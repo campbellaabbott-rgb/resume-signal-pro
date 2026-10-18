@@ -35,6 +35,24 @@ const TOOLS: Tool[] = [
   { fn: "generate-interview-coach", tool: "prep", body: { resumeText: RESUME, targetRole: "Engineer", mode: "generate" }, ok: () => chatReply(PREP) },
 ];
 
+/**
+ * A plan that is live only through a trial (status trialing): the kit is
+ * unlocked, but every writing use is a paid model run, so it is counted on a
+ * free account's figures and chain until a charge clears (S12-098: the
+ * grants read the same flag).
+ */
+const TRIAL_USER = "2c4e6a8b-0d1f-4a3b-8c5d-7e9f1a2b3c4d";
+function withTrial(w: WritingWorld): string {
+  w.users[tokenFor(TRIAL_USER)] = { id: TRIAL_USER, email: "trial@example.com" };
+  const before = w.db.rpcs.pro_entitlement_rows;
+  const live = new Date(Date.now() + 5 * 86400_000).toISOString();
+  w.db.rpcs.pro_entitlement_rows = (a) =>
+    a.p_user_id === TRIAL_USER
+      ? { data: [{ tier: "pro", status: "trialing", current_period_end: live, bound: true }], error: null }
+      : before(a);
+  return tokenFor(TRIAL_USER);
+}
+
 const handlers = new Map<string, EdgeHandler>();
 let world: WritingWorld;
 
@@ -92,6 +110,15 @@ for (const t of TOOLS) {
       expect(r.status, JSON.stringify(r.body)).toBe(200);
       expect(world.takes).toEqual([{ p_user_id: PRO_USER, p_tools: [t.tool], p_per_day: 5, p_per_month: 60, p_tier: "pro" }]);
       expect(world.ai[0].model).toBe("google/gemini-2.5-pro");
+    });
+
+    it("a trial writes on a free account's allowance and Flash, never Pro's figures", async () => {
+      world.reply = t.ok;
+      const trial = withTrial(world);
+      const r = await call(trial);
+      expect(r.status, JSON.stringify(r.body)).toBe(200);
+      expect(world.takes).toEqual([{ p_user_id: TRIAL_USER, p_tools: [t.tool], p_per_day: 1, p_per_month: null, p_tier: "free" }]);
+      expect(world.ai[0].model).toBe("google/gemini-2.5-flash");
     });
 
     it("a spent day answers 429 daily_limit with resetsAt and a Retry-After, before the model", async () => {
@@ -211,6 +238,15 @@ describe("generate-apply-package: Pro's kit is one tailored résumé from the al
     const r = await post(handlers.get("generate-apply-package")!, "generate-apply-package", KIT, tokenFor(PRO_USER));
     expect(r.status).toBeGreaterThanOrEqual(400);
     expect(world.refunds).toEqual([{ p_user_id: PRO_USER, p_use_ids: ["use-resume-0"] }]);
+  });
+
+  it("a trial still unlocks the kit but counts it on a free account's figures", async () => {
+    const trial = withTrial(world);
+    world.take = () => ({ allowed: false, reason: "daily_limit", tool: "resume", limit: 1, resets_at: new Date(Date.now() + 3600_000).toISOString() });
+    const r = await post(handlers.get("generate-apply-package")!, "generate-apply-package", KIT, trial);
+    expect(r.status).toBe(429);
+    expect(world.takes).toEqual([{ p_user_id: TRIAL_USER, p_tools: ["resume"], p_per_day: 1, p_per_month: null, p_tier: "free" }]);
+    expect(world.ai).toEqual([]);
   });
 
   it("a free account is still asked to go Pro (402) and spends nothing", async () => {

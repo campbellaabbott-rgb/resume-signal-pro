@@ -148,6 +148,9 @@ async function handleKit(req: Request, holder: { pass: WritingPass | null }): Pr
     // kits are never counted in the address's day; the account's own hour
     // is counted before the plan is read (review of S8-063).
     let proAccount = false;
+    // Paid (not a trial): Pro's writing figures. A trial still unlocks the kit
+    // (an ongoing feature) but counts on a free account's allowance (S12-098).
+    let proPaid = false;
     let userId: string | null = null;
     const token = signedInToken(req.headers.get("Authorization") ?? "");
     if (token) {
@@ -165,7 +168,9 @@ async function handleKit(req: Request, holder: { pass: WritingPass | null }): Pr
         if (mine === null) return spendRefusal("limiter_unavailable", null, corsHeaders);
         if (!mine) return spendRefusal("rate_limited_function", KITS_PER_ACCOUNT_HOUR, corsHeaders);
         try {
-          proAccount = (await accountProStanding(supabase, userId)).pro;
+          const standing = await accountProStanding(supabase, userId);
+          proAccount = standing.pro;
+          proPaid = standing.consumables;
         } catch (e) {
           console.warn("[GENERATE-APPLY-PACKAGE] pro check failed:", String(e).slice(0, 120));
         }
@@ -295,7 +300,7 @@ async function handleKit(req: Request, holder: { pass: WritingPass | null }): Pr
       // PRO'S KIT IS ONE TAILORED RÉSUMÉ FROM ITS WRITING ALLOWANCE (owner
       // decision 2026-10-12: five packages a UTC day, sixty a UTC month). The
       // co-pilot's letter is counted by generate-cover-letter.
-      const taken = await takeWriting(supabase, userId, "pro", ["resume"], corsHeaders);
+      const taken = await takeWriting(supabase, userId, proPaid ? "pro" : "free", ["resume"], corsHeaders);
       if ("refused" in taken) return taken.refused;
       holder.pass = taken.pass;
     }

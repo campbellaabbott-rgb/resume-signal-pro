@@ -144,7 +144,11 @@ export async function writingGate(
 
   const standing = await accountProStanding(db, userId);
   if (!standing.known) return { refused: unavailable(cors) };
-  return takeWriting(db, userId, standing.pro ? "pro" : "free", tools, cors);
+  // Every use is a paid model run, so Pro's figures and chain follow the
+  // plan's CONSUMABLES flag, the one the grants read (S12-098), not the flag
+  // a trial also sets: a trial, or a trial's last hour before its first
+  // charge clears, writes on a free account's allowance.
+  return takeWriting(db, userId, standing.consumables ? "pro" : "free", tools, cors);
 }
 
 /**
