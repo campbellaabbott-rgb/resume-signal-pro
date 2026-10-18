@@ -4232,7 +4232,8 @@
       "q": "mots recherchés",
       "location": "lieu",
       "activelyHiring": "historique d'embauche de l'employeur",
-      "sort": "ordre de tri"
+      "sort": "ordre de tri",
+      "placeExclusion": "exclusion d'un lieu"
     },
     "companiesChip": "{{n}} entreprises",
     "firstSeenToday": "vue pour la première fois aujourd'hui",
@@ -5303,10 +5304,10 @@
     "retiredMeta": "Nous ne vendons plus l'Agent Pass ni la formule Agent, et nous n'envoyons pas de candidatures. Voici ce qui a changé, et la façon gratuite de postuler avec votre propre IA.",
     "retiredBadge": "Retiré",
     "retiredBody": "Nous ne vendons plus l'Agent Pass, la formule Agent ni l'Apply Assistant, et notre propre agent de candidature est désactivé : Resume Booster n'envoie de candidatures pour personne.",
-    "retiredBuyers": "Vous en avez acheté un ? Nous le rembourserons ou l'honorerons. Écrivez-nous depuis l'adresse utilisée pour payer :",
     "freePathTitle": "La voie gratuite : postuler vous-même, avec votre propre IA",
     "freePathBody": "Connectez Resume Booster à Claude ou ChatGPT gratuitement. Votre IA cherche avec vous sur le tableau, lit l'offre — et, quand le système de l'employeur le publie, le formulaire de candidature — et vous aide à rédiger vos réponses. Vous vérifiez tout et cliquez sur Envoyer sur le site de l'employeur.",
-    "freePathCta": "Connectez votre IA"
+    "freePathCta": "Connectez votre IA",
+    "retiredBuyersHonour": "Vous en avez acheté un ? Écrivez-nous depuis l'adresse utilisée pour payer et nous honorerons votre achat :"
   },
   "oauthConsent": {
     "title": "Connectez votre agent",
@@ -5614,11 +5615,11 @@
     "deleteConfirm": "Oui, supprimer mon compte",
     "deleteStart": "Supprimer mon compte",
     "deletedLabel": "Supprimé :",
-    "deletedList": "votre compte et votre connexion ; votre historique d'analyses, votre liste de corrections, votre objectif, les versions enregistrées de votre CV et vos candidatures suivies ; les recherches enregistrées et les alertes ; tout fichier de CV que vous avez importé ; vos clés d'API et d'IA connectée, qui cessent de fonctionner ; et, une fois votre adresse vérifiée, ses inscriptions aux listes de diffusion.",
     "export": "Télécharger toutes mes données (JSON)",
     "keptLabel": "Conservé :",
     "keptList": "les justificatifs de paiement (la référence Stripe, le montant, la date et l'adresse figurant sur le reçu) aussi longtemps que la loi fiscale l'exige, et une mention d'exclusion pour votre adresse afin qu'aucun e-mail déjà en file d'attente ne l'atteigne. Les crédits d'analyse achetés sous votre adresse sans compte restent attachés à cette adresse.",
-    "title": "Vos données"
+    "title": "Vos données",
+    "deletedListDocs": "votre compte et votre connexion ; votre historique d'analyses, votre liste de corrections, votre objectif, les versions enregistrées de votre CV et vos candidatures suivies ; les recherches enregistrées et les alertes ; tout fichier de CV que vous avez importé ; les documents que nous avons préparés pour vos achats et ce qu'inclut Pro ; vos clés d'API et d'IA connectée, qui cessent de fonctionner ; et, une fois votre adresse vérifiée, ses inscriptions aux listes de diffusion et les documents préparés à cette adresse."
   },
   "accountSettings": {
     "codeFailed": "Nous n'avons pas pu demander de code de confirmation pour l'instant. Réessayez dans une minute.",

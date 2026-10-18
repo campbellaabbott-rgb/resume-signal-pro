@@ -4233,7 +4233,8 @@
       "q": "palabras de búsqueda",
       "location": "ubicación",
       "activelyHiring": "historial de contratación del empleador",
-      "sort": "orden"
+      "sort": "orden",
+      "placeExclusion": "exclusión de un lugar"
     },
     "companiesChip": "{{n}} empresas",
     "firstSeenToday": "vista por primera vez hoy",
@@ -5303,10 +5304,10 @@
     "retiredMeta": "Ya no vendemos el Agent Pass ni el plan Agent, y no enviamos solicitudes. Aquí tienes qué ha cambiado y la forma gratuita de postularte con tu propia IA.",
     "retiredBadge": "Retirado",
     "retiredBody": "Ya no vendemos el Agent Pass, el plan Agent ni el Apply Assistant, y nuestro propio agente de postulación está desactivado: Resume Booster no envía solicitudes por nadie.",
-    "retiredBuyers": "¿Compraste uno antes? Te lo reembolsaremos o lo respetaremos. Escríbenos desde la dirección con la que pagaste:",
     "freePathTitle": "La forma gratuita: postúlate por tu cuenta, con tu propia IA",
     "freePathBody": "Conecta Resume Booster a Claude o ChatGPT sin coste. Tu IA busca contigo en la bolsa de empleo, lee la oferta —y, si el sistema del empleador lo publica, el formulario de solicitud— y te ayuda a escribir tus respuestas. Tú lo revisas todo y pulsas Enviar en el sitio del empleador.",
-    "freePathCta": "Conecta tu IA"
+    "freePathCta": "Conecta tu IA",
+    "retiredBuyersHonour": "¿Compraste uno antes? Escríbenos desde la dirección con la que pagaste y respetaremos lo que compraste:"
   },
   "oauthConsent": {
     "title": "Conecta tu agente",
@@ -5614,11 +5615,11 @@
     "deleteConfirm": "Sí, eliminar mi cuenta",
     "deleteStart": "Eliminar mi cuenta",
     "deletedLabel": "Se elimina:",
-    "deletedList": "tu cuenta y tu inicio de sesión; tu historial de análisis, tu lista de tareas, tu objetivo, las versiones guardadas de tu currículum y las candidaturas registradas; las búsquedas guardadas y las alertas; cualquier archivo de currículum que hayas subido; tus claves de API y de IA conectadas, que dejan de funcionar; y, cuando tu dirección esté verificada, sus entradas en listas de correo.",
     "export": "Descargar todos mis datos (JSON)",
     "keptLabel": "Se conserva:",
     "keptList": "los registros de pago (la referencia de Stripe, el importe, la fecha y la dirección del recibo) durante el tiempo que exija la ley fiscal, y una nota de no enviar correos a tu dirección para que no le llegue ningún correo ya en cola. Los créditos de análisis comprados con tu dirección sin cuenta se quedan con esa dirección.",
-    "title": "Tus datos"
+    "title": "Tus datos",
+    "deletedListDocs": "tu cuenta y tu inicio de sesión; tu historial de análisis, tu lista de tareas, tu objetivo, las versiones guardadas de tu currículum y las candidaturas registradas; las búsquedas guardadas y las alertas; cualquier archivo de currículum que hayas subido; los documentos que preparamos para tus compras y lo incluido en Pro; tus claves de API y de IA conectadas, que dejan de funcionar; y, cuando tu dirección esté verificada, sus entradas en listas de correo y los documentos preparados con ella."
   },
   "accountSettings": {
     "codeFailed": "No pudimos pedir un código de confirmación en este momento. Inténtalo de nuevo en un minuto.",

@@ -169,7 +169,7 @@ describe("section 65: the pass page and the /agent bake", () => {
 
   it("a wave-4 deploy is judged by the retirement notice, and a trial still on the bake is INFO, not PASS", () => {
     const { lines } = run(S65, { curl: [W4, ...bundle(EN_W4), page("/agent", "<p>See how it works: 7 days free for first-time subscribers</p>")] });
-    expect(has(lines, "PASS", /English strings carry "Bought one before\? We will refund it or honour it"/), show(lines)).toBe(true);
+    expect(has(lines, "PASS", /English strings carry "we will honour what you bought"/), show(lines)).toBe(true);
     expect(lines.some((l) => /repairRefunded/.test(l)), show(lines)).toBe(false);
     expect(has(lines, "INFO", /\/agent as served to a crawler still names the retired plan's free days/), show(lines)).toBe(true);
     expect(lines.some((l) => l.startsWith("PASS") && /\/agent as served to a crawler names the trial/.test(l)), show(lines)).toBe(false);

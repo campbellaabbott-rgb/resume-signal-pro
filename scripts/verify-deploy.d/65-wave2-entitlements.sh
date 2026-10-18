@@ -91,7 +91,7 @@ else
               "first-time subscribers|the board names the trial for first-time subscribers only (L6-29)" \
               "first-time subscribers start with|the agent paywall names the trial for first-time subscribers only (L6-29)" \
               "welcomeTitleTrial|the welcome banner names a trial only when the checkout gave one (L6-29)" \
-              "$( [ "$VD65_W4" = 1 ] && echo "Bought one before? We will refund it or honour it|the retired pass page tells a past buyer they are refunded or honoured (wave 4 replaced the pass page and its repair sentence)" || echo "repairRefunded|the pass page says a refunded payment opens no pass (L6-18)" )" \
+              "$( [ "$VD65_W4" = 1 ] && echo "we will honour what you bought|the retired pass page tells a past buyer what they bought is honoured, with no refund promised (wave 4 replaced the pass page and its repair sentence; round 2 fixes dropped the refund)" || echo "repairRefunded|the pass page says a refunded payment opens no pass (L6-18)" )" \
               "Your trial is on|the Pro card tells a trial what is on now (L6-08)"; do
     S=${PAIR%%|*}; WHY=${PAIR#*|}
     if printf '%s' "$EN65" | grep -qF "$S"; then echo "PASS  English strings carry \"$S\": $WHY"

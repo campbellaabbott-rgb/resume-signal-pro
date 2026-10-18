@@ -4232,7 +4232,8 @@
       "q": "search words",
       "location": "location",
       "activelyHiring": "employer hiring record",
-      "sort": "sort order"
+      "sort": "sort order",
+      "placeExclusion": "leaving out a place"
     },
     "companiesChip": "{{n}} companies",
     "firstSeenToday": "first seen today",
@@ -5303,10 +5304,10 @@
     "retiredMeta": "We no longer sell the Agent Pass or the Agent plan, and we do not send applications. Here is what changed, and the free way to apply with your own AI.",
     "retiredBadge": "Retired",
     "retiredBody": "We no longer sell the Agent Pass, the Agent plan or the Apply Assistant, and our own apply agent is switched off: Resume Booster does not send applications for anyone.",
-    "retiredBuyers": "Bought one before? We will refund it or honour it. Write to us from the address you paid with:",
     "freePathTitle": "The free way: apply yourself, with your own AI",
     "freePathBody": "Connect Resume Booster to Claude or ChatGPT at no cost. Your AI searches the board with you, reads the posting — and, where the employer's system publishes it, the application form — and helps you write your answers. You check everything and press Submit on the employer's own site.",
-    "freePathCta": "Connect your AI"
+    "freePathCta": "Connect your AI",
+    "retiredBuyersHonour": "Bought one before? Write to us from the address you paid with and we will honour what you bought:"
   },
   "oauthConsent": {
     "title": "Connect your agent",
@@ -5614,11 +5615,11 @@
     "deleteConfirm": "Yes, delete my account",
     "deleteStart": "Delete my account",
     "deletedLabel": "Deleted:",
-    "deletedList": "your account and sign-in; your scan history, checklist, goal, saved résumé versions and tracked applications; saved searches and alerts; any CV file you uploaded; your API and connected-AI keys, which stop working; and, once your address is proven, its mailing-list entries.",
     "export": "Download all my data (JSON)",
     "keptLabel": "Kept:",
     "keptList": "payment records (the Stripe reference, amount, date and the address on the receipt) for as long as tax law requires, and a do-not-mail note for your address so that no mail already queued reaches it. Scan credits bought under your address without an account stay with that address.",
-    "title": "Your data"
+    "title": "Your data",
+    "deletedListDocs": "your account and sign-in; your scan history, checklist, goal, saved résumé versions and tracked applications; saved searches and alerts; any CV file you uploaded; the documents we made for your purchases and Pro inclusions; your API and connected-AI keys, which stop working; and, once your address is proven, its mailing-list entries and the documents made under it."
   },
   "accountSettings": {
     "codeFailed": "We couldn't ask for a confirmation code right now. Try again in a minute.",

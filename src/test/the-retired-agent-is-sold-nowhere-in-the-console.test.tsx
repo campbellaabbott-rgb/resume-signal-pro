@@ -99,7 +99,7 @@ describe("the Morning Queue panel, as a customer with no plan sees it", () => {
   it("a past pass holder is not told the pass funds an agent that is switched off", async () => {
     access.value = { active: true, tier: "pass", status: "active", pass: { state: "active", usable: true, applicationsLeft: 7 } };
     render(<MemoryRouter><MorningQueuePanel userId="u-7" email="pass@example.com" defaultResume={RESUME} /></MemoryRouter>);
-    await screen.findByText(/Bought one before\? We will refund it or honour it/);
+    await screen.findByText(/Bought one before\? Write to us from the address you paid with and we will honour what you bought/);
     expect(document.body.textContent).not.toMatch(/Your Agent Pass funds this agent/);
   });
 });
@@ -135,10 +135,12 @@ describe("the application kit sells nothing to a member without Pro", () => {
 });
 
 describe("/agent says the agent is retired where it offered the pass", () => {
-  it("the notice names the change, the refund, the address and the free path", () => {
+  it("the notice names the change, the address, the free path, and promises no refund", () => {
     render(<MemoryRouter><AgentRetiredNotice /></MemoryRouter>);
     const box = document.querySelector("[data-agent-retired]")!;
     expect(box.textContent).toMatch(/does not send applications for anyone/);
+    expect(box.textContent).toMatch(/we will honour what you bought/);
+    expect(box.textContent).not.toMatch(/refund/i);
     expect(box.querySelector("a[href^='mailto:']")!.getAttribute("href")).toBe("mailto:resumeboostersupp@gmail.com");
     expect(box.querySelector("a[href='/agents']")).toBeTruthy();
     expect(box.textContent).not.toMatch(/\$\d/);

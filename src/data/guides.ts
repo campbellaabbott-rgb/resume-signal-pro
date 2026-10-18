@@ -420,11 +420,10 @@ export const GUIDES: Record<string, Guide> = {
       },
       {
         q: "Can a tool do this translation for me?",
-        a: "Ours does: Freelance Boost ($29) takes a guided project intake — or a pasted platform profile — and applies exactly the structure rules and bullet formula in this guide, using only facts you provide. It never invents clients, metrics, or outcomes; if you give it no number, it writes an honest bullet without one.",
+        a: "The translation is the method above: one consolidated role, bullets built on client problems and outcomes, and only facts you can back up. Our free scan then reads the finished resume the way an applicant tracking system does and tells you what it still misses. Nothing should invent a client, a metric or an outcome for you; if you have no number, an honest bullet without one is stronger.",
       },
     ],
     related: [
-      { label: "Freelance Boost — do this translation for me", href: "/freelance-boost" },
       { label: "Career changer's resume playbook", href: "/guides/career-change-resume" },
       { label: "Scan your resume free", href: "/" },
     ],
@@ -487,11 +486,10 @@ export const GUIDES: Record<string, Guide> = {
       },
       {
         q: "Can a tool structure this for me?",
-        a: "Yes — Freelance Boost has a fractional mode: give it your engagements and it writes the umbrella entry, per-engagement scope lines, and a transition paragraph aimed at either a full-time seat or further fractional work. It uses only the facts you provide — invented scope would be spotted instantly at this level, so we never generate any.",
+        a: "The structure is the method above: one umbrella entry, a scope line per engagement, and a summary that names the move you want. Our free scan reads the finished resume and treats overlapping senior engagements as a portfolio, not as job-hopping. Use only the scope you actually had: invented scope is spotted instantly at this level.",
       },
     ],
     related: [
-      { label: "Freelance Boost (fractional mode) — structure it for me", href: "/freelance-boost" },
       { label: "How to put freelance work on your resume", href: "/guides/freelance-work-on-resume" },
       { label: "Scan your resume free", href: "/" },
     ],
@@ -576,7 +574,7 @@ export const GUIDES: Record<string, Guide> = {
         h2: "What changed",
         paras: [
           "Our Apply Agent was a service that prepared applications overnight and could send some of them for you. It is switched off, and nothing is prepared or sent any more. We also stopped selling the three products built around it: the Agent plan, the Agent Pass and the Apply Assistant. Their checkouts refuse a purchase and charge nothing.",
-          "If you bought one of them, we will refund it or honour it. Write to resumeboostersupp@gmail.com from the address you paid with.",
+          "If you bought one of them, write to resumeboostersupp@gmail.com from the address you paid with and we will honour what you bought.",
           "Your account keeps what it had. The application tracker, your saved jobs and any applications the agent prepared before stay where they were, and none of them will be sent.",
         ],
       },
@@ -636,7 +634,7 @@ export const GUIDES: Record<string, Guide> = {
       },
       {
         q: "I paid for the Agent plan, the Agent Pass or the Apply Assistant. What happens now?",
-        a: "We will refund it or honour it. Write to resumeboostersupp@gmail.com from the address you paid with.",
+        a: "Write to resumeboostersupp@gmail.com from the address you paid with and we will honour what you bought.",
       },
       {
         q: "Will my AI fill in the whole application for me?",

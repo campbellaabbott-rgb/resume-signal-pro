@@ -124,8 +124,8 @@ export default function Agent() {
           <p className="mt-3 text-muted-foreground">
             {t("agentPage.retiredPublicLead", "Resume Booster no longer applies for anyone. You can still search live jobs and apply yourself, with Claude or ChatGPT helping you, on the employer's own site.")}
           </p>
-          {/* Not AgentRetiredNotice: its past-buyer line promises a refund,
-              and the owner's decision is that sales are final. */}
+          {/* Not AgentRetiredNotice: the signed-out page names no past-buyer
+              address; sales are final (the owner's decision). */}
           <div className="mt-6 rounded-xl border border-border bg-muted/40 p-4 text-[13px] text-muted-foreground">
             <p>{t("agentPage.retiredPublicBody", "We no longer sell the Agent plan, the Agent Pass or the Apply Assistant, and our own apply agent is switched off: nothing is submitted for you.")}</p>
             <Link to="/agents" className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline">

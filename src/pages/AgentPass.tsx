@@ -56,7 +56,7 @@ export default function AgentPass() {
             <p className="text-muted-foreground flex items-start gap-2" data-pass-buyers>
               <Mail className="w-4 h-4 mt-1 shrink-0 text-primary" aria-hidden />
               <span>
-                {t("agentPass.retiredBuyers", "Bought one before? We will refund it or honour it. Write to us from the address you paid with:")}{" "}
+                {t("agentPass.retiredBuyersHonour", "Bought one before? Write to us from the address you paid with and we will honour what you bought:")}{" "}
                 <a href={`mailto:${SUPPORT_EMAIL}`} className="text-primary hover:underline">{SUPPORT_EMAIL}</a>
               </span>
             </p>

@@ -4232,7 +4232,8 @@
       "q": "zoekwoorden",
       "location": "locatie",
       "activelyHiring": "wervingsgeschiedenis van de werkgever",
-      "sort": "sortering"
+      "sort": "sortering",
+      "placeExclusion": "een plaats uitsluiten"
     },
     "companiesChip": "{{n}} bedrijven",
     "firstSeenToday": "voor het eerst gezien vandaag",
@@ -5303,10 +5304,10 @@
     "retiredMeta": "We verkopen de Agent Pass en het Agent-abonnement niet meer en versturen geen sollicitaties. Hier lees je wat er is veranderd, en hoe je gratis solliciteert met je eigen AI.",
     "retiredBadge": "Stopgezet",
     "retiredBody": "We verkopen de Agent Pass, het Agent-abonnement en de Apply Assistant niet meer, en onze eigen sollicitatie-agent staat uit: Resume Booster verstuurt voor niemand sollicitaties.",
-    "retiredBuyers": "Er al een gekocht? We betalen het terug of komen het na. Schrijf ons vanaf het adres waarmee je hebt betaald:",
     "freePathTitle": "De gratis manier: zelf solliciteren, met je eigen AI",
     "freePathBody": "Koppel Resume Booster kosteloos aan Claude of ChatGPT. Je AI zoekt samen met je op het bord, leest de vacature — en, waar het systeem van de werkgever het publiceert, het sollicitatieformulier — en helpt je je antwoorden te schrijven. Jij controleert alles en drukt zelf op Verzenden op de site van de werkgever.",
-    "freePathCta": "Koppel je AI"
+    "freePathCta": "Koppel je AI",
+    "retiredBuyersHonour": "Er al een gekocht? Schrijf ons vanaf het adres waarmee je hebt betaald en we komen na wat je hebt gekocht:"
   },
   "oauthConsent": {
     "title": "Verbind je agent",
@@ -5614,11 +5615,11 @@
     "deleteConfirm": "Ja, verwijder mijn account",
     "deleteStart": "Mijn account verwijderen",
     "deletedLabel": "Verwijderd:",
-    "deletedList": "je account en je login; je scangeschiedenis, checklist, doel, opgeslagen cv-versies en gevolgde sollicitaties; opgeslagen zoekopdrachten en meldingen; elk cv-bestand dat je hebt geüpload; je API- en AI-koppelingssleutels, die niet meer werken; en, zodra je adres is bevestigd, de inschrijvingen ervan op mailinglijsten.",
     "export": "Al mijn gegevens downloaden (JSON)",
     "keptLabel": "Bewaard:",
     "keptList": "betaalgegevens (de Stripe-referentie, het bedrag, de datum en het adres op het betaalbewijs) zolang de belastingwet dat vereist, en een niet-mailen-notitie voor je adres zodat geen al ingeplande e-mail het bereikt. Scantegoed dat zonder account onder je adres is gekocht, blijft bij dat adres.",
-    "title": "Je gegevens"
+    "title": "Je gegevens",
+    "deletedListDocs": "je account en je login; je scangeschiedenis, checklist, doel, opgeslagen cv-versies en gevolgde sollicitaties; opgeslagen zoekopdrachten en meldingen; elk cv-bestand dat je hebt geüpload; de documenten die we voor je aankopen en wat bij Pro hoort hebben gemaakt; je API- en AI-koppelingssleutels, die niet meer werken; en, zodra je adres is bevestigd, de inschrijvingen ervan op mailinglijsten en de documenten die op dat adres zijn gemaakt."
   },
   "accountSettings": {
     "codeFailed": "We konden nu geen bevestigingscode aanvragen. Probeer het over een minuut opnieuw.",

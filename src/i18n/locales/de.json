@@ -4232,7 +4232,8 @@
       "q": "Suchbegriffe",
       "location": "Ort",
       "activelyHiring": "Einstellungsbilanz des Arbeitgebers",
-      "sort": "Sortierung"
+      "sort": "Sortierung",
+      "placeExclusion": "Ortsausschluss"
     },
     "companiesChip": "{{n}} Unternehmen",
     "firstSeenToday": "zuerst gesehen: heute",
@@ -5303,10 +5304,10 @@
     "retiredMeta": "Wir verkaufen den Agent Pass und den Agent-Plan nicht mehr und versenden keine Bewerbungen. Hier steht, was sich geändert hat, und wie du dich kostenlos mit deiner eigenen KI bewirbst.",
     "retiredBadge": "Eingestellt",
     "retiredBody": "Wir verkaufen den Agent Pass, den Agent-Plan und den Apply Assistant nicht mehr, und unser eigener Bewerbungs-Agent ist abgeschaltet: Resume Booster versendet für niemanden Bewerbungen.",
-    "retiredBuyers": "Schon einen gekauft? Wir erstatten ihn oder lösen ihn ein. Schreib uns von der Adresse, mit der du bezahlt hast:",
     "freePathTitle": "Der kostenlose Weg: selbst bewerben, mit deiner eigenen KI",
     "freePathBody": "Verbinde Resume Booster kostenlos mit Claude oder ChatGPT. Deine KI durchsucht mit dir die Jobbörse, liest die Stellenanzeige – und, wo das System des Arbeitgebers es veröffentlicht, das Bewerbungsformular – und hilft dir, deine Antworten zu schreiben. Du prüfst alles und klickst auf der Website des Arbeitgebers selbst auf Absenden.",
-    "freePathCta": "Verbinde deine KI"
+    "freePathCta": "Verbinde deine KI",
+    "retiredBuyersHonour": "Schon einen gekauft? Schreib uns von der Adresse, mit der du bezahlt hast, und wir lösen ein, was du gekauft hast:"
   },
   "oauthConsent": {
     "title": "Verbinde deinen Agenten",
@@ -5614,11 +5615,11 @@
     "deleteConfirm": "Ja, mein Konto löschen",
     "deleteStart": "Mein Konto löschen",
     "deletedLabel": "Gelöscht:",
-    "deletedList": "Ihr Konto und Ihre Anmeldung; Ihr Scanverlauf, Ihre Checkliste, Ihr Ziel, gespeicherte Lebenslaufversionen und verfolgte Bewerbungen; gespeicherte Suchen und Benachrichtigungen; jede hochgeladene Lebenslaufdatei; Ihre API- und KI-Verbindungsschlüssel, die dann nicht mehr funktionieren; und, sobald Ihre Adresse bestätigt ist, ihre Einträge in Verteilern.",
     "export": "Alle meine Daten herunterladen (JSON)",
     "keptLabel": "Aufbewahrt:",
     "keptList": "Zahlungsbelege (die Stripe-Referenz, der Betrag, das Datum und die Adresse auf der Quittung), solange das Steuerrecht es verlangt, und ein Sperrvermerk für Ihre Adresse, damit keine bereits geplante E-Mail sie erreicht. Scan-Guthaben, die ohne Konto unter Ihrer Adresse gekauft wurden, bleiben bei dieser Adresse.",
-    "title": "Ihre Daten"
+    "title": "Ihre Daten",
+    "deletedListDocs": "Ihr Konto und Ihre Anmeldung; Ihr Scanverlauf, Ihre Checkliste, Ihr Ziel, gespeicherte Lebenslaufversionen und verfolgte Bewerbungen; gespeicherte Suchen und Benachrichtigungen; jede hochgeladene Lebenslaufdatei; die Dokumente, die wir für Ihre Käufe und Pro-Leistungen erstellt haben; Ihre API- und KI-Verbindungsschlüssel, die dann nicht mehr funktionieren; und, sobald Ihre Adresse bestätigt ist, ihre Einträge in Verteilern und die unter ihr erstellten Dokumente."
   },
   "accountSettings": {
     "codeFailed": "Wir konnten gerade keinen Bestätigungscode anfordern. Versuchen Sie es in einer Minute noch einmal.",

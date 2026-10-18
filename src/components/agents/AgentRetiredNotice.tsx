@@ -31,7 +31,7 @@ export function AgentRetiredNotice({ className }: { className?: string }) {
       <p className="mt-2 flex items-start gap-2">
         <Mail className="w-3.5 h-3.5 mt-0.5 shrink-0 text-primary" aria-hidden />
         <span>
-          {t("agentPass.retiredBuyers", "Bought one before? We will refund it or honour it. Write to us from the address you paid with:")}{" "}
+          {t("agentPass.retiredBuyersHonour", "Bought one before? Write to us from the address you paid with and we will honour what you bought:")}{" "}
           <a href={`mailto:${AGENT_RETIRED_SUPPORT_EMAIL}`} className="text-primary hover:underline">{AGENT_RETIRED_SUPPORT_EMAIL}</a>
         </span>
       </p>

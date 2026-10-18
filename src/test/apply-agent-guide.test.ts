@@ -117,8 +117,9 @@ describe("what the guide says matches the switch", () => {
     }
   });
 
-  it("tells a past buyer they are refunded or honoured, at the retirement notice's address", () => {
-    expect(prose).toMatch(/refund it or honour it/);
+  it("tells a past buyer what they bought is honoured, at the retirement notice's address, and promises no refund", () => {
+    expect(prose).toMatch(/we will honour what you bought/);
+    expect(prose).not.toMatch(/refund it/);
     expect(prose).toMatch(/resumeboostersupp@gmail\.com/);
   });
 });

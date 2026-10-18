@@ -4232,7 +4232,8 @@
       "q": "mga salitang hinahanap",
       "location": "lokasyon",
       "activelyHiring": "rekord ng pagkuha ng employer",
-      "sort": "pagkakaayos"
+      "sort": "pagkakaayos",
+      "placeExclusion": "pag-alis ng isang lugar"
     },
     "companiesChip": "{{n}} kumpanya",
     "firstSeenToday": "unang nakita ngayong araw",
@@ -5303,10 +5304,10 @@
     "retiredMeta": "Hindi na namin ibinebenta ang Agent Pass o ang Agent plan, at hindi kami nagpapadala ng mga application. Narito kung ano ang nagbago, at ang libreng paraan ng pag-apply gamit ang sarili mong AI.",
     "retiredBadge": "Itinigil na",
     "retiredBody": "Hindi na namin ibinebenta ang Agent Pass, ang Agent plan o ang Apply Assistant, at naka-off ang sarili naming apply agent: hindi nagpapadala ang Resume Booster ng application para kaninuman.",
-    "retiredBuyers": "Nakabili ka na ba dati? Ire-refund namin ito o tutuparin. Sumulat sa amin mula sa address na ginamit mo sa pagbabayad:",
     "freePathTitle": "Ang libreng paraan: mag-apply nang ikaw mismo, gamit ang sarili mong AI",
     "freePathBody": "Ikonekta nang walang bayad ang Resume Booster sa Claude o ChatGPT. Naghahanap ang iyong AI sa board kasama mo, binabasa ang posting — at, kung inilalathala ito ng system ng employer, ang application form — at tinutulungan kang isulat ang iyong mga sagot. Ikaw ang susuri sa lahat at pipindot ng Submit sa sariling site ng employer.",
-    "freePathCta": "Ikonekta ang iyong AI"
+    "freePathCta": "Ikonekta ang iyong AI",
+    "retiredBuyersHonour": "Nakabili ka na ba dati? Sumulat sa amin mula sa address na ginamit mo sa pagbabayad at tutuparin namin ang binili mo:"
   },
   "oauthConsent": {
     "title": "Ikonekta ang iyong agent",
@@ -5614,11 +5615,11 @@
     "deleteConfirm": "Oo, burahin ang account ko",
     "deleteStart": "Burahin ang account ko",
     "deletedLabel": "Buburahin:",
-    "deletedList": "ang account at sign-in mo; ang scan history, checklist, goal, mga naka-save na bersyon ng resume at mga tina-track na application mo; mga naka-save na search at alert; anumang CV file na in-upload mo; ang mga API at connected-AI key mo, na hindi na gagana; at, kapag napatunayan na ang address mo, ang mga entry nito sa mga mailing list.",
     "export": "I-download ang lahat ng data ko (JSON)",
     "keptLabel": "Itatabi:",
     "keptList": "mga record ng bayad (ang Stripe reference, halaga, petsa at ang address sa resibo) hangga't hinihingi ng batas sa buwis, at isang do-not-mail na tala para sa address mo para hindi ito maabot ng anumang email na nakapila na. Ang mga scan credit na binili gamit ang address mo nang walang account ay mananatili sa address na iyon.",
-    "title": "Ang data mo"
+    "title": "Ang data mo",
+    "deletedListDocs": "ang account at sign-in mo; ang scan history, checklist, goal, mga naka-save na bersyon ng resume at mga tina-track na application mo; mga naka-save na search at alert; anumang CV file na in-upload mo; ang mga dokumentong ginawa namin para sa mga binili mo at sa kasama ng Pro; ang mga API at connected-AI key mo, na hindi na gagana; at, kapag napatunayan na ang address mo, ang mga entry nito sa mga mailing list at ang mga dokumentong ginawa sa address na iyon."
   },
   "accountSettings": {
     "codeFailed": "Hindi kami makahingi ng confirmation code ngayon. Subukan ulit pagkalipas ng isang minuto.",
