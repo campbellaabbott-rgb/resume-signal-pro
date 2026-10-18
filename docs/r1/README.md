@@ -30,6 +30,15 @@ checkout question keys on a member having signed in on this browser; and
 deno.lock is main's again. r1/flags is folded in: Google sign-in and password
 recovery ship in the FIRST publish (see "Switches" and "Deploy order").
 
+After R1 merged and its functions went live, the S13 sweep found four bugs
+it introduced or left. The hotfix (branch r1/hotfix-s13, see "The S13
+hotfix" below) fixes them: a second Full Analysis in one tab is shown its own
+analysis (S13-002); a Lovable 429 or a hung send never stops sign-in mail
+(S13-017, process-email-queue 2026-10-14.2, and migration 20261014100000
+edited in place before it was applied anywhere); a Freelance Boost purchase
+is honoured only on the load that captured it (S13-082); and an expired
+reset link from our own mail offers a new reset link (S13-106).
+
 | branch | what it owns |
 |---|---|
 | r1/mail | auth-email-hook, process-email-queue, resend-webhook (new), `_shared/send-mail.ts`, the auth mail templates and their strings, migration 20261014100000, verify section 94 |
@@ -140,7 +149,9 @@ recovery ship in the FIRST publish (see "Switches" and "Deploy order").
 - It also moves every Stripe `session_id` on any path (product and full
   analysis returns, Freelance Boost, the pass, `/account?pro=success`, the
   scan-pack return), the `share` id on `/success` (it reads and deletes the
-  analysis, so the page keeps a new share in the stash, not the address), and
+  analysis, so the page keeps a new share in the stash, not the address, with
+  the purchase it belongs to; a `/success` address names one purchase or one
+  analysis, and what it names replaces the pair the stash held, S13-002), and
   the API key link's `#confirm` on `/data-api`. Those path-bound values stay in
   the address when storage is blocked, so the page still finds them.
 - Not moved: the company-claim link's `claim_verify` (`/jobs/company/:token`).
@@ -214,6 +225,14 @@ recovery ship in the FIRST publish (see "Switches" and "Deploy order").
   Resend from `account@resumebooster.work`. A permanent Resend refusal
   dead-letters it naming both refusals; a Resend 429, 5xx or timeout leaves it
   on the queue for the next tick, until the code inside it expires.
+- A Lovable 429 on sign-in mail sends that mail through Resend at once, and
+  the rest of the run's sign-in mail goes straight to Resend. It sets no
+  cooldown: `email_send_state.retry_after_until` belongs to the transactional
+  queue alone, and a cooldown in force never holds sign-in mail, in the
+  function or in rb-auth-mail-drain. Every Lovable send has a 10-second
+  deadline. A send past it may still land, so it counts as a transient
+  failure (a 'failed' row toward the three), and the run's later sign-in mail
+  goes to Resend (S13-017, process-email-queue 2026-10-14.2).
 - resend-webhook records bounces and complaints, and suppresses those
   addresses.
 
@@ -293,6 +312,41 @@ after two hours, so rows in those states would read as stuck mail; stamping
 keeps the reader honest without changing it inside R1. A later migration can
 add both states to that reader's terminal list and move to rows.
 
+## The S13 hotfix (branch r1/hotfix-s13, 2026-10-17)
+
+R1 is merged and its functions are live (x-fn-build 2026-10-14.1). The S13
+sweep (`~/.config/resumebooster/platform-debug-2026-10-12-s13/r1-followup.json`)
+found these, and the hotfix fixes them on main:
+
+| item | what was wrong | what is true now |
+|---|---|---|
+| S13-002 (high, commercial blocker) | The first script merged only the keys it captured, so a second $5 purchase in one tab arrived at `/success` beside the first purchase's stashed share. The page showed analysis #1, never generated #2, recorded no sale and hid Try again; after a Delete (or the email's share link) it said "Analysis not found". | A `/success` address names one purchase or one analysis: the first script replaces the pair the stash held for `/success` in the same write (a new session id drops the old share; a share link alone drops the tab's `/success` purchase). The page stores a share with the purchase it belongs to (`share_session`) and honours a stashed share only for that purchase, or with no purchase named (read-only). Delete forgets the share. |
+| S13-017 (medium) | A Lovable 429 stopped the run and set `retry_after_until` to Retry-After (an hour), which the drain's cron also honoured, so every reset mail expired into the dead-letter queue with no Resend try. A hung Lovable send was killed before any row counted it. | process-email-queue 2026-10-14.2: a 429 on sign-in mail goes through Resend at once with the payload's idempotency key and sets no cooldown; the run's other sign-in mail goes straight to Resend; a cooldown in force never holds sign-in mail; a send past its 10 s deadline is a transient failure and Lovable is not asked again in that run. Migration 20261014100000 (never applied anywhere; drizzle/migrations has no stub naming it) was edited in place: the cron no longer returns during a cooldown, and its self-check fails if the command reads `email_send_state` again. Its ledger rule now waits for 2026-10-14.2. |
+| S13-082 (low) | FreelanceBoost read the stashed session id with no age check, so every later visit in the tab showed the old purchase, the buy buttons never rendered, and "Start a new purchase" could not be reached. | The stashed id is honoured only on the load that captured it (the stash's `_at` against `performance.timeOrigin`, with 2 s of slack). "Start a new purchase" is offered beside a purchase too, and it clears the mark, the stash and the address. |
+| S13-106 (low) | A definite refusal of our own mail's reset link (`mode=confirm&type=recovery`) said "Sign in again to get a new one" with only "Back to sign in". | It opens the reset page on its "expired" step: "This reset link has expired or was already used", "Send a new reset link" for the address this browser asked for (read before the refusal spends the marker), and "Email support". Other link types keep the generic wording. |
+
+Deploy (generate the message with `node scripts/deploy-ledger.mjs --message`):
+process-email-queue 2026-10-14.2, then the frontend (index.html,
+Success, FreelanceBoost, Auth, ResetFlow). Migration 20261014100000 waits
+for section 94 to show 2026-10-14.2. Sections 94 and 95 carry the new lines.
+
+Hand-offs (not in this hotfix):
+
+- **S13-123 → wave 4, payments-delivery group.** The paid page says the
+  analysis is "kept for 90 days behind the share link above" (`analysisSaved`,
+  en.json) and the FAQ says "you can copy a shareable link"
+  (`faq.questions.share`), but neither Success.tsx nor AnalysisResults has a
+  share or copy control, and since R1 the address bar reads a bare
+  `/success`. Either add a "Copy link" control that copies
+  `/success?share=<id>` (a read-only token once S13-079 separates read from
+  delete), or reword both strings to name the email link and the account page,
+  in all 9 locales. It touches Success.tsx: rebase onto this hotfix.
+- **S13-017's alarm → wave 4 (scan-heartbeat owner).** scan-heartbeat's
+  evaluateDelivery counts 'dlq' rows but is not wired to overallStatus, so a
+  dead-lettered sign-in mail alarms nobody. Wire an auth-mail DLQ count (and
+  'rate_limited' rows on auth_emails) into its alerting; this hotfix does not
+  edit scan-heartbeat.
+
 ## Switches (`src/config/auth-providers.ts`)
 
 | switch | first publish | why |
@@ -338,7 +392,9 @@ rule's text names the frontend gate:
    The first publish turns on Google and recovery, and both prove a mailbox
    only the guard acts on.
 4. **Migration 20261014100000** (mail drain), once section 94 shows
-   process-email-queue answering 2026-10-14.1 AND its post-with-no-JWT line
+   process-email-queue answering 2026-10-14.2 (the S13-017 hotfix: the job
+   posts through a provider cooldown, which only that build drains sign-in
+   mail through) AND its post-with-no-JWT line
    PASSes (the gateway's 401: verify_jwt is on, so the role claim the
    function reads is the platform's word; and its body carries the
    `UNAUTHORIZED_` code the drain reads back). Before applying it, read
@@ -350,13 +406,16 @@ rule's text names the frontend gate:
    anon the way section 96 reads it), so a publish ahead of step 3, or over a
    migration the staged runner dropped, is caught.
 6. **Run `bash scripts/verify-deploy.sh` again** and read 94, 95 and 96.
-   - 94: the three mail builds, DNS, OUR drain job rb-auth-mail-drain (last
-     run succeeded, no failures; a process-email-queue job is reported as
+   - 94: the three mail builds, process-email-queue at 2026-10-14.2 or
+     later (S13-017), DNS, OUR drain job rb-auth-mail-drain (last run
+     succeeded, no failures; a process-email-queue job is reported as
      Lovable's), the gateway's 401 to a post with no JWT in the body the
      drain reads back, the publishable key's 403 with cronKey false.
    - 95: the deployed bundle's flags (`google=on recovery=on code=off
      apple=off`), the controls against the guard being ready, the stash
-     script first in `<head>`, and no magic-link copy.
+     script first in `<head>`, that script RUN for two purchases on
+     `/success` in one tab dropping the first one's share (S13-002), and no
+     magic-link copy.
    - 96: the auth-signed-in and verify-product-purchase builds, the CORS
      origin, 401 without a session, the readers and tables closed (42501,
      each table read selecting a real column).
