@@ -35,7 +35,7 @@ file; the integrator keeps both sections.)
 | `src/components/pricing/use-pricing-strings.ts` | the interim strings loader (deleted at switch-over) |
 | `src/components/pricing/strings/<lng>.json` | the pricing strings, nine languages, root key `pricingPlans` |
 | `src/components/pricing/{RichText,format-utc,use-media}.ts(x)` | small helpers |
-| `preview-pricing.html`, `src/preview/pricing.tsx`, `src/preview/preview-network.ts` | the development preview |
+| `preview-pricing.html`, `src/preview/pricing.tsx`, `src/preview/pricing-network.ts` | the development preview |
 | `src/test/hp-pricing-decisions.test.tsx` | every owner decision, mounted |
 | `src/test/hp-pricing-strings.test.ts` | shard rules, house rules in nine languages, design rules, the loader |
 | `src/test/hp-pricing-mirrors.test.ts` | each mirror against the constant that decides it |
@@ -58,7 +58,7 @@ open http://localhost:8193/preview-pricing.html
 | `?bare=1` | no preview bar |
 
 The preview answers every checkout, portal and subscription-check request in
-the browser (`src/preview/preview-network.ts`), so it can never reach a
+the browser (`src/preview/pricing-network.ts`), so it can never reach a
 checkout. The live reads the shipped page already makes
 (`get_board_vendor_counts`, the header's credit balance) go out unchanged.
 
@@ -179,4 +179,4 @@ section 2), in this order.
     3, the FAQ and comparison open, and the JSON-LD from
     `pricingJsonLd(resolveSaleGates())`.
 13. **Delete the preview**: `preview-pricing.html`, `src/preview/pricing.tsx`
-    (and `src/preview/preview-network.ts` once no preview imports it).
+    and `src/preview/pricing-network.ts`.

@@ -83,7 +83,9 @@ export function FreeCard({ postings }: { postings: OpenPostings }) {
             <span data-testid="open-postings-count">{t("pricingPlans.free.search", { n: fmtCount(postings.openTotal, { lng }) })}</span>
           </CheckItem>
         ) : (
-          <CheckItem>{t("pricingPlans.free.searchNoCount")}</CheckItem>
+          // The stamp's line is held open while the figure loads, so the
+          // list below does not move when the count arrives.
+          <CheckItem note={<span aria-hidden="true">{" "}</span>}>{t("pricingPlans.free.searchNoCount")}</CheckItem>
         )}
         <CheckItem>{t("pricingPlans.free.scans", { n: FREE_SCANS_PER_DAY })}</CheckItem>
         <CheckItem note={t("pricingPlans.free.fitNote")}>

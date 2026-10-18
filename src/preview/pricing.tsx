@@ -11,11 +11,11 @@
  *                 block and in the bar: it is not the shipped state, no seller
  *                 value is invented, and Go Pro and Buy start nothing here.
  *   ?lng=de       the page in another of the nine languages.
- *   ?fixture=1    a fixed open-postings figure (preview-network.ts).
+ *   ?fixture=1    a fixed open-postings figure (pricing-network.ts).
  *   ?bare=1       no preview bar (the in-card labels of ?state=open stay).
  */
 import "@/lib/storage-guard";
-import "./preview-network";
+import "./pricing-network";
 import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { HelmetProvider } from "react-helmet-async";

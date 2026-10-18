@@ -1,5 +1,5 @@
 /**
- * THE PREVIEW PAGES' NETWORK RULES, imported before anything else so the
+ * THE PRICING PREVIEW NETWORK RULES, imported before anything else so the
  * Supabase client (which keeps the fetch it finds when it is created) is
  * created with this one.
  *
