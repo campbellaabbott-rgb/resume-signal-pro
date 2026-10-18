@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <!--
+      A DEVELOPMENT PREVIEW OF THE REBUILT /pricing, served by Vite's dev
+      server at /preview-pricing.html. It is not part of the production build
+      (vite builds index.html only) and is deleted at switch-over, when
+      App.tsx routes /pricing to src/pages/pricing/PricingPage.tsx.
+      Query: ?state=open shows the buy buttons (labelled as a preview; never
+      the shipped state), ?lng=de picks a language, ?fixture=1 uses a fixed
+      open-postings figure, ?bare=1 hides the preview bar.
+    -->
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Pricing preview</title>
+    <link rel="icon" href="/favicon.png" type="image/png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  </head>
+  <body>
+    <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-md focus:outline-none">
+      Skip to main content
+    </a>
+    <div id="root"></div>
+    <script type="module" src="/src/preview/pricing.tsx"></script>
+  </body>
+</html>
