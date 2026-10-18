@@ -114,8 +114,21 @@ describe("the ninety-day counts", () => {
     }
   });
 
-  it("the zero-relist control still comes first, with its own sentence", () => {
-    const g = hiringRecordGate({ ...READABLE, observability_bucket: "lap_proven", filled_roles_90d: 1293, relisted_roles_90d: 0 });
+  it("a lap board takes the lap sentence, which carries no figure, even when the zero-relist control also fires (GD5)", () => {
+    // Domino's and Eurofins on 2026-10-18: lap_proven, 23,594 and 1,623 down,
+    // none back. The 'relist' sentence quotes that count, which is the
+    // inflated lap-board figure GD5 hides; the reason stays the one section
+    // 91 V7b reads.
+    for (const filled of [1293, 23594]) {
+      const g = hiringRecordGate({ ...READABLE, observability_bucket: "lap_proven", filled_roles_90d: filled, relisted_roles_90d: 0 });
+      expect(g.counts90).toEqual({ ok: false, reason: "relist detection unproven" });
+      expect(g.countsCopy).toBe("relistLap");
+      expect(HIRING_RECORD_GATE_COPY[g.countsCopy!]).not.toMatch(/\{\{n\}\}|\{\{d\}\}|\d/);
+    }
+  });
+
+  it("on a board read in full the zero-relist control keeps its own sentence, with its count", () => {
+    const g = hiringRecordGate({ ...READABLE, observability_bucket: "full_read", filled_roles_90d: 1293, relisted_roles_90d: 0 });
     expect(g.counts90).toEqual({ ok: false, reason: "relist detection unproven" });
     expect(g.countsCopy).toBe("relist");
   });

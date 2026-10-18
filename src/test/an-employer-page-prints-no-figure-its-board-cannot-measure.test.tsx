@@ -158,10 +158,18 @@ describe("an employer page prints no figure its board cannot measure", () => {
     });
   }
 
-  it("Domino's names our re-list detector, with its count of takedowns, as the reason", async () => {
+  it("Domino's (a lap board, 13,347 down and none back) gives the lap reason, which quotes no figure (GD5)", async () => {
     mount("dominos", { curve: LAP.dominos });
     await waitFor(() => expect(gateLine("relist detection unproven")).not.toBeNull(), SLOW);
-    expect(gateLine("relist detection unproven")!.textContent).toContain("We logged 13,347 roles taken down on this board over 10 days of watching and not one that came back");
+    expect(gateLine("relist detection unproven")!.textContent).toContain("our re-post test sees only the part read on one visit");
+    expect(gateLine("relist detection unproven")!.textContent, "the lap board's inflated count").not.toMatch(/\d/);
+    expect(text()).not.toMatch(/13,?347/);
+  });
+
+  it("positive control: on a board read in full, 1,293 down and none back names our re-list detector with its count", async () => {
+    mount("acme", { curve: { ...FULL, filled_roles_90d: 1293, relisted_roles_90d: 0 } });
+    await waitFor(() => expect(gateLine("relist detection unproven")).not.toBeNull(), SLOW);
+    expect(gateLine("relist detection unproven")!.textContent).toMatch(/We logged 1,293 roles taken down on this board over \d+ days of watching and not one that came back/);
     expect(gateLine("relist detection unproven")!.textContent).toContain("our re-list detection is not working here");
   });
 
@@ -181,7 +189,10 @@ describe("an employer page prints no figure its board cannot measure", () => {
     expect(text()).not.toMatch(/\b1293\b/);
     expect(text()).not.toMatch(SHARE_14);
     expect(text(), "Eurofins' median of 25 days is a lap figure").not.toMatch(MEDIAN);
-    expect(gateLine("relist detection unproven")!.textContent).toContain("1,293 roles taken down");
+    // Eurofins is read in laps: the reason is the lap sentence, with no count.
+    expect(gateLine("relist detection unproven")!.textContent).toContain("our re-post test sees only the part read on one visit");
+    expect(gateLine("relist detection unproven")!.textContent).not.toMatch(/\d/);
+    expect(text()).not.toMatch(/1,293/);
   });
 
   it("positive control: a board read in full and watched 40 days keeps its share, its median and its count", async () => {

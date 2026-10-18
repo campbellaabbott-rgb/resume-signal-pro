@@ -50,12 +50,16 @@
  * 'unproven read'.
  *
  * THE NINETY-DAY COUNTS, IN THIS ORDER (owner decision GD5(a), which
- * supersedes profiles D16(a) for lap boards): the zero-relist control; then
- * every board read in laps (lap_proven, lap_pending, unprovable), because the
- * re-post test there sees only the window of one visit and files re-posts as
- * takedowns, with the same reason 'relist detection unproven' (verify
- * section 91 reads it); then a board we cannot say we read at all ('unproven
- * read'); then THE RELIST TEST THAT READS OTHER SITES: the test asks only
+ * supersedes profiles D16(a) for lap boards): every board read in laps
+ * (lap_proven, lap_pending, unprovable) first, because the re-post test there
+ * sees only the window of one visit and files re-posts as takedowns, with the
+ * reason 'relist detection unproven' (verify section 91 reads it) and the
+ * sentence that carries no figure: the count it would quote is the inflated
+ * one GD5 hides (Domino's logged 23,594 down and 0 back on 2026-10-18, a lap
+ * board); then the zero-relist control, on the same reason, whose sentence
+ * may quote the count because only a board read in full reaches it; then a
+ * board we cannot say we read at all ('unproven read'); then THE RELIST TEST
+ * THAT READS OTHER SITES: the test asks only
  * whether the same title was live elsewhere on the board, so on a board that
  * lists one title at many locations a real takedown reads as a re-post
  * (Centria Autism: 2,967 "came back" against 43 down, 97% of its postings
@@ -336,8 +340,8 @@ export function hiringRecordGate(row: HiringRecordRow | null | undefined): Hirin
   let counts90: GateDecision;
   let countsCopy: HiringRecordGateCopyKey | null = null;
   if (!Number.isFinite(filled) || !Number.isFinite(relisted)) { counts90 = no("unread"); countsCopy = "unread"; }
-  else if (filled >= RELIST_CONTROL_MIN_ROLES && relisted === 0) { counts90 = no("relist detection unproven"); countsCopy = "relist"; }
   else if (lapMode) { counts90 = no("relist detection unproven"); countsCopy = "relistLap"; }
+  else if (filled >= RELIST_CONTROL_MIN_ROLES && relisted === 0) { counts90 = no("relist detection unproven"); countsCopy = "relist"; }
   else if (!fullRead) { counts90 = no("unproven read"); countsCopy = "unprovenReadCounts"; }
   else if (unreliable === null) { counts90 = no("unread"); countsCopy = "unread"; }
   else if (unreliable) { counts90 = no("relist test reads other sites"); countsCopy = "otherSites"; }

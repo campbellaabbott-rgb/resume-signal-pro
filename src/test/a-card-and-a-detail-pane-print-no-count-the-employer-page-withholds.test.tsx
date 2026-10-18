@@ -129,7 +129,10 @@ describe("a card and a detail pane print no count the employer page withholds", 
   });
 
   for (const [name, token, row, why] of [
-    ["Domino's (13,347 down, none back)", "dominos", DOMINOS, /re-list detection is not working here/],
+    // Domino's is a lap board: GD5 hides its 90-day count, so the reason is
+    // the lap sentence, which quotes no figure (2026-10-18 review: the zero-
+    // relist sentence printed 23,594 in the tooltip and the pane clause).
+    ["Domino's (13,347 down, none back, a lap board)", "dominos", DOMINOS, /our re-post test sees only the part read on one visit/],
     ["Eurofins (1,293 down, none back, read in full)", "Eurofins", EUROFINS, /re-list detection is not working here/],
     // GD5(a): a lap-read board's re-post test sees one visit's window, so its
     // counts are withheld at any depth, with the lap sentence.
@@ -140,6 +143,9 @@ describe("a card and a detail pane print no count the employer page withholds", 
       await waitFor(() => expect(card()?.textContent ?? "").toContain("Closure record withheld"), SLOW);
       const chip = Array.from(card()!.querySelectorAll<HTMLElement>("[title]")).find((e) => (e.textContent ?? "").includes("Closure record withheld"))!;
       expect(chip.getAttribute("title")).toMatch(why);
+      if (row.observability_bucket === "lap_proven") {
+        expect(chip.getAttribute("title"), "a lap board's withheld tooltip quotes no figure").not.toMatch(/\d/);
+      }
       expect(card()!.textContent, "a withheld record is not 'no closure record'").not.toContain("No closure record");
       expect(card()!.textContent, "withheld counts cannot carry the badge").not.toContain("Actively hiring");
       expect(titles().filter((s) => STAY_OFF.test(s)), "a tooltip printed the withheld count").toEqual([]);
@@ -148,6 +154,9 @@ describe("a card and a detail pane print no count the employer page withholds", 
       expect(titles().filter((s) => STAY_OFF.test(s))).toEqual([]);
       expect(text(), "the detail pane said we hold no record").not.toMatch(/we hold no closure record for this employer/);
       expect(text()).toMatch(why);
+      if (row.observability_bucket === "lap_proven") {
+        expect(text(), "the pane clause quotes the lap board's count").not.toMatch(/13,?347|509\b/);
+      }
     });
 
     it(`${name}: the employer page's hiring record is badged withheld, prints no count, and its own cards carry no record`, async () => {
