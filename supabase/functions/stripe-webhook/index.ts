@@ -49,6 +49,8 @@ import { targetRolesOf } from "../_shared/target-roles.ts";
 import { AGENT_PRODUCTS_ON_SALE, APPLY_AGENT_ON, APPLY_ASSISTANT_ON_SALE } from "../_shared/apply-agent-switch.ts";
 // One way out for a mail to a buyer, with its log row (R1's transport).
 import { sendMail } from "../_shared/send-mail.ts";
+// What an affiliate earns on one referred checkout: one rule, shared with verify-product-purchase.
+import { commissionCentsFor } from "../_shared/affiliate-commission.ts";
 
 // Provable from outside without a purchase or a signature: every response,
 // the 405 a GET receives included, carries this in x-fn-build.
@@ -58,7 +60,8 @@ import { sendMail } from "../_shared/send-mail.ts";
 // function 2026-10-11.22 for its own changes; the merged code is neither, and
 // the integration gives it a later string.
 // 2026-10-11.29 (wave 4 round 2 integration): payments-delivery's code
-// (2026-10-11.22) with account-compliance's bundled notice change (.25).
+// (2026-10-11.22) with account-compliance's bundled notice change (.25), and
+// the affiliate commission read from _shared/affiliate-commission.ts.
 const FN_BUILD = "stripe-webhook.2026-10-11.29";
 const BUILD_HEADER = { "x-fn-build": FN_BUILD };
 
@@ -690,11 +693,6 @@ async function sendPendingWithdrawal(
 /** The id of a Stripe reference that may arrive expanded or as a bare id. */
 const refId = (v: unknown): string | null =>
   typeof v === "string" && v ? v : (v && typeof v === "object" && typeof (v as { id?: unknown }).id === "string" ? (v as { id: string }).id : null);
-
-/** The commission a checkout named, in cents (0 to $100), or null when it named none. */
-function namedCommissionOf(raw: unknown): number | null {
-  return typeof raw === "string" && /^\d{1,5}$/.test(raw) && Number(raw) <= 10_000 ? Number(raw) : null;
-}
 
 /** A customer's address, read from Stripe; null for a deleted customer or a failed read. */
 async function customerEmailOf(stripe: Stripe, customerRef: unknown): Promise<string | null> {
@@ -1609,24 +1607,16 @@ serve(async (req) => {
             const referralCode = session.metadata?.referral_code;
             if (referralCode && session.amount_total) {
               const productType = session.metadata?.product_type;
-              // Kept in sync with the same list in verify-product-purchase/index.ts —
-              // this one had drifted out of sync (missing interview_coach/
-              // career_path_simulator entirely, and would have defaulted
-              // apply_assistant to the $5 tier on a $7 sale).
-              const lowCommission = ['basic_keyword_fix', 'cover_letter', 'scan_pack', 'scan_credits', 'career_bundle', 'interview_coach', 'career_path_simulator', 'apply_assistant'];
-              // Every checkout now carries the code; the ones the affiliate
-              // page promises nothing for mark it "none" and are recorded at
-              // $0 (_shared/checkout-policy.ts policyMetadata). A checkout that
-              // names its commission (metadata.referral_commission_cents,
-              // written by our checkout code, never by the buyer) is paid
-              // exactly that: the owner re-based the programme on a flat $10
-              // for a referred customer's first paid Pro month (2026-10-12),
-              // which the subscription checkout names. Otherwise the
-              // per-product amounts the affiliate page lists.
-              const namedCommission = namedCommissionOf(session.metadata?.referral_commission_cents);
-              const commissionCents = session.metadata?.referral_commission === "none" ? 0
-                : namedCommission !== null ? namedCommission
-                : lowCommission.includes(productType || '') ? 100 : 500;
+              // ONE RULE, IN ONE PLACE (_shared/affiliate-commission.ts,
+              // verify-product-purchase reads the same): a referral marked
+              // "none" is recorded at $0; a checkout that names its
+              // commission (metadata.referral_commission_cents, written by our
+              // checkout code, never by the buyer: the flat $10 on a referred
+              // customer's first paid Pro month, owner decision 2026-10-12) is
+              // paid exactly that; a session minted before the rule is paid by
+              // the rule it was sold under. The two payers each kept a copy of
+              // this list, and the copies had drifted before.
+              const commissionCents = commissionCentsFor(session.metadata);
               
               // verify-product-purchase (triggered from the success page) can also
               // record this same conversion — the table's UNIQUE constraint on

@@ -15,12 +15,16 @@ import { bearerOf } from "../_shared/service-caller.ts";
 // The $7 Apply Assistant is retired (wave 4): a session opened before the
 // switch and paid after it is recorded, never generated (S12-169).
 import { APPLY_ASSISTANT_ON_SALE } from "../_shared/apply-agent-switch.ts";
+// What an affiliate earns on one referred checkout: one rule, shared with stripe-webhook.
+import { commissionCentsFor } from "../_shared/affiliate-commission.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build. R1 stamped this function
 // 2026-10-14.1 and deploys first, so wave 4 keeps R1's day with a higher
 // sequence (docs/deploy-ledger.json, _reservationsNote).
-const FN_BUILD = "verify-product-purchase.2026-10-14.22";
+// 2026-10-14.29 (wave 4 round 2 integration): the affiliate commission is
+// read from _shared/affiliate-commission.ts, the rule stripe-webhook reads.
+const FN_BUILD = "verify-product-purchase.2026-10-14.29";
 
 /** Why a sale of this product cannot be delivered while it is not sold, or null. */
 function retiredReasonOf(productType: string | null | undefined): string | null {
@@ -901,21 +905,11 @@ serve(async (req) => {
     // Record affiliate conversion if there was a referral
     const referralCode = session.metadata?.referral_code;
     if (referralCode && isFirstUse && session.amount_total) {
-      // Commission rates: $1 for basic products, $5 for premium products.
-      // applyAssistant is $7 — without being in this list it defaulted to the $5
-      // premium-tier commission, leaving only ~$2 to cover the Stripe fee and two
-      // AI generation calls on every affiliate-referred sale.
-      const lowCommissionProducts = ['basic_keyword_fix', 'cover_letter', 'scan_pack', 'scan_credits', 'career_bundle', 'interview_coach', 'career_path_simulator', 'apply_assistant'];
-      // A checkout the affiliate page promises nothing for marks its referral
-      // "none" (_shared/checkout-policy.ts): recorded at $0, never paid. A
-      // checkout that names its commission (metadata.referral_commission_cents,
-      // written by our checkout code) is paid exactly that, as the webhook
-      // pays it (the flat $10 on a referred first Pro month, 2026-10-12).
-      const rawNamed = session.metadata?.referral_commission_cents;
-      const namedCommission = typeof rawNamed === "string" && /^\d{1,5}$/.test(rawNamed) && Number(rawNamed) <= 10_000 ? Number(rawNamed) : null;
-      const commissionCents = session.metadata?.referral_commission === "none" ? 0
-        : namedCommission !== null ? namedCommission
-        : lowCommissionProducts.includes(productType || '') ? 100 : 500;
+      // ONE RULE, IN ONE PLACE (_shared/affiliate-commission.ts, which the
+      // webhook reads too): "none" is recorded at $0, a named amount (the flat
+      // $10 on a referred first Pro month, 2026-10-12) is paid exactly, and a
+      // session minted before the rule is paid by the rule it was sold under.
+      const commissionCents = commissionCentsFor(session.metadata);
       logStep("Recording affiliate conversion", { 
         referralCode, 
         amount: session.amount_total,
