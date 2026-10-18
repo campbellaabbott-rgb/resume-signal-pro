@@ -507,6 +507,10 @@ describe("G8: the tiles are the owner's three with one GitHub line under them; t
     const written: Array<{ path: string; content: string; title: string; description: string; robots?: string }> = [];
     const fn = new Function(
       "D", "write", "readFileSync", "join", "root", "process", "BOARD_TOTAL", "plusClaim", "breadcrumbLd", "breadcrumbNav", "FREE_KEY_RATE_SENTENCE", "APPLY_YOURSELF_LINE",
+      // The SEO round (2026-10-18): the block reads the bake's one MCP address,
+      // the site's origin for the MCP server's own node, and the board
+      // snapshot's date phrase.
+      "SITE", "MCP_URL", "BOARD_AS_OF",
       `${block}; return true;`,
     );
     fn(
@@ -514,6 +518,7 @@ describe("G8: the tiles are the owner's three with one GitHub line under them; t
       (p: { path: string; content: string; title: string; description: string }) => written.push(p),
       () => "", (...xs: string[]) => xs.join("/"), ROOT, { env: { VITE_SUPABASE_URL: "https://example.invalid" } },
       123456, (n: number) => `${n}+`, () => ({}), () => "", "the rate sentence", APPLY_YOURSELF_LINE,
+      "https://resumebooster.work", "https://example.invalid/functions/v1/agent-mcp", "as of 2026-10-18",
     );
     expect(written.map((w) => w.path)).toEqual(["/agents"]);
     return written[0].content;
@@ -539,15 +544,23 @@ describe("G8: the tiles are the owner's three with one GitHub line under them; t
       expect(html).not.toContain(`href="#${h.id}"`);
     }
     expect(html).not.toContain('id="more"');
-    // The GitHub line, as the page renders it: lead, then the link.
-    const line = /<p class="text-sm text-muted-foreground text-center mb-6">([^<]*) <a href="([^"]+)">([^<]+)<\/a><\/p>/.exec(html);
+    // THE GITHUB LINE, AS THE CRAWLER COPY SAYS IT (R7a, 2026-10-18): a
+    // seeker page names only Claude, ChatGPT and Claude Code, so the bake's
+    // line names no other host and sends every other app to the install repo.
+    // (The React page's own line, pinned by githubLineOffences, is the
+    // react group's to change.)
+    const line = /<p class="text-sm text-muted-foreground text-center mb-6">([^<]*)<a href="([^"]+)">([^<]+)<\/a><\/p>/.exec(html);
     expect(line, "the GitHub line is not in the bake").not.toBeNull();
-    expect(githubLineOffences(`${line![1]} ${line![3]}`, line![2])).toEqual([]);
+    expect(line![1]).toBe("Using a different app? Setup for other apps is in ");
+    expect(line![2]).toBe(MCP_INSTALL_REPO_URL);
+    for (const h of MCP_OFF_PAGE_HOSTS) expect(text, `${h.name} named on the seeker page`).not.toMatch(new RegExp(`\\b${h.name}\\b`));
     // The prose fallback is the one long-tail block the bake keeps.
     expect(html).toContain(`<h4 class="font-semibold mb-1">${MCP_COPY_THE_PROMPT!.name}`);
     for (const m of MCP_MORE_HOSTS.filter((x) => x.id !== "copy-the-prompt")) expect(html, `${m.id} baked though the page sends it to GitHub`).not.toContain(`<h4 class="font-semibold mb-1">${m.name}`);
-    // The developer disclosure keeps the whole table: the server's reach, not a seeker's choice.
-    for (const h of MCP_HOSTS) expect(html, `${h.id} missing from the reach disclosure`).toContain(`<strong class="text-foreground">${h.name}</strong> — `);
+    // The reach disclosure names the page's hosts and sends every other app to the install repository (R7a).
+    for (const h of MCP_PAGE_HOSTS) expect(html, `${h.id} missing from the reach disclosure`).toContain(`<strong class="text-foreground">${h.name}</strong> — `);
+    for (const h of MCP_OFF_PAGE_HOSTS) expect(html, `${h.id} in the reach disclosure`).not.toContain(`<strong class="text-foreground">${h.name}</strong> — `);
+    expect(html).toContain("Any other app reaches every tool your key allows");
     expect(html).toMatch(/only while the server's sign-in service is switched on/);
     expect(html).not.toMatch(/Bearer rb_live_\.\.\./);
     expect(html).toContain("Which agent do you use?");

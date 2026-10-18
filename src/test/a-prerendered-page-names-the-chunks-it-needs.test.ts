@@ -28,8 +28,11 @@ describe("a prerendered page names the chunks it needs", () => {
     expect(SCRIPT).not.toMatch(/modulepreload[^`]*assets\/Jobs-[A-Za-z0-9]{6}/);
   });
 
-  it("the jobs route preloads its own chunk; other routes do not", () => {
-    expect(SCRIPT).toMatch(/path === "\/jobs" \|\| path\.startsWith\("\/jobs\/"\)/);
+  it("each route preloads the chunk it runs (SEO-023: a posting page preloaded Jobs, never JobPosting)", () => {
+    // The map from a page to its route chunk is scripts/prerender-preload.mjs
+    // routeChunkPrefix, tested in seo-bake-helpers.test.ts; the bake reads it.
+    expect(SCRIPT).toMatch(/const prefix = routeChunkPrefix\(path\);/);
+    expect(SCRIPT).toMatch(/preloadClosure\(route, \{ readChunk, entry: ENTRY_CHUNK \}\)/);
   });
 
   it("a missing chunk warns instead of emitting a broken hint", () => {

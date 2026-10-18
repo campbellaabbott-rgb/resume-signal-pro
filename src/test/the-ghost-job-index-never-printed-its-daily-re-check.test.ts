@@ -56,7 +56,9 @@ const ADAPTERS = {
 describe("the Ghost Job Index prints its dated daily re-check", () => {
   it("states the percentage, the decided count, the sample and the day", () => {
     const g = build({ stats: STATS, audit: AUDIT, freshness: null, transparency: null, ...ADAPTERS }).ghost;
-    expect(text(g.html)).toContain("Daily re-check: 99.1% of 113 decided sample postings still live at the source (2026-10-07)");
+    // SEO-009: the sample size, its 95% (Wilson) interval and the weighting
+    // rule stand beside the share, dated.
+    expect(text(g.html)).toContain("Daily re-check: 99.1% of 113 decided sample postings still live at the source (n = 113, 95% interval 95.1–99.9%, 2026-10-07), drawn evenly across hiring systems, so the largest boards, where most takedowns happen, are under-sampled");
     expect(text(g.html)).toContain("114 sampled on 2026-10-07");
   });
 

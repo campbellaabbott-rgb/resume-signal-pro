@@ -81,10 +81,13 @@ const llmsAgentsLineOffences = (line: string): string[] => {
     if (!namesHost(steps, h.name)) out.push(`tile ${h.name} not named as the page's steps`);
     if (namesHost(readme, h.name)) out.push(`tile ${h.name} sent to the README`);
   }
+  // R7a (2026-10-18): a seeker-facing file names only Claude, ChatGPT and
+  // Claude Code. The off-page hosts live in the install repository's README
+  // and are named nowhere in this line, the README clause included.
   for (const h of MCP_OFF_PAGE_HOSTS) {
-    if (!namesHost(readme, h.name)) out.push(`off-page host ${h.name} not sent to the README`);
-    if (namesHost(steps, h.name)) out.push(`off-page host ${h.name} named as the page's steps`);
+    if (namesHost(line, h.name)) out.push(`off-page host ${h.name} named on a seeker-facing file`);
   }
+  if (!/every other app/.test(readme)) out.push("the README clause does not send every other app to the README");
   if (/rb_live_/.test(line)) out.push("a key in the line");
   for (const m of MCP_MORE_HOSTS) if (m.id !== "copy-the-prompt" && line.includes(m.name)) out.push(`long-tail host ${m.name} named`);
   return out;
@@ -500,7 +503,7 @@ describe("the page, the prerender and llms.txt derive the tier from the mirror",
     for (const n of MCP_TOOL_NAMES.filter((x) => x.includes("_"))) expect(LLMS_AGENTS_LINE, `${n} typed into llms.txt`).not.toContain(n);
     expect(LLMS_AGENTS_LINE).toMatch(/llms-full\.txt/);
   });
-  it("the hand-written llms.txt names the page's tiles as the page's steps, the off-page hosts as the README's, the install repo — and no long-tail host", () => {
+  it("the hand-written llms.txt names the page's tiles as the page's steps, every other app as the README's, the install repo — and no off-page or long-tail host", () => {
     // llms.txt is the ONE surface that cannot read the mirror, so its host
     // names are typed. This pins them to the same property the page's G8
     // pins its tiles and GitHub line to: a tile change that leaves this
@@ -520,9 +523,10 @@ describe("teeth: each property fails on a copy that breaks it", () => {
     const off = MCP_OFF_PAGE_HOSTS[0].name;
     // The reach sentence elsewhere in the line still names every host, so each mutation touches only the clause under test.
     expect(llmsAgentsLineOffences(swap(steps, steps.split(tile).join("Cowork")))).toContain(`tile ${tile} not named as the page's steps`);
-    expect(llmsAgentsLineOffences(swap(readme, readme.replace(off, `${off}, ${tile}`)))).toContain(`tile ${tile} sent to the README`);
-    expect(llmsAgentsLineOffences(swap(readme, readme.split(off).join("Emacs")))).toContain(`off-page host ${off} not sent to the README`);
-    expect(llmsAgentsLineOffences(swap(steps, steps.replace(tile, `${tile}, ${off}`)))).toContain(`off-page host ${off} named as the page's steps`);
+    expect(llmsAgentsLineOffences(swap(readme, readme.replace("every other app", `${tile} and every other app`)))).toContain(`tile ${tile} sent to the README`);
+    expect(llmsAgentsLineOffences(swap(readme, readme.replace("every other app", `${off} and every other app`)))).toContain(`off-page host ${off} named on a seeker-facing file`);
+    expect(llmsAgentsLineOffences(swap(steps, steps.replace(tile, `${tile}, ${off}`)))).toContain(`off-page host ${off} named on a seeker-facing file`);
+    expect(llmsAgentsLineOffences(swap(readme, readme.replace("every other app", "some apps")))).toContain("the README clause does not send every other app to the README");
     expect(llmsAgentsLineOffences(line.replace(MCP_INSTALL_REPO_URL, "https://example.invalid/repo"))).toContain("no sentence carries the install repo URL");
     const tail = MCP_MORE_HOSTS.find((m) => m.id !== "copy-the-prompt")!;
     expect(llmsAgentsLineOffences(`${line} ${tail.name} works too.`)).toContain(`long-tail host ${tail.name} named`);
