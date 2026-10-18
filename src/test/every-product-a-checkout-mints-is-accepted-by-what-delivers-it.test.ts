@@ -214,7 +214,7 @@ const DELIVERERS: Record<string, (t: string) => Promise<string[]> | string[]> = 
     // An `if` on the shared constant that leaves (return / continue) -- not
     // merely a mention of it, which a ternary elsewhere would satisfy.
     const exits = /if \((?:productType|delivery\.product_type) === FULL_ANALYSIS_PRODUCT_TYPE\) \{[\s\S]{0,700}?\b(?:return|continue)\b/;
-    for (const [who, src, anchor] of [["stripe-webhook", DELIVERY, "if (!resumeSessionId)"], ["retry-failed-deliveries", RETRY, "if (!resumeSessionId)"]] as const) {
+    for (const [who, src, anchor] of [["stripe-webhook", DELIVERY, "if (!resumeSessionId)"], ["retry-failed-deliveries", RETRY, "if (!savedCopy && !resumeSessionId)"]] as const) {
       const m = exits.exec(src);
       if (!m || m.index > src.indexOf(anchor)) out.push(`${who} has no explicit branch for ${t} ahead of its "no resume session" failure`);
     }

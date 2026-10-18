@@ -58,6 +58,7 @@ import { parseEdgeFunctionError } from "@/lib/edge-function-errors";
 import { AIGenerationProgress } from "@/components/AIGenerationProgress";
 import { CREDITS_UPDATED_EVENT, fetchProvenCredits, rememberCreditSession } from "@/hooks/use-scan-credits";
 import { maskEmail, stashedSessionIdFor } from "@/lib/auth-fragment";
+import { AUTH_SUPPORT_EMAIL } from "@/config/auth-providers";
 
 // Map product keys to icons
 const productIcons: Record<string, React.ElementType> = {
@@ -229,6 +230,13 @@ export default function ProductSuccess() {
   // The product is still being made by the server after the page stopped
   // asking (S11-140): it is mailed when ready, never regenerated from this tab.
   const [stillBeingMade, setStillBeingMade] = useState(false);
+  // An order nothing can make yet (S12-054): an Apply Assistant bought with
+  // no job posting. The buyer is told what is missing and how to send it,
+  // never to close the tab and wait for a mail that cannot come.
+  const [needsJobPosting, setNeedsJobPosting] = useState(false);
+  // A retired product paid after it stopped being sold (S12-169): recorded,
+  // not made; the owner settles it by hand.
+  const [retiredSale, setRetiredSale] = useState(false);
   // Whether the purchase has an address the confirmation mail goes to.
   const [buyerEmailOnFile, setBuyerEmailOnFile] = useState(false);
 
@@ -656,6 +664,20 @@ export default function ProductSuccess() {
         // makes it from that résumé, saves it and mails it. A copy made here
         // from this tab's résumé would be a second generation and a second,
         // different document. Said the same way as one still being made.
+        // NOTHING CAN MAKE IT (S12-054, S12-169): the server says what is
+        // missing, or that the product is no longer sold. Checked before the
+        // "still being made" answer, which promised a mail that never came.
+        if (data?.retired === true && !data?.generatedContent) {
+          setRetiredSale(true);
+          setIsVerifying(false);
+          return;
+        }
+        if (data?.needsJobPosting === true && !data?.generatedContent) {
+          setNeedsJobPosting(true);
+          setIsVerifying(false);
+          return;
+        }
+
         const sweepMakesIt = !data?.generatedContent && data?.hasResumeData === true && SERVER_RENDERED.has(productKey ?? '');
         if (SERVER_RENDERED.has(productKey ?? '') && ((data?.inProgress && !data?.generatedContent) || sweepMakesIt)) {
           setStillBeingMade(true);
@@ -972,6 +994,53 @@ export default function ProductSuccess() {
     productKey === 'interviewCoach' ||
     productKey === 'careerPathSimulator'
   );
+
+  // NOTHING CAN MAKE IT YET (S12-054) OR AT ALL (S12-169). Each says what
+  // happened and what comes next, and neither tells the buyer to wait for a
+  // mail with the product in it.
+  if (needsJobPosting || retiredSale) {
+    const name = productDisplayName || t('productSuccess.yourContent');
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="pt-32 pb-20">
+          <div className="container max-w-2xl text-center" data-testid={needsJobPosting ? "needs-job-posting" : "retired-sale"}>
+            <div className="space-y-4">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 border border-primary/30">
+                <AlertCircle className="w-8 h-8 text-primary" />
+              </div>
+              {needsJobPosting ? (
+                <>
+                  <h1 className="text-2xl font-bold">{t('productSuccess.needsJobPosting.title', 'Your {{product}} needs the job posting', { product: name })}</h1>
+                  <p className="text-muted-foreground">
+                    {t('productSuccess.needsJobPosting.body', 'It is made for one job posting, and none was attached to this purchase, so it could not be made automatically. You will not be charged again.')}
+                  </p>
+                  <p className="text-muted-foreground">
+                    {buyerEmailOnFile
+                      ? t('productSuccess.needsJobPosting.emailed', 'We are emailing the address you paid with to ask for it. Reply to that email with the posting (the link or the text) and we will make it and send it to you.')
+                      : t('productSuccess.needsJobPosting.noEmail', 'Email {{support}} with this page\'s order reference and the job posting (the link or the text), and we will make it and send it to you.', { support: AUTH_SUPPORT_EMAIL })}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <h1 className="text-2xl font-bold">{t('productSuccess.retiredSale.title', '{{product}} is no longer sold', { product: name })}</h1>
+                  <p className="text-muted-foreground">
+                    {t('productSuccess.retiredSale.body', 'Your payment is recorded, but this product stopped being sold before the payment went through, so nothing was made automatically. We have been told and will contact you at the address you paid with.')}
+                  </p>
+                </>
+              )}
+              {sessionId && (
+                <p className="text-xs text-muted-foreground break-all">
+                  {t('productSuccess.orderReference', 'Order reference: {{reference}}', { reference: sessionId })}
+                </p>
+              )}
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   // STILL BEING MADE (S11-140). The server is generating this purchase and
   // mails it when it is ready; the page says so instead of making a second

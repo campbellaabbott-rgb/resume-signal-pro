@@ -51,6 +51,11 @@ vi.setConfig({ testTimeout: 30_000, hookTimeout: 120_000 });
 const DIR = resolve(__dirname, "../../supabase/migrations");
 const FILE = readdirSync(DIR).find((f) => f.startsWith("20261005120000_"))!;
 const MIGRATION = readFileSync(resolve(DIR, FILE), "utf8");
+// S12-154 (20261011141000): a claimed purchase answers only its claimer, and the
+// scanner passes its user id to the spender, so the database the module runs
+// against is the lane through that file.
+const CLAIMER_FILE = readdirSync(DIR).find((f) => f.startsWith("20261011141000_"))!;
+const CLAIMER_MIGRATION = readFileSync(resolve(DIR, CLAIMER_FILE), "utf8");
 
 let pg: PGlite;
 
@@ -136,6 +141,7 @@ beforeAll(async () => {
     GRANT EXECUTE ON FUNCTION public.get_scan_credits(text) TO anon, authenticated, service_role;
   `);
   await pg.exec(`BEGIN;\n${MIGRATION}\nCOMMIT;`);
+  await pg.exec(`BEGIN;\n${CLAIMER_MIGRATION}\nCOMMIT;`);
 }, 120_000);
 
 afterAll(async () => { await pg?.close(); });
@@ -146,7 +152,7 @@ const can = async (role: string, sig: string) =>
 describe("the migration, applied", () => {
   const SIGS = [
     "public.use_scan_credit(text)", "public.get_scan_credits(text)", "public.add_scan_credits(text,integer)",
-    "public.scan_credit_grant_record(text,text,text,integer)", "public.scan_credit_redeem(text,text)",
+    "public.scan_credit_grant_record(text,text,text,integer)", "public.scan_credit_redeem(text,text,uuid)",
     "public.scan_credit_refund(text,text)", "public.scan_credit_balance(text,text[],uuid)", "public.scan_credit_grants_bought(text[])",
     "public.scan_credit_grant_claim(text[],uuid)", "public.scan_credit_account_grants(uuid)",
   ];

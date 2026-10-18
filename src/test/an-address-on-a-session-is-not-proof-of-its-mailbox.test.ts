@@ -41,7 +41,7 @@ vi.setConfig({ testTimeout: 60_000, hookTimeout: 180_000 });
 
 const b64url = (o: unknown) => Buffer.from(JSON.stringify(o)).toString("base64url");
 const token = (sub: string, amr: unknown) =>
-  `${b64url({ alg: "HS256", typ: "JWT" })}.${b64url({ sub, role: "authenticated", amr })}.sig`;
+  `${b64url({ alg: "HS256", typ: "JWT" })}.${b64url({ sub, role: "authenticated", aud: "authenticated", amr })}.sig`;
 const now = () => Math.floor(Date.now() / 1000);
 const google = (email: string, verified: unknown = true) => [{ provider: "google", identity_data: { email, email_verified: verified } }];
 

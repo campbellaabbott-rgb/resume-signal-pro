@@ -85,6 +85,9 @@ beforeAll(async () => {
     "https://esm.sh/stripe@18.5.0": STRIPE_STUB,
     "https://esm.sh/@supabase/supabase-js@2": "export const createClient = () => globalThis.__legalDb; export class SupabaseClient {}",
     "https://esm.sh/resend@2.0.0": "export class Resend { constructor() { this.emails = { send: async () => ({ data: null, error: null }) }; } }",
+    // The $99 plan is retired (wave 4); its trial confirmation is the dormant
+    // plan's, run with the switch on (helpers/apply-agent-switch-on.ts).
+    "_shared/apply-agent-switch.ts": "export const APPLY_AGENT_ON = true; export const AGENT_PRODUCTS_ON_SALE = true; export const APPLY_ASSISTANT_ON_SALE = false;",
   });
   queueRun = await loadEdgeHandler("process-email-queue", {
     "npm:@lovable.dev/email-js": "export async function sendLovableEmail(p) { return globalThis.__legalSend(p); }",

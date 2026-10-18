@@ -12,10 +12,34 @@ import { targetRolesOf } from "../_shared/target-roles.ts";
 import { hasMailboxProof, maskEmail } from "../_shared/mailbox-proof.ts";
 import { jwtClaims, requireWebsiteSession } from "../_shared/website-session.ts";
 import { bearerOf } from "../_shared/service-caller.ts";
+// The $7 Apply Assistant is retired (wave 4): a session opened before the
+// switch and paid after it is recorded, never generated (S12-169).
+import { APPLY_ASSISTANT_ON_SALE } from "../_shared/apply-agent-switch.ts";
 
 // Provable from outside without a purchase: every response, the CORS
-// preflight included, carries this in x-fn-build.
-const FN_BUILD = "verify-product-purchase.2026-10-14.1";
+// preflight included, carries this in x-fn-build. R1 stamped this function
+// 2026-10-14.1 and deploys first, so wave 4 keeps R1's day with a higher
+// sequence (docs/deploy-ledger.json, _reservationsNote).
+const FN_BUILD = "verify-product-purchase.2026-10-14.22";
+
+/** Why a sale of this product cannot be delivered while it is not sold, or null. */
+function retiredReasonOf(productType: string | null | undefined): string | null {
+  return productType === "apply_assistant" && !APPLY_ASSISTANT_ON_SALE
+    ? "the Apply Assistant is no longer sold; nothing was generated"
+    : null;
+}
+
+/**
+ * THE STRIPE KEY FOR THIS SESSION (CP-033): a cs_test_ session is read with
+ * the test-mode key when one is configured (the owner's test rehearsal), and
+ * every other session, a test one included when no test key exists, with the
+ * live key as before.
+ */
+function stripeKeyFor(sessionId: unknown): string | undefined {
+  const testKey = Deno.env.get("STRIPE_TEST_SECRET_KEY") ?? "";
+  if (typeof sessionId === "string" && sessionId.startsWith("cs_test_") && testKey.startsWith("sk_test_")) return testKey;
+  return Deno.env.get("STRIPE_SECRET_KEY");
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -59,6 +83,11 @@ const SCAN_CREDIT_PRODUCT_TYPES = ['scan_pack', 'scan_credits', 'career_bundle']
 // every case of buildGenerationRequest below.
 /** How long a delivery marked generating counts as being made by someone else. */
 const GENERATION_IN_PROGRESS_MS = 5 * 60 * 1000;
+// HOW LONG THIS PAGE HOLDS AN ORDER IT MAKES (20261011144000, CP-019). The
+// lease is what tells the webhook, the sweep and a second tab apart: a row
+// whose lease is live is answered inProgress, an expired one is reclaimed,
+// and the finish carries the token so a maker that lost the row mails nobody.
+const LEASE_MINUTES = 10;
 
 const GENERATED_PRODUCT_TYPES = [
   'apply_assistant', 'basic_keyword_fix', 'cover_letter', 'premium_package', 'graduate_gameplan',
@@ -169,7 +198,7 @@ serve(async (req) => {
     logStep("Verifying purchase", { sessionId: sessionId.substring(0, 20) + "..." });
 
     // Initialize Stripe
-    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+    const stripeKey = stripeKeyFor(sessionId);
     if (!stripeKey) {
       throw new Error("STRIPE_SECRET_KEY not configured");
     }
@@ -405,10 +434,52 @@ serve(async (req) => {
           language: session.metadata?.language || null,
           target_roles: session.metadata?.target_roles || null,
           ...(purchasedCredits != null ? { credits: purchasedCredits } : {}),
+          // A test-mode purchase (the owner's rehearsal, CP-033) is tagged as
+          // the webhook tags it, so the delivery health count leaves it out
+          // (20261011143500).
+          ...((session as { livemode?: boolean }).livemode === false ? { livemode: false } : {}),
         }
       });
       if (trackError) logStep("Delivery record could not be written", { error: trackError.message });
       else logStep("Delivery tracking started");
+    }
+
+    // A RETIRED PRODUCT'S SALE IS RECORDED, NEVER MADE (S12-169). Claimed
+    // here first (the webhook was late), it is a payment taken after the
+    // product stopped being sold: the row is closed as undeliverable_retired,
+    // a failure no sweep retries, and the webhook, which still receives the
+    // event, tells the owner (its door is per session). Claimed by the
+    // webhook first, the row it wrote says so. A sale from before the switch
+    // (a saved copy, or a row with any other history) is served as it always
+    // was.
+    const retired = retiredReasonOf(productType);
+    let retiredSale = false;
+    if (retired) {
+      if (isFirstUse) {
+        retiredSale = true;
+        const { error: closeError } = await supabase.from('product_deliveries')
+          .update({ status: 'generation_failed', generation_success: false, max_retries: 0, next_retry_at: null, generation_error: `undeliverable_retired: ${retired}` })
+          .eq('stripe_session_id', sessionId);
+        if (closeError) logStep("Retired sale could not be recorded", { error: closeError.message });
+      } else {
+        const { data: row } = await supabase.from('product_deliveries')
+          .select('generation_error').eq('stripe_session_id', sessionId).maybeSingle();
+        retiredSale = String((row as { generation_error?: unknown } | null)?.generation_error ?? '').startsWith('undeliverable_retired');
+      }
+    }
+    if (retiredSale) {
+      logStep("Retired product: recorded, not generated", { sessionId: sessionId.substring(0, 20), productType });
+      const showRetiredBuyer = await callerProvedMailbox(req, supabase, customerEmail);
+      return new Response(
+        JSON.stringify({
+          success: true, verified: true, isFirstUse, productType, productName,
+          customerEmail: showRetiredBuyer ? customerEmail : maskEmail(customerEmail),
+          customerEmailMasked: !!customerEmail && !showRetiredBuyer,
+          emailSent: false, generatedContent: null, inProgress: false, hasResumeData: false,
+          retired: true,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // If content generation is requested and we have resume data
@@ -421,8 +492,22 @@ serve(async (req) => {
     // reason, for the sweeper to finish: it re-credits what the row says was
     // bought, or regenerates the product and mails it.
     let undelivered: string | null = null;
+    // The lease this page holds on the order while it makes it
+    // (20261011144000; taken below, before the generator is called), and how
+    // it is given back after a failure recorded through log_delivery_step,
+    // which knows nothing of leases: by its token, so a row another maker
+    // took meanwhile is left alone.
+    let leaseToken: string | null = null;
+    const releaseLease = async () => {
+      if (!leaseToken) return;
+      const token = leaseToken;
+      leaseToken = null;
+      const { error } = await supabase.rpc('release_delivery_lease', { p_stripe_session_id: sessionId, p_lease_token: token });
+      if (error) logStep("The lease could not be given back; it expires on its own", { error: error.message });
+    };
     const recordUndelivered = async (reason: string) => {
       undelivered = reason.slice(0, 500);
+      await releaseLease();
       if (!isFirstUse) return;
       await supabase.rpc('log_delivery_step', {
         p_stripe_session_id: sessionId,
@@ -450,8 +535,19 @@ serve(async (req) => {
     // homepage scan of job Y, showed a kit for Y), and asked for the saved
     // copy only for the keyword fix. It is answered now whenever it exists.
     let inProgress = false;
+    // The row's status as this call read it: what the lease is taken against.
+    let seenStatus: string | null = null;
     // Set when the bound résumé could not be read: the sweep cannot make it either.
     let resumeUnreadable = false;
+    // An Apply Assistant bought with no job posting (S12-054): nothing can
+    // make it until the buyer sends the posting, so the page must not say it
+    // is on its way. The retry sweep spends the row, asks the buyer for the
+    // posting and tells the owner.
+    let needsJobPosting = false;
+    // Set when THIS call made the product and saved it. Mailed below whoever
+    // claimed the session first (CP-021): when the webhook claimed it and its
+    // own try failed, the copy this page made was never mailed by anyone.
+    let generatedHere = false;
     if (GENERATED_PRODUCT_TYPES.includes(productType ?? '') && !generatedContent) {
       try {
         const { data: priorRows } = await supabase
@@ -478,27 +574,82 @@ serve(async (req) => {
       try {
         const { data: row } = await supabase
           .from('product_deliveries')
-          .select('status, content_generation_started_at')
+          .select('status, content_generation_started_at, lease_until')
           .eq('stripe_session_id', sessionId)
           .maybeSingle();
-        const started = Date.parse(String((row as { content_generation_started_at?: string } | null)?.content_generation_started_at ?? ''));
-        inProgress = (row as { status?: string } | null)?.status === 'generating'
-          && Number.isFinite(started) && Date.now() - started < GENERATION_IN_PROGRESS_MS;
+        const r = row as { status?: string; content_generation_started_at?: string; lease_until?: string | null } | null;
+        seenStatus = typeof r?.status === 'string' ? r.status : null;
+        const started = Date.parse(String(r?.content_generation_started_at ?? ''));
+        const leaseUntil = Date.parse(String(r?.lease_until ?? ''));
+        // A live lease is another maker's (20261011144000); a row leased by
+        // an older build carries no lease, and is judged by its start stamp.
+        inProgress = r?.status === 'generating'
+          && (Number.isFinite(leaseUntil)
+            ? leaseUntil > Date.now()
+            : Number.isFinite(started) && Date.now() - started < GENERATION_IN_PROGRESS_MS);
         if (inProgress) logStep("Generation in progress elsewhere; not generating twice", { sessionId });
       } catch (e) {
         logStep("Delivery status unreadable; generating here", { error: String(e) });
       }
     }
 
+    // THE LEASE (20261011144000, CP-019). Before this page makes a product it
+    // keeps a copy of, it takes the order: the webhook, the sweep and a second
+    // tab are told "in progress" while the lease is live, and a lease that
+    // expired (a maker that died) is reclaimed. NULL means another maker took
+    // it between the read above and now: it is theirs, and the page waits.
+    // The two products made afresh on every visit are not leased (a second
+    // tab would be held for ten minutes for nothing).
+    if (generateContent && resumeSessionId && !generatedContent && !inProgress && SAVED_COPY_PRODUCT_TYPES.includes(productType ?? '')) {
+      const { data: token, error: leaseError } = await supabase.rpc('take_delivery_lease', {
+        p_stripe_session_id: sessionId, p_seen_status: seenStatus ?? 'payment_received', p_minutes: LEASE_MINUTES,
+        p_product_type: productType ?? 'unknown', p_email: customerEmail,
+      });
+      if (leaseError) {
+        logStep("The delivery lease could not be taken; generating without it", { error: leaseError.message });
+      } else if (!token) {
+        inProgress = true;
+        logStep("Another maker took this order first; not generating twice", { sessionId });
+      } else {
+        leaseToken = String(token);
+      }
+    }
+    // How this page records that it made the order: with the lease it holds
+    // (finish_delivery_generation, status 'generated'), refused when another
+    // maker finished first, in which case that maker mails its copy and this
+    // page mails nothing; without a lease, the step writer as before.
+    const recordMade = async (durationMs: number): Promise<boolean> => {
+      if (!leaseToken) {
+        await supabase.rpc('log_delivery_step', {
+          p_stripe_session_id: sessionId, p_step: 'generation_completed', p_success: true, p_duration_ms: durationMs,
+        });
+        return true;
+      }
+      const { data: finished, error: finishError } = await supabase.rpc('finish_delivery_generation', {
+        p_stripe_session_id: sessionId, p_lease_token: leaseToken, p_status: 'generated', p_duration_ms: durationMs,
+      });
+      if (finishError) {
+        logStep("The finish could not be recorded; the sweep mails the saved copy once the lease expires", { error: finishError.message });
+        return false;
+      }
+      if (finished !== true) {
+        logStep("Another maker finished this order first; it mails its copy, this page mails nothing", { sessionId });
+        return false;
+      }
+      return true;
+    };
+
     if (generateContent && resumeSessionId && !generatedContent && !inProgress) {
       logStep("Content generation requested", { productType, resumeSessionId });
 
-      // Log generation started
-      await supabase.rpc('log_delivery_step', {
-        p_stripe_session_id: sessionId,
-        p_step: 'generation_started'
-      });
-      
+      // Log generation started (the lease above already did, when one was taken)
+      if (!leaseToken) {
+        await supabase.rpc('log_delivery_step', {
+          p_stripe_session_id: sessionId,
+          p_step: 'generation_started'
+        });
+      }
+
       const generationStartTime = Date.now();
       
       // Get stored resume data
@@ -524,7 +675,22 @@ serve(async (req) => {
         const language = session.metadata?.language || 'en';
 
         // Generate content based on product type
-        if (productType === 'apply_assistant' && resume_text && job_description_text) {
+        if (productType === 'apply_assistant' && resume_text && !job_description_text) {
+          needsJobPosting = true;
+          logStep("Apply Assistant has no job posting: it cannot be made; the sweep asks the buyer for it", { sessionId: sessionId.substring(0, 20) });
+          // generation_failed with the reason, due now: the next sweep spends
+          // the row, mails the buyer once for the posting and tells the owner.
+          await supabase.rpc('log_delivery_step', {
+            p_stripe_session_id: sessionId,
+            p_step: 'generation_completed',
+            p_success: false,
+            p_error: 'job_posting_required: no job posting is attached to this Apply Assistant purchase',
+          });
+          await supabase.from('product_deliveries').update({ next_retry_at: new Date().toISOString() })
+            .eq('stripe_session_id', sessionId).eq('status', 'generation_failed');
+          undelivered = 'job_posting_required';
+          await releaseLease();
+        } else if (productType === 'apply_assistant' && resume_text && job_description_text) {
           logStep("Calling generate-apply-package + generate-cover-letter");
           const [packageResponse, coverLetterResponse] = await Promise.all([
             // The session is the generator's proof of purchase (a cs_ id is
@@ -570,13 +736,7 @@ serve(async (req) => {
               p_generated_content: generatedContent
             });
             logStep("Content saved for recovery");
-
-            await supabase.rpc('log_delivery_step', {
-              p_stripe_session_id: sessionId,
-              p_step: 'generation_completed',
-              p_success: true,
-              p_duration_ms: applyGenDuration
-            });
+            generatedHere = await recordMade(applyGenDuration);
           } else {
             const errorText = await packageResponse.text();
             logStep("Apply package generation failed", { status: packageResponse.status, error: errorText });
@@ -589,6 +749,7 @@ serve(async (req) => {
               p_error: errorText.substring(0, 500),
               p_duration_ms: applyGenDuration
             });
+            await releaseLease();
           }
         } else {
           const request = resume_text
@@ -624,16 +785,21 @@ serve(async (req) => {
                 p_product_name: productName,
                 p_generated_content: generatedContent
               });
-              if (saveError) logStep("Content could NOT be saved for recovery", { error: saveError.message });
-              else logStep("Content saved for recovery");
-
-              await supabase.rpc('log_delivery_step', {
-                p_stripe_session_id: sessionId,
-                p_step: 'generation_completed',
-                p_success: !saveError,
-                p_error: saveError ? `save_purchased_content: ${saveError.message}`.slice(0, 500) : null,
-                p_duration_ms: genDuration
-              });
+              if (saveError) {
+                logStep("Content could NOT be saved for recovery", { error: saveError.message });
+                generatedHere = false;
+                await supabase.rpc('log_delivery_step', {
+                  p_stripe_session_id: sessionId,
+                  p_step: 'generation_completed',
+                  p_success: false,
+                  p_error: `save_purchased_content: ${saveError.message}`.slice(0, 500),
+                  p_duration_ms: genDuration
+                });
+                await releaseLease();
+              } else {
+                logStep("Content saved for recovery");
+                generatedHere = await recordMade(genDuration);
+              }
             } else {
               const errorText = genResponse.ok ? `${request.endpoint} answered 200 with no content` : await genResponse.text();
               logStep(`${request.endpoint} generation failed`, { status: genResponse.status, error: errorText });
@@ -646,6 +812,7 @@ serve(async (req) => {
                 p_error: errorText.substring(0, 500),
                 p_duration_ms: genDuration
               });
+              await releaseLease();
             }
           } else {
             logStep("No matching content generator", { productType, hasResumeText: !!resume_text });
@@ -740,8 +907,15 @@ serve(async (req) => {
       // AI generation calls on every affiliate-referred sale.
       const lowCommissionProducts = ['basic_keyword_fix', 'cover_letter', 'scan_pack', 'scan_credits', 'career_bundle', 'interview_coach', 'career_path_simulator', 'apply_assistant'];
       // A checkout the affiliate page promises nothing for marks its referral
-      // "none" (_shared/checkout-policy.ts): recorded at $0, never paid.
-      const commissionCents = session.metadata?.referral_commission === "none" ? 0 : lowCommissionProducts.includes(productType || '') ? 100 : 500;
+      // "none" (_shared/checkout-policy.ts): recorded at $0, never paid. A
+      // checkout that names its commission (metadata.referral_commission_cents,
+      // written by our checkout code) is paid exactly that, as the webhook
+      // pays it (the flat $10 on a referred first Pro month, 2026-10-12).
+      const rawNamed = session.metadata?.referral_commission_cents;
+      const namedCommission = typeof rawNamed === "string" && /^\d{1,5}$/.test(rawNamed) && Number(rawNamed) <= 10_000 ? Number(rawNamed) : null;
+      const commissionCents = session.metadata?.referral_commission === "none" ? 0
+        : namedCommission !== null ? namedCommission
+        : lowCommissionProducts.includes(productType || '') ? 100 : 500;
       logStep("Recording affiliate conversion", { 
         referralCode, 
         amount: session.amount_total,
@@ -817,10 +991,24 @@ serve(async (req) => {
     // again. The row stays at payment_received; the sweeper makes it and
     // mails it.
     const nothingToSend = GENERATED_PRODUCT_TYPES.includes(productType ?? '') && !generatedContent;
+    // A refused mail is the sweep's to resend from the saved copy, at once
+    // (CP-021): email_failed, due now, never waiting on an older schedule.
+    const dueNowForTheSweep = async () => {
+      try {
+        await supabase.from('product_deliveries').update({ next_retry_at: new Date().toISOString() })
+          .eq('stripe_session_id', sessionId).eq('status', 'email_failed');
+      } catch (e) {
+        logStep("Could not make the failed mail due now", { error: String(e) });
+      }
+    };
     if (isFirstUse && customerEmail && !undelivered && nothingToSend) {
       logStep("Confirmation mail held back: nothing has been made yet; the retry sweeper delivers it", { sessionId });
     }
-    if (isFirstUse && customerEmail && !undelivered && !nothingToSend) {
+    // Mailed by the call that claimed the session first, or by the call that
+    // made the product (CP-021: a non-first call that made it used to save it
+    // and mail nobody, leaving a 'generated' row no sweep ever selected).
+    const mailsTheBuyer = isFirstUse || generatedHere;
+    if (mailsTheBuyer && customerEmail && !undelivered && !nothingToSend) {
       try {
         // The service-role key: send-product-email is internal and refuses
         // the publishable key, which every visitor holds.
@@ -860,6 +1048,7 @@ serve(async (req) => {
             p_success: false,
             p_error: `Email send failed with status ${emailResponse.status}`
           });
+          await dueNowForTheSweep();
         }
       } catch (emailError) {
         logStep("Email error", { error: String(emailError) });
@@ -871,6 +1060,7 @@ serve(async (req) => {
           p_success: false,
           p_error: String(emailError).substring(0, 500)
         });
+        await dueNowForTheSweep();
         // Don't fail the request if email fails
       }
     }
@@ -897,7 +1087,9 @@ serve(async (req) => {
         inProgress,
         // A résumé is bound AND readable: the retry sweep can make the product
         // from it, so the page makes nothing of its own (review of S11-054).
-        hasResumeData: !!resumeSessionId && !resumeUnreadable,
+        hasResumeData: !!resumeSessionId && !resumeUnreadable && !needsJobPosting,
+        // Nothing can make it until the buyer sends the posting (S12-054).
+        ...(needsJobPosting ? { needsJobPosting: true } : {}),
         // The ATS Defense roles named at checkout, for the page's own fallback (S11-074).
         ...(productType === 'ats_defense' ? { targetRoles: boughtRoles } : {}),
       }),

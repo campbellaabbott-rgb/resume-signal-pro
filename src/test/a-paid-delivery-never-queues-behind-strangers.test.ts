@@ -34,7 +34,11 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
+import { FakeDb, loadEdgeHandler, type EdgeHandler, fakeLeaseRpcs } from "./helpers/edge-harness";
+// The Apply Assistant is retired (wave 4): its dormant delivery path, which these
+// cases prove, runs with its switch on; the retired behaviour ships and is held by
+// w4b-payments-the-webhook-records-retired-sales-ends-retired-plans-and-says-what-happened.
+import { APPLY_ASSISTANT_SWITCH_ON } from "./helpers/apply-agent-switch-on";
 
 vi.setConfig({ testTimeout: 30_000, hookTimeout: 180_000 });
 
@@ -98,7 +102,7 @@ beforeAll(async () => {
     return new Response("{}", { status: 200 });
   };
   g.__fakeSupabase = db;
-  for (const fn of ["stripe-webhook", "verify-product-purchase", "retry-failed-deliveries"]) callers.set(fn, await loadEdgeHandler(fn, STUBS));
+  for (const fn of ["stripe-webhook", "verify-product-purchase", "retry-failed-deliveries"]) callers.set(fn, await loadEdgeHandler(fn, { ...STUBS, ...APPLY_ASSISTANT_SWITCH_ON }));
   for (const fn of GUARDED) generators.set(fn, await loadEdgeHandler(fn, STUBS));
 }, 180_000);
 
@@ -111,6 +115,8 @@ beforeEach(() => {
   spent = false;
   sessionDaySpent = false;
   db.rpcs = {
+    // The lease a maker takes before it generates (20261011144000).
+    ...fakeLeaseRpcs(db),
     check_rate_limit: (a) => {
       rateCalls.push(a as RateArgs);
       const p = String((a as RateArgs).p_ip);

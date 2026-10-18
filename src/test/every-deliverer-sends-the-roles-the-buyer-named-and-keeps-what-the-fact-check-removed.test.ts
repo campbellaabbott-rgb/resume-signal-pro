@@ -17,7 +17,10 @@
  * Run against the shipped handlers with only their network faked.
  */
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
+// The Apply Assistant is retired (wave 4): the saved-kit cases run its dormant
+// delivery path with the switch on (helpers/apply-agent-switch-on.ts).
+import { APPLY_ASSISTANT_SWITCH_ON } from "./helpers/apply-agent-switch-on";
+import { FakeDb, loadEdgeHandler, type EdgeHandler, fakeLeaseRpcs } from "./helpers/edge-harness";
 
 vi.setConfig({ testTimeout: 30_000, hookTimeout: 180_000 });
 
@@ -76,9 +79,9 @@ beforeAll(async () => {
     if (url.includes("/functions/v1/generate-")) return new Response(JSON.stringify({ success: true, data: { beforeScore: { overall: 40 } } }), { status: 200 });
     return new Response("{}", { status: 200 });
   };
-  webhook = await loadEdgeHandler("stripe-webhook", STUBS);
+  webhook = await loadEdgeHandler("stripe-webhook", { ...STUBS, ...APPLY_ASSISTANT_SWITCH_ON });
   sweeper = await loadEdgeHandler("retry-failed-deliveries", STUBS);
-  verify = await loadEdgeHandler("verify-product-purchase", STUBS);
+  verify = await loadEdgeHandler("verify-product-purchase", { ...STUBS, ...APPLY_ASSISTANT_SWITCH_ON });
 }, 180_000);
 
 beforeEach(() => {
@@ -87,6 +90,8 @@ beforeEach(() => {
   fetches.length = 0;
   world.sessions = {};
   db.rpcs = {
+    // The lease a maker takes before it generates (20261011144000).
+    ...fakeLeaseRpcs(db),
     log_webhook_event: () => ({ data: null, error: null }),
     get_temp_resume: () => ({ data: [{ resume_text: "A".repeat(400), job_description_text: "Senior engineer posting at Globex" }], error: null }),
     save_purchased_content: (a) => { db.rows("purchased_content").push({ stripe_session_id: a.p_stripe_session_id, generated_content: a.p_generated_content }); return { data: "pc", error: null }; },

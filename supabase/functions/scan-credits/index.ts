@@ -32,12 +32,16 @@ import {
   scanCreditGrantsBought,
 } from "../_shared/scan-credits.ts";
 import { provenMailbox } from "../_shared/mailbox-proof.ts";
+import { websiteSessionOf, type WebsiteAuth } from "../_shared/website-session.ts";
 
 // Provable from outside: every response, the CORS preflight included, carries
 // this in x-fn-build.
 // 2026-10-14.1 (R1 integration): _shared/mailbox-proof.ts gained the proof-row
 // readers and maskEmail; provenMailbox, the one import here, is unchanged.
-const FN_BUILD = "scan-credits.2026-10-14.1";
+// 2026-10-14.22 (wave 4, after R1): a purchase another account claimed shows
+// nothing here (S12-154), a pack whose address is only in customer_details is
+// recorded (S12-103), and the caller is a website session or nobody (CP-C).
+const FN_BUILD = "scan-credits.2026-10-14.22";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -93,8 +97,12 @@ Deno.serve(async (req) => {
     let provenEmail: string | null = null;
     if (hasUserToken) {
       try {
-        const { data } = await service.auth.getUser(jwt);
-        const user = data?.user ?? null;
+        // A WEBSITE SESSION OR NOBODY (critical-path CP-C item 10): a token
+        // minted for a connector (client_id, or an audience other than the
+        // site's) is not a signed-in visitor here, so it claims and reads
+        // nothing; it is answered as a caller holding only its session ids.
+        const verified = await websiteSessionOf(req.headers, service.auth as unknown as WebsiteAuth);
+        const user = verified.ok ? verified.session.user : null;
         const e = normalizeCreditEmail(user?.email);
         userId = isAuthUserId(user?.id) ? user!.id : null;
         accountEmail = userId && e.includes("@") ? e : null;

@@ -1,0 +1,45 @@
+# THE MONEY PATH, END TO END (critical-path plan 2026-10-12, CP-I).
+#
+# Runs src/test/e2e/money-path: every shipped handler a purchase passes
+# through (the webhook, the verifier, the retry sweep, analyze-resume and the
+# purchase mailers), calling each other for real, against Postgres (pglite)
+# with the live SQL, and only Stripe, the model gateway and Resend faked. It
+# runs on the pull requests that touch that path. The same files run in the
+# default suite (ci.yml); this job names the path on its own so a red money
+# path cannot hide in a long list.
+name: E2E purchase
+
+on:
+  pull_request:
+    paths:
+      - "supabase/functions/create-*checkout*/**"
+      - "supabase/functions/stripe-webhook/**"
+      - "supabase/functions/verify-*/**"
+      - "supabase/functions/retry-*/**"
+      - "supabase/functions/generate-*/**"
+      - "supabase/functions/analyze-resume/**"
+      - "supabase/functions/send-product-email/**"
+      - "supabase/functions/send-analysis-email/**"
+      - "supabase/functions/recover-purchase/**"
+      - "supabase/functions/get-account-data/**"
+      - "supabase/functions/_shared/**"
+      - "supabase/migrations/**"
+      - "src/test/e2e/**"
+      - "src/test/helpers/**"
+      - "vitest.e2e.config.ts"
+  workflow_dispatch:
+
+jobs:
+  money-path:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      # --legacy-peer-deps for the reason ci.yml gives (React 19 peer metadata).
+      - name: Install deps
+        run: npm ci --legacy-peer-deps
+      - name: The money path
+        run: npx vitest run -c vitest.e2e.config.ts

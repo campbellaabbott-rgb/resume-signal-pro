@@ -127,6 +127,50 @@ export class FakeDb {
   }
 }
 
+/**
+ * The lease RPCs of 20261011144000 over the fake's product_deliveries rows,
+ * for a test of a maker (the webhook, the sweep, the verifier) that leases an
+ * order before it generates: take hands out a token while no live lease
+ * exists on a row in the status the maker saw, finish and release land only
+ * with the row's current token. Spread into db.rpcs.
+ */
+export function fakeLeaseRpcs(db: FakeDb): FakeDb["rpcs"] {
+  const rowsOf = () => db.rows("product_deliveries");
+  const find = (sid: unknown) => rowsOf().find((r) => r.stripe_session_id === sid);
+  let n = 0;
+  return {
+    take_delivery_lease: (a) => {
+      let row = find(a.p_stripe_session_id);
+      if (!row) {
+        row = { id: `pd-${a.p_stripe_session_id}`, stripe_session_id: a.p_stripe_session_id, product_type: a.p_product_type ?? "unknown",
+          customer_email: a.p_email ?? null, status: "payment_received", retry_count: 0, max_retries: 8 };
+        rowsOf().push(row);
+      } else {
+        if (row.status === "delivered" || row.status === "refunded" || row.email_sent_at) return { data: null, error: null };
+        if (row.status !== a.p_seen_status) return { data: null, error: null };
+        if (Date.parse(String(row.lease_until ?? "")) > Date.now()) return { data: null, error: null };
+      }
+      const token = `lease-${++n}`;
+      Object.assign(row, { status: "generating", content_generation_started_at: new Date().toISOString(), lease_token: token,
+        lease_until: new Date(Date.now() + Number(a.p_minutes ?? 10) * 60_000).toISOString() });
+      return { data: token, error: null };
+    },
+    finish_delivery_generation: (a) => {
+      const row = find(a.p_stripe_session_id);
+      if (!row || row.status !== "generating" || !a.p_lease_token || row.lease_token !== a.p_lease_token) return { data: false, error: null };
+      Object.assign(row, { status: a.p_status ?? "content_generated", generation_success: true, content_generation_completed_at: new Date().toISOString(),
+        lease_token: null, lease_until: null });
+      return { data: true, error: null };
+    },
+    release_delivery_lease: (a) => {
+      const row = find(a.p_stripe_session_id);
+      if (!row || !a.p_lease_token || row.lease_token !== a.p_lease_token) return { data: false, error: null };
+      Object.assign(row, { lease_token: null, lease_until: null });
+      return { data: true, error: null };
+    },
+  };
+}
+
 let seq = 0;
 const hex = (n: number) => Array.from({ length: n }, () => Math.floor(Math.random() * 16).toString(16)).join("");
 

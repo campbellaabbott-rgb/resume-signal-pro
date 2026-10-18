@@ -467,7 +467,11 @@ const trackPerformance = (startTime: number, operation: string, success: boolean
 // and seo-ingest-ops (S11-028/150) each stamped .4 on different code.
 // 2026-10-14.1 (R1 integration): _shared/mailbox-proof.ts gained the proof-row
 // readers and maskEmail; provenMailbox, the import here, is unchanged.
-const FN_BUILD = "free-keyword-scan.2026-10-14.1";
+// 2026-10-14.22 (wave 4 round 2, payments-delivery): _shared/scan-credits.ts
+// spends a claimed purchase only for the account that claimed it (the redeem
+// call names p_user_id, which only 20261011141000's function takes) and finds
+// a pack whose address is only in customer_details; this bundle changed with it.
+const FN_BUILD = "free-keyword-scan.2026-10-14.22";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

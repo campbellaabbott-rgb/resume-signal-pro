@@ -23,6 +23,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
+import { buildIsAtLeast } from "./helpers/fn-build";
 import { analyzeResumeHarness, fullAnalysisSession, RESUME, type Harness } from "./helpers/analyze-resume-harness";
 import { OWING_SUBSCRIPTION_STATUSES as DENO_OWING } from "../../supabase/functions/_shared/subscription-standing";
 import { OWING_SUBSCRIPTION_STATUSES as WEB_OWING } from "@/config/subscription-status";
@@ -155,7 +156,7 @@ describe("reconcile-stripe answers its cron, our servers and the owner, and nobo
 
   it("answers its build on the preflight", async () => {
     const res = await handlers["reconcile-stripe"](new Request("https://harness.supabase.co/functions/v1/reconcile-stripe", { method: "OPTIONS" }));
-    expect(res.headers.get("x-fn-build")).toMatch(/^reconcile-stripe\.2026-10-05\.\d+$/);
+    expect(buildIsAtLeast(res.headers.get("x-fn-build"), "reconcile-stripe", "2026-10-05", 1)).toBe(true);
   });
 });
 

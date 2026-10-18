@@ -27,7 +27,10 @@ import { isAuthUserId, scanCreditBalance, type CreditDb } from "../_shared/scan-
 // this in x-fn-build.
 // 2026-10-14.1 (R1 integration): _shared/mailbox-proof.ts gained the proof-row
 // readers and maskEmail; provenMailbox, the one import here, is unchanged.
-const FN_BUILD = "get-account-data.2026-10-14.1";
+// 2026-10-14.22 (wave 4 round 2, payments-delivery): _shared/scan-credits.ts
+// lists a claimed purchase only for the account that claimed it; this bundle
+// changed with it.
+const FN_BUILD = "get-account-data.2026-10-14.22";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
