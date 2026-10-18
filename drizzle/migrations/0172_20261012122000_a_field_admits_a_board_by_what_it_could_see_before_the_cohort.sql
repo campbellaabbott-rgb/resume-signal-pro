@@ -1,0 +1,1 @@
+SELECT public._mig_exec(sql) FROM public._mig_stage WHERE name = '20261012122000_a_field_admits_a_board_by_what_it_could_see_before_the_cohort.sql';
