@@ -1205,6 +1205,13 @@
       "when": 1792321114820,
       "tag": "0171_20261012121000_a_fill_share_counts_only_roles_the_board_was_watched_for",
       "breakpoints": true
+    },
+    {
+      "idx": 172,
+      "version": "7",
+      "when": 1792321125646,
+      "tag": "0172_20261012122000_a_field_admits_a_board_by_what_it_could_see_before_the_cohort",
+      "breakpoints": true
     }
   ]
 }

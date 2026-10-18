@@ -6152,6 +6152,8 @@ export type Database = {
       get_category_fill_curve: {
         Args: { p_days?: number; p_min_n?: number }
         Returns: {
+          admitted_boards_14: number
+          admitted_boards_30: number
           ageouts_at_30: number
           category: string
           cohort_from: string
@@ -6175,6 +6177,8 @@ export type Database = {
           still_open_14: number
           still_open_30: number
           still_open_30_hi: number
+          still_open_30_k1: number
+          still_open_30_k3: number
           still_open_30_lo: number
           sufficient: boolean
           sufficient_30: boolean
