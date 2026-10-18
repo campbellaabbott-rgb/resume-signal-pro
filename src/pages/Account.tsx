@@ -1056,7 +1056,7 @@ export default function Account() {
               {matching.text
                 ? t("accountPage.matchingPasted", "Pasted résumé ({{n}} characters)", { n: matching.text.length.toLocaleString() })
                 : matching.scanId
-                ? (() => { const s = scans.find((x) => x.id === matching.scanId); return s ? t("accountPage.matchingPinned", "Pinned: {{name}} · {{date}}", { name: s.label ?? (s.industry ?? t("accountPage.matchingScan", "scan")).replace(/_/g, " "), date: new Date(s.created_at).toLocaleDateString() }) : t("accountPage.matchingPinnedGone", "Pinned scan (no longer in your history)"); })()
+                ? (() => { const s = scans.find((x) => x.id === matching.scanId); return s ? t("accountPage.matchingPinnedScan", "Pinned: {{name}} · {{date}}", { name: s.label ?? (s.industry ?? t("accountPage.matchingScan", "scan")).replace(/_/g, " "), date: new Date(s.created_at).toLocaleDateString() }) : t("accountPage.matchingPinnedGone", "Pinned scan (no longer in your history)"); })()
                 : t("accountPage.matchingLatest", "Latest scan (default)")}
             </span>
             <div className="ml-auto flex items-center gap-2">
