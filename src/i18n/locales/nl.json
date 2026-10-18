@@ -5062,11 +5062,11 @@
     "statCompanyBoards": "vacaturesites van bedrijven met openstaande vacatures",
     "badge2": "Live vacaturebord + je eigen AI",
     "headlineHighlight2": "Solliciteer zelf, met hulp van je eigen AI.",
-    "sub2": "Vacatures rechtstreeks uit de eigen wervingssystemen van bedrijven, de hele dag opnieuw gecontroleerd. Scan je cv gratis, zoek op het bord hier of vanuit Claude of ChatGPT, en solliciteer zelf, als je wilt met hulp van je AI. We versturen nooit iets namens jou."
+    "sub2": "Vacatures rechtstreeks uit de eigen wervingssystemen van bedrijven, de hele dag opnieuw gecontroleerd. Scan je cv gratis, zoek op het bord hier of vanuit Claude of ChatGPT, en solliciteer zelf, als je wilt met hulp van je AI."
   },
   "homeAgent": {
     "lead": "Neem je eigen AI-agent mee.",
-    "passLine": "Je AI schrijft een concept en jij beslist: Resume Booster verstuurt nooit een sollicitatie namens jou.",
+    "passLine": "Je AI schrijft een concept en jij beslist.",
     "connectCta": "Verbind je agent",
     "connectLine2": "Verbind hem gratis en zonder account — {{freeCallsPerDay}} aanroepen per dag per netwerkadres om het vacaturebord te verkennen (een kantoor of een thuisverbinding telt als één adres; vanuit ChatGPT heeft iedereen zijn eigen {{freeCallsPerDay}}, en vanuit Claude gaat eerst een dagelijkse pot voor die alle Claude-gebruikers delen)."
   },

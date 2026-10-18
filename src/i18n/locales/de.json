@@ -5062,11 +5062,11 @@
     "statCompanyBoards": "Unternehmens-Jobportale mit offenen Stellen",
     "badge2": "Live-Jobbörse + deine eigene KI",
     "headlineHighlight2": "Bewirb dich selbst, mit Hilfe deiner eigenen KI.",
-    "sub2": "Stellen direkt aus den eigenen Bewerbungssystemen der Unternehmen, den ganzen Tag über neu geprüft. Scanne deinen Lebenslauf kostenlos, durchsuche die Jobbörse hier oder mit Claude oder ChatGPT und bewirb dich selbst, auf Wunsch mit Hilfe deiner KI. Wir senden niemals etwas für dich ab."
+    "sub2": "Stellen direkt aus den eigenen Bewerbungssystemen der Unternehmen, den ganzen Tag über neu geprüft. Scanne deinen Lebenslauf kostenlos, durchsuche die Jobbörse hier oder mit Claude oder ChatGPT und bewirb dich selbst, auf Wunsch mit Hilfe deiner KI."
   },
   "homeAgent": {
     "lead": "Bring deinen eigenen KI-Agenten mit.",
-    "passLine": "Deine KI entwirft, du entscheidest: Resume Booster sendet niemals eine Bewerbung für dich ab.",
+    "passLine": "Deine KI entwirft, du entscheidest.",
     "connectCta": "Agenten verbinden",
     "connectLine2": "Kostenlos und ohne Konto verbinden — {{freeCallsPerDay}} Aufrufe pro Tag und Netzwerkadresse, um sich auf der Jobbörse umzusehen (ein Büro oder ein Heimanschluss zählt als eine Adresse; aus ChatGPT hat jede Person ihre eigenen {{freeCallsPerDay}}, und aus Claude kommt zuerst ein Tageskontingent, das alle Claude-Nutzer teilen)."
   },

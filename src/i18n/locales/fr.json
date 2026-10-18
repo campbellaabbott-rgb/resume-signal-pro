@@ -5096,11 +5096,11 @@
     "statCompanyBoards": "sites carrières d'entreprises qui recrutent",
     "badge2": "Offres en direct + votre propre IA",
     "headlineHighlight2": "Postulez vous-même, avec l'aide de votre propre IA.",
-    "sub2": "Des offres lues dans les propres systèmes de recrutement des entreprises et revérifiées toute la journée. Analysez votre CV gratuitement, cherchez sur le tableau ici ou depuis Claude ou ChatGPT, et postulez vous-même, avec l'aide de votre IA si vous le souhaitez. Nous n'envoyons jamais rien à votre place."
+    "sub2": "Des offres lues dans les propres systèmes de recrutement des entreprises et revérifiées toute la journée. Analysez votre CV gratuitement, cherchez sur le tableau ici ou depuis Claude ou ChatGPT, et postulez vous-même, avec l'aide de votre IA si vous le souhaitez."
   },
   "homeAgent": {
     "lead": "Amenez votre propre agent IA.",
-    "passLine": "Votre IA rédige, vous décidez : Resume Booster n'envoie jamais de candidature à votre place.",
+    "passLine": "Votre IA rédige, vous décidez.",
     "connectCta": "Connecter votre agent",
     "connectLine2": "Connectez-le gratuitement et sans compte — {{freeCallsPerDay}} appels par jour et par adresse réseau pour explorer la bourse d'emploi (un bureau ou une connexion domestique compte pour une seule adresse ; depuis ChatGPT chaque personne a ses propres {{freeCallsPerDay}}, et depuis Claude un quota quotidien partagé par tous les utilisateurs de Claude passe en premier)."
   },

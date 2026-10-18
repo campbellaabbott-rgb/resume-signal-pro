@@ -555,12 +555,16 @@ describe("the agent offer on the homepage", () => {
     const stray = digitRuns(text).filter((n) => n !== String(MCP_ANON_CAPS.perAddressPerDay));
     expect(stray, "a digit the allowance mirror did not supply").toEqual([]);
     expect(text).not.toMatch(/\$|\bpass\b/i);
-    expect(text).toMatch(/never submits an application for you/);
+    expect(text).toMatch(/you decide/i);
+    // Until wave 4 retires the server-side agent, the homepage must not say we never submit:
+    // the coverage section on the same page still describes the live agent.
+    expect(text).not.toMatch(/never submits/i);
     expect(el!.querySelector("h1, h2, h3")).toBeNull();
     expect(el!.querySelector("button")).toBeNull();
     expect(document.querySelectorAll("h1").length).toBe(1);
     // The hero itself claims no submissions either.
     expect(hero!.textContent ?? "").not.toMatch(/applies for you|can submit for you|submits where|AI apply agent/i);
+    expect(hero!.textContent ?? "", "the hero promises never to submit while the agent is still live").not.toMatch(/never submit/i);
   });
 
   for (const signedIn of [false, true]) {
