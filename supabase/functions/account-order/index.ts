@@ -55,7 +55,7 @@ Deno.serve(async (req) => {
 
   try {
     const url = Deno.env.get("SUPABASE_URL") ?? "";
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
     const anon = createClient(url, Deno.env.get("SUPABASE_ANON_KEY") ?? "", { auth: { persistSession: false } });
     const session = await requireWebsiteSession(req, { auth: anon.auth, headers: corsHeaders });
     if (session instanceof Response) return session;
@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
     const sessionId = typeof body.sessionId === "string" && SESSION_RE.test(body.sessionId) ? body.sessionId : null;
     if (!action || !sessionId) return json({ error: "Name an order and what you want for it." }, 400);
 
-    const service = createClient(url, serviceKey, { auth: { persistSession: false } });
+    const service = createClient(url, supabaseServiceKey, { auth: { persistSession: false } });
     const proofEnv: MailboxEnv = {
       db: service,
       confirmedSince: Deno.env.get("EMAIL_CONFIRMED_SINCE") ?? null,
@@ -104,7 +104,7 @@ Deno.serve(async (req) => {
     if (!saved || saved.generated_content == null) {
       return json({ error: "This order has no saved copy to email. Open it from its link instead.", code: "no_saved_copy" }, 409);
     }
-    const bucket = (await sha256Hex(`${serviceKey}:account-order-mail:${sessionId}`)).slice(0, 32);
+    const bucket = (await sha256Hex(`${supabaseServiceKey}:account-order-mail:${sessionId}`)).slice(0, 32);
     const { data: allowed, error: doorErr } = await service.rpc("mail_door_take", {
       p_door: "account-order:mail-again", p_bucket: bucket, p_max: MAIL_AGAIN_PER_DAY, p_window_minutes: 1440,
     });
@@ -115,7 +115,7 @@ Deno.serve(async (req) => {
     const productName = saved.product_name ?? (delivery as { product_name?: string } | null)?.product_name ?? "Your purchase";
     const sent = await fetch(`${url}/functions/v1/send-product-email`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${serviceKey}`, apikey: serviceKey },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${supabaseServiceKey}`, apikey: supabaseServiceKey },
       body: JSON.stringify({ email: orderEmail, productType, productName, generatedContent: saved.generated_content, sessionId }),
       signal: AbortSignal.timeout(20_000),
     }).catch(() => null);
