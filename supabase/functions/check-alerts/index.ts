@@ -52,7 +52,8 @@ export const LOOKBACK_HOURS = 6;
  * inbox, and quiet reads as healthy. Each run reads the last heartbeat's time
  * from get_scan_health_status; older than this (three missed runs of its
  * ten-minute cron), or never, is a critical alert. healthchecks.io
- * (HC_PING_URL, pinged by every heartbeat run) watches from outside Supabase.
+ * (HC_HEARTBEAT_PING_URL, pinged by every heartbeat run) watches from outside
+ * Supabase.
  */
 export const HEARTBEAT_STALE_MINUTES = 30;
 /** The age a heartbeat that never ran is reported as. */

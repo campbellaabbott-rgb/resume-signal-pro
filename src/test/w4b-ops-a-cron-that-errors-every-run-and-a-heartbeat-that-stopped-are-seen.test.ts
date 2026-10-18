@@ -18,9 +18,10 @@
  *
  * WHAT HOLDS NOW: 20261011200000 runs twice in pglite and its readers count
  * what they claim; the shipped scan-heartbeat fails the cron check on
- * repeated 5xx, calls an abort on its own clock degraded, and pings
- * HC_PING_URL; the shipped check-alerts alarms on a heartbeat older than 30
- * minutes. Only the network and the database are faked.
+ * repeated 5xx, calls an abort on its own clock degraded, pings its own
+ * healthchecks.io check (HC_HEARTBEAT_PING_URL, never mail-watch's
+ * HC_PING_URL) and fails mail_watch_alive on a stale mail-watch stamp; the
+ * shipped check-alerts alarms on a heartbeat older than 30 minutes. Only the network and the database are faked.
  */
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
@@ -195,6 +196,11 @@ let answers: Answer;
 let scanFails: null | (() => never) = null;
 let pings: string[] = [];
 let pending: Promise<unknown>[] = [];
+let mailWatchAt: string | undefined;
+type Out = { status: string; deadMan?: string; checks: Array<{ name: string; passed: boolean; error?: string }>; skipped: Array<{ name: string; reason: string }> };
+const heartbeatRun = async (): Promise<Out> => (await heartbeat(new Request("https://h.supabase.co/functions/v1/scan-heartbeat", {
+  method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${SERVICE}` }, body: "{}",
+}))).json();
 
 describe("the shipped scan-heartbeat", () => {
   beforeAll(async () => {
@@ -225,22 +231,24 @@ describe("the shipped scan-heartbeat", () => {
   beforeEach(() => {
     scanFails = null;
     pings = [];
+    delete hbEnv.HC_HEARTBEAT_PING_URL;
     delete hbEnv.HC_PING_URL;
+    mailWatchAt = undefined;
     answers = { data: { available: true, responses: 40, refused: 0, error_window_responses: 120, server_errors: 0, timed_out: 0, not_found: 0 }, error: null };
     const db = new ProxyDb();
     db.answer = (q: Query): Answer | undefined => {
       if (q.rpc === "check_rate_limit") return { data: true, error: null };
       if (q.rpc === "cron_http_answers") return answers;
+      if (q.table === "job_board_meta" && q.calls.some(([m, a]) => m === "eq" && a[1] === "mail_watch_run")) {
+        return mailWatchAt === undefined ? { data: null, error: null } : { data: { updated_at: mailWatchAt }, error: null };
+      }
       if (q.table === "job_board_meta") return { data: { updated_at: new Date().toISOString() }, error: null };
       return undefined;
     };
     (globalThis as Record<string, unknown>).__w4bHbDb = db;
   });
   afterEach(async () => { await Promise.allSettled(pending); pending = []; });
-  type Out = { status: string; deadMan?: string; checks: Array<{ name: string; passed: boolean; error?: string }>; skipped: Array<{ name: string; reason: string }> };
-  const run = async (): Promise<Out> => (await heartbeat(new Request("https://h.supabase.co/functions/v1/scan-heartbeat", {
-    method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${SERVICE}` }, body: "{}",
-  }))).json();
+  const run = heartbeatRun;
   const check = (j: Out, name: string) => j.checks.find((c) => c.name === name);
 
   it("reads cron_http_answers over the two windows, and repeated 5xx fail the check and degrade the run", async () => {
@@ -276,11 +284,12 @@ describe("the shipped scan-heartbeat", () => {
     expect(j.status).toBe("down");
   });
 
-  it("pings HC_PING_URL every run, /fail when it found the product down, and says when it is unset", async () => {
+  it("pings its own check every run, /fail when it found the product down, says when it is unset, and never pings mail-watch's", async () => {
+    hbEnv.HC_PING_URL = "https://hc-ping.com/mail-watch-check";
     let j = await run();
-    expect(j.deadMan).toBe("unset");
+    expect(j.deadMan, "the heartbeat pinged mail-watch's check, which would keep either death quiet").toBe("unset");
     expect(pings).toEqual([]);
-    hbEnv.HC_PING_URL = "https://hc-ping.com/0f1e2d3c-test";
+    hbEnv.HC_HEARTBEAT_PING_URL = "https://hc-ping.com/0f1e2d3c-test";
     j = await run();
     expect(j.deadMan).toBe("sent");
     expect(pings).toEqual(["https://hc-ping.com/0f1e2d3c-test"]);
@@ -288,6 +297,24 @@ describe("the shipped scan-heartbeat", () => {
     j = await run();
     expect(j.status).toBe("down");
     expect(pings.at(-1)).toBe("https://hc-ping.com/0f1e2d3c-test/fail");
+  });
+
+  it("the dead-man pair: a mail-watch stamp older than three of its runs fails mail_watch_alive and degrades the run", async () => {
+    mailWatchAt = new Date(Date.now() - 70 * 60_000).toISOString();
+    const j = await heartbeatRun();
+    const c = j.checks.find((x) => x.name === "mail_watch_alive");
+    expect(c?.passed).toBe(false);
+    expect(c?.error).toMatch(/mail-watch last ran 70 min ago/);
+    expect(j.status).not.toBe("healthy");
+  });
+
+  it("the dead-man pair, positive control: a fresh stamp passes, and no stamp at all is a skip, not a verdict", async () => {
+    mailWatchAt = new Date(Date.now() - 12 * 60_000).toISOString();
+    expect((await heartbeatRun()).checks.find((x) => x.name === "mail_watch_alive")?.passed).toBe(true);
+    mailWatchAt = undefined;
+    const j = await heartbeatRun();
+    expect(j.checks.find((x) => x.name === "mail_watch_alive")).toBeUndefined();
+    expect(j.skipped.find((x) => x.name === "mail_watch_alive")?.reason).toMatch(/has not run here yet/);
   });
 });
 

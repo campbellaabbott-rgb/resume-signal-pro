@@ -9,7 +9,7 @@ import { keyMatches } from "../_shared/admin-key.ts";
 // every heartbeat run since the check shipped. See _shared/search-caller.ts.
 import { searchCallerHeader } from "../_shared/search-caller.ts";
 import { boardTailChecks, dbFailureCheck } from "./board-tail.ts";
-import { cronAnswersCheck, CRON_ERROR_WINDOW_MIN, CRON_REFUSAL_WINDOW_MIN, E2E_ABORT_MS, e2eAbortedText, isAbort, pingDeadMan } from "./watch.ts";
+import { cronAnswersCheck, CRON_ERROR_WINDOW_MIN, CRON_REFUSAL_WINDOW_MIN, E2E_ABORT_MS, e2eAbortedText, HEARTBEAT_PING_ENV, isAbort, mailWatchCheck, pingDeadMan } from "./watch.ts";
 
 // Declare EdgeRuntime for background tasks
 declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
@@ -126,7 +126,7 @@ function unanswered(r: { timedOut?: boolean; failed?: boolean }, fn: string, ms:
  *
  * BUMP ON EVERY DEPLOY of this function.
  */
-const BUILD_VERSION = "2026-10-11.28"; // 10-11.28: the cron check reads cron_http_answers and fails on repeated 5xx (S12-157); the end-to-end scan waits past the scanner's own clock and an abort on ours is degraded (S12-159); each run pings HC_PING_URL (S12-065).  10-09.7: carries both .6 and .3 (wave-3 fix round integration).  10-09.6: fails job_board_refresh_head (3h), job_board_filter_audit (12h) and job_board_pass_end (a pass-end tail that started and never finished, S11-001) and job_board_db_failures (S11-023).  10-09.3: a partial e2e report, a refused (429) e2e scan and a visitor fallback rate of half or more fail their checks (S11-028).  10-09.1: a paid order that never arrived mails the owner, naming it, newest first (decided after the delivery read, not before); a cron call refused (401/403) in the last hour fails cron_http_refusals.  10-08.1: answers only its cron, the service role and the owner's key; the e2e scan is uncached; alerts stamp only after a send that worked; vendor drift skips when unevaluated; delivery reads email_logs too
+const BUILD_VERSION = "2026-10-11.28"; // 10-11.28: the cron check reads cron_http_answers and fails on repeated 5xx (S12-157); the end-to-end scan waits past the scanner's own clock and an abort on ours is degraded (S12-159); each run pings its own healthchecks.io check (HC_HEARTBEAT_PING_URL), and a mail-watch whose run stamp is 45 minutes old fails mail_watch_alive (S12-065).  10-09.7: carries both .6 and .3 (wave-3 fix round integration).  10-09.6: fails job_board_refresh_head (3h), job_board_filter_audit (12h) and job_board_pass_end (a pass-end tail that started and never finished, S11-001) and job_board_db_failures (S11-023).  10-09.3: a partial e2e report, a refused (429) e2e scan and a visitor fallback rate of half or more fail their checks (S11-028).  10-09.1: a paid order that never arrived mails the owner, naming it, newest first (decided after the delivery read, not before); a cron call refused (401/403) in the last hour fails cron_http_refusals.  10-08.1: answers only its cron, the service role and the owner's key; the e2e scan is uncached; alerts stamp only after a send that worked; vendor drift skips when unevaluated; delivery reads email_logs too
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -461,6 +461,25 @@ serve(async (req) => {
       }
     } catch (e) {
       skip('cron_http_answers', `reader threw (${e instanceof Error ? e.message.slice(0, 80) : 'unknown'}) — cron answers not evaluated`);
+    }
+
+    // Check 2d: the other half of the dead-man pair (S12-065). mail-watch
+    // alarms when this heartbeat's cron stops; this alarms when mail-watch's
+    // run stamp is older than three of its 15-minute runs.
+    try {
+      const { data, error } = await supabase.from('job_board_meta').select('updated_at').eq('k', 'mail_watch_run').maybeSingle();
+      const verdict = error ? null : mailWatchCheck((data as { updated_at?: string } | null)?.updated_at);
+      if (error) skip('mail_watch_alive', `job_board_meta unreadable (${error.message?.slice(0, 80) ?? 'error'}) — mail-watch not evaluated`);
+      else if (!verdict) skip('mail_watch_alive', 'mail-watch has not run here yet — nothing to watch');
+      else {
+        checks.push({ name: 'mail_watch_alive', passed: verdict.passed, responseTimeMs: 0, error: verdict.error });
+        if (!verdict.passed) {
+          if (overallStatus === 'healthy') overallStatus = 'degraded';
+          errorMessage = errorMessage || `Mail watch: ${verdict.error!.slice(0, 120)}`;
+        }
+      }
+    } catch (e) {
+      skip('mail_watch_alive', `stamp read threw (${e instanceof Error ? e.message.slice(0, 80) : 'unknown'}) — mail-watch not evaluated`);
     }
 
     // Check 3: Cache system
@@ -1983,8 +2002,8 @@ serve(async (req) => {
     const fillGaps = await evaluateFillGaps(supabase);
 
     // The run finished: tell the watcher outside Supabase (S12-065).
-    const deadMan = await pingDeadMan(Deno.env.get('HC_PING_URL'), overallStatus);
-    if (deadMan !== 'sent') console.log(`[HEARTBEAT] dead-man ping ${deadMan}${deadMan === 'unset' ? ' (HC_PING_URL is not an https URL: nothing outside Supabase notices if this cron stops)' : ''}`);
+    const deadMan = await pingDeadMan(Deno.env.get(HEARTBEAT_PING_ENV), overallStatus);
+    if (deadMan !== 'sent') console.log(`[HEARTBEAT] dead-man ping ${deadMan}${deadMan === 'unset' ? ` (${HEARTBEAT_PING_ENV} is not an https URL: nothing outside Supabase notices if this cron stops)` : ''}`);
 
     return new Response(
       JSON.stringify({
@@ -2036,7 +2055,7 @@ serve(async (req) => {
     });
 
     EdgeRuntime.waitUntil(sendHeartbeatAlert('down', error instanceof Error ? error.message : 'Unknown', checks, totalTime));
-    EdgeRuntime.waitUntil(pingDeadMan(Deno.env.get('HC_PING_URL'), 'down'));
+    EdgeRuntime.waitUntil(pingDeadMan(Deno.env.get(HEARTBEAT_PING_ENV), 'down'));
 
     return new Response(
       JSON.stringify({

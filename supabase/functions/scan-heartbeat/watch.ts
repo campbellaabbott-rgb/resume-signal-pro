@@ -82,12 +82,33 @@ export function isAbort(e: unknown): boolean {
  * WHO WATCHES THE HEARTBEAT (S12-065). Its alerts, the refusal check and the
  * Stripe-key check all run inside it; if its cron stops (a vault re-key, a
  * revoked job), the inbox goes quiet and quiet reads as healthy. Each run
- * pings HC_PING_URL, a healthchecks.io check outside Supabase and Resend that
- * mails the owner when the pings stop: a success ping for a run that
- * finished, /fail for one that found the product down. Unset or not https,
- * nothing is sent and the run says so. Never throws; a ping that fails must
- * not fail the heartbeat.
+ * pings HC_HEARTBEAT_PING_URL, a healthchecks.io check outside Supabase and
+ * Resend that mails the owner when the pings stop: a success ping for a run
+ * that finished, /fail for one that found the product down. Its OWN check,
+ * never mail-watch's HC_PING_URL: two senders on one check keep it quiet
+ * while either is alive, so the death of the other would never be heard.
+ * Unset or not https, nothing is sent and the run says so. Never throws; a
+ * ping that fails must not fail the heartbeat.
  */
+/** The secret the heartbeat pings: its own healthchecks.io check. */
+export const HEARTBEAT_PING_ENV = "HC_HEARTBEAT_PING_URL";
+
+/**
+ * THE OTHER HALF OF THE DEAD-MAN PAIR. mail-watch (every 15 minutes) alarms
+ * when the heartbeat's cron stops; the heartbeat alarms when mail-watch's run
+ * stamp (job_board_meta mail_watch_run) is older than three of its runs. No
+ * stamp at all is no verdict: mail-watch has not run here yet.
+ */
+export const MAIL_WATCH_STALE_MIN = 45;
+export function mailWatchCheck(updatedAt: string | null | undefined, now = Date.now()): { passed: boolean; error?: string } | null {
+  const at = Date.parse(String(updatedAt ?? ""));
+  if (!Number.isFinite(at)) return null;
+  const age = Math.max(0, Math.floor((now - at) / 60_000));
+  return age <= MAIL_WATCH_STALE_MIN
+    ? { passed: true }
+    : { passed: false, error: `mail-watch last ran ${age} min ago (it runs every 15): the alarms on mail that stopped, bounced or never left are silent` };
+}
+
 export async function pingDeadMan(
   url: string | undefined | null,
   status: string,

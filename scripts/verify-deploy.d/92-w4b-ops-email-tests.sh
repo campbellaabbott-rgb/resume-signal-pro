@@ -37,7 +37,7 @@ const oldWording=issues.some((x)=>/^(Success rate below|No successful scans in l
 if(oldWording)console.log("FAIL  get_scan_health_status still speaks the old reader ("+JSON.stringify(issues).slice(0,200)+"): 20261011200000, which counts visitor scans only, is not applied");
 else console.log("INFO  get_scan_health_status: status "+r.status+", "+r.scans_last_hour+" visitor scan(s) this hour at "+r.success_rate_last_hour+"%, issues "+JSON.stringify(issues).slice(0,200)+(visitorWording?" (the 20261011200000 wording)":" (no issue to tell the two readers apart by)"));'
 
-echo "INFO  OWNER: create a healthchecks.io check (period 15 min, grace 30 min) and put its ping URL in the Lovable secret HC_PING_URL; scan-heartbeat 2026-10-11.28 pings it every run (/fail when it finds the product down) and its JSON says deadMan sent|unset|failed. Then pause the scan-heartbeat-sentinel job for 45 min once to see the check mail you."
+echo "INFO  OWNER: create a SECOND healthchecks.io check for the heartbeat (period 10 min, grace 20 min; not mail-watch's HC_PING_URL check, or each would keep the other's death quiet) and put its ping URL in the Lovable secret HC_HEARTBEAT_PING_URL; scan-heartbeat 2026-10-11.28 pings it every run (/fail when it finds the product down) and its JSON says deadMan sent|unset|failed. Then pause the scan-heartbeat-sentinel job for 30 min once to see the check mail you."
 
 if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
   gh run list --workflow board-health.yml --limit 40 --json event,createdAt,conclusion > /tmp/vd_92_bh.json 2>/dev/null || : > /tmp/vd_92_bh.json
