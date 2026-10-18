@@ -5062,11 +5062,11 @@
     "statCompanyBoards": "company job boards hiring",
     "badge2": "Live job board + your own AI",
     "headlineHighlight2": "Apply yourself, with your own AI's help.",
-    "sub2": "Openings read from companies' own hiring systems and re-checked all day. Scan your CV for free, search the board here or from Claude or ChatGPT, and apply yourself, with your AI's help if you like. We never submit anything for you."
+    "sub2": "Openings read from companies' own hiring systems and re-checked all day. Scan your CV for free, search the board here or from Claude or ChatGPT, and apply yourself, with your AI's help if you like."
   },
   "homeAgent": {
     "lead": "Bring your own AI agent.",
-    "passLine": "Your AI drafts and you decide: Resume Booster never submits an application for you.",
+    "passLine": "Your AI drafts and you decide.",
     "connectCta": "Connect your agent",
     "connectLine2": "Connect it free with no account — {{freeCallsPerDay}} calls a day per network address to look around the board (an office or a home connection counts as one address; from ChatGPT each person has their own {{freeCallsPerDay}}, and from Claude a daily pool every Claude user shares comes first)."
   },

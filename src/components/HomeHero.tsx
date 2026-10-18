@@ -96,7 +96,7 @@ export function HomeHero({ agentOffer }: { agentOffer?: ReactNode } = {}) {
           </h1>
 
           <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed mb-5">
-            {t("homeHero.sub2", "Openings read from companies' own hiring systems and re-checked all day. Scan your CV for free, search the board here or from Claude or ChatGPT, and apply yourself, with your AI's help if you like. We never submit anything for you.")}
+            {t("homeHero.sub2", "Openings read from companies' own hiring systems and re-checked all day. Scan your CV for free, search the board here or from Claude or ChatGPT, and apply yourself, with your AI's help if you like.")}
           </p>
 
           {/* THE NUMBERS THAT MATTER, and only once measured. Reserved

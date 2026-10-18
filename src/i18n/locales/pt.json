@@ -5096,11 +5096,11 @@
     "statCompanyBoards": "portais de emprego de empresas a contratar",
     "badge2": "Quadro de vagas ao vivo + a sua própria IA",
     "headlineHighlight2": "Candidate-se por conta própria, com a ajuda da sua IA.",
-    "sub2": "Vagas lidas dos próprios sistemas de contratação das empresas e reverificadas o dia todo. Analise o seu currículo de graça, busque no quadro aqui ou pelo Claude ou ChatGPT e candidate-se por conta própria, com a ajuda da sua IA se quiser. Nunca enviamos nada por você."
+    "sub2": "Vagas lidas dos próprios sistemas de contratação das empresas e reverificadas o dia todo. Analise o seu currículo de graça, busque no quadro aqui ou pelo Claude ou ChatGPT e candidate-se por conta própria, com a ajuda da sua IA se quiser."
   },
   "homeAgent": {
     "lead": "Traga o seu próprio agente de IA.",
-    "passLine": "A sua IA faz o rascunho e você decide: o Resume Booster nunca envia uma candidatura por você.",
+    "passLine": "A sua IA faz o rascunho e você decide.",
     "connectCta": "Ligar o seu agente",
     "connectLine2": "Conecte-o grátis e sem conta — {{freeCallsPerDay}} chamadas por dia por endereço de rede para explorar o quadro de vagas (um escritório ou uma conexão doméstica conta como um só endereço; pelo ChatGPT cada pessoa tem as suas próprias {{freeCallsPerDay}}, e pelo Claude vem primeiro uma cota diária que todos os usuários do Claude compartilham)."
   },

@@ -5062,11 +5062,11 @@
     "statCompanyBoards": "job board ng kumpanyang naghi-hire",
     "badge2": "Live na job board + sarili mong AI",
     "headlineHighlight2": "Mag-apply nang ikaw mismo, sa tulong ng sarili mong AI.",
-    "sub2": "Mga bakanteng binasa mula mismo sa mga hiring system ng mga kumpanya at sinusuri muli buong araw. I-scan nang libre ang iyong CV, maghanap sa board dito o mula sa Claude o ChatGPT, at mag-apply nang ikaw mismo, sa tulong ng iyong AI kung gusto mo. Hindi kami kailanman nagsusumite ng anuman para sa iyo."
+    "sub2": "Mga bakanteng binasa mula mismo sa mga hiring system ng mga kumpanya at sinusuri muli buong araw. I-scan nang libre ang iyong CV, maghanap sa board dito o mula sa Claude o ChatGPT, at mag-apply nang ikaw mismo, sa tulong ng iyong AI kung gusto mo."
   },
   "homeAgent": {
     "lead": "Dalhin ang sarili mong AI agent.",
-    "passLine": "Gumagawa ng draft ang iyong AI at ikaw ang nagpapasya: hindi kailanman nagsusumite ang Resume Booster ng application para sa iyo.",
+    "passLine": "Gumagawa ng draft ang iyong AI at ikaw ang nagpapasya.",
     "connectCta": "Ikonekta ang iyong agent",
     "connectLine2": "Ikonekta ito nang libre at walang account — {{freeCallsPerDay}} na tawag bawat araw bawat network address para tumingin-tingin sa job board (ang isang opisina o koneksyon sa bahay ay binibilang bilang isang address; mula sa ChatGPT may sariling {{freeCallsPerDay}} ang bawat tao, at mula sa Claude, nauuna ang pang-araw-araw na pool na pinagsasaluhan ng lahat ng gumagamit ng Claude)."
   },
