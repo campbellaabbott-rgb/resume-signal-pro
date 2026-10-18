@@ -14,10 +14,11 @@
  * endpoint faked, and reads the results region the visitor sees.
  */
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import { MOUNT_TEST_BUDGET, SLOW } from "./helpers/mount-budget";
+import { clickWhenEnabled } from "./helpers/click-when-enabled";
 
 vi.setConfig(MOUNT_TEST_BUDGET);
 
@@ -95,7 +96,8 @@ describe("the homepage's result screen", () => {
     render(<HelmetProvider><MemoryRouter initialEntries={["/"]}><Index /></MemoryRouter></HelmetProvider>);
     const scan = (await screen.findAllByRole("button", {}, SLOW)).find((b) => b.closest('[data-scan-button="true"]')) as HTMLButtonElement;
     expect(scan, "the free-scan button").toBeTruthy();
-    fireEvent.click(scan);
+    // Disabled until the restored résumé is in place: a click before that did nothing (S12-166).
+    await clickWhenEnabled(() => screen.getAllByRole("button").find((b) => b.closest('[data-scan-button="true"]')) as HTMLElement);
     const steps = await screen.findByTestId("report-next-steps", {}, SLOW);
     expect(invoke.mock.calls.some((c) => c[0] === "free-keyword-scan")).toBe(true);
 

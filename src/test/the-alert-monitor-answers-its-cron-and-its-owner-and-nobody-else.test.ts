@@ -75,6 +75,8 @@ beforeEach(() => {
   db.rpcs.get_email_health = reader("get_email_health", { success_rate: 50 });
   db.rpcs.get_webhook_health = reader("get_webhook_health", { total_received: 10, processing_failed: 5 });
   db.rpcs.get_parse_failure_stats = reader("get_parse_failure_stats", { total_failures: 9 });
+  // A heartbeat that ran a minute ago: the dead-man (S12-065) has nothing to say.
+  db.rpcs.get_scan_health_status = reader("get_scan_health_status", { last_heartbeat_time: new Date(Date.now() - 60_000).toISOString(), last_heartbeat_status: "healthy" });
   db.rpcs.should_send_alert = () => { calls.push("should_send_alert"); return { data: true, error: null }; };
   db.rpcs.log_alert_sent = () => { calls.push("log_alert_sent"); return { data: null, error: null }; };
   const g = globalThis as Record<string, unknown>;

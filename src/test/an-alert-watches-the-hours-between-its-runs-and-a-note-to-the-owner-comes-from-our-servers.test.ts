@@ -63,6 +63,7 @@ beforeEach(() => {
   rec("get_email_health", [{ success_rate: 100 }]);
   rec("get_webhook_health", [{ total_received: 0 }]);
   rec("get_parse_failure_stats", [{ total_failures: 0 }]);
+  rec("get_scan_health_status", [{ last_heartbeat_time: new Date(Date.now() - 60_000).toISOString(), last_heartbeat_status: "healthy" }]);
   rec("should_send_alert", true);
   rec("log_alert_sent", null);
   db.rpcs.email_cron_key_matches = (a) => ({ data: a.p_key === CRON_KEY, error: null });
@@ -74,7 +75,8 @@ const runAlerts = () => alerts(new Request("https://harness.supabase.co/function
 describe("check-alerts reads the hours since its last run", () => {
   it("every health reader is asked for the six hours the cron's cadence leaves between runs", async () => {
     await runAlerts();
-    const readers = rpcArgs.filter(([n]) => n.startsWith("get_"));
+    // get_scan_health_status, the heartbeat's dead-man, takes no window (S12-065).
+    const readers = rpcArgs.filter(([n]) => n.startsWith("get_") && n !== "get_scan_health_status");
     expect(readers).toHaveLength(5);
     for (const [n, a] of readers) expect(a, n).toEqual({ p_hours_back: 6 });
   });

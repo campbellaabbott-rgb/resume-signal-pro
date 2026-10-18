@@ -103,11 +103,18 @@ for(const sort of ["newest","salary"]){
 // migration renames only the five bare-token boards (cc); the stored rows of a named tenant
 // are renamed by the name-sync lane of job-board (NAME_SYNC_VERSION 4), last in a
 // pass-end tail, a few dozen boards per pass: INFO until it has reached them.
+// EVERY ROW, NOT THE NEWEST (S12-164): the newest row is the one the insert
+// trigger names, so a one-row read passed while 278 older rows kept the code
+// name. A page of up to 200 rows is counted; a PASS needs the whole board read.
 for(const [tok,want,lane] of [["ms~wd5~external","Morgan Stanley",true],["rmit~wd3~RMIT_Careers","RMIT University",true],["flextronics~wd1~Careers","Flex Ltd.",true],["cc","Climate Corps",false]]){
-  const r=await list({companies:[tok],limit:1});const got=rows(r)[0]&&rows(r)[0].company;
-  if(bad(r)||!rows(r).length)info("F1 "+tok+": no open row to read a name from");
-  else if(lane)soft(got===want,"F1 "+tok+" stored as "+JSON.stringify(got)+" (want "+want+" once the name-sync lane v4 has reached the board; S11-133/S11-134)");
-  else console.log((got===want?"PASS":"FAIL")+"  F1 "+tok+" stored as "+JSON.stringify(got)+" (want "+want+"; FAIL until 20261009100100 is applied)");
+  const r=await list({companies:[tok],limit:200});const got=rows(r);
+  if(bad(r)||!got.length){info("F1 "+tok+": no open row to read a name from");continue}
+  const off=got.filter((j)=>j.company!==want);const total=typeof r.total==="number"?r.total:null;const whole=total!==null&&got.length>=total;
+  const names=[...new Set(off.map((j)=>JSON.stringify(j.company)))].slice(0,3).join(", ");
+  const msg="F1 "+tok+": "+off.length+" of "+got.length+" rows read"+(total!==null?" (of "+total+")":"")+" not named "+want+(off.length?" (e.g. "+names+")":"");
+  if(off.length)console.log((lane?"INFO":"FAIL")+"  "+msg+(lane?" -- the name-sync lane v4 has not reached them yet (S11-133/S11-134)":" -- FAIL until 20261009100100 is applied"));
+  else if(!whole)info(msg+": the rest of the board was not read, so this is not a pass");
+  else console.log("PASS  "+msg);
 }
 // S8-062: no anon probe that does not spend a limiter row; the build lines above carry it.
 info("S8-062 job-fit / application-fit: keyed on the platform address hourly, a limiter error is 503; not probed (a fit-batch call spends a check_rate_limit row). Judge by the two x-fn-build lines above.");

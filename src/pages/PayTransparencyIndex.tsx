@@ -27,6 +27,7 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { supabase } from "@/integrations/supabase/client";
 import { companyLanderPath } from "@/lib/public-href";
+import { foldToBoardCategories } from "@/lib/board-category-labels";
 
 const rpc = (fn: string, args?: Record<string, unknown>) =>
   (supabase as unknown as { rpc: (f: string, a?: Record<string, unknown>) => Promise<{ data: unknown }> }).rpc(fn, args);
@@ -41,13 +42,9 @@ interface Coverage {
   overall: { total: number; pay_pct: number; mode_n: number; mode_pct: number };
 }
 
-const CATEGORY_LABELS: Record<string, string> = {
-  engineering: "Engineering & IT", data_ai: "Data & AI", design: "Design", marketing: "Marketing",
-  sales: "Sales & Partnerships", finance: "Finance & Accounting", healthcare: "Healthcare",
-  education: "Education", legal: "Legal", people_hr: "People & HR", operations: "Operations & Logistics",
-  customer: "Customer Support", admin: "Administrative", hospitality_retail: "Hospitality & Retail",
-  science: "Science & Research", construction: "Construction & Trades", creative: "Media & Creative",
-};
+// Fields are named the way the board's own filter names them, and a field the
+// board does not serve is counted under Other (S12-046: a local list printed
+// the raw slugs product, security and other, and names the board never shows).
 
 export default function PayTransparencyIndex() {
   const [pay, setPay] = useState<PayData | null>(null);
@@ -151,9 +148,9 @@ export default function PayTransparencyIndex() {
             <h2 className="text-2xl font-bold mb-2">By field</h2>
             <p className="text-sm text-muted-foreground mb-5">Share of catalogued postings stating pay, per field (fields with 200+ postings).</p>
             <div className="space-y-2">
-              {(pay?.categories ?? []).map((c) => (
-                <div key={c.category} className="flex items-center gap-3">
-                  <span className="w-44 shrink-0 text-sm truncate">{CATEGORY_LABELS[c.category] ?? c.category}</span>
+              {foldToBoardCategories(pay?.categories ?? []).map((c) => (
+                <div key={c.category} className="flex items-center gap-3" data-field={c.category}>
+                  <span className="w-44 shrink-0 text-sm truncate">{c.label}</span>
                   <div className="flex-1 h-3 rounded-full bg-muted overflow-hidden">
                     <div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(c.pay_pct, 100)}%` }} />
                   </div>

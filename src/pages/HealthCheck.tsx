@@ -242,6 +242,23 @@ const serviceIcons = {
   stripe: CreditCard,
 };
 
+/**
+ * A PANEL WHOSE READER FAILED SAYS SO (S12-158). Nine fetchers dropped their
+ * error: with a wrong admin key, or admin-ops answering 502, every panel
+ * printed its quiet state ("No orders in last 24h", "No function errors"), so
+ * a broken dashboard looked like a calm day. A failed read now renders this in
+ * the panel's place, with the reason, and never the empty state.
+ */
+type Panel = 'product' | 'email' | 'functionErrors' | 'rateLimits' | 'payments' | 'delivery' | 'aiQuality' | 'checkoutFunnel' | 'webhooks' | 'parseFailures';
+
+function PanelUnavailable({ why }: { why: string }) {
+  return (
+    <p className="text-sm text-destructive text-center py-4" role="status" data-panel-unavailable="true">
+      Unavailable: this panel's reader did not answer ({why.slice(0, 140)}). That is not the same as no activity: check the admin key, or try again.
+    </p>
+  );
+}
+
 const serviceLabels = {
   database: 'Database',
   ai_gateway: 'AI Gateway',
@@ -257,6 +274,15 @@ function HealthCheckContent() {
   // The heartbeat history could not be read (register L3-08). An empty list
   // used to render as 100% uptime and "All systems operational".
   const [heartbeatsUnavailable, setHeartbeatsUnavailable] = useState(false);
+  // Each panel whose last read failed, with why (S12-158).
+  const [unavailable, setUnavailable] = useState<Partial<Record<Panel, string>>>({});
+  const markPanel = (panel: Panel, why: string | null) => setUnavailable((u) => {
+    if (why === null && !(panel in u)) return u;
+    const next = { ...u };
+    if (why === null) delete next[panel]; else next[panel] = why;
+    return next;
+  });
+  const failed = (e: unknown) => (e instanceof Error ? e.message : typeof e === 'string' ? e : 'the request failed');
   const [productMetrics, setProductMetrics] = useState<ProductMetrics | null>(null);
   const [recentIncidents, setRecentIncidents] = useState<HeartbeatRecord[]>([]);
   
@@ -295,8 +321,14 @@ function HealthCheckContent() {
 
   const fetchProductMetrics = async () => {
     try {
-      const { data: successData } = await supabase.rpc('get_scan_success_rate', { p_hours_back: 24 });
-      const { data: todayCount } = await supabase.rpc('get_today_scan_count');
+      const { data: successData, error: successError } = await supabase.rpc('get_scan_success_rate', { p_hours_back: 24 });
+      const { data: todayCount, error: countError } = await supabase.rpc('get_today_scan_count');
+      if (successError || countError) {
+        setProductMetrics(null);
+        markPanel('product', (successError ?? countError)!.message);
+        return;
+      }
+      markPanel('product', null);
       
       if (successData && successData[0]) {
         setProductMetrics({
@@ -309,6 +341,7 @@ function HealthCheckContent() {
       }
     } catch (e) {
       console.error('Failed to fetch product metrics:', e);
+      markPanel('product', failed(e));
     }
   };
 
@@ -334,7 +367,9 @@ function HealthCheckContent() {
 
   const fetchEmailHealth = async () => {
     try {
-      const { data } = await adminRpc('get_email_health', { p_hours_back: 24 });
+      const { data, error } = await adminRpc('get_email_health', { p_hours_back: 24 });
+      if (error) { setEmailHealth(null); markPanel('email', error.message); return; }
+      markPanel('email', null);
       if (data && data[0]) {
         setEmailHealth({
           ...data[0],
@@ -343,23 +378,29 @@ function HealthCheckContent() {
       }
     } catch (e) {
       console.error('Failed to fetch email health:', e);
+      markPanel('email', failed(e));
     }
   };
 
   const fetchFunctionErrors = async () => {
     try {
-      const { data } = await adminRpc('get_function_error_rates', { p_hours_back: 24 });
+      const { data, error } = await adminRpc('get_function_error_rates', { p_hours_back: 24 });
+      if (error) { setFunctionErrors([]); markPanel('functionErrors', error.message); return; }
+      markPanel('functionErrors', null);
       if (data) {
         setFunctionErrors(data as FunctionError[]);
       }
     } catch (e) {
       console.error('Failed to fetch function errors:', e);
+      markPanel('functionErrors', failed(e));
     }
   };
 
   const fetchRateLimitStats = async () => {
     try {
-      const { data } = await adminRpc('get_rate_limit_stats', { p_hours_back: 24 });
+      const { data, error } = await adminRpc('get_rate_limit_stats', { p_hours_back: 24 });
+      if (error) { setRateLimitStats(null); markPanel('rateLimits', error.message); return; }
+      markPanel('rateLimits', null);
       if (data && data[0]) {
         setRateLimitStats({
           ...data[0],
@@ -369,12 +410,15 @@ function HealthCheckContent() {
       }
     } catch (e) {
       console.error('Failed to fetch rate limit stats:', e);
+      markPanel('rateLimits', failed(e));
     }
   };
 
   const fetchPaymentHealth = async () => {
     try {
-      const { data } = await adminRpc('get_payment_health', { p_hours_back: 24 });
+      const { data, error } = await adminRpc('get_payment_health', { p_hours_back: 24 });
+      if (error) { setPaymentHealth(null); markPanel('payments', error.message); return; }
+      markPanel('payments', null);
       if (data && data[0]) {
         setPaymentHealth({
           ...data[0],
@@ -383,12 +427,15 @@ function HealthCheckContent() {
       }
     } catch (e) {
       console.error('Failed to fetch payment health:', e);
+      markPanel('payments', failed(e));
     }
   };
 
   const fetchDeliveryHealth = async () => {
     try {
-      const { data } = await adminRpc('get_delivery_health', { p_hours_back: 24 });
+      const { data, error } = await adminRpc('get_delivery_health', { p_hours_back: 24 });
+      if (error) { setDeliveryHealth(null); markPanel('delivery', error.message); return; }
+      markPanel('delivery', null);
       if (data && data[0]) {
         setDeliveryHealth({
           ...data[0],
@@ -397,12 +444,15 @@ function HealthCheckContent() {
       }
     } catch (e) {
       console.error('Failed to fetch delivery health:', e);
+      markPanel('delivery', failed(e));
     }
   };
 
   const fetchAIQuality = async () => {
     try {
-      const { data } = await adminRpc('get_ai_quality_stats', { p_hours_back: 24 });
+      const { data, error } = await adminRpc('get_ai_quality_stats', { p_hours_back: 24 });
+      if (error) { setAIQuality(null); markPanel('aiQuality', error.message); return; }
+      markPanel('aiQuality', null);
       if (data && data[0]) {
         setAIQuality({
           ...data[0],
@@ -411,23 +461,29 @@ function HealthCheckContent() {
       }
     } catch (e) {
       console.error('Failed to fetch AI quality:', e);
+      markPanel('aiQuality', failed(e));
     }
   };
 
   const fetchCheckoutFunnel = async () => {
     try {
-      const { data } = await adminRpc('get_checkout_funnel', { p_hours_back: 24 });
+      const { data, error } = await adminRpc('get_checkout_funnel', { p_hours_back: 24 });
+      if (error) { setCheckoutFunnel(null); markPanel('checkoutFunnel', error.message); return; }
+      markPanel('checkoutFunnel', null);
       if (data && data[0]) {
         setCheckoutFunnel(data[0] as CheckoutFunnel);
       }
     } catch (e) {
       console.error('Failed to fetch checkout funnel:', e);
+      markPanel('checkoutFunnel', failed(e));
     }
   };
 
   const fetchWebhookHealth = async () => {
     try {
-      const { data } = await adminRpc('get_webhook_health', { p_hours_back: 24 });
+      const { data, error } = await adminRpc('get_webhook_health', { p_hours_back: 24 });
+      if (error) { setWebhookHealth(null); markPanel('webhooks', error.message); return; }
+      markPanel('webhooks', null);
       if (data && data[0]) {
         setWebhookHealth({
           ...data[0],
@@ -437,12 +493,15 @@ function HealthCheckContent() {
       }
     } catch (e) {
       console.error('Failed to fetch webhook health:', e);
+      markPanel('webhooks', failed(e));
     }
   };
 
   const fetchParseFailures = async () => {
     try {
-      const { data } = await adminRpc('get_parse_failure_stats', { p_hours_back: 24 });
+      const { data, error } = await adminRpc('get_parse_failure_stats', { p_hours_back: 24 });
+      if (error) { setParseFailures(null); markPanel('parseFailures', error.message); return; }
+      markPanel('parseFailures', null);
       if (data && data[0]) {
         setParseFailures({
           ...data[0],
@@ -452,6 +511,7 @@ function HealthCheckContent() {
       }
     } catch (e) {
       console.error('Failed to fetch parse failures:', e);
+      markPanel('parseFailures', failed(e));
     }
   };
 
@@ -711,6 +771,7 @@ function HealthCheckContent() {
             </CardTitle>
           </CardHeader>
           <CardContent>
+            {unavailable.product ? <PanelUnavailable why={unavailable.product} /> : (
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               <div className="text-center p-3 rounded-lg bg-muted/50">
                 <p className="text-2xl font-bold">{productMetrics?.scansToday || 0}</p>
@@ -739,6 +800,7 @@ function HealthCheckContent() {
                 <p className="text-xs text-muted-foreground">Failed Scans</p>
               </div>
             </div>
+            )}
           </CardContent>
         </Card>
 
@@ -995,7 +1057,7 @@ function HealthCheckContent() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {!emailHealth || emailHealth.total_emails === 0 ? (
+              {unavailable.email ? <PanelUnavailable why={unavailable.email} /> : !emailHealth || emailHealth.total_emails === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">No emails sent in last 24h</p>
               ) : (
                 <>
@@ -1041,13 +1103,13 @@ function HealthCheckContent() {
                   <ShieldAlert className="h-5 w-5 text-orange-500" />
                   Function Errors (24h)
                 </div>
-                <Badge variant={functionErrors.length === 0 ? 'default' : 'destructive'}>
-                  {functionErrors.reduce((acc, f) => acc + Number(f.total_errors), 0)} total
+                <Badge variant={!unavailable.functionErrors && functionErrors.length === 0 ? 'default' : 'destructive'}>
+                  {unavailable.functionErrors ? 'unavailable' : `${functionErrors.reduce((acc, f) => acc + Number(f.total_errors), 0)} total`}
                 </Badge>
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {functionErrors.length === 0 ? (
+              {unavailable.functionErrors ? <PanelUnavailable why={unavailable.functionErrors} /> : functionErrors.length === 0 ? (
                 <div className="text-center py-4">
                   <CheckCircle className="h-8 w-8 text-green-500 mx-auto mb-2" />
                   <p className="text-sm text-muted-foreground">No function errors</p>
@@ -1081,13 +1143,13 @@ function HealthCheckContent() {
                   <Ban className="h-5 w-5 text-yellow-500" />
                   Rate Limiting (24h)
                 </div>
-                <Badge variant={!rateLimitStats?.total_limited ? 'default' : 'secondary'}>
-                  {rateLimitStats?.total_limited || 0} blocked
+                <Badge variant={unavailable.rateLimits ? 'destructive' : !rateLimitStats?.total_limited ? 'default' : 'secondary'}>
+                  {unavailable.rateLimits ? 'unavailable' : `${rateLimitStats?.total_limited || 0} blocked`}
                 </Badge>
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {!rateLimitStats || rateLimitStats.total_limited === 0 ? (
+              {unavailable.rateLimits ? <PanelUnavailable why={unavailable.rateLimits} /> : !rateLimitStats || rateLimitStats.total_limited === 0 ? (
                 <div className="text-center py-4">
                   <CheckCircle className="h-8 w-8 text-green-500 mx-auto mb-2" />
                   <p className="text-sm text-muted-foreground">No rate limits triggered</p>
@@ -1135,7 +1197,7 @@ function HealthCheckContent() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {!paymentHealth || paymentHealth.total_attempts === 0 ? (
+              {unavailable.payments ? <PanelUnavailable why={unavailable.payments} /> : !paymentHealth || paymentHealth.total_attempts === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">No checkout attempts in last 24h</p>
               ) : (
                 <>
@@ -1196,7 +1258,7 @@ function HealthCheckContent() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {!deliveryHealth || deliveryHealth.total_orders === 0 ? (
+              {unavailable.delivery ? <PanelUnavailable why={unavailable.delivery} /> : !deliveryHealth || deliveryHealth.total_orders === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">No orders in last 24h</p>
               ) : (
                 <>
@@ -1250,7 +1312,7 @@ function HealthCheckContent() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {!aiQuality || aiQuality.total_generations === 0 ? (
+              {unavailable.aiQuality ? <PanelUnavailable why={unavailable.aiQuality} /> : !aiQuality || aiQuality.total_generations === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">No AI generations in last 24h</p>
               ) : (
                 <>
@@ -1299,7 +1361,7 @@ function HealthCheckContent() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {!checkoutFunnel || checkoutFunnel.checkouts_started === 0 ? (
+              {unavailable.checkoutFunnel ? <PanelUnavailable why={unavailable.checkoutFunnel} /> : !checkoutFunnel || checkoutFunnel.checkouts_started === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">No checkouts in last 24h</p>
               ) : (
                 <div className="space-y-2">
@@ -1371,7 +1433,7 @@ function HealthCheckContent() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {!webhookHealth || webhookHealth.total_received === 0 ? (
+              {unavailable.webhooks ? <PanelUnavailable why={unavailable.webhooks} /> : !webhookHealth || webhookHealth.total_received === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">No webhooks received in last 24h</p>
               ) : (
                 <>
@@ -1418,13 +1480,13 @@ function HealthCheckContent() {
                   <FileWarning className="h-5 w-5 text-orange-500" />
                   Parse Failures (24h)
                 </div>
-                <Badge variant={!parseFailures || parseFailures.total_failures === 0 ? 'default' : 'destructive'}>
-                  {parseFailures?.total_failures || 0} failures
+                <Badge variant={!unavailable.parseFailures && (!parseFailures || parseFailures.total_failures === 0) ? 'default' : 'destructive'}>
+                  {unavailable.parseFailures ? 'unavailable' : `${parseFailures?.total_failures || 0} failures`}
                 </Badge>
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {!parseFailures || parseFailures.total_failures === 0 ? (
+              {unavailable.parseFailures ? <PanelUnavailable why={unavailable.parseFailures} /> : !parseFailures || parseFailures.total_failures === 0 ? (
                 <div className="text-center py-4">
                   <CheckCircle className="h-8 w-8 text-green-500 mx-auto mb-2" />
                   <p className="text-sm text-muted-foreground">No parse failures</p>

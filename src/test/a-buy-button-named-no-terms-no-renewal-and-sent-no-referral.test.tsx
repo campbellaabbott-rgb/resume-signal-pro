@@ -24,6 +24,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { MOUNT_TEST_BUDGET } from "./helpers/mount-budget";
+import { clickWhenEnabled } from "./helpers/click-when-enabled";
 import en from "../i18n/locales/en.json";
 import { TERMS_VERSION } from "@/config/terms";
 import { SUBSCRIPTIONS } from "@/config/products";
@@ -103,7 +104,8 @@ describe("the line above a buy button, and what the button's call carries", () =
       invoke.mockImplementation(async (fn: string) => ({ data: fn === "check-subscription" ? { active: false } : { url: "" }, error: null }));
       render(<MemoryRouter><AgentSubscriptionCard /><ProSubscriptionCard /></MemoryRouter>);
       fireEvent.click(screen.getByRole("button", { name: new RegExp(en.agentPlan.cta) }));
-      fireEvent.click(await screen.findByRole("button", { name: /Go Pro/ }));
+      // Go Pro is disabled until the subscription check answers (S12-166).
+      await clickWhenEnabled(() => screen.getByRole("button", { name: /Go Pro/ }));
       await waitFor(() => expect(invoke).toHaveBeenCalledWith("create-subscription-checkout", expect.anything()));
       const bodyOf = (fn: string) => invoke.mock.calls.find(([f]) => f === fn)![1].body;
       expect(bodyOf("create-agent-checkout").language).toBe("de");
@@ -111,6 +113,23 @@ describe("the line above a buy button, and what the button's call carries", () =
     } finally {
       i18n.language = was;
     }
+  });
+
+  // S12-166: findByRole hands back Go Pro while the subscription check is
+  // still out and the button is disabled; a click then did nothing and the
+  // wait for the checkout call timed out, red on main for five pushes. A slow
+  // check makes that window certain here.
+  it("a click on Go Pro waits for the subscription check, however slow, and reaches the checkout", async () => {
+    let answer: (v: unknown) => void = () => {};
+    invoke.mockImplementation((fn: string) => (fn === "check-subscription"
+      ? new Promise((r) => { answer = r; })
+      : Promise.resolve({ data: { url: "" }, error: null })));
+    render(<MemoryRouter><ProSubscriptionCard /></MemoryRouter>);
+    const button = await screen.findByRole("button", { name: /Go Pro/ });
+    expect(button.hasAttribute("disabled"), "the window this guards: Go Pro disabled while the check is out").toBe(true);
+    setTimeout(() => answer({ data: { active: false }, error: null }), 150);
+    await clickWhenEnabled(() => screen.getByRole("button", { name: /Go Pro/ }));
+    await waitFor(() => expect(invoke).toHaveBeenCalledWith("create-subscription-checkout", expect.anything()));
   });
 
   it("while the EU/UK switch is off, no box is shown and no consent is sent", () => {

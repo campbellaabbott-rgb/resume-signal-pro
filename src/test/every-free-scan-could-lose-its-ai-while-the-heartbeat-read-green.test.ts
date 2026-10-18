@@ -68,7 +68,7 @@ describe("scan-heartbeat judges whether the AI analysis reached the report", () 
     const db = new ProxyDb();
     db.answer = (q: Query) => {
       if (q.rpc === "check_rate_limit") return { data: true, error: null };
-      if (q.rpc === "cron_http_refusals") return { data: { available: true, responses: 10, refused: 0, server_errors: 0, timed_out: 0 }, error: null };
+      if (q.rpc === "cron_http_answers") return { data: { available: true, responses: 10, refused: 0, error_window_responses: 30, server_errors: 0, timed_out: 0, not_found: 0 }, error: null };
       if (q.table === "job_board_meta") return { data: { updated_at: new Date().toISOString() }, error: null };
       if (q.table === "detection_telemetry") {
         if (telemetry.error) return { data: null, error: { message: telemetry.error }, count: null };

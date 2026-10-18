@@ -12,6 +12,7 @@
 //   node scripts/deploy-ledger.mjs --message  # also print the Lovable message (only from origin/main)
 //   node scripts/deploy-ledger.mjs --draft    # a labelled preview of it from any checkout (not sendable)
 //   node scripts/deploy-ledger.mjs --json     # machine-readable
+//   node scripts/deploy-ledger.mjs --record-deploy  # the verifiedDeploys entry for this commit once it verified (from GitHub main only)
 //   node scripts/deploy-ledger.mjs --against <git-ref> [--against <git-ref> ...] [--main <git-ref>] [--head <git-ref>]
 //                                             # integration check, no network (exit 3 on a violation)
 //   node scripts/deploy-ledger.mjs --overlap <git-ref> [<git-ref> ...] [--main <git-ref>]
@@ -412,6 +413,31 @@ export async function liveBuild(base, fn, { tries = 2, timeoutMs = 20_000, pause
   return undefined;
 }
 
+/** The publishable key this checkout's site ships (.env), or the environment's. */
+function anonKey() {
+  if (process.env.VITE_SUPABASE_PUBLISHABLE_KEY) return process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  try {
+    const m = /^VITE_SUPABASE_PUBLISHABLE_KEY="?([^"\n]+)"?/m.exec(readFileSync(join(ROOT, ".env"), "utf8"));
+    return m ? m[1].trim() : null;
+  } catch { return null; }
+}
+
+/**
+ * get_cron_health's rows (anon-readable aggregates: job name, schedule,
+ * active, run counts; never a command), read with a GET, which PostgREST runs
+ * in a read-only transaction. null when it could not be read.
+ */
+async function cronHealth(base, { timeoutMs = 20_000 } = {}) {
+  const key = anonKey();
+  if (!key) return null;
+  try {
+    const r = await fetch(`${base}/rest/v1/rpc/get_cron_health?p_hours=24`, { headers: { apikey: key, Authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(timeoutMs) });
+    if (!r.ok) return null;
+    const j = await r.json();
+    return Array.isArray(j) ? j : null;
+  } catch { return null; }
+}
+
 /** A row's state from what the repo carries (`want`) and what the preflight answered (`have`). Pure. */
 export function rowState(want, have) {
   if (!want) return "no-marker";
@@ -472,6 +498,97 @@ export function lateStampViolations(pending, applied, sqlOf) {
 /** Rows whose live build is LATER than the one main carries: main is behind production (exit 8). Pure. */
 export function liveAheadRows(rows) {
   return (rows ?? []).filter((r) => r.state === "live-ahead");
+}
+
+/**
+ * A ROLLBACK IS A DEPLOY (S12-161). When main reverts a broken build, the
+ * live build sorts after main's, and the report read that row as
+ * "live-ahead": no message named the function, so the rollback could not go
+ * through the process at all. `policy.rollbacks` declares one per function:
+ *
+ *   "rollbacks": { "<fn>": { "from": "<the live build being rolled back>", "why": "..." } }
+ *
+ * A live-ahead row whose live build is exactly the declared `from` becomes a
+ * deploy (state "deploy (rollback)", `rollbackFrom` set): the message names
+ * it with the build it rolls back, and section 49 FAILs it until production
+ * answers main's build. Every other live-ahead row stays "main is behind
+ * production" (exit 8): a build nobody declared is never rolled back by a
+ * pasted message. A declaration that matches no row is stale. Pure.
+ *
+ *   returns { rows, rollbacks, stale }: rows with the declared rollbacks
+ *   re-stated, the rollback rows, and [{ fn, from }] for stale declarations
+ */
+export function applyRollbacks(rows, policy) {
+  const decl = Object.entries(policy?.rollbacks ?? {}).filter(([k, v]) => !k.startsWith("_") && v && typeof v === "object");
+  const from = new Map(decl.map(([fn, d]) => [fn, typeof d.from === "string" ? d.from : null]));
+  const out = (rows ?? []).map((r) => (r.state === "live-ahead" && from.get(r.fn) && from.get(r.fn) === r.have
+    ? { ...r, state: "deploy (rollback)", rollbackFrom: r.have }
+    : r));
+  const rollbacks = out.filter((r) => r.rollbackFrom);
+  const stale = decl.filter(([fn]) => !rollbacks.some((r) => r.fn === fn)).map(([fn]) => ({ fn, from: from.get(fn) }));
+  return { rows: out, rollbacks, stale };
+}
+
+/**
+ * A MIGRATION LIVE BY BEHAVIOUR (S12-162). Lovable has applied migrations
+ * without writing a staged-runner stub (20261008125000 and 20261008128000),
+ * and every report after listed them as not applied: four of the eleven FAILs
+ * the wave-3 verify read were the ledger's own. `policy.appliedByBehaviour`
+ * names, per migration stamp, what production must show for it to count as
+ * applied: `cronJobs`, the pg_cron jobs it schedules, each listed and active
+ * by get_cron_health (anon-readable, aggregates only; verify section 7m reads
+ * the same function). `cronRows` is that reader's answer, or null when it
+ * could not be read: then nothing is proven, and each such migration stays
+ * pending with the reason. Pure.
+ *
+ *   returns { pending: [file], proven: [{ file, jobs }], unproven: [{ file, why }] }
+ */
+export function behaviourApplied(pending, policy, cronRows) {
+  const proofs = Object.entries(policy?.appliedByBehaviour ?? {}).filter(([k]) => /^\d{14}$/.test(k));
+  const active = Array.isArray(cronRows) ? new Map(cronRows.map((r) => [String(r?.ch_jobname ?? ""), r?.ch_active === true])) : null;
+  const out = { pending: [], proven: [], unproven: [] };
+  for (const file of pending ?? []) {
+    const proof = proofs.find(([stamp]) => file.startsWith(`${stamp}_`))?.[1];
+    if (!proof) { out.pending.push(file); continue; }
+    const jobs = (Array.isArray(proof.cronJobs) ? proof.cronJobs : []).filter((j) => typeof j === "string" && j);
+    let why = "";
+    if (!jobs.length) why = "its appliedByBehaviour entry names no cronJobs";
+    else if (!active) why = "get_cron_health could not be read, so its jobs could not be seen";
+    else {
+      const missing = jobs.filter((j) => active.get(j) !== true);
+      if (missing.length) why = `get_cron_health lists no active ${missing.join(", ")}`;
+    }
+    if (why) { out.pending.push(file); out.unproven.push({ file, why }); continue; }
+    out.proven.push({ file, jobs });
+  }
+  return out;
+}
+
+/**
+ * THE RECORD OF A VERIFIED DEPLOY, GENERATED (S12-162). verifiedDeploys was
+ * typed by hand, so the record that clears a false MUST BUMP came a deploy
+ * late or not at all. `--record-deploy` prints this entry for the owner to
+ * add once the deploy has verified: main's commit and every function that
+ * answers exactly the build main carries. Pure.
+ */
+export function verifiedDeployEntry({ commit, date, rows, note = "" }) {
+  const functions = {};
+  for (const r of [...(rows ?? [])].sort((a, b) => (a.fn < b.fn ? -1 : a.fn > b.fn ? 1 : 0))) {
+    if (r.state === "live" && r.have && r.have === r.want) functions[r.fn] = r.have;
+  }
+  return {
+    commit: String(commit ?? "").slice(0, 8),
+    date,
+    note: note || `generated by node scripts/deploy-ledger.mjs --record-deploy: ${Object.keys(functions).length} functions answering main's build; add it only after verify-deploy passed`,
+    functions,
+  };
+}
+
+/** Why `--record-deploy` refuses: a record is written only from GitHub main with no gap left. null when it may print. Pure. */
+export function recordRefusal({ refusal = null, toDeploy = [], unreachable = [], liveAhead = [] }) {
+  if (refusal) return refusal;
+  const gap = [...toDeploy.map((r) => r.fn), ...unreachable.map((r) => r.fn), ...liveAhead.map((r) => r.fn)];
+  return gap.length ? `${gap.length} function(s) do not answer main's build yet (${gap.slice(0, 6).join(", ")}${gap.length > 6 ? ", ..." : ""}): a deploy is recorded only once nothing is left to deploy` : null;
 }
 
 function stubRecord() {
@@ -573,6 +690,50 @@ export function migrationPhases(pending, policy, rows) {
 }
 
 /**
+ * THE HOLD, CHECKED BY MACHINE (S12-032). A held migration's conditions were
+ * prose in `until`, read by nobody: all three of wave 3's holds were met
+ * while every message still said "Do NOT apply yet", so an owner pasting the
+ * message would have skipped 20261009112000 (the shortlist lockdown) for
+ * good. Each holdUntilVerified entry now names `releaseWhen`, one or more
+ * "fn:<name>@<YYYY-MM-DD.N>" the ledger reads from the preflight rows; `until`
+ * keeps what only the owner can check (a verify section, a published page).
+ *
+ * For every held pending file: its conditions, each met when that function
+ * answers the build or later, and `releasable` when every one is met (then
+ * section 49 FAILs until the hold is released and its message sent). A hold
+ * the ledger cannot check is an error that stops the message (exit 6): no
+ * releaseWhen, a malformed one, a function main lacks, or a build main never
+ * reaches. An entry that names no held pending file is stale. Pure.
+ *
+ *   returns { holds: [{ file, stamp, until, conditions: [{ fn, need, have, met }], releasable }], errors, stale: [stamp] }
+ */
+export function holdStates(heldFiles, policy, rows) {
+  const byFn = new Map((rows ?? []).map((r) => [r.fn, r]));
+  const out = { holds: [], errors: [], stale: [] };
+  for (const h of policy?.holdUntilVerified ?? []) {
+    const stamp = String(h?.stamp ?? "");
+    const file = /^\d{14}$/.test(stamp) ? (heldFiles ?? []).find((f) => f.startsWith(`${stamp}_`)) ?? null : null;
+    if (!file) { out.stale.push(stamp); continue; }
+    const when = Array.isArray(h?.releaseWhen) ? h.releaseWhen : [];
+    if (!when.length) out.errors.push(`hold ${file} names no releaseWhen ("fn:<name>@<YYYY-MM-DD.N>"), so the ledger can never say it is releasable`);
+    const conditions = [];
+    for (const c of when) {
+      const m = AFTER_FN.exec(String(c));
+      if (!m) { out.errors.push(`hold ${file}: releaseWhen "${c}" is not "fn:<name>@<YYYY-MM-DD.N>"`); continue; }
+      const [, fn, b] = m;
+      const need = `${fn}.${b}`;
+      const r = byFn.get(fn);
+      if (!r) { out.errors.push(`hold ${file} waits for ${need}, but main has no function ${fn}`); continue; }
+      if (!r.want || !buildAtLeast(r.want, need)) { out.errors.push(`hold ${file} waits for ${need}, but main carries ${r.want ?? "no build the ledger can read"}: it can never be released`); continue; }
+      conditions.push({ fn, need, have: r.have ?? null, met: (r.state === "live" || r.state === "live-ahead") && buildAtLeast(r.have, need) });
+    }
+    const releasable = when.length > 0 && conditions.length === when.length && conditions.every((c) => c.met);
+    out.holds.push({ file, stamp, until: String(h?.until ?? ""), conditions, releasable });
+  }
+  return out;
+}
+
+/**
  * THE CHECKOUT A MESSAGE MAY COME FROM (S11-127). Lovable pulls GitHub main,
  * so a message must name main's commit and list main's pending migrations. A
  * checkout behind origin/main re-lists migrations Lovable already applied (the
@@ -608,32 +769,46 @@ export function checkoutRefusal({ head, originMain, fetched = true, behind = 0, 
  * Functions whose preflight never answered head the message as a STOP: the
  * ledger could not say whether they are live (S11-048).
  */
-export function lovableMessage({ head, draftOf = null, phases, hold = [], neverApply = [], toDeploy = [], unreachable = [] }) {
+export function lovableMessage({ head, draftOf = null, phases, hold = [], holds = null, neverApply = [], toDeploy = [], unreachable = [], liveAhead = [] }) {
   const L = [];
   if (draftOf) L.push(`DRAFT from ${draftOf} at ${head}: NOT a deploy message. Lovable pulls GitHub main; regenerate this at the merge commit on main.`, "");
   else L.push(`Pull GitHub main at commit **${head}** (or later ONLY if the deploy ledger is re-run on it).`, "");
   if (unreachable.length) {
     L.push(`STOP: could not check ${unreachable.length} function(s), so this message may leave them out. Their preflight did not answer, twice. Re-run the deploy ledger before sending: ${unreachable.map((r) => r.fn).join(", ")}.`, "");
   }
+  if (liveAhead.length) {
+    L.push(`STOP: ${liveAhead.length} function(s) answer a build later than the one main carries, and this message leaves them out: ${liveAhead.map((r) => `${r.fn} (live ${r.have}, main ${r.want})`).join(", ")}. Merge the code that is live into main, or, to roll one back on purpose, declare it under rollbacks in docs/deploy-ledger.json and regenerate this message.`, "");
+  }
   let step = 0;
   const migs = (list, lead) => {
     L.push(`${++step}. ${lead}`);
     list.forEach((m, i) => L.push(`   ${i + 1}. ${m.file}${m.note ? ` (${m.note})` : ""}`));
   };
+  // A hold the ledger checked says which of its conditions are live (S12-032):
+  // "Do NOT apply" over a hold whose every condition is met is how a release
+  // gets skipped for good.
+  const heldNow = holds ? holds.filter((h) => !h.releasable) : null;
+  const releasable = holds ? holds.filter((h) => h.releasable) : [];
+  const waits = (h) => h.conditions.filter((c) => !c.met).map((c) => `${c.need} or later, live ${c.have ?? "unknown"}`).join("; ");
   const holdLines = () => {
-    if (hold.length) L.push(`   Do NOT apply yet: ${hold.join(", ")}.`);
+    if (heldNow) {
+      if (heldNow.length) L.push(`   Do NOT apply yet: ${heldNow.map((h) => `${h.file} (waits for ${waits(h) || "its conditions"})`).join(", ")}.`);
+      for (const h of releasable) {
+        L.push(`   RELEASABLE, still held: ${h.file}. Every condition it names is live (${h.conditions.map((c) => `${c.fn} answers ${c.have}`).join("; ")}). Confirm what only you can check (${h.until || "see its hold"}), then release it in docs/deploy-ledger.json and regenerate this message; do not apply it from this one.`);
+      }
+    } else if (hold.length) L.push(`   Do NOT apply yet: ${hold.join(", ")}.`);
     if (neverApply.length) L.push(`   NEVER apply: ${neverApply.join(", ")} (superseded).`);
   };
   if (phases.pre.length) {
     migs(phases.pre, phases.pre.length === 1 ? `Apply this migration (it is self-verifying and safe to re-run):` : `Apply these ${phases.pre.length} migrations, in this order, one at a time (each is self-verifying and safe to re-run):`);
     holdLines();
-  } else if (hold.length || neverApply.length) {
+  } else if (hold.length || (holds && holds.length) || neverApply.length) {
     L.push(`${++step}. Apply no migration before the functions.`);
     holdLines();
   }
   if (toDeploy.length) {
     L.push(`${++step}. Deploy these ${toDeploy.length} edge functions. An OPTIONS request to each must answer this x-fn-build:`);
-    for (const r of toDeploy) L.push(`   - ${r.fn}: ${r.want}`);
+    for (const r of toDeploy) L.push(`   - ${r.fn}: ${r.want}${r.rollbackFrom ? ` (a declared rollback from the live ${r.rollbackFrom})` : ""}`);
   }
   const these = (n) => (n === 1 ? "this migration" : `these ${n} migrations, in this order`);
   if (phases.afterFunctions.length) {
@@ -675,7 +850,7 @@ async function main(argv) {
   const BASE = POLICY.supabaseUrl;
   const head = git("rev-parse", "--short", "HEAD");
   const fns = readdirSync(FN_DIR).filter((d) => d !== "_shared" && existsSync(join(FN_DIR, d, "index.ts"))).sort();
-  const rows = await pool(fns, 8, async (fn) => {
+  const measured = await pool(fns, 8, async (fn) => {
     const src = readFileSync(join(FN_DIR, fn, "index.ts"), "utf8");
     const stamp = buildOf(fn, src);
     const want = stamp && sendsBuildHeader(fn) ? stamp : null;
@@ -684,7 +859,17 @@ async function main(argv) {
     const state = rowState(want, have);
     return { fn, want, have: have ?? null, state, changedSinceStamp: drift.changed, stampCommit: drift.since, ...(stamp && !want ? { stampNotSent: stamp } : {}) };
   });
+  // A declared rollback is a deploy, not a live-ahead row (S12-161).
+  const rb = applyRollbacks(measured, POLICY);
+  const rows = rb.rows;
   const mig = migrations(POLICY);
+  // A migration with no stub but a behaviour proof is judged by production (S12-162).
+  const needsProof = mig.pending.some((f) => Object.keys(POLICY.appliedByBehaviour ?? {}).some((s) => /^\d{14}$/.test(s) && f.startsWith(`${s}_`)));
+  const behaviour = behaviourApplied(mig.pending, POLICY, needsProof ? await cronHealth(BASE) : null);
+  mig.pending = behaviour.pending;
+  mig.applied = [...mig.applied, ...behaviour.proven.map((p) => p.file)].sort();
+  mig.appliedByBehaviour = behaviour.proven;
+  mig.unproven = behaviour.unproven;
   const stubs = stubRecord();
   const toDeploy = rows.filter((r) => r.state.startsWith("deploy"));
   const unreachable = rows.filter((r) => r.state === "unreachable");
@@ -697,6 +882,9 @@ async function main(argv) {
   const sharedOnly = liveStamped.filter((r) => !unbumped.includes(r));
   const noMarker = rows.filter((r) => r.state === "no-marker");
   const phases = migrationPhases(mig.pending, POLICY, rows);
+  // A hold the ledger cannot check stops the message like an order rule (S12-032).
+  const holds = holdStates(mig.hold, POLICY, rows);
+  phases.errors.push(...holds.errors);
   const late = lateStampViolations([...mig.pending, ...mig.hold], mig.applied, (f) => readFileSync(join(MIG_DIR, f), "utf8"));
   const liveAhead = liveAheadRows(rows);
 
@@ -728,14 +916,24 @@ async function main(argv) {
     // names would push the JSON past the 64 KB a pipe takes before exit cuts it
     // off (section 49 reads it through one), so only its length is printed.
     const { applied, ...migOut } = mig;
-    console.log(JSON.stringify({ head, checkout, stubs, toDeploy, unreachable, unbumped, sharedOnly, noMarker, migrations: { ...migOut, appliedCount: applied.length }, phases, late, liveAhead, rows }, null, 2));
+    console.log(JSON.stringify({ head, checkout, stubs, toDeploy, unreachable, unbumped, sharedOnly, noMarker, migrations: { ...migOut, appliedCount: applied.length }, phases, holds: holds.holds, staleHolds: holds.stale, staleRollbacks: rb.stale, late, liveAhead, rows }, null, 2));
     process.exit(exitFor(false));
+  }
+  if (args.has("--record-deploy")) {
+    // The verifiedDeploys entry for this commit (S12-162), printed, never written.
+    const why = recordRefusal({ refusal, toDeploy, unreachable, liveAhead });
+    if (why) { console.log(`REFUSED: ${why}.`); process.exit(5); }
+    const entry = verifiedDeployEntry({ commit: headFull, date: new Date().toISOString().slice(0, 10), rows });
+    console.log(`Add this to docs/deploy-ledger.json verifiedDeploys once verify-deploy has passed for ${head}:\n`);
+    console.log(JSON.stringify(entry, null, 2));
+    process.exit(0);
   }
   console.log(`DEPLOY LEDGER at ${head} (${new Date().toISOString()})\n`);
   console.log(refusal ? `Checkout: NOT GitHub main (${refusal}).` : `Checkout: HEAD is origin/main.`);
   console.log(`Staged-runner record: ${stubs.count} stubs, newest ${stubs.newest ?? "none"}.\n`);
   console.log(`Functions: ${rows.length} (${rows.filter((r) => r.state === "live").length} live at the repo build, ${toDeploy.length} to deploy, ${unreachable.length} could not be checked, ${noMarker.length} without a build marker)`);
-  for (const r of toDeploy) console.log(`  DEPLOY  ${r.fn.padEnd(32)} live ${r.have ?? "-"}  ->  ${r.want}`);
+  for (const r of toDeploy) console.log(`  DEPLOY  ${r.fn.padEnd(32)} live ${r.have ?? "-"}  ->  ${r.want}${r.rollbackFrom ? "  (a declared rollback)" : ""}`);
+  for (const x of rb.stale) console.log(`  STALE ROLLBACK  ${x.fn}: docs/deploy-ledger.json rollbacks names ${x.from ?? "no build"}, which ${x.fn} does not answer ahead of main: remove the entry`);
   if (unreachable.length) {
     console.log(`\nCOULD NOT CHECK (the preflight did not answer, twice): re-run the ledger. Each of these may be a function to deploy:`);
     for (const r of unreachable) console.log(`  UNREACHABLE  ${r.fn.padEnd(32)} the checkout carries ${r.want}`);
@@ -754,7 +952,15 @@ async function main(argv) {
   pr("before the functions", phases.pre);
   pr("after the functions they wait for", phases.afterFunctions);
   pr("after the frontend", phases.afterFrontend);
-  if (mig.hold.length) { console.log(`Held until the step before is verified live:`); for (const f of mig.hold) console.log(`  HOLD  ${f}`); }
+  for (const p of behaviour.proven) console.log(`  APPLIED BY BEHAVIOUR (no stub)  ${p.file}: get_cron_health lists ${p.jobs.join(", ")} active`);
+  for (const u of behaviour.unproven) console.log(`  NOT PROVEN  ${u.file}: ${u.why}`);
+  if (holds.holds.length) {
+    console.log(`Held until the step before is verified live:`);
+    for (const h of holds.holds) {
+      console.log(`  ${h.releasable ? "RELEASABLE" : "HOLD"}  ${h.file}: ${h.conditions.map((c) => `${c.need} ${c.met ? "live" : "not live"} (answers ${c.have ?? "unknown"})`).join("; ") || "no condition the ledger can check"}`);
+    }
+  }
+  for (const st of holds.stale) console.log(`  STALE HOLD  ${st}: holdUntilVerified names no pending migration (applied, or no such file): remove it`);
   if (mig.neverApplyPresent.length) console.log(`NEVER apply (superseded): ${mig.neverApplyPresent.join(", ")}`);
   if (phases.errors.length) {
     console.log(`\nORDER RULES THAT CANNOT BE MET (docs/deploy-ledger.json migrationOrder): no message until they are fixed:`);
@@ -765,7 +971,7 @@ async function main(argv) {
     for (const v of late) console.log(`  ${v.pending}  touches  ${v.objects.join(", ")}  defined by the later ${v.applied}`);
   }
   if (liveAhead.length) {
-    console.log(`\nMAIN IS BEHIND PRODUCTION: these functions answer a build later than the one main carries (a deploy from main would roll them back):`);
+    console.log(`\nMAIN IS BEHIND PRODUCTION: these functions answer a build later than the one main carries (a deploy from main would roll them back; a rollback on purpose is declared under rollbacks in docs/deploy-ledger.json):`);
     for (const r of liveAhead) console.log(`  ${r.fn.padEnd(32)} main ${r.want}  live ${r.have}`);
   }
 
@@ -782,7 +988,7 @@ async function main(argv) {
       let branch = "";
       try { branch = git("rev-parse", "--abbrev-ref", "HEAD"); } catch { /* detached */ }
       const draftOf = args.has("--message") ? null : (branch && branch !== "HEAD" ? branch : head);
-      for (const l of lovableMessage({ head, draftOf, phases, hold: mig.hold, neverApply: mig.neverApplyPresent, toDeploy, unreachable })) console.log(l);
+      for (const l of lovableMessage({ head, draftOf, phases, hold: mig.hold, holds: holds.holds, neverApply: mig.neverApplyPresent, toDeploy, unreachable, liveAhead })) console.log(l);
     }
   }
   process.exitCode = exitFor(args.has("--message"));

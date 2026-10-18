@@ -20,3 +20,13 @@ in scope.
   nothing (0 of 0, an empty object, a refusal with no reason) is INFO.
 - One run at a time: the script holds `/tmp/vd_verify_deploy.lock.d` while it
   runs, because sections share fixed `/tmp/vd_*` files.
+- The whole run is piped through `scripts/verify-deploy-tally.mjs` (S12-163):
+  a section that prints no verdict, or hits a script error (a stack frame, a
+  thrown error), is a FAIL in the tally, and every PASS is void when section
+  0's positive control (job-board status answering as itself) did not pass.
+  The script exits 1 on any FAIL. Guard every `JSON.parse` of an answer: a
+  gateway's HTML body must print a FAIL that shows it, never crash the
+  section into silence.
+- A file a section reads back from `/tmp` is removed before the step that
+  writes it, so a failed read can never hand the section an earlier run's
+  answer (S12-165).

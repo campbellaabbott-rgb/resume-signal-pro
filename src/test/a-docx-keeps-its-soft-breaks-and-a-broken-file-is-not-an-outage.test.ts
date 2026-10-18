@@ -22,6 +22,9 @@
  */
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import mammothNpm from "mammoth";
+import mammothPkg from "mammoth/package.json";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import JSZipNpm from "jszip";
 import { FunctionsFetchError, FunctionsHttpError } from "@supabase/supabase-js";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
@@ -106,9 +109,12 @@ describe("S11-033: a broken file is the file's problem", () => {
 
   it("a document this mammoth cannot walk is never a 500 either", async () => {
     // npm mammoth 1.6.0 throws on Strict Open XML; the deployed 1.12.3 reads it
-    // (docx_test.ts). Either way the answer is about the file.
+    // (docx_test.ts). Either way the answer is about the file. CI installs the
+    // version production imports (S12-167), and there the answer is the text.
     const r = await upload(await strictDocx(Zip));
-    expect([200, 422]).toContain(r.status);
+    const deployed = /esm\.sh\/mammoth@(\d+\.\d+\.\d+)/.exec(readFileSync(resolve(__dirname, "../../supabase/functions/parse-docx/libs.ts"), "utf8"))?.[1];
+    if ((mammothPkg as { version: string }).version === deployed) expect(r.status, `mammoth ${deployed} reads Strict Open XML`).toBe(200);
+    else expect([200, 422]).toContain(r.status);
     if (r.status === 422) expect(r.body.code).toBe("damaged_file");
   });
 

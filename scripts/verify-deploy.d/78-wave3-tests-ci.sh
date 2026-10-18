@@ -42,15 +42,20 @@ if ! command -v gh >/dev/null 2>&1 || ! gh auth status >/dev/null 2>&1; then
   echo "INFO  gh is not installed or not signed in: the GitHub lines below are skipped (scheduled board-health runs, CI on main, the sweep, the deploy check)"
 else
   VD78_SINCE=$(git log -1 --format=%cI -- .github/workflows/board-health.yml 2>/dev/null)
+  # NOTHING FROM AN EARLIER RUN (S12-165). The jobs file and the deploy log are
+  # written only when their run id was listed, so a failed list left the last
+  # run's files in place and this section judged CI from them. Every file is
+  # removed first, and each read names the run it belongs to.
+  rm -f /tmp/vd_78_bh.json /tmp/vd_78_ci.json /tmp/vd_78_bw.json /tmp/vd_78_dep.json /tmp/vd_78_ci_jobs.json /tmp/vd_78_dep.log
   gh run list --workflow board-health.yml --limit 30 --json event,conclusion,createdAt > /tmp/vd_78_bh.json 2>/dev/null
   gh run list --workflow ci.yml --branch main --limit 20 --json databaseId,conclusion,createdAt,headSha > /tmp/vd_78_ci.json 2>/dev/null
   gh run list --workflow botwall-sweep.yml --limit 5 --json event,conclusion,createdAt > /tmp/vd_78_bw.json 2>/dev/null
   gh run list --workflow deploy.yml --branch main --limit 1 --json databaseId,conclusion,createdAt > /tmp/vd_78_dep.json 2>/dev/null
   VD78_CI=$(node -e 'try{const r=JSON.parse(require("fs").readFileSync("/tmp/vd_78_ci.json","utf8"));process.stdout.write(String((r[0]||{}).databaseId||""))}catch{}')
-  [ -n "$VD78_CI" ] && gh run view "$VD78_CI" --json jobs > /tmp/vd_78_ci_jobs.json 2>/dev/null
+  [ -n "$VD78_CI" ] && gh run view "$VD78_CI" --json databaseId,jobs > /tmp/vd_78_ci_jobs.json 2>/dev/null
   VD78_DEP=$(node -e 'try{const r=JSON.parse(require("fs").readFileSync("/tmp/vd_78_dep.json","utf8"));process.stdout.write(String((r[0]||{}).databaseId||""))}catch{}')
   [ -n "$VD78_DEP" ] && gh run view "$VD78_DEP" --log > /tmp/vd_78_dep.log 2>/dev/null
-  VD78_SINCE="$VD78_SINCE" node -e '
+  VD78_SINCE="$VD78_SINCE" VD78_CI="${VD78_CI:-}" node -e '
 const fs=require("fs");const rd=(f)=>{try{return JSON.parse(fs.readFileSync(f,"utf8"))}catch{return null}};
 const ok=(c,m)=>console.log((c?"PASS":"FAIL")+"  "+m);const info=(m)=>console.log("INFO  "+m);
 const since=Date.parse(process.env.VD78_SINCE||"");
@@ -61,9 +66,14 @@ else{const last=sched[0];
   if(last&&last.conclusion==="failure")info("the latest scheduled board-health run FAILED: the probe found the board unhealthy, and its issue (label board-health) says why");}
 const ci=rd("/tmp/vd_78_ci.json")||[];
 if(ci.length){const green=ci.filter((r)=>r.conclusion==="success").length;info("CI on main: "+green+" of the last "+ci.length+" runs green (5 of 20 before wave 3: of the 15 red, 14 failed on flaky render or race tests and 1 on the over-budget light-list case)");}
-const jobs=((rd("/tmp/vd_78_ci_jobs.json")||{}).jobs)||[];
+const jobsFile=rd("/tmp/vd_78_ci_jobs.json")||{};
+const runId=String(process.env.VD78_CI||"");
+const ownRun=!!runId&&String(jobsFile.databaseId||"")===runId;
+const jobs=ownRun?(jobsFile.jobs||[]):[];
 const job=(n)=>jobs.find((x)=>x.name===n);
-if(!jobs.length)info("the latest CI run on main lists no jobs (not finished, or not readable)");
+if(!runId)info("the CI runs on main could not be listed, so no CI line is judged");
+else if(!ownRun)info("the jobs read do not belong to the latest CI run on main ("+runId+"), so no CI line is judged");
+else if(!jobs.length)info("the latest CI run on main lists no jobs (not finished, or not readable)");
 else{
   for(const n of ["test","deno-tests"]){const j=job(n);ok(!!j&&j.conclusion==="success","CI on main, latest run: job "+n+" "+(j?j.conclusion||j.status:"MISSING -- main does not carry the wave-3 ci.yml"));}
   const t=job("test");if(t&&Array.isArray(t.steps)){const skipped=t.steps.filter((s)=>s.conclusion==="skipped"&&!/^(Post |Set up job|Complete job)/.test(String(s.name))).map((s)=>s.name);ok(skipped.length===0,"no check in the test job was skipped by an earlier failure"+(skipped.length?": "+skipped.join(", "):""));}
