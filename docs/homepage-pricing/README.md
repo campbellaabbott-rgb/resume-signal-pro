@@ -183,7 +183,7 @@ Screenshots and data: `keep/home-pricing-design/build/home/` (`shots/`,
   stamp only on the full-read card; no re-dating or undated row; no
   Save/Check fit/menu; at most four data calls and no `get_board_flow`; no
   "new · gone" text; list hidden on refusal; no list call for a driven browser;
-  every five-figure count inside an element that names its time; FAQ answers
+  every count of 1,000 or more inside an element that names its time; FAQ answers
   and sources table in the DOM while closed; field links only from the
   category list; plan strip with G1 closed, G2 closed, all open; account strip
   without "and alerts".

@@ -242,7 +242,7 @@ describe("every count names its date basis", () => {
     );
   });
 
-  it("no five-figure-or-larger count stands outside an element that names its time", async () => {
+  it("no count of 1,000 or more stands outside an element that names its time", async () => {
     arrange();
     mount();
     await ready();
