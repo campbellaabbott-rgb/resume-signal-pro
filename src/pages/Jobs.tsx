@@ -66,6 +66,7 @@ import { LayoffFilingChip, LayoffFilingLine, layoffHidesForCountry, useEmployerL
 import { CompanyLanderAccordion, CompanyLanderEmpty, CompanyLanderHeader, CompanyLanderRail, CompanyResultsLine, CompanySimilarAfterFirstPage, useCompanyProfile } from "@/components/jobs/company/CompanyLander";
 import type { HiringRecordInput } from "@/components/jobs/company/HiringRecordCard";
 import { buildLanderModel, isUsajobsBoard, type OpenRolesValue as LanderOpenRoles } from "@/lib/company/lander-model";
+import { keyBelongsToALayer } from "@/lib/board-keys";
 import { bakedLanderName, cachedLanderName, rememberLanderName } from "@/lib/display-name";
 import { JobCard } from "@/components/jobs/listing/JobCard";
 import { PostingDetail } from "@/components/jobs/listing/PostingDetail";
@@ -4788,8 +4789,14 @@ function JobsBoard({ boardId }: { boardId: string }) {
     };
     // The compare sheet sits above the panel (z-50 over z-40), so Escape
     // closes what is on top first, and only then the panel beneath it.
+    // ONE OWNER PER ESCAPE: a Radix layer (the phone's posting sheet, a ⋯
+    // menu, the filter sheet) dismisses itself on Escape and marks the event
+    // handled; acting on it here too closed the phone sheet twice (two
+    // history.back calls left the board) and closed the posting under a menu
+    // (src/lib/board-keys.ts).
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
+      if (keyBelongsToALayer(e)) return;
       if (compareOpen) { setCompareOpen(false); return; }
       closeDetail();
     };
@@ -6224,6 +6231,10 @@ function JobsBoard({ boardId }: { boardId: string }) {
       // AND wrote a tracker row marked applied for a job the user never
       // applied to (bug sweep 2026-07-26).
       if (typeof el?.closest === "function" && el.closest("button, a, [role='button'], summary, label")) return;
+      // A key inside a ⋯ menu, a dialog or a listbox is that layer's: Enter on
+      // a menu item opened the pane's posting and marked it applied, and j/k
+      // typed in an open menu moved the list (src/lib/board-keys.ts).
+      if (keyBelongsToALayer(e)) return;
       const list = groupedJobs.map((g) => g.primary);
       if (list.length === 0) return;
       // ARROWS SCROLL A PAGE. THAT IS NOT NEGOTIABLE, AND WE TOOK IT AWAY.
@@ -8069,7 +8080,9 @@ function JobsBoard({ boardId }: { boardId: string }) {
         onCheckFit={() => { void checkFit(detailJob); }}
         checkFitBusy={fitFetching === detailJob.id}
         onClose={() => closeDetail()}
-        menu={postingMenu(detailJob)}
+        // Hiding the posting from its own pane closes the pane: the card left
+        // the list, and the pane kept showing the posting just hidden.
+        menu={{ ...postingMenu(detailJob), onHide: () => { dismissJob(detailJob); closeDetail(); } }}
         saved={savedIds.has(detailJob.id)}
         onToggleSave={() => { void saveJob(detailJob); }}
         highlight={{ have: hits[detailJob.id] ?? [], missing: misses[detailJob.id] ?? [] }}
