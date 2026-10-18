@@ -1,160 +1,45 @@
-// deploy-stamp: 2026-07-04T18:44Z
+// deploy-stamp: 2026-10-11T16:00Z
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { stamped } from "../_shared/fn-build.ts";
 
-// The build every response names (x-fn-build); see _shared/fn-build.ts.
-const FN_BUILD = "scrape-linkedin.2026-10-09.2";
+/**
+ * RETIRED (S12-152; owner decision 2026-10-12). Answers every request with 410
+ * and calls nothing.
+ *
+ * This fetched a LinkedIn profile through Firecrawl for the free report's
+ * LinkedIn insights. No page has called it since the insights moved to pasted
+ * text, and the LinkedIn insights are among the free report extras the owner
+ * stopped offering. It was still a live, unauthenticated Firecrawl proxy on
+ * the project's key: its address limit read the first forwarded hop, which a
+ * caller writes, and a caller rotating through an IPv6 /64 bought a fresh
+ * allowance per request -- Firecrawl spend, and requests against LinkedIn's
+ * terms, from our account.
+ *
+ * An endpoint nobody calls is safest when it does nothing: it reads no body,
+ * touches no database and reaches no third party. Once this build verifies,
+ * the owner revokes FIRECRAWL_API_KEY (no other function reads it).
+ * The previous implementation is in git history.
+ */
+
+// Provable from outside without a call to anyone: every response, the CORS
+// preflight included, carries this in x-fn-build.
+const FN_BUILD = "scrape-linkedin.2026-10-11.24";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Expose-Headers": "x-fn-build",
+  "x-fn-build": FN_BUILD,
 };
 
-const RATE_LIMIT = 5; // 5 requests per hour (strict - uses paid Firecrawl API)
-const RATE_WINDOW_MINUTES = 60;
-
-serve(stamped(FN_BUILD, async (req) => {
-  if (req.method === 'OPTIONS') {
+serve((req) => {
+  if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
-
-  // Get client IP for rate limiting (prioritize Cloudflare's trusted header)
-  const clientIp = req.headers.get('cf-connecting-ip') ||
-                   req.headers.get('x-forwarded-for')?.split(',')[0].trim() || 
-                   req.headers.get('x-real-ip') || 
-                   'unknown';
-
-  try {
-    console.log(`[SCRAPE-LINKEDIN] Request from IP: ${clientIp}`);
-
-    // Check persistent rate limit
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Check global rate limit first (100 req/hr across ALL functions)
-    const { data: globalAllowed, error: globalRlError } = await supabase.rpc('check_global_rate_limit', {
-      p_ip: clientIp,
-      p_max_requests: 100,
-      p_window_minutes: 60
-    });
-
-    if (globalRlError) {
-      console.error("[SCRAPE-LINKEDIN] Global rate limit check error:", globalRlError);
-    } else if (!globalAllowed) {
-      console.log(`[SCRAPE-LINKEDIN] Global rate limit exceeded for IP: ${clientIp}`);
-      return new Response(
-        JSON.stringify({ success: false, error: 'Rate limit exceeded. Please try again later or paste your profile text instead.', code: 'rate_limited_budget' }),
-        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': '3600' } }
-      );
-    }
-
-    // Check per-function rate limit
-    const { data: allowed, error: rlError } = await supabase.rpc('check_rate_limit', {
-      p_ip: clientIp,
-      p_function: 'scrape-linkedin',
-      p_max_requests: RATE_LIMIT,
-      p_window_minutes: RATE_WINDOW_MINUTES
-    });
-
-    if (rlError) {
-      console.error("[SCRAPE-LINKEDIN] Rate limit check error:", rlError);
-    } else if (!allowed) {
-      console.log(`[SCRAPE-LINKEDIN] Rate limit exceeded for IP: ${clientIp}`);
-      return new Response(
-        JSON.stringify({ success: false, error: 'Rate limit exceeded. Please try again later or paste your profile text instead.', code: 'rate_limited_function' }),
-        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': '3600' } }
-      );
-    }
-
-    const { url } = await req.json();
-
-    if (!url) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'LinkedIn URL is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Validate LinkedIn URL format
-    const linkedinRegex = /^https?:\/\/(www\.)?linkedin\.com\/in\/[\w-]+\/?$/i;
-    if (!linkedinRegex.test(url.trim())) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Invalid LinkedIn profile URL. Please use format: linkedin.com/in/username' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const apiKey = Deno.env.get('FIRECRAWL_API_KEY');
-    if (!apiKey) {
-      console.error('[SCRAPE-LINKEDIN] FIRECRAWL_API_KEY not configured');
-      return new Response(
-        JSON.stringify({ success: false, error: 'Profile import unavailable. Please paste your profile text instead.' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log('[SCRAPE-LINKEDIN] Scraping URL:', url);
-
-    const response = await fetch('https://api.firecrawl.dev/v1/scrape', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        url: url.trim(),
-        formats: ['markdown'],
-        onlyMainContent: true,
-        waitFor: 3000,
-      }),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      console.error('[SCRAPE-LINKEDIN] Firecrawl API error:', data);
-      
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ success: false, error: 'Service temporarily unavailable. Please paste your profile text instead.' }),
-          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      return new Response(
-        JSON.stringify({ success: false, error: 'Could not scrape LinkedIn profile. Please try pasting your profile text instead.' }),
-        { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const markdown = data.data?.markdown || data.markdown || '';
-    
-    if (!markdown || markdown.length < 100) {
-      console.error('[SCRAPE-LINKEDIN] Insufficient content scraped');
-      return new Response(
-        JSON.stringify({ success: false, error: 'Could not extract enough profile content. Please try pasting your profile text instead.' }),
-        { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log('[SCRAPE-LINKEDIN] Successfully scraped profile, content length:', markdown.length);
-
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        text: markdown,
-        metadata: data.data?.metadata || data.metadata || {}
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-
-  } catch (error) {
-    console.error('[SCRAPE-LINKEDIN] Error:', error);
-    return new Response(
-      JSON.stringify({ success: false, error: 'An error occurred while scraping the profile.' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  }
-}));
+  return new Response(
+    JSON.stringify({
+      error: "This endpoint has been retired. LinkedIn profiles are no longer fetched.",
+      code: "retired",
+    }),
+    { status: 410, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+  );
+});

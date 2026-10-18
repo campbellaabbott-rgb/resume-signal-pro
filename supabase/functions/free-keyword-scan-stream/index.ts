@@ -11,6 +11,9 @@ import { detectCountryFromResume, effectiveCountryOf } from "./market-intelligen
 import { resolveLanguageName } from "../_shared/language-instruction.ts";
 import { FIXED_CHOICES_STAY_ENGLISH, normalizeScanReport } from "../_shared/scan-report-shape.ts";
 import { functionCeiling } from "../_shared/model-spend-gate.ts";
+import { attachScanMailSeal } from "../_shared/scan-mail-seal.ts";
+import { accountProStanding } from "../_shared/pro-standing.ts";
+import { scrubSealedSentences } from "./seal-safe.ts";
 import { evaluateCountryStandards } from "./country-standards.ts";
 import { computeParseQuality, parseResumeStructure, formatStructureForPrompt } from "./resume-structure.ts";
 import { detectResumeLanguage } from "./resume-language.ts";
@@ -6498,7 +6501,19 @@ function clampImprovementToScoreGap(report: Record<string, unknown>): void {
 // clamp (register L5-15), on fresh and cached reports.
 // 2026-10-09.5 (wave-3 fix round integration): parsers-scan and
 // fetcher-frontend each stamped .4 on different code.
-const FN_BUILD = "free-keyword-scan-stream.2026-10-09.5";
+// 2026-10-11.24 (wave 4 second round, generators): the backup scanner's
+// report carries the primary's report id and mail seal, so "email my report"
+// prints its issues (S12-145); a signed-in account is counted by itself and
+// a Pro account is not refused at the daily limit (S12-143, S12-144); the
+// primary's smaller hour with a per-network share, read before the day's slot
+// (S12-066); sealed sentences scrubbed as the primary's are (S12-068).
+const FN_BUILD = "free-keyword-scan-stream.2026-10-11.24";
+
+/** The primary's report id formula (free-keyword-scan/report-meta.ts reportIdFor): this report's cache key and its score. */
+async function streamReportId(cacheKey: string, score: unknown): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${cacheKey}|${score}`));
+  return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 12).toUpperCase();
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -6527,8 +6542,9 @@ const STREAM_ATTEMPT_TIMEOUT_MS = 55_000;
  * The function-wide hour (S11-019): model-backed scans the anonymous internet,
  * and separately proven callers (a board pass, a proven mailbox, a paying
  * account), may run per hour, and one proven identity's share of the latter.
+ * The primary's figures (S12-066): the two forks spend one hour together.
  */
-const SCAN_CEILING = { strangersPerHour: 300, provenPerHour: 300, perProvenCallerPerHour: 20 } as const;
+const SCAN_CEILING = { strangersPerHour: 60, provenPerHour: 200, perProvenCallerPerHour: 20, strangerNetworkPerHour: 12 } as const;
 
 const getCountryFromHeaders = (req: Request): string | null => {
   // Sanitized (review-caught 2026-07-25): Cloudflare emits pseudo-codes XX
@@ -7531,11 +7547,13 @@ serve(async (req) => {
       // A signed-in account gets the primary's larger allowance; only the
       // address the platform verified on the JWT counts.
       let isAuthedUser = false;
+      let authedUserId: string | null = null;
       try {
         const jwt = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '').trim();
         if (jwt && jwt !== (Deno.env.get('SUPABASE_ANON_KEY') ?? '')) {
           const { data: { user } } = await supabase.auth.getUser(jwt);
           isAuthedUser = !!user?.id;
+          authedUserId = typeof user?.id === 'string' ? user.id : null;
         }
       } catch { /* anonymous */ }
       const dailyScanLimit = isAuthedUser ? SIGNED_IN_SCANS_PER_DAY : FREE_SCANS_PER_DAY;
@@ -7650,6 +7668,19 @@ serve(async (req) => {
           clampImprovementToScoreGap(servedFromCache);
           // A report cached with a translated fixed choice must not replay a crash (S11-029).
           normalizeScanReport(servedFromCache);
+          // A report cached before S12-145 has no report id: given one here,
+          // scrubbed and sealed, so its mail prints its issues.
+          if (!servedFromCache.reportMeta || typeof servedFromCache.reportMeta !== 'object') {
+            servedFromCache.reportMeta = {
+              reportId: await streamReportId(cacheKey, servedFromCache.atsScoreEstimate),
+              engineVersion: 'stream',
+              generatedAt: new Date().toISOString(),
+              industry: servedFromCache.industry ?? null,
+              benchmarkSource: 'estimate',
+            };
+          }
+          scrubSealedSentences(servedFromCache, resumeText);
+          await attachScanMailSeal(servedFromCache, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
           send('complete', servedFromCache);
           close();
           return;
@@ -7660,11 +7691,29 @@ serve(async (req) => {
       
       console.log(`[FREE-KEYWORD-SCAN-STREAM] Cache MISS for key ${cacheKey.substring(0, 8)}...`);
 
+      // THE FUNCTION-WIDE HOUR (S11-019), the primary's twin: a rotating
+      // address pool gets a fresh daily allowance per address, so only a
+      // ceiling across callers bounds it, kept apart for proven callers so a
+      // pool cannot lock them out. The bucket is the scanner's own, shared
+      // with the primary as the daily one is, so the two forks together spend
+      // one hour. Past it (or when it cannot be counted) this fork asks for a
+      // retry, as it does past the concurrency slot. Read BEFORE the day's
+      // slot, so a refused scan spends none of the person's day (S12-066).
+      const ceiling = await functionCeiling(supabase, req, FUNCTION_NAME, SCAN_CEILING);
+      if (ceiling) {
+        console.log(`[FREE-KEYWORD-SCAN-STREAM] Function ceiling refused (${ceiling.code}, limit ${ceiling.limit})`);
+        send('error', { error: 'Our analysers are busy right now. Please try again in a minute.', code: 'busy', retryable: true });
+        close();
+        return;
+      }
+
       // The day's scan slot, counted only once the cache has missed: a
       // rescan of the same text is a replay (sweep S8-068, as in the primary).
+      // A signed-in account is counted by itself, as in the primary (S12-143).
+      const dailyKey = authedUserId ? `user:${authedUserId}`.slice(0, 45) : clientIp;
       const { data: allowed, error: rlError } = await supabase.rpc('check_rate_limit', {
         p_function: FUNCTION_NAME,
-        p_ip: clientIp,
+        p_ip: dailyKey,
         p_max_requests: dailyScanLimit,
         p_window_minutes: 24 * 60
       });
@@ -7674,28 +7723,18 @@ serve(async (req) => {
         close();
         return;
       }
-      if (!allowed) {
+      // Past the day, a Pro account keeps scanning, as in the primary: Pro was
+      // told "Daily limit, upgrade" by the fork it falls back to (S12-144).
+      const proPastTheDay = !allowed && !!authedUserId && (await accountProStanding(supabase, authedUserId).catch(() => null))?.pro === true;
+      if (!allowed && !proPastTheDay) {
         send('error', {
-          error: 'Daily scan limit reached. Upgrade for unlimited access!',
+          error: isAuthedUser
+            ? `You've used all ${dailyScanLimit} free scans for today. Your limit resets within 24 hours; Pro includes unlimited scans.`
+            : `You've used all ${dailyScanLimit} free scans for today. Create a free account for ${SIGNED_IN_SCANS_PER_DAY}/day, or come back within 24 hours.`,
           rateLimited: true,
+          code: 'daily_scan_limit',
           scansLimit: dailyScanLimit
         });
-        close();
-        return;
-      }
-
-
-      // THE FUNCTION-WIDE HOUR (S11-019), the primary's twin: a rotating
-      // address pool gets a fresh daily allowance per address, so only a
-      // ceiling across callers bounds it, kept apart for proven callers so a
-      // pool cannot lock them out. The bucket is the scanner's own, shared
-      // with the primary as the daily one is, so the two forks together spend
-      // one hour. Past it (or when it cannot be counted) this fork asks for a
-      // retry, as it does past the concurrency slot.
-      const ceiling = await functionCeiling(supabase, req, FUNCTION_NAME, SCAN_CEILING);
-      if (ceiling) {
-        console.log(`[FREE-KEYWORD-SCAN-STREAM] Function ceiling refused (${ceiling.code}, limit ${ceiling.limit})`);
-        send('error', { error: 'Our analysers are busy right now. Please try again in a minute.', code: 'busy', retryable: true });
         close();
         return;
       }
@@ -8966,6 +9005,19 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
       // before the report is cached or sent (S11-029).
       normalizeScanReport(responseData);
 
+      // THE PRIMARY'S REPORT META (S12-145): a report id and, below, the mail
+      // seal. Without them "email my report" from a backup-scanner report
+      // printed the numbers and none of the issues. Sealed sentences are
+      // scrubbed before the report is cached or sealed (S12-068).
+      responseData.reportMeta = {
+        reportId: await streamReportId(cacheKey, responseData.atsScoreEstimate),
+        engineVersion: 'stream',
+        generatedAt: new Date().toISOString(),
+        industry: responseData.industry ?? null,
+        benchmarkSource: 'estimate',
+      };
+      scrubSealedSentences(responseData, resumeText);
+
       // Store in cache for future requests (non-blocking)
       if (!thinAnalysis) EdgeRuntime.waitUntil(
         (async () => {
@@ -8992,7 +9044,8 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
       const duration = Date.now() - requestStartTime;
       console.log(`[FREE-KEYWORD-SCAN-STREAM] Complete in ${duration}ms, ATS: ${analysis.atsScoreEstimate}, Recruiter: ${dualScore.recruiterImpact}`);
 
-      // Send final result
+      // Send final result, sealed last over exactly what the browser receives.
+      await attachScanMailSeal(responseData, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
       send('progress', { stage: 'complete', message: 'Analysis complete!', progress: 100 });
       send('complete', responseData);
       close();

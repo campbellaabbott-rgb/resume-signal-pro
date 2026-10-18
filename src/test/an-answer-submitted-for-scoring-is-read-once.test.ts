@@ -23,10 +23,15 @@ import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harnes
 
 vi.setConfig({ testTimeout: 30_000, hookTimeout: 120_000 });
 
+// Since 2026-10-12 the writing tools need an account, so these calls are made
+// as a signed-in account the stub's auth server knows.
+const USER = "4f9a3c2e-1b7d-4e8a-9c0f-2a6b5d4e3f21";
+const b64url = (o: unknown) => Buffer.from(JSON.stringify(o)).toString("base64url");
+const SIGNED_IN = `${b64url({ alg: "HS256" })}.${b64url({ role: "authenticated", sub: USER, aud: "authenticated" })}.c2ln`;
 const STUBS: Record<string, string> = {
   "https://deno.land/std@0.190.0/http/server.ts": "export function serve(h) { globalThis.__edgeHandler = h; }",
   "https://esm.sh/@supabase/supabase-js@2.39.3":
-    "export function createClient() { const db = globalThis.__coachDb; return { rpc: (n, a) => db.rpc(n, a), from: (t) => db.from(t) }; }",
+    `export function createClient() { const db = globalThis.__coachDb; return { rpc: (n, a) => db.rpc(n, a), from: (t) => db.from(t), auth: { getUser: async () => ({ data: { user: { id: "${USER}" } }, error: null }) } }; }`,
 };
 
 const RESUME = "Jane Doe -- Senior software engineer. Led the payments migration that cut checkout errors by 40%. ".repeat(3);
@@ -59,12 +64,15 @@ beforeEach(() => {
   ai = [];
   counted = 0;
   db.rpcs.check_rate_limit = () => { counted++; return { data: true, error: null }; };
+  db.rpcs.pro_entitlement_rows = () => ({ data: [], error: null });
+  db.rpcs.take_writing_tools = () => ({ data: { allowed: true, use_ids: ["use-1"] }, error: null });
+  db.rpcs.refund_writing_tools = () => ({ data: 1, error: null });
   (globalThis as Record<string, unknown>).__coachDb = db;
 });
 
 const post = async (body: unknown) => {
   const res = await handler(new Request("https://h.supabase.co/functions/v1/generate-interview-coach", {
-    method: "POST", headers: { "content-type": "application/json", "cf-connecting-ip": "203.0.113.9" }, body: JSON.stringify(body),
+    method: "POST", headers: { "content-type": "application/json", "cf-connecting-ip": "203.0.113.9", authorization: `Bearer ${SIGNED_IN}` }, body: JSON.stringify(body),
   }));
   return { status: res.status, body: await res.json() as Record<string, unknown> };
 };

@@ -13,9 +13,14 @@ import { checkoutSessionSettled } from "../_shared/pass-settlement.ts";
 import { accountProStanding } from "../_shared/pro.ts";
 import { REFUNDED_PURCHASE_MESSAGE, sessionWasRefunded } from "../_shared/payment-revocation.ts";
 import { purchaseSpendGate, spendRefusal } from "../_shared/model-spend-gate.ts";
+import { refundWriting, takeWriting, type WritingPass } from "../_shared/writing-allowance.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
+// 2026-10-11.24 (wave 4 second round, generators): a Pro account's kit is
+// one tailored résumé from its writing allowance (five a UTC day, sixty a UTC
+// month; owner decision 2026-10-12), given back when no kit is delivered. A
+// past Apply Assistant buyer keeps the purchase's own daily allowance.
 // 2026-10-09.62 (wave-3 fix round integration): carries both 2026-10-09.5 and the payments-account group's 2026-10-09.61.
 // 2026-10-11.1 (wave-4 integration): _shared/application-questions.ts, which
 // this function imports for roleGuidance alone, gained w4/mcp's widened
@@ -23,7 +28,7 @@ import { purchaseSpendGate, spendRefusal } from "../_shared/model-spend-gate.ts"
 // bundle and the repository's are the same code.
 // 2026-10-11.2: the classifier it imports no longer exempts a second ask inside a work-done
 // prompt, and knows when-could-you-start and current earnings (review of 9fe3bc0d).
-const FN_BUILD = "generate-apply-package.2026-10-11.2";
+const FN_BUILD = "generate-apply-package.2026-10-11.24";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -105,7 +110,14 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+  // A Pro account's use is given back whenever no kit is delivered.
+  const holder: { pass: WritingPass | null } = { pass: null };
+  const res = await handleKit(req, holder);
+  if (res.status >= 400) await refundWriting(getServiceClient(), holder.pass);
+  return res;
+});
 
+async function handleKit(req: Request, holder: { pass: WritingPass | null }): Promise<Response> {
   const clientIp = getClientIp(req);
 
   try {
@@ -134,9 +146,9 @@ serve(async (req) => {
     // kits are never counted in the address's day; the account's own hour
     // is counted before the plan is read (review of S8-063).
     let proAccount = false;
+    let userId: string | null = null;
     const token = signedInToken(req.headers.get("Authorization") ?? "");
     if (token) {
-      let userId: string | null = null;
       try {
         const authed = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_ANON_KEY") ?? "", {
           global: { headers: { Authorization: `Bearer ${token}` } },
@@ -277,6 +289,13 @@ serve(async (req) => {
     if (entitledByPurchase) {
       const purchaseRefused = await purchaseSpendGate(supabase, 'generate-apply-package', sessionId, KITS_PER_PURCHASE_DAY, corsHeaders);
       if (purchaseRefused) return purchaseRefused;
+    } else if (proAccount && userId) {
+      // PRO'S KIT IS ONE TAILORED RÉSUMÉ FROM ITS WRITING ALLOWANCE (owner
+      // decision 2026-10-12: five packages a UTC day, sixty a UTC month). The
+      // co-pilot's letter is counted by generate-cover-letter.
+      const taken = await takeWriting(supabase, userId, "pro", ["resume"], corsHeaders);
+      if ("refused" in taken) return taken.refused;
+      holder.pass = taken.pass;
     }
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -540,4 +559,4 @@ Prepare the tailored application package.`;
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
-});
+}

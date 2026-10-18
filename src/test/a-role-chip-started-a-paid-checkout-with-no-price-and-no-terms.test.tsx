@@ -73,7 +73,7 @@ async function mountWithSheet() {
       />
     </MemoryRouter>,
   );
-  fireEvent.click(screen.getByRole("button", { name: /excel\/csv/i }));
+  fireEvent.click(screen.getByRole("tab", { name: /excel\/csv/i }));
   const input = screen.getByLabelText(/upload job listing spreadsheet/i) as HTMLInputElement;
   await act(async () => {
     fireEvent.change(input, { target: { files: [new File(["title,company\nData Engineer,Acme\n"], "jobs.csv", { type: "text/csv" })] } });

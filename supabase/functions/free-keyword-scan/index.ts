@@ -27,6 +27,7 @@ import { SCAN_MODEL_CHAIN } from "../_shared/scan-models.ts";
 import { FIXED_CHOICES_STAY_ENGLISH, normalizeScanReport } from "../_shared/scan-report-shape.ts";
 import { functionCeiling } from "../_shared/model-spend-gate.ts";
 import { buildScoreAudit, reportIdFor } from "./report-meta.ts";
+import { scrubSealedSentences } from "./seal-safe.ts";
 import {
   detectCountryFromResume,
   effectiveCountryOf,
@@ -356,8 +357,14 @@ const FUNCTION_NAME = 'free-keyword-scan';
  * The per-address day and the request budget bound one address; only this
  * bounds a rotating pool. Past it the scan is served the rule-based report,
  * which calls no model.
+ *
+ * S12-066: ~43 rotating addresses spent the 300 an hour (7,200 a day against
+ * about two real scans a day), and then every visitor, a Pro trial included,
+ * got the rule-based report. The strangers' hour is now 60, one network (an
+ * IPv4 /24, an IPv6 /48) may spend 12 of it, and proven callers keep their own
+ * larger hour, so a pool cannot lock them out.
  */
-const SCAN_CEILING = { strangersPerHour: 300, provenPerHour: 300, perProvenCallerPerHour: 20 } as const;
+const SCAN_CEILING = { strangersPerHour: 60, provenPerHour: 200, perProvenCallerPerHour: 20, strangerNetworkPerHour: 12 } as const;
 
 
 // Fallback must be a real inbox — admin@resumebooster.com was a dead letter
@@ -471,7 +478,15 @@ const trackPerformance = (startTime: number, operation: string, success: boolean
 // spends a claimed purchase only for the account that claimed it (the redeem
 // call names p_user_id, which only 20261011141000's function takes) and finds
 // a pack whose address is only in customer_details; this bundle changed with it.
-const FN_BUILD = "free-keyword-scan.2026-10-14.22";
+// 2026-10-14.24 (wave 4 second round, generators; R1's day, as R1 stamped
+// this function 2026-10-14.1 and a later build may not sort before it): a smaller strangers' hour
+// with a per-network share, and no daily slot spent on the hour's fallback
+// (S12-066); synthetic:true needs our secret, a refused hour is recorded on
+// the scan's metric and alarms the owner (S12-142); a free account's daily
+// scans are counted by account, not address (S12-143); sealed sentences never
+// quote the résumé or carry a number to dial (S12-068); the spend gate it
+// imports counts a proven account by name (S12-146).
+const FN_BUILD = "free-keyword-scan.2026-10-14.24";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -1388,9 +1403,16 @@ serve(async (req) => {
     // load-test-scan.mjs) send synthetic:true so their scans land in
     // scan_metrics as scan_type='synthetic' instead of 'free' and stay out
     // of the published score statistics (get_public_scan_insights,
-    // get_real_score_distribution filter to real scan types). No secret
-    // needed: spoofing the flag only removes a scan from our own stats.
-    const isSyntheticScan = body.synthetic === true;
+    // get_real_score_distribution filter to real scan types).
+    // IT NEEDS OUR SECRET (S12-142). It was honoured for anyone, and a scan
+    // marked synthetic skips the public counter, the owner's per-scan mail and
+    // the detection logs: a pool spending the hourly ceiling could hide every
+    // one of its scans by sending the flag. The scripts now send the secret in
+    // x-synthetic-secret (SYNTHETIC_SCAN_SECRET, else HEARTBEAT_SECRET); with
+    // neither set the flag is ignored and the scan counts as a visitor's.
+    const syntheticSecret = Deno.env.get('SYNTHETIC_SCAN_SECRET') || heartbeatSecret || '';
+    const isSyntheticScan = body.synthetic === true && syntheticSecret.length > 0 &&
+      (req.headers.get('x-synthetic-secret') === syntheticSecret || isHeartbeatProbe);
     // OUR OWN PROBE IS NOT A RESUME ANYONE SCANNED. Since the heartbeat's scan
     // stopped being a cache hit (2026-10-08) it runs the whole pipeline every
     // 10 minutes, so everything below that counts a visitor's scan skips it:
@@ -1668,6 +1690,9 @@ serve(async (req) => {
         normalizeScanReport(cachedReport);
         // Sealed on the way out, so a report cached before the mail seal
         // existed can still be emailed in full (see the seal at the end).
+        // A report cached before S12-068 may still quote the résumé in a
+        // sealed sentence: scrubbed here, before the seal.
+        scrubSealedSentences(cachedReport, resumeText);
         await attachScanMailSeal(cachedReport, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
         return new Response(
           JSON.stringify(cachedReport),
@@ -1678,13 +1703,38 @@ serve(async (req) => {
       console.warn('[FREE-KEYWORD-SCAN] Report cache read failed (continuing):', e);
     }
 
-    // The day's scan slot, counted only now that the cache has missed.
-    const functionRateLimitResult = await supabase.rpc('check_rate_limit', {
-      p_function: 'free-keyword-scan',
-      p_ip: clientIp,
-      p_max_requests: dailyScanLimit,
-      p_window_minutes: 1440 // 24 hours
-    });
+    // THE FUNCTION-WIDE HOUR comes before the day's slot (S12-066, S11-019).
+    // A scan past it calls no model, so it spends none of the person's daily
+    // scans: a pool that spent the hour used to cost every later visitor one
+    // of their seven for a rule-based report. It fails CLOSED, as every spend
+    // gate does. Our own heartbeat is not counted, so the probe never reads a
+    // full hour as an outage.
+    const hourCeiling = isHeartbeatProbe
+      ? null
+      : await functionCeiling(supabase, req, FUNCTION_NAME, SCAN_CEILING, { boardPass: body.boardPass });
+    if (hourCeiling) {
+      // RECORDED, NOT ONLY LOGGED (S12-142): the refusal was a console line,
+      // so the first sign of a spent hour was the AI balance. The scan's
+      // completed metric carries ceilingRefused (below, in scan_metrics
+      // metadata) for an absolute alarm to count; that alarm belongs to the
+      // monitors' owner (scan-heartbeat / check-alerts), and owner mail goes
+      // through notify-owner, never from here.
+      console.log(`[FREE-KEYWORD-SCAN] FUNCTION CEILING: ${hourCeiling.code} (limit ${hourCeiling.limit}) — serving the rule-based report`);
+    }
+
+    // The day's scan slot, counted only now that the cache has missed and the
+    // model will write the report. A signed-in account is counted by ITSELF
+    // (S12-143): its fifteen a day were counted on the address, shared with
+    // every anonymous visitor behind the same office NAT.
+    const dailyKey = authedUserId ? `user:${authedUserId}`.slice(0, 45) : clientIp;
+    const functionRateLimitResult = hourCeiling
+      ? { data: true, error: null }
+      : await supabase.rpc('check_rate_limit', {
+        p_function: 'free-keyword-scan',
+        p_ip: dailyKey,
+        p_max_requests: dailyScanLimit,
+        p_window_minutes: 1440 // 24 hours
+      });
     if (functionRateLimitResult.error) {
       console.error("[FREE-KEYWORD-SCAN] Rate limit check error:", functionRateLimitResult.error);
       return new Response(
@@ -1745,7 +1795,7 @@ serve(async (req) => {
         .from('rate_limits')
         .select('request_count, window_start')
         .eq('function_name', 'free-keyword-scan')
-        .eq('ip_address', clientIp)
+        .eq('ip_address', dailyKey)
         .maybeSingle();
       
       const scansUsed = usageData?.request_count || dailyScanLimit;
@@ -1762,9 +1812,11 @@ serve(async (req) => {
         : '';
       return new Response(
         JSON.stringify({ 
+          // Scan Packs are no longer sold (owner decision 2026-10-12), so the
+          // refusal offers only what exists: a free account, Pro, or the reset.
           error: (isAuthedUser
-            ? `You've used all ${dailyScanLimit} free scans for today. Get a Scan Pack to keep going, or your limit resets in ~${hoursUntilReset} hour${hoursUntilReset !== 1 ? 's' : ''}.`
-            : `You've used all ${dailyScanLimit} free scans for today. Create a free account for ${SIGNED_IN_SCANS_PER_DAY}/day, get a Scan Pack, or come back in ~${hoursUntilReset} hour${hoursUntilReset !== 1 ? 's' : ''}.`) + unprovenNote,
+            ? `You've used all ${dailyScanLimit} free scans for today. Your limit resets in ~${hoursUntilReset} hour${hoursUntilReset !== 1 ? 's' : ''}; Pro includes unlimited scans.`
+            : `You've used all ${dailyScanLimit} free scans for today. Create a free account for ${SIGNED_IN_SCANS_PER_DAY}/day, or come back in ~${hoursUntilReset} hour${hoursUntilReset !== 1 ? 's' : ''}.`) + unprovenNote,
           rateLimited: true,
           mailboxUnproven: isAuthedUser && !provenEmail,
           scansUsed,
@@ -2520,9 +2572,12 @@ ${resumeText.substring(0, 20000)}
           missingSections: Object.entries(hasSections).filter(([, v]) => !v).map(([k]) => k.replace(/^has/, '').toLowerCase()),
         },
         contactInfo: { hasEmail: /@/.test(resumeText), hasPhone: /\(\d{3}\)|\d{3}[-.]\d{3,4}/.test(resumeText), hasLinkedIn: /linkedin/i.test(resumeText), missingItems: [] },
+        // The issue line is sealed and can be emailed, so it never quotes the
+        // résumé (S12-068); the bullet itself rides on the impact line, which
+        // the page shows and the mail does not print.
         redFlags: bulletAnalysis.weakBullets.slice(0, 3).map(b => ({
-          issue: `Weak bullet: "${b.text.slice(0, 80)}"`,
-          impact: b.reason,
+          issue: 'A bullet reads as a duty, not a result',
+          impact: `"${b.text.slice(0, 80)}" — ${b.reason}`,
           severity: 'moderate',
         })),
         keywords: [],
@@ -3144,17 +3199,10 @@ ${resumeText.substring(0, 20000)}
     const MAX_CONCURRENT_AI_SCANS = Number(Deno.env.get('MAX_CONCURRENT_AI_SCANS') ?? '40');
     let scanSlotId: string | null = null;
     let loadShedded = false;
-    // THE FUNCTION-WIDE HOUR comes first (S11-019): a scan past it calls no
-    // model and takes no slot. Unlike the slot it fails CLOSED, as every spend
-    // gate does: a ceiling a counting error switches off is no ceiling. Our
-    // own heartbeat is not counted, so the probe never reads a full hour as
-    // an outage.
-    const ceiling = isHeartbeatProbe
-      ? null
-      : await functionCeiling(supabase, req, FUNCTION_NAME, SCAN_CEILING, { boardPass: body.boardPass });
-    if (ceiling) {
+    // THE FUNCTION-WIDE HOUR was read before the day's slot (hourCeiling,
+    // above): a scan past it calls no model and takes no concurrency slot.
+    if (hourCeiling) {
       loadShedded = true;
-      console.log(`[FREE-KEYWORD-SCAN] FUNCTION CEILING: ${ceiling.code} (limit ${ceiling.limit}) — serving the rule-based report`);
     } else try {
       const { data: slot, error: slotErr } = await supabase.rpc('acquire_scan_slot', { p_max: MAX_CONCURRENT_AI_SCANS, p_ttl_seconds: 180 });
       if (!slotErr && slot === null) loadShedded = true;
@@ -4570,6 +4618,8 @@ ${resumeText.substring(0, 20000)}
         formatGrade: analysis.formatGrade,
         partialReason: partialReport ? (responseData.partialReason ?? null) : null,
         usedFallback: usedRuleBasedFallback,
+        // A scan the hourly ceiling refused is recorded as such (S12-142).
+        ceilingRefused: hourCeiling ? hourCeiling.code : null,
       }
     });
     
@@ -4600,6 +4650,12 @@ ${resumeText.substring(0, 20000)}
     // Every fixed choice and list the page draws holds a value it can draw,
     // before the report is cached or sealed (S11-029).
     normalizeScanReport(responseData);
+
+    // THE SEALED SENTENCES NEVER QUOTE THE RÉSUMÉ OR CARRY A NUMBER TO DIAL
+    // (S12-068): scrubbed before the report is cached or sealed, so the copy
+    // the page shows, the copy the cache replays and the copy a mail prints
+    // are one and the same.
+    scrubSealedSentences(responseData, resumeText);
 
     // Cache the finished report for identical rescans (full AI reports only —
     // fallback/partial reports would freeze a degraded experience for 7 days).

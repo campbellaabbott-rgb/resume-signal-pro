@@ -41,9 +41,10 @@
  *      one. Two of them: a caller who has PROVEN something -- a browser
  *      holding a board pass (a solved Turnstile challenge), a signed-in
  *      account whose mailbox provenMailbox() accepts, or a paying account --
- *      spends an allowance of its own (`user:` / `pass:`, the address
- *      allowance's size) and then the "proven" ceiling; everyone else spends
- *      the "global" one. A pool that spends the anonymous ceiling therefore
+ *      is counted in an allowance of its own (`user:` / `pass:`, the address
+ *      allowance's size) INSTEAD of its address (S12-146: a Pro member on a
+ *      shared office address was refused for its neighbours' hour), and then
+ *      spends the "proven" ceiling; everyone else spends the "global" one. A pool that spends the anonymous ceiling therefore
  *      cannot lock out a person who proved a mailbox, paid, or proved a
  *      browser, and the worst an hour can cost is still two fixed numbers.
  *      A plain password account is NOT proven (register S11-083, owner
@@ -113,6 +114,7 @@ export type SpendRefusalCode =
   | "rate_limited_function"
   | "rate_limited_session"
   | "rate_limited_global"
+  | "rate_limited_network"
   | "limiter_unavailable";
 
 // Loose client type so the real SupabaseClient and a test fake both fit. Only
@@ -203,6 +205,7 @@ const MESSAGES: Record<SpendRefusalCode, string> = {
   rate_limited_function: "You've reached the limit for this tool for now. Please try again later.",
   rate_limited_session: "This purchase has been generated as many times as we allow in one day. Please try again tomorrow.",
   rate_limited_global: "This tool is very busy right now. Please try again later.",
+  rate_limited_network: "This tool is very busy on your network right now. Please try again later.",
   limiter_unavailable: "This tool is temporarily unavailable. Please try again in a minute.",
 };
 
@@ -210,8 +213,23 @@ const RETRY_AFTER: Record<SpendRefusalCode, string> = {
   rate_limited_function: "3600",
   rate_limited_session: "86400",
   rate_limited_global: "3600",
+  rate_limited_network: "3600",
   limiter_unavailable: "60",
 };
+
+/**
+ * The network an address belongs to, as one bucket: an IPv4 address's /24,
+ * an IPv6 address's /48 (S12-066). A pool rotating through the addresses of
+ * one provider's block shares one network allowance. "unknown" for no address.
+ */
+export function spendNetworkKey(h: Headers): string {
+  const a = spendAddressKey(h);
+  const v4 = /^(\d{1,3}\.\d{1,3}\.\d{1,3})\.\d{1,3}$/.exec(a);
+  if (v4) return `${v4[1]}.0/24`;
+  const v6 = /^([0-9a-f]{1,4}):([0-9a-f]{1,4}):([0-9a-f]{1,4}):[0-9a-f]{1,4}::\/64$/.exec(a);
+  if (v6) return `${v6[1]}:${v6[2]}:${v6[3]}::/48`;
+  return a;
+}
 
 export function spendRefusal(
   code: SpendRefusalCode,
@@ -269,7 +287,7 @@ function countSession(db: SpendDb, fn: string, session: string, perDay: number):
  * this function delivers. A NULL product_type is no purchase here, and neither
  * is another product: a $2 scan pack used to switch off the ceiling.
  */
-async function deliversProduct(db: SpendDb, session: string, products: readonly string[]): Promise<boolean> {
+export async function deliversProduct(db: SpendDb, session: string, products: readonly string[]): Promise<boolean> {
   try {
     const { data, error } = await db.from("used_stripe_sessions")
       .select("session_id, product_type").eq("session_id", session).maybeSingle();
@@ -400,10 +418,15 @@ export async function modelSpendGate(
   const delivers = limits.globalPerHour !== undefined && !!session && !!opts.products && opts.products.length > 0
     && await deliversProduct(db, session, opts.products);
 
-  // 3. The address.
+  // 3. Who is counted. On a free generator a caller who has PROVEN something
+  //    (a proven mailbox, a paying account, a board pass) is counted by that
+  //    name instead of its address (S12-146): a Pro member behind an office
+  //    NAT was refused because neighbours had spent the address's hour, and
+  //    an account bought nothing at the gate. Everyone else by address.
+  const who = limits.globalPerHour !== undefined ? await provenCaller(db, req.headers, opts.boardPass) : null;
   const mine = await counted(db, {
     p_function: fn,
-    p_ip: spendAddressKey(req.headers),
+    p_ip: who ?? spendAddressKey(req.headers),
     p_max_requests: limits.perAddress,
     p_window_minutes: limits.windowMinutes ?? 60,
   });
@@ -424,16 +447,12 @@ export async function modelSpendGate(
   }
   if (mine === false) return spendRefusal("rate_limited_function", limits.perAddress, cors);
 
-  // 5. The function as a whole: proven callers and strangers spend separate allowances.
-  const verdict = await ceilingVerdict(
-    db,
-    req.headers,
-    fn,
-    { max: limits.perAddress, windowMinutes: limits.windowMinutes ?? 60 },
-    { strangers: limits.globalPerHour, proven: limits.globalPerHour },
-    opts.boardPass,
-  );
-  return verdict ? spendRefusal(verdict.code, verdict.limit, cors) : null;
+  // 5. The function as a whole: proven callers and strangers spend separate
+  //    allowances. A proven caller's own allowance was step 3.
+  const world = await counted(db, { p_function: fn, p_ip: who ? PROVEN_BUCKET : GLOBAL_BUCKET, p_max_requests: limits.globalPerHour, p_window_minutes: 60 });
+  if (world === null) return spendRefusal("limiter_unavailable", null, cors);
+  if (world === false) return spendRefusal("rate_limited_global", limits.globalPerHour, cors);
+  return null;
 }
 
 /** Which allowance ran out, or null to go on. */
@@ -448,7 +467,7 @@ async function ceilingVerdict(
   h: Headers,
   fn: string,
   own: { max: number; windowMinutes: number },
-  ceilings: { strangers: number; proven: number },
+  ceilings: { strangers: number; proven: number; strangerNetwork?: number },
   boardPass: unknown,
 ): Promise<CeilingVerdict> {
   const who = await provenCaller(db, h, boardPass);
@@ -456,6 +475,12 @@ async function ceilingVerdict(
     const mine = await counted(db, { p_function: fn, p_ip: who, p_max_requests: own.max, p_window_minutes: own.windowMinutes });
     if (mine === null) return { code: "limiter_unavailable", limit: null };
     if (mine === false) return { code: "rate_limited_function", limit: own.max };
+  } else if (ceilings.strangerNetwork !== undefined) {
+    // A stranger's network (/24, /48) may spend only its share of the
+    // strangers' hour (S12-066): ~43 rotating addresses spent the whole hour.
+    const net = await counted(db, { p_function: fn, p_ip: `net:${spendNetworkKey(h)}`.slice(0, 45), p_max_requests: ceilings.strangerNetwork, p_window_minutes: 60 });
+    if (net === null) return { code: "limiter_unavailable", limit: null };
+    if (net === false) return { code: "rate_limited_network", limit: ceilings.strangerNetwork };
   }
   const max = who ? ceilings.proven : ceilings.strangers;
   const world = await counted(db, { p_function: fn, p_ip: who ? PROVEN_BUCKET : GLOBAL_BUCKET, p_max_requests: max, p_window_minutes: 60 });
@@ -472,6 +497,8 @@ export type FunctionCeiling = {
   provenPerHour: number;
   /** One proven identity's own hourly allowance inside the proven ceiling. */
   perProvenCallerPerHour: number;
+  /** One stranger network's (/24 or /48) share of the strangers' hour (S12-066). */
+  strangerNetworkPerHour?: number;
 };
 
 /**
@@ -497,7 +524,7 @@ export async function functionCeiling(
     req.headers,
     fn,
     { max: limits.perProvenCallerPerHour, windowMinutes: 60 },
-    { strangers: limits.strangersPerHour, proven: limits.provenPerHour },
+    { strangers: limits.strangersPerHour, proven: limits.provenPerHour, strangerNetwork: limits.strangerNetworkPerHour },
     opts.boardPass,
   );
 }

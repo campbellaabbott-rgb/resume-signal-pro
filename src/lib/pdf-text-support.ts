@@ -1,35 +1,49 @@
-// jsPDF's built-in fonts (helvetica, times, courier) use WinAnsiEncoding, which
-// covers ASCII plus the Latin-1 Supplement (Western European accented
-// characters like é, ñ, ü) but nothing beyond — Cyrillic, Arabic, Devanagari,
-// CJK, etc. all render as blank boxes or missing glyphs. Properly fixing this
-// means embedding a full Unicode font (several hundred KB), which is a real
-// feature investment, not a one-line fix. Until that's built, this detects
-// the problem so callers can warn the user clearly instead of silently
-// producing a PDF with missing text and no explanation.
+// jsPDF's built-in fonts (helvetica, times, courier) use WinAnsiEncoding
+// (Windows-1252): ASCII, the Latin-1 Supplement (é, ñ, ü) and 27 more
+// characters in 0x80-0x9F, and nothing else. Polish, Czech, Hungarian,
+// Turkish and Romanian letters (Ł, ő, ğ, ș), the rupee sign, arrows, and every
+// non-Latin script (Cyrillic, Devanagari, CJK) come out as letter-spaced
+// garbage or blanks. Callers check here first, and draw another way (a Word
+// file, the browser's own print-to-PDF) instead of producing that garbage.
 
-// WinAnsiEncoding (Windows-1252) includes a handful of common typographic
-// characters above the Latin-1 range — em/en dash, curly quotes, ellipsis,
-// bullet, trademark — that jsPDF's standard fonts render just fine despite
-// their Unicode codepoints being > 0xFF. Without this allowlist, ordinary
-// AI-generated text using an em dash would get flagged as "unsupported"
-// alongside genuinely unrenderable scripts, which would make the warning
-// fire constantly and lose all signal.
-const WINANSI_EXTRA_CHARS = new Set([
-  "–", "—", // en dash, em dash
-  "‘", "’", // left/right single quote
-  "“", "”", // left/right double quote
-  "•", // bullet
-  "…", // ellipsis
-  "™", // trademark
+// THE REAL TABLE (S12-006). The old list held eight of the 27 characters
+// Windows-1252 adds above Latin-1, so text with €, „, œ or Š (which draw
+// fine) raised the "may not display" warning, while the check itself still
+// let nothing through that it should not. These are all 27.
+const WINANSI_ABOVE_LATIN1 = new Set([
+  "€", "‚", "ƒ", "„", "…", "†", "‡", "ˆ", "‰", "Š", "‹", "Œ", "Ž",
+  "‘", "’", "“", "”", "•", "–", "—", "˜", "™", "š", "›", "œ", "ž", "Ÿ",
 ]);
 
+/** True when jsPDF's built-in fonts can draw this one character. */
+export function pdfCanDraw(char: string): boolean {
+  const cp = char.codePointAt(0)!;
+  if (cp === 0x09 || cp === 0x0a || cp === 0x0d) return true;
+  if (cp >= 0x20 && cp <= 0x7e) return true;
+  if (cp >= 0xa0 && cp <= 0xff) return true;
+  return WINANSI_ABOVE_LATIN1.has(char);
+}
+
+/** The distinct characters in `text` the built-in fonts cannot draw, in order of first appearance. */
+export function unsupportedPdfCharacters(text: string): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const char of text ?? "") {
+    if (!pdfCanDraw(char) && !seen.has(char)) {
+      seen.add(char);
+      out.push(char);
+    }
+  }
+  return out;
+}
+
 /**
- * Returns true if any character in the text falls outside the range jsPDF's
- * standard fonts can render (Latin-1 plus the WinAnsi-extra set above).
+ * Returns true if any character in the text falls outside what jsPDF's
+ * standard fonts can render (Windows-1252).
  */
 export function hasUnsupportedPdfCharacters(text: string): boolean {
-  for (const char of text) {
-    if (char.codePointAt(0)! > 0xff && !WINANSI_EXTRA_CHARS.has(char)) return true;
+  for (const char of text ?? "") {
+    if (!pdfCanDraw(char)) return true;
   }
   return false;
 }

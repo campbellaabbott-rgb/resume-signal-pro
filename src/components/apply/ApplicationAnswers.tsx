@@ -61,6 +61,62 @@ export function stripLabelMarkup(raw: unknown): string {
     .trim();
 }
 
+type TFn = (key: string, fallback: string, opts?: Record<string, unknown>) => string;
+
+/**
+ * THE SENTENCE FOR A REFUSED DRAFT, BY WHICH LIMIT FIRED (S12-051).
+ *
+ * Every 429 read "Busy — try again shortly", so an hour-long allowance (the
+ * spend gate's Retry-After: 3600) told the person to retry in a moment, and a
+ * spent day sounded like a hiccup. The server's code and Retry-After say
+ * which limit it was and how long it lasts; the writing tools' account
+ * refusals (401 sign_in_required, 429 daily_limit / monthly_limit with
+ * resetsAt) carry their own sentence, which is used as written.
+ */
+export function answersFailureMessage(
+  status: number | undefined,
+  body: Record<string, unknown> | null,
+  retryAfterSeconds: number | null,
+  t: TFn,
+): string {
+  const code = typeof body?.code === "string" ? body.code : typeof body?.error === "string" ? body.error : "";
+  const serverSentence = typeof body?.message === "string" && body.message.trim() ? body.message : null;
+  if (status === 401 || code === "sign_in_required") {
+    return serverSentence ?? t("applyAnswers.signIn", "Sign in to draft answers. A free account is enough.");
+  }
+  if (code === "daily_limit" || code === "monthly_limit") {
+    if (serverSentence) return serverSentence;
+    const at = typeof body?.resetsAt === "string" ? new Date(body.resetsAt) : null;
+    const when = at && Number.isFinite(at.getTime()) ? at.toLocaleString(undefined, { hour: "2-digit", minute: "2-digit", month: "short", day: "numeric" }) : null;
+    return when
+      ? t("applyAnswers.limitUntil", "You've used this allowance. You can draft more after {{when}}.", { when })
+      : t("applyAnswers.limit", "You've used this allowance for now. Please try again later.");
+  }
+  if (status === 429 && code === "model_busy") {
+    return t("applyAnswers.modelBusy", "The AI service is busy. Please try again in a minute.");
+  }
+  if (status === 429) {
+    const minutes = Math.max(1, Math.round((retryAfterSeconds ?? 3600) / 60));
+    return minutes >= 120
+      ? t("applyAnswers.limitHours", "You've reached the drafting limit for now. Please try again in about {{hours}} hours.", { hours: Math.round(minutes / 60) })
+      : t("applyAnswers.limitMinutes", "You've reached the drafting limit for now. Please try again in about {{minutes}} minutes.", { minutes });
+  }
+  if (status === 503) {
+    return t("applyAnswers.unavailable", "Drafting is unavailable for a minute. Please try again shortly.");
+  }
+  return t("applyAnswers.failed", "Couldn't draft answers right now.");
+}
+
+/** A failed functions.invoke as status, body and Retry-After (the SDK puts the Response on error.context). */
+async function readInvokeFailure(error: unknown): Promise<{ status?: number; body: Record<string, unknown> | null; retryAfter: number | null }> {
+  const ctx = (error as { context?: Response } | null)?.context;
+  if (!ctx || typeof ctx !== "object") return { body: null, retryAfter: null };
+  let body: Record<string, unknown> | null = null;
+  try { body = await ctx.clone().json(); } catch { body = null; }
+  const ra = Number(ctx.headers?.get?.("retry-after"));
+  return { status: ctx.status, body, retryAfter: Number.isFinite(ra) && ra > 0 ? ra : null };
+}
+
 export function ApplicationAnswers({
   resumeText,
   jobTitle,
@@ -86,11 +142,13 @@ export function ApplicationAnswers({
   /** Kick off drafting on mount (e.g. a board modal that opens straight into it). */
   autoStart?: boolean;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [answers, setAnswers] = useState<DraftedAnswer[] | null>(null);
   const [inferred, setInferred] = useState(false);
   const [skipped, setSkipped] = useState<Array<{ question: string; class: string }>>([]);
+  /** Questions past the drafting cap, or in a chunk that failed: named back for the person (S12-148). */
+  const [undrafted, setUndrafted] = useState<string[]>([]);
   /** Documents the real form demands (from the ATS form config) — shown as a
    *  pre-flight so the candidate has them ready before they start. */
   const [requirements, setRequirements] = useState<string[]>([]);
@@ -128,16 +186,19 @@ export function ApplicationAnswers({
           // Real-questions fetch is best-effort; fall through to JD-inference.
         }
       }
+      // The reader's language goes with the request (S12-026): answers follow
+      // the posting's language, the notes the person reads follow this one.
       const { data, error } = await supabase.functions.invoke("generate-application-answers", {
-        body: { resumeText, jobTitle, jobCompany, jobDescription, questions, jobCategory, experienceBand },
+        body: { resumeText, jobTitle, jobCompany, jobDescription, questions, jobCategory, experienceBand, language: i18n.language },
       });
       if (error || !data) {
-        const status = (error as { context?: { status?: number } })?.context?.status;
-        toast.error(status === 429 ? "Busy — try again shortly." : "Couldn't draft answers right now.");
+        const failure = await readInvokeFailure(error);
+        toast.error(answersFailureMessage(failure.status, failure.body, failure.retryAfter, t as unknown as TFn));
         return;
       }
-      const d = data as { answers?: DraftedAnswer[]; inferred?: boolean; skipped?: Array<{ question?: string; class?: string }> };
+      const d = data as { answers?: DraftedAnswer[]; inferred?: boolean; skipped?: Array<{ question?: string; class?: string }>; undrafted?: unknown };
       setAnswers(Array.isArray(d.answers) ? d.answers : []);
+      setUndrafted(Array.isArray(d.undrafted) ? d.undrafted.filter((q): q is string => typeof q === "string" && !!q.trim()) : []);
       setInferred(!!d.inferred);
       setSkipped(
         Array.isArray(d.skipped)
@@ -147,7 +208,7 @@ export function ApplicationAnswers({
           : [],
       );
     } catch {
-      toast.error("Couldn't draft answers right now.");
+      toast.error(t("applyAnswers.failed", "Couldn't draft answers right now."));
     } finally {
       setLoading(false);
     }
@@ -169,7 +230,7 @@ export function ApplicationAnswers({
       .filter((a) => a.answer.trim())
       .map((a) => `Q: ${a.question}\nA: ${a.answer}`)
       .join("\n\n");
-    if (text) navigator.clipboard?.writeText(text).then(() => toast.success("All answers copied"));
+    if (text) navigator.clipboard?.writeText(text).then(() => toast.success(t("applyAnswers.copiedAll", "All answers copied")));
   };
 
   if (!resumeText) return null;
@@ -198,14 +259,14 @@ export function ApplicationAnswers({
           className="inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1.5 rounded-full border border-primary/40 text-primary hover:bg-primary/10 disabled:opacity-60"
         >
           {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <MessageSquare className="w-3 h-3" />}
-          Draft this application's questions
+          {t("applyAnswers.draftButton", "Draft this application's questions")}
         </button>
       </div>
     );
   }
 
-  if (answers.length === 0 && skipped.length === 0) {
-    return <p className="mt-3 text-[11px] text-muted-foreground">No auto-draftable questions — the rest are yours to complete honestly.</p>;
+  if (answers.length === 0 && skipped.length === 0 && undrafted.length === 0) {
+    return <p className="mt-3 text-[11px] text-muted-foreground">{t("applyAnswers.nothingDraftable", "No auto-draftable questions — the rest are yours to complete honestly.")}</p>;
   }
 
   const gaps = answers.filter((a) => !a.supported).length;
@@ -227,28 +288,30 @@ export function ApplicationAnswers({
       )}
       {answers.length > 0 && (
         <>
-          {/* The honesty guarantee, made visible: this is the anti-spray-bot moat —
-              every answer is résumé-grounded, and gaps are flagged, never invented. */}
+          {/* The honesty guarantee, made visible: every answer is fact-checked
+              against the résumé on the server (S12-062), and one that names
+              anything the résumé does not state is flagged, never shipped as
+              "supported". */}
           {gaps === 0 ? (
             <p className="inline-flex items-center gap-1 text-[11px] font-medium text-success">
-              <ShieldCheck className="w-3 h-3 shrink-0" /> Every answer is grounded in your résumé — nothing invented.
+              <ShieldCheck className="w-3 h-3 shrink-0" /> {t("applyAnswers.allGrounded", "Every answer is grounded in your résumé — nothing invented.")}
             </p>
           ) : (
             <p className="inline-flex items-start gap-1 text-[11px] font-medium text-warning">
-              <AlertTriangle className="w-3 h-3 mt-0.5 shrink-0" /> {gaps} of {answers.length} need your input — we flagged them instead of inventing anything.
+              <AlertTriangle className="w-3 h-3 mt-0.5 shrink-0" /> {t("applyAnswers.someNeedInput", "{{gaps}} of {{total}} need your input — we flagged them instead of inventing anything.", { gaps, total: answers.length })}
             </p>
           )}
           <div className="flex items-start justify-between gap-2">
             <p className="text-[11px] text-muted-foreground">
               {inferred
-                ? "Likely questions for this role (this ATS doesn't publish its form) — grounded in your resume. Review before you paste."
-                : "This application's real questions, drafted from your resume. Review before you paste."}
+                ? t("applyAnswers.inferredIntro", "Likely questions for this role (this ATS doesn't publish its form) — grounded in your résumé. Review before you paste.")
+                : t("applyAnswers.realIntro", "This application's real questions, drafted from your résumé. Review before you paste.")}
             </p>
             <button
               onClick={copyAll}
               className="shrink-0 inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
             >
-              <Copy className="w-3 h-3" /> Copy all
+              <Copy className="w-3 h-3" /> {t("applyAnswers.copyAll", "Copy all")}
             </button>
           </div>
           {answers.map((a, i) => (
@@ -256,9 +319,9 @@ export function ApplicationAnswers({
               <div className="flex items-start gap-1.5">
                 <p className="flex-1 text-[12px] font-medium text-foreground">{a.question}</p>
                 <button
-                  onClick={() => navigator.clipboard?.writeText(a.answer).then(() => toast.success("Copied"))}
+                  onClick={() => navigator.clipboard?.writeText(a.answer).then(() => toast.success(t("applyAnswers.copied", "Copied")))}
                   className="shrink-0 text-muted-foreground hover:text-foreground"
-                  aria-label="Copy answer"
+                  aria-label={t("applyAnswers.copyAnswer", "Copy answer")}
                 >
                   <Copy className="w-3 h-3" />
                 </button>
@@ -267,17 +330,28 @@ export function ApplicationAnswers({
               {!a.supported && (
                 <p className="mt-1 inline-flex items-start gap-1 text-[11px] text-warning">
                   <AlertTriangle className="w-3 h-3 mt-0.5 shrink-0" />
-                  {a.note || "Add specifics from your own experience — we won't invent them."}
+                  {a.note || t("applyAnswers.addSpecifics", "Add specifics from your own experience — we won't invent them.")}
                 </p>
               )}
             </div>
           ))}
         </>
       )}
+      {undrafted.length > 0 && (
+        <div className="rounded-lg border border-border/60 bg-muted/40 p-2.5" data-testid="answers-undrafted">
+          <p className="text-[11px] font-medium text-foreground">{t("applyAnswers.undraftedTitle", "Not drafted — answer these yourself")}</p>
+          <p className="text-[11px] text-muted-foreground">{t("applyAnswers.undraftedBody", "We draft a limited number of questions per application, and these were left for you.")}</p>
+          <ul className="mt-1.5 space-y-0.5">
+            {undrafted.map((q, i) => (
+              <li key={i} className="text-[11px] text-muted-foreground">• {q}</li>
+            ))}
+          </ul>
+        </div>
+      )}
       {skipped.length > 0 && (
         <div className="rounded-lg border border-border/60 bg-muted/40 p-2.5">
-          <p className="text-[11px] font-medium text-foreground">You'll answer these yourself</p>
-          <p className="text-[11px] text-muted-foreground">We don't guess your identity, work authorization, salary, or demographics — the honest answer to each is yours alone.</p>
+          <p className="text-[11px] font-medium text-foreground">{t("applyAnswers.yoursTitle", "You'll answer these yourself")}</p>
+          <p className="text-[11px] text-muted-foreground">{t("applyAnswers.yoursBody", "We don't guess your identity, work authorization, salary, or demographics — the honest answer to each is yours alone.")}</p>
           <ul className="mt-1.5 space-y-0.5">
             {skipped.map((s, i) => (
               <li key={i} className="text-[11px] text-muted-foreground">• {s.question}</li>

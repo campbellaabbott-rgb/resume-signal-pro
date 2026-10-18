@@ -277,10 +277,10 @@ beforeEach(() => {
   vi.spyOn(console, "error").mockImplementation(() => {});
 });
 
-async function scan(body: Record<string, unknown>, jwt = "anon_harness") {
+async function scan(body: Record<string, unknown>, jwt = "anon_harness", extra: Record<string, string> = {}) {
   const res = await handler(new Request("https://harness.supabase.co/functions/v1/free-keyword-scan", {
     method: "POST",
-    headers: { "content-type": "application/json", authorization: `Bearer ${jwt}`, "cf-connecting-ip": "198.51.100.40" },
+    headers: { "content-type": "application/json", authorization: `Bearer ${jwt}`, "cf-connecting-ip": "198.51.100.40", ...extra },
     body: typeof body === "string" ? body : JSON.stringify(body),
   }));
   const text = await res.text();
@@ -331,7 +331,9 @@ describe("an address on a session proves nothing either, while sign-ups are auto
     try {
       const r = await scan({ resumeText: RESUME }, JWT.squatsVictim);
       expect(r.status).toBe(429);
-      expect(proLookups).toEqual([SQUATTER_ID]);
+      // Every lookup is the signed-in account's own id, never the address
+      // (the hourly ceiling, read before the day since S12-066, asks too).
+      expect([...new Set(proLookups)]).toEqual([SQUATTER_ID]);
       expect(aiCalls).toBe(0);
     } finally {
       USERS[JWT.squatsVictim].email = "victim@example.com";
@@ -458,7 +460,8 @@ describe("the owner's note for a scan (wave 2 email-ops, register L10-13)", () =
       expect(notifyCalls, "a real scan stopped telling the owner").toHaveLength(1);
       expect(notifyCalls[0].headers.Authorization, "notify-owner refuses a note without the service key").toBe(`Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`);
       notifyCalls.length = 0;
-      expect((await scan({ resumeText: `${RESUME}\nsynthetic run`, synthetic: true })).status).toBe(200);
+      // A script's synthetic scan carries our secret since S12-142.
+      expect((await scan({ resumeText: `${RESUME}\nsynthetic run`, synthetic: true }, "anon_harness", { "x-synthetic-secret": "hb-secret" })).status).toBe(200);
       const hb = await handler(new Request("https://harness.supabase.co/functions/v1/free-keyword-scan", {
         method: "POST",
         headers: { "content-type": "application/json", authorization: "Bearer anon_harness", "x-heartbeat-secret": "hb-secret", "cf-connecting-ip": "198.51.100.41" },

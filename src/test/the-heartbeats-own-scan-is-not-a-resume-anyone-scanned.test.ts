@@ -219,10 +219,19 @@ describe("our own probes are not", () => {
     expect(completedType(), "a heartbeat typed synthetic enters a score study that excludes only heartbeat").toEqual(["heartbeat"]);
   });
 
-  it("a script's synthetic scan is not counted either, and stays typed synthetic", async () => {
-    const r = await scan({ resumeText: `${RESUME}\nload test 17`, synthetic: true });
+  it("a script's synthetic scan, sent with our secret, is not counted either, and stays typed synthetic", async () => {
+    // Since S12-142 the flag needs the secret (SYNTHETIC_SCAN_SECRET, else
+    // HEARTBEAT_SECRET) in x-synthetic-secret.
+    const r = await scan({ resumeText: `${RESUME}\nload test 17`, synthetic: true }, { "x-synthetic-secret": "hb-secret" });
     expect(r.status).toBe(200);
     expect(visitorFootprint()).toEqual(nothing);
     expect(completedType()).toEqual(["synthetic"]);
+  });
+
+  it("S12-142: synthetic:true without the secret is a visitor's scan, counted and typed free", async () => {
+    const r = await scan({ resumeText: `${RESUME}\nload test 18`, synthetic: true });
+    expect(r.status).toBe(200);
+    expect(visitorFootprint().counter).toBe(1);
+    expect(completedType()).toEqual(["free"]);
   });
 });

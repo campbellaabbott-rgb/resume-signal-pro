@@ -36,6 +36,12 @@ const SCAN = {
   keywords: [{ keyword: "airflow", reason: "Standard for the role", frequencyWeight: 3, suggestedSection: "skills" }],
   quickWins: [{ fix: "Add pipeline throughput numbers", timeEstimate: "10 min", impact: "high", scoreImpact: 6, category: "quantification" }],
   improvementPotential: 20,
+  // A freelance résumé's guidance card sold a third product, Freelance Boost
+  // at $29, which this test could not see while no scan set it (S12-039).
+  freelanceGuidance: {
+    positioning: "Independent data consultant",
+    projectsAsExperience: [{ project: "Pipeline for a retailer", presentAs: "Built a nightly Airflow pipeline for a retail client" }],
+  },
 };
 
 const invoke = vi.fn(async (fn: string) => (fn === "free-keyword-scan" ? { data: SCAN, error: null } : { data: null, error: null }));
@@ -69,6 +75,14 @@ if (!(globalThis as { IntersectionObserver?: unknown }).IntersectionObserver) {
   };
 }
 
+// The report is a lazy chunk of the homepage. Under a loaded full suite its
+// compile was paid inside the fifteen-second wait below and read as a
+// missing report (twenty seconds, "Unable to find report-next-steps"), while
+// the same case takes two seconds quiet. Importing the chunk here pays that
+// compile in the import phase, so the wait measures the render, which is
+// what this test is about (src/test/helpers/mount-budget.ts: make it fast,
+// never widen the budget).
+import "@/components/FreeKeywordResults";
 import Index from "@/pages/Index";
 import { saveResumeToSession } from "@/hooks/use-session-resume";
 import { PRODUCTS, SUBSCRIPTIONS } from "@/config/products";
@@ -93,5 +107,8 @@ describe("the homepage's result screen", () => {
     expect(text).not.toContain(PRODUCTS.premiumPackage.name);
     const prices = new Set([...text.matchAll(/\$\s?(\d+)(?![\d.,]*\s?[KMBkmb](?![a-z]))(?![\d.,])/g)].map((m) => Number(m[1])));
     expect([...prices].sort((a, b) => a - b)).toEqual([PRODUCTS.fullAnalysis.priceUsd, SUBSCRIPTIONS.pro.priceUsd].sort((a, b) => a - b));
+    // The freelance guidance itself still renders (free advice), without a product card.
+    expect(text).toContain("Independent data consultant");
+    expect(region.querySelector('a[href="/freelance-boost"]')).toBeNull();
   });
 });

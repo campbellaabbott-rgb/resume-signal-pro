@@ -5,8 +5,10 @@
 
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { roundedFloor, useBoardTotals } from "@/hooks/use-board-totals";
 
 export function SaveResumeVersion({
   resumeText,
@@ -18,6 +20,15 @@ export function SaveResumeVersion({
   reportId?: string;
 }) {
   const { user } = useAuth();
+  const { t } = useTranslation();
+  // THE BOARD'S OWN COUNT, AND WHAT IT REALLY DOES (S12-136). The pitch said
+  // the board "ranks all ~40,000 live openings" against the résumé: the board
+  // serves about a million, and it scores the page of openings the person is
+  // looking at, not all of them. The live floor, or no number at all.
+  const totals = useBoardTotals();
+  const boardLine = totals
+    ? t("saveResume.boardFitWithCount", "Save this résumé and the job board scores each opening you look at against it — over {{n}} live openings to browse", { n: roundedFloor(totals.jobs).toLocaleString() })
+    : t("saveResume.boardFit", "Save this résumé and the job board scores each opening you look at against it");
   const [label, setLabel] = useState(
     () => `${new Date().toLocaleDateString(undefined, { month: "short", day: "numeric" })}${score != null ? ` — scored ${score}` : ""}`,
   );
@@ -29,7 +40,7 @@ export function SaveResumeVersion({
       <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4 mb-6">
         <p className="text-sm font-semibold text-foreground mb-1.5">Keep this scan working for you</p>
         <ul className="text-xs text-muted-foreground space-y-1 mb-3">
-          <li>• Save this resume — the job board ranks all ~40,000 live openings against it, every visit</li>
+          <li>• {boardLine}</li>
           <li>• Save searches ("remote healthcare") and see how many new postings match since you last looked</li>
           <li>• Bookmark jobs and your application tracker fills itself — fit scores included</li>
         </ul>
@@ -77,9 +88,7 @@ export function SaveResumeVersion({
     <div className="rounded-2xl border border-border bg-card/60 p-4 mb-6">
       <p className="text-sm font-semibold text-foreground mb-0.5">Save this resume version</p>
       <p className="text-xs text-muted-foreground mb-3">
-        Stored in your account until you delete it — this is the only time we keep resume content, and only
-        because you asked. It powers fit-ranking across the job board's ~40,000 openings, automatic fit
-        scores on tracked applications, and the which-version-lands-interviews view.
+        {t("saveResume.versionExplainer", "Stored in your account until you delete it — this is the only time we keep résumé content, and only because you asked. It powers fit scores on the openings you browse on the job board, automatic fit scores on tracked applications, and the which-version-lands-interviews view.")}
       </p>
       <div className="flex gap-2">
         <input

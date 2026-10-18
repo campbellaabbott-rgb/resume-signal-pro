@@ -102,11 +102,24 @@ describe("the fallback refuses what the primary refuses, before the model", () =
     expect(aiCalls).toBe(0);
   });
 
+  // Since S12-066 the function-wide hour is read before the day's slot (a
+  // scan the hour refuses spends none of the person's day), so the day is
+  // refused here on its own bucket, the 1,440-minute one.
+  const day = (a: Record<string, unknown>) => a.p_window_minutes === 1440;
+
   it("the daily limit, and a limiter error is not read as a pass", async () => {
-    db.rpcs.check_rate_limit = () => ({ data: false, error: null });
+    db.rpcs.check_rate_limit = (a) => ({ data: !day(a), error: null });
     expect((await scan({ resumeText: RESUME })).error?.rateLimited).toBe(true);
-    db.rpcs.check_rate_limit = () => ({ data: null, error: { message: "boom" } });
+    db.rpcs.check_rate_limit = (a) => (day(a) ? { data: null, error: { message: "boom" } } : { data: true, error: null });
     expect((await scan({ resumeText: RESUME })).error?.rateLimited).toBeUndefined();
+    expect(aiCalls).toBe(0);
+  });
+
+  it("a refused hour spends no daily slot (S12-066)", async () => {
+    const days: unknown[] = [];
+    db.rpcs.check_rate_limit = (a) => { if (day(a)) days.push(a.p_ip); return { data: day(a), error: null }; };
+    expect((await scan({ resumeText: RESUME })).error?.code).toBe("busy");
+    expect(days).toEqual([]);
     expect(aiCalls).toBe(0);
   });
 
@@ -118,7 +131,7 @@ describe("the fallback refuses what the primary refuses, before the model", () =
 
   it("a forged first forwarded hop does not buy a fresh daily bucket", async () => {
     const seen: string[] = [];
-    db.rpcs.check_rate_limit = (a) => { seen.push(String(a.p_ip)); return { data: false, error: null }; };
+    db.rpcs.check_rate_limit = (a) => { if (day(a)) seen.push(String(a.p_ip)); return { data: !day(a), error: null }; };
     for (const forged of ["6.6.6.6", "7.7.7.7"]) {
       await scan({ resumeText: RESUME }, { "cf-connecting-ip": "", "x-forwarded-for": `${forged}, 203.0.113.30` });
     }

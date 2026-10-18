@@ -1,4 +1,67 @@
 import type { BuilderResume } from "@/types/resume-builder";
+import { unsupportedPdfCharacters } from "@/lib/pdf-text-support";
+import { detectPostingLanguage, type PostingLanguage } from "../../supabase/functions/_shared/posting-language";
+
+/**
+ * WHY AN EXPORT IS REFUSED (S12-006, S12-030).
+ *
+ *   - missing_name: a résumé with no name went out headed "Your Name", in
+ *     English, over whatever language the résumé was written in. A résumé an
+ *     employer reads needs the person's own name, so the export asks for it.
+ *   - unsupported_characters: jsPDF's built-in fonts draw only Windows-1252
+ *     (WinAnsi). "Łukasz Wójcik" came out as "A u k a s z", letter-spaced and
+ *     cut off, on the document an employer reads. No embedded font ships yet,
+ *     so the PDF is not drawn at all; exportResumeBuilderPDF saves the Word
+ *     file instead (Word draws every character) and says why.
+ */
+export class ResumeExportError extends Error {
+  constructor(public code: "missing_name" | "unsupported_characters", public chars: string[] = []) {
+    super(code === "missing_name" ? "The résumé has no name." : `The PDF font cannot draw: ${chars.join(" ")}`);
+    this.name = "ResumeExportError";
+  }
+}
+
+/** Every text a résumé export draws. */
+function resumeTexts(resume: BuilderResume): string[] {
+  const c = resume.contact;
+  return [
+    c.fullName, c.title, c.email, c.phone, c.location, c.linkedIn, c.website,
+    resume.summary,
+    ...resume.experience.flatMap((e) => [e.company, e.title, e.location, e.startDate, e.endDate, ...e.bullets]),
+    ...resume.education.flatMap((e) => [e.school, e.degree, e.field, e.startDate, e.endDate, e.details]),
+    ...resume.skills,
+    ...resume.certifications,
+  ].filter((s): s is string => typeof s === "string" && s.length > 0);
+}
+
+/** The characters in this résumé the PDF's built-in fonts cannot draw (empty when it can draw them all). */
+export function resumePdfUnsupported(resume: BuilderResume): string[] {
+  return unsupportedPdfCharacters(resumeTexts(resume).join("\n"));
+}
+
+/** The section headings an export prints, in the résumé's own language. */
+export type SectionLabels = { summary: string; experience: string; education: string; skills: string; certifications: string };
+
+const SECTION_LABELS: Record<PostingLanguage, SectionLabels> = {
+  en: { summary: "Summary", experience: "Experience", education: "Education", skills: "Skills", certifications: "Certifications" },
+  de: { summary: "Profil", experience: "Berufserfahrung", education: "Ausbildung", skills: "Kenntnisse", certifications: "Zertifizierungen" },
+  nl: { summary: "Profiel", experience: "Werkervaring", education: "Opleiding", skills: "Vaardigheden", certifications: "Certificeringen" },
+  fr: { summary: "Profil", experience: "Expérience professionnelle", education: "Formation", skills: "Compétences", certifications: "Certifications" },
+  es: { summary: "Perfil", experience: "Experiencia profesional", education: "Formación", skills: "Habilidades", certifications: "Certificaciones" },
+  pt: { summary: "Perfil", experience: "Experiência profissional", education: "Formação", skills: "Competências", certifications: "Certificações" },
+  it: { summary: "Profilo", experience: "Esperienza professionale", education: "Istruzione", skills: "Competenze", certifications: "Certificazioni" },
+};
+
+/**
+ * The headings for a résumé, by the language its own sentences are written in
+ * (S12-030: a German résumé exported under "EXPERIENCE"). English when the
+ * language is not clear.
+ */
+export function resumeSectionLabels(resume: BuilderResume): SectionLabels {
+  const prose = [resume.summary, resume.contact.title, ...resume.experience.flatMap((e) => [e.title, ...e.bullets]), ...resume.education.map((e) => e.details)]
+    .filter(Boolean).join("\n");
+  return SECTION_LABELS[detectPostingLanguage(prose) ?? "en"];
+}
 
 // jspdf and docx are dynamically imported inside each export function rather than
 // statically here, so the Resume Builder page's own chunk doesn't carry ~550KB of
@@ -62,6 +125,12 @@ export async function buildResumePdf(resume: BuilderResume, options: ResumeExpor
   // Resolve the constructor from whichever slot the bundler/runtime exposes —
   // vite gives it on .default, Node ESM interop gives it on .jsPDF. Picking
   // the one that's actually a function works in both without surprises.
+  // Refused before anything is drawn (see ResumeExportError).
+  if (!resume.contact.fullName?.trim()) throw new ResumeExportError("missing_name");
+  const unsupported = resumePdfUnsupported(resume);
+  if (unsupported.length > 0) throw new ResumeExportError("unsupported_characters", unsupported);
+  const labels = resumeSectionLabels(resume);
+
   const jsPDFModule = await import("jspdf");
   const jsPDF = (typeof jsPDFModule.default === "function" ? jsPDFModule.default : jsPDFModule.jsPDF) as typeof jsPDFModule.jsPDF;
   const spec = TEMPLATES[options.template ?? "modern"];
@@ -171,7 +240,7 @@ export async function buildResumePdf(resume: BuilderResume, options: ResumeExpor
   // Header — auto-shrink the name to fit one line (a name that wraps or runs
   // off the page edge looks broken); wrap the title so a long one can't
   // overflow the right margin either.
-  const nameStr = resume.contact.fullName || "Your Name";
+  const nameStr = resume.contact.fullName.trim();
   let nameSize = spec.name;
   pdf.setFont(F, "bold");
   pdf.setFontSize(nameSize);
@@ -200,19 +269,22 @@ export async function buildResumePdf(resume: BuilderResume, options: ResumeExpor
   y += 2;
 
   if (resume.summary) {
-    addSectionHeading("Summary");
+    addSectionHeading(labels.summary);
     addWrappedText(resume.summary, spec.body, spec.lh);
   }
 
   if (resume.experience.length > 0) {
-    addSectionHeading("Experience");
+    addSectionHeading(labels.experience);
     for (const entry of resume.experience) {
       // Keep-together: never orphan a job title at the bottom of a page —
       // require room for title + company + first bullet before starting.
       ensureSpace(16);
-      addEntryHeader(entry.title || "Role", formatDateRange(entry.startDate, entry.endDate), spec.body + 0.5);
+      // No English placeholder title over a résumé in another language: an
+      // entry with no title is headed by its company.
+      const headed = entry.title || entry.company;
+      addEntryHeader(headed, formatDateRange(entry.startDate, entry.endDate), spec.body + 0.5);
 
-      const companyLine = [entry.company, entry.location].filter(Boolean).join(" — ");
+      const companyLine = [entry.title ? entry.company : "", entry.location].filter(Boolean).join(" — ");
       if (companyLine) {
         pdf.setFontSize(spec.body);
         pdf.setFont(F, "italic");
@@ -239,7 +311,7 @@ export async function buildResumePdf(resume: BuilderResume, options: ResumeExpor
   }
 
   if (resume.education.length > 0) {
-    addSectionHeading("Education");
+    addSectionHeading(labels.education);
     for (const entry of resume.education) {
       ensureSpace(6);
       const degreeLine = [entry.degree, entry.field].filter(Boolean).join(", ");
@@ -258,26 +330,54 @@ export async function buildResumePdf(resume: BuilderResume, options: ResumeExpor
   }
 
   if (resume.skills.length > 0) {
-    addSectionHeading("Skills");
+    addSectionHeading(labels.skills);
     addInlineList(resume.skills, spec.body - 0.5, spec.lh - 0.2);
   }
 
   if (resume.certifications.length > 0) {
-    addSectionHeading("Certifications");
+    addSectionHeading(labels.certifications);
     addInlineList(resume.certifications, spec.body - 0.5, spec.lh - 0.2);
   }
 
   return pdf;
 }
 
-export async function exportResumeBuilderPDF(resume: BuilderResume, options: ResumeExportOptions = {}): Promise<void> {
+/** What an export saved: the PDF, or the Word file in its place and the characters that forced it. */
+export type ResumeExportResult = { format: "pdf" } | { format: "docx"; unsupported: string[] };
+
+/**
+ * Save the résumé as a PDF; when the PDF's fonts cannot draw one of its
+ * characters, save the Word file instead (S12-006) and say which characters.
+ * A résumé with no name is refused (ResumeExportError "missing_name").
+ */
+export async function exportResumeBuilderPDF(resume: BuilderResume, options: ResumeExportOptions = {}): Promise<ResumeExportResult> {
+  if (!resume.contact.fullName?.trim()) throw new ResumeExportError("missing_name");
+  const unsupported = resumePdfUnsupported(resume);
+  if (unsupported.length > 0) {
+    await exportResumeBuilderDocx(resume, options);
+    return { format: "docx", unsupported };
+  }
   const pdf = await buildResumePdf(resume, options);
-  pdf.save(`${sanitizeFilename(resume.contact.fullName || "resume")}.pdf`);
+  pdf.save(`${sanitizeFilename(resume.contact.fullName)}.pdf`);
+  return { format: "pdf" };
 }
 
+/**
+ * The Word page, set explicitly (S12-112). The docx library's default page is
+ * A4, but the right tab stop was sized for US Letter (6.5" of text), so every
+ * date sat 5.9 mm past the right margin. The page is A4, like the PDF, with
+ * one-inch margins, and the tab stop is computed from them.
+ */
+export const DOCX_PAGE = Object.freeze({ width: 11906, height: 16838, margin: 1440 });
+/** The right tab stop: the text width of DOCX_PAGE, in twips. */
+export const DOCX_RIGHT_TAB = DOCX_PAGE.width - 2 * DOCX_PAGE.margin;
+
 export async function buildResumeDocxDocument(resume: BuilderResume, options: ResumeExportOptions = {}) {
+  if (!resume.contact.fullName?.trim()) throw new ResumeExportError("missing_name");
   const { Document, Paragraph, TextRun, BorderStyle, TabStopType } = await import("docx");
   const spec = TEMPLATES[options.template ?? "modern"];
+  const labels = resumeSectionLabels(resume);
+  const fullName = resume.contact.fullName.trim();
 
   // Typography constants (docx sizes are half-points). One consistent scale —
   // the output should read like a professionally typeset resume, not a Word
@@ -289,15 +389,15 @@ export async function buildResumeDocxDocument(resume: BuilderResume, options: Re
   const BODY_SIZE = Math.round(spec.body * 2);
   const META_SIZE = Math.round((spec.body - 1.2) * 2);
   const FONT = spec.docxFont;
-  // Right tab at the right margin: 8.5" page - 2x1" margins = 6.5" = 9360 twips
-  const RIGHT_TAB = 9360;
+  // Right tab at the right margin of the page the section declares.
+  const RIGHT_TAB = DOCX_RIGHT_TAB;
 
   const run = (text: string, opts: { bold?: boolean; italics?: boolean; size?: number; color?: string } = {}) =>
     new TextRun({ text, font: FONT, size: opts.size ?? BODY_SIZE, bold: opts.bold, italics: opts.italics, color: opts.color });
 
   const children: InstanceType<typeof Paragraph>[] = [];
 
-  children.push(new Paragraph({ children: [run(resume.contact.fullName || "Your Name", { bold: true, size: NAME_SIZE, color: spec.accentHex })], spacing: { after: 40 } }));
+  children.push(new Paragraph({ children: [run(fullName, { bold: true, size: NAME_SIZE, color: spec.accentHex })], spacing: { after: 40 } }));
 
   if (resume.contact.title) {
     children.push(new Paragraph({ children: [run(resume.contact.title, { size: TITLE_SIZE, color: "444444" })], spacing: { after: 40 } }));
@@ -329,15 +429,15 @@ export async function buildResumeDocxDocument(resume: BuilderResume, options: Re
     });
 
   if (resume.summary) {
-    addHeading("Summary");
+    addHeading(labels.summary);
     children.push(new Paragraph({ children: [run(resume.summary)], spacing: { after: 60 } }));
   }
 
   if (resume.experience.length > 0) {
-    addHeading("Experience");
+    addHeading(labels.experience);
     for (const entry of resume.experience) {
-      children.push(entryHeader(entry.title || "Role", formatDateRange(entry.startDate, entry.endDate)));
-      const companyLine = [entry.company, entry.location].filter(Boolean).join(" — ");
+      children.push(entryHeader(entry.title || entry.company, formatDateRange(entry.startDate, entry.endDate)));
+      const companyLine = [entry.title ? entry.company : "", entry.location].filter(Boolean).join(" — ");
       if (companyLine) {
         children.push(new Paragraph({ children: [run(companyLine, { italics: true, size: META_SIZE + 2 })], spacing: { after: 40 } }));
       }
@@ -349,7 +449,7 @@ export async function buildResumeDocxDocument(resume: BuilderResume, options: Re
   }
 
   if (resume.education.length > 0) {
-    addHeading("Education");
+    addHeading(labels.education);
     for (const entry of resume.education) {
       const degreeLine = [entry.degree, entry.field].filter(Boolean).join(", ");
       children.push(entryHeader(degreeLine || entry.school, formatDateRange(entry.startDate, entry.endDate)));
@@ -363,18 +463,31 @@ export async function buildResumeDocxDocument(resume: BuilderResume, options: Re
   }
 
   if (resume.skills.length > 0) {
-    addHeading("Skills");
+    addHeading(labels.skills);
     children.push(new Paragraph({ children: [run(resume.skills.join("  •  "))], spacing: { after: 60 } }));
   }
 
   if (resume.certifications.length > 0) {
-    addHeading("Certifications");
+    addHeading(labels.certifications);
     children.push(new Paragraph({ children: [run(resume.certifications.join("  •  "))], spacing: { after: 60 } }));
   }
 
   return new Document({
+    // The file's own author and title are the person's (S12-112: Word showed
+    // "Un-named" as the author of every exported résumé).
+    creator: fullName,
+    lastModifiedBy: fullName,
+    title: fullName,
     styles: { default: { document: { run: { font: FONT, size: BODY_SIZE } } } },
-    sections: [{ properties: {}, children }],
+    sections: [{
+      properties: {
+        page: {
+          size: { width: DOCX_PAGE.width, height: DOCX_PAGE.height },
+          margin: { top: DOCX_PAGE.margin, right: DOCX_PAGE.margin, bottom: DOCX_PAGE.margin, left: DOCX_PAGE.margin },
+        },
+      },
+      children,
+    }],
   });
 }
 
@@ -385,7 +498,7 @@ export async function exportResumeBuilderDocx(resume: BuilderResume, options: Re
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `${sanitizeFilename(resume.contact.fullName || "resume")}.docx`;
+  link.download = `${sanitizeFilename(resume.contact.fullName)}.docx`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);

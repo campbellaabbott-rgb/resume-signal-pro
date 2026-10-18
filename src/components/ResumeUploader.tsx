@@ -528,8 +528,24 @@ export function ResumeUploader({
         : reason === "rate_limited" || reason === "board_budget" || result.httpStatus === 429 ? "limited"
         : "failed",
     );
+    // THE REASON IS SEEN (S12-141). On a phone the job-description section
+    // starts collapsed, so a link that could not be read put its message
+    // inside a closed section and the scan button seemed to do nothing. The
+    // section opens and the message takes focus.
+    setShowJobDescription(true);
+    focusUrlMessage.current = true;
     return null;
   };
+  /** Set when a failed read should move focus to its message on the next render. */
+  const focusUrlMessage = useRef(false);
+  const urlMessageRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (focusUrlMessage.current && urlMessageRef.current) {
+      focusUrlMessage.current = false;
+      urlMessageRef.current.focus();
+      urlMessageRef.current.scrollIntoView?.({ behavior: "smooth", block: "center" });
+    }
+  });
   const getFinalJobDescriptionText = () =>
     scannableJobDescription(localJobDescriptionText || jobDescriptionText).trim();
 
@@ -837,6 +853,8 @@ export function ResumeUploader({
           {/* STEP 2: Job Description Section (Optional, collapsible) */}
           <div className="mb-6 opacity-70 hover:opacity-100 transition-opacity">
             <button
+              type="button"
+              aria-expanded={showJobDescription}
               onClick={() => setShowJobDescription(!showJobDescription)}
               className="w-full flex items-center justify-between group"
             >
@@ -868,10 +886,14 @@ export function ResumeUploader({
                   {t('uploader.jdAddHintPrefix')} <span className="text-foreground font-medium">{t('uploader.jdAddHintHighlight')}</span>
                 </p>
 
-                {/* Mode Tabs */}
+                {/* Mode Tabs: a tab list a screen reader can read, with the
+                    selected one announced (S12-140); it exposed no state. */}
                 <div className="flex justify-start">
-                  <div className="inline-flex rounded-xl bg-muted/50 border border-border p-1 flex-wrap">
+                  <div role="tablist" aria-label={t('uploader.jobDescription.title')} className="inline-flex rounded-xl bg-muted/50 border border-border p-1 flex-wrap">
                     <button
+                      type="button"
+                      role="tab"
+                      aria-selected={jobDescriptionMode === "paste"}
                       onClick={() => setJobDescriptionMode("paste")}
                       className={cn(
                         "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
@@ -884,6 +906,9 @@ export function ResumeUploader({
                       {t('uploader.modeTabs.pasteText')}
                     </button>
                     <button
+                      type="button"
+                      role="tab"
+                      aria-selected={jobDescriptionMode === "url"}
                       onClick={() => setJobDescriptionMode("url")}
                       className={cn(
                         "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
@@ -896,6 +921,9 @@ export function ResumeUploader({
                       {t('uploader.modeTabs.jobUrl')}
                     </button>
                     <button
+                      type="button"
+                      role="tab"
+                      aria-selected={jobDescriptionMode === "spreadsheet"}
                       onClick={() => setJobDescriptionMode("spreadsheet")}
                       className={cn(
                         "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
@@ -908,6 +936,9 @@ export function ResumeUploader({
                       {t('uploader.modeTabs.excelCsv')}
                     </button>
                     <button
+                      type="button"
+                      role="tab"
+                      aria-selected={jobDescriptionMode === "gsheets"}
                       onClick={() => setJobDescriptionMode("gsheets")}
                       className={cn(
                         "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
@@ -990,7 +1021,7 @@ export function ResumeUploader({
                 )}
                 {/* Why a link could not be read, and the way on: paste the text. */}
                 {(urlFetch === "unsupported" || urlFetch === "failed" || urlFetch === "limited") && (
-                  <div role="status" className="flex flex-wrap items-center gap-2 p-3 rounded-xl bg-muted/50 border border-border">
+                  <div role="status" ref={urlMessageRef} tabIndex={-1} data-testid="job-url-message" className="flex flex-wrap items-center gap-2 p-3 rounded-xl bg-muted/50 border border-border focus:outline-none focus:ring-2 focus:ring-primary/50">
                     <span className="text-sm text-foreground">
                       {urlFetch === "unsupported" ? t('uploader.jobUrlUnsupported')
                         : urlFetch === "limited" ? t('uploader.jobUrlLimited')
@@ -1378,14 +1409,16 @@ export function ResumeUploader({
                   <div className="space-y-3" data-scan-button="true">
                     <Button
                       size="xl"
-                      disabled={!canProceed}
+                      disabled={!canProceed || urlFetch === "loading"}
+                      aria-busy={urlFetch === "loading"}
                       onClick={handleFreeScanClick}
                       onMouseEnter={prefetchScan}
                       onFocus={prefetchScan}
                       className="w-full sm:w-auto sm:min-w-[340px] h-16 text-lg gap-3 border-2 border-success bg-success hover:bg-success/90 text-success-foreground font-bold shadow-[0_0_25px_rgba(34,197,94,0.4)] hover:shadow-[0_0_35px_rgba(34,197,94,0.5)] transition-all touch-manipulation active:scale-[0.98]"
                     >
-                      <Zap className="w-5 h-5 fill-current" />
-                      <span>{t('uploader.getFreeAnalysis')}</span>
+                      {/* While the posting link is read first, the button says so (S12-141). */}
+                      {urlFetch === "loading" ? <Loader2 className="w-5 h-5 animate-spin" /> : <Zap className="w-5 h-5 fill-current" />}
+                      <span>{urlFetch === "loading" ? t('uploader.jobUrlFetching') : t('uploader.getFreeAnalysis')}</span>
                       <span className="px-2.5 py-1 rounded-full bg-white/20 text-xs font-bold uppercase tracking-wide">{t('hero.freeBadge')}</span>
                     </Button>
 

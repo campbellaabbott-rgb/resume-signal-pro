@@ -48,7 +48,8 @@ function mount() {
 }
 const jdBox = () => (screen.getAllByRole("textbox") as HTMLTextAreaElement[]).find((t) => /job description you're applying to/i.test(t.placeholder ?? ""));
 const scanButton = () => screen.getAllByRole("button").find((b) => b.closest('[data-scan-button="true"]'))!;
-const urlTab = () => screen.getByRole("button", { name: /^Job URL$/ });
+// A tab since S12-140 (the mode switch is a tab list with its selection announced).
+const urlTab = () => screen.getByRole("tab", { name: /^Job URL$/ });
 const urlInput = () => screen.getByRole("textbox", { name: /^Job URL$/ });
 const fetchCalls = () => invoke.mock.calls.filter((c) => c[0] === "fetch-job-posting");
 

@@ -481,16 +481,9 @@ export function FreelanceGuidanceCard({
         </div>
       )}
 
-      <a
-        href="/freelance-boost"
-        className="mt-3 flex items-center justify-between rounded-xl border border-primary/40 bg-primary/10 p-3 hover:bg-primary/15 transition-colors"
-      >
-        <span className="text-xs text-foreground">
-          <span className="font-semibold">Freelance Boost</span> — a guided flow that turns these projects into a finished,
-          recruiter-grade experience section in your target field's language. $29, one-time.
-        </span>
-        <ArrowRight className="w-4 h-4 text-primary shrink-0 ml-2" />
-      </a>
+      {/* No product card here (S12-039): the free report offers exactly two
+          upgrades, the Full Analysis and Pro (owner decision 2026-10-08).
+          Freelance Boost is still sold on its own page. */}
     </div>
   );
 }

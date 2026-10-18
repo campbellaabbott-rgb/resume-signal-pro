@@ -2,12 +2,50 @@ import { useState, useCallback, useRef } from 'react';
 import { parseEdgeFunctionError, ParsedEdgeFunctionError } from '@/lib/edge-function-errors';
 import { isNetworkRetryable } from '@/lib/resilient-edge-function';
 import { scannableJobDescription } from '@/lib/job-description-input';
+import { supabase } from '@/integrations/supabase/client';
 import { 
   validateResumeBeforeSend, 
   validateExperienceEstimate,
   ResumeValidationResult,
   ExperienceValidationResult 
 } from '@/lib/resume-validation';
+
+/** The signed-in person's access token, or null for a visitor (never throws). */
+async function signedInToken(): Promise<string | null> {
+  try {
+    const { data } = await supabase.auth.getSession();
+    return data.session?.access_token ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The backup scanner's refusal event, worded by WHICH limit fired (S12-144):
+ * every rateLimited event was "Daily Scan Limit Reached", so the shared
+ * request budget (an hour, code rate_limited_budget) and a busy analyser read
+ * as a spent day with an upgrade pitch.
+ */
+export function streamErrorFor(parsed: { error?: string; rateLimited?: boolean; code?: string; retryAfterSeconds?: number; retryable?: boolean }, errorMsg: string): ParsedEdgeFunctionError {
+  if (parsed.code === 'rate_limited_budget') {
+    const minutes = Math.max(1, Math.round((parsed.retryAfterSeconds ?? 3600) / 60));
+    return {
+      title: 'Too Many Requests',
+      description: `Too many requests from your connection. Please try again in about ${minutes} minute${minutes === 1 ? '' : 's'}.`,
+      isRetryable: true,
+      errorCode: 'RATE_LIMITED_BUDGET',
+    };
+  }
+  if (parsed.code === 'busy' || parsed.retryable === true) {
+    return { title: 'Analysers Busy', description: errorMsg, isRetryable: true, errorCode: 'BUSY' };
+  }
+  return {
+    title: parsed.rateLimited ? 'Daily Scan Limit Reached' : 'Analysis Failed',
+    description: errorMsg,
+    isRetryable: false,
+    errorCode: parsed.rateLimited ? 'RATE_LIMITED' : 'ANALYSIS_ERROR',
+  };
+}
 
 // Client-side cache configuration
 const CLIENT_CACHE_KEY_PREFIX = 'resume_scan_cache_v2_';
@@ -297,6 +335,11 @@ export function useStreamingScan() {
       try {
         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
         const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+        // THE SIGNED-IN PERSON'S OWN TOKEN (S12-144). The backup scanner was
+        // always sent the publishable key, so it counted every caller as
+        // anonymous: a free account got the anonymous allowance and a Pro
+        // member was told "Daily limit, upgrade" during a primary outage.
+        const bearer = await signedInToken() ?? supabaseKey;
 
         console.log(`[StreamingScan] Attempt ${attempt}/${maxRetries + 1}`);
 
@@ -304,7 +347,7 @@ export function useStreamingScan() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${supabaseKey}`,
+            'Authorization': `Bearer ${bearer}`,
             'apikey': supabaseKey,
           },
           body: JSON.stringify({
@@ -430,12 +473,7 @@ export function useStreamingScan() {
 
                 case 'error':
                   const errorMsg = parsed.error || 'Analysis failed';
-                  const parsedError: ParsedEdgeFunctionError = {
-                    title: parsed.rateLimited ? 'Daily Scan Limit Reached' : 'Analysis Failed',
-                    description: errorMsg,
-                    isRetryable: false,
-                    errorCode: parsed.rateLimited ? 'RATE_LIMITED' : 'ANALYSIS_ERROR',
-                  };
+                  const parsedError: ParsedEdgeFunctionError = streamErrorFor(parsed, errorMsg);
                   
                   setState({
                     isStreaming: false,

@@ -7,12 +7,12 @@ import { checkInputLimits, MAX_JOB_DESCRIPTION_LENGTH } from "../_shared/input-l
 import { looksLikeBrokenJson, UnusableModelOutput } from "../_shared/ai-fallback.ts";
 import { autoFixContent, validateContent } from "./auto-fix.ts";
 import { stripInventedContact } from "../_shared/contact-guard.ts";
-import { validateProseClaims } from "../_shared/resume-grounding.ts";
+import { restoreUnsupportedLines, rewrittenResumeFigureIssues, validateProseClaims } from "../_shared/resume-grounding.ts";
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
 // 2026-10-09.62 (wave-3 fix round integration): carries both 2026-10-09.4 and the payments-account group's 2026-10-09.61.
-const FN_BUILD = "generate-premium-package.2026-10-09.62";
+const FN_BUILD = "generate-premium-package.2026-10-11.24";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -312,7 +312,7 @@ COPY ALL DATA EXACTLY FROM THE ORIGINAL:
 1. Keep the FULL original description
 2. ADD relevant industry keywords naturally woven in
 3. EXPAND bullet points with more context (don't replace, enhance)
-4. QUANTIFY achievements where reasonable (infer if not present)
+4. Keep every figure the resume states, exactly as stated. NEVER add a number, percentage, amount, count or date the resume does not state: a figure the candidate never claimed is refused by an automated fact check and the whole package is rejected
 5. STRENGTHEN action verbs
 
 ### What to ADD:
@@ -515,7 +515,11 @@ Write a cover letter that sounds like it was written by this specific person - c
     const resumeContent = resumeAiResponse.choices?.[0]?.message?.content;
     if (!resumeContent) throw new Error("No content in resume AI response");
 
-    let resumeResult;
+    // The model's JSON, as parsed: typed loosely because the repair below
+    // reassigns it from a closure, and an untyped `let` is then an implicit
+    // any that the deno gate refuses.
+    // deno-lint-ignore no-explicit-any
+    let resumeResult: Record<string, any>;
     try {
       const jsonMatch = resumeContent.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
@@ -536,7 +540,8 @@ Write a cover letter that sounds like it was written by this specific person - c
     const coverLetterContent = coverLetterAiResponse.choices?.[0]?.message?.content;
     if (!coverLetterContent) throw new Error("No content in cover letter AI response");
 
-    let coverLetterResult;
+    // deno-lint-ignore no-explicit-any
+    let coverLetterResult: Record<string, any>;
     try {
       const jsonMatch = coverLetterContent.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
@@ -591,13 +596,99 @@ Write a cover letter that sounds like it was written by this specific person - c
     // ran only the contact guard: a rewrite could add "$250,000" or "10,000
     // users" the candidate never claimed and ship it. Every impact figure in
     // the résumé must come from the résumé; the letter may also cite the
-    // posting's own numbers. A draft that fails is refused (retryable), never
-    // delivered: the deliverers record the failure and try again.
+    // posting's own numbers. A draft that fails is repaired once, then its
+    // résumé lines fall back to the résumé's own (below); a letter that still
+    // fails is refused (retryable), never delivered.
     const figureContext = [jobDescription, jobTitle, jobCompany].filter(Boolean).join("\n");
-    const figureIssues = [
-      ...validateProseClaims(resumeText, resumeResult.rewrittenResume || ''),
-      ...validateProseClaims(resumeText, coverLetterResult.coverLetter || '', figureContext),
-    ];
+    // The rewrite's skills section may cite the posting's own numbers ("ISO
+    // 27001"); its bullets only the résumé's (CP-018).
+    const checkResumeFigures = () => rewrittenResumeFigureIssues(resumeText, String(resumeResult.rewrittenResume || ''), figureContext);
+    const checkLetterFigures = () => validateProseClaims(resumeText, coverLetterResult.coverLetter || '', figureContext);
+    let resumeFigureIssues = checkResumeFigures();
+    let letterFigureIssues = checkLetterFigures();
+
+    // ONE REPAIR WITH THE ISSUES LISTED (critical path CP-018), as the cover
+    // letter runs it. The check refused the whole package outright, the
+    // refusal counted against the purchase's day, and the prompt itself asked
+    // the model to "infer" figures: the package almost never delivered, and
+    // the delivery row was spent after its retries. Each part that fails is
+    // sent back once with its issues and the rule.
+    const repairPart = async (
+      label: string,
+      system: string,
+      user: string,
+      draft: Record<string, unknown>,
+      issues: string[],
+      field: 'rewrittenResume' | 'coverLetter',
+    ): Promise<Record<string, unknown> | null> => {
+      try {
+        const { response } = await callAIWithFallback(apiKey, {
+          messages: [
+            { role: "system", content: system },
+            { role: "user", content: user },
+            { role: "assistant", content: JSON.stringify(draft) },
+            {
+              role: "user",
+              content: `Your draft was REJECTED by an automated fact check:\n- ${issues.slice(0, 6).join("\n- ")}\nRewrite it so every number, percentage, amount, count and date attributed to the candidate appears in the resume. Remove a figure the resume does not state; never replace it with another. Rephrasing is fine; new facts are not. Return the same JSON format.`,
+            },
+          ],
+          max_completion_tokens: field === 'rewrittenResume' ? 12000 : 4000,
+        }, `${label} figure repair`);
+        if (!response.ok) return null;
+        const json = await response.json();
+        const content = json.choices?.[0]?.message?.content;
+        const match = typeof content === "string" ? content.match(/\{[\s\S]*\}/) : null;
+        if (!match) return null;
+        const repaired = JSON.parse(match[0]) as Record<string, unknown>;
+        if (typeof repaired[field] !== "string" || !(repaired[field] as string).trim()) return null;
+        // The repaired text passes the same guards the first draft did.
+        const guarded = stripInventedContact(autoFixContent(repaired[field] as string, resumeText).fixed, resumeText);
+        repaired[field] = guarded.text;
+        return repaired;
+      } catch (e) {
+        logStep(`${label} figure repair failed`, { error: String(e) });
+        return null;
+      }
+    };
+    if (resumeFigureIssues.length > 0) {
+      logStep("Resume rewrite failed the figure check, repairing once", { issues: resumeFigureIssues.slice(0, 5) });
+      const repaired = await repairPart('Resume', resumeSystemPrompt, resumeUserPrompt, resumeResult, resumeFigureIssues, 'rewrittenResume');
+      if (repaired) {
+        resumeResult = repaired;
+        resumeFigureIssues = checkResumeFigures();
+      }
+    }
+    if (letterFigureIssues.length > 0) {
+      logStep("Cover letter failed the figure check, repairing once", { issues: letterFigureIssues.slice(0, 5) });
+      const repaired = await repairPart('Cover letter', coverLetterSystemPrompt, coverLetterUserPrompt, coverLetterResult, letterFigureIssues, 'coverLetter');
+      if (repaired) {
+        coverLetterResult = repaired;
+        letterFigureIssues = checkLetterFigures();
+      }
+    }
+    // THE LAST RESORT (CP-018, as corrected 2026-10-12): a rewrite that still
+    // states a figure the candidate never claimed after its repair has each
+    // such line put back to the résumé's own line, or left out when the
+    // résumé has nothing like it, and is delivered. Only the letter, which has
+    // no original line to fall back on, can still be refused.
+    // A fallback that would cut the rewrite below 60% of its length is not a
+    // package worth sending: that draft is refused (retryable) as before.
+    if (resumeFigureIssues.length > 0) {
+      const drafted = String(resumeResult.rewrittenResume || '');
+      const restored = restoreUnsupportedLines(resumeText, drafted, figureContext);
+      const keepsEnough = restored.text.trim().length >= drafted.trim().length * 0.6;
+      if (keepsEnough) {
+        resumeResult = { ...resumeResult, rewrittenResume: restored.text };
+        resumeFigureIssues = checkResumeFigures();
+      }
+      logStep("Resume lines put back to the résumé's own after the repair", {
+        restored: restored.restored.length,
+        dropped: restored.dropped.length,
+        keepsEnough,
+        remaining: resumeFigureIssues.length,
+      });
+    }
+    const figureIssues = [...resumeFigureIssues, ...letterFigureIssues];
     if (figureIssues.length > 0) {
       logStep("Premium package rejected by the figure check", { issues: figureIssues.slice(0, 5) });
       return new Response(

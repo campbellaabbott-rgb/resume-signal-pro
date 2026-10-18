@@ -17,7 +17,7 @@ import { modelSpendGate } from "../_shared/model-spend-gate.ts";
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
 // 2026-10-10.62 (wave-3 fix round integration): carries both 2026-10-10.4 and the payments-account group's 2026-10-10.61.
-const FN_BUILD = "shortlist-evaluate.2026-10-10.62";
+const FN_BUILD = "shortlist-evaluate.2026-10-11.24";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

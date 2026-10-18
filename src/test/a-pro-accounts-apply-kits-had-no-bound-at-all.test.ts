@@ -90,6 +90,12 @@ beforeEach(() => {
     counts.set(key, n);
     return { data: n <= Number(a.p_max_requests), error: null };
   };
+  // A Pro kit also takes one tailored résumé from the account's writing
+  // allowance since wave 4's second round (20261011160000); allowed here, and
+  // given back because the harness's model never delivers. This test is about
+  // the hourly bucket, which is counted before it.
+  db.rpcs.take_writing_tools = (a) => ({ data: { allowed: true, use_ids: (a.p_tools as string[]).map((t) => `use-${t}`) }, error: null });
+  db.rpcs.refund_writing_tools = (a) => ({ data: (a.p_use_ids as string[]).length, error: null });
   (globalThis as Record<string, unknown>).__kitDb = db;
   modelCalls = 0;
   getUserCalls = 0;

@@ -81,7 +81,9 @@ type Case = {
 const CASES: Case[] = [
   { fn: "generate-summary", perAddress: 30, global: 600, body: { atsScore: 71, formatGrade: "B", industry: "tech", experienceLevel: "mid", topStrength: "Clear metrics", redFlagsCount: 2, quickWins: [{ fix: "Quantify the 2023 launch" }], improvementPotential: { estimatedScoreIncrease: 12 }, candidateName: "Jane Doe" } },
   { fn: "generate-interview-coach", perAddress: 20, global: 200, body: { resumeText: RESUME, targetRole: "Engineer", mode: "generate" } },
-  { fn: "generate-career-path", perAddress: 20, global: 200, body: { resumeText: RESUME } },
+  // Career Path is retired (owner decision 2026-10-12): only a past buyer's
+  // page reaches the model, so the gate is held on that call.
+  { fn: "generate-career-path", perAddress: 20, global: 200, body: { resumeText: RESUME, isPremium: true, sessionId: PAID } },
   { fn: "generate-cover-letter", perAddress: 20, global: 200, body: { resumeText: RESUME, jobTitle: "Engineer", jobDescription: POSTING } },
   { fn: "generate-tailored-resume", perAddress: 20, global: 200, body: { resumeText: RESUME, jobTitle: "Engineer", jobDescription: POSTING } },
   { fn: "generate-elevator-pitch", perAddress: 20, global: 200, body: { resumeText: RESUME } },
@@ -148,13 +150,30 @@ beforeEach(() => {
   db.rpcs.check_rate_limit = (args) => { rateCalls.push(args as RateArgs); return rate(args as RateArgs); };
   db.rpcs.get_cached_response = () => ({ data: null, error: null });
   db.rpcs.store_cached_response = () => ({ data: null, error: null });
+  db.rpcs.pro_entitlement_rows = () => ({ data: [], error: null });
+  db.rpcs.take_writing_tools = () => ({ data: { allowed: true, use_ids: ["use-1"] }, error: null });
+  db.rpcs.refund_writing_tools = () => ({ data: 1, error: null });
   (globalThis as Record<string, unknown>).__spendDb = db;
 });
 
+/**
+ * THE WRITING TOOLS NEED AN ACCOUNT (owner decision 2026-10-12): signed out,
+ * the tailored résumé, the cover letter and the interview-prep set answer 401
+ * before anything is counted (w4b-the-writing-tools-are-counted-by-account
+ * runs that). Here they call as a signed-in free account -- the harness's
+ * auth answers "user-harness" for any token, which is not a UUID, so the
+ * account reads as free and proves nothing to the spend gate -- and the gate
+ * in front of them is held exactly as before.
+ */
+const WRITING_TOOLS = new Set(["generate-cover-letter", "generate-tailored-resume", "generate-interview-coach"]);
+const b64url = (o: unknown) => Buffer.from(JSON.stringify(o)).toString("base64url");
+const SIGNED_IN = `${b64url({ alg: "HS256" })}.${b64url({ role: "authenticated", sub: "user-harness", aud: "authenticated" })}.c2ln`;
+
 async function call(c: Case, headers: Record<string, string>) {
+  const bearer = WRITING_TOOLS.has(c.fn) ? SIGNED_IN : "anon_harness";
   const res = await handlers.get(c.fn)!(new Request(`https://harness.supabase.co/functions/v1/${c.fn}`, {
     method: "POST",
-    headers: { "content-type": "application/json", authorization: "Bearer anon_harness", apikey: "anon_harness", ...headers },
+    headers: { "content-type": "application/json", authorization: `Bearer ${bearer}`, apikey: "anon_harness", ...headers },
     body: JSON.stringify(c.body),
   }));
   const text = await res.text();
@@ -262,7 +281,6 @@ describe("a purchase is off a free generator's ceiling only for a product that g
   const DELIVERS: Record<string, string[]> = {
     "generate-cover-letter": ["cover_letter", "apply_assistant"],
     "generate-interview-coach": ["interview_coach"],
-    "generate-career-path": ["career_path_simulator"],
   };
   for (const [fn, products] of Object.entries(DELIVERS)) {
     for (const product of products) {
@@ -392,6 +410,19 @@ describe("the warm-up spends nothing on any function it pings", () => {
       expect(aiBodies).toEqual([]);
     });
   }
+});
+
+describe("the free Career Path is retired (owner decision 2026-10-12)", () => {
+  it("answers 410 before any count or model call, with or without a session", async () => {
+    const c = CASES.find((x) => x.fn === "generate-career-path")!;
+    for (const body of [{ resumeText: RESUME }, { resumeText: RESUME, sessionId: PAID }]) {
+      const r = await call({ ...c, body }, { "cf-connecting-ip": "198.51.100.4" });
+      expect(r.status, JSON.stringify(body)).toBe(410);
+      expect(r.body.code).toBe("retired");
+    }
+    expect(rateCalls).toEqual([]);
+    expect(aiBodies).toEqual([]);
+  });
 });
 
 describe("the retired tailored-resume stream does nothing at all", () => {
