@@ -6,7 +6,8 @@
   ],
   "appliedOutsideDrizzle": [
     "20261008125000",
-    "20261008128000"
+    "20261008128000",
+    "20261014100000"
   ],
   "_appliedOutsideDrizzleNote": "Applied, but no staged-runner stub names them. 20261008125000 and 20261008128000 were released 2026-10-11 after wave 2 step 1 verified, and Lovable applied them without writing a stub, so every later message re-listed them. They are live by behaviour (checked 2026-10-11): get_cron_health lists send-search-digest, industry-corrections-digest and check-error-spikes, and check-error-spikes has run 35+ times.",
   "holdUntilVerified": [],
@@ -294,6 +295,23 @@
         "verify-scan-pack-purchase": "verify-scan-pack-purchase.2026-10-09.2",
         "warm-up": "warm-up.2026-10-09.2",
         "withdraw-subscription": "withdraw-subscription.2026-10-09.61"
+      }
+    },
+    {
+      "commit": "9c991052",
+      "date": "2026-10-17",
+      "note": "R1 (PR #33, merge 6aab7045) with the disk-row fix (PR #34) and the light images (PR #35), deployed from main 9c991052: Lovable's drizzle stubs 0163 (20261014110000) and 0164 (20261017100000) in cf0b4967/bb7bb3f5/5464e502 (2026-10-17 19:56-19:59Z), the ten functions answering their 2026-10-14.1 builds, and the frontend published with Google and recovery on. verify-deploy 2026-10-17 ~23:10Z: 950 PASS, 27 FAIL; sections 95 and 96 pass in full; 94 passes except the owner's SPF record on send (permerror) and RESEND_WEBHOOK_SECRET unset (INFO). 20261014100000 has no drizzle stub but is applied by behaviour: section 94 reads rb-auth-mail-drain active, 359 runs in the last hour, 0 failed, last run succeeded (recorded in appliedOutsideDrizzle). The six 'code changed after its live stamp' FAILs were the fix rounds changing code under the same unreleased stamp before this deploy; this entry makes 9c991052 their base.",
+      "functions": {
+        "auth-email-hook": "auth-email-hook.2026-10-14.1",
+        "auth-signed-in": "auth-signed-in.2026-10-14.1",
+        "create-portal-session": "create-portal-session.2026-10-14.1",
+        "delete-account": "delete-account.2026-10-14.1",
+        "free-keyword-scan": "free-keyword-scan.2026-10-14.1",
+        "get-account-data": "get-account-data.2026-10-14.1",
+        "process-email-queue": "process-email-queue.2026-10-14.1",
+        "resend-webhook": "resend-webhook.2026-10-14.1",
+        "scan-credits": "scan-credits.2026-10-14.1",
+        "verify-product-purchase": "verify-product-purchase.2026-10-14.1"
       }
     }
   ],
