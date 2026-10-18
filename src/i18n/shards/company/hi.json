@@ -134,7 +134,9 @@
       "showing_one": "पिछले {{days}} दिनों की तारीख़ वाले {{total}} रोल में से {{shown}} दिखाया जा रहा है",
       "showing_other": "पिछले {{days}} दिनों की तारीख़ वाले {{total}} रोल में से {{shown}} दिखाए जा रहे हैं",
       "showingMatching_one": "{{total}} मेल खाते रोल में से {{shown}} दिखाया जा रहा है",
-      "showingMatching_other": "{{total}} मेल खाते रोल में से {{shown}} दिखाए जा रहे हैं"
+      "showingMatching_other": "{{total}} मेल खाते रोल में से {{shown}} दिखाए जा रहे हैं",
+      "showingSplit_one": "{{total}} रोल में से {{shown}} दिखाया जा रहा है: {{dated}} पिछले {{days}} दिनों की तारीख़ वाले, {{u}} बिना तारीख़ के",
+      "showingSplit_other": "{{total}} रोल में से {{shown}} दिखाए जा रहे हैं: {{dated}} पिछले {{days}} दिनों की तारीख़ वाले, {{u}} बिना तारीख़ के"
     },
     "sec": {
       "fiscalYear": "वित्त वर्ष",

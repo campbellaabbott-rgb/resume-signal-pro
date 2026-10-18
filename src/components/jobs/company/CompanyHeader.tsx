@@ -74,12 +74,24 @@ export function openRolesBasis(t: TFunction, v: Pick<OpenRolesValue, "asOf" | "b
  * no date (undated), they are split off: "240 roles dated in the last 30 days
  * (20 more carry no date)". A floor is never split.
  */
+/**
+ * THE ONE SPLIT of the page's figure into roles dated in the window and roles
+ * with no date. The header's answer line and the results line both read it,
+ * so one page cannot call an undated role dated in one line and split it off
+ * in the other (2026-10-18 review: exacare-inc, 8 dated and 2 undated, read
+ * "8 roles dated" above "Showing 10 of 10 roles dated"). A floor is never
+ * split, and a count of undated roles the figure cannot hold is ignored.
+ */
+export function openRolesSplit(v: Pick<OpenRolesValue, "value" | "floor">, undated?: number | null): { dated: number; undated: number } {
+  const u = !v.floor && typeof undated === "number" && Number.isFinite(undated) && undated > 0 && undated <= v.value ? undated : 0;
+  return { dated: v.value - u, undated: u };
+}
+
 export function openRolesLine(t: TFunction, v: OpenRolesValue | null, lang: string, undated?: number | null): string | null {
   if (!v) return null;
   const dated = openRolesBasis(t, v, lang);
   if (!dated) return null;
-  const u = !v.floor && typeof undated === "number" && Number.isFinite(undated) && undated > 0 && undated <= v.value ? undated : 0;
-  const datedN = v.value - u;
+  const { dated: datedN, undated: u } = openRolesSplit(v, undated);
   const n = fmtCount(datedN, { floor: v.floor, lng: lang });
   const head = tPlural(t, "companyProfile.openRoles", datedN, { n, days: SERVED_WINDOW_DAYS }, "{{n}} role dated in the last {{days}} days", "{{n}} roles dated in the last {{days}} days")
     + (u > 0 ? ` ${t("companyProfile.undatedMore", "({{u}} more carry no date)", { u: fmtCount(u, { lng: lang }) })}` : "");

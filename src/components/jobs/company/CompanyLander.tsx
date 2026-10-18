@@ -28,7 +28,7 @@ import type { LayoffFiling } from "@/components/jobs/LayoffFilingLine";
 import { SERVED_WINDOW_DAYS, type LanderModel, type OpenRolesValue } from "@/lib/company/lander-model";
 import { ago as fmtAgo, count as fmtCount } from "@/lib/format";
 import { tPlural } from "@/lib/company/plural";
-import { CompanyHeader, openRolesBasis, type WorkModeSplit } from "./CompanyHeader";
+import { CompanyHeader, openRolesBasis, openRolesSplit, type WorkModeSplit } from "./CompanyHeader";
 import { CollisionBoardsPanel, CollisionHeader } from "./CollisionHeader";
 import { UsajobsHubHeader } from "./UsajobsHubHeader";
 import { CompanyEmptyState } from "./CompanyEmptyState";
@@ -133,9 +133,17 @@ export function CompanyResultsLine({ model, shown, matching, boardReadAt }: {
   const total: { value: number; floor: boolean } | null = model.visitorFiltered ? (matching ?? null) : (model.openRoles as OpenRolesValue | null);
   if (!total || shown <= 0) return null;
   const vars = { shown: fmtCount(shown, { lng: lang }), total: fmtCount(total.value, { floor: total.floor, lng: lang }), days: SERVED_WINDOW_DAYS };
+  // The header's split, read from the same helper: a page whose reply counts
+  // undated roles names them here too instead of calling them dated.
+  const split = model.visitorFiltered ? { dated: total.value, undated: 0 } : openRolesSplit(total, model.undatedOpen);
   const head = model.visitorFiltered
     ? tPlural(t, "companyProfile.results.showingMatching", total.value, vars, "Showing {{shown}} of {{total}} matching role", "Showing {{shown}} of {{total}} matching roles")
-    : tPlural(t, "companyProfile.results.showing", total.value, vars, "Showing {{shown}} of {{total}} role dated in the last {{days}} days", "Showing {{shown}} of {{total}} roles dated in the last {{days}} days");
+    : split.undated > 0
+      ? tPlural(t, "companyProfile.results.showingSplit", total.value,
+        { ...vars, dated: fmtCount(split.dated, { lng: lang }), u: fmtCount(split.undated, { lng: lang }) },
+        "Showing {{shown}} of {{total}} role: {{dated}} dated in the last {{days}} days, {{u}} with no date",
+        "Showing {{shown}} of {{total}} roles: {{dated}} dated in the last {{days}} days, {{u}} with no date")
+      : tPlural(t, "companyProfile.results.showing", total.value, vars, "Showing {{shown}} of {{total}} role dated in the last {{days}} days", "Showing {{shown}} of {{total}} roles dated in the last {{days}} days");
   // The figure's own date: a board-level count says when it was counted, so
   // the header and this line never print two different "read" times.
   const read = boardReadAt ? fmtAgo(boardReadAt, { lng: lang }) : "";

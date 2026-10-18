@@ -6353,16 +6353,22 @@ function JobsBoard({ boardId }: { boardId: string }) {
     return raw ? boardName(landerCompany, raw) : null;
   }, [landerCompany, jobs, data]);
   // This board's own last read (the newest feed-read stamp on its rows), never
-  // the board-wide median.
+  // the board-wide median, and ONLY ON A BOARD WE READ IN FULL: the same gate
+  // the cards' stamp passes (feedReadStatable, GD6/A3). A lap-read board's
+  // rows carry a stamp that moves on every partial visit, so its header and
+  // results line said "read 6 hr ago" above cards saying the board was only
+  // partly read (Eurofins, intel, 2026-10-18). Without it the list's figure
+  // is dated by when the list answered ("counted"), and the results line and
+  // the zero page say no "this board read".
   const landerBoardReadAt = useMemo(() => {
-    if (!landerCompany) return null;
+    if (!landerCompany || !feedReadStatable(hiringCurve)) return null;
     let best: string | null = null;
     for (const j of jobs) {
       if (j.token !== landerCompany || !j.recheckedAt) continue;
       if (!best || Date.parse(j.recheckedAt) > Date.parse(best)) best = j.recheckedAt;
     }
     return best;
-  }, [jobs, landerCompany]);
+  }, [jobs, landerCompany, hiringCurve]);
   // The hiring system of the board's rows, when they all share one.
   const landerSource = useMemo(() => {
     if (!landerCompany) return null;

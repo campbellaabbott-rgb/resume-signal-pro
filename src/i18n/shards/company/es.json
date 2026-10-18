@@ -147,7 +147,10 @@
       "showing_many": "Mostrando {{shown}} de {{total}} vacantes con fecha en los últimos {{days}} días",
       "showingMatching_one": "Mostrando {{shown}} de {{total}} vacante que coincide",
       "showingMatching_other": "Mostrando {{shown}} de {{total}} vacantes que coinciden",
-      "showingMatching_many": "Mostrando {{shown}} de {{total}} vacantes que coinciden"
+      "showingMatching_many": "Mostrando {{shown}} de {{total}} vacantes que coinciden",
+      "showingSplit_one": "Mostrando {{shown}} de {{total}} vacante: {{dated}} con fecha en los últimos {{days}} días y {{u}} sin fecha",
+      "showingSplit_other": "Mostrando {{shown}} de {{total}} vacantes: {{dated}} con fecha en los últimos {{days}} días y {{u}} sin fecha",
+      "showingSplit_many": "Mostrando {{shown}} de {{total}} vacantes: {{dated}} con fecha en los últimos {{days}} días y {{u}} sin fecha"
     },
     "sec": {
       "fiscalYear": "Año fiscal",

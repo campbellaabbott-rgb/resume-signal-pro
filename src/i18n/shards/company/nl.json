@@ -134,7 +134,9 @@
       "showing_one": "{{shown}} van {{total}} vacature gedateerd in de afgelopen {{days}} dagen",
       "showing_other": "{{shown}} van {{total}} vacatures gedateerd in de afgelopen {{days}} dagen",
       "showingMatching_one": "{{shown}} van {{total}} passende vacature getoond",
-      "showingMatching_other": "{{shown}} van {{total}} passende vacatures getoond"
+      "showingMatching_other": "{{shown}} van {{total}} passende vacatures getoond",
+      "showingSplit_one": "{{shown}} van {{total}} vacature: {{dated}} gedateerd in de afgelopen {{days}} dagen, {{u}} zonder datum",
+      "showingSplit_other": "{{shown}} van {{total}} vacatures: {{dated}} gedateerd in de afgelopen {{days}} dagen, {{u}} zonder datum"
     },
     "sec": {
       "fiscalYear": "Boekjaar",

@@ -24,6 +24,7 @@ import i18n from "i18next";
 import { buildLanderModel, chooseOpenRoles, LIST_COUNT_CAP, type LanderInput } from "@/lib/company/lander-model";
 import { openRolesLine, CompanyHeader } from "@/components/jobs/company/CompanyHeader";
 import { CompanyResultsLine } from "@/components/jobs/company/CompanyLander";
+import { OpenRolesLinkLine } from "@/components/jobs/listing/PostingDetail";
 import { date as fmtDate } from "@/lib/format";
 // Dates as the site's one formatter prints them for English readers (src/lib/format.ts: day, month, year), so the guard keeps its "reader's language" claim without pinning one calendar style.
 const D = (day: string) => fmtDate(day, { lng: "en" });
@@ -119,6 +120,32 @@ describe("every surface prints the same object the same way", () => {
     expect(container.textContent).not.toMatch(/read 30 min ago/);
     // No second figure, and no exact-looking copy of the floor.
     expect(container.textContent).not.toMatch(/\b19936\b|\b10,000\+|\b19,936(?!\+)/);
+  });
+});
+
+describe("undated roles are split off on every surface, never called dated (2026-10-18 review)", () => {
+  it("exacare-inc's shape (10 served, 2 with no date): the header, the results line and the pane link agree", () => {
+    const model = buildLanderModel(input({ token: "exacare-inc", storedName: "Exacare", listTotal: 10, feedTotal: 10, feedFloor: false, undatedOpen: 2 }));
+    expect(model.undatedOpen).toBe(2);
+    const { container } = render(createElement(MemoryRouter, null,
+      createElement(CompanyHeader, { model, token: "exacare-inc", system: null, boardReadAt: minsAgo(46), onWatch: () => {} }),
+      createElement(CompanyResultsLine, { model, shown: 10, boardReadAt: minsAgo(46) }),
+      createElement(OpenRolesLinkLine, { link: { count: model.openRoles!, href: "/jobs/company/exacare-inc", name: "Exacare" } }),
+    ));
+    const answer = container.querySelector("[data-company-answer]")?.textContent ?? "";
+    const results = container.querySelector("[data-company-results]")?.textContent ?? "";
+    const link = container.querySelector("[data-open-roles-link]")?.textContent ?? "";
+    expect(answer).toContain("8 roles dated in the last 30 days (2 more carry no date)");
+    expect(results).toContain("Showing 10 of 10 roles: 8 dated in the last 30 days, 2 with no date");
+    expect(link).toBe("See all 10 open roles at Exacare");
+    // No surface calls the two undated roles dated.
+    expect(container.textContent).not.toMatch(/\b10 roles? dated\b/);
+  });
+
+  it("with no undated roles the results line keeps its one sentence", () => {
+    const model = buildLanderModel(input({ listTotal: 967, undatedOpen: 0 }));
+    render(createElement(MemoryRouter, null, createElement(CompanyResultsLine, { model, shown: 20, boardReadAt: minsAgo(46) })));
+    expect(document.querySelector("[data-company-results]")?.textContent).toContain("Showing 20 of 967 roles dated in the last 30 days");
   });
 });
 

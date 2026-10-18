@@ -134,7 +134,9 @@
       "showing_one": "Showing {{shown}} of {{total}} role dated in the last {{days}} days",
       "showing_other": "Showing {{shown}} of {{total}} roles dated in the last {{days}} days",
       "showingMatching_one": "Showing {{shown}} of {{total}} matching role",
-      "showingMatching_other": "Showing {{shown}} of {{total}} matching roles"
+      "showingMatching_other": "Showing {{shown}} of {{total}} matching roles",
+      "showingSplit_one": "Showing {{shown}} of {{total}} role: {{dated}} dated in the last {{days}} days, {{u}} with no date",
+      "showingSplit_other": "Showing {{shown}} of {{total}} roles: {{dated}} dated in the last {{days}} days, {{u}} with no date"
     },
     "sec": {
       "fiscalYear": "Financial year",

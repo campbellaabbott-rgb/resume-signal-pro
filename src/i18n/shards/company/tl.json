@@ -134,7 +134,9 @@
       "showing_one": "Ipinapakita ang {{shown}} sa {{total}} role na may petsa sa nakaraang {{days}} araw",
       "showing_other": "Ipinapakita ang {{shown}} sa {{total}} role na may petsa sa nakaraang {{days}} araw",
       "showingMatching_one": "Ipinapakita ang {{shown}} sa {{total}} tugmang role",
-      "showingMatching_other": "Ipinapakita ang {{shown}} sa {{total}} tugmang role"
+      "showingMatching_other": "Ipinapakita ang {{shown}} sa {{total}} tugmang role",
+      "showingSplit_one": "Ipinapakita ang {{shown}} sa {{total}} role: {{dated}} na may petsa sa nakaraang {{days}} araw, {{u}} na walang petsa",
+      "showingSplit_other": "Ipinapakita ang {{shown}} sa {{total}} role: {{dated}} na may petsa sa nakaraang {{days}} araw, {{u}} na walang petsa"
     },
     "sec": {
       "fiscalYear": "Taon ng pananalapi",

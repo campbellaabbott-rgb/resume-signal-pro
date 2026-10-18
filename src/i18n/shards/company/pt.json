@@ -147,7 +147,10 @@
       "showing_many": "Mostrando {{shown}} de {{total}} vagas com data nos últimos {{days}} dias",
       "showingMatching_one": "A mostrar {{shown}} de {{total}} vaga correspondente",
       "showingMatching_other": "A mostrar {{shown}} de {{total}} vagas correspondentes",
-      "showingMatching_many": "A mostrar {{shown}} de {{total}} vagas correspondentes"
+      "showingMatching_many": "A mostrar {{shown}} de {{total}} vagas correspondentes",
+      "showingSplit_one": "Mostrando {{shown}} de {{total}} vaga: {{dated}} com data nos últimos {{days}} dias e {{u}} sem data",
+      "showingSplit_other": "Mostrando {{shown}} de {{total}} vagas: {{dated}} com data nos últimos {{days}} dias e {{u}} sem data",
+      "showingSplit_many": "Mostrando {{shown}} de {{total}} vagas: {{dated}} com data nos últimos {{days}} dias e {{u}} sem data"
     },
     "sec": {
       "fiscalYear": "Ano fiscal",

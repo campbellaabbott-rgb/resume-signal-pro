@@ -134,7 +134,9 @@
       "showing_one": "{{shown}} von {{total}} Stelle mit Datum in den letzten {{days}} Tagen",
       "showing_other": "{{shown}} von {{total}} Stellen mit Datum in den letzten {{days}} Tagen",
       "showingMatching_one": "{{shown}} von {{total}} passenden Stelle angezeigt",
-      "showingMatching_other": "{{shown}} von {{total}} passenden Stellen angezeigt"
+      "showingMatching_other": "{{shown}} von {{total}} passenden Stellen angezeigt",
+      "showingSplit_one": "{{shown}} von {{total}} Stelle: {{dated}} mit Datum in den letzten {{days}} Tagen, {{u}} ohne Datum",
+      "showingSplit_other": "{{shown}} von {{total}} Stellen: {{dated}} mit Datum in den letzten {{days}} Tagen, {{u}} ohne Datum"
     },
     "sec": {
       "fiscalYear": "Geschäftsjahr",

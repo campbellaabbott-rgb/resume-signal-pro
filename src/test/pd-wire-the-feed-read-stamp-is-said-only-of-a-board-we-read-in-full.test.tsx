@@ -68,9 +68,10 @@ const curve = (token: string, bucket: string) => ({
 });
 const BUCKET: Record<string, string> = { acme: "full_read", dominos: "lap_proven" };
 
-function mount() {
-  window.history.replaceState({}, "", "/jobs");
-  const jobs = [FULL, LAPS];
+function mount(path = "/jobs") {
+  window.history.replaceState({}, "", path);
+  const lander = path.match(/^\/jobs\/company\/([^/?]+)/)?.[1] ?? null;
+  const jobs = lander ? [FULL, LAPS].filter((j) => j.token === lander) : [FULL, LAPS];
   rpc.mockImplementation(async (fn: string, a?: { p_tokens?: string[] }) => {
     if (fn === "get_company_fill_curve") return { data: (a?.p_tokens ?? []).filter((t) => BUCKET[t]).map((t) => curve(t, BUCKET[t])), error: null };
     return { data: [], error: null };
@@ -88,9 +89,10 @@ function mount() {
     return { data: {} };
   });
   return render(
-    <MemoryRouter initialEntries={["/jobs"]}>
+    <MemoryRouter initialEntries={[path]}>
       <Routes>
         <Route path="/jobs" element={<Jobs />} />
+        <Route path="/jobs/company/:companyToken" element={<Jobs />} />
       </Routes>
     </MemoryRouter>,
   );
@@ -132,5 +134,26 @@ describe("the feed-read stamp is said only of a board we read in full", () => {
     fireEvent.click(cardOf("Platform Engineer")!);
     await waitFor(() => expect(status()?.getAttribute("data-live-status")).toBe("read"), SLOW);
     expect(document.body.textContent ?? "").toContain("Employer's feed read");
+  });
+});
+
+describe("the company page dates its figure by a read only on a board we read in full (GD6/A3)", () => {
+  const answer = () => document.querySelector<HTMLElement>("[data-company-answer]")?.textContent ?? "";
+  const results = () => document.querySelector<HTMLElement>("[data-company-results]")?.textContent ?? "";
+
+  it("a lap_proven board: neither the header nor the results line says the board was read", async () => {
+    mount("/jobs/company/dominos");
+    await waitFor(() => expect(rpc.mock.calls.some(([fn]) => fn === "get_company_fill_curve")).toBe(true), SLOW);
+    await waitFor(() => expect(answer()).toMatch(/1 role dated in the last 30 days/), SLOW);
+    // Let the curve's answer land before judging the stamp.
+    await new Promise((r) => setTimeout(r, 200));
+    expect(answer(), "the header dated a lap board's figure by a read").not.toMatch(/\bread\b/);
+    expect(answer()).toMatch(/counted/);
+    expect(results(), "the results line said this board was read").not.toMatch(/board read/);
+  });
+
+  it("a full_read board keeps its read stamp (the positive control)", async () => {
+    mount("/jobs/company/acme");
+    await waitFor(() => expect(answer()).toMatch(/1 role dated in the last 30 days · read 4 min ago/), SLOW);
   });
 });

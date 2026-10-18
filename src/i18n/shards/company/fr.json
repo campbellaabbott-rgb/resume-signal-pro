@@ -147,7 +147,10 @@
       "showing_many": "Affichage de {{shown}} sur {{total}} postes datés des {{days}} derniers jours",
       "showingMatching_one": "{{shown}} affiché sur {{total}} poste correspondant",
       "showingMatching_other": "{{shown}} affichés sur {{total}} postes correspondants",
-      "showingMatching_many": "{{shown}} affichés sur {{total}} postes correspondants"
+      "showingMatching_many": "{{shown}} affichés sur {{total}} postes correspondants",
+      "showingSplit_one": "Affichage de {{shown}} sur {{total}} poste : {{dated}} datés des {{days}} derniers jours, {{u}} sans date",
+      "showingSplit_other": "Affichage de {{shown}} sur {{total}} postes : {{dated}} datés des {{days}} derniers jours, {{u}} sans date",
+      "showingSplit_many": "Affichage de {{shown}} sur {{total}} postes : {{dated}} datés des {{days}} derniers jours, {{u}} sans date"
     },
     "sec": {
       "fiscalYear": "Exercice",
