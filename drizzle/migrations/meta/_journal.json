@@ -1212,6 +1212,13 @@
       "when": 1792321125646,
       "tag": "0172_20261012122000_a_field_admits_a_board_by_what_it_could_see_before_the_cohort",
       "breakpoints": true
+    },
+    {
+      "idx": 173,
+      "version": "7",
+      "when": 1792321138946,
+      "tag": "0173_20261012130000_four_company_tables_are_read_through_their_readers_and_never_by_a_client",
+      "breakpoints": true
     }
   ]
 }
