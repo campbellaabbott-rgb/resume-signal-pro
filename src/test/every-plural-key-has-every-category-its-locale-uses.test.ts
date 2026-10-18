@@ -19,9 +19,10 @@ import { LOCALE_FILES, readLocale } from "./helpers/locale-strings";
 
 const SUFFIX = /_(zero|one|two|few|many|other)$/;
 
+const ORDER = ["zero", "one", "two", "few", "many", "other"];
 const intlLocale = (lng: string) => (lng === "tl" ? "fil" : lng);
 const categories = (lng: string) =>
-  new Intl.PluralRules(intlLocale(lng)).resolvedOptions().pluralCategories.filter((c) => c !== "zero");
+  [...new Intl.PluralRules(intlLocale(lng)).resolvedOptions().pluralCategories].filter((c) => c !== "zero").sort((x, y) => ORDER.indexOf(x) - ORDER.indexOf(y));
 
 function groups(bundle: Bundle): Map<string, Set<string>> {
   const out = new Map<string, Set<string>>();
