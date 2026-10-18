@@ -17,7 +17,11 @@
 #     answered, and a search with ChatGPT's user agent answers in the
 #     ChatGPT edition. Neither read can show whether a row was written
 #     (honouring the flag changes no answer): that is the owner's
-#     service-role SQL, printed with this run's nonce;
+#     service-role SQL, printed with this run's nonce. Its expected count
+#     follows the agent-mcp build: 1 from 2026-10-11.3 (the flag followed
+#     OpenAI's egress, and this run calls from outside it), 0 from
+#     2026-10-11.27 (sweep S12-085: a caller that says it is ChatGPT is never
+#     logged, from anywhere; section 92 asks the same of its own nonce);
 #   - "nurse jobs in Texas" returns at least 90% of q "nurse" with location
 #     "Texas" and names the place in intentFilters, and so does "software
 #     engineer jobs in new york" against its location form; an employer asked
@@ -25,9 +29,8 @@
 #
 # READ-ONLY. job-board reads use the probe budget (anonymous reads of our own
 # tooling); ONE keyless MCP lookup is spent, as ChatGPT's user agent from this
-# machine (outside OpenAI's egress), so the owner can check that a user agent
-# alone no longer keeps a search out of the log. No write, no maintenance
-# action.
+# machine (outside OpenAI's egress), so the owner can check which rule the
+# serving agent-mcp follows. No write, no maintenance action.
 echo "== 86. wave 4 job-board .93: pass-end receipts, the no-log flag, search as asked =="
 
 VD86_JB=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/job-board" -H "x-rb-budget: probe" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+: *//')
@@ -62,7 +65,9 @@ J "{\"action\":\"list\",\"q\":\"nurse\",\"noLog\":true,\"limit\":1}" > /tmp/vd_8
 if build_ge agent-mcp "$VD86_MCP" "2026-10-11" "3"; then
   MC -A "ChatGPT-User/1.0; +https://openai.com/bot" -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"search_jobs\",\"arguments\":{\"query\":\"$VD86_NONCE\",\"limit\":1}}}" > /tmp/vd_86_gpt.json
 else : > /tmp/vd_86_gpt.json; fi
-VD86_LIVE="$VD86_LIVE" VD86_MCP="$VD86_MCP" VD86_NONCE="$VD86_NONCE" node -e '
+VD86_CLAIM=0
+build_ge agent-mcp "$VD86_MCP" "2026-10-11" "27" && VD86_CLAIM=1
+VD86_LIVE="$VD86_LIVE" VD86_MCP="$VD86_MCP" VD86_NONCE="$VD86_NONCE" VD86_CLAIM="$VD86_CLAIM" node -e '
 const fs=require("fs");const ok=(c,m)=>console.log((c?"PASS":"FAIL")+"  "+m);const info=(m)=>console.log("INFO  "+m);
 const rd=(f)=>{try{return JSON.parse(fs.readFileSync(f,"utf8"))}catch{return null}};
 const b=rd("/tmp/vd_86_nolog_browser.json");
@@ -74,7 +79,11 @@ else{
   if(r.isError&&/allowance is spent|Too many keyless calls/.test(t))info("the ChatGPT-edition search was refused for the allowance: "+t.slice(0,120));
   else ok(!r.isError&&!/utm_/.test(t),"a search with the ChatGPT user agent answers in the ChatGPT edition (no tracking tags); whether it was logged is the owner SQL below");
 }
-if(process.env.VD86_LIVE==="1")info("owner, service role, a minute after this run: SELECT count(*) FROM job_board_search_events WHERE q = '\''"+process.env.VD86_NONCE+"'\'' must be 1, and the same count on job_board_search_misses 1 too: this run called from outside OpenAI'\''s published egress, and from agent-mcp 2026-10-11.3 a user agent alone no longer keeps a search out of the log (0 means the flag still follows the user agent); that a search from OpenAI'\''s egress is not logged is proved in the suite (a-model-reads-slim-cards-and-a-chatgpt-search-is-not-logged, every-claude-and-chatgpt-user-shared-one-addresss-unkeyed-allowance) and, live, by SELECT count(*) FROM job_board_search_events WHERE caller = '\''mcp'\'' AND at::date = current_date staying near the Claude and other search_jobs and search calls in mcp_calls_daily for the day, never those plus ChatGPT'\''s; once .93 has served an hour, SELECT count(*) FROM job_board_search_events WHERE caller = '\''mcp'\'' AND at > now() - interval '\''1 hour'\'' AND jsonb_array_length(coalesce(shown, '\''[]'\''::jsonb)) > 0 must be 0 (an MCP search keeps its words, never its shown ids)");'
+const claim=process.env.VD86_CLAIM==="1";
+const want=claim
+  ?"must be 0, and the same count on job_board_search_misses 0 too: from agent-mcp 2026-10-11.27 a caller that says it is ChatGPT is never logged, from anywhere (S12-085; 1 means the flag still follows OpenAI'\''s egress list)"
+  :"must be 1, and the same count on job_board_search_misses 1 too: this run called from outside OpenAI'\''s published egress, and from agent-mcp 2026-10-11.3 a user agent alone no longer keeps a search out of the log (0 means the flag still follows the user agent)";
+if(process.env.VD86_LIVE==="1")info("owner, service role, a minute after this run: SELECT count(*) FROM job_board_search_events WHERE q = '\''"+process.env.VD86_NONCE+"'\'' "+want+"; that a search from OpenAI'\''s egress is not logged is proved in the suite (a-model-reads-slim-cards-and-a-chatgpt-search-is-not-logged, every-claude-and-chatgpt-user-shared-one-addresss-unkeyed-allowance) and, live, by SELECT count(*) FROM job_board_search_events WHERE caller = '\''mcp'\'' AND at::date = current_date staying near the Claude and other search_jobs and search calls in mcp_calls_daily for the day, never those plus ChatGPT'\''s; once .93 has served an hour, SELECT count(*) FROM job_board_search_events WHERE caller = '\''mcp'\'' AND at > now() - interval '\''1 hour'\'' AND jsonb_array_length(coalesce(shown, '\''[]'\''::jsonb)) > 0 must be 0 (an MCP search keeps its words, never its shown ids)");'
 
 # Search as asked: the place moved out of the words, and an employer by name.
 J '{"action":"list","q":"nurse jobs in Texas","limit":1}' > /tmp/vd_86_q1.json

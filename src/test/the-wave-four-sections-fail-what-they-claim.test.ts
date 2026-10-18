@@ -400,9 +400,18 @@ describe("86: job-board .93", () => {
       /a search with the ChatGPT user agent answers in the ChatGPT edition/, /"nurse jobs in Texas" returns 1584 of the location form's 1592/, /"software engineer jobs in new york" returns 437/,
       /companies:\["Humana"\] resolves by name/,
     ]) expect(has(lines, "PASS", re), `${re}${show(lines)}`).toBe(true);
-    // From agent-mcp 2026-10-11.3 the flag follows OpenAI's egress, and this
-    // run calls from outside it: its nonce must be logged (review of 9fe3bc0d).
-    expect(has(lines, "INFO", /job_board_search_events WHERE q = 'vdnolog\d+' must be 1/), show(lines)).toBe(true);
+    // The real handler serves 2026-10-11.27 or later: a caller that says it
+    // is ChatGPT is never logged, from anywhere (S12-085), so the run's own
+    // nonce must count 0, and the older rule's 1 is not asked.
+    expect(real.options.headers["x-fn-build"]).toMatch(/^agent-mcp\.2026-10-11\.(2[7-9]|[3-9]\d|\d{3,})$/);
+    expect(has(lines, "INFO", /job_board_search_events WHERE q = 'vdnolog\d+' must be 0, and the same count on job_board_search_misses 0/), show(lines)).toBe(true);
+    expect(has(lines, "INFO", /'vdnolog\d+' must be 1/), show(lines)).toBe(false);
+  });
+
+  it("an agent-mcp between 2026-10-11.3 and .27 still has its nonce asked for 1: that build follows OpenAI's egress and this run calls from outside it", () => {
+    const { lines } = run(["86-wave4-job-board.sh"], healthy({ "opt:mcp": { match: `^OPTIONS ${esc(MCP)} `, headers: { "x-fn-build": "agent-mcp.2026-10-11.3" } } }));
+    expect(has(lines, "INFO", /job_board_search_events WHERE q = 'vdnolog\d+' must be 1, and the same count on job_board_search_misses 1/), show(lines)).toBe(true);
+    expect(has(lines, "INFO", /'vdnolog\d+' must be 0/), show(lines)).toBe(false);
   });
 
   it("a tail with an open step past 30 minutes FAILs naming it; one in flight is INFO", () => {

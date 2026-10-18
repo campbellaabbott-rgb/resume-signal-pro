@@ -88,7 +88,7 @@ const g=((rd("/tmp/vd_92_gpt.json")||{}).result)||{};const gt=String(((g.content
 if(spent(g,gt))info("the ChatGPT nonce search was refused for the allowance: "+gt.slice(0,120));
 else{
   ok(!g.isError,"a search that says it is ChatGPT answers"+(g.isError?": "+gt.slice(0,120):""));
-  info("owner, service role, a minute after this run: SELECT count(*) FROM job_board_search_events WHERE q = '\''"+process.env.VD92_NONCE+"'\'' must be 0 (S12-085: a caller that says it is ChatGPT is never logged, from anywhere; 1 means the no-log flag still follows OpenAI'\''s egress list). Section 86'\''s nonce line asking for 1 predates this fix.");
+  info("owner, service role, a minute after this run: SELECT count(*) FROM job_board_search_events WHERE q = '\''"+process.env.VD92_NONCE+"'\'' must be 0 (S12-085: a caller that says it is ChatGPT is never logged, from anywhere; 1 means the no-log flag still follows OpenAI'\''s egress list). Section 86 asks the same 0 of its own nonce from this build on.");
 }'
 fi
 
