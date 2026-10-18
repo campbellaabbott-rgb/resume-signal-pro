@@ -81,7 +81,7 @@
       "review": "Revisas cada borrador y lo envías tú.",
       "statusTitle": "En Claude o ChatGPT: todavía no.",
       "statusBody": "Las herramientas de Pro necesitan que inicies sesión desde tu IA, y eso aún no está activado. Hasta entonces, funcionan en este sitio web.",
-      "consent": "Acepto que Pro se renueve por {{price}} al mes hasta que lo cancele.",
+      "consent": "Acepto que Pro se renueve automáticamente cada mes por {{price}} hasta que lo cancele, y que puedo cancelarlo cuando quiera desde mi cuenta.",
       "consentError": "Marca la casilla para aceptar la renovación antes de ir al pago.",
       "cta": "Hazte Pro, {{price}} al mes",
       "fine": "Necesitas una cuenta gratuita; primero inicias sesión. Pro sigue activo hasta el final del mes que pagaste.",

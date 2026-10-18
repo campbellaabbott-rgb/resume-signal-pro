@@ -15,6 +15,17 @@
  *   - for Pro, the shared PurchaseTerms line (renewal, "By continuing you
  *     agree", the seller): it sits in the button's own block, which is how a
  *     press on this button carries the Terms version (src/lib/purchase-terms.ts).
+ *
+ * THE RENEWAL BOX IS A STAND-IN FOR WAVE 4'S. Wave 4's PurchaseTerms renders
+ * its own box ([data-auto-renew-box]) for kind="subscription" plan="pro";
+ * purchaseTerms() sends `autoRenewConsent: true` only when that box was
+ * ticked, and create-subscription-checkout refuses a plan without it and
+ * records AUTO_RENEW_CONSENT_VERSION with the time. This base's PurchaseTerms
+ * has no box, so the block draws one with the same attribute and wave 4's
+ * words, and records nothing of its own. When wave 4's PurchaseTerms arrives,
+ * src/test/hp-fix-renewal-box.test.tsx finds two boxes and switch-over step 8
+ * deletes this one, keeping the focus-and-error press through PurchaseTerms'
+ * onAutoRenewChange (docs/homepage-pricing/README.md).
  */
 import { useId, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
@@ -28,16 +39,6 @@ import { isOwingStatus } from "@/config/subscription-status";
 import { money } from "@/lib/format";
 import { FULL_ANALYSIS_PRICE_USD, PRO_PRICE_USD } from "./plan-facts";
 import { GATE_TEXT_KEY, type FullAnalysisClosedBy, type ProClosedBy, type SaleGates } from "./sale-gates";
-
-/** The wording version of the renewal box; the server records it with the time (wave 4, G7). */
-export const RENEWAL_CONSENT_VERSION = "2026-10-17";
-
-export interface RenewalConsentRecord {
-  renewalConsent: true;
-  renewalConsentVersion: string;
-  /** The sentence the buyer ticked, in the language they read it in. */
-  renewalConsentText: string;
-}
 
 /** Furniture only the preview page passes: a label above each button and a stand-in for the seller line. */
 export interface PreviewFurniture {
@@ -93,7 +94,8 @@ export function FullAnalysisBuy({ gates, preview }: { gates: SaleGates; preview?
 export interface ProBuyBlockProps {
   gates: SaleGates;
   busy?: boolean;
-  onGoPro: (consent: RenewalConsentRecord) => void;
+  /** Called only once the renewal box is ticked. */
+  onGoPro: () => void;
   preview?: PreviewFurniture;
 }
 
@@ -113,14 +115,14 @@ export function ProBuyBlock({ gates, busy = false, onGoPro, preview }: ProBuyBlo
       box.current?.focus();
       return;
     }
-    onGoPro({ renewalConsent: true, renewalConsentVersion: RENEWAL_CONSENT_VERSION, renewalConsentText: consentText });
+    onGoPro();
   };
 
   return (
     <div className="mt-5" data-buy-block="pro">
       {preview?.label}
       <div className="rounded-md border border-border bg-background px-3 py-2.5" data-renewal-consent="">
-        <label htmlFor={`${id}-renew`} className="flex min-h-6 cursor-pointer items-start gap-2.5 text-sm text-foreground coarse:min-h-11">
+        <label htmlFor={`${id}-renew`} data-auto-renew-box="" className="flex min-h-6 cursor-pointer items-start gap-2.5 text-sm text-foreground coarse:min-h-11">
           <input
             ref={box}
             id={`${id}-renew`}
@@ -160,9 +162,9 @@ export function ProBuyBlock({ gates, busy = false, onGoPro, preview }: ProBuyBlo
  * payment sees Update payment (never a second subscription, platform sweep
  * L6-06), anyone else the buy block. Signed out, Go Pro goes to sign-in first.
  *
- * The renewal box's record is not sent yet: create-subscription-checkout
- * accepts it once wave 4 ships G7 (it refuses a checkout without it and
- * records the version and the time). Until then the box gates the press here.
+ * The renewal consent the server reads is wave 4's PurchaseTerms box (see
+ * the head of this file); until it is on this base the stand-in gates the
+ * press here and nothing is sent for it.
  */
 export function ProBuyConnected({ gates }: { gates: SaleGates }) {
   const { t } = useTranslation();

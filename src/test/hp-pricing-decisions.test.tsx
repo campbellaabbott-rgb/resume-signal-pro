@@ -73,7 +73,6 @@ import { resolveSaleGates, type SaleGateInput } from "@/components/pricing/sale-
 import { PRO_PERK_ITEMS, visibleProPerks } from "@/components/pricing/pro-perks-mirror";
 import { pricingJsonLd } from "@/components/pricing/pricing-jsonld";
 import { FAQ_IDS } from "@/components/pricing/PricingFaq";
-import { RENEWAL_CONSENT_VERSION } from "@/components/pricing/BuyBlock";
 import { BUILDER_PRICE_USD, FULL_ANALYSIS_PRICE_USD, PRO_PRICE_USD } from "@/components/pricing/plan-facts";
 import en from "@/components/pricing/strings/en.json";
 import PricingPage from "@/pages/pricing/PricingPage";
@@ -314,7 +313,6 @@ describe("6. Go Pro needs a separate, unchecked, required renewal box", () => {
     fireEvent.click(block.querySelector("[data-buy=pro]")!);
     expect(h.subscribe).toHaveBeenCalledTimes(1);
     expect(h.subscribe).toHaveBeenCalledWith("member@example.com");
-    expect(RENEWAL_CONSENT_VERSION).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 
   it("signed out, a ticked Go Pro goes to sign-in first", () => {

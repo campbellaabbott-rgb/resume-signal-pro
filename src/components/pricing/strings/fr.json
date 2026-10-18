@@ -81,7 +81,7 @@
       "review": "Vous relisez chaque brouillon et l'envoyez vous-même.",
       "statusTitle": "Dans Claude ou ChatGPT : pas encore.",
       "statusBody": "Les outils Pro demandent que vous soyez connecté depuis votre IA, ce qui n'est pas encore activé. D'ici là, ils fonctionnent sur ce site.",
-      "consent": "J'accepte que Pro se renouvelle à {{price}} par mois jusqu'à ce que je résilie.",
+      "consent": "J'accepte que Pro se renouvelle automatiquement chaque mois à {{price}} jusqu'à ce que je résilie, et que je peux résilier à tout moment depuis mon compte.",
       "consentError": "Cochez la case pour accepter le renouvellement avant de passer au paiement.",
       "cta": "Passer à Pro, {{price}} par mois",
       "fine": "Nécessite un compte gratuit ; vous vous connectez d'abord. Pro reste actif jusqu'à la fin du mois payé.",

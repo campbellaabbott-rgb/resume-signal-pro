@@ -81,7 +81,7 @@
       "review": "Ikaw ang nagsusuri ng bawat draft at ikaw mismo ang nagpapadala nito.",
       "statusTitle": "Sa Claude o ChatGPT: hindi pa.",
       "statusBody": "Kailangan ng mga tool ng Pro na naka-sign in ka mula sa iyong AI, at hindi pa iyon naka-on. Hanggang doon, tumatakbo sila sa website na ito.",
-      "consent": "Pumapayag ako na nire-renew ang Pro sa {{price}} bawat buwan hanggang kanselahin ko.",
+      "consent": "Pumapayag ako na awtomatikong nire-renew ang Pro bawat buwan sa {{price}} hanggang kanselahin ko, at na maaari kong kanselahin ito anumang oras mula sa aking account.",
       "consentError": "Lagyan ng tsek ang kahon para pumayag sa renewal bago ka pumunta sa checkout.",
       "cta": "Mag-Pro, {{price}} bawat buwan",
       "fine": "Kailangan ng libreng account; mag-sign in ka muna. Naka-on ang Pro hanggang sa katapusan ng buwang binayaran mo.",

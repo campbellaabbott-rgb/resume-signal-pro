@@ -81,7 +81,7 @@
       "review": "Je controleert elk concept en verstuurt het zelf.",
       "statusTitle": "In Claude of ChatGPT: nog niet.",
       "statusBody": "De Pro-hulpmiddelen vragen dat je vanuit je AI bent ingelogd, en dat staat nog niet aan. Tot dan werken ze op deze website.",
-      "consent": "Ik ga ermee akkoord dat Pro wordt verlengd voor {{price}} per maand tot ik opzeg.",
+      "consent": "Ik ga ermee akkoord dat Pro elke maand automatisch wordt verlengd voor {{price}} tot ik opzeg, en dat ik altijd via mijn account kan opzeggen.",
       "consentError": "Vink het vakje aan om in te stemmen met de verlenging voordat je gaat afrekenen.",
       "cta": "Neem Pro, {{price}} per maand",
       "fine": "Vereist een gratis account; je logt eerst in. Pro blijft actief tot het einde van de maand die je hebt betaald.",
