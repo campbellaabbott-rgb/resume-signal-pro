@@ -378,6 +378,9 @@ describe("check-subscription answers what the account's plan unlocks", () => {
     db.rows("pro_subscribers").push({ email: "subscriber@example.com", status: "active", current_period_end: soon(), updated_at: new Date().toISOString() });
     const body = await (await post("check-subscription", {}, "jwt-squatter")).json();
     expect(body).toMatchObject({ active: false, linkPending: true });
+    // Wave 4 round 2 fixes (D8): a stranger signed up as the address learns
+    // only that a plan exists to link, not its standing, renewal or cancel.
+    for (const k of ["status", "currentPeriodEnd", "cancelAtPeriodEnd", "tier", "email"]) expect(body, k).not.toHaveProperty(k);
   });
 });
 

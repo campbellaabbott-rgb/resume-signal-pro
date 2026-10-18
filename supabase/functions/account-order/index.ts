@@ -28,7 +28,10 @@ import { requireWebsiteSession } from "../_shared/website-session.ts";
 // Provable from outside without touching an order: every response, the CORS
 // preflight included, carries this in x-fn-build. It imports
 // _shared/mailbox-proof.ts, which R1 stamped 2026-10-14.1.
-const FN_BUILD = "account-order.2026-10-14.25";
+// 2026-10-14.30 (wave 4 round 2 fixes): a receipt is asked of Stripe at most
+// RECEIPTS_PER_HOUR times an hour per account, counted before Stripe is asked
+// (the account's Stripe reads share one limit with the checkouts).
+const FN_BUILD = "account-order.2026-10-14.30";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -42,6 +45,8 @@ const json = (body: unknown, status = 200) =>
 
 /** Sends of one order's saved copy in a day. */
 export const MAIL_AGAIN_PER_DAY = 3;
+/** Receipts one account may ask Stripe for in an hour. */
+export const RECEIPTS_PER_HOUR = 30;
 const SESSION_RE = /^cs_(live|test)_[A-Za-z0-9]{8,200}$/;
 
 async function sha256Hex(s: string): Promise<string> {
@@ -90,6 +95,13 @@ Deno.serve(async (req) => {
     if (action === "receipt") {
       const stripeKey = Deno.env.get(sessionId.startsWith("cs_test_") ? "STRIPE_TEST_SECRET_KEY" : "STRIPE_SECRET_KEY");
       if (!stripeKey) return json({ error: "Receipts are unavailable right now." }, 503);
+      // Counted before Stripe is asked: every retrieve spends the account's shared read limit.
+      const receiptBucket = (await sha256Hex(`${supabaseServiceKey}:account-order-receipt:${user.id}`)).slice(0, 32);
+      const { data: receiptOk, error: receiptDoorErr } = await service.rpc("mail_door_take", {
+        p_door: "account-order:receipt", p_bucket: receiptBucket, p_max: RECEIPTS_PER_HOUR, p_window_minutes: 60,
+      });
+      if (receiptDoorErr) return json({ error: "Receipts are unavailable right now. Try again in a minute." }, 503);
+      if (receiptOk !== true) return json({ error: "Too many receipt requests this hour. Try again later.", code: "rate_limited" }, 429);
       const stripe = new Stripe(stripeKey, { apiVersion: "2025-12-15.clover" });
       const s = await stripe.checkout.sessions.retrieve(sessionId, { expand: ["payment_intent.latest_charge"] });
       const pi = s.payment_intent as unknown as { latest_charge?: { receipt_url?: string | null } | string | null } | null;

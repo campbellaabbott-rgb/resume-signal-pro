@@ -57,7 +57,12 @@ import { cacheCancelFlag, cancelFlagFrom, recordingSubscriptions } from "../_sha
 // which plan a signed-in account's standing rests on (planTier, S12-168: a
 // retired Agent plan is not shown as Pro); a caller just back from Stripe's
 // billing portal (fresh: true) is answered from Stripe, not a cached row.
-const FN_BUILD = "check-subscription.2026-10-11.23";
+// 2026-10-11.30 (wave 4 round 2 fixes): an account that is not Pro, on an
+// address whose plan is live, is told only that the address has a plan to
+// link (linkPending), never that plan's status, renewal date or cancellation:
+// sign-ups are auto-confirmed, so anyone can sign up as a stranger's address
+// (D8).
+const FN_BUILD = "check-subscription.2026-10-11.30";
 
 /**
  * Which plan a signed-in account's rows rest on: a live Pro row, else a live
@@ -123,6 +128,14 @@ serve(async (req) => {
       }
       const all = (liveRow ? [...rows, liveRow] : rows) as Array<ProRow & { tier?: string | null }>;
       const standing = proStandingFrom(all);
+      // The address's live plan is not this account's: a stranger's until it
+      // is linked, so only "there is one to link" is said.
+      if (addressAnswer.active === true && !standing.pro) {
+        return json({
+          active: false, trialing: standing.trialing, consumablesIncluded: standing.consumables,
+          planTier: planTierOf(all), linkPending: true,
+        }, status);
+      }
       return json({
         ...addressAnswer,
         active: standing.pro,

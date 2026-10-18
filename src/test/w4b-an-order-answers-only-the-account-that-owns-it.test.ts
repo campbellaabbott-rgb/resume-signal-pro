@@ -48,7 +48,7 @@ beforeAll(async () => {
   };
   handler = await loadEdgeHandler("account-order", {
     "https://esm.sh/@supabase/supabase-js@2": "export function createClient(...a) { return globalThis.__w4bOrder(...a); }",
-    "https://esm.sh/stripe@18.5.0": `export default class Stripe { constructor() { this.checkout = { sessions: { retrieve: async (id) => ({ id, payment_intent: { latest_charge: { receipt_url: "https://pay.stripe.com/receipts/" + id } } }) } }; } }`,
+    "https://esm.sh/stripe@18.5.0": `export default class Stripe { constructor() { this.checkout = { sessions: { retrieve: async (id) => { globalThis.__aoRetrieves = (globalThis.__aoRetrieves ?? 0) + 1; return { id, payment_intent: { latest_charge: { receipt_url: "https://pay.stripe.com/receipts/" + id } } }; } } }; } }`,
   });
 }, 120_000);
 
@@ -97,9 +97,22 @@ describe("receipt", () => {
   it("answers Stripe's receipt URL and sends nothing", async () => {
     const r = await ask({ action: "receipt", sessionId: MINE });
     expect(r.status).toBe(200);
-    expect(r.build).toBe("account-order.2026-10-14.25");
+    expect(r.build).toBe("account-order.2026-10-14.30");
     expect(r.json.url).toBe(`https://pay.stripe.com/receipts/${MINE}`);
     expect(mailed).toEqual([]);
+  });
+
+  // Wave 4 round 2 fixes: every receipt was a live Stripe retrieve with no
+  // limiter; an account owning one order could loop it and draw down the
+  // Stripe account's shared read limit.
+  it("is counted per account before Stripe is asked: past thirty an hour, 429 and no Stripe read", async () => {
+    const g = globalThis as Record<string, unknown>;
+    g.__aoRetrieves = 0;
+    const statuses: number[] = [];
+    for (let i = 0; i < 31; i++) statuses.push((await ask({ action: "receipt", sessionId: MINE })).status);
+    expect(statuses.slice(0, 30).every((s) => s === 200)).toBe(true);
+    expect(statuses[30]).toBe(429);
+    expect(g.__aoRetrieves).toBe(30);
   });
 });
 
