@@ -70,7 +70,7 @@
       "noAccount": "Keine Karte, kein Konto",
       "allowance": "{{free}} Scans pro Tag, {{signedIn}} mit einem kostenlosen Konto",
       "cta": "Lebenslauf kostenlos scannen",
-      "retention": "Der Lebenslauftext wird nach {{hours}} Stunden gelöscht und der kostenlose Bericht nach {{days}} Tagen; eine bezahlte Full Analysis bleibt {{paidDays}} Tage hinter ihrem privaten Link. Die Seite <trust>Vertrauen</trust> listet jede Kopie auf.",
+      "retention": "Der Lebenslauftext wird nach {{hours}} Stunden gelöscht und der kostenlose Bericht nach {{days}} Tagen; eine bezahlte Vollanalyse bleibt {{paidDays}} Tage hinter ihrem privaten Link. Die Seite <trust>Vertrauen</trust> listet jede Kopie auf.",
       "sampleSummary": "Einen Beispielbericht ansehen"
     },
     "sample": {
@@ -142,14 +142,14 @@
       "freeBodyNoAlerts": "Mit einem kostenlosen Konto außerdem gespeicherte Suchen, der Tracker und pro Tag ein angepasster Lebenslauf, ein Anschreiben und eine Interview-Vorbereitung.",
       "once": "einmalig",
       "perMonth": "pro Monat",
-      "faTitle": "Full Analysis",
+      "faTitle": "Vollanalyse",
       "faBody": "Ein tieferer Bericht über deinen Lebenslauf gegenüber einer Stelle: eine Aufschlüsselung des Scores, Keyword-Lücken mit je einer Korrektur, Umformulierungen Stichpunkt für Stichpunkt, ein Aktionsplan und ein PDF.",
-      "faGatedSeller": "Noch nicht im Verkauf. Der Verkauf beginnt, sobald Name und Anschrift des Verkäufers auf dieser Seite veröffentlicht sind.",
-      "faGatedDelivery": "Noch nicht im Verkauf. Wir prüfen, dass der Bericht bei den Käufern ankommt.",
+      "faGatedSeller": "Noch nicht im Verkauf. Käufe sind bald möglich, sobald Name und Anschrift des Verkäufers auf der Preisseite stehen.",
+      "faGatedDelivery": "Noch nicht im Verkauf. Wir prüfen, ob der Bericht bei den Käufern ankommt.",
       "proTitle": "Pro",
       "proBody": "Die Schreibwerkzeuge für eine aktive Suche: {{perDay}} von jedem pro Tag und {{perMonth}} von jedem pro Monat (ein Paket ist je eines), und keine Tagesgrenze für Scans.",
-      "proIncludesFa": "Die Full Analysis ist enthalten.",
-      "termFinal": "Alle Verkäufe sind endgültig.",
+      "proIncludesFa": "Die Vollanalyse ist enthalten.",
+      "termFinal": "Alle Käufe sind endgültig.",
       "termTerritory": "Noch nicht verkauft in der EU, im EWR, im Vereinigten Königreich oder in Indien, bis wir dort steuerlich registriert sind. Der Checkout weist Käufer ab, die er dort verorten kann: anhand der Währung, der Zeitzone des Browsers und einer Abfrage der IP-Adresse.",
       "termUsd": "Preise in US-Dollar.",
       "more": "Preise und Limits ansehen"
@@ -166,7 +166,7 @@
       "fitQ": "Sagt ihr mir, welche Jobs ich bekomme?",
       "fitA": "Nein. Passung vergleicht Wörter: Sie zeigt, welche Begriffe einer Stelle dein Lebenslauf enthält. Sie ist kostenlos, ohne Konto, in dem Browser, in dem du deinen Lebenslauf gescannt oder abgelegt hast. Ort, Arbeitserlaubnis und Seniorität liest sie noch nicht, und sie sagt nie Vorstellungsgespräche oder Angebote voraus. Wir bauen den Lebenslauf-Abgleich neu auf.",
       "resumeQ": "Was passiert mit meinem Lebenslauf?",
-      "resumeA": "Der Text wird nach {{hours}} Stunden gelöscht und der kostenlose Bericht nach {{days}} Tagen. Eine bezahlte Full Analysis bleibt {{paidDays}} Tage hinter ihrem privaten Link, wenn du sie nicht früher löschst. Die Seite <trust>Vertrauen</trust> listet jede Kopie auf."
+      "resumeA": "Der Text wird nach {{hours}} Stunden gelöscht und der kostenlose Bericht nach {{days}} Tagen. Eine bezahlte Vollanalyse bleibt {{paidDays}} Tage hinter ihrem privaten Link, wenn du sie nicht früher löschst. Die Seite <trust>Vertrauen</trust> listet jede Kopie auf."
     }
   }
 }

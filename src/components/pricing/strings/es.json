@@ -22,7 +22,7 @@
       "renewalBody": "Los precios están en dólares estadounidenses. Pro se renueva cada mes por {{proPrice}} hasta que lo canceles, y aceptas la renovación con una casilla aparte antes del pago. El Análisis completo es un solo pago y nunca se renueva."
     },
     "buy": {
-      "finalSale": "Todas las ventas son finales.",
+      "finalSale": "Todas las ventas son definitivas.",
       "region": "Aún no se vende en la UE, el EEE, el Reino Unido ni la India.",
       "gateSeller": "Aún no está a la venta. Las compras se abrirán pronto, cuando el nombre y la dirección del vendedor se publiquen en esta página.",
       "gateFaDelivery": "Aún no está a la venta. Estamos comprobando que el informe llega a los compradores.",
@@ -171,7 +171,7 @@
       "packageA": "La redacción para una oferta: un currículum adaptado, una carta de presentación y preparación de entrevista. Pro permite {{perDay}} de cada al día y {{perMonth}} de cada al mes, contados en días UTC. Una cuenta gratuita permite {{freePerDay}} de cada al día.",
       "cancelQ": "¿Cómo cancelo Pro?",
       "cancelA": "En línea desde tu cuenta, igual que te suscribiste, cuando quieras. Cancelar detiene la próxima renovación, y Pro sigue activo hasta el final del mes que pagaste.",
-      "applyQ": "¿Postuláis a empleos por mí?",
+      "applyQ": "¿Se postulan a empleos por mí?",
       "applyA": "No, en ningún plan. Pro redacta borradores para las ofertas que eliges; tú revisas los borradores y postulas en el sitio del empleador, a mano o con ayuda de Claude, ChatGPT o Claude Code.",
       "interviewsQ": "¿Pagar me conseguirá entrevistas?",
       "interviewsA": "No podemos prometerlo, y no estimamos las posibilidades de nadie. Las herramientas mejoran lo que envías; deciden los empleadores."

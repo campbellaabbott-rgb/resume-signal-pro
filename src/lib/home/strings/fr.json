@@ -97,7 +97,7 @@
       "beforeText": "Responsable des rapports mensuels.",
       "after": "Après",
       "afterText": "Création du rapport mensuel des ventes pour <ph>[nombre]</ph> équipes régionales, réduisant la préparation de <ph>[avant]</ph> à <ph>[après]</ph>.",
-      "foot": "Les crochets marquent des faits que vous seul connaissez. Vérifiez chaque chiffre avant de l'utiliser."
+      "foot": "Les crochets signalent des faits que vous seul connaissez. Contrôlez chaque chiffre avant de l'utiliser."
     },
     "ai": {
       "title": "Cherchez dans le tableau depuis Claude ou ChatGPT",
@@ -148,8 +148,8 @@
       "perMonth": "par mois",
       "faTitle": "Analyse complète",
       "faBody": "Un rapport plus poussé sur votre CV face à une offre : le détail du score, les mots-clés manquants avec une correction pour chacun, des réécritures puce par puce, un plan d'action et un PDF.",
-      "faGatedSeller": "Pas encore en vente. Les ventes ouvriront dès que le nom et l'adresse du vendeur seront publiés sur cette page.",
-      "faGatedDelivery": "Pas encore en vente. Nous vérifions que le rapport parvient bien aux acheteurs.",
+      "faGatedSeller": "Pas encore en vente. Les achats ouvriront bientôt, dès que le nom et l'adresse du vendeur seront publiés sur la page des tarifs.",
+      "faGatedDelivery": "Pas encore en vente. Nous contrôlons que le rapport parvient bien aux acheteurs.",
       "proTitle": "Pro",
       "proBody": "Les outils de rédaction pour une recherche active : {{perDay}} de chaque par jour et {{perMonth}} de chaque par mois (un pack contient un de chaque), et pas de plafond quotidien d'analyses.",
       "proIncludesFa": "L'Analyse complète est incluse.",

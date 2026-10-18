@@ -22,7 +22,7 @@
       "renewalBody": "Os preços estão em dólares americanos. O Pro renova todo mês por {{proPrice}} até você cancelar, e você aceita a renovação em uma caixa separada antes do pagamento. A Análise completa é um pagamento único e nunca renova."
     },
     "buy": {
-      "finalSale": "Todas as vendas são finais.",
+      "finalSale": "Todas as vendas são definitivas.",
       "region": "Ainda não vendido na UE, no EEE, no Reino Unido nem na Índia.",
       "gateSeller": "Ainda não está à venda. As compras abrem em breve, quando o nome e o endereço do vendedor forem publicados nesta página.",
       "gateFaDelivery": "Ainda não está à venda. Estamos conferindo se o relatório chega aos compradores.",

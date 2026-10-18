@@ -70,7 +70,7 @@
       "noAccount": "Walang card, walang account",
       "allowance": "{{free}} scan bawat araw, {{signedIn}} gamit ang libreng account",
       "cta": "I-scan nang libre ang résumé ko",
-      "retention": "Binubura ang text ng résumé pagkalipas ng {{hours}} oras at ang libreng ulat pagkalipas ng {{days}} araw; ang bayad na Full Analysis ay nananatili sa likod ng pribadong link nito nang {{paidDays}} araw. Inililista ng pahinang <trust>Tiwala</trust> ang bawat kopya.",
+      "retention": "Binubura ang text ng résumé pagkalipas ng {{hours}} oras at ang libreng ulat pagkalipas ng {{days}} araw; ang bayad na Buong Pagsusuri ay nananatili sa likod ng pribadong link nito nang {{paidDays}} araw. Inililista ng pahinang <trust>Tiwala</trust> ang bawat kopya.",
       "sampleSummary": "Tingnan ang isang halimbawang ulat"
     },
     "sample": {
@@ -142,13 +142,13 @@
       "freeBodyNoAlerts": "Sa libreng account, mayroon ding mga naka-save na paghahanap, ang tracker, at bawat araw ay isang iniangkop na résumé, isang cover letter at isang paghahanda sa interview.",
       "once": "minsan",
       "perMonth": "bawat buwan",
-      "faTitle": "Full Analysis",
+      "faTitle": "Buong Pagsusuri",
       "faBody": "Mas malalim na ulat sa résumé mo laban sa isang trabaho: breakdown ng score, mga kulang na keyword na may ayos para sa bawat isa, muling pagsulat bawat bullet, isang action plan at isang PDF.",
-      "faGatedSeller": "Hindi pa ibinebenta. Magbubukas ang bentahan kapag nailathala na sa pahinang ito ang pangalan at address ng nagbebenta.",
-      "faGatedDelivery": "Hindi pa ibinebenta. Sinusuri pa namin na nakakarating ang ulat sa mga mamimili.",
+      "faGatedSeller": "Hindi pa ibinebenta. Magbubukas ang pagbili sa lalong madaling panahon, kapag nailathala na sa pahina ng presyo ang pangalan at address ng nagbebenta.",
+      "faGatedDelivery": "Hindi pa ibinebenta. Tinitingnan namin kung nakakarating ang ulat sa mga mamimili.",
       "proTitle": "Pro",
       "proBody": "Ang mga tool sa pagsulat para sa aktibong paghahanap: {{perDay}} ng bawat isa kada araw at {{perMonth}} ng bawat isa kada buwan (ang isang package ay tig-isa), at walang pang-araw-araw na limit sa mga scan.",
-      "proIncludesFa": "Kasama ang Full Analysis.",
+      "proIncludesFa": "Kasama ang Buong Pagsusuri.",
       "termFinal": "Final ang lahat ng benta.",
       "termTerritory": "Hindi pa ibinebenta sa EU, EEA, UK o India, hanggang makapagparehistro kami roon para sa buwis. Tinatanggihan ng checkout ang mga mamimiling matutukoy nitong naroon, batay sa currency, sa time zone ng browser at sa pagtingin sa IP address.",
       "termUsd": "Mga presyo sa US dollar.",
@@ -166,7 +166,7 @@
       "fitQ": "Sasabihin ba ninyo kung anong trabaho ang makukuha ko?",
       "fitA": "Hindi. Naghahambing ng mga salita ang fit: ipinapakita nito kung aling mga termino ng posting ang gamit ng résumé mo. Libre ito, walang account, sa browser kung saan mo in-scan o inilagay ang résumé mo. Hindi pa nito binabasa ang lokasyon, pahintulot sa trabaho o seniority, at hindi nito kailanman hinuhulaan ang mga interview o alok. Binubuo naming muli ang pagtutugma ng résumé.",
       "resumeQ": "Ano ang nangyayari sa résumé ko?",
-      "resumeA": "Binubura ang text pagkalipas ng {{hours}} oras at ang libreng ulat pagkalipas ng {{days}} araw. Ang bayad na Full Analysis ay nananatili sa likod ng pribadong link nito nang {{paidDays}} araw maliban kung burahin mo ito nang mas maaga. Inililista ng pahinang <trust>Tiwala</trust> ang bawat kopya."
+      "resumeA": "Binubura ang text pagkalipas ng {{hours}} oras at ang libreng ulat pagkalipas ng {{days}} araw. Ang bayad na Buong Pagsusuri ay nananatili sa likod ng pribadong link nito nang {{paidDays}} araw maliban kung burahin mo ito nang mas maaga. Inililista ng pahinang <trust>Tiwala</trust> ang bawat kopya."
     }
   }
 }

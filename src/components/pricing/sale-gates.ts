@@ -21,11 +21,16 @@
  * missing address as the reason when the reason is an unwatched delivery.
  */
 import { SELLER, sellerIdentity, type SellerIdentity } from "@/config/seller";
+import { SALE_SWITCHES } from "@/lib/home/sale-gates";
 
-/** Stand-in for FULL_ANALYSIS_ON_SALE (src/config/sales-gate.ts, hp/honesty). */
-export const FULL_ANALYSIS_DELIVERY_WATCHED = false;
-/** Stand-in for PRO_ON_SALE (src/config/sales-gate.ts, hp/honesty). */
-export const PRO_SUBSCRIPTION_WATCHED = false;
+/**
+ * Stand-in for FULL_ANALYSIS_ON_SALE (src/config/sales-gate.ts, hp/honesty).
+ * It reads the homepage's switch, so the two pages flip together and can
+ * never disagree about what is on sale.
+ */
+export const FULL_ANALYSIS_DELIVERY_WATCHED: boolean = SALE_SWITCHES.fullAnalysisOnSale;
+/** Stand-in for PRO_ON_SALE (src/config/sales-gate.ts, hp/honesty); the homepage's switch. */
+export const PRO_SUBSCRIPTION_WATCHED: boolean = SALE_SWITCHES.proOnSale;
 
 export type FullAnalysisClosedBy = "seller" | "delivery";
 export type ProClosedBy = "seller" | "watched";

@@ -303,7 +303,8 @@ describe("the plan strip", () => {
     arrange();
     mount();
     expect(document.querySelector('[data-plan="full-analysis"]')!.getAttribute("data-plan-state")).toBe("gatedSeller");
-    expect(text()).toContain("Not on sale yet. Sales open once the seller's name and address are published on this page.");
+    expect(text()).toContain("Not on sale yet. Purchases open soon, once the seller's name and address are published on the pricing page.");
+    expect(text()).not.toContain("on this page");
     expect(document.querySelector('[data-plan="pro"]')).toBeNull();
     expect(main().textContent).toContain("Paid extras are not on sale yet; purchases open soon.");
     expect(main().textContent).toContain("All sales are final.");
