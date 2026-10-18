@@ -31,7 +31,9 @@
  * what the first script stashed: an error or a refused pair is shown here as
  * an expired link, with "Send a new reset link" for the address this browser
  * asked for; a pair the auth server could not be asked about is kept, and
- * Try again asks once more.
+ * Try again asks once more. OUR OWN MAIL'S LINK (S13-106) is the same: a
+ * reset link the confirm page's press got a definite refusal for opens this
+ * screen on that same "expired" step.
  */
 import { useEffect, useId, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -90,15 +92,21 @@ export function WrongPasswordLink({ next }: { next: string }) {
  */
 type Step = "request" | "code" | "checking" | "password" | "done" | "blocked" | "refused" | "google" | "expired" | "signedIn";
 
-export function ResetFlow({ next, initialSession }: { next: string; initialSession: Session | null }) {
+/**
+ * `initialExpired`: our own mail's reset link (/auth?mode=confirm&type=recovery)
+ * was refused for good (expired, already used). The page opens on the
+ * "expired" step, as for the default sender's link, with the address this
+ * browser asked for, if it knows it (S13-106).
+ */
+export function ResetFlow({ next, initialSession, initialExpired }: { next: string; initialSession: Session | null; initialExpired?: { email: string | null } }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { session, loading, stashState, ensureGuard, setResetUnderway, clearStashOutcome, retryStashedSession, signInWithGoogle } = useAuth();
   const id = useId();
   const emailId = `${id}-email`, passwordId = `${id}-password`, errorId = `${id}-error`;
-  const [step, setStep] = useState<Step>(initialSession ? "checking" : "request");
+  const [step, setStep] = useState<Step>(initialSession ? "checking" : initialExpired ? "expired" : "request");
   const [recoverySession, setRecoverySession] = useState<Session | null>(initialSession);
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(() => (!initialSession && initialExpired?.email) || "");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
