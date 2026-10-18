@@ -175,6 +175,21 @@ describe("after the lock", () => {
     expect(rows[0].company).toBe("Acme Health");
   });
 
+  it("applies through Lovable's staged runner, which executes the file inside a SECURITY DEFINER function", async () => {
+    // drizzle/migrations/0020_mig_exec_helper.sql: almost every staged stub is
+    // SELECT public._mig_exec((SELECT sql FROM public._mig_stage ...)), and
+    // PostgreSQL refuses a change of role inside a definer (42501). A
+    // self-check that switched to anon rolled the whole lock back there while
+    // every inline run here passed.
+    const db = await fresh(`
+      CREATE OR REPLACE FUNCTION public._mig_exec(p_sql text) RETURNS void
+        LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $fn$ BEGIN EXECUTE p_sql; END; $fn$;`);
+    await expect(db.query("SELECT public._mig_exec($1)", [MIGRATION])).resolves.toBeDefined();
+    for (const t of TABLES) expect(await as(db, "anon", `SELECT 1 FROM public.${t} LIMIT 1`), t).toBe("42501");
+    // Twice through the runner, too.
+    await expect(db.query("SELECT public._mig_exec($1)", [MIGRATION])).resolves.toBeDefined();
+  });
+
   it("is safe to run twice", async () => {
     const db = await fresh();
     await db.exec(MIGRATION);

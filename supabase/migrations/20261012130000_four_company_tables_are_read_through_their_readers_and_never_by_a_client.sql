@@ -46,7 +46,10 @@
 -- database it runs on, not on this list: it finds every function whose body
 -- names one of the four tables, requires each to be a definer whose owner can
 -- read the table (or a trigger function, or one no client can execute), and
--- calls the three company-page readers AS ANON.
+-- that anon may still execute the three company-page readers. It reads the
+-- catalogue only and never changes role, so it also runs inside the staged
+-- runner's definer (verify sections 81f and 81g call the readers as anon over
+-- REST once the deploy is live).
 --
 -- WHAT CHANGES: row level security on (it already is, but a table that lost
 -- it is re-locked), every policy that admits PUBLIC, anon or authenticated
@@ -136,8 +139,9 @@ COMMENT ON TABLE public.company_name_overrides IS
 --      SECURITY DEFINER whose owner holds SELECT, a trigger function, or a
 --      function no client role can execute (an INVOKER reader a client can
 --      call would start failing the moment this file commits);
---   4. the three readers the company page calls as anon still answer as anon,
---      and a direct read as anon is refused.
+--   4. anon may still execute the three readers the company page calls as
+--      anon (from the catalogue; verify sections 81f and 81g probe the reads
+--      themselves over REST).
 DO $$
 DECLARE
   t text;
@@ -145,7 +149,6 @@ DECLARE
   priv text;
   n int;
   bad text;
-  denied boolean;
 BEGIN
   FOREACH t IN ARRAY ARRAY['showcase_excluded', 'company_profiles', 'company_financials', 'company_name_overrides'] LOOP
     IF to_regclass('public.' || t) IS NULL THEN CONTINUE; END IF;
@@ -207,44 +210,26 @@ BEGIN
     RAISE EXCEPTION 'self-check 20261012130000: these readers would stop working once a client cannot read the tables: %', bad;
   END IF;
 
-  -- 4. The company page's three readers, as anon, and a direct read refused.
-  IF to_regprocedure('public.get_company_intel(text)') IS NOT NULL THEN
-    IF NOT has_function_privilege('anon', 'public.get_company_intel(text)', 'EXECUTE') THEN
-      RAISE EXCEPTION 'self-check 20261012130000: anon cannot execute get_company_intel, which the company page calls as anon';
-    END IF;
-    SET LOCAL ROLE anon;
-    PERFORM public.get_company_intel('20261012130000-self-check');
-    RESET ROLE;
+  -- 4. The company page's three readers stay executable by anon. This is read
+  -- from the catalogue only. Lovable's staged runner executes a migration
+  -- through public._mig_exec, a SECURITY DEFINER function, and PostgreSQL
+  -- refuses a change of role inside one (42501), so a self-check that switched
+  -- to anon would roll the whole lock back there. That anon can call the
+  -- readers and is refused the tables is probed over REST by verify sections
+  -- 81f and 81g after the deploy; section 1 above already proved the refusal
+  -- from the catalogue (no table or column privilege, no client policy).
+  IF to_regprocedure('public.get_company_intel(text)') IS NOT NULL
+     AND NOT has_function_privilege('anon', 'public.get_company_intel(text)', 'EXECUTE') THEN
+    RAISE EXCEPTION 'self-check 20261012130000: anon cannot execute get_company_intel, which the company page calls as anon';
   END IF;
-  IF to_regprocedure('public.get_company_financials(text)') IS NOT NULL THEN
-    IF NOT has_function_privilege('anon', 'public.get_company_financials(text)', 'EXECUTE') THEN
-      RAISE EXCEPTION 'self-check 20261012130000: anon cannot execute get_company_financials, which the company page calls as anon';
-    END IF;
-    SET LOCAL ROLE anon;
-    PERFORM public.get_company_financials('20261012130000-self-check');
-    RESET ROLE;
+  IF to_regprocedure('public.get_company_financials(text)') IS NOT NULL
+     AND NOT has_function_privilege('anon', 'public.get_company_financials(text)', 'EXECUTE') THEN
+    RAISE EXCEPTION 'self-check 20261012130000: anon cannot execute get_company_financials, which the company page calls as anon';
   END IF;
-  IF to_regprocedure('public.get_similar_companies(text,integer)') IS NOT NULL THEN
-    IF NOT has_function_privilege('anon', 'public.get_similar_companies(text,integer)', 'EXECUTE') THEN
-      RAISE EXCEPTION 'self-check 20261012130000: anon cannot execute get_similar_companies, which the company page calls as anon';
-    END IF;
-    SET LOCAL ROLE anon;
-    PERFORM * FROM public.get_similar_companies('20261012130000-self-check', 1);
-    RESET ROLE;
+  IF to_regprocedure('public.get_similar_companies(text,integer)') IS NOT NULL
+     AND NOT has_function_privilege('anon', 'public.get_similar_companies(text,integer)', 'EXECUTE') THEN
+    RAISE EXCEPTION 'self-check 20261012130000: anon cannot execute get_similar_companies, which the company page calls as anon';
   END IF;
-  FOREACH t IN ARRAY ARRAY['showcase_excluded', 'company_profiles', 'company_financials', 'company_name_overrides'] LOOP
-    IF to_regclass('public.' || t) IS NULL THEN CONTINUE; END IF;
-    denied := false;
-    SET LOCAL ROLE anon;
-    BEGIN
-      EXECUTE format('SELECT 1 FROM public.%I LIMIT 1', t);
-    EXCEPTION WHEN insufficient_privilege THEN denied := true;
-    END;
-    RESET ROLE;
-    IF NOT denied THEN
-      RAISE EXCEPTION 'self-check 20261012130000: anon can still read public.% directly', t;
-    END IF;
-  END LOOP;
 END $$;
 
 NOTIFY pgrst, 'reload schema';
