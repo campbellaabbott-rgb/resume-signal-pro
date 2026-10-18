@@ -90,7 +90,8 @@
       "back": "{{name}} पर वापस",
       "openRoles_one": "{{name}} की सभी {{n}} खुली भूमिका देखें",
       "openRoles_other": "{{name}} की सभी {{n}} खुली भूमिकाएँ देखें",
-      "openRolesFloor": "{{name}} की सभी {{n}}+ खुली भूमिकाएँ देखें"
+      "openRolesFloor": "{{name}} की सभी {{n}}+ खुली भूमिकाएँ देखें",
+      "backBoards": "“{{token}}” नाम वाले बोर्ड पर वापस जाएँ"
     },
     "sheet": {
       "back": "सूची पर वापस"

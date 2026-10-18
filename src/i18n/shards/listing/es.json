@@ -93,7 +93,8 @@
       "openRoles_one": "Ver el {{n}} puesto abierto en {{name}}",
       "openRoles_many": "Ver los {{n}} puestos abiertos en {{name}}",
       "openRoles_other": "Ver los {{n}} puestos abiertos en {{name}}",
-      "openRolesFloor": "Ver los {{n}}+ puestos abiertos en {{name}}"
+      "openRolesFloor": "Ver los {{n}}+ puestos abiertos en {{name}}",
+      "backBoards": "Volver a los portales llamados «{{token}}»"
     },
     "sheet": {
       "back": "Volver a la lista"

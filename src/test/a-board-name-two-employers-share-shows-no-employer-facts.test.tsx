@@ -249,6 +249,53 @@ describe("the cards and the detail pane of a shared token", () => {
   });
 });
 
+describe("a page whose rows belong to different employers names each row's own employer (2026-10-18 review)", () => {
+  beforeEach(() => {
+    try { sessionStorage.clear(); localStorage.clear(); } catch { /* blocked */ }
+    invoke.mockReset(); rpc.mockReset();
+  });
+  const cards = () => Array.from(document.querySelectorAll<HTMLElement>("[data-job-id]"));
+  const pane = () => document.querySelector<HTMLElement>("[data-posting-detail]");
+  const cardOf = (title: string) => cards().find((c) => (c.textContent ?? "").includes(title))!;
+
+  it("a shared board name: each card names its employer, and the second board's pane credits nothing to the first board's name", async () => {
+    mount("clear", [job("greenhouse", "clear", "CLEAR - Corporate", 1), job("bamboohr", "clear", "Clear", 2)]);
+    await waitFor(() => expect(cards()).toHaveLength(2), SLOW);
+    expect(cardOf("Platform Engineer 1").textContent).toContain("CLEAR - Corporate");
+    expect(cardOf("Platform Engineer 2").textContent).toContain("Clear");
+    fireEvent.click(cardOf("Platform Engineer 2"));
+    await waitFor(() => expect(pane()?.textContent ?? "").toContain("Platform Engineer 2"), SLOW);
+    const p = pane()!.textContent ?? "";
+    // (Its "Similar openings" list may name the other board's own posting with
+    // its own employer; nothing may credit THIS posting to that name.)
+    expect(p, "the pane credited the other board's posting to the first board's stored name").not.toMatch(/Back to CLEAR - Corporate|at CLEAR - Corporate/);
+    expect(p, "the pane linked a pooled count of both boards").not.toMatch(/See all \d+ open roles?/);
+    expect(p).toContain("Back to boards named “clear”");
+    expect(p, "the pane names the row's own employer").toContain("Clear");
+  });
+
+  it("the USAJOBS hub: each card names its agency, and the pane names it too", async () => {
+    mount("usajobs", [job("usajobs", "usajobs", "Department of the Army", 1), job("usajobs", "usajobs", "Veterans Health Administration", 2)]);
+    await waitFor(() => expect(cards()).toHaveLength(2), SLOW);
+    expect(cardOf("Platform Engineer 1").textContent).toContain("Department of the Army");
+    expect(cardOf("Platform Engineer 2").textContent).toContain("Veterans Health Administration");
+    fireEvent.click(cardOf("Platform Engineer 2"));
+    await waitFor(() => expect(pane()?.textContent ?? "").toContain("Platform Engineer 2"), SLOW);
+    const p = pane()!.textContent ?? "";
+    expect(p).toContain("Veterans Health Administration");
+    expect(p).toContain("Back to USAJOBS");
+    expect(p, "the hub's pane linked the whole hub's count as one employer's").not.toMatch(/See all \d+ open roles?/);
+  });
+
+  it("positive control: one employer's page hides the employer on its own cards and links its figure from the pane", async () => {
+    mount("jnj", [job("workday", "jnj", "Johnson & Johnson", 1), job("workday", "jnj", "Johnson & Johnson", 2)]);
+    await waitFor(() => expect(cards()).toHaveLength(2), SLOW);
+    expect(cardOf("Platform Engineer 1").textContent).not.toContain("Johnson & Johnson");
+    fireEvent.click(cardOf("Platform Engineer 2"));
+    await waitFor(() => expect(pane()?.textContent ?? "").toMatch(/See all 2 open roles at Johnson & Johnson/), SLOW);
+  });
+});
+
 describe("the browser's employer cache", () => {
   it("answers a shared token with no facts and asks no reader", async () => {
     rpc.mockReset();

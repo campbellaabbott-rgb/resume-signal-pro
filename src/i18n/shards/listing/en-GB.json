@@ -90,7 +90,8 @@
       "back": "Back to {{name}}",
       "openRoles_one": "See all {{n}} open role at {{name}}",
       "openRoles_other": "See all {{n}} open roles at {{name}}",
-      "openRolesFloor": "See all {{n}}+ open roles at {{name}}"
+      "openRolesFloor": "See all {{n}}+ open roles at {{name}}",
+      "backBoards": "Back to boards named “{{token}}”"
     },
     "sheet": {
       "back": "Back to the list"

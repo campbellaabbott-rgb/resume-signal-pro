@@ -90,7 +90,8 @@
       "back": "Bumalik sa {{name}}",
       "openRoles_one": "Tingnan ang {{n}} bukas na trabaho sa {{name}}",
       "openRoles_other": "Tingnan ang lahat ng {{n}} bukas na trabaho sa {{name}}",
-      "openRolesFloor": "Tingnan ang lahat ng {{n}}+ bukas na trabaho sa {{name}}"
+      "openRolesFloor": "Tingnan ang lahat ng {{n}}+ bukas na trabaho sa {{name}}",
+      "backBoards": "Bumalik sa mga board na may pangalang “{{token}}”"
     },
     "sheet": {
       "back": "Bumalik sa listahan"

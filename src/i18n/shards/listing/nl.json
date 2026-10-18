@@ -90,7 +90,8 @@
       "back": "Terug naar {{name}}",
       "openRoles_one": "Bekijk de {{n}} open functie bij {{name}}",
       "openRoles_other": "Bekijk alle {{n}} open functies bij {{name}}",
-      "openRolesFloor": "Bekijk alle {{n}}+ open functies bij {{name}}"
+      "openRolesFloor": "Bekijk alle {{n}}+ open functies bij {{name}}",
+      "backBoards": "Terug naar vacatureborden met de naam ‘{{token}}’"
     },
     "sheet": {
       "back": "Terug naar de lijst"

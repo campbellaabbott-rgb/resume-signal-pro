@@ -90,7 +90,8 @@
       "back": "Zurück zu {{name}}",
       "openRoles_one": "Alle {{n}} offene Stelle bei {{name}} ansehen",
       "openRoles_other": "Alle {{n}} offenen Stellen bei {{name}} ansehen",
-      "openRolesFloor": "Alle {{n}}+ offenen Stellen bei {{name}} ansehen"
+      "openRolesFloor": "Alle {{n}}+ offenen Stellen bei {{name}} ansehen",
+      "backBoards": "Zurück zu Jobboards namens „{{token}}“"
     },
     "sheet": {
       "back": "Zurück zur Liste"

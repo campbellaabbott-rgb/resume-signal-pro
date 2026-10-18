@@ -93,7 +93,8 @@
       "openRoles_one": "Voir le {{n}} poste ouvert chez {{name}}",
       "openRoles_many": "Voir les {{n}} postes ouverts chez {{name}}",
       "openRoles_other": "Voir les {{n}} postes ouverts chez {{name}}",
-      "openRolesFloor": "Voir les {{n}}+ postes ouverts chez {{name}}"
+      "openRolesFloor": "Voir les {{n}}+ postes ouverts chez {{name}}",
+      "backBoards": "Retour aux sites carrières nommés « {{token}} »"
     },
     "sheet": {
       "back": "Retour à la liste"

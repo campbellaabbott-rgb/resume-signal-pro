@@ -93,7 +93,8 @@
       "openRoles_one": "Ver a {{n}} vaga aberta na {{name}}",
       "openRoles_many": "Ver as {{n}} vagas abertas na {{name}}",
       "openRoles_other": "Ver as {{n}} vagas abertas na {{name}}",
-      "openRolesFloor": "Ver as {{n}}+ vagas abertas na {{name}}"
+      "openRolesFloor": "Ver as {{n}}+ vagas abertas na {{name}}",
+      "backBoards": "Voltar aos portais chamados «{{token}}»"
     },
     "sheet": {
       "back": "Voltar à lista"

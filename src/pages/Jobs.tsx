@@ -6453,6 +6453,14 @@ function JobsBoard({ boardId }: { boardId: string }) {
     landerCollision, loading, error, budgetRefusal, landerRecord, landerGrowthVerdict, landerLayoffFilings, landerVisitorFilters, listAnsweredAt,
     landerReplyCurrent, landerUncarried]);
   const onCompanyPage = !!landerCompany && !!landerModel;
+  // A PAGE THAT IS ONE EMPLOYER'S. A board name two hiring systems share and
+  // the USAJOBS hub are not: their rows belong to different employers (or
+  // federal agencies), so each card and the pane name the row's own employer,
+  // and nothing on the pane credits a posting, or the pooled count, to the
+  // board's stored name (2026-10-18 review: /jobs/company/clear's pane read
+  // "See all 45 open roles at CLEAR - Corporate" on the other employer's
+  // posting; the USAJOBS hub's cards named no agency).
+  const landerOneEmployer = onCompanyPage && landerModel!.variant !== "collision" && landerModel!.variant !== "usajobs";
   // The last unfiltered figure stands in while a visitor filter narrows the
   // list, so a filter never blanks the header; the resolved name is
   // remembered for the next visit's first paint.
@@ -7585,7 +7593,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
 
   const renderDetail = (inSheet: boolean) => detailJob ? (() => {
     const onLander = !!landerCompany && detailJob.token === landerCompany;
-    const surface = inSheet ? "sheet" as const : onLander ? "company" as const : "board" as const;
+    const surface = inSheet ? "sheet" as const : onLander && landerOneEmployer ? "company" as const : "board" as const;
     // "See all N open roles at X": on a company page the page's ONE figure,
     // printed the way the header prints it; on the board the servable count
     // of the employer's group (the company facet's `open`, never the
@@ -7596,7 +7604,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
     const cnt = entry?.open;
     const scope = entry ? scopeTokensOf(entry) : (detailJob.token ? [detailJob.token] : []);
     const openRolesLink = onLander
-      ? (landerModel?.openRoles && landerModel.name.name
+      ? (landerOneEmployer && landerModel?.openRoles && landerModel.name.name
         ? { count: landerModel.openRoles, href: companyLanderPath(landerCompany!), name: landerModel.name.name, onClick: (e: React.MouseEvent<HTMLAnchorElement>) => { e.preventDefault(); closeDetail(); } }
         : null)
       : typeof cnt === "number" && cnt >= 2 && detailJob.token
@@ -8051,7 +8059,12 @@ function JobsBoard({ boardId }: { boardId: string }) {
           ),
         }}
         openRolesLink={openRolesLink}
-        back={onLander && landerModel?.name.name ? { label: t("listing.detail.back", "Back to {{name}}", { name: landerModel.name.name }), onBack: () => closeDetail() } : undefined}
+        back={!onLander || !landerModel ? undefined
+          : landerModel.variant === "collision"
+            ? { label: t("listing.detail.backBoards", "Back to boards named “{{token}}”", { token: landerCompany }), onBack: () => closeDetail() }
+            : landerModel.variant === "usajobs"
+              ? { label: t("listing.detail.back", "Back to {{name}}", { name: "USAJOBS" }), onBack: () => closeDetail() }
+              : landerModel.name.name ? { label: t("listing.detail.back", "Back to {{name}}", { name: landerModel.name.name }), onBack: () => closeDetail() } : undefined}
         onApply={() => applyFrom(detailJob)}
         onCheckFit={() => { void checkFit(detailJob); }}
         checkFitBusy={fitFetching === detailJob.id}
@@ -11362,7 +11375,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                       ctx={{
                         surface: onCompanyPage ? "company" : "board",
                         density,
-                        hideEmployer: onCompanyPage && job.token === landerCompany,
+                        hideEmployer: landerOneEmployer && job.token === landerCompany,
                         selected: detailJob?.id === job.id,
                       }}
                       href={jobDetailHref(job.id)}
