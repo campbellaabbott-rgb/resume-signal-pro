@@ -105,11 +105,9 @@ describe("the line above a buy button, and what the button's call carries", () =
     try {
       invoke.mockImplementation(async (fn: string) => ({ data: fn === "check-subscription" ? { active: false } : { url: "" }, error: null }));
       render(<MemoryRouter><AgentSubscriptionCard /><ProSubscriptionCard /></MemoryRouter>);
+      fireEvent.click(document.querySelector("[data-auto-renew-box] input")!); // Pro's own renewal box (2026-10-17): Go Pro waits for it.
       fireEvent.click(screen.getByRole("button", { name: new RegExp(en.agentPlan.cta) }));
-      const goPro = await screen.findByRole("button", { name: /Go Pro/ });
-      // Pro's own renewal box first (owner decision 2026-10-17): the button waits for it.
-      fireEvent.click(document.querySelector("[data-auto-renew-box] input")!);
-      fireEvent.click(goPro);
+      fireEvent.click(await screen.findByRole("button", { name: /Go Pro/ }));
       await waitFor(() => expect(invoke).toHaveBeenCalledWith("create-subscription-checkout", expect.anything()));
       const bodyOf = (fn: string) => invoke.mock.calls.find(([f]) => f === fn)![1].body;
       expect(bodyOf("create-agent-checkout").language).toBe("de");

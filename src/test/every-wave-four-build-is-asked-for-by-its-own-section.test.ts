@@ -12,7 +12,7 @@
  *
  * The property: every function built on 2026-10-11 (wave 4's day) or on
  * job-board's reserved 2026-09-09.93 is asked for by at least one of the
- * wave-4 sections (82-86, 93) through build_ge, at that date with a floor at
+ * wave-4 sections (82-86, 93, and the second round's 92-w4b-*) through build_ge, at that date with a floor at
  * or below the build the repository carries (build_ge accepts a later one, so
  * a floor can lag a later fix-round stamp without going stale). A later wave
  * is free of this test.
