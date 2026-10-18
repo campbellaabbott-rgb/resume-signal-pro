@@ -27,7 +27,7 @@ export const fmtMoney = (n: number, currency: string | null | undefined, lng: st
   const compact = Math.abs(n) >= 10_000;
   try {
     return new Intl.NumberFormat(lng || "en", {
-      style: "currency", currency: code, notation: compact ? "compact" : "standard", maximumFractionDigits: compact ? 1 : 0,
+      style: "currency", currency: code, notation: compact ? "compact" : "standard", minimumFractionDigits: 0, maximumFractionDigits: compact ? 1 : 0,
     }).format(n);
   } catch {
     return `${code} ${Math.round(n)}`;
