@@ -6242,6 +6242,10 @@ export type Database = {
           dated_coverage: number
           dated_n: number
           events_30: number
+          feed_capped: boolean
+          feed_read_at: string
+          feed_state: string
+          feed_total: number
           fill_rate_14: number
           fill_rate_14_hi: number
           fill_rate_14_lo: number
@@ -6253,8 +6257,11 @@ export type Database = {
           fills_90d: number
           fills_le_14: number
           insufficient_reason_30: string
+          late_sighted_30: number
           median_censored: boolean
           median_days_to_fill: number
+          multi_site_n: number
+          multi_site_title_share: number
           n_at_risk_14: number
           n_at_risk_30: number
           observability_bucket: string
@@ -6274,6 +6281,7 @@ export type Database = {
           taken_down_30: number
           tracking_days: number
           undated_n: number
+          undated_open: number
           watched_from: string
         }[]
       }
