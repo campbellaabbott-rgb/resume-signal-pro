@@ -12,6 +12,7 @@ import { ApplyAssistantResults, type ApplyPackageData } from "@/components/Apply
 import { normalizeBuilderResume } from "@/types/resume-builder";
 import { isProductHidden } from "@/config/products";
 import { toast } from "sonner";
+import { writingRefusalOf, writingRefusalText } from "@/lib/writing-refusal";
 
 interface ApplyKitPanelProps {
   jobPosting: string;
@@ -20,7 +21,7 @@ interface ApplyKitPanelProps {
 }
 
 export function ApplyKitPanel({ jobPosting, resumeText, proActive }: ApplyKitPanelProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [open, setOpen] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [kit, setKit] = useState<ApplyPackageData | null>(null);
@@ -48,6 +49,10 @@ export function ApplyKitPanel({ jobPosting, resumeText, proActive }: ApplyKitPan
         body: { resumeText, jobPostingText: jobPosting },
       });
       if (error || !data?.success) {
+        // The account's writing allowance is used up, or the session ended:
+        // said with when it comes back, never as a failure to retry now.
+        const refusal = error ? await writingRefusalOf(error) : null;
+        if (refusal) { toast.error(writingRefusalText(refusal, (k, d, v) => t(k, d, v), i18n.language)); return; }
         const msg = (data as { error?: string })?.error ?? t("accountPage.akGenFailed", "Generation failed — try again.");
         toast.error(msg);
         return;
