@@ -14,6 +14,7 @@ import { ApplyAssistantResults, type ApplyPackageData } from "@/components/Apply
 import { CardErrorBoundary } from "@/components/CardErrorBoundary";
 import { normalizeBuilderResume } from "@/types/resume-builder";
 import { toast } from "sonner";
+import { writingRefusalOf, writingRefusalText } from "@/lib/writing-refusal";
 
 export interface CopilotApp {
   id: string;
@@ -76,7 +77,7 @@ export function ApplyCopilotPanel({
   onKit: (appId: string, kit: unknown) => void;
   onStatus: (appId: string, status: string) => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number; company: string } | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -122,6 +123,10 @@ export function ApplyCopilotPanel({
             // error.context — that's the only place the real status lives.
             const status = (error as { context?: { status?: number } })?.context?.status;
             if (status === 402) { toast.error(t("accountPage.acNeedsPro", "Batch prep needs Pro. Upgrade to prep applications in bulk.")); break; }
+            // The account's writing allowance (a day's or a month's), or an
+            // ended session: said with when it comes back, and the batch stops.
+            const refusal = await writingRefusalOf(error);
+            if (refusal) { toast.error(writingRefusalText(refusal, (k, d, v) => t(k, d, v), i18n.language)); break; }
             if (status === 429) { toast.error(t("accountPage.acDailyLimit", "Daily generation limit reached — the ones prepped so far are saved. Try the rest tomorrow.")); break; }
             continue; // 422 grounding refusal or transient — skip this one, keep going
           }
@@ -136,7 +141,11 @@ export function ApplyCopilotPanel({
           body: { resumeText, jobDescription: a.job_posting, jobTitle: a.role, jobCompany: a.company, tone: "professional" },
         });
         const letter = !letterError ? (letterData as { data?: { coverLetter?: unknown } } | null)?.data?.coverLetter : null;
-        if (letterError && (letterError as { context?: { status?: number } })?.context?.status === 429) {
+        const letterRefusal = letterError ? await writingRefusalOf(letterError) : null;
+        if (letterRefusal) {
+          toast.error(writingRefusalText(letterRefusal, (k, d, v) => t(k, d, v), i18n.language));
+          stop = true;
+        } else if (letterError && (letterError as { context?: { status?: number } })?.context?.status === 429) {
           toast.error(t("accountPage.acDailyLimit", "Daily generation limit reached — the ones prepped so far are saved. Try the rest tomorrow."));
           stop = true;
         }

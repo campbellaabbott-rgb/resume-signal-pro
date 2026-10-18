@@ -28,6 +28,14 @@ export const SELLER: { readonly legalName: string; readonly postalAddress: strin
   postalAddress: "",
 };
 
+/**
+ * The name the site trades under, the same in every language: a brand is not
+ * translated. The en-GB locale called it "CV Booster" in the comparison
+ * headings, a name no receipt, notice or legal page carries (plan CP-G). This
+ * is the trading name only; the legal name above stays the owner's to give.
+ */
+export const TRADING_NAME = "Resume Booster";
+
 export type SellerIdentity = { legalName: string; postalAddress: string };
 
 /** The identity to show, or null while either half is unset. */

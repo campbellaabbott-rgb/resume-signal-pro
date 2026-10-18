@@ -48,7 +48,7 @@ import type { Json } from "@/integrations/supabase/types";
 import { ProSubscriptionCard } from "@/components/ProSubscriptionCard";
 import { CreditsAndPurchases, type AccountPass } from "@/components/account/CreditsAndPurchases";
 import type { AccountOrder } from "@/components/account/OrdersList";
-import { SecurityCard } from "@/components/account/SecurityCard";
+import { SecurityCard, type MailboxProofSummary } from "@/components/account/SecurityCard";
 import { DataPrivacyCard } from "@/components/account/DataPrivacyCard";
 import { AccountSettingsCards } from "@/components/account/ConnectedAIsCard";
 import { importLocalHistory } from "@/lib/account-history-import";
@@ -175,6 +175,8 @@ interface AccountData {
   orders?: AccountOrder[];
   /** False while this sign-in has not proven the account's mailbox (get-account-data). */
   mailboxProven?: boolean;
+  /** How and when the proven address was proven (get-account-data; the Security card). */
+  mailboxProof?: MailboxProofSummary | null;
   /** The guard, run by get-account-data as a backstop, cleared a password set before the proof (plan CP-H). */
   passwordCleared?: boolean;
   /** ...and ended every session, this one included: sign in again. */
@@ -426,6 +428,7 @@ export default function Account() {
       passes: Array.isArray(acc.passes) ? acc.passes : [],
       orders: Array.isArray(acc.orders) ? acc.orders : undefined,
       mailboxProven: acc.mailboxProven !== false,
+      mailboxProof: acc.mailboxProof && typeof acc.mailboxProof === "object" ? acc.mailboxProof : null,
     });
   };
 
@@ -1857,7 +1860,7 @@ export default function Account() {
         </div>
 
         {/* Sign-in and security, then the data card: export and delete (S12-060, S12-137, D9) */}
-        <SecurityCard />
+        <SecurityCard proven={account ? account.mailboxProven : undefined} proof={account?.mailboxProof ?? null} />
         {/* Connected AIs and the mail this account gets (plan CP-H, D12) */}
         <AccountSettingsCards />
         <DataPrivacyCard onExport={exportData} onDelete={deleteAccount} />

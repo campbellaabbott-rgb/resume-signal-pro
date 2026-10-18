@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { SCAN_RESULTS_WITHIN_SECONDS } from "@/config/scan-timing";
 import { PRODUCTS } from "@/config/products";
+import { TRADING_NAME } from "@/config/seller";
 
 interface ComparisonRow {
   feature: string;
@@ -65,7 +66,7 @@ export function ValueComparison() {
           {t('valueComparison.feature')}
         </div>
         <div className="p-3 md:p-4 text-center">
-          <span className="font-bold text-primary text-sm md:text-base">{t('valueComparison.us')}</span>
+          <span className="font-bold text-primary text-sm md:text-base">{TRADING_NAME}</span>
         </div>
         <div className="p-3 md:p-4 text-center">
           <span className="font-medium text-muted-foreground text-sm md:text-base">

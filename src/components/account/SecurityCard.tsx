@@ -20,6 +20,9 @@
  *     still confirms on its own it is not offered, and the card says how to
  *     get the address changed.
  *   - Sign out of this device, or everywhere.
+ *   - How the address was proven, and when (Account UX spec 6): the account
+ *     read (get-account-data) says it, from the sign-in that proved it; an
+ *     unproven address is said to be unproven.
  * Every string goes through t(key, English default).
  */
 import { useEffect, useState } from "react";
@@ -54,8 +57,40 @@ export function useAddressChangeConfirmed(): boolean | null {
 
 type Msg = { ok: boolean; text: string } | null;
 
-export function SecurityCard() {
-  const { t } = useTranslation();
+/** How the account's address was proven, and when (get-account-data's mailboxProof). */
+export type MailboxProofSummary = { how: "code" | "link" | "reset" | "provider" | "confirmation"; at: string | null };
+
+type SecurityCardProps = {
+  /** get-account-data's mailboxProven; undefined while the account read is not in. */
+  proven?: boolean;
+  proof?: MailboxProofSummary | null;
+};
+
+/** The proof line, or null when the account read has not said. */
+export function proofLine(
+  t: (key: string, fallback: string, vars?: Record<string, unknown>) => string,
+  proven: boolean | undefined,
+  proof: MailboxProofSummary | null | undefined,
+  locale?: string,
+): string | null {
+  if (proven === false) return t("accountSettings.unproven", "Your address isn't proven yet, so purchases made under it without signing in don't show on this page.");
+  if (proven !== true || !proof) return null;
+  const how = {
+    code: t("accountSettings.provenHow.code", "by a code we emailed to it"),
+    link: t("accountSettings.provenHow.link", "by a link we emailed to it"),
+    reset: t("accountSettings.provenHow.reset", "by a password-reset email we sent to it"),
+    provider: t("accountSettings.provenHow.provider", "by a Google or Apple sign-in that verified it"),
+    confirmation: t("accountSettings.provenHow.confirmation", "by confirming the email we sent to it"),
+  }[proof.how];
+  if (!how) return null;
+  const at = proof.at ? new Date(proof.at) : null;
+  return at && Number.isFinite(at.getTime())
+    ? t("accountSettings.provenOn", "Your address was proven {{how}} on {{date}}.", { how, date: at.toLocaleDateString(locale, { year: "numeric", month: "long", day: "numeric" }) })
+    : t("accountSettings.proven", "Your address was proven {{how}}.", { how });
+}
+
+export function SecurityCard({ proven, proof }: SecurityCardProps = {}) {
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { user, session, signOut, signOutEverywhere, ensureGuard } = useAuth();
   const addressChangeOn = useAddressChangeConfirmed();
@@ -136,6 +171,10 @@ export function SecurityCard() {
         <ShieldCheck className="w-4 h-4 text-primary" />
         <h2 className="font-semibold text-foreground text-sm">{t("accountSettings.title", "Sign-in and security")}</h2>
       </div>
+      {(() => {
+        const line = proofLine((k, d, v) => t(k, d, v), proven, proof, i18n.language);
+        return line ? <p className="text-xs text-muted-foreground mb-3" data-proof-line={proven ? (proof?.how ?? "") : "unproven"}>{line}</p> : null;
+      })()}
 
       <div className="grid sm:grid-cols-2 gap-5 mb-4">
         <div>

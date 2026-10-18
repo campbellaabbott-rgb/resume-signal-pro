@@ -87,7 +87,7 @@ function routes(over: Record<string, Route | null> = {}, mail: Record<string, st
   base.shell = { match: "^GET https://site\\.test/$", body: `<html><head><script type="module" src="/assets/index-Zz99.js"></script></head></html>` };
   base.entry = { match: "^GET https://site\\.test/assets/index-Zz99\\.js$", body: ENTRY };
   base.banner = { match: "ConsentBanner-Ab12\\.js$", body: src("src/components/ConsentBanner.tsx") };
-  base.account = { match: "Account-Cd34\\.js$", body: [src("src/pages/Account.tsx"), src("src/components/account/ConnectedAIsCard.tsx"), src("src/components/account/OrdersList.tsx")].join("\n") };
+  base.account = { match: "Account-Cd34\\.js$", body: [src("src/pages/Account.tsx"), src("src/components/account/ConnectedAIsCard.tsx"), src("src/components/account/OrdersList.tsx"), src("src/components/account/SecurityCard.tsx")].join("\n") };
   base.privacy = { match: "Privacy-Ef56\\.js$", body: src("src/pages/Privacy.tsx") };
   base.shortlist = { match: "Shortlist-Gh78\\.js$", body: src("src/pages/Shortlist.tsx") };
   for (const [k, v] of Object.entries(over)) { if (v === null) delete base[k]; else base[k] = v; }
@@ -103,7 +103,8 @@ describe("section 92 account-compliance on a deploy of this round", () => {
     for (const fn of MARKETING) expect(has(lines, "PASS", new RegExp(`${fn} x-marketing-mail = on`)), show(lines)).toBe(true);
     expect(has(lines, "PASS", /account_erase_personal_data exists and anon may not run it/), show(lines)).toBe(true);
     expect(has(lines, "PASS", /ConsentBanner-Ab12\.js and carries the analytics consent key/), show(lines)).toBe(true);
-    expect(has(lines, "PASS", /Account-Cd34\.js carries the connected-AIs card/), show(lines)).toBe(true);
+    expect(has(lines, "PASS", /Account-Cd34\.js carries the connected-AIs card, .* and the line saying how and when the address was proven/), show(lines)).toBe(true);
+    expect(has(lines, "INFO", /20261011172000 .*fix-plan-drip/), show(lines)).toBe(true);
     expect(has(lines, "PASS", /Privacy-Ef56\.js names Mailgun and ipinfo/), show(lines)).toBe(true);
     expect(has(lines, "PASS", /Shortlist-Gh78\.js asks for the uploader's attestation/), show(lines)).toBe(true);
     expect(calls.length).toBeGreaterThan(10);
@@ -154,8 +155,11 @@ describe("section 92 account-compliance fails each regression", () => {
     ({ lines } = run(routes({ account: { match: "Account-Cd34\\.js$", body: src("src/components/account/OrdersList.tsx") } })));
     expect(has(lines, "FAIL", /Account-Cd34\.js lacks the connected-AIs card/), show(lines)).toBe(true);
     // the account home without the orders list's Report a problem
-    ({ lines } = run(routes({ account: { match: "Account-Cd34\\.js$", body: [src("src/pages/Account.tsx"), src("src/components/account/ConnectedAIsCard.tsx")].join("\n") } })));
-    expect(has(lines, "FAIL", /Account-Cd34\.js lacks the connected-AIs card, account-settings, account-order or Report a problem/), show(lines)).toBe(true);
+    ({ lines } = run(routes({ account: { match: "Account-Cd34\\.js$", body: [src("src/pages/Account.tsx"), src("src/components/account/ConnectedAIsCard.tsx"), src("src/components/account/SecurityCard.tsx")].join("\n") } })));
+    expect(has(lines, "FAIL", /Account-Cd34\.js lacks the connected-AIs card, account-settings, account-order, Report a problem or the proof line/), show(lines)).toBe(true);
+    // the account home without the Security card's proof line
+    ({ lines } = run(routes({ account: { match: "Account-Cd34\\.js$", body: [src("src/pages/Account.tsx"), src("src/components/account/ConnectedAIsCard.tsx"), src("src/components/account/OrdersList.tsx")].join("\n") } })));
+    expect(has(lines, "FAIL", /Account-Cd34\.js lacks .* or the proof line/), show(lines)).toBe(true);
     ({ lines } = run(routes({ privacy: { match: "Privacy-Ef56\\.js$", body: "Resend Supabase" } })));
     expect(has(lines, "FAIL", /does not name Mailgun and ipinfo/), show(lines)).toBe(true);
     ({ lines } = run(routes({ shortlist: { match: "Shortlist-Gh78\\.js$", body: `from("shortlist_demographics")` } })));

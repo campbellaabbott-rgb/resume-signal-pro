@@ -40,6 +40,13 @@
 // before it exactly as auth-signed-in would, once per session (the guard's
 // per-session claim and the proof row's key keep a concurrent run single),
 // and says passwordCleared so the page can tell the person.
+//
+// HOW THE ADDRESS WAS PROVEN, AND WHEN (Account UX spec 6, Security). A proven
+// address now comes with mailboxProof {how, at}: from R1's proof row (an
+// emailed code, an emailed link, a password reset, a provider sign-in or a
+// confirmation, at the sign-in that proved it), else from the provider
+// identity or the confirmation that proved it by the session rule. A failed
+// read of the row says nothing (null) rather than guess.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { accountProvenEmail } from "../_shared/account-proof.ts";
@@ -53,7 +60,8 @@ import { requireWebsiteSession } from "../_shared/website-session.ts";
 // 2026-10-14.1, so this build sorts after that day.
 // 2026-10-14.25 (wave 4 round 2): the account proof rule, orders with status,
 // amount and link, a website session only, and the account guard as a
-// backstop for a fresh sign-in the guard never answered.
+// backstop for a fresh sign-in the guard never answered; how and when the
+// address was proven.
 // 2026-10-14.29 (wave 4 round 2 integration): carries account-compliance's
 // 2026-10-14.25 and payments-delivery's 2026-10-14.22 (_shared/scan-credits.ts
 // lists a claimed purchase only for the account that claimed it).
@@ -90,6 +98,39 @@ type DeliveryRow = {
 };
 type ContentRow = { stripe_session_id?: string | null; product_name?: string | null; product_type?: string | null; created_at: string };
 type GrantRow = { id: string; product_name?: string | null; product_type?: string | null; created_at: string; revoked_at?: string | null };
+
+/** How the account's address was proven, as the Security card says it. */
+export type ProofHow = "code" | "link" | "reset" | "provider" | "confirmation";
+export type MailboxProofSummary = { how: ProofHow; at: string | null };
+
+/** account_mailbox_proofs.method, as the card words it. */
+const PROOF_HOW: Record<string, ProofHow> = { otp: "code", magiclink: "link", recovery: "reset", oauth: "provider", email_confirm: "confirmation" };
+const isoOrNull = (v: unknown): string | null => (typeof v === "string" && Number.isFinite(Date.parse(v)) ? v : null);
+
+type ProofUser = {
+  email_confirmed_at?: unknown;
+  identities?: Array<{ provider?: unknown; created_at?: unknown; identity_data?: { email?: unknown } | null; email?: unknown }> | null;
+};
+
+/**
+ * How a PROVEN address was proven, and when. The proof row decides when there
+ * is one; otherwise the session rule proved it, by a Google or Apple identity
+ * for that address or by a confirmation. Called only for a proven address.
+ */
+export function proofSummaryOf(
+  row: { method?: unknown; amr_at?: unknown; created_at?: unknown } | null | undefined,
+  user: ProofUser | null | undefined,
+  provenEmail: string,
+): MailboxProofSummary {
+  const how = row && typeof row.method === "string" ? PROOF_HOW[row.method] : undefined;
+  if (how) return { how, at: isoOrNull(row?.amr_at) ?? isoOrNull(row?.created_at) };
+  const address = provenEmail.trim().toLowerCase();
+  const identity = (Array.isArray(user?.identities) ? user!.identities! : []).find((i) =>
+    (i?.provider === "google" || i?.provider === "apple")
+    && String(i?.identity_data?.email ?? i?.email ?? "").trim().toLowerCase() === address);
+  if (identity) return { how: "provider", at: isoOrNull(identity.created_at) };
+  return { how: "confirmation", at: isoOrNull(user?.email_confirmed_at) };
+}
 
 const RESUME_MISSING = /r[eé]sum[eé][^.]{0,40}(expired|linked|missing|required|gone)|no r[eé]sum[eé]/i;
 
@@ -156,6 +197,21 @@ Deno.serve(async (req) => {
         if (guard.body.proven) provenEmail = String(user.email).trim().toLowerCase();
       } catch (e) {
         console.warn("[GET-ACCOUNT-DATA] guard backstop threw:", e instanceof Error ? e.message : String(e));
+      }
+    }
+
+    // How the proven address was proven, and when (the Security card).
+    let mailboxProof: MailboxProofSummary | null = null;
+    if (provenEmail) {
+      try {
+        const proofRow = await service.from("account_mailbox_proofs")
+          .select("method, amr_at, created_at")
+          .eq("user_id", user.id)
+          .eq("email", provenEmail)
+          .maybeSingle();
+        mailboxProof = proofRow.error ? null : proofSummaryOf(proofRow.data as Record<string, unknown> | null, user as ProofUser, provenEmail);
+      } catch {
+        mailboxProof = null;
       }
     }
 
@@ -237,7 +293,7 @@ Deno.serve(async (req) => {
     });
 
     return json({
-      credits: credits ?? 0, purchases, orders: orderList, passes, mailboxProven: !!provenEmail,
+      credits: credits ?? 0, purchases, orders: orderList, passes, mailboxProven: !!provenEmail, mailboxProof,
       ...(passwordCleared ? { passwordCleared: true } : {}),
       ...(signedOut ? { signedOut: true } : {}),
     });
