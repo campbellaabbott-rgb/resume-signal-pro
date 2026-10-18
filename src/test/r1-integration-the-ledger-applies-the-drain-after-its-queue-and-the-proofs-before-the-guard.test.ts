@@ -147,7 +147,12 @@ describe("the two shared files R1 declared are R1's where it says, and the code 
     };
     for (const [file, re] of Object.entries(reads)) {
       expect(L.sharedOwner(POLICY.sharedFiles, file), file).toBe("critical-path");
-      expect(codeOf(readFileSync(resolve(ROOT, file), "utf8")), file).toMatch(re);
+      const code = codeOf(readFileSync(resolve(ROOT, file), "utf8"));
+      // Wave 4 retired the pass: its page is a retirement notice that reads no
+      // session_id at all, which the note allows ("its pass page no longer
+      // reads session_id at all"). A page that still reads one reads the stash.
+      if (file === "src/pages/AgentPass.tsx" && !/session_id/.test(code)) continue;
+      expect(code, file).toMatch(re);
     }
     const html = readFileSync(resolve(ROOT, "index.html"), "utf8");
     expect(html, "the first script no longer moves session_id on every path").toMatch(/v = q\.get\("session_id"\); if \(v !== null\)/);
