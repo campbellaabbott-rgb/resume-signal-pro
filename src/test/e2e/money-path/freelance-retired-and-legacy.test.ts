@@ -25,8 +25,11 @@
  *      from that copy by the sweep, once, never made again (CP-030), and a
  *      delivered order is never made or mailed again (20261011140000).
  *
- * The cut products' checkouts answering 410 are create-product-checkout's
- * (the checkout-catalogue group); their scenarios are added at integration.
+ *   2c (CP-I scenarios 2 and 6, corrected at integration) a cut product's
+ *      checkout: the Premium Package, the Interview Coach, the Career Path,
+ *      and both Freelance tiers (cut 2026-10-17) answer 410 retired with a
+ *      sentence and the pricing page, never a Stripe url; nothing is counted,
+ *      charged, made or mailed.
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { mailsTo, moneyPath, OWNER, paidSession, type MoneyPath } from "./harness";
@@ -172,5 +175,24 @@ describe("5: what was saved is mailed once, and what was delivered is closed", (
     await p.sweep();
     expect((await p.order(id))?.status).toBe("delivered");
     expect(mailsTo(p, BUYER, /Cover Letter is Ready/), "a delivered order was mailed again").toHaveLength(1);
+  });
+});
+
+describe("2c: a cut product's checkout takes no money", () => {
+  it.each([
+    ["premiumPackage", "premium_package"],
+    ["interviewCoach", "interview_coach"],
+    ["careerPathSimulator", "career_path_simulator"],
+    ["freelanceBoost", "freelance_boost"],
+    ["freelanceTransitionPro", "freelance_transition_pro"],
+  ])("%s answers 410 retired, with no Stripe url, and nothing is made or mailed", async (productId, productType) => {
+    const r = await p.call("create-product-checkout", { productId, email: BUYER, language: "en" }, { origin: "https://resumebooster.work" });
+    expect(r.status).toBe(410);
+    expect(r.json).toMatchObject({ retired: true, cut: true, product: productType, pricing: "https://resumebooster.work/pricing" });
+    expect(String(r.json.error ?? "")).not.toBe("");
+    expect(r.json.url).toBeUndefined();
+    expect(p.modelCalls()).toBe(0);
+    expect(p.mails).toEqual([]);
+    expect(p.routed, "the refusal called another function").toEqual([]);
   });
 });

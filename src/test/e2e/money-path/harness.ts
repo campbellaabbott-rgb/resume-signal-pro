@@ -77,6 +77,8 @@ export const MONEY_PATH_FUNCTIONS = [
   "send-product-email",
   "send-analysis-email",
   "recover-purchase",
+  // The one-off checkout, for the cut products' refusals (integration, 2026-10-18).
+  "create-product-checkout",
 ] as const;
 
 /** A mail Resend accepted, from either door (the SDK or the REST API). */
@@ -206,6 +208,8 @@ export default class Stripe {
     this.checkout = { sessions: {
       retrieve: async (id) => { const s = w().sessions[id]; if (!s) throw new Error("No such checkout.session: " + id); return JSON.parse(JSON.stringify(s)); },
       list: async (q) => ({ data: Object.values(w().sessions).filter((s) => !q || !q.payment_intent || s.payment_intent === q.payment_intent), has_more: false }),
+      // No scenario mints a session: a checkout that reaches this is a defect.
+      create: async () => { throw new Error("money path: a checkout reached Stripe"); },
     } };
     this.charges = { retrieve: async (id) => { const c = w().charges[id]; if (!c) throw new Error("No such charge"); return c; } };
     this.invoicePayments = { list: async () => ({ data: [] }) };
@@ -231,6 +235,7 @@ const STUBS: Record<string, string> = {
   "https://deno.land/std@0.168.0/crypto/mod.ts": "export const crypto = globalThis.crypto;",
   "https://esm.sh/stripe@18.5.0": STRIPE_STUB,
   "https://esm.sh/@supabase/supabase-js@2": "export const createClient = () => globalThis.__moneyPath.client; export class SupabaseClient {}",
+  "https://esm.sh/@supabase/supabase-js@2.39.3": "export const createClient = () => globalThis.__moneyPath.client; export class SupabaseClient {}",
   "https://esm.sh/resend@2.0.0": RESEND_SDK_STUB,
 };
 
