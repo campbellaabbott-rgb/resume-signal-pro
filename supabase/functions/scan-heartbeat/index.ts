@@ -3,6 +3,8 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { isScheduledCaller } from "../_shared/email-cron.ts";
 import { keyMatches } from "../_shared/admin-key.ts";
+// The apply agent's switch (wave 4): its worker's state is read only while it is on.
+import { APPLY_AGENT_ON } from "../_shared/apply-agent-switch.ts";
 // THE BATTERY BELOW IS NOT CANDIDATE DEMAND. Its four filter probes call the
 // board's `list` action, which logs a search event unconditionally — so a
 // literal {salaryFloor: 100000} probe has been landing in the demand log on
@@ -19,7 +21,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-admin-key, x-email-cron',
   'Access-Control-Expose-Headers': 'x-fn-build',
   // BUILD_VERSION below, as the other functions carry it.
-  'x-fn-build': 'scan-heartbeat.2026-10-11.28',
+  'x-fn-build': 'scan-heartbeat.2026-10-11.29',
 };
 
 // Test resume for heartbeat checks
@@ -126,7 +128,7 @@ function unanswered(r: { timedOut?: boolean; failed?: boolean }, fn: string, ms:
  *
  * BUMP ON EVERY DEPLOY of this function.
  */
-const BUILD_VERSION = "2026-10-11.28"; // 10-11.28: the cron check reads cron_http_answers and fails on repeated 5xx (S12-157); the end-to-end scan waits past the scanner's own clock and an abort on ours is degraded (S12-159); each run pings its own healthchecks.io check (HC_HEARTBEAT_PING_URL), and a mail-watch whose run stamp is 45 minutes old fails mail_watch_alive (S12-065).  10-09.7: carries both .6 and .3 (wave-3 fix round integration).  10-09.6: fails job_board_refresh_head (3h), job_board_filter_audit (12h) and job_board_pass_end (a pass-end tail that started and never finished, S11-001) and job_board_db_failures (S11-023).  10-09.3: a partial e2e report, a refused (429) e2e scan and a visitor fallback rate of half or more fail their checks (S11-028).  10-09.1: a paid order that never arrived mails the owner, naming it, newest first (decided after the delivery read, not before); a cron call refused (401/403) in the last hour fails cron_http_refusals.  10-08.1: answers only its cron, the service role and the owner's key; the e2e scan is uncached; alerts stamp only after a send that worked; vendor drift skips when unevaluated; delivery reads email_logs too
+const BUILD_VERSION = "2026-10-11.29"; // 10-11.29: the apply worker's offline alarm is read only while the apply agent is switched on (S12-171): with the agent retired, an active mandate left behind rang "worker offline" every six hours.  10-11.28: the cron check reads cron_http_answers and fails on repeated 5xx (S12-157); the end-to-end scan waits past the scanner's own clock and an abort on ours is degraded (S12-159); each run pings its own healthchecks.io check (HC_HEARTBEAT_PING_URL), and a mail-watch whose run stamp is 45 minutes old fails mail_watch_alive (S12-065).  10-09.7: carries both .6 and .3 (wave-3 fix round integration).  10-09.6: fails job_board_refresh_head (3h), job_board_filter_audit (12h) and job_board_pass_end (a pass-end tail that started and never finished, S11-001) and job_board_db_failures (S11-023).  10-09.3: a partial e2e report, a refused (429) e2e scan and a visitor fallback rate of half or more fail their checks (S11-028).  10-09.1: a paid order that never arrived mails the owner, naming it, newest first (decided after the delivery read, not before); a cron call refused (401/403) in the last hour fails cron_http_refusals.  10-08.1: answers only its cron, the service role and the owner's key; the e2e scan is uncached; alerts stamp only after a send that worked; vendor drift skips when unevaluated; delivery reads email_logs too
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1976,9 +1978,17 @@ serve(async (req) => {
     // Deliberately OUTSIDE overallStatus: the scanner and board are fine when
     // the sender is down, and turning this into a platform "down" would page on
     // the wrong thing.
-    const senderState = await evaluateSenderState(supabase);
-    if (senderState?.shouldAlert) {
-      EdgeRuntime.waitUntil(sendSenderOfflineAlert(senderState));
+    //
+    // The server-side apply agent is switched off (wave 4, owner decision
+    // 2026-10-11): its worker is meant to be down, so an active mandate left
+    // behind would ring "worker offline" every six hours for a machine nobody
+    // should run (S12-171). Read only while the switch is on; the response
+    // says why it was not read.
+    const senderState: SenderState | { reason: 'switched-off'; shouldAlert: false } | null = APPLY_AGENT_ON
+      ? await evaluateSenderState(supabase)
+      : { reason: 'switched-off', shouldAlert: false };
+    if (APPLY_AGENT_ON && senderState?.shouldAlert) {
+      EdgeRuntime.waitUntil(sendSenderOfflineAlert(senderState as SenderState));
     }
 
     // WHAT CONFIRMATION PAGES ACTUALLY SAID when the worker could not recognise
