@@ -10,7 +10,7 @@
  * WHAT HOLDS NOW.
  *   - get-account-data answers mailboxProof {how, at} for a proven address
  *     (w4b-get-account-data-says-how-and-when-the-address-was-proven.test.ts);
- *   - the Security card says the address was proven by a sign-in code on that
+ *   - the Security card says the address was proven by an emailed code on that
  *     day, says an unproven address is unproven, and says nothing before the
  *     account read is in.
  */
@@ -54,7 +54,7 @@ describe("the Security card says it", () => {
     card({ proven: true, proof: { how: "code", at: "2026-10-12T09:30:00Z" } });
     const line = document.querySelector("[data-proof-line]");
     expect(line?.getAttribute("data-proof-line")).toBe("code");
-    expect(line?.textContent).toMatch(/^Your address was proven by a sign-in code we emailed to it on .*2026\.$/);
+    expect(line?.textContent).toMatch(/^Your address was proven by a code we emailed to it on .*2026\.$/);
   });
 
   it("a provider proof with no date still says how", () => {

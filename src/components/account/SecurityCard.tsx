@@ -76,8 +76,8 @@ export function proofLine(
   if (proven === false) return t("accountSettings.unproven", "Your address isn't proven yet, so purchases made under it without signing in don't show on this page.");
   if (proven !== true || !proof) return null;
   const how = {
-    code: t("accountSettings.provenHow.code", "by a sign-in code we emailed to it"),
-    link: t("accountSettings.provenHow.link", "by a sign-in link we emailed to it"),
+    code: t("accountSettings.provenHow.code", "by a code we emailed to it"),
+    link: t("accountSettings.provenHow.link", "by a link we emailed to it"),
     reset: t("accountSettings.provenHow.reset", "by a password-reset email we sent to it"),
     provider: t("accountSettings.provenHow.provider", "by a Google or Apple sign-in that verified it"),
     confirmation: t("accountSettings.provenHow.confirmation", "by confirming the email we sent to it"),
