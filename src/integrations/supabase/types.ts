@@ -7803,6 +7803,10 @@ export type Database = {
         Args: { p_sources: string[] }
         Returns: Json
       }
+      workday_site_is_own_employer: {
+        Args: { p_token: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

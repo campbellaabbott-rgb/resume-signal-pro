@@ -1219,6 +1219,13 @@
       "when": 1792321138946,
       "tag": "0173_20261012130000_four_company_tables_are_read_through_their_readers_and_never_by_a_client",
       "breakpoints": true
+    },
+    {
+      "idx": 174,
+      "version": "7",
+      "when": 1792321146147,
+      "tag": "0174_20261012135000_a_workday_tenant_that_hosts_another_employer_is_read_one_site_at_a_time",
+      "breakpoints": true
     }
   ]
 }
