@@ -19,7 +19,7 @@
  * (20261011101000), only the network faked.
  */
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { createHash } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 import { PGlite } from "@electric-sql/pglite";
 import { loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
 import { PgSupabase } from "./helpers/pglite-supabase";
@@ -47,7 +47,16 @@ let boardDelayMs = 0;
 let boardInFlight = 0;
 let boardMaxInFlight = 0;
 
-const hex16 = (s: string) => createHash("sha256").update(s).digest("hex").slice(0, 16);
+/**
+ * The day's keyed bucket hash agent-mcp writes (allowance.ts bucketHash,
+ * S12-175), under the secret it falls back to with no MCP_BUCKET_SECRET: a
+ * key derived from the harness's service-role key for today's UTC date.
+ */
+const hex16 = (s: string) =>
+  createHmac("sha256", createHmac("sha256", "service-role:service_harness").update(`mcp-anon-bucket:${new Date().toISOString().slice(0, 10)}`).digest())
+    .update(s).digest("hex").slice(0, 16);
+/** What the bucket used to be: the plain SHA-256 of the address, which anyone can recompute. */
+const plainSha16 = (s: string) => createHash("sha256").update(s).digest("hex").slice(0, 16);
 const today = () => new Date().toISOString().slice(0, 10);
 const hhmi = () => new Date().toISOString().slice(11, 16).replace(":", "");
 const seed = (bucket: string, calls: number) =>
@@ -406,13 +415,78 @@ describe("a burst is bounded in this isolate, and a long employer list is refuse
   });
 });
 
-describe("only a call from OpenAI's published egress keeps its search out of the demand log", () => {
-  it("a ChatGPT user agent or an openai/ _meta key from anywhere else is logged like any other search", async () => {
-    await callFrom(OTHER_ADDR, { ua: "ChatGPT-probe/1.0" });
+/**
+ * Sweep S12-085 turned the review of 9fe3bc0d's rule round: tied to OpenAI's
+ * published egress, a ChatGPT search was logged whenever the list could not
+ * be read in 1.5 s, while the Privacy page says ChatGPT searches are not
+ * kept. A caller that says it is ChatGPT is now never logged, from anywhere;
+ * what it says still never picks who pays.
+ */
+describe("a caller that says it is ChatGPT keeps its search out of the demand log, and still pays as what its address is", () => {
+  it("a ChatGPT user agent or an openai/ _meta key from anywhere is not logged, and is counted as everyone else", async () => {
+    const ua = await callFrom(OTHER_ADDR, { ua: "ChatGPT-probe/1.0" });
     await callFrom(OTHER_ADDR, { meta: { "openai/anything": "x" } });
-    expect(boardCalls.map((b) => b.noLog)).toEqual([undefined, undefined]);
+    expect(boardCalls.map((b) => b.noLog)).toEqual([true, true]);
+    expect(ua.sc.unkeyed).toMatchObject({ allowance: "connection", partition: "other" });
     boardCalls = [];
     await callFrom(CHATGPT_ADDR, { meta: { "openai/subject": "v1/real-person" } });
     expect(boardCalls.map((b) => b.noLog)).toEqual([true]);
+    boardCalls = [];
+    await callFrom(OTHER_ADDR);
+    await callFrom(CLAUDE_ADDR);
+    expect(boardCalls.map((b) => b.noLog)).toEqual([undefined, undefined]);
+  });
+});
+
+/** Sweep S12-175: a bucket read off the table gives no address back. */
+describe("an address is stored only as the day's keyed hash", () => {
+  it("the bucket is the keyed hash, never the plain SHA-256 anyone can recompute from the address", async () => {
+    await callFrom(OTHER_ADDR);
+    expect(await callsIn(`ip:${hex16(OTHER_ADDR)}`)).toBe(1);
+    expect(await callsIn(`ip:${plainSha16(OTHER_ADDR)}`)).toBe(0);
+    const rows = (await db.query<{ bucket: string }>("SELECT bucket FROM public.mcp_anon_rate")).rows.map((r) => r.bucket);
+    expect(rows.join(" ")).not.toContain(plainSha16(OTHER_ADDR));
+    expect(rows.join(" ")).not.toContain(OTHER_ADDR);
+  });
+
+  it("a ChatGPT person's id is keyed the same way", async () => {
+    await callFrom(CHATGPT_ADDR, { meta: { "openai/subject": "v1/user-c" } });
+    expect(await callsIn(`ip:u:chatgpt:${hex16("v1/user-c")}`)).toBe(1);
+    expect(await callsIn(`ip:u:chatgpt:${plainSha16("v1/user-c")}`)).toBe(0);
+  });
+});
+
+/**
+ * Sweep S12-176: every Claude user arrives from Anthropic's few addresses, so
+ * board_stats' 30 a minute per address was 30 for all of them, and Claude's
+ * one pool bucket had 5 refunds a day for every Claude user.
+ */
+describe("board_stats and refunds are sized to the bucket, not the address", () => {
+  it("Claude's users together get Claude's pool's minute of board_stats; a connection still gets 30", async () => {
+    const claude = await Promise.all(Array.from({ length: A.boardStatsPerMinute + 5 }, () => callFrom(CLAUDE_ADDR, { name: "board_stats", args: {} })));
+    expect(claude.filter((r) => r.refused).map((r) => r.text)).toEqual([]);
+    const addr = "203.0.113.99";
+    const one = await Promise.all(Array.from({ length: A.boardStatsPerMinute + 1 }, () => callFrom(addr, { name: "board_stats", args: {} })));
+    // The minute may turn over mid-burst; at most one minute's worth is refused.
+    expect(one.filter((r) => r.refused).length).toBeLessThanOrEqual(1);
+    const more = await callFrom(addr, { name: "board_stats", args: {} });
+    if (new Date().getUTCSeconds() > 2) expect(more.text).toMatch(/Too many board_stats calls this minute for this connection \(30 a minute\)/);
+  });
+
+  it("a transport fault from Claude is given back after five refunds today: the pool's refunds are the pool's size", async () => {
+    await seed(`refund:ip:host:claude`, A.refundsPerBucket);
+    boardMode = "unreachable";
+    await callFrom(CLAUDE_ADDR);
+    await settle();
+    expect(await callsIn("ip:host:claude")).toBe(0);
+    expect(await callsIn(`refund:ip:host:claude`)).toBe(A.refundsPerBucket + 1);
+  });
+
+  it("a connection still stops at five", async () => {
+    await seed(`refund:ip:${hex16(OTHER_ADDR)}`, A.refundsPerBucket);
+    boardMode = "unreachable";
+    await callFrom(OTHER_ADDR);
+    await settle();
+    expect(await callsIn(`ip:${hex16(OTHER_ADDR)}`)).toBe(1);
   });
 });

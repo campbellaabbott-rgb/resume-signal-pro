@@ -98,19 +98,27 @@ import {
 } from "../_shared/application-form.ts";
 import { applyMyselfAnswer, applyMyselfMarkdown, type ApplyPosting } from "./apply-myself.ts";
 // The first search answers the question as asked: a place moved out of the
-// query, a company name resolved to its board (spec D2 §2.3).
-import { looksLikeToken, pickCompany, readQuery, type CompanyCandidate, type QueryReading } from "./query-place.ts";
+// query (spec D2 §2.3). An employer name is resolved by job-board itself, one
+// rule for every spelling (sweep S12-080).
+import { readQuery, type QueryReading } from "./query-place.ts";
+// OpenAI's published ChatGPT egress as last read, for when the live list
+// cannot be (sweep S12-085).
+import { BUNDLED_CHATGPT_EGRESS_V4 } from "./chatgpt-egress.ts";
 // The keyless allowance: who pays (by verified address only), and what a
 // refusal says (by edition).
 import {
   ANON_ALLOWANCE,
+  boardStatsPerMinuteFor,
+  bucketHash,
   connectionOf,
   formsBucket,
   FORMS_POOL,
   hoursUntilReset,
   lookupBucket,
+  refundsFor,
   secondsLeftInMinute,
   spentRefusal,
+  utcDay,
   type AllowanceBucket,
   type Edition,
   type MeterDecision,
@@ -300,8 +308,22 @@ const SUPPORTED_METHODS = ["initialize", "tools/list", "tools/call", "prompts/li
  *  says so; the forms pool is split by platform; board_stats misses share one
  *  read; at most six keyless calls run at once per isolate; a search naming
  *  more than 50 employers is refused before it is counted; only OpenAI's
- *  published egress keeps a search out of the demand log. */
-const FN_BUILD = "agent-mcp.2026-10-11.3";
+ *  published egress keeps a search out of the demand log.
+ *  2026-10-11.27 (S12 sweep, wave 4 round 2): an employer name goes to
+ *  job-board as typed and the board's notes on it come back
+ *  (unknownCompanies, companiesResolved, companiesUnresolved,
+ *  companiesNotLookedUp), and a scope the board could not apply is never
+ *  answered as the whole board (S12-040, S12-080); the schema says total is a
+ *  floor when countCapped and names rankedFellBack (S12-041); a caller that
+ *  says it is ChatGPT is never logged, and OpenAI's egress list falls back to
+ *  a bundled copy (S12-085); the keyless buckets are a keyed daily hash, not
+ *  a plain hash of the address (S12-175); board_stats and refunds are sized
+ *  to the bucket (S12-176); apply_myself reads the employer's hint with the
+ *  label (S12-082), refuses a protected status inside a compound work-done
+ *  question (S12-081), lists no hidden Greenhouse field and no unasked GDPR
+ *  consent (S12-173), and says null, not "no account, no CAPTCHA", for a
+ *  hiring system nobody measured (S12-174). */
+const FN_BUILD = "agent-mcp.2026-10-11.27";
 /** Where a free key is minted — the page every refusal in this file points at. */
 const MINT_URL = "https://resumebooster.work/data-api";
 /** Where a pass is bought, signed in — the fix every pass refusal names. */
@@ -466,10 +488,15 @@ function inV4Cidr(ip: string, cidr: string): boolean {
   const mask = n === 0 ? 0 : (0xffffffff << (32 - n)) >>> 0;
   return ((a & mask) >>> 0) === ((b & mask) >>> 0);
 }
-let chatgptEgress: { at: number; cidrs: string[] } = { at: 0, cidrs: [] };
-/** OpenAI's list; an unreadable one is [] for ten minutes, and the caller is counted as everyone else is. */
-async function chatgptEgressCidrs(): Promise<string[]> {
-  const ttl = chatgptEgress.cidrs.length ? 6 * 3600_000 : 10 * 60_000;
+let chatgptEgress: { at: number; cidrs: readonly string[]; live: boolean } = { at: 0, cidrs: [], live: false };
+/**
+ * OpenAI's list, read live at most every six hours. An unreadable or empty
+ * read answers the bundled copy (chatgpt-egress.ts) and is tried again in ten
+ * minutes (sweep S12-085: it answered [] for ten minutes, so every ChatGPT
+ * user on a cold isolate was counted as everyone else).
+ */
+async function chatgptEgressCidrs(): Promise<readonly string[]> {
+  const ttl = chatgptEgress.live ? 6 * 3600_000 : 10 * 60_000;
   if (chatgptEgress.at && Date.now() - chatgptEgress.at < ttl) return chatgptEgress.cidrs;
   let cidrs: string[] = [];
   try {
@@ -479,8 +506,10 @@ async function chatgptEgressCidrs(): Promise<string[]> {
   } catch (e) {
     console.warn("[AGENT-MCP] ChatGPT egress list unreadable:", String((e as Error)?.message ?? e).slice(0, 120));
   }
-  chatgptEgress = { at: Date.now(), cidrs };
-  return cidrs;
+  chatgptEgress = cidrs.length
+    ? { at: Date.now(), cidrs, live: true }
+    : { at: Date.now(), cidrs: BUNDLED_CHATGPT_EGRESS_V4, live: false };
+  return chatgptEgress.cidrs;
 }
 /**
  * Whose servers made this call, judged by the platform-seen address alone —
@@ -543,6 +572,18 @@ function secondsToMidnightUtc(): number {
  */
 function secondsToNextMinute(): number {
   return Math.max(1, 60 - new Date().getUTCSeconds());
+}
+
+/**
+ * The secret the keyless buckets are keyed with (allowance.ts bucketHash,
+ * S12-175): MCP_BUCKET_SECRET when the owner has set it, which rotates them
+ * all at once whenever it is changed; until then a key derived from the
+ * service-role key, which this function already holds and no table or reply
+ * ever carries. Never empty, so a bucket is never the plain hash of an address.
+ */
+function bucketSecret(): string {
+  const own = (Deno.env.get("MCP_BUCKET_SECRET") ?? "").trim();
+  return own || `service-role:${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""}`;
 }
 
 async function sha256Hex(s: string): Promise<string> {
@@ -855,8 +896,19 @@ function disclosures(r: Record<string, unknown>): Record<string, unknown> {
       // Row-selecting for the same reason: the agency opt-out hides disclosed
       // inventory, and an agent must be able to say the market view excludes it.
       "agenciesExcluded",
+      // WHAT THE EMPLOYER SCOPE DID (sweeps S12-040, S12-080). The board names
+      // an employer it does not carry (unknownCompanies, beside a total of 0
+      // that is not that employer's hiring), resolves a name to its boards
+      // (companiesResolved), refuses a name that matched no single employer
+      // with its candidates (companiesUnresolved) and names those past the
+      // fifth (companiesNotLookedUp). Each was dropped here, so an uncarried
+      // employer read as one with no openings.
+      "unknownCompanies", "companiesResolved", "companiesUnresolved", "companiesNotLookedUp",
     ]
   ) if (r[k] !== undefined && r[k] !== null) out[k] = r[k];
+  // The ranked search failed and the board answered with its fallback (S12-041):
+  // said as a flag, never the board's internal error text.
+  if (r.rankedFellBack) out.rankedFellBack = true;
   return out;
 }
 
@@ -883,7 +935,7 @@ const SEARCH_PROPERTIES = {
   employmentType: { type: "string", description: "Comma list: full_time, part_time, contract, temporary, internship." },
   category: { type: "string", description: "Comma list of board_stats category slugs, max 3." },
   department: { type: "string", description: "Part of the employer's own team name." },
-  companies: { type: "string", description: "Comma list of companyToken values from cards." },
+  companies: { type: "string", description: "Comma list of companyToken values or employer names." },
   experience: { type: "string", description: "Comma list: entry, mid, senior, expert (the posting's band)." },
   maxAgeDays: { type: "number", description: "Postings from the last N days (1-30)." },
   postedAfter: { type: "string", description: "ISO date; postings the employer dated after it." },
@@ -941,7 +993,11 @@ const JOB_CARD_SCHEMA = {
 
 /** Everything the board publishes about the search itself, passed through. */
 const DISCLOSURE_SCHEMA = {
-  total: { type: ["integer", "null"], description: "Exact match count; absent with countUnavailable:true when the board refuses to guess." },
+  // NOT "exact" (sweep S12-041): a broad search stops counting at the board's
+  // ceiling and says countCapped, which this schema never declared, so "how
+  // many nurse jobs" came back as "exactly" the ceiling.
+  total: { type: ["integer", "null"], description: "The board's match count: exact, unless countCapped says it is where counting stopped (a floor). Absent with countUnavailable:true when the board refuses to guess." },
+  countCapped: { type: "boolean", description: "total is the board's counting ceiling, not the number: report 'at least' total, never 'exactly'." },
   totalAtLeast: { type: "integer", description: "A floor on the count when paging went past the exact total." },
   countUnavailable: { type: "boolean", description: "Do not report a total." },
   relatedTotal: { type: "integer", description: "Further postings matched in the description only." },
@@ -959,7 +1015,11 @@ const DISCLOSURE_SCHEMA = {
   agenciesExcluded: { type: "boolean", description: "Row-selecting: agency postings are hidden from this page." },
   withheld: { type: "integer", description: "Rows on this page the connector may not hand on (the board's total still counts them)." },
   locationInterpreted: { type: "object", description: "What was read out of the query: the place moved to location or country, a trailing remote, and the words moved." },
+  rankedFellBack: { type: "boolean", description: "The ranked search failed and the board answered with its fallback search: the order may be less relevant." },
   companiesResolved: { type: "array", description: "Employer names in companies, each with the board tokens it resolved to." },
+  companiesUnresolved: { type: "array", description: "Names in companies that matched no single employer, each with up to five candidates to offer; nothing was searched for them." },
+  companiesNotLookedUp: { type: "array", description: "Names past the fifth in companies: not looked up and not searched." },
+  unknownCompanies: { type: "array", items: { type: "string" }, description: "Employers asked for that this board does not carry under that name: a total of 0 says nothing about their hiring." },
 };
 
 /**
@@ -1230,7 +1290,7 @@ const TOOLS = [
       "Search the live job board: postings pulled directly from employers' own hiring systems, 30-day freshness cap. " +
       "Send job titles, skills and places, never CV text; put the place in location, not in query. " +
       "Returns slim job cards with the board's parsed pay (salaryMinAnnual/salaryMaxAnnual) and seniority, plus its honesty " +
-      "disclosures: exact totals when knowable (countUnavailable otherwise), filters it could not honour (ignoredFilters), " +
+      "disclosures: totals (a floor when countCapped; countUnavailable when unknown), filters it could not honour (ignoredFilters), " +
       "words it read as filters (intentFilters) and spelling suggestions. Answers with no key: one page of " +
       `${ANON_SEARCH_LIMIT} rows to offset ${ANON_ALLOWANCE.maxOffset}; a key pages up to ${KEYED_SEARCH_LIMIT}.`,
     annotations: READS_THE_BOARD,
@@ -1403,8 +1463,8 @@ const TOOLS = [
           type: "object",
           properties: {
             submitter: { type: "string", enum: ["you"] },
-            needsEmployerAccount: { type: "boolean" },
-            captchaLikely: { type: "boolean" },
+            needsEmployerAccount: { type: ["boolean", "null"], description: "null: not measured." },
+            captchaLikely: { type: ["boolean", "null"] },
             attachFilesYourself: { type: "boolean" },
           },
           additionalProperties: true,
@@ -1965,6 +2025,8 @@ function guideText(edition: Edition): string {
     `## What the answers mean`,
     ``,
     `- \`countUnavailable\` means the board refuses to guess a total; \`ignoredFilters\` names any filter it could not apply, so the results answer a wider question than was asked.`,
+    `- \`countCapped\` means \`total\` is where the board stopped counting: say "at least" that many, never "exactly".`,
+    `- \`unknownCompanies\` names an employer this board does not carry under that name, and \`companiesUnresolved\` a name that matched no single employer, with candidates to ask about: neither is an employer with no openings.`,
     `- Pay and seniority arrive parsed (\`salaryMinAnnual\`, \`salaryMaxAnnual\`, \`experienceBand\`, \`minYears\`) and are ABSENT when the posting states none: absence is not zero.`,
     `- \`applyForm: true\` on a card means \`${tool("apply_myself")}\` can read that employer's form for you.`,
     ``,
@@ -2278,6 +2340,17 @@ function searchBody(args: Record<string, unknown>): Record<string, unknown> {
       "Send the employers you care about most, or search without companies and read companyToken off the cards.",
     );
   }
+  // An entry with no letter or digit is neither a token nor a name. job-board
+  // passes such a value to its filter unread, the filter drops it and names
+  // `companies` ignored, and a scope of only such values was the whole board
+  // (sweep S12-080): refused here, before the call is counted.
+  const blank = companies.filter((c) => !/[\p{L}\p{N}]/u.test(c));
+  if (blank.length) {
+    throw new ToolArgumentError(
+      `companies holds ${blank.map((c) => JSON.stringify(c)).join(", ")}, which is not an employer name or token.`,
+      "Send employer names or companyToken values from cards, comma-separated.",
+    );
+  }
   // ASKED FOR BY NAME, AND REFUSED BY NAME. A vendor filter naming a system
   // this server may not redistribute would bind a filter that can only ever
   // select rows the runners then drop, and the agent would read the empty
@@ -2400,31 +2473,23 @@ async function servableSearchBody(args: Record<string, unknown>): Promise<Record
   return body;
 }
 
-/** company-suggest answers, per isolate, for ten minutes: a name asked twice is one board read. */
-const SUGGEST_CACHE_MS = 600_000;
-const suggestCache = new Map<string, { at: number; companies: CompanyCandidate[] }>();
-async function suggestCompanies(name: string, ctx: Ctx): Promise<CompanyCandidate[]> {
-  const key = name.trim().toLowerCase();
-  const hit = suggestCache.get(key);
-  if (hit && Date.now() - hit.at < SUGGEST_CACHE_MS) return hit.companies;
-  const r = await board({ action: "company-suggest", q: key.slice(0, 80) }, ctx);
-  const companies = (Array.isArray(r.companies) ? r.companies : []) as CompanyCandidate[];
-  if (suggestCache.size > 2_000) suggestCache.clear();
-  suggestCache.set(key, { at: Date.now(), companies });
-  return companies;
-}
-
 /**
  * THE SEARCH AS THE PERSON MEANT IT (spec D2 §2.3): a known place at the end
- * of the query moved to location or country, a trailing "remote" to the
- * filter, and an employer NAME in `companies` resolved to its board tokens —
- * an exact name only, never two employers merged. A name that resolves to
- * nothing is named in ignoredFilters with its closest candidates, so the
- * wider answer says it is wider.
+ * of the query moved to location or country, and a trailing "remote" to the
+ * filter.
+ *
+ * AN EMPLOYER NAME IS LEFT FOR THE BOARD (sweep S12-080). This function used
+ * to resolve a name itself through company-suggest, under a rule of its own,
+ * and only for a name that did not look like a token: "CVS" matched no exact
+ * name and was DROPPED, so the search ran over the whole board under that
+ * employer's name, while "cvs" looked like a token, went to the board, came
+ * back as an employer the board does not carry, and read as total 0 with
+ * nothing said. job-board (.93) resolves every entry it does not carry by
+ * name, under one rule whatever the spelling, never widens a refused scope,
+ * and names what it did (companiesResolved, companiesUnresolved,
+ * companiesNotLookedUp, unknownCompanies); disclosures() forwards all four.
  */
-async function searchAsMeant(input: Record<string, unknown>, ctx: Ctx): Promise<{
-  args: Record<string, unknown>; reading: QueryReading | null; resolved: Array<{ asked: string; name: string; tokens: string[] }>; ignored: string[];
-}> {
+function searchAsMeant(input: Record<string, unknown>): { args: Record<string, unknown>; reading: QueryReading | null } {
   let args = { ...input };
   let reading: QueryReading | null = null;
   const set = (v: unknown) => v !== undefined && v !== null && v !== "";
@@ -2435,36 +2500,36 @@ async function searchAsMeant(input: Record<string, unknown>, ctx: Ctx): Promise<
       args = { ...args, query: r.query, ...(r.location ? { location: r.location } : {}), ...(r.country ? { country: r.country } : {}), ...(r.remote ? { remote: true } : {}) };
     }
   }
-  const resolved: Array<{ asked: string; name: string; tokens: string[] }> = [];
-  const ignored: string[] = [];
-  const entries = companyTokens(args.companies);
-  const names = entries.filter((e) => !looksLikeToken(e));
-  if (names.length) {
-    const tokens = entries.filter((e) => looksLikeToken(e));
-    for (const name of names.slice(0, 5)) {
-      let candidates: CompanyCandidate[] = [];
-      try {
-        candidates = await suggestCompanies(name, ctx);
-      } catch (e) {
-        console.warn("[AGENT-MCP] company-suggest unavailable:", String((e as Error)?.message ?? e).slice(0, 120));
-      }
-      const pick = pickCompany(name, candidates);
-      if ("tokens" in pick) {
-        tokens.push(...pick.tokens);
-        resolved.push({ asked: name, name: pick.name, tokens: pick.tokens });
-      } else {
-        ignored.push(`companies: "${name}" matched no employer by name${pick.candidates.length ? ` (closest: ${pick.candidates.join(", ")})` : ""}`);
-      }
-    }
-    for (const name of names.slice(5)) ignored.push(`companies: "${name}" was not looked up (five names a call)`);
-    args = { ...args, companies: [...new Set(tokens)] };
-  }
-  return { args, reading, resolved, ignored };
+  return { args, reading };
+}
+
+/** The board's own notes on an employer scope: present whenever it read one by name. */
+const SCOPE_NOTES = ["companiesResolved", "companiesUnresolved", "companiesNotLookedUp", "unknownCompanies"] as const;
+
+/**
+ * NEVER THE WHOLE BOARD UNDER AN EMPLOYER'S NAME (sweep S12-080). A scope the
+ * board did not apply, named only as `companies` in ignoredFilters with none
+ * of its notes beside it, is a board that could not read the entries (a
+ * job-board older than .93 meeting a name, while a deploy is in flight): its
+ * rows answer a question about every employer. Null when the scope held (or
+ * none was asked), else the answer that says nothing was searched.
+ */
+function unboundScope(asked: readonly string[], r: Record<string, unknown>): Record<string, unknown> | null {
+  if (!asked.length) return null;
+  if (SCOPE_NOTES.some((k) => r[k] !== undefined && r[k] !== null)) return null;
+  const ignored = Array.isArray(r.ignoredFilters) ? (r.ignoredFilters as unknown[]) : [];
+  if (!ignored.includes("companies")) return null;
+  return {
+    jobs: [], hasMore: false, countUnavailable: true,
+    ignoredFilters: [`companies: the board could not apply ${asked.map((c) => JSON.stringify(c)).join(", ")}, so nothing was searched rather than every employer. Send companyToken values from cards.`],
+  };
 }
 
 async function runSearchJobs(input: Record<string, unknown>, ctx: Ctx = KEYED_CTX): Promise<unknown> {
-  const { args, reading, resolved, ignored } = await searchAsMeant(input, ctx);
+  const { args, reading } = searchAsMeant(input);
   const r = await board(await servableSearchBody(args), ctx);
+  const unbound = unboundScope(companyTokens(args.companies), r);
+  if (unbound) return { ...unbound, ...(reading ? { locationInterpreted: reading } : {}) };
   // How many rows the board answered, before the redistribution filter: a
   // count only, never the rows.
   const answered = Number((r.jobs as unknown[] | undefined)?.length ?? 0);
@@ -2472,8 +2537,6 @@ async function runSearchJobs(input: Record<string, unknown>, ctx: Ctx = KEYED_CT
   const offset = Math.max(0, Number(args.offset ?? 0) || 0);
   const out: Record<string, unknown> = { jobs: jobs.map((j) => compactJob(j, ctx)), ...disclosures(r) };
   if (reading) out.locationInterpreted = reading;
-  if (resolved.length) out.companiesResolved = resolved;
-  if (ignored.length) out.ignoredFilters = [...(Array.isArray(out.ignoredFilters) ? out.ignoredFilters : []), ...ignored];
   // The board's `total` beside them still counts what it counted, so rows
   // dropped on the way out are NAMED (the reason is in board_stats, the
   // instructions and the guide; a card budget has no room for it per page).
@@ -2778,6 +2841,9 @@ async function runFitResume(args: Record<string, unknown>, apiKeyId: string): Pr
   }
   const limit = Math.max(1, Math.min(20, Number(args.limit ?? 20) || 20));
   const r = await board(await servableSearchBody({ ...args, query, limit }));
+  // An employer scope the board could not apply is never scored as the whole board (S12-080).
+  const unbound = unboundScope(companyTokens(args.companies), r);
+  if (unbound) return { terms, query, ...unbound };
   // Dropped BEFORE scoring: this tool returns a job card per row exactly as
   // search_jobs does, so it redistributes the same way — and filtering here
   // also means the scorer's budget is never spent on a row nobody receives.
@@ -4075,18 +4141,22 @@ function keylessTurn(waitMs: number = ANON_ALLOWANCE.inFlightWaitMs): Promise<((
   });
 }
 
-/** board_stats calls this minute per connection, in this isolate: it is never counted, so this alone bounds it. */
+/**
+ * board_stats calls this minute per allowance bucket, in this isolate: it is
+ * never counted, so this alone bounds it. Keyed by the bucket (a keyed hash,
+ * never an address) and capped at the bucket's size (boardStatsPerMinuteFor).
+ */
 const boardStatsMinute = new Map<string, { minute: number; n: number }>();
-function boardStatsAllowed(connection: string, now: number = Date.now()): boolean {
+function boardStatsAllowed(bucket: string, perMinute: number, now: number = Date.now()): boolean {
   const minute = Math.floor(now / 60_000);
-  const seen = boardStatsMinute.get(connection);
+  const seen = boardStatsMinute.get(bucket);
   if (!seen || seen.minute !== minute) {
     if (boardStatsMinute.size > 5_000) boardStatsMinute.clear();
-    boardStatsMinute.set(connection, { minute, n: 1 });
+    boardStatsMinute.set(bucket, { minute, n: 1 });
     return true;
   }
   seen.n++;
-  return seen.n <= ANON_ALLOWANCE.boardStatsPerMinute;
+  return seen.n <= perMinute;
 }
 
 /** What a refused call can do instead with nothing: the posting's page, or the board. */
@@ -4115,15 +4185,15 @@ function answeredNotFound(toolName: string, out: Record<string, unknown>): boole
  * counted by mcp_anon_check_v2 against its share's minute, the overall
  * minute, the bucket, its host's share of the day and the overall day — or,
  * for apply_myself, the forms pool, which never touches the lookups.
- * board_stats is never counted: it is cached, and bounded per connection per
- * minute in this isolate.
+ * board_stats is never counted: it is cached, and bounded per allowance
+ * bucket per minute in this isolate, at the bucket's size.
  *
  * A refusal is in band, by edition: the hours (or seconds) until it resets,
  * whose allowance it was, and the keyless twin; header advice only for a
  * caller outside both chat platforms. A call is given back only for a
  * transport fault between this server and the board, or an id the board
- * does not carry, at most ANON_ALLOWANCE.refundsPerBucket times a day; a
- * timeout never is.
+ * does not carry, at most refundsFor(bucket) times a day (the bucket's
+ * size, never less than ANON_ALLOWANCE.refundsPerBucket); a timeout never is.
  *
  * Never metered through api_key_check's tables (there is no key) and never
  * through the cross-function rate budget (that starved résumé upload once).
@@ -4139,21 +4209,36 @@ async function answerUnkeyed(
   const A = ANON_ALLOWANCE;
   const address = callerAddress(req.headers);
   const edition = editionOf(req.headers, params);
-  const host = await egressHost(address, isChatGptCaller(req.headers, params));
-  // Not logged only for a call from OpenAI's published egress (review of
-  // 9fe3bc0d): the edition follows what a caller says it is, and a script
-  // anywhere could otherwise keep its searches out of the demand log.
-  const ctx: Ctx = { edition, noLog: host === "chatgpt", keyless: true };
+  const claimsChatGpt = isChatGptCaller(req.headers, params);
+  const host = await egressHost(address, claimsChatGpt);
+  // NOT LOGGED ON THE CLAIM, FAIL-CLOSED (sweep S12-085). The Privacy page
+  // says ChatGPT searches are not kept. Tied to OpenAI's published egress, a
+  // ChatGPT search was logged whenever that list could not be read (1.5 s on
+  // a cold isolate) or lagged a new OpenAI range. A caller that says it is
+  // ChatGPT is now never logged: the most a script gains by saying so is a
+  // search missing from the demand log; who pays is still the verified
+  // address alone (`host`).
+  const ctx: Ctx = { edition, noLog: claimsChatGpt, keyless: true };
   const partition: Partition = host ?? "other";
   const connection = connectionOf(address);
+  // The day's keyed hashes (S12-175): the connection and ChatGPT's per-person
+  // id are only ever stored as these, never as themselves.
+  const secret = bucketSecret();
+  const subject = host === "chatgpt" ? openaiSubjectOf(params) : "";
+  const subjectHash = subject ? await bucketHash(secret, utcDay(), subject) : "";
+  const lookups = lookupBucket(host, subjectHash, await bucketHash(secret, utcDay(), connection));
 
   if (toolName === "board_stats") {
-    if (!boardStatsAllowed(connection)) {
+    // Bounded per allowance bucket, at the bucket's size (S12-176): every
+    // Claude user arrives from Anthropic's few addresses, so a cap of 30 a
+    // minute per address was 30 for all of them.
+    const perMinute = boardStatsPerMinuteFor(lookups);
+    if (!boardStatsAllowed(lookups.bucket, perMinute)) {
       countCall(client, partition, "keyless", toolName, "refused_minute");
       const secs = secondsLeftInMinute();
       return {
         rpc: rpcResult(rpcId, toolErr(
-          `Too many board_stats calls this minute from this connection (${A.boardStatsPerMinute} a minute).`,
+          `Too many board_stats calls this minute ${lookups.owner} (${perMinute.toLocaleString("en-US")} a minute).`,
           `Try again in ${secs} seconds; the figures change at most every five minutes.`,
         )),
         headers: { "Retry-After": String(secs) },
@@ -4192,15 +4277,13 @@ async function answerUnkeyed(
   async function meteredRun(): Promise<{ rpc: unknown; headers: Record<string, string> }> {
     // A ChatGPT caller stamps its user as `openai/subject` in _meta. It keys
     // that user's own bucket only on a call from OpenAI's published egress;
-    // from anywhere else it is the caller's own word and keys nothing. Logged
-    // hashed and alone: never beside an address.
-    const subject = host === "chatgpt" ? openaiSubjectOf(params) : "";
-    const subjectHash = subject ? (await sha256Hex(subject)).slice(0, 16) : "";
+    // from anywhere else it is the caller's own word and keys nothing (the
+    // hash above is made only for a ChatGPT host). Logged as the day's keyed
+    // hash and alone: never beside an address.
     if (subject) console.log(`[AGENT-MCP] keyless subject ${subjectHash} (${toolName})`);
     // Measurement for a later claude.ai-versus-API sub-share: the user agent
     // of calls from Anthropic's range. A hint, never a credential.
     if (host === "claude") console.log(`[AGENT-MCP] claude-range ${toolName} ua=${(req.headers.get("user-agent") ?? "").slice(0, 80)}`);
-    const lookups = lookupBucket(host, subjectHash, (await sha256Hex(connection)).slice(0, 16));
     const forms = toolName === "apply_myself";
     const m: AllowanceBucket = forms ? formsBucket(lookups) : lookups;
 
@@ -4237,7 +4320,8 @@ async function answerUnkeyed(
 
     const giveBack = (why: string) => {
       background((async () => {
-        const { data: back } = await client.rpc("mcp_anon_refund", { p_bucket: m.bucket, p_global_bucket: m.share, p_overall: true, p_max: A.refundsPerBucket, p_overall_bucket: forms ? FORMS_POOL : "global" });
+        // At the bucket's size (S12-176): Claude's pool is one bucket for every Claude user.
+        const { data: back } = await client.rpc("mcp_anon_refund", { p_bucket: m.bucket, p_global_bucket: m.share, p_overall: true, p_max: refundsFor(m), p_overall_bucket: forms ? FORMS_POOL : "global" });
         console.log(`[AGENT-MCP] keyless ${toolName} ${why}: ${back === true ? "given back" : "not given back (daily limit)"}`);
       })());
     };
@@ -4374,6 +4458,11 @@ function shapeOnly(schema: unknown, depth = 0): unknown {
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(s)) {
     if (k === "description") continue;
+    // `additionalProperties: true` is JSON Schema's default, so leaving it
+    // out says the same thing in 28 fewer bytes, 32 times over (S12 sweep:
+    // the disclosures S12-040/041 added had to fit under 25,000). A `false`
+    // or a schema is kept.
+    if (k === "additionalProperties" && v === true) continue;
     // Inside `properties` every key is a field name, never the keyword.
     out[k] = k === "properties" && v && typeof v === "object"
       ? Object.fromEntries(Object.entries(v as Record<string, unknown>).map(([f, fv]) => [f, shapeOnly(fv, depth + 1)]))
@@ -4766,9 +4855,11 @@ Deno.serve(async (req) => {
     }
   }
 
-  // As for a keyless call: not logged only from OpenAI's published egress.
-  const verifiedHost = await egressHost(callerAddress(req.headers), isChatGptCaller(req.headers, params));
-  const ctx: Ctx = { edition, noLog: verifiedHost === "chatgpt", keyless: false };
+  // As for a keyless call: a caller that says it is ChatGPT is never logged
+  // (fail-closed, S12-085); who pays still follows the verified address.
+  const claimsChatGpt = isChatGptCaller(req.headers, params);
+  const verifiedHost = await egressHost(callerAddress(req.headers), claimsChatGpt);
+  const ctx: Ctx = { edition, noLog: claimsChatGpt, keyless: false };
   try {
     if (!d) {
       // No key, one of ANON_TOOLS: counted by mcp_anon_check_v2, then

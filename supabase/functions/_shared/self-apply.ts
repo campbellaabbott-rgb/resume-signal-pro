@@ -27,7 +27,9 @@
  *     sentences.") rather than a second question or anything factual. The
  *     review of 9fe3bc0d found a motivation opening carrying "When could you
  *     start?", "Have you previously applied to us?" and "interested in
- *     leaving", and work-done prompts carrying a second ask, all drafted whole.
+ *     leaving", and work-done prompts carrying a second ask, all drafted whole;
+ *   - and the employer's hint under the label, read as part of the question,
+ *     asks for nothing factual either (hintIsPlain, sweep S12-082).
  * Everything else goes to the person: identity fields to "your_details",
  * attachments to "your_documents", demographic questions (voluntary, never
  * drafted), consents (the AI never ticks one), factual questions with their
@@ -139,6 +141,23 @@ export function laterSentencesArePlain(label: string): boolean {
     !s.includes("?") && classifyQuestion(s, "textarea") === "draftable" && topicOf(s) === "other");
 }
 
+/**
+ * THE EMPLOYER'S HINT IS PART OF THE QUESTION (sweep S12-082). A form's note
+ * under a label ("Include your salary expectations and whether you need
+ * sponsorship") was never read: the label alone decided, and the packet then
+ * printed the hint under "Questions your AI may draft". A question is drafted
+ * only when its hint, every sentence of it, is a plain instruction or a
+ * question about the work: nothing a factual list keeps from a model, no
+ * factual topic, nothing about the person's own status, no word about leaving.
+ */
+export function hintIsPlain(hint: string | undefined): boolean {
+  const h = cleanQuestionLabel(hint ?? "");
+  if (!h) return true;
+  if (LEAVING.test(h) || PROTECTED_FACTUAL.test(h) || PERSONAL_HISTORY.test(h)) return false;
+  return h.split(SENTENCES).every((s) =>
+    classifyQuestion(s, "textarea") === "draftable" && topicOf(s) === "other" && !OWN_STATUS.test(s));
+}
+
 /** True when the label is one of the motivation questions and asks nothing of the person's status. */
 export function isMotivationQuestion(label: string): boolean {
   if (!MOTIVATION.test(label) || PROTECTED_FACTUAL.test(label) || PERSONAL_HISTORY.test(label) || LEAVING.test(label)) return false;
@@ -165,6 +184,11 @@ export function whoAnswers(q: SelfApplyInput, n: number): SelfApplyQuestion {
   const free = isFreeText(type, q.options);
   const sense = sponsorshipSense(label);
   const countries = countriesIn(label);
+  // The employer's hint is read with the label (S12-082): one that asks for
+  // a fact keeps the question with the person, and says what it is about.
+  const plainHint = hintIsPlain(q.hint);
+  const hintTopic = plainHint ? "other" : topicOf(cleanQuestionLabel(q.hint ?? ""));
+  const hintExtras = hintTopic !== "other" ? { topic: hintTopic } : {};
   const factualExtras = {
     topic: topicOf(label),
     ...(countries.length ? { aboutCountry: countries } : {}),
@@ -176,7 +200,8 @@ export function whoAnswers(q: SelfApplyInput, n: number): SelfApplyQuestion {
     case "file":
       // A text box that wants the cover letter itself is motivation text the
       // AI may draft; an upload slot is the person's document.
-      if (free && COVER_LETTER.test(label) && isMotivationQuestion(label)) return { ...base, answeredBy: "draft_from_your_cv" };
+      if (free && plainHint && COVER_LETTER.test(label) && isMotivationQuestion(label)) return { ...base, answeredBy: "draft_from_your_cv" };
+      if (free && COVER_LETTER.test(label) && isMotivationQuestion(label)) return { ...base, answeredBy: "you", cvMayHelp: true, ...hintExtras };
       // A label naming the résumé on a control with options ("I affirm that my
       // application, resume ... are accurate": I agree) is the person's own
       // declaration, which the AI never ticks; only an upload slot is a document.
@@ -190,12 +215,12 @@ export function whoAnswers(q: SelfApplyInput, n: number): SelfApplyQuestion {
       return { ...base, answeredBy: "you", ...factualExtras };
     case "draftable":
     default: {
-      if (free && !LEAVING.test(label) && laterSentencesArePlain(label) && (asksAboutWorkDone(label) || isMotivationQuestion(label))) {
+      if (free && plainHint && !LEAVING.test(label) && laterSentencesArePlain(label) && (asksAboutWorkDone(label) || isMotivationQuestion(label))) {
         return { ...base, answeredBy: "draft_from_your_cv" };
       }
       // A sponsorship or country word in a question the classifier let through
       // is still the person's: say what it is about.
-      return { ...base, answeredBy: "you", cvMayHelp: true, ...(sense ? { sponsorshipSense: sense } : {}), ...(countries.length ? { aboutCountry: countries } : {}) };
+      return { ...base, answeredBy: "you", cvMayHelp: true, ...hintExtras, ...(sense ? { sponsorshipSense: sense } : {}), ...(countries.length ? { aboutCountry: countries } : {}) };
     }
   }
 }

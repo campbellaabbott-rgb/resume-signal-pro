@@ -47,7 +47,8 @@ export type ApplyMyselfAnswer = ApplyPosting & {
     alsoOnForm: string[];
     note?: string;
   };
-  route: { submitter: "you"; needsEmployerAccount: boolean; captchaLikely: boolean; attachFilesYourself: true };
+  /** null where the hiring system was never measured: an unmeasured system is not claimed free of either obstacle. */
+  route: { submitter: "you"; needsEmployerAccount: boolean | null; captchaLikely: boolean | null; attachFilesYourself: true };
   postingTerms: string[];
 };
 
@@ -67,13 +68,19 @@ const PAGE_READ_NOTE =
 /** What such a page still asks for: the CV, whose requirement the page did not show us. */
 const PAGE_READ_DOCUMENTS = [{ name: "Resume / CV", required: false }];
 
-/** What applying needs from the person on this hiring system, from the measured vendor table. */
+/**
+ * What applying needs from the person on this hiring system, from the
+ * measured vendor table. A system nobody measured (Taleo, say) answers null
+ * for both, as /v1 does (sweep S12-174): false was "no account, no CAPTCHA",
+ * a claim nothing measured.
+ */
 export function routeFor(vendor: string): ApplyMyselfAnswer["route"] {
   const fact = automationFor(vendor);
+  const unmeasured = fact.tier === "unknown";
   return {
     submitter: "you",
-    needsEmployerAccount: fact.tier === "signup" || /account\s+needed/i.test(fact.note),
-    captchaLikely: fact.tier === "click",
+    needsEmployerAccount: fact.tier === "signup" || /account\s+needed/i.test(fact.note) ? true : unmeasured ? null : false,
+    captchaLikely: fact.tier === "click" ? true : unmeasured ? null : false,
     attachFilesYourself: true,
   };
 }
@@ -158,6 +165,9 @@ export function applyMyselfMarkdown(a: ApplyMyselfAnswer): string {
   lines.push("");
   lines.push("## Where to apply", "");
   lines.push(`- The employer's own form: ${a.applyUrl ?? a.siteUrl}`);
-  lines.push(`- You submit it. ${a.route.needsEmployerAccount ? "This hiring system asks you to make an account with the employer first. " : ""}${a.route.captchaLikely ? "Expect a CAPTCHA, which you solve. " : ""}Attach your files yourself.`);
+  const unmeasured = a.route.needsEmployerAccount === null && a.route.captchaLikely === null
+    ? "We have not measured whether this hiring system asks for an account or a CAPTCHA. "
+    : "";
+  lines.push(`- You submit it. ${a.route.needsEmployerAccount ? "This hiring system asks you to make an account with the employer first. " : ""}${a.route.captchaLikely ? "Expect a CAPTCHA, which you solve. " : ""}${unmeasured}Attach your files yourself.`);
   return lines.join("\n");
 }

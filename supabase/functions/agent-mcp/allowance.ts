@@ -51,7 +51,7 @@ export const ANON_ALLOWANCE = {
     shares: { claude: 2_000, chatgpt: 2_000, other: 1_000 },
     perMinute: { claude: 10, chatgpt: 6, other: 4 },
   },
-  /** board_stats, never counted: one cached answer for this long, and this many calls a minute per address in one isolate. */
+  /** board_stats, never counted: one cached answer for this long, and this many calls a minute for a connection's bucket in one isolate (boardStatsPerMinuteFor scales it to a bigger bucket). */
   boardStatsCacheMs: 300_000,
   boardStatsPerMinute: 30,
   /** Rows on one keyless page, and the deepest offset a keyless caller may page to. */
@@ -61,8 +61,15 @@ export const ANON_ALLOWANCE = {
   keyedMaxOffset: 10_000,
   /** Ids check_jobs_open answers in one keyless call (a keyed call takes 200). */
   checkJobsOpenIds: 50,
-  /** Transport failures and unknown ids given back, at most, per bucket per day. */
+  /**
+   * Transport failures and unknown ids given back per bucket per day: at
+   * least refundsPerBucket, and refundShare of the bucket's day for a bigger
+   * one (S12-176: Claude's 10,000 is one bucket for every Claude user, and 5
+   * a day was 5 for all of them). boardStatsPerMinute is a connection's
+   * (100 a day) minute; a bigger bucket gets the same per hundred a day.
+   */
   refundsPerBucket: 5,
+  refundShare: 0.05,
   /**
    * Keyless calls running at once in one isolate, and how long one waits for
    * a turn before it is turned away uncounted (review of 9fe3bc0d). The
@@ -88,7 +95,7 @@ export type Edition = "claude" | "chatgpt" | "other";
 
 export type AllowanceKind = "claude" | "chatgpt-user" | "chatgpt" | "connection";
 
-/** One keyless bucket, ready for mcp_anon_check_v2. `bucket` never holds an address: a connection is a hash. */
+/** One keyless bucket, ready for mcp_anon_check_v2. `bucket` never holds an address: a connection is the day's keyed hash (bucketHash). */
 export type AllowanceBucket = {
   partition: Partition;
   kind: AllowanceKind;
@@ -168,7 +175,7 @@ export function connectionOf(address: string): string {
  * The one bucket a lookup is counted in. `host` is the platform the VERIFIED
  * address belongs to (null for anyone else); `subjectHash` is a hash of
  * openai/subject, used only when that platform is ChatGPT; `connectionHash` is
- * a hash of connectionOf(address). Exactly one bucket per call: a spent bucket
+ * bucketHash of connectionOf(address). Exactly one bucket per call: a spent bucket
  * never falls through to another.
  */
 export function lookupBucket(host: "claude" | "chatgpt" | null, subjectHash: string, connectionHash: string): AllowanceBucket {
@@ -224,6 +231,56 @@ export function formsBucket(b: AllowanceBucket): AllowanceBucket {
 
 /** True for a forms call's bucket. */
 export const isFormsBucket = (b: AllowanceBucket): boolean => b.share.startsWith(`${FORMS_POOL}:`);
+
+/**
+ * Calls given back a day for this bucket (mcp_anon_refund's p_max): the
+ * bucket's refundShare, never fewer than refundsPerBucket. A connection
+ * (100) keeps 5; a ChatGPT person (200) gets 10; Claude's pool (10,000) 500.
+ */
+export function refundsFor(b: AllowanceBucket): number {
+  const A = ANON_ALLOWANCE;
+  return Math.max(A.refundsPerBucket, Math.ceil(b.bucketCap * A.refundShare));
+}
+
+/**
+ * board_stats calls a minute for this lookup bucket, in one isolate: a
+ * connection's figure for each hundred calls of the bucket's day, never
+ * fewer than a connection's. A connection keeps 30; Claude's pool gets 3,000.
+ */
+export function boardStatsPerMinuteFor(b: AllowanceBucket): number {
+  const A = ANON_ALLOWANCE;
+  return Math.max(A.boardStatsPerMinute, Math.round((A.boardStatsPerMinute * b.bucketCap) / A.otherPerConnection));
+}
+
+/** The UTC day a keyed hash and the allowance both run on. */
+export const utcDay = (now: number = Date.now()): string => new Date(now).toISOString().slice(0, 10);
+
+/**
+ * A KEYED HASH THAT CHANGES EVERY DAY (sweep S12-175). A connection's bucket
+ * was the plain SHA-256 of its address, and the IPv4 space is small enough to
+ * hash whole in minutes, so a read of mcp_anon_rate gave the addresses back;
+ * the Privacy page's "one-way hashed" was not so. The bucket is now
+ * HMAC-SHA-256 of the value under a key derived for the UTC day from a secret
+ * the table never sees, cut to 16 hex characters: without the secret no row
+ * can be turned back into an address, and no two days' rows can be joined.
+ * The allowance is a day long, so the day's key costs nothing the counter
+ * needs. Each day's key is derived once per isolate.
+ */
+let dayKey: { secret: string; day: string; key: CryptoKey } | null = null;
+const HMAC = { name: "HMAC", hash: "SHA-256" } as const;
+const hmacSign = (key: CryptoKey, message: string): Promise<ArrayBuffer> =>
+  crypto.subtle.sign("HMAC", key, new TextEncoder().encode(message));
+export async function bucketHash(secret: string, day: string, value: string): Promise<string> {
+  if (!secret) throw new Error("bucketHash needs a secret");
+  let key = dayKey && dayKey.secret === secret && dayKey.day === day ? dayKey.key : null;
+  if (!key) {
+    const root = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), HMAC, false, ["sign"]);
+    key = await crypto.subtle.importKey("raw", await hmacSign(root, `mcp-anon-bucket:${day}`), HMAC, false, ["sign"]);
+    dayKey = { secret, day, key };
+  }
+  const mac = new Uint8Array(await hmacSign(key, value));
+  return [...mac.slice(0, 8)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
 
 /** mcp_anon_check_v2's answer (its OUT columns). */
 export type MeterDecision = {

@@ -6,16 +6,27 @@
  * found 107 of the 1,584 nurse postings the board serves in Texas, because
  * the place was searched as words; "Humana" in companies found nothing,
  * because companies takes a board token. agent-mcp now reads the place out
- * of the query and resolves a company name through job-board's
- * company-suggest, and says what it read.
+ * of the query, and says what it read.
+ *
+ * AN EMPLOYER NAME IS THE BOARD'S TO RESOLVE (sweep S12-080). agent-mcp used
+ * to resolve a name itself, only when it did not look like a token: "CVS"
+ * matched no exact name and was dropped, so every nurse job on the board came
+ * back under CVS's name; "cvs" went to the board as a token, came back as an
+ * employer the board does not carry, and read as total 0 because agent-mcp
+ * dropped the board's notes (S12-040). The name now goes to job-board as
+ * typed, the board's notes come back, and a scope the board could not apply
+ * is never answered as the whole board.
  *
  * The rule (agent-mcp/query-place.ts) on positives and the review's
  * negatives, then the server run as shipped with the board faked: what it
  * sends the board, and what it tells the caller.
  */
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { foldName, looksLikeToken, pickCompany, readQuery } from "../../supabase/functions/agent-mcp/query-place";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { readQuery } from "../../supabase/functions/agent-mcp/query-place";
 import { loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
+import { codeOf } from "./helpers/strip-comments";
 
 vi.setConfig({ testTimeout: 30_000, hookTimeout: 120_000 });
 
@@ -70,30 +81,13 @@ describe("the review's negatives stay titles", () => {
   });
 });
 
-describe("a company name resolves to its board, or is named as ignored", () => {
-  const candidates = [
-    { token: "humana~wd5~Humana_External_Career_Site", name: "Humana", open: 812 },
-    { token: "centerwell", name: "CenterWell Senior Primary Care", open: 90 },
-  ];
-  it("an exact name, folded, resolves; a parenthesised qualifier is the same employer", () => {
-    expect(pickCompany("humana", candidates)).toEqual({ name: "Humana", tokens: ["humana~wd5~Humana_External_Career_Site"] });
-    expect(pickCompany("Domino's", [{ token: "dominos", name: "Dominos (US)" }])).toEqual({ name: "Dominos", tokens: ["dominos"] });
-    expect(foldName("Domino's")).toBe(foldName("dominos"));
-  });
-  it("a name that is only part of another employer's never merges them", () => {
-    expect(pickCompany("Center", candidates)).toEqual({ candidates: ["Humana", "CenterWell Senior Primary Care"] });
-  });
-  it("a token is not a name", () => {
-    expect(looksLikeToken("humana~wd5~Humana_External_Career_Site")).toBe(true);
-    expect(looksLikeToken("acme")).toBe(true);
-    expect(looksLikeToken("Humana")).toBe(false);
-    expect(looksLikeToken("Best Buy")).toBe(false);
-  });
-});
+const NURSE = { id: "greenhouse:acme:1", source: "greenhouse", token: "acme", company: "Acme", title: "Nurse" };
 
 describe("the server sends the board the search as meant, and says what it read", () => {
   let handler: EdgeHandler;
   let boardBodies: Array<Record<string, unknown>>;
+  /** The board's answer to the next list call; a function of the body sent. */
+  let listAnswer: (body: Record<string, unknown>) => Record<string, unknown>;
   beforeAll(async () => {
     const g = globalThis as Record<string, unknown>;
     const env: Record<string, string> = { SUPABASE_URL: "https://harness.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "service_harness", SUPABASE_ANON_KEY: "anon_harness" };
@@ -102,10 +96,8 @@ describe("the server sends the board the search as meant, and says what it read"
       if (String(url).endsWith("/functions/v1/job-board")) {
         const body = JSON.parse(String(init.body ?? "{}")) as Record<string, unknown>;
         boardBodies.push(body);
-        if (body.action === "company-suggest") {
-          return new Response(JSON.stringify({ companies: String(body.q).includes("humana") ? [{ token: "humana~wd5~Humana_External_Career_Site", name: "Humana", open: 812 }] : [{ token: "acme", name: "Acme Widgets" }] }), { status: 200 });
-        }
-        return new Response(JSON.stringify({ jobs: [], total: 0, ignoredFilters: [] }), { status: 200 });
+        if (body.action === "company-suggest") return new Response(JSON.stringify({ companies: [] }), { status: 200 });
+        return new Response(JSON.stringify(listAnswer(body)), { status: 200 });
       }
       return new Response("{}", { status: 404 });
     };
@@ -123,33 +115,115 @@ describe("the server sends the board the search as meant, and says what it read"
       "https://esm.sh/@supabase/supabase-js@2.45.0": "export class SupabaseClient {} export function createClient() { return globalThis.__mcpDb; }",
     });
   }, 120_000);
-  beforeEach(() => { boardBodies = []; });
+  beforeEach(() => {
+    boardBodies = [];
+    listAnswer = () => ({ jobs: [], total: 0, ignoredFilters: [] });
+  });
 
-  const search = async (args: Record<string, unknown>) => {
+  const call = async (args: Record<string, unknown>) => {
     const res = await handler(new Request("https://harness.supabase.co/functions/v1/agent-mcp", {
       method: "POST",
       headers: { "content-type": "application/json", "x-forwarded-for": "203.0.113.7" },
       body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "search_jobs", arguments: args } }),
     }));
-    return ((await res.json()) as { result: { structuredContent: Record<string, unknown> } }).result.structuredContent;
+    return ((await res.json()) as { result: { isError?: boolean; structuredContent?: Record<string, unknown>; content: Array<{ text: string }> } }).result;
   };
+  const search = async (args: Record<string, unknown>) => (await call(args)).structuredContent ?? {};
+  const listBody = () => boardBodies.find((b) => b.action === "list");
 
   it("'nurse jobs in Texas' searches nurse in Texas, and says so", async () => {
     const sc = await search({ query: "nurse jobs in Texas" });
-    const list = boardBodies.find((b) => b.action === "list")!;
-    expect(list).toMatchObject({ q: "nurse", location: "Texas" });
+    expect(listBody()).toMatchObject({ q: "nurse", location: "Texas" });
     expect(sc.locationInterpreted).toMatchObject({ query: "nurse", location: "Texas", from: "in Texas" });
   });
 
-  it("Humana by name scopes the search to Humana's board, and says which", async () => {
+  it("Humana by name goes to the board as typed, and the board's resolution comes back", async () => {
+    const resolved = [{ asked: "Humana", name: "Humana", tokens: ["humana~wd5~Humana_External_Career_Site"] }];
+    listAnswer = () => ({ jobs: [{ ...NURSE, token: "humana~wd5~Humana_External_Career_Site", company: "Humana" }], total: 1, companiesResolved: resolved });
     const sc = await search({ query: "nurse", companies: "Humana" });
-    expect(boardBodies.find((b) => b.action === "list")).toMatchObject({ companies: ["humana~wd5~Humana_External_Career_Site"] });
-    expect(sc.companiesResolved).toEqual([{ asked: "Humana", name: "Humana", tokens: ["humana~wd5~Humana_External_Career_Site"] }]);
+    expect(listBody()!.companies).toEqual(["Humana"]);
+    expect(boardBodies.some((b) => b.action === "company-suggest")).toBe(false);
+    expect(sc.companiesResolved).toEqual(resolved);
   });
 
-  it("a company the board does not carry is named in ignoredFilters with its closest candidates, never merged", async () => {
-    const sc = await search({ query: "nurse", companies: "Nonexistent Corp" });
-    expect(boardBodies.find((b) => b.action === "list")!.companies).toBeUndefined();
-    expect((sc.ignoredFilters as string[]).join(" ")).toMatch(/"Nonexistent Corp" matched no employer by name \(closest: Acme Widgets\)/);
+  it("'CVS' and 'cvs' reach the board alike, and neither is the whole board nor a silent 0", async () => {
+    const answers: Array<Record<string, unknown>> = [];
+    listAnswer = (body) => {
+      const asked = String((body.companies as string[])[0]);
+      return {
+        jobs: [], total: 0, hasMore: false, nextOffset: 0,
+        unknownCompanies: [asked],
+        companiesUnresolved: [{ asked, candidates: [{ token: "cvshealth", name: "CVS Health", open: 4100 }] }],
+        ignoredFilters: [],
+      };
+    };
+    for (const spelling of ["CVS", "cvs"]) {
+      boardBodies = [];
+      const sc = await search({ query: "nurse", companies: spelling });
+      expect(listBody()!.companies, spelling).toEqual([spelling]);
+      expect(sc.jobs, spelling).toEqual([]);
+      expect(sc.unknownCompanies, spelling).toEqual([spelling]);
+      expect(sc.companiesUnresolved, spelling).toEqual([{ asked: spelling, candidates: [{ token: "cvshealth", name: "CVS Health", open: 4100 }] }]);
+      answers.push(sc);
+    }
+    expect(answers.map((a) => (a.companiesUnresolved as Array<{ candidates: unknown }>)[0].candidates)).toEqual([
+      [{ token: "cvshealth", name: "CVS Health", open: 4100 }], [{ token: "cvshealth", name: "CVS Health", open: 4100 }],
+    ]);
+  });
+
+  it("a scope the board could not apply is answered with nothing, never with every employer's rows", async () => {
+    // A job-board older than .93 meeting a name: it names `companies` ignored and serves the whole board.
+    listAnswer = () => ({ jobs: [NURSE], total: 52000, hasMore: true, nextOffset: 10, ignoredFilters: ["companies"] });
+    const sc = await search({ query: "nurse", companies: "Best Buy" });
+    expect(sc.jobs).toEqual([]);
+    expect(sc.total).toBeUndefined();
+    expect(sc.countUnavailable).toBe(true);
+    expect((sc.ignoredFilters as string[]).join(" ")).toMatch(/could not apply "Best Buy", so nothing was searched rather than every employer/);
+  });
+
+  it("a scope the board applied, with a name it refused beside a carried token, keeps the rows and the notes", async () => {
+    listAnswer = () => ({
+      jobs: [NURSE], total: 3, ignoredFilters: ["companies"],
+      companiesUnresolved: [{ asked: "Nobody Corp", candidates: [] }],
+    });
+    const sc = await search({ query: "nurse", companies: "acme,Nobody Corp" });
+    expect(listBody()!.companies).toEqual(["acme", "Nobody Corp"]);
+    expect((sc.jobs as unknown[]).length).toBe(1);
+    expect(sc.companiesUnresolved).toEqual([{ asked: "Nobody Corp", candidates: [] }]);
+  });
+
+  it("an entry with no letter or digit is an argument error, sent nowhere", async () => {
+    const r = await call({ query: "nurse", companies: "acme, ---" });
+    expect(r.isError).toBe(true);
+    expect(r.content[0].text).toMatch(/not an employer name or token/);
+    expect(boardBodies).toHaveLength(0);
+  });
+
+  it("a capped count and a fallen-back ranking are said, and the board's error text is not (S12-041)", async () => {
+    listAnswer = () => ({ jobs: [NURSE], total: 10000, countCapped: true, rankedFellBack: "57014: canceling statement due to statement timeout", hasMore: true, nextOffset: 10 });
+    const sc = await search({ query: "nurse" });
+    expect(sc.total).toBe(10000);
+    expect(sc.countCapped).toBe(true);
+    expect(sc.rankedFellBack).toBe(true);
+    expect(JSON.stringify(sc)).not.toMatch(/57014|canceling statement/);
+  });
+});
+
+describe("the schema an agent reads says what the count is (S12-041)", () => {
+  const MCP = codeOf(readFileSync(resolve(__dirname, "../../supabase/functions/agent-mcp/index.ts"), "utf8"));
+  const schema = MCP.slice(MCP.indexOf("const DISCLOSURE_SCHEMA = {"), MCP.indexOf("\n};", MCP.indexOf("const DISCLOSURE_SCHEMA = {")));
+
+  it("total is not called exact, countCapped and rankedFellBack are declared, and the employer notes are", () => {
+    expect(schema).not.toMatch(/Exact match count/);
+    expect(schema).toMatch(/total: \{ type: \["integer", "null"\], description: "[^"]*countCapped[^"]*"/);
+    for (const k of ["countCapped", "rankedFellBack", "unknownCompanies", "companiesUnresolved", "companiesNotLookedUp", "companiesResolved"]) {
+      expect(schema, k).toMatch(new RegExp(`\\b${k}: \\{ type:`));
+    }
+  });
+
+  it("disclosures() passes every one of them on", () => {
+    const fn = MCP.slice(MCP.indexOf("function disclosures("), MCP.indexOf("const SEARCH_PROPERTIES"));
+    for (const k of ["countCapped", "unknownCompanies", "companiesResolved", "companiesUnresolved", "companiesNotLookedUp"]) expect(fn, k).toContain(`"${k}"`);
+    expect(fn).toMatch(/if \(r\.rankedFellBack\) out\.rankedFellBack = true;/);
   });
 });

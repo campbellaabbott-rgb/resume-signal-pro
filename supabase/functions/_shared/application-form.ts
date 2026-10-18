@@ -127,6 +127,12 @@ async function jsonOf(res: Response): Promise<unknown> {
 
 const isFile = (type: string) => /file|upload|attachment|document/i.test(type);
 
+/** A control the page fills itself (Greenhouse `input_hidden`): never a question for the person. */
+const isHiddenType = (type: string) => /^(?:input_)?hidden$/i.test(type.trim());
+
+/** The data_compliance flags under which a Greenhouse form actually asks the person for consent. */
+const DATA_CONSENT_FLAGS = ["requires_consent", "requires_processing_consent", "requires_retention_consent", "demographic_data_consent_applies"] as const;
+
 function finish(questions: FormQuestion[], extraDocs: FormDocument[] = [], alsoOnForm: string[] = []): VendorForm | null {
   const qs = questions.filter((q) => q.label).slice(0, MAX_QUESTIONS);
   if (!qs.length && !extraDocs.length) return null;
@@ -152,6 +158,10 @@ async function readGreenhouse(o: ReadOptions, p: PostingRef, ext: string): Promi
     const label = strip(q?.label);
     if (!label) return null;
     const fields = Array.isArray(q?.fields) ? q.fields : [];
+    // A question whose every field is hidden is filled by the page, never by
+    // the person: a location question's Latitude and Longitude arrive marked
+    // required (sweep S12-173, read live on an xAI posting).
+    if (fields.length && fields.every((f) => isHiddenType(String(f?.type ?? "")))) return null;
     const type = String(fields[0]?.type ?? "");
     const options = fields.map((f) => optionsOf(f?.values)).find(Boolean);
     const hint = strip(q?.description);
@@ -163,8 +173,13 @@ async function readGreenhouse(o: ReadOptions, p: PostingRef, ext: string): Promi
     const t = String((c as { type?: unknown })?.type ?? "").toLowerCase();
     also.push(t === "eeoc" ? "Voluntary self-identification (EEO) questions" : `Compliance questions${t ? ` (${t})` : ""}`);
   }
+  // Greenhouse lists a data_compliance entry on every posting, with flags
+  // that say whether the form asks for anything (sweep S12-173: "GDPR" was
+  // claimed on every form). Named only when one of them asks.
   for (const c of Array.isArray(gh.data_compliance) ? gh.data_compliance : []) {
-    const t = String((c as { type?: unknown })?.type ?? "").toLowerCase();
+    const flags = (c ?? {}) as Record<string, unknown>;
+    if (!DATA_CONSENT_FLAGS.some((f) => flags[f] === true)) continue;
+    const t = String(flags.type ?? "").toLowerCase();
     also.push(t === "gdpr" ? "Data-protection consent (GDPR)" : `Data-protection consent${t ? ` (${t})` : ""}`);
   }
   if (gh.demographic_questions) also.push("Voluntary demographic questions");
@@ -269,7 +284,9 @@ async function readHtmlForm(o: ReadOptions, p: PostingRef, vendor: "breezy" | "p
 function formOfRow(row: FormCacheRow): VendorForm | null {
   const f = row.form as Partial<VendorForm> | null;
   if (!f || !Array.isArray(f.questions) || !Array.isArray(f.documents)) return null;
-  return { questions: f.questions, documents: f.documents, alsoOnForm: Array.isArray(f.alsoOnForm) ? f.alsoOnForm : [] };
+  // A row cached before hidden fields were dropped still holds them (S12-173).
+  const questions = f.questions.filter((q) => !isHiddenType(String(q?.type ?? "")));
+  return { questions, documents: f.documents, alsoOnForm: Array.isArray(f.alsoOnForm) ? f.alsoOnForm : [] };
 }
 
 /**

@@ -14,6 +14,7 @@
 // what the page promises, to people who cannot see the difference. Both
 // predicates appear in every query below and a guard test pins them.
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { attachLastVerified, neverReadTokens } from "./last-verified.ts";
 import { SENDABLE_VENDORS } from "../_shared/apply-automation.ts";
 import { locationTerms } from "../_shared/location-terms.ts";
 import { isStateCodeAlias, locationBranch } from "../_shared/location-match.ts";
@@ -250,11 +251,15 @@ async function withheldCompanyTokens(client: SupabaseClient): Promise<Set<string
 
 // The columns /v1 promises. Listed once, explicitly, because `select("*")`
 // would silently publish every column added to the table later — including
-// operational ones nobody agreed to expose.
+// operational ones nobody agreed to expose. The table's last_seen column is
+// NOT read (sweep S12-121): job-board writes it once, at insert, so it is the
+// discovery time. Every job object carries last_verified_at (when the
+// employer's feed last listed the posting) and last_seen set to the same
+// value, attached after the read by last-verified.ts.
 const JOB_FIELDS = [
   "id", "source", "company_token", "company", "title", "location", "country",
   "remote", "work_mode", "department", "category", "posted_at", "first_seen",
-  "last_seen", "apply_url", "salary", "salary_min_annual", "salary_max_annual",
+  "apply_url", "salary", "salary_min_annual", "salary_max_annual",
   "salary_period", "salary_currency", "experience_band", "min_years",
   // AGENCY DISCLOSURE (2026-08-31 charter): the employer's board is a tagged
   // staffing agency. Disclosed on every job object because an API consumer
@@ -356,7 +361,16 @@ const LIST_FILTERS = [
 // across /v1/fit and fit_resume together; the application route says a
 // Breezy or Pinpoint page read with no questions was read, and names the CV;
 // the drafting rule refuses a second ask inside a work-done question.
-const FN_BUILD = "public-api.2026-10-11.3";
+// 2026-10-11.27 (S12 sweep, wave 4 round 2): every job object carries
+// last_verified_at, when the employer's feed last listed it, and last_seen
+// now holds the same value instead of the insert time (S12-121); the ranked
+// engine passes on the board's employer-scope notes and rankedFellBack, and
+// an empty default-engine page for company_tokens the board has never read
+// names them (S12-040); the application route reads the employer's hint with
+// each label, refuses a protected status inside a compound work-done
+// question and lists no hidden Greenhouse field or unasked GDPR consent
+// (S12-081, S12-082, S12-173).
+const FN_BUILD = "public-api.2026-10-11.27";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -882,7 +896,11 @@ async function listJobsRanked(url: URL, headers: Record<string, string>, lists: 
     work_mode: j.workMode ?? null, department: j.department ?? null, category: j.category ?? null,
     posted_at: j.postedAt ?? null,
     // The ranked engine does not carry first_seen; null rather than a guess.
-    first_seen: null, last_seen: j.lastSeen ?? null,
+    // When the employer's feed last listed it is the board's recheckedAt,
+    // never its lastSeen, which is the insert time (S12-121).
+    first_seen: null,
+    last_verified_at: typeof j.recheckedAt === "string" ? j.recheckedAt : null,
+    last_seen: typeof j.recheckedAt === "string" ? j.recheckedAt : null,
     apply_url: j.applyUrl, salary: j.salary ?? null,
     salary_min_annual: j.salaryMinAnnual ?? null, salary_max_annual: j.salaryMaxAnnual ?? null,
     salary_period: j.salaryPeriod ?? null, salary_currency: j.salaryCurrency ?? null,
@@ -901,9 +919,18 @@ async function listJobsRanked(url: URL, headers: Record<string, string>, lists: 
   // `related` (S8-077). Reporting value alone hid ~95% of a q=kubernetes walk.
   const related = typeof r.relatedTotal === "number" ? r.relatedTotal : null;
   const disc: Record<string, unknown> = {};
-  for (const k of ["ignoredFilters", "excludedTerms", "intentFilters", "aliases", "didYouMean", "searchRoute", "coverage", "salaryStatedOnly", "agenciesExcluded"]) {
+  // With what the board did to an employer scope (S12-040): an employer it
+  // does not carry, a name it resolved, refused or did not look up. Each was
+  // dropped, so an uncarried company_token read as total 0.
+  for (const k of [
+    "ignoredFilters", "excludedTerms", "intentFilters", "aliases", "didYouMean", "searchRoute", "coverage", "salaryStatedOnly", "agenciesExcluded",
+    "unknownCompanies", "companiesResolved", "companiesUnresolved", "companiesNotLookedUp",
+  ]) {
     if (r[k] !== undefined && r[k] !== null) disc[k] = r[k];
   }
+  // The ranked search failed and the board answered with its fallback: said
+  // as a flag, never the board's internal error text.
+  if (r.rankedFellBack) disc.rankedFellBack = true;
   return json({
     apiVersion: API_VERSION,
     engine: "ranked",
@@ -1380,6 +1407,31 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
     const { effective_posted: _sortKey, ...rest } = r;
     return rest;
   });
+  // When each employer's feed last listed the posting (S12-121).
+  await attachLastVerified(client, publicRows);
+  // An empty page for employers the board has never read is not their hiring
+  // (S12-040): named, as the board's own list names them.
+  const unknownCompanies = publicRows.length === 0 && offset === 0 && !cursor && lists.company_token.length
+    ? await neverReadTokens(client, lists.company_token)
+    : null;
+  const disclosed: Record<string, unknown> = {
+    ...(limitCappedByInclude
+      ? {
+        limitCapped: {
+          requested: askedLimit,
+          applied: limit,
+          reason: "include=description",
+          note: `Descriptions average ~5.7KB per posting, so pages carrying them are capped at ${MAX_LIMIT_WITH_DESCRIPTION} rows. Page with cursor= to walk the same set.`,
+        },
+      }
+      : {}),
+    ...(unknownCompanies && unknownCompanies.length
+      ? {
+        unknownCompanies,
+        unknownCompaniesNote: "The board has never read these company_tokens (it does not carry them, or has not managed to read them): this empty page is not their hiring.",
+      }
+      : {}),
+  };
 
   return json({
     apiVersion: API_VERSION,
@@ -1409,19 +1461,9 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
     })(),
     // A NARROWING WE PERFORMED, NAMED. The caller asked for more rows than a
     // description page may carry; they got fewer, and the alternative to saying
-    // so is their code concluding the board ran out of postings.
-    ...(limitCappedByInclude
-      ? {
-        disclosures: {
-          limitCapped: {
-            requested: askedLimit,
-            applied: limit,
-            reason: "include=description",
-            note: `Descriptions average ~5.7KB per posting, so pages carrying them are capped at ${MAX_LIMIT_WITH_DESCRIPTION} rows. Page with cursor= to walk the same set.`,
-          },
-        },
-      }
-      : {}),
+    // so is their code concluding the board ran out of postings. Beside it, an
+    // employer scope the board has never read (built above).
+    ...(Object.keys(disclosed).length ? { disclosures: disclosed } : {}),
     // "estimated" is named as estimated. An exact count over this table costs
     // seconds and the board already learned not to pay it per request.
     total: { value: count, basis: countBasis },
@@ -1544,6 +1586,7 @@ async function oneJob(client: SupabaseClient, id: string, headers: Record<string
   // A withdrawn posting is 404 and NOT a stale 200. The difference is the whole
   // product: a caller must be able to tell "gone" from "we stopped looking".
   if (!data) return fail(404, "not_found", `No live posting with that id. It may have been withdrawn by the employer, aged past the 30-day window, or come from a hiring system this API may not redistribute (${NO_REDISTRIBUTION_SOURCES.join(", ")}; see /v1 restrictions).`, headers);
+  await attachLastVerified(client, [data as unknown as Record<string, unknown>]);
   return json({ apiVersion: API_VERSION, data }, 200, headers);
 }
 
@@ -1591,7 +1634,8 @@ async function applicationForm(client: SupabaseClient, url: URL, id: string, hea
     return fail(404, "not_found", "No live posting with that id. It may have been withdrawn by the employer or aged past the 30-day window, so there is no form to read.", headers);
   }
   const row = posting as unknown as Record<string, unknown>;
-  const form = formBlock(await readV1Form(row, client));
+  const [, read] = await Promise.all([attachLastVerified(client, [row]), readV1Form(row, client)]);
+  const form = formBlock(read);
   // NOT READ IS NOT "ASKS NOTHING". The hiring system did not answer (a
   // timeout, a 429 or a 5xx, none of them cached), so there is no form to
   // serve and no honest empty one: the client retries.

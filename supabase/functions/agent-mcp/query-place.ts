@@ -21,11 +21,10 @@
 //   - a split happens only when the query that remains is not empty, and
 //     never when the caller already set location (or country) itself.
 //
-// Company names go through job-board's company-suggest (the caller does the
-// I/O; pickCompany below is the rule): an exact normalised name, or that name
-// with a parenthesised qualifier, resolves to the employer's token(s); any
-// other name is named in ignoredFilters with up to five candidates. Two
-// different employers are never merged.
+// Company names are not read here any more (sweep S12-080): a rule of this
+// module's own, applied only to a name that did not look like a token, gave
+// "CVS" the whole board and "cvs" a silent 0. job-board resolves every name
+// under one rule and names what it did; agent-mcp passes both through.
 //
 // Pure: no I/O, so the Node suite walks every positive and negative.
 
@@ -114,29 +113,4 @@ export function readQuery(raw: string, has: { location?: boolean; country?: bool
   }
   out.query = query;
   return out;
-}
-
-/** An employer candidate as company-suggest answers it. */
-export type CompanyCandidate = { token?: unknown; name?: unknown; open?: unknown; tokens?: unknown };
-
-/** Lower-case, accents and punctuation removed: "Domino's" and "dominos" are one name. */
-export const foldName = (s: string): string =>
-  s.normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9\u0080-￿]+/g, "");
-
-/** True for a string that is already a board token rather than a name. */
-export const looksLikeToken = (s: string): boolean => /~/.test(s) || /^[a-z0-9][a-z0-9._-]*$/.test(s);
-
-/**
- * The employer an asked name means: every candidate whose name is the asked
- * name exactly (folded), or that name with a parenthesised qualifier ("Acme
- * (UK)"). Their tokens, or null with up to five candidate names for the
- * caller to offer. Never two different employer names.
- */
-export function pickCompany(asked: string, candidates: readonly CompanyCandidate[]): { name: string; tokens: string[] } | { candidates: string[] } {
-  const want = foldName(asked);
-  const base = (n: string) => n.replace(/\s*\([^)]*\)\s*$/, "");
-  const hits = candidates.filter((c) => typeof c.name === "string" && (foldName(c.name) === want || foldName(base(c.name)) === want));
-  const tokens = [...new Set(hits.flatMap((c) => (Array.isArray(c.tokens) && c.tokens.length ? c.tokens : [c.token]).filter((t): t is string => typeof t === "string" && !!t)))];
-  if (hits.length && tokens.length) return { name: base(String(hits[0].name)), tokens };
-  return { candidates: candidates.map((c) => String(c.name ?? "")).filter(Boolean).slice(0, 5) };
 }

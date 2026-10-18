@@ -448,9 +448,12 @@ describe("the in-band sign-in hedge is the HTTP challenge's own string, in the t
     // A subject is the caller's own word: it is read at all only when the
     // platform-seen address is in OpenAI's published egress (egressHost), and
     // keys a bucket only hashed. Its log line carries no address beside it.
-    expect(unkeyed).toMatch(/const host = await egressHost\(address, isChatGptCaller\(req\.headers, params\)\);/);
+    // (Since S12-085 the claim alone sets the no-log flag; it still never
+    // picks the host. Since S12-175 the hash is keyed and daily.)
+    expect(unkeyed).toMatch(/const claimsChatGpt = isChatGptCaller\(req\.headers, params\);/);
+    expect(unkeyed).toMatch(/const host = await egressHost\(address, claimsChatGpt\);/);
     expect(unkeyed).toMatch(/const subject = host === "chatgpt" \? openaiSubjectOf\(params\) : "";/);
-    expect(unkeyed).toMatch(/const subjectHash = subject \? \(await sha256Hex\(subject\)\)\.slice\(0, 16\) : "";/);
+    expect(unkeyed).toMatch(/const subjectHash = subject \? await bucketHash\(secret, utcDay\(\), subject\) : "";/);
     expect(unkeyed).toMatch(/keyless subject \$\{subjectHash\} \(\$\{toolName\}\)/);
     expect(unkeyed).not.toMatch(/on address|ipHash/);
     expect(unkeyed).toMatch(/const lookups = lookupBucket\(host, subjectHash, /);

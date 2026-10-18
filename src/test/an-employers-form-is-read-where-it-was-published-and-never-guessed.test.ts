@@ -94,7 +94,7 @@ describe("each reader returns the form as the employer wrote it", () => {
         { label: "<p>Why do you want to join <b>Acme</b>?</p>", required: false, description: "<p>A few sentences.</p>", fields: [{ type: "textarea" }] },
       ],
       compliance: [{ type: "eeoc", questions: [] }],
-      data_compliance: [{ type: "gdpr" }],
+      data_compliance: [{ type: "gdpr", requires_consent: true, requires_processing_consent: false, requires_retention_consent: false }],
     };
     const { f, calls } = fetchFrom(() => json(payload));
     const r = await readApplicationForm(ref("greenhouse:eu~acme:42"), { fetch: f, now: () => NOW });
