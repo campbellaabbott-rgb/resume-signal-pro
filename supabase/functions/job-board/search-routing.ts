@@ -22,6 +22,7 @@
  * These are imported and executed by the tests.
  */
 import { STATE_ALIASES } from "../_shared/location-terms.ts";
+import { knownPlace } from "./query-place.ts";
 
 /** Fold to letters and digits: "AT&T" -> "att", "Domino's" -> "dominos".
  *
@@ -692,13 +693,20 @@ const EXCLUSION_STOPWORDS: ReadonlySet<string> = new Set([
 const NOT_VERBS = /^(?:requiring|requires|require|involving|involves|including|includes|with|doing)$/i;
 /**
  * Where a "not" phrase ends besides an operator: two words, a place word
- * ("in Boston", "near Dallas", a state), or a word the intent lift reads
- * ("remote", "part time"), so "nurse not night shift in Boston" keeps Boston
- * and "software engineer not senior remote" keeps remote.
+ * ("in Boston", "near Dallas", a state, or any place the board knows, so
+ * "warehouse not forklift Dallas" keeps Dallas), or a word the intent lift
+ * reads ("remote", "part time"): "software engineer not senior remote" keeps remote.
  */
 const NOT_PHRASE_STOP = /^(?:in|near|around|at|for|within|from|jobs?|remote(?:ly)?|hybrid|on-?site|wfh|part(?:-?time)?|full(?:-?time)?|internships?|interns?|temporary|entry(?:-level)?)$/i;
 const isStateWord = (ws: string[], j: number): boolean =>
   own(STATE_ALIASES, ws[j].toLowerCase()) || (j + 1 < ws.length && own(STATE_ALIASES, `${ws[j]} ${ws[j + 1]}`.toLowerCase()));
+/** A place the board knows begins at word j ("Dallas", "nyc", "San Antonio", "Austin, TX"), not one begun a word earlier ("new york"). */
+const placeStartsAt = (ws: string[], j: number): boolean => {
+  const name = (a: number, n: number) => ws.slice(a, a + n).join(" ").replace(/[.,;:!?]+$/, "");
+  const known = (a: number, n: number) => a >= 0 && a + n <= ws.length && knownPlace(name(a, n)) !== null;
+  // "City, ST" takes any words before the comma, so only a comma-free name counts as begun earlier.
+  return [1, 2, 3].some((n) => known(j, n)) && ![2, 3].some((n) => !name(j - 1, n).includes(",") && known(j - 1, n));
+};
 const cleanTerm = (e: string): string =>
   e.split(/\s+/).map((w) => w.replace(/[^a-z0-9+#.]/gi, "").toLowerCase()).filter(Boolean).join(" ");
 
@@ -723,7 +731,7 @@ export function splitExclusions(raw: string): { positive: string; excluded: stri
       while (j + 1 < words.length && NOT_VERBS.test(words[j])) j++;
       const phrase: string[] = [];
       while (j < words.length && !/^not$/i.test(words[j]) && !words[j].startsWith("-") && !quoted(words[j])) {
-        if (phrase.length && (phrase.length >= 2 || NOT_PHRASE_STOP.test(words[j]) || isStateWord(words, j))) break;
+        if (phrase.length && (phrase.length >= 2 || NOT_PHRASE_STOP.test(words[j]) || isStateWord(words, j) || placeStartsAt(words, j))) break;
         phrase.push(words[j++]);
       }
       if (phrase.length) { excluded.push(phrase.join(" ")); i = j - 1; continue; }
