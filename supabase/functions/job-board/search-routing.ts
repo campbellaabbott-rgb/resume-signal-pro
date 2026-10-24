@@ -21,8 +21,8 @@
  * found two of my guards passing while the code they described had been deleted.
  * These are imported and executed by the tests.
  */
-import { STATE_ALIASES } from "../_shared/location-terms.ts";
-import { knownPlace } from "./query-place.ts";
+import { METRO_ALIASES, STATE_ALIASES } from "../_shared/location-terms.ts";
+import { COUNTRY_NAMES, knownPlace } from "./query-place.ts";
 
 /** Fold to letters and digits: "AT&T" -> "att", "Domino's" -> "dominos".
  *
@@ -700,10 +700,18 @@ const NOT_VERBS = /^(?:requiring|requires|require|involving|involves|including|i
 const NOT_PHRASE_STOP = /^(?:in|near|around|at|for|within|from|jobs?|remote(?:ly)?|hybrid|on-?site|wfh|part(?:-?time)?|full(?:-?time)?|internships?|interns?|temporary|entry(?:-level)?)$/i;
 const isStateWord = (ws: string[], j: number): boolean =>
   own(STATE_ALIASES, ws[j].toLowerCase()) || (j + 1 < ws.length && own(STATE_ALIASES, `${ws[j]} ${ws[j + 1]}`.toLowerCase()));
-/** A place the board knows begins at word j ("Dallas", "nyc", "San Antonio", "Austin, TX"), not one begun a word earlier ("new york"). */
+/**
+ * A place name in any case: knownPlace lifts "SF", "uk" or "us" only as a code in capitals, but ending a "not"
+ * phrase before one costs at most its second word, while taking one in drops the place ("cook not line sf").
+ */
+const placeKey = (s: string): boolean => {
+  const k = s.toLowerCase();
+  return k !== "the city" && (own(STATE_ALIASES, k) || own(METRO_ALIASES, k) || own(COUNTRY_NAMES, k));
+};
+/** A place the board knows begins at word j ("Dallas", "nyc", "sf", "San Antonio", "Austin, TX"), not one begun a word earlier ("new york"). */
 const placeStartsAt = (ws: string[], j: number): boolean => {
   const name = (a: number, n: number) => ws.slice(a, a + n).join(" ").replace(/[.,;:!?]+$/, "");
-  const known = (a: number, n: number) => a >= 0 && a + n <= ws.length && knownPlace(name(a, n)) !== null;
+  const known = (a: number, n: number) => a >= 0 && a + n <= ws.length && (placeKey(name(a, n)) || knownPlace(name(a, n)) !== null);
   // "City, ST" takes any words before the comma, so only a comma-free name counts as begun earlier.
   return [1, 2, 3].some((n) => known(j, n)) && ![2, 3].some((n) => !name(j - 1, n).includes(",") && known(j - 1, n));
 };

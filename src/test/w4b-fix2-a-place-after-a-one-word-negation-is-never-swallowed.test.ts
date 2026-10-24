@@ -13,8 +13,9 @@
  *
  * THE RULE NOW. The phrase stops before any place knownPlace() recognises
  * (state, metro alias, the city table, "City, ST", a country), one to three
- * words long, unless the place began a word earlier inside the phrase
- * ("not new york" still excludes "new york").
+ * words long, or any state, metro or country name in any case ("sf", "uk",
+ * "us", which the place lift takes only in capitals), unless the place began
+ * a word earlier inside the phrase ("not new york" still excludes "new york").
  */
 import { describe, expect, it } from "vitest";
 import { splitExclusions } from "../../supabase/functions/job-board/search-routing";
@@ -33,6 +34,16 @@ describe("a place after the negated word stays in the search", () => {
     ["developer not contract Toronto", "developer Toronto", ["contract"]],
     ["welder not pipeline Phoenix", "welder Phoenix", ["pipeline"]],
     ["chef not sous seattle", "chef seattle", ["sous"]],
+    // A place name in lower case, or a code the place lift takes only in capitals, still ends the phrase.
+    ["cook not line sf", "cook sf", ["line"]],
+    ["cook not line SF", "cook SF", ["line"]],
+    ["nurse not travel uk", "nurse uk", ["travel"]],
+    ["analyst not junior us", "analyst us", ["junior"]],
+    ["driver not cdl atl", "driver atl", ["cdl"]],
+    ["nurse not icu new york", "nurse new york", ["icu"]],
+    ["warehouse not forklift dallas tx", "warehouse dallas tx", ["forklift"]],
+    ["driver not cdl los angeles", "driver los angeles", ["cdl"]],
+    ["engineer not senior bay area", "engineer bay area", ["senior"]],
   ])("%s", (q, positive, excluded) => {
     expect(splitExclusions(q)).toEqual({ positive, excluded });
   });
