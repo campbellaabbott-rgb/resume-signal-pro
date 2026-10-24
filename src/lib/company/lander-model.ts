@@ -28,7 +28,7 @@
  * module never reads a raw fill-curve count and never re-derives a bar.
  */
 import type { CollidedBoard } from "@/lib/board-collisions";
-import type { HiringRecordRefusal } from "@/lib/hiring-record-gate";
+import { FULL_READ_BUCKET, LAP_BUCKET, LAP_MODE_BUCKETS, type HiringRecordRefusal } from "@/lib/hiring-record-gate";
 
 /** The served list counts up to this many rows and then says countCapped (job-board serveList). */
 export const LIST_COUNT_CAP = 10_000;
@@ -166,6 +166,21 @@ export interface BoardTotalInput {
   readAt: string | null | undefined;
   state: string | null | undefined;
   capped: boolean | null | undefined;
+  /**
+   * How the board is read (get_company_fill_curve.observability_bucket): the
+   * zero page's only evidence of a complete read when no total was stated,
+   * since a vendor whose feed is read whole in one visit never states one.
+   * full_read: the newest observed day (within seven) was a complete read.
+   * lap_pending / unprovable: a windowed board with no complete pass.
+   * lap_proven: a completed pass at some time we cannot date here.
+   * unobserved: the newest day's visit failed (an earlier day may be whole).
+   * null: no observation in the last seven days (or one too new to classify).
+   * undefined: the reader did not carry the column, and the rule before the
+   * bucket applies.
+   */
+  bucket?: string | null;
+  /** get_company_fill_curve.tracking_days: tells a board with no recent observation from one too new to classify. */
+  trackingDays?: number | string | null;
 }
 
 /** A board total the page may print: stated on a complete read no more than 48 hours ago, not a vendor's cap. */
@@ -177,12 +192,16 @@ export interface BoardTotalFact {
 /**
  * What a page with nothing dated in the last 30 days may say about the board
  * (Track 1, A3): "older" (a complete read listed roles, none dated in our
- * window), "empty" (a complete read listed none), "unread" (no complete read
- * we can stand on: stale, capped, an error, or never), or null while the
- * curve has not answered. Never "has no open roles" while older ones are
- * listed.
+ * window), "empty" (a complete read listed none), "fullRead" (the newest read
+ * was complete but stated no total we may print: say only that, as of that
+ * read, no role on the board is dated in our window), "unread" (evidence that
+ * no complete read happened recently: a windowed board never read through, or
+ * no observation in seven days), or null when neither may be said (the curve
+ * has not answered, a lap we cannot date, a failed newest visit, a board too
+ * new to classify). Never "has no open roles" while older ones are listed, and
+ * never "not read" about a board whose newest read was complete.
  */
-export type ZeroReading = "older" | "empty" | "unread";
+export type ZeroReading = "older" | "empty" | "fullRead" | "unread";
 
 export interface LanderName {
   /** The name to print, or null: render a skeleton bar, never the token. */
@@ -258,12 +277,31 @@ export function boardTotalFact(input: BoardTotalInput | null | undefined, now: n
   return { total, readAt: input.readAt };
 }
 
-/** The zero page's reading: older roles listed, an empty board, or a board we have not read in full recently. */
+/**
+ * The zero page's reading, from the evidence the curve gives (the truth table
+ * is in src/test/pd-hotfix-the-zero-page-never-says-not-read-of-a-board-read-in-full.test.tsx):
+ *   1. a printable total (complete, stated, no older than 48 hours, uncapped):
+ *      "older" or "empty", with its read time;
+ *   2. otherwise the bucket: full_read is "fullRead"; a windowed board with no
+ *      complete pass, or a tracked board with no observation in seven days, is
+ *      "unread"; a lap we cannot date, a failed newest visit, a board too new
+ *      to classify, or a bucket this build does not know says nothing (null);
+ *   3. a reader without the bucket keeps the rule before it: no total, "unread".
+ */
 export function zeroReadingOf(input: Pick<LanderInput, "boardTotal" | "now">): ZeroReading | null {
   if (input.boardTotal === undefined) return null;
   const fact = boardTotalFact(input.boardTotal, input.now ?? Date.now());
-  if (!fact) return "unread";
-  return fact.total > 0 ? "older" : "empty";
+  if (fact) return fact.total > 0 ? "older" : "empty";
+  const bucket = input.boardTotal?.bucket;
+  if (bucket === undefined) return "unread";
+  if (bucket === FULL_READ_BUCKET) return "fullRead";
+  if (bucket !== null && bucket !== LAP_BUCKET && LAP_MODE_BUCKETS.includes(bucket)) return "unread";
+  if (bucket === null) {
+    const raw = input.boardTotal?.trackingDays;
+    const days = typeof raw === "string" ? Number(raw) : raw;
+    return typeof days === "number" && Number.isFinite(days) && days >= 1 ? "unread" : null;
+  }
+  return null;
 }
 
 const finite = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n);

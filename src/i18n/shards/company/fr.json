@@ -194,6 +194,7 @@
       "basis": "Nous affichons les postes datés des {{days}} derniers jours.",
       "empty": "Aucun poste sur le site carrières de {{company}} quand nous l'avons lu {{ago}}.",
       "emptyBoard": "Aucun poste sur ce site quand nous l'avons lu {{ago}}.",
+      "fullRead": "D'après notre dernière lecture complète, aucun poste de ce site n'est daté des {{days}} derniers jours.",
       "unread": "Nous n'avons pas lu tout le site de {{company}} récemment.",
       "unreadBoard": "Nous n'avons pas lu tout ce site récemment."
     },

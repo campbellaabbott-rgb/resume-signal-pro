@@ -177,6 +177,7 @@
       "basis": "We tonen vacatures gedateerd in de afgelopen {{days}} dagen.",
       "empty": "Geen vacatures op het vacaturebord van {{company}} toen we het {{ago}} lazen.",
       "emptyBoard": "Geen vacatures op dit vacaturebord toen we het {{ago}} lazen.",
+      "fullRead": "Volgens onze laatste volledige leesronde heeft geen vacature op dit vacaturebord een datum in de afgelopen {{days}} dagen.",
       "unread": "We hebben het vacaturebord van {{company}} de laatste tijd niet helemaal gelezen.",
       "unreadBoard": "We hebben dit vacaturebord de laatste tijd niet helemaal gelezen."
     },

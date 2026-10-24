@@ -6457,7 +6457,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
       relatedTotal: typeof data?.relatedTotal === "number" ? data.relatedTotal : null,
       listAnsweredAt,
       boardTotal: curveAnsweredAt === null ? undefined : hiringCurve
-        ? { total: hiringCurve.feed_total, readAt: hiringCurve.feed_read_at, state: hiringCurve.feed_state, capped: hiringCurve.feed_capped }
+        ? { total: hiringCurve.feed_total, readAt: hiringCurve.feed_read_at, state: hiringCurve.feed_state, capped: hiringCurve.feed_capped, bucket: hiringCurve.observability_bucket, trackingDays: hiringCurve.tracking_days }
         : null,
       undatedOpen: undated === null || undated === undefined || undated === "" ? null : Number(undated),
     });

@@ -177,6 +177,7 @@
       "basis": "Ipinapakita namin ang mga role na may petsa sa nakaraang {{days}} araw.",
       "empty": "Walang role sa job board ng {{company}} nang basahin namin ito {{ago}}.",
       "emptyBoard": "Walang role sa board na ito nang basahin namin ito {{ago}}.",
+      "fullRead": "Ayon sa huli naming buong pagbasa, walang role sa board na ito na may petsa sa nakaraang {{days}} araw.",
       "unread": "Hindi pa namin nababasa nang buo ang board ng {{company}} kamakailan.",
       "unreadBoard": "Hindi pa namin nababasa nang buo ang board na ito kamakailan."
     },

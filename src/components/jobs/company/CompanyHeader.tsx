@@ -121,6 +121,9 @@ export function boardTotalLine(t: TFunction, model: Pick<LanderModel, "boardTota
  *   older  -> "None of the 31 roles on BASS ABA's board is dated in the last
  *             30 days (read Oct 12). We show roles dated in the last 30 days."
  *   empty  -> "No roles on BASS ABA's job board when we read it 5 hr ago."
+ *   fullRead (the newest read was complete and stated no total, as every
+ *             feed read whole in one visit does) -> "As of our latest full
+ *             read, no role on this board is dated in the last 30 days."
  *   unread -> "We have not read BASS ABA's whole board recently."
  *   null (the curve has not answered) -> "No roles dated in the last 30 days",
  *             which the list itself supports.
@@ -143,6 +146,9 @@ export function zeroAnswer(t: TFunction, model: Pick<LanderModel, "zeroReading" 
     return own
       ? t("companyProfile.zero.empty", "No roles on {{companyPossessive}} job board when we read it {{ago}}.", { company: name, companyPossessive, ago })
       : t("companyProfile.zero.emptyBoard", "No roles on this board when we read it {{ago}}.", { ago });
+  }
+  if (model.zeroReading === "fullRead") {
+    return t("companyProfile.zero.fullRead", "As of our latest full read, no role on this board is dated in the last {{days}} days.", { days: SERVED_WINDOW_DAYS });
   }
   if (model.zeroReading === "unread") {
     return own
