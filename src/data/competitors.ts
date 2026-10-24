@@ -78,7 +78,7 @@ export const COMPETITORS: Record<string, Competitor> = {
       { dim: "Job tracking (CRM)", us: "Basic application tracker in your account.", them: "Their core strength — a genuinely good job-search CRM with a browser extension.", usWins: false },
       { dim: "Resume builder", us: "Free structured builder with typeset PDF/DOCX export.", them: "Polished builder with more templates; deeper customization on paid.", usWins: false },
       { dim: "Pricing model", us: US_PRICING, them: "Freemium with weekly/monthly subscription for advanced features (as of mid-2026).", usWins: true },
-      { dim: "Freelance / career-changer support", us: "Dedicated products: career-change bridge in every scan, Freelance Boost for project-based careers.", them: "General-purpose; no dedicated career-changer tooling.", usWins: true },
+      { dim: "Freelance / career-changer support", us: "The career-change bridge in every scan, and the free account's writing tools: a tailored résumé, cover letter and interview prep for one job a day.", them: "General-purpose; no dedicated career-changer tooling.", usWins: true },
     ],
   },
   rezi: {
