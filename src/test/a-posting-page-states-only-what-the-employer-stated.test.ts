@@ -150,13 +150,13 @@ describe("nothing optional is guessed", () => {
     expect(ld(complete({ salaryMinAnnual: 62400, salaryCurrency: "GBP", salaryPeriod: "hour" }))!.baseSalary).toBeUndefined();
   });
 
-  it("states pay only where the employer stated the figure and the year it is for", () => {
+  it("states no pay in the markup even where the employer stated a yearly figure (owner decision, SEO-016)", () => {
+    // Google's reference: only employers may provide baseSalary. The board's
+    // figure is our reading of the employer's text, so the markup carries
+    // none and the visible page keeps the employer's own words.
     const d = ld(complete({ salaryMinAnnual: 62000, salaryMaxAnnual: 71000, salaryCurrency: "GBP", salaryPeriod: "year" }))!;
-    expect(d.baseSalary).toEqual({
-      "@type": "MonetaryAmount",
-      currency: "GBP",
-      value: { "@type": "QuantitativeValue", minValue: 62000, maxValue: 71000, unitText: "YEAR" },
-    });
+    expect(d, "a complete posting produced no markup").toBeTruthy();
+    expect(d.baseSalary).toBeUndefined();
   });
 
   it("publishes the whole description, because that is what the property is for", () => {
@@ -224,9 +224,19 @@ describe("nothing optional is guessed", () => {
     // "Remote, Arizona, United States of America". That is neither a place nor
     // a telecommute signal. A remote posting keeps a place only where the
     // string genuinely decomposes to a town.
+    // THE INTERIM ASYMMETRIC RULE (SEO-003): a remote label that names a
+    // region or a town, with no vendor flag behind it, is that place and not
+    // TELECOMMUTE ("Germany - Bayern Remote" was four in-store sales jobs). The
+    // place is Arizona, the state; the word Remote is still never the town.
     const arizona = ld(complete({ workMode: "remote", country: "US", location: "Remote, Arizona, United States of America" }))!;
-    expect(arizona.jobLocationType).toBe("TELECOMMUTE");
-    expect(arizona.jobLocation, "a remote posting was given a place called Remote").toBeUndefined();
+    expect(arizona.jobLocationType).toBeUndefined();
+    const az = (arizona.jobLocation as { address: Record<string, unknown> }).address;
+    expect(az.addressLocality, "a remote posting was given a place called Remote").toBeUndefined();
+    expect(az.addressRegion).toBe("AZ");
+    // With the hiring system's own remote flag it is TELECOMMUTE, and still no town called Remote.
+    const flagged = ld(complete({ workMode: "remote", workModeSource: "vendor", country: "US", location: "Remote, Arizona, United States of America" }))!;
+    expect(flagged.jobLocationType).toBe("TELECOMMUTE");
+    expect(flagged.jobLocation, "a remote posting was given a place called Remote").toBeUndefined();
     // A remote posting whose location IS a town keeps it, because that is a
     // fact about the job and not a placeholder.
     const munich = ld(complete({ workMode: "remote", country: "DE", location: "Munich, Germany" }))!;

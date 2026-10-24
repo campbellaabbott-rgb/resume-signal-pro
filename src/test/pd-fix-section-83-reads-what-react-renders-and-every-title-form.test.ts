@@ -37,6 +37,10 @@ describe("C1 accepts every company title form the bake writes, and no 'verified'
       page("Domino's", 23791), page("Albertsons Companies", 6239), page("National Federation of Independent Business (NFIB)", 431),
       page("Acme", null), page("Surge Staffing", 308, "agency"), page("USAJOBS", 13926, "usajobs"),
     ]) expect(TITLE_OK.test(t), t).toBe(true);
+    // The SEO round's forms (2026-10-18): an employer's boards summed (S12-021) and a name two hiring systems carry (S13-117).
+    const pooled = companyLanderPage({ token: "t", name: "PwC", primaryToken: "t", openN: 3011, boards: 3, facts: null, boardCompanies: null, site: "https://x", esc, possessive: (n: string) => `${n}'s`, fmt: (n: number) => n.toLocaleString("en-US"), href: (t: string) => `/jobs/company/${t}` }).title;
+    const collided = companyLanderPage({ token: "lush", name: "Lush", primaryToken: "lush", openN: 40, collision: { h1: "Open roles on boards named “lush”", lead: "" }, facts: null, boardCompanies: null, site: "https://x", esc, possessive: (n: string) => `${n}'s`, fmt: (n: number) => n.toLocaleString("en-US"), href: (t: string) => `/jobs/company/${t}` }).title;
+    for (const t of [pooled, collided]) expect(TITLE_OK.test(t), t).toBe(true);
     // The short form exists (the budget is real), so the old full-form-only check failed a correct deploy.
     expect(page("Albertsons Companies", 6239)).toBe("Albertsons Companies jobs: 6,239 open roles");
   });

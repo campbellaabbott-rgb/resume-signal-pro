@@ -116,7 +116,10 @@ import("node:fs").then(async (fs) => {
   // open roles", "National Federation of Independent Business (NFIB) jobs"),
   // so requiring the full form failed a correct deploy whenever the sample
   // hit one. The real test is the basis and no "verified".
-  const TITLE_OK = / jobs(?:: [\d,]+ (?:open roles(?: from their own hiring system)?|roles(?: listed by a staffing agency)?)|: (?:open roles from their own hiring system|roles listed by a staffing agency))?$|^Federal openings listed on USAJOBS(?:: [\d,]+ roles)?$/;
+  // The SEO round (2026-10-18) added two forms: an employer page that sums its
+  // boards ("PwC jobs: 3,011 open roles across 3 hiring-system boards") and a
+  // name two hiring systems carry ("Open roles on boards named “lush”").
+  const TITLE_OK = / jobs(?:: [\d,]+ (?:open roles(?: from their own hiring system| across \d+ (?:hiring-system )?boards)?|roles(?: listed by a staffing agency)?)|: (?:open roles from their own hiring system|roles listed by a staffing agency))?$|^Federal openings listed on USAJOBS(?:: [\d,]+ roles)?$|^Open roles on boards named “[^”]+”$/;
   const titles = threeCompanies.map((p) => [p, titleOf((docs.get(p) || {}).body || "")]);
   const badTitles = titles.filter(([, t]) => !TITLE_OK.test(t) || /verified/i.test(t));
   if (!titles.length) out("INFO", "C1 no company page to read a title from");
