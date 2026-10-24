@@ -374,7 +374,8 @@ const LIST_FILTERS = [
 // clause inside a work-done or motivation question with the person (when they
 // could start, pay, references, gaps, where they live, covenants), as
 // ANSWERED_BY_MEANS already says, and a hint asking for pay is not plain.
-const FN_BUILD = "public-api.2026-10-11.30";
+// 2026-10-11.31 (wave 4 round 2 recheck): the application route carries the classifier that reads every later clause and sentence of a work-done or motivation question against the shared factual topics (notice, earliest, earned, who to contact).
+const FN_BUILD = "public-api.2026-10-11.31";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",

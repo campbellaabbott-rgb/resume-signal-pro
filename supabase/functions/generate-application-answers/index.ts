@@ -62,7 +62,8 @@ import { signInRequired } from "../_shared/writing-allowance.ts";
 // switched-off apply agent) may ask; a browser is answered 401
 // sign_in_required before anything is spent. The classifier it imports
 // keeps a factual clause inside a work or motivation question the person's.
-const FN_BUILD = "generate-application-answers.2026-10-11.30";
+// 2026-10-11.31 (wave 4 round 2 recheck): carries the classifier that reads every later clause and sentence of a work-done or motivation question against the shared factual topics (notice, earliest, earned, who to contact).
+const FN_BUILD = "generate-application-answers.2026-10-11.31";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

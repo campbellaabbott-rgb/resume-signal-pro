@@ -80,7 +80,8 @@ import { APPLY_AGENT_ON } from "../_shared/apply-agent-switch.ts";
 // 2026-10-11.30 (wave 4 round 2 fixes): the same switched-off code, carrying
 // the classifier that keeps a factual clause (start date, pay, references,
 // gaps, covenants) inside a work-done prompt the person's.
-const BUILD_VERSION = "2026-10-11.30";
+// 2026-10-11.31 (wave 4 round 2 recheck): the same switched-off code, carrying the classifier that reads every later clause and sentence of a work-done or motivation question against the shared factual topics (notice, earliest, earned, who to contact).
+const BUILD_VERSION = "2026-10-11.31";
 // Provable from outside with no key: the CORS preflight and every response
 // carry this in x-fn-build.
 const FN_BUILD = `apply-agent.${BUILD_VERSION}`;

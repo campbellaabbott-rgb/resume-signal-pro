@@ -36,7 +36,8 @@ import { fencePosting, postingText, POSTING_DATA_RULE } from "../_shared/posting
 // website session only (a connected app's token is no session here, CP-J /
 // S9-001), and the posting reaches the model as fenced data with its hidden
 // text dropped (S12-147, as the cover letter and tailored résumé do).
-const FN_BUILD = "generate-apply-package.2026-10-11.30";
+// 2026-10-11.31 (wave 4 round 2 recheck): carries the classifier that reads every later clause and sentence of a work-done or motivation question against the shared factual topics (notice, earliest, earned, who to contact).
+const FN_BUILD = "generate-apply-package.2026-10-11.31";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
