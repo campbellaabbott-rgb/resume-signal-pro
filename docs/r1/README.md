@@ -149,7 +149,11 @@ new reset link (S13-106).
   leave the address: that sign-in is lost, never adopted unasked.
 - It also moves every Stripe `session_id` on any path (product and full
   analysis returns, Freelance Boost, the pass, `/account?pro=success`, the
-  scan-pack return), the `share` id on `/success` (it reads and deletes the
+  scan-pack return), each path's under its own key (`session_id:<path>`,
+  beside `session_id` and `session_id_path` for the last capture, so a
+  payment return on one page never evicts another page's purchase that is
+  paid and not yet delivered; the hotfix's second fixer round), the `share`
+  id on `/success` (it reads and deletes the
   analysis, so the page keeps a new share in the stash, not the address, with
   the purchase it belongs to; a `/success` address names one purchase or one
   analysis, and what it names replaces the pair the stash held, S13-002), and
@@ -330,18 +334,27 @@ found these, and the hotfix fixes them on main:
 
 | item | what was wrong | what is true now |
 |---|---|---|
-| S13-002 (high, commercial blocker) | The first script merged only the keys it captured, so a second $5 purchase in one tab arrived at `/success` beside the first purchase's stashed share. The page showed analysis #1, never generated #2, recorded no sale and hid Try again; after a Delete (or the email's share link) it said "Analysis not found". | A `/success` address names one purchase or one analysis: the first script replaces the pair the stash held for `/success` in the same write (a new session id drops the old share; a share link alone drops the tab's `/success` purchase). The page stores a share with the purchase it belongs to (`share_session`) and honours a stashed share only for that purchase, or with no purchase named (read-only). Delete forgets the share. |
-| S13-017 (medium) | A Lovable 429 stopped the run and set `retry_after_until` to Retry-After (an hour), which the drain's cron also honoured, so every reset mail expired into the dead-letter queue with no Resend try. A hung Lovable send was killed before any row counted it. | process-email-queue 2026-10-14.2: a 429 on sign-in mail goes through Resend at once with the payload's idempotency key and sets no cooldown; the run's other sign-in mail goes straight to Resend; the function drains sign-in mail while a cooldown holds; a send past its 10 s deadline is a transient failure and Lovable is not asked again in that run; a run never starts a message its 30 s claim has no room for, and its Resend sends are at least 500 ms apart. Migration 20261014100000 is LIVE (applied outside the staged runner; the ledger lists it in `appliedOutsideDrizzle`) and stays the text that was applied. The new migration 20261014120000 re-schedules rb-auth-mail-drain in place (same job, same name) with that command minus its cooldown read; its self-check fails a command that still reads `email_send_state`, and its ledger rule waits for 2026-10-14.2. |
-| S13-082 (low) | FreelanceBoost read the stashed session id with no end, so every later visit in the tab showed the old purchase, the buy buttons never rendered, and "Start a new purchase" could not be reached. | The stashed id is honoured until its purchase is delivered: a reload before the page mounted, a tab restore or a reload during generation still finds a paid purchase, and once the section is on screen the stash forgets the id, so a later visit (a reload or an in-app link) is a new visit. "Start a new purchase" is offered under a delivered section (not beside a paid one not yet generated) and clears the mark, the stash and the address. A first draft honoured the id only on the document that captured it, which dropped undelivered purchases on any reload; the fixer round replaced it. |
+| S13-002 (high, commercial blocker) | The first script merged only the keys it captured, so a second $5 purchase in one tab arrived at `/success` beside the first purchase's stashed share. The page showed analysis #1, never generated #2, recorded no sale and hid Try again; after a Delete (or the email's share link) it said "Analysis not found". | A `/success` address names one purchase or one analysis: the first script replaces the pair the stash held for `/success` in the same write (a new session id drops the old share; a share link alone drops the tab's `/success` purchase). The page stores a share with the purchase it belongs to (`share_session`) and honours a stashed share only for that purchase, or with no purchase named (read-only). Delete forgets the share and the purchase it was made for, so Back to `/success` says no session is open instead of asking a buyer who just deleted their data for the résumé again (second fixer round). |
+| S13-017 (medium) | A Lovable 429 stopped the run and set `retry_after_until` to Retry-After (an hour), which the drain's cron also honoured, so every reset mail expired into the dead-letter queue with no Resend try. A hung Lovable send was killed before any row counted it. | process-email-queue 2026-10-14.2: a 429 on sign-in mail goes through Resend at once with the payload's idempotency key and sets no cooldown; the run's other sign-in mail goes straight to Resend; the function drains sign-in mail while a cooldown holds; a send past its 10 s deadline is a transient failure and Lovable is not asked again in that run; a run never starts a message its 30 s claim has no room for, and its Resend sends are at least 500 ms apart. The first message of a batch is always tried, so `LOVABLE_SEND_TIMEOUT_MS` is held to 19.5 s (what a claim leaves after its margin, a Resend fallback and its pacing), and a Resend send is bounded whole, body included: `_shared/send-mail.ts` (imported only by process-email-queue) keeps its deadline armed until the body is read, and a 2xx whose body stalls is a send (second fixer round). Migration 20261014100000 is LIVE (applied outside the staged runner; the ledger lists it in `appliedOutsideDrizzle`) and stays the text that was applied. The new migration 20261014120000 re-schedules rb-auth-mail-drain in place (same job, same name) with that command minus its cooldown read; its self-check fails a command that still reads `email_send_state`, and its ledger rule waits for 2026-10-14.2. Its command begins `SET statement_timeout = '10s'`, which `get_cron_health` reports as `ch_timeout` and no other file writes: section 94 reads that trace, PASSes `10s`, and FAILs anything else once 2026-10-14.2 serves (second fixer round; before, nothing anon could read told the two commands apart). |
+| S13-082 (low) | FreelanceBoost read the stashed session id with no end, so every later visit in the tab showed the old purchase, the buy buttons never rendered, and "Start a new purchase" could not be reached. | The stashed id is honoured until its purchase is delivered: a reload before the page mounted, a tab restore or a reload during generation still finds a paid purchase, and once the section is on screen the stash forgets a Stripe purchase's id, so a later visit (a reload or an in-app link) is a new visit, whose box points to the purchase email's link (stripe-webhook mails it). A Pro member's grant (`pro_<id>`) stays in the stash after delivery, until "Start a new purchase" or the tab closes: create-product-checkout mints it and mails nothing, so no email link could bring its section back. Each path keeps its own stashed id, so a $5 Full Analysis bought in the tab before the Boost was generated no longer evicts it. "Start a new purchase" is offered under a delivered section (not beside a paid one not yet generated) and clears the mark, the stash and the address. A first draft honoured the id only on the document that captured it, which dropped undelivered purchases on any reload; the fixer round replaced it, and the second fixer round kept grants and gave each path its own id. |
 | S13-106 (low) | A definite refusal of our own mail's reset link (`mode=confirm&type=recovery`) said "Sign in again to get a new one" with only "Back to sign in". | It opens the reset page on its "expired" step: "This reset link has expired or was already used", "Send a new reset link" for the address this browser asked for (read before the refusal spends the marker), and "Email support". Other link types keep the generic wording. |
 
-Deploy (generate the message with `node scripts/deploy-ledger.mjs --message`):
-process-email-queue 2026-10-14.2, then the frontend (index.html,
-Success, FreelanceBoost, Auth, ResetFlow), then migration 20261014120000
-once section 94 shows 2026-10-14.2 (the ledger's after-rule). Like
-20261014100000, it never touches Lovable's own mail path. Sections 94 and 95
-carry the new lines; section 94 cannot read a job's command, so it prints an
-INFO line saying the cron's change is proved by 20261014120000's self-check.
+Deploy: the order is the one `node scripts/deploy-ledger.mjs --message`
+prints at the merge commit, never this paragraph. The draft from this branch
+(2026-10-24) reads: 1. apply no migration before the functions (and the
+standing HOLD on 20261012111000 and NEVER on 20260928003117); 2. deploy
+process-email-queue `process-email-queue.2026-10-14.2`; 3. once it answers
+that build, apply migration 20261014120000; 4. publish the frontend
+(index.html, Success, FreelanceBoost, Auth, ResetFlow). Like 20261014100000,
+the migration never touches Lovable's own mail path. The draft also prints
+MUST BUMP employer-profiles: that is already on main (commit 8422645e changed
+`_shared/perks-extract.ts` and `employer-profiles/sweep.ts` after the stamp
+commit 345802a3), belongs to company-profiles, and this deploy does not ship
+it. Afterwards section 94 PASSes process-email-queue 2026-10-14.2 and
+rb-auth-mail-drain's `10s` trace; only after that PASS is 20261014120000
+recorded in `appliedOutsideDrizzle` (it has no staged-runner stub either if
+it is applied the way 20261014100000 was). Section 95 PASSes the stash
+script's two `/success` returns (S13-002) and its per-path session ids.
 
 Hand-offs (not in this hotfix):
 
@@ -364,10 +377,17 @@ Hand-offs (not in this hotfix):
   w4b/checkout-catalogue (FreelanceBoost.tsx), and wave4/integration (both
   pages, and the R1 ledger test
   `r1-integration-the-ledger-applies-the-drain-after-its-queue-and-the-proofs-before-the-guard.test.ts`).
-  On FreelanceBoost a
-  Regenerate control shown "whenever sessionId is set" now appears only
-  while a purchase is open on the page: the stash forgets the id once its
-  section is on screen, so a later visit has none.
+  `docs/deploy-ledger.json` `sharedFiles` now gives those three files to
+  critical-path, and `_sharedFilesNote` says what wave 4 keeps when it
+  re-applies its own hunks: in FreelanceBoost, which wave 4 turns into a
+  "no longer sold" notice, `stashedSessionIdFor('/freelance-boost', null)`
+  and `forgetStashedSessionFor` on delivery, for past buyers' links; in
+  Success, `stashedShareFor`, `stashShareFor`, `forgetStashedShare` and
+  `forgetStashedSessionFor` on Delete. On FreelanceBoost a Regenerate
+  control shown "whenever sessionId is set" appears only while a purchase is
+  open on the page: the stash forgets a Stripe purchase's id once its
+  section is on screen, so a later visit has none (a Pro member's grant
+  stays until "Start a new purchase").
 
 ## Switches (`src/config/auth-providers.ts`)
 
@@ -427,16 +447,17 @@ rule's text names the frontend gate:
    migration the staged runner dropped, is caught.
 6. **Run `bash scripts/verify-deploy.sh` again** and read 94, 95 and 96.
    - 94: the three mail builds, process-email-queue at 2026-10-14.2 or
-     later (S13-017; an INFO line says the drain's command is proved by
-     20261014120000's self-check), DNS, OUR drain job rb-auth-mail-drain (last run
+     later (S13-017), rb-auth-mail-drain's `10s` trace from 20261014120000
+     (FAIL without it once 2026-10-14.2 serves), DNS, OUR drain job rb-auth-mail-drain (last run
      succeeded, no failures; a process-email-queue job is reported as
      Lovable's), the gateway's 401 to a post with no JWT in the body the
      drain reads back, the publishable key's 403 with cronKey false.
    - 95: the deployed bundle's flags (`google=on recovery=on code=off
      apple=off`), the controls against the guard being ready, the stash
      script first in `<head>`, that script RUN for two purchases on
-     `/success` in one tab dropping the first one's share (S13-002), and no
-     magic-link copy.
+     `/success` in one tab dropping the first one's share (S13-002) and for
+     a `/freelance-boost` return then a `/success` return keeping each
+     path's session id, and no magic-link copy.
    - 96: the auth-signed-in and verify-product-purchase builds, the CORS
      origin, 401 without a session, the readers and tables closed (42501,
      each table read selecting a real column).

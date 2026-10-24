@@ -171,6 +171,18 @@ describe("the two shared files R1 declared are R1's where it says, and the code 
     expect(html, "the first script no longer moves session_id on every path").toMatch(/v = q\.get\("session_id"\); if \(v !== null\)/);
   });
 
+  it("the hotfix's two pages and this test, which wave 4 also changes, are critical-path's, and the note names what wave 4 keeps of each (DEPLOY-LEDGER.md section 6; second fixer round)", () => {
+    for (const file of [
+      "src/pages/FreelanceBoost.tsx",
+      "src/pages/Success.tsx",
+      "src/test/r1-integration-the-ledger-applies-the-drain-after-its-queue-and-the-proofs-before-the-guard.test.ts",
+    ]) expect(L.sharedOwner(POLICY.sharedFiles, file), `${file} is changed by the hotfix and by wave 4 with no owner: --overlap exits 4`).toBe("critical-path");
+    const note = String(POLICY._sharedFilesNote ?? "");
+    for (const kept of ["stashedSessionIdFor", "forgetStashedSessionFor", "stashedShareFor", "stashShareFor", "forgetStashedShare"]) {
+      expect(note, `the note does not tell wave 4 to keep ${kept} when it rebases`).toContain(kept);
+    }
+  });
+
   it("the proofs' order rule names the frontend gate the first publish needs (Google and recovery on: S12-057)", () => {
     const why = String(POLICY.migrationOrder["20261014110000"]?.why ?? "");
     expect(why).toMatch(/frontend is published only once verify section 96 PASSes/);
