@@ -112,11 +112,17 @@ export function resetBakedHeadForTests(): void {
  * carry two titles and two of each share tag. Once React owns one of a kind,
  * the unowned ones of that kind are removed; nothing of a kind React has not
  * written is touched.
+ *
+ * The robots directive is one of those kinds: an address with no baked file
+ * is served the root index.html, whose template says "index, follow", and a
+ * noindex page (an internal tool, an uncarried board) added its own beside
+ * it, so the head carried two contradicting directives.
  */
 export function supersedeBakedTitleAndShareTags(): void {
   if (typeof document === "undefined") return;
   const kinds: Array<[string, (n: Element) => string]> = [
     ["title", () => "title"],
+    ['meta[name="robots"]', () => "robots"],
     ['meta[property^="og:"]', (n) => `og|${n.getAttribute("property")}`],
     ['meta[name^="twitter:"]', (n) => `tw|${n.getAttribute("name")}`],
   ];
