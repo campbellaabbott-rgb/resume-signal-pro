@@ -414,21 +414,56 @@ export function fill(template: string, vars: Record<string, string>): string {
  * pages asked "Should a CV in United States include a photo?" and
  * "Lebenslauf in Schweiz". The names that take an article (or a contracted
  * preposition) in that language get it; every other name is untouched.
+ *
+ * These are the bake's rules, phrase for phrase (cvFill in
+ * src/lib/cv-country-phrase.ts on the SEO bake branch, which fills the baked
+ * copy of these pages), so a reader with scripts and one without get the
+ * same sentence. The template is rewritten around each {name} first, then
+ * filled.
  */
-const EN_THE = new Set(["United States", "United Kingdom", "Netherlands", "United Arab Emirates", "Philippines"]);
-const reEsc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-export function countryPhraseFix(locale: string | undefined, text: string, name: string): string {
+const EN_THE = new Set(["United States", "United Kingdom", "Netherlands", "Philippines", "United Arab Emirates", "Czech Republic", "Bahamas", "Gambia"]);
+type CountryForms = { in: string; of: string; bare: string };
+const COUNTRY_FORMS: Record<string, Record<string, CountryForms>> = {
+  pt: { Brasil: { in: "no Brasil", of: "do Brasil", bare: "o Brasil" } },
+  de: { Schweiz: { in: "in der Schweiz", of: "der Schweiz", bare: "die Schweiz" } },
+  fr: {
+    France: { in: "en France", of: "de la France", bare: "la France" },
+    Belgique: { in: "en Belgique", of: "de la Belgique", bare: "la Belgique" },
+    Suisse: { in: "en Suisse", of: "de la Suisse", bare: "la Suisse" },
+  },
+};
+const COUNTRY_PATTERNS: Record<string, Array<[RegExp, keyof CountryForms | ((f: CountryForms) => string)]>> = {
+  pt: [[/\bem \{name\}/g, "in"], [/\bde \{name\}/g, "of"], [/\bmira \{name\}/g, (f) => `mira ${f.bare}`]],
+  de: [[/\bin \{name\}/g, "in"], [/\bvon \{name\}/g, (f) => `von ${f.of}`], [/\bauf \{name\}/g, (f) => `auf ${f.bare}`]],
+  fr: [[/\ben \{name\}/g, "in"], [/\bde \{name\}/g, "of"], [/\bvise \{name\}/g, (f) => `vise ${f.bare}`]],
+};
+
+/** A template rewritten so each {name} reads as the page's language needs it. */
+function countryTemplate(locale: string | undefined, template: string, name: string): string {
   const lng = locale ?? "en";
-  const n = reEsc(name);
-  if (lng === "en" && EN_THE.has(name)) return text.replace(new RegExp(`\\b(in|targets|for|of|to) (${n})\\b`, "g"), "$1 the $2");
-  if (lng === "de" && name === "Schweiz") return text.replace(/\bin Schweiz\b/g, "in der Schweiz").replace(/\bvon Schweiz\b/g, "der Schweiz");
-  if (lng === "pt" && name === "Brasil") return text.replace(/\bem Brasil\b/g, "no Brasil").replace(/\bde Brasil\b/g, "do Brasil");
-  return text;
+  let t = String(template ?? "");
+  if (lng === "en" && EN_THE.has(name)) {
+    const the = `the ${name}`;
+    return t.replace(/\{name\}'s/g, /s$/.test(name) ? `${the}'` : `${the}'s`).replace(/\{name\}/g, the);
+  }
+  const forms = COUNTRY_FORMS[lng]?.[name];
+  if (forms) {
+    for (const [re, form] of COUNTRY_PATTERNS[lng] ?? []) {
+      t = t.replace(re, () => (typeof form === "function" ? form(forms) : forms[form]));
+    }
+  }
+  return t;
 }
 
-/** fill(), then the country phrase made grammatical for the page's language. */
+/** fill(), with the country phrase made grammatical for the page's language. */
 export function cvFill(locale: string | undefined, template: string, vars: Record<string, string>): string {
-  return countryPhraseFix(locale, fill(template, vars), vars.name ?? "");
+  const name = vars.name ?? "";
+  return fill(name ? countryTemplate(locale, template, name) : template, vars);
+}
+
+/** The same rules over text already filled with `name`. */
+export function countryPhraseFix(locale: string | undefined, text: string, name: string): string {
+  return name ? cvFill(locale, text.split(name).join("{name}"), { name }) : text;
 }
 
 /**
