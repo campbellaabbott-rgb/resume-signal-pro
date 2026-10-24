@@ -357,7 +357,19 @@ MC -d '{"jsonrpc":"2.0","id":4,"method":"resources/list","params":{}}' | node -e
 MC -d '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"board_stats","arguments":{}}}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const r=(JSON.parse(s).result)||{};const txt=JSON.stringify(r.content||"");const spent=/allowance is spent/.test(txt);console.log((r.isError?(spent?"INFO":"FAIL"):"PASS")+"  keyless board_stats "+(r.isError?(spent?"refused: this address is over its daily allowance (our own probes) — the wall works":"isError "+txt.slice(0,120)):"answers"+((r.structuredContent||{}).withKey?" with a withKey block":"")))})'
 MC -w '\nHTTPSTATUS:%{http_code}' -d '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"request_application","arguments":{"jobId":"zz"}}}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const st=(s.match(/HTTPSTATUS:(\d+)/)||[])[1];s=s.replace(/\nHTTPSTATUS:\d+$/,"");if(st==="401")return console.log("PASS  keyless request_application -> 401 (sign-in is ON and the challenge is answered)");let j;try{j=JSON.parse(s)}catch{j=null}const r=(j&&j.result)||{};const txt=JSON.stringify(r).slice(0,300);console.log((r.isError&&/key|sign-in/i.test(txt)?"PASS":"FAIL")+"  keyless request_application refused in band: "+txt.slice(0,120))})'
 probe mcp_anon_check '{"p_ip_hash":"0000000000000000","p_global_cap":1,"p_ip_cap":1}'
-if [ -n "$RB" ]; then MC -H "Authorization: Bearer $RB" -d '{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"employer_growth","arguments":{"companyTokens":["dominos","tysonfoods~wd5~TSN","zz-not-a-board"]}}}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const r=(JSON.parse(s).result)||{};const rows=((r.structuredContent||{}).employers)||[];console.log((!r.isError&&rows.length===3?"PASS":"FAIL")+"  keyed employer_growth: "+rows.length+" rows, "+rows.map(x=>x.verdict+(x.unknown_reason?"/"+x.unknown_reason:"")).join(","))})'; fi
+# Keyed employer_growth. Re-pointed 2026-10-24 (profiles+design verify
+# triage): the first token was a SmartRecruiters board, which agent-mcp has
+# refused by name since 25f0aa31 (withheld until SmartRecruiters permits
+# redistribution), so the call could never answer three rows. It asks a
+# Greenhouse board with a growth series instead (stripe: no-growth with a
+# baseline in get_company_growth on 2026-10-24), and the withheld board is
+# asserted refused in band on a call of its own. A refused key prints its own
+# words, so a revoked key reads as the key and not as the tool; both lines
+# still need the owner's new key (the 2026-09-02 key is revoked).
+if [ -n "$RB" ]; then
+  MC -H "Authorization: Bearer $RB" -d '{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"employer_growth","arguments":{"companyTokens":["stripe","tysonfoods~wd5~TSN","zz-not-a-board"]}}}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{return console.log("FAIL  keyed employer_growth answered non-JSON: "+s.slice(0,120))}const r=j.result||{};const why=(r.content||[]).map(c=>c.text||"").join(" ").slice(0,200)||JSON.stringify(j.error||"").slice(0,200);if(!j.result||r.isError)return console.log("FAIL  keyed employer_growth refused: "+why+(/revoked|not recogni|unknown/i.test(why)?" (the key, not the tool: the owner mints a new one at /data-api)":""));const rows=((r.structuredContent||{}).employers)||[];console.log((rows.length===3?"PASS":"FAIL")+"  keyed employer_growth: "+rows.length+" rows, "+rows.map(x=>x.company_token+" "+x.verdict+(x.unknown_reason?"/"+x.unknown_reason:"")).join(", ")+" (want 3)")})'
+  MC -H "Authorization: Bearer $RB" -d '{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"employer_growth","arguments":{"companyTokens":["dominos"]}}}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{return console.log("FAIL  keyed employer_growth on a withheld board answered non-JSON: "+s.slice(0,120))}const r=j.result||{};const why=(r.content||[]).map(c=>c.text||"").join(" ").slice(0,200)||JSON.stringify(j.error||"").slice(0,200);if(r.isError&&/cannot be served by this server/.test(why))console.log("PASS  keyed employer_growth refuses the withheld SmartRecruiters board by name, in band: "+why.slice(0,120));else if(r.isError)console.log("FAIL  keyed employer_growth on the withheld board was refused for another reason: "+why+(/revoked|not recogni|unknown/i.test(why)?" (the key, not the tool: the owner mints a new one at /data-api)":""));else console.log("FAIL  keyed employer_growth served a withheld SmartRecruiters board: "+JSON.stringify(r.structuredContent||r).slice(0,160))})'
+else echo "INFO  no RB_API_KEY in .env.local: the keyed employer_growth lines are not run (the owner mints a key at /data-api)"; fi
 
 echo "== 5o. the six-hour pass =="
 probe agent_pass_grant '{"p_user_id":"00000000-0000-0000-0000-000000000000","p_stripe_session_id":"zz","p_payment_intent_id":"zz","p_amount_cents":0,"p_session_hours":1,"p_applications_total":1,"p_rate_per_min":1,"p_daily_quota":1,"p_shelf_days":1}'
@@ -367,7 +379,11 @@ probe custom_access_token_hook '{"event":{}}'
 code=$(curl -s -m 30 -o /dev/null -w '%{http_code}' "$B/rest/v1/agent_passes?select=applications_used&limit=1" -H "apikey: $K" -H "Authorization: Bearer $K"); [ "$code" = "401" ] || [ "$code" = "403" ] && echo "PASS  agent_passes as anon -> $code" || echo "FAIL  agent_passes as anon -> $code"
 prm=$(curl -s -m 30 -w '\n%{http_code}' "$B/functions/v1/agent-mcp/.well-known/oauth-protected-resource" -H "apikey: $K"); pcode=$(printf '%s' "$prm" | tail -1); printf '%s' "$prm" | sed '$d' | grep -q '"resource"' && [ "$pcode" = "200" ] && echo "PASS  PRM served on the function path" || echo "FAIL  PRM -> HTTP $pcode"
 as=$(curl -s -m 20 "$B/.well-known/oauth-authorization-server/auth/v1"); printf '%s' "$as" | grep -q '"registration_endpoint"' && echo "PASS  OAuth AS metadata answers with DCR" || echo "INFO  OAuth AS: $(printf '%s' "$as" | head -c 90) (the owner's dashboard toggle)"
-if [ -n "$RB" ]; then MC -H "Authorization: Bearer $RB" -d '{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"key_status","arguments":{}}}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const sc=((JSON.parse(s).result||{}).structuredContent)||{};const p=sc.pass||null;console.log((p&&p.state?"PASS":"INFO")+"  key_status.pass.state = "+(p&&p.state))})'; fi
+# key_status. Re-pointed 2026-10-24 (profiles+design verify triage): the
+# six-hour pass is retired (apply pivot, owner 2026-10-11), so its state is no
+# longer expected; the call must answer the key's own tier and quota, and a
+# refusal prints its words.
+if [ -n "$RB" ]; then MC -H "Authorization: Bearer $RB" -d '{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"key_status","arguments":{}}}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{return console.log("FAIL  keyed key_status answered non-JSON: "+s.slice(0,120))}const r=j.result||{};const why=(r.content||[]).map(c=>c.text||"").join(" ").slice(0,200)||JSON.stringify(j.error||"").slice(0,200);if(!j.result||r.isError)return console.log("FAIL  keyed key_status refused: "+why+(/revoked|not recogni|unknown/i.test(why)?" (the key, not the tool: the owner mints a new one at /data-api)":""));const sc=r.structuredContent||{};const k=sc.key||{},q=sc.quota||{};console.log((typeof k.tier==="string"&&Number.isFinite(q.limit)?"PASS":"FAIL")+"  keyed key_status answers the key: tier "+k.tier+", quota "+q.used+"/"+q.limit+(sc.pass&&sc.pass.state?" (still reports a pass state, "+sc.pass.state+": the pass is retired)":""))})'; fi
 
 echo "== 5p. no prerendered page is served as the homepage shell =="
 HOMET=$(title /)
@@ -673,13 +689,41 @@ probe record_checkout_start '{"p_stripe_session_id":"cs_probe_anon_denied_000","
 echo "== 7c. the writer's key names the variant: later funnel stages leave zero (a day of traffic after deploy) =="
 R get_funnel_cohort_stats '{"p_cohort_dimension":"trafficSource","p_days_back":1}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{return console.log("FAIL  cohort reader non-JSON: "+s.slice(0,120))}if(!Array.isArray(j))return console.log("FAIL  cohort reader: "+JSON.stringify(j).slice(0,160));const sum=k=>j.reduce((a,r)=>a+Number(r[k]||0),0);const later=["upload_started","scan_started","results_viewed","product_clicked","checkout_started","purchase_completed"];const t={};for(const k of ["landing_view",...later])t[k]=sum(k);console.log("INFO  24h stages: "+JSON.stringify(t)+" (baseline 2026-09-27: landing 136,048/30d, every later stage 0)");const any=later.some(k=>t[k]>0);console.log((any?"PASS":"INFO")+"  a later stage is non-zero"+(any?"":" -- not yet: judge this a day after deploy, not on the hour"))})'
 
-echo "== 7d. the crawler reads the prices: /pricing and /agents carry the plan and pass figures =="
+echo "== 7d. the crawler reads the prices: /pricing sells Pro at \$45 and nothing retired, /agents names no retired price =="
+# Re-pointed 2026-10-24 (profiles+design verify triage). The apply pivot
+# (owner, 2026-10-11) retired the monthly plan and the pass, and the bake now
+# sells only what is on sale, so the old ">= 5 of each" read FAIL on a true
+# page and its PASS state would trip 83 C1. Retired claims are judged with
+# 83 C1's own list (scripts/prerender-retired.mjs); a bare 29 dollars is not one,
+# because a one-time product at that price is still on sale.
 PR=$(curl -s -m 30 -A "$UA" "$SITE/pricing")
-for T in 45 99 29; do N=$(printf '%s' "$PR" | grep -o "\$$T" | wc -l | tr -d ' '); [ "$N" -ge 5 ] && echo "PASS  /pricing carries \$$T x$N (want >= 5; baseline 0 for 45 and 99)" || echo "FAIL  /pricing carries \$$T x$N (want >= 5)"; done
-DESC=$(printf '%s' "$PR" | grep -o '<meta name="description" content="[^"]*"' | head -1)
-case "$DESC" in *"pass for your own agent."\") echo "PASS  /pricing description ends with the pass sentence";; *) echo "FAIL  /pricing description: ${DESC:0:200} (baseline: cut at 'purchases (\"')";; esac
 AG=$(curl -s -m 30 -A "$UA" "$SITE/agents")
-for T in 99 29; do N=$(printf '%s' "$AG" | grep -o "\$$T" | wc -l | tr -d ' '); [ "$N" -ge 5 ] && echo "PASS  /agents carries \$$T x$N (want >= 5; baseline 0)" || echo "FAIL  /agents carries \$$T x$N (want >= 5)"; done
+VD7D_PR="$PR" VD7D_AG="$AG" VD7D_ROOT="$(pwd)" node --input-type=module -e '
+const { VD7D_PR: pr, VD7D_AG: ag, VD7D_ROOT: root } = process.env;
+const out = (s, m) => console.log(`${s.padEnd(5)} ${m}`);
+import(`${root}/scripts/prerender-retired.mjs`).then((R) => {
+  const bare = (h, n) => (h.match(new RegExp(`\\$${n}(?![0-9])`, "g")) || []).length;
+  const served = (h) => `${R.crawlerText(h)} ${JSON.stringify(R.jsonLdBlocks(h))}`;
+  if (!pr || pr.length < 2000) { out("FAIL", `/pricing answered ${pr.length} bytes: nothing to judge`); }
+  else {
+    const desc = (pr.match(/<meta name="description" content="([^"]*)"/) || [])[1] || "";
+    const body = R.crawlerText(pr);
+    if (desc.includes("Pro $45/month") && body.includes("$45/month")) out("PASS", `/pricing states Pro at $45/month in its description and its body ($45 x${bare(pr, 45)} in the document; baseline 0)`);
+    else out("FAIL", `/pricing does not state Pro at $45/month in both its description and its body (description ${desc.includes("Pro $45/month") ? "yes" : "no"}, body ${body.includes("$45/month") ? "yes" : "no"}; $45 x${bare(pr, 45)})`);
+    const hits = R.retiredClaimsIn(served(pr), { sales: true });
+    if (hits.length) out("FAIL", `/pricing sells or names a retired product: ${hits.map(([c, m]) => `${c} ("${m.slice(0, 60)}")`).join("; ")}`);
+    else out("PASS", `/pricing carries no retired claim by 83 C1\x27s list (bare $99 x${bare(pr, 99)}; bare $29 x${bare(pr, 29)}, a one-time product still on sale, never a pass)`);
+    const descBad = !/Pro \$45\/month\.$/.test(desc) ? "does not end with \x27Pro $45/month.\x27" : /\bpass\b/i.test(desc) ? "names a pass" : /Apply Agent/.test(desc) ? "names the Apply Agent" : /purchases \($/.test(desc) ? "is cut at \x27purchases (\x27" : "";
+    if (descBad) out("FAIL", `/pricing description ${descBad}: "${desc.slice(0, 200)}"`);
+    else out("PASS", `/pricing description is whole and names only what is on sale: "${desc}"`);
+  }
+  if (!ag || ag.length < 2000) { out("FAIL", `/agents answered ${ag.length} bytes: nothing to judge`); return; }
+  const agHits = R.retiredClaimsIn(served(ag));
+  if (agHits.length) out("FAIL", `/agents carries a retired price or claim: ${agHits.map(([c, m]) => `${c} ("${m.slice(0, 60)}")`).join("; ")}`);
+  else if (bare(ag, 99) + bare(ag, 29)) out("INFO", `/agents carries no retired claim by 83 C1\x27s list, but a bare $99 x${bare(ag, 99)} / $29 x${bare(ag, 29)}: read what it prices`);
+  else out("PASS", "/agents carries no retired claim and no $99 or $29 at all (the plan and the pass are retired)");
+}).catch((e) => out("FAIL", `7d this checkout cannot read scripts/prerender-retired.mjs (${String(e).slice(0, 80)}): the retired list is the judge`));
+'
 
 echo "== 7e. the retired job sitemap is GONE, terminally (the ~733k-URL crawl trap) =="
 # .82's claim. Removing the robots.txt line on 2026-09-23 removed the sign; the

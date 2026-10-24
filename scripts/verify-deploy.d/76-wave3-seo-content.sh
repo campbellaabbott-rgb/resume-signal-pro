@@ -50,11 +50,23 @@ const textOf = (h) => h.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<[^>
   else out("PASS", "the homepage carries none of the retired absolute claims");
   if (canonOf(home.body) === `${SITE}/`) out("PASS", "the homepage file names itself canonical (an unknown address is no longer an indexable copy of /)");
   else out("FAIL", `the homepage canonical is "${canonOf(home.body) || "absent"}" (F2d)`);
-  // L1-08: the agent Service carries its prices.
-  const svc = lds(home.body).find((j) => j["@type"] === "Service");
-  const prices = svc && Array.isArray(svc.offers) ? svc.offers.map((o) => o.price) : [];
-  if (prices.includes("99") && prices.includes("29")) out("PASS", "the homepage apply-agent Service offers carry $99 and $29 (L1-08)");
-  else out("FAIL", `the homepage Service offers carry ${JSON.stringify(prices)} (L1-08: was "Included with an account")`);
+  // L1-08, re-pointed 2026-10-24 (profiles+design verify triage). The apply
+  // pivot (owner, 2026-10-11) retired the agent plan and the pass, and the
+  // bake dropped the Service block that sold them, so the homepage now passes
+  // when it sells neither: no Service block, and no Offer at either retired
+  // price at any depth (the rule 83 C2 judges). The block coming back fails.
+  const homeLd = lds(home.body);
+  const svcs = homeLd.filter((j) => j && j["@type"] === "Service");
+  const retiredOffers = [];
+  const walkOffers = (v) => {
+    if (Array.isArray(v)) { v.forEach(walkOffers); return; }
+    if (!v || typeof v !== "object") return;
+    if (v["@type"] === "Offer" || v["@type"] === "AggregateOffer") for (const k of ["price", "lowPrice", "highPrice"]) if (k in v && [99, 29].includes(Number(v[k]))) retiredOffers.push(`${k} ${v[k]}`);
+    Object.values(v).forEach(walkOffers);
+  };
+  walkOffers(homeLd);
+  if (!svcs.length && !retiredOffers.length) out("PASS", "the homepage carries no Service block and no Offer at $99 or $29: the retired agent plan and pass are not sold (L1-08 since the apply pivot; 83 C2)");
+  else out("FAIL", `the homepage still sells the retired apply agent: ${svcs.length} Service block(s), Offers at ${JSON.stringify(retiredOffers)} (L1-08 since the apply pivot; 83 C2)`);
 
   // ---- F1: employers by the name they use ----
   const ms = [];
@@ -234,8 +246,16 @@ const textOf = (h) => h.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<[^>
   if (lt.status === 200 && rel === 0 && /work\.resumebooster\/jobs/.test(lt.body) && !/zero ghost|whether it was filled|10 languages|aggregator or a scrape/i.test(lt.body)) out("PASS", "/llms.txt names its domain on every link, names the registry entry, and drops zero-ghost, filled, 10 languages and never-a-scrape");
   else out("FAIL", `/llms.txt: ${rel} relative links${/zero ghost/i.test(lt.body) ? ", still says zero ghost jobs" : ""}${/whether it was filled/.test(lt.body) ? ", still says filled" : ""}${/10 languages/.test(lt.body) ? ", still says 10 languages" : ""}${/aggregator or a scrape/.test(lt.body) ? ", still says never a scrape" : ""}${/work\.resumebooster\/jobs/.test(lt.body) ? "" : ", no registry name"}`);
   const lf = await get("/llms-full.txt");
-  if (/work\.resumebooster\/jobs/.test(lf.body) && !/raises both for its hours`?$/m.test(lf.body) && /never raises them on \/v1/.test(lf.body)) out("PASS", "/llms-full.txt names the registry entry and scopes the pass to the MCP server (L9-11)");
-  else out("FAIL", "/llms-full.txt lacks the registry name or still says a pass raises the /v1 limits (L9-11)");
+  // L9-11, re-pointed 2026-10-24 (profiles+design verify triage): the pass is
+  // retired, so the file no longer scopes it to the MCP server; it must name
+  // the registry entry and sell no pass at all.
+  const lfWhy = [
+    /work\.resumebooster\/jobs/.test(lf.body) ? "" : "no registry name",
+    /raises both for its hours`?$/m.test(lf.body) ? "still says a pass raises the /v1 limits" : "",
+    /\bAgent Pass\b|\blive pass\b/i.test(lf.body) ? "still names the retired pass" : "",
+  ].filter(Boolean);
+  if (lf.status === 200 && !lfWhy.length) out("PASS", "/llms-full.txt names the registry entry and names no pass, retired since the apply pivot (L9-11)");
+  else out("FAIL", `/llms-full.txt (HTTP ${lf.status}): ${lfWhy.join(", ") || "unreadable"} (L9-11)`);
   if (/every employer with open roles/.test(lf.body)) out("FAIL", "/llms-full.txt still says /companies lists every employer with open roles (L4-11)");
   else if (/\/companies — the [\d,]+ employers this site gives a page/.test(lf.body)) out("PASS", "/llms-full.txt says /companies lists the employers with a page of their own, counted (L4-11)");
   else out("FAIL", "/llms-full.txt has no counted /companies line (L4-11)");

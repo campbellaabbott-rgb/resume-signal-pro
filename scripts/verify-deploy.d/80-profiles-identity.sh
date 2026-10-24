@@ -15,7 +15,11 @@
 # PRE-DEPLOY (expected, from this branch on 2026-10-11): both probes answer
 # PGRST202 (absent); blackstone answers BX and costar answers CSGP (FAIL);
 # trustmark answers TRMK (FAIL); the intel answer carries no open_by_source;
-# the board chunk carries no jobsPage.collision literal.
+# the board chunk carries no collision header. Re-pointed 2026-10-24
+# (profiles+design verify triage): the design round replaced the old
+# collision notice with the company header's own collision variant
+# (src/components/jobs/company/CollisionHeader.tsx), so the chunk is judged by
+# that header's keys; the old notice's key is no longer bundled at all.
 echo "== 80. company profiles phase 0: identity (employer key, SEC figures matched to one board, shared-token pages) =="
 
 probe employer_segment '{"p_token":"blackstone"}'
@@ -67,6 +71,9 @@ const tick=(r)=>r.j&&typeof r.j==="object"?r.j.ticker:null;
   const m=main.match(/"\.\/Jobs-[A-Za-z0-9_-]*\.js"/);
   const jobs=m?await get(SITE+"/assets/"+m[0].slice(3,-1)):"";
   if(!jobs)ok(false,"could not load the board chunk from the live entry: the shared-token claim cannot be judged");
-  else ok(jobs.includes("jobsPage.collision.title")&&jobs.includes("open_by_source"),"a company page of a token two hiring systems carry shows the per-vendor split instead of employer facts (jobsPage.collision, open_by_source)");
+  else{
+    const has={h1:jobs.includes("companyProfile.collision.h1"),boards:jobs.includes("companyProfile.collision.panelTitle")||jobs.includes("data-collision-boards"),split:jobs.includes("open_by_source")};
+    ok(has.h1&&has.boards&&has.split,"a company page of a token two hiring systems carry shows the per-vendor split instead of employer facts (the collision header: heading "+has.h1+", the boards panel "+has.boards+", open_by_source "+has.split+")");
+  }
 })();
 '

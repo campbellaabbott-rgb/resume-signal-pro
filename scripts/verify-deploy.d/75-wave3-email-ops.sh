@@ -48,7 +48,12 @@ for P75 in 'market_pulse_confirm_unsent|p_email=nobody%40example.invalid&p_token
 done
 echo "INFO  20261009140000 cannot be read from here (its body is the service role's): the pglite test proves the 15-minute 'generating' rule; after the deploy, a row stuck in generating for 15+ min should move to delivered or generation_failed on the next retry-failed-deliveries run"
 
-# Cron: the layoff refresh carries its ten minutes (S8-049); the mail queue has a job at all (S8-017).
+# Cron: the layoff refresh carries its ten minutes (S8-049); our drain job runs
+# clean (S8-017). Re-pointed 2026-10-24 (profiles+design verify triage): R1
+# (20261014100000) schedules the drain as rb-auth-mail-drain, which the name
+# pattern this check used never matched, so the check is by name first and
+# judged by section 94's rule; a job Lovable names after the queue function is
+# still accepted, and never required.
 R get_cron_health '{"p_hours":48}' > /tmp/vd_75_cron.json
 node -e '
 const fs=require("fs");let j;try{j=JSON.parse(fs.readFileSync("/tmp/vd_75_cron.json","utf8"))}catch{j=null}
@@ -59,9 +64,14 @@ if(!l)console.log("FAIL  no layoff-partition-refresh cron job");
 else console.log((l.ch_timeout==="10min"?"PASS":"FAIL")+"  layoff-partition-refresh sets statement_timeout "+JSON.stringify(l.ch_timeout)+" (want \"10min\": 20261009142000); longest run "+l.ch_max_seconds+" s in 48h");
 const ex=job("job-board-exits-rollup-retention");
 if(ex)console.log((ex.ch_timeout?"PASS":"FAIL")+"  job-board-exits-rollup-retention sets statement_timeout "+JSON.stringify(ex.ch_timeout)+" (wave 2, 20261008113000)");
-const q=j.find((x)=>/process-email-queue|email_queue_dispatch|email-queue/.test(String(x.ch_jobname)));
-if(!q)console.log("FAIL  no cron job drains the email queue (S8-017): queued magic links, email-change mails and the fix-plan drip never leave pgmq. OWNER: re-create process-email-queue in Lovable Cloud email setup, or move auth mail to GoTrue");
-else console.log((q.ch_active&&Number(q.ch_runs)>0?"PASS":"FAIL")+"  "+q.ch_jobname+" cron: active "+q.ch_active+", runs "+q.ch_runs+"/48h, last "+q.ch_last_status);'
+const q=job("rb-auth-mail-drain")||j.find((x)=>/process-email-queue|email_queue_dispatch|email-queue/.test(String(x.ch_jobname)));
+if(!q)console.log("FAIL  no cron job drains the email queue (S8-017): queued magic links and email-change mails never leave pgmq (rb-auth-mail-drain from 20261014100000 is missing, and no other drain job exists)");
+else{
+  const last=String(q.ch_last_status??"");
+  const good=q.ch_active&&Number(q.ch_runs)>0&&Number(q.ch_failed)===0&&last==="succeeded";
+  console.log((good?"PASS":"FAIL")+"  "+q.ch_jobname+" cron drains the email queue (S8-017): active "+q.ch_active+", runs "+q.ch_runs+"/48h, failed "+q.ch_failed+", last run "+(last||"none")+" (want active, runs > 0, failed 0, last run succeeded: section 94 rule)");
+}
+console.log("INFO  the drain carries the auth_emails queue only (sign-in and email-change mail); the fix-plan drip in transactional_emails waits for CP-G by decision (20261014100000 header), so that queue is not drained yet");'
 
 # recover-purchase takes what the email carries (and refuses text with no reference before any lookup).
 RP75=$(curl -s -m 30 -X POST "$B/functions/v1/recover-purchase" -H "Content-Type: application/json" -H "apikey: $K" -H "Authorization: Bearer $K" -d '{"sessionId":"no purchase reference in this text"}')
