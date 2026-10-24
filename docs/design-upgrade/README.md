@@ -69,6 +69,7 @@ says so.
 | 9 | `20261012130000_four_company_tables_are_read_through_their_readers_and_never_by_a_client` | `showcase_excluded`, `company_profiles`, `company_financials` and `company_name_overrides` closed to PUBLIC, anon and authenticated | safe before the publish: neither the live frontend nor this one reads them directly (both use the definer readers), and job-board reads two of them with the service role. Its self-check reads the catalogue only and never switches role, so it applies inside the staged runner's `_mig_exec` definer (PostgreSQL refuses a role switch there, 42501); sections 81f and 81g probe the reads over REST |
 | 10 | `20261012135000_a_workday_tenant_that_hosts_another_employer_is_read_one_site_at_a_time` | `workday_site_is_own_employer`; `get_company_intel` and `get_similar_companies` rewritten from the catalogue | after 2. It refuses a live body it does not recognise (S12-130) |
 | 11 | `20261012136000_a_similar_employer_is_named_by_its_board_and_the_federal_listing_site_is_not_one` | `get_similar_companies` rewritten from the catalogue: no USAJOBS row, no staffing-agency board, no board name two hiring systems share; each board named by its full-token override, else the name most of its rows carry (never `max(company)`) | after 10 (it refuses to run before it). It refuses a live body it does not recognise. Section 81h reads it |
+| 12 | `20261012137000_a_company_page_asks_once_per_read_whether_its_workday_tenant_hosts_another_employer` | the 2026-10-24 hotfix (`pd/hotfix`, after the 10-18 publish): `get_company_intel` and `get_similar_companies` rewritten from the catalogue to ask `workday_site_is_own_employer` once per call, where 10 asked it once per snapshot row and every Workday token timed out (500 57014 after 15 s) | after 11, and before the hotfix's frontend publish, whose bake re-reads every Workday page's facts. It refuses a live body other than the one 10 and 11 left. Section 81i times it |
 | - | `20261012111000_the_perk_sweep_runs_every_minute_under_a_lease_and_the_rollup_nightly_under_a_budget` | the vault key and the two crons | **HELD** (`holdUntilVerified`) until step 6 |
 
 ### 2. Functions
@@ -113,7 +114,7 @@ checkout refusals are live. Keep the two publishes close together.
 |---|---|---|
 | 80 | `80-profiles-identity.sh`, `80-company-profiles-perks.sh` | identity and the perk engine (`employer-profiles.2026-10-12.2`, the reader answers anon, the perk tables refuse it) |
 | 91 | `91-profiles-gate-and-fixes.sh` | the hiring-record gate, the LCA line, headcount, llms.txt, V3, V3b, V7, V7b (it reads the lock's 42501 on `company_profiles.as_of` as the lock) |
-| 81 | `81-profiles-design-accuracy.sh` | Track 1 on named pages, the four-table lock, and (81h) no USAJOBS row in the similar-employers list of CVS Health or Eurofins |
+| 81 | `81-profiles-design-accuracy.sh` | Track 1 on named pages, the four-table lock, (81h) no USAJOBS row in the similar-employers list of CVS Health or Eurofins, and (81i, the 2026-10-24 hotfix) `get_company_intel` answering three sitemap Workday tokens and a made-up one with the reader object within 3 s |
 | 83 | `83-profiles-design-bake.sh` | the crawler copy sells nothing retired (now also /trust, /privacy, /terms, and every company-title form the bake writes); once-published company URLs keep a page of their own; (C6) USAJOBS is baked as the federal listing site and Surge Staffing as an agency; (C7) the strings React renders (the entry, the English and Index chunks) carry none of the retired home, FAQ and trust sentences |
 | 87 | `87-profiles-design-pass-b.sh` | the board serves the lander, card, pane and filter row; the agent pitch is gone |
 | 40 | `40-db-exposure.sh` | the census shows nothing unlisted |
@@ -222,6 +223,68 @@ lander. Main thaws when section 49 shows no gap.
   longer on this list: the fix round of 2026-10-18 took wave 4's values for
   them (docs/deploy-ledger.json `_sharedFilesNote`). Wave 4 sets
   `BAKE_STILL_SELLS_THE_PASS` to false once both are merged.
+
+## The hotfix of 2026-10-24 (branch `pd/hotfix`)
+
+This deploy went live on 2026-10-18 (main `57815de9`) and did not verify.
+The 2026-10-24 verify (1014 PASS, 34 FAIL) found two regressions the deploy
+shipped and 16 checks that had gone stale. `pd/hotfix` merges
+`pd/hotfix-intel-db` and `pd/hotfix-zero-copy` on main `8a6561c4`; it is the
+fix to the deploy being verified, so it merges while main is frozen.
+
+**1. Workday company pages.** `get_company_intel` answered 500 57014
+(statement timeout) on every Workday token, a made-up one included. Live at
+2026-10-24 22:21Z, one anon GET per token: `cat~wd5~caterpillarcareers`
+15.40 s, `nvidia~wd5~NVIDIAExternalCareerSite` 15.18 s,
+`dollartree~wd5~dollartreeus` 15.19 s, `zzzz-none~wd1~Careers` 15.22 s;
+`stripe` 200 in 0.55 s. 283 of the 485 company pages in the sitemap are
+Workday pages, and every one lost its pay floor, fields, places, headcount
+and net-7d, for readers and in the bake. Migration `20261012137000` (row 12
+above) asks the hosting-tenant helper once per call; the detail is in the
+[company profiles README](../company-profiles/README.md), "Hotfix
+2026-10-24".
+
+**2. The zero page.** `companyProfile.zero.unread` ("We have not read
+{{companyPossessive}} whole board recently") printed on the zero page of
+every whole-feed board (Greenhouse, Lever, Ashby, BambooHR, Workable,
+Recruitee, Breezy) read in full, because job-board records no `feed_total`
+for them: BASS ABA (curve row `full_read`, 89 tracking days, 0 open roles),
+bayada, centriaautism, databricks, stripe. `zeroReadingOf` now reads the
+curve's `observability_bucket` and `tracking_days`: `full_read` with no
+printable total says "As of our latest full read, no role on this board is
+dated in the last 30 days." (a new key in all nine company shards); a
+windowed board never read through, or no observation in seven days, still
+says "not read"; a lap we cannot date says nothing beyond the list's own
+line. Recording whole-feed totals is a later job-board item, so 81c's Stripe
+line stays FAIL until then by decision.
+
+**The 16 stale checks.** 7d (`/pricing` Pro at $45/month in description and
+body; retired claims judged by `scripts/prerender-retired.mjs`, so the bare
+$29 of Freelance Boost is not one; the description ends "Pro $45/month.";
+`/agents` names no retired price), 65 (`/agent` names no trial and no plan
+price and says to apply yourself), 74 (`/pricing` says Pro renews until you
+cancel), 76 L1-08 (no Service block, no Offer at 99 or 29) and L9-11 (no
+pass named), 80 (the collision header is `companyProfile.collision.h1`), 75
+S8-017 and 63's INFO (the drain is `rb-auth-mail-drain`), 63's notify DNS
+INFO (printed only when no lovable.cloud delegation is found), 5n/5q (keyed
+`employer_growth` asks stripe; dominos is asserted refused in band) and 5o
+(`key_status` answers tier and quota, no pass state) are re-pointed, each
+run live (PASS) and against the old state (FAIL). The 5n/5q and 5o keyed
+lines still need the owner's new data-API key. The sixteenth, section 49's
+employer-profiles stamp, is ledger data: it clears when the `verifiedDeploys`
+entry for `57815de9` is appended. New: 81i times `get_company_intel` on
+three sitemap Workday tokens and the made-up one (200 with the reader
+object within 3 s each); before the migration all four FAIL at 500 57014.
+
+**Deploy.** The ledger's message from the merge commit: apply
+`20261012137000` (step 1; no function changes), then publish the frontend,
+so the bake re-reads the Workday facts and the zero copy ships. Then run
+`bash scripts/verify-deploy.sh` and read 80, 81 (81i and the rest; 81c's
+Stripe total stays FAIL by decision), 83 and 49. Only when those pass is
+`{commit: '57815de9', functions: {'employer-profiles':
+'employer-profiles.2026-10-12.2'}}` appended to `verifiedDeploys`, which
+also clears 49's MUST BUMP; then release the `20261012111000` hold as
+step 5 says.
 
 ## The fix round of 2026-10-18 (branch `pd-fix`, pushed as `design/integration`)
 
