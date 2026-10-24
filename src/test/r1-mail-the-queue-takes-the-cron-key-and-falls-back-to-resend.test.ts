@@ -45,13 +45,18 @@
  *     fallback, and the run's later sign-in mail goes to Resend. Before the
  *     hotfix one 429 with Retry-After 3600 stopped the run, set an hour's
  *     cooldown, and every reset mail queued meanwhile expired unsent;
+ *   - the Resend fallback burst after a 429 is paced at 500 ms or more (Resend's
+ *     limit, 2 a second, is the whole team's), a Resend 429 while Lovable is
+ *     out leaves the rest of the batch for the next tick, and a run never
+ *     starts a message its 30-second claim has no room for, so a second
+ *     drain cannot read a message this run is still sending through Resend;
  *   - transactional_emails keeps today's behaviour (a 429 still stops the
  *     run and sets the cooldown).
  *
  * Lovable's "set up emails" step can regenerate this function; this file is
  * the guard that fails CI when the cron key or the fallback disappears.
  */
-import { afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
 
 const jwt = (claims: Record<string, unknown>) => `x.${Buffer.from(JSON.stringify(claims)).toString("base64url")}.y`;
@@ -62,7 +67,7 @@ const CRON_KEY = "c".repeat(64);
 
 const db = new FakeDb();
 const lovable: Array<Record<string, unknown>> = [];
-const resend: Array<{ url: string; headers: Record<string, string>; body: Record<string, unknown> }> = [];
+const resend: Array<{ url: string; headers: Record<string, string>; body: Record<string, unknown>; at: number }> = [];
 const dlq: Array<Record<string, unknown>> = [];
 const deleted: number[] = [];
 const reads: string[] = [];
@@ -89,7 +94,7 @@ beforeAll(async () => {
   g.fetch = async (input: string | URL | Request, init?: RequestInit) => {
     const url = String(input instanceof Request ? input.url : input);
     if (!url.startsWith("https://api.resend.com/")) throw new Error(`unexpected fetch ${url}`);
-    resend.push({ url, headers: Object.fromEntries(new Headers(init?.headers).entries()), body: JSON.parse(String(init?.body ?? "{}")) });
+    resend.push({ url, headers: Object.fromEntries(new Headers(init?.headers).entries()), body: JSON.parse(String(init?.body ?? "{}")), at: Date.now() });
     return resendAnswer();
   };
   handler = await loadEdgeHandler("process-email-queue", {
@@ -99,6 +104,7 @@ beforeAll(async () => {
 }, 60_000);
 
 afterEach(() => {
+  vi.restoreAllMocks();
   g.__peqSend = defaultSend;
   lovable.length = 0; resend.length = 0; dlq.length = 0; deleted.length = 0; reads.length = 0;
   db.tables = {}; db.writes = []; db.rpcs = {}; db.faults = [];
@@ -455,6 +461,57 @@ describe("a Lovable throttle or hang never stops sign-in mail (S13-017, hotfix 2
     queues = { auth_emails: [authMsg(72)] };
     expect(await (await run({ "x-email-cron": CRON_KEY })).json()).toEqual({ processed: 1, viaResend: 1 });
     expect(resend.map((r) => r.headers["idempotency-key"])).toEqual(["auth:run-72"]);
+  });
+});
+
+describe("the Resend fallback burst stays inside Resend's limit and inside the run's claim", () => {
+  const throttled = async (p: Record<string, unknown>) => {
+    lovable.push(p);
+    throw Object.assign(new Error("Email API error: 429 daily quota exceeded"), { name: "EmailAPIError", status: 429, retryAfterSeconds: 3600 });
+  };
+
+  it("after a Lovable 429, the run's Resend sends are at least 500 ms apart, whatever send_delay_ms says (here 0)", async () => {
+    install();
+    queues = { auth_emails: [authMsg(90), authMsg(91), authMsg(92)] };
+    g.__peqSend = throttled;
+    expect(await (await run({ "x-email-cron": CRON_KEY })).json()).toEqual({ processed: 3, viaResend: 3, rateLimited: 1 });
+    const gaps = resend.slice(1).map((r, k) => r.at - resend[k].at);
+    expect(gaps, "the fallback burst outran Resend's team-wide limit of 2 a second").toHaveLength(2);
+    for (const gap of gaps) expect(gap).toBeGreaterThanOrEqual(490);
+  });
+
+  it("a Resend 429 while Lovable is out ends the run's sign-in sends: the rest stay on the queue for the next tick, nothing dead-letters", async () => {
+    install();
+    queues = { auth_emails: [authMsg(93), authMsg(94), authMsg(95), authMsg(96)] };
+    g.__peqSend = throttled;
+    resendAnswer = () => new Response(JSON.stringify({ statusCode: 429, name: "rate_limit_exceeded", message: "Too many requests" }), { status: 429 });
+    expect(await (await run({ "x-email-cron": CRON_KEY })).json()).toEqual({ processed: 0, resendFailed: 1, rateLimited: 1, leftForNextTick: 3 });
+    expect(resend, "the run kept hammering a Resend that had answered 429").toHaveLength(1);
+    expect(dlq).toEqual([]);
+    expect(deleted).toEqual([]);
+    expect(db.rows("email_send_state")[0].retry_after_until).toBeNull();
+  });
+
+  it("a run never starts a message its 30-second claim has no room for: with each Resend send taking 9 s, three go and two wait for the next read", async () => {
+    install();
+    queues = { auth_emails: [authMsg(100), authMsg(101), authMsg(102), authMsg(103), authMsg(104)] };
+    g.__peqSend = throttled;
+    const realNow = Date.now.bind(Date);
+    let skew = 0;
+    vi.spyOn(Date, "now").mockImplementation(() => realNow() + skew);
+    resendAnswer = () => { skew += 9_000; return new Response(JSON.stringify({ id: "re_slow" }), { status: 200 }); };
+    expect(await (await run({ "x-email-cron": CRON_KEY })).json()).toEqual({ processed: 3, viaResend: 3, rateLimited: 1, leftForNextTick: 2 });
+    expect(resend.map((r) => r.headers["idempotency-key"]), "a send was started past the claim, where another drain could read the same mail").toEqual(["auth:run-100", "auth:run-101", "auth:run-102"]);
+    expect(deleted).toEqual([100, 101, 102]);
+    expect(dlq).toEqual([]);
+  });
+
+  it("the first message of a batch is always tried, however long its slowest outcome", async () => {
+    install();
+    env.LOVABLE_SEND_TIMEOUT_MS = "30000";
+    queues = { auth_emails: [authMsg(105), authMsg(106)] };
+    expect(await (await run({ "x-email-cron": CRON_KEY })).json()).toEqual({ processed: 1, leftForNextTick: 1 });
+    expect(lovable.map((p) => p.message_id)).toEqual(["m-105"]);
   });
 });
 

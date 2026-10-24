@@ -19,8 +19,9 @@ import { sendMail } from "../_shared/send-mail.ts";
  *     before this code ran, so the claim is the platform's word), the
  *     service-role key itself (compared in constant time), OR the vault email
  *     cron key in x-email-cron (email_cron_key_matches, the key every other
- *     email cron sends). Our own drain job (rb-auth-mail-drain, 20261014100000)
- *     posts the vault bearer AND the cron key. Every refusal names this
+ *     email cron sends). Our own drain job (rb-auth-mail-drain, scheduled by
+ *     20261014100000, re-scheduled by 20261014120000) posts the vault bearer
+ *     AND the cron key. Every refusal names this
  *     function in its body (refusedBy) and says whether a cron key was offered
  *     (cronKey), so the cron command can read back ITS OWN refusals from
  *     pg_net and fail its run, and never counts another caller's.
@@ -53,17 +54,32 @@ import { sendMail } from "../_shared/send-mail.ts";
  *     Resend at once (Lovable did not take it, so it cannot arrive twice),
  *     and every later auth mail of the run goes straight to Resend. It sets
  *     NO cooldown: email_send_state.retry_after_until is the transactional
- *     queue's alone, and a cooldown in force never stops the auth queue
- *     (rb-auth-mail-drain posts through it too). Before this, one 429 with
- *     Retry-After 3600 stopped the run, set an hour's cooldown that the
- *     cron honoured, and every reset mail queued meanwhile expired into the
- *     dead-letter queue with no Resend try and no alert. Every Lovable send
- *     has a deadline (LOVABLE_SEND_TIMEOUT_MS, 10 s): email-js calls fetch
- *     with no signal, so a hung API held the run until the platform killed
- *     it, before any row was written. A send past its deadline may still
- *     land, so it is a transient failure (a 'failed' row, counted toward
- *     AUTH_FALLBACK_AFTER_FAILURES), and the run's later auth mail, which
- *     Lovable never saw, goes straight to Resend.
+ *     queue's alone, and a cooldown in force never stops this function from
+ *     draining the auth queue. The live drain job's command, scheduled by
+ *     20261014100000, still returns during a cooldown; 20261014120000
+ *     re-schedules it without that read (it waits for this build). Before
+ *     this, one 429 with Retry-After 3600 stopped the run, set an hour's
+ *     cooldown that the cron honoured, and every reset mail queued meanwhile
+ *     expired into the dead-letter queue with no Resend try and no alert.
+ *     Every Lovable send has a deadline (LOVABLE_SEND_TIMEOUT_MS, 10 s):
+ *     email-js calls fetch with no signal, so a hung API held the run until
+ *     the platform killed it, before any row was written. A send past its
+ *     deadline may still land, so it is a transient failure (a 'failed' row,
+ *     counted toward AUTH_FALLBACK_AFTER_FAILURES), and the run's later auth
+ *     mail goes straight to Resend.
+ *   - A RUN NEVER OUTLIVES ITS CLAIM. read_email_batch hides the batch for
+ *     CLAIM_SECONDS (30 s). A message is started only while the claim has
+ *     room for its slowest outcome (a Lovable deadline, then a Resend
+ *     fallback); the rest are left for the next read. Without this, a slow
+ *     Resend burst outlived the claim, and a second drain re-read the tail
+ *     and asked a recovered Lovable while this run sent the same mail
+ *     through Resend: two providers, whose idempotency keys do not dedupe
+ *     each other.
+ *   - THE RESEND FALLBACK IS PACED for Resend's limit, which is the whole
+ *     team's (2 requests a second by default): at least RESEND_FALLBACK_PACE_MS
+ *     between two Resend sends of a run, whatever send_delay_ms says. A
+ *     Resend 429 while Lovable is out ends the run's sign-in sends; the rest
+ *     wait for the next tick.
  *   - transactional_emails keeps its behaviour (a 429 there still stops the
  *     run and sets the cooldown), except that a hung send now fails after
  *     its deadline as any transient failure does.
@@ -92,6 +108,12 @@ export const AUTH_FALLBACK_FROM = 'Resume Booster <account@resumebooster.work>'
 /** Transient Lovable failures an auth mail takes before Resend is tried. */
 export const AUTH_FALLBACK_AFTER_FAILURES = 3
 const AUTH_FALLBACK_TIMEOUT_MS = 8_000
+/** The least time between two Resend sends of one run (Resend's default limit is 2 a second, team-wide). */
+export const RESEND_FALLBACK_PACE_MS = 500
+/** How long read_email_batch hides a claimed message (pgmq vt, seconds). */
+export const CLAIM_SECONDS = 30
+/** Room kept at the end of a claim, so no send runs past it. */
+const CLAIM_MARGIN_MS = 2_000
 /** How long a Lovable send may take (LOVABLE_SEND_TIMEOUT_MS overrides it, within 50 ms and 30 s). */
 export const LOVABLE_SEND_TIMEOUT_MS = 10_000
 
@@ -385,9 +407,14 @@ Deno.serve(async (req) => {
   let viaResend = 0
   let resendFailed = 0
   let rateLimited = 0
+  let leftForNextTick = 0
   // Why Lovable is not asked again in this run (S13-017): it answered 429, or
   // a send passed its deadline. The run's later auth mail goes to Resend.
   let lovableOut: string | null = null
+  // Resend answered 429 in this run: with Lovable out too, the run's sign-in
+  // mail has nowhere to go until the next tick.
+  let resendThrottled = false
+  let lastResendAt = 0
 
   /**
    * ONE AUTH MAIL THROUGH RESEND (D1). Sent: off the queue. Not sent: a mail
@@ -404,7 +431,11 @@ Deno.serve(async (req) => {
     lovableMsg: string,
   ) => {
     const payload = msg.message
+    const wait = lastResendAt + RESEND_FALLBACK_PACE_MS - Date.now()
+    if (lastResendAt > 0 && wait > 0) await new Promise((r) => setTimeout(r, wait))
     const fb = await sendAuthThroughResend(supabase, payload, why)
+    lastResendAt = Date.now()
+    if (fb.status === 429) resendThrottled = true
     if (fb.ok) {
       viaResend++
       totalProcessed++
@@ -433,10 +464,11 @@ Deno.serve(async (req) => {
       cooled.push(queue)
       continue
     }
+    const claimedAt = Date.now()
     const { data: messages, error: readError } = await supabase.rpc('read_email_batch', {
       queue_name: queue,
       batch_size: batchSize,
-      vt: 30,
+      vt: CLAIM_SECONDS,
     })
 
     if (readError) {
@@ -486,6 +518,21 @@ Deno.serve(async (req) => {
     }
 
     for (let i = 0; i < messages.length; i++) {
+      // THE CLAIM HAS ROOM FOR THIS MESSAGE, or it is left for the next read
+      // (a message still being sent when the claim lapses is read again by
+      // another drain). Its slowest outcome: Lovable's deadline (unless
+      // Lovable is out), then, for sign-in mail, a Resend fallback. The
+      // first message of a batch is always tried.
+      if (queue === 'auth_emails' && lovableOut && resendThrottled) {
+        leftForNextTick += messages.length - i
+        break
+      }
+      const slowest = (queue === 'auth_emails' && lovableOut ? 0 : sendTimeoutMs)
+        + (queue === 'auth_emails' ? AUTH_FALLBACK_TIMEOUT_MS + RESEND_FALLBACK_PACE_MS : 0)
+      if (i > 0 && Date.now() - claimedAt + slowest > CLAIM_SECONDS * 1000 - CLAIM_MARGIN_MS) {
+        leftForNextTick += messages.length - i
+        break
+      }
       const msg = messages[i]
       const payload = msg.message
       const failedAttempts =
@@ -572,8 +619,10 @@ Deno.serve(async (req) => {
       }
 
       // LOVABLE IS OUT FOR THE REST OF THIS RUN (S13-017): it answered 429,
-      // or a send passed its deadline. This auth mail was never handed to
-      // it, so Resend cannot make it arrive twice.
+      // or a send passed its deadline. This run never handed this mail to
+      // Lovable. (An earlier run may have, if its send passed the deadline
+      // and may still land; the claim rule above keeps two runs from holding
+      // one message at once, not that.)
       if (queue === 'auth_emails' && lovableOut) {
         await throughResend(queue, msg, `Lovable not asked: ${lovableOut} earlier in this run`, null, '')
         if (i < messages.length - 1) await new Promise((r) => setTimeout(r, sendDelayMs))
@@ -751,6 +800,7 @@ Deno.serve(async (req) => {
     ...(viaResend ? { viaResend } : {}),
     ...(resendFailed ? { resendFailed } : {}),
     ...(rateLimited ? { rateLimited } : {}),
+    ...(leftForNextTick ? { leftForNextTick } : {}),
     ...(cooled.length ? { cooledQueues: cooled } : {}),
   })
 })
