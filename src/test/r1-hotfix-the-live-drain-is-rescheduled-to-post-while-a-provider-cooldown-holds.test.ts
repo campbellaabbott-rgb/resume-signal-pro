@@ -25,7 +25,11 @@
  *     it refuses a job of that name that neither R1 file wrote, and a queue
  *     wrapper open to clients, changing nothing; Lovable's own job is left
  *     byte for byte;
- *   - its self-check fails a command that reads the cooldown again.
+ *   - its self-check fails a command that reads the cooldown again;
+ *   - (second fixer round) its command begins SET statement_timeout = '10s',
+ *     which get_cron_health reports as ch_timeout (the live command sets
+ *     none), so verify section 94 can tell from outside whether this file
+ *     applied; its self-check refuses a command without that trace.
  */
 import { describe, expect, it, vi } from "vitest";
 import type { PGlite } from "@electric-sql/pglite";
@@ -78,6 +82,8 @@ const jobNamed = async (pg: PGlite, name: string) =>
 const job = (pg: PGlite) => jobNamed(pg, JOB);
 const calls = (pg: PGlite) => rows<{ url: string; headers: Record<string, string>; body: Record<string, unknown> }>(pg, "SELECT url, headers, body FROM net.calls ORDER BY id");
 const tick = async (pg: PGlite) => pg.exec((await job(pg)).command);
+/** What 20261014120000's command begins with: the timeout get_cron_health reports as ch_timeout, which only this file writes. */
+const TRACE = "SET statement_timeout = '10s';";
 
 describe("the live job (20261014100000, the text that was applied)", () => {
   it("is restored to what production runs: its command still waits a provider cooldown out", async () => {
@@ -111,15 +117,35 @@ describe("20261014120000 over the live job", () => {
     expect(c[0].body).toEqual({ source: "cron", queues: ["auth_emails"] });
   });
 
-  it("the new command is the live one with only the cooldown read and the marker changed", () => {
+  it("the new command is the live one with only the cooldown read and the marker changed, behind the SET that leaves its trace", () => {
     const body = (sql: string) => sql.split("$cmd$")[1];
     const old = body(migration(LIVE));
     const now = body(migration(FILE));
-    const expected = old
+    const expected = TRACE + old
       .replace("rb-auth-mail-drain 20261014100000 refusedBy", "rb-auth-mail-drain 20261014120000 refusedBy")
       .replace("  IF EXISTS (SELECT 1 FROM public.email_send_state s WHERE s.retry_after_until > now()) THEN\n    RETURN;\n  END IF;\n", "");
-    expect(expected, "the live command's text moved: re-derive this file's command from it").not.toBe(old);
+    expect(expected, "the live command's text moved: re-derive this file's command from it").not.toBe(TRACE + old);
     expect(now).toBe(expected);
+  });
+
+  it("leaves a trace production can read after the deploy: get_cron_health's ch_timeout reads '10s' from the new command and nothing from the live one (second fixer round)", async () => {
+    const pg = await live({ seed: SECRETS });
+    const reader = /substring\(j\.command FROM ('(?:[^']|'')*')\)/.exec(migration("20261004010000"))?.[1];
+    expect(reader, "get_cron_health's ch_timeout expression moved: re-read it from its migration").toBeTruthy();
+    const chTimeout = async () => (await rows<{ t: string | null }>(pg, `SELECT substring($1 FROM ${reader}) AS t`, [(await job(pg)).command]))[0].t;
+    expect(await chTimeout(), "the live job already carries a timeout, so the trace would prove nothing").toBeNull();
+    await apply(pg);
+    expect(await chTimeout(), "nothing anon can read tells the re-scheduled job from the live one (section 94 could only print INFO)").toBe("10s");
+    await pg.exec(`INSERT INTO pgmq.q_auth_emails (message) VALUES ('{}'); ${COOLDOWN}`);
+    await tick(pg);
+    expect(await calls(pg), "the SET in front of the command stopped it posting").toHaveLength(1);
+  });
+
+  it("its self-check fails a command without the trace (a runner that edited the file could strip it)", async () => {
+    const pg = await live();
+    const edited = migration(FILE).replace("$cmd$" + TRACE, "$cmd$");
+    expect(edited).not.toBe(migration(FILE));
+    await expect(pg.exec(edited)).rejects.toThrow(/does not begin with this file's SET statement_timeout = '10s'/);
   });
 
   it("keeps every read-back: empty queue, no bearer, a refusal of its own post and the gateway's 401 each post nothing", async () => {

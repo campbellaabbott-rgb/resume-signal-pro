@@ -23,9 +23,12 @@
 # would then read a refused bearer as a success (second recheck of R1).
 # process-email-queue must serve 2026-10-14.2 (the S13-017 hotfix: a Lovable
 # throttle or hang never stops sign-in mail), read from its preflight. The
-# drain job's command cannot be read from here: migration 20261014120000,
-# which re-schedules it without the cooldown read, proves it by its own
-# self-check, and this section says so in an INFO line.
+# drain job's command cannot be read from here, but its trace can:
+# migration 20261014120000, which re-schedules it without the cooldown read,
+# makes the command begin SET statement_timeout = '10s', which get_cron_health
+# reports as ch_timeout and no other file writes (20261014100000's sets none),
+# and its self-check refuses a command without it. '10s' PASSes; anything else
+# FAILs once process-email-queue serves 2026-10-14.2, and is INFO before.
 echo "== 94. R1 mail: the sending DNS, the hook/queue/webhook builds, the drain job, the anon refusals =="
 
 vd94_dns() { curl -s -m 20 "https://dns.google/resolve?name=$1&type=$2" -H 'accept: application/dns-json'; }
@@ -71,20 +74,21 @@ done
 # cooldown holds, and a hung Lovable send fails after its deadline. Migration
 # 20261014120000 re-schedules rb-auth-mail-drain to post through a cooldown,
 # so it waits for this build.
+VD94_PEQ2=0
 if [ "$VD94_PEQ" = 1 ]; then
   if build_ge process-email-queue "$VD94_PEQ_BUILD" 2026-10-14 2; then
+    VD94_PEQ2=1
     echo "PASS  process-email-queue x-fn-build = $VD94_PEQ_BUILD: the function sends a sign-in mail Lovable throttled or left hanging through Resend, sets no cooldown for the auth queue, and drains it while one holds (S13-017, 2026-10-14.2 or later)"
   else
     echo "FAIL  process-email-queue x-fn-build = $VD94_PEQ_BUILD: a Lovable 429 still stops sign-in mail and sets an hour's cooldown, so reset mail expires unsent (S13-017). Deploy process-email-queue.2026-10-14.2 before migration 20261014120000"
   fi
-  echo "INFO  rb-auth-mail-drain's command cannot be read from here: that it posts while a provider cooldown holds is proved only by migration 20261014120000's self-check (it fails a command that still reads email_send_state). Until that file is applied, the live job (20261014100000) still returns during a cooldown"
 fi
 
 # Our drain job (20261014100000 schedules rb-auth-mail-drain, 20261014120000
 # re-schedules it; a job named process-email-queue is Lovable's and is
 # reported, never judged as ours).
 curl -s -m 60 "$B/rest/v1/rpc/get_cron_health?p_hours=1" -H "apikey: $K" -H "Authorization: Bearer $K" > /tmp/vd_94_cron.json
-node -e '
+VD94_PEQ2="$VD94_PEQ2" node -e '
 const fs=require("fs");let j;try{j=JSON.parse(fs.readFileSync("/tmp/vd_94_cron.json","utf8"))}catch{j=null}
 if(!Array.isArray(j)){console.log("INFO  get_cron_health unreadable: "+JSON.stringify(j).slice(0,140));process.exit(0)}
 const lov=j.find((x)=>x.ch_jobname==="process-email-queue");
@@ -93,7 +97,11 @@ const q=j.find((x)=>x.ch_jobname==="rb-auth-mail-drain");
 if(!q){console.log("FAIL  no rb-auth-mail-drain cron job: queued sign-in mail is drained only by Lovable'"'"'s own job, if any (20261014100000 not applied, or the job was removed)");process.exit(0)}
 const last=String(q.ch_last_status??"");
 const ok=q.ch_active&&Number(q.ch_runs)>0&&Number(q.ch_failed)===0&&last==="succeeded";
-console.log((ok?"PASS":"FAIL")+"  rb-auth-mail-drain cron: schedule "+JSON.stringify(q.ch_schedule)+", active "+q.ch_active+", runs "+q.ch_runs+"/1h, failed "+q.ch_failed+", last run "+(last||"none")+" (want active, runs > 0, failed 0, last run succeeded; the command fails its own run when the vault holds no email_queue_service_role_key or email_cron_key, when the drain refused one of its own posts, or when the gateway answered one with its own 401, since pg_net alone reads every refused post as a success)");'
+console.log((ok?"PASS":"FAIL")+"  rb-auth-mail-drain cron: schedule "+JSON.stringify(q.ch_schedule)+", active "+q.ch_active+", runs "+q.ch_runs+"/1h, failed "+q.ch_failed+", last run "+(last||"none")+" (want active, runs > 0, failed 0, last run succeeded; the command fails its own run when the vault holds no email_queue_service_role_key or email_cron_key, when the drain refused one of its own posts, or when the gateway answered one with its own 401, since pg_net alone reads every refused post as a success)");
+const trace=q.ch_timeout??null;
+if(trace==="10s")console.log("PASS  rb-auth-mail-drain runs 20261014120000'"'"'s command (its statement_timeout \"10s\", which only that file writes, and whose self-check refuses a command that reads email_send_state): sign-in mail is drained while a provider cooldown holds (S13-017)");
+else if(process.env.VD94_PEQ2==="1")console.log("FAIL  rb-auth-mail-drain does not run 20261014120000'"'"'s command (statement_timeout "+JSON.stringify(trace)+", want \"10s\"): the 20261014100000 command returns while a provider cooldown holds, so sign-in mail can wait past its code (S13-017). process-email-queue serves 2026-10-14.2: apply 20261014120000 as written (a copy edited to make it apply loses this trace)");
+else console.log("INFO  rb-auth-mail-drain runs the 20261014100000 command (statement_timeout "+JSON.stringify(trace)+"), which returns while a provider cooldown holds; migration 20261014120000 replaces it once process-email-queue serves 2026-10-14.2");'
 
 # The stuck count: email_delivery_health is service-role only since 20261004110000,
 # so no anonymous reader of it exists. Prove it stays closed; the count itself is

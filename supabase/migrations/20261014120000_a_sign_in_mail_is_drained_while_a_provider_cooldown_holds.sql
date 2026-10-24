@@ -21,11 +21,24 @@
 -- WHY A NEW FILE. 20261014100000 is applied, so an edit to it never reaches
 -- production and would leave the repo describing a job the database does not
 -- run. This file re-schedules the job only, with 20261014100000's command
--- changed in two places: it no longer reads the provider cooldown, and its
--- marker names this file ('rb-auth-mail-drain 20261014120000'). Everything
--- else is the same text: the pgmq.metrics test, the vault bearer and the
--- cron key, the read-back of the drain's own refusals and of the gateway's
--- 401, and the post naming the auth queue only.
+-- changed in three places: it no longer reads the provider cooldown, its
+-- marker names this file ('rb-auth-mail-drain 20261014120000'), and it
+-- begins SET statement_timeout = '10s'. Everything else is the same text:
+-- the pgmq.metrics test, the vault bearer and the cron key, the read-back of
+-- the drain's own refusals and of the gateway's 401, and the post naming the
+-- auth queue only.
+--
+-- THE TRACE (second fixer round). Nothing anon can read showed a job's
+-- command, so after a deploy nobody could tell whether this file had applied
+-- (20261014100000 itself was applied outside the staged runner, and the
+-- runner has edited failing files before). get_cron_health (20261004010000)
+-- reports, as ch_timeout, the statement_timeout a command begins with:
+-- 20261014100000's sets none, this file's sets '10s', which no other file
+-- writes. Verify section 94 reads it: PASS on '10s', FAIL on anything else
+-- once process-email-queue serves 2026-10-14.2. The value also bounds a run
+-- by its tick: a drain stuck past 10 seconds is cancelled, and counted as a
+-- failed run, instead of holding the next one back. The self-check below
+-- refuses a command without it, so the trace means this file's command.
 --
 -- WHAT THIS FILE DOES, in order:
 --   0. REFUSES TO RUN while a SECURITY DEFINER function that touches pgmq is
@@ -41,7 +54,8 @@
 --      would have scheduled it. A job named 'process-email-queue' is
 --      Lovable's: read to report it, never scheduled, altered or unscheduled.
 --   2. Self-check: no queue wrapper is open; the job exists with this file's
---      marker, every 10 seconds; its command posts to the function with the
+--      marker, every 10 seconds, its command beginning with the '10s'
+--      statement_timeout get_cron_health reports; it posts to the function with the
 --      vault bearer and the cron key behind the pgmq.metrics test, names the
 --      auth queue only, reads the drain's own refusals and the gateway's 401
 --      back, and does not read the provider cooldown table; and no job named
@@ -53,9 +67,9 @@
 -- APPLY ORDER: after process-email-queue.2026-10-14.2 serves (verify-deploy
 -- section 94). The 2026-10-14.1 build skips every run during a cooldown and
 -- sets one from a Lovable 429 on sign-in mail, so this command would post
--- into a build that ignores it. Section 94 cannot read a job's command, so
--- the proof that this file applied is its own self-check; section 94 prints
--- an INFO line saying so.
+-- into a build that ignores it. Section 94 cannot read a job's command; it
+-- reads the trace above (ch_timeout '10s'), and this file's self-check
+-- vouches for the rest of the command.
 
 -- ── 0. No drain while a queue wrapper is open to clients ────────────────────
 DO $$
@@ -109,7 +123,7 @@ BEGIN
   IF v_existing IS NULL THEN
     RAISE NOTICE 'r1 hotfix: no rb-auth-mail-drain job exists (20261014100000 made one; it was removed); scheduling it';
   END IF;
-  v_cmd := $cmd$
+  v_cmd := $cmd$SET statement_timeout = '10s';
 DO $drain$
 DECLARE
   v_marker constant text := 'rb-auth-mail-drain 20261014120000 refusedBy';
@@ -209,6 +223,9 @@ BEGIN
   END IF;
   IF v_sched <> '10 seconds' THEN
     RAISE EXCEPTION 'self-check: the rb-auth-mail-drain job runs on %, not every 10 seconds', v_sched;
+  END IF;
+  IF left(v_cmd, length('SET statement_timeout = ''10s'';')) <> 'SET statement_timeout = ''10s'';' THEN
+    RAISE EXCEPTION 'self-check: the rb-auth-mail-drain command does not begin with this file''s SET statement_timeout = ''10s'', the trace verify section 94 reads through get_cron_health: %', left(v_cmd, 120);
   END IF;
   IF position('/functions/v1/process-email-queue' IN v_cmd) = 0
      OR position('Authorization' IN v_cmd) = 0

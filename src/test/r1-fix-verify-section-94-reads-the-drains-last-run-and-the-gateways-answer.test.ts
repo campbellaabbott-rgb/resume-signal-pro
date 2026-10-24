@@ -174,15 +174,42 @@ describe("the publishable key", () => {
 
 describe("the S13-017 hotfix build (a Lovable throttle or hang never stops sign-in mail)", () => {
   it("PASSes process-email-queue 2026-10-14.2 or later, and FAILs the 2026-10-14.1 build a 429 stops, naming the build to deploy before the drain migration", () => {
-    const fixed = run({ cron: job(), noJwt: GATEWAY_401, builds: { "process-email-queue": "2026-10-14.2" } }).lines;
+    const fixed = run({ cron: job({ ch_timeout: "10s" }), noJwt: GATEWAY_401, builds: { "process-email-queue": "2026-10-14.2" } }).lines;
     expect(has(fixed, "PASS", /process-email-queue x-fn-build = process-email-queue\.2026-10-14\.2: the function sends a sign-in mail Lovable throttled or left hanging through Resend, sets no cooldown for the auth queue/), show(fixed)).toBe(true);
     expect(fixed.some((l) => /^FAIL .*S13-017/.test(l)), show(fixed)).toBe(false);
-    expect(has(fixed, "INFO", /rb-auth-mail-drain's command cannot be read from here: .*proved only by migration 20261014120000's self-check/), "section 94 claims a cron command it cannot read").toBe(true);
-    expect(fixed.some((l) => /^PASS .*no cooldown holds the auth queue/.test(l)), "the PASS line claims the cron's behaviour, which this section cannot see").toBe(false);
+    expect(fixed.some((l) => /^PASS .*no cooldown holds the auth queue/.test(l)), "the PASS line claims the cron's behaviour, which the build line cannot see").toBe(false);
     const later = run({ cron: job(), noJwt: GATEWAY_401, builds: { "process-email-queue": "2026-10-20.1" } }).lines;
     expect(has(later, "PASS", /S13-017, 2026-10-14\.2 or later/), show(later)).toBe(true);
     const old = run({ cron: job(), noJwt: GATEWAY_401, builds: { "process-email-queue": "2026-10-14.1" } }).lines;
     expect(has(old, "FAIL", /process-email-queue x-fn-build = process-email-queue\.2026-10-14\.1: a Lovable 429 still stops sign-in mail .*Deploy process-email-queue\.2026-10-14\.2 before migration 20261014120000/), show(old)).toBe(true);
     expect(has(old, "PASS", /process-email-queue x-fn-build = process-email-queue\.2026-10-14\.1 \(2026-10-14\.1 or later\)/), "the R1 line no longer reads the .1 build as R1's").toBe(true);
+  });
+});
+
+describe("the drain job's own trace (20261014120000; second fixer round of the R1 hotfix)", () => {
+  // 20261014120000's command begins SET statement_timeout = '10s', which
+  // get_cron_health reports as ch_timeout; 20261014100000's sets none.
+  const MIGRATION_120 = readFileSync(resolve(ROOT, "supabase/migrations/20261014120000_a_sign_in_mail_is_drained_while_a_provider_cooldown_holds.sql"), "utf8");
+  const peq = (b: string) => ({ "process-email-queue": b });
+
+  it("PASSes a job whose command carries 20261014120000's trace: what anon can read now says the cooldown read is gone", () => {
+    const { lines } = run({ cron: job({ ch_timeout: "10s" }), noJwt: GATEWAY_401, builds: peq("2026-10-14.2") });
+    expect(has(lines, "PASS", /rb-auth-mail-drain runs 20261014120000's command \(its statement_timeout "10s", which only that file writes, and whose self-check refuses a command that reads email_send_state\)/), show(lines)).toBe(true);
+    expect(lines.some((l) => /cannot be read from here/.test(l)), "section 94 still says it cannot tell the commands apart").toBe(false);
+    expect(MIGRATION_120).toContain("v_cmd := $cmd$SET statement_timeout = '10s';");
+  });
+
+  it("FAILs a job without the trace once process-email-queue serves 2026-10-14.2: 20261014120000 was not applied, or was applied edited", () => {
+    for (const t of [null, "30s"]) {
+      const { lines } = run({ cron: job({ ch_timeout: t }), noJwt: GATEWAY_401, builds: peq("2026-10-14.2") });
+      expect(has(lines, "FAIL", /rb-auth-mail-drain does not run 20261014120000's command .*returns while a provider cooldown holds.*apply 20261014120000/), show(lines)).toBe(true);
+      expect(lines.some((l) => /^PASS .*rb-auth-mail-drain runs 20261014120000/.test(l)), show(lines)).toBe(false);
+    }
+  });
+
+  it("before 2026-10-14.2 serves, a job without the trace is INFO: the migration waits for that build", () => {
+    const { lines } = run({ cron: job(), noJwt: GATEWAY_401, builds: peq("2026-10-14.1") });
+    expect(has(lines, "INFO", /rb-auth-mail-drain runs the 20261014100000 command .*20261014120000 replaces it once process-email-queue serves 2026-10-14\.2/), show(lines)).toBe(true);
+    expect(lines.some((l) => /^(PASS|FAIL) .*20261014120000's command/.test(l)), show(lines)).toBe(false);
   });
 });
