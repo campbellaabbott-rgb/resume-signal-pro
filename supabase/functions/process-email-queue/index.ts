@@ -61,7 +61,7 @@ import { sendMail } from "../_shared/send-mail.ts";
  *     this, one 429 with Retry-After 3600 stopped the run, set an hour's
  *     cooldown that the cron honoured, and every reset mail queued meanwhile
  *     expired into the dead-letter queue with no Resend try and no alert.
- *     Every Lovable send has a deadline (LOVABLE_SEND_TIMEOUT_MS, 10 s):
+ *     Every Lovable send has a deadline (LOVABLE_SEND_TIMEOUT_MS, 10 s, at most 19.5 s):
  *     email-js calls fetch with no signal, so a hung API held the run until
  *     the platform killed it, before any row was written. A send past its
  *     deadline may still land, so it is a transient failure (a 'failed' row,
@@ -70,7 +70,11 @@ import { sendMail } from "../_shared/send-mail.ts";
  *   - A RUN NEVER OUTLIVES ITS CLAIM. read_email_batch hides the batch for
  *     CLAIM_SECONDS (30 s). A message is started only while the claim has
  *     room for its slowest outcome (a Lovable deadline, then a Resend
- *     fallback); the rest are left for the next read. Without this, a slow
+ *     fallback); the rest are left for the next read. The first message is
+ *     always tried, so the Lovable deadline is held to what a claim leaves
+ *     for it (LOVABLE_SEND_TIMEOUT_MAX_MS, 19.5 s), and a Resend send is
+ *     bounded whole, body included (sendMail keeps its deadline armed until
+ *     the body is read). Without this, a slow
  *     Resend burst outlived the claim, and a second drain re-read the tail
  *     and asked a recovered Lovable while this run sent the same mail
  *     through Resend: two providers, whose idempotency keys do not dedupe
@@ -114,13 +118,22 @@ export const RESEND_FALLBACK_PACE_MS = 500
 export const CLAIM_SECONDS = 30
 /** Room kept at the end of a claim, so no send runs past it. */
 const CLAIM_MARGIN_MS = 2_000
-/** How long a Lovable send may take (LOVABLE_SEND_TIMEOUT_MS overrides it, within 50 ms and 30 s). */
+/** How long a Lovable send may take (LOVABLE_SEND_TIMEOUT_MS overrides it, within 50 ms and LOVABLE_SEND_TIMEOUT_MAX_MS). */
 export const LOVABLE_SEND_TIMEOUT_MS = 10_000
+/**
+ * THE LONGEST A LOVABLE DEADLINE MAY BE: what a claim leaves once its margin,
+ * a Resend fallback and its pacing are taken out (19.5 s). The first message
+ * of a batch is always tried, so this bound is what keeps its slowest outcome
+ * (Lovable's deadline, then Resend) inside its claim; a deadline of 30 s let
+ * the fallback start after the claim lapsed, while another drain could read
+ * the same mail and ask a recovered Lovable.
+ */
+export const LOVABLE_SEND_TIMEOUT_MAX_MS = CLAIM_SECONDS * 1000 - CLAIM_MARGIN_MS - AUTH_FALLBACK_TIMEOUT_MS - RESEND_FALLBACK_PACE_MS
 
 /** The deadline for one Lovable send. */
 export function lovableSendTimeoutMs(raw: string | undefined): number {
   const n = Number(raw)
-  return Number.isFinite(n) && n > 0 ? Math.min(30_000, Math.max(50, Math.floor(n))) : LOVABLE_SEND_TIMEOUT_MS
+  return Number.isFinite(n) && n > 0 ? Math.min(LOVABLE_SEND_TIMEOUT_MAX_MS, Math.max(50, Math.floor(n))) : LOVABLE_SEND_TIMEOUT_MS
 }
 
 /**

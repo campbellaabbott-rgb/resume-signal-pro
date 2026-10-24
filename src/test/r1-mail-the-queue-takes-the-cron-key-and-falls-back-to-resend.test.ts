@@ -50,6 +50,10 @@
  *     out leaves the rest of the batch for the next tick, and a run never
  *     starts a message its 30-second claim has no room for, so a second
  *     drain cannot read a message this run is still sending through Resend;
+ *     the first message is always tried, so a Lovable deadline set as high
+ *     as 30 s is held to 19.5 s, and a Resend answer whose body never ends
+ *     is bounded by the send's deadline (second fixer round: both let the
+ *     fallback outlive the claim);
  *   - transactional_emails keeps today's behaviour (a 429 still stops the
  *     run and sets the cooldown).
  *
@@ -506,12 +510,69 @@ describe("the Resend fallback burst stays inside Resend's limit and inside the r
     expect(dlq).toEqual([]);
   });
 
-  it("the first message of a batch is always tried, however long its slowest outcome", async () => {
+  it("the first message of a batch is always tried, and the claim's room is judged for the rest", async () => {
     install();
     env.LOVABLE_SEND_TIMEOUT_MS = "30000";
     queues = { auth_emails: [authMsg(105), authMsg(106)] };
+    const realNow = Date.now.bind(Date);
+    let skew = 0;
+    vi.spyOn(Date, "now").mockImplementation(() => realNow() + skew);
+    // Lovable takes 1 s to send the first: the second's slowest outcome (the held deadline, 19.5 s, then a Resend fallback) no longer fits.
+    g.__peqSend = async (p: Record<string, unknown>) => { lovable.push(p); skew += 1_000; return { success: true }; };
     expect(await (await run({ "x-email-cron": CRON_KEY })).json()).toEqual({ processed: 1, leftForNextTick: 1 });
     expect(lovable.map((p) => p.message_id)).toEqual(["m-105"]);
+  });
+
+  /** Run the drain on a fake clock (timers and Date), so 30-second deadlines take no real time. */
+  async function onAFakeClock(headers: Record<string, string>): Promise<unknown> {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
+    try {
+      const pending = run(headers).then((r) => r.json());
+      await vi.advanceTimersByTimeAsync(60_000);
+      vi.useRealTimers();
+      return await Promise.race([pending, new Promise((r) => setTimeout(() => r("still running"), 2_000))]);
+    } finally {
+      vi.useRealTimers();
+    }
+  }
+
+  it("a Lovable deadline set as high as 30 s is held to what the claim leaves: a third hung send's Resend fallback still ends inside the 30-second claim (second fixer round)", async () => {
+    install();
+    env.LOVABLE_SEND_TIMEOUT_MS = "30000";
+    for (let k = 0; k < 2; k++) db.rows("email_send_log").push({ message_id: "m-300", template_name: "magiclink", recipient_email: "u300@example.com", status: "failed" });
+    queues = { auth_emails: [authMsg(300)] };
+    g.__peqSend = (p: Record<string, unknown>) => { lovable.push(p); return new Promise(() => { /* Lovable never answers */ }); };
+    let claimedAt = 0;
+    db.rpcs.read_email_batch = (a) => { claimedAt = Date.now(); reads.push(String(a.queue_name)); return { data: queues[String(a.queue_name)] ?? [], error: null }; };
+    const legs: Array<{ start: number; end: number }> = [];
+    const fetchBefore = g.fetch as typeof fetch;
+    // Resend takes 7.9 s, inside the fallback's 8-second deadline.
+    g.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+      const start = Date.now();
+      await new Promise((r) => setTimeout(r, 7_900));
+      const res = await fetchBefore(input, init);
+      legs.push({ start, end: Date.now() });
+      return res;
+    }) as typeof fetch;
+    try {
+      expect(await onAFakeClock({ "x-email-cron": CRON_KEY })).toEqual({ processed: 1, viaResend: 1 });
+    } finally {
+      g.fetch = fetchBefore;
+    }
+    expect(legs).toHaveLength(1);
+    expect(legs[0].end - claimedAt, "the Resend fallback ran past the 30-second claim (less its 2 s margin), where another drain can read the mail and ask a recovered Lovable: two providers, one mail twice").toBeLessThanOrEqual(28_000);
+    const failed = db.rows("email_send_log").filter((r) => r.message_id === "m-300" && r.status === "failed").map((r) => String(r.error_message ?? ""));
+    expect(failed.some((m) => m.includes("did not answer within 19500 ms")), `the deadline was not held to the claim: ${failed.join(" | ")}`).toBe(true);
+  });
+
+  it("a Resend 200 whose body never ends does not hold the run past its claim: once the send's deadline passes, the mail is recorded sent (second fixer round)", async () => {
+    install();
+    queues = { auth_emails: [authMsg(400)] };
+    g.__peqSend = throttled;
+    resendAnswer = () => new Response(new ReadableStream({ start(c) { c.enqueue(new TextEncoder().encode('{"id":')); } }), { status: 200 });
+    expect(await onAFakeClock({ "x-email-cron": CRON_KEY }), "a Resend body that never ended held the run until the platform killed it, before the 'sent' row").toEqual({ processed: 1, viaResend: 1, rateLimited: 1 });
+    expect(rowsFor("m-400")).toEqual(["rate_limited", "sent"]);
+    expect(deleted).toEqual([400]);
   });
 });
 
