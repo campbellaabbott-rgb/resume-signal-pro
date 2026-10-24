@@ -1,7 +1,9 @@
 /* LEDGER: calm data. Static Inter (400/500/600, 700 for the wordmark only) and
    JetBrains Mono 400 for ids and codes. Space Grotesk is gone: headings are
-   Inter 600. The @import must precede every other rule. */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400&display=swap');
+   Inter 600. The font faces are NOT loaded from this file: index.html requests
+   their stylesheet from the head, beside this one, and applies it without
+   blocking the first paint (SEO-020). Loaded from here, the browser could ask
+   for it only after parsing this file, and could paint only after both. */
 
 /* A metric-matched local fallback, so the swap to Inter moves no line. */
 @font-face {

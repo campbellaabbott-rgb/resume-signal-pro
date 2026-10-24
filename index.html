@@ -70,32 +70,43 @@
          a visitor can page to by roughly a fifth. The prerendered head states
          both numbers from the live board; this shell states neither. -->
     <title>Resume Booster — Live Jobs Straight From Employers</title>
-    <meta name="description" content="Live jobs straight from employers' own hiring systems, re-verified all day. Scan your resume free and see your match score on every posting.">
+    <meta name="description" content="Live jobs straight from employers' own hiring systems, re-read through the day. Scan your resume free and see your match score on every posting.">
     <meta name="author" content="Resume Booster" />
     <meta name="keywords" content="resume review, resume feedback, ATS optimization, job search, career coaching, resume tips, interview preparation, CV optimization, job application help">
     <meta name="robots" content="index, follow" />
 
     <!-- Favicon -->
-    <link rel="icon" href="/favicon.png" type="image/png" />
-    <link rel="apple-touch-icon" href="/favicon.png" />
+    <link rel="icon" href="/favicon.png" type="image/png" sizes="96x96" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180" />
     <link rel="manifest" href="/manifest.webmanifest" />
 
-    <!-- Preconnect for Performance -->
+    <!-- Preconnect for Performance: only to hosts every page uses. -->
     <link rel="preconnect" href="https://bwhdazbotpblihdxcmho.supabase.co" crossorigin />
     <link rel="dns-prefetch" href="https://bwhdazbotpblihdxcmho.supabase.co" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="preconnect" href="https://js.stripe.com" />
+
+    <!-- FONTS NEVER BLOCK THE FIRST PAINT (SEO-020). The font stylesheet is
+         requested here, at the same moment as the app's own CSS, rather than
+         from inside it, where it was a second blocking request the browser
+         could only discover after the first had arrived. It applies once
+         loaded (the media swap), and font-display swap paints text at once
+         in the metric-matched Inter Fallback (src/index.css), so the change
+         of face moves no line. The noscript twin applies it without script.
+         Self-hosting the same faces would also drop the font hosts' two
+         connections; that needs the woff2 files in public/fonts. -->
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400&display=swap" media="print" onload="this.media='all'" />
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400&display=swap" /></noscript>
 
     <!-- Open Graph / Facebook (sitewide fallback for non-JS social crawlers) -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://resumebooster.work/" />
     <meta property="og:title" content="Resume Booster — Live Jobs Straight From Employers" />
-    <meta property="og:description" content="Live jobs straight from employers' own hiring systems, re-verified all day — plus a free resume fit scan." />
+    <meta property="og:description" content="Live jobs straight from employers' own hiring systems, re-read through the day — plus a free resume fit scan." />
     <meta property="og:image" content="https://resumebooster.work/og-image.png" />
     <meta property="og:image:type" content="image/png" />
     <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="675" />
+    <meta property="og:image:height" content="630" />
     <meta property="og:image:alt" content="Resume Booster — live job board and free resume scan" />
     <meta property="og:site_name" content="Resume Booster" />
     <meta property="og:locale" content="en_US" />
@@ -104,7 +115,7 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:url" content="https://resumebooster.work/" />
     <meta name="twitter:title" content="Resume Booster — Live Jobs Straight From Employers" />
-    <meta name="twitter:description" content="Live jobs straight from employers' own hiring systems, re-verified all day — plus a free resume fit scan." />
+    <meta name="twitter:description" content="Live jobs straight from employers' own hiring systems, re-read through the day — plus a free resume fit scan." />
     <meta name="twitter:image" content="https://resumebooster.work/og-image.png" />
     <meta name="twitter:image:alt" content="Resume Booster — live job board and free resume scan" />
 
