@@ -108,6 +108,10 @@ const ROOT = resolve(__dirname, "../..");
 const RAW = readFileSync(resolve(ROOT, "src/pages/Jobs.tsx"), "utf8");
 const JOBS = RAW.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
 const SLOW = { timeout: 4000 } as const;
+// Pass B (2026-10-12): the board's card, pane and phone sheet are the listing
+// vocabulary's (src/components/jobs/listing/), mounted by Jobs.tsx.
+const CARD_RAW = readFileSync(resolve(ROOT, "src/components/jobs/listing/JobCard.tsx"), "utf8");
+const FACTS_RAW = readFileSync(resolve(ROOT, "src/components/jobs/listing/PostingFacts.tsx"), "utf8");
 
 const DAY = 86_400_000;
 const ago = (d: number) => new Date(Date.now() - d * DAY).toISOString();
@@ -197,6 +201,7 @@ const CURVE = [
     median_days_to_fill: 11, median_censored: false,
     dated_coverage: 0.80, dated_n: 40, undated_n: 10,
     fill_through: 0.70, churn: 0.26, absorption: 0.10, tracking_days: 90, sufficient: true,
+    observability_bucket: "full_read", watched_from: "2026-08-01", multi_site_title_share: 0,
   },
   {
     company_token: "beta", open_roles: 4, fills_90d: 11, relists_90d: 0, filled_roles_90d: 11, relisted_roles_90d: 0, ageouts_90d: 1,
@@ -206,6 +211,7 @@ const CURVE = [
     median_days_to_fill: 12, median_censored: false,
     dated_coverage: 0.80, dated_n: 33, undated_n: 8,
     fill_through: 0.90, churn: 0, absorption: 0.05, tracking_days: 90, sufficient: true,
+    observability_bucket: "full_read", watched_from: "2026-08-01", multi_site_title_share: 0,
   },
   {
     company_token: "gamma", open_roles: 3, fills_90d: 6, relists_90d: 1, filled_roles_90d: 6, relisted_roles_90d: 1, ageouts_90d: 4,
@@ -215,6 +221,7 @@ const CURVE = [
     median_days_to_fill: null, median_censored: true,
     dated_coverage: 0.80, dated_n: 29, undated_n: 7,
     fill_through: 0.50, churn: 0.14, absorption: 0.20, tracking_days: 90, sufficient: true,
+    observability_bucket: "full_read", watched_from: "2026-08-01", multi_site_title_share: 0,
   },
   {
     company_token: "delta", open_roles: 900, fills_90d: 0, relists_90d: 0, filled_roles_90d: 0, relisted_roles_90d: 0, ageouts_90d: 0,
@@ -296,16 +303,17 @@ describe("a card that shows nine chips shows nothing", () => {
   it("behaviour: the trust claim finally names the hiring system, and falls back when it cannot", async () => {
     mount();
     await waitFor(() => expect(text()).toContain("Staff Engineer"), SLOW);
-    // The differentiator, made checkable: a reader can go and look at Acme's
-    // Greenhouse board in ten seconds. "Verified direct from Acme" could not
-    // be checked at all.
-    expect(text()).toContain("Direct from Acme on Greenhouse");
-    expect(text()).toContain("Direct from Beta on Lever");
-    expect(text()).toContain("Direct from Gamma on Workday");
-    // A source we hold no vendor label for keeps the un-named sentence rather
-    // than printing "brandnewats" at the reader.
-    expect(text()).toContain("Verified direct from Delta");
+    // The differentiator, made checkable: each card names the hiring system
+    // it was read from ("Greenhouse · feed read just now"), and the feed-read
+    // stamp only on a board we read in full (Acme's). A source we hold no
+    // vendor label for names nothing rather than printing "brandnewats".
+    const cardFor = (title: string) => cards().find((c) => (c.textContent ?? "").includes(title))?.textContent ?? "";
+    await waitFor(() => expect(cardFor("Staff Engineer")).toContain("Greenhouse · feed read"), SLOW);
+    expect(cardFor("Warehouse Associate")).toContain("Lever");
+    expect(cardFor("Quiet Role")).toContain("Workday");
+    expect(cardFor("Warehouse Associate"), "a board with no read stamp prints none").not.toContain("feed read");
     expect(text(), "a raw column value reached the page").not.toContain("brandnewats");
+    expect(text(), "the unverifiable claim is gone").not.toMatch(/Verified direct from/);
   });
 
   it("behaviour: the pay basis and the currency are stated — and only where the employer has not stated them", async () => {
@@ -326,8 +334,9 @@ describe("a card that shows nine chips shows nothing", () => {
   it("behaviour: the country is added where the place name is ambiguous, and nowhere else", async () => {
     mount();
     await waitFor(() => expect(text()).toContain("Staff Engineer"), SLOW);
-    // "Cambridge" is two countries and the card now says which.
-    expect(text()).toContain("Cambridge · United Kingdom");
+    // "Cambridge" is two countries and the card now says which (the card
+    // separates its place facts with a dot of its own).
+    expect(list()).toMatch(/Cambridge·United Kingdom/);
     // "Austin, TX, USA" and "Berlin, Germany" have already answered.
     expect(hits("United States"), "the location line already said USA").toBe(0);
     expect(hits("Germany"), "the location line already said Germany").toBe(1);
@@ -342,7 +351,7 @@ describe("a card that shows nine chips shows nothing", () => {
     // per company per day, so the true number can only be higher — "(7×)" was
     // an equality claim over a deduped count and the "×+" is the correction,
     // not decoration. If the marker ever goes away this must fail.
-    await waitFor(() => expect(text()).toContain("Re-lists roles often (24×+)"), SLOW);
+    await waitFor(() => expect(text()).toContain("Back or same title live (24×+)"), SLOW);
     await waitFor(() => expect(text()).toContain("Fills fast — 58% within 14d"), SLOW);
     // SCOPED TO THE CARDS, not the document: "Actively hiring" is the filter
     // control's label as well as the chip's, and a document-wide wait would be
@@ -356,7 +365,7 @@ describe("a card that shows nine chips shows nothing", () => {
     const acme = cards().find((c) => (c.textContent ?? "").includes("Acme"));
     expect(acme, "Acme's card is not on the page").toBeTruthy();
     const acmeText = acme!.textContent ?? "";
-    expect(acmeText, "the caution must take the slot").toContain("Re-lists roles often");
+    expect(acmeText, "the caution must take the slot").toContain("Back or same title live");
     expect(acmeText, "praise must not sit beside the caution about the same employer")
       .not.toContain("Fills fast");
     expect(acmeText, "praise must not sit beside the caution about the same employer")
@@ -371,11 +380,11 @@ describe("a card that shows nine chips shows nothing", () => {
     // the slot with a muted "No closure record" and is asserted separately
     // below. Three positive-or-caution statements over four cards. Counted over
     // the CARDS only, for the reason above.
-    expect(listHits("Re-lists roles often") + listHits("Fills fast") + listHits("Actively hiring")).toBe(3);
+    expect(listHits("Back or same title live") + listHits("Fills fast") + listHits("Actively hiring")).toBe(3);
     // And no card carries two of them.
     for (const c of cards()) {
       const t = c.textContent ?? "";
-      const said = ["Re-lists roles often", "Fills fast", "Actively hiring"].filter((x) => t.includes(x));
+      const said = ["Back or same title live", "Fills fast", "Actively hiring"].filter((x) => t.includes(x));
       expect(said.length, `two employer statements on one card: ${said.join(" + ")}`).toBeLessThanOrEqual(1);
     }
     // ── THE THIRD STATE HAS THE SLOT IT USED TO LEAVE EMPTY ────────────────
@@ -391,7 +400,7 @@ describe("a card that shows nine chips shows nothing", () => {
     expect(deltaText, "an unreadable record must never render as the positive one")
       .not.toContain("Actively hiring");
     expect(deltaText).not.toContain("Fills fast");
-    expect(deltaText).not.toContain("Re-lists roles often");
+    expect(deltaText).not.toContain("Back or same title live");
   });
 
   it("behaviour: the field-window comparison appears only on a posting the EMPLOYER dated", async () => {
@@ -456,16 +465,15 @@ describe("a card that shows nine chips shows nothing", () => {
     const toggle = document.querySelector('[aria-pressed][title="Switch list density"]') as HTMLElement | null;
     expect(toggle, "the density toggle must survive the redesign").not.toBeNull();
     expect(toggle!.getAttribute("aria-pressed")).toBe("false");
-    // The action row is present and shown in the roomy view.
-    const actions = () => cards()[0].querySelector<HTMLElement>(".mt-3");
-    expect(actions()?.textContent).toContain("Check my fit");
-    expect(actions()?.className, "the roomy view shows the actions").not.toContain("hidden");
+    // The card carries no action row now (Apply lives in the pane, beside
+    // the facts it should be read with); compact density makes the rows
+    // genuinely denser and keeps the evidence line.
+    expect(cards()[0].className, "the roomy view pads the card").toContain("p-4");
     fireEvent.click(toggle!);
     await waitFor(() => expect(toggle!.getAttribute("aria-pressed")).toBe("true"), SLOW);
-    // Rows are genuinely denser: the per-card action row folds away.
-    expect(actions()?.className, "compact must still fold the actions away").toContain("hidden");
+    expect(cards()[0].className, "compact rows are denser").toContain("py-2.5");
     // The differentiator is not a luxury of the roomy view.
-    expect(list()).toContain("Direct from Acme on Greenhouse");
+    await waitFor(() => expect(list()).toContain("Greenhouse · feed read"), SLOW);
   });
 
   it("behaviour: the detail panel answers in labelled rows, and omits the rows it cannot fill", async () => {
@@ -477,9 +485,9 @@ describe("a card that shows nine chips shows nothing", () => {
     for (const label of ["Pay", "Work mode", "Job type", "Experience", "Country", "Field", "Posted"]) {
       expect(panel(), `the panel must label ${label}`).toContain(label);
     }
-    // The panel states the annualization's arithmetic in full rather than in a
-    // tooltip the reader may never open.
-    expect(panel()).toContain("as stated in the posting");
+    // The pay row names its basis under the employer's figure, in visible
+    // words rather than in a tooltip the reader may never open.
+    expect(panel()).toContain("from the employer's feed");
     // A fact the employer did not state has NO ROW — not a dash, not "—", not
     // "Not specified". The absence of a row is the absence of a STATEMENT.
     expect(panel()).not.toContain("Not specified");
@@ -524,7 +532,10 @@ describe("a card that shows nine chips shows nothing", () => {
     // employer whose roles came back faster than they stayed down while the
     // detail pane warned. And the role caution the pane prints sits between
     // the event caution and the praise.
-    const iFast = slot.indexOf('hiringRecordVerdict(hh) === "closes" && canStateFillRate');
+    // Since company profiles phase 0 the praise branch reads the verdict
+    // through the shared hiring-record gate (gatedVerdict), so a record the
+    // employer page withholds cannot be praised on its card.
+    const iFast = slot.indexOf('gatedVerdict(hh) === "closes" && canStateFillRate');
     const iRoles = slot.indexOf("relistCaution(hh)");
     const iActive = slot.indexOf("isActivelyHiring(job.token)");
     expect(iRoles, "the role caution branch is missing").toBeGreaterThan(-1);
@@ -554,10 +565,13 @@ describe("a card that shows nine chips shows nothing", () => {
   });
 
   it("the reason the tiers exist is written down where the next tidy-up will read it", () => {
-    // PROSE, so RAW.
-    expect(RAW).toMatch(/THE CARD, IN THREE TIERS/);
+    // PROSE, so RAW. The card's rows and the pane's labelled list live in
+    // the listing components now; the one-slot rule stays with the board,
+    // which fills that slot.
+    expect(CARD_RAW).toMatch(/Four rows, each answering one question/);
+    expect(CARD_RAW).toMatch(/At most two chips/);
     expect(RAW).toMatch(/ONE SLOT FOR WHAT THIS EMPLOYER ACTUALLY DOES/);
-    expect(RAW).toMatch(/THE RIGHT RAIL IS ABOUT THE READER/);
-    expect(RAW).toMatch(/AT A GLANCE: A LABELLED FACT LIST, NOT A CHIP CLOUD/);
+    expect(FACTS_RAW).toMatch(/THE POSTING'S FACTS, AS A LABELLED LIST/);
+    expect(FACTS_RAW).toMatch(/A fact the employer did not state has no row/);
   });
 });

@@ -1413,6 +1413,7 @@ export type Database = {
           cik: number
           currency: string
           exchange: string
+          matched_source: string | null
           sec_name: string
           series: Json
           slug: string
@@ -1423,6 +1424,7 @@ export type Database = {
           cik: number
           currency?: string
           exchange?: string
+          matched_source?: string | null
           sec_name?: string
           series?: Json
           slug: string
@@ -1433,6 +1435,7 @@ export type Database = {
           cik?: number
           currency?: string
           exchange?: string
+          matched_source?: string | null
           sec_name?: string
           series?: Json
           slug?: string
@@ -1461,18 +1464,21 @@ export type Database = {
       }
       company_profiles: {
         Row: {
+          as_of: string | null
           company_token: string
           employee_basis: string
           employee_count: number
           yc_batch: string | null
         }
         Insert: {
+          as_of?: string | null
           company_token: string
           employee_basis: string
           employee_count: number
           yc_batch?: string | null
         }
         Update: {
+          as_of?: string | null
           company_token?: string
           employee_basis?: string
           employee_count?: number
@@ -1580,6 +1586,7 @@ export type Database = {
           id: string
           message_id: string | null
           metadata: Json | null
+          provider_message_id: string | null
           recipient_email: string
           status: string
           template_name: string
@@ -1590,6 +1597,7 @@ export type Database = {
           id?: string
           message_id?: string | null
           metadata?: Json | null
+          provider_message_id?: string | null
           recipient_email: string
           status: string
           template_name: string
@@ -1600,6 +1608,7 @@ export type Database = {
           id?: string
           message_id?: string | null
           metadata?: Json | null
+          provider_message_id?: string | null
           recipient_email?: string
           status?: string
           template_name?: string
@@ -1657,6 +1666,357 @@ export type Database = {
           id?: string
           token?: string
           used_at?: string | null
+        }
+        Relationships: []
+      }
+      employer_perk_board_flags: {
+        Row: {
+          as_of: string
+          company_token: string
+          flag: string
+          postings: number
+          share: number
+          source: string
+        }
+        Insert: {
+          as_of?: string
+          company_token: string
+          flag: string
+          postings: number
+          share: number
+          source: string
+        }
+        Update: {
+          as_of?: string
+          company_token?: string
+          flag?: string
+          postings?: number
+          share?: number
+          source?: string
+        }
+        Relationships: []
+      }
+      employer_perk_lines: {
+        Row: {
+          first_seen_at: string
+          last_seen_at: string
+          line: string
+          line_hash: string
+          pto_days: number | null
+          pto_plus_holidays: boolean
+        }
+        Insert: {
+          first_seen_at?: string
+          last_seen_at?: string
+          line: string
+          line_hash: string
+          pto_days?: number | null
+          pto_plus_holidays?: boolean
+        }
+        Update: {
+          first_seen_at?: string
+          last_seen_at?: string
+          line?: string
+          line_hash?: string
+          pto_days?: number | null
+          pto_plus_holidays?: boolean
+        }
+        Relationships: []
+      }
+      employer_perk_postings: {
+        Row: {
+          agency: boolean
+          company_token: string
+          country: string | null
+          english: boolean
+          extracted_at: string
+          extractor_version: number
+          franchise: boolean
+          perks_n: number
+          perks_q: number
+          perks_y: number
+          posting_id: string
+          quote_line_hash: string[] | null
+          readable: boolean
+          source: string
+          text_hash: string | null
+        }
+        Insert: {
+          agency?: boolean
+          company_token: string
+          country?: string | null
+          english?: boolean
+          extracted_at?: string
+          extractor_version: number
+          franchise?: boolean
+          perks_n?: number
+          perks_q?: number
+          perks_y?: number
+          posting_id: string
+          quote_line_hash?: string[] | null
+          readable: boolean
+          source: string
+          text_hash?: string | null
+        }
+        Update: {
+          agency?: boolean
+          company_token?: string
+          country?: string | null
+          english?: boolean
+          extracted_at?: string
+          extractor_version?: number
+          franchise?: boolean
+          perks_n?: number
+          perks_q?: number
+          perks_y?: number
+          posting_id?: string
+          quote_line_hash?: string[] | null
+          readable?: boolean
+          source?: string
+          text_hash?: string | null
+        }
+        Relationships: []
+      }
+      employer_perk_rollup_state: {
+        Row: {
+          boards: number
+          chunks: number
+          id: boolean
+          lap_cursor: string | null
+          lap_finished_at: string | null
+          lap_started_at: string | null
+          ms_per_krow: number | null
+          rows_written: number
+          updated_at: string
+        }
+        Insert: {
+          boards?: number
+          chunks?: number
+          id?: boolean
+          lap_cursor?: string | null
+          lap_finished_at?: string | null
+          lap_started_at?: string | null
+          ms_per_krow?: number | null
+          rows_written?: number
+          updated_at?: string
+        }
+        Update: {
+          boards?: number
+          chunks?: number
+          id?: boolean
+          lap_cursor?: string | null
+          lap_finished_at?: string | null
+          lap_started_at?: string | null
+          ms_per_krow?: number | null
+          rows_written?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      employer_perk_rollups: {
+        Row: {
+          as_of: string
+          company_token: string
+          country: string
+          k: number
+          n: number
+          perk: string
+          qualified_share: number
+          quote_hash: string | null
+          quote_posting_id: string | null
+          source: string
+          standard_text: boolean
+        }
+        Insert: {
+          as_of?: string
+          company_token: string
+          country: string
+          k: number
+          n: number
+          perk: string
+          qualified_share?: number
+          quote_hash?: string | null
+          quote_posting_id?: string | null
+          source: string
+          standard_text?: boolean
+        }
+        Update: {
+          as_of?: string
+          company_token?: string
+          country?: string
+          k?: number
+          n?: number
+          perk?: string
+          qualified_share?: number
+          quote_hash?: string | null
+          quote_posting_id?: string | null
+          source?: string
+          standard_text?: boolean
+        }
+        Relationships: []
+      }
+      employer_perk_sweep_boards: {
+        Row: {
+          company_token: string
+          cursor_id: string | null
+          open_roles: number
+          queued_at: string
+          swept_at: string | null
+          swept_version: number | null
+        }
+        Insert: {
+          company_token: string
+          cursor_id?: string | null
+          open_roles?: number
+          queued_at?: string
+          swept_at?: string | null
+          swept_version?: number | null
+        }
+        Update: {
+          company_token?: string
+          cursor_id?: string | null
+          open_roles?: number
+          queued_at?: string
+          swept_at?: string | null
+          swept_version?: number | null
+        }
+        Relationships: []
+      }
+      employer_profile_config: {
+        Row: {
+          id: boolean
+          note: string | null
+          publish_paused: boolean
+          rollup_chunk: number
+          suppressed_sources: string[]
+          sweep_batch: number
+          sweep_paused: boolean
+          sweep_wall_ms: number
+          updated_at: string
+        }
+        Insert: {
+          id?: boolean
+          note?: string | null
+          publish_paused?: boolean
+          rollup_chunk?: number
+          suppressed_sources?: string[]
+          sweep_batch?: number
+          sweep_paused?: boolean
+          sweep_wall_ms?: number
+          updated_at?: string
+        }
+        Update: {
+          id?: boolean
+          note?: string | null
+          publish_paused?: boolean
+          rollup_chunk?: number
+          suppressed_sources?: string[]
+          sweep_batch?: number
+          sweep_paused?: boolean
+          sweep_wall_ms?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      employer_profile_leases: {
+        Row: {
+          expires_at: string
+          holder: string
+          name: string
+        }
+        Insert: {
+          expires_at: string
+          holder: string
+          name: string
+        }
+        Update: {
+          expires_at?: string
+          holder?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      employer_profile_perk_publish: {
+        Row: {
+          audit_correct: number | null
+          audit_judged: number | null
+          audit_mode: string | null
+          audit_note: string | null
+          bit: number
+          counts: string
+          last_audited_at: string | null
+          perk: string
+          published: boolean
+          updated_at: string
+        }
+        Insert: {
+          audit_correct?: number | null
+          audit_judged?: number | null
+          audit_mode?: string | null
+          audit_note?: string | null
+          bit: number
+          counts: string
+          last_audited_at?: string | null
+          perk: string
+          published?: boolean
+          updated_at?: string
+        }
+        Update: {
+          audit_correct?: number | null
+          audit_judged?: number | null
+          audit_mode?: string | null
+          audit_note?: string | null
+          bit?: number
+          counts?: string
+          last_audited_at?: string | null
+          perk?: string
+          published?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      employer_profile_runs: {
+        Row: {
+          boards: number | null
+          build: string | null
+          extract_ms: number | null
+          finished_at: string | null
+          id: number
+          kind: string
+          lines_written: number | null
+          note: string | null
+          ok: boolean | null
+          postings_read: number | null
+          postings_written: number | null
+          started_at: string
+        }
+        Insert: {
+          boards?: number | null
+          build?: string | null
+          extract_ms?: number | null
+          finished_at?: string | null
+          id?: number
+          kind: string
+          lines_written?: number | null
+          note?: string | null
+          ok?: boolean | null
+          postings_read?: number | null
+          postings_written?: number | null
+          started_at?: string
+        }
+        Update: {
+          boards?: number | null
+          build?: string | null
+          extract_ms?: number | null
+          finished_at?: string | null
+          id?: number
+          kind?: string
+          lines_written?: number | null
+          note?: string | null
+          ok?: boolean | null
+          postings_read?: number | null
+          postings_written?: number | null
+          started_at?: string
         }
         Relationships: []
       }
@@ -3773,6 +4133,54 @@ export type Database = {
         }
         Relationships: []
       }
+      perk_legal_baselines: {
+        Row: {
+          also_applies_in: string | null
+          also_source_url: string | null
+          also_statute: string | null
+          applies_in: string | null
+          country: string
+          minimum: string
+          minimum_days: number | null
+          minimum_days_plus_holidays: number | null
+          note: string
+          perk: string
+          read_on: string
+          source_url: string
+          statute: string
+        }
+        Insert: {
+          also_applies_in?: string | null
+          also_source_url?: string | null
+          also_statute?: string | null
+          applies_in?: string | null
+          country: string
+          minimum: string
+          minimum_days?: number | null
+          minimum_days_plus_holidays?: number | null
+          note: string
+          perk: string
+          read_on: string
+          source_url: string
+          statute: string
+        }
+        Update: {
+          also_applies_in?: string | null
+          also_source_url?: string | null
+          also_statute?: string | null
+          applies_in?: string | null
+          country?: string
+          minimum?: string
+          minimum_days?: number | null
+          minimum_days_plus_holidays?: number | null
+          note?: string
+          perk?: string
+          read_on?: string
+          source_url?: string
+          statute?: string
+        }
+        Relationships: []
+      }
       pro_grants: {
         Row: {
           consumed_at: string | null
@@ -5274,6 +5682,14 @@ export type Database = {
         Returns: string[]
       }
       auth_user_has_password: { Args: { p_user_id: string }; Returns: boolean }
+      board_multi_site_title_share: {
+        Args: { p_tokens: string[] }
+        Returns: {
+          company_token: string
+          multi_site_n: number
+          multi_site_title_share: number
+        }[]
+      }
       board_recency_ladder: {
         Args: { p_fresh_days?: number; p_step?: number }
         Returns: Json
@@ -5447,6 +5863,66 @@ export type Database = {
         }[]
       }
       email_queue_dispatch: { Args: never; Returns: undefined }
+      employer_key: {
+        Args: { p_source: string; p_token: string }
+        Returns: string
+      }
+      employer_perk_audit_draw: {
+        Args: { p_perk: string; p_rows?: number }
+        Returns: Json
+      }
+      employer_perk_audit_record: {
+        Args: {
+          p_correct: number
+          p_judged: number
+          p_mode: string
+          p_note?: string
+          p_perk: string
+        }
+        Returns: Json
+      }
+      employer_perk_audit_status: { Args: never; Returns: Json }
+      employer_perk_rollup_tick: {
+        Args: { p_budget_ms?: number }
+        Returns: Json
+      }
+      employer_perk_store: {
+        Args: {
+          p_cursor: string
+          p_done: boolean
+          p_lines: Json
+          p_rows: Json
+          p_token: string
+          p_version: number
+        }
+        Returns: Json
+      }
+      employer_perk_sweep_take: {
+        Args: { p_budget_ms?: number; p_limit: number; p_version: number }
+        Returns: {
+          agency: boolean
+          body: string
+          company_token: string
+          country: string
+          posting_id: string
+          source: string
+          text_hash: string
+          title: string
+        }[]
+      }
+      employer_profile_lease_release: {
+        Args: { p_holder: string; p_name: string }
+        Returns: boolean
+      }
+      employer_profile_lease_take: {
+        Args: { p_holder: string; p_name: string; p_seconds: number }
+        Returns: boolean
+      }
+      employer_profile_set_pause: {
+        Args: { p_note?: string; p_publish?: boolean; p_sweep?: boolean }
+        Returns: Json
+      }
+      employer_segment: { Args: { p_token: string }; Returns: string }
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
         Returns: number
@@ -5676,6 +6152,8 @@ export type Database = {
       get_category_fill_curve: {
         Args: { p_days?: number; p_min_n?: number }
         Returns: {
+          admitted_boards_14: number
+          admitted_boards_30: number
           ageouts_at_30: number
           category: string
           cohort_from: string
@@ -5699,6 +6177,8 @@ export type Database = {
           still_open_14: number
           still_open_30: number
           still_open_30_hi: number
+          still_open_30_k1: number
+          still_open_30_k3: number
           still_open_30_lo: number
           sufficient: boolean
           sufficient_30: boolean
@@ -5766,6 +6246,10 @@ export type Database = {
           dated_coverage: number
           dated_n: number
           events_30: number
+          feed_capped: boolean
+          feed_read_at: string
+          feed_state: string
+          feed_total: number
           fill_rate_14: number
           fill_rate_14_hi: number
           fill_rate_14_lo: number
@@ -5777,8 +6261,11 @@ export type Database = {
           fills_90d: number
           fills_le_14: number
           insufficient_reason_30: string
+          late_sighted_30: number
           median_censored: boolean
           median_days_to_fill: number
+          multi_site_n: number
+          multi_site_title_share: number
           n_at_risk_14: number
           n_at_risk_30: number
           observability_bucket: string
@@ -5798,6 +6285,7 @@ export type Database = {
           taken_down_30: number
           tracking_days: number
           undated_n: number
+          undated_open: number
           watched_from: string
         }[]
       }
@@ -6017,6 +6505,7 @@ export type Database = {
           ow_worksite_state: string
         }[]
       }
+      get_employer_perks: { Args: { p_token: string }; Returns: Json }
       get_empty_boards: { Args: { p_tokens: string[] }; Returns: string[] }
       get_entry_level_companies: {
         Args: { p_limit?: number }
@@ -7313,6 +7802,10 @@ export type Database = {
       v1_withheld_company_tokens: {
         Args: { p_sources: string[] }
         Returns: Json
+      }
+      workday_site_is_own_employer: {
+        Args: { p_token: string }
+        Returns: boolean
       }
     }
     Enums: {

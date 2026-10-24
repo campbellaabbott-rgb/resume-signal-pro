@@ -64,6 +64,10 @@ import Jobs from "../pages/Jobs";
 import { LayoffPartitionSection } from "../components/ghost/LayoffPartitionSection";
 import { readLayoffRow, layoffLineText } from "../components/jobs/LayoffFilingLine";
 import { LAYOFF_MIN_ARM_EMPLOYERS, LAYOFF_PARTITION_MIN_N_AT_RISK_30 } from "../config/layoffs";
+import { date as fmtDate } from "@/lib/format";
+// Dates as the site's one formatter prints them for English readers (src/lib/format.ts: day, month, year), so the guard keeps its "reader's language" claim without pinning one calendar style.
+const D = (day: string) => fmtDate(day, { lng: "en" });
+
 
 vi.setConfig({ testTimeout: 30_000 });
 const SLOW = { timeout: 4000 } as const;
@@ -161,7 +165,8 @@ describe("a filing is printed as a filing, with its source link -- or not at all
     const tip = chip.getAttribute("title") ?? "";
     expect(tip, "the filer is the source's spelling, never the tenant's name").toContain("ACME LOGISTICS LLC");
     expect(tip).not.toMatch(/\bAcme made\b/);
-    expect(tip).toContain("2026-09-10");
+    expect(tip, "the filing date prints in the reader's language").toContain(D("2026-09-10"));
+    expect(tip).not.toMatch(/\d{4}-\d{2}-\d{2}/);
     expect(tip).toContain("California EDD");
     expect(chip.getAttribute("data-layoff-event-date")).toBe("2026-09-10");
     // The request record: one batch, every visible token, no per-card call.
@@ -237,19 +242,22 @@ describe("a filing is printed as a filing, with its source link -- or not at all
       return el!;
     }, SLOW);
     const s = line.textContent ?? "";
-    expect(s).toContain("ACME LOGISTICS LLC filed a layoff notice with California dated 2026-09-10: 120 positions at Fremont, effective 2026-11-09");
-    expect(s).toContain("listed by California EDD on 2026-09-12");
+    expect(s).toContain(`ACME LOGISTICS LLC filed a layoff notice with California dated ${D("2026-09-10")}: 120 positions at Fremont, effective ${D("2026-11-09")}`);
+    expect(s).toContain(`listed by California EDD on ${D("2026-09-12")}`);
     expect(s).toMatch(/read from California EDD \d+h ago/);
     const a = line.querySelector<HTMLAnchorElement>('a[data-layoff-source="state_warn"]');
     expect(a?.getAttribute("href")).toBe(WARN_ACME.lf_source_url);
     expect(a?.textContent).toBe("California EDD ↗");
+    // A link inside a sentence is underlined at rest (the design system's
+    // .link): colour alone failed axe's link-in-text-block at 1.08:1.
+    expect(a?.className.split(/\s+/)).toContain("link");
     // No verdict, no adjective, no absence.
     expect(s).not.toMatch(/\b(ghost|fake|real|quality|legit|live|now)\b/i);
     // The SEC shape, through the pure renderer: percentage, both dates, the
     // link label, and a "+N more" only when the reader counted more.
     const t = (_k: string, d: string, o?: Record<string, unknown>) => d.replace(/\{\{(\w+)\}\}/g, (_, k) => String(o?.[k] ?? ""));
     const sec = layoffLineText(readLayoffRow(SEC_BETA)!, t);
-    expect(sec.text).toContain("Beta Holdings, Inc. reported a workforce reduction of about 12.5% in an 8-K (Item 2.05) dated 2026-09-08, filed with the SEC on 2026-09-11");
+    expect(sec.text).toContain(`Beta Holdings, Inc. reported a workforce reduction of about 12.5% in an 8-K (Item 2.05) dated ${D("2026-09-08")}, filed with the SEC on ${D("2026-09-11")}`);
     expect(sec.linkLabel).toBe("SEC filing");
     // A subsidiary_site relation prints the FILER and the parent sentence.
     const sub = layoffLineText(readLayoffRow({ ...SEC_BETA, lf_relation: "subsidiary_site" })!, t);
@@ -292,17 +300,27 @@ describe("a filing is printed as a filing, with its source link -- or not at all
         <Routes><Route path="/jobs/company/:companyToken" element={<Jobs />} /></Routes>
       </MemoryRouter>,
     );
+    // Two shapes while the wiring pass swaps the lander's regions: the
+    // legacy "Also on record:" item in the Hiring Health card, or the company
+    // page's Public records rows (design spec 5.5f), outside the record.
     const item = await waitFor(() => {
-      const el = document.querySelector<HTMLElement>('[data-layoff-filing="record"]');
+      const el = document.querySelector<HTMLElement>('[data-layoff-filing="record"], [data-layoff-filing="records"]');
       expect(el).toBeTruthy();
       return el!;
     }, SLOW);
-    expect(item.tagName).toBe("LI");
-    expect(item.textContent).toContain("Also on record:");
     const anchors = Array.from(item.querySelectorAll<HTMLAnchorElement>("a[data-layoff-source]"));
     expect(anchors.map((x) => x.getAttribute("href"))).toEqual([WARN_ACME.lf_source_url, SEC_BETA.lf_source_url]);
-    expect(item.textContent).toContain("ACME LOGISTICS LLC filed a layoff notice with California dated 2026-09-10");
-    expect(item.textContent).toContain("Beta Holdings, Inc. reported a workforce reduction of about 12.5%");
+    if (item.getAttribute("data-layoff-filing") === "record") {
+      expect(item.tagName).toBe("LI");
+      expect(item.textContent).toContain("Also on record:");
+      expect(item.textContent).toContain(`ACME LOGISTICS LLC filed a layoff notice with California dated ${D("2026-09-10")}`);
+      expect(item.textContent).toContain("Beta Holdings, Inc. reported a workforce reduction of about 12.5%");
+    } else {
+      expect(item.closest("[data-public-records]"), "the rows sit in Public records").not.toBeNull();
+      expect(item.closest("[data-hiring-record]"), "and never inside the hiring record").toBeNull();
+      expect(item.textContent).toContain(`ACME LOGISTICS LLC · WARN notice · California · 120 workers · filed ${D("2026-09-10")}`);
+      expect(item.textContent).toContain(`Beta Holdings, Inc. · SEC 8-K Item 2.05 · filed ${D("2026-09-11")}`);
+    }
     // The reader asked for THIS token and nothing else, once.
     const calls = rpc.mock.calls.filter(([fn]) => fn === "get_employer_layoff_filings_all");
     expect(calls.length).toBe(1);

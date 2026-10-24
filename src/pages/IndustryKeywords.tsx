@@ -95,7 +95,7 @@ export default function IndustryKeywords() {
               <Link to={`/jobs/field/${INDUSTRY_TO_CATEGORY[slug]}`} className="text-primary font-medium">
                 See live {name.toLowerCase()} openings on the job board →
               </Link>{" "}
-              <span className="text-xs text-muted-foreground">pulled from companies' official job boards, re-verified all day</span>
+              <span className="text-xs text-muted-foreground">pulled from companies' official job boards, re-read through the day</span>
             </p>
           )}
 

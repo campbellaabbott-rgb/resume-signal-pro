@@ -10,11 +10,14 @@
  * descriptions promise a résumé check (commercial-readiness plan, 2026-10-08)
  * and the page offered none.
  *
- * WHAT THIS HOLDS. A live posting with a description shows "Score my résumé
- * against this job (free)"; pressing it stores the posting for the scanner
- * through the same hand-off the scanner reads, lands on "/#upload", and is
- * counted (with the page view that is its denominator). A description too
- * short for the scanner to accept offers no button that would do nothing.
+ * WHAT THIS HOLDS. A live posting with a description shows the free fit check
+ * ("Check my fit, free" since the page took the board's listing vocabulary,
+ * 2026-10-12; it read "Score my résumé against this job (free)" before);
+ * pressing it stores the posting for the scanner through the same hand-off
+ * the scanner reads, lands on "/#upload", and is counted (with the page view
+ * that is its denominator). A description too short for the scanner to accept
+ * offers no button that would do nothing. Apply on the employer's site stays
+ * the first action.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -73,7 +76,7 @@ describe("a job page offers the free score against its own posting", () => {
     const sent = hookFetch();
     invoke.mockResolvedValue({ data: { job: row(), description: DESCRIPTION }, error: null });
     at();
-    const button = await screen.findByRole("button", { name: "Score my résumé against this job (free)" });
+    const button = await screen.findByRole("button", { name: "Check my fit, free" });
     await waitFor(() => expect(sent().some((b) => b.testName === "job_page" && b.variant === "posting_view")).toBe(true));
     expect(sent().find((b) => b.variant === "posting_view")!.metadata?.page).toBe(PATH);
 
@@ -89,8 +92,8 @@ describe("a job page offers the free score against its own posting", () => {
   it("Apply stays, and stays first", async () => {
     invoke.mockResolvedValue({ data: { job: row(), description: DESCRIPTION }, error: null });
     at();
-    const score = await screen.findByRole("button", { name: "Score my résumé against this job (free)" });
-    const apply = screen.getByRole("link", { name: /Apply on Acme's own site/ });
+    const score = await screen.findByRole("button", { name: "Check my fit, free" });
+    const apply = screen.getByRole("link", { name: /Apply on Acme's site/ });
     expect(apply.compareDocumentPosition(score) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
@@ -98,6 +101,6 @@ describe("a job page offers the free score against its own posting", () => {
     invoke.mockResolvedValue({ data: { job: row(), description: "Short blurb." }, error: null });
     at();
     await screen.findByRole("heading", { level: 1, name: "Staff Accountant" });
-    expect(screen.queryByRole("button", { name: /Score my résumé/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Check my fit/ })).toBeNull();
   });
 });

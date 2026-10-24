@@ -36,6 +36,10 @@ const CODE = FN.replace(/\/\*[\s\S]*?\*\//g, "")
 const PAGE = readFileSync(resolve(ROOT, "src/pages/Jobs.tsx"), "utf8");
 const PAGE_CODE = PAGE.replace(/\/\*[\s\S]*?\*\//g, "")
   .split("\n").map((l) => (/^\s*\/\//.test(l) ? "" : l)).join("\n");
+// Pass B (2026-10-12): the board's card is the listing vocabulary's JobCard, which prints the match chips.
+const CARD = readFileSync(resolve(ROOT, "src/components/jobs/listing/JobCard.tsx"), "utf8");
+const CARD_CODE = CARD.replace(/\/\*[\s\S]*?\*\//g, "")
+  .split("\n").map((l) => (/^\s*\/\//.test(l) ? "" : l)).join("\n");
 
 describe("a tier that cannot say no is worse than no tier", () => {
   it("there is exactly ONE semantic retrieval, not two", () => {
@@ -151,8 +155,12 @@ describe("a tier that cannot say no is worse than no tier", () => {
   });
 
   it("the rows are labelled in the UI, never passed off as keyword hits", () => {
-    expect(PAGE_CODE).toMatch(/semanticMatch \&\& !job\.closeMatch/);
-    expect(PAGE_CODE).toMatch(/jobsPage\.semanticMatchChip/);
+    expect(CARD_CODE).toMatch(/semanticMatch \&\& !job\.closeMatch/);
+    expect(CARD_CODE).toMatch(/jobsPage\.semanticMatchChip/);
+    expect(PAGE_CODE, "the board mounts the card that prints the chip").toMatch(/<JobCard\b/);
+    // TEETH: a card that drops the close-match guard, or the chip, fails here.
+    expect(CARD_CODE.replace("job.semanticMatch && !job.closeMatch", "job.semanticMatch")).not.toMatch(/semanticMatch \&\& !job\.closeMatch/);
+    expect(CARD_CODE.replace("jobsPage.semanticMatchChip", "jobsPage.semanticMatch")).not.toMatch(/jobsPage\.semanticMatchChip/);
     for (const f of readdirSync(resolve(ROOT, "src/i18n/locales")).filter((x) => x.endsWith(".json"))) {
       const j = JSON.parse(readFileSync(resolve(ROOT, "src/i18n/locales", f), "utf8")) as { jobsPage?: Record<string, string> };
       expect(j.jobsPage?.semanticMatchChip, `${f} missing semanticMatchChip`).toBeTruthy();

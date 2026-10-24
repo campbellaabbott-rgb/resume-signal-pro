@@ -6,10 +6,16 @@
   ],
   "appliedOutsideDrizzle": [
     "20261008125000",
-    "20261008128000"
+    "20261008128000",
+    "20261014100000"
   ],
   "_appliedOutsideDrizzleNote": "Applied, but no staged-runner stub names them. 20261008125000 and 20261008128000 were released 2026-10-11 after wave 2 step 1 verified, and Lovable applied them without writing a stub, so every later message re-listed them. They are live by behaviour (checked 2026-10-11): get_cron_health lists send-search-digest, industry-corrections-digest and check-error-spikes, and check-error-spikes has run 35+ times.",
-  "holdUntilVerified": [],
+  "holdUntilVerified": [
+    {
+      "stamp": "20261012111000",
+      "until": "company profiles phase 1 step 1 verified: employer-profiles' OPTIONS answers x-fn-build employer-profiles.2026-10-12.2 and verify section 80 passes (get_employer_perks answers anon, the perk tables refuse it). Applied earlier, the every-minute sweep cron kicks a function that is not deployed yet and every kick is a refusal cron_http_refusals counts"
+    }
+  ],
   "migrationOrder": {
     "_note": "Per migration stamp: `after` is \"fn:<name>@<YYYY-MM-DD.N>\" (apply once that function answers that build or later) or \"frontend\" (apply once the frontend is published); `before` lists \"fn:<name>\" a migration must precede. No entry: before the functions. The ledger prints five steps: migrations before the functions, the functions, migrations after the functions they wait for, the frontend, migrations after the frontend (docs/DEPLOY-LEDGER.md §1).",
     "20261009101000": {
@@ -107,11 +113,11 @@
       "deployOrder": 1.5
     },
     "company-profiles": {
-      "branches": ["profiles/"],
+      "branches": ["profiles/", "design/", "pd/", "pd-int"],
       "migrations": "20261012*",
       "jobBoard": "none: phases 0-2 change no job-board (phase 3 is company-profiles-phase3)",
       "fnBuildDate": "2026-10-12",
-      "status": "phases 0-2 (identity, the hiring-record gate, perks); in flight on profiles/integration",
+      "status": "phases 0-2 (identity, the hiring-record gate, perks) and the design upgrade (passes A and B, the Track 1 accuracy round, the bake round) deploy TOGETHER from design/integration as one integration PR; design/ and pd/ branches belong to this reservation",
       "deployOrder": 2
     },
     "wave4": {
@@ -135,7 +141,7 @@
       "jobBoard": "2026-09-09.95+"
     }
   },
-  "_sharedFilesNote": "File ownership while branches run in parallel (docs/DEPLOY-LEDGER.md §6): path -> the workstream (a reservations key) that owns it. A key ending in / covers its folder; fn:<name> covers a function. node scripts/deploy-ledger.mjs --overlap <ref> ... exits 4 on any file or function two refs change that this map does not give a reservation-named owner. The other branch rebases onto the owner's version and re-applies only its own entries. 2026-10-11: post-wave3/tooling (wave3) and profiles/integration both change the four files below. wave3 merges first and owns the ledger policy and its rules doc; profiles' hold (20261012111000) and its reservation are re-applied by profiles on that version. company-profiles owns the bake, and keeps this PR's postingFreshBudget and per-page carried flag when it rebases. 2026-10-12 (R1 integration): R1 (critical-path) deploys before company profiles, design and wave 4, so its version of two shared files is the base. supabase/config.toml: critical-path owns only its two lines, the [functions.resend-webhook] block with verify_jwt = false (Resend posts carry no JWT; the Svix signature is the function's door); profiles' and design's [functions.employer-profiles] block is theirs and is re-applied on rebase. index.html: critical-path owns only the first script in <head>, the inline classic stash script that moves URL credentials into sessionStorage before any other script (the host's analytics included) can read the address; it must stay the first child of <head>, and wave 4's SEO group owns the rest of the head. src/test/the-ledger-message-kept-no-order-and-hid-what-it-could-not-check.test.ts: R1's two migrationOrder rules (20261014100000, 20261014110000) failed its 'every rule names a stamp that exists' check, which looked only at 20261009* files. R1 carries wave 4's broadening of that check line for line (any migration file counts), so critical-path owns the file and wave 4 re-applies only its own added test of the 20261011* order on rebase. 2026-10-12 (R1 fix, register S12-090): the first script in index.html now moves every Stripe session_id and the API key link's #confirm out of the address, so the pages that read them read this tab's stash instead. R1 owns only those reads: src/pages/AgentPass.tsx (its session_id, through stashedSessionIdFor), src/pages/DataApi.tsx (its #confirm, through stashedFragment) and src/pages/Index.tsx (the scan-pack return's session_id). Wave 4 rewrites all three; on rebase it keeps its own version and re-applies the stash read wherever its version still reads session_id or #confirm from the address (its pass page no longer reads session_id at all).",
+  "_sharedFilesNote": "File ownership while branches run in parallel (docs/DEPLOY-LEDGER.md §6): path -> the workstream (a reservations key) that owns it. A key ending in / covers its folder; fn:<name> covers a function. node scripts/deploy-ledger.mjs --overlap <ref> ... exits 4 on any file or function two refs change that this map does not give a reservation-named owner. The other branch rebases onto the owner's version and re-applies only its own entries. 2026-10-11: post-wave3/tooling (wave3) and profiles/integration both change the four files below. wave3 merges first and owns the ledger policy and its rules doc; profiles' hold (20261012111000) and its reservation are re-applied by profiles on that version. company-profiles owns the bake, and keeps this PR's postingFreshBudget and per-page carried flag when it rebases. 2026-10-12 (R1 integration): R1 (critical-path) deploys before company profiles, design and wave 4, so its version of two shared files is the base. supabase/config.toml: critical-path owns only its two lines, the [functions.resend-webhook] block with verify_jwt = false (Resend posts carry no JWT; the Svix signature is the function's door); profiles' and design's [functions.employer-profiles] block is theirs and is re-applied on rebase. index.html: critical-path owns only the first script in <head>, the inline classic stash script that moves URL credentials into sessionStorage before any other script (the host's analytics included) can read the address; it must stay the first child of <head>, and wave 4's SEO group owns the rest of the head. src/test/the-ledger-message-kept-no-order-and-hid-what-it-could-not-check.test.ts: R1's two migrationOrder rules (20261014100000, 20261014110000) failed its 'every rule names a stamp that exists' check, which looked only at 20261009* files. R1 carries wave 4's broadening of that check line for line (any migration file counts), so critical-path owns the file and wave 4 re-applies only its own added test of the 20261011* order on rebase. 2026-10-12 (R1 fix, register S12-090): the first script in index.html now moves every Stripe session_id and the API key link's #confirm out of the address, so the pages that read them read this tab's stash instead. R1 owns only those reads: src/pages/AgentPass.tsx (its session_id, through stashedSessionIdFor), src/pages/DataApi.tsx (its #confirm, through stashedFragment) and src/pages/Index.tsx (the scan-pack return's session_id). Wave 4 rewrites all three; on rebase it keeps its own version and re-applies the stash read wherever its version still reads session_id or #confirm from the address (its pass page no longer reads session_id at all). 2026-10-17 (company profiles and the design upgrade, one integration PR from design/integration, deployOrder 2): design/integration and wave4/integration both change the 24 files below, and no function. company-profiles deploys before wave 4, so its version of each is the base and it owns them; wave 4 merges main after this PR and re-applies only its own hunks. public/llms.txt, the nine locale files and the hand-off test keep the ownership wave 4's own note already gave them. The locales: this branch EDITED 32 en values (hero.badge, hero.headline.feedbackLive, hero.headline.feedbackPlain, hero.browseJobsLive, hero.browseJobsPlain, freeResults.matches.subtitle, homeHero.statOpenings, accountPage.trackerEmptyCta, explore.repostWarn and 23 jobsPage keys, listed in docs/design-upgrade/README.md) and REMOVED 63 superseded jobsPage keys (among them the apply-agent pitch keys wave 4 asked the board's owner to remove), the same in every locale; none of them is a key wave 4 changed, and wave 4 takes these values and removals when it rebases. Its own added keys (agentConnect, agentPass, homeAgent, homeHero, pricingPage, dataApiPage, faq, agentMatches, atsCoverage, privacy) merge beside them. public/llms.txt: this branch's MCP line names no pass, no Agent plan and no apply tools; wave 4 re-applies its connect, apply-yourself, paid-tools and Builder lines without re-adding a retired product. src/pages/Pricing.tsx and src/components/AtsCoverage.tsx: this branch changes only classes (two in-sentence links to the .link class, the as-of line to text-subtle-foreground), which wave 4 keeps in its rewrite. Sections 65 and 74: the English-chunk finder keys on sourceNote instead of agentPitchCta (the key is gone), which wave 4 keeps. src/data/guides.ts and the eight tests in the map (seven that pin the retired products' copy, plus a-pass-paid-for-forms-the-agent-could-only-prepare, whose llms.txt case now reads that a paid key opens the scorer and that no retired product is named): this branch retired the Apply Agent's plan, the pass and the Apply Assistant from the guide text and pinned the new words; wave 4 keeps those and re-applies its own assertions, and sets BAKE_STILL_SELLS_THE_PASS to false once both are merged. 2026-10-18 (the last fix round on design/integration): the page React renders sold the retired agent while the bake did not, so this branch took wave 4's own homepage change where it is the same change: src/components/HomeHero.tsx is wave 4's file byte for byte (company-profiles owns it now because it deploys first; wave 4 keeps it as is), and the locales carry wave 4's homeHero.badge2, headlineHighlight2 and sub2, homeAgent.passLine and faq.questions.bringYourAgent.answer verbatim and drop homeHero.badge, headlineHighlight, sub, statSendable and homeAgent.passCta, as wave 4 does. src/pages/Index.tsx stays critical-path's; company-profiles changes two hunks of it, the strip's pass line and signed-in pass link (the pass link removed and the pass mirror unread, as wave 4 does) and the head description (re-read through the day), which wave 4 keeps. Values this branch wrote that wave 4 writes differently, and wave 4 takes its own on rebase once its sale-path removal ships: faq.questions.subscription.answer (names Pro and points to the Pricing page for every plan on sale, because the Agent plan is still sold until wave 4), faq.questions.dataStorage.answer and the trust page neverSold and retention.rows.agent strings (wave 4's without the switched-off sentence, which is not true until wave 4 switches the agent off). The guide at /guides/how-the-apply-agent-works, the baked /agent and llms.txt hold their retirement sentences until wave 4 is live; wave 4 restores them.",
   "sharedFiles": {
     "docs/deploy-ledger.json": "wave3",
     "docs/DEPLOY-LEDGER.md": "wave3",
@@ -146,7 +152,24 @@
     "src/test/the-ledger-message-kept-no-order-and-hid-what-it-could-not-check.test.ts": "critical-path",
     "src/pages/AgentPass.tsx": "critical-path",
     "src/pages/DataApi.tsx": "critical-path",
-    "src/pages/Index.tsx": "critical-path"
+    "src/pages/Index.tsx": "critical-path",
+    "public/llms.txt": "company-profiles",
+    "src/i18n/locales/": "company-profiles",
+    "src/data/guides.ts": "company-profiles",
+    "src/pages/Pricing.tsx": "company-profiles",
+    "src/components/AtsCoverage.tsx": "company-profiles",
+    "src/components/HomeHero.tsx": "company-profiles",
+    "scripts/verify-deploy.d/65-wave2-entitlements.sh": "company-profiles",
+    "scripts/verify-deploy.d/74-wave3-payments-account.sh": "company-profiles",
+    "src/test/the-board-hands-a-job-and-a-search-to-the-agent.test.tsx": "company-profiles",
+    "src/test/a-company-count-that-names-both-of-its-numbers.test.ts": "company-profiles",
+    "src/test/a-pass-number-on-a-page-is-a-placeholder.test.tsx": "company-profiles",
+    "src/test/agent-hallmark.test.ts": "company-profiles",
+    "src/test/apply-agent-guide.test.ts": "company-profiles",
+    "src/test/pricing-truth.test.ts": "company-profiles",
+    "src/test/the-page-says-six-and-the-server-says-eleven.test.ts": "company-profiles",
+    "src/test/which-agent-do-you-use.test.tsx": "company-profiles",
+    "src/test/a-pass-paid-for-forms-the-agent-could-only-prepare.test.ts": "company-profiles"
   },
   "_baselineNote": "Lovable's staged-runner stubs (drizzle/migrations) name every migration from 20260923 on; earlier ones were applied before that record was complete and were judged applied by behaviour (2026-10-10 check: 20260917170000, 20260918101000, 20260918200000, 20260921120000 have no stub).",
   "verifiedDeploys": [
@@ -294,6 +317,23 @@
         "verify-scan-pack-purchase": "verify-scan-pack-purchase.2026-10-09.2",
         "warm-up": "warm-up.2026-10-09.2",
         "withdraw-subscription": "withdraw-subscription.2026-10-09.61"
+      }
+    },
+    {
+      "commit": "9c991052",
+      "date": "2026-10-17",
+      "note": "R1 (PR #33, merge 6aab7045) with the disk-row fix (PR #34) and the light images (PR #35), deployed from main 9c991052: Lovable's drizzle stubs 0163 (20261014110000) and 0164 (20261017100000) in cf0b4967/bb7bb3f5/5464e502 (2026-10-17 19:56-19:59Z), the ten functions answering their 2026-10-14.1 builds, and the frontend published with Google and recovery on. verify-deploy 2026-10-17 ~23:10Z: 950 PASS, 27 FAIL; sections 95 and 96 pass in full; 94 passes except the owner's SPF record on send (permerror) and RESEND_WEBHOOK_SECRET unset (INFO). 20261014100000 has no drizzle stub but is applied by behaviour: section 94 reads rb-auth-mail-drain active, 359 runs in the last hour, 0 failed, last run succeeded (recorded in appliedOutsideDrizzle). The six 'code changed after its live stamp' FAILs were the fix rounds changing code under the same unreleased stamp before this deploy; this entry makes 9c991052 their base.",
+      "functions": {
+        "auth-email-hook": "auth-email-hook.2026-10-14.1",
+        "auth-signed-in": "auth-signed-in.2026-10-14.1",
+        "create-portal-session": "create-portal-session.2026-10-14.1",
+        "delete-account": "delete-account.2026-10-14.1",
+        "free-keyword-scan": "free-keyword-scan.2026-10-14.1",
+        "get-account-data": "get-account-data.2026-10-14.1",
+        "process-email-queue": "process-email-queue.2026-10-14.1",
+        "resend-webhook": "resend-webhook.2026-10-14.1",
+        "scan-credits": "scan-credits.2026-10-14.1",
+        "verify-product-purchase": "verify-product-purchase.2026-10-14.1"
       }
     }
   ],

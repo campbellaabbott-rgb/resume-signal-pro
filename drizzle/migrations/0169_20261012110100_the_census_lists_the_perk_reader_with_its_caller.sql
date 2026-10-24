@@ -1,0 +1,1 @@
+SELECT public._mig_exec(sql) FROM public._mig_stage WHERE name = '20261012110100_the_census_lists_the_perk_reader_with_its_caller.sql';

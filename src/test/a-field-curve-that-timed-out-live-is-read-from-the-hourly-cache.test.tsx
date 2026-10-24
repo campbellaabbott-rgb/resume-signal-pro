@@ -319,7 +319,7 @@ describe("/jobs reads the field curve off the same cache and dates its clause", 
     // rather than a request that has not landed. With neither a field row nor
     // an employer curve the comparison block has nothing to compare against
     // and draws nothing at all, which is the page's existing rule.
-    await waitFor(() => expect(body()).toContain("Apply on company site"), SLOW);
+    await waitFor(() => expect(body()).toContain("Check my fit, free"), SLOW);
     await waitFor(() => expect(calls(CACHE_FN)).toBe(1), SLOW);
     await new Promise((r) => setTimeout(r, 50));
     expect(body()).toContain("Backend Engineer");

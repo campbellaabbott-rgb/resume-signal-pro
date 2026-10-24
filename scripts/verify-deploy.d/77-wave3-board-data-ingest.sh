@@ -79,7 +79,16 @@ const get=async(u)=>{try{const r=await fetch(u);return r.ok?await r.text():""}ca
       ok(jobs.includes("jobsPage.layoffChipSecExit")||main.includes("jobsPage.layoffChipSecExit"),"an exit-cost 8-K prints a neutral chip and sentence (S8-026, needs lf_workforce below)");
     }
     const post=postName?await get(SITE+"/assets/"+postName):"";
-    ok(post.includes("jobPostingPage.scoreCta"),(postName||"JobPosting chunk")+": a posting offers the free score against it beside Apply");
+    // THE FIT OFFER MAY SIT ONE CHUNK DOWN. Since the design upgrade the
+    // posting page renders the shared posting component, which rollup puts in
+    // its own chunk (imported by the posting page and the board), and labels
+    // the offer "Check my fit, free" under the listing namespace. So the line
+    // reads the posting chunk and every chunk it imports, and accepts either
+    // label: the old page key or the shared component key.
+    const fitOffer=(s)=>s.includes("jobPostingPage.scoreCta")||s.includes("listing.actions.checkFit");
+    let fitIn=post&&fitOffer(post)?postName:null;
+    if(post&&!fitIn){for(const r of refs(post).slice(0,40)){const s=await get(SITE+"/assets/"+r);if(s&&fitOffer(s)){fitIn=r;break}}}
+    ok(!!fitIn,(postName||"JobPosting chunk")+": a posting offers the free score against it beside Apply"+(fitIn&&fitIn!==postName?" (in "+fitIn+", which the posting chunk imports)":""));
     const ghost=ghostName?await get(SITE+"/assets/"+ghostName):"";
     const anyGhost=ghost+main;
     ok(anyGhost.includes("stamp a notice a median"),"the Ghost Index names the state stamp lag, not a feed arrival lag (S8-096)");

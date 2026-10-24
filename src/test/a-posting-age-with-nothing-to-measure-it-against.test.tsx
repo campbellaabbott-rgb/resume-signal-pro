@@ -100,6 +100,9 @@ const ROOT = resolve(__dirname, "../..");
 // against raw source that also carries it in a comment) is this repo's oldest
 // guard bug, and this file's fix writes comments containing its own identifiers.
 const RAW = readFileSync(resolve(ROOT, "src/pages/Jobs.tsx"), "utf8");
+// The FillCurve row type, with its field notes, moved to a shared module
+// (design pass A); Jobs.tsx imports it from there.
+const BOARD_JOB_RAW = readFileSync(resolve(ROOT, "src/lib/board-job.ts"), "utf8");
 const JOBS = RAW.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
 const EXPLORE_RAW = readFileSync(resolve(ROOT, "src/pages/Explore.tsx"), "utf8");
 const EXPLORE = EXPLORE_RAW.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
@@ -113,11 +116,15 @@ const daysAgoIso = (d: number) => new Date(Date.now() - d * 86_400_000).toISOStr
 // about silence is about that line and not about a race.
 const FIELD_LINE = "Measured over every role in this field that we watched in the last";
 const EMPLOYER_LINE = "longer than this employer usually leaves a role up";
-// "The company lookup has answered." verdictTakedownsObserved is gated on
-// fills_90d >= 3 and nothing else — no rate, no coverage, no window — so it
-// still fires while a rate is being REFUSED. That is what makes the employer
-// line's absence a refusal rather than a request that has not landed.
+// "The company lookup has answered." verdictTakedownsObserved needs three
+// roles down for good and no rate, coverage or rate window, so it still fires
+// while a rate is being REFUSED. That is what makes the employer line's
+// absence a refusal rather than a request that has not landed. Since company
+// profiles phase 0 the count goes through the shared hiring-record gate,
+// whose depth floor is 21 days of watching: below it the clause is the
+// withheld one (COMPANY_ANSWERED_WITHHELD), which answers just as surely.
 const COMPANY_ANSWERED = "come off the board and stay off";
+const COMPANY_ANSWERED_WITHHELD = "we hold a closure record for this employer and do not print it";
 
 // serveList emits the client's own shape (see BoardJob) — camelCase, `token`
 // for the company and `postedAt` for the employer's stated date.
@@ -164,6 +171,7 @@ type Curve = {
   open_roles: number; fills_90d: number; relists_90d: number; filled_roles_90d: number; relisted_roles_90d: number; ageouts_90d: number;
   fill_through: number; churn: number; absorption: number;
   tracking_days: number; sufficient: boolean;
+  observability_bucket?: string; watched_from?: string | null; multi_site_title_share?: number;
 };
 const curve = (over: Partial<Curve> = {}): Curve => ({
   company_token: "acme", n_at_risk_14: 120, fills_le_14: 64,
@@ -173,7 +181,7 @@ const curve = (over: Partial<Curve> = {}): Curve => ({
   dated_coverage: 0.78, dated_n: 210, undated_n: 59,
   open_roles: 5, fills_90d: 14, relists_90d: 0, filled_roles_90d: 14, relisted_roles_90d: 0, ageouts_90d: 3,
   fill_through: 0.6, churn: 0, absorption: 0.1,
-  tracking_days: 63, sufficient: true, ...over,
+  tracking_days: 63, sufficient: true, observability_bucket: "full_read", watched_from: "2026-08-01", multi_site_title_share: 0, ...over,
 });
 
 function mount(
@@ -299,13 +307,25 @@ describe("a posting age with nothing to measure it against", () => {
     expect(p).toContain("63 days of tracking");
   });
 
+  it("behaviour: where the re-post test reads other sites, the outlived line states every takedown and no fill or re-listed share", async () => {
+    // Centria-shaped: one title live at many sites, far more "came back" than
+    // went down. The gate's ceiling is every takedown, not a fill share.
+    mount([row()], { company: [curve({ multi_site_title_share: 0.97, filled_roles_90d: 43, relisted_roles_90d: 2967 })] });
+    await waitFor(() => expect(panelText()).toContain(EMPLOYER_LINE), SLOW);
+    const p = line(EMPLOYER_LINE);
+    expect(p, "the share off the board within the horizon").toContain("60%");
+    expect(p).toContain("counting every takedown");
+    expect(p, "a fill share the gate says is not a ceiling").not.toMatch(/taken down for good/);
+    expect(p, "a re-listed share on a board whose re-post test files new locations as re-posts").not.toMatch(/re-listed/);
+  });
+
   it("behaviour: an undated posting gets NO comparison, however much we know about its field", async () => {
     // first_seen is our discovery time and has never been a posting age here.
     // The stats are fully present; the age is not, so the block does not render.
     mount([row({ postedAt: null })]);
     // The panel is genuinely open (this string exists nowhere else on the page)
     // and both lookups have answered, so "absent" is a refusal.
-    await waitFor(() => expect(panelText()).toContain("Apply on company site"), SLOW);
+    await waitFor(() => expect(panelText()).toContain("Check my fit, free"), SLOW);
     await waitFor(() => expect(rpc.mock.calls.some((c) => c[0] === "get_company_fill_curve")).toBe(true), SLOW);
     const text = panelText();
     expect(text, "an age was invented from something the employer did not state")
@@ -352,7 +372,9 @@ describe("a posting age with nothing to measure it against", () => {
     // tracking" — a number from a window that cannot hold it, which is the
     // exact defect the estimator was written to remove, on the other axis.
     const { unmount } = mount([row()], { company: [curve({ tracking_days: 10 })] });
-    await waitFor(() => expect(panelText()).toContain(COMPANY_ANSWERED), SLOW);
+    await waitFor(() => expect(panelText()).toContain(COMPANY_ANSWERED_WITHHELD), SLOW);
+    // Ten days is under the gate's 21-day floor for the ninety-day count too.
+    expect(panelText()).not.toContain(COMPANY_ANSWERED);
     expect(panelText()).toContain("Posted 24 days ago");
     expect(panelText(), "ten days of tracking cannot support a fourteen-day rate")
       .not.toContain(EMPLOYER_LINE);
@@ -501,8 +523,8 @@ describe("a posting age with nothing to measure it against", () => {
     // for. The warning survived the rewrite and got SHARPER: it is now aimed
     // at the live trap (n_at_risk_14, the day-14 risk set) rather than at the
     // retired one (closed_90d), and it names the replacement.
-    expect(RAW).toMatch(/never a number to print beside a rate/);
-    expect(RAW).toMatch(/Print dated_n instead/);
+    expect(BOARD_JOB_RAW).toMatch(/never a number to print beside a rate/);
+    expect(BOARD_JOB_RAW).toMatch(/Print dated_n instead/);
     // A COMMENT IS NOT A GUARD. This repo has seven times shipped a green test
     // over dead code because the spelling it pinned lived in prose, so the
     // property is pinned in CODE as well: the cohort is what reaches the copy.
@@ -527,6 +549,7 @@ describe("a posting age with nothing to measure it against", () => {
       "fieldCurveCompareBounded",
       "fieldCurveBasis",
       "employerOutlivedCurveBounded",
+      "employerOutlivedEveryTakedown",
       "employerOutlivedCurveBasisDated",
       "fieldMedianCensored",
       "fillCoverageQualifier",
