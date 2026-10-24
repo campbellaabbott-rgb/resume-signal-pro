@@ -814,7 +814,10 @@ the fixes: 56,685 under the 4.5 MB line (4,434,303 and 65,697 before them),
 and 4,447,626 after the recheck's fixes: 52,374 under the line, 2,374 inside
 the agreed 50,000 of room (the classifier's shared TOPICS moved into
 _shared/application-questions.ts and the salary rule grew; their comments
-were cut to keep the room). It was 4,466,852 (33,148 under) before the
+were cut to keep the room). Re-tallied at 2709842c from git's own sizes of
+the tracked files (the same folders, plus main's two profiles _shared files,
+which are the same 72,818 bytes on main): 4,447,181 bytes, 52,819 under the
+line and 2,819 inside the room. It was 4,466,852 (33,148 under) before the
 integration moved the long comment runs of four more job-board files into
 `docs/job-board-index-notes.md`.
 
@@ -1194,9 +1197,12 @@ Major:
   to the person; eight controls are still drafted.
 - **A place after a one-word negation stays in the search** (job-board
   search-routing, .93): the phrase stops before any place knownPlace()
-  recognises, one to three words, unless the place began inside the phrase
-  ("not new york"): "warehouse not forklift Dallas" excludes forklift and
-  searches Dallas, as main did.
+  recognises, one to three words, or any state, metro or country name in any
+  case ("sf", "uk", "us", which the place lift takes only in capitals),
+  unless the place began inside the phrase ("not new york"): "warehouse not
+  forklift Dallas" excludes forklift and searches Dallas, as main did, and
+  "cook not line sf" excludes line and keeps sf (2709842c, found by the
+  fixer's own probe after 705452b1).
 
 Minor: the Teal comparison no longer counts Freelance Boost among our
 products (it names the career-change bridge and the free account's writing
@@ -1214,3 +1220,13 @@ lock a genuine buyer out.
 
 `accountPage.lastResumeLabel` is no longer rendered (every saved version now
 has a score); the translator may drop it.
+
+The gate after the recheck's fixes, at 2709842c: the frontend typecheck, the
+worker's tsc and `scripts/check-functions.sh` (every edge function and the
+Deno tests; deno.lock restored) are clean; `deploy-ledger --against
+origin/main` finds 0 violations, `--against fa66a031` 7 functions moved and
+the one reserved violation (job-board `.93`), and `--overlap HEAD
+origin/design/integration origin/r1/integration` no undeclared overlap. All
+nine recheck tests fail with fa66a031's code restored (75 of 106 cases) and
+pass on the fixes. The full suite runs in the push's pre-push hook; its count
+is in the PR #39 body. Main is not merged in this step.
