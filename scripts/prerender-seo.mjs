@@ -26,7 +26,7 @@ import { dirname, join, resolve } from "node:path";
 import {
   PRERENDER_LEDGER_PATH, POSTING_STUB_KEEP_DAYS, callBudget, companyLanderPage, contentFingerprint, landerFacts, landerHasOwnContent, landerRobots, landerThinBreaker,
   bakeLanders, employerBoardsOf, employerPageOf, carrySitemaps, pageLastmod, postingCarryBase, postingCheckState, postingFreshBudget, postingRowEligible, postingStubEntry, postingStubPage,
-  LANDER_OPENINGS_READS, LANDER_OPENINGS_SHOWN, LLMS_TXT_COMPANIES, companiesLlmsLine, llmsTxtCompaniesCount, duplicateSkeletons, landerBreakers, landerOpenings, landerSkeleton, nextOpeningsCache, openingsFromList, openingsToRead,
+  LANDER_OPENINGS_READS, LANDER_OPENINGS_SHOWN, LLMS_TXT_COMPANIES, companiesLlmsLine, readCompanyIntel, llmsTxtCompaniesCount, duplicateSkeletons, landerBreakers, landerOpenings, landerSkeleton, nextOpeningsCache, openingsFromList, openingsToRead,
 } from "./prerender-pages.mjs";
 // The once-published pages, the ceiling, the dates and the duplicate groups
 // (SEO-002, SEO-025, SEO-036 and decision 5 of the design upgrade's README).
@@ -244,6 +244,8 @@ export { ONET_EXPECTATIONS } from "../supabase/functions/free-keyword-scan/onet-
 export { onetForRole } from "../src/lib/onet-match";
 export { roleListCopy } from "../src/lib/role-page-copy";
 export { ROLE_PAGES, rolesForIndustry } from "../src/data/roles";
+export { displayKeyword, industryLabel, inSentence } from "../src/lib/seo/display-case";
+export { industryKeywordsHead, roleKeywordsHead } from "../src/lib/seo/keyword-pages";
 export { TOOL_LANDINGS } from "../src/data/tool-landings";
 export { SCAN_RESULTS_WITHIN_SECONDS } from "../src/config/scan-timing";
 export { COMPETITORS } from "../src/data/competitors";
@@ -258,7 +260,7 @@ export { getAllProducts, PASS, SUBSCRIPTIONS, PRODUCTS } from "../src/config/pro
 export { AFFILIATE_COMMISSION_CENTS, formatUsd } from "../src/config/affiliate-commission";
 export { ALL_BOARD_SOURCES } from "../src/config/ats-vendors";
 export { publicApiBase, mcpServerUrl } from "../src/config/public-endpoints";
-export { cvFill } from "../src/lib/cv-country-phrase";
+export { cvFill, cvStandardsFaqs } from "../src/lib/cv-country-phrase";
 export { collidedBoards } from "../src/lib/board-collisions";
 export { postingRemoteBasis, postingRequisitionIdentity, postingText, postingLanguage, postingCountryMismatch, postingValidThrough, remoteLocationNamesAPlace } from "../src/components/jobs/posting-page";
 export { changelog } from "../src/data/changelog";
@@ -272,7 +274,7 @@ export { MCP_TOOLS, MCP_HOSTS, MCP_READ_TOOLS, MCP_PAID_TOOLS, MCP_APPLY_TOOLS, 
 export { MCP_MORE_HOSTS, MCP_TROUBLESHOOTING, MCP_SIGN_IN_NEUTRAL, MCP_SERVER_ADDRESS_NOTE, MCP_ADDRESS_GLOSS, MCP_NEEDS_ACCOUNT_LINE, MCP_WITHHELD_NOTE, MCP_INSTALL_REPO_URL, MCP_TEST_QUERY, MCP_SIGN_IN_META_KEY, stepSegments, curlInitialize, andList } from "../src/config/mcp-tools";
 export { MCP_PAGE_HOSTS, MCP_OFF_PAGE_HOSTS, MCP_OTHER_AGENTS_LINE, MCP_COPY_THE_PROMPT } from "../src/config/mcp-tools";
 export { FREE_KEY_RATE_PER_MIN } from "../src/config/free-key-limits";
-export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPostingLive, jdParagraphs, postingEmployer, postingIdFromPath, postingIdentity, postingJsonLd, postingPageDescription, postingPagePath, postingPageTitle, postingPathParts } from "../src/components/jobs/posting-page";
+export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPostingLive, jdParagraphs, postingEmployer, postingIdFromPath, postingIdentity, postingJsonLd, postingPageDescription, postingPagePath, postingPageTitle, postingPageTitleAvoiding, postingPathParts } from "../src/components/jobs/posting-page";
 export { boardName, employerName, isCodeShapedName, possessive } from "../src/lib/company-display";
 export { isCollidedToken } from "../src/lib/board-collisions";
 export { FEDERAL_LISTING_RESULT_CAP, isFederalListingBoard } from "../src/lib/company/lander-model";
@@ -1216,10 +1218,14 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
   // renders the SAME string the app renders, and a placeholder the mirror
   // does not name is a build error rather than a blank.
   const fillCopy = (s, vals, who) => String(s || "").replace(/\{\{(\w+)\}\}/g, (_, k) => { if (!(k in vals)) throw new Error(`[prerender-seo] ${who} copy names a placeholder with no mirror: ${k}`); return String(vals[k]); });
-  const label = (slug) => slug.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  // SEO-019 / S13-089: one letter-case rule for both renderers
+  // (src/lib/seo/display-case.ts): acronyms as acronyms ("HR", "RN"), plain
+  // words as words, never every word of four letters upper-cased.
+  const label = (slug) => D.industryLabel(slug);
+  const inSentence = (name) => D.inSentence(name);
   // "Domino's", never "Domino's's" (F1): every possessive of an employer name.
   const possessive = D.possessive;
-  const displayKeyword = (k) => (k.length <= 4 && !k.includes(" ") ? k.toUpperCase() : k);
+  const displayKeyword = (k, industry) => D.displayKeyword(k, industry);
   const uniq = (a) => [...new Set(a)];
   // DESCRIPTIONS BUILT UP TO THE SNIPPET BUDGET, NOT CUT (OBS-2). The bake
   // logged 278 descriptions over 160 characters and clamped every one
@@ -1276,9 +1282,9 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
   const chip = (text, cls = "px-2.5 py-1 rounded-lg bg-card border border-border text-sm text-foreground capitalize") =>
     `<span class="${cls}">${esc(text)}</span>`;
   const chips = (arr, cls) => `<div class="flex flex-wrap gap-1.5">${arr.map((k) => chip(k, cls)).join("")}</div>`;
-  const kwChips = (arr) =>
+  const kwChips = (arr, industry) =>
     `<div class="flex flex-wrap gap-1.5">${arr
-      .map((k) => chip(displayKeyword(k), `px-2.5 py-1 rounded-lg bg-card border border-border text-sm text-foreground${k.length <= 4 && !k.includes(" ") ? "" : " capitalize"}`))
+      .map((k) => chip(displayKeyword(k, industry), "px-2.5 py-1 rounded-lg bg-card border border-border text-sm text-foreground capitalize"))
       .join("")}</div>`;
   const pill = (href, text) =>
     `<a href="${href}" class="px-3 py-1.5 rounded-full border border-border text-muted-foreground hover:text-foreground transition-colors">${esc(text)}</a>`;
@@ -1489,13 +1495,17 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
     const note = D.SCREENER_NOTES[slug];
     const related = Object.keys(D.INDUSTRY_KEYWORDS).filter((s) => s !== slug).sort().slice(0, 8);
     const industryFaqs = D.buildIndustryFaqs({ name, keywords, certifications: certs, screenerNote: note });
+    const head = D.industryKeywordsHead(slug, keywords);
+    const lower = inSentence(name);
     write({
       path: `/industries/${slug}`,
       // hreflang must be declared on BOTH sides of a language pair or
       // crawlers ignore it — the ES pages already point here.
       hreflang: D.ES_INDUSTRIES[slug] ? { en: `/industries/${slug}`, es: `/es/industrias/${slug}` } : null,
-      title: `${name} Resume Keywords — What ATS Systems Look For`,
-      description: listDesc(keywords.map(displayKeyword), " and more: ", `the keywords, job titles and certifications our scanner checks on ${name.toLowerCase()} resumes. Free scan included.`),
+      // The head React's /industries page prints (src/lib/seo/keyword-pages.ts):
+      // the field's name first, so no two pages share a description.
+      title: head.title,
+      description: head.description,
       jsonLd: [
         breadcrumbLd([{ name: "Home", path: "/" }, { name: "Industries", path: "/industries" }, { name, path: `/industries/${slug}` }]),
         ...(industryFaqs.length ? [faqLd(industryFaqs)] : []),
@@ -1503,19 +1513,19 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
       content: `
         ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Industries", href: "/industries" }, { name }])}
         <h1 class="text-3xl font-bold mb-3">${esc(name)} Resume Keywords &amp; ATS Expectations</h1>
-        <p class="text-muted-foreground mb-8">This isn't an article — it's the live data our resume scanner uses to analyze ${esc(name.toLowerCase())} resumes. When the engine improves, this page updates with it.</p>
+        <p class="text-muted-foreground mb-8">This isn't an article — it's the live data our resume scanner uses to analyze ${esc(lower)} resumes. When the engine improves, this page updates with it.</p>
         ${onetBlock(onet)}
-        <section class="mb-8"><h2 class="text-xl font-bold mb-2">Keywords ATS systems expect on ${esc(name.toLowerCase())} resumes</h2>${kwChips(keywords)}</section>
-        <section class="mb-8"><h2 class="text-xl font-bold mb-2">Job titles recruiters recognize in this field</h2>${chips(titles, "px-2.5 py-1 rounded-lg bg-card border border-border text-sm text-muted-foreground capitalize")}</section>
-        ${certs.length ? `<section class="mb-8"><h2 class="text-xl font-bold mb-2">Certifications that anchor a ${esc(name.toLowerCase())} resume</h2>${chips(certs, "px-2.5 py-1 rounded-lg bg-success/5 border border-success/25 text-sm text-foreground uppercase")}</section>` : ""}
-        ${subs.length ? `<section class="mb-8"><h2 class="text-xl font-bold mb-2">Specializations our scanner distinguishes within ${esc(name.toLowerCase())}</h2><div class="space-y-2">${subs.map((sub) => `<div class="rounded-xl border border-border bg-card p-3"><p class="text-sm font-medium text-foreground">${esc(sub.label)}</p><p class="text-xs text-muted-foreground capitalize">Signals: ${esc(sub.signals.slice(0, 6).join(", "))}</p></div>`).join("")}</div></section>` : ""}
-        ${note ? `<section class="rounded-2xl border border-warning/30 bg-warning/5 p-5 mb-8"><h2 class="font-semibold text-foreground mb-1">What screeners check first in ${esc(name.toLowerCase())}</h2><p class="text-sm text-muted-foreground">${esc(note)}</p></section>` : ""}
+        <section class="mb-8"><h2 class="text-xl font-bold mb-2">Keywords ATS systems expect on ${esc(lower)} resumes</h2>${kwChips(keywords, slug)}</section>
+        <section class="mb-8"><h2 class="text-xl font-bold mb-2">Job titles recruiters recognize in this field</h2>${chips(titles.map((t) => displayKeyword(t, slug)), "px-2.5 py-1 rounded-lg bg-card border border-border text-sm text-muted-foreground capitalize")}</section>
+        ${certs.length ? `<section class="mb-8"><h2 class="text-xl font-bold mb-2">Certifications that anchor a ${esc(lower)} resume</h2>${chips(certs, "px-2.5 py-1 rounded-lg bg-success/5 border border-success/25 text-sm text-foreground uppercase")}</section>` : ""}
+        ${subs.length ? `<section class="mb-8"><h2 class="text-xl font-bold mb-2">Specializations our scanner distinguishes within ${esc(lower)}</h2><div class="space-y-2">${subs.map((sub) => `<div class="rounded-xl border border-border bg-card p-3"><p class="text-sm font-medium text-foreground">${esc(sub.label)}</p><p class="text-xs text-muted-foreground capitalize">Signals: ${esc(sub.signals.slice(0, 6).join(", "))}</p></div>`).join("")}</div></section>` : ""}
+        ${note ? `<section class="rounded-2xl border border-warning/30 bg-warning/5 p-5 mb-8"><h2 class="font-semibold text-foreground mb-1">What screeners check first in ${esc(lower)}</h2><p class="text-sm text-muted-foreground">${esc(note)}</p></section>` : ""}
         ${industryFaqs.length ? `<section class="mb-8"><h2 class="text-xl font-bold mb-3">Common questions</h2><div class="space-y-3">${industryFaqs.map((f) => `<div class="rounded-2xl border border-border bg-card p-4"><h3 class="font-semibold text-foreground text-sm mb-1.5">${esc(f.q)}</h3><p class="text-xs text-muted-foreground leading-relaxed">${esc(f.a)}</p></div>`).join("")}</div></section>` : ""}
         ${cta(`See how your resume scores against this data — free`, "A full diagnostic report in seconds: missing keywords, ATS parsing, weakest bullets rewritten, and a fix plan. No signup; your resume is deleted within 7 days.", "Scan my resume free")}
         ${D.ES_INDUSTRIES[slug] ? `<p class="text-xs text-muted-foreground mb-4"><a href="/es/industrias/${slug}" class="text-primary">Versión en español →</a></p>` : ""}
         ${roles.length ? `<section class="mt-8"><h2 class="text-xl font-bold mb-2">Role-specific keyword guides</h2><div class="flex flex-wrap gap-1.5">${roles.map((r) => `<a href="/roles/${r.slug}" class="px-3 py-1.5 rounded-full border border-primary/40 text-primary text-sm">${esc(r.title)} resume keywords →</a>`).join("")}</div></section>` : ""}
         <nav class="mt-8 flex flex-wrap gap-2 text-xs">${related.map((s) => pill(`/industries/${s}`, `${label(s)} keywords →`)).join("")}${pill("/industries", "All industries")}</nav>
-        <p class="text-xs text-muted-foreground mt-8">Methodology: keyword and title lists come directly from the detection tables our scanner runs on every ${esc(name.toLowerCase())} resume, validated by a pinned regression suite. O*NET data is public domain from the U.S. Department of Labor. See <a href="/methodology" class="underline">our methodology</a>.</p>`,
+        <p class="text-xs text-muted-foreground mt-8">Methodology: keyword and title lists come directly from the detection tables our scanner runs on every ${esc(lower)} resume, validated by a pinned regression suite. O*NET data is public domain from the U.S. Department of Labor. See <a href="/methodology" class="underline">our methodology</a>.</p>`,
     });
   }
 
@@ -1533,22 +1543,23 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
     const copy = D.roleListCopy(role.title, indName);
     const relatedTitles = uniq(data.titles).filter((t) => t.toLowerCase() !== role.title.toLowerCase()).slice(0, 10);
     const siblings = D.rolesForIndustry(role.industry).filter((r) => r.slug !== role.slug);
+    const head = D.roleKeywordsHead(role.title, role.industry, keywords);
     write({
       path: `/roles/${role.slug}`,
-      title: `${role.title} Resume Keywords — What ATS Systems Look For`.length > 68 ? `${role.title} Resume Keywords — ATS Guide` : `${role.title} Resume Keywords — What ATS Systems Look For`,
-      description: listDesc(keywords.slice(0, 5).map(displayKeyword), " and more: ", `the keywords, certifications and titles our scanner checks on ${role.title.toLowerCase()} resumes. Free ATS scan included.`),
+      title: head.title,
+      description: head.description,
       jsonLd: [breadcrumbLd([{ name: "Home", path: "/" }, { name: "Industries", path: "/industries" }, { name: indName, path: `/industries/${role.industry}` }, { name: role.title, path: `/roles/${role.slug}` }])],
       content: `
         ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Industries", href: "/industries" }, { name: indName, href: `/industries/${role.industry}` }, { name: role.title }])}
         <h1 class="text-3xl font-bold mb-3">${esc(role.title)} Resume Keywords &amp; ATS Expectations</h1>
         <p class="text-muted-foreground mb-8">${esc(copy.intro)}</p>
         ${onetBlock(onet)}
-        <section class="mb-8"><h2 class="text-xl font-bold mb-2">${esc(copy.keywordsHeading)}</h2>${kwChips(keywords)}</section>
+        <section class="mb-8"><h2 class="text-xl font-bold mb-2">${esc(copy.keywordsHeading)}</h2>${kwChips(keywords, role.industry)}</section>
         ${certs.length ? `<section class="mb-8"><h2 class="text-xl font-bold mb-2">${esc(copy.certsHeading)}</h2>${chips(certs, "px-2.5 py-1 rounded-lg bg-success/5 border border-success/25 text-sm text-foreground uppercase")}</section>` : ""}
-        ${relatedTitles.length ? `<section class="mb-8"><h2 class="text-xl font-bold mb-2">Adjacent titles recruiters search alongside "${esc(role.title)}"</h2>${chips(relatedTitles, "px-2.5 py-1 rounded-lg bg-card border border-border text-sm text-muted-foreground capitalize")}</section>` : ""}
-        ${cta(`Scan your ${role.title.toLowerCase()} resume against this data — free`, "A full diagnostic report in seconds: missing keywords, ATS parsing, weakest bullets rewritten, and a fix plan. No signup; your resume is deleted within 7 days.", "Scan my resume free")}
+        ${relatedTitles.length ? `<section class="mb-8"><h2 class="text-xl font-bold mb-2">Adjacent titles recruiters search alongside "${esc(role.title)}"</h2>${chips(relatedTitles.map((t) => displayKeyword(t, role.industry)), "px-2.5 py-1 rounded-lg bg-card border border-border text-sm text-muted-foreground capitalize")}</section>` : ""}
+        ${cta(`Scan your ${inSentence(role.title)} resume against this data — free`, "A full diagnostic report in seconds: missing keywords, ATS parsing, weakest bullets rewritten, and a fix plan. No signup; your resume is deleted within 7 days.", "Scan my resume free")}
         <nav class="mt-8 flex flex-wrap gap-2 text-xs">${siblings.map((r) => pill(`/roles/${r.slug}`, `${r.title} keywords →`)).join("")}${pill(`/industries/${role.industry}`, `All ${indName} keywords →`)}</nav>
-        <p class="text-xs text-muted-foreground mt-8">Methodology: these lists come directly from the detection tables our scanner runs on every ${esc(indName.toLowerCase())} resume, validated by a pinned regression suite. See <a href="/methodology" class="underline">our methodology</a>.</p>`,
+        <p class="text-xs text-muted-foreground mt-8">Methodology: these lists come directly from the detection tables our scanner runs on every ${esc(inSentence(indName))} resume, validated by a pinned regression suite. See <a href="/methodology" class="underline">our methodology</a>.</p>`,
     });
   }
 
@@ -1960,7 +1971,7 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
     // The CTA goes to the scan page in the page's own language where there is
     // one (SEO-034), and every {name} is filled in the form its phrase needs
     // ("in the United States", "no Brasil", "in der Schweiz": D.cvFill).
-    const sectionHtml = (t, std, notes, name, locale = "en") => `
+    const sectionHtml = (t, std, notes, name, locale = "en", faqs = []) => `
       <div class="grid sm:grid-cols-2 gap-3 mb-8">
         <div class="rounded-xl border border-border bg-card p-4"><h2 class="text-sm font-semibold mb-1">${esc(t.docTermLabel)}</h2><p class="font-medium">${esc(std.docTerm)}</p><p class="text-xs text-muted-foreground mt-1">${esc(t.paperLabel)}: ${esc(std.paper)}</p></div>
         <div class="rounded-xl border border-border bg-card p-4"><h2 class="text-sm font-semibold mb-1">${esc(t.lengthLabel)}</h2><p class="font-medium">${esc(notes.lengthNote)}</p></div>
@@ -1968,6 +1979,7 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
       <section class="rounded-2xl border border-primary/25 bg-primary/5 p-5 mb-8"><h2 class="text-lg font-bold mb-1">${esc(t.photoLabel)} <span class="ml-2 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold">${esc(t.photoNorms[std.photo])}</span></h2><p class="text-sm text-muted-foreground">${esc(notes.photoNote)}</p></section>
       <section class="mb-8"><h2 class="text-lg font-bold mb-1">${esc(t.personalLabel)}</h2><p class="text-sm text-muted-foreground">${esc(notes.personalDataNote)}</p></section>
       ${notes.conventions.length ? `<section class="mb-8"><h2 class="text-lg font-bold mb-2">${esc(t.conventionsLabel)}</h2><ul class="space-y-2 text-sm text-muted-foreground">${notes.conventions.map((c) => `<li>• ${esc(c)}</li>`).join("")}</ul></section>` : ""}
+      ${faqs.length ? `<section class="mb-10"><h2 class="text-lg font-bold mb-3">${esc(t.faqHeading)}</h2>${faqs.map((f) => `<div class="rounded-2xl border border-border bg-card p-4 mb-3"><h3 class="font-semibold text-sm mb-1.5">${esc(f.q)}</h3><p class="text-sm text-muted-foreground">${esc(f.a)}</p></div>`).join("")}</section>` : ""}
       <section class="rounded-2xl border-2 border-primary bg-card p-6 text-center"><h2 class="text-xl font-bold mb-2">${esc(t.ctaTitle)}</h2><p class="text-sm text-muted-foreground mb-4">${esc(D.cvFill(t.ctaText, { name }, locale))}</p><a href="${locale === "es" ? "/es/revisar-curriculum" : "/"}" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm">${esc(t.ctaButton)}</a></section>
       <p class="text-[11px] text-muted-foreground mt-6">${esc(t.sourceNote)}</p>`;
 
@@ -1978,6 +1990,9 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
       const name = std.name;
       const vars = { name, docTerm: std.docTerm };
       const notes = { lengthNote: std.lengthNote, photoNote: std.photoNote, personalDataNote: std.personalDataNote, conventions: std.conventions };
+      // SEO-032: the two questions the FAQ markup asks are on the page too,
+      // from the one array React's page prints (src/lib/cv-country-phrase.ts).
+      const faqs = D.cvStandardsFaqs("en", t, { name, docTerm: std.docTerm, photo: std.photo, photoNote: notes.photoNote, lengthNote: notes.lengthNote });
       write({
         path: `/cv-standards/${D.COUNTRY_SLUGS[iso]}`,
         hreflang: D.hreflangCluster(iso),
@@ -1985,17 +2000,14 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
         description: fitDesc(D.cvFill(t.metaDescription, vars, "en"), D.cvFill("Photo norms, expected length, and personal-data rules for a {docTerm} in {name}.", vars, "en")),
         jsonLd: [
           breadcrumbLd([{ name: "Home", path: "/" }, { name: "CV Standards", path: "/cv-standards" }, { name, path: `/cv-standards/${D.COUNTRY_SLUGS[iso]}` }]),
-          faqLd([
-            { q: D.cvFill(t.faqPhoto, vars, "en"), a: `${t.photoNorms[std.photo]}. ${std.photoNote}` },
-            { q: D.cvFill(t.faqLength, vars, "en"), a: std.lengthNote },
-          ]),
+          faqLd(faqs),
         ],
         content: `
           ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "CV Standards", href: "/cv-standards" }, { name }])}
           <h1 class="text-3xl font-bold mb-3">${esc(D.cvFill(t.h1, vars, "en"))}</h1>
           <p class="text-muted-foreground mb-8">${esc(D.cvFill(t.intro, vars, "en"))}</p>
           ${(() => { const cl = D.hreflangCluster(iso); const names = { es: "Español", fr: "Français", de: "Deutsch", pt: "Português", nl: "Nederlands" }; const alts = Object.entries(cl).filter(([l]) => l !== "en"); return alts.length ? `<p class="text-xs text-muted-foreground mb-6">${alts.map(([l, href]) => `<a href="${href}" class="text-primary mr-3">${names[l] ?? l} →</a>`).join("")}</p>` : ""; })()}
-          ${sectionHtml(t, std, notes, name)}`,
+          ${sectionHtml(t, std, notes, name, "en", faqs)}`,
       });
     }
 
@@ -2008,21 +2020,19 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
         const t = cfg.t;
         const name = notes.countryName;
         const vars = { name, docTerm: std.docTerm };
+        const faqs = D.cvStandardsFaqs(locale, t, { name, docTerm: std.docTerm, photo: std.photo, photoNote: notes.photoNote, lengthNote: notes.lengthNote });
         write({
           path: `/${cfg.pathBase}/${slug}`,
           lang: cfg.htmlLang,
           hreflang: D.hreflangCluster(iso),
           title: D.cvFill(t.title, vars, locale),
           description: D.cvFill(t.metaDescription, vars, locale),
-          jsonLd: [faqLd([
-            { q: D.cvFill(t.faqPhoto, vars, locale), a: `${t.photoNorms[std.photo]}. ${notes.photoNote}` },
-            { q: D.cvFill(t.faqLength, vars, locale), a: notes.lengthNote },
-          ])],
+          jsonLd: [faqLd(faqs)],
           content: `
             <h1 class="text-3xl font-bold mb-3">${esc(D.cvFill(t.h1, vars, locale))}</h1>
             <p class="text-muted-foreground mb-8">${esc(D.cvFill(t.intro, vars, locale))}</p>
             <p class="text-xs text-muted-foreground mb-6"><a href="/cv-standards/${D.COUNTRY_SLUGS[iso]}" class="text-primary">English version →</a></p>
-            ${sectionHtml(t, std, notes, name, locale)}`,
+            ${sectionHtml(t, std, notes, name, locale, faqs)}`,
         });
       }
     }
@@ -2099,6 +2109,14 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
     const p = landerByToken.get(pageToken) ?? c;
     return { name: p.name, href: publicHref(`/jobs/company/${p.token}`) };
   };
+  // THE SAME ANSWER, FOR THE APP (SEO-010). React cannot know which boards
+  // have a page: the bake runs after the bundle is hashed. It reads this file
+  // (src/lib/seo/lander-manifest.ts) and links /jobs?company=<token> for any
+  // board the file does not name, so a crawler that runs scripts is never
+  // sent to an address that serves the homepage's copy.
+  const landersManifest = Object.fromEntries(LANDERS.map((c) => [c.token, landerFor(c.token)?.href ?? null]));
+  writeFileSync(join(dist, "landers.json"), JSON.stringify(landersManifest));
+  console.log(`[prerender-seo] /landers.json written: ${Object.values(landersManifest).filter(Boolean).length} of ${LANDERS.length} chosen boards name a page`);
   /** The href a data-page table or a posting uses for an employer board. */
   const companyHrefFor = (token) => landerFor(token)?.href ?? `/jobs?company=${encodeURIComponent(String(token ?? ""))}`;
   const companyLinkHtml = (token, name) => {
@@ -2479,6 +2497,12 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
       // carries none (SEO-016), so the log counts the visible line.
       let withPay = 0;
       let countryMismatch = 0;
+      // NO TWO POSTING PAGES SHARE A TITLE (the CI parity test found two live
+      // postings under one title after the 2026-10-18 publish): each written
+      // title is remembered, and a later page that would repeat one carries
+      // its requisition key instead (postingPageTitleAvoiding).
+      const postingTitlesTaken = new Set();
+      let titlesDisambiguated = 0;
       for (const { job, description, first, carried } of detailed) {
         const path = D.postingPagePath(job.id);
         const ld = D.postingJsonLd(job, description, { site: SITE });
@@ -2527,7 +2551,12 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
           ...(lang && lang !== "en" ? { lang } : {}),
           // The page's own sentences, for the banned-phrase check; never the employer's text.
           ownText: `${D.postingPageDescription(job)} ${ownSentence} the application happens on ${possessive(nm)} own hiring system; this board only links to it.`,
-          title: D.postingPageTitle(job),
+          title: (() => {
+            const t = D.postingPageTitleAvoiding(job, postingTitlesTaken);
+            if (t !== D.postingPageTitle(job)) titlesDisambiguated++;
+            postingTitlesTaken.add(t);
+            return t;
+          })(),
           description: D.postingPageDescription(job),
           content: `
             <p><a href="/jobs">All openings</a></p>
@@ -2591,7 +2620,7 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
             </ul>
           </section>`;
       }
-      console.log(`[prerender-seo] posting pages: carried ${carriedPaths.length} / live ${postingPaths.length} of a ceiling of ${POSTING_PAGE_CEILING} (${carriedLive} carried, ${freshWritten} new from a pool of ${pool.length}, ${eligible.length} eligible, ${freshNameRefused} new refused for an employer name that cannot be printed) / gone ${stubCount("gone")} / retired ${stubCount("retired")} / seeded ${stubCount("seeded")} (published before the ledger, never re-read; ${seededPostings.added} added this bake) / unchecked ${stubCount("unchecked")} / tombstones ${stubCount("tombstone")}; ${withPay} show employer-stated pay on the page (none in the markup); fresh budget ${freshBudget} (carried live ${carriedLive}, ceiling ${POSTING_PAGE_CEILING}; ${retiredExpiring} expiring within ${POSTING_EXPIRY_NEAR_DAYS} days gave way to the reserve); ${countryMismatch} with a location ending in another country (job markup withheld; a carried one keeps its page under D7 and is on the dry run); carry base: live sitemap ${liveSitemap ? "read" : "UNREAD"}, ledger ${ledgerSource}`);
+      console.log(`[prerender-seo] posting pages: carried ${carriedPaths.length} / live ${postingPaths.length} of a ceiling of ${POSTING_PAGE_CEILING} (${carriedLive} carried, ${freshWritten} new from a pool of ${pool.length}, ${eligible.length} eligible, ${freshNameRefused} new refused for an employer name that cannot be printed) / gone ${stubCount("gone")} / retired ${stubCount("retired")} / seeded ${stubCount("seeded")} (published before the ledger, never re-read; ${seededPostings.added} added this bake) / unchecked ${stubCount("unchecked")} / tombstones ${stubCount("tombstone")}; ${withPay} show employer-stated pay on the page (none in the markup); ${titlesDisambiguated} titles took a requisition key to stay unique; fresh budget ${freshBudget} (carried live ${carriedLive}, ceiling ${POSTING_PAGE_CEILING}; ${retiredExpiring} expiring within ${POSTING_EXPIRY_NEAR_DAYS} days gave way to the reserve); ${countryMismatch} with a location ending in another country (job markup withheld; a carried one keeps its page under D7 and is on the dry run); carry base: live sitemap ${liveSitemap ? "read" : "UNREAD"}, ledger ${ledgerSource}`);
       // A carried page the board did not answer for is the symptom to look at
       // first: it is an "unchecked" noindex page until a later bake reaches it.
       if (stubCount("unchecked")) {
@@ -2807,25 +2836,26 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
         // time limit and the publish failed. Past the deadline, or after a
         // run of consecutive failures, the remaining pages state no places or
         // fields — the same graceful outcome as a single failed read.
-        const intelDeadline = Date.now() + 90_000;
-        let intelFailRun = 0;
-        let intelSkipped = 0;
-        for (let i = 0; i < intelAsked.length; i += 6) {
-          if (Date.now() > intelDeadline || intelFailRun >= 18) { intelSkipped = intelAsked.length - i; break; }
-          await Promise.all(intelAsked.slice(i, i + 6).map(async (c) => {
-            try {
-              const r = await fetch(`${supaUrl6}/rest/v1/rpc/get_company_intel`, {
-                method: "POST",
-                headers: { apikey: supaKey6, Authorization: `Bearer ${supaKey6}`, "Content-Type": "application/json" },
-                body: JSON.stringify({ p_token: c.token }),
-                signal: AbortSignal.timeout(8000),
-              });
-              const j = r.ok ? await r.json() : null;
-              if (j && typeof j === "object" && !Array.isArray(j)) { intelOf.set(c.token, j); intelFailRun = 0; }
-              else intelFailRun++;
-            } catch { intelFailRun++; /* that page states no places or fields */ }
-          }));
-        }
+        // The loop is readCompanyIntel (prerender-pages.mjs), with the same
+        // 90-second deadline, 18-failure stop, batches of 6 and 8-second
+        // timeout, so a test can run the deadline path. A page whose intel is
+        // missing is still written below, stating no places or fields.
+        const { intelOf: intelRead, skipped: intelSkipped } = await readCompanyIntel({
+          tokens: intelAsked.map((c) => c.token),
+          deadlineMs: 90_000,
+          maxFailRun: 18,
+          batch: 6,
+          fetchIntel: async (token) => {
+            const r = await fetch(`${supaUrl6}/rest/v1/rpc/get_company_intel`, {
+              method: "POST",
+              headers: { apikey: supaKey6, Authorization: `Bearer ${supaKey6}`, "Content-Type": "application/json" },
+              body: JSON.stringify({ p_token: token }),
+              signal: AbortSignal.timeout(8000),
+            });
+            return r.ok ? await r.json() : null;
+          },
+        });
+        for (const [t, j] of intelRead) intelOf.set(t, j);
         if (intelSkipped) console.warn(`[prerender-seo] company intel: stopped early (deadline or repeated failures) — ${intelSkipped} of ${intelAsked.length} employer pages state no places or fields this bake`);
       }
       // Each employer's listing: the never-read and oldest first, one board
@@ -3412,20 +3442,11 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
       path: "/methodology",
       title: M.metaTitle || "Methodology — How Resume Booster Scores Resumes",
       description: M.metaDescription,
+      // SEO-031: the breadcrumb only. The page's steps were also marked up as
+      // a how-to entity, which Google no longer shows and which React's own
+      // copy duplicated after hydration with different text.
       jsonLd: [
         breadcrumbLd([{ name: "Home", path: "/" }, { name: "Methodology", path: "/methodology" }]),
-        {
-          "@context": "https://schema.org",
-          "@type": "HowTo",
-          name: "How Resume Booster analyzes your resume",
-          description: fillM(M.heroSubtitle),
-          step: Object.values(steps).map((s, i) => ({
-            "@type": "HowToStep",
-            position: i + 1,
-            name: s.title,
-            text: s.description,
-          })),
-        },
       ],
       content: `
         ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Methodology" }])}
@@ -4110,8 +4131,9 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
   // snapshot and sentences every other page uses, and it is linked from the
   // footer, llms.txt and the sitemap. No legal name, address or contact
   // point: the owner has not supplied them (SEO-045), so the page names none.
-  // The app has no /about route yet (react hand-off), so a browser that runs
-  // the app renders its own page over this one.
+  // The app's own /about (src/pages/About.tsx) prints these sentences from
+  // the main locale's aboutPage keys. Neither promises that nothing is ever
+  // sent to an employer for anyone: the server-side apply agent is still live.
   {
     const snap = BOARD_SNAPSHOT;
     const fmtN = (n) => Number(n).toLocaleString("en-US");
@@ -4138,7 +4160,7 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
         <h1 class="text-3xl font-bold mb-3">About Resume Booster</h1>
         <p class="text-muted-foreground mb-6">Resume Booster, at resumebooster.work, is two things: a live job board of openings ${SOURCE_SENTENCE}, and a free resume scanner that shows how an applicant-tracking system reads your file. It is an independent site, not affiliated with any employer or hiring system it reads, and not the same product as resumebooster.io or ResumeBoostAI.</p>
         <section class="mb-8"><h2 class="text-xl font-bold mb-2">What the board is</h2>
-          <p class="text-sm text-muted-foreground">${snap.openTotal ? `${fmtN(snap.openTotal)} open postings` : "Open postings"}${snap.boards ? ` from ${fmtN(snap.boards)} company job boards with roles open` : ""} (${esc(asOfPhrase(snap))}), each ${BOARD_SOURCE_SENTENCE}. The boards come from ${D.SERVING_SOURCE_LIST}. A company job board is one employer's board on one hiring system, and one employer can run several, so the board count is not a count of employers. Applying always happens on the employer's own site; this site never submits an application.</p>
+          <p class="text-sm text-muted-foreground">${snap.openTotal ? `${fmtN(snap.openTotal)} open postings` : "Open postings"}${snap.boards ? ` from ${fmtN(snap.boards)} company job boards with roles open` : ""} (${esc(asOfPhrase(snap))}), each ${BOARD_SOURCE_SENTENCE}. The boards come from ${D.SERVING_SOURCE_LIST}. A company job board is one employer's board on one hiring system, and one employer can run several, so the board count is not a count of employers. Applying always happens on the employer's own site.</p>
         </section>
         <section class="mb-8"><h2 class="text-xl font-bold mb-2">How the counts are made</h2>
           <p class="text-sm text-muted-foreground">An open role is a posting the employer's own feed still serves whose date falls inside the last 30 days: the employer's own date, or for a posting with no date, the day we last saw it in the feed. Every count on this site says the day it was taken; a count printed on a page built from a saved reading says so. The feeds are re-read in a rotation, the largest boards most often, and how far behind the rotation runs is published on the <a href="/ghost-job-index">Ghost Job Index</a> as a measurement, not a promise. A posting coming down is logged as a takedown and never called a hire: a hire, a withdrawal and a cancelled requisition look the same from a feed. The scoring behind the resume scan is on the <a href="/methodology">methodology page</a>.</p>

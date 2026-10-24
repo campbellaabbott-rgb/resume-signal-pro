@@ -22,12 +22,19 @@ export const postingSourceSentence = (possessiveName) => `Read from ${possessive
 export const BOARD_SOURCE_SENTENCE = `${SOURCE_SENTENCE}; a staffing agency's board and a federal listing site, where the board carries one, are labelled as what they are`;
 
 /**
- * THE RE-CHECK, WITH ITS CONDITION (R6a). "The live board re-checks a posting
- * when you open it" sat unconditionally on 1,002 company pages and 500 posting
- * pages; the check runs only where the employer's system answers it, which is
- * what llms.txt already said.
+ * THE RE-CHECK, WITH ITS CONDITIONS (R6a, and one spelling with React, R6).
+ * "The live board re-checks a posting when you open it" sat unconditionally
+ * on 1,002 company pages and 500 posting pages. The live board asks the
+ * employer's system again only when our last read of that posting's feed is
+ * older than RECHECK_AFTER_HOURS (VERIFY_ON_VIEW_AFTER_HOURS in
+ * src/lib/seo/source-copy.ts, the threshold Jobs.tsx applies, held equal by
+ * src/test/seo-integration-one-re-check-sentence.test.ts), and only where
+ * that system answers a single-posting read. React's posting note
+ * (jobPostingPage.sourceNote) states the same rule; this clause completes
+ * "the live board …".
  */
-export const RECHECK_CLAUSE = "re-checks a posting when you open it, where the employer's system allows it";
+export const RECHECK_AFTER_HOURS = 6;
+export const RECHECK_CLAUSE = `asks the employer's system again when you open a posting whose feed it last read more than ${RECHECK_AFTER_HOURS} hours ago, where that system allows it`;
 
 /** The phrases no crawler page and no llms file may carry (R5a): each is a promise the board cannot keep for every row. */
 export const BANNED_SOURCE_PHRASES = [

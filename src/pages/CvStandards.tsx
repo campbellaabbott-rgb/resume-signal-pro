@@ -14,11 +14,10 @@ import {
   COUNTRY_SLUGS,
   CV_LOCALES,
   EN_TEMPLATE,
-  cvFill,
-  cvStandardsFaqs,
   isoFromSlug,
   hreflangCluster,
 } from "@/data/cv-standards-content";
+import { cvFill, cvStandardsFaqs } from "@/lib/cv-country-phrase";
 
 const SITE = "https://resumebooster.work";
 
@@ -56,7 +55,7 @@ export default function CvStandards({ locale }: CvStandardsProps) {
 
   return (
     <div className="min-h-screen bg-background">
-      <SEO title={cvFill(locale, t.title, vars)} description={cvFill(locale, t.metaDescription, vars)} path={path} />
+      <SEO title={cvFill(t.title, vars, locale)} description={cvFill(t.metaDescription, vars, locale)} path={path} />
       {Object.entries(cluster).map(([lang, href]) => (
         <link key={lang} rel="alternate" hrefLang={lang} href={`${SITE}${href}`} />
       ))}
@@ -69,8 +68,8 @@ export default function CvStandards({ locale }: CvStandardsProps) {
             <Link to="/cv-standards" className="hover:text-foreground">CV Standards</Link> /{" "}
             <span className="text-foreground">{name}</span>
           </nav>
-          <h1 className="text-3xl md:text-4xl font-bold mb-3">{cvFill(locale, t.h1, vars)}</h1>
-          <p className="text-muted-foreground mb-8">{cvFill(locale, t.intro, vars)}</p>
+          <h1 className="text-3xl md:text-4xl font-bold mb-3">{cvFill(t.h1, vars, locale)}</h1>
+          <p className="text-muted-foreground mb-8">{cvFill(t.intro, vars, locale)}</p>
           {/* Visible language links — hreflang alone isn't crawlable navigation */}
           {Object.keys(cluster).length > 1 && (
             <p className="text-xs text-muted-foreground -mt-4 mb-6">
@@ -154,7 +153,7 @@ export default function CvStandards({ locale }: CvStandardsProps) {
 
           <section className="rounded-2xl border-2 border-primary bg-card p-6 text-center">
             <h2 className="text-xl font-bold mb-2">{t.ctaTitle}</h2>
-            <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">{cvFill(locale, t.ctaText, vars)}</p>
+            <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">{cvFill(t.ctaText, vars, locale)}</p>
             <Button asChild className="gap-2">
               <Link to="/">
                 {t.ctaButton}

@@ -12,6 +12,7 @@
  * and the React page (src/pages/CvStandards.tsx) can call the same function.
  */
 import { fill } from "../data/cv-standards-content";
+import type { CvTemplateStrings } from "../data/cv-standards-content";
 
 /** English names that take "the". */
 const EN_THE = new Set(["United States", "United Kingdom", "Netherlands", "Philippines", "United Arab Emirates", "Czech Republic", "Bahamas", "Gambia"]);
@@ -61,4 +62,30 @@ export function cvFill(template: string, vars: { name: string; docTerm?: string 
     }
   }
   return fill(t, { ...vars, name, docTerm: vars.docTerm ?? "" });
+}
+
+/** The same rules over text already filled with `name`. */
+export function countryPhraseFix(locale: string | undefined, text: string, name: string): string {
+  return name ? cvFill(text.split(name).join("{name}"), { name }, locale ?? "en") : text;
+}
+
+/**
+ * THE TWO QUESTIONS A COUNTRY PAGE ANSWERS, FOR THE MARKUP AND THE PAGE ALIKE
+ * (SEO-032). The FAQPage block asked "Should a CV in … include a photo?" and
+ * "How long should a CV be in …?" on 73 pages that never showed either
+ * question. Both renderers (src/pages/CvStandards.tsx and the bake) print
+ * these as visible questions with their answers, and the markup is built
+ * from the same array.
+ */
+export function cvStandardsFaqs(
+  locale: string | undefined,
+  t: CvTemplateStrings,
+  facts: { name: string; docTerm: string; photo: keyof CvTemplateStrings["photoNorms"]; photoNote: string; lengthNote: string },
+): Array<{ q: string; a: string }> {
+  const vars = { name: facts.name, docTerm: facts.docTerm };
+  const lng = locale ?? "en";
+  return [
+    { q: cvFill(t.faqPhoto, vars, lng), a: `${t.photoNorms[facts.photo]}. ${facts.photoNote}` },
+    { q: cvFill(t.faqLength, vars, lng), a: facts.lengthNote },
+  ];
 }

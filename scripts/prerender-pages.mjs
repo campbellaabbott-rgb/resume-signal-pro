@@ -748,6 +748,37 @@ export const LANDER_OPENINGS_MAX_AGE_DAYS = 14;
 export const LANDER_OPENINGS_SHOWN = 10;
 export const LANDER_MIN_OPENINGS = 3;
 
+/**
+ * get_company_intel FOR EACH EMPLOYER PAGE, UNDER ONE DEADLINE (2026-10-18).
+ *
+ * When the RPC was slow, 500 employers at an 8-second timeout each ran past
+ * the publish build's time limit and the publish failed, so Lovable put a
+ * 90-second deadline on the whole phase and stopped after 18 failures in a
+ * row. Past either, the remaining employers get no intel. That never costs a
+ * page: a page with no intel states no places or fields (landerFacts of
+ * nothing is empty) and is written all the same, so an employer page the
+ * bake chose is never dropped because its intel read timed out or was never
+ * made. `fetchIntel(token)` answers the parsed body, or null on a refusal;
+ * `now` is the clock, injectable for the test.
+ */
+export async function readCompanyIntel({ tokens, fetchIntel, deadlineMs = 90_000, maxFailRun = 18, batch = 6, now = Date.now }) {
+  const intelOf = new Map();
+  const deadline = now() + deadlineMs;
+  let failRun = 0;
+  let skipped = 0;
+  for (let i = 0; i < tokens.length; i += batch) {
+    if (now() > deadline || failRun >= maxFailRun) { skipped = tokens.length - i; break; }
+    await Promise.all(tokens.slice(i, i + batch).map(async (token) => {
+      try {
+        const j = await fetchIntel(token);
+        if (j && typeof j === "object" && !Array.isArray(j)) { intelOf.set(token, j); failRun = 0; }
+        else failRun++;
+      } catch { failRun++; }
+    }));
+  }
+  return { intelOf, skipped };
+}
+
 /** Up to three named places and three named fields from one get_company_intel answer. */
 export function landerFacts(intel, { countryName, fieldLabel }) {
   const rows = (v, key) => (Array.isArray(v) ? v : [])
@@ -951,6 +982,11 @@ export function companyLanderPage({ token, name, primaryToken, robots = null, ca
   // own; the listing site's agencies'; an agency's clients'.
   const where = usajobs ? "Where these federal openings are" : agency ? `Where ${esc(poss)} listed roles are` : `Where ${esc(poss)} open roles are`;
   const fieldsHead = usajobs ? "The fields these federal openings are in" : agency ? `The fields ${esc(poss)} roles are listed in` : `The fields ${esc(nm)} is hiring in`;
+  // WHOSE COUNTS THE PLACES AND FIELDS ARE (S13-116). get_company_intel reads
+  // the whole hiring system a board sits on (every career site of a Workday
+  // tenant), so on a sub-site page "on this board" credited the tenant's
+  // countries and fields to one site. The sentence names the scope it read.
+  const factsScope = usajobs ? "across USAJOBS" : `across ${esc(poss)} hiring system`;
   // A row with a page of its own is linked; any other row is text, and the
   // page's one link to the live board (below) is how a reader opens it.
   const openingRow = (p) => (typeof p.href === "string" && p.href
@@ -959,11 +995,11 @@ export function companyLanderPage({ token, name, primaryToken, robots = null, ca
   const factsHtml = [
     facts?.countries?.length
       ? `<h2>${where}</h2>
-            <p>The countries holding the most of its roles on this board: ${facts.countries.map((x) => `<a href="${href}?country=${encodeURIComponent(x.code)}">${esc(x.name)}</a>`).join(", ")}.</p>`
+            <p>The countries holding the most of its roles ${factsScope}: ${facts.countries.map((x) => `<a href="${href}?country=${encodeURIComponent(x.code)}">${esc(x.name)}</a>`).join(", ")}.</p>`
       : "",
     facts?.fields?.length
       ? `<h2>${fieldsHead}</h2>
-            <p>The fields holding the most of its roles on this board: ${facts.fields.map((x) => `<a href="${href}?category=${encodeURIComponent(x.slug)}">${esc(x.label)}</a>`).join(", ")}. Fields are our own sorting of each posting's title, never a label the employer applied.</p>`
+            <p>The fields holding the most of its roles ${factsScope}: ${facts.fields.map((x) => `<a href="${href}?category=${encodeURIComponent(x.slug)}">${esc(x.label)}</a>`).join(", ")}. Fields are our own sorting of each posting's title, never a label the employer applied.</p>`
       : "",
     openings.length
       ? `<h2>${usajobs ? "Openings listed on USAJOBS" : collided ? "Openings on these boards" : agency ? `Roles listed by ${esc(nm)}` : `Openings at ${esc(nm)}`}</h2>

@@ -277,3 +277,83 @@ describe("no page in the bake carries pay in its job markup", () => {
     expect(existsSync(join(DIST, "llms.txt"))).toBe(true);
   });
 });
+
+// ---- Integration round (2026-10-24): the hand-offs the builders left for the bake ----
+
+const titleOf = (h: string) => (/<title>([^<]*)<\/title>/.exec(h) || [])[1] ?? "";
+const typesOf = (h: string) => jsonLdBlocks(h).map((b) => (b as { "@type"?: string })["@type"]);
+
+describe("SEO-010: /landers.json names the page of every board the bake chose, and a bake with no intel still writes each one", () => {
+  it("every board it names has a written page with its own title and canonical", () => {
+    const manifest = JSON.parse(readFileSync(join(DIST, "landers.json"), "utf8")) as Record<string, string | null>;
+    const named = Object.entries(manifest).filter(([, v]) => typeof v === "string") as Array<[string, string]>;
+    expect(named.length).toBeGreaterThan(100);
+    const home = titleOf(page("/"));
+    const missing: string[] = [];
+    for (const [token, href] of named) {
+      expect(href.startsWith("/jobs/company/"), `${token} -> ${href}`).toBe(true);
+      let h = "";
+      try { h = page(href); } catch { missing.push(href); continue; }
+      if (!titleOf(h) || titleOf(h) === home || canonOf(h) === `${SITE}/`) missing.push(href);
+    }
+    expect(missing).toEqual([]);
+    // This bake is offline: it asked get_company_intel for nobody, and wrote the pages anyway.
+    expect(LOG).toMatch(/intel read for 0 of \d+/);
+  });
+});
+
+describe("SEO-031: /methodology states no how-to entity", () => {
+  it("carries only its breadcrumb", () => {
+    const types = typesOf(page("/methodology"));
+    expect(types).not.toContain("HowTo");
+    expect(types).toContain("BreadcrumbList");
+  });
+});
+
+describe("SEO-032: a CV-standards page shows the questions its FAQ markup asks", () => {
+  it.each(["/cv-standards/united-states", "/cv-standards/germany"])("%s", (path) => {
+    const h = page(path);
+    const faq = jsonLdBlocks(h).find((b) => (b as { "@type"?: string })["@type"] === "FAQPage") as { mainEntity: Array<{ name: string }> } | undefined;
+    expect(faq?.mainEntity.length).toBe(2);
+    const visible = [...h.matchAll(/<h3[^>]*>([^<]*)<\/h3>/g)].map((m) => m[1].replace(/&amp;/g, "&").replace(/&#39;/g, "'").replace(/&quot;/g, '"'));
+    for (const q of faq!.mainEntity) expect(visible).toContain(q.name);
+  });
+});
+
+describe("SEO-019 / S13-089: keyword pages case acronyms only, and no two share a description", () => {
+  it("/industries/hr is HR, no chip shouts a plain word, and the keyword pages' descriptions are unique", () => {
+    expect(titleOf(page("/industries/hr"))).toBe("HR Resume Keywords — What ATS Systems Look For");
+    const descs = new Map<string, string[]>();
+    for (const rel of filesUnder(DIST).filter((f) => /^(industries|roles)\/[^/]+\/index\.html$/.test(f))) {
+      const h = readFileSync(join(DIST, rel), "utf8");
+      expect(h, rel).not.toMatch(/>(WIND|SPAY|SOPS|APIS|RFIS)</);
+      const d = descOf(h) ?? "";
+      descs.set(d, [...(descs.get(d) ?? []), rel]);
+    }
+    expect(descs.size).toBeGreaterThan(200);
+    expect([...descs.values()].filter((v) => v.length > 1)).toEqual([]);
+  });
+});
+
+describe("S13-116: a company page says whose places and fields it prints", () => {
+  it("never credits them to 'this board'", () => {
+    const companies = filesUnder(DIST).filter((f) => f.startsWith("jobs/company/") && f.endsWith("index.html"));
+    expect(companies.length).toBeGreaterThan(100);
+    expect(companies.filter((f) => /most of its roles on this board/.test(readFileSync(join(DIST, f), "utf8")))).toEqual([]);
+  });
+});
+
+describe("no two sitemap pages share a title", () => {
+  it("holds over every URL the sitemap lists", () => {
+    const byTitle = new Map<string, string[]>();
+    let read = 0;
+    for (const p of sitemapPaths()) {
+      let h = "";
+      try { h = page(p); } catch { continue; }
+      read++;
+      byTitle.set(titleOf(h), [...(byTitle.get(titleOf(h)) ?? []), p]);
+    }
+    expect(read).toBeGreaterThan(500);
+    expect([...byTitle.entries()].filter(([, v]) => v.length > 1)).toEqual([]);
+  });
+});

@@ -1,8 +1,10 @@
 /**
  * The employer name the prerendered company lander carried in its <h1>.
  *
- * createRoot replaces the baked markup on the first render, so main.tsx reads
- * the name here, before it is gone. Kept free of imports so the entry bundle
+ * The baked markup stays on screen until the route's first real commit
+ * (src/lib/keep-prerendered-page.ts) and is removed then, and React's own
+ * mount node sits first inside #root, so main.tsx reads the name here,
+ * before React mounts and before the baked nodes go. Kept free of imports so the entry bundle
  * pays nothing for it; src/lib/display-name.ts cleans the text when it reads
  * it back.
  */

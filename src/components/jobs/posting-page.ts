@@ -988,6 +988,35 @@ export function postingPageTitle(job: PostingRow): string {
   return `${clip(title, TITLE_MIN_ROOM)}${TITLE_SEP}${key}`;
 }
 
+/**
+ * THE TITLE, DIFFERENT FROM EVERY TITLE THE BAKE HAS ALREADY GIVEN A POSTING.
+ *
+ * postingPageTitle's first half keeps the place and drops the employer when
+ * both do not fit beside a whole job title, so two employers' identical
+ * titles in one city ("Registered Nurse - ICU Night Shift — Boston, MA")
+ * render one title for two different jobs, and a sitemap carrying both is
+ * the duplicate Search Console reports. The bake passes the titles it has
+ * already written; a taken title gets the employer's requisition key as its
+ * tail (with the employer in front where it fits), and in the last resort
+ * the key in brackets, which is unique per URL by construction.
+ */
+export function postingPageTitleAvoiding(job: PostingRow, taken: ReadonlySet<string>): string {
+  const first = postingPageTitle(job);
+  if (!taken.has(first)) return first;
+  const title = postingText(job.title);
+  const company = job.company ? postingEmployer(job) : "";
+  const key = postingPathParts(job.id)?.key ?? "";
+  if (!key) return first;
+  for (const tail of [company ? `${company} ${key}` : "", key]) {
+    if (!tail) continue;
+    const room = TITLE_BUDGET - tail.length - TITLE_SEP.length;
+    if (room < TITLE_MIN_ROOM) continue;
+    const candidate = `${clip(title, room)}${TITLE_SEP}${tail}`;
+    if (!taken.has(candidate)) return candidate;
+  }
+  return `${first} (${key})`;
+}
+
 /** A search result's snippet is cut at about this length. */
 const DESCRIPTION_BUDGET = 160;
 

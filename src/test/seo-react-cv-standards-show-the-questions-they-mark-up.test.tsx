@@ -15,7 +15,8 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import CvStandards from "@/pages/CvStandards";
 import { COUNTRY_STANDARDS } from "../../supabase/functions/free-keyword-scan/country-standards";
-import { CV_LOCALES, EN_TEMPLATE, countryPhraseFix, cvFill, cvStandardsFaqs } from "@/data/cv-standards-content";
+import { CV_LOCALES, EN_TEMPLATE } from "@/data/cv-standards-content";
+import { countryPhraseFix, cvFill, cvStandardsFaqs } from "@/lib/cv-country-phrase";
 
 afterEach(cleanup);
 
@@ -48,22 +49,22 @@ describe("the questions a country page answers", () => {
     expect(screen.getByRole("heading", { level: 2, name: CV_LOCALES.de.t.faqHeading })).toBeTruthy();
   });
 
-  // The bake fills its own copy of these pages with the same rules
-  // (src/lib/cv-country-phrase.ts on the bake builder's branch), so the two
-  // renderers print one sentence for each country.
+  // The bake fills its own copy of these pages with the same function
+  // (src/lib/cv-country-phrase.ts), so the two renderers print one sentence
+  // for each country.
   it("writes each phrase the way the bake's country-phrase rules do", () => {
     const fr = CV_LOCALES.fr.t;
-    expect(cvFill("fr", fr.intro, { name: "France", docTerm: "CV" })).toContain("quand un CV vise la France");
-    expect(cvFill("fr", fr.ctaText, { name: "Belgique", docTerm: "CV" })).toContain("selon les normes de la Belgique");
-    expect(cvFill("fr", fr.faqPhoto, { name: "Suisse", docTerm: "CV" })).toBe("Faut-il une photo sur un CV en Suisse ?");
+    expect(cvFill(fr.intro, { name: "France", docTerm: "CV" }, "fr")).toContain("quand un CV vise la France");
+    expect(cvFill(fr.ctaText, { name: "Belgique", docTerm: "CV" }, "fr")).toContain("selon les normes de la Belgique");
+    expect(cvFill(fr.faqPhoto, { name: "Suisse", docTerm: "CV" }, "fr")).toBe("Faut-il une photo sur un CV en Suisse ?");
     const de = CV_LOCALES.de.t;
-    expect(cvFill("de", de.intro, { name: "Schweiz", docTerm: "Lebenslauf" })).toContain("wenn ein Lebenslauf auf die Schweiz zielt");
-    expect(cvFill("de", de.ctaText, { name: "Schweiz", docTerm: "Lebenslauf" })).toContain("nach den Normen von der Schweiz");
+    expect(cvFill(de.intro, { name: "Schweiz", docTerm: "Lebenslauf" }, "de")).toContain("wenn ein Lebenslauf auf die Schweiz zielt");
+    expect(cvFill(de.ctaText, { name: "Schweiz", docTerm: "Lebenslauf" }, "de")).toContain("nach den Normen von der Schweiz");
     const pt = CV_LOCALES.pt.t;
-    expect(cvFill("pt", pt.intro, { name: "Brasil", docTerm: "currículo" })).toContain("quando um currículo mira o Brasil");
-    expect(cvFill("pt", pt.title, { name: "Brasil", docTerm: "currículo" })).toBe("Currículo no Brasil: foto, extensão e formato");
-    expect(cvFill("en", EN_TEMPLATE.intro, { name: "Czech Republic", docTerm: "CV" })).toContain("when a resume targets the Czech Republic");
-    expect(cvFill("en", "{name}'s norms", { name: "Netherlands" })).toBe("the Netherlands' norms");
+    expect(cvFill(pt.intro, { name: "Brasil", docTerm: "currículo" }, "pt")).toContain("quando um currículo mira o Brasil");
+    expect(cvFill(pt.title, { name: "Brasil", docTerm: "currículo" }, "pt")).toBe("Currículo no Brasil: foto, extensão e formato");
+    expect(cvFill(EN_TEMPLATE.intro, { name: "Czech Republic", docTerm: "CV" }, "en")).toContain("when a resume targets the Czech Republic");
+    expect(cvFill("{name}'s norms", { name: "Netherlands" }, "en")).toBe("the Netherlands' norms");
   });
 
   it("leaves names that take no article alone (positive control)", () => {
