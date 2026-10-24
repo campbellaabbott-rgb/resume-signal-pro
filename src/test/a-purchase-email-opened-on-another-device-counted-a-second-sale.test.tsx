@@ -13,7 +13,10 @@
  *
  * WHAT HOLDS NOW, with the real page mounted and only the backend faked: the
  * saved copy is shown either way; it is counted as a sale only in the tab
- * that started the checkout.
+ * that started the checkout. That tab's funnel progress is analytics state,
+ * read from the tab's storage only after the visitor allowed analytics (wave
+ * 4 round 2 recheck), so the tab that started the checkout is seeded with a
+ * yes.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
@@ -51,6 +54,13 @@ vi.mock("@/components/seo/SEO", () => ({ SEO: () => null }));
 vi.mock("@/components/ProductPreview", () => ({ ProductPreview: () => null }));
 
 import ProductSuccess from "../pages/ProductSuccess";
+import { resetConsentMemory, setAnalyticsConsent } from "@/lib/consent";
+
+/** The tab that started the checkout, with analytics allowed: its funnel progress is in the tab's storage. */
+const startedTheCheckoutHere = () => {
+  setAnalyticsConsent("granted");
+  sessionStorage.setItem("funnel_progress", JSON.stringify(["landing_view", "product_clicked", "checkout_started"]));
+};
 
 vi.setConfig(MOUNT_TEST_BUDGET);
 
@@ -60,6 +70,7 @@ const SESSION = "cs_live_boughtlastnight0001";
 beforeEach(() => {
   sessionStorage.clear();
   localStorage.clear();
+  resetConsentMemory();
   invoke.mockReset();
   conversionPurchase.mockReset();
   funnelPurchase.mockReset();
@@ -107,14 +118,14 @@ describe("the saved copy of a purchase", () => {
     cleanup();
     conversionPurchase.mockReset();
     savedInVerify(false);
-    sessionStorage.setItem("funnel_progress", JSON.stringify(["landing_view", "product_clicked", "checkout_started"]));
+    startedTheCheckoutHere();
     open();
     expect(await screen.findByText(LETTER, {}, SLOW)).toBeInTheDocument();
     expect(conversionPurchase).toHaveBeenCalledTimes(1);
   });
 
   it("in the tab that started the checkout (the webhook finished first): shown, and counted once", async () => {
-    sessionStorage.setItem("funnel_progress", JSON.stringify(["landing_view", "product_clicked", "checkout_started"]));
+    startedTheCheckoutHere();
     open();
     expect(await screen.findByText(LETTER, {}, SLOW)).toBeInTheDocument();
     expect(conversionPurchase).toHaveBeenCalledTimes(1);

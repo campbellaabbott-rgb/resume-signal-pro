@@ -1,4 +1,5 @@
 import { useCallback, useRef } from 'react';
+import { analyticsSessionGet, analyticsSessionSet } from '@/lib/analytics-session-store';
 import { getVisitorId, postTrackEvent } from '@/lib/track-transport';
 
 // Optimization event types for tracking feature effectiveness
@@ -48,11 +49,12 @@ const trackOptimizationEvent = async (
   }
 };
 
-// Calculate session duration
+// Calculate session duration. The clock is analytics state: in the page's
+// memory until the visitor allows analytics (src/lib/analytics-session-store.ts).
 const getSessionDuration = (): number => {
-  const startTime = sessionStorage.getItem('session_start');
+  const startTime = analyticsSessionGet('session_start');
   if (!startTime) {
-    sessionStorage.setItem('session_start', Date.now().toString());
+    analyticsSessionSet('session_start', Date.now().toString());
     return 0;
   }
   return Math.round((Date.now() - parseInt(startTime)) / 1000);
@@ -60,8 +62,8 @@ const getSessionDuration = (): number => {
 
 // Initialize session start time
 if (typeof window !== 'undefined') {
-  if (!sessionStorage.getItem('session_start')) {
-    sessionStorage.setItem('session_start', Date.now().toString());
+  if (!analyticsSessionGet('session_start')) {
+    analyticsSessionSet('session_start', Date.now().toString());
   }
 }
 

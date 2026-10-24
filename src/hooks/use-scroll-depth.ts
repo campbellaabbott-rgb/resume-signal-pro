@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { postTrackEvent } from '@/lib/track-transport';
+import { analyticsSessionGet, analyticsSessionSet } from '@/lib/analytics-session-store';
 
 const SCROLL_MILESTONES = [0, 25, 50, 75, 90, 100] as const;
 
@@ -11,11 +12,12 @@ type ScrollMilestone = typeof SCROLL_MILESTONES[number];
 
 export function useScrollDepth(pageName: string = 'home') {
   const trackedMilestones = useRef<Set<ScrollMilestone>>(new Set());
-  const sessionKey = `scroll_tracked_${pageName}_${new Date().toDateString()}`;
+  // Analytics state: in the page's memory until the visitor allows analytics.
+  const sessionKey = `scroll_tracked_${pageName}_${new Date().toDateString()}` as const;
 
   useEffect(() => {
     // Load already tracked milestones for this session
-    const tracked = sessionStorage.getItem(sessionKey);
+    const tracked = analyticsSessionGet(sessionKey);
     if (tracked) {
       // Guarded: a corrupt/legacy value would otherwise throw synchronously
       // inside this effect and can take the page down. Start fresh instead —
@@ -31,7 +33,7 @@ export function useScrollDepth(pageName: string = 'home') {
       if (trackedMilestones.current.has(milestone)) return;
 
       trackedMilestones.current.add(milestone);
-      sessionStorage.setItem(sessionKey, JSON.stringify([...trackedMilestones.current]));
+      analyticsSessionSet(sessionKey, JSON.stringify([...trackedMilestones.current]));
 
       // Through the one transport (keepalive, dev-silenced, one visitor id,
       // pathname-only page fields) — not a bare client invoke around it.

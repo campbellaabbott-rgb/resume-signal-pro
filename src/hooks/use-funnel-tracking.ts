@@ -40,7 +40,9 @@ const getSessionId = (): string => {
 // is guarded the same way.
 const getFunnelProgress = (): FunnelStage[] => {
   try {
-    const stored = sessionStorage.getItem('funnel_progress');
+    // Analytics state: it only decides whether a purchase is counted, so it is
+    // in the page's memory until the visitor allows analytics.
+    const stored = analyticsSessionGet('funnel_progress');
     return stored ? JSON.parse(stored) : [];
   } catch {
     return [];
@@ -56,7 +58,7 @@ export const reachedInThisTab = (stage: FunnelStage): boolean => getFunnelProgre
 
 // Save funnel progress
 const saveFunnelProgress = (stages: FunnelStage[]) => {
-  sessionStorage.setItem('funnel_progress', JSON.stringify(stages));
+  analyticsSessionSet('funnel_progress', JSON.stringify(stages));
 };
 
 // Calculate time since landing

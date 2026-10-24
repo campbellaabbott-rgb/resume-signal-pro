@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { analyticsSessionGet, analyticsSessionSet } from '@/lib/analytics-session-store';
 import { postTrackEvent } from '@/lib/track-transport';
 import { ProductId } from '@/config/products';
 import { AB_TESTS } from '@/hooks/use-ab-test';
@@ -84,13 +85,14 @@ export function useConversionTracking() {
   // Track when purchase is completed (on success page)
   const trackPurchaseCompleted = useCallback((productId: ProductId | string, priceUsd?: number, sessionId?: string) => {
     // Prevent duplicate tracking using sessionStorage
-    const trackingKey = `purchase_tracked_${sessionId || productId}`;
-    if (sessionStorage.getItem(trackingKey)) {
+    // Analytics state: in the page's memory until the visitor allows analytics.
+    const trackingKey = `purchase_tracked_${sessionId || productId}` as const;
+    if (analyticsSessionGet(trackingKey)) {
       console.log('[Conversion] Purchase already tracked, skipping');
       return;
     }
 
-    sessionStorage.setItem(trackingKey, 'true');
+    analyticsSessionSet(trackingKey, 'true');
     trackConversionEvent('purchase_completed', productId, { priceUsd, sessionId });
   }, []);
 

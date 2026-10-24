@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { postTrackEvent } from '@/lib/track-transport';
+import { analyticsSessionGet, analyticsSessionSet } from '@/lib/analytics-session-store';
 
 const TIME_MILESTONES = [0, 30, 60, 120, 300, 600] as const; // seconds: 0s, 30s, 1m, 2m, 5m, 10m
 
@@ -18,13 +19,14 @@ export function useTimeOnPage(pageName: string = 'home') {
   const startTime = useRef<number>(Date.now());
   const trackedMilestones = useRef<Set<TimeMilestone>>(new Set());
   const intervalRef = useRef<number | null>(null);
-  const sessionKey = `time_tracked_${pageName}_${new Date().toDateString()}`;
+  // Analytics state: in the page's memory until the visitor allows analytics.
+  const sessionKey = `time_tracked_${pageName}_${new Date().toDateString()}` as const;
 
   useEffect(() => {
     startTime.current = Date.now();
 
     // Load already tracked milestones for this session
-    const tracked = sessionStorage.getItem(sessionKey);
+    const tracked = analyticsSessionGet(sessionKey);
     if (tracked) {
       // Guarded: a corrupt/legacy value would otherwise throw synchronously
       // inside this effect and can take the page down. Start fresh instead —
@@ -40,7 +42,7 @@ export function useTimeOnPage(pageName: string = 'home') {
       if (trackedMilestones.current.has(milestone)) return;
 
       trackedMilestones.current.add(milestone);
-      sessionStorage.setItem(sessionKey, JSON.stringify([...trackedMilestones.current]));
+      analyticsSessionSet(sessionKey, JSON.stringify([...trackedMilestones.current]));
 
       // Through the one transport (keepalive, dev-silenced, one visitor id,
       // pathname-only page fields) — not a bare client invoke around it.
