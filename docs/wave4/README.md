@@ -746,6 +746,8 @@ functions:
 13. `20261011200000` cron_http_answers and the visitors-only scan health reader (before scan-heartbeat, mail-watch, check-alerts)
 14. `20261011210000` a deleted account takes the documents made for it and its Pro grants (the fixes; replaces account_erase_personal_data, same signature, so no function waits on it)
 15. `20261011211000` an affiliate is paid once per customer and never for themselves, and a refunded or disputed payment takes the commission back (the fixes; replaces record_affiliate_conversion, same single signature, plus a trigger on payment_revocations)
+16. `20261011212000` a deleted account takes its Full Analysis (resume_analyses, through each purchased_content pointer), not only the pointer (the recheck; replaces account_erase_personal_data again, same signature, so no function waits on it)
+17. `20261011213000` career_path_past_buyers, a confirmed past Career Path buyer remembered until their 90 days end (the recheck; before generate-career-path 2026-10-11.31, which reads it best-effort: without it a buyer is asked about again behind the buckets, as before)
 
 Round 1's six (20261011100000 to 20261011130000) come first, as in "Deploy"
 above; R1's two (20261014100000, 20261014110000) are on main already once
@@ -790,18 +792,29 @@ answers its build in `x-fn-build`). The ones round 2 changed:
   public-api, apply-agent (switched off; its bundled classifier), scan-heartbeat;
   **.2026-10-14.30** get-account-data, free-keyword-scan, account-order.
   job-board stays `2026-09-09.93` and carries the board fixes.
+- **.2026-10-11.31** (the fixes after the recheck, below):
+  generate-career-path, and the five that bundle the widened classifier:
+  agent-mcp, public-api, generate-application-answers,
+  generate-apply-package, apply-agent (switched off). job-board stays
+  `2026-09-09.93` and carries the salary and negation fixes.
 
 `--against origin/main` reports 0 violations. Against each w4b branch the only
 "same build string on different code" lines are job-board `.93` (shared by
 reservation) and R1's three functions (below, under the owner's steps).
 After the fixes, `--against origin/wave4/integration` (the branch before
 them) finds 14 functions whose code moved and one violation, job-board `.93`
-by reservation: every other one carries a `.30` build.
+by reservation: every other one carries a `.30` build. After the recheck's
+fixes, `--against` the branch before them (fa66a031) finds 7 functions moved
+and one violation, job-board `.93` by reservation; the other six carry `.31`.
 
 The job-board upload, tallied the deploy's way (its folder plus all of
 _shared, comments included) with the profiles round's two _shared files at
 their size on design/integration (72,818 bytes), is 4,443,315 bytes after
-the fixes: 56,685 under the 4.5 MB line (4,434,303 and 65,697 before them). It was 4,466,852 (33,148 under) before the
+the fixes: 56,685 under the 4.5 MB line (4,434,303 and 65,697 before them),
+and 4,447,626 after the recheck's fixes: 52,374 under the line, 2,374 inside
+the agreed 50,000 of room (the classifier's shared TOPICS moved into
+_shared/application-questions.ts and the salary rule grew; their comments
+were cut to keep the room). It was 4,466,852 (33,148 under) before the
 integration moved the long comment runs of four more job-board files into
 `docs/job-board-index-notes.md`.
 
@@ -812,7 +825,9 @@ One read-only section per group: `scripts/verify-deploy.d/92-w4b-payments-delive
 `92-w4b-account-compliance.sh`, `92-w4b-job-board.sh`,
 `92-w4b-agents-api.sh`, `92-w4b-ops-email-tests.sh`, and for the fixes after
 the review `92-w4b-fixer.sh` (every `.30` build, a signed-out cover note
-refused 401, and three board behaviours). `verify-deploy.sh` runs
+refused 401, and three board behaviours), and for the fixes after the recheck
+`92-w4b-fixer2.sh` (six `.31` builds, career_path_past_buyers closed to the
+anon key, "warehouse not forklift Dallas" excluding only forklift). `verify-deploy.sh` runs
 them with the rest, behind section 0's positive control and the tally that
 fails a section which prints no verdict. Expected FAILs while the seller is
 unnamed: section 92 account-compliance FAILs the three marketing senders on
@@ -929,7 +944,9 @@ After the deploy:
   and section 92's plain nonce counts 1 (the positive control; a 0 there
   means connector searches are not logged and the 0s prove nothing); the
   fixer section's two reads: `affiliate_commission_revoked` in `pg_trigger`
-  and `account_erase_personal_data`'s source naming `purchased_content`.
+  and `account_erase_personal_data`'s source naming `purchased_content`; and
+  fixer2's two: that source naming `public.resume_analyses`, and
+  `career_path_past_buyers` with row level security on.
 - Optional proof: pause `scan-heartbeat-sentinel` for 30 minutes once and
   confirm the healthchecks.io check mails you.
 - Watch the INFO lines for the experience, salary and country re-derivations
@@ -1128,3 +1145,72 @@ accountPrivacy.deletedList, agentPass.retiredBuyers.
 
 Nothing in the fixes needed a file another round owns: the place exclusion
 reaches the page through ignoredFilters, which Jobs.tsx already words.
+
+### Fixes after the recheck
+
+A recheck of the fixes (at fa66a031) found four major and four minor
+regressions or gaps in them. The fixer fixed every one on `w4b-fix`, each
+with a test that fails on fa66a031 (proved by restoring that code once) and
+passes on the fix. Builds `.31` above; migrations 16 and 17 above; verifier
+`92-w4b-fixer2.sh`. No locale file was edited and no key was added.
+
+Major:
+
+- **A pay label keeps the pay, whatever follows** (_shared/salary-extract.ts,
+  job-board .93): ending a clause at a colon had taken "Pay Range:" out of
+  the figure's clause, so the standard transparency line "Pay Range: $17.00 -
+  $19.00 per hour plus profit sharing" (and "... + deal commissions", "OTE:
+  ... on closed deals", the label on the line above) was refused, and the
+  version 11 re-sweep would have NULLed that stored pay. The rule now: a range
+  is a business figure only as that figure's own amount (the business word
+  right before it through amount words, "portfolio of", "projects worth",
+  "valued at"; or right after it, "$5M in deals"); profit sharing, deal
+  bonuses and commissions and a fleet vehicle are not business figures; a
+  pay label before the figure in its labelled clause makes it pay whatever
+  follows, NOT_PAY's words after it included; job titles ("Portfolio
+  Analyst", "Pipeline Welder") keep their pay. minedSalaryRefused reads
+  S12-019's rule only (not NOT_PAY, which the old miner applied more widely,
+  so a figure it refuses is a vendor's field), at every place the description
+  quotes the stored text. The test runs the recheck's seven lines, ten of
+  ours, four titles, 1,200 label/layout/tail/figure combinations, and
+  backfill-salary through the board handler, where only the business figure
+  is rewritten.
+- **A deleted account takes its Full Analysis** (20261011212000): the
+  analysis lives in resume_analyses (it quotes the résumé; its share id
+  reads it for 90 days) and purchased_content holds only `{shareId}`; the
+  function now deletes the analysis each erased pointer names, then the
+  pointers, and answers `analyses_deleted`. The DO block and the pglite test
+  probe it, so the delete card's "the documents we made for your purchases
+  and Pro inclusions" is true of the one document still sold.
+- **A fact in a later clause is the person's, in any words**
+  (_shared/application-questions.ts, self-apply.ts, the worker's mirror):
+  TOPICS and topicOf moved beside the patterns and into the worker; a later
+  sentence naming any topic is its own question, a later clause naming one
+  follows the clause rule (so "payroll and wages" and "fixed income" stay the
+  work's object), and every clause after a motivation opening is read against
+  topicOf; PERSON_ASKS reads able or free to start, the date you can join,
+  earliest, notice, what the person made or earned and their earnings, and
+  who to contact to confirm. The recheck's ten labels and eleven of ours go
+  to the person; eight controls are still drafted.
+- **A place after a one-word negation stays in the search** (job-board
+  search-routing, .93): the phrase stops before any place knownPlace()
+  recognises, one to three words, unless the place began inside the phrase
+  ("not new york"): "warehouse not forklift Dallas" excludes forklift and
+  searches Dallas, as main did.
+
+Minor: the Teal comparison no longer counts Freelance Boost among our
+products (it names the career-change bridge and the free account's writing
+tools), and a guard reads every competitor string and every src/data string
+literal for a cut product; the scroll and time milestones, the optimisation
+events' session clock, the funnel's progress and the purchase dedup wait in
+the page's memory until a yes and a no forgets them (the homepage, mounted
+with no choice, leaves sessionStorage empty; the purchase-email test seeds
+its checkout tab with a yes); a résumé saved from the last scan carries the
+score of the scan of exactly that text (a whole-text fingerprint in the local
+history) and is not offered otherwise, so /account never shows a latest 0;
+a past Career Path buyer Stripe confirmed is remembered until their 90 days
+end (20261011213000), so strangers who fill the function-wide bucket cannot
+lock a genuine buyer out.
+
+`accountPage.lastResumeLabel` is no longer rendered (every saved version now
+has a score); the translator may drop it.
