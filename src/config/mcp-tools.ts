@@ -745,7 +745,10 @@ export const MCP_OFF_PAGE_HOSTS: readonly McpHost[] = MCP_HOSTS.filter((h) => !h
  * its target are spelled once.
  */
 export const MCP_OTHER_AGENTS_LINE = {
-  lead: `Using a different agent? Setup for ${MCP_OFF_PAGE_HOSTS.map((h) => h.name).join(", ")} and other tools is`,
+  // R7: the line names no other app. Seeker pages name only Claude, ChatGPT
+  // and Claude Code (owner, 2026-09-18); the install repo's README carries
+  // every other app's setup, MCP_OFF_PAGE_HOSTS included.
+  lead: "Using a different AI app? Setup for other apps is",
   link: "on GitHub →",
   href: MCP_INSTALL_REPO_URL,
 } as const;
@@ -916,9 +919,9 @@ export const MCP_TROUBLESHOOTING: readonly TroubleRow[] = [
   },
   {
     id: "zero-tools",
-    see: "Cursor / VS Code / Cline: server listed, zero tools",
-    why: "Wrong transport (Cline: not `sse`; VS Code: `\"type\": \"http\"`) or `/mcp` appended to the address.",
-    fix: "The address ends in `/agent-mcp` exactly; the transport is HTTP (Cline: \"Streamable HTTP\").",
+    see: "Another app: server listed, zero tools",
+    why: "The wrong transport (SSE instead of Streamable HTTP) or `/mcp` appended to the address.",
+    fix: "The address ends in `/agent-mcp` exactly and the transport is Streamable HTTP; the install repo on GitHub has each app's own block.",
     source: { kind: "vendor", doc: "https://code.visualstudio.com/docs/agents/reference/mcp-configuration" },
   },
   {

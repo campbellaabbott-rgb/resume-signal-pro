@@ -79,7 +79,10 @@
       "roles": "Mga bukas na role",
       "tableCaption": "Mga bukas na role ayon sa larangan at bansa",
       "title": "Halo ng mga role",
-      "titleListings": "Karamihan ng role ay nakalista sa"
+      "titleListings": "Karamihan ng role ay nakalista sa",
+      "titlePooled": "Hiring mix sa buong hiring system ng employer",
+      "basisPooled": "Saklaw ng mga bilang na ito ang bawat career site ng employer na ito sa iisang hiring system (hindi bababa sa {{n}} bukas na role), hindi lang ang {{m}} sa page na ito. Binasa noong {{date}}; hindi kasama ang mga role sa field na hindi namin kilala.",
+      "basisPooledUndated": "Saklaw ng mga bilang na ito ang bawat career site ng employer na ito sa iisang hiring system (hindi bababa sa {{n}} bukas na role), hindi lang ang {{m}} sa page na ito. Hindi kasama ang mga role sa field na hindi namin kilala."
     },
     "nameLoading": "Nilo-load ang pangalan ng employer",
     "openRoles_one": "{{n}} role na may petsa sa nakaraang {{days}} araw",
@@ -157,7 +160,8 @@
       "searchLabel": "Maghanap ng trabaho",
       "searchPlaceholder": "Employer o job title",
       "searchTitle": "Hanapin ang employer na ito sa live board",
-      "title": "Hindi pa namin binabasa ang board na may pangalang “{{token}}”"
+      "title": "Hindi pa namin binabasa ang board na may pangalang “{{token}}”",
+      "didYouMean": "Ito ba ang isa sa mga board na tinutukoy mo?"
     },
     "usajobs": {
       "cap": "Hanggang {{cap}} resulta bawat query; hindi lahat ng federal na bakante.",

@@ -267,8 +267,8 @@ export function LiveMatches({ resumeText, industry }: { resumeText: string; indu
               TRACKED total under the SERVABLE noun. The number is a parameter so
               a translated copy cannot bake a stale one in either. */}
           {boardTotal
-            ? t("freeResults.matches.openBoardFallbackLive", "Open the live job board — {{n}}+ verified openings, ranked against your resume", { n: roundedFloor(boardTotal).toLocaleString() })
-            : t("freeResults.matches.openBoardFallbackPlain", "Open the live job board — verified openings, ranked against your resume")}
+            ? t("freeResults.matches.openBoardFallbackLive", "Open the live job board — {{n}}+ openings live now, ranked against your resume", { n: roundedFloor(boardTotal).toLocaleString() })
+            : t("freeResults.matches.openBoardFallbackPlain", "Open the live job board — live openings, ranked against your resume")}
           <ArrowRight className="w-4 h-4 shrink-0" />
         </Link>
       </div>
@@ -299,7 +299,7 @@ export function LiveMatches({ resumeText, industry }: { resumeText: string; indu
       </div>
       <p className="text-xs text-muted-foreground mb-3">
         {retrieval === null
-          ? t("freeResults.matches.subtitle", "Ranked by the same deterministic fit scoring as your report — from live company job boards, continuously re-verified against each company's official feed.")
+          ? t("freeResults.matches.subtitle", "Ranked by the same deterministic fit scoring as your report — from live company job boards, re-read through the day against each employer's own feed.")
           : retrieval.by === "resume"
             ? t("freeResults.matches.subtitleSearched", "Searched live company job boards for {{role}} — the occupation this resume names — then ranked by the same deterministic fit scoring as your report.", { role: retrieval.role })
             : t("freeResults.matches.subtitleIndustry", "We couldn't read a job title from this resume, so these are current openings in your field — scored against your resume, not found by it. Search the board yourself to narrow them.")}
@@ -371,8 +371,8 @@ export function LiveMatches({ resumeText, industry }: { resumeText: string; indu
           </Link>
           <p className="text-[11px] text-muted-foreground text-center mt-2">
             {boardTotal
-              ? t("freeResults.matches.openBoardNoteLive", "{{n}}+ verified openings · save searches, watch companies, track applications", { n: roundedFloor(boardTotal).toLocaleString() })
-              : t("freeResults.matches.openBoardNotePlain", "Verified openings · save searches, watch companies, track applications")}
+              ? t("freeResults.matches.openBoardNoteLive", "{{n}}+ openings live now · save searches, watch companies, track applications", { n: roundedFloor(boardTotal).toLocaleString() })
+              : t("freeResults.matches.openBoardNotePlain", "Live openings · save searches, watch companies, track applications")}
           </p>
         </>
       )}

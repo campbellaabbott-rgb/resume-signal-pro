@@ -79,7 +79,10 @@
       "roles": "Open vacatures",
       "tableCaption": "Open vacatures per vakgebied en per land",
       "title": "Vacaturemix",
-      "titleListings": "Vacatures vooral geplaatst in"
+      "titleListings": "Vacatures vooral geplaatst in",
+      "titlePooled": "Wervingsmix over het hele systeem van de werkgever",
+      "basisPooled": "Deze getallen omvatten elke carrièresite die deze werkgever op hetzelfde systeem heeft (minstens {{n}} open functies), niet alleen de {{m}} op deze pagina. Gelezen op {{date}}; functies in een vakgebied dat we niet herkennen zijn weggelaten.",
+      "basisPooledUndated": "Deze getallen omvatten elke carrièresite die deze werkgever op hetzelfde systeem heeft (minstens {{n}} open functies), niet alleen de {{m}} op deze pagina. Functies in een vakgebied dat we niet herkennen zijn weggelaten."
     },
     "nameLoading": "Naam van de werkgever wordt geladen",
     "openRoles_one": "{{n}} vacature gedateerd in de afgelopen {{days}} dagen",
@@ -157,7 +160,8 @@
       "searchLabel": "Vacatures zoeken",
       "searchPlaceholder": "Werkgever of functietitel",
       "searchTitle": "Zoek deze werkgever in de live vacaturebank",
-      "title": "We lezen nog geen vacaturebord met de naam ‘{{token}}’"
+      "title": "We lezen nog geen vacaturebord met de naam ‘{{token}}’",
+      "didYouMean": "Bedoelde je een van deze borden?"
     },
     "usajobs": {
       "cap": "Tot {{cap}} resultaten per zoekopdracht; niet elke federale vacature.",

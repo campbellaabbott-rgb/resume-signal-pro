@@ -14,7 +14,7 @@ import { Link } from "react-router-dom";
 import { ArrowLeft, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { listingTitle } from "@/lib/listing/text";
-import { companyLanderPath } from "@/lib/public-href";
+import { useCompanyBoardHref } from "@/lib/seo/lander-manifest";
 import { countryToName, displayLocation } from "@/lib/listing/location";
 import { listingEmployer } from "@/lib/listing/employer";
 import type { ListingJob } from "@/lib/listing/types";
@@ -40,7 +40,10 @@ export function PostingHeader({ job, level = 2, sticky = true, hideEmployer, men
   const loc = displayLocation(job.location);
   const country = countryToName(loc.text, job.country, i18n.language || "en");
   const place = [loc.text, country].filter(Boolean).join(" · ");
-  const href = job.token ? companyLanderPath(job.token) : null;
+  // SEO-010: an employer link goes to its written company page, or to the
+  // live board filtered to the board when the bake wrote none.
+  const companyHref = useCompanyBoardHref();
+  const href = job.token ? companyHref(job.token) : null;
   const Heading = level === 1 ? "h1" : "h2";
   return (
     <header className={`${sticky ? "sticky top-0 z-20" : ""} border-b border-border bg-background px-4 py-3 sm:px-5`} data-posting-header="">

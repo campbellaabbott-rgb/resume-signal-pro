@@ -15,6 +15,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Database, ShieldCheck, Scale, Newspaper, FlaskConical, Building2, CheckCircle2, XCircle, Mail, KeyRound, Terminal, Copy, Check, Loader2 } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
@@ -262,6 +263,7 @@ function GetAKey() {
 }
 
 export default function DataApi() {
+  const { t } = useTranslation();
   const [stats, setStats] = useState<{ total_open?: number; total_companies?: number; total_company_names?: number; closed_90d?: number; tracking_days?: number; observed_days?: number } | null>(null);
 
   useEffect(() => {
@@ -306,7 +308,10 @@ export default function DataApi() {
 
   const notInDataset = [
     { title: "Zero jobseeker data", body: "No job seeker's résumé or profile is in this dataset, at any tier, and that data is not for sale. The résumés our users give us are kept only as long as /trust says, for their own use. This dataset is about employers' public postings only." },
-    { title: "No scraped aggregators", body: "Nothing comes from job aggregators, search-engine scrapes, or third-party lists. Only companies' own official career-site feeds." },
+    // R5b: the dataset carries staffing agencies' boards and the federal
+    // listing site as well as employers' own systems, so it claims only what
+    // holds for every row: read from the system that published it.
+    { title: "Never copied from another job board", body: `${t("boardSource.sentence")} Nothing comes from search-engine scrapes or third-party lists.` },
     { title: "No modeled guesses", body: "No estimated salaries, no inferred headcounts, no synthetic history. Fields we can't observe are null, not imputed." },
   ];
 

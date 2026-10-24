@@ -46,6 +46,7 @@ const PayTransparencyIndex = lazy(() => import("./pages/PayTransparencyIndex"));
 const Privacy = lazy(() => import("./pages/Privacy"));
 const Pricing = lazy(() => import("./pages/Pricing"));
 const Methodology = lazy(() => import("./pages/Methodology"));
+const About = lazy(() => import("./pages/About"));
 const DevCheckoutTest = lazy(() => import("./pages/DevCheckoutTest"));
 const Affiliates = lazy(() => import("./pages/Affiliates"));
 const AffiliateRedirect = lazy(() => import("./pages/AffiliateRedirect"));
@@ -154,6 +155,7 @@ const App = () => (
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/methodology" element={<Methodology />} />
+          <Route path="/about" element={<About />} />
           <Route path="/companies" element={<Companies />} />
           <Route path="/affiliates" element={<Affiliates />} />
           <Route path="/market-pulse/confirm" element={<MarketPulseConfirm />} />

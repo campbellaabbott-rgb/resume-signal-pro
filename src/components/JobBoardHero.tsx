@@ -168,7 +168,7 @@ export function JobBoardHero() {
           <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 text-xs sm:text-sm text-muted-foreground mb-7 animate-fade-in" style={{ animationDelay: "0.2s" }}>
             <span className="inline-flex items-center gap-1.5">
               <ShieldCheck className="w-4 h-4 text-success" />
-              {t("boardHero.trustDirect", "Direct from company career pages — no aggregators")}
+              {t("boardHero.trustDirect", "Read from the hiring system that published each job")}
             </span>
             <span className="w-1 h-1 rounded-full bg-muted-foreground/30 hidden sm:block" />
             <span className="inline-flex items-center gap-1.5">

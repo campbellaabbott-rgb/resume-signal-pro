@@ -26,7 +26,7 @@ import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { supabase } from "@/integrations/supabase/client";
-import { companyLanderPath } from "@/lib/public-href";
+import { useCompanyBoardHref } from "@/lib/seo/lander-manifest";
 
 const rpc = (fn: string, args?: Record<string, unknown>) =>
   (supabase as unknown as { rpc: (f: string, a?: Record<string, unknown>) => Promise<{ data: unknown }> }).rpc(fn, args);
@@ -50,6 +50,9 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 export default function PayTransparencyIndex() {
+  // SEO-010: an employer link goes to its written company page, or to the
+  // live board filtered to the board when the bake wrote none.
+  const companyHref = useCompanyBoardHref();
   const [pay, setPay] = useState<PayData | null>(null);
   const [cov, setCov] = useState<Coverage | null>(null);
   // The cache ships its own computed_at and the page was throwing it away, then
@@ -173,7 +176,7 @@ export default function PayTransparencyIndex() {
               {(pay?.top_companies ?? []).map((c) => (
                 <Link
                   key={c.company_token}
-                  to={companyLanderPath(c.company_token)}
+                  to={companyHref(c.company_token)}
                   className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3 hover:border-primary/50 transition-colors"
                 >
                   <span className="text-sm font-semibold truncate">{c.company}</span>

@@ -85,7 +85,10 @@
       "roles": "Postes ouverts",
       "tableCaption": "Postes ouverts par domaine et par pays",
       "title": "Répartition des postes",
-      "titleListings": "Postes publiés surtout en"
+      "titleListings": "Postes publiés surtout en",
+      "titlePooled": "Répartition des recrutements sur tout le système de l'employeur",
+      "basisPooled": "Ces chiffres couvrent tous les sites carrières que cet employeur exploite sur le même système (au moins {{n}} postes ouverts), pas seulement les {{m}} de cette page. Lus le {{date}} ; les postes d'un domaine que nous ne reconnaissons pas sont exclus.",
+      "basisPooledUndated": "Ces chiffres couvrent tous les sites carrières que cet employeur exploite sur le même système (au moins {{n}} postes ouverts), pas seulement les {{m}} de cette page. Les postes d'un domaine que nous ne reconnaissons pas sont exclus."
     },
     "nameLoading": "Chargement du nom de l'employeur",
     "openRoles_one": "{{n}} poste daté des {{days}} derniers jours",
@@ -172,7 +175,8 @@
       "searchLabel": "Rechercher des offres",
       "searchPlaceholder": "Employeur ou intitulé de poste",
       "searchTitle": "Chercher cet employeur dans les offres en direct",
-      "title": "Nous ne lisons pas encore de site nommé « {{token}} »"
+      "title": "Nous ne lisons pas encore de site nommé « {{token}} »",
+      "didYouMean": "Vouliez-vous dire l'un de ces sites ?"
     },
     "usajobs": {
       "cap": "Jusqu'à {{cap}} résultats par requête ; pas tous les postes fédéraux.",

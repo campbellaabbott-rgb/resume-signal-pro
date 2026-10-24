@@ -358,9 +358,13 @@ export function CompanyHeader({ model, token, system, countries = [], workMode, 
         )}
         <div className="min-w-0 space-y-1">
           <h1 className="text-2xl font-semibold tracking-tight text-foreground break-words sm:text-3xl">{h1}</h1>
+          {/* THE ANSWER LINE'S PLACE IS HELD WHILE THE LIST LOADS (R9): it
+              arrived as a new 24px line under the H1 and moved the whole page
+              (Domino's lab CLS 0.354 at 1280). The bar is the line's own
+              height at each width. */}
           {answer
             ? <p className="text-sm font-medium text-foreground sm:text-base" data-company-answer="">{answer}</p>
-            : !model.openRoles && (model.answerable || !name) ? <span aria-hidden="true" className="block h-5 w-56 max-w-full rounded-md bg-muted animate-pulse motion-reduce:animate-none" /> : null}
+            : !model.openRoles && (model.answerable || !name || !model.nameSettled) ? <span aria-hidden="true" data-company-answer-reserve="" className="block h-5 sm:h-6 w-56 max-w-full rounded-md bg-muted animate-pulse motion-reduce:animate-none" /> : null}
           {answer && totalLine && <p className="text-meta text-muted-foreground" data-company-board-total="">{totalLine}</p>}
           {subtitle && <p className="hidden sm:block text-sm text-muted-foreground">{subtitle}</p>}
         </div>

@@ -5,6 +5,7 @@
 // build-time prerenderer so the visible content and JSON-LD never drift.
 
 import { SCAN_RESULTS_WITHIN_SECONDS } from "../config/scan-timing";
+import { inSentence } from "../lib/seo/display-case";
 
 export interface IndustryFaq {
   q: string;
@@ -18,7 +19,8 @@ export function buildIndustryFaqs(opts: {
   screenerNote?: string;
 }): IndustryFaq[] {
   const { name, keywords, certifications, screenerNote } = opts;
-  const lower = name.toLowerCase();
+  // An acronym stays one inside a sentence: "HR resumes", not "hr resumes" (SEO-019).
+  const lower = inSentence(name);
   const faqs: IndustryFaq[] = [];
 
   if (keywords.length >= 5) {

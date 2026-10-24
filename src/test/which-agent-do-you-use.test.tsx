@@ -409,11 +409,16 @@ const tileOffences = (rendered: readonly (string | null)[]): string[] => {
   for (const id of rendered) if (!MCP_HOSTS.find((h) => h.id === id)?.page) out.push(`${id} is not flagged page in the table`);
   return out;
 };
-/** THE GITHUB LINE PROPERTY: the off-page hosts by name, in the table's order, then "and other tools", and the install repo as the one link. */
+/**
+ * THE GITHUB LINE PROPERTY (R7, 2026-10-18): it names NO app — seeker pages
+ * name only Claude, ChatGPT and Claude Code, and every other app's setup is
+ * the install repo's — and the install repo is the one link.
+ */
+const GITHUB_LINE = "Using a different AI app? Setup for other apps is on GitHub →";
 const githubLineOffences = (text: string, href: string | null): string[] => {
   const out: string[] = [];
-  const names = MCP_OFF_PAGE_HOSTS.map((h) => h.name).join(", ");
-  if (text !== `Using a different agent? Setup for ${names} and other tools is on GitHub →`) out.push(`line reads "${text}"`);
+  if (text !== GITHUB_LINE) out.push(`line reads "${text}"`);
+  for (const h of [...MCP_OFF_PAGE_HOSTS, ...MCP_MORE_HOSTS]) if (text.includes(h.name)) out.push(`line names ${h.name}`);
   if (href !== MCP_INSTALL_REPO_URL) out.push(`link goes to ${href}`);
   if (!/^https:\/\/github\.com\/[^?#]+$/.test(href ?? "")) out.push("link is not a bare GitHub URL");
   if (/rb_live_|[?&]key=/.test(href ?? "")) out.push("link carries a key");
@@ -437,7 +442,7 @@ describe("G8: the tiles are the owner's three with one GitHub line under them; t
   });
   it("the GitHub line names the off-page hosts from the table and links the install repo constant — spelled once in the mirror", () => {
     expect(githubLineOffences(MCP_OTHER_AGENTS_TEXT, MCP_OTHER_AGENTS_LINE.href)).toEqual([]);
-    expect(MCP_OTHER_AGENTS_TEXT).toBe("Using a different agent? Setup for Cursor, VS Code and other tools is on GitHub →");
+    expect(MCP_OTHER_AGENTS_TEXT).toBe(GITHUB_LINE);
     expect(`${MCP_OTHER_AGENTS_LINE.lead} ${MCP_OTHER_AGENTS_LINE.link}`).toBe(MCP_OTHER_AGENTS_TEXT);
     const cfg = strip(read("src/config/mcp-tools.ts"));
     expect(cfg.split(MCP_INSTALL_REPO_URL).length - 1, "the repo URL is typed more than once in the mirror").toBe(1);
@@ -851,12 +856,13 @@ describe("teeth: each source property fails on a copy that breaks it", () => {
   });
   it("a GitHub line with a typed name, another host, another target or a key breaks G8", () => {
     const names = MCP_OFF_PAGE_HOSTS.map((h) => h.name).join(", ");
-    expect(githubLineOffences(`Using a different agent? Setup for ${names} and other tools is on GitHub →`, MCP_INSTALL_REPO_URL)).toEqual([]);
+    expect(githubLineOffences(GITHUB_LINE, MCP_INSTALL_REPO_URL)).toEqual([]);
+    expect(githubLineOffences(`Using a different agent? Setup for ${names} and other tools is on GitHub →`, MCP_INSTALL_REPO_URL)).not.toEqual([]);
     expect(githubLineOffences(`Using a different agent? Setup for ${names}, Zed and other tools is on GitHub →`, MCP_INSTALL_REPO_URL)).not.toEqual([]);
     expect(githubLineOffences(`Using a different agent? Setup for Cursor and other tools is on GitHub →`, MCP_INSTALL_REPO_URL)).not.toEqual([]);
-    expect(githubLineOffences(`Using a different agent? Setup for ${names} and other tools is on GitHub →`, "https://github.com/someone-else/resumebooster-mcp")).not.toEqual([]);
-    expect(githubLineOffences(`Using a different agent? Setup for ${names} and other tools is on GitHub →`, `${MCP_INSTALL_REPO_URL}?key=${KEY}`)).not.toEqual([]);
-    expect(githubLineOffences(`Using a different agent? Setup for ${names} and other tools is on GitHub →`, null)).not.toEqual([]);
+    expect(githubLineOffences(GITHUB_LINE, "https://github.com/someone-else/resumebooster-mcp")).not.toEqual([]);
+    expect(githubLineOffences(GITHUB_LINE, `${MCP_INSTALL_REPO_URL}?key=${KEY}`)).not.toEqual([]);
+    expect(githubLineOffences(GITHUB_LINE, null)).not.toEqual([]);
   });
   it("a first step naming the transport breaks G8", () => {
     const first = MCP_HOSTS[0].steps({ url: URL })[0];

@@ -1,0 +1,131 @@
+/**
+ * THE TITLE AND DESCRIPTION OF THE BOARD'S INDEXED PAGES, ONE BUILDER FOR BOTH
+ * RENDERERS (SEO-007, R3).
+ *
+ * The bake and the React page wrote different heads for the same address:
+ * /jobs/company/dominos baked "Domino's jobs: 23,789 open roles from their own
+ * hiring system" and React replaced it with "Domino's jobs: open roles from
+ * their own hiring system"; the field pages and /jobs differed the same way;
+ * an agency's page baked "roles listed by a staffing agency" while React said
+ * "open roles from their own hiring system" (it had no agency branch).
+ *
+ * Every head here is built from main-locale keys (jobsPage.*, read by the
+ * bake from en.json, and from the company shard for the federal listing
+ * site's own words), with English defaults that are the bake's own sentences
+ * — scripts/prerender-pages.mjs companyLanderPage for the company pages,
+ * which src/test/seo-react-one-head-per-address.test.tsx holds equal to this
+ * builder for every kind, with and without a count. React reads it for an
+ * address it renders without a baked head (an SPA navigation); on a load of a
+ * baked file it keeps the baked words (SEO.tsx preferBakedHead).
+ *
+ * `n` is always the figure already formatted for the reader's language (or
+ * the bake's margined "85,000+" claim); null prints the count-free sentence.
+ */
+
+/** i18next's t(key, defaultValue, vars) shape; the bake passes a reader over EN_LOCALE. */
+export type HeadT = (key: string, defaultValue: string, vars?: Record<string, unknown>) => string;
+
+export interface BoardHead {
+  title: string;
+  description: string;
+}
+
+/** The SERP budget the bake applies: the name stays whole, the source phrase gives way first, then the count. */
+export const BOARD_TITLE_MAX = 68;
+const fit = (...options: string[]) => options.find((o) => o.length <= BOARD_TITLE_MAX) ?? options[options.length - 1];
+
+export type CompanyHeadKind = "employer" | "agency" | "usajobs";
+
+/**
+ * A company page. `name` is the board's display name; `possessive` its
+ * possessive ("Domino's", never "Domino's's"). For the federal listing site
+ * `usajobsH1` and `capLine` are the company shard's own sentences.
+ */
+export function companyBoardHead(o: {
+  kind: CompanyHeadKind;
+  name: string;
+  possessive: string;
+  n: string | null;
+  t: HeadT;
+  usajobsH1?: string;
+  capLine?: string;
+}): BoardHead {
+  const { kind, name: company, possessive: companyPossessive, n, t } = o;
+  const v = { company, companyPossessive, n };
+  if (kind === "usajobs") {
+    const h1 = o.usajobsH1 ?? "";
+    return {
+      title: n ? fit(t("jobsPage.usajobsSeoTitleCount", "{{h1}}: {{n}} roles", { h1, n }), h1) : h1,
+      description: n
+        ? t("jobsPage.usajobsSeoDescriptionCount", "{{n}} federal openings listed on USAJOBS, each naming its agency. {{cap}} Check your resume's fit free.", { n, cap: o.capLine ?? "" })
+        : t("jobsPage.usajobsSeoDescription", "Federal openings listed on USAJOBS, each naming its agency. {{cap}} Check your resume's fit free.", { cap: o.capLine ?? "" }),
+    };
+  }
+  if (kind === "agency") {
+    return {
+      title: n
+        ? fit(
+            t("jobsPage.agencySeoTitleCount", "{{company}} jobs: {{n}} roles listed by a staffing agency", v),
+            t("jobsPage.agencySeoTitleCountShort", "{{company}} jobs: {{n}} roles", v),
+            t("jobsPage.companySeoTitleShort", "{{company}} jobs", v),
+          )
+        : fit(t("jobsPage.agencySeoTitle", "{{company}} jobs: roles listed by a staffing agency", v), t("jobsPage.companySeoTitleShort", "{{company}} jobs", v)),
+      description: n
+        ? t("jobsPage.agencySeoDescriptionCount", "{{n}} roles listed by {{company}}, a staffing agency: roles are usually for its clients. Check your resume's fit free before you apply.", v)
+        : t("jobsPage.agencySeoDescription", "Roles listed by {{company}}, a staffing agency: roles are usually for its clients. Check your resume's fit free before you apply.", v),
+    };
+  }
+  return {
+    title: n
+      ? fit(
+          t("jobsPage.companySeoTitleCount", "{{company}} jobs: {{n}} open roles from their own hiring system", v),
+          t("jobsPage.companySeoTitleCountShort", "{{company}} jobs: {{n}} open roles", v),
+          t("jobsPage.companySeoTitleShort", "{{company}} jobs", v),
+        )
+      : fit(t("jobsPage.companySeoTitle", "{{company}} jobs: open roles from their own hiring system", v), t("jobsPage.companySeoTitleShort", "{{company}} jobs", v)),
+    description: n
+      ? t("jobsPage.companySeoDescriptionCount", "{{n}} open roles at {{company}}, read from {{companyPossessive}} own hiring system. Check your resume's fit free before you apply.", v)
+      : t("jobsPage.companySeoDescription", "Open roles at {{company}}, read from {{companyPossessive}} own hiring system. Check your resume's fit free before you apply.", v),
+  };
+}
+
+/**
+ * A field page (/jobs/field/<slug>). `n` is the bake's margined claim
+ * ("85,000+"), `exact` the formatted count for the description, `boards`
+ * the formatted board count and `countsDay` the bake's dated clause; React
+ * passes none of them and prints the count-free sentences.
+ */
+export function fieldBoardHead(o: { label: string; t: HeadT; n?: string | null; exact?: string | null; boards?: string | null; countsDay?: string | null }): BoardHead {
+  const { label: category, t } = o;
+  const v = { category, n: o.n, exact: o.exact, boards: o.boards, countsDay: o.countsDay };
+  const lead = o.exact && o.countsDay
+    ? t("jobsPage.landerSeoDescriptionLeadCount", "{{exact}} live {{category}} openings, {{countsDay}}", v)
+    : t("jobsPage.landerSeoDescriptionLead", "Live {{category}} openings", v);
+  const boards = o.boards ? t("jobsPage.landerSeoDescriptionBoards", ", from {{boards}} company job boards", v) : "";
+  return {
+    title: o.n
+      ? t("jobsPage.landerSeoTitleCount", "{{category}} Jobs — {{n}} Live Openings", v)
+      : t("jobsPage.landerSeoTitle", "{{category}} Jobs — Live Openings from Company Boards", v),
+    description: `${lead}${boards}${t("jobsPage.landerSeoDescriptionTail", ", each read from the hiring system that published it.", v)}`,
+  };
+}
+
+/**
+ * The board (/jobs). `n` and `boards` are the bake's margined claims; React
+ * passes neither and prints the count-free sentences.
+ */
+export function jobsBoardHead(o: { t: HeadT; n?: string | null; boards?: string | null }): BoardHead {
+  const { t } = o;
+  const v = { n: o.n, boards: o.boards };
+  const phrase = o.n && o.boards
+    ? t("jobsPage.seoPhraseCountBoards", "{{n}} live openings across {{boards}} company job boards", v)
+    : o.n
+      ? t("jobsPage.seoPhraseCount", "{{n}} live openings", v)
+      : t("jobsPage.seoPhrase", "live openings from companies' own job boards", v);
+  return {
+    title: o.n
+      ? t("jobsPage.seoTitleCount", "Live Job Board — {{n}} Openings Direct From Company Career Pages", v)
+      : t("jobsPage.seoTitle", "Live Job Board — Openings Direct From Company Career Pages", v),
+    description: t("jobsPage.seoDescription", "Browse {{phrase}}, each read from the hiring system that published it, never copied from another job board. No dated posting older than 30 days.", { phrase }),
+  };
+}

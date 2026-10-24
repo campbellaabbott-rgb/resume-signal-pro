@@ -46,7 +46,7 @@ import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "re
 import { Link } from "react-router-dom";
 import i18n, { type TFunction } from "i18next";
 import { tPlural } from "@/lib/company/plural";
-import { companyLanderPath } from "@/lib/public-href";
+import { useCompanyBoardHref } from "@/lib/seo/lander-manifest";
 import { useTranslation } from "react-i18next";
 import { ExternalLink, Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -410,6 +410,9 @@ function withSourceLink(text: string, row: LayoffFiling, linkLabel: string): Rea
  *  and the count of further filings on the employer page when there are
  *  any. Used by the detail panel and, one per filing, by the employer page. */
 function FilingSentence({ row, t }: { row: LayoffFiling; t: T }) {
+  // SEO-010: an employer link goes to its written company page, or to the
+  // live board filtered to the board when the bake wrote none.
+  const companyHref = useCompanyBoardHref();
   const { text, linkLabel } = layoffLineText(row, t);
   return (
     <>
@@ -419,7 +422,7 @@ function FilingSentence({ row, t }: { row: LayoffFiling; t: T }) {
       {row.moreN > 0 && (
         <>
           {" · "}
-          <Link to={companyLanderPath(row.companyToken)} className="link" onClick={stop}>
+          <Link to={companyHref(row.companyToken)} className="link" onClick={stop}>
             {t("jobsPage.layoffMore", "+{{more}} more on the employer page", { more: fmtCount(row.moreN) })}
           </Link>
         </>

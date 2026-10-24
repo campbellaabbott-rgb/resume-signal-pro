@@ -141,7 +141,7 @@
 //     leave seven languages rendering the claim this page stopped making.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { companyLanderPath } from "@/lib/public-href";
+import { useCompanyBoardHref } from "@/lib/seo/lander-manifest";
 import { companyRowScope } from "@/pages/Companies";
 import { useTranslation } from "react-i18next";
 import { ArrowRight, Bookmark, Briefcase, Layers, LucideIcon, MapPin, Search, SlidersHorizontal } from "lucide-react";
@@ -1389,6 +1389,9 @@ function freshEntry<T extends { at: number }>(m: Map<string, T>, key: string): T
 
 export default function Explore() {
   const { t, i18n } = useTranslation();
+  // SEO-010: an employer link goes to its written company page, or to the
+  // live board filtered to the board when the bake wrote none.
+  const companyHref = useCompanyBoardHref();
   const { user } = useAuth();
   // A board-budget refusal is the BOARD pausing this connection, not this
   // page failing: one notice, no "our instrument failing", no retry advice.
@@ -3219,7 +3222,7 @@ export default function Explore() {
                   const scope = companyRowScope({ token: h.tokens[0], tokens: h.tokens });
                   const backTo = backHere(null, null, "check");
                   const href = single
-                    ? companyLanderPath(h.tokens[0], new URLSearchParams({ from: "explore", back: backTo }).toString())
+                    ? companyHref(h.tokens[0], new URLSearchParams({ from: "explore", back: backTo }).toString())
                     : toBoard({ company: scope.tokens.join(",") }, backTo);
                   const open = scope.complete ? numOr(h.open_roles) : null;
                   // ONE GUARD, TWO CALL SITES. `single` is checked here as well
