@@ -23,7 +23,11 @@ import { sessionWasRefunded } from "../_shared/payment-revocation.ts";
 // spends the Stripe account's shared read limit: a well-formed id only, a
 // per-address and a function-wide bucket before Stripe is asked, and a
 // session Stripe refused is not asked about again for ten minutes.
-const FN_BUILD = "generate-career-path.2026-10-11.30";
+// 2026-10-11.31 (wave 4 round 2 recheck): a past buyer Stripe confirmed is
+// remembered until their 90 days end (career_path_past_buyers,
+// 20261011213000) and read before either bucket, so strangers who fill the
+// function-wide bucket cannot lock a genuine buyer out.
+const FN_BUILD = "generate-career-path.2026-10-11.31";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -54,6 +58,29 @@ type RateDb = Parameters<typeof sessionWasRefunded>[0] & {
   rpc: (fn: string, args: Record<string, unknown>) => PromiseLike<{ data: unknown; error: unknown }>;
 };
 
+/** A past buyer Stripe already confirmed, inside their 90 days and not refunded or disputed since. Read before either bucket. */
+async function rememberedPastBuyer(db: RateDb, sessionId: string): Promise<boolean> {
+  try {
+    const { data, error } = await db.from("career_path_past_buyers").select("regenerate_until")
+      .eq("stripe_session_id", sessionId).gt("regenerate_until", new Date().toISOString()).maybeSingle();
+    if (error || !data) return false;
+    return !(await sessionWasRefunded(db, sessionId));
+  } catch {
+    return false;
+  }
+}
+
+/** Remember Stripe's yes until the buyer's 90 days end, and drop the rows whose days have ended. Best effort: unremembered, the next visit asks Stripe again. */
+async function rememberPastBuyer(db: RateDb, sessionId: string, until: number): Promise<void> {
+  try {
+    const now = new Date().toISOString();
+    await db.from("career_path_past_buyers").upsert({ stripe_session_id: sessionId, regenerate_until: new Date(until).toISOString(), confirmed_at: now }, { onConflict: "stripe_session_id" });
+    await db.from("career_path_past_buyers").delete().lt("regenerate_until", now);
+  } catch {
+    /* asked again next time */
+  }
+}
+
 /** Both buckets must answer yes; an unanswered bucket is a no (Stripe is never asked blind). */
 async function stripeReadAllowed(db: RateDb, req: Request): Promise<boolean> {
   const take = async (ip: string, max: number) => {
@@ -72,34 +99,39 @@ async function stripeReadAllowed(db: RateDb, req: Request): Promise<boolean> {
  * A past buyer whose claim row (kept 30 days) is gone: the Stripe session
  * itself, paid, for this product, inside PAST_BUYER_DAYS, and not refunded.
  * Counted before Stripe is asked, because every call spends the account's
- * shared read limit, which the checkouts and the webhook also need.
+ * shared read limit, which the checkouts and the webhook also need. A yes is
+ * remembered, so the buyer is never counted again.
  */
 async function pastBuyerFromStripe(db: RateDb, req: Request, sessionId: unknown): Promise<boolean> {
   if (typeof sessionId !== "string" || !STRIPE_SESSION_ID.test(sessionId)) return false;
+  if (await rememberedPastBuyer(db, sessionId)) return true;
   const refusedAt = notPastBuyer.get(sessionId);
   if (refusedAt && Date.now() - refusedAt < NOT_PAST_BUYER_MS) return false;
   const key = Deno.env.get("STRIPE_SECRET_KEY");
   if (!key) return false;
   if (!(await stripeReadAllowed(db, req))) return false;
-  const answer = await pastBuyerAnswer(db, key, sessionId);
-  if (!answer) {
+  const until = await pastBuyerUntil(db, key, sessionId);
+  if (until === null) {
     if (notPastBuyer.size > 5000) notPastBuyer.clear();
     notPastBuyer.set(sessionId, Date.now());
+    return false;
   }
-  return answer;
+  await rememberPastBuyer(db, sessionId, until);
+  return true;
 }
 
-async function pastBuyerAnswer(db: RateDb, key: string, sessionId: string): Promise<boolean> {
+/** When a paid, unrefunded Career Path session's regeneration ends, or null when Stripe does not show one inside its 90 days. */
+async function pastBuyerUntil(db: RateDb, key: string, sessionId: string): Promise<number | null> {
   try {
     const stripe = new Stripe(key, { apiVersion: "2025-12-15.clover" });
     const s = await stripe.checkout.sessions.retrieve(sessionId);
     const created = Number((s as { created?: number }).created ?? 0) * 1000;
-    if (!checkoutSessionSettled(s)) return false;
-    if (String(s.metadata?.product_type ?? "") !== "career_path_simulator") return false;
-    if (!created || Date.now() - created > PAST_BUYER_DAYS * 86400_000) return false;
-    return !(await sessionWasRefunded(db, sessionId));
+    if (!checkoutSessionSettled(s)) return null;
+    if (String(s.metadata?.product_type ?? "") !== "career_path_simulator") return null;
+    if (!created || Date.now() - created > PAST_BUYER_DAYS * 86400_000) return null;
+    return (await sessionWasRefunded(db, sessionId)) ? null : created + PAST_BUYER_DAYS * 86400_000;
   } catch {
-    return false;
+    return null;
   }
 }
 

@@ -209,6 +209,7 @@ class FakeQuery implements PromiseLike<DbResult> {
   // R1's account guard asks whether the account is proven at ANOTHER address (S12-177).
   neq(col: string, val: unknown) { this.preds.push((r) => (r[col] ?? null) !== (val ?? null)); return this; }
   gt(col: string, val: unknown) { this.preds.push((r) => r[col] != null && String(r[col]) > String(val)); return this; }
+  lt(col: string, val: unknown) { this.preds.push((r) => r[col] != null && String(r[col]) < String(val)); return this; }
   order() { return this; }
   limit() { return this; }
 
