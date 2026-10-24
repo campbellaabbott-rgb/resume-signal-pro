@@ -834,7 +834,13 @@ own nonce, whose count must be 1: the positive control for that 0.
 3. Then this branch: merge origin/main into it first. Expect conflicts in
    the nine locale files, `public/llms.txt`, `src/components/AtsCoverage.tsx`,
    `src/data/guides.ts`, `src/pages/Index.tsx`, `src/pages/Pricing.tsx`,
-   `docs/deploy-ledger.json` and six tests (git merge-tree, 2026-10-18).
+   `docs/deploy-ledger.json` and six tests (git merge-tree, 2026-10-18),
+   and since main's d823aae4 (2026-10-18) also `src/components/HomeHero.tsx`
+   (git merge-tree, 2026-10-24, the same six tests). d823aae4 cut the hero's
+   and the strip's "never submits" sentence, in nine locales and in
+   `a-pass-number-on-a-page-is-a-placeholder.test.tsx`, only while the
+   server-side agent was live; this branch retires it, so the merge may keep
+   wave 4's sentence and that test's wave 4 side. Apart from HomeHero,
    company-profiles owns them; wave 4 keeps the other side and re-applies its
    own hunks and its 374 locale keys (349 from the integration and 25 from
    the fixes, adding only; the fixes also remove accountPrivacy.deletedList
