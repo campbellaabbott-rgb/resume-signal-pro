@@ -51,7 +51,7 @@ import { useFunnelTracking } from "@/hooks/use-funnel-tracking";
 import { usePersonalization } from "@/hooks/use-personalization";
 import { parseEdgeFunctionError } from "@/lib/edge-function-errors";
 import { PRODUCTS } from "@/config/products";
-import { forgetStashedShare, stashShareFor, stashedSessionIdFor, stashedShareFor } from "@/lib/auth-fragment";
+import { forgetStashedSessionFor, forgetStashedShare, stashShareFor, stashedSessionIdFor, stashedShareFor } from "@/lib/auth-fragment";
 
 const Success = () => {
   const { t } = useTranslation();
@@ -462,8 +462,14 @@ const Success = () => {
       });
 
       if (deleteError) throw deleteError;
-      // The analysis is gone: this tab no longer names it (S13-002).
+      // The analysis is gone: this tab no longer names it (S13-002), nor the
+      // purchase it was made for. Back to /success would otherwise ask
+      // analyze-resume for that purchase, whose saved copy is gone (a 409),
+      // and then ask the buyer who just deleted their data for the résumé
+      // again; analyze-resume refuses that purchase a second analysis
+      // anyway (SESSION_USED). Back now says no session is open.
       forgetStashedShare();
+      forgetStashedSessionFor("/success", sessionId);
 
       toast({
         title: t('success.toast.dataDeleted'),

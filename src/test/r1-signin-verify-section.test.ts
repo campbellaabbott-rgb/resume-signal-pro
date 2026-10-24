@@ -152,6 +152,16 @@ describe("section 95: the live stash script, run for two purchases on /success (
     const routes = site().map((r) => r.match.endsWith(`${esc(SITE)}/$`) ? { ...r, status: 500 } : r);
     expect(has(run(routes).lines, "FAIL", /its \/success rule \(S13-002\) could not be run/)).toBe(true);
   });
+
+  it("passes a script that keeps one session id per path, and fails one with a single slot for every path (second fixer round)", () => {
+    const { lines } = run(site());
+    expect(has(lines, "PASS", /keeps one session id per path: a \/success return leaves a Freelance Boost paid and not yet generated in the stash/), show(lines)).toBe(true);
+    const ONE_SLOT = STASH.replace(' S["session_id:" + P] = v;', "");
+    expect(ONE_SLOT, "the per-path write could not be removed from index.html's script").not.toBe(STASH);
+    const routes = site().map((r) => r.match.endsWith(`${esc(SITE)}/$`) ? { ...r, body: page(ONE_SLOT) } : r);
+    const one = run(routes).lines;
+    expect(has(one, "FAIL", /keeps one session id for every path: a payment return on \/success evicts a Freelance Boost paid and not yet generated/), show(one)).toBe(true);
+  });
 });
 
 describe("section 95: the Auth chunk and the switches", () => {

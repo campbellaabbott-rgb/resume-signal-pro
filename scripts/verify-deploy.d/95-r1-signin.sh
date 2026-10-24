@@ -10,7 +10,10 @@
 #     records the address;
 #   - that script, RUN here for two Stripe returns to /success in one tab,
 #     drops the first purchase's share when the second arrives (S13-002, the
-#     R1 hotfix): otherwise the second buyer is shown the first analysis;
+#     R1 hotfix): otherwise the second buyer is shown the first analysis; and,
+#     run for a /freelance-boost return then a /success return, keeps each
+#     path's session id (the hotfix's second fixer round): otherwise a Boost
+#     paid and not yet generated is evicted and offered for sale again;
 #   - the live Auth chunk is the R1 page (it carries the rb-auth flags mark)
 #     and has no magic-link copy left;
 #   - each sign-in switch, read from the deployed bundle, and a switch that is
@@ -101,6 +104,14 @@ else{try{
   if(s.session_id==="cs_vd95_second"&&s.share===undefined)say("PASS","the live stash script, run for two purchases on /success in one tab, drops the first purchase share when the second arrives (S13-002): the second purchase gets its own analysis");
   else if(s.session_id!=="cs_vd95_second")say("FAIL","the live stash script did not stash the second purchase on /success: "+JSON.stringify(s).slice(0,140));
   else say("FAIL","the live stash script keeps the first purchase share beside a second purchase on /success (S13-002): the buyer is shown the old analysis and the new one is never generated. Publish the frontend with the R1 hotfix");
+  // 1c. One session id per path (second fixer round): a Freelance Boost paid
+  // and not yet generated, then a /success return in the same tab.
+  const per=new Map();
+  runStash(rootScript,"/freelance-boost?session_id=cs_vd95_boost",per);
+  runStash(rootScript,"/success?session_id=cs_vd95_fa",per);
+  const p=JSON.parse(per.get("rb_url_stash")||"{}");
+  if(p["session_id:/freelance-boost"]==="cs_vd95_boost"&&p["session_id:/success"]==="cs_vd95_fa")say("PASS","the live stash script keeps one session id per path: a /success return leaves a Freelance Boost paid and not yet generated in the stash, so its buyer is never offered the buy buttons again");
+  else say("FAIL","the live stash script keeps one session id for every path: a payment return on /success evicts a Freelance Boost paid and not yet generated, and back on its page the buyer is offered the buy buttons again ("+JSON.stringify(p).slice(0,140)+"). Publish the frontend with the R1 hotfix");
 }catch(e){say("FAIL","the live stash script could not be run here: "+String(e).slice(0,140))}}
 
 // 2. The live Auth chunk, the chunks it imports, and the entry that names it.

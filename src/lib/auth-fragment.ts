@@ -23,7 +23,14 @@
  *   by the auth client, which reads both the query and the fragment);
  * - session_id on ANY path (every Stripe return: /product-success, /success,
  *   /freelance-boost, /agents/pass, /account?pro=success), with
- *   session_id_path naming where it came from;
+ *   session_id_path naming where it came from, and the same id again under
+ *   "session_id:" + that path. Each path keeps its own (second fixer round
+ *   of the R1 hotfix): with one slot for every path, a $5 Full Analysis
+ *   bought in the tab overwrote a Freelance Boost that was paid and not yet
+ *   generated, and back on its page the buyer was offered the buy buttons
+ *   again. session_id and session_id_path still name the last capture, and a
+ *   stash the live page wrote before this (those two keys only) is still
+ *   read;
  * - share on /success (it reads and deletes that analysis), with share_path
  *   and share_session, the purchase it belongs to ("" for an address that
  *   named only the analysis). A /success address names one purchase or one
@@ -97,6 +104,9 @@ export function discardStashedSession(): void {
   writeStash(s);
 }
 
+/** Where the stash keeps the session id captured on `path` (each path its own). */
+const sessionKeyFor = (path: string) => `session_id:${path}`;
+
 /**
  * A path-bound value a page uses (session_id, share). One still in the
  * address wins: the first script strips it on every load, so one that is
@@ -110,9 +120,17 @@ export function stashedValueFor(key: "session_id" | "share", path: string, urlVa
   return { value: null, fromStash: false };
 }
 
-/** The Stripe session id a payment-return page uses (see stashedValueFor). */
+/**
+ * The Stripe session id a payment-return page uses: one still in the address
+ * wins (see stashedValueFor), else the one stashed for this path, else the
+ * last capture when it was made on this path (a stash written before ids
+ * were kept per path).
+ */
 export function stashedSessionIdFor(path: string, urlValue: string | null | undefined): { id: string | null; fromStash: boolean } {
-  const r = stashedValueFor("session_id", path, urlValue);
+  if (urlValue) return { id: urlValue, fromStash: false };
+  const own = peekStashed(sessionKeyFor(path));
+  if (own) return { id: own, fromStash: true };
+  const r = stashedValueFor("session_id", path, null);
   return { id: r.value, fromStash: r.fromStash };
 }
 
@@ -126,6 +144,7 @@ export function stashValueFor(key: "session_id" | "share", path: string, value: 
     const s = readStash();
     s[key] = value;
     s[`${key}_path`] = path;
+    if (key === "session_id") s[sessionKeyFor(path)] = value;
     // A share written without its purchase belongs to no purchase (stashShareFor names one).
     if (key === "share") delete s.share_session;
     sessionStorage.setItem(STASH_KEY, JSON.stringify(s));
@@ -178,15 +197,23 @@ export function forgetStashedShare(): void {
 /**
  * Forget the session id stashed for `path`: its purchase was delivered, or
  * the page started a new one. With `sessionId`, only that purchase's id goes
- * (a stash that holds another purchase's id keeps it).
+ * (a stash that holds another purchase's id keeps it). Another path's id is
+ * never touched.
  */
 export function forgetStashedSessionFor(path: string, sessionId?: string | null): void {
   const s = readStash();
-  if (s.session_id_path !== path) return;
-  if (sessionId && s.session_id !== sessionId) return;
-  delete s.session_id;
-  delete s.session_id_path;
-  writeStash(s);
+  const key = sessionKeyFor(path);
+  let changed = false;
+  if (s[key] !== undefined && (!sessionId || s[key] === sessionId)) {
+    delete s[key];
+    changed = true;
+  }
+  if (s.session_id_path === path && (!sessionId || s.session_id === sessionId)) {
+    delete s.session_id;
+    delete s.session_id_path;
+    changed = true;
+  }
+  if (changed) writeStash(s);
 }
 
 /**

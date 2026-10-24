@@ -36,7 +36,14 @@
  *     the buy buttons;
  *   - the page showing a delivered purchase offers "Start a new purchase",
  *     which forgets it in the stash and the address; the "already paid" box of
- *     a purchase not yet generated does not offer it.
+ *     a purchase not yet generated does not offer it;
+ *   - (second fixer round) another payment return in the tab, a $5 Full
+ *     Analysis on /success, no longer evicts a Boost paid and not yet
+ *     generated: the stash keeps one session id per path;
+ *   - (second fixer round) a Pro member's grant (pro_<id>) stays in the stash
+ *     after delivery, so a reload, Back from the builder or an in-app link
+ *     shows its section again: no purchase email names a grant, so the
+ *     "open the link in your purchase email" box was a dead end.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -69,6 +76,7 @@ vi.mock("@/components/seo/SEO", () => ({ SEO: () => null }));
 vi.mock("@/components/ProductPreview", () => ({ ProductPreview: () => null }));
 
 import FreelanceBoost from "../pages/FreelanceBoost";
+import { stashedSessionIdFor } from "@/lib/auth-fragment";
 
 vi.setConfig(MOUNT_TEST_BUDGET);
 
@@ -97,6 +105,8 @@ const buyButtons = () => screen.queryByRole("button", { name: /Boost my experien
 const FIRST = "cs_live_BOOSTBOOSTAA";
 /** Paid, nothing generated yet: recover-purchase finds nothing, generation makes it. */
 const UNDELIVERED = "cs_live_BOOSTNOTYETB";
+/** A Pro member's included Boost, delivered earlier: a grant, never a Stripe session, and no purchase email names it. */
+const GRANT = "pro_0f8fad5b-d9cb-469f-a165-70867728950e";
 const section = (header: string) => ({ structure: "projects_section", structureNote: "", header, scopeStatement: "", projects: [], transitionParagraph: "", gapHandling: "", keywordCoverage: null });
 const DRAFT = {
   projects: [{ clientType: "a 10-person dental practice", problem: "", deliverable: "A booking site", toolsSkills: "", outcome: "", duration: "", paymentBand: "", repeatOrReferral: "" }],
@@ -111,6 +121,7 @@ beforeEach(() => {
   generation = async () => ({ data: { success: true, data: section("The new purchase's section") }, error: null });
   h.invoke.mockReset().mockImplementation(async (fn: string, o: { body: { sessionId?: string } }) => {
     if (fn === "recover-purchase") {
+      if (o.body.sessionId === GRANT) return { data: { success: true, found: true, purchases: [{ productType: "freelance_transition_pro", generatedContent: section("The Pro member's section") }] }, error: null };
       return o.body.sessionId === FIRST
         ? { data: { success: true, found: true, purchases: [{ productType: "freelance_boost", generatedContent: section("The first purchase's section") }] }, error: null }
         : { data: { success: true, found: false, purchases: [] }, error: null };
@@ -179,6 +190,56 @@ describe("a paid Freelance Boost not yet delivered is never dropped", () => {
     expect(await screen.findByRole("button", { name: /Generate my section \(already paid\)/ }, SLOW)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: en.freelanceBoost.startNewPurchase })).toBeNull();
     expect(stash().session_id, "an undelivered purchase left the stash").toBe(UNDELIVERED);
+  });
+});
+
+describe("a paid Freelance Boost not yet delivered survives another payment return in the tab (second fixer round)", () => {
+  it("a $5 Full Analysis bought in the same tab before the Boost was generated does not evict it: back on the page, the Boost is still the purchase", async () => {
+    localStorage.setItem("freelanceBoostIntake", JSON.stringify(DRAFT));
+    generation = () => new Promise(() => { /* still being written when the buyer leaves for another checkout */ });
+    arrive(`/freelance-boost?session_id=${UNDELIVERED}`);
+    page();
+    await waitFor(() => expect(called("generate-freelance-boost")).toEqual([UNDELIVERED]), SLOW);
+    cleanup();
+    h.invoke.mockClear();
+
+    // Another Stripe return in this tab: the first script stashes the $5 purchase for /success.
+    arrive("/success?session_id=cs_live_FULLANALYSIS1", 10_000);
+    arrive("/freelance-boost", 30_000);
+    page();
+    await waitFor(() => expect(recovered(), "a /success return evicted the paid, undelivered Boost").toEqual([UNDELIVERED]), SLOW);
+    await settle();
+    expect(screen.queryByText(en.freelanceBoost.boughtHereTitle), "a paid purchase not yet generated was left to the purchase email").toBeNull();
+    expect(buyButtons(), "a buyer who had paid was offered the buy buttons again").toBeNull();
+    expect(stashedSessionIdFor("/success", null).id, "the Boost's id took the /success purchase's place").toBe("cs_live_FULLANALYSIS1");
+  });
+});
+
+describe("a Pro member's included Boost (a grant: no purchase email names it)", () => {
+  it("stays in the tab after it is delivered: a reload, Back from the builder or an in-app link shows the section again, and 'Start a new purchase' still forgets it", async () => {
+    arrive(`/freelance-boost?session_id=${GRANT}`);
+    page();
+    expect(await screen.findByText("The Pro member's section", {}, SLOW)).toBeInTheDocument();
+    await settle();
+    expect(stash().session_id, "a delivered grant left the stash, and no email can bring it back").toBe(GRANT);
+    cleanup();
+    h.invoke.mockClear();
+
+    arrive("/freelance-boost", 20_000);
+    page();
+    expect(await screen.findByText("The Pro member's section", {}, SLOW)).toBeInTheDocument();
+    expect(recovered(), "a reload after delivery could not reach the grant's section").toEqual([GRANT]);
+    expect(screen.queryByText(en.freelanceBoost.openYourLink), "a Pro member was sent to a purchase email that does not exist").toBeNull();
+    cleanup();
+    h.invoke.mockClear();
+
+    window.history.pushState(null, "", "/");
+    window.history.pushState(null, "", "/freelance-boost");
+    page();
+    expect(await screen.findByText("The Pro member's section", {}, SLOW)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: en.freelanceBoost.startNewPurchase }));
+    expect(await screen.findByRole("button", { name: /Boost my experience/ }, SLOW)).toBeInTheDocument();
+    expect(stash().session_id, "'Start a new purchase' kept the grant").toBeUndefined();
   });
 });
 

@@ -24,7 +24,11 @@
  *     the email's share link was opened in the tab (a Pro member's included
  *     analysis, a pro_ grant, too);
  *   - a share link opened in a tab that holds a purchase shows the analysis
- *     the link names, read-only.
+ *     the link names, read-only;
+ *   - (second fixer round) Delete forgets the purchase as well as its share,
+ *     so Back to /success says no session is open, never "we need your
+ *     résumé again" to a buyer who just deleted their data (that request
+ *     would also be refused: the purchase already had its analysis).
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -183,6 +187,26 @@ describe("a second full analysis bought in the same tab", () => {
 
     await buyAndSee("cs_live_AFTERDELETE1");
     expect(screen.queryByText("Analysis not found. The link may be invalid or expired.")).toBeNull();
+  });
+
+  it("after Delete, Back to /success (in the app, or a new document) is not asked for the résumé again: the tab forgot the deleted purchase too (second fixer round)", async () => {
+    await buyAndSee("cs_live_DELETEDAAAAA");
+    fireEvent.click(screen.getByRole("button", { name: /Delete Data/ }));
+    await act(async () => { fireEvent.click(await screen.findByRole("button", { name: "Yes, delete my data" })); });
+    await waitFor(() => expect(window.location.pathname).toBe("/"));
+    expect(stash().session_id, "the tab still names the purchase whose analysis was deleted").toBeUndefined();
+    cleanup();
+
+    for (const back of ["in the app (no new document)", "a new document"]) {
+      h.invoke.mockClear();
+      if (back === "a new document") arrive("/success");
+      else window.history.replaceState(null, "", "/success");
+      page();
+      expect(await screen.findByText("No session found", {}, SLOW), `Back ${back}`).toBeInTheDocument();
+      expect(screen.queryByText(en.resumeRecovery.title), `Back ${back} asked a buyer who had just deleted their data for the résumé again`).toBeNull();
+      expect(analyzeCalls(), `Back ${back} asked analyze-resume for the deleted purchase (a 409, then the résumé form)`).toEqual([]);
+      cleanup();
+    }
   });
 
   it("after the analysis email's share link was opened in the tab, the new purchase (a Pro member's included one too) gets its analysis", async () => {
