@@ -34,6 +34,39 @@ export interface BoardHead {
 export const BOARD_TITLE_MAX = 68;
 const fit = (...options: string[]) => options.find((o) => o.length <= BOARD_TITLE_MAX) ?? options[options.length - 1];
 
+/**
+ * DESCRIPTIONS BUILT UP TO THE SNIPPET BUDGET, NEVER CUT (OBS-2), AS THE BAKE
+ * BUILDS THEM: the first option that fits 160 characters, else the last. The
+ * shorter options are taken from the localized sentence itself, so every
+ * language gives way the same way: its first sentence (the call to action
+ * goes), then the clause before a mark that follows the name.
+ */
+export const BOARD_DESCRIPTION_MAX = 160;
+const snip = (...options: string[]) => {
+  const opts = options.filter((o) => o.length > 0);
+  return opts.find((o) => o.length <= BOARD_DESCRIPTION_MAX) ?? opts[opts.length - 1] ?? "";
+};
+/** Where the name last ends in `s` (0 when it is absent), so a period inside a name never ends a sentence. */
+const afterName = (s: string, name: string) => {
+  const i = name ? s.lastIndexOf(name) : -1;
+  return i < 0 ? 0 : i + name.length;
+};
+/** The first sentence of `s` (to its first full stop or danda after the name), or "" when it has only one. */
+const firstSentence = (s: string, name: string) => {
+  const m = /[.\u0964](?=\s|$)/.exec(s.slice(afterName(s, name)));
+  if (!m) return "";
+  const end = afterName(s, name) + m.index + 1;
+  return end < s.length ? s.slice(0, end) : "";
+};
+/** The text before the first `mark` after the name's first appearance, closed with the sentence's own stop. */
+const clauseBefore = (s: string, name: string, mark: string) => {
+  const from = name ? Math.max(0, s.indexOf(name)) + name.length : 0;
+  const i = s.indexOf(mark, from);
+  if (i < 0) return "";
+  const stop = /\u0964/.test(s) ? "\u0964" : ".";
+  return `${s.slice(0, i).trimEnd()}${stop}`;
+};
+
 export type CompanyHeadKind = "employer" | "agency" | "usajobs";
 
 /**
@@ -54,11 +87,12 @@ export function companyBoardHead(o: {
   const v = { company, companyPossessive, n };
   if (kind === "usajobs") {
     const h1 = o.usajobsH1 ?? "";
+    const full = n
+      ? t("jobsPage.usajobsSeoDescriptionCount", "{{n}} federal openings listed on USAJOBS, each naming its agency. {{cap}} Check your resume's fit free.", { n, cap: o.capLine ?? "" })
+      : t("jobsPage.usajobsSeoDescription", "Federal openings listed on USAJOBS, each naming its agency. {{cap}} Check your resume's fit free.", { cap: o.capLine ?? "" });
     return {
       title: n ? fit(t("jobsPage.usajobsSeoTitleCount", "{{h1}}: {{n}} roles", { h1, n }), h1) : h1,
-      description: n
-        ? t("jobsPage.usajobsSeoDescriptionCount", "{{n}} federal openings listed on USAJOBS, each naming its agency. {{cap}} Check your resume's fit free.", { n, cap: o.capLine ?? "" })
-        : t("jobsPage.usajobsSeoDescription", "Federal openings listed on USAJOBS, each naming its agency. {{cap}} Check your resume's fit free.", { cap: o.capLine ?? "" }),
+      description: snip(full, firstSentence(full, "")),
     };
   }
   if (kind === "agency") {
@@ -70,9 +104,11 @@ export function companyBoardHead(o: {
             t("jobsPage.companySeoTitleShort", "{{company}} jobs", v),
           )
         : fit(t("jobsPage.agencySeoTitle", "{{company}} jobs: roles listed by a staffing agency", v), t("jobsPage.companySeoTitleShort", "{{company}} jobs", v)),
-      description: n
-        ? t("jobsPage.agencySeoDescriptionCount", "{{n}} roles listed by {{company}}, a staffing agency: roles are usually for its clients. Check your resume's fit free before you apply.", v)
-        : t("jobsPage.agencySeoDescription", "Roles listed by {{company}}, a staffing agency: roles are usually for its clients. Check your resume's fit free before you apply.", v),
+      description: (() => {
+        const bare = t("jobsPage.agencySeoDescription", "Roles listed by {{company}}, a staffing agency: roles are usually for its clients. Check your resume's fit free before you apply.", v);
+        const full = n ? t("jobsPage.agencySeoDescriptionCount", "{{n}} roles listed by {{company}}, a staffing agency: roles are usually for its clients. Check your resume's fit free before you apply.", v) : bare;
+        return snip(full, firstSentence(full, company), clauseBefore(bare, company, ":"));
+      })(),
     };
   }
   return {
@@ -83,9 +119,17 @@ export function companyBoardHead(o: {
           t("jobsPage.companySeoTitleShort", "{{company}} jobs", v),
         )
       : fit(t("jobsPage.companySeoTitle", "{{company}} jobs: open roles from their own hiring system", v), t("jobsPage.companySeoTitleShort", "{{company}} jobs", v)),
-    description: n
-      ? t("jobsPage.companySeoDescriptionCount", "{{n}} open roles at {{company}}, read from {{companyPossessive}} own hiring system. Check your resume's fit free before you apply.", v)
-      : t("jobsPage.companySeoDescription", "Open roles at {{company}}, read from {{companyPossessive}} own hiring system. Check your resume's fit free before you apply.", v),
+    description: (() => {
+      const full = n
+        ? t("jobsPage.companySeoDescriptionCount", "{{n}} open roles at {{company}}, read from {{companyPossessive}} own hiring system. Check your resume's fit free before you apply.", v)
+        : t("jobsPage.companySeoDescription", "Open roles at {{company}}, read from {{companyPossessive}} own hiring system. Check your resume's fit free before you apply.", v);
+      // A long name: "read from its own hiring system", then the count and the name alone.
+      const vIts = { ...v, companyPossessive: t("jobsPage.companySeoPossessiveIts", "its", v) };
+      const its = n
+        ? t("jobsPage.companySeoDescriptionCount", "{{n}} open roles at {{company}}, read from {{companyPossessive}} own hiring system. Check your resume's fit free before you apply.", vIts)
+        : t("jobsPage.companySeoDescription", "Open roles at {{company}}, read from {{companyPossessive}} own hiring system. Check your resume's fit free before you apply.", vIts);
+      return snip(full, firstSentence(full, company), firstSentence(its, company), clauseBefore(full, company, ", "));
+    })(),
   };
 }
 

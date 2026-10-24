@@ -341,7 +341,11 @@ export default function JobPosting() {
     <>
       {/* The crawl directive for a gone posting is set on the tag the bake
           already wrote (see the effect above), never as a second one here. */}
-      {(live || retracted) && <SEO title={seoTitle} description={seoDescription} path={path} />}
+      {/* A live posting loaded from its baked file keeps the baked title and
+          description (SEO-007's rule): the bake may have given this page its
+          requisition key to keep its title apart from another posting's
+          (postingPageTitleAvoiding), which postingPageTitle alone cannot know. */}
+      {(live || retracted) && <SEO title={seoTitle} description={seoDescription} path={path} preferBakedHead={live && !!shown} />}
       <Header />
       <main id="main-content" tabIndex={-1} className="min-h-screen pb-20 pt-24 focus:outline-none">
         <div className="mx-auto w-full max-w-3xl px-4 sm:px-6">

@@ -12135,7 +12135,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                 invisible right up until a missing translation would have
                 rendered it. Now there is one list, and it is the one the code
                 obeys. */}
-            {t("jobsPage.sourceNote", "Sources: the official public job-board APIs companies publish on {{vendors}}. The largest boards are re-checked most often and the rotation runs continuously \u2014 how far behind it is right now is a measurement rather than a promise: the live median and 95th-percentile re-check ages are published on the Ghost Job Index \u2014 and postings a company takes down disappear on the next pass. A feed that stops responding drops off the board rather than breaking it.", { vendors: SERVING_SOURCE_LIST })}
+            {t("jobsPage.sourceNote", "Sources: companies' own hiring systems, on {{vendors}}. The largest boards are re-checked most often and the rotation runs continuously \u2014 how far behind it is right now is a measurement rather than a promise: the live median and 95th-percentile re-check ages are published on the Ghost Job Index \u2014 and a posting a company takes down leaves the board when the rotation next re-reads that company's feed. A feed that stops responding drops off the board rather than breaking it.", { vendors: SERVING_SOURCE_LIST })}
           </p>
         </div>
       </main>

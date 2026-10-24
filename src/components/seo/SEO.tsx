@@ -42,7 +42,10 @@ interface SEOProps {
 export function SEO({ title, description, path, image, noIndex, canonicalPath, preferBakedHead }: SEOProps) {
   const url = `${SITE}${publicPath(canonicalPath ?? path)}`;
   const ogImage = image ?? `${SITE}/og-image.png`;
-  const baked = preferBakedHead && !noIndex ? bakedHeadFor(path) : null;
+  // Only an indexable page's own baked head is kept: a stub or a duplicate
+  // pointing at its twin describes itself, not what React renders over it.
+  const bakedFile = preferBakedHead && !noIndex ? bakedHeadFor(path) : null;
+  const baked = bakedFile?.indexable ? bakedFile : null;
   const shownTitle = baked?.title || title;
   const shownDescription = baked?.description || description;
   useEffect(() => {

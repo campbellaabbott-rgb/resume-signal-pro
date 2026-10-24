@@ -48,7 +48,7 @@ export const GUIDES_INTRO =
   "No recycled folklore. Every guide below is grounded in something this product actually does — the checks our scanner runs, the documented behavior of real ATS parsers, or how the board reads employers' own hiring systems. Where the popular advice is wrong, we say so.";
 export const GUIDES_INDEX_TITLE = "Resume & ATS Guides, and Applying With Your Own AI — From Real Data";
 export const GUIDES_INDEX_DESCRIPTION =
-  "How ATS systems actually work, how resumes really get rejected, how to fix yours, and how to apply with your own AI — grounded in what the product does, not folklore.";
+  "How ATS systems work, why resumes get rejected, how to fix yours and how to apply with your own AI, grounded in what the product does.";
 
 export const GUIDE_GROUNDING_DEFAULT =
   "Grounded in the checks our scanner runs on every resume";
@@ -254,7 +254,7 @@ export const GUIDES: Record<string, Guide> = {
     title: "Career Change Resume: Keywords & Framing That Work",
     h1: "The career changer's resume playbook",
     description:
-      "How to write a resume when your experience is in one field and your target is another: bridge keywords, title translation, and the sections that carry a transition.",
+      "How to write a resume when your experience is in one field and your target another: bridge keywords, title translation and transition sections.",
     tldr:
       "A career-change resume fails because every title and keyword points at the old field. Fix it three ways: re-label transferable work in the target field's vocabulary (bridge keywords), name the transition explicitly in a summary line, and add a projects section that carries target-field evidence. Keep the standard reverse-chronological format — functional resumes parse badly and recruiters distrust them.",
     updated: "2026-07-06",
@@ -431,7 +431,7 @@ export const GUIDES: Record<string, Guide> = {
     title: "How to Put Fractional Roles on Your Resume (CFO, CMO, CTO)",
     h1: "How to put fractional roles on your resume",
     description:
-      "Concurrent engagements without the job-hopper misread: the umbrella portfolio entry, per-engagement scope lines, where advisory roles sit, and framing fractional work when applying full-time.",
+      "Concurrent engagements without the job-hopper misread: the umbrella portfolio entry, per-engagement scope lines and where advisory roles sit.",
     tldr:
       "Fractional roles belong under ONE umbrella entry — 'Fractional CFO — concurrent engagements, 2022–present' — with each engagement as a scope line beneath it ('PE-backed healthcare services company, ~$40M revenue: owned FP&A and board reporting'), never as separate look-alike jobs, which reads as instability in a six-second skim. Lead every line with executive scope (P&L, budget, headcount, stage), keep client names out unless you have permission, and when applying to a full-time role, frame the portfolio as continuity of leadership at breadth — not as a collection of short stints.",
     updated: "2026-07-08",

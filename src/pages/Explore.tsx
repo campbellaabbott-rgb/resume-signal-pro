@@ -2189,8 +2189,10 @@ export default function Explore() {
         description={/* seoDescription5, NOT seoDescription4: "how much of the
             board each filter can even see" described the board-wide share the
             chips stopped printing; the share on the page is now the FIELD's.
-            Mirrored in scripts/prerender-seo.mjs. */
-          t("explore.seoDescription5", "Start from the field you work in, narrow to the actual role, then to remote, pay, experience or country — every number is a live count of the exact search the link runs, with how much of that field each filter can even see. Plus what our closure record does and does not say about the employers hiring in that slice.")}
+            Mirrored in scripts/prerender-seo.mjs word for word, and under 160
+            characters in every language: the 316-character sentence it was
+            had its end cut off in every result snippet (OBS-2). */
+          t("explore.seoDescription5", "Every field on the board with a live count, the roles inside each, and remote, pay, experience and country filters that say how much of the field they can see.")}
         path="/explore"
       />
       <Header />

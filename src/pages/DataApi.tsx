@@ -28,6 +28,7 @@ import { apiKeyTokenFromHash, errorBodyOf, forgetConfirmFragment } from "@/lib/c
 import { stashedFragment } from "@/lib/auth-fragment";
 import { PurchaseTerms } from "@/components/PurchaseTerms";
 import { purchaseTerms } from "@/lib/purchase-terms";
+import { publicApiBase } from "@/config/public-endpoints";
 
 const rpc = (fn: string, args?: Record<string, unknown>) =>
   (supabase as unknown as { rpc: (f: string, a?: Record<string, unknown>) => Promise<{ data: unknown }> }).rpc(fn, args);
@@ -37,8 +38,11 @@ const fmt = (n: number | null | undefined) => (typeof n === "number" ? n.toLocal
 const CONTACT = "resumeboostersupp@gmail.com";
 
 // Read from the same env the client is built with, so the documented base URL
-// cannot drift from the project these docs are served by.
-const API_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/public-api`;
+// cannot drift from the project these docs are served by, and spelled by the
+// one builder the bake and both llms files use (SEO-015), which falls back to
+// the project's own address rather than printing "undefined" in a build with
+// no environment.
+const API_BASE = publicApiBase(import.meta.env.VITE_SUPABASE_URL);
 
 // THE PARAMS LINE IS A PROMISE, not a summary. A reader builds against it, so
 // it lists what the function actually accepts — including the ones it will

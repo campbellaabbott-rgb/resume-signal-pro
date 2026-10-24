@@ -28,6 +28,13 @@ export interface BakedHead {
   description: string | null;
   /** The @type of every JSON-LD block the bake put in the head. */
   ldTypes: string[];
+  /**
+   * Whether the bake wrote this head for an indexable page of its own: no
+   * noindex, and a canonical naming this address. A stub ("no longer has a
+   * page of its own") or a duplicate pointing at its twin is a baked head too,
+   * but its title describes the stub, not the page React renders over it.
+   */
+  indexable: boolean;
 }
 
 const trim = (p: string) => (p.length > 1 ? p.replace(/\/+$/, "") : p);
@@ -73,11 +80,16 @@ function readBakedHead(): BakedHead | null {
   const ldTypes = [...document.head.querySelectorAll('script[type="application/ld+json"]')]
     .filter((n) => !ownedByReact(n))
     .flatMap((n) => ldTypesOf(n.textContent));
+  const robots = [...document.head.querySelectorAll('meta[name="robots"]')].find((n) => !ownedByReact(n))?.getAttribute("content") ?? "";
+  let canonicalPath: string | null = null;
+  try { canonicalPath = canonical ? normalisePath(new URL(canonical.getAttribute("href") ?? "", window.location.origin).pathname) : null; } catch { canonicalPath = null; }
+  const own = normalisePath(path);
   return {
-    path: normalisePath(path),
+    path: own,
     title: title?.textContent ?? null,
     description: description?.getAttribute("content") ?? null,
     ldTypes,
+    indexable: !/noindex/i.test(robots) && (own === "/" || canonicalPath === own),
   };
 }
 

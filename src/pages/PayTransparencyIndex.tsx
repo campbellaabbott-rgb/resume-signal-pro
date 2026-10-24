@@ -123,22 +123,19 @@ export default function PayTransparencyIndex() {
                 fallback below computes live and carries no computed_at, so it
                 shows nothing rather than an invented time — no timestamp, no
                 claim, the same rule as /explore. */}
-            {/* THE DENOMINATOR IS NOT THE BOARD. The two aggregates behind this
-                page count the WHOLE postings table — no serving predicate, no
-                30-day window — so the figure above is over every posting we
-                have ever catalogued, including ones since taken down. That was
-                stated in the migration that moved them off the request path
-                (20260812201000) and nowhere a reader could see it, while the
-                sentence above described that population with the word the
-                board uses for what it is still serving: the right number under
-                the wrong noun, which is the one defect this page
-                exists to argue against. Naming the population is the fix; the
-                serving-predicate change is a separate migration with its own
-                verification. */}
+            {/* THE DENOMINATOR, NAMED (S13-088). The two aggregates behind this
+                page count the whole postings table, with no serving predicate
+                and no 30-day window. That table no longer keeps postings that
+                came down: the closure pass and the freshness sweep delete them,
+                so the population is what the board currently carries plus the
+                few rows awaiting removal. The sentence below said the figure
+                included roles since taken down, which stopped being true when
+                those deletes began; it now names the population the table
+                holds, the same sentence the baked page prints. */}
             {computedAt && (
               <p className="text-[13px] text-muted-foreground mb-2">
                 Measured {new Date(computedAt).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}, refreshed hourly.
-                Counted across every posting in our table — including roles since taken down or aged past the board's 30-day cap — not only the ones open today.
+                Counted across the postings the board currently carries, plus the few awaiting removal; the table keeps no postings that have come down.
               </p>
             )}
             <p className="text-[13px] text-muted-foreground flex items-center gap-1.5">
@@ -170,8 +167,12 @@ export default function PayTransparencyIndex() {
 
         <section className="py-12 border-t border-border bg-muted/20">
           <div className="container max-w-4xl">
-            <h2 className="text-2xl font-bold mb-2">Most transparent large employers</h2>
-            <p className="text-sm text-muted-foreground mb-5">Companies with 50+ catalogued postings, ranked by the share stating pay.</p>
+            {/* ONE ROW PER JOB BOARD (S13-049). The aggregate ranks each feed
+                token, so an employer running several boards appears once per
+                board and its other boards are not pooled into the row: the
+                heading names the unit the table counts, as the baked page does. */}
+            <h2 className="text-2xl font-bold mb-2">Most transparent large job boards</h2>
+            <p className="text-sm text-muted-foreground mb-5">Job boards with 50+ postings, ranked by the share stating pay. One row per job board; an employer running several counts once per board.</p>
             <div className="grid sm:grid-cols-2 gap-2.5">
               {(pay?.top_companies ?? []).map((c) => (
                 <Link
