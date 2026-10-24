@@ -43,6 +43,7 @@
  * corpus by src/test/a-question-about-your-history-is-never-drafted-from-a-cv.
  */
 import {
+  CLAUSE_BREAK,
   FACTUAL,
   OWN_STATUS,
   PERSONAL_HISTORY,
@@ -52,6 +53,7 @@ import {
   asksAboutWorkDone,
   classifyQuestion,
   cleanQuestionLabel,
+  topicOf,
   type QuestionClass,
 } from "./application-questions.ts";
 import { sponsorshipSense, type SponsorshipSense } from "./submission-packet.ts";
@@ -99,35 +101,7 @@ export function isFreeText(type: string, options?: string[]): boolean {
   return FREE_TEXT_TYPE.test(String(type ?? "").trim());
 }
 
-const TOPICS: ReadonlyArray<[string, RegExp]> = [
-  ["sponsorship", /sponsor|visa/i],
-  ["work_authorisation", /authori[sz]|eligib\w*\s+to\s+work|right\s+to\s+(?:live\s+(?:and|&)\s+)?work|work\s+permit|legally|citizen|permanent\s+resident|green\s+card|immigration|residen(?:cy|ce)\s+(?:status|permit)/i],
-  ["salary", /salary|compensation|pay\b|wages?|remuneration|rate\b|\bote\b|\bctc\b/i],
-  ["start_date", /start|notice\s+period|available\s+(?:to|from)/i],
-  ["relocation", /relocat/i],
-  ["on_site", /on[-\s]?site|in\s+(?:the\s+)?office|hybrid|days?\s+(?:a|per)\s+week/i],
-  ["commute", /commut/i],
-  ["location", /time\s*-?zone|located|based\s+in|where\s+(?:are\s+you|do\s+you\s+live)/i],
-  ["travel", /travel/i],
-  ["schedule", /shift|weekend|night|overtime|on[-\s]?call|availability|days\s+(?:are\s+)?you\s+available/i],
-  ["age", /\bage\b|18|years\s+old|of\s+age/i],
-  ["criminal_history", /convict|criminal|felon|arrest|misdemean|charge/i],
-  ["background_check", /background\s+check|dbs|clearance|drug\s+(?:test|screen)/i],
-  ["licence", /licen[sc]e|certif/i],
-  ["references", /referees?|references?/i],
-  ["employment_history", /terminat|dismiss|fired|let\s+go|resign|leaving|left\s+your|gaps?|career\s+break|employed\s+by|worked\s+(?:for|at)|former\s+employee|previous\s+employee|rehire/i],
-  ["education_results", /\bgpa\b|grade|marks?\b|class\s+rank|classification/i],
-  ["relations", /relative|family|related\s+to|know\s+(?:anyone|someone)/i],
-  ["referral_source", /hear|learn\s+about|referr|who\s+referred/i],
-  ["health", /medical|health|disab|accommodat|vaccin|pregnan|physical/i],
-  ["tax_id", /\btax\b|\bssn\b|social\s+security|national\s+insurance|\bnie\b|\bdni\b|\bnif\b|\btin\b/i],
-];
-
-/** What a factual question asks about, or "other" when no topic names it. */
-export function topicOf(label: string): string {
-  for (const [topic, re] of TOPICS) if (re.test(label)) return topic;
-  return "other";
-}
+export { topicOf };
 
 /** Sentences, each keeping its own closing mark, so a later one can be read for a question mark. */
 const SENTENCES = /(?<=[?!;])\s+|(?<=[a-z]{3}\.)\s+(?=[A-Z])/;
@@ -165,12 +139,16 @@ export function hintIsPlain(hint: string | undefined): boolean {
  * True when the label is one of the motivation questions and asks nothing of
  * the person's status, and no fact either: "Why do you want to work here, and
  * how soon you could start" carries a second, factual ask (review of wave 4
- * round 2).
+ * round 2), nor a later clause naming a topic (recheck).
  */
 export function isMotivationQuestion(label: string): boolean {
-  if (!MOTIVATION.test(label) || PROTECTED_FACTUAL.test(label) || PERSONAL_HISTORY.test(label) || LEAVING.test(label)) return false;
+  const opening = MOTIVATION.exec(label);
+  if (!opening || PROTECTED_FACTUAL.test(label) || PERSONAL_HISTORY.test(label) || LEAVING.test(label)) return false;
   if (FACTUAL.test(label) || PERSON_ASKS.test(label) || PERSON_FACT_NOUNS.test(label)) return false;
   if (!laterSentencesArePlain(label)) return false;
+  const [firstSentence] = label.slice(opening.index + opening[0].length).split(SENTENCES);
+  const clauses = (firstSentence ?? "").split(CLAUSE_BREAK);
+  for (let i = 2; i < clauses.length; i += 2) if (topicOf(clauses[i]) !== "other") return false;
   return !OWN_STATUS.test(label.replace(MOTIVATION_OPENING, " "));
 }
 

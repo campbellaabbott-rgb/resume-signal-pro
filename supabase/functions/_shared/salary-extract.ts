@@ -694,32 +694,19 @@ export function parseSalaryStructured(
 const decodeLegacyEntities = (s: string) =>
   s.replace(/&mdash;/gi, "\u2014").replace(/&ndash;/gi, "\u2013").replace(/&nbsp;/gi, " ").replace(/&amp;/gi, "&");
 
-// S12-019: THE FIRST MONEY RANGE IS NOT THE PAY. The miner took the first range
-// in the text and judged it on 40 characters around it, so an Airbus £24.5k
-// placement was listed at £350K-£800K (a figure about the work, a sentence
-// earlier) and 6 of 12 "$500k+ manager" rows were portfolios, fleets and
-// P&Ls. Every range is now a candidate, and one is refused as a business
-// figure only when it is that business figure's OWN AMOUNT: the business word
-// comes right before it, joined only by words that introduce an amount ("a
-// portfolio of", "fleet costs of", "projects worth", "valued at"), or right
-// after it ("$5M in deals", "a $2M portfolio"). A business word anywhere else
-// in the sentence (a job title, "plus profit sharing", "on closed deals") is
-// not the figure's, and a pay label standing before the figure in its own
-// labelled clause ("Pay Range:", even on the line above) makes it pay whatever
-// follows. A candidate whose sentence names pay is preferred to one that does
-// not. Words a retail, warehouse, insurance or lending posting uses for the
-// work itself (inventory, transactions, claims, loans, costs, volume) are not
-// business figures: they took stated pay off those postings.
+// S12-019: THE FIRST MONEY RANGE IS NOT THE PAY (an Airbus £24.5k placement
+// listed at £350K-£800K; portfolio "salaries"). Every range is a candidate; one
+// is a business figure only as that figure's OWN AMOUNT: the business word
+// right before it through amount words ("portfolio of", "projects worth") or
+// right after it ("$5M in deals"). A pay label before it wins. Retail and
+// lending work words (inventory, claims, loans, costs) are not business words.
 const BUSINESS_WORDS = String.raw`portfolio|aum|assets?\s+under(?:\s+management)?|fleet(?!\s+(?:vehicles?|cars?|cards?))|p\s?&\s?l|profit(?!\s*-?\s*shar)|turnover|spend(?:ing)?|contracts?\s+(?:value|worth|valued)|valued?\s+at|worth|deals?(?!\s+(?:bonus|commission))|pipeline|projects?\s+(?:of|worth|valued|ranging|totall?ing)|capex|opex|investments?\s+of|book\s+of\s+business|accounts?\s+(?:of|worth|valued|ranging)|annual\s+sales|sales\s+of|premiums?\s+of|financing\s+of|acquisitions?\s+of|million|billion`;
-/** Words that join a business noun to its amount: "portfolio of", "P&L responsibility of up to", "deal sizes between". */
 const AMOUNT_JOINERS = String.raw`of|worth|valued|at|totall?ing|ranging|from|between|exceeding|over|above|up|to|approximately|around|about|roughly|nearly|almost|more|than|in|the|a|an|range|sizes?|values?|costs?|responsibilit(?:y|ies)|with|annual(?:ly)?|yearly|total|averaging|by|upwards`;
-/** A business figure whose amount is the candidate: the business word, then only joining words, then the figure. */
 const BUSINESS_BEFORE = new RegExp(String.raw`\b(?:${BUSINESS_WORDS})\b(?:\s+(?:${AMOUNT_JOINERS})\b)*\s*[~≈]?\s*$`, "i");
-/** A business figure the candidate is the amount of, named right after it: "$5M in deals", "$2M+ portfolio", "$1M P&L". */
 const BUSINESS_AFTER = new RegExp(String.raw`^\+?\s*(?:(?:usd|eur|gbp|cad|aud|nzd|chf|sgd)\s+)?(?:(?:in|of|worth|annual|annualized|yearly|total|closed|new|managed|client|gross|net)\s+){0,3}(?:${BUSINESS_WORDS})\b`, "i");
 /** A clause ends at a comma (not inside a number), a semicolon, a colon, a bracket, a line or a block tag. */
 const CLAUSE_END = /,(?!\d)|[;:()\n]/g;
-/** A labelled clause ends the same way, except that a colon joins a label to its value, and so does a line that ends on one ("Pay Range:" above the figure). */
+/** As CLAUSE_END, but a colon (or a line ending on one) joins a label to its value. */
 const LABEL_CLAUSE_END = /,(?!\d)|[;()\n]/g;
 const ENDS_ON_A_LABEL = /:\s*(?:<\/?[a-z][^>]*>\s*)*$/i;
 const PAY_WORD = /\b(?:salary|salaries|pay|compensation|wages?|base\s+(?:pay|salary|rate|compensation)|hourly\s+rate|rate\s+of\s+pay|earn(?:ings)?|remuneration|ote|starting\s+(?:at|pay|salary|rate|wage)|per\s+(?:hour|year|annum)|hourly)\b/i;
@@ -730,38 +717,26 @@ function sentenceAround(hay: string, at: number, end: number): [number, number] 
   const cut = hay.slice(end).search(/[!?]|\.(?=\s|$)/);
   return [s0, cut < 0 ? hay.length : end + cut];
 }
-/** Where the clause holding `at` starts, at or after s0. */
 function clauseStart(lined: string, at: number, s0: number): number {
   const head = [...lined.slice(s0, at).matchAll(CLAUSE_END)].at(-1);
   return head ? s0 + (head.index ?? 0) + 1 : s0;
 }
-/** Where the labelled clause holding `at` starts: a colon, or a line ending on one, does not end it. */
 function labelClauseStart(lined: string, at: number, s0: number): number {
   const slice = lined.slice(s0, at);
   const ends = [...slice.matchAll(LABEL_CLAUSE_END)].filter((m) => m[0] !== "\n" || !ENDS_ON_A_LABEL.test(slice.slice(0, m.index ?? 0)));
   const last = ends.at(-1);
   return last ? s0 + (last.index ?? 0) + 1 : s0;
 }
-/**
- * S12-019's rule alone: the candidate at [at, end) is the amount of a business
- * figure. Before it, the business word must stand in the figure's own clause
- * (a colon ends one, so "Fleet Manager: $70,000" is a title, not a fleet) and
- * reach it through joining words only. After it, the business word must
- * follow at once ("in deals", "portfolio"), and a pay label before the figure
- * in its labelled clause wins: "Pay Range: $17 - $19 per hour plus profit
- * sharing" and "OTE: $120,000 - $160,000 in deals" are pay.
- */
+/** S12-019 alone. A colon ends the clause before ("Fleet Manager: $70,000" is a title); a label beats a word after. */
 function isBusinessAmount(hay: string, at: number, end: number, lined: string, s0: number, labelledHere: boolean): boolean {
   if (BUSINESS_BEFORE.test(hay.slice(Math.max(clauseStart(lined, at, s0), at - 40), at))) return true;
   return !labelledHere && BUSINESS_AFTER.test(hay.slice(end, end + 60));
 }
 /**
- * A candidate figure at [at, end) reads as this job's pay by its own words.
- * The NOT_PAY window (40 characters before, 20 after) stops at the figure's
- * own sentence: "...annual revenue accounts. Pay range: $60,000" is pay. Its
- * part after the figure yields to a pay label before it ("Salary Range:
- * $95,000 - $120,000 plus deal bonuses" is pay); its part before never does
- * ("Sign-on bonus pay: $1,000"). Then isBusinessAmount.
+ * A candidate at [at, end) is this job's pay by its own words. NOT_PAY (40
+ * before, 20 after) stays in the sentence; its after part yields to a pay
+ * label before the figure ("Salary Range: $95,000 - $120,000 plus deal
+ * bonuses"), its before part never does.
  */
 function candidateIsPay(hay: string, at: number, end: number, lined = hay): { pay: boolean; labelled: boolean } {
   const [s0, s1] = sentenceAround(hay, at, end);
@@ -828,14 +803,9 @@ function singleIfPay(hay: string, lined: string, single: RegExpMatchArray, mustB
 }
 
 /**
- * S12-019, for the salary re-sweep: the stored text was mined from this
- * description (it is there, verbatim) and S12-019's rule refuses it as a
- * business figure at every place the description quotes it. Only that rule:
- * NOT_PAY is older than the re-sweep, and the old miner applied it over a
- * wider window, so a stored figure it refuses was never mined from that text
- * (it is a vendor's own salary field the description also quotes) and is not
- * the miner's mistake. A pay label before the figure keeps it, whatever
- * follows: the re-sweep never NULLs a range a posting states as its pay.
+ * For the v11 re-sweep: S12-019's rule refuses the stored text at every place
+ * the description quotes it. Not NOT_PAY: the old miner applied it more
+ * widely, so a figure it refuses is a vendor's field, not a mining mistake.
  */
 export function minedSalaryRefused(description: string | null | undefined, stored: string | null | undefined): boolean {
   if (!description || !stored) return false;
