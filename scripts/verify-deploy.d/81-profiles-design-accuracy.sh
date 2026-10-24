@@ -28,6 +28,12 @@
 #   81h get_similar_companies (20261012136000) lists no USAJOBS row, under any
 #       name, for CVS Health and Eurofins, whose lists led with it on
 #       2026-10-18 as "Veterans Health Administration".
+#   81i get_company_intel answers Workday tokens: three Workday company pages
+#       the sitemap listed on 2026-10-24 and one made-up Workday token each
+#       answer HTTP 200 with the reader object within 3 seconds. 81g probes
+#       only stripe, so it stayed green while every Workday token answered
+#       500 57014 after 15 seconds (20261012135000 ran the hosting-tenant
+#       test once per snapshot row; 20261012137000 runs it once per call).
 #
 # HOW IT IS JUDGED. Live rows are judged by this checkout's gate and lander
 # model (src/lib/hiring-record-gate.ts and src/lib/company/lander-model.ts,
@@ -272,5 +278,65 @@ for (const fn of ["get_company_intel", "get_company_financials", "get_similar_co
     if (fed.length) out("FAIL", `81h ${t}: the list names the USAJOBS board as "${fed.map((r) => r.company).join(", ")}" (20261012136000 is not applied)`);
     else out("PASS", `81h ${t}: ${a.body.length} similar employer(s), none of them the USAJOBS board`);
   }
+}
+'
+
+# ---- 81i: get_company_intel answers Workday tokens within 3 seconds ----
+# Read-only: one GET of the sitemap and one anon GET of the reader per token,
+# timed from request to the last byte of the reply.
+SITE="$SITE" B="$B" K="$K" node -e '
+const { SITE, B, K } = process.env;
+const fs = require("fs");
+const H = { apikey: K, Authorization: `Bearer ${K}` };
+// Three Workday company pages the live sitemap listed on 2026-10-24, and a
+// made-up Workday token with no postings, no snapshots and no override.
+const REAL = ["cat~wd5~caterpillarcareers", "nvidia~wd5~NVIDIAExternalCareerSite", "dollartree~wd5~dollartreeus"];
+const MADE_UP = "zzzz-none~wd1~Careers";
+(async () => {
+  let sitemap = null;
+  try { const r = await fetch(`${SITE}/sitemap.xml`, { signal: AbortSignal.timeout(30000) }); if (r.ok) sitemap = await r.text(); } catch { sitemap = null; }
+  const probes = [];
+  for (const token of [...REAL, MADE_UP]) {
+    const t0 = Date.now();
+    let status = 0;
+    let body = "";
+    try {
+      const r = await fetch(`${B}/rest/v1/rpc/get_company_intel?p_token=${encodeURIComponent(token)}`, { headers: H, signal: AbortSignal.timeout(30000) });
+      status = r.status;
+      body = await r.text();
+    } catch (e) { body = String((e && e.name) || e); }
+    const ms = Date.now() - t0;
+    const inSitemap = token === MADE_UP || sitemap === null ? null : sitemap.includes(`/jobs/company/${token}</loc>`);
+    probes.push({ token, madeUp: token === MADE_UP, status, ms, body: body.slice(0, 400), inSitemap });
+  }
+  fs.writeFileSync("/tmp/vd_81_workday.json", JSON.stringify({ at: new Date().toISOString(), probes }));
+})();
+'
+node -e '
+const fs = require("fs");
+const out = (s, m) => console.log(`${s.padEnd(5)} ${m}`);
+const BOUND_MS = 3000;
+let w = null;
+try { w = JSON.parse(fs.readFileSync("/tmp/vd_81_workday.json", "utf8")); } catch { w = null; }
+const probes = w && Array.isArray(w.probes) ? w.probes : [];
+if (probes.length === 0) out("FAIL", "81i get_company_intel on Workday tokens: not probed");
+for (const p of probes) {
+  const secs = (Number(p.ms) / 1000).toFixed(2);
+  const label = p.madeUp ? `${p.token} (made up: no postings, no override)` : p.token;
+  let j = null;
+  try { j = JSON.parse(p.body); } catch { j = null; }
+  const code = (String(p.body).match(/"code":"([^"]+)"/) || [])[1] || "";
+  const shaped = !!j && typeof j === "object" && !Array.isArray(j) && Object.prototype.hasOwnProperty.call(j, "open_by_source");
+  const fast = Number.isFinite(Number(p.ms)) && Number(p.ms) <= BOUND_MS;
+  if (p.status === 200 && fast && shaped) {
+    const n = (v) => (Array.isArray(v) ? v.length : 0);
+    out("PASS", `81i ${label}: get_company_intel answered 200 in ${secs} s, within 3 s [usd_n ${j.usd_n}, ${n(j.countries)} countries, ${n(j.categories)} fields, net_7d ${j.net_7d}]`);
+  } else if (p.status === 200 && fast) {
+    out("FAIL", `81i ${label}: get_company_intel answered 200 in ${secs} s but not with the reader object (${String(p.body).slice(0, 120)})`);
+  } else {
+    const why = code === "57014" ? ": a statement timeout, the hosting-tenant test running once per row (is 20261012137000 applied?)" : "";
+    out("FAIL", `81i ${label}: get_company_intel answered HTTP ${p.status}${code ? ` ${code}` : ""} in ${secs} s, want 200 within 3 s${why}`);
+  }
+  if (p.inSitemap === false) out("INFO", `81i ${p.token} is no longer in the live sitemap: the reader was still timed, but swap in a Workday company page the sitemap lists`);
 }
 '
