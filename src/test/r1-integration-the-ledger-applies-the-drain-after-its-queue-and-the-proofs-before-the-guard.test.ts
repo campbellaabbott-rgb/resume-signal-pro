@@ -99,6 +99,24 @@ describe("R1's two migrations sit where they work", () => {
     expect(codeOf(sql)).toMatch(/x-email-cron/);
   });
 
+  it("the hotfix's re-schedule (120000) waits for process-email-queue 2026-10-14.2, which main carries, and 100000 stays applied, never listed again", () => {
+    const rule = POLICY.migrationOrder["20261014120000"];
+    expect(rule?.after, "120000 does not wait for the build that drains sign-in mail through a cooldown").toBe("fn:process-email-queue@2026-10-14.2");
+    expect(POLICY.appliedOutsideDrizzle, "100000 is live; listing it again would re-run the applied text").toContain("20261014100000");
+    const file = R1_MIGRATIONS.find((f) => f.startsWith("20261014120000"));
+    expect(file, "no 20261014120000 file in R1's spare range").toBeDefined();
+    expect(readFileSync(join(MIG, file!), "utf8")).toContain("APPLY ORDER: after process-email-queue.2026-10-14.2 serves");
+    const queue = rowsWith().find((r) => r.fn === "process-email-queue")!;
+    expect(buildIsAtLeast(queue.want, "process-email-queue", "2026-10-14", 2), "main's process-email-queue is older than the build 120000 waits for").toBe(true);
+    const waiting = L.migrationPhases([file!], POLICY, rowsWith({ "process-email-queue": "process-email-queue.2026-10-14.1" }));
+    expect(waiting.errors).toEqual([]);
+    expect(waiting.afterFunctions.map((m) => m.file), "with 2026-10-14.1 live, 120000 was put before the function deploys").toEqual([file]);
+    expect(waiting.afterFunctions[0].note).toMatch(/once process-email-queue answers process-email-queue\.2026-10-14\.2 or later/);
+    const served = L.migrationPhases([file!], POLICY, rowsWith({ "process-email-queue": queue.want! }));
+    expect(served.errors).toEqual([]);
+    expect(served.pre.map((m) => m.file)).toEqual([file]);
+  });
+
   it("the guard and the purchase verifier really read what 110000 creates", () => {
     const sql = codeOf(readFileSync(join(MIG, R1_MIGRATIONS.find((f) => f.startsWith("20261014110000"))!), "utf8"));
     for (const name of ["account_mailbox_proofs", "account_password_clears", "auth_changed_since", "auth_sign_in_addresses", "auth_user_has_password"]) {

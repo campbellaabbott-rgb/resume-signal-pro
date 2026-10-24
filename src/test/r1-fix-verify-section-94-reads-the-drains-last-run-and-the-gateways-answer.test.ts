@@ -175,12 +175,14 @@ describe("the publishable key", () => {
 describe("the S13-017 hotfix build (a Lovable throttle or hang never stops sign-in mail)", () => {
   it("PASSes process-email-queue 2026-10-14.2 or later, and FAILs the 2026-10-14.1 build a 429 stops, naming the build to deploy before the drain migration", () => {
     const fixed = run({ cron: job(), noJwt: GATEWAY_401, builds: { "process-email-queue": "2026-10-14.2" } }).lines;
-    expect(has(fixed, "PASS", /process-email-queue x-fn-build = process-email-queue\.2026-10-14\.2: a Lovable 429 or a hung send on sign-in mail goes out through Resend/), show(fixed)).toBe(true);
+    expect(has(fixed, "PASS", /process-email-queue x-fn-build = process-email-queue\.2026-10-14\.2: the function sends a sign-in mail Lovable throttled or left hanging through Resend, sets no cooldown for the auth queue/), show(fixed)).toBe(true);
     expect(fixed.some((l) => /^FAIL .*S13-017/.test(l)), show(fixed)).toBe(false);
+    expect(has(fixed, "INFO", /rb-auth-mail-drain's command cannot be read from here: .*proved only by migration 20261014120000's self-check/), "section 94 claims a cron command it cannot read").toBe(true);
+    expect(fixed.some((l) => /^PASS .*no cooldown holds the auth queue/.test(l)), "the PASS line claims the cron's behaviour, which this section cannot see").toBe(false);
     const later = run({ cron: job(), noJwt: GATEWAY_401, builds: { "process-email-queue": "2026-10-20.1" } }).lines;
     expect(has(later, "PASS", /S13-017, 2026-10-14\.2 or later/), show(later)).toBe(true);
     const old = run({ cron: job(), noJwt: GATEWAY_401, builds: { "process-email-queue": "2026-10-14.1" } }).lines;
-    expect(has(old, "FAIL", /process-email-queue x-fn-build = process-email-queue\.2026-10-14\.1: a Lovable 429 still stops sign-in mail .*Deploy process-email-queue\.2026-10-14\.2 before migration 20261014100000/), show(old)).toBe(true);
+    expect(has(old, "FAIL", /process-email-queue x-fn-build = process-email-queue\.2026-10-14\.1: a Lovable 429 still stops sign-in mail .*Deploy process-email-queue\.2026-10-14\.2 before migration 20261014120000/), show(old)).toBe(true);
     expect(has(old, "PASS", /process-email-queue x-fn-build = process-email-queue\.2026-10-14\.1 \(2026-10-14\.1 or later\)/), "the R1 line no longer reads the .1 build as R1's").toBe(true);
   });
 });
