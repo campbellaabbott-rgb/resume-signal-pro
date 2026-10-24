@@ -27,8 +27,15 @@
  *     to save it to the account as a résumé version (lastScanResumeToOffer,
  *     saveLastScanResume), an explicit opt-in insert into user_scans, the
  *     only place résumé text is ever stored.
+ *   - (Recheck.) That version carries the score of the scan of THAT text
+ *     only: the local scan whose resumeFingerprint is the tab's text. The
+ *     tab's text is also written by an upload before any scan, the résumé
+ *     builder and the premium rewrite, and the newest local score could be
+ *     another résumé's; a version saved at 0 (user_scans.ats_score is NOT
+ *     NULL) read as the latest score, a drop, and a chart falling to 0. With
+ *     no scan of that exact text, nothing is offered.
  */
-import type { ScanHistory, ScanHistoryEntry } from "@/hooks/use-scan-history";
+import { resumeFingerprint, type ScanHistory, type ScanHistoryEntry } from "@/hooks/use-scan-history";
 
 /** The local history's key (src/hooks/use-scan-history.ts). */
 export const LOCAL_HISTORY_KEY = "rb_scan_history";
@@ -145,19 +152,22 @@ export function declineLocalScans(userId: string): void {
   if (userId) write("local", importFlagKey(userId), "1");
 }
 
-/** The résumé this tab scanned last, when it is long enough to be one and the account has not decided about it. */
-export function lastScanResumeToOffer(userId: string): string | null {
+/** The résumé this tab scanned last and that scan's score: an offer only when it is long enough, a local scan of that exact text scored it, and the account has not decided. */
+export function lastScanResumeToOffer(userId: string): { text: string; score: number } | null {
   if (!userId || read("session", lastResumeFlagKey(userId))) return null;
   const text = (read("session", SESSION_RESUME_KEY) ?? "").trim();
-  return text.length >= MIN_RESUME_CHARS ? text.slice(0, MAX_RESUME_CHARS) : null;
+  if (text.length < MIN_RESUME_CHARS) return null;
+  const score = scoreOfThisText(text);
+  return score === null ? null : { text: text.slice(0, MAX_RESUME_CHARS), score };
 }
 
-/** Save this tab's last scanned résumé as a résumé version, at the person's request. true when it was saved. Never throws. */
-export async function saveLastScanResume(db: Db, userId: string, text: string, score: number | null, label: string): Promise<boolean> {
+/** Save this tab's last scanned résumé as a résumé version, with its own scan's score, at the person's request. true when it was saved. Never throws. */
+export async function saveLastScanResume(db: Db, userId: string, text: string, score: number, label: string): Promise<boolean> {
   try {
+    if (!Number.isFinite(score)) return false;
     const { error } = await db.from("user_scans").insert({
       user_id: userId,
-      ats_score: typeof score === "number" ? score : 0,
+      ats_score: score,
       label: label.slice(0, 80),
       resume_text: text.slice(0, MAX_RESUME_CHARS),
     });
@@ -174,11 +184,13 @@ export function declineLastScanResume(userId: string): void {
   if (userId) write("session", lastResumeFlagKey(userId), "declined");
 }
 
-/** The newest local scan's score, for the saved version's label. */
-export function latestLocalScore(): number | null {
+/** The score of the newest local scan of exactly this text, or null when none scored it. */
+export function scoreOfThisText(text: string): number | null {
   try {
+    const fp = resumeFingerprint(text);
     const parsed = JSON.parse(read("local", LOCAL_HISTORY_KEY) ?? "null") as Partial<ScanHistory> | null;
-    const entries = (Array.isArray(parsed?.entries) ? parsed!.entries! : []).filter((e) => typeof e?.atsScore === "number");
+    const entries = (Array.isArray(parsed?.entries) ? parsed!.entries! : [])
+      .filter((e) => e && typeof e.atsScore === "number" && Number.isFinite(e.atsScore) && e.resumeFingerprint === fp);
     if (!entries.length) return null;
     const newest = entries.reduce((a, b) => (Date.parse(String(b.timestamp)) > Date.parse(String(a.timestamp)) ? b : a));
     return newest.atsScore;

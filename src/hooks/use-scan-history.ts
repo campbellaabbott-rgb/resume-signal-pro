@@ -33,6 +33,8 @@ export interface ScanHistoryEntry {
   checklistCompletedCount?: number;
   // Resume fingerprint for deduplication
   resumeHash?: string;
+  /** The whole scanned résumé's fingerprint (resumeFingerprint), so its score is only ever paired with that exact text. */
+  resumeFingerprint?: string;
   // Job matching (if applicable)
   jobMatchScore?: number;
   jobTitle?: string;
@@ -74,6 +76,21 @@ function generateResumeHash(resumeText: string): string {
     hash = hash & hash; // Convert to 32bit integer
   }
   return Math.abs(hash).toString(36);
+}
+
+/**
+ * The whole résumé's fingerprint: its length and a 32-bit FNV-1a hash of all of
+ * it, whitespace collapsed. resumeHash reads only the first 500 characters (a
+ * dedup key); this one tells an edited version from the one that was scanned.
+ */
+export function resumeFingerprint(resumeText: string): string {
+  const normalized = resumeText.replace(/\s+/g, ' ').trim();
+  let h = 0x811c9dc5;
+  for (let i = 0; i < normalized.length; i++) {
+    h ^= normalized.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return `${normalized.length}:${(h >>> 0).toString(36)}`;
 }
 
 // Get grade ranking for comparison
@@ -236,6 +253,7 @@ export const useScanHistory = () => {
       id: `scan_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       timestamp: new Date().toISOString(),
       resumeHash,
+      ...(resumeText ? { resumeFingerprint: resumeFingerprint(resumeText) } : {}),
       checklistCompletedCount: 0,
     };
 

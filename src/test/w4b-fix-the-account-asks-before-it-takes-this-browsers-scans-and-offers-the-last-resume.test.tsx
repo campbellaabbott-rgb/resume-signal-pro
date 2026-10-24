@@ -31,6 +31,7 @@ import {
   CLAIMED_KEY, importLocalScans, lastScanResumeToOffer, localScansToOffer, LOCAL_HISTORY_KEY, SESSION_RESUME_KEY,
 } from "@/lib/account-history-import";
 import { LocalHistoryOffer } from "@/components/account/LocalHistoryOffer";
+import { resumeFingerprint } from "@/hooks/use-scan-history";
 
 type Row = Record<string, unknown>;
 const fakeDb = () => {
@@ -47,13 +48,14 @@ const fakeDb = () => {
   };
 };
 
+const RESUME = "Jane Doe, RN. Charge nurse with eight years in acute care. ".repeat(8);
+// The newest scan is of RESUME (the recheck: a saved version carries the score of its own text's scan).
 const LOCAL = {
   entries: [
     { id: "a1", timestamp: "2026-10-01T10:00:00.000Z", atsScore: 61, industry: "healthcare", checklist: [{ id: "q", label: "Add your BLS certification", completed: false, category: "quick_win" }], jobTitle: "Charge Nurse", jobCompany: "Acme Health" },
-    { id: "a2", timestamp: "2026-10-02T10:00:00.000Z", atsScore: 70, industry: "healthcare" },
+    { id: "a2", timestamp: "2026-10-02T10:00:00.000Z", atsScore: 70, industry: "healthcare", resumeFingerprint: resumeFingerprint(RESUME) },
   ],
 };
-const RESUME = "Jane Doe, RN. Charge nurse with eight years in acute care. ".repeat(8);
 
 beforeEach(() => {
   localStorage.clear();
@@ -98,7 +100,7 @@ describe("the résumé this tab scanned is offered to the account", () => {
   it("Save stores it as a résumé version; nothing is stored before", async () => {
     sessionStorage.setItem(SESSION_RESUME_KEY, RESUME);
     const offered = lastScanResumeToOffer("u-1");
-    expect(offered).toBe(RESUME.trim());
+    expect(offered).toEqual({ text: RESUME.trim(), score: 70 });
     const { db, inserted } = fakeDb();
     render(<MemoryRouter><LocalHistoryOffer db={db} userId="u-1" offeredScans={[]} offeredResume={offered} mapRow={(r: never) => r} onScans={() => {}} /></MemoryRouter>);
     expect(screen.getByText("Save the résumé from your last scan?")).toBeTruthy();

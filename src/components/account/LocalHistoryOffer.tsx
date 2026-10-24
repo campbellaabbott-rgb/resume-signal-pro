@@ -7,13 +7,14 @@
  *     my account", and "Not mine" stops the offer for this account; a scan
  *     another account added is never offered;
  *   - the résumé this tab scanned last: saved as a résumé version only on
- *     "Save it", the opt-in exception to "never stored".
+ *     "Save it", the opt-in exception to "never stored", with the score of the
+ *     scan of that exact text (offered only when there is one).
  */
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { ScanHistoryEntry } from "@/hooks/use-scan-history";
 import {
-  declineLastScanResume, declineLocalScans, importLocalScans, latestLocalScore, saveLastScanResume,
+  declineLastScanResume, declineLocalScans, importLocalScans, saveLastScanResume,
 } from "@/lib/account-history-import";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -25,7 +26,7 @@ export function LocalHistoryOffer<T>({
   db: Db;
   userId: string;
   offeredScans: ScanHistoryEntry[];
-  offeredResume: string | null;
+  offeredResume: { text: string; score: number } | null;
   mapRow: (row: never) => T;
   onScans: (list: T[]) => void;
 }) {
@@ -51,12 +52,10 @@ export function LocalHistoryOffer<T>({
     if (!offeredResume) return;
     setResumeState("saving");
     setFailed(false);
-    const score = latestLocalScore();
+    const { text, score } = offeredResume;
     const day = new Date().toLocaleDateString(undefined, { month: "short", day: "numeric" });
-    const label = score != null
-      ? t("accountPage.lastResumeLabelScored", "Last scan, {{day}}: scored {{score}}", { day, score })
-      : t("accountPage.lastResumeLabel", "Last scan, {{day}}", { day });
-    const ok = await saveLastScanResume(db, userId, offeredResume, score, label);
+    const label = t("accountPage.lastResumeLabelScored", "Last scan, {{day}}: scored {{score}}", { day, score });
+    const ok = await saveLastScanResume(db, userId, text, score, label);
     if (!ok) { setResumeState("offer"); setFailed(true); return; }
     setResumeState("saved");
   };

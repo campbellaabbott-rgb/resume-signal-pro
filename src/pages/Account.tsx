@@ -228,7 +228,7 @@ export default function Account() {
   const navigate = useNavigate();
   const [scans, setScans] = useState<UserScan[]>([]);
   // What this browser holds, offered and never taken silently (S12-025).
-  const [localOffer, setLocalOffer] = useState<{ scans: ScanHistoryEntry[]; resume: string | null } | null>(null);
+  const [localOffer, setLocalOffer] = useState<{ scans: ScanHistoryEntry[]; resume: { text: string; score: number } | null } | null>(null);
   const [account, setAccount] = useState<AccountData | null>(null);
   // S12-155: a failed get-account-data read is said, never shown as "0 credits".
   const [accountFailed, setAccountFailed] = useState(false);
