@@ -130,3 +130,85 @@ stores the English flag and the leave days), and verify section 80 wants it.
   block on every catalogue collision; the bake, MCP and `/v1` (phases 4 and 5)
   must apply the catalogue rule too.
 - D10 (rename "filled" to "taken down (not relisted)") is not done.
+
+## Hotfix 2026-10-24: a Workday company page asks once per read
+
+Branch `pd/hotfix-intel-db`, migration `20261012137000` (migration only: no
+edge function, no frontend, no job-board). It is one of the two regressions
+that kept the profiles + design deploy (PR #36, live 2026-10-18) from
+verifying; the other, the "not read whole board" zero line, is the
+frontend hotfix's.
+
+**What was wrong.** `get_company_intel` answered HTTP 500, code 57014
+(statement timeout), on every Workday token, a made-up one included. 283 of
+the 485 company pages in the sitemap are Workday pages; each lost its pay
+floor, fields, places, headcount and net-7d for readers (a 15-second
+shimmer, then nothing) and in the baked copy, each view held a 15-second
+statement on the 4-core database, and the 2026-10-18 publish timed out on
+it (hence the 90-second deadline Lovable put in the bake).
+
+The before, the verifier's anon GET of `get_company_intel` on 2026-10-24 at
+22:21Z, one request per token:
+
+| Token | Answer | Time |
+|---|---|---|
+| `cat~wd5~caterpillarcareers` | 500 57014 | 15.40 s |
+| `nvidia~wd5~NVIDIAExternalCareerSite` | 500 57014 | 15.18 s |
+| `dollartree~wd5~dollartreeus` | 500 57014 | 15.19 s |
+| `sysco~wd5~syscocareers` | 500 57014 | 15.37 s |
+| `meijer~wd5~Meijer_Stores_Hourly` | 500 57014 | 15.38 s |
+| `zzzz-none~wd1~Careers` (made up, no postings) | 500 57014 | 15.22 s |
+| `stripe` (Greenhouse) | 200 | 0.55 s |
+
+`get_similar_companies` on the same Workday tokens answered 200 in 0.8 to
+1.1 s: its call sat behind the employer-segment filter, so it ran a handful
+of times, not thousands.
+
+**Why.** `20261012135000` added its hosting-tenant test,
+`workday_site_is_own_employer` on the page's own token, inside an OR in two
+readers: the Workday arm of `get_company_intel`'s snapshot series and the
+postings predicate of both readers. The helper is a STABLE SQL function
+with its own `search_path` setting, so the planner never inlines it, and a
+call inside an OR arm is not a one-time filter: it ran once for every
+snapshot row of the window that reached the arm, each run a scan of
+`company_name_overrides`.
+
+**The fix.** Each reader opens its WITH with a one-row MATERIALIZED CTE
+(`own_site`) holding the helper's answer, and each test reads it through a
+scalar subquery, which the planner runs as an InitPlan: one evaluation per
+call, however many rows the read touches. The answer is the same boolean,
+so every reply is unchanged. The file rewrites the live bodies from the
+catalogue (as `135000` and `136000` did), refuses a body that is not the one
+`135000` left, compares signature, result, security, volatility, settings,
+owner and grants before and after, restates the grants of
+`20261012101000`, and its self-check refuses the per-row shape. Safe to run
+twice.
+
+**The other readers.** `get_company_financials` calls only
+`employer_segment`, which is IMMUTABLE with no setting and is inlined;
+`get_company_fill_curve` calls `board_multi_site_title_share` once in its
+FROM list and `normalize_close_title` per title by nature. No search or
+list reader calls a non-inlinable helper on its own parameters inside a
+per-row predicate.
+
+**Measured on pglite** (3,510 snapshot rows, 400 override rows, median of
+three warm runs; `pd-hotfix-workday-intel-asks-once-per-read.test.ts`): a
+pooled Workday site 189.3 ms before, 4.1 ms after; the made-up Workday
+token 217.4 ms before, 3.4 ms after; a Greenhouse token 2.0 ms and 1.8 ms.
+The counting stand-in ran the helper at least 3,500 times per Workday read
+before, and exactly once after.
+
+**Tests.** `pd-hotfix-workday-intel-asks-once-per-read.test.ts` (once per
+call by a counting stand-in and by the generic plan; byte-identical JSON
+from both readers for ten kinds of token; attributes and grants unchanged;
+safe twice; the self-check refuses the old shape and drifted grants) and
+`pd-hotfix-verify-81i-times-the-workday-intel-reader.test.ts` (the probe
+below fails on the 22:21Z answers and passes on the fix's).
+
+**After the deploy.** Apply `20261012137000` after `20261012136000` (both
+readers must carry the `135000` body it expects; if it refuses, read
+`pg_get_functiondef` and fold the fix in). Then verify section 81: line 81i
+times `get_company_intel` on three Workday pages the sitemap lists and on
+the made-up token, and passes each only on a 200 carrying the reader object
+within 3 seconds. 81g, which probes stripe alone, stayed green through the
+outage.
