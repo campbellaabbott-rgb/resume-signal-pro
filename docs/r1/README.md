@@ -34,10 +34,11 @@ After R1 merged and its functions went live, the S13 sweep found four bugs
 it introduced or left. The hotfix (branch r1/hotfix-s13, see "The S13
 hotfix" below) fixes them: a second Full Analysis in one tab is shown its own
 analysis (S13-002); a Lovable 429 or a hung send never stops sign-in mail
-(S13-017, process-email-queue 2026-10-14.2, and migration 20261014100000
-edited in place before it was applied anywhere); a Freelance Boost purchase
-is honoured only on the load that captured it (S13-082); and an expired
-reset link from our own mail offers a new reset link (S13-106).
+(S13-017: process-email-queue 2026-10-14.2, and migration 20261014120000,
+which re-schedules the live drain job so a provider cooldown no longer holds
+it); a Freelance Boost purchase is honoured until it is delivered, and no
+longer after (S13-082); and an expired reset link from our own mail offers a
+new reset link (S13-106).
 
 | branch | what it owns |
 |---|---|
@@ -228,11 +229,19 @@ reset link from our own mail offers a new reset link (S13-106).
 - A Lovable 429 on sign-in mail sends that mail through Resend at once, and
   the rest of the run's sign-in mail goes straight to Resend. It sets no
   cooldown: `email_send_state.retry_after_until` belongs to the transactional
-  queue alone, and a cooldown in force never holds sign-in mail, in the
-  function or in rb-auth-mail-drain. Every Lovable send has a 10-second
-  deadline. A send past it may still land, so it counts as a transient
-  failure (a 'failed' row toward the three), and the run's later sign-in mail
-  goes to Resend (S13-017, process-email-queue 2026-10-14.2).
+  queue alone, and the function drains sign-in mail while one holds. The
+  live rb-auth-mail-drain (20261014100000) still returns during a cooldown;
+  migration 20261014120000 re-schedules it without that read. Every Lovable
+  send has a 10-second deadline. A send past it may still land, so it counts
+  as a transient failure (a 'failed' row toward the three), and the run's
+  later sign-in mail goes to Resend (S13-017, process-email-queue
+  2026-10-14.2).
+- A run never starts a message its 30-second claim (pgmq's visibility
+  timeout) has no room for, so a second drain cannot read a mail this run is
+  still sending through Resend: the two providers' idempotency keys do not
+  dedupe each other. Resend sends in one run are at least 500 ms apart
+  (Resend's default limit, 2 a second, is the whole team's), and a Resend 429
+  while Lovable is out leaves the rest of the batch for the next tick.
 - resend-webhook records bounces and complaints, and suppresses those
   addresses.
 
@@ -260,7 +269,8 @@ job name; it is neither, so:
   dispatcher names none). The fix-plan drip in transactional_emails stays
   where it is until CP-G gives it its text part, marketing purpose, seller
   footer and the apex sender; a caller that names that queue gets it.
-- Our cron job is **`rb-auth-mail-drain`** (20261014100000): it never
+- Our cron job is **`rb-auth-mail-drain`** (20261014100000, re-scheduled by
+  20261014120000 without the cooldown read): it never
   schedules, alters or unschedules a job named `process-email-queue` (the
   file only reads that name to report it, and its self-check fails if a job
   of that name carries a marker of ours). It posts the vault bearer
@@ -321,14 +331,17 @@ found these, and the hotfix fixes them on main:
 | item | what was wrong | what is true now |
 |---|---|---|
 | S13-002 (high, commercial blocker) | The first script merged only the keys it captured, so a second $5 purchase in one tab arrived at `/success` beside the first purchase's stashed share. The page showed analysis #1, never generated #2, recorded no sale and hid Try again; after a Delete (or the email's share link) it said "Analysis not found". | A `/success` address names one purchase or one analysis: the first script replaces the pair the stash held for `/success` in the same write (a new session id drops the old share; a share link alone drops the tab's `/success` purchase). The page stores a share with the purchase it belongs to (`share_session`) and honours a stashed share only for that purchase, or with no purchase named (read-only). Delete forgets the share. |
-| S13-017 (medium) | A Lovable 429 stopped the run and set `retry_after_until` to Retry-After (an hour), which the drain's cron also honoured, so every reset mail expired into the dead-letter queue with no Resend try. A hung Lovable send was killed before any row counted it. | process-email-queue 2026-10-14.2: a 429 on sign-in mail goes through Resend at once with the payload's idempotency key and sets no cooldown; the run's other sign-in mail goes straight to Resend; a cooldown in force never holds sign-in mail; a send past its 10 s deadline is a transient failure and Lovable is not asked again in that run. Migration 20261014100000 (never applied anywhere; drizzle/migrations has no stub naming it) was edited in place: the cron no longer returns during a cooldown, and its self-check fails if the command reads `email_send_state` again. Its ledger rule now waits for 2026-10-14.2. |
-| S13-082 (low) | FreelanceBoost read the stashed session id with no age check, so every later visit in the tab showed the old purchase, the buy buttons never rendered, and "Start a new purchase" could not be reached. | The stashed id is honoured only on the load that captured it (the stash's `_at` against `performance.timeOrigin`, with 2 s of slack). "Start a new purchase" is offered beside a purchase too, and it clears the mark, the stash and the address. |
+| S13-017 (medium) | A Lovable 429 stopped the run and set `retry_after_until` to Retry-After (an hour), which the drain's cron also honoured, so every reset mail expired into the dead-letter queue with no Resend try. A hung Lovable send was killed before any row counted it. | process-email-queue 2026-10-14.2: a 429 on sign-in mail goes through Resend at once with the payload's idempotency key and sets no cooldown; the run's other sign-in mail goes straight to Resend; the function drains sign-in mail while a cooldown holds; a send past its 10 s deadline is a transient failure and Lovable is not asked again in that run; a run never starts a message its 30 s claim has no room for, and its Resend sends are at least 500 ms apart. Migration 20261014100000 is LIVE (applied outside the staged runner; the ledger lists it in `appliedOutsideDrizzle`) and stays the text that was applied. The new migration 20261014120000 re-schedules rb-auth-mail-drain in place (same job, same name) with that command minus its cooldown read; its self-check fails a command that still reads `email_send_state`, and its ledger rule waits for 2026-10-14.2. |
+| S13-082 (low) | FreelanceBoost read the stashed session id with no end, so every later visit in the tab showed the old purchase, the buy buttons never rendered, and "Start a new purchase" could not be reached. | The stashed id is honoured until its purchase is delivered: a reload before the page mounted, a tab restore or a reload during generation still finds a paid purchase, and once the section is on screen the stash forgets the id, so a later visit (a reload or an in-app link) is a new visit. "Start a new purchase" is offered under a delivered section (not beside a paid one not yet generated) and clears the mark, the stash and the address. A first draft honoured the id only on the document that captured it, which dropped undelivered purchases on any reload; the fixer round replaced it. |
 | S13-106 (low) | A definite refusal of our own mail's reset link (`mode=confirm&type=recovery`) said "Sign in again to get a new one" with only "Back to sign in". | It opens the reset page on its "expired" step: "This reset link has expired or was already used", "Send a new reset link" for the address this browser asked for (read before the refusal spends the marker), and "Email support". Other link types keep the generic wording. |
 
 Deploy (generate the message with `node scripts/deploy-ledger.mjs --message`):
 process-email-queue 2026-10-14.2, then the frontend (index.html,
-Success, FreelanceBoost, Auth, ResetFlow). Migration 20261014100000 waits
-for section 94 to show 2026-10-14.2. Sections 94 and 95 carry the new lines.
+Success, FreelanceBoost, Auth, ResetFlow), then migration 20261014120000
+once section 94 shows 2026-10-14.2 (the ledger's after-rule). Like
+20261014100000, it never touches Lovable's own mail path. Sections 94 and 95
+carry the new lines; section 94 cannot read a job's command, so it prints an
+INFO line saying the cron's change is proved by 20261014120000's self-check.
 
 Hand-offs (not in this hotfix):
 
@@ -346,6 +359,15 @@ Hand-offs (not in this hotfix):
   dead-lettered sign-in mail alarms nobody. Wire an auth-mail DLQ count (and
   'rate_limited' rows on auth_emails) into its alerting; this hotfix does not
   edit scan-heartbeat.
+- **Rebase onto this hotfix** (`node scripts/deploy-ledger.mjs --overlap`,
+  2026-10-24): w4b/payments-delivery (Success.tsx), w4b/generators and
+  w4b/checkout-catalogue (FreelanceBoost.tsx), and wave4/integration (both
+  pages, and the R1 ledger test
+  `r1-integration-the-ledger-applies-the-drain-after-its-queue-and-the-proofs-before-the-guard.test.ts`).
+  On FreelanceBoost a
+  Regenerate control shown "whenever sessionId is set" now appears only
+  while a purchase is open on the page: the stash forgets the id once its
+  section is on screen, so a later visit has none.
 
 ## Switches (`src/config/auth-providers.ts`)
 
@@ -392,9 +414,7 @@ rule's text names the frontend gate:
    The first publish turns on Google and recovery, and both prove a mailbox
    only the guard acts on.
 4. **Migration 20261014100000** (mail drain), once section 94 shows
-   process-email-queue answering 2026-10-14.2 (the S13-017 hotfix: the job
-   posts through a provider cooldown, which only that build drains sign-in
-   mail through) AND its post-with-no-JWT line
+   process-email-queue answering 2026-10-14.1 AND its post-with-no-JWT line
    PASSes (the gateway's 401: verify_jwt is on, so the role claim the
    function reads is the platform's word; and its body carries the
    `UNAUTHORIZED_` code the drain reads back). Before applying it, read
@@ -407,7 +427,8 @@ rule's text names the frontend gate:
    migration the staged runner dropped, is caught.
 6. **Run `bash scripts/verify-deploy.sh` again** and read 94, 95 and 96.
    - 94: the three mail builds, process-email-queue at 2026-10-14.2 or
-     later (S13-017), DNS, OUR drain job rb-auth-mail-drain (last run
+     later (S13-017; an INFO line says the drain's command is proved by
+     20261014120000's self-check), DNS, OUR drain job rb-auth-mail-drain (last run
      succeeded, no failures; a process-email-queue job is reported as
      Lovable's), the gateway's 401 to a post with no JWT in the body the
      drain reads back, the publishable key's 403 with cronKey false.
