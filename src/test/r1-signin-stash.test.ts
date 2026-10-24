@@ -14,7 +14,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
   STASH_KEY, clearPendingSignIn, discardStashedSession, forgetStashedSessionFor, forgetStashedShare, maskEmail, newestAmr, peekStashed, readPendingSignIn,
-  pendingMatches, safeNextPath, setPendingSignIn, stashShareFor, stashValueFor, stashedFragment, stashedSessionIdFor, stashedSessionIdThisLoad, stashedShareFor, stashedValueFor, takeStashed,
+  pendingMatches, safeNextPath, setPendingSignIn, stashShareFor, stashValueFor, stashedFragment, stashedSessionIdFor, stashedShareFor, stashedValueFor, takeStashed,
 } from "@/lib/auth-fragment";
 import { parseParametersFromURL } from "@supabase/auth-js/dist/module/lib/helpers";
 
@@ -252,24 +252,20 @@ describe("the readers the pages use", () => {
     expect(stashedSessionIdFor("/success", "cs_in_url")).toEqual({ id: "cs_in_url", fromStash: false });
   });
 
-  it("a session id honoured only on the load that captured it: this document's capture yes, an earlier document's no (S13-082)", () => {
-    const at = (origin: number) => Object.defineProperty(performance, "timeOrigin", { configurable: true, get: () => origin });
-    try {
-      at(Date.now() - 100);
-      load("/freelance-boost?session_id=cs_live_boost_once");
-      expect(stashedSessionIdThisLoad("/freelance-boost", null)).toEqual({ id: "cs_live_boost_once", fromStash: true });
-      expect(stashedSessionIdThisLoad("/freelance-boost", "cs_in_the_address"), "an id still in the address always wins").toEqual({ id: "cs_in_the_address", fromStash: false });
-      at(Date.now() + 60_000);
-      load("/freelance-boost");
-      expect(stashedSessionIdThisLoad("/freelance-boost", null), "a later load read the old purchase back").toEqual({ id: null, fromStash: false });
-      expect(stashedSessionIdFor("/freelance-boost", null).id, "the reload-keeping reader still finds it (the success page needs that)").toBe("cs_live_boost_once");
-      forgetStashedSessionFor("/success");
-      expect(peekStashed("session_id"), "forgetting another page's purchase dropped this one").toBe("cs_live_boost_once");
-      forgetStashedSessionFor("/freelance-boost");
-      expect(peekStashed("session_id")).toBeNull();
-    } finally {
-      delete (performance as unknown as Record<string, unknown>).timeOrigin;
-    }
+  it("a stashed session id stays until its purchase is delivered, and only that purchase's id is forgotten (S13-082)", () => {
+    load("/freelance-boost?session_id=cs_live_boost_once");
+    load("/freelance-boost");
+    expect(stashedSessionIdFor("/freelance-boost", null), "a reload before delivery lost the paid purchase").toEqual({ id: "cs_live_boost_once", fromStash: true });
+    forgetStashedSessionFor("/success");
+    expect(peekStashed("session_id"), "forgetting another page's purchase dropped this one").toBe("cs_live_boost_once");
+    forgetStashedSessionFor("/freelance-boost", "cs_live_an_older_purchase");
+    expect(peekStashed("session_id"), "delivering another purchase dropped this one").toBe("cs_live_boost_once");
+    forgetStashedSessionFor("/freelance-boost", "cs_live_boost_once");
+    expect(peekStashed("session_id")).toBeNull();
+    expect(peekStashed("session_id_path")).toBeNull();
+    load("/freelance-boost?session_id=cs_live_boost_two");
+    forgetStashedSessionFor("/freelance-boost");
+    expect(peekStashed("session_id"), "a new purchase kept the old one in the stash").toBeNull();
   });
 
   it("a stashed share is honoured only for the purchase it was made for (S13-002)", () => {
