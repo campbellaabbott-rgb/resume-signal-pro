@@ -18,8 +18,11 @@ import { skipWithoutDist } from "./helpers/built-output";
  *   the first paint waits for;
  * - the font CSS is requested from the head, at the same moment as the app
  *   CSS, preloaded, applied without blocking the paint (media swap, with a
- *   noscript twin), and asks for font-display swap. Text paints at once in the
- *   metric-matched Inter Fallback and changes face in place, moving no line;
+ *   noscript twin), and asks for font-display optional. Text paints at once
+ *   in the metric-matched Inter Fallback; a face that arrives late is used
+ *   from the next page load on, so the page never re-wraps for it (the swap
+ *   it asked for before cost the Domino's page 0.136 of CLS on a phone,
+ *   measured by the SEO round's integration, 2026-10-24);
  * - it carries every face the tailwind stacks name: Inter 400/500/600/700 and
  *   JetBrains Mono 400 (the mono stack, used for ids and code);
  * - there is no preconnect to a host the page never uses;
@@ -54,7 +57,7 @@ function fontProblems(html: string): string[] {
   for (const s of sheets) {
     if (s.media !== "print" || !/this\.media\s*=\s*'all'/.test(s.onload ?? "")) problems.push(`the font stylesheet blocks the paint (media="${s.media}", onload="${s.onload}")`);
     const href = s.href ?? "";
-    if (!/display=swap/.test(href)) problems.push("the font CSS does not ask for font-display swap");
+    if (!/display=optional(&|$)/.test(href)) problems.push("the font CSS does not ask for font-display optional (a late swap re-wraps the prerendered page)");
     if (!/family=Inter:wght@400;500;600;700(&|$)/.test(href)) problems.push(`the font CSS does not carry Inter 400-700: ${href}`);
     if (!/family=JetBrains\+Mono:wght@400(&|$)/.test(href)) problems.push(`the font CSS does not carry JetBrains Mono 400: ${href}`);
     if (!links.some((l) => l.rel === "preload" && l.as === "style" && l.href === href)) problems.push("the font CSS is not preloaded");

@@ -93,11 +93,10 @@ const PRIVATE_PREFIXES = ["/dev/", "/admin/", "/r/"];
  * only in the component. Adding to this list is a decision, not a default.
  */
 //
-// /about (SEO-011b, seo/react 2026-10-18): the React route lands first so a
-// baked /about is never repainted as NotFound; its write({ path: "/about" })
-// is the bake builder's (seo/bake). When that lands, the honesty test below
-// fails on purpose: take "/about" off this list in the same merge.
-const KNOWN_FALLBACK_ROUTES = ["/privacy", "/terms", "/about"];
+// /about (SEO-011b) left this list in the SEO round's integration
+// (2026-10-24): the React route and the bake's write({ path: "/about" })
+// landed together, and the honesty test below asked for it.
+const KNOWN_FALLBACK_ROUTES = ["/privacy", "/terms"];
 
 const PRERENDERED_PATHS = (): Set<string> => {
   const src = readFileSync(resolve(ROOT, "scripts/prerender-seo.mjs"), "utf8")

@@ -52,8 +52,8 @@ const gz = (b) => zlib.gzipSync(b, { level: 9 }).length;
     else out("PASS", `${cssHref} imports nothing (${css.bytes.length} B): the first paint waits for one stylesheet (SEO-020)`);
   }
   const fontSheets = links.filter((l) => attr(l, "rel") === "stylesheet" && /^https:\/\/fonts\.googleapis\.com\//.test(attr(l, "href") || ""));
-  if (fontSheets.length === 1 && attr(fontSheets[0], "media") === "print" && /this\.media\s*=\s*.all./.test(attr(fontSheets[0], "onload") || "") && /display=swap/.test(attr(fontSheets[0], "href") || "")) out("PASS", "the font stylesheet loads from the head without blocking the paint (media swap, font-display swap) (SEO-020)");
-  else out("FAIL", `the homepage head has ${fontSheets.length} font stylesheet link(s), not one applied by a media swap with display=swap (SEO-020)`);
+  if (fontSheets.length === 1 && attr(fontSheets[0], "media") === "print" && /this\.media\s*=\s*.all./.test(attr(fontSheets[0], "onload") || "") && /display=optional(&|$)/.test(attr(fontSheets[0], "href") || "")) out("PASS", "the font stylesheet loads from the head without blocking the paint (media swap, font-display optional: no late re-wrap) (SEO-020, SEO-022)");
+  else out("FAIL", `the homepage head has ${fontSheets.length} font stylesheet link(s), not one applied by a media swap with display=optional (SEO-020, SEO-022)`);
   const stripe = links.filter((l) => /^(preconnect|dns-prefetch)$/.test(attr(l, "rel") || "") && /stripe\.com/.test(attr(l, "href") || ""));
   if (stripe.length) out("FAIL", `the head still opens a connection to ${attr(stripe[0], "href")}, which no page loads (SEO-020)`);
   else out("PASS", "the head opens no connection to Stripe (SEO-020)");

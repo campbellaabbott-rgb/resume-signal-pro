@@ -121,8 +121,13 @@ const pick = (arr, n) => (arr.length <= n ? arr : Array.from({ length: n }, (_, 
     const a = (jp.jobLocation && jp.jobLocation.address) || {};
     if (typeof a.addressLocality === "string" && /[/_()|]|\bonly\b|\b(?:remote|hybrid|on-?site)\b/i.test(a.addressLocality)) bad.push(`${p}: locality "${a.addressLocality}"`);
     if (jp.jobLocationType === "TELECOMMUTE" && (a.addressRegion || a.addressLocality)) info.push(`${p}: TELECOMMUTE beside ${a.addressLocality || a.addressRegion}`);
-    const dp = Date.parse(String(jp.datePosted).slice(0, 10)), vt = Date.parse(String(jp.validThrough).slice(0, 10));
-    if (Number.isFinite(dp) && Number.isFinite(vt) && (vt - dp) / 86400000 > 30) bad.push(`${p}: validThrough ${String(jp.validThrough).slice(0, 10)} past posted ${String(jp.datePosted).slice(0, 10)} + 30`);
+    // The window runs from the date the EMPLOYER states, which the page
+    // prints ("Posted YYYY-MM-DD, as stated by the employer"); datePosted is
+    // that date clamped to the day of the bake, so a stated "tomorrow" reads
+    // one day short. The later of the two is the start of the window.
+    const stated = (/Posted (\d{4}-\d{2}-\d{2}), as stated by the employer/.exec(d.body) || [])[1];
+    const dp = Math.max(Date.parse(String(jp.datePosted).slice(0, 10)), stated ? Date.parse(stated) : -Infinity), vt = Date.parse(String(jp.validThrough).slice(0, 10));
+    if (Number.isFinite(dp) && Number.isFinite(vt) && (vt - dp) / 86400000 > 30) bad.push(`${p}: validThrough ${String(jp.validThrough).slice(0, 10)} past posted ${stated ?? String(jp.datePosted).slice(0, 10)} + 30`);
   }
   if (!sample.length) out("INFO", "P1 the sitemap names no posting page");
   else if (bad.length) out("FAIL", `P1 ${bad.length} posting page(s): ${bad.slice(0, 10).join("; ")}`);

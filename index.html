@@ -89,14 +89,20 @@
          requested here, at the same moment as the app's own CSS, rather than
          from inside it, where it was a second blocking request the browser
          could only discover after the first had arrived. It applies once
-         loaded (the media swap), and font-display swap paints text at once
-         in the metric-matched Inter Fallback (src/index.css), so the change
-         of face moves no line. The noscript twin applies it without script.
+         loaded (the media swap), and text paints at once in the
+         metric-matched Inter Fallback (src/index.css). Font-display is
+         optional, not swap: measured on the merged SEO round's build
+         (2026-10-24, lab, phone profile), the late swap to Inter still
+         re-wrapped lines of the prerendered page, 0.136 of the Domino's
+         company page's 0.155 CLS, and 0.08 of /jobs' 0.146 on desktop. With
+         optional, a face that is not ready in the first moments is used
+         from the next page load on, and the page never moves for it (0.018
+         and 0.066). The noscript twin applies it without script.
          Self-hosting the same faces would also drop the font hosts' two
          connections; that needs the woff2 files in public/fonts. -->
-    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400&display=swap" />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400&display=swap" media="print" onload="this.media='all'" />
-    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400&display=swap" /></noscript>
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400&display=optional" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400&display=optional" media="print" onload="this.media='all'" />
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400&display=optional" /></noscript>
 
     <!-- Open Graph / Facebook (sitewide fallback for non-JS social crawlers) -->
     <meta property="og:type" content="website" />

@@ -379,8 +379,10 @@ export const carrySitemaps = ({ ledgerSource, liveSitemap, committedSitemap }) =
  * not answer when this was built). Never the homepage, never indexed.
  */
 export function postingStubPage({ path, id, state, since, title, company, companyLink, windowDays, duplicateOf = null, basis = null, ceiling = null, esc }) {
-  const t = typeof title === "string" && title.trim() ? title.trim() : null;
-  const c = typeof company === "string" && company.trim() ? company.trim() : null;
+  // One line, as the posting's own page prints it (postingText): an employer's
+  // double space is not part of the job, and the stub's title kept it.
+  const t = typeof title === "string" && title.trim() ? title.replace(/\s+/g, " ").trim() : null;
+  const c = typeof company === "string" && company.trim() ? company.replace(/\s+/g, " ").trim() : null;
   const what = t ? `${esc(t)}${c ? ` at ${esc(c)}` : ""}` : "This posting";
   const board = `/jobs?job=${encodeURIComponent(id)}`;
   const head = state === "gone"
