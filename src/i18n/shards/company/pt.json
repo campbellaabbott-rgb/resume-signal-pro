@@ -194,6 +194,7 @@
       "basis": "Mostramos vagas com data nos últimos {{days}} dias.",
       "empty": "Nenhuma vaga no portal da {{company}} quando o lemos {{ago}}.",
       "emptyBoard": "Nenhuma vaga neste portal quando o lemos {{ago}}.",
+      "fullRead": "Segundo a nossa última leitura completa, nenhuma vaga deste portal tem data nos últimos {{days}} dias.",
       "unread": "Não lemos o portal completo da {{company}} recentemente.",
       "unreadBoard": "Não lemos este portal completo recentemente."
     },

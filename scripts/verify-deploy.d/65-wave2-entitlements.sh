@@ -13,7 +13,9 @@
 #     the agent plan's card, the trial named for first-time subscribers (the
 #     board and the agent paywall), the trial-only welcome banner, the pass
 #     page's refunded line, the Pro card's trial line;
-#   - the crawler's /agent names the trial for first-time subscribers;
+#   - the crawler's /agent names no trial and no plan price since the apply
+#     pivot (it named the agent plan's trial for first-time subscribers until
+#     that plan was retired);
 #   - the owner steps that no read can prove are named as INFO.
 #
 # READ-ONLY. OPTIONS preflights and the webhook's GET (405) run no function
@@ -92,11 +94,17 @@ else
   done
 fi
 
-# The page a crawler reads for /agent (Googlebot UA, read-only GET).
+# The page a crawler reads for /agent (Googlebot UA, read-only GET). Re-pointed
+# 2026-10-24 (profiles+design verify triage): the trial belonged to the agent
+# plan the apply pivot retired (owner, 2026-10-11), so naming it is now one of
+# the retired claims in scripts/prerender-retired.mjs (83 C1's list), and the
+# page says to apply yourself on the employer's own site instead.
 AG65=$(curl -s -m 30 -A "$UA" "$SITE/agent")
-if printf '%s' "$AG65" | grep -qF "days free for first-time subscribers"; then echo "PASS  /agent as served to a crawler names the trial for first-time subscribers (L6-29)"
-elif printf '%s' "$AG65" | grep -qE "[0-9]+ days free"; then echo "FAIL  /agent as served to a crawler still promises free days to everyone (the prerender with this wave is not published)"
-else echo "FAIL  /agent as served to a crawler names no trial at all ($(printf '%s' "$AG65" | wc -c | tr -d ' ') bytes)"; fi
+if printf '%s' "$AG65" | grep -qF "days free for first-time subscribers"; then echo "FAIL  /agent as served to a crawler still names the retired agent plan's trial (a retired claim in scripts/prerender-retired.mjs)"
+elif printf '%s' "$AG65" | grep -qE "[0-9]+ days free|first-time subscribers"; then echo "FAIL  /agent as served to a crawler still promises free days (L6-29): no plan on sale has a trial"
+elif printf '%s' "$AG65" | grep -qF '$99'; then echo "FAIL  /agent as served to a crawler still prices the retired agent plan"
+elif printf '%s' "$AG65" | grep -qF "apply yourself on the employer"; then echo "PASS  /agent as served to a crawler names no trial and no plan price, and says to apply yourself on the employer's own site"
+else echo "FAIL  /agent as served to a crawler lacks the apply-yourself line ($(printf '%s' "$AG65" | wc -c | tr -d ' ') bytes): the bake with the apply pivot is not published"; fi
 
 # The owner steps no read can prove.
 echo "INFO  OWNER STEP (L6-18): subscribe the Stripe webhook endpoint to charge.refunded and charge.dispute.created; until then Stripe sends neither and no refund revokes anything"

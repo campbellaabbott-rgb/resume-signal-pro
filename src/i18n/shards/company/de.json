@@ -177,6 +177,7 @@
       "basis": "Wir zeigen Stellen mit Datum in den letzten {{days}} Tagen.",
       "empty": "Keine Stellen auf dem Jobboard von {{company}}, als wir es {{ago}} gelesen haben.",
       "emptyBoard": "Keine Stellen auf diesem Jobboard, als wir es {{ago}} gelesen haben.",
+      "fullRead": "Laut unserem letzten vollständigen Lesen trägt keine Stelle auf diesem Jobboard ein Datum aus den letzten {{days}} Tagen.",
       "unread": "Wir haben das Jobboard von {{company}} in letzter Zeit nicht vollständig gelesen.",
       "unreadBoard": "Wir haben dieses Jobboard in letzter Zeit nicht vollständig gelesen."
     },

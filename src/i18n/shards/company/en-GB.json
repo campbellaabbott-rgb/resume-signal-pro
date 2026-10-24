@@ -177,6 +177,7 @@
       "basis": "We show roles dated in the last {{days}} days.",
       "empty": "No roles on {{companyPossessive}} job board when we read it {{ago}}.",
       "emptyBoard": "No roles on this board when we read it {{ago}}.",
+      "fullRead": "As of our latest full read, no role on this board is dated in the last {{days}} days.",
       "unread": "We have not read {{companyPossessive}} whole board recently.",
       "unreadBoard": "We have not read this whole board recently."
     },
