@@ -744,6 +744,8 @@ functions:
 11. `20261011171000` shortlist records no candidate sex or race
 12. `20261011172000` fix-plan mails queued before the pause are archived
 13. `20261011200000` cron_http_answers and the visitors-only scan health reader (before scan-heartbeat, mail-watch, check-alerts)
+14. `20261011210000` a deleted account takes the documents made for it and its Pro grants (the fixes; replaces account_erase_personal_data, same signature, so no function waits on it)
+15. `20261011211000` an affiliate is paid once per customer and never for themselves, and a refunded or disputed payment takes the commission back (the fixes; replaces record_affiliate_conversion, same single signature, plus a trigger on payment_revocations)
 
 Round 1's six (20261011100000 to 20261011130000) come first, as in "Deploy"
 above; R1's two (20261014100000, 20261014110000) are on main already once
@@ -782,15 +784,24 @@ answers its build in `x-fn-build`). The ones round 2 changed:
   free-keyword-scan-stream, mail-watch (new), scan-heartbeat, agent-mcp;
   **.2026-10-14.29** free-keyword-scan, get-account-data,
   verify-product-purchase.
+- **.2026-10-11.30** (the fixes after the review, below): generate-career-path,
+  generate-application-answers, generate-apply-package,
+  free-keyword-scan-stream, stripe-webhook, check-subscription, agent-mcp,
+  public-api, apply-agent (switched off; its bundled classifier), scan-heartbeat;
+  **.2026-10-14.30** get-account-data, free-keyword-scan, account-order.
+  job-board stays `2026-09-09.93` and carries the board fixes.
 
 `--against origin/main` reports 0 violations. Against each w4b branch the only
 "same build string on different code" lines are job-board `.93` (shared by
 reservation) and R1's three functions (below, under the owner's steps).
+After the fixes, `--against origin/wave4/integration` (the branch before
+them) finds 14 functions whose code moved and one violation, job-board `.93`
+by reservation: every other one carries a `.30` build.
 
 The job-board upload, tallied the deploy's way (its folder plus all of
 _shared, comments included) with the profiles round's two _shared files at
-their size on design/integration (72,818 bytes), is 4,434,303 bytes: 65,697
-under the 4.5 MB line. It was 4,466,852 (33,148 under) before the
+their size on design/integration (72,818 bytes), is 4,443,315 bytes after
+the fixes: 56,685 under the 4.5 MB line (4,434,303 and 65,697 before them). It was 4,466,852 (33,148 under) before the
 integration moved the long comment runs of four more job-board files into
 `docs/job-board-index-notes.md`.
 
@@ -799,13 +810,17 @@ integration moved the long comment runs of four more job-board files into
 One read-only section per group: `scripts/verify-deploy.d/92-w4b-payments-delivery.sh`,
 `92-w4b-checkout-catalogue.sh`, `92-w4b-generators.sh`,
 `92-w4b-account-compliance.sh`, `92-w4b-job-board.sh`,
-`92-w4b-agents-api.sh`, `92-w4b-ops-email-tests.sh`. `verify-deploy.sh` runs
+`92-w4b-agents-api.sh`, `92-w4b-ops-email-tests.sh`, and for the fixes after
+the review `92-w4b-fixer.sh` (every `.30` build, a signed-out cover note
+refused 401, and three board behaviours). `verify-deploy.sh` runs
 them with the rest, behind section 0's positive control and the tally that
 fails a section which prints no verdict. Expected FAILs while the seller is
 unnamed: section 92 account-compliance FAILs the three marketing senders on
 purpose, and checkout-catalogue reports `purchasesOpen` false as a PASS plus
 an owner step. From agent-mcp 2026-10-11.27 on, the owner's count on the
-ChatGPT nonce is 0 in both section 86 and section 92.
+ChatGPT nonce is 0 in both section 86 and section 92, and from the fixes on
+section 92 agents-api spends one more keyless search, a plain one with its
+own nonce, whose count must be 1: the positive control for that 0.
 
 ### Deploy order
 
@@ -821,7 +836,9 @@ ChatGPT nonce is 0 in both section 86 and section 92.
    `src/data/guides.ts`, `src/pages/Index.tsx`, `src/pages/Pricing.tsx`,
    `docs/deploy-ledger.json` and six tests (git merge-tree, 2026-10-18).
    company-profiles owns them; wave 4 keeps the other side and re-applies its
-   own hunks and its 349 locale keys (adding only). Main has the
+   own hunks and its 374 locale keys (349 from the integration and 25 from
+   the fixes, adding only; the fixes also remove accountPrivacy.deletedList
+   and agentPass.retiredBuyers, which nothing renders). Main has the
    `ledger/r1-verified` change (PR #37): keep its 20261014100000 in
    `appliedOutsideDrizzle` and its `verifiedDeploys` entry, and do not
    restore 20261008125000 or 20261008128000 there (this branch proves them
@@ -839,9 +856,14 @@ Before purchases can open:
   (never a placeholder), then publish the frontend and redeploy
   create-checkout, create-subscription-checkout and create-product-checkout.
   Marketing mail resumes at the same time.
-- Rehearse a Full Analysis purchase in Stripe test mode (set
+- Optionally rehearse the webhook in Stripe test mode (set
   `STRIPE_TEST_SECRET_KEY` and `STRIPE_TEST_WEBHOOK_SECRET` from a test-mode
-  endpoint), then make one live purchase.
+  endpoint and send a test checkout.session.completed for a Full Analysis).
+  This proves only the webhook's claim, delivery row and link mail: the site's
+  own checkout (create-checkout) and the success page's delivery
+  (analyze-resume) use the live key only, so a test purchase cannot be
+  carried to an analysis, and a test event touches no plan, dispute or
+  affiliate. The first real proof of a purchase is one live Full Analysis.
 - Get an accountant's ruling on India's GST and register for EU/UK VAT.
   Turning `EU_UK_SALES` on lifts the EU/EEA/UK refusal; India also needs IN,
   INR and Asia/Kolkata removed from `_shared/sales-territory-zones.ts`.
@@ -897,7 +919,11 @@ After the deploy:
   `has_table_privilege('authenticated','public.shortlist_demographics','INSERT')`
   is false; `select count(*) from pgmq.q_transactional_emails where
   message->>'label'='fix-plan-drip'` is 0; the ChatGPT nonces of sections 86
-  and 92 count 0 in `job_board_search_events` and `job_board_search_misses`.
+  and 92 count 0 in `job_board_search_events` and `job_board_search_misses`,
+  and section 92's plain nonce counts 1 (the positive control; a 0 there
+  means connector searches are not logged and the 0s prove nothing); the
+  fixer section's two reads: `affiliate_commission_revoked` in `pg_trigger`
+  and `account_erase_personal_data`'s source naming `purchased_content`.
 - Optional proof: pause `scan-heartbeat-sentinel` for 30 minutes once and
   confirm the healthchecks.io check mails you.
 - Watch the INFO lines for the experience, salary and country re-derivations
@@ -1000,3 +1026,99 @@ On the integration branch, 2026-10-18 (load average 7-20 from other workflows):
   4,434,303 bytes, 65,697 under the line.
 - Every fix the integration made was proved by restoring the code it changed:
   its test fails there and passes on the fix.
+
+### Fixes after the review
+
+A review of this branch confirmed twelve major findings and twenty-three
+minor ones. The fixer applied every one on `w4b-fix` (onto
+wave4/integration), each with a test that fails on the code before it
+(proved by restoring that code once) and passes on the fix. Builds `.30`
+above; migrations 14 and 15 above; verifier `92-w4b-fixer.sh`.
+
+Major:
+
+- **A plan is not an order** (get-account-data): Pro and the agent plan left
+  the account's orders list, where they showed Receipt (always 404), Email it
+  again (always 409) and Open controls that could not work.
+- **A price names its currency** (get-account-data, OrdersList,
+  stripe-webhook): the currency comes from `checkout_starts`, then the
+  delivery row's metadata (the webhook now records `session.currency`), else
+  no price; amounts are formatted in Stripe's minor unit (770 JPY is ¥770,
+  not $7.70).
+- **A made-up session id never spends the Stripe read limit**
+  (generate-career-path): a well-formed `cs_live_`/`cs_test_` id only, a
+  per-address (10 an hour) and a function-wide (200 an hour) bucket before
+  Stripe is asked, and a refused id is not asked about again for ten minutes.
+- **A deleted account takes its documents and Pro grants** (20261011210000):
+  `purchased_content` for bound sessions and the account's grants, and with
+  a proven address the address's; the delete card (new key
+  `accountPrivacy.deletedListDocs`) and Privacy section 6 say so.
+- **No cover note for a signed-out caller** (generate-application-answers):
+  the cover-note mode answers 401 `sign_in_required` unless our own servers
+  ask.
+- **A business word does not take the pay away** (_shared/salary-extract.ts):
+  a business figure counts only in the figure's own clause, next to it, a
+  nearer pay label wins, lines and block tags end a clause, and the generic
+  words (inventory, transactions, claims, loans, costs, volume, equity) are
+  gone, so the version 11 re-sweep NULLs no correct pay.
+- **A search never waits for the employer list** (job-board): the router
+  routes on the live set this isolate built last or the table and rebuilds
+  after the response; section 92 job-board asks cvs and UPS up to four times.
+- **"not" negates a short phrase** (job-board search-routing): it stops at
+  two words, a place word or state, or an intent word.
+- **A factual clause is the person's** (_shared/application-questions.ts,
+  self-apply.ts, the worker's mirror): start date, pay, references, gaps,
+  where the person lives (always) and covenants or conflicts of interest
+  (the clause rule) in a later clause of a work-done or motivation question,
+  or in a hint, go to the person.
+- **No refund is promised** (AgentRetiredNotice, AgentPass, guides): the
+  past-buyer line says what was bought is honoured (new key
+  `agentPass.retiredBuyersHonour`); a guard reads every locale, guide and
+  source default.
+- **No guide sells Freelance Boost** (guides.ts): both answers describe the
+  method and the free scan; the links are gone; a guard reads every guide.
+- **The account asks before it takes this browser's scans, and offers the
+  last résumé** (account-history-import, LocalHistoryOffer, Account,
+  SaveResumeVersion): nothing is imported until "Add them to my account"; a
+  scan one account added is never offered to another; the résumé this tab
+  scanned is offered as a résumé version; the signed-out card returns to
+  /account.
+
+Minor: the affiliate's flat $10 is earned once per customer and never for
+the affiliate's own purchase, and a refund or dispute takes it back
+(20261011211000); a paid Pro member can run the included Full Analysis while
+purchases are closed (Index, FreeKeywordResults); the test-mode owner step
+above says what a rehearsal proves; a test-mode event acts only on a one-off
+checkout, with no commission (stripe-webhook); check-subscription tells an
+account that is not Pro only `linkPending` for an address's live plan; the
+funnel and cohort hooks store nothing before consent and a no forgets them
+(src/lib/analytics-session-store.ts); Privacy names ipinfo's checkout lookup
+and speaks for our own analytics only; account-order counts receipts (30 an
+hour) before Stripe; generate-apply-package and both free scanners read a
+website session only (CP-J); live brand keys never claim a country, and a
+two-letter or occupation-guard literal never joins an employer's boards; a
+browse paged by a keyset cursor past 10,000 is served; "nurse jobs not in
+Texas" drops the negated place and names `placeExclusion` in ignoredFilters
+(new key `jobsPage.filterName.placeExclusion`, which the page's existing
+"We couldn't apply …" line renders); the name-sync cursor carries a retry its
+clock never reached; a wish word must belong to the years and "Additional
+Qualifications" is not a wish list; withLiveBrands keeps its last set only;
+fit_resume names the rule its gate applies; a name two carried employers
+share is not listed in unknownCompanies; section 92 agents-api has a positive
+control; the co-pilot words an hourly refusal as an hour; scan-heartbeat
+fails `scan_ceiling_refused` above ten refused scans an hour (S12-142's
+alarm); generate-apply-package fences the posting as data.
+
+New keys, all nine locales: accountPrivacy.deletedListDocs,
+agentPass.retiredBuyersHonour, jobsPage.filterName.placeExclusion,
+accountPage.localScansOfferTitle, localScansOfferBody, localScansAdd,
+localScansNotMine, lastResumeOfferTitle, lastResumeOfferBody, lastResumeSave,
+lastResumeNo, lastResumeSaved, lastResumeLabel, lastResumeLabelScored,
+localOfferFailed, acBusy, acLimitHours, acLimitMinutes;
+saveResume.signedOutTitle, signedOutSearches, signedOutTracker,
+signedOutKeeps, signedOutCta; freeResults.nextSteps.fullAnalysisIncluded,
+fullAnalysisIncludedCta. Removed (nothing renders them):
+accountPrivacy.deletedList, agentPass.retiredBuyers.
+
+Nothing in the fixes needed a file another round owns: the place exclusion
+reaches the page through ignoredFilters, which Jobs.tsx already words.
