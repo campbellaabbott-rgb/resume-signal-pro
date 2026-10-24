@@ -257,7 +257,7 @@ export const GUIDES: Record<string, Guide> = {
       "How to write a resume when your experience is in one field and your target another: bridge keywords, title translation and transition sections.",
     tldr:
       "A career-change resume fails because every title and keyword points at the old field. Fix it three ways: re-label transferable work in the target field's vocabulary (bridge keywords), name the transition explicitly in a summary line, and add a projects section that carries target-field evidence. Keep the standard reverse-chronological format — functional resumes parse badly and recruiters distrust them.",
-    updated: "2026-07-06",
+    updated: "2026-10-24",
     minutes: 6,
     sections: [
       {
@@ -434,7 +434,7 @@ export const GUIDES: Record<string, Guide> = {
       "Concurrent engagements without the job-hopper misread: the umbrella portfolio entry, per-engagement scope lines and where advisory roles sit.",
     tldr:
       "Fractional roles belong under ONE umbrella entry — 'Fractional CFO — concurrent engagements, 2022–present' — with each engagement as a scope line beneath it ('PE-backed healthcare services company, ~$40M revenue: owned FP&A and board reporting'), never as separate look-alike jobs, which reads as instability in a six-second skim. Lead every line with executive scope (P&L, budget, headcount, stage), keep client names out unless you have permission, and when applying to a full-time role, frame the portfolio as continuity of leadership at breadth — not as a collection of short stints.",
-    updated: "2026-07-08",
+    updated: "2026-10-24",
     minutes: 6,
     sections: [
       {

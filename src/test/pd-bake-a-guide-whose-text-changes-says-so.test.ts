@@ -20,10 +20,10 @@ const RECORDED: Record<string, { hash: string; updated: string }> = {
   "why-resumes-get-rejected": { hash: "16227d3ef5313fba", updated: "2026-07-06" },
   "ats-auto-rejection-myth": { hash: "393684fd362a65c7", updated: "2026-07-06" },
   "resume-keywords-guide": { hash: "3eeb80151ceb3f02", updated: "2026-07-06" },
-  "career-change-resume": { hash: "4104274e7d696b5e", updated: "2026-07-06" },
+  "career-change-resume": { hash: "4178157bbd57fede", updated: "2026-10-24" },
   "resume-format-that-survives-ats": { hash: "f9f66986ed7052f9", updated: "2026-07-06" },
   "freelance-work-on-resume": { hash: "a233ea58ac95e571", updated: "2026-07-08" },
-  "fractional-roles-on-resume": { hash: "f13365b34d992b63", updated: "2026-07-08" },
+  "fractional-roles-on-resume": { hash: "94554a71d1cce3e4", updated: "2026-10-24" },
   "what-resume-score-means": { hash: "3b87cd6327e2fd30", updated: "2026-10-10" },
   "how-the-apply-agent-works": { hash: "6c15fd28569af597", updated: "2026-10-12" },
 };
