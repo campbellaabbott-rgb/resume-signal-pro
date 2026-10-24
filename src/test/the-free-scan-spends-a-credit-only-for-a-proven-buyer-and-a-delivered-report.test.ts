@@ -109,10 +109,15 @@ const env: Record<string, string> = {
   NOTIFY_SCANS: "false",
 };
 
-/** A session token shaped like the auth server's: only its amr claim is read. */
+/**
+ * A session token shaped like the auth server's website session: its amr
+ * claim says how the person signed in, and its audience is the website's
+ * (the scanner reads the account through websiteSessionOf, CP-J, which treats
+ * any other audience or a connected app's token as an anonymous visitor).
+ */
 const b64url = (o: unknown) => Buffer.from(JSON.stringify(o)).toString("base64url");
 const token = (sub: string, method: string, at = Math.floor(Date.now() / 1000)) =>
-  `${b64url({ alg: "HS256", typ: "JWT" })}.${b64url({ sub, role: "authenticated", amr: [{ method, timestamp: at }] })}.sig`;
+  `${b64url({ alg: "HS256", typ: "JWT" })}.${b64url({ sub, role: "authenticated", aud: "authenticated", amr: [{ method, timestamp: at }] })}.sig`;
 const google = (email: string) => [{ provider: "google", identity_data: { email, email_verified: true } }];
 type FakeUser = { id: string; email: string; email_confirmed_at?: string; identities?: unknown[] };
 
