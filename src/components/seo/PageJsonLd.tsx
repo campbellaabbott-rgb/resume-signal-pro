@@ -17,8 +17,15 @@
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { ownedByReact } from "@/lib/prerendered-head";
-import { POSTING_LD_TAG_ID } from "@/components/jobs/posting-page";
 import { hasBakedPage, ldTypesOf } from "./baked-head";
+
+/**
+ * The id of the posting page's JobPosting slot (POSTING_LD_TAG_ID in
+ * src/components/jobs/posting-page.ts, held equal by a test). Named here, not
+ * imported: this module rides in the SEO chunk every page loads, and an
+ * import pulled the posting page's builders into it (8 KB gzip on every page).
+ */
+export const POSTING_SLOT_ID = "posting-jsonld";
 
 type Block = Record<string, unknown> | string | null | undefined | false;
 
@@ -34,7 +41,7 @@ export function supersedeBakedJsonLd(): void {
   for (const s of scripts) {
     if (ownedByReact(s) || s.parentElement !== document.head) continue;
     // The posting page owns its JobPosting slot by id and replaces it itself.
-    if (s.id === POSTING_LD_TAG_ID) continue;
+    if (s.id === POSTING_SLOT_ID) continue;
     if (ldTypesOf(s.textContent).some((t) => reactTypes.has(t))) s.remove();
   }
 }

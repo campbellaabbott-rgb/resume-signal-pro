@@ -133,3 +133,39 @@ describe("a page that renders its own block over a baked one", () => {
     expect(JSON.parse(app?.textContent ?? "{}").name).toBe("react");
   });
 });
+
+// THE SEO CHUNK STAYS SMALL (measured on the built output, 2026-10-24).
+// SEO.tsx is in every page's chunk graph, and PageJsonLd imported its posting
+// slot id from src/components/jobs/posting-page.ts: the bundler moved that
+// whole module (8 KB gzip) into the shared SEO chunk, so /, /pricing and every
+// other page downloaded the posting page's builders (SEO chunk 957 B -> 10,408
+// B gzip). The head modules name the slot themselves; this holds the two equal
+// and the slot left in place.
+describe("the posting slot", () => {
+  it("is named by the head modules without importing the posting page's builders", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { resolve } = await import("node:path");
+    const { codeOf } = await import("./helpers/strip-comments");
+    for (const f of ["../components/seo/PageJsonLd.tsx", "../components/seo/SEO.tsx", "../components/seo/baked-head.ts"]) {
+      expect(codeOf(readFileSync(resolve(__dirname, f), "utf8")), f).not.toMatch(/components\/jobs\/posting-page/);
+    }
+    const { POSTING_LD_TAG_ID } = await import("@/components/jobs/posting-page");
+    const { POSTING_SLOT_ID } = await import("@/components/seo/PageJsonLd");
+    expect(POSTING_SLOT_ID).toBe(POSTING_LD_TAG_ID);
+  });
+
+  it("keeps the baked posting block when React states a JobPosting of its own", async () => {
+    const { supersedeBakedJsonLd, POSTING_SLOT_ID } = await import("@/components/seo/PageJsonLd");
+    document.head.innerHTML = `<script type="application/ld+json" id="${POSTING_SLOT_ID}">{"@type":"JobPosting","title":"baked"}</script><script type="application/ld+json">{"@type":"JobPosting","title":"stray"}</script>`;
+    const own = document.createElement("script");
+    own.type = "application/ld+json";
+    own.textContent = JSON.stringify({ "@type": "JobPosting", title: "react" });
+    (own as unknown as Record<string, unknown>)["__reactFiber$test"] = {};
+    document.body.appendChild(own);
+    supersedeBakedJsonLd();
+    const left = [...document.querySelectorAll('script[type="application/ld+json"]')].map((s) => JSON.parse(s.textContent || "{}").title);
+    expect(left.sort()).toEqual(["baked", "react"]);
+    own.remove();
+    document.head.innerHTML = "";
+  });
+});
