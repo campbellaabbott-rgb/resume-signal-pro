@@ -67,7 +67,8 @@ import { retiredCheckoutAnswer } from "../_shared/apply-agent-retired.ts";
 // included, which a September date could not. 2026-10-11.13: retired (wave 4).
 const FN_NAME = "create-pass-checkout";
 // 2026-10-11.14: apply-agent-switch.ts gained the Apply Assistant's own switch (APPLY_ASSISTANT_ON_SALE); nothing this function does changed. The retirement sentence module's header was corrected too.
-const FN_BUILD = `${FN_NAME}.2026-10-11.14`;
+// 2026-10-11.15: the retirement sentence's apply-yourself line says what the question marking does (it reads words and can miss an unusually worded question about the buyer) and asks them to read every answer before they send (wave 4 descope, 2026-10-25); nothing this function does changed.
+const FN_BUILD = `${FN_NAME}.2026-10-11.15`;
 
 const cors = {
   "Access-Control-Allow-Origin": "*",

@@ -41,7 +41,8 @@ import { proIncludes } from "../_shared/pro-perks.ts";
 // includes (pro-perks.ts), which is nothing this function sells; and while
 // the seller's legal name and postal address are unset every purchase is a
 // 409 seller_identity_missing (seller-gate.ts), before the limiter or Stripe.
-const FN_BUILD = "create-product-checkout.2026-10-11.23";
+// 2026-10-11.24: the retirement sentence's apply-yourself line says what the question marking does (it reads words and can miss an unusually worded question about the buyer) and asks them to read every answer before they send (wave 4 descope, 2026-10-25); nothing this function does changed.
+const FN_BUILD = "create-product-checkout.2026-10-11.24";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
