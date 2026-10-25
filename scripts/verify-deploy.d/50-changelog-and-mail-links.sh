@@ -6,13 +6,18 @@
 echo "== 50. changelog of 3-5 October, the mailers' links, and the closure ledger kept =="
 
 CL=$(curl -s -m 30 -A "$UA" "$SITE/changelog")
+# The crawler page lists only the newest 30 entries. A title it does not carry
+# is judged below, in the English strings chunk the browser loads, because
+# newer entries push these off that page.
+CL_PAST=""
 for T in "Big Workday employers were missing many of their jobs" \
          "A PDF résumé reached our scanner as one long line" \
          "What we keep, for how long, and an address that reaches us" \
          "Paid tools that took payment and delivered nothing" \
          "Nine employers whose job lists were too big for us to read"; do
   if printf '%s' "$CL" | grep -qF "$T"; then echo "PASS  /changelog serves crawlers \"$T\""
-  else echo "FAIL  /changelog does not serve \"$T\" (frontend not published, or the prerender did not rebuild)"; fi
+  else CL_PAST="$CL_PAST$T
+"; fi
 done
 # The corrected entries are from July, past the 30 the crawler page lists, so
 # they are judged in the English strings chunk the browser loads for the page.
@@ -24,6 +29,23 @@ for CH in $(curl -s -m 30 "$SITE$CL_MAIN" | grep -o '"\./en-[A-Za-z0-9_-]*\.js"'
   CL_CORR=$(printf '%s' "$CL_BODY" | grep -o "Correction, 5 October 2026" | wc -l | tr -d ' ')
   break
 done
+
+# The titles the crawler page no longer lists, judged in the US English
+# changelog chunk (never en-GB, which spells résumé as CV).
+CL_US=""
+if [ -n "$CL_PAST" ]; then
+  for CH in $(curl -s -m 30 "$SITE$CL_MAIN" | grep -o '"\./en-[A-Za-z0-9_-]*\.js"' | tr -d '"' | sed 's|^\./||' | grep -v '^en-GB-' | sort -u); do
+    CL_TRY=$(curl -s -m 30 "$SITE/assets/$CH")
+    printf '%s' "$CL_TRY" | grep -q "aSliceReadAsTheWholeSite" || continue
+    CL_US=$CL_TRY
+    break
+  done
+fi
+while IFS= read -r T; do
+  [ -n "$T" ] || continue
+  if [ -n "$CL_US" ] && printf '%s' "$CL_US" | grep -qF "$T"; then echo "PASS  \"$T\" is past the newest 30 entries the crawler page lists, and the English changelog strings the browser loads carry it"
+  else echo "FAIL  /changelog does not serve \"$T\" (frontend not published, or the prerender did not rebuild)"; fi
+done <<< "$CL_PAST"
 if [ "$CL_CORR" -ge 2 ]; then echo "PASS  the changelog strings the browser loads carry both dated corrections ($CL_CORR)"
 else echo "FAIL  the changelog strings the browser loads carry $CL_CORR of the 2 dated corrections (freeAccounts, savedVersions)"; fi
 
