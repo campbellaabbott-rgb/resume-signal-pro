@@ -214,13 +214,35 @@ line 81i times `get_company_intel` on three Workday pages the sitemap lists
 and on the made-up token, and passes each only on a 200 within 3 seconds
 carrying the reader object, and for the three real pages only when the
 reply reads facts (a Workday source with open roles, and places or fields).
-81j reads the baked crawler copy of those three pages after the publish's
-re-bake and passes each only when it states where its roles are or in which
-fields, with Domino's as the positive control. 81g, which probes stripe
-alone, stayed green through the outage.
+81j reads the baked crawler copy after the publish's re-bake: 24 Workday
+company pages sampled from the live sitemap (its last 8, where the bake's
+90-second intel deadline cuts first, and 16 spread over the rest), and
+passes only when at least 90% state "The countries holding the most of its
+roles on this board:" or "The fields holding the most of its roles on this
+board:". 81i's 3-second bound does not prove the bake fitted its deadline
+(the whole bake fits only at about 1.1 s per round of six); 81j does. 81g,
+which probes stripe alone, stayed green through the outage.
 
 **Fix round (2026-10-24 review).** The self-check also refuses, on every
 run, a reader that lost its search_path or its 15-second timeout (a second
 run skips the rewrite and its before/after comparison), and that comparison
 now includes argument defaults (`get_similar_companies`' `p_limit DEFAULT
 6`, which the page relies on).
+
+**Recheck round (2026-10-25).** Two majors. First, 81i and 81j could both
+pass on a bake that ran past its 90-second intel deadline: the bake reads
+`get_company_intel` six at a time in page order, largest first, and 81j
+read three of the largest pages. 81j now samples the sitemap as above; on
+2026-10-25 none of the 283 Workday pages in the sitemap states either fact
+line, so it FAILs 0 of 24 until the re-bake (Domino's, the SmartRecruiters
+control, states two). Second, the zero page: a corpus of every live zero
+page (12,564 of the 44,379 catalogued boards, each against its own public
+feed read through job-board's `fetchBoard`, 11,857 feeds read) showed that
+`2e3bc5a1` printed a sentence the board's own feed contradicts on 352 rows
+(the list's line on 342 boards whose feeds date roles this month, 326 of
+them served under a sibling Oracle site; the older-roles sentence on 7; the
+full-read sentence on 3), and on 328 with the same inputs 49 hours later.
+The page now says only "No roles are listed on this page right now." where
+the board's figures and the page disagree, and "not read" only where our
+own reads show it (25 rows): no false sentence on any corpus row. The
+design upgrade README, "The recheck round", has the table.

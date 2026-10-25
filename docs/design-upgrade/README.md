@@ -114,7 +114,7 @@ checkout refusals are live. Keep the two publishes close together.
 |---|---|---|
 | 80 | `80-profiles-identity.sh`, `80-company-profiles-perks.sh` | identity and the perk engine (`employer-profiles.2026-10-12.2`, the reader answers anon, the perk tables refuse it) |
 | 91 | `91-profiles-gate-and-fixes.sh` | the hiring-record gate, the LCA line, headcount, llms.txt, V3, V3b, V7, V7b (it reads the lock's 42501 on `company_profiles.as_of` as the lock) |
-| 81 | `81-profiles-design-accuracy.sh` | Track 1 on named pages, the four-table lock, (81h) no USAJOBS row in the similar-employers list of CVS Health or Eurofins, and from the 2026-10-24 hotfix: (81c) the zero page judged as the page builds it (the full-read sentence served, the Jobs chunk passing the read bucket, BASS ABA never "not read"), (81i) `get_company_intel` answering three sitemap Workday tokens with facts and a made-up one with the reader object, each within 3 s, and (81j) the baked crawler copy of those three Workday pages stating places or fields, Domino's the control |
+| 81 | `81-profiles-design-accuracy.sh` | Track 1 on named pages, the four-table lock, (81h) no USAJOBS row in the similar-employers list of CVS Health or Eurofins, and from the 2026-10-24 hotfix: (81c) the zero page says only what its inputs agree on (the served copy carries the page's own line and asks for neither refuted sentence, the Jobs chunk passes the read bucket, and BASS ABA, Delaney at the Green and Akumin's ADG site give no reading when nothing is listed), (81i) `get_company_intel` answering three sitemap Workday tokens with facts and a made-up one with the reader object, each within 3 s, and (81j) at least 90% of 24 Workday company pages sampled from the live sitemap, its last 8 included, stating the bake's places or fields line |
 | 83 | `83-profiles-design-bake.sh` | the crawler copy sells nothing retired (now also /trust, /privacy, /terms, and every company-title form the bake writes); once-published company URLs keep a page of their own; (C6) USAJOBS is baked as the federal listing site and Surge Staffing as an agency; (C7) the strings React renders (the entry, the English and Index chunks) carry none of the retired home, FAQ and trust sentences |
 | 87 | `87-profiles-design-pass-b.sh` | the board serves the lander, card, pane and filter row; the agent pitch is gone |
 | 40 | `40-db-exposure.sh` | the census shows nothing unlisted |
@@ -246,27 +246,19 @@ above) asks the hosting-tenant helper once per call; the detail is in the
 
 **2. The zero page.** `companyProfile.zero.unread` ("We have not read
 {{companyPossessive}} whole board recently") printed on the zero page of
-every whole-feed board (Greenhouse, Lever, Ashby, BambooHR, Workable,
-Recruitee, Breezy) read in full, because job-board records no `feed_total`
-for them. Live zero pages on 2026-10-24 (curve rows `full_read`, no stated
-total, 0 open roles): BASS ABA (Greenhouse, 89 tracking days), `acds`
-(Lever), `tilt` (Ashby) and `northern` (BambooHR). bayada, centriaautism,
-databricks and stripe are not zero pages (1,693, 792, 175 and 218 open
-roles); the verifier's own model read them as "not read" because section 81
-built its input without the bucket (fixed in the fix round below).
-`zeroReadingOf` now reads the curve's `observability_bucket` and
-`tracking_days`: `full_read` with no printable total says "As of our latest
-full read, no role on this board is dated in the last 30 days." (a new key
-in all nine company shards); a windowed board never read through, or no
-observation in seven days, still says "not read"; a lap we cannot date says
-nothing beyond the list's own line. Recording whole-feed totals is a later
-job-board item, so 81c's Stripe line stays FAIL until then by decision.
-
-The fix round (below) found the same deploy's "older" sentence false too:
-a fresh total from a read in state `ok` (which kept at least one role dated
-in our window) printed "None of the N roles ... is dated in the last 30
-days" on Oracle career sub-sites whose requisitions are served under a
-sibling site. It now prints only the list's own line there.
+every whole-feed board read in full, because job-board records no
+`feed_total` for them (BASS ABA, `acds`, `tilt`, `northern` on 2026-10-24).
+The first fix replaced it with a full-read sentence and kept the 10-18
+deploy's older-roles sentence; the review and the recheck each found one of
+those false on a live page (Delaney at the Green, an Oracle sub-site whose
+three requisitions, dated this month, a sibling site serves). So the rule
+was rebuilt from a corpus of every live zero page (the recheck round below):
+the zero page now says "No roles are listed on this page right now." with no
+read time, and says "not read" only where our own reads show no complete
+read and no stated total. On the corpus's 12,564 zero pages that is the
+page's own line on 12,539 and "not read" on 25, and no sentence the board's
+own feed contradicts. Recording whole-feed totals is a later job-board item,
+so 81c's Stripe line stays FAIL until then by decision.
 
 **The 16 stale checks.** 7d (`/pricing` Pro at $45/month in description and
 body; retired claims judged by `scripts/prerender-retired.mjs`, so the bare
@@ -289,10 +281,11 @@ object within 3 s each); before the migration all four FAIL at 500 57014.
 **Deploy.** The ledger's message from the merge commit: apply
 `20261012137000` (step 1; no function changes), then publish the frontend,
 so the bake re-reads the Workday facts and the zero copy ships. Then run
-`bash scripts/verify-deploy.sh` and read 80, 81 (81c's full-read and bucket
-lines, which FAIL until the publish; 81i, Workday facts within 3 s; 81j, the
-baked Workday pages' places or fields; 81c's Stripe total stays FAIL by
-decision), 83 and 49. Only when those pass is
+`bash scripts/verify-deploy.sh` and read 80, 81 (81c's own-line, refuted-key
+and bucket lines, which FAIL until the publish; 81i, Workday facts within
+3 s; 81j, at least 90% of 24 sampled Workday pages stating places or fields,
+which FAILs until the re-bake; 81c's Stripe total stays FAIL by decision),
+83 and 49. Only when those pass is
 `{commit: '57815de9', functions: {'employer-profiles':
 'employer-profiles.2026-10-12.2'}}` appended to `verifiedDeploys`, which
 also clears 49's MUST BUMP; then release the `20261012111000` hold as
@@ -307,7 +300,7 @@ left with a reason.
 
 | Finding | Fix | Test |
 |---|---|---|
-| The zero page's "older" sentence (same deploy, `4cc5e079`) was false on Oracle career sub-sites: Delaney at the Green (`eexs~us2~CX_19005`) stated 3 on an `ok` read at 22:56Z, its own feed dates all three this month, and all three are served under its tenant's All site, yet the page said "None of the 3 roles ... is dated in the last 30 days" (Hearst UK the same with 20; about 285 pages projected) | `zeroReadingOf` says "older" or "empty" only from a read in state `empty` (job-board writes it when a read kept nothing in our window); a fresh `ok` total gives no reading, so the list's own line prints. A stale `ok` total under a newer full read keeps `fullRead` (`hdrc~ca3~CX_1`, whose feed now answers 0) | `pd-hotfix-the-zero-page-never-says-...` (Delaney's, Hearst UK's and hdrc's live rows, the header render, German); `the-open-role-count-...` |
+| (Superseded by the recheck round below.) The zero page's "older" sentence (same deploy, `4cc5e079`) was false on Oracle career sub-sites: Delaney at the Green (`eexs~us2~CX_19005`) stated 3 on an `ok` read at 22:56Z, its own feed dates all three this month, and all three are served under its tenant's All site, yet the page said "None of the 3 roles ... is dated in the last 30 days" (Hearst UK the same with 20; about 285 pages projected) | `zeroReadingOf` says "older" or "empty" only from a read in state `empty` (job-board writes it when a read kept nothing in our window); a fresh `ok` total gives no reading, so the list's own line prints. A stale `ok` total under a newer full read keeps `fullRead` (`hdrc~ca3~CX_1`, whose feed now answers 0) | `pd-hotfix-the-zero-page-never-says-...` (Delaney's, Hearst UK's and hdrc's live rows, the header render, German); `the-open-role-count-...` |
 | Section 81 built the zero page's input without the bucket, so 81c printed "not read" for BASS ABA after the fix, and no line could FAIL if the zero fix was missing live | 81's tsx loop builds `bt` exactly as `Jobs.tsx` does; 81c FAILs on "not read" for a `full_read` row, PASSes on full read, older or empty; two bundle lines FAIL unless the served chunks carry `companyProfile.zero.fullRead` and the Jobs chunk passes `observability_bucket` and `tracking_days`; the "older from 31" expectation is retired (job-board never states a Greenhouse total) | `the-accuracy-verifier-can-fail-every-claim-it-makes.test.ts` now runs the section's own tsx loop, compares its input with `Jobs.tsx`'s, and fails on a loop without the bucket and on the 10-18 bundle |
 | 81i PASSed a fast 200 with an empty reader object, and nothing checked the baked Workday pages, which the bake drops silently past its 90 s deadline | 81i needs a Workday source with open roles and places or fields on the three real tokens (the made-up one keeps the shape rule); 81j fetches the three pages as Googlebot and FAILs unless each states where its roles are or in which fields, Domino's the positive control. Live today: 81i FAIL (13.8 to 14.8 s), 81j FAIL on all three, control PASS | `pd-hotfix-verify-81i-...` (the empty reader, wrong source, no places; 81j before, after, homepage shell, HTTP error, bare control) |
 
@@ -326,15 +319,71 @@ six-hour name. Tests: `pd-hotfix-workday-intel-asks-once-per-read.test.ts`
 
 **Left, with the reason:**
 
-- **The full-read sentence names no time (a minor).** Dating it needs
-  `get_company_fill_curve` to return the newest `job_board_board_state`
-  read (a redefinition of a hot reader) and a new placeholder in nine
-  locales; that is a feature, not a hotfix. The sentence is accurate as it
-  stands ("as of our latest full read", and `full_read` means a read within
-  seven days).
+- **The full-read sentence names no time (a minor).** Resolved in the
+  recheck round below: the sentence is gone (the safe default), so there is
+  no read time to name.
 - **Naming the sibling site that holds an Oracle sub-site's requisitions
   (the blocker's "better still").** The zero page now says nothing false
   there; saying where the roles are is a separate item.
+
+### The recheck round (2026-10-25, branch `pd-hotfix-fix`, pushed as `pd/hotfix`)
+
+The recheck of `2e3bc5a1` found two majors and four minors. A heuristic
+that had failed a recheck got a corpus this time, not another pattern.
+
+**The corpus.** Every live company page whose board served 0 open roles on
+2026-10-25: `get_company_fill_curve` over all 44,379 catalogued tokens
+(anon GETs, 208 batches) gave 12,564 zero pages (BambooHR 2,302, Personio
+1,550, Greenhouse 1,216, Paylocity 1,074, Ashby 951, Recruitee 744,
+Workable 736, SmartRecruiters 669, Teamtailor 618, Lever 506, Oracle 486,
+Breezy 477, Rippling 421, ADP 283, Workday 250, UKG 129, Pinpoint 121,
+iCIMS 24, JazzHR 7). Each board's own public feed was read minutes later
+through job-board's own `fetchBoard`, bundled for Node (11,857 read; 707
+could not be, mostly 404s, a few oversize or rate-limited), and for 342
+Oracle and Workday sites whose feeds dated roles this month the read-only
+job-board list was asked which sibling site serves them. The table is
+`src/test/fixtures/zero-page-corpus-2026-10-25.json` (the full one, with
+feed totals and dates, under `~/.config/resumebooster/pd-hotfix-zero-corpus/`).
+
+| Sentence | Live (`57815de9`) | `2e3bc5a1` | This fix |
+|---|---|---|---|
+| "We have not read X's whole board recently." | 11,040 rows, false on 10,297 (read in full), unsettled on 715 | 25, true | 25, true |
+| "None of the N roles ... is dated in the last 30 days (read DATE)." | 1,524, false on 326 | 1,196, false on 7 | none |
+| "As of our latest full read, no role on this board is dated in the last 30 days." | none | 10,255, false on 3 (1 unsettled, 3 unverifiable) | none |
+| "No roles dated in the last 30 days" (the list's line) | none | 1,088, false on 342 (681 unverifiable) | none |
+| "No roles are listed on this page right now." | none | none | 12,539, true by construction |
+
+The rows `2e3bc5a1` got wrong: the list's line on 342 boards whose feeds
+date roles this month (330 Oracle sub-sites, Delaney at the Green and
+Hearst UK among them, 326 of the 342 served under a sibling site; 8
+Workday, 3 ADP, 1 Teamtailor; 319 of the 342 read in full with a fresh
+`ok` total, 22 Oracle laps and 1 failed visit); the older-roles sentence on 7 (four Workday sites, among
+them `akumincorp~wd5~adgcareers`, whose read in state `empty` stated 5
+while its own feed listed roles posted 5 and 12 days earlier, and three
+ADP boards); the full-read sentence on 3 (`sabanto` and
+`alaskan-copper-and-brass` on Breezy, one Paylocity board) whose inputs
+match 10,248 true rows exactly. Read with the same inputs 49 hours later,
+as after an ingest gap, `2e3bc5a1` prints the full-read sentence falsely on
+328 rows; this fix prints nothing false then either.
+
+| Finding | Fix | Test (each failed first on `2e3bc5a1`) |
+|---|---|---|
+| Major: a Delaney-shape page reads as full-read once its `ok` total is 48 hours old | The safe default: where the board's figures and the page disagree (a stated total above zero in any state, a stale total, a read whose vendor the page cannot see) the page prints only its own line, "No roles are listed on this page right now.", with no read time; "not read" only where our reads show no complete read and no stated total; "empty" only where a fresh complete read stated none. The older-roles and full-read sentences, their keys and `boardReadAgo` are removed in all nine shards, and the empty column's heading is the same line. `job-board/index.ts` is not touched | `pd-hotfix-the-zero-page-never-says-...` runs the real model on all 12,564 corpus rows, now and 49 hours later, renders the header and the empty column, and pins the rows `2e3bc5a1` got wrong; with `the-open-role-count-...`, 20 cases failed first; `an-empty-company-page-...` |
+| Major: 81i and 81j PASS on a bake that cut its tail at the 90 s deadline | 81j samples 24 Workday company pages from the live sitemap (its last 8 and 16 spread over the rest, from the sitemap alone) and PASSes only when at least 90% carry "The countries holding the most of its roles on this board:" or "The fields holding the most of its roles on this board:", exactly as the bake writes them; a homepage shell or an error counts against it, and an unreadable sitemap, fewer than 20 Workday pages or an empty sample FAIL. 81i keeps its 3 s probe and says it does not prove the deadline. Live on 2026-10-25 none of the 283 Workday pages carries either line: 81j FAILs 0 of 24 | `pd-hotfix-verify-81i-...`: the recorded live probe FAILs, a fixture bake PASSes at 24 and 22 of 24 and FAILs at 21 and on a tail cut (16 of 24), the probe picks the same 24 every run (9 cases failed first) |
+| 81c could not FAIL on the safe default missing | 81c FAILs a bundle without the page's own line or still asking for the refuted keys, and a model giving any reading on BASS ABA, Delaney or Akumin ADG when nothing is listed; live today the three bundle lines FAIL and the three board lines PASS | `the-accuracy-verifier-...`: the 10-18 bundle, `2e3bc5a1`'s bundle and model, Delaney 49 hours stale (7 cases failed first) |
+| Minor: 7d's Offer walk missed an @type array, a nested priceSpecification and "29 USD"; 76 L1-08 read Service blocks only at the top level | `scripts/prerender-retired.mjs` exports `retiredOfferPrices` (any node typed Offer, AggregateOffer or a price specification, or under a priceSpecification key; price, lowPrice, highPrice, minPrice, maxPrice, a number or with its currency) and `nodesOfType` (an @graph included); 7d and 76 L1-08 call them | `pd-hotfix-the-re-pointed-crawler-lines-...`: five offer shapes, an @graph Service (8 cases failed first) |
+| Minor: 76 L9-11 passed a $29 pass sold without the word "pass" | L9-11 also FAILs $29 or 29 USD beside hours, limits or a quota; Freelance Boost at $29 still passes (it says neither) | same file |
+| Minor: the full-read sentence named no read time | Gone with the sentence | the zero-page test |
+
+**Hand-offs.** The zero page's SPA head still reads "Browse X's open roles
+dated in the last 30 days" (`jobsPage.companySeoDescription`, in
+`Jobs.tsx`, which seo/react rewrites): it is the same for every company
+page and claims no count, but a zero variant of its own would be truer.
+The corpus also shows the collector's own board-state calls are wrong on
+some boards (a Workday site whose read in state `empty` stated 5 while two
+of its roles were days old; Breezy and Paylocity boards read in full that
+serve nothing their feeds date this month); that is job-board's (wave 4),
+not this page's.
 
 ## The fix round of 2026-10-18 (branch `pd-fix`, pushed as `design/integration`)
 
