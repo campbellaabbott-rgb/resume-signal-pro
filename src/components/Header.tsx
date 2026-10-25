@@ -1,5 +1,5 @@
 import { Bot, BookOpen, Briefcase, Building2, ChevronDown, Compass, CreditCard, Megaphone, Menu, Shield, User as UserIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -35,13 +35,63 @@ import { cn } from "@/lib/utils";
  *
  * Layer 40: every sheet and dialog (50) sits above it, so a sheet's close
  * button can never sit under the header.
+ *
+ * THE QUIET VARIANT (homepage and pricing spec of 2026-10-17, section 3): a
+ * page whose own content carries its one filled button (the board-first
+ * homepage's "Search jobs", the pricing page's "Create a free account")
+ * mounts <Header variant="quiet" />. It has no filled button: no Get started
+ * and no Start. Sign in is a plain link in the row, and when the row does not
+ * fit it moves into the Menu sheet, which then shows at every width. Whether
+ * it fits is MEASURED on the row (useSignInFits), never read off a fixed
+ * breakpoint: the row's width depends on the language and the account label,
+ * and French and Spanish overflow at widths where English fits.
  */
-export function Header() {
-  const { t } = useTranslation();
+
+/**
+ * True while the quiet row has room for Sign in. The row overflowing
+ * (scrollWidth past clientWidth) moves it out and remembers how wide the full
+ * row was; it comes back only once the row is at least that wide again, so
+ * it never flickers at the edge. A new language or account label measures
+ * again from the full row. Off (always true) for the default header.
+ */
+function useSignInFits(row: RefObject<HTMLElement>, enabled: boolean, remeasureKey: string): boolean {
+  const [fits, setFits] = useState(true);
+  const fullWidth = useRef<number | null>(null);
+  useLayoutEffect(() => {
+    fullWidth.current = null;
+    setFits(true);
+  }, [remeasureKey]);
+  useLayoutEffect(() => {
+    const el = row.current;
+    if (!enabled || !el) return;
+    const check = () => {
+      if (fits) {
+        if (el.scrollWidth > el.clientWidth) {
+          fullWidth.current = el.scrollWidth;
+          setFits(false);
+        }
+      } else if (fullWidth.current !== null && el.clientWidth >= fullWidth.current) {
+        setFits(true);
+      }
+    };
+    check();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(check);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [row, enabled, fits]);
+  return !enabled || fits;
+}
+
+export function Header({ variant = "default" }: { variant?: "default" | "quiet" } = {}) {
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { session } = useAuth();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const quiet = variant === "quiet";
+  const row = useRef<HTMLDivElement>(null);
+  const signInInRow = useSignInFits(row, quiet, `${i18n.language}|${session ? "account" : "signin"}`);
 
   // The menu closes on any navigation, and on Escape wherever focus is.
   useEffect(() => { setMenuOpen(false); }, [location.pathname, location.search, location.hash]);
@@ -60,17 +110,15 @@ export function Header() {
 
   const scrollToUpload = () => {
     // THE UPLOADER ON THIS PAGE FIRST (S8-094): the scanner landers render
-    // their own uploader, so Start scrolls to it instead of leaving for "/".
+    // their own uploader, so Start scrolls to it instead of leaving the page.
     const uploadSection = document.getElementById("upload");
     if (uploadSection) {
       uploadSection.scrollIntoView({ behavior: "smooth", block: "start" });
       return;
     }
-    if (location.pathname !== "/") {
-      navigate("/#upload");
-      return;
-    }
-    window.scrollTo({ top: window.innerHeight, behavior: "smooth" });
+    // Anywhere else, the scanner's own address: since the homepage
+    // switch-over "/" is the job board and has no uploader to scroll to.
+    navigate("/resume-checker#upload");
   };
 
   const accountTo = session ? "/account" : "/auth";
@@ -93,7 +141,7 @@ export function Header() {
 
   return (
     <header className="fixed inset-x-0 top-0 z-40 border-b border-border bg-background/90 backdrop-blur-sm" role="banner">
-      <div className="container flex h-14 items-center gap-2 lg:h-16 lg:gap-4">
+      <div ref={row} data-header-row className="container flex h-14 items-center gap-2 lg:h-16 lg:gap-4">
         <Link
           to="/"
           onClick={(e) => {
@@ -155,36 +203,52 @@ export function Header() {
             <LanguageSwitcher variant="compact" />
           </div>
           <ScanCreditsCounter />
-          {/* The account icon: in the bar from sm up, named at every width. */}
-          <Link
-            to={accountTo}
-            className="hidden sm:flex h-9 items-center gap-1.5 rounded-md px-2 text-sm font-medium text-muted-foreground transition-colors duration-fast hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring coarse:h-11"
-          >
-            <UserIcon aria-hidden="true" className="h-4 w-4" />
-            <span className="sr-only xl:not-sr-only">{accountLabel}</span>
-          </Link>
-          {/* Named by its visible word, as the phone's Start is: the old
-              aria-label ("Empezar - desplazarse a la sección de carga") did
-              not contain the visible "Comenzar" in Spanish or Portuguese
-              (WCAG 2.5.3 Label in Name). */}
-          <Button
-            onClick={scrollToUpload}
-            size="sm"
-            className="hidden shrink-0 lg:inline-flex"
-            data-header-cta="desktop"
-          >
-            {t("header.getStarted")}
-          </Button>
-          <Button onClick={scrollToUpload} size="sm" className="shrink-0 lg:hidden">
-            {t("header.start")}
-          </Button>
+          {quiet ? (
+            // Quiet: Sign in by its word, a plain link, while the row has
+            // room; otherwise it is in the Menu sheet below.
+            signInInRow && (
+              <Link
+                to={accountTo}
+                data-header-signin=""
+                className="flex h-9 shrink-0 items-center whitespace-nowrap rounded-md px-2 text-sm font-medium text-muted-foreground transition-colors duration-fast hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring coarse:h-11"
+              >
+                {accountLabel}
+              </Link>
+            )
+          ) : (
+            <>
+              {/* The account icon: in the bar from sm up, named at every width. */}
+              <Link
+                to={accountTo}
+                className="hidden sm:flex h-9 items-center gap-1.5 rounded-md px-2 text-sm font-medium text-muted-foreground transition-colors duration-fast hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring coarse:h-11"
+              >
+                <UserIcon aria-hidden="true" className="h-4 w-4" />
+                <span className="sr-only xl:not-sr-only">{accountLabel}</span>
+              </Link>
+              {/* Named by its visible word, as the phone's Start is: the old
+                  aria-label ("Empezar - desplazarse a la sección de carga") did
+                  not contain the visible "Comenzar" in Spanish or Portuguese
+                  (WCAG 2.5.3 Label in Name). */}
+              <Button
+                onClick={scrollToUpload}
+                size="sm"
+                className="hidden shrink-0 lg:inline-flex"
+                data-header-cta="desktop"
+              >
+                {t("header.getStarted")}
+              </Button>
+              <Button onClick={scrollToUpload} size="sm" className="shrink-0 lg:hidden">
+                {t("header.start")}
+              </Button>
+            </>
+          )}
           <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
             <SheetTrigger asChild>
               <IconButton
                 aria-label={t("header.menu", "Menu")}
                 aria-expanded={menuOpen}
                 aria-controls="phone-nav"
-                className="lg:hidden"
+                className={quiet && !signInInRow ? undefined : "lg:hidden"}
               >
                 <Menu />
               </IconButton>
