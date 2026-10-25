@@ -39,7 +39,7 @@ const SITE = "https://site.test";
 type Layout = { entry: string; carries?: string; chunks: Record<string, string | null> };
 const LAYOUTS = (JSON.parse(readFileSync(resolve(__dirname, "fixtures/verify-us-english-layouts-2026-10-25.json"), "utf8")) as { layouts: Record<string, Layout> }).layouts;
 const i18n = (p: string) => JSON.parse(readFileSync(resolve(ROOT, "src/i18n", p), "utf8"));
-const SECTIONS = ["50-changelog-and-mail-links.sh", "62-wave2-frontend-board.sh", "65-wave2-entitlements.sh", "72-wave3-scan-ai.sh", "74-wave3-payments-account.sh"];
+const SECTIONS = ["50-changelog-and-mail-links.sh", "52-changelog-oct17-25.sh", "62-wave2-frontend-board.sh", "65-wave2-entitlements.sh", "72-wave3-scan-ai.sh", "74-wave3-payments-account.sh"];
 
 /** A chunk's body as the build writes it: JSON.parse of a string for rb-en_all, an object literal for a lazy locale file. */
 function chunkBody(source: string | null, entry: string): string {
@@ -67,8 +67,8 @@ process.stdout.write(out);
 const dirs: string[] = [];
 afterAll(() => { for (const d of dirs) { try { rmSync(d, { recursive: true, force: true }); } catch { /* best effort */ } } });
 
-/** Serve `layout` at SITE and run `script` in bash from the repository root; returns the printed lines and the URLs fetched. */
-function serve(layout: Layout, script: string): { lines: string[]; calls: string[] } {
+/** Serve `layout` at SITE (plus any `pages`, path -> body) and run `script` in bash from the repository root; returns the printed lines and the URLs fetched. */
+function serve(layout: Layout, script: string, pages: Record<string, string> = {}): { lines: string[]; calls: string[] } {
   const dir = mkdtempSync(join(tmpdir(), "vd-usen-"));
   dirs.push(dir);
   mkdirSync(join(dir, "bin"));
@@ -84,6 +84,7 @@ function serve(layout: Layout, script: string): { lines: string[]; calls: string
   put("/", `<!doctype html><html><head><script type="module" crossorigin src="/assets/${layout.entry}"></script></head><body><div id="root"></div></body></html>`);
   put(`/assets/${layout.entry}`, entryBody(layout));
   for (const [name, source] of Object.entries(layout.chunks)) put(`/assets/${name}`, chunkBody(source, layout.entry));
+  for (const [path, body] of Object.entries(pages)) put(path, body);
   writeFileSync(join(dir, "routes.json"), JSON.stringify(routes));
   writeFileSync(join(dir, "calls.log"), "");
   const prelude = `set -u
@@ -209,5 +210,68 @@ describe("50 counts the changelog's corrections in the US English changelog", ()
   it("the moved layout, with only the British changelog left, FAILs", () => {
     const { lines } = serve(LAYOUTS.moved, section("50-changelog-and-mail-links.sh"));
     expect(lines, show(lines)).toContain("FAIL  the changelog strings the browser loads carry 0 of the 2 dated corrections (freeAccounts, savedVersions)");
+  });
+});
+
+// Main's changelog sections for 17 to 25 October (PR #45) judged the titles
+// the crawler page no longer lists in a chunk list of their own; on the SEO
+// round's merge they take it from the lister too.
+const BRITISH = (calls: string[]) => calls.filter((u) => /\/assets\/en-GB-/.test(u));
+const crawlerPage = (titles: string[]) => `<!doctype html><html><body><main>${titles.map((t) => `<h2>${t}</h2>`).join("")}</main></body></html>`;
+
+describe("50 judges the titles the crawler page no longer lists in the US English changelog", () => {
+  const TITLES50 = [
+    "Big Workday employers were missing many of their jobs",
+    "A PDF résumé reached our scanner as one long line",
+    "What we keep, for how long, and an address that reaches us",
+    "Paid tools that took payment and delivered nothing",
+    "Nine employers whose job lists were too big for us to read",
+  ];
+
+  it("the split build and the live publish find every title in the US changelog shard, and fetch no British chunk", () => {
+    for (const l of [LAYOUTS.split, LAYOUTS.entryCarried]) {
+      const { lines, calls } = serve(l, section("50-changelog-and-mail-links.sh"), { "/changelog": crawlerPage([]) });
+      for (const t of TITLES50) expect(lines, show(lines)).toContain(`PASS  "${t}" is past the newest 30 entries the crawler page lists, and the English changelog strings the browser loads carry it`);
+      expect(BRITISH(calls)).toEqual([]);
+    }
+  });
+
+  it("the crawler page that lists a title passes it there", () => {
+    const { lines } = serve(LAYOUTS.split, section("50-changelog-and-mail-links.sh"), { "/changelog": crawlerPage(TITLES50) });
+    for (const t of TITLES50) expect(lines, show(lines)).toContain(`PASS  /changelog serves crawlers "${t}"`);
+  });
+
+  it("the moved layout, with only the British changelog left, FAILs every title", () => {
+    const { lines, calls } = serve(LAYOUTS.moved, section("50-changelog-and-mail-links.sh"), { "/changelog": crawlerPage([]) });
+    for (const t of TITLES50) expect(lines, show(lines)).toContain(`FAIL  /changelog does not serve "${t}" (frontend not published, or the prerender did not rebuild)`);
+    expect(BRITISH(calls)).toEqual([]);
+  });
+});
+
+describe("52 tells a prerender that did not rebuild from no publish, in the US English changelog", () => {
+  const TITLES52 = [
+    "Workday company pages were missing their facts for a week",
+    "A calmer design, in one dark color scheme",
+    "Sign-in and reset emails have a second sender",
+    "A lighter tab icon and share picture",
+  ];
+
+  it("the crawler page that lists the titles passes them", () => {
+    const { lines } = serve(LAYOUTS.split, section("52-changelog-oct17-25.sh"), { "/changelog": crawlerPage(TITLES52) });
+    for (const t of TITLES52) expect(lines, show(lines)).toContain(`PASS  /changelog serves crawlers "${t}"`);
+  });
+
+  it("the split build and the live publish read the US shard: the strings are there and the crawler copy is not", () => {
+    for (const l of [LAYOUTS.split, LAYOUTS.entryCarried]) {
+      const { lines, calls } = serve(l, section("52-changelog-oct17-25.sh"), { "/changelog": crawlerPage([]) });
+      for (const t of TITLES52) expect(lines, show(lines)).toContain(`FAIL  the English changelog strings the browser loads carry "${t}", but the crawler copy of /changelog does not (the prerender did not rebuild)`);
+      expect(BRITISH(calls)).toEqual([]);
+    }
+  });
+
+  it("the moved layout reads no British chunk, so it says the frontend was not published, \"colour\" or not", () => {
+    const { lines, calls } = serve(LAYOUTS.moved, section("52-changelog-oct17-25.sh"), { "/changelog": crawlerPage([]) });
+    for (const t of TITLES52) expect(lines, show(lines)).toContain(`FAIL  /changelog does not serve "${t}" (the frontend has not been published since the changelog for 17 to 25 October merged)`);
+    expect(BRITISH(calls)).toEqual([]);
   });
 });

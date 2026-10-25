@@ -455,7 +455,7 @@ const MADE_UP = "zzzz-none~wd1~Careers";
     } catch (e) { body = String((e && e.name) || e); }
     const ms = Date.now() - t0;
     const inSitemap = token === MADE_UP || sitemap === null ? null : sitemap.includes(`/jobs/company/${token}</loc>`);
-    probes.push({ token, madeUp: token === MADE_UP, status, ms, body: body.slice(0, 400), inSitemap });
+    probes.push({ token, madeUp: token === MADE_UP, status, ms, body, inSitemap });
   }
   fs.writeFileSync("/tmp/vd_81_workday.json", JSON.stringify({ at: new Date().toISOString(), probes }));
 })();
