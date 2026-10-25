@@ -31,7 +31,12 @@ import { supabase } from "@/integrations/supabase/client";
  */
 const SUPPORT_EMAIL = "resumeboostersupp@gmail.com";
 
-export function ScanCreditsCounter() {
+/**
+ * balanceOnly (the quiet header): render only a proven balance, and nothing
+ * for a browser without one, so a visitor who never bought credits is not
+ * shown an explainer about a product no longer sold.
+ */
+export function ScanCreditsCounter({ balanceOnly = false }: { balanceOnly?: boolean } = {}) {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const { credits, email, signedIn, known, refreshCredits } = useScanCredits();
@@ -108,6 +113,9 @@ export function ScanCreditsCounter() {
       </Popover>
     );
   }
+
+  // No proven balance: in the quiet header, nothing at all.
+  if (balanceOnly) return null;
 
   // No proven balance: explain where credits show up, and offer sign-in
   const legacyEmail = legacyCreditsEmail();
