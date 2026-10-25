@@ -7,8 +7,9 @@
 // uncarried token got the same filter-error copy.
 //
 //   - ZERO: the board is carried and this page lists no roles. The list
-//     column says only that (the header's own line), offers Watch, and lists
-//     three employers hiring in the same field. The page hides the detail pane.
+//     column says only that (the header's own line), offers Watch (promising
+//     what it counts only where the model allows), and lists three employers
+//     hiring in the same field. The page hides the detail pane.
 //   - UNCARRIED: we do not read a board by this name. The page says that,
 //     offers a search of the live board and the companies directory.
 //
@@ -88,9 +89,14 @@ export function CompanyEmptyState({ model, token, boardReadAt, similar = [], onW
       <div className={underHeader ? "sr-only" : undefined}>
         <h2 id="company-empty-title" className="text-base font-semibold text-foreground">{title}</h2>
       </div>
-      <p className="text-sm text-muted-foreground">
-        {t("companyProfile.zero.body", "Watch this board and your account will count its new postings when they appear.")}
-      </p>
+      {/* The watch counts only postings stored under this token: the promise
+          is made only where the model says the inputs agree with it
+          (lander-model's watchPromiseOf; round 3 review, 2026-10-25). */}
+      {model.watchPromise && (
+        <p className="text-sm text-muted-foreground">
+          {t("companyProfile.zero.body", "Watch this board and your account will count its new postings when they appear.")}
+        </p>
+      )}
       {onWatch && (
         <button
           type="button"

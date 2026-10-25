@@ -148,6 +148,30 @@ export function zeroAnswer(t: TFunction, model: Pick<LanderModel, "zeroReading" 
   return t("companyProfile.zero.answer", "No roles are listed on this page right now.");
 }
 
+/**
+ * THE ZERO PAGE'S TITLE AND DESCRIPTION (round 3 review, 2026-10-25). Every
+ * zero page's head said "{X} jobs: open roles from their own hiring system"
+ * and "Browse {X}'s open roles dated in the last 30 days", or "Live jobs
+ * straight from this board's own hiring system", while the page listed none.
+ * Now the title names no open roles ("{X} jobs", or the generic board's own
+ * heading) and the description is the page's own line, which is true of every
+ * zero page. `label` is what the generic heading names when the board has no
+ * name (the page's existing rule).
+ */
+export function zeroPageHead(t: TFunction, model: Pick<LanderModel, "name">, label: string): { title: string; description: string } {
+  const { name, generic } = model.name;
+  if (!name || generic) {
+    return {
+      title: t("companyProfile.h1Generic", "Roles on the “{{label}}” board", { label: name ?? label }),
+      description: t("companyProfile.zero.answer", "No roles are listed on this page right now."),
+    };
+  }
+  return {
+    title: t("companyProfile.zero.seoTitle", "{{company}} jobs", { company: name }),
+    description: t("companyProfile.zero.seoDescription", "{{company}}: no roles are listed on this page right now.", { company: name }),
+  };
+}
+
 /** Jobs › Companies › {name}, at sm and up. */
 export function CompanyBreadcrumb({ name }: { name: string | null }) {
   const { t } = useTranslation();

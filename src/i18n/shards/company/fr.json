@@ -181,6 +181,8 @@
     "zero": {
       "allRoles": "Rechercher tous les postes ouverts",
       "answer": "Aucun poste n'est affiché sur cette page pour le moment.",
+      "seoTitle": "Emplois chez {{company}}",
+      "seoDescription": "{{company}} : aucun poste n'est affiché sur cette page pour le moment.",
       "body": "Suivez ce site et votre compte comptera ses nouvelles offres dès leur parution.",
       "empty": "Aucun poste sur le site carrières de {{company}} quand nous l'avons lu {{ago}}.",
       "emptyBoard": "Aucun poste sur ce site quand nous l'avons lu {{ago}}.",

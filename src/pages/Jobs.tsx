@@ -64,6 +64,7 @@ import { datedHeadcount } from "@/lib/headcount";
 import { SavedSearchPills } from "@/components/jobs/SavedSearchPills";
 import { LayoffFilingChip, LayoffFilingLine, layoffHidesForCountry, useEmployerLayoffFilings, useEmployerLayoffFilingsAll } from "@/components/jobs/LayoffFilingLine";
 import { CompanyLanderAccordion, CompanyLanderEmpty, CompanyLanderHeader, CompanyLanderRail, CompanyResultsLine, CompanySimilarAfterFirstPage, useCompanyProfile } from "@/components/jobs/company/CompanyLander";
+import { zeroPageHead } from "@/components/jobs/company/CompanyHeader";
 import type { HiringRecordInput } from "@/components/jobs/company/HiringRecordCard";
 import { buildLanderModel, isUsajobsBoard, FEDERAL_LISTING_RESULT_CAP, type OpenRolesValue as LanderOpenRoles } from "@/lib/company/lander-model";
 import { keyBelongsToALayer } from "@/lib/board-keys";
@@ -5006,7 +5007,11 @@ function JobsBoard({ boardId }: { boardId: string }) {
   // Watch-company: a saved search scoped to this employer — new postings show
   // up in the account's "new since last look" counts and the weekly digest.
   // Pure reuse of the saved-search machinery; nothing new to go stale.
-  const watchCompany = async () => {
+  // `promise` is the lander model's watchPromise: on a zero page whose board
+  // states roles this token never lists (a sub-site whose requisitions a
+  // sibling site holds), the watch can count nothing, so the toast says only
+  // that it is watching (round 3 review, 2026-10-25).
+  const watchCompany = async (promise = true) => {
     if (!landerCompany) return;
     if (!session) return requireAuth();
     // digest_opt_in was never set here, so "watching" fed the account counts
@@ -5042,7 +5047,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
     }
     toast({
       title: t("jobsPage.watchSaved", "Watching {{company}}", { company: landerCompanyName }),
-      description: t("jobsPage.watchSavedDescAlert", "We'll email you when they post new roles (daily at most — unsubscribe any time), and your account shows the new-since-last-look count."),
+      ...(promise ? { description: t("jobsPage.watchSavedDescAlert", "We'll email you when they post new roles (daily at most — unsubscribe any time), and your account shows the new-since-last-look count.") } : {}),
     });
   };
 
@@ -8226,6 +8231,11 @@ function JobsBoard({ boardId }: { boardId: string }) {
               "{{n}} hiring system carries a board with this name. Nothing we hold says whether they are one employer, so this page shows no employer facts.",
               "{{n}} hiring systems carry a board with this name. Nothing we hold says whether they are one employer, so this page shows no employer facts."),
           }
+        // A zero page lists no roles: its head names none either (round 3
+        // review, 2026-10-25: every zero page's title and description said
+        // the employer had open roles).
+        : landerModel.variant === "zero"
+        ? zeroPageHead(t, landerModel, landerCompany)
         : !landerModel.name.name || landerModel.name.generic
           ? {
               title: t("companyProfile.h1Generic", "Roles on the “{{label}}” board", { label: landerModel.name.name ?? landerCompany }),
@@ -8277,6 +8287,9 @@ function JobsBoard({ boardId }: { boardId: string }) {
             ? t("jobsPage.a11yLoading", "Loading openings…")
             : error
             ? t("jobsPage.a11yError", "Could not load openings. Try again.")
+            // A zero company page has no filter to blame: it says the page's own line.
+            : shownCount === 0 && landerModel?.variant === "zero"
+            ? t("companyProfile.zero.answer", "No roles are listed on this page right now.")
             : shownCount === 0 && data?.sortUnavailable === "no-stated-pay"
             ? t("jobsPage.sortNoStatedPayTitle", "None of these matches states its pay, so there is nothing to sort by pay")
             : shownCount === 0 && data?.sortUnavailable
@@ -8317,7 +8330,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
               profile={landerProfile}
               employerChipTip={hiringCurve ? hiringBadgeTip(landerRecord, landerGrowthVerdict, hiringCurve, landerGrowth) : undefined}
               boardReadAt={landerBoardReadAt}
-              onWatch={() => { void watchCompany(); }}
+              onWatch={() => { void watchCompany(landerModel.watchPromise); }}
               onShowOnly={(s) => setVendor(s)}
               boardsInPanel
             />

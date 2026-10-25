@@ -39,11 +39,38 @@
  *   yes             | fact, 0, state empty     | any                        | empty   | "No roles on X's job board when we read it AGO."
  *   yes             | fact above 0, any state  | any                        | null    | the page's own line (the board and the page disagree)
  *   yes             | stale, capped, unknown   | any                        | null    | the page's own line
- *   yes             | none                     | lap_pending, unprovable    | unread  | "We have not read X's whole board recently."
- *   yes             | none                     | null, tracking >= 1        | unread  | same
+ *   yes             | none                     | null, tracking >= 1        | unread  | "We have not read X's whole board recently."
  *   yes             | none                     | full_read, lap_proven,     | null    | the page's own line (the page cannot see the
- *                   |                          | unobserved, null with 0,   |         | vendor, and a read in full was contradicted
- *                   |                          | unknown, absent            |         | by its own feed on rows like the true ones)
+ *                   |                          | lap_pending, unprovable,   |         | vendor, and a read in full was contradicted
+ *                   |                          | unobserved, null with 0,   |         | by its own feed on rows like the true ones)
+ *                   |                          | unknown, absent            |         |
+ *
+ * KNOWN EDGES (round 3 review, 2026-10-25), each named rather than patched:
+ *   - a windowed bucket (lap_pending, unprovable) is the newest visit's alone.
+ *     For the vendors whose complete reads leave no stated total (job-board's
+ *     DERIVED_FEED_TOTAL_SOURCES: Rippling, JazzHR, Teamtailor), one windowed
+ *     visit after a complete read reads exactly like no complete read, and a
+ *     zero page has no rows to name its vendor by. So the windowed buckets now
+ *     say the page's own line; the two corpus rows that said "not read" from
+ *     them (a UKG board read 600 of 1,046, an ADP board 300 of 433) were true,
+ *     and lose a true sentence, not gain a false one.
+ *   - a board re-catalogued with old postings reads bucket null with tracking
+ *     days for up to 30 minutes after its first read (until the closure
+ *     refresh classifies it), and says "not read" in that window. No corpus
+ *     row has that shape; it is kept, since the arm is true on all 23 rows.
+ *
+ * THE WATCH PROMISE ("Watch this board and your account will count its new
+ * postings when they appear", and the toast's "We'll email you when they post
+ * new roles"). A watch is a saved search on this token, so it counts only
+ * postings stored under it. On the 326 corpus rows whose in-window roles a
+ * sibling Oracle site serves (304 with a stated total, 22 lap-proven with
+ * none), it counts nothing, ever. It is made only where the inputs agree with
+ * it (lander-model's watchPromiseOf): no stated total, the newest observed day
+ * a complete read, and a token the sub-site dedupe cannot empty. 10,200 rows.
+ *
+ * THE HEAD. Every zero page's title and description said the employer had
+ * open roles ("{X} jobs: open roles from their own hiring system", "Browse
+ * {X}'s open roles dated in the last 30 days"). zeroPageHead names none.
  *
  * The page's own line is true of every zero page and says nothing about the
  * employer's board; it carries no read time, since "board read 5 min ago"
@@ -61,8 +88,8 @@ import { MemoryRouter } from "react-router-dom";
 import { beforeAll, describe, expect, it } from "vitest";
 import i18n from "@/i18n";
 import { COMPANY_SHARD_LOCALES, companyShard, loadCompanyShard } from "./helpers/company-shard";
-import { buildLanderModel, zeroReadingOf, type BoardTotalInput, type LanderInput } from "@/lib/company/lander-model";
-import { CompanyHeader, zeroAnswer } from "@/components/jobs/company/CompanyHeader";
+import { buildLanderModel, watchPromiseOf, zeroReadingOf, type BoardTotalInput, type LanderInput } from "@/lib/company/lander-model";
+import { CompanyHeader, zeroAnswer, zeroPageHead } from "@/components/jobs/company/CompanyHeader";
 import { CompanyEmptyState } from "@/components/jobs/company/CompanyEmptyState";
 
 const ROOT = resolve(__dirname, "../..");
@@ -79,8 +106,10 @@ const fromRow = pageMapping(JOBS);
 // ── the corpus ─────────────────────────────────────────────────────────────
 type CorpusRow = [token: string, vendor: string, bucket: string | null, tracking: number | null, total: number | null, readAt: string | null,
   state: string | null, capped: boolean | null, feed: string, inWindow: number | null, siblingServed: number | null];
+type Edge = { name: string; vendor: string; inputs: Record<string, unknown>; truth: string; must_not?: string; known_edge?: boolean };
 const CORPUS = JSON.parse(readFileSync(resolve(__dirname, "fixtures/zero-page-corpus-2026-10-25.json"), "utf8")) as {
   at: string; columns: string[]; rows: CorpusRow[]; wrong_2e3bc5a1: Record<string, [reading: string | null, why: string]>;
+  round3: { watch_named: Record<string, string>; edges: Edge[] };
 };
 const CORPUS_AT = Date.parse(CORPUS.at);
 /** A corpus row as get_company_fill_curve answered it (the columns the page reads). */
@@ -108,8 +137,13 @@ const UNREAD_EN = "We have not read BASS ABA Therapy's whole board recently.";
 /** The sentences the corpus refuted, in any form. */
 const REFUTED = /None of the \d|is not dated in the last|As of our latest full read|No roles dated in the last|We show roles dated|board read/;
 const NOT_READ = /not read|have not read/i;
-/** What our own reads say: a windowed board with no complete pass, or no observation in seven days, and no stated total. */
-const ourReadsSayUnread = (r: CorpusRow) => r[4] === null && (r[2] === "lap_pending" || r[2] === "unprovable" || (r[2] === null && (r[3] ?? 0) >= 1));
+/** What our own reads say: no observation in seven days on a tracked board, and no stated total. */
+const ourReadsSayUnread = (r: CorpusRow) => r[4] === null && r[2] === null && (r[3] ?? 0) >= 1;
+/** The token is a site the sub-site dedupe can empty (every catalogued token of that hiring system has this shape). */
+const dedupedSite = (r: CorpusRow) => r[1] === "oracle";
+/** The rows whose roles in the window a sibling site serves: a watch on this token counts nothing there. */
+const siblingHolds = (r: CorpusRow) => (r[10] ?? 0) > 0;
+const WATCH_BODY = "Watch this board and your account will count its new postings when they appear.";
 
 beforeAll(() => { loadCompanyShard(); });
 
@@ -133,7 +167,7 @@ describe("the corpus: every live zero page of 2026-10-25", () => {
       else expect(m.zeroReading, `${r[0]}: a sentence about what a read found`).toBeNull();
       if (ourReadsSayUnread(r)) expect(m.zeroReading, r[0]).toBe("unread");
     }
-    expect(tally).toEqual({ own: 12539, unread: 25 });
+    expect(tally).toEqual({ own: 12541, unread: 23 });
   });
 
   it("no row the page can show prints a sentence the corpus refuted, and the 352 rows 2e3bc5a1 got wrong print the page's own line", () => {
@@ -201,14 +235,155 @@ describe("the named boards", () => {
   });
 });
 
+describe("the watch promise (round 3): made only where a watch on this token can count the board's new postings", () => {
+  it("on no corpus row whose roles a sibling site holds, on no row with a stated total, and on every row the inputs allow: 10,200 of 12,564", () => {
+    const tally = { promise: 0, siblingRows: 0, siblingNoTotal: 0 };
+    for (const r of CORPUS.rows) {
+      const m = zeroPage(curveRow(r), { token: r[0] });
+      if (siblingHolds(r)) {
+        tally.siblingRows++;
+        if (r[4] === null) tally.siblingNoTotal++;
+        expect(m.watchPromise, `${r[0]}: its roles are served under a sibling site, so a watch here counts nothing`).toBe(false);
+      }
+      if (r[4] !== null) expect(m.watchPromise, `${r[0]}: the board states ${r[4]} roles this page does not list`).toBe(false);
+      if (m.watchPromise) {
+        tally.promise++;
+        expect([r[4], r[2], dedupedSite(r), siblingHolds(r)], r[0]).toEqual([null, "full_read", false, false]);
+      }
+      expect(m.watchPromise, r[0]).toBe(r[4] === null && r[2] === "full_read" && !dedupedSite(r));
+    }
+    expect(tally).toEqual({ promise: 10200, siblingRows: 326, siblingNoTotal: 22 });
+  });
+
+  it("the boards the review checked live, each with the sibling site that holds its roles, promise nothing", () => {
+    const named = Object.entries(CORPUS.round3.watch_named);
+    expect(named.length).toBe(14);
+    for (const [tok, holder] of named) {
+      const r = rowOf(tok);
+      expect(siblingHolds(r), `${tok}: the corpus serves its roles under a sibling (the review: ${holder})`).toBe(true);
+      expect(zeroPage(curveRow(r), { token: tok }).watchPromise, tok).toBe(false);
+    }
+  });
+
+  it("the 22 lap-proven sub-sites with no stated total promise nothing: the token is a site the sub-site dedupe empties", () => {
+    const rows = CORPUS.rows.filter((r) => siblingHolds(r) && r[4] === null);
+    expect(rows.length).toBe(22);
+    for (const r of rows) {
+      expect(r[2], r[0]).toBe("lap_proven");
+      expect(watchPromiseOf({ boardTotal: fromRow(curveRow(r)), token: r[0] }), r[0]).toBe(false);
+    }
+  });
+
+  it("nothing is promised before the curve answers, on a reader without its columns, or where our newest read was not whole", () => {
+    const bass = curveRow(rowOf("bassabatherapy"));
+    expect(watchPromiseOf({ boardTotal: fromRow(bass), token: "bassabatherapy" }), "the positive control").toBe(true);
+    expect(watchPromiseOf({ boardTotal: undefined, token: "bassabatherapy" })).toBe(false);
+    expect(watchPromiseOf({ boardTotal: null, token: "bassabatherapy" })).toBe(false);
+    for (const b of ["unobserved", "lap_pending", "unprovable", "lap_proven", null]) {
+      expect(watchPromiseOf({ boardTotal: fromRow({ ...bass, observability_bucket: b, tracking_days: 89 }), token: "bassabatherapy" }), String(b)).toBe(false);
+    }
+    // Off the zero page the promise is the page's, unchanged.
+    expect(buildLanderModel(input({ listTotal: 12, boardTotal: fromRow(curveRow(rowOf("eexs~us2~CX_19005"))) })).watchPromise).toBe(true);
+  });
+
+  it("the empty column prints the promise on BASS ABA and not on Delaney at the Green, in English, German and Spanish", async () => {
+    const delaney = curveRow(rowOf("eexs~us2~CX_19005"));
+    const bass = curveRow(rowOf("bassabatherapy"));
+    const col = (row: ReturnType<typeof curveRow>, name: string) => {
+      const { container, unmount } = render(<MemoryRouter><CompanyEmptyState model={zeroPage(row, { token: row.company_token, storedName: name })} token={row.company_token} boardReadAt={null} underHeader /></MemoryRouter>);
+      const text = container.textContent ?? "";
+      unmount();
+      return text;
+    };
+    expect(col(bass, "BASS ABA Therapy")).toContain(WATCH_BODY);
+    expect(col(delaney, "Delaney at the Green")).not.toContain(WATCH_BODY);
+    for (const [lng, body] of [["de", "Beobachten Sie dieses Jobboard"], ["es", "Sigue este portal"]] as const) {
+      await i18n.changeLanguage(lng);
+      try {
+        expect(col(bass, "BASS ABA Therapy"), lng).toContain(body);
+        expect(col(delaney, "Delaney at the Green"), lng).not.toContain(body);
+      } finally {
+        await i18n.changeLanguage("en");
+      }
+    }
+  });
+
+  it("the page's watch toast drops its emailing sentence where the model withholds the promise (src/pages/Jobs.tsx)", () => {
+    expect(JOBS).toMatch(/const watchCompany = async \(promise = true\) =>/);
+    expect(JOBS).toMatch(/\.\.\.\(promise \? \{ description: t\("jobsPage\.watchSavedDescAlert"/);
+    expect(JOBS).toMatch(/onWatch=\{\(\) => \{ void watchCompany\(landerModel\.watchPromise\); \}\}/);
+  });
+});
+
+describe("the edges the round 3 review named", () => {
+  it("each edge's inputs: a windowed visit after a complete read says the page's own line; the re-catalogue window is the one known edge", () => {
+    for (const e of CORPUS.round3.edges) {
+      const row = { company_token: `edge-${e.vendor}`, open_roles: 0, ...e.inputs };
+      const line = zeroAnswer(t, zeroPage(row, { token: row.company_token }), "en");
+      if (e.known_edge) expect(line, e.name).toBe(UNREAD_EN);
+      else expect(line, e.name).toBe(OWN_LINE);
+    }
+  });
+});
+
+describe("the head (round 3): a zero page's title and description name no open roles", () => {
+  const CLAIMS = /open roles|offenen Stellen|Live jobs|dated in the last|\bBrowse /;
+  it("on every corpus row, named, generic or nameless, the title names no open roles and the description is the page's own line", () => {
+    for (const r of CORPUS.rows) {
+      for (const storedName of ["Delaney at the Green", "Corporate", null]) {
+        const m = zeroPage(curveRow(r), { token: r[0], storedName });
+        expect(m.variant).toBe("zero");
+        const head = zeroPageHead(t, m, r[0]);
+        expect(head.title, r[0]).not.toMatch(CLAIMS);
+        expect(head.description, r[0]).not.toMatch(CLAIMS);
+        expect(head.description, r[0]).toMatch(/no roles are listed on this page right now\.$/i);
+      }
+    }
+    const named = zeroPageHead(t, zeroPage(curveRow(rowOf("eexs~us2~CX_19005")), { storedName: "Delaney at the Green" }), "eexs~us2~CX_19005");
+    expect(named).toEqual({ title: "Delaney at the Green jobs", description: "Delaney at the Green: no roles are listed on this page right now." });
+    expect(zeroPageHead(t, zeroPage(curveRow(rowOf("bassabatherapy")), { storedName: null }), "10kbi")).toEqual({ title: "Roles on the “10kbi” board", description: OWN_LINE });
+  });
+
+  it("in German and Spanish too", async () => {
+    const m = zeroPage(curveRow(rowOf("eexs~us2~CX_19005")), { storedName: "Delaney at the Green" });
+    for (const [lng, title, desc] of [["de", "Jobs bei Delaney at the Green", "Delaney at the Green: Auf dieser Seite sind gerade keine Stellen aufgeführt."], ["es", "Empleos en Delaney at the Green", "Delaney at the Green: ahora mismo no hay ninguna vacante en esta página."]] as const) {
+      await i18n.changeLanguage(lng);
+      try {
+        expect(zeroPageHead(i18n.t.bind(i18n), m, "x"), lng).toEqual({ title, description: desc });
+      } finally {
+        await i18n.changeLanguage("en");
+      }
+    }
+  });
+
+  it("the page routes the zero variant to zeroPageHead ahead of the employer's head, and its live region says the page's own line", () => {
+    const seo = JOBS.slice(JOBS.indexOf("const landerSeo"), JOBS.indexOf("jobsPage.companySeoDescription"));
+    expect(seo, "landerSeo moved: RE-ANCHOR").toContain("jobsPage.companySeoTitle");
+    expect(seo).toMatch(/landerModel\.variant === "zero"\s*\?\s*zeroPageHead\(t, landerModel, landerCompany\)/);
+    expect(seo.indexOf("zeroPageHead(")).toBeLessThan(seo.indexOf("jobsPage.companySeoTitle"));
+    const live = JOBS.slice(JOBS.indexOf('role="status" aria-live="polite"'), JOBS.indexOf('t("jobsPage.a11yNoResults"'));
+    expect(live, "the live region moved: RE-ANCHOR").toContain("a11yError");
+    expect(live).toMatch(/shownCount === 0 && landerModel\?\.variant === "zero"\s*\?\s*t\("companyProfile\.zero\.answer"/);
+  });
+});
+
 describe("what may still be said", () => {
   const BASS = curveRow(rowOf("bassabatherapy"));
   const hoursAgo = (h: number) => new Date(CORPUS_AT - h * 3_600_000).toISOString();
 
-  it("'not read' where our own reads show no complete read and no total: no observation in seven days, or a windowed board with no complete pass", () => {
+  it("'not read' where our own reads show no complete read and no total: no observation in seven days on a tracked board", () => {
     expect(zeroAnswer(t, zeroPage({ ...BASS, observability_bucket: null, tracking_days: 89 }), "en")).toBe(UNREAD_EN);
-    for (const b of ["lap_pending", "unprovable"]) expect(zeroAnswer(t, zeroPage({ ...BASS, observability_bucket: b }), "en"), b).toBe(UNREAD_EN);
-    expect(zeroAnswer(t, zeroPage({ ...BASS, observability_bucket: "lap_pending" }, { storedName: "Corporate" }), "en")).toBe("We have not read this whole board recently.");
+    expect(zeroAnswer(t, zeroPage({ ...BASS, observability_bucket: null, tracking_days: 89 }, { storedName: "Corporate" }), "en")).toBe("We have not read this whole board recently.");
+  });
+
+  it("a windowed bucket says the page's own line: one windowed visit after a complete read reads the same on a vendor that states no total (round 3)", () => {
+    // A Teamtailor board read whole a day ago, then windowed once: job-board writes no feed_total for it, and the bucket is the newest visit's.
+    for (const b of ["lap_pending", "unprovable"]) expect(zeroAnswer(t, zeroPage({ ...BASS, observability_bucket: b }), "en"), b).toBe(OWN_LINE);
+    for (const tok of ["a232a7a1-770b-48a0-b05a-65d403177066~9201585048116_2", "recruiting~RED1001RMI~fa9d032b-b0dd-4c99-8ebe-c09d9352c68c"]) {
+      const r = rowOf(tok);
+      expect(r[2], tok).toBe("unprovable");
+      expect(zeroPage(curveRow(r), { token: tok }).zeroReading, tok).toBeNull();
+    }
   });
 
   it("never 'not read' beside a stated total, on a board read in full or through a lap, or on one too new to classify", () => {
@@ -218,6 +393,8 @@ describe("what may still be said", () => {
       { ...BASS, observability_bucket: null, tracking_days: 89, ...stated },
       { ...BASS, observability_bucket: "full_read" },
       { ...BASS, observability_bucket: "lap_proven" },
+      { ...BASS, observability_bucket: "lap_pending" },
+      { ...BASS, observability_bucket: "unprovable" },
       { ...BASS, observability_bucket: "unobserved" },
       { ...BASS, observability_bucket: null, tracking_days: 0 },
       { ...BASS, observability_bucket: "a_bucket_this_build_does_not_know" },

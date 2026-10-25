@@ -166,6 +166,8 @@
     "zero": {
       "allRoles": "Search all open roles",
       "answer": "No roles are listed on this page right now.",
+      "seoTitle": "{{company}} jobs",
+      "seoDescription": "{{company}}: no roles are listed on this page right now.",
       "body": "Watch this board and your account will count its new postings when they appear.",
       "empty": "No roles on {{companyPossessive}} job board when we read it {{ago}}.",
       "emptyBoard": "No roles on this board when we read it {{ago}}.",

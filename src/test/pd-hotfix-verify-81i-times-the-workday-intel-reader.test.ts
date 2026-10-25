@@ -22,7 +22,13 @@
  * of the largest pages, which the bake reads first, PASSed a bake that cut
  * its tail; 81j now samples 24 Workday pages from the live sitemap (its last
  * 8 and 16 spread over the rest) and needs 90% of them to state a fact line.
- * On 2026-10-25 none of the 283 did (the recorded fixture).
+ * On 2026-10-25 none of the 283 did (the recorded fixture). The round 3
+ * review found that a block of the 20 largest pages baking without facts
+ * (what a reader too slow on big tenants for the bake's 8-second per-call
+ * timeout drops) PASSed 22 of 24; the sample now opens with the sitemap's
+ * first 4 Workday pages, each of which must state a fact line, and an INFO
+ * says when the sampled titles' role counts stop falling in sitemap order
+ * (the tail is the deadline's only in the bake's order).
  */
 import { describe, expect, it } from "vitest";
 import { execFileSync } from "node:child_process";
@@ -158,8 +164,9 @@ describe("81i: get_company_intel answers Workday tokens within 3 seconds", () =>
 // The recheck of 2026-10-25: 81j read three of the largest Workday pages, which
 // the bake reads first, so a bake that ran past its 90-second intel deadline
 // and dropped the facts of every later page still PASSed. 81j now samples 24
-// Workday pages from the live sitemap (its last 8 and 16 spread over the
-// rest) and needs at least 90% of them to state a fact line.
+// Workday pages from the live sitemap (its first 4, its last 8 and 12 spread
+// between them) and needs at least 90% of them, and each of the first 4, to
+// state a fact line (round 3).
 const PLACES = "The countries holding the most of its roles on this board:";
 const FIELDS = "The fields holding the most of its roles on this board:";
 const SITE = "https://resumebooster.work";
@@ -169,12 +176,24 @@ const baked = (token: string, facts: string) =>
   `<html><head><title>${token} jobs: 100 open roles from their own hiring system</title><link rel="canonical" href="${SITE}/jobs/company/${token}" /></head><body>${facts}</body></html>`;
 const HOME_SHELL = `<html><head><title>Resume Booster: Live Jobs Straight From Employers</title><link rel="canonical" href="${SITE}/" /></head><body>home</body></html>`;
 type BakedPage = { token: string; url: string; pos: number; status: number; body: string };
-/** A probe file of `n` sampled pages out of `of` Workday pages; `bare(i)` says which sampled pages lack facts. */
+/** The sitemap positions 81j's probe samples out of `of` Workday pages: the first 4, the last 8, and 12 spread between them. */
+const samplePositions = (of: number): number[] => {
+  const pick = new Set<number>();
+  const lo = Math.min(4, of);
+  for (let i = 0; i < lo; i++) pick.add(i);
+  const hi = Math.max(lo, of - 8);
+  for (let i = hi; i < of; i++) pick.add(i);
+  const mid = hi - lo;
+  const spread = Math.min(mid, 24 - pick.size);
+  for (let k = 0; k < spread; k++) pick.add(lo + (spread === 1 ? 0 : Math.round((k * (mid - 1)) / (spread - 1))));
+  return [...pick].sort((a, b) => a - b);
+};
+/** A probe file of `n` sampled pages out of `of` Workday pages, at the probe's own positions; `bare(i)` says which sampled pages lack facts. */
 const bakedFile = (n: number, bare: (i: number) => boolean, of = 283, o: Record<string, unknown> = {}) => ({
   at: "2026-10-25T02:00:00Z", site: SITE, sitemapStatus: 200, companyPages: 485, workdayPages: of, home: HOME_SHELL,
-  pages: Array.from({ length: n }, (_, i): BakedPage => {
+  pages: samplePositions(of).slice(0, n).map((pos, i): BakedPage => {
     const token = `t${i}~wd5~Careers`;
-    return { token, url: `${SITE}/jobs/company/${token}`, pos: Math.round((i * (of - 1)) / Math.max(1, n - 1)), status: 200, body: baked(token, bare(i) ? "" : factLine(PLACES) + factLine(FIELDS)) };
+    return { token, url: `${SITE}/jobs/company/${token}`, pos, status: 200, body: baked(token, bare(i) ? "" : factLine(PLACES) + factLine(FIELDS)) };
   }),
   control: { token: "dominos", status: 200, body: baked("dominos", factLine(PLACES)) },
   ...o,
@@ -209,7 +228,7 @@ describe("81j: at least 90% of a sitemap sample of baked Workday company pages s
     }
   });
 
-  it("the sample is the sitemap's last 8 Workday pages and 16 spread over the rest, in sitemap order, the same every run", () => {
+  it("the sample is the sitemap's first 4 Workday pages, its last 8 and 12 spread between them, in sitemap order, the same every run", () => {
     const wd = Array.from({ length: 283 }, (_, i) => `w${i}~wd${(i % 5) + 1}~Site`);
     const others = ["dominos", "eexs~us2~CX_3001", "careers.ulta.com/"];
     const sm = sitemapOf([...others.slice(0, 2), ...wd.slice(0, 100), others[2], ...wd.slice(100)]);
@@ -219,7 +238,9 @@ describe("81j: at least 90% of a sitemap sample of baked Workday company pages s
     expect(a.file.workdayPages).toBe(283);
     expect(pos.length).toBe(24);
     expect(pos.slice(-8), "the tail a deadline cuts first").toEqual([275, 276, 277, 278, 279, 280, 281, 282]);
-    expect(pos[0], "the largest Workday page").toBe(0);
+    expect(pos.slice(0, 4), "the largest Workday pages, which a slow reader loses first").toEqual([0, 1, 2, 3]);
+    expect(pos.slice(4, 16), "12 spread between them").toEqual([4, 29, 53, 78, 102, 127, 151, 176, 200, 225, 249, 274]);
+    expect(pos, "the test's own copy of the probe's positions").toEqual(samplePositions(283));
     expect(new Set(pos).size).toBe(24);
     expect(pos).toEqual([...pos].sort((x, y) => x - y));
     expect(a.file.pages.map((p) => p.token)).toEqual(b.file.pages.map((p) => p.token));
@@ -231,7 +252,8 @@ describe("81j: at least 90% of a sitemap sample of baked Workday company pages s
   it("FAILs on what production served on 2026-10-25 (0 of 24; none of the 283 Workday pages states a fact line)", () => {
     expect(LIVE_81J.pages.length).toBe(24);
     const lines = runBaked(LIVE_81J);
-    expect(lines[0], show(lines)).toMatch(/^FAIL {2}81j 0 of 24 sampled Workday company pages \(sitemap positions 1 to 283 of 283; the last 8: 0\) state a fact line/);
+    expect(LIVE_81J.pages.map((p: BakedPage) => p.pos), "recorded with the round 3 probe").toEqual(samplePositions(283));
+    expect(lines[0], show(lines)).toMatch(/^FAIL {2}81j 0 of 24 sampled Workday company pages \(sitemap positions 1 to 283 of 283; the first 4: 0, the last 8: 0\) state a fact line/);
     expect(lines.filter((l) => l.startsWith("PASS")), show(lines)).toEqual([]);
     expect(lines.some((l) => l.startsWith("INFO  81j control dominos (SmartRecruiters): HTTP 200, 2 fact line(s)")), show(lines)).toBe(true);
   });
@@ -240,7 +262,7 @@ describe("81j: at least 90% of a sitemap sample of baked Workday company pages s
     const all = runBaked(bakedFile(24, () => false));
     expect(all[0], show(all)).toMatch(/^PASS {2}81j 24 of 24 sampled Workday company pages .* 100%, at least 90%/);
     expect(all.filter((l) => l.startsWith("FAIL")), show(all)).toEqual([]);
-    const two = runBaked(bakedFile(24, (i) => i === 3 || i === 9));
+    const two = runBaked(bakedFile(24, (i) => i === 5 || i === 9));
     expect(two[0], show(two)).toMatch(/^PASS {2}81j 22 of 24 .*: 91\.7%, at least 90%/);
   });
 
@@ -252,6 +274,32 @@ describe("81j: at least 90% of a sitemap sample of baked Workday company pages s
     // The pages the old 81j read (three of the largest) carry facts in this bake, so it PASSed.
     const largest = bakedFile(24, (i) => i >= 16).pages.slice(0, 3);
     expect(largest.every((p) => p.body.includes(PLACES)), "the head of the bake order kept its facts").toBe(true);
+  });
+
+  it("round 3: one of the first 4 without facts FAILs at 23 of 24, and so do the 20 largest pages (the review's case, 22 of 24 under the old sample)", () => {
+    const one = runBaked(bakedFile(24, (i) => i === 2));
+    expect(one[0], show(one)).toMatch(/^FAIL {2}81j 23 of 24 .*the first 4: 3, the last 8: 8\) .*: 95\.8%, but not each of the first 4: the largest Workday pages baked without facts/);
+    const head20 = bakedFile(24, () => false);
+    for (const p of head20.pages) if (p.pos < 20) p.body = baked(p.token, "");
+    const h = runBaked(head20);
+    expect(h[0], show(h)).toMatch(/^FAIL {2}81j 19 of 24 .*the first 4: 0, the last 8: 8\)/);
+    // The old sample (16 spread and the last 8) held only positions 0 and 18 of the 20.
+    const oldPositions = [...Array.from({ length: 16 }, (_, k) => Math.round((k * 274) / 15)), 275, 276, 277, 278, 279, 280, 281, 282];
+    expect(oldPositions.filter((x) => x < 20)).toEqual([0, 18]);
+  });
+
+  it("round 3: an INFO when the sampled titles' role counts rise in sitemap order (the sitemap left the bake's order)", () => {
+    const titled = (n: number) => (p: BakedPage) => ({ ...p, body: p.body.replace(/100 open roles/, `${n.toLocaleString("en-US")} open roles`) });
+    const falling = bakedFile(24, () => false);
+    falling.pages = falling.pages.map((p, i) => titled(5000 - i * 100)(p));
+    const f = runBaked(falling);
+    expect(f[0], show(f)).toMatch(/^PASS/);
+    expect(f.some((l) => /^INFO {2}81j the sampled titles' role counts rise/.test(l)), show(f)).toBe(false);
+    const risen = bakedFile(24, () => false);
+    risen.pages = risen.pages.map((p, i) => titled(i === 10 ? 9000 : 5000 - i * 100)(p));
+    const r = runBaked(risen);
+    expect(r[0], show(r)).toMatch(/^PASS/);
+    expect(r.some((l) => /^INFO {2}81j the sampled titles' role counts rise in sitemap order \(position 128: 4100, position 152: 9000\): the sitemap may no longer list Workday pages in the bake's order/.test(l)), show(r)).toBe(true);
   });
 
   it("a homepage shell (by title or by a canonical that is not the page's own), an HTTP error, or neither line counts against the share", () => {

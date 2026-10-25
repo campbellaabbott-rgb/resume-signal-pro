@@ -37,7 +37,7 @@ import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { hiringRecordGate, type HiringRecordRow } from "@/lib/hiring-record-gate";
-import { boardTotalFact, zeroReadingOf } from "@/lib/company/lander-model";
+import { boardTotalFact, watchPromiseOf, zeroReadingOf } from "@/lib/company/lander-model";
 
 const ROOT = resolve(__dirname, "../..");
 const SH = readFileSync(resolve(ROOT, "scripts/verify-deploy.d/81-profiles-design-accuracy.sh"), "utf8");
@@ -62,7 +62,7 @@ function loopOf(tsx: string) {
 function derived(rows: Row[], tsx = TSX) {
   const gate: Record<string, unknown> = {};
   const model: Record<string, unknown> = {};
-  loopOf(tsx)({ hiringRecordGate }, { boardTotalFact, zeroReadingOf }, rows, gate, model);
+  loopOf(tsx)({ hiringRecordGate }, { boardTotalFact, zeroReadingOf, watchPromiseOf }, rows, gate, model);
   return { gate: JSON.stringify(gate), model: JSON.stringify(model) };
 }
 
@@ -269,10 +269,28 @@ describe("81c judges the zero page as the page builds it (hotfix 2026-10-24; cor
     }
   });
 
-  it("a windowed board never read through keeps 'not read' as true, as INFO", () => {
-    const rows = afterRows.map((r) => (r.company_token === "bassabatherapy" ? { ...r, observability_bucket: "lap_pending" } : r));
-    const lines = run(files(rows, NEW_BUNDLE, AFTER));
-    expect(lineOf(lines, "BASS ABA"), show(lines)).toMatch(/^INFO {2}81c BASS ABA: zero reading "unread" \(bucket lap_pending/);
+  it("a windowed board says the page's own line (round 3: the bucket is the newest visit's), and a board unobserved for seven days keeps 'not read' as true, as INFO", () => {
+    const windowed = afterRows.map((r) => (r.company_token === "bassabatherapy" ? { ...r, observability_bucket: "lap_pending" } : r));
+    const w = run(files(windowed, NEW_BUNDLE, AFTER));
+    expect(lineOf(w, "BASS ABA"), show(w)).toMatch(/^PASS {2}81c BASS ABA .*bucket lap_pending.*the page says only "No roles are listed on this page right now\."/);
+    const unseen = afterRows.map((r) => (r.company_token === "bassabatherapy" ? { ...r, observability_bucket: null } : r));
+    const u = run(files(unseen, NEW_BUNDLE, AFTER));
+    expect(lineOf(u, "BASS ABA"), show(u)).toMatch(/^INFO {2}81c BASS ABA: zero reading "unread" \(bucket none, 89 tracking days/);
+  });
+
+  it("the watch promise (round 3): made on BASS ABA, withheld on Delaney and Akumin; a model that promises everywhere, or has no rule, FAILs", () => {
+    const watchLine = (lines: string[], label: string) => lines.find((l) => new RegExp(`81c ${label}: the page (?:promises|offers|would promise)|81c ${label}: this checkout.s lander model has no watch rule`).test(l)) ?? "";
+    const lines = run(files(afterRows, NEW_BUNDLE, AFTER));
+    expect(watchLine(lines, "BASS ABA"), show(lines)).toMatch(/^PASS {2}81c BASS ABA: the page promises a watch counts its new postings, where no total is stated/);
+    expect(watchLine(lines, "Delaney at the Green"), show(lines)).toMatch(/^PASS {2}81c Delaney at the Green: the page offers Watch without promising what it counts \(bucket full_read, 49 tracking days, feed_total 3/);
+    expect(watchLine(lines, "Akumin ADG"), show(lines)).toMatch(/^PASS {2}81c Akumin ADG: the page offers Watch without promising what it counts/);
+    // The page before round 3: every zero page promised the watch.
+    const everywhere = JSON.stringify(Object.fromEntries(Object.entries(JSON.parse(derived(afterRows).model) as Record<string, Record<string, unknown>>).map(([k, v]) => [k, { ...v, watchPromise: true }])));
+    const all = run({ ...files(afterRows, NEW_BUNDLE, AFTER), "vd_81_model.json": everywhere });
+    expect(watchLine(all, "Delaney at the Green"), show(all)).toMatch(/^FAIL {2}81c Delaney at the Green: the page would promise a watch counts its new postings \(.*feed_total 3.*, a site the sub-site dedupe empties\)/);
+    expect(watchLine(all, "Akumin ADG"), show(all)).toMatch(/^FAIL {2}81c Akumin ADG: the page would promise a watch counts its new postings/);
+    const noRule = run({ ...files(afterRows, NEW_BUNDLE, AFTER), "vd_81_model.json": modelBy(afterRows, (bt) => zeroReadingOf({ boardTotal: bt as never })) });
+    expect(watchLine(noRule, "BASS ABA"), show(noRule)).toMatch(/^FAIL {2}81c BASS ABA: this checkout.s lander model has no watch rule \(watchPromiseOf\)/);
   });
 });
 

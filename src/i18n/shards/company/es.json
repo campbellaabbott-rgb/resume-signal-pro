@@ -181,6 +181,8 @@
     "zero": {
       "allRoles": "Buscar todas las vacantes abiertas",
       "answer": "Ahora mismo no hay ninguna vacante en esta página.",
+      "seoTitle": "Empleos en {{company}}",
+      "seoDescription": "{{company}}: ahora mismo no hay ninguna vacante en esta página.",
       "body": "Sigue este portal y tu cuenta contará sus nuevas ofertas cuando aparezcan.",
       "empty": "Ninguna vacante en el portal de {{company}} cuando lo leímos {{ago}}.",
       "emptyBoard": "Ninguna vacante en este portal cuando lo leímos {{ago}}.",

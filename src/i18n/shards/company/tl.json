@@ -166,6 +166,8 @@
     "zero": {
       "allRoles": "Maghanap sa lahat ng bukas na role",
       "answer": "Walang role na nakalista sa page na ito sa ngayon.",
+      "seoTitle": "Mga trabaho sa {{company}}",
+      "seoDescription": "{{company}}: walang role na nakalista sa page na ito sa ngayon.",
       "body": "Bantayan ang board na ito at bibilangin ng account mo ang mga bagong posting kapag lumabas ang mga ito.",
       "empty": "Walang role sa job board ng {{company}} nang basahin namin ito {{ago}}.",
       "emptyBoard": "Walang role sa board na ito nang basahin namin ito {{ago}}.",

@@ -27,7 +27,10 @@
 #       Oracle sub-site whose requisitions a sibling site serves) and Akumin's
 #       ADG site (a Workday site that stated 5 at a read in state empty while
 #       its own feed dated 2 roles this month) each give no reading at all on
-#       this checkout's model when nothing is listed; Stripe's board total is
+#       this checkout's model when nothing is listed, and the page promises
+#       that a watch counts new postings only where no total is stated and
+#       the token is no Oracle sub-site (Delaney's watch can count nothing:
+#       a sibling site holds its requisitions); Stripe's board total is
 #       within 10% of its own Greenhouse feed (FAIL by decision until
 #       job-board records whole-feed totals).
 #   81d Databricks and Canva print no "never half" (their 30-day share is
@@ -47,11 +50,12 @@
 #       seconds (20261012135000 ran the hosting-tenant test once per snapshot
 #       row; 20261012137000 runs it once per call).
 #   81j at least 90% of 24 Workday company pages sampled from the live
-#       sitemap (its last 8, where the bake's 90 s intel deadline cuts first,
-#       and 16 spread over the rest) state the bake's places or fields line
-#       on their own baked file: the bake drops the facts without failing when
-#       the reader is slow, so neither a fast reader (81i) nor three of the
-#       largest pages proves the re-bake.
+#       sitemap (its first 4, the largest, which a reader too slow on big
+#       tenants loses; its last 8, where the bake's 90 s intel deadline cuts
+#       first; and 12 spread over the rest) state the bake's places or fields
+#       line on their own baked file, and each of the first 4 does: the bake
+#       drops the facts without failing when the reader is slow, so neither a
+#       fast reader (81i) nor three of the largest pages proves the re-bake.
 #
 # HOW IT IS JUDGED. Live rows are judged by this checkout's gate and lander
 # model (src/lib/hiring-record-gate.ts and src/lib/company/lander-model.ts,
@@ -146,7 +150,7 @@ Promise.all([import("./src/lib/hiring-record-gate.ts"), import("./src/lib/compan
     gate[r.company_token] = g.hiringRecordGate(r);
     const has = Object.prototype.hasOwnProperty.call(r, "feed_total");
     const bt = has ? { total: r.feed_total, readAt: r.feed_read_at, state: r.feed_state, capped: r.feed_capped, bucket: r.observability_bucket, trackingDays: r.tracking_days } : null;
-    model[r.company_token] = { feedColumns: has, boardTotal: has ? m.boardTotalFact(bt) : null, zeroReading: has ? m.zeroReadingOf({ boardTotal: bt }) : null };
+    model[r.company_token] = { feedColumns: has, boardTotal: has ? m.boardTotalFact(bt) : null, zeroReading: has ? m.zeroReadingOf({ boardTotal: bt }) : null, watchPromise: has && typeof m.watchPromiseOf === "function" ? m.watchPromiseOf({ boardTotal: bt, token: r.company_token }) : null };
   }
   fs.writeFileSync("/tmp/vd_81_gate.json", JSON.stringify(gate));
   fs.writeFileSync("/tmp/vd_81_model.json", JSON.stringify(model));
@@ -246,6 +250,16 @@ for (const [label, t, shape, list] of ZERO_BOARDS) {
   else if (mm.zeroReading === "unread" && r.observability_bucket !== "full_read" && r.observability_bucket !== "lap_proven" && (r.feed_total === null || r.feed_total === undefined)) out("INFO", `81c ${label}: zero reading "unread" (${facts81c(r)}): our own reads show no complete read, so "not read" is true`);
   else if (mm.zeroReading === "empty" && Number(r.feed_total) === 0) out("PASS", `81c ${label}: nothing listed and its board stated none at ${r.feed_read_at}: the page says so`);
   else out("FAIL", `81c ${label} (${shape}): this checkout\x27s lander model gives the zero reading "${mm.zeroReading}" (${facts81c(r)}): the page would print a sentence about what a read found where the board and the page disagree`);
+  // The watch promise ("your account will count its new postings"): a watch
+  // counts only postings stored under this token, so a board that states
+  // roles this page does not list (Delaney, whose requisitions CX_3001
+  // holds), or an Oracle sub-site, gets none (round 3 review, 2026-10-25).
+  const stated = r.feed_total !== null && r.feed_total !== undefined;
+  const subSite = /^[^~]+~[^~]+~CX(?:_\w+)?$/.test(t);
+  if (typeof mm.watchPromise !== "boolean") out("FAIL", `81c ${label}: this checkout\x27s lander model has no watch rule (watchPromiseOf), so the zero page promises every watch counts new postings`);
+  else if (mm.watchPromise && (stated || subSite)) out("FAIL", `81c ${label}: the page would promise a watch counts its new postings (${facts81c(r)}${subSite ? ", a site the sub-site dedupe empties" : ""}): a watch on this token can count nothing the board states`);
+  else if (mm.watchPromise) out("PASS", `81c ${label}: the page promises a watch counts its new postings, where no total is stated, the newest read was whole and no sibling site holds its roles (${facts81c(r)})`);
+  else out("PASS", `81c ${label}: the page offers Watch without promising what it counts (${facts81c(r)})`);
 }
 {
   const r = rowOf("stripe");
@@ -399,19 +413,25 @@ for (const p of probes) {
 # at a time in its own page order (open roles, largest first), and past its
 # 90-second deadline, or after 18 failures in a row, every page after that
 # point states neither. So the line samples the sitemap, which lists the
-# company pages in that same order: its last 8 Workday pages (where a cut
-# lands first) and 16 more spread evenly over the rest, 24 in all, chosen
-# from the sitemap alone, so every run reads the same pages. It PASSes only
-# when at least 90% of the sample states a fact line on the page's own baked
-# file. A homepage shell, an HTTP error or a page with neither line counts
-# against it; an unreadable sitemap, fewer than 20 Workday pages or an empty
-# sample FAILs outright. 81i's 3-second reader does not prove the bake
-# fitted its deadline (the whole bake fits only at about 1.1 s per round of
-# six); this line does. On 2026-10-25 none of the 283 Workday pages in the
-# sitemap stated either line.
+# company pages in that same order: its first 4 Workday pages (the largest
+# tenants, which an 8-second per-call timeout drops first when the reader is
+# slow on big boards), its last 8 (where a deadline cut lands first) and 12
+# more spread evenly between them, 24 in all, chosen from the sitemap alone,
+# so every run reads the same pages. It PASSes only when at least 90% of the
+# sample states a fact line on the page's own baked file and every one of the
+# first 4 does (round 3 review, 2026-10-25: a block of the 20 largest pages
+# without facts PASSed 22 of 24). A homepage shell, an HTTP error or a page
+# with neither line counts against it; an unreadable sitemap, fewer than 20
+# Workday pages or an empty sample FAILs outright. The tail is the deadline's
+# only while the sitemap keeps the bake's order (open roles, largest first),
+# so an INFO says when the sampled titles' role counts stop falling. 81i's
+# 3-second reader does not prove the bake fitted its deadline (the whole bake
+# fits only at about 1.1 s per round of six); this line does. On 2026-10-25
+# none of the 283 Workday pages in the sitemap stated either line.
 SITE="$SITE" UA="$UA" node -e '
 const { SITE, UA } = process.env;
 const fs = require("fs");
+const HEAD = 4;
 const TAIL = 8;
 const SAMPLE = 24;
 const get = async (url) => { try { const r = await fetch(url, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(30000) }); return { status: r.status, body: await r.text() }; } catch (e) { return { status: 0, body: "" }; } };
@@ -419,12 +439,15 @@ const get = async (url) => { try { const r = await fetch(url, { headers: { "User
   const sm = await get(`${SITE}/sitemap.xml`);
   const locs = sm.status === 200 ? [...sm.body.matchAll(/<loc>([^<]*\/jobs\/company\/([^<]+))<\/loc>/g)].map((m) => ({ url: m[1], token: m[2] })) : [];
   const wd = locs.filter((l) => /~wd\d+~/.test(l.token));
-  // The last TAIL in the sitemap order, then evenly spaced over the rest.
+  // The first HEAD and the last TAIL in the sitemap order, then evenly spaced between them.
   const pick = new Set();
-  for (let i = Math.max(0, wd.length - TAIL); i < wd.length; i++) pick.add(i);
-  const rest = Math.max(0, wd.length - TAIL);
-  const spread = Math.min(rest, SAMPLE - pick.size);
-  for (let k = 0; k < spread; k++) pick.add(spread === 1 ? 0 : Math.round((k * (rest - 1)) / (spread - 1)));
+  const lo = Math.min(HEAD, wd.length);
+  for (let i = 0; i < lo; i++) pick.add(i);
+  const hi = Math.max(lo, wd.length - TAIL);
+  for (let i = hi; i < wd.length; i++) pick.add(i);
+  const mid = hi - lo;
+  const spread = Math.min(mid, SAMPLE - pick.size);
+  for (let k = 0; k < spread; k++) pick.add(lo + (spread === 1 ? 0 : Math.round((k * (mid - 1)) / (spread - 1))));
   const sample = [...pick].sort((a, b) => a - b).map((i) => ({ pos: i, ...wd[i] }));
   const home = await get(`${SITE}/`);
   const pages = [];
@@ -442,6 +465,7 @@ const fs = require("fs");
 const out = (s, m) => console.log(`${s.padEnd(5)} ${m}`);
 const MIN_SAMPLE = 20;
 const MIN_SHARE = 0.9;
+const HEAD = 4;
 const PLACES = "The countries holding the most of its roles on this board:";
 const FIELDS = "The fields holding the most of its roles on this board:";
 let b = null;
@@ -470,9 +494,20 @@ else {
     const pct = Math.round(share * 1000) / 10;
     const tail = judged.slice(-8);
     const tailGood = tail.filter((x) => x.why === null).length;
-    const what = `${good.length} of ${pages.length} sampled Workday company pages (sitemap positions ${pages[0].pos + 1} to ${pages[pages.length - 1].pos + 1} of ${b.workdayPages}; the last ${tail.length}: ${tailGood}) state a fact line ("${PLACES}" or "${FIELDS}"): ${pct}%`;
-    if (pages.length >= MIN_SAMPLE && share >= MIN_SHARE) out("PASS", `81j ${what}, at least 90%: the bake read the company reader for its Workday pages, its tail included`);
-    else out("FAIL", `81j ${what}, want at least 90% of at least ${MIN_SAMPLE}: the bake dropped Workday facts (is 20261012137000 applied, did the publish re-bake after it, and did the bake run past its 90-second intel deadline?)`);
+    // The first HEAD sitemap Workday pages, each of which must be sampled and state a fact line.
+    const head = judged.filter((x) => x.p.pos < HEAD);
+    const headWant = Math.min(HEAD, b.workdayPages);
+    const headGood = head.filter((x) => x.why === null).length;
+    const headOk = head.length === headWant && headGood === headWant;
+    const what = `${good.length} of ${pages.length} sampled Workday company pages (sitemap positions ${pages[0].pos + 1} to ${pages[pages.length - 1].pos + 1} of ${b.workdayPages}; the first ${headWant}: ${headGood}${head.length < headWant ? ` of ${head.length} sampled` : ""}, the last ${tail.length}: ${tailGood}) state a fact line ("${PLACES}" or "${FIELDS}"): ${pct}%`;
+    if (pages.length >= MIN_SAMPLE && share >= MIN_SHARE && headOk) out("PASS", `81j ${what}, at least 90% and each of the first ${headWant}: the bake read the company reader for its Workday pages, its largest and its tail included`);
+    else if (pages.length >= MIN_SAMPLE && share >= MIN_SHARE) out("FAIL", `81j ${what}, but not each of the first ${headWant}: the largest Workday pages baked without facts (is the reader too slow on big tenants for the bake\x27s 8-second per-call timeout?)`);
+    else out("FAIL", `81j ${what}, want at least 90% of at least ${MIN_SAMPLE} and each of the first ${headWant}: the bake dropped Workday facts (is 20261012137000 applied, did the publish re-bake after it, and did the bake run past its 90-second intel deadline?)`);
+    // The tail is the deadline\x27s only while the sitemap keeps the bake\x27s order (open roles, largest first).
+    const roles = (p) => { const m = /([\d,]+)\+? open roles/.exec(titleOf(p.body)); return m ? Number(m[1].replace(/,/g, "")) : null; };
+    const counted = judged.map((x) => ({ pos: x.p.pos, n: roles(x.p) })).filter((x) => x.n !== null);
+    const rise = counted.findIndex((x, i) => i > 0 && x.n > counted[i - 1].n);
+    if (rise > 0) out("INFO", `81j the sampled titles\x27 role counts rise in sitemap order (position ${counted[rise - 1].pos + 1}: ${counted[rise - 1].n}, position ${counted[rise].pos + 1}: ${counted[rise].n}): the sitemap may no longer list Workday pages in the bake\x27s order, so its last 8 may not be where the deadline cuts`);
     const misses = judged.filter((x) => x.why !== null);
     for (const x of misses.slice(0, 8)) out("INFO", `81j ${x.p.token} (sitemap Workday position ${x.p.pos + 1}): ${x.why}`);
     if (misses.length > 8) out("INFO", `81j ... and ${misses.length - 8} more sampled page(s) without a fact line`);
