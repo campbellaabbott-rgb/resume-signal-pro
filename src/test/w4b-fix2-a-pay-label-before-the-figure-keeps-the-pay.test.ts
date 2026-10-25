@@ -13,14 +13,17 @@
  * business word ("Portfolio Analyst - $90,000 - $110,000", "Pipeline Welder
  * $30 - $40 per hour") were refused the same way.
  *
- * THE RULE NOW (round 3, w4b-fix3; the corpus test beside this one measures
+ * THE RULE NOW (round 4, w4b-fix3; the corpus test beside this one measures
  * it). The old guards decide first, in the old order, so a bonus word right
  * after a figure still refuses it (round 2 let a label override them, and a
  * sign-on bonus under "Compensation:" became the pay). A figure they accept is
- * set aside only as a business figure: a business noun is its own subject and
- * no pay word stands in its sentence or right after it. A label before the
- * figure is such a pay word, so every line here keeps its pay. The re-sweep
- * refuses only the figure the old miner took, so it never NULLs pay.
+ * set aside only when a business noun owns it ("costs of", "valued at", "in
+ * deals", "$X portfolio") and no pay word stands in its sentence or right after
+ * it. A label before the figure is such a pay word, so every line here keeps
+ * its pay. The re-sweep rewrites a stored figure only to a later stated pay and
+ * never to NULL (recheck 3: a refusal alone NULLed real pay), so a business
+ * figure with no pay after it is set aside for new postings and left as it is
+ * on stored rows.
  */
 import { beforeAll, describe, expect, it } from "vitest";
 import { extractSalary, minedSalaryRefused } from "../../supabase/functions/_shared/salary-extract";
@@ -92,7 +95,10 @@ describe("the business figure's own amount is still refused (S12-019)", () => {
     ["Manage deal sizes of $50K - $250K with enterprise buyers.", "$50K - $250K"],
   ])("%s", (text, figure) => {
     expect(extractSalary(text)).toBeNull();
-    expect(minedSalaryRefused(text, figure), "a business figure the miner stored is re-mined").toBe(true);
+    expect(minedSalaryRefused(text, figure), "with no stated pay after it, the re-sweep leaves the stored figure (never NULL)").toBe(false);
+    const withPay = `${text} Pay range: $60,000 - $75,000 per year.`;
+    expect(extractSalary(withPay)).toBe("$60,000 - $75,000 per year");
+    expect(minedSalaryRefused(withPay, figure), "a business figure the miner stored gives way to the pay stated later").toBe(true);
   });
 });
 
@@ -134,7 +140,7 @@ describe("the re-sweep never NULLs a range the posting states as pay", () => {
   let h: BoardHandler;
   beforeAll(async () => { h = await bootBoardHandler(); }, 120_000);
 
-  it("backfill-salary leaves every labelled range alone and re-mines only the business figure", async () => {
+  it("backfill-salary leaves every labelled range alone, rewrites the business figure only to the pay stated later, and NULLs nothing", async () => {
     const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${SVC}:board-chain`));
     const chainKey = [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 32);
     const rows = [...RECHECK, ...OURS].map(([description, salary], i) => ({
@@ -144,6 +150,10 @@ describe("the re-sweep never NULLs a range the posting states as pay", () => {
     rows.push({
       id: "workday:deals:1", source: "workday", salary: "$500,000 - $900,000", country: "US", title: "Account Executive",
       description: "Our team closed $500,000 - $900,000 in deals each quarter.", employment_type: null,
+      salary_min_annual: 500000, salary_max_annual: 900000, salary_period: "year", salary_currency: "USD",
+    } as (typeof rows)[number], {
+      id: "workday:deals:2", source: "workday", salary: "$500,000 - $900,000", country: "US", title: "Account Executive",
+      description: "Our team closed $500,000 - $900,000 in deals each quarter. Base salary $90,000 - $110,000.", employment_type: null,
       salary_min_annual: 500000, salary_max_annual: 900000, salary_period: "year", salary_currency: "USD",
     } as (typeof rows)[number]);
     h.reset();
@@ -156,9 +166,8 @@ describe("the re-sweep never NULLs a range the posting states as pay", () => {
       ids: (q.calls.find(([m]) => m === "in")?.[1][1] as string[] | undefined) ?? [],
     }));
     const nulled = patches.filter((p) => p.patch && "salary" in p.patch && p.patch.salary === null).flatMap((p) => [p.id, ...p.ids]);
-    expect(nulled, JSON.stringify(patches)).toEqual(["workday:deals:1"]);
-    for (const p of patches) {
-      if (p.patch && "salary" in p.patch) expect(String(p.id), "only the business figure's text is rewritten").toBe("workday:deals:1");
-    }
+    expect(nulled, JSON.stringify(patches)).toEqual([]);
+    const rewritten = patches.filter((p) => p.patch && "salary" in p.patch);
+    expect(rewritten.map((p) => [p.id, p.patch.salary]), "only the business figure with a stated pay after it is rewritten").toEqual([["workday:deals:2", "$90,000 - $110,000"]]);
   });
 });
