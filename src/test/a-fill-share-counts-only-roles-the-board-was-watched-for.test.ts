@@ -24,8 +24,15 @@
 import { PGlite } from "@electric-sql/pglite";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { liveDefinitionOf } from "./helpers/live-sql";
+
+// A PGLITE TEST IS NOT A 5-SECOND TEST. Each case here queries a pglite
+// database (one headcount case starts two of its own), and on a loaded runner
+// a case ran 5.5 to 7.6 seconds, past vitest's default budget: it failed
+// GitHub CI on PR #40 twice and the pre-push suite once, with nothing wrong
+// (2026-10-25). This is the budget the other pglite files here use.
+vi.setConfig({ hookTimeout: 120_000, testTimeout: 30_000 });
 
 const MIG = resolve(__dirname, "../../supabase/migrations");
 const read = (f: string) => readFileSync(resolve(MIG, f), "utf8");

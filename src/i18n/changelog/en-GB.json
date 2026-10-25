@@ -1406,7 +1406,7 @@
     },
     "signInEmailsHaveASecondSender": {
       "title": "Sign-in and reset emails have a second sender",
-      "description": "If our main mail service refuses a sign-in or password-reset email, or fails to send it three times, the email now goes out through a second mail service instead of failing. A job of our own sends these emails from their queue every 10 seconds. One case still waits: when the main service asks us to slow down, the email waits for it rather than switching to the second service."
+      "description": "If our main mail service refuses a sign-in or password-reset email, or fails to send it three times, the email now goes out through a second mail service instead of failing. A job of our own sends these emails from their queue every 10 seconds."
     },
     "privacyAroundSignInAndPurchases": {
       "title": "Three privacy gaps around sign-in and purchases",

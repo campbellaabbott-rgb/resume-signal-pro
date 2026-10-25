@@ -5,7 +5,8 @@
 #
 # READ-ONLY. DNS is read over DNS-over-HTTPS (dns.google). Builds are read from
 # OPTIONS preflights. get_cron_health is read with a GET (PostgREST runs it in
-# a read-only transaction). The three POSTs write nothing on the build they
+# a read-only transaction). The site's entry script and its US English
+# changelog chunk are read with GETs. The three POSTs write nothing on the build they
 # are sent to, and are sent only once that build serves: an unsigned event to
 # resend-webhook (refused before any database access: 503 while
 # RESEND_WEBHOOK_SECRET is unset, 401 once it is), and to process-email-queue
@@ -21,6 +22,14 @@
 # string code starting UNAUTHORIZED_ (the live body, 2026-10-17); the
 # no-JWT probe below FAILs a 401 in any other shape, because the command
 # would then read a refused bearer as a success (second recheck of R1).
+# process-email-queue must serve 2026-10-14.2 (the S13-017 hotfix: a Lovable
+# throttle or hang never stops sign-in mail), read from its preflight. The
+# drain job's command cannot be read from here, but its trace can:
+# migration 20261014120000, which re-schedules it without the cooldown read,
+# makes the command begin SET statement_timeout = '10s', which get_cron_health
+# reports as ch_timeout and no other file writes (20261014100000's sets none),
+# and its self-check refuses a command without it. '10s' PASSes; anything else
+# FAILs once process-email-queue serves 2026-10-14.2, and is INFO before.
 echo "== 94. R1 mail: the sending DNS, the hook/queue/webhook builds, the drain job, the anon refusals =="
 
 vd94_dns() { curl -s -m 20 "https://dns.google/resolve?name=$1&type=$2" -H 'accept: application/dns-json'; }
@@ -58,14 +67,61 @@ for FN94 in auth-email-hook process-email-queue resend-webhook; do
   H94=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$FN94" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+: *//')
   if [ -z "$H94" ]; then echo "FAIL  $FN94 preflight carries no x-fn-build (want $FN94.2026-10-14.1 or later; a new function answers 404 until it is deployed)"
   elif build_ge "$FN94" "$H94" 2026-10-14 1; then echo "PASS  $FN94 x-fn-build = $H94 (2026-10-14.1 or later)"
-    [ "$FN94" = process-email-queue ] && VD94_PEQ=1; [ "$FN94" = resend-webhook ] && VD94_RW=1
+    [ "$FN94" = process-email-queue ] && VD94_PEQ=1 && VD94_PEQ_BUILD=$H94; [ "$FN94" = resend-webhook ] && VD94_RW=1
   else echo "FAIL  $FN94 x-fn-build = $H94 (want $FN94.2026-10-14.1 or later)"; fi
 done
+# The S13-017 hotfix (2026-10-14.2): a Lovable 429 on sign-in mail goes through
+# Resend and sets no cooldown, the function drains the auth queue while a
+# cooldown holds, and a hung Lovable send fails after its deadline. Migration
+# 20261014120000 re-schedules rb-auth-mail-drain to post through a cooldown,
+# so it waits for this build.
+VD94_PEQ2=0
+if [ "$VD94_PEQ" = 1 ]; then
+  if build_ge process-email-queue "$VD94_PEQ_BUILD" 2026-10-14 2; then
+    VD94_PEQ2=1
+    echo "PASS  process-email-queue x-fn-build = $VD94_PEQ_BUILD: the function sends a sign-in mail Lovable throttled or left hanging through Resend, sets no cooldown for the auth queue, and drains it while one holds (S13-017, 2026-10-14.2 or later)"
+  else
+    echo "FAIL  process-email-queue x-fn-build = $VD94_PEQ_BUILD: a Lovable 429 still stops sign-in mail and sets an hour's cooldown, so reset mail expires unsent (S13-017). Deploy process-email-queue.2026-10-14.2 before migration 20261014120000"
+  fi
+fi
 
-# Our drain job (20261014100000 schedules rb-auth-mail-drain; a job named
-# process-email-queue is Lovable's and is reported, never judged as ours).
+# The changelog entry signInEmailsHaveASecondSender (2026-10-17, main's PR #45)
+# closed with a sentence that is true only of the 2026-10-14.1 build: that a
+# sign-in mail waits, rather than going through the second service, when the
+# main service throttles us. 2026-10-14.2 sends that mail through Resend at
+# once, so R1 drops the sentence in all 9 locales, and the frontend publish
+# that carries the drop follows this build in R1's deploy order. Read-only:
+# the US English changelog chunk the entry names, never an en-GB one.
+VD94_CL_MAIN=$(curl -s -m 30 "$SITE/" | grep -o '/assets/index-[^"]*\.js' | head -1)
+VD94_CL=""; VD94_CL_CHUNK=""
+if [ -n "$VD94_CL_MAIN" ]; then
+  for CH94 in $(curl -s -m 30 "$SITE$VD94_CL_MAIN" | grep -o '"\./en-[A-Za-z0-9_-]*\.js"' | tr -d '"' | sed 's|^\./||' | grep -v '^en-GB-' | sort -u); do
+    VD94_CLT=$(curl -s -m 30 "$SITE/assets/$CH94")
+    printf '%s' "$VD94_CLT" | grep -q "signInEmailsHaveASecondSender" || continue
+    VD94_CL=$VD94_CLT; VD94_CL_CHUNK=$CH94
+    break
+  done
+fi
+VD94_SLOW="when the main service asks us to slow down"
+if [ -z "$VD94_CL" ]; then
+  echo "INFO  no US English changelog chunk the entry names carries signInEmailsHaveASecondSender: the frontend has not been published since the changelog for 17 to 25 October merged (section 52 judges the entries)"
+elif printf '%s' "$VD94_CL" | grep -qF "$VD94_SLOW"; then
+  if [ "$VD94_PEQ2" = 1 ]; then
+    echo "FAIL  the US changelog ($VD94_CL_CHUNK) still says a sign-in mail waits \"$VD94_SLOW\", but process-email-queue serves $VD94_PEQ_BUILD, which sends that mail through Resend at once (S13-017): publish the frontend from main with R1 merged, which drops that sentence in all 9 locales"
+  else
+    echo "INFO  the US changelog ($VD94_CL_CHUNK) says a sign-in mail waits \"$VD94_SLOW\": true while process-email-queue serves the 2026-10-14.1 build; R1's frontend publish drops it after 2026-10-14.2 serves"
+  fi
+elif [ "$VD94_PEQ2" = 1 ]; then
+  echo "PASS  the US changelog ($VD94_CL_CHUNK) carries signInEmailsHaveASecondSender without the sentence that a throttled sign-in mail waits, which process-email-queue $VD94_PEQ_BUILD made untrue"
+else
+  echo "INFO  the US changelog ($VD94_CL_CHUNK) carries signInEmailsHaveASecondSender without the throttle sentence, though process-email-queue does not serve 2026-10-14.2 yet (R1's deploy order publishes the frontend after that build)"
+fi
+
+# Our drain job (20261014100000 schedules rb-auth-mail-drain, 20261014120000
+# re-schedules it; a job named process-email-queue is Lovable's and is
+# reported, never judged as ours).
 curl -s -m 60 "$B/rest/v1/rpc/get_cron_health?p_hours=1" -H "apikey: $K" -H "Authorization: Bearer $K" > /tmp/vd_94_cron.json
-node -e '
+VD94_PEQ2="$VD94_PEQ2" node -e '
 const fs=require("fs");let j;try{j=JSON.parse(fs.readFileSync("/tmp/vd_94_cron.json","utf8"))}catch{j=null}
 if(!Array.isArray(j)){console.log("INFO  get_cron_health unreadable: "+JSON.stringify(j).slice(0,140));process.exit(0)}
 const lov=j.find((x)=>x.ch_jobname==="process-email-queue");
@@ -74,7 +130,11 @@ const q=j.find((x)=>x.ch_jobname==="rb-auth-mail-drain");
 if(!q){console.log("FAIL  no rb-auth-mail-drain cron job: queued sign-in mail is drained only by Lovable'"'"'s own job, if any (20261014100000 not applied, or the job was removed)");process.exit(0)}
 const last=String(q.ch_last_status??"");
 const ok=q.ch_active&&Number(q.ch_runs)>0&&Number(q.ch_failed)===0&&last==="succeeded";
-console.log((ok?"PASS":"FAIL")+"  rb-auth-mail-drain cron: schedule "+JSON.stringify(q.ch_schedule)+", active "+q.ch_active+", runs "+q.ch_runs+"/1h, failed "+q.ch_failed+", last run "+(last||"none")+" (want active, runs > 0, failed 0, last run succeeded; the command fails its own run when the vault holds no email_queue_service_role_key or email_cron_key, when the drain refused one of its own posts, or when the gateway answered one with its own 401, since pg_net alone reads every refused post as a success)");'
+console.log((ok?"PASS":"FAIL")+"  rb-auth-mail-drain cron: schedule "+JSON.stringify(q.ch_schedule)+", active "+q.ch_active+", runs "+q.ch_runs+"/1h, failed "+q.ch_failed+", last run "+(last||"none")+" (want active, runs > 0, failed 0, last run succeeded; the command fails its own run when the vault holds no email_queue_service_role_key or email_cron_key, when the drain refused one of its own posts, or when the gateway answered one with its own 401, since pg_net alone reads every refused post as a success)");
+const trace=q.ch_timeout??null;
+if(trace==="10s")console.log("PASS  rb-auth-mail-drain runs 20261014120000'"'"'s command (its statement_timeout \"10s\", which only that file writes, and whose self-check refuses a command that reads email_send_state): sign-in mail is drained while a provider cooldown holds (S13-017)");
+else if(process.env.VD94_PEQ2==="1")console.log("FAIL  rb-auth-mail-drain does not run 20261014120000'"'"'s command (statement_timeout "+JSON.stringify(trace)+", want \"10s\"): the 20261014100000 command returns while a provider cooldown holds, so sign-in mail can wait past its code (S13-017). process-email-queue serves 2026-10-14.2: apply 20261014120000 as written (a copy edited to make it apply loses this trace)");
+else console.log("INFO  rb-auth-mail-drain runs the 20261014100000 command (statement_timeout "+JSON.stringify(trace)+"), which returns while a provider cooldown holds; migration 20261014120000 replaces it once process-email-queue serves 2026-10-14.2");'
 
 # The stuck count: email_delivery_health is service-role only since 20261004110000,
 # so no anonymous reader of it exists. Prove it stays closed; the count itself is

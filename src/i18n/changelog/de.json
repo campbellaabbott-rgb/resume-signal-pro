@@ -1406,7 +1406,7 @@
     },
     "signInEmailsHaveASecondSender": {
       "title": "Anmelde- und Zurücksetzungs-E-Mails haben einen zweiten Versender",
-      "description": "Wenn unser Haupt-Maildienst eine Anmelde- oder Passwort-Zurücksetzungs-E-Mail ablehnt oder sie dreimal nicht versenden kann, wird die E-Mail jetzt über einen zweiten Maildienst verschickt, statt zu scheitern. Ein eigener Job von uns versendet diese E-Mails alle 10 Sekunden aus ihrer Warteschlange. Ein Fall wartet noch: Wenn der Haupt-Maildienst uns bittet, langsamer zu machen, wartet die E-Mail auf ihn, statt zum zweiten Dienst zu wechseln."
+      "description": "Wenn unser Haupt-Maildienst eine Anmelde- oder Passwort-Zurücksetzungs-E-Mail ablehnt oder sie dreimal nicht versenden kann, wird die E-Mail jetzt über einen zweiten Maildienst verschickt, statt zu scheitern. Ein eigener Job von uns versendet diese E-Mails alle 10 Sekunden aus ihrer Warteschlange."
     },
     "privacyAroundSignInAndPurchases": {
       "title": "Drei Datenschutzlücken rund um Anmeldung und Käufe",

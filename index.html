@@ -11,6 +11,13 @@
          them. Keys are compared decoded (URLSearchParams), in the query and
          the fragment alike. A sign-in's parts leave the address even when the
          stash cannot be written: that sign-in is lost, never adopted unasked.
+         A /success address names ONE purchase or ONE analysis (S13-002): what
+         it names replaces the purchase-and-analysis pair the stash held for
+         /success in the same write, so a second purchase in this tab is never
+         shown the first one's analysis, and a share is stored with the
+         purchase it belongs to. Each path keeps its own session id
+         ("session_id:" + path), so a payment return on one page never evicts
+         another page's purchase that is paid and not yet delivered.
          src/lib/auth-fragment.ts reads them back; the keys are listed there,
          and src/test/r1-signin-stash.test.ts runs this script. */
       (function () {
@@ -30,7 +37,7 @@
             v = f.get("confirm"); if (P === "/data-api" && v !== null) { S.fragment = "#confirm=" + v; S.fragment_path = P; f["delete"]("confirm"); fs = 1; }
           }
           if (any(q, T) || any(q, ["error_code", "error_description"]) || (P === "/auth" && any(q, ["type", "error"]))) qh = cut(q, q2);
-          v = q.get("session_id"); if (v !== null) { S.session_id = v; S.session_id_path = P; q["delete"]("session_id"); qs = 1; }
+          v = q.get("session_id"); if (v !== null) { S.session_id = v; S.session_id_path = P; S["session_id:" + P] = v; q["delete"]("session_id"); qs = 1; }
           v = q.get("share"); if (P === "/success" && v !== null) { S.share = v; S.share_path = P; q["delete"]("share"); qs = 1; }
           if (!qh && !qs && !fh && !fs) return;
           try {
@@ -38,6 +45,11 @@
             try { o = JSON.parse(W.getItem(K)); } catch (e) { o = null; }
             o = o && typeof o === "object" ? o : {};
             if (qh || fh) for (k = 0; k < G.length; k++) delete o[G[k]];
+            if (P === "/success" && (S.session_id !== undefined || S.share !== undefined)) {
+              delete o.share; delete o.share_path; delete o.share_session;
+              if (S.session_id === undefined) { delete o["session_id:" + P]; if (o.session_id_path === P) { delete o.session_id; delete o.session_id_path; } }
+              if (S.share !== undefined) S.share_session = S.session_id !== undefined ? S.session_id : "";
+            }
             for (k in N) o[k] = N[k];
             for (k in S) o[k] = S[k];
             o._at = Date.now(); o._path = P;

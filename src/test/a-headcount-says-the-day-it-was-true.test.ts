@@ -15,12 +15,19 @@
  * self-check test boots two databases, and under a loaded full suite it
  * outran the 5 s default twice on 2026-10-25 while passing alone.
  */
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { codeOf } from "./helpers/strip-comments";
 import { datedHeadcount } from "@/lib/headcount";
+
+// A PGLITE TEST IS NOT A 5-SECOND TEST. Each case here queries a pglite
+// database (one headcount case starts two of its own), and on a loaded runner
+// a case ran 5.5 to 7.6 seconds, past vitest's default budget: it failed
+// GitHub CI on PR #40 twice and the pre-push suite once, with nothing wrong
+// (2026-10-25). This is the budget the other pglite files here use.
+vi.setConfig({ hookTimeout: 120_000, testTimeout: 30_000 });
 
 const ROOT = resolve(__dirname, "../..");
 const MIGRATIONS = resolve(ROOT, "supabase/migrations");
