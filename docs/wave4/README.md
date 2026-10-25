@@ -24,6 +24,128 @@ The job-board group's notes are in
 [job-board-deploy-notes.md](../job-board-deploy-notes.md) under `## 2026-09-09.93`.
 The other groups' notes are their commit messages; this file is the summary.
 
+## Descope 2026-10-25
+
+Four fix rounds went around three heuristics, and the final recheck of round 4
+(`~/.config/resumebooster/wave4-fix3-results-2026-10-25.json`, "final") still
+found two of them worse than origin/main on inputs no corpus held. The owner's
+policy is that a heuristic is never worse than main on any case, and that after
+repeated failed rechecks we stop patching spellings. So two rules left wave 4
+and one stayed with its claims made true. Branch `wave4-descope`, pushed to
+`wave4/integration`.
+
+**What left, and why.**
+
+- **The salary miner (S12-019).** The recheck found round 4's miner returning
+  null where main stores the stated pay for zone phrasing ("$210,000 -
+  $250,000 in high cost of labor markets", "in Tier 1 cost markets", "in
+  Investment Banking") and the v11 re-sweep able to overwrite a stored zone pay
+  with a benefit, an overtime rate or an award. `_shared/salary-extract.ts` is
+  byte-identical to origin/main's, `SALARY_PARSE_VERSION` stays at main's 10
+  (main's own line), so no v11 re-sweep ever runs, and backfill-salary
+  re-parses stored text exactly as main does: `minedSalaryRefused`, the re-mine
+  branch and its notes section are gone. S12-019's own Airbus row stays as main
+  serves it.
+- **The search's plural and hyphen folds (S12-017's title match).**
+  `titleExcluded` folded an excluded word to its plural, so "account" struck
+  "Accounts Payable Manager" and "contract" struck "Contracts Administrator",
+  which main never does. `titleExcluded` is origin/main's exact match again:
+  an excluded word or phrase strikes a title only where it stands exactly as
+  typed. `splitExclusions` keeps rounds 3 and 4 (one word unless a pinned
+  compound or a known or pinned place, both words of "not A or B", the typed
+  hyphen and a slash list kept).
+
+**S12-019 is now its own salary project.** Its method is a whole-population
+diff, not a corpus of chosen cases: re-parse every stored salary string the
+board serves with main and with the candidate, plus a sampled re-read of
+descriptions; hand-review every changed row; and allow zero value-to-NULL.
+What it inherits: the 941-case corpus (`src/test/fixtures/w4b-fix3-salary/corpus.json`,
+each case with the reading's answer and main's), kept as a benchmark test,
+`src/test/salary-benchmark-a-salary-change-is-measured-against-mains-answers.test.ts`,
+which runs the shipped extractor and pins main's answer on every case (844
+right by reading) and fails, naming that method, on any change that moves one;
+the round-4 self-break set at
+`~/.config/resumebooster/wave4-fix3-corpora/salary/round4/selfbreak/`; and the
+recheck's 60-case corpus and probes in `~/.config/resumebooster/wave4-fix3-recheck4/`.
+The round tests that pinned round behaviour are deleted (the first-money-range
+test and the fix1, fix2 and fix3 salary files), and sections 92 job-board,
+fixer2 and fixer3 read no salary.
+
+**The search after the descope.** On the 1,169-query corpus the shipped rule
+answers 1,122 right (origin/main 764) and is wrong on no case main gets right.
+The 47 it misses are each wrong on main too: the 8 gaps (the split) and 39
+residuals the corpus test now names, where the split is right and only the
+exact title match misses a title spelled another way: 33 hyphenated words
+("not part-time" strikes "Part-Time Barista" but not "Part Time Barista";
+main's "parttime" strikes neither, main's open defect, not a right answer) and
+6 plurals ("manager" keeps "Store Managers", as main does). The 75 self-break
+queries: 69 right, 6 residuals, none wrong where main is right. One
+title-level difference is not a corpus case and is said here so nobody reads
+it as a fix: a title that runs the hyphenated word together ("Parttime
+Barista") is struck by main's folded "parttime" and kept by the typed
+"part-time".
+
+**What stayed: the question rule, with every claim made true.** No rule
+change. It ships because it is strictly safer than main in the direction that
+matters: on the recheck's 24 fresh questions about the person, round 4 drafts
+17 and main's classifier 22, and the questions it gets wrong the other way
+are work questions sent to the person, the declared safe side. Every sentence
+a seeker, a crawler or an AI host reads about who answers a question now says
+what the marking does: a question that looks like it is about the person goes
+to the person, an open question about their work can be drafted from their
+CV, the marking reads words and can miss an unusually worded question about
+the person, and some work questions go to the person, so the person reads
+every answer before sending. Changed: in all nine locales the `/agents` apply
+lines (`agentConnect.selfApplyFree`, `applyStep3`), the answers panel
+(`applyAnswers.yoursBody`) and the `/agent` profile panel (`applyProfile.legalIntro`,
+`intro`, `demographics`); the applyAgent changelog entry in all nine; the
+retired products' refusal line in every language (`_shared/apply-agent-retired.ts`);
+`public/llms.txt`; the apply guide (and so llms-full.txt, which bakes the
+guides); the apply_myself tool and prompt cards in `src/config/mcp-tools.ts`
+(and so the `/agents` bake); agent-mcp's apply_myself description, its
+call-order resource and its apply_myself prompt (which now tells the AI to ask
+the person about any marked question that asks about them); the markdown
+packet's note under its drafting heading; the `/v1` application description
+and `answeredByMeans`; and the rules list on `/agents`, which now says rule 3
+as the server says it ("draft only the questions marked for drafting").
+Emails, generate-apply-package and generate-application-answers carry no
+such claim. The guard
+`src/test/the-copy-about-who-answers-a-question-promises-nothing-the-marking-cannot-keep.test.ts`
+reads every one of those surfaces (all locale, changelog and auth shards
+included) for the removed phrasings in each language, checks the
+read-every-answer line in each language, and is shown catching each removed
+sentence as it stood.
+
+**Builds.** agent-mcp and public-api `2026-10-11.34`; create-agent-checkout
+and create-pass-checkout `2026-10-11.15`; create-product-checkout
+`2026-10-11.24` (their only change is the refusal line). generate-application-answers,
+generate-apply-package and apply-agent stay `2026-10-11.33` (unchanged).
+job-board keeps its reserved `2026-09-09.93`, now with main's salary miner and
+main's title match.
+
+**Checks run.** Each through `~/.config/resumebooster/heavy.sh`: `npm run
+typecheck` exits 0; the worker's `tsc --noEmit` exits 0;
+`scripts/check-functions.sh` is clean (every edge function and the Deno
+tests; deno.lock restored). The upload-tally guard passes: job-board's upload,
+tallied the deploy's way (its folder plus all of _shared, comments included,
+plus the profiles round's two _shared files at 72,818 bytes), is 4,436,776
+bytes, 63,224 under the 4.5 MB line and 13,224 inside the agreed 50,000 of
+room, 8,098 bytes smaller than round 4's 4,444,874 (the salary module and the
+re-mine branch went back to main's). `deploy-ledger --against origin/main`
+finds 0 violations; `--against 9ca51755` (round 4) finds 6 functions moved and
+one violation, job-board `.93`, by reservation, as in every round; the other
+five carry the builds above. `deploy-ledger --draft` lists 25 migrations, 1
+held (20261011103000) and 69 functions to deploy, and exits 2 with MUST BUMP
+for auth-email-hook, auth-signed-in and process-email-queue, R1's functions,
+which this branch lacks until main is merged (as under "Deploy order").
+`--overlap HEAD origin/design/integration origin/r1/integration` finds no
+undeclared overlap; against r1/hotfix-s13, seo/integration and hp/integration
+it lists the same nine undeclared files round 4 did, and `git merge-tree`
+finds the same conflicted files against each of those branches and main
+before and after the descope (it adds none). The full suite runs in the
+push's pre-push hook; its count is in the PR #39 body. Main is not merged in
+this step.
+
 ## What a person can do after this deploy
 
 - **Connect** Claude or ChatGPT with no key and no account. Every read tool
@@ -38,12 +160,16 @@ The other groups' notes are their commit messages; this file is the summary.
 - **Apply themselves.** When the employer uses Greenhouse, Ashby, Recruitee,
   Breezy or Pinpoint (only Greenhouse and Recruitee inside ChatGPT, which
   `/agents` now says too), the AI reads the real application form. The
-  drafting rule is default-deny: the AI drafts only open questions about work
-  done and a short list of motivation questions, each a single ask. Every
-  factual question (authorisation, sponsorship, pay, start date, references,
-  gaps, terminations, a previous application), every demographic question,
-  every consent and every attestation goes to the person, even when it rides
-  inside a work-done or motivation question. We never submit anything.
+  marking rule is default-deny: a question is marked for the AI to draft only
+  when it reads as an open question about work done or one of a short list of
+  motivation questions, each a single ask; every other question, including a
+  fact riding inside a work-done or motivation question, is marked for the
+  person. It reads words, so it can still mark an unusually worded factual or
+  protected question for a draft (the final recheck saw 17 of 24 fresh ones;
+  main's classifier drafts 22), and it sends some ordinary work questions to
+  the person. Every page and AI-host text says so and tells the person to read
+  every answer before sending (see "Descope 2026-10-25"). We never submit
+  anything.
 - **Developers** get the same from `/v1`, fit scoring free at 25 a key a day
   across `fit_resume` and `/v1/fit` together on a confirmed key, and a
   "Builder API (planned)" card at $49 a month whose only action is an email
@@ -638,7 +764,8 @@ renewal box; deno.lock stays the base's) and account-compliance's final head
   the writing allowance's refusals), CP-G (the en-GB trader name), CP-J (the
   account functions take a website session only), D14.
 - **job-board**: S12-013, S12-014 (board, MCP and /v1 routing), S12-015,
-  S12-017, S12-018, S12-019, S12-020, S12-027, S12-028, S12-035, S12-036,
+  S12-017, S12-018, S12-020 (S12-019 left in the descope of 2026-10-25),
+  S12-027, S12-028, S12-035, S12-036,
   S12-037, S12-038, S12-083, S12-084, S12-122, S12-123, S12-124, S12-125 (no
   change needed, pinned), S12-126, S12-128, S12-172.
 - **agents-api**: S12-040, S12-041, S12-080, S12-081, S12-082, S12-085,
@@ -796,11 +923,13 @@ answers its build in `x-fn-build`). The ones round 2 changed:
   generate-career-path, and the five that bundle the widened classifier:
   agent-mcp, public-api, generate-application-answers,
   generate-apply-package, apply-agent (switched off). job-board stays
-  `2026-09-09.93` and carries the salary and negation fixes.
+  `2026-09-09.93` and carries the negation fixes (its salary rule left in the
+  descope of 2026-10-25).
 - **.2026-10-11.32** (fix round 3, below): the five that bundle round 3's
   question rule: agent-mcp, public-api, generate-application-answers,
   generate-apply-package, apply-agent (switched off). job-board stays
-  `2026-09-09.93` and carries round 3's salary and negation rules.
+  `2026-09-09.93` and carries round 3's negation rule (its salary rule left in
+  the descope of 2026-10-25).
 
 `--against origin/main` reports 0 violations. Against each w4b branch the only
 "same build string on different code" lines are job-board `.93` (shared by
@@ -840,8 +969,8 @@ the review `92-w4b-fixer.sh` (every `.30` build, a signed-out cover note
 refused 401, and three board behaviours), and for the fixes after the recheck
 `92-w4b-fixer2.sh` (six `.31` builds, career_path_past_buyers closed to the
 anon key, "warehouse not forklift Dallas" excluding only forklift), and for
-fix round 3 `92-w4b-fixer3.sh` (five `.32` builds, three negations only round
-3 answers all of, and the v11 salary re-sweep on four live postings). `verify-deploy.sh` runs
+fix round 3 `92-w4b-fixer3.sh` (five `.32` builds and three negations only round
+3 answers all of; its salary re-sweep lines left in the descope). `verify-deploy.sh` runs
 them with the rest, behind section 0's positive control and the tally that
 fails a section which prints no verdict. Expected FAILs while the seller is
 unnamed: section 92 account-compliance FAILs the three marketing senders on
@@ -963,8 +1092,9 @@ After the deploy:
   `career_path_past_buyers` with row level security on.
 - Optional proof: pause `scan-heartbeat-sentinel` for 30 minutes once and
   confirm the healthchecks.io check mails you.
-- Watch the INFO lines for the experience, salary and country re-derivations
-  (EXPERIENCE_VERSION 2, SALARY_PARSE_VERSION 11, COUNTRY_MAP_VERSION 10).
+- Watch the INFO lines for the experience and country re-derivations
+  (EXPERIENCE_VERSION 2, COUNTRY_MAP_VERSION 10). SALARY_PARSE_VERSION stays at
+  main's 10 after the descope, so no salary re-sweep runs.
 - Record the deploy with `--record-deploy` from main once verify passes;
   release `20261011103000` only when the ledger prints RELEASABLE.
 - Changelog entries in nine locales, each checked live, in the next frontend
@@ -1094,10 +1224,8 @@ Major:
   the cover-note mode answers 401 `sign_in_required` unless our own servers
   ask.
 - **A business word does not take the pay away** (_shared/salary-extract.ts):
-  a business figure counts only in the figure's own clause, next to it, a
-  nearer pay label wins, lines and block tags end a clause, and the generic
-  words (inventory, transactions, claims, loans, costs, volume, equity) are
-  gone, so the version 11 re-sweep NULLs no correct pay.
+  left in the descope of 2026-10-25. The salary miner is origin/main's and
+  S12-019 is its own salary project.
 - **A search never waits for the employer list** (job-board): the router
   routes on the live set this isolate built last or the table and rebuilds
   after the response; section 92 job-board asks cvs and UPS up to four times.
@@ -1171,24 +1299,8 @@ passes on the fix. Builds `.31` above; migrations 16 and 17 above; verifier
 Major:
 
 - **A pay label keeps the pay, whatever follows** (_shared/salary-extract.ts,
-  job-board .93): ending a clause at a colon had taken "Pay Range:" out of
-  the figure's clause, so the standard transparency line "Pay Range: $17.00 -
-  $19.00 per hour plus profit sharing" (and "... + deal commissions", "OTE:
-  ... on closed deals", the label on the line above) was refused, and the
-  version 11 re-sweep would have NULLed that stored pay. The rule now: a range
-  is a business figure only as that figure's own amount (the business word
-  right before it through amount words, "portfolio of", "projects worth",
-  "valued at"; or right after it, "$5M in deals"); profit sharing, deal
-  bonuses and commissions and a fleet vehicle are not business figures; a
-  pay label before the figure in its labelled clause makes it pay whatever
-  follows, NOT_PAY's words after it included; job titles ("Portfolio
-  Analyst", "Pipeline Welder") keep their pay. minedSalaryRefused reads
-  S12-019's rule only (not NOT_PAY, which the old miner applied more widely,
-  so a figure it refuses is a vendor's field), at every place the description
-  quotes the stored text. The test runs the recheck's seven lines, ten of
-  ours, four titles, 1,200 label/layout/tail/figure combinations, and
-  backfill-salary through the board handler, where only the business figure
-  is rewritten.
+  job-board .93): left in the descope of 2026-10-25. The salary miner is
+  origin/main's and S12-019 is its own salary project.
 - **A deleted account takes its Full Analysis** (20261011212000): the
   analysis lives in resume_analyses (it quotes the résumé; its share id
   reads it for 90 days) and purchased_content holds only `{shareId}`; the
@@ -1262,53 +1374,12 @@ inputs are in `~/.config/resumebooster/wave4-fix3-corpora/<area>/`. The
 committed fixtures are under `src/test/fixtures/w4b-fix3-*/`, anonymised, with
 no personal data.
 
-**Salary** (`_shared/salary-extract.ts`, job-board `.93`). The corpus has 556
-cases: 492 live postings read through the job-board detail action on
-2026-10-24 (19 vendors, 19 countries), every recheck input and 39 inputs from
-earlier rounds' tests. 468 of them have a stored salary, so they also test the
-version 11 re-sweep. Correct / wrong:
-
-| version | miner | re-sweep (468) | worse than main |
-|---|---|---|---|
-| origin/main | 522 / 34 | 449 / 19 | |
-| fa66a031 | 511 / 45 | 430 / 38, NULLs 30 stored pays | 58 |
-| 9af3c783 | 524 / 32 | 446 / 22, NULLs 11 stored pays | 24 |
-| round 3 | 542 / 14 | 468 / 0, NULLs no stored pay | 0 |
-
-All 24 cases where 9af3c783 was worse came from recheck 2: the "valued at",
-"worth" and "fleet averaging" pay lines it refused (and its re-sweep would
-NULL), plus two lines where it took a referral bonus or a hiring budget as pay.
-9af3c783 did not even fix S12-019's own Airbus row; round 3 does.
-
-The rule: the miner reads figures exactly as main does (same guards, same
-order), so where main's guards refuse a figure the answer stays null. It
-changes main's answer only when main's figure is a business figure: a
-business noun is that figure's own subject (in the clause just before it, or
-right after it through "in" or "of"; a noun heading a job title does not count,
-and a person or job noun in between makes the figure theirs), and no pay word
-stands in its sentence before it or right after it. A big business figure (an
-annual top of 200,000 or more) gives way to the next pay stated, or to null; a
-smaller one gives way only to a later figure labelled as pay, never to null.
-The re-sweep rewrites a stored salary only when it is exactly the figure
-main's miner takes and the miner now sets that figure aside, so a vendor's pay
-field, or pay main read correctly, is never touched. SALARY_PARSE_VERSION stays
-11: version 11 has never run live (main is at 10). Its note in job-board now
-describes this rule.
-
-Self-break: 75 new inputs written after the change. The first 50 found two
-inputs worse than main, fixed by the person-or-job-noun rule and by more pay
-words (rewards, total cash, pays, paying). After that fix those 50 score
-40 / 10, never worse than main (main 28 / 22, 9af3c783 39 / 11). The next 25
-score 20 / 5, never worse than main (main 9 / 16).
-
-Left: 14 corpus cases are still wrong, each giving exactly main's answer. 11
-are safe misses where a bonus, 401(k) or revenue word beside stated pay keeps
-main's null; 3 are a fertility allowance ("up to $10,000 per year") that every
-version reads as pay. A business noun used as a colon heading ("Book of
-business: $350,000 - $500,000") and business nouns outside the list still give
-main's answer. Found while labelling, outside this rule: the range grammar
-reads only the ceiling of "USD $X - USD $Y /Yr", "$60,000 -- $250,000" and
-"between $X and $Y", and a "$170-$190 per day" rate is annualised as hourly.
+**Salary** (`_shared/salary-extract.ts`, job-board `.93`): this round's rule
+did not ship. Round 4 replaced it and the descope of 2026-10-25 took both out:
+the miner is origin/main's again and S12-019 is its own salary project. The
+round's corpus and measurements are in
+`~/.config/resumebooster/wave4-fix3-corpora/salary/` and in
+`wave4-fix3-results-2026-10-25.json`.
 
 **Questions** (`_shared/application-questions.ts`, `self-apply.ts`, the
 worker's `questions/protected.ts`; the five `.32` builds). The corpus has
@@ -1400,16 +1471,11 @@ unchanged and needs its own fix.
 
 **What the integration added.** The five functions that bundle the question
 rule carry `.2026-10-11.32`. job-board keeps its reserved `2026-09-09.93`.
-The version 11 note in job-board describes round 3's salary rule.
 `scripts/verify-deploy.d/92-w4b-fixer3.sh` reads round 3 after it deploys:
 the five `.32` builds; once the wave 4 board code serves, "nurse not night
 shift, TX" excluding night shift, "nurse not travel er" excluding travel and
 "warehouse not forklift San Jose" excluding forklift (only round 3 answers all
-three); and the re-sweep on four live postings. The Airbus placement must lose
-its business figure, Bbinsurance must show its stated "$50.00 - $53.00
-Hourly", and two stated pays beside business words (Paylocity, KIPP) must keep
-theirs. An old figure the re-sweep has not reached yet, or a posting that is
-gone, is INFO. The question rule has no live probe: no read-only route
+three). Its salary re-sweep lines left in the descope. The question rule has no live probe: no read-only route
 classifies a label we choose, and the one real form found with a label that
 rounds 2 and 3 answer differently (Airtable) is not carried. Its test runs the
 section against a fake curl, and each regression reads FAIL.
@@ -1437,10 +1503,14 @@ in hints and a second ask on a new line, and its classifier refused motivation
 questions that named "full-time". This round put every recheck-3 input and
 the rechecker's own corpora into each rule's corpus, measured origin/main,
 fa66a031 (round 1), 9af3c783 (round 2) and 237bf2e8 (round 3) on it, and
-changed the rule until it is never wrong where main is right. The salary and
-search rules meet that bar; the question rule meets it for every question
-labelled the person's and misses it, on the safe side, for open work
-questions (below).
+changed the rule until it is never wrong where main is right. On their
+corpora the salary and search rules met that bar and the question rule met it
+for every question labelled the person's, missing it on the safe side for open
+work questions (below). The final recheck then found the salary miner and the
+search's plural fold worse than main on fresh inputs, and the question rule
+drafting 17 of 24 fresh questions about the person (main's classifier drafts
+22). The descope of 2026-10-25 took the salary rule and the plural and hyphen
+folds out; the question rule ships with its copy made true.
 
 One builder, w4b-fix (this branch), on the round-3 files. The corpora,
 measurements, tools and self-break inputs are in
@@ -1469,11 +1539,12 @@ compound (three-word ones now too: "door to door", "12 hour shifts", "long
 term care"), a known place, or a pinned region or city ("south florida", "new
 england", "west coast", "long island", "sioux falls", "baton rouge"). "not A
 or B" negates both ("or" or "nor"; a capitalised "OR" only in an all-capitals
-query, where it is the search operator; a comma or full stop ends the chain). A single excluded word strikes itself and its
-plural, never its singular; only a phrase's last word folds a plural. A hyphen
-inside an excluded word is an optional break ("not part-time" strikes
-Part-Time and Part Time), and a slash between words lists alternatives
-("travel/agency").
+query, where it is the search operator; a comma or full stop ends the chain). A hyphen
+inside an excluded word is kept, and a slash between words lists alternatives
+("travel/agency"). This round's title match also folded plurals and treated a
+hyphen as an optional break; the descope of 2026-10-25 took both out, and the
+title match is origin/main's exact one (figures below, under "Descope
+2026-10-25").
 
 Self-break: 50 queries written after the change, then 25 more. All 75 were
 right when written (origin/main 22, 237bf2e8 25). They are pinned in
@@ -1485,46 +1556,13 @@ nursing"), two phrases no list holds ("fast paced", "retail store"), "not
 Austin, TX" (a comma place after "not" is never taken whole), and "not with
 the agency".
 
-**Salary** (`_shared/salary-extract.ts`, job-board `.93`). 941 cases, each
-labelled by reading: round 3's 556 less 21 repeated texts, the rechecker's
-352 less 4, 54 inputs written for the recheck-3 findings and 4 fresh live
-postings (588 live in all). 817 have a stored salary and test the re-sweep.
-
-| version | miner correct | worse than main | re-sweep NULLs a stored pay |
-|---|---|---|---|
-| origin/main | 844 | | (no re-sweep) |
-| fa66a031 | 827 | 66 | 70 |
-| 9af3c783 | 855 | 31 | 24 |
-| 237bf2e8 | 801 | 101 | 98 |
-| round 4 | 902 | 0 | 0 |
-
-The rule: a figure main's guards accept is set aside only when a business
-noun owns it ("<noun> of / valued at / worth / in excess of $X", "deal size
-$X", "$X in/of <noun>", "$X portfolio"), no pay word stands in its sentence or
-right after it, and it reads as annual. A noun beside a figure owns nothing.
-A later figure takes its place only when it is base pay, labelled as pay or
-stated hourly.
-The v11 re-sweep rewrites a stored figure only to a pay stated after it, never
-to NULL (`minedSalaryRefused` now needs a mined answer), and still corrects 22
-business figures on the corpus. The v11 note in job-board says so.
-
-Self-break: 50 excerpts written after the change: 48 right (origin/main 34,
-237bf2e8 37), never worse than main, and the re-sweep NULLs and swaps no
-stored pay. The two misses give main's own answer: "Book of business of
-$500K-$1M; base salary of $120K-$150K" reads null, and "an average deal size of
-$50K - $100K and OTE of $200K - $250K" keeps the deal size, as main does.
-
-Left: 39 corpus cases, each answered exactly as main answers them: agency and
-contract figures, fleet values, allowances and international formats the
-miner still reads as main does, and a fertility allowance every version reads
-as pay. Eight business figures in the self-break set stay stored, as main
-leaves them, because the re-sweep never NULLs. That includes S12-019's own
-Airbus placement: the miner no longer takes "£350K to £800K annually in
-external business revenue", but the posting's own "Salary: £24,500" is a bare
-figure with no period, which main's guards refuse, so no stated pay is mined
-and the stored business figure stays in the pay sort. Round 3 cleared it by
-writing NULL, the move that also NULLed 98 real pays; making the miner read a
-labelled bare figure is a change to main's guards and needs its own corpus.
+**Salary** (`_shared/salary-extract.ts`, job-board `.93`): this round's rule
+did not ship. The final recheck found its miner returning null where main
+stores pay ("in high cost of labor markets", "in Investment Banking") and its
+v11 re-sweep able to overwrite a stored pay with a benefit, so the descope of
+2026-10-25 put the miner back to origin/main's. The 941-case corpus stays in
+the repo as a benchmark (see "Descope 2026-10-25"); the round's measurements
+and self-break set are in `~/.config/resumebooster/wave4-fix3-corpora/salary/round4/`.
 
 **Questions** (`_shared/application-questions.ts`, `self-apply.ts`, the
 worker's `questions/protected.ts`; the five functions build `.33`). 2,385
@@ -1580,9 +1618,8 @@ pinned in `self-break-round4.json`.
 `.2026-10-11.33`. job-board keeps its reserved `2026-09-09.93`.
 `scripts/verify-deploy.d/92-w4b-fixer3.sh` now reads round 4: the five `.33`
 builds; "nurse not south florida", "nurse not travel or agency" and "barista
-not part-time" beside round 3's three negations; and five stored salaries,
-where the Philips "$200,000 to $250,000 annually" pay must stay and a NULL is
-a FAIL. Its test still runs it against a fake curl and each regression reads
+not part-time" beside round 3's three negations. Its five stored-salary lines
+left in the descope. Its test still runs it against a fake curl and each regression reads
 FAIL. To fit the job-board upload, comment runs in abuse-guards.ts,
 chain-watchdog.ts, shadow.ts and stale-lane.ts moved into
 `docs/job-board-index-notes.md`, with the code unchanged.
