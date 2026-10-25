@@ -26,6 +26,10 @@
  * that it has not silently drifted from a state a human checked. That is worth
  * having and it is not worth more than it is.
  *
+ * Wave 4 fix 3 moved five rows from draftable to factual on purpose: each asks
+ * whether the person is bound by a non-compete or non-solicitation agreement,
+ * which no CV establishes (PERSON_FACT_NOUNS now counts in the classifier).
+ *
  * THE TAIL IS REAL. This is pattern matching over free text in at least six
  * languages; there will be phrasings it misses. Two things bound the damage: a
  * missed consent lands in `draftable`, where the grounding validator marks an

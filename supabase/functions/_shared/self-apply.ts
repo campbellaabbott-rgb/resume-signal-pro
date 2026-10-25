@@ -43,16 +43,17 @@
  * corpus by src/test/a-question-about-your-history-is-never-drafted-from-a-cv.
  */
 import {
+  ADDRESSES_PERSON,
   CLAUSE_BREAK,
-  FACTUAL,
+  MOTIVE_CLAUSE,
   OWN_STATUS,
-  PERSONAL_HISTORY,
-  PERSON_ASKS,
-  PERSON_FACT_NOUNS,
-  PROTECTED_FACTUAL,
+  PERSON_CIRCUMSTANCE,
+  WORK_CLAUSE,
+  WORK_PAST,
   asksAboutWorkDone,
   classifyQuestion,
   cleanQuestionLabel,
+  mentionsPersonFact,
   topicOf,
   type QuestionClass,
 } from "./application-questions.ts";
@@ -88,10 +89,10 @@ export type SelfApplyQuestion = SelfApplyInput & {
  * sentence that merely mentions the role later on is not one.
  */
 export const MOTIVATION =
-  /^\s*(?:please\s+)?(?:(?:tell|share\s+with)\s+us\s+)?(?:(?:in\s+(?:a\s+few|\d+)\s+(?:words|sentences)[,:]?\s+)?(?:why\s+(?:do\s+you\s+want|would\s+you\s+like|are\s+you\s+(?:interested|applying|excited)|have\s+you\s+applied|did\s+you\s+apply)\b|why\s+(?:this\s+(?:role|position|job|company|team|opportunity)|us|our\s+company)\b|what\s+(?:interests|excites|attracts|draws|motivates|appeals\s+to)\s+you\b|what\s+(?:makes|made)\s+you\s+(?:want\s+to\s+apply|interested|apply)\b)|(?:cover\s*-?\s*letter|motivation(?:al)?\s+(?:letter|statement)|letter\s+of\s+motivation)\b|(?:is\s+there\s+)?anything\s+else\s+(?:you['’]?d|you\s+would)\s+like\s+(?:us\s+)?to\s+know\b|additional\s+information\b)/i;
+  /^\s*(?:please\s+)?(?:(?:tell|share\s+with)\s+us\s+)?(?:(?:in\s+(?:a\s+few|one|two|three|\d+(?:\s*[-–]\s*\d+)?)\s+(?:words|sentences)[,:]?\s+)?(?:why\s+(?:do\s+you\s+want|would\s+you\s+like|are\s+you\s+(?:interested|applying|excited)|have\s+you\s+applied|did\s+you\s+apply)\b|why\s+(?:this\s+(?:role|position|job|company|team|opportunity)|us|our\s+company)\b|what\s+(?:interests|excites|attracts|draws|motivates|appeals\s+to)\s+you\b|what\s+(?:makes|made)\s+you\s+(?:want\s+to\s+apply|interested|apply)\b)|(?:cover\s*-?\s*letter|motivation(?:al)?\s+(?:letter|statement)|letter\s+of\s+motivation)\b|(?:is\s+there\s+)?anything\s+else\s+(?:you['’]?d|you\s+would)\s+like\s+(?:us\s+)?to\s+know\b|additional\s+information\b)/i;
 
 /** The opening a motivation question shares with a status question ("why are you ..."), removed before OWN_STATUS reads the rest. */
-const MOTIVATION_OPENING = /^\s*(?:please\s+)?(?:(?:tell|share\s+with)\s+us\s+)?why\s+are\s+you\s+(?:interested|applying|excited)\b/i;
+const MOTIVATION_OPENING = /^\s*(?:please\s+)?(?:(?:tell|share\s+with)\s+us\s+)?(?:in\s+(?:a\s+few|one|two|three|\d+(?:\s*[-–]\s*\d+)?)\s+(?:words|sentences)[,:]?\s+)?why\s+are\s+you\s+(?:interested|applying|excited)\b/i;
 
 const FREE_TEXT_TYPE = /^(?:input_text|textarea|text|string|longtext|long_text|short_text|shorttext|paragraph|free_?text|multi_?line(?:_text)?|text_?area|text_?field|essay|open|open_question|long_?answer|short_?answer)$/i;
 
@@ -112,10 +113,14 @@ const LEAVING = /\b(?:leav\w*|left)\b/i;
 /**
  * True when every sentence after the first is a plain instruction: not a
  * question, nothing the classifier keeps from a model, and no factual topic.
+ * Fix 3: no fact in any list's words, nothing about the person's
+ * circumstances, and nothing else addressed to them that is not about their
+ * work or their motivation ("Include your political affiliation.").
  */
 export function laterSentencesArePlain(label: string): boolean {
   return label.split(SENTENCES).slice(1).every((s) =>
-    !s.includes("?") && classifyQuestion(s, "textarea") === "draftable" && topicOf(s) === "other");
+    !s.includes("?") && classifyQuestion(s, "textarea") === "draftable" && topicOf(s) === "other" && !mentionsPersonFact(s) && !PERSON_CIRCUMSTANCE.test(s) &&
+    !(ADDRESSES_PERSON.test(s) && !WORK_CLAUSE.test(s) && !MOTIVE_CLAUSE.test(s)));
 }
 
 /**
@@ -126,29 +131,41 @@ export function laterSentencesArePlain(label: string): boolean {
  * only when its hint, every sentence of it, is a plain instruction or a
  * question about the work: nothing a factual list keeps from a model, no
  * factual topic, nothing about the person's own status, no word about leaving.
+ * Fix 3: the whole hint is read against every fact list at once
+ * (mentionsPersonFact), and a sentence offering a document ("Add a cover
+ * letter or anything else you'd like to share") is still plain.
  */
 export function hintIsPlain(hint: string | undefined): boolean {
   const h = cleanQuestionLabel(hint ?? "");
   if (!h) return true;
-  if (LEAVING.test(h) || PROTECTED_FACTUAL.test(h) || PERSONAL_HISTORY.test(h) || PERSON_ASKS.test(h) || PERSON_FACT_NOUNS.test(h)) return false;
-  return h.split(SENTENCES).every((s) =>
-    classifyQuestion(s, "textarea") === "draftable" && topicOf(s) === "other" && !OWN_STATUS.test(s));
+  if (LEAVING.test(h) || mentionsPersonFact(h) || PERSON_CIRCUMSTANCE.test(h)) return false;
+  return h.split(SENTENCES).every((s) => {
+    const cls = classifyQuestion(s, "textarea");
+    return (cls === "draftable" || cls === "file") && topicOf(s) === "other" && !OWN_STATUS.test(s);
+  });
 }
 
 /**
  * True when the label is one of the motivation questions and asks nothing of
  * the person's status, and no fact either: "Why do you want to work here, and
  * how soon you could start" carries a second, factual ask (review of wave 4
- * round 2), nor a later clause naming a topic (recheck).
+ * round 2), nor a later clause naming a topic (recheck). Fix 3: the whole
+ * label is read against every fact list at once, whatever joins its parts,
+ * and a later clause addressed to the person is theirs unless it is about
+ * their work or their motivation ("... and do you have kids?").
  */
 export function isMotivationQuestion(label: string): boolean {
   const opening = MOTIVATION.exec(label);
-  if (!opening || PROTECTED_FACTUAL.test(label) || PERSONAL_HISTORY.test(label) || LEAVING.test(label)) return false;
-  if (FACTUAL.test(label) || PERSON_ASKS.test(label) || PERSON_FACT_NOUNS.test(label)) return false;
+  if (!opening || LEAVING.test(label) || mentionsPersonFact(label)) return false;
   if (!laterSentencesArePlain(label)) return false;
   const [firstSentence] = label.slice(opening.index + opening[0].length).split(SENTENCES);
   const clauses = (firstSentence ?? "").split(CLAUSE_BREAK);
-  for (let i = 2; i < clauses.length; i += 2) if (topicOf(clauses[i]) !== "other") return false;
+  for (let i = 2; i < clauses.length; i += 2) {
+    const c = clauses[i];
+    if (topicOf(c) !== "other") return false;
+    if (PERSON_CIRCUMSTANCE.test(c) && !WORK_PAST.test(c) && !MOTIVE_CLAUSE.test(c)) return false;
+    if (ADDRESSES_PERSON.test(c) && !WORK_CLAUSE.test(c) && !MOTIVE_CLAUSE.test(c)) return false;
+  }
   return !OWN_STATUS.test(label.replace(MOTIVATION_OPENING, " "));
 }
 
