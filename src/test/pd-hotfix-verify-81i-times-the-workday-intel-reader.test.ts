@@ -17,10 +17,12 @@
  * object passed 81i, so a migration that answered quickly with no facts would
  * have verified. The three real tokens now also need a Workday source with
  * open roles and places or fields; the made-up token keeps the shape rule.
- * And 81j reads the baked crawler copy of the same three pages (the bake
- * drops facts silently past its 90-second deadline), with Domino's as the
- * positive control: on 2026-10-24 none of the three carried a fact line and
- * Domino's carried two.
+ * And 81j reads the baked crawler copy (the bake drops facts silently past
+ * its 90-second deadline). The recheck of 2026-10-25 found that reading three
+ * of the largest pages, which the bake reads first, PASSed a bake that cut
+ * its tail; 81j now samples 24 Workday pages from the live sitemap (its last
+ * 8 and 16 spread over the rest) and needs 90% of them to state a fact line.
+ * On 2026-10-25 none of the 283 did (the recorded fixture).
  */
 import { describe, expect, it } from "vitest";
 import { execFileSync } from "node:child_process";
@@ -152,61 +154,134 @@ describe("81i: get_company_intel answers Workday tokens within 3 seconds", () =>
   });
 });
 
-// ── 81j: the baked crawler copy of the same Workday pages ──────────────────
-const FACT_LINE = (what: "countries" | "fields") =>
-  `<h2>Where its open roles are</h2><p>The ${what} holding the most of its roles on this board: <a href="/jobs/company/x?country=US">United States</a>.</p>`;
-const page = (name: string, facts: string) =>
-  `<html><head><title>${name} jobs: 100 open roles from their own hiring system</title><link rel="canonical" href="https://resumebooster.work/jobs/company/x" /></head><body><h1>${name}</h1>${facts}</body></html>`;
-const HOME_SHELL = `<html><head><title>Resume Booster — 900,000+ Live Jobs Straight From Employers</title></head><body>home</body></html>`;
-type Baked = { token: string; control: boolean; status: number; body: string };
-const bakedOf = (token: string, status: number, body: string): Baked => ({ token, control: token === "dominos", status, body });
-const BAKED_BEFORE = {
-  at: "2026-10-24T23:30:00Z",
-  home: HOME_SHELL,
-  pages: [
-    bakedOf(REAL[0], 200, page("Caterpillar", "")), bakedOf(REAL[1], 200, page("NVIDIA", "")),
-    bakedOf(REAL[2], 200, page("Dollar Tree", "")), bakedOf("dominos", 200, page("Domino's", FACT_LINE("countries") + FACT_LINE("fields"))),
-  ],
-};
-const BAKED_AFTER = {
-  ...BAKED_BEFORE,
-  pages: [
-    bakedOf(REAL[0], 200, page("Caterpillar", FACT_LINE("countries") + FACT_LINE("fields"))), bakedOf(REAL[1], 200, page("NVIDIA", FACT_LINE("fields"))),
-    bakedOf(REAL[2], 200, page("Dollar Tree", FACT_LINE("countries"))), bakedOf("dominos", 200, page("Domino's", FACT_LINE("countries") + FACT_LINE("fields"))),
-  ],
-};
+// ── 81j: a sample of the sitemap's baked Workday pages ─────────────────────
+// The recheck of 2026-10-25: 81j read three of the largest Workday pages, which
+// the bake reads first, so a bake that ran past its 90-second intel deadline
+// and dropped the facts of every later page still PASSed. 81j now samples 24
+// Workday pages from the live sitemap (its last 8 and 16 spread over the
+// rest) and needs at least 90% of them to state a fact line.
+const PLACES = "The countries holding the most of its roles on this board:";
+const FIELDS = "The fields holding the most of its roles on this board:";
+const SITE = "https://resumebooster.work";
+const LIVE_81J = JSON.parse(readFileSync(resolve(ROOT, "src/test/fixtures/verify-81j-live-2026-10-25.json"), "utf8"));
+const factLine = (marker: string) => `<p>${marker} <a href="/jobs/company/x?country=US">United States</a>.</p>`;
+const baked = (token: string, facts: string) =>
+  `<html><head><title>${token} jobs: 100 open roles from their own hiring system</title><link rel="canonical" href="${SITE}/jobs/company/${token}" /></head><body>${facts}</body></html>`;
+const HOME_SHELL = `<html><head><title>Resume Booster: Live Jobs Straight From Employers</title><link rel="canonical" href="${SITE}/" /></head><body>home</body></html>`;
+type BakedPage = { token: string; url: string; pos: number; status: number; body: string };
+/** A probe file of `n` sampled pages out of `of` Workday pages; `bare(i)` says which sampled pages lack facts. */
+const bakedFile = (n: number, bare: (i: number) => boolean, of = 283, o: Record<string, unknown> = {}) => ({
+  at: "2026-10-25T02:00:00Z", site: SITE, sitemapStatus: 200, companyPages: 485, workdayPages: of, home: HOME_SHELL,
+  pages: Array.from({ length: n }, (_, i): BakedPage => {
+    const token = `t${i}~wd5~Careers`;
+    return { token, url: `${SITE}/jobs/company/${token}`, pos: Math.round((i * (of - 1)) / Math.max(1, n - 1)), status: 200, body: baked(token, bare(i) ? "" : factLine(PLACES) + factLine(FIELDS)) };
+  }),
+  control: { token: "dominos", status: 200, body: baked("dominos", factLine(PLACES)) },
+  ...o,
+});
 const runBaked = (f: object | null) => run(f, bakedJudge, "vd_81_baked.json");
 
-describe("81j: the baked Workday company pages state their places or fields", () => {
-  it("both blocks were found, and the probe is read-only GETs with the crawler's UA", () => {
-    expect(bakedProbe.length).toBeGreaterThan(300);
+/** Runs 81j's probe block against a fake web: `pages` maps a URL to its body (missing: 404). */
+function runBakedProbe(sitemap: string, pages: Record<string, string>): { lines: string[]; file: { pages: BakedPage[]; workdayPages: number } } {
+  const dir = mkdtempSync(join(tmpdir(), "vd-81j-"));
+  const fake = `globalThis.fetch = async (u) => { const W = ${JSON.stringify({ [`${SITE}/sitemap.xml`]: sitemap, ...pages })}; const b = W[String(u)]; return { status: b === undefined ? 404 : 200, text: async () => b ?? "" }; };\n`;
+  const code = fake + bakedProbe.split("/tmp/vd_81_").join(join(dir, "vd_81_"));
+  const lines = execFileSync(process.execPath, ["-e", code], { encoding: "utf8", env: { ...process.env, SITE, UA: "Googlebot" } }).split("\n").filter(Boolean);
+  return { lines, file: JSON.parse(readFileSync(join(dir, "vd_81_baked.json"), "utf8")) };
+}
+const sitemapOf = (tokens: string[]) => `<?xml version="1.0"?><urlset>${["/", "/pricing", ...tokens.map((t) => `/jobs/company/${t}`)].map((p) => `<url><loc>${SITE}${p}</loc></url>`).join("")}</urlset>`;
+
+describe("81j: at least 90% of a sitemap sample of baked Workday company pages state a fact line", () => {
+  it("both blocks were found; the probe is read-only GETs with the crawler's UA and reads the live sitemap", () => {
+    expect(bakedProbe.length).toBeGreaterThan(500);
     expect(bakedProbe).not.toMatch(/method\s*:/);
     expect(bakedProbe).toMatch(/"User-Agent": UA/);
-    for (const t of [...REAL, "dominos"]) expect(bakedProbe, t).toContain(`"${t}"`);
-    expect(bakedProbe).toMatch(/\/jobs\/company\/\$\{encodeURIComponent\(token\)\}/);
+    expect(bakedProbe).toContain("/sitemap.xml");
+    expect(bakedProbe).toMatch(/~wd\\d\+~/);
+    expect(bakedJudge.length).toBeGreaterThan(500);
   });
 
-  it("FAILs on what production served on 2026-10-24 (no Workday page carries a fact line; Domino's carries two)", () => {
-    const lines = runBaked(BAKED_BEFORE);
-    expect(lines.filter((l) => l.startsWith("PASS") && REAL.some((r) => l.includes(r))), show(lines)).toEqual([]);
-    for (const t of REAL) expect(lines.some((l) => l.startsWith(`FAIL  81j ${t}: the baked page states neither where its roles are nor in which fields`)), show(lines)).toBe(true);
-    expect(lines.some((l) => /^PASS {2}81j dominos \(positive control\): the baked page states 2 fact line/.test(l)), show(lines)).toBe(true);
+  it("names the fact lines exactly as the bake writes them (scripts/prerender-pages.mjs)", () => {
+    const bake = readFileSync(resolve(ROOT, "scripts/prerender-pages.mjs"), "utf8");
+    for (const marker of [PLACES, FIELDS]) {
+      expect(bake, marker).toContain(`<p>${marker} `);
+      expect(bakedJudge, marker).toContain(`"${marker}"`);
+    }
   });
 
-  it("PASSes when each Workday page states places or fields", () => {
-    const lines = runBaked(BAKED_AFTER);
-    expect(lines.filter((l) => !l.startsWith("PASS")), show(lines)).toEqual([]);
-    expect(lines).toContain("PASS  81j cat~wd5~caterpillarcareers: the baked page states where its roles are and in which fields (2 fact lines)");
-    expect(lines.length).toBe(4);
+  it("the sample is the sitemap's last 8 Workday pages and 16 spread over the rest, in sitemap order, the same every run", () => {
+    const wd = Array.from({ length: 283 }, (_, i) => `w${i}~wd${(i % 5) + 1}~Site`);
+    const others = ["dominos", "eexs~us2~CX_3001", "careers.ulta.com/"];
+    const sm = sitemapOf([...others.slice(0, 2), ...wd.slice(0, 100), others[2], ...wd.slice(100)]);
+    const a = runBakedProbe(sm, {});
+    const b = runBakedProbe(sm, {});
+    const pos = a.file.pages.map((p) => p.pos);
+    expect(a.file.workdayPages).toBe(283);
+    expect(pos.length).toBe(24);
+    expect(pos.slice(-8), "the tail a deadline cuts first").toEqual([275, 276, 277, 278, 279, 280, 281, 282]);
+    expect(pos[0], "the largest Workday page").toBe(0);
+    expect(new Set(pos).size).toBe(24);
+    expect(pos).toEqual([...pos].sort((x, y) => x - y));
+    expect(a.file.pages.map((p) => p.token)).toEqual(b.file.pages.map((p) => p.token));
+    expect(a.file.pages.every((p) => /~wd\d+~/.test(p.token)), "only Workday pages are sampled").toBe(true);
+    const few = runBakedProbe(sitemapOf(wd.slice(0, 12)), {});
+    expect(few.file.pages.map((p) => p.pos), "fewer than 24: every Workday page").toEqual(Array.from({ length: 12 }, (_, i) => i));
   });
 
-  it("a page served as the homepage shell, an error, or no probe at all FAILs; a control without facts says the bake wrote none anywhere", () => {
-    const shell = runBaked({ ...BAKED_AFTER, pages: [bakedOf(REAL[2], 200, HOME_SHELL)] });
-    expect(shell[0], show(shell)).toMatch(/^FAIL {2}81j dollartree~wd5~dollartreeus: served the homepage shell to a crawler/);
-    const err = runBaked({ ...BAKED_AFTER, pages: [bakedOf(REAL[0], 503, "")] });
-    expect(err[0], show(err)).toMatch(/^FAIL {2}81j cat~wd5~caterpillarcareers: HTTP 503/);
+  it("FAILs on what production served on 2026-10-25 (0 of 24; none of the 283 Workday pages states a fact line)", () => {
+    expect(LIVE_81J.pages.length).toBe(24);
+    const lines = runBaked(LIVE_81J);
+    expect(lines[0], show(lines)).toMatch(/^FAIL {2}81j 0 of 24 sampled Workday company pages \(sitemap positions 1 to 283 of 283; the last 8: 0\) state a fact line/);
+    expect(lines.filter((l) => l.startsWith("PASS")), show(lines)).toEqual([]);
+    expect(lines.some((l) => l.startsWith("INFO  81j control dominos (SmartRecruiters): HTTP 200, 2 fact line(s)")), show(lines)).toBe(true);
+  });
+
+  it("PASSes on a bake that wrote every sampled page's facts, and at 22 of 24 (91.7%)", () => {
+    const all = runBaked(bakedFile(24, () => false));
+    expect(all[0], show(all)).toMatch(/^PASS {2}81j 24 of 24 sampled Workday company pages .* 100%, at least 90%/);
+    expect(all.filter((l) => l.startsWith("FAIL")), show(all)).toEqual([]);
+    const two = runBaked(bakedFile(24, (i) => i === 3 || i === 9));
+    expect(two[0], show(two)).toMatch(/^PASS {2}81j 22 of 24 .*: 91\.7%, at least 90%/);
+  });
+
+  it("FAILs at 21 of 24 (87.5%), and on the recheck's tail cut: the spread pages carry facts, the last 8 do not", () => {
+    const three = runBaked(bakedFile(24, (i) => i < 3));
+    expect(three[0], show(three)).toMatch(/^FAIL {2}81j 21 of 24 .*: 87\.5%, want at least 90%/);
+    const cut = runBaked(bakedFile(24, (i) => i >= 16));
+    expect(cut[0], show(cut)).toMatch(/^FAIL {2}81j 16 of 24 .*the last 8: 0\) state a fact line/);
+    // The pages the old 81j read (three of the largest) carry facts in this bake, so it PASSed.
+    const largest = bakedFile(24, (i) => i >= 16).pages.slice(0, 3);
+    expect(largest.every((p) => p.body.includes(PLACES)), "the head of the bake order kept its facts").toBe(true);
+  });
+
+  it("a homepage shell (by title or by a canonical that is not the page's own), an HTTP error, or neither line counts against the share", () => {
+    const shellByTitle = bakedFile(24, () => false);
+    shellByTitle.pages[0].body = HOME_SHELL;
+    shellByTitle.pages[1].body = baked("other", factLine(PLACES)).replace(`${SITE}/jobs/company/other`, `${SITE}/`);
+    shellByTitle.pages[2].status = 503;
+    const lines = runBaked(shellByTitle);
+    expect(lines[0], show(lines)).toMatch(/^FAIL {2}81j 21 of 24 /);
+    expect(lines.some((l) => /^INFO {2}81j t0~wd5~Careers .*: the homepage shell/.test(l)), show(lines)).toBe(true);
+    expect(lines.some((l) => /^INFO {2}81j t1~wd5~Careers .*: the homepage shell .*canonical "https:\/\/resumebooster\.work\/"/.test(l)), show(lines)).toBe(true);
+    expect(lines.some((l) => /^INFO {2}81j t2~wd5~Careers .*: HTTP 503/.test(l)), show(lines)).toBe(true);
+  });
+
+  it("an empty sample, too few Workday pages, an unreadable sitemap or no probe file FAILs outright", () => {
+    expect(runBaked(bakedFile(0, () => false, 0))[0]).toMatch(/^FAIL {2}81j the live sitemap lists 0 Workday company page\(s\) among 485 company pages: the sample is empty/);
+    expect(runBaked(bakedFile(12, () => false, 12))[0]).toMatch(/^FAIL {2}81j the live sitemap lists only 12 Workday company page\(s\), fewer than the 20/);
+    expect(runBaked(bakedFile(24, () => false, 283, { sitemapStatus: 503 }))).toEqual(["FAIL  81j the live sitemap answered HTTP 503: no Workday company page to sample"]);
     expect(runBaked(null)).toEqual(["FAIL  81j the baked Workday company pages: not probed"]);
-    const noControl = runBaked({ ...BAKED_BEFORE, pages: [bakedOf("dominos", 200, page("Domino's", ""))] });
-    expect(noControl[0], show(noControl)).toMatch(/^FAIL {2}81j dominos \(positive control\): the baked page states no fact line either: this bake wrote no places or fields on any page/);
+  });
+
+  it("the probe fed the live sitemap's shape with every page baked writes a file the judge PASSes; with the homepage everywhere it FAILs", () => {
+    const wd = Array.from({ length: 40 }, (_, i) => `w${i}~wd1~Site`);
+    const sm = sitemapOf(["dominos", ...wd]);
+    const good = Object.fromEntries(wd.map((t) => [`${SITE}/jobs/company/${t}`, baked(t, factLine(FIELDS))]));
+    const g = runBakedProbe(sm, { ...good, [`${SITE}/`]: HOME_SHELL, [`${SITE}/jobs/company/dominos`]: baked("dominos", factLine(PLACES)) });
+    expect(g.file.pages.length).toBe(24);
+    expect(runBaked(g.file)[0]).toMatch(/^PASS {2}81j 24 of 24 /);
+    const shells = Object.fromEntries(wd.map((t) => [`${SITE}/jobs/company/${t}`, HOME_SHELL]));
+    const s = runBakedProbe(sm, { ...shells, [`${SITE}/`]: HOME_SHELL });
+    expect(runBaked(s.file)[0]).toMatch(/^FAIL {2}81j 0 of 24 /);
   });
 });

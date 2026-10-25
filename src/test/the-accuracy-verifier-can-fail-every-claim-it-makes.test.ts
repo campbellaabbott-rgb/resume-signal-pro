@@ -22,6 +22,14 @@
  * profiles+design hotfix review, 2026-10-24: the loop built the zero page's
  * input without the read bucket, so 81c printed "not read" for BASS ABA while
  * the page printed the full-read sentence, and nothing could fail on it).
+ *
+ * The recheck of 2026-10-25 and its corpus: every sentence about what a read
+ * of the board found was false somewhere, so the zero page now says only its
+ * own line where the board and the page disagree. 81c FAILs a served bundle
+ * that still asks for the refuted sentences or lacks the line, and a model
+ * that gives any reading on BASS ABA, Delaney at the Green (an Oracle
+ * sub-site a sibling site serves) or Akumin's ADG site (a Workday site whose
+ * read in state empty stated 5 while its feed dated 2 roles this month).
  */
 import { describe, expect, it } from "vitest";
 import { execFileSync } from "node:child_process";
@@ -84,15 +92,17 @@ const NEW_BUNDLE = [
   `companyNotHiring:"We show roles dated in the last 30 days, and the {{company}} job board has none right now."`,
   `verdictSlowFill:"we never see half its roles come down and stay down inside {{d}} days"`,
   `t("jobsPage.hhGate.lap",x.lap)`, `t("jobsPage.hhGate.unprovenRead",x.u)`, `t("jobsPage.hhGate.otherSites",x.o)`,
-  `t("companyProfile.zero.older",{count:n})`,
-  `t("companyProfile.zero.fullRead",{days:30})`,
+  `t("companyProfile.zero.answer","No roles are listed on this page right now.")`,
   // The Jobs chunk's lander input, as the production build minifies it (esbuild on src/pages/Jobs.tsx).
   `boardTotal:to===null?void 0:H?{total:H.feed_total,readAt:H.feed_read_at,state:H.feed_state,capped:H.feed_capped,bucket:H.observability_bucket,trackingDays:H.tracking_days}:null`,
 ].join(";");
-/** What the 2026-10-18 publish serves: the zero copy before the hotfix (no full-read key, no bucket in the Jobs chunk's input). */
+/** What the 2026-10-18 publish serves: the zero copy before the hotfix (the older-roles sentence, the list's line, no bucket in the Jobs chunk's input). */
 const PD_BUNDLE = NEW_BUNDLE
-  .replace(`t("companyProfile.zero.fullRead",{days:30})`, "")
+  .replace(`t("companyProfile.zero.answer","No roles are listed on this page right now.")`, `t("companyProfile.zero.older",{count:n});t("companyProfile.zero.answer","No roles dated in the last {{days}} days")`)
   .replace(",bucket:H.observability_bucket,trackingDays:H.tracking_days", "");
+/** What 2e3bc5a1 would have served: both refuted sentences, the bucket, and the list's old line. */
+const HEAD_BUNDLE = NEW_BUNDLE
+  .replace(`t("companyProfile.zero.answer","No roles are listed on this page right now.")`, `t("companyProfile.zero.older",{count:n});t("companyProfile.zero.fullRead",{days:30});t("companyProfile.zero.answer","No roles dated in the last {{days}} days")`);
 
 const beforeRows = BEFORE_READ.curves.body;
 const hoursAgo = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString();
@@ -105,7 +115,13 @@ const afterRows: Row[] = beforeRows.map((r) => {
   if (r.company_token === "bassabatherapy") return { ...base, observability_bucket: "full_read", tracking_days: 89 };
   if (r.company_token === "stripe") return { ...base, feed_total: 727, feed_read_at: hoursAgo(1), feed_state: "ok", feed_capped: false };
   return base;
-});
+}).concat([
+  // The two disagreeing shapes as the curve answered them on 2026-10-25 (src/test/fixtures/zero-page-corpus-2026-10-25.json).
+  { ...beforeRows[0], company_token: "eexs~us2~CX_19005", open_roles: 0, observability_bucket: "full_read", tracking_days: 49, multi_site_title_share: null, multi_site_n: 0, feed_total: 3, feed_read_at: hoursAgo(2), feed_state: "ok", feed_capped: false, undated_open: 0 },
+  { ...beforeRows[0], company_token: "akumincorp~wd5~adgcareers", open_roles: 0, observability_bucket: "full_read", tracking_days: 90, multi_site_title_share: null, multi_site_n: 0, feed_total: 5, feed_read_at: hoursAgo(1), feed_state: "empty", feed_capped: false, undated_open: 0 },
+]);
+/** The read-only list for each zero board after the deploy: nothing listed. */
+const EXT_AFTER = { ...(BEFORE_READ.ext as object), zeroLists: { "eexs~us2~CX_19005": { status: 200, total: 0 }, "akumincorp~wd5~adgcareers": { status: 200, total: 0 } } };
 
 const files = (rows: Row[], bundle: string, over: Record<string, unknown> = {}): Record<string, string> => {
   const d = derived(rows);
@@ -146,7 +162,7 @@ describe("before the deploy (production, 2026-10-12): every Track 1 and lock cla
   });
   it("81c-81e: the zero sentence, BASS ABA, Stripe, the old bound and Centria's escaped share", () => {
     expect(line(lines, "FAIL", /81c the served copy still says an employer has no open roles/), show(lines)).toBe(true);
-    expect(line(lines, "FAIL", /81c the served chunks lack companyProfile\.zero\.older/), show(lines)).toBe(true);
+    expect(line(lines, "FAIL", /81c the served copy lacks the zero page's own line/), show(lines)).toBe(true);
     expect(line(lines, "FAIL", /81c BASS ABA: the reply carries no feed_total/), show(lines)).toBe(true);
     expect(line(lines, "FAIL", /81c Stripe: the reply carries no feed_total/), show(lines)).toBe(true);
     expect(line(lines, "FAIL", /81d Databricks: the served copy is the old bound/), show(lines)).toBe(true);
@@ -165,7 +181,7 @@ describe("before the deploy (production, 2026-10-12): every Track 1 and lock cla
 });
 
 describe("after the deploy: every claim passes", () => {
-  const lines = run(files(afterRows, NEW_BUNDLE, { lock: LOCKED, similar: SIMILAR_AFTER }));
+  const lines = run(files(afterRows, NEW_BUNDLE, { lock: LOCKED, similar: SIMILAR_AFTER, ext: EXT_AFTER }));
   it("no line fails", () => {
     expect(lines.filter((l) => l.startsWith("FAIL")), show(lines)).toEqual([]);
   });
@@ -176,8 +192,11 @@ describe("after the deploy: every claim passes", () => {
     expect(line(lines, "PASS", /81b Centria Autism: no 90-day counts/), show(lines)).toBe(true);
     expect(line(lines, "PASS", /81b BAYADA: no 90-day counts/), show(lines)).toBe(true);
     expect(line(lines, "PASS", /81c the served copy names the 30-day window/), show(lines)).toBe(true);
-    expect(line(lines, "PASS", /81c BASS ABA: nothing served in the window and its newest read was complete \(bucket full_read, 89 tracking days, no stated total\): the page says that as of our latest full read no role is dated in the last 30 days/), show(lines)).toBe(true);
-    expect(line(lines, "PASS", /81c the served chunks carry the full-read zero sentence \(companyProfile\.zero\.fullRead\)/), show(lines)).toBe(true);
+    expect(line(lines, "PASS", /81c BASS ABA \(a Greenhouse board read whole in one visit, so no total is stated\): nothing listed \(bucket full_read, 89 tracking days, no stated total\): the page says only "No roles are listed on this page right now\."/), show(lines)).toBe(true);
+    expect(line(lines, "PASS", /81c Delaney at the Green \(an Oracle sub-site whose requisitions a sibling site serves\): nothing listed \(bucket full_read, 49 tracking days, feed_total 3 \(ok, read /), show(lines)).toBe(true);
+    expect(line(lines, "PASS", /81c Akumin ADG \(.*\): nothing listed \(bucket full_read, 90 tracking days, feed_total 5 \(empty, read /), show(lines)).toBe(true);
+    expect(line(lines, "PASS", /81c the served copy carries the zero page's own line/), show(lines)).toBe(true);
+    expect(line(lines, "PASS", /81c the served chunks ask for neither zero sentence the corpus refuted/), show(lines)).toBe(true);
     expect(line(lines, "PASS", /81c the served Jobs chunk hands the zero page the curve's read bucket and tracking days/), show(lines)).toBe(true);
     expect(line(lines, "PASS", /81c Stripe: board total 727 .* within 10% of its Greenhouse feed \(722\)/), show(lines)).toBe(true);
     expect(line(lines, "PASS", /81d Databricks: no "never half"/), show(lines)).toBe(true);
@@ -187,9 +206,22 @@ describe("after the deploy: every claim passes", () => {
   });
 });
 
-describe("81c judges the zero page as the page builds it (profiles+design hotfix, 2026-10-24)", () => {
-  const bassLine = (lines: string[]) => lines.find((l) => /81c BASS ABA/.test(l)) ?? "";
-  const LOCKED_AFTER = { lock: LOCKED, similar: SIMILAR_AFTER };
+describe("81c judges the zero page as the page builds it (hotfix 2026-10-24; corpus 2026-10-25)", () => {
+  const lineOf = (lines: string[], label: string) => lines.find((l) => new RegExp(`81c ${label}`).test(l)) ?? "";
+  const AFTER = { lock: LOCKED, similar: SIMILAR_AFTER, ext: EXT_AFTER };
+  /** The judge's model file for these rows, as a given zeroReadingOf builds it. */
+  const modelBy = (rows: Row[], reading: (bt: Record<string, unknown>) => string | null) => JSON.stringify(Object.fromEntries(rows.map((r) => {
+    const bt = { total: r.feed_total, readAt: r.feed_read_at, state: r.feed_state, capped: r.feed_capped, bucket: r.observability_bucket, trackingDays: r.tracking_days };
+    return [r.company_token, { feedColumns: true, boardTotal: boardTotalFact(bt as never), zeroReading: reading(bt) }];
+  })));
+  // 2e3bc5a1's zeroReadingOf, as it was (a fresh total in state empty is older; full_read with no fresh total is fullRead).
+  const headReading = (bt: Record<string, unknown>): string | null => {
+    const fact = boardTotalFact(bt as never);
+    if (fact) return bt.state === "empty" ? (fact.total > 0 ? "older" : "empty") : null;
+    if (bt.bucket === "full_read") return "fullRead";
+    if (bt.bucket === "lap_pending" || bt.bucket === "unprovable") return "unread";
+    return bt.bucket === null && Number(bt.trackingDays) >= 1 ? "unread" : null;
+  };
 
   it("the section's model input is the page's own mapping from the curve row (src/pages/Jobs.tsx)", () => {
     const jobs = readFileSync(resolve(ROOT, "src/pages/Jobs.tsx"), "utf8");
@@ -202,36 +234,45 @@ describe("81c judges the zero page as the page builds it (profiles+design hotfix
     for (const r of afterRows) expect(oursOf(r), r.company_token).toEqual(pageOf(r));
   });
 
-  it("the 2026-10-18 publish (no full-read key, no bucket in the Jobs chunk) FAILs both bundle lines", () => {
-    const lines = run(files(afterRows, PD_BUNDLE, LOCKED_AFTER));
-    expect(line(lines, "FAIL", /81c the served chunks lack companyProfile\.zero\.fullRead/), show(lines)).toBe(true);
+  it("the 2026-10-18 publish (the older-roles sentence, the list's line, no bucket in the Jobs chunk) FAILs all three bundle lines", () => {
+    const lines = run(files(afterRows, PD_BUNDLE, AFTER));
+    expect(line(lines, "FAIL", /81c the served copy lacks the zero page's own line/), show(lines)).toBe(true);
+    expect(line(lines, "FAIL", /81c the served chunks still ask for companyProfile\.zero\.older:/), show(lines)).toBe(true);
     expect(line(lines, "FAIL", /81c the served Jobs chunk does not hand the zero page the curve's observability_bucket and tracking_days/), show(lines)).toBe(true);
   });
 
-  it("a model fed without the bucket (the loop before the hotfix) reads BASS ABA as not read, and 81c FAILs", () => {
-    const dropped = TSX.replace(", bucket: r.observability_bucket, trackingDays: r.tracking_days", "");
-    expect(dropped, "the teeth mutation did not apply: RE-ANCHOR it").not.toBe(TSX);
-    const d = derived(afterRows, dropped);
-    const lines = run({ ...files(afterRows, NEW_BUNDLE, LOCKED_AFTER), "vd_81_model.json": d.model });
-    expect(bassLine(lines), show(lines)).toMatch(/^FAIL {2}81c BASS ABA: this checkout's lander model says we have not read a board whose newest read was complete \(bucket full_read, 89 tracking days, no stated total\)/);
+  it("2e3bc5a1's bundle FAILs on both refuted sentences, and its model FAILs BASS ABA and Akumin ADG (Delaney's fresh total read null there)", () => {
+    const lines = run(files(afterRows, HEAD_BUNDLE, AFTER));
+    expect(line(lines, "FAIL", /81c the served chunks still ask for companyProfile\.zero\.older and companyProfile\.zero\.fullRead/), show(lines)).toBe(true);
+    const withHead = run({ ...files(afterRows, NEW_BUNDLE, AFTER), "vd_81_model.json": modelBy(afterRows, headReading) });
+    expect(lineOf(withHead, "BASS ABA"), show(withHead)).toMatch(/^FAIL {2}81c BASS ABA .*gives the zero reading "fullRead"/);
+    expect(lineOf(withHead, "Akumin ADG"), show(withHead)).toMatch(/^FAIL {2}81c Akumin ADG .*gives the zero reading "older" \(bucket full_read, 90 tracking days, feed_total 5 \(empty/);
+    expect(lineOf(withHead, "Delaney at the Green"), show(withHead)).toMatch(/^PASS/);
+    // The recheck's case: Delaney's total 49 hours old, read by 2e3bc5a1's rule, is the full-read sentence.
+    const stale = afterRows.map((r) => (r.company_token === "eexs~us2~CX_19005" ? { ...r, feed_read_at: hoursAgo(49) } : r));
+    const staleHead = run({ ...files(stale, NEW_BUNDLE, AFTER), "vd_81_model.json": modelBy(stale, headReading) });
+    expect(lineOf(staleHead, "Delaney at the Green"), show(staleHead)).toMatch(/^FAIL {2}81c Delaney at the Green .*gives the zero reading "fullRead"/);
+    const staleFix = run(files(stale, NEW_BUNDLE, AFTER));
+    expect(lineOf(staleFix, "Delaney at the Green"), show(staleFix)).toMatch(/^PASS/);
   });
 
-  it("a read that kept nothing in our window and stated 31 still PASSes as older roles listed", () => {
-    const rows = afterRows.map((r) => (r.company_token === "bassabatherapy" ? { ...r, feed_total: 31, feed_read_at: hoursAgo(2), feed_state: "empty", feed_capped: false } : r));
-    const lines = run(files(rows, NEW_BUNDLE, LOCKED_AFTER));
-    expect(bassLine(lines), show(lines)).toMatch(/^PASS {2}81c BASS ABA: nothing served in the window and its board listed 31 roles .* on a read that kept none in the window/);
+  it("a board the list now serves is INFO, not judged", () => {
+    const lines = run(files(afterRows, NEW_BUNDLE, { ...AFTER, ext: { ...EXT_AFTER, zeroLists: { "eexs~us2~CX_19005": { status: 200, total: 3 } } } }));
+    expect(lineOf(lines, "Delaney at the Green"), show(lines)).toMatch(/^INFO {2}81c Delaney at the Green: the board serves 3 role\(s\) on this read; not a zero page now/);
   });
 
-  it("a fresh total from a read that kept roles in our window says only the list's line, as INFO", () => {
-    const rows = afterRows.map((r) => (r.company_token === "bassabatherapy" ? { ...r, feed_total: 3, feed_read_at: hoursAgo(1), feed_state: "ok", feed_capped: false } : r));
-    const lines = run(files(rows, NEW_BUNDLE, LOCKED_AFTER));
-    expect(bassLine(lines), show(lines)).toMatch(/^INFO {2}81c BASS ABA: no zero reading .* the page prints only the list's own line/);
+  it("a stated total from either read state says only the page's own line, and PASSes", () => {
+    for (const state of ["empty", "ok"]) {
+      const rows = afterRows.map((r) => (r.company_token === "bassabatherapy" ? { ...r, feed_total: 31, feed_read_at: hoursAgo(2), feed_state: state, feed_capped: false } : r));
+      const lines = run(files(rows, NEW_BUNDLE, AFTER));
+      expect(lineOf(lines, "BASS ABA"), `${state}\n${show(lines)}`).toMatch(/^PASS {2}81c BASS ABA .*feed_total 31 .*the page says only "No roles are listed on this page right now\."/);
+    }
   });
 
   it("a windowed board never read through keeps 'not read' as true, as INFO", () => {
     const rows = afterRows.map((r) => (r.company_token === "bassabatherapy" ? { ...r, observability_bucket: "lap_pending" } : r));
-    const lines = run(files(rows, NEW_BUNDLE, LOCKED_AFTER));
-    expect(bassLine(lines), show(lines)).toMatch(/^INFO {2}81c BASS ABA: zero reading "unread" \(bucket lap_pending/);
+    const lines = run(files(rows, NEW_BUNDLE, AFTER));
+    expect(lineOf(lines, "BASS ABA"), show(lines)).toMatch(/^INFO {2}81c BASS ABA: zero reading "unread" \(bucket lap_pending/);
   });
 });
 

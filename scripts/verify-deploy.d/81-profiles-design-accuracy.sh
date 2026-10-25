@@ -16,14 +16,19 @@
 #       at many sites) the gate refuses the 90-day counts because the re-post
 #       test reads other sites, which needs the multi-site column the reissued
 #       reader adds.
-#   81c no page says an employer has no open roles while its board lists older
-#       ones, and none says we have not read a board we read in full: the
-#       served copy carries the window, the zero-with-total sentence and the
-#       full-read sentence, and the Jobs chunk hands the zero page the curve's
-#       read bucket and tracking days; BASS ABA's live row (a Greenhouse board
-#       read whole in one visit, so no total is stated) gives the full-read
-#       reading, never "not read" (the 2026-10-24 hotfix); Stripe's board
-#       total is within 10% of its own Greenhouse feed (FAIL by decision until
+#   81c a zero page says only what its inputs agree on (the 2026-10-25
+#       corpus of every live zero page, src/test/fixtures/zero-page-corpus-
+#       2026-10-25.json): the served copy carries the window and the page's
+#       own line ("No roles are listed on this page right now."), the served
+#       chunks ask for neither sentence the corpus refuted (the older-roles
+#       and full-read sentences), and the Jobs chunk hands the zero page the
+#       curve's read bucket and tracking days (its "not read" needs them);
+#       BASS ABA (read in full, no stated total), Delaney at the Green (an
+#       Oracle sub-site whose requisitions a sibling site serves) and Akumin's
+#       ADG site (a Workday site that stated 5 at a read in state empty while
+#       its own feed dated 2 roles this month) each give no reading at all on
+#       this checkout's model when nothing is listed; Stripe's board total is
+#       within 10% of its own Greenhouse feed (FAIL by decision until
 #       job-board records whole-feed totals).
 #   81d Databricks and Canva print no "never half" (their 30-day share is
 #       under one half).
@@ -41,11 +46,12 @@
 #       stayed green while every Workday token answered 500 57014 after 15
 #       seconds (20261012135000 ran the hosting-tenant test once per snapshot
 #       row; 20261012137000 runs it once per call).
-#   81j the baked crawler copy of those three Workday company pages states
-#       where their roles are or in which fields (the bake's "holding the most
-#       of its roles" lines), with Domino's as the positive control: the bake
-#       drops the facts without failing when the reader is slow (its 90 s
-#       deadline), so a fast reader alone does not prove the pages.
+#   81j at least 90% of 24 Workday company pages sampled from the live
+#       sitemap (its last 8, where the bake's 90 s intel deadline cuts first,
+#       and 16 spread over the rest) state the bake's places or fields line
+#       on their own baked file: the bake drops the facts without failing when
+#       the reader is slow, so neither a fast reader (81i) nor three of the
+#       largest pages proves the re-bake.
 #
 # HOW IT IS JUDGED. Live rows are judged by this checkout's gate and lander
 # model (src/lib/hiring-record-gate.ts and src/lib/company/lander-model.ts,
@@ -64,7 +70,7 @@ const fs = require("fs");
 const H = { apikey: K, Authorization: `Bearer ${K}` };
 const get = async (url, headers = {}) => { try { const r = await fetch(url, { headers, signal: AbortSignal.timeout(60000) }); return { status: r.status, body: await r.text() }; } catch (e) { return { status: 0, body: "" }; } };
 const json = (s) => { try { return JSON.parse(s); } catch { return null; } };
-const TOKENS = ["egud~us2~CX_1", "ejwl~us2~CX", "eluq~us2~CX_1", "hcbt~em2~CX_1001", "databricks", "Canva", "centriaautism", "bayada", "stripe", "bassabatherapy"];
+const TOKENS = ["egud~us2~CX_1", "ejwl~us2~CX", "eluq~us2~CX_1", "hcbt~em2~CX_1001", "databricks", "Canva", "centriaautism", "bayada", "stripe", "bassabatherapy", "eexs~us2~CX_19005", "akumincorp~wd5~adgcareers"];
 (async () => {
   // The rows the employer pages read, over a read-only GET.
   const arr = "{" + TOKENS.map((t) => JSON.stringify(t)).join(",") + "}";
@@ -90,17 +96,21 @@ const TOKENS = ["egud~us2~CX_1", "ejwl~us2~CX", "eluq~us2~CX_1", "hcbt~em2~CX_10
   }
   fs.writeFileSync("/tmp/vd_81_bundle.txt", bundle);
   fs.writeFileSync("/tmp/vd_81_meta.json", JSON.stringify({ main: main || null, jobsChunk: jobsChunk || null }));
-  // BASS ABA: what the board serves (the read-only list).
-  let bass = { status: 0, total: null };
-  try {
-    const r = await fetch(`${B}/functions/v1/job-board`, { method: "POST", headers: { ...H, "Content-Type": "application/json", "x-rb-budget": "probe" }, body: JSON.stringify({ action: "list", companies: ["bassabatherapy"], limit: 5, includeFacets: false }), signal: AbortSignal.timeout(60000) });
-    const j = await r.json();
-    bass = { status: r.status, total: typeof j?.total === "number" ? j.total : null };
-  } catch { bass = { status: 0, total: null }; }
+  // What the zero boards serve (the read-only list): BASS ABA and the two disagreeing shapes.
+  const listed = async (token) => {
+    try {
+      const r = await fetch(`${B}/functions/v1/job-board`, { method: "POST", headers: { ...H, "Content-Type": "application/json", "x-rb-budget": "probe" }, body: JSON.stringify({ action: "list", companies: [token], limit: 5, includeFacets: false }), signal: AbortSignal.timeout(60000) });
+      const j = await r.json();
+      return { status: r.status, total: typeof j?.total === "number" ? j.total : null };
+    } catch { return { status: 0, total: null }; }
+  };
+  const bass = await listed("bassabatherapy");
+  const zeroLists = {};
+  for (const t of ["eexs~us2~CX_19005", "akumincorp~wd5~adgcareers"]) zeroLists[t] = await listed(t);
   // Stripe: its own Greenhouse feed states the total.
   const gh = await get("https://boards-api.greenhouse.io/v1/boards/stripe/jobs");
   const ghj = json(gh.body);
-  fs.writeFileSync("/tmp/vd_81_ext.json", JSON.stringify({ bass, stripeFeed: { status: gh.status, total: ghj && ghj.meta && typeof ghj.meta.total === "number" ? ghj.meta.total : (ghj && Array.isArray(ghj.jobs) ? ghj.jobs.length : null) } }));
+  fs.writeFileSync("/tmp/vd_81_ext.json", JSON.stringify({ bass, zeroLists, stripeFeed: { status: gh.status, total: ghj && ghj.meta && typeof ghj.meta.total === "number" ? ghj.meta.total : (ghj && Array.isArray(ghj.jobs) ? ghj.jobs.length : null) } }));
   // The four locked tables, each by a real column, as anon.
   const lock = {};
   for (const [t, col] of [["showcase_excluded", "company_token"], ["company_profiles", "company_token"], ["company_financials", "slug"], ["company_name_overrides", "slug"]]) {
@@ -200,36 +210,42 @@ for (const [label, t] of [["Centria Autism", "centriaautism"], ["BAYADA", "bayad
   else out("PASS", `81b ${label}: no 90-day counts and no caution: the re-post test reads other sites here [${facts}]`);
 }
 
-// ---- 81c: no "no open roles" while older ones are listed ----
+// ---- 81c: a zero page says only what its inputs agree on ----
+const OWN_LINE = "No roles are listed on this page right now.";
 if (served) {
   const old = words("has", "no", "open", "roles", "on", "their", "job", "board");
   if (has(old)) out("FAIL", "81c the served copy still says an employer has no open roles on its board, whatever the board lists");
   else if (!has("dated in the last 30 days")) out("FAIL", "81c the served copy does not name the 30-day window its counts cover");
   else out("PASS", "81c the served copy names the 30-day window and never says an employer has no open roles on its board");
-  if (has("companyProfile.zero.older")) out("PASS", "81c the served chunks carry the zero-with-total sentence (companyProfile.zero.older)");
-  else out("FAIL", "81c the served chunks lack companyProfile.zero.older: a zero page cannot say its board lists older roles");
-  if (has("companyProfile.zero.fullRead")) out("PASS", "81c the served chunks carry the full-read zero sentence (companyProfile.zero.fullRead)");
-  else out("FAIL", "81c the served chunks lack companyProfile.zero.fullRead: a zero page of a board read in full still says we have not read it (the 2026-10-24 hotfix is not published)");
+  if (has(OWN_LINE)) out("PASS", `81c the served copy carries the zero page\x27s own line ("${OWN_LINE}")`);
+  else out("FAIL", "81c the served copy lacks the zero page\x27s own line: a zero page still prints a sentence about what a read of its board found (the 2026-10-25 safe default is not published)");
+  // Asked for by key in the served code (the shard text is not looked at).
+  const refuted = ["companyProfile.zero.older", "companyProfile.zero.fullRead"].filter((k) => has(k));
+  if (refuted.length) out("FAIL", `81c the served chunks still ask for ${refuted.join(" and ")}: sentences the 2026-10-25 corpus found false on zero pages whose inputs matched true ones`);
+  else out("PASS", "81c the served chunks ask for neither zero sentence the corpus refuted (companyProfile.zero.older, companyProfile.zero.fullRead)");
   // The lander input the Jobs chunk builds from the curve row, minified: the
   // bucket and the tracking days beside the feed columns (src/pages/Jobs.tsx).
   if (/bucket:\s*([\w$]+)\.observability_bucket\s*,\s*trackingDays:\s*\1\.tracking_days\b/.test(bundle)) out("PASS", "81c the served Jobs chunk hands the zero page the curve\x27s read bucket and tracking days");
-  else out("FAIL", "81c the served Jobs chunk does not hand the zero page the curve\x27s observability_bucket and tracking_days: it says \"not read\" of every board with no stated total");
+  else out("FAIL", "81c the served Jobs chunk does not hand the zero page the curve\x27s observability_bucket and tracking_days: its \"not read\" cannot tell a board we read in full from one we did not");
 }
-{
-  const r = rowOf("bassabatherapy");
-  const mm = model && model.bassabatherapy;
-  const listTotal = ext.bass ? ext.bass.total : null;
-  const stated = r && r.feed_total !== null && r.feed_total !== undefined;
-  const facts = r ? `bucket ${r.observability_bucket ?? "none"}, ${r.tracking_days ?? "no"} tracking days, ${stated ? `feed_total ${r.feed_total} (${r.feed_state}, read ${r.feed_read_at})` : "no stated total"}` : "";
-  if (!r || !mm) out("INFO", "81c BASS ABA: no curve row answered, nothing to judge");
-  else if (!mm.feedColumns) out("FAIL", "81c BASS ABA: the reply carries no feed_total, so 20261012121000 is not applied and the zero page can say only what the list holds");
-  else if (listTotal !== 0) out("INFO", `81c BASS ABA: the board serves ${listTotal ?? "an unread number of"} role(s) on this read; not a zero page now`);
-  else if (mm.zeroReading === "unread" && r.observability_bucket === "full_read") out("FAIL", `81c BASS ABA: this checkout\x27s lander model says we have not read a board whose newest read was complete (${facts}): the zero page prints the false "not read" sentence`);
-  else if (mm.zeroReading === "fullRead") out("PASS", `81c BASS ABA: nothing served in the window and its newest read was complete (${facts}): the page says that as of our latest full read no role is dated in the last 30 days`);
-  else if (mm.zeroReading === "older") out("PASS", `81c BASS ABA: nothing served in the window and its board listed ${r.feed_total} roles at ${r.feed_read_at} on a read that kept none in the window (${r.feed_state}): the page says none of them is dated in the last 30 days`);
-  else if (mm.zeroReading === "empty") out("PASS", `81c BASS ABA: nothing served in the window and its board listed none when we read it at ${r.feed_read_at} (${r.feed_state}): the page says so`);
-  else if (mm.zeroReading === "unread") out("INFO", `81c BASS ABA: zero reading "unread" (${facts}): no complete read stands behind the page, so "not read" is true`);
-  else out("INFO", `81c BASS ABA: no zero reading (${facts}): the page prints only the list\x27s own line`);
+// The zero boards, each judged by this checkout\x27s model on its live row when nothing is listed.
+const facts81c = (r) => `bucket ${r.observability_bucket ?? "none"}, ${r.tracking_days ?? "no"} tracking days, ${r.feed_total !== null && r.feed_total !== undefined ? `feed_total ${r.feed_total} (${r.feed_state}, read ${r.feed_read_at})` : "no stated total"}`;
+const ZERO_BOARDS = [
+  ["BASS ABA", "bassabatherapy", "a Greenhouse board read whole in one visit, so no total is stated", ext.bass],
+  ["Delaney at the Green", "eexs~us2~CX_19005", "an Oracle sub-site whose requisitions a sibling site serves", (ext.zeroLists || {})["eexs~us2~CX_19005"]],
+  ["Akumin ADG", "akumincorp~wd5~adgcareers", "a Workday site whose own feed dated 2 roles this month while a read in state empty stated 5", (ext.zeroLists || {})["akumincorp~wd5~adgcareers"]],
+];
+for (const [label, t, shape, list] of ZERO_BOARDS) {
+  const r = rowOf(t);
+  const mm = model && model[t];
+  const listTotal = list ? list.total : null;
+  if (!r || !mm) { out("INFO", `81c ${label}: no curve row answered, nothing to judge`); continue; }
+  if (!mm.feedColumns) { out("FAIL", `81c ${label}: the reply carries no feed_total, so 20261012121000 is not applied and the zero page cannot be judged`); continue; }
+  if (listTotal !== 0) { out("INFO", `81c ${label}: the board serves ${listTotal ?? "an unread number of"} role(s) on this read; not a zero page now`); continue; }
+  if (mm.zeroReading === null) out("PASS", `81c ${label} (${shape}): nothing listed (${facts81c(r)}): the page says only "${OWN_LINE}"`);
+  else if (mm.zeroReading === "unread" && r.observability_bucket !== "full_read" && r.observability_bucket !== "lap_proven" && (r.feed_total === null || r.feed_total === undefined)) out("INFO", `81c ${label}: zero reading "unread" (${facts81c(r)}): our own reads show no complete read, so "not read" is true`);
+  else if (mm.zeroReading === "empty" && Number(r.feed_total) === 0) out("PASS", `81c ${label}: nothing listed and its board stated none at ${r.feed_read_at}: the page says so`);
+  else out("FAIL", `81c ${label} (${shape}): this checkout\x27s lander model gives the zero reading "${mm.zeroReading}" (${facts81c(r)}): the page would print a sentence about what a read found where the board and the page disagree`);
 }
 {
   const r = rowOf("stripe");
@@ -374,59 +390,95 @@ for (const p of probes) {
 '
 
 # ---- 81j: the baked Workday company pages state their places or fields ----
-# Read-only: GETs of the homepage and four company pages with the crawler's
-# UA. The bake writes "The countries holding the most of its roles on this
-# board" and "The fields holding the most ..." from get_company_intel, and
-# drops both without failing when the reader is slow (its 90-second deadline,
-# or 18 failures in a row), so 81i's fast reader does not prove the pages:
-# on 2026-10-24 none of these three Workday pages carried either line and
-# Domino's carried both.
+# Read-only: GETs of the live sitemap, the homepage and a sample of baked
+# Workday company pages, with the crawler's UA. The bake writes two fact
+# lines on a company page from get_company_intel, exactly
+#   "The countries holding the most of its roles on this board:" and
+#   "The fields holding the most of its roles on this board:",
+# and drops both without failing when the reader is slow: it reads six pages
+# at a time in its own page order (open roles, largest first), and past its
+# 90-second deadline, or after 18 failures in a row, every page after that
+# point states neither. So the line samples the sitemap, which lists the
+# company pages in that same order: its last 8 Workday pages (where a cut
+# lands first) and 16 more spread evenly over the rest, 24 in all, chosen
+# from the sitemap alone, so every run reads the same pages. It PASSes only
+# when at least 90% of the sample states a fact line on the page's own baked
+# file. A homepage shell, an HTTP error or a page with neither line counts
+# against it; an unreadable sitemap, fewer than 20 Workday pages or an empty
+# sample FAILs outright. 81i's 3-second reader does not prove the bake
+# fitted its deadline (the whole bake fits only at about 1.1 s per round of
+# six); this line does. On 2026-10-25 none of the 283 Workday pages in the
+# sitemap stated either line.
 SITE="$SITE" UA="$UA" node -e '
 const { SITE, UA } = process.env;
 const fs = require("fs");
-// The three Workday pages 81i times, and the dominos board (SmartRecruiters),
-// the positive control: a page whose facts the bake wrote on 2026-10-24.
-const PAGES = ["cat~wd5~caterpillarcareers", "nvidia~wd5~NVIDIAExternalCareerSite", "dollartree~wd5~dollartreeus", "dominos"];
-const get = async (path) => { try { const r = await fetch(`${SITE}${path}`, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(30000) }); return { status: r.status, body: await r.text() }; } catch (e) { return { status: 0, body: "" }; } };
+const TAIL = 8;
+const SAMPLE = 24;
+const get = async (url) => { try { const r = await fetch(url, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(30000) }); return { status: r.status, body: await r.text() }; } catch (e) { return { status: 0, body: "" }; } };
 (async () => {
-  const home = await get("/");
+  const sm = await get(`${SITE}/sitemap.xml`);
+  const locs = sm.status === 200 ? [...sm.body.matchAll(/<loc>([^<]*\/jobs\/company\/([^<]+))<\/loc>/g)].map((m) => ({ url: m[1], token: m[2] })) : [];
+  const wd = locs.filter((l) => /~wd\d+~/.test(l.token));
+  // The last TAIL in the sitemap order, then evenly spaced over the rest.
+  const pick = new Set();
+  for (let i = Math.max(0, wd.length - TAIL); i < wd.length; i++) pick.add(i);
+  const rest = Math.max(0, wd.length - TAIL);
+  const spread = Math.min(rest, SAMPLE - pick.size);
+  for (let k = 0; k < spread; k++) pick.add(spread === 1 ? 0 : Math.round((k * (rest - 1)) / (spread - 1)));
+  const sample = [...pick].sort((a, b) => a - b).map((i) => ({ pos: i, ...wd[i] }));
+  const home = await get(`${SITE}/`);
   const pages = [];
-  for (const token of PAGES) {
-    const r = await get(`/jobs/company/${encodeURIComponent(token)}`);
-    pages.push({ token, control: token === "dominos", status: r.status, body: r.body.slice(0, 400000) });
+  for (const p of sample) {
+    const r = await get(p.url);
+    pages.push({ token: p.token, url: p.url, pos: p.pos, status: r.status, body: r.body.slice(0, 400000) });
   }
-  fs.writeFileSync("/tmp/vd_81_baked.json", JSON.stringify({ at: new Date().toISOString(), home: home.body.slice(0, 400000), pages }));
+  // The positive control (SmartRecruiters): says whether this bake wrote facts anywhere.
+  const ctl = await get(`${SITE}/jobs/company/dominos`);
+  fs.writeFileSync("/tmp/vd_81_baked.json", JSON.stringify({ at: new Date().toISOString(), site: SITE, sitemapStatus: sm.status, companyPages: locs.length, workdayPages: wd.length, home: home.body.slice(0, 400000), pages, control: { token: "dominos", status: ctl.status, body: ctl.body.slice(0, 400000) } }));
 })();
 '
 node -e '
 const fs = require("fs");
 const out = (s, m) => console.log(`${s.padEnd(5)} ${m}`);
+const MIN_SAMPLE = 20;
+const MIN_SHARE = 0.9;
+const PLACES = "The countries holding the most of its roles on this board:";
+const FIELDS = "The fields holding the most of its roles on this board:";
 let b = null;
 try { b = JSON.parse(fs.readFileSync("/tmp/vd_81_baked.json", "utf8")); } catch { b = null; }
-const pages = b && Array.isArray(b.pages) ? b.pages : [];
-if (pages.length === 0) out("FAIL", "81j the baked Workday company pages: not probed");
+const count = (h, s) => String(h || "").split(s).length - 1;
 const titleOf = (h) => (String(h || "").match(/<title>([^<]*)<\/title>/) || [])[1] || "";
-const homeTitle = b ? titleOf(b.home) : "";
-const lines = (h) => ({
-  places: (String(h || "").match(/The countries holding the most of its roles on this board/g) || []).length,
-  fields: (String(h || "").match(/The fields holding the most of its roles on this board/g) || []).length,
-});
-const control = pages.find((p) => p.control);
-const controlBare = !!control && control.status === 200 && lines(control.body).places + lines(control.body).fields === 0;
-for (const p of pages) {
-  const label = p.control ? `${p.token} (positive control)` : p.token;
+const canonOf = (h) => (String(h || "").match(/<link rel="canonical" href="([^"]*)"/) || [])[1] || "";
+const verdict = (p, homeTitle, site) => {
+  if (p.status !== 200) return `HTTP ${p.status}`;
   const t = titleOf(p.body);
-  if (p.status !== 200) { out("FAIL", `81j ${label}: HTTP ${p.status} to a crawler, want 200 with the baked page`); continue; }
-  if (!t || (homeTitle && t === homeTitle)) { out("FAIL", `81j ${label}: served the homepage shell to a crawler (title "${t}"): the page is not baked`); continue; }
-  const c = lines(p.body);
-  const n = c.places + c.fields;
-  if (p.control) {
-    if (n) out("PASS", `81j ${label}: the baked page states ${n} fact line(s) (places ${c.places}, fields ${c.fields}): the bake read the company reader`);
-    else out("FAIL", `81j ${label}: the baked page states no fact line either: this bake wrote no places or fields on any page (it could not read get_company_intel, or ran past its deadline)`);
-    continue;
+  const own = `${site}/jobs/company/${p.token}`;
+  if (!t || (homeTitle && t === homeTitle) || canonOf(p.body) !== own) return `the homepage shell (title "${t.slice(0, 60)}", canonical "${canonOf(p.body) || "absent"}")`;
+  return count(p.body, PLACES) + count(p.body, FIELDS) > 0 ? null : "neither fact line";
+};
+if (!b) out("FAIL", "81j the baked Workday company pages: not probed");
+else if (b.sitemapStatus !== 200) out("FAIL", `81j the live sitemap answered HTTP ${b.sitemapStatus}: no Workday company page to sample`);
+else {
+  const pages = Array.isArray(b.pages) ? b.pages : [];
+  const homeTitle = titleOf(b.home);
+  if (pages.length === 0) out("FAIL", `81j the live sitemap lists ${b.workdayPages ?? 0} Workday company page(s) among ${b.companyPages ?? 0} company pages: the sample is empty, nothing proves the bake`);
+  else if ((b.workdayPages ?? 0) < MIN_SAMPLE) out("FAIL", `81j the live sitemap lists only ${b.workdayPages} Workday company page(s), fewer than the ${MIN_SAMPLE} this line samples: the bake wrote too few to judge`);
+  else {
+    const judged = pages.map((p) => ({ p, why: verdict(p, homeTitle, b.site) }));
+    const good = judged.filter((x) => x.why === null);
+    const share = good.length / pages.length;
+    const pct = Math.round(share * 1000) / 10;
+    const tail = judged.slice(-8);
+    const tailGood = tail.filter((x) => x.why === null).length;
+    const what = `${good.length} of ${pages.length} sampled Workday company pages (sitemap positions ${pages[0].pos + 1} to ${pages[pages.length - 1].pos + 1} of ${b.workdayPages}; the last ${tail.length}: ${tailGood}) state a fact line ("${PLACES}" or "${FIELDS}"): ${pct}%`;
+    if (pages.length >= MIN_SAMPLE && share >= MIN_SHARE) out("PASS", `81j ${what}, at least 90%: the bake read the company reader for its Workday pages, its tail included`);
+    else out("FAIL", `81j ${what}, want at least 90% of at least ${MIN_SAMPLE}: the bake dropped Workday facts (is 20261012137000 applied, did the publish re-bake after it, and did the bake run past its 90-second intel deadline?)`);
+    const misses = judged.filter((x) => x.why !== null);
+    for (const x of misses.slice(0, 8)) out("INFO", `81j ${x.p.token} (sitemap Workday position ${x.p.pos + 1}): ${x.why}`);
+    if (misses.length > 8) out("INFO", `81j ... and ${misses.length - 8} more sampled page(s) without a fact line`);
+    const c = b.control || {};
+    const cn = count(c.body, PLACES) + count(c.body, FIELDS);
+    out("INFO", `81j control dominos (SmartRecruiters): HTTP ${c.status}, ${cn} fact line(s)${cn ? "" : ": this bake wrote no places or fields on any page it was checked on"}`);
   }
-  const what = c.places && c.fields ? "where its roles are and in which fields" : c.places ? "where its roles are" : "in which fields its roles are";
-  if (n) out("PASS", `81j ${label}: the baked page states ${what} (${n} fact line${n === 1 ? "" : "s"})`);
-  else out("FAIL", `81j ${label}: the baked page states neither where its roles are nor in which fields${controlBare ? "" : ", while the control does"}: the bake dropped this Workday page\x27s facts (is 20261012137000 applied, and did the publish re-bake after it?)`);
 }
 '
