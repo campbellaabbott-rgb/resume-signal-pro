@@ -144,10 +144,10 @@ console.log(`baselines/proto-top20.json: ${Object.keys(proto).length} résumés;
 
 // 5. The hand judgments travel with the corpus (first run only: later hand
 // reviews are recorded in the repo copy and must not be overwritten).
-mkdirSync(join(FIX, "judgments"), { recursive: true });
+mkdirSync(join(FIX, "hand-review"), { recursive: true });
 for (const f of ["overrides.json", "posting-facts.json"]) {
-  const to = join(FIX, "judgments", f);
-  if (existsSync(to)) { console.log(`judgments/${f} kept (already in the repo)`); continue; }
+  const to = join(FIX, "hand-review", f);
+  if (existsSync(to)) { console.log(`hand-review/${f} kept (already in the repo)`); continue; }
   writeFileSync(to, readFileSync(join(B, "judgments", f), "utf8"));
-  console.log(`judgments/${f} copied`);
+  console.log(`hand-review/${f} copied`);
 }

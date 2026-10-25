@@ -110,7 +110,8 @@ console.log("\n" + "metric".padEnd(w0) + cols.map((c, i) => c.name.padEnd(ws[i])
 for (const [name, get] of rows) console.log(name.padEnd(w0) + cols.map((c, i) => get(c).padEnd(ws[i])).join(""));
 console.log(`\nCaveat: the AFTER and prototype columns are auto-judged on the dev set (the prototype and the engine were tuned on these 24);
 the offline AFTER run is a closed world (only postings an earlier run retrieved; requirements only where one read a description).
-No AFTER row has a hand review yet. A gate verdict for v1 needs the held-out AFTER run and its hand review (spec §19.2).`);
+AFTER has had no hand review of its own: its reviewed rows are pairs BEFORE's review already covered.
+A gate verdict for v1 needs the held-out AFTER run and its hand review (spec §19.2).`);
 
 // BEFORE on the held-out set, once before-retrieve / describe / before-score have run from a ledger.
 const hoScored = join(OUT, "before-heldout-scored.json");

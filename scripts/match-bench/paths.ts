@@ -1,4 +1,4 @@
-// Where things live. The fixtures (résumés, manifests, corpus, judgments,
+// Where things live. The fixtures (résumés, manifests, corpus, hand review,
 // baselines) are committed under src/test/fixtures/match-bench so the CI gate
 // can read them; the harness writes its working files to scripts/match-bench/out
 // and keeps live answers in scripts/match-bench/cache (both git-ignored).

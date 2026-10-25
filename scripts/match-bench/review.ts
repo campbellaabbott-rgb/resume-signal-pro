@@ -2,7 +2,7 @@
 // BEFORE had). One sheet per résumé, one line per shown row with the v2
 // rubric's automatic verdict, and under it the description phrases a reviewer
 // checks: sponsorship, citizenship, clearance, licence, years, work mode.
-// Corrections go to src/test/fixtures/match-bench/judgments/overrides.json
+// Corrections go to src/test/fixtures/match-bench/hand-review/overrides.json
 // (per résumé x posting, through ovr.py) or posting-facts.json (a posting's own
 // metadata); every later report re-reads them, for BEFORE and AFTER alike.
 //

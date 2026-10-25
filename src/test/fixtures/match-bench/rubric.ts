@@ -38,8 +38,8 @@
  * written here, apart from _shared/licence-rules.ts and posting-requirements.ts,
  * so the matcher is never graded by its own rules.
  *
- * Hand reviews: judgments/overrides.json ("<resumeId>::<postingId>") and
- * judgments/posting-facts.json (a posting's own metadata) apply to both rubrics.
+ * Hand reviews: hand-review/overrides.json ("<resumeId>::<postingId>") and
+ * hand-review/posting-facts.json (a posting's own metadata) apply to both rubrics.
  */
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -380,8 +380,8 @@ export function autoJudge(t: ResumeTruth, row: PostingRow, desc: string | null, 
 }
 
 type Override = Partial<Pick<Verdict, "role" | "seniority" | "location" | "auth" | "licence">> & { note?: string };
-export const OVERRIDES: Record<string, Override> = readJson("judgments/overrides.json");
-export const POSTING_FACTS: Record<string, Partial<PostingRow> & { note?: string }> = readJson("judgments/posting-facts.json");
+export const OVERRIDES: Record<string, Override> = readJson("hand-review/overrides.json");
+export const POSTING_FACTS: Record<string, Partial<PostingRow> & { note?: string }> = readJson("hand-review/posting-facts.json");
 
 /** The automatic verdict, with the posting's hand-corrected facts and the pair's hand override applied. */
 export function judge(t: ResumeTruth, row: PostingRow, desc: string | null, rubric: Rubric = "v2"): Verdict {

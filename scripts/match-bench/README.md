@@ -25,7 +25,7 @@ budgeted ledger (`live.ts`). The CI gate makes none.
 | `baselines/proto-top20.json` | The Requirements-First prototype's shown rows (extractor profile and confirmed "oracle" profile). |
 | `baselines/before.json` | BEFORE and the prototype, under both rubrics (`report.ts --save-before`). |
 | `baselines/v1.json` | The AFTER baseline the CI gate holds (`report.ts --save-after`). |
-| `judgments/overrides.json`, `judgments/posting-facts.json` | The hand review: 14 pair corrections and 121 posting facts. They apply to every rubric and every pipeline. |
+| `hand-review/overrides.json`, `hand-review/posting-facts.json` | The hand review: 14 pair corrections and 121 posting facts. They apply to every rubric and every pipeline. |
 | `rubric.ts` | The rubric (below). |
 | `metrics.ts`, `gate.ts`, `reader-score.ts` | The numbers, the gate's rule and its tolerance, and the held-out reader score. |
 | `after-pipeline.ts`, `metro-rings.ts`, `corpus.ts`, `scrub.ts` | The offline AFTER run (below), the commute rings it answers `metro_ring` from, the corpus loader, and the contact-detail scrubber. |
@@ -131,7 +131,8 @@ merged origin/main. The first recording, from a7e910d3, read exact-11
 **Caveats, which hold until the AFTER benchmark has its own budget and hand
 review (owner decision 8):**
 - The prototype and AFTER columns are auto-judged, on the dev set they were tuned
-  on.
+  on. AFTER has had no hand review of its own. Its one reviewed row is a pair
+  that BEFORE's review already covered.
 - The offline AFTER run is a closed world. It finds only postings an earlier run
   retrieved, and reads requirements only where one of them read a description.
 - `metro_ring` is answered from the prototype's hand-written rings (`metro-rings.ts`),
@@ -198,15 +199,18 @@ corpus with 492 descriptions, `baseline.v1.json`, `bench.ts`, `judge.ts`,
 `rings.ts` and `src/test/match-bench.test.ts`. Its own unit tests also read
 `db.ts`, `endpoint.ts`, `manifest.ts`, `resumes/` and `parsed/` there.
 
-On 2026-10-24 this bench renamed the four files whose paths collided with
-different content:
+On 2026-10-24 this bench renamed its files whose paths collided with rm/engine's:
 - `bench.ts` became `gate.ts`;
 - `judge.ts` became `rubric.ts`;
 - `rings.ts` became `metro-rings.ts`;
-- `corpus.json.gz` became `postings.json.gz`.
+- `corpus.json.gz` became `postings.json.gz`;
+- `judgments/` became `hand-review/`. Its two files were byte-identical to
+  rm/engine's when they moved. Corrections from the AFTER hand review go here.
 
-The two `judgments/` files are byte-identical on both branches. The two
-branches now merge without a conflict, and each bench keeps passing.
+The two branches now share no file. A trial merge of rm/engine 9fa797f2 into
+this branch on 2026-10-24 had no conflict. Both benches and the engine's
+fixture tests passed on it: 9 files, 124 tests, and this gate ran in full in
+3.0 s.
 
 The two benches print different AFTER figures for the same engine. rm/engine's
 reads exact-11 87.3 / 85.9. This one reads 85.5 / 81.8. The corpora differ
@@ -232,7 +236,7 @@ The other bench tests:
 | `01-parse.ts [--set dev\|heldout\|all]` | Renders each résumé to PDF (jsPDF) and DOCX, and reads both back through parse-pdf's and parse-docx's own cores. Writes `<set>/parsed/`. A dev parse that drifts from the BEFORE text is reported, not overwritten. | none |
 | `report.ts` | The table above, the held-out reader, BEFORE on the held-out set once scored. Takes `--save-before`, `--save-after --ref`, `--gate` and `--verbose`. Writes `out/after-*.json`. | none |
 | `review.ts --after out/after-extract.json` / `--before` | Review sheets with the v2 verdict and the phrases a reviewer checks. | none |
-| `ovr.py` | Appends hand corrections (TSV on stdin) to `judgments/overrides.json`. | none |
+| `ovr.py` | Appends hand corrections (TSV on stdin) to `hand-review/overrides.json`. | none |
 | `describe.ts --after <file>` / `--before heldout` [`--freeze`] | Descriptions for every shown row, from the corpus, then the cache, then live `detail`. `--freeze` adds them to the corpus under a new version. | `detail`, ledger only |
 | `before-retrieve.ts --set heldout` | Today's "For you" retrieval: `resumeRoleTerms(text, 4)[0]`, then one 60-row `list`. | `list`, ledger only |
 | `before-score.ts --set heldout` | fit-batch's call shape and the stable fit partition, locally. | none |

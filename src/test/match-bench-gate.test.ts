@@ -23,8 +23,9 @@
  * WHAT IT DOES NOT CLAIM. The corpus is a closed world: AFTER finds only
  * postings an earlier run retrieved and reads requirements only where one of
  * them read a description. It measures regressions in reading, gating,
- * tiering and ordering, not the live board's recall, and no AFTER row has a
- * hand review yet. The v1-beats-BEFORE verdict needs the held-out AFTER run
+ * tiering and ordering, not the live board's recall. AFTER has had no hand
+ * review of its own: a shown row counts as reviewed only where BEFORE's review
+ * already covered that pair. The v1-beats-BEFORE verdict needs the held-out AFTER run
  * with its own probe budget and hand review (spec §19.2, owner decision 8).
  *
  * WHEN IT SKIPS. Only while NONE of the engine's modules is on the branch (the

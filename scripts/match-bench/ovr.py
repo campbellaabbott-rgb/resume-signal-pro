@@ -6,7 +6,7 @@
 import json, os, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-PATH = os.path.join(HERE, "..", "..", "src", "test", "fixtures", "match-bench", "judgments", "overrides.json")
+PATH = os.path.join(HERE, "..", "..", "src", "test", "fixtures", "match-bench", "hand-review", "overrides.json")
 ALLOWED = {
     "role": {"target", "adjacent", "related", "old", "off"},
     "seniority": {"ok", "too_junior", "too_senior"},
