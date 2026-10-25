@@ -46,13 +46,20 @@
 -- many times as it wrote them, and the one WITH 20261012101000 opened it
 -- with, or the file refuses rather than overwrite a body it does not know. A
 -- body that already asks once is left alone, so the file is safe to run
--- twice. Signature, return type, security, volatility, settings (search_path
--- and the 15-second timeout), owner and grants are compared before and after
--- the rewrite in the same block, and the grants are restated afterwards as
--- 20261012101000 wrote them.
+-- twice. Signature (argument defaults included: the page relies on
+-- get_similar_companies' p_limit DEFAULT 6), return type, security,
+-- volatility, settings (search_path and the 15-second timeout), owner and
+-- grants are compared before and after the rewrite in the same block, and the
+-- grants are restated afterwards as 20261012101000 wrote them.
 --
--- Self-verifying: it refuses the per-row shape, an attribute that moved and a
--- grant that drifted. Safe to re-run.
+-- Self-verifying: it refuses the per-row shape, an attribute that moved, a
+-- grant that drifted and, on every run (a second run skips the rewrite and
+-- its comparison), a reader that lost either setting. Safe to re-run.
+--
+-- 20261012135000 must never be re-run after this file. Its own self-check
+-- looks for the per-row text this file removes, so it RAISEs here; that RAISE
+-- means it is superseded, not that it needs editing. 20261012136000 re-runs
+-- cleanly.
 
 SET LOCAL statement_timeout = '2min';
 
@@ -97,7 +104,7 @@ BEGIN
         r.fn, r.uses, n_bare, n_call, n_with;
     END IF;
 
-    SELECT concat_ws(' | ', p.prorettype::regtype::text, pg_get_function_identity_arguments(p.oid),
+    SELECT concat_ws(' | ', p.prorettype::regtype::text, pg_get_function_arguments(p.oid),
                      'definer=' || p.prosecdef::text, 'volatile=' || p.provolatile::text,
                      'parallel=' || p.proparallel::text, 'strict=' || p.proisstrict::text,
                      'config=' || COALESCE(array_to_string(p.proconfig, ','), ''),
@@ -108,7 +115,7 @@ BEGIN
     v_new := replace(replace(v_def, v_bare, v_once), v_with, v_cte);
     EXECUTE v_new;
 
-    SELECT concat_ws(' | ', p.prorettype::regtype::text, pg_get_function_identity_arguments(p.oid),
+    SELECT concat_ws(' | ', p.prorettype::regtype::text, pg_get_function_arguments(p.oid),
                      'definer=' || p.prosecdef::text, 'volatile=' || p.provolatile::text,
                      'parallel=' || p.proparallel::text, 'strict=' || p.proisstrict::text,
                      'config=' || COALESCE(array_to_string(p.proconfig, ','), ''),
@@ -155,9 +162,15 @@ BEGIN
     END IF;
     IF NOT EXISTS (SELECT 1 FROM pg_proc p
                     WHERE p.oid = r.fn::regprocedure AND p.prosecdef AND p.provolatile = 's'
-                      AND p.prorettype = 'jsonb'::regtype
-                      AND 'search_path=public' = ANY (COALESCE(p.proconfig, ARRAY[]::text[]))) THEN
-      RAISE EXCEPTION 'self-check 20261012137000: % is no longer a STABLE definer returning jsonb with search_path public', r.fn;
+                      AND p.prorettype = 'jsonb'::regtype) THEN
+      RAISE EXCEPTION 'self-check 20261012137000: % is no longer a STABLE definer returning jsonb', r.fn;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_proc p
+                    WHERE p.oid = r.fn::regprocedure
+                      AND 'search_path=public' = ANY (COALESCE(p.proconfig, ARRAY[]::text[]))
+                      AND 'statement_timeout=15s' = ANY (COALESCE(p.proconfig, ARRAY[]::text[]))) THEN
+      RAISE EXCEPTION 'self-check 20261012137000: % lost a setting: want search_path=public and statement_timeout=15s (20261012101000), found %',
+        r.fn, (SELECT COALESCE(array_to_string(p.proconfig, ','), 'none') FROM pg_proc p WHERE p.oid = r.fn::regprocedure);
     END IF;
     IF NOT has_function_privilege('anon', r.fn::regprocedure, 'EXECUTE')
        OR NOT has_function_privilege('authenticated', r.fn::regprocedure, 'EXECUTE')

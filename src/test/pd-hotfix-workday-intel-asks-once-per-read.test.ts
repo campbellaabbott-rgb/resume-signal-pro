@@ -21,8 +21,14 @@
  *   (c) signatures, security, volatility, settings, owner and grants are
  *       unchanged, and no function is created;
  *   (d) the file is safe to run twice;
- *   (e) its self-check refuses the per-row shape and drifted grants, and the
- *       rewrite refuses a live body it does not know.
+ *   (e) its self-check refuses the per-row shape, drifted grants and a
+ *       reader that lost a setting (the 15-second timeout), and the rewrite
+ *       refuses a live body it does not know;
+ *   (f) its before/after fingerprint sees an argument default
+ *       (get_similar_companies' p_limit DEFAULT 6, which the page relies on);
+ *   (g) 20261012135000 must never be re-run once this file is applied: its
+ *       own self-check refuses the body this file leaves, which means
+ *       "superseded", and both the file's header and the ledger say so.
  */
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
@@ -377,6 +383,16 @@ describe("(e) the self-check and the rewrite refuse what they must", () => {
     await expect(db.exec(VERIFY)).rejects.toThrow(/workday_site_is_own_employer is not service-role only/);
   });
 
+  it("refuses a reader that lost its 15-second statement timeout, or its search_path", async () => {
+    const db = await boot({ fix: true });
+    await db.exec("ALTER FUNCTION public.get_company_intel(text) RESET statement_timeout");
+    await expect(db.exec(VERIFY)).rejects.toThrow(/self-check 20261012137000: public\.get_company_intel\(text\) lost a setting/);
+    await db.exec("ALTER FUNCTION public.get_company_intel(text) SET statement_timeout = '15s'");
+    await expect(db.exec(VERIFY)).resolves.toBeDefined();
+    await db.exec("ALTER FUNCTION public.get_similar_companies(text, integer) SET search_path = public, pg_temp");
+    await expect(db.exec(VERIFY)).rejects.toThrow(/self-check 20261012137000: public\.get_similar_companies\(text,integer\) lost a setting/);
+  });
+
   it("the rewrite refuses a live body it does not know rather than overwrite it", async () => {
     const db = await boot();
     // 20261012101000 re-run puts back its own body, which has no hosting-tenant test.
@@ -384,3 +400,52 @@ describe("(e) the self-check and the rewrite refuse what they must", () => {
     await expect(db.exec(FIX)).rejects.toThrow(/get_company_intel\(text\): expected the 20261012135000 body .* it drifted/);
   });
 });
+
+describe("(f) the before/after fingerprint sees argument defaults", () => {
+  // The expression the file compares before and after its rewrite, cut out of the file.
+  const FP = (FIX.match(/SELECT (concat_ws\((?:(?!\bINTO\b)[\s\S])*?\))\s+INTO v_pre/) ?? [])[1] ?? "";
+
+  it("the fingerprint expression was found, and both sides of the comparison use the same one", () => {
+    expect(FP.length).toBeGreaterThan(200);
+    const post = (FIX.match(/SELECT (concat_ws\((?:(?!\bINTO\b)[\s\S])*?\))\s+INTO v_post/) ?? [])[1] ?? "";
+    expect(post).toBe(FP);
+  });
+
+  it("a reader whose p_limit lost its DEFAULT 6 fingerprints differently", async () => {
+    const db = new PGlite();
+    await db.exec(`
+      CREATE FUNCTION public.fp_with(p_token text, p_limit int DEFAULT 6) RETURNS jsonb LANGUAGE sql STABLE AS $$ SELECT '[]'::jsonb $$;
+      CREATE FUNCTION public.fp_without(p_token text, p_limit int) RETURNS jsonb LANGUAGE sql STABLE AS $$ SELECT '[]'::jsonb $$;
+    `);
+    const fp = async (fn: string) => (await db.query<{ f: string }>(`SELECT ${FP} AS f FROM pg_proc p WHERE p.oid = $1::regprocedure`, [fn])).rows[0].f;
+    const a = await fp("public.fp_with(text,integer)");
+    const b = await fp("public.fp_without(text,integer)");
+    expect(a).toContain("DEFAULT 6");
+    expect(a).not.toBe(b);
+  });
+
+  it("on the live order, get_similar_companies' default is in its fingerprint before and after the rewrite", async () => {
+    for (const db of [before, after]) {
+      const f = (await db.query<{ f: string }>(`SELECT ${FP} AS f FROM pg_proc p WHERE p.oid = 'public.get_similar_companies(text,integer)'::regprocedure`)).rows[0].f;
+      expect(f).toContain("p_limit integer DEFAULT 6");
+    }
+  });
+});
+
+describe("(g) 20261012135000 is superseded once this file is applied", () => {
+  it("re-running 20261012135000 after the fix RAISEs from its own self-check (and 20261012136000 re-runs cleanly)", async () => {
+    const db = await boot({ fix: true });
+    await expect(db.exec(mig("20261012135000_"))).rejects.toThrow(/self-check 20261012135000/);
+    await expect(db.exec(strip(mig("20261012136000_")))).resolves.toBeDefined();
+  });
+
+  it("the file's header and the ledger's migrationOrder entry say a RAISE from it means superseded, never edit it", () => {
+    const header = FIX.split("\n").filter((l) => l.startsWith("--")).join(" ").replace(/--\s?/g, "").replace(/\s+/g, " ");
+    expect(header).toMatch(/20261012135000 must never be re-run after this file/);
+    expect(header).toMatch(/means it is superseded, not that it needs editing/);
+    const ledger = JSON.parse(readFileSync(resolve(__dirname, "../../docs/deploy-ledger.json"), "utf8")) as { migrationOrder: Record<string, { why: string }> };
+    expect(ledger.migrationOrder["20261012137000"].why).toMatch(/20261012135000 must never be re-run after 20261012137000/);
+    expect(ledger.migrationOrder["20261012137000"].why).toMatch(/means it is superseded, not that it needs editing/);
+  });
+});
+
