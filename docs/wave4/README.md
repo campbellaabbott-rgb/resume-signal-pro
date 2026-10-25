@@ -1518,7 +1518,13 @@ Left: 39 corpus cases, each answered exactly as main answers them: agency and
 contract figures, fleet values, allowances and international formats the
 miner still reads as main does, and a fertility allowance every version reads
 as pay. Eight business figures in the self-break set stay stored, as main
-leaves them, because the re-sweep never NULLs.
+leaves them, because the re-sweep never NULLs. That includes S12-019's own
+Airbus placement: the miner no longer takes "£350K to £800K annually in
+external business revenue", but the posting's own "Salary: £24,500" is a bare
+figure with no period, which main's guards refuse, so no stated pay is mined
+and the stored business figure stays in the pay sort. Round 3 cleared it by
+writing NULL, the move that also NULLed 98 real pays; making the miner read a
+labelled bare figure is a change to main's guards and needs its own corpus.
 
 **Questions** (`_shared/application-questions.ts`, `self-apply.ts`, the
 worker's `questions/protected.ts`; the five functions build `.33`). 2,385
