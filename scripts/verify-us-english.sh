@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # The chunks that can hold the US English strings the browser loads, for the
 # verify sections that judge copy in the served bundle (50, 52, 62, 65, 72,
-# 74).
+# 74, 94).
 #
 #   bash scripts/verify-us-english.sh <entry URL>
 #

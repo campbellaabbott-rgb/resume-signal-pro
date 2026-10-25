@@ -39,7 +39,7 @@ const SITE = "https://site.test";
 type Layout = { entry: string; carries?: string; chunks: Record<string, string | null> };
 const LAYOUTS = (JSON.parse(readFileSync(resolve(__dirname, "fixtures/verify-us-english-layouts-2026-10-25.json"), "utf8")) as { layouts: Record<string, Layout> }).layouts;
 const i18n = (p: string) => JSON.parse(readFileSync(resolve(ROOT, "src/i18n", p), "utf8"));
-const SECTIONS = ["50-changelog-and-mail-links.sh", "52-changelog-oct17-25.sh", "62-wave2-frontend-board.sh", "65-wave2-entitlements.sh", "72-wave3-scan-ai.sh", "74-wave3-payments-account.sh"];
+const SECTIONS = ["50-changelog-and-mail-links.sh", "52-changelog-oct17-25.sh", "62-wave2-frontend-board.sh", "65-wave2-entitlements.sh", "72-wave3-scan-ai.sh", "74-wave3-payments-account.sh", "94-r1-mail.sh"];
 
 /** A chunk's body as the build writes it: JSON.parse of a string for rb-en_all, an object literal for a lazy locale file. */
 function chunkBody(source: string | null, entry: string): string {

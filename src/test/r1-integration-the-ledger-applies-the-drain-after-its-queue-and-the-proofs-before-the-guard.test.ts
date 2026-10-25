@@ -95,8 +95,26 @@ describe("R1's two migrations sit where they work", () => {
     expect(codeOf(queue)).toMatch(/!\(await callerMayDrain\(req\.headers, supabase, supabaseServiceKey\)\)/);
     expect(codeOf(readFileSync(join(FN_DIR, "_shared/email-cron.ts"), "utf8"))).toContain('h.get("x-email-cron")');
     const sql = readFileSync(join(MIG, R1_MIGRATIONS.find((f) => f.startsWith("20261014100000"))!), "utf8");
-    expect(sql).toMatch(/APPLY ORDER: after process-email-queue\.2026-10-14\.1 serves/);
+    expect(sql, "the drain's header names another build than the rule it waits for").toContain(`APPLY ORDER: after process-email-queue.${m![1]}.${m![2]} serves`);
     expect(codeOf(sql)).toMatch(/x-email-cron/);
+  });
+
+  it("the hotfix's re-schedule (120000) waits for process-email-queue 2026-10-14.2, which main carries, and 100000 stays applied, never listed again", () => {
+    const rule = POLICY.migrationOrder["20261014120000"];
+    expect(rule?.after, "120000 does not wait for the build that drains sign-in mail through a cooldown").toBe("fn:process-email-queue@2026-10-14.2");
+    expect(POLICY.appliedOutsideDrizzle, "100000 is live; listing it again would re-run the applied text").toContain("20261014100000");
+    const file = R1_MIGRATIONS.find((f) => f.startsWith("20261014120000"));
+    expect(file, "no 20261014120000 file in R1's spare range").toBeDefined();
+    expect(readFileSync(join(MIG, file!), "utf8")).toContain("APPLY ORDER: after process-email-queue.2026-10-14.2 serves");
+    const queue = rowsWith().find((r) => r.fn === "process-email-queue")!;
+    expect(buildIsAtLeast(queue.want, "process-email-queue", "2026-10-14", 2), "main's process-email-queue is older than the build 120000 waits for").toBe(true);
+    const waiting = L.migrationPhases([file!], POLICY, rowsWith({ "process-email-queue": "process-email-queue.2026-10-14.1" }));
+    expect(waiting.errors).toEqual([]);
+    expect(waiting.afterFunctions.map((m) => m.file), "with 2026-10-14.1 live, 120000 was put before the function deploys").toEqual([file]);
+    expect(waiting.afterFunctions[0].note).toMatch(/once process-email-queue answers process-email-queue\.2026-10-14\.2 or later/);
+    const served = L.migrationPhases([file!], POLICY, rowsWith({ "process-email-queue": queue.want! }));
+    expect(served.errors).toEqual([]);
+    expect(served.pre.map((m) => m.file)).toEqual([file]);
   });
 
   it("the guard and the purchase verifier really read what 110000 creates", () => {
@@ -151,6 +169,18 @@ describe("the two shared files R1 declared are R1's where it says, and the code 
     }
     const html = readFileSync(resolve(ROOT, "index.html"), "utf8");
     expect(html, "the first script no longer moves session_id on every path").toMatch(/v = q\.get\("session_id"\); if \(v !== null\)/);
+  });
+
+  it("the hotfix's two pages and this test, which wave 4 also changes, are critical-path's, and the note names what wave 4 keeps of each (DEPLOY-LEDGER.md section 6; second fixer round)", () => {
+    for (const file of [
+      "src/pages/FreelanceBoost.tsx",
+      "src/pages/Success.tsx",
+      "src/test/r1-integration-the-ledger-applies-the-drain-after-its-queue-and-the-proofs-before-the-guard.test.ts",
+    ]) expect(L.sharedOwner(POLICY.sharedFiles, file), `${file} is changed by the hotfix and by wave 4 with no owner: --overlap exits 4`).toBe("critical-path");
+    const note = String(POLICY._sharedFilesNote ?? "");
+    for (const kept of ["stashedSessionIdFor", "forgetStashedSessionFor", "stashedShareFor", "stashShareFor", "forgetStashedShare"]) {
+      expect(note, `the note does not tell wave 4 to keep ${kept} when it rebases`).toContain(kept);
+    }
   });
 
   it("the proofs' order rule names the frontend gate the first publish needs (Google and recovery on: S12-057)", () => {
