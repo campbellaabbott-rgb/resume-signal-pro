@@ -14,6 +14,9 @@ import {
   setAsideCounts, setAsideSummary, tierFor, type TierReader, TOP_N,
 } from "../../supabase/functions/_shared/match-tiers";
 import { readPostingLicence, type Licence } from "../../supabase/functions/_shared/licence-rules";
+import { GAP_LABEL, readerYears, REQUIREMENTS_NOT_READ } from "../../supabase/functions/_shared/match-tiers";
+import { effectiveMinYears, extractRequirements } from "../../supabase/functions/_shared/posting-requirements";
+import { familyByKey, levelFacets } from "../../supabase/functions/_shared/title-families";
 
 const LEVEL0 = { intern: false, aboveEntry: false, numeral: false, overreach: false, junior: false, assistant: false };
 const facets = (over: Partial<RowFacets> = {}): RowFacets => ({
@@ -51,7 +54,10 @@ describe("gates", () => {
     expect(gateFor(facets({ level: { ...LEVEL0, junior: true } }), reader({ level: "senior" }))?.reason).toBe("level_below");
     expect(gateFor(facets({ level: { ...LEVEL0, assistant: true } }), reader({ level: "exec" }))).toBeNull();
     expect(gateFor(facets({ level: { ...LEVEL0, assistant: true }, assistantIsJunior: true }), reader({ level: "exec" }))?.reason).toBe("level_below");
-    expect(gateFor(facets({ level: { ...LEVEL0, aboveEntry: true }, levelInQuery: true }), reader({ level: "entry" })), "the level is the job").toBeNull();
+    // Where the level is the job, the family's own noun is left out when the facets are read (levelFacets(title, family)),
+    // so a facet that still says aboveEntry is a real seniority word and gates like any other.
+    expect(gateFor(facets({ level: levelFacets("Store Manager", familyByKey("store_manager")!), levelInQuery: true }), reader({ level: "entry" })), "the level is the job").toBeNull();
+    expect(gateFor(facets({ level: { ...LEVEL0, aboveEntry: true }, levelInQuery: true }), reader({ level: "entry" }))?.reason).toBe("level_above");
     expect(gateFor(facets({ level: { ...LEVEL0, intern: true } }), reader()))?.toEqual({ reason: "internship" });
     expect(gateFor(facets({ level: { ...LEVEL0, intern: true } }), reader({ student: true }))).toBeNull();
   });
@@ -175,5 +181,83 @@ describe("the set-aside line names its basis", () => {
     expect(counts.no_sponsorship).toEqual({ count: 1, basis: "of the 40 postings we read" });
     expect(setAsideSummary(counts, 40)).toBe("Set aside: 2 outside where you said you can work · 1 senior titles · of the 40 we read: 1 say they won't sponsor");
     expect(setAsideSummary({}, 0)).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The fixer's round (review of rm/integration 7af55e52). Each block failed on
+// that commit.
+// ---------------------------------------------------------------------------
+const PAD = "\nThe team supports month-end close, reconciliations and reporting for a growing business across several offices and entities.";
+
+describe("an unread row carries its label wherever it is tiered", () => {
+  it("tierFor adds 'requirements not read' after the tier is set, so the label is never counted as a gap", () => {
+    expect(tierFor(facets({ requirements: "not read" }), reader())).toMatchObject({ tier: "good", gaps: [REQUIREMENTS_NOT_READ] });
+    expect(tierFor(facets({ requirements: "not read", titleRank: 1 }), reader())).toMatchObject({ tier: "good", gaps: [GAP_LABEL.nearTitle, REQUIREMENTS_NOT_READ] });
+    expect(tierFor(facets(), reader()).gaps).not.toContain(REQUIREMENTS_NOT_READ);
+  });
+});
+
+describe("a requirement read but not compared is never a Strong", () => {
+  it("a stated minimum with the reader's years unknown is a smaller gap", () => {
+    expect(tierFor(facets({ minYears: 5 }), reader({ years: null }))).toMatchObject({ tier: "good", gaps: ["asks 5+ years; we could not read yours"] });
+  });
+  it("a required degree with none on the résumé is a smaller gap; a preferred one is no gap", () => {
+    const must = reqs({ degree: { level: "bachelor", must: true, quote: "Bachelor's degree required" } });
+    expect(tierFor(facets({ requirements: must }), reader({ degree: null }))).toMatchObject({ tier: "good", gaps: ["asks for a bachelor's degree; none on your résumé"] });
+    const nice = reqs({ degree: { level: "bachelor", must: false, quote: "Bachelor's degree preferred" } });
+    expect(tierFor(facets({ requirements: nice }), reader({ degree: null })).tier).toBe("strong");
+  });
+  it("the reviewer's probe: 5 years and a bachelor's both required, a mid reader with neither read is never Strong", () => {
+    const q = extractRequirements(`Bachelor's degree in Accounting required.\nMinimum of 5 years of accounting experience required.${PAD}`);
+    expect(q.minYears).toBe(5);
+    const f = facets({ requirements: q, minYears: effectiveMinYears(null, q) });
+    expect(gateFor(f, reader({ years: null, degree: null }))).toBeNull();
+    expect(tierFor(f, reader({ years: null, degree: null })).tier).toBe("stretch");
+  });
+  it("a career changer whose years in the new field are unknown is judged on no years at all, never on the old career's", () => {
+    expect(readerYears(reader({ careerChanger: true, targetYears: null, years: { low: 12, high: 12 } }))).toBeNull();
+    expect(tierFor(facets({ minYears: 5 }), reader({ careerChanger: true, targetYears: null, years: { low: 12, high: 12 } })).tier).toBe("good");
+  });
+});
+
+describe("levels in a family whose level is the job: only the family's own noun is exempt", () => {
+  const g = (title: string, key: string, level: TierReader["level"]) =>
+    gateFor(facets({ level: levelFacets(title, familyByKey(key)!), levelInQuery: true }), reader({ level }))?.reason ?? null;
+  it("Director, VP and Principal are above a mid reader; Senior is above an entry reader; the bare title is neither", () => {
+    for (const t of ["Director of Product Management", "VP, Product Management", "Principal Product Manager"]) {
+      expect(g(t, "product_manager", "mid"), t).toBe("level_above");
+      expect(g(t, "product_manager", "entry"), t).toBe("level_above");
+    }
+    expect(g("Senior Marketing Manager", "marketing_manager", "entry")).toBe("level_above");
+    expect(g("Senior Product Manager", "product_manager", "mid")).toBeNull();
+    expect(g("Product Manager", "product_manager", "entry")).toBeNull();
+    expect(g("Store Manager", "store_manager", "entry")).toBeNull();
+    expect(g("Staff Software Engineer", "swe_staff", "mid")).toBeNull();
+    expect(g("Principal Software Engineer", "swe_staff", "mid")).toBe("level_above");
+  });
+});
+
+describe("a clearance is held, not held, or never sent", () => {
+  const f = facets({ requirements: reqs({ activeClearance: "Active Secret clearance required" }) });
+  it("a held clearance read as a licence counts as held", () => {
+    expect(gateFor(f, reader({ licences: [{ kind: "clearance", jurisdiction: null, compact: false, grade: "secret", basis: "" }] }))).toBeNull();
+  });
+  it("a reader whose clearance was never sent is not set aside: the row carries a smaller gap the device resolves", () => {
+    const unsent = reader({ workAuth: { status: "unknown", needsSponsorship: false, citizenOf: [], clearance: null, clearanceKnown: false } });
+    expect(gateFor(f, unsent)).toBeNull();
+    expect(tierFor(f, unsent)).toMatchObject({ tier: "good", gaps: [GAP_LABEL.clearanceNotSent] });
+    expect(gateFor(f, reader())?.reason, "a reader known to hold none is still set aside").toBe("clearance_required");
+  });
+});
+
+describe("a posting that accepts permanent residents", () => {
+  const f = facets({ requirements: reqs({ citizenOrResident: "Must be a US citizen or permanent resident" }) });
+  const wa = (status: string, needsSponsorship = false) => reader({ workAuth: { status, needsSponsorship, citizenOf: [], clearance: null } });
+  it("sets aside only work-visa and student-visa readers", () => {
+    expect(gateFor(f, wa("permanent_resident"))).toBeNull();
+    expect(gateFor(f, wa("unknown"))).toBeNull();
+    expect(gateFor(f, wa("work_visa", true))?.reason).toBe("citizen_or_resident_required");
+    expect(gateFor(f, wa("student_visa", true))?.reason).toBe("citizen_or_resident_required");
   });
 });

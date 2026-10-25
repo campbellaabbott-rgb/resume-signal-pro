@@ -156,3 +156,26 @@ describe("years: employment only, merged intervals, non-English dates", () => {
     expect(readProfile(t, { nowYear: 2026 }).student).toBe(true);
   });
 });
+
+// The fixer's round (review of rm/integration 7af55e52): this block failed on that commit.
+describe("a career changer whose years in the new field are unknown", () => {
+  const chef = [
+    "Jordan Example", "Staff Accountant", "Kansas City, MO | jordan@example.com", "",
+    "SUMMARY",
+    "Twelve years as an executive chef, now moving into accounting with a completed bookkeeping course.",
+    "EXPERIENCE",
+    "Executive Chef - Bistro Example | Jan 2014 - Present",
+    "Sous Chef - Grill Example | Jun 2012 - Dec 2013",
+  ].join("\n");
+  it("is read as entry, so the old career's years never stand in for the new field's", () => {
+    const p = readProfile(chef, { nowYear: 2026 });
+    expect(p.careerChanger).toBe(true);
+    expect(p.targetYears).toBeNull();
+    expect(p.level).toBe("entry");
+  });
+  it("names the old career, never the adverb before the cue", () => {
+    const p = readProfile(chef, { nowYear: 2026 });
+    expect(p.former).not.toBe("now");
+    expect(p.former).toMatch(/chef/i);
+  });
+});

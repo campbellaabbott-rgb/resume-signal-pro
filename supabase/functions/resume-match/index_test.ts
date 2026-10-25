@@ -15,8 +15,11 @@
 // Run: deno test --allow-env --allow-read supabase/functions/resume-match/
 
 import { assert, assertEquals, assertMatch } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { type Deps, followUpToken, followUpValid, handle, SERVER_SURFACE_EXCLUDED_SOURCES, SITE_PER_NETWORK_HOUR, siteInput, WIDEN_PER_NETWORK_HOUR } from "./handler.ts";
-import { CANDIDATES_DEADLINE_MS, clearRingCache } from "./pipeline.ts";
+import {
+  type Deps, followUpToken, followUpValid, handle, RATE_RPC, SERVER_SURFACE_EXCLUDED_SOURCES, SITE_PER_NETWORK_HOUR, siteInput, TOKEN_USE_PREFIX,
+  WIDEN_PER_NETWORK_HOUR,
+} from "./handler.ts";
+import { CANDIDATES_DEADLINE_MS, clearRingCache, RING_DEADLINE_MS } from "./pipeline.ts";
 
 const SERVICE = "service_test_key_0123456789abcdef0123456789abcdef";
 const BUILD = "resume-match.2026-10-16.1";
@@ -26,14 +29,20 @@ type Call = { kind: "rpc" | "select" | "write"; name: string; args: unknown };
 interface FakeOpts {
   candidates?: (args: Record<string, unknown>, n: number) => unknown[] | Promise<unknown[]>;
   ring?: unknown[];
+  ringDelayMs?: number;
   anon?: { data: unknown; error: unknown } | (() => Promise<never>);
   limit?: { data: unknown; error: unknown };
+  /** Answers for the first limiter calls, in order; then `limit`. */
+  limitSeq?: Array<{ data: unknown; error: unknown }>;
   descriptions?: Record<string, string>;
+  /** Rows job_posting_requirements already holds. */
+  cached?: Array<{ posting_id: string; requirements: unknown; posting_terms: string[] | null; description_chars: number }>;
 }
 
 function fakeClient(o: FakeOpts = {}) {
   const calls: Call[] = [];
   let candidateCalls = 0;
+  let limitCalls = 0;
   const thenable = <T>(p: Promise<T>) => Object.assign(p, { abortSignal: () => p });
   const client = {
     rpc(name: string, args: Record<string, unknown>) {
@@ -42,8 +51,11 @@ function fakeClient(o: FakeOpts = {}) {
         if (typeof o.anon === "function") return thenable(o.anon());
         return thenable(Promise.resolve(o.anon ?? { data: [{ is_allowed: true, used_today: 1, cap_today: 10000 }], error: null }));
       }
-      if (name === "check_rate_limit") return thenable(Promise.resolve(o.limit ?? { data: true, error: null }));
-      if (name === "metro_ring") return thenable(Promise.resolve({ data: o.ring ?? [], error: null }));
+      if (name === RATE_RPC) return thenable(Promise.resolve(o.limitSeq?.[limitCalls++] ?? o.limit ?? { data: true, error: null }));
+      if (name === "metro_ring") {
+        const answer = { data: o.ring ?? [], error: null };
+        return thenable(o.ringDelayMs ? new Promise((res) => setTimeout(() => res(answer), o.ringDelayMs)) : Promise.resolve(answer));
+      }
       if (name === "match_candidates") {
         const n = candidateCalls++;
         return thenable(Promise.resolve(o.candidates ? o.candidates(args, n) : []).then((data) => ({ data, error: null })));
@@ -61,6 +73,7 @@ function fakeClient(o: FakeOpts = {}) {
               const data = ids.filter((id) => o.descriptions?.[id]).map((id) => ({ id, description: o.descriptions![id], min_years: null }));
               return thenable(Promise.resolve({ data, error: null }));
             }
+            if (table === "job_posting_requirements") return thenable(Promise.resolve({ data: (o.cached ?? []).filter((c) => ids.includes(c.posting_id)), error: null }));
             return thenable(Promise.resolve({ data: [], error: null }));
           },
         };
@@ -139,7 +152,7 @@ Deno.test("the mcp and v1 surfaces withhold the sources /v1 may not redistribute
   const mc = f.calls.filter((c) => c.name === "match_candidates");
   assert(mc.length >= 1);
   for (const c of mc) assertEquals((c.args as Record<string, unknown>).p_exclude_sources, [...SERVER_SURFACE_EXCLUDED_SOURCES]);
-  assertEquals(f.calls.filter((c) => c.name === "check_rate_limit" || c.name === "job_board_anon_check").length, 0, "the service role is metered by its own surface");
+  assertEquals(f.calls.filter((c) => c.name === RATE_RPC || c.name === "job_board_anon_check").length, 0, "the service role is metered by its own surface");
 
   const g = fakeClient({ ring: COLUMBUS_RING, candidates: () => [cand("1")] });
   await handle(post(cashier()), deps(g.client));
@@ -152,19 +165,31 @@ Deno.test("the board's meter comes first, then 30 an hour per network; a follow-
   const first = await handle(post(cashier()), deps(f.client));
   const body = await first.json();
   const order = f.calls.filter((c) => c.kind === "rpc").map((c) => c.name);
-  assertEquals(order.slice(0, 2), ["job_board_anon_check", "check_rate_limit"]);
-  const limit = f.calls.find((c) => c.name === "check_rate_limit")!.args as Record<string, unknown>;
-  assertEquals([limit.p_function, limit.p_max_requests, limit.p_window_minutes], ["resume-match", SITE_PER_NETWORK_HOUR, 60]);
-  assertMatch(String(body.followUp), /^v1\.\d+\.[0-9a-f]{32}$/);
+  assertEquals(order.slice(0, 2), ["job_board_anon_check", RATE_RPC]);
+  const limit = f.calls.find((c) => c.name === RATE_RPC)!.args as Record<string, unknown>;
+  assertEquals([limit.p_function, limit.p_max, limit.p_window_minutes], ["resume-match", SITE_PER_NETWORK_HOUR, 60]);
+  assertMatch(String(body.followUp), /^v2\.\d+\.2\.[0-9a-f]{32}$/);
 
+  // A follow-up spends its token once (one take of 1 in 30 minutes), then the widening allowance.
   const g = fakeClient({ ring: COLUMBUS_RING, candidates: () => [] });
   await handle(post({ ...cashier(), widen: 2, followUp: body.followUp }), deps(g.client));
-  const w = g.calls.find((c) => c.name === "check_rate_limit")!.args as Record<string, unknown>;
-  assertEquals([w.p_function, w.p_max_requests], ["resume-match-widen", WIDEN_PER_NETWORK_HOUR]);
+  const takes = g.calls.filter((c) => c.name === RATE_RPC).map((c) => c.args as Record<string, unknown>);
+  assertEquals(takes.length, 2);
+  assertMatch(String(takes[0].p_function), new RegExp(`^${TOKEN_USE_PREFIX}[0-9a-f]{16}$`));
+  assertEquals([takes[0].p_max, takes[0].p_window_minutes], [1, 30]);
+  assertEquals([takes[1].p_function, takes[1].p_max], ["resume-match-widen", WIDEN_PER_NETWORK_HOUR]);
+
+  // A spent token counts against the 30 like a new search.
+  const spent = fakeClient({ ring: COLUMBUS_RING, candidates: () => [], limitSeq: [{ data: false, error: null }] });
+  await handle(post({ ...cashier(), widen: 2, followUp: body.followUp }), deps(spent.client));
+  assertEquals((spent.calls.filter((c) => c.name === RATE_RPC)[1].args as Record<string, unknown>).p_function, "resume-match");
 
   const h = fakeClient({ ring: COLUMBUS_RING, candidates: () => [] });
   await handle(post({ ...cashier({ roles: ["Barista"] }), widen: 2, followUp: body.followUp }), deps(h.client));
-  assertEquals((h.calls.find((c) => c.name === "check_rate_limit")!.args as Record<string, unknown>).p_function, "resume-match", "a token for another search is a new search");
+  assertEquals((h.calls.find((c) => c.name === RATE_RPC)!.args as Record<string, unknown>).p_function, "resume-match", "a token for another search is a new search");
+  const k = fakeClient({ ring: COLUMBUS_RING, candidates: () => [] });
+  await handle(post({ ...cashier(), widen: 5, followUp: body.followUp }), deps(k.client));
+  assertEquals(k.calls.filter((c) => c.name === RATE_RPC).map((c) => (c.args as Record<string, unknown>).p_function), ["resume-match"], "a token for step 2 does not pay for step 5");
 });
 
 Deno.test("a full hour is a 429 naming the shared network allowance; a limiter that cannot answer is a 503, never a pass", async () => {
@@ -189,19 +214,59 @@ Deno.test("a full hour is a 429 naming the shared network allowance; a limiter t
 
   const blocked = fakeClient({ anon: { data: [{ is_allowed: false, network_rule: true, cap_today: 0, used_today: 0 }], error: null } });
   assertEquals((await handle(post(cashier()), deps(blocked.client))).status, 429);
-  assertEquals(blocked.calls.filter((c) => c.name === "check_rate_limit" || c.name === "match_candidates").length, 0, "refused before any work");
+  assertEquals(blocked.calls.filter((c) => c.name === RATE_RPC || c.name === "match_candidates").length, 0, "refused before any work");
 });
 
-Deno.test("a follow-up token is bound to its search and expires", async () => {
+Deno.test("a follow-up token is bound to its search and its step, and expires", async () => {
   const input = siteInput(cashier().profile);
   const now = Date.UTC(2026, 9, 16);
-  const t = await followUpToken(SERVICE, input, now);
-  assert(await followUpValid(SERVICE, t, input, now + 60_000));
-  assert(!(await followUpValid(SERVICE, t, input, now + 31 * 60_000)), "expired after 30 minutes");
-  assert(!(await followUpValid(SERVICE, t, siteInput(cashier({ radiusKm: 80 }).profile), now)), "another search");
-  assert(!(await followUpValid(SERVICE, t.replace(/.$/, (c) => (c === "0" ? "1" : "0")), input, now)), "tampered");
-  assert(!(await followUpValid("", t, input, now)));
-  assert(!(await followUpValid(SERVICE, 42, input, now)));
+  const t = await followUpToken(SERVICE, input, now, 2);
+  assert(await followUpValid(SERVICE, t, input, now + 60_000, 2));
+  assert(!(await followUpValid(SERVICE, t, input, now + 60_000, 3)), "another step");
+  assert(!(await followUpValid(SERVICE, t.replace(/^v2\.(\d+)\.2\./, "v2.$1.3."), input, now, 3)), "a step rewritten in the token");
+  assert(!(await followUpValid(SERVICE, t, input, now + 31 * 60_000, 2)), "expired after 30 minutes");
+  assert(!(await followUpValid(SERVICE, t, siteInput(cashier({ radiusKm: 80 }).profile), now, 2)), "another search");
+  assert(!(await followUpValid(SERVICE, t.replace(/.$/, (c) => (c === "0" ? "1" : "0")), input, now, 2)), "tampered");
+  assert(!(await followUpValid("", t, input, now, 2)));
+  assert(!(await followUpValid(SERVICE, 42, input, now, 2)));
+});
+
+Deno.test("a reader's own words never become query syntax, and a fallback never widens to any word order", async () => {
+  clearRingCache();
+  const f = fakeClient({ ring: COLUMBUS_RING, candidates: () => [] });
+  const twenty = ["CA", "GB", "DE", "FR", "IE", "NL", "ES", "IT", "PT", "PL", "US", "SE", "NO", "DK", "FI", "BE", "AT", "CH", "AU", "NZ"];
+  await handle(post({ action: "match", profile: { roles: ["-zzz"], home: { city: "Columbus", region: "OH", country: "US" }, canWorkIn: twenty, relocate: "country", remote: true } }), deps(f.client));
+  const mc = f.calls.filter((c) => c.name === "match_candidates").map((c) => c.args as Record<string, unknown>);
+  assertEquals(mc.length, 1, "no any-word-order statement for a reader's own words");
+  assertEquals(mc[0].p_q_en, '"zzz"');
+  assertEquals((mc[0].p_countries as string[])[0], "US", "the home country first: the country lane reads three");
+  const g = fakeClient({ ring: COLUMBUS_RING, candidates: () => [] });
+  await handle(post({ action: "match", profile: { roles: ["worker or staff or team or crew"], home: { city: "Columbus", region: "OH", country: "US" } }, widen: 1 }), deps(g.client));
+  assertEquals((g.calls.find((c) => c.name === "match_candidates")!.args as Record<string, unknown>).p_q_en, '"worker staff team crew"');
+});
+
+Deno.test("widening step 5 places the reader's own region and says 'elsewhere in'", async () => {
+  clearRingCache();
+  const f = fakeClient({ ring: COLUMBUS_RING, candidates: () => [cand("cle", { location: "Cleveland, OH", lane: "region" })] });
+  const body = await (await handle(post({ ...cashier(), widen: 5 }), deps(f.client))).json();
+  const args = f.calls.find((c) => c.name === "match_candidates")!.args as Record<string, unknown>;
+  assertEquals(args.p_regions, ["Ohio", ", OH"]);
+  assertEquals(args.p_ring, []);
+  const row = body.rows.find((r: { id: string }) => r.id === "cle");
+  assert(row, "the Cleveland row is shown, not set aside as beyond the commute");
+  assertEquals(row.placeLine, "elsewhere in Ohio");
+  assert(row.gaps.includes("found by a wider search"));
+});
+
+Deno.test("a missed ring deadline falls back to the city and the request goes on: requirements are still read", async () => {
+  clearRingCache();
+  const f = fakeClient({ ring: COLUMBUS_RING, ringDelayMs: RING_DEADLINE_MS + 150, candidates: (_a, n) => (n === 0 ? [cand("r1")] : []), descriptions: { r1: "Cashier at a busy neighbourhood store. Requirements:\n- Cash handling experience required.\n- Customer service skills and a friendly manner with every guest at the front end, weekends included." } });
+  const body = await (await handle(post(cashier()), deps(f.client))).json();
+  assertEquals(body.deadlineMissed, "ring");
+  assertEquals(body.searched.ringSource, "city-only");
+  assert(f.calls.some((c) => c.kind === "select" && c.name === "job_board_postings"), "the descriptions were read");
+  assertEquals(body.rows.find((r: { id: string }) => r.id === "r1").requirements, "read");
+  await new Promise((r) => setTimeout(r, 200));
 });
 
 Deno.test("one automatic widening step at most, and an explicit step runs alone", async () => {
@@ -247,11 +312,78 @@ Deno.test("an unread row is never Strong; quotes are at most 160 characters; at 
   assert(unread.gaps.includes("requirements not read"));
   for (const r of body.rows) {
     if (r.requirements === "not read") continue;
-    for (const line of [...r.requirements.must, ...r.requirements.nice]) assert(line.length <= 160, `quote of ${line.length}`);
+    for (const line of [...r.facets.requirements.must, ...r.facets.requirements.nice]) assert(line.length <= 160, `quote of ${line.length}`);
   }
   assert(body.basis.walked <= 6, `walked ${body.basis.walked}`);
   assertEquals(body.rows.filter((r: { postingTerms: unknown }) => r.postingTerms === "pending").length >= 1, true);
   assertMatch(body.footer, /not a prediction of whether you will be hired/);
+});
+
+// ---------------------------------------------------------------------------
+// The fixer's round (review of rm/integration 7af55e52): each failed on that commit.
+// ---------------------------------------------------------------------------
+
+const READABLE = (n: number) => `Cashier ${n} at a busy neighbourhood store. Requirements:\n- Cash handling experience required.\n- Customer service skills and a friendly manner with every guest at the front end, weekends included.`;
+
+Deno.test("the notes say true things: commute-area rows counted alone, no home city said, pending counts only what will fill", async () => {
+  clearRingCache();
+  const remote = [cand("rm1", { location: "Remote - US", lane: "remote", remote: true }), cand("rm2", { location: "Remote - US", lane: "remote", remote: true })];
+  const f = fakeClient({ ring: [], candidates: (_a, n) => (n === 0 ? [...remote, cand("ring1")] : []) });
+  const body = await (await handle(post(cashier({ remote: true })), deps(f.client))).json();
+  const thin = body.notes.find((x: string) => /We also tried/.test(x));
+  assertEquals(thin, "1 in Columbus; 2 remote. We also tried: any word order.", "only the city was searched, and two rows are remote");
+
+  const g = fakeClient({ ring: [], candidates: () => [cand("x1", { location: "Remote - US", lane: "remote", remote: true })] });
+  const noHome = await (await handle(post({ action: "match", profile: { roles: ["Cashier"], canWorkIn: ["US"], remote: true } }), deps(g.client))).json();
+  assert(noHome.notes.includes("No home city was given, so no commute area was searched."), JSON.stringify(noHome.notes));
+
+  // Two rows read, one with no readable description: the unreadable one never fills, so it is not pending.
+  const h = fakeClient({ ring: COLUMBUS_RING, candidates: (_a, n) => (n === 0 ? [cand("p1"), cand("p2")] : []), descriptions: { p1: READABLE(1) } });
+  const pend = await (await handle(post(cashier()), deps(h.client))).json();
+  assertEquals(pend.basis.pending, 0, "p1 was walked; p2 has no description to walk");
+  assert(!pend.notes.some((x: string) => /keywords pending/.test(x)));
+});
+
+Deno.test("countries the reader never named are 'the country your résumé says you live in', not 'where you said'", async () => {
+  clearRingCache();
+  const f = fakeClient({ ring: COLUMBUS_RING, candidates: (_a, n) => (n === 0 ? [cand("gb", { location: "London", country: "GB" }), cand("oh")] : []) });
+  const text = "Retail Cashier\nColumbus, OH\n\nEXPERIENCE\nCashier, Kroger, Columbus, OH, 2019 - 2024\nCash handling and customer service on a busy front end.";
+  const body = await (await handle(post({ action: "match", resumeText: text, surface: "mcp" }, { service: true }), deps(f.client))).json();
+  assertMatch(body.footer, /the country your résumé says you live in/);
+  assertEquals(body.setAside.outside_countries?.label, "Outside the country your résumé says you live in");
+  const said = await (await handle(post({ action: "match", resumeText: text, surface: "mcp", overrides: { canWorkIn: ["US"] } }, { service: true }), deps(fakeClient({ ring: COLUMBUS_RING, candidates: () => [] }).client))).json();
+  assertMatch(said.footer, /where you said you can work/);
+});
+
+Deno.test("every step's deadline is what is left of 2.5 s: late in the request the descriptions are not read, and the cache write goes after the answer", async () => {
+  clearRingCache();
+  let now = 0;
+  const f = fakeClient({ ring: COLUMBUS_RING, candidates: (_a, n) => { if (n === 0) now = 1_750; return n === 0 ? [cand("late1")] : []; }, descriptions: { late1: READABLE(1) } });
+  const d = { ...deps(f.client), clock: () => now };
+  const body = await (await handle(post(cashier()), d)).json();
+  assertEquals(f.calls.filter((c) => c.kind === "select").length, 0, "1.75 s in, 750 ms left: no description read starts");
+  assert(body.notes.some((x: string) => /requirements not read: the page answered before/.test(x)));
+
+  const bg: Promise<unknown>[] = [];
+  const g = fakeClient({ ring: COLUMBUS_RING, candidates: (_a, n) => (n === 0 ? [cand("w1")] : []), descriptions: { w1: READABLE(1) } });
+  await handle(post(cashier()), { ...deps(g.client), background: (p) => { bg.push(p); } });
+  assertEquals(bg.length, 1, "the requirement cache write ran after the answer");
+  await Promise.all(bg);
+  assertEquals(g.calls.filter((c) => c.kind === "write").length, 1);
+});
+
+Deno.test("a cached row whose terms are pending is fetched only to be walked, never to wait again", async () => {
+  clearRingCache();
+  const reqs = { version: "x", minYears: null, minYearsQuote: null, licence: null, noSponsorship: null, citizenshipRequired: null, citizenOrResident: null, activeClearance: null, clearanceObtainable: null, degree: null, languages: [], shift: null, driving: null, credentials: [], must: [], nice: [] };
+  const ids = Array.from({ length: 30 }, (_, i) => `c${i}`);
+  const f = fakeClient({
+    ring: COLUMBUS_RING, candidates: (_a, n) => (n === 0 ? ids.map((id) => cand(id)) : []),
+    cached: ids.map((id) => ({ posting_id: id, requirements: reqs, posting_terms: null, description_chars: 6_000 })),
+    descriptions: Object.fromEntries(ids.map((id, i) => [id, READABLE(i)])),
+  });
+  await handle(post(cashier()), deps(f.client));
+  const fetched = f.calls.filter((c) => c.kind === "select" && c.name === "job_board_postings").flatMap((c) => (c.args as { ids: string[] }).ids);
+  assert(fetched.length <= 6, `fetched ${fetched.length} descriptions to walk at most 6`);
 });
 
 // ---------------------------------------------------------------------------
@@ -298,12 +430,14 @@ Deno.test("canary: profile values and résumé text reach no log line, no write 
       years: { low: 17.25, high: 19.75 }, former: CANARY.former, careerChanger: true,
       licences: [{ kind: "rn", jurisdiction: CANARY.licence, compact: true }],
       workAuth: { status: "work_visa", needsSponsorship: true, citizenOf: ["NZ"], clearance: "ts/sci" },
+      // Spec 14: the reader's answers to requirement lines are profile values too (device only; never read here).
+      answers: { "Canary line qx9": "no" },
     },
   }), deps(f.client, logs));
   assertEquals(res.status, 200);
   const body = await res.json();
   const bad: string[] = [];
-  const everywhere = [CANARY.former, "Zephyrine", "ts/sci", "work_visa", "17.25", "19.75", '"NZ"', `"${CANARY.licence}"`];
+  const everywhere = [CANARY.former, "Zephyrine", "ts/sci", "work_visa", "17.25", "19.75", '"NZ"', `"${CANARY.licence}"`, "qx9"];
   for (const l of logs) bad.push(...leaks("log", l, [...everywhere, CANARY.city]));
   for (const w of f.calls.filter((c) => c.kind === "write")) bad.push(...leaks(`write ${w.name}`, JSON.stringify(w.args), [...everywhere, CANARY.city]));
   // Only the fields that say what was searched may name the reader's own city.

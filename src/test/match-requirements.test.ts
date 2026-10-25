@@ -155,3 +155,66 @@ describe("licence rules", () => {
     expect(statesIn("licensed in Texas")).toEqual(["TX"]);
   });
 });
+
+// ---------------------------------------------------------------------------
+// The fixer's round (review of rm/integration 7af55e52). Each block failed on
+// that commit.
+// ---------------------------------------------------------------------------
+const PAD2 = " This role supports our analytics programme with daily reporting, stakeholder updates and documentation across several teams and offices.";
+
+describe("a clearance to obtain, a clearance not required and a clearance preferred are not an active requirement", () => {
+  it.each([
+    ["Must be able to obtain an active Secret clearance.", true],
+    ["Candidates must have the ability to obtain and maintain an active security clearance.", true],
+    ["No security clearance required.", false],
+    ["An active TS/SCI clearance is preferred but not required.", false],
+  ])("%s", (s, obtainable) => {
+    const r = extractRequirements(`${s}${PAD2}`);
+    expect(r.activeClearance).toBeNull();
+    if (obtainable) expect(r.clearanceObtainable).not.toBeNull();
+  });
+  it("an active clearance still reads as one", () => {
+    expect(extractRequirements(`Must hold an active Top Secret clearance.${PAD2}`).activeClearance).toMatch(/active Top Secret clearance/);
+  });
+});
+
+describe("citizenship: a clause that accepts permanent residents, and one that says it is not required", () => {
+  it.each(["Must be a US citizen or permanent resident.", "US Citizen or Green Card holder required."])("%s accepts permanent residents", (s) => {
+    const r = extractRequirements(`${s}${PAD2}`);
+    expect(r.citizenshipRequired).toBeNull();
+    expect(r.citizenOrResident).not.toBeNull();
+  });
+  it("'citizenship is not required' requires nothing; 'must be a U.S. citizen' still does", () => {
+    const no = extractRequirements(`U.S. citizenship is not required for this role.${PAD2}`);
+    expect(no.citizenshipRequired).toBeNull();
+    expect(no.citizenOrResident).toBeNull();
+    expect(extractRequirements(`Must be a U.S. citizen.${PAD2}`).citizenshipRequired).toBe("Must be a U.S. citizen");
+  });
+});
+
+describe("a minimum re-read from the text is held to the stored minimum's bar", () => {
+  it("a company-age sentence is not a requirement, and a re-read of 16 or more is unknown", () => {
+    expect(extractRequirements(`We have over 20 years of experience providing logistics solutions.${PAD2}`).minYears).toBeNull();
+    expect(extractRequirements(`Our team brings over 12 years of experience serving clients. Requires 3+ years of experience in logistics.${PAD2}`).minYears).toBe(3);
+    expect(effectiveMinYears(3, { ...extractRequirements(`Requires 3+ years of experience in logistics.${PAD2}`), minYears: 18 })).toBeNull();
+  });
+});
+
+describe("licence or-lists, preferred licences and a nurse educator", () => {
+  const rnIL = [{ kind: "rn" as const, jurisdiction: "IL", compact: false, basis: "" }];
+  const lpn = [{ kind: "lpn" as const, jurisdiction: null, compact: false, basis: "" }];
+  it("'RN or LPN license required' is met by either", () => {
+    const need = readPostingLicence("Current RN or LPN license required.");
+    expect(licenceVerdict(rnIL, need)).toBe("met");
+    expect(licenceVerdict(lpn, need)).toBe("met");
+    expect(licenceVerdict([], need)).toBe("missing");
+  });
+  it("a licence the sentence calls preferred asks nothing", () => {
+    expect(licenceVerdict([], readPostingLicence("CPA or CMA certification preferred."))).toBe("not_asked");
+    expect(licenceVerdict([], readPostingLicence("Teaching certificate preferred."))).toBe("not_asked");
+    expect(licenceVerdict([], readPostingLicence("Current Ohio RN license required, BSN preferred."))).toBe("missing");
+  });
+  it("a Certified Nurse Educator certification is not a teaching licence", () => {
+    expect(readPostingLicence("Certified Nurse Educator certification preferred for this nursing role.")?.kind).not.toBe("teacher");
+  });
+});

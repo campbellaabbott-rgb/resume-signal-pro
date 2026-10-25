@@ -56,6 +56,14 @@ export interface TitleFamily {
   assistantIsJunior?: boolean;
   /** A résumé title maps to this family when it matches; defaults to core. */
   match?: RegExp;
+  /**
+   * levelInQuery families: the word the family is named by, left out when a
+   * title's level words are read (defaults to headNoun). Every other level
+   * word still counts: "Director of Product Management" is above a mid reader.
+   */
+  levelNoun?: string;
+  /** Spans the not-list ignores (widening step 3: the rung words the next rung itself contains). */
+  notIgnore?: RegExp;
 }
 
 /** Sales and recruiting titles share words with almost every occupation. */
@@ -110,7 +118,7 @@ export const TITLE_FAMILIES: readonly TitleFamily[] = [
   {
     key: "rn", label: "Registered nurse", onsite: true, headNoun: "nurse", licensed: "rn",
     q: ["registered nurse", "new graduate nurse", "nurse resident", "graduate nurse", "staff nurse", "rn"],
-    core: /\bregistered nurse\b|\b(rn|r\.n\.)\b|\bstaff nurse\b|\bnurse resident\b|\bgraduate nurse\b|\bnew grad(uate)? (registered )?nurse\b/i,
+    core: /\bregistered nurse\b|\b(rn|r\.n\.)\b|\bstaff nurse\b|\bcharge nurse\b|\bnurse resident\b|\bgraduate nurse\b|\bnew grad(uate)? (registered )?nurse\b/i,
     near: /\b(clinical|med[- ]?surg|telemetry|float|icu|er|ed|emergency|pediatric|labor and delivery|oncology|surgical)\b[^,|]*\bnurse\b/i,
     not: /\bnurse practitioner|\bnp\b|\blpn\b|\blvn\b|licensed (practical|vocational)|\bcna\b|nursing assistant|nurse aide|\bmanager\b|\bdirector\b|anesthetist|midwife|educator|informatics|case manager|\bmedical assistant\b|\binstructor\b/i,
     adjacent: ["clinical nurse", "telemetry nurse", "medical surgical nurse"],
@@ -221,7 +229,7 @@ export const TITLE_FAMILIES: readonly TitleFamily[] = [
 
   // ---- software and data
   {
-    key: "swe_staff", label: "Staff software engineer", onsite: false, levelInQuery: true, headNoun: "engineer",
+    key: "swe_staff", label: "Staff software engineer", onsite: false, levelInQuery: true, headNoun: "engineer", levelNoun: "staff",
     q: ["staff software engineer", "staff engineer", "principal software engineer", "principal engineer", "senior staff engineer", "distinguished engineer"],
     core: /\b(staff|principal|distinguished)\b[^,|]*\b(software|backend|back[- ]end|full[- ]?stack|platform|distributed systems|storage)\b[^,|]*\b(engineer|developer)\b|\b(staff|principal|distinguished) (software|backend|platform|storage|distributed systems) (engineer|developer)\b/i,
     near: /\bsoftware architect|engineering fellow\b|\b(staff|principal)\b[^,|]*\bengineer\b/i,
@@ -348,7 +356,7 @@ export const TITLE_FAMILIES: readonly TitleFamily[] = [
     q: ["controller", "corporate controller", "vp of accounting", "chief accounting officer", "director of accounting", "vp controller"],
     core: /\b(corporate |division(al)? |plant |group )?controller\b|\bchief accounting officer\b|\b(vp|vice president|director|head)\b[^,|]*\baccounting\b/i,
     near: /\bcontrollership\b|\bfinance director\b/i,
-    not: /\bassistant\b|\bsr\.? accountant\b|\baccountant\b|\b(air traffic|controls?|inventory|production|traffic|game|motion|logic|programmable|credit|project controls|document controller|cost controller|stock controller)\b/i,
+    not: /\bassistant\b|\bsr\.? accountant\b|\baccountant\b|\b(air traffic|controls?|inventory|production|traffic|game|motion|logic|programmable|credit|project controls|document controller|cost controller|stock controller|itsm|process controller|revenue cycle|revenue controller)\b/i,
     adjacent: ["assistant controller", "finance director", "accounting manager"],
   },
   {
@@ -544,7 +552,8 @@ export const TITLE_FAMILIES: readonly TitleFamily[] = [
   {
     key: "store_manager", label: "Store manager", onsite: true, levelInQuery: true, assistantIsJunior: true, headNoun: "manager",
     q: ["store manager", "general manager retail", "district manager", "store director", "general store manager", "multi unit manager"],
-    core: /\b(store|general store|retail store) (manager|director)\b|\bdistrict manager\b|\bgeneral manager\b|\bmulti[- ]unit\b[^,|]*\bmanager\b|\bstore leader\b/i,
+    // A general manager counts only beside a store or retail word: a dealership's or a property's GM is another job.
+    core: /\b(store|general store|retail store) (manager|director)\b|\bdistrict manager\b|\bgeneral manager\b(?=[^|]*\b(retail|store|shop)\b)|\b(retail|store|shop)\b[^,|]*\bgeneral manager\b|\bmulti[- ]unit\b[^,|]*\bmanager\b|\bstore leader\b/i,
     near: /\bregional (operations )?manager\b[^,|]*\b(retail|stores?)\b/i,
     not: /\bassistant\b|\bco-?manager\b|\bdeputy\b|\bassociate store\b|\bpharmacy\b|\brestaurant\b|\bhotel\b|\bdistrict sales\b|\bsales district\b|\bin training\b/i,
     adjacent: ["assistant store manager", "store operations manager", "area manager retail"],
@@ -554,7 +563,8 @@ export const TITLE_FAMILIES: readonly TitleFamily[] = [
     q: ["shift supervisor", "retail supervisor", "assistant store manager", "key holder", "assistant manager retail", "front end supervisor"],
     core: /\b(shift|retail|store|front[- ]end|department|team) (supervisor|lead|leader)\b|\bkey ?holder\b|\bassistant (store )?manager\b|\bshift leader\b/i,
     near: /\bsupervisor\b[^,|]*\b(retail|store|sales floor|front end)\b|\bassistant store\b/i,
-    not: /\b(warehouse|construction|nurse|clinical|restaurant|kitchen|security|call center|manufacturing|production|maintenance|property|bank|pharmacy technician|janitorial)\b|\bstore manager\b(?!.*assistant)|\bdistrict\b/i,
+    // "store manager" is another job only when "assistant" does not stand before it: Assistant Store Manager is this family's core.
+    not: /\b(warehouse|construction|nurse|clinical|restaurant|kitchen|security|call center|manufacturing|production|maintenance|property|bank|pharmacy technician|janitorial)\b|(?<!\bassistant )\bstore manager\b|\bdistrict\b/i,
     adjacent: ["assistant store manager", "department manager retail", "operations supervisor retail"],
   },
   {
@@ -782,36 +792,82 @@ export function familyForTitles(titles: readonly string[]): { family: TitleFamil
 
 const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+/** A fallback phrase keeps at most this many words: a job title, not a paragraph. */
+export const FALLBACK_WORDS_MAX = 6;
+
 /**
  * An occupation the families do not carry: the reader's own titles OR'ed,
  * each title's words in order with anything between (a title regex built
  * from what they wrote), and the generic not-list. family: null in the
  * response says so.
+ *
+ * THE READER'S WORDS NEVER BECOME QUERY SYNTAX. websearch_to_tsquery reads a
+ * leading "-" as NOT, a bare "or" as OR and quotes as a phrase, so "-zzz"
+ * became a negation no index can answer and a long role an OR of fifteen
+ * common words. Those are dropped here, each phrase keeps at most six words,
+ * and the pipeline sends every fallback phrase quoted (familyQuery's literal
+ * form), never through the any-word-order step.
  */
 export function fallbackFamily(titles: readonly string[]): TitleFamily | null {
-  const clean = titles.map((t) => t.toLowerCase().replace(/[^a-z0-9&+' -]/g, " ").replace(/\s+/g, " ").trim()).filter((t) => t.length >= 3).slice(0, 3);
+  const clean = titles
+    .map((t) => t.toLowerCase()
+      .replace(/[^a-z0-9&+' -]/g, " ")
+      .replace(/(^|\s)[-']+/g, "$1")
+      .replace(/[-']+(?=\s|$)/g, "")
+      .split(/\s+/)
+      .filter((w) => w && w !== "or" && w !== "and" && w !== "not")
+      .slice(0, FALLBACK_WORDS_MAX)
+      .join(" ")
+      .trim())
+    .filter((t) => t.length >= 3)
+    .slice(0, 3);
   if (!clean.length) return null;
   const core = new RegExp(clean.map((t) => t.split(" ").map((w) => `\\b${esc(w)}\\b`).join("[^,|]*")).join("|"), "i");
   const head = clean[0].split(" ").pop() ?? clean[0];
   return { key: "", label: titles[0], q: clean, core, not: GENERIC_NOT, headNoun: head, onsite: false };
 }
 
-/** websearch_to_tsquery text: quoted phrases OR'ed, or bare words for "any word order". */
-export function familyQuery(phrases: readonly string[], anyOrder = false): string {
+/**
+ * websearch_to_tsquery text: quoted phrases OR'ed, or bare words for "any
+ * word order". `literal` quotes every phrase, one word included, and ignores
+ * any word order: the form a reader's own words (a fallback family) take.
+ */
+export function familyQuery(phrases: readonly string[], anyOrder = false, literal = false): string {
   const clean = phrases.map((p) => p.replace(/["\\]/g, " ").replace(/\s+/g, " ").trim()).filter(Boolean);
+  if (literal) return clean.map((p) => `"${p}"`).join(" or ");
   return clean.map((p) => (anyOrder || !p.includes(" ") ? p : `"${p}"`)).join(" or ");
 }
 
 /** 0 core, 1 near, 9 not this occupation. */
 export function titleRank(f: TitleFamily, title: string): 0 | 1 | 9 {
-  if (f.not?.test(title)) return 9;
+  if (notListed(f, title)) return 9;
   if (f.core.test(title)) return 0;
   if (f.near?.test(title)) return 1;
   return 9;
 }
 
 /** True when the not-list (not merely a miss) is why the title is out. */
-export const notListed = (f: TitleFamily, title: string): boolean => !!f.not?.test(title);
+export function notListed(f: TitleFamily, title: string): boolean {
+  if (!f.not) return false;
+  return f.not.test(f.notIgnore ? title.replace(f.notIgnore, " ") : title);
+}
+
+const phraseRe = (phrase: string) => phrase.split(" ").map((w) => `\\b${esc(w)}\\b`).join("[^,|]*");
+
+/**
+ * WIDENING STEP 3, THE NEXT RUNG: the family's adjacent titles as core, its
+ * own core as near, and its not-list with the adjacent phrase's own words
+ * ignored. store_manager's not-list refuses "assistant" and controller's too,
+ * so their next rung ("assistant store manager", "assistant controller") was
+ * refused by the very word it is made of. A not-list word elsewhere in the
+ * title still refuses it ("Assistant Controller - Air Traffic"). Null when the
+ * family names no next rung.
+ */
+export function adjacentFamily(f: TitleFamily): TitleFamily | null {
+  if (!f.adjacent?.length) return null;
+  const alt = f.adjacent.map(phraseRe).join("|");
+  return { ...f, core: new RegExp(alt, "i"), near: f.core, notIgnore: new RegExp(alt, "gi") };
+}
 
 /**
  * LEVEL WORDS IN A TITLE, as facets the device can re-tier from. "Staff" is a
@@ -831,8 +887,13 @@ export interface LevelFacets {
   junior: boolean;
   assistant: boolean;
 }
-export function levelFacets(title: string): LevelFacets {
-  const t = title ?? "";
+export function levelFacets(title: string, family?: Pick<TitleFamily, "levelInQuery" | "levelNoun" | "headNoun"> | null): LevelFacets {
+  let t = title ?? "";
+  // Where the level is the job, the family's own noun is not a level word; every other one is.
+  if (family?.levelInQuery) {
+    const noun = family.levelNoun ?? family.headNoun;
+    t = t.replace(new RegExp(`\\b${esc(noun)}s?\\b`, "gi"), " ").replace(/\s+/g, " ").trim();
+  }
   const band = bandFromTitle(t);
   return {
     intern: /\b(intern|internship|co-?op|summer (analyst|associate|student)|working student|werkstudent|student)\b/i.test(t),

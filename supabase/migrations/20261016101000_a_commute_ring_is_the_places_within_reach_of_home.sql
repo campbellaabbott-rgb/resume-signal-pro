@@ -16,6 +16,11 @@
 -- km is held to 1..200 and max to 1..50. Distances are great-circle
 -- (haversine, R = 6371 km) after a bounding-box prefilter on (lat, lon).
 --
+-- Each place comes with its ASCII name as well as its own (GeoNames writes
+-- Montréal and Zürich with their accents; the board mostly does not), so
+-- resume-match searches both spellings. A changed return type cannot be
+-- replaced in place, so any earlier metro_ring is dropped first.
+--
 -- SECURITY INVOKER, LANGUAGE sql, STABLE: it reads geo_places as its caller,
 -- and only the service role (resume-match) may call it. A GRANT restricts
 -- nothing on its own (definer-exposure history), so the function is revoked
@@ -24,14 +29,22 @@
 --
 -- Depends on 20261016100000. Safe to run twice.
 
-CREATE OR REPLACE FUNCTION public.metro_ring(
+DO $$
+DECLARE r record;
+BEGIN
+  FOR r IN SELECT oid::regprocedure AS sig FROM pg_proc WHERE pronamespace = 'public'::regnamespace AND proname = 'metro_ring' LOOP
+    EXECUTE 'DROP FUNCTION IF EXISTS ' || r.sig;
+  END LOOP;
+END $$;
+
+CREATE FUNCTION public.metro_ring(
   p_city text,
   p_region text,
   p_country text,
   p_km integer DEFAULT 40,
   p_max integer DEFAULT 20
 )
-RETURNS TABLE (name text, region text, region_name text, country text, km real, population integer, center boolean)
+RETURNS TABLE (name text, ascii_name text, region text, region_name text, country text, km real, population integer, center boolean)
 LANGUAGE sql
 STABLE
 SECURITY INVOKER
@@ -54,7 +67,7 @@ AS $$
     ORDER BY g.population DESC, g.geonameid
     LIMIT 1
   ), d AS (
-    SELECT g.name, g.region, g.region_name, g.country, g.population, g.geonameid = c.geonameid AS center,
+    SELECT g.name, g.ascii_name, g.region, g.region_name, g.country, g.population, g.geonameid = c.geonameid AS center,
       2 * 6371 * asin(least(1, sqrt(
         power(sin(radians(g.lat - c.lat) / 2), 2)
         + cos(radians(c.lat)) * cos(radians(g.lat)) * power(sin(radians(g.lon - c.lon) / 2), 2)
@@ -64,7 +77,7 @@ AS $$
       AND g.lon BETWEEN c.lon - k.km / (111.0 * greatest(cos(radians(c.lat)), 0.05))
                     AND c.lon + k.km / (111.0 * greatest(cos(radians(c.lat)), 0.05))
   )
-  SELECT d.name, d.region, d.region_name, d.country, d.dist::real, d.population, d.center
+  SELECT d.name, d.ascii_name, d.region, d.region_name, d.country, d.dist::real, d.population, d.center
   FROM d, k
   WHERE d.dist <= k.km
   ORDER BY d.center DESC, d.population DESC, d.name

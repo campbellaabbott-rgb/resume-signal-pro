@@ -111,29 +111,44 @@ rate is given with its denominator. BEFORE's all-24 figure is a [low, high]
 bound.
 
 BEFORE and the prototype were recorded on 2026-10-12. The AFTER column was
-recorded on 2026-10-24 from `rm/engine` d549462d (committed tree, clean),
-offline, and re-recorded on 2026-10-25 on `rm/integration`, where rm/engine
-f5c2d151 and rm/bench 1b275429 were merged. Every figure was the same; only the
-baseline's ref, date and wall times changed. The first recording, from
-a7e910d3, read exact-11 81.8 / 75.5 and location 1.1% (2/186).
+first recorded on 2026-10-24 from `rm/engine` d549462d, offline, then on
+2026-10-25 on `rm/integration` (rm/engine f5c2d151 merged with rm/bench
+1b275429; every figure the same), and RE-RECORDED on 2026-10-25 after the
+fixer's round, with the AFTER hand review folded in.
 
-| metric | BEFORE legacy (as run) | BEFORE v2 | proto v2 (auto) | AFTER v2 extract |
+THE HAND REVIEW IS NOW TWO ROUNDS. `hand-review/overrides.json` holds the 14
+pair reviews of 2026-10-12 and 462 of the measurer's AFTER review of
+2026-10-25 (each marked `"review": "after-2026-10-25"`; the 25 of its verdicts
+that fell on BEFORE's own rows, and one the first round already held, were
+left out). The legacy rubric, the 2026-10-12 judge as it ran, applies only the
+first round, so BEFORE and the prototype replay their as-run figures; the v2
+rubric applies both rounds to every column alike. One dev manifest rule was
+fixed in the same round: the Atlanta retail supervisor's "too senior" pattern
+matched "store manager" inside "Assistant Store Manager", a title its own
+target names.
+
+| metric | BEFORE legacy (as run) | BEFORE v2 | proto v2 | AFTER v2 extract |
 |---|---|---|---|---|
-| P@10 / P@20, exact 11 | 14.5 / 10.0 | 14.5 / 10.0 | 85.5 / 84.5 | 85.5 / 81.8 |
-| P@10 / P@20, all 24 | [6.7, 17.1] / [4.6, 9.8] | same | 74.6 / 69.8 | 73.3 / 67.1 |
-| location mismatch, exact-11 top 20 | 85.5% (188/220) | 85.0% (187/220) | 2.0% (4/200) | 1.0% (2/200) |
-| location mismatch, all-24 top 20 | pool 90.6% | pool 90.4% | 1.1% (4/364) | 0.5% (2/364) |
-| seniority mismatch, exact 11 | 15.9% (35/220) | 15.9% (35/220) | 4.5% (9/199) | 7.6% (15/197) |
-| licence fails shown, exact 11 | 0 (never checked) | 14 | 0 | 0 |
-| rows with a description read, exact 11 | 220/220 | 220/220 | 67/200 | 74/200 |
-| rows with a hand review, exact 11 | 10/220 | 10/220 | 0/200 | 1/200 |
+| P@10 / P@20, exact 11 | 14.5 / 10.0 | 14.5 / 10.0 | 77.3 / 79.1 | 77.3 / 76.8 |
+| P@10 / P@20, all 24 | [6.7, 17.1] / [4.6, 9.8] | same | 68.8 / 66.0 | 68.8 / 65.4 |
+| location mismatch, exact-11 top 20 | 85.5% (188/220) | 85.0% (187/220) | 3.5% (7/200) | 1.0% (2/200) |
+| location mismatch, all-24 top 20 | pool 90.6% | pool 90.4% | 1.9% (7/364) | 0.5% (2/373) |
+| seniority mismatch, exact 11 | 15.9% (35/220) | 15.9% (35/220) | 7.1% (14/196) | 11.2% (22/197) |
+| licence fails shown, exact 11 | 0 (never checked) | 14 | 0 | 2 |
+| rows with a description read, exact 11 | 220/220 | 220/220 | 67/200 | 75/200 |
+| rows with a hand review, exact 11 | 10/220 | 10/220 | 108/200 | 166/200 |
 | résumés under 10 rows / at zero, all 24 | - | - | 7 / 3 | 6 / 3 |
 
-**Caveats, which hold until the AFTER benchmark has its own budget and hand
-review (owner decision 8):**
-- The prototype and AFTER columns are auto-judged, on the dev set they were tuned
-  on. AFTER has had no hand review of its own. Its one reviewed row is a pair
-  that BEFORE's review already covered.
+Before the second round the AFTER column read exact-11 85.5 / 81.8, auto-judged:
+the hand review takes about 8 points off on this corpus, and about 11 once
+every row's description is read too (`docs/resume-match.md`, "What was
+measured").
+
+**Caveats, which hold until the AFTER benchmark is repeated on the fixed
+engine with its own budget and hand review (owner decision 8):**
+- The prototype and AFTER columns are on the dev set they were tuned on. AFTER's
+  reviewed rows are pairs one of the two rounds covered; 34 of its exact-11
+  rows have no review.
 - The offline AFTER run is a closed world. It finds only postings an earlier run
   retrieved, and reads requirements only where one of them read a description.
 - `metro_ring` is answered from the prototype's hand-written rings (`metro-rings.ts`),
@@ -147,7 +162,7 @@ review (owner decision 8):**
 | city ≥90% | 61% | 36/59 |
 | authorisation precision 100% | 97.1% | 33/34 declared statuses read right |
 | years within 3 ≥85% | 86.7% | 52/60 |
-| entry-level recall ≥90%, ≤1 false positive | 59.1%, 0 | 13/22 |
+| entry-level recall ≥90%, ≤1 false positive | 68.2%, 0 | 15/22 (59.1%, 13/22 before a career changer with no stated years in the new field was read as entry) |
 | sponsorship need (no target) | 75% | 3/4 |
 
 On the dev set, the reader reads every home. On the blind set it misses about a
@@ -167,6 +182,10 @@ It fails when any of these happens:
 - exact-11 P@10 falls more than **5 points** below `baselines/v1.json`;
 - top-20 location mismatch, exact 11 or all 24, rises more than **2 points**
   above it;
+- exact-11 seniority mismatch or wrong field rises more than **3 points** above
+  it (added 2026-10-25: five of nine regressions the reviewer planted passed
+  the gate; the ones no figure here can see, on rows the frozen corpus does not
+  hold, are left to the unit tests, as `gate.ts` says);
 - a résumé shows zero rows that did not before;
 - AFTER stops beating BEFORE (v2) on the same 11;
 - the held-out reader falls more than **5 points** on country, city, years or

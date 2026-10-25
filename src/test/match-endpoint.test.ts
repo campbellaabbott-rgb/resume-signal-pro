@@ -99,12 +99,18 @@ describe("places, occupations and requirements", () => {
     }
     expect(by("fed").sourceNote).toBe(USAJOBS_NOTE);
     expect(by("w3").sourceNote).toBeNull();
-    expect(by("w1").requirements.noSponsorship).toMatch(/unable to sponsor/);
-    expect(by("w1").requirements.degree).toMatchObject({ level: "high_school", must: true });
+    // What a posting asks is sent once, in facets.requirements (the device re-tiers from it); the row says only whether it was read.
+    expect(by("w1").requirements).toBe("read");
+    expect(by("w1").facets.requirements.noSponsorship).toMatch(/unable to sponsor/);
+    expect(by("w1").facets.requirements.degree).toMatchObject({ level: "high_school", must: true });
+    expect(by("w1").gaps, "a required diploma with none on the résumé is a gap, never a silent Strong").toContain("asks for a high school diploma; none on your résumé");
     expect(by("w2").tier).toBe("strong");
     for (const row of r.rows) {
       if (row.requirements === "not read") continue;
-      for (const q of [...row.requirements.must, ...row.requirements.nice]) expect(q.length).toBeLessThanOrEqual(160);
+      const q = row.facets.requirements;
+      expect(q.must.length, "the anonymous answer carries at most 4 required lines").toBeLessThanOrEqual(4);
+      expect(q.nice.length).toBeLessThanOrEqual(4);
+      for (const line of [...q.must, ...q.nice]) expect(line.length).toBeLessThanOrEqual(160);
     }
   });
 
@@ -242,8 +248,23 @@ describe("abuse: the board's meter, 30 an hour per network, follow-ups apart", (
     expect(otherSearch.status, "a token is for the search it was issued for").toBe(429);
   });
 
+  // The fixer's round (review of rm/integration 7af55e52): failed on that commit (one token replayed every step 150 times).
+  it("a token pays for the one step it names, once: a replay and another step count against the 30", async () => {
+    const first = (await ep.post(columbusCashier(), { ip: "192.0.2.210" })).body;
+    expect(first.nextWiden).toBe(2);
+    expect(first.followUp).toMatch(/^v2\.\d+\.2\./);
+    await seed("192.0.2.210", "resume-match", 30);
+    const once = await ep.post({ ...columbusCashier(), widen: 2, followUp: first.followUp }, { ip: "192.0.2.210" });
+    expect(once.status).toBe(200);
+    expect(once.body.followUp, "the follow-up's answer carries a token for its own next step").toMatch(new RegExp(`^v2\\.\\d+\\.${once.body.nextWiden}\\.`));
+    expect((await ep.post({ ...columbusCashier(), widen: 2, followUp: first.followUp }, { ip: "192.0.2.210" })).status, "the same token again").toBe(429);
+    const second = (await ep.post(columbusCashier(), { ip: "192.0.4.1" })).body;
+    await seed("192.0.4.1", "resume-match", 30);
+    expect((await ep.post({ ...columbusCashier(), widen: 5, followUp: second.followUp }, { ip: "192.0.4.1" })).status, "a step-2 token for step 5").toBe(429);
+  });
+
   it("a limiter that cannot answer is a 503, never a pass", async () => {
-    ep.client.rpcFaults.set("check_rate_limit", { code: "57014", message: "canceling statement" });
+    ep.client.rpcFaults.set("resume_match_rate_take", { code: "57014", message: "canceling statement" });
     const r = await ep.post(columbusCashier(), { ip: "192.0.2.50" });
     expect(r.status).toBe(503);
     expect(r.body.error).toBe("limiter_unavailable");
@@ -264,6 +285,27 @@ describe("abuse: the board's meter, 30 an hour per network, follow-ups apart", (
   it("the service role is not metered here (its surfaces carry their own allowance)", async () => {
     ep.client.calls = [];
     await ep.post({ action: "match", surface: "v1", resumeText: "Pat Example\nColumbus, OH | pat@example.com\nCashier\n\nEXPERIENCE\nCashier - Market | 2022 - Present\n- Register and returns, balanced drawers daily." }, { service: true });
-    expect(ep.client.calls.some((c) => c.name === "check_rate_limit" || c.name === "job_board_anon_check")).toBe(false);
+    expect(ep.client.calls.some((c) => c.name === "resume_match_rate_take" || c.name === "check_rate_limit" || c.name === "job_board_anon_check")).toBe(false);
+  });
+});
+
+// The fixer's round (review of rm/integration 7af55e52): failed on that commit (step 5 set every region row aside).
+describe("widening step 5: elsewhere in the reader's region", () => {
+  it("places region rows for a reader who would not relocate, says 'elsewhere in Ohio', and carries the widened gap", async () => {
+    await addPostings(db, [
+      { id: "cle-1", title: "Cashier", location: "Cleveland, OH", country: "US", company: "Heinen's" },
+      { id: "cle-2", title: "Cashier", location: "Toledo, Ohio", country: "US", company: "Kroger Toledo" },
+    ]);
+    const r = (await ep.post({ ...columbusCashier(), widen: 5 }, { ip: "198.51.100.150" })).body;
+    expect(r.steps.map((s: { step: number }) => s.step)).toEqual([5]);
+    expect(r.steps[0].label).toBe("elsewhere in Ohio");
+    const shown = r.rows.filter((x: { id: string }) => x.id.startsWith("cle-"));
+    expect(shown.map((x: { id: string }) => x.id).sort()).toEqual(["cle-1", "cle-2"]);
+    for (const x of shown) {
+      expect(x.lane).toBe("region");
+      expect(x.placeLine).toBe("elsewhere in Ohio");
+      expect(x.gaps).toContain("found by a wider search");
+    }
+    expect(r.setAside.beyond_commute?.count ?? 0).toBe(0);
   });
 });

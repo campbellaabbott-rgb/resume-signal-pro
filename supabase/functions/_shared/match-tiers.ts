@@ -10,8 +10,10 @@
  * Tiers are ordinal and carry no number:
  *   Strong  requirements read, core title, level fits, stated minimum within
  *           the reader's years + 2 (2 for an entry reader), licence met or
- *           met-pending, no required line answered "No", no smaller gap;
- *   Good    exactly one smaller gap, or requirements not read;
+ *           met-pending, no required line answered "No", no smaller gap. A
+ *           stated requirement whose reader side is unknown (years not read,
+ *           no degree on the résumé, a clearance never sent) is a smaller gap;
+ *   Good    exactly one smaller gap, or requirements not read (labelled so);
  *   Stretch 3+ years short, an entry reader against a senior band, a licence
  *           held elsewhere, or two or more smaller gaps.
  *
@@ -33,10 +35,12 @@ export type Level = "entry" | "mid" | "senior" | "exec";
 export type SetAsideReason =
   | "outside_countries" | "beyond_commute" | "place_not_stated" | "different_occupation" | "previous_field"
   | "internship" | "level_above" | "level_below" | "no_sponsorship" | "citizenship_required"
-  | "clearance_required" | "licence_missing" | "licence_elsewhere";
+  | "citizen_or_resident_required" | "clearance_required" | "licence_missing" | "licence_elsewhere";
 
 /** Reasons counted over the rows whose description was read. */
-export const DESCRIPTION_REASONS: ReadonlySet<SetAsideReason> = new Set(["no_sponsorship", "citizenship_required", "clearance_required", "licence_missing"]);
+export const DESCRIPTION_REASONS: ReadonlySet<SetAsideReason> = new Set([
+  "no_sponsorship", "citizenship_required", "citizen_or_resident_required", "clearance_required", "licence_missing",
+]);
 
 // ---------------------------------------------------------------------------
 // Wording. Every sentence the list shows lives here.
@@ -44,6 +48,9 @@ export const DESCRIPTION_REASONS: ReadonlySet<SetAsideReason> = new Set(["no_spo
 
 export const FOOTER =
   "This compares each posting's stated requirements with your résumé and where you said you can work. It is not a prediction of whether you will be hired.";
+/** The footer when nobody said where they can work: the countries searched are where the résumé says they live. */
+export const FOOTER_HOME =
+  "This compares each posting's stated requirements with your résumé and the country your résumé says you live in. It is not a prediction of whether you will be hired.";
 export const TIER_LABEL: Record<Tier, string> = { strong: "Strong match", good: "Good match", stretch: "Stretch" };
 export const TIER_DEFINITION: Record<Tier, string> = {
   strong: "Strong match: meets every stated requirement we could read",
@@ -61,10 +68,14 @@ export const SET_ASIDE_LABEL: Record<SetAsideReason, string> = {
   level_below: "More junior than your experience",
   no_sponsorship: "Says it won't sponsor",
   citizenship_required: "Says citizenship required",
+  citizen_or_resident_required: "Says citizens or permanent residents only",
   clearance_required: "Needs an active clearance you haven't listed",
   licence_missing: "Needs a licence you haven't listed",
   licence_elsewhere: "Needs a licence in {{state}}",
 };
+/** outside_countries when the countries searched are the résumé's home country, not ones the reader named. */
+export const OUTSIDE_HOME_LABEL = "Outside the country your résumé says you live in";
+export const OUTSIDE_HOME_SHORT = "outside the country your résumé says you live in";
 /** Short forms for the one-line summary ("34 outside where you said you can work"). */
 export const SET_ASIDE_SHORT: Record<SetAsideReason, string> = {
   outside_countries: "outside where you said you can work",
@@ -77,6 +88,7 @@ export const SET_ASIDE_SHORT: Record<SetAsideReason, string> = {
   level_below: "more junior than your experience",
   no_sponsorship: "say they won't sponsor",
   citizenship_required: "say citizenship required",
+  citizen_or_resident_required: "say citizens or permanent residents only",
   clearance_required: "need an active clearance",
   licence_missing: "need a licence you haven't listed",
   licence_elsewhere: "need a licence in another state",
@@ -88,16 +100,31 @@ export const USAJOBS_NOTE = "Most federal jobs require U.S. citizenship; this po
 export const LICENCE_STATE_NOT_STATED = "licence state not stated";
 export const NO_CLOSURE_RECORD = "no closure record yet";
 export const RING_FALLBACK = "Only {{city}} itself was searched: the commute area around it is not available yet.";
-export const THIN_RESULTS = "{{n}} in your {{city}} commute area. We also tried: {{steps}}.";
+/** {{place}} is "your Columbus commute area", or the city alone when only the city was searched; {{elsewhere}} the other lanes' counts. */
+export const THIN_RESULTS = "{{n}} in {{place}}{{elsewhere}}. We also tried: {{steps}}.";
+export const NO_HOME = "No home city was given, so no commute area was searched.";
 export const NO_OCCUPATION = "Type your target role";
 export const PARTIAL_FAILURE = "{{n}} could not be checked: retry";
 export const KEYWORD_OVERLAP = "Keyword overlap: {{n}} of {{m}} recognised terms in this posting appear in your résumé.";
 export const PLACE_LINE = {
   ring: "in your {{city}} commute area ({{km}} km)",
-  remote: "Remote within the {{country}}",
+  /** {{country}} carries its article: "the US", "Canada". */
+  remote: "Remote within {{country}}",
+  /** A remote row whose location names a state or province other than the reader's. */
+  remoteLists: "Remote (lists {{region}})",
   region: "you said you'd move within {{region}}",
+  /** Widening step 5: the reader's own region, which they did not say they would move within. */
+  elsewhere: "elsewhere in {{region}}",
   country: "Elsewhere in {{country}}",
 } as const;
+/** Country names as a sentence uses them, article included. */
+export const COUNTRY_DISPLAY: Record<string, string> = {
+  US: "the US", GB: "the UK", CA: "Canada", AU: "Australia", DE: "Germany", IN: "India", IE: "Ireland", NL: "the Netherlands",
+  FR: "France", ES: "Spain", IT: "Italy", PT: "Portugal", PL: "Poland", RO: "Romania", SE: "Sweden", NO: "Norway", DK: "Denmark",
+  FI: "Finland", BE: "Belgium", AT: "Austria", CH: "Switzerland", NZ: "New Zealand", SG: "Singapore", MX: "Mexico", BR: "Brazil",
+  JP: "Japan", AE: "the United Arab Emirates", PH: "the Philippines", ZA: "South Africa", CZ: "the Czech Republic", IL: "Israel",
+};
+export const countryDisplay = (code: string): string => COUNTRY_DISPLAY[code] ?? code;
 export const WIDEN_STEP_LABEL: Record<number, string> = {
   1: "any word order",
   2: "'{{headNoun}}'",
@@ -110,11 +137,17 @@ export const GAP_LABEL = {
   nearTitle: "a related title",
   widened: "found by a wider search",
   yearsShort: "asks {{min}}+ years; we read about {{years}}",
+  /** The posting states a minimum and the reader's years were not read: compared with nothing, so never Strong. */
+  yearsUnknown: "asks {{min}}+ years; we could not read yours",
   licenceTransfer: "licence held in another state",
   licenceTransferPending: "licence transfer pending",
   licenceNotListed: "licence not on your résumé",
   licenceStateNotStated: LICENCE_STATE_NOT_STATED,
   degreeBelow: "asks for a {{degree}}",
+  degreeNotListed: "asks for a {{degree}}; none on your résumé",
+  /** The site request carried no clearance (the reader did not send work authorisation): the device resolves it. */
+  clearanceNotSent: "asks for an active clearance",
+  remoteWithin: "remote within {{region}}",
   answeredNo: "you answered No to a required line",
   seniorBand: "an experienced-level posting",
 } as const;
@@ -167,6 +200,8 @@ export interface PostingReqFacet {
   licence: PostingLicence | null;
   noSponsorship: string | null;
   citizenshipRequired: string | null;
+  /** Citizens or permanent residents (a green card is enough). */
+  citizenOrResident?: string | null;
   activeClearance: string | null;
   degree: { level: string; must: boolean; quote: string } | null;
   must: string[];
@@ -189,10 +224,12 @@ export interface RowFacets {
   requirements: PostingReqFacet | "not read";
   /** States the row's own location names (licence jurisdiction when the text names none). */
   rowStates: string[];
-  /** Licensed family on the remote lane, no state named. */
+  /** Licensed family on the remote lane, no state named, and the reader holds that licence. */
   licenceStateNotStated: boolean;
   /** The country the row is in (for a citizenship line). */
   country: string | null;
+  /** A remote row whose location names a state or province other than the reader's home one: its name. */
+  remoteListsRegion?: string | null;
 }
 
 export interface TierReader {
@@ -201,7 +238,16 @@ export interface TierReader {
   targetYears: number | null;
   careerChanger: boolean;
   student?: boolean;
-  workAuth: { status: string; needsSponsorship: boolean; citizenOf: string[]; clearance: string | null };
+  workAuth: {
+    status: string; needsSponsorship: boolean; citizenOf: string[]; clearance: string | null;
+    /**
+     * False when the request carried no clearance at all (the site's default
+     * body sends no work authorisation): an active-clearance row is then not
+     * set aside, it carries a smaller gap, and the device re-gates it with the
+     * reader's own answer. Absent means known.
+     */
+    clearanceKnown?: boolean;
+  };
   licences: readonly Licence[];
   degree?: string | null;
   /** Answers to "? Yes / No / Skip" lines, keyed by the line's quote. Device only, never sent. */
@@ -229,10 +275,13 @@ export function gateFor(f: RowFacets, r: TierReader): Gate | null {
   if (f.titleRank === 9) return { reason: f.previousField ? "previous_field" : "different_occupation" };
   if (f.previousField && f.titleRank !== 0) return { reason: "previous_field" };
   if (f.level.intern && !r.student) return { reason: "internship" };
-  if (!f.levelInQuery) {
-    if (r.level === "entry" && (f.level.aboveEntry || f.level.numeral)) return { reason: "level_above" };
-    if (r.level === "mid" && f.level.overreach) return { reason: "level_above" };
-  }
+  // Level words apply to every family. Where the level is the job (product
+  // manager, controller, staff engineer), the server reads the title's level
+  // words with the family's own noun left out (levelFacets(title, family)), so
+  // "Product Manager" is not above an entry reader and "Director of Product
+  // Management" is above a mid one.
+  if (r.level === "entry" && (f.level.aboveEntry || f.level.numeral)) return { reason: "level_above" };
+  if (r.level === "mid" && f.level.overreach) return { reason: "level_above" };
   if ((r.level === "senior" || r.level === "exec") && (f.level.junior || (f.assistantIsJunior && f.level.assistant))) {
     return { reason: "level_below" };
   }
@@ -240,7 +289,8 @@ export function gateFor(f: RowFacets, r: TierReader): Gate | null {
   if (q !== "not read") {
     if (r.workAuth.needsSponsorship && q.noSponsorship) return { reason: "no_sponsorship" };
     if (q.citizenshipRequired && declaredNotCitizen(r, f.country)) return { reason: "citizenship_required" };
-    if (q.activeClearance && !r.workAuth.clearance) return { reason: "clearance_required" };
+    if (q.citizenOrResident && declaredOnAVisa(r)) return { reason: "citizen_or_resident_required" };
+    if (q.activeClearance && !heldClearance(r) && r.workAuth.clearanceKnown !== false) return { reason: "clearance_required" };
     if (q.licence && licenceIsGate(q.licence.kind) && licenceVerdict(r.licences, q.licence, f.rowStates) === "missing") {
       return { reason: "licence_missing" };
     }
@@ -256,20 +306,44 @@ export function declaredNotCitizen(r: TierReader, country: string | null): boole
   return r.workAuth.status === "permanent_resident" || r.workAuth.status === "student_visa" || r.workAuth.status === "work_visa";
 }
 
+/** A posting open to citizens and permanent residents sets aside only a reader who declared a work or student visa. */
+export function declaredOnAVisa(r: TierReader): boolean {
+  return r.workAuth.status === "student_visa" || r.workAuth.status === "work_visa";
+}
+
+/** The clearance the reader holds: the work-authorisation field, or a clearance read as a licence. */
+export function heldClearance(r: TierReader): string | null {
+  return r.workAuth.clearance ?? r.licences.find((l) => l.kind === "clearance")?.grade ?? null;
+}
+
 // ---------------------------------------------------------------------------
 // Tiers
 // ---------------------------------------------------------------------------
 
 export interface TierResult { tier: Tier; gaps: string[]; notRead: boolean; licence: LicenceVerdict }
 
-/** The years an entry reader is judged on (0) or the reader's high years (target-field years for a career changer). */
+/**
+ * The years a reader is judged on: 0 for an entry reader, target-field years
+ * for a career changer who states them, and none at all (null) for a career
+ * changer who does not: the old career's years never stand in for the new
+ * field's. Otherwise the reader's high years.
+ */
 export function readerYears(r: TierReader): number | null {
   if (r.level === "entry") return 0;
-  if (r.careerChanger && r.targetYears !== null) return r.targetYears;
+  if (r.careerChanger) return r.targetYears;
   return r.years ? r.years.high : null;
 }
 export const YEARS_ALLOWANCE = 2;
 
+/**
+ * STRONG MEANS EVERY STATED REQUIREMENT WE COULD READ WAS COMPARED AND MET. A
+ * requirement the posting states but the reader's side of which is unknown
+ * (years not read, no degree on the résumé, a clearance never sent) is a
+ * smaller gap, the same as a licence not listed: compared with nothing, it is
+ * not met. "requirements not read" is added after the tier is set, so it caps
+ * an unread row at Good without counting as one of its gaps, and it is added
+ * here, where the server and the device both tier, so a re-tier keeps it.
+ */
 export function tierFor(f: RowFacets, r: TierReader): TierResult {
   const minor: string[] = [];
   const major: string[] = [];
@@ -277,14 +351,18 @@ export function tierFor(f: RowFacets, r: TierReader): TierResult {
   const q = f.requirements === "not read" ? null : f.requirements;
 
   if (f.titleRank === 1) minor.push(GAP_LABEL.nearTitle);
-  if (f.widenStep >= 1 && f.widenStep <= 3) minor.push(GAP_LABEL.widened);
+  if ((f.widenStep >= 1 && f.widenStep <= 3) || f.widenStep === 5) minor.push(GAP_LABEL.widened);
+  if (f.remoteListsRegion) minor.push(fill(GAP_LABEL.remoteWithin, { region: f.remoteListsRegion }));
 
   const yrs = readerYears(r);
-  if (typeof f.minYears === "number" && yrs !== null) {
-    const short = f.minYears - (yrs + YEARS_ALLOWANCE);
-    const label = fill(GAP_LABEL.yearsShort, { min: f.minYears, years: Math.round(r.level === "entry" ? (r.years?.low ?? 0) : yrs) });
-    if (short >= 3) major.push(label);
-    else if (short >= 1) minor.push(label);
+  if (typeof f.minYears === "number") {
+    if (yrs === null) minor.push(fill(GAP_LABEL.yearsUnknown, { min: f.minYears }));
+    else {
+      const short = f.minYears - (yrs + YEARS_ALLOWANCE);
+      const label = fill(GAP_LABEL.yearsShort, { min: f.minYears, years: Math.round(r.level === "entry" ? (r.years?.low ?? 0) : yrs) });
+      if (short >= 3) major.push(label);
+      else if (short >= 1) minor.push(label);
+    }
   }
   if (r.level === "entry" && (f.band === "senior" || f.band === "expert")) major.push(GAP_LABEL.seniorBand);
 
@@ -296,11 +374,16 @@ export function tierFor(f: RowFacets, r: TierReader): TierResult {
     else if (licence === "missing") minor.push(GAP_LABEL.licenceNotListed);
   }
   if (f.licenceStateNotStated) minor.push(GAP_LABEL.licenceStateNotStated);
-  if (q?.degree && q.degree.must && r.degree && DEGREE_RANK[r.degree] !== undefined && DEGREE_RANK[q.degree.level] !== undefined) {
-    const below = DEGREE_RANK[q.degree.level] - DEGREE_RANK[r.degree];
-    if (below === 1) minor.push(fill(GAP_LABEL.degreeBelow, { degree: DEGREE_NAME[q.degree.level] }));
-    else if (below >= 2) major.push(fill(GAP_LABEL.degreeBelow, { degree: DEGREE_NAME[q.degree.level] }));
+  if (q?.degree && q.degree.must && DEGREE_RANK[q.degree.level] !== undefined) {
+    const name = DEGREE_NAME[q.degree.level];
+    if (!r.degree || DEGREE_RANK[r.degree] === undefined) minor.push(fill(GAP_LABEL.degreeNotListed, { degree: name }));
+    else {
+      const below = DEGREE_RANK[q.degree.level] - DEGREE_RANK[r.degree];
+      if (below === 1) minor.push(fill(GAP_LABEL.degreeBelow, { degree: name }));
+      else if (below >= 2) major.push(fill(GAP_LABEL.degreeBelow, { degree: name }));
+    }
   }
+  if (q?.activeClearance && !heldClearance(r) && r.workAuth.clearanceKnown === false) minor.push(GAP_LABEL.clearanceNotSent);
   const answeredNo = !!q && !!r.answers && q.must.some((line) => r.answers![line] === "no");
   if (answeredNo) minor.push(GAP_LABEL.answeredNo);
 
@@ -310,7 +393,8 @@ export function tierFor(f: RowFacets, r: TierReader): TierResult {
   else tier = "strong";
   // Never Strong without reading the requirements, and never Strong on a near title.
   if (tier === "strong" && (notRead || f.titleRank !== 0 || answeredNo)) tier = "good";
-  return { tier, gaps: [...major, ...minor], notRead, licence };
+  const gaps = [...major, ...minor];
+  return { tier, gaps: notRead ? [...gaps, REQUIREMENTS_NOT_READ] : gaps, notRead, licence };
 }
 
 // ---------------------------------------------------------------------------
@@ -415,13 +499,22 @@ export function setAsideCounts(gated: ReadonlyArray<Gate>, totals: { found: numb
   return out;
 }
 
+/** Where the countries searched came from: named by the reader, or the résumé's home country by default. */
+export type CountriesBasis = "declared" | "home" | "none";
+
+/** A reason's label; "outside the countries you said" only when the reader said. */
+export function setAsideLabel(reason: SetAsideReason, basis: CountriesBasis = "declared"): string {
+  return reason === "outside_countries" && basis === "home" ? OUTSIDE_HOME_LABEL : SET_ASIDE_LABEL[reason];
+}
+
 /** "Set aside: 34 outside where you said you can work · 12 senior titles · of the 40 we read: 3 say they won't sponsor". */
-export function setAsideSummary(counts: Partial<Record<SetAsideReason, SetAsideCount>>, read: number): string | null {
+export function setAsideSummary(counts: Partial<Record<SetAsideReason, SetAsideCount>>, read: number, basis: CountriesBasis = "declared"): string | null {
   const place: string[] = [];
   const desc: string[] = [];
   for (const [k, v] of Object.entries(counts) as Array<[SetAsideReason, SetAsideCount]>) {
     if (!v || v.count === 0) continue;
-    (DESCRIPTION_REASONS.has(k) ? desc : place).push(`${v.count} ${SET_ASIDE_SHORT[k]}`);
+    const short = k === "outside_countries" && basis === "home" ? OUTSIDE_HOME_SHORT : SET_ASIDE_SHORT[k];
+    (DESCRIPTION_REASONS.has(k) ? desc : place).push(`${v.count} ${short}`);
   }
   if (!place.length && !desc.length) return null;
   const parts = [...place];

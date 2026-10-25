@@ -15,14 +15,16 @@ claim below has a line there.
   `_shared/match-tiers.ts`, `_shared/licence-rules.ts`). Only resume-match
   imports them, so no other function's bundle changes and no other build stamp
   moves.
-- **Four migrations**, new objects only (nothing existing is altered):
+- **Five migrations**, new objects only (nothing existing is altered; the
+  fifth writes the existing `rate_limits` table, as `check_rate_limit` does):
 
   | stamp | objects |
   |---|---|
   | 20261016100000 | `geo_places` (empty until the GeoNames seed) |
-  | 20261016101000 | `metro_ring(city, region, country, km, max)` |
-  | 20261016102000 | `match_candidates`, its builder `match_candidates_query`, and `match_candidates_explain` for the timing gate |
+  | 20261016101000 | `metro_ring(city, region, country, km, max)`, answering each place's ASCII name beside its own (Montréal and Montreal) |
+  | 20261016102000 | `match_candidates`, its builder `match_candidates_query`, and `match_candidates_explain` for the timing gate. The builder refuses a negation-only query (querytree 'T'), one of more than 64 nodes and a query text over 400 characters, and holds the country lane to the first three countries |
   | 20261016103000 | `job_posting_requirements` and the daily cron `purge-job-posting-requirements`, whose command sets its own `statement_timeout` |
+  | 20261016104000 | `resume_match_rate_take(bucket, function, max, window)`: the hourly allowance counted and answered in one upsert, so a parallel burst from one network is counted call by call. resume-match calls it in place of `check_rate_limit` |
 
   Every object is service-role only: RLS on with no policy for the tables,
   Supabase's default grants revoked from PUBLIC, anon and authenticated by
@@ -34,18 +36,22 @@ claim below has a line there.
 
 ### Deploy order
 
-1. **The four migrations first.** Without `match_candidates` every match
-   answers 500. Lovable's staged runner has edited failing migrations before,
+1. **The five migrations first.** Without `match_candidates` every match
+   answers 500, and without `resume_match_rate_take` every anonymous match
+   answers 503. Lovable's staged runner has edited failing migrations before,
    so judge "applied" by behaviour: section 97's probes answer 42501 for each
-   of the four functions and both tables (a missing object is a FAIL once the
-   build serves), and the purge job appears in `get_cron_health` with its
-   timeout.
+   of the four read functions and both tables (a missing object is a FAIL once
+   the build serves), the purge job appears in `get_cron_health` with its
+   timeout, and the ten matches answer 200 (a missing limiter is a 503 there).
 2. **Then the function** (`resume-match`).
 3. **Run section 97.** It makes ten timed anonymous matches with synthetic
-   profiles, then repeats the first profile until this network's bucket
-   answers 429 (at most 31 calls in all). That spends the verifying network's
-   hour: a second run within the hour prints the timings as INFO and judges
-   the 429 at once. Run it again an hour later if the timings were INFO.
+   profiles (three on the remote lane, one relocating anywhere in the
+   country), one widening follow-up with the first answer's token, then
+   repeats the first profile until this network's bucket answers 429 (at most
+   31 counted calls, plus the follow-up in the widening allowance). That spends
+   the verifying network's hour: a second run within the hour prints the
+   timings as INFO and judges the 429 at once. Run it again an hour later if
+   the timings were INFO.
 4. **The changelog** entry is written from what section 97 proved live, after section
    97 passes (owner rule). Phase 0 has no reader-visible change.
 5. **Before phase 1**: the timing gate (`docs/resume-match.md`, "The timing
@@ -65,7 +71,10 @@ The ledger reservation (`resume-match`: `rm/`, `20261016*`, fnBuildDate
 | the requirement cache is purged daily under its own timeout | `purge-job-posting-requirements sets its own timeout in the command: 120s` |
 | the site's matcher refuses résumé text; the server surfaces answer only the service role | `resume text from a site caller -> 400 resume_text_refused`; `the mcp surface without the service key -> 403 server_surface` |
 | first page p50 ≤2.5 s and p90 ≤4 s wall over ten synthetic profiles | `wall p50 = ...`, `wall p90 = ...` (nearest rank, curl's wall time, the cold start included) |
-| the candidates statement p90 ≤700 ms | `phaseMs.candidates p90 = ...` |
+| the candidates statement p90 ≤700 ms, and no answer's over its 1.2 s deadline | `phaseMs.candidates p90 = ...`; `phaseMs.candidates max = ... over the ten` (the nearest-rank p90 of ten drops the slowest) |
+| a matcher that returns nothing fails: common occupations in large metros find rows | `N of the 10 answers carry at least one row (gate 8)` |
+| no answer missed a deadline (a lane that times out answers an empty page) | `N answers, 0 missed a deadline` (the follow-up included) |
+| a widening follow-up rides the token the first answer issued for that step | `a widening follow-up with the token from the first answer -> 200 steps [n] (asked n)` |
 | edge CPU under the 2 s cap | `cpuMs p50 ..., p90 ..., max ...` |
 | every answer names its phases, its CPU and its build | `10 answers carry phaseMs {...}, cpuMs, and a build equal to their x-fn-build` |
 | every row is tiered strong, good or stretch | `N rows over 10 answers, every one tiered ...` |
@@ -74,6 +83,17 @@ The ledger reservation (`resume-match`: `rm/`, `20261016*`, fnBuildDate
 | Columbus, OH never reaches Columbus, GA | `Columbus, OH: N rows, 0 in Georgia`; with the GeoNames seed applied, also `Columbus, OH ring (...) contains Westerville: true` (INFO while the ring is the city alone) |
 | no served match sentence uses a banned word | `N served match sentences hold none of the ... banned patterns` (the list is read from `_shared/match-tiers.ts`) |
 | 30 calls an hour per network, then 429 from the function itself | `call N of this run -> 429 rate_limited limit 30 scope network, Retry-After 3600, from resume-match...` |
+
+### What the fixer's round changed before deploy (2026-10-25)
+
+The review of rm/integration 7af55e52 found 16 defects and 22 smaller ones;
+each fix has a test that failed on that commit. What changes for the deploy:
+the fifth migration; `metro_ring` returns `ascii_name` (dropped and created
+again, since a return type cannot be replaced; nothing calls it yet);
+`match_candidates_query`'s refusals and country-lane cap; the requirement
+cache's extractor version is `2026-10-16.2` (no row of `.1` was ever written:
+nothing has deployed); section 97's new lines above. The engine's changes and
+their measurements are in `docs/resume-match.md`, "The fixer's round".
 
 ### Known INFO lines after this deploy
 

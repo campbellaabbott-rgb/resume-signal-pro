@@ -6,9 +6,12 @@
 // years, and licence kinds with where they are held. Never the basis lines
 // (they quote the résumé), never the headline as written, never an answer to a
 // requirement line, and by default never work authorisation: the device
-// re-applies the sponsorship and citizenship gates itself (retier.ts), so
-// immigration status does not need to travel. No résumé-derived value goes
-// in a URL either: this is a POST body.
+// re-applies the sponsorship, citizenship and clearance gates itself
+// (retier.ts), so immigration status does not need to travel. A held security
+// clearance counts as work authorisation here: by default it is left out of
+// the licences too, and resume-match, told nothing, sets no clearance-required
+// row aside (the row carries "asks for an active clearance" until the device
+// re-tiers it). No résumé-derived value goes in a URL either: this is a POST body.
 
 import type { MatchProfile } from "../../../supabase/functions/_shared/resume-profile";
 
@@ -43,7 +46,9 @@ export function matchRequestBody(p: MatchProfile, opts: MatchRequestOptions = {}
     former: p.former,
     student: p.student,
     degree: p.degree,
-    licences: p.licences.map((l) => ({ kind: l.kind, jurisdiction: l.jurisdiction, compact: l.compact, grade: l.grade ?? null })),
+    licences: p.licences
+      .filter((l) => opts.includeWorkAuth || l.kind !== "clearance")
+      .map((l) => ({ kind: l.kind, jurisdiction: l.jurisdiction, compact: l.compact, grade: l.grade ?? null })),
   };
   if (opts.includeWorkAuth) {
     profile.workAuth = { status: p.workAuth.status, needsSponsorship: p.workAuth.needsSponsorship, citizenOf: p.workAuth.citizenOf, clearance: p.workAuth.clearance };

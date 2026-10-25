@@ -16,10 +16,17 @@
  * countries the board refuses are refused here too, and each call is one read
  * of the address's board day), then against this function's own bucket: 30
  * calls an hour per /24 or /48 network (_shared/network-bucket.ts; everyone on
- * one campus or carrier NAT shares it). A widening follow-up that carries the
- * first page's followUp token is not counted against the 30; it spends a
- * separate 150 an hour per network. A limiter that cannot answer is a 503,
- * never a pass. Requirement quotes are cut to about 160 characters.
+ * one campus or carrier NAT shares it). The bucket is counted by
+ * resume_match_rate_take, one atomic upsert, so a parallel burst from one
+ * network is counted call by call (check_rate_limit read the count before
+ * writing it, and a burst on a fresh window all passed). A widening follow-up
+ * carrying the followUp token of the answer before it is not counted against
+ * the 30; it spends a separate 150 an hour per network. Each token names the
+ * one step it was issued for (the answer's nextWiden), and the first use
+ * spends it: a replay counts against the 30 like a new search. A limiter that
+ * cannot answer is a 503, never a pass. Requirement quotes are cut to about
+ * 160 characters, and the site answer carries at most 4 required and 4
+ * preferred lines per posting.
  *
  * NOTHING ABOUT THE READER IS LOGGED: one line per call, counts and timings.
  */
@@ -33,7 +40,7 @@ import { NO_OCCUPATION } from "../_shared/match-tiers.ts";
 import {
   ADDRESS_DAILY_CAP, ANON_BUDGET_DEADLINE_MS, BUILD_DAILY_CAP, bucketFor, budgetRefusal, classifyCaller, type CountedCaller, PROBE_DAILY_CAP,
 } from "../job-board/anon-budget.ts";
-import { type Client, type MatchInput, runMatch } from "./pipeline.ts";
+import { type Client, type MatchInput, runMatch, SITE_LINES_MAX } from "./pipeline.ts";
 
 /**
  * Sources the mcp and v1 surfaces may not redistribute: public-api's and
@@ -45,6 +52,10 @@ export const SITE_PER_NETWORK_HOUR = 30;
 export const WIDEN_PER_NETWORK_HOUR = 150;
 export const RATE_FUNCTION = "resume-match";
 export const WIDEN_RATE_FUNCTION = "resume-match-widen";
+/** The atomic limiter (20261016104000): one upsert that counts and answers. */
+export const RATE_RPC = "resume_match_rate_take";
+/** A follow-up token's one use, recorded under this prefix and the token's signature. */
+export const TOKEN_USE_PREFIX = "resume-match-step:";
 export const MAX_BODY_BYTES = 131_072;
 export const STRING_MAX = 120;
 export const ARRAY_MAX = 20;
@@ -67,6 +78,8 @@ export interface Deps {
   now(): number;
   order(): "rank" | "recent";
   log(line: string): void;
+  /** Runs a promise after the answer (EdgeRuntime.waitUntil in production). */
+  background?: (p: Promise<unknown>) => void;
 }
 
 const json = (body: unknown, status = 200, extra: Record<string, string> = {}) =>
@@ -145,6 +158,8 @@ export function siteInput(v: unknown): MatchInput {
   const home = place(p.home, "profile.home");
   const extraPlaces = arr(p.extraPlaces, "profile.extraPlaces", 5).map((x, i) => place(x, `profile.extraPlaces[${i}]`)!).filter(Boolean);
   let canWorkIn = arr(p.canWorkIn, "profile.canWorkIn").map((x, i) => cc(x, `profile.canWorkIn[${i}]`));
+  // The countries the reader confirmed on the strip; none sent, the home country stands in and the answer says so.
+  const countriesBasis: MatchInput["countriesBasis"] = canWorkIn.length ? "declared" : home?.country ? "home" : "none";
   if (!canWorkIn.length && home?.country) canWorkIn = [home.country];
   const years = p.years === undefined || p.years === null ? null : (() => {
     const y = p.years as Record<string, unknown>;
@@ -163,6 +178,10 @@ export function siteInput(v: unknown): MatchInput {
     };
   });
   const wa = (p.workAuth ?? {}) as Record<string, unknown>;
+  // Told nothing about a clearance (the default body sends no work
+  // authorisation), the server sets no clearance-required row aside: the
+  // device re-gates it with the reader's own answer (src/lib/match/retier.ts).
+  const clearanceKnown = !!p.workAuth && typeof p.workAuth === "object" && "clearance" in wa;
   return {
     roles,
     home: home ? { ...home, country: home.country ?? canWorkIn[0] ?? null } : null,
@@ -175,6 +194,7 @@ export function siteInput(v: unknown): MatchInput {
       return r;
     })(),
     canWorkIn,
+    countriesBasis,
     level: oneOf(p.level, "profile.level", LEVELS, "mid"),
     years,
     targetYears: num(p.targetYears, "profile.targetYears", 0, 60),
@@ -188,6 +208,7 @@ export function siteInput(v: unknown): MatchInput {
       needsSponsorship: bool(wa.needsSponsorship, "profile.workAuth.needsSponsorship"),
       citizenOf: arr(wa.citizenOf, "profile.workAuth.citizenOf").map((x, i) => cc(x, `profile.workAuth.citizenOf[${i}]`)),
       clearance: wa.clearance === undefined || wa.clearance === null ? null : oneOf(wa.clearance, "profile.workAuth.clearance", CLEARANCES, "secret"),
+      clearanceKnown,
     },
   };
 }
@@ -218,6 +239,8 @@ export function serverInput(resumeText: string, overrides: unknown, nowYear: num
     remote: o.remote === undefined ? p.remote : bool(o.remote, "overrides.remote"),
     radiusKm: p.radiusKm,
     canWorkIn: canWorkIn.length ? canWorkIn : country ? [country] : p.canWorkIn,
+    // Named by the user (an override) or stated on the résumé is "declared"; otherwise it is the résumé's home country.
+    countriesBasis: canWorkIn.length || country ? "declared" : p.canWorkInBasis,
     level: p.level,
     years: p.years,
     targetYears: p.targetYears,
@@ -242,18 +265,24 @@ async function hmac(key: string, msg: string): Promise<string> {
 function searchKey(i: MatchInput): string {
   return JSON.stringify([i.roles, i.home, i.extraPlaces, i.relocate, i.remote, i.radiusKm, i.canWorkIn]);
 }
-export async function followUpToken(serviceKey: string, input: MatchInput, nowMs: number): Promise<string> {
+/**
+ * A token for ONE widening step of this search: the step is inside the HMAC,
+ * so a token issued for step 2 cannot pay for step 5, and the handler spends
+ * it on first use. Each answer issues a token for its own nextWiden.
+ */
+export async function followUpToken(serviceKey: string, input: MatchInput, nowMs: number, step: number): Promise<string> {
   const exp = nowMs + FOLLOW_UP_TTL_MS;
-  return `v1.${exp}.${await hmac(serviceKey, `${exp}|${searchKey(input)}`)}`;
+  return `v2.${exp}.${step}.${await hmac(serviceKey, `${exp}|${step}|${searchKey(input)}`)}`;
 }
-export async function followUpValid(serviceKey: string, token: unknown, input: MatchInput, nowMs: number): Promise<boolean> {
-  if (typeof token !== "string" || token.length > 80 || !serviceKey) return false;
-  const m = /^v1\.(\d{10,16})\.([0-9a-f]{32})$/.exec(token);
-  if (!m || Number(m[1]) < nowMs) return false;
-  const want = await hmac(serviceKey, `${m[1]}|${searchKey(input)}`);
+/** The token's signature when it is valid for this search and this step, else null. */
+export async function followUpValid(serviceKey: string, token: unknown, input: MatchInput, nowMs: number, step: number): Promise<string | null> {
+  if (typeof token !== "string" || token.length > 80 || !serviceKey) return null;
+  const m = /^v2\.(\d{10,16})\.([1-6])\.([0-9a-f]{32})$/.exec(token);
+  if (!m || Number(m[1]) < nowMs || Number(m[2]) !== step) return null;
+  const want = await hmac(serviceKey, `${m[1]}|${m[2]}|${searchKey(input)}`);
   let d = 0;
-  for (let i = 0; i < want.length; i++) d |= want.charCodeAt(i) ^ m[2].charCodeAt(i);
-  return d === 0;
+  for (let i = 0; i < want.length; i++) d |= want.charCodeAt(i) ^ m[3].charCodeAt(i);
+  return d === 0 ? m[3] : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -333,11 +362,20 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
           }, CORS);
         }
       }
-      const follow = widen > 0 && await followUpValid(serviceKey, body.followUp, input, deps.now());
+      const bucket = await networkBucket(req.headers, serviceKey, RATE_FUNCTION);
+      const take = (fn: string, max: number, minutes: number) =>
+        raceLimiter(client.rpc(RATE_RPC, { p_bucket: bucket, p_function: fn, p_max: max, p_window_minutes: minutes }), ANON_BUDGET_DEADLINE_MS);
+      // A follow-up rides the widening allowance only with a token for this step, used once.
+      const sig = widen > 0 ? await followUpValid(serviceKey, body.followUp, input, deps.now(), widen) : null;
+      let follow = false;
+      if (sig) {
+        const { data: first, error: useErr } = await take(`${TOKEN_USE_PREFIX}${sig.slice(0, 16)}`, 1, Math.ceil(FOLLOW_UP_TTL_MS / 60_000));
+        if (useErr || typeof first !== "boolean") return limiterDown(deps, "bucket");
+        follow = first;
+      }
       const fn = follow ? WIDEN_RATE_FUNCTION : RATE_FUNCTION;
       const max = follow ? WIDEN_PER_NETWORK_HOUR : SITE_PER_NETWORK_HOUR;
-      const bucket = await networkBucket(req.headers, serviceKey, RATE_FUNCTION);
-      const { data: allowed, error: limitErr } = await raceLimiter(client.rpc("check_rate_limit", { p_ip: bucket, p_function: fn, p_max_requests: max, p_window_minutes: 60 }), ANON_BUDGET_DEADLINE_MS);
+      const { data: allowed, error: limitErr } = await take(fn, max, 60);
       if (limitErr || typeof allowed !== "boolean") return limiterDown(deps, "bucket");
       if (allowed === false) {
         deps.log("[resume-match] surface=site status=429 refused=network_hour");
@@ -362,9 +400,12 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       nowMs: deps.now(),
       startedMs: started,
       clock: deps.clock,
+      linesMax: surface === "site" ? SITE_LINES_MAX : undefined,
+      background: deps.background,
     });
     const total = Math.round(deps.clock() - started);
-    const followUp = surface === "site" && widen === 0 ? await followUpToken(serviceKey, input, deps.now()) : null;
+    // A token for the next step this answer offers, and for nothing else.
+    const followUp = surface === "site" && result.nextWiden ? await followUpToken(serviceKey, input, deps.now(), result.nextWiden) : null;
     deps.log(`[resume-match] surface=${surface} status=200 rows=${result.rows.length} found=${result.basis.found} read=${result.basis.read} widen=${widen} ms=${total} cpu=${result.cpuMs}${result.deadlineMissed ? ` missed=${result.deadlineMissed}` : ""}`);
     return json({
       build: deps.build,

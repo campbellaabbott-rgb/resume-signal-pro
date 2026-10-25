@@ -1,7 +1,7 @@
 {
- "recordedAt": "2026-10-25T04:51:42.038Z",
+ "recordedAt": "2026-10-25T11:36:14.171Z",
  "engine": {
-  "ref": "rm/integration: rm/engine f5c2d151 merged with rm/bench 1b275429 (2026-10-25)",
+  "ref": "rm/integration 7af55e52 plus the fixer's round (2026-10-25; 462 of the measurer's hand reviews folded into hand-review/overrides.json), committed with this file",
   "note": "Recorded offline from the frozen corpus with scripts/match-bench/report.ts --save-after."
  },
  "corpusVersion": "match-bench-corpus.2026-10-12.1",
@@ -9,52 +9,54 @@
  "tolerance": {
   "p10Points": 5,
   "locationPoints": 2,
+  "seniorityPoints": 3,
+  "wrongFieldPoints": 3,
   "readerPoints": 5
  },
  "extract": {
   "mode": "extract",
   "exact11": {
    "n": 11,
-   "p10": 85.5,
-   "p20": 81.8,
+   "p10": 77.3,
+   "p20": 76.8,
    "shown": 200,
-   "shortlisted": 180,
-   "precisionShown": 90,
+   "shortlisted": 169,
+   "precisionShown": 84.5,
    "location": 1,
    "locationRows": 2,
-   "seniority": 7.6,
-   "seniorityRows": 15,
+   "seniority": 11.2,
+   "seniorityRows": 22,
    "infield": 197,
    "wrongField": 1.5,
    "oldCareer": 0,
-   "licenceFail": 0,
-   "authFail": 1,
-   "descRead": 74,
-   "reviewed": 1,
+   "licenceFail": 2,
+   "authFail": 2,
+   "descRead": 75,
+   "reviewed": 166,
    "under10": 1,
    "under20": 1,
    "zero": 1
   },
   "all24": {
    "n": 24,
-   "p10": 73.3,
-   "p20": 67.1,
-   "shown": 364,
-   "shortlisted": 322,
-   "precisionShown": 88.5,
+   "p10": 68.8,
+   "p20": 65.4,
+   "shown": 373,
+   "shortlisted": 314,
+   "precisionShown": 84.2,
    "location": 0.5,
    "locationRows": 2,
-   "seniority": 10.2,
-   "seniorityRows": 37,
-   "infield": 361,
-   "wrongField": 0.8,
+   "seniority": 12.5,
+   "seniorityRows": 46,
+   "infield": 369,
+   "wrongField": 1.1,
    "oldCareer": 0,
-   "licenceFail": 0,
-   "authFail": 1,
-   "descRead": 74,
-   "reviewed": 1,
+   "licenceFail": 3,
+   "authFail": 2,
+   "descRead": 75,
+   "reviewed": 209,
    "under10": 6,
-   "under20": 7,
+   "under20": 6,
    "zero": 3
   },
   "zero": [
@@ -65,7 +67,7 @@
   "perResume": {
    "sw-ng-austin": {
     "rows": 20,
-    "shortlisted": 16,
+    "shortlisted": 13,
     "family": "swe",
     "steps": [
      0
@@ -73,7 +75,7 @@
    },
    "sw-mid-toronto": {
     "rows": 20,
-    "shortlisted": 16,
+    "shortlisted": 18,
     "family": "swe",
     "steps": [
      0
@@ -81,7 +83,7 @@
    },
    "sw-sr-seattle": {
     "rows": 20,
-    "shortlisted": 18,
+    "shortlisted": 20,
     "family": "swe_staff",
     "steps": [
      0
@@ -89,7 +91,7 @@
    },
    "rn-ng-phoenix": {
     "rows": 20,
-    "shortlisted": 16,
+    "shortlisted": 13,
     "family": "rn",
     "steps": [
      0
@@ -97,7 +99,7 @@
    },
    "rn-mid-chicago": {
     "rows": 20,
-    "shortlisted": 19,
+    "shortlisted": 17,
     "family": "rn_icu",
     "steps": [
      0
@@ -114,24 +116,23 @@
    },
    "rt-ng-columbus": {
     "rows": 20,
-    "shortlisted": 14,
+    "shortlisted": 16,
     "family": "cashier",
     "steps": [
      0
     ]
    },
    "rt-mid-gap-atlanta": {
-    "rows": 11,
-    "shortlisted": 10,
+    "rows": 20,
+    "shortlisted": 17,
     "family": "retail_supervisor",
     "steps": [
-     0,
-     1
+     0
     ]
    },
    "rt-sr-dallas": {
     "rows": 20,
-    "shortlisted": 17,
+    "shortlisted": 16,
     "family": "store_manager",
     "steps": [
      0
@@ -139,7 +140,7 @@
    },
    "fn-ng-nyc": {
     "rows": 20,
-    "shortlisted": 18,
+    "shortlisted": 17,
     "family": "financial_analyst",
     "steps": [
      0
@@ -147,7 +148,7 @@
    },
    "fn-mid-charlotte": {
     "rows": 20,
-    "shortlisted": 19,
+    "shortlisted": 18,
     "family": "financial_analyst",
     "steps": [
      0
@@ -155,7 +156,7 @@
    },
    "fn-sr-chicago": {
     "rows": 20,
-    "shortlisted": 20,
+    "shortlisted": 18,
     "family": "controller",
     "steps": [
      0
@@ -179,7 +180,7 @@
    },
    "mk-ch-journalist-portland": {
     "rows": 20,
-    "shortlisted": 20,
+    "shortlisted": 19,
     "family": "content_marketing",
     "steps": [
      0
@@ -187,7 +188,7 @@
    },
    "tr-ng-hvac-houston": {
     "rows": 8,
-    "shortlisted": 6,
+    "shortlisted": 4,
     "family": "hvac_tech",
     "steps": [
      0,
@@ -232,7 +233,7 @@
    },
    "ed-ch-teacher-to-id-minneapolis": {
     "rows": 20,
-    "shortlisted": 20,
+    "shortlisted": 19,
     "family": "instructional_designer",
     "steps": [
      0
@@ -240,7 +241,7 @@
    },
    "da-ng-opt-sanjose": {
     "rows": 20,
-    "shortlisted": 18,
+    "shortlisted": 13,
     "family": "data_analyst",
     "steps": [
      0
@@ -248,7 +249,7 @@
    },
    "da-mid-pittsburgh": {
     "rows": 20,
-    "shortlisted": 17,
+    "shortlisted": 19,
     "family": "data_analyst",
     "steps": [
      0
@@ -256,59 +257,59 @@
    },
    "da-ch-biochem-to-ds-sandiego": {
     "rows": 20,
-    "shortlisted": 17,
+    "shortlisted": 16,
     "family": "data_scientist",
     "steps": [
      0
     ]
    }
   },
-  "maxWallMs": 194
+  "maxWallMs": 440
  },
  "oracle": {
   "mode": "oracle",
   "exact11": {
    "n": 11,
-   "p10": 84.5,
-   "p20": 80.5,
+   "p10": 77.3,
+   "p20": 76.4,
    "shown": 200,
-   "shortlisted": 177,
-   "precisionShown": 88.5,
+   "shortlisted": 168,
+   "precisionShown": 84,
    "location": 2,
    "locationRows": 4,
-   "seniority": 8.6,
-   "seniorityRows": 17,
+   "seniority": 11.1,
+   "seniorityRows": 22,
    "infield": 198,
    "wrongField": 1,
    "oldCareer": 0,
-   "licenceFail": 0,
-   "authFail": 2,
+   "licenceFail": 2,
+   "authFail": 4,
    "descRead": 73,
-   "reviewed": 0,
+   "reviewed": 167,
    "under10": 1,
    "under20": 1,
    "zero": 1
   },
   "all24": {
    "n": 24,
-   "p10": 72.9,
-   "p20": 66.5,
-   "shown": 364,
-   "shortlisted": 319,
-   "precisionShown": 87.6,
+   "p10": 68.8,
+   "p20": 65.2,
+   "shown": 373,
+   "shortlisted": 313,
+   "precisionShown": 83.9,
    "location": 1.1,
    "locationRows": 4,
-   "seniority": 10.8,
-   "seniorityRows": 39,
-   "infield": 362,
-   "wrongField": 0.5,
+   "seniority": 12.4,
+   "seniorityRows": 46,
+   "infield": 370,
+   "wrongField": 0.8,
    "oldCareer": 0,
-   "licenceFail": 0,
-   "authFail": 2,
+   "licenceFail": 3,
+   "authFail": 4,
    "descRead": 74,
-   "reviewed": 0,
+   "reviewed": 211,
    "under10": 6,
-   "under20": 7,
+   "under20": 6,
    "zero": 3
   },
   "zero": [
@@ -319,7 +320,7 @@
   "perResume": {
    "sw-ng-austin": {
     "rows": 20,
-    "shortlisted": 16,
+    "shortlisted": 13,
     "family": "swe",
     "steps": [
      0
@@ -327,7 +328,7 @@
    },
    "sw-mid-toronto": {
     "rows": 20,
-    "shortlisted": 16,
+    "shortlisted": 18,
     "family": "swe",
     "steps": [
      0
@@ -335,7 +336,7 @@
    },
    "sw-sr-seattle": {
     "rows": 20,
-    "shortlisted": 18,
+    "shortlisted": 20,
     "family": "swe_staff",
     "steps": [
      0
@@ -343,7 +344,7 @@
    },
    "rn-ng-phoenix": {
     "rows": 20,
-    "shortlisted": 16,
+    "shortlisted": 13,
     "family": "rn",
     "steps": [
      0
@@ -351,7 +352,7 @@
    },
    "rn-mid-chicago": {
     "rows": 20,
-    "shortlisted": 18,
+    "shortlisted": 17,
     "family": "rn_icu",
     "steps": [
      0
@@ -368,24 +369,23 @@
    },
    "rt-ng-columbus": {
     "rows": 20,
-    "shortlisted": 14,
+    "shortlisted": 16,
     "family": "cashier",
     "steps": [
      0
     ]
    },
    "rt-mid-gap-atlanta": {
-    "rows": 11,
-    "shortlisted": 10,
+    "rows": 20,
+    "shortlisted": 17,
     "family": "retail_supervisor",
     "steps": [
-     0,
-     1
+     0
     ]
    },
    "rt-sr-dallas": {
     "rows": 20,
-    "shortlisted": 17,
+    "shortlisted": 16,
     "family": "store_manager",
     "steps": [
      0
@@ -393,7 +393,7 @@
    },
    "fn-ng-nyc": {
     "rows": 20,
-    "shortlisted": 18,
+    "shortlisted": 17,
     "family": "financial_analyst",
     "steps": [
      0
@@ -401,7 +401,7 @@
    },
    "fn-mid-charlotte": {
     "rows": 20,
-    "shortlisted": 19,
+    "shortlisted": 18,
     "family": "financial_analyst",
     "steps": [
      0
@@ -409,7 +409,7 @@
    },
    "fn-sr-chicago": {
     "rows": 20,
-    "shortlisted": 20,
+    "shortlisted": 18,
     "family": "controller",
     "steps": [
      0
@@ -433,7 +433,7 @@
    },
    "mk-ch-journalist-portland": {
     "rows": 20,
-    "shortlisted": 20,
+    "shortlisted": 19,
     "family": "content_marketing",
     "steps": [
      0
@@ -441,7 +441,7 @@
    },
    "tr-ng-hvac-houston": {
     "rows": 8,
-    "shortlisted": 6,
+    "shortlisted": 4,
     "family": "hvac_tech",
     "steps": [
      0,
@@ -486,7 +486,7 @@
    },
    "ed-ch-teacher-to-id-minneapolis": {
     "rows": 20,
-    "shortlisted": 20,
+    "shortlisted": 19,
     "family": "instructional_designer",
     "steps": [
      0
@@ -494,7 +494,7 @@
    },
    "da-ng-opt-sanjose": {
     "rows": 20,
-    "shortlisted": 16,
+    "shortlisted": 12,
     "family": "data_analyst",
     "steps": [
      0
@@ -502,7 +502,7 @@
    },
    "da-mid-pittsburgh": {
     "rows": 20,
-    "shortlisted": 17,
+    "shortlisted": 19,
     "family": "data_analyst",
     "steps": [
      0
@@ -510,14 +510,14 @@
    },
    "da-ch-biochem-to-ds-sandiego": {
     "rows": 20,
-    "shortlisted": 17,
+    "shortlisted": 16,
     "family": "data_scientist",
     "steps": [
      0
     ]
    }
   },
-  "maxWallMs": 196
+  "maxWallMs": 756
  },
  "reader": {
   "n": 60,
@@ -532,8 +532,8 @@
   "authClaimed": 34,
   "years3": 86.7,
   "yearsRight": 52,
-  "entryRecall": 59.1,
-  "entryRight": 13,
+  "entryRecall": 68.2,
+  "entryRight": 15,
   "entryOf": 22,
   "entryFalsePositives": 0,
   "sponsorRecall": 75,

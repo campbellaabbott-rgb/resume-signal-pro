@@ -20,7 +20,19 @@
 --   region   regions the reader said they would move to: each region's aliases
 --            as search_jobs' place arms (a name, or ", TX" as the trailing,
 --            no-space and leading arms).
---   country  only when the reader would move anywhere in the country.
+--   country  only when the reader would move anywhere in the country, and
+--            over the first three countries the reader can work in (the
+--            home country first): a title-only lane over twenty countries is
+--            the costliest arm there is.
+--
+-- A QUERY NO INDEX CAN ANSWER IS REFUSED. websearch_to_tsquery turns "-zzz"
+-- into a negation alone (querytree 'T': it matches every row and no index
+-- can answer it), and a long role into an OR of common words. Either tsquery
+-- is dropped when its querytree is 'T' or it has more than 64 nodes (the
+-- widest family query has 47), and a query text over 400 characters answers
+-- no rows at all. resume-match also quotes a reader's own words and strips
+-- the syntax from them (title-families.ts fallbackFamily); this is the guard
+-- behind it.
 --
 -- THE BASE PREDICATE IS SEARCH_JOBS': effective_posted >= the fresh cutoff AND
 -- missing_since IS NULL. A pglite test holds the two to the same rows by
@@ -114,8 +126,14 @@ BEGIN
   IF cardinality(coalesce(p_ring, '{}')) > 40 OR cardinality(coalesce(p_regions, '{}')) > 40 THEN
     RAISE EXCEPTION 'match_candidates: at most 40 ring places and 40 region aliases';
   END IF;
+  IF length(coalesce(p_q_en, '')) > 400 OR length(coalesce(p_q_simple, '')) > 400 THEN
+    RETURN;
+  END IF;
   IF coalesce(btrim(p_q_en), '') <> '' THEN q_en := websearch_to_tsquery('english', p_q_en); END IF;
   IF coalesce(btrim(p_q_simple), '') <> '' THEN q_simple := websearch_to_tsquery('simple', p_q_simple); END IF;
+  -- Negation alone (querytree 'T') or wider than any family's query: refused.
+  IF q_en IS NOT NULL AND numnode(q_en) > 0 AND (querytree(q_en) = 'T' OR numnode(q_en) > 64) THEN q_en := NULL; END IF;
+  IF q_simple IS NOT NULL AND numnode(q_simple) > 0 AND (querytree(q_simple) = 'T' OR numnode(q_simple) > 64) THEN q_simple := NULL; END IF;
   IF (q_en IS NULL OR numnode(q_en) = 0) AND (q_simple IS NULL OR numnode(q_simple) = 0) THEN
     RETURN;
   END IF;
@@ -193,11 +211,11 @@ BEGIN
     END IF;
   END IF;
 
-  -- COUNTRY: anywhere in the countries, only when the reader would move anywhere.
+  -- COUNTRY: anywhere in the first three countries, only when the reader would move anywhere.
   IF p_country_lane IS TRUE AND cardinality(coalesce(p_countries, '{}')) > 0 THEN
     v_lanes := v_lanes || ('(SELECT ' || cols || ', ''country''::text AS lane, ' || v_rank || '::real AS title_rank'
       || ' FROM public.job_board_postings p WHERE ' || v_title || v_base
-      || ' AND p.country = ANY($6)' || v_order || ' LIMIT ' || v_lim || ')');
+      || ' AND p.country = ANY(($6)[1:3])' || v_order || ' LIMIT ' || v_lim || ')');
   END IF;
 
   IF cardinality(v_lanes) = 0 THEN
@@ -347,6 +365,25 @@ BEGIN
     'zqxjvkw', NULL, now(), ARRAY['US'], ARRAY['Boise'], true, ARRAY['Texas'], false, NULL, 5, 'rank', NULL) e;
   IF v_plan IS NULL OR strpos(v_plan, 'Execution Time') = 0 THEN
     RAISE EXCEPTION 'match_candidates_explain answered no analysed plan: %', left(coalesce(v_plan, 'nothing'), 200);
+  END IF;
+  -- A negation alone, a query wider than any family's and an over-long text build nothing.
+  SELECT count(*) INTO v_n FROM public.match_candidates_query('-zqxjvkw', NULL, ARRAY['US'], ARRAY['Boise'], true, '{}', true);
+  IF v_n <> 0 THEN
+    RAISE EXCEPTION 'match_candidates_query built a statement for a negation alone, which no index can answer';
+  END IF;
+  SELECT count(*) INTO v_n FROM public.match_candidates_query(
+    (SELECT string_agg('zq' || g::text || 'x', ' or ') FROM generate_series(1, 40) g), NULL, ARRAY['US'], ARRAY['Boise'], true, '{}', true);
+  IF v_n <> 0 THEN
+    RAISE EXCEPTION 'match_candidates_query built a statement for a 40-word OR, wider than any family''s query';
+  END IF;
+  SELECT count(*) INTO v_n FROM public.match_candidates_query(repeat('zqxjvkw ', 60), NULL, ARRAY['US'], ARRAY['Boise'], true, '{}', true);
+  IF v_n <> 0 THEN
+    RAISE EXCEPTION 'match_candidates_query built a statement for a query text over 400 characters';
+  END IF;
+  SELECT pr.prosrc INTO v_src FROM pg_proc pr
+  WHERE pr.pronamespace = 'public'::regnamespace AND pr.proname = 'match_candidates_query';
+  IF strpos(v_src, 'ANY(($6)[1:3])') = 0 THEN
+    RAISE EXCEPTION 'match_candidates_query''s country lane is not held to the first three countries';
   END IF;
 END $$;
 

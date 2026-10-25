@@ -379,7 +379,14 @@ export function autoJudge(t: ResumeTruth, row: PostingRow, desc: string | null, 
   return { role, seniority, location, auth, licence, shortlist, reasons, reviewed: false, descRead: !!desc };
 }
 
-type Override = Partial<Pick<Verdict, "role" | "seniority" | "location" | "auth" | "licence">> & { note?: string };
+/**
+ * A pair's hand review. `review` names a later review round (the AFTER hand
+ * review of 2026-10-25, 462 pairs); the legacy rubric is the 2026-10-12 judge
+ * as it ran and applies only the reviews that existed then, so BEFORE's and the
+ * prototype's as-run figures replay unchanged. The v2 rubric applies all of
+ * them, to every column alike.
+ */
+type Override = Partial<Pick<Verdict, "role" | "seniority" | "location" | "auth" | "licence">> & { note?: string; review?: string };
 export const OVERRIDES: Record<string, Override> = readJson("hand-review/overrides.json");
 export const POSTING_FACTS: Record<string, Partial<PostingRow> & { note?: string }> = readJson("hand-review/posting-facts.json");
 
@@ -387,9 +394,10 @@ export const POSTING_FACTS: Record<string, Partial<PostingRow> & { note?: string
 export function judge(t: ResumeTruth, row: PostingRow, desc: string | null, rubric: Rubric = "v2"): Verdict {
   const fixed = { ...row, ...(POSTING_FACTS[row.id] ?? {}) };
   const v = autoJudge(t, fixed, desc, rubric);
-  const o = OVERRIDES[`${t.id}::${row.id}`];
+  const found = OVERRIDES[`${t.id}::${row.id}`];
+  const o = found && !(rubric === "legacy" && found.review) ? found : undefined;
   if (o) {
-    const { note, ...fields } = o;
+    const { note, review: _review, ...fields } = o;
     Object.assign(v, fields);
     v.reviewed = true;
     if (note) v.note = note;

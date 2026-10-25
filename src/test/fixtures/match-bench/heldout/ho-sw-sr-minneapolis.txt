@@ -1,7 +1,7 @@
 THOMAS LINDQVIST ||
 thomas.lindqvist@example.com || STAFF SOFTWARE ENGINEER
 (612) 555-0148 ||
-linkedin.com/in/tlindqvist-eng || Fourteen years building distributed systems for retail and
+linkedin.com/in/example-tlindqvist-eng || Fourteen years building distributed systems for retail and
  || logistics. I lead platform work that other teams build on:
 CORE SKILLS || inventory, pricing and order routing at national scale.
 Go, Java, Scala ||

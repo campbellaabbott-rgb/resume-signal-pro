@@ -44,7 +44,7 @@ function beforeAndProto(): BeforeBaseline {
   }
   return {
     recordedAt: new Date().toISOString(),
-    note: "BEFORE = wave-3 main 65f7e5bc, measured 2026-10-12 (legacy = the rubric as it ran; v2 = licences, clearance and auth wording read). proto = the Requirements-First prototype's shown rows (auto-judged, dev set).",
+    note: "BEFORE = wave-3 main 65f7e5bc, measured 2026-10-12 (legacy = the rubric as it ran; v2 = licences, clearance and auth wording read). proto = the Requirements-First prototype's shown rows (dev set). legacy applies only the 2026-10-12 hand reviews; v2 applies every hand review, the AFTER review of 2026-10-25 included, wherever a column shows a reviewed pair.",
     legacy: { exact11: legacy.exact11, all24: legacy.all24 },
     v2: { exact11: v2.exact11, all24: v2.all24 },
     proto,
@@ -108,9 +108,9 @@ const w0 = Math.max(...rows.map((r) => r[0].length)) + 2;
 const ws = cols.map((c) => Math.max(c.name.length, ...rows.map((r) => r[1](c).length)) + 2);
 console.log("\n" + "metric".padEnd(w0) + cols.map((c, i) => c.name.padEnd(ws[i])).join(""));
 for (const [name, get] of rows) console.log(name.padEnd(w0) + cols.map((c, i) => get(c).padEnd(ws[i])).join(""));
-console.log(`\nCaveat: the AFTER and prototype columns are auto-judged on the dev set (the prototype and the engine were tuned on these 24);
+console.log(`\nCaveat: the AFTER and prototype columns are judged on the dev set, automatically except where a hand review covers the pair (the prototype and the engine were tuned on these 24);
 the offline AFTER run is a closed world (only postings an earlier run retrieved; requirements only where one read a description).
-AFTER has had no hand review of its own: its reviewed rows are pairs BEFORE's review already covered.
+AFTER's reviewed rows are pairs one of the two hand-review rounds covered (2026-10-12, and the AFTER review of 2026-10-25 on 7af55e52).
 A gate verdict for v1 needs the held-out AFTER run and its hand review (spec §19.2).`);
 
 // BEFORE on the held-out set, once before-retrieve / describe / before-score have run from a ledger.

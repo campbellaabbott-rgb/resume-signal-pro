@@ -5,8 +5,10 @@
  * fit-batch already makes: id, description, min_years) and lifts out the
  * lines a recruiter screens on: required and preferred lines, the stated
  * minimum years, the licence and where it must be held, a refusal to sponsor,
- * citizenship, an ACTIVE clearance (an "ability to obtain" one is
- * information), degree, language, shift and driving. Each comes with the
+ * citizenship (alone, or "citizens or permanent residents", read apart: a
+ * green card meets the second), an ACTIVE clearance (one to obtain, one
+ * preferred or one "not required" is not), degree, language, shift and
+ * driving. Each comes with the
  * sentence it was read from, cut to about 160 characters (owner decision 2:
  * the anonymous path must not become a bulk export of description text).
  *
@@ -21,7 +23,9 @@
  * since, but stored rows keep the old value (4 of the 5 bench rows with a
  * readable description re-parse to null). So a stored value of 16 or more is
  * unknown, and whenever the description is read, the value re-read from it
- * with the board's own parser replaces the stored one.
+ * with the board's own parser replaces the stored one, held to the same bar
+ * (16 or more is unknown) and read with the employer's own years left out
+ * ("We have over 20 years of experience providing ...").
  *
  * POSTING TERMS are the dictionary walk behind keyword overlap: the same
  * dictionary, order and containment rule as _shared/fit-score.ts (a parity
@@ -36,7 +40,8 @@ import { parseMinYears } from "../job-board/experience.ts";
 import { INDUSTRY_KEYWORDS } from "./industry-detection.ts";
 import { cut, type PostingLicence, readPostingLicence, sentenceAt } from "./licence-rules.ts";
 
-export const EXTRACTOR_VERSION = "2026-10-16.1";
+/** .2: citizens-or-residents read apart, an obtainable or unrequired clearance is no requirement, company-age years dropped. */
+export const EXTRACTOR_VERSION = "2026-10-16.2";
 /** Requirements are read for this many candidates per call. */
 export const READ_TOP = 40;
 export const MAX_UNCACHED_WALKS = 6;
@@ -61,7 +66,10 @@ export interface PostingRequirements {
   minYearsQuote: string | null;
   licence: PostingLicence | null;
   noSponsorship: string | null;
+  /** Citizenship alone: "must be a U.S. citizen". */
   citizenshipRequired: string | null;
+  /** Citizens or permanent residents: "US citizen or green card holder required". */
+  citizenOrResident: string | null;
   activeClearance: string | null;
   clearanceObtainable: string | null;
   degree: { level: DegreeLevel; must: boolean; quote: string } | null;
@@ -83,15 +91,28 @@ export const readable = (description: string | null | undefined): description is
  * was not, a stored value of STALE_MIN_YEARS or more is unknown.
  */
 export function effectiveMinYears(stored: number | null | undefined, reRead: PostingRequirements | "not read" | null | undefined): number | null {
-  if (reRead && reRead !== "not read") return reRead.minYears;
+  // A re-read value is held to the same bar: 16 or more is a company's age or an age, not a hiring bar.
+  if (reRead && reRead !== "not read") return typeof reRead.minYears === "number" && reRead.minYears >= STALE_MIN_YEARS ? null : reRead.minYears;
   if (typeof stored !== "number" || !Number.isFinite(stored)) return null;
   return stored >= STALE_MIN_YEARS ? null : stored;
+}
+
+/**
+ * Sentences about the employer's own years ("We have over 20 years of
+ * experience providing logistics solutions") that the board's parser reads as
+ * a requirement: the subject is the company, the years are its experience, and
+ * nothing addresses the candidate. They are left out before the minimum is read.
+ */
+const COMPANY_YEARS = /\b(?:we|we've|we're|our|us|the company|our company|our team|our firm)\b[^.!?\n]{0,80}\byears? of (?:[a-z-]+ ){0,2}(?:experience|expertise)\b/i;
+const ADDRESSES_CANDIDATE = /\b(?:you|your|you'll|candidates?|applicants?|someone|individual|person|hire|looking for|seeking|seek|ideal|need|needs|required|requires|requirement|minimum|must|should have|preferred|qualifications?)\b/i;
+function withoutCompanyYears(text: string): string {
+  return text.split(/(?<=[.!?])\s+|\n/).filter((s) => !(COMPANY_YEARS.test(s) && !ADDRESSES_CANDIDATE.test(s))).join("\n");
 }
 
 const NO_SPONSOR = /\b(?:not|unable to|cannot|can ?not|will not|won'?t|does not|do not|is not able to|are not able to)\s+(?:be able to\s+)?(?:sponsor|offer (?:visa |immigration )?sponsorship|provide (?:visa |immigration )?sponsorship|support (?:visa|h-?1b)|consider (?:candidates|applicants) (?:who|that) (?:require|need))|without (?:the need for |requiring )?(?:current or future |now or in the future |present or future )?(?:employer[- ]|visa |immigration )?sponsorship|\bno (?:visa |immigration )?sponsorship\b|sponsorship (?:is |will )?not (?:be )?(?:available|offered|provided)|not eligible for (?:visa )?sponsorship|\bauthori[sz]ed to work in the (?:us|u\.s\.|united states)\b[^.]{0,60}\b(?:now and|now or) in the future\b/i;
 const CITIZEN = /\bu\.?s\.? citizen(?:ship)?\b[^.\n]{0,40}\b(?:required|requirement|only|must)\b|\bmust be (?:a )?u\.?s\.? citizen\b|\bus citizens only\b|\b(?:requires?|required) (?:u\.?s\.? )?citizenship\b|\bcitizenship (?:is )?required\b/i;
 const ACTIVE_CLEARANCE = /\b(?:active|current|existing)\b[^.\n]{0,25}\b(?:secret|top secret|ts\/sci|ts|public trust|security)\s+clearance\b|\b(?:secret|top secret|ts\/sci)\s+clearance\b[^.\n]{0,30}\b(?:required|is required|must)\b|\bclearance (?:is )?required\b|\bmust (?:currently )?(?:hold|possess|have) (?:an? )?(?:active )?(?:secret|top secret|ts\/sci|security) clearance\b/i;
-const OBTAIN_CLEARANCE = /\b(?:ability|able|eligib(?:le|ility)) (?:to )?(?:obtain|receive|be granted|for)\b[^.\n]{0,30}\bclearance\b|\bmust be (?:able to )?(?:obtain|granted)\b[^.\n]{0,30}\bclearance\b/i;
+const OBTAIN_CLEARANCE = /\b(?:ability|able|eligib(?:le|ility)|willing(?:ness)?) (?:to )?(?:obtain|receive|be granted|for)\b[^.\n]{0,45}\bclearance\b|\bmust be (?:able to )?(?:obtain|granted)\b[^.\n]{0,45}\bclearance\b|\b(?:obtain|obtaining) and maintain\b[^.\n]{0,45}\bclearance\b/i;
 const DEGREES: Array<[DegreeLevel, RegExp]> = [
   // Dotted forms end in a full stop, where \b cannot match, so they sit outside the word boundaries.
   ["doctorate", /\b(?:phd|doctorate|doctoral degree|pharmd|dpt|md degree)\b|\b(?:ph|pharm)\.\s?d\.?|\bd\.p\.t\./i],
@@ -112,6 +133,61 @@ const OTHER_HEAD = /^(?:responsibilities|what you(?:'| wi)ll do|duties|benefits|
 function quoteOf(text: string, re: RegExp): string | null {
   const m = re.exec(text);
   return m ? sentenceAt(text, m.index, m[0].length) : null;
+}
+
+/** Every match of `re` (made global), each with the sentence it sits in. */
+function sentencesMatching(text: string, re: RegExp): string[] {
+  const g = new RegExp(re.source, re.flags.includes("g") ? re.flags : `${re.flags}g`);
+  const out: string[] = [];
+  for (const m of text.matchAll(g)) {
+    const s = sentenceAt(text, m.index ?? 0, m[0].length);
+    if (!out.includes(s)) out.push(s);
+    if (out.length >= 8) break;
+  }
+  return out;
+}
+
+const NOT_REQUIRED = /\bnot (?:be )?(?:required|a requirement|necessary|needed)\b|\bno (?:security |active |u\.?s\.? )?(?:clearance|citizenship)\b[^.\n]{0,20}\b(?:required|needed|necessary)\b|\bdoes not require\b|\bnot required\b/i;
+const PREFERRED = /\b(?:preferred|a plus|desired|desirable|nice to have|bonus|advantageous)\b/i;
+
+/**
+ * An ACTIVE clearance the posting requires. A sentence that asks only for the
+ * ability to obtain one (or eligibility) is information (clearanceObtainable);
+ * one that says no clearance is required, or calls it preferred, asks nothing.
+ * The obtain wording is checked in the sentence around every match before the
+ * active wording counts: "must be able to obtain an active Secret clearance"
+ * holds both.
+ */
+function readClearance(text: string): { active: string | null; obtainable: string | null } {
+  let active: string | null = null;
+  let obtainable: string | null = null;
+  for (const s of sentencesMatching(text, ACTIVE_CLEARANCE)) {
+    if (NOT_REQUIRED.test(s)) continue;
+    if (OBTAIN_CLEARANCE.test(s)) { obtainable ??= s; continue; }
+    if (PREFERRED.test(s) && !/\b(?:required|must)\b/i.test(s.replace(/\bnot required\b/gi, ""))) continue;
+    active = s;
+    break;
+  }
+  if (!active && !obtainable) {
+    const o = quoteOf(text, OBTAIN_CLEARANCE);
+    if (o && !NOT_REQUIRED.test(o)) obtainable = o;
+  }
+  return { active, obtainable: active ? null : obtainable };
+}
+
+/** Accepts a permanent resident (or green-card holder, or "U.S. person") beside a citizen. */
+const OR_RESIDENT = /\b(?:or|and)\s+(?:a\s+)?(?:lawful\s+)?(?:u\.?s\.?\s+)?(?:permanent residents?|green[- ]card(?: holders?)?|lawful permanent|u\.?s\.? persons?)\b|\bpermanent residents?\b|\bgreen[- ]card\b/i;
+
+/** Citizenship alone, or citizens and permanent residents; a sentence saying it is not required asks nothing. */
+function readCitizenship(text: string): { citizen: string | null; orResident: string | null } {
+  let citizen: string | null = null;
+  let orResident: string | null = null;
+  for (const s of sentencesMatching(text, CITIZEN)) {
+    if (NOT_REQUIRED.test(s)) continue;
+    if (OR_RESIDENT.test(s)) { orResident ??= s; continue; }
+    citizen ??= s;
+  }
+  return { citizen, orResident };
 }
 
 /** Required and preferred lines, read off the posting's own headings and inline wording. */
@@ -139,7 +215,8 @@ function requirementLines(text: string): { must: string[]; nice: string[] } {
 export function extractRequirements(description: string): PostingRequirements {
   const text = description.slice(0, DESCRIPTION_READ_CHARS);
   const lines = requirementLines(text);
-  const minYears = parseMinYears(text);
+  const read = parseMinYears(withoutCompanyYears(text));
+  const minYears = read !== null && read >= STALE_MIN_YEARS ? null : read;
   let minYearsQuote: string | null = null;
   if (minYears !== null) {
     const m = new RegExp(`(?<!\\d)${minYears}\\s*\\+?\\s*(?:-\\s*\\d{1,2}\\s*)?years?`, "i").exec(text);
@@ -163,16 +240,18 @@ export function extractRequirements(description: string): PostingRequirements {
   }
   const drivingM = DRIVING.exec(text);
   const credentials = [...new Set([...text.matchAll(CREDENTIALS)].map((m) => m[1].toUpperCase().replace(/^CPRS$/, "CPR")))].slice(0, 8);
-  const active = quoteOf(text, ACTIVE_CLEARANCE);
+  const clearance = readClearance(text);
+  const citizenship = readCitizenship(text);
   return {
     version: EXTRACTOR_VERSION,
     minYears,
     minYearsQuote,
     licence: readPostingLicence(text),
     noSponsorship: quoteOf(text, NO_SPONSOR),
-    citizenshipRequired: quoteOf(text, CITIZEN),
-    activeClearance: active,
-    clearanceObtainable: active ? null : quoteOf(text, OBTAIN_CLEARANCE),
+    citizenshipRequired: citizenship.citizen,
+    citizenOrResident: citizenship.orResident,
+    activeClearance: clearance.active,
+    clearanceObtainable: clearance.obtainable,
     degree,
     languages,
     shift: quoteOf(text, SHIFT),

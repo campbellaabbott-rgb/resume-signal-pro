@@ -12,6 +12,9 @@ import { stamped } from "../_shared/fn-build.ts";
 import { getServiceClient } from "../_shared/supabase-client.ts";
 import { handle } from "./handler.ts";
 
+/** Supabase's edge runtime: work that may finish after the answer. */
+declare const EdgeRuntime: { waitUntil: (p: Promise<unknown>) => void } | undefined;
+
 // 2026-10-16.1: phase 0, the engine and resume-match behind no UI (docs/resume-match-deploy-notes.md).
 const FN_BUILD = "resume-match.2026-10-16.1";
 
@@ -24,4 +27,6 @@ Deno.serve(stamped(FN_BUILD, (req) => handle(req, {
   // The spec 6.5 timing gate's fallback, switchable without a deploy of code.
   order: () => (Deno.env.get("RESUME_MATCH_ORDER") === "recent" ? "recent" : "rank"),
   log: (line) => console.log(line),
+  // The requirement cache's write runs after the answer where the runtime allows it.
+  background: typeof EdgeRuntime !== "undefined" && EdgeRuntime ? (p) => EdgeRuntime!.waitUntil(p) : undefined,
 })));

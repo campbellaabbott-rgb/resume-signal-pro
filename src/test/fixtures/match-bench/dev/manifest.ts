@@ -135,7 +135,8 @@ export const RESUMES: ResumeTruth[] = [
     adjacent: [/\b(sales associate|cashier|retail associate|store associate|customer service|stock|team member|merchandis|clerk)\b/i],
     related: [/\b(warehouse|driver|pharmacy technician|supervisor)\b/i], oldCareer: [],
     tooJunior: [],
-    tooSenior: [/\b(store manager|general manager|district|regional|director|area manager|vp)\b/i],
+    // "Assistant Store Manager" is a target above; the rung above it is the store or general manager without "assistant" (fixed 2026-10-25: the bare words matched inside the target title).
+    tooSenior: [/(?<!\bassistant )\b(store manager|general manager)\b|\b(district|regional|director|area manager|vp)\b/i],
     maxMinYears: 8,
     metro: ["atlanta|GA", "decatur|GA", "sandy springs|GA", "marietta|GA", "smyrna|GA", "east point|GA", "college park|GA", "brookhaven|GA", "dunwoody|GA", "chamblee|GA", "doraville|GA", "tucker|GA", "stone mountain|GA", "roswell|GA", "alpharetta|GA", "kennesaw|GA", "lithonia|GA", "morrow|GA", "conyers|GA", "snellville|GA", "duluth|GA", "norcross|GA", "lawrenceville|GA"],
     relocate: "none", remoteOk: true, authorized: ["US"], sponsorshipFuture: false, citizen: true, licences: [], ...NONE,

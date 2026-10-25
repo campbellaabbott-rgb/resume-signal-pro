@@ -22,13 +22,28 @@ import { scoreReader, type ReaderAnswer, type ReaderScore } from "./reader-score
  * so one row moving in one résumé moves it by 0.9 points: 5 points is about
  * six rows across the set, more than a re-ordering and less than a real loss.
  * Location mismatch in the shown top 20 is pooled over about 190 rows: 2 points
- * is about four more rows the candidate cannot take.
+ * is about four more rows the candidate cannot take. Seniority mismatch (over
+ * the in-field rows) and wrong field (over every shown row) are pooled the
+ * same way: 3 points is about six rows.
+ *
+ * WHAT THE GATE DOES NOT SEE. The frozen corpus holds descriptions for few of
+ * the rows the engine shows (74 of 200 on the exact 11), it has no row that
+ * exercises the remote lane of an on-site family, and no career changer's
+ * previous field among the shown rows. Planted regressions there (the stale
+ * minimum guard, on-site remote validity, the previous-field gate) moved no
+ * figure on 2026-10-25; they are guarded by the unit tests (match-place,
+ * match-tiers, match-families, match-requirements, match-profile,
+ * match-endpoint), each of which failed for every such plant.
  */
 export const GATE_TOLERANCE = {
   /** exact-11 P@10 may fall at most this many points below the recorded AFTER baseline. */
   p10Points: 5,
   /** location mismatch in the top 20 (exact 11, and all 24) may rise at most this many points above it. */
   locationPoints: 2,
+  /** exact-11 seniority mismatch (in-field rows) may rise at most this many points above it. */
+  seniorityPoints: 3,
+  /** exact-11 wrong field (shown rows in another occupation or the old career) may rise at most this many points above it. */
+  wrongFieldPoints: 3,
   /** held-out profile reader: country, city, years and entry recall may fall at most this many points. */
   readerPoints: 5,
 } as const;
@@ -149,6 +164,12 @@ export function gateFailures(current: AfterMeasure, baseline: AfterBaseline, bef
   };
   loc(current.exact11.location, b.exact11.location, "exact-11");
   loc(current.all24.location, b.all24.location, "all-24");
+  const rise = (cur: number | null, rec: number | null, points: number, what: string) => {
+    const ceiling = Math.round(((rec ?? 0) + points) * 10) / 10;
+    if ((cur ?? 0) > ceiling) out.push(`exact-11 ${what} ${cur}% is above the recorded ${rec}% plus ${points} points (${ceiling}%)`);
+  };
+  rise(current.exact11.seniority, b.exact11.seniority, tol.seniorityPoints, "seniority mismatch");
+  rise(current.exact11.wrongField, b.exact11.wrongField, tol.wrongFieldPoints, "wrong-field");
   const newlyZero = current.zero.filter((id) => !b.zero.includes(id));
   if (newlyZero.length) out.push(`résumés newly at zero rows: ${newlyZero.join(", ")}`);
   // Like with like: AFTER must still beat BEFORE on the same 11 résumés under the same rubric.

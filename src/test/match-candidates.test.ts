@@ -198,6 +198,59 @@ describe("the timing gate reads the plan of exactly the statement match_candidat
   });
 });
 
+// The fixer's round (review of rm/integration 7af55e52): each block failed on that commit.
+describe("a query no index can answer is refused, and the country lane is held to three countries", () => {
+  it("a negation alone, an OR wider than any family's and an over-long text return no rows and build no statement", async () => {
+    for (const q of ["-cashier", Array.from({ length: 40 }, (_, i) => `zq${i}x`).join(" or "), "cashier ".repeat(60)]) {
+      expect(await candidates({ p_q_en: q, p_ring: ["Westerville"], p_remote: true, p_country_lane: true }), q.slice(0, 30)).toEqual([]);
+      const built = await db.query<{ n: number }>(`SELECT count(*)::int AS n FROM public.match_candidates_query($1, NULL, ARRAY['US'], ARRAY['Westerville'], true, ARRAY[]::text[], true)`, [q]);
+      expect(built.rows[0].n, q.slice(0, 30)).toBe(0);
+    }
+  });
+  it("the widest family query still runs (47 nodes)", async () => {
+    const wide = '"icu nurse" or "critical care nurse" or "registered nurse icu" or "intensive care unit registered nurse" or "registered nurse critical care" or "icu registered nurse" or "registered nurse" or "staff nurse"';
+    const built = await db.query<{ n: number }>(`SELECT count(*)::int AS n FROM public.match_candidates_query($1, NULL, ARRAY['US'], ARRAY['Westerville'], false, ARRAY[]::text[], false)`, [wide]);
+    expect(built.rows[0].n).toBe(1);
+  });
+  it("the country lane reads the first three countries the reader can work in, and no more", async () => {
+    await addPostings(db, [
+      { id: "de-cashier", title: "Cashier", location: "Berlin", country: "DE" },
+      { id: "gb-cashier", title: "Cashier", location: "Leeds", country: "GB" },
+    ]);
+    const three = ids(await candidates({ p_country_lane: true, p_countries: ["GB", "CA", "DE"] }));
+    expect(three).toEqual(expect.arrayContaining(["de-cashier", "gb-cashier"]));
+    const four = ids(await candidates({ p_country_lane: true, p_countries: ["GB", "CA", "FR", "DE"] }));
+    expect(four).toContain("gb-cashier");
+    expect(four).not.toContain("de-cashier");
+  });
+  it("metro_ring names each place's ASCII spelling beside its own", async () => {
+    await db.query(`INSERT INTO public.geo_places (geonameid, name, ascii_name, country, admin1_code, region, region_name, lat, lon, population)
+      VALUES (9001, 'Montréal', 'Montreal', 'CA', '10', 'QC', 'Quebec', 45.5088, -73.5878, 1600000) ON CONFLICT DO NOTHING`);
+    const r = (await db.query<{ name: string; ascii_name: string }>(`SELECT name, ascii_name FROM public.metro_ring('Montreal', NULL, 'CA', 15, 5)`)).rows;
+    expect(r[0]).toEqual({ name: "Montréal", ascii_name: "Montreal" });
+  });
+});
+
+describe("resume_match_rate_take counts every call in the statement that answers it", () => {
+  const take = async (bucket: string, fn: string, max: number, minutes = 60) =>
+    (await db.query<{ ok: boolean }>(`SELECT public.resume_match_rate_take($1, $2, $3, $4) AS ok`, [bucket, fn, max, minutes])).rows[0].ok;
+  it("allows the cap and refuses the next; a refused call is still counted; an expired window starts again", async () => {
+    expect([await take("b1", "resume-match", 2), await take("b1", "resume-match", 2), await take("b1", "resume-match", 2)]).toEqual([true, true, false]);
+    const c = await db.query<{ request_count: number }>(`SELECT request_count FROM public.rate_limits WHERE ip_address = 'b1' AND function_name = 'resume-match'`);
+    expect(c.rows[0].request_count).toBe(3);
+    await db.query(`UPDATE public.rate_limits SET window_start = now() - interval '2 hours' WHERE ip_address = 'b1'`);
+    expect(await take("b1", "resume-match", 2)).toBe(true);
+  });
+  it("a burst sent at once is counted call by call (check_rate_limit let a fresh-window burst through)", async () => {
+    const burst = await Promise.all(Array.from({ length: 8 }, () => take("b2", "resume-match", 5)));
+    expect(burst.filter(Boolean)).toHaveLength(5);
+  });
+  it("refuses bounds a caller could abuse", async () => {
+    await expect(take("x".repeat(50), "resume-match", 2)).rejects.toThrow(/invalid bucket/);
+    await expect(take("b3", "resume-match", 0)).rejects.toThrow(/p_max must be 1 to 1000/);
+  });
+});
+
 describe("who may call it, and running it twice", () => {
   it("no client role holds anything on the new objects; the service role holds what resume-match needs", async () => {
     const q = async (sql: string) => Object.values((await db.query<Record<string, boolean>>(sql)).rows[0])[0];
@@ -215,6 +268,14 @@ describe("who may call it, and running it twice", () => {
     expect(await q(`SELECT has_function_privilege('service_role', 'public.match_candidates_explain(${SIG12})', 'EXECUTE')`)).toBe(true);
     expect(await q(`SELECT has_table_privilege('service_role', 'public.job_posting_requirements', 'INSERT')`)).toBe(true);
     expect(await q(`SELECT has_table_privilege('service_role', 'public.geo_places', 'SELECT')`)).toBe(true);
+  });
+
+  it("the atomic limiter is the service role's alone", async () => {
+    const q = async (sql: string) => Object.values((await db.query<Record<string, boolean>>(sql)).rows[0])[0];
+    for (const role of ["anon", "authenticated"]) {
+      expect(await q(`SELECT has_function_privilege('${role}', 'public.resume_match_rate_take(text, text, integer, integer)', 'EXECUTE')`)).toBe(false);
+    }
+    expect(await q(`SELECT has_function_privilege('service_role', 'public.resume_match_rate_take(text, text, integer, integer)', 'EXECUTE')`)).toBe(true);
   });
 
   it("every file applies a second time and still verifies itself", async () => {

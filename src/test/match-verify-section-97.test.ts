@@ -112,11 +112,13 @@ function answer(over: Record<string, unknown> = {}): string {
     rows: [readRow(), unreadRow()], more: 0,
     setAside: { beyond_commute: { count: 3, basis: "of the 120 postings found", label: "Beyond your commute area and where you'd move" } },
     setAsideRows: [], summary: "3 beyond your commute area", steps: [{ step: 0, label: "exact titles", added: 5 }],
-    nextWiden: 1, thin: false, notes: [], basis: { found: 120, passed: 40, read: 20, walked: 6, pending: 0 },
+    nextWiden: 2, thin: false, notes: [], basis: { found: 120, passed: 40, read: 20, walked: 6, pending: 0 },
     deadlineMissed: null, phaseMs: { anon: 40, ring: 30, candidates: 420, requirements: 300, terms: 60, total: 1100 }, cpuMs: 140,
-    footer: FOOTER, followUp: "v1.1790000000000.0123456789abcdef0123456789abcdef", ...over,
+    footer: FOOTER, followUp: "v2.1790000000000.2.0123456789abcdef0123456789abcdef", ...over,
   });
 }
+/** The widening follow-up's answer: the one step it asked for. */
+const followAnswer = (over: Record<string, unknown> = {}) => answer({ steps: [{ step: 2, label: "'nurse'", added: 4 }], nextWiden: 3, followUp: "v2.1790000000000.3.0123456789abcdef0123456789abcdef", ...over });
 const denied = () => JSON.stringify({ code: "42501", message: "permission denied" });
 const CRON = JSON.stringify([
   { ch_jobname: "purge-job-posting-requirements", ch_schedule: "41 4 * * *", ch_active: true, ch_timeout: "120s", ch_last_status: "succeeded" },
@@ -135,10 +137,11 @@ const BASE: Route[] = [
   { match: `^POST ${FN}\\t.*"resumeText"`, status: 400, headers: H, body: JSON.stringify({ error: "resume_text_refused", message: "Résumé text is accepted only from our own servers." }) },
 ];
 /** The ten profiles: the canary (Accountant, Columbus) first so a later catch-all does not shadow it, then a 429 after `okCalls` of the rest. */
-function profiles(o: { canary?: string; other?: string; time?: number; okCalls?: number; after?: Route } = {}): Route[] {
+function profiles(o: { canary?: string; other?: string; time?: number; okCalls?: number; after?: Route; follow?: Route } = {}): Route[] {
   const ok: Route = { match: `^POST ${FN}\\t`, headers: H, body: o.other ?? answer(), time: o.time ?? 1.1, ...(o.okCalls !== undefined ? { max: o.okCalls } : {}) };
   return [
     { match: `^POST ${FN}\\t.*"Accountant"`, headers: H, body: o.canary ?? answer(), time: o.time ?? 1.1 },
+    o.follow ?? { match: `^POST ${FN}\\t.*"widen":2,"followUp":"v2\\.`, headers: H, body: followAnswer(), time: 1.2 },
     ok,
     o.after ?? { match: `^POST ${FN}\\t`, status: 429, headers: { ...H, "retry-after": "3600" }, body: RATE_LIMITED },
   ];
@@ -162,18 +165,48 @@ describe("verify section 97", () => {
       /match_candidates as anon -> 42501/, /match_candidates_query as anon -> 42501/, /match_candidates_explain as anon -> 42501/, /metro_ring as anon -> 42501/, /geo_places as anon -> 401 42501/, /job_posting_requirements as anon -> 401 42501/,
       /purge-job-posting-requirements sets its own timeout in the command: 120s/,
       /resume text from a site caller -> 400 resume_text_refused/, /mcp surface without the service key -> 403 server_surface/,
-      /wall p50 = 1\.10 s/, /wall p90 = 1\.10 s/, /phaseMs\.candidates p90 = 420 ms/, /cpuMs p50 140/,
+      /wall p50 = 1\.10 s/, /wall p90 = 1\.10 s/, /phaseMs\.candidates p90 = 420 ms/, /phaseMs\.candidates max = 420 ms over the ten/, /cpuMs p50 140/,
+      /10 of the 10 answers carry at least one row \(gate 8\)/,
       /10 answers carry phaseMs/, /20 rows over 10 answers, every one tiered/, /10 of 20 rows have requirements not read: each capped at good/,
       /canary profile .* is not echoed/, /Columbus, OH ring \(4 places\) contains Westerville: true; rows in Georgia: 0/, /Columbus, OH: 2 rows, 0 in Georgia/,
       /served match sentences hold none of the \d+ banned patterns/,
+      /a widening follow-up with the token from the first answer -> 200 steps \[2\] \(asked 2\), 1\.2 s/,
+      /11 answers, 0 missed a deadline/,
       /call \d+ of this run -> 429 rate_limited limit 30 scope network, Retry-After 3600, from resume-match\.2026-10-16\.1/,
     ]) expect(body.some((l) => re.test(l)), re + show(lines)).toBe(true);
-    expect(body.length, show(lines)).toBe(23);
+    expect(body.length, show(lines)).toBe(27);
     expect(out).not.toContain(KEY);
     // Every RPC is a GET but the cron-health reader; every function POST is a synthetic profile or one of the two refusals.
     expect(calls.filter((c) => /^curl\tPOST https:\/\/p\.supabase\.co\/rest\/v1\/rpc\//.test(c)).map((c) => c.split("\t")[1])).toEqual(["POST https://p.supabase.co/rest/v1/rpc/get_cron_health"]);
-    expect(profilePosts(calls).length).toBe(14);
+    expect(profilePosts(calls).length).toBe(15);
     expect(profilePosts(calls).every((c) => /"profile":\{"roles":\[/.test(c) && !/resumeText/.test(c))).toBe(true);
+    // Three profiles use the remote lane and one relocates anywhere in the country; the follow-up is the first profile at its step.
+    expect(profilePosts(calls).filter((c) => /"remote":true/.test(c) && !/"widen"/.test(c)).length).toBe(3);
+    expect(profilePosts(calls).filter((c) => /"relocate":"country"/.test(c)).length).toBe(1);
+    expect(profilePosts(calls).filter((c) => /"widen":2,"followUp":"v2\.1790000000000\.2\./.test(c) && /Registered Nurse/.test(c))).toHaveLength(1);
+  });
+
+  // The fixer's round (review of rm/integration 7af55e52): both failed on that commit (17 PASS and 4 INFO; every line PASS).
+  it("a matcher that returns nothing FAILs: no rows on the ten answers", async () => {
+    const none = answer({ rows: [], family: null, basis: { found: 0, passed: 0, read: 0, walked: 0, pending: 0 }, phaseMs: { anon: 40, ring: 30, candidates: 0, requirements: 0, terms: 0, total: 300 } });
+    const { lines } = run(GOOD({ other: none, canary: none, follow: { match: `^POST ${FN}\\t.*"widen":2`, headers: H, body: followAnswer({ rows: [] }) } }));
+    expect(has(lines, "FAIL", /0 of the 10 answers carry at least one row \(gate 8\)/), show(lines)).toBe(true);
+  });
+
+  it("one remote answer that missed its candidates deadline FAILs, though p90 drops it", async () => {
+    const late = answer({ rows: [], deadlineMissed: "candidates", phaseMs: { anon: 40, ring: 30, candidates: 1201, requirements: 0, terms: 0, total: 1300 } });
+    const routes = [...BASE, { match: `^POST ${FN}\\t.*"Software Engineer"`, headers: H, body: late, time: 1.4 }, ...profiles({ okCalls: 12 })];
+    const { lines } = run(routes);
+    expect(has(lines, "PASS", /phaseMs\.candidates p90 = 420 ms/), "the nearest-rank p90 drops the slowest of ten" + show(lines)).toBe(true);
+    expect(has(lines, "FAIL", /phaseMs\.candidates max = 1201 ms over the ten .* profile 2\)/), show(lines)).toBe(true);
+    expect(has(lines, "FAIL", /11 answers, 1 missed a deadline: 2 candidates/), show(lines)).toBe(true);
+  });
+
+  it("a follow-up refused, or answering another step, FAILs", async () => {
+    const refused = run(GOOD({ follow: { match: `^POST ${FN}\\t.*"widen":2`, status: 429, headers: H, body: RATE_LIMITED } })).lines;
+    expect(has(refused, "FAIL", /a widening follow-up with the token from the first answer -> 429 rate_limited/), show(refused)).toBe(true);
+    const other = run(GOOD({ follow: { match: `^POST ${FN}\\t.*"widen":2`, headers: H, body: followAnswer({ steps: [{ step: 5, label: "elsewhere in Ohio", added: 1 }] }) } })).lines;
+    expect(has(other, "FAIL", /steps \[5\] \(asked 2\)/), show(other)).toBe(true);
   });
 
   it("nothing deployed: the build FAILs, the rest is INFO, and no synthetic profile is sent", () => {
@@ -288,7 +321,7 @@ describe("verify section 97", () => {
   it("31 calls and no 429 FAIL: the bucket is not enforced", () => {
     const { lines, calls } = run([...BASE, ...profiles({ after: { match: `^POST ${FN}\\t`, headers: H, body: answer() } })]);
     expect(has(lines, "FAIL", /31 matches from this network in one hour and no 429/), show(lines)).toBe(true);
-    expect(profilePosts(calls)).toHaveLength(31);
+    expect(profilePosts(calls)).toHaveLength(32);
   });
 
   it("a 429 without the bucket's shape FAILs; the board meter refusing first is INFO", () => {
@@ -305,6 +338,6 @@ describe("verify section 97", () => {
     expect(has(lines, "INFO", /only 5 of 10 timed matches answered: this network spent its 30 an hour/), show(lines)).toBe(true);
     expect(has(lines, "PASS", /wall p50/), show(lines)).toBe(false);
     expect(has(lines, "PASS", /call \d+ of this run -> 429 rate_limited limit 30 scope network/), show(lines)).toBe(true);
-    expect(profilePosts(calls)).toHaveLength(10);
+    expect(profilePosts(calls)).toHaveLength(11);
   });
 });

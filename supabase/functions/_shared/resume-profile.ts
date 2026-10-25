@@ -265,6 +265,38 @@ function cleanTitle(seg: string): { title: string; dropped: string } {
   return { title, dropped: seg.slice(title.length) };
 }
 
+/** Words that sit between an old career and the cue without naming it ("executive chef, now moving into"). */
+const BEFORE_CUE_FILLER = new Set([
+  "now", "currently", "recently", "actively", "gradually", "finally", "slowly", "today", "presently", "also", "then", "and", "am", "is",
+  "i", "i'm", "im", "who", "that", "been", "have", "has", "was", "were", "who's", "after", "before", "years", "year", "a", "an", "the",
+  "as", "of", "with", "from", "my", "me",
+]);
+
+/**
+ * The old career named before a career-change cue ("Biochemist turned data
+ * scientist", "executive chef, now moving into accounting"), as up to four
+ * words, walking back over clauses that hold only filler ("now"); null when
+ * nothing but filler stands there. [0] is the span read, [1] the phrase, as
+ * the regex match it replaces had.
+ */
+function beforeTheMove(text: string): [string, string] | null {
+  const m = /\b(?:moving into|transitioning (?:to|into)|turned)\b/i.exec(text);
+  if (!m) return null;
+  const line = text.slice(0, m.index).split(/\n/).pop() ?? "";
+  const clauses = line.split(/[,;:()]/);
+  const filler = (w: string) => BEFORE_CUE_FILLER.has(w.toLowerCase());
+  for (let i = clauses.length - 1; i >= 0; i--) {
+    const words = clauses[i].split(/[^A-Za-z'-]+/).filter(Boolean);
+    while (words.length && filler(words[words.length - 1])) words.pop();
+    const kept = words.slice(-4);
+    while (kept.length && filler(kept[0])) kept.shift();
+    if (!kept.length) continue;
+    const phrase = kept.join(" ");
+    return phrase.length >= 3 ? [`${phrase} ${m[0]}`, phrase] : null;
+  }
+  return null;
+}
+
 function containsWord(hay: string, needle: string): boolean {
   const esc = needle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   return new RegExp(`(^|[^a-z0-9])${esc}([^a-z0-9]|$)`, "i").test(hay);
@@ -418,7 +450,7 @@ export function readProfile(rawText: string, opts: { nowYear?: number } = {}): M
   const careerChanger = !!former || !!changerCue;
   const licenceLines = lines.filter((l) => LICENCE_LINE.test(l));
   const terms = resumeRoleTerms(text, 6);
-  const beforeMove = /([a-z][a-z ]{2,40}?)\s+(?:moving into|transitioning (?:to|into)|turned)\b/i.exec(`${headlineLine}\n${summaryBody}`);
+  const beforeMove = beforeTheMove(`${headlineLine}\n${summaryBody}`);
   const candidates: string[] = [];
   const push = (t: string) => {
     const k = t.toLowerCase();
@@ -494,7 +526,10 @@ export function readProfile(rawText: string, opts: { nowYear?: number } = {}): M
   if (careerChanger) {
     const since = /\bsince (20\d\d)\b/i.exec(text) ?? /\b(?:completed|finished)\b[^.]{0,80}\b(?:in )?(20\d\d)\b/i.exec(text);
     if (since) targetYears = Math.max(0, nowYear - Number(since[1]));
-    if (level !== "entry") level = targetYears !== null && targetYears < 3 ? "entry" : "mid";
+    // Years in the new field unknown: entry, judged on none, never on the old
+    // career's total (a chef of twelve years moving into accounting is not a
+    // mid-level accountant).
+    if (level !== "entry") level = targetYears === null || targetYears < 3 ? "entry" : "mid";
     if (/\bscientist\b/i.test(headline ?? "") && level === "entry" && (yLow ?? 0) >= 3) level = "mid";
   }
   basis.level = `${level}${newGrad ? " (new graduate)" : ""}`;

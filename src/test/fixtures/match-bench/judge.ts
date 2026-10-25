@@ -216,7 +216,8 @@ export function autoJudge(t: ResumeTruth, row: PostingRow, desc: string | null, 
   return { role, seniority, location, auth, licence, shortlist, reasons, reviewed: false };
 }
 
-type Override = Partial<Pick<Verdict, "role" | "seniority" | "location" | "auth" | "licence">> & { note?: string };
+/** `review` names a later review round; the as-run judge (licences off) applies only the 2026-10-12 reviews (rubric.ts says why). */
+type Override = Partial<Pick<Verdict, "role" | "seniority" | "location" | "auth" | "licence">> & { note?: string; review?: string };
 const JUDGMENTS = resolve(dirname(fileURLToPath(import.meta.url)), "hand-review");
 let OVR: Record<string, Override> | null = null;
 let FACTS: Record<string, Partial<PostingRow> & { note?: string }> | null = null;
@@ -226,9 +227,11 @@ export function judge(t: ResumeTruth, row: PostingRow, desc: string | null, opts
   OVR ??= JSON.parse(readFileSync(resolve(JUDGMENTS, "overrides.json"), "utf8"));
   const fixed = { ...row, ...(FACTS![row.id] ?? {}) };
   const v = autoJudge(t, fixed, desc, opts);
-  const o = OVR![`${t.id}::${row.id}`];
+  const found = OVR![`${t.id}::${row.id}`];
+  const o = found && !(!opts.licences && found.review) ? found : undefined;
   if (o) {
-    Object.assign(v, o);
+    const { review: _review, ...fields } = o;
+    Object.assign(v, fields);
     v.reviewed = true;
     if (o.note) v.note = o.note;
     v.shortlist = (v.role === "target" || v.role === "adjacent") && v.seniority === "ok" && v.location !== "mismatch" && v.auth === "ok" && v.licence === "ok";

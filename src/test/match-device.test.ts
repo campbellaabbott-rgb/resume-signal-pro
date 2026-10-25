@@ -16,7 +16,8 @@ import { resolve } from "node:path";
 import { computeFit, scanResume } from "../../supabase/functions/_shared/fit-score";
 import { postingTerms } from "../../supabase/functions/_shared/posting-requirements";
 import { readProfile } from "../../supabase/functions/_shared/resume-profile";
-import type { RowFacets, TierReader } from "../../supabase/functions/_shared/match-tiers";
+import { gateFor, REQUIREMENTS_NOT_READ, type RowFacets, type TierReader } from "../../supabase/functions/_shared/match-tiers";
+import { siteInput } from "../../supabase/functions/resume-match/handler";
 import { keywordOverlap } from "@/lib/match/keyword-overlap";
 import { applyNotForMe, NO_ADJUSTMENTS, notForMeEvent, partitionBySession } from "@/lib/match/not-for-me";
 import { changesRetrieval, matchRequestBody } from "@/lib/match/request";
@@ -129,9 +130,10 @@ describe("re-tiering on the device", () => {
     expect(after.counts.no_sponsorship).toEqual({ count: 1, basis: "of the 2 postings we read" });
     expect(after.rows.length + after.setAside.length).toBe(rows.length);
   });
-  it("a row whose requirements were not read stays at Good on the device too", () => {
-    const out = retier([row("x", { requirements: "not read" })], reader(), { nowMs: NOW, found: 1, read: 0 });
+  it("a row whose requirements were not read stays at Good on the device too, and keeps its label", () => {
+    const out = retier([row("x", { requirements: "not read" }, { tier: "good", gaps: [REQUIREMENTS_NOT_READ] })], reader(), { nowMs: NOW, found: 1, read: 0 });
     expect(out.rows[0].tier).toBe("good");
+    expect(out.rows[0].gaps).toContain(REQUIREMENTS_NOT_READ);
   });
   it("keyword overlap is the last tie-break and never lifts a row over a better tier", () => {
     const rows = [row("good", { titleRank: 1 }), row("s1"), row("s2")];
@@ -194,6 +196,42 @@ describe("the session profile", () => {
     expect(s).not.toHaveProperty("workAuth");
     expect(s).not.toHaveProperty("basis");
     expect(s.roles).toEqual(p.roles);
+  });
+  // The fixer's round (review of rm/integration 7af55e52): this failed on that commit.
+  it("is an allow-list: no licence's quoted line, no headline and no held clearance reaches it, for any dev résumé or a cleared reader", () => {
+    const cleared = readProfile("Casey Example\nIntelligence Analyst\nArlington, VA | casey@example.com\nActive Top Secret/SCI clearance. U.S. citizen.\n\nEXPERIENCE\nIntelligence Analyst - Example Corp | Jan 2018 - Present", { nowYear: NOW_YEAR });
+    expect(cleared.licences.some((l) => l.kind === "clearance")).toBe(true);
+    for (const prof of [...RESUMES.map((r) => readProfile(text(r.id), { nowYear: NOW_YEAR })), cleared]) {
+      const json = JSON.stringify(syncableProfile(prof));
+      expect(json).not.toMatch(/"headline"|"basis"|"workAuth"|"clearance"/);
+      const allowed = [...prof.roles, prof.former ?? "", prof.home?.city ?? ""];
+      for (const l of prof.licences) if (l.basis.length >= 12) expect(json.includes(l.basis), l.basis).toBe(false);
+      for (const line of Object.values(prof.basis)) {
+        if (line.length >= 20 && !allowed.some((a) => a.includes(line))) expect(json.includes(line), line).toBe(false);
+      }
+    }
+  });
+});
+
+// The fixer's round (review of rm/integration 7af55e52): each failed on that commit.
+describe("a clearance on the default request", () => {
+  const ts = "Casey Example\nIntelligence Analyst\nArlington, VA | casey@example.com\nActive Top Secret/SCI clearance.\n\nEXPERIENCE\nIntelligence Analyst - Example Corp | Jan 2018 - Present";
+  it("never leaves the device unless the reader sends work authorisation", () => {
+    const p = readProfile(ts, { nowYear: NOW_YEAR });
+    expect(JSON.stringify(matchRequestBody(p).profile)).not.toMatch(/clearance|secret/i);
+    expect(JSON.stringify(matchRequestBody(p, { includeWorkAuth: true }).profile)).toMatch(/top secret/);
+  });
+  it("is not set aside by the server, so a cleared reader still sees a clearance-required row and a reader without one has it set aside here", () => {
+    const p = readProfile(ts, { nowYear: NOW_YEAR });
+    const input = siteInput(matchRequestBody(p).profile);
+    const f = facets({ requirements: { ...facets().requirements as Exclude<RowFacets["requirements"], "not read">, activeClearance: "Active Top Secret clearance required" } });
+    const serverReader: TierReader = { level: input.level, years: input.years, targetYears: input.targetYears, careerChanger: input.careerChanger, student: input.student, workAuth: input.workAuth, licences: input.licences, degree: input.degree };
+    expect(gateFor(f, serverReader)).toBeNull();
+    const rows = [row("ts", { requirements: f.requirements })];
+    const cleared = retier(rows, reader({ workAuth: { status: "citizen", needsSponsorship: false, citizenOf: ["US"], clearance: p.workAuth.clearance } }), { nowMs: Date.UTC(2026, 9, 12), found: 1, read: 1 });
+    expect(cleared.rows.map((r) => r.id)).toEqual(["ts"]);
+    const none = retier(rows, reader(), { nowMs: Date.UTC(2026, 9, 12), found: 1, read: 1 });
+    expect(none.setAside.map((s) => s.gate.reason)).toEqual(["clearance_required"]);
   });
 });
 

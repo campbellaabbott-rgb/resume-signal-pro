@@ -43,6 +43,10 @@ export interface Licence {
 
 export interface PostingLicence {
   kind: LicenceKind;
+  /** Other kinds the same sentence accepts in its place ("RN or LPN license required"). */
+  alternatives?: LicenceKind[];
+  /** The clause calls it preferred, a plus or desired: it asks nothing. */
+  optional?: boolean;
   /** Jurisdictions the posting names for this licence; empty = none named. */
   jurisdictions: string[];
   /** "or eligible", "upon hire", "within 90 days", "prior to start": the posting accepts it pending. */
@@ -77,6 +81,14 @@ export const AUDITED_LICENCE_FAMILIES: readonly LicenceAudit[] = [];
 export function licenceIsGate(kind: LicenceKind): boolean {
   return AUDITED_LICENCE_FAMILIES.some((a) => a.kind === kind && a.of >= AUDIT_PASS.of && a.correct * AUDIT_PASS.of >= AUDIT_PASS.correct * a.of);
 }
+
+/**
+ * Licences whose holder may practise only where the licence was issued, so a
+ * remote posting that names a state needs that state's licence (or the nurse
+ * compact). A CPA, an engineer's PE or an EPA 608 card does not bind a remote
+ * desk job to one state, and the remote lane does not check them.
+ */
+export const PRACTICE_BOUND: ReadonlySet<LicenceKind> = new Set(["rn", "lpn", "np", "pt", "ot", "pharmacist", "teacher"]);
 
 const US_STATE_NAMES: Record<string, string> = {
   alabama: "AL", alaska: "AK", arizona: "AZ", arkansas: "AR", california: "CA", colorado: "CO", connecticut: "CT",
@@ -167,7 +179,8 @@ const RULES: KindRule[] = [
   { kind: "pt", posting: /\b(?:licensed physical therapist|physical therapist licen[cs]e|pt licen[cs]e|licen[cs]ed? (?:to practice )?(?:as a )?physical therap)/i, resume: /\b(?:licensed physical therapist|physical therapist licen[cs]e|pt licen[cs]e)\b/i },
   { kind: "ot", posting: /\b(?:licensed occupational therapist|occupational therapist licen[cs]e|ot licen[cs]e)\b/i, resume: /\b(?:licensed occupational therapist|occupational therapist licen[cs]e)\b/i },
   { kind: "cpa", posting: /\bcpa\b(?:[^.\n]{0,40}\b(?:required|licen[cs]e|certif))|\b(?:active|current|licensed) cpa\b|\bcertified public accountant\b/i, resume: /\bcpa\b|\bcertified public accountant\b/i },
-  { kind: "teacher", posting: /\b(?:teaching|teacher|educator'?s?|multiple subject|single subject) (?:certificat(?:e|ion)|credential|licen[cs]e)\b|\bstate (?:teaching )?certification\b/i, resume: /\b(?:teaching|teacher|educator'?s?|multiple subject|single subject)\b[^.\n]{0,30}\b(?:certificat(?:e|ion)|credential|licen[cs]e)\b/i },
+  // A nurse or health educator's certification is not a teaching licence.
+  { kind: "teacher", posting: /\b(?:teaching|teacher|(?<!\b(?:nurse|nursing|health|diabetes|clinical) )educator'?s?|multiple subject|single subject) (?:certificat(?:e|ion)|credential|licen[cs]e)\b|\bstate (?:teaching )?certification\b/i, resume: /\b(?:teaching|teacher|educator'?s?|multiple subject|single subject)\b[^.\n]{0,30}\b(?:certificat(?:e|ion)|credential|licen[cs]e)\b/i },
   { kind: "electrician", posting: /\b(?:journeyman|master|licen[cs]ed|a-grade)\s+electrician\b|\belectrical (?:contractor |mechanic )?licen[cs]e\b|\belectrician'?s? licen[cs]e\b/i, resume: /\belectrical (?:mechanic )?licen[cs]e\b|\b(?:journeyman|master|a-grade|licen[cs]ed)\s+electrician\b/i },
   { kind: "cdl", posting: /\bcdl\b|\bcommercial driver'?s? licen[cs]e\b/i, resume: /\bcdl\b|\bcommercial driver'?s? licen[cs]e\b/i },
   { kind: "pe", posting: /\bprofessional engineer(?:ing)?\b[^.\n]{0,20}\b(?:licen[cs]e|\(pe\)|registration)|\bpe licen[cs]e\b|\blicensed pe\b/i, resume: /\bprofessional engineer\b[^.\n]{0,20}\blicen[cs]e|\bpe licen[cs]e\b|\blicensed pe\b|,\s*p\.?e\.?\b/i },
@@ -204,7 +217,24 @@ export function readResumeLicences(text: string): Licence[] {
   return out;
 }
 
-/** The licence a posting asks for, if its text names one this file knows. */
+/** The clause (between commas, semicolons or sentence ends) around a match. */
+function clauseAt(text: string, i: number, len: number): string {
+  let s = i;
+  while (s > 0 && !/[.!?\n•;,]/.test(text[s - 1])) s--;
+  let e = i + len;
+  while (e < text.length && !/[.!?\n•;,]/.test(text[e])) e++;
+  return text.slice(s, e);
+}
+const OPTIONAL_WORDS = /\b(?:preferred|a plus|desired|desirable|nice to have|bonus|advantageous)\b/i;
+const REQUIRED_WORDS = /\b(?:required|requires|must|mandatory|need(?:ed)?)\b/i;
+
+/**
+ * The licence a posting asks for, if its text names one this file knows. The
+ * first rule that matches (in RULES order) is the kind; every other kind the
+ * same sentence names is an alternative it accepts ("RN or LPN license
+ * required"); a clause that calls the licence preferred, a plus or desired
+ * makes it optional, which asks nothing.
+ */
 export function readPostingLicence(description: string): PostingLicence | null {
   for (const r of RULES) {
     if (r.kind === "clearance") continue;
@@ -212,8 +242,16 @@ export function readPostingLicence(description: string): PostingLicence | null {
     if (!m) continue;
     const quote = sentenceAt(description, m.index, m[0].length);
     const grade = r.kind === "cdl" ? (/\bclass\s*([abc])\b/i.exec(quote)?.[1]?.toUpperCase() ?? null) : null;
+    // "or" in the sentence makes every other licence it names an alternative; "and" does not.
+    const alternatives: LicenceKind[] = /\bor\b/i.test(quote)
+      ? RULES.filter((o) => o.kind !== r.kind && o.kind !== "clearance" && o.posting.test(quote)).map((o) => o.kind)
+      : [];
+    const clause = clauseAt(description, m.index, m[0].length);
+    const optional = OPTIONAL_WORDS.test(clause) && !REQUIRED_WORDS.test(clause.replace(/\bnot required\b/gi, ""));
     return {
       kind: r.kind,
+      ...(alternatives.length ? { alternatives } : {}),
+      ...(optional ? { optional: true } : {}),
       jurisdictions: jurisdictionsNear(description, m.index, m[0].length),
       pending: PENDING.test(quote),
       compactAccepted: COMPACT.test(quote),
@@ -228,15 +266,16 @@ export type LicenceVerdict = "met" | "met_pending" | "transfer_pending" | "trans
 
 /**
  * The reader's licences against the posting's ask. A licence of the right kind
- * in the right place (or a compact licence in a compact state, or no place
- * named) is met; the right kind elsewhere is a transfer, pending when the
- * posting accepts eligibility; none at all is missing (pending when the
- * posting accepts eligibility, so a new graduate awaiting a licence reads as
- * met-pending, never as met).
+ * (or of a kind the sentence accepts in its place) in the right place (or a
+ * compact licence in a compact state, or no place named) is met; the right
+ * kind elsewhere is a transfer, pending when the posting accepts eligibility;
+ * none at all is missing (pending when the posting accepts eligibility, so a
+ * new graduate awaiting a licence reads as met-pending, never as met). A
+ * licence the posting calls preferred is not asked.
  */
 export function licenceVerdict(have: readonly Licence[], need: PostingLicence | null, rowStates: readonly string[] = []): LicenceVerdict {
-  if (!need) return "not_asked";
-  const mine = have.filter((l) => l.kind === need.kind);
+  if (!need || need.optional) return "not_asked";
+  const mine = have.filter((l) => l.kind === need.kind || !!need.alternatives?.includes(l.kind));
   const where = need.jurisdictions.length ? need.jurisdictions : rowStates;
   if (mine.length === 0) return need.pending ? "met_pending" : "missing";
   if (need.kind === "cdl" && need.grade && mine.every((l) => l.grade && l.grade > need.grade!)) return need.pending ? "transfer_pending" : "transfer";

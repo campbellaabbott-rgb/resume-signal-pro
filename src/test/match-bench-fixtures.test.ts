@@ -93,6 +93,17 @@ describe("nothing personal", () => {
     }
   });
 
+  // The fixer's round (review of rm/integration 7af55e52): four handles that could be real people's failed this.
+  it("gives every invented profile link a reserved handle, so no made-up history sits under a real person's profile", () => {
+    const parsed = [
+      ...RESUMES.map((r) => readFileSync(join(FIXTURES, "dev", "parsed", `${r.id}.pdf.txt`), "utf8")),
+      ...HELDOUT.map((h) => readFileSync(join(FIXTURES, "heldout", "parsed", `${h.id}.pdf.txt`), "utf8")),
+    ];
+    const handles = [...resumeTexts, ...parsed].flatMap((t) => [...t.matchAll(/linkedin\.com\/in\/([A-Za-z0-9_-]+)/gi)].map((m) => m[1]));
+    expect(handles.length).toBeGreaterThan(0);
+    expect(handles.filter((h) => !/^example-/i.test(h))).toEqual([]);
+  });
+
   it("keeps no email, phone number or profile link in any posting description", () => {
     const c = loadCorpus();
     const left: string[] = [];

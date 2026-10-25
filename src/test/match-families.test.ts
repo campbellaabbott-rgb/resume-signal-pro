@@ -7,7 +7,7 @@
  */
 import { describe, expect, it } from "vitest";
 import {
-  familyByKey, familyForTitles, familyQuery, fallbackFamily, GENERIC_NOT, levelFacets, NOT_MAX_CHARS, TITLE_FAMILIES, titleRank,
+  adjacentFamily, familyByKey, familyForTitles, familyQuery, fallbackFamily, GENERIC_NOT, levelFacets, NOT_MAX_CHARS, notListed, TITLE_FAMILIES, titleRank,
 } from "../../supabase/functions/_shared/title-families";
 
 describe("the table", () => {
@@ -106,5 +106,56 @@ describe("level words, as the board's band reads them", () => {
     expect(levelFacets("Junior Developer").junior).toBe(true);
     expect(levelFacets("Software Engineering Intern").intern).toBe(true);
     expect(levelFacets("Director of Nursing").overreach).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The fixer's round (review of rm/integration 7af55e52). Each block failed on
+// that commit.
+// ---------------------------------------------------------------------------
+describe("a reader's own words never become query syntax", () => {
+  it("a leading '-', a bare or/and and quotes are dropped, and each phrase keeps at most six words", () => {
+    expect(fallbackFamily(["-zzz"])!.q).toEqual(["zzz"]);
+    expect(fallbackFamily(['worker or staff or team and "clerk"'])!.q).toEqual(["worker staff team clerk"]);
+    expect(fallbackFamily(["one two three four five six seven eight"])!.q).toEqual(["one two three four five six"]);
+    expect(fallbackFamily(["- or -"])).toBeNull();
+  });
+  it("a literal query quotes every phrase, one word included, and ignores any word order", () => {
+    expect(familyQuery(["zzz", "basket weaver"], true, true)).toBe('"zzz" or "basket weaver"');
+  });
+});
+
+describe("a family's own titles are its own", () => {
+  const rs = familyByKey("retail_supervisor")!;
+  it("retail supervisors keep Assistant Store Manager; a store manager is still another job", () => {
+    expect(familyForTitles(["Assistant Store Manager"])?.family.key).toBe("retail_supervisor");
+    expect(titleRank(rs, "Assistant Store Manager")).toBe(0);
+    expect(titleRank(rs, "Assistant Store Manager - Retail")).toBe(0);
+    expect(titleRank(rs, "Store Manager")).toBe(9);
+    for (const p of rs.q) expect(titleRank(rs, p), p).toBe(0);
+  });
+  it("no family's not-list refuses one of its own query phrases", () => {
+    const bad = TITLE_FAMILIES.flatMap((f) => f.q.filter((p) => notListed(f, p)).map((p) => `${f.key}: ${p}`));
+    expect(bad).toEqual([]);
+  });
+  it("the next rung (step 3) is not refused by the rung words it contains", () => {
+    const sm = adjacentFamily(familyByKey("store_manager")!)!;
+    const c = adjacentFamily(familyByKey("controller")!)!;
+    expect(titleRank(sm, "Assistant Store Manager")).toBe(0);
+    expect(titleRank(c, "Assistant Controller")).toBe(0);
+    expect(titleRank(c, "Assistant Controller - Air Traffic")).toBe(9);
+    expect(adjacentFamily(familyByKey("cashier")!)).toBeNull();
+  });
+  it("controller, store manager and registered nurse scopes", () => {
+    const controller = familyByKey("controller")!;
+    const sm = familyByKey("store_manager")!;
+    const rn = familyByKey("rn")!;
+    expect(titleRank(controller, "ITSM Process Controller")).toBe(9);
+    expect(titleRank(controller, "Revenue Controller")).toBe(9);
+    expect(titleRank(controller, "Corporate Controller")).toBe(0);
+    expect(titleRank(sm, "General Manager - Car Dealership")).toBe(9);
+    expect(titleRank(sm, "General Manager, Retail Store")).toBe(0);
+    expect(titleRank(rn, "Charge Nurse")).toBe(0);
+    expect(familyForTitles(["Charge Nurse"])?.family.key).toBe("rn");
   });
 });

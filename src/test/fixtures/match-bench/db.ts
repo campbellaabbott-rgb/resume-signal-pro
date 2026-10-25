@@ -2,7 +2,7 @@
  * A REAL POSTGRES FOR THE MATCH TESTS: the board's postings table as the search
  * RPCs see it, Supabase's default grants, and the shipped migrations.
  *
- * The four 20261016* files run here exactly as they ship. Supabase grants ALL
+ * The five 20261016* files run here exactly as they ship. Supabase grants ALL
  * on every new table and EXECUTE on every new function to anon and
  * authenticated by default, and a GRANT never takes that away; the stand-in
  * starts from those defaults (agent-db.ts's rule), so a migration whose REVOKE
@@ -26,7 +26,7 @@ export const migrationText = (prefix: string): string => {
   if (!f) throw new Error(`no migration ${prefix}`);
   return readFileSync(resolve(MIG, f), "utf8");
 };
-export const MATCH_MIGRATIONS = ["20261016100000", "20261016101000", "20261016102000", "20261016103000"];
+export const MATCH_MIGRATIONS = ["20261016100000", "20261016101000", "20261016102000", "20261016103000", "20261016104000"];
 
 export const POSTINGS_TABLE = `
   CREATE EXTENSION IF NOT EXISTS pg_trgm;

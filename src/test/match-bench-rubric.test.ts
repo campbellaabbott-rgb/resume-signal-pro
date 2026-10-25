@@ -178,7 +178,19 @@ describe("what did not move", () => {
       for (const [k, val] of Object.entries(o)) if (k !== "note") expect((v as unknown as Record<string, unknown>)[k]).toBe(val);
     }
     expect(Object.keys(POSTING_FACTS).length).toBe(121);
-    expect(Object.keys(OVERRIDES).length).toBe(14);
+    // 14 from the 2026-10-12 review; 462 from the AFTER hand review of 2026-10-25 (the 25 it shared with BEFORE's own rows left out).
+    expect(Object.values(OVERRIDES).filter((o) => !(o as { review?: string }).review)).toHaveLength(14);
+    expect(Object.values(OVERRIDES).filter((o) => (o as { review?: string }).review === "after-2026-10-25")).toHaveLength(462);
+  });
+
+  it("applies a later review round under v2 only: the legacy rubric is the 2026-10-12 judge as it ran", () => {
+    const [key, o] = Object.entries(OVERRIDES).find(([, x]) => (x as { review?: string }).review && (x as { seniority?: string }).seniority === "too_senior")!;
+    const [rid, pid] = key.split("::");
+    const t = RESUMES.find((r) => r.id === rid);
+    if (!t) return; // a held-out pair: the dev rubric never judges it
+    const base: PostingRow = { id: pid, title: "x" };
+    expect(judge(t, base, null, "v2")).toMatchObject({ reviewed: true, seniority: (o as { seniority: string }).seniority });
+    expect(judge(t, base, null, "legacy").reviewed).toBe(false);
   });
 
   it("never imports the engine it grades", () => {

@@ -14,6 +14,8 @@
  *   - P@10 on the exact 11 falls more than GATE_TOLERANCE.p10Points (5) below it;
  *   - location mismatch in the shown top 20 (exact 11, and all 24) rises more
  *     than GATE_TOLERANCE.locationPoints (2) above it;
+ *   - exact-11 seniority mismatch or wrong field rises more than
+ *     GATE_TOLERANCE.seniorityPoints / wrongFieldPoints (3) above it;
  *   - a résumé shows zero rows that did not before;
  *   - AFTER stops beating BEFORE on the same 11 résumés under the same rubric;
  *   - the profile reader, scored on the 60 held-out résumés written blind,
@@ -23,10 +25,12 @@
  * WHAT IT DOES NOT CLAIM. The corpus is a closed world: AFTER finds only
  * postings an earlier run retrieved and reads requirements only where one of
  * them read a description. It measures regressions in reading, gating,
- * tiering and ordering, not the live board's recall. AFTER has had no hand
- * review of its own: a shown row counts as reviewed only where BEFORE's review
- * already covered that pair. The v1-beats-BEFORE verdict needs the held-out AFTER run
- * with its own probe budget and hand review (spec §19.2, owner decision 8).
+ * tiering and ordering, not the live board's recall. A shown row counts as
+ * reviewed where one of the two hand-review rounds covered that pair (the
+ * 2026-10-12 review, and the measurer's AFTER review of 2026-10-25 on
+ * rm/integration 7af55e52). The v1-beats-BEFORE verdict on the fixed engine
+ * needs the held-out AFTER run repeated with its own probe budget and hand
+ * review (spec §19.2, owner decision 8).
  *
  * IT NEVER SKIPS. The engine and the bench were merged together on
  * rm/integration, so every state but "ready" fails here, naming what is
@@ -113,6 +117,15 @@ describe("the gate's rule, on numbers it is handed", () => {
     expect(gateFailures(shift(base.extract, { p10: -GATE_TOLERANCE.p10Points - 0.1 }), base, before).join()).toMatch(/P@10/);
     expect(gateFailures(shift(base.extract, { loc: GATE_TOLERANCE.locationPoints + 0.1 }), base, before).join()).toMatch(/location mismatch/);
     expect(gateFailures(shift(base.extract, { zero: [...base.extract.zero, "sw-ng-austin"] }), base, before).join()).toMatch(/newly at zero rows: sw-ng-austin/);
+  });
+
+  // The fixer's round (review of rm/integration 7af55e52): 5 of 9 planted regressions passed the gate; these two failed on that commit.
+  it("fails a seniority or wrong-field rise on the exact 11 beyond its tolerance, and passes one inside it", () => {
+    const at = (field: "seniority" | "wrongField", by: number) => ({ ...base.extract, exact11: { ...base.extract.exact11, [field]: (base.extract.exact11[field] ?? 0) + by } });
+    expect(gateFailures(at("seniority", GATE_TOLERANCE.seniorityPoints), base, before)).toEqual([]);
+    expect(gateFailures(at("wrongField", GATE_TOLERANCE.wrongFieldPoints), base, before)).toEqual([]);
+    expect(gateFailures(at("seniority", GATE_TOLERANCE.seniorityPoints + 0.1), base, before).join()).toMatch(/exact-11 seniority mismatch/);
+    expect(gateFailures(at("wrongField", GATE_TOLERANCE.wrongFieldPoints + 0.1), base, before).join()).toMatch(/exact-11 wrong-field/);
   });
 
   it("fails an AFTER that no longer beats BEFORE on the same résumés, whatever the baseline says", () => {

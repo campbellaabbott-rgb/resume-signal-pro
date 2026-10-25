@@ -10,12 +10,20 @@
 #   - two POSTs refused before any limiter or database work: résumé text from
 #     the site, and the mcp surface without the service key;
 #   - ten anonymous POSTs with synthetic profiles (a role, a city, and on the
-#     last one canary values; never a résumé), timed by curl, then the first
-#     profile again until this network's 30-an-hour bucket answers 429, at
-#     most 21 more. Each POST is one read of the board's probe day
+#     last one canary values; never a résumé), timed by curl: three use the
+#     remote lane, one relocates anywhere in the country; then one widening
+#     follow-up carrying the first answer's token (the step it names); then
+#     the first profile again until this network's 30-an-hour bucket answers
+#     429, at most 21 more. Each POST is one read of the board's probe day
 #     (x-rb-budget: probe) and one count in the function's own network
-#     bucket, and may fill the posting-keyed requirement cache, exactly as a
-#     reader's call does. Nothing here signs in or calls a writer.
+#     bucket (the follow-up in the widening one), and may fill the
+#     posting-keyed requirement cache, exactly as a reader's call does.
+#     Nothing here signs in or calls a writer.
+# A MATCHER THAT RETURNS NOTHING FAILS. These are common occupations in large
+# US metros: fewer than 8 of the 10 answers with a row is a FAIL, any answer
+# that missed a deadline is a FAIL (a lane that times out returns an empty
+# page), and the candidates statement is judged by its slowest answer against
+# its 1.2 s deadline as well as by p90 against 700 ms.
 # THE MIGRATIONS ARE A PRECONDITION OF THE BUILD: once resume-match answers
 # 2026-10-16.1 or later, a function or table that does not exist is a FAIL
 # (every match then answers 500), not an INFO. A run within an hour of an
@@ -90,11 +98,11 @@ VD97_MCP_CODE=$(curl -s -m 30 -D /tmp/vd_97_mcp.h -o /tmp/vd_97_mcp.json -w '%{h
 # the canary values (a former job, work authorisation, a licence).
 VD97_P1='{"action":"match","profile":{"roles":["Registered Nurse"],"home":{"city":"Chicago","region":"IL","country":"US"},"radiusKm":40,"level":"mid","licences":[{"kind":"rn","jurisdiction":"IL"}]}}'
 VD97_P2='{"action":"match","profile":{"roles":["Software Engineer"],"home":{"city":"Seattle","region":"WA","country":"US"},"radiusKm":40,"level":"senior","remote":true}}'
-VD97_P3='{"action":"match","profile":{"roles":["Data Analyst"],"home":{"city":"Pittsburgh","region":"PA","country":"US"},"radiusKm":40,"level":"mid"}}'
+VD97_P3='{"action":"match","profile":{"roles":["Data Analyst"],"home":{"city":"Pittsburgh","region":"PA","country":"US"},"radiusKm":40,"level":"mid","remote":true}}'
 VD97_P4='{"action":"match","profile":{"roles":["Electrician"],"home":{"city":"Philadelphia","region":"PA","country":"US"},"radiusKm":40,"level":"entry"}}'
 VD97_P5='{"action":"match","profile":{"roles":["Elementary Teacher"],"home":{"city":"Sacramento","region":"CA","country":"US"},"radiusKm":40,"level":"entry"}}'
 VD97_P6='{"action":"match","profile":{"roles":["Marketing Coordinator"],"home":{"city":"Boston","region":"MA","country":"US"},"radiusKm":40,"level":"entry"}}'
-VD97_P7='{"action":"match","profile":{"roles":["Financial Analyst"],"home":{"city":"Charlotte","region":"NC","country":"US"},"radiusKm":40,"level":"mid"}}'
+VD97_P7='{"action":"match","profile":{"roles":["Financial Analyst"],"home":{"city":"Charlotte","region":"NC","country":"US"},"radiusKm":40,"level":"mid","relocate":"country","remote":true}}'
 VD97_P8='{"action":"match","profile":{"roles":["Store Manager"],"home":{"city":"Dallas","region":"TX","country":"US"},"radiusKm":40,"level":"senior"}}'
 VD97_P9='{"action":"match","profile":{"roles":["HVAC Technician"],"home":{"city":"Houston","region":"TX","country":"US"},"radiusKm":40,"level":"entry"}}'
 VD97_P10='{"action":"match","profile":{"roles":["Accountant"],"home":{"city":"Columbus","region":"OH","country":"US"},"radiusKm":40,"level":"mid","remote":false,"former":"Zqcanary Lamplighter","workAuth":{"status":"work_visa","needsSponsorship":true,"citizenOf":["NZ"]},"licences":[{"kind":"cpa","jurisdiction":"OH"}]}}'
@@ -105,6 +113,13 @@ for VD97_I in 1 2 3 4 5 6 7 8 9 10; do
   if [ "$VD97_OK" = "1" ]; then echo "$VD97_I $(vd97_post "/tmp/vd_97_m$VD97_I.json" "$VD97_BODY")" >> /tmp/vd_97_times.txt
   else : > "/tmp/vd_97_m$VD97_I.json"; : > "/tmp/vd_97_m$VD97_I.json.h"; fi
 done
+# One widening follow-up: the first profile again, at the step its answer
+# offers, with the token that answer issued for that step.
+: > /tmp/vd_97_follow.txt; : > /tmp/vd_97_f1.json
+if [ "$VD97_OK" = "1" ] && grep -qE '^1 200 ' /tmp/vd_97_times.txt; then
+  VD97_FBODY=$(VD97_P1="$VD97_P1" node -e 'const fs=require("fs");let a={};try{a=JSON.parse(fs.readFileSync("/tmp/vd_97_m1.json","utf8"))}catch{};const b=JSON.parse(process.env.VD97_P1);if(typeof a.followUp==="string"&&Number.isInteger(a.nextWiden)){b.widen=a.nextWiden;b.followUp=a.followUp;process.stdout.write(JSON.stringify(b))}')
+  if [ -n "$VD97_FBODY" ]; then echo "$(vd97_post /tmp/vd_97_f1.json "$VD97_FBODY")" > /tmp/vd_97_follow.txt; fi
+fi
 # Then the first profile again until the bucket answers, at most 21 more
 # (10 + 21 = 31 calls in one hour from one network).
 if [ "$VD97_OK" = "1" ] && ! grep -qE '^[0-9]+ 429 ' /tmp/vd_97_times.txt && ! grep -qvE '^[0-9]+ 200 ' /tmp/vd_97_times.txt; then
@@ -145,8 +160,14 @@ if(timed.length===10&&bodies.length===10){
   ok(p90<=4,"ten synthetic profiles: wall p90 = "+p90.toFixed(2)+" s (gate 4 s)");
   const cand=bodies.map((x)=>Number((x.b.phaseMs||{}).candidates));const c90=pct(cand,0.9);
   ok(Number.isFinite(c90)&&c90<=700,"phaseMs.candidates p90 = "+c90+" ms (gate 700 ms; over it, set RESUME_MATCH_ORDER=recent or cut the ring to 12 places, docs/resume-match.md)");
+  // The slowest answer, not the nearest-rank p90 (which drops it): the remote lane is one profile in three.
+  const cmax=Math.max(...cand);
+  ok(Number.isFinite(cmax)&&cmax<=1200,"phaseMs.candidates max = "+cmax+" ms over the ten (the statement deadline is 1,200 ms; profile "+bodies[cand.indexOf(cmax)].i+")");
   const cpu=bodies.map((x)=>Number(x.b.cpuMs));
   ok(cpu.every((c)=>Number.isFinite(c))&&Math.max(...cpu)<=2000,"cpuMs p50 "+pct(cpu,0.5)+", p90 "+pct(cpu,0.9)+", max "+Math.max(...cpu)+" ms (cap 2,000 ms)");
+  // A matcher that returns nothing is not a pass: these are common occupations in large metros.
+  const empty=bodies.filter((x)=>!(Array.isArray(x.b.rows)&&x.b.rows.length>0));
+  ok(empty.length<=2,(10-empty.length)+" of the 10 answers carry at least one row (gate 8)"+(empty.length?"; no rows for profile "+empty.map((x)=>x.i).join(", "):""));
 }else if(bad.length===0){info("only "+bodies.length+" of 10 timed matches answered: "+(limitedOnly?"this network spent its 30 an hour on an earlier run within the hour":"the board meter refused this address")+", so the timings are judged on a later run")}
 if(!bodies.length){info("no match answered 200, so the tiers, the canary, the Columbus ring and the wording could not be read");}
 else{
@@ -186,6 +207,14 @@ else{
   else if(!said.length)info("no served sentence to read for banned words");
   else{const hits=said.filter((v)=>banned.some((re)=>re.test(v)));ok(hits.length===0,said.length+" served match sentences hold none of the "+banned.length+" banned patterns"+(hits.length?": "+JSON.stringify(hits.slice(0,3)):""))}
 }
+// The widening follow-up: the step the first answer offered, paid by its token.
+const fl=rd("/tmp/vd_97_follow.txt").trim();const fb=js("/tmp/vd_97_f1.json")||{};const m1=js("/tmp/vd_97_m1.json")||{};
+if(!fl)info("the widening follow-up was not sent: the first match did not answer 200 with a followUp token and a nextWiden");
+else{const fp=fl.split(" ");const fsteps=Array.isArray(fb.steps)?fb.steps.map((s)=>s&&s.step):[];
+  ok(fp[0]==="200"&&fsteps.length===1&&fsteps[0]===m1.nextWiden&&Number(fp[1])<=4,"a widening follow-up with the token from the first answer -> "+fp[0]+" "+(fb.error?fb.error+" ":"")+"steps "+JSON.stringify(fsteps)+" (asked "+m1.nextWiden+"), "+fp[1]+" s (want 200, that one step, under 4 s)");}
+// No answer missed a deadline: a lane that times out answers an empty page that looks like a thin one.
+const answered=[...bodies.map((x)=>({i:String(x.i),b:x.b})),...(fl&&fl.startsWith("200 ")?[{i:"follow-up",b:fb}]:[])];
+if(answered.length){const late=answered.filter((x)=>x.b.deadlineMissed);ok(late.length===0,answered.length+" answers, "+late.length+" missed a deadline"+(late.length?": "+late.map((x)=>x.i+" "+x.b.deadlineMissed).join(", "):""))}
 // The network bucket: 30 an hour, then 429 from the function itself.
 const extra=rd("/tmp/vd_97_rl.txt").split("\n").filter(Boolean).map((l)=>{const p=l.split(" ");return {n:Number(p[0]),code:p[1]}});
 const firstTimed=timed.find((x)=>x.code==="429");
