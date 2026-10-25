@@ -24,8 +24,15 @@
 import { PGlite } from "@electric-sql/pglite";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { liveDefinitionOf } from "./helpers/live-sql";
+
+// A PGLITE TEST IS NOT A 5-SECOND TEST. Each case here queries a pglite
+// database (one headcount case starts two of its own), and on a loaded runner
+// a case ran 5.5 to 7.6 seconds, past vitest's default budget: it failed
+// GitHub CI on PR #40 twice and the pre-push suite once, with nothing wrong
+// (2026-10-25). This is the budget the other pglite files here use.
+vi.setConfig({ hookTimeout: 120_000, testTimeout: 30_000 });
 
 const MIG = resolve(__dirname, "../../supabase/migrations");
 const read = (f: string) => readFileSync(resolve(MIG, f), "utf8");
@@ -260,13 +267,7 @@ describe("the interval contains its own share", () => {
     expect(outside, `old: ${o.fill_rate_14} [${o.fill_rate_14_lo}, ${o.fill_rate_14_hi}]`).toBe(true);
     expect(num(n.fill_rate_14)).toBeGreaterThanOrEqual(num(n.fill_rate_14_lo));
     expect(num(n.fill_rate_14)).toBeLessThanOrEqual(num(n.fill_rate_14_hi));
-    // Two databases boot inside this one case (the old curve and the new),
-    // where every other case boots one: under the full suite on the merged
-    // wave 4 + main tree it ran past vitest's 5 s twice (2026-10-25), and alone
-    // on a busy machine it took 5.4 s. 30 s is the suite's working range
-    // for a pglite case (a-day-thirty-gate-must-have-seen-the-cohort-produce-
-    // an-event); a hanging query still fails inside it.
-  }, 30_000);
+  });
 });
 
 describe("honest sufficiency", () => {
