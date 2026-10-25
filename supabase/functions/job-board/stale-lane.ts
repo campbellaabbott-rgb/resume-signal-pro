@@ -107,18 +107,7 @@ export const STALE_PER_SLICE = 3;
 export const STALE_LANE_MIN_AGE_H = 72;
 /** Fetches the lane spends on one board before calling it unresolved. */
 export const STALE_TRIES_MAX = 4;
-/**
- * Upper bound on the p_exclude array the lane sends get_stalest_boards. The
- * three sets it is built from are each bounded: PROTOTYPE_NAMES is 12 names,
- * OVERSIZE_BOARDS is capped at 200 entries by index.ts's OVERSIZE_CAP, and
- * the remainder (188) is room for unresolved tokens, which enter the tries
- * map at most STALE_PER_SLICE per cold hop, only reach STALE_TRIES_MAX after
- * four failed fetches, and leave it on the first slice that stamps them (by
- * any lane), so the room is not consumed monotonically. 400 tokens × (longest catalogued token + JSON
- * quoting) is under 30 KB: a POST body PostgREST reads without a thought,
- * and the RPC's own c_exclude_cap (2,000) is five times wider, so truncation
- * on either side is a degradation back to the pre-fix window, never an error.
- */
+// Rationale: docs/job-board-index-notes.md#n1377-export-const-stale_exclude_max
 export const STALE_EXCLUDE_MAX = 400;
 /**
  * Every property name of Object.prototype, own and accessor alike — the
@@ -185,30 +174,12 @@ export interface StaleVerdict {
   row: StaleRow;
 }
 
-/**
- * Is this token a property name of Object.prototype? `in` walks the chain and
- * Object.prototype's chain is null, so this is exactly "would `{}[token]` be
- * something other than undefined". Covers constructor, __proto__, toString,
- * valueOf, hasOwnProperty, isPrototypeOf, propertyIsEnumerable,
- * toLocaleString and the legacy __define/__lookup accessors.
- */
+// Rationale: docs/job-board-index-notes.md#n1378-export-function-isprototypename-token-st
 export function isPrototypeName(token: string): boolean {
   return typeof token === "string" && token in Object.prototype;
 }
 
-/**
- * Own keys of a meta Record, as a Set. This is the ONLY sanctioned way to
- * bring a token-keyed Record into this module: Object.keys never reports
- * inherited names, so tokensOf({}) does not contain 'constructor'. Anything
- * that is not a plain object yields the empty set — a meta row can hold a
- * string, null, or an array left by an older writer.
- *
- * board_failures keys a SHARED token's boards `source:token` since .89 (n417),
- * while this lane's RPC rows name tokens; such a key yields its token, so a
- * shared token with one failing twin is treated as failing here (the cautious
- * direction for a lane that only ever adds a fetch). No catalog token contains
- * a colon, so a bare token passes through unchanged.
- */
+// Rationale: docs/job-board-index-notes.md#n1379-export-function-tokensof-rec-unknown-set
 export function tokensOf(rec: unknown): Set<string> {
   if (rec === null || typeof rec !== "object" || Array.isArray(rec)) return new Set();
   return new Set(Object.keys(rec as Record<string, unknown>).map((k) => {
@@ -247,23 +218,7 @@ export function writeStaleTries(tries: ReadonlyMap<string, number>): Record<stri
   return out;
 }
 
-/**
- * Fold one slice's stamps into the tries map. A token that STAMPED this slice
- * (is in okTokens) leaves the map whoever fetched it — this lane, or the
- * rotation reaching a board the lane had given up on: okTokens is every stamp
- * the slice landed, and a board that stamps is not stale, so its history is
- * done. A token the lane fetched that did not stamp counts one more try.
- * Every other entry is untouched. Pure: returns a new Map.
- *
- * Why the rotation's stamps must count: since .71 a token at STALE_TRIES_MAX
- * is sent as p_exclude, so the lane never sees it in a window again and never
- * fetches it — an entry only this lane's own fetches could clear would be
- * permanent, and four historical failures would hide a catalogued board from
- * the stale window for good. A stamp that lands on a hop where the lane does
- * not run (hot phase, shed level 2) is forgotten on the next lap's stamp that
- * lands on one that does; while such an entry lingers the board is fresh, so
- * excluding it costs nothing.
- */
+// Rationale: docs/job-board-index-notes.md#n1380-export-function-bumpstaletries
 export function bumpStaleTries(
   tries: ReadonlyMap<string, number>,
   fetched: readonly string[],
@@ -278,13 +233,7 @@ export function bumpStaleTries(
   return out;
 }
 
-/**
- * The tokens the lane has given up on: every entry at or past triesMax, in
- * map order. Since .71 this is the list p_exclude keeps out of the window, so
- * it is also what status publishes as `excludedUnresolved` — the window's own
- * 'unresolved' verdicts read [] once the exclusion works, and a count alone
- * (triesPending) does not say which boards a human should look at.
- */
+// Rationale: docs/job-board-index-notes.md#n1381-export-function-unresolvedtokens
 export function unresolvedTokens(
   tries: ReadonlyMap<string, number>,
   triesMax: number = STALE_TRIES_MAX,
@@ -294,21 +243,7 @@ export function unresolvedTokens(
   return out;
 }
 
-/**
- * The tokens get_stalest_boards must keep OUT of the window: the classes no
- * fetch can move. In order — PROTOTYPE_NAMES first (a fixed twelve), then
- * OVERSIZE_BOARDS (≤ OVERSIZE_CAP), then every token whose tries reached
- * triesMax ('unresolved') — deduplicated and cut at `max` (STALE_EXCLUDE_MAX),
- * so if anything is ever dropped it is the youngest unresolved tokens, which
- * re-enter the window and classify as 'unresolved' exactly as before .71.
- *
- * Not excluded on purpose: uncatalogued (the orphan prune's, and worth seeing
- * while it is blocked), quarantined (lifts on its own), dormant and failing
- * (other lanes own them and they leave the tail when those lanes stamp them).
- *
- * `oversize` is an Iterable of tokens (the registry's board keys mapped to
- * tokens since .90), so the call site need not materialise a Set. Pure: returns a new array, inputs untouched.
- */
+// Rationale: docs/job-board-index-notes.md#n1382-export-function-staleexclusion
 export function staleExclusion(
   ctx: { oversize: Iterable<string>; tries: ReadonlyMap<string, number>; triesMax?: number },
   max: number = STALE_EXCLUDE_MAX,
@@ -320,21 +255,7 @@ export function staleExclusion(
   return [...out].slice(0, Math.max(max, 0));
 }
 
-/**
- * Classify every row, oldest first, one class each, decided in this order:
- *
- *   prototype_name > uncatalogued > oversize > quarantined > dormant > failing
- *   > unresolved > unexplained
- *
- * The order is "what a fetch could change, from least to most": a prototype
- * name must never reach a token-keyed map at all; an uncatalogued token has no
- * fetch to be given; oversize and quarantined cannot stamp until something
- * outside the lane changes; dormant and failing already have lanes; unresolved
- * has had this lane's budget; unexplained is what is left, and it is the only
- * class selectStaleLane() will fetch.
- *
- * Pure: inputs are never mutated; the same inputs give the same verdicts.
- */
+// Rationale: docs/job-board-index-notes.md#n1383-export-function-classifystale-rows-reado
 export function classifyStale(rows: readonly StaleRow[], ctx: StaleContext): StaleVerdict[] {
   const triesMax = ctx.triesMax ?? STALE_TRIES_MAX;
   const out: StaleVerdict[] = [];

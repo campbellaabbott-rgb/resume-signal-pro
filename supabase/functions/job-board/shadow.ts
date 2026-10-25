@@ -1,32 +1,4 @@
-// THE OTHER BUCKET, PHASE 1 — SHADOW CLASSIFICATION. Pure module: no I/O, no
-// client, no writes. It holds (1) every gate as a NAMED CONSTANT with the
-// measurement that produced it, (2) the seven guarded employer defaults keyed
-// by company_token, (3) the first-claim resolver that turns the mechanisms'
-// verdicts into ONE proposal for the shadow columns, and (4) the reader for
-// job_board_meta.category_promotions.
-//
-// THE ONE RULE EVERYTHING HERE OBEYS: no mechanism writes `category`. A
-// proposal lives in category_proposed / category_basis / category_key /
-// category_confidence / category_proposed_at / category_proposed_v, and
-// `category` moves only via promote_category(basis, key, target) (migration
-// 20260909225500) after a written audit — the basis fields PERSIST after
-// promotion so Explore can count inferred rows and revert_category
-// (20260909226000) puts any key back with one UPDATE. Disagreement between
-// mechanisms writes nothing and stamps category_key = 'conflict'.
-//
-// A guard reads this file with its comments stripped and asserts: no client,
-// no table write, no bare `category` member anywhere in the code. The word
-// itself is therefore kept out of identifiers and strings below; the field a
-// proposal names is its `target`.
-//
-// Provenance for every number: scratchpad/other-bucket/ (2026-09-10): the
-// 2,576-row stratified sample (other-sample.jsonl), the 3,060 labelled rows
-// (labelled.jsonl), 2,365 hand-judged employer-page title decisions
-// (judgments.json, mirrored byte-for-byte at src/test/fixtures/
-// other-bucket-judgments.json), mechC-gate.txt (rule terms), plan/union.txt
-// (first-claim accounting), employer-ranking.json (bucket-scoped totals),
-// dominos-bracket.json (the bisected Domino's total) and mechA/ (embedding
-// leave-one-out + the F2 gate).
+// Rationale: docs/job-board-index-notes.md#n1359-import-type-jobcategory-from-categories
 
 import type { JobCategory } from "./categories.ts";
 import { CATEGORIZE_VERSION, proposeCategory } from "./categories.ts";
@@ -41,13 +13,7 @@ export type Field = Exclude<JobCategory, "other">;
  * STEP 6). Bump when an employer entry or guard changes.
  */
 export const CATEGORY_SHADOW_VERSION = 1;
-/**
- * The employer defaults were judged on the v9 residue and re-applied after the
- * v10 rules on the same sample (plan/union.txt: rule 419 first, employer +317).
- * Every later CATEGORIZE_VERSION bump moves the residue a rule fires on, so
- * the seven must be re-judged (n >= EMPLOYER_MIN_N, second page) before they
- * are valid under it. A guard asserts CATEGORIZE_VERSION <= this.
- */
+// Rationale: docs/job-board-index-notes.md#n1360-export-const-employer_defaults_valid_thr
 export const EMPLOYER_DEFAULTS_VALID_THROUGH_CATEGORIZE_VERSION = 10;
 
 // ── Mechanism 1: RULE gates (categories.ts V10_TERMS) ──────────────────────
@@ -65,13 +31,7 @@ export const EMPLOYER_MIN_PURITY = 0.95;
 export const EMPLOYER_MIN_N = 40;
 /** An independent second page, drawn deep, must also clear 0.95 (the Bass Pro lesson: 55/60 on page one, 41/60 at offset 370). */
 export const EMPLOYER_SECOND_PAGE_MIN = 0.95;
-/**
- * Where the second page must be drawn: offset / bucket-scoped total, as a
- * fraction, "at offset ~= half the employer's bucket count". The seven pages
- * sit at 0.47-0.53 (raw-v2-*-<offset>.json over employer-ranking.json totals;
- * Domino's 8,000 over the bisected 15,000 lower bound = 0.53); a page-one draw
- * (60 / 15,000 = 0.004) is outside the band and is not a second page.
- */
+// Rationale: docs/job-board-index-notes.md#n1361-export-const-employer_second_page_offset
 export const EMPLOYER_SECOND_PAGE_OFFSET_BAND: readonly [number, number] = [0.4, 0.6];
 
 // ── Mechanism 3: EMBED gates (F2; mechA/score.mjs; 160 hand-judged rows) ───
@@ -121,12 +81,7 @@ export interface ShadowProposal {
   confidence: number;
 }
 
-/**
- * The shadow-column patch — the ONLY shape a pass may write. A bare
- * `category` column is not a member of this type on purpose; a guard asserts
- * that (against comment-stripped code) and that this module performs no
- * database write at all.
- */
+// Rationale: docs/job-board-index-notes.md#n1362-export-interface-shadowpatch
 export interface ShadowPatch {
   category_proposed: Field | null;
   category_basis: CategoryBasis | null;
@@ -161,12 +116,7 @@ export interface EmployerDefault {
   bucketTotal: number;
 }
 
-/**
- * Every figure below is what judgments.json produces THROUGH THE ENTRY'S OWN
- * GUARD; the employer guard test recomputes all of them from the fixture and
- * fails on drift. Unguarded strict purity is quoted so the guard's worth is
- * visible. Second-page offsets are the raw-v2-*-<offset>.json draws.
- */
+// Rationale: docs/job-board-index-notes.md#n1363-export-const-employer_defaults-readonlya
 export const EMPLOYER_DEFAULTS: ReadonlyArray<EmployerDefault> = [
   // Chili's — 120/120 on both pages, no guard needed (the cleanest default).
   {
@@ -215,14 +165,7 @@ export const EMPLOYER_DEFAULTS: ReadonlyArray<EmployerDefault> = [
     target: "hospitality_retail", mode: "conditional", guard: /fuel|receiver|\(prod\)|insights|senior manager/i,
     purity: 112 / 112, n: 112, unguarded: { right: 112, n: 120 }, secondPage: { right: 55, n: 55, offset: 1000 }, bucketTotal: 2018,
   },
-  // Domino's — CONDITIONAL: 215/238 strict unguarded (0.903). Delivery
-  // Expert, E-Biker, driver and CSR rows are EXCLUDED and stay in the bucket,
-  // never filed anywhere -- the guard is a HOLD on the row (employerHolds /
-  // resolveShadowRow), not merely a silence of this mechanism, so an embed
-  // vote cannot file them either (the drivers convention is operations, but
-  // no employer default may file a role the rules refuse). Guarded 211/211; the
-  // deep page (offset 8,000 of a bucket bisected to >15,000 and <=17,500,
-  // dominos-bracket.json; bucketTotal is the lower bound) 59/59.
+  // Rationale: docs/job-board-index-notes.md#n1364-block
   {
     token: "dominos", name: "Domino's", judgedKey: "dominos",
     target: "hospitality_retail", mode: "conditional", guard: /delivery|e-biker|driver|\bCSR\b/i,
@@ -230,12 +173,7 @@ export const EMPLOYER_DEFAULTS: ReadonlyArray<EmployerDefault> = [
   },
 ];
 
-/**
- * Employers judged and REFUSED as defaults, by the key judgments.json holds
- * them under (strict bucket-residue purity in the note). A guard asserts none
- * is in EMPLOYER_DEFAULTS and that the judged rows themselves fail the bar.
- * Not a comment: this list is a negative test set.
- */
+// Rationale: docs/job-board-index-notes.md#n1365-export-const-refuted_employer_tokens-rea
 export const REFUTED_EMPLOYER_TOKENS: ReadonlyArray<[judgedKey: string, name: string, why: string]> = [
   ["ejwl~us2~CX", "Marriott", "0.83 — enriched for Executive Resolution / finance / receiving"],
   ["efet~us2~CX_1", "Hilton", "0.78"],
@@ -269,28 +207,13 @@ export function employerGuardExcludes(e: EmployerDefault, title: string): boolea
   return e.guard ? e.guard.test(title ?? "") : false;
 }
 
-/**
- * A guard hit is a HOLD ON THE ROW, not a silence of one mechanism: the
- * judged verdict for these titles (a Domino's Delivery Expert, a JCPenney
- * Program Mgr, a Kroger DISTRIBUTION row) was "not this employer's field",
- * and the plan's rule is that they stay in the bucket, never filed. Without
- * this, an F2-clearing embed vote filed a Domino's delivery row as
- * hospitality_retail (mechA/judged.jsonl n=30, share 0.732) -- promotable
- * under (embed, embed_knn_v1, hospitality_retail) with no per-employer audit.
- * resolveShadowRow returns {kind: "held"} for such a row regardless of what
- * the rule or embed mechanism says, and shadowRowPatch writes nothing for it.
- */
+// Rationale: docs/job-board-index-notes.md#n1366-export-function-employerholds-companytok
 export function employerHolds(companyToken: string | null | undefined, title: string): boolean {
   const e = companyToken ? EMPLOYER_BY_TOKEN.get(companyToken) : undefined;
   return e ? employerGuardExcludes(e, title) : false;
 }
 
-/**
- * The employer mechanism. Null when the token has no default (the common
- * case), when there is no token, or when the guard excludes the title (the
- * row stays in the bucket; it is NOT filed anywhere else). Confidence is the
- * measured, guarded, strict purity.
- */
+// Rationale: docs/job-board-index-notes.md#n1367-export-function-proposebyemployer-compan
 export function proposeByEmployer(companyToken: string | null | undefined, title: string): ShadowProposal | null {
   const e = companyToken ? EMPLOYER_BY_TOKEN.get(companyToken) : undefined;
   if (!e) return null;
@@ -298,13 +221,7 @@ export function proposeByEmployer(companyToken: string | null | undefined, title
   return { basis: "employer", key: e.token, target: e.target, confidence: e.purity };
 }
 
-/**
- * Every gate an entry must clear, as a validator over the table's own
- * figures. Returns one {token, reason} per failure; an empty list means the
- * table is admissible. The catalog tokens are handed in by the caller (the
- * test parses sources.ts through the one catalog reader), so this module
- * stays free of file I/O.
- */
+// Rationale: docs/job-board-index-notes.md#n1368-export-function-validateemployerdefaults
 export function validateEmployerDefaults(
   defaults: ReadonlyArray<EmployerDefault>,
   catalogTokens: ReadonlySet<string>,
@@ -337,12 +254,7 @@ export function validateEmployerDefaults(
 }
 
 // ── Mechanism 3: the embed verdict, as the resolver receives it ────────────
-/**
- * embed-classify.ts's proposal, after ITS gate (share, nn1, centroid, target
- * set), in the shape the resolver compares. The barred targets and the
- * anchor version are re-checked here so a loosened scorer, or a proposal made
- * under a previous anchor set, can never reach a row: either returns null.
- */
+// Rationale: docs/job-board-index-notes.md#n1369-export-function-embedtoshadow-p-field-st
 export function embedToShadow(p: { field: string; key: string; confidence: number } | null | undefined): ShadowProposal | null {
   if (!p) return null;
   if (p.key !== EMBED_ANCHOR_VERSION) return null;
@@ -374,16 +286,7 @@ function admissible(p: ShadowProposal | null | undefined): p is ShadowProposal {
   return true;
 }
 
-/**
- * ORDER: rule -> employer -> embed, BY BASIS, never by input position
- * (plan/union.txt: rule 419, employer +317, embed +155 on the sample;
- * reversing changes nothing about precision but would stamp rule-explainable
- * rows with an inference basis, so rule goes first). A basis wins ONLY when
- * every other mechanism that fired agrees or is silent; any disagreement is a
- * conflict (journal guards §7 — the Kroger "CUSTOMER SVC/DEPT MANAGER" case,
- * now silent because the abbreviation step is withheld). Pure: same input,
- * same output, nothing written.
- */
+// Rationale: docs/job-board-index-notes.md#n1370-export-function-resolvefirstclaim-propos
 export function resolveFirstClaim(proposals: ReadonlyArray<ShadowProposal | null | undefined>): ShadowResolution {
   const fired = proposals.filter(admissible).sort((a, b) => BASIS_RANK[a.basis] - BASIS_RANK[b.basis]);
   if (fired.length === 0) return { kind: "silent" };
@@ -392,12 +295,7 @@ export function resolveFirstClaim(proposals: ReadonlyArray<ShadowProposal | null
   return { kind: "claim", proposal: fired[0], agreed: fired };
 }
 
-/**
- * The row patch for a resolution — the ONLY thing a sweep may write. A claim
- * fills the six shadow columns; a conflict clears the proposal and stamps
- * CONFLICT_KEY; silence returns null so the sweep leaves the row untouched.
- * `version` is the rules version the hop runs under (category_proposed_v).
- */
+// Rationale: docs/job-board-index-notes.md#n1371-export-function-shadowrowpatch-res-shado
 export function shadowRowPatch(res: ShadowResolution, version: number, at: string = new Date().toISOString()): ShadowPatch | null {
   if (res.kind === "silent" || res.kind === "held") return null;
   if (res.kind === "conflict") {
@@ -421,16 +319,7 @@ export interface ShadowRowInput {
   embed?: { field: string; key: string; confidence: number } | null;
 }
 
-/**
- * The three mechanisms over one row, resolved. THE ENTRY POINT the hop
- * (phase 2) must use -- not resolveFirstClaim directly -- because only here
- * is the employer hold applied: a row an employer guard holds is returned as
- * {kind: "held"} before any mechanism is consulted, so neither a rule term
- * nor an embed vote can file it. Then rule from categories.ts proposeCategory
- * (null unless the frozen rules leave the row in "other"), employer from the
- * token, embed from the scorer's proposal. Returns the resolution; the patch
- * is shadowRowPatch(..., CATEGORIZE_VERSION).
- */
+// Rationale: docs/job-board-index-notes.md#n1372-export-function-resolveshadowrow-input-s
 export function resolveShadowRow(input: ShadowRowInput): ShadowResolution {
   const token = input.company_token ?? null;
   if (employerHolds(token, input.title ?? "")) return { kind: "held", token: token as string };
@@ -446,17 +335,7 @@ export function resolveShadowRow(input: ShadowRowInput): ShadowResolution {
 export const SHADOW_PROPOSED_VERSION = CATEGORIZE_VERSION;
 
 // ── The promotion reader (job_board_meta.category_promotions) ──────────────
-/**
- * One listed triple, exactly as promote_category (20260909225500) reads it:
- * {"basis","key","target","audit","judged","wrong"}, an element of the BARE
- * JSON ARRAY that is job_board_meta.category_promotions' value (20260909224000
- * seeds '[]'; a wrapped {"list": [...]} or {"promotions": [...]} is tolerated
- * by every reader but is not the shape to write). The list is written ONLY by
- * hand, after an audit file exists at scratchpad/other-bucket/audit/
- * <basis>-<key>.md; the function refuses any triple not listed, listed
- * without an audit, or listed under the bar. This build ships ZERO promotions
- * (the seed is []).
- */
+// Rationale: docs/job-board-index-notes.md#n1373-export-interface-promotion
 export interface Promotion {
   basis: CategoryBasis;
   key: string;
@@ -475,12 +354,7 @@ const asCount = (v: unknown): number | null => {
   return null;
 };
 
-/**
- * Parse the meta row's value. Tolerant of the shapes a hand-written row can
- * take — a bare array (the seeded, canonical shape), {"list": [...]} or
- * {"promotions": [...]} — and DROPS anything malformed rather than throwing:
- * a malformed row must fail closed (nothing promoted), never open.
- */
+// Rationale: docs/job-board-index-notes.md#n1374-export-function-readpromotions-value-unk
 export function readPromotions(value: unknown): Promotion[] {
   let list: unknown[] = [];
   if (Array.isArray(value)) list = value;
@@ -509,12 +383,7 @@ export function readPromotions(value: unknown): Promotion[] {
   return out;
 }
 
-/**
- * The same bar promote_category enforces in SQL, so a reader can tell a
- * listing that WILL promote from one the function will refuse: an audit file
- * named, judged/wrong present, judged >= the per-basis minimum, wrong <= the
- * per-basis maximum. A missing count is a refusal, never a pass.
- */
+// Rationale: docs/job-board-index-notes.md#n1375-export-function-promotionclearsbar-p-pro
 export function promotionClearsBar(p: Promotion): boolean {
   if (!p.audit) return false;
   if (p.judged === null || p.wrong === null) return false;
@@ -528,12 +397,7 @@ export function isPromoted(list: ReadonlyArray<Promotion>, basis: CategoryBasis,
   return list.some((p) => p.basis === basis && p.key === key && p.target === target);
 }
 
-/**
- * The embed anchor set is frozen under EMBED_ANCHOR_VERSION; every embed
- * promotion names the anchor version as its key, so a promotion made under a
- * previous anchor set is NOT a promotion under this one. Filtering here is
- * what "any anchor change resets every embed-basis promotion" means in code.
- */
+// Rationale: docs/job-board-index-notes.md#n1376-export-function-promotionsvalidforanchor
 export function promotionsValidForAnchors(list: ReadonlyArray<Promotion>, anchorVersion: string = EMBED_ANCHOR_VERSION): Promotion[] {
   return list.filter((p) => p.basis !== "embed" || p.key === anchorVersion);
 }

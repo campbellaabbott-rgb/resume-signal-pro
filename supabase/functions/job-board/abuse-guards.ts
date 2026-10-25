@@ -1,42 +1,8 @@
-/**
- * WHAT AN ANONYMOUS REQUEST MAY NOT DO TO THE BOARD (.88). Pure apart from the
- * rpc and the database client it is handed, so vitest imports it. Why, with the numbers:
- * docs/job-board-deploy-notes.md (2026-09-09.88); defect-sweep 2026-10-02
- * items 2.12 and 2.24.
- *
- *   THE DEMAND LANE. `verify` used to queue the board of every id it was handed
- *   -- before probing, for ids that were never postings -- and the refresh put
- *   up to five queued boards at the head of EVERY cold slice for twenty
- *   minutes, never removing one. One anonymous request every twenty minutes
- *   could spend most of each slice's 1,500-posting budget on boards it chose.
- *   Now a board is queued only for a posting the board actually holds, a slice
- *   takes at most one, a taken board waits a cooldown before it can be taken
- *   again, the lane takes a fixed number of boards an hour, whoever asks, and
- *   what it served is kept in a row verify cannot write.
- *
- *   THE INCIDENT RECORD. One overwritable row held the board's last
- *   filter-integrity incident together with the caller's own filters; any
- *   request that tripped the sensor replaced it. Now each field has its own row
- *   and nothing the caller wrote is stored in it.
- *
- *   PER-ADDRESS ALLOWANCES for the actions that write or fetch on a caller's
- *   behalf, keyed on the platform's address (never the first forwarded hop),
- *   counted by the hour because that is the longest window the limiter keeps.
- */
+// Rationale: docs/job-board-index-notes.md#n1347-import-clientaddress-from-_shared-client
 import { clientAddress } from "../_shared/client-address.ts";
 import { addressKey, exemptKind } from "./anon-budget.ts";
 
-// ── the demand lane ─────────────────────────────────────────────────────────
-//
-// TWO ROWS, ONE WRITER EACH. `demand` is the queue and verify is the only code
-// that writes it. `demand_served` is what the lane served and the refresh is
-// the only code that writes it. With one row written by both, a verify that
-// read the row before a slice consumed a board and wrote after it put the
-// board back and erased its served stamp, so the cooldown and the hourly count
-// lost an entry each time the race was won. Now nothing verify writes can
-// touch a served stamp: a board it re-queues is still cooling, and cooling
-// outlasts a queue entry (DEMAND_COOLDOWN_MS > DEMAND_TTL_MS), so the refresh
-// never removes a taken board from the queue at all -- it lapses.
+// Rationale: docs/job-board-index-notes.md#n1348-a-request-older-than-this-is
 
 /** A request older than this is dropped unserved: the reader has moved on. */
 export const DEMAND_TTL_MS = 20 * 60_000;
@@ -69,13 +35,7 @@ const queuedNow = (queue: DemandQueue | null | undefined, now: number): DemandEn
 const liveServed = (served: DemandServed | null | undefined, now: number): DemandEntry[] =>
   entries(served?.served).filter((e) => now - e.at < DEMAND_COOLDOWN_MS);
 
-/**
- * verify: the next queue, adding the boards of postings the board holds. A
- * board already queued keeps its place (a repeat request cannot keep it fresh
- * forever); a board the lane served inside the cooldown is not queued. null
- * when nothing changed, so the caller writes nothing. The result is a queue
- * only: verify never writes a served stamp.
- */
+// Rationale: docs/job-board-index-notes.md#n1349-export-function-admitdemand
 export function admitDemand(
   queue: DemandQueue | null | undefined,
   served: DemandServed | null | undefined,
@@ -97,14 +57,7 @@ export function recordServed(served: DemandServed | null | undefined, take: read
   return { served: [...live, ...[...new Set(take)].filter((t) => !have.has(t)).map((t) => ({ t, at: now }))] };
 }
 
-/**
- * refresh (a cold slice): the boards to put first, at most DEMAND_PER_SLICE and
- * only while the lane has taken fewer than DEMAND_PER_HOUR in the last hour.
- * `eligible` says which tokens this slice may take (a catalogued cold board not
- * already in the slice). `served` is the next served row; write it only once
- * the slice is admitted, or a declined slice would spend the request without
- * fetching the board.
- */
+// Rationale: docs/job-board-index-notes.md#n1350-export-function-takedemand
 export function takeDemand(
   queue: DemandQueue | null | undefined,
   served: DemandServed | null | undefined,
@@ -118,13 +71,7 @@ export function takeDemand(
   return { take, served: take.length ? recordServed(served, take, now) : null };
 }
 
-/**
- * status.demandLane: the lane's rules as deployed and how much of them was
- * used, counts only -- never a board token, so status does not publish what
- * readers are looking at. `queued` counts requests still waiting (a served
- * board's request lapses in the queue, cooling). servedLastHour above perHour
- * cannot happen with one writer; seeing it means a second writer of the row.
- */
+// Rationale: docs/job-board-index-notes.md#n1351-export-function-demandlanestatus
 export function demandLaneStatus(
   queue: DemandQueue | null | undefined,
   served: DemandServed | null | undefined,
@@ -157,16 +104,7 @@ export async function readDemand(client: MetaDb): Promise<{ queue: DemandQueue |
   return { queue: v(DEMAND_QUEUE_KEY) as DemandQueue | null, served: v(DEMAND_SERVED_KEY) as DemandServed | null };
 }
 
-/**
- * Stamp what an admitted slice took from the demand lane (.88). Only the
- * refresh writes this row, and it writes conditionally on the stamp it read,
- * merging onto a fresh read when another slice wrote first, so neither a
- * verify nor an overlapping slice can erase a served stamp. Three tries, then
- * an unconditional write merged onto the last row read: a stamp must land. A
- * row that could never be read is never overwritten blind (that would erase
- * every other stamp); the board then goes unstamped, which costs at most one
- * repeat of it while its request is queued.
- */
+// Rationale: docs/job-board-index-notes.md#n1352-export-async-function-stampdemandserved
 export async function stampDemandServed(client: MetaDb, take: readonly string[], now: number): Promise<void> {
   let last: DemandServed | null = null;
   let read = false;
@@ -198,21 +136,10 @@ export async function stampDemandServed(client: MetaDb, take: readonly string[],
 // ── the filter-integrity incident record ────────────────────────────────────
 
 export const INCIDENT_KEY_PREFIX = "filter_integrity_incident.";
-/**
- * A field's incident row is rewritten at most this often. Whatever
- * disagreement remains between a list read and its sensor is then at most one
- * write per field per interval, not one per request, and a repeat cannot keep
- * a stale incident looking current minute by minute.
- */
+// Rationale: docs/job-board-index-notes.md#n1353-export-const-incident_rewrite_ms-_000
 export const INCIDENT_REWRITE_MS = 10 * 60_000;
 
-/**
- * One row per field that a page violated, keyed by that field. A field name
- * comes from the closed set filterViolations emits, and the sample keeps only
- * the served row's own value (`got`, the database's word), never `want` and
- * never the request's filters: those are the caller's text, and a sensor
- * record must not be something a request can write into.
- */
+// Rationale: docs/job-board-index-notes.md#n1354-export-function-incidentrows
 export function incidentRows(
   violations: ReadonlyArray<{ field: string; got: string }>,
   rows: number,
@@ -274,12 +201,7 @@ export function summariseIncidents(
   };
 }
 
-/**
- * Write filter-integrity incident rows, each at most once per
- * INCIDENT_REWRITE_MS (.88): a conditional update of a row older than the
- * interval, else an insert of a row that does not exist yet (a row that exists
- * and is fresh refuses the insert, which is the throttle answering).
- */
+// Rationale: docs/job-board-index-notes.md#n1355-export-async-function-writeincidents-cli
 export async function writeIncidents(client: MetaDb, rows: ReturnType<typeof incidentRows>): Promise<void> {
   const cutoff = new Date(Date.now() - INCIDENT_REWRITE_MS).toISOString();
   await Promise.all(rows.map(async (row) => {
@@ -297,17 +219,7 @@ export type RateRpc = (
   args: Record<string, unknown>,
 ) => PromiseLike<{ data: unknown; error: unknown }>;
 
-/**
- * AN HOUR, BECAUSE AN HOUR IS THE LONGEST WINDOW THE LIMITER KEEPS.
- * check_rate_limit (20251219200654, still the live definition) deletes, on one
- * call in a hundred, every rate_limits row older than the CALLING function's
- * window, whatever function wrote it. Every caller passes 60 minutes or more,
- * and track-ab-event calls it on every analytics event with a key the client
- * chooses, so a 1,440-minute row is deleted about an hour after it starts and
- * a "daily" allowance is an hourly one that can be reset on demand. A
- * 60-minute row is never older than the shortest sweep, so an hourly count is
- * one the database actually keeps. The day-equivalent of each cap is 24x it.
- */
+// Rationale: docs/job-board-index-notes.md#n1356-export-const-allowance_window_minutes
 export const ALLOWANCE_WINDOW_MINUTES = 60;
 /** check_rate_limit raises above this, and an error is answered as allowed, so a larger cap would switch itself off. */
 export const LIMITER_MAX_REQUESTS = 1000;
@@ -320,17 +232,7 @@ export const CLICK_PER_ADDRESS_HOUR = 300;
 /** fit-batch (older bundles; the site calls job-fit): twenty ids a call. */
 export const FIT_PER_ADDRESS_HOUR = 60;
 
-/**
- * An hourly allowance for one action, on its own rate_limits row (a function
- * name outside check_global_rate_limit's budgeted set, so it never spends the
- * upload/checkout budget). Keyed on the platform's address, normalised like the
- * board meter (an IPv6 host is its /64). The service key and our servers'
- * reader proof are never refused; neither is a request with no public address
- * (a shared 'unknown' row would refuse everyone behind a gateway), nor one
- * whose check errors: an allowance must never take the board down. false only
- * on the limiter's explicit no. The cap sent is held inside the limiter's
- * bound, so a constant raised past it stays a cap instead of an error.
- */
+// Rationale: docs/job-board-index-notes.md#n1357-export-async-function-addressallowance
 export async function addressAllowance(
   rpc: RateRpc,
   h: Headers,

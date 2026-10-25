@@ -21131,3 +21131,551 @@ The LOO gate as a stamp: run looAgreement over the embedded anchors and say
 whether the figure reproduces the audited one. The loader stores exactly
 this object; assertAnchorStamp reads it back. `passed` is computed here and
 nowhere else — a caller cannot stamp a set as passing by hand.
+
+## n1347-import-clientaddress-from-_shared-client
+
+In `supabase/functions/job-board/abuse-guards.ts`, above: `import { clientAddress } from "../_shared/client-address.ts";`
+
+WHAT AN ANONYMOUS REQUEST MAY NOT DO TO THE BOARD (.88). Pure apart from the
+rpc and the database client it is handed, so vitest imports it. Why, with the numbers:
+docs/job-board-deploy-notes.md (2026-09-09.88); defect-sweep 2026-10-02
+items 2.12 and 2.24.
+
+  THE DEMAND LANE. `verify` used to queue the board of every id it was handed
+  -- before probing, for ids that were never postings -- and the refresh put
+  up to five queued boards at the head of EVERY cold slice for twenty
+  minutes, never removing one. One anonymous request every twenty minutes
+  could spend most of each slice's 1,500-posting budget on boards it chose.
+  Now a board is queued only for a posting the board actually holds, a slice
+  takes at most one, a taken board waits a cooldown before it can be taken
+  again, the lane takes a fixed number of boards an hour, whoever asks, and
+  what it served is kept in a row verify cannot write.
+
+  THE INCIDENT RECORD. One overwritable row held the board's last
+  filter-integrity incident together with the caller's own filters; any
+  request that tripped the sensor replaced it. Now each field has its own row
+  and nothing the caller wrote is stored in it.
+
+  PER-ADDRESS ALLOWANCES for the actions that write or fetch on a caller's
+  behalf, keyed on the platform's address (never the first forwarded hop),
+  counted by the hour because that is the longest window the limiter keeps.
+
+## n1348-a-request-older-than-this-is
+
+In `supabase/functions/job-board/abuse-guards.ts`, above: `/** A request older than this is dropped unserved: the reader has moved on. */`
+
+── the demand lane ─────────────────────────────────────────────────────────
+
+TWO ROWS, ONE WRITER EACH. `demand` is the queue and verify is the only code
+that writes it. `demand_served` is what the lane served and the refresh is
+the only code that writes it. With one row written by both, a verify that
+read the row before a slice consumed a board and wrote after it put the
+board back and erased its served stamp, so the cooldown and the hourly count
+lost an entry each time the race was won. Now nothing verify writes can
+touch a served stamp: a board it re-queues is still cooling, and cooling
+outlasts a queue entry (DEMAND_COOLDOWN_MS > DEMAND_TTL_MS), so the refresh
+never removes a taken board from the queue at all -- it lapses.
+
+## n1349-export-function-admitdemand
+
+In `supabase/functions/job-board/abuse-guards.ts`, above: `export function admitDemand(`
+
+verify: the next queue, adding the boards of postings the board holds. A
+board already queued keeps its place (a repeat request cannot keep it fresh
+forever); a board the lane served inside the cooldown is not queued. null
+when nothing changed, so the caller writes nothing. The result is a queue
+only: verify never writes a served stamp.
+
+## n1350-export-function-takedemand
+
+In `supabase/functions/job-board/abuse-guards.ts`, above: `export function takeDemand(`
+
+refresh (a cold slice): the boards to put first, at most DEMAND_PER_SLICE and
+only while the lane has taken fewer than DEMAND_PER_HOUR in the last hour.
+`eligible` says which tokens this slice may take (a catalogued cold board not
+already in the slice). `served` is the next served row; write it only once
+the slice is admitted, or a declined slice would spend the request without
+fetching the board.
+
+## n1351-export-function-demandlanestatus
+
+In `supabase/functions/job-board/abuse-guards.ts`, above: `export function demandLaneStatus(`
+
+status.demandLane: the lane's rules as deployed and how much of them was
+used, counts only -- never a board token, so status does not publish what
+readers are looking at. `queued` counts requests still waiting (a served
+board's request lapses in the queue, cooling). servedLastHour above perHour
+cannot happen with one writer; seeing it means a second writer of the row.
+
+## n1352-export-async-function-stampdemandserved
+
+In `supabase/functions/job-board/abuse-guards.ts`, above: `export async function stampDemandServed(client: MetaDb, take: readonly string[], now: number): Promise<void> {`
+
+Stamp what an admitted slice took from the demand lane (.88). Only the
+refresh writes this row, and it writes conditionally on the stamp it read,
+merging onto a fresh read when another slice wrote first, so neither a
+verify nor an overlapping slice can erase a served stamp. Three tries, then
+an unconditional write merged onto the last row read: a stamp must land. A
+row that could never be read is never overwritten blind (that would erase
+every other stamp); the board then goes unstamped, which costs at most one
+repeat of it while its request is queued.
+
+## n1353-export-const-incident_rewrite_ms-_000
+
+In `supabase/functions/job-board/abuse-guards.ts`, above: `export const INCIDENT_REWRITE_MS = 10 * 60_000;`
+
+A field's incident row is rewritten at most this often. Whatever
+disagreement remains between a list read and its sensor is then at most one
+write per field per interval, not one per request, and a repeat cannot keep
+a stale incident looking current minute by minute.
+
+## n1354-export-function-incidentrows
+
+In `supabase/functions/job-board/abuse-guards.ts`, above: `export function incidentRows(`
+
+One row per field that a page violated, keyed by that field. A field name
+comes from the closed set filterViolations emits, and the sample keeps only
+the served row's own value (`got`, the database's word), never `want` and
+never the request's filters: those are the caller's text, and a sensor
+record must not be something a request can write into.
+
+## n1355-export-async-function-writeincidents-cli
+
+In `supabase/functions/job-board/abuse-guards.ts`, above: `export async function writeIncidents(client: MetaDb, rows: ReturnType<typeof incidentRows>): Promise<void> {`
+
+Write filter-integrity incident rows, each at most once per
+INCIDENT_REWRITE_MS (.88): a conditional update of a row older than the
+interval, else an insert of a row that does not exist yet (a row that exists
+and is fresh refuses the insert, which is the throttle answering).
+
+## n1356-export-const-allowance_window_minutes
+
+In `supabase/functions/job-board/abuse-guards.ts`, above: `export const ALLOWANCE_WINDOW_MINUTES = 60;`
+
+AN HOUR, BECAUSE AN HOUR IS THE LONGEST WINDOW THE LIMITER KEEPS.
+check_rate_limit (20251219200654, still the live definition) deletes, on one
+call in a hundred, every rate_limits row older than the CALLING function's
+window, whatever function wrote it. Every caller passes 60 minutes or more,
+and track-ab-event calls it on every analytics event with a key the client
+chooses, so a 1,440-minute row is deleted about an hour after it starts and
+a "daily" allowance is an hourly one that can be reset on demand. A
+60-minute row is never older than the shortest sweep, so an hourly count is
+one the database actually keeps. The day-equivalent of each cap is 24x it.
+
+## n1357-export-async-function-addressallowance
+
+In `supabase/functions/job-board/abuse-guards.ts`, above: `export async function addressAllowance(`
+
+An hourly allowance for one action, on its own rate_limits row (a function
+name outside check_global_rate_limit's budgeted set, so it never spends the
+upload/checkout budget). Keyed on the platform's address, normalised like the
+board meter (an IPv6 host is its /64). The service key and our servers'
+reader proof are never refused; neither is a request with no public address
+(a shared 'unknown' row would refuse everyone behind a gateway), nor one
+whose check errors: an allowance must never take the board down. false only
+on the limiter's explicit no. The cap sent is held inside the limiter's
+bound, so a constant raised past it stays a cap instead of an error.
+
+## n1358-export-interface-rekickinput
+
+In `supabase/functions/job-board/chain-watchdog.ts`, above: `export interface RekickInput {`
+
+The dead-chain watchdog's decision, pure.
+
+The refresh rotation is a self-kicking chain: each slice POSTs the next hop,
+and pg_cron exists only to start a fresh chain when the running one dies.
+Migration 20260909219000 put the two cron kicks five minutes apart; this is
+the other half its header describes — a re-kick from inside the function,
+judged on the chain's OWN pulse rather than on the wall clock.
+
+THE RULE (20260909219000's header, applied): the chain is presumed dead
+when its freshest pulse is older than 2 x coldEmaMs + SLICE_LOCK_MS and the
+chain_kick row does not prove it alive. Then kick hop 0 — a plain,
+non-forced {action:"refresh"}, the body pg_cron sends — and FALL THROUGH:
+the kick never consumes the exclusive maintenance ladder's stamp, mirroring
+the desc-sweep rule at the head of maybeKickMaintenance.
+
+WHAT A PULSE IS, and why there are four. The first cut judged only
+slice_stats.workAt, which stampSliceWork writes at LOOP END. A live hop is
+silent on that row for its whole loop (hot slices measured at 341s against
+a threshold of ~4 min at the live cold EMA) and again for its whole post-
+loop tail, so a live hot slice read as dead. index.ts already stamps more
+often than that, and every stamp is a heartbeat:
+
+  refresh_progress.updated_at  hop START (the optimistic cursor advance)
+                               and hop end
+  slice_trace.updated_at       every board fetched and every board stored
+                               (breadcrumb): inside a live loop the gap is
+                               bounded by one board's FETCH_TIMEOUT_MS
+  slice_stats.workAt           loop end (stampSliceWork)
+  slice_stats.at               hop end, after the tail (recordSliceStats)
+
+The freshest of the four is the pulse. That is what lets the threshold stay
+at the cold EMA in both phases: it no longer has to cover a whole slice,
+only the longest silence a live hop can show, which is one board's fetch
+or the post-loop tail. The pass-end tail is the residual — it stamps a
+coarse breadcrumb per block, so the silence it can show is one block, the
+same exposure the :x4/:x9 crons have always had at the three-minute lock.
+
+WHAT chain_kick CAN AND CANNOT PROVE. chainNextSlice stamps 'kicked' before
+it fetches the child and the real outcome after the child's ENTIRE response
+— and the child returns the moment it has scheduled its own kick. So when
+hop P kicks C, P's 'kicked' is overwritten by P's parent stamping
+'continued' for P, and the row reads 'continued' while C runs: the stamp is
+one hop behind the chain. A 'continued' that predates a later pulse is
+therefore proof that the chain WAS alive when the pulse's hop started, not
+that it is alive now; only a 'continued' newer than every pulse — the last
+parent saw the last hop return, and nothing has started since — says the
+chain ended by design. That is the rule:
+
+  'continued' AND no pulse after it   -> chain_alive (ended or alive; the
+                                         cron owns the next first light)
+  'continued' AND a pulse after it    -> superseded: judge the pulse
+  anything else                       -> judge the pulse
+
+TWO THINGS IT MUST NEVER DO, and the guard asserts both on this function:
+  1. fire on a 'continued' stamp that nothing has superseded, however old
+     the pulse. That row means the last hop returned to a live parent and
+     no hop has started since — the chain finished, and a kick would only
+     start the next pass a few minutes before the cron does.
+  2. fire within the window of the freshest pulse. The window is
+     2 x coldEmaMs + SLICE_LOCK_MS: two average cold slices of silence past
+     the lock the child enforces. Inside it, a quiet pulse is a slow board
+     or a tail, not a death.
+
+A THIRD, decided in index.ts because it is about the caller: a hop that is
+evaluating this is itself the chain's pulse. maybeKickMaintenance runs
+inside a hop — at pass end AFTER a tail that can outlast the window — and
+a kick from there would start a second chain beside the one doing the
+evaluating. In-hop evaluation observes and logs; it never sends.
+
+WHY THIS IS A MODULE. dormancy.ts and rotation.ts follow the same split —
+pure functions here, DB I/O in index.ts — so the decision can be exercised
+from vitest with every input the runtime could hand it, and the guard can
+prove the never-fires as behaviour rather than as a spelling.
+
+WHERE IT RUNS (the load-bearing part, from the CHAIN lane's design): the
+status action, the one path monitors hit while nothing else runs. Its own
+throttle is SLICE_LOCK_MS on the chain_watchdog stamp, deliberately NOT the
+ten-minute maintenance floor, which would recreate the wait the migration
+removed — and index.ts enforces that throttle with a conditional write, so
+two status calls a few hundred milliseconds apart cannot both kick.
+
+## n1359-import-type-jobcategory-from-categories
+
+In `supabase/functions/job-board/shadow.ts`, above: `import type { JobCategory } from "./categories.ts";`
+
+THE OTHER BUCKET, PHASE 1 — SHADOW CLASSIFICATION. Pure module: no I/O, no
+client, no writes. It holds (1) every gate as a NAMED CONSTANT with the
+measurement that produced it, (2) the seven guarded employer defaults keyed
+by company_token, (3) the first-claim resolver that turns the mechanisms'
+verdicts into ONE proposal for the shadow columns, and (4) the reader for
+job_board_meta.category_promotions.
+
+THE ONE RULE EVERYTHING HERE OBEYS: no mechanism writes `category`. A
+proposal lives in category_proposed / category_basis / category_key /
+category_confidence / category_proposed_at / category_proposed_v, and
+`category` moves only via promote_category(basis, key, target) (migration
+20260909225500) after a written audit — the basis fields PERSIST after
+promotion so Explore can count inferred rows and revert_category
+(20260909226000) puts any key back with one UPDATE. Disagreement between
+mechanisms writes nothing and stamps category_key = 'conflict'.
+
+A guard reads this file with its comments stripped and asserts: no client,
+no table write, no bare `category` member anywhere in the code. The word
+itself is therefore kept out of identifiers and strings below; the field a
+proposal names is its `target`.
+
+Provenance for every number: scratchpad/other-bucket/ (2026-09-10): the
+2,576-row stratified sample (other-sample.jsonl), the 3,060 labelled rows
+(labelled.jsonl), 2,365 hand-judged employer-page title decisions
+(judgments.json, mirrored byte-for-byte at src/test/fixtures/
+other-bucket-judgments.json), mechC-gate.txt (rule terms), plan/union.txt
+(first-claim accounting), employer-ranking.json (bucket-scoped totals),
+dominos-bracket.json (the bisected Domino's total) and mechA/ (embedding
+leave-one-out + the F2 gate).
+
+## n1360-export-const-employer_defaults_valid_thr
+
+In `supabase/functions/job-board/shadow.ts`, above: `export const EMPLOYER_DEFAULTS_VALID_THROUGH_CATEGORIZE_VERSION = 10;`
+
+The employer defaults were judged on the v9 residue and re-applied after the
+v10 rules on the same sample (plan/union.txt: rule 419 first, employer +317).
+Every later CATEGORIZE_VERSION bump moves the residue a rule fires on, so
+the seven must be re-judged (n >= EMPLOYER_MIN_N, second page) before they
+are valid under it. A guard asserts CATEGORIZE_VERSION <= this.
+
+## n1361-export-const-employer_second_page_offset
+
+In `supabase/functions/job-board/shadow.ts`, above: `export const EMPLOYER_SECOND_PAGE_OFFSET_BAND: readonly [number, number] = [0.4, 0.6];`
+
+Where the second page must be drawn: offset / bucket-scoped total, as a
+fraction, "at offset ~= half the employer's bucket count". The seven pages
+sit at 0.47-0.53 (raw-v2-*-<offset>.json over employer-ranking.json totals;
+Domino's 8,000 over the bisected 15,000 lower bound = 0.53); a page-one draw
+(60 / 15,000 = 0.004) is outside the band and is not a second page.
+
+## n1362-export-interface-shadowpatch
+
+In `supabase/functions/job-board/shadow.ts`, above: `export interface ShadowPatch {`
+
+The shadow-column patch — the ONLY shape a pass may write. A bare
+`category` column is not a member of this type on purpose; a guard asserts
+that (against comment-stripped code) and that this module performs no
+database write at all.
+
+## n1363-export-const-employer_defaults-readonlya
+
+In `supabase/functions/job-board/shadow.ts`, above: `export const EMPLOYER_DEFAULTS: ReadonlyArray<EmployerDefault> = [`
+
+Every figure below is what judgments.json produces THROUGH THE ENTRY'S OWN
+GUARD; the employer guard test recomputes all of them from the fixture and
+fails on drift. Unguarded strict purity is quoted so the guard's worth is
+visible. Second-page offsets are the raw-v2-*-<offset>.json draws.
+
+## n1364-block
+
+In `supabase/functions/job-board/shadow.ts`, above: `{`
+
+Domino's — CONDITIONAL: 215/238 strict unguarded (0.903). Delivery
+Expert, E-Biker, driver and CSR rows are EXCLUDED and stay in the bucket,
+never filed anywhere -- the guard is a HOLD on the row (employerHolds /
+resolveShadowRow), not merely a silence of this mechanism, so an embed
+vote cannot file them either (the drivers convention is operations, but
+no employer default may file a role the rules refuse). Guarded 211/211; the
+deep page (offset 8,000 of a bucket bisected to >15,000 and <=17,500,
+dominos-bracket.json; bucketTotal is the lower bound) 59/59.
+
+## n1365-export-const-refuted_employer_tokens-rea
+
+In `supabase/functions/job-board/shadow.ts`, above: `export const REFUTED_EMPLOYER_TOKENS: ReadonlyArray<[judgedKey: string, name: string, why: string]> = [`
+
+Employers judged and REFUSED as defaults, by the key judgments.json holds
+them under (strict bucket-residue purity in the note). A guard asserts none
+is in EMPLOYER_DEFAULTS and that the judged rows themselves fail the bar.
+Not a comment: this list is a negative test set.
+
+## n1366-export-function-employerholds-companytok
+
+In `supabase/functions/job-board/shadow.ts`, above: `export function employerHolds(companyToken: string | null | undefined, title: string): boolean {`
+
+A guard hit is a HOLD ON THE ROW, not a silence of one mechanism: the
+judged verdict for these titles (a Domino's Delivery Expert, a JCPenney
+Program Mgr, a Kroger DISTRIBUTION row) was "not this employer's field",
+and the plan's rule is that they stay in the bucket, never filed. Without
+this, an F2-clearing embed vote filed a Domino's delivery row as
+hospitality_retail (mechA/judged.jsonl n=30, share 0.732) -- promotable
+under (embed, embed_knn_v1, hospitality_retail) with no per-employer audit.
+resolveShadowRow returns {kind: "held"} for such a row regardless of what
+the rule or embed mechanism says, and shadowRowPatch writes nothing for it.
+
+## n1367-export-function-proposebyemployer-compan
+
+In `supabase/functions/job-board/shadow.ts`, above: `export function proposeByEmployer(companyToken: string | null | undefined, title: string): ShadowProposal | null {`
+
+The employer mechanism. Null when the token has no default (the common
+case), when there is no token, or when the guard excludes the title (the
+row stays in the bucket; it is NOT filed anywhere else). Confidence is the
+measured, guarded, strict purity.
+
+## n1368-export-function-validateemployerdefaults
+
+In `supabase/functions/job-board/shadow.ts`, above: `export function validateEmployerDefaults(`
+
+Every gate an entry must clear, as a validator over the table's own
+figures. Returns one {token, reason} per failure; an empty list means the
+table is admissible. The catalog tokens are handed in by the caller (the
+test parses sources.ts through the one catalog reader), so this module
+stays free of file I/O.
+
+## n1369-export-function-embedtoshadow-p-field-st
+
+In `supabase/functions/job-board/shadow.ts`, above: `export function embedToShadow(p: { field: string; key: string; confidence: number } | null | undefined): ShadowProposal | null {`
+
+embed-classify.ts's proposal, after ITS gate (share, nn1, centroid, target
+set), in the shape the resolver compares. The barred targets and the
+anchor version are re-checked here so a loosened scorer, or a proposal made
+under a previous anchor set, can never reach a row: either returns null.
+
+## n1370-export-function-resolvefirstclaim-propos
+
+In `supabase/functions/job-board/shadow.ts`, above: `export function resolveFirstClaim(proposals: ReadonlyArray<ShadowProposal | null | undefined>): ShadowResolution {`
+
+ORDER: rule -> employer -> embed, BY BASIS, never by input position
+(plan/union.txt: rule 419, employer +317, embed +155 on the sample;
+reversing changes nothing about precision but would stamp rule-explainable
+rows with an inference basis, so rule goes first). A basis wins ONLY when
+every other mechanism that fired agrees or is silent; any disagreement is a
+conflict (journal guards §7 — the Kroger "CUSTOMER SVC/DEPT MANAGER" case,
+now silent because the abbreviation step is withheld). Pure: same input,
+same output, nothing written.
+
+## n1371-export-function-shadowrowpatch-res-shado
+
+In `supabase/functions/job-board/shadow.ts`, above: `export function shadowRowPatch(res: ShadowResolution, version: number, at: string = new Date().toISOString()): ShadowPatch | null {`
+
+The row patch for a resolution — the ONLY thing a sweep may write. A claim
+fills the six shadow columns; a conflict clears the proposal and stamps
+CONFLICT_KEY; silence returns null so the sweep leaves the row untouched.
+`version` is the rules version the hop runs under (category_proposed_v).
+
+## n1372-export-function-resolveshadowrow-input-s
+
+In `supabase/functions/job-board/shadow.ts`, above: `export function resolveShadowRow(input: ShadowRowInput): ShadowResolution {`
+
+The three mechanisms over one row, resolved. THE ENTRY POINT the hop
+(phase 2) must use -- not resolveFirstClaim directly -- because only here
+is the employer hold applied: a row an employer guard holds is returned as
+{kind: "held"} before any mechanism is consulted, so neither a rule term
+nor an embed vote can file it. Then rule from categories.ts proposeCategory
+(null unless the frozen rules leave the row in "other"), employer from the
+token, embed from the scorer's proposal. Returns the resolution; the patch
+is shadowRowPatch(..., CATEGORIZE_VERSION).
+
+## n1373-export-interface-promotion
+
+In `supabase/functions/job-board/shadow.ts`, above: `export interface Promotion {`
+
+One listed triple, exactly as promote_category (20260909225500) reads it:
+{"basis","key","target","audit","judged","wrong"}, an element of the BARE
+JSON ARRAY that is job_board_meta.category_promotions' value (20260909224000
+seeds '[]'; a wrapped {"list": [...]} or {"promotions": [...]} is tolerated
+by every reader but is not the shape to write). The list is written ONLY by
+hand, after an audit file exists at scratchpad/other-bucket/audit/
+<basis>-<key>.md; the function refuses any triple not listed, listed
+without an audit, or listed under the bar. This build ships ZERO promotions
+(the seed is []).
+
+## n1374-export-function-readpromotions-value-unk
+
+In `supabase/functions/job-board/shadow.ts`, above: `export function readPromotions(value: unknown): Promotion[] {`
+
+Parse the meta row's value. Tolerant of the shapes a hand-written row can
+take — a bare array (the seeded, canonical shape), {"list": [...]} or
+{"promotions": [...]} — and DROPS anything malformed rather than throwing:
+a malformed row must fail closed (nothing promoted), never open.
+
+## n1375-export-function-promotionclearsbar-p-pro
+
+In `supabase/functions/job-board/shadow.ts`, above: `export function promotionClearsBar(p: Promotion): boolean {`
+
+The same bar promote_category enforces in SQL, so a reader can tell a
+listing that WILL promote from one the function will refuse: an audit file
+named, judged/wrong present, judged >= the per-basis minimum, wrong <= the
+per-basis maximum. A missing count is a refusal, never a pass.
+
+## n1376-export-function-promotionsvalidforanchor
+
+In `supabase/functions/job-board/shadow.ts`, above: `export function promotionsValidForAnchors(list: ReadonlyArray<Promotion>, anchorVersion: string = EMBED_ANCHOR_VERSION): Promotion[] {`
+
+The embed anchor set is frozen under EMBED_ANCHOR_VERSION; every embed
+promotion names the anchor version as its key, so a promotion made under a
+previous anchor set is NOT a promotion under this one. Filtering here is
+what "any anchor change resets every embed-basis promotion" means in code.
+
+## n1377-export-const-stale_exclude_max
+
+In `supabase/functions/job-board/stale-lane.ts`, above: `export const STALE_EXCLUDE_MAX = 400;`
+
+Upper bound on the p_exclude array the lane sends get_stalest_boards. The
+three sets it is built from are each bounded: PROTOTYPE_NAMES is 12 names,
+OVERSIZE_BOARDS is capped at 200 entries by index.ts's OVERSIZE_CAP, and
+the remainder (188) is room for unresolved tokens, which enter the tries
+map at most STALE_PER_SLICE per cold hop, only reach STALE_TRIES_MAX after
+four failed fetches, and leave it on the first slice that stamps them (by
+any lane), so the room is not consumed monotonically. 400 tokens × (longest catalogued token + JSON
+quoting) is under 30 KB: a POST body PostgREST reads without a thought,
+and the RPC's own c_exclude_cap (2,000) is five times wider, so truncation
+on either side is a degradation back to the pre-fix window, never an error.
+
+## n1378-export-function-isprototypename-token-st
+
+In `supabase/functions/job-board/stale-lane.ts`, above: `export function isPrototypeName(token: string): boolean {`
+
+Is this token a property name of Object.prototype? `in` walks the chain and
+Object.prototype's chain is null, so this is exactly "would `{}[token]` be
+something other than undefined". Covers constructor, __proto__, toString,
+valueOf, hasOwnProperty, isPrototypeOf, propertyIsEnumerable,
+toLocaleString and the legacy __define/__lookup accessors.
+
+## n1379-export-function-tokensof-rec-unknown-set
+
+In `supabase/functions/job-board/stale-lane.ts`, above: `export function tokensOf(rec: unknown): Set<string> {`
+
+Own keys of a meta Record, as a Set. This is the ONLY sanctioned way to
+bring a token-keyed Record into this module: Object.keys never reports
+inherited names, so tokensOf({}) does not contain 'constructor'. Anything
+that is not a plain object yields the empty set — a meta row can hold a
+string, null, or an array left by an older writer.
+
+board_failures keys a SHARED token's boards `source:token` since .89 (n417),
+while this lane's RPC rows name tokens; such a key yields its token, so a
+shared token with one failing twin is treated as failing here (the cautious
+direction for a lane that only ever adds a fetch). No catalog token contains
+a colon, so a bare token passes through unchanged.
+
+## n1380-export-function-bumpstaletries
+
+In `supabase/functions/job-board/stale-lane.ts`, above: `export function bumpStaleTries(`
+
+Fold one slice's stamps into the tries map. A token that STAMPED this slice
+(is in okTokens) leaves the map whoever fetched it — this lane, or the
+rotation reaching a board the lane had given up on: okTokens is every stamp
+the slice landed, and a board that stamps is not stale, so its history is
+done. A token the lane fetched that did not stamp counts one more try.
+Every other entry is untouched. Pure: returns a new Map.
+
+Why the rotation's stamps must count: since .71 a token at STALE_TRIES_MAX
+is sent as p_exclude, so the lane never sees it in a window again and never
+fetches it — an entry only this lane's own fetches could clear would be
+permanent, and four historical failures would hide a catalogued board from
+the stale window for good. A stamp that lands on a hop where the lane does
+not run (hot phase, shed level 2) is forgotten on the next lap's stamp that
+lands on one that does; while such an entry lingers the board is fresh, so
+excluding it costs nothing.
+
+## n1381-export-function-unresolvedtokens
+
+In `supabase/functions/job-board/stale-lane.ts`, above: `export function unresolvedTokens(`
+
+The tokens the lane has given up on: every entry at or past triesMax, in
+map order. Since .71 this is the list p_exclude keeps out of the window, so
+it is also what status publishes as `excludedUnresolved` — the window's own
+'unresolved' verdicts read [] once the exclusion works, and a count alone
+(triesPending) does not say which boards a human should look at.
+
+## n1382-export-function-staleexclusion
+
+In `supabase/functions/job-board/stale-lane.ts`, above: `export function staleExclusion(`
+
+The tokens get_stalest_boards must keep OUT of the window: the classes no
+fetch can move. In order — PROTOTYPE_NAMES first (a fixed twelve), then
+OVERSIZE_BOARDS (≤ OVERSIZE_CAP), then every token whose tries reached
+triesMax ('unresolved') — deduplicated and cut at `max` (STALE_EXCLUDE_MAX),
+so if anything is ever dropped it is the youngest unresolved tokens, which
+re-enter the window and classify as 'unresolved' exactly as before .71.
+
+Not excluded on purpose: uncatalogued (the orphan prune's, and worth seeing
+while it is blocked), quarantined (lifts on its own), dormant and failing
+(other lanes own them and they leave the tail when those lanes stamp them).
+
+`oversize` is an Iterable of tokens (the registry's board keys mapped to
+tokens since .90), so the call site need not materialise a Set. Pure: returns a new array, inputs untouched.
+
+## n1383-export-function-classifystale-rows-reado
+
+In `supabase/functions/job-board/stale-lane.ts`, above: `export function classifyStale(rows: readonly StaleRow[], ctx: StaleContext): StaleVerdict[] {`
+
+Classify every row, oldest first, one class each, decided in this order:
+
+  prototype_name > uncatalogued > oversize > quarantined > dormant > failing
+  > unresolved > unexplained
+
+The order is "what a fetch could change, from least to most": a prototype
+name must never reach a token-keyed map at all; an uncatalogued token has no
+fetch to be given; oversize and quarantined cannot stamp until something
+outside the lane changes; dormant and failing already have lanes; unresolved
+has had this lane's budget; unexplained is what is left, and it is the only
+class selectStaleLane() will fetch.
+
+Pure: inputs are never mutated; the same inputs give the same verdicts.
