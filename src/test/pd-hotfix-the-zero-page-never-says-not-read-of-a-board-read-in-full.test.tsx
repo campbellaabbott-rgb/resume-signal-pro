@@ -366,9 +366,10 @@ describe("the head (round 3): a zero page's title and description name no open r
     expect(employerAt, "the employer's head moved: RE-ANCHOR").toBeGreaterThan(0);
     expect(seo).toMatch(/landerModel\.variant === "zero"\s*\?\s*zeroPageHead\(t, landerModel, landerCompany\)/);
     expect(seo.indexOf("zeroPageHead(")).toBeLessThan(employerAt);
-    const live = JOBS.slice(JOBS.indexOf('role="status" aria-live="polite"'), JOBS.indexOf('t("jobsPage.a11yNoResults"'));
+    expect(JOBS).toMatch(/const a11yEmpty = landerModel\?\.variant === "zero"\s*\?\s*t\("companyProfile\.zero\.answer", "No roles are listed on this page right now\."\)\s*:\s*t\("jobsPage\.a11yNoResults"/);
+    const live = JOBS.slice(JOBS.indexOf('role="status" aria-live="polite"'), JOBS.indexOf('t("jobsPage.a11yResults"'));
     expect(live, "the live region moved: RE-ANCHOR").toContain("a11yError");
-    expect(live).toMatch(/shownCount === 0 && landerModel\?\.variant === "zero"\s*\?\s*t\("companyProfile\.zero\.answer"/);
+    expect(live).toMatch(/: shownCount === 0\s*\?\s*a11yEmpty\s*:/);
   });
 });
 

@@ -6470,6 +6470,11 @@ function JobsBoard({ boardId }: { boardId: string }) {
     landerCollision, loading, error, budgetRefusal, landerRecord, landerGrowthVerdict, landerLayoffFilings, landerVisitorFilters, listAnsweredAt,
     landerReplyCurrent, landerUncarried]);
   const onCompanyPage = !!landerCompany && !!landerModel;
+  // The polite region's empty line (below): a zero company page has no filter
+  // to blame, so it says the page's own line (round 3 review, 2026-10-25).
+  const a11yEmpty = landerModel?.variant === "zero"
+    ? t("companyProfile.zero.answer", "No roles are listed on this page right now.")
+    : t("jobsPage.a11yNoResults", "No openings match these filters.");
   // A PAGE THAT IS ONE EMPLOYER'S. A board name two hiring systems share and
   // the USAJOBS hub are not: their rows belong to different employers (or
   // federal agencies), so each card and the pane name the row's own employer,
@@ -8287,15 +8292,12 @@ function JobsBoard({ boardId }: { boardId: string }) {
             ? t("jobsPage.a11yLoading", "Loading openings…")
             : error
             ? t("jobsPage.a11yError", "Could not load openings. Try again.")
-            // A zero company page has no filter to blame: it says the page's own line.
-            : shownCount === 0 && landerModel?.variant === "zero"
-            ? t("companyProfile.zero.answer", "No roles are listed on this page right now.")
             : shownCount === 0 && data?.sortUnavailable === "no-stated-pay"
             ? t("jobsPage.sortNoStatedPayTitle", "None of these matches states its pay, so there is nothing to sort by pay")
             : shownCount === 0 && data?.sortUnavailable
             ? t("jobsPage.sortPayFailedTitle", "We couldn't read pay for this search just now")
             : shownCount === 0
-            ? t("jobsPage.a11yNoResults", "No openings match these filters.")
+            ? a11yEmpty
             : t("jobsPage.a11yResults", "{{count}} openings shown.", { count: shownCount })}
         </p>
         <div className="container max-w-4xl lg:max-w-[1400px]">
