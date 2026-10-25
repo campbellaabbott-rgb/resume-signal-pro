@@ -522,17 +522,36 @@ export function bakeEmployerKey(token) {
  * page. `displayName` gives the name; `unreadable` flags a board whose name is
  * still a system code, which gets a page but never an indexable one.
  */
-export function selectLanders(companyFacet, { openOf, displayName = (c) => c.name.trim(), unreadable = () => false, max = 500, min = 8 }) {
+export function selectLanders(companyFacet, { openOf, displayName = (c) => c.name.trim(), unreadable = () => false, max = 500, min = 8, keep = null, keepRatio = 0.5 }) {
   const size = (c) => (typeof c.open === "number" ? c.open : (c.count ?? 0));
-  const top = (Array.isArray(companyFacet) ? companyFacet : [])
+  const ranked = (Array.isArray(companyFacet) ? companyFacet : [])
     // Tilde is allowed: Oracle/Workday compound tokens (tenant~dc~site) are
     // valid URL path segments, the list API accepts them, and the SPA route
     // serves them 200 (verified on Hilton, efet~us2~CX_1, 2026-07-26).
     .filter((c) => c && typeof c.token === "string" && /^[A-Za-z0-9._~-]+$/.test(c.token)
       && typeof c.name === "string" && c.name.trim()
       && (typeof openOf(c) === "number" ? openOf(c) >= min : (typeof c.count === "number" && c.count >= min)))
-    .sort((a, b) => (openOf(b) ?? b.count ?? 0) - (openOf(a) ?? a.count ?? 0))
-    .slice(0, max)
+    .sort((a, b) => (openOf(b) ?? b.count ?? 0) - (openOf(a) ?? a.count ?? 0));
+  let chosen = ranked.slice(0, max);
+  // D7 AT THE CEILING (owner decision; the round's review, 2026-10-24): the
+  // plain top `max` rotated boards indexable on the live site today out at
+  // the cut (24 pages with 198-307 open roles each in the round's bake). A
+  // board indexable today (`keep`) keeps its place while its open roles are
+  // at least `keepRatio` of the cut's; it displaces the lowest-ranked NEW
+  // boards, never another board indexable today, so the set never passes the
+  // ceiling. Refusing a page new to the index is what D7 allows.
+  if (keep && typeof keep.has === "function" && keep.size && ranked.length > max && chosen.length) {
+    const cut = openOf(chosen[chosen.length - 1]) ?? chosen[chosen.length - 1].count ?? 0;
+    const held = ranked.slice(max).filter((c) => keep.has(c.token) && (openOf(c) ?? c.count ?? 0) >= cut * keepRatio);
+    const droppable = chosen.filter((c) => !keep.has(c.token)).reverse();
+    const n = Math.min(held.length, droppable.length);
+    if (n) {
+      const drop = new Set(droppable.slice(0, n).map((c) => c.token));
+      chosen = [...chosen.filter((c) => !drop.has(c.token)), ...held.slice(0, n)]
+        .sort((a, b) => (openOf(b) ?? b.count ?? 0) - (openOf(a) ?? a.count ?? 0));
+    }
+  }
+  const top = chosen
     .map((c) => {
       const open = openOf(c);
       const name = displayName(c);
@@ -591,7 +610,7 @@ export function employerPageOf(landers, token) {
  * and a board whose printed name is still its tenant code gets a page that is
  * never indexable.
  */
-export const bakeLanders = (companyFacet, { D, openOf, max, min, nameOf = null }) => selectLanders(companyFacet, {
+export const bakeLanders = (companyFacet, { D, openOf, max, min, nameOf = null, keep = null }) => selectLanders(companyFacet, {
   openOf,
   // SEO-006: `nameOf` is the bake's repaired name (scripts/prerender-names.mjs
   // bakeEmployerName: "Chubb External" prints as "Chubb"); the code-shape test
@@ -600,6 +619,7 @@ export const bakeLanders = (companyFacet, { D, openOf, max, min, nameOf = null }
   unreadable: (c, name) => D.isCodeShapedName(c.token, name) || (nameOf ? D.isCodeShapedName(c.token, D.boardName(c.token, c.name)) : false),
   ...(max ? { max } : {}),
   ...(min ? { min } : {}),
+  ...(keep ? { keep } : {}),
 });
 
 /**

@@ -2064,10 +2064,34 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
   // a careers subdomain, a bare generic word) refuses a page NEW to the index;
   // a page indexable on the live site today keeps its index this round (owner
   // decision D7) and goes on the dry-run list instead.
+  // WHAT IS INDEXABLE ON THE LIVE SITE TODAY: the company pages the live
+  // sitemap lists (the committed one when the live one could not be read),
+  // and any the previous ledger recorded as live. D7 protects exactly these.
+  const sitemapCompanyPaths = (xml) => new Set([...String(xml || "").matchAll(/<loc>([^<]+)<\/loc>/g)]
+    .map((m) => m[1].trim().replace(/^https?:\/\/[^/]+/, "").replace(/\/+$/, "")).filter((p) => companyTokenOf(p)));
+  const priorCompanies = ledgerIn && ledgerIn.companies && typeof ledgerIn.companies === "object" ? ledgerIn.companies : {};
+  const INDEXABLE_TODAY = (() => {
+    const live = liveSitemap ? sitemapCompanyPaths(liveSitemap) : new Set();
+    if (live.size) return live;
+    let committed = "";
+    try { committed = readFileSync(join(root, "public/sitemap.xml"), "utf8"); } catch { /* none */ }
+    return sitemapCompanyPaths(committed);
+  })();
+  for (const [p, e] of Object.entries(priorCompanies)) if (e && e.state === "live") INDEXABLE_TODAY.add(p.replace(/\/+$/, ""));
+  // D7 at the ceiling: the boards indexable today, which keep their place
+  // near the cut (selectLanders `keep`).
+  const INDEXABLE_TODAY_TOKENS = new Set([...INDEXABLE_TODAY].map((p) => companyTokenOf(p)).filter(Boolean));
   const NAME_PARTS = { boardName: D.boardName, isCodeShapedName: D.isCodeShapedName };
   const LANDERS = bakeLanders(Array.isArray(boardFacets?.companiesFacet) ? boardFacets.companiesFacet : [], {
     D, openOf: openRolesOf, nameOf: (c) => bakeEmployerName(c.token, c.name, NAME_PARTS).name,
+    keep: INDEXABLE_TODAY_TOKENS,
   });
+  {
+    const plain = new Set(bakeLanders(Array.isArray(boardFacets?.companiesFacet) ? boardFacets.companiesFacet : [], { D, openOf: openRolesOf, nameOf: (c) => bakeEmployerName(c.token, c.name, NAME_PARTS).name }).map((c) => c.token));
+    const held = LANDERS.filter((c) => !plain.has(c.token)).map((c) => c.token);
+    const displaced = [...plain].filter((t) => !LANDERS.some((c) => c.token === t));
+    console.log(`[prerender-seo] D7 at the ceiling: ${held.length} board(s) indexable today kept near the cut${held.length ? ` (${held.slice(0, 30).join(", ")})` : ""}; ${displaced.length} new board(s) made way${displaced.length ? ` (${displaced.slice(0, 30).join(", ")})` : ""}`);
+  }
   const NAME_GATE = new Map(LANDERS.map((c) => [c.token, bakeEmployerName(c.token, c.stored, NAME_PARTS)]));
   // WHAT EACH BOARD IS, as the live page says it (prerender-pages.mjs
   // companyLanderPage `kind`): the USAJOBS listing site, a staffing agency's
@@ -2085,20 +2109,6 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
       ...(cp.agency?.banner ? { agencyBanner: cp.agency.banner } : {}),
     };
   })();
-  // WHAT IS INDEXABLE ON THE LIVE SITE TODAY: the company pages the live
-  // sitemap lists (the committed one when the live one could not be read),
-  // and any the previous ledger recorded as live. D7 protects exactly these.
-  const sitemapCompanyPaths = (xml) => new Set([...String(xml || "").matchAll(/<loc>([^<]+)<\/loc>/g)]
-    .map((m) => m[1].trim().replace(/^https?:\/\/[^/]+/, "").replace(/\/+$/, "")).filter((p) => companyTokenOf(p)));
-  const priorCompanies = ledgerIn && ledgerIn.companies && typeof ledgerIn.companies === "object" ? ledgerIn.companies : {};
-  const INDEXABLE_TODAY = (() => {
-    const live = liveSitemap ? sitemapCompanyPaths(liveSitemap) : new Set();
-    if (live.size) return live;
-    let committed = "";
-    try { committed = readFileSync(join(root, "public/sitemap.xml"), "utf8"); } catch { /* none */ }
-    return sitemapCompanyPaths(committed);
-  })();
-  for (const [p, e] of Object.entries(priorCompanies)) if (e && e.state === "live") INDEXABLE_TODAY.add(p.replace(/\/+$/, ""));
   const wasIndexable = (token) => INDEXABLE_TODAY.has(`/jobs/company/${token}`);
   /** The dry run the owner signs under D7: every page indexable today that a stricter rule would drop. */
   const nameGateDryRun = [];
