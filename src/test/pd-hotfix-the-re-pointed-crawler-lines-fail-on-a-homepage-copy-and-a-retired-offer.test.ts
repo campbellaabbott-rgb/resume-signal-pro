@@ -367,10 +367,21 @@ describe("the SEO round's merge (2026-10-25): the backstop reads $295 as no $29 
       // the clause that prices the second one does not name Freelance Boost.
       "Freelance Boost or a six-hour unlimited agent window costs $29.",
       "Freelance Boost plus six hours of uncapped agent calls for $29.",
+      // So do " with ", " versus ", " vs ", an opening bracket and a slash
+      // (the SEO round's last pass before landing).
+      "Freelance Boost with six uncapped agent hours costs $29.",
+      "Freelance Boost (and a six-hour agent window) costs $29.",
+      "Freelance Boost versus a six-hour agent window at $29.",
+      "Freelance Boost vs a six-hour agent window at $29.",
+      "Freelance Boost/six-hour agent window: $29.",
     ];
     const skipped = [
       "Freelance Boost ($29) rewrites your profile, and it is delivered within 48 hours.",
       "$29 one-time Freelance Boost, delivered within 48 hours.",
+      // A bracket that holds only the price stays with the name before it, and
+      // a clause after " with " that prices nothing prints nothing.
+      "Freelance Boost ($29.00) comes with a guided intake, delivered within 48 hours.",
+      "Freelance Boost (USD 29) rewrites your profile/portfolio.",
       // Live llms-full's own sentence: its " or " splits no price from the name.
       "Freelance Boost ($29) takes a guided project intake — or a pasted platform profile — and applies exactly the structure rules in this guide.",
     ];

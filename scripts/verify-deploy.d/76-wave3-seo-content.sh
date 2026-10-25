@@ -16,15 +16,18 @@
 # L9-11 FAILs llms-full.txt on the retired pass's own copy, its names and 83
 # C1's retired list. A paraphrase in new words passes it whatever it says.
 # Beside it, a sentence prints as INFO for a person to read when one of its
-# clauses (split at a comma or semicolon followed by a space, or at " and ",
-# " or " or " plus ") prices something at exactly $29 ($29, $29.00, 29 USD,
-# USD 29; never $295, $29.99 or $29,000) and does not name Freelance Boost.
+# clauses (split at a comma or semicolon followed by a space; at " and ",
+# " or ", " plus ", " with ", " versus " or " vs "; at a slash; or at an
+# opening bracket that holds more than the price) prices something at exactly
+# $29 ($29, $29.00, 29 USD, USD 29; never $295, $29.99 or $29,000) and does
+# not name Freelance Boost.
 # So a sentence passes with no INFO when its only $29 sits in a clause that
 # names Freelance Boost ("Freelance Boost ($29) takes a guided project intake
 # ..."), and prints when the price has a clause of its own ("Freelance
 # Boost, our guided rewrite, costs $29" prints too). A paraphrase that names
 # no price is not shown at all (round 4, 2026-10-25; clause rule, the SEO
-# round's merge; " or " and " plus ", its review).
+# round's merge; " or " and " plus ", its review; " with ", " versus ",
+# " vs ", "/" and "(", its last pass before landing).
 echo "== 76. wave 3 seo-content: names, published URLs, company pages, data pages, claims =="
 
 REPO_ROOT76="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -299,10 +302,13 @@ const textOf = (h) => h.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<[^>
   const P29 = "(?:\\$\\s?29(?:\\.00)?(?!\\d|[,.]\\d)|\\b29(?:\\.00)?\\s?(?:USD|US dollars|dollars)\\b|\\bUSD\\s?29(?:\\.00)?(?!\\d|[,.]\\d))";
   const P29_RE = new RegExp(P29, "i");
   // Only the clause that names Freelance Boost is skipped, not its sentence:
-  // a sentence prints when a clause of it (split at a comma or semicolon
-  // before a space, or at " and ", " or " or " plus ") prices something at
-  // $29 without the name.
-  const clausesOf = (x) => x.split(/,\s+|;\s*|\s+(?:and|or|plus)\s+/);
+  // a sentence prints when a clause of it prices something at $29 without the
+  // name. Clauses split at a comma or semicolon before a space; at " and ",
+  // " or ", " plus ", " with ", " versus " and " vs "; at a slash; and at an
+  // opening bracket, except a bracket holding only the price, which stays
+  // with the name before it ("Freelance Boost ($29) ...").
+  const CLAUSE_SPLIT = new RegExp(`,\\s+|;\\s*|\\s+(?:and|or|plus|with|versus|vs\\.?)\\s+|/|\\((?!\\s*${P29}\\s*\\))`, "i");
+  const clausesOf = (x) => x.split(CLAUSE_SPLIT);
   const lfPriced = lf.body.split(/(?<=[.!?])\s+|\n+/).map((x) => x.trim()).filter((x) => clausesOf(x).some((c) => P29_RE.test(c) && !/Freelance Boost/i.test(c)));
   const lfWhy = [
     /work\.resumebooster\/jobs/.test(lf.body) ? "" : "no registry name",
