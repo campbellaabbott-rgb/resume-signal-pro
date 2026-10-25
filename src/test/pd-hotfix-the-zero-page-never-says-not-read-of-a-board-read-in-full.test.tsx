@@ -62,11 +62,15 @@
  * THE WATCH PROMISE ("Watch this board and your account will count its new
  * postings when they appear", and the toast's "We'll email you when they post
  * new roles"). A watch is a saved search on this token, so it counts only
- * postings stored under it. On the 326 corpus rows whose in-window roles a
- * sibling Oracle site serves (304 with a stated total, 22 lap-proven with
- * none), it counts nothing, ever. It is made only where the inputs agree with
- * it (lander-model's watchPromiseOf): no stated total, the newest observed day
- * a complete read, and a token the sub-site dedupe cannot empty. 10,200 rows.
+ * postings stored under it. On the 332 corpus rows whose in-window roles a
+ * sibling site serves (326 Oracle, 304 with a stated total and 22 lap-proven
+ * with none; and, matched by base id since round 4, 6 Workday rows listing
+ * copies of a sibling's requisitions, all with a stated total), it counts
+ * nothing, ever. It is made only where the inputs agree with it (lander-model's
+ * watchPromiseOf): no stated total, the newest observed day a complete read,
+ * and a token neither dedupe can empty (an Oracle site, or a Workday site of a
+ * tenant with another catalogued site). 10,178 rows; the round 4 cases are in
+ * pd-hotfix-a-watch-on-a-workday-site-whose-tenant-has-another-promises-nothing.test.tsx.
  *
  * THE HEAD. Every zero page's title and description said the employer had
  * open roles ("{X} jobs: open roles from their own hiring system", "Browse
@@ -89,6 +93,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import i18n from "@/i18n";
 import { COMPANY_SHARD_LOCALES, companyShard, loadCompanyShard } from "./helpers/company-shard";
 import { buildLanderModel, watchPromiseOf, zeroReadingOf, type BoardTotalInput, type LanderInput } from "@/lib/company/lander-model";
+import { WORKDAY_MULTI_SITE_TENANTS } from "@/lib/company/workday-multi-site-tenants";
 import { CompanyHeader, zeroAnswer, zeroPageHead } from "@/components/jobs/company/CompanyHeader";
 import { CompanyEmptyState } from "@/components/jobs/company/CompanyEmptyState";
 
@@ -139,9 +144,9 @@ const REFUTED = /None of the \d|is not dated in the last|As of our latest full r
 const NOT_READ = /not read|have not read/i;
 /** What our own reads say: no observation in seven days on a tracked board, and no stated total. */
 const ourReadsSayUnread = (r: CorpusRow) => r[4] === null && r[2] === null && (r[3] ?? 0) >= 1;
-/** The token is a site the sub-site dedupe can empty (every catalogued token of that hiring system has this shape). */
-const dedupedSite = (r: CorpusRow) => r[1] === "oracle";
-/** The rows whose roles in the window a sibling site serves: a watch on this token counts nothing there. */
+/** The token is a site a dedupe can empty: an Oracle site, or a Workday site of a tenant with another catalogued site (round 4). */
+const dedupedSite = (r: CorpusRow) => r[1] === "oracle" || (r[1] === "workday" && WORKDAY_MULTI_SITE_TENANTS.has(r[0].split("~")[0]));
+/** The rows whose roles in the window a sibling site serves (a Workday copy by its base id, round 4): a watch on this token counts nothing there. */
 const siblingHolds = (r: CorpusRow) => (r[10] ?? 0) > 0;
 const WATCH_BODY = "Watch this board and your account will count its new postings when they appear.";
 
@@ -236,7 +241,7 @@ describe("the named boards", () => {
 });
 
 describe("the watch promise (round 3): made only where a watch on this token can count the board's new postings", () => {
-  it("on no corpus row whose roles a sibling site holds, on no row with a stated total, and on every row the inputs allow: 10,200 of 12,564", () => {
+  it("on no corpus row whose roles a sibling site holds, on no row with a stated total, and on every row the inputs allow: 10,178 of 12,564", () => {
     const tally = { promise: 0, siblingRows: 0, siblingNoTotal: 0 };
     for (const r of CORPUS.rows) {
       const m = zeroPage(curveRow(r), { token: r[0] });
@@ -252,7 +257,7 @@ describe("the watch promise (round 3): made only where a watch on this token can
       }
       expect(m.watchPromise, r[0]).toBe(r[4] === null && r[2] === "full_read" && !dedupedSite(r));
     }
-    expect(tally).toEqual({ promise: 10200, siblingRows: 326, siblingNoTotal: 22 });
+    expect(tally).toEqual({ promise: 10178, siblingRows: 332, siblingNoTotal: 22 });
   });
 
   it("the boards the review checked live, each with the sibling site that holds its roles, promise nothing", () => {

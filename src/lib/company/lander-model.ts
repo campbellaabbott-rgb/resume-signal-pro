@@ -29,6 +29,7 @@
  */
 import type { CollidedBoard } from "@/lib/board-collisions";
 import type { HiringRecordRefusal } from "@/lib/hiring-record-gate";
+import { WORKDAY_MULTI_SITE_TENANTS } from "@/lib/company/workday-multi-site-tenants";
 
 /** The served list counts up to this many rows and then says countCapped (job-board serveList). */
 export const LIST_COUNT_CAP = 10_000;
@@ -337,35 +338,69 @@ const statesTotal = (bt: BoardTotalInput): boolean => bt.total !== null && bt.to
 const FULL_READ_BUCKET = "full_read";
 
 /**
- * A token naming one career site of a tenant whose requisitions job-board
- * stores under ONE site: the sub-site dedupe (job-board's planOracleSubsiteVisit)
- * keeps a requisition two sites of a tenant both list on the better-ranked
- * site and drops it from the other. On 2026-10-25 every catalogued token of
- * that hiring system had this shape and no other token did (1,343 of 44,379).
+ * A token naming one career site of an Oracle tenant whose requisitions
+ * job-board stores under ONE site: the sub-site dedupe (job-board's
+ * planOracleSubsiteVisit) keeps a requisition two sites of a tenant both list
+ * on the better-ranked site and drops it from the other. On 2026-10-25 every
+ * catalogued token of that hiring system had this shape and no other token
+ * did (1,343 of 44,379).
  */
-const SITE_DEDUPED_TOKEN = /^[^~]+~[^~]+~CX(?:_\w+)?$/;
+const ORACLE_SITE_TOKEN = /^[^~]+~[^~]+~CX(?:_\w+)?$/;
+/**
+ * A Workday token, tenant~wdN~site, capturing the tenant. On 2026-10-25 every
+ * catalogued token of that hiring system had this shape and no other token
+ * did (3,698), and every tenant was lower-case letters and digits.
+ */
+const WORKDAY_SITE_TOKEN = /^([^~]+)~wd\d+~[^~]+$/;
+
+/**
+ * A site job-board's dedupes can empty, so a watch on it can count nothing of
+ * what the employer lists there. job-board has two:
+ *   - the Oracle sub-site dedupe, on every Oracle site (above);
+ *   - the Workday cross-site dedupe, which skips a site's new requisition copy
+ *     (an id with a one- or two-digit suffix after three digits, R31339-1)
+ *     whenever a stored row of any site of the same tenant holds the base id
+ *     (R31339). strayer~wd1~CU_Careers listed 9 roles dated this month on
+ *     2026-10-25 and served none; 7 were copies of requisitions
+ *     strayer~wd1~SEI serves (final recheck of round 3).
+ * The Workday arm is the safe default: every site of a tenant with more than
+ * one catalogued site (src/lib/company/workday-multi-site-tenants.ts,
+ * generated from the catalogue, 511 tenants), since this page cannot see which
+ * copies a sibling holds. With one site, the dedupe can only compare a copy
+ * with that same site's own stored rows, and a page that promises stated no
+ * total at its newest complete read (job-board never writes 0).
+ */
+export function siteDedupedToken(token: string | null | undefined): boolean {
+  const t = String(token ?? "");
+  if (ORACLE_SITE_TOKEN.test(t)) return true;
+  const workday = WORKDAY_SITE_TOKEN.exec(t);
+  return !!workday && WORKDAY_MULTI_SITE_TENANTS.has(workday[1]);
+}
 
 /**
  * THE WATCH PROMISE ON A ZERO PAGE. A watch is a saved search scoped to this
  * token, so it counts only postings stored under it. It was promised on every
- * zero page, and was false on the sub-sites whose requisitions a sibling site
- * holds: Delaney at the Green (eexs~us2~CX_19005) states 3 roles on its own
- * feed, all served under CX_3001, so its watch counts nothing, ever (round 3
- * review, 2026-10-25: 326 corpus rows, 304 with a stated total and 22 with
- * none). So the promise is made only where the inputs agree with it: the curve
- * has answered with its columns, the board states no total (a stated total
- * with nothing listed means the board and this page disagree; job-board never
- * writes 0), the newest observed day was a complete read (a board we fail to
- * read in full never lists a new posting), and the token is not a site the
- * sub-site dedupe can empty. Everywhere else the page offers Watch without
- * saying what it will count.
+ * zero page, and was false on the sites whose roles a sibling site holds:
+ * Delaney at the Green (eexs~us2~CX_19005) states 3 roles on its own feed, all
+ * served under CX_3001, so its watch counts nothing, ever (round 3 review,
+ * 2026-10-25: 326 corpus rows, 304 with a stated total and 22 with none), and
+ * strayer~wd1~CU_Careers lists Workday copies of requisitions another strayer
+ * site holds (round 4: 6 more corpus rows, matched by base id, all with a
+ * stated total). So the promise is made only where the inputs agree with it:
+ * the curve has answered with its columns, the board states no total (a
+ * stated total with nothing listed means the board and this page disagree;
+ * job-board never writes 0), the newest observed day was a complete read (a
+ * board we fail to read in full never lists a new posting), and the token is
+ * not a site either dedupe can empty (siteDedupedToken). Everywhere else the
+ * page offers Watch without saying what it will count. On the 12,564-page
+ * corpus it is made on 10,178 pages and on none a sibling site serves.
  */
 export function watchPromiseOf(input: Pick<LanderInput, "boardTotal" | "token">): boolean {
   const bt = input.boardTotal;
   if (bt === undefined || bt === null) return false;
   if (statesTotal(bt)) return false;
   if (bt.bucket !== FULL_READ_BUCKET) return false;
-  return !SITE_DEDUPED_TOKEN.test(String(input.token ?? ""));
+  return !siteDedupedToken(input.token);
 }
 
 const finite = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n);
