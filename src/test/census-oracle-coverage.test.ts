@@ -43,11 +43,18 @@ describe("oracle is discovered and verified", () => {
     expect(CENSUS).toMatch(/vendor: "oracle", kind: "oracle", surt: "com,oraclecloud,"/);
   });
 
-  it("extracts tenant~region~CX_1 — the shape sources.ts stores", () => {
+  it("extracts tenant~region~CX_1 — the shape sources.ts stores — through the one host parser", async () => {
     // A token in any other shape cannot be verified or merged without
     // translation, and translation is where token formats go to rot.
-    expect(CENSUS).toMatch(/\^\(\[a-z0-9-\]\+\)\\\.fa\\\.\(\[a-z0-9-\]\+\)\\\.oraclecloud\\\.com\$/);
-    expect(CENSUS).toMatch(/add\("oracle", `\$\{m\[1\]\}~\$\{m\[2\]\}~CX_1`\)/);
+    expect(CENSUS).toMatch(/import \{[^}]*\boracleTokenOfHost\b[^}]*\} from "\.\/oracle-host\.mjs"/);
+    expect(CENSUS).toMatch(/const token = oracleTokenOfHost\(host\);/);
+    expect(CENSUS).toMatch(/add\("oracle", token\)/);
+    const { oracleTokenOfHost } = await import("../../scripts/oracle-host.mjs");
+    expect(oracleTokenOfHost("edel.fa.us2.oraclecloud.com")).toBe("edel~us2~CX_1");
+    // A host with no region label (JPMorgan Chase's, 2026-10-25) is a careers
+    // host too: its token carries an empty middle field.
+    expect(oracleTokenOfHost("jpmc.fa.oraclecloud.com")).toBe("jpmc~~CX_1");
+    expect(oracleTokenOfHost("login.oraclecloud.com")).toBeNull();
   });
 
   it("verify-all can probe it, or discovery is pointless", () => {

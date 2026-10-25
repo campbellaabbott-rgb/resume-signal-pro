@@ -61,7 +61,8 @@ import {
 // wave 3 adds the Oregon/Illinois/Massachusetts map fixes, S8-026/S8-108 and edgar_reread.
 // .3 (wave 3 integration): board-data-ingest stamped .1 and tests-ci .2 (the x-fn-build header via
 // _shared/fn-build.ts stamped()); the merged function carries both, so a build neither shipped alone.
-export const BUILD_VERSION = "2026-10-09.3";
+// 2026-10-15.1: the catalogue copy carries JPMorgan Chase (oracle jpmc~~CX_1001) and its search key.
+export const BUILD_VERSION = "2026-10-15.1";
 
 // ── mirror constants (src/config/layoffs.ts names this file) ──────────────
 export const LAYOFF_LOOKBACK_DAYS = 90;

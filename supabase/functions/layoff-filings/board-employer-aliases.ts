@@ -527,4 +527,5 @@ export const EMPLOYER_ALIASES: Readonly<Record<string, { name: string; tokens: s
   prysmiangroup: { name: "Prysmiangroup", tokens: ["prysmiangroup~wd3~Careers"] },
   tuftsmedicine: { name: "Tuftsmedicine", tokens: ["tuftsmedicine~wd1~Jobs"] },
   lbg: { name: "Lbg", tokens: ["lbg~wd3~broadbean_external", "lbg~wd3~lbg_Careers"] },
-  cornell: { name: "Cornell", tokens: ["cornell~wd1~CornellCareerPage", "cornell~wd1~cornellpositions"] },};
+  cornell: { name: "Cornell", tokens: ["cornell~wd1~CornellCareerPage", "cornell~wd1~cornellpositions"] },
+  jpmorgan: { name: "JPMorgan Chase", tokens: ["jpmc~~CX_1001"] },};

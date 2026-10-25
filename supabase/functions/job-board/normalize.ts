@@ -2234,10 +2234,16 @@ export interface OracleReq {
   ShortDescriptionStr?: string;
 }
 
+/** The CE host of a `tenant~region~site` token; an empty region means a host without one. "" for any other shape. */
+export function oracleHost(token: string): string {
+  const [t, r, s] = token.split("~");
+  return t && s ? `${t}.fa.${r ? r + "." : ""}oraclecloud.com` : "";
+}
+
 export function normalizeOracle(items: OracleReq[], company: string, token: string): JobPosting[] {
-  const [tenant, region, site] = token.split("~");
-  if (!tenant || !region || !site) return [];
-  const base = `https://${tenant}.fa.${region}.oraclecloud.com/hcmUI/CandidateExperience/en/sites/${site}`;
+  const site = token.split("~")[2], host = oracleHost(token);
+  if (!host) return [];
+  const base = `https://${host}/hcmUI/CandidateExperience/en/sites/${site}`;
   return (Array.isArray(items) ? items : [])
     .map((j) => {
       const title = String(j.Title ?? "").trim();
@@ -2451,10 +2457,10 @@ export function normalizeUsajobs(items: UsajobsItem[], _company: string, token: 
 // Rationale: docs/job-board-index-notes.md#n1252-export-const-oracle_dev_tenant_re-dev-te
 export const ORACLE_DEV_TENANT_RE = /^[^~]*-(dev|test|stage|uat)\d*(?:-|$)/i;
 
-/** `tenant` of an Oracle `tenant~region~site` token; null for any other shape. */
+/** `tenant` of an Oracle `tenant~region~site` token (region may be empty); null for any other shape. */
 export function oracleTenantOf(token: string): string | null {
   const parts = String(token ?? "").split("~");
-  if (parts.length !== 3 || !parts[0] || !parts[1] || !parts[2]) return null;
+  if (parts.length !== 3 || !parts[0] || !parts[2]) return null;
   return parts[0];
 }
 

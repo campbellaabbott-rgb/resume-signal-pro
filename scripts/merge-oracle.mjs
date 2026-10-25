@@ -23,6 +23,7 @@
 //
 // Usage: node scripts/merge-oracle.mjs <oracle-names.json> [--cap 85000] [--apply]
 import { readFileSync, writeFileSync } from "node:fs";
+import { oracleHost as hostOf } from "./oracle-host.mjs";
 
 const args = process.argv.slice(2);
 const APPLY = args.includes("--apply");
@@ -68,7 +69,6 @@ const existingNames = new Set(
     .concat([...catalog.matchAll(/s\("([^"]+)"/g)].map((m) => m[1].toLowerCase())),
 );
 
-const hostOf = (token) => { const [t, dc] = token.split("~"); return `${t}.fa.${dc}.oraclecloud.com`; };
 const jget = async (url) => {
   const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0", Accept: "application/json" }, signal: AbortSignal.timeout(20_000) });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);

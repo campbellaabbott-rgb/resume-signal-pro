@@ -12,6 +12,7 @@
 import fs from "node:fs";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { oracleHost } from "./oracle-host.mjs";
 const execFileP = promisify(execFile);
 
 const [, , CENSUS_PATH, OUT] = process.argv;
@@ -203,11 +204,12 @@ const verifiers = {
   // be the only other check. Verified live 2026-08-10: an existing tenant
   // returned TotalJobsCount 906.
   oracle: async (t) => {
-    const [tenant, region, site] = String(t).split("~");
-    if (!tenant || !region || !site) return null;
+    const [tenant, , site] = String(t).split("~");
+    const host = oracleHost(t);
+    if (!host) return null;
     const finder = `findReqs;siteNumber=${site},limit=1`;
     const d = await probe(
-      `https://${tenant}.fa.${region}.oraclecloud.com/hcmRestApi/resources/latest/` +
+      `https://${host}/hcmRestApi/resources/latest/` +
       `recruitingCEJobRequisitions?onlyData=true&expand=requisitionList&finder=${encodeURIComponent(finder)}`,
     );
     const item = Array.isArray(d?.items) ? d.items[0] : null;

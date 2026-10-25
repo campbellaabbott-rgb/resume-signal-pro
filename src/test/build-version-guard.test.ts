@@ -285,7 +285,10 @@ const PINNED = {
   // the two-character `\v` (same code point, 352KB less deploy source —
   // the .79 redeploy was refused at 4.6MB against the 4.5MB cap). The
   // catalog pins below are UNCHANGED, which is the proof no entry moved.
-  sourcesHash: "4af7837d33843c1c",
+  // 2026-09-09.95: +JPMorgan Chase (oracle jpmc~~CX_1001, the region-less
+  // host jpmc.fa.oraclecloud.com), appended as the last entry so no carried
+  // board's cursor position moves. The pin moved with the catalogue.
+  sourcesHash: "f115f86fec5d1de3",
   // The PARSED catalog behind that hash — 44,081 packed + 463 object-literal
   // entries — pinned separately so a re-format is distinguishable from a real
   // catalog change (see the two-pins note at the top of this file). Read
@@ -305,8 +308,9 @@ const PINNED = {
   // catalog until it learned the packed form. Removing them shifts every
   // later index by two and the refresh cursor is positional, so this costs
   // one transient partial rotation, the same as a census merge.
-  catalogSize: 44_519,
-  catalogHash: "0eca2d501140ab79",
+  // 44,520 since 2026-09-09.95: +1, JPMorgan Chase.
+  catalogSize: 44_520,
+  catalogHash: "e8e8c870cef6aa49",
   // 2026-08-21.4: disables the exact-word tier's company matcher, whose index
   // never built. Bumped so the mitigation is externally identifiable.
   // 2026-08-21.5: routed retrieval. index.ts + two new modules; sources.ts
@@ -1443,7 +1447,14 @@ const PINNED = {
   // calls its own handler in-process; the pass-end tail runs as its own hops
   // with a receipt per step (pass-end.ts, S11-001).
   // sources.ts UNCHANGED.
-  buildVersion: "2026-09-09.93",
+  // 2026-09-09.95: an Oracle host with no region label. oracleHost(token) in
+  // normalize.ts is the one builder the list read, checkLive, the description
+  // read and the apply links share; an empty region drops the label
+  // (jpmc.fa.oraclecloud.com), any other token builds the byte-identical URL
+  // it built before. oracleTenantOf accepts the empty region so the rows are
+  // keyed by requisition. sources.ts CHANGED: +JPMorgan Chase, jpmc~~CX_1001
+  // (catalogSize 44,520). .94 stays company-profiles-phase3's reservation.
+  buildVersion: "2026-09-09.95",
 };
 
 /**
