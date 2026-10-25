@@ -10,12 +10,7 @@
     "20261014100000"
   ],
   "_appliedOutsideDrizzleNote": "Applied, but no staged-runner stub names them. 20261008125000 and 20261008128000 were released 2026-10-11 after wave 2 step 1 verified, and Lovable applied them without writing a stub, so every later message re-listed them. They are live by behaviour (checked 2026-10-11): get_cron_health lists send-search-digest, industry-corrections-digest and check-error-spikes, and check-error-spikes has run 35+ times.",
-  "holdUntilVerified": [
-    {
-      "stamp": "20261012111000",
-      "until": "company profiles phase 1 step 1 verified: employer-profiles' OPTIONS answers x-fn-build employer-profiles.2026-10-12.2 and verify section 80 passes (get_employer_perks answers anon, the perk tables refuse it). Applied earlier, the every-minute sweep cron kicks a function that is not deployed yet and every kick is a refusal cron_http_refusals counts"
-    }
-  ],
+  "holdUntilVerified": [],
   "migrationOrder": {
     "_note": "Per migration stamp: `after` is \"fn:<name>@<YYYY-MM-DD.N>\" (apply once that function answers that build or later) or \"frontend\" (apply once the frontend is published); `before` lists \"fn:<name>\" a migration must precede. No entry: before the functions. The ledger prints five steps: migrations before the functions, the functions, migrations after the functions they wait for, the frontend, migrations after the frontend (docs/DEPLOY-LEDGER.md §1).",
     "20261009101000": {
@@ -88,6 +83,10 @@
     },
     "20261012137000": {
       "why": "profiles+design hotfix (pd/hotfix, 2026-10-24), a fix to the deploy being verified (main 57815de9, published 2026-10-18). It rewrites get_company_intel and get_similar_companies from the catalogue so each asks workday_site_is_own_employer once per call (a one-row MATERIALIZED CTE read through an InitPlan) instead of once per snapshot row, the shape 20261012135000 left, under which every Workday token answered 500 57014 after about 15 s. No function changes, so it is step 1, and it must apply BEFORE the frontend publish: the publish re-runs the bake, which reads get_company_intel for each of the 283 Workday company pages and prints no Workday fact (and spends the bake's 90-second deadline) while the old body is live. It refuses any live body other than the one 20261012135000 and 20261012136000 left. 20261012135000 must never be re-run after 20261012137000: its self-check looks for the per-row text 20261012137000 removes and RAISEs, which means it is superseded, not that it needs editing (the staged runner has edited failing migrations before). Applied is judged by verify 81i (three Workday tokens the sitemap lists, each a 200 within 3 s that reads a Workday source with open roles and places or fields, and a made-up one with the reader object), not by the runner; the re-bake by 81j (at least 90% of 24 Workday company pages sampled from the live sitemap, its first 4 included, each of which must state them, and its last 8, where the bake's 90-second intel deadline cuts first, state their places or fields; 81i's 3-second bound alone does not prove the bake fitted that deadline). The employer-profiles MUST BUMP in this report and section 49 clears only with the verifiedDeploys entry for 57815de9, which is appended after sections 80, 81 and 83 pass"
+    },
+    "20261012111000": {
+      "after": "fn:employer-profiles@2026-10-12.2",
+      "why": "held until company profiles phase 1 step 1 verified, released 2026-10-25. Applied before employer-profiles 2026-10-12.2 serves, the every-minute sweep cron kicks a function that is not deployed and every kick is a refusal cron_http_refusals counts"
     }
   },
   "_reservationsNote": "Listed in deploy order from 2026-10-11 (deployOrder; docs/DEPLOY-LEDGER.md §3): the wave 3 closeout, R1 (critical-path), company profiles phases 0-2, wave 4, company profiles phase 3. A migration stamp need not sort in deploy order (wave 4's 20261011* deploys after profiles' 20261012*, and R1's 20261014* deploys before both): the ledger lists what the staged runner has not recorded, whatever sorts first. A function stamped on a later day by an earlier deploy takes that day with a higher sequence (§3). 2026-10-12: the owner moved R1 (sign-in, password recovery, auth mail and the masked purchase address) out of wave 4 into its own reservation, critical-path, deploying after the wave 3 closeout and before company profiles (deployOrder 1.5; decision D13 of the critical-path plan). Its functions are stamped 2026-10-14.1: auth-email-hook, process-email-queue, resend-webhook, auth-signed-in and verify-product-purchase, plus create-portal-session, delete-account, free-keyword-scan, get-account-data and scan-credits, whose code is unchanged but whose _shared/mailbox-proof.ts gained exports. A later deploy that changes any of the ten stamps 2026-10-14 with a higher sequence or a later day. Verify-deploy sections 94, 95 and 96 are R1's (94-r1-mail.sh, 95-r1-signin.sh, 96-r1-signin-server.sh); wave 4's critical-path plan had planned 94-96 for CP-A, CP-B and CP-C, and those groups now pick other numbers.",
@@ -346,7 +345,15 @@
         "scan-credits": "scan-credits.2026-10-14.1",
         "verify-product-purchase": "verify-product-purchase.2026-10-14.1"
       }
+    },
+    {
+      "commit": "57815de9",
+      "date": "2026-10-25",
+      "note": "company profiles phases 0-2 + design (PR #36, merge 57815de9) and the PD hotfix (PR #41, merge 5a90daa4), deployed from main: Lovable applied 20261012137000 byte-identical as drizzle 0176 (349e1992/bcb0ae47, 2026-10-25 14:17Z) and skipped 20261012111000 (held) and 20260928003117 (never). verify-deploy 2026-10-25 ~15:20Z on bcb0ae47: 1039 PASS, 8 FAIL, each explained. 81i x3: the verifier kept 400 characters of a several-thousand-character reply and could not parse it; fixed with this entry and re-run live, 4 of 4 PASS (Caterpillar, NVIDIA, Dollar Tree with facts in 0.56-0.79 s, the made-up token in 0.55 s); 81j 24 of 24 Workday pages state a fact line. 49 employer-profiles: its .2 stamp was written at 345802a3 and 8422645e changed sweep.ts and _shared/perks-extract.ts before 57815de9 merged; Lovable deploys the function as main holds it, and this entry records that .2 serves 57815de9's code. 81c Stripe: get_company_fill_curve has no feed-total row for stripe (feed_read_at null); 137000 touches only get_company_intel, so it is open, not this deploy's. 5i: the hourly leaderboard holds 19 qualifying rows where the check wants exactly 20; nothing in this deploy touches it. CI on main: the GitHub runner's 5 s test timeouts (the local pre-push suite is the gate). SPF on send: the owner's DNS step.",
+      "functions": {
+        "employer-profiles": "employer-profiles.2026-10-12.2"
+      }
     }
   ],
-  "_holdNote": "20261008125000 and 20261008128000 were released 2026-10-11 after wave 2 step 1 verified (their conditions: job-board .91, send-search-digest, industry-corrections-digest and check-error-spikes serving; /email/unsubscribe live). 20261009100300, 20261009112000 and 20261009160100 were released 2026-10-11 after wave 3 verified (job-board .92 with sliceStats.buildSince 2026-10-11T20:48:26Z; shortlist-evaluate 2026-10-10.62 with the Shortlist page deciding through shortlist_decide; layoff-filings 2026-10-09.3 serving and the old build no longer running). Their conditions stay in migrationOrder as after-rules."
+  "_holdNote": "20261008125000 and 20261008128000 were released 2026-10-11 after wave 2 step 1 verified (their conditions: job-board .91, send-search-digest, industry-corrections-digest and check-error-spikes serving; /email/unsubscribe live). 20261009100300, 20261009112000 and 20261009160100 were released 2026-10-11 after wave 3 verified (job-board .92 with sliceStats.buildSince 2026-10-11T20:48:26Z; shortlist-evaluate 2026-10-10.62 with the Shortlist page deciding through shortlist_decide; layoff-filings 2026-10-09.3 serving and the old build no longer running). Their conditions stay in migrationOrder as after-rules. 20261012111000 was released 2026-10-25 after company profiles phase 1 step 1 verified (employer-profiles answering employer-profiles.2026-10-12.2 and section 80 passing: get_employer_perks answers anon in shape, the perk tables and the audit status refuse it); its condition stays in migrationOrder as an after-rule."
 }
