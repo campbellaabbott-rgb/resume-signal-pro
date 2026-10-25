@@ -5028,7 +5028,9 @@ function JobsBoard({ boardId }: { boardId: string }) {
   // `promise` is the lander model's watchPromise: on a zero page whose board
   // states roles this token never lists (a sub-site whose requisitions a
   // sibling site holds), the watch can count nothing, so the toast says only
-  // that it is watching (round 3 review, 2026-10-25).
+  // that it is watching (round 3 review, 2026-10-25); on any page of a site
+  // a dedupe can empty it would miss what a sibling holds, so it says the
+  // same there (the SEO round's merge review).
   const watchCompany = async (promise = true) => {
     if (!landerCompany) return;
     if (!session) return requireAuth();
@@ -6490,9 +6492,13 @@ function JobsBoard({ boardId }: { boardId: string }) {
     landerReplyCurrent, landerUncarried]);
   const onCompanyPage = !!landerCompany && !!landerModel;
   // The polite region's empty line (below): a zero company page has no filter
-  // to blame, so it says the page's own line (round 3 review, 2026-10-25).
+  // to blame, so it says the page's own line (round 3 review, 2026-10-25),
+  // and so does a page for a board we do not read: its heading (the SEO
+  // round's merge review).
   const a11yEmpty = landerModel?.variant === "zero"
     ? t("companyProfile.zero.answer", "No roles are listed on this page right now.")
+    : landerModel?.variant === "uncarried"
+    ? t("companyProfile.uncarried.title", "We don't read a board called “{{token}}” yet", { token: landerCompany })
     : t("jobsPage.a11yNoResults", "No openings match these filters.");
   // A PAGE THAT IS ONE EMPLOYER'S. A board name two hiring systems share and
   // the USAJOBS hub are not: their rows belong to different employers (or

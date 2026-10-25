@@ -188,6 +188,12 @@ describe("the watch promise on every corpus row (round 4)", () => {
     }
     expect(watchPromiseOf({ token: "eexs~us2~CX_19005", boardTotal: OPEN })).toBe(false);
     expect(watchPromiseOf({ token: "bassabatherapy", boardTotal: OPEN })).toBe(true);
+    // Off the zero page too, a site whose copies a sibling can hold is
+    // promised nothing; a single-site tenant keeps the promise (the SEO
+    // round's merge review, 2026-10-25).
+    const standard = (tok: string) => buildLanderModel(input({ token: tok, listTotal: 40, boardTotal: OPEN })).watchPromise;
+    for (const tok of ["boeing~wd1~PRIDE", "akumincorp~wd5~adgcareers", "strayer~wd1~CU_Careers"]) expect(standard(tok), tok).toBe(false);
+    for (const tok of ["exactsciences~wd1~Exact_Sciences", "ibotta~wd1~Ibotta", "bassabatherapy"]) expect(standard(tok), tok).toBe(true);
     // A tenant's name that only looks like a multi-site one is its own tenant.
     expect(siteDedupedToken("boeingx~wd1~PRIDE")).toBe(false);
     expect(siteDedupedToken("boeing")).toBe(false);

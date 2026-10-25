@@ -92,4 +92,21 @@ describe("the uncarried company page", () => {
     const asked = invoke.mock.calls.find(([, o]) => (o as { body?: { action?: string } })?.body?.action === "company-suggest");
     expect((asked?.[1] as { body: { q: string } }).body.q).toBe("intel");
   });
+
+  it("tells a screen reader what the page says, never that filters the visitor never set match nothing", async () => {
+    // The polite region said "No openings match these filters." on an address
+    // we do not read, with no filter set (the SEO round's merge review,
+    // 2026-10-25); a11yEmpty knew only the zero page.
+    window.history.replaceState({}, "", "/jobs/company/anduril");
+    render(
+      <HelmetProvider>
+        <MemoryRouter initialEntries={["/jobs/company/anduril"]}>
+          <Routes><Route path="/jobs/company/:companyToken" element={<Jobs />} /></Routes>
+        </MemoryRouter>
+      </HelmetProvider>,
+    );
+    const status = await screen.findByText("We don't read a board called “anduril” yet", { selector: '[role="status"]' }, SLOW);
+    expect(status.getAttribute("aria-live")).toBe("polite");
+    expect(screen.queryByText("No openings match these filters.")).toBeNull();
+  });
 });
