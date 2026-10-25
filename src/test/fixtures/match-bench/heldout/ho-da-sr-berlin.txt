@@ -1,0 +1,25 @@
+Javier Moreno Ruiz
+Analytics Lead | Senior Data Analyst
+Berlin | javier.moreno@example.com | +49 30 000000 95
+Spanish citizen (EU). Languages: Spanish (native), English (C2), German (B1).
+
+PROFILE
+Twelve years in analytics, the last five leading teams. I build analytics functions that people trust: clean metrics, a semantic layer, and analysts who sit with the product teams they serve. Looking for Analytics Lead, Head of Analytics or Senior Data Analyst roles in Berlin or remote within Germany.
+
+EXPERIENCE
+Analytics Lead - Spree Mobility GmbH, Berlin | ene. 2021 – actualidad
+- Lead 6 analysts and 2 analytics engineers; built the dbt + Looker semantic layer used by 300 people.
+- Pricing experiments that added EUR 6M annual revenue; owner of the company KPI tree.
+
+Senior Data Analyst - Mercado Digital S.L., Madrid, España | mar. 2016 – dic. 2020
+- Marketplace analytics, seller retention models, experimentation platform rollout.
+
+Data Analyst - Banco Atlántico, Madrid, España | sept. 2013 – feb. 2016
+- Credit risk reporting and SAS to Python migration.
+
+EDUCATION
+Máster en Big Data y Analytics - Universidad Carlos III de Madrid | 2013
+Grado en Estadística - Universidad Complutense de Madrid | 2012
+
+SKILLS
+SQL, Python, dbt, Looker, BigQuery, experimentation and causal inference, stakeholder management, team leadership, hiring

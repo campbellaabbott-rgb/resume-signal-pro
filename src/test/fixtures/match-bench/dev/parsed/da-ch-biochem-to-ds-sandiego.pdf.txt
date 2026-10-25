@@ -1,0 +1,23 @@
+Yusuf Okafor, PhD
+Data Scientist | Computational Biology
+San Diego, CA | yusuf.okafor@example.com | 858-555-0102 | github.com/yokafor
+U.S. citizen. San Diego onsite/hybrid or U.S. remote.
+SUMMARY
+Biochemist turned data scientist. A PhD and five years of postdoctoral and industry lab research, where I
+increasingly did the analysis myself: Python and R pipelines for high-throughput screening and RNA-seq data.
+Completed an applied machine learning program in 2025; now seeking data scientist roles, ideally in biotech or
+healthcare.
+EXPERIENCE
+Scientist I, Assay Development - Torrey Pines Therapeutics, San Diego, CA | 2022 - 2025
+- Designed and ran cell-based assays; built Python pipelines to QC and analyze 1.2M-well high-throughput
+screens, replacing manual Excel workflows.
+- Trained a gradient-boosted model to flag assay artifacts (AUC 0.91) and presented it to platform leadership.
+Postdoctoral Fellow - La Jolla Institute for Molecular Research, La Jolla, CA | 2020 - 2022
+- RNA-seq differential expression analysis in R (DESeq2); co-authored 4 peer-reviewed papers.
+EDUCATION
+Applied Machine Learning Certificate - UC San Diego Extension, 2025
+Ph.D. Biochemistry - University of California, Davis, 2020
+B.S. Chemistry - University of Lagos, 2014
+SKILLS
+Python (pandas, NumPy, scikit-learn, PyTorch), R (tidyverse, DESeq2), SQL, statistics, machine learning,
+experimental design, data visualization, Git, AWS (S3, SageMaker basics)

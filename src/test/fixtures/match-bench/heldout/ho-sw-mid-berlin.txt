@@ -1,0 +1,27 @@
+Katarzyna Wójcik
+Backend Engineer (Java / Kotlin)
+Berlin, Deutschland | katarzyna.wojcik@example.com | +49 30 000000 41
+EU citizen (Polish passport), no work permit needed in Germany. Languages: Polish (native), English (C1), German (B2).
+
+SUMMARY
+Backend engineer with seven years building payment and logistics services on the JVM. I care about clear service boundaries, observability and on-call that does not burn people out.
+
+BERUFSERFAHRUNG / EXPERIENCE
+Backend Engineer - Spreewald Logistik GmbH, Berlin | 03/2023 – heute
+- Own the shipment-tracking services (Kotlin, Spring Boot, Kafka, PostgreSQL): 40 million events a day.
+- Moved four endpoints out of the monolith into two services; p95 latency down from 900 ms to 180 ms.
+- Onboarding buddy for two junior engineers; run the backend guild's design reviews.
+
+Backend Engineer - Kreuzberg Pay GmbH, Berlin | 03/2021 – 02/2023
+- Built SEPA direct-debit and refund services in Java 17 and Spring; PCI-DSS scope reduction.
+- Introduced contract testing (Pact) across 12 services.
+
+Software Developer - Wrocław Systems Sp. z o.o., Wrocław, Polen | 09/2019 – 02/2021
+- Java EE maintenance for an insurance client; first Docker and Jenkins pipelines in the team.
+
+AUSBILDUNG / EDUCATION
+M.Sc. Informatik (Computer Science) - Politechnika Wrocławska | 10/2017 – 07/2019
+B.Sc. Informatik - Politechnika Wrocławska | 10/2014 – 07/2017
+
+KENNTNISSE / SKILLS
+Kotlin, Java, Spring Boot, Kafka, PostgreSQL, Redis, Kubernetes, Terraform, AWS, Grafana, Prometheus, event-driven architecture, domain-driven design

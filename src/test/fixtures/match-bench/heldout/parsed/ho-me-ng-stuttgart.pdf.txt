@@ -1,0 +1,20 @@
+Aditya Verma
+Graduate Mechanical Engineer | Design and Simulation
+Stuttgart, Germany | aditya.verma@example.com | +49 711 000000 28
+Indian citizen. Residence permit for job seeking after graduation (Section 20 AufenthG); an employment offer will
+require an EU Blue Card / work permit application. Languages: English (C2), German (B2), Hindi (native).
+Looking for junior mechanical engineer, design engineer (Konstrukteur) or CAE engineer roles in the Stuttgart
+region (Böblingen, Sindelfingen, Esslingen, Ludwigsburg).
+EDUCATION
+M.Sc. Mechanical Engineering (Maschinenbau) - Universität Stuttgart | 10/2024 – 09/2026 | Grade 1.7
+Thesis: Topology optimisation of a cast aluminium e-axle bracket (Abaqus, Tosca)
+B.Tech. Mechanical Engineering - Vellore Institute of Technology, India | 07/2019 – 06/2023
+EXPERIENCE
+Working Student (Werkstudent), CAE - Neckar Automotive Systems GmbH, Esslingen | 04/2025 – 09/2026 (20
+h/week)
+- FE durability simulations of chassis brackets in Abaqus; automated meshing scripts in Python.
+Graduate Engineer Trainee - Deccan Pumps Ltd, Pune, India | 07/2023 – 08/2024
+- 3D modelling and drawings of centrifugal pump casings in SolidWorks; GD&T and tolerance stack-ups.
+SKILLS
+CATIA V5, SolidWorks, Abaqus, ANSYS Mechanical, Python, MATLAB, GD&T, DFMEA, design for manufacturing,
+technical drawings (ISO)

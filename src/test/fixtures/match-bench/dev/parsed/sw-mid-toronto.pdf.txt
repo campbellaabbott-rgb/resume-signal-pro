@@ -1,0 +1,25 @@
+Oluwaseun Adeyemi
+Backend Software Engineer
+Toronto, Ontario, Canada | seun.adeyemi@example.com | +1 (416) 555-0198 | linkedin.com/in/seun-adeyemi
+Canadian permanent resident: eligible to work in Canada; would require visa sponsorship for U.S.-based roles.
+Seeking Toronto (hybrid) or remote-in-Canada positions.
+SUMMARY
+Backend engineer with 6 years of experience designing and operating high-throughput Java and Kotlin services on
+AWS. Comfortable owning services end to end, from API design to on-call.
+EXPERIENCE
+Software Engineer II - Maple Ledger Inc., Toronto, ON | 2022 - Present
+- Own the payments ledger service (Kotlin, Spring Boot, PostgreSQL) processing 3M transactions per day.
+- Migrated synchronous order events to Apache Kafka, reducing p99 latency from 900 ms to 180 ms.
+- Led the move from EC2 to Kubernetes (EKS) with Terraform; mentored two junior engineers.
+- Weekly on-call rotation; wrote runbooks and SLO dashboards in Grafana.
+Software Developer - Northbridge Insurance Systems, Mississauga, ON | 2020 - 2022
+- Built Java microservices for policy quoting and introduced contract testing with Pact.
+- Moved CI from Jenkins to GitHub Actions, cutting build time by 40%.
+Junior Developer - Lagos Digital Works, Lagos, Nigeria | 2018 - 2020
+- Developed REST APIs in Java and Node.js for mobile banking clients; maintained MySQL databases.
+EDUCATION
+B.Sc. Computer Science, University of Lagos, 2018
+AWS Certified Developer - Associate (2023)
+SKILLS
+Java, Kotlin, Spring Boot, Node.js, SQL, PostgreSQL, MySQL, Apache Kafka, Redis, AWS (EKS, Lambda, SQS,
+RDS), Kubernetes, Docker, Terraform, gRPC, REST, microservices, Grafana, Prometheus
