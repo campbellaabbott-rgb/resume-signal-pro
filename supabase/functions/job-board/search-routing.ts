@@ -687,51 +687,66 @@ const EXCLUSION_STOPWORDS: ReadonlySet<string> = new Set([
  * or a "not". "not requiring night shifts" drops the verb. A stopword after
  * "not" still vetoes the operator ("director not for profit").
  *
- * HOW MANY WORDS "not" TAKES (wave 4 fix 3, measured on a 591-query corpus in
- * src/test/fixtures/w4b-fix3-search). ONE word, as main always did, unless:
- *   - the two words are a pinned compound in NOT_COMPOUNDS ("night shift",
- *     "box truck", "call center"); both words are fixed, so no place and no
- *     wanted word can ride in as the second one, in any case; or
- *   - the words are a place of two or three words the board knows ("not new
- *     york"): the place is what was negated. Comma-free only, so "night shift,
- *     TX" is never read as a "City, ST".
- * Two earlier rules took a second word unless it looked like a place, and
- * each recheck found a place the gazetteer did not know ("forklift san jose")
- * or a wanted word ("travel er", the ER nurse main pins). One word is the
- * safe default: it costs a compound outside the list exactly what main costs.
+ * HOW MANY WORDS "not" TAKES (wave 4 fix 4, measured on the 1,169-query corpus
+ * in src/test/fixtures/w4b-fix3-search). ONE word, as main always did, unless
+ * the words are a pinned compound (NOT_COMPOUNDS: "night shift", "home health
+ * care"), a place the board knows ("not new york") or a pinned region or city
+ * the gazetteer lacks (NEGATED_PLACES: "south florida", "san jose"). Every
+ * word of those is fixed, so no wanted word rides in. "not A or B" negates
+ * both; a capital OR stays the searcher's operator. One word is the safe
+ * default: it costs a phrase outside the lists exactly what main costs.
  */
 const NOT_VERBS = /^(?:requiring|requires|require|involving|involves|including|includes|with|doing)$/i;
 const SHIFT_KINDS = ["night", "overnight", "graveyard", "weekend", "evening", "swing", "rotating", "split", "double",
-  "day", "late", "early", "morning", "first", "second", "third", "1st", "2nd", "3rd"];
+  "day", "late", "early", "morning", "first", "second", "third", "1st", "2nd", "3rd", "noc", "nite", "pm", "am", "afternoon",
+  "mid", "midnight"];
 export const NOT_COMPOUNDS: ReadonlySet<string> = new Set([
   ...SHIFT_KINDS.map((k) => `${k} shift`),
   "box truck", "dump truck", "tow truck", "call center", "call centre", "contact center", "contact centre",
   "home health", "home care", "customer service", "field service", "help desk", "tech support", "technical support",
   "data entry", "fast food", "general labor", "general labour", "team lead", "team leader", "part time", "full time",
   "entry level", "per diem", "new grad", "commission only", "cold calling", "cold call", "door knocking",
-  "heavy lifting", "long haul",
+  "heavy lifting", "long haul", "cold storage", "line cook", "tech lead", "assisted living", "skilled nursing",
+  "light industrial", "fine dining", "heavy equipment", "reach truck", "day care", "overnight travel", "on call",
+  "home health care", "home health aide", "long term care", "door to door", "12 hour shift", "10 hour shift", "8 hour shift",
 ]);
+export const NEGATED_PLACES: ReadonlySet<string> = new Set(("san jose|new orleans|long beach|baton rouge|little rock|sioux falls|" +
+  "fort lauderdale|st louis|grand rapids|corpus christi|fort myers|fort wayne|fort collins|colorado springs|palo alto|" +
+  "santa rosa|santa ana|santa clara|santa barbara|santa monica|santa cruz|san mateo|san bernardino|ann arbor|" +
+  "virginia beach|boca raton|winston salem|new haven|thousand oaks|round rock|sugar land|college station|cedar park|" +
+  "cedar rapids|st petersburg|st paul|saint paul|palm beach|west palm beach|palm springs|overland park|chapel hill|" +
+  "south bend|green bay|mountain view|redwood city|menlo park|newport news|cape coral|myrtle beach|iowa city|" +
+  "atlantic city|staten island|new england|west coast|east coast|gulf coast|long island|inland empire|silicon valley|" +
+  "twin cities|east bay|pacific northwest|upstate new york|central valley|south florida|north florida|central florida|" +
+  "north texas|south texas|central texas|east texas|west texas|southern california|northern california").split("|"));
 const bareWord = (w: string) => w.toLowerCase().replace(/^[^a-z0-9]+|[^a-z0-9]+$/g, "");
-/** Is "a b" a pinned compound (its second word singular or plural)? A break after the first word ends the negation. */
-const isNotCompound = (a: string, b: string): boolean => {
-  if (/[,;:.!?]$/.test(a)) return false;
-  const x = bareWord(a), y = bareWord(b);
-  return NOT_COMPOUNDS.has(`${x} ${y}`) || (/[^s]s$/.test(y) && NOT_COMPOUNDS.has(`${x} ${y.slice(0, -1)}`));
+/** The length (3 or 2) of a pinned compound at word j (its last word singular or plural), else 0. A break inside ends it. */
+const compoundAt = (ws: string[], j: number): number => {
+  for (const n of [3, 2]) {
+    const part = ws.slice(j, j + n);
+    if (part.length < n || part.slice(0, -1).some((w) => /[,;:.!?]$/.test(w)) || part.slice(1).some((w) => /^[-"]/.test(w))) continue;
+    const key = part.map(bareWord), last = key[n - 1];
+    if (NOT_COMPOUNDS.has(key.join(" ")) || (/[^s]s$/.test(last) && NOT_COMPOUNDS.has(`${key.slice(0, -1).join(" ")} ${last.slice(0, -1)}`))) return n;
+  }
+  return 0;
 };
 const PLACE_WORD = /^\p{L}[\p{L}.'-]*$/u;
-/** The length (2 or 3) of a comma-free place the board knows starting at word j, else 0. */
+/** The length (3 or 2) of a comma-free place at word j that the board knows or NEGATED_PLACES pins, else 0. */
 const placeAfterNot = (ws: string[], j: number): number => {
   for (const n of [3, 2]) {
     const part = ws.slice(j, j + n);
     if (part.length < n) continue;
     part[n - 1] = part[n - 1].replace(/[,;:!?]+$/, "");
-    if (part.every((w) => PLACE_WORD.test(w)) && knownPlace(part.join(" ")) !== null) return n;
+    if (part.every((w) => PLACE_WORD.test(w)) && (NEGATED_PLACES.has(part.map(bareWord).join(" ")) || knownPlace(part.join(" ")) !== null)) return n;
   }
   return 0;
 };
-/** A word's trailing full stop is the sentence's, not the word's: "night shift." strikes "Night Shift RN"; ".net" keeps its dot. */
-const cleanTerm = (e: string): string =>
-  e.split(/\s+/).map((w) => w.replace(/[^a-z0-9+#.]/gi, "").replace(/\.+$/, "").toLowerCase()).filter(Boolean).join(" ");
+/** The excluded words: a sentence's full stop is dropped ("night shift." strikes "Night Shift RN"; ".net" keeps its dot),
+ *  a hyphen inside a word is kept, and a slash between words lists alternatives ("travel/agency"). */
+const cleanTerms = (e: string): string[] => {
+  const t = e.split(/\s+/).map((w) => w.replace(/[^a-z0-9+#./-]/gi, "").replace(/\.+$/, "").replace(/^-+|-+$/g, "").toLowerCase()).filter(Boolean).join(" ");
+  return /^[a-z][a-z-]*(?:\/[a-z][a-z-]*)+$/.test(t) ? t.split("/") : [t.replace(/\//g, "")];
+};
 
 export function splitExclusions(raw: string): { positive: string; excluded: string[] } {
   const text = String(raw ?? "").trim();
@@ -741,6 +756,14 @@ export function splitExclusions(raw: string): { positive: string; excluded: stri
   // stays an ordinary word.
   const words = text.match(/-?"[^"]*"|\S+/g) ?? [];
   const quoted = (w: string) => /^-?".*"$/.test(w);
+  /** The exclusion starting at word j and its length, or null when no exclusion can start there. */
+  const target = (j: number): [string, number] | null => {
+    const t = words[j];
+    if (t === undefined || t.startsWith("-") || /^not$/i.test(t)) return null;
+    if (quoted(t)) return [t.slice(1, -1), 1];
+    const n = compoundAt(words, j) || placeAfterNot(words, j) || (EXCLUSION_STOPWORDS.has(t.toLowerCase()) ? 0 : 1);
+    return n ? [words.slice(j, j + n).join(" "), n] : null;
+  };
   const positive: string[] = [];
   const excluded: string[] = [];
   for (let i = 0; i < words.length; i++) {
@@ -748,19 +771,20 @@ export function splitExclusions(raw: string): { positive: string; excluded: stri
     if (/^not$/i.test(w)) {
       // A trailing "not" negates nothing and is dropped, as main drops it.
       if (i + 1 === words.length) continue;
-      // A leading verb is dropped ("not requiring night shifts").
+      // A leading verb is dropped ("not requiring night shifts"), and an article before a compound.
       let j = i + 1;
-      while (j + 1 < words.length && NOT_VERBS.test(words[j])) j++;
-      const t = words[j];
-      if (EXCLUSION_STOPWORDS.has(t.toLowerCase()) || /^not$/i.test(t)) { positive.push(w); continue; }
+      while (j + 1 < words.length && (NOT_VERBS.test(words[j]) || (/^(?:the|an?)$/i.test(words[j]) && compoundAt(words, j + 1)))) j++;
       // "not -travel": the hyphen already negates it.
-      if (t.startsWith("-")) continue;
-      if (quoted(t)) { excluded.push(t.slice(1, -1)); i = j; continue; }
-      let n = placeAfterNot(words, j) || 1;
-      const after = words[j + 1];
-      if (n === 1 && after !== undefined && !/^not$/i.test(after) && !after.startsWith("-") && !quoted(after) && isNotCompound(t, after)) n = 2;
-      excluded.push(words.slice(j, j + n).join(" "));
-      i = j + n - 1;
+      if (words[j].startsWith("-")) { i = j - 1; continue; }
+      let got = target(j);
+      if (!got) { positive.push(w); continue; }
+      for (;;) {
+        excluded.push(got[0]);
+        i = j + got[1] - 1;
+        const or = words[i + 1] ?? "";
+        if (!/^n?or$/i.test(or) || (or === "OR" && text !== text.toUpperCase()) || /[,;:.!?]$/.test(words[i]) || !(got = target(i + 2))) break;
+        j = i + 2;
+      }
       continue;
     }
     if (w.length > 1 && w.startsWith("-")) {
@@ -769,7 +793,7 @@ export function splitExclusions(raw: string): { positive: string; excluded: stri
     }
     positive.push(w);
   }
-  const cleanExcluded = [...new Set(excluded.map(cleanTerm).filter((e) => e.replace(/ /g, "").length >= 2))];
+  const cleanExcluded = [...new Set(excluded.flatMap(cleanTerms).filter((e) => e.replace(/[ -]/g, "").length >= 2))];
   // Nothing left to search means the exclusion has eaten the query. Run what
   // they typed instead of returning the entire board.
   if (!positive.length || !cleanExcluded.length) return { positive: text, excluded: [] };
@@ -777,17 +801,22 @@ export function splitExclusions(raw: string): { positive: string; excluded: stri
 }
 
 const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-/** One excluded word as a pattern: its plural or singular too ("shifts" strikes "Night Shift"). */
-const wordForm = (w: string): string => {
-  if (!/[a-z]$/i.test(w) || w.length <= 3) return esc(w);
-  const base = /[^s]s$/i.test(w) ? w.slice(0, -1) : w;
-  return `${esc(base)}(?:s|es)?`;
+/** A typed word as a pattern: as typed, or with a plural ending ("manager" strikes "Store Managers"). Only a phrase's
+ *  last word loses a plural "s" ("night shifts" strikes "Night Shift RN"), so a lone "news" never strikes "New". */
+const wordForm = (w: string, fold: boolean): string => {
+  const base = fold && w.length > 3 && /[^s]s$/.test(w) ? w.slice(0, -1) : w;
+  return /[a-z]$/.test(base) && w.length > 3 ? `${esc(base)}(?:s|es)?` : esc(base);
 };
 
 /** Does a title contain any excluded term or phrase? Word-ish match, so "manager" does
- *  not strike out "management-adjacent" by coincidence of substring. */
+ *  not strike out "management-adjacent" by coincidence of substring. A hyphen inside a
+ *  word is an optional break: "part-time" strikes "Part-Time", "Part Time" and "Parttime". */
 export function titleExcluded(title: string, excluded: readonly string[]): boolean {
   if (!excluded.length) return false;
   const t = String(title ?? "").toLowerCase();
-  return excluded.some((e) => new RegExp(`(^|[^a-z0-9])${e.split(" ").map(wordForm).join("[^a-z0-9]+")}([^a-z0-9]|$)`, "i").test(t));
+  return excluded.some((e) => {
+    const segs = e.split(" ").flatMap((w, i) => w.split("-").filter(Boolean).map((s, k) => [k ? "[^a-z0-9]*" : i ? "[^a-z0-9]+" : "", s]));
+    const body = segs.map(([sep, s], i) => sep + wordForm(s, segs.length > 1 && i === segs.length - 1)).join("");
+    return new RegExp(`(^|[^a-z0-9])${body}([^a-z0-9]|$)`, "i").test(t);
+  });
 }

@@ -1,0 +1,1620 @@
+{
+ "about": "Fix round 4's search self-break: 50 queries written after the round-4 rule passed its corpus (batch 1) and 25 more after that (batch 2); correct holds each version's verdict, whenWritten the round-4 rule's when the batch was written.",
+ "cases": [
+  {
+   "id": "sb-01",
+   "q": "nurse not travel or agency Long Island",
+   "expect": {
+    "positive": "nurse Long Island",
+    "excluded": [
+     "travel",
+     "agency"
+    ]
+   },
+   "reason": "or-list then a pinned region stays",
+   "batch": 1,
+   "correct": {
+    "main": false,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": false,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb-02",
+   "q": "driver not long island",
+   "expect": {
+    "positive": "driver",
+    "excluded": [
+     "long island"
+    ]
+   },
+   "reason": "pinned region, lower case",
+   "batch": 1,
+   "correct": {
+    "main": false,
+    "fa66a031": true,
+    "9af3c783": true,
+    "237bf2e8": false,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb-03",
+   "q": "teacher not new england or new york",
+   "expect": {
+    "positive": "teacher",
+    "excluded": [
+     "new england",
+     "new york"
+    ]
+   },
+   "reason": "two places joined by or",
+   "batch": 1,
+   "correct": {
+    "main": false,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": false,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb-04",
+   "q": "nurse not night shifts or weekends Tampa",
+   "expect": {
+    "positive": "nurse Tampa",
+    "excluded": [
+     "night shifts",
+     "weekends"
+    ]
+   },
+   "reason": "compound plural then or",
+   "batch": 1,
+   "correct": {
+    "main": false,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": false,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb-05",
+   "q": "cook not line-cook",
+   "expect": {
+    "positive": "cook",
+    "excluded": [
+     "line-cook"
+    ]
+   },
+   "reason": "hyphenated compound",
+   "alsoAccept": [
+    {
+     "positive": "cook",
+     "excluded": [
+      "line cook"
+     ]
+    }
+   ],
+   "strike": [
+    "Line Cook",
+    "Line-Cook II"
+   ],
+   "keep": [
+    "Cook"
+   ],
+   "batch": 1,
+   "correct": {
+    "main": false,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": false,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb-06",
+   "q": "rep not b2b/b2c",
+   "expect": {
+    "positive": "rep",
+    "excluded": [
+     "b2bb2c"
+    ]
+   },
+   "reason": "digits in a slash list are not split (main's answer)",
+   "batch": 1,
+   "correct": {
+    "main": true,
+    "fa66a031": true,
+    "9af3c783": true,
+    "237bf2e8": true,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb-07",
+   "q": "nurse not lpn/lvn",
+   "expect": {
+    "positive": "nurse",
+    "excluded": [
+     "lpn",
+     "lvn"
+    ]
+   },
+   "reason": "slash list",
+   "strike": [
+    "LPN Nurse",
+    "LVN Nurse"
+   ],
+   "keep": [
+    "RN Nurse"
+   ],
+   "batch": 1,
+   "correct": {
+    "main": false,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": false,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb-08",
+   "q": "engineer not news",
+   "expect": {
+    "positive": "engineer",
+    "excluded": [
+     "news"
+    ]
+   },
+   "reason": "'news' strikes only News",
+   "strike": [
+    "News Engineer"
+   ],
+   "keep": [
+    "New Grad Engineer",
+    "Engineer, New Product"
+   ],
+   "batch": 1,
+   "correct": {
+    "main": true,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": false,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb-09",
+   "q": "driver not parts Tulsa OK",
+   "expect": {
+    "positive": "driver Tulsa OK",
+    "excluded": [
+     "parts"
+    ]
+   },
+   "reason": "'parts' strikes only Parts",
+   "strike": [
+    "Parts Driver"
+   ],
+   "keep": [
+    "Part-Time Driver",
+    "Part Time Driver"
+   ],
+   "batch": 1,
+   "correct": {
+    "main": true,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": false,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb-10",
+   "q": "teacher not arts and crafts",
+   "expect": {
+    "positive": "teacher and crafts",
+    "excluded": [
+     "arts"
+    ]
+   },
+   "reason": "one word; 'and crafts' stays (main's answer)",
+   "strike": [
+    "Arts Teacher"
+   ],
+   "keep": [
+    "Art Teacher"
+   ],
+   "batch": 1,
+   "correct": {
+    "main": true,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": false,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb-11",
+   "q": "nurse not homes",
+   "expect": {
+    "positive": "nurse",
+    "excluded": [
+     "homes"
+    ]
+   },
+   "reason": "'homes' strikes Homes only",
+   "strike": [
+    "Group Homes Nurse"
+   ],
+   "keep": [
+    "Home Health Nurse"
+   ],
+   "batch": 1,
+   "correct": {
+    "main": true,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": false,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb-12",
+   "q": "analyst not operation",
+   "expect": {
+    "positive": "analyst",
+    "excluded": [
+     "operation"
+    ]
+   },
+   "reason": "a singular strikes its plural",
+   "strike": [
+    "Operations Analyst",
+    "Operation Analyst"
+   ],
+   "keep": [
+    "Analyst"
+   ],
+   "batch": 1,
+   "correct": {
+    "main": false,
+    "fa66a031": true,
+    "9af3c783": true,
+    "237bf2e8": true,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb-13",
+   "q": "clerk not store",
+   "expect": {
+    "positive": "clerk",
+    "excluded": [
+     "store"
+    ]
+   },
+   "reason": "a singular strikes its plural",
+   "strike": [
+    "Store Clerk",
+    "Stores Clerk"
+   ],
+   "keep": [
+    "Storage Clerk"
+   ],
+   "batch": 1,
+   "correct": {
+    "main": false,
+    "fa66a031": true,
+    "9af3c783": true,
+    "237bf2e8": true,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb-14",
+   "q": "nurse not night shift Fort Worth",
+   "expect": {
+    "positive": "nurse Fort Worth",
+    "excluded": [
+     "night shift"
+    ]
+   },
+   "reason": "compound; the city stays",
+   "batch": 1,
+   "correct": {
+    "main": false,
+    "fa66a031": true,
+    "9af3c783": true,
+    "237bf2e8": true,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb-15",
+   "q": "nurse not Fort Worth",
+   "expect": {
+    "positive": "nurse",
+    "excluded": [
+     "fort worth"
+    ]
+   },
+   "reason": "a known city is one exclusion",
+   "batch": 1,
+   "correct": {
+    "main": false,
+    "fa66a031": true,
+    "9af3c783": true,
+    "237bf2e8": true,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb-16",
+   "q": "cna not fort myers fl",
+   "expect": {
+    "positive": "cna fl",
+    "excluded": [
+     "fort myers"
+    ]
+   },
+   "reason": "pinned city; the state stays",
+   "batch": 1,
+   "correct": {
+    "main": false,
+    "fa66a031": true,
+    "9af3c783": true,
+    "237bf2e8": false,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb-17",
+   "q": "nurse not san jose ca",
+   "expect": {
+    "positive": "nurse ca",
+    "excluded": [
+     "san jose"
+    ]
+   },
+   "reason": "pinned city; the state stays",
+   "batch": 1,
+   "correct": {
+    "main": false,
+    "fa66a031": true,
+    "9af3c783": true,
+    "237bf2e8": false,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb-18",
+   "q": "nurse not travel san jose ca",
+   "expect": {
+    "positive": "nurse san jose ca",
+    "excluded": [
+     "travel"
+    ]
+   },
+   "reason": "one word; the city stays",
+   "batch": 1,
+   "correct": {
+    "main": true,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": true,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb-19",
+   "q": "developer not senior silicon valley",
+   "expect": {
+    "positive": "developer silicon valley",
+    "excluded": [
+     "senior"
+    ]
+   },
+   "reason": "one word; the region stays",
+   "batch": 1,
+   "correct": {
+    "main": true,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": true,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb-20",
+   "q": "caregiver not noc",
+   "expect": {
+    "positive": "caregiver",
+    "excluded": [
+     "noc"
+    ]
+   },
+   "reason": "one word",
+   "batch": 1,
+   "correct": {
+    "main": true,
+    "fa66a031": true,
+    "9af3c783": true,
+    "237bf2e8": true,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb-21",
+   "q": "caregiver not NOC shift Reno",
+   "expect": {
+    "positive": "caregiver Reno",
+    "excluded": [
+     "noc shift"
+    ]
+   },
+   "reason": "compound in capitals",
+   "batch": 1,
+   "correct": {
+    "main": false,
+    "fa66a031": true,
+    "9af3c783": true,
+    "237bf2e8": false,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb-22",
+   "q": "nurse not 12 hour shifts Dallas",
+   "expect": {
+    "positive": "nurse Dallas",
+    "excluded": [
+     "12 hour shifts"
+    ]
+   },
+   "reason": "three-word compound; the city stays",
+   "batch": 1,
+   "correct": {
+    "main": false,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": false,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb-23",
+   "q": "nurse not 12 hour Dallas",
+   "expect": {
+    "positive": "nurse hour Dallas",
+    "excluded": [
+     "12"
+    ]
+   },
+   "reason": "'12 hour' alone is no compound; one word (main's answer)",
+   "batch": 1,
+   "correct": {
+    "main": true,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": true,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb-24",
+   "q": "nurse not home health aide Tampa",
+   "expect": {
+    "positive": "nurse Tampa",
+    "excluded": [
+     "home health aide"
+    ]
+   },
+   "reason": "three-word compound",
+   "batch": 1,
+   "correct": {
+    "main": false,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": false,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb-25",
+   "q": "nurse not home health Tampa",
+   "expect": {
+    "positive": "nurse Tampa",
+    "excluded": [
+     "home health"
+    ]
+   },
+   "reason": "two-word compound",
+   "batch": 1,
+   "correct": {
+    "main": false,
+    "fa66a031": true,
+    "9af3c783": true,
+    "237bf2e8": true,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb-26",
+   "q": "nurse not long term",
+   "expect": {
+    "positive": "nurse term",
+    "excluded": [
+     "long"
+    ]
+   },
+   "reason": "'long term' is no compound alone; one word (main's answer)",
+   "batch": 1,
+   "correct": {
+    "main": true,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": true,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb-27",
+   "q": "nurse not on call shifts",
+   "expect": {
+    "positive": "nurse shifts",
+    "excluded": [
+     "on call"
+    ]
+   },
+   "reason": "compound 'on call'; 'shifts' stays",
+   "alsoAccept": [
+    {
+     "positive": "nurse",
+     "excluded": [
+      "on call shifts"
+     ]
+    }
+   ],
+   "batch": 1,
+   "correct": {
+    "main": false,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": false,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb-28",
+   "q": "nurse not the weekend shift",
+   "expect": {
+    "positive": "nurse",
+    "excluded": [
+     "weekend shift"
+    ]
+   },
+   "reason": "article then compound",
+   "batch": 1,
+   "correct": {
+    "main": false,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": false,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb-29",
+   "q": "nurse not a night shift job",
+   "expect": {
+    "positive": "nurse job",
+    "excluded": [
+     "night shift"
+    ]
+   },
+   "reason": "article then compound; job stays",
+   "batch": 1,
+   "correct": {
+    "main": false,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": false,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb-30",
+   "q": "nurse not the best",
+   "expect": {
+    "positive": "nurse not the best",
+    "excluded": []
+   },
+   "reason": "'the' then no compound: the veto stands",
+   "batch": 1,
+   "correct": {
+    "main": true,
+    "fa66a031": true,
+    "9af3c783": true,
+    "237bf2e8": true,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb-31",
+   "q": "driver not with the company",
+   "expect": {
+    "positive": "driver not with the company",
+    "excluded": []
+   },
+   "reason": "verb then stopword: unparsed (main excludes \"with\")",
+   "batch": 1,
+   "correct": {
+    "main": false,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": true,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb-32",
+   "q": "rn not icu or",
+   "expect": {
+    "positive": "rn or",
+    "excluded": [
+     "icu"
+    ]
+   },
+   "reason": "a trailing 'or' extends nothing",
+   "batch": 1,
+   "correct": {
+    "main": true,
+    "fa66a031": true,
+    "9af3c783": true,
+    "237bf2e8": true,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb-33",
+   "q": "rn not icu OR er",
+   "expect": {
+    "positive": "rn OR er",
+    "excluded": [
+     "icu"
+    ]
+   },
+   "reason": "capital OR is the operator",
+   "batch": 1,
+   "correct": {
+    "main": true,
+    "fa66a031": true,
+    "9af3c783": true,
+    "237bf2e8": true,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb-34",
+   "q": "RN NOT ICU OR ER",
+   "expect": {
+    "positive": "RN",
+    "excluded": [
+     "icu",
+     "er"
+    ]
+   },
+   "reason": "an all-capitals query reads OR as English",
+   "batch": 1,
+   "correct": {
+    "main": false,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": false,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb-35",
+   "q": "nurse not travel or agency, Dallas",
+   "expect": {
+    "positive": "nurse Dallas",
+    "excluded": [
+     "travel",
+     "agency"
+    ]
+   },
+   "reason": "or-list; comma before the place",
+   "batch": 1,
+   "correct": {
+    "main": false,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": false,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb-36",
+   "q": "nurse not travel or agency not per diem",
+   "expect": {
+    "positive": "nurse",
+    "excluded": [
+     "travel",
+     "agency",
+     "per diem"
+    ]
+   },
+   "reason": "or-list then another not",
+   "batch": 1,
+   "correct": {
+    "main": false,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": false,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb-37",
+   "q": "accountant not cpa or cma Chicago",
+   "expect": {
+    "positive": "accountant Chicago",
+    "excluded": [
+     "cpa",
+     "cma"
+    ]
+   },
+   "reason": "or-list",
+   "batch": 1,
+   "correct": {
+    "main": false,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": false,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb-38",
+   "q": "engineer not windows or linux",
+   "expect": {
+    "positive": "engineer",
+    "excluded": [
+     "windows",
+     "linux"
+    ]
+   },
+   "reason": "or-list",
+   "strike": [
+    "Windows Engineer",
+    "Linux Engineer"
+   ],
+   "keep": [
+    "Window Engineer"
+   ],
+   "batch": 1,
+   "correct": {
+    "main": false,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": false,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb-39",
+   "q": "producer not news or sports",
+   "expect": {
+    "positive": "producer",
+    "excluded": [
+     "news",
+     "sports"
+    ]
+   },
+   "reason": "or-list",
+   "strike": [
+    "News Producer",
+    "Sports Producer"
+   ],
+   "keep": [
+    "New Business Producer",
+    "Sport Producer"
+   ],
+   "batch": 1,
+   "correct": {
+    "main": false,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": false,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb-40",
+   "q": "warehouse not cold storage or freezer",
+   "expect": {
+    "positive": "warehouse",
+    "excluded": [
+     "cold storage",
+     "freezer"
+    ]
+   },
+   "reason": "compound then or",
+   "batch": 1,
+   "correct": {
+    "main": false,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": false,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb-41",
+   "q": "nurse -night-shift Tulsa",
+   "expect": {
+    "positive": "nurse Tulsa",
+    "excluded": [
+     "night-shift"
+    ]
+   },
+   "reason": "hyphen operator on a hyphenated word",
+   "alsoAccept": [
+    {
+     "positive": "nurse Tulsa",
+     "excluded": [
+      "night shift"
+     ]
+    }
+   ],
+   "strike": [
+    "Night Shift Nurse"
+   ],
+   "batch": 1,
+   "correct": {
+    "main": false,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": false,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb-42",
+   "q": "nurse not -night-shift",
+   "expect": {
+    "positive": "nurse",
+    "excluded": [
+     "night-shift"
+    ]
+   },
+   "reason": "'not' then the hyphen operator",
+   "alsoAccept": [
+    {
+     "positive": "nurse",
+     "excluded": [
+      "night shift"
+     ]
+    }
+   ],
+   "strike": [
+    "Night-Shift Nurse"
+   ],
+   "batch": 1,
+   "correct": {
+    "main": false,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": false,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb-43",
+   "q": "developer not jr/sr",
+   "expect": {
+    "positive": "developer",
+    "excluded": [
+     "jr",
+     "sr"
+    ]
+   },
+   "reason": "slash list",
+   "strike": [
+    "Jr Developer",
+    "Sr Developer"
+   ],
+   "keep": [
+    "Developer"
+   ],
+   "batch": 1,
+   "correct": {
+    "main": false,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": false,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb-44",
+   "q": "nurse not virginia beach",
+   "expect": {
+    "positive": "nurse",
+    "excluded": [
+     "virginia beach"
+    ]
+   },
+   "reason": "pinned city before the state word could be read",
+   "batch": 1,
+   "correct": {
+    "main": false,
+    "fa66a031": true,
+    "9af3c783": true,
+    "237bf2e8": false,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb-45",
+   "q": "nurse not virginia",
+   "expect": {
+    "positive": "nurse",
+    "excluded": [
+     "virginia"
+    ]
+   },
+   "reason": "one word: a state",
+   "batch": 1,
+   "correct": {
+    "main": true,
+    "fa66a031": true,
+    "9af3c783": true,
+    "237bf2e8": true,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb-46",
+   "q": "nurse not west virginia",
+   "expect": {
+    "positive": "nurse",
+    "excluded": [
+     "west virginia"
+    ]
+   },
+   "reason": "a known state",
+   "batch": 1,
+   "correct": {
+    "main": false,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": true,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb-47",
+   "q": "nurse not west palm beach",
+   "expect": {
+    "positive": "nurse",
+    "excluded": [
+     "west palm beach"
+    ]
+   },
+   "reason": "pinned three-word city",
+   "batch": 1,
+   "correct": {
+    "main": false,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": false,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb-48",
+   "q": "teacher not palm beach county",
+   "expect": {
+    "positive": "teacher county",
+    "excluded": [
+     "palm beach"
+    ]
+   },
+   "reason": "pinned city; 'county' stays",
+   "batch": 1,
+   "correct": {
+    "main": false,
+    "fa66a031": true,
+    "9af3c783": true,
+    "237bf2e8": false,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb-49",
+   "q": "driver not upstate new york",
+   "expect": {
+    "positive": "driver",
+    "excluded": [
+     "upstate new york"
+    ]
+   },
+   "reason": "pinned three-word region",
+   "batch": 1,
+   "correct": {
+    "main": false,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": false,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb-50",
+   "q": "nurse not pacific northwest remote",
+   "expect": {
+    "positive": "nurse remote",
+    "excluded": [
+     "pacific northwest"
+    ]
+   },
+   "reason": "pinned region; remote stays",
+   "batch": 1,
+   "correct": {
+    "main": false,
+    "fa66a031": true,
+    "9af3c783": true,
+    "237bf2e8": false,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb2-01",
+   "q": "warehouse not san jose forklift",
+   "expect": {
+    "positive": "warehouse forklift",
+    "excluded": [
+     "san jose"
+    ]
+   },
+   "reason": "pinned city; the wanted word after it stays",
+   "batch": 2,
+   "correct": {
+    "main": false,
+    "fa66a031": true,
+    "9af3c783": true,
+    "237bf2e8": false,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb2-02",
+   "q": "chef not fine dining or catering",
+   "expect": {
+    "positive": "chef",
+    "excluded": [
+     "fine dining",
+     "catering"
+    ]
+   },
+   "reason": "compound then or",
+   "batch": 2,
+   "correct": {
+    "main": false,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": false,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb2-03",
+   "q": "nurse not travel or local",
+   "expect": {
+    "positive": "nurse",
+    "excluded": [
+     "travel",
+     "local"
+    ]
+   },
+   "reason": "or-list",
+   "batch": 2,
+   "correct": {
+    "main": false,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": false,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb2-04",
+   "q": "nurse not travel or new grad",
+   "expect": {
+    "positive": "nurse",
+    "excluded": [
+     "travel",
+     "new grad"
+    ]
+   },
+   "reason": "or then compound",
+   "batch": 2,
+   "correct": {
+    "main": false,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": false,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb2-05",
+   "q": "cashier not part time or seasonal",
+   "expect": {
+    "positive": "cashier",
+    "excluded": [
+     "part time",
+     "seasonal"
+    ]
+   },
+   "reason": "compound then or",
+   "batch": 2,
+   "correct": {
+    "main": false,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": false,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb2-06",
+   "q": "nurse not travel or san jose",
+   "expect": {
+    "positive": "nurse",
+    "excluded": [
+     "travel",
+     "san jose"
+    ]
+   },
+   "reason": "or then pinned city",
+   "batch": 2,
+   "correct": {
+    "main": false,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": false,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb2-07",
+   "q": "nurse not am",
+   "expect": {
+    "positive": "nurse",
+    "excluded": [
+     "am"
+    ]
+   },
+   "reason": "one word",
+   "batch": 2,
+   "correct": {
+    "main": true,
+    "fa66a031": true,
+    "9af3c783": true,
+    "237bf2e8": true,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb2-08",
+   "q": "driver not over-the-road or regional",
+   "expect": {
+    "positive": "driver",
+    "excluded": [
+     "over-the-road",
+     "regional"
+    ]
+   },
+   "reason": "hyphenated then or",
+   "strike": [
+    "Over The Road Driver",
+    "Regional Driver"
+   ],
+   "keep": [
+    "Local Driver"
+   ],
+   "batch": 2,
+   "correct": {
+    "main": false,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": false,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb2-09",
+   "q": "nurse not ICU/CCU",
+   "expect": {
+    "positive": "nurse",
+    "excluded": [
+     "icu",
+     "ccu"
+    ]
+   },
+   "reason": "slash list",
+   "strike": [
+    "ICU Nurse",
+    "CCU Nurse"
+   ],
+   "keep": [
+    "ER Nurse"
+   ],
+   "batch": 2,
+   "correct": {
+    "main": false,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": false,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb2-10",
+   "q": "designer not ui/ux",
+   "expect": {
+    "positive": "designer",
+    "excluded": [
+     "ui",
+     "ux"
+    ]
+   },
+   "reason": "slash list",
+   "strike": [
+    "UI/UX Designer",
+    "UX Designer"
+   ],
+   "keep": [
+    "Graphic Designer"
+   ],
+   "batch": 2,
+   "correct": {
+    "main": false,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": false,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb2-11",
+   "q": "developer not c#/.net",
+   "expect": {
+    "positive": "developer",
+    "excluded": [
+     "c#.net"
+    ]
+   },
+   "reason": "symbols in a slash list: main's answer",
+   "batch": 2,
+   "correct": {
+    "main": true,
+    "fa66a031": true,
+    "9af3c783": true,
+    "237bf2e8": true,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb2-12",
+   "q": "nurse not day shift or night shift",
+   "expect": {
+    "positive": "nurse",
+    "excluded": [
+     "day shift",
+     "night shift"
+    ]
+   },
+   "reason": "two compounds",
+   "batch": 2,
+   "correct": {
+    "main": false,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": false,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb2-13",
+   "q": "manager not the call center",
+   "expect": {
+    "positive": "manager",
+    "excluded": [
+     "call center"
+    ]
+   },
+   "reason": "article then compound",
+   "batch": 2,
+   "correct": {
+    "main": false,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": false,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb2-14",
+   "q": "teacher not an aide",
+   "expect": {
+    "positive": "teacher not an aide",
+    "excluded": []
+   },
+   "reason": "article then no compound: the veto stands",
+   "batch": 2,
+   "correct": {
+    "main": true,
+    "fa66a031": true,
+    "9af3c783": true,
+    "237bf2e8": true,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb2-15",
+   "q": "nurse not on call or weekends",
+   "expect": {
+    "positive": "nurse",
+    "excluded": [
+     "on call",
+     "weekends"
+    ]
+   },
+   "reason": "'on call' then or",
+   "batch": 2,
+   "correct": {
+    "main": false,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": false,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb2-16",
+   "q": "rep not customer service or sales",
+   "expect": {
+    "positive": "rep",
+    "excluded": [
+     "customer service",
+     "sales"
+    ]
+   },
+   "reason": "compound then or",
+   "batch": 2,
+   "correct": {
+    "main": false,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": false,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb2-17",
+   "q": "nurse not shifts",
+   "expect": {
+    "positive": "nurse",
+    "excluded": [
+     "shifts"
+    ]
+   },
+   "reason": "a lone plural strikes its own word only",
+   "strike": [
+    "Shifts Nurse"
+   ],
+   "keep": [
+    "Night Shift Nurse"
+   ],
+   "batch": 2,
+   "correct": {
+    "main": true,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": false,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb2-18",
+   "q": "driver not buses",
+   "expect": {
+    "positive": "driver",
+    "excluded": [
+     "buses"
+    ]
+   },
+   "reason": "a lone plural strikes its own word only",
+   "strike": [
+    "Buses Driver"
+   ],
+   "keep": [
+    "Bus Driver"
+   ],
+   "batch": 2,
+   "correct": {
+    "main": true,
+    "fa66a031": true,
+    "9af3c783": true,
+    "237bf2e8": true,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb2-19",
+   "q": "optician not glass",
+   "expect": {
+    "positive": "optician",
+    "excluded": [
+     "glass"
+    ]
+   },
+   "reason": "a singular strikes its plural",
+   "strike": [
+    "Glass Optician",
+    "Glasses Optician"
+   ],
+   "keep": [
+    "Optician"
+   ],
+   "batch": 2,
+   "correct": {
+    "main": false,
+    "fa66a031": true,
+    "9af3c783": true,
+    "237bf2e8": true,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb2-20",
+   "q": "anchor not new",
+   "expect": {
+    "positive": "anchor",
+    "excluded": [
+     "new"
+    ]
+   },
+   "reason": "a three-letter word is matched as typed",
+   "strike": [
+    "New Anchor"
+   ],
+   "keep": [
+    "News Anchor"
+   ],
+   "batch": 2,
+   "correct": {
+    "main": true,
+    "fa66a031": true,
+    "9af3c783": true,
+    "237bf2e8": true,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb2-21",
+   "q": "nurse not travel or or",
+   "expect": {
+    "positive": "nurse",
+    "excluded": [
+     "travel",
+     "or"
+    ]
+   },
+   "reason": "'or' then a word that is 'or'",
+   "alsoAccept": [
+    {
+     "positive": "nurse or or",
+     "excluded": [
+      "travel"
+     ]
+    }
+   ],
+   "batch": 2,
+   "correct": {
+    "main": false,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": false,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb2-22",
+   "q": "engineer not senior, or staff",
+   "expect": {
+    "positive": "engineer or staff",
+    "excluded": [
+     "senior"
+    ]
+   },
+   "reason": "a comma ends the negation before 'or'",
+   "batch": 2,
+   "correct": {
+    "main": true,
+    "fa66a031": true,
+    "9af3c783": true,
+    "237bf2e8": true,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb2-23",
+   "q": "nurse not travel or not agency",
+   "expect": {
+    "positive": "nurse or",
+    "excluded": [
+     "travel",
+     "agency"
+    ]
+   },
+   "reason": "'or not' is a new negation",
+   "batch": 2,
+   "correct": {
+    "main": true,
+    "fa66a031": true,
+    "9af3c783": true,
+    "237bf2e8": true,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb2-24",
+   "q": "nurse not little rock or memphis",
+   "expect": {
+    "positive": "nurse",
+    "excluded": [
+     "little rock",
+     "memphis"
+    ]
+   },
+   "reason": "pinned city then or",
+   "batch": 2,
+   "correct": {
+    "main": false,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": false,
+    "whenWritten": true
+   }
+  },
+  {
+   "id": "sb2-25",
+   "q": "cna not assisted living or memory care",
+   "expect": {
+    "positive": "cna care",
+    "excluded": [
+     "assisted living",
+     "memory"
+    ]
+   },
+   "reason": "compound then or one word ('memory care' is not pinned)",
+   "batch": 2,
+   "correct": {
+    "main": false,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": false,
+    "whenWritten": true
+   }
+  }
+ ]
+}

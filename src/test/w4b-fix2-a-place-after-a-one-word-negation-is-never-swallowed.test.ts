@@ -28,7 +28,7 @@ describe("a place after the negated word stays in the search", () => {
     ["driver not cdl Houston", "driver Houston", ["cdl"]],
     ["accountant not senior Austin", "accountant Austin", ["senior"]],
     ["nurse not icu nyc", "nurse nyc", ["icu"]],
-    ["barista not part-time Denver", "barista Denver", ["parttime"]],
+    ["barista not part-time Denver", "barista Denver", ["part-time"]],
     ["cashier not overnight San Antonio", "cashier San Antonio", ["overnight"]],
     ["electrician not apprentice Austin, TX", "electrician Austin, TX", ["apprentice"]],
     ["nurse not travel London", "nurse London", ["travel"]],

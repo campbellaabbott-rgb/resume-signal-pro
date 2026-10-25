@@ -1,6 +1,6 @@
 // @vitest-environment node
 /**
- * NEGATED SEARCH PHRASES, GENERATED (wave 4 fix 3, S12-017).
+ * NEGATED SEARCH PHRASES, GENERATED (wave 4 fix rounds 3 and 4, S12-017).
  *
  * The corpus test pins 591 labelled queries; this one walks combinations no
  * one listed, from a fixed seed so a failure reproduces:
@@ -13,12 +13,19 @@
  *   - random queries with no compound, no known multi-word place, no quote
  *     and no verb after "not": the answer is origin/main's, word for word;
  *   - any query: the positive words are the typed words, in order, minus the
- *     operators and the excluded words, and nothing is invented.
- * LIVE_RULE below is origin/main's splitExclusions (8a6561c4), copied as the
- * oracle: what production answers today.
+ *     operators and the excluded words, and nothing is invented;
+ *   - round 4: "T not A or B" excludes both; a pinned region or city after
+ *     "not" is one exclusion and stays wanted after a negated word; and a
+ *     title is struck by a word only where origin/main strikes it or where
+ *     the title holds that word's own plural (never its singular), and a
+ *     hyphenated word strikes its parts written together, apart or hyphenated.
+ * LIVE_RULE and LIVE_TITLE below are origin/main's splitExclusions and
+ * titleExcluded (8a6561c4), copied as the oracle: what production answers today.
+ * A hyphen inside an excluded word is the one place this rule's string differs
+ * from main's ("part-time" for main's "parttime"); the oracle compares without it.
  */
 import { describe, expect, it } from "vitest";
-import { NOT_COMPOUNDS, splitExclusions } from "../../supabase/functions/job-board/search-routing";
+import { NEGATED_PLACES, NOT_COMPOUNDS, splitExclusions, titleExcluded } from "../../supabase/functions/job-board/search-routing";
 import { knownPlace } from "../../supabase/functions/job-board/query-place";
 
 type Out = { positive: string; excluded: string[] };
@@ -45,6 +52,13 @@ function LIVE_RULE(raw: string): Out {
   if (!positive.length || !clean.length) return { positive: text, excluded: [] };
   return { positive: positive.join(" "), excluded: clean };
 }
+function LIVE_TITLE(title: string, excluded: readonly string[]): boolean {
+  if (!excluded.length) return false;
+  const t = String(title ?? "").toLowerCase();
+  return excluded.some((e) => new RegExp(`(^|[^a-z0-9])${e.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^a-z0-9]|$)`, "i").test(t));
+}
+/** The same answer as main's, reading a kept hyphen as main's fold. */
+const asLive = (o: Out): string => JSON.stringify({ positive: o.positive, excluded: o.excluded.map((e) => e.replace(/-/g, "")) });
 
 /** mulberry32: a fixed seed, so a failing combination reproduces. */
 function rng(seed: number) {
@@ -60,7 +74,7 @@ function rng(seed: number) {
 const R = rng(20261024);
 const pick = <T,>(xs: readonly T[]): T => xs[Math.floor(R() * xs.length)];
 const caseOf = (s: string, k: number) => (k === 0 ? s.toLowerCase() : k === 1 ? s.replace(/\b\w/g, (c) => c.toUpperCase()) : k === 2 ? s.toUpperCase() : s);
-const clean = (s: string) => s.split(/\s+/).map((w) => w.replace(/[^a-z0-9+#.]/gi, "").replace(/\.+$/, "").toLowerCase()).filter(Boolean).join(" ");
+const clean = (s: string) => s.split(/\s+/).map((w) => w.replace(/[^a-z0-9+#.-]/gi, "").replace(/\.+$/, "").replace(/^-+|-+$/g, "").toLowerCase()).filter(Boolean).join(" ");
 
 const TITLES = ["nurse", "rn", "registered nurse", "warehouse", "driver", "truck driver", "teacher", "accountant", "barista", "cook",
   "line cook", "chef", "cashier", "electrician", "software engineer", "developer", "welder", "data analyst", "security guard",
@@ -92,7 +106,7 @@ describe("one negated word never takes the next word (any place, any case, inven
       const q = `${t} not ${n} ${prep}${tail}`;
       const want = { positive: `${t} ${prep}${tail}`, excluded: [clean(n)] };
       const got = splitExclusions(q);
-      if (JSON.stringify(got) !== JSON.stringify(want) || JSON.stringify(got) !== JSON.stringify(LIVE_RULE(q))) bad.push(`${q} -> ${JSON.stringify(got)}`);
+      if (JSON.stringify(got) !== JSON.stringify(want) || asLive(got) !== JSON.stringify(LIVE_RULE(q))) bad.push(`${q} -> ${JSON.stringify(got)}`);
     }
     expect(bad.slice(0, 10)).toEqual([]);
   });
@@ -116,7 +130,8 @@ describe("a pinned compound takes exactly its two words, in any case", () => {
   });
 
   it("no compound word is a place, in any case, so no place can ride in as a compound's second word", () => {
-    for (const c of COMPOUNDS) for (const w of c.split(" ")) for (const k of [0, 1, 2]) expect(knownPlace(caseOf(w, k)), `${c}: ${w}`).toBeNull();
+    // A compound's first word is never taken alone as a place ("on" alone is the stopword veto), so only "ON call"'s "ON" is a place.
+    for (const c of COMPOUNDS) for (const w of c.split(" ").slice(c.startsWith("on ") ? 1 : 0)) for (const k of [0, 1, 2]) expect(knownPlace(caseOf(w, k)), `${c}: ${w}`).toBeNull();
   });
 });
 
@@ -146,7 +161,7 @@ describe("outside compounds, known multi-word places, quotes and verbs, the answ
       const q = ws.join(" ");
       const got = splitExclusions(q);
       const live = LIVE_RULE(q);
-      if (JSON.stringify(got) !== JSON.stringify(live)) bad.push(`${q} -> ${JSON.stringify(got)} live ${JSON.stringify(live)}`);
+      if (asLive(got) !== JSON.stringify(live)) bad.push(`${q} -> ${JSON.stringify(got)} live ${JSON.stringify(live)}`);
     }
     expect(tried).toBeGreaterThan(3000);
     expect(bad.slice(0, 10)).toEqual([]);
@@ -171,3 +186,89 @@ describe("outside compounds, known multi-word places, quotes and verbs, the answ
     }
   });
 });
+
+describe("round 4: 'not A or B', pinned regions and cities, and the title match", () => {
+  const ONE = NEGS.filter((n) => !["night", "box", "call", "home", "line", "lead", "union"].includes(n) && !/[-+.]/.test(n));
+  const TAILS = ["", " Dallas", " Tulsa", " remote", " San Jose", " New Orleans", " TX", " 75201"];
+  it("'T not A or B' excludes both one-word negations and keeps the rest", () => {
+    const bad: string[] = [];
+    for (let k = 0; k < 2000; k++) {
+      const t = pick(TITLES), a = pick(ONE), b = pick(ONE), tail = pick(TAILS);
+      if (a === b) continue;
+      const joiner = pick(["or", "nor", "Or"]);
+      const q = `${t} not ${a} ${joiner} ${b}${tail}`;
+      const got = splitExclusions(q);
+      const want = { positive: `${t}${tail}`, excluded: [a, b] };
+      if (JSON.stringify(got) !== JSON.stringify(want)) bad.push(`${q} -> ${JSON.stringify(got)}`);
+      // A capital OR in a query that is not all capitals is the searcher's operator: main's answer.
+      const q2 = `${t} not ${a} OR ${b}${tail}`;
+      if (asLive(splitExclusions(q2)) !== JSON.stringify(LIVE_RULE(q2))) bad.push(`${q2} -> ${JSON.stringify(splitExclusions(q2))}`);
+    }
+    expect(bad.slice(0, 10)).toEqual([]);
+  });
+
+  it("a pinned region or city after 'not' is one exclusion, and after a negated word it stays in the search", () => {
+    const bad: string[] = [];
+    for (const place of NEGATED_PLACES) {
+      for (const k of [0, 1, 2]) {
+        const p = caseOf(place, k), t = pick(TITLES), n = pick(ONE), tail = pick(TAILS);
+        const q1 = `${t} not ${p}${tail}`;
+        const g1 = splitExclusions(q1);
+        if (JSON.stringify(g1) !== JSON.stringify({ positive: `${t}${tail}`, excluded: [place] })) bad.push(`${q1} -> ${JSON.stringify(g1)}`);
+        const q2 = `${t} not ${n} ${p}`;
+        const g2 = splitExclusions(q2);
+        if (JSON.stringify(g2) !== JSON.stringify({ positive: `${t} ${p}`, excluded: [n] })) bad.push(`${q2} -> ${JSON.stringify(g2)}`);
+      }
+    }
+    expect(bad.slice(0, 10)).toEqual([]);
+  });
+
+  it("no pinned place word is a compound word, so a pinned place never takes a compound's partner", () => {
+    const compoundWords = new Set(COMPOUNDS.flatMap((c) => c.split(" ")));
+    for (const p of NEGATED_PLACES) {
+      const [first, second] = p.split(" ");
+      expect(NOT_COMPOUNDS.has(`${first} ${second}`), p).toBe(false);
+      expect(compoundWords.has(p.split(" ").slice(-1)[0]) && NOT_COMPOUNDS.has(p), p).toBe(false);
+    }
+  });
+
+  const WORDS = ["news", "parts", "arts", "lines", "homes", "services", "windows", "sales", "goods", "graphics", "systems",
+    "operations", "nights", "shifts", "manager", "travel", "agency", "nurse", "line", "home", "art", "part", "new", "window",
+    "service", "senior", "lead", "cook", "night", "shift", "traveler", "c++", ".net", "rn", "er", "icu", "bus", "glass", "boss"];
+  const TITLE_WORDS = [...WORDS, ...WORDS.map((w) => `${w}s`), ...WORDS.map((w) => `${w}es`), ...WORDS.map((w) => w.replace(/s$/, "")),
+    "time", "business", "producer", "editor", "driver", "teacher", "aide", "consultant", "engineer", "-", ",", "/", "&"];
+  const PLURAL = (w: string, title: string) => new RegExp(`(^|[^a-z0-9])${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(s|es)([^a-z0-9]|$)`).test(title);
+  it("a single word strikes a title only where main does or where the title holds that word's own plural", () => {
+    const bad: string[] = [];
+    for (let k = 0; k < 20000; k++) {
+      const w = pick(WORDS);
+      const title = Array.from({ length: 2 + Math.floor(R() * 4) }, () => pick(TITLE_WORDS)).join(" ");
+      const mine = titleExcluded(title, [w]), live = LIVE_TITLE(title, [w]);
+      if (live && !mine) bad.push(`${w} | ${title}: main strikes it, this rule keeps it`);
+      if (mine && !live && !PLURAL(w, title.toLowerCase())) bad.push(`${w} | ${title}: struck with no '${w}' and no plural of it`);
+    }
+    expect(bad.slice(0, 10)).toEqual([]);
+  });
+
+  it("a hyphenated word strikes its parts written together, apart or hyphenated, and nothing main keeps that lacks both parts side by side", () => {
+    const HY = ["part-time", "full-time", "night-shift", "live-in", "e-commerce", "co-op", "k-12", "x-ray", "on-call", "per-diem", "over-the-road"];
+    const bad: string[] = [];
+    for (const h of HY) {
+      const parts = h.split("-");
+      for (const title of [`${tc(parts.join("-"))} Worker`, `${tc(parts.join(" "))} Worker`, `${tc(parts.join(""))} Worker`, `Worker - ${parts.join(" ").toUpperCase()}`]) {
+        if (!titleExcluded(title, splitExclusions(`worker not ${h}`).excluded)) bad.push(`${h} misses ${title}`);
+      }
+      for (let k = 0; k < 300; k++) {
+        const title = Array.from({ length: 2 + Math.floor(R() * 4) }, () => pick([...parts, ...TITLE_WORDS])).join(" ");
+        const mine = titleExcluded(title, [h]);
+        const live = LIVE_TITLE(title, [h.replace(/-/g, "")]);
+        const together = new RegExp(`(^|[^a-z0-9])${parts.map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("[^a-z0-9]*")}`).test(title.toLowerCase());
+        if (live && !mine) bad.push(`${h} | ${title}: main strikes it, this rule keeps it`);
+        if (mine && !together) bad.push(`${h} | ${title}: struck without its parts side by side`);
+      }
+    }
+    expect(bad.slice(0, 10)).toEqual([]);
+  });
+});
+
+const tc = (s: string) => s.split(" ").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
