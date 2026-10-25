@@ -114,7 +114,7 @@ checkout refusals are live. Keep the two publishes close together.
 |---|---|---|
 | 80 | `80-profiles-identity.sh`, `80-company-profiles-perks.sh` | identity and the perk engine (`employer-profiles.2026-10-12.2`, the reader answers anon, the perk tables refuse it) |
 | 91 | `91-profiles-gate-and-fixes.sh` | the hiring-record gate, the LCA line, headcount, llms.txt, V3, V3b, V7, V7b (it reads the lock's 42501 on `company_profiles.as_of` as the lock) |
-| 81 | `81-profiles-design-accuracy.sh` | Track 1 on named pages, the four-table lock, (81h) no USAJOBS row in the similar-employers list of CVS Health or Eurofins, and from the 2026-10-24 hotfix: (81c) the zero page says only what its inputs agree on (the served copy carries the page's own line and asks for neither refuted sentence, the Jobs chunk passes the read bucket, the served chunks ask for the zero page's own head keys and print the watch sentence only where the model's `watchPromise` opens it, and BASS ABA, Delaney at the Green, Akumin's ADG site and Boeing's PRIDE site give no reading when nothing is listed and a watch promise only where a watch can count; those watch lines read this checkout's model and print INFO until the served gate PASSes), (81i) `get_company_intel` answering three sitemap Workday tokens with facts and a made-up one with the reader object, each within 3 s, and (81j) at least 90% of 24 Workday company pages sampled from the live sitemap, its last 8 included, stating the bake's places or fields line |
+| 81 | `81-profiles-design-accuracy.sh` | Track 1 on named pages, the four-table lock, (81h) no USAJOBS row in the similar-employers list of CVS Health or Eurofins, and from the 2026-10-24 hotfix: (81c) the zero page says only what its inputs agree on (the served copy carries the page's own line and asks for neither refuted sentence, the Jobs chunk passes the read bucket, the served chunks ask for the zero page's own head keys and print the watch sentence only where the model's `watchPromise` opens it, and BASS ABA, Delaney at the Green, Akumin's ADG site and Boeing's PRIDE site give no reading when nothing is listed and a watch promise only where a watch can count; those watch lines read this checkout's model and print INFO until the served gate PASSes; and the board total the page prints on LLNL, Clifford Chance and Sodexo is within 10% of what their own SmartRecruiters feed states), (81i) `get_company_intel` answering three sitemap Workday tokens with facts and a made-up one with the reader object, each within 3 s, and (81j) at least 90% of 24 Workday company pages sampled from the live sitemap, its last 8 included, stating the bake's places or fields line |
 | 83 | `83-profiles-design-bake.sh` | the crawler copy sells nothing retired (now also /trust, /privacy, /terms, and every company-title form the bake writes); once-published company URLs keep a page of their own; (C6) USAJOBS is baked as the federal listing site and Surge Staffing as an agency; (C7) the strings React renders (the entry, the English and Index chunks) carry none of the retired home, FAQ and trust sentences |
 | 87 | `87-profiles-design-pass-b.sh` | the board serves the lander, card, pane and filter row; the agent pitch is gone |
 | 40 | `40-db-exposure.sh` | the census shows nothing unlisted |
@@ -260,8 +260,19 @@ page's own line on 12,541 and "not read" on 23, and no sentence the board's
 own feed contradicts. Round 3 (below) took the same rule to the rest of the
 zero page: its title and description name no open roles, its live region
 blames no filter, and its Watch sentence promises a count only where a watch
-on the token can count the board's new postings. Recording whole-feed totals is a later job-board item,
-so 81c's Stripe line stays FAIL until then by decision.
+on the token can count the board's new postings. 81c's board-total line
+judged Stripe, which FAILed by decision until job-board recorded whole-feed
+totals; on 2026-10-25 that was found to be the wrong board, not a missing
+total. A whole-feed board states no total of its own: Greenhouse's
+`meta.total` is the length of the list it ships (719 of 719 on Stripe, 31 of
+31 on BASS ABA), which the n130 rule keeps out as it keeps JazzHR's, and
+recording it would withdraw the watch promise from every zero page whose
+board lists only older roles (BASS ABA's). The fixture's Stripe total (727,
+state ok) was a row the writer cannot produce. The line now judges the
+printed total on three SmartRecruiters boards one visit reads whole (LLNL,
+Clifford Chance, Sodexo), each against its own feed's `totalFound`, and FAILs
+if none of the three can be judged while their feeds answer; live that day
+all three PASSed at 0% off.
 
 **The 16 stale checks.** 7d (`/pricing` Pro at $45/month in description and
 body; retired claims judged by `scripts/prerender-retired.mjs`, so the bare
@@ -289,7 +300,7 @@ bucket, zero-head and watch-gate lines, which FAIL until the publish, and its
 watch lines, INFO until the gate is served and PASS after; 81i, Workday facts within
 3 s; 81j, at least 90% of 24 sampled Workday pages, and each of the
 sitemap's first 4, stating places or fields, which FAILs until the
-re-bake; 81c's Stripe total stays FAIL by decision),
+re-bake; 81c's board total, on three SmartRecruiters boards since 2026-10-25),
 83 and 49. Only when those pass is
 `{commit: '57815de9', functions: {'employer-profiles':
 'employer-profiles.2026-10-12.2'}}` appended to `verifiedDeploys`, which

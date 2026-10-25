@@ -42,6 +42,15 @@
  * site (a Workday site of a five-site tenant, read in full with no stated
  * total) is judged too: the Workday cross-site dedupe can empty it, and
  * 474dca30's Oracle-only rule promised there.
+ *
+ * The board total (2026-10-25): 81c judged the printed total on Stripe, whose
+ * row was a fixture invention (727, state ok). A whole-feed board states no
+ * total, by design: job-board records none for Greenhouse, Lever, Ashby and
+ * the rest, and Greenhouse's meta.total is the length of the list it ships
+ * (719 of 719 on Stripe that day). So the live verify FAILed a claim the
+ * system never makes. The total is now judged where the vendor states its own
+ * count and one visit reads the board whole: three SmartRecruiters boards
+ * (LLNL, Clifford Chance, Sodexo), each against its own feed's totalFound.
  */
 import { describe, expect, it } from "vitest";
 import { execFileSync } from "node:child_process";
@@ -130,6 +139,9 @@ const HEAD_BUNDLE = NEW_BUNDLE
   .replace(`t("companyProfile.zero.answer","No roles are listed on this page right now.")`, `t("companyProfile.zero.older",{count:n});t("companyProfile.zero.fullRead",{days:30});t("companyProfile.zero.answer","No roles dated in the last {{days}} days")`);
 
 const beforeRows = BEFORE_READ.curves.body;
+/** The boards 81c judges the printed board total on: label, token, what its own SmartRecruiters feed and the curve stated, and the roles listed (2026-10-25). */
+const STATED = [["LLNL", "LLNL", 174, 99], ["Clifford Chance", "CliffordChance", 179, 70], ["Sodexo", "Sodexo", 153, 49]] as const;
+const STATED_FEEDS = Object.fromEntries(STATED.map(([, token, total]) => [token, { status: 200, total }]));
 const hoursAgo = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString();
 /** The deploy's reader: the same rows with the columns 20261012121000 appends and its interval clamp. */
 const afterRows: Row[] = beforeRows.map((r) => {
@@ -138,7 +150,8 @@ const afterRows: Row[] = beforeRows.map((r) => {
   if (r.company_token === "bayada") return { ...base, multi_site_title_share: 0.44 };
   // BASS ABA as the curve answers it live (2026-10-24): a Greenhouse board read whole in one visit, so job-board states no total.
   if (r.company_token === "bassabatherapy") return { ...base, observability_bucket: "full_read", tracking_days: 89 };
-  if (r.company_token === "stripe") return { ...base, feed_total: 727, feed_read_at: hoursAgo(1), feed_state: "ok", feed_capped: false };
+  // Stripe as the curve answers it live (2026-10-25): read in full, no stated total, like BASS ABA (a whole-feed Greenhouse board).
+  if (r.company_token === "stripe") return { ...base, observability_bucket: "full_read", tracking_days: 90 };
   return base;
 }).concat([
   // The two disagreeing shapes as the curve answered them on 2026-10-25 (src/test/fixtures/zero-page-corpus-2026-10-25.json).
@@ -146,9 +159,14 @@ const afterRows: Row[] = beforeRows.map((r) => {
   { ...beforeRows[0], company_token: "akumincorp~wd5~adgcareers", open_roles: 0, observability_bucket: "full_read", tracking_days: 90, multi_site_title_share: null, multi_site_n: 0, feed_total: 5, feed_read_at: hoursAgo(1), feed_state: "empty", feed_capped: false, undated_open: 0 },
   // Boeing's PRIDE site as the curve answered it live (round 4, 2026-10-25): read in full, no stated total, one of five Workday sites of its tenant.
   { ...beforeRows[0], company_token: "boeing~wd1~PRIDE", open_roles: 0, observability_bucket: "full_read", tracking_days: 85, multi_site_title_share: null, multi_site_n: 0, feed_total: null, feed_read_at: null, feed_state: null, feed_capped: null, undated_open: 0 },
+  // The three boards whose own feed states a total, as the curve answered them live (2026-10-25): read whole in one visit, the total verbatim.
+  ...STATED.map(([, token, total, open]): Row => ({ ...beforeRows[0], company_token: token, open_roles: open, observability_bucket: "full_read", tracking_days: 90, multi_site_title_share: null, multi_site_n: 0, feed_total: total, feed_read_at: hoursAgo(3), feed_state: "ok", feed_capped: false, undated_open: 0 })),
 ]);
-/** The read-only list for each zero board after the deploy: nothing listed. */
-const EXT_AFTER = { ...(BEFORE_READ.ext as object), zeroLists: { "eexs~us2~CX_19005": { status: 200, total: 0 }, "akumincorp~wd5~adgcareers": { status: 200, total: 0 }, "boeing~wd1~PRIDE": { status: 200, total: 0 } } };
+/** The read-only list for each zero board after the deploy: nothing listed; and the three boards' own SmartRecruiters feeds. */
+const EXT_AFTER = { ...(BEFORE_READ.ext as object), zeroLists: { "eexs~us2~CX_19005": { status: 200, total: 0 }, "akumincorp~wd5~adgcareers": { status: 200, total: 0 }, "boeing~wd1~PRIDE": { status: 200, total: 0 } }, statedFeeds: STATED_FEEDS };
+/** 2026-10-12's reader on the three boards: rows without the feed columns 20261012121000 appends. */
+const BEFORE_ROWS: Row[] = beforeRows.concat(STATED.map(([, token]) => ({ ...beforeRows[0], company_token: token })));
+const EXT_BEFORE = { ...(BEFORE_READ.ext as object), statedFeeds: STATED_FEEDS };
 
 const files = (rows: Row[], bundle: string, over: Record<string, unknown> = {}): Record<string, string> => {
   const d = derived(rows);
@@ -177,7 +195,7 @@ const LOCKED = Object.fromEntries([["showcase_excluded", "company_token"], ["com
   .map(([t, col]) => [t, { col, status: 401, body: `{"code":"42501","details":null,"hint":null,"message":"permission denied for table ${t}"}` }]));
 
 describe("before the deploy (production, 2026-10-12): every Track 1 and lock claim fails", () => {
-  const lines = run(files(beforeRows, OLD_BUNDLE));
+  const lines = run(files(BEFORE_ROWS, OLD_BUNDLE, { ext: EXT_BEFORE }));
   it("81a: the four lap_pending boards", () => {
     for (const l of ["AutoZone", "Marriott", "Kroger", "Kotak"]) expect(line(lines, "FAIL", new RegExp(`81a ${l}:`)), show(lines)).toBe(true);
   });
@@ -187,11 +205,11 @@ describe("before the deploy (production, 2026-10-12): every Track 1 and lock cla
     expect(line(lines, "FAIL", /81b Centria Autism: the reply carries no multi_site_title_share/), show(lines)).toBe(true);
     expect(line(lines, "FAIL", /81b BAYADA: the reply carries no multi_site_title_share/), show(lines)).toBe(true);
   });
-  it("81c-81e: the zero sentence, BASS ABA, Stripe, the old bound and Centria's escaped share", () => {
+  it("81c-81e: the zero sentence, BASS ABA, the three board totals, the old bound and Centria's escaped share", () => {
     expect(line(lines, "FAIL", /81c the served copy still says an employer has no open roles/), show(lines)).toBe(true);
     expect(line(lines, "FAIL", /81c the served copy lacks the zero page's own line/), show(lines)).toBe(true);
     expect(line(lines, "FAIL", /81c BASS ABA: the reply carries no feed_total/), show(lines)).toBe(true);
-    expect(line(lines, "FAIL", /81c Stripe: the reply carries no feed_total/), show(lines)).toBe(true);
+    for (const [label] of STATED) expect(line(lines, "FAIL", new RegExp(`81c ${label}: the reply carries no feed_total`)), show(lines)).toBe(true);
     expect(line(lines, "FAIL", /81c the served chunks do not ask for companyProfile\.zero\.seoTitle or companyProfile\.zero\.seoDescription/), show(lines)).toBe(true);
     expect(line(lines, "FAIL", /81c the served chunks never ask for companyProfile\.zero\.body/), show(lines)).toBe(true);
     expect(line(lines, "FAIL", /81d Databricks: the served copy is the old bound/), show(lines)).toBe(true);
@@ -227,7 +245,7 @@ describe("after the deploy: every claim passes", () => {
     expect(line(lines, "PASS", /81c the served copy carries the zero page's own line/), show(lines)).toBe(true);
     expect(line(lines, "PASS", /81c the served chunks ask for neither zero sentence the corpus refuted/), show(lines)).toBe(true);
     expect(line(lines, "PASS", /81c the served Jobs chunk hands the zero page the curve's read bucket and tracking days/), show(lines)).toBe(true);
-    expect(line(lines, "PASS", /81c Stripe: board total 727 .* within 10% of its Greenhouse feed \(722\)/), show(lines)).toBe(true);
+    for (const [label, , total] of STATED) expect(line(lines, "PASS", new RegExp(`81c ${label}: the page prints board total ${total} \\(read .*\\), within 10% of its own SmartRecruiters feed \\(${total}\\)`)), show(lines)).toBe(true);
     expect(line(lines, "PASS", /81c the served chunks ask for companyProfile\.zero\.seoTitle and companyProfile\.zero\.seoDescription/), show(lines)).toBe(true);
     expect(line(lines, "PASS", /81c the served company chunk prints companyProfile\.zero\.body only where the lander model's watchPromise opens it \(1 call\(s\)\)/), show(lines)).toBe(true);
     expect(line(lines, "PASS", /81c Boeing PRIDE \(.*\): nothing listed \(bucket full_read, 85 tracking days, no stated total\)/), show(lines)).toBe(true);
@@ -348,6 +366,78 @@ describe("81c judges the zero page as the page builds it (hotfix 2026-10-24; cor
       expect(sites, `${tenant}'s catalogued Workday sites`).toBe(want);
       const named = new RegExp(`"${token}", "[^"]*", \\(ext\\.zeroLists \\|\\| \\{\\}\\)\\["${token}"\\], "a Workday site of a tenant with (\\d+) catalogued sites`).exec(SH);
       expect(named?.[1], `section 81's ZERO_BOARDS entry for ${token}`).toBe(String(want));
+    }
+  });
+});
+
+describe("81c judges the printed board total where the board's own feed states one (2026-10-25)", () => {
+  const AFTER = { lock: LOCKED, similar: SIMILAR_AFTER, ext: EXT_AFTER };
+  const totalLine = (lines: string[], label: string) => lines.find((l) => new RegExp(`^\\w+ +81c ${label}: `).test(l)) ?? "";
+  const NONE_JUDGED = /^FAIL {2}81c none of the 3 named boards whose own feed states a total could be judged/;
+  const withRow = (token: string, over: Partial<Row>) => afterRows.map((r) => (r.company_token === token ? { ...r, ...over } : r));
+
+  it("the live shape: Stripe, a Greenhouse board read whole, states no total and is not judged; each named board PASSes and none FAILs", () => {
+    const lines = run(files(afterRows, NEW_BUNDLE, { ...AFTER, ext: { ...EXT_AFTER, stripeFeed: { status: 200, total: 719 } } }));
+    expect(lines.filter((l) => /^FAIL +81c/.test(l)), show(lines)).toEqual([]);
+    expect(lines.filter((l) => /81c Stripe/.test(l)), show(lines)).toEqual([]);
+    for (const [label, , total] of STATED) expect(totalLine(lines, label), show(lines)).toMatch(new RegExp(`^PASS {2}81c ${label}: the page prints board total ${total} \\(read `));
+  });
+
+  it("TEETH: a board read in full whose row states no total FAILs (job-board did not record the vendor's own count)", () => {
+    const lines = run(files(withRow("LLNL", { feed_total: null, feed_read_at: null, feed_state: null, feed_capped: null }), NEW_BUNDLE, AFTER));
+    expect(totalLine(lines, "LLNL"), show(lines)).toMatch(/^FAIL {2}81c LLNL: read in full \(bucket full_read\) with no board total from a complete read while its SmartRecruiters feed states 174/);
+  });
+
+  it("TEETH: a printed total more than 10% off its own feed FAILs, and the page's print rule is the one judged", () => {
+    const off = run(files(withRow("Sodexo", { feed_total: 120 }), NEW_BUNDLE, AFTER));
+    expect(totalLine(off, "Sodexo"), show(off)).toMatch(/^FAIL {2}81c Sodexo: the page prints board total 120 \(read .*\), 22% off its own SmartRecruiters feed \(153\)/);
+    // The page prints no capped total, so a capped one is not compared with the feed.
+    const capped = run(files(withRow("Sodexo", { feed_total: 120, feed_capped: true }), NEW_BUNDLE, AFTER));
+    expect(totalLine(capped, "Sodexo"), show(capped)).toMatch(/^INFO {2}81c Sodexo: feed_total 120 \(ok, read .*\) is one the page may not print/);
+  });
+
+  it("a board grown past one visit, a total too old to print and a board the curve did not answer are INFO; with no board judged the claim FAILs", () => {
+    const one = run(files(withRow("CliffordChance", { observability_bucket: "lap_proven", feed_total: null, feed_read_at: null, feed_state: null, feed_capped: null }), NEW_BUNDLE, AFTER));
+    expect(totalLine(one, "Clifford Chance"), show(one)).toMatch(/^INFO {2}81c Clifford Chance: no complete read stated a total \(bucket lap_proven\) while its feed states 179/);
+    expect(one.filter((l) => NONE_JUDGED.test(l)), show(one)).toEqual([]);
+    const none = afterRows
+      .filter((r) => r.company_token !== "Sodexo")
+      .map((r) => (r.company_token === "CliffordChance" ? { ...r, observability_bucket: "lap_proven", feed_total: null, feed_read_at: null, feed_state: null, feed_capped: null }
+        : r.company_token === "LLNL" ? { ...r, feed_read_at: hoursAgo(49) } : r));
+    const lines = run(files(none, NEW_BUNDLE, AFTER));
+    expect(totalLine(lines, "LLNL"), show(lines)).toMatch(/^INFO {2}81c LLNL: feed_total 174 \(ok, read .*\) is one the page may not print \(older than 48 hours or capped\)/);
+    expect(totalLine(lines, "Sodexo"), show(lines)).toMatch(/^INFO {2}81c Sodexo: no curve row answered/);
+    expect(line(lines, "FAIL", NONE_JUDGED), show(lines)).toBe(true);
+  });
+
+  it("a model that did not run says so, and is not read as a total too old to print", () => {
+    const lines = run({ ...files(afterRows, NEW_BUNDLE, AFTER), "vd_81_model.json": "null" });
+    for (const [label] of STATED) expect(totalLine(lines, label), show(lines)).toMatch(new RegExp(`^INFO {2}81c ${label}: this checkout's lander model did not run, so the printed total cannot be judged$`));
+    expect(lines.filter((l) => NONE_JUDGED.test(l)), show(lines)).toEqual([]);
+  });
+
+  it("feeds that do not answer are INFO and leave nothing to judge, so they FAIL nothing", () => {
+    const down = Object.fromEntries(STATED.map(([, token]) => [token, { status: 0, total: null }]));
+    const lines = run(files(afterRows, NEW_BUNDLE, { ...AFTER, ext: { ...EXT_AFTER, statedFeeds: down } }));
+    for (const [label] of STATED) expect(totalLine(lines, label), show(lines)).toMatch(new RegExp(`^INFO {2}81c ${label}: its SmartRecruiters feed answered HTTP 0 with no total`));
+    expect(lines.filter((l) => /^FAIL +81c/.test(l)), show(lines)).toEqual([]);
+  });
+
+  it("the read and the judge name the same three boards, each a SmartRecruiters board in the catalogue, and the curve is asked for each", () => {
+    const fetchBlock = blocks.find((b) => b.includes("/tmp/vd_81_ext.json") && b.includes("writeFileSync")) ?? "";
+    const read = /const STATED = (\[[^\]]*\]);/.exec(fetchBlock);
+    const judged = /const STATED_BOARDS = (\[[^;]*\]);/.exec(judge);
+    expect(read, "the read's STATED list moved: RE-ANCHOR").toBeTruthy();
+    expect(judged, "the judge's STATED_BOARDS list moved: RE-ANCHOR").toBeTruthy();
+    const readTokens = JSON.parse(read![1]) as string[];
+    const judgedBoards = JSON.parse(judged![1]) as [string, string][];
+    expect(judgedBoards.map(([, t]) => t)).toEqual(readTokens);
+    expect(judgedBoards).toEqual(STATED.map(([label, token]) => [label, token]));
+    expect(/const TOKENS = \[[^\]]*\.\.\.STATED\];/.test(fetchBlock), "the curve read does not ask for the STATED boards").toBe(true);
+    expect(fetchBlock).toMatch(/api\.smartrecruiters\.com\/v1\/companies\/\$\{encodeURIComponent\(t\)\}\/postings\?limit=1/);
+    expect(fetchBlock).toContain("totalFound");
+    for (const token of readTokens) {
+      expect(CATALOG.filter((e) => e.token === token).map((e) => e.source), `${token} in the catalogue`).toEqual(["smartrecruiters"]);
     }
   });
 });
