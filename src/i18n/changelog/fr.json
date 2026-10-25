@@ -346,7 +346,7 @@
     },
     "setupIsOneStep": {
       "title": "Configurer votre agent de candidature ne prend plus qu'une étape : importez votre CV",
-      "description": "Nous lisons votre nom, votre e-mail, votre téléphone et votre LinkedIn directement dans le document et les enregistrons — inutile de ressaisir ce que vous venez de nous transmettre. Ce qu'un formulaire exige et que le CV ne dit pas vous est demandé au moment où ce formulaire le demande, pas avant. Votre autorisation de travail, votre salaire et votre date de début ne sont jamais devinés."
+      "description": "Nous lisons votre nom, votre e-mail, votre téléphone et votre LinkedIn directement dans le document et les enregistrons — inutile de ressaisir ce que vous venez de nous transmettre. Ce qu'un formulaire exige et que le CV ne dit pas vous est demandé au moment où ce formulaire le demande, pas avant. Sur une question qu'il reconnaît comme portant sur votre autorisation de travail, votre salaire ou votre date de début, l'agent ne devine pas la réponse."
     },
     "sentButUnconfirmed": {
       "title": "Une candidature que nous n'avons pas pu confirmer ne ressemble plus à une qui vous attend",

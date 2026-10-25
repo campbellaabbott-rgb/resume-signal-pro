@@ -346,7 +346,7 @@
     },
     "setupIsOneStep": {
       "title": "Die Einrichtung Ihres Bewerbungs-Agenten ist jetzt ein Schritt: Lebenslauf hochladen",
-      "description": "Wir lesen Name, E-Mail, Telefonnummer und LinkedIn direkt aus dem Dokument und speichern sie — kein erneutes Eintippen von Angaben, die Sie gerade übergeben haben. Was ein Formular verlangt und der Lebenslauf nicht hergibt, fragen wir genau dann, wenn das Formular es verlangt. Arbeitserlaubnis, Gehalt und Startdatum werden nie erraten."
+      "description": "Wir lesen Name, E-Mail, Telefonnummer und LinkedIn direkt aus dem Dokument und speichern sie — kein erneutes Eintippen von Angaben, die Sie gerade übergeben haben. Was ein Formular verlangt und der Lebenslauf nicht hergibt, fragen wir genau dann, wenn das Formular es verlangt. Bei einer Frage, die er als Frage nach Arbeitserlaubnis, Gehalt oder Startdatum erkennt, rät der Agent die Antwort nicht."
     },
     "sentButUnconfirmed": {
       "title": "Eine Bewerbung ohne Bestätigung sieht nicht mehr aus wie eine, die auf Sie wartet",

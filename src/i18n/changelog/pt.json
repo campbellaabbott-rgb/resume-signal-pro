@@ -346,7 +346,7 @@
     },
     "setupIsOneStep": {
       "title": "Configurar o seu agente de candidaturas passou a ser um passo: envie o seu CV",
-      "description": "Lemos o seu nome, e-mail, telefone e LinkedIn diretamente do documento e guardamos — sem reescrever dados que acabou de nos dar. O que um formulário exigir e o CV não disser é perguntado no momento em que esse formulário pergunta, não antes. A sua autorização de trabalho, salário e data de início nunca são adivinhados."
+      "description": "Lemos o seu nome, e-mail, telefone e LinkedIn diretamente do documento e guardamos — sem reescrever dados que acabou de nos dar. O que um formulário exigir e o CV não disser é perguntado no momento em que esse formulário pergunta, não antes. Numa pergunta que reconhece como sendo sobre a sua autorização de trabalho, salário ou data de início, o agente não adivinha a resposta."
     },
     "sentButUnconfirmed": {
       "title": "Uma candidatura que não conseguimos confirmar já não parece estar à sua espera",

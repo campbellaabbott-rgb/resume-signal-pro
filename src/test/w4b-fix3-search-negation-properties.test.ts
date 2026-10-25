@@ -1,66 +1,57 @@
 // @vitest-environment node
 /**
- * NEGATED SEARCH PHRASES, GENERATED (wave 4 fix rounds 3 and 4, S12-017).
+ * NEGATED SEARCH PHRASES, GENERATED: THE SHIPPED ANSWER IS ORIGIN/MAIN'S
+ * (wave 4 descope, 2026-10-25; S12-017 left wave 4).
  *
- * The corpus test pins 591 labelled queries; this one walks combinations no
- * one listed, from a fixed seed so a failure reproduces:
- *   - a title, ONE negated word, then any place, known or not, any case, with
- *     or without a preposition, or an invented word in capitals: the place or
- *     word stays wanted and only the negated word is excluded, exactly as
- *     origin/main answers;
- *   - a pinned compound in any case, then any of those: both compound words
- *     are excluded and nothing after them;
- *   - random queries with no compound, no known multi-word place, no quote
- *     and no verb after "not": the answer is origin/main's, word for word;
- *   - any query: the positive words are the typed words, in order, minus the
- *     operators and the excluded words, and nothing is invented;
- *   - round 4: "T not A or B" excludes both; a pinned region or city after
- *     "not" is one exclusion and stays wanted after a negated word;
- *   - the title match is origin/main's (the 2026-10-25 descope took round 4's
- *     plural and hyphen folds out): a word strikes exactly the titles main's
- *     match strikes, and a hyphenated word strikes exactly the titles that
- *     hold it as typed, hyphen included. A title spelling it apart or run
- *     together is kept: main's open defect, a residual.
- * LIVE_RULE and LIVE_TITLE below are origin/main's splitExclusions and
- * titleExcluded (8a6561c4), copied as the oracle: what production answers today.
- * A hyphen inside an excluded word is the one place this rule's string differs
- * from main's ("part-time" for main's "parttime"); the oracle compares without it.
+ * Four fix rounds changed how far "not" reaches and how an excluded word
+ * strikes a title, and every recheck found inputs where a round was worse than
+ * origin/main. The descope of 2026-10-25 took the title folds out but kept
+ * rounds 3 and 4's split, and its recheck found that mix worse than main too:
+ * a single-letter slash pair ("not a/p") excluded nothing, a slash pair that
+ * names one thing ("med/surg") struck "Med Tech" titles, and a compound typed
+ * with a space or as a plural ("not part time", "not night shifts") stopped
+ * striking the hyphenated and singular titles main strikes. So the whole
+ * exclusion path is origin/main's again, byte for byte, and S12-017 is its own
+ * search project.
+ *
+ * This file walks combinations no one listed, from a fixed seed so a failure
+ * reproduces, and asks one thing of each: the shipped splitExclusions answers
+ * exactly what origin/main's does, and the shipped titleExcluded strikes
+ * exactly the titles origin/main's strikes. The shapes it walks are the ones
+ * the rounds changed: one negated word before any place, known or invented;
+ * round 4's pinned compounds, typed with a space, a hyphen, run together or
+ * as a plural, before titles spelled each of those ways; round 4's pinned
+ * regions and cities; slash pairs of letters, words and digits; "not A or B";
+ * a verb or an article after "not"; quoted phrases; and random queries.
+ * ORIGIN_MAIN is origin/main's code at ef4fb53e, frozen in
+ * fixtures/w4b-fix3-search/origin-main-exclusion.ts. ROUND4_COMPOUNDS and
+ * ROUND4_PLACES are the lists round 4 pinned, kept here as data so the walk
+ * still reaches the shapes they named; nothing in the shipped code reads them.
  */
 import { describe, expect, it } from "vitest";
-import { NEGATED_PLACES, NOT_COMPOUNDS, splitExclusions, titleExcluded } from "../../supabase/functions/job-board/search-routing";
-import { knownPlace } from "../../supabase/functions/job-board/query-place";
+import * as SHIPPED from "../../supabase/functions/job-board/search-routing";
+import * as ORIGIN_MAIN from "./fixtures/w4b-fix3-search/origin-main-exclusion";
 
-type Out = { positive: string; excluded: string[] };
-
-const LIVE_STOPWORDS = new Set(["for", "the", "a", "an", "of", "in", "at", "to", "on"]);
-function LIVE_RULE(raw: string): Out {
-  const text = String(raw ?? "").trim();
-  if (!text) return { positive: text, excluded: [] };
-  const positive: string[] = [];
-  const excluded: string[] = [];
-  let pendingNot: string | null = null;
-  for (const w of text.split(/\s+/)) {
-    if (pendingNot !== null) {
-      if (LIVE_STOPWORDS.has(w.toLowerCase())) positive.push(pendingNot, w);
-      else excluded.push(w.toLowerCase());
-      pendingNot = null;
-      continue;
-    }
-    if (/^not$/i.test(w)) { pendingNot = w; continue; }
-    if (w.length > 1 && w.startsWith("-")) { excluded.push(w.slice(1).toLowerCase()); continue; }
-    positive.push(w);
-  }
-  const clean = [...new Set(excluded.map((e) => e.replace(/[^a-z0-9+#.]/gi, "").toLowerCase()).filter((e) => e.length >= 2))];
-  if (!positive.length || !clean.length) return { positive: text, excluded: [] };
-  return { positive: positive.join(" "), excluded: clean };
-}
-function LIVE_TITLE(title: string, excluded: readonly string[]): boolean {
-  if (!excluded.length) return false;
-  const t = String(title ?? "").toLowerCase();
-  return excluded.some((e) => new RegExp(`(^|[^a-z0-9])${e.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^a-z0-9]|$)`, "i").test(t));
-}
-/** The same answer as main's, reading a kept hyphen as main's fold. */
-const asLive = (o: Out): string => JSON.stringify({ positive: o.positive, excluded: o.excluded.map((e) => e.replace(/-/g, "")) });
+const ROUND4_COMPOUNDS = ["night shift", "overnight shift", "graveyard shift", "weekend shift", "evening shift", "swing shift",
+  "rotating shift", "split shift", "double shift", "day shift", "late shift", "early shift", "morning shift", "first shift",
+  "second shift", "third shift", "1st shift", "2nd shift", "3rd shift", "noc shift", "nite shift", "pm shift", "am shift",
+  "afternoon shift", "mid shift", "midnight shift", "box truck", "dump truck", "tow truck", "call center", "call centre",
+  "contact center", "contact centre", "home health", "home care", "customer service", "field service", "help desk", "tech support",
+  "technical support", "data entry", "fast food", "general labor", "general labour", "team lead", "team leader", "part time",
+  "full time", "entry level", "per diem", "new grad", "commission only", "cold calling", "cold call", "door knocking",
+  "heavy lifting", "long haul", "cold storage", "line cook", "tech lead", "assisted living", "skilled nursing", "light industrial",
+  "fine dining", "heavy equipment", "reach truck", "day care", "overnight travel", "on call", "home health care", "home health aide",
+  "long term care", "door to door", "12 hour shift", "10 hour shift", "8 hour shift"];
+const ROUND4_PLACES = ["san jose", "new orleans", "long beach", "baton rouge", "little rock", "sioux falls", "fort lauderdale",
+  "st louis", "grand rapids", "corpus christi", "fort myers", "fort wayne", "fort collins", "colorado springs", "palo alto",
+  "santa rosa", "santa ana", "santa clara", "santa barbara", "santa monica", "santa cruz", "san mateo", "san bernardino", "ann arbor",
+  "virginia beach", "boca raton", "winston salem", "new haven", "thousand oaks", "round rock", "sugar land", "college station",
+  "cedar park", "cedar rapids", "st petersburg", "st paul", "saint paul", "palm beach", "west palm beach", "palm springs",
+  "overland park", "chapel hill", "south bend", "green bay", "mountain view", "redwood city", "menlo park", "newport news",
+  "cape coral", "myrtle beach", "iowa city", "atlantic city", "staten island", "new england", "west coast", "east coast",
+  "gulf coast", "long island", "inland empire", "silicon valley", "twin cities", "east bay", "pacific northwest",
+  "upstate new york", "central valley", "south florida", "north florida", "central florida", "north texas", "south texas",
+  "central texas", "east texas", "west texas", "southern california", "northern california"];
 
 /** mulberry32: a fixed seed, so a failing combination reproduces. */
 function rng(seed: number) {
@@ -73,208 +64,132 @@ function rng(seed: number) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
-const R = rng(20261024);
+const R = rng(20261025);
 const pick = <T,>(xs: readonly T[]): T => xs[Math.floor(R() * xs.length)];
 const caseOf = (s: string, k: number) => (k === 0 ? s.toLowerCase() : k === 1 ? s.replace(/\b\w/g, (c) => c.toUpperCase()) : k === 2 ? s.toUpperCase() : s);
-const clean = (s: string) => s.split(/\s+/).map((w) => w.replace(/[^a-z0-9+#.-]/gi, "").replace(/\.+$/, "").replace(/^-+|-+$/g, "").toLowerCase()).filter(Boolean).join(" ");
+const tc = (s: string) => s.split(" ").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
 
 const TITLES = ["nurse", "rn", "registered nurse", "warehouse", "driver", "truck driver", "teacher", "accountant", "barista", "cook",
   "line cook", "chef", "cashier", "electrician", "software engineer", "developer", "welder", "data analyst", "security guard",
-  "pharmacist", "mechanic", "receptionist", "project manager", "caregiver", "plumber", "paralegal", "cna", "bartender", "recruiter"];
-/** One-word negations. "night", "box", "call", "home" start compounds, and are paired below only with places. */
+  "pharmacist", "mechanic", "receptionist", "project manager", "caregiver", "plumber", "paralegal", "cna", "bartender", "recruiter",
+  "clerk", "technician", "rep", "agent", "aide", "worker"];
 const NEGS = ["senior", "junior", "travel", "night", "overnight", "contract", "temp", "forklift", "cdl", "substitute", "icu", "agency",
   "lead", "manager", "sales", "commission", "weekend", "intern", "apprentice", "staffing", "union", "federal", "clearance", "part-time",
-  "otr", "sous", "line", "remote", "prn", "er", "seasonal", "box", "call", "home", "c++", ".net", "crypto", "unpaid"];
+  "otr", "sous", "line", "remote", "prn", "er", "seasonal", "box", "call", "home", "c++", ".net", "crypto", "unpaid", "news", "parts",
+  "account", "accounts", "contracts", "nights", "shifts", "full-time", "e-commerce", "k-12", "live-in", "on-call", "per-diem"];
 const PLACES = ["Dallas", "Chicago", "Houston", "Austin", "Denver", "Phoenix", "Boston", "San Antonio", "Los Angeles", "Kansas City",
   "Salt Lake City", "St. Louis", "Fort Worth", "Jacksonville", "Tulsa", "Spokane", "Fresno", "San Jose", "Oakland", "Long Beach",
   "Richmond", "Norfolk", "Rochester", "Albany", "Hartford", "Providence", "Jackson", "Birmingham", "New Orleans", "Baton Rouge",
   "Little Rock", "Madison", "Texas", "Florida", "New Jersey", "North Carolina", "TX", "CA", "NY", "nyc", "sf", "la", "bay area", "dfw",
   "atl", "socal", "uk", "us", "nz", "canada", "germany", "new zealand", "london", "toronto", "Austin, TX", "Dallas TX", "San Jose, CA",
   "tulsa ok", "75201", "remote", "hybrid", "part time", "full time", "remote us", "new york", "York", "Reading", "Mobile", "Normal"];
+const SLASHES = ["a/p", "a/r", "p/t", "f/t", "l/d", "w/e", "med/surg", "tcp/ip", "ob/gyn", "ar/ap", "lpn/lvn", "icu/ccu", "ui/ux",
+  "jr/sr", "senior/lead", "travel/agency", "24/7", "9/80", "3/12", "m/f", "c/c++"];
 const SYL = ["bor", "ell", "an", "ton", "vil", "ma", "ker", "ridge", "ham", "lo", "sta", "wen", "dor", "ast", "ion", "qu", "ex", "zel"];
 const invented = () => { let w = ""; const n = 2 + Math.floor(R() * 3); for (let i = 0; i < n; i++) w += pick(SYL); return R() < 0.5 ? w[0].toUpperCase() + w.slice(1) : w; };
-const COMPOUNDS = [...NOT_COMPOUNDS];
 
-describe("one negated word never takes the next word (any place, any case, invented words)", () => {
-  it("answers 'T P' with only the negated word excluded, exactly as origin/main does", () => {
-    const bad: string[] = [];
-    for (let k = 0; k < 4000; k++) {
-      const t = caseOf(pick(TITLES), Math.floor(R() * 3));
-      const n = pick(NEGS);
-      const tail = R() < 0.2 ? invented() : caseOf(pick(PLACES), Math.floor(R() * 4));
-      const prep = R() < 0.15 ? pick(["in", "near", "around"]) + " " : "";
-      // A compound's first word followed by its own partner is the compound rule, tested below.
-      if (NOT_COMPOUNDS.has(`${n} ${tail.split(" ")[0].toLowerCase().replace(/s$/, "")}`)) continue;
-      const q = `${t} not ${n} ${prep}${tail}`;
-      const want = { positive: `${t} ${prep}${tail}`, excluded: [clean(n)] };
-      const got = splitExclusions(q);
-      if (JSON.stringify(got) !== JSON.stringify(want) || asLive(got) !== JSON.stringify(LIVE_RULE(q))) bad.push(`${q} -> ${JSON.stringify(got)}`);
-    }
-    expect(bad.slice(0, 10)).toEqual([]);
-  });
-});
+/** Every spelling of a phrase a title might carry: apart, hyphenated, run together, and with or without a plural last word. */
+function spellings(phrase: string): string[] {
+  const ws = phrase.split(/[\s/-]+/).filter(Boolean);
+  const sing = ws.map((w, i) => (i === ws.length - 1 ? w.replace(/(?<=[^s])s$/, "") : w));
+  const plur = ws.map((w, i) => (i === ws.length - 1 && !/s$/.test(w) ? `${w}s` : w));
+  return [...new Set([ws, sing, plur].flatMap((x) => [x.join(" "), x.join("-"), x.join(""), x.join("/")]))];
+}
+/** Titles around a phrase: before the head, after a dash, in brackets, alone, and beside unrelated words. */
+function titlesFor(head: string, phrase: string): string[] {
+  const H = tc(head);
+  return spellings(phrase).flatMap((s) => [`${tc(s)} ${H}`, `${H} - ${tc(s)}`, `${H} (${tc(s)})`, `${H} ${s.toUpperCase()}`]);
+}
+const OTHER_TITLES = ["Certified Med Tech", "Nuclear Med Tech - Per Diem", "Med Spa Nurse", "IP Engineer", "AP Clerk", "A/P Clerk",
+  "Accounts Payable Manager", "Contracts Administrator", "New Grad RN", "Part-Time Driver", "Store Managers", "Long Beach Driver",
+  "Nurse - New York", "Night Shift RN", "Box Truck Driver", "Call Center Agent", "Customer Services Rep", "Parttime Barista",
+  "Ecommerce Developer", "K12 Teacher", "Cashier (Full-Time & Part-Time)", "Cashier - PT", "Travel ER Nurse", "ER Nurse"];
 
-describe("a pinned compound takes exactly its two words, in any case", () => {
-  it("excludes the compound and keeps whatever follows", () => {
-    const bad: string[] = [];
-    for (let k = 0; k < 3000; k++) {
-      const t = pick(TITLES);
-      const c = caseOf(pick(COMPOUNDS), Math.floor(R() * 3));
-      const plural = R() < 0.3 && !/s$/.test(c) ? "s" : "";
-      const tail = R() < 0.2 ? "" : R() < 0.3 ? invented() : pick(PLACES);
-      const verb = R() < 0.15 ? "requiring " : "";
-      const q = `${t} not ${verb}${c}${plural}${tail ? ` ${tail}` : ""}`;
-      const want = { positive: `${t}${tail ? ` ${tail}` : ""}`, excluded: [clean(c + plural)] };
-      const got = splitExclusions(q);
-      if (JSON.stringify(got) !== JSON.stringify(want)) bad.push(`${q} -> ${JSON.stringify(got)}`);
-    }
-    expect(bad.slice(0, 10)).toEqual([]);
-  });
+const bad: string[] = [];
+/** The shipped answer to q, and its strikes over the given titles, against origin/main's. Records any difference. */
+function same(q: string, titles: readonly string[] = []): void {
+  const got = SHIPPED.splitExclusions(q), want = ORIGIN_MAIN.splitExclusions(q);
+  if (JSON.stringify(got) !== JSON.stringify(want)) { bad.push(`${q}: shipped ${JSON.stringify(got)}, origin/main ${JSON.stringify(want)}`); return; }
+  for (const t of [...titles, ...OTHER_TITLES]) {
+    const a = SHIPPED.titleExcluded(t, got.excluded), b = ORIGIN_MAIN.titleExcluded(t, want.excluded);
+    if (a !== b) bad.push(`${q} | ${t}: shipped ${a ? "strikes" : "keeps"} it, origin/main ${b ? "strikes" : "keeps"} it`);
+  }
+}
+const run = (fn: () => void) => { bad.length = 0; fn(); return bad.slice(0, 10); };
 
-  it("no compound word is a place, in any case, so no place can ride in as a compound's second word", () => {
-    // A compound's first word is never taken alone as a place ("on" alone is the stopword veto), so only "ON call"'s "ON" is a place.
-    for (const c of COMPOUNDS) for (const w of c.split(" ").slice(c.startsWith("on ") ? 1 : 0)) for (const k of [0, 1, 2]) expect(knownPlace(caseOf(w, k)), `${c}: ${w}`).toBeNull();
-  });
-});
-
-describe("a sentence's full stop never rides into an exclusion (found by the fix 3 self-break)", () => {
-  it("strikes the title the words name, with or without the stop", () => {
-    expect(splitExclusions("nurse not night shift.")).toEqual({ positive: "nurse", excluded: ["night shift"] });
-    expect(splitExclusions("engineer not manager.")).toEqual({ positive: "engineer", excluded: ["manager"] });
-    expect(splitExclusions("developer not .net")).toEqual({ positive: "developer", excluded: [".net"] });
-  });
-});
-
-describe("outside compounds, known multi-word places, quotes and verbs, the answer is origin/main's", () => {
-  const VOCAB = [...new Set([...TITLES.flatMap((t) => t.split(" ")), ...NEGS, "Dallas", "Chicago", "Tulsa", "Jacksonville", "Madison",
-    "Oakland", "TX", "tx", "nyc", "sf", "uk", "us", "nz", "remote", "jobs", "for", "in", "the", "-travel", "-senior", "-agency"])];
-  const knownRun = (ws: string[]) => ws.some((_, i) => [2, 3].some((n) => i + n <= ws.length && knownPlace(ws.slice(i, i + n).join(" ")) !== null));
-  it("matches origin/main word for word on random queries", () => {
-    const bad: string[] = [];
-    let tried = 0;
-    for (let k = 0; k < 6000; k++) {
-      const ws: string[] = [];
-      const len = 2 + Math.floor(R() * 6);
-      for (let i = 0; i < len; i++) ws.push(R() < 0.25 ? caseOf("not", Math.floor(R() * 3)) : R() < 0.1 ? invented() : pick(VOCAB));
-      if (ws.some((w, i) => /^not$/i.test(w) && i + 1 < ws.length && /^not$/i.test(ws[i + 1]))) continue;
-      if (ws.some((w, i) => i + 1 < ws.length && NOT_COMPOUNDS.has(`${w.toLowerCase()} ${ws[i + 1].toLowerCase().replace(/s$/, "")}`))) continue;
-      if (knownRun(ws)) continue;
-      tried++;
-      const q = ws.join(" ");
-      const got = splitExclusions(q);
-      const live = LIVE_RULE(q);
-      if (asLive(got) !== JSON.stringify(live)) bad.push(`${q} -> ${JSON.stringify(got)} live ${JSON.stringify(live)}`);
-    }
-    expect(tried).toBeGreaterThan(3000);
-    expect(bad.slice(0, 10)).toEqual([]);
-  });
-
-  it("the positive words are the typed words, in order, and nothing is invented", () => {
-    for (let k = 0; k < 3000; k++) {
-      const ws: string[] = [];
-      const len = 1 + Math.floor(R() * 7);
-      for (let i = 0; i < len; i++) ws.push(R() < 0.2 ? "not" : R() < 0.15 ? pick(COMPOUNDS) : R() < 0.1 ? pick(PLACES) : pick(VOCAB));
-      const q = ws.join(" ");
-      const got = splitExclusions(q);
-      const typed = q.split(/\s+/);
-      const pos = got.positive.split(/\s+/).filter(Boolean);
-      let at = 0;
-      for (const p of pos) {
-        while (at < typed.length && typed[at] !== p) at++;
-        expect(at < typed.length, `${q}: positive word ${p} was not typed in this order`).toBe(true);
-        at++;
+describe("the shipped exclusion answers every generated query exactly as origin/main does", () => {
+  it("one negated word before any place, any case, a preposition or an invented word", () => {
+    expect(run(() => {
+      for (let k = 0; k < 3000; k++) {
+        const t = caseOf(pick(TITLES), Math.floor(R() * 3)), n = pick(NEGS);
+        const tail = R() < 0.2 ? invented() : caseOf(pick(PLACES), Math.floor(R() * 4));
+        const prep = R() < 0.15 ? `${pick(["in", "near", "around"])} ` : "";
+        same(`${t} not ${n} ${prep}${tail}`, titlesFor(t.split(" ")[0], n));
+        same(`${t} -${n} ${prep}${tail}`);
       }
-      for (const e of got.excluded) expect(clean(q).includes(e), `${q}: excluded ${e} was not typed`).toBe(true);
-    }
+    })).toEqual([]);
+  });
+
+  it("round 4's pinned compounds, typed apart, hyphenated, run together or plural, before titles spelled every way", () => {
+    expect(run(() => {
+      for (const c of ROUND4_COMPOUNDS) {
+        for (const typed of spellings(c)) {
+          const t = pick(TITLES), tail = R() < 0.4 ? "" : ` ${pick(PLACES)}`;
+          const head = t.split(" ")[0];
+          same(`${t} not ${caseOf(typed, Math.floor(R() * 3))}${tail}`, titlesFor(head, c));
+          same(`${t} not requiring ${typed}${tail}`, titlesFor(head, c));
+          same(`${t} not the ${typed}`, titlesFor(head, c));
+          same(`${t} -"${typed}"${tail}`, titlesFor(head, c));
+        }
+      }
+    })).toEqual([]);
+  });
+
+  it("round 4's pinned regions and cities, alone and after a negated word", () => {
+    expect(run(() => {
+      for (const p of ROUND4_PLACES) for (const k of [0, 1, 2]) {
+        const t = pick(TITLES), n = pick(NEGS);
+        same(`${t} not ${caseOf(p, k)}`, titlesFor(t.split(" ")[0], p));
+        same(`${t} not ${n} ${caseOf(p, k)}`, titlesFor(t.split(" ")[0], n));
+      }
+    })).toEqual([]);
+  });
+
+  it("slash pairs of letters, words and digits, after 'not' and after a minus, alone or in 'not A or B'", () => {
+    expect(run(() => {
+      for (const s of SLASHES) for (const t of TITLES) {
+        const titles = [...titlesFor(t.split(" ")[0], s), ...s.split("/").map((w) => `${tc(w)} ${tc(t)}`)];
+        same(`${t} not ${s}`, titles);
+        same(`${t} -${s}`, titles);
+        same(`${t} not -${s}`, titles);
+        same(`${t} not ${s} Dallas`, titles);
+        same(`${t} not ${s} or ${pick(SLASHES)}`, titles);
+      }
+    })).toEqual([]);
+  });
+
+  it("'not A or B', a capital OR, and a list with commas", () => {
+    expect(run(() => {
+      for (let k = 0; k < 2000; k++) {
+        const t = pick(TITLES), a = pick(NEGS), b = pick(NEGS), tail = pick(["", " Dallas", " remote", " San Jose", " TX"]);
+        const titles = [...titlesFor(t.split(" ")[0], a), ...titlesFor(t.split(" ")[0], b)];
+        same(`${t} not ${a} ${pick(["or", "nor", "Or", "OR"])} ${b}${tail}`, titles);
+        same(`${t} not ${a}, or ${b}${tail}`, titles);
+        same(`${t.toUpperCase()} NOT ${a.toUpperCase()} OR ${b.toUpperCase()}`, titles);
+      }
+    })).toEqual([]);
+  });
+
+  it("random queries over the same words, with stray operators, quotes and stops", () => {
+    const VOCAB = [...new Set([...TITLES.flatMap((t) => t.split(" ")), ...NEGS, ...ROUND4_COMPOUNDS.flatMap((c) => c.split(" ")),
+      ...ROUND4_PLACES.flatMap((p) => p.split(" ")), ...SLASHES, "jobs", "for", "in", "the", "a", "-travel", "-senior", "\"team", "lead\"",
+      "shift.", "night,", "-", "not", "NOT", "requiring", "with"])];
+    expect(run(() => {
+      for (let k = 0; k < 8000; k++) {
+        const ws = Array.from({ length: 1 + Math.floor(R() * 7) }, () => (R() < 0.2 ? caseOf("not", Math.floor(R() * 3)) : R() < 0.08 ? invented() : pick(VOCAB)));
+        const q = ws.join(" ");
+        same(q, ws.filter((w) => !/^not$/i.test(w)).slice(0, 3).map((w) => `${tc(w.replace(/[^a-z0-9/-]/gi, ""))} Worker`));
+      }
+    })).toEqual([]);
   });
 });
-
-describe("round 4: 'not A or B', pinned regions and cities, and the title match", () => {
-  const ONE = NEGS.filter((n) => !["night", "box", "call", "home", "line", "lead", "union"].includes(n) && !/[-+.]/.test(n));
-  const TAILS = ["", " Dallas", " Tulsa", " remote", " San Jose", " New Orleans", " TX", " 75201"];
-  it("'T not A or B' excludes both one-word negations and keeps the rest", () => {
-    const bad: string[] = [];
-    for (let k = 0; k < 2000; k++) {
-      const t = pick(TITLES), a = pick(ONE), b = pick(ONE), tail = pick(TAILS);
-      if (a === b) continue;
-      const joiner = pick(["or", "nor", "Or"]);
-      const q = `${t} not ${a} ${joiner} ${b}${tail}`;
-      const got = splitExclusions(q);
-      const want = { positive: `${t}${tail}`, excluded: [a, b] };
-      if (JSON.stringify(got) !== JSON.stringify(want)) bad.push(`${q} -> ${JSON.stringify(got)}`);
-      // A capital OR in a query that is not all capitals is the searcher's operator: main's answer.
-      const q2 = `${t} not ${a} OR ${b}${tail}`;
-      if (asLive(splitExclusions(q2)) !== JSON.stringify(LIVE_RULE(q2))) bad.push(`${q2} -> ${JSON.stringify(splitExclusions(q2))}`);
-    }
-    expect(bad.slice(0, 10)).toEqual([]);
-  });
-
-  it("a pinned region or city after 'not' is one exclusion, and after a negated word it stays in the search", () => {
-    const bad: string[] = [];
-    for (const place of NEGATED_PLACES) {
-      for (const k of [0, 1, 2]) {
-        const p = caseOf(place, k), t = pick(TITLES), n = pick(ONE), tail = pick(TAILS);
-        const q1 = `${t} not ${p}${tail}`;
-        const g1 = splitExclusions(q1);
-        if (JSON.stringify(g1) !== JSON.stringify({ positive: `${t}${tail}`, excluded: [place] })) bad.push(`${q1} -> ${JSON.stringify(g1)}`);
-        const q2 = `${t} not ${n} ${p}`;
-        const g2 = splitExclusions(q2);
-        if (JSON.stringify(g2) !== JSON.stringify({ positive: `${t} ${p}`, excluded: [n] })) bad.push(`${q2} -> ${JSON.stringify(g2)}`);
-      }
-    }
-    expect(bad.slice(0, 10)).toEqual([]);
-  });
-
-  it("no pinned place word is a compound word, so a pinned place never takes a compound's partner", () => {
-    const compoundWords = new Set(COMPOUNDS.flatMap((c) => c.split(" ")));
-    for (const p of NEGATED_PLACES) {
-      const [first, second] = p.split(" ");
-      expect(NOT_COMPOUNDS.has(`${first} ${second}`), p).toBe(false);
-      expect(compoundWords.has(p.split(" ").slice(-1)[0]) && NOT_COMPOUNDS.has(p), p).toBe(false);
-    }
-  });
-
-  const WORDS = ["news", "parts", "arts", "lines", "homes", "services", "windows", "sales", "goods", "graphics", "systems",
-    "operations", "nights", "shifts", "manager", "travel", "agency", "nurse", "line", "home", "art", "part", "new", "window",
-    "service", "senior", "lead", "cook", "night", "shift", "traveler", "c++", ".net", "rn", "er", "icu", "bus", "glass", "boss"];
-  const TITLE_WORDS = [...WORDS, ...WORDS.map((w) => `${w}s`), ...WORDS.map((w) => `${w}es`), ...WORDS.map((w) => w.replace(/s$/, "")),
-    "time", "business", "producer", "editor", "driver", "teacher", "aide", "consultant", "engineer", "-", ",", "/", "&"];
-  const PLURAL = (w: string, title: string) => new RegExp(`(^|[^a-z0-9])${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(s|es)([^a-z0-9]|$)`).test(title);
-  it("a single word strikes exactly the titles origin/main strikes: no plural fold, so 'news' keeps New Grad and 'parts' keeps Part-Time", () => {
-    const bad: string[] = [];
-    let plurals = 0;
-    for (let k = 0; k < 20000; k++) {
-      const w = pick(WORDS);
-      const title = Array.from({ length: 2 + Math.floor(R() * 4) }, () => pick(TITLE_WORDS)).join(" ");
-      const mine = titleExcluded(title, [w]), live = LIVE_TITLE(title, [w]);
-      if (mine !== live) bad.push(`${w} | ${title}: main ${live ? "strikes" : "keeps"} it, this rule ${mine ? "strikes" : "keeps"} it`);
-      if (!live && PLURAL(w, title.toLowerCase())) plurals++;
-    }
-    expect(bad.slice(0, 10)).toEqual([]);
-    expect(plurals, "no title held a plural of its word, so this cannot show the fold is gone").toBeGreaterThan(100);
-    expect(titleExcluded("New Grad RN", ["news"])).toBe(false);
-    expect(titleExcluded("Part-Time Driver", ["parts"])).toBe(false);
-    expect(titleExcluded("Accounts Payable Manager", ["account"])).toBe(false);
-  });
-
-  it("a hyphenated word strikes exactly the titles that hold it as typed; apart or run together it is main's open defect, a residual", () => {
-    const HY = ["part-time", "full-time", "night-shift", "live-in", "e-commerce", "co-op", "k-12", "x-ray", "on-call", "per-diem", "over-the-road"];
-    const bad: string[] = [];
-    for (const h of HY) {
-      const parts = h.split("-");
-      const ex = splitExclusions(`worker not ${h}`).excluded;
-      expect(ex, `${h} is excluded as typed`).toEqual([h]);
-      if (!titleExcluded(`${tc(parts.join("-"))} Worker`, ex)) bad.push(`${h} misses ${tc(parts.join("-"))} Worker`);
-      // Residual, as on origin/main: a title that spells it apart is kept.
-      if (titleExcluded(`${tc(parts.join(" "))} Worker`, ex)) bad.push(`${h} strikes ${tc(parts.join(" "))} Worker: a fold came back`);
-      for (let k = 0; k < 300; k++) {
-        const title = Array.from({ length: 2 + Math.floor(R() * 4) }, () => pick([...parts, h, ...TITLE_WORDS])).join(" ");
-        const mine = titleExcluded(title, [h]);
-        if (mine !== LIVE_TITLE(title, [h])) bad.push(`${h} | ${title}: differs from main's match of the same word`);
-      }
-    }
-    expect(bad.slice(0, 10)).toEqual([]);
-  });
-});
-
-const tc = (s: string) => s.split(" ").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
