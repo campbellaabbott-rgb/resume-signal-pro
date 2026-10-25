@@ -40,7 +40,7 @@ describe("a prerendered page names the chunks it needs", () => {
   });
 
   it("the hints are actually injected into the head", () => {
-    expect(SCRIPT).toMatch(/headExtra \+= preloadFor\(path\);/);
+    expect(SCRIPT).toMatch(/headExtra \+= preloadFor\(path, \{ fallback: isFallback \}\);/);
   });
 
   // Only meaningful after a build; skipped rather than failed on a clean tree,

@@ -43,6 +43,11 @@ export const BANNED_SOURCE_PHRASES = [
   ["'no aggregators'", /\bno aggregators\b/i],
   ["'never aggregators'", /\bnever aggregators\b/i],
   ["an unconditional re-check", /\bre-checks a posting when you open it(?!, where the employer)/i],
+  // A board-wide list holds the federal listing site and staffing agencies'
+  // boards: no sentence may say every row is an employer's own (/companies
+  // said both until the round's review).
+  ["a blanket 'every posting comes from the company's own hiring system'", /\bevery posting comes from the company's own hiring system\b/i],
+  ["a board-wide 'each read from the employer's own hiring system'", /\beach read from the employer's own hiring system\b/i],
 ];
 
 /** Every banned source phrase one text carries, as [claim, matched text]. */

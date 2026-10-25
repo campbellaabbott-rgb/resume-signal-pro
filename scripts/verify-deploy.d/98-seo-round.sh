@@ -20,7 +20,9 @@
 #       validThrough never more than 30 days past the datePosted it states.
 #   P2  (OBS-1) no two sitemap posting pages share a title.
 #   P3  (SEO-023) a posting page preloads JobPosting-*.js and not Jobs-*.js;
-#       / preloads Index-*.js; /pricing preloads Pricing-*.js.
+#       / adds Index-*.js from its "/"-only script, never in its static head
+#       (the same file is every unbaked address's page, so /auth must preload
+#       no Index-*.js); /pricing preloads Pricing-*.js.
 #   C1  (SEO-005) company pages link no /jobs?job= address and name their own
 #       hiring system, never the nineteen-system list.
 #   C2  (S12-021, SEO-037) the PwC page states the sum of its boards; the
@@ -169,10 +171,27 @@ const pick = (arr, n) => (arr.length <= n ? arr : Array.from({ length: n }, (_, 
     if (hints.some((h) => h.startsWith("JobPosting-")) && !hints.some((h) => h.startsWith("Jobs-"))) out("PASS", `P3 ${one} preloads ${hints.filter((h) => /^JobPosting-/.test(h)).join(", ")} and not the Jobs chunk`);
     else out("FAIL", `P3 ${one} preloads ${hints.join(", ") || "nothing"}: want JobPosting-*.js and not Jobs-*.js`);
   }
-  for (const [p, want] of [["/", "Index-"], ["/pricing", "Pricing-"]]) {
+  {
+    const p = "/pricing", want = "Pricing-";
     const hints = pre((await get(p)).body);
     if (hints.some((h) => h.startsWith(want))) out("PASS", `P3 ${p} preloads its route chunk (${hints.filter((h) => h.startsWith(want)).join(", ")})`);
     else out("FAIL", `P3 ${p} preloads ${hints.join(", ") || "nothing"}: want ${want}*.js`);
+  }
+  // The root file is also the SPA fallback: the homepage\x27s chunks come from
+  // its "/"-only script, and a fallback address preloads none of them.
+  {
+    const home = (await get("/")).body;
+    const scripted = ((/<script data-home-preload="1">if\(location\.pathname==="\/"\)\{(\[[^\]]*\])/.exec(home) || [])[1]) || "[]";
+    let list = [];
+    try { list = JSON.parse(scripted); } catch { list = []; }
+    const staticIndex = pre(home).filter((h) => h.startsWith("Index-"));
+    if (list.some((h) => String(h).startsWith("Index-")) && !staticIndex.length) out("PASS", `P3 / adds ${list.filter((h) => String(h).startsWith("Index-")).join(", ")} from its "/"-only script, not its static head`);
+    else out("FAIL", `P3 / static head preloads ${staticIndex.join(", ") || "no Index chunk"}, its "/"-only script names ${list.join(", ") || "nothing"}: want Index-*.js from the script only`);
+    for (const fb of ["/auth", "/some-unknown-route-xyz"]) {
+      const d = await get(fb);
+      const idx = pre(d.body).filter((h) => !h.startsWith("Footer-"));
+      out(d.status === 200 && !idx.length ? "PASS" : "FAIL", `P3 fallback ${fb}: HTTP ${d.status}, static preloads ${pre(d.body).join(", ") || "none"}${idx.length ? " (the homepage\x27s chunks on a page that never runs them)" : ""}`);
+    }
   }
 }
 

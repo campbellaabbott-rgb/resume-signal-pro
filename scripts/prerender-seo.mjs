@@ -46,7 +46,7 @@ import {
   bannedSourcePhrasesIn, orgNode, orgRef, websiteRef, withWebsiteGraph, boardSnapshot, asOfPhrase, ORG_ID,
 } from "./prerender-copy.mjs";
 import { legalBodyFromTsx, legalText } from "./prerender-legal.mjs";
-import { routeChunkPrefix, preloadClosure } from "./prerender-preload.mjs";
+import { routeChunkPrefix, preloadClosure, fallbackPreloadHtml } from "./prerender-preload.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 // A BAKE CAN BE POINTED AWAY FROM THE CHECKOUT. PRERENDER_OUT names a
@@ -210,7 +210,7 @@ export const composeHtml = (
   }
   // Preload hints last in the head, so they cannot displace the meta tags
   // above them if the template shape ever shifts.
-  headExtra += preloadFor(path);
+  headExtra += preloadFor(path, { fallback: isFallback });
   html = putVerbatim(html, "</head>", `${headExtra}</head>`);
   const clearScript = isFallback
     ? `<script>if(location.pathname!=="/"){var r=document.getElementById("root");if(r)r.innerHTML="";var c=document.querySelector('link[rel="canonical"]');if(c)c.remove();document.querySelectorAll('script[data-home-only]').forEach(function(s){s.remove();});}</script>`
@@ -262,7 +262,7 @@ export { ALL_BOARD_SOURCES } from "../src/config/ats-vendors";
 export { publicApiBase, mcpServerUrl } from "../src/config/public-endpoints";
 export { cvFill, cvStandardsFaqs } from "../src/lib/cv-country-phrase";
 export { collidedBoards } from "../src/lib/board-collisions";
-export { postingRemoteBasis, postingRequisitionIdentity, postingText, postingLanguage, postingCountryMismatch, postingValidThrough, remoteLocationNamesAPlace } from "../src/components/jobs/posting-page";
+export { localityProblem, postingRemoteBasis, postingRequisitionIdentity, postingText, postingLanguage, postingCountryMismatch, postingValidThrough, remoteLocationNamesAPlace } from "../src/components/jobs/posting-page";
 export { changelog } from "../src/data/changelog";
 export { SCAN_ATS_SYSTEMS, SCORE_AI_BAND, SCORE_AUDIT_PARTS } from "../src/config/score-method";
 export { PRIVACY_LAST_UPDATED, SELLER, TERMS_LAST_UPDATED, sellerIdentity } from "../src/config/seller";
@@ -1190,17 +1190,23 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
   })();
   const readChunk = (f) => readFileSync(join(assetDir, f), "utf8");
   const preloadCache = new Map();
-  const preloadFor = (path) => {
+  const preloadFor = (path, { fallback = false } = {}) => {
     const prefix = routeChunkPrefix(path);
-    if (!preloadCache.has(prefix)) {
+    const key = `${prefix}|${fallback ? "fallback" : "page"}`;
+    if (!preloadCache.has(key)) {
       const route = prefix ? chunkFor(prefix) : null;
       // Footer renders on every prerendered page, so it is always on the
       // critical path; a route chunk that imports it lists it anyway.
       const files = route ? preloadClosure(route, { readChunk, entry: ENTRY_CHUNK }) : [];
       if (FOOTER_CHUNK && !files.includes(FOOTER_CHUNK)) files.unshift(FOOTER_CHUNK);
-      preloadCache.set(prefix, files.map((f) => `<link rel="modulepreload" href="/assets/${f}">`).join(""));
+      // The root index.html is every unbaked address's page too: its static
+      // head names Footer only, and the homepage's chunks are added on "/"
+      // alone (fallbackPreloadHtml).
+      preloadCache.set(key, fallback
+        ? fallbackPreloadHtml(files, { always: FOOTER_CHUNK ? [FOOTER_CHUNK] : [] })
+        : files.map((f) => `<link rel="modulepreload" href="/assets/${f}">`).join(""));
     }
-    return preloadCache.get(prefix);
+    return preloadCache.get(key);
   };
   {
     const missing = ["Jobs", "JobPosting", "Index", "Pricing", "Footer"].filter((p) => !chunkFor(p));
@@ -2773,7 +2779,10 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
           // which is the wording every other surface here was changed away from.
           // EVERY NUMBER NAMES ITS DATE BASIS, and no "re-checked continuously"
           // (Track 1 A3 point 5, GD6): the count is the day this page was built.
-          description: `${n ? `${fmt(n)} live ${label} openings, ${COUNTS_DAY}` : `Live ${label} openings`}${boardCompanies ? `, from ${fmt(boardCompanies)} company job boards` : ""}, each read from the employer's own hiring system.`,
+          // The tail React's fieldBoardHead prints (board-heads.ts): the counts
+          // include USAJOBS and staffing agencies' boards, so "the employer's
+          // own hiring system" was not true of every opening counted.
+          description: `${n ? `${fmt(n)} live ${label} openings, ${COUNTS_DAY}` : `Live ${label} openings`}${boardCompanies ? `, from ${fmt(boardCompanies)} company job boards` : ""}${D.EN_LOCALE?.jobsPage?.landerSeoDescriptionTail || ", each read from the hiring system that published it."}`,
           content: `
           <h1>Live ${label} jobs</h1>
           <p>${countPhrase[0].toUpperCase()}${countPhrase.slice(1)}${boardTotal && boardCompanies ? ` — part of ${fmt(boardTotal)} live postings across ${fmt(boardCompanies)} company job boards with open roles` : boardTotal ? ` — part of ${fmt(boardTotal)} live postings` : ""}, ${esc(COUNTS_BASIS)}. Every opening is ${BOARD_SOURCE_SENTENCE}. The hiring systems read are ${D.SERVING_SOURCE_LIST}, and applying happens on the employer's own site.</p>
@@ -2791,7 +2800,7 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
             "@context": "https://schema.org",
             "@type": "CollectionPage",
             name: `Live ${label} jobs`,
-            description: `Live ${label} openings read from employers' own hiring systems.`,
+            description: `Live ${label} openings, each read from the hiring system that published it.`,
             url: `${SITE}/jobs/field/${slug}`,
             isPartOf: websiteRef(SITE),
           }, {
@@ -3149,6 +3158,21 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
       // send the same mixed signal the canonical exists to prevent.
       {
         const primaries = LANDERS.filter((c) => indexable.has(c.token));
+        // NOT EVERY ROW IS AN EMPLOYER (the round's review): the list holds
+        // USAJOBS, the federal listing site, and staffing agencies' boards,
+        // and the page said each was "read from its own hiring system". The
+        // count names employers only, the others are counted and labelled as
+        // what they are, and the source sentence is the board's own.
+        const employersListed = primaries.filter((c) => landerKindOf(c.token) === "employer").length;
+        const agenciesListed = primaries.filter((c) => landerKindOf(c.token) === "agency").length;
+        const federalListed = primaries.some((c) => landerKindOf(c.token) === "usajobs");
+        const othersListed = [
+          ...(federalListed ? ["the federal listing site"] : []),
+          ...(agenciesListed ? [`${fmt(agenciesListed)} staffing ${agenciesListed === 1 ? "agency" : "agencies"}`] : []),
+        ].join(" and ");
+        const kindsRead = ["an employer's own", ...(agenciesListed ? ["a staffing agency's (labelled)"] : []), ...(federalListed ? ["the federal listing site (labelled)"] : [])];
+        const kindsSentence = kindsRead.length === 1 ? kindsRead[0] : `${kindsRead.slice(0, -1).join(", ")} or ${kindsRead[kindsRead.length - 1]}`;
+        const KIND_LABEL = { usajobs: "the federal listing site", agency: "a staffing agency" };
         const byLetter = new Map();
         for (const c of [...primaries].sort((a, b) => a.name.localeCompare(b.name))) {
           const letter = /^[a-z]/i.test(c.name.trim()) ? c.name.trim()[0].toUpperCase() : "#";
@@ -3163,17 +3187,22 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
               // count or no count. An A-Z row that disagreed with the page one
               // click away is the same defect at directory scale.
               const o = openRolesOf(c);
-              return `<li><a href="${landerPath(c.token)}" class="text-primary hover:underline">${esc(c.name)}</a>${typeof o === "number" ? ` <span class="text-muted-foreground">— ${fmt(o)} open roles</span>` : ""}</li>`;
+              const kind = KIND_LABEL[landerKindOf(c.token)];
+              return `<li><a href="${landerPath(c.token)}" class="text-primary hover:underline">${esc(c.name)}</a>${kind ? ` <span class="text-muted-foreground">(${kind})</span>` : ""}${typeof o === "number" ? ` <span class="text-muted-foreground">— ${fmt(o)} open roles</span>` : ""}</li>`;
             }).join("\n            ")}
           </ul>`).join("\n");
         COMPANY_PAGE_COUNT = primaries.length;
         write({
           path: "/companies",
-          title: `${fmt(primaries.length)} Companies Hiring Now, From Their Own Hiring Systems`,
-          description: `The ${fmt(primaries.length)} employers on the board with a page of their own, each read from its own hiring system${COUNTED_ON ? `, open roles counted ${COUNTED_ON}` : ""}.`,
+          title: `${fmt(employersListed)} Companies Hiring Now, From Their Own Hiring Systems`,
+          description: fitDesc(
+            `The ${fmt(employersListed)} employers with a page of their own, each read from its own hiring system${othersListed ? `, plus ${othersListed}, labelled` : ""}${COUNTED_ON ? `; open roles counted ${COUNTED_ON}` : ""}.`,
+            `${fmt(employersListed)} employers read from their own hiring systems${othersListed ? `, plus ${othersListed}, labelled` : ""}${COUNTED_ON ? `; counted ${COUNTED_ON}` : ""}.`,
+            `${fmt(employersListed)} employers read from their own hiring systems${othersListed ? `, plus ${othersListed}, labelled` : ""}.`,
+          ),
           content: `
             <h1 class="text-2xl font-bold mb-3">Companies hiring on the board</h1>
-            <p class="text-muted-foreground mb-6">The ${fmt(primaries.length)} employers with a page of their own, listed A–Z; the board itself carries far more (${boardCompanies ? `${fmt(boardCompanies)} company job boards with roles open now` : "every one is searchable"} on <a href="/jobs" class="text-primary underline">the live board</a>). Every posting comes from the company's own hiring system. Where a count is shown it means postings the employer has not taken down whose date falls inside the last 30 days (the employer's own date, or for a posting with no date, the day we last saw it): the same rule the linked page serves, measured when this index was last built${COUNTED_ON ? `, ${esc(COUNTED_ON)}` : ""}.</p>
+            <p class="text-muted-foreground mb-6">The ${fmt(employersListed)} employers with a page of their own${othersListed ? `, and ${othersListed}` : ""}, listed A–Z; the board itself carries far more (${boardCompanies ? `${fmt(boardCompanies)} company job boards with roles open now` : "every one is searchable"} on <a href="/jobs" class="text-primary underline">the live board</a>). Every posting is read from the hiring system that published it: ${kindsSentence}, never copied from another job board. Where a count is shown it means postings the employer has not taken down whose date falls inside the last 30 days (the employer's own date, or for a posting with no date, the day we last saw it): the same rule the linked page serves, measured when this index was last built${COUNTED_ON ? `, ${esc(COUNTED_ON)}` : ""}.</p>
             ${sections}`,
         });
       }

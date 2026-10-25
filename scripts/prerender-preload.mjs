@@ -21,6 +21,24 @@ export function routeChunkPrefix(path) {
   return null;
 }
 
+/**
+ * THE HEAD OF THE ROOT index.html, WHICH IS ALSO THE SPA FALLBACK.
+ *
+ * Lovable serves dist/index.html for every address the bake did not write:
+ * /auth, /account, an unbaked posting, an unknown company token. Its static
+ * head therefore names only what every page needs (Footer, `always`); the
+ * homepage's own route chunks are added by a script that runs only on "/".
+ * With the homepage's twelve chunks written into the static head (about
+ * 103 KB gzip a page never runs), /auth measured LCP 3,192 ms on a phone
+ * against 2,696 ms without them (the round's review, 2026-10-24).
+ */
+export function fallbackPreloadHtml(files, { always = [] } = {}) {
+  const head = always.map((f) => `<link rel="modulepreload" href="/assets/${f}">`).join("");
+  const rest = (files ?? []).filter((f) => !always.includes(f) && /^[\w.-]+\.js$/.test(f));
+  if (!rest.length) return head;
+  return `${head}<script data-home-preload="1">if(location.pathname==="/"){${JSON.stringify(rest)}.forEach(function(f){var l=document.createElement("link");l.rel="modulepreload";l.href="/assets/"+f;document.head.appendChild(l);});}</script>`;
+}
+
 /** The chunk files a chunk imports statically, by file name, in the order they appear. */
 export function staticImportsOf(code) {
   const out = [];
