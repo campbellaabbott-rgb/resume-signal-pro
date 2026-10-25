@@ -5164,6 +5164,7 @@
     "secureSignedIn": "Veilig afrekenen via Stripe. Altijd opzegbaar — geen vastzitten.",
     "secureSignedOut": "Je logt eerst in, zodat het abonnement op je account staat. Veilig afrekenen via Stripe; altijd opzegbaar.",
     "summaryLine": "Alles van een gratis account, plus de schrijftools, de volledige analyse van $ 5 inbegrepen en geen daglimiet op scans",
+    "summaryLineWithoutAnalysis": "Alles van een gratis account, plus de schrijftools en geen daglimiet op scans",
     "title": "Resume Booster Pro",
     "toast": {
       "alreadyMemberBody": "Je abonnement is al actief op dit account.",

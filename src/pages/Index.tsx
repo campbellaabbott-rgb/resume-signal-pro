@@ -58,7 +58,7 @@ import { FloatingUploadButton, FloatingSeeReportButton } from "@/components/Floa
 import { CheckoutOverlay, type CheckoutStep } from "@/components/CheckoutOverlay";
 import { FreeReportSignupNudge } from "@/components/FreeReportSignupNudge";
 import { checkoutRefusalOfBody } from "@/lib/checkout-refusal";
-import { purchasesOpen } from "@/lib/purchases-open";
+import { fullAnalysisOnSale } from "@/lib/purchases-open";
 import { useProSubscription } from "@/hooks/use-pro-subscription";
 import { territoryHint } from "@/lib/checkout-territory";
 import { useToast } from "@/hooks/use-toast";
@@ -1720,11 +1720,13 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
     // one: by the time the body is built, a tap on the overlay (or anywhere
     // else) during the awaits below would be (review of the integration).
     const terms = purchaseTerms();
-    // NO PURCHASE WITHOUT A NAMED SELLER (owner decision 2026-10-17, B&P
-    // 17538(d)): until src/config/seller.ts carries the legal name and postal
-    // address, nothing is stored, counted or sent to the checkout, which
-    // would refuse with 409 seller_identity_missing anyway.
-    if (!purchasesOpen() && !proIncludesAnalysis) {
+    // NO PURCHASE UNTIL THE FULL ANALYSIS IS ON SALE (owner decision
+    // 2026-10-17, B&P 17538(d); gate G2): until src/config/seller.ts carries
+    // the legal name and postal address (the checkout would refuse with 409
+    // seller_identity_missing) and the owner has watched one delivery,
+    // nothing is stored, counted or sent to the checkout. A Pro member's
+    // included analysis is not a sale.
+    if (!fullAnalysisOnSale() && !proIncludesAnalysis) {
       toast({
         title: t('checkoutGate.purchasesOpenSoonTitle', 'Purchases open soon'),
         description: t('checkoutGate.purchasesOpenSoon', 'Purchases open soon. Searching jobs, the free scan and a free account work now.'),

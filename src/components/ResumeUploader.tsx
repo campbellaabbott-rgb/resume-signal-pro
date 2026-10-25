@@ -16,19 +16,13 @@ import { ScanGuideArrow } from "@/components/ScanGuideArrow";
 import { useScanPrefetch } from "@/hooks/use-scan-prefetch";
 import { ScanProgressStages } from "@/components/ScanProgressStages";
 import { PurchaseTerms } from "@/components/PurchaseTerms";
-import { purchasesOpen } from "@/lib/purchases-open";
-import { FULL_ANALYSIS_ON_SALE } from "@/config/sales-gate";
+import { fullAnalysisOnSale } from "@/lib/purchases-open";
 import { PurchasesOpenSoon } from "@/components/checkout/PurchasesOpenSoon";
 import { looksLikeLink, scannableJobDescription } from "@/lib/job-description-input";
-/**
- * THE FULL ANALYSIS IS ON SALE HERE ONLY WHEN G1 AND G2 BOTH HOLD (homepage
- * and pricing spec of 2026-10-17): the seller is named (purchasesOpen()) and
- * the owner has watched a real purchase deliver (FULL_ANALYSIS_ON_SALE).
- * Read at render, so a switch the owner flips takes effect on the next paint.
- */
-function fullAnalysisOnSale(): boolean {
-  return purchasesOpen() && FULL_ANALYSIS_ON_SALE;
-}
+// THE FULL ANALYSIS IS ON SALE HERE ONLY WHEN G1 AND G2 BOTH HOLD (homepage
+// and pricing spec of 2026-10-17): fullAnalysisOnSale() is the seller's name
+// and the owner's switch, read at render, so a switch the owner flips takes
+// effect on the next paint (src/lib/purchases-open.ts).
 
 // Step indicator component for better UX guidance
 interface StepIndicatorProps {

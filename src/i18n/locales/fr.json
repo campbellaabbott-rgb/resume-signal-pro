@@ -5200,6 +5200,7 @@
     "secureSignedIn": "Paiement sécurisé via Stripe. Résiliable à tout moment — sans engagement.",
     "secureSignedOut": "Vous vous connecterez d'abord, pour que la formule soit sur votre compte. Paiement sécurisé via Stripe ; résiliable à tout moment.",
     "summaryLine": "Tout ce qu'offre un compte gratuit, plus les outils de rédaction, l'Analyse complète à 5 $ incluse et aucun plafond quotidien d'analyses",
+    "summaryLineWithoutAnalysis": "Tout ce qu'offre un compte gratuit, plus les outils de rédaction et aucun plafond quotidien d'analyses",
     "title": "Resume Booster Pro",
     "toast": {
       "alreadyMemberBody": "Votre formule est déjà active sur ce compte.",

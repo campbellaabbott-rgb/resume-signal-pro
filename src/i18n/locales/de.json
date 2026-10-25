@@ -5164,6 +5164,7 @@
     "secureSignedIn": "Sicherer Bezahlvorgang über Stripe. Jederzeit kündbar – keine Bindung.",
     "secureSignedOut": "Sie melden sich zuerst an, damit der Tarif zu Ihrem Konto gehört. Sicherer Bezahlvorgang über Stripe; jederzeit kündbar.",
     "summaryLine": "Alles aus einem kostenlosen Konto, plus die Schreibwerkzeuge, die vollständige Analyse für 5 $ inklusive und keine tägliche Obergrenze für Scans",
+    "summaryLineWithoutAnalysis": "Alles aus einem kostenlosen Konto, plus die Schreibwerkzeuge und keine tägliche Obergrenze für Scans",
     "title": "Resume Booster Pro",
     "toast": {
       "alreadyMemberBody": "Ihr Tarif ist in diesem Konto bereits aktiv.",

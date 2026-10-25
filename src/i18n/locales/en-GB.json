@@ -5164,6 +5164,7 @@
     "secureSignedIn": "Secure checkout via Stripe. Cancel anytime — no lock-in.",
     "secureSignedOut": "You'll sign in first, so the plan is on your account. Secure checkout via Stripe; cancel anytime.",
     "summaryLine": "Everything in a free account, plus the writing tools, the $5 Full Analysis included and no daily cap on scans",
+    "summaryLineWithoutAnalysis": "Everything in a free account, plus the writing tools and no daily cap on scans",
     "title": "Resume Booster Pro",
     "toast": {
       "alreadyMemberBody": "Your plan is already active on this account.",

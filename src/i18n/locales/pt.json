@@ -5200,6 +5200,7 @@
     "secureSignedIn": "Pagamento seguro através da Stripe. Cancele quando quiser — sem fidelização.",
     "secureSignedOut": "Vai iniciar sessão primeiro, para que o plano fique na sua conta. Pagamento seguro através da Stripe; cancele quando quiser.",
     "summaryLine": "Tudo o que inclui uma conta gratuita, mais as ferramentas de escrita, a Análise completa de 5 $ incluída e sem limite diário de análises",
+    "summaryLineWithoutAnalysis": "Tudo o que inclui uma conta gratuita, mais as ferramentas de escrita e sem limite diário de análises",
     "title": "Resume Booster Pro",
     "toast": {
       "alreadyMemberBody": "O seu plano já está ativo nesta conta.",

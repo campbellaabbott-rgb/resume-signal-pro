@@ -85,7 +85,7 @@ vi.mock("@/hooks/use-toast", () => ({ useToast: () => ({ toast: (t: { title?: st
 // Purchases open, as once the owner names the seller: the overlay is what is
 // tested here. The shipped gate (no seller, no purchase) is tested in
 // w4b-no-buy-button-until-the-seller-is-named.test.tsx.
-vi.mock("@/lib/purchases-open", () => ({ purchasesOpen: () => true }));
+vi.mock("@/lib/purchases-open", () => ({ purchasesOpen: () => true, fullAnalysisOnSale: () => true, proOnSale: () => true }));
 
 import Index from "@/pages/Index";
 

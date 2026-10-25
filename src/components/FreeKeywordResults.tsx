@@ -25,9 +25,9 @@ import { IndustryKeywordSuggestions } from "./IndustryKeywordSuggestions";
 import { RoleKeywordSuggestions } from "./RoleKeywordSuggestions";
 import { analyzeKeywordPresence } from "@/config/industry-keywords";
 import { PurchaseTerms } from "./PurchaseTerms";
-import { purchasesOpen } from "@/lib/purchases-open";
+import { fullAnalysisOnSale } from "@/lib/purchases-open";
 import { PurchasesOpenSoon } from "@/components/checkout/PurchasesOpenSoon";
-import { PRO_SUMMARY } from "@/config/pro-perks";
+import { proSummaryOnSale } from "@/config/pro-perks";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -835,8 +835,9 @@ export function FreeKeywordResults({
   const getFinalCtaText = () => t('freeScan.cta.button');
 
   // Track which CTA converts, then trigger checkout
-  // Whether the report may offer a purchase: only once the seller is named.
-  const canBuy = purchasesOpen();
+  // Whether the report may offer a purchase: the seller is named and the
+  // owner has put the Full Analysis on sale (G1 and G2).
+  const canBuy = fullAnalysisOnSale();
   // A Pro member's included analysis is not a sale: offered while purchases are closed.
   const offerIncluded = !canBuy && proIncludesAnalysis;
 
@@ -4625,8 +4626,9 @@ export function FreeKeywordResults({
             <span>
               <span className="block text-sm font-medium text-foreground">{t('freeResults.nextSteps.proName')}</span>
               {/* Pro's line is the one summary every page reads (owner
-                  decision 2026-10-17: src/config/pro-perks.ts). */}
-              <span className="block text-xs text-muted-foreground">{t(PRO_SUMMARY.key, PRO_SUMMARY.text)}</span>
+                  decision 2026-10-17: src/config/pro-perks.ts), without the
+                  included Full Analysis until that is on sale (G2). */}
+              <span className="block text-xs text-muted-foreground">{t(proSummaryOnSale().key, proSummaryOnSale().text)}</span>
             </span>
             <span className="text-sm font-semibold text-primary shrink-0 ml-3">{t('freeResults.nextSteps.proPrice', { price: SUBSCRIPTIONS.pro.priceUsd })}</span>
           </Link>

@@ -96,7 +96,9 @@ describe("the uploader's Full Analysis controls need G1 and G2", () => {
 
   it("the condition is read from the owner's switch, never typed in the component", () => {
     const code = readFileSync(resolve(__dirname, "../components/ResumeUploader.tsx"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
-    expect(code).toMatch(/import \{[^}]*\bFULL_ANALYSIS_ON_SALE\b[^}]*\} from "@\/config\/sales-gate"/);
+    // The one gate every Full Analysis control reads (src/lib/purchases-open.ts).
+    expect(code).toMatch(/import \{[^}]*\bfullAnalysisOnSale\b[^}]*\} from "@\/lib\/purchases-open"/);
+    expect(code).not.toMatch(/\bpurchasesOpen\(/);
     // No Full Analysis control is gated on the seller alone any more.
     expect(code).not.toMatch(/purchasesOpen\(\) && \(/);
     expect(code).not.toMatch(/&& purchasesOpen\(\) &&/);

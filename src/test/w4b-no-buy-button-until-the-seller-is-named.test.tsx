@@ -23,6 +23,10 @@ import { MemoryRouter } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import { MOUNT_TEST_BUDGET } from "./helpers/mount-budget";
 
+// G2 and G2b open (src/config/sales-gate.ts), so the seller's name is the one
+// gate under test here; every-buy-control-sells-only-what-the-owner-has-put-on-sale
+// holds the switches themselves.
+vi.mock("@/config/sales-gate", async (importOriginal) => ({ ...(await importOriginal<Record<string, unknown>>()), FULL_ANALYSIS_ON_SALE: true, PRO_ON_SALE: true }));
 // The seller, as shipped (empty) or named by a test.
 const seller = vi.hoisted(() => ({ legalName: "", postalAddress: "" }));
 vi.mock("@/config/seller", async (importOriginal) => {

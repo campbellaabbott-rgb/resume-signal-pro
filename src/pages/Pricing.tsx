@@ -14,7 +14,7 @@ import { ProSubscriptionCard } from "@/components/ProSubscriptionCard";
 import { AtsCoverage } from '@/components/AtsCoverage';
 import { PurchaseTerms } from "@/components/PurchaseTerms";
 import { PurchasesOpenSoon } from "@/components/checkout/PurchasesOpenSoon";
-import { purchasesOpen } from "@/lib/purchases-open";
+import { fullAnalysisOnSale } from "@/lib/purchases-open";
 
 // THE PRODUCT LINE (owner decisions 2026-10-12 and 2026-10-17). The page
 // sells what is still for sale: free search and scans, the $5 Full Analysis
@@ -24,13 +24,14 @@ import { purchasesOpen } from "@/lib/purchases-open";
 // Coach as one-offs, Scan Packs, and since 2026-10-17 Freelance Boost and
 // Transition Pro) are offered nowhere, and their checkouts answer 410. The
 // apply pivot's retired Apply Assistant, Agent plan and Agent Pass were
-// already gone. While src/config/seller.ts names no seller, the Full Analysis
-// card says purchases open soon instead of offering a button (B&P 17538(d)).
+// already gone. Until the Full Analysis is on sale (src/config/seller.ts names
+// the seller, B&P 17538(d), and the owner's G2 switch is on), its card says
+// purchases open soon instead of offering a button.
 const offeredHere = (id: ProductId) => !isProductHidden(id);
 
 export default function Pricing() {
   const { t } = useTranslation();
-  const open = purchasesOpen();
+  const open = fullAnalysisOnSale();
 
   // Track scroll depth for drop-off analysis
   useScrollDepth('pricing');

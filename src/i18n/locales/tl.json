@@ -5164,6 +5164,7 @@
     "secureSignedIn": "Secure na checkout sa Stripe. Kanselahin anumang oras — walang lock-in.",
     "secureSignedOut": "Magsa-sign in ka muna, para nasa account mo ang plan. Secure na checkout sa Stripe; kanselahin anumang oras.",
     "summaryLine": "Lahat ng nasa libreng account, kasama ang mga writing tool, ang $5 na Full Analysis at walang daily cap sa mga scan",
+    "summaryLineWithoutAnalysis": "Lahat ng nasa libreng account, kasama ang mga writing tool at walang daily cap sa mga scan",
     "title": "Resume Booster Pro",
     "toast": {
       "alreadyMemberBody": "Aktibo na ang plan mo sa account na ito.",

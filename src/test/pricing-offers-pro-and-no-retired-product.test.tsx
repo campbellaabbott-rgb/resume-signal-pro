@@ -39,7 +39,7 @@ vi.mock("@/components/ProductPreview", () => ({ ProductPreview: () => null }));
 
 import Pricing from "../pages/Pricing";
 import { PRODUCTS, SUBSCRIPTIONS, PASS, getAllProducts } from "@/config/products";
-import { PRO_PERKS } from "@/config/pro-perks";
+import { proPerksOnSale } from "@/config/pro-perks";
 
 vi.setConfig(MOUNT_TEST_BUDGET);
 afterEach(cleanup);
@@ -53,7 +53,9 @@ describe("/pricing after the apply pivot", () => {
   it("renders the Pro card with today's perks, and no Agent plan card", () => {
     mount();
     expect(screen.getByText("Resume Booster Pro")).toBeInTheDocument();
-    for (const perk of PRO_PERKS) expect(screen.getByText(perk)).toBeInTheDocument();
+    // Today's perks: the included Full Analysis waits for gate G2.
+    for (const perk of proPerksOnSale()) expect(screen.getByText(perk.text)).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/Full Analysis included/);
     expect(document.body.textContent).not.toContain(`$${SUBSCRIPTIONS.agent.priceUsd}`);
     expect(document.body.textContent).not.toMatch(/Morning Queue|Apply Agent|Agent plan|Start the agent/);
   });

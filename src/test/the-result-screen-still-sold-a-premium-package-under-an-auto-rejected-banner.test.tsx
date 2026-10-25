@@ -108,7 +108,11 @@ describe("the homepage's result screen", () => {
     expect(text).not.toMatch(/auto-rejected|strongly recommended|estimated gain/i);
     expect(text).not.toContain(PRODUCTS.premiumPackage.name);
     const prices = new Set([...text.matchAll(/\$\s?(\d+)(?![\d.,]*\s?[KMBkmb](?![a-z]))(?![\d.,])/g)].map((m) => Number(m[1])));
-    expect([...prices].sort((a, b) => a - b)).toEqual([PRODUCTS.fullAnalysis.priceUsd, SUBSCRIPTIONS.pro.priceUsd].sort((a, b) => a - b));
+    // Only the Full Analysis and Pro are priced. Pro's row always shows; the
+    // $5 shows only once the Full Analysis is on sale (the seller named and
+    // gate G2), and Pro's summary names it only then.
+    expect([...prices].filter((p) => p !== PRODUCTS.fullAnalysis.priceUsd && p !== SUBSCRIPTIONS.pro.priceUsd)).toEqual([]);
+    expect(prices.has(SUBSCRIPTIONS.pro.priceUsd)).toBe(true);
     // The freelance guidance itself still renders (free advice), without a product card.
     expect(text).toContain("Independent data consultant");
     expect(region.querySelector('a[href="/freelance-boost"]')).toBeNull();
