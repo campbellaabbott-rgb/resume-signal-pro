@@ -14,10 +14,16 @@
 # posting URLs are checked (S11-154: a sitemap the new bake wrote cannot show
 # what became of the old one's URLs).
 # L9-11 FAILs llms-full.txt on the retired pass's own copy, its names and 83
-# C1's retired list. A paraphrase in new words passes it whatever it says;
-# every sentence that prices something at $29 without naming Freelance Boost
-# prints as INFO for a person to read, and one that names no price is not
-# shown at all (round 4, 2026-10-25).
+# C1's retired list. A paraphrase in new words passes it whatever it says.
+# Beside it, a sentence prints as INFO for a person to read when one of its
+# clauses (split at a comma or semicolon followed by a space, or at " and ")
+# prices something at exactly $29 ($29, $29.00, 29 USD, USD 29; never $295,
+# $29.99 or $29,000) and does not name Freelance Boost. So a sentence passes
+# with no INFO when its only $29 sits in a clause that names Freelance Boost
+# ("Freelance Boost ($29) takes a guided project intake ..."), and prints
+# when the price has a clause of its own ("Freelance Boost, our guided
+# rewrite, costs $29" prints too). A paraphrase that names no price is not
+# shown at all (round 4, 2026-10-25; clause rule, the SEO round's merge).
 echo "== 76. wave 3 seo-content: names, published URLs, company pages, data pages, claims =="
 
 REPO_ROOT76="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -277,14 +283,21 @@ const textOf = (h) => h.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<[^>
   // (a $29 product delivered within 48 hours, a $29 review returned within 24
   // hours) and missed paraphrases (a 360-minute window for $29), so the price
   // is read as INFO and never FAILs: every sentence that prices something at
-  // $29 ($29.00, 29 USD, USD 29) and does not name Freelance Boost, the
-  // one-time product on sale at that price, is printed for a person to read.
+  // $29 ($29.00, 29 USD, USD 29) in a clause that does not name Freelance
+  // Boost, the one-time product on sale at that price, is printed for a
+  // person to read.
   // A paraphrase that names the price is shown there; one that names no price
   // at all (hours, limits or calls alone) is not shown anywhere.
   const lfPassCopy = retired76 && typeof retired76.retiredPassCopyIn === "function" ? retired76.retiredPassCopyIn(lf.body) : null;
-  const P29 = "(?:\\$\\s?29(?:\\.00)?(?![\\d,.]\\d)|\\b29(?:\\.00)?\\s?(?:USD|US dollars|dollars)\\b|\\bUSD\\s?29(?:\\.00)?(?![\\d,.]\\d))";
+  // After the 29, no digit and no separator followed by a digit: $295,
+  // $29.99 and $29,000 are other prices (the SEO round\x27s merge, 2026-10-25).
+  const P29 = "(?:\\$\\s?29(?:\\.00)?(?!\\d|[,.]\\d)|\\b29(?:\\.00)?\\s?(?:USD|US dollars|dollars)\\b|\\bUSD\\s?29(?:\\.00)?(?!\\d|[,.]\\d))";
   const P29_RE = new RegExp(P29, "i");
-  const lfPriced = lf.body.split(/(?<=[.!?])\s+|\n+/).map((x) => x.trim()).filter((x) => P29_RE.test(x) && !/Freelance Boost/i.test(x));
+  // Only the clause that names Freelance Boost is skipped, not its sentence:
+  // a sentence prints when a clause of it (split at a comma or semicolon
+  // before a space, or at " and ") prices something at $29 without the name.
+  const clausesOf = (x) => x.split(/,\s+|;\s*|\s+and\s+/);
+  const lfPriced = lf.body.split(/(?<=[.!?])\s+|\n+/).map((x) => x.trim()).filter((x) => clausesOf(x).some((c) => P29_RE.test(c) && !/Freelance Boost/i.test(c)));
   const lfWhy = [
     /work\.resumebooster\/jobs/.test(lf.body) ? "" : "no registry name",
     /raises both for its hours`?$/m.test(lf.body) ? "still says a pass raises the /v1 limits" : "",
