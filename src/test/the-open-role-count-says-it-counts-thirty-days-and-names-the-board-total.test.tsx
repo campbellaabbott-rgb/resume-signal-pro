@@ -99,10 +99,11 @@ describe("the figure states its basis", () => {
   });
 });
 
-describe("a page with nothing in the window says what the board holds", () => {
+describe("a page with nothing in the window says only what its inputs agree on", () => {
   const bass = (bt: LanderInput["boardTotal"]) => buildLanderModel(input({
     token: "bassabatherapy", storedName: "BASS ABA Therapy", listTotal: FIXTURE.lists.bassabatherapy.total, boardTotal: bt,
   }));
+  const OWN_LINE = "No roles are listed on this page right now.";
 
   it("the recorded list reply for BASS ABA served nothing (2026-10-12)", () => {
     expect(FIXTURE.lists.bassabatherapy.status).toBe(200);
@@ -110,26 +111,27 @@ describe("a page with nothing in the window says what the board holds", () => {
     expect(bass(undefined).variant).toBe("zero");
   });
 
-  it("older roles listed: none of them is dated in the window, with the board's total and read date", () => {
-    const m = bass({ total: 31, readAt: hoursAgo(5), state: "empty", capped: false });
-    expect(m.zeroReading).toBe("older");
-    expect(zeroAnswer(t, m, "en")).toMatch(/^None of the 31 roles on BASS ABA Therapy's board is dated in the last 30 days \(read \d{1,2} [A-Z][a-z]{2,4}\.? \d{4}\)\. We show roles dated in the last 30 days\.$/);
+  it("a board that states roles while the page lists none disagrees with it: the page says only its own line, whatever the read state", () => {
+    // The 2026-10-25 corpus: a read in state empty that stated 5 (akumincorp~wd5~adgcareers) had 2 roles dated this month on its own feed.
+    for (const state of ["empty", "ok"]) {
+      const m = bass({ total: 31, readAt: hoursAgo(5), state, capped: false });
+      expect(m.zeroReading, state).toBeNull();
+      expect(zeroAnswer(t, m, "en"), state).toBe(OWN_LINE);
+    }
   });
 
-  it("an empty board, a board we have not read in full recently, and an answer not yet in", () => {
+  it("an empty board, a stale or stateless total, an older reader, and an answer not yet in", () => {
     expect(zeroAnswer(t, bass({ total: 0, readAt: hoursAgo(5), state: "empty", capped: false }), "en")).toBe("No roles on BASS ABA Therapy's job board when we read it 5 hr ago.");
-    // A fresh total from a read that kept roles in our window (state ok) is neither: the page lists none of them.
-    expect(zeroAnswer(t, bass({ total: 31, readAt: hoursAgo(5), state: "ok", capped: false }), "en")).toBe("No roles dated in the last 30 days");
-    expect(zeroAnswer(t, bass({ total: 0, readAt: hoursAgo(5), state: "ok", capped: false }), "en")).toBe("No roles dated in the last 30 days");
-    expect(zeroAnswer(t, bass({ total: 31, readAt: hoursAgo(80), state: "ok", capped: false }), "en")).toBe("We have not read BASS ABA Therapy's whole board recently.");
-    expect(zeroAnswer(t, bass(null), "en"), "a reader without the columns is unread, never a zero").toBe("We have not read BASS ABA Therapy's whole board recently.");
+    expect(zeroAnswer(t, bass({ total: 0, readAt: hoursAgo(5), state: "ok", capped: false }), "en")).toBe(OWN_LINE);
+    expect(zeroAnswer(t, bass({ total: 31, readAt: hoursAgo(80), state: "ok", capped: false }), "en")).toBe(OWN_LINE);
+    expect(zeroAnswer(t, bass(null), "en"), "a reader without the columns says nothing about the board").toBe(OWN_LINE);
     expect(zeroReadingOf({ boardTotal: undefined })).toBeNull();
-    expect(zeroAnswer(t, bass(undefined), "en")).toBe("No roles dated in the last 30 days");
+    expect(zeroAnswer(t, bass(undefined), "en")).toBe(OWN_LINE);
   });
 
-  it("a generic board label takes no possessive", () => {
+  it("a generic board label gets the same line", () => {
     const m = buildLanderModel(input({ storedName: "Corporate", listTotal: 0, boardTotal: { total: 12, readAt: hoursAgo(3), state: "empty", capped: false } }));
-    expect(zeroAnswer(t, m, "en")).toMatch(/^None of the 12 roles on this board is dated in the last 30 days \(read [^)]+\)\. We show roles dated in the last 30 days\.$/);
+    expect(zeroAnswer(t, m, "en")).toBe(OWN_LINE);
   });
 
   it("a collision page and USAJOBS print no board total", () => {
@@ -144,10 +146,9 @@ describe("the lander's sentences (pass B: the company shard and the listing shar
   const listing = (JSON.parse(readFileSync(resolve(__dirname, "../i18n/shards/listing/en.json"), "utf8")) as { listing: Record<string, unknown> }).listing;
   const leaf = (o: unknown, path: string): string => String(path.split(".").reduce<unknown>((x, k) => (x && typeof x === "object" ? (x as Record<string, unknown>)[k] : undefined), o));
   const strings = (o: unknown, prefix = ""): Array<[string, string]> => Object.entries((o ?? {}) as Record<string, unknown>).flatMap(([k, v]) => (v && typeof v === "object" ? strings(v, `${prefix}${k}.`) : [[`${prefix}${k}`, String(v)] as [string, string]]));
-  it("the zero answer states the window and asserts no empty board", () => {
-    expect(leaf(company, "zero.answer")).toBe("No roles dated in the last {{days}} days");
-    expect(leaf(company, "zero.basis")).toBe("We show roles dated in the last {{days}} days.");
-    expect(leaf(company, "zero.older_other")).toMatch(/is dated in the last \{\{days\}\} days \(read \{\{date\}\}\)/);
+  it("the zero answer is about this page and asserts nothing about the employer's board", () => {
+    expect(leaf(company, "zero.answer")).toBe("No roles are listed on this page right now.");
+    for (const gone of ["zero.basis", "zero.older_other", "zero.fullRead", "zero.title", "zero.titleBoard"]) expect(leaf(company, gone), gone).toBe("undefined");
     expect(leaf(company, "openRoles_other")).toMatch(/dated in the last \{\{days\}\} days/);
     expect(leaf(company, "subtitle")).toBe("Live jobs straight from {{companyPossessive}} own hiring system.");
     for (const k of ["companySeoTitle", "companySeoDescription", "openRolesTip", "orientTitle", "zeroTitle"]) {

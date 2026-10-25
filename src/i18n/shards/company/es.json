@@ -25,7 +25,6 @@
     "agency": {
       "banner": "Este es el portal de una agencia de empleo. Las vacantes de aquí suelen ser para sus clientes."
     },
-    "boardReadAgo": "portal leído {{ago}}",
     "breadcrumbCompanies": "Empresas",
     "breadcrumbJobs": "Empleos",
     "breadcrumbLabel": "Ruta de navegación",
@@ -181,20 +180,10 @@
     },
     "zero": {
       "allRoles": "Buscar todas las vacantes abiertas",
-      "answer": "Ninguna vacante con fecha en los últimos {{days}} días",
+      "answer": "Ahora mismo no hay ninguna vacante en esta página.",
       "body": "Sigue este portal y tu cuenta contará sus nuevas ofertas cuando aparezcan.",
-      "title": "Ninguna vacante en {{name}} con fecha en los últimos {{days}} días",
-      "titleBoard": "Ninguna vacante en este portal con fecha en los últimos {{days}} días",
-      "older_one": "La {{total}} vacante del portal de {{company}} no tiene fecha en los últimos {{days}} días (leído el {{date}}).",
-      "older_other": "Ninguna de las {{total}} vacantes del portal de {{company}} tiene fecha en los últimos {{days}} días (leído el {{date}}).",
-      "older_many": "Ninguna de las {{total}} vacantes del portal de {{company}} tiene fecha en los últimos {{days}} días (leído el {{date}}).",
-      "olderBoard_one": "La {{total}} vacante de este portal no tiene fecha en los últimos {{days}} días (leído el {{date}}).",
-      "olderBoard_other": "Ninguna de las {{total}} vacantes de este portal tiene fecha en los últimos {{days}} días (leído el {{date}}).",
-      "olderBoard_many": "Ninguna de las {{total}} vacantes de este portal tiene fecha en los últimos {{days}} días (leído el {{date}}).",
-      "basis": "Mostramos vacantes con fecha en los últimos {{days}} días.",
       "empty": "Ninguna vacante en el portal de {{company}} cuando lo leímos {{ago}}.",
       "emptyBoard": "Ninguna vacante en este portal cuando lo leímos {{ago}}.",
-      "fullRead": "Según nuestra última lectura completa, ninguna vacante de este portal tiene fecha en los últimos {{days}} días.",
       "unread": "No hemos leído el portal completo de {{company}} recientemente.",
       "unreadBoard": "No hemos leído este portal completo recientemente."
     },

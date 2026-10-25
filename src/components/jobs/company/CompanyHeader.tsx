@@ -115,18 +115,16 @@ export function boardTotalLine(t: TFunction, model: Pick<LanderModel, "boardTota
 }
 
 /**
- * THE ZERO PAGE'S ANSWER (Track 1, A3). "No open roles right now" was said of
- * boards that list older roles (BASS ABA: none served, 31 on its own board,
- * 38 to 101 days old, 2026-10-11). Now:
- *   older  -> "None of the 31 roles on BASS ABA's board is dated in the last
- *             30 days (read Oct 12). We show roles dated in the last 30 days."
+ * THE ZERO PAGE'S ANSWER (Track 1, A3; the safe default of 2026-10-25).
+ * "No open roles right now" was said of boards that list older roles (BASS
+ * ABA, 2026-10-11), and every sentence about what a read of the board found
+ * was later false somewhere (the corpus in lander-model's zeroReadingOf). Now:
  *   empty  -> "No roles on BASS ABA's job board when we read it 5 hr ago."
- *   fullRead (the newest read was complete and stated no total, as every
- *             feed read whole in one visit does) -> "As of our latest full
- *             read, no role on this board is dated in the last 30 days."
+ *             (a fresh complete read at which the board itself stated none)
  *   unread -> "We have not read BASS ABA's whole board recently."
- *   null (the curve has not answered) -> "No roles dated in the last 30 days",
- *             which the list itself supports.
+ *             (our own reads show no complete read behind the page)
+ *   null   -> "No roles are listed on this page right now.", true of every
+ *             zero page and silent about the employer's board.
  * A generic board label ("Corporate") never takes a possessive.
  */
 export function zeroAnswer(t: TFunction, model: Pick<LanderModel, "zeroReading" | "boardTotal" | "name">, lang: string): string {
@@ -134,28 +132,20 @@ export function zeroAnswer(t: TFunction, model: Pick<LanderModel, "zeroReading" 
   const own = !!name && !generic;
   const companyPossessive = own ? possessive(name!) : "";
   const b = model.boardTotal;
-  if (model.zeroReading === "older" && b) {
-    const vars = { total: fmtCount(b.total, { lng: lang }), date: fmtDate(b.readAt, { lng: lang }), company: name ?? "", companyPossessive, days: SERVED_WINDOW_DAYS };
-    const head = own
-      ? tPlural(t, "companyProfile.zero.older", b.total, vars, "The {{total}} role on {{companyPossessive}} board is not dated in the last {{days}} days (read {{date}}).", "None of the {{total}} roles on {{companyPossessive}} board is dated in the last {{days}} days (read {{date}}).")
-      : tPlural(t, "companyProfile.zero.olderBoard", b.total, vars, "The {{total}} role on this board is not dated in the last {{days}} days (read {{date}}).", "None of the {{total}} roles on this board is dated in the last {{days}} days (read {{date}}).");
-    return `${head} ${t("companyProfile.zero.basis", "We show roles dated in the last {{days}} days.", { days: SERVED_WINDOW_DAYS })}`;
-  }
   if (model.zeroReading === "empty" && b) {
     const ago = fmtAgo(b.readAt, { lng: lang });
-    return own
-      ? t("companyProfile.zero.empty", "No roles on {{companyPossessive}} job board when we read it {{ago}}.", { company: name, companyPossessive, ago })
-      : t("companyProfile.zero.emptyBoard", "No roles on this board when we read it {{ago}}.", { ago });
-  }
-  if (model.zeroReading === "fullRead") {
-    return t("companyProfile.zero.fullRead", "As of our latest full read, no role on this board is dated in the last {{days}} days.", { days: SERVED_WINDOW_DAYS });
+    if (ago) {
+      return own
+        ? t("companyProfile.zero.empty", "No roles on {{companyPossessive}} job board when we read it {{ago}}.", { company: name, companyPossessive, ago })
+        : t("companyProfile.zero.emptyBoard", "No roles on this board when we read it {{ago}}.", { ago });
+    }
   }
   if (model.zeroReading === "unread") {
     return own
       ? t("companyProfile.zero.unread", "We have not read {{companyPossessive}} whole board recently.", { company: name, companyPossessive })
       : t("companyProfile.zero.unreadBoard", "We have not read this whole board recently.");
   }
-  return t("companyProfile.zero.answer", "No roles dated in the last {{days}} days", { days: SERVED_WINDOW_DAYS });
+  return t("companyProfile.zero.answer", "No roles are listed on this page right now.");
 }
 
 /** Jobs › Companies › {name}, at sm and up. */
@@ -285,14 +275,11 @@ export function CompanyHeader({ model, token, system, countries = [], workMode, 
           : t("companyProfile.h1Generic", "Roles on the “{{label}}” board", { label: name }))
       : name;
 
-  // The zero page says what the last complete read of the board saw (A3);
-  // only the list's own "none dated in our window" carries the list's read.
-  const zeroLine = zero ? zeroAnswer(t, model, lang) : null;
-  const answer = zero
-    ? (model.zeroReading === null && boardReadAt && fmtAgo(boardReadAt, { lng: lang })
-        ? `${zeroLine} · ${t("companyProfile.boardReadAgo", "board read {{ago}}", { ago: fmtAgo(boardReadAt, { lng: lang }) })}`
-        : zeroLine)
-    : openRolesLine(t, model.openRoles, lang, model.undatedOpen);
+  // The zero page says only what its inputs agree on (zeroAnswer). Its own
+  // line carries no read time: "board read 5 min ago" beside "no roles listed"
+  // reads as what that read found, and on a board whose roles a sibling site
+  // serves the read found them (2026-10-25).
+  const answer = zero ? zeroAnswer(t, model, lang) : openRolesLine(t, model.openRoles, lang, model.undatedOpen);
   const totalLine = zero ? null : boardTotalLine(t, model, lang);
 
   // Not on the zero variant: "Live jobs straight from X's own hiring system"

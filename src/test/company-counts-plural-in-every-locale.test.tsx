@@ -37,8 +37,7 @@ const shardFlat = (l: string) => new Map(flatten((companyShard(l) as { companyPr
 /** Placeholders a translation may use beyond English's: the component passes both forms of the name. */
 const EXTRA: Record<string, string[]> = {
   subtitle: ["company", "companyPossessive"],
-  // Track 1 (A3): the zero page's sentences get both forms of the name too.
-  "zero.older_one": ["company", "companyPossessive"], "zero.older_other": ["company", "companyPossessive"], "zero.older_many": ["company", "companyPossessive"],
+  // Track 1 (A3): the zero page's named sentences get both forms of the name too.
   "zero.empty": ["company", "companyPossessive"], "zero.unread": ["company", "companyPossessive"],
 };
 
