@@ -45,6 +45,15 @@ describe("the ceiling keeps today's indexable boards near the cut", () => {
     expect(chosen).toEqual(["a", "b", "c", "d", "e", "f"]);
   });
 
+  it("never displaces a board of an employer indexable today (its openings pool into that employer's page)", () => {
+    const pwc = [board("a", 900), board("b", 800), board("pwc~wd3~global", 700), board("d", 600), board("e", 320), board("pwc~wd3~campus", 310), board("surge", 290), board("g", 100)]
+      .map((c) => (c.token.startsWith("pwc") ? { ...c, name: "PwC" } : c));
+    const chosen = tokens(selectLanders(pwc, { openOf, max: 6, keep: new Set(["pwc~wd3~global", "surge"]) }));
+    expect(chosen).toContain("pwc~wd3~campus");
+    expect(chosen).toContain("surge");
+    expect(chosen).not.toContain("e");
+  });
+
   it("is what the bake passes: today's indexable company pages", () => {
     const bake = readFileSync(resolve(__dirname, "../../scripts/prerender-seo.mjs"), "utf8");
     expect(bake).toMatch(/nameOf: \(c\) => bakeEmployerName\(c\.token, c\.name, NAME_PARTS\)\.name,\n\s*keep: INDEXABLE_TODAY_TOKENS,/);

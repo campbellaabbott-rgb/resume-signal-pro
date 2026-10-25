@@ -538,12 +538,17 @@ export function selectLanders(companyFacet, { openOf, displayName = (c) => c.nam
   // the cut (24 pages with 198-307 open roles each in the round's bake). A
   // board indexable today (`keep`) keeps its place while its open roles are
   // at least `keepRatio` of the cut's; it displaces the lowest-ranked NEW
-  // boards, never another board indexable today, so the set never passes the
-  // ceiling. Refusing a page new to the index is what D7 allows.
+  // boards, never another board indexable today and never a board of an
+  // employer that has one (a secondary board pools its openings into its
+  // employer's page: dropping PwC's campus board cut "across 3 hiring-system
+  // boards" to one), so the set never passes the ceiling. Refusing a page new
+  // to the index is what D7 allows.
   if (keep && typeof keep.has === "function" && keep.size && ranked.length > max && chosen.length) {
     const cut = openOf(chosen[chosen.length - 1]) ?? chosen[chosen.length - 1].count ?? 0;
     const held = ranked.slice(max).filter((c) => keep.has(c.token) && (openOf(c) ?? c.count ?? 0) >= cut * keepRatio);
-    const droppable = chosen.filter((c) => !keep.has(c.token)).reverse();
+    const groupOf = (c) => `${bakeEmployerKey(c.token)}\u0000${String(displayName(c) ?? "").toLowerCase().replace(/\s+/g, " ").trim()}`;
+    const keptGroups = new Set(ranked.filter((c) => keep.has(c.token)).map(groupOf));
+    const droppable = chosen.filter((c) => !keep.has(c.token) && !keptGroups.has(groupOf(c))).reverse();
     const n = Math.min(held.length, droppable.length);
     if (n) {
       const drop = new Set(droppable.slice(0, n).map((c) => c.token));
