@@ -260,7 +260,13 @@ describe("the interval contains its own share", () => {
     expect(outside, `old: ${o.fill_rate_14} [${o.fill_rate_14_lo}, ${o.fill_rate_14_hi}]`).toBe(true);
     expect(num(n.fill_rate_14)).toBeGreaterThanOrEqual(num(n.fill_rate_14_lo));
     expect(num(n.fill_rate_14)).toBeLessThanOrEqual(num(n.fill_rate_14_hi));
-  });
+    // Two databases boot inside this one case (the old curve and the new),
+    // where every other case boots one: under the full suite on the merged
+    // wave 4 + main tree it ran past vitest's 5 s twice (2026-10-25), and alone
+    // on a busy machine it took 5.4 s. 30 s is the suite's working range
+    // for a pglite case (a-day-thirty-gate-must-have-seen-the-cohort-produce-
+    // an-event); a hanging query still fails inside it.
+  }, 30_000);
 });
 
 describe("honest sufficiency", () => {
