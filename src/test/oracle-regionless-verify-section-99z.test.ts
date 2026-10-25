@@ -17,12 +17,13 @@
  *   - an uncarried token, a proven read serving far from the employer's own
  *     count, an apply link on another host, an apply page that does not
  *     answer, a requisition the employer's detail endpoint does not list, an
- *     empty description, a regional control that serves nothing, on the wrong
- *     host or unread for days, and an unreadable list each print FAIL;
+ *     empty description, a regional control that serves nothing, sits on the
+ *     wrong host or went unread by a build over a day old, a status with no
+ *     buildSince, and an unreadable list each print FAIL;
  *   - a count before the first full read is proven is INFO, and so is a board
  *     not read yet;
- *   - the publishable key is never printed, every POST is a job-board list or
- *     detail read carrying x-rb-budget: probe, the fill-curve read is a GET,
+ *   - the publishable key is never printed, every POST is a job-board status,
+ *     list or detail read carrying x-rb-budget: probe, the fill-curve read is a GET,
  *     and every GET to JPMorgan's host is paced by a sleep of a second or more.
  */
 import { afterAll, describe, expect, it, vi } from "vitest";
@@ -106,6 +107,7 @@ const ctlJob = (id: string, over: Record<string, unknown> = {}) => ({
 type Over = {
   build?: string | null; list?: string; served?: number; jobs?: unknown[]; unknown?: boolean; bucket?: string | null;
   inWindow?: number | null; ctl?: string; ctlTotal?: number; ctlJobs?: unknown[]; applyStatus?: number; reqItems?: number; description?: string;
+  buildSince?: string | null; status?: string;
 };
 function routes(o: Over = {}): Route[] {
   const build = o.build === undefined ? "job-board.2026-09-09.95" : o.build;
@@ -116,8 +118,11 @@ function routes(o: Over = {}): Route[] {
   const curve = JSON.stringify(o.bucket === null ? [] : [{ company_token: TOK, observability_bucket: o.bucket ?? "lap_proven", open_roles: o.served ?? 3700 }]);
   const feed = JSON.stringify({ items: [{ TotalJobsCount: 7244, postingDatesFacet: o.inWindow === null ? [] : [{ Id: 7, TotalCount: 1283 }, { Id: 30, TotalCount: o.inWindow ?? 3728 }, { Id: 31, TotalCount: 3516 }], requisitionList: [{ Id: "210587260" }] }] });
   const ctl = o.ctl ?? JSON.stringify({ jobs: o.ctlJobs ?? [ctlJob("1"), ctlJob("2")], total: o.ctlTotal ?? 2802, hasMore: true });
+  const since = o.buildSince === undefined ? new Date(Date.now() - 2 * 3_600_000).toISOString() : o.buildSince;
+  const status = o.status ?? JSON.stringify({ version: "2026-09-09.95", sliceStats: since === null ? {} : { build: "2026-09-09.95", buildSince: since } });
   return [
     { match: `^OPTIONS ${FB}$`, status: 204, headers: build ? { "x-fn-build": build } : {} },
+    { match: `^POST ${FB}\\t\\{"action":"status"\\}`, body: status },
     { match: `^POST ${FB}\\t.*"action":"list".*"jpmc~~CX_1001"`, body: list },
     { match: `^POST ${FB}\\t.*"action":"list".*"efet~us2~CX_1"`, body: ctl },
     { match: `^POST ${FB}\\t.*"action":"detail"`, body: JSON.stringify({ job: jpmcJob("210587260"), description: o.description ?? "Builds trading systems. ".repeat(40) }) },
@@ -138,7 +143,7 @@ describe("section 99z: Oracle hosts with no region", () => {
     expect(verdicts(lines, "INFO"), show(lines)).toEqual([]);
     const pass = verdicts(lines, "PASS");
     for (const re of [/x-fn-build = job-board\.2026-09-09\.95/, /carries jpmc~~CX_1001/, /serves 3700 rows against 3728/, /apply link is on jpmc\.fa\.oraclecloud\.com/,
-      /answers 200/, /requisition 210587260 answers on the employer detail endpoint with 1 item/, /-character description/, /control efet~us2~CX_1 serves 2802/, /last read 0\.\d h ago/]) {
+      /answers 200/, /requisition 210587260 answers on the employer detail endpoint with 1 item/, /-character description/, /control efet~us2~CX_1 serves 2802/, /control efet~us2~CX_1 was read by this build: newest row seen 0\.\d h ago, after the first slice of this build 2\.\d h ago/]) {
       expect(pass.some((l) => re.test(l)), `${re}\n${show(lines)}`).toBe(true);
     }
     expect(pass.length).toBe(9);
@@ -189,11 +194,17 @@ describe("section 99z: Oracle hosts with no region", () => {
     expect(hasLine(run(routes({ description: "" })).lines, "FAIL", /reads a 0-character description/)).toBe(true);
   });
 
-  it("FAILs a regional control that serves nothing, sits on the wrong host, or was not read for days", () => {
+  it("FAILs a regional control that serves nothing, sits on the wrong host, or was not read by a build over a day old", () => {
     expect(hasLine(run(routes({ ctlTotal: 0, ctlJobs: [] })).lines, "FAIL", /control efet~us2~CX_1 serves 0 rows/)).toBe(true);
     expect(hasLine(run(routes({ ctlJobs: [ctlJob("1", { applyUrl: "https://efet.fa.oraclecloud.com/hcmUI/x/job/1" })] })).lines, "FAIL", /apply links on \["efet\.fa\.oraclecloud\.com"\]/)).toBe(true);
-    const stale = new Date(Date.now() - 72 * 3_600_000).toISOString();
-    expect(hasLine(run(routes({ ctlJobs: [ctlJob("1", { lastSeen: stale })] })).lines, "FAIL", /last read 72\.\d h ago/)).toBe(true);
+    const ago = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString();
+    const old = run(routes({ ctlJobs: [ctlJob("1", { lastSeen: ago(30) })], buildSince: ago(28) }));
+    expect(hasLine(old.lines, "FAIL", /last read 30\.\d h ago, and nothing since the first slice of this build 28\.\d h ago/), show(old.lines)).toBe(true);
+    const young = run(routes({ ctlJobs: [ctlJob("1", { lastSeen: ago(5) })], buildSince: ago(3) }));
+    expect(hasLine(young.lines, "INFO", /last read 5\.\d h ago, before the first slice of this build 3\.\d h ago/), show(young.lines)).toBe(true);
+    expect(verdicts(young.lines, "FAIL"), show(young.lines)).toEqual([]);
+    const blind = run(routes({ buildSince: null }));
+    expect(hasLine(blind.lines, "FAIL", /states no sliceStats\.buildSince/), show(blind.lines)).toBe(true);
   });
 
   it("FAILs an unreadable list, never crashing into silence", () => {
@@ -206,9 +217,9 @@ describe("section 99z: Oracle hosts with no region", () => {
     const { out, calls } = run(routes());
     expect(out).not.toContain(KEY);
     const posts = calls.filter((c) => /^curl\tPOST /.test(c));
-    expect(posts.length).toBe(3);
+    expect(posts.length).toBe(4);
     for (const p of posts) {
-      expect(p, p).toMatch(new RegExp(`^curl\\tPOST ${FB}\\t\\{"action":"(list|detail)"`));
+      expect(p, p).toMatch(new RegExp(`^curl\\tPOST ${FB}\\t\\{"action":"(list|detail|status)"`));
       expect(p, p).toMatch(/headers:.*x-rb-budget: probe/);
     }
     expect(calls.some((c) => /^curl\tGET https:\/\/p\.supabase\.co\/rest\/v1\/rpc\/get_company_fill_curve\?/.test(c))).toBe(true);

@@ -27,11 +27,13 @@
 #     on the spot, as a seeker's click does);
 #   - a regional Oracle board (Hilton, efet~us2~CX_1) still serves, its apply
 #     links on efet.fa.us2.oraclecloud.com, and one of its rows was seen by a
-#     read in the last 24 hours: the shared host builder did not break the
-#     boards that have a region.
+#     read of THIS build (after status.sliceStats.buildSince, its first slice):
+#     the shared host builder did not break the boards that have a region.
+#     Before such a read it is INFO while the build is under 24 h old (a hot
+#     board laps in about 7 h), and FAIL after.
 #
-# READ-ONLY. One OPTIONS preflight; job-board list and detail reads sent with
-# x-rb-budget: probe (detail is the seeker's own read); one anon RPC GET of a
+# READ-ONLY. One OPTIONS preflight; job-board status, list and detail reads
+# sent with x-rb-budget: probe (detail is the seeker's own read); one anon RPC GET of a
 # STABLE reader; three GETs to JPMorgan's own host (the feed's first row and
 # its facet, one apply page, one requisition detail), paced 1.2 s apart.
 echo "== 99z. Oracle hosts with no region: JPMorgan Chase is read from jpmc.fa.oraclecloud.com, and the regional boards still read =="
@@ -46,16 +48,17 @@ elif build_ge job-board "$VD99Z_H" "2026-09-09" "95"; then echo "PASS  job-board
 else echo "INFO  job-board preflight x-fn-build = $VD99Z_H: job-board.2026-09-09.95, the build that reads an Oracle host with no region, is not serving yet, so the JPMorgan lines wait for it"; fi
 
 if [ "$VD99Z_LIVE" = 1 ]; then
-  rm -f /tmp/vd_99z_jpmc.json /tmp/vd_99z_curve.json /tmp/vd_99z_feed.json /tmp/vd_99z_ctl.json /tmp/vd_99z_req.json /tmp/vd_99z_detail.json /tmp/vd_99z_pick.txt
+  rm -f /tmp/vd_99z_jpmc.json /tmp/vd_99z_curve.json /tmp/vd_99z_feed.json /tmp/vd_99z_ctl.json /tmp/vd_99z_status.json /tmp/vd_99z_req.json /tmp/vd_99z_detail.json /tmp/vd_99z_pick.txt
   J "{\"action\":\"list\",\"companies\":[\"$VD99Z_TOK\"],\"vendor\":[\"oracle\"],\"groupSimilar\":false,\"includeFacets\":false,\"limit\":5}" > /tmp/vd_99z_jpmc.json
   curl -s -m 60 "$B/rest/v1/rpc/get_company_fill_curve?p_tokens=%7B%22jpmc~~CX_1001%22%7D" -H "apikey: $K" -H "Authorization: Bearer $K" > /tmp/vd_99z_curve.json
   curl -s -m 60 "https://$VD99Z_HOST/hcmRestApi/resources/latest/recruitingCEJobRequisitions?onlyData=true&expand=requisitionList&finder=findReqs%3BsiteNumber%3DCX_1001%2Climit%3D1%2Coffset%3D0%2CsortBy%3DPOSTING_DATES_DESC" > /tmp/vd_99z_feed.json
   J "{\"action\":\"list\",\"companies\":[\"$VD99Z_CTL\"],\"vendor\":[\"oracle\"],\"groupSimilar\":false,\"includeFacets\":false,\"limit\":20}" > /tmp/vd_99z_ctl.json
+  J '{"action":"status"}' > /tmp/vd_99z_status.json
   VD99Z_TOK="$VD99Z_TOK" VD99Z_CTL="$VD99Z_CTL" VD99Z_HOST="$VD99Z_HOST" node -e '
 const fs=require("fs");const E=process.env;
 const read=(f)=>{try{return JSON.parse(fs.readFileSync(f,"utf8"))}catch{return null}};
 const peek=(f)=>{try{return fs.readFileSync(f,"utf8").slice(0,160).replace(/\s+/g," ")}catch{return "(no answer)"}};
-const L=read("/tmp/vd_99z_jpmc.json"),C=read("/tmp/vd_99z_curve.json"),F=read("/tmp/vd_99z_feed.json"),X=read("/tmp/vd_99z_ctl.json");
+const L=read("/tmp/vd_99z_jpmc.json"),C=read("/tmp/vd_99z_curve.json"),F=read("/tmp/vd_99z_feed.json"),X=read("/tmp/vd_99z_ctl.json"),S=read("/tmp/vd_99z_status.json");
 const pick=[];
 if(!L||typeof L!=="object"||Array.isArray(L)){console.log("FAIL  job-board list for "+E.VD99Z_TOK+" is unreadable: "+peek("/tmp/vd_99z_jpmc.json"))}
 else{
@@ -91,9 +94,14 @@ else{
   const ok=typeof X.total==="number"&&X.total>=100&&hosts.length===1&&hosts[0]===want;
   console.log((ok?"PASS":"FAIL")+"  the regional Oracle control "+E.VD99Z_CTL+" serves "+X.total+" rows (want 100 or more), apply links on "+JSON.stringify(hosts)+" (want [\""+want+"\"])");
   const seen=X.jobs.map((x)=>Date.parse(x.lastSeen||"")).filter(Number.isFinite);
-  const newest=seen.length?Math.max(...seen):null;const hrs=newest===null?null:(Date.now()-newest)/3600000;
+  const newest=seen.length?Math.max(...seen):null;
+  const ss=S&&S.sliceStats&&typeof S.sliceStats==="object"?S.sliceStats:null;const since=ss?Date.parse(ss.buildSince||""):NaN;
+  const age=(t)=>((Date.now()-t)/3600000).toFixed(1)+" h ago";
   if(newest===null)console.log("FAIL  the regional Oracle control "+E.VD99Z_CTL+" served no row with a lastSeen, so nothing shows a read reached it");
-  else console.log((hrs<=24?"PASS":"FAIL")+"  the regional Oracle control "+E.VD99Z_CTL+" was last read "+hrs.toFixed(1)+" h ago (want within 24 h: the host builder still reaches a host with a region)");
+  else if(!ss||!Number.isFinite(since))console.log("FAIL  job-board status states no sliceStats.buildSince, so nothing dates this build against the control read last "+age(newest)+": "+peek("/tmp/vd_99z_status.json"));
+  else if(newest>=since)console.log("PASS  the regional Oracle control "+E.VD99Z_CTL+" was read by this build: newest row seen "+age(newest)+", after the first slice of this build "+age(since)+" (sliceStats.build "+ss.build+"): the host builder still reaches a host with a region");
+  else if(Date.now()-since<24*3600000)console.log("INFO  the regional Oracle control "+E.VD99Z_CTL+" was last read "+age(newest)+", before the first slice of this build "+age(since)+": a hot board laps in about 7 h, so re-run once the build is older");
+  else console.log("FAIL  the regional Oracle control "+E.VD99Z_CTL+" was last read "+age(newest)+", and nothing since the first slice of this build "+age(since)+": more than 24 h without a read on a host with a region");
 }
 fs.writeFileSync("/tmp/vd_99z_pick.txt",pick.join("\n"));
 ' 2>&1 || echo "FAIL  99z judge threw (see the lines above)"
