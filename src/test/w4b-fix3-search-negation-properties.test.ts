@@ -15,10 +15,12 @@
  *   - any query: the positive words are the typed words, in order, minus the
  *     operators and the excluded words, and nothing is invented;
  *   - round 4: "T not A or B" excludes both; a pinned region or city after
- *     "not" is one exclusion and stays wanted after a negated word; and a
- *     title is struck by a word only where origin/main strikes it or where
- *     the title holds that word's own plural (never its singular), and a
- *     hyphenated word strikes its parts written together, apart or hyphenated.
+ *     "not" is one exclusion and stays wanted after a negated word;
+ *   - the title match is origin/main's (the 2026-10-25 descope took round 4's
+ *     plural and hyphen folds out): a word strikes exactly the titles main's
+ *     match strikes, and a hyphenated word strikes exactly the titles that
+ *     hold it as typed, hyphen included. A title spelling it apart or run
+ *     together is kept: main's open defect, a residual.
  * LIVE_RULE and LIVE_TITLE below are origin/main's splitExclusions and
  * titleExcluded (8a6561c4), copied as the oracle: what production answers today.
  * A hyphen inside an excluded word is the one place this rule's string differs
@@ -238,33 +240,37 @@ describe("round 4: 'not A or B', pinned regions and cities, and the title match"
   const TITLE_WORDS = [...WORDS, ...WORDS.map((w) => `${w}s`), ...WORDS.map((w) => `${w}es`), ...WORDS.map((w) => w.replace(/s$/, "")),
     "time", "business", "producer", "editor", "driver", "teacher", "aide", "consultant", "engineer", "-", ",", "/", "&"];
   const PLURAL = (w: string, title: string) => new RegExp(`(^|[^a-z0-9])${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(s|es)([^a-z0-9]|$)`).test(title);
-  it("a single word strikes a title only where main does or where the title holds that word's own plural", () => {
+  it("a single word strikes exactly the titles origin/main strikes: no plural fold, so 'news' keeps New Grad and 'parts' keeps Part-Time", () => {
     const bad: string[] = [];
+    let plurals = 0;
     for (let k = 0; k < 20000; k++) {
       const w = pick(WORDS);
       const title = Array.from({ length: 2 + Math.floor(R() * 4) }, () => pick(TITLE_WORDS)).join(" ");
       const mine = titleExcluded(title, [w]), live = LIVE_TITLE(title, [w]);
-      if (live && !mine) bad.push(`${w} | ${title}: main strikes it, this rule keeps it`);
-      if (mine && !live && !PLURAL(w, title.toLowerCase())) bad.push(`${w} | ${title}: struck with no '${w}' and no plural of it`);
+      if (mine !== live) bad.push(`${w} | ${title}: main ${live ? "strikes" : "keeps"} it, this rule ${mine ? "strikes" : "keeps"} it`);
+      if (!live && PLURAL(w, title.toLowerCase())) plurals++;
     }
     expect(bad.slice(0, 10)).toEqual([]);
+    expect(plurals, "no title held a plural of its word, so this cannot show the fold is gone").toBeGreaterThan(100);
+    expect(titleExcluded("New Grad RN", ["news"])).toBe(false);
+    expect(titleExcluded("Part-Time Driver", ["parts"])).toBe(false);
+    expect(titleExcluded("Accounts Payable Manager", ["account"])).toBe(false);
   });
 
-  it("a hyphenated word strikes its parts written together, apart or hyphenated, and nothing main keeps that lacks both parts side by side", () => {
+  it("a hyphenated word strikes exactly the titles that hold it as typed; apart or run together it is main's open defect, a residual", () => {
     const HY = ["part-time", "full-time", "night-shift", "live-in", "e-commerce", "co-op", "k-12", "x-ray", "on-call", "per-diem", "over-the-road"];
     const bad: string[] = [];
     for (const h of HY) {
       const parts = h.split("-");
-      for (const title of [`${tc(parts.join("-"))} Worker`, `${tc(parts.join(" "))} Worker`, `${tc(parts.join(""))} Worker`, `Worker - ${parts.join(" ").toUpperCase()}`]) {
-        if (!titleExcluded(title, splitExclusions(`worker not ${h}`).excluded)) bad.push(`${h} misses ${title}`);
-      }
+      const ex = splitExclusions(`worker not ${h}`).excluded;
+      expect(ex, `${h} is excluded as typed`).toEqual([h]);
+      if (!titleExcluded(`${tc(parts.join("-"))} Worker`, ex)) bad.push(`${h} misses ${tc(parts.join("-"))} Worker`);
+      // Residual, as on origin/main: a title that spells it apart is kept.
+      if (titleExcluded(`${tc(parts.join(" "))} Worker`, ex)) bad.push(`${h} strikes ${tc(parts.join(" "))} Worker: a fold came back`);
       for (let k = 0; k < 300; k++) {
-        const title = Array.from({ length: 2 + Math.floor(R() * 4) }, () => pick([...parts, ...TITLE_WORDS])).join(" ");
+        const title = Array.from({ length: 2 + Math.floor(R() * 4) }, () => pick([...parts, h, ...TITLE_WORDS])).join(" ");
         const mine = titleExcluded(title, [h]);
-        const live = LIVE_TITLE(title, [h.replace(/-/g, "")]);
-        const together = new RegExp(`(^|[^a-z0-9])${parts.map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("[^a-z0-9]*")}`).test(title.toLowerCase());
-        if (live && !mine) bad.push(`${h} | ${title}: main strikes it, this rule keeps it`);
-        if (mine && !together) bad.push(`${h} | ${title}: struck without its parts side by side`);
+        if (mine !== LIVE_TITLE(title, [h])) bad.push(`${h} | ${title}: differs from main's match of the same word`);
       }
     }
     expect(bad.slice(0, 10)).toEqual([]);

@@ -14,9 +14,13 @@
  *
  * THE RULE NOW. One negated word, as origin/main does, unless the words are a
  * pinned compound, a known place, or a pinned region or city; "not A or B"
- * negates both. A single word strikes itself and its plural, never its
- * singular; only a phrase's last word folds a plural. A hyphen inside a word
- * is an optional break, and a slash between words lists alternatives.
+ * negates both; a hyphen inside a word is kept and a slash between words lists
+ * alternatives. That is splitExclusions. The title match is origin/main's
+ * titleExcluded, byte for byte: an excluded word or phrase strikes a title
+ * only where it stands exactly as typed. Round 4's plural and hyphen folds
+ * were taken out on 2026-10-25 (wave 4 descope): the final recheck found a
+ * plural striking a different job word ("account" struck "Accounts Payable
+ * Manager"), which origin/main never does.
  *
  * THE CORPUS (fixtures/w4b-fix3-search/negated-phrases.json): 1,169 queries,
  * every one labelled from its structure before any version ran: round 3's
@@ -24,12 +28,14 @@
  * rechecker's 511, and the recheck-3 findings' inputs with titles each
  * exclusion must and must not strike. A case is right only when the split is
  * right AND the version's own titleExcluded strikes what it should. Measured:
- * origin/main 764, fa66a031 496, 9af3c783 737, 237bf2e8 1,017, this rule
- * 1,161. On no case is this rule wrong where origin/main is right; the eight
- * it still gets wrong are pinned with the reason, and main gets each wrong too.
- * Seventy-five queries written after the rule to break it
+ * origin/main 764, fa66a031 496, 9af3c783 737, 237bf2e8 1,017, round 4
+ * (with its folds) 1,161, and the shipped rule after the descope 1,122. On no
+ * case is it wrong where origin/main is right. The 47 it gets wrong are each
+ * wrong on main too: the 8 gaps (the split) and the 39 RESIDUAL cases below,
+ * where the split is right and only the exact title match misses a title
+ * spelled another way. Seventy-five queries written after round 4 to break it
  * (fixtures/w4b-fix3-search/self-break-round4.json): origin/main 22 right,
- * 237bf2e8 25, this rule all 75 when they were written.
+ * 237bf2e8 25, round 4 all 75, the shipped rule 69 (6 RESIDUAL).
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -63,15 +69,57 @@ function probes(c: Case): { strike: string[]; keep: string[] } {
     keep: [...(c.keep ?? []), tc(head), ...pos.slice(1).filter((t) => /^[a-z]/.test(t) && t !== "or" && t !== "not").map((t) => `${tc(head)} ${tc(t)}`)],
   };
 }
+/** How the real code answers a case: whether the split is right, and the titles it misses and wrongly strikes. */
+function judge(c: Case): { splitOk: boolean; got: Out; missed: string[]; wrong: string[] } {
+  const got = splitExclusions(c.q);
+  const splitOk = [c.expect, ...(c.alsoAccept ?? [])].some((a) => normPos(a.positive) === normPos(got.positive) && sameExc(a.excluded, got.excluded));
+  if (!splitOk) return { splitOk, got, missed: [], wrong: [] };
+  const { strike, keep } = probes(c);
+  return { splitOk, got, missed: strike.filter((t) => !titleExcluded(t, got.excluded)), wrong: keep.filter((t) => titleExcluded(t, got.excluded)) };
+}
 /** What is wrong with the real code's answer to a case, or "" when it is right. */
 function verdict(c: Case): string {
-  const got = splitExclusions(c.q);
-  const ok = [c.expect, ...(c.alsoAccept ?? [])].some((a) => normPos(a.positive) === normPos(got.positive) && sameExc(a.excluded, got.excluded));
-  if (!ok) return `split ${JSON.stringify(got)}, want ${JSON.stringify(c.expect)}`;
-  const { strike, keep } = probes(c);
-  const missed = strike.filter((t) => !titleExcluded(t, got.excluded));
-  const wrong = keep.filter((t) => titleExcluded(t, got.excluded));
+  const { splitOk, got, missed, wrong } = judge(c);
+  if (!splitOk) return `split ${JSON.stringify(got)}, want ${JSON.stringify(c.expect)}`;
   return missed.length || wrong.length ? `excluded ${JSON.stringify(got.excluded)} misses ${JSON.stringify(missed)} and strikes ${JSON.stringify(wrong)}` : "";
+}
+
+/**
+ * RESIDUAL: cases the shipped rule splits right whose exact title match misses a
+ * title spelled another way. Every one is wrong on origin/main too. "hyphen":
+ * the typed hyphenated word strikes only a title that spells it with the hyphen
+ * ("part-time" strikes "Part-Time Barista", not "Part Time Barista" or
+ * "Parttime Barista"); origin/main folds it to "parttime", which strikes no
+ * Part-Time title at all. That is main's defect, still open, not a right answer.
+ * "plural": the typed form strikes only itself ("manager" keeps "Store
+ * Managers", "night shifts" keeps "Night Shift RN"), as on origin/main.
+ */
+const RESIDUAL: Readonly<Record<string, "hyphen" | "plural">> = {
+  "neg-020": "hyphen", "neg-053": "hyphen", "neg-093": "hyphen", "neg-129": "hyphen", "neg-146": "hyphen",
+  "neg-152": "hyphen", "neg-154": "hyphen", "neg-181": "hyphen", "neg-186": "hyphen", "neg-208": "hyphen",
+  "neg-213": "hyphen", "neg-226": "hyphen", "neg-266": "hyphen", "neg-272": "hyphen", "neg-274": "hyphen",
+  "neg-300": "hyphen", "neg-302": "hyphen", "neg-462": "hyphen", "neg-532": "hyphen", "neg-545": "hyphen",
+  "neg-556": "hyphen", "rc3-H-operator-026": "hyphen", "rc3-H-operator-041": "hyphen", "r4-135": "hyphen",
+  "r4-136": "hyphen", "r4-138": "hyphen", "r4-139": "hyphen", "r4-140": "hyphen", "r4-142": "hyphen",
+  "r4-143": "hyphen", "r4-144": "hyphen", "r4-145": "hyphen", "r4-146": "hyphen",
+  "neg-316": "plural", "neg-438": "plural", "r4-021": "plural", "r4-024": "plural", "r4-025": "plural", "r4-027": "plural",
+  // The self-break queries.
+  "sb-05": "hyphen", "sb-41": "hyphen", "sb2-08": "hyphen",
+  "sb-12": "plural", "sb-13": "plural", "sb2-19": "plural",
+};
+const isResidual = (c: Case) => Object.prototype.hasOwnProperty.call(RESIDUAL, c.id);
+/** A residual is wrong on main too, its split is right, it strikes nothing wanted, and every title it misses is the class's. */
+function residualHolds(c: Case): string {
+  const { splitOk, got, missed, wrong } = judge(c);
+  if (c.correct.main) return "origin/main answers it right, so it cannot be a residual";
+  if (!splitOk) return `split ${JSON.stringify(got)}: a residual is a title miss, not a wrong split`;
+  if (wrong.length) return `strikes wanted titles ${JSON.stringify(wrong)}`;
+  if (!missed.length) return "now answered right: take it out of RESIDUAL";
+  const typed = (e: string) => new RegExp(`(^|[^a-z0-9])${e.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^a-z0-9]|$)`, "i");
+  const stray = missed.filter((t) => got.excluded.some((e) => typed(e).test(t)));
+  if (stray.length) return `misses ${JSON.stringify(stray)}, which hold the typed word exactly`;
+  if (RESIDUAL[c.id] === "hyphen" && !got.excluded.some((e) => e.includes("-"))) return "a hyphen residual with no hyphenated exclusion";
+  return "";
 }
 
 describe("the corpus is what it claims", () => {
@@ -105,17 +153,33 @@ describe("the corpus is what it claims", () => {
     for (const c of gaps) expect(c.correct.main, c.q).toBe(false);
   });
 
-  it("the hyphenated words are labelled as typed, so a fold that strikes nothing is never pinned as right", () => {
-    for (const c of CASES.filter((x) => /\bnot part-time\b/i.test(x.q))) {
+  it("the hyphenated words are labelled as typed, and every 'not part-time' case is a residual, never pinned as right", () => {
+    const pt = CASES.filter((x) => /\bnot part-time\b/i.test(x.q));
+    expect(pt.length).toBeGreaterThanOrEqual(20);
+    for (const c of pt) {
       expect(c.expect.excluded.map(normExc), c.q).toContain("part time");
       expect(c.correct.main, `${c.q}: main's "parttime" strikes no Part-Time title`).toBe(false);
+      expect(RESIDUAL[c.id], `${c.q}: the exact match misses "Part Time" titles, so it is main's open defect`).toBe("hyphen");
     }
+  });
+
+  it("the shipped rule answers 1,122 of the 1,169 right; the other 47 are the 8 gaps and the 39 residuals", () => {
+    expect(CASES.filter((c) => verdict(c) === "").length).toBe(1122);
+    expect(CASES.filter((c) => c.gap).length).toBe(8);
+    expect(CASES.filter(isResidual).length).toBe(39);
+    expect(CASES.filter((c) => c.gap && isResidual(c)).map((c) => c.id)).toEqual([]);
   });
 });
 
 describe("each query splits as labelled and strikes the titles it names", () => {
-  it.each(CASES.filter((c) => !c.gap).map((c) => [c.id, c.q, c] as const))("%s %s", (_id, _q, c) => {
+  it.each(CASES.filter((c) => !c.gap && !isResidual(c)).map((c) => [c.id, c.q, c] as const))("%s %s", (_id, _q, c) => {
     expect(verdict(c), `${c.reason}${c.ambiguous ? ` (ambiguous: ${c.ambiguous})` : ""}`).toBe("");
+  });
+});
+
+describe("the residuals miss only a title spelled another way, and main misses them too", () => {
+  it.each(CASES.filter(isResidual).map((c) => [c.id, c.q, c] as const))("%s %s", (_id, _q, c) => {
+    expect(residualHolds(c), RESIDUAL[c.id]).toBe("");
   });
 });
 
@@ -141,15 +205,25 @@ describe("never worse than origin/main", () => {
 type SelfBreakCase = Case & { batch: 1 | 2; correct: Case["correct"] & { whenWritten: boolean } };
 const SELF_BREAK = (JSON.parse(readFileSync(resolve(__dirname, "fixtures/w4b-fix3-search/self-break-round4.json"), "utf8")) as { cases: SelfBreakCase[] }).cases;
 
-describe("seventy-five queries written after this rule to break it", () => {
-  it("were all right when written, fifty and then twenty-five, where origin/main got 22", () => {
+describe("seventy-five queries written after round 4 to break it", () => {
+  it("round 4 got all 75 when written, origin/main 22, and the shipped rule 69 with 6 residuals", () => {
     expect(SELF_BREAK.filter((c) => c.batch === 1).length).toBe(50);
     expect(SELF_BREAK.filter((c) => c.batch === 2).length).toBe(25);
     expect(SELF_BREAK.filter((c) => c.correct.whenWritten).length).toBe(75);
     expect(SELF_BREAK.filter((c) => c.correct.main).length).toBe(22);
+    expect(SELF_BREAK.filter((c) => verdict(c) === "").length).toBe(69);
+    expect(SELF_BREAK.filter(isResidual).length).toBe(6);
   });
 
-  it.each(SELF_BREAK.map((c) => [c.id, c.q, c] as const))("%s %s", (_id, _q, c) => {
+  it("never wrong where origin/main is right", () => {
+    expect(SELF_BREAK.filter((c) => c.correct.main && verdict(c) !== "").map((c) => `${c.q}: ${verdict(c)}`)).toEqual([]);
+  });
+
+  it.each(SELF_BREAK.filter((c) => !isResidual(c)).map((c) => [c.id, c.q, c] as const))("%s %s", (_id, _q, c) => {
     expect(verdict(c), c.reason).toBe("");
+  });
+
+  it.each(SELF_BREAK.filter(isResidual).map((c) => [c.id, c.q, c] as const))("residual %s %s", (_id, _q, c) => {
+    expect(residualHolds(c), RESIDUAL[c.id]).toBe("");
   });
 });

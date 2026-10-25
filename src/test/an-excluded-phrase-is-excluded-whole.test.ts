@@ -11,7 +11,8 @@
  *
  * A quoted phrase is one token, negated whole by "-" or "not"; "not" takes one
  * word, or both words of a pinned compound ("night shift", wave 4 fix 3); and
- * titleExcluded matches a phrase as adjacent words, plural or singular.
+ * titleExcluded matches a phrase exactly as typed, origin/main's match (the
+ * 2026-10-25 wave 4 descope took the plural fold out).
  */
 import { describe, expect, it } from "vitest";
 import { splitExclusions, titleExcluded } from "../../supabase/functions/job-board/search-routing";
@@ -33,10 +34,12 @@ describe("the exclusion parser keeps a phrase together (S12-017)", () => {
     expect(titleExcluded("Nurse Manager", ex.excluded)).toBe(false);
   });
 
-  it("'not requiring night shifts' drops the verb and strikes the singular title too", () => {
+  it("'not requiring night shifts' drops the verb and excludes the phrase as typed", () => {
     const ex = splitExclusions("nurse not requiring night shifts");
     expect(ex).toEqual({ positive: "nurse", excluded: ["night shifts"] });
-    expect(titleExcluded("Registered Nurse - Night Shift", ex.excluded)).toBe(true);
+    expect(titleExcluded("Registered Nurse - Night Shifts", ex.excluded)).toBe(true);
+    // Residual, as on origin/main's match: the singular title is kept.
+    expect(titleExcluded("Registered Nurse - Night Shift", ex.excluded)).toBe(false);
   });
 
   it('not "a phrase", a phrase then an operator, and a positive quote beside an exclusion', () => {
@@ -52,6 +55,7 @@ describe("the exclusion parser keeps a phrase together (S12-017)", () => {
     expect(splitExclusions("not night shift")).toEqual({ positive: "not night shift", excluded: [] });
     expect(splitExclusions('"team lead"')).toEqual({ positive: '"team lead"', excluded: [] });
     expect(titleExcluded("Management Consultant", ["manager"])).toBe(false);
-    expect(titleExcluded("Store Managers", ["manager"])).toBe(true);
+    // origin/main's exact match: a plural title is kept.
+    expect(titleExcluded("Store Managers", ["manager"])).toBe(false);
   });
 });

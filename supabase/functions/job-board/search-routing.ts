@@ -800,23 +800,10 @@ export function splitExclusions(raw: string): { positive: string; excluded: stri
   return { positive: positive.join(" "), excluded: cleanExcluded };
 }
 
-const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-/** A typed word as a pattern: as typed, or with a plural ending ("manager" strikes "Store Managers"). Only a phrase's
- *  last word loses a plural "s" ("night shifts" strikes "Night Shift RN"), so a lone "news" never strikes "New". */
-const wordForm = (w: string, fold: boolean): string => {
-  const base = fold && w.length > 3 && /[^s]s$/.test(w) ? w.slice(0, -1) : w;
-  return /[a-z]$/.test(base) && w.length > 3 ? `${esc(base)}(?:s|es)?` : esc(base);
-};
-
-/** Does a title contain any excluded term or phrase? Word-ish match, so "manager" does
- *  not strike out "management-adjacent" by coincidence of substring. A hyphen inside a
- *  word is an optional break: "part-time" strikes "Part-Time", "Part Time" and "Parttime". */
+/** Does a title contain any excluded term? Word-ish match, so "manager" does
+ *  not strike out "management-adjacent" by coincidence of substring. */
 export function titleExcluded(title: string, excluded: readonly string[]): boolean {
   if (!excluded.length) return false;
   const t = String(title ?? "").toLowerCase();
-  return excluded.some((e) => {
-    const segs = e.split(" ").flatMap((w, i) => w.split("-").filter(Boolean).map((s, k) => [k ? "[^a-z0-9]*" : i ? "[^a-z0-9]+" : "", s]));
-    const body = segs.map(([sep, s], i) => sep + wordForm(s, segs.length > 1 && i === segs.length - 1)).join("");
-    return new RegExp(`(^|[^a-z0-9])${body}([^a-z0-9]|$)`, "i").test(t);
-  });
+  return excluded.some((e) => new RegExp(`(^|[^a-z0-9])${e.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^a-z0-9]|$)`, "i").test(t));
 }
