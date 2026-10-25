@@ -369,17 +369,69 @@ function functionsTouched(ref, files) {
   return [...out].sort();
 }
 
-/** --overlap: git reads only. Each ref is diffed from its merge-base with `mainRef`. Returns the undeclared count. */
+/**
+ * The listed refs a ref is BUILT ON (docs/DEPLOY-LEDGER.md §6): every other
+ * ref with which it shares commits main does not have, where it is the one
+ * that went further. A branch cut from wave4/integration carries all of
+ * wave 4's changes; diffed from its merge-base with main alone, each of them
+ * would read as its own, and it would overlap wave 4 on every file wave 4
+ * touched. Returns [{ ref, fork }], fork being the shared commit. A ref that
+ * is itself an ancestor of the other (the base, not the stack) has none.
+ */
+function stackedOn(i, refs, tips, mainRef) {
+  const out = [];
+  for (let j = 0; j < refs.length; j++) {
+    if (j === i) continue;
+    let fork;
+    try { fork = git("merge-base", tips[i], tips[j]); } catch { continue; } // unrelated histories share nothing
+    if (fork === tips[i]) continue; // refs[i] is the base refs[j] is built on
+    if (isAncestor(fork, mainRef)) continue; // they share only main
+    out.push({ ref: refs[j], fork });
+  }
+  return out;
+}
+
+/**
+ * What git makes of a stack's fork and the ref's main base on its own: the
+ * tree `git merge-tree --write-tree` writes (conflicted files keep their
+ * markers). A file the ref holds exactly as that tree has it came from the
+ * stack or from main, not from the ref.
+ */
+function automaticMerge(fork, base) {
+  let out;
+  try { out = execFileSync("git", ["merge-tree", "--write-tree", fork, base], { cwd: ROOT, encoding: "utf8", maxBuffer: 1 << 28, stdio: ["ignore", "pipe", "ignore"] }); }
+  catch (e) { out = String(e?.stdout ?? ""); } // exit 1 means conflicts; the tree is still the first line
+  const tree = out.split("\n")[0].trim();
+  if (!/^[0-9a-f]{40,64}$/.test(tree)) throw new Error(`git merge-tree ${fork} ${base} wrote no tree`);
+  return tree;
+}
+
+/**
+ * --overlap: git reads only. Each ref is diffed from its merge-base with
+ * `mainRef`; a ref built on other listed refs keeps only the files it holds
+ * differently from every one of its stacks merged with main (stackedOn,
+ * automaticMerge), so it is judged by its own changes and not by the branch
+ * it was cut from. A change two refs share from before they forked is
+ * neither's own. Returns the undeclared count.
+ */
 export function runOverlap(refs, mainRef, policy) {
-  const changes = refs.map((ref) => {
-    git("rev-parse", "--verify", `${ref}^{commit}`); // an unknown ref is an error, not an empty pass
+  const tips = refs.map((ref) => git("rev-parse", "--verify", `${ref}^{commit}`)); // an unknown ref is an error, not an empty pass
+  const changes = refs.map((ref, i) => {
     const base = git("merge-base", ref, mainRef);
-    const files = git("diff", "--name-only", base, ref).split("\n").filter(Boolean);
-    return { ref, base, files, functions: functionsTouched(ref, files) };
+    let files = git("diff", "--name-only", base, ref).split("\n").filter(Boolean);
+    const stacks = stackedOn(i, refs, tips, mainRef);
+    for (const s of stacks) {
+      const mine = new Set(git("diff", "--name-only", automaticMerge(s.fork, base), ref).split("\n").filter(Boolean));
+      files = files.filter((f) => mine.has(f));
+    }
+    return { ref, base, stacks, files, functions: functionsTouched(ref, files) };
   });
   const r = overlapReport(changes, policy);
   console.log(`OVERLAP across ${refs.length} ref(s), each diffed from its merge-base with ${mainRef} (git only, no network)`);
-  for (const c of changes) console.log(`  ${c.ref}: ${c.files.length} files, ${c.functions.length} functions (since ${c.base.slice(0, 8)})`);
+  for (const c of changes) {
+    const on = c.stacks.length ? `; built on ${c.stacks.map((s) => `${s.ref} (fork ${s.fork.slice(0, 8)})`).join(", ")}, so only what it holds differently from each` : "";
+    console.log(`  ${c.ref}: ${c.files.length} files, ${c.functions.length} functions (since ${c.base.slice(0, 8)}${on})`);
+  }
   const line = (x, name) => {
     const who = x.declared ? `owned by ${x.owner}` : x.owner ? `sharedFiles names "${x.owner}", which no reservation is` : "no owner in sharedFiles";
     console.log(`  ${x.declared ? "DECLARED  " : "UNDECLARED"} ${name.padEnd(48)} ${who}; changed by ${x.refs.join(", ")}`);

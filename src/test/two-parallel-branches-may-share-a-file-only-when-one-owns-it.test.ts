@@ -176,6 +176,94 @@ describe("--overlap, run on a repository with a main and three branches", () => 
   });
 });
 
+// ── a branch built on another in-flight branch ───────────────────────────────
+// hp/honesty and hp/scanner were cut from wave4/integration, which main does
+// not carry yet, and merged main into it. Diffed from their merge-base with
+// main, every file wave 4 touched read as theirs (677 overlaps with wave 4
+// on 2026-10-25). A stacked ref is judged by what it holds differently from
+// each listed ref it is built on, merged with main the way git would.
+function stackRepo() {
+  const r = repo();
+  const { g, put, commit } = r;
+  const FIVE = ["one", "two", "three", "four", "five"];
+  put("docs/both.md", FIVE.join("\n") + "\n");
+  commit("main before the stack");
+  // the stack: an in-flight branch that main does not carry
+  g("checkout", "-q", "-b", "stack/base", "main");
+  put("docs/a.md", "a from the stack\n");
+  put("docs/notes.md", "notes\nfrom the stack\n");
+  put("docs/both.md", ["ONE (the stack)", ...FIVE.slice(1)].join("\n") + "\n");
+  put("supabase/functions/job-board/index.ts", "export const v = 93;\n");
+  commit("stack");
+  // two children cut from it: one adds a file of its own, one also edits a stack file
+  g("checkout", "-q", "-b", "stack/child-1", "stack/base");
+  put("docs/c1.md", "child one\n");
+  commit("child one");
+  g("checkout", "-q", "-b", "stack/child-2", "stack/base");
+  put("docs/c2.md", "child two\n");
+  put("docs/a.md", "a from the stack\nand child two\n");
+  commit("child two");
+  // main moves again: job-board in a way that conflicts with the stack, and
+  // the far end of a file the stack also changed, which git merges unaided
+  g("checkout", "-q", "main");
+  put("docs/both.md", [...FIVE.slice(0, 4), "FIVE (main)"].join("\n") + "\n");
+  put("supabase/functions/job-board/index.ts", "export const v = 94;\n");
+  commit("main moves again");
+  // a third child merges main into the stack and resolves the conflict
+  g("checkout", "-q", "-b", "stack/child-3", "stack/base");
+  put("docs/c3.md", "child three\n");
+  commit("child three");
+  let conflicted = false;
+  try { g("-c", "user.name=t", "-c", "user.email=t@t", "merge", "-q", "--no-edit", "main"); } catch { conflicted = true; }
+  expect(conflicted, "main's job-board change conflicts with the stack's").toBe(true);
+  put("supabase/functions/job-board/index.ts", "export const v = 94; // over the stack's 93\n");
+  commit("merge main into the stack");
+  g("checkout", "-q", "main");
+  return r;
+}
+
+describe("--overlap, a ref built on another listed ref", () => {
+  it("judges each child by its own changes: what it inherited from the stack is not an overlap", () => {
+    const { run } = stackRepo();
+    const { code, out } = run("stack/base", "stack/child-1", "stack/child-2");
+    expect(code, out).toBe(4);
+    // child two edited a stack file again: that one is a real overlap with the stack
+    expect(out).toMatch(/UNDECLARED docs\/a\.md\s+no owner in sharedFiles; changed by stack\/base, stack\/child-2/);
+    // and nothing it only carries: the notes, the function, the other child's file
+    expect(out).not.toMatch(/UNDECLARED docs\/notes\.md/);
+    expect(out).not.toMatch(/job-board/);
+    expect(out).toMatch(/stack\/child-1: 1 files, 0 functions \(since [0-9a-f]{8}; built on stack\/base \(fork [0-9a-f]{8}\)/);
+    expect(out).toMatch(/1 undeclared overlap\(s\)/);
+  });
+
+  it("without the stack listed, a child is diffed from main as before", () => {
+    const { run } = stackRepo();
+    const { out } = run("stack/child-1", "post-wave3/tooling");
+    expect(out).toMatch(/stack\/child-1: 5 files, 1 functions \(since [0-9a-f]{8}\)/);
+    expect(out).toMatch(/UNDECLARED docs\/notes\.md/);
+  });
+
+  it("two children cut from one stack share nothing they did not each change", () => {
+    const { run } = stackRepo();
+    const { code, out } = run("stack/child-1", "stack/child-2");
+    expect(code, out).toBe(0);
+    expect(out).toMatch(/Files changed by more than one ref: 0/);
+  });
+
+  it("a child that merged main owns the conflicts it resolved, and nothing git merged on its own", () => {
+    const { run } = stackRepo();
+    const { code, out } = run("stack/base", "stack/child-3");
+    expect(code, out).toBe(4);
+    expect(out).toMatch(/UNDECLARED job-board\s+no owner in sharedFiles; changed by stack\/base, stack\/child-3/);
+    expect(out).toMatch(/UNDECLARED supabase\/functions\/job-board\/index\.ts/);
+    // docs/both.md: the stack and main both changed it, and git merged it unaided
+    expect(out).not.toMatch(/docs\/both\.md/);
+    expect(out).not.toMatch(/UNDECLARED docs\/notes\.md/);
+    expect(out).toMatch(/stack\/child-3: 2 files, 1 functions/);
+    expect(out).toMatch(/2 undeclared overlap\(s\)/);
+  });
+});
+
 describe("the real policy declares every overlap it knows of with a reservation-named owner", () => {
   it("each sharedFiles owner is a reservations key", async () => {
     const { readFileSync } = await import("node:fs");
