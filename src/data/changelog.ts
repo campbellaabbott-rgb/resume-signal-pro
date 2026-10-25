@@ -23,6 +23,18 @@ export interface ChangelogEntry {
 }
 
 export const changelog: ChangelogEntry[] = [
+  { id: "workdayCompanyPagesLostTheirFacts", date: "2026-10-25", tags: ["fixed"] },
+  { id: "aCompanyPageThatListsNoRoles", date: "2026-10-25", tags: ["fixed"] },
+  { id: "companyPagesLeadWithTheJobs", date: "2026-10-18", tags: ["improved"] },
+  { id: "postingPagesSayWhatEachFactRestsOn", date: "2026-10-18", tags: ["improved"] },
+  { id: "theHomePageStoppedSayingAnAgentApplies", date: "2026-10-18", tags: ["fixed"] },
+  { id: "aCalmerDarkDesign", date: "2026-10-18", tags: ["improved"] },
+  { id: "forgotPasswordOnTheSignInPage", date: "2026-10-17", tags: ["new"] },
+  { id: "signInWithGoogle", date: "2026-10-17", tags: ["new"] },
+  { id: "signInLinksWaitForYourClick", date: "2026-10-17", tags: ["improved", "fixed"] },
+  { id: "signInEmailsHaveASecondSender", date: "2026-10-17", tags: ["improved"] },
+  { id: "privacyAroundSignInAndPurchases", date: "2026-10-17", tags: ["fixed"] },
+  { id: "aLighterTabIconAndSharePicture", date: "2026-10-17", tags: ["improved"] },
   { id: "boardCountsCountAgain", date: "2026-10-11", tags: ["fixed"] },
   { id: "placeSearchesFindTheirJobs", date: "2026-10-11", tags: ["fixed"] },
   { id: "searchesThatMissedWhatYouMeant", date: "2026-10-11", tags: ["fixed"] },
