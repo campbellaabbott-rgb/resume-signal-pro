@@ -81,7 +81,8 @@ import { APPLY_AGENT_ON } from "../_shared/apply-agent-switch.ts";
 // the classifier that keeps a factual clause (start date, pay, references,
 // gaps, covenants) inside a work-done prompt the person's.
 // 2026-10-11.31 (wave 4 round 2 recheck): the same switched-off code, carrying the classifier that reads every later clause and sentence of a work-done or motivation question against the shared factual topics (notice, earliest, earned, who to contact).
-const BUILD_VERSION = "2026-10-11.31";
+// 2026-10-11.32 (wave 4 fix round 3, corpus-first): the same switched-off code, carrying the classifier that sends a later clause addressed to the person to the person unless it is about work done or motivation.
+const BUILD_VERSION = "2026-10-11.32";
 // Provable from outside with no key: the CORS preflight and every response
 // carry this in x-fn-build.
 const FN_BUILD = `apply-agent.${BUILD_VERSION}`;

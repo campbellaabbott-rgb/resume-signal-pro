@@ -332,7 +332,8 @@ const SUPPORTED_METHODS = ["initialize", "tools/list", "tools/call", "prompts/li
 // names the rule its gate applies (a confirmed key or a proven account), not
 // "any key".
 // 2026-10-11.31 (wave 4 round 2 recheck): apply_myself carries the classifier that reads every later clause and sentence of a work-done or motivation question against the shared factual topics (notice, earliest, earned, who to contact).
-const FN_BUILD = "agent-mcp.2026-10-11.31";
+// 2026-10-11.32 (wave 4 fix round 3, corpus-first): apply_myself carries the classifier that sends a later clause addressed to the person to the person unless it is about work done or motivation, whatever joins it.
+const FN_BUILD = "agent-mcp.2026-10-11.32";
 /** Where a free key is minted — the page every refusal in this file points at. */
 const MINT_URL = "https://resumebooster.work/data-api";
 /** Where a pass is bought, signed in — the fix every pass refusal names. */

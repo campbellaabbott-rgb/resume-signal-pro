@@ -63,7 +63,8 @@ import { signInRequired } from "../_shared/writing-allowance.ts";
 // sign_in_required before anything is spent. The classifier it imports
 // keeps a factual clause inside a work or motivation question the person's.
 // 2026-10-11.31 (wave 4 round 2 recheck): carries the classifier that reads every later clause and sentence of a work-done or motivation question against the shared factual topics (notice, earliest, earned, who to contact).
-const FN_BUILD = "generate-application-answers.2026-10-11.31";
+// 2026-10-11.32 (wave 4 fix round 3, corpus-first): carries the classifier that refuses a personal fact or ask unless the label is about work done.
+const FN_BUILD = "generate-application-answers.2026-10-11.32";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
