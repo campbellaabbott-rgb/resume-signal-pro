@@ -424,6 +424,13 @@ Hand-offs (not in this hotfix):
   open on the page: the stash forgets a Stripe purchase's id once its
   section is on screen, so a later visit has none (a Pro member's grant
   stays until "Start a new purchase").
+- **The changelog folder** (merge of main 3cd6fb77, 2026-10-25).
+  wave4/integration edits one other line of each of the nine
+  `src/i18n/changelog/*.json` (the `applyAgent` description), so
+  `sharedFiles` gives `src/i18n/changelog/` to critical-path. A git
+  merge-tree of wave4/integration onto this branch merges all nine without a
+  conflict; wave 4 keeps the shorter `signInEmailsHaveASecondSender`
+  description when it merges main.
 
 ## Switches (`src/config/auth-providers.ts`)
 
