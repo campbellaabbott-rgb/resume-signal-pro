@@ -5,7 +5,8 @@
 #
 # READ-ONLY. DNS is read over DNS-over-HTTPS (dns.google). Builds are read from
 # OPTIONS preflights. get_cron_health is read with a GET (PostgREST runs it in
-# a read-only transaction). The three POSTs write nothing on the build they
+# a read-only transaction). The site's entry script and its US English
+# changelog chunk are read with GETs. The three POSTs write nothing on the build they
 # are sent to, and are sent only once that build serves: an unsigned event to
 # resend-webhook (refused before any database access: 503 while
 # RESEND_WEBHOOK_SECRET is unset, 401 once it is), and to process-email-queue
@@ -82,6 +83,38 @@ if [ "$VD94_PEQ" = 1 ]; then
   else
     echo "FAIL  process-email-queue x-fn-build = $VD94_PEQ_BUILD: a Lovable 429 still stops sign-in mail and sets an hour's cooldown, so reset mail expires unsent (S13-017). Deploy process-email-queue.2026-10-14.2 before migration 20261014120000"
   fi
+fi
+
+# The changelog entry signInEmailsHaveASecondSender (2026-10-17, main's PR #45)
+# closed with a sentence that is true only of the 2026-10-14.1 build: that a
+# sign-in mail waits, rather than going through the second service, when the
+# main service throttles us. 2026-10-14.2 sends that mail through Resend at
+# once, so R1 drops the sentence in all 9 locales, and the frontend publish
+# that carries the drop follows this build in R1's deploy order. Read-only:
+# the US English changelog chunk the entry names, never an en-GB one.
+VD94_CL_MAIN=$(curl -s -m 30 "$SITE/" | grep -o '/assets/index-[^"]*\.js' | head -1)
+VD94_CL=""; VD94_CL_CHUNK=""
+if [ -n "$VD94_CL_MAIN" ]; then
+  for CH94 in $(curl -s -m 30 "$SITE$VD94_CL_MAIN" | grep -o '"\./en-[A-Za-z0-9_-]*\.js"' | tr -d '"' | sed 's|^\./||' | grep -v '^en-GB-' | sort -u); do
+    VD94_CLT=$(curl -s -m 30 "$SITE/assets/$CH94")
+    printf '%s' "$VD94_CLT" | grep -q "signInEmailsHaveASecondSender" || continue
+    VD94_CL=$VD94_CLT; VD94_CL_CHUNK=$CH94
+    break
+  done
+fi
+VD94_SLOW="when the main service asks us to slow down"
+if [ -z "$VD94_CL" ]; then
+  echo "INFO  no US English changelog chunk the entry names carries signInEmailsHaveASecondSender: the frontend has not been published since the changelog for 17 to 25 October merged (section 52 judges the entries)"
+elif printf '%s' "$VD94_CL" | grep -qF "$VD94_SLOW"; then
+  if [ "$VD94_PEQ2" = 1 ]; then
+    echo "FAIL  the US changelog ($VD94_CL_CHUNK) still says a sign-in mail waits \"$VD94_SLOW\", but process-email-queue serves $VD94_PEQ_BUILD, which sends that mail through Resend at once (S13-017): publish the frontend from main with R1 merged, which drops that sentence in all 9 locales"
+  else
+    echo "INFO  the US changelog ($VD94_CL_CHUNK) says a sign-in mail waits \"$VD94_SLOW\": true while process-email-queue serves the 2026-10-14.1 build; R1's frontend publish drops it after 2026-10-14.2 serves"
+  fi
+elif [ "$VD94_PEQ2" = 1 ]; then
+  echo "PASS  the US changelog ($VD94_CL_CHUNK) carries signInEmailsHaveASecondSender without the sentence that a throttled sign-in mail waits, which process-email-queue $VD94_PEQ_BUILD made untrue"
+else
+  echo "INFO  the US changelog ($VD94_CL_CHUNK) carries signInEmailsHaveASecondSender without the throttle sentence, though process-email-queue does not serve 2026-10-14.2 yet (R1's deploy order publishes the frontend after that build)"
 fi
 
 # Our drain job (20261014100000 schedules rb-auth-mail-drain, 20261014120000

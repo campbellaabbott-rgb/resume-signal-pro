@@ -341,20 +341,56 @@ found these, and the hotfix fixes them on main:
 
 Deploy: the order is the one `node scripts/deploy-ledger.mjs --message`
 prints at the merge commit, never this paragraph. The draft from this branch
-(2026-10-24) reads: 1. apply no migration before the functions (and the
-standing HOLD on 20261012111000 and NEVER on 20260928003117); 2. deploy
-process-email-queue `process-email-queue.2026-10-14.2`; 3. once it answers
-that build, apply migration 20261014120000; 4. publish the frontend
-(index.html, Success, FreelanceBoost, Auth, ResetFlow). Like 20261014100000,
-the migration never touches Lovable's own mail path. The draft also prints
-MUST BUMP employer-profiles: that is already on main (commit 8422645e changed
-`_shared/perks-extract.ts` and `employer-profiles/sweep.ts` after the stamp
-commit 345802a3), belongs to company-profiles, and this deploy does not ship
-it. Afterwards section 94 PASSes process-email-queue 2026-10-14.2 and
-rb-auth-mail-drain's `10s` trace; only after that PASS is 20261014120000
-recorded in `appliedOutsideDrizzle` (it has no staged-runner stub either if
-it is applied the way 20261014100000 was). Section 95 PASSes the stash
-script's two `/success` returns (S13-002) and its per-path session ids.
+after it merged main 3cd6fb77 (2026-10-25) exits 0 and reads: 1. apply
+migration 20261012111000 (company-profiles' perk sweep: main released its
+HOLD on 2026-10-25 once the profiles deploy verified, and employer-profiles
+already answers 2026-10-12.2; if the owner applies it in Lovable first, the
+message at the merge commit no longer lists it), and NEVER apply
+20260928003117; 2. deploy process-email-queue
+`process-email-queue.2026-10-14.2`; 3. once it answers that build, apply
+migration 20261014120000; 4. publish the frontend (index.html, Success,
+FreelanceBoost, Auth, ResetFlow, and the nine changelog files below). Like
+20261014100000, the migration never touches Lovable's own mail path. The
+employer-profiles MUST BUMP that the 2026-10-24 draft printed is gone: main's
+verifiedDeploys entry for 57815de9 records that deploy. Afterwards section 94
+PASSes process-email-queue 2026-10-14.2 and rb-auth-mail-drain's `10s` trace;
+only after that PASS is 20261014120000 recorded in `appliedOutsideDrizzle`
+(it has no staged-runner stub either if it is applied the way 20261014100000
+was). Section 95 PASSes the stash script's two `/success` returns (S13-002)
+and its per-path session ids.
+
+The changelog sentence (merge of main 3cd6fb77). Main's entry
+`signInEmailsHaveASecondSender` (dated 2026-10-17, PR #45) ended with a
+sentence saying that when the main mail service asks us to slow down, the
+email waits for it rather than switching to the second service. That is true
+of process-email-queue 2026-10-14.1 and false of 2026-10-14.2, which sends
+that mail through Resend at once (S13-017). The deploy order above serves
+2026-10-14.2 before the frontend publish, so this branch drops that last
+sentence from the entry in all 9 `src/i18n/changelog/*.json`; the rest of
+the entry is true of both builds. Section 94 reads the US English changelog
+chunk the entry names (never en-GB): it FAILs when that chunk still carries
+the sentence while process-email-queue answers 2026-10-14.2, PASSes the
+entry without it once 2026-10-14.2 serves, and is INFO before 2026-10-14.2
+serves or before any publish carries the entry.
+
+Closeout, after sections 94 and 95 PASS on this deploy:
+
+1. Record it in `docs/deploy-ledger.json` `verifiedDeploys` (the merge commit
+   on main, its date, and what verified).
+2. Add a dated `2026-10-xx` R1-hotfix changelog entry (the day the deploy
+   verifies) to `src/data/changelog.ts` and all 9 `src/i18n/changelog/*.json`
+   (en, en-GB, de, es, fr, hi, nl, pt, tl, each a real translation). It says
+   only what S13 changed that a seeker can see and that is live when it
+   ships: a second Full Analysis bought in one tab shows its own analysis
+   (S13-002); a sign-in or reset email the main mail service throttles or
+   leaves hanging goes out through the second service (S13-017); a Freelance
+   Boost purchase stays on the page until it is delivered (S13-082, left out
+   if wave 4 has stopped selling Freelance Boost by then); and an expired
+   reset link from our own email offers a new one (S13-106).
+3. Live-check it before it is called done: the next frontend publish carries
+   it, and a verify line reads its title on the crawler copy of `/changelog`
+   and in the US English changelog chunk, as section 52 does for the entries
+   of 17 to 25 October.
 
 Hand-offs (not in this hotfix):
 
@@ -448,7 +484,9 @@ rule's text names the frontend gate:
 6. **Run `bash scripts/verify-deploy.sh` again** and read 94, 95 and 96.
    - 94: the three mail builds, process-email-queue at 2026-10-14.2 or
      later (S13-017), rb-auth-mail-drain's `10s` trace from 20261014120000
-     (FAIL without it once 2026-10-14.2 serves), DNS, OUR drain job rb-auth-mail-drain (last run
+     (FAIL without it once 2026-10-14.2 serves), the US changelog without
+     the sentence 2026-10-14.2 made untrue (see "The changelog sentence"
+     above), DNS, OUR drain job rb-auth-mail-drain (last run
      succeeded, no failures; a process-email-queue job is reported as
      Lovable's), the gateway's 401 to a post with no JWT in the body the
      drain reads back, the publishable key's 403 with cronKey false.
@@ -472,7 +510,9 @@ cron job, the column and the tables' refusals.
 
 Then record the deploy in `docs/deploy-ledger.json` `verifiedDeploys`, and add
 the changelog entries in all 9 locales in the next frontend publish (owner
-rule).
+rule). For R1 itself both are done: `verifiedDeploys` records it at 9c991052
+(2026-10-17), and the six entries of that deploy, dated 2026-10-17, reached main in PR #45
+(3cd6fb77). The hotfix's own closeout is in "The S13 hotfix" above.
 
 **The ledger cannot print step 3 as its own step.** Its message prints
 migrations, functions, the after-function migrations and "Publish the

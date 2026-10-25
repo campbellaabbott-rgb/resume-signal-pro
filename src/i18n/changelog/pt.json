@@ -1406,7 +1406,7 @@
     },
     "signInEmailsHaveASecondSender": {
       "title": "Os e-mails de início de sessão e de reposição têm um segundo remetente",
-      "description": "Se o nosso serviço de e-mail principal recusar um e-mail de início de sessão ou de reposição da senha, ou falhar três vezes a enviá-lo, o e-mail sai agora por um segundo serviço de e-mail em vez de falhar. Uma tarefa nossa envia estes e-mails a partir da sua fila a cada 10 segundos. Um caso ainda espera: quando o serviço principal nos pede para abrandar, o e-mail espera por ele em vez de passar para o segundo serviço."
+      "description": "Se o nosso serviço de e-mail principal recusar um e-mail de início de sessão ou de reposição da senha, ou falhar três vezes a enviá-lo, o e-mail sai agora por um segundo serviço de e-mail em vez de falhar. Uma tarefa nossa envia estes e-mails a partir da sua fila a cada 10 segundos."
     },
     "privacyAroundSignInAndPurchases": {
       "title": "Três falhas de privacidade no início de sessão e nas compras",

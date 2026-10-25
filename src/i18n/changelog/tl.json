@@ -1406,7 +1406,7 @@
     },
     "signInEmailsHaveASecondSender": {
       "title": "May pangalawang tagapagpadala na ang mga email para sa sign-in at reset",
-      "description": "Kapag tinanggihan ng aming pangunahing mail service ang isang sign-in o password-reset na email, o tatlong beses itong nabigong ipadala, lalabas na ngayon ang email sa pamamagitan ng pangalawang mail service sa halip na pumalya. Isang sarili naming job ang nagpapadala ng mga email na ito mula sa kanilang queue bawat 10 segundo. May isang kasong naghihintay pa rin: kapag hiniling ng pangunahing service na bagalan namin, hinihintay ito ng email sa halip na lumipat sa pangalawang service."
+      "description": "Kapag tinanggihan ng aming pangunahing mail service ang isang sign-in o password-reset na email, o tatlong beses itong nabigong ipadala, lalabas na ngayon ang email sa pamamagitan ng pangalawang mail service sa halip na pumalya. Isang sarili naming job ang nagpapadala ng mga email na ito mula sa kanilang queue bawat 10 segundo."
     },
     "privacyAroundSignInAndPurchases": {
       "title": "Tatlong butas sa privacy sa paligid ng sign-in at mga pagbili",

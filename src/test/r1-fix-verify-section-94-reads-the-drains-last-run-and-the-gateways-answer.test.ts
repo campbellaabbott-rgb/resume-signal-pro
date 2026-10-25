@@ -43,7 +43,7 @@ const SECTION = readFileSync(resolve(ROOT, "scripts/verify-deploy.d/94-r1-mail.s
 const dirs: string[] = [];
 afterAll(() => { for (const d of dirs) { try { rmSync(d, { recursive: true, force: true }); } catch { /* best effort */ } } });
 
-type Cfg = { cron: unknown; noJwt: { status: number; body: string }; anonKey?: { status: number; body: string }; builds?: Record<string, string> };
+type Cfg = { cron: unknown; noJwt: { status: number; body: string }; anonKey?: { status: number; body: string }; builds?: Record<string, string>; site?: { entry: string; chunks: Record<string, string> } };
 const CURL = `#!/usr/bin/env node
 const fs=require("fs");const a=process.argv.slice(2);
 let url="",method="GET",out=null,w=null,dump=false;const hs=[];
@@ -61,6 +61,12 @@ if(url.includes("dns.google")){
   else if(/_dmarc/.test(url))body=ans("v=DMARC1; p=none");
   else if(/notify\\./.test(url))body=ans("ns1.lovable.cloud.");
   else body=ans("lovable_verify=abc");
+}else if(url.startsWith("https://site.test")){const st=cfg.site;const path=url.slice("https://site.test".length);
+  if(!st){status=404;}
+  else if(path==="/"||path===""){body='<!doctype html><script type="module" crossorigin src="/assets/'+st.entry+'"></script>';}
+  else if(path==="/assets/"+st.entry){body="const lazy=["+Object.keys(st.chunks).map((n)=>'()=>import("./'+n+'")').join(",")+"];export{lazy as a};";}
+  else if(path.startsWith("/assets/")&&Object.prototype.hasOwnProperty.call(st.chunks,path.slice(8))){body=st.chunks[path.slice(8)];}
+  else{status=404;}
 }else if(method==="OPTIONS"){const fn=url.split("/functions/v1/")[1];head="HTTP/2 200\\r\\nx-fn-build: "+fn+"."+((cfg.builds||{})[fn]||"2026-10-14.1")+"\\r\\n\\r\\n";}
 else if(url.includes("get_cron_health"))body=JSON.stringify(cfg.cron);
 else if(url.includes("/rest/v1/rpc/"))body=JSON.stringify({code:"42501"});
@@ -211,5 +217,57 @@ describe("the drain job's own trace (20261014120000; second fixer round of the R
     const { lines } = run({ cron: job(), noJwt: GATEWAY_401, builds: peq("2026-10-14.1") });
     expect(has(lines, "INFO", /rb-auth-mail-drain runs the 20261014100000 command .*20261014120000 replaces it once process-email-queue serves 2026-10-14\.2/), show(lines)).toBe(true);
     expect(lines.some((l) => /^(PASS|FAIL) .*20261014120000's command/.test(l)), show(lines)).toBe(false);
+  });
+});
+
+describe("the changelog's throttle sentence against the 2026-10-14.2 build (main's PR #45 entry, R1's merge of main 3cd6fb77)", () => {
+  // Main's entry closed with this sentence, true only of the 2026-10-14.1
+  // build; R1 drops it in all 9 locales and publishes after 2026-10-14.2.
+  const OLD_US = "If our main mail service refuses a sign-in or password-reset email, or fails to send it three times, the email now goes out through a second mail service instead of failing. A job of our own sends these emails from their queue every 10 seconds. One case still waits: when the main service asks us to slow down, the email waits for it rather than switching to the second service.";
+  const chunk = (description: string) => `const e=${JSON.stringify({ changelogEntries: { signInEmailsHaveASecondSender: { title: "Sign-in and reset emails have a second sender", description } } })};export{e as default};`;
+  const repoChunk = (locale: string) => `const e=${readFileSync(resolve(ROOT, `src/i18n/changelog/${locale}.json`), "utf8")};export{e as default};`;
+  const OTHER = "const e={auth:{continue:\"Continue\"}};export{e as default};";
+  const peq = (b: string) => ({ "process-email-queue": b });
+
+  it("FAILs a US changelog chunk that still carries the sentence once process-email-queue serves 2026-10-14.2, though the British chunk is new", () => {
+    const site = { entry: "index-AbC123.js", chunks: { "en-GB-Zz9.js": repoChunk("en-GB"), "en-Aa1.js": OTHER, "en-Qq7.js": chunk(OLD_US) } };
+    const { lines, calls } = run({ cron: job({ ch_timeout: "10s" }), noJwt: GATEWAY_401, builds: peq("2026-10-14.2"), site });
+    expect(has(lines, "FAIL", /the US changelog \(en-Qq7\.js\) still says a sign-in mail waits "when the main service asks us to slow down", but process-email-queue serves process-email-queue\.2026-10-14\.2, which sends that mail through Resend at once \(S13-017\): publish the frontend from main with R1 merged/), show(lines)).toBe(true);
+    expect(lines.some((l) => /^PASS .*US changelog/.test(l)), show(lines)).toBe(false);
+    expect(calls, "section 94 read a British chunk").not.toMatch(/en-GB-Zz9\.js/);
+    expect(calls).toMatch(/^GET https:\/\/site\.test\/assets\/en-Qq7\.js /m);
+  });
+
+  it("PASSes the chunk this branch's en.json builds, and never takes the British chunk for it", () => {
+    const site = { entry: "index-AbC123.js", chunks: { "en-GB-Zz9.js": chunk(OLD_US), "en-Qq7.js": repoChunk("en") } };
+    const { lines } = run({ cron: job({ ch_timeout: "10s" }), noJwt: GATEWAY_401, builds: peq("2026-10-14.2"), site });
+    expect(has(lines, "PASS", /the US changelog \(en-Qq7\.js\) carries signInEmailsHaveASecondSender without the sentence that a throttled sign-in mail waits, which process-email-queue process-email-queue\.2026-10-14\.2 made untrue/), show(lines)).toBe(true);
+    expect(lines.some((l) => /^FAIL .*US changelog/.test(l)), show(lines)).toBe(false);
+  });
+
+  it("the sentence is gone from all 9 locales, and the rest of the entry stays", () => {
+    const WANT: Record<string, RegExp> = {
+      en: /every 10 seconds\.$/, "en-GB": /every 10 seconds\.$/, de: /alle 10 Sekunden aus ihrer Warteschlange\.$/,
+      es: /cada 10 segundos\.$/, fr: /toutes les 10 secondes\.$/, hi: /हर 10 सेकंड में उनकी कतार से भेजता है।$/,
+      nl: /elke 10 seconden uit hun wachtrij\.$/, pt: /a cada 10 segundos\.$/, tl: /bawat 10 segundo\.$/,
+    };
+    for (const [locale, end] of Object.entries(WANT)) {
+      const d = JSON.parse(readFileSync(resolve(ROOT, `src/i18n/changelog/${locale}.json`), "utf8")).changelogEntries.signInEmailsHaveASecondSender.description as string;
+      expect(d, `${locale}: the entry no longer ends on its queue sentence`).toMatch(end);
+    }
+    expect(OLD_US.startsWith(JSON.parse(readFileSync(resolve(ROOT, "src/i18n/changelog/en.json"), "utf8")).changelogEntries.signInEmailsHaveASecondSender.description)).toBe(true);
+  });
+
+  it("before 2026-10-14.2 serves, the sentence is INFO: it is true of the 2026-10-14.1 build", () => {
+    const site = { entry: "index-AbC123.js", chunks: { "en-Qq7.js": chunk(OLD_US) } };
+    const { lines } = run({ cron: job(), noJwt: GATEWAY_401, builds: peq("2026-10-14.1"), site });
+    expect(has(lines, "INFO", /the US changelog \(en-Qq7\.js\) says a sign-in mail waits .*true while process-email-queue serves the 2026-10-14\.1 build/), show(lines)).toBe(true);
+    expect(lines.some((l) => /^(PASS|FAIL) .*US changelog/.test(l)), show(lines)).toBe(false);
+  });
+
+  it("no chunk with the entry is INFO, and section 52 judges the entries", () => {
+    const { lines } = run({ cron: job({ ch_timeout: "10s" }), noJwt: GATEWAY_401, builds: peq("2026-10-14.2"), site: { entry: "index-AbC123.js", chunks: { "en-Aa1.js": OTHER } } });
+    expect(has(lines, "INFO", /no US English changelog chunk the entry names carries signInEmailsHaveASecondSender/), show(lines)).toBe(true);
+    expect(lines.some((l) => /^(PASS|FAIL) .*US changelog/.test(l)), show(lines)).toBe(false);
   });
 });

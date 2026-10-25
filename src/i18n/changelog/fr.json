@@ -1406,7 +1406,7 @@
     },
     "signInEmailsHaveASecondSender": {
       "title": "Les e-mails de connexion et de réinitialisation ont un second expéditeur",
-      "description": "Si notre service d'envoi principal refuse un e-mail de connexion ou de réinitialisation du mot de passe, ou échoue trois fois à l'envoyer, l'e-mail part désormais par un second service d'envoi au lieu d'échouer. Une tâche à nous envoie ces e-mails depuis leur file d'attente toutes les 10 secondes. Un cas attend encore : quand le service principal nous demande de ralentir, l'e-mail l'attend au lieu de passer au second service."
+      "description": "Si notre service d'envoi principal refuse un e-mail de connexion ou de réinitialisation du mot de passe, ou échoue trois fois à l'envoyer, l'e-mail part désormais par un second service d'envoi au lieu d'échouer. Une tâche à nous envoie ces e-mails depuis leur file d'attente toutes les 10 secondes."
     },
     "privacyAroundSignInAndPurchases": {
       "title": "Trois failles de confidentialité autour de la connexion et des achats",

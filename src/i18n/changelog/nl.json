@@ -1406,7 +1406,7 @@
     },
     "signInEmailsHaveASecondSender": {
       "title": "Inlog- en resetmails hebben een tweede verzender",
-      "description": "Als onze belangrijkste maildienst een inlog- of wachtwoordresetmail weigert, of die drie keer niet kan versturen, gaat de e-mail nu via een tweede maildienst de deur uit in plaats van te mislukken. Een eigen taak van ons verstuurt deze e-mails elke 10 seconden uit hun wachtrij. Eén geval wacht nog: als de belangrijkste dienst ons vraagt het rustiger aan te doen, wacht de e-mail daarop in plaats van naar de tweede dienst over te stappen."
+      "description": "Als onze belangrijkste maildienst een inlog- of wachtwoordresetmail weigert, of die drie keer niet kan versturen, gaat de e-mail nu via een tweede maildienst de deur uit in plaats van te mislukken. Een eigen taak van ons verstuurt deze e-mails elke 10 seconden uit hun wachtrij."
     },
     "privacyAroundSignInAndPurchases": {
       "title": "Drie privacylekken rond inloggen en aankopen",
