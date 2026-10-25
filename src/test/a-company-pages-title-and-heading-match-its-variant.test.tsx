@@ -56,7 +56,7 @@ const job = (source: string, token: string, company: string, n: number) => ({
   postedAt: ago(2 * DAY), lastSeen: ago(2 * DAY), recheckedAt: ago(60_000), applyUrl: `https://x/${n}`, remote: false,
 });
 
-function mount(token: string, jobs: ReturnType<typeof job>[]) {
+function mount(token: string, jobs: ReturnType<typeof job>[], listGate?: Promise<void>) {
   const path = `/jobs/company/${token}`;
   window.history.replaceState({}, "", path);
   rpc.mockImplementation(async () => ({ data: [], error: null }));
@@ -66,6 +66,7 @@ function mount(token: string, jobs: ReturnType<typeof job>[]) {
     if (fn === "job-board" && b.action === "detail") return { data: { job: jobs[0], description: "A role." } };
     if (fn === "job-board" && b.action === "facets") return { data: { categories: {}, refreshedAt: ago(0), sources: {}, sourcesAt: ago(0) }, error: null };
     if (fn === "job-board" && b.action === "list") {
+      if (listGate) await listGate;
       if (b.facetCounts) return { data: { categories: {} } };
       if (b.countOnly) return { data: { total: jobs.length } };
       return { data: { jobs, total: jobs.length, totalAllCompanies: jobs.length, companies: jobs.length ? [{ token, name: jobs[0].company, open: jobs.length }] : [], companiesCount: jobs.length ? 1 : 0, categories: {}, failedSources: [], failedCount: 0, refreshedAt: null, hasMore: false, unknownCompanies: [] } };
@@ -84,6 +85,17 @@ beforeEach(() => {
   invoke.mockReset(); rpc.mockReset();
   document.title = "";
 });
+
+/**
+ * Waits for the zero head itself: the exact title and the zero line as the
+ * description, together. A wait for a title containing "{name} jobs" is also
+ * satisfied by the interim employer head, "{name} jobs: open roles from their
+ * own hiring system", which the page carries until the list answers.
+ */
+const waitForZeroHead = (name: string) => waitFor(() => {
+  expect(document.title).toBe(`${name} jobs`);
+  expect(document.head.querySelector('meta[name="description"]')?.getAttribute("content")).toBe(`${name}: no roles are listed on this page right now.`);
+}, SLOW);
 
 describe("the document title follows the page's variant", () => {
   it("USAJOBS: the hub's own wording, never 'own hiring system'", async () => {
@@ -109,10 +121,22 @@ describe("the document title follows the page's variant", () => {
   it("a named zero page: '{company} jobs' and the page's own line in the head and the live region, never 'open roles' (round 3, 2026-10-25)", async () => {
     rememberLanderName("acme", "Acme");
     mount("acme", []);
-    await waitFor(() => expect(document.title).toContain("Acme jobs"), SLOW);
+    await waitForZeroHead("Acme");
     expect(document.title).not.toMatch(/open roles|own hiring system/);
-    await waitFor(() => expect(document.head.querySelector('meta[name="description"]')?.getAttribute("content")).toBe("Acme: no roles are listed on this page right now."), SLOW);
     expect(document.querySelector('p[role="status"][aria-live="polite"]')?.textContent, "the polite region blamed filters the visitor never set").toBe("No roles are listed on this page right now.");
+  });
+
+  it("a named zero page whose list answers late: the wait is for the zero head itself, not the interim employer head that also contains 'Acme jobs' (GitHub CI run 40161219561)", async () => {
+    rememberLanderName("acme", "Acme");
+    let release!: () => void;
+    mount("acme", [], new Promise<void>((r) => { release = r; }));
+    // While the list is in flight the page carries the employer's head, whose
+    // title also contains "Acme jobs": a wait for that substring stopped here.
+    await waitFor(() => expect(document.title).toBe("Acme jobs: open roles from their own hiring system"), SLOW);
+    release();
+    await waitForZeroHead("Acme");
+    expect(document.title).not.toMatch(/open roles|own hiring system/);
+    expect(document.querySelector('p[role="status"][aria-live="polite"]')?.textContent).toBe("No roles are listed on this page right now.");
   });
 
   it("positive control: an employer's page keeps '{company} jobs: open roles from their own hiring system'", async () => {
