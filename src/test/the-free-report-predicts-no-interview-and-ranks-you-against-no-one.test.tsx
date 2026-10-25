@@ -37,7 +37,10 @@ vi.mock("@/integrations/supabase/client", () => ({
   },
 }));
 vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: null, session: null }) }));
-vi.mock("@/lib/purchases-open", () => ({ purchasesOpen: () => true }));
+// Every buy control is open, so the report renders all it can: the seller is
+// named, and on the switch-over tree hp/scanner's report also reads the
+// per-product gates (G2 and G2b), which are open here too.
+vi.mock("@/lib/purchases-open", () => ({ purchasesOpen: () => true, fullAnalysisOnSale: () => true, proOnSale: () => true }));
 vi.stubGlobal("fetch", vi.fn(async () => { throw new Error("no network in this test"); }));
 Element.prototype.scrollIntoView = vi.fn();
 if (!(globalThis as { IntersectionObserver?: unknown }).IntersectionObserver) {
