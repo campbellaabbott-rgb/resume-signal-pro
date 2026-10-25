@@ -40,6 +40,7 @@ const AFTER: Site = {
   "/og-image.png": { type: "image/png", body: pub("og-image.png") },
   "/apple-touch-icon.png": { type: "image/png", body: pub("apple-touch-icon.png") },
   "/favicon.png": { type: "image/png", body: pub("favicon.png") },
+  "/favicon.ico": { type: "image/x-icon", body: pub("favicon.ico") },
 };
 
 /** A PNG header of the given size, padded to `bytes`: enough for a reader of the IHDR. */
@@ -68,6 +69,8 @@ const BEFORE: Site = {
   "/og-image.png": { type: "image/png", body: fakePng(1200, 675, 133_325) },
   "/apple-touch-icon.png": { type: "text/plain", body: "Not Found", status: 404 },
   "/favicon.png": { type: "image/png", body: fakePng(180, 180, 5_606) },
+  // The host served the homepage for it before #35 put a real icon in public/.
+  "/favicon.ico": { type: "text/html; charset=utf-8", body: "<!doctype html><html></html>" },
 };
 
 let server: Server;
@@ -112,7 +115,7 @@ describe("section 98", () => {
   it("fails every one of those lines on the site as it shipped before the round", () => {
     expect(before.length, before.join("\n")).toBe(after.length);
     expect(before.filter((l) => l.startsWith("PASS")), before.join("\n")).toEqual([]);
-    for (const tag of ["SEO-020", "SEO-021", "SEO-040", "og-image.png", "apple-touch-icon", "favicon.png", "verified"]) {
+    for (const tag of ["SEO-020", "SEO-021", "SEO-040", "og-image.png", "apple-touch-icon", "favicon.png", "favicon.ico", "verified"]) {
       expect(before.some((l) => l.startsWith("FAIL") && l.includes(tag)), `a FAIL line names ${tag}`).toBe(true);
     }
   });

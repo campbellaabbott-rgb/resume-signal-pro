@@ -4,8 +4,12 @@
 # the browser UA. Read-only: GETs of the homepage, a prerendered posting
 # page, the app's entry script and stylesheet, and three images. Pre-deploy
 # the new claims FAIL by design; nothing here may crash.
-#   SEO-020  the app stylesheet imports nothing; the font CSS loads from the
-#            head without blocking (media swap); no Stripe preconnect
+#   SEO-020  the app stylesheet imports nothing; no font stylesheet is
+#            requested: the head declares the faces inline (font-display
+#            optional, woff2 on the font host) and preloads the Inter latin
+#            file, so the face is known at the first layout and is used (the
+#            media-swap head of the round's first try rendered Inter on no
+#            load at all); no Stripe preconnect
 #   SEO-021  the entry carries the code that keeps the prerendered page on
 #            screen (its mount attribute); that #root never empties is a
 #            browser measurement, recorded in the round's report
@@ -13,7 +17,8 @@
 #            the namespace registry and none of the job board's strings
 #   IMG      /og-image.png is a PNG of 1200x630 within 200 KB, served as
 #            image/png, and the head says 630; /apple-touch-icon.png is a
-#            180 px PNG the head links; /favicon.png is 48-96 px within 3 KB
+#            180 px PNG within 30 KB the head links; /favicon.png is 48-96 px
+#            within 3 KB; /favicon.ico answers 200 as an icon type
 #   OBS-3    no head description on / says verified
 echo "== 98. SEO speed: fonts, the prerendered page, the entry budget, share image and icons =="
 
@@ -52,8 +57,14 @@ const gz = (b) => zlib.gzipSync(b, { level: 9 }).length;
     else out("PASS", `${cssHref} imports nothing (${css.bytes.length} B): the first paint waits for one stylesheet (SEO-020)`);
   }
   const fontSheets = links.filter((l) => attr(l, "rel") === "stylesheet" && /^https:\/\/fonts\.googleapis\.com\//.test(attr(l, "href") || ""));
-  if (fontSheets.length === 1 && attr(fontSheets[0], "media") === "print" && /this\.media\s*=\s*.all./.test(attr(fontSheets[0], "onload") || "") && /display=optional(&|$)/.test(attr(fontSheets[0], "href") || "")) out("PASS", "the font stylesheet loads from the head without blocking the paint (media swap, font-display optional: no late re-wrap) (SEO-020, SEO-022)");
-  else out("FAIL", `the homepage head has ${fontSheets.length} font stylesheet link(s), not one applied by a media swap with display=optional (SEO-020, SEO-022)`);
+  const inlineCss = [...head.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)].map((m) => m[1]).join("\n");
+  const faces = [...inlineCss.matchAll(/@font-face\s*\{([^}]*)\}/g)].map((m) => m[1]);
+  const interFaces = faces.filter((f) => /font-family:\s*[\x27"]?Inter[\x27"]?\s*;/.test(f));
+  const latinSrc = ((interFaces.find((f) => /unicode-range:\s*U\+0000-00FF/.test(f)) || "").match(/url\(([^)]+)\)/) || [])[1];
+  const preloaded = latinSrc && links.some((l) => attr(l, "rel") === "preload" && attr(l, "as") === "font" && /\scrossorigin/.test(l) && attr(l, "href") === latinSrc.replace(/[\x27"]/g, ""));
+  const allOptional = faces.length > 0 && faces.every((f) => /font-display:\s*optional/.test(f) && /url\(https:\/\/fonts\.gstatic\.com\/[^)]+\.woff2\)/.test(f));
+  if (!fontSheets.length && interFaces.length && allOptional && preloaded) out("PASS", `the head declares ${faces.length} faces inline (font-display optional, woff2 on the font host) and preloads the Inter latin file: no font stylesheet request, the face is known at the first layout and never re-wraps the page (SEO-020, SEO-022)`);
+  else out("FAIL", `the font head: ${fontSheets.length} font stylesheet request(s), ${interFaces.length} inline Inter face(s), ${allOptional ? "all" : "not all"} optional on the font host, the latin file ${preloaded ? "preloaded" : "NOT preloaded"} (want inline optional faces and a preloaded latin file, no stylesheet request: an optional face declared after the first layout is never used) (SEO-020, SEO-022)`);
   const stripe = links.filter((l) => /^(preconnect|dns-prefetch)$/.test(attr(l, "rel") || "") && /stripe\.com/.test(attr(l, "href") || ""));
   if (stripe.length) out("FAIL", `the head still opens a connection to ${attr(stripe[0], "href")}, which no page loads (SEO-020)`);
   else out("PASS", "the head opens no connection to Stripe (SEO-020)");
@@ -108,14 +119,19 @@ const gz = (b) => zlib.gzipSync(b, { level: 9 }).length;
   const touchLink = links.find((l) => (attr(l, "rel") || "").split(/\s+/).includes("apple-touch-icon"));
   const touch = await get("/apple-touch-icon.png");
   const tSize = png(touch.bytes);
-  if (touch.status === 200 && tSize && tSize.w === 180 && tSize.h === 180 && /^image\/png/.test(touch.type)) out("PASS", `/apple-touch-icon.png is a 180x180 PNG of ${touch.bytes.length} B served as ${touch.type}`);
-  else out("FAIL", `/apple-touch-icon.png answered ${touch.status} as "${touch.type}", ${tSize ? `${tSize.w}x${tSize.h}` : "not a PNG"} (want a 180x180 PNG)`);
+  if (touch.status === 200 && tSize && tSize.w === 180 && tSize.h === 180 && /^image\/png/.test(touch.type) && touch.bytes.length <= 30 * 1024) out("PASS", `/apple-touch-icon.png is a 180x180 PNG of ${touch.bytes.length} B served as ${touch.type}`);
+  else out("FAIL", `/apple-touch-icon.png answered ${touch.status} as "${touch.type}", ${tSize ? `${tSize.w}x${tSize.h}` : "not a PNG"}, ${touch.bytes.length} B (want a 180x180 PNG within 30 KB)`);
   if (touchLink && attr(touchLink, "href") === "/apple-touch-icon.png") out("PASS", "the homepage head links /apple-touch-icon.png as its touch icon");
   else out("FAIL", `the homepage head\x27s touch icon is ${touchLink ? attr(touchLink, "href") : "absent"} (want /apple-touch-icon.png)`);
   const fav = await get("/favicon.png");
   const fSize = png(fav.bytes);
   if (fav.status === 200 && fSize && fSize.w >= 48 && fSize.w <= 96 && fSize.w === fSize.h && fav.bytes.length <= 3 * 1024 && /^image\/png/.test(fav.type)) out("PASS", `/favicon.png is a ${fSize.w} px PNG of ${fav.bytes.length} B served as ${fav.type}`);
   else out("FAIL", `/favicon.png answered ${fav.status} as "${fav.type}", ${fSize ? `${fSize.w}x${fSize.h}` : "not a PNG"}, ${fav.bytes.length} B (want 48-96 px, within 3 KB)`);
+
+  const ico = await get("/favicon.ico");
+  const icoMagic = ico.bytes.length >= 4 && ico.bytes.readUInt32BE(0) === 0x00000100;
+  if (ico.status === 200 && /^image\/(?:vnd\.microsoft\.icon|x-icon)/.test(ico.type) && icoMagic && ico.bytes.length <= 10 * 1024) out("PASS", `/favicon.ico is an icon of ${ico.bytes.length} B served as ${ico.type}`);
+  else out("FAIL", `/favicon.ico answered ${ico.status} as "${ico.type}", ${icoMagic ? "an icon" : "not an icon file"}, ${ico.bytes.length} B (want an .ico within 10 KB served as image/vnd.microsoft.icon or image/x-icon)`);
 
   // ---- OBS-3: no description says verified ----
   const said = ["description", "og:description", "twitter:description"].map((k) => [k, meta(head, k) || ""]).filter(([, v]) => /verif/i.test(v));

@@ -13,17 +13,26 @@ import { skipWithoutDist } from "./helpers/built-output";
  * for it. The head also opened a connection to Stripe's script host, which no
  * page loads.
  *
+ * THEN, THE ROUND'S REVIEW (2026-10-24): the round applied Google's font
+ * CSS by a media swap AFTER the first paint and asked for font-display
+ * optional. An optional face that is not declared when the text first lays
+ * out is never used for that page, so Inter rendered on no load at all,
+ * first or repeat (h1 read "Arial", the fallback face, on 42 matrix loads and
+ * on repeat loads with the HTTP cache on), while the woff2 still downloaded.
+ *
  * What holds now:
  * - src/index.css imports nothing; the app stylesheet is the only stylesheet
  *   the first paint waits for;
- * - the font CSS is requested from the head, at the same moment as the app
- *   CSS, preloaded, applied without blocking the paint (media swap, with a
- *   noscript twin), and asks for font-display optional. Text paints at once
- *   in the metric-matched Inter Fallback; a face that arrives late is used
- *   from the next page load on, so the page never re-wraps for it (the swap
- *   it asked for before cost the Domino's page 0.136 of CLS on a phone,
- *   measured by the SEO round's integration, 2026-10-24);
- * - it carries every face the tailwind stacks name: Inter 400/500/600/700 and
+ * - the faces are declared in the head itself (an inline style, no font
+ *   stylesheet request at all), font-display optional, pointing at the
+ *   woff2 files on the font host; the Inter latin file, one variable file for
+ *   400-700, is preloaded. So the face is known at the first layout: on a
+ *   first visit it is used if it arrives inside the browser's short block
+ *   period, otherwise the page keeps the metric-matched Inter Fallback for
+ *   that view and never re-wraps (the swap cost the Domino's page 0.136 of
+ *   CLS on a phone); from the next load on it comes from the HTTP cache and
+ *   renders;
+ * - it carries every face the tailwind stacks name: Inter 400-700 and
  *   JetBrains Mono 400 (the mono stack, used for ids and code);
  * - there is no preconnect to a host the page never uses;
  * - R1's stash script is still the first thing in the head.
@@ -44,25 +53,38 @@ function attrs(tag: string): Record<string, string> {
   return out;
 }
 const linksOf = (head: string) => [...head.replace(/<noscript>[\s\S]*?<\/noscript>/gi, "").matchAll(/<link\b[^>]*>/gi)].map((m) => attrs(m[0].slice(5)));
-const noscriptLinksOf = (head: string) => [...head.matchAll(/<noscript>([\s\S]*?)<\/noscript>/gi)].flatMap((m) => [...m[1].matchAll(/<link\b[^>]*>/gi)].map((l) => attrs(l[0].slice(5))));
-const FONT_HOST = "https://fonts.googleapis.com/";
+const FILE_HOST = "https://fonts.gstatic.com/";
 
-/** What a head must hold for the fonts never to block a paint. Returns the problems found. */
+/** The @font-face rules a head declares inline, as { family, weight, display, src, range }. */
+function inlineFaces(head: string) {
+  const css = [...head.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)].map((m) => m[1]).join("\n").replace(/\/\*[\s\S]*?\*\//g, "");
+  return [...css.matchAll(/@font-face\s*\{([^}]*)\}/g)].map((m) => {
+    const prop = (k: string) => (new RegExp(`${k}\\s*:\\s*([^;]+)`).exec(m[1])?.[1] ?? "").trim();
+    return { family: prop("font-family").replace(/['"]/g, ""), weight: prop("font-weight"), display: prop("font-display"), src: (/url\(([^)]+)\)/.exec(prop("src"))?.[1] ?? "").replace(/['"]/g, ""), range: prop("unicode-range") };
+  });
+}
+
+/** What a head must hold for the fonts never to block a paint and still be used. Returns the problems found. */
 function fontProblems(html: string): string[] {
   const head = headOf(html);
   const links = linksOf(head);
   const problems: string[] = [];
-  const sheets = links.filter((l) => l.rel === "stylesheet" && (l.href ?? "").startsWith(FONT_HOST));
-  if (sheets.length !== 1) problems.push(`expected one font stylesheet link, found ${sheets.length}`);
-  for (const s of sheets) {
-    if (s.media !== "print" || !/this\.media\s*=\s*'all'/.test(s.onload ?? "")) problems.push(`the font stylesheet blocks the paint (media="${s.media}", onload="${s.onload}")`);
-    const href = s.href ?? "";
-    if (!/display=optional(&|$)/.test(href)) problems.push("the font CSS does not ask for font-display optional (a late swap re-wraps the prerendered page)");
-    if (!/family=Inter:wght@400;500;600;700(&|$)/.test(href)) problems.push(`the font CSS does not carry Inter 400-700: ${href}`);
-    if (!/family=JetBrains\+Mono:wght@400(&|$)/.test(href)) problems.push(`the font CSS does not carry JetBrains Mono 400: ${href}`);
-    if (!links.some((l) => l.rel === "preload" && l.as === "style" && l.href === href)) problems.push("the font CSS is not preloaded");
-    if (!noscriptLinksOf(head).some((l) => l.rel === "stylesheet" && l.href === href)) problems.push("no noscript twin applies the font CSS without script");
+  const sheets = links.filter((l) => l.rel === "stylesheet" && /^https:\/\/fonts\.googleapis\.com\//.test(l.href ?? ""));
+  if (sheets.length) problems.push(`a font stylesheet request (${sheets[0].href}): the faces must be declared in the head, or an optional face arrives after the first layout and is never used`);
+  const faces = inlineFaces(head);
+  const inter = faces.filter((f) => f.family === "Inter");
+  const mono = faces.filter((f) => f.family === "JetBrains Mono");
+  if (!inter.length) problems.push("the head declares no Inter face");
+  if (!mono.length) problems.push("the head declares no JetBrains Mono face");
+  for (const f of faces) {
+    if (f.display !== "optional") problems.push(`${f.family} asks for font-display ${f.display || "nothing"}, not optional (a late swap re-wraps the prerendered page)`);
+    if (!f.src.startsWith(FILE_HOST) || !f.src.endsWith(".woff2")) problems.push(`${f.family} is not a woff2 on the font file host: ${f.src}`);
   }
+  if (inter.length && !inter.every((f) => /^400\s+700$/.test(f.weight))) problems.push(`Inter does not cover 400-700: ${inter.map((f) => f.weight).join(", ")}`);
+  if (mono.length && !mono.every((f) => f.weight === "400")) problems.push(`JetBrains Mono is not 400: ${mono.map((f) => f.weight).join(", ")}`);
+  const latin = inter.find((f) => /^U\+0000-00FF\b/.test(f.range));
+  if (!latin) problems.push("no Inter face covers latin (U+0000-00FF)");
+  else if (!links.some((l) => l.rel === "preload" && l.as === "font" && l.type === "font/woff2" && "crossorigin" in l && l.href === latin.src)) problems.push(`the Inter latin file ${latin.src} is not preloaded as a crossorigin woff2 font`);
   if (!links.some((l) => l.rel === "preconnect" && l.href === "https://fonts.gstatic.com" && "crossorigin" in l)) problems.push("no crossorigin preconnect to the font file host");
   for (const l of links.filter((x) => x.rel === "preconnect" || x.rel === "dns-prefetch")) {
     if (/stripe\.com/.test(l.href ?? "")) problems.push(`a ${l.rel} to ${l.href}, which no page loads`);
@@ -97,6 +119,10 @@ describe("the static head", () => {
     const before = HTML.replace(/<head>/, `<head><link rel="preconnect" href="https://js.stripe.com" />`);
     expect(fontProblems(before).some((p) => /stripe/.test(p))).toBe(true);
     expect(fontProblems("<html><head></head></html>").length).toBeGreaterThan(0);
+    // The round's media-swap head: Inter rendered on no load at all.
+    const swapped = `<html><head><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin /><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400&display=optional" media="print" onload="this.media='all'" /></head></html>`;
+    expect(fontProblems(swapped).some((p) => /font stylesheet request/.test(p))).toBe(true);
+    expect(fontProblems(swapped).some((p) => /declares no Inter face/.test(p))).toBe(true);
   });
 });
 
