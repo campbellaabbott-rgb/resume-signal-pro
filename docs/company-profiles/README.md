@@ -265,4 +265,34 @@ state a fact line (a block of the 20 largest without facts PASSed 22 of
 24), and says when the sitemap stops listing them in the bake's order. "Not
 read" from a windowed bucket is gone (two true rows lose it), so it now
 prints on 23 corpus rows. The design upgrade README, "Round 3", has the
-table.
+table. (Round 4 corrects two of these words: the Oracle sub-site dedupe is
+not the only one that empties a site, and "none of the 326" was measured with
+a sibling check that matched exact ids.)
+
+**Round 4 (2026-10-25).** The final recheck of `474dca30` left three minors,
+each closed with a test that failed first on it. First, job-board's Workday
+cross-site dedupe also empties sites: it skips a new requisition copy
+(`R31339-1`) on any site whenever another site of the tenant stores the base
+id (`R31339`), so `strayer~wd1~CU_Careers` listed 9 roles dated this month
+and served none, 7 of them copies of `strayer~wd1~SEI`'s. The zero page now
+also withholds its watch promise on every Workday site of a tenant with more
+than one catalogued site (the safe default; 511 tenants in
+`src/lib/company/workday-multi-site-tenants.ts`, generated from `sources.ts`
+by `scripts/workday-multi-site-tenants.ts`, with a guard that recomputes it).
+The corpus's sibling check matches a Workday copy by its base id: six named
+rows (`strayer~wd1~CU_Careers`, `akumincorp~wd5~adgcareers`,
+`agf~wd3~AGF_Careers`, `anaheimducks~wd5~ocViBE`,
+`integritymarketing~wd1~RitterInsuranceMarketing`,
+`tcsedsystem~wd1~SaybrookUniversityCareers`) are sibling-held, all with a
+stated total, so 332 rows in all; the promise is made on 10,178 of the
+12,564 zero pages (22 Workday pages on multi-site tenants, `boeing~wd1~PRIDE`
+among them, lose it; 16 on single-site tenants keep it) and on none of the
+332. Second, 81c now reads round 3 in the served bundle: the zero page's
+head keys and the watch sentence gated on the model's `watchPromise`; live
+both FAIL until the publish, a production build of the branch PASSes, and
+the watch lines print INFO until the gate is served. Boeing's PRIDE site is
+a fourth zero board there. Third, 76 L9-11's price rule is INFO: the
+retired pass's own copy, its names (now with `/agents/pass`) and 83 C1's
+list FAIL; every other $29 sentence that does not name Freelance Boost is
+printed for a person to read. The design upgrade README, "Round 4", has the
+table and the residuals.
