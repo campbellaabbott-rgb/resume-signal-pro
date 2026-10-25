@@ -59,8 +59,8 @@
       "rowOpen_many": "{{n}} postes ouverts",
       "searchLink": "Rechercher dans les offres en direct",
       "searchTail": "pour filtrer n'importe quel employeur par poste, salaire ou lieu.",
-      "seoDescription": "Chaque employeur est lu directement depuis son propre système de recrutement. Parcourez les plus grands sites carrières ou recherchez dans les offres en direct.",
-      "seoTitle": "Entreprises qui recrutent : offres en direct depuis leurs propres systèmes de recrutement",
+      "seoDescription": "Chaque site carrières est lu dans le système de recrutement qui le publie : le plus souvent celui de l'employeur ; agences d'intérim et site fédéral sont signalés.",
+      "seoTitle": "Entreprises qui recrutent : offres lues dans chaque système de recrutement",
       "countedAgo": "Chiffres issus du dernier comptage du site, {{ago}}.",
       "intro2": "Chaque site carrières est lu depuis son propre système de recrutement : la plupart appartiennent aux employeurs eux-mêmes, ceux des agences de recrutement sont signalés sur leur page, et USAJOBS est le site d'offres du gouvernement fédéral américain, où les agences publient leurs postes. Les plus grands sites carrières figurent ci-dessous."
     },

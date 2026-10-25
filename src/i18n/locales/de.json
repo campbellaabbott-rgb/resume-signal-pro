@@ -5276,7 +5276,7 @@
     "scoreCta": "Meinen Lebenslauf mit dieser Stelle abgleichen (kostenlos)",
     "scoreNote": "Öffnet den kostenlosen Scanner mit der bereits eingefügten Beschreibung dieser Stelle.",
     "descHeading": "Die Beschreibung des Arbeitgebers",
-    "sourceNote": "Aus dem eigenen Bewerbersystem von {{company}} gelesen, nie von einer anderen Jobbörse kopiert. Eine datierte Anzeige wird höchstens {{days}} Tage ab dem vom Arbeitgeber angegebenen Datum ausgespielt. Auf dem Live-Board fragt das Öffnen einer Anzeige, deren Feed wir zuletzt vor mehr als {{hours}} Stunden gelesen haben, das System des Arbeitgebers erneut ab.",
+    "sourceNote": "Aus dem eigenen Bewerbersystem von {{company}} gelesen, nie von einer anderen Jobbörse kopiert. Eine datierte Anzeige wird höchstens {{days}} Tage ab dem vom Arbeitgeber angegebenen Datum ausgespielt. Auf dem Live-Board fragt das Öffnen einer Anzeige, deren Feed wir zuletzt vor mehr als {{hours}} Stunden gelesen haben, das System des Arbeitgebers erneut ab, sofern dieses System das zulässt.",
     "theEmployer": "dem Arbeitgeber",
     "theEmployerPossessive": "des Arbeitgebers"
   },
@@ -5488,7 +5488,7 @@
   },
   "aboutPage": {
     "metaTitle": "Über Resume Booster — eine Live-Jobbörse und ein kostenloser Lebenslauf-Check",
-    "metaDescription": "Wer resumebooster.work betreibt, was seine Jobbörse ist und wie ihre Zahlen entstehen, jede Zahl mit Datum.",
+    "metaDescription": "Was resumebooster.work ist, was seine Jobbörse ist und wie ihre Zahlen entstehen, jede Zahl mit Datum.",
     "breadcrumbLabel": "Brotkrumen-Navigation",
     "breadcrumbHome": "Startseite",
     "breadcrumbHere": "Über uns",
@@ -5511,5 +5511,11 @@
     "nextChangelog": "Neuigkeiten",
     "privacyLine": "Fragen zu Datenschutz und Daten:",
     "seller": "Verkäufer: {{name}}, {{address}}"
+  },
+  "apiAddressPage": {
+    "metaTitle": "Das ist nicht die Adresse der API",
+    "metaDescription": "Die Daten-API liegt nicht unter der Adresse dieser Website; Anleitung und kostenlose Schlüssel stehen auf /data-api.",
+    "lead": "Du hast diese Website nach {{path}} gefragt. Die API liegt nicht hier, sondern unter:",
+    "keyLine": "Anfragen tragen einen Schlüssel als Authorization: Bearer rb_live_…; kostenlose Schlüssel und alle Endpunkte stehen auf"
   }
 }

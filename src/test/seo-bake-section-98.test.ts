@@ -73,9 +73,18 @@ function site(fixed: boolean): Route[] {
     route("/favicon.png", "", { b64: png(fixed ? 64 : 512, fixed ? 64 : 512, fixed ? 0 : 80_000), type: "image/png" }),
     ...(fixed ? [route("/apple-touch-icon.png", "", { b64: png(180, 180), type: "image/png" })] : []),
     route("/favicon.ico", "", { b64: Buffer.from("icon").toString("base64"), type: "image/x-icon" }),
-    route("/sitemap.xml", `<urlset><url><loc>${SITE}/jobs/company/dominos</loc></url><url><loc>${SITE}/about</loc></url></urlset>`, { type: "application/xml" }),
+    route("/sitemap.xml", `<urlset><url><loc>${SITE}/jobs/company/dominos</loc></url><url><loc>${SITE}/about</loc></url><url><loc>${SITE}/jobs/posting/workday/alation~wd503~ExternalSite/R10000775</loc></url><url><loc>${SITE}/jobs/posting/workday/grpr~wd3~parques_reunidos/JR108112</loc></url></urlset>`, { type: "application/xml" }),
     route("/jobs/company/dominos", company),
     route("/jobs", fixed ? `<html><head>${ORG}</head><body>read from employers' own hiring systems, not copied from other job boards</body></html>` : "<html><head></head><body>No aggregators: each opening is read from the hiring system.</body></html>"),
+    route("/companies", fixed
+      ? `<html><head>${ORG}</head><body><p>Every posting is read from the hiring system that published it: an employer's own or the federal listing site (labelled).</p><ul><li>USAJOBS (the federal listing site)</li></ul></body></html>`
+      : `<html><head>${ORG}</head><body><p>Every posting comes from the company's own hiring system.</p><ul><li>USAJOBS</li></ul></body></html>`),
+    fixed
+      ? route("/landers.json", JSON.stringify(Object.fromEntries([["dominos", "dominos"], ...Array.from({ length: 450 }, (_, i) => [`board${i}`, `board${i}`])])), { type: "application/json" })
+      : route("/landers.json", "<!doctype html><html><head><title>Resume Booster</title></head></html>"),
+    // A sitemap posting page: the bad one carries the review's two localities.
+    route("/jobs/posting/workday/alation~wd503~ExternalSite/R10000775", `<html><head>${ORG}<script type="application/ld+json">${JSON.stringify({ "@type": "JobPosting", datePosted: "2026-10-24", validThrough: fixed ? "2026-11-23T23:59:59+00:00" : "2026-11-24T23:59:59+00:00", jobLocation: { "@type": "Place", address: { "@type": "PostalAddress", addressCountry: "US", ...(fixed ? {} : { addressLocality: "USA-" }) } } })}</script></head><body>Posted 2026-10-25, as stated by the employer.</body></html>`),
+    route("/jobs/posting/workday/grpr~wd3~parques_reunidos/JR108112", `<html><head>${ORG}<script type="application/ld+json">${JSON.stringify({ "@type": "JobPosting", datePosted: "2026-10-20", validThrough: "2026-11-19T23:59:59+00:00", jobLocation: { "@type": "Place", address: { "@type": "PostalAddress", addressCountry: "DE", addressLocality: fixed ? "Bottrop-Kirchhellen" : "Movie Park Germany" } } })}</script></head><body></body></html>`),
   ];
 }
 
@@ -96,6 +105,20 @@ describe("section 98 judges what it says it judges", () => {
   it("C1: a company page linking /jobs?job=, naming all nineteen systems or re-checking unconditionally fails", () => {
     expect(has(bad, "FAIL", /C1 \/jobs\/company\/dominos: links \/jobs\?job=; \/jobs\/company\/dominos: names all nineteen hiring systems/), show(bad)).toBe(true);
     expect(has(good, "PASS", /C1 1 sampled company pages: no \/jobs\?job= link/), show(good)).toBe(true);
+  });
+  it("C4: a /landers.json served as the homepage's HTML fails, a JSON manifest naming dominos passes", () => {
+    expect(has(bad, "FAIL", /C4 \/landers\.json: HTTP 200 "text\/html", not a JSON object/), show(bad)).toBe(true);
+    expect(has(good, "PASS", /C4 \/landers\.json: 200 application\/json, 451 boards, dominos -> dominos/), show(good)).toBe(true);
+  });
+  it("P1: a locality ending in a dash or carrying a country, and a 31-day window, fail", () => {
+    expect(has(bad, "FAIL", /P1 .*locality "USA-" \(a dash or a mark at one end\)/), show(bad)).toBe(true);
+    expect(has(bad, "FAIL", /P1 .*locality "Movie Park Germany" \(a country.s name\)/), show(bad)).toBe(true);
+    expect(has(bad, "FAIL", /P1 .*validThrough 2026-11-24 more than 30 days past datePosted 2026-10-24/), show(bad)).toBe(true);
+    expect(has(good, "PASS", /P1 2 of 2 sampled posting pages carry job markup/), show(good)).toBe(true);
+  });
+  it("G3: the blanket source sentence on /companies fails", () => {
+    expect(has(bad, "FAIL", /G3 .*\/companies: "Every posting comes from the company's own hiring system"/), show(bad)).toBe(true);
+    expect(has(good, "FAIL", /G3 .*\/companies:/), show(good)).toBe(false);
   });
   it("G3: 'No aggregators' on a sampled page fails", () => {
     expect(has(bad, "FAIL", /G3 .*\/jobs: "No aggregators"/), show(bad)).toBe(true);

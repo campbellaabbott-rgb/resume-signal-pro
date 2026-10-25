@@ -5276,7 +5276,7 @@
     "scoreCta": "Score my CV against this job (free)",
     "scoreNote": "Opens the free scanner with this vacancy's description already filled in.",
     "descHeading": "The employer's own description",
-    "sourceNote": "Read from {{companyPossessive}} own hiring system, never copied from another job board. A dated posting is served for at most {{days}} days from the date the employer states. On the live board, opening a posting whose feed we last read more than {{hours}} hours ago asks the employer's system again.",
+    "sourceNote": "Read from {{companyPossessive}} own hiring system, never copied from another job board. A dated posting is served for at most {{days}} days from the date the employer states. On the live board, opening a posting whose feed we last read more than {{hours}} hours ago asks the employer's system again, where that system allows it.",
     "theEmployer": "the employer",
     "theEmployerPossessive": "the employer's"
   },
@@ -5488,7 +5488,7 @@
   },
   "aboutPage": {
     "metaTitle": "About Resume Booster — a Live Job Board and a Free CV Scan",
-    "metaDescription": "Who runs resumebooster.work, what its job board is and how its counts are made, each figure dated.",
+    "metaDescription": "What resumebooster.work is, what its job board is and how its counts are made, each figure dated.",
     "breadcrumbLabel": "Breadcrumb",
     "breadcrumbHome": "Home",
     "breadcrumbHere": "About",
@@ -5511,5 +5511,11 @@
     "nextChangelog": "Changelog",
     "privacyLine": "Privacy and data questions:",
     "seller": "Seller: {{name}}, {{address}}"
+  },
+  "apiAddressPage": {
+    "metaTitle": "This is not the API address",
+    "metaDescription": "The data API does not live on this site's own address; the how-to and the free keys are on /data-api.",
+    "lead": "You asked this site for {{path}}. The API does not live here; it lives at:",
+    "keyLine": "Requests carry a key as Authorization: Bearer rb_live_…; free keys and every endpoint are described on"
   }
 }

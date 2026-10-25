@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { Helmet } from "react-helmet-async";
+import { useTranslation } from "react-i18next";
 import { publicPath } from "@/lib/public-href";
 import { supersedePrerenderedTags } from "@/lib/prerendered-head";
 import { bakedHeadFor, supersedeBakedTitleAndShareTags } from "./baked-head";
@@ -44,7 +45,13 @@ export function SEO({ title, description, path, image, noIndex, canonicalPath, p
   const ogImage = image ?? `${SITE}/og-image.png`;
   // Only an indexable page's own baked head is kept: a stub or a duplicate
   // pointing at its twin describes itself, not what React renders over it.
-  const bakedFile = preferBakedHead && !noIndex ? bakedHeadFor(path) : null;
+  // AND ONLY FOR A READER OF THE BAKE'S LANGUAGE: the bake writes English, and
+  // a German reader of /jobs/company/dominos kept its English title over a
+  // German page (the round's review, 2026-10-24). Crawlers read English.
+  const { i18n } = useTranslation();
+  const lang = String(i18n?.language || i18n?.resolvedLanguage || "en").toLowerCase();
+  const readsBakedLanguage = lang === "en" || lang.startsWith("en-");
+  const bakedFile = preferBakedHead && !noIndex && readsBakedLanguage ? bakedHeadFor(path) : null;
   const baked = bakedFile?.indexable ? bakedFile : null;
   const shownTitle = baked?.title || title;
   const shownDescription = baked?.description || description;

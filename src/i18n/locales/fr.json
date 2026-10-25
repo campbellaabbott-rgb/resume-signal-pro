@@ -5310,7 +5310,7 @@
     "scoreCta": "Évaluer mon CV pour cette offre (gratuit)",
     "scoreNote": "Ouvre l'analyseur gratuit avec la description de cette offre déjà remplie.",
     "descHeading": "La description de l'employeur",
-    "sourceNote": "Lue dans le propre système de recrutement de {{company}}, jamais copiée d'un autre site d'emploi. Une offre datée est diffusée au maximum {{days}} jours à partir de la date indiquée par l'employeur. Sur le site en direct, ouvrir une offre dont nous avons lu le flux il y a plus de {{hours}} heures interroge de nouveau le système de l'employeur.",
+    "sourceNote": "Lue dans le propre système de recrutement de {{company}}, jamais copiée d'un autre site d'emploi. Une offre datée est diffusée au maximum {{days}} jours à partir de la date indiquée par l'employeur. Sur le site en direct, ouvrir une offre dont nous avons lu le flux il y a plus de {{hours}} heures interroge de nouveau le système de l'employeur, lorsque ce système le permet.",
     "theEmployer": "l'employeur",
     "theEmployerPossessive": "de l'employeur"
   },
@@ -5525,7 +5525,7 @@
   },
   "aboutPage": {
     "metaTitle": "À propos de Resume Booster — un site d'emploi en direct et une analyse de CV gratuite",
-    "metaDescription": "Qui gère resumebooster.work, ce qu'est son site d'emploi et comment ses comptages sont faits, chaque chiffre daté.",
+    "metaDescription": "Ce qu'est resumebooster.work, ce qu'est son site d'emploi et comment ses comptages sont faits, chaque chiffre daté.",
     "breadcrumbLabel": "Fil d'Ariane",
     "breadcrumbHome": "Accueil",
     "breadcrumbHere": "À propos",
@@ -5548,5 +5548,11 @@
     "nextChangelog": "Nouveautés",
     "privacyLine": "Questions sur la confidentialité et les données :",
     "seller": "Vendeur : {{name}}, {{address}}"
+  },
+  "apiAddressPage": {
+    "metaTitle": "Ce n'est pas l'adresse de l'API",
+    "metaDescription": "L'API de données n'est pas à l'adresse de ce site ; le mode d'emploi et les clés gratuites sont sur /data-api.",
+    "lead": "Vous avez demandé {{path}} à ce site. L'API n'est pas ici ; elle se trouve à :",
+    "keyLine": "Les requêtes portent une clé sous la forme Authorization: Bearer rb_live_… ; les clés gratuites et tous les points d'accès sont décrits sur"
   }
 }

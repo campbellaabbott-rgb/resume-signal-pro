@@ -3074,7 +3074,7 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
       }
       for (const list of fieldEmployers.values()) list.sort((a, b) => b.n - a.n || a.name.localeCompare(b.name));
       const distinct = new Set([...indexable].map((t) => skeletonOf.get(t))).size;
-      console.log(`[prerender-seo] company pages: ${LANDERS.length} (${consolidated} canonicalized to a larger board of the same employer; ${nameShared} sharing a name with a larger, different employer (self-canonical, noindex, SEO-037); ${indexable.size} indexable, ${distinct} distinct once names and numbers are out; noindex: ${thin} with too few openings of their own, ${duplicated} matching another page, ${codeNamed} still named by a tenant code${codeNamed ? `: ${LANDERS.filter((c) => c.primary === c.token && c.unreadable).slice(0, 40).map((c) => c.token).join(", ")}` : ""}, ${nameRefused} new pages refused for a name that cannot be printed; ${nameRepaired} names repaired); duplicates: kept ${dupesKept} of ${dupeGroups.length} groups${dupeBreaker ? " (breaker on: none demoted)" : ""}; labelled: ${LANDERS.filter((c) => landerKindOf(c.token) === "usajobs").length} federal listing site, ${LANDERS.filter((c) => landerKindOf(c.token) === "agency").length} staffing agency (${AGENCY_TOKENS.size} agency boards in the catalogue); intel read for ${intelOf.size} of ${primaries0.length}; listings read ${openingsReads.size} of ${toRead.length} (${openingsUnread} unread), ${Object.keys(landerOpeningsCache).length} of ${listedTokens.length} carried`);
+      console.log(`[prerender-seo] company pages: ${LANDERS.length} (${consolidated} canonicalized to a larger board of the same employer; ${nameShared} sharing a name with a larger board we cannot tie to them (self-canonical, noindex, SEO-037); ${indexable.size} indexable, ${distinct} distinct once names and numbers are out; noindex: ${thin} with too few openings of their own, ${duplicated} matching another page, ${codeNamed} still named by a tenant code${codeNamed ? `: ${LANDERS.filter((c) => c.primary === c.token && c.unreadable).slice(0, 40).map((c) => c.token).join(", ")}` : ""}, ${nameRefused} new pages refused for a name that cannot be printed; ${nameRepaired} names repaired); duplicates: kept ${dupesKept} of ${dupeGroups.length} groups${dupeBreaker ? " (breaker on: none demoted)" : ""}; labelled: ${LANDERS.filter((c) => landerKindOf(c.token) === "usajobs").length} federal listing site, ${LANDERS.filter((c) => landerKindOf(c.token) === "agency").length} staffing agency (${AGENCY_TOKENS.size} agency boards in the catalogue); intel read for ${intelOf.size} of ${primaries0.length}; listings read ${openingsReads.size} of ${toRead.length} (${openingsUnread} unread), ${Object.keys(landerOpeningsCache).length} of ${listedTokens.length} carried`);
 
       // ---- Once-published company pages this bake did not choose (SEO-002) ----
       //
@@ -3715,6 +3715,10 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
             url: `${SITE}/agents`,
             ...(mcpUrl ? { installUrl: mcpUrl } : {}),
             description: `A remote MCP server over the live job board: search and read tools for ${countClause}, free to start with no key.`,
+            // Google's software-app result asks for an offer; the server is
+            // free to start (the keyless allowance). No rating is claimed: none
+            // exists that could be stated honestly.
+            offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
             publisher: { "@id": `${SITE}/#org` },
             sameAs: [D.MCP_INSTALL_REPO_URL, "https://registry.modelcontextprotocol.io/v0/servers?search=work.resumebooster/jobs"],
           },
@@ -4176,8 +4180,10 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
       path: "/about",
       title: "About Resume Booster — a Live Job Board and a Free Resume Scan",
       description: fitDesc(
-        `Who runs resumebooster.work, what its job board is and how its counts are made: open roles ${SOURCE_SENTENCE}, each figure dated.`,
-        "Who runs resumebooster.work, what its job board is and how its counts are made, each figure dated.",
+        // Until the owner supplies the seller's identity (SEO-045) the page
+        // names no operator, so the description does not promise one.
+        `What resumebooster.work is, what its job board is and how its counts are made: open roles ${SOURCE_SENTENCE}, each figure dated.`,
+        "What resumebooster.work is, what its job board is and how its counts are made, each figure dated.",
       ),
       jsonLd: [
         breadcrumbLd([{ name: "Home", path: "/" }, { name: "About", path: "/about" }]),
@@ -4234,6 +4240,22 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
         <p class="text-sm text-muted-foreground">Requests carry a key as <code>Authorization: Bearer rb_live_…</code>; free keys and every endpoint are described on <a href="/data-api" class="text-primary underline">Hiring Data &amp; API</a>.</p>`,
     });
   }
+
+  // ---- /dev/checkout-test: an internal tool, said noindex to every crawler ----
+  //
+  // robots.txt disallowed /dev/, so a crawler could never fetch the page to
+  // read its noindex, and a crawler that runs no scripts was served the
+  // homepage shell there (S13-131). The Disallow is gone; this small page says
+  // noindex without script, and the app's own head says it with script.
+  write({
+    path: "/dev/checkout-test",
+    robots: "noindex, nofollow",
+    title: "Internal checkout test",
+    description: "An internal page for testing checkout. It is not part of the site for visitors and is not for search.",
+    content: `
+        <h1 class="text-2xl font-bold mb-3">Internal checkout test</h1>
+        <p class="text-muted-foreground">An internal page for testing checkout. It is not part of the site for visitors; <a href="/" class="text-primary underline">the home page</a> is.</p>`,
+  });
 
   // ---- /llms-full.txt: complete citable text in one fetch ----
   // Companion to the hand-written public/llms.txt overview. AI engines that
@@ -4303,7 +4325,7 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
     lines.push(`- Entry-Level Index: ${SITE}/entry-level-index — employers ranked by real early-career openings (internships, junior, graduate, 0–2 year roles), counted only where the posting's own title or stated requirements say so.`);
     lines.push(`- Pay Transparency Index: ${SITE}/pay-transparency — the share of postings that state pay, by field, hiring system and large job board (one row per board, so an employer running several counts once per board), counted from the postings' own text and ATS fields; never estimated or modelled, and placement cannot be bought.`);
     lines.push(companiesLlmsLine({ site: SITE, count: COMPANY_PAGE_COUNT }));
-    lines.push(`- About: ${SITE}/about — who runs resumebooster.work, what the board is, and how its counts are made and dated.`);
+    lines.push(`- About: ${SITE}/about — what resumebooster.work is, what the board is, and how its counts are made and dated.`);
     lines.push(`- Hiring Data & API: ${SITE}/data-api — a read-only JSON API over the live board at ${API_BASE}/v1 (every path below is relative to ${API_BASE}; the addresses under ${SITE}/v1 are pages that point here), with free self-serve keys (${FREE_KEY_RATE_SENTENCE}): GET /v1/jobs, /v1/jobs/{id}, /v1/changes (what opened and closed since a timestamp, and whether each close was a genuine takedown or a re-list), /v1/companies, /v1/stats (headline counts, closure log, feed freshness p50/p95/max), /v1/usage, and POST /v1/fit (paid). Cursor pagination and ETags. Licensing beyond the free tier: free for journalists with attribution, at cost for research, custom for commercial feeds.`);
     lines.push(`- MCP server for AI agents: ${SITE}/agents (listed in the official MCP registry as ${MCP_REGISTRY_NAME}) — search and read tools (${LLMS_TOOLS.map((t) => t.name).join(", ")}) over the same board. MCP server address (Streamable HTTP): ${MCP_URL} — registry name ${MCP_REGISTRY_NAME}. ${D.MCP_ANON_TOOLS.map((t) => t.name).join(", ")} answer with no key at all (${D.MCP_ANON_CAPS.perAddressPerDay} calls a day per network address — an office or a home connection counts as one; from ChatGPT each person has their own ${D.MCP_ANON_CAPS.perAddressPerDay}, and Claude's users share ${D.MCP_ANON_CAPS.hostPoolPerDay} a day first — ${D.MCP_ANON_CAPS.globalPerDay} a day across every unkeyed caller, search capped at ${D.MCP_ANON_CAPS.searchRows} rows), so any host can use those before sign-in; every other read tool needs a free key, and ${D.MCP_PAID_TOOLS.map((t) => t.name).join(", ")} a paid key. A key travels in an Authorization header, so the keyed tools are reachable from ${andHosts(D.MCP_HOSTS.filter((x) => x.page && x.header).map((x) => x.name))}, and any other app that can send a header, with a pasted key; ${andHosts(D.MCP_HOSTS.filter((x) => x.page && !x.header && x.oauth).map((x) => x.name))} have no field for a key and sign a person in instead — but only while the server's sign-in service is switched on: then a keyed tool called with no credential answers a sign-in challenge, the host shows its Connect card, and after Allow on ${SITE}/oauth/consent the call runs on that account's own key; when it is off, the same call answers in words (no card) and the unkeyed tools still answer. Today's state: the Test the server button on ${SITE}/agents, or the initialize result's _meta["${D.MCP_SIGN_IN_META_KEY}"].state; the page's own steps are at ${SITE}/agents#<host> for ${D.MCP_PAGE_HOSTS.map((x) => x.id).join(", ")}; setup for every other app is in the install repository's README at ${D.MCP_INSTALL_REPO_URL}. ${AGENT_OFFER.lead} ${AGENT_OFFER.connect} ${APPLY_YOURSELF_LINE}`);
     lines.push("");

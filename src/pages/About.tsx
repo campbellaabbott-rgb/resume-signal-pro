@@ -55,7 +55,7 @@ export default function About() {
     <div className="min-h-screen bg-background">
       <SEO
         title={t("aboutPage.metaTitle", "About Resume Booster — a Live Job Board and a Free Resume Scan")}
-        description={t("aboutPage.metaDescription", "Who runs resumebooster.work, what its job board is and how its counts are made, each figure dated.")}
+        description={t("aboutPage.metaDescription", "What resumebooster.work is, what its job board is and how its counts are made, each figure dated.")}
         path="/about"
         preferBakedHead
       />

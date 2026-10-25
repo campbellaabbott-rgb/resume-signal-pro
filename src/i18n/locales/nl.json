@@ -5276,7 +5276,7 @@
     "scoreCta": "Mijn cv beoordelen voor deze vacature (gratis)",
     "scoreNote": "Opent de gratis scanner met de beschrijving van deze vacature al ingevuld.",
     "descHeading": "De eigen omschrijving van de werkgever",
-    "sourceNote": "Gelezen uit het eigen wervingssysteem van {{company}}, nooit gekopieerd van een andere vacaturebank. Een gedateerde vacature wordt hoogstens {{days}} dagen getoond vanaf de datum die de werkgever vermeldt. Op het live bord vraagt het openen van een vacature waarvan we de feed meer dan {{hours}} uur geleden voor het laatst lazen het systeem van de werkgever opnieuw.",
+    "sourceNote": "Gelezen uit het eigen wervingssysteem van {{company}}, nooit gekopieerd van een andere vacaturebank. Een gedateerde vacature wordt hoogstens {{days}} dagen getoond vanaf de datum die de werkgever vermeldt. Op het live bord vraagt het openen van een vacature waarvan we de feed meer dan {{hours}} uur geleden voor het laatst lazen het systeem van de werkgever opnieuw, waar dat systeem het toelaat.",
     "theEmployer": "de werkgever",
     "theEmployerPossessive": "van de werkgever"
   },
@@ -5488,7 +5488,7 @@
   },
   "aboutPage": {
     "metaTitle": "Over Resume Booster — een live vacaturebank en een gratis cv-scan",
-    "metaDescription": "Wie resumebooster.work runt, wat de vacaturebank is en hoe de tellingen tot stand komen, elk getal met datum.",
+    "metaDescription": "Wat resumebooster.work is, wat de vacaturebank is en hoe de tellingen tot stand komen, elk getal met datum.",
     "breadcrumbLabel": "Kruimelpad",
     "breadcrumbHome": "Home",
     "breadcrumbHere": "Over",
@@ -5511,5 +5511,11 @@
     "nextChangelog": "Nieuw",
     "privacyLine": "Vragen over privacy en gegevens:",
     "seller": "Verkoper: {{name}}, {{address}}"
+  },
+  "apiAddressPage": {
+    "metaTitle": "Dit is niet het adres van de API",
+    "metaDescription": "De data-API staat niet op het adres van deze site; de uitleg en de gratis sleutels staan op /data-api.",
+    "lead": "Je vroeg deze site om {{path}}. De API staat hier niet, maar op:",
+    "keyLine": "Verzoeken dragen een sleutel als Authorization: Bearer rb_live_…; gratis sleutels en elk endpoint staan op"
   }
 }

@@ -29,6 +29,10 @@
 #       University of Rochester's UR_Staff board is self-canonical and noindex.
 #   C3  (S13-047) a once-published company path the board still carries serves
 #       the app shell, never a tombstone.
+#   C4  (SEO-010) /landers.json, which every React employer link reads, answers
+#       200 as JSON, names at least 400 boards and maps dominos to its page: a
+#       missing or HTML manifest silently sends every employer link to the
+#       generic board.
 #   G1  (SEO-011a) every sampled page carries the #org Organization (no legal
 #       identity) and a WebSite whose publisher is it; /agents carries the MCP
 #       server's SoftwareApplication; /about is a page of its own.
@@ -36,8 +40,9 @@
 #       prints and the API host /data-api prints; /v1 and /v1/jobs are noindex
 #       pages naming the API host.
 #   G3  (R5a, R6a, R7a, SEO-027) no sampled page or llms file says "never an
-#       aggregator", "no aggregators", "never a repost" or an unconditional
-#       re-check; /agents and the llms files name no IDE host; every llms.txt
+#       aggregator", "no aggregators", "never a repost", an unconditional
+#       re-check, or (on /companies, whose list holds USAJOBS and staffing
+#       agencies) that every posting comes from the company's own system; /agents and the llms files name no IDE host; every llms.txt
 #       URL is in the sitemap.
 #   G4  (SEO-029, S12-133, SEO-034, SEO-028) /privacy and /terms carry their
 #       full text; /affiliates prints no 20%; a French page says fr_FR and
@@ -229,11 +234,21 @@ const pick = (arr, n) => (arr.length <= n ? arr : Array.from({ length: n }, (_, 
     if (d.status === 200 && /<script type="module"[^>]*src="\/assets\//.test(d.body) && !/No longer a page on this site/.test(d.body)) out("PASS", `C3 carried ${p} serves the app shell, not a tombstone`);
     else out("FAIL", `C3 carried ${p} answered ${d.status} ${/No longer a page on this site/.test(d.body) ? "with a tombstone" : "without the app"}`);
   }
+  // C4: the landers manifest the React employer links read.
+  const lm = await get("/landers.json", 60000);
+  let man = null;
+  try { man = /json/.test(lm.type) ? JSON.parse(lm.body) : null; } catch { man = null; }
+  const body = man && typeof man === "object" && !Array.isArray(man) ? (["pages", "landers"].map((k) => man[k]).find((v) => v && typeof v === "object" && !Array.isArray(v)) || man) : null;
+  const n = body ? Object.keys(body).length : 0;
+  const dom = body ? body.dominos : undefined;
+  const domOk = dom === "dominos" || dom === "/jobs/company/dominos";
+  if (lm.status === 200 && body && n >= 400 && domOk) out("PASS", `C4 /landers.json: 200 ${lm.type}, ${n} boards, dominos -> ${dom}`);
+  else out("FAIL", `C4 /landers.json: HTTP ${lm.status} "${lm.type}", ${body ? `${n} boards, dominos -> ${JSON.stringify(dom)}` : "not a JSON object"} (want 200 JSON, at least 400 boards, dominos -> its page: without it every employer link falls back to the generic board)`);
 }
 
 // ---- G1-G4: the entity graph, the addresses, the copy ----
 {
-  const pages = ["/", "/about", "/agents", "/data-api", "/jobs", "/ghost-job-index", "/entry-level-index", "/research/ats-score-benchmarks", "/privacy", "/terms", "/affiliates", "/fr/normes-cv/france", "/jobs/field/engineering", ...pick(companies, 2), ...pick(postings, 2)];
+  const pages = ["/", "/about", "/agents", "/data-api", "/jobs", "/companies", "/ghost-job-index", "/entry-level-index", "/research/ats-score-benchmarks", "/privacy", "/terms", "/affiliates", "/fr/normes-cv/france", "/jobs/field/engineering", ...pick(companies, 2), ...pick(postings, 2)];
   const docs = new Map();
   for (let i = 0; i < pages.length; i += 6) await Promise.all(pages.slice(i, i + 6).map(async (p) => docs.set(p, await get(urlOf(p)))));
   const graphBad = [];
@@ -267,7 +282,7 @@ const pick = (arr, n) => (arr.length <= n ? arr : Array.from({ length: n }, (_, 
     out(d.status === 200 && /noindex/.test(robotsOf(d.body)) && api && d.body.includes(api) ? "PASS" : "FAIL", `G2 ${p}: HTTP ${d.status}, robots "${robotsOf(d.body)}", ${api && d.body.includes(api) ? "names the API host" : "does NOT name the API host"} (it served the homepage copy before)`);
   }
   // G3 copy.
-  const BANNED = [/\bnever an aggregator\b/i, /\bno aggregators\b/i, /\bnever a repost\b/i, /\bnever aggregators\b/i, /\bre-checks a posting when you open it(?!, where the employer)/i];
+  const BANNED = [/\bnever an aggregator\b/i, /\bno aggregators\b/i, /\bnever a repost\b/i, /\bnever aggregators\b/i, /\bre-checks a posting when you open it(?!, where the employer)/i, /\bevery posting comes from the company\x27s own hiring system\b/i, /\beach read from the employer\x27s own hiring system\b/i];
   const IDE = /\b(?:Cursor(?! pagination)|VS Code|Visual Studio Code|Cline|Windsurf|Gemini CLI|Codex CLI)\b/;
   const copyBad = [];
   for (const p of pages) {

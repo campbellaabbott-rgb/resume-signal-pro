@@ -5310,7 +5310,7 @@
     "scoreCta": "Puntuar mi currículum para este empleo (gratis)",
     "scoreNote": "Abre el escáner gratuito con la descripción de esta oferta ya completada.",
     "descHeading": "La descripción del propio empleador",
-    "sourceNote": "Leída del propio sistema de selección de {{company}}, nunca copiada de otra bolsa de empleo. Una vacante con fecha se muestra como máximo {{days}} días desde la fecha que indica el empleador. En el portal en vivo, abrir una vacante cuyo feed leímos por última vez hace más de {{hours}} horas vuelve a consultar el sistema del empleador.",
+    "sourceNote": "Leída del propio sistema de selección de {{company}}, nunca copiada de otra bolsa de empleo. Una vacante con fecha se muestra como máximo {{days}} días desde la fecha que indica el empleador. En el portal en vivo, abrir una vacante cuyo feed leímos por última vez hace más de {{hours}} horas vuelve a consultar el sistema del empleador, donde ese sistema lo permite.",
     "theEmployer": "el empleador",
     "theEmployerPossessive": "del empleador"
   },
@@ -5525,7 +5525,7 @@
   },
   "aboutPage": {
     "metaTitle": "Sobre Resume Booster — una bolsa de empleo en vivo y un análisis de currículum gratis",
-    "metaDescription": "Quién gestiona resumebooster.work, qué es su bolsa de empleo y cómo se hacen sus recuentos, cada cifra con su fecha.",
+    "metaDescription": "Qué es resumebooster.work, qué es su bolsa de empleo y cómo se hacen sus recuentos, cada cifra con su fecha.",
     "breadcrumbLabel": "Ruta de navegación",
     "breadcrumbHome": "Inicio",
     "breadcrumbHere": "Acerca de",
@@ -5548,5 +5548,11 @@
     "nextChangelog": "Novedades",
     "privacyLine": "Preguntas sobre privacidad y datos:",
     "seller": "Vendedor: {{name}}, {{address}}"
+  },
+  "apiAddressPage": {
+    "metaTitle": "Esta no es la dirección de la API",
+    "metaDescription": "La API de datos no está en la dirección de este sitio; la guía y las claves gratuitas están en /data-api.",
+    "lead": "Pediste a este sitio {{path}}. La API no está aquí; está en:",
+    "keyLine": "Las solicitudes llevan una clave como Authorization: Bearer rb_live_…; las claves gratuitas y todos los endpoints se describen en"
   }
 }

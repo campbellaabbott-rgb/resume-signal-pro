@@ -59,8 +59,8 @@
       "rowOpen_many": "{{n}} vacantes abiertas",
       "searchLink": "Busca en el portal en vivo",
       "searchTail": "para filtrar cualquier empleador por puesto, salario o ubicación.",
-      "seoDescription": "Cada empleador del portal se lee directamente de su propio sistema de contratación. Explora los portales más grandes o busca en el portal en vivo.",
-      "seoTitle": "Empresas que contratan ahora: empleos en vivo de sus propios sistemas de contratación",
+      "seoDescription": "Cada portal se lee del sistema de contratación que lo publica: casi siempre el del empleador; las agencias de empleo y el portal federal están señalados.",
+      "seoTitle": "Empresas que contratan ahora: empleos leídos de cada sistema de contratación",
       "countedAgo": "Cifras del último recuento del portal, {{ago}}.",
       "intro2": "Cada portal se lee de su propio sistema de contratación: la mayoría son de los propios empleadores, los portales de agencias de empleo están señalados en sus páginas y USAJOBS es el sitio de empleo del gobierno federal de EE. UU., donde las agencias publican sus puestos. Abajo están los portales más grandes."
     },

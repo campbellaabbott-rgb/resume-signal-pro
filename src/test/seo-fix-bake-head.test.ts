@@ -10,7 +10,7 @@
  *     system, while its list holds USAJOBS and a staffing agency.
  */
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { fallbackPreloadHtml } from "../../scripts/prerender-preload.mjs";
 import { bannedSourcePhrasesIn } from "../../scripts/prerender-copy.mjs";
@@ -58,6 +58,16 @@ describe("/companies says what each listed board is", () => {
     expect(BAKE).toMatch(/title: `\$\{fmt\(employersListed\)\} Companies Hiring Now, From Their Own Hiring Systems`/);
     expect(BAKE).toMatch(/const KIND_LABEL = \{ usajobs: "the federal listing site", agency: "a staffing agency" \};/);
     expect(BAKE).not.toMatch(/Every posting comes from the company's own hiring system\./);
+  });
+  it("and React's /companies head says the same in every language: no 'every employer ... its own hiring system'", () => {
+    const dir = resolve(ROOT, "src/i18n/shards/company");
+    for (const f of readdirSync(dir).filter((x) => x.endsWith(".json"))) {
+      const d = JSON.parse(readFileSync(resolve(dir, f), "utf8")).companyProfile.directory;
+      expect(String(d.seoDescription), f).not.toMatch(/Every employer on the board is read straight from its own hiring system|Jeder Arbeitgeber auf der Jobbörse wird direkt|Cada empleador del portal se lee directamente|Chaque employeur est lu directement|Elke werkgever wordt rechtstreeks|Cada empregador do portal é lido|Bawat employer sa board ay binabasa|हर नियोक्ता को सीधे/);
+      expect(String(d.seoTitle), f).not.toMatch(/Their Own Hiring Systems|ihren eigenen|sus propios|leurs propres|hun eigen|seus próprios|sarili nilang|उनके अपने/);
+    }
+    const page = readFileSync(resolve(ROOT, "src/pages/Companies.tsx"), "utf8");
+    expect(page).toContain(JSON.stringify(JSON.parse(readFileSync(resolve(ROOT, "src/i18n/shards/company/en.json"), "utf8")).companyProfile.directory.seoDescription));
   });
   it("refuses the blanket sentences on any page the bake writes", () => {
     expect(bannedSourcePhrasesIn("Every posting comes from the company's own hiring system.")).toHaveLength(1);

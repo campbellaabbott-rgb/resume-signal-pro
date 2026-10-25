@@ -5276,7 +5276,7 @@
     "scoreCta": "I-score ang aking résumé para sa trabahong ito (libre)",
     "scoreNote": "Binubuksan ang libreng scanner na nakapuno na ang paglalarawan ng posting na ito.",
     "descHeading": "Ang sariling paglalarawan ng employer",
-    "sourceNote": "Binasa mula sa sariling hiring system ng {{company}}, hindi kailanman kinopya mula sa ibang job board. Ang posting na may petsa ay ipinapakita nang hanggang {{days}} araw mula sa petsang sinabi ng employer. Sa live na board, kapag binuksan mo ang posting na ang feed ay huli naming binasa nang higit {{hours}} oras na ang nakalipas, muling tinatanong ang system ng employer.",
+    "sourceNote": "Binasa mula sa sariling hiring system ng {{company}}, hindi kailanman kinopya mula sa ibang job board. Ang posting na may petsa ay ipinapakita nang hanggang {{days}} araw mula sa petsang sinabi ng employer. Sa live na board, kapag binuksan mo ang posting na ang feed ay huli naming binasa nang higit {{hours}} oras na ang nakalipas, muling tinatanong ang system ng employer, kung saan pinapayagan ito ng system na iyon.",
     "theEmployer": "ang employer",
     "theEmployerPossessive": "ng employer"
   },
@@ -5488,7 +5488,7 @@
   },
   "aboutPage": {
     "metaTitle": "Tungkol sa Resume Booster — isang live na job board at libreng resume scan",
-    "metaDescription": "Sino ang nagpapatakbo ng resumebooster.work, ano ang job board nito at paano ginagawa ang mga bilang nito, bawat numero may petsa.",
+    "metaDescription": "Ano ang resumebooster.work, ano ang job board nito at paano ginagawa ang mga bilang nito, bawat numero may petsa.",
     "breadcrumbLabel": "Breadcrumb",
     "breadcrumbHome": "Home",
     "breadcrumbHere": "Tungkol",
@@ -5511,5 +5511,11 @@
     "nextChangelog": "Bago",
     "privacyLine": "Mga tanong tungkol sa privacy at data:",
     "seller": "Nagbebenta: {{name}}, {{address}}"
+  },
+  "apiAddressPage": {
+    "metaTitle": "Hindi ito ang address ng API",
+    "metaDescription": "Wala sa sariling address ng site na ito ang data API; nasa /data-api ang paraan at ang libreng mga key.",
+    "lead": "Hiningi mo sa site na ito ang {{path}}. Wala rito ang API; narito ito:",
+    "keyLine": "May dalang key ang mga request bilang Authorization: Bearer rb_live_…; inilalarawan ang libreng mga key at bawat endpoint sa"
   }
 }

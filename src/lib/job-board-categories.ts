@@ -57,3 +57,25 @@ export const INDUSTRY_TO_CATEGORY: Record<string, BoardCategorySlug> = {
   manufacturing: "operations",
   administrative: "admin",
 };
+
+/**
+ * THE SCAN'S OWN INDUSTRY WORDS → BOARD CATEGORIES, for the free-scan matches
+ * card (LiveMatches). The stream fallback scanner (free-keyword-scan-stream,
+ * VALID_INDUSTRIES) and the session it leaves behind (rb_scan_industry) carry
+ * slugs the industry pages do not ("software_engineering", "human_resources",
+ * "nursing"), and S13-132's cleanup of the page map took them away from the
+ * card: a fallback scan whose occupation could not be resolved listed the
+ * whole board as "current openings in your field" (the round's review,
+ * 2026-10-24). The page map stays keyed by INDUSTRY_KEYWORDS slugs; the card
+ * reads this one.
+ */
+export const SCAN_INDUSTRY_TO_CATEGORY: Record<string, BoardCategorySlug> = {
+  ...INDUSTRY_TO_CATEGORY,
+  software_engineering: "engineering",
+  human_resources: "people_hr",
+  nursing: "healthcare",
+  accounting: "finance",
+  customer_service: "customer",
+  design: "design",
+  supply_chain: "operations",
+};

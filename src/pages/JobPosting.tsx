@@ -460,7 +460,7 @@ export default function JobPosting() {
                 <p className="mt-6 text-xs text-muted-foreground">
                   {t("jobPostingPage.sourceNote", {
                     defaultValue:
-                      "Read from {{companyPossessive}} own hiring system, never copied from another job board. A dated posting is served for at most {{days}} days from the date the employer states. On the live board, opening a posting whose feed we last read more than {{hours}} hours ago asks the employer's system again.",
+                      "Read from {{companyPossessive}} own hiring system, never copied from another job board. A dated posting is served for at most {{days}} days from the date the employer states. On the live board, opening a posting whose feed we last read more than {{hours}} hours ago asks the employer's system again, where that system allows it.",
                     company: company || t("jobPostingPage.theEmployer", "the employer"),
                     companyPossessive: companyPossessive || t("jobPostingPage.theEmployerPossessive", "the employer's"),
                     days: BOARD_FRESH_WINDOW_DAYS,

@@ -29,6 +29,7 @@ import {
   remoteLocationNamesAPlace,
   type PostingRow,
 } from "@/components/jobs/posting-page";
+import { prepareDescription } from "@/lib/listing/description";
 
 const SITE = "https://resumebooster.work";
 const NOW = new Date("2026-10-24T12:00:00Z");
@@ -167,5 +168,10 @@ describe("a stray 'undefined' line from the Workday description assembly is drop
     const d = ld(row({ location: "Munich", country: "DE", workMode: null }), raw)!;
     expect(String(d.description)).not.toMatch(/^\s*undefined\s*$/m);
     expect(String(d.description)).toContain("This role is suitable for you.");
+  });
+  it("and out of the React posting page's text", () => {
+    const prepared = prepareDescription(raw);
+    expect(prepared.text).not.toMatch(/^\s*undefined\s*$/m);
+    expect(prepared.text).toContain("This role is suitable for you.");
   });
 });

@@ -19,7 +19,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { invokeJobBoard } from "@/lib/invoke-job-board";
 import { rolesForIndustry } from "@/data/roles";
 import { roundedFloor } from "@/hooks/use-board-totals";
-import { INDUSTRY_TO_CATEGORY } from "@/lib/job-board-categories";
+import { SCAN_INDUSTRY_TO_CATEGORY } from "@/lib/job-board-categories";
 
 interface MatchJob {
   id: string;
@@ -125,7 +125,7 @@ export function LiveMatches({ resumeText, industry }: { resumeText: string; indu
         const role = await resumeRoleQuery(resumeText);
         if (cancelled) return;
         const topRole = rolesForIndustry(industry)[0]?.title;
-        const category = INDUSTRY_TO_CATEGORY[industry];
+        const category = SCAN_INDUSTRY_TO_CATEGORY[industry];
         // Résumé query first (this résumé's own occupation); the industry's
         // first canonical title for a résumé whose occupation cannot be
         // resolved; the category for an industry we carry no role pages for.

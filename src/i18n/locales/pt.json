@@ -5310,7 +5310,7 @@
     "scoreCta": "Avaliar o meu currículo para esta vaga (grátis)",
     "scoreNote": "Abre o analisador gratuito com a descrição desta vaga já preenchida.",
     "descHeading": "A descrição do próprio empregador",
-    "sourceNote": "Lida do próprio sistema de recrutamento da {{company}}, nunca copiada de outro mural de vagas. Uma vaga datada é apresentada no máximo {{days}} dias a partir da data indicada pelo empregador. No portal ao vivo, abrir uma vaga cujo feed lemos pela última vez há mais de {{hours}} horas consulta de novo o sistema do empregador.",
+    "sourceNote": "Lida do próprio sistema de recrutamento da {{company}}, nunca copiada de outro mural de vagas. Uma vaga datada é apresentada no máximo {{days}} dias a partir da data indicada pelo empregador. No portal ao vivo, abrir uma vaga cujo feed lemos pela última vez há mais de {{hours}} horas consulta de novo o sistema do empregador, quando esse sistema o permite.",
     "theEmployer": "o empregador",
     "theEmployerPossessive": "do empregador"
   },
@@ -5525,7 +5525,7 @@
   },
   "aboutPage": {
     "metaTitle": "Sobre o Resume Booster — um mural de vagas ao vivo e uma análise de currículo grátis",
-    "metaDescription": "Quem gere o resumebooster.work, o que é o seu mural de vagas e como são feitas as suas contagens, cada número com data.",
+    "metaDescription": "O que é o resumebooster.work, o que é o seu mural de vagas e como são feitas as suas contagens, cada número com data.",
     "breadcrumbLabel": "Navegação estrutural",
     "breadcrumbHome": "Início",
     "breadcrumbHere": "Sobre",
@@ -5548,5 +5548,11 @@
     "nextChangelog": "Novidades",
     "privacyLine": "Perguntas sobre privacidade e dados:",
     "seller": "Vendedor: {{name}}, {{address}}"
+  },
+  "apiAddressPage": {
+    "metaTitle": "Este não é o endereço da API",
+    "metaDescription": "A API de dados não está no endereço deste site; o guia e as chaves gratuitas estão em /data-api.",
+    "lead": "Pediu a este site {{path}}. A API não está aqui; está em:",
+    "keyLine": "Os pedidos levam uma chave como Authorization: Bearer rb_live_…; as chaves gratuitas e todos os endpoints estão descritos em"
   }
 }

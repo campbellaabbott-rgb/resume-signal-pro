@@ -113,7 +113,12 @@ const PRERENDERED_PATHS = (): Set<string> => {
   const landings = /path:\s*cfg\.path/.test(src)
     ? [...readFileSync(resolve(ROOT, "src/data/tool-landings.ts"), "utf8").matchAll(/path:\s*"(\/[^"]+)"/g)].map((m) => m[1])
     : [];
-  return new Set([...literal, ...landings]);
+  // The /v1 guidance pages are written from a list of [path, what] pairs
+  // (SEO-015), so they count as written only where that loop writes them.
+  const apiPages = /for \(const \[path, what\] of \[\s*\["\/v1", /.test(src)
+    ? [...src.matchAll(/\["(\/v1(?:\/[a-z]+)?)", "/g)].map((m) => m[1])
+    : [];
+  return new Set([...literal, ...landings, ...apiPages]);
 };
 
 describe("every public route in the router has a prerendered page", () => {

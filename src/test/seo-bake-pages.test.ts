@@ -94,7 +94,9 @@ describe("SEO-037: a board sharing a name with a different, larger employer keep
     expect(p.robots).toBe("noindex, follow");
     expect(p.title).toContain("on its Workday board “UR_Staff”");
     expect(p.title.length).toBeLessThanOrEqual(68);
-    expect(p.content).toContain("a different employer under the same name has a page of its own");
+    // The bake knows only that the two tenants differ, not that two employers do.
+    expect(p.content).toContain("another board under the same name, which we cannot tie to this one, has a page of its own");
+    expect(p.content).not.toContain("a different employer under the same name");
     // The same employer's sibling board still canonicalises to its primary.
     const sibling = lander({ token: "pwc~wd3~global_campus_careers", primaryToken: "pwc~wd3~crm_experienced_careers_site", name: "PwC", openN: 355 });
     expect(sibling.canonical).toBe("/jobs/company/pwc~wd3~crm_experienced_careers_site");
