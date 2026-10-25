@@ -13,13 +13,20 @@
  *   - "All sales are final.", above every payment and plan (homepage and
  *     pricing spec of 2026-10-17, "Before you buy": the before-audit found six
  *     paid entry points and none said it). The pricing page uses the same
- *     sentence in each language.
+ *     sentence in each language. One exception: while the EU/UK switch is on,
+ *     a plan's block shows the service-start box instead, because
+ *     withdraw-subscription refunds an EU or UK plan in full or pro rata and
+ *     the box states those terms; an unqualified "final" would be false for
+ *     the very buyers the switch admits. A payment keeps the sentence beside
+ *     its box, in which the buyer gives up the withdrawal right.
  *   - While the EU/UK switch is off, one region line to every buyer: not sold
  *     in the EU, the EEA, the UK or India yet (S12-059; India by owner
  *     decision 2026-10-17), and that checkout turns buyers away by the
- *     currency and the time zone the device reports. Those are the two checks
- *     every checkout runs; its third signal answers only with a key that is
- *     not set, so the line never names it (owner decision W5, 2026-10-24).
+ *     currency and the time zone the device reports. Those are the checks
+ *     that run without a key (the Full Analysis checkout reads both; Pro's
+ *     reads the time zone). The address lookup runs only when its key is
+ *     set, and whether it is set in production is unverified, so the line
+ *     never names it (owner decision W5, 2026-10-24).
  *     ONE region statement per block: RegionNotice, which only a browser
  *     whose time zone is in the territory saw, no longer renders here,
  *     because the line covers every buyer, including one turned away by the
@@ -89,14 +96,16 @@ export function PurchaseTerms({ kind, plan, className, onAutoRenewChange }: Prop
   useEffect(() => { if (kind !== "signup") askServerForEuUkSwitch(); }, [kind]);
   const box = kind === "payment" ? "withdrawalWaiver" : "serviceStartConsent";
   // A purchase, not a sign-up: final, and (while EU and UK sales are off) not
-  // sold in the territory, said to every buyer before the press.
+  // sold in the territory, said to every buyer before the press. A plan under
+  // the EU/UK switch is not final: its withdrawal box says what is refunded.
   const sale = kind !== "signup";
+  const finalSale = sale && !(boxShown && kind === "subscription");
   const proPrice = `$${SUBSCRIPTIONS.pro.priceUsd}`;
   const agentPrice = `$${SUBSCRIPTIONS.agent.priceUsd}`;
 
   return (
     <div ref={ref} className={cn("space-y-1.5 text-xs text-muted-foreground", className)} data-testid="purchase-terms">
-      {sale && <p data-final-sale="">{t("purchaseTerms.finalSale", "All sales are final.")}</p>}
+      {finalSale && <p data-final-sale="">{t("purchaseTerms.finalSale", "All sales are final.")}</p>}
       {sale && !boxShown && (
         <p data-region-line="">
           {t("purchaseTerms.regionLine", "Not sold in the EU, the EEA, the UK or India yet. Checkout turns away buyers it can place there, from the currency and the time zone your device reports.")}

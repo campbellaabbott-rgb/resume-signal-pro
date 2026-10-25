@@ -11,13 +11,22 @@
  *   - "All sales are final.", the same sentence the pricing page uses;
  *   - one region line for every buyer: not sold in the EU, the EEA, the UK or
  *     India yet, and that checkout turns buyers away by the currency and the
- *     time zone the device reports. Those are the two checks checkout always
- *     runs; the address lookup answers only with a key nobody has set, so the
- *     line never names it (owner decision W5, 2026-10-24).
+ *     time zone the device reports. Those are the checks that run without a
+ *     key: the Full Analysis checkout reads both and Pro's reads the time
+ *     zone. The address lookup runs only if its key is set, and whether it is
+ *     set in production is unverified, so the line never names it (owner
+ *     decision W5, 2026-10-24).
  * The block carries ONE region statement, so RegionNotice no longer renders
  * inside it: the line covers every buyer, including one turned away by the
  * currency whose time zone the notice could not place. The line goes when the
  * server says EU and UK sales are on.
+ *
+ * With that switch on, a plan's block shows the service-start box ("if I
+ * withdraw within 14 days, I pay for the days already used") and
+ * withdraw-subscription refunds an EU or UK plan in full or pro rata, so the
+ * plan's block no longer says "All sales are final.": the box states its
+ * terms. A payment's block keeps the sentence, beside the box in which the
+ * buyer gives up the withdrawal right once the report starts.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render } from "@testing-library/react";
@@ -89,8 +98,29 @@ describe("above every payment and plan, never above a sign-up", () => {
     state.euUkOn = true;
     three();
     for (const b of blocks()) expect(b.querySelector("[data-region-line]")).toBeNull();
-    // Final sale stands whatever the switch says.
-    expect(blocks()[0].querySelector("[data-final-sale]")).not.toBeNull();
+  });
+
+  it("with EU and UK sales on, a plan carries no unqualified final-sale line, and its box states the withdrawal terms", () => {
+    state.euUkOn = true;
+    render(
+      <MemoryRouter>
+        <PurchaseTerms kind="subscription" plan="pro" />
+        <PurchaseTerms kind="subscription" plan="agent" />
+      </MemoryRouter>,
+    );
+    for (const b of blocks()) {
+      expect(b.querySelector("[data-final-sale]")).toBeNull();
+      expect(b.textContent).not.toMatch(/All sales are final/);
+      expect(b.textContent).toMatch(/withdraw/i);
+    }
+  });
+
+  it("with EU and UK sales on, a payment keeps the final-sale line beside the box that waives the withdrawal right", () => {
+    state.euUkOn = true;
+    render(<MemoryRouter><PurchaseTerms kind="payment" /></MemoryRouter>);
+    const [pay] = blocks();
+    expect(pay.querySelector("[data-final-sale]")?.textContent).toBe("All sales are final.");
+    expect(pay.querySelector("input[type='checkbox']")).not.toBeNull();
   });
 });
 
