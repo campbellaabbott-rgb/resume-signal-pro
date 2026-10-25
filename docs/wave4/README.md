@@ -32,7 +32,10 @@ found two of them worse than origin/main on inputs no corpus held. The owner's
 policy is that a heuristic is never worse than main on any case, and that after
 repeated failed rechecks we stop patching spellings. So two rules left wave 4
 and one stayed with its claims made true. Branch `wave4-descope`, pushed to
-`wave4/integration`.
+`wave4/integration`. The descope's first form (27e54375) kept rounds 3 and 4's
+search split; a recheck of it (2026-10-25, findings in this section) found
+that mix worse than main too, so the whole search exclusion went back to
+main's and the question copy was weakened once more (823cdc1f, f805722c).
 
 **What left, and why.**
 
@@ -46,14 +49,28 @@ and one stayed with its claims made true. Branch `wave4-descope`, pushed to
   re-parses stored text exactly as main does: `minedSalaryRefused`, the re-mine
   branch and its notes section are gone. S12-019's own Airbus row stays as main
   serves it.
-- **The search's plural and hyphen folds (S12-017's title match).**
-  `titleExcluded` folded an excluded word to its plural, so "account" struck
-  "Accounts Payable Manager" and "contract" struck "Contracts Administrator",
-  which main never does. `titleExcluded` is origin/main's exact match again:
-  an excluded word or phrase strikes a title only where it stands exactly as
-  typed. `splitExclusions` keeps rounds 3 and 4 (one word unless a pinned
-  compound or a known or pinned place, both words of "not A or B", the typed
-  hyphen and a slash list kept).
+- **The search exclusion, whole (S12-017).** Round 4's `titleExcluded`
+  folded an excluded word to its plural, so "account" struck "Accounts
+  Payable Manager" and "contract" struck "Contracts Administrator", which main
+  never does. The descope's first form put main's `titleExcluded` back and
+  kept rounds 3 and 4's `splitExclusions` and `cleanTerms`; its recheck found
+  that mix worse than main on realistic queries: a slash pair of single
+  letters ("clerk not a/p", "cashier not p/t") excluded nothing, so the
+  search pulled in the titles the person excluded (production, on main,
+  answers "clerk not a/p" with `excludedTerms` ["ap"]); a slash pair that
+  names one thing was split into common words ("technician not med/surg"
+  struck "Certified Med Tech", "engineer not tcp/ip" struck "IP Engineer");
+  and a pinned compound typed with a space or as a plural ("cashier not part
+  time", "nurse not night shifts") struck only that spelling, keeping
+  "Cashier (Part-Time)" and "Night Shift RN", which main strikes through its
+  one-word exclusion. A case-level corpus score could not see the last class,
+  because main's split is wrong on those queries while its title strikes are
+  right. So the whole exclusion path is origin/main's again: in
+  `job-board/search-routing.ts`, `splitExclusions`, its cleaning and
+  `titleExcluded` are main's text byte for byte, from the "engineer not
+  manager" note to the end of the file, the `query-place` import only the
+  pinned-place rule read is gone, and job-board's handler calls them exactly
+  as main does.
 
 **S12-019 is now its own salary project.** Its method is a whole-population
 diff, not a corpus of chosen cases: re-parse every stored salary string the
@@ -69,21 +86,62 @@ the round-4 self-break set at
 recheck's 60-case corpus and probes in `~/.config/resumebooster/wave4-fix3-recheck4/`.
 The round tests that pinned round behaviour are deleted (the first-money-range
 test and the fix1, fix2 and fix3 salary files), and sections 92 job-board,
-fixer2 and fixer3 read no salary.
+fixer2 and fixer3 read no salary. Under main's miner a pay line read from a
+description can be a business figure (S12-019's own Airbus placement serves
+"£350K to £800K annually" in the GB pay sort, read live 2026-10-25), so the
+project must also correct the sentences that call the served figure stated
+pay, which are main's and which wave 4 did not touch: the board's "Stated pay
+only" and "ordered by stated pay" labels and the changelog's "real published
+pay only, never estimates". The two AI-host lines wave 4 rewrote now say what
+is true: agent-mcp's job-card `salary` is "the posting's pay text, verbatim:
+the employer's pay field, or a pay line the board read from the description,
+which on rare postings is a business figure", and `hasStatedPay` says the
+same.
 
-**The search after the descope.** On the 1,169-query corpus the shipped rule
-answers 1,122 right (origin/main 764) and is wrong on no case main gets right.
-The 47 it misses are each wrong on main too: the 8 gaps (the split) and 39
-residuals the corpus test now names, where the split is right and only the
-exact title match misses a title spelled another way: 33 hyphenated words
-("not part-time" strikes "Part-Time Barista" but not "Part Time Barista";
-main's "parttime" strikes neither, main's open defect, not a right answer) and
-6 plurals ("manager" keeps "Store Managers", as main does). The 75 self-break
-queries: 69 right, 6 residuals, none wrong where main is right. One
-title-level difference is not a corpus case and is said here so nobody reads
-it as a fix: a title that runs the hyphenated word together ("Parttime
-Barista") is struck by main's folded "parttime" and kept by the typed
-"part-time".
+**S12-017 is now its own search project.** Its method has to measure titles,
+not only splits: a candidate is never worse than main at the query level and,
+for every title main's split and match strike, the candidate strikes it too
+(and keeps what main keeps unless the label says otherwise), checked on a
+corpus and on live titles. What it inherits: the 1,191-query corpus
+(`src/test/fixtures/w4b-fix3-search/negated-phrases.json`, now with the
+recheck's 22 `dsc-` cases), the 75 self-break queries, origin/main's exclusion
+frozen at ef4fb53e (`src/test/fixtures/w4b-fix3-search/origin-main-exclusion.ts`),
+round 4's pinned compound and place lists (kept as data in the generated
+test), and the recheck's live-title reads and query sets. Main's open defects
+it starts from, all on the record: "not" takes one word, so "not night
+shift" searches "shift" and "not part time" searches "time"; a typed hyphen
+or slash is folded away, so "part-time" becomes "parttime" and "a/p" becomes
+"ap", which strike only a title spelled that way; and a plural typed word
+strikes only itself.
+
+**The search after the descope.** The exclusion is main's, proved three ways.
+`src/test/w4b-descope-the-search-exclusion-is-origin-mains.test.ts` checks
+that the shipped section is main's text, that nothing before it reads an
+exclusion, that job-board's handler calls it on main's lines, and that every
+case the recheck named (the slash pairs, med/surg and tcp/ip, the spaced and
+plural compounds against hyphenated titles, "news" and "parts" and "account"
+against New Grad, Part-Time and Accounts Payable titles) answers as main
+does. The corpus test asserts that the shipped split equals main's on all
+1,191 queries and the 75 self-break queries and that the shipped title match
+strikes exactly what main's strikes over every title each case names; it
+asks for no improvement, and keeps main's own score as the record (765 of
+the 1,191 right by label, 22 of the 75). The generated test walks round 4's
+compounds and places, slash pairs, hyphens, plurals, quotes, "not A or B"
+and random queries against main. All three fail at 27e54375 (518 tests) and
+pass now. The phrase test (`an-excluded-phrase-is-excluded-whole`) is
+deleted, the two place tests pin main's split, and the scorer test is main's
+again. Sections 92 fixer and fixer3 want main's `excludedTerms` (fixer3 reads
+eight negations, among them "clerk not a/p" ["ap"] and "cashier not part
+time" ["part"]), and section 92 job-board reads no negated search. The board's
+banner (`jobsPage.excludedTerms`, nine locales) says it hides results whose
+title contains the excluded words, which is all main's rule does: it reads
+only the title, word by word as typed, so a posting located in an excluded
+place, or titled with a plural of the word, stays. Not part of the exclusion,
+and kept: the place lift's guard that drops a negated place it knows
+("nurse jobs not in Texas" searches no Texas and names `placeExclusion`,
+S12-172), and the stemmer and employer-key routes (S12-014, S12-018); each
+has its own tests and section 92 job-board lines, and the recheck named no
+case where they are worse than main.
 
 **What stayed: the question rule, with every claim made true.** No rule
 change. It ships because it is strictly safer than main in the direction that
@@ -93,9 +151,14 @@ are work questions sent to the person, the declared safe side. Every sentence
 a seeker, a crawler or an AI host reads about who answers a question now says
 what the marking does: a question that looks like it is about the person goes
 to the person, an open question about their work can be drafted from their
-CV, the marking reads words and can miss an unusually worded question about
-the person, and some work questions go to the person, so the person reads
-every answer before sending. Changed: in all nine locales the `/agents` apply
+CV, the marking reads words and can miss a question about the person, even a
+plainly worded one, and some work questions go to the person, so the person
+reads every answer before sending. (The first rewrite said it can miss only
+an unusually worded question; the recheck of the descope found plainly
+worded ones missed: apply_myself marks "How many years of accident-free
+driving experience do you have?" for a draft, and the answers panel drafts
+"Are you legally permitted to work in Germany?". main's classifier misses the
+same, so this is not worse than main; the copy now says so.) Changed: in all nine locales the `/agents` apply
 lines (`agentConnect.selfApplyFree`, `applyStep3`), the answers panel
 (`applyAnswers.yoursBody`) and the `/agent` profile panel (`applyProfile.legalIntro`,
 `intro`, `demographics`); the applyAgent changelog entry in all nine; the
@@ -112,39 +175,61 @@ Emails, generate-apply-package and generate-application-answers carry no
 such claim. The guard
 `src/test/the-copy-about-who-answers-a-question-promises-nothing-the-marking-cannot-keep.test.ts`
 reads every one of those surfaces (all locale, changelog and auth shards
-included) for the removed phrasings in each language, checks the
-read-every-answer line in each language, and is shown catching each removed
-sentence as it stood.
+included) for the removed phrasings in each language, the old "worded
+unusually" qualifier among them, checks the read-every-answer line and the
+plainly-worded hedge in each language, and is shown catching each removed
+sentence as it stood. The same recheck found three more absolutes the
+marking cannot keep, now true, weaker sentences in all nine languages: the
+`/agent` panel's work-authorisation hints (`applyProfile.otherCountriesHint`,
+`authorizedHint`) say the agent stops, or does not assume, on a country
+question it recognises; the `setupIsOneStep` changelog entry says the agent
+does not guess work authorisation, salary or start date on a question it
+recognises as asking for one; and the answers panel's all-clear
+(`applyAnswers.allGrounded`) says our check found no credential, degree,
+figure, employer or job title the résumé does not show, which is what
+`validateCandidateClaims` reads.
 
-**Builds.** agent-mcp and public-api `2026-10-11.34`; create-agent-checkout
-and create-pass-checkout `2026-10-11.15`; create-product-checkout
-`2026-10-11.24` (their only change is the refusal line). generate-application-answers,
-generate-apply-package and apply-agent stay `2026-10-11.33` (unchanged).
-job-board keeps its reserved `2026-09-09.93`, now with main's salary miner and
-main's title match.
+**Builds.** agent-mcp and public-api `2026-10-11.35`; create-agent-checkout
+and create-pass-checkout `2026-10-11.16`; create-product-checkout
+`2026-10-11.25` (their only change is the refusal line). Each moved twice in
+the descope (`.34`, `.15` and `.24` were the first form, never deployed).
+generate-application-answers, generate-apply-package and apply-agent stay
+`2026-10-11.33` (unchanged). job-board keeps its reserved `2026-09-09.93`,
+now with main's salary miner and main's search exclusion.
 
-**Checks run.** Each through `~/.config/resumebooster/heavy.sh`: `npm run
-typecheck` exits 0; the worker's `tsc --noEmit` exits 0;
-`scripts/check-functions.sh` is clean (every edge function and the Deno
-tests; deno.lock restored). The upload-tally guard passes: job-board's upload,
-tallied the deploy's way (its folder plus all of _shared, comments included,
-plus the profiles round's two _shared files at 72,818 bytes), is 4,436,776
-bytes, 63,224 under the 4.5 MB line and 13,224 inside the agreed 50,000 of
-room, 8,098 bytes smaller than round 4's 4,444,874 (the salary module and the
-re-mine branch went back to main's). `deploy-ledger --against origin/main`
-finds 0 violations; `--against 9ca51755` (round 4) finds 6 functions moved and
-one violation, job-board `.93`, by reservation, as in every round; the other
-five carry the builds above. `deploy-ledger --draft` lists 25 migrations, 1
-held (20261011103000) and 69 functions to deploy, and exits 2 with MUST BUMP
-for auth-email-hook, auth-signed-in and process-email-queue, R1's functions,
-which this branch lacks until main is merged (as under "Deploy order").
-`--overlap HEAD origin/design/integration origin/r1/integration` finds no
-undeclared overlap; against r1/hotfix-s13, seo/integration and hp/integration
-it lists the same nine undeclared files round 4 did, and `git merge-tree`
-finds the same conflicted files against each of those branches and main
-before and after the descope (it adds none). The full suite runs in the
-push's pre-push hook; its count is in the PR #39 body. Main is not merged in
-this step.
+**Left for other owners by the descope.** `src/pages/Jobs.tsx` (profiles and
+design; wave 4 may not touch it) still carries the old English fallback for
+`jobsPage.excludedTerms` ("Hiding results that mention ..."). It renders only
+when the key is missing, and all nine locales now hold the true sentence;
+whoever next edits that line should copy en.json's. The S12-019 and S12-017
+projects inherit the sentences and corpora named above.
+
+**Checks run** (at the head after the recheck's fixes). Each through
+`~/.config/resumebooster/heavy.sh`: `npm run typecheck` exits 0; the worker's
+`tsc --noEmit` exits 0; `scripts/check-functions.sh` is clean (every edge
+function and the Deno tests; deno.lock restored); the pre-commit typecheck
+passed on both commits. The new and rewritten search tests (518 failing at
+27e54375) and the claims tests (31 failing on 27e54375's copy) pass, and the
+213 test files that read the changed copy, locales, guides, MCP cards and
+functions pass (3,584 tests). The upload-tally guard passes: job-board's
+upload, tallied the deploy's way from git's sizes (its folder plus all of
+_shared, comments included, plus main's two profiles _shared files at 72,818
+bytes), is 4,430,397 bytes, 69,603 under the 4.5 MB line and 19,603 inside the
+agreed 50,000 of room, 6,379 smaller than the descope's first form
+(search-routing.ts went back to main's). `deploy-ledger --against 27e54375`
+finds 6 functions moved (agent-mcp, public-api, the three checkouts and
+job-board) and one violation, job-board `.93`, by reservation, as in every
+round; the other five carry the builds above. `--against origin/main`
+(ef4fb53e) finds one violation, process-email-queue `.2026-10-14.1` sorting
+before main's `.2026-10-14.2`: main moved it after this branch was cut (27e54375
+shows the same against today's main), and merging main, the first step under
+"Deploy order", clears it. `--overlap HEAD origin/design/integration
+origin/r1/integration` finds no undeclared overlap; against r1/hotfix-s13,
+seo/integration and hp/integration it lists the same six undeclared files
+27e54375 does, and `git merge-tree` finds the same conflicted files as
+27e54375 against each of those branches and main (27, 27, 31 and 22). The full
+suite runs in the push's pre-push hook; its count is in the PR #39 body. Main
+is not merged in this step.
 
 ## What a person can do after this deploy
 
@@ -164,10 +249,10 @@ this step.
   when it reads as an open question about work done or one of a short list of
   motivation questions, each a single ask; every other question, including a
   fact riding inside a work-done or motivation question, is marked for the
-  person. It reads words, so it can still mark an unusually worded factual or
-  protected question for a draft (the final recheck saw 17 of 24 fresh ones;
-  main's classifier drafts 22), and it sends some ordinary work questions to
-  the person. Every page and AI-host text says so and tells the person to read
+  person. It reads words, so it can still mark a factual or protected
+  question for a draft, even a plainly worded one (the final recheck saw 17
+  of 24 fresh ones; main's classifier drafts 22), and it sends some ordinary
+  work questions to the person. Every page and AI-host text says so and tells the person to read
   every answer before sending (see "Descope 2026-10-25"). We never submit
   anything.
 - **Developers** get the same from `/v1`, fit scoring free at 25 a key a day
@@ -764,7 +849,7 @@ renewal box; deno.lock stays the base's) and account-compliance's final head
   the writing allowance's refusals), CP-G (the en-GB trader name), CP-J (the
   account functions take a website session only), D14.
 - **job-board**: S12-013, S12-014 (board, MCP and /v1 routing), S12-015,
-  S12-017, S12-018, S12-020 (S12-019 left in the descope of 2026-10-25),
+  S12-018, S12-020 (S12-017 and S12-019 left in the descope of 2026-10-25),
   S12-027, S12-028, S12-035, S12-036,
   S12-037, S12-038, S12-083, S12-084, S12-122, S12-123, S12-124, S12-125 (no
   change needed, pinned), S12-126, S12-128, S12-172.
@@ -923,13 +1008,13 @@ answers its build in `x-fn-build`). The ones round 2 changed:
   generate-career-path, and the five that bundle the widened classifier:
   agent-mcp, public-api, generate-application-answers,
   generate-apply-package, apply-agent (switched off). job-board stays
-  `2026-09-09.93` and carries the negation fixes (its salary rule left in the
-  descope of 2026-10-25).
+  `2026-09-09.93` and carried the negation fixes (they and its salary rule
+  left in the descope of 2026-10-25; the exclusion is main's).
 - **.2026-10-11.32** (fix round 3, below): the five that bundle round 3's
   question rule: agent-mcp, public-api, generate-application-answers,
   generate-apply-package, apply-agent (switched off). job-board stays
-  `2026-09-09.93` and carries round 3's negation rule (its salary rule left in
-  the descope of 2026-10-25).
+  `2026-09-09.93` and carried round 3's negation rule (it and its salary rule
+  left in the descope of 2026-10-25; the exclusion is main's).
 
 `--against origin/main` reports 0 violations. Against each w4b branch the only
 "same build string on different code" lines are job-board `.93` (shared by
@@ -969,8 +1054,9 @@ the review `92-w4b-fixer.sh` (every `.30` build, a signed-out cover note
 refused 401, and three board behaviours), and for the fixes after the recheck
 `92-w4b-fixer2.sh` (six `.31` builds, career_path_past_buyers closed to the
 anon key, "warehouse not forklift Dallas" excluding only forklift), and for
-fix round 3 `92-w4b-fixer3.sh` (five `.32` builds and three negations only round
-3 answers all of; its salary re-sweep lines left in the descope). `verify-deploy.sh` runs
+fix rounds 3 and 4 `92-w4b-fixer3.sh` (the five question builds at `.33` or
+later, and, since the descope, eight negations that must answer as main's
+rule does; its salary re-sweep lines left in the descope). `verify-deploy.sh` runs
 them with the rest, behind section 0's positive control and the tally that
 fails a section which prints no verdict. Expected FAILs while the seller is
 unnamed: section 92 account-compliance FAILs the three marketing senders on
@@ -1229,8 +1315,10 @@ Major:
 - **A search never waits for the employer list** (job-board): the router
   routes on the live set this isolate built last or the table and rebuilds
   after the response; section 92 job-board asks cvs and UPS up to four times.
-- **"not" negates a short phrase** (job-board search-routing): it stops at
-  two words, a place word or state, or an intent word.
+- **"not" negates a short phrase** (job-board search-routing): left in the
+  descope of 2026-10-25. The exclusion is origin/main's ("not" takes one
+  word) and S12-017 is its own search project. The place and the mode after
+  a one-word negation stay, as on main.
 - **A factual clause is the person's** (_shared/application-questions.ts,
   self-apply.ts, the worker's mirror): start date, pay, references, gaps,
   where the person lives (always) and covenants or conflicts of interest
@@ -1319,13 +1407,15 @@ Major:
   who to contact to confirm. The recheck's ten labels and eleven of ours go
   to the person; eight controls are still drafted.
 - **A place after a one-word negation stays in the search** (job-board
-  search-routing, .93): the phrase stops before any place knownPlace()
-  recognises, one to three words, or any state, metro or country name in any
-  case ("sf", "uk", "us", which the place lift takes only in capitals),
-  unless the place began inside the phrase ("not new york"): "warehouse not
-  forklift Dallas" excludes forklift and searches Dallas, as main did, and
-  "cook not line sf" excludes line and keeps sf (2709842c, found by the
-  fixer's own probe after 705452b1).
+  search-routing, .93): true on main too, and since the descope of
+  2026-10-25 by main's own rule ("not" takes one word). As built then, the
+  phrase stopped before any place knownPlace() recognises, one to three
+  words, or any state, metro or country name in any case ("sf", "uk", "us",
+  which the place lift takes only in capitals), unless the place began
+  inside the phrase ("not new york"): "warehouse not forklift Dallas"
+  excluded forklift and searched Dallas, as main did, and "cook not line sf"
+  excluded line and kept sf (2709842c, found by the fixer's own probe after
+  705452b1).
 
 Minor: the Teal comparison no longer counts Freelance Boost among our
 products (it names the career-change bridge and the free account's writing
@@ -1430,8 +1520,10 @@ over-routes are present- or future-tense work clauses ("and your sales
 methodology", "the CRM you prefer"). Five non-compete rows in
 `src/test/fixtures/consent-corpus.json` now expect factual.
 
-**Search** (job-board `search-routing.ts`, `.93`). The corpus has 591 cases
-(anonymised; every recheck input included):
+**Search** (job-board `search-routing.ts`, `.93`): this round's rule did not
+ship. Round 4 replaced it and the descope of 2026-10-25 put origin/main's
+exclusion back, whole; S12-017 is its own search project. As measured then,
+the corpus had 591 cases (anonymised; every recheck input included):
 
 | version | correct / wrong | worse than main |
 |---|---|---|
@@ -1471,7 +1563,8 @@ unchanged and needs its own fix.
 
 **What the integration added.** The five functions that bundle the question
 rule carry `.2026-10-11.32`. job-board keeps its reserved `2026-09-09.93`.
-`scripts/verify-deploy.d/92-w4b-fixer3.sh` reads round 3 after it deploys:
+`scripts/verify-deploy.d/92-w4b-fixer3.sh` read round 3 after it deploys
+(since the descope it wants main's answers instead):
 the five `.32` builds; once the wave 4 board code serves, "nurse not night
 shift, TX" excluding night shift, "nurse not travel er" excluding travel and
 "warehouse not forklift San Jose" excluding forklift (only round 3 answers all
@@ -1519,8 +1612,11 @@ rechecker's own in `questions-recheck3/` and `salary-recheck3/`). The committed
 fixtures are under `src/test/fixtures/w4b-fix3-*/`, anonymised. Each corpus
 test fails on the version it replaces.
 
-**Search** (job-board `search-routing.ts`, `.93`). 1,169 queries, each
-labelled from its structure before any version ran: round 3's 591 (its
+**Search** (job-board `search-routing.ts`, `.93`): this round's rule did not
+ship; the descope of 2026-10-25 put origin/main's exclusion back, whole, and
+S12-017 is its own search project (figures under "Descope 2026-10-25"). As
+measured then: 1,169 queries, each labelled from its structure before any
+version ran: round 3's 591 (its
 "part-time" labels corrected to the typed word, since main's "parttime"
 strikes no title), the rechecker's 511 and the recheck-3 inputs with the
 titles each exclusion must and must not strike. A case is right only when the
@@ -1542,9 +1638,8 @@ or B" negates both ("or" or "nor"; a capitalised "OR" only in an all-capitals
 query, where it is the search operator; a comma or full stop ends the chain). A hyphen
 inside an excluded word is kept, and a slash between words lists alternatives
 ("travel/agency"). This round's title match also folded plurals and treated a
-hyphen as an optional break; the descope of 2026-10-25 took both out, and the
-title match is origin/main's exact one (figures below, under "Descope
-2026-10-25").
+hyphen as an optional break. The descope of 2026-10-25 took the folds out
+first and then the whole rule.
 
 Self-break: 50 queries written after the change, then 25 more. All 75 were
 right when written (origin/main 22, 237bf2e8 25). They are pinned in
@@ -1616,9 +1711,10 @@ pinned in `self-break-round4.json`.
 
 **What the integration added.** The five question functions carry
 `.2026-10-11.33`. job-board keeps its reserved `2026-09-09.93`.
-`scripts/verify-deploy.d/92-w4b-fixer3.sh` now reads round 4: the five `.33`
+`scripts/verify-deploy.d/92-w4b-fixer3.sh` read round 4: the five `.33`
 builds; "nurse not south florida", "nurse not travel or agency" and "barista
-not part-time" beside round 3's three negations. Its five stored-salary lines
+not part-time" beside round 3's three negations (since the descope all eight
+of its negations want main's answers). Its five stored-salary lines
 left in the descope. Its test still runs it against a fake curl and each regression reads
 FAIL. To fit the job-board upload, comment runs in abuse-guards.ts,
 chain-watchdog.ts, shadow.ts and stale-lane.ts moved into
