@@ -24,7 +24,6 @@
     "agency": {
       "banner": "Dit is het vacaturebord van een uitzend- of detacheringsbureau. De vacatures hier zijn meestal voor zijn klanten."
     },
-    "boardReadAgo": "vacaturebord gelezen {{ago}}",
     "breadcrumbCompanies": "Bedrijven",
     "breadcrumbJobs": "Vacatures",
     "breadcrumbLabel": "Kruimelpad",
@@ -166,15 +165,10 @@
     },
     "zero": {
       "allRoles": "Alle open vacatures doorzoeken",
-      "answer": "Geen vacatures gedateerd in de afgelopen {{days}} dagen",
+      "answer": "Op deze pagina staan op dit moment geen vacatures.",
+      "seoTitle": "Vacatures bij {{company}}",
+      "seoDescription": "{{company}}: op deze pagina staan op dit moment geen vacatures.",
       "body": "Volg dit vacaturebord en je account telt nieuwe vacatures zodra ze verschijnen.",
-      "title": "Geen vacatures bij {{name}} gedateerd in de afgelopen {{days}} dagen",
-      "titleBoard": "Geen vacatures op dit vacaturebord gedateerd in de afgelopen {{days}} dagen",
-      "older_one": "De {{total}} vacature op het vacaturebord van {{company}} is niet gedateerd in de afgelopen {{days}} dagen (gelezen {{date}}).",
-      "older_other": "Geen van de {{total}} vacatures op het vacaturebord van {{company}} is gedateerd in de afgelopen {{days}} dagen (gelezen {{date}}).",
-      "olderBoard_one": "De {{total}} vacature op dit vacaturebord is niet gedateerd in de afgelopen {{days}} dagen (gelezen {{date}}).",
-      "olderBoard_other": "Geen van de {{total}} vacatures op dit vacaturebord is gedateerd in de afgelopen {{days}} dagen (gelezen {{date}}).",
-      "basis": "We tonen vacatures gedateerd in de afgelopen {{days}} dagen.",
       "empty": "Geen vacatures op het vacaturebord van {{company}} toen we het {{ago}} lazen.",
       "emptyBoard": "Geen vacatures op dit vacaturebord toen we het {{ago}} lazen.",
       "unread": "We hebben het vacaturebord van {{company}} de laatste tijd niet helemaal gelezen.",

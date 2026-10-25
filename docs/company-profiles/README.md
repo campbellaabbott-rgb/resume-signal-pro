@@ -130,3 +130,169 @@ stores the English flag and the leave days), and verify section 80 wants it.
   block on every catalogue collision; the bake, MCP and `/v1` (phases 4 and 5)
   must apply the catalogue rule too.
 - D10 (rename "filled" to "taken down (not relisted)") is not done.
+
+## Hotfix 2026-10-24: a Workday company page asks once per read
+
+Branch `pd/hotfix-intel-db`, migration `20261012137000` (migration only: no
+edge function, no frontend, no job-board). It is one of the two regressions
+that kept the profiles + design deploy (PR #36, live 2026-10-18) from
+verifying; the other, the "not read whole board" zero line, is the
+frontend hotfix's.
+
+**What was wrong.** `get_company_intel` answered HTTP 500, code 57014
+(statement timeout), on every Workday token, a made-up one included. 283 of
+the 485 company pages in the sitemap are Workday pages; each lost its pay
+floor, fields, places, headcount and net-7d for readers (a 15-second
+shimmer, then nothing) and in the baked copy, each view held a 15-second
+statement on the 4-core database, and the 2026-10-18 publish timed out on
+it (hence the 90-second deadline Lovable put in the bake).
+
+The before, the verifier's anon GET of `get_company_intel` on 2026-10-24 at
+22:21Z, one request per token:
+
+| Token | Answer | Time |
+|---|---|---|
+| `cat~wd5~caterpillarcareers` | 500 57014 | 15.40 s |
+| `nvidia~wd5~NVIDIAExternalCareerSite` | 500 57014 | 15.18 s |
+| `dollartree~wd5~dollartreeus` | 500 57014 | 15.19 s |
+| `sysco~wd5~syscocareers` | 500 57014 | 15.37 s |
+| `meijer~wd5~Meijer_Stores_Hourly` | 500 57014 | 15.38 s |
+| `zzzz-none~wd1~Careers` (made up, no postings) | 500 57014 | 15.22 s |
+| `stripe` (Greenhouse) | 200 | 0.55 s |
+
+`get_similar_companies` on the same Workday tokens answered 200 in 0.8 to
+1.1 s: its call sat behind the employer-segment filter, so it ran a handful
+of times, not thousands.
+
+**Why.** `20261012135000` added its hosting-tenant test,
+`workday_site_is_own_employer` on the page's own token, inside an OR in two
+readers: the Workday arm of `get_company_intel`'s snapshot series and the
+postings predicate of both readers. The helper is a STABLE SQL function
+with its own `search_path` setting, so the planner never inlines it, and a
+call inside an OR arm is not a one-time filter: it ran once for every
+snapshot row of the window that reached the arm, each run a scan of
+`company_name_overrides`.
+
+**The fix.** Each reader opens its WITH with a one-row MATERIALIZED CTE
+(`own_site`) holding the helper's answer, and each test reads it through a
+scalar subquery, which the planner runs as an InitPlan: one evaluation per
+call, however many rows the read touches. The answer is the same boolean,
+so every reply is unchanged. The file rewrites the live bodies from the
+catalogue (as `135000` and `136000` did), refuses a body that is not the one
+`135000` left, compares signature, result, security, volatility, settings,
+owner and grants before and after, restates the grants of
+`20261012101000`, and its self-check refuses the per-row shape. Safe to run
+twice.
+
+**The other readers.** `get_company_financials` calls only
+`employer_segment`, which is IMMUTABLE with no setting and is inlined;
+`get_company_fill_curve` calls `board_multi_site_title_share` once in its
+FROM list and `normalize_close_title` per title by nature. No search or
+list reader calls a non-inlinable helper on its own parameters inside a
+per-row predicate.
+
+**Measured on pglite** (3,510 snapshot rows, 400 override rows, median of
+three warm runs; `pd-hotfix-workday-intel-asks-once-per-read.test.ts`): a
+pooled Workday site 189.3 ms before, 4.1 ms after; the made-up Workday
+token 217.4 ms before, 3.4 ms after; a Greenhouse token 2.0 ms and 1.8 ms.
+The counting stand-in ran the helper at least 3,500 times per Workday read
+before, and exactly once after.
+
+**Tests.** `pd-hotfix-workday-intel-asks-once-per-read.test.ts` (once per
+call by a counting stand-in and by the generic plan; byte-identical JSON
+from both readers for ten kinds of token; attributes and grants unchanged;
+safe twice; the self-check refuses the old shape and drifted grants) and
+`pd-hotfix-verify-81i-times-the-workday-intel-reader.test.ts` (the probe
+below fails on the 22:21Z answers and passes on the fix's).
+
+**After the deploy.** Apply `20261012137000` after `20261012136000` (both
+readers must carry the `135000` body it expects; if it refuses, read
+`pg_get_functiondef` and fold the fix in). Never re-run `20261012135000`
+after it: its own self-check refuses the body `137000` leaves, and that
+RAISE means superseded, not that it needs editing. Then verify section 81:
+line 81i times `get_company_intel` on three Workday pages the sitemap lists
+and on the made-up token, and passes each only on a 200 within 3 seconds
+carrying the reader object, and for the three real pages only when the
+reply reads facts (a Workday source with open roles, and places or fields).
+81j reads the baked crawler copy after the publish's re-bake: 24 Workday
+company pages sampled from the live sitemap (its first 4, the largest,
+which a reader too slow on big tenants loses to the bake's 8-second
+per-call timeout; its last 8, where the bake's 90-second intel deadline
+cuts first; and 12 spread between them), and passes only when at least 90%
+state "The countries holding the most of its roles on this board:" or "The
+fields holding the most of its roles on this board:" and each of the first
+4 does. 81i's 3-second bound does not prove the bake fitted its deadline
+(the whole bake fits only at about 1.1 s per round of six); 81j does. 81g,
+which probes stripe alone, stayed green through the outage.
+
+**Fix round (2026-10-24 review).** The self-check also refuses, on every
+run, a reader that lost its search_path or its 15-second timeout (a second
+run skips the rewrite and its before/after comparison), and that comparison
+now includes argument defaults (`get_similar_companies`' `p_limit DEFAULT
+6`, which the page relies on).
+
+**Recheck round (2026-10-25).** Two majors. First, 81i and 81j could both
+pass on a bake that ran past its 90-second intel deadline: the bake reads
+`get_company_intel` six at a time in page order, largest first, and 81j
+read three of the largest pages. 81j now samples the sitemap as above; on
+2026-10-25 none of the 283 Workday pages in the sitemap states either fact
+line, so it FAILs 0 of 24 until the re-bake (Domino's, the SmartRecruiters
+control, states two). Second, the zero page: a corpus of every live zero
+page (12,564 of the 44,379 catalogued boards, each against its own public
+feed read through job-board's `fetchBoard`, 11,857 feeds read) showed that
+`2e3bc5a1` printed a sentence the board's own feed contradicts on 352 rows
+(the list's line on 342 boards whose feeds date roles this month, 326 of
+them served under a sibling Oracle site; the older-roles sentence on 7; the
+full-read sentence on 3), and on 328 with the same inputs 49 hours later.
+The page now says only "No roles are listed on this page right now." where
+the board's figures and the page disagree, and "not read" only where our
+own reads show it (25 rows): no false sentence on any corpus row. The
+design upgrade README, "The recheck round", has the table.
+
+**Round 3 (2026-10-25).** Two blockers, both on main and live before the
+hotfix. The zero column promised "Watch this board and your account will
+count its new postings when they appear" (and the toast "We'll email you
+when they post new roles") on Oracle sub-sites whose requisitions a sibling
+site holds, where a watch on the token counts nothing: Delaney at the Green
+states 3 roles, all served as `eexs~us2~CX_3001`. The promise is now made
+only where the curve has answered, the board states no total, the newest
+observed day was a complete read and the token is no Oracle site
+(`watchPromiseOf`): 10,200 of the corpus's 12,564 zero pages, none of the
+326 whose roles a sibling serves. And every zero page's head claimed open
+roles; it now reads "{X} jobs" and "{X}: no roles are listed on this page
+right now.". 81j also needs each of the sitemap's first 4 Workday pages to
+state a fact line (a block of the 20 largest without facts PASSed 22 of
+24), and says when the sitemap stops listing them in the bake's order. "Not
+read" from a windowed bucket is gone (two true rows lose it), so it now
+prints on 23 corpus rows. The design upgrade README, "Round 3", has the
+table. (Round 4 corrects two of these words: the Oracle sub-site dedupe is
+not the only one that empties a site, and "none of the 326" was measured with
+a sibling check that matched exact ids.)
+
+**Round 4 (2026-10-25).** The final recheck of `474dca30` left three minors,
+each closed with a test that failed first on it. First, job-board's Workday
+cross-site dedupe also empties sites: it skips a new requisition copy
+(`R31339-1`) on any site whenever another site of the tenant stores the base
+id (`R31339`), so `strayer~wd1~CU_Careers` listed 9 roles dated this month
+and served none, 7 of them copies of `strayer~wd1~SEI`'s. The zero page now
+also withholds its watch promise on every Workday site of a tenant with more
+than one catalogued site (the safe default; 511 tenants in
+`src/lib/company/workday-multi-site-tenants.ts`, generated from `sources.ts`
+by `scripts/workday-multi-site-tenants.ts`, with a guard that recomputes it).
+The corpus's sibling check matches a Workday copy by its base id: six named
+rows (`strayer~wd1~CU_Careers`, `akumincorp~wd5~adgcareers`,
+`agf~wd3~AGF_Careers`, `anaheimducks~wd5~ocViBE`,
+`integritymarketing~wd1~RitterInsuranceMarketing`,
+`tcsedsystem~wd1~SaybrookUniversityCareers`) are sibling-held, all with a
+stated total, so 332 rows in all; the promise is made on 10,178 of the
+12,564 zero pages (22 Workday pages on multi-site tenants, `boeing~wd1~PRIDE`
+among them, lose it; 16 on single-site tenants keep it) and on none of the
+332. Second, 81c now reads round 3 in the served bundle: the zero page's
+head keys and the watch sentence gated on the model's `watchPromise`; live
+both FAIL until the publish, a production build of the branch PASSes, and
+the watch lines print INFO until the gate is served. Boeing's PRIDE site is
+a fourth zero board there. Third, 76 L9-11's price rule is INFO: the
+retired pass's own copy, its names (now with `/agents/pass`) and 83 C1's
+list FAIL; every other $29 sentence that does not name Freelance Boost is
+printed for a person to read. The design upgrade README, "Round 4", has the
+table and the residuals.

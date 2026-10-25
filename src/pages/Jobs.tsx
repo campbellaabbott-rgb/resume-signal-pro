@@ -69,6 +69,7 @@ import { buildLanderModel, isUsajobsBoard, FEDERAL_LISTING_RESULT_CAP, type Open
 import { keyBelongsToALayer } from "@/lib/board-keys";
 import { tPlural } from "@/lib/company/plural";
 import { bakedLanderName, cachedLanderName, rememberLanderName } from "@/lib/display-name";
+import { zeroPageHead } from "@/components/jobs/company/CompanyHeader";
 import { JobCard } from "@/components/jobs/listing/JobCard";
 import { PostingDetail } from "@/components/jobs/listing/PostingDetail";
 import { PostingSheet } from "@/components/jobs/listing/PostingSheet";
@@ -5006,7 +5007,11 @@ function JobsBoard({ boardId }: { boardId: string }) {
   // Watch-company: a saved search scoped to this employer — new postings show
   // up in the account's "new since last look" counts and the weekly digest.
   // Pure reuse of the saved-search machinery; nothing new to go stale.
-  const watchCompany = async () => {
+  // `promise` is the lander model's watchPromise: on a zero page whose board
+  // states roles this token never lists (a sub-site whose requisitions a
+  // sibling site holds), the watch can count nothing, so the toast says only
+  // that it is watching (round 3 review, 2026-10-25).
+  const watchCompany = async (promise = true) => {
     if (!landerCompany) return;
     if (!session) return requireAuth();
     // digest_opt_in was never set here, so "watching" fed the account counts
@@ -5042,7 +5047,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
     }
     toast({
       title: t("jobsPage.watchSaved", "Watching {{company}}", { company: landerCompanyName }),
-      description: t("jobsPage.watchSavedDescAlert", "We'll email you when they post new roles (daily at most — unsubscribe any time), and your account shows the new-since-last-look count."),
+      ...(promise ? { description: t("jobsPage.watchSavedDescAlert", "We'll email you when they post new roles (daily at most — unsubscribe any time), and your account shows the new-since-last-look count.") } : {}),
     });
   };
 
@@ -6457,7 +6462,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
       relatedTotal: typeof data?.relatedTotal === "number" ? data.relatedTotal : null,
       listAnsweredAt,
       boardTotal: curveAnsweredAt === null ? undefined : hiringCurve
-        ? { total: hiringCurve.feed_total, readAt: hiringCurve.feed_read_at, state: hiringCurve.feed_state, capped: hiringCurve.feed_capped }
+        ? { total: hiringCurve.feed_total, readAt: hiringCurve.feed_read_at, state: hiringCurve.feed_state, capped: hiringCurve.feed_capped, bucket: hiringCurve.observability_bucket, trackingDays: hiringCurve.tracking_days }
         : null,
       undatedOpen: undated === null || undated === undefined || undated === "" ? null : Number(undated),
     });
@@ -6465,6 +6470,11 @@ function JobsBoard({ boardId }: { boardId: string }) {
     landerCollision, loading, error, budgetRefusal, landerRecord, landerGrowthVerdict, landerLayoffFilings, landerVisitorFilters, listAnsweredAt,
     landerReplyCurrent, landerUncarried]);
   const onCompanyPage = !!landerCompany && !!landerModel;
+  // The polite region's empty line (below): a zero company page has no filter
+  // to blame, so it says the page's own line (round 3 review, 2026-10-25).
+  const a11yEmpty = landerModel?.variant === "zero"
+    ? t("companyProfile.zero.answer", "No roles are listed on this page right now.")
+    : t("jobsPage.a11yNoResults", "No openings match these filters.");
   // A PAGE THAT IS ONE EMPLOYER'S. A board name two hiring systems share and
   // the USAJOBS hub are not: their rows belong to different employers (or
   // federal agencies), so each card and the pane name the row's own employer,
@@ -8226,6 +8236,11 @@ function JobsBoard({ boardId }: { boardId: string }) {
               "{{n}} hiring system carries a board with this name. Nothing we hold says whether they are one employer, so this page shows no employer facts.",
               "{{n}} hiring systems carry a board with this name. Nothing we hold says whether they are one employer, so this page shows no employer facts."),
           }
+        // A zero page lists no roles: its head names none either (round 3
+        // review, 2026-10-25: every zero page's title and description said
+        // the employer had open roles).
+        : landerModel.variant === "zero"
+        ? zeroPageHead(t, landerModel, landerCompany)
         : !landerModel.name.name || landerModel.name.generic
           ? {
               title: t("companyProfile.h1Generic", "Roles on the “{{label}}” board", { label: landerModel.name.name ?? landerCompany }),
@@ -8282,7 +8297,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
             : shownCount === 0 && data?.sortUnavailable
             ? t("jobsPage.sortPayFailedTitle", "We couldn't read pay for this search just now")
             : shownCount === 0
-            ? t("jobsPage.a11yNoResults", "No openings match these filters.")
+            ? a11yEmpty
             : t("jobsPage.a11yResults", "{{count}} openings shown.", { count: shownCount })}
         </p>
         <div className="container max-w-4xl lg:max-w-[1400px]">
@@ -8317,7 +8332,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
               profile={landerProfile}
               employerChipTip={hiringCurve ? hiringBadgeTip(landerRecord, landerGrowthVerdict, hiringCurve, landerGrowth) : undefined}
               boardReadAt={landerBoardReadAt}
-              onWatch={() => { void watchCompany(); }}
+              onWatch={() => { void watchCompany(landerModel.watchPromise); }}
               onShowOnly={(s) => setVendor(s)}
               boardsInPanel
             />

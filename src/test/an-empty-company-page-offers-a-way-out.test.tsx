@@ -5,8 +5,9 @@
  * all of that -- Loosening one filter helps: Remove Blackstone" though the
  * visitor had set no filter, beside a pane saying "Select a posting" with
  * nothing to select, and listed no similar employers. Held here:
- *   - a carried board with no open roles is the zero variant: the board's own
- *     read time, Watch, three similar employers, and no filter copy;
+ *   - a carried board with no open roles is the zero variant: the page's own
+ *     line (no read time beside it, 2026-10-25), Watch, three similar
+ *     employers, and no filter copy;
  *   - a visitor's filter that empties the list is NOT the zero variant;
  *   - a token we do not carry says so, with a search and the directory link,
  *     and only when the page knows it is not carried (unknown is never
@@ -45,19 +46,19 @@ function Where() {
 }
 
 describe("a carried board with no open roles", () => {
-  it("is the zero variant, and the header answers with the board's read time", () => {
+  it("is the zero variant, and the header answers with the page's own line and no read time", () => {
     const m = buildLanderModel(input());
     expect(m.variant).toBe("zero");
     render(<MemoryRouter><CompanyLanderHeader model={m} token="blackstone" labelOf={() => "Workday"} source="workday" boardReadAt={minsAgo(46)} onWatch={() => {}} onShowOnly={() => {}} /></MemoryRouter>);
-    expect(document.querySelector("[data-company-answer]")?.textContent).toBe("No roles dated in the last 30 days · board read 46 min ago");
+    expect(document.querySelector("[data-company-answer]")?.textContent).toBe("No roles are listed on this page right now.");
   });
 
-  it("says so with the read time, offers Watch and three similar employers, and never uses filter copy", () => {
+  it("says so, offers Watch and three similar employers, and never uses filter copy", () => {
     const onWatch = vi.fn();
     const m = buildLanderModel(input());
     render(<MemoryRouter><CompanyEmptyState model={m} token="blackstone" boardReadAt={minsAgo(46)} similar={[1, 2, 3, 4, 5].map(sim)} onWatch={onWatch} /></MemoryRouter>);
-    expect(screen.getByRole("heading", { level: 2, name: "No roles at Blackstone dated in the last 30 days" })).toBeInTheDocument();
-    expect(screen.getByText("board read 46 min ago")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "No roles are listed on this page right now." })).toBeInTheDocument();
+    expect(screen.queryByText(/board read/)).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Watch Blackstone" }));
     expect(onWatch).toHaveBeenCalledTimes(1);
     const links = screen.getAllByRole("link").map((a) => a.getAttribute("href"));
@@ -83,7 +84,7 @@ describe("a carried board with no open roles", () => {
     expect(m.sections.employerChip).toBe(false);
     render(<MemoryRouter><CompanyLanderHeader model={m} token="blackstone" labelOf={() => "Workday"} source="workday" boardReadAt={minsAgo(46)} onWatch={() => {}} onShowOnly={() => {}} /></MemoryRouter>);
     const header = document.querySelector("[data-company-header]")?.textContent ?? "";
-    expect(header).toContain("No roles dated in the last 30 days");
+    expect(header).toContain("No roles are listed on this page right now.");
     expect(header).not.toMatch(/Actively hiring/);
     expect(header).not.toMatch(/Live jobs straight from/);
     expect(document.querySelector("[data-employer-chip]")).toBeNull();

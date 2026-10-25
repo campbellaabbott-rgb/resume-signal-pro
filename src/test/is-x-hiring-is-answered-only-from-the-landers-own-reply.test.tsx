@@ -91,9 +91,9 @@ const mount = (url = "/jobs/company/acme") => {
 const text = () => document.body.textContent ?? "";
 // Pass B (2026-10-12): the lander is the company vocabulary's; its one answer is
 // the header's figure line, and a board with nothing in the window is the zero
-// variant ("No roles at {{name}} dated in the last 30 days").
+// variant, whose line says only that this page lists no roles (2026-10-25).
 const answer = () => document.querySelector("[data-company-answer]")?.textContent ?? "";
-const ZERO = /No roles (?:at Acme|on this board) dated in the last 30 days/;
+const ZERO = /No roles are listed on this page right now\./;
 const settle = (ms: number) => act(async () => { await new Promise((r) => setTimeout(r, ms)); });
 const listReads = () => invoke.mock.calls
   .filter(([fn, o]) => fn === "job-board" && (o as { body?: Body })?.body?.action === "list"
