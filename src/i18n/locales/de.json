@@ -4255,7 +4255,7 @@
     "intentUndone": "Nach {{phrases}} als Wörtern gesucht, nicht als Filter.",
     "intentRedo": "Wieder als Filter anwenden",
     "facetWithheld": "Bei einer Textsuche stehen keine Zahlen neben den Bereichen: Wir würden sie anders zählen als die Liste, sodass sie nicht zu ihr passen würden.",
-    "excludedTerms": "Ergebnisse mit {{terms}} werden ausgeblendet. Entfernen Sie das „not“ oder das „-“, um sie zu sehen.",
+    "excludedTerms": "Ergebnisse, deren Titel {{terms}} enthält, werden ausgeblendet. Entfernen Sie das „not“ oder das „-“, um sie zu sehen.",
     "salaryStatedOnly": "Nach Gehalt sortiert — daher erscheinen hier nur Stellen mit Gehaltsangabe.",
     "locationExpanded": "{{from}} wurde als {{places}} durchsucht.",
     "salaryFromQuery": "{{amount}} in deiner Suche wurde als Mindestgehalt übernommen.",

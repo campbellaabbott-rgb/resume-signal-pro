@@ -4255,7 +4255,7 @@
     "intentUndone": "Searched for {{phrases}} as words, not as a filter.",
     "intentRedo": "Apply them as filters again",
     "facetWithheld": "No counts beside the fields for a text search: we would count them a different way from the list, so they would not match it.",
-    "excludedTerms": "Hiding results that mention {{terms}}. Remove the “not” or the “-” to see them.",
+    "excludedTerms": "Hiding results whose title contains {{terms}}. Remove the “not” or the “-” to see them.",
     "salaryStatedOnly": "Sorted by pay, so only roles that state a salary appear here.",
     "locationExpanded": "Searched {{from}} as {{places}}.",
     "salaryFromQuery": "Read {{amount}} in your search as a minimum pay filter.",

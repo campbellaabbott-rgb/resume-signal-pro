@@ -4255,7 +4255,7 @@
     "intentUndone": "{{phrases}} a été recherché comme des mots, pas comme un filtre.",
     "intentRedo": "Les appliquer à nouveau comme filtres",
     "facetWithheld": "Pas de chiffres à côté des domaines pour une recherche texte : nous les compterions autrement que la liste, et ils ne lui correspondraient pas.",
-    "excludedTerms": "Les résultats mentionnant {{terms}} sont masqués. Retirez le « not » ou le « - » pour les afficher.",
+    "excludedTerms": "Les résultats dont le titre contient {{terms}} sont masqués. Retirez le « not » ou le « - » pour les afficher.",
     "salaryStatedOnly": "Trié par salaire — seules les offres qui indiquent une rémunération apparaissent ici.",
     "locationExpanded": "{{from}} a été recherché comme {{places}}.",
     "salaryFromQuery": "{{amount}} dans ta recherche a été appliqué comme salaire minimum.",

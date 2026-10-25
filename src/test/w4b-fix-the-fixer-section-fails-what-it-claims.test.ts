@@ -81,7 +81,7 @@ function healthy(over: Partial<Record<string, Route | null>> = {}, build = "30")
   Object.assign(base, {
     cover: { match: `^POST ${FN}/generate-application-answers .*cover-note`, status: 401, body: JSON.stringify({ error: "sign_in_required" }) },
     offset: { match: `^POST ${FN}/job-board .*"offset":10001`, status: 400, body: JSON.stringify({ error: "offset_too_deep" }) },
-    boston: { match: `^POST ${FN}/job-board .*night shift in Boston`, body: JSON.stringify({ jobs: [], excludedTerms: ["night shift"], intentFilters: ["in Boston"] }) },
+    boston: { match: `^POST ${FN}/job-board .*night shift in Boston`, body: JSON.stringify({ jobs: [], excludedTerms: ["night"], intentFilters: ["in Boston"] }) },
     tx: { match: `^POST ${FN}/job-board .*not in Texas`, body: JSON.stringify({ jobs: [], ignoredFilters: ["placeExclusion"] }) },
     cursor: { match: `^POST ${FN}/job-board .*"cursor"`, body: JSON.stringify({ jobs: [] }) },
   });
@@ -116,6 +116,11 @@ describe("each regression reads FAIL", () => {
   it("'not' swallowing the place again", () => {
     const { lines } = run(healthy({ boston: { match: `^POST ${FN}/job-board .*night shift in Boston`, body: JSON.stringify({ jobs: [], excludedTerms: ["night shift in boston"] }) } }));
     expect(has(lines, "FAIL", /night shift in Boston/), show(lines)).toBe(true);
+  });
+
+  it("the descoped phrase rule's answer (the compound taken whole) instead of origin/main's one word", () => {
+    const { lines } = run(healthy({ boston: { match: `^POST ${FN}/job-board .*night shift in Boston`, body: JSON.stringify({ jobs: [], excludedTerms: ["night shift"], intentFilters: ["in Boston"] }) } }));
+    expect(has(lines, "FAIL", /night shift in Boston" excludes \["night shift"\]/), show(lines)).toBe(true);
   });
 
   it("a cursor-paged browse refused past 10,000", () => {

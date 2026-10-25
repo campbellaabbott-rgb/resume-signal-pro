@@ -4256,7 +4256,7 @@
     "intentUndone": "Buscamos {{phrases}} como palabras, no como un filtro.",
     "intentRedo": "Volver a aplicarlas como filtros",
     "facetWithheld": "Sin cifras junto a los campos en una búsqueda de texto: las contaríamos de otra forma que la lista, así que no coincidirían con ella.",
-    "excludedTerms": "Se ocultan los resultados que mencionan {{terms}}. Quita el «not» o el «-» para verlos.",
+    "excludedTerms": "Se ocultan los resultados cuyo título contiene {{terms}}. Quita el «not» o el «-» para verlos.",
     "salaryStatedOnly": "Ordenado por salario, así que aquí solo aparecen las ofertas que lo indican.",
     "locationExpanded": "Buscamos {{from}} como {{places}}.",
     "salaryFromQuery": "Interpretamos {{amount}} en tu búsqueda como salario mínimo.",

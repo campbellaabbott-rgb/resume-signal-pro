@@ -4255,7 +4255,7 @@
     "intentUndone": "Hinanap ang {{phrases}} bilang mga salita, hindi bilang filter.",
     "intentRedo": "Ilapat ulit bilang mga filter",
     "facetWithheld": "Walang bilang sa tabi ng mga larangan sa paghahanap ng teksto: iba ang paraan ng pagbilang namin dito kaysa sa listahan, kaya hindi ito tutugma.",
-    "excludedTerms": "Itinatago ang mga resultang bumabanggit ng {{terms}}. Alisin ang “not” o ang “-” para makita ang mga ito.",
+    "excludedTerms": "Itinatago ang mga resultang may {{terms}} sa pamagat. Alisin ang “not” o ang “-” para makita ang mga ito.",
     "salaryStatedOnly": "Nakaayos ayon sa sahod — kaya ang mga trabahong may nakasaad na sahod lang ang lumalabas dito.",
     "locationExpanded": "Hinanap ang {{from}} bilang {{places}}.",
     "salaryFromQuery": "Binasa ang {{amount}} sa iyong paghahanap bilang pinakamababang sahod.",

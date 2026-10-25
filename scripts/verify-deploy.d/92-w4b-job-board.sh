@@ -23,8 +23,6 @@
 #     the first answer that routes (or the last);
 #   - 'accountant' takes the SIMPLE route and its first page is accountants,
 #     not account managers (S12-018);
-#   - 'nurse not night shift' serves no night-shift title, and 'driver
-#     -"box truck"' no box-truck title (S12-017);
 #   - 'nurse jobs not in Texas' does not lift Texas into the location filter,
 #     names placeExclusion in ignoredFilters, and its first page is not all
 #     Texas rows (S12-172: the words "not in Texas" left in the text served
@@ -37,7 +35,9 @@
 # INFO only: the experience and country re-derivations (S12-013, S12-037) run
 # over the rotation after the deploy, so their lines print counts to watch,
 # not a verdict. The salary miner (S12-019) left wave 4 on 2026-10-25 and is
-# main's, so this section reads nothing about it.
+# main's, so this section reads nothing about it. So did the excluded-phrase
+# rule (S12-017): the exclusion is origin/main's again, so this section reads
+# no negated search (section 92 fixer3 reads main's answers).
 #
 # READ-ONLY. job-board list, exists and status reads on the probe budget, and
 # OPTIONS preflights. No write, no maintenance action, no metered fetch.
@@ -63,7 +63,7 @@ VD92_ARR=$(curl -s -m 60 -o /dev/null -w '%{http_code}' -X POST "$B/functions/v1
 VD92_LONG=$(node -e 'process.stdout.write("greenhouse:vd92:"+"x".repeat(20000))')
 VD92_EX=$(curl -s -m 60 -o /tmp/vd_92_exists.json -w '%{http_code}' -X POST "$B/functions/v1/job-board" -H "Content-Type: application/json" -H "x-rb-budget: probe" -H "apikey: $K" -H "Authorization: Bearer $K" -d "{\"action\":\"exists\",\"ids\":[\"$VD92_LONG\"]}")
 
-# S12-124, S12-014, S12-018, S12-017, S12-172, S12-035: list reads.
+# S12-124, S12-014, S12-018, S12-172, S12-035: list reads.
 J '{"action":"list","q":123,"limit":1}' > /tmp/vd_92_qnum.json
 J '{"action":"list","q":"\u0000","limit":1}' > /tmp/vd_92_qnul.json
 for VD92_W in cvs UPS; do
@@ -76,8 +76,6 @@ for VD92_W in cvs UPS; do
   echo "INFO  q $VD92_W was asked $VD92_TRY time(s) before it was judged (the live keys are built after an isolate's first text search)"
 done
 J '{"action":"list","q":"accountant","limit":20}' > /tmp/vd_92_acct.json
-J '{"action":"list","q":"nurse not night shift","limit":60}' > /tmp/vd_92_night.json
-J '{"action":"list","q":"driver -\"box truck\"","limit":60}' > /tmp/vd_92_box.json
 J '{"action":"list","q":"nurse jobs not in Texas","limit":20}' > /tmp/vd_92_nottx.json
 J '{"action":"list","q":"cashier","sort":"salary","limit":60}' > /tmp/vd_92_pay.json
 J '{"action":"list","q":"cashier","experience":["expert"],"limit":5}' > /tmp/vd_92_exp.json
@@ -116,14 +114,6 @@ for(const [f,word,re] of [["/tmp/vd_92_cvs.json","cvs",/cvs/i],["/tmp/vd_92_ups.
  const acct=rs.filter((r)=>/accountan/i.test(String(r.title||"")));const mgr=rs.filter((r)=>/\baccount (manager|executive|director|representative)\b/i.test(String(r.title||""))&&!/accountan/i.test(String(r.title||"")));
  if(rs.length===0)ok(false,"q \"accountant\" answered no rows");
  else ok(j.searchRoute==="SIMPLE"&&mgr.length===0&&acct.length>=Math.ceil(0.8*rs.length),"q \"accountant\" takes route "+j.searchRoute+" (want SIMPLE): "+acct.length+" of "+rs.length+" first titles say accountant, "+mgr.length+" are account managers or executives (want 80% or more, and 0)"+(mgr.length?": "+mgr.slice(0,3).map((r)=>r.title).join(" | "):""));}
-
-// S12-017
-{const j=rd("/tmp/vd_92_night.json");const rs=rows(j);const bad=rs.filter((r)=>/\bnight[- ]?shifts?\b/i.test(String(r.title||"")));
- if(rs.length===0)ok(false,"q \"nurse not night shift\" answered no rows (a lone \"not\" phrase must not empty the board)");
- else ok(bad.length===0,"q \"nurse not night shift\" serves "+rs.length+" rows, "+bad.length+" with night shift in the title (want 0)"+(bad.length?": "+bad.slice(0,3).map((r)=>r.title).join(" | "):""));
- const b=rd("/tmp/vd_92_box.json");const bs=rows(b);const bb=bs.filter((r)=>/\bbox[- ]?trucks?\b/i.test(String(r.title||"")));
- if(bs.length===0)info("q driver -\"box truck\" answered no rows, so the phrase exclusion is not judged");
- else ok(bb.length===0,"q driver -\"box truck\" serves "+bs.length+" rows, "+bb.length+" with box truck in the title (want 0)"+(bb.length?": "+bb.slice(0,3).map((r)=>r.title).join(" | "):""));}
 
 // S12-172
 {const j=rd("/tmp/vd_92_nottx.json");const named=JSON.stringify((j&&j.intentFilters)||[]);

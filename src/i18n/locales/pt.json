@@ -4255,7 +4255,7 @@
     "intentUndone": "Pesquisámos {{phrases}} como palavras, não como um filtro.",
     "intentRedo": "Voltar a aplicá-las como filtros",
     "facetWithheld": "Sem números ao lado das áreas numa pesquisa de texto: contá-los-íamos de outra forma que a lista, por isso não coincidiriam com ela.",
-    "excludedTerms": "A ocultar resultados que mencionam {{terms}}. Remova o “not” ou o “-” para os ver.",
+    "excludedTerms": "A ocultar resultados cujo título contém {{terms}}. Remova o “not” ou o “-” para os ver.",
     "salaryStatedOnly": "Ordenado por salário — só aparecem aqui as vagas que o indicam.",
     "locationExpanded": "Pesquisámos {{from}} como {{places}}.",
     "salaryFromQuery": "Interpretámos {{amount}} na tua pesquisa como salário mínimo.",
