@@ -19,7 +19,7 @@ for T in "Workday company pages were missing their facts for a week" \
          "What a company page says when it lists no roles" \
          "Company pages lead with the jobs, and their figures say what they count" \
          "A posting's own page says what each fact rests on" \
-         "Our home page, and the copy AI assistants read, stopped saying an agent applies for you" \
+         "The top of our home page, and the copy crawlers and AI assistants read, stopped saying an agent applies for you" \
          "A calmer design, in one dark color scheme" \
          "is on the sign-in page" \
          "Sign in with Google, and a guard against accounts set up with your address" \
