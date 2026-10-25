@@ -522,7 +522,7 @@
     },
     "applyAgent": {
       "title": "De sollicitatie-agent: echte sollicitatievragen, beantwoord vanuit je cv — nooit verzonnen",
-      "description": "Greenhouse-vacatures hebben nu een \"Antwoorden voorbereiden\"-knop. De agent haalt de echte vragen van de sollicitatie uit het systeem van het bedrijf zelf, schrijft antwoorden die strikt op je cv gebaseerd zijn en markeert wat hij niet kan onderbouwen in plaats van het te verzinnen — vragen over identiteit, salaris en demografie blijven altijd aan jou. Hetzelfde paneel past je cv aan op de functie, schrijft een sollicitatiebrief, bereidt waarschijnlijke interviewvragen voor, waarschuwt als je al gesolliciteerd hebt en toont de eerlijkheidsgarantie vooraf. Jij controleert alles en verstuurt op de site van het bedrijf zelf — hij solliciteert nooit namens jou."
+      "description": "Greenhouse-vacatures hebben nu een \"Antwoorden voorbereiden\"-knop. De agent haalt de echte vragen van de sollicitatie uit het systeem van het bedrijf zelf, schrijft antwoorden die strikt op je cv gebaseerd zijn en markeert wat hij niet kan onderbouwen in plaats van het te verzinnen — vragen die hij herkent als vragen over identiteit, salaris of demografie blijven aan jou. Hetzelfde paneel past je cv aan op de functie, schrijft een sollicitatiebrief, bereidt waarschijnlijke interviewvragen voor, waarschuwt als je al gesolliciteerd hebt en toont de eerlijkheidsgarantie vooraf. Jij controleert alles en verstuurt op de site van het bedrijf zelf — hij solliciteert nooit namens jou."
     },
     "explainableFit": {
       "title": "Fit die je kunt lezen — wat je hebt, wat je toevoegt, en alleen meldingen bij sterke matches",

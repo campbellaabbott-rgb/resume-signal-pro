@@ -350,7 +350,7 @@ export function ApplyProfilePanel({ userId }: { userId: string }) {
       </div>
       <p className="text-sm text-muted-foreground mb-5">
         {t("applyProfile.intro",
-          "Answer these once and the agent stops having to ask. Anything you leave blank isn't guessed at — applications that need it wait for you instead.")}
+          "Answer these once and the agent stops having to ask. When a question it recognizes needs an answer you left blank, that application waits for you.")}
       </p>
 
       {readiness.gaps.length === 0 ? (
@@ -536,7 +536,7 @@ export function ApplyProfilePanel({ userId }: { userId: string }) {
         </h4>
         <p className="text-xs text-muted-foreground mb-4">
           {t("applyProfile.legalIntro",
-            "The agent never guesses at these — a wrong answer here can void an application. \"Not stated\" is a real answer: it means the agent waits for you on any form that asks.")}
+            "A wrong answer here can void an application. The agent uses these answers on the questions it recognizes as asking about you, and it can miss one worded unusually. \"Not stated\" is a real answer: on a question it recognizes, the agent waits for you.")}
         </p>
 
         <TriToggle
@@ -677,7 +677,7 @@ export function ApplyProfilePanel({ userId }: { userId: string }) {
           />
           <span>
             {t("applyProfile.demographics",
-              "Answer voluntary diversity questions myself. Left off, the agent declines them on your behalf — it never fills them in for you.")}
+              "Answer voluntary diversity questions myself. Left off, the agent declines the diversity questions it recognizes on your behalf rather than filling them in.")}
           </span>
         </label>
       </div>

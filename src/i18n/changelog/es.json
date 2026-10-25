@@ -522,7 +522,7 @@
     },
     "applyAgent": {
       "title": "El agente de solicitud: preguntas reales de la postulación, respondidas desde tu currículum — nunca inventadas",
-      "description": "Las ofertas de Greenhouse ahora llevan un botón de \"Preparar respuestas\". El agente obtiene las preguntas reales de la postulación desde el propio sistema de la empresa, redacta respuestas basadas estrictamente en tu currículum y señala lo que no puede respaldar en lugar de inventarlo — las preguntas de identidad, salario y demografía siempre quedan para ti. El mismo panel adapta tu currículum al puesto, redacta una carta de presentación, prepara posibles preguntas de entrevista, te avisa si ya postulaste y muestra la garantía de honestidad de frente. Tú revisas todo y envías en el sitio de la propia empresa — nunca postula por ti."
+      "description": "Las ofertas de Greenhouse ahora llevan un botón de \"Preparar respuestas\". El agente obtiene las preguntas reales de la postulación desde el propio sistema de la empresa, redacta respuestas basadas estrictamente en tu currículum y señala lo que no puede respaldar en lugar de inventarlo — las preguntas que reconoce como de identidad, salario o demografía quedan para ti. El mismo panel adapta tu currículum al puesto, redacta una carta de presentación, prepara posibles preguntas de entrevista, te avisa si ya postulaste y muestra la garantía de honestidad de frente. Tú revisas todo y envías en el sitio de la propia empresa — nunca postula por ti."
     },
     "explainableFit": {
       "title": "Afinidad que se entiende: qué tienes, qué añadir y alertas solo de coincidencias fuertes",

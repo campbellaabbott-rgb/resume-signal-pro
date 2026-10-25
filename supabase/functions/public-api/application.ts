@@ -12,10 +12,10 @@
 //     and fails closed: a payload that does not parse is "no form read", never
 //     an empty form;
 //   - _shared/self-apply.ts decides who answers each question, DEFAULT-DENY:
-//     only open questions about work done, and a short list of motivation
-//     questions, are draft_from_your_cv; every factual question (work
-//     authorisation, sponsorship, salary, references, gaps, terminations),
-//     every demographic question and every consent box is the person's own.
+//     a question is draft_from_your_cv only when it reads as an open question
+//     about work done or a short motivation question; the rest are the
+//     person's. It reads words, so an unusually worded question about the
+//     person can still be marked draft_from_your_cv, and the text below says so.
 //
 // What this file adds is the /v1 shape around them, and nothing that decides.
 // It never fills or submits anything: route.submitter is always "you".
@@ -51,16 +51,16 @@ export const FORM_UNREACHABLE_RETRY_S = 120;
 
 /** What the /v1 index says this route does. Every clause is something the code below does. */
 export const APPLICATION_DESCRIPTION =
-  `GET /v1/jobs/{id}/application — the employer's own application form for a live posting, when its hiring system publishes one (${VENDOR_PROSE}), and each posting's form is cached for 24 hours. Any other posting answers form.source "not-published" beside its apply_url. Each question carries answeredBy under a default-deny rule: an assistant may draft only open questions about work the person has done and a short list of motivation questions, from a CV the person supplied; every factual, demographic and consent question is the person's own. Nothing is filled or submitted: route.submitter is always "you". A posting from a withheld hiring system answers 451; a hiring system that does not answer is a 503 with Retry-After. Metered as one call.`;
+  `GET /v1/jobs/{id}/application — the employer's own application form for a live posting, when its hiring system publishes one (${VENDOR_PROSE}), and each posting's form is cached for 24 hours. Any other posting answers form.source "not-published" beside its apply_url. Each question carries answeredBy under a default-deny rule: draft_from_your_cv only where the question reads as an open question about work the person has done or a short motivation question, and the person's own everywhere else. The rule reads the question's words, so an unusually worded factual or protected question can be marked draft_from_your_cv and some work questions are marked you; the person reads every answer before they send. Nothing is filled or submitted: route.submitter is always "you". A posting from a withheld hiring system answers 451; a hiring system that does not answer is a 503 with Retry-After. Metered as one call.`;
 
 /** The four answeredBy values, said once, in the body of every 200. */
 export const ANSWERED_BY_MEANS: Readonly<Record<SelfApplyQuestion["answeredBy"], string>> = Object.freeze({
   you:
-    "The person answers in their own words: every factual question (work authorisation, sponsorship, salary, start date, relocation, criminal or employment history including terminations, reasons for leaving and gaps, references, grades, age), every demographic question (voluntary:true; never answered for them) and every consent or attestation box. cvMayHelp:true marks an open question their CV may help them write; it is still theirs to answer.",
+    "The person answers in their own words. This is the mark for the questions that read as about them: factual ones (work authorisation, sponsorship, salary, start date, relocation, criminal or employment history including terminations, reasons for leaving and gaps, references, grades, age), demographic ones (voluntary:true; an assistant must not answer them for the person) and consent or attestation boxes. cvMayHelp:true marks an open question their CV may help them write; it is still theirs to answer.",
   your_details: "Contact details the person enters: name, email, phone, address, profile links.",
   your_documents: "A file the person attaches themselves: CV, cover letter, portfolio.",
   draft_from_your_cv:
-    "An open question about work the person has done, or a short motivation question (why this role or employer, cover-letter text, anything else to add). An assistant may draft it only from a CV the person supplied, must flag anything the CV does not support, and shows the draft to the person before it is used.",
+    "A question that reads as an open question about work the person has done, or a short motivation question (why this role or employer, cover-letter text, anything else to add). The mark is read from the words and can miss an unusually worded question about the person: an assistant asks the person instead whenever the question asks about them. Otherwise it may draft it only from a CV the person supplied, must flag anything the CV does not support, and shows the draft to the person before it is used.",
 });
 
 /** Said in the body of every 200. */

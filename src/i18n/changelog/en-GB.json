@@ -522,7 +522,7 @@
     },
     "applyAgent": {
       "title": "The apply agent: real application questions, answered from your CV — never invented",
-      "description": "Greenhouse postings now carry a \"Prep answers\" button. The agent pulls the application's real questions from the company's own system, drafts answers grounded strictly in your CV, and flags anything it can't support instead of inventing it — identity, salary, and demographic questions are always left to you. The same panel tailors your CV for the role, drafts a cover letter, preps likely interview questions, warns you if you already applied, and states the honesty guarantee up front. You review everything and submit on the company's own site — it never applies for you."
+      "description": "Greenhouse postings now carry a \"Prep answers\" button. The agent pulls the application's real questions from the company's own system, drafts answers grounded strictly in your CV, and flags anything it can't support instead of inventing it — questions it recognises as asking for your identity, salary or demographics are left to you. The same panel tailors your CV for the role, drafts a cover letter, preps likely interview questions, warns you if you already applied, and states the honesty guarantee up front. You review everything and submit on the company's own site — it never applies for you."
     },
     "explainableFit": {
       "title": "Fit you can read — what you have, what to add, and alerts only for strong matches",

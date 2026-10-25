@@ -522,7 +522,7 @@
     },
     "applyAgent": {
       "title": "L'agent de candidature : les vraies questions du formulaire, répondues depuis votre CV — jamais inventées",
-      "description": "Les annonces Greenhouse portent désormais un bouton « Préparer les réponses ». L'agent récupère les vraies questions de la candidature depuis le système de l'entreprise, rédige des réponses strictement ancrées dans votre CV et signale ce qu'il ne peut pas étayer au lieu de l'inventer — les questions d'identité, de salaire et démographiques vous restent toujours réservées. Le même panneau adapte votre CV au poste, rédige une lettre de motivation, prépare les questions d'entretien probables, vous prévient si vous avez déjà candidaté et affiche la garantie d'honnêteté d'emblée. Vous relisez tout et envoyez sur le site de l'entreprise — il ne candidate jamais à votre place."
+      "description": "Les annonces Greenhouse portent désormais un bouton « Préparer les réponses ». L'agent récupère les vraies questions de la candidature depuis le système de l'entreprise, rédige des réponses strictement ancrées dans votre CV et signale ce qu'il ne peut pas étayer au lieu de l'inventer — les questions qu'il reconnaît comme portant sur l'identité, le salaire ou les données démographiques vous restent réservées. Le même panneau adapte votre CV au poste, rédige une lettre de motivation, prépare les questions d'entretien probables, vous prévient si vous avez déjà candidaté et affiche la garantie d'honnêteté d'emblée. Vous relisez tout et envoyez sur le site de l'entreprise — il ne candidate jamais à votre place."
     },
     "explainableFit": {
       "title": "Une affinité lisible : ce que vous avez, quoi ajouter, et des alertes réservées aux fortes correspondances",

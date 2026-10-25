@@ -522,7 +522,7 @@
     },
     "applyAgent": {
       "title": "O agente de candidatura: perguntas reais da vaga, respondidas a partir do seu currículo — nunca inventadas",
-      "description": "As vagas do Greenhouse agora têm um botão de \"Preparar respostas\". O agente busca as perguntas reais da candidatura no próprio sistema da empresa, rascunha respostas estritamente baseadas no seu currículo e sinaliza o que não pode sustentar em vez de inventar — perguntas de identidade, salário e demografia ficam sempre com você. O mesmo painel adapta seu currículo à função, rascunha uma carta de apresentação, prepara prováveis perguntas de entrevista, avisa se você já se candidatou e mostra a garantia de honestidade logo de início. Você revisa tudo e envia no site da própria empresa — ele nunca se candidata por você."
+      "description": "As vagas do Greenhouse agora têm um botão de \"Preparar respostas\". O agente busca as perguntas reais da candidatura no próprio sistema da empresa, rascunha respostas estritamente baseadas no seu currículo e sinaliza o que não pode sustentar em vez de inventar — as perguntas que ele reconhece como de identidade, salário ou demografia ficam com você. O mesmo painel adapta seu currículo à função, rascunha uma carta de apresentação, prepara prováveis perguntas de entrevista, avisa se você já se candidatou e mostra a garantia de honestidade logo de início. Você revisa tudo e envia no site da própria empresa — ele nunca se candidata por você."
     },
     "explainableFit": {
       "title": "Compatibilidade que dá para ler — o que você tem, o que adicionar, e alertas só para matches fortes",

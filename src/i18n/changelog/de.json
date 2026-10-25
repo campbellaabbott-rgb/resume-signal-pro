@@ -522,7 +522,7 @@
     },
     "applyAgent": {
       "title": "Der Bewerbungsagent: echte Bewerbungsfragen, beantwortet aus deinem Lebenslauf — nie erfunden",
-      "description": "Greenhouse-Anzeigen tragen jetzt einen \"Antworten vorbereiten\"-Button. Der Agent holt die echten Fragen der Bewerbung aus dem System des Unternehmens, entwirft Antworten, die strikt in deinem Lebenslauf verankert sind, und markiert, was er nicht belegen kann, statt es zu erfinden — Fragen zu Identität, Gehalt und Demografie bleiben immer dir überlassen. Dasselbe Panel passt deinen Lebenslauf an die Stelle an, entwirft ein Anschreiben, bereitet wahrscheinliche Interviewfragen vor, warnt dich bei einer Doppelbewerbung und zeigt die Ehrlichkeitsgarantie vorneweg. Du prüfst alles und sendest auf der Seite des Unternehmens — er bewirbt sich nie für dich."
+      "description": "Greenhouse-Anzeigen tragen jetzt einen \"Antworten vorbereiten\"-Button. Der Agent holt die echten Fragen der Bewerbung aus dem System des Unternehmens, entwirft Antworten, die strikt in deinem Lebenslauf verankert sind, und markiert, was er nicht belegen kann, statt es zu erfinden — Fragen, die er als Fragen zu Identität, Gehalt oder Demografie erkennt, bleiben dir überlassen. Dasselbe Panel passt deinen Lebenslauf an die Stelle an, entwirft ein Anschreiben, bereitet wahrscheinliche Interviewfragen vor, warnt dich bei einer Doppelbewerbung und zeigt die Ehrlichkeitsgarantie vorneweg. Du prüfst alles und sendest auf der Seite des Unternehmens — er bewirbt sich nie für dich."
     },
     "explainableFit": {
       "title": "Fit zum Nachlesen — was du hast, was fehlt, und Alerts nur bei starken Treffern",

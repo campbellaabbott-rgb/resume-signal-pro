@@ -75,8 +75,10 @@ describe("the apply section", () => {
     expect(free).toContain(`when the employer uses ${formVendorPhrase("en")}, the application form too`);
     for (const v of MCP_FORM_VENDORS) expect(free).toContain(v.label);
     // Model behaviour is our instruction, never a guarantee.
-    expect(free).toMatch(/Resume Booster tells it to ask you every factual question/);
-    expect(section.textContent).toMatch(/Resume Booster tells your AI to ask you every factual question/);
+    expect(free).toMatch(/Resume Booster tells it to ask you the questions that look like they are about you/);
+    expect(free).toMatch(/can miss a question about you that is worded unusually, so read every answer before you send/);
+    expect(section.textContent).toMatch(/Resume Booster tells your AI to ask you the questions that look like they are about you/);
+    expect(section.textContent).toMatch(/some work questions come to you: read every answer before you send/);
     expect(section.textContent).toMatch(/You submit on the employer's own site/);
     expect(section.querySelector("[data-we-never-submit]")!.textContent).toMatch(/Resume Booster never submits anything for you\./);
     // The systems the retired agent could send on are not presented as a separate capability.

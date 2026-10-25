@@ -1288,6 +1288,7 @@ function applyMyselfDescription(vendors: readonly string[]): string {
     "Help the person apply to one posting themselves, on the employer's own site. When the employer uses " +
     `${vendorList(vendors)}, returns the employer's real application form: every question with its options, and who answers it ` +
     "(answeredBy: you, your_details, your_documents, or draft_from_your_cv for open questions about work done or motivation). " +
+    "answeredBy is read from the question's words and can be wrong: a question about the person worded unusually can be marked draft_from_your_cv, and some work questions are marked you. Rule (1) holds whatever the mark. " +
     "Otherwise returns the posting's apply link and the terms it uses. We never submit anything. " +
     `Rules for helping someone apply: ${HONESTY_RULES}`
   );
@@ -1904,7 +1905,7 @@ const PROMPTS: readonly Prompt[] = [
       `3) Ask me every question whose answeredBy is "you" and use my words; explain a question whose sponsorshipSense is "inverted" before I answer it. ` +
       `"your_details" questions are my contact details: ask me. "your_documents": I attach the file. ` +
       `4) Leave voluntary demographic questions and every consent to me. ` +
-      `5) Draft only the questions marked draft_from_your_cv, only from my CV; flag what it does not support, and show me every draft before using it. ` +
+      `5) Draft only the questions marked draft_from_your_cv, only from my CV; if one of them asks about me (my status, pay, dates, history or identity), ask me instead; flag what it does not support, and show me every draft before using it. ` +
       `6) If you have a browser tool: open applyUrl, enter only what I approved (your browser may ask me first), let me attach files if you cannot, and stop before the final Submit. ` +
       `Otherwise call ${tool("apply_myself")} again with format "markdown" and give me the packet. ` +
       `7) If form.source is not "employer-published", read the posting with ${tool("get_job")}, list what it asks applicants for, and give me applyUrl. ` +
@@ -2026,7 +2027,7 @@ function guideText(edition: Edition): string {
     ``,
     `1. \`${tool("search_jobs")}\`, with the place in \`location\`, not in \`query\`. Send job titles and places, never CV text.`,
     `2. Read postings with \`${tool("get_job")}\` or \`${tool("get_jobs")}\`; re-check a shortlist with \`${tool("check_jobs_open")}\` before acting on it.`,
-    `3. To apply, \`${tool("apply_myself")}\` with the job id: the employer's own form where its hiring system publishes one, every question marked with who answers it. We never submit anything; the person does.`,
+    `3. To apply, \`${tool("apply_myself")}\` with the job id: the employer's own form where its hiring system publishes one, every question marked with who should answer it. The marks are read from the words and can be wrong, so the person reads every answer before they send. We never submit anything; the person does.`,
     `4. A resumebooster.work/jobs?job=<id> link's id is the argument to every job tool.`,
     ``,
     `## Helping someone apply`,

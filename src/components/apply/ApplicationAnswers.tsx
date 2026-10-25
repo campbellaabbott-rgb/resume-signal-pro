@@ -351,7 +351,7 @@ export function ApplicationAnswers({
       {skipped.length > 0 && (
         <div className="rounded-lg border border-border/60 bg-muted/40 p-2.5">
           <p className="text-[11px] font-medium text-foreground">{t("applyAnswers.yoursTitle", "You'll answer these yourself")}</p>
-          <p className="text-[11px] text-muted-foreground">{t("applyAnswers.yoursBody", "We don't guess your identity, work authorization, salary, or demographics — the honest answer to each is yours alone.")}</p>
+          <p className="text-[11px] text-muted-foreground">{t("applyAnswers.yoursBody", "These look like questions about you — your identity, work authorization, salary or demographics — so we left them for you. The check reads the words and can miss one worded unusually: read every answer before you send.")}</p>
           <ul className="mt-1.5 space-y-0.5">
             {skipped.map((s, i) => (
               <li key={i} className="text-[11px] text-muted-foreground">• {s.question}</li>

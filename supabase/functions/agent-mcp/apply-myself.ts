@@ -9,9 +9,11 @@
 //
 // The form is DATA: every label is the employer's text, cleaned of markup and
 // passed through, and every question carries who answers it
-// (_shared/self-apply.ts, default-deny: the AI drafts only questions about
-// work done and a short list of motivation questions; everything factual goes
-// to the person). The rules the AI follows live in the server instructions,
+// (_shared/self-apply.ts, default-deny: a question is marked for the AI only
+// when it reads as about work done or one of a short list of motivation
+// questions; every other question is marked for the person. The marking reads
+// words, so it can mark an unusually worded question about the person for the
+// AI, and the packet says so under the drafting heading). The rules the AI follows live in the server instructions,
 // the tool description and the apply_myself prompt, never in this result.
 //
 // Pure: the caller hands in the posting, the read and the route, so the Node
@@ -118,6 +120,10 @@ export function applyMyselfAnswer(posting: ApplyPosting, read: FormRead, posting
   };
 }
 
+/** Under the drafting heading: the marks are read from the words, so the person checks them and every answer. */
+export const DRAFT_MARK_NOTE =
+  "These are marked from the questions' words. If one asks about you (your status, pay, dates, history or identity), answer it yourself. Read every answer before you send.";
+
 const ANSWERER: Record<SelfApplyQuestion["answeredBy"], string> = {
   you: "you",
   your_details: "your details",
@@ -158,6 +164,7 @@ export function applyMyselfMarkdown(a: ApplyMyselfAnswer): string {
   else lines.push(...yours.map(questionLine), "");
   lines.push("## Questions your AI may draft from your CV", "");
   lines.push(drafts.length ? drafts.map(questionLine).join("\n") : "None.", "");
+  if (drafts.length) lines.push(DRAFT_MARK_NOTE, "");
   lines.push("## Documents to attach", "");
   if (a.form.documents.length) lines.push(...a.form.documents.map((d) => `- ${d.name}${d.required ? " (required)" : " (optional)"}`));
   else lines.push("- Your CV, unless the form says otherwise.");

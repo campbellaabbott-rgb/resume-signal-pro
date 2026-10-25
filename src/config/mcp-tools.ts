@@ -139,7 +139,7 @@ export const MCP_TOOLS: readonly McpTool[] = [
   {
     name: "apply_myself",
     tier: "read",
-    body: `Help a person apply to one posting themselves, on the employer's own site. When the employer uses ${orList(MCP_FORM_VENDORS.map((v) => v.label))}, it returns the employer's real application form: every question with its options, and who answers it — the person for every factual, demographic and consent question, their AI only for open questions about work done or motivation. Otherwise it returns the posting's apply link and the terms the posting uses. Inside ChatGPT it reads the form only for ${orList(MCP_FORM_VENDORS.filter((v) => MCP_FORM_VENDORS_ON_CHATGPT.includes(v.key)).map((v) => v.label))}. Resume Booster never submits anything.`,
+    body: `Help a person apply to one posting themselves, on the employer's own site. When the employer uses ${orList(MCP_FORM_VENDORS.map((v) => v.label))}, it returns the employer's real application form: every question with its options, and who should answer it — the person for the questions that look like they are about them (facts, demographics, consents), their AI for open questions about work done or motivation. The marks are read from the question's words, so a question about the person worded unusually can be marked for their AI and some work questions are marked for the person: the person reads every answer before they send. Otherwise it returns the posting's apply link and the terms the posting uses. Inside ChatGPT it reads the form only for ${orList(MCP_FORM_VENDORS.filter((v) => MCP_FORM_VENDORS_ON_CHATGPT.includes(v.key)).map((v) => v.label))}. Resume Booster never submits anything.`,
   },
   {
     name: "board_stats",
@@ -1167,7 +1167,7 @@ export const MCP_PROMPTS: readonly McpPrompt[] = [
   {
     name: "apply_myself",
     title: "Help me apply myself",
-    body: "Reads the employer's own application form where its hiring system publishes one, asks you every factual question, drafts only the open answers about your work from your CV, and stops before Submit. Nothing is ever submitted for you.",
+    body: "Reads the employer's own application form where its hiring system publishes one, asks you the questions that look like they are about you, drafts open answers about your work from your CV, and stops before Submit. It can take a question about you, worded unusually, for a work question, so read every answer before you send. Nothing is ever submitted for you.",
   },
   {
     name: "apply_to_my_shortlist",
