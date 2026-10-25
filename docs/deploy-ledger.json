@@ -136,8 +136,16 @@
       "status": "vendor benefits capture; its branches are profiles-p3/, so they are not taken for phases 0-2's profiles/",
       "deployOrder": 4
     },
+    "resume-match": {
+      "branches": ["rm/"],
+      "migrations": "20261016*",
+      "jobBoard": "none",
+      "fnBuildDate": "2026-10-16",
+      "status": "phase 0: engine and resume-match behind no UI; phases 1-4 slot after wave 4, profiles+design and R1",
+      "deployOrder": 5
+    },
     "next": {
-      "migrations": "20261015* and later, one day per workstream",
+      "migrations": "20261015* and later except 20261016* (resume-match's), one day per workstream",
       "jobBoard": "2026-09-09.95+"
     }
   },
