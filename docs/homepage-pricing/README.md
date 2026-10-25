@@ -2,7 +2,9 @@
 
 Built from the corrected spec, `reports/homepage-pricing-design-2026-10-17.md`
 (the 30 review problems, the revised owner decisions and section 4), and the
-final board-first mockups in `keep/home-pricing-design/final/`. "/" becomes
+final board-first mockups in `keep/home-pricing-design/final/` (the scratchpad
+`keep/` tree was emptied on 2026-10-23; a copy of the mockups made on
+2026-10-17 is in `~/.config/resumebooster/keep-backup-2026-10-17/home-pricing-design/final/`). "/" becomes
 the job search with live postings, the free résumé scanner moves to
 `/resume-checker`, and `/pricing` leads with what is free.
 
@@ -19,9 +21,16 @@ existing file needs is in [the switch-over plan](#the-switch-over-plan).
 | `hp/pricing` | 50de7209 | the pricing page (Appendix B) |
 | `hp/integration` | this branch | both, the integration (70e4e525) and the fix round of 2026-10-18 below, merged onto `origin/design/integration` 74439737 |
 
-`origin/design/integration` is merged into main (PR #36, 57815de9), so the
-PR (#38, base `design/integration`) now reads against a branch main
-already holds. `git diff --name-status origin/design/integration...hp/integration`
+`origin/design/integration` is merged into main (PR #36, 57815de9) and was
+deployed on 2026-10-18, so the PR (#38, base `design/integration`) now reads
+against a branch main already holds. **The switch-over starts from main**:
+cut the switch-over branch from `origin/main`, merge `hp/integration` into
+it, and read every line number below by its text on main. Main has moved
+20 commits past `design/integration` (most of them Lovable's, up to
+8a6561c4 on 2026-10-18); of the files the switch-over edits, only
+`scripts/prerender-seo.mjs` differs (a deadline on the company-intel phase,
+11 lines added near line 2496, so the `/pricing` block of step 10 sits 11
+lines lower). This branch has not merged main, by decision. `git diff --name-status origin/design/integration...hp/integration`
 lists 90 paths, every one of them added (status A). No existing file is
 modified.
 
@@ -116,9 +125,14 @@ wrap (`WRAP_CHIP`); the pricing title and description follow the gates
 (`pricingMetaKeys`) and name the EEA; the Builder price is `money()`'s and
 en-GB says "licence"; the list call has an 8 s deadline and a curve that
 misses its 2.5 s wait is aborted; the G2 rule also hides wave 4's
-`proPlan.perks.fullAnalysisIncluded`; both H1s break a long compound word
-(the German headline widened the page by 7 px under WCAG 1.4.12 text
-spacing).
+`proPlan.perks.fullAnalysisIncluded`; both H1s break a word only when it
+cannot fit a line (`[overflow-wrap:anywhere]`): the German headline's
+"Bewerbungssystemen" widened the page by 7 px under WCAG 1.4.12 text
+spacing. A first attempt with automatic hyphenation (`hyphens-auto`) split
+the owner's English headline on a 375 px phone ("em-" ending line one) and
+left the reserved third line empty; the H1s no longer hyphenate (held by
+`hp-fix-minors`, and measured below: English is three lines at 320 and
+375 px, as in the mockup).
 
 Not changed here, with the reason: the phone list packs four rows where the
 spec says three (the builder's measured box; recorded in Appendix A item 2);
@@ -150,13 +164,22 @@ The previews are standalone pages Vite's dev server serves directly; nothing
 in the app imports `src/preview/**`, and `vite build` builds `index.html`
 only, so neither preview ships.
 
-## What was measured (fix round, 2026-10-18)
+## What was measured (fix round, re-run 2026-10-24)
 
-One Vite dev server, one headless Chromium (Playwright from
-`worker/node_modules`), closed when done, on this branch's head. Fixture
-data. Scripts, JSON and shots: `keep/home-pricing-design/build/final/`
-(`tools/measure.cjs`, `tools/probe.cjs`, `tools/probe-spacing.cjs`;
-`data/checks.json`, `data/probe.after.json`; `shots/`).
+The fix round measured on 2026-10-18; the scratchpad's `keep/` tree was
+emptied on 2026-10-23 and took the tools, data and shots with it, so every
+check below was re-run on 2026-10-24 on this branch's head, after the
+headline change. One Vite dev server, one headless Chromium (Playwright from
+`worker/node_modules`; axe 4.12.1 from
+`~/Documents/GitHub/vibemarket/node_modules/axe-core/axe.min.js`), closed
+when done. Fixture data (home default; pricing `?fixture=1&bare=1`). The
+tools live outside the scratchpad now:
+`~/.config/resumebooster/home-pricing-2026-10-18/tools/measure.cjs`
+(shots, axe, filled buttons, first screen, coarse targets, CLS) and
+`probe-spacing.cjs` (headline lines and overflow in nine languages, with and
+without text spacing), with `data/checks.json`, `data/probe-spacing.json` and
+`shots/` beside them; a copy of all three is in
+`keep/home-pricing-design/build/final/`.
 
 | Check | Homepage | Pricing |
 |---|---|---|
@@ -165,14 +188,19 @@ data. Scripts, JSON and shots: `keep/home-pricing-design/build/final/`
 | Filled buttons in main | one: "Search jobs" (375 and 1280) | one: "Create a free account" (gated and preview-open, 375 and 1280) |
 | axe 4.12.1, WCAG 2.0/2.1/2.2 A and AA | 0 violations at 375 and 1280 | 0 violations at 375 and 1280, gated and preview-open |
 | axe "needs review" | `aria-valid-attr-value` on today's Header (Radix `aria-controls`) | the same Header item; `th-has-data-cells` on the limits table's group rows |
-| Targets under a coarse pointer (CDP touch emulation, `pointer: coarse` true), 375 px | 25 buttons, link-buttons, chips and summaries: none under 44 px | 14 gated, 17 open: none under 44 px (the renewal label included) |
-| CLS, cold load in the browser's locale, scroll before the data answers (three runs per case: `measure.cjs` once, `probe.cjs` twice) | en 0.0004-0.0005 (list answering after 2.5 s: 0.0005); de 0.0002; es 0.0006-0.0008; fr 0.0008-0.0015; de at 1280 0.0001-0.0012 (was 0.18 in de, es and fr) | en 0-0.0001; de 0-0.00003; es 0-0.007; fr 0.00003-0.0008; de at 1280 0.001-0.015 (the plan cards settling when the count lands) |
-| Horizontal overflow, every `<details>` open | none: nine languages at 320, plus de/fr/es/pt at 360 and 375 | the same (34 runs across both pages) |
-| WCAG 1.4.12 text spacing, German, 320 px | no overflow (was 7 px: the H1's "Bewerbungssystemen"); no chip clipped | no overflow |
+| Targets under a coarse pointer (touch emulation, `pointer: coarse` true), 375 px | 26 buttons, link-buttons, chips and summaries: none under 44 px. Text links keep the 24 px AA floor: the posting title and employer links inside the board's own JobCard (design's file), "Set up Claude Code", the methodology link and "See pricing and limits" | 14 gated, 17 open: none under 44 px (the renewal label included) |
+| CLS, cold load in the browser's locale, scroll at 400 ms, before the data answers (2026-10-24; the 2026-10-18 ranges over three runs per case in brackets) | en 0.0004 (list answering after 2.5 s: 0.0004) [0.0004-0.0005]; de 0.0002; es 0.0006 [0.0006-0.0008]; fr 0.0008 [0.0008-0.0015]; de at 1280 0.0002 [0.0001-0.0012] (was 0.18 in de, es and fr before the fix) | en 0; de 0; es 0 [0-0.007]; fr 0.0008; de at 1280 0.0137 [0.001-0.015] (the plan cards settling when the count lands) |
+| Horizontal overflow, every `<details>` open | none: nine languages at 320 and 375 | the same (36 runs across both pages, plus 8 shot runs at 320 in de/fr/es/pt) |
+| WCAG 1.4.12 text spacing, de, fr, es, pt, 320 px | no overflow (was 7 px in German: the H1's "Bewerbungssystemen") | no overflow |
+| H1 lines (no hyphenation) | en and en-GB 3 at 320 and 375, filling the reserved `3lh`; de, es, fr, pt, nl 4 at 320; 1 at 1280 | one line everywhere |
 
-Screenshots: `shots/home.{375,1280}.{first-screen,full}.png`,
-`shots/pricing-gated.*`, `shots/pricing-open.*`, and
-`shots/i18n.{home,pricing-gated}.{de,fr,es,pt}.320.full.png`.
+Screenshots (2026-10-24): `shots/home.{375,1280}.{first-screen,full}.png`,
+`shots/pricing-gated.{375,1280}.{first-screen,full}.png`,
+`shots/pricing-open.*` (the same four), and
+`shots/i18n.{home,pricing-gated}.{de,fr,es,pt}.320.full.png` (every
+`<details>` open). The whole-page text of every run still carries "Freelance
+Boost": today's Footer, the switch-over gate's job (W4, step 9); the pages'
+own `<main>` names no cut product in any run.
 
 Measured by the builders and not re-run here: the home chunk was 15.7 kB
 gzip. The fix round adds `src/lib/board-collisions.ts` (139 rows, about 2 kB
@@ -185,11 +213,11 @@ day (step 15).
 ## Gate (fix round)
 
 - Frontend typecheck (`tsc -p tsconfig.app.json --noEmit`): passed at every
-  commit (the pre-commit hook).
+  commit (the pre-commit hook) and again on the head.
 - The hp tests, targeted (`npx vitest run --maxWorkers=2 src/test/hp-*`):
-  17 files, all passing.
-- The full suite: once, when no other suite was running (see the PR body
-  for the count).
+  17 files, all passing on the head.
+- The full suite: the pre-push hook's run, when no other suite was running
+  (see the PR body for the count).
 
 ## Open problems
 
@@ -242,19 +270,40 @@ day (step 15).
 
 ## The switch-over plan
 
-Line numbers are as of `origin/design/integration` 74439737, wave 4 as of
-`origin/wave4/integration` 518afef1 and `origin/w4b/checkout-catalogue`
-db74b6c8; wave 4 edits App.tsx, Pricing.tsx and the Header, so find each line
-by its text. Run `node scripts/deploy-ledger.mjs --overlap` before merging.
-The reservation is `home-pricing`: branches `hp/`, no migration, no
-job-board change, verify section 98, and free-keyword-scan's `fnBuildDate`
-(H0 only).
+**Start from main.** `design/integration` reached main through PR #36 and
+was deployed on 2026-10-18, so the switch-over branch is cut from
+`origin/main` and takes `hp/integration` by merge; `hp/integration` itself
+does not merge main first. Line numbers are as of `origin/design/integration`
+74439737 (the same lines on main, except the bake's `/pricing` block, 11
+lines lower), wave 4 as of `origin/wave4/integration` fa66a031 (2026-10-24;
+of the files this plan cites, only free-keyword-scan changed since 518afef1,
+step 12) and
+`origin/w4b/checkout-catalogue` db74b6c8; wave 4 edits App.tsx, Pricing.tsx
+and the Header, so find each line by its text. Run `node scripts/deploy-ledger.mjs --overlap` before merging.
+The ledger has no `home-pricing` reservation yet (`docs/deploy-ledger.json`
+on main lists wave2, wave3, critical-path, company-profiles, wave4,
+company-profiles-phase3 and next), so the switch-over's first commit adds
+one, before `"next"` in `reservations`:
+```json
+"home-pricing": {
+  "branches": ["hp/"],
+  "migrations": "none",
+  "jobBoard": "none",
+  "fnBuildDate": "<switch-over day> (free-keyword-scan only, H0)",
+  "status": "the board-first homepage and the new pricing page: new files plus the switch-over edits in docs/homepage-pricing/README.md; verify section 98",
+  "deployOrder": 5
+}
+```
+(deployOrder 5 follows phase 3's 4 by number only: phase 3 is not a
+precondition, and the owner may deploy this first.)
 
 ### WHEN: every one of these, in ledger order (owner decision 8)
 
 - **W1. The profiles/design train is merged and verified.**
-  `design/integration` is on main (PR #36). `origin/pd/wire` (73aecb4a),
-  `pd/bake` and `pd/accuracy` merge and verify per the ledger.
+  `design/integration` (PR #36, deployed 2026-10-18), `pd/wire` (73aecb4a),
+  `pd/bake` (0fd722b2) and `pd/accuracy` (da3aa29b) are all on main as of
+  2026-10-24. Still owed: their `verifiedDeploys` entry in
+  `docs/deploy-ledger.json` (main's last entry is R1's, 9c991052).
 - **W2. Wave 4 is merged and verified**: `wave4/integration` and every
   `w4b/*` branch (account-compliance, agents-api, base, checkout-catalogue,
   generators, job-board, ops-email-tests, payments-delivery).
@@ -689,7 +738,7 @@ sends `autoRenewConsent: true` from the line containing the pressed button;
 hp/honesty's H0 removes the free report's 21 probability references and the
 Scan Pack offer; its only server part is a re-stamp of free-keyword-scan
 after every wave-4 stamp. Today: `w4b/payments-delivery` .2026-10-14.22,
-`w4b/generators` .2026-10-14.24, `wave4/integration` .2026-10-14.29
+`w4b/generators` .2026-10-14.24, `wave4/integration` .2026-10-14.30 (fa66a031; it was .29 at 518afef1)
 (`supabase/functions/free-keyword-scan/index.ts`, `const FN_BUILD`). H0's
 stamp is `"free-keyword-scan.<switch-over day>.1"`, a day later than all of
 them.
@@ -742,13 +791,16 @@ claim FAILs before the deploy by design.
 ### 15. Before and after
 
 - **Baseline (the day before):** run
-  `keep/home-pricing-design/build/final/tools/measure.cjs` against the live
-  "/" and "/pricing" (point `PAGES` at production), plus a Googlebot curl of
-  both, and save the numbers: live LCP is 1.12 s at 375 per the spec.
+  `~/.config/resumebooster/home-pricing-2026-10-18/tools/measure.cjs` against
+  the live "/" and "/pricing" (`PAGES_HOME=https://resumebooster.work/`
+  `PAGES_PRICING=https://resumebooster.work/pricing ONLY=shots,checks,coarse,cls`),
+  plus a Googlebot curl of both, and save the numbers: live LCP is 1.12 s at
+  375 per the spec. The tool has no LCP probe yet; add one before the
+  baseline.
 - **Lab gates at +1 day, on production:** LCP at 375 throttled 1.2 s or
   less, at 1280 2.5 s or less; CLS 0.02 or less with a scroll started before
   the list answers, in English AND in a cold German and Spanish load at 375
-  (browser locale, as `tools/probe.cjs` does); axe 0 violations; 44 px
+  (browser locale, as `measure.cjs`'s CLS cases do); axe 0 violations; 44 px
   targets under a coarse pointer (CDP touch emulation); no horizontal
   overflow at 320, 360 and 375 px in the nine languages with every
   `<details>` open, and none under text spacing in German at 320; the
@@ -927,8 +979,9 @@ replaced). Nothing in the app imports `src/preview/**`; `vite build` builds
 
 ### Measured (preview, fixture data unless marked live)
 
-Screenshots and data: `keep/home-pricing-design/build/home/` (`shots/`,
-`data/checks.*.json`).
+Screenshots and data were in `keep/home-pricing-design/build/home/`
+(`shots/`, `data/checks.*.json`), emptied on 2026-10-23; the current
+measurements are in "What was measured" above.
 
 | Check | Result |
 |---|---|
@@ -1061,6 +1114,6 @@ checkout. The live reads the shipped page already makes
   (tools/cls-slow.cjs), 0 at 375 and 0.00007 at 1280.
 - Phone first screen (375x812): H1, the summary, the jump links and Before you
   buy (the region line open). The Free card starts at 708px.
-- Screenshots, compare sheets and the JSON:
-  `keep/home-pricing-design/build/pricing/{shots,data,tools}` (tools/shoot.cjs
-  re-runs everything with one browser).
+- Screenshots, compare sheets and the JSON were in
+  `keep/home-pricing-design/build/pricing/{shots,data,tools}`, emptied on
+  2026-10-23; the current measurements are in "What was measured" above.

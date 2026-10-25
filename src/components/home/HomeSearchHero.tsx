@@ -35,7 +35,7 @@ export function HomeSearchHero({ openTotal, asOf }: HomeSearchHeroProps) {
   return (
     <section aria-labelledby="home-h1" className="pt-5 lg:pt-10">
       <div className="container">
-        <h1 id="home-h1" className="min-h-[3lh] break-words text-[clamp(1.5rem,6vw,2.25rem)] font-semibold leading-tight tracking-tight hyphens-auto md:min-h-0 md:text-4xl md:leading-[2.75rem]">
+        <h1 id="home-h1" className="min-h-[3lh] text-[clamp(1.5rem,6vw,2.25rem)] font-semibold leading-tight tracking-tight [overflow-wrap:anywhere] md:min-h-0 md:text-4xl md:leading-[2.75rem]">
           {t("home.hero.title")}
         </h1>
         <p className="mt-2 max-w-[62ch] text-base text-muted-foreground md:text-lg">{t("home.hero.sub")}</p>

@@ -142,13 +142,18 @@ describe("a translated chip label wraps instead of being cut off", () => {
 
 describe("a long compound word in a headline breaks instead of widening the page", () => {
   // Measured under WCAG 1.4.12 text spacing at 320 px: the German headline's
-  // "Bewerbungssystemen" pushed the page 7 px sideways.
-  it("both pages' H1 may break and hyphenate a word", () => {
-    for (const rel of ["../components/home/HomeSearchHero.tsx", "../components/pricing/PricingHead.tsx"]) {
-      const h1 = readFileSync(resolve(__dirname, rel), "utf8").match(/<h1\b[^>]*className="([^"]*)"/)?.[1] ?? "";
-      expect(h1, rel).toMatch(/\bbreak-words\b/);
-      expect(h1, rel).toMatch(/\bhyphens-auto\b/);
-    }
+  // "Bewerbungssystemen" pushed the page 7 px sideways. Automatic hyphenation
+  // fixed that but also split the owner's English headline on a 375 px phone
+  // ("em-" at the end of line one) and left the reserved third line empty.
+  // overflow-wrap: anywhere breaks only a word too long for a line by itself,
+  // and counts toward the min-content width, so nothing else moves.
+  const H1_FILES = ["../components/home/HomeSearchHero.tsx", "../components/pricing/PricingHead.tsx"];
+  const h1Class = (rel: string) => readFileSync(resolve(__dirname, rel), "utf8").match(/<h1\b[^>]*className="([^"]*)"/)?.[1] ?? "";
+  it("both pages' H1 break a word only when it cannot fit a line", () => {
+    for (const rel of H1_FILES) expect(h1Class(rel), rel).toMatch(/(^|\s)\[overflow-wrap:anywhere\](\s|$)/);
+  });
+  it("neither H1 hyphenates an ordinary word", () => {
+    for (const rel of H1_FILES) expect(h1Class(rel), rel).not.toMatch(/\bhyphens-auto\b/);
   });
 });
 
