@@ -21,6 +21,8 @@ import { resolve } from "node:path";
 import {
   jdParagraphs,
   postingDatePosted,
+  postingPageDescription,
+  postingPageTitle,
   postingJsonLd,
   postingLanguage,
   postingPostalAddress,
@@ -157,6 +159,24 @@ describe("a Chinese, Japanese or Korean description says so", () => {
   it("gives the bake an og:locale for each", () => {
     const bake = readFileSync(resolve(__dirname, "../../scripts/prerender-seo.mjs"), "utf8");
     expect(bake).toMatch(/zh: "zh_CN", ja: "ja_JP", ko: "ko_KR"/);
+  });
+});
+
+describe("a carried posting whose employer name the gate refuses names no employer (D7 keeps its index, not its name)", () => {
+  const axia = row({ id: "ukg:recruiting~REG1001RWHM~3f9058a6:238cdd44", token: "recruiting~REG1001RWHM~3f9058a6", company: "", title: "Certified Medical Assistant (CMA) II", location: "Phoenix, AZ", workMode: null });
+  it("prints a head with no 'at ,' and 'the employer' in its own sentence", () => {
+    const d = postingPageDescription(axia);
+    expect(d).toMatch(/^Certified Medical Assistant \(CMA\) II, Phoenix, AZ\./);
+    expect(d).toContain("Straight from the employer's own job board.");
+    expect(d).not.toMatch(/ at [,.]/);
+    expect(postingPageTitle(axia)).toBe("Certified Medical Assistant (CMA) II — Phoenix, AZ");
+  });
+  it("is how the bake writes it: the markup withheld, the page kept, the name not printed", () => {
+    const bake = readFileSync(resolve(__dirname, "../../scripts/prerender-seo.mjs"), "utf8");
+    expect(bake).toMatch(/const job = nameRefused \? \{ \.\.\.rawJob, company: "" \} : rawJob;/);
+    expect(bake).toMatch(/const ld = nameRefused \? null : D\.postingJsonLd\(job, description, \{ site: SITE \}\);/);
+    expect(bake).toMatch(/if \(!path \|\| \(!ld && !\(\(mismatchOnly \|\| nameOnly\) && carried\)\)\) \{/);
+    expect(bake).toMatch(/const nm = nameRefused \? "the employer" : D\.postingEmployer\(job\);/);
   });
 });
 

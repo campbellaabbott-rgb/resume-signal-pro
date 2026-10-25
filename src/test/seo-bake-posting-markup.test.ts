@@ -171,7 +171,7 @@ describe("SEO-035: a location that ends in another country's name is not the row
     // its page with no markup, D7); the answer is never emitted as markup.
     expect(postingJsonLd(row({ location: "Lagos, LA, Nigeria", country: "US", workMode: null }), DESC, { site: SITE, now: NOW, ignoreCountryMismatch: true })).toBeTruthy();
     const bake = readFileSync(resolve(__dirname, "../../scripts/prerender-seo.mjs"), "utf8");
-    expect(bake).toMatch(/if \(!path \|\| \(!ld && !\(mismatchOnly && carried\)\)\) \{/);
+    expect(bake).toMatch(/if \(!path \|\| \(!ld && !\(\(mismatchOnly \|\| nameOnly\) && carried\)\)\) \{/);
     expect(bake).toMatch(/jsonLd: \[\.\.\.\(ld \? \[ld\] : \[\]\), \{/);
   });
   it("leaves a row whose last segment is its own country, a state, or a US territory alone", () => {

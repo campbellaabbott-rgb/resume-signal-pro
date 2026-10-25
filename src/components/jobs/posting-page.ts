@@ -1150,14 +1150,17 @@ export function postingPageDescription(job: PostingRow): string {
   const title = postingText(job.title);
   const company = job.company ? postingEmployer(job) : "";
   const place = postingText(job.location);
-  let out = place ? `${title} at ${company}, ${place}.` : `${title} at ${company}.`;
-  if (servedLength(out) > DESCRIPTION_BUDGET) out = `${title} at ${company}.`;
+  // NO NAME, NO "at ,": a page whose employer name the bake will not print
+  // (logo text kept under D7) says "the employer" instead.
+  const at = company ? ` at ${company}` : "";
+  let out = place ? `${title}${at}, ${place}.` : `${title}${at}.`;
+  if (servedLength(out) > DESCRIPTION_BUDGET) out = `${title}${at}.`;
   if (servedLength(out) > DESCRIPTION_BUDGET) out = `${title}.`;
   const add = (clause: string) => {
     if (servedLength(out + clause) <= DESCRIPTION_BUDGET) out += clause;
   };
   if (job.salary) add(` Pay as stated by the employer: ${String(job.salary).trim()}.`);
-  add(` Straight from ${possessive(company)} own job board.`);
+  add(` Straight from ${company ? possessive(company) : "the employer's"} own job board.`);
   add(" Check your resume against it before you apply.");
   return out;
 }

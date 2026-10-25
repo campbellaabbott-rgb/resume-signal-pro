@@ -2493,9 +2493,17 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
       // posting page prints, its markup's hiringOrganization included; a
       // carried page whose name the gate would refuse keeps its page this
       // round (D7) and goes on the dry-run list.
+      // A CARRIED PAGE WHOSE NAME THE GATE REFUSES keeps its page and its
+      // index (D7), but not the name: its JobPosting is withheld (as a
+      // country mismatch's is) and the page says "the employer" in its head
+      // and its own sentences ("Axia Logo Horizontal" was a hiringOrganization
+      // and a meta description, the round's review, 2026-10-24).
       for (const d of detailed) {
         const named = postingName(d.job);
-        if (named.reason) nameGateDryRun.push({ path: D.postingPagePath(d.job.id), kind: "posting", token: d.job.token ?? null, name: named.name, shown: named.shown, reason: named.reason, would: "lose its JobPosting markup and be marked noindex" });
+        if (named.reason) {
+          nameGateDryRun.push({ path: D.postingPagePath(d.job.id), kind: "posting", token: d.job.token ?? null, name: named.name, shown: named.shown, reason: named.reason, would: "be marked noindex (its job markup is already withheld and its head names no employer)" });
+          d.nameRefused = true;
+        }
         if (named.repaired) d.job = { ...d.job, company: named.name };
       }
 
@@ -2509,9 +2517,15 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
       // its requisition key instead (postingPageTitleAvoiding).
       const postingTitlesTaken = new Set();
       let titlesDisambiguated = 0;
-      for (const { job, description, first, carried } of detailed) {
-        const path = D.postingPagePath(job.id);
-        const ld = D.postingJsonLd(job, description, { site: SITE });
+      let nameWithheld = 0;
+      for (const { job: rawJob, description, first, carried, nameRefused } of detailed) {
+        const path = D.postingPagePath(rawJob.id);
+        // A refused name is not printed: the page's own head and sentences say
+        // "the employer", and its markup is withheld below.
+        const job = nameRefused ? { ...rawJob, company: "" } : rawJob;
+        const nameOnly = !!nameRefused && !!path && !!D.postingJsonLd(rawJob, description, { site: SITE });
+        if (nameOnly) nameWithheld++;
+        const ld = nameRefused ? null : D.postingJsonLd(job, description, { site: SITE });
         // A page whose markup we cannot stand behind is not written as a live
         // page. Its URL keeps a noindex page instead and never reaches the
         // sitemap, which is the whole contract. A location that ends in
@@ -2524,14 +2538,14 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
         // marked up as a Louisiana one.
         const mismatchOnly = !ld && !!path && D.postingCountryMismatch(job) && !!D.postingJsonLd(job, description, { site: SITE, ignoreCountryMismatch: true });
         if (mismatchOnly) countryMismatch++;
-        if (!path || (!ld && !(mismatchOnly && carried))) {
+        if (!path || (!ld && !((mismatchOnly || nameOnly) && carried))) {
           stubs.push({ id: job.id, path, state: "retired", title: job.title, company: job.company });
           continue;
         }
-        if (mismatchOnly) nameGateDryRun.push({ path, kind: "posting", token: job.token ?? null, name: D.postingEmployer(job), shown: job.location ?? null, reason: `the location ends in another country's name than the row's (${job.country})`, would: "be marked noindex (its job markup is already withheld)" });
+        if (mismatchOnly) nameGateDryRun.push({ path, kind: "posting", token: job.token ?? null, name: D.postingEmployer(rawJob), shown: job.location ?? null, reason: `the location ends in another country's name than the row's (${job.country})`, would: "be marked noindex (its job markup is already withheld)" });
         if (job.salary) withPay++;
         const paras = D.jdParagraphs(description);
-        const nm = D.postingEmployer(job);
+        const nm = nameRefused ? "the employer" : D.postingEmployer(job);
         const title = D.postingText(job.title);
         const place = job.location ? D.postingText(job.location) : "";
         const lander = landerFor(job.token);
@@ -2573,7 +2587,7 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
           content: `
             <p><a href="/jobs">All openings</a></p>
             <h1>${esc(title)}</h1>
-            <p>${esc(nm)}${place ? ` — ${esc(place)}` : ""}${remoteShown ? " — Remote" : ""}</p>
+            <p>${esc(nameRefused ? "The employer" : nm)}${place ? ` — ${esc(place)}` : ""}${remoteShown ? " — Remote" : ""}</p>
             <p>Posted ${esc(String(job.postedAt).slice(0, 10))}, as stated by the employer. ${job.salary
               ? `Pay, in the employer's own words and neither converted nor estimated: ${esc(String(job.salary))}.`
               : "We found no pay figure on this posting. That is our reading, not a statement by the employer — the description may still name one."}</p>
@@ -2632,7 +2646,7 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
             </ul>
           </section>`;
       }
-      console.log(`[prerender-seo] posting pages: carried ${carriedPaths.length} / live ${postingPaths.length} of a ceiling of ${POSTING_PAGE_CEILING} (${carriedLive} carried, ${freshWritten} new from a pool of ${pool.length}, ${eligible.length} eligible, ${freshNameRefused} new refused for an employer name that cannot be printed) / gone ${stubCount("gone")} / retired ${stubCount("retired")} / seeded ${stubCount("seeded")} (published before the ledger, never re-read; ${seededPostings.added} added this bake) / unchecked ${stubCount("unchecked")} / tombstones ${stubCount("tombstone")}; ${withPay} show employer-stated pay on the page (none in the markup); ${titlesDisambiguated} title${titlesDisambiguated === 1 ? "" : "s"} took a requisition key to stay unique; fresh budget ${freshBudget} (carried live ${carriedLive}, ceiling ${POSTING_PAGE_CEILING}; ${retiredExpiring} expiring within ${POSTING_EXPIRY_NEAR_DAYS} days gave way to the reserve); ${countryMismatch} with a location ending in another country (job markup withheld; a carried one keeps its page under D7 and is on the dry run); carry base: live sitemap ${liveSitemap ? "read" : "UNREAD"}, ledger ${ledgerSource}`);
+      console.log(`[prerender-seo] posting pages: carried ${carriedPaths.length} / live ${postingPaths.length} of a ceiling of ${POSTING_PAGE_CEILING} (${carriedLive} carried, ${freshWritten} new from a pool of ${pool.length}, ${eligible.length} eligible, ${freshNameRefused} new refused for an employer name that cannot be printed) / gone ${stubCount("gone")} / retired ${stubCount("retired")} / seeded ${stubCount("seeded")} (published before the ledger, never re-read; ${seededPostings.added} added this bake) / unchecked ${stubCount("unchecked")} / tombstones ${stubCount("tombstone")}; ${withPay} show employer-stated pay on the page (none in the markup); ${titlesDisambiguated} title${titlesDisambiguated === 1 ? "" : "s"} took a requisition key to stay unique; fresh budget ${freshBudget} (carried live ${carriedLive}, ceiling ${POSTING_PAGE_CEILING}; ${retiredExpiring} expiring within ${POSTING_EXPIRY_NEAR_DAYS} days gave way to the reserve); ${countryMismatch} with a location ending in another country (job markup withheld; a carried one keeps its page under D7 and is on the dry run); ${nameWithheld} carried with an employer name the gate refuses (job markup withheld, "the employer" printed, on the dry run); carry base: live sitemap ${liveSitemap ? "read" : "UNREAD"}, ledger ${ledgerSource}`);
       // A carried page the board did not answer for is the symptom to look at
       // first: it is an "unchecked" noindex page until a later bake reaches it.
       if (stubCount("unchecked")) {
