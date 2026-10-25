@@ -31,10 +31,15 @@
     "closeMenu": "Fechar menu",
     "phoneNavAriaLabel": "Menu do site",
     "signIn": "Entrar",
-    "account": "Conta"
+    "account": "Conta",
+    "credits": "Meus créditos",
+    "companies": "Empresas",
+    "forAiChats": "Para chats de IA",
+    "more": "Mais",
+    "language": "Idioma"
   },
   "hero": {
-    "badge": "Quadro de vagas ao vivo — cada vaga verificada no sistema da própria empresa",
+    "badge": "Quadro de vagas ao vivo — cada vaga lida do próprio sistema de recrutamento do empregador",
     "freeScan": "Experimentar Análise Grátis",
     "heading": "Pare de adivinhar.",
     "headingHighlight": "Comece a conseguir entrevistas.",
@@ -57,8 +62,8 @@
     "headline": {
       "get": "O quadro de vagas com",
       "recruiterGrade": "vagas ao vivo direto dos sistemas de contratação dos empregadores",
-      "feedbackLive": "— {{n}}+ vagas verificadas, comparadas com o seu CV",
-      "feedbackPlain": "— cada vaga verificada, comparada com o seu CV"
+      "feedbackLive": "— {{n}}+ vagas ativas, comparadas com o seu CV",
+      "feedbackPlain": "— vagas ativas, comparadas com o seu CV"
     },
     "description": "Carregue o seu currículo e receba reescritas otimizadas para ATS, alertas de red flags e melhorias de palavras‑chave — como recrutadores realmente avaliam currículos.",
     "benefits": {
@@ -147,8 +152,8 @@
     "factNoStorage": "Nunca vendido",
     "measureStrip": "Medições, não opiniões · Cada citação verificada · Uma pontuação que mostra seu trabalho",
     "jobsCta": "Mural de vagas ao vivo — cheque seu encaixe antes de se candidatar →",
-    "browseJobsLive": "Explore {{n}}+ vagas verificadas",
-    "browseJobsPlain": "Explore o mural verificado"
+    "browseJobsLive": "Explore {{n}}+ vagas ativas",
+    "browseJobsPlain": "Explore o quadro de vagas ao vivo"
   },
   "footer": {
     "copyright": "© {{year}} Resume Booster. Todos os direitos reservados.",
@@ -160,7 +165,28 @@
     "changelog": "Novidades",
     "navAriaLabel": "Navegação do rodapé",
     "jobs": "Vagas",
-    "explore": "Explorar por área"
+    "explore": "Explorar por área",
+    "resourcesAriaLabel": "Recursos",
+    "links": {
+      "companies": "Empresas contratando",
+      "trust": "Confiança e transparência",
+      "resumeChecker": "Verificador de currículo grátis",
+      "atsTest": "Teste ATS de currículo",
+      "resumeScore": "Pontuação do currículo",
+      "industries": "Palavras-chave de currículo por setor",
+      "guides": "Guias de currículo e ATS",
+      "workday": "Guia do ATS Workday",
+      "greenhouse": "Guia do Greenhouse",
+      "lever": "Guia do Lever",
+      "icims": "Guia do iCIMS",
+      "vsJobscan": "vs. Jobscan",
+      "freelanceBoost": "Freelance Boost",
+      "builder": "Criador de currículo",
+      "methodology": "Metodologia",
+      "dataApi": "Dados de contratação e API",
+      "agents": "Conecte seu agente",
+      "payTransparency": "Índice de transparência salarial"
+    }
   },
   "howItWorks": {
     "badge": "Análise com IA",
@@ -379,7 +405,8 @@
     "orGetCompleteAnalysis": "Ou obtenha a análise completa por",
     "securePaymentStripe": "Pagamento seguro via Stripe",
     "gsheetsImportFailed": "Falha ao importar do Google Sheets. Tente novamente.",
-    "gsheetsImportFailedShared": "Falha ao importar do Google Sheets. Certifique-se de que a folha está partilhada com 'Qualquer pessoa com o link'."
+    "gsheetsImportFailedShared": "Falha ao importar do Google Sheets. Certifique-se de que a folha está partilhada com 'Qualquer pessoa com o link'.",
+    "otherJobsAvailable_many": "{{count}} outras vagas disponíveis"
   },
   "faq": {
     "title": "Perguntas Frequentes",
@@ -400,7 +427,7 @@
       },
       "subscription": {
         "question": "Isto é uma subscrição?",
-        "answer": "As duas opções existem, e você escolhe. Cada relatório e ferramenta é um pagamento único que nunca se renova. Separadamente, há dois planos mensais opcionais: o Pro por ${{proPrice}}/mês, com verificações ilimitadas e todas as ferramentas, e a Fila da Manhã por ${{agentPrice}}/mês, em que o agente de candidatura prepara uma lista de vagas selecionadas para você durante a noite. A verificação de currículo e o quadro de vagas continuam gratuitos de qualquer forma. Os dois planos são renovados todo mês até você cancelar, e o teste gratuito da Fila da Manhã para novos assinantes vira o plano pago quando termina, a menos que você cancele antes. Fora isso, nada faz upgrade da sua conta automaticamente."
+        "answer": "As duas opções existem, e você escolhe. Cada relatório e ferramenta é um pagamento único que nunca se renova. Separadamente, o Pro por ${{proPrice}}/mês é um plano mensal opcional, com verificações ilimitadas e todas as ferramentas, e a página de preços lista cada plano mensal à venda com o seu preço e qualquer teste gratuito. Um plano mensal é renovado todo mês até você cancelar, e um teste gratuito vira o plano pago quando termina, a menos que você cancele antes. A verificação de currículo, o quadro de vagas e conectar a sua própria IA continuam gratuitos de qualquer forma. Fora isso, nada faz upgrade da sua conta automaticamente."
       },
       "share": {
         "question": "Posso partilhar a minha análise com outros?",
@@ -412,7 +439,7 @@
       },
       "dataStorage": {
         "question": "Armazenam os dados do meu currículo?",
-        "answer": "Apenas por pouco tempo, e com prazo. Quando carrega ou cola um currículo, o texto é guardado durante 24 horas para que um pagamento o possa usar, e depois apagado. O seu relatório gratuito, que cita linhas do seu currículo, é guardado durante 7 dias para que uma nova análise do mesmo ficheiro com a mesma vaga receba o mesmo relatório, e depois apagado. Uma análise paga fica atrás da sua ligação privada durante 90 dias, a menos que a apague antes. Só guardamos um currículo durante mais tempo quando nos pede: uma versão que guarda na sua conta, o currículo que define para a correspondência de vagas ou o CV que entrega ao agente de candidaturas, que o envia aos empregadores a que se candidata por si. Nunca o vendemos. A nossa página de Confiança lista cada cópia e o respetivo prazo."
+        "answer": "Apenas por pouco tempo, e com prazo. Quando carrega ou cola um currículo, o texto é guardado durante 24 horas para que um pagamento o possa usar, e depois apagado. O seu relatório gratuito, que cita linhas do seu currículo, é guardado durante 7 dias para que uma nova análise do mesmo ficheiro com a mesma vaga receba o mesmo relatório, e depois apagado. Uma análise paga fica atrás da sua ligação privada durante 90 dias, a menos que a apague antes. Só guardamos um currículo durante mais tempo quando nos pede: uma versão que guarda na sua conta, o currículo que define para a correspondência de vagas ou o CV que entrega ao agente de candidaturas. Nunca o vendemos. A nossa página de Confiança lista cada cópia e o respetivo prazo."
       },
       "vsChatGPT": {
         "question": "Porque é isto melhor que o ChatGPT ou modelos de currículo?",
@@ -420,7 +447,7 @@
       },
       "bringYourAgent": {
         "question": "O meu próprio agente de IA pode usar isto?",
-        "answer": "Sim. Ler o quadro de vagas não exige nenhuma chave numa primeira chamada, e uma chave gratuita abre todas as ferramentas de leitura. Para que o seu agente solicite candidaturas, um passe de ${{passPrice}} dá a ele {{passHours}} horas e {{passApplications}} candidaturas, a partir da primeira chamada e sem nunca renovar; o plano Agent faz o mesmo mensalmente e renova. Cada vaga e cada busca no quadro tem um controle que copia um prompt para o seu agente, e a configuração de cada host está em /agents."
+        "answer": "Sim, de graça. Conecte o Resume Booster ao Claude, ao ChatGPT ou ao Claude Code, e a sua IA pode buscar no quadro, ler as vagas por completo e ajudar você a se candidatar no site do empregador; ler o quadro não exige chave nem conta. A sua IA faz o rascunho e você decide: nunca enviamos uma candidatura por você. Cada vaga e cada busca no quadro tem um controle que copia um prompt para a sua IA, e a configuração de cada app está em /agents."
       }
     }
   },
@@ -830,7 +857,10 @@
       "good": "Bom",
       "needsImprovement": "Precisa melhorar",
       "poor": "Fraco"
-    }
+    },
+    "eliteSignal_many": "{{count}} sinais de destaque",
+    "issue_many": "{{count}} problemas",
+    "quickFix_many": "{{count}} correções rápidas"
   },
   "careerSnapshot": {
     "downloadPdf": "Baixar relatório em PDF",
@@ -853,14 +883,16 @@
     "topStrengths": {
       "title": "Principais Pontos Fortes",
       "identified_one": "{{count}} identificado",
-      "identified_other": "{{count}} identificados"
+      "identified_other": "{{count}} identificados",
+      "identified_many": "{{count}} identificados"
     },
     "careerRisks": {
       "title": "Riscos de Carreira e Perguntas",
       "count_one": "{{count}} risco",
       "count_other": "{{count}} riscos",
       "recruiterWillAsk": "O recrutador vai perguntar:",
-      "howToAddress": "Como abordar:"
+      "howToAddress": "Como abordar:",
+      "count_many": "{{count}} riscos"
     },
     "positioning": {
       "title": "Orientação de Posicionamento",
@@ -1592,7 +1624,11 @@
       "careerDescDefault": "Orientação para negociação salarial, caminhos de próximo cargo e pontos de conversa para entrevistas para {{industry}}",
       "kwDescWithStats": "{{count}} palavras-chave faltando encontradas específicas de {{industry}} que os sistemas ATS procuram",
       "kwDescGood": "Forte cobertura de palavras-chave para {{industry}} — obtenha dicas de formulação e colocação para fazê-las contar ainda mais",
-      "kwDescDefault": "Palavras-chave faltando específicas de {{industry}} que os sistemas ATS procuram"
+      "kwDescDefault": "Palavras-chave faltando específicas de {{industry}} que os sistemas ATS procuram",
+      "kwHard_many": "• {{count}} habilidades técnicas críticas faltando no seu currículo",
+      "kwCerts_many": "• {{count}} certificações do setor para mencionar (mesmo em andamento)",
+      "kwTools_many": "• {{count}} ferramentas comumente listadas na sua área que estão faltando",
+      "kwMethodology_many": "• {{count}} palavras-chave de metodologia que seus concorrentes estão usando"
     },
     "premiumCta": {
       "package": "Pacote Premium",
@@ -1669,7 +1705,7 @@
       "title": "Vagas ao vivo que combinam com este currículo",
       "titleSearching": "Procurando vagas ao vivo para este currículo",
       "titleIndustry": "Vagas ao vivo na sua área",
-      "subtitle": "Classificadas com a mesma pontuação determinística do seu relatório — de murais de vagas reais, verificados continuamente contra o feed oficial de cada empresa.",
+      "subtitle": "Classificadas com a mesma pontuação determinística do seu relatório — de murais de vagas reais, relidos ao longo do dia a partir do próprio feed de cada empregador.",
       "subtitleSearched": "Pesquisamos {{role}} em murais de vagas reais — a ocupação que este currículo indica — e depois classificamos com a mesma pontuação determinística do seu relatório.",
       "subtitleIndustry": "Não conseguimos ler um cargo neste currículo, então estas são vagas atuais da sua área — pontuadas com o seu currículo, mas não encontradas por ele. Pesquise você mesmo no mural para restringi-las.",
       "loading": "Classificando vagas ao vivo contra seu currículo…",
@@ -2195,7 +2231,8 @@
       "title": "O seu {{product}} ainda está a ser preparado",
       "emailed": "Está a demorar mais do que o habitual. Vamos enviá-lo por e-mail assim que estiver pronto, por isso pode fechar esta página.",
       "refresh": "Está a demorar mais do que o habitual. Atualize esta página daqui a alguns minutos para o ver."
-    }
+    },
+    "creditsAdded_many": "{{count}} créditos adicionados!"
   },
   "analysisResults": {
     "copied": "Copiado!",
@@ -2386,7 +2423,8 @@
     "analysisProcessingDescription": "Não foi possível extrair recomendações detalhadas do seu currículo. Isto pode acontecer se o formato do currículo for inusual ou se tiver ocorrido um problema durante o processamento.",
     "bottomCta": "Aplique estas alterações ao seu currículo e veja a sua taxa de entrevistas melhorar!",
     "bottomCtaWithLinkedIn": "Aplique estas alterações ao seu currículo e perfil LinkedIn e veja a sua taxa de entrevistas melhorar!",
-    "analysisSaved": "Esta análise fica guardada {{analysisDays}} dias através do link de partilha acima e depois é apagada. Descarregue-a em PDF para guardar a sua própria cópia."
+    "analysisSaved": "Esta análise fica guardada {{analysisDays}} dias através do link de partilha acima e depois é apagada. Descarregue-a em PDF para guardar a sua própria cópia.",
+    "pageCount_many": "{{count}} páginas"
   },
   "personalization": {
     "experience": {
@@ -2523,7 +2561,8 @@
     "industryKeywordsToInclude": "Palavras-chave da indústria a incluir",
     "valuableCertifications": "Certificações valiosas:",
     "recommendedLength_one": "Extensão de currículo recomendada: {{count}} página para profissionais de nível {{level}}",
-    "recommendedLength_other": "Extensão de currículo recomendada: {{count}} páginas para profissionais de nível {{level}}"
+    "recommendedLength_other": "Extensão de currículo recomendada: {{count}} páginas para profissionais de nível {{level}}",
+    "recommendedLength_many": "Extensão de currículo recomendada: {{count}} páginas para profissionais de nível {{level}}"
   },
   "trustPage": {
     "metaTitle": "Confiança e Segurança — Resume Booster",
@@ -2559,7 +2598,7 @@
       },
       "neverSold": {
         "title": "Nunca vendido",
-        "description": "Nunca vendemos o seu currículo nem o mostramos a recrutadores. Só sai daqui para o fornecedor de IA que escreve o seu relatório, o fornecedor de e-mail que entrega o relatório que enviar para si e a análise paga que lhe enviamos e, se ativar o agente de candidaturas, os empregadores a que se candidata por si. A Stripe trata do pagamento e não recebe qualquer texto do currículo."
+        "description": "Nunca vendemos o seu currículo nem o mostramos a recrutadores. Só sai daqui para o fornecedor de IA que escreve o seu relatório e o fornecedor de e-mail que entrega o relatório que enviar para si e a análise paga que lhe enviamos. A Stripe trata do pagamento e não recebe qualquer texto do currículo."
       },
       "transparent": {
         "title": "Processamento transparente",
@@ -2633,7 +2672,7 @@
         "agent": {
           "what": "O CV que entrega ao agente de candidaturas: o ficheiro e o seu texto",
           "where": "Armazenamento privado que só você e o agente podem ler",
-          "howLong": "Enquanto usar o agente, que o envia aos empregadores a que se candidata por si. Eliminar a conta apaga o texto; envie um e-mail para {{email}} para apagar o ficheiro."
+          "howLong": "Um CV que lhe entregou fica guardado até eliminar a conta ou pedir que o apaguemos: eliminar a conta apaga o texto; envie um e-mail para {{email}} para apagar o ficheiro."
         },
         "payment": {
           "what": "O seu pagamento",
@@ -2785,7 +2824,9 @@
     "buyCreditsFor_one": "Comprar {{count}} crédito por {{price}}",
     "buyCreditsFor_other": "Comprar {{count}} créditos por {{price}}",
     "maybeLater": "Talvez mais tarde",
-    "dialogTitle": "Comprar créditos de verificação"
+    "dialogTitle": "Comprar créditos de verificação",
+    "resumeScans_many": "{{count}} verificações de currículo",
+    "buyCreditsFor_many": "Comprar {{count}} créditos por {{price}}"
   },
   "addOnsShowcase": {
     "powerUpAddOns": "Complementos de reforço",
@@ -2894,7 +2935,10 @@
     "getCreditsFor_other": "Obter {{count}} créditos por {{price}}",
     "noThanks": "Não, obrigado, vou esperar pela reinicialização das minhas verificações gratuitas",
     "fewerCredits": "Menos créditos",
-    "moreCredits": "Mais créditos"
+    "moreCredits": "Mais créditos",
+    "hour_many": "{{count}} horas",
+    "credits_many": "{{count}} verificações de currículo",
+    "getCreditsFor_many": "Obter {{count}} créditos por {{price}}"
   },
   "changelogPage": {
     "metaTitle": "Registo de alterações — Resume Booster",
@@ -3080,7 +3124,9 @@
   },
   "floatingHelpButton": {
     "needHelp": "Precisa de ajuda?",
-    "questionsOrFeedback": "Perguntas ou comentários? Envie-nos um e-mail:"
+    "questionsOrFeedback": "Perguntas ou comentários? Envie-nos um e-mail:",
+    "getHelp": "Obter ajuda",
+    "closeHelp": "Fechar ajuda"
   },
   "atsParseSimulator": {
     "title": "Simulação de análise ATS",
@@ -3214,7 +3260,9 @@
     "notStated": "Não declarado explicitamente (Oportunidade ATS)",
     "highImpact": "Palavras-chave de alto impacto a adicionar:",
     "plusMore": "+{{count}} mais",
-    "foundCount": "{{count}} palavras-chave encontradas no seu currículo"
+    "foundCount": "{{count}} palavras-chave encontradas no seu currículo",
+    "criticalGap_many": "{{count}} palavras-chave não declaradas explicitamente — oportunidade de otimização ATS",
+    "goodCoverage_many": "Boa cobertura — {{count}} palavras-chave de alto impacto podem fortalecer sua correspondência"
   },
   "interactiveChecklist": {
     "quickWin": "Vitória Rápida",
@@ -3255,7 +3303,8 @@
     "softSkills": "Habilidades Interpessoais",
     "tools": "Ferramentas e Software",
     "certifications": "Certificações",
-    "methodologies": "Metodologias"
+    "methodologies": "Metodologias",
+    "gapCount_many": "({{count}} lacunas)"
   },
   "recruiterView": {
     "seeThrough": "Veja seu currículo pelos olhos de um recrutador",
@@ -3338,7 +3387,9 @@
     "advancedToHighlight": "Habilidades avançadas a destacar",
     "plusMore": "+{{count}} mais",
     "standOut": "Destaque-se de outros candidatos",
-    "foundCount": "{{count}} palavras-chave específicas do cargo encontradas"
+    "foundCount": "{{count}} palavras-chave específicas do cargo encontradas",
+    "missingCore_many": "Faltando {{count}} palavras-chave centrais esperadas dos {{role}}s",
+    "goodFoundation_many": "Boa base! Adicione {{count}} palavras-chave avançadas para se destacar"
   },
   "shareableCard": {
     "excellent": "Excelente",
@@ -3530,9 +3581,9 @@
   },
   "jobsPage": {
     "seoTitle": "Vagas ao vivo direto dos sites das próprias empresas — confira seu encaixe antes de se candidatar",
-    "seoDescription": "Vagas reais tiradas diretamente dos sites de carreira oficiais de milhares de empresas — sem agregadores, sem republicações, reverificadas o dia todo e conferidas ao vivo na hora de se candidatar. Veja grátis como seu currículo encaixa em qualquer vaga e candidate-se no site da empresa.",
+    "seoDescription": "Vagas ativas lidas diretamente dos próprios sistemas de recrutamento de milhares de empregadores e relidas ao longo do dia. Veja grátis como seu currículo encaixa em qualquer vaga e candidate-se no site do empregador.",
     "h1": "Mural de vagas ao vivo",
-    "subtitle": "Cada vaga aqui vem diretamente do próprio sistema de recrutamento da empresa — sem agregadores, sem links quebrados e sem republicações nossas. Quando é a própria empresa que republica uma vaga, o anúncio informa isso. Cada uma é reverificada ao vivo no momento em que você se candidata.",
+    "subtitle": "Cada vaga aqui vem diretamente do próprio sistema de recrutamento da empresa — sem agregadores, sem links quebrados e sem republicações nossas. Quando é a própria empresa que republica uma vaga, o anúncio informa isso. Quando o sistema do empregador permite, reverificamos a vaga no momento em que você se candidata.",
     "honestyNote": "Depois fazemos o que outros murais ignoram: analise grátis seu currículo em relação a qualquer vaga e veja exatamente o que adicionar — para você se candidatar preparado, não na sorte.",
     "searchPlaceholder": "Cargo ou palavra-chave — ex.: product designer",
     "locationPlaceholder": "Localização",
@@ -3552,7 +3603,6 @@
     "alsoInLocations_other": "Também contratando em mais {{count}} locais",
     "postedToday": "hoje",
     "postedDaysAgo": "há {{count}} d",
-    "checkFit": "Checar meu encaixe — escaneio grátis",
     "apply": "Candidatar-se no site da {{company}}",
     "loadMore": "Carregar mais",
     "endNarrowTitle": "Fim dos resultados — {{n}} vagas mostradas para estes filtros",
@@ -3581,16 +3631,10 @@
     "fitLoadedTitle": "Descrição da vaga carregada",
     "fitLoadedDesc": "{{title}} na {{company}} — envie ou cole seu currículo e o escaneio vai checar o encaixe com esta vaga.",
     "allFields": "Todas as áreas",
-    "companySeoTitle": "Vagas na {{company}} — Vagas reais e verificadas",
-    "companySeoDescription": "Explore as vagas da {{company}}, tiradas diretamente do site de carreira da {{company}} e reverificadas o dia todo — sem agregadores, sem republicações. Confira grátis o encaixe do seu currículo em qualquer vaga e candidate-se no site da {{company}}.",
-    "companyH1": "Vagas abertas na {{company}}",
-    "uncarriedH1": "Não acompanhamos {{company}}",
-    "uncarriedSeoTitle": "Não acompanhamos {{company}}",
-    "uncarriedBody": "{{company}} não está no nosso quadro de vagas. Só mostramos vagas dos portais de empregadores que lemos.",
-    "companySubtitle": "Cada vaga da {{company}} aqui vem diretamente do sistema de recrutamento da {{company}} — verificada, ainda aberta e conferida no momento em que você se candidata.",
-    "companyResultsSummary": "Mostrando {{shown}} de {{total}} vagas na {{company}}",
+    "companySeoTitle": "Vagas na {{company}}: vagas abertas do seu próprio sistema de recrutamento",
+    "companySeoDescription": "Explore as vagas abertas da {{company}} com data nos últimos 30 dias, lidas do seu próprio sistema de recrutamento. Confira grátis o encaixe do seu currículo em qualquer vaga e candidate-se no site da {{company}}.",
     "openRoles": "{{count}} vagas abertas",
-    "openRolesTip": "Esta empresa tem {{count}} vagas verificadas ativas no mural agora — um sinal real de contratação ativa.",
+    "openRolesTip": "Esta empresa tem agora {{count}} vagas com data nos últimos 30 dias no seu próprio portal.",
     "fitSummaryStrong": "Você encaixa muito bem em {{count}} destas vagas",
     "fitSummaryPossible": "Você pode encaixar em {{count}} destas vagas",
     "fitSummaryAndPossible": "e pode encaixar em mais {{count}}",
@@ -3627,7 +3671,6 @@
     "signInToSave": "Vagas e buscas salvas ficam na sua conta gratuita.",
     "jobSaved": "Salvo no seu rastreador de candidaturas",
     "saveFailed": "Não foi possível salvar — tente de novo.",
-    "savedBadge": "Salvo",
     "saveJob": "Salvar",
     "saveTip": "Guarde esta vaga no seu rastreador de candidaturas",
     "saveSearch": "Salvar esta busca",
@@ -3645,22 +3688,17 @@
     "fitNeedsResumeTitle": "Escaneie seu currículo primeiro",
     "fitNeedsResume": "Faça o escaneio grátis (ou salve uma versão na sua conta) e o mural ordenará cada vaga pelo seu encaixe.",
     "landerSeoTitle": "Vagas de {{category}} ao vivo — Dos murais oficiais das empresas",
-    "landerSeoDescription": "Vagas de {{category}} ao vivo tiradas diretamente dos sites oficiais das empresas — sem agregadores, sem republicações, reverificadas o dia todo. Confira grátis o encaixe do seu currículo e candidate-se no site da empresa.",
+    "landerSeoDescription": "Vagas de {{category}} ao vivo, lidas dos próprios sistemas de recrutamento dos empregadores e relidas ao longo do dia. Confira grátis o encaixe do seu currículo e candidate-se no site do empregador.",
     "landerH1": "Vagas de {{category}} ao vivo",
-    "trustBadge": "Verificado, direto da {{company}}",
-    "trustBadgeTip": "Extraído diretamente do sistema de recrutamento oficial da empresa — não de um agregador nem de uma cópia rastreada. Verificado ao vivo quando você clica em Candidatar-se.",
     "addToCompete": "Adicione para competir:",
     "matchStrong": "Boa correspondência",
     "matchPossible": "Correspondência possível",
     "matchStretch": "Pouco provável",
     "matchCoverage": "{{pct}}% das palavras-chave reconhecidas desta vaga já estão no seu currículo",
-    "postedProvenance": "Idade da vaga com base na data que a empresa informa no seu próprio site de carreiras — vagas sem data não mostram idade, nunca uma estimativa",
-    "companyStated": "informada pela empresa",
     "allCountries": "Todos os países",
     "countryTip": "País lido do texto de localização de cada vaga — as que não conseguimos localizar ficam de fora com este filtro ativo, nunca adivinhadas.",
     "freshHint": "Conta apenas datas de publicação informadas pela empresa",
     "rechecked": "feed relido {{ago}}",
-    "recheckedTip": "Quando relemos pela última vez o feed da própria empresa",
     "agoJustNow": "agora mesmo",
     "agoMinutes": "há {{count}}m",
     "agoHours": "há {{count}}h",
@@ -3674,7 +3712,6 @@
     "presetHealth": "Saúde · EUA",
     "jumpBackIn": "Continuar de onde parou:",
     "share": "Compartilhar",
-    "shareTip": "Copiar um link direto para esta vaga",
     "shareCopied": "Link copiado — qualquer pessoa pode abrir esta vaga",
     "shareFailed": "Não foi possível copiar o link",
     "paletteTitle": "Ações rápidas",
@@ -3730,7 +3767,6 @@
     "savedTip": "No seu rastreador — clique para abrir",
     "aliasLine": "também busca: {{terms}}",
     "matchedInDesc": "Na descrição:",
-    "moreAtCompany": "Mais {{n}} vagas abertas na {{company}} — ver todas",
     "relatedRoles": "Cargos relacionados:",
     "fuzzyLine": "Sem correspondências exatas para “{{q}}” — mostrando os cargos mais próximos.",
     "semanticLine": "Nenhum título corresponde a “{{q}}” — mostrando as vagas mais próximas por significado.",
@@ -3745,8 +3781,8 @@
     "nlDropped": "Não foi possível aplicar: {{filters}} — o que foi pedido não é um valor que esse filtro aceite, então não foi aplicado.",
     "nlFailed": "Não foi possível interpretar — use os filtros abaixo.",
     "backToExplore": "Voltar a Explorar",
-    "orientTitle": "{{total}} vagas verificadas — por onde você quer começar?",
-    "orientTitlePlain": "Vagas verificadas — por onde quer começar?",
+    "orientTitle": "{{total}} vagas ativas — por onde você quer começar?",
+    "orientTitlePlain": "Vagas ativas — por onde quer começar?",
     "orientSub": "Escolha uma área, solte seu currículo abaixo para um ranking pessoal, ou apenas veja as mais novas.",
     "orientBrowse": "Ver as vagas mais novas →",
     "orientExplore2": "Ou comece por uma área — todas as áreas do quadro, com um número ao vivo exato e as funções dentro dela",
@@ -3762,13 +3798,12 @@
     "dropTooShort": "Não conseguimos ler texto suficiente desse arquivo — tente o scanner completo.",
     "dropTooLarge": "Esse arquivo passa de 10 MB — exporte uma cópia mais leve e tente de novo.",
     "nlHintTip": "Entende salário, remoto, datas, áreas e 'empresas que realmente contratam' — transforma sua frase em filtros reais.",
-    "queueBridge": "Prefere escolhas prontas para revisar toda manhã? O Agente roda sua busca à noite — Fila da manhã, na sua conta.",
     "verdictFitStrong": "forte encaixe de palavras-chave com seu currículo",
     "verdictFitPossible": "encaixe possível — veja as lacunas abaixo",
     "verdictFitStretch": "difícil para seu currículo atual",
-    "verdictFresh": "publicada há {{d}}d — os primeiros a aplicar são lidos",
+    "verdictFresh": "publicada há {{d}}d, pela data do próprio empregador",
     "verdictFills": "esta empresa realmente preenche vagas ({{n}} no nosso acompanhamento)",
-    "verdictChurn": "republica vagas com frequência ({{n}}×) — respostas podem demorar",
+    "verdictChurn": "pelo menos {{n}} vagas que vimos sair voltaram com o mesmo anúncio ou tinham outro anúncio com o mesmo título no ar naquele momento",
     "verdictSpeed": "costuma preencher em ~{{d}} dias",
     "verdictGo": "Vale aplicar agora",
     "verdictCaution": "Aplique com expectativas",
@@ -3785,6 +3820,8 @@
     "hiringBadgeTip3": "«A contratar ativamente» significa aqui uma de duas coisas observadas no próprio quadro do empregador: vimos pelo menos {{min}} das suas vagas saírem do quadro nos últimos {{days}} dias e não voltarem, ou o quadro apresentou pelo menos {{minNet}} vagas a mais — pelo menos {{minRate}}% a mais — do que {{gdays}} dias antes, contadas a partir da nossa própria observação diária nos dias em que o lemos por inteiro. Um encerramento não é uma contratação — uma vaga preenchida, uma cancelada e uma retirada são idênticas vistas daqui — e mais vagas apresentadas são vagas abertas líquidas das que saíram, num só quadro, nunca um número de efetivos.",
     "hiringBasis3": "«A contratar ativamente» significa aqui qualquer uma das duas metades: empregadores que vimos retirar pelo menos {{min}} vagas nos últimos {{days}} dias e deixá-las fora, ou um quadro que apresentou pelo menos {{minNet}} vagas a mais — pelo menos {{minRate}}% a mais — do que {{gdays}} dias antes, contadas a partir da nossa própria observação diária nos dias em que o lemos por inteiro. Um encerramento não é uma contratação, e uma subida nas vagas apresentadas são vagas abertas líquidas das que saíram — um só quadro, não um número de efetivos.",
     "hiringSetAside3": "Postas de parte: {{n}} vagas em pelo menos {{c}} empregadores pelos quais não podemos responder — pelo menos uma das duas metades está por ler em cada um, e nada do que lemos atingiu o limiar. {{noClosure}} para os quais não temos registo de encerramentos: nunca vimos uma publicação sua sair do quadro, o que pode ser um quadro maior do que uma visita consegue ler, onde nenhum encerramento seu nos é de todo observável, ou um empregador que simplesmente não retirou nada enquanto observávamos; daqui não conseguimos distinguir os casos. {{growthUnread}} para os quais não conseguimos ler um ritmo de publicação: {{reasons}}. Tudo isto é uma lacuna no nosso registo, não uma prova sobre a sua contratação. O que «A contratar ativamente» mede são empregadores que vimos retirar pelo menos {{min}} vagas nos últimos {{days}} dias e deixá-las fora, ou um quadro que apresentou pelo menos {{minNet}} vagas a mais — pelo menos {{minRate}}% a mais — do que {{gdays}} dias antes, contadas a partir da nossa própria observação diária nos dias em que o lemos por inteiro. Um encerramento não é uma contratação, e mais vagas apresentadas não são um número de efetivos.",
+    "hiringSetAsideWithheld": "{{w}} para os quais temos registo de encerramentos que não mostramos: no portal deles a nossa deteção de anúncios republicados não funciona, ou ainda não o observámos tempo suficiente para que uma retirada tenha continuado retirada. É uma lacuna no nosso registo, não um facto sobre o empregador.",
+    "hiringSetAsideShared": "{{s}} são nomes de portal que dois sistemas de recrutamento têm: para eles não lemos nenhum dado do empregador, por isso nenhuma das duas metades está lida.",
     "savedWithoutHiringFilter3": "O filtro «A contratar ativamente» — empregadores que vimos retirar vagas e deixá-las fora, ou cujo quadro apresentou pelo menos {{minNet}} vagas a mais ({{minRate}}%+) do que {{gdays}} dias antes, contadas a partir da nossa própria observação diária; não uma contagem de contratações nem um número de efetivos — é aplicado no seu navegador, não no quadro, por isso esta pesquisa guardada não o inclui.",
     "hiringAdmittedCloses": "Este: vimos {{n}} das suas vagas saírem do quadro nos últimos {{days}} dias e não voltarem.",
     "hiringAdmittedGrew": "Este: o seu quadro apresentou {{latest}} vagas em {{latestDay}} contra {{baseline}} em {{baselineDay}} — {{pct}}% a mais, contadas a partir da nossa própria observação diária.",
@@ -3800,8 +3837,6 @@
     "growthWhyUnread": "a leitura ainda não terminou, ou não respondeu",
     "verdictGrew": "o seu quadro apresentou {{latest}} vagas em {{latestDay}} contra {{baseline}} em {{baselineDay}} — {{pct}}% a mais, contadas a partir da nossa própria observação diária",
     "verdictGrowthUnread": "não conseguimos ler o seu ritmo de publicação — {{reason}}",
-    "hhGrowthGrew": "{{latest}} vagas apresentadas neste quadro em {{latestDay}} contra {{baseline}} em {{baselineDay}} — {{pct}}% a mais em {{gdays}} dias, contadas a partir da nossa própria observação diária nos dias em que lemos o quadro por inteiro. Mais vagas apresentadas são vagas abertas líquidas das que saíram: um só quadro, não um número de efetivos.",
-    "hhGrowthNone": "Sem subida nas vagas apresentadas neste quadro entre {{baselineDay}} ({{baseline}}) e {{latestDay}} ({{latest}}), contadas a partir da nossa própria observação diária. Uma contagem mais baixa pode ser a nossa própria desduplicação e não é uma afirmação de que estão a encolher.",
     "hhGrowthUnread": "Ainda sem ritmo de publicação para este quadro: {{reason}}. Uma lacuna no nosso registo, não um sinal de que não estão a contratar.",
     "growthUnavailable": "Não conseguimos ler os ritmos de publicação agora — o problema é nosso, não do mercado — por isso só a metade dos encerramentos deste filtro pode corresponder até voltar.",
     "growthReasonRead": "{{c}} em quadros que só conseguimos ler em parte, ou não conseguimos ler, nalgum dia da janela",
@@ -3817,8 +3852,9 @@
     "noRecordBadgeTip": "Não temos qualquer registo de uma publicação deste empregador a sair do quadro. Isso acontece de duas formas que daqui não conseguimos distinguir: num quadro maior do que uma visita consegue ler, nenhum encerramento nos é observável até completarmos uma volta completa demonstrável e depois vermos uma vaga sair; num quadro que lemos por inteiro, significa simplesmente que nada foi retirado enquanto observávamos. De qualquer forma é uma lacuna no nosso registo e não diz nada sobre se estão a contratar.",
     "takedownSetAsideShow": "Mostrá-las",
     "signalReading": "Ainda estamos a ler o nosso registo de encerramentos e os ritmos de publicação para estes empregadores. Uma leitura por terminar não é uma leitura vazia, por isso nada do que está no ecrã é ainda uma conclusão sobre quem quer que seja.",
-    "takedownEmpty": "Nenhum empregador entre as vagas carregadas aqui tem um registo de encerramentos que atinja o limiar. Desative para ver todas as vagas verificadas.",
+    "takedownEmpty": "Nenhum empregador entre as vagas carregadas aqui tem um registo de encerramentos que atinja o limiar. Desative para ver todas as vagas.",
     "verdictNoRecord": "não temos registo de encerramentos deste empregador, por isso não podemos dizer nem uma coisa nem outra — pode ser um quadro maior do que uma visita consegue ler, onde nenhum encerramento nos é observável, ou um empregador que não retirou nada enquanto observávamos",
+    "verdictRecordWithheld": "temos registo de encerramentos deste empregador e não o mostramos: {{why}}",
     "hhNoClosureRecord": "Não temos registo de encerramentos deste empregador: nenhuma das suas publicações foi observada a sair do quadro. Num quadro maior do que uma visita consegue ler, nenhum encerramento nos é observável até completarmos uma volta completa demonstrável e depois vermos uma vaga sair; num quadro que lemos por inteiro, significa que nada foi retirado enquanto observávamos. Daqui não conseguimos distinguir os dois casos, por isso é uma lacuna do nosso lado e não um sinal de que não estão a contratar.",
     "hhRelistsOnly": "Todas as publicações deles que vimos sair voltaram republicadas, por isso não temos qualquer retirada limpa para contar — {{n}} republicações registadas, o que é um mínimo.",
     "compareTip": "Adicionar à comparação (até 3)",
@@ -3850,11 +3886,21 @@
       "bandMid": "médio porte",
       "bandSmall": "porte startup",
       "employees": "≈{{n}} funcionários ({{basis}}) · {{band}}",
+      "asOf": "em {{date}}",
       "basisYc": "perfil YC",
       "basisPr": "registros públicos",
       "net7d": "+{{n}} vagas líquidas novas esta semana",
       "salary": "piso salarial declarado mediano ${{m}} ({{n}} vagas em USD)",
       "fields": "contrata principalmente em {{fields}}"
+    },
+    "collision": {
+      "title": "{{n}} sistemas de recrutamento têm um portal com este nome",
+      "body": "Nada do que temos indica se esses portais pertencem a um mesmo empregador e, muitas vezes, não pertencem. Por isso esta página lista as vagas de todos eles, mas aqui não mostra dados do empregador: nem números de salário ou de funcionários, nem histórico de contratações, nem registros oficiais, nem empregadores semelhantes, porque não poderíamos dizer a qual empregador eles se referem.",
+      "board": "{{name}} em {{vendor}}",
+      "openRoles": "vagas abertas agora: {{n}}",
+      "basis": "Vagas abertas são anúncios que o feed de cada portal ainda publica e cuja data cai nos últimos 30 dias: a data do empregador ou, para um anúncio sem data, o dia em que o vimos pela última vez.",
+      "filterHint": "Para ver só as vagas de um portal, escolha o sistema de recrutamento dele nos filtros.",
+      "otherSystem": "outro sistema de recrutamento"
     },
     "similar": {
       "title": "Também contratando em {{field}}",
@@ -3869,7 +3915,6 @@
       "hybrid": "Híbrido",
       "onsite": "Presencial"
     },
-    "salaryAnnualized": "≈{{range}}/ano conforme declarado",
     "publicCo": {
       "chip": "Empresa listada",
       "viewFilings": "Relatórios SEC",
@@ -3880,11 +3925,36 @@
       "trendAria": "Receita por ano fiscal",
       "sourceLine": "Fonte: os próprios relatórios de {{name}} à SEC (10-K/20-F). Números conforme arquivados; não é aconselhamento de investimento."
     },
-    "h1b": {
-      "chip": "Salários declarados · pedidos H-1B {{fy}}",
-      "summary": "{{company}} declarou salários-base para {{n}} posições H-1B certificadas — mediana {{m}}/ano.",
-      "range": "{{lo}}–{{hi}} · {{n}} pedidos",
-      "sourceLine": "Fonte: arquivos públicos LCA do Departamento do Trabalho dos EUA — salários-base declarados pelo empregador, anualizados. Apenas posições H-1B; não é o salário de toda a empresa."
+    "perks": {
+      "title": "Benefícios citados nos anúncios de vaga da empresa",
+      "notListed": "Um benefício que não aparece aqui não quer dizer que não seja oferecido. Só mostramos benefícios cuja leitura já verificamos, e só onde o mencionam anúncios suficientes entre os que conseguimos ler.",
+      "howTo": "Toque, passe o cursor ou selecione um benefício para ver quantos anúncios o mencionam e a frase que usam.",
+      "labelHealth": "Plano de saúde",
+      "labelDental": "Plano odontológico",
+      "labelVision": "Cobertura oftalmológica",
+      "labelLifeDis": "Seguro de vida ou de invalidez",
+      "labelRetire": "Previdência ou plano de aposentadoria",
+      "labelPto": "Folgas e férias remuneradas",
+      "labelParental": "Licença parental",
+      "labelEquity": "Ações ou participação acionária",
+      "labelVisaNotOffered": "Patrocínio de visto: indicado como indisponível em pelo menos {{k}} de {{n}} anúncios",
+      "limitsTitle": "Limitações indicadas",
+      "count": "Mencionado em pelo menos {{k}} de {{n}} anúncios abertos que conseguimos ler (país: {{country}}), lidos em {{date}}.",
+      "countLimit": "Indicado como indisponível em pelo menos {{k}} de {{n}} anúncios abertos que conseguimos ler (país: {{country}}), lidos em {{date}}. Os demais não são contados como anúncios que o oferecem.",
+      "quoteLabel": "Nas palavras da empresa:",
+      "postingLink": "Ver o anúncio de onde vem esta frase",
+      "postingGone": "O anúncio de onde esta frase foi citada não está mais na plataforma.",
+      "conditionsTag": "com condições",
+      "conditions": "{{q}} destes {{k}} anúncios o ressalvam ou limitam quem tem direito.",
+      "standardText": "A maioria destes anúncios traz esta mesma frase, palavra por palavra.",
+      "legalTag": "pode ser o mínimo legal",
+      "legal": "A lei deste país fixa um mínimo para isso, e esta frase pode descrever esse mínimo:",
+      "withheldCollision": "Não exibido aqui: mais de um sistema de recrutamento tem um portal com este nome, e não conseguimos dizer se é o mesmo empregador.",
+      "withheldAgency": "Não exibido na página de uma agência de recrutamento: os benefícios dos anúncios dela descrevem o pacote da própria agência ou o de cada cliente, não o de um empregador.",
+      "withheldFranchise": "Não exibido para esta página: {{pct}}% dos anúncios que conseguimos ler dizem que a unidade tem dono e gestão independentes, então cada franqueado define os próprios benefícios.",
+      "withheldFranchiseUnsized": "Não exibido para esta página: muitos dos anúncios dela dizem que a unidade tem dono e gestão independentes, então cada franqueado define os próprios benefícios.",
+      "withheldVendor": "Ainda não exibido para esta página: o sistema de recrutamento dela coloca os benefícios em uma parte do anúncio que ainda não guardamos.",
+      "basis": "Lido do texto dos próprios anúncios abertos da empresa escritos em inglês; anúncios em outros idiomas ainda não são lidos. Uma marcação exige pelo menos {{minN}} anúncios de um país que conseguimos ler, com o benefício mencionado em pelo menos {{minK}} deles e em pelo menos {{minPct}}% deles. \"Pelo menos\" porque nosso leitor pode deixar passar uma menção."
     },
     "employerCtx": {
       "title": "Sobre este empregador",
@@ -3912,7 +3982,7 @@
       "newBadge": "+{{n}} novas"
     },
     "appliedBadge": "Candidatado",
-    "welcomeLine": "Cada vaga aqui é verificada ao vivo no próprio sistema da empresa. Comece onde este quadro é mais forte:",
+    "welcomeLine": "Cada vaga aqui é lida no próprio sistema do empregador. Comece onde este quadro é mais forte:",
     "welcomePostedToday": "Publicadas hoje",
     "welcomeStatedPay": "Só com salário declarado",
     "welcomeDismiss": "Dispensar",
@@ -3937,11 +4007,7 @@
     "deadLinkDismiss": "Dispensar",
     "tailorLimitTitle": "Limite por hora atingido",
     "tailorLimit": "Usou os ajustes de currículo desta hora — repõem-se dentro de uma hora. Tudo o que gerou fica guardado.",
-    "savedMilestone": "Já são {{n}} vagas no seu pipeline",
-    "savedMilestoneDesc": "O Apply Agent pode preparar respostas personalizadas para todas de uma vez — teste grátis de {{trialDays}} dias para novos assinantes. No modo de revisão, o padrão, nada é enviado até você aprovar.",
     "sortRelevance": "Relevância",
-    "companyNotHiring": "Agora não — a {{company}} não tem vagas abertas no seu portal neste momento. Siga a empresa abaixo e enviaremos um e-mail quando surgirem novas vagas.",
-    "companyYesHiringCapped": "Sim — mais de {{n}} vagas abertas verificadas agora mesmo, diretamente do portal da {{company}}.",
     "postingClosedTitle": "Esse anúncio acabou de fechar",
     "postingClosedBody": "A {{company}} retirou este anúncio. Já não aparece na plataforma — as ofertas abaixo continuam ativas.",
     "reportCheckedTitle": "Acabámos de verificar novamente",
@@ -3974,12 +4040,10 @@
     "coachBusy": "O coach de entrevistas está ocupado — tente novamente daqui a pouco.",
     "coachError": "Ocorreu um erro ao preparar as perguntas. Tente novamente.",
     "detailClose": "Fechar",
-    "salaryVerbatim": "tal como indicado no anúncio",
     "salaryContext": "Mediana dos mínimos na área: {{sym}}{{median}} ({{currency}}, de {{n}} anúncios que indicam salário)",
     "salaryAbove": "{{pct}}% acima da mediana dos mínimos",
     "salaryBelow": "{{pct}}% abaixo da mediana dos mínimos",
     "salaryLevel": "Praticamente ao nível da mediana dos mínimos",
-    "applyShort": "Candidatar-se no site da empresa",
     "prepAnswers": "Preparar respostas",
     "detailFitCta": "Ver a minha compatibilidade com esta vaga — usa o currículo guardado",
     "detailFitLoading": "A comparar este anúncio com o seu currículo…",
@@ -3988,30 +4052,24 @@
     "missingKeywords": "Em falta no seu currículo:",
     "hlHave": "no seu currículo",
     "hlMissing": "em falta",
-    "detailNoDesc": "O feed desta empresa não publica a descrição completa — o anúncio completo está no site da própria empresa, através do botão Candidatar-se.",
     "detailSimilar": "Ofertas semelhantes na plataforma",
-    "companyYesHiring": "Sim — {{count}} {{roleWord}} em aberto e verificadas neste momento, diretamente do portal de emprego da {{company}}.",
     "countLine": "{{total}} ofertas ativas de {{companyFeeds}} feeds de empresas — todas diretamente do sistema de recrutamento de cada empresa.",
-    "subtitleShort": "Todas as vagas vêm diretamente do sistema de carreiras de cada empresa — verificadas, recentes e reverificadas quando se candidata.",
+    "subtitleShort": "Cada vaga vem diretamente do próprio sistema de recrutamento do empregador, com data nos últimos 30 dias.",
     "badgeOfficial": "Só feeds oficiais",
     "guaranteeFreshTip": "Toda vaga cuja data informada pela empresa ultrapassa 30 dias é removida automaticamente — na entrada e novamente na exibição. Quando a empresa não informa nenhuma data, não podemos considerar a vaga antiga, então a mantemos e não mostramos idade em vez de adivinhar uma.",
     "badgeFresh": "Limite de 30 dias",
-    "badgeLive": "Reverificado ao candidatar-se",
+    "badgeLive": "Reverificado ao candidatar-se, quando o sistema permite",
     "aboutToggle": "Como funciona esta plataforma",
     "guaranteeFresh": "Nenhuma vaga datada passa de 30 dias",
     "dataPagesGhost": "Índice de Empregos Fantasma",
     "dataPagesTrends": "Tendências semanais de contratação",
     "dataPagesEntry": "Índice de Início de Carreira",
-    "hhTitle": "Saúde da Contratação",
-    "hhOpen": "vagas abertas verificadas na plataforma neste momento",
-    "hhFilledPre": "Preencheu",
     "hhFilledPost": "vagas em {{d}} dias de monitorização — cada uma esteve publicada pelo menos uma semana antes de sair",
     "hhFilledPostUntracked": "vagas desde que começámos a monitorizar — cada uma esteve publicada pelo menos uma semana antes de sair",
     "hhSpeed": "normalmente em ~{{d}} dias",
     "hhRepostsTracked": "Republicou o mesmo título de vaga {{n}} vezes durante a nossa monitorização — republicação de rotina ou vagas que reabrem constantemente.",
     "hhFootnote": "Calculado a partir do ciclo de vida completo dos anúncios oficiais desta empresa — quando abrem e quando fecham — e não de um retrato pontual.",
     "watchCta": "Acompanhar a {{company}}",
-    "watchNote": "A sua conta contará os novos anúncios desde a sua última visita.",
     "nlHintLong": "Convertemos a pesquisa em filtros reais e mostramos exatamente como a interpretámos — ajuste o que quiser abaixo.",
     "filtersBtn": "Filtros",
     "anySalary": "Qualquer salário",
@@ -4043,14 +4101,14 @@
     "budgetPass": "Seu navegador precisa concluir uma verificação rápida antes que o mural possa carregar. Recarregue a página para tentar de novo.",
     "budgetContact": "Se você está procurando trabalho e isso está atrapalhando, escreva para {{email}} e nós resolvemos.",
     "clearSearch": "Limpar a pesquisa",
-    "zeroTitle": "Nenhuma oferta verificada corresponde a todos esses critérios",
+    "zeroTitle": "Nenhuma oferta corresponde a todos esses critérios",
     "sortNoStatedPayTitle": "Nenhum destes resultados indica o salário, por isso não há nada para ordenar por salário",
     "sortNoStatedPayBody": "Ordenar por salário mostra só ofertas com um valor que podemos comparar. Os resultados continuam lá noutra ordem.",
     "sortPayFailedTitle": "Não conseguimos ler o salário desta pesquisa agora",
     "sortPayFailedBody": "A ordem por salário não respondeu desta vez. Os resultados continuam lá noutra ordem, ou tente de novo daqui a pouco.",
     "sortShowNewest": "Mostrar as mais recentes primeiro",
     "zeroTitleDegraded": "Sem correspondências exatas — e a nossa pesquisa por significado não terminou",
-    "zeroBody": "Só listamos anúncios verificados nos sistemas das próprias empresas — nada é acrescentado para encher. Aliviar um filtro ajuda:",
+    "zeroBody": "Só listamos anúncios lidos nos próprios sistemas dos empregadores — nada é acrescentado para encher. Aliviar um filtro ajuda:",
     "zeroBodyDegraded": "Essa segunda passagem procura vagas que signifiquem o mesmo que escreveu, e desta vez esgotou o tempo. Tente de novo daqui a pouco ou alivie um filtro:",
     "zeroRemove": "Remover {{label}} — {{n}} ofertas",
     "skillUnlockLead": "Desbloqueio de competência:",
@@ -4065,17 +4123,13 @@
     "benchmarkLine": "Salário anunciado nesta área: mediana dos mínimos {{symbol}}{{median}} ({{currency}}) — com base em {{n}} anúncios daqui que indicam salário",
     "seenLastVisit": "publicado antes da sua última visita",
     "urgencyChip": "Costuma fechar em ~{{d}} dias",
-    "repostTipTracked": "Esta empresa republicou o mesmo título de vaga {{n}} vezes durante a nossa monitorização. Pode significar republicação de rotina ou vagas que reabrem constantemente — vale a pena saber antes de investir numa candidatura.",
+    "repostTipTracked": "{{n}} vezes durante o nosso acompanhamento, uma vaga saiu daqui enquanto outro anúncio com o mesmo título estava no ar. Contamos isso uma vez por título por dia.",
     "repostChipTracked": "Republica vagas com frequência ({{n}}×)",
     "youHave": "Já tem:",
-    "applyBtn": "Candidatar-se",
     "reportedBadge": "Sinalizado — obrigado",
     "reportGone": "O anúncio desapareceu",
     "reportMisleading": "Parece enganoso",
     "reportOther": "Outra coisa",
-    "reportCancel": "Cancelar",
-    "reportCta": "Sinalizar este anúncio",
-    "reportTip": "Algo de errado com este anúncio? Uma sinalização de \"desaparecido\" reverifica-o de imediato no site da própria empresa.",
     "dismissCta": "Ocultar este anúncio",
     "dismissTip": "Oculta este anúncio neste dispositivo. Pode repor todos os anúncios ocultos quando quiser.",
     "hideLocations": "Ocultar outras localizações",
@@ -4122,7 +4176,6 @@
     "sourcesDown_other": "{{count}} feeds de empresas estão fora do ar agora",
     "sourcesDownAtLeast_one": "pelo menos {{count}} feed de empresa está fora do ar agora",
     "sourcesDownAtLeast_other": "pelo menos {{count}} feeds de empresas estão fora do ar agora",
-    "verifiedAgo": "verificado {{ago}}",
     "healthUnavailable": "dados de ritmo de contratação indisponíveis agora",
     "ignoredFilters": "Não conseguimos aplicar {{filters}} — esses resultados não estão filtrados por isso. Tudo o resto que selecionaste foi aplicado.",
     "filterName": {
@@ -4152,9 +4205,6 @@
       "sort": "ordenação"
     },
     "companiesChip": "{{n}} empresas",
-    "firstSeenToday": "vista pela primeira vez hoje",
-    "firstSeenDaysAgo": "vista pela primeira vez há {{count}}d",
-    "firstSeenProvenance": "Este empregador não indica data de publicação, por isso não se mostra idade. Esta é a data em que a vaga apareceu pela primeira vez no nosso mural — limita a idade máxima possível, mas é a nossa data de descoberta, não a do empregador.",
     "droppedTerms": "Pesquisámos nos títulos para o resto — {{words}} ignorado, não aparece nos títulos das vagas.",
     "coverageScopeBoard": "todo o quadro, não apenas esta página filtrada",
     "filterCoverageDated": "Em {{scope}}, segundo a contagem de {{asOf}}, os empregadores indicam {{fields}}. Um filtro só pode encontrar o que o empregador publicou: as vagas que não indicam ficam ocultas por ele, não ausentes.",
@@ -4180,13 +4230,8 @@
     "locationSplit": "Lemos “{{place}}” como localização — mostrando vagas de “{{q}}” em {{place}}.",
     "locationSplitApply": "Usar como filtro de localização",
     "ignoredWidening": "Não conseguimos acrescentar {{filters}} a esta página, por isso essas vagas ficam de fora aqui.",
-    "chipAgentOnly": "O agente pode candidatar-se",
     "chipInclUncat": "+ não classificadas",
     "deadLinkDocTitle": "Vaga já não disponível — Resume Booster",
-    "agentAppliesChip": "O agente pode candidatar-se",
-    "descFailed": "Não conseguimos carregar esta descrição agora.",
-    "agentOnlyTip": "Mostrar apenas vagas cujo formulário o nosso agente consiga preencher e enviar por ti. O emblema Sparkles num cartão significa o mesmo — isto filtra todo o quadro para essas.",
-    "agentOnly": "O agente pode candidatar-se",
     "inclUncatSalaryTip": "Indisponível ao ordenar por salário — essa combinação é demasiado lenta de servir, por isso não fingimos aplicá-la.",
     "inclUncatTip": "Algumas vagas não podem ser classificadas numa área a partir do título. Ficam de fora quando escolhes uma — isto volta a incluí-las.",
     "inclUncat": "+ não classificadas",
@@ -4197,10 +4242,6 @@
     "fitFailedNote": "{{n}} vagas não puderam ser pontuadas agora — normalmente é temporário.",
     "fitRetry": "Tentar novamente",
     "dropTitleScoped": "Larga aqui o teu CV — encontramos as vagas que combinam e ordenamo-las por afinidade em segundos.",
-    "agentPitchCounted": "O agente pode preencher e enviar {{n}} destas por ti — lê o teu CV, escreve cada candidatura separadamente e responde às perguntas de triagem do empregador.",
-    "agentPitchCta": "Ver como funciona — {{trialDays}} dias grátis para novos assinantes, depois {{agentPrice}} $/mês",
-    "agentPitchScopeLive": "Candidata-se em {{n}} sistemas de recrutamento — cerca de {{pct}}% do quadro — e nunca em sites que colocam as candidaturas atrás de um CAPTCHA. Em todos os outros prepara a candidatura e você envia-a.",
-    "agentPitchScopePlain": "Candidata-se nos sistemas de recrutamento que o permitem e nunca em sites que colocam as candidaturas atrás de um CAPTCHA. Em todos os outros prepara a candidatura e você envia-a.",
     "loadMoreFailed": "Não foi possível carregar mais agora — os teus resultados continuam aqui.",
     "loadMoreRetry": "Tentar novamente",
     "moreLocations_one": "A mesma função em mais {{count}} localização",
@@ -4217,6 +4258,7 @@
     "hideOpenings": "Ocultar as outras vagas",
     "moreOpenings_one": "Mais {{count}} vaga desta função",
     "moreOpenings_other": "Mais {{count}} vagas desta função",
+    "moreOpenings_many": "Mais {{count}} vagas desta função",
     "seeAllOpenings": "Ver todas as {{count}} vagas desta função",
     "a11yLoading": "Carregando vagas…",
     "a11yError": "Não foi possível carregar as vagas. Tente novamente.",
@@ -4287,10 +4329,7 @@
     "hideAgenciesTip": "Oculta vagas publicadas por agências de recrutamento e de trabalho temporário. Os cartões delas levam o selo «Agência de recrutamento»; este filtro tira-as por completo da página. Desligado por padrão — uma vaga de agência é uma vaga real.",
     "chipNoAgencies": "Sem agências de recrutamento",
     "agencyBadge": "Agência de recrutamento",
-    "agencyBadgeTip": "Este empregador é uma agência de recrutamento ou de trabalho temporário — a vaga pode ser preenchida por conta de um cliente. Use «Ocultar agências de recrutamento» nos filtros para excluí-las.",
     "agenciesExcluded": "As vagas de agências de recrutamento estão ocultas pelo seu filtro — os totais contam apenas empregadores diretos.",
-    "trustBadgeAts": "Direto de {{company}} no {{ats}}",
-    "trustBadgeAtsTip": "Esta vaga foi lida diretamente do feed de empregos {{ats}} da própria {{company}} — o mesmo sistema em que os recrutadores dela publicam. Não é um agregador nem uma cópia extraída. É verificada ao vivo quando você clica em Candidatar-se.",
     "annualizedBasisTip": "Conta nossa, não do empregador: uma taxa por hora × 2.080 horas (40 horas por semana, 52 semanas), uma diária × 260 dias, uma mensal × 12. O valor à esquerda é o que a vaga diz literalmente.",
     "pastFieldWindow": "Aberta há mais tempo que 75% das vagas de {{field}}",
     "pastFieldWindowTip": "Medido pelo nosso próprio registro de encerramentos: das {{n}} vagas de {{field}} que vimos sair do ar nos últimos {{window}} dias, três quartos sumiram em até {{p75}} dias. Esta está no dia {{age}} pela data de publicação da própria empresa. Uma vaga aberta há muito tempo não está morta — mas vale saber antes de gastar uma candidatura.",
@@ -4303,10 +4342,7 @@
     "locationTidiedNote": "Exatamente como o sistema do empregador escreveu. A linha no topo deste painel é o mesmo texto sem os códigos de requisição e de unidade — nada foi acrescentado.",
     "factField": "Área",
     "factPosted": "Publicada",
-    "factApplying": "Candidatura",
     "factEmployer": "Empregador",
-    "experienceProvenance": "Nossa faixa de senioridade para esta vaga, deduzida do título e dos requisitos — não é um rótulo escolhido pelo empregador.",
-    "minYearsProvenance": "Os anos mínimos que a própria vaga pede, nas palavras do empregador.",
     "countryProvenance": "Lido do feed do próprio empregador: o campo de país quando ele publica um e, caso contrário, o texto de localização. Vagas que não conseguimos localizar não mostram país em vez de um palpite.",
     "categoryProvenance": "Nossa classificação desta vaga, deduzida do título — não é um rótulo escolhido pelo empregador. O nome da equipe do próprio empregador, quando o feed dele informa, aparece ao lado da empresa no topo.",
     "payBasis": {
@@ -4318,9 +4354,9 @@
     },
     "countryTipCounts": "O país é lido do próprio texto de localização de cada vaga; vagas que não conseguimos localizar ficam de fora enquanto isto está ativo, nunca são adivinhadas. As contagens são os totais de todo o quadro.",
     "countryTipNoCounts": "O país é lido do próprio texto de localização de cada vaga; vagas que não conseguimos localizar ficam de fora enquanto isto está ativo, nunca são adivinhadas. As contagens estão ocultas porque os únicos números que temos são os do quadro inteiro, e você filtrou o quadro.",
-    "verdictChurnFloor": "republica vagas com frequência (pelo menos {{n}}×) — as respostas podem demorar",
+    "verdictChurnFloor": "{{n}} vagas que vimos sair voltaram com o mesmo anúncio ou tinham outro anúncio com o mesmo título no ar naquele momento",
     "verdictFillRate": "retira {{pct}}% das suas vagas em {{d}} dias",
-    "verdictSlowFill": "nunca vemos metade das suas vagas sair em {{d}} dias",
+    "verdictSlowFill": "nunca vemos metade das suas vagas sair e não voltar em {{d}} dias",
     "fieldCurveBasis": "Do nosso registo de ciclo de vida: cada vaga que acompanhámos, medida a partir da data de publicação indicada pelo próprio empregador e de mais nenhuma. As vagas ainda publicadas, e as que passaram o nosso limite de 30 dias, contam como inacabadas em vez de ficarem de fora — deixá-las de fora é o que fazia a antiga cifra sair igual em todas as áreas. Uma área com registo demasiado escasso não recebe cifra alguma.",
     "fieldCurveAsOf": "Números do setor à data de {{when}}.",
     "fieldCurveAsOfCarried": "Números do setor à data de {{when}}, transportados: o último recálculo horário não terminou, por isso este número é o da execução anterior.",
@@ -4331,18 +4367,31 @@
     "employerOutlivedCurve": "Isso é mais tempo do que este empregador costuma deixar uma vaga publicada: {{gone}}% das suas vagas saem do quadro em {{d}} dias — {{fillPct}}% retiradas em definitivo ({{lo}}–{{hi}}%), as restantes republicadas.",
     "employerOutlivedCurveBasis": "Medido sobre {{n}} das suas vagas ao longo de {{tracking}} dias de acompanhamento.",
     "fillCurveLine": "{{gone}}% das vagas desta área saem do quadro em {{d}} dias — {{fillPct}}% retiradas em definitivo ({{lo}}–{{hi}}%), as restantes republicadas. Medido sobre {{n}} vagas nos últimos {{window}} dias.",
-    "hhTakenDownPost": "vagas em {{d}} dias de acompanhamento — retiradas em definitivo, não republicadas",
-    "hhTakenDownPostUntracked": "vagas desde que começámos a acompanhar — retiradas em definitivo, não republicadas",
     "hhFillRate": "{{pct}}% das suas vagas saem em {{d}} dias ({{lo}}–{{hi}}% para cima ou para baixo), medido sobre {{n}} vagas.",
     "hhMedianCensored": "Não vimos metade delas sair em {{d}} dias, por isso não há cifra típica a dar.",
     "hhMedian": "Metade destas vagas é preenchida ao dia {{d}}.",
     "hhPaceThin": "Ainda não terminaram vagas suficientes desta empresa para dizer a que ritmo se move — {{d}} dias de acompanhamento até agora.",
     "hhPaceThinUntracked": "Ainda não terminaram vagas suficientes desta empresa para dizer a que ritmo se move.",
+    "hhGate": {
+      "lap": "Não indicamos a rapidez com que as vagas deste empregador são retiradas. Neste quadro só confirmamos uma retirada ao reler o quadro inteiro, o que pode confirmá-la com uma a três leituras de atraso, por isso uma proporção dentro de 14 dias e um tempo típico sairiam ambos errados. É um limite da forma como lemos o quadro, não um facto sobre o empregador.",
+      "coverage": "Não indicamos a rapidez com que as vagas deste empregador são retiradas: só {{pct}}% das suas vagas trazem uma data de publicação da própria empresa, poucas demais para medir.",
+      "paceTracking": "Observamos este quadro há {{d}} dias. Uma proporção de vagas retiradas em 14 dias precisa de pelo menos {{min}} dias de observação, por isso ainda não damos nenhuma.",
+      "countsTracking": "Observamos este quadro há {{d}} dias. Só contamos as vagas retiradas e não republicadas após {{min}} dias de observação, porque uma vaga retirada há menos tempo ainda pode voltar.",
+      "countsTrackingLap": "Observamos este quadro há {{d}} dias. Aqui só contamos as vagas retiradas e não republicadas após {{min}} dias de observação: neste quadro uma retirada só é confirmada ao reler o quadro inteiro, e uma vaga retirada há menos tempo ainda pode voltar.",
+      "relist": "Não mostramos quantas vagas deste empregador foram retiradas e continuaram retiradas. Registámos {{n}} vagas retiradas neste quadro em {{d}} dias de observação e nenhuma que tenha voltado, o que num quadro deste tamanho significa que a nossa deteção de republicações não está a funcionar aqui, não que nada tenha sido republicado. É uma lacuna no nosso registo, não um facto sobre o empregador.",
+      "withheldBadge": "Registo de retiradas retido",
+      "unprovenRead": "Não indicamos a rapidez com que as vagas deste empregador saem. Ainda não comprovámos que lemos este portal até ao fim, por isso uma vaga retirada onde não conseguíamos ver pareceria ainda aberta, e uma proporção ou um prazo típico sairiam errados. É um limite da forma como lemos o portal, não um facto sobre o empregador.",
+      "unprovenReadCounts": "Não indicamos quantas vagas deste empregador saíram e não voltaram. Não lemos este portal até ao fim de forma recente o suficiente para saber que vagas saíram. É um limite da forma como lemos o portal, não um facto sobre o empregador.",
+      "relistLap": "Não indicamos quantas vagas deste empregador saíram e não voltaram. Lemos este portal por partes, e o nosso teste de republicação só vê a parte lida em cada visita, por isso uma vaga que voltou noutra parte do portal pode parecer uma que não voltou. É uma lacuna no nosso registo, não um facto sobre o empregador.",
+      "otherSites": "Não indicamos quantas vagas deste empregador saíram e não voltaram. Neste portal, um mesmo título está publicado em muitos locais ao mesmo tempo, e o nosso teste de republicação ainda não distingue um novo local de uma republicação. É uma lacuna no nosso registo, não um facto sobre o empregador.",
+      "interval": "Não indicamos a rapidez com que as vagas deste empregador saem: a proporção calculada ficou fora da sua própria margem de erro, por isso o nosso cálculo tem de ser corrigido antes de a mostrar. É uma falha do nosso lado, não um facto sobre o empregador.",
+      "unread": "Não mostramos agora o registo de saídas deste empregador: a consulta que o fornece respondeu sem um valor de que a página precisa para o verificar. É uma lacuna do nosso lado, não um facto sobre o empregador."
+    },
     "hhRepostsFloor": "Republicou o mesmo título de vaga pelo menos {{n}} vezes durante o acompanhamento — republicação de rotina, ou vagas que voltam a abrir sem parar.",
     "hhFootnoteCurve": "Calculado a partir do ciclo de vida completo das publicações oficiais desta empresa — quando abrem e quando saem — não de um instantâneo. As vagas ainda publicadas, e as que passaram o nosso limite de 30 dias, contam como inacabadas em vez de ficarem de fora.",
-    "repostTipFloor": "Esta empresa republicou o mesmo título de vaga pelo menos {{n}} vezes durante o nosso acompanhamento — contamos um título republicado uma vez por dia, por isso o número real pode ser maior. Pode significar republicação de rotina ou vagas que voltam a abrir sem parar — vale a pena saber antes de investir numa candidatura.",
-    "repostTipRoles": "Nos últimos {{days}} dias, pelo menos {{n}} das vagas desta empresa que vimos sair do quadro voltaram — fechadas mais de uma vez, republicadas com o mesmo título ou de novo no quadro hoje — contra {{f}} que não voltaram. Só vemos uma vaga voltar sob o seu próprio anúncio, por isso o número real pode ser maior. Vale a pena saber antes de investir numa candidatura.",
-    "repostChipFloor": "Republica vagas com frequência ({{n}}×+)",
+    "repostTipFloor": "{{n}} vezes durante o nosso acompanhamento, uma vaga saiu daqui enquanto outro anúncio com o mesmo título estava no ar. Contamos isso uma vez por título por dia.",
+    "repostTipRoles": "Nos últimos {{days}} dias, {{n}} vagas que vimos sair daqui voltaram com o mesmo anúncio ou tinham outro anúncio com o mesmo título no ar naquele momento; {{f}} saíram e não voltaram.",
+    "repostChipFloor": "Voltou ou mesmo título no ar ({{n}}×+)",
     "urgencyTipRate": "Medido sobre {{n}} vagas desta empresa: {{pct}}% saíram em definitivo em até {{d}} dias após a publicação ({{lo}}–{{hi}}% para cima ou para baixo). As vagas ainda publicadas, e as que passaram o nosso limite de 30 dias, contam como inacabadas em vez de ficarem de fora. Vale a pena candidatar-se cedo.",
     "urgencyChipRate": "Preenche depressa — {{pct}}% em {{d}}d",
     "hhBadgeTipTakedowns": "Esta empresa retirou em definitivo {{n}} vagas no nosso acompanhamento até agora — fechadas, não republicadas. Um padrão de contratação comprovado e ativo, não apenas anúncios abertos.",
@@ -4357,7 +4406,7 @@
     "employerOutlivedCurveBasisDated": "Medido sobre as {{n}} vagas suas que trazem a data de publicação da própria empresa, ao longo de {{tracking}} dias de acompanhamento.",
     "fillCurveLineBounded": "{{gone}}% das vagas desta área saem do quadro em {{d}} dias — até {{fillPct}}% retiradas em definitivo ({{lo}}–{{hi}}%), pelo menos {{relistPct}}% republicadas. Medido sobre todas as vagas desta área que acompanhámos nos últimos {{window}} dias.",
     "hhFillRateDated": "Até {{pct}}% das suas vagas são retiradas em definitivo em {{d}} dias ({{lo}}–{{hi}}% para qualquer lado), medido sobre as {{n}} vagas que trazem a data de publicação da própria empresa.",
-    "activelyHiringUnavailable": "Não conseguimos ler os dados de ritmo de contratação agora, por isso este filtro não tem com que comparar — o problema é nosso, não do mercado. Desligue-o para ver todas as vagas verificadas.",
+    "activelyHiringUnavailable": "Não conseguimos ler os dados de ritmo de contratação agora, por isso este filtro não tem com que comparar — o problema é nosso, não do mercado. Desligue-o para ver todas as vagas.",
     "urgencyTipRateDated": "Medido sobre as {{n}} vagas desta empresa que trazem a sua própria data de publicação: até {{pct}}% foram retiradas em definitivo em {{d}} dias após a publicação ({{lo}}–{{hi}}% para qualquer lado). As vagas ainda abertas, e as que passaram o nosso limite de 30 dias, contam como inacabadas em vez de ficarem de fora. Vale a pena candidatar-se cedo.",
     "pastFieldHorizonTipNoCount": "Medido a partir do nosso próprio registo de ciclo de vida: das vagas de {{field}} que acompanhámos nos últimos {{window}} dias, {{gone}}% saíram do quadro em {{d}} dias. Esta está no dia {{age}} pela data publicada pela própria empresa. Uma vaga aberta há muito tempo não é uma vaga morta — mas vale a pena saber antes de investir uma candidatura.",
     "compareFillRateBounded": "até {{pct}}% das suas vagas são retiradas em definitivo em {{d}}d ({{lo}}–{{hi}}%)",
@@ -4370,8 +4419,6 @@
     "whichAgent": "Qual agente?",
     "agentOpenThere": "Abrir lá (pré-preenchido, não enviado)",
     "agentOpenThereTip": "Abre lá uma nova conversa com o prompt já preenchido. Nada é enviado até você pressionar enviar.",
-    "agentAppliesTip2": "O formulário de candidatura deste empregador é um que o nosso agente de candidatura consegue preencher e enviar sozinho — sem CAPTCHA e sem conta. Ele ainda devolve a candidatura a você se o empregador perguntar algo que não conseguimos responder a partir do seu perfil. Requer o plano Agent ou um passe ativo.",
-    "bringYourOwnAgent": "ou traga o seu próprio agente",
     "sendSearchToAgent": "Enviar esta busca ao meu agente",
     "sendSearchTip": "Copia um prompt de uma linha para o seu próprio agente de IA: os filtros e a ordem que você está vendo, como os argumentos que a busca do nosso servidor MCP aceita.",
     "searchPromptCopied": "Busca copiada como prompt — cole-o no seu agente.",
@@ -4380,9 +4427,11 @@
     "lcaChip": "Salários H-1B declarados · {{quarter}}",
     "lcaRange": "{{company}} apresentou {{n}} Labor Condition Applications certificadas para {{occupation}} em {{state}} no {{quarter}}, com salários anuais de {{low}} a {{high}}.",
     "lcaWhyThisCell": "Este é o maior grupo de pedidos que este empregador apresentou naquele trimestre. Este anúncio não indica nenhum código de ocupação, por isso não foi associado a esta vaga.",
+    "lcaWhyThisCellEmployer": "Este é o maior grupo de pedidos que este empregador apresentou nesse trimestre, mostrado como um exemplo do que apresentou. Não está associado a nenhuma vaga específica deste quadro.",
     "lcaSponsor": "{{company}} tem {{total}} pedidos certificados registados nesse período com salário anual declarado, distribuídos por {{groups}} grupos de ocupação e estado.",
     "lcaPeriod": "São pedidos que o Departamento certificou entre {{from}} e {{to}}.",
     "lcaNotAnOffer": "Estes são os salários apresentados nesses pedidos. Não são a remuneração desta vaga nem uma proposta.",
+    "lcaNotAnOfferEmployer": "Estes são os salários apresentados nesses pedidos. Não são a remuneração de nenhuma vaga deste portal nem uma proposta.",
     "lcaBasis": "Fonte: {{file}}, publicado em {{published}} — US Department of Labor, Office of Foreign Labor Certification. Dados de domínio público; o Departamento não endossa este site.",
     "lcaMinNote": "Mostrado apenas quando há pelo menos {{min}} pedidos certificados por trás do número.",
     "layoffChipSec": "Redução de efetivos declarada",
@@ -4402,7 +4451,15 @@
     "layoffRead": "lido de {{sourceName}} {{readAgo}}",
     "layoffReadStale": "última leitura {{readAt}}",
     "layoffMore": "+{{more}} mais na página do empregador",
-    "hhAlsoOnRecord": "Também em registo:"
+    "hhAlsoOnRecord": "Também em registo:",
+    "alsoInLocations_many": "Também contratando em mais {{count}} locais",
+    "sourcesDown_many": "{{count}} feeds de empresas estão fora do ar agora",
+    "sourcesDownAtLeast_many": "pelo menos {{count}} feeds de empresas estão fora do ar agora",
+    "moreLocations_many": "A mesma vaga em mais {{count}} localizações",
+    "verdictTakedownCeiling": "retira até {{pct}}% das suas vagas em {{d}} dias, contando cada retirada",
+    "hhTakedownRateDated": "Até {{pct}}% das suas vagas saíram em {{d}} dias, contando cada retirada, medido sobre as {{n}} vagas com data de publicação da própria empresa.",
+    "hhFootnoteCurveListing": "Calculado a partir do ciclo de vida completo das publicações que este site lista — quando abrem e quando saem — não de um instantâneo. As vagas ainda publicadas, e as que passaram o nosso limite de 30 dias, contam como inacabadas em vez de ficarem de fora.",
+    "employerOutlivedEveryTakedown": "É mais do que este empregador costuma manter uma vaga publicada: {{gone}}% das suas vagas saem do portal em {{d}} dias, contando cada retirada."
   },
   "accountPage": {
     "statusSaveFailed": "Não foi possível salvar esse status — tente novamente.",
@@ -4426,7 +4483,7 @@
     "deleteAccount": "Excluir conta",
     "welcome": "Bem-vindo! Vamos à sua primeira pontuação 🎯",
     "trackerEmpty": "Acompanhe onde você se candidatou — status, datas e a pontuação enviada, tudo em um lugar.",
-    "trackerEmptyCta": "Explore vagas verificadas — salvar uma inicia seu rastreador",
+    "trackerEmptyCta": "Explore vagas ativas — salvar uma inicia seu rastreador",
     "status": {
       "saved": "Salva",
       "applied": "Enviada",
@@ -4591,7 +4648,13 @@
       "notLinked": "Um plano no seu e-mail não está vinculado a esta conta. Escreva para nós e cuidaremos da desistência.",
       "outsideTerritory": "A desistência em {{days}} dias aplica-se a planos faturados para um endereço na UE, no EEE ou no Reino Unido, e este plano foi faturado noutro local. Pode cancelá-lo a qualquer momento.",
       "failed": "A desistência não foi concluída. Tente de novo em um minuto."
-    }
+    },
+    "closedHeading_many": "{{count}} das suas candidaturas fecharam — aqui estão vagas novas",
+    "ssSavedCount_many": "{{count}} salvas",
+    "ssNewHeadline_many": "{{count}} vagas novas correspondem às suas buscas desde a última visita",
+    "acPreppedToast_many": "{{count}} candidaturas preparadas — revise e candidate-se abaixo.",
+    "acPrepAll_many": "Preparar {{count}} candidaturas adaptadas",
+    "acGoPro_many": "Assine o Pro para preparar {{count}} vagas salvas"
   },
   "applyAgent": {
     "badge": "Seu agente de IA para candidaturas",
@@ -4616,7 +4679,7 @@
     "rankCta2": "Solte um currículo para classificá-las por compatibilidade"
   },
   "explore": {
-    "repostWarn": "Republica vagas: {{events}} republicações em {{roles}} vagas em {{d}} dias",
+    "repostWarn": "{{events}} retiradas aqui tinham outro anúncio com o mesmo título no ar, em {{roles}} títulos durante {{d}} dias",
     "intentFields2": "Percorrer todo o quadro",
     "intentCheck": "Verificar um empregador",
     "seoTitle5": "Explorar todas as áreas do quadro — um número ao vivo exato e as funções dentro de cada uma",
@@ -5023,24 +5086,22 @@
     "ctaBrowse": "Ver todas"
   },
   "homeHero": {
-    "badge": "Mural ao vivo + agente de IA",
     "headlinePre": "Vagas ao vivo, direto dos sistemas de contratação dos empregadores.",
-    "headlineHighlight": "O agente candidata-se por si.",
-    "sub": "Vagas lidas dos próprios sistemas de recrutamento das empresas e reverificadas o dia todo. Carregue o seu CV: o agente classifica todas, escreve cada candidatura com honestidade e submete onde o empregador permite.",
-    "statOpenings": "vagas verificadas",
+    "statOpenings": "vagas ativas",
     "statCompanies": "empresas",
-    "statSendable": "o agente pode submeter por si",
     "ctaPrimary": "Carregue o seu CV — grátis",
     "ctaSecondary": "Explorar o mural",
     "reassure": "Análise grátis · sem cartão, sem registo",
     "exploreCta": "Explorar por área",
-    "statCompanyBoards": "portais de emprego de empresas a contratar"
+    "statCompanyBoards": "portais de emprego de empresas a contratar",
+    "badge2": "Quadro de vagas ao vivo + a sua própria IA",
+    "headlineHighlight2": "Candidate-se por conta própria, com a ajuda da sua IA.",
+    "sub2": "Vagas lidas dos próprios sistemas de contratação das empresas e reverificadas o dia todo. Analise o seu currículo de graça, busque no quadro aqui ou pelo Claude ou ChatGPT e candidate-se por conta própria, com a ajuda da sua IA se quiser."
   },
   "homeAgent": {
     "lead": "Traga o seu próprio agente de IA.",
-    "passLine": "Um passe de {{passPrice}} $ dá ao seu agente {{passHours}} horas para pesquisar o quadro e candidatar-se por si a {{passApplications}} vagas. Uma vaga só conta quando o agente pode enviar a candidatura. Nunca renova; inicie sessão para comprar.",
+    "passLine": "A sua IA faz o rascunho e você decide.",
     "connectCta": "Ligar o seu agente",
-    "passCta": "Comprar ou abrir o seu passe",
     "connectLine2": "Conecte-o grátis e sem conta — {{freeCallsPerDay}} chamadas por dia por endereço de rede para explorar o quadro de vagas (um escritório ou uma conexão doméstica conta como um só endereço; pelo ChatGPT cada pessoa tem as suas próprias {{freeCallsPerDay}}, e pelo Claude vem primeiro uma cota diária que todos os usuários do Claude compartilham)."
   },
   "ghostIndex": {
@@ -5073,7 +5134,8 @@
     "layoffCadenceHourly": "de hora a hora",
     "layoffCadenceNightly": "todas as noites",
     "layoffReasonUnread": "a leitura não respondeu nesta visita",
-    "stillUp30Row2": "{{pct}}% das vagas datadas de {{field}} publicadas entre {{cohortFrom}} e {{cohortTo}} ainda estavam anunciadas ao alcançar o nosso limite de 30 dias (n={{n}}, ±{{hw}} pontos); no máximo {{r}}% tinham sido retiradas definitivamente e pelo menos {{x}}% republicadas. Contado apenas em portais que lemos até ao fim e nos quais vimos, nesta coorte, vagas próprias serem retiradas ou republicadas.",
+    "stillUp30Row3": "{{pct}}% das vagas datadas de {{field}} publicadas entre {{cohortFrom}} e {{cohortTo}} ainda estavam anunciadas ao alcançar o nosso limite de 30 dias (n={{n}}, ±{{hw}} pontos); no máximo {{r}}% tinham sido retiradas definitivamente e pelo menos {{x}}% republicadas. Contado apenas em portais que lemos até ao fim e nos quais vimos vagas serem retiradas nos 90 dias antes do início desta coorte.",
+    "stillUp30Boards": "Agregado sobre {{n}} portais de emprego de empresas que lemos por completo.",
     "stillUp30Pool": "Isso corresponde a {{gateShare}}% das vagas datadas desta área que chegaram ao limite.",
     "stillUp30TopBoard": "{{topBoardShare}}% da base deste cálculo é o portal de uma única empresa.",
     "stillUp30ReasonUnread2": "nenhuma vaga datada desta área alcançou o nosso limite de 30 dias nesta coorte, em nenhum portal — não há aqui amostra para medir, e não uma amostra com mau resultado",
@@ -5360,5 +5422,63 @@
       "Banco de palavras-chave do seu setor",
       "Garantia de reotimização de 30 dias"
     ]
+  },
+  "format": {
+    "ago": "há {{duration}}",
+    "justNow": "agora mesmo",
+    "period": {
+      "hour": "/h",
+      "day": "/dia",
+      "week": "/semana",
+      "month": "/mês",
+      "year": "/ano"
+    }
+  },
+  "ds": {
+    "tryAgain": "Tentar novamente",
+    "lightTheme": "Tema claro",
+    "asOf": {
+      "read": "lido {{when}}",
+      "loaded": "carregado {{when}}",
+      "filed": "apresentado {{when}}",
+      "asOf": "atualizado {{when}}",
+      "posted": "publicado {{when}}"
+    }
+  },
+  "howApply": {
+    "heading": "Como funciona a candidatura aqui",
+    "through": "As candidaturas passam pelo {{system}}.",
+    "captchaClick": "Na nossa verificação de {{pages}} páginas de candidatura ({{date}}), os formulários do {{system}} costumavam mostrar uma etapa de verificação humana.",
+    "captchaAuto": "Na nossa verificação de {{pages}} páginas de candidatura ({{date}}), os formulários do {{system}} não mostraram nenhuma etapa de verificação humana nessa amostra.",
+    "questions": "Lemos as próprias perguntas de triagem desta vaga.",
+    "recheck": "Onde o sistema do empregador permite, verificamos de novo se a vaga ainda está no ar quando você clica em Candidatar-se."
+  },
+  "filterBar": {
+    "keywordLabel": "Buscar vagas por cargo ou palavra-chave",
+    "keywordPlaceholder": "Cargo ou palavra-chave",
+    "companyKeywordPlaceholder_one": "Buscar em {{n}} vaga da {{name}}",
+    "companyKeywordPlaceholder_other": "Buscar em {{n}} vagas da {{name}}",
+    "companyKeywordPlaceholderNoCount": "Buscar vagas da {{name}}",
+    "locationLabel": "Local",
+    "locationPlaceholder": "Cidade, região ou país",
+    "filters": "Filtros",
+    "filtersCount": "Filtros ({{n}})",
+    "search": "Buscar",
+    "activeFilters": "Filtros ativos",
+    "removeFilter": "Remover filtro: {{label}}",
+    "clearAll": "Limpar todos os filtros",
+    "sheetTitle": "Filtros",
+    "done": "Concluído",
+    "postedWithin": "Publicado em",
+    "field": "Área",
+    "seniority": "Senioridade",
+    "payStated": "Salário informado",
+    "payStatedOnly": "Só vagas que informam o salário",
+    "payStatedChip": "Informa salário",
+    "hiringSystem": "Sistema de recrutamento",
+    "country": "País",
+    "agencies": "Agências de recrutamento",
+    "agenciesHiddenChip": "Sem agências de recrutamento",
+    "companyKeywordPlaceholder_many": "Buscar em {{n}} vagas da {{name}}"
   }
 }

@@ -310,9 +310,17 @@ describe("a board that grew is a rate with gates, not a count", () => {
     // The five surfaces the build was asked for, pinned by their keys: the
     // chip (via the partition), the detail panel clause, the compare row, the
     // employer page's health line, and the card's second unread chip.
-    for (const k of ["verdictGrew", "verdictGrowthUnread", "hhGrowthGrew", "hhGrowthNone", "hhGrowthUnread", "growthUnreadBadge", "growthUnreadBadgeTip", "hiringAdmittedGrew"]) {
+    for (const k of ["verdictGrew", "verdictGrowthUnread", "growthUnreadBadge", "growthUnreadBadgeTip", "hiringAdmittedGrew"]) {
       expect(JOBS, `jobsPage.${k} is not rendered`).toContain(`"jobsPage.${k}"`);
     }
+    // The employer page's health line moved with pass B (2026-10-12) into G3's
+    // HiringRecordCard, which the page hands the same gated verdict and the
+    // growth row: its grew, no-growth and unread lines are rendered there.
+    const CARD = strip(read("src/components/jobs/company/HiringRecordCard.tsx"));
+    for (const k of ["companyProfile.record.growthGrew", "companyProfile.record.growthNone", "companyProfile.record.growthLabel", "jobsPage.hhGrowthUnread"]) {
+      expect(CARD, `${k} is not rendered by the hiring record card`).toContain(`"${k}"`);
+    }
+    expect(JOBS, "the page hands the card its growth row and the reason an unread one is unread").toMatch(/row: landerGrowth,\s*why: landerGrowthWhy,/);
     expect(all(JOBS, /"jobsPage\.verdictGrew"/).length, "the detail clause and the compare row both render the grew sentence").toBe(2);
     // The card's second unread chip is reached only when the combined
     // verdict is unknown AND the growth half is the unread one.
@@ -323,7 +331,7 @@ describe("a board that grew is a rate with gates, not a count", () => {
     const en = JSON.parse(read("src/i18n/locales/en.json")).jobsPage as Record<string, string>;
     const inline: Record<string, string> = {};
     for (const m of read("src/pages/Jobs.tsx").matchAll(/t\("jobsPage\.([A-Za-z0-9_]+)",\s*"((?:[^"\\]|\\.)*)"/g)) inline[m[1]] = m[2];
-    const FIGURE_KEYS = ["verdictGrew", "hhGrowthGrew", "hhGrowthNone", "hiringAdmittedGrew", "hiringAdmittedBoth"] as const;
+    const FIGURE_KEYS = ["verdictGrew", "hiringAdmittedGrew", "hiringAdmittedBoth"] as const;
     const CALENDAR_DATE = /\b20\d\d-\d\d-\d\d\b|\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2}\b|\b\d{1,2}\s+(January|February|March|April|May|June|July|August|September|October|November|December)\b/;
     for (const src of [en, inline]) {
       for (const k of FIGURE_KEYS) {
@@ -337,14 +345,10 @@ describe("a board that grew is a rate with gates, not a count", () => {
       }
       // The grew sentences carry the rate; the no-growth sentence never
       // renders a fall as shrinking (our own de-duplication lowers a count).
-      for (const k of ["verdictGrew", "hhGrowthGrew", "hiringAdmittedGrew", "hiringAdmittedBoth"]) expect(src[k], `${k} does not print the rate`).toContain("{{pct}}");
-      expect(src.hhGrowthNone).toMatch(/not a claim that they are shrinking/);
-      expect(src.hhGrowthNone).not.toMatch(/\bis shrinking\b|\bshrank\b|\bcut\b/i);
+      for (const k of ["verdictGrew", "hiringAdmittedGrew", "hiringAdmittedBoth"]) expect(src[k], `${k} does not print the rate`).toContain("{{pct}}");
       // The unread sentences name OUR gap and never the employer's inactivity.
-      for (const k of ["growthUnreadBadgeTip", "hhGrowthUnread"]) {
-        expect(src[k]).toMatch(/gap in our record/);
-        expect(src[k]).toMatch(/not a sign they are not hiring/);
-      }
+      expect(src.growthUnreadBadgeTip).toMatch(/gap in our record/);
+      expect(src.growthUnreadBadgeTip).toMatch(/not a sign they are not hiring/);
       for (const k of ["growthWhyRead", "growthWhySeries", "growthWhyTooNew", "growthWhyTooSmall", "growthWhyReplaced", "growthWhyExcluded", "growthWhyUnread"]) {
         expect(src[k], `${k} missing`).toBeTruthy();
         expect(src[k], `${k} makes a claim about the employer`).not.toMatch(/not hiring|stopped|inactive|shrink/i);
@@ -359,6 +363,25 @@ describe("a board that grew is a rate with gates, not a count", () => {
         expect(src[k], `${k} does not print its count`).toContain("{{c}}");
       }
     }
+    // THE EMPLOYER PAGE'S GROWTH LINES (HiringRecordCard, the company shard):
+    // both counts and both of OUR dates, the rate on a rise, the basis named
+    // once in the label under either line (rows served on this board in our
+    // own daily snapshot, counted differently from open roles), never a hire
+    // or a headcount, and a no-growth line never says shrinking. The unread
+    // line (jobsPage.hhGrowthUnread, rendered by the card) names our gap.
+    const shard = JSON.parse(read("src/i18n/shards/company/en.json")).companyProfile.record as Record<string, string>;
+    for (const k of ["growthGrew", "growthNone"]) {
+      for (const ph of ["{{a}}", "{{b}}", "{{d1}}", "{{d2}}"]) expect(shard[k], `record.${k} does not print ${ph}`).toContain(ph);
+      expect(shard[k]).not.toMatch(/\bhired\b|headcount/i);
+      expect(shard[k]).not.toMatch(CALENDAR_DATE);
+    }
+    expect(shard.growthGrew).toContain("{{pct}}");
+    expect(shard.growthNone).not.toMatch(/\bis shrinking\b|\bshrank\b|\bcut\b|\bfell\b/i);
+    expect(shard.growthLabel).toMatch(/\bthis board\b/);
+    expect(shard.growthLabel).toMatch(/our own daily snapshot/);
+    expect(shard.growthLabel).toMatch(/counted differently from open roles/);
+    expect(en.hhGrowthUnread).toMatch(/gap in our record/);
+    expect(en.hhGrowthUnread).toMatch(/not a sign they are not hiring/);
     // The tenure copy never prints an onboarding date: no growth key carries a
     // first_snapshot placeholder at all, because a censored board's first day
     // is the table's own floor.

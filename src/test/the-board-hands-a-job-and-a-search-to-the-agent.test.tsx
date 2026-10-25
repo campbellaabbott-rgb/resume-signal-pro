@@ -47,6 +47,7 @@ import { render, screen, waitFor, fireEvent, within } from "@testing-library/rea
 import { MemoryRouter } from "react-router-dom";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
+import { choosePostingMenuItem } from "./helpers/posting-menu";
 
 const invoke = vi.fn();
 const rpc = vi.fn();
@@ -115,7 +116,7 @@ function serverSearchProperties(): string[] {
 /** Every filter the board can carry, all switched on — the widest body it can send. */
 const FULL_STATE: BoardFilterState = {
   q: "nurse -travel", location: "austin", remoteOnly: true, workMode: "", category: "healthcare", inclUncat: true,
-  agentOnly: true, country: "US,GB", experience: "mid,senior", companyTokens: ["acme", "beta"], salaryFloor: 90000,
+  country: "US,GB", experience: "mid,senior", companyTokens: ["acme", "beta"], salaryFloor: 90000,
   salaryCeiling: 150000, payBasis: "salaried", statedPayOnly: true, includeUnstatedPay: true, maxYears: 5,
   department: "ICU", vendor: "greenhouse,lever", employmentType: "full_time,contract", hideAgencies: true, freshness: "7",
 };
@@ -203,18 +204,22 @@ describe("1. the search mapper", () => {
     const server = serverSearchProperties();
     const body = boardFilterBody(FULL_STATE);
     // The widest body carries every board filter (a state that drops one is
-    // a vacuous subset check).
-    expect(Object.keys(body).length).toBeGreaterThanOrEqual(20);
+    // a vacuous subset check). Nineteen since the agent-only filter left the
+    // board with the retired apply agent (2026-10-12).
+    expect(Object.keys(body).length).toBeGreaterThanOrEqual(19);
     const args = toSearchJobsArgs(body, "salary");
     for (const k of Object.keys(args)) expect(server, `${k} is not a search_jobs argument`).toContain(k);
     // The four renames landed under the server's names and nothing under the board's.
     for (const [from, to] of Object.entries(SEARCH_ARG_RENAMES)) {
+      // The board's agent-only filter is retired (2026-10-12): the mapper keeps
+      // the rename for a saved search that carries it, and the board sends none.
+      if (from === "sendableOnly") { expect(body).not.toHaveProperty(from); continue; }
       expect(body, `${from} is not in the board body — the rename is stale`).toHaveProperty(from);
       expect(args).toHaveProperty(to);
       expect(args).not.toHaveProperty(from);
     }
     expect(args.query).toBe("nurse -travel");
-    expect(args.agentReadyOnly).toBe(true);
+    expect(args.agentReadyOnly, "the board sends no agent-only filter, so the hand-off carries none").toBeUndefined();
     expect(args.salaryMin).toBe(90000);
     expect(args.salaryMax).toBe(150000);
     // The widening switch has no argument and is dropped, not renamed.
@@ -391,10 +396,12 @@ describe("2. the hand-offs on /jobs, judged by the request body", () => {
     const fetchSpy = hookFetch();
     localStorage.setItem(HOST_STORAGE_KEY, MCP_HOSTS[1].name);
     mount(); await settled();
-    const btn = within(card("Warehouse Associate")).getByRole("button", { name: "Open in your agent" });
+    // Since pass B (2026-10-12) the card's copy of the control is the
+    // "Open in Claude or ChatGPT" item of its ⋯ menu: one click, the
+    // remembered host, no chooser.
     expect(card("Warehouse Associate").querySelector("select")).toBeNull();
     const before = tracked(fetchSpy).length;
-    fireEvent.click(btn);
+    await choosePostingMenuItem(card("Warehouse Associate"), "Open in Claude or ChatGPT");
     await waitFor(() => expect(clipboard().length).toBe(1), SLOW);
     expect(clipboard()[0]).toContain('job id "workday:beta:2"');
     await waitFor(() => expect(tracked(fetchSpy).length).toBe(before + 1), SLOW);
@@ -407,7 +414,7 @@ describe("2. the hand-offs on /jobs, judged by the request body", () => {
     const fetchSpy = hookFetch();
     // A filter state from the address bar — the same one the list request
     // was built from, so the arguments handed over are the request's twin.
-    mount("/jobs?q=nurse&location=austin&remote=1&agentOnly=1&salaryFloor=90000&salaryCeiling=150000&noAgencies=1&fresh=7&country=US,GB&inclUncat=1&category=healthcare&sort=salary&activelyHiring=1");
+    mount("/jobs?q=nurse&location=austin&remote=1&salaryFloor=90000&salaryCeiling=150000&noAgencies=1&fresh=7&country=US,GB&inclUncat=1&category=healthcare&sort=salary&activelyHiring=1");
     // The two rows fall to the browser-side filters under this state; the
     // control is there regardless of what the list shows.
     await waitFor(() => expect(screen.getByRole("button", { name: "Send this search to my agent" })).toBeTruthy(), SLOW);
@@ -421,7 +428,7 @@ describe("2. the hand-offs on /jobs, judged by the request body", () => {
     // EXACTLY the arguments for this state: the four renames, the widening
     // switch dropped, the on-screen sort, nothing the state did not carry.
     expect(args).toEqual({
-      query: "nurse", location: "austin", remote: true, category: "healthcare", agentReadyOnly: true,
+      query: "nurse", location: "austin", remote: true, category: "healthcare",
       country: "US,GB", salaryMin: 90000, salaryMax: 150000, excludeAgencies: true, maxAgeDays: 7, sort: "salary",
     });
     expect(copied).toContain(MCP_URL);
@@ -454,7 +461,7 @@ describe("2. the hand-offs on /jobs, judged by the request body", () => {
     expect((toastSpy.mock.calls[0][0] as { description?: string }).description).toBeUndefined();
   });
 
-  it("the welcome strip's fourth entry links /agents and fires welcome_agent; the Applying row links /agents beside the chip", async () => {
+  it("the welcome strip's fourth entry links /agents and fires welcome_agent; no agent-can-apply chip is left on the card or the panel", async () => {
     const fetchSpy = hookFetch();
     mount(); await settled();
     const link = screen.getByRole("link", { name: "Bring your own agent" });
@@ -463,14 +470,14 @@ describe("2. the hand-offs on /jobs, judged by the request body", () => {
     fireEvent.click(link);
     await waitFor(() => expect(tracked(fetchSpy).length).toBe(before + 1), SLOW);
     expect(tracked(fetchSpy).at(-1)!.variant).toBe("welcome_agent");
-    // The panel of a sendable posting: the chip to the plan, and the pass
-    // beside it. The tooltip no longer says the plan is the only way.
+    // The panel of a sendable posting carried a chip to the retired Agent
+    // plan and the pass beside it; both left with the apply agent (the apply
+    // pivot, 2026-10-11). The panel keeps the hand-off to the reader's own AI.
     fireEvent.click(card("Staff Engineer"));
     await panelOpen();
-    const chips = screen.getAllByRole("link", { name: "Agent can apply" });
-    expect(chips.length).toBeGreaterThanOrEqual(2); // the card's and the panel's
-    for (const c of chips) expect(c.getAttribute("title")).toMatch(/Needs the Agent plan or a live pass\.$/);
-    for (const l of screen.getAllByRole("link", { name: "or bring your own agent" })) expect(l.getAttribute("href")).toBe("/agents");
+    expect(screen.queryAllByRole("link", { name: "Agent can apply" })).toEqual([]);
+    expect(screen.queryAllByRole("link", { name: "or bring your own agent" })).toEqual([]);
+    expect(screen.getAllByRole("button", { name: "Open in your agent" }).length).toBeGreaterThan(0);
   });
 
   it("every variant this lane sends fits track-ab-event's cap", () => {
@@ -489,8 +496,8 @@ describe("2. the header", () => {
     const fetchSpy = hookFetch();
     render(<MemoryRouter><Header /></MemoryRouter>);
     // The wide nav's item; the phone menu is closed.
-    expect(screen.getAllByRole("link", { name: "Agents" }).length).toBe(1);
-    const wide = screen.getByRole("link", { name: "Agents" });
+    expect(screen.getAllByRole("link", { name: "For AI chats" }).length).toBe(1);
+    const wide = screen.getByRole("link", { name: "For AI chats" });
     expect(wide.getAttribute("href")).toBe("/agents");
     // Order in the wide nav: Jobs, then Agents.
     const jobs = screen.getByRole("link", { name: "Jobs" });
@@ -498,7 +505,8 @@ describe("2. the header", () => {
     // The twin is the one that renders under 640px: in the phone menu (which
     // replaced the icon-only link, S8-093).
     fireEvent.click(screen.getByRole("button", { name: "Menu" }));
-    const links = screen.getAllByRole("link", { name: "Agents" });
+    // The menu is a modal sheet: the wide nav behind it is aria-hidden while it is open.
+    const links = screen.getAllByRole("link", { name: "For AI chats", hidden: true });
     expect(links.length).toBe(2);
     for (const l of links) expect(l.getAttribute("href")).toBe("/agents");
     const twin = links.find((l) => l !== wide)!;
@@ -514,7 +522,7 @@ describe("2. the header", () => {
     // opened one before each click.
     const twinNow = () => {
       if (!document.getElementById("phone-nav")) fireEvent.click(screen.getByRole("button", { name: "Menu" }));
-      return screen.getAllByRole("link", { name: "Agents" }).find((l) => l.closest("#phone-nav"))!;
+      return screen.getAllByRole("link", { name: "For AI chats", hidden: true }).find((l) => l.closest("#phone-nav"))!;
     };
     await new Promise((r) => setTimeout(r, 0));
     fireEvent.click(twinNow());
@@ -562,9 +570,10 @@ describe("3. no typed rate or quota remains on the pages this lane touched", () 
     expect(page).not.toMatch(/Both (kinds )?meter identically/);
     const bake = strip(read("scripts/prerender-seo.mjs"));
     // L9-11 (wave 3): the bake prints this sentence on /data-api and in the
-    // llms-full /v1 line, where a pass raises nothing: it is scoped to the
-    // MCP server, the only place the pass overlay applies.
-    expect(bake).toMatch(/const FREE_KEY_RATE_SENTENCE = `\$\{D\.FREE_KEY_RATE_PER_MIN\} requests a minute and \$\{D\.MCP_FREE_KEY_DAILY_QUOTA\.toLocaleString\("en-US"\)\} calls a day per key; on the MCP server, a live Agent Pass on an account-linked key raises both for its hours, and it never raises them on \/v1`;/);
+    // llms-full /v1 line. Its rate and quota are the two mirrors; what it
+    // says after them belongs to the bake's owner (its pass clause is listed
+    // for removal in the apply pivot's hand-off).
+    expect(bake).toMatch(/const FREE_KEY_RATE_SENTENCE = `\$\{D\.FREE_KEY_RATE_PER_MIN\} requests a minute and \$\{D\.MCP_FREE_KEY_DAILY_QUOTA\.toLocaleString\("en-US"\)\} calls a day per key/);
     expect(bake.match(/\$\{FREE_KEY_RATE_SENTENCE\}/g)?.length).toBe(3);
     expect(bake).not.toMatch(/meter identically/);
     // The data entry the bake bundles exports both mirrors.
@@ -602,12 +611,17 @@ describe("3. the pass sentences this lane added interpolate in every locale", ()
       }
       // The retired key came out of this file, and the re-minted one is in.
       expect(get(d, "jobsPage.agentAppliesTip"), `${f} still carries the retired agentAppliesTip`).toBeUndefined();
-      expect(get(d, "jobsPage.agentAppliesTip2")).toBeTruthy();
+      // Its successor went with the Agent plan it sold (pass B, 2026-10-12).
+      expect(get(d, "jobsPage.agentAppliesTip2"), `${f} still carries the retired agentAppliesTip2`).toBeUndefined();
     });
   }
-  it("en's placeholders are the pass mirror's names, and the /agent line and the FAQ are wired to it", () => {
+  it("en's placeholders are the pass mirror's names where a pass is still named, and the FAQ names none since the apply pivot", () => {
     expect(placeholders(get(EN, "agentPage.connectInstead")!)).toEqual(["passHours", "passPrice"]);
-    expect(placeholders(get(EN, "faq.questions.bringYourAgent.answer")!)).toEqual(["passApplications", "passHours", "passPrice"]);
+    // The FAQ's own-AI answer sells nothing since the apply pivot (wave 4's
+    // sentence, taken by design/integration on 2026-10-18): no pass
+    // placeholder, no price, and it says we never submit.
+    expect(placeholders(get(EN, "faq.questions.bringYourAgent.answer")!)).toEqual([]);
+    expect(get(EN, "faq.questions.bringYourAgent.answer")!).toMatch(/never submit an application/);
     const agent = strip(read("src/pages/Agent.tsx"));
     expect(agent).toMatch(/agentPage\.connectInstead[\s\S]{0,300}\{ passHours: PASS\.sessionHours, passPrice: PASS\.priceUsd \}/);
     expect(agent).toMatch(/to="\/agents"/);
@@ -664,12 +678,15 @@ describe("3. the prerender links the hand-off and lists the attach menu from the
     expect(jobs).toMatch(/<a href="\/agents">connect your agent<\/a>/);
     expect(jobs).toMatch(/\/jobs\?job=&lt;id&gt;<\/code> link's id is the argument/);
   });
-  it("the /agents block renders prompts and resources off D.MCP_PROMPTS and D.MCP_RESOURCES, after the tools and before the boundary", () => {
+  it("the /agents block renders prompts and resources off D.MCP_PROMPTS and D.MCP_RESOURCES, after the tools and before the apply-yourself section", () => {
     const agents = between('path: "/agents",', 'path: "/freelance-boost",');
-    const tools = agents.indexOf("D.MCP_TOOLS.map(");
-    const prompts = agents.indexOf("D.MCP_PROMPTS.map(");
-    const resources = agents.indexOf("D.MCP_RESOURCES.map(");
-    const boundary = agents.indexOf("What your agent can and cannot do");
+    const tools = agents.indexOf("keptTools.map(");
+    const prompts = agents.indexOf("keptPrompts.map(");
+    const resources = agents.indexOf("D.MCP_RESOURCES.filter(");
+    const boundary = agents.indexOf("Applying stays yours");
+    // Both lists come off the mirrors, less what served the retired agent.
+    expect(BAKE).toMatch(/const keptTools = D\.MCP_TOOLS\.filter\(toolKept\)/);
+    expect(BAKE).toMatch(/const keptPrompts = D\.MCP_PROMPTS\.filter\(/);
     expect(tools).toBeGreaterThan(-1);
     expect(prompts).toBeGreaterThan(tools);
     expect(resources).toBeGreaterThan(prompts);

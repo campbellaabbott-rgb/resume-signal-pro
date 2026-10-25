@@ -499,20 +499,21 @@ describe("G8: the tiles are the owner's three with one GitHub line under them; t
     expect(start).toBeGreaterThan(-1);
     expect(end).toBeGreaterThan(start);
     const block = BAKE.slice(start, end);
-    // The block reads the plan and pass mirrors too (the crawler copy names
-    // the figures since 2026-09-27), so the harness hands it the real ones.
-    const { SUBSCRIPTIONS, PASS } = await import("../config/products");
-    const D = mutate({ ...(await import("../config/mcp-tools")), SUBSCRIPTIONS, PASS, SENDABLE_VENDOR_LABELS: ["a", "b"], SENDABLE_VENDOR_SENTENCE: "a and b" });
+    // The block reads the MCP mirror and the one apply-yourself line the
+    // crawler copy says (scripts/prerender-retired.mjs); it reads neither the
+    // plan nor the pass, which are retired (the apply pivot, 2026-10-11).
+    const { APPLY_YOURSELF_LINE } = await import("../../scripts/prerender-retired.mjs");
+    const D = mutate({ ...(await import("../config/mcp-tools")) });
     const written: Array<{ path: string; content: string; title: string; description: string; robots?: string }> = [];
     const fn = new Function(
-      "D", "write", "readFileSync", "join", "root", "process", "BOARD_TOTAL", "plusClaim", "breadcrumbLd", "breadcrumbNav", "FREE_KEY_RATE_SENTENCE",
+      "D", "write", "readFileSync", "join", "root", "process", "BOARD_TOTAL", "plusClaim", "breadcrumbLd", "breadcrumbNav", "FREE_KEY_RATE_SENTENCE", "APPLY_YOURSELF_LINE",
       `${block}; return true;`,
     );
     fn(
       D,
       (p: { path: string; content: string; title: string; description: string }) => written.push(p),
       () => "", (...xs: string[]) => xs.join("/"), ROOT, { env: { VITE_SUPABASE_URL: "https://example.invalid" } },
-      123456, (n: number) => `${n}+`, () => ({}), () => "", "the rate sentence",
+      123456, (n: number) => `${n}+`, () => ({}), () => "", "the rate sentence", APPLY_YOURSELF_LINE,
     );
     expect(written.map((w) => w.path)).toEqual(["/agents"]);
     return written[0].content;

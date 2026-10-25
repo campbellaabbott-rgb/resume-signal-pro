@@ -17,17 +17,18 @@ import { Check, Loader2, Mail } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
 import { supabase } from "@/integrations/supabase/client";
 import { forgetConfirmFragment, pulseTokenFromHash } from "@/lib/confirm-link";
+import { stashedFragment, takeStashed } from "@/lib/auth-fragment";
 
 type State = "ready" | "confirming" | "done" | "invalid" | "error" | "missing";
 
 export default function MarketPulseConfirm() {
   const { t } = useTranslation();
   const [token] = useState<string | null>(() =>
-    typeof window === "undefined" ? null : pulseTokenFromHash(window.location.hash));
+    typeof window === "undefined" ? null : pulseTokenFromHash(stashedFragment(window.location.hash)));
   const [state, setState] = useState<State>(token ? "ready" : "missing");
 
   useEffect(() => {
-    if (state === "done" || state === "invalid") forgetConfirmFragment();
+    if (state === "done" || state === "invalid") { forgetConfirmFragment(); takeStashed("fragment"); }
   }, [state]);
 
   const confirm = async () => {

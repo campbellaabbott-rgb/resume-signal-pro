@@ -5,8 +5,9 @@
  * and the address kept only session_id. A reload, Back or a restored tab
  * found no key and showed "Resume Not Found": the buyer was asked to
  * regenerate the product they had just paid for, while the server held it.
- * Now the address names the analysis once it is shown (?share=, beside the
- * session), and a page with no résumé asks analyze-resume by the session
+ * Now the tab names the analysis once it is shown (its share id, kept in the
+ * tab's stash rather than the address since R1: the id reads and deletes the
+ * analysis, S12-090), and a page with no résumé asks analyze-resume by the session
  * alone, which answers a redeemed session from its saved copy.
  *
  * The page is mounted for real, through the browser's own history, with only
@@ -57,6 +58,7 @@ const ANALYSIS = { industry: "Software", experienceLevel: "Senior", atsScore: { 
 const page = () => render(<BrowserRouter><Success /></BrowserRouter>);
 
 beforeEach(() => {
+  sessionStorage.clear();
   vi.stubGlobal("fetch", vi.fn(async () => new Response("{}", { status: 200 })));
   clearAllResumeData();
   invoke.mockReset();
@@ -78,7 +80,8 @@ describe("the paid analysis on the success page", () => {
     window.history.replaceState(null, "", "/success?session_id=cs_live_reload");
     page();
     expect(await screen.findByTestId("analysis", {}, SLOW)).toBeInTheDocument();
-    await waitFor(() => expect(window.location.search, "the address does not name the analysis it showed").toContain("share=share_saved_01"));
+    await waitFor(() => expect(JSON.parse(sessionStorage.getItem("rb_url_stash") ?? "{}"), "the tab does not name the analysis it showed").toMatchObject({ share: "share_saved_01", share_path: "/success" }));
+    expect(window.location.search, "the share id went into the address").not.toContain("share=");
     expect(window.location.search).toContain("session_id=cs_live_reload");
     cleanup();
     page(); // the reload

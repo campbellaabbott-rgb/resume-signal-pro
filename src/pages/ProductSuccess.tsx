@@ -57,6 +57,7 @@ import { normalizeBuilderResume } from "@/types/resume-builder";
 import { parseEdgeFunctionError } from "@/lib/edge-function-errors";
 import { AIGenerationProgress } from "@/components/AIGenerationProgress";
 import { CREDITS_UPDATED_EVENT, fetchProvenCredits, rememberCreditSession } from "@/hooks/use-scan-credits";
+import { maskEmail, stashedSessionIdFor } from "@/lib/auth-fragment";
 
 // Map product keys to icons
 const productIcons: Record<string, React.ElementType> = {
@@ -231,7 +232,10 @@ export default function ProductSuccess() {
   // Whether the purchase has an address the confirmation mail goes to.
   const [buyerEmailOnFile, setBuyerEmailOnFile] = useState(false);
 
-  const sessionId = searchParams.get("session_id");
+  // The Stripe session id: the first script in index.html moves it out of the
+  // address before any analytics can record it (src/lib/auth-fragment.ts).
+  const [stashedSession] = useState(() => stashedSessionIdFor("/product-success", null).id);
+  const sessionId = searchParams.get("session_id") || stashedSession;
   const productKey = searchParams.get("product") as ProductId | null;
   
   // Get product details
@@ -678,12 +682,20 @@ export default function ProductSuccess() {
           const fromContent = data?.generatedContent && typeof data.generatedContent === 'object' && 'credits' in data.generatedContent
             ? Number((data.generatedContent as { credits: number }).credits) || 0
             : 0;
-          const email = proven?.email ?? (data?.customerEmail ? String(data.customerEmail).toLowerCase().trim() : null);
-          // A convenience for sign-in and checkout prefill, never a proof.
-          if (email) {
-            try { localStorage.setItem('scanCreditsEmail', email); } catch { /* no storage */ }
-          }
-          setScanCreditsResult({ credits: proven?.bought || fromContent, email: email ?? '' });
+          // THE ADDRESS THE SERVER SHOWS, NEVER MORE (Account UX spec 7). This
+          // page opens from a bearer link anyone can be forwarded, so the
+          // purchase's address is masked unless the server said this signed-in
+          // visitor proved that mailbox (customerEmailMasked false); an older
+          // server that does not say is masked here. Nothing is written to
+          // this browser's storage from the answer: the next person to buy here
+          // must not find this buyer's address in their checkout.
+          const serverEmail = typeof data?.customerEmail === 'string' ? data.customerEmail.trim() : '';
+          const shownEmail = serverEmail
+            ? (data?.customerEmailMasked === false ? serverEmail : maskEmail(serverEmail))
+            : proven?.email
+              ? (proven.signedIn && proven.mailboxProven ? proven.email : maskEmail(proven.email))
+              : '';
+          setScanCreditsResult({ credits: proven?.bought || fromContent, email: shownEmail });
           window.dispatchEvent(new CustomEvent(CREDITS_UPDATED_EVENT));
         }
 

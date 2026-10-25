@@ -198,7 +198,7 @@ export function AtsCoverage({
             </p>
           )}
 
-          {asOfLine && <p className="mt-1.5 text-[11px] text-muted-foreground/70">{asOfLine}</p>}
+          {asOfLine && <p className="mt-1.5 text-xs text-subtle-foreground">{asOfLine}</p>}
         </div>
       </section>
     );

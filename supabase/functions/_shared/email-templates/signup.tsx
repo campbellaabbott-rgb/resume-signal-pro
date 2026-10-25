@@ -13,8 +13,10 @@ import {
   Preview,
   Text,
 } from 'npm:@react-email/components@0.0.22'
+import { CodeBlock, button, container, footer, h1, link, main, text, type CodeProps } from './auth-parts.tsx'
+import { authMailLanguage, authStrings } from './auth-strings.ts'
 
-interface SignupEmailProps {
+interface SignupEmailProps extends CodeProps {
   siteName: string
   siteUrl: string
   recipient: string
@@ -26,61 +28,35 @@ export const SignupEmail = ({
   siteUrl,
   recipient,
   confirmationUrl,
-}: SignupEmailProps) => (
-  <Html lang="en" dir="ltr">
-    <Head />
-    <Preview>Confirm your email for {siteName}</Preview>
-    <Body style={main}>
-      <Container style={container}>
-        <Heading style={h1}>Confirm your email</Heading>
-        <Text style={text}>
-          Thanks for signing up for{' '}
-          <Link href={siteUrl} style={link}>
-            <strong>{siteName}</strong>
-          </Link>
-          !
-        </Text>
-        <Text style={text}>
-          Please confirm your email address (
-          <Link href={`mailto:${recipient}`} style={link}>
-            {recipient}
-          </Link>
-          ) by clicking the button below:
-        </Text>
-        <Button style={button} href={confirmationUrl}>
-          Verify Email
-        </Button>
-        <Text style={footer}>
-          If you didn't create an account, you can safely ignore this email.
-        </Text>
-      </Container>
-    </Body>
-  </Html>
-)
+  token,
+  expiryMinutes,
+  lng,
+}: SignupEmailProps) => {
+  const s = authStrings(lng)
+  return (
+    <Html lang={authMailLanguage(lng)} dir="ltr">
+      <Head />
+      <Preview>{s.signup.preview(siteName)}</Preview>
+      <Body style={main}>
+        <Container style={container}>
+          <Heading style={h1}>{s.signup.heading}</Heading>
+          <Text style={text}>
+            {s.signup.before}
+            <Link href={siteUrl} style={link}>
+              <strong>{siteName}</strong>
+            </Link>
+            {s.signup.after(recipient)}
+          </Text>
+          <CodeBlock token={token} expiryMinutes={expiryMinutes} lng={lng} lead={s.signup.lead} />
+          <Text style={text}>{token ? s.signup.orBrowser : s.signup.noToken}</Text>
+          <Button style={button} href={confirmationUrl}>
+            {s.signup.button}
+          </Button>
+          <Text style={footer}>{s.ignore}</Text>
+        </Container>
+      </Body>
+    </Html>
+  )
+}
 
 export default SignupEmail
-
-const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }
-const container = { padding: '20px 25px' }
-const h1 = {
-  fontSize: '22px',
-  fontWeight: 'bold' as const,
-  color: '#000000',
-  margin: '0 0 20px',
-}
-const text = {
-  fontSize: '14px',
-  color: '#55575d',
-  lineHeight: '1.5',
-  margin: '0 0 25px',
-}
-const link = { color: 'inherit', textDecoration: 'underline' }
-const button = {
-  backgroundColor: '#000000',
-  color: '#ffffff',
-  fontSize: '14px',
-  borderRadius: '8px',
-  padding: '12px 20px',
-  textDecoration: 'none',
-}
-const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }

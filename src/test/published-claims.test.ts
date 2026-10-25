@@ -5,6 +5,7 @@ import { isUnfiltered, normalizeFilters } from "../../supabase/functions/job-boa
 import { BOARD_SOURCE_LIST } from "../config/ats-vendors";
 import { SERVING_SOURCE_LIST, DORMANT_SOURCES } from "../config/ats-vendors";
 import { codeOf } from "./helpers/strip-comments";
+import { readLocale, shardLeaves, LOCALE_FILES, LISTING_BANNED_PHRASES } from "./helpers/locale-strings";
 
 // /trust and /methodology — the two pages whose entire purpose is to be
 // believed — carried the worst claims on the site until 2026-07-27:
@@ -65,13 +66,40 @@ describe("no hand-written corpus counts in any locale", () => {
 
   for (const file of locales) {
     it(`${file} states no hardcoded 'N,000+' scan count`, () => {
-      const offenders = allStrings(readJson(resolve(localeDir, file)))
+      // Main locale AND string shards: what a reader of this language is served.
+      const offenders = allStrings(readLocale(file))
         .filter(([p]) => /^(trustIndicators|methodologyPage|trustPage|freeResults)\b/.test(p))
         .filter(([, v]) => ROUND_BRAG.test(v))
         .map(([p, v]) => `${p} = ${v}`);
       expect(offenders).toEqual([]);
     });
   }
+});
+
+describe("string shards carry no claim the main locales may not", () => {
+  // The listing and company strings live in src/i18n/shards/<group>/<lng>.json
+  // (design spec, section 1). A phrase banned here must not be able to hide
+  // there, so the shard text is swept with the same lists, per language.
+  it("the sweep covers all nine languages", () => {
+    expect(LOCALE_FILES.length).toBe(9);
+  });
+
+  for (const file of LOCALE_FILES) {
+    it(`${file}: no shard string says verified, filled, or early applicants get read`, () => {
+      const hits = shardLeaves(file).flatMap(([k, v]) =>
+        LISTING_BANNED_PHRASES.filter(([, re]) => re.test(v)).map(([name]) => `${k} (${name}): ${v.slice(0, 80)}`));
+      expect(hits).toEqual([]);
+    });
+  }
+
+  it("positive control: the phrase list catches the sentences the audit found", () => {
+    const caught = (t: string) => LISTING_BANNED_PHRASES.some(([, re]) => re.test(t));
+    expect(caught("Yes — 199 verified open roles right now")).toBe(true);
+    expect(caught("posted 0d ago — early applicants get read")).toBe(true);
+    expect(caught("Half of these roles are filled by day 25")).toBe(true);
+    expect(caught("Ja — aktuell 199 verifizierte offene Stellen")).toBe(true);
+    expect(caught("Live at source · feed read 46 min ago")).toBe(false);
+  });
 });
 
 describe("no unsourced efficacy statistics", () => {
@@ -92,7 +120,7 @@ describe("no unsourced efficacy statistics", () => {
     });
 
     it(`${file} claims no "N% report better ..." outcome rate`, () => {
-      const offenders = allStrings(readJson(resolve(localeDir, file)))
+      const offenders = allStrings(readLocale(file))
         .filter(([, v]) => /\d+\s*%[^.]{0,40}\b(report|reported|see|saw|experience)\b/i.test(v))
         .map(([p, v]) => `${p} = ${v}`);
       expect(offenders).toEqual([]);
@@ -459,8 +487,15 @@ describe("the re-check chip shows real re-verification, not insert time", () => 
   const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8")
     + readFileSync(resolve(root, "supabase/functions/job-board/clusters.ts"), "utf8");
 
+  // Pass B (2026-10-12): the pane's stamp is the listing vocabulary's LiveStatus,
+  // fed the served row (servedOf), and the card's is JobCard's feed-read line.
+  const live = readFileSync(resolve(root, "src/components/jobs/listing/LiveStatus.tsx"), "utf8");
+  const card = readFileSync(resolve(root, "src/components/jobs/listing/JobCard.tsx"), "utf8");
+
   it("the chip renders recheckedAt, never lastSeen", () => {
-    expect(jobs).toMatch(/detailJob\.recheckedAt &&/);
+    expect(jobs).toMatch(/served=\{servedOf\(detailJob\)\}/);
+    expect(live).toMatch(/const ago = agoText\(served\.recheckedAt, lng, now\);/);
+    expect(live).not.toMatch(/lastSeen|firstSeen/);
     expect(jobs).not.toMatch(/\{detailJob\.lastSeen &&/);
     expect(jobs).not.toMatch(/agoLabel\(detailJob\.lastSeen/);
   });
@@ -2007,22 +2042,29 @@ describe("fill-speed reports the window it actually observed", () => {
 describe("the verification receipt is visible before the click", () => {
   const jobs = readFileSync(resolve(root, "src/pages/Jobs.tsx"), "utf8");
 
+  // Pass B (2026-10-12): the card is the listing vocabulary's JobCard; the
+  // board hands it the served stamp (servedOf) and the card prints the feed read.
+  const card = readFileSync(resolve(root, "src/components/jobs/listing/JobCard.tsx"), "utf8");
+
   it("renders on the card, not only in the detail panel", () => {
-    expect(jobs).toMatch(/job\.recheckedAt && !job\.missingSince/);
-    expect(jobs).toMatch(/jobsPage\.verifiedAgo/);
+    expect(jobs).toMatch(/recheckedAt: servedOf\(job\)\.recheckedAt/);
+    expect(card).toMatch(/const read = job\.missingSince \? null : agoText\(job\.recheckedAt, lng, now\);/);
+    expect(card).toMatch(/listing\.card\.feedRead/);
   });
 
   it("renders nothing when there is no stamp", () => {
     // A missing stamp must never be dressed up as a weaker one — the same rule
     // that replaced lastSeen (insert-time) with recheckedAt (feed-read time).
-    const blk = jobs.slice(jobs.indexOf("{job.recheckedAt && !job.missingSince"));
-    expect(blk.slice(0, 700)).not.toMatch(/lastSeen|firstSeen|postedAt/);
+    const at = card.indexOf("const read = job.missingSince ? null : agoText(job.recheckedAt");
+    expect(at, "the card's stamp moved -- re-anchor").toBeGreaterThan(-1);
+    expect(card.slice(at, at + 700)).not.toMatch(/lastSeen|firstSeen|postedAt/);
   });
 
   it("every locale can render it", () => {
     for (const l of ["en", "en-GB", "es", "fr", "de", "pt", "nl", "hi", "tl"]) {
-      const j = JSON.parse(readFileSync(resolve(root, `src/i18n/locales/${l}.json`), "utf8"));
-      expect(j.jobsPage.verifiedAgo, `${l} missing verifiedAgo`).toContain("{{ago}}");
+      const j = JSON.parse(readFileSync(resolve(root, `src/i18n/shards/listing/${l}.json`), "utf8"));
+      expect(j.listing.card.feedRead, `${l} missing listing.card.feedRead`).toContain("{{ago}}");
+      expect(j.listing.status.read, `${l} missing listing.status.read`).toContain("{{ago}}");
     }
   });
 });
@@ -2499,14 +2541,30 @@ describe("no surface may opt out of the freshness claim by not being listed", ()
   const INTERVAL = /(\d+\s*[–-]\s*\d+|\bevery\s+\d+)\s*(minutes?|minutos?|minuto|minuten|min\b|मिनट)/i;
   const RECHECK = /re-?check|re-?verif|revisan|vérifi|geprüft|reverific|gecheckt|जांचे|sinusuri/i;
 
+  // A DOTFILE IS A BUILD CACHE, NOT A SURFACE. The bake bundles the app's
+  // modules (old changelog entries included) into the gitignored
+  // scripts/.prerender-data.mjs, so after any local build this sweep read
+  // that generated copy and failed on text no page serves; on CI, where the
+  // file never exists, the same sweep passed (design upgrade README,
+  // decision 5). Dot-named files and folders are skipped everywhere.
+  const swept = (name: string, isDir: boolean) =>
+    !name.startsWith(".") && (isDir ? name !== "node_modules" && name !== "test" : /\.(tsx?|jsx?|mjs|json|txt|html|md|sql)$/.test(name));
   const walk = (dir: string, out: string[] = []): string[] => {
     for (const e of readdirSync(resolve(ROOT, dir), { withFileTypes: true })) {
       const rel = `${dir}/${e.name}`;
-      if (e.isDirectory()) { if (e.name !== "node_modules" && e.name !== "test") walk(rel, out); }
-      else if (/\.(tsx?|jsx?|mjs|json|txt|html|md|sql)$/.test(e.name)) out.push(rel);
+      if (!swept(e.name, e.isDirectory())) continue;
+      if (e.isDirectory()) walk(rel, out);
+      else out.push(rel);
     }
     return out;
   };
+
+  it("never reads the bake's generated bundle, and still reads the bake", () => {
+    expect(swept(".prerender-data.mjs", false), "the generated bundle is swept").toBe(false);
+    expect(swept(".prerender-data-entry.ts", false)).toBe(false);
+    expect(swept("prerender-seo.mjs", false), "the bake itself is no longer swept").toBe(true);
+    expect(swept("seo-seed", true)).toBe(true);
+  });
 
   // ONE walk, every claim. Adding a claim here costs a line; adding a file to
   // a per-claim list is the thing that keeps failing.

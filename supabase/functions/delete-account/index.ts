@@ -37,7 +37,9 @@ import { bearerOf } from "../_shared/service-caller.ts";
 
 // Provable from outside without deleting anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "delete-account.2026-10-09.4";
+// 2026-10-14.1 (R1 integration): _shared/mailbox-proof.ts gained the proof-row
+// readers and maskEmail; provenMailbox, the one import here, is unchanged.
+const FN_BUILD = "delete-account.2026-10-14.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

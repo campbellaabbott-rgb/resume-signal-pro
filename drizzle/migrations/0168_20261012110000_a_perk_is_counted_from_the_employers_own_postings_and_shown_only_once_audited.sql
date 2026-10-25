@@ -1,0 +1,1 @@
+SELECT public._mig_exec(sql) FROM public._mig_stage WHERE name = '20261012110000_a_perk_is_counted_from_the_employers_own_postings_and_shown_only_once_audited.sql';

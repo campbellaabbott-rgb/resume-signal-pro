@@ -19,7 +19,9 @@ vi.mock("@/integrations/supabase/client", () => ({
 import { CompanyIntelPanel } from "../components/jobs/CompanyIntelPanel";
 
 const INTEL = {
-  employees: 24000, employee_basis: "public_records", yc_batch: null,
+  // Dated, so the headcount still renders: an undated one never prints
+  // (owner decision D11, src/lib/headcount.ts).
+  employees: 24000, employees_as_of: "2026-07-23", employee_basis: "public_records", yc_batch: null,
   median_usd_floor: 65000, usd_n: 40,
   categories: [{ category: "healthcare", n: 900 }], countries: [{ country: "US", n: 1200 }],
   net_7d: 52,

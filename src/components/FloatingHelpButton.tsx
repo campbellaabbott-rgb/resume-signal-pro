@@ -12,17 +12,17 @@ export function FloatingHelpButton() {
   const barVisible = useStickyBarVisible();
 
   return (
-    <div className={cn("fixed right-6 z-50 flex flex-col items-end gap-3 transition-[bottom]", barVisible ? "bottom-28" : "bottom-6")}>
+    <div data-floating-help="" className={cn("fixed right-4 z-help flex flex-col items-end gap-3 transition-[bottom] duration-base sm:right-6", barVisible ? "bottom-28" : "bottom-6")}>
       {isOpen && (
-        <div className="bg-card border border-border rounded-lg shadow-lg p-4 animate-in fade-in slide-in-from-bottom-2 duration-200">
+        <div className="bg-popover border border-border-strong rounded-lg shadow-overlay p-4 animate-in fade-in duration-base">
           <div className="flex items-center justify-between gap-4 mb-2">
             <span className="text-sm font-medium">{t('floatingHelpButton.needHelp')}</span>
             <button
               onClick={() => setIsOpen(false)}
-              className="text-muted-foreground hover:text-foreground transition-colors"
-              aria-label="Close"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring coarse:h-11 coarse:w-11"
+              aria-label={t('common.close', 'Close')}
             >
-              <X className="w-4 h-4" />
+              <X aria-hidden="true" className="w-4 h-4" />
             </button>
           </div>
           <p className="text-xs text-muted-foreground mb-3">
@@ -30,9 +30,9 @@ export function FloatingHelpButton() {
           </p>
           <a
             href="mailto:resumeboostersupp@gmail.com"
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-primary/10 border border-primary/20 text-primary hover:bg-primary/20 transition-colors text-sm font-medium"
+            className="link inline-flex items-center gap-2 text-sm font-medium"
           >
-            <Mail className="w-4 h-4" />
+            <Mail aria-hidden="true" className="w-4 h-4" />
             resumeboostersupp@gmail.com
           </a>
         </div>
@@ -40,10 +40,11 @@ export function FloatingHelpButton() {
       <Button
         onClick={() => setIsOpen(!isOpen)}
         size="icon"
-        className="h-12 w-12 rounded-full shadow-lg"
-        aria-label={isOpen ? "Close help" : "Get help"}
+        className="h-11 w-11 rounded-full shadow-overlay"
+        aria-label={isOpen ? t('floatingHelpButton.closeHelp', 'Close help') : t('floatingHelpButton.getHelp', 'Get help')}
+        aria-expanded={isOpen}
       >
-        {isOpen ? <X className="w-5 h-5" /> : <HelpCircle className="w-5 h-5" />}
+        {isOpen ? <X aria-hidden="true" className="w-5 h-5" /> : <HelpCircle aria-hidden="true" className="w-5 h-5" />}
       </Button>
     </div>
   );

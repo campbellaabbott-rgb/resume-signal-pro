@@ -668,7 +668,9 @@ function floorViolations(code: string, grain: "tok" | "pool"): string[] {
     const arms = flat.match(/COALESCE\([cep]\.posted_at >= \(\(wf\.watched_from \+ 1\)::timestamp AT TIME ZONE 'UTC'\), false\) AS in_watch30/g)?.length ?? 0;
     if (arms !== 3) v.push("arms");
     if ((flat.match(/LEFT JOIN obs wf ON wf\.tok = [cep]\.company_token/g)?.length ?? 0) !== 3) v.push("arm-joins");
-    if (!/WHERE r\.in_cohort30 AND r\.tt IS NOT NULL AND r\.tt >= 0 AND r\.in_watch30 GROUP BY r\.tok, r\.tt/.test(flat)) v.push("chain-clipped");
+    // 20261012121000 keeps the clip and adds delayed entry after it (a row is
+    // at risk only from its entry day), so either spelling clips the chain.
+    if (!/WHERE r\.in_cohort30 AND r\.tt IS NOT NULL AND r\.tt >= 0 AND r\.in_watch30(?: GROUP BY r\.tok, r\.tt| AND r\.entry_tt < r\.tt)/.test(flat)) v.push("chain-clipped");
     if (!/COALESCE\(ob\.admitted AND ob\.watched_from IS NOT NULL AND ob\.watched_from < \(SELECT h\.to_d FROM cohort30 h\) AND/.test(flat)) v.push("gate-term");
     if (!/ob\.watched_from AS watched_from/.test(flat)) v.push("floor-published");
     const order = ["'unobservable'", "'lap'", "'watch'", "'n'", "'events'", "'fills'", "'relists'", "'width'", "'precision'", "'arithmetic'"]
@@ -681,7 +683,10 @@ function floorViolations(code: string, grain: "tok" | "pool"): string[] {
     const arms = flat.match(/COALESCE\(ob\.admitted AND [cep]\.posted_at >= \(\(ob\.watched_from \+ 1\)::timestamp AT TIME ZONE 'UTC'\), false\) AS admitted/g)?.length ?? 0;
     if (arms !== 3) v.push("arms");
     if (/COALESCE\(ob\.admitted, false\) AS admitted/.test(flat)) v.push("bucket-only-arm");
-    if (!/AND r\.tt <= 30 AND r\.admitted GROUP BY r\.tok, r\.cat/.test(flat)) v.push("control-floored");
+    // 20261012122000 replaces the field's cohort-event control with admission
+    // by takedowns from before the cohort, still on top of the watched rows
+    // (raw.admitted); the layoff writer keeps the floored control.
+    if (!/AND r\.tt <= 30 AND r\.admitted GROUP BY r\.tok, r\.cat|\(r\.admitted AND COALESCE\(pr\.n, 0\) >= \(SELECT kk\.min_events_30 FROM k kk\)\) AS admitted/.test(flat)) v.push("control-floored");
   }
   return v;
 }
