@@ -6,9 +6,10 @@
 // with nothing to select, and no similar employers (audit CP13). An
 // uncarried token got the same filter-error copy.
 //
-//   - ZERO: the board is carried and has no open roles. The list column says
-//     so with the board's own read time, offers Watch, and lists three
-//     employers hiring in the same field. The page hides the detail pane.
+//   - ZERO: the board is carried and this page lists no roles. The list
+//     column says only that (the header's own line), offers Watch (promising
+//     what it counts only where the model allows), and lists three employers
+//     hiring in the same field. The page hides the detail pane.
 //   - UNCARRIED: we do not read a board by this name. The page says that,
 //     offers a search of the live board and the companies directory.
 //
@@ -18,8 +19,7 @@ import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { SERVED_WINDOW_DAYS, type LanderModel } from "@/lib/company/lander-model";
-import { ago as fmtAgo } from "@/lib/format";
+import type { LanderModel } from "@/lib/company/lander-model";
 import { SimilarCompaniesView, type SimilarRow } from "@/components/jobs/SimilarCompanies";
 
 export function CompanyEmptyState({ model, token, boardReadAt, similar = [], onWatch, underHeader = false }: {
@@ -29,7 +29,7 @@ export function CompanyEmptyState({ model, token, boardReadAt, similar = [], onW
   similar?: SimilarRow[];
   /** Offer Watch here. Leave it out when the page header (which has its own Watch) is on screen. */
   onWatch?: () => void;
-  /** The company header above already says "No open roles right now · board read …": the title is kept for screen readers only. */
+  /** The company header above already says the zero page's line: the title is kept for screen readers only. */
   underHeader?: boolean;
 }) {
   const { t, i18n } = useTranslation();
@@ -78,22 +78,25 @@ export function CompanyEmptyState({ model, token, boardReadAt, similar = [], onW
 
   if (model.variant !== "zero") return null;
   const name = model.name.name;
-  const read = boardReadAt ? fmtAgo(boardReadAt, { lng: lang }) : "";
-  const title = !name || model.name.generic
-    ? t("companyProfile.zero.titleBoard", "No roles on this board dated in the last {{days}} days", { days: SERVED_WINDOW_DAYS })
-    : t("companyProfile.zero.title", "No roles at {{name}} dated in the last {{days}} days", { name, days: SERVED_WINDOW_DAYS });
+  // The heading is the page's own line, true of every zero page. "No roles
+  // at X dated in the last 30 days" with "board read 5 min ago" under it was
+  // false where a sibling site serves the employer's roles, which that read
+  // found (the 2026-10-25 corpus, lander-model's zeroReadingOf).
+  const title = t("companyProfile.zero.answer", "No roles are listed on this page right now.");
 
   return (
     <section data-company-empty="zero" aria-labelledby="company-empty-title" className="rounded-lg border border-border bg-card p-4 space-y-3">
       <div className={underHeader ? "sr-only" : undefined}>
         <h2 id="company-empty-title" className="text-base font-semibold text-foreground">{title}</h2>
-        {read && (
-          <p className="text-meta text-muted-foreground">{t("companyProfile.boardReadAgo", "board read {{ago}}", { ago: read })}</p>
-        )}
       </div>
-      <p className="text-sm text-muted-foreground">
-        {t("companyProfile.zero.body", "Watch this board and your account will count its new postings when they appear.")}
-      </p>
+      {/* The watch counts only postings stored under this token: the promise
+          is made only where the model says the inputs agree with it
+          (lander-model's watchPromiseOf; round 3 review, 2026-10-25). */}
+      {model.watchPromise && (
+        <p className="text-sm text-muted-foreground">
+          {t("companyProfile.zero.body", "Watch this board and your account will count its new postings when they appear.")}
+        </p>
+      )}
       {onWatch && (
         <button
           type="button"

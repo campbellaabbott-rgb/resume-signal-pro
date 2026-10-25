@@ -43,7 +43,7 @@ Branch `wave3/email-ops`. Verifier: `scripts/verify-deploy.d/75-wave3-email-ops.
 | S8-122 | fixed | `useABTest().trackClick` records a view under `<test>__click`; `conversion` is left to the purchase |
 | S8-123 | fixed | scroll/time milestones carry the page in the variant (`pricing:25%`); get-analytics folds the prefix back |
 | S8-035 | partly | the "more than 10,000" claim is gone from es/fr/pt/tl (guard extended). **Owner decision:** remove the tips box or route it to the pulse; stop send-scan-report writing every report address into `free_scan_leads`; retention of existing rows |
-| S8-017 | owner | no cron drains the email queue. Section 75 now FAILs while no such job exists. Owner: re-create process-email-queue's job (Lovable Cloud email setup) or move auth mail to GoTrue |
+| S8-017 | resolved by R1, 20261014100000 | `rb-auth-mail-drain` drains the auth_emails queue every ten seconds. Section 75 finds it by name and judges it by section 94's rule (active, runs, failed 0, last run succeeded); it still FAILs if no drain job exists. The fix-plan drip in transactional_emails waits for CP-G by decision |
 | S8-020 | owner | wave 2 added `client_callable_unlisted_names` (admin-ops, commit 1721a15a). Owner: read the two names, then revoke or allowlist them. Section 40 stays INFO (house rule: the census is not redefined here) |
 | S8-050 | owner | five live cron jobs no repo file creates; read their commands with the service role, then one inventory migration (see also S8-061 below) |
 

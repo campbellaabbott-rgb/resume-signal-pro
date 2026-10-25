@@ -25,7 +25,6 @@
     "agency": {
       "banner": "Ce site carrières est celui d'une agence de recrutement. Les postes proposés ici sont généralement pour ses clients."
     },
-    "boardReadAgo": "site lu {{ago}}",
     "breadcrumbCompanies": "Entreprises",
     "breadcrumbJobs": "Offres",
     "breadcrumbLabel": "Fil d'Ariane",
@@ -181,17 +180,10 @@
     },
     "zero": {
       "allRoles": "Rechercher tous les postes ouverts",
-      "answer": "Aucun poste daté des {{days}} derniers jours",
+      "answer": "Aucun poste n'est affiché sur cette page pour le moment.",
+      "seoTitle": "Emplois chez {{company}}",
+      "seoDescription": "{{company}} : aucun poste n'est affiché sur cette page pour le moment.",
       "body": "Suivez ce site et votre compte comptera ses nouvelles offres dès leur parution.",
-      "title": "Aucun poste chez {{name}} daté des {{days}} derniers jours",
-      "titleBoard": "Aucun poste sur ce site daté des {{days}} derniers jours",
-      "older_one": "Le {{total}} poste du site de {{company}} n'est pas daté des {{days}} derniers jours (lu le {{date}}).",
-      "older_other": "Aucun des {{total}} postes du site de {{company}} n'est daté des {{days}} derniers jours (lu le {{date}}).",
-      "older_many": "Aucun des {{total}} postes du site de {{company}} n'est daté des {{days}} derniers jours (lu le {{date}}).",
-      "olderBoard_one": "Le {{total}} poste de ce site n'est pas daté des {{days}} derniers jours (lu le {{date}}).",
-      "olderBoard_other": "Aucun des {{total}} postes de ce site n'est daté des {{days}} derniers jours (lu le {{date}}).",
-      "olderBoard_many": "Aucun des {{total}} postes de ce site n'est daté des {{days}} derniers jours (lu le {{date}}).",
-      "basis": "Nous affichons les postes datés des {{days}} derniers jours.",
       "empty": "Aucun poste sur le site carrières de {{company}} quand nous l'avons lu {{ago}}.",
       "emptyBoard": "Aucun poste sur ce site quand nous l'avons lu {{ago}}.",
       "unread": "Nous n'avons pas lu tout le site de {{company}} récemment.",

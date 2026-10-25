@@ -1,0 +1,13 @@
+{
+ "about": "Verbatim excerpts of the company chunk section 81c reads (round 4, 2026-10-25): the served Jobs chunk of the live publish (57815de9, entry /assets/index-CVlj-9LZ.js, fetched read-only at 04:44Z), which carries no zero-page head keys, and the Jobs chunk of a production vite build of pd/hotfix at 474dca30 (the same build without the prerender bake, entry /assets/index-Dic2vcf0.js). body: the window around the one call of companyProfile.zero.body; head: the zero-page head builder. The 81c teeth test runs the judge on each.",
+ "live_57815de9": {
+  "chunk": "Jobs-CbQa3cTu.js",
+  "body": ":\"rounded-lg border border-border bg-card p-4 space-y-3\",children:[n.jsxs(\"div\",{className:m?\"sr-only\":void 0,children:[n.jsx(\"h2\",{id:\"company-empty-title\",className:\"text-base font-semibold text-foreground\",children:_}),N&&n.jsx(\"p\",{className:\"text-meta text-muted-foreground\",children:h(\"companyProfile.boardReadAgo\",\"board read {{ago}}\",{ago:N})})]}),n.jsx(\"p\",{className:\"text-sm text-muted-foreground\",children:h(\"companyProfile.zero.body\",\"Watch this board and your account will count its new postings when they appear.\")}),l&&n.jsx(\"button\",{type:\"button\",onClick:l,className:\"",
+  "head": null
+ },
+ "branch_474dca30": {
+  "chunk": "Jobs-Cn1XBK0d.js",
+  "body": "ge right now.\");return n.jsxs(\"section\",{\"data-company-empty\":\"zero\",\"aria-labelledby\":\"company-empty-title\",className:\"rounded-lg border border-border bg-card p-4 space-y-3\",children:[n.jsx(\"div\",{className:m?\"sr-only\":void 0,children:n.jsx(\"h2\",{id:\"company-empty-title\",className:\"text-base font-semibold text-foreground\",children:v})}),t.watchPromise&&n.jsx(\"p\",{className:\"text-sm text-muted-foreground\",children:h(\"companyProfile.zero.body\",\"Watch this board and your account will count its new postings when they appear.\")}),l&&n.jsx(\"button\",{type:\"button\",onClick:l,className:\"",
+  "head": "answer\",\"No roles are listed on this page right now.\")}function Og(t,e,r){const{name:a,generic:l}=e.name;return!a||l?{title:t(\"companyProfile.h1Generic\",\"Roles on the “{{label}}” board\",{label:a??r}),description:t(\"companyProfile.zero.answer\",\"No roles are listed on this page right now.\")}:{title:t(\"companyProfile.zero.seoTitle\",\"{{company}} jobs\",{company:a}),description:t(\"companyProfile.zero.seoDescription\",\"{{company}}: no roles are listed on this page right now.\",{company:a})}}function ei({name:t}){const{t:e}=K();return n.jsx(\"nav\",{\"aria-label\":e(\"companyProfile.breadcrumbLabel"
+ }
+}
