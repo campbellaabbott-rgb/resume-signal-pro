@@ -69,6 +69,9 @@ describe("a phone had no menu", () => {
   });
 });
 
+// The desktop CTA is named by its visible word ("Get Started"), not by the old
+// aria-label "Get started - scroll to upload section" (WCAG 2.5.3, review of
+// 3ebdcbb2), so it is found by that word.
 describe("Start left the scanner it was on", () => {
   it("on a scanner lander, Start scrolls to that page's uploader and stays on the page", () => {
     const upload = document.createElement("div");
@@ -77,14 +80,14 @@ describe("Start left the scanner it was on", () => {
     upload.scrollIntoView = scroll;
     document.body.appendChild(upload);
     mount("/resume-checker");
-    fireEvent.click(screen.getByRole("button", { name: /Get started/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Get started$/i }));
     expect(scroll).toHaveBeenCalled();
     expect(where, "Start navigated away from the uploader the visitor was on").toBe("/resume-checker");
   });
 
   it("positive control: a page with no uploader still goes to the homepage's", () => {
     mount("/pricing");
-    fireEvent.click(screen.getByRole("button", { name: /Get started/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Get started$/i }));
     expect(where).toBe("/#upload");
   });
 });

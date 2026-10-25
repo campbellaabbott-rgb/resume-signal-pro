@@ -15,7 +15,7 @@ export function AccountNav() {
   return (
     <nav
       aria-label={t("accountPage.navLabel", "Account sections")}
-      className="sticky top-16 z-20 -mx-1 px-1 py-2 mb-4 bg-background/80 backdrop-blur-md flex items-center gap-2 overflow-x-auto"
+      className="sticky top-14 lg:top-16 z-20 -mx-1 px-1 py-2 mb-4 bg-background/80 backdrop-blur-md flex items-center gap-2 overflow-x-auto"
     >
       {items.map(([href, label]) => (
         <a

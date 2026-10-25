@@ -107,14 +107,14 @@ describe("a link to another board page loads that board", () => {
       expect(after.some((b) => JSON.stringify(b.companies) === JSON.stringify(["globex"])),
         "the employer link changed the address and sent no request for the employer").toBe(true);
     }, SLOW);
-    await waitFor(() => expect(h1()).toMatch(/Open roles at Globex/), SLOW);
+    await waitFor(() => expect(h1()).toMatch(/^Globex$/), SLOW);
     // And the URL-sync effect writes the NEW board's address, not the old one's.
     await waitFor(() => expect(window.location.pathname).toBe("/jobs/company/globex"), SLOW);
   });
 
   it("the way back to the full board asks for the full board", async () => {
     mount("/jobs/company/acme");
-    await waitFor(() => expect(h1()).toMatch(/Open roles at Acme/), SLOW);
+    await waitFor(() => expect(h1()).toMatch(/^Acme$/), SLOW);
     const before = listBodies().length;
     // The header's Jobs link: the one way back every page offers.
     const jobsLink = screen.getAllByRole("link").find((a) => a.getAttribute("href") === "/jobs");
@@ -195,7 +195,7 @@ describe("a link to another board page loads that board", () => {
     await act(async () => { fireEvent.click(within(panel).getByRole("link", { name: "Globex" })); });
     // Let every queued history traversal land before judging.
     await act(async () => { await new Promise((r) => setTimeout(r, 600)); });
-    await waitFor(() => expect(h1()).toMatch(/Open roles at Globex/), SLOW);
+    await waitFor(() => expect(h1()).toMatch(/^Globex$/), SLOW);
     expect(window.location.pathname, "the panel's employer link ended somewhere other than the employer").toBe("/jobs/company/globex");
     expect(new URLSearchParams(window.location.search).has("job")).toBe(false);
     const after = listBodies().slice(before);
@@ -213,7 +213,7 @@ describe("a link to another board page loads that board", () => {
     mountBrowser("/jobs");
     await waitFor(() => expect(document.body.textContent).toContain("Globex Engineer 1"), SLOW);
     await act(async () => { fireEvent.click(screen.getAllByRole("link", { name: "Acme" })[0]); });
-    await waitFor(() => expect(h1()).toMatch(/Open roles at Acme/), SLOW);
+    await waitFor(() => expect(h1()).toMatch(/^Acme$/), SLOW);
     const before = listBodies().length;
     await act(async () => { window.history.back(); await new Promise((r) => setTimeout(r, 300)); });
     await waitFor(() => expect(h1()).toBe("Live job board"), SLOW);

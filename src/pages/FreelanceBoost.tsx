@@ -20,6 +20,8 @@ import { useToast } from "@/hooks/use-toast";
 import { ProductPreview } from "@/components/ProductPreview";
 import { getResumeFromSession } from "@/hooks/use-session-resume";
 import { PurchaseTerms } from "@/components/PurchaseTerms";
+import { FREELANCE_PURCHASE_KEY } from "@/lib/purchase-proofs";
+import { stashedSessionIdFor } from "@/lib/auth-fragment";
 
 interface ProjectIntake {
   clientType: string; problem: string; deliverable: string; toolsSkills: string;
@@ -47,7 +49,7 @@ const DRAFT_KEY = "freelanceBoostIntake";
  * the mark and no link, the page offers no buy button and asks for the link
  * from the purchase email; the result loads only from that link.
  */
-export const PURCHASE_KEY = "freelanceBoostPurchase";
+export const PURCHASE_KEY = FREELANCE_PURCHASE_KEY;
 /** How long the mark keeps the buy buttons away. */
 export const PURCHASE_MEMORY_MS = 7 * 86_400_000;
 const readBoughtHere = (): boolean => {
@@ -137,7 +139,10 @@ export default function FreelanceBoost() {
   // Returned from checkout with a paid session (or a Pro grant) → the
   // purchase. This browser bought one before, without the link → no buy
   // buttons, and the link from the email to see it.
-  const urlSession = params.get("session_id");
+  // The first script in index.html moves session_id out of the address
+  // before any analytics records it; this tab's stash keeps it for a reload.
+  const [stashedSession] = useState(() => stashedSessionIdFor("/freelance-boost", null).id);
+  const urlSession = params.get("session_id") || stashedSession;
   const [boughtHere, setBoughtHere] = useState(readBoughtHere);
   const sessionId = urlSession;
   useEffect(() => {

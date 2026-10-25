@@ -84,7 +84,10 @@ describe("the public page dates its own figures", () => {
   it("still says 'right now' when the cache is current", () => {
     // The wording is true on a healthy hourly refresh; dating everything
     // unconditionally would trade one inaccuracy for a worse-looking product.
-    expect(pageCode).toMatch(/: "verified open roles right now"/);
+    expect(pageCode).toMatch(/: "open roles right now"/);
+    // We read employers' feeds; we do not verify each role, so neither the
+    // current caption nor the dated one may call the count verified.
+    expect(pageCode).not.toMatch(/verified open roles/i);
   });
 });
 

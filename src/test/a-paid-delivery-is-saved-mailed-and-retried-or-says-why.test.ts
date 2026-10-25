@@ -403,7 +403,12 @@ describe("verify-product-purchase", () => {
     world.sessions.cs_live_verify_comp = paid("cs_live_verify_comp", { product_type: "career_snapshot", customer_email: "" }, { payment_status: "no_payment_required", amount_total: 0, customer_details: { email: "Comp@Example.com" } });
     const r = await post({ sessionId: "cs_live_verify_comp" });
     expect(r.status).toBe(200);
-    expect(r.json.customerEmail).toBe("comp@example.com");
+    // The delivery record carries the typed address; the answer to a caller
+    // with no proven session shows it masked (R1, src/test/r1-server-*).
+    const record = rpcCalls.find((c) => c.name === "log_delivery_step" && c.args.p_step === "payment_received");
+    expect((record?.args.p_metadata as Record<string, unknown> | undefined)?.email).toBe("comp@example.com");
+    expect(r.json.customerEmail).toBe("c***@example.com");
+    expect(r.json.customerEmailMasked).toBe(true);
   });
 });
 

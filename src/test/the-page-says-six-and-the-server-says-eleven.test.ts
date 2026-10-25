@@ -216,7 +216,9 @@ describe("the page says six and the server says eleven", () => {
     // from a second copy typed into the script.
     expect(PRERENDER).toMatch(/path: "\/agents"/);
     expect(PRERENDER).toMatch(/D\.MCP_TOOLS/);
-    expect(PRERENDER).toMatch(/D\.SENDABLE_VENDOR_(?:SENTENCE|LABELS)/);
+    // The sendable-vendor mirror described where the retired agent submitted
+    // (the apply pivot, 2026-10-11): the crawler copy names none of it now.
+    expect(PRERENDER).not.toMatch(/D\.SENDABLE_VENDOR_(?:SENTENCE|LABELS)/);
     expect(PRERENDER).toMatch(/D\.MCP_HOSTS/);
     expect(/\b\d{3}k\+/.exec(PRERENDER)?.[0], "prerender spells a corpus count").toBeUndefined();
     // The 2026-08-27 incident, one page over: /agent's crawler copy said

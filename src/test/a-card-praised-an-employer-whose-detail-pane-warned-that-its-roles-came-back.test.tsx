@@ -68,6 +68,7 @@ const curve = (token: string, filled: number, relisted: number) => ({
   median_days_to_fill: 11, median_censored: false,
   dated_coverage: 0.80, dated_n: 40, undated_n: 10,
   fill_through: 0.70, churn: 0.10, absorption: 0.10, tracking_days: 90, sufficient: true,
+  observability_bucket: "full_read", watched_from: "2026-08-01", multi_site_title_share: 0,
 });
 const CURVE = [curve("churny", 5, 20), curve("steady", 11, 0)];
 
@@ -130,13 +131,13 @@ describe("the card and the detail pane say the same thing about an employer whos
     mount();
     // The control row proves the praise branch is alive on this page.
     await waitFor(() => expect(cardOf("Steady")?.textContent ?? "").toContain("Fills fast"), SLOW);
-    await waitFor(() => expect(cardOf("Churny")?.textContent ?? "").toContain("Re-lists roles often (20×+)"), SLOW);
+    await waitFor(() => expect(cardOf("Churny")?.textContent ?? "").toContain("Back or same title live (20×+)"), SLOW);
     expect(cardOf("Churny")?.textContent ?? "", "praise beside a true warning about the same employer").not.toContain("Fills fast");
   });
 
   it("the detail pane for the same employer warns, so the two surfaces agree", async () => {
     mount("/jobs?job=greenhouse:churny:1");
-    await waitFor(() => expect(panel()).toContain("re-lists roles often (at least 20×)"), SLOW);
+    await waitFor(() => expect(panel()).toContain("20 roles we watched come down came back under the same posting or had another posting with the same title live"), SLOW);
     expect(panel()).toContain("Apply with expectations");
   });
 });

@@ -46,6 +46,7 @@ import { MCP_PAGE_HOSTS, andList, type McpHost, type SignInFact } from "@/config
 import { PASS } from "@/config/products";
 import { AgentSetupChecklist } from "@/components/account/AgentSetupChecklist";
 import { PurchaseTerms } from "@/components/PurchaseTerms";
+import { stashedSessionIdFor } from "@/lib/auth-fragment";
 // The remembered host is ONE rule, in src/lib/agent-handoff.ts: the board,
 // /agents and this receipt read and write the same key through the same two
 // functions, so a change to what counts as a page host lands in one place.
@@ -103,7 +104,7 @@ export default function AgentPass() {
   const [params] = useSearchParams();
   // Stripe's ids are cs_… strings; anything else is not sent to the function.
   const sessionId = useMemo(() => {
-    const v = params.get("session_id") ?? "";
+    const v = params.get("session_id") || stashedSessionIdFor("/agents/pass", null).id || "";
     return /^cs_[A-Za-z0-9_]+$/.test(v) ? v : null;
   }, [params]);
 

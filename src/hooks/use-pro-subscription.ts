@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import i18n from "@/i18n";
 import { checkoutContext } from "@/lib/track-transport";
 import { consentWasRequired, purchaseTerms } from "@/lib/purchase-terms";
+import { stashedSessionIdFor } from "@/lib/auth-fragment";
 
 /** How often, and how many times, a buyer back from Stripe is re-checked until the plan reads live. */
 export const PRO_CONFIRM_INTERVAL_MS = 3000;
@@ -59,7 +60,8 @@ export function useProSubscription() {
   const heldSession = (() => {
     try {
       const q = new URLSearchParams(window.location.search);
-      const id = q.get("session_id") ?? "";
+      // The first script in index.html moves session_id into this tab's stash.
+      const id = stashedSessionIdFor(window.location.pathname.replace(/\/+$/, "") || "/", q.get("session_id")).id ?? "";
       return q.get("pro") === "success" && /^cs_[A-Za-z0-9_]{8,250}$/.test(id) ? id : null;
     } catch {
       return null;

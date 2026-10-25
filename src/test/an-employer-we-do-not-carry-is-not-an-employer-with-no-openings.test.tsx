@@ -9,9 +9,19 @@
  * of indexable pages, each stating a falsehood about a real company.
  *
  * WHAT HOLDS NOW, with the list answering as the server now does
- * (unknownCompanies): the page says "We don't carry <X>", is noindex, prints
- * no not-hiring sentence and no claim offer. A carried employer with an empty
- * board keeps its honest "not right now" sentence and stays indexable.
+ * (unknownCompanies): the page says we do not read a board by that name, is
+ * noindex, prints no not-hiring sentence and no claim offer. A carried
+ * employer with an empty board keeps its honest zero answer and stays
+ * indexable.
+ *
+ * Since the design upgrade's pass B the company page is the design lander,
+ * whose model has an "uncarried" variant (src/lib/company/lander-model.ts):
+ * its H1 names the token the address asked for, because a board we never
+ * read has no stored name to print, and a carried board's zero answer names
+ * the 30-day window it counts ("this board" until its name has loaded). The
+ * assertions below read that wording; what they hold is unchanged, and the
+ * uncarried page now refuses every watch control, not only one named for the
+ * employer.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
@@ -87,21 +97,21 @@ describe("a company page for an employer the board does not carry", () => {
   it("says we don't carry it, is noindex, and claims nothing about the employer", async () => {
     answer(false);
     mount("/jobs/company/amazon");
-    await waitFor(() => expect(h1(), "the page never said it does not carry the employer").toMatch(/We don.t carry Amazon/), SLOW);
-    expect(document.body.textContent, "an employer we never read was said to be not hiring").not.toMatch(/has no open roles/);
+    await waitFor(() => expect(h1(), "the page never said it does not carry the employer").toMatch(/We don.t read a board called .amazon. yet/), SLOW);
+    expect(document.body.textContent, "an employer we never read was said to be not hiring").not.toMatch(/has no open roles|No roles (?:at|on) /);
     expect(screen.queryByText(/Claim this profile/), "a claim offer on a page for an employer we do not carry").toBeNull();
     expect(screen.queryByRole("button", { name: /Alert me when this exists/ }), "an alert for postings that can never arrive").toBeNull();
-    expect(screen.queryByRole("button", { name: /^Watch Amazon/ }), "a watch on an employer we do not read").toBeNull();
+    expect(screen.queryByRole("button", { name: /^Watch / }), "a watch on an employer we do not read").toBeNull();
     await waitFor(() => expect(robots().some((r) => /noindex/.test(r)), `robots: ${robots().join(" | ") || "none"}`).toBe(true), SLOW);
-    expect(document.title).not.toMatch(/Is Amazon hiring/);
+    expect(document.title).not.toMatch(/Is Amazon hiring|open roles from their own hiring system/i);
   });
 
   it("a carried employer with an empty board keeps its honest answer and stays indexable", async () => {
     answer(true);
     mount("/jobs/company/acme");
-    await waitFor(() => expect(document.body.textContent).toMatch(/has no open roles/), SLOW);
-    expect(h1()).not.toMatch(/We don.t carry/);
-    expect(screen.queryByRole("button", { name: /^Watch Acme/ }), "the positive control: a carried employer keeps its watch").not.toBeNull();
+    await waitFor(() => expect(document.body.textContent).toMatch(/No roles (?:at Acme|on this board) dated in the last 30 days/), SLOW);
+    expect(h1()).not.toMatch(/We don.t read a board/);
+    expect(screen.queryByRole("button", { name: /^Watch (?:Acme|this board)/ }), "the positive control: a carried employer keeps its watch").not.toBeNull();
     expect(robots().some((r) => /noindex/.test(r))).toBe(false);
   });
 });

@@ -139,11 +139,11 @@ export function FloatingUploadButton({
   return (
     <div 
       className={cn(
-        "fixed z-50 bottom-24 left-0 right-0 flex justify-center pointer-events-none",
-        "transition-all duration-300",
+        "fixed z-help bottom-24 left-0 right-0 flex justify-center pointer-events-none",
+        "transition-opacity duration-base",
         isVisible 
-          ? "translate-y-0 opacity-100" 
-          : "translate-y-24 opacity-0"
+          ? "opacity-100" 
+          : "opacity-0 invisible"
       )}
     >
       {showVerifyFirst ? (
@@ -151,32 +151,30 @@ export function FloatingUploadButton({
         <button
           onClick={handleVerifyClick}
           className={cn(
-            "pointer-events-auto flex items-center gap-2 px-6 py-4 rounded-full",
-            "bg-gradient-to-r from-primary via-primary to-indigo-500 text-primary-foreground font-bold text-base",
-            "shadow-xl shadow-primary/40 hover:shadow-2xl hover:shadow-primary/50",
-            "touch-manipulation",
-            justTriggered && "animate-bounce"
+            "pointer-events-auto flex h-11 items-center gap-2 px-5 rounded-md",
+            "bg-primary text-primary-foreground font-semibold text-base hover:bg-primary-hover",
+            "shadow-overlay",
+            "touch-manipulation"
           )}
           aria-label={t('floatingUpload.verifyAriaLabel')}
         >
-          <Eye className="w-5 h-5" />
+          <Eye aria-hidden="true" className="w-5 h-5" />
           <span>{t('floatingUpload.step1Verify')}</span>
-          <ArrowDown className="w-4 h-4 animate-bounce" />
+          <ArrowDown aria-hidden="true" className="w-4 h-4" />
         </button>
       ) : (
         // Step 2: Scan button
         <button
           onClick={handleScanClick}
           className={cn(
-            "pointer-events-auto flex items-center gap-2 px-6 py-4 rounded-full",
-            "bg-gradient-to-r from-success via-success to-emerald-500 text-success-foreground font-bold text-base",
-            "shadow-xl shadow-success/40 hover:shadow-2xl hover:shadow-success/50",
-            "touch-manipulation",
-            "animate-bounce"
+            "pointer-events-auto flex h-11 items-center gap-2 px-5 rounded-md",
+            "bg-primary text-primary-foreground font-semibold text-base hover:bg-primary-hover",
+            "shadow-overlay",
+            "touch-manipulation"
           )}
           aria-label={t('floatingUpload.scanAriaLabel')}
         >
-          <Zap className="w-5 h-5 fill-current" />
+          <Zap aria-hidden="true" className="w-5 h-5" />
           <span>{t('floatingUpload.step2Scan')}</span>
         </button>
       )}
@@ -241,25 +239,24 @@ export function FloatingSeeReportButton({ isVisible = false }: FloatingSeeReport
   return (
     <div 
       className={cn(
-        "fixed z-50 bottom-24 left-0 right-0 flex justify-center pointer-events-none",
-        "transition-all duration-300",
+        "fixed z-help bottom-24 left-0 right-0 flex justify-center pointer-events-none",
+        "transition-opacity duration-base",
         showButton 
-          ? "translate-y-0 opacity-100" 
-          : "translate-y-24 opacity-0"
+          ? "opacity-100" 
+          : "opacity-0 invisible"
       )}
     >
       <button
         onClick={handleClick}
         className={cn(
-          "pointer-events-auto flex items-center gap-2 px-6 py-4 rounded-full",
-          "bg-gradient-to-r from-primary via-primary to-indigo-500 text-primary-foreground font-bold text-base",
-          "shadow-xl shadow-primary/40 hover:shadow-2xl hover:shadow-primary/50",
-          "touch-manipulation",
-          justAppeared && "animate-bounce"
+          "pointer-events-auto flex h-11 items-center gap-2 px-5 rounded-md",
+          "bg-primary text-primary-foreground font-semibold text-base hover:bg-primary-hover",
+          "shadow-overlay",
+          "touch-manipulation"
         )}
         aria-label={t('floatingUpload.seeReportAriaLabel')}
       >
-        <FileText className="w-5 h-5" />
+        <FileText aria-hidden="true" className="w-5 h-5" />
         <span>{t('floatingUpload.seeReport')}</span>
       </button>
     </div>

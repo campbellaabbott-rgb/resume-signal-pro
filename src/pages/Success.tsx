@@ -51,6 +51,7 @@ import { useFunnelTracking } from "@/hooks/use-funnel-tracking";
 import { usePersonalization } from "@/hooks/use-personalization";
 import { parseEdgeFunctionError } from "@/lib/edge-function-errors";
 import { PRODUCTS } from "@/config/products";
+import { stashValueFor, stashedSessionIdFor, stashedValueFor } from "@/lib/auth-fragment";
 
 const Success = () => {
   const { t } = useTranslation();
@@ -88,8 +89,17 @@ const Success = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const sessionId = searchParams.get("session_id");
-  const shareIdParam = searchParams.get("share");
+  // The Stripe session id: the first script in index.html moves it out of the
+  // address before any analytics can record it (src/lib/auth-fragment.ts).
+  // Read once, so clearing this browser's data mid-page does not unmount the purchase.
+  const [stashedSession] = useState(() => stashedSessionIdFor("/success", null).id);
+  const urlSessionId = searchParams.get("session_id");
+  const sessionId = urlSessionId || stashedSession;
+  const sessionIdStashed = !urlSessionId && !!stashedSession;
+  // The share id reads AND deletes this analysis, so the first script keeps it
+  // out of the address too (this tab's stash holds it for a reload).
+  const [stashedShare] = useState(() => stashedValueFor("share", "/success", null).value);
+  const shareIdParam = searchParams.get("share") || stashedShare;
 
   // Simulate progress steps during loading. The timers are CLEARED when the
   // effect re-runs or the page unmounts (platform sweep L12-06): left pending
@@ -119,7 +129,14 @@ const Success = () => {
    */
   const rememberShareInUrl = (newShareId: unknown) => {
     if (typeof newShareId !== "string" || !newShareId || !sessionId) return;
-    navigate(`/success?session_id=${encodeURIComponent(sessionId)}&share=${encodeURIComponent(newShareId)}`, { replace: true });
+    // The share id reads and deletes the analysis, so it goes into this tab's
+    // stash, not the address, wherever the stash can be written.
+    if (stashValueFor("share", "/success", newShareId)) return;
+    // A session id the first script stashed stays out of the address: the
+    // tab's stash still holds it for a reload.
+    navigate(sessionIdStashed
+      ? `/success?share=${encodeURIComponent(newShareId)}`
+      : `/success?session_id=${encodeURIComponent(sessionId)}&share=${encodeURIComponent(newShareId)}`, { replace: true });
   };
 
   /**
