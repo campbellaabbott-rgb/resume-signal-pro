@@ -31,7 +31,7 @@ it, and read every line number below by its text on main. Main has moved
 `scripts/prerender-seo.mjs` differs (a deadline on the company-intel phase,
 11 lines added near line 2496, so the `/pricing` block of step 10 sits 11
 lines lower). This branch has not merged main, by decision. `git diff --name-status origin/design/integration...hp/integration`
-lists 90 paths, every one of them added (status A). No existing file is
+lists 91 paths, every one of them added (status A). No existing file is
 modified.
 
 ## What was built
@@ -192,8 +192,9 @@ only, so neither preview ships.
 
 The fix round measured on 2026-10-18; the scratchpad's `keep/` tree was
 emptied on 2026-10-23 and took the tools, data and shots with it, so every
-check below was re-run on 2026-10-24 on this branch's head, after the
-headline change. One Vite dev server, one headless Chromium (Playwright from
+check below was re-run on 2026-10-24 (01:04 UTC on the 25th) on this
+branch's head, after the headline change and W5's shorter territory
+sentences. One Vite dev server, one headless Chromium (Playwright from
 `worker/node_modules`; axe 4.12.1 from
 `~/Documents/GitHub/vibemarket/node_modules/axe-core/axe.min.js`), closed
 when done. Fixture data (home default; pricing `?fixture=1&bare=1`). The
@@ -207,8 +208,8 @@ without text spacing), with `data/checks.json`, `data/probe-spacing.json` and
 
 | Check | Homepage | Pricing |
 |---|---|---|
-| 375x812 first screen | search box 282-326 px; first posting card from 710 px, its title 727-751 px | H1 80-116 px, summary, jump links and "Before you buy"; Free card from 684 px |
-| 1280x800 first screen | search box 244-288 px; first posting title 522-546 px | H1, summary, "Before you buy"; cards from 456 px |
+| 375x812 first screen | search box 282-326 px; first posting card from 710 px, its title 727-751 px | H1 80-116 px, summary, jump links and "Before you buy"; Free card from 664 px (684 before W5 shortened the region sentence by a line) |
+| 1280x800 first screen | search box 244-288 px; first posting card from 505 px, its title 522-546 px | H1 112-152 px, summary, "Before you buy"; cards from 436 px (456 before W5) |
 | Filled buttons in main | one: "Search jobs" (375 and 1280) | one: "Create a free account" (gated and preview-open, 375 and 1280) |
 | axe 4.12.1, WCAG 2.0/2.1/2.2 A and AA | 0 violations at 375 and 1280 | 0 violations at 375 and 1280, gated and preview-open |
 | axe "needs review" | `aria-valid-attr-value` on today's Header (Radix `aria-controls`) | the same Header item; `th-has-data-cells` on the limits table's group rows |
@@ -216,9 +217,10 @@ without text spacing), with `data/checks.json`, `data/probe-spacing.json` and
 | CLS, cold load in the browser's locale, scroll at 400 ms, before the data answers (2026-10-24; the 2026-10-18 ranges over three runs per case in brackets) | en 0.0004 (list answering after 2.5 s: 0.0004) [0.0004-0.0005]; de 0.0002; es 0.0006 [0.0006-0.0008]; fr 0.0008 [0.0008-0.0015]; de at 1280 0.0002 [0.0001-0.0012] (was 0.18 in de, es and fr before the fix) | en 0; de 0; es 0 [0-0.007]; fr 0.0008; de at 1280 0.0137 [0.001-0.015] (the plan cards settling when the count lands) |
 | Horizontal overflow, every `<details>` open | none: nine languages at 320 and 375 | the same (36 runs across both pages, plus 8 shot runs at 320 in de/fr/es/pt) |
 | WCAG 1.4.12 text spacing, de, fr, es, pt, 320 px | no overflow (was 7 px in German: the H1's "Bewerbungssystemen") | no overflow |
-| H1 lines (no hyphenation) | en and en-GB 3 at 320 and 375, filling the reserved `3lh`; de, es, fr, pt, nl 4 at 320; 1 at 1280 | one line everywhere |
+| H1 lines (no hyphenation) | en and en-GB 3 at 320 and 375, filling the reserved `3lh`; de, es, fr, pt, nl 4 at 320 (nl and pt also at 375); 1 at 1280 | one line everywhere |
 
-Screenshots (2026-10-24): `shots/home.{375,1280}.{first-screen,full}.png`,
+Screenshots (2026-10-24, W5's wording in every one):
+`shots/home.{375,1280}.{first-screen,full}.png`,
 `shots/pricing-gated.{375,1280}.{first-screen,full}.png`,
 `shots/pricing-open.*` (the same four), and
 `shots/i18n.{home,pricing-gated}.{de,fr,es,pt}.320.full.png` (every
@@ -237,9 +239,11 @@ day (step 15).
 ## Gate (fix round)
 
 - Frontend typecheck (`tsc -p tsconfig.app.json --noEmit`): passed at every
-  commit (the pre-commit hook) and again on the head.
-- The hp tests, targeted (`npx vitest run --maxWorkers=2 src/test/hp-*`):
-  17 files, all passing on the head.
+  commit (the pre-commit hook, run under `~/.config/resumebooster/heavy.sh`
+  since 2026-10-24).
+- The hp tests, targeted (`npx vitest run --maxWorkers=2 src/test/hp-`):
+  18 files (`hp-fix-no-ip-lookup` the newest), 307 tests, all passing on the
+  head.
 - The full suite: the pre-push hook's run, when no other suite was running
   (see the PR body for the count).
 
