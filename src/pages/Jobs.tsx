@@ -8515,14 +8515,20 @@ function JobsBoard({ boardId }: { boardId: string }) {
               horizon, with its sample, its window and its interval. Renders
               only when the RPC says the record can carry the claim and enough
               of it carries employer-stated posting dates. */}
-          {/* THE FIELD LINE'S PLACE IS HELD WHILE THE FIELD TABLE LOADS (SEO-022):
-              it arrived as a 128px block on a phone (56px at 1280) above the
-              filters and moved the page (field page lab CLS 0.13 at 375). */}
-          {landerCategory && !fieldLineSettled && (
-            <p aria-hidden="true" data-field-line-reserve="" className="mb-2 min-h-[128px] sm:min-h-[92px] lg:min-h-[56px]" />
+          {/* THE FIELD LINE'S PLACE IS HELD, AND NEVER GIVEN UP (SEO-022): it
+              arrived as a 128px block on a phone (56px at 1280) above the
+              filters and moved the page (field page lab CLS 0.13 at 375). The
+              round's reserve then came off once the table was read, and on a
+              field whose curve cannot state a rate everything below moved up
+              128px (education, CLS 0.112). The slot keeps its height on every
+              field page, whatever the read returns. */}
+          {landerCategory && (
+          <div data-field-line-slot="" className="mb-2 min-h-[128px] sm:min-h-[92px] lg:min-h-[56px]">
+          {!fieldLineSettled && (
+            <p aria-hidden="true" data-field-line-reserve="" />
           )}
-          {landerCategory && fieldLineSettled && canStateFillRate(fieldCurve, fieldCurve?.window_days) && (
-            <p className="inline-flex flex-wrap items-center gap-1.5 text-[12px] text-muted-foreground mb-2">
+          {fieldLineSettled && canStateFillRate(fieldCurve, fieldCurve?.window_days) && (
+            <p className="inline-flex flex-wrap items-center gap-1.5 text-[12px] text-muted-foreground">
               <Clock className="w-3.5 h-3.5 text-primary shrink-0" />
               <span>
                 {/* The count is gone for the reason given at fieldCurveCompare:
@@ -8556,6 +8562,8 @@ function JobsBoard({ boardId }: { boardId: string }) {
                 )}
               </span>
             </p>
+          )}
+          </div>
           )}
           {/* THE TRUST CHIPS FOLD INTO "HOW THIS BOARD WORKS" ON A PHONE. One
               nowrap row of them pushed the document past 320px in French,

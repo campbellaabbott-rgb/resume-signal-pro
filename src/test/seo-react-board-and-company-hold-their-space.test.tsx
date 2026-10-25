@@ -86,15 +86,24 @@ describe("the company page while its list loads", () => {
 });
 
 describe("/jobs while its counts load", () => {
-  it("a field page holds the field line's place until the field table has been read", async () => {
+  it("a field page holds the field line's place, and never gives it up once painted, whatever the field table says", async () => {
+    // THE ROUND'S REVIEW (2026-10-24): the reserve came off once the table was
+    // read, and on a field whose curve cannot state a rate (education that
+    // day) everything below it moved up 128 px on a phone: CLS 0.112 every
+    // run, against 0.019 before the reserve. The slot now stays at its height.
     invoke.mockImplementation(async () => ({ data: {}, error: null }));
-    window.history.replaceState({}, "", "/jobs/field/engineering");
-    render(<HelmetProvider><MemoryRouter initialEntries={["/jobs/field/engineering"]}><Routes><Route path="/jobs/field/:category" element={<Jobs />} /></Routes></MemoryRouter></HelmetProvider>);
-    const reserve = document.querySelector("[data-field-line-reserve]");
-    expect(reserve, "no reserved field line while the field table loads").not.toBeNull();
-    expect(reserve?.className).toMatch(/min-h-\[128px\]/);
-    expect(reserve?.className).toMatch(/lg:min-h-\[56px\]/);
+    window.history.replaceState({}, "", "/jobs/field/education");
+    render(<HelmetProvider><MemoryRouter initialEntries={["/jobs/field/education"]}><Routes><Route path="/jobs/field/:category" element={<Jobs />} /></Routes></MemoryRouter></HelmetProvider>);
+    const slotClasses = () => document.querySelector("[data-field-line-slot]")?.className ?? null;
+    const before = slotClasses();
+    expect(before, "no field line slot while the field table loads").not.toBeNull();
+    expect(before).toMatch(/min-h-\[128px\]/);
+    expect(before).toMatch(/sm:min-h-\[92px\]/);
+    expect(before).toMatch(/lg:min-h-\[56px\]/);
+    expect(document.querySelector("[data-field-line-reserve]"), "the reserve is shown while the table loads").not.toBeNull();
+    // Read: this table carries no row for the field, so no rate can be stated.
     await waitFor(() => expect(document.querySelector("[data-field-line-reserve]")).toBeNull(), { timeout: 8000 });
+    expect(slotClasses(), "the slot collapsed once the table was read: the page below it moves").toBe(before);
   });
 
   it("reserves the count paragraph's final lines and puts 'posted today' on the count line", async () => {
