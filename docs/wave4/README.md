@@ -1423,3 +1423,170 @@ origin/r1/integration` finds no undeclared overlap. The job-board upload is
 4,447,116 bytes, 2,884 inside the agreed 50,000 of room. The full suite runs
 in the push's pre-push hook; its count is in the PR #39 body. Main is not
 merged in this step.
+
+### Fix round 4: recheck 3, corpus-first again
+
+Recheck 3 broke round 3 in all three rules, and found regressions from
+origin/main in each: the search folded a one-word exclusion to its singular,
+so "not news" struck every "New ..." title and "not parts" every "Part-Time"
+one; the salary rule read a pay-transparency template ("the Target Earning
+potential is $200,000 to $250,000 annually"), contractor and locum rates and
+"+ RSUs" tails as business figures, and its re-sweep wrote NULL over that
+stored pay; and the question rule drafted facts in words no list held, facts
+in hints and a second ask on a new line, and its classifier refused motivation
+questions that named "full-time". This round put every recheck-3 input and
+the rechecker's own corpora into each rule's corpus, measured origin/main,
+fa66a031 (round 1), 9af3c783 (round 2) and 237bf2e8 (round 3) on it, and
+changed the rule until it is never wrong where main is right. The salary and
+search rules meet that bar; the question rule meets it for every question
+labelled the person's and misses it, on the safe side, for open work
+questions (below).
+
+One builder, w4b-fix (this branch), on the round-3 files. The corpora,
+measurements, tools and self-break inputs are in
+`~/.config/resumebooster/wave4-fix3-corpora/<area>/round4/` (with the
+rechecker's own in `questions-recheck3/` and `salary-recheck3/`). The committed
+fixtures are under `src/test/fixtures/w4b-fix3-*/`, anonymised. Each corpus
+test fails on the version it replaces.
+
+**Search** (job-board `search-routing.ts`, `.93`). 1,169 queries, each
+labelled from its structure before any version ran: round 3's 591 (its
+"part-time" labels corrected to the typed word, since main's "parttime"
+strikes no title), the rechecker's 511 and the recheck-3 inputs with the
+titles each exclusion must and must not strike. A case is right only when the
+split is right and that version's own title match strikes what it should.
+
+| version | correct / wrong | worse than main |
+|---|---|---|
+| origin/main | 764 / 405 | |
+| fa66a031 | 496 / 673 | 568 |
+| 9af3c783 | 737 / 432 | 320 |
+| 237bf2e8 | 1,017 / 152 | 19 |
+| round 4 | 1,161 / 8 | 0 |
+
+The rule: one negated word, as main does, unless the words are a pinned
+compound (three-word ones now too: "door to door", "12 hour shifts", "long
+term care"), a known place, or a pinned region or city ("south florida", "new
+england", "west coast", "long island", "sioux falls", "baton rouge"). "not A
+or B" negates both ("or" or "nor"; a capitalised "OR" only in an all-capitals
+query, where it is the search operator; a comma or full stop ends the chain). A single excluded word strikes itself and its
+plural, never its singular; only a phrase's last word folds a plural. A hyphen
+inside an excluded word is an optional break ("not part-time" strikes
+Part-Time and Part Time), and a slash between words lists alternatives
+("travel/agency").
+
+Self-break: 50 queries written after the change, then 25 more. All 75 were
+right when written (origin/main 22, 237bf2e8 25). They are pinned in
+`self-break-round4.json`.
+
+Left: 8 cases, each wrong on main too: compounds left off the list because
+their tail word is usually wanted ("car sales", "outside sales", "travel
+nursing"), two phrases no list holds ("fast paced", "retail store"), "not
+Austin, TX" (a comma place after "not" is never taken whole), and "not with
+the agency".
+
+**Salary** (`_shared/salary-extract.ts`, job-board `.93`). 941 cases, each
+labelled by reading: round 3's 556 less 21 repeated texts, the rechecker's
+352 less 4, 54 inputs written for the recheck-3 findings and 4 fresh live
+postings (588 live in all). 817 have a stored salary and test the re-sweep.
+
+| version | miner correct | worse than main | re-sweep NULLs a stored pay |
+|---|---|---|---|
+| origin/main | 844 | | (no re-sweep) |
+| fa66a031 | 827 | 66 | 70 |
+| 9af3c783 | 855 | 31 | 24 |
+| 237bf2e8 | 801 | 101 | 98 |
+| round 4 | 902 | 0 | 0 |
+
+The rule: a figure main's guards accept is set aside only when a business
+noun owns it ("<noun> of / valued at / worth / in excess of $X", "deal size
+$X", "$X in/of <noun>", "$X portfolio"), no pay word stands in its sentence or
+right after it, and it reads as annual. A noun beside a figure owns nothing.
+A later figure takes its place only when it is base pay, labelled as pay or
+stated hourly.
+The v11 re-sweep rewrites a stored figure only to a pay stated after it, never
+to NULL (`minedSalaryRefused` now needs a mined answer), and still corrects 22
+business figures on the corpus. The v11 note in job-board says so.
+
+Self-break: 50 excerpts written after the change: 48 right (origin/main 34,
+237bf2e8 37), never worse than main, and the re-sweep NULLs and swaps no
+stored pay. The two misses give main's own answer: "Book of business of
+$500K-$1M; base salary of $120K-$150K" reads null, and "an average deal size of
+$50K - $100K and OTE of $200K - $250K" keeps the deal size, as main does.
+
+Left: 39 corpus cases, each answered exactly as main answers them: agency and
+contract figures, fleet values, allowances and international formats the
+miner still reads as main does, and a fertility allowance every version reads
+as pay. Eight business figures in the self-break set stay stored, as main
+leaves them, because the re-sweep never NULLs.
+
+**Questions** (`_shared/application-questions.ts`, `self-apply.ts`, the
+worker's `questions/protected.ts`; the five functions build `.33`). 2,385
+labels: round 3's 1,536, the rechecker's 643 and 51 follow-up probes, round
+3's 200 self-break inputs and the recheck-3 labels, repeats removed, each
+labelled twice: by policy (what the rule should do) and by text (what the
+words say, where an HR or legal work question in protected words reads as
+draftable). whoAnswers reads each as a required textarea; main's stand-in is
+classifyQuestion === "draftable".
+
+| version | right (policy) | person rows drafted | draftable rows sent to the person | worse than main (policy / text) |
+|---|---|---|---|---|
+| origin/main | 1,163 | 1,198 | 24 | |
+| fa66a031 | 1,845 | 320 | 220 | 200 / 264 |
+| 9af3c783 | 1,873 | 280 | 232 | 212 / 276 |
+| 237bf2e8 | 2,060 | 95 | 230 | 234 / 298 |
+| round 4 | 2,195 | 0 | 190 | 177 / 241 |
+
+At the classifier (the gate generate-application-answers and apply-agent
+use): main 913 of 1,626 right, 237bf2e8 1,254 (worse than main on 40), round
+4 1,307 (worse on 0; it lets 303 factual rows through, main 690).
+
+The rule: every later clause, later sentence and hint sentence is
+default-deny. It is drafted only when it is visibly work (a verb of work done,
+or made of work words) or motivation. "any <noun that is not work>" is an ask.
+A fact is the work's object only when a work verb or work noun governs it,
+never after "as a", "on a", "without", "while", "since" or "during". A line
+break, a colon, a bracket and a second "your" start new parts, and a format
+note ("Max 300 words.", "Keep your answer concise.") is not one. Words that
+also name a job ("full-time", "eligibility", "visa") count only after the
+opening ask and never at the classifier. The worker's mirror is
+source-identical and agrees on every label.
+
+Not met, on the safe side: the 177 rows worse than main by policy (241 by the
+text labels) are all draftable questions sent to the person. None is a
+factual ask. They are open work or motivation questions whose openings or
+later clauses the default-deny gate does not recognise, which apply_myself
+has sent to the person since e21baaf4.
+
+Self-break: 50 labels written after the change found 9 misses (41 right): five
+facts drafted ("... and hobbies", "... and native language", "... and social
+media handles", "... as an immigrant yourself", "years of experience while
+holding a green card") and four work questions over-routed. After the fix,
+49 / 50. The next 25 found 4 (21 right): "... and favorite sports teams"
+drafted and three questions main drafts sent to the person ("the PMO tools
+you rolled out", "Keep your answer concise.", "Why are you excited ..., and
+what you would like to learn?"). Fixing them found "citation tools" read as a
+citation, also fixed. After that, 25 / 25. The one left is "running background
+checks for new hires", which main also sends to the person. Both sets are
+pinned in `self-break-round4.json`.
+
+**What the integration added.** The five question functions carry
+`.2026-10-11.33`. job-board keeps its reserved `2026-09-09.93`.
+`scripts/verify-deploy.d/92-w4b-fixer3.sh` now reads round 4: the five `.33`
+builds; "nurse not south florida", "nurse not travel or agency" and "barista
+not part-time" beside round 3's three negations; and five stored salaries,
+where the Philips "$200,000 to $250,000 annually" pay must stay and a NULL is
+a FAIL. Its test still runs it against a fake curl and each regression reads
+FAIL. To fit the job-board upload, comment runs in abuse-guards.ts,
+chain-watchdog.ts, shadow.ts and stale-lane.ts moved into
+`docs/job-board-index-notes.md`, with the code unchanged.
+
+The gate after fix round 4: the frontend typecheck, the worker's tsc and
+`scripts/check-functions.sh` (every edge function and the Deno tests;
+deno.lock restored) are clean. `deploy-ledger --against origin/main` finds 0
+violations. `--against 237bf2e8` finds 6 functions moved and the one reserved
+violation (job-board `.93`). `--overlap HEAD origin/design/integration
+origin/r1/integration` finds no undeclared overlap. The job-board upload is
+4,444,874 bytes, 5,126 inside the agreed 50,000 of room. The full suite runs
+in the push's pre-push hook; its count is in the PR #39 body. Main is not
+merged in this step.
