@@ -24,12 +24,27 @@
  *     name. Until a ruling, the new homepage and pricing page say "saved
  *     searches" without "alerts" unless the seller is named.
  *
- * Readers: the scanner's Full Analysis link and button (G1 and G2, in
- * ResumeUploader), and from the homepage switch-over
- * (docs/homepage-pricing/README.md, step 5) the new homepage's plan strip and
- * the pricing page's cards, through SALE_SWITCHES. Buy controls elsewhere
- * (the scan report, the comparison table, the sticky bar, the Pro card) still
- * read purchasesOpen() alone.
+ * Readers: every buy control, through fullAnalysisOnSale() (G1 and G2) and
+ * proOnSale() (G1 and G2b) in src/lib/purchases-open.ts: the uploader, the
+ * free report, the sticky bar, the comparison table, the closing call to
+ * action, the old pricing page's Full Analysis card, Index's checkout handler
+ * (a Pro member's included analysis excepted) and the Pro card, which also
+ * leaves the included Full Analysis out of its list and summary while G2 is
+ * closed. From the homepage switch-over (docs/homepage-pricing/README.md,
+ * step 5) the new homepage's plan strip and the pricing page's cards read the
+ * switches through SALE_SWITCHES. A test fails on any other caller of
+ * purchasesOpen(). The checkouts gate on the seller alone.
+ *
+ * THE WATCHED PURCHASES. G2 and G2b open only after the owner has watched a
+ * real purchase, and no page offers one while they are closed. The owner
+ * makes it from a local build (npm run dev against the production project)
+ * with the switch flipped in the working copy, never committed, and signed
+ * in there for Pro: the checkouts read none of these switches, and
+ * checkoutOrigin sends a buyer on http://localhost back to that build's own
+ * success page, so the payment, the webhook and the delivered report (or the
+ * subscription, its package and its cancellation) are watched without the
+ * product appearing on the site. Then the switch is flipped here, in a
+ * commit that says what was watched.
  */
 
 /** The saved-search digest's mail class, as ruled (G6). */
