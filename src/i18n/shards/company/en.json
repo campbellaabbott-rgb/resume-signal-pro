@@ -24,7 +24,6 @@
     "agency": {
       "banner": "This is a staffing agency's board. Roles here are usually for its clients."
     },
-    "boardReadAgo": "board read {{ago}}",
     "breadcrumbCompanies": "Companies",
     "breadcrumbJobs": "Jobs",
     "breadcrumbLabel": "Breadcrumb",
@@ -170,15 +169,10 @@
     },
     "zero": {
       "allRoles": "Search all open roles",
-      "answer": "No roles dated in the last {{days}} days",
+      "answer": "No roles are listed on this page right now.",
+      "seoTitle": "{{company}} jobs",
+      "seoDescription": "{{company}}: no roles are listed on this page right now.",
       "body": "Watch this board and your account will count its new postings when they appear.",
-      "title": "No roles at {{name}} dated in the last {{days}} days",
-      "titleBoard": "No roles on this board dated in the last {{days}} days",
-      "older_one": "The {{total}} role on {{companyPossessive}} board is not dated in the last {{days}} days (read {{date}}).",
-      "older_other": "None of the {{total}} roles on {{companyPossessive}} board is dated in the last {{days}} days (read {{date}}).",
-      "olderBoard_one": "The {{total}} role on this board is not dated in the last {{days}} days (read {{date}}).",
-      "olderBoard_other": "None of the {{total}} roles on this board is dated in the last {{days}} days (read {{date}}).",
-      "basis": "We show roles dated in the last {{days}} days.",
       "empty": "No roles on {{companyPossessive}} job board when we read it {{ago}}.",
       "emptyBoard": "No roles on this board when we read it {{ago}}.",
       "unread": "We have not read {{companyPossessive}} whole board recently.",

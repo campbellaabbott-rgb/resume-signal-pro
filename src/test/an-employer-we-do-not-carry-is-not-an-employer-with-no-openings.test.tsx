@@ -98,7 +98,7 @@ describe("a company page for an employer the board does not carry", () => {
     answer(false);
     mount("/jobs/company/amazon");
     await waitFor(() => expect(h1(), "the page never said it does not carry the employer").toMatch(/We don.t read a board called .amazon. yet/), SLOW);
-    expect(document.body.textContent, "an employer we never read was said to be not hiring").not.toMatch(/has no open roles|No roles (?:at|on) /);
+    expect(document.body.textContent, "an employer we never read was said to be not hiring").not.toMatch(/has no open roles|No roles (?:at|on) |No roles are listed/);
     expect(screen.queryByText(/Claim this profile/), "a claim offer on a page for an employer we do not carry").toBeNull();
     expect(screen.queryByRole("button", { name: /Alert me when this exists/ }), "an alert for postings that can never arrive").toBeNull();
     expect(screen.queryByRole("button", { name: /^Watch / }), "a watch on an employer we do not read").toBeNull();
@@ -109,7 +109,7 @@ describe("a company page for an employer the board does not carry", () => {
   it("a carried employer with an empty board keeps its honest answer and stays indexable", async () => {
     answer(true);
     mount("/jobs/company/acme");
-    await waitFor(() => expect(document.body.textContent).toMatch(/No roles (?:at Acme|on this board) dated in the last 30 days/), SLOW);
+    await waitFor(() => expect(document.body.textContent).toMatch(/No roles are listed on this page right now\./), SLOW);
     expect(h1()).not.toMatch(/We don.t read a board/);
     expect(screen.queryByRole("button", { name: /^Watch (?:Acme|this board)/ }), "the positive control: a carried employer keeps its watch").not.toBeNull();
     expect(robots().some((r) => /noindex/.test(r))).toBe(false);

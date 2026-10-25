@@ -38,6 +38,7 @@ function stubTable() {
 
 import Jobs from "../pages/Jobs";
 import { buildLanderModel, type LanderInput } from "@/lib/company/lander-model";
+import { rememberLanderName } from "@/lib/display-name";
 import { CompanyHeader } from "@/components/jobs/company/CompanyHeader";
 import { HiringRecordCard } from "@/components/jobs/company/HiringRecordCard";
 
@@ -103,6 +104,15 @@ describe("the document title follows the page's variant", () => {
     expect(document.title).not.toMatch(/10kbi jobs: open roles/);
     await waitFor(() => expect(document.querySelector("h1")?.textContent ?? "").toContain("Roles on the “10kbi” board"), SLOW);
     expect(document.body.textContent).not.toContain("Loading the employer's name");
+  });
+
+  it("a named zero page: '{company} jobs' and the page's own line in the head and the live region, never 'open roles' (round 3, 2026-10-25)", async () => {
+    rememberLanderName("acme", "Acme");
+    mount("acme", []);
+    await waitFor(() => expect(document.title).toContain("Acme jobs"), SLOW);
+    expect(document.title).not.toMatch(/open roles|own hiring system/);
+    await waitFor(() => expect(document.head.querySelector('meta[name="description"]')?.getAttribute("content")).toBe("Acme: no roles are listed on this page right now."), SLOW);
+    expect(document.querySelector('p[role="status"][aria-live="polite"]')?.textContent, "the polite region blamed filters the visitor never set").toBe("No roles are listed on this page right now.");
   });
 
   it("positive control: an employer's page keeps '{company} jobs: open roles from their own hiring system'", async () => {

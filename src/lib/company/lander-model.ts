@@ -29,6 +29,7 @@
  */
 import type { CollidedBoard } from "@/lib/board-collisions";
 import type { HiringRecordRefusal } from "@/lib/hiring-record-gate";
+import { WORKDAY_MULTI_SITE_TENANTS } from "@/lib/company/workday-multi-site-tenants";
 
 /** The served list counts up to this many rows and then says countCapped (job-board serveList). */
 export const LIST_COUNT_CAP = 10_000;
@@ -166,6 +167,19 @@ export interface BoardTotalInput {
   readAt: string | null | undefined;
   state: string | null | undefined;
   capped: boolean | null | undefined;
+  /**
+   * How the board is read (get_company_fill_curve.observability_bucket),
+   * which the zero page reads only to say "not read" where our own reads
+   * show it. full_read: the newest observed day (within seven) was a
+   * complete read. lap_pending / unprovable: a windowed board with no
+   * complete pass. lap_proven: a completed pass at some time we cannot date
+   * here. unobserved: the newest day's visit failed (an earlier day may be
+   * whole). null: no observation in the last seven days (or one too new to
+   * classify). undefined: the reader did not carry the column.
+   */
+  bucket?: string | null;
+  /** get_company_fill_curve.tracking_days: tells a board with no recent observation from one too new to classify. */
+  trackingDays?: number | string | null;
 }
 
 /** A board total the page may print: stated on a complete read no more than 48 hours ago, not a vendor's cap. */
@@ -175,14 +189,26 @@ export interface BoardTotalFact {
 }
 
 /**
- * What a page with nothing dated in the last 30 days may say about the board
- * (Track 1, A3): "older" (a complete read listed roles, none dated in our
- * window), "empty" (a complete read listed none), "unread" (no complete read
- * we can stand on: stale, capped, an error, or never), or null while the
- * curve has not answered. Never "has no open roles" while older ones are
- * listed.
+ * What a zero page may say about the board beyond its own line, "No roles
+ * are listed on this page right now", which is true of every zero page and
+ * claims nothing about the employer's board (null):
+ *   "empty"  a complete read, no more than 48 hours old, at which the board
+ *            itself stated none (the board and this page agree);
+ *   "unread" our own reads say no complete read stands behind the page: a
+ *            tracked board with no observation in seven days, and no stated
+ *            total from any complete read in that time.
+ * Nothing else may be said. The 2026-10-25 corpus (every live zero page,
+ * each against its board's own public feed, in
+ * src/test/fixtures/zero-page-corpus-2026-10-25.json) found that the inputs
+ * cannot tell a board whose roles are all older than our window from one
+ * whose roles we serve under a sibling site, hold back or have not read yet:
+ * "None of the N roles is dated in the last 30 days" and "As of our latest
+ * full read, no role on this board is dated in the last 30 days" were each
+ * false on rows whose inputs matched true rows exactly. So when the board's
+ * figures and this page disagree (a stated total above zero, a stale total, a
+ * read whose vendor this page cannot see), the page says only its own line.
  */
-export type ZeroReading = "older" | "empty" | "unread";
+export type ZeroReading = "empty" | "unread";
 
 export interface LanderName {
   /** The name to print, or null: render a skeleton bar, never the token. */
@@ -229,6 +255,13 @@ export interface LanderModel {
   /** On the zero page only: what may be said about the board. */
   zeroReading: ZeroReading | null;
   /**
+   * Whether the page may promise that a watch counts the board's new
+   * postings ("Watch this board and your account will count its new postings
+   * when they appear", and the watch toast's "We'll email you when they post
+   * new roles"). Always true off the zero page. On it, see watchPromiseOf.
+   */
+  watchPromise: boolean;
+  /**
    * The list has answered (or failed), so a name that is still null will not
    * arrive from it: the header stops showing a loading bar and names the
    * board instead (a zero page has no rows to name it from).
@@ -240,6 +273,8 @@ export interface LanderModel {
 export const BOARD_TOTAL_MAX_AGE_MS = 48 * 3_600_000;
 /** The read states that are a complete read: ok, or empty (every role older than our window). */
 const COMPLETE_READ_STATES = new Set(["ok", "empty"]);
+/** The complete read state at which the board stated none and we held none: the only one "empty" may stand on. */
+const KEPT_NOTHING_STATE = "empty";
 
 /**
  * The board's own total, if the page may print it: a complete read (state ok
@@ -258,12 +293,114 @@ export function boardTotalFact(input: BoardTotalInput | null | undefined, now: n
   return { total, readAt: input.readAt };
 }
 
-/** The zero page's reading: older roles listed, an empty board, or a board we have not read in full recently. */
+/**
+ * The zero page's reading (the table, and the corpus it was checked against,
+ * are in src/test/pd-hotfix-the-zero-page-never-says-not-read-of-a-board-read-in-full.test.tsx):
+ *   1. the curve has not answered, or answered without the feed columns: null;
+ *   2. a printable total (complete, stated, no older than 48 hours,
+ *      uncapped): "empty" when the board stated none at a read that kept
+ *      none, and null otherwise, since a board that states roles while this
+ *      page lists none disagrees with it whatever the read state says (state
+ *      ok: an Oracle sub-site whose requisitions a sibling site serves; state
+ *      empty: a Workday site whose roles a sibling holds, 2026-10-25);
+ *   3. a stated total that may not be printed (stale, capped, an unknown
+ *      state): null;
+ *   4. no stated total: a tracked board with no observation in seven days is
+ *      "unread"; anything else (a read in full whose vendor this page cannot
+ *      see, a windowed board, a lap we cannot date, a failed newest visit, a
+ *      board too new to classify, a bucket this build does not know, a reader
+ *      without the bucket) is null.
+ * A windowed bucket (lap_pending, unprovable) is the newest visit's alone,
+ * and for the vendors whose complete reads leave no stated total (job-board's
+ * DERIVED_FEED_TOTAL_SOURCES, and any feed that states none) one windowed
+ * visit after a complete read reads the same as no complete read at all; a
+ * zero page has no rows to name its vendor by, so it cannot tell them apart
+ * and says only its own line (round 3 review, 2026-10-25). A known edge, kept:
+ * a board re-catalogued with old postings reads bucket null, tracked, for up
+ * to 30 minutes after its first read, until the closure refresh classifies it.
+ */
 export function zeroReadingOf(input: Pick<LanderInput, "boardTotal" | "now">): ZeroReading | null {
-  if (input.boardTotal === undefined) return null;
-  const fact = boardTotalFact(input.boardTotal, input.now ?? Date.now());
-  if (!fact) return "unread";
-  return fact.total > 0 ? "older" : "empty";
+  const bt = input.boardTotal;
+  if (bt === undefined || bt === null) return null;
+  const fact = boardTotalFact(bt, input.now ?? Date.now());
+  if (fact) return fact.total === 0 && String(bt.state ?? "") === KEPT_NOTHING_STATE ? "empty" : null;
+  if (statesTotal(bt)) return null;
+  if (bt.bucket !== null) return null;
+  const raw = bt.trackingDays;
+  const days = typeof raw === "string" ? Number(raw) : raw;
+  return typeof days === "number" && Number.isFinite(days) && days >= 1 ? "unread" : null;
+}
+
+/** The curve row states a board total at all, fresh or stale, printable or not. */
+const statesTotal = (bt: BoardTotalInput): boolean => bt.total !== null && bt.total !== undefined && bt.total !== "";
+
+/** The bucket of a board whose newest observed day (within seven) was a complete read. */
+const FULL_READ_BUCKET = "full_read";
+
+/**
+ * A token naming one career site of an Oracle tenant whose requisitions
+ * job-board stores under ONE site: the sub-site dedupe (job-board's
+ * planOracleSubsiteVisit) keeps a requisition two sites of a tenant both list
+ * on the better-ranked site and drops it from the other. On 2026-10-25 every
+ * catalogued token of that hiring system had this shape and no other token
+ * did (1,343 of 44,379).
+ */
+const ORACLE_SITE_TOKEN = /^[^~]+~[^~]+~CX(?:_\w+)?$/;
+/**
+ * A Workday token, tenant~wdN~site, capturing the tenant. On 2026-10-25 every
+ * catalogued token of that hiring system had this shape and no other token
+ * did (3,698), and every tenant was lower-case letters and digits.
+ */
+const WORKDAY_SITE_TOKEN = /^([^~]+)~wd\d+~[^~]+$/;
+
+/**
+ * A site job-board's dedupes can empty, so a watch on it can count nothing of
+ * what the employer lists there. job-board has two:
+ *   - the Oracle sub-site dedupe, on every Oracle site (above);
+ *   - the Workday cross-site dedupe, which skips a site's new requisition copy
+ *     (an id with a one- or two-digit suffix after three digits, R31339-1)
+ *     whenever a stored row of any site of the same tenant holds the base id
+ *     (R31339). strayer~wd1~CU_Careers listed 9 roles dated this month on
+ *     2026-10-25 and served none; 7 were copies of requisitions
+ *     strayer~wd1~SEI serves (final recheck of round 3).
+ * The Workday arm is the safe default: every site of a tenant with more than
+ * one catalogued site (src/lib/company/workday-multi-site-tenants.ts,
+ * generated from the catalogue, 511 tenants), since this page cannot see which
+ * copies a sibling holds. With one site, the dedupe can only compare a copy
+ * with that same site's own stored rows, and a page that promises stated no
+ * total at its newest complete read (job-board never writes 0).
+ */
+export function siteDedupedToken(token: string | null | undefined): boolean {
+  const t = String(token ?? "");
+  if (ORACLE_SITE_TOKEN.test(t)) return true;
+  const workday = WORKDAY_SITE_TOKEN.exec(t);
+  return !!workday && WORKDAY_MULTI_SITE_TENANTS.has(workday[1]);
+}
+
+/**
+ * THE WATCH PROMISE ON A ZERO PAGE. A watch is a saved search scoped to this
+ * token, so it counts only postings stored under it. It was promised on every
+ * zero page, and was false on the sites whose roles a sibling site holds:
+ * Delaney at the Green (eexs~us2~CX_19005) states 3 roles on its own feed, all
+ * served under CX_3001, so its watch counts nothing, ever (round 3 review,
+ * 2026-10-25: 326 corpus rows, 304 with a stated total and 22 with none), and
+ * strayer~wd1~CU_Careers lists Workday copies of requisitions another strayer
+ * site holds (round 4: 6 more corpus rows, matched by base id, all with a
+ * stated total). So the promise is made only where the inputs agree with it:
+ * the curve has answered with its columns, the board states no total (a
+ * stated total with nothing listed means the board and this page disagree;
+ * job-board never writes 0), the newest observed day was a complete read (a
+ * board we fail to read in full never lists a new posting), and the token is
+ * not a site either dedupe can empty (siteDedupedToken). Everywhere else the
+ * page offers Watch without saying what it will count. On the 12,564-page
+ * corpus it is made on 10,178 pages and on none a sibling site serves.
+ */
+export function watchPromiseOf(input: Pick<LanderInput, "boardTotal" | "token">): boolean {
+  const bt = input.boardTotal;
+  if (bt === undefined || bt === null) return false;
+  if (statesTotal(bt)) return false;
+  if (bt.bucket !== FULL_READ_BUCKET) return false;
+  return !siteDedupedToken(input.token);
 }
 
 const finite = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n);
@@ -424,6 +561,7 @@ export function buildLanderModel(input: LanderInput): LanderModel {
     boardTotal: employerBoard ? boardTotalFact(input.boardTotal, input.now ?? Date.now()) : null,
     undatedOpen: employerBoard ? undated : null,
     zeroReading: variant === "zero" ? zeroReadingOf(input) : null,
+    watchPromise: variant !== "zero" || watchPromiseOf(input),
     nameSettled: !input.loading && (input.error || input.budgetRefusal || finite(input.listTotal)),
   };
 }

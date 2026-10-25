@@ -13,6 +13,11 @@
 # sitemap) F2a prints INFO "cannot judge" and only the live sitemap's own
 # posting URLs are checked (S11-154: a sitemap the new bake wrote cannot show
 # what became of the old one's URLs).
+# L9-11 FAILs llms-full.txt on the retired pass's own copy, its names and 83
+# C1's retired list. A paraphrase in new words passes it whatever it says;
+# every sentence that prices something at $29 without naming Freelance Boost
+# prints as INFO for a person to read, and one that names no price is not
+# shown at all (round 4, 2026-10-25).
 echo "== 76. wave 3 seo-content: names, published URLs, company pages, data pages, claims =="
 
 REPO_ROOT76="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -50,11 +55,30 @@ const textOf = (h) => h.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<[^>
   else out("PASS", "the homepage carries none of the retired absolute claims");
   if (canonOf(home.body) === `${SITE}/`) out("PASS", "the homepage file names itself canonical (an unknown address is no longer an indexable copy of /)");
   else out("FAIL", `the homepage canonical is "${canonOf(home.body) || "absent"}" (F2d)`);
-  // L1-08: the agent Service carries its prices.
-  const svc = lds(home.body).find((j) => j["@type"] === "Service");
-  const prices = svc && Array.isArray(svc.offers) ? svc.offers.map((o) => o.price) : [];
-  if (prices.includes("99") && prices.includes("29")) out("PASS", "the homepage apply-agent Service offers carry $99 and $29 (L1-08)");
-  else out("FAIL", `the homepage Service offers carry ${JSON.stringify(prices)} (L1-08: was "Included with an account")`);
+  // L1-08, re-pointed 2026-10-24 (profiles+design verify triage). The apply
+  // pivot (owner, 2026-10-11) retired the agent plan and the pass, and the
+  // bake dropped the Service block that sold them, so the homepage now passes
+  // when it sells neither: no Service block, and no Offer at either retired
+  // price at any depth (the rule 83 C2 judges). The block coming back fails.
+  // Services and offers are read with the walks of the retired list
+  // (scripts/prerender-retired.mjs): a Service at any depth, an @graph
+  // included, and every offer or price specification, an array @type, a
+  // nested priceSpecification and a price written with its currency
+  // included (recheck, 2026-10-25).
+  const homeLd = lds(home.body);
+  const R108 = await import(`${REPO_ROOT}/scripts/prerender-retired.mjs`).catch(() => null);
+  // A Service by any spelling of its @type ("schema:Service") and any
+  // subtype (ProfessionalService), and every object under offers or
+  // makesOffer, typed or not (round 3 review, 2026-10-25).
+  const svcs = R108 ? R108.nodesOfType(homeLd, R108.SERVICE_TYPE) : [];
+  const retiredOffers = R108 ? R108.retiredOfferPrices(homeLd) : [];
+  // Selling nothing is judged only on a homepage that carries its JSON-LD
+  // (the template writes a WebSite block): with no block at all there is
+  // nothing to judge, not nothing sold (fix round, 2026-10-24).
+  if (!R108) out("FAIL", "this checkout cannot read scripts/prerender-retired.mjs, so whether the homepage sells the retired agent cannot be judged (L1-08)");
+  else if (!homeLd.length) out("FAIL", "the homepage carries no parseable JSON-LD at all, so whether it sells the retired agent cannot be judged (L1-08; the template writes a WebSite block)");
+  else if (!svcs.length && !retiredOffers.length) out("PASS", "the homepage carries no Service block and no Offer at $99 or $29: the retired agent plan and pass are not sold (L1-08 since the apply pivot; 83 C2)");
+  else out("FAIL", `the homepage still sells the retired apply agent: ${svcs.length} Service block(s), Offers at ${JSON.stringify(retiredOffers)} (L1-08 since the apply pivot; 83 C2)`);
 
   // ---- F1: employers by the name they use ----
   const ms = [];
@@ -237,8 +261,43 @@ const textOf = (h) => h.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<[^>
   if (lt.status === 200 && rel === 0 && /work\.resumebooster\/jobs/.test(lt.body) && !/zero ghost|whether it was filled|10 languages|aggregator or a scrape/i.test(lt.body)) out("PASS", "/llms.txt names its domain on every link, names the registry entry, and drops zero-ghost, filled, 10 languages and never-a-scrape");
   else out("FAIL", `/llms.txt: ${rel} relative links${/zero ghost/i.test(lt.body) ? ", still says zero ghost jobs" : ""}${/whether it was filled/.test(lt.body) ? ", still says filled" : ""}${/10 languages/.test(lt.body) ? ", still says 10 languages" : ""}${/aggregator or a scrape/.test(lt.body) ? ", still says never a scrape" : ""}${/work\.resumebooster\/jobs/.test(lt.body) ? "" : ", no registry name"}`);
   const lf = await get("/llms-full.txt");
-  if (/work\.resumebooster\/jobs/.test(lf.body) && !/raises both for its hours`?$/m.test(lf.body) && /never raises them on \/v1/.test(lf.body)) out("PASS", "/llms-full.txt names the registry entry and scopes the pass to the MCP server (L9-11)");
-  else out("FAIL", "/llms-full.txt lacks the registry name or still says a pass raises the /v1 limits (L9-11)");
+  // L9-11, re-pointed 2026-10-24 (profiles+design verify triage): the pass is
+  // retired, so the file no longer scopes it to the MCP server; it must name
+  // the registry entry and sell no pass at all: none of the pass\x27s names,
+  // and nothing on 83 C1\x27s retired list (scripts/prerender-retired.mjs), which
+  // reads "a six-hour pass for $29" as the pass (fix round, 2026-10-24).
+  const retired76 = await import(`${REPO_ROOT}/scripts/prerender-retired.mjs`).catch(() => null);
+  const lfRetired = retired76 ? retired76.retiredClaimsIn(lf.body) : null;
+  // THE FAIL JUDGE IS THE PASS\x27S OWN COPY AND ITS NAMES (round 3 review and
+  // round 4, 2026-10-25): every clause the copy that sold it said, from git
+  // history (RETIRED_PASS_COPY in scripts/prerender-retired.mjs), the names
+  // below, and 83 C1\x27s retired list (a $29 price within 60 characters of
+  // the word pass). RESIDUAL, named: a paraphrase in new words passes all
+  // three, whatever it says. A price rule tried beside them failed true copy
+  // (a $29 product delivered within 48 hours, a $29 review returned within 24
+  // hours) and missed paraphrases (a 360-minute window for $29), so the price
+  // is read as INFO and never FAILs: every sentence that prices something at
+  // $29 ($29.00, 29 USD, USD 29) and does not name Freelance Boost, the
+  // one-time product on sale at that price, is printed for a person to read.
+  // A paraphrase that names the price is shown there; one that names no price
+  // at all (hours, limits or calls alone) is not shown anywhere.
+  const lfPassCopy = retired76 && typeof retired76.retiredPassCopyIn === "function" ? retired76.retiredPassCopyIn(lf.body) : null;
+  const P29 = "(?:\\$\\s?29(?:\\.00)?(?![\\d,.]\\d)|\\b29(?:\\.00)?\\s?(?:USD|US dollars|dollars)\\b|\\bUSD\\s?29(?:\\.00)?(?![\\d,.]\\d))";
+  const P29_RE = new RegExp(P29, "i");
+  const lfPriced = lf.body.split(/(?<=[.!?])\s+|\n+/).map((x) => x.trim()).filter((x) => P29_RE.test(x) && !/Freelance Boost/i.test(x));
+  const lfWhy = [
+    /work\.resumebooster\/jobs/.test(lf.body) ? "" : "no registry name",
+    /raises both for its hours`?$/m.test(lf.body) ? "still says a pass raises the /v1 limits" : "",
+    // The names, and the pass page the bake linked (round 4: a link to it passed).
+    /\bAgent Pass\b|\blive pass\b|\b(?:six|6)[- ]hour pass\b|\/agents\/pass\b/i.test(lf.body) ? "still names the retired pass" : "",
+    // The retired pass\x27s own copy, clause by clause (round 3).
+    lfPassCopy === null ? "this checkout\x27s scripts/prerender-retired.mjs has no retired pass copy (RETIRED_PASS_COPY) to judge by" : lfPassCopy.length ? `still carries the retired pass\x27s own copy ("${lfPassCopy[0].slice(0, 80)}"${lfPassCopy.length > 1 ? ` and ${lfPassCopy.length - 1} more clause(s)` : ""})` : "",
+    lfRetired === null ? "this checkout cannot read scripts/prerender-retired.mjs (the retired list is the judge)" : lfRetired.length ? `still carries a retired claim: ${lfRetired.map(([c, m]) => `${c} ("${m.slice(0, 60)}")`).join("; ")}` : "",
+  ].filter(Boolean);
+  if (lf.status === 200 && !lfWhy.length) out("PASS", "/llms-full.txt names the registry entry, names no pass and carries no retired claim by 83 C1\x27s list (L9-11)");
+  else out("FAIL", `/llms-full.txt (HTTP ${lf.status}): ${lfWhy.join(", ") || "unreadable"} (L9-11)`);
+  for (const x of lfPriced.slice(0, 5)) out("INFO", `L9-11 backstop: /llms-full.txt prices something at $29 without naming Freelance Boost: "${x.slice(0, 140)}" (read it: the retired pass in new words would sit here, and the line above does not judge it)`);
+  if (lfPriced.length > 5) out("INFO", `L9-11 backstop: and ${lfPriced.length - 5} more sentence(s) priced at $29 without naming Freelance Boost`);
   if (/every employer with open roles/.test(lf.body)) out("FAIL", "/llms-full.txt still says /companies lists every employer with open roles (L4-11)");
   else if (/\/companies — the [\d,]+ employers this site gives a page/.test(lf.body)) out("PASS", "/llms-full.txt says /companies lists the employers with a page of their own, counted (L4-11)");
   else out("FAIL", "/llms-full.txt has no counted /companies line (L4-11)");

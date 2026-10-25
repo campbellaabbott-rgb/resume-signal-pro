@@ -24,7 +24,6 @@
     "agency": {
       "banner": "Board ito ng isang staffing agency. Karaniwang para sa mga kliyente nito ang mga role dito."
     },
-    "boardReadAgo": "nabasa ang board {{ago}}",
     "breadcrumbCompanies": "Mga kumpanya",
     "breadcrumbJobs": "Mga trabaho",
     "breadcrumbLabel": "Breadcrumb",
@@ -170,15 +169,10 @@
     },
     "zero": {
       "allRoles": "Maghanap sa lahat ng bukas na role",
-      "answer": "Walang role na may petsa sa nakaraang {{days}} araw",
+      "answer": "Walang role na nakalista sa page na ito sa ngayon.",
+      "seoTitle": "Mga trabaho sa {{company}}",
+      "seoDescription": "{{company}}: walang role na nakalista sa page na ito sa ngayon.",
       "body": "Bantayan ang board na ito at bibilangin ng account mo ang mga bagong posting kapag lumabas ang mga ito.",
-      "title": "Walang role sa {{name}} na may petsa sa nakaraang {{days}} araw",
-      "titleBoard": "Walang role sa board na ito na may petsa sa nakaraang {{days}} araw",
-      "older_one": "Ang {{total}} role sa board ng {{company}} ay walang petsa sa nakaraang {{days}} araw (nabasa {{date}}).",
-      "older_other": "Wala sa {{total}} role sa board ng {{company}} ang may petsa sa nakaraang {{days}} araw (nabasa {{date}}).",
-      "olderBoard_one": "Ang {{total}} role sa board na ito ay walang petsa sa nakaraang {{days}} araw (nabasa {{date}}).",
-      "olderBoard_other": "Wala sa {{total}} role sa board na ito ang may petsa sa nakaraang {{days}} araw (nabasa {{date}}).",
-      "basis": "Ipinapakita namin ang mga role na may petsa sa nakaraang {{days}} araw.",
       "empty": "Walang role sa job board ng {{company}} nang basahin namin ito {{ago}}.",
       "emptyBoard": "Walang role sa board na ito nang basahin namin ito {{ago}}.",
       "unread": "Hindi pa namin nababasa nang buo ang board ng {{company}} kamakailan.",

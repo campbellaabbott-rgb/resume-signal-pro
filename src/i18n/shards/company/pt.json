@@ -25,7 +25,6 @@
     "agency": {
       "banner": "Este é o portal de uma agência de recrutamento. As vagas aqui são normalmente para os clientes dela."
     },
-    "boardReadAgo": "portal lido {{ago}}",
     "breadcrumbCompanies": "Empresas",
     "breadcrumbJobs": "Vagas",
     "breadcrumbLabel": "Navegação estrutural",
@@ -185,17 +184,10 @@
     },
     "zero": {
       "allRoles": "Pesquisar todas as vagas abertas",
-      "answer": "Nenhuma vaga com data nos últimos {{days}} dias",
+      "answer": "Neste momento não há nenhuma vaga nesta página.",
+      "seoTitle": "Vagas na {{company}}",
+      "seoDescription": "{{company}}: neste momento não há nenhuma vaga nesta página.",
       "body": "Acompanhe este portal e a sua conta contará os novos anúncios quando aparecerem.",
-      "title": "Nenhuma vaga na {{name}} com data nos últimos {{days}} dias",
-      "titleBoard": "Nenhuma vaga neste portal com data nos últimos {{days}} dias",
-      "older_one": "A {{total}} vaga do portal da {{company}} não tem data nos últimos {{days}} dias (lido em {{date}}).",
-      "older_other": "Nenhuma das {{total}} vagas do portal da {{company}} tem data nos últimos {{days}} dias (lido em {{date}}).",
-      "older_many": "Nenhuma das {{total}} vagas do portal da {{company}} tem data nos últimos {{days}} dias (lido em {{date}}).",
-      "olderBoard_one": "A {{total}} vaga deste portal não tem data nos últimos {{days}} dias (lido em {{date}}).",
-      "olderBoard_other": "Nenhuma das {{total}} vagas deste portal tem data nos últimos {{days}} dias (lido em {{date}}).",
-      "olderBoard_many": "Nenhuma das {{total}} vagas deste portal tem data nos últimos {{days}} dias (lido em {{date}}).",
-      "basis": "Mostramos vagas com data nos últimos {{days}} dias.",
       "empty": "Nenhuma vaga no portal da {{company}} quando o lemos {{ago}}.",
       "emptyBoard": "Nenhuma vaga neste portal quando o lemos {{ago}}.",
       "unread": "Não lemos o portal completo da {{company}} recentemente.",

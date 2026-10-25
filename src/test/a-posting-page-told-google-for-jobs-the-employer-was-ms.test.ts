@@ -216,7 +216,7 @@ describe("the React company page names the employer and its possessive the way t
   // stays in the main locale, read by Jobs.tsx for the SEO tag.
   const LANDER_KEYS = ["companySeoDescription"];
   const shardDir = resolve(__dirname, "../i18n/shards/company");
-  const SHARD_KEYS = ["subtitle", "zero.older_other", "zero.empty", "zero.unread"];
+  const SHARD_KEYS = ["subtitle", "zero.empty", "zero.unread"];
   const leaf = (o: unknown, path: string): unknown => path.split(".").reduce<unknown>((x, k) => (x && typeof x === "object" ? (x as Record<string, unknown>)[k] : undefined), o);
 
   it("no locale builds an English possessive by appending 's to the name", () => {
