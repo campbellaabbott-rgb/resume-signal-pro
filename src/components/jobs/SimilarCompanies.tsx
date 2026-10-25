@@ -16,7 +16,7 @@
 
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { useCompanyBoardHref } from "@/lib/seo/lander-manifest";
+import { useCompanyProfileLink } from "@/lib/seo/lander-manifest";
 import { ArrowRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
@@ -86,7 +86,9 @@ export function SimilarCompaniesView({ rows, variant = "page", limit, headingLev
   const { t, i18n } = useTranslation();
   // SEO-010: an employer link goes to its written company page, or to the
   // live board filtered to the board when the bake wrote none.
-  const companyHref = useCompanyBoardHref();
+  // A similar employer opens its profile: the written page, or the profile
+  // address with rel="nofollow" when the bake wrote none (SEO-010).
+  const profileLink = useCompanyProfileLink();
   const shown = typeof limit === "number" ? rows.slice(0, limit) : rows;
   if (shown.length === 0) return null;
   const lang = i18n.language || "en";
@@ -116,7 +118,8 @@ export function SimilarCompaniesView({ rows, variant = "page", limit, headingLev
           return (
             <li key={r.company_token}>
               <Link
-                to={companyHref(r.company_token)}
+                to={profileLink(r.company_token).href}
+                rel={profileLink(r.company_token).rel}
                 className="group flex min-h-11 items-center gap-3 rounded-md border border-border bg-card px-3 py-2 hover:border-border-strong hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
                 <span className="min-w-0 flex-1">

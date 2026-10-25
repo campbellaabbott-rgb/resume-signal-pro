@@ -91,6 +91,27 @@ export function companyBoardHref(token: string, query?: string): string {
   return `/jobs?company=${encodeURIComponent(token)}${q ? `&${q}` : ""}`;
 }
 
+/**
+ * A LINK THAT PROMISES THE EMPLOYER'S PROFILE ("Full Snowflake hiring
+ * profile", "+3 more on the employer page", the employer's name on a card or
+ * a posting) opens the profile, written page or not. The round sent every
+ * employer link to /jobs?company=<token> unless the manifest named a page, and
+ * it names about 500 of some 31,800 boards: the profile link opened the
+ * generic board, with no hiring record, pay card or layoff list, and nothing
+ * in the app reached an unbaked employer's profile any more (review,
+ * 2026-10-24). React renders the profile for any carried token, and an
+ * uncarried one marks itself noindex. So a board with no written page keeps
+ * its profile address with rel="nofollow": people reach the profile, and
+ * crawlers are asked to follow only the pages the bake wrote (SEO-010).
+ */
+export interface CompanyProfileLink { href: string; rel?: "nofollow" }
+export function companyProfileLink(token: string, query?: string): CompanyProfileLink {
+  const page = manifest?.get(token);
+  if (page) return { href: companyBoardHref(token, query) };
+  const q = query ? (query.startsWith("?") || query.startsWith("&") ? query.slice(1) : query) : "";
+  return { href: companyLanderPath(token, q || undefined), rel: "nofollow" };
+}
+
 const subscribe = (l: () => void) => {
   listeners.add(l);
   return () => { listeners.delete(l); };
@@ -102,6 +123,13 @@ export function useCompanyBoardHref(): (token: string, query?: string) => string
   useSyncExternalStore(subscribe, snapshot, snapshot);
   useEffect(() => { void loadLanderManifest(); }, []);
   return companyBoardHref;
+}
+
+/** companyProfileLink for a component: it loads the manifest and re-renders when it arrives. */
+export function useCompanyProfileLink(): (token: string, query?: string) => CompanyProfileLink {
+  useSyncExternalStore(subscribe, snapshot, snapshot);
+  useEffect(() => { void loadLanderManifest(); }, []);
+  return companyProfileLink;
 }
 
 /**

@@ -25,6 +25,8 @@ afterEach(() => { cleanup(); setLanderManifestForTests(null); });
 
 const row = (company_token: string, company: string) => ({ company, company_token, open_roles: 10, employees: null, employee_basis: null, category: "healthcare" });
 const hrefs = () => [...document.querySelectorAll("a")].map((a) => a.getAttribute("href") ?? "");
+/** The links a crawler is not asked to skip: no rel="nofollow". */
+const followed = () => [...document.querySelectorAll("a")].filter((a) => !/\bnofollow\b/.test(a.getAttribute("rel") ?? "")).map((a) => a.getAttribute("href") ?? "");
 
 describe("companyBoardHref", () => {
   it("links the live board while no manifest has loaded", () => {
@@ -57,20 +59,24 @@ describe("companyBoardHref", () => {
   });
 });
 
-describe("a rendered employer link", () => {
-  it("never points at /jobs/company/ for a token without a written page", () => {
+describe("a rendered employer profile link", () => {
+  // A similar employer is a link to its profile. Since the round's review
+  // (2026-10-24) a board with no written page keeps its profile address, so
+  // people reach the hiring record, but with rel="nofollow": a crawler is
+  // asked to follow only the pages the bake wrote.
+  it("never asks a crawler to follow /jobs/company/ for a token without a written page", () => {
     setLanderManifestForTests({ dominos: "dominos" });
     render(<MemoryRouter><SimilarCompaniesView rows={[row("dominos", "Domino's"), row("menasha~wd12~MenashaCorp", "Menasha")]} /></MemoryRouter>);
-    const links = hrefs();
-    expect(links).toContain("/jobs/company/dominos");
-    expect(links).toContain("/jobs?company=menasha~wd12~MenashaCorp");
-    expect(links.filter((h) => h.startsWith("/jobs/company/") && !h.startsWith("/jobs/company/dominos"))).toEqual([]);
+    expect(hrefs()).toContain("/jobs/company/dominos");
+    expect(hrefs()).toContain("/jobs/company/menasha~wd12~MenashaCorp");
+    expect(followed().filter((h) => h.startsWith("/jobs/company/") && !h.startsWith("/jobs/company/dominos"))).toEqual([]);
+    expect(hrefs().filter((h) => h.startsWith("/jobs?company="))).toEqual([]);
   });
 
-  it("re-renders onto the written page once the manifest arrives", async () => {
+  it("drops the nofollow once the manifest names the written page", async () => {
     render(<MemoryRouter><SimilarCompaniesView rows={[row("dominos", "Domino's")]} /></MemoryRouter>);
-    expect(hrefs()).toContain("/jobs?company=dominos");
+    expect(followed()).not.toContain("/jobs/company/dominos");
     await act(async () => { setLanderManifestForTests({ dominos: "dominos" }); });
-    expect(hrefs()).toContain("/jobs/company/dominos");
+    expect(followed()).toContain("/jobs/company/dominos");
   });
 });

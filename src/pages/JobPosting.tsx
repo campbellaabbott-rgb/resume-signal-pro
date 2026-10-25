@@ -43,7 +43,7 @@
 
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
-import { useCompanyBoardHref } from "@/lib/seo/lander-manifest";
+import { useCompanyProfileLink } from "@/lib/seo/lander-manifest";
 import { VERIFY_ON_VIEW_AFTER_HOURS } from "@/lib/seo/source-copy";
 import { useTranslation } from "react-i18next";
 import { ChevronRight, Loader2 } from "lucide-react";
@@ -144,9 +144,9 @@ function clearJobMarkup(): void {
 
 export default function JobPosting() {
   const { t } = useTranslation();
-  // SEO-010: an employer link goes to its written company page, or to the
-  // live board filtered to the board when the bake wrote none.
-  const companyHref = useCompanyBoardHref();
+  // The employer's name opens its profile: the written page, or the profile
+  // address with rel="nofollow" when the bake wrote none (SEO-010).
+  const profileLink = useCompanyProfileLink();
   const navigate = useNavigate();
   const params = useParams<{ source?: string; token?: string; key?: string; id?: string }>();
 
@@ -361,7 +361,7 @@ export default function JobPosting() {
                 <>
                   <li aria-hidden="true"><ChevronRight className="h-3.5 w-3.5" /></li>
                   <li className="min-w-0">
-                    <Link to={companyHref(shown.token)} className="break-words text-primary underline decoration-primary/50 underline-offset-2 hover:decoration-primary">
+                    <Link to={profileLink(shown.token).href} rel={profileLink(shown.token).rel} className="break-words text-primary underline decoration-primary/50 underline-offset-2 hover:decoration-primary">
                       {company}
                     </Link>
                   </li>

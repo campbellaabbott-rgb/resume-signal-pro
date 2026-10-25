@@ -14,7 +14,7 @@ import { Link } from "react-router-dom";
 import { ArrowLeft, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { listingTitle } from "@/lib/listing/text";
-import { useCompanyBoardHref } from "@/lib/seo/lander-manifest";
+import { useCompanyProfileLink } from "@/lib/seo/lander-manifest";
 import { countryToName, displayLocation } from "@/lib/listing/location";
 import { listingEmployer } from "@/lib/listing/employer";
 import type { ListingJob } from "@/lib/listing/types";
@@ -40,10 +40,11 @@ export function PostingHeader({ job, level = 2, sticky = true, hideEmployer, men
   const loc = displayLocation(job.location);
   const country = countryToName(loc.text, job.country, i18n.language || "en");
   const place = [loc.text, country].filter(Boolean).join(" · ");
-  // SEO-010: an employer link goes to its written company page, or to the
-  // live board filtered to the board when the bake wrote none.
-  const companyHref = useCompanyBoardHref();
-  const href = job.token ? companyHref(job.token) : null;
+  // The employer's name opens its profile: the written page, or the profile
+  // address with rel="nofollow" when the bake wrote none (SEO-010).
+  const profileLink = useCompanyProfileLink();
+  const profile = job.token ? profileLink(job.token) : null;
+  const href = profile ? profile.href : null;
   const Heading = level === 1 ? "h1" : "h2";
   return (
     <header className={`${sticky ? "sticky top-0 z-20" : ""} border-b border-border bg-background px-4 py-3 sm:px-5`} data-posting-header="">
@@ -66,6 +67,7 @@ export function PostingHeader({ job, level = 2, sticky = true, hideEmployer, men
                 <Link
                   to={href}
                   className="text-primary underline decoration-primary/50 underline-offset-2 hover:decoration-primary"
+                  rel={profile?.rel}
                   onClick={onEmployerClick ? (e) => onEmployerClick(e, href) : undefined}
                 >
                   {employer}
