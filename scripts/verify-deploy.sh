@@ -698,8 +698,8 @@ echo "== 7d. the crawler reads the prices: /pricing sells Pro at \$45 and nothin
 # because a one-time product at that price is still on sale.
 PR=$(curl -s -m 30 -A "$UA" "$SITE/pricing")
 AG=$(curl -s -m 30 -A "$UA" "$SITE/agents")
-VD7D_PR="$PR" VD7D_AG="$AG" VD7D_ROOT="$(pwd)" node --input-type=module -e '
-const { VD7D_PR: pr, VD7D_AG: ag, VD7D_ROOT: root } = process.env;
+VD7D_PR="$PR" VD7D_AG="$AG" VD7D_ROOT="$(pwd)" VD7D_SITE="$SITE" node --input-type=module -e '
+const { VD7D_PR: pr, VD7D_AG: ag, VD7D_ROOT: root, VD7D_SITE: site } = process.env;
 const out = (s, m) => console.log(`${s.padEnd(5)} ${m}`);
 import(`${root}/scripts/prerender-retired.mjs`).then((R) => {
   const bare = (h, n) => (h.match(new RegExp(`\\$${n}(?![0-9])`, "g")) || []).length;
@@ -718,10 +718,18 @@ import(`${root}/scripts/prerender-retired.mjs`).then((R) => {
     else out("PASS", `/pricing description is whole and names only what is on sale: "${desc}"`);
   }
   if (!ag || ag.length < 2000) { out("FAIL", `/agents answered ${ag.length} bytes: nothing to judge`); return; }
+  // The homepage file is what the host serves at a path it has no page for,
+  // and it carries no retired price either, so the page must be /agents (fix
+  // round, 2026-10-24). An Offer prices in a field with no dollar sign, so
+  // every Offer is walked for the retired prices, as 76 L1-08 does.
+  const agCanon = (ag.match(/<link rel="canonical" href="([^"]*)"/) || [])[1] || "";
+  const agOffers = R.offersIn(R.jsonLdBlocks(ag)).flatMap((o) => ["price", "lowPrice", "highPrice"].filter((k) => k in o && [99, 29].includes(Number(o[k]))).map((k) => `${k} ${o[k]}`));
   const agHits = R.retiredClaimsIn(served(ag));
-  if (agHits.length) out("FAIL", `/agents carries a retired price or claim: ${agHits.map(([c, m]) => `${c} ("${m.slice(0, 60)}")`).join("; ")}`);
+  if (agCanon !== `${site}/agents`) out("FAIL", `/agents as served to a crawler is not its own page (canonical "${agCanon || "absent"}"): the homepage shell or another page proves nothing about /agents`);
+  else if (agHits.length) out("FAIL", `/agents carries a retired price or claim: ${agHits.map(([c, m]) => `${c} ("${m.slice(0, 60)}")`).join("; ")}`);
+  else if (agOffers.length) out("FAIL", `/agents offers a retired price in its JSON-LD: ${agOffers.join(", ")} (the agent plan and the pass are retired)`);
   else if (bare(ag, 99) + bare(ag, 29)) out("INFO", `/agents carries no retired claim by 83 C1\x27s list, but a bare $99 x${bare(ag, 99)} / $29 x${bare(ag, 29)}: read what it prices`);
-  else out("PASS", "/agents carries no retired claim and no $99 or $29 at all (the plan and the pass are retired)");
+  else out("PASS", "/agents is its own page and carries no retired claim, no Offer at 99 or 29, and no $99 or $29 at all (the plan and the pass are retired)");
 }).catch((e) => out("FAIL", `7d this checkout cannot read scripts/prerender-retired.mjs (${String(e).slice(0, 80)}): the retired list is the judge`));
 '
 

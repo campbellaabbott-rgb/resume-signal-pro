@@ -65,7 +65,11 @@ const textOf = (h) => h.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<[^>
     Object.values(v).forEach(walkOffers);
   };
   walkOffers(homeLd);
-  if (!svcs.length && !retiredOffers.length) out("PASS", "the homepage carries no Service block and no Offer at $99 or $29: the retired agent plan and pass are not sold (L1-08 since the apply pivot; 83 C2)");
+  // Selling nothing is judged only on a homepage that carries its JSON-LD
+  // (the template writes a WebSite block): with no block at all there is
+  // nothing to judge, not nothing sold (fix round, 2026-10-24).
+  if (!homeLd.length) out("FAIL", "the homepage carries no parseable JSON-LD at all, so whether it sells the retired agent cannot be judged (L1-08; the template writes a WebSite block)");
+  else if (!svcs.length && !retiredOffers.length) out("PASS", "the homepage carries no Service block and no Offer at $99 or $29: the retired agent plan and pass are not sold (L1-08 since the apply pivot; 83 C2)");
   else out("FAIL", `the homepage still sells the retired apply agent: ${svcs.length} Service block(s), Offers at ${JSON.stringify(retiredOffers)} (L1-08 since the apply pivot; 83 C2)`);
 
   // ---- F1: employers by the name they use ----
@@ -248,13 +252,18 @@ const textOf = (h) => h.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<[^>
   const lf = await get("/llms-full.txt");
   // L9-11, re-pointed 2026-10-24 (profiles+design verify triage): the pass is
   // retired, so the file no longer scopes it to the MCP server; it must name
-  // the registry entry and sell no pass at all.
+  // the registry entry and sell no pass at all: none of the pass\x27s names,
+  // and nothing on 83 C1\x27s retired list (scripts/prerender-retired.mjs), which
+  // reads "a six-hour pass for $29" as the pass (fix round, 2026-10-24).
+  const retired76 = await import(`${REPO_ROOT}/scripts/prerender-retired.mjs`).catch(() => null);
+  const lfRetired = retired76 ? retired76.retiredClaimsIn(lf.body) : null;
   const lfWhy = [
     /work\.resumebooster\/jobs/.test(lf.body) ? "" : "no registry name",
     /raises both for its hours`?$/m.test(lf.body) ? "still says a pass raises the /v1 limits" : "",
-    /\bAgent Pass\b|\blive pass\b/i.test(lf.body) ? "still names the retired pass" : "",
+    /\bAgent Pass\b|\blive pass\b|\b(?:six|6)[- ]hour pass\b/i.test(lf.body) ? "still names the retired pass" : "",
+    lfRetired === null ? "this checkout cannot read scripts/prerender-retired.mjs (the retired list is the judge)" : lfRetired.length ? `still carries a retired claim: ${lfRetired.map(([c, m]) => `${c} ("${m.slice(0, 60)}")`).join("; ")}` : "",
   ].filter(Boolean);
-  if (lf.status === 200 && !lfWhy.length) out("PASS", "/llms-full.txt names the registry entry and names no pass, retired since the apply pivot (L9-11)");
+  if (lf.status === 200 && !lfWhy.length) out("PASS", "/llms-full.txt names the registry entry, names no pass and carries no retired claim by 83 C1\x27s list (L9-11)");
   else out("FAIL", `/llms-full.txt (HTTP ${lf.status}): ${lfWhy.join(", ") || "unreadable"} (L9-11)`);
   if (/every employer with open roles/.test(lf.body)) out("FAIL", "/llms-full.txt still says /companies lists every employer with open roles (L4-11)");
   else if (/\/companies — the [\d,]+ employers this site gives a page/.test(lf.body)) out("PASS", "/llms-full.txt says /companies lists the employers with a page of their own, counted (L4-11)");

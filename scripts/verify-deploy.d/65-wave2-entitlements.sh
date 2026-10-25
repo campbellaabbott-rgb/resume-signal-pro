@@ -98,12 +98,17 @@ fi
 # 2026-10-24 (profiles+design verify triage): the trial belonged to the agent
 # plan the apply pivot retired (owner, 2026-10-11), so naming it is now one of
 # the retired claims in scripts/prerender-retired.mjs (83 C1's list), and the
-# page says to apply yourself on the employer's own site instead.
+# page says to apply yourself on the employer's own site instead. The
+# homepage file carries that sentence too, and the host serves it at any path
+# it has no page for, so the PASS also needs /agent's own canonical (fix
+# round, 2026-10-24).
 AG65=$(curl -s -m 30 -A "$UA" "$SITE/agent")
+AG65_CANON=$(printf '%s' "$AG65" | grep -o '<link rel="canonical" href="[^"]*"' | head -1 | sed 's/.*href="//; s/"$//')
 if printf '%s' "$AG65" | grep -qF "days free for first-time subscribers"; then echo "FAIL  /agent as served to a crawler still names the retired agent plan's trial (a retired claim in scripts/prerender-retired.mjs)"
 elif printf '%s' "$AG65" | grep -qE "[0-9]+ days free|first-time subscribers"; then echo "FAIL  /agent as served to a crawler still promises free days (L6-29): no plan on sale has a trial"
 elif printf '%s' "$AG65" | grep -qF '$99'; then echo "FAIL  /agent as served to a crawler still prices the retired agent plan"
-elif printf '%s' "$AG65" | grep -qF "apply yourself on the employer"; then echo "PASS  /agent as served to a crawler names no trial and no plan price, and says to apply yourself on the employer's own site"
+elif [ "$AG65_CANON" != "$SITE/agent" ]; then echo "FAIL  /agent as served to a crawler is not /agent's own page (canonical ${AG65_CANON:-absent}): the homepage shell or another page proves nothing about /agent"
+elif printf '%s' "$AG65" | grep -qF "apply yourself on the employer"; then echo "PASS  /agent as served to a crawler names no trial and no plan price, is its own page, and says to apply yourself on the employer's own site"
 else echo "FAIL  /agent as served to a crawler lacks the apply-yourself line ($(printf '%s' "$AG65" | wc -c | tr -d ' ') bytes): the bake with the apply pivot is not published"; fi
 
 # The owner steps no read can prove.
