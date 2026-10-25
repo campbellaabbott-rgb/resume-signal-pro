@@ -13,7 +13,8 @@
  *     no more than 48 hours old, not Workday's 2,000 cap);
  *   - a page with nothing in the window says what the last complete read saw:
  *     older roles listed, an empty board, or that we have not read the whole
- *     board recently; never "has no open roles" while older ones are listed.
+ *     board recently; never "has no open roles" while older ones are listed,
+ *     and never "older" from a read that kept roles in our window (state ok).
  *
  * The list reply for bassabatherapy recorded on 2026-10-12 (total 0) is the
  * zero page's input; the board totals are the curve's feed columns
@@ -116,7 +117,10 @@ describe("a page with nothing in the window says what the board holds", () => {
   });
 
   it("an empty board, a board we have not read in full recently, and an answer not yet in", () => {
-    expect(zeroAnswer(t, bass({ total: 0, readAt: hoursAgo(5), state: "ok", capped: false }), "en")).toBe("No roles on BASS ABA Therapy's job board when we read it 5 hr ago.");
+    expect(zeroAnswer(t, bass({ total: 0, readAt: hoursAgo(5), state: "empty", capped: false }), "en")).toBe("No roles on BASS ABA Therapy's job board when we read it 5 hr ago.");
+    // A fresh total from a read that kept roles in our window (state ok) is neither: the page lists none of them.
+    expect(zeroAnswer(t, bass({ total: 31, readAt: hoursAgo(5), state: "ok", capped: false }), "en")).toBe("No roles dated in the last 30 days");
+    expect(zeroAnswer(t, bass({ total: 0, readAt: hoursAgo(5), state: "ok", capped: false }), "en")).toBe("No roles dated in the last 30 days");
     expect(zeroAnswer(t, bass({ total: 31, readAt: hoursAgo(80), state: "ok", capped: false }), "en")).toBe("We have not read BASS ABA Therapy's whole board recently.");
     expect(zeroAnswer(t, bass(null), "en"), "a reader without the columns is unread, never a zero").toBe("We have not read BASS ABA Therapy's whole board recently.");
     expect(zeroReadingOf({ boardTotal: undefined })).toBeNull();
@@ -124,7 +128,7 @@ describe("a page with nothing in the window says what the board holds", () => {
   });
 
   it("a generic board label takes no possessive", () => {
-    const m = buildLanderModel(input({ storedName: "Corporate", listTotal: 0, boardTotal: { total: 12, readAt: hoursAgo(3), state: "ok", capped: false } }));
+    const m = buildLanderModel(input({ storedName: "Corporate", listTotal: 0, boardTotal: { total: 12, readAt: hoursAgo(3), state: "empty", capped: false } }));
     expect(zeroAnswer(t, m, "en")).toMatch(/^None of the 12 roles on this board is dated in the last 30 days \(read [^)]+\)\. We show roles dated in the last 30 days\.$/);
   });
 

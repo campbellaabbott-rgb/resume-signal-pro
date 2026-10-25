@@ -14,17 +14,19 @@
  * 30 days, no visitor filter). "fact" is boardTotalFact: a complete read
  * (state ok or empty) that stated a total, no older than 48 hours, uncapped.
  *
- *   curve answered? | fact      | bucket                  | tracking | reading  | sentence
- *   no              | -         | -                       | -        | null     | "No roles dated in the last 30 days" (the list's own)
- *   yes             | total > 0 | any                     | any      | older    | "None of the N roles ... (read DATE)."
- *   yes             | total = 0 | any                     | any      | empty    | "No roles on ... when we read it AGO."
- *   yes             | none      | full_read               | any      | fullRead | "As of our latest full read, no role on this board is dated in the last 30 days."
- *   yes             | none      | lap_pending, unprovable | any      | unread   | "We have not read ...'s whole board recently."
- *   yes             | none      | null (none in 7 days)   | >= 1     | unread   | same
- *   yes             | none      | null                    | 0 / none | null     | the list's own (too new to classify)
- *   yes             | none      | lap_proven, unobserved, | any      | null     | the list's own (a lap we cannot date; a failed newest
- *                   |           | a bucket we don't know  |          |          | visit with a whole read possibly the day before)
- *   yes             | none      | absent (older reader)   | -        | unread   | the rule before the bucket, unchanged
+ *   curve answered? | fact             | bucket                  | tracking | reading  | sentence
+ *   no              | -                | -                       | -        | null     | "No roles dated in the last 30 days" (the list's own)
+ *   yes             | empty, total > 0 | any                     | any      | older    | "None of the N roles ... (read DATE)."
+ *   yes             | empty, total = 0 | any                     | any      | empty    | "No roles on ... when we read it AGO."
+ *   yes             | ok, any total    | any                     | any      | null     | the list's own (that read kept roles in our window
+ *                   |                  |                         |          |          | that this page does not list)
+ *   yes             | none             | full_read               | any      | fullRead | "As of our latest full read, no role on this board is dated in the last 30 days."
+ *   yes             | none             | lap_pending, unprovable | any      | unread   | "We have not read ...'s whole board recently."
+ *   yes             | none             | null (none in 7 days)   | >= 1     | unread   | same
+ *   yes             | none             | null                    | 0 / none | null     | the list's own (too new to classify)
+ *   yes             | none             | lap_proven, unobserved, | any      | null     | the list's own (a lap we cannot date; a failed newest
+ *                   |                  | a bucket we don't know  |          |          | visit with a whole read possibly the day before)
+ *   yes             | none             | absent (older reader)   | -        | unread   | the rule before the bucket, unchanged
  *
  * Why no read date on fullRead: the curve dates only a read that stated a
  * total (feed_read_at), and a whole-feed vendor states none, so there is no
@@ -35,6 +37,18 @@
  * it was. A stale stated total on a full_read board is fullRead, never
  * "not read": the newer complete read may simply have stated nothing (an
  * emptied board writes no total).
+ *
+ * Why a fresh total from a read in state ok is not "older" (fix round,
+ * 2026-10-24): job-board writes state ok only when the read kept at least one
+ * role inside our 30-day window or undated (servedThisVisit, counted before
+ * the Oracle sub-site dedupe moves a requisition to a better-ranked sibling
+ * site), and empty only when it kept none. So on a zero page an ok read means
+ * the board does carry roles in our window that this page does not list:
+ * Delaney at the Green (eexs~us2~CX_19005, an Oracle career sub-site) stated
+ * 3 on a read at 22:56Z, its own feed dates all three this month, and all
+ * three are served under its tenant's "All" site. "None of the 3 roles ... is
+ * dated in the last 30 days" was false there; the page now says only what the
+ * list says. A total only job-board's empty state can carry is "older".
  *
  * The page's own mapping from the curve row (src/pages/Jobs.tsx, the
  * lander's boardTotal input) is read out of the source and run on the
@@ -55,6 +69,12 @@ const BASS = {"company_token":"bassabatherapy","n_at_risk_14":35,"fills_le_14":0
 const CANVA = {"company_token":"Canva","n_at_risk_14":231,"fills_le_14":85,"fill_rate_14":0.2315,"fill_rate_14_lo":0.2015,"fill_rate_14_hi":0.2645,"relist_rate_14":0.1295,"still_open_14":0.639,"fill_rate_7":0.1289,"fill_rate_30":0.4505,"median_days_to_fill":null,"median_censored":true,"dated_coverage":0.7282,"dated_n":450,"undated_n":168,"open_roles":36,"fills_90d":207,"relists_90d":87,"ageouts_90d":288,"fill_through":0.3491,"churn":0.2959,"absorption":-0.75,"tracking_days":90,"sufficient":true,"observability_bucket":"full_read","still_open_30":0.366,"still_open_30_lo":0.3113,"still_open_30_hi":0.4208,"taken_down_30":0.4372,"relist_rate_30":0.1968,"n_at_risk_30":114,"ageouts_at_30":108,"sum_check_30":1,"cohort_from":"2026-08-07","cohort_to":"2026-09-24","sufficient_30":true,"events_30":187,"fills_30":129,"relists_30":58,"watched_from":"2026-08-02","insufficient_reason_30":null,"filled_roles_90d":207,"relisted_roles_90d":87,"multi_site_title_share":0.1944,"multi_site_n":36,"feed_total":97,"feed_read_at":"2026-10-24T17:02:32.894+00:00","feed_state":"ok","feed_capped":false,"late_sighted_30":0,"undated_open":0};
 const STRIPE = {"company_token":"stripe","open_roles":220,"tracking_days":90,"observability_bucket":"full_read","feed_total":null,"feed_read_at":null,"feed_state":null,"feed_capped":null};
 const RECORDED_AT = Date.parse("2026-10-24T20:34:57Z");
+// get_company_fill_curve, anon GET, 2026-10-24T23:59:13Z: two Oracle career sub-sites whose
+// requisitions are served under a sibling site, and one whose own feed emptied after a stated total.
+const DELANEY = {"company_token":"eexs~us2~CX_19005","open_roles":0,"tracking_days":49,"observability_bucket":"full_read","feed_total":3,"feed_read_at":"2026-10-24T22:56:01.925+00:00","feed_state":"ok","feed_capped":false};
+const HEARST_UK = {"company_token":"eevd~us6~CX_1001","open_roles":0,"tracking_days":50,"observability_bucket":"full_read","feed_total":20,"feed_read_at":"2026-10-24T22:53:57.299+00:00","feed_state":"ok","feed_capped":false};
+const HDRC = {"company_token":"hdrc~ca3~CX_1","open_roles":0,"tracking_days":0,"observability_bucket":"full_read","feed_total":1,"feed_read_at":"2026-10-22T22:31:07.843+00:00","feed_state":"ok","feed_capped":false};
+const RECORDED_AT_ORACLE = Date.parse("2026-10-24T23:59:13Z");
 
 const ROOT = resolve(__dirname, "../..");
 const JOBS = readFileSync(resolve(ROOT, "src/pages/Jobs.tsx"), "utf8");
@@ -142,23 +162,71 @@ describe("a board genuinely not read keeps the unread sentence", () => {
   });
 });
 
-describe("a board with a printable total prints the total sentence", () => {
-  it("Canva's live row: 97 on a complete read three and a half hours before the recording", () => {
-    const m = zeroPage(CANVA, { token: "Canva", storedName: "Canva" });
+describe("a board with a printable total prints the total sentence only when that read kept nothing in our window", () => {
+  it("a complete read that kept nothing in our window (state empty) and stated 31: none of them is dated in the window", () => {
+    const m = zeroPage({ ...BASS, feed_total: 31, feed_read_at: new Date(RECORDED_AT - 5 * 3_600_000).toISOString(), feed_state: "empty", feed_capped: false });
     expect(m.zeroReading).toBe("older");
-    expect(zeroAnswer(t, m, "en")).toMatch(/^None of the 97 roles on Canva's board is dated in the last 30 days \(read [^)]+\)\. We show roles dated in the last 30 days\.$/);
+    expect(zeroAnswer(t, m, "en")).toMatch(/^None of the 31 roles on BASS ABA Therapy's board is dated in the last 30 days \(read [^)]+\)\. We show roles dated in the last 30 days\.$/);
   });
 
   it("the 48-hour edge: 47 hours is the total, 49 hours on a full read is fullRead, on a windowed board unread", () => {
-    const at = (h: number, bucket: string | null) => ({ ...BASS, observability_bucket: bucket, feed_total: 31, feed_read_at: new Date(RECORDED_AT - h * 3_600_000).toISOString(), feed_state: "ok", feed_capped: false });
+    const at = (h: number, bucket: string | null, state = "empty") => ({ ...BASS, observability_bucket: bucket, feed_total: 31, feed_read_at: new Date(RECORDED_AT - h * 3_600_000).toISOString(), feed_state: state, feed_capped: false });
     expect(zeroPage(at(47, "full_read")).zeroReading).toBe("older");
     expect(zeroPage(at(49, "full_read")).zeroReading).toBe("fullRead");
     expect(zeroPage(at(49, "lap_pending")).zeroReading).toBe("unread");
+    expect(zeroPage(at(47, "full_read", "ok")).zeroReading, "a fresh ok read kept roles in our window").toBeNull();
+    expect(zeroPage(at(49, "full_read", "ok")).zeroReading, "a stale ok read under a newer full read").toBe("fullRead");
   });
 
   it("a complete read that stated zero is the empty sentence, with its read time", () => {
     const m = zeroPage({ ...BASS, feed_total: 0, feed_read_at: new Date(RECORDED_AT - 5 * 3_600_000).toISOString(), feed_state: "empty", feed_capped: false });
     expect(m.zeroReading).toBe("empty");
+  });
+});
+
+describe("a fresh total from a read that kept roles in our window (state ok) is never 'older' on a zero page", () => {
+  const oracle = (row: typeof DELANEY, name: string) =>
+    zeroPage(row, { token: row.company_token, storedName: name, now: RECORDED_AT_ORACLE });
+
+  it("Delaney at the Green's live row (Oracle sub-site, 3 stated at 22:56Z, all 3 served under its tenant's All site) says only what the list says", () => {
+    const m = oracle(DELANEY, "Delaney at the Green");
+    expect(m.variant).toBe("zero");
+    expect(m.boardTotal, "the total is still a fact the model holds").toEqual({ total: 3, readAt: DELANEY.feed_read_at });
+    expect(m.zeroReading).toBeNull();
+    expect(zeroAnswer(t, m, "en")).toBe(LIST_EN);
+  });
+
+  it("the rendered header never says none of the 3 roles is dated in our window", () => {
+    const m = oracle(DELANEY, "Delaney at the Green");
+    const { container } = render(<MemoryRouter><CompanyHeader model={m} token={DELANEY.company_token} system={null} boardReadAt={null} onWatch={() => {}} /></MemoryRouter>);
+    const text = container.textContent ?? "";
+    expect(container.querySelector("[data-company-answer]")?.textContent).toBe(LIST_EN);
+    expect(text).not.toMatch(/None of the 3 roles|is dated in the last 30 days \(read/);
+    expect(text).not.toMatch(NOT_READ);
+  });
+
+  it("German says only the list's line too", async () => {
+    await i18n.changeLanguage("de");
+    try {
+      const line = zeroAnswer(i18n.t.bind(i18n), oracle(DELANEY, "Delaney at the Green"), "de");
+      expect(line).toBe(i18n.t("companyProfile.zero.answer", { days: 30 }));
+      expect(line).not.toMatch(/\b3\b/);
+    } finally {
+      await i18n.changeLanguage("en");
+    }
+  });
+
+  it("Hearst UK's live row (20 stated, state ok, nothing listed) reads the same way", () => {
+    expect(oracle(HEARST_UK, "Hearst UK").zeroReading).toBeNull();
+    expect(zeroAnswer(t, oracle(HEARST_UK, "Hearst UK"), "en")).toBe(LIST_EN);
+  });
+
+  it("a stale ok total under a newer full read keeps fullRead (hdrc~ca3~CX_1: its own feed answers 0 now)", () => {
+    expect(oracle(HDRC, "Hdrc").zeroReading).toBe("fullRead");
+  });
+
+  it("Canva's live row (97 stated on an ok read) is never 'older' when nothing is listed", () => {
+    expect(zeroPage(CANVA, { token: "Canva", storedName: "Canva" }).zeroReading).toBeNull();
   });
 });
 
@@ -212,6 +280,12 @@ describe("TEETH", () => {
     expect(dropped, "the teeth mutation did not apply: RE-ANCHOR it").not.toBe(JOBS);
     const m = buildLanderModel(input({ boardTotal: pageMapping(dropped)(BASS) }));
     expect(zeroAnswer(t, m, "en")).toMatch(NOT_READ);
+  });
+
+  it("the rule before the fix round (any fresh total is older) fails the Delaney assertion", () => {
+    const before = (row: typeof DELANEY) => (fromRow(row).state === "ok" ? "older" : null);
+    expect(before(DELANEY)).toBe("older");
+    expect(zeroReadingOf({ boardTotal: fromRow(DELANEY), now: RECORDED_AT_ORACLE })).not.toBe(before(DELANEY));
   });
 
   it("the rule before the fix (no total means unread) fails the BASS ABA assertion", () => {

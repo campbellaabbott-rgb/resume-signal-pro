@@ -191,8 +191,9 @@ export interface BoardTotalFact {
 
 /**
  * What a page with nothing dated in the last 30 days may say about the board
- * (Track 1, A3): "older" (a complete read listed roles, none dated in our
- * window), "empty" (a complete read listed none), "fullRead" (the newest read
+ * (Track 1, A3): "older" (a complete read that kept nothing in our window
+ * stated roles, so none is dated in it), "empty" (such a read stated none),
+ * "fullRead" (the newest read
  * was complete but stated no total we may print: say only that, as of that
  * read, no role on the board is dated in our window), "unread" (evidence that
  * no complete read happened recently: a windowed board never read through, or
@@ -259,6 +260,12 @@ export interface LanderModel {
 export const BOARD_TOTAL_MAX_AGE_MS = 48 * 3_600_000;
 /** The read states that are a complete read: ok, or empty (every role older than our window). */
 const COMPLETE_READ_STATES = new Set(["ok", "empty"]);
+/**
+ * The one complete read state that kept nothing inside our window: job-board
+ * writes empty when a read served no row dated in the last 30 days (or
+ * undated) and held none, and ok when it kept at least one.
+ */
+const KEPT_NOTHING_STATE = "empty";
 
 /**
  * The board's own total, if the page may print it: a complete read (state ok
@@ -281,7 +288,13 @@ export function boardTotalFact(input: BoardTotalInput | null | undefined, now: n
  * The zero page's reading, from the evidence the curve gives (the truth table
  * is in src/test/pd-hotfix-the-zero-page-never-says-not-read-of-a-board-read-in-full.test.tsx):
  *   1. a printable total (complete, stated, no older than 48 hours, uncapped):
- *      "older" or "empty", with its read time;
+ *      from a read that kept nothing in our window (state empty), "older" or
+ *      "empty", with its read time; from a read that kept roles in our
+ *      window (state ok), nothing (null): the board carries roles dated in
+ *      our window that this page does not list (an Oracle career sub-site
+ *      whose requisitions are served under a sibling site, 2026-10-24), so
+ *      neither "none is dated in the window" nor "as of our full read" is
+ *      true there;
  *   2. otherwise the bucket: full_read is "fullRead"; a windowed board with no
  *      complete pass, or a tracked board with no observation in seven days, is
  *      "unread"; a lap we cannot date, a failed newest visit, a board too new
@@ -291,7 +304,10 @@ export function boardTotalFact(input: BoardTotalInput | null | undefined, now: n
 export function zeroReadingOf(input: Pick<LanderInput, "boardTotal" | "now">): ZeroReading | null {
   if (input.boardTotal === undefined) return null;
   const fact = boardTotalFact(input.boardTotal, input.now ?? Date.now());
-  if (fact) return fact.total > 0 ? "older" : "empty";
+  if (fact) {
+    if (String(input.boardTotal?.state ?? "") !== KEPT_NOTHING_STATE) return null;
+    return fact.total > 0 ? "older" : "empty";
+  }
   const bucket = input.boardTotal?.bucket;
   if (bucket === undefined) return "unread";
   if (bucket === FULL_READ_BUCKET) return "fullRead";
