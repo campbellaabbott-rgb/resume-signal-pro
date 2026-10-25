@@ -199,8 +199,10 @@ export function offersIn(blocks) {
  * clauses that use the word for something else (an ATS score is not a pass
  * mark; a probe is not counted as a pass) are left out. A clause the file
  * carries, in any case, with "six" or "6", "$29", "$29.00" or "29 USD", is
- * the retired pass's copy. A paraphrase in new words is not in this list:
- * 76 L9-11 keeps its price rule beside it for that, and says so.
+ * the retired pass's copy. A paraphrase in new words is not in this list and
+ * passes 76 L9-11, which says so: a price rule beside the list failed true
+ * copy and missed paraphrases, so L9-11 prints every other sentence priced at
+ * $29 that does not name Freelance Boost as INFO instead (round 4).
  */
 export const RETIRED_PASS_COPY = [
   "$29 for 6 hours and 10 applications",

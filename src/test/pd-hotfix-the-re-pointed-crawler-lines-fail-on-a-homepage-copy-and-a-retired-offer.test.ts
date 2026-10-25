@@ -40,6 +40,17 @@
  * Boost sentence beside "48 hours". L9-11 is now judged by the retired pass's
  * own copy (RETIRED_PASS_COPY, every clause that sold it, from git history),
  * with the price rule kept as a backstop for a paraphrase.
+ *
+ * The final recheck of round 3 found the backstop still a pattern list: it
+ * passed paraphrases that name the price without its words ("a 360-minute
+ * window of higher throughput for $29") and FAILed true copy (a $29 Freelance
+ * Boost whose name comes after the price or more than 40 characters before
+ * it, a $29 resume review returned within 24 hours). Round 4 makes the
+ * backstop INFO: the retired copy, the names (and the pass page's address,
+ * which the bake linked) and 83 C1's list stay the FAIL judge, and every
+ * sentence that prices something at $29 without naming Freelance Boost is
+ * printed for a person to read. Every historical pass sentence 474dca30
+ * FAILed (fixtures/retired-pass-sentences-2026-10-25.json) still FAILs.
  */
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -257,11 +268,13 @@ describe("7d and 76 read every shape of a retired offer (recheck, 2026-10-25)", 
     expect(has(run76(routes(offer, LLMS_FULL)), "FAIL", /the homepage still sells the retired apply agent: 0 Service block\(s\), Offers at \["price 29 USD"\]/)).toBe(true);
   });
 
-  it("76 L9-11 FAILs a $29 pass sold without the word, and keeps passing Freelance Boost at $29", () => {
+  it("76 L9-11 FAILs a $29 pass in the pass's own words, prints a $29 paraphrase as INFO, and keeps passing Freelance Boost at $29", () => {
     const sold = run76(routes(HOMEPAGE, `${LLMS_FULL}- Raise your limits for six hours for $29.\n`));
-    expect(has(sold, "FAIL", /\/llms-full\.txt \(HTTP 200\): still carries the retired pass's own copy \("6 hours for \$29"\), still sells the retired pass by its price \("limits for six hours for \$29"\) \(L9-11\)/), show(sold)).toBe(true);
+    expect(has(sold, "FAIL", /\/llms-full\.txt \(HTTP 200\): still carries the retired pass's own copy \("6 hours for \$29"\) \(L9-11\)/), show(sold)).toBe(true);
+    // Round 4: the price is read as INFO, never FAIL.
     const usd = run76(routes(HOMEPAGE, `${LLMS_FULL}- Six hours of higher quotas: 29 USD.\n`));
-    expect(has(usd, "FAIL", /still sells the retired pass by its price/), show(usd)).toBe(true);
+    expect(has(usd, "PASS", /\/llms-full\.txt names the registry entry, names no pass and carries no retired claim/), show(usd)).toBe(true);
+    expect(has(usd, "INFO", /^L9-11 backstop: \/llms-full\.txt prices something at \$29 without naming Freelance Boost: "- Six hours of higher quotas: 29 USD\."/), show(usd)).toBe(true);
     const boost = run76(routes(HOMEPAGE, `${LLMS_FULL}- A: Ours does: Freelance Boost ($29) takes a guided project intake and applies it to your profile.\n`));
     expect(has(boost, "PASS", /\/llms-full\.txt names the registry entry, names no pass and carries no retired claim/), show(boost)).toBe(true);
   });
@@ -361,20 +374,108 @@ describe("round 3: L9-11 is judged by the retired pass's own copy, with the pric
   }
 
   for (const sentence of ["- Six hours of unlimited searches: $29.00.", "- $29 for 6h of uncapped calls.", "- $29 one-time: higher rate caps until midnight."]) {
-    it(`the backstop FAILs a paraphrase the review found passing: ${sentence.slice(2)}`, () => {
+    it(`the backstop prints a paraphrase round 3 found passing as INFO, and the line does not FAIL on it (round 4): ${sentence.slice(2)}`, () => {
       const lines = l911(sentence);
-      expect(has(lines, "FAIL", /still sells the retired pass by its price/), show(lines)).toBe(true);
+      expect(passes(lines), show(lines)).toBe(true);
+      expect(has(lines, "INFO", /^L9-11 backstop: \/llms-full\.txt prices something at \$29 without naming Freelance Boost/), show(lines)).toBe(true);
     });
   }
 
   for (const sentence of ["- Freelance Boost ($29): a one-time rewrite delivered within 48 hours.", "- Freelance Boost $29, no limits on edits."]) {
-    it(`PASSes a true Freelance Boost sentence: ${sentence.slice(2)}`, () => {
-      expect(passes(l911(sentence)), show(l911(sentence))).toBe(true);
+    it(`PASSes a true Freelance Boost sentence, with no backstop INFO: ${sentence.slice(2)}`, () => {
+      const lines = l911(sentence);
+      expect(passes(lines), show(lines)).toBe(true);
+      expect(lines.some((l) => /L9-11 backstop/.test(l)), show(lines)).toBe(false);
     });
   }
 
   it("today's live llms-full shape (its only $29 is Freelance Boost) PASSes", () => {
     const lines = l911("- A: Ours does: Freelance Boost ($29) takes a guided project intake — or a pasted platform profile — and applies exactly the structure rules and bullet formula in this guide, using only facts you provide.");
     expect(passes(lines), show(lines)).toBe(true);
+  });
+});
+
+// ── round 4 (2026-10-25): the price backstop is INFO ───────────────────────
+const RETIRED = JSON.parse(readFileSync(resolve(__dirname, "fixtures/retired-pass-sentences-2026-10-25.json"), "utf8")) as {
+  fail: Array<[sentence: string, source: string]>;
+  excluded: Record<string, [source: string, why: string]>;
+};
+/** 76's L9-11 block, cut from the script: from the llms-full read to the L4-11 line. */
+const L911_BLOCK = (() => {
+  const a = S76.indexOf('  const lf = await get("/llms-full.txt");');
+  const b = S76.indexOf("  if (/every employer with open roles/.test(lf.body))");
+  return a > 0 && b > a ? S76.slice(a, b) : "";
+})();
+/** L9-11's lines for each sentence appended to today's llms-full, in one node process (the block as section 76 runs it). */
+function l911Many(sentences: string[]): string[][] {
+  expect(L911_BLOCK, "76's L9-11 block moved: RE-ANCHOR").toMatch(/retiredPassCopyIn/);
+  const dir = mkdtempSync(join(tmpdir(), "vd-l911-"));
+  dirs.push(dir);
+  const code = `(async () => { const REPO_ROOT = ${JSON.stringify(ROOT)}; const res = [];
+for (const s of ${JSON.stringify(sentences)}) { const lines = []; const out = (st, m) => lines.push(st.padEnd(5) + " " + m);
+  const get = async () => ({ status: 200, body: ${JSON.stringify(LLMS_FULL)} + s + "\\n" });
+  { ${L911_BLOCK} }
+  res.push(lines); }
+process.stdout.write(JSON.stringify(res)); })();`;
+  writeFileSync(join(dir, "l911.js"), code);
+  return JSON.parse(execFileSync(process.execPath, [join(dir, "l911.js")], { cwd: ROOT, encoding: "utf8", timeout: 55_000 })) as string[][];
+}
+const verdict = (lines: string[]) => (lines.find((l) => /\(L9-11\)$/.test(l)) ?? "").slice(0, 4);
+
+describe("round 4: L9-11 FAILs on the pass's own copy, its names and the retired list; the price is INFO", () => {
+  const passes = (lines: string[]) => has(lines, "PASS", /\/llms-full\.txt names the registry entry, names no pass and carries no retired claim/);
+  const backstop = (lines: string[]) => lines.filter((l) => /L9-11 backstop/.test(l));
+
+  it("every historical pass sentence 474dca30 FAILed still FAILs, and the pass page's address the bake linked FAILs now", () => {
+    expect(RETIRED.fail.length).toBe(50);
+    const lines = l911Many(RETIRED.fail.map(([t]) => t));
+    const notFailing = RETIRED.fail.filter((_, i) => verdict(lines[i]) !== "FAIL").map(([t, src]) => `${t} (${src})`);
+    expect(notFailing, "historical pass sentences L9-11 passes").toEqual([]);
+    expect(RETIRED.fail.map(([t]) => t)).toContain("https://resumebooster.work /agents/pass");
+    // A backstop line is never the reason: it is INFO.
+    for (const ls of lines) for (const l of backstop(ls)) expect(l).toMatch(/^INFO/);
+  });
+
+  it("the strings left out are not the pass's crawler copy, each with why", () => {
+    const why = Object.values(RETIRED.excluded).map(([, w]) => w);
+    expect(why.length).toBe(17);
+    for (const w of why) expect(w).toMatch(/^not the pass|^a JSON-LD key, a path or a CSS class|^a label on the pass page or the consent screen/);
+  });
+
+  // The final recheck's sentences, verbatim.
+  const TRUE_COPY = [
+    "$29 one-time Freelance Boost, delivered within 48 hours.",
+    "Freelance Boost, our guided one-time profile rewrite for freelancers, costs $29 and is delivered within 48 hours.",
+    "Resume review: $29, returned within 24 hours.",
+  ];
+  const PARAPHRASES = [
+    "$29 unlocks a burst of uncapped agent calls on your account key.",
+    "Agents can buy a 360-minute window of higher throughput for $29.",
+    "One payment of $29 lifts your agent's daily ceiling for the rest of the day.",
+  ];
+
+  it("the three true sentences the recheck saw FAIL now PASS; the two that name Freelance Boost print no INFO", () => {
+    const lines = l911Many(TRUE_COPY);
+    TRUE_COPY.forEach((t, i) => expect(passes(lines[i]), `${t}\n${lines[i].join("\n")}`).toBe(true));
+    expect(backstop(lines[0])).toEqual([]);
+    expect(backstop(lines[1])).toEqual([]);
+    expect(backstop(lines[2])).toEqual([expect.stringMatching(/^INFO +L9-11 backstop: \/llms-full\.txt prices something at \$29 without naming Freelance Boost: "Resume review: \$29, returned within 24 hours\."/)]);
+  });
+
+  it("the three paraphrases the recheck saw PASS print INFO, quoted, and never FAIL", () => {
+    const lines = l911Many(PARAPHRASES);
+    PARAPHRASES.forEach((t, i) => {
+      expect(passes(lines[i]), `${t}\n${lines[i].join("\n")}`).toBe(true);
+      expect(backstop(lines[i]), t).toEqual([expect.stringMatching(new RegExp(`^INFO +L9-11 backstop: /llms-full\\.txt prices something at \\$29 without naming Freelance Boost: "${t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"`))]);
+    });
+  });
+
+  it("today's live llms-full shape prints no backstop INFO; six priced sentences print five and a count", () => {
+    const [live] = l911Many(["- A: Ours does: Freelance Boost ($29) takes a guided project intake — or a pasted platform profile — and applies exactly the structure rules and bullet formula in this guide, using only facts you provide."]);
+    expect(passes(live), live.join("\n")).toBe(true);
+    expect(backstop(live)).toEqual([]);
+    const [many] = l911Many([Array.from({ length: 6 }, (_, i) => `Thing ${i + 1} costs $29.`).join(" ")]);
+    expect(backstop(many).length).toBe(6);
+    expect(backstop(many)[5]).toMatch(/^INFO +L9-11 backstop: and 1 more sentence\(s\) priced at \$29 without naming Freelance Boost$/);
   });
 });

@@ -13,6 +13,11 @@
 # sitemap) F2a prints INFO "cannot judge" and only the live sitemap's own
 # posting URLs are checked (S11-154: a sitemap the new bake wrote cannot show
 # what became of the old one's URLs).
+# L9-11 FAILs llms-full.txt on the retired pass's own copy, its names and 83
+# C1's retired list. A paraphrase in new words passes it whatever it says;
+# every sentence that prices something at $29 without naming Freelance Boost
+# prints as INFO for a person to read, and one that names no price is not
+# shown at all (round 4, 2026-10-25).
 echo "== 76. wave 3 seo-content: names, published URLs, company pages, data pages, claims =="
 
 REPO_ROOT76="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -260,41 +265,36 @@ const textOf = (h) => h.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<[^>
   // reads "a six-hour pass for $29" as the pass (fix round, 2026-10-24).
   const retired76 = await import(`${REPO_ROOT}/scripts/prerender-retired.mjs`).catch(() => null);
   const lfRetired = retired76 ? retired76.retiredClaimsIn(lf.body) : null;
-  // THE JUDGE IS THE PASS\x27S OWN COPY (round 3 review, 2026-10-25): every
-  // clause the copy that sold it said, from git history
-  // (RETIRED_PASS_COPY in scripts/prerender-retired.mjs). The price rule
-  // below stays beside it for a paraphrase in new words, which no list of
-  // old sentences can hold; a paraphrase that names neither the price nor
-  // its hours, limits, caps or quota passes both (residual, named).
+  // THE FAIL JUDGE IS THE PASS\x27S OWN COPY AND ITS NAMES (round 3 review and
+  // round 4, 2026-10-25): every clause the copy that sold it said, from git
+  // history (RETIRED_PASS_COPY in scripts/prerender-retired.mjs), the names
+  // below, and 83 C1\x27s retired list (a $29 price within 60 characters of
+  // the word pass). RESIDUAL, named: a paraphrase in new words passes all
+  // three, whatever it says. A price rule tried beside them failed true copy
+  // (a $29 product delivered within 48 hours, a $29 review returned within 24
+  // hours) and missed paraphrases (a 360-minute window for $29), so the price
+  // is read as INFO and never FAILs: every sentence that prices something at
+  // $29 ($29.00, 29 USD, USD 29) and does not name Freelance Boost, the
+  // one-time product on sale at that price, is printed for a person to read.
+  // A paraphrase that names the price is shown there; one that names no price
+  // at all (hours, limits or calls alone) is not shown anywhere.
   const lfPassCopy = retired76 && typeof retired76.retiredPassCopyIn === "function" ? retired76.retiredPassCopyIn(lf.body) : null;
   const P29 = "(?:\\$\\s?29(?:\\.00)?(?![\\d,.]\\d)|\\b29(?:\\.00)?\\s?(?:USD|US dollars|dollars)\\b|\\bUSD\\s?29(?:\\.00)?(?![\\d,.]\\d))";
-  const PASS_WORDS = "\\b(?:(?:six|6)[- ]?(?:hours?|hrs?|h)|hours?|hrs?|limits?|quotas?|caps?|allowance)\\b";
-  const PASS_BY_PRICE = new RegExp(`${P29}[^.<\\n]{0,80}${PASS_WORDS}|${PASS_WORDS}[^.<\\n]{0,80}${P29}`, "gi");
-  // Freelance Boost is the one-time product on sale at $29: a match whose
-  // price has its name within 40 characters before it is that product.
   const P29_RE = new RegExp(P29, "i");
-  const passByPrice = (() => {
-    for (const m of lf.body.matchAll(PASS_BY_PRICE)) {
-      const at = m.index + m[0].search(P29_RE);
-      if (/Freelance Boost/i.test(lf.body.slice(Math.max(0, at - 40), at))) continue;
-      return m[0];
-    }
-    return null;
-  })();
+  const lfPriced = lf.body.split(/(?<=[.!?])\s+|\n+/).map((x) => x.trim()).filter((x) => P29_RE.test(x) && !/Freelance Boost/i.test(x));
   const lfWhy = [
     /work\.resumebooster\/jobs/.test(lf.body) ? "" : "no registry name",
     /raises both for its hours`?$/m.test(lf.body) ? "still says a pass raises the /v1 limits" : "",
-    /\bAgent Pass\b|\blive pass\b|\b(?:six|6)[- ]hour pass\b/i.test(lf.body) ? "still names the retired pass" : "",
-    // The retired pass\x27s own copy, clause by clause; then the pass sold by
-    // what it did, without the word: $29 (or $29.00, or 29 USD) beside hours,
-    // limits, caps, a quota or an allowance (recheck and round 3,
-    // 2026-10-25), except where Freelance Boost names the price.
+    // The names, and the pass page the bake linked (round 4: a link to it passed).
+    /\bAgent Pass\b|\blive pass\b|\b(?:six|6)[- ]hour pass\b|\/agents\/pass\b/i.test(lf.body) ? "still names the retired pass" : "",
+    // The retired pass\x27s own copy, clause by clause (round 3).
     lfPassCopy === null ? "this checkout\x27s scripts/prerender-retired.mjs has no retired pass copy (RETIRED_PASS_COPY) to judge by" : lfPassCopy.length ? `still carries the retired pass\x27s own copy ("${lfPassCopy[0].slice(0, 80)}"${lfPassCopy.length > 1 ? ` and ${lfPassCopy.length - 1} more clause(s)` : ""})` : "",
-    passByPrice ? `still sells the retired pass by its price ("${passByPrice.slice(0, 80)}")` : "",
     lfRetired === null ? "this checkout cannot read scripts/prerender-retired.mjs (the retired list is the judge)" : lfRetired.length ? `still carries a retired claim: ${lfRetired.map(([c, m]) => `${c} ("${m.slice(0, 60)}")`).join("; ")}` : "",
   ].filter(Boolean);
   if (lf.status === 200 && !lfWhy.length) out("PASS", "/llms-full.txt names the registry entry, names no pass and carries no retired claim by 83 C1\x27s list (L9-11)");
   else out("FAIL", `/llms-full.txt (HTTP ${lf.status}): ${lfWhy.join(", ") || "unreadable"} (L9-11)`);
+  for (const x of lfPriced.slice(0, 5)) out("INFO", `L9-11 backstop: /llms-full.txt prices something at $29 without naming Freelance Boost: "${x.slice(0, 140)}" (read it: the retired pass in new words would sit here, and the line above does not judge it)`);
+  if (lfPriced.length > 5) out("INFO", `L9-11 backstop: and ${lfPriced.length - 5} more sentence(s) priced at $29 without naming Freelance Boost`);
   if (/every employer with open roles/.test(lf.body)) out("FAIL", "/llms-full.txt still says /companies lists every employer with open roles (L4-11)");
   else if (/\/companies — the [\d,]+ employers this site gives a page/.test(lf.body)) out("PASS", "/llms-full.txt says /companies lists the employers with a page of their own, counted (L4-11)");
   else out("FAIL", "/llms-full.txt has no counted /companies line (L4-11)");
