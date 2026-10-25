@@ -1,0 +1,488 @@
+{
+ "breezy:sourcefit:8fcb81d04df4-data-analyst": {
+  "country": "PH",
+  "note": "remote role for a Philippines outsourcing firm; location reads 'Eastwood Quezon City, PH', stored country null"
+ },
+ "greenhouse:canopyworks:4434551009": {
+  "country": "US",
+  "note": "'SF Bay Area or Remote' - US company, stored country null"
+ },
+ "ashby:aerovect:e5b47895-656b-43ea-8caf-9e6ec8609f2c": {
+  "country": "CA",
+  "note": "'Toronto - Remote' - remote in Canada, stored country null"
+ },
+ "lever:colibrigroup:71a2e473-1490-4775-879e-5d4c1d1251f2": {
+  "country": "US",
+  "note": "'1 Remote' at a US company, stored country null"
+ },
+ "breezy:seven-retail:ef56b4f0977d-content-marketing-supervisor-education": {
+  "country": "ID",
+  "note": "South Jakarta, Indonesia; stored country US (ID read as Idaho)"
+ },
+ "paylocity:08f7a172-1b89-430f-b35d-8d5d516b5f06:4576539": {
+  "location": "Bryant, AR",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "workday:wegmans~wd1~Wegmans:R0298138-1": {
+  "location": "Liverpool, NY",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "paylocity:c1b2b050-a953-462b-8a50-87e02cfda063:2708048": {
+  "location": "Memphis, TN",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "paylocity:e76e6b2f-61bd-45b3-95db-b2ab381b09c0:2708048": {
+  "location": "Memphis, TN",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "paylocity:c6015a22-01ba-4a3e-b39d-ea7166c658c9:4576734": {
+  "location": "Spokane, WA",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "paylocity:f75e24ca-bf64-487d-8214-0c5927d78ad7:3763633": {
+  "location": "Bethany, OK",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "paylocity:0fc5696d-c267-4a7f-86f3-ded7b45e3145:4492489": {
+  "location": "Middletown, IA",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "paylocity:2b53dba2-cae7-437c-ab2d-73d6bca06751:4575097": {
+  "location": "Madison, WI",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "workday:michaels~wd5~External:R00326625": {
+  "location": "Alexandria, VA",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "workday:mgmresorts~wd5~MGMCareers:280251": {
+  "location": "Biloxi, MS",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "workday:michaels~wd5~External:R00326665": {
+  "location": "Hamilton, OH",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "paylocity:b38f89fc-bab4-4f08-93a3-147bf1f3f0fe:4575437": {
+  "location": "Middletown, CT",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "workday:vareximaging~wd103~External_Career_Site:R0005884-1": {
+  "location": "Salt Lake City, UT",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "paylocity:04ca353d-bedd-4be9-9026-8368001d8256:4506464": {
+  "location": "Cincinnati, OH",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "paylocity:04ca353d-bedd-4be9-9026-8368001d8256:4503421": {
+  "location": "Withamsville, OH",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "workday:bridgestone~wd5~External:24958": {
+  "location": "Alice, TX",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "paylocity:749a3926-b1f8-45b9-b029-80663fa138ed:4572469": {
+  "location": "Topsham, ME",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "paylocity:a04bee6a-d1bf-4ea5-99a8-8d9cad99cf62:4574306": {
+  "location": "Prescott Valley, AZ",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "workday:bridgestone~wd5~External:24994": {
+  "location": "Citrus Heights, CA",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "workday:davita~wd1~DKC_External:R0480745": {
+  "location": "Denver, CO",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "workday:cae~wd3~career:123830": {
+  "location": "Dallas, TX",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "workday:papajohns~wd1~PapaJohnsCareers:0000002152": {
+  "location": "Atlanta, GA",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "workday:wynd~wd5~External:R-129861": {
+  "location": "Orlando, FL",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "ashby:cantina:2b1c117d-1c45-493e-b8df-81d6b675af9d": {
+  "location": "Brooklyn, NY",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "workday:sonyglobal~wd1~SonyGlobalCareers:JR-119716": {
+  "location": "San Diego, CA",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "paylocity:d9b37b10-cc4b-42a8-99a9-58ff3a9d5ac2:4529723": {
+  "location": "Norcross, GA",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "paylocity:d36c0ffd-1e05-4284-b30e-6fd76928f128:4573454": {
+  "location": "Los Angeles, CA",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "paylocity:f3eb253c-5943-49f6-91e6-aca27a2f7020:4458343": {
+  "location": "Windham, NY",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "paylocity:0e349db7-b4fe-436e-816a-f8dcbcde4444:4534634": {
+  "location": "Boise, ID",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "paylocity:8bd5baf0-bfbf-4749-b216-97d94bc29214:4073538": {
+  "location": "Jacksonville, FL",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "paylocity:c405618e-d024-4f0c-abd7-c2813cc8726d:4556682": {
+  "location": "Chesapeake Beach, MD",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "workday:wynd~wd5~External:R-130173": {
+  "location": "Long Beach, CA",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "workday:metabo~wd3~kokicareers:1002674": {
+  "location": "Braselton, GA",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "workday:pg~wd5~1000:R000159059": {
+  "location": "Cincinnati, OH",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "workday:deseretmanagement~wd1~DeseretBook:R8405": {
+  "location": "Salt Lake City, UT",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "workday:fourseasons~wd3~search:REQ10392150": {
+  "location": "Philadelphia, PA",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "workday:sarahbush~wd1~SarahBush:JR105358": {
+  "location": "Mattoon, IL",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "workday:colby~wd5~ColbyCareers:R0007473": {
+  "location": "Waterville, ME",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "workday:benchmark~wd1~PGH_Careers:R0067656": {
+  "location": "Excelsior Springs, MO",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "workday:tucsonaz~wd1~Tucson_Talent:JR-1003516": {
+  "location": "Tucson, AZ",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "workday:trinityhealth~wd1~Jobs:00645427": {
+  "location": "Westerville, OH",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "workday:woodward~wd5~woodward:JR113598": {
+  "location": "Fort Collins, CO",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "workday:imh~wd108~IntermountainCareers:R180278": {
+  "location": "Park City, UT",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "workday:onni~wd10~Onni_External_Careers:R-102387": {
+  "location": "Los Angeles, CA",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "workday:mymvw~wd5~HVOCareers:JR94770": {
+  "location": "Escondido, CA",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "paylocity:72290d19-0402-451e-91fe-19facfa212e0:4400203": {
+  "location": "Charlottesville, VA",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "paylocity:d79042c7-a1d6-4e4e-b3d7-26bde9f270fc:4564906": {
+  "location": "Dallas, TX",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "workday:seaworldentertainment~wd1~SEA:JR129739-1": {
+  "location": "Tampa, FL",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "paylocity:87c433ae-2510-43da-970a-5e585d886419:4551899": {
+  "location": "Seguin, TX",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "workday:charlottenc~wd12~citgov:JR104685": {
+  "location": "Charlotte, NC",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "workday:fultonhogan~wd3~Fultonhogan:R27107": {
+  "location": "Dulwich, South Australia",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "workday:cw~wd1~External:R339662": {
+  "location": "Lara, Victoria",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "workday:prysmiangroup~wd3~Careers:R-35614": {
+  "location": "McKinney, TX",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "workday:sentara~wd1~SCS:JR-107097": {
+  "location": "Norfolk, VA",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "paylocity:f704ba70-5596-4705-b1ee-594fb67bfbc8:4555557": {
+  "location": "Pensacola, FL",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "paylocity:f6c3f193-f4f5-416d-9e91-ffb87a922bda:4368036": {
+  "location": "Wheeling, IL",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "paylocity:cc041e92-29f4-440d-9295-6aefa4ae3402:2794287": {
+  "location": "Indianapolis, IN",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "workday:seaworldentertainment~wd1~SEA:JR135783": {
+  "location": "Tampa, FL",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "workday:seaworldentertainment~wd1~SEA:JR133795": {
+  "location": "Tampa, FL",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "workday:osu~wd1~OSUCareers:R160073": {
+  "location": "Montgomery County, Ohio",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "workday:nshe~wd1~UNLV-External:R0153181": {
+  "location": "Las Vegas, NV",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "workday:acxiomllc~wd5~AcxiomUSA:JR014544": {
+  "location": "Conway, AR",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "workday:nuffieldhealth~wd3~NH_Careers:JR0100651": {
+  "location": "Guildford, England",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "workday:ramsayhealthcare~wd3~Ramsay_Careers:JR17575": {
+  "location": "Halesowen, England",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "workday:circlehealth~wd103~chgcareers:JR115525": {
+  "location": "Birmingham, England",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "workday:mdlz~wd3~External:R-175621": {
+  "location": "Birmingham, England",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "workday:circlehealth~wd103~chgcareers:JR116984": {
+  "location": "Orpington, England",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "workday:bupa~wd3~EXT_CAREER:R1223254": {
+  "location": "London, England",
+  "note": "location string names no place; resolved from the employer/store name"
+ },
+ "greenhouse:herewithinc:8882740002": {
+  "country": "US",
+  "note": "'Remote' at a US company, stored country null"
+ },
+ "greenhouse:zestai:6217526004": {
+  "country": "US",
+  "note": "'Remote' at a US company (Los Angeles), stored country null"
+ },
+ "workday:uasys~wd5~UASYS:R0085167": {
+  "location": "Little Rock, AR",
+  "workMode": "onsite",
+  "remote": false,
+  "note": "stored work_mode remote for an on-site campus HVAC job (UAMS, Little Rock)"
+ },
+ "ashby:simple-ai:9a5f5694-e066-4087-9a13-b1a62d8d8025": {
+  "location": "San Francisco, CA",
+  "note": "location names a city/site without its state; resolved from the city or employer"
+ },
+ "greenhouse:gersonlehrmangroup:7978289003": {
+  "location": "Austin, TX",
+  "note": "location names a city/site without its state; resolved from the city or employer"
+ },
+ "ashby:pariveda:48cfdabe-9dcc-4324-8e07-4a5ddf3af2e1": {
+  "location": "Dallas, TX",
+  "note": "location names a city/site without its state; resolved from the city or employer"
+ },
+ "workday:saintfrancis~wd115~External:JR29230": {
+  "location": "Tulsa, OK",
+  "note": "location names a city/site without its state; resolved from the city or employer"
+ },
+ "workday:aah~wd5~External:R277279": {
+  "location": "Elkhorn, WI",
+  "note": "location names a city/site without its state; resolved from the city or employer"
+ },
+ "workday:sentara~wd1~SCS:JR-107840": {
+  "location": "Elizabeth City, NC",
+  "note": "location names a city/site without its state; resolved from the city or employer"
+ },
+ "workday:nshs~wd1~ns-eeh:R48530": {
+  "location": "Evanston, IL",
+  "note": "location names a city/site without its state; resolved from the city or employer"
+ },
+ "workday:wellstar~wd1~wellstarcareers:JR-78121": {
+  "location": "Marietta, GA",
+  "note": "location names a city/site without its state; resolved from the city or employer"
+ },
+ "workday:anchorglass~wd1~Careers:JR1000932-1": {
+  "location": "Henryetta, OK",
+  "note": "location names a city/site without its state; resolved from the city or employer"
+ },
+ "paylocity:a99bc801-31aa-4033-87b0-af7e35934d6f:4437879": {
+  "location": "Salt Lake City, UT",
+  "note": "location names a city/site without its state; resolved from the city or employer"
+ },
+ "workday:sih~wd5~SIH_External:JR105361": {
+  "location": "Harrisburg, IL",
+  "note": "location names a city/site without its state; resolved from the city or employer"
+ },
+ "workday:mwaa~wd1~MWAA:R0007474": {
+  "location": "Dulles, VA",
+  "note": "location names a city/site without its state; resolved from the city or employer"
+ },
+ "paylocity:e04aee47-c149-47d4-bd57-60e4b4a79ce0:4119372": {
+  "location": "Seattle, WA",
+  "note": "location names a city/site without its state; resolved from the city or employer"
+ },
+ "paylocity:e04aee47-c149-47d4-bd57-60e4b4a79ce0:2769950": {
+  "location": "Seattle, WA",
+  "note": "location names a city/site without its state; resolved from the city or employer"
+ },
+ "ashby:inferact:e713f7c6-310c-49be-ac85-412cdb9a941a": {
+  "location": "San Francisco, CA",
+  "note": "location names a city/site without its state; resolved from the city or employer"
+ },
+ "ashby:liquid-ai:6418faf7-b6f2-4780-8d5b-b92e3f1d3716": {
+  "location": "San Francisco, CA",
+  "note": "location names a city/site without its state; resolved from the city or employer"
+ },
+ "paylocity:0b73e13b-a0d1-424d-9675-584597a56492:4204759": {
+  "location": "Austin, TX",
+  "note": "location names a city/site without its state; resolved from the city or employer"
+ },
+ "ashby:aescape:bdac60c5-0694-4b5e-b0d0-f23d7e18d101": {
+  "location": "New York, NY",
+  "note": "location names a city/site without its state; resolved from the city or employer"
+ },
+ "paylocity:5e1fbd91-693b-4d83-809a-8e3c2435cc57:4550688": {
+  "location": "Boulder City, NV",
+  "note": "location names a city/site without its state; resolved from the city or employer"
+ },
+ "greenhouse:qgenda:5433507008": {
+  "location": "Atlanta, GA",
+  "note": "location names a city/site without its state; resolved from the city or employer"
+ },
+ "workday:firstnational~wd12~fnbocareers:R-20261817": {
+  "location": "Omaha, NE",
+  "note": "location names a city/site without its state; resolved from the city or employer"
+ },
+ "paylocity:04871aa9-f66d-4794-a4d8-14d6ee47fc3a:4566793": {
+  "location": "Providence, RI",
+  "note": "location names a city/site without its state; resolved from the city or employer"
+ },
+ "paylocity:79dea6e7-3c4b-4b70-9765-d0f2f1710550:4567148": {
+  "location": "Milwaukee, WI",
+  "note": "location names a city/site without its state; resolved from the city or employer"
+ },
+ "paylocity:79dea6e7-3c4b-4b70-9765-d0f2f1710550:4567313": {
+  "location": "Milwaukee, WI",
+  "note": "location names a city/site without its state; resolved from the city or employer"
+ },
+ "paylocity:9f9fa650-38b8-4a3a-9802-437f2a6070fb:3359528": {
+  "location": "Braintree, MA",
+  "note": "location names a city/site without its state; resolved from the city or employer"
+ },
+ "paylocity:8cdee9b9-46b5-4bb6-9ae4-a6df415dfddf:2850292": {
+  "location": "Waterville, ME",
+  "note": "location names a city/site without its state; resolved from the city or employer"
+ },
+ "paylocity:8cdee9b9-46b5-4bb6-9ae4-a6df415dfddf:4576653": {
+  "location": "Waterville, ME",
+  "note": "location names a city/site without its state; resolved from the city or employer"
+ },
+ "paylocity:4f24e0f6-5b86-497b-8d90-f17aad9acb6c:3543648": {
+  "location": "Florida",
+  "note": "location names a city/site without its state; resolved from the city or employer"
+ },
+ "paylocity:08ddfc1c-9d0f-4de3-96bd-3a034f03e45e:3765450": {
+  "location": "Presque Isle, ME",
+  "note": "location names a city/site without its state; resolved from the city or employer"
+ },
+ "paylocity:08ddfc1c-9d0f-4de3-96bd-3a034f03e45e:3288208": {
+  "location": "Easton, ME",
+  "note": "location names a city/site without its state; resolved from the city or employer"
+ },
+ "paylocity:77e4d086-09aa-417e-89ad-8ff071e39b92:4572922": {
+  "location": "Wooster, OH",
+  "note": "location names a city/site without its state; resolved from the city or employer"
+ },
+ "paylocity:29bae572-7ba0-4d58-bf6d-48cd77cd0aec:4569266": {
+  "location": "Detroit, MI",
+  "note": "location names a city/site without its state; resolved from the city or employer"
+ },
+ "paylocity:29bae572-7ba0-4d58-bf6d-48cd77cd0aec:4569257": {
+  "location": "Detroit, MI",
+  "note": "location names a city/site without its state; resolved from the city or employer"
+ },
+ "workday:rrhs~wd5~RRH:243511": {
+  "location": "Rochester, NY",
+  "note": "location names a city/site without its state; resolved from the city or employer"
+ },
+ "workday:tstc~wd1~TSTC_Jobs:R-006141": {
+  "location": "Waco, TX",
+  "note": "location names a city/site without its state; resolved from the city or employer"
+ },
+ "workday:asu~wd1~asustaffcareers:JR127908": {
+  "location": "Glendale, AZ",
+  "note": "location names a city/site without its state; resolved from the city or employer"
+ },
+ "workday:asu~wd1~asustaffcareers:JR128046-1": {
+  "location": "Glendale, AZ",
+  "note": "location names a city/site without its state; resolved from the city or employer"
+ },
+ "paylocity:99b524b6-fdad-4d66-baa4-273e62607248:4459210": {
+  "location": "Chicago, IL",
+  "note": "location names a city/site without its state; resolved from the city or employer"
+ },
+ "workday:oreillyauto~wd1~oreilly:R203606": {
+  "location": "Springfield, MO",
+  "note": "location names a city/site without its state; resolved from the city or employer"
+ },
+ "workday:rtddenver~wd5~Careers:R7336": {
+  "location": "Denver, CO",
+  "note": "location names a city/site without its state; resolved from the city or employer"
+ },
+ "paylocity:fd2c9a06-d0c4-42a0-8c1b-9371d38f45b1:4561648": {
+  "location": "Valparaiso, IN",
+  "note": "location names a city/site without its state; resolved from the city or employer"
+ },
+ "workday:imh~wd108~IntermountainCareers:R185952": {
+  "location": "Las Vegas, NV",
+  "note": "description: Work City Las Vegas, Work State Nevada"
+ },
+ "ashby:buildout:cd64f63b-ee11-4e96-8b09-672d801202a0": {
+  "country": "US",
+  "note": "remote role at a US company ('Remote' / 'Remote - North America'), stored country null"
+ },
+ "greenhouse:alpaca:6187285004": {
+  "country": "US",
+  "note": "remote role at a US company ('Remote' / 'Remote - North America'), stored country null"
+ },
+ "workday:medimpact~wd5~MedImpact:JR102830": {
+  "country": "US",
+  "note": "remote role at a US company ('Remote' / 'Remote - North America'), stored country null"
+ }
+}
