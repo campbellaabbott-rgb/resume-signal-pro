@@ -17,11 +17,12 @@
  *   - OBS-1: one UKG requisition under two career sites was two indexable
  *     pages with one title.
  */
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
   countryCodeOfName,
+  countryNameTable,
   isPostingLive,
   postingCountryMismatch,
   postingIdentity,
@@ -180,6 +181,92 @@ describe("SEO-035: a location that ends in another country's name is not the row
     expect(postingCountryMismatch({ location: "Austin, TX, United States of America", country: "US" })).toBe(false);
     expect(postingCountryMismatch({ location: "San Juan, Puerto Rico", country: "US" })).toBe(false);
     expect(postingCountryMismatch({ location: "Lebanon", country: "US" }), "one segment is not enough to say").toBe(false);
+  });
+
+  // Intl names the withdrawn codes after the country that holds the current
+  // code (Vietnam for VD as well as VN), and an A-Z walk met the withdrawn one
+  // first, so a Vietnam row filed VN read as "another country" and lost its
+  // markup (Unilever R-1189545, Ho Chi Minh City; every Zimbabwe row on the board).
+  it("reads Vietnam, Zimbabwe, Vanuatu, Benin and Burkina Faso as the codes in use", () => {
+    const cases: Array<[string, string]> = [
+      ["Ho Chi Minh City, Vietnam", "VN"],
+      ["Harare, Zimbabwe", "ZW"],
+      ["Port Vila, Vanuatu", "VU"],
+      ["Cotonou, Benin", "BJ"],
+      ["Ouagadougou, Burkina Faso", "BF"],
+    ];
+    for (const [location, country] of cases) {
+      const last = location.split(", ").pop()!;
+      expect(countryCodeOfName(last), last).toBe(country);
+      expect(postingCountryMismatch({ location, country }), location).toBe(false);
+      expect(ld(row({ id: "greenhouse:acme:1", token: "acme", company: "Acme", location, country, workMode: null })), location).toBeTruthy();
+    }
+    // A Vietnam location on a row filed under another country is still another country.
+    expect(postingCountryMismatch({ location: "Hanoi, Vietnam", country: "US" })).toBe(true);
+  });
+
+  it("maps every name in the table to a current ISO 3166-1 code, never one Intl files under another", () => {
+    const table = countryNameTable();
+    expect(table.size, "the table is empty — the loop below would pass vacuously").toBeGreaterThan(200);
+    const offenders: string[] = [];
+    for (const [name, code] of table) {
+      if (!ISO_3166_1_CURRENT.has(code) && code !== "XK") offenders.push(`${name} -> ${code} (not a current ISO 3166-1 code)`);
+      let canonical = code;
+      try { canonical = Intl.getCanonicalLocales(`und-${code}`)[0].split("-")[1] ?? code; } catch { /* runtime without it */ }
+      if (canonical !== code) offenders.push(`${name} -> ${code} (Intl files it under ${canonical})`);
+    }
+    expect(offenders).toEqual([]);
+    // Every region name the runtime prints reads back to a current code too.
+    const dn = new Intl.DisplayNames(["en"], { type: "region" });
+    for (let a = 65; a < 91; a++) {
+      for (let b = 65; b < 91; b++) {
+        const code = String.fromCharCode(a, b);
+        let name: string | undefined;
+        try { name = dn.of(code); } catch { name = undefined; }
+        if (!name || name === code) continue;
+        const read = countryCodeOfName(name);
+        if (read !== null) expect(ISO_3166_1_CURRENT.has(read) || read === "XK", `${code} ${name} -> ${read}`).toBe(true);
+      }
+    }
+  });
+
+  // A browser whose Intl does not canonicalise region subtags must still read
+  // Vietnam as VN: the reader's own list of withdrawn codes carries it then.
+  it("reads the codes in use on a runtime that files no region under another", async () => {
+    vi.resetModules();
+    const spy = vi.spyOn(Intl, "getCanonicalLocales").mockImplementation((l) => (Array.isArray(l) ? l.map(String) : [String(l)]));
+    try {
+      const fresh = await import("@/components/jobs/posting-page");
+      expect(Intl.getCanonicalLocales("und-VD"), "the stub must leave VD as VD").toEqual(["und-VD"]);
+      for (const [name, code] of [["Vietnam", "VN"], ["Zimbabwe", "ZW"], ["Vanuatu", "VU"], ["Benin", "BJ"], ["Burkina Faso", "BF"], ["Serbia", "RS"], ["Curaçao", "CW"], ["Myanmar (Burma)", "MM"], ["United Kingdom", "GB"]] as const) {
+        expect(fresh.countryCodeOfName(name), name).toBe(code);
+      }
+      const offenders = [...fresh.countryNameTable()].filter(([, code]) => !ISO_3166_1_CURRENT.has(code) && code !== "XK").map(([n, c]) => `${n} -> ${c}`);
+      expect(offenders).toEqual([]);
+    } finally {
+      spy.mockRestore();
+      vi.resetModules();
+    }
+  });
+});
+
+/** ISO 3166-1 alpha-2, the 249 codes assigned today (Kosovo's XK is user-assigned and checked apart). */
+const ISO_3166_1_CURRENT = new Set((
+  "AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ " +
+  "CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR " +
+  "GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO JP " +
+  "KE KG KH KI KM KN KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT " +
+  "MU MV MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW " +
+  "SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ " +
+  "UA UG UM US UY UZ VA VC VE VG VI VN VU WF WS YE YT ZA ZM ZW"
+).split(" "));
+
+describe("the ISO 3166-1 list the table is checked against", () => {
+  it("holds the 249 assigned codes and none of the withdrawn ones", () => {
+    expect(ISO_3166_1_CURRENT.size).toBe(249);
+    for (const old of ["AN", "BU", "CS", "DD", "DY", "FX", "HV", "NH", "RH", "SU", "TP", "UK", "VD", "YD", "YU", "ZR"]) {
+      expect(ISO_3166_1_CURRENT.has(old), old).toBe(false);
+    }
   });
 });
 

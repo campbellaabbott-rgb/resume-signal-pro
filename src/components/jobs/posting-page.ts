@@ -511,8 +511,31 @@ const NOT_IN_A_TOWN = /[/_()|\\[\]]/;
  * ("United States of America", "UK", "Czech Republic"). Built once, on first
  * use. Withdrawn and pseudo codes are left out so a name maps to the code in
  * use ("Myanmar (Burma)" is MM, not the withdrawn BU).
+ *
+ * The runtime names a withdrawn code after the country that holds its
+ * current code, so an A-Z walk that kept the first code met the old one
+ * first for Vietnam, Zimbabwe and Vanuatu and filed every row there as
+ * "another country" (SEO-035 withheld their markup). A code is kept only
+ * when the runtime files it under itself (its canonical region is the same
+ * code); the fixed list below also names every withdrawn code the runtime
+ * still prints, for a runtime that does not canonicalise regions.
  */
-const WITHDRAWN_REGIONS = new Set("AN BU CS DD FX NT QU SU TP YD YU ZR EU EZ QO UN XA XB ZZ UM AC CP DG EA IC TA".split(" "));
+const WITHDRAWN_REGIONS = new Set((
+  // Withdrawn from ISO 3166-1, or never in it, though the runtime prints a name for them.
+  "AN BU CS DD DY FX HV NH NT QU RH SU TP UK VD YD YU ZR " +
+  // Groupings, pseudo codes and the unknown region.
+  "EU EZ QO UN XA XB ZZ " +
+  // Exceptionally reserved codes and the US minor outlying islands, which no hiring system files a row under.
+  "UM AC CP CQ DG EA IC TA"
+).split(" "));
+/** The code the runtime files a region under, or the code itself when it cannot say. */
+function canonicalRegion(code: string): string {
+  try {
+    return Intl.getCanonicalLocales(`und-${code}`)[0]?.split("-")[1] ?? code;
+  } catch {
+    return code;
+  }
+}
 const COUNTRY_ALIASES: Record<string, string> = {
   usa: "US", "u s": "US", "u s a": "US", us: "US", "united states of america": "US", america: "US",
   uk: "GB", "u k": "GB", "great britain": "GB", britain: "GB", england: "GB", scotland: "GB", wales: "GB", "northern ireland": "GB",
@@ -533,7 +556,7 @@ function countryTable(): Map<string, string> {
     for (let a = 65; a < 91; a++) {
       for (let b = 65; b < 91; b++) {
         const code = String.fromCharCode(a, b);
-        if (WITHDRAWN_REGIONS.has(code)) continue;
+        if (WITHDRAWN_REGIONS.has(code) || canonicalRegion(code) !== code) continue;
         let name: string | undefined;
         try { name = dn.of(code); } catch { name = undefined; }
         if (!name || name === code) continue;
@@ -548,6 +571,11 @@ function countryTable(): Map<string, string> {
   for (const [k, v] of Object.entries(COUNTRY_ALIASES)) m.set(countryKey(k), v);
   COUNTRY_BY_NAME = m;
   return m;
+}
+
+/** Every country name the reader knows, with the code it reads it as (tests read the whole table). */
+export function countryNameTable(): ReadonlyMap<string, string> {
+  return countryTable();
 }
 
 /** The two-letter code a whole string names as a country, or null ("United States of America" -> "US"). */
