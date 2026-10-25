@@ -560,6 +560,18 @@ proved you own it". Choose before P3: accept it and change the sign-up copy
 and the owner steps, or have the guard skip an account's own first sign-up
 (review minor, not changed in R1).
 
+## Test budgets (fixer pass, 2026-10-25)
+
+PR #40's CI `test` job failed three times at 2c77ffd9 (run 40167945249). Every failing case was in a file this round does not change, and every one passed alone. Most were pglite cases that ran past vitest's 5-second default on a loaded runner. The fixes give each such case the repository's pglite budget, and change no behaviour:
+
+- `a-fill-share-counts-only-roles-the-board-was-watched-for` and `a-headcount-says-the-day-it-was-true` get 30-second tests and 120-second hooks. seo/integration carries the identical commit, so the two branches merge cleanly in either order.
+- The ledger case of `a-new-subscriber-was-sent-no-terms-no-way-to-cancel-and-no-trial-reminder` gets wave4/integration's own 60-second line, character for character.
+- `a-migration-the-staged-runner-executes-never-changes-role`, `four-company-tables-are-read-through-their-readers-and-never-by-a-client`, `the-disk-alarm-divides-by-the-disk-lovable-reports` and `the-webhook-log-drops-resume-text-and-every-copy-has-a-clock` get the same budget. No other open branch changes these four.
+
+critical-path owns the three files other branches also change (`docs/deploy-ledger.json` sharedFiles).
+
+One render race still fails CI at random: `a-buy-button-named-no-terms-no-renewal-and-sent-no-referral` clicks Go Pro while the button is still disabled for the subscription check. `built-output` fails on main's own duplicate-title pair, which PR #42 fixes. Neither is this round's.
+
 ## Known limits
 
 **Unproven until live**
