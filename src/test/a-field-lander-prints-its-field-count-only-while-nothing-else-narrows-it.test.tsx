@@ -85,7 +85,7 @@ const mount = (url: string) => {
 // THE HERO COUNT LINE, the one sentence this fix is about. The field rail's chips
 // carry their own counts under their own rules (a probe replaces the reply's
 // facet once it answers), so the assertions read this slot, not the page.
-const countLine = () => Array.from(document.querySelectorAll("main p")).map((p) => p.textContent ?? "").find((s) => /straight from the company's own/.test(s)) ?? "";
+const countLine = () => Array.from(document.querySelectorAll("main p")).map((p) => p.textContent ?? "").find((s) => /straight from the (?:company|employer)'s own/.test(s)) ?? "";
 const listBodies = () => invoke.mock.calls
   .filter(([fn, o]) => fn === "job-board" && (o as { body?: Body })?.body?.action === "list"
     && !(o as { body?: Body }).body?.countOnly && !(o as { body?: Body }).body?.facetCounts)

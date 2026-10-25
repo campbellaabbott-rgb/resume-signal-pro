@@ -475,10 +475,10 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
     ? `Resume Booster — ${roundedFloor(homeTotals.jobs).toLocaleString()}+ Live Jobs Straight From Employers`
     : "Resume Booster — Live Jobs Straight From Employers";
   const homeDescription = homeTotals
-    ? `Live jobs straight from employers' own hiring systems: ${roundedFloor(homeTotals.jobs).toLocaleString()}+ openings, re-verified all day${
+    ? `Live jobs straight from employers' own hiring systems: ${roundedFloor(homeTotals.jobs).toLocaleString()}+ openings, re-read through the day${
         homeTotals.tracked ? `, and ${roundedFloor(homeTotals.tracked).toLocaleString()}+ roles tracked including ones we have watched close` : ""
       }. Scan your resume free and see your match score on every posting.`
-    : "Live jobs straight from employers' own hiring systems, re-verified all day. Scan your resume free and see your match score on every posting.";
+    : "Live jobs straight from employers' own hiring systems, re-read through the day. Scan your resume free and see your match score on every posting.";
 
   // Spanish landing routes flip the whole app chrome to Spanish — the visitor
   // searched in Spanish; showing an English page under a Spanish URL would be

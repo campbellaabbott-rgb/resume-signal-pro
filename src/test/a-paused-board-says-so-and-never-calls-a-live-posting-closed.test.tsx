@@ -208,7 +208,11 @@ describe("a paused board says so, and never calls a live posting closed", () => 
     await settle(2500);
     const counted = calls.filter((c) => BUDGETED_ACTIONS.has(c.action));
     expect(counted.map((c) => c.action).sort(), JSON.stringify(calls.map((c) => c.action))).toHaveLength(5);
-    expect(calls.some((c) => c.action === "status"), "status is made, and is not counted").toBe(true);
+    // `status` is not a counted action, and since pass B (2026-10-12) the board
+    // makes no status call of its own (the retired agent pitch's reach hook was
+    // the caller), so a deep-link load is exactly the five below.
+    expect(BUDGETED_ACTIONS.has("status"), "status is never a counted action").toBe(false);
+    expect(calls.some((c) => c.action === "status"), "the board called status again: count it here if it is ever budgeted").toBe(false);
     expect(ADDRESS_DAILY_CAP, "a person loading 1,500 postings in a day never meets the cap").toBeGreaterThanOrEqual(1500 * counted.length);
   });
 });

@@ -1,0 +1,1 @@
+SELECT public._mig_exec(sql) FROM public._mig_stage WHERE name = '20261012120000_a_relist_warning_never_reads_another_site.sql';

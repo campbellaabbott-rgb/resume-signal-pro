@@ -8,8 +8,7 @@
  *
  * A prerendered SEO guide is the worst case of that pattern, because it is the
  * copy least likely to be re-read and the most likely to be the first thing a
- * stranger believes. So every factual claim in the guide is pinned here to the
- * code or the migration that makes it true.
+ * stranger believes. So every factual claim in the guide is pinned here.
  *
  * The rule the guide follows, and this file enforces: STRUCTURE may be stated,
  * QUANTITIES may not. How many postings the agent can submit to changes daily;
@@ -25,9 +24,9 @@
  * default-deny, and the hosts named are only Claude, ChatGPT and Claude Code.
  */
 import { describe, expect, it } from "vitest";
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { GUIDES } from "@/data/guides";
+import { GUIDES, GUIDES_INDEX_DESCRIPTION, GUIDES_INDEX_TITLE, GUIDES_INTRO } from "@/data/guides";
 import { SENDABLE_VENDORS } from "../../supabase/functions/_shared/apply-automation";
 import { APPLY_AGENT_ON, AGENT_PRODUCTS_ON_SALE } from "../../supabase/functions/_shared/apply-agent-switch";
 import { MCP_FORM_VENDORS, MCP_FORM_VENDORS_ON_CHATGPT } from "@/config/mcp-tools";
@@ -39,10 +38,6 @@ const prose = (() => {
   for (const f of guide.faqs ?? []) parts.push(f.q, f.a);
   return parts.join("\n");
 })();
-
-const DIR = resolve(__dirname, "../../supabase/migrations");
-const allSql = readdirSync(DIR).filter((f) => f.endsWith(".sql"))
-  .map((f) => readFileSync(resolve(DIR, f), "utf8")).join("\n");
 
 describe("the guide exists and is wired like every other one", () => {
   it("is registered under its own slug", () => {
@@ -122,13 +117,16 @@ describe("what the guide says matches the switch", () => {
     expect(prose).not.toMatch(/refund it/);
     expect(prose).toMatch(/resumeboostersupp@gmail\.com/);
   });
+
+  it("the guides index no longer sells the agent either", () => {
+    for (const s of [GUIDES_INDEX_TITLE, GUIDES_INDEX_DESCRIPTION, GUIDES_INTRO]) {
+      expect(s).not.toMatch(/apply agent/i);
+    }
+  });
 });
 
 describe("it does not bake in a number that will go stale", () => {
   it("quotes no posting counts or percentages of the board", () => {
-    // AgentReachNote exists BECAUSE a hardcoded "30,000+" outliving its data is
-    // the failure to avoid. A prerendered page cannot re-read the board, so it
-    // must not claim a quantity at all.
     const offenders = [
       /\b\d{1,3}(,\d{3})+\s*(postings|jobs)/i,   // "29,522 postings"
       /\b\d+(\.\d+)?\s*%\s*of the board/i,        // "3.5% of the board"
@@ -157,13 +155,8 @@ describe("it does not bake in a number that will go stale", () => {
 describe("somebody can actually find it", () => {
   const read = (rel: string) => readFileSync(resolve(__dirname, rel), "utf8");
 
-  it("is linked from the agent page itself, on every tab", () => {
-    // A guide nobody can reach from the product is an SEO page, not
-    // instructions. The link sits next to the h1 rather than inside a tab.
+  it("is still linked from the agent page and the setup checklist", () => {
     expect(read("../pages/Agent.tsx")).toMatch(/\/guides\/how-the-apply-agent-works/);
-  });
-
-  it("is linked from the setup checklist, where people are most lost", () => {
     expect(read("../components/account/AgentSetupChecklist.tsx"))
       .toMatch(/\/guides\/how-the-apply-agent-works/);
   });
@@ -181,9 +174,6 @@ describe("somebody can actually find it", () => {
 
 describe("the byline says what THIS guide is grounded in", () => {
   it("does not inherit the résumé-scanner default", () => {
-    // The byline was hardcoded in GuideArticle.tsx AND prerender-seo.mjs as
-    // "Grounded in the checks our scanner runs on every resume". True of eight
-    // résumé guides; false of this one, and it would have shipped under it.
     expect(guide.grounding, "this guide must state its own grounding").toBeTruthy();
     expect(guide.grounding).not.toMatch(/scanner runs on every resume/);
   });
@@ -217,9 +207,6 @@ describe("the refusals are stated, because they are the product", () => {
   });
 
   it("does not claim a success rate or an interview outcome", () => {
-    // Zero applications have been submitted to date. Any performance claim on a
-    // public page would be unfounded, and this is the page a stranger reads
-    // first.
     for (const re of [/\d+\s*%\s*(success|response|interview)/i, /guaranteed/i, /land(s)? you (a|an) (job|interview)/i]) {
       expect(prose, `the guide must not claim outcomes (${re})`).not.toMatch(re);
     }

@@ -58,7 +58,7 @@ describe("a company page carries what the board knows about that employer and no
     const p = page("ms~wd5~external", "Morgan Stanley", 605, MS);
     expect(p.content).toContain(`<a href="/jobs/company/ms~wd5~external?country=IN">India</a>`);
     expect(p.content).toContain(`<a href="/jobs/company/ms~wd5~external?category=finance">Finance &amp; Accounting</a>`);
-    expect(p.title).toBe("Morgan Stanley Jobs — 605 Verified Openings");
+    expect(p.title).toBe("Morgan Stanley jobs: 605 open roles from their own hiring system");
   });
 
   it("links the posting pages this bake wrote for it, in the body and as an ItemList", () => {
@@ -78,9 +78,10 @@ describe("a company page carries what the board knows about that employer and no
     const p = page("dominos", "Domino's", 25792, DOMINOS);
     expect(p.content).not.toMatch(/[A-Z]{3,} [A-Z']{3,} [A-Z]{3,}:/);
     expect(p.content).not.toMatch(/the number below it/);
-    expect(p.content).toContain("has not taken down and whose date falls inside the last 30 days");
+    expect(p.content).toContain("has not taken down whose date falls inside the last 30 days: the employer's own date, or for a posting with no date, the day we last saw it in their feed");
     for (const s of [p.title, p.description, p.content]) expect(s).not.toMatch(/Domino(?:'|&#39;)s(?:'|&#39;)s/);
-    expect(p.content).toContain("Domino's own official job board");
+    expect(p.content).toContain("Domino's own hiring system");
+    expect(`${p.title} ${p.content}`, "the board reads employers' feeds; it does not verify each role").not.toMatch(/verified/i);
   });
 
   it("drops the catch-all bucket and empty rows from the facts", () => {

@@ -50,10 +50,10 @@ export interface Guide {
  * them; the page retracted it and the bake kept serving it (L4-10).
  */
 export const GUIDES_INTRO =
-  "No recycled folklore. Every guide below is grounded in something this product actually does — the checks our scanner runs, the documented behavior of real ATS parsers, or what our apply agent will and will not do on your behalf. Where the popular advice is wrong, we say so.";
-export const GUIDES_INDEX_TITLE = "Resume, ATS & Apply Agent Guides — From Real Data";
+  "No recycled folklore. Every guide below is grounded in something this product actually does — the checks our scanner runs, the documented behavior of real ATS parsers, or how the board reads employers' own hiring systems. Where the popular advice is wrong, we say so.";
+export const GUIDES_INDEX_TITLE = "Resume & ATS Guides, and Applying With Your Own AI — From Real Data";
 export const GUIDES_INDEX_DESCRIPTION =
-  "How ATS systems actually work, how resumes really get rejected, how to fix yours, and how our apply agent works — grounded in what the product does, not folklore.";
+  "How ATS systems actually work, how resumes really get rejected, how to fix yours, and how to apply with your own AI — grounded in what the product does, not folklore.";
 
 export const GUIDE_GROUNDING_DEFAULT =
   "Grounded in the checks our scanner runs on every resume";
@@ -503,7 +503,7 @@ export const GUIDES: Record<string, Guide> = {
       "Resume scores are estimates with error bars, not verdicts. How scoring works, why we show a range, and how to use a score without being fooled by it.",
     tldr:
       "A resume score is a model's estimate built from proxies (parseability, keyword coverage, structure), not a measurement of hiring odds — two reasonable tools will disagree on the same resume by several points. Use scores for prioritization: below ~50 usually means a structural or parsing problem to fix first; above ~80 means stop polishing and start applying. Trust only scores that come with an itemized explanation.",
-    updated: "2026-07-06",
+    updated: "2026-10-10",
     minutes: 5,
     sections: [
       {
@@ -649,7 +649,7 @@ export const GUIDES: Record<string, Guide> = {
     related: [
       { label: "Connect Claude or ChatGPT", href: "/agents" },
       { label: "See the live job board", href: "/jobs" },
-      { label: "How we verify every posting", href: "/methodology" },
+      { label: "How the board reads and re-checks postings", href: "/methodology" },
       { label: "Why resumes get rejected", href: "/guides/why-resumes-get-rejected" },
     ],
   },

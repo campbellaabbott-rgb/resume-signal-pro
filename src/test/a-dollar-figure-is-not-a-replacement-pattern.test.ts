@@ -257,58 +257,33 @@ describe("the prices a crawler reads are the mirrors', never typed", () => {
     expect(SCRIPT).toMatch(/export \{[^}]*\bSUBSCRIPTIONS\b[^}]*\} from "\.\.\/src\/config\/products"/);
   });
 
-  it("/pricing prints Pro, the Apply Agent and the pass from the mirrors", () => {
+  // THE APPLY PIVOT (owner, 2026-10-11): the Agent plan and the Agent Pass
+  // are retired, so the crawler copy prints Pro's price from its mirror and
+  // no price of a retired product at all. The rendered pages are read for the
+  // same thing by src/test/pd-bake-the-crawler-copy-sells-nothing-retired.test.ts.
+  it("/pricing prints Pro from the mirror, and neither the agent's plan nor its pass", () => {
     const pro = boundTo("D.SUBSCRIPTIONS.pro");
-    const agent = boundTo("D.SUBSCRIPTIONS.agent");
     expect(pro.length, "a binding to the Pro mirror").toBeGreaterThan(0);
-    expect(agent.length, "a binding to the Agent mirror").toBeGreaterThan(0);
     const b = block("/pricing");
     expect(prints(b, pro, ".priceUsd"), "Pro's price, from the mirror").toBe(true);
-    expect(prints(b, agent, ".priceUsd"), "the Apply Agent's price, from the mirror").toBe(true);
-    expect(b).toContain("$${D.PASS.priceUsd}");
+    expect(b, "the agent plan's mirror is read on /pricing").not.toMatch(/SUBSCRIPTIONS\.agent/);
+    expect(b, "the pass's mirror is read on /pricing").not.toMatch(/D\.PASS\./);
     // The description is one of the slots — the snippet is what the query sees.
     const desc = /description: `([^`]*)`/.exec(b)?.[1] ?? "";
     expect(prints(desc, pro, ".priceUsd")).toBe(true);
-    expect(prints(desc, agent, ".priceUsd")).toBe(true);
-    expect(desc).toContain("$${D.PASS.priceUsd}");
-    // The offer ceiling is derived from everything on sale, as Pricing.tsx does.
+    // The offer ceiling is derived from everything still on sale.
     expect(b).toMatch(/highPrice: String\(Math\.max\(\.\.\.offerPrices\)\)/);
-    expect(SCRIPT).toMatch(/const offerPrices = \[\.\.\.paid\.map\(\(p\) => p\.priceUsd\), \w+\.priceUsd, \w+\.priceUsd, D\.PASS\.priceUsd\];/);
+    expect(SCRIPT).toMatch(/const offerPrices = \[\.\.\.paid\.map\(\(p\) => p\.priceUsd\), \w+\.priceUsd\];/);
+    expect(SCRIPT, "the retired one-time products are filtered out of the list").toMatch(/!RETIRED_PRODUCT_IDS\.includes\(p\.id\)/);
   });
 
-  it("/agents prints the Agent plan and the pass prices from the mirrors", () => {
-    const agent = boundTo("D.SUBSCRIPTIONS.agent.priceUsd");
-    const pass = boundTo("D.PASS.priceUsd");
-    expect(agent.length).toBeGreaterThan(0);
-    expect(pass.length).toBeGreaterThan(0);
-    const b = block("/agents");
-    expect(prints(b, agent), "the plan's monthly price").toBe(true);
-    expect(prints(b, pass), "the pass price").toBe(true);
-    const desc = /description: `([^`]*)`/.exec(b)?.[1] ?? "";
-    expect(prints(desc, agent)).toBe(true);
-    expect(prints(desc, pass)).toBe(true);
-  });
-
-  it("/agent prints its monthly price from the mirror in the title, the description and the body", () => {
-    const agent = boundTo("D.SUBSCRIPTIONS.agent.priceUsd");
-    const b = block("/agent");
-    const title = /title: `([^`]*)`/.exec(b)?.[1] ?? "";
-    const desc = /description: `([^`]*)`/.exec(b)?.[1] ?? "";
-    expect(prints(title, agent), "title").toBe(true);
-    expect(prints(desc, agent), "description").toBe(true);
-    expect((b.match(/\$\$\{\w+\}\/month/g) ?? []).length, "the body's price line").toBeGreaterThan(0);
-  });
-
-  // The trial is offered once per customer (L6-29); /agent told every
-  // crawler and visitor it was free for a typed number of days.
-  it("/agent prints the trial's length from the mirror and names who gets it", () => {
-    const days = boundTo("D.SUBSCRIPTIONS.agent.trialDays");
-    expect(days.length, "a binding to the trial length's mirror").toBeGreaterThan(0);
-    const b = block("/agent");
-    const desc = /description: `([^`]*)`/.exec(b)?.[1] ?? "";
-    const named = (text: string) => days.some((n) => text.includes(`\${${n}} days free for first-time subscribers`));
-    expect(named(desc), "description").toBe(true);
-    expect(named(b.slice(b.indexOf("content:"))), "body").toBe(true);
-    expect(b, "a typed trial length").not.toMatch(/\b\d+ days? free|free week/i);
+  it("/agents and /agent print no price of the retired plan or pass", () => {
+    for (const path of ["/agents", "/agent"]) {
+      const b = block(path);
+      expect(b, `${path} reads the agent plan's mirror`).not.toMatch(/SUBSCRIPTIONS\.agent/);
+      expect(b, `${path} reads the pass's mirror`).not.toMatch(/D\.PASS\./);
+      expect(b, `${path} prints a monthly price`).not.toMatch(/\$\$\{\w+\}\/(?:month|mo)/);
+      expect(b, `${path} offers a trial`).not.toMatch(/days free for first-time subscribers/);
+    }
   });
 });

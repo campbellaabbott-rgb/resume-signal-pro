@@ -230,10 +230,12 @@ describe("no reader-facing surface publishes companiesFacet.count", () => {
       href: (t: string) => `/jobs/company/${t}`,
     });
     const withN = page(2119);
-    expect(withN.title).toBe("PwC Jobs — 2,119 Verified Openings");
-    expect(withN.description).toMatch(/^Browse 2,119 open roles at PwC/);
-    expect(withN.content).toMatch(/2,119 verified PwC openings right now/);
-    expect(withN.content, "the page states the rule the number was counted under").toMatch(/has not taken down and whose date falls inside the last 30 days/);
+    // Never "verified": the board reads each employer's feed; it does not
+    // verify each role (owner, 2026-10-12).
+    expect(withN.title).toBe("PwC jobs: 2,119 open roles from their own hiring system");
+    expect(withN.description).toMatch(/^2,119 open roles at PwC/);
+    expect(withN.content).toMatch(/2,119 open PwC roles/);
+    expect(withN.content, "the page states the rule the number was counted under").toMatch(/has not taken down whose date falls inside the last 30 days/);
     const without = page(null);
     for (const s of [without.title, without.description, without.content]) expect(s.replace(/<[^>]*>/g, " ")).not.toMatch(/\d/);
   });
@@ -553,9 +555,13 @@ describe("the fallback ladder cannot be emptied by a silent facet", () => {
   });
 
   it("the field lander's denominator names boards and drops out when unmeasured", () => {
-    const desc = c.slice(c.indexOf("description: `Browse ${countPhrase}"), c.indexOf("description: `Browse ${countPhrase}") + 320);
+    const at = c.indexOf("description: `${n ? `${fmt(n)} live ${label} openings");
+    expect(at, "the field lander's description").toBeGreaterThan(-1);
+    const desc = c.slice(at, at + 320);
     expect(desc, "a count of boards may not be printed as companies").not.toMatch(/companies' official job boards/);
-    expect(desc).toMatch(/company job boards with roles open now/);
+    expect(desc).toMatch(/company job boards/);
+    // Every number names its date basis (the bake's own "counted <day>").
+    expect(desc).toMatch(/\$\{COUNTS_DAY\}/);
     expect(desc, "an unsourced constant may not stand in for a measurement").not.toMatch(/3,000\+/);
   });
 });

@@ -36,6 +36,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { inflight } from "@/lib/company/inflight";
 
 /** The minimum number of certified applications behind any figure this line prints -- both behind
  *  the wage cell and behind the employer total. Mirrors the k block of the reader migration
@@ -178,6 +179,48 @@ export interface LcaFiledWagesLineProps {
   socCode?: string | null;
   /** The posting's US state, two letters or a region code with its country prefix. */
   worksiteState?: string | null;
+  /** Where the line sits. "posting" (the default) is beside one posting; "employer" is the
+   *  employer page, where no posting is in view, so the sentence explaining an unasked cell
+   *  must not mention one. */
+  context?: "posting" | "employer";
+  /** Extra classes for the outer box (spacing on the employer page). */
+  className?: string;
+}
+
+export type LcaRow = { employer: LcaEmployerFilings; wages: LcaFiledWages | null };
+
+/**
+ * The reader's row for one token, asked once while in flight. null until a
+ * row arrives that clears every bar, and on any failure.
+ */
+export function useLcaFiledWages(
+  companyToken: string | null | undefined,
+  socCode: string | null = null,
+  worksiteState: string | null = null,
+  enabled = true,
+): LcaRow | null {
+  const [row, setRow] = useState<LcaRow | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    setRow(null);
+    if (!companyToken || !enabled) return;
+    inflight(`get_employer_lca_wages:${companyToken}:${socCode ?? ""}:${worksiteState ?? ""}`, async () => {
+      const { data } = await (supabase as unknown as {
+        rpc: (f: string, a?: Record<string, unknown>) => Promise<{ data: unknown }>;
+      }).rpc("get_employer_lca_wages", {
+        p_tokens: [companyToken],
+        p_soc_code: socCode ?? null,
+        p_worksite_state: worksiteState ?? null,
+      });
+      return data;
+    }).then((data) => {
+      if (cancelled) return;
+      const first = Array.isArray(data) ? data[0] : data;
+      setRow(readLcaRow(first));
+    }).catch(() => { /* additive line: a reader that could not load prints nothing, and prints no error either */ });
+    return () => { cancelled = true; };
+  }, [companyToken, socCode, worksiteState, enabled]);
+  return row;
 }
 
 /**
@@ -185,46 +228,33 @@ export interface LcaFiledWagesLineProps {
  * every bar -- no skeleton, no "no data" state, because an absence here is not
  * a fact about the employer and must not occupy space as though it were.
  */
-export function LcaFiledWagesLine({ companyToken, companyName, socCode = null, worksiteState = null }: LcaFiledWagesLineProps) {
+export function LcaFiledWagesLine({ companyToken, companyName, socCode = null, worksiteState = null, context = "posting", className = "" }: LcaFiledWagesLineProps) {
+  const row = useLcaFiledWages(companyToken, socCode, worksiteState);
+  return <LcaFiledWagesView row={row} companyName={companyName} context={context} className={className} />;
+}
+
+/** The line for a row already read. `bare` drops its own border inside a profile section. */
+export function LcaFiledWagesView({ row, companyName, context = "posting", className = "", bare = false }: {
+  row: LcaRow | null;
+  companyName: string;
+  context?: "posting" | "employer";
+  className?: string;
+  bare?: boolean;
+}) {
   const { t, i18n } = useTranslation();
-  const [row, setRow] = useState<{ employer: LcaEmployerFilings; wages: LcaFiledWages | null } | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    setRow(null);
-    if (!companyToken) return;
-    (async () => {
-      try {
-        const { data } = await (supabase as unknown as {
-          rpc: (f: string, a?: Record<string, unknown>) => Promise<{ data: unknown }>;
-        }).rpc("get_employer_lca_wages", {
-          p_tokens: [companyToken],
-          p_soc_code: socCode ?? null,
-          p_worksite_state: worksiteState ?? null,
-        });
-        if (cancelled) return;
-        const first = Array.isArray(data) ? data[0] : data;
-        setRow(readLcaRow(first));
-      } catch {
-        /* additive line: a reader that could not load prints nothing, and prints no error either */
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [companyToken, socCode, worksiteState]);
-
   if (!row) return null;
   const { employer, wages } = row;
   const lang = i18n.language || "en";
 
   return (
-    <div className="rounded-lg border border-border bg-card p-3 max-w-xl text-left">
-      <div className="flex items-center gap-1.5 mb-1 text-[12px] font-medium text-primary">
-        <FileText className="w-3.5 h-3.5" aria-hidden="true" />
+    <div className={`${bare ? "" : "rounded-lg border border-border bg-card p-3 max-w-xl "}text-left${className ? ` ${className}` : ""}`} data-lca-context={context}>
+      <div className="flex items-center gap-1.5 mb-1 text-meta font-medium text-foreground">
+        <FileText className="w-3.5 h-3.5 text-primary" aria-hidden="true" />
         {t("jobsPage.lcaChip", "Filed H-1B wages · {{quarter}}", { quarter: employer.fiscalQuarter })}
       </div>
 
       {wages && (
-        <p className="text-[12px] text-foreground mb-1">
+        <p className="text-meta text-foreground mb-1">
           {t(
             "jobsPage.lcaRange",
             "{{company}} filed {{n}} certified labor condition applications for {{occupation}} in {{state}} in {{quarter}}, at annual wages from {{low}} to {{high}}.",
@@ -242,15 +272,20 @@ export function LcaFiledWagesLine({ companyToken, companyName, socCode = null, w
       )}
 
       {wages && LCA_UNASKED_BASES.includes(wages.basis) && (
-        <p className="text-[11px] text-muted-foreground mb-1" data-lca-basis={wages.basis}>
-          {t(
-            "jobsPage.lcaWhyThisCell",
-            "This is the largest group of applications this employer filed that quarter. Nothing on this posting states an occupation code, so it was not matched to this role.",
-          )}
+        <p className="text-xs text-muted-foreground mb-1" data-lca-basis={wages.basis}>
+          {context === "employer"
+            ? t(
+              "jobsPage.lcaWhyThisCellEmployer",
+              "This is the largest group of applications this employer filed that quarter, shown as one example of what it filed. It is not matched to any one role on this board.",
+            )
+            : t(
+              "jobsPage.lcaWhyThisCell",
+              "This is the largest group of applications this employer filed that quarter. Nothing on this posting states an occupation code, so it was not matched to this role.",
+            )}
         </p>
       )}
 
-      <p className="text-[11px] text-muted-foreground mb-1">
+      <p className="text-xs text-muted-foreground mb-1">
         {t(
           "jobsPage.lcaSponsor",
           "{{company}} has {{total}} certified applications on file for that period with a yearly-stated wage, across {{groups}} occupation-and-state groups.",
@@ -263,7 +298,7 @@ export function LcaFiledWagesLine({ companyToken, companyName, socCode = null, w
       </p>
 
       {employer.coverageFrom && employer.coverageTo && (
-        <p className="text-[11px] text-muted-foreground mb-1" data-lca-coverage={`${employer.coverageFrom}..${employer.coverageTo}`}>
+        <p className="text-xs text-muted-foreground mb-1" data-lca-coverage={`${employer.coverageFrom}..${employer.coverageTo}`}>
           {t(
             "jobsPage.lcaPeriod",
             "These are applications the Department certified between {{from}} and {{to}}.",
@@ -272,11 +307,13 @@ export function LcaFiledWagesLine({ companyToken, companyName, socCode = null, w
         </p>
       )}
 
-      <p className="text-[11px] text-muted-foreground mb-1">
-        {t("jobsPage.lcaNotAnOffer", "These are wages that were filed for those applications. They are not this role's pay and not an offer.")}
+      <p className="text-xs text-muted-foreground mb-1">
+        {context === "employer"
+          ? t("jobsPage.lcaNotAnOfferEmployer", "These are wages that were filed for those applications. They are not the pay of any role on this board and not an offer.")
+          : t("jobsPage.lcaNotAnOffer", "These are wages that were filed for those applications. They are not this role's pay and not an offer.")}
       </p>
 
-      <p className="text-[11px] text-muted-foreground">
+      <p className="text-xs text-subtle-foreground">
         {t(
           "jobsPage.lcaBasis",
           "Source: {{file}}, published {{published}} — US Department of Labor, Office of Foreign Labor Certification. Public-domain data; the Department does not endorse this site.",
@@ -285,6 +322,26 @@ export function LcaFiledWagesLine({ companyToken, companyName, socCode = null, w
         {t("jobsPage.lcaMinNote", "Shown only where at least {{min}} certified applications sit behind the figure.", { min: LCA_MIN_FILINGS })}
       </p>
     </div>
+  );
+}
+
+/**
+ * The employer page's line (/jobs/company/:token): the same reader, the same
+ * bars and the same copy, asked with no occupation and no state because no
+ * posting is in view, so the reader answers the employer's largest cell and
+ * the sentence beside it says that cell is an example, matched to no role.
+ * It replaced a card that called a function no migration defines.
+ */
+export function EmployerLcaFiledWagesLine({ companyToken, companyName, className = "" }: { companyToken: string; companyName: string; className?: string }) {
+  return (
+    <LcaFiledWagesLine
+      companyToken={companyToken}
+      companyName={companyName}
+      socCode={null}
+      worksiteState={null}
+      context="employer"
+      className={className}
+    />
   );
 }
 
