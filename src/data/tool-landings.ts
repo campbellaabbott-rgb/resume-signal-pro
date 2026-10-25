@@ -105,7 +105,7 @@ export const TOOL_LANDINGS: Record<string, ToolLanding> = {
     path: "/ats-resume-test",
     title: "ATS Resume Test — How Workday & Greenhouse Parse You",
     description:
-      "Test your resume against ATS parsing free: see exactly what applicant tracking systems extract from your file, which keywords are missing, and per-vendor checks for Workday, Greenhouse, Lever, and iCIMS.",
+      "Test your resume against ATS parsing free: what applicant tracking systems extract from your file, missing keywords and per-vendor checks.",
     heading: "Test how ATS systems actually read your resume",
     intro:
       "The scan above runs your real file through extraction and shows you what an applicant tracking system sees — including the parts that silently disappear. Then it checks the specifics that trip up the major vendors.",

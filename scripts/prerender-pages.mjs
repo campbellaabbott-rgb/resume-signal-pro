@@ -5,6 +5,7 @@
 // src/test, so a rule printed on a page and the code that applies it are one.
 
 import { createHash } from "node:crypto";
+import { RECHECK_CLAUSE, websiteRef } from "./prerender-copy.mjs";
 
 // ---- Every posting page the site has published, and what became of it ----
 //
@@ -146,6 +147,37 @@ export function postingCeilingSplit(carried, { ceiling, dateOf }) {
   return { keep: list.filter((_, i) => !retire.has(i)), retire: list.filter((_, i) => retire.has(i)) };
 }
 
+// ---- The fresh reserve, made real (SEO-017) ----
+//
+// postingFreshBudget promised POSTING_FRESH_RESERVE new pages a bake "so the
+// set keeps moving", but the ceiling split above retires only ABOVE the
+// ceiling: with 500 carried pages live the budget was 0 and the 2026-10-18
+// bake added 7 new pages from a pool of 1,200. The set renews itself only as
+// carried pages die. Retiring the oldest-dated pages early would churn open,
+// indexed postings; what may give way is a carried page whose markup expires
+// within a few days anyway, to the honest "retired" page, until the carried
+// set leaves room for the reserve. The ceiling is never broken.
+export const POSTING_EXPIRY_NEAR_DAYS = 3;
+
+/**
+ * The carried live pages that give up their page so the fresh reserve fits:
+ * only those whose validThrough is POSTING_EXPIRY_NEAR_DAYS away or less, the
+ * soonest first, and no more than it takes to bring the carried set down to
+ * ceiling - reserve. Returns NEW lists of the ones to keep and to retire, each
+ * in the order given.
+ */
+export function postingReserveSplit(carried, { ceiling, reserve, today, validThroughOf, nearDays = POSTING_EXPIRY_NEAR_DAYS }) {
+  const list = Array.isArray(carried) ? carried : [];
+  const target = Math.max(0, ceiling - reserve);
+  if (list.length <= target) return { keep: [...list], retire: [] };
+  const near = list
+    .map((x, i) => ({ i, v: validThroughOf(x) }))
+    .filter((c) => typeof c.v === "string" && (() => { const d = dayDiff(today, c.v); return d !== null && d <= nearDays; })())
+    .sort((a, b) => (a.v === b.v ? a.i - b.i : a.v < b.v ? -1 : 1));
+  const retire = new Set(near.slice(0, list.length - target).map((c) => c.i));
+  return { keep: list.filter((_, i) => !retire.has(i)), retire: list.filter((_, i) => retire.has(i)) };
+}
+
 /** The sitemap's posting entries, never more than the ceiling: the rest are dropped and counted. */
 export function capPostingEntries(entries, { isPosting, ceiling }) {
   let n = 0;
@@ -222,13 +254,22 @@ export function onceCompanyPaths({ ledger = null, sitemaps = [], seedPaths = [] 
  */
 export function companyCarryState({ prior, today, onBoard, cachedYoung, keepDays = COMPANY_STUB_KEEP_DAYS }) {
   const p = prior && typeof prior === "object" ? prior : {};
+  // AN EMPLOYER STILL ON THE BOARD IS NEVER TOMBSTONED (S13-047). A tombstone
+  // is a 400-byte page with no app: a person who opens it gets "No longer a
+  // page on this site" and no board. 60 days after its stub, every carried
+  // employer was due one, still hiring or not (S13 sampled 14 of 15 still on
+  // the board, Novant Health with 774 roles), because a carried token gets no
+  // new listing read and so never looked "young" again. While the board
+  // carries the token with open roles the page stays a stub, written through
+  // the app template, which hydrates into the live board; only a token that
+  // left the catalogue or serves nothing becomes a tombstone, and a tombstone
+  // whose employer is back on the board is a stub again.
+  if (onBoard) return cachedYoung ? "noindex" : "stub";
   if (p.state === "tombstone") return "tombstone";
   if (p.state === "stub") {
     const age = dayDiff(p.since, today);
     if (age !== null && age > keepDays) return "tombstone";
   }
-  if (onBoard && cachedYoung) return "noindex";
-  if (p.state === "stub") return "stub";
   return "stub";
 }
 
@@ -258,7 +299,12 @@ export function companyStubPage({ path, token, name = null, esc }) {
     path,
     robots: "noindex, follow",
     title: head,
-    description: `${nm ?? "This employer"} no longer has a page of its own on this site. Its openings, where the board still carries any, are on the live board.`,
+    // Built up to the snippet budget (OBS-2): a long employer name drops the second sentence.
+    description: [
+      `${nm ?? "This employer"} no longer has a page of its own on this site. Its openings, where the board still carries any, are on the live board.`,
+      `${nm ?? "This employer"} no longer has a page of its own on this site.`,
+      "This employer no longer has a page of its own on this site.",
+    ].find((d) => d.length <= 160),
     content: `
             <p><a href="/jobs">All openings</a> · <a href="/companies">Companies with a page of their own</a></p>
             <h1>${esc(head)}</h1>
@@ -333,8 +379,10 @@ export const carrySitemaps = ({ ledgerSource, liveSitemap, committedSitemap }) =
  * not answer when this was built). Never the homepage, never indexed.
  */
 export function postingStubPage({ path, id, state, since, title, company, companyLink, windowDays, duplicateOf = null, basis = null, ceiling = null, esc }) {
-  const t = typeof title === "string" && title.trim() ? title.trim() : null;
-  const c = typeof company === "string" && company.trim() ? company.trim() : null;
+  // One line, as the posting's own page prints it (postingText): an employer's
+  // double space is not part of the job, and the stub's title kept it.
+  const t = typeof title === "string" && title.trim() ? title.replace(/\s+/g, " ").trim() : null;
+  const c = typeof company === "string" && company.trim() ? company.replace(/\s+/g, " ").trim() : null;
   const what = t ? `${esc(t)}${c ? ` at ${esc(c)}` : ""}` : "This posting";
   const board = `/jobs?job=${encodeURIComponent(id)}`;
   const head = state === "gone"
@@ -344,23 +392,43 @@ export function postingStubPage({ path, id, state, since, title, company, compan
   // published before the ledger existed) was never re-read, so its page may
   // not say it is still on the board; a page retired at the ceiling was, but
   // gave its place to a newer posting, which is all its page says.
-  const retiredLead = duplicateOf
-    ? `${what} is the same requisition as <a href="${duplicateOf}">another page on this site</a>, which now carries it.`
+  // A board link is the /jobs page with a dialog open, not a page of its own:
+  // a crawler that follows it reads /jobs again (SEO-005), so it carries
+  // rel="nofollow". A person loses nothing.
+  const boardLink = (text) => `<a href="${board}" rel="nofollow">${text}</a>`;
+  // A DUPLICATE POINTS AT ITS TWIN (SEO-039). It said "the same requisition as
+  // another page on this site" while its own canonical named itself and its
+  // robots said noindex, which tells a crawler nothing about where the
+  // requisition lives. Now its canonical is the twin, and it carries no
+  // noindex (a noindex beside a canonical to another URL is a contradiction).
+  const twin = state === "retired" && typeof duplicateOf === "string" && duplicateOf.startsWith("/") ? duplicateOf : null;
+  const retiredLead = twin
+    ? `${what} is the same requisition as <a href="${esc(twin)}">another page on this site</a>, which now carries it.`
     : basis === "seed"
-      ? `${what} had a page on this site once. This site no longer gives it one, and this page states nothing about it: whether it is still open was not checked. <a href="${board}">The live board checks it when you open it</a>.`
+      ? `${what} had a page on this site once. This site no longer gives it one, and this page states nothing about it: whether it is still open was not checked. ${boardLink("The live board checks it when you open it")}.`
       : basis === "ceiling"
-        ? `${what} is still on the live board, but this site keeps at most ${typeof ceiling === "number" ? ceiling : "a fixed number of"} posting pages and gives the places to the most recently posted ones, so this page states nothing more about it. <a href="${board}">Open it on the live board</a>.`
-        : `${what} is still on the live board, but no longer carries everything a page of its own must state, so this page states nothing more about it. <a href="${board}">Open it on the live board</a>.`;
+        ? `${what} is still on the live board, but this site keeps at most ${typeof ceiling === "number" ? ceiling : "a fixed number of"} posting pages and gives the places to the most recently posted ones, so this page states nothing more about it. ${boardLink("Open it on the live board")}.`
+        : basis === "expiring"
+          ? `${what} is still on the live board, but the date its employer put on it leaves it only a few days in the board's window, so this site gave its page to a newer posting and this page states nothing more about it. ${boardLink("Open it on the live board")}.`
+          : `${what} is still on the live board, but no longer carries everything a page of its own must state, so this page states nothing more about it. ${boardLink("Open it on the live board")}.`;
   const lead = state === "gone"
     ? `${what} is no longer listed on this board${since ? ` (recorded ${esc(since)})` : ""}. That is a statement about this board, not about the employer: the posting may have been taken down, or the date the employer put on it passed the board's ${windowDays}-day window.`
     : state === "retired"
       ? retiredLead
-      : `When this page was built the board did not answer for this posting, so this page states nothing about it. <a href="${board}">The live board checks it when you open it</a>.`;
+      : `When this page was built the board did not answer for this posting, so this page states nothing about it. ${boardLink("The live board checks it when you open it")}.`;
   return {
     path,
-    robots: "noindex, follow",
+    ...(twin ? { canonical: twin } : {}),
+    robots: twin ? null : "noindex, follow",
     title: t ? `${head} — ${t}` : head,
-    description: state === "gone" ? `${t ? `${t}${c ? ` at ${c}` : ""}` : "This posting"} is no longer listed on this board. Browse the live openings instead.` : `${head}. Browse the live openings on the board.`,
+    // Built up to the snippet budget (OBS-2): a long title drops the employer, then itself.
+    description: state === "gone"
+      ? [
+        `${t ? `${t}${c ? ` at ${c}` : ""}` : "This posting"} is no longer listed on this board. Browse the live openings instead.`,
+        `${t ?? "This posting"} is no longer listed on this board.`,
+        "This posting is no longer listed on this board. Browse the live openings instead.",
+      ].find((d) => d.length <= 160)
+      : `${head}. Browse the live openings on the board.`,
     content: `
             <p><a href="/jobs">All openings</a></p>
             <h1>${head}</h1>
@@ -389,6 +457,9 @@ export function postingStubEntry({ stub, prior, today, first = null, employerNam
   // (scripts/indexnow-ping.mjs pings "gone" and "retired" only, S11-155).
   if (stub.seed === true || (p.seed === true && p.state === state)) out.seed = true;
   if (typeof stub.basis === "string") out.basis = stub.basis;
+  // The twin a duplicate canonicalises to rides in the ledger (SEO-039): the
+  // carry dropped it, and every carried duplicate entry read duplicateOf null.
+  if (state === "retired" && typeof stub.duplicateOf === "string" && stub.duplicateOf.startsWith("/")) out.duplicateOf = stub.duplicateOf;
   return out;
 }
 
@@ -451,17 +522,41 @@ export function bakeEmployerKey(token) {
  * page. `displayName` gives the name; `unreadable` flags a board whose name is
  * still a system code, which gets a page but never an indexable one.
  */
-export function selectLanders(companyFacet, { openOf, displayName = (c) => c.name.trim(), unreadable = () => false, max = 500, min = 8 }) {
+export function selectLanders(companyFacet, { openOf, displayName = (c) => c.name.trim(), unreadable = () => false, max = 500, min = 8, keep = null, keepRatio = 0.5 }) {
   const size = (c) => (typeof c.open === "number" ? c.open : (c.count ?? 0));
-  const top = (Array.isArray(companyFacet) ? companyFacet : [])
+  const ranked = (Array.isArray(companyFacet) ? companyFacet : [])
     // Tilde is allowed: Oracle/Workday compound tokens (tenant~dc~site) are
     // valid URL path segments, the list API accepts them, and the SPA route
     // serves them 200 (verified on Hilton, efet~us2~CX_1, 2026-07-26).
     .filter((c) => c && typeof c.token === "string" && /^[A-Za-z0-9._~-]+$/.test(c.token)
       && typeof c.name === "string" && c.name.trim()
       && (typeof openOf(c) === "number" ? openOf(c) >= min : (typeof c.count === "number" && c.count >= min)))
-    .sort((a, b) => (openOf(b) ?? b.count ?? 0) - (openOf(a) ?? a.count ?? 0))
-    .slice(0, max)
+    .sort((a, b) => (openOf(b) ?? b.count ?? 0) - (openOf(a) ?? a.count ?? 0));
+  let chosen = ranked.slice(0, max);
+  // D7 AT THE CEILING (owner decision; the round's review, 2026-10-24): the
+  // plain top `max` rotated boards indexable on the live site today out at
+  // the cut (24 pages with 198-307 open roles each in the round's bake). A
+  // board indexable today (`keep`) keeps its place while its open roles are
+  // at least `keepRatio` of the cut's; it displaces the lowest-ranked NEW
+  // boards, never another board indexable today and never a board of an
+  // employer that has one (a secondary board pools its openings into its
+  // employer's page: dropping PwC's campus board cut "across 3 hiring-system
+  // boards" to one), so the set never passes the ceiling. Refusing a page new
+  // to the index is what D7 allows.
+  if (keep && typeof keep.has === "function" && keep.size && ranked.length > max && chosen.length) {
+    const cut = openOf(chosen[chosen.length - 1]) ?? chosen[chosen.length - 1].count ?? 0;
+    const held = ranked.slice(max).filter((c) => keep.has(c.token) && (openOf(c) ?? c.count ?? 0) >= cut * keepRatio);
+    const groupOf = (c) => `${bakeEmployerKey(c.token)}\u0000${String(displayName(c) ?? "").toLowerCase().replace(/\s+/g, " ").trim()}`;
+    const keptGroups = new Set(ranked.filter((c) => keep.has(c.token)).map(groupOf));
+    const droppable = chosen.filter((c) => !keep.has(c.token) && !keptGroups.has(groupOf(c))).reverse();
+    const n = Math.min(held.length, droppable.length);
+    if (n) {
+      const drop = new Set(droppable.slice(0, n).map((c) => c.token));
+      chosen = [...chosen.filter((c) => !drop.has(c.token)), ...held.slice(0, n)]
+        .sort((a, b) => (openOf(b) ?? b.count ?? 0) - (openOf(a) ?? a.count ?? 0));
+    }
+  }
+  const top = chosen
     .map((c) => {
       const open = openOf(c);
       const name = displayName(c);
@@ -469,18 +564,26 @@ export function selectLanders(companyFacet, { openOf, displayName = (c) => c.nam
     });
   const nameKey = (c) => c.name.toLowerCase().replace(/\s+/g, " ").trim();
   const groupKey = (c) => `${bakeEmployerKey(c.token)}\u0000${nameKey(c)}`;
-  // One employer under one name: its largest board.
+  // THE PAGE INDEXABLE TODAY STAYS THE CANONICAL ONE (D7): when two boards of
+  // one employer swap places by open roles, the primary used to move with
+  // them, and the URL in the index started pointing its canonical at the
+  // other (PwC's crm board, indexable on 2026-10-24, would have canonicalised
+  // to its Global board). A board in `keep` wins its group; otherwise the
+  // largest does. The pooled count is the same either way.
+  const kept = (c) => !!(keep && typeof keep.has === "function" && keep.has(c.token));
+  const better = (c, prev) => (kept(c) !== kept(prev) ? kept(c) : size(c) > size(prev));
+  // One employer under one name: its board indexable today, else its largest.
   const primaryByGroup = new Map();
   for (const c of top) {
     const prev = primaryByGroup.get(groupKey(c));
-    if (!prev || size(c) > size(prev)) primaryByGroup.set(groupKey(c), c);
+    if (!prev || better(c, prev)) primaryByGroup.set(groupKey(c), c);
   }
-  // Across employers sharing a name: the largest of their primaries carries
-  // the one indexable page for that title.
+  // Across employers sharing a name: the one indexable today, else the
+  // largest of their primaries, carries the one indexable page for that title.
   const largestByName = new Map();
   for (const p of primaryByGroup.values()) {
     const prev = largestByName.get(nameKey(p));
-    if (!prev || size(p) > size(prev)) largestByName.set(nameKey(p), p);
+    if (!prev || better(p, prev)) largestByName.set(nameKey(p), p);
   }
   return top.map((c) => {
     const own = primaryByGroup.get(groupKey(c));
@@ -520,7 +623,7 @@ export function employerPageOf(landers, token) {
  * and a board whose printed name is still its tenant code gets a page that is
  * never indexable.
  */
-export const bakeLanders = (companyFacet, { D, openOf, max, min, nameOf = null }) => selectLanders(companyFacet, {
+export const bakeLanders = (companyFacet, { D, openOf, max, min, nameOf = null, keep = null }) => selectLanders(companyFacet, {
   openOf,
   // SEO-006: `nameOf` is the bake's repaired name (scripts/prerender-names.mjs
   // bakeEmployerName: "Chubb External" prints as "Chubb"); the code-shape test
@@ -529,6 +632,7 @@ export const bakeLanders = (companyFacet, { D, openOf, max, min, nameOf = null }
   unreadable: (c, name) => D.isCodeShapedName(c.token, name) || (nameOf ? D.isCodeShapedName(c.token, D.boardName(c.token, c.name)) : false),
   ...(max ? { max } : {}),
   ...(min ? { min } : {}),
+  ...(keep ? { keep } : {}),
 });
 
 /**
@@ -679,6 +783,37 @@ export const LANDER_OPENINGS_MAX_AGE_DAYS = 14;
 export const LANDER_OPENINGS_SHOWN = 10;
 export const LANDER_MIN_OPENINGS = 3;
 
+/**
+ * get_company_intel FOR EACH EMPLOYER PAGE, UNDER ONE DEADLINE (2026-10-18).
+ *
+ * When the RPC was slow, 500 employers at an 8-second timeout each ran past
+ * the publish build's time limit and the publish failed, so Lovable put a
+ * 90-second deadline on the whole phase and stopped after 18 failures in a
+ * row. Past either, the remaining employers get no intel. That never costs a
+ * page: a page with no intel states no places or fields (landerFacts of
+ * nothing is empty) and is written all the same, so an employer page the
+ * bake chose is never dropped because its intel read timed out or was never
+ * made. `fetchIntel(token)` answers the parsed body, or null on a refusal;
+ * `now` is the clock, injectable for the test.
+ */
+export async function readCompanyIntel({ tokens, fetchIntel, deadlineMs = 90_000, maxFailRun = 18, batch = 6, now = Date.now }) {
+  const intelOf = new Map();
+  const deadline = now() + deadlineMs;
+  let failRun = 0;
+  let skipped = 0;
+  for (let i = 0; i < tokens.length; i += batch) {
+    if (now() > deadline || failRun >= maxFailRun) { skipped = tokens.length - i; break; }
+    await Promise.all(tokens.slice(i, i + batch).map(async (token) => {
+      try {
+        const j = await fetchIntel(token);
+        if (j && typeof j === "object" && !Array.isArray(j)) { intelOf.set(token, j); failRun = 0; }
+        else failRun++;
+      } catch { failRun++; }
+    }));
+  }
+  return { intelOf, skipped };
+}
+
 /** Up to three named places and three named fields from one get_company_intel answer. */
 export function landerFacts(intel, { countryName, fieldLabel }) {
   const rows = (v, key) => (Array.isArray(v) ? v : [])
@@ -738,7 +873,7 @@ export function nextOpeningsCache({ prior, reads, tokens, today, maxAgeDays = LA
  * young enough to print: a posting page or two with no listing read says
  * nothing about how many roles the employer lists.
  */
-export function landerOpenings({ postings = [], cached = null, today, maxAgeDays = LANDER_OPENINGS_MAX_AGE_DAYS, limit = LANDER_OPENINGS_SHOWN }) {
+export function landerOpenings({ postings = [], cached = null, today, maxAgeDays = LANDER_OPENINGS_MAX_AGE_DAYS, limit = LANDER_OPENINGS_SHOWN, pageFor = () => null }) {
   const e = youngEntry(cached, today, maxAgeDays);
   const out = [];
   const ids = new Set();
@@ -747,13 +882,38 @@ export function landerOpenings({ postings = [], cached = null, today, maxAgeDays
     if (p.id) ids.add(p.id);
     out.push({ href: p.path, title: p.title, place: p.place ?? "" });
   }
+  // A LISTED ROW LINKS ONLY TO A PAGE THIS BAKE WROTE (SEO-005, S12-131). The
+  // rows used to link /jobs?job=<id>: 4,655 such links on 488 indexable company
+  // pages, every one answering with the /jobs file under a canonical of /jobs,
+  // against 234 links to posting pages that exist. A row with no page of its
+  // own is printed as text, and the page carries one link to the live board.
   for (const r of e ? e.rows : []) {
     if (out.length >= limit) break;
     if (ids.has(r.id)) continue;
     ids.add(r.id);
-    out.push({ href: `/jobs?job=${encodeURIComponent(r.id)}`, title: r.title, place: r.place ?? "" });
+    const page = pageFor(r.id);
+    out.push({ href: typeof page === "string" && page.startsWith("/jobs/posting/") ? page : null, title: r.title, place: r.place ?? "" });
   }
   return { openings: out, at: e ? e.at : null, answered: !!e };
+}
+
+/**
+ * THE BOARD'S OWN HIRING SYSTEM, by name, or null (SEO-005). Every company
+ * page said "(one of Workday, SmartRecruiters, Breezy, …, JazzHR)", all
+ * nineteen, whatever the employer runs. The source is the first segment of a
+ * board id, so a listed opening or a posting page names it; a Workday or UKG
+ * token names it by its shape. `labelOf` maps a source key to its printed name.
+ */
+export function boardVendorOf(token, { ids = [], labelOf }) {
+  for (const id of ids) {
+    const src = String(id ?? "").split(":")[0];
+    const label = src ? labelOf(src) : null;
+    if (label) return label;
+  }
+  const t = String(token ?? "");
+  if (/^[^~]+~wd\d+~/.test(t)) return labelOf("workday");
+  if (/^recruiting2?~/.test(t)) return labelOf("ukg");
+  return null;
 }
 
 /** True when a company page lists enough of its own openings to be a page of its own. */
@@ -829,35 +989,57 @@ export const LANDER_KIND_COPY = {
   agencyBanner: "This is a staffing agency's board. Roles here are usually for its clients.",
 };
 
-export function companyLanderPage({ token, name, primaryToken, robots = null, canonicalTo = null, openN, countedOn = null, facts, openings = [], openingsAt = null, sources, boardCompanies, site, esc, possessive, fmt, href: hrefOf, kind = "employer", copy = LANDER_KIND_COPY }) {
+export function companyLanderPage({ token, name, primaryToken, robots = null, canonicalTo = null, openN, countedOn = null, facts, openings = [], openingsAt = null, vendor = null, boards = 1, nameShared = false, collision = null, boardCompanies, site, esc, possessive, fmt, href: hrefOf, kind = "employer", copy = LANDER_KIND_COPY }) {
   const C = { ...LANDER_KIND_COPY, ...(copy ?? {}) };
   const nm = name;
   const isPrimary = primaryToken === token;
   const hasN = typeof openN === "number";
   const href = hrefOf(token);
   const poss = possessive(nm);
-  const pages = openings.filter((p) => String(p.href).startsWith("/jobs/posting/"));
+  const pages = openings.filter((p) => typeof p.href === "string" && p.href.startsWith("/jobs/posting/"));
   const counted = countedOn ? `, counted ${esc(countedOn)}` : "";
   const usajobs = kind === "usajobs";
   const agency = kind === "agency";
+  // A TOKEN TWO HIRING SYSTEMS CARRY NAMES NO EMPLOYER (S13-117). Nothing held
+  // says whether the boards are one employer, so the page says what the SPA's
+  // collision page says, prints no "own hiring system" and names no
+  // Organization.
+  const collided = !!(collision && collision.h1);
+  // THE EMPLOYER'S OWN HIRING SYSTEM, BY NAME, OR NONE (SEO-005): never the
+  // nineteen-system list.
+  const sys = vendor ? ` (${esc(vendor)})` : "";
+  // MORE THAN ONE OF THE EMPLOYER'S BOARDS POOLED INTO THE COUNT (S12-021):
+  // the PwC page stated 1,525 of the employer's roles while two sibling boards
+  // that canonicalise to it carried 1,486 more.
+  const pooled = Number.isInteger(boards) && boards > 1;
   const capLine = String(C.usajobsCap).replace(/\{\{\s*cap\s*\}\}/g, fmt(C.usajobsCapValue));
   // Who the roles belong to, in the headings and the links: an employer's
   // own; the listing site's agencies'; an agency's clients'.
   const where = usajobs ? "Where these federal openings are" : agency ? `Where ${esc(poss)} listed roles are` : `Where ${esc(poss)} open roles are`;
   const fieldsHead = usajobs ? "The fields these federal openings are in" : agency ? `The fields ${esc(poss)} roles are listed in` : `The fields ${esc(nm)} is hiring in`;
+  // WHOSE COUNTS THE PLACES AND FIELDS ARE (S13-116). get_company_intel reads
+  // the whole hiring system a board sits on (every career site of a Workday
+  // tenant), so on a sub-site page "on this board" credited the tenant's
+  // countries and fields to one site. The sentence names the scope it read.
+  const factsScope = usajobs ? "across USAJOBS" : `across ${esc(poss)} hiring system`;
+  // A row with a page of its own is linked; any other row is text, and the
+  // page's one link to the live board (below) is how a reader opens it.
+  const openingRow = (p) => (typeof p.href === "string" && p.href
+    ? `<li><a href="${esc(p.href)}">${esc(p.title)}</a>${p.place ? ` — ${esc(p.place)}` : ""}</li>`
+    : `<li>${esc(p.title)}${p.place ? ` — ${esc(p.place)}` : ""}</li>`);
   const factsHtml = [
     facts?.countries?.length
       ? `<h2>${where}</h2>
-            <p>The countries holding the most of its roles on this board: ${facts.countries.map((x) => `<a href="${href}?country=${encodeURIComponent(x.code)}">${esc(x.name)}</a>`).join(", ")}.</p>`
+            <p>The countries holding the most of its roles ${factsScope}: ${facts.countries.map((x) => `<a href="${href}?country=${encodeURIComponent(x.code)}">${esc(x.name)}</a>`).join(", ")}.</p>`
       : "",
     facts?.fields?.length
       ? `<h2>${fieldsHead}</h2>
-            <p>The fields holding the most of its roles on this board: ${facts.fields.map((x) => `<a href="${href}?category=${encodeURIComponent(x.slug)}">${esc(x.label)}</a>`).join(", ")}. Fields are our own sorting of each posting's title, never a label the employer applied.</p>`
+            <p>The fields holding the most of its roles ${factsScope}: ${facts.fields.map((x) => `<a href="${href}?category=${encodeURIComponent(x.slug)}">${esc(x.label)}</a>`).join(", ")}. Fields are our own sorting of each posting's title, never a label the employer applied.</p>`
       : "",
     openings.length
-      ? `<h2>${usajobs ? "Openings listed on USAJOBS" : agency ? `Roles listed by ${esc(nm)}` : `Openings at ${esc(nm)}`}</h2>
-            <p>${openingsAt ? `From ${esc(poss)} listing on this board, read ${esc(openingsAt)}, newest first` : `${esc(poss)} openings with a page of their own on this site`}; the live board re-checks a posting when you open it.</p>
-            <ul>${openings.map((p) => `<li><a href="${esc(p.href)}">${esc(p.title)}</a>${p.place ? ` — ${esc(p.place)}` : ""}</li>`).join("")}</ul>`
+      ? `<h2>${usajobs ? "Openings listed on USAJOBS" : collided ? "Openings on these boards" : agency ? `Roles listed by ${esc(nm)}` : `Openings at ${esc(nm)}`}</h2>
+            <p>${openingsAt ? `From ${collided ? "these boards' listing" : `${esc(poss)} listing`} on this board, read ${esc(openingsAt)}, newest first` : `${collided ? "Openings" : `${esc(poss)} openings`} with a page of their own on this site`}; the live board ${RECHECK_CLAUSE}. A role with a page of its own on this site is linked; every role opens on <a href="${href}">the live board</a>.</p>
+            <ul>${openings.map(openingRow).join("")}</ul>`
       : "",
   ].filter(Boolean).join("\n            ");
   // 68-char SERP budget: the name always stays whole; the source phrase gives
@@ -866,37 +1048,62 @@ export function companyLanderPage({ token, name, primaryToken, robots = null, ca
   // The count's basis (what an open role is, and the day it was counted) is
   // the first sentence of the body.
   const fit = (...options) => options.find((o) => o.length <= 68) ?? options[options.length - 1];
-  const title = usajobs
-    ? (hasN ? fit(`${C.usajobsH1}: ${fmt(openN)} roles`, C.usajobsH1) : C.usajobsH1)
-    : agency
-      ? (hasN ? fit(`${nm} jobs: ${fmt(openN)} roles listed by a staffing agency`, `${nm} jobs: ${fmt(openN)} roles`, `${nm} jobs`) : fit(`${nm} jobs: roles listed by a staffing agency`, `${nm} jobs`))
-      : (hasN
-        ? fit(`${nm} jobs: ${fmt(openN)} open roles from their own hiring system`, `${nm} jobs: ${fmt(openN)} open roles`, `${nm} jobs`)
-        : fit(`${nm} jobs: open roles from their own hiring system`, `${nm} jobs`));
-  const description = usajobs
-    ? `${hasN ? `${fmt(openN)} federal openings` : "Federal openings"} listed on USAJOBS, each naming its agency. ${capLine} Check your resume's fit free.`
-    : agency
-      ? `${hasN ? `${fmt(openN)} roles` : "Roles"} listed by ${nm}, a staffing agency: roles are usually for its clients. Check your resume's fit free before you apply.`
-      : hasN
-        ? `${fmt(openN)} open roles at ${nm}, read from ${poss} own hiring system. Check your resume's fit free before you apply.`
-        : `Open roles at ${nm}, read from ${poss} own hiring system. Check your resume's fit free before you apply.`;
+  // A BOARD THAT SHARES ITS NAME WITH A DIFFERENT, LARGER EMPLOYER (SEO-037)
+  // keeps its own canonical, is never indexed, and says which board it is: the
+  // University of Rochester's UR_Staff tenant canonicalised to another
+  // tenant's page the bake itself classes as a different employer.
+  const siteLabel = String(token).includes("~") ? String(token).split("~").pop() : String(token);
+  const sharedTail = vendor ? `on its ${vendor} board “${siteLabel}”` : `on its board “${siteLabel}”`;
+  const title = collided
+    ? fit(String(collision.h1))
+    : usajobs
+      ? (hasN ? fit(`${C.usajobsH1}: ${fmt(openN)} roles`, C.usajobsH1) : C.usajobsH1)
+      : agency
+        ? (hasN ? fit(`${nm} jobs: ${fmt(openN)} roles listed by a staffing agency`, `${nm} jobs: ${fmt(openN)} roles`, `${nm} jobs`) : fit(`${nm} jobs: roles listed by a staffing agency`, `${nm} jobs`))
+        : nameShared
+          ? (hasN ? fit(`${nm} jobs: ${fmt(openN)} open roles ${sharedTail}`, `${nm} jobs ${sharedTail}`, `${nm} jobs (${siteLabel})`) : fit(`${nm} jobs ${sharedTail}`, `${nm} jobs (${siteLabel})`))
+          : pooled && hasN
+            ? fit(`${nm} jobs: ${fmt(openN)} open roles across ${boards} hiring-system boards`, `${nm} jobs: ${fmt(openN)} open roles across ${boards} boards`, `${nm} jobs: ${fmt(openN)} open roles`, `${nm} jobs`)
+            : (hasN
+              ? fit(`${nm} jobs: ${fmt(openN)} open roles from their own hiring system`, `${nm} jobs: ${fmt(openN)} open roles`, `${nm} jobs`)
+              : fit(`${nm} jobs: open roles from their own hiring system`, `${nm} jobs`));
+  // Built up to the snippet budget, never cut (OBS-2): the long form only when
+  // it fits, the short one otherwise.
+  const snip = (...options) => options.find((o) => o.length <= 160) ?? options[options.length - 1];
+  const description = collided
+    ? snip(`${String(collision.h1)}: ${hasN ? `${fmt(openN)} open roles across the boards` : "the open roles on each board"}. Nothing we hold says whether they are one employer.`, `${String(collision.h1)}.`)
+    : usajobs
+      ? snip(`${hasN ? `${fmt(openN)} federal openings` : "Federal openings"} listed on USAJOBS, each naming its agency. ${capLine} Check your resume's fit free.`, `${hasN ? `${fmt(openN)} federal openings` : "Federal openings"} listed on USAJOBS, each naming its agency.`)
+      : agency
+        ? snip(`${hasN ? `${fmt(openN)} roles` : "Roles"} listed by ${nm}, a staffing agency: roles are usually for its clients. Check your resume's fit free before you apply.`, `${hasN ? `${fmt(openN)} roles` : "Roles"} listed by ${nm}, a staffing agency: roles are usually for its clients.`, `Roles listed by ${nm}, a staffing agency.`)
+        : pooled && hasN
+          ? snip(`${fmt(openN)} open roles at ${nm} across ${boards} of its hiring-system boards, read from its own hiring systems. Check your resume's fit free before you apply.`, `${fmt(openN)} open roles at ${nm} across ${boards} of its hiring-system boards, read from its own hiring systems.`, `${fmt(openN)} open roles at ${nm}, read from its own hiring systems.`)
+          : snip(
+            `${hasN ? `${fmt(openN)} open roles` : "Open roles"} at ${nm}, read from ${poss} own hiring system. Check your resume's fit free before you apply.`,
+            `${hasN ? `${fmt(openN)} open roles` : "Open roles"} at ${nm}, read from ${poss} own hiring system.`,
+            `${hasN ? `${fmt(openN)} open roles` : "Open roles"} at ${nm}, read from its own hiring system.`,
+            `${hasN ? `${fmt(openN)} open roles` : "Open roles"} at ${nm}.`,
+          );
   const windowRule = (who) => ` An open role here is a posting ${who} whose date falls inside the last 30 days: ${usajobs ? "the agency's own date, or for a posting with no date, the day we last saw it in the feed" : "the employer's own date, or for a posting with no date, the day we last saw it in their feed"}. That is the same rule the live board page applies. The count was measured when this page was built and moves as roles open and close.`;
   const noCount = ` This build could not read a count it can stand behind for ${esc(nm)}, so it states none rather than a figure the live board would contradict.`;
-  const lead = usajobs
-    ? `<h1>${esc(C.usajobsH1)}</h1>
+  const lead = collided
+    ? `<h1>${esc(String(collision.h1))}</h1>
+            <p>${esc(String(collision.lead ?? ""))} ${hasN ? `${fmt(openN)} open roles across the boards${counted}.` : ""}${hasN ? windowRule("its board has not taken down") : ""}</p>`
+    : usajobs
+      ? `<h1>${esc(C.usajobsH1)}</h1>
             <p>${esc(C.usajobsSubtitle)} ${hasN ? `${fmt(openN)} openings listed${counted}.` : ""} ${esc(capLine)} Applying happens on USAJOBS.${hasN ? windowRule("that is still listed") : noCount}</p>`
-    : agency
-      ? `<h1>Roles listed by ${esc(nm)}</h1>
+      : agency
+        ? `<h1>Roles listed by ${esc(nm)}</h1>
             <p>${esc(C.agencyBanner)}</p>
-            <p>${hasN ? `${fmt(openN)} roles on ${esc(poss)} board${counted}` : `Roles on ${esc(poss)} board`}, read from its own hiring system (one of ${sources}). Applying happens on ${esc(poss)} site.${hasN ? windowRule(`${esc(nm)} has not taken down`) : noCount}</p>`
-      : `<h1>Open roles at ${esc(nm)}</h1>
-            <p>${hasN ? `${fmt(openN)} open ${esc(nm)} roles${counted}` : `Open ${esc(nm)} roles`}, pulled straight from ${esc(poss)} own hiring system (one of ${sources}). Applying happens on ${esc(poss)} own site.${hasN ? windowRule(`${esc(nm)} has not taken down`) : noCount}</p>`;
-  const browse = usajobs ? "Browse every federal opening listed on USAJOBS on the live board" : agency ? `Browse every role ${esc(nm)} lists on the live board` : `Browse all ${esc(nm)} openings on the live board`;
-  const pageName = usajobs ? C.usajobsH1 : agency ? `Roles listed by ${nm}` : `Open roles at ${nm}`;
+            <p>${hasN ? `${fmt(openN)} roles on ${esc(poss)} board${counted}` : `Roles on ${esc(poss)} board`}, read from its own hiring system${sys}. Applying happens on ${esc(poss)} site.${hasN ? windowRule(`${esc(nm)} has not taken down`) : noCount}</p>`
+        : `<h1>Open roles at ${esc(nm)}</h1>
+            <p>${hasN ? `${fmt(openN)} open ${esc(nm)} roles${pooled ? ` across ${boards} of ${esc(poss)} hiring-system boards` : ""}${counted}` : `Open ${esc(nm)} roles`}, read from ${esc(poss)} own hiring system${pooled ? "s" : ""}${sys}${nameShared ? `: this is ${esc(poss)} board “${esc(siteLabel)}”, and another board under the same name, which we cannot tie to this one, has a page of its own` : ""}. Applying happens on ${esc(poss)} own site.${hasN ? windowRule(`${esc(nm)} has not taken down`) : noCount}</p>`;
+  const browse = usajobs ? "Browse every federal opening listed on USAJOBS on the live board" : collided ? "Browse the roles on these boards on the live board" : agency ? `Browse every role ${esc(nm)} lists on the live board` : `Browse all ${esc(nm)} openings on the live board`;
+  const pageName = collided ? String(collision.h1) : usajobs ? C.usajobsH1 : agency ? `Roles listed by ${nm}` : `Open roles at ${nm}`;
   return {
     path: `/jobs/company/${token}`,
-    canonical: canonicalTo ? `/jobs/company/${canonicalTo}` : isPrimary ? null : `/jobs/company/${primaryToken}`,
-    robots: canonicalTo ? null : isPrimary ? robots : null,
+    canonical: nameShared ? null : canonicalTo ? `/jobs/company/${canonicalTo}` : isPrimary ? null : `/jobs/company/${primaryToken}`,
+    robots: nameShared ? "noindex, follow" : canonicalTo ? null : isPrimary ? robots : null,
     title,
     description,
     content: `
@@ -909,16 +1116,19 @@ export function companyLanderPage({ token, name, primaryToken, robots = null, ca
       "@context": "https://schema.org",
       "@type": "CollectionPage",
       name: pageName,
-      description: usajobs
-        ? `Federal openings listed on USAJOBS, each naming its agency.`
-        : agency
-          ? `Roles listed by ${nm}, a staffing agency: roles are usually for its clients.`
-          : `Open ${nm} roles read from ${poss} own hiring system.`,
+      description: collided
+        ? `${String(collision.h1)}. Nothing we hold says whether they are one employer.`
+        : usajobs
+          ? `Federal openings listed on USAJOBS, each naming its agency.`
+          : agency
+            ? `Roles listed by ${nm}, a staffing agency: roles are usually for its clients.`
+            : `Open ${nm} roles read from ${poss} own hiring system${pooled ? "s" : ""}.`,
       url: `${site}${href}`,
       // An Organization is named only as an employer hiring for itself: not
-      // for the federal listing site, not for an agency's clients' roles.
-      ...(usajobs || agency ? {} : { about: { "@type": "Organization", name: nm } }),
-      isPartOf: { "@type": "WebSite", name: "Resume Booster", url: site },
+      // for the federal listing site, not for an agency's clients' roles, and
+      // not for a name two employers' boards share.
+      ...(usajobs || agency || collided ? {} : { about: { "@type": "Organization", name: nm } }),
+      isPartOf: websiteRef(site),
       // Only the openings that are pages of their own: a board link is the board.
       ...(pages.length ? { mainEntity: { "@type": "ItemList", itemListElement: pages.map((p, i) => ({ "@type": "ListItem", position: i + 1, url: `${site}${p.href}`, name: p.title })) } } : {}),
     }, {
@@ -926,7 +1136,7 @@ export function companyLanderPage({ token, name, primaryToken, robots = null, ca
       "@type": "BreadcrumbList",
       itemListElement: [
         { "@type": "ListItem", position: 1, name: "Job board", item: `${site}/jobs` },
-        { "@type": "ListItem", position: 2, name: usajobs ? "USAJOBS listings" : `${nm} jobs`, item: `${site}${href}` },
+        { "@type": "ListItem", position: 2, name: usajobs ? "USAJOBS listings" : collided ? String(collision.h1) : `${nm} jobs`, item: `${site}${href}` },
       ],
     }],
   };

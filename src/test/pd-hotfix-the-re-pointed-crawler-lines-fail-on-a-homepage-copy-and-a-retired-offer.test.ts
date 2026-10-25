@@ -346,6 +346,54 @@ describe("round 3: /pricing's JSON-LD is walked, and the walks read four more sh
   });
 });
 
+describe("the SEO round's merge (2026-10-25): the backstop reads $295 as no $29 price, and skips only the clause that names Freelance Boost", () => {
+  const backstop = (lines: string[]) => lines.filter((l) => /L9-11 backstop/.test(l));
+  const passes = (lines: string[]) => has(lines, "PASS", /\/llms-full\.txt names the registry entry, names no pass and carries no retired claim/);
+
+  it("a larger price that starts with 29 is not $29: $295, $2,950, USD 295 and $29.99 print nothing; $29, $29.00, $29, and 29 USD still print", () => {
+    const none = ["Lifetime access: $295.", "Team plan: $2,950 a year.", "Enterprise: USD 295 a month.", "A course for $29.99 a month."];
+    const some = ["Six hours of searches: $29.", "Six hours of searches: $29.00.", "For $29, six hours of searches.", "Six hours of searches for 29 USD."];
+    const lines = l911Many([...none, ...some]);
+    none.forEach((t, i) => { expect(passes(lines[i]), t).toBe(true); expect(backstop(lines[i]), t).toEqual([]); });
+    some.forEach((t, i) => expect(backstop(lines[none.length + i]), t).toHaveLength(1));
+  });
+
+  it("a sentence that names Freelance Boost in one clause and prices something else at $29 in another prints that sentence; a clause carrying both the name and the price is skipped", () => {
+    const shown = [
+      "Freelance Boost is a one-time rewrite; agents get six hours of uncapped calls for $29.",
+      "Freelance Boost rewrites your profile, and $29 buys your agent a day of higher limits.",
+      "Freelance Boost and a six-hour agent window at $29 are both on sale.",
+      // " or " and " plus " join two things too (the SEO round's merge review):
+      // the clause that prices the second one does not name Freelance Boost.
+      "Freelance Boost or a six-hour unlimited agent window costs $29.",
+      "Freelance Boost plus six hours of uncapped agent calls for $29.",
+      // So do " with ", " versus ", " vs ", an opening bracket and a slash
+      // (the SEO round's last pass before landing).
+      "Freelance Boost with six uncapped agent hours costs $29.",
+      "Freelance Boost (and a six-hour agent window) costs $29.",
+      "Freelance Boost versus a six-hour agent window at $29.",
+      "Freelance Boost vs a six-hour agent window at $29.",
+      "Freelance Boost/six-hour agent window: $29.",
+    ];
+    const skipped = [
+      "Freelance Boost ($29) rewrites your profile, and it is delivered within 48 hours.",
+      "$29 one-time Freelance Boost, delivered within 48 hours.",
+      // A bracket that holds only the price stays with the name before it, and
+      // a clause after " with " that prices nothing prints nothing.
+      "Freelance Boost ($29.00) comes with a guided intake, delivered within 48 hours.",
+      "Freelance Boost (USD 29) rewrites your profile/portfolio.",
+      // Live llms-full's own sentence: its " or " splits no price from the name.
+      "Freelance Boost ($29) takes a guided project intake — or a pasted platform profile — and applies exactly the structure rules in this guide.",
+    ];
+    const lines = l911Many([...shown, ...skipped]);
+    shown.forEach((t, i) => {
+      expect(passes(lines[i]), t).toBe(true);
+      expect(backstop(lines[i]), t).toEqual([expect.stringMatching(new RegExp(`^INFO +L9-11 backstop: /llms-full\\.txt prices something at \\$29 without naming Freelance Boost: "${t.slice(0, 140).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"`))]);
+    });
+    skipped.forEach((t, i) => expect(backstop(lines[shown.length + i]), t).toEqual([]));
+  });
+});
+
 describe("round 3: L9-11 is judged by the retired pass's own copy, with the price rule as a backstop", () => {
   const routes = (home: string, llmsFull: string) => [route("/", home), route("/llms-full.txt", llmsFull)];
   const l911 = (extra: string) => run76(routes(HOMEPAGE, `${LLMS_FULL}${extra}\n`));
@@ -454,11 +502,13 @@ describe("round 4: L9-11 FAILs on the pass's own copy, its names and the retired
     "One payment of $29 lifts your agent's daily ceiling for the rest of the day.",
   ];
 
-  it("the three true sentences the recheck saw FAIL now PASS; the two that name Freelance Boost print no INFO", () => {
+  it("the three true sentences the recheck saw FAIL now PASS; the one whose $29 sits in the clause naming Freelance Boost prints no INFO", () => {
     const lines = l911Many(TRUE_COPY);
     TRUE_COPY.forEach((t, i) => expect(passes(lines[i]), `${t}\n${lines[i].join("\n")}`).toBe(true));
     expect(backstop(lines[0])).toEqual([]);
-    expect(backstop(lines[1])).toEqual([]);
+    // Its price has a clause of its own ("costs $29"), which names no product:
+    // only the clause naming Freelance Boost is skipped (the SEO round's merge).
+    expect(backstop(lines[1])).toEqual([expect.stringMatching(/^INFO +L9-11 backstop: \/llms-full\.txt prices something at \$29 without naming Freelance Boost: "Freelance Boost, our guided one-time profile rewrite/)]);
     expect(backstop(lines[2])).toEqual([expect.stringMatching(/^INFO +L9-11 backstop: \/llms-full\.txt prices something at \$29 without naming Freelance Boost: "Resume review: \$29, returned within 24 hours\."/)]);
   });
 

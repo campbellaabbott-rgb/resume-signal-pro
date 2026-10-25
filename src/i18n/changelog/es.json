@@ -1406,7 +1406,7 @@
     },
     "signInEmailsHaveASecondSender": {
       "title": "Los correos de inicio de sesión y de restablecimiento tienen un segundo remitente",
-      "description": "Si nuestro servicio de correo principal rechaza un correo de inicio de sesión o de restablecimiento de contraseña, o no consigue enviarlo tres veces, ahora el correo sale por un segundo servicio de correo en lugar de fallar. Un proceso propio envía estos correos desde su cola cada 10 segundos. Un caso todavía espera: cuando el servicio principal nos pide ir más despacio, el correo lo espera en lugar de pasar al segundo servicio."
+      "description": "Si nuestro servicio de correo principal rechaza un correo de inicio de sesión o de restablecimiento de contraseña, o no consigue enviarlo tres veces, ahora el correo sale por un segundo servicio de correo en lugar de fallar. Un proceso propio envía estos correos desde su cola cada 10 segundos."
     },
     "privacyAroundSignInAndPurchases": {
       "title": "Tres fallos de privacidad en el inicio de sesión y las compras",

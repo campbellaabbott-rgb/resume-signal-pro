@@ -84,8 +84,14 @@ export interface FilterBarProps {
   };
   /** Board variant: the names to print on company chips, by token. */
   companyLabels?: Record<string, string>;
-  /** Company variant: whose page this is. A generic board label is passed with generic: true. */
-  company?: { name: string; generic?: boolean; openRoles?: OpenRolesValue | null };
+  /**
+   * Company variant: whose page this is. A generic board label is passed with
+   * generic: true. `kind` says what the page is (R2, R8): a board name two
+   * hiring systems share ("collision", named by its `token`) or the federal
+   * listing site ("usajobs") is not one employer, so the keyword box never
+   * credits the page's count to a name.
+   */
+  company?: { name: string | null; generic?: boolean; openRoles?: OpenRolesValue | null; kind?: "employer" | "collision" | "usajobs"; token?: string };
   sort?: { value: string; options: Array<{ value: string; label: string }>; onChange: (v: string) => void };
   /** Called when the visitor submits the keyword or location (Enter). */
   onSubmit?: () => void;
@@ -193,8 +199,17 @@ export function FilterBar({ variant, value, onChange, options, companyLabels, co
 
   const lng = i18n.language;
   let keywordPlaceholder = t("filterBar.keywordPlaceholder", "Title or keyword");
-  if (variant === "company" && company?.name && !company.generic) {
-    const roles = company.openRoles;
+  const roles = company?.openRoles;
+  const n = roles && roles.value > 0 ? fmtCount(roles.value, { lng, floor: roles.floor }) : null;
+  if (variant === "company" && company?.kind === "collision" && company.token) {
+    keywordPlaceholder = n
+      ? t("filterBar.collisionKeywordPlaceholder", { count: roles!.value, n, token: company.token, defaultValue: "Search {{n}} roles on boards named “{{token}}”" })
+      : t("filterBar.collisionKeywordPlaceholderNoCount", { token: company.token, defaultValue: "Search roles on boards named “{{token}}”" });
+  } else if (variant === "company" && company?.kind === "usajobs") {
+    keywordPlaceholder = n
+      ? t("filterBar.usajobsKeywordPlaceholder", { count: roles!.value, n, defaultValue: "Search {{n}} federal openings listed on USAJOBS" })
+      : t("filterBar.usajobsKeywordPlaceholderNoCount", { defaultValue: "Search federal openings listed on USAJOBS" });
+  } else if (variant === "company" && company?.name && !company.generic) {
     keywordPlaceholder = roles && roles.value > 0
       ? t("filterBar.companyKeywordPlaceholder", {
           count: roles.value,

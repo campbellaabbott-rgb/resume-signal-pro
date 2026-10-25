@@ -21,6 +21,14 @@ import { codeOf } from "./helpers/strip-comments";
  *   within 200 KB.
  * The budgets are the spec's bake guard. A .png path holding JPEG bytes fails
  * here, so this fix cannot re-open L4-13.
+ *
+ * AND THE FOLLOW-UPS (SEO round of 2026-10-18):
+ * - the share image is 1200x630, the 1.91:1 frame Facebook, LinkedIn and X
+ *   crop to; at 1200x675 every card cut its top and bottom. The head's
+ *   og:image:height says 630 with it;
+ * - the touch icon is its own 180 px file (/apple-touch-icon.png, which iOS
+ *   also asks for with no link and which answered 404), so the tab icon no
+ *   longer has to be 180 px: favicon.png is 48-96 px and within 3 KB.
  */
 
 const ROOT = resolve(__dirname, "../..");
@@ -29,6 +37,10 @@ const SITE = "https://resumebooster.work";
 const read = (rel: string) => readFileSync(resolve(ROOT, rel), "utf8");
 
 const TAB_ICON_MAX_BYTES = 10 * 1024;
+const TAB_PNG_MAX_BYTES = 3 * 1024;
+const TAB_PNG_MAX_PX = 96;
+const TOUCH_ICON_PATH = "/apple-touch-icon.png";
+const SHARE_IMAGE_SIZE = { width: 1200, height: 630 };
 const ICO_MAX_BYTES = 10 * 1024;
 const SHARE_IMAGE_MAX_BYTES = 200 * 1024;
 const TAB_ICON_MIN_PX = 48;
@@ -156,6 +168,23 @@ describe("the static head's icons", () => {
     expect(size!.height).toBe(size!.width);
   });
 
+  it("the touch icon is its own 180 px file at /apple-touch-icon.png, not the tab icon", () => {
+    const touch = icons.filter((l) => relHas(l, "apple-touch-icon"));
+    const tabs = icons.filter((l) => relHas(l, "icon"));
+    expect(touch.map((l) => l.href)).toEqual([TOUCH_ICON_PATH]);
+    for (const tab of tabs) expect(tab.href, "the tab icon and the touch icon are different files").not.toBe(TOUCH_ICON_PATH);
+    const { size } = checkedImage(TOUCH_ICON_PATH);
+    expect(size).toEqual({ width: 180, height: 180 });
+    expect(touch[0].sizes, "the link declares the size it serves").toBe("180x180");
+  });
+
+  it.each(icons.filter((l) => relHas(l, "icon") && l.href.endsWith(".png")).map((l) => [l.href] as const))("PNG tab icon %s is 48-96 px and within 3 KB, now that the touch icon is a file of its own", (href) => {
+    const { bytes, size } = checkedImage(href);
+    expect(bytes.length, `${href} is ${bytes.length} B`).toBeLessThanOrEqual(TAB_PNG_MAX_BYTES);
+    expect(size!.width, `${href} is ${size!.width} px wide`).toBeGreaterThanOrEqual(TAB_ICON_MIN_PX);
+    expect(size!.width, `${href} is ${size!.width} px wide`).toBeLessThanOrEqual(TAB_PNG_MAX_PX);
+  });
+
   it("favicon.ico, fetched with no link by browsers and crawlers, carries 16, 32 and 48 px frames and stays within 10 KB", () => {
     const { bytes } = checkedImage("/favicon.ico");
     expect(bytes.length, `favicon.ico is ${bytes.length} B`).toBeLessThanOrEqual(ICO_MAX_BYTES);
@@ -184,6 +213,11 @@ describe("the share image", () => {
       expect(width > 0 && height > 0, "the head declares og:image:width and og:image:height").toBe(true);
       expect(size).toEqual({ width, height });
     }
+  });
+
+  it("the share image is 1200x630 (1.91:1) and the head says so", () => {
+    expect({ width: Number(meta("og:image:width")), height: Number(meta("og:image:height")) }).toEqual(SHARE_IMAGE_SIZE);
+    expect(checkedImage(ogImage!).size).toEqual(SHARE_IMAGE_SIZE);
   });
 
   it("the SPA's default share image (SEO.tsx) is the file the static head names", () => {

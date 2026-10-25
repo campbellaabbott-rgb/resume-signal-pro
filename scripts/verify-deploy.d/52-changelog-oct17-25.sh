@@ -9,7 +9,7 @@ echo "== 52. changelog of 17, 18 and 25 October on the crawler copy of /changelo
 CL52=$(curl -s -m 30 -A "$UA" "$SITE/changelog")
 CL52_BODY=""
 CL52_MAIN=$(curl -s -m 30 "$SITE/" | grep -o '/assets/index-[^"]*\.js' | head -1)
-for CH in $(curl -s -m 30 "$SITE$CL52_MAIN" | grep -o '"\./en-[A-Za-z0-9_-]*\.js"' | tr -d '"' | sed 's|^\./||' | grep -v '^en-GB-' | sort -u); do
+for CH in $(bash scripts/verify-us-english.sh "$SITE$CL52_MAIN"); do
   CL52_TRY=$(curl -s -m 30 "$SITE/assets/$CH")
   printf '%s' "$CL52_TRY" | grep -q "workdayCompanyPagesLostTheirFacts" || continue
   CL52_BODY=$CL52_TRY

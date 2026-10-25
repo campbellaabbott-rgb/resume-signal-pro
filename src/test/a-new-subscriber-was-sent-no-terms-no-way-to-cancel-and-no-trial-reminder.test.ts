@@ -328,5 +328,5 @@ describe("the ledger (20261009130000) in a real Postgres", () => {
     await pg.exec("INSERT INTO public.subscription_notices (subscription_id, kind, email) VALUES ('sub_x', 'confirmation', 'a@b.co')");
     await expect(pg.exec("INSERT INTO public.subscription_notices (subscription_id, kind, email) VALUES ('sub_x', 'confirmation', 'a@b.co')")).rejects.toThrow(/duplicate key/);
     await pg.close();
-  });
+  }, 60_000); // a Postgres booted in pglite, like every other pglite test's budget: 2.7 s alone, over 5 s under a loaded machine
 });

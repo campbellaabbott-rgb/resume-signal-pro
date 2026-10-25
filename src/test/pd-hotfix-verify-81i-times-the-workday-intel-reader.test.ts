@@ -247,11 +247,32 @@ describe("81j: at least 90% of a sitemap sample of baked Workday company pages s
   });
 
   it("names the fact lines exactly as the bake writes them (scripts/prerender-pages.mjs)", () => {
+    // The SEO round's bake names the scope it read (S13-116): "across
+    // Boeing's hiring system", or "across USAJOBS", where main's 2026-10-25
+    // bake, live until that round publishes, says "on this board".
     const bake = readFileSync(resolve(ROOT, "scripts/prerender-pages.mjs"), "utf8");
-    for (const marker of [PLACES, FIELDS]) {
-      expect(bake, marker).toContain(`<p>${marker} `);
-      expect(bakedJudge, marker).toContain(`"${marker}"`);
+    expect(bake).toMatch(/const factsScope = usajobs \? "across USAJOBS" : `across \$\{esc\(poss\)\} hiring system`;/);
+    for (const kind of ["countries", "fields"]) {
+      expect(bake, kind).toContain(`<p>The ${kind} holding the most of its roles \${factsScope}: `);
     }
+    for (const marker of [PLACES, FIELDS]) expect(bakedJudge, marker).toContain(`"${marker}"`);
+    const scoped = (scope: string) => (kind: string) => `<p>The ${kind} holding the most of its roles ${scope}: <a href="/jobs/company/x?country=US">United States</a>.</p>`;
+    for (const [label, line] of [
+      ["an employer's hiring system, its possessive escaped as the bake writes it", scoped("across Boeing&#39;s hiring system")],
+      ["an employer whose name ends in s", scoped("across Siemens&#39; hiring system")],
+      ["the federal listing site", scoped("across USAJOBS")],
+    ] as const) {
+      for (const kind of ["countries", "fields"]) {
+        const file = bakedFile(24, () => false);
+        for (const p of file.pages) p.body = baked(p.token, line(kind));
+        const lines = runBaked(file);
+        expect(lines[0], `${label}, ${kind}: ${show(lines)}`).toMatch(/^PASS {2}81j 24 of 24 /);
+      }
+    }
+    // A sentence with no scope, or one cut off before its colon, is not the bake's.
+    const near = bakedFile(24, () => false);
+    for (const p of near.pages) p.body = baked(p.token, "<p>The countries holding the most of its roles: United States.</p><p>The fields holding the most of its roles across Boeing&#39;s hiring system</p>");
+    expect(runBaked(near)[0]).toMatch(/^FAIL {2}81j 0 of 24 /);
   });
 
   it("the sample is the sitemap's first 4 Workday pages, its last 8 and 12 spread between them, in sitemap order, the same every run", () => {

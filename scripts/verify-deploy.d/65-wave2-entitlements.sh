@@ -74,7 +74,7 @@ esac
 # The copy the browser loads (the English strings chunk the main bundle names).
 EN65=""
 MAIN65=$(curl -s -m 30 "$SITE/" | grep -o '/assets/index-[^"]*\.js' | head -1)
-for CH in $(curl -s -m 30 "$SITE$MAIN65" | grep -o '"\./en-[A-Za-z0-9_-]*\.js"' | tr -d '"' | sed 's|^\./||' | sort -u); do
+for CH in $(bash scripts/verify-us-english.sh "$SITE$MAIN65"); do
   BODY65=$(curl -s -m 30 "$SITE/assets/$CH")
   printf '%s' "$BODY65" | grep -q "sourceNote" || continue
   EN65=$BODY65; break

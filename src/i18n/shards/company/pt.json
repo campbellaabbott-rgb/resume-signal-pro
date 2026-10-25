@@ -58,8 +58,8 @@
       "rowOpen_many": "{{n}} vagas abertas",
       "searchLink": "Pesquisar no portal ao vivo",
       "searchTail": "para filtrar qualquer empregador por função, salário ou local.",
-      "seoDescription": "Cada empregador do portal é lido diretamente do seu próprio sistema de recrutamento. Veja os maiores portais ou pesquise no portal ao vivo.",
-      "seoTitle": "Empresas a contratar agora — vagas ao vivo dos seus próprios sistemas de recrutamento",
+      "seoDescription": "Cada portal é lido do sistema de recrutamento que o publica: quase sempre o do empregador; agências de emprego e o portal federal estão assinalados.",
+      "seoTitle": "Empresas a contratar agora — vagas lidas de cada sistema de recrutamento",
       "countedAgo": "Números da última contagem do portal, {{ago}}.",
       "intro2": "Cada portal é lido do seu próprio sistema de recrutamento: a maioria é dos próprios empregadores, os portais de agências de recrutamento estão assinalados nas suas páginas, e o USAJOBS é o site de vagas do governo federal dos EUA, onde as agências publicam as suas vagas. Os maiores portais estão abaixo."
     },
@@ -84,7 +84,10 @@
       "roles": "Vagas abertas",
       "tableCaption": "Vagas abertas por área e por país",
       "title": "Distribuição das vagas",
-      "titleListings": "Vagas publicadas sobretudo em"
+      "titleListings": "Vagas publicadas sobretudo em",
+      "titlePooled": "Distribuição das contratações em todo o sistema do empregador",
+      "basisPooled": "Estes números cobrem todos os sites de carreira que este empregador mantém no mesmo sistema (pelo menos {{n}} vagas abertas), não só as {{m}} desta página. Lidos em {{date}}; vagas de áreas que não reconhecemos ficam de fora.",
+      "basisPooledUndated": "Estes números cobrem todos os sites de carreira que este empregador mantém no mesmo sistema (pelo menos {{n}} vagas abertas), não só as {{m}} desta página. Vagas de áreas que não reconhecemos ficam de fora."
     },
     "nameLoading": "A carregar o nome do empregador",
     "openRoles_one": "{{n}} vaga com data nos últimos {{days}} dias",
@@ -171,7 +174,8 @@
       "searchLabel": "Pesquisar vagas",
       "searchPlaceholder": "Empregador ou título da função",
       "searchTitle": "Procurar este empregador no portal ao vivo",
-      "title": "Ainda não lemos um portal chamado «{{token}}»"
+      "title": "Ainda não lemos um portal chamado «{{token}}»",
+      "didYouMean": "Você quis dizer um destes murais?"
     },
     "usajobs": {
       "cap": "Até {{cap}} resultados por pesquisa; nem todas as vagas federais.",

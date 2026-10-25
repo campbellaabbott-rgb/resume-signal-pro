@@ -17,6 +17,7 @@ vi.mock("@/integrations/supabase/client", () => ({
 }));
 
 import { MoreRolesAtEmployer, MORE_ROLES_SHOWN } from "./MoreRolesAtEmployer";
+import { setLanderManifestForTests } from "@/lib/seo/lander-manifest";
 
 type Watcher = { cb: IntersectionObserverCallback; disconnected: boolean };
 let watchers: Watcher[] = [];
@@ -35,7 +36,9 @@ const rows = (n: number) => Array.from({ length: n }, (_, i) => ({ id: `greenhou
 const mount = () => render(<MemoryRouter><MoreRolesAtEmployer token="acme" employer="Acme" excludeId="greenhouse:acme:0" /></MemoryRouter>);
 
 beforeAll(() => { i18n.addResourceBundle("en", "translation", enListing, true, true); });
-beforeEach(() => { invoke.mockReset(); watchers = []; clearBoardBudgetRefusal(); });
+// Every board has a written page here (SEO-010): this file holds the read, not which
+// boards the bake wrote.
+beforeEach(() => { invoke.mockReset(); watchers = []; clearBoardBudgetRefusal(); setLanderManifestForTests("*"); });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); clearBoardBudgetRefusal(); });
 
 describe("one lazy read", () => {
