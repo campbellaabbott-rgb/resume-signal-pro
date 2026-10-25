@@ -207,8 +207,20 @@ below fails on the 22:21Z answers and passes on the fix's).
 
 **After the deploy.** Apply `20261012137000` after `20261012136000` (both
 readers must carry the `135000` body it expects; if it refuses, read
-`pg_get_functiondef` and fold the fix in). Then verify section 81: line 81i
-times `get_company_intel` on three Workday pages the sitemap lists and on
-the made-up token, and passes each only on a 200 carrying the reader object
-within 3 seconds. 81g, which probes stripe alone, stayed green through the
-outage.
+`pg_get_functiondef` and fold the fix in). Never re-run `20261012135000`
+after it: its own self-check refuses the body `137000` leaves, and that
+RAISE means superseded, not that it needs editing. Then verify section 81:
+line 81i times `get_company_intel` on three Workday pages the sitemap lists
+and on the made-up token, and passes each only on a 200 within 3 seconds
+carrying the reader object, and for the three real pages only when the
+reply reads facts (a Workday source with open roles, and places or fields).
+81j reads the baked crawler copy of those three pages after the publish's
+re-bake and passes each only when it states where its roles are or in which
+fields, with Domino's as the positive control. 81g, which probes stripe
+alone, stayed green through the outage.
+
+**Fix round (2026-10-24 review).** The self-check also refuses, on every
+run, a reader that lost its search_path or its 15-second timeout (a second
+run skips the rewrite and its before/after comparison), and that comparison
+now includes argument defaults (`get_similar_companies`' `p_limit DEFAULT
+6`, which the page relies on).
