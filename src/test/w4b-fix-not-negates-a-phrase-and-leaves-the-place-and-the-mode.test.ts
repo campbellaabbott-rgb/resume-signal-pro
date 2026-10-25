@@ -16,8 +16,8 @@
  *     not in Texas" served only Texas nurses.
  *
  * WHAT HOLDS NOW:
- *   - the phrase after "not" stops at two words, a place word or a state, or
- *     a word the intent lift reads;
+ *   - "not" takes one word, or a pinned compound ("night shift"), so the
+ *     place and the mode after it stay (fix 3; its corpus test has the rule);
  *   - through the shipped handler, "nurse not night shift in Boston" searches
  *     Boston and excludes "night shift"; "software engineer not senior remote"
  *     filters remote and excludes "senior";

@@ -21,8 +21,7 @@
  * found two of my guards passing while the code they described had been deleted.
  * These are imported and executed by the tests.
  */
-import { METRO_ALIASES, STATE_ALIASES } from "../_shared/location-terms.ts";
-import { COUNTRY_NAMES, knownPlace } from "./query-place.ts";
+import { knownPlace } from "./query-place.ts";
 
 /** Fold to letters and digits: "AT&T" -> "att", "Domino's" -> "dominos".
  *
@@ -685,38 +684,54 @@ const EXCLUSION_STOPWORDS: ReadonlySet<string> = new Set([
  * the token -"team (excluded) and lead" (kept), so it returned team leads; and
  * "nurse not night shift" excluded "night" and REQUIRED "shift", returning
  * night shifts. A quoted phrase is one token, negated whole by a leading "-"
- * or a "not"; and "not" before more than one word negates those words as one
- * phrase to the end of the query (or the next operator), never the first word
- * alone. "not requiring night shifts" drops the verb. A stopword after "not"
- * still vetoes the operator ("director not for profit").
+ * or a "not". "not requiring night shifts" drops the verb. A stopword after
+ * "not" still vetoes the operator ("director not for profit").
+ *
+ * HOW MANY WORDS "not" TAKES (wave 4 fix 3, measured on a 591-query corpus in
+ * src/test/fixtures/w4b-fix3-search). ONE word, as main always did, unless:
+ *   - the two words are a pinned compound in NOT_COMPOUNDS ("night shift",
+ *     "box truck", "call center"); both words are fixed, so no place and no
+ *     wanted word can ride in as the second one, in any case; or
+ *   - the words are a place of two or three words the board knows ("not new
+ *     york"): the place is what was negated. Comma-free only, so "night shift,
+ *     TX" is never read as a "City, ST".
+ * Two earlier rules took a second word unless it looked like a place, and
+ * each recheck found a place the gazetteer did not know ("forklift san jose")
+ * or a wanted word ("travel er", the ER nurse main pins). One word is the
+ * safe default: it costs a compound outside the list exactly what main costs.
  */
 const NOT_VERBS = /^(?:requiring|requires|require|involving|involves|including|includes|with|doing)$/i;
-/**
- * Where a "not" phrase ends besides an operator: two words, a place word
- * ("in Boston", "near Dallas", a state, or any place the board knows, so
- * "warehouse not forklift Dallas" keeps Dallas), or a word the intent lift
- * reads ("remote", "part time"): "software engineer not senior remote" keeps remote.
- */
-const NOT_PHRASE_STOP = /^(?:in|near|around|at|for|within|from|jobs?|remote(?:ly)?|hybrid|on-?site|wfh|part(?:-?time)?|full(?:-?time)?|internships?|interns?|temporary|entry(?:-level)?)$/i;
-const isStateWord = (ws: string[], j: number): boolean =>
-  own(STATE_ALIASES, ws[j].toLowerCase()) || (j + 1 < ws.length && own(STATE_ALIASES, `${ws[j]} ${ws[j + 1]}`.toLowerCase()));
-/**
- * A place name in any case: knownPlace lifts "SF", "uk" or "us" only as a code in capitals, but ending a "not"
- * phrase before one costs at most its second word, while taking one in drops the place ("cook not line sf").
- */
-const placeKey = (s: string): boolean => {
-  const k = s.toLowerCase();
-  return k !== "the city" && (own(STATE_ALIASES, k) || own(METRO_ALIASES, k) || own(COUNTRY_NAMES, k));
+const SHIFT_KINDS = ["night", "overnight", "graveyard", "weekend", "evening", "swing", "rotating", "split", "double",
+  "day", "late", "early", "morning", "first", "second", "third", "1st", "2nd", "3rd"];
+export const NOT_COMPOUNDS: ReadonlySet<string> = new Set([
+  ...SHIFT_KINDS.map((k) => `${k} shift`),
+  "box truck", "dump truck", "tow truck", "call center", "call centre", "contact center", "contact centre",
+  "home health", "home care", "customer service", "field service", "help desk", "tech support", "technical support",
+  "data entry", "fast food", "general labor", "general labour", "team lead", "team leader", "part time", "full time",
+  "entry level", "per diem", "new grad", "commission only", "cold calling", "cold call", "door knocking",
+  "heavy lifting", "long haul",
+]);
+const bareWord = (w: string) => w.toLowerCase().replace(/^[^a-z0-9]+|[^a-z0-9]+$/g, "");
+/** Is "a b" a pinned compound (its second word singular or plural)? A break after the first word ends the negation. */
+const isNotCompound = (a: string, b: string): boolean => {
+  if (/[,;:.!?]$/.test(a)) return false;
+  const x = bareWord(a), y = bareWord(b);
+  return NOT_COMPOUNDS.has(`${x} ${y}`) || (/[^s]s$/.test(y) && NOT_COMPOUNDS.has(`${x} ${y.slice(0, -1)}`));
 };
-/** A place the board knows begins at word j ("Dallas", "nyc", "sf", "San Antonio", "Austin, TX"), not one begun a word earlier ("new york"). */
-const placeStartsAt = (ws: string[], j: number): boolean => {
-  const name = (a: number, n: number) => ws.slice(a, a + n).join(" ").replace(/[.,;:!?]+$/, "");
-  const known = (a: number, n: number) => a >= 0 && a + n <= ws.length && (placeKey(name(a, n)) || knownPlace(name(a, n)) !== null);
-  // "City, ST" takes any words before the comma, so only a comma-free name counts as begun earlier.
-  return [1, 2, 3].some((n) => known(j, n)) && ![2, 3].some((n) => !name(j - 1, n).includes(",") && known(j - 1, n));
+const PLACE_WORD = /^\p{L}[\p{L}.'-]*$/u;
+/** The length (2 or 3) of a comma-free place the board knows starting at word j, else 0. */
+const placeAfterNot = (ws: string[], j: number): number => {
+  for (const n of [3, 2]) {
+    const part = ws.slice(j, j + n);
+    if (part.length < n) continue;
+    part[n - 1] = part[n - 1].replace(/[,;:!?]+$/, "");
+    if (part.every((w) => PLACE_WORD.test(w)) && knownPlace(part.join(" ")) !== null) return n;
+  }
+  return 0;
 };
+/** A word's trailing full stop is the sentence's, not the word's: "night shift." strikes "Night Shift RN"; ".net" keeps its dot. */
 const cleanTerm = (e: string): string =>
-  e.split(/\s+/).map((w) => w.replace(/[^a-z0-9+#.]/gi, "").toLowerCase()).filter(Boolean).join(" ");
+  e.split(/\s+/).map((w) => w.replace(/[^a-z0-9+#.]/gi, "").replace(/\.+$/, "").toLowerCase()).filter(Boolean).join(" ");
 
 export function splitExclusions(raw: string): { positive: string; excluded: string[] } {
   const text = String(raw ?? "").trim();
@@ -730,20 +745,22 @@ export function splitExclusions(raw: string): { positive: string; excluded: stri
   const excluded: string[] = [];
   for (let i = 0; i < words.length; i++) {
     const w = words[i];
-    if (/^not$/i.test(w) && i + 1 < words.length) {
-      const next = words[i + 1];
-      if (EXCLUSION_STOPWORDS.has(next.toLowerCase())) { positive.push(w, next); i++; continue; }
-      if (quoted(next) && !next.startsWith("-")) { excluded.push(next.slice(1, -1)); i++; continue; }
-      // The words after "not" (a leading verb dropped), up to two, are one phrase.
+    if (/^not$/i.test(w)) {
+      // A trailing "not" negates nothing and is dropped, as main drops it.
+      if (i + 1 === words.length) continue;
+      // A leading verb is dropped ("not requiring night shifts").
       let j = i + 1;
       while (j + 1 < words.length && NOT_VERBS.test(words[j])) j++;
-      const phrase: string[] = [];
-      while (j < words.length && !/^not$/i.test(words[j]) && !words[j].startsWith("-") && !quoted(words[j])) {
-        if (phrase.length && (phrase.length >= 2 || NOT_PHRASE_STOP.test(words[j]) || isStateWord(words, j) || placeStartsAt(words, j))) break;
-        phrase.push(words[j++]);
-      }
-      if (phrase.length) { excluded.push(phrase.join(" ")); i = j - 1; continue; }
-      positive.push(w);
+      const t = words[j];
+      if (EXCLUSION_STOPWORDS.has(t.toLowerCase()) || /^not$/i.test(t)) { positive.push(w); continue; }
+      // "not -travel": the hyphen already negates it.
+      if (t.startsWith("-")) continue;
+      if (quoted(t)) { excluded.push(t.slice(1, -1)); i = j; continue; }
+      let n = placeAfterNot(words, j) || 1;
+      const after = words[j + 1];
+      if (n === 1 && after !== undefined && !/^not$/i.test(after) && !after.startsWith("-") && !quoted(after) && isNotCompound(t, after)) n = 2;
+      excluded.push(words.slice(j, j + n).join(" "));
+      i = j + n - 1;
       continue;
     }
     if (w.length > 1 && w.startsWith("-")) {
