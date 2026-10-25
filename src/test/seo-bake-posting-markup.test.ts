@@ -66,11 +66,12 @@ describe("SEO-003: a remote label that names a place is that place, never TELECO
     expect(address.addressLocality).toBeUndefined();
   });
 
-  it("keeps TELECOMMUTE for a remote row whose location names no place below its country", () => {
+  it("marks a remote row whose location names no place below its country up as that country, not TELECOMMUTE (no vendor flag)", () => {
     for (const location of ["Remote - US", "United States (Remote)", "Remote", "", "USA", "Anywhere in the US"]) {
       const d = ld(row({ id: "greenhouse:acme:1", token: "acme", company: "Acme", country: "US", location }))!;
       expect(d, location).toBeTruthy();
-      expect(d.jobLocationType, location).toBe("TELECOMMUTE");
+      expect(d.jobLocationType, location).toBeUndefined();
+      expect((d.jobLocation as { address: Record<string, unknown> }).address, location).toEqual({ "@type": "PostalAddress", addressCountry: "US" });
       expect(postingRemoteBasis(row({ country: "US", location })), location).toBe("place-free");
     }
     // "Remote Worker France": the work-mode word and the country come out and nothing is left.

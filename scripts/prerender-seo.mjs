@@ -61,7 +61,7 @@ const dist = OUT ? join(OUT, "dist") : join(root, "dist");
 const publicOut = OUT ? join(OUT, "public") : join(root, "public");
 const SITE = "https://resumebooster.work";
 /** The og:locale a page in each language carries (SEO-034). */
-const OG_LOCALE = { en: "en_US", es: "es_ES", fr: "fr_FR", de: "de_DE", pt: "pt_BR", nl: "nl_NL", it: "it_IT" };
+const OG_LOCALE = { en: "en_US", es: "es_ES", fr: "fr_FR", de: "de_DE", pt: "pt_BR", nl: "nl_NL", it: "it_IT", zh: "zh_CN", ja: "ja_JP", ko: "ko_KR" };
 
 // ---- Substitution that inserts its value as-is ----
 //
@@ -2529,8 +2529,10 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
         const title = D.postingText(job.title);
         const place = job.location ? D.postingText(job.location) : "";
         const lander = landerFor(job.token);
-        // The page says Remote only where its markup does (SEO-003): a remote
-        // label that names a place is that place.
+        // The page says Remote where the row is remote and names no place
+        // below its country (SEO-003): a remote label that names a place is
+        // that place. The markup says TELECOMMUTE only on the hiring system's
+        // own remote field; a label alone is marked up as its country.
         const remoteShown = D.postingRemoteBasis(job) !== null;
         // THE LANGUAGE THE EMPLOYER WROTE IN (SEO-034): every posting page was
         // lang="en". Read from the description; null keeps the site's own.
@@ -2540,8 +2542,12 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
         if (ld) {
           const locality = ld.jobLocation?.address?.addressLocality;
           const wrong = [];
-          if (ld.jobLocationType === "TELECOMMUTE" && job.workModeSource !== "vendor" && D.remoteLocationNamesAPlace(job)) wrong.push("TELECOMMUTE on a location that names a place, with no vendor flag");
-          if (typeof locality === "string" && /[/_()|]|\bonly\b|\b(?:remote|hybrid|on-?site)\b/i.test(locality)) wrong.push(`a junk addressLocality "${locality}"`);
+          // TELECOMMUTE stands only on the hiring system's own remote field,
+          // and a locality is refused by the producer's own rules read back
+          // (a dash at an end, a country's name inside it, a site code...).
+          if (ld.jobLocationType === "TELECOMMUTE" && job.workModeSource !== "vendor") wrong.push("TELECOMMUTE with no vendor flag");
+          const why = typeof locality === "string" ? D.localityProblem(locality) : null;
+          if (why) wrong.push(`a junk addressLocality "${locality}" (${why})`);
           if ("baseSalary" in ld) wrong.push("baseSalary");
           if (wrong.length) markupFound.push({ path, wrong });
         }
@@ -4584,7 +4590,7 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
   } else console.log("[prerender-seo] source-sentence check: no written page or llms file says 'never an aggregator', 'no aggregators', 'never a repost' or an unconditional re-check");
   if (markupFound.length) {
     console.error(`[prerender-seo] JOB MARKUP the bake would not stand behind on ${markupFound.length} page(s): ${markupFound.slice(0, 20).map((r) => `${r.path}: ${r.wrong.join("; ")}`).join(" | ")}`);
-  } else console.log("[prerender-seo] job-markup check: no TELECOMMUTE on a named place without a vendor flag, no junk locality, no baseSalary");
+  } else console.log("[prerender-seo] job-markup check: no TELECOMMUTE without a vendor flag, no junk locality (a dash at an end, a country inside, a site code, a work mode), no baseSalary");
 
   // Say out loud what the clamp had to cut. Silent truncation is how the
   // homepage shipped a snippet ending "…Upload your CV and an AI…".

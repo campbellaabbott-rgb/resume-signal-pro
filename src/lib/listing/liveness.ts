@@ -51,7 +51,7 @@ export function postingLiveness(
   // A stamp that is not a date is no statement of one (and would throw in the
   // window arithmetic): it reads as undated, never as expired.
   if (typeof job.postedAt === "string" && /^\d{4}-\d{2}-\d{2}/.test(job.postedAt) && Number.isFinite(Date.parse(job.postedAt.slice(0, 10)))) {
-    const through = postingValidThrough({ id: job.id, postedAt: job.postedAt, missingSince: null } as PostingRow);
+    const through = postingValidThrough({ id: job.id, postedAt: job.postedAt, missingSince: null } as PostingRow, now);
     if (!through || through < now.toISOString().slice(0, 10)) return "windowClosed";
   }
   return "live";

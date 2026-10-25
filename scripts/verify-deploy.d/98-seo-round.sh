@@ -14,9 +14,10 @@
 #       FAIL until the image follow-ups (the 1200x630 card, the 180 px icon,
 #       the smaller favicon) are deployed: that is the point of the line.
 #   P1  (SEO-003, SEO-004, SEO-016, SEO-035) posting pages the sitemap names:
-#       no baseSalary, no locality carrying a site code, a bracket, "only" or a
-#       work-mode word, no TELECOMMUTE beside a named place (INFO once the
-#       board carries a vendor flag), validThrough never past posted + 30.
+#       no baseSalary, no locality carrying a site code, a bracket, "only", a
+#       work-mode word, a dash at either end or a country's name, no
+#       TELECOMMUTE (the board carries no vendor flag yet: INFO once it does),
+#       validThrough never more than 30 days past the datePosted it states.
 #   P2  (OBS-1) no two sitemap posting pages share a title.
 #   P3  (SEO-023) a posting page preloads JobPosting-*.js and not Jobs-*.js;
 #       / preloads Index-*.js; /pricing preloads Pricing-*.js.
@@ -58,6 +59,26 @@ const get = async (path, ms = 30000, binary = false) => {
 };
 const ld = (h) => [...String(h).matchAll(/<script type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g)].map((m) => { try { return JSON.parse(m[1].replace(/\\u003c/g, "<")); } catch { return {}; } });
 const titleOf = (h) => (String(h).match(/<title>([^<]*)<\/title>/) || [])[1] || "";
+// A LOCALITY NO ONE WOULD CALL A TOWN, judged here without the bake\x27s code:
+// country names come from the runtime\x27s own region names.
+const COUNTRY_NAMES = (() => {
+  const names = new Set(["usa", "uk", "america", "england", "scotland", "wales", "holland", "the netherlands", "czech republic", "russia", "south korea", "korea", "turkey", "uae"]);
+  try { const dn = new Intl.DisplayNames(["en"], { type: "region" }); for (let a = 65; a < 91; a++) for (let b = 65; b < 91; b++) { const c = String.fromCharCode(a, b); let n; try { n = dn.of(c); } catch { n = undefined; } if (n && n !== c) names.add(n.toLowerCase().replace(/\s*\(.*\)\s*$/, "")); } } catch {}
+  return names;
+})();
+const localityProblem = (s) => {
+  const t = String(s).trim();
+  if (/[/_()|]|\bonly\b|\b(?:remote|hybrid|on-?site)\b/i.test(t)) return "a site code, a bracket, only or a work mode";
+  if (/^[-\u2013_/,.:]|[-\u2013_/,.:]$/.test(t)) return "a dash or a mark at one end";
+  const w = t.toLowerCase().split(/\s+/).map((x) => x.replace(/^[-\u2013_/,.:]+|[-\u2013_/,.:]+$/g, "")).filter(Boolean);
+  for (let i = 0; i < w.length; i++) for (let n = 1; n <= 4 && i + n <= w.length; n++) {
+    if (!COUNTRY_NAMES.has(w.slice(i, i + n).join(" "))) continue;
+    const rest = [...w.slice(0, i), ...w.slice(i + n)];
+    if (rest.length === 1 && /^(?:city|town|west|east|north|south|new|port|fort|lake|mount|mt|saint|st)$/.test(rest[0])) continue;
+    return "a country\x27s name";
+  }
+  return null;
+};
 const robotsOf = (h) => (String(h).match(/<meta name="robots" content="([^"]*)"/) || [])[1] || "";
 const canonOf = (h) => (String(h).match(/<link rel="canonical" href="([^"]*)"/) || [])[1] || "";
 const text = (h) => String(h).replace(/<script\b[\s\S]*?<\/script>/gi, " ").replace(/<[^>]+>/g, " ").replace(/&quot;/g, "\"").replace(/&#39;/g, "\x27").replace(/&amp;/g, "&").replace(/\s+/g, " ");
@@ -119,21 +140,19 @@ const pick = (arr, n) => (arr.length <= n ? arr : Array.from({ length: n }, (_, 
     read++;
     if ("baseSalary" in jp) bad.push(`${p}: baseSalary`);
     const a = (jp.jobLocation && jp.jobLocation.address) || {};
-    if (typeof a.addressLocality === "string" && /[/_()|]|\bonly\b|\b(?:remote|hybrid|on-?site)\b/i.test(a.addressLocality)) bad.push(`${p}: locality "${a.addressLocality}"`);
-    if (jp.jobLocationType === "TELECOMMUTE" && (a.addressRegion || a.addressLocality)) info.push(`${p}: TELECOMMUTE beside ${a.addressLocality || a.addressRegion}`);
-    // The window runs from the date the EMPLOYER states, which the page
-    // prints ("Posted YYYY-MM-DD, as stated by the employer"); datePosted is
-    // that date clamped to the day of the bake, so a stated "tomorrow" reads
-    // one day short. The later of the two is the start of the window.
-    const stated = (/Posted (\d{4}-\d{2}-\d{2}), as stated by the employer/.exec(d.body) || [])[1];
-    const dp = Math.max(Date.parse(String(jp.datePosted).slice(0, 10)), stated ? Date.parse(stated) : -Infinity), vt = Date.parse(String(jp.validThrough).slice(0, 10));
-    if (Number.isFinite(dp) && Number.isFinite(vt) && (vt - dp) / 86400000 > 30) bad.push(`${p}: validThrough ${String(jp.validThrough).slice(0, 10)} past posted ${stated ?? String(jp.datePosted).slice(0, 10)} + 30`);
+    const why = typeof a.addressLocality === "string" ? localityProblem(a.addressLocality) : null;
+    if (why) bad.push(`${p}: locality "${a.addressLocality}" (${why})`);
+    if (jp.jobLocationType === "TELECOMMUTE") info.push(`${p}: TELECOMMUTE${a.addressLocality || a.addressRegion ? ` beside ${a.addressLocality || a.addressRegion}` : ""}`);
+    // The markup\x27s own window: validThrough is counted from the day its
+    // datePosted states (an employer\x27s "tomorrow" is the bake\x27s day in both).
+    const dp = Date.parse(String(jp.datePosted).slice(0, 10)), vt = Date.parse(String(jp.validThrough).slice(0, 10));
+    if (Number.isFinite(dp) && Number.isFinite(vt) && (vt - dp) / 86400000 > 30) bad.push(`${p}: validThrough ${String(jp.validThrough).slice(0, 10)} more than 30 days past datePosted ${String(jp.datePosted).slice(0, 10)}`);
   }
   if (!sample.length) out("INFO", "P1 the sitemap names no posting page");
   else if (bad.length) out("FAIL", `P1 ${bad.length} posting page(s): ${bad.slice(0, 10).join("; ")}`);
-  else out(read ? "PASS" : "INFO", `P1 ${read} of ${sample.length} sampled posting pages carry job markup: no baseSalary, no junk locality, no validThrough past posted + 30`);
-  if (info.length) out("FAIL", `P1 TELECOMMUTE beside a named place with no vendor flag on the board (SEO-003): ${info.slice(0, 6).join("; ")} — INFO once the board carries workModeSource`);
-  else if (read) out("PASS", "P1 no sampled TELECOMMUTE page names a place (the interim asymmetric rule)");
+  else out(read ? "PASS" : "INFO", `P1 ${read} of ${sample.length} sampled posting pages carry job markup: no baseSalary, no junk locality, no window over 30 days`);
+  if (info.length) out("FAIL", `P1 TELECOMMUTE while the board carries no vendor remote flag (SEO-003): ${info.slice(0, 6).join("; ")} — INFO once the board returns workModeSource`);
+  else if (read) out("PASS", "P1 no sampled page says TELECOMMUTE (only the hiring system\x27s own remote field may, and the board carries none yet)");
   // P2 over every sitemap posting title.
   const titles = new Map();
   const all = postings.slice(0, 600);
