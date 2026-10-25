@@ -15,6 +15,13 @@
  * before this round (fixtures/verify-81-before-2026-10-12.json, with the
  * served copy of that day reduced to the strings the section looks for) and
  * PASSes on a fixture of what the deploy serves.
+ *
+ * The model the judge reads (/tmp/vd_81_model.json) is built here by the
+ * section's OWN tsx loop, cut out of the script and run on the fixture rows,
+ * so the input it hands the lander model is the one under test (the
+ * profiles+design hotfix review, 2026-10-24: the loop built the zero page's
+ * input without the read bucket, so 81c printed "not read" for BASS ABA while
+ * the page printed the full-read sentence, and nothing could fail on it).
  */
 import { describe, expect, it } from "vitest";
 import { execFileSync } from "node:child_process";
@@ -35,15 +42,19 @@ const BEFORE_READ = JSON.parse(readFileSync(resolve(__dirname, "fixtures/verify-
   ext: unknown; lock: unknown; readers: unknown; meta: unknown;
 };
 
-function derived(rows: Row[]) {
+/** The section's tsx block, and the loop in it that turns each live row into the gate and the model the judge reads. */
+const TSX = (/npx --no-install tsx -e '([^']*)'/.exec(SH) ?? [])[1] ?? "";
+const LOOP = /for \(const r of rows\) \{\n([\s\S]*?)\n {2}\}\n/;
+function loopOf(tsx: string) {
+  const m = LOOP.exec(tsx);
+  if (!m) throw new Error("section 81's tsx loop over the curve rows moved: RE-ANCHOR this test on it");
+  return new Function("g", "m", "rows", "gate", "model", `for (const r of rows) {\n${m[1]}\n}`) as
+    (g: unknown, m: unknown, rows: Row[], gate: Record<string, unknown>, model: Record<string, unknown>) => void;
+}
+function derived(rows: Row[], tsx = TSX) {
   const gate: Record<string, unknown> = {};
   const model: Record<string, unknown> = {};
-  for (const r of rows) {
-    gate[r.company_token] = hiringRecordGate(r);
-    const has = Object.prototype.hasOwnProperty.call(r, "feed_total");
-    const bt = has ? { total: r.feed_total as number, readAt: r.feed_read_at as string, state: r.feed_state as string, capped: r.feed_capped as boolean } : null;
-    model[r.company_token] = { feedColumns: has, boardTotal: has ? boardTotalFact(bt) : null, zeroReading: has ? zeroReadingOf({ boardTotal: bt }) : null };
-  }
+  loopOf(tsx)({ hiringRecordGate }, { boardTotalFact, zeroReadingOf }, rows, gate, model);
   return { gate: JSON.stringify(gate), model: JSON.stringify(model) };
 }
 
@@ -74,7 +85,14 @@ const NEW_BUNDLE = [
   `verdictSlowFill:"we never see half its roles come down and stay down inside {{d}} days"`,
   `t("jobsPage.hhGate.lap",x.lap)`, `t("jobsPage.hhGate.unprovenRead",x.u)`, `t("jobsPage.hhGate.otherSites",x.o)`,
   `t("companyProfile.zero.older",{count:n})`,
+  `t("companyProfile.zero.fullRead",{days:30})`,
+  // The Jobs chunk's lander input, as the production build minifies it (esbuild on src/pages/Jobs.tsx).
+  `boardTotal:to===null?void 0:H?{total:H.feed_total,readAt:H.feed_read_at,state:H.feed_state,capped:H.feed_capped,bucket:H.observability_bucket,trackingDays:H.tracking_days}:null`,
 ].join(";");
+/** What the 2026-10-18 publish serves: the zero copy before the hotfix (no full-read key, no bucket in the Jobs chunk's input). */
+const PD_BUNDLE = NEW_BUNDLE
+  .replace(`t("companyProfile.zero.fullRead",{days:30})`, "")
+  .replace(",bucket:H.observability_bucket,trackingDays:H.tracking_days", "");
 
 const beforeRows = BEFORE_READ.curves.body;
 const hoursAgo = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString();
@@ -83,7 +101,8 @@ const afterRows: Row[] = beforeRows.map((r) => {
   const base: Row = { ...r, multi_site_title_share: 0.05, multi_site_n: 100, feed_total: null, feed_read_at: null, feed_state: null, feed_capped: null, undated_open: 0 };
   if (r.company_token === "centriaautism") return { ...base, multi_site_title_share: 0.97, fill_rate_14: 0.0069 };
   if (r.company_token === "bayada") return { ...base, multi_site_title_share: 0.44 };
-  if (r.company_token === "bassabatherapy") return { ...base, feed_total: 31, feed_read_at: hoursAgo(2), feed_state: "empty", feed_capped: false };
+  // BASS ABA as the curve answers it live (2026-10-24): a Greenhouse board read whole in one visit, so job-board states no total.
+  if (r.company_token === "bassabatherapy") return { ...base, observability_bucket: "full_read", tracking_days: 89 };
   if (r.company_token === "stripe") return { ...base, feed_total: 727, feed_read_at: hoursAgo(1), feed_state: "ok", feed_capped: false };
   return base;
 });
@@ -157,12 +176,62 @@ describe("after the deploy: every claim passes", () => {
     expect(line(lines, "PASS", /81b Centria Autism: no 90-day counts/), show(lines)).toBe(true);
     expect(line(lines, "PASS", /81b BAYADA: no 90-day counts/), show(lines)).toBe(true);
     expect(line(lines, "PASS", /81c the served copy names the 30-day window/), show(lines)).toBe(true);
-    expect(line(lines, "PASS", /81c BASS ABA: nothing served in the window and its board listed 31 roles/), show(lines)).toBe(true);
+    expect(line(lines, "PASS", /81c BASS ABA: nothing served in the window and its newest read was complete \(bucket full_read, 89 tracking days, no stated total\): the page says that as of our latest full read no role is dated in the last 30 days/), show(lines)).toBe(true);
+    expect(line(lines, "PASS", /81c the served chunks carry the full-read zero sentence \(companyProfile\.zero\.fullRead\)/), show(lines)).toBe(true);
+    expect(line(lines, "PASS", /81c the served Jobs chunk hands the zero page the curve's read bucket and tracking days/), show(lines)).toBe(true);
     expect(line(lines, "PASS", /81c Stripe: board total 727 .* within 10% of its Greenhouse feed \(722\)/), show(lines)).toBe(true);
     expect(line(lines, "PASS", /81d Databricks: no "never half"/), show(lines)).toBe(true);
     expect(line(lines, "PASS", /81e all \d+ rows publish their 14-day share inside its own interval/), show(lines)).toBe(true);
     expect(lines.filter((l) => /^PASS +81f .*refused \(HTTP 401, 42501\)/.test(l))).toHaveLength(4);
     expect(lines.filter((l) => /^PASS +81h .*none of them the USAJOBS board/.test(l))).toHaveLength(2);
+  });
+});
+
+describe("81c judges the zero page as the page builds it (profiles+design hotfix, 2026-10-24)", () => {
+  const bassLine = (lines: string[]) => lines.find((l) => /81c BASS ABA/.test(l)) ?? "";
+  const LOCKED_AFTER = { lock: LOCKED, similar: SIMILAR_AFTER };
+
+  it("the section's model input is the page's own mapping from the curve row (src/pages/Jobs.tsx)", () => {
+    const jobs = readFileSync(resolve(ROOT, "src/pages/Jobs.tsx"), "utf8");
+    const page = /boardTotal: curveAnsweredAt === null \? undefined : hiringCurve\s*\?\s*(\{[^{}]*\})\s*:\s*null,/.exec(jobs);
+    const ours = /const bt = has \? (\{[^{}]*\}) : null;/.exec(TSX);
+    expect(page, "the page's mapping moved: RE-ANCHOR").toBeTruthy();
+    expect(ours, "section 81's bt moved: RE-ANCHOR").toBeTruthy();
+    const pageOf = new Function("hiringCurve", `return (${page![1]});`);
+    const oursOf = new Function("r", `return (${ours![1]});`);
+    for (const r of afterRows) expect(oursOf(r), r.company_token).toEqual(pageOf(r));
+  });
+
+  it("the 2026-10-18 publish (no full-read key, no bucket in the Jobs chunk) FAILs both bundle lines", () => {
+    const lines = run(files(afterRows, PD_BUNDLE, LOCKED_AFTER));
+    expect(line(lines, "FAIL", /81c the served chunks lack companyProfile\.zero\.fullRead/), show(lines)).toBe(true);
+    expect(line(lines, "FAIL", /81c the served Jobs chunk does not hand the zero page the curve's observability_bucket and tracking_days/), show(lines)).toBe(true);
+  });
+
+  it("a model fed without the bucket (the loop before the hotfix) reads BASS ABA as not read, and 81c FAILs", () => {
+    const dropped = TSX.replace(", bucket: r.observability_bucket, trackingDays: r.tracking_days", "");
+    expect(dropped, "the teeth mutation did not apply: RE-ANCHOR it").not.toBe(TSX);
+    const d = derived(afterRows, dropped);
+    const lines = run({ ...files(afterRows, NEW_BUNDLE, LOCKED_AFTER), "vd_81_model.json": d.model });
+    expect(bassLine(lines), show(lines)).toMatch(/^FAIL {2}81c BASS ABA: this checkout's lander model says we have not read a board whose newest read was complete \(bucket full_read, 89 tracking days, no stated total\)/);
+  });
+
+  it("a read that kept nothing in our window and stated 31 still PASSes as older roles listed", () => {
+    const rows = afterRows.map((r) => (r.company_token === "bassabatherapy" ? { ...r, feed_total: 31, feed_read_at: hoursAgo(2), feed_state: "empty", feed_capped: false } : r));
+    const lines = run(files(rows, NEW_BUNDLE, LOCKED_AFTER));
+    expect(bassLine(lines), show(lines)).toMatch(/^PASS {2}81c BASS ABA: nothing served in the window and its board listed 31 roles .* on a read that kept none in the window/);
+  });
+
+  it("a fresh total from a read that kept roles in our window says only the list's line, as INFO", () => {
+    const rows = afterRows.map((r) => (r.company_token === "bassabatherapy" ? { ...r, feed_total: 3, feed_read_at: hoursAgo(1), feed_state: "ok", feed_capped: false } : r));
+    const lines = run(files(rows, NEW_BUNDLE, LOCKED_AFTER));
+    expect(bassLine(lines), show(lines)).toMatch(/^INFO {2}81c BASS ABA: no zero reading .* the page prints only the list's own line/);
+  });
+
+  it("a windowed board never read through keeps 'not read' as true, as INFO", () => {
+    const rows = afterRows.map((r) => (r.company_token === "bassabatherapy" ? { ...r, observability_bucket: "lap_pending" } : r));
+    const lines = run(files(rows, NEW_BUNDLE, LOCKED_AFTER));
+    expect(bassLine(lines), show(lines)).toMatch(/^INFO {2}81c BASS ABA: zero reading "unread" \(bucket lap_pending/);
   });
 });
 
