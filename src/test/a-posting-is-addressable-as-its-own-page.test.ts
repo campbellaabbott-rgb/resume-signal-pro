@@ -234,6 +234,81 @@ describe("the route and the generator agree about where a posting lives", () => 
   });
 });
 
+/**
+ * ONE POSTING PAGE, JUDGED. A page must carry its own heading and exactly one
+ * JobPosting naming its own address, with one exception the bake records: a
+ * carried page that owner decision D7 keeps indexable while its markup is
+ * withheld (the name gate refuses the employer's name, or the location ends
+ * in another country's name). The bake writes why in the page's posting
+ * ledger entry (`markupWithheld`), and only such a page may carry no job
+ * markup; it must then carry none at all. A page with no markup and no such
+ * entry, a new page with one, or an entry that says withheld beside markup
+ * the page still serves is a page about nothing, or a ledger that lies.
+ * Returns the problem, or null.
+ */
+type PostingLedgerEntry = { state?: string; carried?: boolean; markupWithheld?: string } | undefined;
+const WITHHELD_REASONS = new Set(["name", "country"]);
+function postingPageProblem(path: string, html: string, entry: PostingLedgerEntry): string | null {
+  if (!/<h1>[^<]+<\/h1>/.test(html)) return "no heading";
+  // ATTRIBUTES ALLOWED ON THE TAG. The JobPosting block carries the id the
+  // React route takes it over by, and a pattern that required the tag to end
+  // right after the type read this page as having no job markup at all.
+  const blocks = [...html.matchAll(/<script type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g)]
+    .map((m) => { try { return JSON.parse(m[1]); } catch { return null; } })
+    .filter((d) => d && d["@type"] === "JobPosting");
+  const withheld = entry?.markupWithheld;
+  if (withheld !== undefined) {
+    if (!WITHHELD_REASONS.has(withheld)) return `the ledger withholds its markup for an unknown reason "${withheld}"`;
+    if (entry?.carried !== true) return `the ledger withholds its markup (${withheld}) on a page that was not carried: D7 keeps only pages indexable today`;
+    if (blocks.length !== 0) return `the ledger says its markup is withheld (${withheld}) and the page serves ${blocks.length} job entities`;
+    if (withheld === "name" && !/<p>The employer\b/.test(html)) return "the ledger withholds its markup for the employer's name, and the page still prints a name";
+    return null;
+  }
+  if (blocks.length !== 1) return `${blocks.length} job entities`;
+  if (blocks[0].url !== `${SITE}${path}`) return `markup names ${blocks[0].url}`;
+  return null;
+}
+
+describe("a posting page is judged by its own heading and markup, or by the reason the bake withheld it", () => {
+  const P = "/jobs/posting/smartrecruiters/ThePlace1/744000154839819";
+  const ld = (url: string) => `<script type="application/ld+json" data-rb-posting="x">${JSON.stringify({ "@context": "https://schema.org", "@type": "JobPosting", url })}</script>`;
+  const crumbs = `<script type="application/ld+json">${JSON.stringify({ "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: [] })}</script>`;
+  const page = (head: string, body: string) => `<!doctype html><html><head>${head}</head><body><h1>Store Associate</h1>${body}</body></html>`;
+
+  it("passes a page with its heading and one JobPosting naming its own address", () => {
+    expect(postingPageProblem(P, page(ld(`${SITE}${P}`) + crumbs, "<p>ThePlace — Lagos</p>"), { state: "live", carried: true })).toBeNull();
+  });
+
+  it("fails a page with no job markup and no reason in the ledger", () => {
+    expect(postingPageProblem(P, page(crumbs, "<p>ThePlace — Lagos</p>"), { state: "live", carried: true })).toBe("0 job entities");
+    expect(postingPageProblem(P, page(crumbs, "<p>ThePlace — Lagos</p>"), undefined)).toBe("0 job entities");
+  });
+
+  it("passes a carried page whose markup the bake withheld for its country or its employer's name, and that serves none", () => {
+    expect(postingPageProblem(P, page(crumbs, "<p>ThePlace — Lagos</p>"), { state: "live", carried: true, markupWithheld: "country" })).toBeNull();
+    expect(postingPageProblem(P, page(crumbs, "<p>The employer — Austin, TX</p>"), { state: "live", carried: true, markupWithheld: "name" })).toBeNull();
+  });
+
+  it("fails a withheld page that was not carried, that still serves markup, that prints the refused name, or whose reason is unknown", () => {
+    expect(postingPageProblem(P, page(crumbs, "<p>ThePlace — Lagos</p>"), { state: "live", carried: false, markupWithheld: "country" })).toMatch(/not carried/);
+    expect(postingPageProblem(P, page(ld(`${SITE}${P}`) + crumbs, "<p>ThePlace — Lagos</p>"), { state: "live", carried: true, markupWithheld: "country" })).toMatch(/serves 1 job entities/);
+    expect(postingPageProblem(P, page(crumbs, "<p>Axia Logo Horizontal — Austin, TX</p>"), { state: "live", carried: true, markupWithheld: "name" })).toMatch(/still prints a name/);
+    expect(postingPageProblem(P, page(crumbs, "<p>ThePlace — Lagos</p>"), { state: "live", carried: true, markupWithheld: "budget" })).toMatch(/unknown reason/);
+  });
+
+  it("fails a page without its own heading, and markup that names another address", () => {
+    expect(postingPageProblem(P, "<html><body><p>x</p></body></html>", { state: "live", carried: true })).toBe("no heading");
+    expect(postingPageProblem(P, page(ld(`${SITE}/jobs`), ""), { state: "live", carried: true })).toBe(`markup names ${SITE}/jobs`);
+  });
+
+  it("the bake writes the reason into the ledger entry of every live page it writes without markup", () => {
+    const bake = codeOf(read("scripts/prerender-seo.mjs"));
+    expect(bake).toMatch(/postingLedger\[path\] = \{ state: "live", since: TODAY, first, carried, title, company: nm, token: job\.token \?\? null, \.\.\.\(ld \? \{\} : \{ markupWithheld: nameRefused \? "name" : "country" \}\) \};/);
+    // A page is written without markup only when it is carried and D7 keeps it.
+    expect(bake).toMatch(/if \(!path \|\| \(!ld && !\(\(mismatchOnly \|\| nameOnly\) && carried\)\)\) \{/);
+  });
+});
+
 const DIST = resolve(ROOT, "dist/index.html");
 const built = existsSync(DIST);
 
@@ -286,22 +361,22 @@ describe.skipIf(skipWithoutDist(built))("every posting URL in the built sitemap 
     expect(wrong, "a canonical that names another page tells the crawler to index that one instead").toEqual([]);
   });
 
-  it("gives each one a heading and job markup whose address is its own", () => {
+  it("gives each one a heading and job markup whose address is its own, or the reason D7 kept it without", () => {
+    const ledgerFile = resolve(ROOT, "dist/prerender-ledger.json");
+    const postings: Record<string, PostingLedgerEntry> = existsSync(ledgerFile) ? (JSON.parse(readFileSync(ledgerFile, "utf8")).postings ?? {}) : {};
     const wrong: string[] = [];
+    const withheld: string[] = [];
     for (const p of paths) {
       const f = servedFile(p);
       if (!f) continue;
-      const html = readFileSync(f, "utf8");
-      if (!/<h1>[^<]+<\/h1>/.test(html)) { wrong.push(`${p} → no heading`); continue; }
-      // ATTRIBUTES ALLOWED ON THE TAG. The JobPosting block carries the id the
-      // React route takes it over by, and a pattern that required the tag to
-      // end right after the type read this page as having no job markup at all.
-      const blocks = [...html.matchAll(/<script type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g)]
-        .map((m) => { try { return JSON.parse(m[1]); } catch { return null; } })
-        .filter((d) => d && d["@type"] === "JobPosting");
-      if (blocks.length !== 1) { wrong.push(`${p} → ${blocks.length} job entities`); continue; }
-      if (blocks[0].url !== `${SITE}${p}`) wrong.push(`${p} → markup names ${blocks[0].url}`);
+      const why = postingPageProblem(p, readFileSync(f, "utf8"), postings[p]);
+      if (why) wrong.push(`${p} → ${why}`);
+      else if (postings[p]?.markupWithheld) withheld.push(`${p} (${postings[p]!.markupWithheld})`);
     }
     expect(wrong, "a posting page without its own heading and its own job markup is a page about nothing").toEqual([]);
+    // A HANDFUL, NOT A HABIT. D7 keeps the few carried pages a stricter rule
+    // would drop; a fault that withholds markup across the set (a country
+    // reader that reads every row as a mismatch) would otherwise pass here.
+    expect(withheld.length, `pages kept without job markup: ${withheld.join(", ")}`).toBeLessThanOrEqual(Math.max(5, Math.ceil(paths.length * 0.02)));
   });
 });

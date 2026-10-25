@@ -2627,7 +2627,12 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
         // from what the live site published, or new under postingFreshBudget.
         // The built-output guard judges the ceiling from it (the bound on the
         // live set is max(ceiling, carried), never POSTING_PAGE_CAP).
-        postingLedger[path] = { state: "live", since: TODAY, first, carried, title, company: nm, token: job.token ?? null };
+        // `markupWithheld` names why a page D7 keeps indexable carries no
+        // JobPosting: "name" (the name gate refuses the employer's name) or
+        // "country" (the location ends in another country's name). The
+        // built-output guard accepts a page with no job markup only when its
+        // entry says so, and the page was carried.
+        postingLedger[path] = { state: "live", since: TODAY, first, carried, title, company: nm, token: job.token ?? null, ...(ld ? {} : { markupWithheld: nameRefused ? "name" : "country" }) };
       }
 
       // The URLs this site published that get no live page: each keeps a
