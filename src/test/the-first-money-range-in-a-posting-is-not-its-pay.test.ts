@@ -7,11 +7,13 @@
  * the 40 characters around it. An Airbus £24.5k placement was listed at
  * £350K-£800K (the value of the work, a sentence before the pay) and sat at
  * the top of the GB pay sort; 6 of the 12 "$500k+ manager" rows were
- * portfolios, fleets and P&Ls. Every range is now a candidate: one whose
- * sentence names a business figure is refused unless a pay word stands right
- * before it, and a range whose sentence names pay is preferred. SALARY_PARSE
- * VERSION 11 re-sweeps the stored rows and re-mines a stored figure the miner
- * took from the description that the rules now refuse.
+ * portfolios, fleets and P&Ls. The figure the old guards accept is now set
+ * aside when it is a business figure (a business noun its own subject, no pay
+ * word in its sentence): a big one gives way to the next figure, a smaller one
+ * only to a later figure labelled as pay. Where the old guards refuse a figure
+ * the answer is null, as before. SALARY_PARSE_VERSION 11 re-sweeps the stored
+ * rows and re-mines a stored figure only when it is the one the old miner took
+ * and the miner now sets it aside (round 3, w4b-fix3).
  */
 import { beforeAll, describe, expect, it } from "vitest";
 import { extractSalary, minedSalaryRefused } from "../../supabase/functions/_shared/salary-extract";
@@ -24,8 +26,14 @@ const FLEET = "Oversee fleet costs of $500k - $900k across the region. Compensat
 describe("the miner reads every range and takes the pay (S12-019)", () => {
   it("skips the business figure and takes the pay the posting states", () => {
     expect(extractSalary(AIRBUS)).toBe("£24,500 per annum");
-    expect(extractSalary(PORTFOLIO)).toBe("$60,000 - $75,000 per year");
     expect(extractSalary(FLEET)).toBe("$85,000 - $95,000");
+  });
+
+  it("where the old guards refuse the first figure (revenue, a bonus), the answer is still null, as it always was", () => {
+    // Round 3 (w4b-fix3): reading on past a refused figure let a bonus heading
+    // or an allowance become the pay in round 2; a null here is a safe miss.
+    expect(extractSalary(PORTFOLIO)).toBeNull();
+    expect(extractSalary("Sign-on bonus of $1,000 - $2,000! Starting pay $18 per hour.")).toBeNull();
   });
 
   it("a business figure alone is no pay at all", () => {
@@ -33,8 +41,8 @@ describe("the miner reads every range and takes the pay (S12-019)", () => {
     expect(extractSalary("Our clients' projects are valued at $350,000 - $800,000 each.")).toBeNull();
   });
 
-  it("a single figure that stands apart from a rejected range, in a pay sentence, is read", () => {
-    expect(extractSalary("Sign-on bonus of $1,000 - $2,000! Starting pay $18 per hour.")).toBe("$18 per hour");
+  it("a single figure that stands apart from a range set aside as a business figure is read", () => {
+    expect(extractSalary("Our clients' projects are valued at $350,000 - $800,000 each. Starting pay $28 per hour.")).toBe("$28 per hour");
   });
 
   it("positive control: the shapes it always read still read the same", () => {

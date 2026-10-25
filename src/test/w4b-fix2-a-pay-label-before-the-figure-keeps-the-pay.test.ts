@@ -13,14 +13,14 @@
  * business word ("Portfolio Analyst - $90,000 - $110,000", "Pipeline Welder
  * $30 - $40 per hour") were refused the same way.
  *
- * THE RULE NOW. A range is a business figure only when it is that figure's own
- * amount: the business word right before it, joined by amount words only
- * ("portfolio of", "fleet costs of", "projects worth", "valued at"), or right
- * after it ("$5M in deals", "$2M portfolio"). A pay label before the figure in
- * its labelled clause (a colon, or a line ending on one, does not end that
- * clause) makes it pay whatever follows, the NOT_PAY words after it included.
- * The re-sweep reads S12-019's rule only, at every place the description
- * quotes the stored text, so it never NULLs a range the posting states as pay.
+ * THE RULE NOW (round 3, w4b-fix3; the corpus test beside this one measures
+ * it). The old guards decide first, in the old order, so a bonus word right
+ * after a figure still refuses it (round 2 let a label override them, and a
+ * sign-on bonus under "Compensation:" became the pay). A figure they accept is
+ * set aside only as a business figure: a business noun is its own subject and
+ * no pay word stands in its sentence or right after it. A label before the
+ * figure is such a pay word, so every line here keeps its pay. The re-sweep
+ * refuses only the figure the old miner took, so it never NULLs pay.
  */
 import { beforeAll, describe, expect, it } from "vitest";
 import { extractSalary, minedSalaryRefused } from "../../supabase/functions/_shared/salary-extract";
@@ -30,7 +30,6 @@ import { bootBoardHandler, SVC, type BoardHandler } from "./helpers/board-handle
 const RECHECK: Array<[string, string]> = [
   ["Pay Range: $17.00 - $19.00 per hour plus profit sharing", "$17.00 - $19.00 per hour"],
   ["Base Pay Range: $70,000 - $90,000 USD + profit sharing + 401(k)", "$70,000 - $90,000"],
-  ["Salary Range: $95,000 - $120,000 plus deal bonuses", "$95,000 - $120,000"],
   ["Hourly Rate: $22 - $26 + quarterly profit share", "$22 - $26"],
   ["Compensation: $120,000 - $150,000 base + deal commissions", "$120,000 - $150,000"],
   ["Account Executive OTE: $120,000 - $160,000 on closed deals", "$120,000 - $160,000"],
@@ -63,13 +62,29 @@ describe("a label, a colon, the figure and a business word: the figure is the pa
     expect(extractSalary(text)).toBe(pay);
     expect(minedSalaryRefused(text, pay), "the v11 re-sweep must keep the stored pay").toBe(false);
   });
+
+  it("a bonus word right after the figure: the old guard's null stands (a safe miss), and the re-sweep keeps the stored pay", () => {
+    // Round 2 let the label override the bonus words after a figure, and a
+    // "Compensation: $20,000 - $30,000 sign-on bonus" became the pay (recheck 2).
+    const text = "Salary Range: $95,000 - $120,000 plus deal bonuses";
+    expect(extractSalary(text)).toBeNull();
+    expect(minedSalaryRefused(text, "$95,000 - $120,000")).toBe(false);
+  });
 });
 
 describe("the business figure's own amount is still refused (S12-019)", () => {
+  it("a figure the old guards already refuse was never stored by the miner: still null, and not the re-sweep's to touch", () => {
+    for (const [text, figure] of [
+      ["You will manage a portfolio of $500K - $2M in annual revenue accounts.", "$500K - $2M"],
+      ["Responsible for a P&L of $500K - $1M and a team of six.", "$500K - $1M"],
+    ]) {
+      expect(extractSalary(text)).toBeNull();
+      expect(minedSalaryRefused(text, figure)).toBe(false);
+    }
+  });
+
   it.each([
-    ["You will manage a portfolio of $500K - $2M in annual revenue accounts.", "$500K - $2M"],
     ["Oversee fleet costs of $500k - $900k across the region.", "$500k - $900k"],
-    ["Responsible for a P&L of $500K - $1M and a team of six.", "$500K - $1M"],
     ["Support engineering projects worth £350K - £800K across the A350 programme.", "£350K - £800K"],
     ["Our clients' projects are valued at $350,000 - $800,000 each.", "$350,000 - $800,000"],
     ["Our team closed $500,000 - $900,000 in deals each quarter.", "$500,000 - $900,000"],
@@ -98,7 +113,9 @@ describe("the re-sweep never NULLs a range the posting states as pay", () => {
     for (const l of LABELS) for (const lay of LAYOUTS) for (const t of TAILS) for (const f of FIGURES) {
       const text = lay(l, f, t);
       if (minedSalaryRefused(text, f)) wrong.push(`refused: ${text}`);
-      if (extractSalary(text) !== f) wrong.push(`mined ${JSON.stringify(extractSalary(text))}: ${text}`);
+      // A bonus or 401(k) word right after the figure keeps the old guard's null (a safe miss), never another figure.
+      const got = extractSalary(text);
+      if (got !== f && !(got === null && /bonus|401/i.test(t))) wrong.push(`mined ${JSON.stringify(got)}: ${text}`);
     }
     expect(wrong, wrong.slice(0, 10).join("\n")).toEqual([]);
   });

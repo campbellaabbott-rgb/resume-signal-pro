@@ -14,7 +14,8 @@
  * WHAT HOLDS NOW:
  *   - every case the review ran keeps its pay, and the re-sweep leaves it;
  *   - the S12-019 cases stay refused (the-first-money-range-in-a-posting-is-
- *     not-its-pay.test.ts runs beside this one, unchanged).
+ *     not-its-pay.test.ts runs beside this one; round 3's corpus test,
+ *     w4b-fix3-salary-corpus.test.ts, measures the rule on real postings).
  */
 import { describe, expect, it } from "vitest";
 import { extractSalary, minedSalaryRefused } from "../../supabase/functions/_shared/salary-extract";
