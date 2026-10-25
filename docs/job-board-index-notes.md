@@ -13101,16 +13101,6 @@ only stored record of a posting's schedule, and the part-time guard now
 reads its underscore spelling; `source` is what says whether even that
 is enough (see sweepRefusesAnnual).
 
-## n767-const-rowdesc-r-as-description-string
-
-In `supabase/functions/job-board/index.ts`, above: `const rowDesc = (r as { description?: string | null }).description ?? null;`
-
-S12-019: a figure the miner took from this row's description that
-the current rules refuse as pay is re-mined, text and columns
-together (NULL when nothing in the text is pay). A vendor's own
-salary is never touched here: minedSalaryRefused needs the stored
-text verbatim in the description AND judged not pay.
-
 ## n768-const-p-parsesalarystructured-row-salary
 
 In `supabase/functions/job-board/index.ts`, above: `const p = parseSalaryStructured(row.salary, row.country, { title: (row as { title?: string | null }).title ?? null, description: (row as { d`

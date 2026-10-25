@@ -15,7 +15,7 @@
 #     job-board reads).
 # INFO only: 20261011212000 (account deletion takes the Full Analysis) is
 # proved by its own self-check; the owner's read is printed. The salary rule
-# has no live probe: its proof is backfill-salary's own log line after v11.
+# left wave 4 on 2026-10-25 (the miner is main's), so nothing here reads it.
 #
 # READ-ONLY. OPTIONS preflights, one anon table read that must be refused, and
 # one job-board list read on the probe budget.

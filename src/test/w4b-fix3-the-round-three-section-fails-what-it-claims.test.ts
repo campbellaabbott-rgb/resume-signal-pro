@@ -9,9 +9,8 @@
  * verifier. Each round's answer is fed in: round 2's negation (it took a
  * second word) and origin/main's (it split the compound) each read FAIL once
  * the wave 4 board code serves, and so does round 3's for round 4's three
- * negations; a re-sweep that NULLs any salary (round 3's NULLed Philips's
- * stated pay), or writes another figure, reads FAIL; Bbinsurance still holding
- * its old business figure, or a posting already gone, reads INFO.
+ * negations. The salary re-sweep lines left with the salary rule (wave 4
+ * descope, 2026-10-25): the section must not read a single posting's pay.
  */
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -77,18 +76,10 @@ const show = (lines: string[]) => `\n${lines.join("\n")}`;
 const FN = "https://p\\.supabase\\.co/functions/v1";
 const FIVE = ["agent-mcp", "public-api", "generate-application-answers", "generate-apply-package", "apply-agent"];
 const Q = { tx: "nurse not night shift, TX", er: "nurse not travel er", sj: "warehouse not forklift San Jose", sf: "nurse not south florida", or: "nurse not travel or agency", pt: "barista not part-time" } as const;
-const DETAIL = {
-  airbus: "workday:ag~wd3~Airbus:JR10428421",
-  bb: "workday:bbinsurance~wd1~Careers:0000003072",
-  pl: "paylocity:8a6852cc-82d6-47e2-9e95-214ed5a77edf:4257268",
-  kipp: "smartrecruiters:KIPP:744000153836599",
-  ph: "workday:philips~wd3~jobs-and-careers:593574-1",
-} as const;
 const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const list = (q: string, excluded: string[]): Route => ({ match: `^POST ${FN}/job-board .*"q":"${esc(q)}"`, body: JSON.stringify({ jobs: [], excludedTerms: excluded }) });
-const detail = (id: string, salary: string | null): Route => ({ match: `^POST ${FN}/job-board .*"action":"detail","id":"${esc(id)}"`, body: JSON.stringify({ job: { id, salary } }) });
 
-/** Round 4 deployed, the v11 re-sweep done. The board answers are what the code on disk answers. */
+/** Round 4 deployed. The board answers are what the code on disk answers. */
 function healthy(over: Partial<Record<string, Route | null>> = {}, build = "33"): Route[] {
   const base: Record<string, Route> = {};
   for (const f of FIVE) base[`opt:${f}`] = { match: `^OPTIONS ${FN}/${f}$`, headers: { "x-fn-build": `${f}.2026-10-11.${build}` } };
@@ -100,11 +91,6 @@ function healthy(over: Partial<Record<string, Route | null>> = {}, build = "33")
     sf: list(Q.sf, splitExclusions(Q.sf).excluded),
     or: list(Q.or, splitExclusions(Q.or).excluded),
     pt: list(Q.pt, splitExclusions(Q.pt).excluded),
-    airbus: detail(DETAIL.airbus, "£350K to £800K annually"),
-    ph: detail(DETAIL.ph, "$200,000 to $250,000 annually"),
-    bb: detail(DETAIL.bb, "$50.00 - $53.00 Hourly"),
-    pl: detail(DETAIL.pl, "$225,000 to $275,000"),
-    kipp: detail(DETAIL.kipp, "$300,000 - $350,000"),
   });
   for (const [k, v] of Object.entries(over)) { if (v === null) delete base[k]; else if (v) base[k] = v; }
   return Object.values(base);
@@ -121,19 +107,21 @@ describe("the board answers the section expects are what the code on disk answer
   });
 });
 
-describe("section 92 fix rounds 3 and 4, on a healthy deploy after the re-sweep", () => {
-  it("every build, the six negations and the five postings PASS", () => {
+describe("section 92 fix rounds 3 and 4, on a healthy deploy", () => {
+  it("every build and the six negations PASS, and no posting's pay is read", () => {
     const { lines, calls } = run(healthy());
     expect(fails(lines), show(lines)).toEqual([]);
     expect(lines.filter((l) => /^PASS {2}\S+ x-fn-build = /.test(l))).toHaveLength(5);
     for (const q of Object.values(Q)) expect(has(lines, "PASS", new RegExp(esc(`q "${q}"`))), show(lines)).toBe(true);
-    expect(has(lines, "PASS", /Airbus placement \(S12-019\) salary "£350K to £800K annually" \(no stated pay follows/), show(lines)).toBe(true);
-    expect(has(lines, "PASS", /Philips .* salary "\$200,000 to \$250,000 annually" \(a stated pay beside business words keeps its pay\)/), show(lines)).toBe(true);
-    expect(has(lines, "PASS", /Bbinsurance .* salary "\$50\.00 - \$53\.00 Hourly"/), show(lines)).toBe(true);
-    expect(has(lines, "PASS", /Paylocity .* keeps its pay/), show(lines)).toBe(true);
-    expect(has(lines, "PASS", /KIPP .* keeps its pay/), show(lines)).toBe(true);
+    expect(lines.filter((l) => /salary|re-sweep/i.test(l)), show(lines)).toEqual([]);
     expect(calls.filter((c) => !/^(OPTIONS|GET) /.test(c)).every((c) => /\/job-board /.test(c)), "only job-board reads are POSTed").toBe(true);
-    expect(calls.filter((c) => /\/job-board /.test(c)).every((c) => /"action":"(list|detail)"/.test(c)), "every job-board read is a list or a detail").toBe(true);
+    expect(calls.filter((c) => /\/job-board /.test(c)).every((c) => /"action":"list"/.test(c)), "every job-board read is a list").toBe(true);
+    expect(calls.filter((c) => /\/job-board /.test(c))).toHaveLength(7);
+  });
+
+  it("the section's own text names no salary probe and no v11", () => {
+    const code = SECTION.split("\n").filter((l) => !/^\s*#/.test(l)).join("\n");
+    expect(code).not.toMatch(/"action":"detail"|salary|v11/i);
   });
 });
 
@@ -150,12 +138,6 @@ describe("each regression reads FAIL", () => {
     expect(has(lines, "FAIL", /q "barista not part-time" excludes \["parttime"\]/), show(lines)).toBe(true);
   });
 
-  it("round 3's re-sweep, which NULLed the Philips stated pay and the Airbus figure", () => {
-    const { lines } = run(healthy({ ph: detail(DETAIL.ph, null), airbus: detail(DETAIL.airbus, null) }));
-    expect(has(lines, "FAIL", /Philips .* salary null .*never write NULL/), show(lines)).toBe(true);
-    expect(has(lines, "FAIL", /Airbus placement .* salary null .*never write NULL/), show(lines)).toBe(true);
-  });
-
   it("round 2's negation, which took a second word", () => {
     const { lines } = run(healthy({ er: list(Q.er, ["travel er"]), sj: list(Q.sj, ["forklift san"]) }));
     expect(has(lines, "FAIL", /q "nurse not travel er" excludes \["travel er"\]/), show(lines)).toBe(true);
@@ -165,18 +147,6 @@ describe("each regression reads FAIL", () => {
   it("origin/main's negation, which split the compound", () => {
     const { lines } = run(healthy({ tx: list(Q.tx, ["night"]) }));
     expect(has(lines, "FAIL", /q "nurse not night shift, TX" excludes \["night"\]/), show(lines)).toBe(true);
-  });
-
-  it("a re-sweep that NULLs a stated pay", () => {
-    const { lines } = run(healthy({ bb: detail(DETAIL.bb, null), kipp: detail(DETAIL.kipp, null) }));
-    expect(has(lines, "FAIL", /Bbinsurance .* salary null/), show(lines)).toBe(true);
-    expect(has(lines, "FAIL", /KIPP .* salary null/), show(lines)).toBe(true);
-  });
-
-  it("a re-sweep that writes another figure", () => {
-    const { lines } = run(healthy({ airbus: detail(DETAIL.airbus, "£40,000"), pl: detail(DETAIL.pl, "$10,000") }));
-    expect(has(lines, "FAIL", /Airbus placement .* salary "£40,000"/), show(lines)).toBe(true);
-    expect(has(lines, "FAIL", /Paylocity .* salary "\$10,000"/), show(lines)).toBe(true);
   });
 });
 
@@ -188,16 +158,5 @@ describe("what cannot be judged yet is INFO, never PASS or FAIL", () => {
     }));
     expect(fails(lines), show(lines)).toEqual([]);
     for (const q of Object.values(Q)) expect(has(lines, "INFO", new RegExp(`${esc(`q "${q}"`)}.*not judged`)), show(lines)).toBe(true);
-  });
-
-  it("an old business figure the re-sweep has not reached yet is INFO, as is a posting that is gone", () => {
-    const { lines } = run(healthy({
-      bb: detail(DETAIL.bb, "$500,000 - $1,000,000"),
-      kipp: { match: `^POST ${FN}/job-board .*"action":"detail","id":"${esc(DETAIL.kipp)}"`, body: JSON.stringify({ job: null, closed: true }) },
-    }));
-    expect(fails(lines), show(lines)).toEqual([]);
-    expect(has(lines, "INFO", /Bbinsurance .* old business figure: the v11 re-sweep has not reached it yet/), show(lines)).toBe(true);
-    expect(has(lines, "INFO", /KIPP .* no posting row to read \(closed\)/), show(lines)).toBe(true);
-    expect(lines.some((l) => /^PASS {2}(Bbinsurance|KIPP)/.test(l)), show(lines)).toBe(false);
   });
 });

@@ -34,9 +34,10 @@
 #     reads ok while boards wait (S12-015, S12-084);
 #   - parse-pdf, parse-docx and fetch-job-posting serve 2026-10-11.26 or later
 #     (S12-027, S12-028, S12-038, S12-128).
-# INFO only: the experience, salary and country re-derivations (S12-013,
-# S12-019, S12-037) run over the rotation after the deploy, so their lines
-# print counts to watch, not a verdict.
+# INFO only: the experience and country re-derivations (S12-013, S12-037) run
+# over the rotation after the deploy, so their lines print counts to watch,
+# not a verdict. The salary miner (S12-019) left wave 4 on 2026-10-25 and is
+# main's, so this section reads nothing about it.
 #
 # READ-ONLY. job-board list, exists and status reads on the probe budget, and
 # OPTIONS preflights. No write, no maintenance action, no metered fetch.
@@ -81,7 +82,6 @@ J '{"action":"list","q":"nurse jobs not in Texas","limit":20}' > /tmp/vd_92_nott
 J '{"action":"list","q":"cashier","sort":"salary","limit":60}' > /tmp/vd_92_pay.json
 J '{"action":"list","q":"cashier","experience":["expert"],"limit":5}' > /tmp/vd_92_exp.json
 J '{"action":"list","q":"Red Deer","country":"US","limit":20}' > /tmp/vd_92_reddeer.json
-J '{"action":"list","sort":"salary","limit":60}' > /tmp/vd_92_paytop.json
 J '{"action":"status"}' > /tmp/vd_92_status.json
 
 VD92_LIVE="$VD92_LIVE" VD92_R2="$VD92_R2" VD92_NULL="$VD92_NULL" VD92_ARR="$VD92_ARR" VD92_EX="$VD92_EX" VD92_LONG="$VD92_LONG" node -e '
@@ -147,8 +147,7 @@ for(const [f,word,re] of [["/tmp/vd_92_cvs.json","cvs",/cvs/i],["/tmp/vd_92_ups.
 
 // INFO: re-derivations that run over the rotation.
 {const e=rd("/tmp/vd_92_exp.json");info("cashier postings filed Expert: "+(n(e)??"?")+" (S12-013: EXPERIENCE_VERSION 2 re-derives every stored row over the following passes; this should fall to near 0)");
- const rdr=rd("/tmp/vd_92_reddeer.json");const ab=rows(rdr).filter((r)=>/,\s*AB\b/.test(String(r.location||"")));info("\"Red Deer\" rows still filed in the US with an Alberta address: "+ab.length+" of "+rows(rdr).length+" (S12-037: COUNTRY_MAP_VERSION 10 re-files them over the rotation; want 0 once it has run)");
- const top=rd("/tmp/vd_92_paytop.json");const airbus=rows(top).filter((r)=>/airbus/i.test(String(r.company||""))&&/800/.test(String(r.salary||"")));info("the pay order first page holds "+airbus.length+" Airbus row(s) priced from a £350K-£800K placement (S12-019: SALARY_PARSE_VERSION 11 re-mines them; want 0 once it has run)");}'
+ const rdr=rd("/tmp/vd_92_reddeer.json");const ab=rows(rdr).filter((r)=>/,\s*AB\b/.test(String(r.location||"")));info("\"Red Deer\" rows still filed in the US with an Alberta address: "+ab.length+" of "+rows(rdr).length+" (S12-037: COUNTRY_MAP_VERSION 10 re-files them over the rotation; want 0 once it has run)");}'
 
 for VD92_FN in parse-pdf parse-docx fetch-job-posting; do
   VD92_H=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$VD92_FN" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+: *//')

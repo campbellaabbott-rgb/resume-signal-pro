@@ -694,125 +694,40 @@ export function parseSalaryStructured(
 const decodeLegacyEntities = (s: string) =>
   s.replace(/&mdash;/gi, "\u2014").replace(/&ndash;/gi, "\u2013").replace(/&nbsp;/gi, " ").replace(/&amp;/gi, "&");
 
-// S12-019: the old miner took the first figure its guards accept, and some
-// postings state a business figure first (Airbus's placement "£350K to £800K
-// annually in external business revenue", "a book of business of approximately
-// $500,000 - $1,000,000"). The old guards still judge every figure in the old
-// order, so where they refuse the old figure the answer is null as before. A
-// figure they accept is set aside only when a business noun OWNS it ("<noun>
-// of / valued at / worth / in excess of $X", "deal size $X", "$X in/of <noun>",
-// "$X portfolio"), no pay word stands in its sentence or right after it, and
-// it reads as annual: an hourly, daily, weekly or monthly rate is never one. A
-// noun that only stands beside a figure (a job title, "+ RSUs", "Target
-// Earning potential", "Total target cash") owns nothing. A big one (top of
-// 200,000 or more) gives way to a later figure labelled as pay, or to null; a
-// smaller one only to a later labelled pay. That later figure is never an
-// allowance, benefit or incentive. Measured: w4b-fix3-salary-corpus.test.ts.
-const BIG_FIGURE = 200_000;
-const PAY_WORD = /\b(?:salary|salaries|pay|pays|paying|paid|compensation|comp|wages?|remunerat\w*|renumerat\w*|earnings?|earn|income|ote|on[\s-]?target|package|stipend|hourly|rewards|total\s+cash)\b/i;
-const BUSINESS_NOUN = String.raw`business|portfolios?|pipelines?|revenues?|sales|turnover|p\s?&\s?l|profits?(?!\s*-?\s*shar)|deals?|aum|assets(?:\s+under\s+management)?|spend(?:ing)?|quotas?|investments?|premiums?|valuation|funding|endowments?|liabilit(?:y|ies)|projects?|costs?|fleet|net\s+worth|checks|equity|(?:stock\s+)?options|(?:share|stock)\s+units|psus?|rsus?`;
-const QUALIFIER = String.raw`(?:(?:approximately|approx\.?|about|around|roughly|over|more\s+than|at\s+least|nearly|circa|up\s+to|an?|additional|minimum(?:\s+of)?)\s+)*[~>]?\s*$`;
-/** The words just before a figure name its owner: "portfolio of a minimum", "deal sizes of", "Book of business:". */
-const OWNER_BEFORE = new RegExp(String.raw`\b(?:(?:${BUSINESS_NOUN})\s+(?:(?:is|are|was|were)\s+)?(?:of|valued\s+at|worth|totall?ing|in\s+excess\s+of|exceeding|ranging\s+from)|(?:deal|project)s?\s+(?:sizes?|values?)\s*(?::|of)?|book\s+of\s+business\s*:)\s+${QUALIFIER}`, "i");
-const TITLE_AFTER = String.raw`(?:managers?|management|directors?|leads?|leaders?|analysts?|engineers?|engineering|specialists?|coordinators?|associates?|executives?|development|officers?|operations|applications|partners?|owners?|administrators?|consultants?|controls?|accountants?)\b`;
-/** Not a job title's noun, even one word before the title word ("Deal Desk Analyst"). */
-const NOT_A_TITLE = String.raw`(?!\s+(?:(?!(?:of|in|the|a|an|and|to|for|with|is|are)\b)[\w&/-]+\s+)?${TITLE_AFTER})`;
-/** The words just after a figure name its owner: "in external business revenue", "in RSUs", "portfolio" (not "in a business", not "in base plus RSUs"). */
-const OWNER_AFTER = new RegExp(String.raw`^\s*(?:(?:in|of)\s+(?!(?:a|an|the|our|this|that|your|their|its|my)\b)(?:(?!(?:plus|and|or|with)\b)[\w()-]+\s+){0,3}?(?:${BUSINESS_NOUN})|portfolios?|pipelines?|book\s+of\s+business|deals?|projects?)\b${NOT_A_TITLE}`, "i");
-/** Before a later figure: what follows a business figure is pay only when it is not one of these. */
-const NOT_BASE = /allowance|benefit|assistance|incentive|relocat|housing|tuition|reimburs/i;
-/** A line ending on a label colon does not end the sentence. */
-const SENTENCE_END = /[.!?](?=\s)|\n(?<!:\n)/g;
-
-/** Where the text after the last match of `re` in `s` starts (0 when none). */
-function lastEnd(s: string, re: RegExp): number {
-  let at = 0;
-  for (const m of s.matchAll(re)) at = (m.index ?? 0) + m[0].length;
-  return at;
-}
-
-type Verdict = { text: string; business: boolean; big: boolean; labelled: boolean; base: boolean; hourly: boolean } | null;
-/** How the words around the figure at [at, end) read; `annual` is false for any hourly, daily, weekly or monthly reading. */
-function readAround(lined: string, at: number, end: number, annual: boolean, top: number, text: string, hourly: boolean): Verdict {
-  const head = lined.slice(Math.max(0, at - 250), at);
-  // A figure that starts its line takes a short heading line above it as its sentence ("Pay Range", then "$50.00 - $53.00 Hourly").
-  const own = head.slice(lastEnd(head, SENTENCE_END));
-  const line = head.endsWith("\n") ? head.slice(0, -1) : "";
-  const above = line.slice(lastEnd(line, SENTENCE_END));
-  const sentence = own.trim() || above.length > 40 ? own : above;
-  const tail = lined.slice(end, end + 60);
-  const cut = tail.search(/[.!?](?=\s|$)|[;\n]/);
-  const tailClause = cut < 0 ? tail : tail.slice(0, cut);
-  const labelled = PAY_WORD.test(sentence) || PAY_WORD.test(tailClause.slice(0, 40));
-  const near = head.slice(-70);
-  // "Range:", "Base:" or a rate before a figure name it as pay too, though they do not label a later one.
-  const named = labelled || /\b(?:range|rates?|base)\b/i.test(sentence);
-  const business = annual && !named && (OWNER_BEFORE.test(near) || OWNER_AFTER.test(tailClause));
-  return { text, business, big: annual && top >= BIG_FIGURE, labelled, base: !NOT_BASE.test(near.slice(lastEnd(near, SENTENCE_END))), hourly };
-}
-/** The old miner's guards on one range: null where they refuse it. */
-function judgeRange(hay: string, lined: string, range: RegExpMatchArray): Verdict {
-  const at = range.index ?? 0;
-  const ctx = hay.slice(Math.max(0, at - 40), at + range[0].length + 20);
-  if (NOT_PAY.test(ctx)) return null;
-  const lo = parseMoney(range[1]);
-  const hi = parseMoney(range[2]);
-  const period = `${range[3] ?? ""} ${RANGE_FIRST_PERIOD.exec(range[0])?.[1] ?? ""}`;
-  const hourly = /hour|hr|hourly/i.test(period) ||
-    (lo !== null && hi !== null && lo < 1_000 && hi < 1_000 && !/[kK]\s*$/.test(range[1] + range[2]));
-  if (lo === null || hi === null || !plausible(lo, hi, hourly)) return null;
-  const text = range[0].replace(/\s+/g, " ").trim().slice(0, 200);
-  // The money pattern may take the space after a figure; the words after it start after the figure itself.
-  return readAround(lined, at, at + range[0].trimEnd().length, !hourly && !/week|wk|month|mo\b/i.test(period), hi, text, hourly);
-}
-function judgeSingle(hay: string, lined: string, single: RegExpMatchArray): Verdict {
-  const at = single.index ?? 0;
-  const ctx = hay.slice(Math.max(0, at - 40), at + single[0].length + 20);
-  if (NOT_PAY.test(ctx)) return null;
-  const v = parseMoney(single[1]);
-  const hourly = /hour|hr|hourly/i.test(single[2]);
-  if (v === null || !plausible(v, v, hourly)) return null;
-  const text = single[0].replace(/\s+/g, " ").trim().slice(0, 200);
-  return readAround(lined, at, at + single[0].trimEnd().length, !hourly && !/week|wk|month|mo\b/i.test(single[2]), v, text, hourly);
-}
-
-/** The figure the old miner took (its text, or null) and the answer now. */
-function mine(text: string): { old: string | null; now: string | null } {
-  // One character per whitespace run, so `hay` is the old miner's text and indices are shared.
-  const lined = decodeLegacyEntities(text.slice(0, 12_000)).replace(/\s+/g, (ws) => (ws.includes("\n") ? "\n" : " "));
-  const hay = lined.replace(/\n/g, " ");
-  const ranges = [...hay.matchAll(new RegExp(RANGE_RE.source, "gi"))];
-  // Singles apart from every range: the old miner read them only when there was no range.
-  const singles = [...hay.matchAll(new RegExp(SINGLE_RE.source, "gi"))]
-    .filter((m) => !ranges.some((r) => (m.index ?? 0) < (r.index ?? 0) + r[0].length && (m.index ?? 0) + m[0].length > (r.index ?? 0)));
-  const judged = (function* () {
-    for (const r of ranges) yield judgeRange(hay, lined, r);
-    for (const s of singles) yield judgeSingle(hay, lined, s);
-  })();
-  let old: string | null | undefined;
-  let aside: string | null | undefined; // set once a business figure is seen: null for a big one, else the figure itself
-  for (const v of judged) {
-    if (old === undefined) old = v?.text ?? null;
-    if (aside !== undefined) {
-      if (v && !v.business && (v.labelled || v.hourly) && v.base) return { old, now: v.text };
-      continue;
-    }
-    if (!v) return { old, now: null };
-    if (!v.business) return { old, now: v.text };
-    aside = v.big ? null : v.text;
-  }
-  return { old: old ?? null, now: aside ?? null };
-}
-
 export function extractSalary(text: string | null | undefined): string | null {
-  return text ? mine(text).now : null;
-}
+  if (!text) return null;
+  const hay = decodeLegacyEntities(text.slice(0, 12_000)).replace(/\s+/g, " ");
 
-/** For the v11 re-sweep: the stored text is the old miner's business figure and the miner now reads a later stated
- *  pay. A refusal alone never NULLs a stored salary: a business figure with no stated pay after it is left as it is. */
-export function minedSalaryRefused(description: string | null | undefined, stored: string | null | undefined): boolean {
-  if (!description || !stored) return false;
-  const { old, now } = mine(description);
-  const s = stored.replace(/\s+/g, " ").trim();
-  return old === s && now !== null && now !== s;
+  const range = hay.match(RANGE_RE);
+  if (range && range.index !== undefined) {
+    const ctx = hay.slice(Math.max(0, range.index - 40), range.index + range[0].length + 20);
+    if (!NOT_PAY.test(ctx)) {
+      const lo = parseMoney(range[1]);
+      const hi = parseMoney(range[2]);
+      const firstPeriod = RANGE_FIRST_PERIOD.exec(range[0])?.[1] ?? "";
+      const hourly = /hour|hr|hourly/i.test(`${range[3] ?? ""} ${firstPeriod}`) ||
+        (lo !== null && hi !== null && lo < 1_000 && hi < 1_000 && !/[kK]\s*$/.test(range[1] + range[2]));
+      if (lo !== null && hi !== null && plausible(lo, hi, hourly)) {
+        return range[0].replace(/\s+/g, " ").trim().slice(0, 200);
+      }
+    }
+    // A money range matched but failed the pay guards (bonus context, absurd
+    // spread, wage-floor). The text is ambiguous — do NOT let the single-figure
+    // fallback cherry-pick one end of a rejected range. Conservative null.
+    return null;
+  }
+
+  // Single figure only when explicitly tied to a pay period ("$95,000 per year").
+  const single = hay.match(SINGLE_RE);
+  if (single && single.index !== undefined) {
+    const ctx = hay.slice(Math.max(0, single.index - 40), single.index + single[0].length + 20);
+    if (!NOT_PAY.test(ctx)) {
+      const v = parseMoney(single[1]);
+      const hourly = /hour|hr|hourly/i.test(single[2]);
+      if (v !== null && plausible(v, v, hourly)) {
+        return single[0].replace(/\s+/g, " ").trim().slice(0, 200);
+      }
+    }
+  }
+  return null;
 }
