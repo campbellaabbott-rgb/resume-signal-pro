@@ -1,35 +1,38 @@
 // @vitest-environment node
 /**
- * THE MATCH BENCH AS A REGRESSION GATE (spec 19), offline.
+ * THE ENGINE'S OWN BENCH: the request path and the engine's promises, offline.
+ *
+ * This is NOT the accuracy gate. The one gate on P@10, top-20 location
+ * mismatch, résumés at zero and the held-out reader is
+ * match-bench-gate.test.ts (rubric v2, the 4,684-posting corpus, a stated
+ * tolerance). Two gates on one metric drift apart, so when rm/engine and
+ * rm/bench were merged on rm/integration this file stopped holding v1 to
+ * baseline.v1.json. That file stays as scripts/match-bench/run.ts's record
+ * (the CPU figures in docs/resume-match.md come from it).
  *
  * 1. Positive control. BEFORE replayed from its frozen display order through
  *    the ported judge, licence rule off, reproduces what the 2026-10-12 bench
  *    printed: exact-11 P@10 14.5, P@20 10.0, location mismatch 85.5%,
  *    in-field seniority 15.9%; all-24 bounds [6.7, 17.1] and [4.6, 9.8]. If
  *    this moves, the port (or the corpus) is wrong, not the matcher.
- * 2. The licence rule (new) only ever removes shortlisted rows, and is applied
- *    to BEFORE and v1 alike.
- * 3. v1 (resume-match's own pipeline against the shipped migrations and the
- *    frozen corpus) does not fall below baseline.v1.json, no résumé the floor
- *    had above zero falls to zero, and location mismatch does not rise.
- *    These are DEV-SET, AUTO-JUDGED figures and the corpus holds only what
- *    BEFORE and the prototype read: a floor against regressions, never a
- *    claim that v1 beats BEFORE. That claim waits for the held-out set, the
- *    AFTER probe budget and the same hand review (owner decision 8).
- *
- * Regenerate the floor after a deliberate change: npx tsx scripts/match-bench/run.ts --save
+ * 2. The licence rule only ever removes shortlisted rows.
+ * 3. v1 runs the way the device calls it: each dev résumé read on the device,
+ *    sent as the body src/lib/match/request.ts builds, validated by the
+ *    handler's own siteInput, matched by runMatch against the shipped
+ *    migrations. Over all 24 it keeps the engine's promises: no deadline
+ *    missed, a row whose requirements were not read is never Strong, and one
+ *    automatic widening step at most.
  */
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import type { PGlite } from "@electric-sql/pglite";
-import { bootBenchDb, loadCorpus, replayBefore, runV1, type V1Per, type V1Summary } from "./fixtures/match-bench/bench";
+import { bootBenchDb, loadCorpus, replayBefore, runV1, type V1Per } from "./fixtures/match-bench/bench";
 import { autoJudge, licenceVerdict } from "./fixtures/match-bench/judge";
 import { RESUMES } from "./fixtures/match-bench/manifest";
 
 const FIX = resolve(__dirname, "fixtures/match-bench");
 const BEFORE = JSON.parse(readFileSync(resolve(FIX, "baseline.before.json"), "utf8"));
-const FLOOR = JSON.parse(readFileSync(resolve(FIX, "baseline.v1.json"), "utf8")) as { summary: V1Summary; per: Array<{ id: string; p10: number; p20: number; shown: number }> };
 
 describe("the frozen corpus", () => {
   it("is under the 4 MB the spec allows and holds every row BEFORE showed", () => {
@@ -89,41 +92,30 @@ describe("the licence rule, from the posting's own words", () => {
   });
 });
 
-describe("v1 on the frozen corpus (dev set, auto-judged): a floor, not a verdict", () => {
+describe("v1 through the device's request path, on the frozen corpus: the engine's promises", () => {
   let db: PGlite;
   let per: V1Per[];
-  let s: V1Summary;
   beforeAll(async () => {
     db = await bootBenchDb();
-    ({ per, summary: s } = await runV1(db, { licences: true, frozenClock: true }));
+    ({ per } = await runV1(db, { licences: true, frozenClock: true }));
   }, 240_000);
   afterAll(async () => { await db?.close(); });
 
-  it("does not fall below the recorded floor on P@10 and P@20, exact 11 and all 24", () => {
-    expect(s.exact11.p10!).toBeGreaterThanOrEqual(FLOOR.summary.exact11.p10!);
-    expect(s.exact11.p20!).toBeGreaterThanOrEqual(FLOOR.summary.exact11.p20!);
-    expect(s.all24.p10!).toBeGreaterThanOrEqual(FLOOR.summary.all24.p10!);
-    expect(s.all24.p20!).toBeGreaterThanOrEqual(FLOOR.summary.all24.p20!);
-  });
-  it("no résumé the floor had above zero is at zero, and none runs past a deadline", () => {
-    for (const f of FLOOR.per) {
-      const p = per.find((x) => x.id === f.id)!;
-      if (f.p20 > 0) expect(p.p20, `${f.id} fell to zero`).toBeGreaterThan(0);
-      expect(p.deadlineMissed, f.id).toBeNull();
-    }
-  });
-  it("location mismatch does not rise, and every shown row's place is one the reader can reach", () => {
-    expect(s.exact11.locationPooled[0]).toBeLessThanOrEqual(FLOOR.summary.exact11.locationPooled[0]);
-    expect(s.all24.locationPooled[0]).toBeLessThanOrEqual(FLOOR.summary.all24.locationPooled[0]);
+  it("runs every dev résumé, and none runs past a deadline", () => {
+    expect(per.map((p) => p.id).sort()).toEqual(RESUMES.map((r) => r.id).sort());
+    for (const p of per) expect(p.deadlineMissed, p.id).toBeNull();
   });
   it("a row whose requirements were not read is never Strong; one widening step at most", () => {
+    let unread = 0;
     for (const p of per) {
-      for (const r of p.rows) if (!r.requirementsRead) expect(r.tier, `${p.id} ${r.id}`).not.toBe("strong");
+      for (const r of p.rows) {
+        if (r.requirementsRead) continue;
+        unread++;
+        expect(r.tier, `${p.id} ${r.id}`).not.toBe("strong");
+      }
       expect(p.steps.length, p.id).toBeLessThanOrEqual(2);
     }
-  });
-  it("beats BEFORE's exact-set figures on this corpus (recorded for the report, with the caveats above)", () => {
-    expect(s.exact11.p20!).toBeGreaterThan(BEFORE.summary.exactSet.p20);
-    expect(s.exact11.location!).toBeLessThan(BEFORE.summary.exactSet.location);
+    // Positive control: the corpus leaves most rows unread, so the cap was exercised.
+    expect(unread).toBeGreaterThan(0);
   });
 });

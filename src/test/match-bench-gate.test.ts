@@ -28,10 +28,11 @@
  * already covered that pair. The v1-beats-BEFORE verdict needs the held-out AFTER run
  * with its own probe budget and hand review (spec §19.2, owner decision 8).
  *
- * WHEN IT SKIPS. Only while NONE of the engine's modules is on the branch (the
- * bench landed before rm/engine). A branch with some but not all of them fails,
- * naming what is missing: a half-merged engine is not a reason to stay quiet.
- * MATCH_ENGINE_ROOT=<checkout> points it at another checkout's engine.
+ * IT NEVER SKIPS. The engine and the bench were merged together on
+ * rm/integration, so every state but "ready" fails here, naming what is
+ * missing: a branch without the engine, or with only part of it, is a broken
+ * merge, not a reason to stay quiet. MATCH_ENGINE_ROOT=<checkout> points it at
+ * another checkout's engine, which must be whole too.
  *
  * IT NEVER TOUCHES THE NETWORK: global fetch throws for the whole measurement,
  * and the offline client answers only metro_ring and match_candidates.
@@ -49,9 +50,6 @@ import type { ReaderScore } from "./fixtures/match-bench/reader-score";
 
 const ENGINE_ROOT = process.env.MATCH_ENGINE_ROOT ? resolve(process.env.MATCH_ENGINE_ROOT) : REPO_ROOT;
 const readiness = engineReadiness(ENGINE_ROOT);
-if (readiness.kind === "absent") {
-  console.warn(`[match-bench gate] SKIPPED: ${readiness.message}. The gate runs as soon as the engine is merged.`);
-}
 
 describe("the gate knows whether the engine is here", () => {
   it("looks for spec §18's modules by their import paths", () => {
@@ -66,7 +64,7 @@ describe("the gate knows whether the engine is here", () => {
     ]);
   });
 
-  it("skips only when nothing is there, and calls one module without the rest a half-merged engine", () => {
+  it("calls an empty checkout absent and one module without the rest a half-merged engine", () => {
     const tmp = mkdtempSync(join(tmpdir(), "match-bench-ready-"));
     try {
       expect(engineReadiness(tmp).kind).toBe("absent");
@@ -81,8 +79,8 @@ describe("the gate knows whether the engine is here", () => {
     }
   });
 
-  it("is never half-merged on this branch", () => {
-    expect(readiness.kind === "partial" ? readiness.message : "ok").toBe("ok");
+  it("finds the whole engine on this branch, so the AFTER measurement below always runs", () => {
+    expect(readiness.kind === "ready" ? "ready" : readiness.message).toBe("ready");
   });
 });
 
@@ -132,7 +130,7 @@ describe("the gate's rule, on numbers it is handed", () => {
   });
 });
 
-describe.skipIf(readiness.kind !== "ready")("AFTER, offline, against the recorded baseline", () => {
+describe("AFTER, offline, against the recorded baseline", () => {
   let measure: AfterMeasure;
   let reader: ReaderScore;
   const realFetch = globalThis.fetch;

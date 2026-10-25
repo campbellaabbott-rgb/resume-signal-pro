@@ -55,7 +55,7 @@ full record, with the three prototypes and the judges, is
 | `supabase/functions/resume-match/index_test.ts` | The Deno test: a canary résumé and canary profile values reach no log line, no write and no echo; the limiter order; the follow-up token; one automatic widening step; no statement after a missed deadline. |
 | `src/lib/match/**` | Pure modules a later page uses (request body, keyword overlap, re-tiering from facets, the "Not for me" chips, stable insertion, the session profile, the strip as data). No component imports them yet. |
 | `scripts/match/build-geo-seed.mjs` | Turns the GeoNames files into the `geo_places` seed chunks. |
-| `scripts/match-bench/**`, `src/test/fixtures/match-bench/**` | The offline bench: the frozen corpus, the 24 dev résumés, the ported judge, the baselines. |
+| `scripts/match-bench/**`, `src/test/fixtures/match-bench/**` | The offline bench: the 24 dev résumés, the 60 held-out résumés written blind, two frozen corpora, two judges (rm/bench's v2 rubric, which the gate uses, and rm/engine's port of the 2026-10-12 judge), the baselines. `scripts/match-bench/README.md` says which does what. |
 | `src/test/match-*.test.ts` | The regression gate (below). |
 | `scripts/verify-deploy.d/97-resume-match.sh` | The live, read-only proof after deploy. |
 
@@ -177,7 +177,9 @@ gate's fallback.
 | `match-serving-parity.test.ts` | excluded sources and the 30-day window equal to the board's and /v1's; no scorer call |
 | `match-wording.test.ts` | no banned word in any sentence, with a positive control |
 | `match-device.test.ts` | the device modules |
-| `match-bench.test.ts` | BEFORE replays to exactly 14.5 / 10.0; v1 does not fall below `baseline.v1.json` |
+| `match-bench-gate.test.ts` | **the accuracy gate**, never skipped: the engine offline over the 4,684-posting corpus, judged by the v2 rubric, against `baselines/v1.json`: exact-11 P@10 within 5 points, top-20 location mismatch within 2 points, no résumé newly at zero, still beating BEFORE; the held-out reader within 5 points, authorisation precision not falling at all; no network call |
+| `match-bench-before.test.ts`, `match-bench-rubric.test.ts`, `match-bench-fixtures.test.ts` | BEFORE replays to 14.5 / 10.0 / 85.5% under the legacy rubric (the positive control); every v2 rule; the held-out set's coverage and blindness, nothing personal, corpus integrity |
+| `match-bench.test.ts` | rm/engine's judge replays BEFORE to exactly 14.5 / 10.0; over all 24 dev résumés, sent the way the device sends them, no deadline is missed, an unread row is never Strong and there is one widening step at most. It holds no accuracy figure (one gate per metric). |
 | `match-geo-seed.test.ts` | the seed builder's chunks apply twice and check their ring |
 | `match-verify-section-97.test.ts` | section 97 can fail every claim it makes, and sends no résumé |
 
@@ -192,13 +194,34 @@ P@20 85.9; all-24 P@10 73.3, P@20 69.0; 0 of 361 shown rows in a place the
 reader cannot reach; seniority mismatch 7.1% (27 of 358); 7 of 24 résumés
 under 20 rows and 3 at zero. BEFORE on the same judge: exact-11 P@10 14.5,
 P@20 10.0, location mismatch 85.5%. This is a floor, not a verdict: the
-held-out set, the AFTER probe budget and the same hand review BEFORE had are
-still owed (spec 19.2). The bench seeds `geo_places` with the prototype's
-hand-written rings until the GeoNames seed lands.
+AFTER probe budget and the same hand review BEFORE had are still owed (spec
+19.2). The bench seeds `geo_places` with the prototype's hand-written rings
+until the GeoNames seed lands.
+
+**The gate's figures** (`match-bench-gate.test.ts`, `scripts/match-bench/report.ts`;
+rm/bench's 4,684-posting corpus with 618 descriptions and its v2 rubric, which
+fails a licence held in another state unless the posting says it may follow
+hire and reads UK and German sponsorship refusals). Re-measured on
+rm/integration on 2026-10-25, the same as rm/engine d549462d: exact-11 P@10
+85.5, P@20 81.8, top-20 location mismatch 1.0% (2 of 200), seniority 7.6% (15
+of 197), licence fails 0; all-24 P@10 73.3, P@20 67.1, location 0.5% (2 of
+364), 6 résumés under 10 rows and 3 at zero. BEFORE under the same rubric:
+exact-11 14.5 / 10.0, location 85.0% (187 of 220). The two benches differ
+because their corpora and rubrics differ; only this one gates.
+
+**The profile reader on the 60 held-out résumés** (written blind by the bench's
+author, aggregates only, spec 5 targets): country 63.3% (38 of 60, target 95%),
+city 61% (36 of 59, target 90%), authorisation precision 97.1% (33 of 34,
+target 100%), years within 3 86.7% (52 of 60, target 85%, met), entry recall
+59.1% (13 of 22, target 90%) with 0 false positives, sponsorship need 3 of 4.
+On the dev set the reader reads every home; on the blind set it misses about a
+third. That is the reader's main gap before phase 1.
 
 **CPU per call** (the function's own `cpuMs`, this Mac under a load average of
 about 7): p50 4 ms, p90 293 ms, max 380 ms on the first pass; p50 4, p90 256,
 max 324 on the second. Wall time in pglite: p50 28 ms, p90 379 ms, max 411 ms.
+Re-run on rm/integration on 2026-10-25 at a load average of about 2.9: p50 2
+ms, p90 164 ms, max 165 ms; wall p50 12 ms, p90 174 ms, max 196 ms.
 CPU follows the number of descriptions read: calls that read none cost 0-8 ms,
 calls that read 7-36 cost 151-380 ms. The frozen corpus holds few
 descriptions (300 of 361 shown rows were unread), so production calls will
@@ -249,9 +272,13 @@ Not run yet: phase 0 has not deployed.
   Columbus, OH ring and RAISEs if it lacks Westerville or reaches Georgia.
   Downloading the files is an owner step; until then the ring is the reader's
   own city.
-- **The held-out set** (60 résumés by an agent who has not seen the families),
-  the AFTER probe budget and hand review, and the two-rater agreement check
-  (spec 19.2). No claim that v1 beats BEFORE rests on the dev-set figures.
+- **The held-out AFTER run** (spec 19.2). The 60 held-out résumés exist,
+  written blind, and the gate scores the profile reader on them. What is owed:
+  calling the deployed resume-match once per held-out profile with its own
+  probe budget, BEFORE on the held-out set, the same hand review for both, and
+  the two-rater agreement check. The steps are in
+  `scripts/match-bench/README.md`, "The AFTER benchmark". No claim that v1
+  beats BEFORE rests on the dev-set figures.
 - **Family mining** to about 300 occupations from the board's titles.
 - **The parse-pdf and parse-docx logging fix.** Wave 4's second round owns
   those files (S12 routing sends parse-pdf and parse-docx items to job-board),

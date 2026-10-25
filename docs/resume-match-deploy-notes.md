@@ -88,8 +88,9 @@ The ledger reservation (`resume-match`: `rm/`, `20261016*`, fnBuildDate
 
 - The parse-pdf and parse-docx logging fix (file names and raw IPs in logs).
   Wave 4's second round owns both files; S12 routes their items to job-board.
-- The GeoNames seed rows, the held-out bench set and the AFTER hand review,
-  family mining, and phases 1-4 (`docs/resume-match.md`, "Not done in phase 0").
+- The GeoNames seed rows, the held-out AFTER run with its own probe budget
+  and hand review, family mining, and phases 1-4 (`docs/resume-match.md`, "Not
+  done in phase 0").
 
 ### Rollback
 

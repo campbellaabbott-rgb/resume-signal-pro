@@ -1,7 +1,7 @@
 {
- "recordedAt": "2026-10-25T03:16:28.074Z",
+ "recordedAt": "2026-10-25T04:51:42.038Z",
  "engine": {
-  "ref": "rm/engine d549462d (committed tree, 2026-10-12 21:04 EDT)",
+  "ref": "rm/integration: rm/engine f5c2d151 merged with rm/bench 1b275429 (2026-10-25)",
   "note": "Recorded offline from the frozen corpus with scripts/match-bench/report.ts --save-after."
  },
  "corpusVersion": "match-bench-corpus.2026-10-12.1",
@@ -263,7 +263,7 @@
     ]
    }
   },
-  "maxWallMs": 198
+  "maxWallMs": 194
  },
  "oracle": {
   "mode": "oracle",
@@ -517,7 +517,7 @@
     ]
    }
   },
-  "maxWallMs": 202
+  "maxWallMs": 196
  },
  "reader": {
   "n": 60,

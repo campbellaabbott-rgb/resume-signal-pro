@@ -4,9 +4,10 @@
  *
  * Floors are the accuracy prototype's dev-set figures (country 24/24,
  * authorisation 24/24, relocation 24/24, level 17/24, years within 3 18/24),
- * read through the parse round trip (parsed/*.pdf.txt) and from the original
- * text. These are DEV-SET numbers: the reader was written against these
- * résumés. The held-out targets (spec 19) need the 60 held-out résumés.
+ * read through the parse round trip (dev/parsed/*.pdf.txt) and from the
+ * original text (dev/*.txt). These are DEV-SET numbers: the reader was written
+ * against these résumés. The held-out targets (spec 19) are scored on the 60
+ * held-out résumés by match-bench-gate.test.ts, aggregates only.
  */
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
@@ -15,7 +16,7 @@ import { dateRanges, readProfile, splitSections } from "../../supabase/functions
 import { RESUMES } from "./fixtures/match-bench/manifest";
 
 const F = resolve(__dirname, "fixtures/match-bench");
-const text = (id: string, kind: "parsed" | "resumes") => readFileSync(resolve(F, kind, kind === "parsed" ? `${id}.pdf.txt` : `${id}.txt`), "utf8");
+const text = (id: string, kind: "parsed" | "resumes") => readFileSync(kind === "parsed" ? resolve(F, "dev", "parsed", `${id}.pdf.txt`) : resolve(F, "dev", `${id}.txt`), "utf8");
 
 function score(kind: "parsed" | "resumes") {
   const ok = { country: 0, auth: 0, reloc: 0, level: 0, years3: 0, sponsorship: 0 };

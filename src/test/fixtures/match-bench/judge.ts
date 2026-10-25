@@ -24,8 +24,9 @@
  * With `licences: false` the port reproduces BEFORE exactly (the positive
  * control in src/test/match-bench.test.ts).
  *
- * Hand corrections: judgments/overrides.json ("<resumeId>::<postingId>") and
- * judgments/posting-facts.json (a posting's own metadata), as in BEFORE.
+ * Hand corrections: hand-review/overrides.json ("<resumeId>::<postingId>") and
+ * hand-review/posting-facts.json (a posting's own metadata), as in BEFORE. The
+ * same two files feed the v2 rubric (rubric.ts): one hand review for both.
  */
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -216,7 +217,7 @@ export function autoJudge(t: ResumeTruth, row: PostingRow, desc: string | null, 
 }
 
 type Override = Partial<Pick<Verdict, "role" | "seniority" | "location" | "auth" | "licence">> & { note?: string };
-const JUDGMENTS = resolve(dirname(fileURLToPath(import.meta.url)), "judgments");
+const JUDGMENTS = resolve(dirname(fileURLToPath(import.meta.url)), "hand-review");
 let OVR: Record<string, Override> | null = null;
 let FACTS: Record<string, Partial<PostingRow> & { note?: string }> | null = null;
 

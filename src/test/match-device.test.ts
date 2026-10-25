@@ -27,7 +27,7 @@ import { stripChips } from "@/lib/match/strip";
 import { readProfileOnDevice } from "@/lib/match/profile-reader";
 import { RESUMES } from "./fixtures/match-bench/manifest";
 
-const DIR = resolve(__dirname, "fixtures/match-bench/resumes");
+const DIR = resolve(__dirname, "fixtures/match-bench/dev");
 const text = (id: string) => readFileSync(resolve(DIR, `${id}.txt`), "utf8");
 const NOW_YEAR = 2026;
 

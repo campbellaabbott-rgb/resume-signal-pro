@@ -166,7 +166,7 @@ export async function bootBenchDb(): Promise<PGlite> {
   return db;
 }
 
-const PARSED = resolve(HERE, "parsed");
+const PARSED = resolve(HERE, "dev", "parsed");
 export const parsedText = (t: ResumeTruth) => readFileSync(resolve(PARSED, `${t.id}.pdf.txt`), "utf8");
 
 /** The manifest's truth for what the strip asks the reader to confirm. */

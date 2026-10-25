@@ -111,10 +111,11 @@ rate is given with its denominator. BEFORE's all-24 figure is a [low, high]
 bound.
 
 BEFORE and the prototype were recorded on 2026-10-12. The AFTER column was
-re-recorded on 2026-10-24 from `rm/engine` d549462d (committed tree, clean),
-offline. Its engine modules are byte-identical at 9fa797f2, where rm/engine
-merged origin/main. The first recording, from a7e910d3, read exact-11
-81.8 / 75.5 and location 1.1% (2/186).
+recorded on 2026-10-24 from `rm/engine` d549462d (committed tree, clean),
+offline, and re-recorded on 2026-10-25 on `rm/integration`, where rm/engine
+f5c2d151 and rm/bench 1b275429 were merged. Every figure was the same; only the
+baseline's ref, date and wall times changed. The first recording, from
+a7e910d3, read exact-11 81.8 / 75.5 and location 1.1% (2/186).
 
 | metric | BEFORE legacy (as run) | BEFORE v2 | proto v2 (auto) | AFTER v2 extract |
 |---|---|---|---|---|
@@ -174,11 +175,13 @@ It fails when any of these happens:
 
 The run is deterministic and makes no network call: `fetch` throws throughout
 the measurement. It takes about 4 to 6 s with `--maxWorkers=2` (3.6 s measured
-on 2026-10-24 against rm/engine d549462d).
+on 2026-10-24 against rm/engine d549462d; 3.2 s on rm/integration on
+2026-10-25).
 
-The gate **skips only while none** of spec §18's modules is on the branch. One
-module without the rest fails, naming what is missing. To try another checkout's
-engine:
+The gate **never skips**. The engine and the bench were merged together on
+rm/integration, so a branch without spec §18's modules, or with only some of
+them, fails, naming what is missing. To try another checkout's engine (it must
+be whole too):
 
 ```
 MATCH_ENGINE_ROOT=/path/to/checkout npx vitest run --maxWorkers=2 src/test/match-bench-gate.test.ts
@@ -191,13 +194,30 @@ what was measured:
 ./node_modules/.bin/tsx scripts/match-bench/report.ts --save-after --ref "<branch> <sha>"
 ```
 
-### rm/engine carries a second bench (for the integrator)
+### Two benches, one gate (merged on rm/integration, 2026-10-25)
 
 rm/engine's last commit (d549462d, seven minutes after this bench was
 committed) added its own bench under the same folder. It has a 2,731-posting
-corpus with 492 descriptions, `baseline.v1.json`, `bench.ts`, `judge.ts`,
-`rings.ts` and `src/test/match-bench.test.ts`. Its own unit tests also read
-`db.ts`, `endpoint.ts`, `manifest.ts`, `resumes/` and `parsed/` there.
+corpus with 492 descriptions (`corpus.json.gz`), `baseline.v1.json`,
+`bench.ts`, `judge.ts`, `rings.ts`, `scripts/match-bench/run.ts` and
+`src/test/match-bench.test.ts`. Its own unit tests also read `db.ts`,
+`endpoint.ts` and `manifest.ts` there.
+
+When the two were merged on rm/integration:
+- **`match-bench-gate.test.ts` is the one accuracy gate.** It holds exact-11
+  P@10, top-20 location mismatch, résumés at zero and the held-out reader, and
+  it never skips.
+- **`match-bench.test.ts` no longer holds any accuracy figure.** It keeps
+  rm/engine's positive control for its judge (BEFORE replays to 14.5 / 10.0)
+  and the engine's promises over all 24 dev résumés, run the way the device
+  calls it (`src/lib/match/request.ts`, then the handler's `siteInput`): no
+  deadline missed, an unread row never Strong, one widening step at most.
+- **`run.ts --cpu`** stays as the local CPU and wall-time measurement, and
+  `baseline.v1.json` stays as its record. No test compares with it.
+- **One copy of each shared fixture.** rm/engine's `resumes/`, `parsed/` and
+  `judgments/` were byte-identical to `dev/`, `dev/parsed/` and
+  `hand-review/`, so they were removed, and rm/engine's judge and tests read
+  the shared copies. Hand corrections in `hand-review/` now reach both judges.
 
 On 2026-10-24 this bench renamed its files whose paths collided with rm/engine's:
 - `bench.ts` became `gate.ts`;
@@ -218,7 +238,7 @@ reads exact-11 87.3 / 85.9. This one reads 85.5 / 81.8. The corpora differ
 rubrics. rm/engine's rubric counts a licence held in another state as a
 transfer, not a fail. This one fails it unless the posting says the licence
 may follow hire. rm/engine's sponsorship wording is US wording only. This one
-also reads UK and German refusals. Keep one gate once both are merged: two
+also reads UK and German refusals. That is why only one of them gates: two
 gates on one metric drift apart.
 
 The other bench tests:

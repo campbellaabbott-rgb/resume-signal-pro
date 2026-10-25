@@ -80,9 +80,11 @@ export type EngineReadiness =
   | { kind: "ready"; migration: string };
 
 /**
- * ABSENT (none of spec §18's modules and no match_candidates migration) is the
- * only state the gate skips in. A branch carrying SOME of them is a half-merged
- * engine: that fails, naming what is missing, instead of skipping quietly.
+ * ABSENT: none of spec §18's modules and no match_candidates migration.
+ * PARTIAL: some of them, a half-merged engine. READY: all of them. The CI gate
+ * requires READY and fails on the other two, naming what is missing (the engine
+ * and the bench were merged together on rm/integration). report.ts prints the
+ * message and measures BEFORE alone for a checkout that is not READY.
  */
 export function engineReadiness(root = REPO_ROOT): EngineReadiness {
   const s = engineState(root);
