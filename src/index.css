@@ -269,8 +269,14 @@
      a block) gets the floor.
 
      44px under a coarse pointer covers buttons, tabs, menu items and selects.
-     Links and controls that size themselves (a utility like min-h-6 wins over
-     this base layer) keep at least 24px, or the spacing 2.5.8 allows. */
+     A control that sizes itself with a utility (min-h-6, min-h-11) keeps that
+     size: one class outranks button and select, and ties with a role
+     selector, which the later utility wins. Not on a link: Tailwind 3 orders
+     its layers without native cascade layers, so specificity decides, and
+     a[href] (0,1,1) beats a single-class utility (0,1,0). A link laid out as
+     a button that needs another floor uses an important utility (!min-h-10,
+     coarse:!min-h-11). Links keep at least 24px, or the spacing 2.5.8
+     allows. */
   button,
   [role="button"],
   [role="tab"],
