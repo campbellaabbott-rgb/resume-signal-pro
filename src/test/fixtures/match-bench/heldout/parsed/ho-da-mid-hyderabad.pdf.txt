@@ -1,0 +1,17 @@
+KAVYA REDDY DATA ANALYST
+Hyderabad, Telangana
+kavya.reddy@example.com Data analyst with five years in fintech and e-commerce analytics:
++91 00000 00551 SQL, Python and dashboards that product and risk teams use daily.
+TOOLS WORK EXPERIENCE
+SQL (BigQuery, MySQL) Data Analyst II - Deccan Pay Technologies, Hyderabad
+Python (pandas, seaborn) Apr 2023 - Present
+Power BI, Looker - Fraud and risk analytics for UPI payments; rules that cut chargebacks
+18%.
+Excel, Google Sheets - Owner of 25 Looker dashboards for product and risk teams.
+Statistics, A/B testing - Mentor two junior analysts.
+EDUCATION Data Analyst - Charminar Commerce Pvt Ltd, Hyderabad
+B.Tech, Computer Science Jul 2021 - Mar 2023
+JNTU Hyderabad, 2021 - Funnel and cohort analysis for a grocery app; weekly business reviews.
+CERTIFICATIONS
+Google Data Analytics
+Microsoft PL-300

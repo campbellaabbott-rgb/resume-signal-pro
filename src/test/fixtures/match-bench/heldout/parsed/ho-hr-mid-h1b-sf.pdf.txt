@@ -1,0 +1,23 @@
+Arvind Krishnan
+HRIS Analyst | People Analytics
+San Francisco, CA | arvind.krishnan@example.com | (415) 555-0165
+Current H-1B visa holder; any new role requires H-1B transfer sponsorship. San Francisco Bay Area (SF, Oakland,
+San Mateo, South Bay) or remote within the US.
+SUMMARY
+HRIS and people-analytics analyst with six years supporting Workday HCM for fast-growing tech companies:
+business processes, reporting, integrations and the dashboards leaders use for headcount and attrition.
+EXPERIENCE
+Senior HRIS Analyst - Golden Gate Software, Inc., San Francisco, CA | Mar 2023 - Present
+- Workday HCM owner for 3,200 employees: business processes, security groups, calculated fields.
+- Built the headcount and attrition dashboards (Workday Prism, Tableau) used by the exec team.
+- Led the Workday Recruiting rollout across 4 countries.
+HRIS Analyst - Bayline Health Tech, Oakland, CA | Jul 2020 - Feb 2023
+- Workday reports, EIB data loads, open enrollment configuration.
+HR Analyst - Infosphere Consulting, Bengaluru, India | Jun 2018 - Jun 2020
+- HR MIS reporting, SuccessFactors data maintenance for 12,000 employees.
+EDUCATION
+MBA, Human Resources - Symbiosis Institute of Business Management, Pune | 2018
+B.E. Computer Science - Anna University, Chennai | 2016
+SKILLS
+Workday HCM, Workday Recruiting, Prism Analytics, EIB, Tableau, SQL, Excel, SuccessFactors, people analytics,
+data privacy (CCPA)

@@ -18,6 +18,8 @@ import { resolve } from "node:path";
  *      This is the one that will actually bite someone: with RLS on and no
  *      policy, an INVOKER function returns ZERO ROWS to anon rather than
  *      raising. The page renders honest-looking zeroes and nothing errors.
+ *      A reader no client role can execute (service role only, revoked by
+ *      name) is not one: anon gets 42501, and INVOKER is the safer choice.
  */
 const DIR = resolve(__dirname, "../../supabase/migrations");
 const FILES = readdirSync(DIR).filter((f) => f.endsWith(".sql")).sort();
@@ -35,6 +37,63 @@ const stripped = (s: string) =>
   s.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/--[^\n]*/g, " ");
 
 const LOCKDOWN = "20260827130000_the_key_wall_had_a_door_beside_it.sql";
+
+type FnState = { definer: boolean; touches: boolean; trigger: boolean; clientsClosed: boolean; file: string };
+
+/**
+ * Each function's NEWEST state, replayed in migration order, CREATE and ALTER
+ * together, because that is what the database actually ends up holding. A scan
+ * that reads only CREATE bodies reports six false positives against the very
+ * migration that fixed them — ALTER FUNCTION ... SECURITY DEFINER changes the
+ * flag and leaves the body alone, which is exactly why the lockdown uses it.
+ * A function that was invoker in 20260715 and definer in 20260811 is definer.
+ */
+function replay(files: Array<{ name: string; sql: string }>): Map<string, FnState> {
+  const create = /CREATE (?:OR REPLACE )?FUNCTION\s+(?:public\.)?(\w+)\s*\(([^)]*)\)/gi;
+  const alter = /ALTER FUNCTION\s+(?:public\.)?(\w+)\s*\([^)]*\)\s+SECURITY\s+(DEFINER|INVOKER)/gi;
+  const revoke = /REVOKE\s+(?:ALL(?:\s+PRIVILEGES)?|EXECUTE)\s+ON\s+FUNCTION\s+(?:public\.)?(\w+)\s*\([^)]*\)\s+FROM\s+([^;]+);/gi;
+  const grant = /GRANT\s+(?:ALL(?:\s+PRIVILEGES)?|EXECUTE)\s+ON\s+FUNCTION\s+(?:public\.)?(\w+)\s*\([^)]*\)\s+TO\s+([^;]+);/gi;
+  const latest = new Map<string, FnState>();
+  for (const { name: f, sql: raw } of files) {
+    const sql = stripped(raw);
+    const createdAt = new Map<string, number>();
+    const ms = [...sql.matchAll(create)];
+    ms.forEach((m, i) => {
+      const body = sql.slice(m.index!, i + 1 < ms.length ? ms[i + 1].index! : sql.length);
+      createdAt.set(m[1], m.index!);
+      latest.set(m[1], {
+        definer: /SECURITY\s+DEFINER/i.test(body),
+        touches: body.includes("job_board_postings"),
+        trigger: /RETURNS\s+trigger/i.test(body),
+        // A new function carries Supabase's default EXECUTE for PUBLIC, anon and authenticated.
+        clientsClosed: false,
+        file: f,
+      });
+    });
+    for (const m of sql.matchAll(alter)) {
+      const prev = latest.get(m[1]);
+      // The body is unchanged by ALTER, so `touches` carries over.
+      if (prev) latest.set(m[1], { ...prev, definer: m[2].toUpperCase() === "DEFINER", file: f });
+    }
+    const acl = [
+      ...[...sql.matchAll(revoke)].map((m) => ({ at: m.index!, fn: m[1], closes: /\bpublic\b/i.test(m[2]) && /\banon\b/i.test(m[2]) && /\bauthenticated\b/i.test(m[2]), opens: false })),
+      ...[...sql.matchAll(grant)].map((m) => ({ at: m.index!, fn: m[1], closes: false, opens: /\b(?:public|anon|authenticated)\b/i.test(m[2]) })),
+    ].sort((a, b) => a.at - b.at);
+    for (const e of acl) {
+      const prev = latest.get(e.fn);
+      if (!prev || (createdAt.has(e.fn) && e.at < createdAt.get(e.fn)!)) continue;
+      if (e.closes) latest.set(e.fn, { ...prev, clientsClosed: true });
+      else if (e.opens) latest.set(e.fn, { ...prev, clientsClosed: false });
+    }
+  }
+  return latest;
+}
+
+/** Invoker readers of the corpus a client role can still execute. */
+const leakyIn = (latest: Map<string, FnState>): string[] =>
+  [...latest.entries()]
+    .filter(([, v]) => v.touches && !v.definer && !v.trigger && !v.clientsClosed)
+    .map(([n, v]) => `${n} (${v.file})`);
 
 describe("the key wall has no door beside it", () => {
   it("ships the lockdown migration", () => {
@@ -65,45 +124,36 @@ describe("the key wall has no door beside it", () => {
   });
 
   it("every anon-reachable function that reads the corpus is SECURITY DEFINER", () => {
-    // Resolved against each function's NEWEST definition, because a function
-    // that was invoker in 20260715 and definer in 20260811 is definer.
-    // Replayed in migration order, CREATE and ALTER together, because that is
-    // what the database actually ends up holding. A scan that reads only CREATE
-    // bodies reports six false positives against the very migration that fixed
-    // them — ALTER FUNCTION ... SECURITY DEFINER changes the flag and leaves the
-    // body alone, which is exactly why the lockdown uses it.
-    const create = /CREATE (?:OR REPLACE )?FUNCTION\s+(?:public\.)?(\w+)\s*\(([^)]*)\)/gi;
-    const alter = /ALTER FUNCTION\s+(?:public\.)?(\w+)\s*\([^)]*\)\s+SECURITY\s+(DEFINER|INVOKER)/gi;
-    const latest = new Map<string, { definer: boolean; touches: boolean; trigger: boolean; file: string }>();
-    for (const f of FILES) {
-      const sql = stripped(readFileSync(resolve(DIR, f), "utf8"));
-      const ms = [...sql.matchAll(create)];
-      ms.forEach((m, i) => {
-        const body = sql.slice(m.index!, i + 1 < ms.length ? ms[i + 1].index! : sql.length);
-        latest.set(m[1], {
-          definer: /SECURITY\s+DEFINER/i.test(body),
-          touches: body.includes("job_board_postings"),
-          trigger: /RETURNS\s+trigger/i.test(body),
-          file: f,
-        });
-      });
-      for (const m of sql.matchAll(alter)) {
-        const prev = latest.get(m[1]);
-        // The body is unchanged by ALTER, so `touches` carries over.
-        if (prev) latest.set(m[1], { ...prev, definer: m[2].toUpperCase() === "DEFINER", file: f });
-      }
-    }
+    const latest = replay(FILES.map((f) => ({ name: f, sql: readFileSync(resolve(DIR, f), "utf8") })));
     expect(latest.size, "no functions parsed — the assertion below would be vacuous").toBeGreaterThan(100);
 
-    const leaky = [...latest.entries()]
-      .filter(([, v]) => v.touches && !v.definer && !v.trigger)
-      .map(([n, v]) => `${n} (${v.file})`);
+    const leaky = leakyIn(latest);
     expect(
       leaky,
       "these read job_board_postings as the CALLER, so under the lockdown they return " +
         "zero rows to anon instead of raising — silently blank stats, not an error:\n  " +
         leaky.join("\n  "),
     ).toEqual([]);
+  });
+
+  // A function no client role can execute is not anon-reachable: anon gets a
+  // 42501, never a blank page. For such a function INVOKER is the SAFER choice:
+  // the service role that calls it bypasses RLS anyway, and if a revoke ever
+  // regressed, an invoker reader would hand anon zero rows where a definer
+  // reader would hand it the corpus. Closed means revoked BY NAME from PUBLIC,
+  // anon AND authenticated after its newest CREATE, with no later grant to any
+  // of them (a revoke from anon alone leaves PUBLIC's default EXECUTE, which
+  // anon inherits).
+  it("an invoker reader counts as closed only when PUBLIC, anon and authenticated are all revoked by name after its CREATE", () => {
+    const reader = "CREATE FUNCTION public.f(p text) RETURNS int LANGUAGE sql STABLE SECURITY INVOKER AS $$ SELECT count(*)::int FROM public.job_board_postings $$;";
+    const leaks = (...sql: string[]) => leakyIn(replay(sql.map((x, i) => ({ name: `2026010${i}000000_x.sql`, sql: x })))).length > 0;
+    expect(leaks(reader), "no revoke at all").toBe(true);
+    expect(leaks(`${reader}\nREVOKE ALL ON FUNCTION public.f(text) FROM anon, authenticated;`), "PUBLIC still grants EXECUTE").toBe(true);
+    expect(leaks(`${reader}\nREVOKE ALL ON FUNCTION public.f(text) FROM PUBLIC, anon, authenticated;`)).toBe(false);
+    expect(leaks(`${reader}\nREVOKE ALL ON FUNCTION public.f(text) FROM PUBLIC, anon, authenticated;`, "GRANT EXECUTE ON FUNCTION public.f(text) TO authenticated;"), "granted back later").toBe(true);
+    expect(leaks(`REVOKE ALL ON FUNCTION public.f(text) FROM PUBLIC, anon, authenticated;\n${reader}`), "a revoke before the CREATE").toBe(true);
+    expect(leaks(`${reader}\nREVOKE ALL ON FUNCTION public.f(text) FROM PUBLIC, anon, authenticated;`, reader), "re-created later with the defaults").toBe(true);
+    expect(leaks(`${reader}\n-- REVOKE ALL ON FUNCTION public.f(text) FROM PUBLIC, anon, authenticated;`), "a revoke in a comment").toBe(true);
   });
 
   it("the six converted functions are named in the lockdown", () => {

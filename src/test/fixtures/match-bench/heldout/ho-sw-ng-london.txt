@@ -1,0 +1,28 @@
+CHIDI OKONKWO
+Graduate Software Engineer
+London, United Kingdom | chidi.okonkwo@example.com | 07700 900731 | github.com/chidi-builds
+Right to work: UK Graduate visa valid until September 2027; will require Skilled Worker visa sponsorship after that. Open to roles anywhere in the UK, hybrid or remote.
+
+PROFILE
+MSc Computer Science graduate who likes backend work: APIs, queues and the tests that keep them honest. Comfortable in Python and TypeScript, learning Go.
+
+EDUCATION
+MSc Computer Science (Distinction) - Queen Mary University of London | Sep 2025 - Sep 2026
+Dissertation: rate limiting for multi-tenant REST APIs (Python, Redis, load testing with k6).
+BSc Computer Engineering - University of Lagos, Nigeria | 2019 - 2024 (First Class)
+
+EXPERIENCE
+Software Engineering Intern - Thamesline Payments, London | Jun 2026 - Aug 2026
+- Built an idempotency layer for a payouts API in TypeScript (Node.js, PostgreSQL); cut duplicate payouts in staging to zero.
+- Wrote contract tests that now run in CI on every merge.
+
+Junior Developer (contract) - Lekki Digital Studio, Lagos, Nigeria | Jan 2024 - Aug 2025
+- Built and maintained Django REST APIs for three e-commerce clients; Docker deployments on AWS.
+- Added Celery background jobs for order emails and stock sync.
+
+PROJECTS
+queue-bench: a small benchmark comparing Redis Streams, RabbitMQ and SQS consumers (Go).
+Hackathon winner, QMUL HackLondon 2026 (team of four).
+
+SKILLS
+Python, TypeScript, Node.js, Django, FastAPI, Go (learning), PostgreSQL, Redis, Docker, AWS (EC2, S3, Lambda), Git, CI/CD (GitHub Actions), unit and integration testing

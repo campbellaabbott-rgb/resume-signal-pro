@@ -1,0 +1,227 @@
+{
+  "note": "v1 on the frozen corpus: dev set, auto-judged, licence rule on, profile as read. A regression floor, not a verdict (spec 19.2).",
+  "judge": {
+    "licences": true
+  },
+  "summary": {
+    "exact11": {
+      "p10": 87.3,
+      "p20": 85.9,
+      "location": 0,
+      "seniority": 4,
+      "locationPooled": [
+        0,
+        200
+      ],
+      "seniorityPooled": [
+        8,
+        197
+      ]
+    },
+    "all24": {
+      "p10": 73.3,
+      "p20": 69,
+      "location": 0,
+      "seniority": 7.1,
+      "locationPooled": [
+        0,
+        361
+      ],
+      "seniorityPooled": [
+        27,
+        358
+      ]
+    },
+    "under10": 6,
+    "under20": 7,
+    "zero": 3,
+    "rows": 361,
+    "reviewed": 2,
+    "licenceFails": 0,
+    "tiers": {
+      "strong": 53,
+      "good": 308
+    },
+    "notRead": 300,
+    "cpuMs": {
+      "p50": 0,
+      "p90": 0,
+      "max": 0
+    },
+    "wallMs": {
+      "p50": 59,
+      "p90": 550,
+      "max": 787
+    }
+  },
+  "per": [
+    {
+      "id": "sw-ng-austin",
+      "exact": true,
+      "p10": 90,
+      "p20": 90,
+      "shown": 20
+    },
+    {
+      "id": "sw-mid-toronto",
+      "exact": true,
+      "p10": 90,
+      "p20": 90,
+      "shown": 20
+    },
+    {
+      "id": "sw-sr-seattle",
+      "exact": true,
+      "p10": 100,
+      "p20": 90,
+      "shown": 20
+    },
+    {
+      "id": "rn-ng-phoenix",
+      "exact": true,
+      "p10": 90,
+      "p20": 90,
+      "shown": 20
+    },
+    {
+      "id": "rn-mid-chicago",
+      "exact": true,
+      "p10": 100,
+      "p20": 100,
+      "shown": 20
+    },
+    {
+      "id": "rn-sr-manchester",
+      "exact": false,
+      "p10": 0,
+      "p20": 0,
+      "shown": 0
+    },
+    {
+      "id": "rt-ng-columbus",
+      "exact": false,
+      "p10": 80,
+      "p20": 75,
+      "shown": 20
+    },
+    {
+      "id": "rt-mid-gap-atlanta",
+      "exact": false,
+      "p10": 90,
+      "p20": 45,
+      "shown": 10
+    },
+    {
+      "id": "rt-sr-dallas",
+      "exact": false,
+      "p10": 90,
+      "p20": 90,
+      "shown": 20
+    },
+    {
+      "id": "fn-ng-nyc",
+      "exact": false,
+      "p10": 100,
+      "p20": 90,
+      "shown": 20
+    },
+    {
+      "id": "fn-mid-charlotte",
+      "exact": false,
+      "p10": 90,
+      "p20": 95,
+      "shown": 20
+    },
+    {
+      "id": "fn-sr-chicago",
+      "exact": true,
+      "p10": 100,
+      "p20": 100,
+      "shown": 20
+    },
+    {
+      "id": "mk-ng-boston",
+      "exact": false,
+      "p10": 80,
+      "p20": 80,
+      "shown": 20
+    },
+    {
+      "id": "mk-mid-denver",
+      "exact": false,
+      "p10": 100,
+      "p20": 100,
+      "shown": 20
+    },
+    {
+      "id": "mk-ch-journalist-portland",
+      "exact": true,
+      "p10": 100,
+      "p20": 100,
+      "shown": 20
+    },
+    {
+      "id": "tr-ng-hvac-houston",
+      "exact": false,
+      "p10": 60,
+      "p20": 30,
+      "shown": 7
+    },
+    {
+      "id": "tr-mid-brisbane",
+      "exact": false,
+      "p10": 30,
+      "p20": 15,
+      "shown": 3
+    },
+    {
+      "id": "tr-ch-cook-to-electrician-philly",
+      "exact": false,
+      "p10": 0,
+      "p20": 0,
+      "shown": 0
+    },
+    {
+      "id": "ed-ng-sacramento",
+      "exact": true,
+      "p10": 0,
+      "p20": 0,
+      "shown": 0
+    },
+    {
+      "id": "ed-mid-gap-raleigh",
+      "exact": false,
+      "p10": 10,
+      "p20": 5,
+      "shown": 1
+    },
+    {
+      "id": "ed-ch-teacher-to-id-minneapolis",
+      "exact": true,
+      "p10": 100,
+      "p20": 100,
+      "shown": 20
+    },
+    {
+      "id": "da-ng-opt-sanjose",
+      "exact": true,
+      "p10": 100,
+      "p20": 95,
+      "shown": 20
+    },
+    {
+      "id": "da-mid-pittsburgh",
+      "exact": true,
+      "p10": 90,
+      "p20": 90,
+      "shown": 20
+    },
+    {
+      "id": "da-ch-biochem-to-ds-sandiego",
+      "exact": false,
+      "p10": 70,
+      "p20": 85,
+      "shown": 20
+    }
+  ]
+}

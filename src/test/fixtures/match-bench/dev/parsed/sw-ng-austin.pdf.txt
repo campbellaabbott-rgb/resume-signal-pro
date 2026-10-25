@@ -1,0 +1,26 @@
+MINH ANH NGUYEN
+Software Engineer (New Grad) | Austin, TX | minh.nguyen@example.com | (512) 555-0143 |
+github.com/mnguyen-dev
+U.S. citizen. Open to relocation within the U.S.; Austin or remote preferred.
+EDUCATION
+The University of Texas at Austin - B.S. Computer Science, May 2026
+GPA 3.7/4.0. Coursework: Data Structures, Algorithms, Operating Systems, Databases, Distributed Systems,
+Machine Learning.
+EXPERIENCE
+Software Engineering Intern - Lonestar Payments (fintech), Austin, TX | May 2025 - Aug 2025
+- Built a TypeScript/React dashboard for merchant dispute tracking used by 40 support agents.
+- Added REST endpoints in Node.js/Express backed by PostgreSQL; wrote Jest unit tests that raised coverage
+from 52% to 78%.
+- Containerized a nightly reconciliation job with Docker and deployed it to AWS ECS.
+Software Engineering Intern - Hill Country Health IT, San Marcos, TX | Jun 2024 - Aug 2024
+- Wrote Python scripts to validate HL7 message feeds, cutting manual QA time by 6 hours per week.
+- Fixed bugs in a Django admin portal and reviewed pull requests with the team.
+Undergraduate Teaching Assistant - Data Structures (CS 314), UT Austin | Jan 2025 - May 2026
+- Led weekly lab sections for 30 students and graded Java programming assignments.
+PROJECTS
+- CampusEats: React Native app for dining-hall menus with 2,000+ monthly users; Firebase backend.
+- Raft-lite: implemented the Raft consensus algorithm in Go for a distributed systems course.
+SKILLS
+Languages: Python, TypeScript, JavaScript, Java, Go, SQL
+Frameworks and tools: React, Node.js, Express, Django, PostgreSQL, Docker, Git, AWS (EC2, S3, ECS), Linux,
+CI/CD (GitHub Actions)

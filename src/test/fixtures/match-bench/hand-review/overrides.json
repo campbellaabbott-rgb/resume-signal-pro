@@ -1,0 +1,2030 @@
+{
+ "sw-ng-austin::ashby:nestmed:3295edf1-a2d5-40f4-9edd-6fa68b1bca9d": {
+  "seniority": "too_senior",
+  "note": "asks 3+ years building and shipping product; stored min_years null"
+ },
+ "sw-ng-austin::ukg:recruiting~MID1029MISO~362b6b1d-f1c3-46f5-9554-4aa90e2bda64:762fff6b-26f4-4ada-b17b-f94525ea6b5c": {
+  "seniority": "ok",
+  "note": "Software Engineer I; the 4+ years is the alternative to a CS degree (min_years misread)"
+ },
+ "sw-sr-seattle::greenhouse:stripe:8267736": {
+  "seniority": "too_junior",
+  "note": "PERM-style ad requiring 2 years: a mid-level seat for a 15-year staff engineer"
+ },
+ "rn-mid-chicago::icims:careers.primehealthcare.com:285183": {
+  "location": "ok",
+  "note": "Joliet IL is Chicagoland (~40 mi); a 12-hour-shift RN commute"
+ },
+ "da-ng-opt-sanjose::paylocity:6ea91ea2-804f-462b-9fd7-63453b2902ab:4558861": {
+  "seniority": "too_senior",
+  "note": "Three (3) years of experience in data analytics; stored min_years null"
+ },
+ "da-ng-opt-sanjose::oracle:fa-ewik-saasfaprod1~ocs~CX_1:1372": {
+  "seniority": "too_senior",
+  "note": "minimum of five (5) years with SSMS/SSRS/Power BI; stored min_years null"
+ },
+ "mk-ch-journalist-portland::bamboohr:mosai:312": {
+  "location": "remote_ok",
+  "note": "description: may be performed remotely (or hybrid Jacksonville/Nashville); its 5 years count journalism"
+ },
+ "mk-ch-journalist-portland::adp:12b42754-ce4b-494b-8ac4-b514a41ae8bf:9200844351143_1": {
+  "location": "remote_ok",
+  "seniority": "too_senior",
+  "note": "US remote, but asks 4+ years of content marketing with strategy ownership; he has about 1"
+ },
+ "ed-ch-teacher-to-id-minneapolis::adp:fde135bd-bf6a-4ebd-965f-43a1d08a2241:9201653669026_1": {
+  "location": "remote_ok",
+  "note": "description: Work Location: Remote or Hybrid, no state restriction stated"
+ },
+ "ed-ch-teacher-to-id-minneapolis::adp:fde135bd-bf6a-4ebd-965f-43a1d08a2241:9201653681853_1": {
+  "location": "remote_ok",
+  "note": "description: Work Location: Remote or Hybrid, no state restriction stated"
+ },
+ "rn-sr-manchester::workday:ramsayhealthcare~wd3~Ramsay_Careers:JR17574": {
+  "role": "adjacent",
+  "note": "Outpatient Manager at a private hospital (Preston) is a nurse-led department lead; description not read"
+ },
+ "mk-mid-denver::workday:devoted~wd1~Devoted:R3698": {
+  "seniority": "too_junior",
+  "note": "Digital Marketing Associate (3 yrs) for an 8-year manager"
+ },
+ "rt-sr-dallas::paylocity:076746ec-d17d-475b-8c76-d5b5c0114065:4572308": {
+  "role": "related",
+  "note": "store manager of an ag-equipment (John Deere) dealership: parts/equipment sales, not big-box retail"
+ },
+ "rt-sr-dallas::smartrecruiters:TheTileShop1:744000154534789": {
+  "seniority": "ok",
+  "note": "specialty-retail store manager; the entry band comes only from a stored 2-year minimum"
+ },
+ "sw-ng-austin::workday:ebay~wd5~apply:R0076716": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "sw-ng-austin::workday:ebay~wd5~apply:R0076812": {
+  "review": "after-2026-10-25",
+  "seniority": "too_senior",
+  "note": "eBay Software Engineer 3: 'mid-level engineer', 4 or more years required"
+ },
+ "sw-ng-austin::workday:globalfoundries~wd1~External:JR-2604100": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "sw-ng-austin::bamboohr:infravision:273": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "sw-ng-austin::greenhouse:neuralink:8014659003": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "sw-ng-austin::greenhouse:natera:6209754004": {
+  "review": "after-2026-10-25",
+  "seniority": "too_senior",
+  "note": "8+ years of Salesforce architecture required; stored min_years null"
+ },
+ "sw-ng-austin::lever:meds:d5ec1d14-0472-4742-a45d-6a2795f8675d": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "sw-ng-austin::greenhouse:neuralink:8005730003": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "sw-ng-austin::workday:silabs~wd1~SiliconlabsCareers:21011-1": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "sw-ng-austin::greenhouse:striveworks:8002825003": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "sw-ng-austin::ashby:9-mothers:851761ae-2f48-4d0e-b55e-9d0b378271ba": {
+  "review": "after-2026-10-25",
+  "seniority": "too_senior",
+  "note": "description's own job title is Senior Robotics Engineer, 'experienced'"
+ },
+ "sw-ng-austin::ashby:american-housing:d583ea22-befd-4056-bf04-4b1b848fe4b9": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "sw-ng-austin::ashby:base-power:3fea4f0f-4ff4-434a-8df7-53dc247a61b4": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "sw-ng-austin::ashby:boom:beb47215-5dc7-497e-9ebb-9cf015a4f637": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "sw-ng-austin::ashby:fluidstack:9e7a062f-752b-4690-98fd-a3cf29860636": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "sw-ng-austin::ashby:saronic:f33184f4-52ef-4b75-b644-2a7d6d525118": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "sw-ng-austin::ashby:zello:b22b4682-38ff-4ef5-85e4-414ec288619a": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "sw-ng-austin::paylocity:b1074347-c2f7-4a0d-b01f-9c2d89b8a00d:4577214": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "sw-mid-toronto::greenhouse:bitgo:8882456002": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "sw-mid-toronto::workday:snapchat~wd1~snap:R0047083-1": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "sw-mid-toronto::greenhouse:bitgo:8880834002": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "sw-mid-toronto::lever:emburse:8e391b84-50f9-406c-b057-33412c87c862": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "sw-mid-toronto::workday:guidewire~wd5~external:15139-1": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "sw-mid-toronto::greenhouse:lyft:8857056002": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "sw-mid-toronto::workday:manulife~wd3~MFCJH_Jobs:JR26071419": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "sw-mid-toronto::greenhouse:okta:8264443": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "sw-mid-toronto::greenhouse:robinhood:8255842": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "sw-mid-toronto::workday:talentmanagementsolution~wd3~perseus-careers1:R54608": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "sw-mid-toronto::workday:td~wd3~TD_Bank_Careers:1512837": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "sw-mid-toronto::workday:td~wd3~TD_Bank_Careers:1514347": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "sw-mid-toronto::greenhouse:tenstorrent:5260226007": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "sw-mid-toronto::greenhouse:zoominfo:8858349002": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "sw-mid-toronto::greenhouse:braze:8249765": {
+  "review": "after-2026-10-25",
+  "seniority": "ok",
+  "note": "'Senior Software Engineer I' asks 5+ years: the trailing I is Braze's senior rung, not a junior title"
+ },
+ "sw-mid-toronto::greenhouse:lyft:8860861002": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "sw-mid-toronto::greenhouse:saltxc:5254213007": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "sw-mid-toronto::lever:veeva:fecaef42-b5c1-4fb2-b819-058171174ed1": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "sw-mid-toronto::greenhouse:coursera:6217587004": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "sw-mid-toronto::greenhouse:formaaiinc:4740510005": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "sw-sr-seattle::greenhouse:gradial:4443881009": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "sw-sr-seattle::greenhouse:hasbro:4443857009": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "sw-sr-seattle::greenhouse:okta:8267556": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "sw-sr-seattle::workday:snapchat~wd1~snap:R0047095-1": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "sw-sr-seattle::greenhouse:andurilindustries:5196570007": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "sw-sr-seattle::greenhouse:block:5447957008": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "sw-sr-seattle::greenhouse:gradial:4438080009": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "sw-sr-seattle::icims:jobs.qxo.com:15327": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "sw-sr-seattle::greenhouse:robinhood:8214383": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "sw-sr-seattle::greenhouse:stripe:8257354": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "sw-sr-seattle::greenhouse:truveta:6217536004": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "sw-sr-seattle::greenhouse:coreweave:4702775006": {
+  "review": "after-2026-10-25",
+  "role": "target",
+  "note": "Staff Engineer, Data Infrastructure Services is a staff software/infrastructure engineering seat (15+ years; he has 15)"
+ },
+ "sw-sr-seattle::greenhouse:digitalocean98:8193253": {
+  "review": "after-2026-10-25",
+  "role": "adjacent",
+  "note": "Principal Engineer for inference memory and storage systems: a distributed-systems software seat, specialised"
+ },
+ "sw-sr-seattle::oracle:eeho~us2~CX_1:346655": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "sw-sr-seattle::oracle:eeho~us2~CX_1:334805": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "sw-sr-seattle::greenhouse:andurilindustries:5252050007": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "sw-sr-seattle::greenhouse:brex:8854165002": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "sw-sr-seattle::oracle:evac~us2~CX_1:462405": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "sw-sr-seattle::greenhouse:impinjexternal:4738944005": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "sw-sr-seattle::icims:jobs.qxo.com:9611": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "rn-ng-phoenix::icims:careers.usrenalcare.com:7287": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "rn-ng-phoenix::icims:careers.usrenalcare.com:7770": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "rn-ng-phoenix::usajobs:usajobs:887869700": {
+  "review": "after-2026-10-25",
+  "seniority": "too_senior",
+  "note": "USPHS O-4 billet flight nurse working without close guidance: an officer seat, not a new-grad RN role"
+ },
+ "rn-ng-phoenix::oracle:fa-euwp-saasfaprod1~ocs~CX_1:388529": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "rn-ng-phoenix::workday:bannerhealth~wd108~Careers:R4456216": {
+  "review": "after-2026-10-25",
+  "seniority": "too_senior",
+  "note": "Banner L&D posting sends new grads (<12 months) to the RN New Grad openings instead"
+ },
+ "rn-ng-phoenix::oracle:eodr~us2~CX_1001:2603023649": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "rn-ng-phoenix::oracle:eodr~us2~CX_1001:2603022749": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "rn-ng-phoenix::workable:advisacare-2:8D7376F144": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "rn-ng-phoenix::workday:bannerhealth~wd108~Careers:R4452509": {
+  "review": "after-2026-10-25",
+  "seniority": "too_senior",
+  "note": "'seeking an experienced candidate with established knowledge' for a new-unit opening team"
+ },
+ "rn-ng-phoenix::workday:bcbsaz~wd1~BCBSAZCareers:R6247": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "rn-ng-phoenix::greenhouse:connectionshealthsolutions:4434327009": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "rn-ng-phoenix::oracle:eexs~us2~CX_3001:40680": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "rn-ng-phoenix::oracle:fa-euwp-saasfaprod1~ocs~CX_1:392549": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "rn-ng-phoenix::oracle:ibnjjb~ocs~CX_1:358901": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "rn-ng-phoenix::lever:lifeforce:ed952555-2c84-4829-adc2-9b668eb11975": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "rn-ng-phoenix::ukg:recruiting2~INT1096INTM~58b1dd36-ea66-4483-8647-5622f78dc5d8:f0c84f86-14d8-4613-9221-9e69ae711cfe": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "rn-ng-phoenix::ukg:recruiting2~INT1096INTM~58b1dd36-ea66-4483-8647-5622f78dc5d8:92dfef1d-1051-4b12-aad8-5e67851c819b": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "rn-ng-phoenix::lever:celerion:ab4617a5-88c6-4022-abde-2b12c79e271f": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "rn-ng-phoenix::workday:freseniusmedicalcare~wd3~fme:R0267405": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "rn-ng-phoenix::icims:jobs.uhsinc.com:372290": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "rn-mid-chicago::smartrecruiters:NorthwesternMedicine:744000154750439": {
+  "review": "after-2026-10-25",
+  "role": "related",
+  "licence": "fail",
+  "note": "Advance Practice Registered Nurse (Lead) is an APRN/nurse-practitioner seat; he holds an RN licence only"
+ },
+ "rn-mid-chicago::smartrecruiters:NorthwesternMedicine:744000154753831": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "rn-mid-chicago::icims:careers.primehealthcare.com:282061": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "rn-mid-chicago::icims:careers.usoncology.com:43718": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "rn-mid-chicago::adp:d7c400ef-abfe-4c9c-9394-21199d77d939:9201005742832_1": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "rn-mid-chicago::workday:freseniusmedicalcare~wd3~fme:R0269868": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "rn-mid-chicago::icims:careers.accentcare.com:92210": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "rn-mid-chicago::icims:careers.sca.health:49632": {
+  "review": "after-2026-10-25",
+  "location": "ok",
+  "role": "related",
+  "note": "Oak Brook is ~20 mi from Chicago (commutable), but Operating Room II is an OR-specialty seat he has no experience for (manifest: OR fails must-have)"
+ },
+ "rn-mid-chicago::workday:cvshealth~wd1~CVS_Health_Careers:R1062422": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "rn-mid-chicago::oracle:eexs~us2~CX_3001:40648": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "rn-mid-chicago::workday:luriechildrens~wd1~externalportal:JR2026-2753": {
+  "review": "after-2026-10-25",
+  "role": "related",
+  "note": "NICU staff nurse: manifest says NICU roles demanding experience he lacks fail must-have"
+ },
+ "rn-mid-chicago::workday:nshs~wd1~ns-eeh:R48472": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "rn-mid-chicago::workday:luriechildrens~wd1~externalportal:JR2026-2512": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "rn-mid-chicago::workday:aah~wd5~External:R277092-1": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "rn-mid-chicago::workday:aah~wd5~External:R276228": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "rn-mid-chicago::paylocity:da53072f-4c4d-4e3a-bc78-6569df410fbc:3038540": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "rn-mid-chicago::paylocity:e5d15a2f-0db0-4cf1-a4af-a0a84c56452d:220081": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "rn-mid-chicago::paylocity:ec8cbf1d-dc3c-459c-b697-5b2f254581ff:3771880": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "rn-mid-chicago::paylocity:ec8cbf1d-dc3c-459c-b697-5b2f254581ff:3771870": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "rn-mid-chicago::icims:careers.primehealthcare.com:285182": {
+  "review": "after-2026-10-25",
+  "location": "ok",
+  "note": "Joliet IL is Chicagoland (~40 mi), as BEFORE's review ruled for the sibling posting"
+ },
+ "fn-sr-chicago::workday:mars~wd3~External:R168462-1": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "fn-sr-chicago::workday:mars~wd3~External:R163568-1": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "fn-sr-chicago::greenhouse:oriongroup:4715601006": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "fn-sr-chicago::workday:gehc~wd5~GEHC_ExternalSite:R4046490-1": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "fn-sr-chicago::paylocity:18c7d41e-fbb5-404d-9ca7-d43a52a634f4:4292587": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "fn-sr-chicago::workday:aah~wd5~External:R269893-1": {
+  "review": "after-2026-10-25",
+  "role": "off",
+  "note": "Manager of Language Access and Interpreter Services: an interpreter-services manager; 'Controller Team' is a department name"
+ },
+ "fn-sr-chicago::workable:ottimate:4BE796AAE2": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "fn-sr-chicago::ukg:recruiting2~ADB1000ADBC~41648143-db27-4906-836e-7f9a417d1a19:5bfdbf39-f694-47ef-a43a-45ef57df926b": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "fn-sr-chicago::ukg:recruiting~TEK1004TKIP~543bec9b-6c14-45be-a14f-9baffb80f02c:8b4ff2fe-8d34-483c-825a-a3ff50271309": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "fn-sr-chicago::workable:risingedgegroup:8C4A7D6FD1": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "fn-sr-chicago::paylocity:18c7d41e-fbb5-404d-9ca7-d43a52a634f4:4219017": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "fn-sr-chicago::workday:caci~wd1~External:332909": {
+  "review": "after-2026-10-25",
+  "role": "related",
+  "note": "Quality Assurance/Project Controller at CACI is government project controls, not a corporate controller seat"
+ },
+ "fn-sr-chicago::smartrecruiters:EVERSANA1:744000149421399": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "fn-sr-chicago::paylocity:f515f055-b227-4d63-8794-e8b24e92ac95:4529432": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "fn-sr-chicago::paylocity:f6a4b653-4698-47ea-934c-8589c47d40f4:3427013": {
+  "review": "after-2026-10-25",
+  "role": "off",
+  "note": "aircraft Maintenance Controller (A&P certificate, MEL): aviation maintenance, not finance"
+ },
+ "fn-sr-chicago::greenhouse:familywell:5424051008": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "fn-sr-chicago::ashby:ambiencehealthcare:334b6633-71dd-4a99-b282-270f80473dd2": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "mk-ch-journalist-portland::rippling:tombrascareers:160e2104-6640-4946-a8df-9a4244103c09": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "mk-ch-journalist-portland::greenhouse:realchemistry:5448632008": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "mk-ch-journalist-portland::workday:wisconsin~wd1~UW_Madison:JR10015297-1": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "mk-ch-journalist-portland::workable:dnigov:C7AB3AE578": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "mk-ch-journalist-portland::workable:museumoficecream:44EBFDA475": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "mk-ch-journalist-portland::rippling:anza-re-llc:7a94fc59-009c-4640-946e-aee0243cb420": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "mk-ch-journalist-portland::workday:ghc~wd1~Kaplan_Careers:JR258966": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "mk-ch-journalist-portland::greenhouse:goodinside:5251964007": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "mk-ch-journalist-portland::workday:pcg~wd1~PCG_External_Careers:JR102215": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "mk-ch-journalist-portland::paylocity:4cd86c84-b4c7-4df6-b6ff-ba7000899d57:4551171": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "mk-ch-journalist-portland::breezy:concurrent-technologies-corporation:a740bc3fa7ee-marketing-and-communications-specialist": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "mk-ch-journalist-portland::paylocity:dfa11ad0-1040-46f6-b8d4-10231d6b5cb2:4522684": {
+  "review": "after-2026-10-25",
+  "role": "off",
+  "location": "mismatch",
+  "note": "Occupational Communications Specialist (American Sign Language) is disability-services ASL support; must reside in Central Minnesota"
+ },
+ "mk-ch-journalist-portland::smartrecruiters:prosidianconsulting:744000153377359": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "mk-ch-journalist-portland::paylocity:5feba9f3-ae4a-41a3-912a-223737d58c80:4270641": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "mk-ch-journalist-portland::workday:betmgminc~wd5~BetMGM:JR100795": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "mk-ch-journalist-portland::breezy:compose-ly:31b02462d448-strategic-portfolio-management-content-writer": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "mk-ch-journalist-portland::workday:georgetown~wd1~Georgetown_Admin_Careers:JR27552": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "mk-ch-journalist-portland::paylocity:13331849-87b2-4cc9-a4bf-5880f11fe8ab:4518494": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "mk-ch-journalist-portland::workday:clearesult~wd1~CLEAResult_External_Careers:R0018176": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ed-ch-teacher-to-id-minneapolis::greenhouse:dlhcorporation:5260470007": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ed-ch-teacher-to-id-minneapolis::workday:icf~wd5~ICFExternal_Career_Site:R2603263-1": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ed-ch-teacher-to-id-minneapolis::workday:psu~wd1~PSU_Staff:0000083261-1": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ed-ch-teacher-to-id-minneapolis::paylocity:9171b255-3154-45ec-a151-49371895561c:3181469": {
+  "review": "after-2026-10-25",
+  "licence": "fail",
+  "note": "title states an active Top Secret clearance is required; she holds none (sibling posting's description says the same)"
+ },
+ "ed-ch-teacher-to-id-minneapolis::paylocity:9171b255-3154-45ec-a151-49371895561c:3212992": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ed-ch-teacher-to-id-minneapolis::greenhouse:americaninstitutesforresearch:5441159008": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ed-ch-teacher-to-id-minneapolis::workday:theirc~wd1~External_Careers:JR00005307": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ed-ch-teacher-to-id-minneapolis::greenhouse:beyondtrust:8220336": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ed-ch-teacher-to-id-minneapolis::oracle:fa-ewje-saasfaprod1~ocs~CX_1:1083": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ed-ch-teacher-to-id-minneapolis::oracle:fa-ewjt-saasfaprod1~ocs~CX_1:20377": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "da-ng-opt-sanjose::adp:88c98010-aa81-453d-a520-789a95022ee5:9206977568265_1": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "da-ng-opt-sanjose::workday:amat~wd1~External:R2626650": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "da-ng-opt-sanjose::greenhouse:doximity:8262005": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "da-ng-opt-sanjose::ukg:recruiting2~SOU1040SINPI~0ee64565-a2c3-6f63-54fd-06d1efaa5d77:2a081a36-ee5a-4843-9c63-66010904ef4a": {
+  "review": "after-2026-10-25",
+  "auth": "fail",
+  "seniority": "too_senior",
+  "note": "must be authorized without current or future employer sponsorship (she is on OPT) and asks a minimum of three years"
+ },
+ "da-ng-opt-sanjose::workday:cvshealth~wd1~CVS_Health_Careers:R1051672-1": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "da-ng-opt-sanjose::workday:jabil~wd5~Jabil_Careers:J2467571": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "da-ng-opt-sanjose::breezy:navaide:55ac96b10f86-data-analyst-palantir-foundry--must-be-government-clearance-eligible": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "da-ng-opt-sanjose::breezy:ninjaholdings:2a88e2765557-data-analyst-marketing": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "da-ng-opt-sanjose::workday:uasys~wd5~UAMS_All_Careers:R0092510": {
+  "review": "after-2026-10-25",
+  "auth": "fail",
+  "note": "UAMS posting says Sponsorship Available: No; she needs future sponsorship"
+ },
+ "da-ng-opt-sanjose::greenhouse:instacart:8249894": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "da-ng-opt-sanjose::smartrecruiters:prosidianconsulting:744000153376929": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "da-ng-opt-sanjose::ukg:recruiting2~MIL1017~f54234e9-dfde-b183-fd20-4fbdb19cba7a:3c0cc1f5-6554-4e40-87b9-7c393c485c9a": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "da-ng-opt-sanjose::rippling:aptnexus:93507859-bdba-4db5-8751-1fb321080dbc": {
+  "review": "after-2026-10-25",
+  "auth": "fail",
+  "note": "MBI for Treasury requires citizenship or lawful permanent residency; she is on F-1 OPT"
+ },
+ "da-ng-opt-sanjose::rippling:martin-company:a32375b0-6f0f-4201-8a07-511030c27b4e": {
+  "review": "after-2026-10-25",
+  "seniority": "too_senior",
+  "note": "3-5+ years of P&C insurance statistical reporting required"
+ },
+ "da-ng-opt-sanjose::ashby:meridianlink:1e72871a-909f-40e7-a433-3eacbd1bb68b": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "da-ng-opt-sanjose::greenhouse:andurilindustries:5244483007": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "da-ng-opt-sanjose::oracle:etud~us8~CX_1:5310": {
+  "review": "after-2026-10-25",
+  "seniority": "too_senior",
+  "note": "minimum of three years of relevant work experience; must live in greater Pensacola"
+ },
+ "da-ng-opt-sanjose::icims:jobs.ucla.edu:11676": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "da-ng-opt-sanjose::rippling:obie:1d41e29d-d002-4f03-a5c0-78a94585eaed": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "da-ng-opt-sanjose::greenhouse:recidiviz:4717510006": {
+  "review": "after-2026-10-25",
+  "auth": "fail",
+  "note": "'Visa sponsorship: Not available'; she needs future sponsorship"
+ },
+ "da-ng-opt-sanjose::workable:saalex:758C0628C9": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "da-ng-opt-sanjose::smartrecruiters:LinkedIn3:744000154534309": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "da-mid-pittsburgh::greenhouse:doximity:8262005": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "da-mid-pittsburgh::ukg:recruiting2~SOU1040SINPI~0ee64565-a2c3-6f63-54fd-06d1efaa5d77:2a081a36-ee5a-4843-9c63-66010904ef4a": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "da-mid-pittsburgh::smartrecruiters:Brightspeed:744000154172027": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "da-mid-pittsburgh::workday:cambiumlearning~wd1~camb:REQ-4644": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "da-mid-pittsburgh::icims:careers.kentro.us:4548": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "da-mid-pittsburgh::workday:centene~wd5~Centene_External:1648823": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "da-mid-pittsburgh::workday:cigna~wd5~cignacareers:26011848": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "da-mid-pittsburgh::workday:cigna~wd5~cignacareers:26012481": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "da-mid-pittsburgh::workday:cni~wd503~CNI:R9553": {
+  "review": "after-2026-10-25",
+  "seniority": "ok",
+  "note": "'Data Analyst I' asks a minimum of 5 years relevant experience (master's recommended): not junior for a 6-year analyst; CDC customer clearance is public trust (PR eligible)"
+ },
+ "da-mid-pittsburgh::workday:cvshealth~wd1~CVS_Health_Careers:R1051672-1": {
+  "review": "after-2026-10-25",
+  "seniority": "too_junior",
+  "note": "0-2+ years reporting analyst seat for a 6-year analyst"
+ },
+ "da-mid-pittsburgh::lever:enablecomp:8d47ba51-4751-468a-90f2-648400f96422": {
+  "review": "after-2026-10-25",
+  "seniority": "ok",
+  "note": "stored min_years 24 is the company's age ('over 24 years of industry-leading expertise'); no stated minimum"
+ },
+ "da-mid-pittsburgh::workday:geisinger~wd5~GeisingerExternal:R-08254": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "da-mid-pittsburgh::workday:geisinger~wd5~GeisingerExternal:R-08295": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "da-mid-pittsburgh::workday:humana~wd5~CenterWell_External_Career_Site:R-421353": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "da-mid-pittsburgh::workday:independencepetgroup~wd12~careers:JR102887": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "da-mid-pittsburgh::workday:jabil~wd5~Jabil_Careers:J2467571": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "da-mid-pittsburgh::greenhouse:launch2:6220200004": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "da-mid-pittsburgh::breezy:nationsbenefits:0351ba4be444-senior-data-analyst": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-sw-ng-london::workday:bpinternational~wd3~bpcwcareerssite:RQ117581": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-sw-ng-london::smartrecruiters:Netcompany1:744000156367389": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-sw-ng-london::workable:and-digital:86A9D4B108": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-sw-ng-london::greenhouse:capitalontap:8902990002": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-sw-ng-london::lever:palantir:0f7d1e01-1f74-4786-944d-910208d390fa": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-sw-mid-berlin::lever:eu~unzer:b2fb123c-5e82-407c-8a8b-8f33094c898a": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-sw-mid-berlin::greenhouse:getyourguide:8264281": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-sw-mid-berlin::smartrecruiters:ScalableGmbH:744000155021562": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-sw-mid-berlin::teamtailor:doodle:8556332": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-sw-mid-berlin::personio:wallround:2843014": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-sw-sr-minneapolis::greenhouse:rvohealth:4743815005": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-sw-sr-minneapolis::workday:ameriprise~wd5~Ameriprise:3892-1": {
+  "review": "after-2026-10-25",
+  "role": "related",
+  "note": "SharePoint Online / OneDrive platform engineering is M365 administration, not a software engineering seat"
+ },
+ "ho-sw-sr-minneapolis::workable:accurant:702F09761D": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-sw-sr-minneapolis::ashby:blank-metal:55afc905-c186-4e4f-b17a-731276ee051d": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-sw-sr-minneapolis::greenhouse:affinipay1:4724462006": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-sw-ch-teacher-to-dev-cleveland::greenhouse:gitlab:8771512002": {
+  "review": "after-2026-10-25",
+  "seniority": "too_senior",
+  "note": "description: 'Intermediate Backend Engineer' with production backend experience; she is a bootcamp junior"
+ },
+ "ho-sw-ch-teacher-to-dev-cleveland::workday:theirc~wd1~External_Careers:JR00005419": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-sw-ch-teacher-to-dev-cleveland::oracle:fa-extu-saasfaprod1~ocs~CX_1:4237": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-sw-ch-teacher-to-dev-cleveland::smartrecruiters:Xplor:744000157410104": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-sw-ch-teacher-to-dev-cleveland::greenhouse:airbnb:8274152": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-rn-ng-houston::icims:jobs.uhsinc.com:377255": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-rn-ng-houston::oracle:eohh~us2~CX_1:428187": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-rn-ng-houston::workday:cigna~wd5~cignacareers:26013092": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-rn-ng-houston::lever:medcarepediatric:b0752a7c-c1dd-4bea-ae04-6e464277149e": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-rn-ng-houston::adp:eb23e9d0-0921-458b-9544-adc0f893a19b:9204936444887_1": {
+  "review": "after-2026-10-25",
+  "seniority": "too_senior",
+  "note": "VA contract ED RN requires at least 1 year of critical care or emergency experience; she is a new grad"
+ },
+ "ho-rn-mid-fl-to-atlanta::icims:careers.emory.edu:174941": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-rn-mid-fl-to-atlanta::ukg:recruiting~SUR1004SRGY~aa616d8f-f2a8-46c2-8f8e-1ca56e162ffd:ddfb1702-aa7b-46e9-b0c8-7917e30248d6": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-rn-mid-fl-to-atlanta::workday:freseniusmedicalcare~wd3~fme:R0256025": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-rn-mid-fl-to-atlanta::adp:fb2b4fd0-3d65-442d-9543-1f8bfc6fb2b5:9201861634627_1": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-rn-mid-fl-to-atlanta::icims:jobs.uhsinc.com:375605": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-rn-returner-sacramento::lever:21hhs:2a525a6a-697f-4359-ab08-4a00897109f7": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-rn-returner-sacramento::icims:jobs.uhsinc.com:373179": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-rt-mid-calgary::bamboohr:jimpeplinski:58": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-rt-mid-calgary::greenhouse:appdirect:8875055002": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-rt-mid-calgary::workday:my7elevenhr~wd12~Careers:5949": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-rt-mid-calgary::workable:charger-logistics-inc:D4AE893BEE": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-rt-sr-phoenix::oracle:ehac~us6~CX_1:20803": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-rt-sr-phoenix::workday:skechers~wd5~One-career-site:JR133337": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-rt-sr-phoenix::ukg:recruiting2~SAL1002~bcc2e2d1-d94c-2041-4126-28086417eb0a:f8458fda-d22e-4c40-92a0-d4a55b25cfc9": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-rt-sr-phoenix::workday:circlek~wd3~CircleKStoreJobs:R626058-1": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-rt-gap-melbourne::workday:petstock~wd105~Petstock:JR108230": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-ac-ng-mumbai::smartrecruiters:Believe:744000154591015": {
+  "review": "after-2026-10-25",
+  "role": "adjacent",
+  "seniority": "too_senior",
+  "note": "GL Accountant (French entities) is an accounting seat, but the posting asks 8 years"
+ },
+ "ho-ac-ng-mumbai::ashby:mapbox:45fb587f-46a7-4c62-98df-c57ca15e9971": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-ac-ng-mumbai::workday:issgovernance~wd1~ISScareers:9736": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-ac-mid-toronto::smartrecruiters:MUFGInvestorServices:744000156671769": {
+  "review": "after-2026-10-25",
+  "seniority": "too_junior",
+  "note": "the description calls the seat Senior Associate needing 2 years of fund administration; she is a 9-year CPA"
+ },
+ "ho-ac-mid-toronto::workday:livenation~wd503~LNExternalSite:JR-93894-2": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-ac-mid-toronto::workday:mlse~wd3~MLSE:JR0000864-1": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-ac-mid-toronto::bamboohr:bakertillywm:356": {
+  "review": "after-2026-10-25",
+  "role": "related",
+  "note": "cross-border personal and corporate tax return preparation in public practice: a tax track, not corporate accounting"
+ },
+ "ho-ac-mid-toronto::workday:wmg~wd1~WMGGLOBAL:R-028612": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-ac-sr-london::teamtailor:creditspring:8592936": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-ac-sr-london::teamtailor:monese:8574485": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-ac-sr-london::smartrecruiters:Version1:744000154491789": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-ac-sr-london::workday:hoganlovells~wd3~Search:R269606-1": {
+  "review": "after-2026-10-25",
+  "role": "related",
+  "note": "law-firm Revenue Controller (billing and collections) is finance, not a financial controller seat"
+ },
+ "ho-ac-sr-london::ashby:lemfi:71fac29d-39a3-40b4-82f8-7f92efc35deb": {
+  "review": "after-2026-10-25",
+  "role": "target",
+  "note": "UK Entity Controller asks ACA/ACCA/CIMA with 10+ years PQE and an entity or financial controller stint: a financial controller seat"
+ },
+ "ho-ac-ch-chef-to-accounting-kansascity::oracle:ebez~us2~CX_4:6655": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-ac-ch-chef-to-accounting-kansascity::greenhouse:ag1:5443255008": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-ac-ch-chef-to-accounting-kansascity::paylocity:63b18e24-726b-41ed-aeb9-a29e7f342513:4597938": {
+  "review": "after-2026-10-25",
+  "location": "mismatch",
+  "note": "KIPP North Carolina: 'LOCATION: North Carolina (remote)'; he lives in Kansas City"
+ },
+ "ho-ac-ch-chef-to-accounting-kansascity::lever:cologix:771f7abe-d1bc-49a2-807a-6af71f17327a": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-ac-ch-chef-to-accounting-kansascity::workday:humana~wd5~Humana_External_Career_Site:R-430361": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-mk-mid-munich::greenhouse:lanesplanes:5007187101": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-mk-mid-munich::workable:hilobyaktiia:50B84E4303": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-mk-mid-munich::breezy:betclic-group:84e52402936701-fixed-term-contract-6-months-product-marketing-manager-casino-f-m": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-mk-mid-munich::smartrecruiters:QADInc:744000154782362": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-mk-mid-munich::lever:airslate:77a4539d-285c-4e95-9dd4-dbc87f1eaa87": {
+  "review": "after-2026-10-25",
+  "location": "mismatch",
+  "note": "remote only in Poland, Romania, Portugal or Spain; she lives in Munich and will not move"
+ },
+ "ho-mk-sr-nashville::bamboohr:hardenberghgroup:107": {
+  "review": "after-2026-10-25",
+  "role": "related",
+  "note": "paid media specialist: marketing, several levels below a director"
+ },
+ "ho-mk-sr-nashville::greenhouse:arcesiumllc:5271766007": {
+  "review": "after-2026-10-25",
+  "role": "related",
+  "note": "Demand Generation Manager (6+ years): marketing, below a director's level"
+ },
+ "ho-mk-sr-nashville::workable:ensodata:3D6DB2C4C0": {
+  "review": "after-2026-10-25",
+  "role": "related",
+  "note": "Demand Generation & Marketing Ops Manager: marketing, below a director's level"
+ },
+ "ho-mk-sr-nashville::workable:lrn-corporation:30C854DB2D": {
+  "review": "after-2026-10-25",
+  "role": "adjacent",
+  "note": "Director, Demand Generation (8-10 years, leads regional programs): a director-level marketing seat"
+ },
+ "ho-mk-sr-nashville::rippling:nerdio-careers:3f8aea6c-b34c-44b2-94b7-855e9bf88c19": {
+  "review": "after-2026-10-25",
+  "role": "related",
+  "note": "Senior Manager, MSP Demand Generation: marketing, a manager seat for a director"
+ },
+ "ho-mk-ch-sales-to-marketing-sydney::workday:stryker~wd1~StrykerCareers:R575727-1": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-mk-ch-sales-to-marketing-sydney::workday:eset~wd3~ESET_External:JR-06094": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-mk-ch-sales-to-marketing-sydney::greenhouse:prezzee:4716969006": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-mk-ch-sales-to-marketing-sydney::workday:philips~wd3~jobs-and-careers:590364": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-mk-ch-sales-to-marketing-sydney::greenhouse:doordashaustralia:8256095": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-mk-ch-sales-to-marketing-sydney::rippling:dispensed-careers:ceecc9b7-7ff9-4ba3-9d8e-72852feb4371": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-mk-ch-sales-to-marketing-sydney::greenhouse:doordashaustralia:8232996": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-el-mid-wa-to-portland::breezy:sunpower:06bcca560f12-journeyman-electrician": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-el-sr-sanantonio::icims:careers.goldennugget.com:49519": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-el-sr-sanantonio::workday:tindall~wd1~Tindall:R3555": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-el-sr-sanantonio::pinpoint:ces:594130": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-ed-mid-ny-cert-in-nj::workable:empowerment-academyand-beloved-community-charter-schools:A6126E9F95": {
+  "review": "after-2026-10-25",
+  "licence": "fail",
+  "note": "candidates MUST hold a New Jersey CE, CEAS or Standard certificate; hers is New York, NJ pending"
+ },
+ "ho-da-ng-opt-boston::workday:massgeneralbrigham~wd1~MGBExternal:RQ4082811-1": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-da-ng-opt-boston::lever:questanalytics:a34477d9-d1e2-4d96-b94b-024042f847c9": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-da-ng-opt-boston::ashby:deepgram:f428c615-65e8-4d4d-84dd-ba0da64f1a9b": {
+  "review": "after-2026-10-25",
+  "seniority": "too_senior",
+  "note": "typically ~3-5 years in marketing/GTM analytics; she has 2"
+ },
+ "ho-da-ng-opt-boston::workday:genevausa~wd5~CareersAtGeneva:JR100742-1": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-da-ng-opt-boston::workday:aep~wd1~AEPCareerSite:R19939": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-da-ng-opt-boston::lever:bluesight:b87fa4f3-7637-4e22-9437-d6b7e8670d8f": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-da-ng-opt-boston::greenhouse:truebill:8037723003": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-da-ng-opt-boston::workday:sanford~wd5~SanfordHealth:R-0271168": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-da-mid-hyderabad::oracle:eeug~us6~CX_1:19682": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-da-mid-hyderabad::workday:corteva~wd5~Corteva:246165W": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-da-mid-hyderabad::workday:sanofi~wd3~SanofiCareers:R2872418": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-da-mid-hyderabad::lever:gohighlevel:2ed5358c-1960-4063-a0ea-f5ae4207c426": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-da-mid-hyderabad::workable:mrsool-3:9BA2496966": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-da-sr-berlin::teamtailor:producthackers:8574958": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-da-sr-berlin::breezy:ablefy:4a24b8538b8401-data-analyst-mid-level-f-m-x": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-da-sr-berlin::greenhouse:projectaservicesgmbhcokg:8844357002": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-da-sr-berlin::ashby:artsy:88611a5b-4c10-4721-be09-3aec0ef97eb5": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-da-sr-berlin::workable:european-dynamics:8ABE21B013": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-da-sr-berlin::smartrecruiters:JobsForHumanity:744000155030494": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-da-ch-logistics-to-analyst-memphis::workable:alphax:1C6F1CA6ED": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-da-ch-logistics-to-analyst-memphis::workday:iheartmedia~wd5~External_iHM:Req39536-2": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-da-ch-logistics-to-analyst-memphis::greenhouse:truebill:8034115003": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-da-ch-logistics-to-analyst-memphis::icims:careers.kentro.us:4610": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-da-ch-logistics-to-analyst-memphis::greenhouse:cribl:6218958004": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-ph-ng-detroit::workday:cvshealth~wd1~CVS_Health_Careers:R1081385": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-ph-mid-oh-to-pittsburgh::workday:cvshealth~wd1~CVS_Health_Careers:R1080095": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-ph-mid-oh-to-pittsburgh::workday:highmarkhealth~wd1~highmark:J286953": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-ph-mid-oh-to-pittsburgh::workday:highmarkhealth~wd1~highmark:J285036-1": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-ph-mid-oh-to-pittsburgh::workday:highmarkhealth~wd1~highmark:J280895": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-ph-mid-leicester::workday:iqvia~wd1~IQVIA:R1571532-1": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-td-mid-cdla-indianapolis::oracle:emcm~us2~CX_1:2355090": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-td-mid-cdla-indianapolis::paylocity:270fd127-d1bd-4498-80ec-17aa995003e7:4556335": {
+  "review": "after-2026-10-25",
+  "seniority": "ok",
+  "note": "stored min_years 25 is 'must be at least 25 years old'; the posting asks five years of safe driving and a Class A (he has 10)"
+ },
+ "ho-td-mid-cdla-indianapolis::paylocity:f263d6ee-3055-4d60-94ce-3c964d790daf:4290208": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-td-mid-cdla-indianapolis::workday:reworld~wd5~External:JR14152": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-td-mid-cdla-indianapolis::workday:reworld~wd5~External:JR14214": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-td-ng-cdla-fresno::oracle:emcm~us2~CX_1:2354914": {
+  "review": "after-2026-10-25",
+  "seniority": "too_senior",
+  "note": "WM requires 1 year operating a vehicle requiring a CDL; his CDL dates from March 2026"
+ },
+ "ho-td-ch-retail-to-driver-winnipeg::oracle:emcm~us2~CX_1:2355071": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-me-mid-pe-cincinnati::paylocity:d0f99e76-6374-4c61-9b3d-347ee13a5f26:4390653": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-me-mid-pe-cincinnati::workable:zen-sherpa-llc:1CE91E3CE1": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-me-mid-pe-cincinnati::greenhouse:armada:5386543008": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-me-mid-pe-cincinnati::ukg:recruiting2~ENE1003ENENG~020a913b-6f29-4cb0-a3b2-8b9d82d26c72:94a6a072-1f84-4fc4-bdb4-22cd7aec980f": {
+  "review": "after-2026-10-25",
+  "role": "related",
+  "note": "Hydro Mechanical Engineer requires at least 6 years of hydropower experience; he is an HVAC design engineer"
+ },
+ "ho-me-mid-pe-cincinnati::ukg:recruiting~ECP1000ECPI~e017f5e5-4f5e-4a98-a5d2-83db591e186f:ba87dd67-c5aa-4d71-9687-1aa6aa860dbf": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-me-sr-chennai::workday:aptiv~wd5~APTIV_CAREERS:J000702164-1": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-me-sr-chennai::workday:cat~wd5~caterpillarcareers:R0000377376": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-me-sr-chennai::workday:dentsuaegis~wd3~DAN_GLOBAL:R1133042": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-me-sr-chennai::workable:datamark-inc:889A15F3A2": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-me-sr-chennai::workday:astrazeneca~wd3~Careers:R-262359-1": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-me-ch-mechanic-to-engineer-adelaide::smartrecruiters:AECOM2:744000152097619": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-cs-ng-gurugram::oracle:egug~us2~CX_1:26015365": {
+  "review": "after-2026-10-25",
+  "role": "target",
+  "note": "Customer Care Professional is a customer care seat (the stored 2-year minimum still makes it too senior for a fresher)"
+ },
+ "ho-cs-mid-tampa::workday:utampa~wd1~staff:R0011153-1": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-cs-mid-tampa::workable:marolina:8B6870DB15": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-cs-returner-halifax::workday:circlek~wd3~CircleKStoreJobs:R630259": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-cs-returner-halifax::workday:myhrabc~wd5~Global:R2617645": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-cs-returner-halifax::smartrecruiters:sutherland:744000155813669": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-cs-returner-halifax::oracle:efds~em5~CX_1:71949": {
+  "review": "after-2026-10-25",
+  "location": "mismatch",
+  "note": "Ford Credit: remote, but the candidate must reside in or around Edmonton AB; she lives in Dartmouth NS"
+ },
+ "ho-cs-returner-halifax::workable:valsoft-corp:0694D45EE9": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-cs-ch-hospitality-to-cs-glasgow::workday:barclays~wd3~External_Career_Site_Barclays:JR-0000136334": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-cs-ch-hospitality-to-cs-glasgow::smartrecruiters:WNSGlobalServices144:744000154955679": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-wh-ng-reno::workday:henryschein~wd1~External_Careers:R135761": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-wh-ng-reno::workday:henryschein~wd1~External_Careers:R135639": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-wh-sr-ops-louisville::ukg:recruiting~OLL1000OLLIE~355913c1-206d-48a4-bb34-020064efe845:f356a1e7-d7fb-48c9-8684-aa081df9e5f1": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-wh-sr-ops-louisville::oracle:ibqmjb~ocs~CX_1:8744": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-wh-sr-ops-louisville::workday:advanceauto~wd5~AdvanceExternalCareers:R-0615478": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-wh-gap-forklift-brampton::workable:charger-logistics-inc:B551454B0A": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-wh-gap-forklift-brampton::workday:vfc~wd5~vfc_careers:R-20261013-0066": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-pt-ng-dpt-milwaukee::workday:aah~wd5~External:R262810": {
+  "review": "after-2026-10-25",
+  "location": "mismatch",
+  "seniority": "too_senior",
+  "note": "'801 S Milwaukee Ave' is Advocate Condell in Libertyville IL (a street name matched the ring); also 1 year of experience required"
+ },
+ "ho-pt-ng-dpt-milwaukee::usajobs:usajobs:887537900": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-pt-ch-trainer-to-pta-omaha::workday:sanford~wd5~SanfordHealth:R-0277851": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-hr-ng-toronto::workday:dentsuaegis~wd3~DAN_GLOBAL:R1133388": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-hr-ng-toronto::workday:galderma~wd3~broadbean_external:JR021263": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-hr-ng-toronto::workday:galderma~wd3~External:JR021263-1": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-hr-mid-h1b-sf::workday:highmarkhealth~wd1~highmark:J288649": {
+  "review": "after-2026-10-25",
+  "location": "mismatch",
+  "note": "'PA, Working at Home - Pennsylvania': home-based within Pennsylvania; she lives in San Francisco"
+ },
+ "ho-hr-mid-h1b-sf::greenhouse:checkr:8301233": {
+  "review": "after-2026-10-25",
+  "role": "target",
+  "note": "Staff Workday HRIS Technical Analyst (6+ years Workday configuration) is an HRIS analyst seat; she has 8 years"
+ },
+ "ho-hr-sr-hrbp-london::smartrecruiters:EvelynPartners:744000156282764": {
+  "review": "after-2026-10-25",
+  "role": "related",
+  "note": "Regulatory HR Specialist (6-month FTC) supporting a Regulatory HR Manager: HR, far below a head of people"
+ },
+ "ho-hr-sr-hrbp-london::workday:ms~wd5~external:PT-JR045166": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-hr-sr-hrbp-london::oracle:ejwl~us2~CX:26133398": {
+  "review": "after-2026-10-25",
+  "role": "related",
+  "note": "hotel HR Coordinator: HR, far below a head of people"
+ },
+ "ho-hr-sr-hrbp-london::icims:careers.cvent.com:10960": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-hr-sr-hrbp-london::greenhouse:thebrattlegroup:4742072005": {
+  "review": "after-2026-10-25",
+  "role": "related",
+  "note": "part-time HR Specialist (3 years): HR, far below a head of people"
+ },
+ "ho-hr-ch-army-to-hr-bengaluru::workday:ms~wd5~external:PT-JR044872": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "rt-ng-columbus::oracle:eluq~us2~CX_1:239312": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "rt-ng-columbus::workday:tapestry~wd108~Tapestry_Careers:JR18291": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "rt-ng-columbus::oracle:hcml~us2~CX_1:33837": {
+  "review": "after-2026-10-25",
+  "seniority": "ok",
+  "note": "stored min_years 16 is 'at least 16 years of age'; no experience minimum"
+ },
+ "rt-ng-columbus::oracle:egud~us2~CX_1:162867": {
+  "review": "after-2026-10-25",
+  "seniority": "ok",
+  "note": "stored min_years 18 is the minimum age; an hourly sales associate seat"
+ },
+ "rt-ng-columbus::greenhouse:storycannabis:5440878008": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "rt-mid-gap-atlanta::workday:cvshealth~wd1~CVS_Health_Careers:R1070196": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "rt-mid-gap-atlanta::ukg:recruiting~PRI1016PRTCH~20ef60ef-4b79-4d37-9876-8dbf1bedf2ff:91a041fc-bc92-4f56-9a34-f21cc7f5eee4": {
+  "review": "after-2026-10-25",
+  "role": "off",
+  "note": "Pritchard Industries is a janitorial/facility services firm: a cleaning-crew shift supervisor, not retail"
+ },
+ "rt-mid-gap-atlanta::icims:talent.urbn.com:32827": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "rt-mid-gap-atlanta::workday:cvshealth~wd1~CVS_Health_Careers:R1070201": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "rt-sr-dallas::workday:dollartree~wd5~dollartreeus:R-353346": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "rt-sr-dallas::workday:lkqcorp~wd5~ExternalCareerSite-LKQ:R73469-1": {
+  "review": "after-2026-10-25",
+  "role": "related",
+  "note": "LKQ District Manager requires 5 years of automotive-industry management (parts/service): not big-box retail, as BEFORE's review ruled the ag-dealership store"
+ },
+ "rt-sr-dallas::workday:levistraussandco~wd5~External:R-0152714": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "rt-sr-dallas::workable:blufox-mobile:CB19BB3C95": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "fn-ng-nyc::smartrecruiters:CityOfNewYork:3743990015982396": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "fn-ng-nyc::workday:hl~wd1~Lateral:R3011": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "fn-ng-nyc::greenhouse:stripe:8249865": {
+  "review": "after-2026-10-25",
+  "seniority": "too_senior",
+  "note": "Stripe asks a bachelor's plus 4 years of strategic finance / FP&A"
+ },
+ "fn-ng-nyc::greenhouse:datadog:8204554": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "fn-mid-charlotte::workday:ghr~wd1~Lateral-US:26037154": {
+  "review": "after-2026-10-25",
+  "role": "related",
+  "note": "Quantitative Finance Analyst: market-risk stress-test modelling needing a master's/PhD in math or statistics, not FP&A"
+ },
+ "fn-mid-charlotte::greenhouse:mergeworld:8267798": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "fn-mid-charlotte::workday:bobsdf~wd1~Bobs_Careers:R-32560": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "fn-mid-charlotte::workday:creditacceptance~wd5~Credit_Acceptance:R13983-1": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "fn-mid-charlotte::greenhouse:humaninterest:8238707": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "mk-ng-boston::smartrecruiters:Frette:3743990016035816": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "mk-ng-boston::smartrecruiters:Versant3:744000152271024": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "mk-ng-boston::lever:bisnow:e7b359a7-6cc8-4bdb-8e15-7d57b2ac1417": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "mk-ng-boston::greenhouse:gyde:4418208009": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "mk-ng-boston::ashby:mecka.ai:6feb5614-06a7-48cb-9d62-7e16434eac04": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "mk-ng-boston::workday:pax8inc~wd12~Pax8Careers:R-102324": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "mk-ng-boston::adp:9bf93b1d-de86-4212-8903-2df38337c33d:9201293372668_1": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "mk-ng-boston::lever:repurposeglobal:d20b11a9-eb9d-4e2c-9b77-7a14c888d12b": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "mk-ng-boston::workday:cooley~wd1~cooley_us_llp:Req5126": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "mk-ng-boston::ashby:polymarket:54122c9f-f0fb-4ef9-9226-f3bea247502a": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "mk-mid-denver::paylocity:4b35858d-7b8c-4311-9498-a6ca1f111cce:4576892": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "mk-mid-denver::workday:gehc~wd5~GEHC_ExternalSite:R4047355": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "mk-mid-denver::smartrecruiters:Vericast:744000153004829": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "mk-mid-denver::workday:evercommerce~wd1~EverCommerce_Careers:R-106529-1": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "tr-ng-hvac-houston::oracle:eiqg~us2~CX_1:169411": {
+  "review": "after-2026-10-25",
+  "licence": "fail",
+  "note": "DoD SkillBridge internship: open only to transitioning service members; he is a trade-school graduate"
+ },
+ "tr-ng-hvac-houston::workday:oshkoshcorporation~wd5~Oshkosh:R50409": {
+  "review": "after-2026-10-25",
+  "seniority": "too_senior",
+  "note": "3 years of related HVAC/electrical maintenance experience required; he is a new graduate"
+ },
+ "tr-mid-brisbane::smartrecruiters:Sodexo:744000153357071": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ed-mid-gap-raleigh::oracle:fa-eotc-saasfaprod1~ocs~CX_25001:65781": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "da-ch-biochem-to-ds-sandiego::workday:bah~wd1~BAH_Jobs:R0251120": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "da-ch-biochem-to-ds-sandiego::workday:illumina~wd1~illumina-careers:43489-JOB": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "da-ch-biochem-to-ds-sandiego::greenhouse:careaccess:4443967009": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "da-ch-biochem-to-ds-sandiego::lever:artera:e69fa8b3-ecad-4f6a-b8b6-77d6542dfbe1": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "da-ch-biochem-to-ds-sandiego::workday:etsy~wd5~Etsy_Careers:JR6022-1": {
+  "review": "after-2026-10-25",
+  "seniority": "too_senior",
+  "note": "Etsy is hiring ML engineers 'at the Senior and Staff levels'; he is a career changer into data science"
+ },
+ "sw-ng-austin::workday:alteryx~wd108~AlteryxCareers:R12529": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "sw-ng-austin::workday:guidehouse~wd1~External:40569": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "mk-ch-journalist-portland::oracle:ekug~us6~CX_1:1958": {
+  "review": "after-2026-10-25",
+  "role": "off",
+  "note": "Executive Assistant & Corporate Communications Specialist: 6+ years as an executive assistant to C-level, not content marketing"
+ },
+ "ed-ch-teacher-to-id-minneapolis::paylocity:9171b255-3154-45ec-a151-49371895561c:3185805": {
+  "review": "after-2026-10-25",
+  "licence": "fail",
+  "note": "title states an active Top Secret clearance is required; she holds none"
+ },
+ "ed-ch-teacher-to-id-minneapolis::greenhouse:pathstream:7999749003": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-da-ng-opt-boston::workday:ccf~wd1~ClevelandClinicCareers:351300": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-da-ng-opt-boston::workday:sentara~wd1~SCS:JR-103158": {
+  "review": "after-2026-10-25",
+  "seniority": "too_senior",
+  "note": "Sentara requires a minimum of three years of data analysis and three of SQL; she has 2"
+ },
+ "ho-da-ng-opt-boston::paylocity:8306c17e-3150-4858-8f6c-59838e3f7ed9:4593207": {
+  "review": "after-2026-10-25",
+  "note": "hand review: automatic verdict stands"
+ },
+ "ho-me-mid-pe-cincinnati::workable:zen-sherpa-llc:94BF2B9AF2": {
+  "review": "after-2026-10-25",
+  "location": "mismatch",
+  "role": "related",
+  "note": "remote only in MN/WI/IL/IA/MO/KS/TX/OK/AR/LA (Ohio is not listed) and 5+ years of oil-and-gas mechanical design; he is an HVAC PE in Cincinnati"
+ },
+ "ho-sw-mid-berlin::greenhouse:catawiki:8305661": {
+  "review": "after-2026-10-25",
+  "location": "mismatch",
+  "note": "BEFORE held-out review: Lisbon, Portugal is not commutable from Berlin; she will not move"
+ },
+ "ho-sw-mid-berlin::ashby:clera:30a9dcc6-3ddf-4fa9-8196-de8f0afca539": {
+  "review": "after-2026-10-25",
+  "note": "BEFORE held-out review: Berlin backend engineer, stands"
+ },
+ "ho-sw-mid-berlin::greenhouse:viaduct:5008420101": {
+  "review": "after-2026-10-25",
+  "location": "mismatch",
+  "note": "BEFORE held-out review: Slovenia is not commutable from Berlin"
+ },
+ "ho-sw-sr-minneapolis::ashby:clera:fac9e1c7-2454-47c8-a534-f24888014ccb": {
+  "review": "after-2026-10-25",
+  "location": "mismatch",
+  "note": "BEFORE held-out review: on-site in San Francisco; he lives in Minneapolis"
+ },
+ "ho-sw-sr-minneapolis::ashby:openai:d95a5b8b-35fb-4ae2-9f6c-594ed24e49f7": {
+  "review": "after-2026-10-25",
+  "location": "mismatch",
+  "note": "BEFORE held-out review: hybrid in San Francisco; he lives in Minneapolis"
+ },
+ "ho-sw-sr-minneapolis::workday:bcbst~wd1~External:R-51015": {
+  "review": "after-2026-10-25",
+  "note": "BEFORE held-out review: remote US, stands"
+ },
+ "ho-rn-ng-houston::paylocity:f9f0eb86-623d-4599-9b60-261f34f2735f:3682151": {
+  "review": "after-2026-10-25",
+  "location": "mismatch",
+  "note": "BEFORE held-out review: Sebastopol is in Sonoma County, California"
+ },
+ "ho-rn-ng-houston::paylocity:450b9702-9d0a-45f8-9f93-340cc0200bab:4612732": {
+  "review": "after-2026-10-25",
+  "location": "ok",
+  "note": "BEFORE held-out review: 'HOU Clinic' is Mia Aesthetics' Houston clinic"
+ },
+ "ho-rn-ng-houston::workday:wellstar~wd1~wellstarcareers:JR-79109-1": {
+  "review": "after-2026-10-25",
+  "location": "mismatch",
+  "note": "BEFORE held-out review: Kennestone Hospital is Wellstar's Marietta, Georgia hospital"
+ },
+ "ho-rn-mid-fl-to-atlanta::paylocity:f9f0eb86-623d-4599-9b60-261f34f2735f:3682151": {
+  "review": "after-2026-10-25",
+  "location": "mismatch",
+  "note": "BEFORE held-out review: Sebastopol, California"
+ },
+ "ho-rn-mid-fl-to-atlanta::paylocity:450b9702-9d0a-45f8-9f93-340cc0200bab:4612732": {
+  "review": "after-2026-10-25",
+  "location": "mismatch",
+  "note": "BEFORE held-out review: Mia Aesthetics' Houston clinic"
+ },
+ "ho-rn-mid-fl-to-atlanta::workday:wellstar~wd1~wellstarcareers:JR-79109-1": {
+  "review": "after-2026-10-25",
+  "location": "ok",
+  "note": "BEFORE held-out review: Kennestone Hospital is in Marietta GA, inside her Atlanta metro"
+ },
+ "ho-rn-returner-sacramento::paylocity:f9f0eb86-623d-4599-9b60-261f34f2735f:3682151": {
+  "review": "after-2026-10-25",
+  "location": "mismatch",
+  "note": "BEFORE held-out review: Sebastopol (Sonoma County) is ~100 miles from Sacramento"
+ },
+ "ho-rn-returner-sacramento::paylocity:450b9702-9d0a-45f8-9f93-340cc0200bab:4612732": {
+  "review": "after-2026-10-25",
+  "location": "mismatch",
+  "note": "BEFORE held-out review: Mia Aesthetics' Houston clinic"
+ },
+ "ho-rn-returner-sacramento::workday:wellstar~wd1~wellstarcareers:JR-79109-1": {
+  "review": "after-2026-10-25",
+  "location": "mismatch",
+  "note": "BEFORE held-out review: Kennestone Hospital, Marietta GA"
+ },
+ "ho-rt-ng-leeds::workday:jlp~wd3~JLPjobs_careers:R-215016": {
+  "review": "after-2026-10-25",
+  "location": "mismatch",
+  "note": "BEFORE held-out review: Cheltenham is ~170 miles from Leeds"
+ },
+ "ho-rt-ng-leeds::teamtailor:wearediverse2:8486154": {
+  "review": "after-2026-10-25",
+  "note": "BEFORE held-out review: place unstated; unknown counts in his favour"
+ },
+ "ho-rt-sr-phoenix::paylocity:23ed4c48-4733-4a86-87d8-db2dd9a6d278:4488375": {
+  "review": "after-2026-10-25",
+  "location": "mismatch",
+  "note": "BEFORE held-out review: Palisades Center is in West Nyack, New York"
+ },
+ "ho-rt-sr-phoenix::workday:bridgestone~wd5~External:26199": {
+  "review": "after-2026-10-25",
+  "location": "mismatch",
+  "note": "BEFORE held-out review: Hazel Dell is in Vancouver, Washington"
+ },
+ "ho-rt-sr-phoenix::workday:kohls~wd504~kohlscareers:R508302": {
+  "review": "after-2026-10-25",
+  "location": "mismatch",
+  "note": "BEFORE held-out review: Kohl's Quincy store (Illinois/Massachusetts), not Phoenix"
+ },
+ "ho-ac-ng-mumbai::workday:wk~wd3~External:R0059209": {
+  "review": "after-2026-10-25",
+  "location": "mismatch",
+  "note": "BEFORE held-out review: Gurgaon is not commutable from Mumbai"
+ },
+ "ho-ac-ng-mumbai::workday:michelinhr~wd3~Michelin:R-2026026239": {
+  "review": "after-2026-10-25",
+  "location": "mismatch",
+  "note": "BEFORE held-out review: Pune is ~150 km from Mumbai"
+ },
+ "ho-ac-sr-london::workday:frontiereconomics~wd3~Frontier_Economics_Careers:JR10240": {
+  "review": "after-2026-10-25",
+  "note": "BEFORE held-out review: London financial controller, stands"
+ },
+ "ho-ac-sr-london::ukg:recruiting2~ATK1000ATKOR~18eec16a-a1ec-458b-82c9-cb3af8866255:01027c98-4959-4d24-a011-0fa44dce1cab": {
+  "review": "after-2026-10-25",
+  "location": "mismatch",
+  "note": "BEFORE held-out review: West Bromwich (West Midlands), on site"
+ },
+ "ho-mk-mid-munich::greenhouse:squad:8302991": {
+  "review": "after-2026-10-25",
+  "location": "mismatch",
+  "note": "BEFORE held-out review: Kyiv/Lviv remote for a Ukrainian company; Ukraine is outside where she can work"
+ },
+ "ho-el-mid-birmingham::workday:mearsgroup~wd3~External_Career_Site:REQ0037010": {
+  "review": "after-2026-10-25",
+  "location": "mismatch",
+  "note": "BEFORE held-out review: Tonbridge, Kent"
+ },
+ "ho-el-mid-birmingham::workday:sovereignnetworkgroup~wd103~SNGExternal:JR1225": {
+  "review": "after-2026-10-25",
+  "location": "mismatch",
+  "note": "BEFORE held-out review: Greenham, Berkshire"
+ },
+ "ho-da-ng-opt-boston::breezy:startupblink:c5c7464a8e2d-data-analyst": {
+  "review": "after-2026-10-25",
+  "note": "BEFORE held-out review: worldwide remote; unknown counts in her favour"
+ },
+ "ho-da-ng-opt-boston::ashby:outset:d9cbcdd3-bbc7-48dd-84c2-7edc632b5fd1": {
+  "review": "after-2026-10-25",
+  "note": "BEFORE held-out review: San Francisco; she relocates anywhere in the US"
+ },
+ "ho-da-ng-opt-boston::oracle:eedu~em3~CX_1003:202606806": {
+  "review": "after-2026-10-25",
+  "note": "BEFORE held-out review: New York; she relocates anywhere in the US"
+ },
+ "ho-da-ng-opt-boston::workday:iheartmedia~wd5~External_iHM:Req39536-2": {
+  "review": "after-2026-10-25",
+  "note": "BEFORE held-out review: remote US, stands"
+ },
+ "ho-da-ng-opt-boston::workable:wsutech:A65E9E0F05": {
+  "review": "after-2026-10-25",
+  "note": "BEFORE held-out review: Wichita; relocation in-country, stands"
+ },
+ "ho-da-mid-hyderabad::breezy:startupblink:c5c7464a8e2d-data-analyst": {
+  "review": "after-2026-10-25",
+  "note": "BEFORE held-out review: worldwide remote; unknown counts in his favour"
+ },
+ "ho-da-mid-hyderabad::workday:bpinternational~wd3~bpcareers:RQ109175": {
+  "review": "after-2026-10-25",
+  "note": "BEFORE held-out review: remote in India, stands"
+ },
+ "ho-da-sr-berlin::workable:peoplecert:AEEA4B7A6A": {
+  "review": "after-2026-10-25",
+  "location": "mismatch",
+  "note": "BEFORE held-out review: Athens, Greece; she will not move"
+ },
+ "ho-da-ch-logistics-to-analyst-memphis::breezy:startupblink:c5c7464a8e2d-data-analyst": {
+  "review": "after-2026-10-25",
+  "note": "BEFORE held-out review: worldwide remote; unknown counts in her favour"
+ },
+ "ho-da-ch-logistics-to-analyst-memphis::ashby:outset:d9cbcdd3-bbc7-48dd-84c2-7edc632b5fd1": {
+  "review": "after-2026-10-25",
+  "location": "mismatch",
+  "note": "BEFORE held-out review: hybrid in San Francisco; she lives in Memphis"
+ },
+ "ho-ph-mid-oh-to-pittsburgh::workday:thedacare~wd5~ThedaCare_Career_Site1:26-27443": {
+  "review": "after-2026-10-25",
+  "location": "mismatch",
+  "note": "BEFORE held-out review: Neenah, Wisconsin"
+ },
+ "ho-ph-mid-oh-to-pittsburgh::workday:genesishcs~wd1~GenesisHCS:JR104633": {
+  "review": "after-2026-10-25",
+  "location": "mismatch",
+  "note": "BEFORE held-out review: Genesis Maysville pharmacy, not Pittsburgh"
+ },
+ "ho-ph-mid-oh-to-pittsburgh::workday:aah~wd5~External:R279398": {
+  "review": "after-2026-10-25",
+  "location": "mismatch",
+  "note": "BEFORE held-out review: Sheboygan County, Wisconsin"
+ },
+ "ho-ph-mid-leicester::workday:asda~wd103~AsdaJobs:R-109539": {
+  "review": "after-2026-10-25",
+  "location": "mismatch",
+  "note": "BEFORE held-out review: Charlton is in south-east London"
+ },
+ "ho-td-mid-cdla-indianapolis::paylocity:a0ae6cc7-8b75-410d-a17a-95d0eaa00f9d:3846580": {
+  "review": "after-2026-10-25",
+  "location": "mismatch",
+  "note": "BEFORE held-out review: Providence Point is a Baptist Homes Society community in Pittsburgh"
+ },
+ "ho-td-mid-cdla-indianapolis::workday:wasteconnections~wd1~Careers:R-104211": {
+  "review": "after-2026-10-25",
+  "location": "mismatch",
+  "note": "BEFORE held-out review: Waste Connections' Vancouver hauling yard"
+ },
+ "ho-me-mid-pe-cincinnati::paylocity:fbdda7dd-4e47-4c13-9252-df255b179e51:4505070": {
+  "review": "after-2026-10-25",
+  "location": "mismatch",
+  "note": "BEFORE held-out review: Alabaster, Alabama plant"
+ },
+ "ho-cs-mid-tampa::paylocity:d417c254-3d82-4486-93e6-0486d96568ab:4612526": {
+  "review": "after-2026-10-25",
+  "location": "mismatch",
+  "note": "BEFORE held-out review: State Savings Bank's Gaylord (Michigan) office"
+ },
+ "ho-cs-mid-tampa::paylocity:c0c0d604-5c20-48c1-bc04-247678a49bfa:4611898": {
+  "review": "after-2026-10-25",
+  "location": "mismatch",
+  "note": "BEFORE held-out review: Detroit"
+ },
+ "ho-cs-mid-tampa::paylocity:86a864b5-eaa4-45e6-9c61-3b56e90f7b3b:4610368": {
+  "review": "after-2026-10-25",
+  "note": "BEFORE held-out review: place unstated; unknown counts in her favour"
+ },
+ "ho-cs-mid-tampa::smartrecruiters:JobsForHumanity:744000157419089": {
+  "review": "after-2026-10-25",
+  "note": "BEFORE held-out review: remote US, stands"
+ },
+ "ho-cs-ch-hospitality-to-cs-glasgow::greenhouse:eu~thgingenuity:5012611101": {
+  "review": "after-2026-10-25",
+  "location": "mismatch",
+  "note": "BEFORE held-out review: Northwich, Cheshire"
+ },
+ "ho-wh-sr-ops-louisville::paylocity:a9375c77-e1dd-4243-b423-5ca18f198d9b:4610422": {
+  "review": "after-2026-10-25",
+  "location": "mismatch",
+  "note": "BEFORE held-out review: Chicago"
+ },
+ "ho-wh-sr-ops-louisville::paylocity:f1b33798-836d-4e04-8836-4bb6de4b4850:4598092": {
+  "review": "after-2026-10-25",
+  "location": "mismatch",
+  "role": "off",
+  "note": "BEFORE held-out review: golf-course general manager in the Chicago suburbs"
+ },
+ "ho-wh-sr-ops-louisville::teamtailor:hudsonnordicdenmark:8609891": {
+  "review": "after-2026-10-25",
+  "location": "mismatch",
+  "auth": "fail",
+  "note": "BEFORE held-out review: General Manager for ARDEX Finland"
+ },
+ "ho-wh-sr-ops-louisville::paylocity:31f3ec43-20ed-4bd0-a7ea-86b91fc25183:4435368": {
+  "review": "after-2026-10-25",
+  "location": "mismatch",
+  "note": "BEFORE held-out review: Jefferson Park, Chicago optical store"
+ },
+ "ho-wh-gap-forklift-brampton::workday:menasha~wd12~MenashaCorp:R16499-1": {
+  "review": "after-2026-10-25",
+  "note": "BEFORE held-out review: Brampton forklift operator, stands"
+ },
+ "ho-pt-ng-dpt-milwaukee::paylocity:501ca867-ba6b-491c-852e-e72ed1d416af:4607891": {
+  "review": "after-2026-10-25",
+  "location": "mismatch",
+  "note": "BEFORE held-out review: Las Cruces, New Mexico"
+ },
+ "ho-pt-ng-dpt-milwaukee::paylocity:58a0c3e0-3eed-467b-b451-768538f293a9:4609281": {
+  "review": "after-2026-10-25",
+  "location": "mismatch",
+  "note": "BEFORE held-out review: Cascadia Services (Pacific Northwest)"
+ },
+ "ho-hr-mid-h1b-sf::workday:nshs~wd1~ns-eeh:R48860": {
+  "review": "after-2026-10-25",
+  "location": "mismatch",
+  "note": "BEFORE held-out review: Skokie, Illinois corporate office"
+ },
+ "ho-hr-mid-h1b-sf::workday:alston~wd1~ExternalCareer:JR100991": {
+  "review": "after-2026-10-25",
+  "location": "mismatch",
+  "note": "BEFORE held-out review: Atlanta"
+ },
+ "ho-hr-mid-h1b-sf::workday:niagarawater~wd5~Niagara:R56368": {
+  "review": "after-2026-10-25",
+  "note": "BEFORE held-out review: remote US, stands"
+ },
+ "ho-hr-mid-h1b-sf::paylocity:62590741-c636-4beb-a0e3-8231343fc8fd:4607941": {
+  "review": "after-2026-10-25",
+  "location": "mismatch",
+  "note": "BEFORE held-out review: in office in Maitland, Florida"
+ },
+ "ho-hr-mid-h1b-sf::recruitee:gsbsolutions1:2782613": {
+  "review": "after-2026-10-25",
+  "location": "mismatch",
+  "auth": "fail",
+  "note": "BEFORE held-out review: remote in Mexico"
+ },
+ "ho-hr-sr-hrbp-london::lever:vrchat:5f8683d1-c30e-4e47-8bfa-540e96b04020": {
+  "review": "after-2026-10-25",
+  "note": "BEFORE held-out review: remote anywhere; unknown counts in her favour"
+ },
+ "ho-hr-sr-hrbp-london::teamtailor:fussy-1738679774:8579343": {
+  "review": "after-2026-10-25",
+  "note": "BEFORE held-out review: London head of people, stands"
+ },
+ "ho-hr-sr-hrbp-london::workable:arondite:32E9522ADC": {
+  "review": "after-2026-10-25",
+  "note": "BEFORE held-out review: London head of people, stands"
+ }
+}

@@ -1,0 +1,24 @@
+DANIEL KOWALSKI
+Staff Software Engineer - Distributed Systems
+Seattle, WA | dkowalski@example.com | 206-555-0177
+U.S. citizen. Seattle-area onsite/hybrid or U.S. remote.
+PROFILE
+Fifteen years building large-scale distributed systems and storage infrastructure. I set technical direction across
+multiple teams, lead design reviews, and have grown engineers into senior and staff roles.
+EXPERIENCE
+Staff Software Engineer, Cascade Cloud Storage - Seattle, WA (2019 - Present)
+- Technical lead for the object metadata platform (Go, Rust) serving 2M requests per second across 14 regions.
+- Designed a multi-region replication protocol that prevented data loss during two regional outages.
+- Set the architecture roadmap for four teams (38 engineers) and chaired the org's design review board.
+- Reduced fleet cost by $4.1M per year through a tiered-storage compaction project.
+Senior Software Engineer, Rainier Commerce - Seattle, WA (2014 - 2019)
+- Led the rewrite of checkout from a Java monolith to services on Kubernetes at 99.99% availability.
+- Built an internal service mesh and observability stack (OpenTelemetry, Prometheus).
+Software Engineer, Pioneer Analytics - Portland, OR (2011 - 2014)
+- C++ and Python data pipeline engineering for clickstream analytics on Hadoop and Kafka.
+EDUCATION
+M.S. Computer Science, University of Washington, 2011
+B.S. Computer Engineering, Oregon State University, 2009
+SKILLS
+Go, Rust, Java, C++, Python, distributed systems, consensus (Raft/Paxos), Kubernetes, AWS, GCP, Kafka,
+Cassandra, PostgreSQL, gRPC, system design, technical leadership, mentoring
