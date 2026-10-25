@@ -711,8 +711,14 @@ import(`${root}/scripts/prerender-retired.mjs`).then((R) => {
     if (desc.includes("Pro $45/month") && body.includes("$45/month")) out("PASS", `/pricing states Pro at $45/month in its description and its body ($45 x${bare(pr, 45)} in the document; baseline 0)`);
     else out("FAIL", `/pricing does not state Pro at $45/month in both its description and its body (description ${desc.includes("Pro $45/month") ? "yes" : "no"}, body ${body.includes("$45/month") ? "yes" : "no"}; $45 x${bare(pr, 45)})`);
     const hits = R.retiredClaimsIn(served(pr), { sales: true });
+    // Its JSON-LD offers are walked as /agents\x27 are (round 3 review,
+    // 2026-10-25: an @type array and a nested priceSpecification at 29 or 99
+    // passed here). A JSON-LD Offer at 29 FAILs as it does in 83 C2:
+    // Freelance Boost is sold in the page body, never through an Offer.
+    const prOffers = R.retiredOfferPrices(R.jsonLdBlocks(pr));
     if (hits.length) out("FAIL", `/pricing sells or names a retired product: ${hits.map(([c, m]) => `${c} ("${m.slice(0, 60)}")`).join("; ")}`);
-    else out("PASS", `/pricing carries no retired claim by 83 C1\x27s list (bare $99 x${bare(pr, 99)}; bare $29 x${bare(pr, 29)}, a one-time product still on sale, never a pass)`);
+    else if (prOffers.length) out("FAIL", `/pricing offers a retired price in its JSON-LD: ${prOffers.join(", ")} (the agent plan and the pass are retired; 83 C2 refuses an Offer at either)`);
+    else out("PASS", `/pricing carries no retired claim by 83 C1\x27s list and no JSON-LD offer at 99 or 29 (bare $99 x${bare(pr, 99)}; bare $29 x${bare(pr, 29)}, a one-time product still on sale, never a pass)`);
     const descBad = !/Pro \$45\/month\.$/.test(desc) ? "does not end with \x27Pro $45/month.\x27" : /\bpass\b/i.test(desc) ? "names a pass" : /Apply Agent/.test(desc) ? "names the Apply Agent" : /purchases \($/.test(desc) ? "is cut at \x27purchases (\x27" : "";
     if (descBad) out("FAIL", `/pricing description ${descBad}: "${desc.slice(0, 200)}"`);
     else out("PASS", `/pricing description is whole and names only what is on sale: "${desc}"`);

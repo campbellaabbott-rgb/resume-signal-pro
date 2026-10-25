@@ -30,6 +30,16 @@
  * offers and services with the retired list's own walks
  * (retiredOfferPrices and nodesOfType), and L9-11 reads $29 beside hours,
  * limits or a quota.
+ *
+ * The round 3 review (2026-10-25) found: 7d judged /pricing's JSON-LD only as
+ * text, so an @type array or a nested priceSpecification at 29 or 99 passed
+ * there; the walks missed an untyped object under offers or makesOffer, a
+ * decimal-comma price ("29,00"), an @type written "schema:Offer" or with the
+ * schema.org URL, and a Service subtype; and L9-11's price rule was one more
+ * pattern, missing "$29.00", "6h" and "caps" and failing a true Freelance
+ * Boost sentence beside "48 hours". L9-11 is now judged by the retired pass's
+ * own copy (RETIRED_PASS_COPY, every clause that sold it, from git history),
+ * with the price rule kept as a backstop for a paraphrase.
  */
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -249,7 +259,7 @@ describe("7d and 76 read every shape of a retired offer (recheck, 2026-10-25)", 
 
   it("76 L9-11 FAILs a $29 pass sold without the word, and keeps passing Freelance Boost at $29", () => {
     const sold = run76(routes(HOMEPAGE, `${LLMS_FULL}- Raise your limits for six hours for $29.\n`));
-    expect(has(sold, "FAIL", /\/llms-full\.txt \(HTTP 200\): still sells the retired pass by its price \("limits for six hours for \$29"\) \(L9-11\)/), show(sold)).toBe(true);
+    expect(has(sold, "FAIL", /\/llms-full\.txt \(HTTP 200\): still carries the retired pass's own copy \("6 hours for \$29"\), still sells the retired pass by its price \("limits for six hours for \$29"\) \(L9-11\)/), show(sold)).toBe(true);
     const usd = run76(routes(HOMEPAGE, `${LLMS_FULL}- Six hours of higher quotas: 29 USD.\n`));
     expect(has(usd, "FAIL", /still sells the retired pass by its price/), show(usd)).toBe(true);
     const boost = run76(routes(HOMEPAGE, `${LLMS_FULL}- A: Ours does: Freelance Boost ($29) takes a guided project intake and applies it to your profile.\n`));
@@ -261,5 +271,110 @@ describe("the lines stay where this test reads them", () => {
   it("76 still carries the L1-08 and L9-11 judges", () => {
     expect(S76).toMatch(/L1-08/);
     expect(S76).toMatch(/L9-11/);
+  });
+});
+
+// ── round 3 (2026-10-25) ────────────────────────────────────────────────────
+const pricingWith = (o: object) => PRICING.replace("</head>", `${ld({ "@context": "https://schema.org", ...o })}</head>`);
+const ROUND3_OFFERS: Array<[string, object]> = [
+  ["an untyped object under offers", { "@type": "Product", name: "x", offers: { price: "29" } }],
+  ["untyped offers in an array", { "@type": "Product", name: "x", offers: [{ price: 99 }] }],
+  ["a decimal-comma price", { "@type": "Offer", price: "29,00" }],
+  ["an @type written schema:Offer", { "@type": "schema:Offer", price: "29" }],
+  ["an @type written as the schema.org URL", { "@type": "https://schema.org/Offer", price: "99" }],
+  ["an untyped object under makesOffer", { "@type": "Organization", name: "x", makesOffer: { price: "29" } }],
+];
+
+describe("round 3: /pricing's JSON-LD is walked, and the walks read four more shapes", () => {
+  it("the retired list's walk finds each round 3 shape; prices on sale and the live /pricing AggregateOffer are not retired", async () => {
+    const R = await import("../../scripts/prerender-retired.mjs");
+    for (const [what, o] of ROUND3_OFFERS) expect(R.retiredOfferPrices([o]).length, what).toBeGreaterThan(0);
+    expect(R.ldPriceNumber("29,00")).toBe(29);
+    expect(R.ldPriceNumber("1.029,50")).toBe(1029.5);
+    expect(R.ldPriceNumber("1,029")).toBe(1029);
+    expect(R.retiredOfferPrices([{ "@type": "AggregateOffer", lowPrice: "0", highPrice: "59", offerCount: 12 }, { "@type": "Offer", price: "0" }, { "@type": "Product", offers: { price: "45" } }])).toEqual([]);
+    expect(R.nodesOfType([{ "@type": "ProfessionalService" }, { "@type": "schema:Service" }, { "@type": "WebSite" }], R.SERVICE_TYPE).length).toBe(2);
+  });
+
+  for (const [what, o] of [...RECHECK_OFFERS.slice(0, 2), ...ROUND3_OFFERS]) {
+    it(`7d FAILs a /pricing whose JSON-LD prices a retired offer through ${what}`, () => {
+      const lines = bash(BLOCK_7D, { "/pricing": pricingWith(o), "/agents": AGENTS_PAGE });
+      expect(has(lines, "FAIL", /^\/pricing offers a retired price in its JSON-LD: /), show(lines)).toBe(true);
+      expect(has(lines, "PASS", /^\/pricing carries no retired claim/), show(lines)).toBe(false);
+    });
+  }
+
+  it("7d PASSes today's /pricing (an AggregateOffer from 0 to 59) and the /pricing with no JSON-LD", () => {
+    for (const page of [PRICING, pricingWith({ "@type": "SoftwareApplication", name: "Resume Booster", offers: { "@type": "AggregateOffer", priceCurrency: "USD", lowPrice: "0", highPrice: "59", offerCount: 12 } })]) {
+      const lines = bash(BLOCK_7D, { "/pricing": page, "/agents": AGENTS_PAGE });
+      expect(has(lines, "PASS", /^\/pricing carries no retired claim by 83 C1's list and no JSON-LD offer at 99 or 29/), show(lines)).toBe(true);
+    }
+  });
+
+  for (const [what, o] of ROUND3_OFFERS) {
+    it(`7d FAILs an /agents whose JSON-LD prices a retired offer through ${what}`, () => {
+      const lines = bash(BLOCK_7D, { "/pricing": PRICING, "/agents": agentsWith(o) });
+      expect(has(lines, "FAIL", /^\/agents offers a retired price in its JSON-LD: /), show(lines)).toBe(true);
+    });
+  }
+
+  const routes = (home: string, llmsFull: string) => [route("/", home), route("/llms-full.txt", llmsFull)];
+  it("76 L1-08 FAILs a Service subtype, a prefixed Service, and an untyped offer under offers on the homepage", () => {
+    for (const [what, block, re] of [
+      ["ProfessionalService", { "@type": "ProfessionalService", name: "Apply Agent" }, /1 Service block/],
+      ["schema:Service", { "@type": "schema:Service", name: "Apply Agent" }, /1 Service block/],
+      ["an untyped offer", { "@type": "Product", name: "Agent", offers: { price: "99" } }, /Offers at \["price 99"\]/],
+    ] as Array<[string, object, RegExp]>) {
+      const home = HOMEPAGE.replace(WEBSITE, WEBSITE + ld({ "@context": "https://schema.org", ...block }));
+      const lines = run76(routes(home, LLMS_FULL));
+      expect(has(lines, "FAIL", /the homepage still sells the retired apply agent/), `${what}${show(lines)}`).toBe(true);
+      expect(lines.some((l) => l.startsWith("FAIL") && re.test(l)), `${what}${show(lines)}`).toBe(true);
+    }
+  });
+});
+
+describe("round 3: L9-11 is judged by the retired pass's own copy, with the price rule as a backstop", () => {
+  const routes = (home: string, llmsFull: string) => [route("/", home), route("/llms-full.txt", llmsFull)];
+  const l911 = (extra: string) => run76(routes(HOMEPAGE, `${LLMS_FULL}${extra}\n`));
+  const passes = (lines: string[]) => has(lines, "PASS", /\/llms-full\.txt names the registry entry, names no pass and carries no retired claim/);
+
+  it("the copy is the pass's own: 42 clauses from git history, none in today's crawler copy, each naming the pass, its price, hours or terms", async () => {
+    const R = await import("../../scripts/prerender-retired.mjs");
+    expect(R.RETIRED_PASS_COPY.length).toBe(42);
+    for (const c of R.RETIRED_PASS_COPY) expect(c, c).toMatch(/\$29|\b6 hours\b|\bpass\b|\bPass\b|\b10 (?:applications|jobs)\b/);
+    // The homepage strip's pass line as the bake wrote it before the apply pivot (f04bf146^), in any case and number spelling.
+    expect(R.retiredPassCopyIn("A $29.00 PASS gives it six hours at full speed to research the board and apply to ten jobs for you. Never renews; sign in to buy.")).toEqual(["A $29 pass gives it 6 hours at full speed to research the board and apply to 10 jobs for you"]);
+    const bake = readFileSync(resolve(ROOT, "scripts/prerender-seo.mjs"), "utf8");
+    expect(R.retiredPassCopyIn(bake), "today's bake source carries a retired pass clause").toEqual([]);
+  });
+
+  for (const sentence of [
+    "- Bring your own AI agent. A $29 pass gives it 6 hours at full speed to research the board and apply to 10 jobs for you. Never renews; sign in to buy.",
+    "- Search free; apply on the $99/month Agent plan or a $29 pass.",
+    "- Or a one-off pass for your own AI agent: $29 for 6 hours and 10 applications. Never renews.",
+    "- Your 6 hours begin at your agent's first call.",
+  ]) {
+    it(`FAILs the retired copy: ${sentence.slice(2, 60)}`, () => {
+      const lines = l911(sentence);
+      expect(has(lines, "FAIL", /\/llms-full\.txt \(HTTP 200\): .*still carries the retired pass's own copy/), show(lines)).toBe(true);
+    });
+  }
+
+  for (const sentence of ["- Six hours of unlimited searches: $29.00.", "- $29 for 6h of uncapped calls.", "- $29 one-time: higher rate caps until midnight."]) {
+    it(`the backstop FAILs a paraphrase the review found passing: ${sentence.slice(2)}`, () => {
+      const lines = l911(sentence);
+      expect(has(lines, "FAIL", /still sells the retired pass by its price/), show(lines)).toBe(true);
+    });
+  }
+
+  for (const sentence of ["- Freelance Boost ($29): a one-time rewrite delivered within 48 hours.", "- Freelance Boost $29, no limits on edits."]) {
+    it(`PASSes a true Freelance Boost sentence: ${sentence.slice(2)}`, () => {
+      expect(passes(l911(sentence)), show(l911(sentence))).toBe(true);
+    });
+  }
+
+  it("today's live llms-full shape (its only $29 is Freelance Boost) PASSes", () => {
+    const lines = l911("- A: Ours does: Freelance Boost ($29) takes a guided project intake — or a pasted platform profile — and applies exactly the structure rules and bullet formula in this guide, using only facts you provide.");
+    expect(passes(lines), show(lines)).toBe(true);
   });
 });

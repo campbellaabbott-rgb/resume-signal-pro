@@ -62,7 +62,10 @@ const textOf = (h) => h.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<[^>
   // included (recheck, 2026-10-25).
   const homeLd = lds(home.body);
   const R108 = await import(`${REPO_ROOT}/scripts/prerender-retired.mjs`).catch(() => null);
-  const svcs = R108 ? R108.nodesOfType(homeLd, "Service") : [];
+  // A Service by any spelling of its @type ("schema:Service") and any
+  // subtype (ProfessionalService), and every object under offers or
+  // makesOffer, typed or not (round 3 review, 2026-10-25).
+  const svcs = R108 ? R108.nodesOfType(homeLd, R108.SERVICE_TYPE) : [];
   const retiredOffers = R108 ? R108.retiredOfferPrices(homeLd) : [];
   // Selling nothing is judged only on a homepage that carries its JSON-LD
   // (the template writes a WebSite block): with no block at all there is
@@ -257,17 +260,37 @@ const textOf = (h) => h.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<[^>
   // reads "a six-hour pass for $29" as the pass (fix round, 2026-10-24).
   const retired76 = await import(`${REPO_ROOT}/scripts/prerender-retired.mjs`).catch(() => null);
   const lfRetired = retired76 ? retired76.retiredClaimsIn(lf.body) : null;
-  const P29 = "(?:\\$\\s?29(?!\\d|[,.]\\d)|\\b29(?:\\.00)?\\s?(?:USD|US dollars|dollars)\\b|\\bUSD\\s?29(?![\\d,.]))";
-  const PASS_WORDS = "\\b(?:(?:six|6)[- ]hours?|hours?|limits?|quotas?)\\b";
-  const PASS_BY_PRICE = new RegExp(`${P29}[^.<\\n]{0,80}${PASS_WORDS}|${PASS_WORDS}[^.<\\n]{0,80}${P29}`, "i");
+  // THE JUDGE IS THE PASS\x27S OWN COPY (round 3 review, 2026-10-25): every
+  // clause the copy that sold it said, from git history
+  // (RETIRED_PASS_COPY in scripts/prerender-retired.mjs). The price rule
+  // below stays beside it for a paraphrase in new words, which no list of
+  // old sentences can hold; a paraphrase that names neither the price nor
+  // its hours, limits, caps or quota passes both (residual, named).
+  const lfPassCopy = retired76 && typeof retired76.retiredPassCopyIn === "function" ? retired76.retiredPassCopyIn(lf.body) : null;
+  const P29 = "(?:\\$\\s?29(?:\\.00)?(?![\\d,.]\\d)|\\b29(?:\\.00)?\\s?(?:USD|US dollars|dollars)\\b|\\bUSD\\s?29(?:\\.00)?(?![\\d,.]\\d))";
+  const PASS_WORDS = "\\b(?:(?:six|6)[- ]?(?:hours?|hrs?|h)|hours?|hrs?|limits?|quotas?|caps?|allowance)\\b";
+  const PASS_BY_PRICE = new RegExp(`${P29}[^.<\\n]{0,80}${PASS_WORDS}|${PASS_WORDS}[^.<\\n]{0,80}${P29}`, "gi");
+  // Freelance Boost is the one-time product on sale at $29: a match whose
+  // price has its name within 40 characters before it is that product.
+  const P29_RE = new RegExp(P29, "i");
+  const passByPrice = (() => {
+    for (const m of lf.body.matchAll(PASS_BY_PRICE)) {
+      const at = m.index + m[0].search(P29_RE);
+      if (/Freelance Boost/i.test(lf.body.slice(Math.max(0, at - 40), at))) continue;
+      return m[0];
+    }
+    return null;
+  })();
   const lfWhy = [
     /work\.resumebooster\/jobs/.test(lf.body) ? "" : "no registry name",
     /raises both for its hours`?$/m.test(lf.body) ? "still says a pass raises the /v1 limits" : "",
     /\bAgent Pass\b|\blive pass\b|\b(?:six|6)[- ]hour pass\b/i.test(lf.body) ? "still names the retired pass" : "",
-    // The pass sold by what it did, without the word: $29 (or 29 USD) beside
-    // hours, limits or a quota (recheck, 2026-10-25). Freelance Boost, a
-    // one-time product at that price, says neither.
-    PASS_BY_PRICE.test(lf.body) ? `still sells the retired pass by its price ("${(lf.body.match(PASS_BY_PRICE) || [""])[0].slice(0, 80)}")` : "",
+    // The retired pass\x27s own copy, clause by clause; then the pass sold by
+    // what it did, without the word: $29 (or $29.00, or 29 USD) beside hours,
+    // limits, caps, a quota or an allowance (recheck and round 3,
+    // 2026-10-25), except where Freelance Boost names the price.
+    lfPassCopy === null ? "this checkout\x27s scripts/prerender-retired.mjs has no retired pass copy (RETIRED_PASS_COPY) to judge by" : lfPassCopy.length ? `still carries the retired pass\x27s own copy ("${lfPassCopy[0].slice(0, 80)}"${lfPassCopy.length > 1 ? ` and ${lfPassCopy.length - 1} more clause(s)` : ""})` : "",
+    passByPrice ? `still sells the retired pass by its price ("${passByPrice.slice(0, 80)}")` : "",
     lfRetired === null ? "this checkout cannot read scripts/prerender-retired.mjs (the retired list is the judge)" : lfRetired.length ? `still carries a retired claim: ${lfRetired.map(([c, m]) => `${c} ("${m.slice(0, 60)}")`).join("; ")}` : "",
   ].filter(Boolean);
   if (lf.status === 200 && !lfWhy.length) out("PASS", "/llms-full.txt names the registry entry, names no pass and carries no retired claim by 83 C1\x27s list (L9-11)");
