@@ -256,8 +256,11 @@ was rebuilt from a corpus of every live zero page (the recheck round below):
 the zero page now says "No roles are listed on this page right now." with no
 read time, and says "not read" only where our own reads show no complete
 read and no stated total. On the corpus's 12,564 zero pages that is the
-page's own line on 12,539 and "not read" on 25, and no sentence the board's
-own feed contradicts. Recording whole-feed totals is a later job-board item,
+page's own line on 12,541 and "not read" on 23, and no sentence the board's
+own feed contradicts. Round 3 (below) took the same rule to the rest of the
+zero page: its title and description name no open roles, its live region
+blames no filter, and its Watch sentence promises a count only where a watch
+on the token can count the board's new postings. Recording whole-feed totals is a later job-board item,
 so 81c's Stripe line stays FAIL until then by decision.
 
 **The 16 stale checks.** 7d (`/pricing` Pro at $45/month in description and
@@ -283,8 +286,9 @@ object within 3 s each); before the migration all four FAIL at 500 57014.
 so the bake re-reads the Workday facts and the zero copy ships. Then run
 `bash scripts/verify-deploy.sh` and read 80, 81 (81c's own-line, refuted-key
 and bucket lines, which FAIL until the publish; 81i, Workday facts within
-3 s; 81j, at least 90% of 24 sampled Workday pages stating places or fields,
-which FAILs until the re-bake; 81c's Stripe total stays FAIL by decision),
+3 s; 81j, at least 90% of 24 sampled Workday pages, and each of the
+sitemap's first 4, stating places or fields, which FAILs until the
+re-bake; 81c's Stripe total stays FAIL by decision),
 83 and 49. Only when those pass is
 `{commit: '57815de9', functions: {'employer-profiles':
 'employer-profiles.2026-10-12.2'}}` appended to `verifiedDeploys`, which
@@ -375,15 +379,47 @@ as after an ingest gap, `2e3bc5a1` prints the full-read sentence falsely on
 | Minor: 76 L9-11 passed a $29 pass sold without the word "pass" | L9-11 also FAILs $29 or 29 USD beside hours, limits or a quota; Freelance Boost at $29 still passes (it says neither) | same file |
 | Minor: the full-read sentence named no read time | Gone with the sentence | the zero-page test |
 
-**Hand-offs.** The zero page's SPA head still reads "Browse X's open roles
-dated in the last 30 days" (`jobsPage.companySeoDescription`, in
-`Jobs.tsx`, which seo/react rewrites): it is the same for every company
-page and claims no count, but a zero variant of its own would be truer.
-The corpus also shows the collector's own board-state calls are wrong on
+**Hand-offs.** The zero page's SPA head still read "Browse X's open roles
+dated in the last 30 days" (`jobsPage.companySeoDescription`); round 3
+below gives the zero variant a head of its own. The corpus also shows the collector's own board-state calls are wrong on
 some boards (a Workday site whose read in state `empty` stated 5 while two
 of its roles were days old; Breezy and Paylocity boards read in full that
 serve nothing their feeds date this month); that is job-board's (wave 4),
 not this page's.
+
+### Round 3 (2026-10-25, branch `pd-hotfix-fix`, pushed as `pd/hotfix`)
+
+The review of `61d4ec62` found two blockers, both on main and live before
+the hotfix, and seven minors. Each finding's inputs went into the corpus
+first (the fixture's `round3` key: the 14 sub-sites the review checked live,
+each with the sibling site that holds its roles, and the edges no corpus row
+has today), and every corpus row is true under this fix.
+
+| Finding | Fix | Test (each failed first on `61d4ec62`) |
+|---|---|---|
+| Blocker: the zero column promised "Watch this board and your account will count its new postings when they appear" in all nine locales (and the toast "We'll email you when they post new roles") on Oracle sub-sites whose requisitions a sibling site holds. A watch is a saved search on the token, so there it counts nothing, ever: Delaney at the Green states 3 roles, all served as `eexs~us2~CX_3001`; the review checked 13 more | `watchPromiseOf` (`lander-model.ts`): the promise is made only where the curve has answered with its columns, the board states no total (job-board never writes 0), the newest observed day was a complete read (a board we fail to read whole lists nothing new) and the token is no Oracle site, the one hiring system the sub-site dedupe empties (all 1,343 of its catalogued tokens have the `tenant~region~CX` shape and no other token does). Elsewhere the column offers Watch without the sentence and the toast says only "Watching X". On the corpus: 10,200 of 12,564 zero pages; none of the 326 whose roles a sibling serves (304 with a stated total, 22 lap-proven with none, which a stated-total rule alone would have kept); none with a stated total | `pd-hotfix-the-zero-page-never-says-...`: every corpus row, the 14 named boards, the 22 lap-proven sub-sites, the column in English, German and Spanish, the toast's wiring; 81c's new watch lines in `the-accuracy-verifier-...` (a model promising everywhere FAILs Delaney and Akumin) |
+| Blocker: every zero page's title and description claimed open roles ("{X} jobs: open roles from their own hiring system", "Browse {X}'s open roles dated in the last 30 days", or "Live jobs straight from this board's own hiring system") | `landerSeo` sends the zero variant to `zeroPageHead` (`CompanyHeader.tsx`) ahead of the employer's head: "{X} jobs" and "{X}: no roles are listed on this page right now." (`companyProfile.zero.seoTitle` and `seoDescription`, new in all nine shards); a generic or nameless board keeps its heading as the title and the page's own line as the description | the zero-page test (every corpus row named, generic and nameless; German and Spanish; the branch's place in `Jobs.tsx`); `a-company-pages-title-...` mounts a named zero page and reads its title, description and live region (it fails with the branch removed) |
+| Minor: the polite live region said "No openings match these filters." on every unfiltered zero page | A zero page announces "No roles are listed on this page right now." | the same mount |
+| Minor: "not read" from a windowed bucket (`lap_pending`, `unprovable`) is the newest visit's alone, and false after one windowed visit on a vendor whose complete reads leave no stated total (Rippling, JazzHR, Teamtailor) | A zero page has no rows to name its vendor by, so the windowed buckets say the page's own line. Two corpus rows lose a true "not read" (a UKG board read 600 of 1,046, an ADP board 300 of 433): 23 rows say it now. Kept as a named edge: a board re-catalogued with old postings reads bucket null for up to 30 minutes after its first read, and says "not read" then | the zero-page test (the fixture's edges); `the-accuracy-verifier-...` |
+| Minor: 81j could PASS with the 20 largest Workday pages unfaceted (22 of 24), and trusted the sitemap's order | The sample opens with the sitemap's first 4 Workday pages, each of which must state a fact line (then 12 spread and the last 8); an INFO says when the sampled titles' role counts rise in sitemap order. Live, read-only, at 03:32Z: FAIL 0 of 24, first 4: 0 (recorded as the fixture) | `pd-hotfix-verify-81i-...`: one of the first 4 missing FAILs at 23 of 24, the 20 largest FAIL, the INFO |
+| Minor: 7d judged `/pricing`'s JSON-LD only as text, so an @type array or a nested priceSpecification at 29 or 99 passed there | 7d walks `/pricing`'s offers with `retiredOfferPrices` and FAILs an Offer at 29 or 99, as 83 C2 does (Freelance Boost is sold in the body, never through an Offer); today's AggregateOffer from 0 to 59 PASSes | `pd-hotfix-the-re-pointed-crawler-lines-...` (seven shapes on `/pricing`) |
+| Minor: the walks missed an untyped object under `offers` or `makesOffer`, a decimal-comma "29,00", an @type written `schema:Offer` or as the schema.org URL, and a Service subtype | `retiredOfferPrices` reads any object under `offers` or `makesOffer` as priced, a comma before exactly two final digits as a decimal point, and types by suffix; L1-08 reads `SERVICE_TYPE` (`/Service$/`) | same file |
+| Minor: L9-11's price rule was one more pattern: it missed "$29.00", "6h" and "caps", and failed a true Freelance Boost sentence beside "48 hours" | L9-11 is judged by `RETIRED_PASS_COPY` (`scripts/prerender-retired.mjs`): 42 clauses of the copy that sold the pass, from every version of `en.json` (`23e294ac`..`9f6f3fce`) and of the bake (`6961adac`..`f04bf146`), rendered with its $29, 6 hours and 10 applications, matched in any case with "six" or "6" and any spelling of $29. The price rule stays as a backstop (now with $29.00, h, hrs, caps and allowance) and skips a price that Freelance Boost names within 40 characters before it | same file |
+
+Live, read-only, on 2026-10-25: 7d's `/pricing` and `/agents` lines and 76
+L1-08 and L9-11 PASS on today's pages; 81j FAILs 0 of 24 until the re-bake.
+
+**Left, with the reason:**
+
+- **Naming the sibling site** that holds a sub-site's requisitions: a
+  separate item, as before; the page says nothing false there.
+- **The watch toast on a standard page of an Oracle sub-site** (one that
+  lists roles) still says "We'll email you when they post new roles", while
+  every requisition it shares with a better-ranked sibling is stored there.
+  The review named only the zero page; a hand-off.
+- **83 C2** still walks Offers by exact type (pd/bake's, handed off).
+- **Residual of L9-11:** a paraphrase in new words that names neither the
+  price nor hours, limits, caps, a quota or an allowance passes both rules.
 
 ## The fix round of 2026-10-18 (branch `pd-fix`, pushed as `design/integration`)
 

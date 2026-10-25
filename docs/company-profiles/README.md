@@ -215,11 +215,13 @@ and on the made-up token, and passes each only on a 200 within 3 seconds
 carrying the reader object, and for the three real pages only when the
 reply reads facts (a Workday source with open roles, and places or fields).
 81j reads the baked crawler copy after the publish's re-bake: 24 Workday
-company pages sampled from the live sitemap (its last 8, where the bake's
-90-second intel deadline cuts first, and 16 spread over the rest), and
-passes only when at least 90% state "The countries holding the most of its
-roles on this board:" or "The fields holding the most of its roles on this
-board:". 81i's 3-second bound does not prove the bake fitted its deadline
+company pages sampled from the live sitemap (its first 4, the largest,
+which a reader too slow on big tenants loses to the bake's 8-second
+per-call timeout; its last 8, where the bake's 90-second intel deadline
+cuts first; and 12 spread between them), and passes only when at least 90%
+state "The countries holding the most of its roles on this board:" or "The
+fields holding the most of its roles on this board:" and each of the first
+4 does. 81i's 3-second bound does not prove the bake fitted its deadline
 (the whole bake fits only at about 1.1 s per round of six); 81j does. 81g,
 which probes stripe alone, stayed green through the outage.
 
@@ -246,3 +248,21 @@ The page now says only "No roles are listed on this page right now." where
 the board's figures and the page disagree, and "not read" only where our
 own reads show it (25 rows): no false sentence on any corpus row. The
 design upgrade README, "The recheck round", has the table.
+
+**Round 3 (2026-10-25).** Two blockers, both on main and live before the
+hotfix. The zero column promised "Watch this board and your account will
+count its new postings when they appear" (and the toast "We'll email you
+when they post new roles") on Oracle sub-sites whose requisitions a sibling
+site holds, where a watch on the token counts nothing: Delaney at the Green
+states 3 roles, all served as `eexs~us2~CX_3001`. The promise is now made
+only where the curve has answered, the board states no total, the newest
+observed day was a complete read and the token is no Oracle site
+(`watchPromiseOf`): 10,200 of the corpus's 12,564 zero pages, none of the
+326 whose roles a sibling serves. And every zero page's head claimed open
+roles; it now reads "{X} jobs" and "{X}: no roles are listed on this page
+right now.". 81j also needs each of the sitemap's first 4 Workday pages to
+state a fact line (a block of the 20 largest without facts PASSed 22 of
+24), and says when the sitemap stops listing them in the bake's order. "Not
+read" from a windowed bucket is gone (two true rows lose it), so it now
+prints on 23 corpus rows. The design upgrade README, "Round 3", has the
+table.
