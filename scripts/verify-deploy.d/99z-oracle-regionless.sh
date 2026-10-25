@@ -41,7 +41,7 @@ echo "== 99z. Oracle hosts with no region: JPMorgan Chase is read from jpmc.fa.o
 VD99Z_TOK="jpmc~~CX_1001"
 VD99Z_CTL="efet~us2~CX_1"
 VD99Z_HOST="jpmc.fa.oraclecloud.com"
-VD99Z_H=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/job-board" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | sed -E 's/^[^:]+: *//')
+VD99Z_H=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/job-board" -H "x-rb-budget: probe" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | sed -E 's/^[^:]+: *//')
 VD99Z_LIVE=0
 if [ -z "$VD99Z_H" ]; then echo "FAIL  job-board preflight carries no x-fn-build (the function is not deployed, or its preflight does not answer)"
 elif build_ge job-board "$VD99Z_H" "2026-09-09" "95"; then echo "PASS  job-board preflight x-fn-build = $VD99Z_H (job-board.2026-09-09.95 or later: the build that reads an Oracle host with no region)"; VD99Z_LIVE=1

@@ -22,8 +22,9 @@
  *     buildSince, and an unreadable list each print FAIL;
  *   - a count before the first full read is proven is INFO, and so is a board
  *     not read yet;
- *   - the publishable key is never printed, every POST is a job-board status,
- *     list or detail read carrying x-rb-budget: probe, the fill-curve read is a GET,
+ *   - the publishable key is never printed, every call to the board (the
+ *     preflight included) carries x-rb-budget: probe, every POST is a
+ *     job-board status, list or detail read, the fill-curve read is a GET,
  *     and every GET to JPMorgan's host is paced by a sleep of a second or more.
  */
 import { afterAll, describe, expect, it, vi } from "vitest";
@@ -222,6 +223,10 @@ describe("section 99z: Oracle hosts with no region", () => {
       expect(p, p).toMatch(new RegExp(`^curl\\tPOST ${FB}\\t\\{"action":"(list|detail|status)"`));
       expect(p, p).toMatch(/headers:.*x-rb-budget: probe/);
     }
+    // The preflight too: every call to the board says it is our tooling, not a browser.
+    const board = calls.filter((c) => /functions\/v1\/job-board/.test(c));
+    expect(board.length).toBe(5);
+    for (const c of board) expect(c, c).toMatch(/headers:.*x-rb-budget: probe/);
     expect(calls.some((c) => /^curl\tGET https:\/\/p\.supabase\.co\/rest\/v1\/rpc\/get_company_fill_curve\?/.test(c))).toBe(true);
     // Every GET to JPMorgan's host after the first follows a sleep of at least a second.
     const seq = calls.filter((c) => /^sleep\t/.test(c) || /^curl\tGET https:\/\/jpmc\.fa\.oraclecloud\.com\//.test(c) || /"action":"detail"/.test(c));
