@@ -244,7 +244,7 @@ export { ONET_EXPECTATIONS } from "../supabase/functions/free-keyword-scan/onet-
 export { onetForRole } from "../src/lib/onet-match";
 export { roleListCopy } from "../src/lib/role-page-copy";
 export { ROLE_PAGES, rolesForIndustry } from "../src/data/roles";
-export { displayKeyword, industryLabel, inSentence } from "../src/lib/seo/display-case";
+export { displayKeyword, industryLabel, inSentence, withArticle } from "../src/lib/seo/display-case";
 export { industryKeywordsHead, roleKeywordsHead } from "../src/lib/seo/keyword-pages";
 export { TOOL_LANDINGS } from "../src/data/tool-landings";
 export { SCAN_RESULTS_WITHIN_SECONDS } from "../src/config/scan-timing";
@@ -1523,7 +1523,7 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
         ${onetBlock(onet)}
         <section class="mb-8"><h2 class="text-xl font-bold mb-2">Keywords ATS systems expect on ${esc(lower)} resumes</h2>${kwChips(keywords, slug)}</section>
         <section class="mb-8"><h2 class="text-xl font-bold mb-2">Job titles recruiters recognize in this field</h2>${chips(titles.map((t) => displayKeyword(t, slug)), "px-2.5 py-1 rounded-lg bg-card border border-border text-sm text-muted-foreground capitalize")}</section>
-        ${certs.length ? `<section class="mb-8"><h2 class="text-xl font-bold mb-2">Certifications that anchor a ${esc(lower)} resume</h2>${chips(certs, "px-2.5 py-1 rounded-lg bg-success/5 border border-success/25 text-sm text-foreground uppercase")}</section>` : ""}
+        ${certs.length ? `<section class="mb-8"><h2 class="text-xl font-bold mb-2">Certifications that anchor ${esc(D.withArticle(lower))} resume</h2>${chips(certs, "px-2.5 py-1 rounded-lg bg-success/5 border border-success/25 text-sm text-foreground uppercase")}</section>` : ""}
         ${subs.length ? `<section class="mb-8"><h2 class="text-xl font-bold mb-2">Specializations our scanner distinguishes within ${esc(lower)}</h2><div class="space-y-2">${subs.map((sub) => `<div class="rounded-xl border border-border bg-card p-3"><p class="text-sm font-medium text-foreground">${esc(sub.label)}</p><p class="text-xs text-muted-foreground capitalize">Signals: ${esc(sub.signals.slice(0, 6).join(", "))}</p></div>`).join("")}</div></section>` : ""}
         ${note ? `<section class="rounded-2xl border border-warning/30 bg-warning/5 p-5 mb-8"><h2 class="font-semibold text-foreground mb-1">What screeners check first in ${esc(lower)}</h2><p class="text-sm text-muted-foreground">${esc(note)}</p></section>` : ""}
         ${industryFaqs.length ? `<section class="mb-8"><h2 class="text-xl font-bold mb-3">Common questions</h2><div class="space-y-3">${industryFaqs.map((f) => `<div class="rounded-2xl border border-border bg-card p-4"><h3 class="font-semibold text-foreground text-sm mb-1.5">${esc(f.q)}</h3><p class="text-xs text-muted-foreground leading-relaxed">${esc(f.a)}</p></div>`).join("")}</div></section>` : ""}

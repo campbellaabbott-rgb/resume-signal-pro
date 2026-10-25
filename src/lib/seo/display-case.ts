@@ -146,6 +146,58 @@ export function displayTitle(raw: string): string {
 export const industryLabel = (slug: string): string => displayTitle(slug);
 
 /**
+ * CERTIFICATION NAMES, AS THEIR BODIES SPELL THEM. The industry FAQ upper-cased
+ * every certification whole ("CERTIFIED ADMINISTRATIVE PROFESSIONAL",
+ * "DATABRICKS CERTIFIED"): a certification is a name, so its plain words are
+ * capitalised, its acronyms upper-cased (the reviewed list above plus the
+ * certification bodies' own below) and a few spelled their own way.
+ */
+const CERT_ACRONYMS = new Set<string>([
+  "abr", "ace", "acf", "acls", "acrp", "acsm", "aia", "ains", "airs", "ap", "apics", "arm", "ata", "atp", "bant", "bcop", "bcps",
+  "bicsi", "bls", "cap", "cca", "ccim", "ccm", "ccna", "ccra", "ccrn", "ccrp", "cchi", "cda", "cep", "ceh", "cfa", "cfe", "cfii",
+  "cfre", "cgfm", "cha", "chha", "chia", "chmm", "cia", "cic", "cims", "cips", "cissp", "cka", "ckad", "clu", "cltd", "cmc",
+  "cmp", "cnp", "cpcu", "cpe", "cpht", "cpim", "cpl", "cqm", "crde", "crs", "cscp", "cscs", "csep", "cspo", "cvt", "cwep",
+  "dau", "dbia", "dds", "dele", "dga", "dmcp", "dmd", "dvm", "ece", "efda", "eit", "epa", "fe", "gmdss", "gpc", "gphr", "gri",
+  "gsec", "gwo", "hdi", "ibm", "ire", "isa", "issa", "itil", "jd", "lcsw", "leed", "lmft", "lmhc", "lmsw", "lmt", "lpc", "lvt",
+  "mba", "meddic", "meddpicc", "mlis", "msw", "nabcep", "nasm", "nbcmi", "nbct", "ncaa", "ncarb", "ncidq", "nrp", "nsca",
+  "oscp", "pals", "pca", "phr", "pi", "pmp", "post", "ppl", "psm", "pspo", "ptcb", "ra", "rac", "rcdd", "rdh", "rvt", "socra",
+  "spj", "sphr", "stcw", "tesol", "tncc", "twic", "uscg", "vmd",
+]);
+const CERT_SPECIAL: Record<string, string> = {
+  "a+": "A+", chfc: "ChFC", comptia: "CompTIA", datacamp: "DataCamp", "deeplearning.ai": "DeepLearning.AI", edd: "EdD",
+  hubspot: "HubSpot", mdiv: "MDiv", "network+": "Network+", pharmd: "PharmD", phd: "PhD", prince2: "PRINCE2", rph: "RPh",
+  safe: "SAFe", "sag-aftra": "SAG-AFTRA", "security+": "Security+", servsafe: "ServSafe", "shrm-cp": "SHRM-CP",
+  "shrm-scp": "SHRM-SCP", tensorflow: "TensorFlow",
+};
+export function displayCertification(name: string): string {
+  return tokens(name)
+    .map((t) => {
+      if (/^\s+$/.test(t) || !t) return t;
+      if (t !== t.toLowerCase()) return t;
+      if (CERT_SPECIAL[t]) return CERT_SPECIAL[t];
+      if (SPECIAL[t]) return SPECIAL[t];
+      if (CERT_ACRONYMS.has(t) || isAcronym(t, true)) return t.toUpperCase();
+      if (/^\d/.test(t)) return t;
+      return capitalise(t);
+    })
+    .join("");
+}
+
+/**
+ * "a" or "an" before a word, by its sound: "an administrative", "a
+ * healthcare", "an HR" (aitch), "a UX". One template printed "on a
+ * administrative resume".
+ */
+export function withArticle(phrase: string): string {
+  const first = String(phrase).trim().split(/[\s/]+/)[0] ?? "";
+  const acronym = first.length > 1 && first === first.toUpperCase() && /\p{L}/u.test(first);
+  const an = acronym
+    ? /^[AEFHILMNORSX]/.test(first)
+    : /^[aeiou]/i.test(first) && !/^(?:uni|use|usu|ure|eu|one|once)/i.test(first);
+  return `${an ? "an" : "a"} ${phrase}`;
+}
+
+/**
  * A heading-cased name inside a sentence: plain words lower-case, acronyms
  * kept ("analyze HR resumes", "on RN resumes", "customer success resumes").
  * It replaces name.toLowerCase(), which printed "hr resumes".

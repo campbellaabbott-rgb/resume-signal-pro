@@ -18,7 +18,7 @@ import { rolesForIndustry } from "@/data/roles";
 import { PageJsonLd } from "@/components/seo/PageJsonLd";
 // Letter case by what a word is, not by its length (SEO-019, S13-089): an
 // acronym is upper-case ("HR", "ICU", "SOPs"), a plain word is not ("wind").
-import { displayKeyword, industryLabel as label, inSentence } from "@/lib/seo/display-case";
+import { displayKeyword, industryLabel as label, inSentence, withArticle } from "@/lib/seo/display-case";
 import { industryKeywordsHead } from "@/lib/seo/keyword-pages";
 
 import { SCREENER_NOTES } from "@/data/screener-notes";
@@ -139,7 +139,7 @@ export default function IndustryKeywords() {
 
           {certs.length > 0 && (
             <section className="mb-8">
-              <h2 className="text-xl font-bold mb-2">Certifications that anchor a {lower} resume</h2>
+              <h2 className="text-xl font-bold mb-2">Certifications that anchor {withArticle(lower)} resume</h2>
               <div className="flex flex-wrap gap-1.5">
                 {certs.map((c) => (
                   <span key={c} className="px-2.5 py-1 rounded-lg bg-success/5 border border-success/25 text-sm text-foreground uppercase">{c}</span>

@@ -5,7 +5,7 @@
 // build-time prerenderer so the visible content and JSON-LD never drift.
 
 import { SCAN_RESULTS_WITHIN_SECONDS } from "../config/scan-timing";
-import { inSentence } from "../lib/seo/display-case";
+import { displayCertification, inSentence, withArticle } from "../lib/seo/display-case";
 
 export interface IndustryFaq {
   q: string;
@@ -32,8 +32,8 @@ export function buildIndustryFaqs(opts: {
 
   if (certifications.length >= 2) {
     faqs.push({
-      q: `Which certifications matter most on a ${lower} resume?`,
-      a: `Our scanner anchors ${lower} resumes on certifications like ${certifications.slice(0, 6).map((c) => c.toUpperCase()).join(", ")}. List the ones you hold with their exact recognized abbreviation — recruiters and ATS searches both match on the standard form.`,
+      q: `Which certifications matter most on ${withArticle(lower)} resume?`,
+      a: `Our scanner anchors ${lower} resumes on certifications like ${certifications.slice(0, 6).map(displayCertification).join(", ")}. List the ones you hold with their exact recognized abbreviation — recruiters and ATS searches both match on the standard form.`,
     });
   }
 
