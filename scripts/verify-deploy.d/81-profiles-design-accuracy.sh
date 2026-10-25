@@ -27,12 +27,21 @@
 #       Oracle sub-site whose requisitions a sibling site serves) and Akumin's
 #       ADG site (a Workday site that stated 5 at a read in state empty while
 #       its own feed dated 2 roles this month) each give no reading at all on
-#       this checkout's model when nothing is listed, and the page promises
-#       that a watch counts new postings only where no total is stated and
-#       the token is no Oracle sub-site (Delaney's watch can count nothing:
-#       a sibling site holds its requisitions); Stripe's board total is
-#       within 10% of its own Greenhouse feed (FAIL by decision until
-#       job-board records whole-feed totals).
+#       this checkout's model when nothing is listed; the served chunks ask
+#       for the zero page's own head (companyProfile.zero.seoTitle and
+#       companyProfile.zero.seoDescription, round 3) and the served company
+#       chunk prints the watch sentence (companyProfile.zero.body) only on
+#       the lander model's watchPromise (round 3), and on that gate the page
+#       promises that a watch counts new postings only where no total is
+#       stated and the token is a site neither dedupe can empty (Delaney's
+#       watch can count nothing: a sibling Oracle site holds its
+#       requisitions; Boeing's PRIDE site, read in full with no stated total,
+#       is one of five Workday sites of its tenant, whose new requisition
+#       copies the Workday cross-site dedupe skips when a sibling holds the
+#       base id, round 4). The watch lines judge this checkout's model, so
+#       they PASS only once the served chunk carries the gate and print INFO
+#       before; Stripe's board total is within 10% of its own Greenhouse feed
+#       (FAIL by decision until job-board records whole-feed totals).
 #   81d Databricks and Canva print no "never half" (their 30-day share is
 #       under one half).
 #   81e no live 14-day share sits outside its own interval.
@@ -61,7 +70,11 @@
 # model (src/lib/hiring-record-gate.ts and src/lib/company/lander-model.ts,
 # through tsx), and the served bundle (the entry, the Jobs chunk, the chunks
 # it imports and the English locale chunks) is searched for the copy and the
-# refusal keys. Both must hold for a PASS. Read-only: GETs (PostgREST runs a
+# refusal keys. Both must hold for a PASS; a line that reads only this
+# checkout's model before the bundle carries what it judges prints INFO.
+# Property names survive minification, so the watch gate is read from the
+# served code itself ("X.watchPromise&&" opening the element whose children
+# call companyProfile.zero.body). Read-only: GETs (PostgREST runs a
 # GET RPC in a read-only transaction), the job-board's read-only list, and one
 # public Greenhouse feed.
 echo "== 81. profiles + design accuracy: Track 1 on named pages, the four-table lock =="
@@ -74,7 +87,7 @@ const fs = require("fs");
 const H = { apikey: K, Authorization: `Bearer ${K}` };
 const get = async (url, headers = {}) => { try { const r = await fetch(url, { headers, signal: AbortSignal.timeout(60000) }); return { status: r.status, body: await r.text() }; } catch (e) { return { status: 0, body: "" }; } };
 const json = (s) => { try { return JSON.parse(s); } catch { return null; } };
-const TOKENS = ["egud~us2~CX_1", "ejwl~us2~CX", "eluq~us2~CX_1", "hcbt~em2~CX_1001", "databricks", "Canva", "centriaautism", "bayada", "stripe", "bassabatherapy", "eexs~us2~CX_19005", "akumincorp~wd5~adgcareers"];
+const TOKENS = ["egud~us2~CX_1", "ejwl~us2~CX", "eluq~us2~CX_1", "hcbt~em2~CX_1001", "databricks", "Canva", "centriaautism", "bayada", "stripe", "bassabatherapy", "eexs~us2~CX_19005", "akumincorp~wd5~adgcareers", "boeing~wd1~PRIDE"];
 (async () => {
   // The rows the employer pages read, over a read-only GET.
   const arr = "{" + TOKENS.map((t) => JSON.stringify(t)).join(",") + "}";
@@ -100,7 +113,7 @@ const TOKENS = ["egud~us2~CX_1", "ejwl~us2~CX", "eluq~us2~CX_1", "hcbt~em2~CX_10
   }
   fs.writeFileSync("/tmp/vd_81_bundle.txt", bundle);
   fs.writeFileSync("/tmp/vd_81_meta.json", JSON.stringify({ main: main || null, jobsChunk: jobsChunk || null }));
-  // What the zero boards serve (the read-only list): BASS ABA and the two disagreeing shapes.
+  // What the zero boards serve (the read-only list): BASS ABA, the two disagreeing shapes and a multi-site Workday site.
   const listed = async (token) => {
     try {
       const r = await fetch(`${B}/functions/v1/job-board`, { method: "POST", headers: { ...H, "Content-Type": "application/json", "x-rb-budget": "probe" }, body: JSON.stringify({ action: "list", companies: [token], limit: 5, includeFacets: false }), signal: AbortSignal.timeout(60000) });
@@ -110,7 +123,7 @@ const TOKENS = ["egud~us2~CX_1", "ejwl~us2~CX", "eluq~us2~CX_1", "hcbt~em2~CX_10
   };
   const bass = await listed("bassabatherapy");
   const zeroLists = {};
-  for (const t of ["eexs~us2~CX_19005", "akumincorp~wd5~adgcareers"]) zeroLists[t] = await listed(t);
+  for (const t of ["eexs~us2~CX_19005", "akumincorp~wd5~adgcareers", "boeing~wd1~PRIDE"]) zeroLists[t] = await listed(t);
   // Stripe: its own Greenhouse feed states the total.
   const gh = await get("https://boards-api.greenhouse.io/v1/boards/stripe/jobs");
   const ghj = json(gh.body);
@@ -232,14 +245,37 @@ if (served) {
   if (/bucket:\s*([\w$]+)\.observability_bucket\s*,\s*trackingDays:\s*\1\.tracking_days\b/.test(bundle)) out("PASS", "81c the served Jobs chunk hands the zero page the curve\x27s read bucket and tracking days");
   else out("FAIL", "81c the served Jobs chunk does not hand the zero page the curve\x27s observability_bucket and tracking_days: its \"not read\" cannot tell a board we read in full from one we did not");
 }
+// Round 3 in the served bundle (round 4, 2026-10-25): the zero page\x27s own
+// head, asked for by key, and the watch sentence gated on the model.
+let watchGateServed = false;
+if (served) {
+  const head = ["companyProfile.zero.seoTitle", "companyProfile.zero.seoDescription"].filter((k) => !has(k));
+  if (head.length) out("FAIL", `81c the served chunks do not ask for ${head.join(" or ")}: a zero page\x27s title and description still say the employer has open roles (round 3\x27s head is not published)`);
+  else out("PASS", "81c the served chunks ask for companyProfile.zero.seoTitle and companyProfile.zero.seoDescription: a zero page\x27s title and description name no open roles");
+  // Each call of the watch sentence must sit in an element the model\x27s
+  // watchPromise opens, as the production build writes CompanyEmptyState:
+  // X.watchPromise&&n.jsx("p",{...,children:t("companyProfile.zero.body",...
+  // A negated receiver (!X.watchPromise) is not the gate.
+  const GATED = /(?<![!\w$.])[\w$]+(?:\.[\w$]+)*\.watchPromise\s*(?:&&|\?)\s*(?:\(\s*0\s*,\s*)?[\w$]+\.jsxs?\)?\(\s*"p"\s*,\s*\{[^{}]*?children:\s*[\w$]+\(\s*$/;
+  const calls = [...bundle.matchAll(/["\x27`]companyProfile\.zero\.body["\x27`]/g)].map((m) => m.index);
+  const ungated = calls.filter((i) => !GATED.test(bundle.slice(Math.max(0, i - 400), i)));
+  if (!calls.length) out("FAIL", "81c the served chunks never ask for companyProfile.zero.body: the watch sentence moved, so its gate cannot be read (re-anchor this line on CompanyEmptyState)");
+  else if (ungated.length) out("FAIL", `81c the served company chunk prints companyProfile.zero.body without the lander model\x27s watchPromise (${ungated.length} of ${calls.length} call(s)): every zero page promises a watch counts its new postings, Delaney at the Green included (round 3\x27s gate is not published)`);
+  else { watchGateServed = true; out("PASS", `81c the served company chunk prints companyProfile.zero.body only where the lander model\x27s watchPromise opens it (${calls.length} call(s))`); }
+}
 // The zero boards, each judged by this checkout\x27s model on its live row when nothing is listed.
 const facts81c = (r) => `bucket ${r.observability_bucket ?? "none"}, ${r.tracking_days ?? "no"} tracking days, ${r.feed_total !== null && r.feed_total !== undefined ? `feed_total ${r.feed_total} (${r.feed_state}, read ${r.feed_read_at})` : "no stated total"}`;
+// The fifth field names the dedupe that can empty the site, when one can: an
+// Oracle site (the sub-site dedupe), or a Workday site of a tenant with more
+// than one catalogued site (the copy dedupe; the catalogue counts are pinned
+// against sources.ts by the-accuracy-verifier-can-fail-every-claim-it-makes).
 const ZERO_BOARDS = [
-  ["BASS ABA", "bassabatherapy", "a Greenhouse board read whole in one visit, so no total is stated", ext.bass],
-  ["Delaney at the Green", "eexs~us2~CX_19005", "an Oracle sub-site whose requisitions a sibling site serves", (ext.zeroLists || {})["eexs~us2~CX_19005"]],
-  ["Akumin ADG", "akumincorp~wd5~adgcareers", "a Workday site whose own feed dated 2 roles this month while a read in state empty stated 5", (ext.zeroLists || {})["akumincorp~wd5~adgcareers"]],
+  ["BASS ABA", "bassabatherapy", "a Greenhouse board read whole in one visit, so no total is stated", ext.bass, null],
+  ["Delaney at the Green", "eexs~us2~CX_19005", "an Oracle sub-site whose requisitions a sibling site serves", (ext.zeroLists || {})["eexs~us2~CX_19005"], "an Oracle site the sub-site dedupe empties"],
+  ["Akumin ADG", "akumincorp~wd5~adgcareers", "a Workday site whose own feed dated 2 roles this month while a read in state empty stated 5", (ext.zeroLists || {})["akumincorp~wd5~adgcareers"], "a Workday site of a tenant with 2 catalogued sites, which the copy dedupe can empty"],
+  ["Boeing PRIDE", "boeing~wd1~PRIDE", "a Workday site read in full with no stated total, one of its tenant\x27s five", (ext.zeroLists || {})["boeing~wd1~PRIDE"], "a Workday site of a tenant with 5 catalogued sites, which the copy dedupe can empty"],
 ];
-for (const [label, t, shape, list] of ZERO_BOARDS) {
+for (const [label, t, shape, list, deduped] of ZERO_BOARDS) {
   const r = rowOf(t);
   const mm = model && model[t];
   const listTotal = list ? list.total : null;
@@ -253,13 +289,17 @@ for (const [label, t, shape, list] of ZERO_BOARDS) {
   // The watch promise ("your account will count its new postings"): a watch
   // counts only postings stored under this token, so a board that states
   // roles this page does not list (Delaney, whose requisitions CX_3001
-  // holds), or an Oracle sub-site, gets none (round 3 review, 2026-10-25).
+  // holds), an Oracle sub-site, or a Workday site whose tenant has another
+  // site gets none (round 3 review and round 4, 2026-10-25). These lines read
+  // this checkout\x27s model, so they PASS only where the served company chunk
+  // gates the sentence on it (the line above), and say INFO before.
   const stated = r.feed_total !== null && r.feed_total !== undefined;
-  const subSite = /^[^~]+~[^~]+~CX(?:_\w+)?$/.test(t);
+  const why = [stated ? `the board states ${r.feed_total} role(s) this page does not list` : "", deduped || ""].filter(Boolean).join("; ");
+  const live = watchGateServed ? "" : "; the served company chunk does not gate the sentence (the line above FAILs), so the live page prints it whatever this model says";
   if (typeof mm.watchPromise !== "boolean") out("FAIL", `81c ${label}: this checkout\x27s lander model has no watch rule (watchPromiseOf), so the zero page promises every watch counts new postings`);
-  else if (mm.watchPromise && (stated || subSite)) out("FAIL", `81c ${label}: the page would promise a watch counts its new postings (${facts81c(r)}${subSite ? ", a site the sub-site dedupe empties" : ""}): a watch on this token can count nothing the board states`);
-  else if (mm.watchPromise) out("PASS", `81c ${label}: the page promises a watch counts its new postings, where no total is stated, the newest read was whole and no sibling site holds its roles (${facts81c(r)})`);
-  else out("PASS", `81c ${label}: the page offers Watch without promising what it counts (${facts81c(r)})`);
+  else if (mm.watchPromise && why) out("FAIL", `81c ${label}: this checkout\x27s model would promise a watch counts its new postings (${facts81c(r)}; ${why}): a watch on this token can count nothing the board lists`);
+  else if (mm.watchPromise) out(watchGateServed ? "PASS" : "INFO", `81c ${label}: ${watchGateServed ? "the page promises" : "this checkout\x27s model promises"} a watch counts its new postings, where no total is stated, the newest read was whole and neither dedupe can empty the site (${facts81c(r)})${live}`);
+  else out(watchGateServed ? "PASS" : "INFO", `81c ${label}: ${watchGateServed ? "the page offers" : "this checkout\x27s model offers"} Watch without promising what it counts (${facts81c(r)}${why ? `; ${why}` : ""})${live}`);
 }
 {
   const r = rowOf("stripe");

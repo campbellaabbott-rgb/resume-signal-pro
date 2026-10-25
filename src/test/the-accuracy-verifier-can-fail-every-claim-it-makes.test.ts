@@ -30,6 +30,18 @@
  * that gives any reading on BASS ABA, Delaney at the Green (an Oracle
  * sub-site a sibling site serves) or Akumin's ADG site (a Workday site whose
  * read in state empty stated 5 while its feed dated 2 roles this month).
+ *
+ * Round 4 (the final recheck of round 3, 2026-10-25): 81c's watch lines ran
+ * this checkout's model on live rows, so they PASSed before any publish while
+ * the live page printed the promise on Delaney. 81c now reads round 3 in the
+ * served bundle: the zero page's head keys and the watch sentence gated on the
+ * model's watchPromise, judged on verbatim excerpts of the live 57815de9 Jobs
+ * chunk (FAIL) and of a production vite build of 474dca30 (PASS), in
+ * fixtures/verify-81c-served-zero-chunks-2026-10-25.json. The watch lines
+ * PASS only once that gate is served and print INFO before. Boeing's PRIDE
+ * site (a Workday site of a five-site tenant, read in full with no stated
+ * total) is judged too: the Workday cross-site dedupe can empty it, and
+ * 474dca30's Oracle-only rule promised there.
  */
 import { describe, expect, it } from "vitest";
 import { execFileSync } from "node:child_process";
@@ -38,6 +50,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { hiringRecordGate, type HiringRecordRow } from "@/lib/hiring-record-gate";
 import { boardTotalFact, watchPromiseOf, zeroReadingOf } from "@/lib/company/lander-model";
+import { CATALOG } from "./helpers/catalog";
 
 const ROOT = resolve(__dirname, "../..");
 const SH = readFileSync(resolve(ROOT, "scripts/verify-deploy.d/81-profiles-design-accuracy.sh"), "utf8");
@@ -76,6 +89,13 @@ function run(files: Record<string, string>): string[] {
 const line = (lines: string[], status: string, re: RegExp) => lines.some((l) => l.startsWith(status) && re.test(l));
 const show = (lines: string[]) => lines.join("\n");
 
+/** Verbatim excerpts of the served company chunk: the live publish (57815de9) and a production build of 474dca30. */
+const CHUNKS = JSON.parse(readFileSync(resolve(__dirname, "fixtures/verify-81c-served-zero-chunks-2026-10-25.json"), "utf8")) as {
+  live_57815de9: { chunk: string; body: string; head: null };
+  branch_474dca30: { chunk: string; body: string; head: string };
+};
+const LIVE = CHUNKS.live_57815de9;
+const BRANCH = CHUNKS.branch_474dca30;
 // The served copy of 2026-10-12, reduced to the strings section 81 reads.
 const OLD_BUNDLE = [
   `repostTipRoles:"In the last {{days}} days at least {{n}} of this company's roles that we watched come off the board came back. We only see a role come back under its own posting, so the real number can be higher. Worth knowing before you invest in an application."`,
@@ -95,11 +115,16 @@ const NEW_BUNDLE = [
   `t("companyProfile.zero.answer","No roles are listed on this page right now.")`,
   // The Jobs chunk's lander input, as the production build minifies it (esbuild on src/pages/Jobs.tsx).
   `boardTotal:to===null?void 0:H?{total:H.feed_total,readAt:H.feed_read_at,state:H.feed_state,capped:H.feed_capped,bucket:H.observability_bucket,trackingDays:H.tracking_days}:null`,
+  // Round 3 as a production build of 474dca30 writes it: the gated watch sentence and the zero page's head.
+  BRANCH.body,
+  BRANCH.head,
 ].join(";");
-/** What the 2026-10-18 publish serves: the zero copy before the hotfix (the older-roles sentence, the list's line, no bucket in the Jobs chunk's input). */
+/** What the 2026-10-18 publish serves: the zero copy before the hotfix (the older-roles sentence, the list's line, no bucket in the Jobs chunk's input, the watch sentence ungated, no zero head). */
 const PD_BUNDLE = NEW_BUNDLE
   .replace(`t("companyProfile.zero.answer","No roles are listed on this page right now.")`, `t("companyProfile.zero.older",{count:n});t("companyProfile.zero.answer","No roles dated in the last {{days}} days")`)
-  .replace(",bucket:H.observability_bucket,trackingDays:H.tracking_days", "");
+  .replace(",bucket:H.observability_bucket,trackingDays:H.tracking_days", "")
+  .replace(BRANCH.body, LIVE.body)
+  .replace(`;${BRANCH.head}`, "");
 /** What 2e3bc5a1 would have served: both refuted sentences, the bucket, and the list's old line. */
 const HEAD_BUNDLE = NEW_BUNDLE
   .replace(`t("companyProfile.zero.answer","No roles are listed on this page right now.")`, `t("companyProfile.zero.older",{count:n});t("companyProfile.zero.fullRead",{days:30});t("companyProfile.zero.answer","No roles dated in the last {{days}} days")`);
@@ -119,9 +144,11 @@ const afterRows: Row[] = beforeRows.map((r) => {
   // The two disagreeing shapes as the curve answered them on 2026-10-25 (src/test/fixtures/zero-page-corpus-2026-10-25.json).
   { ...beforeRows[0], company_token: "eexs~us2~CX_19005", open_roles: 0, observability_bucket: "full_read", tracking_days: 49, multi_site_title_share: null, multi_site_n: 0, feed_total: 3, feed_read_at: hoursAgo(2), feed_state: "ok", feed_capped: false, undated_open: 0 },
   { ...beforeRows[0], company_token: "akumincorp~wd5~adgcareers", open_roles: 0, observability_bucket: "full_read", tracking_days: 90, multi_site_title_share: null, multi_site_n: 0, feed_total: 5, feed_read_at: hoursAgo(1), feed_state: "empty", feed_capped: false, undated_open: 0 },
+  // Boeing's PRIDE site as the curve answered it live (round 4, 2026-10-25): read in full, no stated total, one of five Workday sites of its tenant.
+  { ...beforeRows[0], company_token: "boeing~wd1~PRIDE", open_roles: 0, observability_bucket: "full_read", tracking_days: 85, multi_site_title_share: null, multi_site_n: 0, feed_total: null, feed_read_at: null, feed_state: null, feed_capped: null, undated_open: 0 },
 ]);
 /** The read-only list for each zero board after the deploy: nothing listed. */
-const EXT_AFTER = { ...(BEFORE_READ.ext as object), zeroLists: { "eexs~us2~CX_19005": { status: 200, total: 0 }, "akumincorp~wd5~adgcareers": { status: 200, total: 0 } } };
+const EXT_AFTER = { ...(BEFORE_READ.ext as object), zeroLists: { "eexs~us2~CX_19005": { status: 200, total: 0 }, "akumincorp~wd5~adgcareers": { status: 200, total: 0 }, "boeing~wd1~PRIDE": { status: 200, total: 0 } } };
 
 const files = (rows: Row[], bundle: string, over: Record<string, unknown> = {}): Record<string, string> => {
   const d = derived(rows);
@@ -165,6 +192,8 @@ describe("before the deploy (production, 2026-10-12): every Track 1 and lock cla
     expect(line(lines, "FAIL", /81c the served copy lacks the zero page's own line/), show(lines)).toBe(true);
     expect(line(lines, "FAIL", /81c BASS ABA: the reply carries no feed_total/), show(lines)).toBe(true);
     expect(line(lines, "FAIL", /81c Stripe: the reply carries no feed_total/), show(lines)).toBe(true);
+    expect(line(lines, "FAIL", /81c the served chunks do not ask for companyProfile\.zero\.seoTitle or companyProfile\.zero\.seoDescription/), show(lines)).toBe(true);
+    expect(line(lines, "FAIL", /81c the served chunks never ask for companyProfile\.zero\.body/), show(lines)).toBe(true);
     expect(line(lines, "FAIL", /81d Databricks: the served copy is the old bound/), show(lines)).toBe(true);
     expect(line(lines, "FAIL", /81e 1 of \d+ rows publish a 14-day share outside its own interval.*centriaautism/), show(lines)).toBe(true);
   });
@@ -199,6 +228,9 @@ describe("after the deploy: every claim passes", () => {
     expect(line(lines, "PASS", /81c the served chunks ask for neither zero sentence the corpus refuted/), show(lines)).toBe(true);
     expect(line(lines, "PASS", /81c the served Jobs chunk hands the zero page the curve's read bucket and tracking days/), show(lines)).toBe(true);
     expect(line(lines, "PASS", /81c Stripe: board total 727 .* within 10% of its Greenhouse feed \(722\)/), show(lines)).toBe(true);
+    expect(line(lines, "PASS", /81c the served chunks ask for companyProfile\.zero\.seoTitle and companyProfile\.zero\.seoDescription/), show(lines)).toBe(true);
+    expect(line(lines, "PASS", /81c the served company chunk prints companyProfile\.zero\.body only where the lander model's watchPromise opens it \(1 call\(s\)\)/), show(lines)).toBe(true);
+    expect(line(lines, "PASS", /81c Boeing PRIDE \(.*\): nothing listed \(bucket full_read, 85 tracking days, no stated total\)/), show(lines)).toBe(true);
     expect(line(lines, "PASS", /81d Databricks: no "never half"/), show(lines)).toBe(true);
     expect(line(lines, "PASS", /81e all \d+ rows publish their 14-day share inside its own interval/), show(lines)).toBe(true);
     expect(lines.filter((l) => /^PASS +81f .*refused \(HTTP 401, 42501\)/.test(l))).toHaveLength(4);
@@ -278,19 +310,107 @@ describe("81c judges the zero page as the page builds it (hotfix 2026-10-24; cor
     expect(lineOf(u, "BASS ABA"), show(u)).toMatch(/^INFO {2}81c BASS ABA: zero reading "unread" \(bucket none, 89 tracking days/);
   });
 
-  it("the watch promise (round 3): made on BASS ABA, withheld on Delaney and Akumin; a model that promises everywhere, or has no rule, FAILs", () => {
-    const watchLine = (lines: string[], label: string) => lines.find((l) => new RegExp(`81c ${label}: the page (?:promises|offers|would promise)|81c ${label}: this checkout.s lander model has no watch rule`).test(l)) ?? "";
+  it("the watch promise (round 3 and 4): made on BASS ABA, withheld on Delaney, Akumin and Boeing PRIDE; a model that promises everywhere, or has no rule, FAILs", () => {
+    const watchLine = (lines: string[], label: string) => lines.find((l) => new RegExp(`81c ${label}: (?:the page|this checkout.s model) (?:promises|offers|would promise)|81c ${label}: this checkout.s lander model has no watch rule`).test(l)) ?? "";
     const lines = run(files(afterRows, NEW_BUNDLE, AFTER));
     expect(watchLine(lines, "BASS ABA"), show(lines)).toMatch(/^PASS {2}81c BASS ABA: the page promises a watch counts its new postings, where no total is stated/);
     expect(watchLine(lines, "Delaney at the Green"), show(lines)).toMatch(/^PASS {2}81c Delaney at the Green: the page offers Watch without promising what it counts \(bucket full_read, 49 tracking days, feed_total 3/);
     expect(watchLine(lines, "Akumin ADG"), show(lines)).toMatch(/^PASS {2}81c Akumin ADG: the page offers Watch without promising what it counts/);
+    expect(watchLine(lines, "Boeing PRIDE"), show(lines)).toMatch(/^PASS {2}81c Boeing PRIDE: the page offers Watch without promising what it counts \(bucket full_read, 85 tracking days, no stated total; a Workday site of a tenant with 5 catalogued sites/);
     // The page before round 3: every zero page promised the watch.
     const everywhere = JSON.stringify(Object.fromEntries(Object.entries(JSON.parse(derived(afterRows).model) as Record<string, Record<string, unknown>>).map(([k, v]) => [k, { ...v, watchPromise: true }])));
     const all = run({ ...files(afterRows, NEW_BUNDLE, AFTER), "vd_81_model.json": everywhere });
-    expect(watchLine(all, "Delaney at the Green"), show(all)).toMatch(/^FAIL {2}81c Delaney at the Green: the page would promise a watch counts its new postings \(.*feed_total 3.*, a site the sub-site dedupe empties\)/);
-    expect(watchLine(all, "Akumin ADG"), show(all)).toMatch(/^FAIL {2}81c Akumin ADG: the page would promise a watch counts its new postings/);
+    expect(watchLine(all, "Delaney at the Green"), show(all)).toMatch(/^FAIL {2}81c Delaney at the Green: this checkout's model would promise a watch counts its new postings \(.*feed_total 3.*; the board states 3 role\(s\) this page does not list; an Oracle site the sub-site dedupe empties\)/);
+    expect(watchLine(all, "Akumin ADG"), show(all)).toMatch(/^FAIL {2}81c Akumin ADG: this checkout's model would promise a watch counts its new postings/);
+    expect(watchLine(all, "Boeing PRIDE"), show(all)).toMatch(/^FAIL {2}81c Boeing PRIDE: this checkout's model would promise a watch counts its new postings \(.*no stated total; a Workday site of a tenant with 5 catalogued sites, which the copy dedupe can empty\)/);
     const noRule = run({ ...files(afterRows, NEW_BUNDLE, AFTER), "vd_81_model.json": modelBy(afterRows, (bt) => zeroReadingOf({ boardTotal: bt as never })) });
     expect(watchLine(noRule, "BASS ABA"), show(noRule)).toMatch(/^FAIL {2}81c BASS ABA: this checkout.s lander model has no watch rule \(watchPromiseOf\)/);
+  });
+
+  it("474dca30's watch rule (Oracle sites only) FAILs Boeing PRIDE and nothing else", () => {
+    const watchLine = (lines: string[], label: string) => lines.find((l) => new RegExp(`81c ${label}: (?:the page|this checkout.s model) (?:promises|offers|would promise)`).test(l)) ?? "";
+    const oracleOnly = (token: string, bt: Record<string, unknown>) =>
+      !(bt.total !== null && bt.total !== undefined) && bt.bucket === "full_read" && !/^[^~]+~[^~]+~CX(?:_\w+)?$/.test(token);
+    const model = JSON.stringify(Object.fromEntries(Object.entries(JSON.parse(derived(afterRows).model) as Record<string, Record<string, unknown>>).map(([k, v]) => {
+      const r = afterRows.find((x) => x.company_token === k)!;
+      return [k, { ...v, watchPromise: oracleOnly(k, { total: r.feed_total, bucket: r.observability_bucket }) }];
+    })));
+    const lines = run({ ...files(afterRows, NEW_BUNDLE, AFTER), "vd_81_model.json": model });
+    expect(watchLine(lines, "Boeing PRIDE"), show(lines)).toMatch(/^FAIL {2}81c Boeing PRIDE: this checkout's model would promise/);
+    for (const label of ["BASS ABA", "Delaney at the Green", "Akumin ADG"]) expect(watchLine(lines, label), show(lines)).toMatch(/^PASS/);
+  });
+
+  it("the Workday sites the section names as multi-site are multi-site in the catalogue (sources.ts)", () => {
+    for (const [token, want] of [["akumincorp~wd5~adgcareers", 2], ["boeing~wd1~PRIDE", 5]] as const) {
+      const tenant = token.split("~")[0];
+      const sites = CATALOG.filter((e) => e.source === "workday" && e.token.split("~")[0] === tenant).length;
+      expect(CATALOG.some((e) => e.source === "workday" && e.token === token), `${token} is catalogued`).toBe(true);
+      expect(sites, `${tenant}'s catalogued Workday sites`).toBe(want);
+      const named = new RegExp(`"${token}", "[^"]*", \\(ext\\.zeroLists \\|\\| \\{\\}\\)\\["${token}"\\], "a Workday site of a tenant with (\\d+) catalogued sites`).exec(SH);
+      expect(named?.[1], `section 81's ZERO_BOARDS entry for ${token}`).toBe(String(want));
+    }
+  });
+});
+
+describe("81c reads round 3 in the served bundle, not only in this checkout's model (round 4)", () => {
+  const AFTER = { lock: LOCKED, similar: SIMILAR_AFTER, ext: EXT_AFTER };
+  const WATCH = /^(\w+) +81c (BASS ABA|Delaney at the Green|Akumin ADG|Boeing PRIDE): (?:the page|this checkout's model) (?:promises|offers|would promise)/;
+  const watchLines = (lines: string[]) => lines.filter((l) => WATCH.test(l));
+  const HEAD_LINE = /81c the served chunks (?:do not )?ask for companyProfile\.zero\.seo/;
+  const GATE_LINE = /81c the served (?:company chunk prints|chunks never ask for) companyProfile\.zero\.body/;
+
+  it("the fixture's chunks are the real ones: the live call is ungated and carries no head key, the build's call opens on watchPromise beside the head", () => {
+    expect(LIVE.body).toContain(`children:h("companyProfile.zero.body"`);
+    expect(LIVE.body).not.toMatch(/watchPromise/);
+    expect(LIVE.chunk).toMatch(/^Jobs-[\w-]+\.js$/);
+    expect(BRANCH.body).toContain(`t.watchPromise&&n.jsx("p",{className:"text-sm text-muted-foreground",children:h("companyProfile.zero.body"`);
+    expect(BRANCH.head).toContain(`t("companyProfile.zero.seoTitle","{{company}} jobs",{company:a})`);
+    expect(BRANCH.head).toContain(`t("companyProfile.zero.seoDescription",`);
+  });
+
+  it("TEETH: today's live bundle (57815de9) FAILs both lines, and every watch line prints INFO from this checkout's model, never PASS", () => {
+    const lines = run(files(afterRows, PD_BUNDLE, AFTER));
+    expect(line(lines, "FAIL", /81c the served chunks do not ask for companyProfile\.zero\.seoTitle or companyProfile\.zero\.seoDescription: a zero page's title and description still say the employer has open roles/), show(lines)).toBe(true);
+    expect(line(lines, "FAIL", /81c the served company chunk prints companyProfile\.zero\.body without the lander model's watchPromise \(1 of 1 call\(s\)\): every zero page promises a watch counts its new postings, Delaney at the Green included/), show(lines)).toBe(true);
+    const w = watchLines(lines);
+    expect(w.length, show(lines)).toBe(4);
+    for (const l of w) {
+      expect(l, show(lines)).toMatch(/^INFO {2}81c [^:]+: this checkout's model (?:promises|offers)/);
+      expect(l).toMatch(/the served company chunk does not gate the sentence \(the line above FAILs\), so the live page prints it whatever this model says$/);
+    }
+  });
+
+  it("a production build of the branch (474dca30) PASSes both lines, and the watch lines PASS", () => {
+    const lines = run(files(afterRows, NEW_BUNDLE, AFTER));
+    expect(line(lines, "PASS", /81c the served chunks ask for companyProfile\.zero\.seoTitle and companyProfile\.zero\.seoDescription/), show(lines)).toBe(true);
+    expect(line(lines, "PASS", /81c the served company chunk prints companyProfile\.zero\.body only where the lander model's watchPromise opens it \(1 call\(s\)\)/), show(lines)).toBe(true);
+    const w = watchLines(lines);
+    expect(w.length).toBe(4);
+    for (const l of w) expect(l, show(lines)).toMatch(/^PASS {2}81c [^:]+: the page (?:promises|offers)/);
+  });
+
+  it("each half on its own: the head without the gate FAILs the gate only, the gate without the head FAILs the head only", () => {
+    const headOnly = run(files(afterRows, NEW_BUNDLE.replace(BRANCH.body, LIVE.body), AFTER));
+    expect(line(headOnly, "PASS", HEAD_LINE), show(headOnly)).toBe(true);
+    expect(line(headOnly, "FAIL", GATE_LINE), show(headOnly)).toBe(true);
+    const gateOnly = run(files(afterRows, NEW_BUNDLE.replace(`;${BRANCH.head}`, ""), AFTER));
+    expect(line(gateOnly, "FAIL", /81c the served chunks do not ask for companyProfile\.zero\.seoTitle or companyProfile\.zero\.seoDescription/), show(gateOnly)).toBe(true);
+    expect(line(gateOnly, "PASS", GATE_LINE), show(gateOnly)).toBe(true);
+    const titleOnly = run(files(afterRows, NEW_BUNDLE.replace(`t("companyProfile.zero.seoDescription",`, `t("companyProfile.zero.answer",`), AFTER));
+    expect(line(titleOnly, "FAIL", /81c the served chunks do not ask for companyProfile\.zero\.seoDescription:/), show(titleOnly)).toBe(true);
+  });
+
+  it("a second, ungated call FAILs; a negated gate FAILs; a sentence that moved FAILs as re-anchor, never PASS", () => {
+    const twice = run(files(afterRows, `${NEW_BUNDLE};${LIVE.body}`, AFTER));
+    expect(line(twice, "FAIL", /prints companyProfile\.zero\.body without the lander model's watchPromise \(1 of 2 call\(s\)\)/), show(twice)).toBe(true);
+    const negated = run(files(afterRows, NEW_BUNDLE.replace("t.watchPromise&&", "!t.watchPromise&&"), AFTER));
+    expect(line(negated, "FAIL", GATE_LINE), show(negated)).toBe(true);
+    expect(line(negated, "PASS", GATE_LINE), show(negated)).toBe(false);
+    const ternaryOff = run(files(afterRows, NEW_BUNDLE.replace(`t.watchPromise&&n.jsx("p",{className:"text-sm text-muted-foreground",children:h("companyProfile.zero.body"`, `t.watchPromise?null:n.jsx("p",{className:"text-sm text-muted-foreground",children:h("companyProfile.zero.body"`), AFTER));
+    expect(line(ternaryOff, "FAIL", GATE_LINE), show(ternaryOff)).toBe(true);
+    const moved = run(files(afterRows, NEW_BUNDLE.replace(BRANCH.body, ""), AFTER));
+    expect(line(moved, "FAIL", /81c the served chunks never ask for companyProfile\.zero\.body: the watch sentence moved/), show(moved)).toBe(true);
+    for (const l of watchLines(moved)) expect(l, show(moved)).toMatch(/^INFO/);
   });
 });
 
