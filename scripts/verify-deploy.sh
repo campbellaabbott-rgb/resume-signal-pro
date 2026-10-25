@@ -721,9 +721,12 @@ import(`${root}/scripts/prerender-retired.mjs`).then((R) => {
   // The homepage file is what the host serves at a path it has no page for,
   // and it carries no retired price either, so the page must be /agents (fix
   // round, 2026-10-24). An Offer prices in a field with no dollar sign, so
-  // every Offer is walked for the retired prices, as 76 L1-08 does.
+  // every offer is walked for the retired prices with the walk of the
+  // retired list, as 76 L1-08 is: an array @type, a nested
+  // priceSpecification and a price written with its currency included
+  // (recheck, 2026-10-25).
   const agCanon = (ag.match(/<link rel="canonical" href="([^"]*)"/) || [])[1] || "";
-  const agOffers = R.offersIn(R.jsonLdBlocks(ag)).flatMap((o) => ["price", "lowPrice", "highPrice"].filter((k) => k in o && [99, 29].includes(Number(o[k]))).map((k) => `${k} ${o[k]}`));
+  const agOffers = R.retiredOfferPrices(R.jsonLdBlocks(ag));
   const agHits = R.retiredClaimsIn(served(ag));
   if (agCanon !== `${site}/agents`) out("FAIL", `/agents as served to a crawler is not its own page (canonical "${agCanon || "absent"}"): the homepage shell or another page proves nothing about /agents`);
   else if (agHits.length) out("FAIL", `/agents carries a retired price or claim: ${agHits.map(([c, m]) => `${c} ("${m.slice(0, 60)}")`).join("; ")}`);

@@ -23,6 +23,13 @@
  *     at least one parsed block before it can say the homepage sells nothing.
  * Each is run on the page that fooled it (FAIL), on the page it was written
  * to catch (FAIL) and on today's true page (PASS).
+ *
+ * The recheck of 2026-10-25 found shapes the Offer walk still passed (an
+ * @type array, a nested priceSpecification, "29 USD"), a Service nested in
+ * an @graph, and a $29 pass sold without the word "pass". 7d and 76 now read
+ * offers and services with the retired list's own walks
+ * (retiredOfferPrices and nodesOfType), and L9-11 reads $29 beside hours,
+ * limits or a quota.
  */
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -187,6 +194,66 @@ describe("76: L1-08 needs JSON-LD to judge, L9-11 reads the retired list", () =>
     expect(has(sixHour, "FAIL", /\/llms-full\.txt \(HTTP 200\): .*still names the retired pass.*the \$29 Agent Pass .*\(L9-11\)/), show(sixHour)).toBe(true);
     const old = run76(routes(HOMEPAGE, `${LLMS_FULL}- a live Agent Pass on an account-linked key raises both for its hours\n`));
     expect(has(old, "FAIL", /\/llms-full\.txt \(HTTP 200\): still says a pass raises the \/v1 limits, still names the retired pass/), show(old)).toBe(true);
+  });
+});
+
+// ── the recheck of 2026-10-25: the shapes the Offer-only walk passed ────────
+// A harness built from 7d's expression found three shapes of a retired offer
+// on /agents that PASSed: an @type written as an array, a price inside a
+// nested priceSpecification, and a price written with its currency. 76 L1-08
+// shared the walk and read Service blocks only at the top level, and L9-11
+// passed a $29 pass sold without the word "pass".
+const agentsWith = (o: object) => doc("Connect Your Agent — MCP Server for the Live Job Board", `${SITE}/agents`, WEBSITE + ld({ "@context": "https://schema.org", ...o }), "<h1>Connect your agent</h1>");
+const RECHECK_OFFERS: Array<[string, object]> = [
+  ["an @type array", { "@type": ["Offer"], price: "99", priceCurrency: "USD" }],
+  ["a nested priceSpecification", { "@type": "Offer", priceSpecification: { "@type": "UnitPriceSpecification", price: 99, priceCurrency: "USD" } }],
+  ["a priceSpecification with no @type", { "@type": "Product", name: "x", offers: { "@type": "Offer", priceSpecification: { price: "29" } } }],
+  ["a price with its currency", { "@type": "Offer", price: "29 USD" }],
+  ["an AggregateOffer in an array @type with a lowPrice", { "@type": ["AggregateOffer", "Thing"], lowPrice: "$29.00", highPrice: "99" }],
+];
+
+describe("7d and 76 read every shape of a retired offer (recheck, 2026-10-25)", () => {
+  it("the retired list's walk finds each shape, and an on-sale price is not one", async () => {
+    const R = await import("../../scripts/prerender-retired.mjs");
+    for (const [what, o] of RECHECK_OFFERS) expect(R.retiredOfferPrices([o]).length, what).toBeGreaterThan(0);
+    expect(R.retiredOfferPrices([{ "@type": "Offer", price: "45" }, { "@type": "Offer", price: "29.99" }, { "@type": "Offer", price: "290 USD" }])).toEqual([]);
+    expect(R.retiredOfferPrices([{ "@type": "Offer", price: "29 USD" }])).toEqual(["price 29 USD"]);
+    expect(R.ldPriceNumber("USD 1,029.50")).toBe(1029.5);
+    expect(R.ldPriceNumber("free")).toBeNull();
+    expect(R.nodesOfType([{ "@graph": [{ "@type": ["Service", "Thing"], name: "x" }] }], "Service").length).toBe(1);
+  });
+
+  for (const [what, o] of RECHECK_OFFERS) {
+    it(`7d FAILs an /agents whose JSON-LD prices a retired offer through ${what}`, () => {
+      const lines = bash(BLOCK_7D, { "/pricing": PRICING, "/agents": agentsWith(o) });
+      expect(has(lines, "FAIL", /^\/agents offers a retired price in its JSON-LD: /), show(lines)).toBe(true);
+      expect(has(lines, "PASS", /^\/agents is its own page/), show(lines)).toBe(false);
+    });
+  }
+
+  it("7d still PASSes an /agents whose only Offer is a price on sale", () => {
+    const lines = bash(BLOCK_7D, { "/pricing": PRICING, "/agents": agentsWith({ "@type": "Offer", price: "45", priceCurrency: "USD" }) });
+    expect(has(lines, "PASS", /^\/agents is its own page and carries no retired claim, no Offer at 99 or 29/), show(lines)).toBe(true);
+  });
+
+  const routes = (home: string, llmsFull: string) => [route("/", home), route("/llms-full.txt", llmsFull)];
+  it("76 L1-08 FAILs a Service nested in an @graph that prices through a priceSpecification, and each recheck shape on the homepage", () => {
+    const graph = HOMEPAGE.replace(WEBSITE, ld({ "@context": "https://schema.org", "@graph": [{ "@type": "WebSite", name: "Resume Booster" }, { "@type": "Service", name: "Apply Agent", offers: { "@type": "Offer", priceSpecification: { "@type": "UnitPriceSpecification", price: 99 } } }] }));
+    const g = run76(routes(graph, LLMS_FULL));
+    expect(has(g, "FAIL", /the homepage still sells the retired apply agent: 1 Service block\(s\), Offers at \["price 99"\]/), show(g)).toBe(true);
+    const svcOnly = HOMEPAGE.replace(WEBSITE, ld({ "@context": "https://schema.org", "@graph": [{ "@type": "WebSite", name: "Resume Booster" }, { "@type": ["Service"], name: "Apply Agent" }] }));
+    expect(has(run76(routes(svcOnly, LLMS_FULL)), "FAIL", /the homepage still sells the retired apply agent: 1 Service block/)).toBe(true);
+    const offer = HOMEPAGE.replace(WEBSITE, WEBSITE + ld({ "@context": "https://schema.org", "@type": "Offer", price: "29 USD" }));
+    expect(has(run76(routes(offer, LLMS_FULL)), "FAIL", /the homepage still sells the retired apply agent: 0 Service block\(s\), Offers at \["price 29 USD"\]/)).toBe(true);
+  });
+
+  it("76 L9-11 FAILs a $29 pass sold without the word, and keeps passing Freelance Boost at $29", () => {
+    const sold = run76(routes(HOMEPAGE, `${LLMS_FULL}- Raise your limits for six hours for $29.\n`));
+    expect(has(sold, "FAIL", /\/llms-full\.txt \(HTTP 200\): still sells the retired pass by its price \("limits for six hours for \$29"\) \(L9-11\)/), show(sold)).toBe(true);
+    const usd = run76(routes(HOMEPAGE, `${LLMS_FULL}- Six hours of higher quotas: 29 USD.\n`));
+    expect(has(usd, "FAIL", /still sells the retired pass by its price/), show(usd)).toBe(true);
+    const boost = run76(routes(HOMEPAGE, `${LLMS_FULL}- A: Ours does: Freelance Boost ($29) takes a guided project intake and applies it to your profile.\n`));
+    expect(has(boost, "PASS", /\/llms-full\.txt names the registry entry, names no pass and carries no retired claim/), show(boost)).toBe(true);
   });
 });
 

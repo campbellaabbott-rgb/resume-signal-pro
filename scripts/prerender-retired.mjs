@@ -97,6 +97,63 @@ export function retiredClaimsIn(text, { sales = false } = {}) {
 export const jsonLdBlocks = (html) => [...String(html ?? "").matchAll(/<script type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g)]
   .map((m) => { try { return JSON.parse(m[1].replace(/\\u003c/g, "<")); } catch { return { unparseable: true }; } });
 
+/** The types a JSON-LD node names: its @type as written, a string or an array of strings. */
+export const ldTypes = (node) => (node && typeof node === "object" && !Array.isArray(node) ? [].concat(node["@type"] ?? []).filter((t) => typeof t === "string") : []);
+
+/** Every node in a set of JSON-LD blocks, at any depth (an @graph included), whose types include `type`. */
+export function nodesOfType(blocks, type) {
+  const out = [];
+  const walk = (v) => {
+    if (Array.isArray(v)) { v.forEach(walk); return; }
+    if (!v || typeof v !== "object") return;
+    if (ldTypes(v).includes(type)) out.push(v);
+    for (const x of Object.values(v)) walk(x);
+  };
+  walk(blocks);
+  return out;
+}
+
+/**
+ * The number a JSON-LD price field states, however it is written: 29, "29",
+ * "29.00", "29 USD", "USD 29" and "$29" all read 29; "1,029" reads 1029.
+ * null when it states no number.
+ */
+export function ldPriceNumber(v) {
+  if (typeof v === "number") return Number.isFinite(v) ? v : null;
+  if (typeof v !== "string") return null;
+  const m = /\d[\d,]*(?:\.\d+)?/.exec(v);
+  if (!m) return null;
+  const n = Number(m[0].replace(/,/g, ""));
+  return Number.isFinite(n) ? n : null;
+}
+
+const PRICE_FIELDS = ["price", "lowPrice", "highPrice", "minPrice", "maxPrice"];
+const PRICED_TYPE = (t) => t === "Offer" || t === "AggregateOffer" || /PriceSpecification$/.test(t);
+
+/**
+ * Every retired price an offer states in a set of JSON-LD blocks, at any
+ * depth, as "field value" strings: a node whose types include Offer,
+ * AggregateOffer or a price specification (an @type string or an array), and
+ * any object under a priceSpecification key whatever its type, read through
+ * its price, lowPrice, highPrice, minPrice and maxPrice, a number or a
+ * string with its currency. The 2026-10-25 recheck found three shapes the
+ * Offer-only walk passed: an array @type, a nested priceSpecification and a
+ * price written with its currency.
+ */
+export function retiredOfferPrices(blocks, prices = [99, 29]) {
+  const out = [];
+  const walk = (v, priced = false) => {
+    if (Array.isArray(v)) { v.forEach((x) => walk(x, priced)); return; }
+    if (!v || typeof v !== "object") return;
+    if (priced || ldTypes(v).some(PRICED_TYPE)) {
+      for (const k of PRICE_FIELDS) if (k in v && prices.includes(ldPriceNumber(v[k]))) out.push(`${k} ${typeof v[k] === "string" ? v[k] : String(v[k])}`);
+    }
+    for (const [k, x] of Object.entries(v)) walk(x, k === "priceSpecification");
+  };
+  walk(blocks);
+  return out;
+}
+
 /** Every Offer in a set of JSON-LD blocks, at any depth. */
 export function offersIn(blocks) {
   const out = [];

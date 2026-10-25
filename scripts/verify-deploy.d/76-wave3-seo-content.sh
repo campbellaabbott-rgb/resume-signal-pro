@@ -55,20 +55,20 @@ const textOf = (h) => h.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<[^>
   // bake dropped the Service block that sold them, so the homepage now passes
   // when it sells neither: no Service block, and no Offer at either retired
   // price at any depth (the rule 83 C2 judges). The block coming back fails.
+  // Services and offers are read with the walks of the retired list
+  // (scripts/prerender-retired.mjs): a Service at any depth, an @graph
+  // included, and every offer or price specification, an array @type, a
+  // nested priceSpecification and a price written with its currency
+  // included (recheck, 2026-10-25).
   const homeLd = lds(home.body);
-  const svcs = homeLd.filter((j) => j && j["@type"] === "Service");
-  const retiredOffers = [];
-  const walkOffers = (v) => {
-    if (Array.isArray(v)) { v.forEach(walkOffers); return; }
-    if (!v || typeof v !== "object") return;
-    if (v["@type"] === "Offer" || v["@type"] === "AggregateOffer") for (const k of ["price", "lowPrice", "highPrice"]) if (k in v && [99, 29].includes(Number(v[k]))) retiredOffers.push(`${k} ${v[k]}`);
-    Object.values(v).forEach(walkOffers);
-  };
-  walkOffers(homeLd);
+  const R108 = await import(`${REPO_ROOT}/scripts/prerender-retired.mjs`).catch(() => null);
+  const svcs = R108 ? R108.nodesOfType(homeLd, "Service") : [];
+  const retiredOffers = R108 ? R108.retiredOfferPrices(homeLd) : [];
   // Selling nothing is judged only on a homepage that carries its JSON-LD
   // (the template writes a WebSite block): with no block at all there is
   // nothing to judge, not nothing sold (fix round, 2026-10-24).
-  if (!homeLd.length) out("FAIL", "the homepage carries no parseable JSON-LD at all, so whether it sells the retired agent cannot be judged (L1-08; the template writes a WebSite block)");
+  if (!R108) out("FAIL", "this checkout cannot read scripts/prerender-retired.mjs, so whether the homepage sells the retired agent cannot be judged (L1-08)");
+  else if (!homeLd.length) out("FAIL", "the homepage carries no parseable JSON-LD at all, so whether it sells the retired agent cannot be judged (L1-08; the template writes a WebSite block)");
   else if (!svcs.length && !retiredOffers.length) out("PASS", "the homepage carries no Service block and no Offer at $99 or $29: the retired agent plan and pass are not sold (L1-08 since the apply pivot; 83 C2)");
   else out("FAIL", `the homepage still sells the retired apply agent: ${svcs.length} Service block(s), Offers at ${JSON.stringify(retiredOffers)} (L1-08 since the apply pivot; 83 C2)`);
 
@@ -257,10 +257,17 @@ const textOf = (h) => h.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<[^>
   // reads "a six-hour pass for $29" as the pass (fix round, 2026-10-24).
   const retired76 = await import(`${REPO_ROOT}/scripts/prerender-retired.mjs`).catch(() => null);
   const lfRetired = retired76 ? retired76.retiredClaimsIn(lf.body) : null;
+  const P29 = "(?:\\$\\s?29(?!\\d|[,.]\\d)|\\b29(?:\\.00)?\\s?(?:USD|US dollars|dollars)\\b|\\bUSD\\s?29(?![\\d,.]))";
+  const PASS_WORDS = "\\b(?:(?:six|6)[- ]hours?|hours?|limits?|quotas?)\\b";
+  const PASS_BY_PRICE = new RegExp(`${P29}[^.<\\n]{0,80}${PASS_WORDS}|${PASS_WORDS}[^.<\\n]{0,80}${P29}`, "i");
   const lfWhy = [
     /work\.resumebooster\/jobs/.test(lf.body) ? "" : "no registry name",
     /raises both for its hours`?$/m.test(lf.body) ? "still says a pass raises the /v1 limits" : "",
     /\bAgent Pass\b|\blive pass\b|\b(?:six|6)[- ]hour pass\b/i.test(lf.body) ? "still names the retired pass" : "",
+    // The pass sold by what it did, without the word: $29 (or 29 USD) beside
+    // hours, limits or a quota (recheck, 2026-10-25). Freelance Boost, a
+    // one-time product at that price, says neither.
+    PASS_BY_PRICE.test(lf.body) ? `still sells the retired pass by its price ("${(lf.body.match(PASS_BY_PRICE) || [""])[0].slice(0, 80)}")` : "",
     lfRetired === null ? "this checkout cannot read scripts/prerender-retired.mjs (the retired list is the judge)" : lfRetired.length ? `still carries a retired claim: ${lfRetired.map(([c, m]) => `${c} ("${m.slice(0, 60)}")`).join("; ")}` : "",
   ].filter(Boolean);
   if (lf.status === 200 && !lfWhy.length) out("PASS", "/llms-full.txt names the registry entry, names no pass and carries no retired claim by 83 C1\x27s list (L9-11)");
