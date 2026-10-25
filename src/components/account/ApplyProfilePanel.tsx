@@ -536,7 +536,7 @@ export function ApplyProfilePanel({ userId }: { userId: string }) {
         </h4>
         <p className="text-xs text-muted-foreground mb-4">
           {t("applyProfile.legalIntro",
-            "A wrong answer here can void an application. The agent uses these answers on the questions it recognizes as asking about you, and it can miss one worded unusually. \"Not stated\" is a real answer: on a question it recognizes, the agent waits for you.")}
+            "A wrong answer here can void an application. The agent uses these answers on the questions it recognizes as asking about you, and it can miss a question about you, even a plainly worded one. \"Not stated\" is a real answer: on a question it recognizes, the agent waits for you.")}
         </p>
 
         <TriToggle
@@ -545,7 +545,7 @@ export function ApplyProfilePanel({ userId }: { userId: string }) {
                 { country: p.country.trim() })
             : t("applyProfile.authorizedHome", "Are you authorised to work in the country you live in?")}
           hint={t("applyProfile.authorizedHint",
-            "This answer covers your own country only. Anywhere else, tick it below — the agent will not assume it.")}
+            "This answer covers your own country only. Anywhere else, tick it below: on a country question it recognizes, the agent does not assume it.")}
           value={p.work_authorized}
           onChange={(v) => set("work_authorized", v)}
         />
@@ -556,7 +556,7 @@ export function ApplyProfilePanel({ userId }: { userId: string }) {
           </div>
           <p className="text-xs text-muted-foreground mb-2">
             {t("applyProfile.otherCountriesHint",
-              "Optional, and safe to leave empty. Employers ask about a named country — \"authorised to work in the US?\" — and being authorised somewhere is not being authorised everywhere. Tick only what's true: on any country you haven't ticked, the agent stops and asks you rather than answering.")}
+              "Optional, and safe to leave empty. Employers ask about a named country — \"authorised to work in the US?\" — and being authorised somewhere is not being authorised everywhere. Tick only what's true: on a question it recognizes as asking about a country you haven't ticked, the agent stops and asks you rather than answering.")}
           </p>
           <div className="flex flex-wrap gap-1.5" role="group"
                aria-label={t("applyProfile.otherCountries", "Anywhere else you may work without sponsorship")}>

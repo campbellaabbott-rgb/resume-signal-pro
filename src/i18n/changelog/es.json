@@ -346,7 +346,7 @@
     },
     "setupIsOneStep": {
       "title": "Configurar tu agente de candidaturas ahora es un solo paso: sube tu CV",
-      "description": "Leemos tu nombre, correo, teléfono y LinkedIn directamente del documento y los guardamos, sin que tengas que reescribir datos que acabas de darnos. Lo que un formulario necesite y el CV no diga se te pregunta en el momento en que ese formulario lo pide, no antes. Tu permiso de trabajo, salario y fecha de inicio nunca se adivinan."
+      "description": "Leemos tu nombre, correo, teléfono y LinkedIn directamente del documento y los guardamos, sin que tengas que reescribir datos que acabas de darnos. Lo que un formulario necesite y el CV no diga se te pregunta en el momento en que ese formulario lo pide, no antes. En una pregunta que reconoce como pregunta sobre tu permiso de trabajo, salario o fecha de inicio, el agente no adivina la respuesta."
     },
     "sentButUnconfirmed": {
       "title": "Una candidatura que no pudimos confirmar ya no parece que te esté esperando",

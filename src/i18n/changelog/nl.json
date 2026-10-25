@@ -346,7 +346,7 @@
     },
     "setupIsOneStep": {
       "title": "Je sollicitatieagent instellen is nu één stap: upload je cv",
-      "description": "We lezen je naam, e-mailadres, telefoonnummer en LinkedIn rechtstreeks uit het document en slaan ze op — geen gegevens overtypen die je net hebt aangeleverd. Wat een formulier nodig heeft en het cv niet vermeldt, vragen we op het moment dat dat formulier erom vraagt. Je werkvergunning, salaris en startdatum raden we nooit."
+      "description": "We lezen je naam, e-mailadres, telefoonnummer en LinkedIn rechtstreeks uit het document en slaan ze op — geen gegevens overtypen die je net hebt aangeleverd. Wat een formulier nodig heeft en het cv niet vermeldt, vragen we op het moment dat dat formulier erom vraagt. Bij een vraag die de agent herkent als een vraag naar je werkvergunning, salaris of startdatum, raadt hij het antwoord niet."
     },
     "sentButUnconfirmed": {
       "title": "Een sollicitatie die we niet konden bevestigen lijkt niet langer op eentje die op jou wacht",

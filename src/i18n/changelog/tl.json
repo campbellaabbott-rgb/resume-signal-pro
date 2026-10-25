@@ -346,7 +346,7 @@
     },
     "setupIsOneStep": {
       "title": "Isang hakbang na lang ang pag-set up ng iyong apply agent: i-upload ang CV mo",
-      "description": "Binabasa namin ang pangalan, email, telepono at LinkedIn mo mismo sa dokumento at sine-save — hindi na kailangang i-type muli ang ibinigay mo pa lang. Ang kailangan ng isang form na wala sa CV ay itatanong sa mismong sandaling hingin iyon ng form, hindi nang maaga. Hindi kailanman hinuhulaan ang iyong work authorisation, sahod at petsa ng pagsisimula."
+      "description": "Binabasa namin ang pangalan, email, telepono at LinkedIn mo mismo sa dokumento at sine-save — hindi na kailangang i-type muli ang ibinigay mo pa lang. Ang kailangan ng isang form na wala sa CV ay itatanong sa mismong sandaling hingin iyon ng form, hindi nang maaga. Sa tanong na kinikilala ng agent na tungkol sa iyong work authorisation, sahod o petsa ng pagsisimula, hindi nito hinuhulaan ang sagot."
     },
     "sentButUnconfirmed": {
       "title": "Ang aplikasyong hindi namin nakumpirma ay hindi na mukhang naghihintay sa iyo",
