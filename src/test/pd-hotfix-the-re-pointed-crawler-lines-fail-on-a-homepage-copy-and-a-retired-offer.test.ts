@@ -363,10 +363,16 @@ describe("the SEO round's merge (2026-10-25): the backstop reads $295 as no $29 
       "Freelance Boost is a one-time rewrite; agents get six hours of uncapped calls for $29.",
       "Freelance Boost rewrites your profile, and $29 buys your agent a day of higher limits.",
       "Freelance Boost and a six-hour agent window at $29 are both on sale.",
+      // " or " and " plus " join two things too (the SEO round's merge review):
+      // the clause that prices the second one does not name Freelance Boost.
+      "Freelance Boost or a six-hour unlimited agent window costs $29.",
+      "Freelance Boost plus six hours of uncapped agent calls for $29.",
     ];
     const skipped = [
       "Freelance Boost ($29) rewrites your profile, and it is delivered within 48 hours.",
       "$29 one-time Freelance Boost, delivered within 48 hours.",
+      // Live llms-full's own sentence: its " or " splits no price from the name.
+      "Freelance Boost ($29) takes a guided project intake — or a pasted platform profile — and applies exactly the structure rules in this guide.",
     ];
     const lines = l911Many([...shown, ...skipped]);
     shown.forEach((t, i) => {

@@ -16,14 +16,15 @@
 # L9-11 FAILs llms-full.txt on the retired pass's own copy, its names and 83
 # C1's retired list. A paraphrase in new words passes it whatever it says.
 # Beside it, a sentence prints as INFO for a person to read when one of its
-# clauses (split at a comma or semicolon followed by a space, or at " and ")
-# prices something at exactly $29 ($29, $29.00, 29 USD, USD 29; never $295,
-# $29.99 or $29,000) and does not name Freelance Boost. So a sentence passes
-# with no INFO when its only $29 sits in a clause that names Freelance Boost
-# ("Freelance Boost ($29) takes a guided project intake ..."), and prints
-# when the price has a clause of its own ("Freelance Boost, our guided
-# rewrite, costs $29" prints too). A paraphrase that names no price is not
-# shown at all (round 4, 2026-10-25; clause rule, the SEO round's merge).
+# clauses (split at a comma or semicolon followed by a space, or at " and ",
+# " or " or " plus ") prices something at exactly $29 ($29, $29.00, 29 USD,
+# USD 29; never $295, $29.99 or $29,000) and does not name Freelance Boost.
+# So a sentence passes with no INFO when its only $29 sits in a clause that
+# names Freelance Boost ("Freelance Boost ($29) takes a guided project intake
+# ..."), and prints when the price has a clause of its own ("Freelance
+# Boost, our guided rewrite, costs $29" prints too). A paraphrase that names
+# no price is not shown at all (round 4, 2026-10-25; clause rule, the SEO
+# round's merge; " or " and " plus ", its review).
 echo "== 76. wave 3 seo-content: names, published URLs, company pages, data pages, claims =="
 
 REPO_ROOT76="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -234,8 +235,12 @@ const textOf = (h) => h.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<[^>
   else out("INFO", `S11-013 controls not judged: no company page is written for ${controls.map(([, n]) => n).join(", ")}${ctl.thin.length ? ` (noindex with under three openings: ${ctl.thin.join(", ")})` : ""}`);
 
   // ---- S2: the Ghost Job Index ----
+  // SEO-009 puts the sample size and its 95% interval inside the
+  // parenthesis, before the date: "(n = 117, 95% interval 96.8–100%,
+  // 2026-10-25)". The date alone is the wording before the SEO round. The n
+  // must be the decided count the sentence names.
   const g = await get("/ghost-job-index");
-  if (/Daily re-check: \d+(?:\.\d+)?% of [\d,]+ decided sample postings still live at the source \(\d{4}-\d{2}-\d{2}\)/.test(textOf(g.body))) out("PASS", "/ghost-job-index prints its dated daily re-check (S2)");
+  if (/Daily re-check: \d+(?:\.\d+)?% of ([\d,]+) decided sample postings still live at the source \((?:n = \1(?:, 95% interval [^,)]+)?, )?\d{4}-\d{2}-\d{2}\)/.test(textOf(g.body))) out("PASS", "/ghost-job-index prints its dated daily re-check (S2)");
   else out("FAIL", "/ghost-job-index prints no dated daily re-check line (S2; or the audit was unread at bake time)");
   const ds = lds(g.body).find((j) => j["@type"] === "Dataset");
   if (ds && ds.dateModified) out("PASS", `/ghost-job-index is Dataset markup dated ${ds.dateModified}${ds.license ? `, license ${ds.license}` : ", no license named (owner TODO)"}`);
@@ -295,8 +300,9 @@ const textOf = (h) => h.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<[^>
   const P29_RE = new RegExp(P29, "i");
   // Only the clause that names Freelance Boost is skipped, not its sentence:
   // a sentence prints when a clause of it (split at a comma or semicolon
-  // before a space, or at " and ") prices something at $29 without the name.
-  const clausesOf = (x) => x.split(/,\s+|;\s*|\s+and\s+/);
+  // before a space, or at " and ", " or " or " plus ") prices something at
+  // $29 without the name.
+  const clausesOf = (x) => x.split(/,\s+|;\s*|\s+(?:and|or|plus)\s+/);
   const lfPriced = lf.body.split(/(?<=[.!?])\s+|\n+/).map((x) => x.trim()).filter((x) => clausesOf(x).some((c) => P29_RE.test(c) && !/Freelance Boost/i.test(c)));
   const lfWhy = [
     /work\.resumebooster\/jobs/.test(lf.body) ? "" : "no registry name",

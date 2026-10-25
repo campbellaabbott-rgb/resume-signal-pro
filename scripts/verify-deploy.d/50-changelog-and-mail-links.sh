@@ -18,7 +18,7 @@ done
 # they are judged in the English strings chunk the browser loads for the page.
 CL_MAIN=$(curl -s -m 30 "$SITE/" | grep -o '/assets/index-[^"]*\.js' | head -1)
 CL_CORR=0
-for CH in $(curl -s -m 30 "$SITE$CL_MAIN" | grep -o '"\./en-[A-Za-z0-9_-]*\.js"' | tr -d '"' | sed 's|^\./||' | sort -u); do
+for CH in $(bash scripts/verify-us-english.sh "$SITE$CL_MAIN"); do
   CL_BODY=$(curl -s -m 30 "$SITE/assets/$CH")
   printf '%s' "$CL_BODY" | grep -q "aSliceReadAsTheWholeSite" || continue
   CL_CORR=$(printf '%s' "$CL_BODY" | grep -o "Correction, 5 October 2026" | wc -l | tr -d ' ')

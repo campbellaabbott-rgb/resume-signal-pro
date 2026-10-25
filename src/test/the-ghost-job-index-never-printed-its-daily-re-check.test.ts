@@ -76,6 +76,55 @@ describe("the Ghost Job Index prints its dated daily re-check", () => {
   });
 });
 
+/**
+ * VERIFY SECTION 76's S2 LINE READS THE LINE THE BAKE PRINTS. SEO-009 put the
+ * sample size and its interval inside the parenthesis ("(n = 117, 95%
+ * interval 96.8–100%, 2026-10-25)"), and S2 still wanted the date right after
+ * the opening parenthesis, so every verify run after the publish would have
+ * printed FAIL for a page that carries its dated re-check (the SEO round's
+ * merge review, 2026-10-25). S2's own pattern and 76's own text reader are
+ * cut out of the section and run on what the builder writes, so a later
+ * change to the wording fails here, not on the live page.
+ */
+describe("verify section 76's S2 line passes the re-check the bake prints", () => {
+  const S76 = readFileSync(resolve(__dirname, "../../scripts/verify-deploy.d/76-wave3-seo-content.sh"), "utf8");
+  const s2Line = S76.split("\n").find((l) => l.includes("prints its dated daily re-check (S2)")) ?? "";
+  const s2Source = (/if \(\/(.+)\/\.test\(textOf\(g\.body\)\)\)/.exec(s2Line) ?? [])[1] ?? "";
+  const textOfSource = (/^const textOf = (\(h\) => .+);$/m.exec(S76) ?? [])[1] ?? "";
+  const s2 = (pageHtml: string): boolean => {
+    // eslint-disable-next-line no-new-func
+    const textOf = new Function(`return ${textOfSource}`)() as (h: string) => string;
+    return new RegExp(s2Source).test(textOf(pageHtml));
+  };
+  const page = (body: string) => `<!doctype html><html><head><title>Ghost Job Index</title></head><body><main>${body}</main></body></html>`;
+
+  it("the line and the text reader were found in the section", () => {
+    expect(s2Source, "S2's pattern moved: this test no longer reads it").toMatch(/Daily re-check/);
+    expect(textOfSource, "76's textOf moved: this test no longer reads it").toMatch(/replace/);
+  });
+
+  it("passes the bake's line, with the sample size and its interval inside the parenthesis", () => {
+    const g = build({ stats: STATS, audit: AUDIT, freshness: null, transparency: null, ...ADAPTERS }).ghost;
+    expect(s2(page(g.html)), text(g.html)).toBe(true);
+    const all = build({ stats: STATS, audit: { at: "2026-10-25T04:00:00.000Z", sampled: 118, decided: 117, live: 117, gone: 0, unknown: 1, accuracyPct: 100 }, freshness: null, transparency: null, ...ADAPTERS }).ghost;
+    expect(text(all.html)).toContain("(n = 117, 95% interval 96.8–100%, 2026-10-25)");
+    expect(s2(page(all.html)), text(all.html)).toBe(true);
+    const big = build({ stats: STATS, audit: { at: "2026-10-25T04:00:00.000Z", sampled: 1300, decided: 1234, live: 1200, gone: 34, unknown: 66, accuracyPct: 97.2 }, freshness: null, transparency: null, ...ADAPTERS }).ghost;
+    expect(s2(page(big.html)), text(big.html)).toBe(true);
+  });
+
+  it("passes the line the live page serves until this round publishes (the date alone)", () => {
+    expect(s2(page("<p>Daily re-check: 100% of 117 decided sample postings still live at the source (2026-10-18), drawn evenly across hiring systems.</p>"))).toBe(true);
+  });
+
+  it("fails a page with no re-check, an undated one, and one whose n is not the decided count", () => {
+    const unread = build({ stats: STATS, audit: null, freshness: null, transparency: null }).ghost;
+    expect(s2(page(unread.html))).toBe(false);
+    expect(s2(page("<p>Daily re-check: 100% of 117 decided sample postings still live at the source (n = 117, 95% interval 96.8–100%).</p>"))).toBe(false);
+    expect(s2(page("<p>Daily re-check: 100% of 117 decided sample postings still live at the source (n = 118, 95% interval 96.8–100%, 2026-10-25).</p>"))).toBe(false);
+  });
+});
+
 describe("the data-page tables print labels, names and links a reader can use", () => {
   const f = build({ stats: STATS, audit: AUDIT, freshness: null, transparency: TRANSPARENCY, ...ADAPTERS });
   it("prints the catch-all bucket as what it is, never as a field called other", () => {
