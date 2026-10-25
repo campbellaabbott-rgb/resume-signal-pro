@@ -7,8 +7,9 @@
  * retrieval statement serves exactly the rows search_jobs would serve for the
  * same title and place (held by behaviour, not by spelling); its remote lane
  * does not lean on work_mode alone; the sources the server surfaces withhold
- * are withheld; and no client role can call any of it. Every file applies
- * twice.
+ * are withheld; the timing gate's explain reads the plan of exactly the
+ * statement match_candidates runs; and no client role can call any of it.
+ * Every file applies twice.
  */
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { PGlite } from "@electric-sql/pglite";
@@ -43,6 +44,8 @@ beforeAll(async () => {
 afterAll(async () => { await db.close(); });
 
 const ids = (rows: Array<{ id: string }>) => rows.map((r) => r.id).sort();
+const SIG12 = "text, text, timestamptz, text[], text[], boolean, text[], boolean, text[], integer, text, text[]";
+const SIG11 = "text, text, text[], text[], boolean, text[], boolean, text[], integer, text, text[]";
 async function candidates(args: Record<string, unknown>): Promise<Array<{ id: string; lane: string; siblings: number }>> {
   const a = {
     p_q_en: "cashier", p_q_simple: null, p_countries: ["US"], p_ring: [], p_remote: false, p_regions: [],
@@ -156,17 +159,60 @@ describe("the lanes", () => {
   });
 });
 
+describe("the timing gate reads the plan of exactly the statement match_candidates runs (spec 6.5)", () => {
+  const explain = async (args: Record<string, unknown>): Promise<string[]> => {
+    const a = { p_q_en: "cashier", p_countries: ["US"], p_ring: [], p_remote: false, p_regions: [], p_country_lane: false, p_order: "rank", ...args };
+    const r = await db.query<{ e: string }>(
+      `SELECT e FROM public.match_candidates_explain(p_q_en => $1, p_q_simple => NULL, p_fresh_cutoff => ${CUT}, p_countries => $2::text[], p_ring => $3::text[],
+         p_remote => $4, p_regions => $5::text[], p_country_lane => $6, p_order => $7) e`,
+      [a.p_q_en, a.p_countries, a.p_ring, a.p_remote, a.p_regions, a.p_country_lane, a.p_order],
+    );
+    return r.rows.map((x) => x.e);
+  };
+
+  it("one lane is one limited scan; the union of two lanes appends two; both are analysed", async () => {
+    const one = await explain({ p_ring: ["Westerville"] });
+    expect(one.join("\n")).toMatch(/Execution Time/);
+    expect(one.join("\n")).not.toMatch(/\bAppend\b/);
+    const two = (await explain({ p_ring: ["Westerville"], p_remote: true })).join("\n");
+    expect(two).toMatch(/\bAppend\b/);
+    expect(two.match(/-> {2}Limit\b/g)?.length).toBe(2);
+  });
+
+  it("its top node counts the rows match_candidates returns for the same arguments", async () => {
+    const plan = await explain({ p_ring: ["Westerville"] });
+    const rows = (await candidates({ p_ring: ["Westerville"] })).length;
+    expect(rows).toBe(3);
+    expect(plan[0]).toMatch(new RegExp(`actual [^)]*rows=${rows}(\\.00)? loops=1`));
+    const recent = await explain({ p_ring: ["Westerville"], p_order: "recent" });
+    expect(recent[0]).toMatch(new RegExp(`actual [^)]*rows=${rows}(\\.00)? loops=1`));
+  });
+
+  it("no lane, or no usable title query, is said in words and runs nothing", async () => {
+    expect(await explain({})).toEqual(["no lane to run: no title query, or no ring, remote, region or country lane"]);
+    expect(await explain({ p_q_en: "the", p_ring: ["Westerville"] })).toEqual(["no lane to run: no title query, or no ring, remote, region or country lane"]);
+    const built = await db.query<{ n: number }>(`SELECT count(*)::int AS n FROM public.match_candidates_query('cashier', NULL, ARRAY['US'], ARRAY[]::text[], false, ARRAY[]::text[], false)`);
+    expect(built.rows[0].n).toBe(0);
+    const union = await db.query<{ stmt: string }>(`SELECT stmt FROM public.match_candidates_query('cashier', NULL, ARRAY['US'], ARRAY['Westerville'], true, ARRAY[]::text[], false)`);
+    expect(union.rows[0].stmt.match(/ UNION ALL /g)?.length).toBe(1);
+  });
+});
+
 describe("who may call it, and running it twice", () => {
   it("no client role holds anything on the new objects; the service role holds what resume-match needs", async () => {
     const q = async (sql: string) => Object.values((await db.query<Record<string, boolean>>(sql)).rows[0])[0];
     for (const role of ["anon", "authenticated"]) {
       expect(await q(`SELECT has_function_privilege('${role}', 'public.match_candidates(text, text, timestamptz, text[], text[], boolean, text[], boolean, text[], integer, text, text[])', 'EXECUTE')`)).toBe(false);
       expect(await q(`SELECT has_function_privilege('${role}', 'public.metro_ring(text, text, text, integer, integer)', 'EXECUTE')`)).toBe(false);
+      expect(await q(`SELECT has_function_privilege('${role}', 'public.match_candidates_query(${SIG11})', 'EXECUTE')`)).toBe(false);
+      expect(await q(`SELECT has_function_privilege('${role}', 'public.match_candidates_explain(${SIG12})', 'EXECUTE')`)).toBe(false);
       for (const t of ["geo_places", "job_posting_requirements"]) {
         for (const p of ["SELECT", "INSERT", "UPDATE", "DELETE"]) expect(await q(`SELECT has_table_privilege('${role}', 'public.${t}', '${p}')`), `${role} ${p} ${t}`).toBe(false);
       }
     }
     expect(await q(`SELECT has_function_privilege('service_role', 'public.match_candidates(text, text, timestamptz, text[], text[], boolean, text[], boolean, text[], integer, text, text[])', 'EXECUTE')`)).toBe(true);
+    expect(await q(`SELECT has_function_privilege('service_role', 'public.match_candidates_query(${SIG11})', 'EXECUTE')`)).toBe(true);
+    expect(await q(`SELECT has_function_privilege('service_role', 'public.match_candidates_explain(${SIG12})', 'EXECUTE')`)).toBe(true);
     expect(await q(`SELECT has_table_privilege('service_role', 'public.job_posting_requirements', 'INSERT')`)).toBe(true);
     expect(await q(`SELECT has_table_privilege('service_role', 'public.geo_places', 'SELECT')`)).toBe(true);
   });
@@ -183,5 +229,9 @@ describe("who may call it, and running it twice", () => {
     await db.exec(`GRANT SELECT ON public.job_posting_requirements TO authenticated`);
     await expect(db.exec(migrationText("20261016103000").replace(/REVOKE ALL ON public\.job_posting_requirements[^;]+;/, ""))).rejects.toThrow(/authenticated still holds SELECT/);
     await db.exec(`REVOKE ALL ON public.job_posting_requirements FROM authenticated`);
+    await db.exec(`GRANT EXECUTE ON FUNCTION public.match_candidates_explain(${SIG12}) TO anon`);
+    await expect(db.exec(migrationText("20261016102000").replace(/REVOKE ALL ON FUNCTION public\.match_candidates_explain[^;]+;/, "")))
+      .rejects.toThrow(/match_candidates_explain\([^)]*\) is executable by a client role/);
+    await db.exec(migrationText("20261016102000"));
   });
 });
