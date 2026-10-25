@@ -797,6 +797,10 @@ answers its build in `x-fn-build`). The ones round 2 changed:
   agent-mcp, public-api, generate-application-answers,
   generate-apply-package, apply-agent (switched off). job-board stays
   `2026-09-09.93` and carries the salary and negation fixes.
+- **.2026-10-11.32** (fix round 3, below): the five that bundle round 3's
+  question rule: agent-mcp, public-api, generate-application-answers,
+  generate-apply-package, apply-agent (switched off). job-board stays
+  `2026-09-09.93` and carries round 3's salary and negation rules.
 
 `--against origin/main` reports 0 violations. Against each w4b branch the only
 "same build string on different code" lines are job-board `.93` (shared by
@@ -806,6 +810,8 @@ them) finds 14 functions whose code moved and one violation, job-board `.93`
 by reservation: every other one carries a `.30` build. After the recheck's
 fixes, `--against` the branch before them (fa66a031) finds 7 functions moved
 and one violation, job-board `.93` by reservation; the other six carry `.31`.
+After fix round 3, `--against` 9af3c783 finds 6 functions moved and one
+violation, job-board `.93` by reservation; the other five carry `.32`.
 
 The job-board upload, tallied the deploy's way (its folder plus all of
 _shared, comments included) with the profiles round's two _shared files at
@@ -819,7 +825,10 @@ the tracked files (the same folders, plus main's two profiles _shared files,
 which are the same 72,818 bytes on main): 4,447,181 bytes, 52,819 under the
 line and 2,819 inside the room. It was 4,466,852 (33,148 under) before the
 integration moved the long comment runs of four more job-board files into
-`docs/job-board-index-notes.md`.
+`docs/job-board-index-notes.md`. After fix round 3, from git's sizes at the
+round's integration commit: 4,447,116 bytes, 52,884 under the line and 2,884
+inside the room (65 bytes smaller than round 2: the salary module shrank 461
+bytes and _shared's question modules 360, search-routing.ts grew 761).
 
 ### Verify
 
@@ -830,7 +839,9 @@ One read-only section per group: `scripts/verify-deploy.d/92-w4b-payments-delive
 the review `92-w4b-fixer.sh` (every `.30` build, a signed-out cover note
 refused 401, and three board behaviours), and for the fixes after the recheck
 `92-w4b-fixer2.sh` (six `.31` builds, career_path_past_buyers closed to the
-anon key, "warehouse not forklift Dallas" excluding only forklift). `verify-deploy.sh` runs
+anon key, "warehouse not forklift Dallas" excluding only forklift), and for
+fix round 3 `92-w4b-fixer3.sh` (five `.32` builds, three negations only round
+3 answers all of, and the v11 salary re-sweep on four live postings). `verify-deploy.sh` runs
 them with the rest, behind section 0's positive control and the tally that
 fails a section which prints no verdict. Expected FAILs while the seller is
 unnamed: section 92 account-compliance FAILs the three marketing senders on
@@ -1230,3 +1241,185 @@ origin/design/integration origin/r1/integration` no undeclared overlap. All
 nine recheck tests fail with fa66a031's code restored (75 of 106 cases) and
 pass on the fixes. The full suite runs in the push's pre-push hook; its count
 is in the PR #39 body. Main is not merged in this step.
+
+### Fix round 3: corpus-first
+
+Two rounds of fixes and two independent rechecks went around the same three
+rules: the salary miner's business figures (S12-019), who answers a question
+asked inside a work-done or motivation prompt (S12-081), and how far "not"
+reaches in a search (S12-017). Each fix covered the spellings the reviewer
+listed and each recheck broke it with new inputs or found a regression. This
+round built a labelled corpus for each rule first (real inputs plus every
+input of both rechecks, each with its answer and the reason), measured
+origin/main (what is live), fa66a031 (round 1) and 9af3c783 (round 2) on it,
+and changed the rule until, on the whole corpus, it is never worse than main.
+The question rule does not meet that bar; it is reported below as it stands.
+
+Three builders worked on disjoint files: w4b/fix3-salary (744c80f9),
+w4b/fix3-questions (751bcdee) and w4b/fix3-search (7416bb6b). All three merged
+here without a conflict. The corpora, measurements, tools and self-break
+inputs are in `~/.config/resumebooster/wave4-fix3-corpora/<area>/`. The
+committed fixtures are under `src/test/fixtures/w4b-fix3-*/`, anonymised, with
+no personal data.
+
+**Salary** (`_shared/salary-extract.ts`, job-board `.93`). The corpus has 556
+cases: 492 live postings read through the job-board detail action on
+2026-10-24 (19 vendors, 19 countries), every recheck input and 39 inputs from
+earlier rounds' tests. 468 of them have a stored salary, so they also test the
+version 11 re-sweep. Correct / wrong:
+
+| version | miner | re-sweep (468) | worse than main |
+|---|---|---|---|
+| origin/main | 522 / 34 | 449 / 19 | |
+| fa66a031 | 511 / 45 | 430 / 38, NULLs 30 stored pays | 58 |
+| 9af3c783 | 524 / 32 | 446 / 22, NULLs 11 stored pays | 24 |
+| round 3 | 542 / 14 | 468 / 0, NULLs no stored pay | 0 |
+
+All 24 cases where 9af3c783 was worse came from recheck 2: the "valued at",
+"worth" and "fleet averaging" pay lines it refused (and its re-sweep would
+NULL), plus two lines where it took a referral bonus or a hiring budget as pay.
+9af3c783 did not even fix S12-019's own Airbus row; round 3 does.
+
+The rule: the miner reads figures exactly as main does (same guards, same
+order), so where main's guards refuse a figure the answer stays null. It
+changes main's answer only when main's figure is a business figure: a
+business noun is that figure's own subject (in the clause just before it, or
+right after it through "in" or "of"; a noun heading a job title does not count,
+and a person or job noun in between makes the figure theirs), and no pay word
+stands in its sentence before it or right after it. A big business figure (an
+annual top of 200,000 or more) gives way to the next pay stated, or to null; a
+smaller one gives way only to a later figure labelled as pay, never to null.
+The re-sweep rewrites a stored salary only when it is exactly the figure
+main's miner takes and the miner now sets that figure aside, so a vendor's pay
+field, or pay main read correctly, is never touched. SALARY_PARSE_VERSION stays
+11: version 11 has never run live (main is at 10). Its note in job-board now
+describes this rule.
+
+Self-break: 75 new inputs written after the change. The first 50 found two
+inputs worse than main, fixed by the person-or-job-noun rule and by more pay
+words (rewards, total cash, pays, paying). After that fix those 50 score
+40 / 10, never worse than main (main 28 / 22, 9af3c783 39 / 11). The next 25
+score 20 / 5, never worse than main (main 9 / 16).
+
+Left: 14 corpus cases are still wrong, each giving exactly main's answer. 11
+are safe misses where a bonus, 401(k) or revenue word beside stated pay keeps
+main's null; 3 are a fertility allowance ("up to $10,000 per year") that every
+version reads as pay. A business noun used as a colon heading ("Book of
+business: $350,000 - $500,000") and business nouns outside the list still give
+main's answer. Found while labelling, outside this rule: the range grammar
+reads only the ceiling of "USD $X - USD $Y /Yr", "$60,000 -- $250,000" and
+"between $X and $Y", and a "$170-$190 per day" rate is annualised as hourly.
+
+**Questions** (`_shared/application-questions.ts`, `self-apply.ts`, the
+worker's `questions/protected.ts`; the five `.32` builds). The corpus has
+1,536 rows: 1,092 distinct real labels from 88 employers' public forms
+(Greenhouse 65, Lever 15, Recruitee 8), every recheck input (11 and 22), the
+round-1 review's 16 labels, the S12 controls the existing tests pin, and 324
+generated S12-081 asks under every joiner. Each row is read as a required
+textarea through whoAnswers. origin/main has no whoAnswers, so its stand-in is
+classifyQuestion === "draftable", the gate main's drafting paths use.
+
+| version | correct / wrong | person questions drafted | draftable sent to the person | worse than main |
+|---|---|---|---|---|
+| origin/main | 715 / 821 | 817 | 4 | |
+| fa66a031 | 1,336 / 200 | 125 | 75 | 74 |
+| 9af3c783 | 1,353 / 183 | 108 | 75 | 74 |
+| round 3 | 1,472 / 64 | 0 | 64 | 63 |
+
+The rule changes structure instead of adding words: a later clause defaults to
+the person. Every joiner splits clauses, including any spaced run of symbols.
+A later clause addressed to the person ("you", "your") goes to the person
+unless it is about work done or about motivation. A clause about their
+circumstances (a modal after "you", or "your current / expected / next")
+goes to the person unless it tells work done in the past. A fact anywhere
+after the work words is the work's object only when the work took an object
+first and nothing after it points at the person. classifyQuestion also refuses
+the person asks and fact words unless the label is about work done, and the
+worker's isProtectedQuestion matches it on all 1,536 labels.
+
+Not met: on the corpus this rule is worse than main on 63 rows. All 63 are
+draftable questions it sends to the person: 62 open work or motivation
+questions whose openings the default-deny gate does not recognise ("Tell us
+about a time ...", "How do you approach ...", "Why <employer>?"), which every
+apply_myself version since e21baaf4 has sent to the person, and one label
+whose second sentence is a question. None is a factual ask. Drafting them
+would mean widening what the AI may draft from open questions that no word
+list can screen, so the safe side stands. At the classifier level (the gate
+generate-application-answers and apply-agent use) the rule is worse than main
+on 0 rows; it still lets 248 factual rows through there (main 616, 9af3c783
+498).
+
+Self-break: four rounds of 50 new inputs, each written after a change. Only
+the fourth measured the final rule fresh: 42 / 50, 3 of 31 factual asks
+drafted and 5 work questions over-routed (9af3c783 29 / 50 with 21 drafted,
+main 22 / 50 with 28). One of the three was a regex defect ("need" read as a
+past tense), fixed afterwards. The ones left are past-tense personal facts
+("the city you grew up in", "the jobs you applied to recently"), and the
+over-routes are present- or future-tense work clauses ("and your sales
+methodology", "the CRM you prefer"). Five non-compete rows in
+`src/test/fixtures/consent-corpus.json` now expect factual.
+
+**Search** (job-board `search-routing.ts`, `.93`). The corpus has 591 cases
+(anonymised; every recheck input included):
+
+| version | correct / wrong | worse than main |
+|---|---|---|
+| origin/main | 458 / 133 | |
+| fa66a031 | 258 / 333 | 323 |
+| 9af3c783 | 439 / 152 | 137 |
+| round 3 | 579 / 12 | 0 |
+
+9af3c783 was worse than main on 137 cases, mostly because it always took a
+second word: a city its place list does not know ("San Jose", "New Orleans",
+"Jacksonville FL"), a zip code, or a word the person still wants ("nurse not
+travel er", "engineer not senior python").
+
+The rule: "not" takes one word, as main always did. It takes two only when the
+two words are a pinned compound from a short list (night / weekend / rotating
+... shift, box / dump / tow truck, call center, home health, customer service,
+data entry, team lead, part time, entry level, per diem, cold calling, long
+haul and the like), and it takes a whole place of two or three words that the
+board's place list knows ("not new york"). Every other second word is never
+taken, capitalised or not. A comma ends the negation, a leading verb is
+dropped ("not requiring night shifts"), a quoted phrase is negated whole, and
+a trailing full stop no longer stays on the excluded word. Round 2's
+place-stop machinery is removed.
+
+Self-break: 50 new inputs. One miss was worse than main in effect: "nurse not
+night shift." excluded "night shift." with its full stop, which struck no
+title. It was fixed. The final score is 41 / 50 (main 20 / 50, 9af3c783
+22 / 50), never worse than main.
+
+Left: 12 corpus cases are still wrong, every one of them wrong on main too:
+three-word compounds ("door to door", "12 hour shifts"), compounds left off
+the list because their words are often wanted ("car sales", "travel nursing"),
+negated cities the place list does not know ("nurse not San Jose"), and "not
+Austin, TX". Round 3 is worse than 9af3c783 (not main) on 8 of them. Main's
+folding of "part-time" to "parttime" and "travel/agency" to "travelagency" is
+unchanged and needs its own fix.
+
+**What the integration added.** The five functions that bundle the question
+rule carry `.2026-10-11.32`. job-board keeps its reserved `2026-09-09.93`.
+The version 11 note in job-board describes round 3's salary rule.
+`scripts/verify-deploy.d/92-w4b-fixer3.sh` reads round 3 after it deploys:
+the five `.32` builds; once the wave 4 board code serves, "nurse not night
+shift, TX" excluding night shift, "nurse not travel er" excluding travel and
+"warehouse not forklift San Jose" excluding forklift (only round 3 answers all
+three); and the re-sweep on four live postings. The Airbus placement must lose
+its business figure, Bbinsurance must show its stated "$50.00 - $53.00
+Hourly", and two stated pays beside business words (Paylocity, KIPP) must keep
+theirs. An old figure the re-sweep has not reached yet, or a posting that is
+gone, is INFO. The question rule has no live probe: no read-only route
+classifies a label we choose, and the one real form found with a label that
+rounds 2 and 3 answer differently (Airtable) is not carried. Its test runs the
+section against a fake curl, and each regression reads FAIL.
+
+The gate after fix round 3: the frontend typecheck, the worker's tsc and
+`scripts/check-functions.sh` (every edge function and the Deno tests;
+deno.lock restored) are clean. `deploy-ledger --against origin/main` finds 0
+violations. `--against 9af3c783` finds 6 functions moved and the one reserved
+violation (job-board `.93`). `--overlap HEAD origin/design/integration
+origin/r1/integration` finds no undeclared overlap. The job-board upload is
+4,447,116 bytes, 2,884 inside the agreed 50,000 of room. The full suite runs
+in the push's pre-push hook; its count is in the PR #39 body. Main is not
+merged in this step.
