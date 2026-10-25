@@ -214,7 +214,7 @@ without text spacing), with `data/checks.json`, `data/probe-spacing.json` and
 | axe 4.12.1, WCAG 2.0/2.1/2.2 A and AA | 0 violations at 375 and 1280 | 0 violations at 375 and 1280, gated and preview-open |
 | axe "needs review" | `aria-valid-attr-value` on today's Header (Radix `aria-controls`) | the same Header item; `th-has-data-cells` on the limits table's group rows |
 | Targets under a coarse pointer (touch emulation, `pointer: coarse` true), 375 px | 26 buttons, link-buttons, chips and summaries: none under 44 px. Text links keep the 24 px AA floor: the posting title and employer links inside the board's own JobCard (design's file), "Set up Claude Code", the methodology link and "See pricing and limits" | 14 gated, 17 open: none under 44 px (the renewal label included) |
-| CLS, cold load in the browser's locale, scroll at 400 ms, before the data answers (2026-10-24; the 2026-10-18 ranges over three runs per case in brackets) | en 0.0004 (list answering after 2.5 s: 0.0004) [0.0004-0.0005]; de 0.0002; es 0.0006 [0.0006-0.0008]; fr 0.0008 [0.0008-0.0015]; de at 1280 0.0002 [0.0001-0.0012] (was 0.18 in de, es and fr before the fix) | en 0; de 0; es 0 [0-0.007]; fr 0.0008; de at 1280 0.0137 [0.001-0.015] (the plan cards settling when the count lands) |
+| CLS, cold load in the browser's locale, scroll at 400 ms, before the data answers (2026-10-24; the 2026-10-18 ranges over three runs per case in brackets) | en 0.0004 (list answering after 2.5 s: 0.0004) [0.0004-0.0005]; de 0.0002; es 0.0006 [0.0006-0.0008]; fr 0.0008 [0.0008-0.0015]; de at 1280 0.0002 [0.0001-0.0012] (was 0.18 in de, es and fr before the fix) | en 0; de 0; es 0 [0-0.007]; fr 0 (0.0008 in the run before W5) [0.00003-0.0008]; de at 1280 0.0137 [0.001-0.015] (the plan cards settling when the count lands) |
 | Horizontal overflow, every `<details>` open | none: nine languages at 320 and 375 | the same (36 runs across both pages, plus 8 shot runs at 320 in de/fr/es/pt) |
 | WCAG 1.4.12 text spacing, de, fr, es, pt, 320 px | no overflow (was 7 px in German: the H1's "Bewerbungssystemen") | no overflow |
 | H1 lines (no hyphenation) | en and en-GB 3 at 320 and 375, filling the reserved `3lh`; de, es, fr, pt, nl 4 at 320 (nl and pt also at 375); 1 at 1280 | one line everywhere |
@@ -244,8 +244,10 @@ day (step 15).
 - The hp tests, targeted (`npx vitest run --maxWorkers=2 src/test/hp-`):
   18 files (`hp-fix-no-ip-lookup` the newest), 307 tests, all passing on the
   head.
-- The full suite: the pre-push hook's run, when no other suite was running
-  (see the PR body for the count).
+- The full suite: the pre-push hook's run under the heavy-command lock, no
+  other suite running: on b8863552, 1,049 files passed and 1 skipped
+  (13,501 tests passed, 23 skipped) in 372.6 s; the frontend typecheck
+  passed in the same hook.
 
 ## Open problems
 
