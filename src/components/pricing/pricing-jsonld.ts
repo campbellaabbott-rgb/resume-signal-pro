@@ -4,9 +4,15 @@
  * while G1 and G2 are open; Pro only while G1 and G2b are open. The preview's
  * forced-open state publishes no paid offer, because nothing is on sale.
  * Prices are the plan-facts mirrors, never typed here.
+ *
+ * Each price is stated in US dollars, the currency both list prices are set
+ * in. Pro is billed in them; the Full Analysis is charged in the buyer's
+ * local currency where create-checkout prices it, so its offer carries the
+ * page's own English sentence saying so (owner decision 2026-10-25).
  */
 import { FULL_ANALYSIS_PRICE_USD, PRO_PRICE_USD } from "./plan-facts";
 import type { SaleGates } from "./sale-gates";
+import en from "./strings/en.json";
 
 const SITE = "https://resumebooster.work";
 
@@ -15,7 +21,14 @@ export function pricingJsonLd(gates: SaleGates): Record<string, unknown> {
     { "@type": "Offer", name: "Free", price: "0", priceCurrency: "USD", url: `${SITE}/pricing#free` },
   ];
   if (!gates.previewOpen && gates.fullAnalysis.onSale) {
-    offers.push({ "@type": "Offer", name: "Full Analysis", price: String(FULL_ANALYSIS_PRICE_USD), priceCurrency: "USD", url: `${SITE}/pricing#full-analysis` });
+    offers.push({
+      "@type": "Offer",
+      name: "Full Analysis",
+      price: String(FULL_ANALYSIS_PRICE_USD),
+      priceCurrency: "USD",
+      description: en.pricingPlans.fa.currency,
+      url: `${SITE}/pricing#full-analysis`,
+    });
   }
   if (!gates.previewOpen && gates.pro.onSale) {
     offers.push({

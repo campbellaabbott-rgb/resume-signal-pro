@@ -31,7 +31,7 @@ it, and read every line number below by its text on main. Main has moved
 `scripts/prerender-seo.mjs` differs (a deadline on the company-intel phase,
 11 lines added near line 2496, so the `/pricing` block of step 10 sits 11
 lines lower). This branch has not merged main, by decision. `git diff --name-status origin/design/integration...hp/integration`
-lists 91 paths, every one of them added (status A). No existing file is
+lists 92 paths, every one of them added (status A). No existing file is
 modified.
 
 ## What was built
@@ -55,7 +55,9 @@ data calls; nothing reads `get_board_flow`.
 **Pricing page** (`src/pages/pricing/PricingPage.tsx`): H1 and a summary that
 leads with what is free; "Before you buy" above the cards (all sales final;
 not sold in the EU, the EEA, the UK or India, naming the currency and
-time-zone checks; Pro renews monthly), the Free, Full Analysis ($5, the only
+time-zone checks; Pro billed in US dollars and renewing monthly, the Full
+Analysis charged in the local currency where we support it and in US dollars
+elsewhere), the Free, Full Analysis ($5, the only
 one-off) and Pro ($45) cards, "What the $5 adds", the Builder API (planned,
 $49, "Proposed: 5,000 calls a day; set before launch") and data licence
 cards, the limits table and a seven-question FAQ. "Create a free account" is
@@ -140,6 +142,62 @@ the field chips print the long category names (no short label key exists;
 the switch-over string move may add one); German "du" on the homepage and
 "Sie" on pricing, and Hindi's two spellings of one CTA (hp/i18n's single
 pass); the translated try chips run English queries (Appendix A item 8).
+
+## What changed on 2026-10-25
+
+- **Each product is said in its own currency (owner decision 2026-10-25).**
+  Both pages said every price was in US dollars (`before.renewalTitle`,
+  `before.renewalBody`, `home.plans.termUsd`), and only Pro is:
+  `create-subscription-checkout` bills it with `price_data.currency: "usd"`.
+  The Full Analysis is charged in the currency the scanner page picks from
+  the device's time zone (`src/hooks/use-currency.ts`, sent as
+  `currency: currency.code` by `Index.tsx`'s checkout; a zone the hook does
+  not list reads as the US, so its language fallback never runs);
+  `create-checkout` prices it from `CURRENCY_RATES` (30 currencies) and in
+  US dollars when the table lacks the one asked for (`calculateAmount`'s
+  fallback: 72 of the hook's currencies, CNY, TRY or KES among them). With wave 4,
+  a currency of the EU, the EEA, the UK or India (EUR, GBP, SEK, DKK, NOK,
+  PLN, CZK, HUF, RON and INR in that table) is refused by
+  `_shared/sales-territory.ts`, which leaves USD, CAD, AUD, NZD, JPY, KRW,
+  HKD, SGD, TWD, THB, MYR, IDR, PHP, ILS, AED, ZAR, CHF, MXN, BRL and UYU.
+  Checkout is unchanged. In all nine languages the copy now says:
+  - pricing, "Before you buy": the title "Pro: US dollars, renews monthly."
+    (within two characters of the old title in every language) and the body
+    "Pro is billed in US dollars and renews every month at {{proPrice}} until
+    you cancel, … The Full Analysis is one payment that never renews,
+    charged in your local currency where we support it and in US dollars
+    elsewhere.";
+  - the homepage plan strip: `home.plans.termUsd` is gone. `termCurrency`
+    ("Pro is billed in US dollars. The Full Analysis is charged in your
+    local currency where we support it, and in US dollars elsewhere.")
+    shows while the Pro row does, and `termCurrencyFa` (its second sentence
+    alone) while it does not, so the strip never names Pro's currency
+    without Pro;
+  - the structured data: the Full Analysis offer keeps `price: "5"` and
+    `priceCurrency: "USD"` (the list price every local amount is computed
+    from) and gains `description`, the English `pricingPlans.fa.currency`
+    (the strip's second sentence). Pro's offer is unchanged;
+  - the dollar-sign icon beside both currency lines is a banknote.
+
+  Held by `hp-fix-currency-per-product`, run red first (62 of its 66 tests
+  failed on the old strings): in every language and over every string
+  either page carries, a sentence that names dollars names exactly one
+  product, a sentence that puts the Full Analysis in dollars also names the
+  local currency, a sentence that names the local currency names the Full
+  Analysis and not Pro, and each page says both; rendered in English in all
+  eight sale states, the same holds for the text on screen and the strip
+  picks its line by the Pro row; the JSON-LD description; no hp source file
+  types a dollar word; and the checkout facts the sentences rest on (Pro's
+  only `price_data` currency is usd, `CURRENCY_RATES` has more than one
+  currency and falls back to usd, the page that sells the Full Analysis
+  sends `currency.code` from `useCurrency`), so a checkout that moves fails
+  there before the copy goes false. No other hp test pinned the old
+  sentences; the 19 hp files pass.
+  Not re-measured: the renewal titles keep their length, so the 375 px first
+  screen should not move; the strip's currency line, below the fold, is one
+  or two lines longer. The next `measure.cjs` run confirms both. The live
+  `/pricing` bake (`AggregateOffer` in USD, the old page's) states no
+  currency sentence and is replaced in step 10.
 
 ## What changed on 2026-10-24
 
@@ -241,9 +299,9 @@ day (step 15).
 - Frontend typecheck (`tsc -p tsconfig.app.json --noEmit`): passed at every
   commit (the pre-commit hook, run under `~/.config/resumebooster/heavy.sh`
   since 2026-10-24).
-- The hp tests, targeted (`npx vitest run --maxWorkers=2 src/test/hp-`):
-  18 files (`hp-fix-no-ip-lookup` the newest), 307 tests, all passing on the
-  head.
+- The hp tests, targeted (`npx vitest run --maxWorkers=1 src/test/hp-`):
+  19 files (`hp-fix-currency-per-product` the newest), 373 tests, all
+  passing on the head.
 - The full suite: the pre-push hook's run under the heavy-command lock, no
   other suite running: on b8863552, 1,049 files passed and 1 skipped
   (13,501 tests passed, 23 skipped) in 372.6 s; the frontend typecheck
@@ -450,7 +508,9 @@ until each opens. G7's server side is wave 4's and ships with W2.
   `hp-home-strings`, `hp-pricing-strings`, `hp-integration-one-voice`,
   `hp-fix-never-submit`, `hp-fix-alerts-one-answer`, `hp-fix-minors`,
   `hp-fix-language-swap`, `hp-fix-no-ip-lookup` (its `HOME_DIR` and
-  `PRICING_DIR`) and `hp-pricing-decisions` (its `en` import);
+  `PRICING_DIR`), `hp-fix-currency-per-product` (its `HOME_DIR`,
+  `PRICING_DIR` and the two English reads) and `hp-pricing-decisions` (its
+  `en` import);
   `hp-fix-renewal-box` imports `@/i18n/shards/pricing/en.json`. Delete the
   "home strings loader" block in `hp-home-search-and-strings.test.tsx`, the
   "interim loader" block in `hp-pricing-strings.test.ts`, and the "pricing
@@ -458,7 +518,10 @@ until each opens. G7's server side is wave 4's and ships with W2.
   first-render and language-change blocks stay and now exercise
   `useLocaleReady`). Remove the `import "@/lib/home/strings";` and
   `import "@/components/pricing/use-pricing-strings";` lines from
-  `hp-fix-never-submit`, `hp-fix-alerts-one-answer` and `hp-fix-minors`.
+  `hp-fix-never-submit`, `hp-fix-alerts-one-answer`, `hp-fix-minors` and
+  `hp-fix-currency-per-product`. `src/components/pricing/pricing-jsonld.ts`
+  imports `./strings/en.json` for the Full Analysis offer's description;
+  it becomes `@/i18n/shards/pricing/en.json`.
   In `every-shard-string-is-loaded-translated-and-scanned.test.ts` ("both
   shards exist") add `"home"` and `"pricing"` to the expected names.
 
@@ -485,7 +548,9 @@ copy: a key in both fails the shard guard's collision rule.
   `fa.what`, `fa.b1`-`fa.b5`, `fa.how`, `pro.name`, `pro.unit`, `pro.what`,
   `pro.step*`, `pro.perks.*`, `pro.review`, `pro.statusTitle`,
   `pro.statusBody`, `adds.*`, `b2b.*`, `limits.*`, `faq.*`. They stay in the
-  shard: `fa.cta`, `fa.fine`, `pro.consent`, `pro.consentError`, `pro.cta`,
+  shard: `fa.cta`, `fa.fine`, `fa.currency` (read from the English shard by
+  `pricing-jsonld.ts`, for the structured data only), `pro.consent`,
+  `pro.consentError`, `pro.cta`,
   `pro.fine`, `pro.memberActive`, `pro.manage`, `pro.owing`,
   `pro.updatePayment` (none renders while the gates are closed).
 - Lighter alternative, with a precedent: the bake already reads one shard
@@ -733,7 +798,9 @@ sends `autoRenewConsent: true` from the line containing the pressed button;
   `HOME_FIELD_SLUGS` through the same slugs as `CATEGORY_LANDERS` (line
   1124; `hospitality_retail`, never `retail` or `hospitality`), the scan, AI
   (with the three `/agents#…` links), sources and plan text with no offer
-  while G1, G2 or G2b is closed, and the FAQ inside open `<details>`. No
+  while G1, G2 or G2b is closed (the currency line is `plans.termCurrency`
+  when `homePlanRows(saleGates()).pro` is non-null, else
+  `plans.termCurrencyFa`), and the FAQ inside open `<details>`. No
   flow figure; no never-submit sentence while W3 is open. JSON-LD offers:
   the Full Analysis only when
   `homePlanRows(saleGates()).fullAnalysis.state === "onSale"`, Pro only when
@@ -832,6 +899,11 @@ claim FAILs before the deploy by design.
 - C10 the apply agent is retired: `rpc/agent_sender_public_status` answers
   false, or /trust serves wave 4's retirement sentence; while neither holds,
   "/" and "/pricing" carry no "never submit".
+- C11 (owner decision 2026-10-25) "/pricing" says "Pro is billed in US
+  dollars" and "charged in your local currency where we support it and in
+  US dollars elsewhere", and "/" its strip's currency line for the rows it
+  shows; neither page carries a sentence that puts both products in one
+  currency ("Prices in US dollars", "Prices are in US dollars").
 - G4 (W6) is a ledger precondition; the section prints it as a note, not a
   claim. G3 (W5) was decided on 2026-10-24 (the IP clause dropped), so C4
   holds the page to that decision instead.
@@ -979,7 +1051,10 @@ replaced). Nothing in the app imports `src/preview/**`; `vite build` builds
   or India, until we are registered for tax there. Checkout turns away buyers
   it can place there, from the currency and the browser's time zone." (the
   IP-lookup clause the builder wrote was dropped by owner decision W5,
-  2026-10-24) · "Prices in US dollars."
+  2026-10-24) · the currency line (owner decision 2026-10-25): "Pro is billed
+  in US dollars. The Full Analysis is charged in your local currency where
+  we support it, and in US dollars elsewhere." while the Pro row shows, its
+  second sentence alone while it does not.
 - **4.7 FAQ (P3, P5).** Five questions, answers in the DOM while closed; the
   corrected "How current is a posting?"; fit "free, with no account, in the
   browser where you scanned or dropped your résumé"; systems named from the
@@ -1088,7 +1163,7 @@ The same rule: the sections above are current where they differ.
 | `src/pages/pricing/PricingPage.tsx` | the route page: SEO head, JSON-LD, Header, Footer, one data read (the open-postings figure), the sale gates |
 | `src/components/pricing/PricingView.tsx` | the body, top to bottom: head, Before you buy, three plan cards, what the $5 adds, Builder and licence, the limits table, the FAQ |
 | `src/components/pricing/PricingHead.tsx` | H1, the summary that leads with what is free, jump links (under lg) |
-| `src/components/pricing/BeforeYouBuy.tsx` | all sales final; the region refusal and what checkout checks; US dollars and Pro's renewal |
+| `src/components/pricing/BeforeYouBuy.tsx` | all sales final; the region refusal and what checkout checks; each product's currency and Pro's renewal |
 | `src/components/pricing/PlanCards.tsx` | Free, Full Analysis, Pro |
 | `src/components/pricing/BuyBlock.tsx` | the seller-gated buy controls, the final-sale and region line, the Pro renewal box, the gate notes |
 | `src/components/pricing/FreeVsFullAnalysis.tsx` | the free report against the Full Analysis |
@@ -1140,6 +1215,7 @@ checkout. The live reads the shipped page already makes
 | "All sales are final" beside every buy control | `SaleTermsLine` in each buy block | decisions 4 |
 | Not sold in the EU, EEA, UK or India, said before any click, naming the currency and time-zone checks (never a billing address; the IP lookup dropped by owner decision W5, 2026-10-24) | `BeforeYouBuy.tsx` (the region item is always open), the FAQ | decisions 5; `hp-fix-no-ip-lookup` |
 | Pro's separate, unchecked, required renewal box (AB 2863) | `ProBuyBlock` | decisions 6 |
+| Each product in its own currency (2026-10-25): Pro billed in US dollars; the Full Analysis charged in the local currency where `create-checkout` prices it, in US dollars elsewhere; no sentence gives both one currency | `BeforeYouBuy.tsx` (the renewal item), `HomePlanStrip.tsx`, `pricing-jsonld.ts` | `hp-fix-currency-per-product` |
 | One open-postings figure (openTotal from `get_board_vendor_counts`, with its `as_of`) | `FreeCard`, through the existing `useBoardVendorCounts` | decisions 10 |
 | Fit is free without an account | Free card ("No account needed"), the table, the FAQ | decisions 9 |
 | Each closed gate gives its own reason (G1, G2, G2b); Pro's included Full Analysis hides with G2; no delivery time printed | `sale-gates.ts`, `pro-perks-mirror.ts` | decisions 8 |

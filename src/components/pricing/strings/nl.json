@@ -23,8 +23,8 @@
       "h2": "Voordat je koopt",
       "finalBody": "Geen terugbetalingen, behalve waar de wet er een voorschrijft. Niet tevreden over een betaald resultaat? Beantwoord je ontvangstbewijs en we maken het opnieuw, gratis.",
       "regionBody": "Verkoop daar wacht tot we geregistreerd zijn voor de btw, of voor de GST in India. De kassa weigert kopers die hij daar kan plaatsen, aan de hand van de valuta en de tijdzone die je apparaat doorgeeft. Alles wat gratis is, werkt overal.",
-      "renewalTitle": "Amerikaanse dollars. Pro wordt elke maand verlengd.",
-      "renewalBody": "De prijzen zijn in Amerikaanse dollars. Pro wordt elke maand verlengd voor {{proPrice}} tot je opzegt, en je stemt in met de verlenging via een apart vakje vóór het afrekenen. De Volledige analyse is één betaling en wordt nooit verlengd."
+      "renewalTitle": "Pro: Amerikaanse dollars, wordt elke maand verlengd.",
+      "renewalBody": "Pro wordt gefactureerd in Amerikaanse dollars en wordt elke maand verlengd voor {{proPrice}} tot je opzegt, en je stemt in met de verlenging via een apart vakje vóór het afrekenen. De Volledige analyse is één betaling die nooit wordt verlengd, afgerekend in je lokale valuta als we die ondersteunen en anders in Amerikaanse dollars."
     },
     "buy": {
       "finalSale": "Alle verkopen zijn definitief.",
@@ -64,7 +64,8 @@
       "b5": "Een pdf en een privélink die {{days}} dagen bewaard blijft",
       "how": "Je uploadt eerst je cv; daarna volgt het afrekenen.",
       "cta": "Koop de Volledige analyse, {{price}}",
-      "fine": "Eén betaling, wordt nooit verlengd."
+      "fine": "Eén betaling, wordt nooit verlengd.",
+      "currency": "De Volledige analyse wordt afgerekend in je lokale valuta als we die ondersteunen, en anders in Amerikaanse dollars."
     },
     "pro": {
       "name": "Pro",

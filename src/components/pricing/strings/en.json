@@ -23,8 +23,8 @@
       "h2": "Before you buy",
       "finalBody": "No refunds, except where the law requires one. Not happy with a paid result? Reply to your receipt and we make it again, free.",
       "regionBody": "Sales there wait until we are registered for VAT, or for GST in India. Checkout turns away buyers it can place there, from the currency and the time zone your device reports. Everything free works everywhere.",
-      "renewalTitle": "US dollars. Pro renews monthly.",
-      "renewalBody": "Prices are in US dollars. Pro renews every month at {{proPrice}} until you cancel, and you agree to the renewal with a separate tick box before checkout. The Full Analysis is one payment and never renews."
+      "renewalTitle": "Pro: US dollars, renews monthly.",
+      "renewalBody": "Pro is billed in US dollars and renews every month at {{proPrice}} until you cancel, and you agree to the renewal with a separate tick box before checkout. The Full Analysis is one payment that never renews, charged in your local currency where we support it and in US dollars elsewhere."
     },
     "buy": {
       "finalSale": "All sales are final.",
@@ -64,7 +64,8 @@
       "b5": "A PDF, and a private link kept {{days}} days",
       "how": "You upload your résumé first; checkout comes after.",
       "cta": "Buy the Full Analysis, {{price}}",
-      "fine": "One payment, never renews."
+      "fine": "One payment, never renews.",
+      "currency": "The Full Analysis is charged in your local currency where we support it, and in US dollars elsewhere."
     },
     "pro": {
       "name": "Pro",

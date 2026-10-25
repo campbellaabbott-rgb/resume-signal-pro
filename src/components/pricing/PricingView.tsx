@@ -3,7 +3,8 @@
  *
  *   PricingHead          H1, the summary that leads with what is free, jump links
  *   BeforeYouBuy         all sales final; the region refusal and what checkout
- *                        checks; US dollars and Pro's renewal. Above every card.
+ *                        checks; each product's currency and Pro's renewal.
+ *                        Above every card.
  *   Free / Full Analysis / Pro
  *   FreeVsFullAnalysis   what the Full Analysis adds to the free report
  *   BuilderAndLicence    the planned Builder API card and the data licence

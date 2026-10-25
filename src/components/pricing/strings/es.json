@@ -23,8 +23,8 @@
       "h2": "Antes de comprar",
       "finalBody": "Sin reembolsos, salvo cuando la ley exija uno. ¿No te convence un resultado de pago? Responde a tu recibo y lo hacemos de nuevo, gratis.",
       "regionBody": "Las ventas allí esperan a que estemos registrados para el IVA, o para el GST en la India. El pago rechaza a los compradores que puede ubicar allí, por la moneda y la zona horaria que indica tu dispositivo. Todo lo gratuito funciona en todas partes.",
-      "renewalTitle": "Dólares estadounidenses. Pro se renueva cada mes.",
-      "renewalBody": "Los precios están en dólares estadounidenses. Pro se renueva cada mes por {{proPrice}} hasta que lo canceles, y aceptas la renovación con una casilla aparte antes del pago. El Análisis completo es un solo pago y nunca se renueva."
+      "renewalTitle": "Pro: dólares estadounidenses, se renueva cada mes.",
+      "renewalBody": "Pro se cobra en dólares estadounidenses y se renueva cada mes por {{proPrice}} hasta que lo canceles, y aceptas la renovación con una casilla aparte antes del pago. El Análisis completo es un solo pago que nunca se renueva, y se cobra en tu moneda local si la admitimos o, si no, en dólares estadounidenses."
     },
     "buy": {
       "finalSale": "Todas las ventas son definitivas.",
@@ -64,7 +64,8 @@
       "b5": "Un PDF y un enlace privado que se conserva {{days}} días",
       "how": "Primero subes tu currículum; el pago viene después.",
       "cta": "Comprar el Análisis completo, {{price}}",
-      "fine": "Un solo pago, nunca se renueva."
+      "fine": "Un solo pago, nunca se renueva.",
+      "currency": "El Análisis completo se cobra en tu moneda local si la admitimos o, si no, en dólares estadounidenses."
     },
     "pro": {
       "name": "Pro",

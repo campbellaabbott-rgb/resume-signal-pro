@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { DollarSign, Globe, Receipt } from "lucide-react";
+import { Banknote, Globe, Receipt } from "lucide-react";
 import { money } from "@/lib/format";
 import { HOME_FULL_ANALYSIS_USD, HOME_PRO_USD_PER_MONTH, HOME_PRO_WRITING_PER_DAY, HOME_PRO_WRITING_PER_MONTH } from "@/lib/home/facts";
 import { homePlanRows, type SaleGates } from "@/lib/home/sale-gates";
@@ -11,7 +11,9 @@ import { homePlanRows, type SaleGates } from "@/lib/home/sale-gates";
  * different reasons, review P17); the Pro row appears only once G1 and G2b
  * pass, and says it includes the Full Analysis only once G2 has. The sale
  * terms sit under the rows before any click: final sale, where it is not sold
- * and what checkout looks at to tell, and the currency.
+ * and what checkout looks at to tell, and the currency each product is charged
+ * in (owner decision 2026-10-25): Pro's only while its row is shown, and the
+ * Full Analysis's local currency with the fallback create-checkout uses.
  */
 export function HomePlanStrip({ gates }: { gates: SaleGates }) {
   const { t, i18n } = useTranslation();
@@ -62,7 +64,7 @@ export function HomePlanStrip({ gates }: { gates: SaleGates }) {
         <ul className="mt-3 grid gap-1.5 text-meta text-muted-foreground">
           <li className="flex items-start gap-2"><Receipt aria-hidden="true" className="mt-px h-3.5 w-3.5 shrink-0" /><span>{t("home.plans.termFinal")}</span></li>
           <li className="flex items-start gap-2"><Globe aria-hidden="true" className="mt-px h-3.5 w-3.5 shrink-0" /><span>{t("home.plans.termTerritory")}</span></li>
-          <li className="flex items-start gap-2"><DollarSign aria-hidden="true" className="mt-px h-3.5 w-3.5 shrink-0" /><span>{t("home.plans.termUsd")}</span></li>
+          <li className="flex items-start gap-2"><Banknote aria-hidden="true" className="mt-px h-3.5 w-3.5 shrink-0" /><span>{t(rows.pro ? "home.plans.termCurrency" : "home.plans.termCurrencyFa")}</span></li>
         </ul>
         <div className="mt-5">
           <Link to="/pricing" className="link inline-flex items-center">{t("home.plans.more")}</Link>

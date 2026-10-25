@@ -153,7 +153,8 @@
       "proIncludesFa": "A Análise completa está incluída.",
       "termFinal": "Todas as vendas são definitivas.",
       "termTerritory": "Ainda não vendido na UE, no EEE, no Reino Unido nem na Índia, até estarmos registrados lá para fins fiscais. O checkout recusa compradores que consegue situar lá, pela moeda e pelo fuso horário do navegador.",
-      "termUsd": "Preços em dólares americanos.",
+      "termCurrency": "O Pro é cobrado em dólares americanos. A Análise completa é cobrada na sua moeda local quando a aceitamos e, nos outros casos, em dólares americanos.",
+      "termCurrencyFa": "A Análise completa é cobrada na sua moeda local quando a aceitamos e, nos outros casos, em dólares americanos.",
       "more": "Ver preços e limites"
     },
     "faq": {

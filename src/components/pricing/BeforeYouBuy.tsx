@@ -8,14 +8,17 @@
  *      reports (owner decision W5, 2026-10-24: a third check that answers
  *      only when its key is set is not described). Never "billing address":
  *      no code checks one before payment.
- *   3. US dollars, and Pro renews monthly with a separate renewal tick box.
+ *   3. Pro is billed in US dollars and renews monthly with a separate renewal
+ *      tick box; the Full Analysis is charged in the local currency where
+ *      create-checkout prices it, and in US dollars elsewhere (owner decision
+ *      2026-10-25).
  *
  * From lg the three sit side by side, all text shown. Under lg they stack in
  * one box; the region line stays open, its mechanism included, so it is read
  * before any click, and the other two are native <details>, whose text stays
  * in the DOM while closed (a reader's Find opens them; a crawler reads them).
  */
-import { ChevronDown, DollarSign, Globe, Receipt } from "lucide-react";
+import { Banknote, ChevronDown, Globe, Receipt } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { money } from "@/lib/format";
@@ -38,7 +41,7 @@ export function BeforeYouBuy() {
   const items: Item[] = [
     { id: "final", icon: <Receipt aria-hidden="true" />, title: t("pricingPlans.buy.finalSale"), body: t("pricingPlans.before.finalBody"), alwaysOpen: false },
     { id: "region", icon: <Globe aria-hidden="true" />, title: t("pricingPlans.buy.region"), body: t("pricingPlans.before.regionBody"), alwaysOpen: true },
-    { id: "renewal", icon: <DollarSign aria-hidden="true" />, title: t("pricingPlans.before.renewalTitle"), body: t("pricingPlans.before.renewalBody", { proPrice }), alwaysOpen: false },
+    { id: "renewal", icon: <Banknote aria-hidden="true" />, title: t("pricingPlans.before.renewalTitle"), body: t("pricingPlans.before.renewalBody", { proPrice }), alwaysOpen: false },
   ];
   const iconCls = "mt-0.5 inline-flex shrink-0 text-foreground [&_svg]:h-4 [&_svg]:w-4";
 
