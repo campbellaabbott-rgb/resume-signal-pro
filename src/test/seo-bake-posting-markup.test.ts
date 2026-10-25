@@ -205,6 +205,78 @@ describe("SEO-035: a location that ends in another country's name is not the row
     expect(postingCountryMismatch({ location: "Hanoi, Vietnam", country: "US" })).toBe(true);
   });
 
+  // The 2026-10-25 recheck: the rule read the last segment as the country
+  // whatever order the place was written in, so a US town that shares a
+  // country's name lost its markup (101 Globalfoundries rows in Malta, New
+  // York; every "MI - Holland" and "PA - Lebanon" row), and so did a list of
+  // places that names the row's country before another one.
+  it("leaves a town that shares a country's name alone when the place is written state first or country first", () => {
+    const cases: Array<[string, string, string]> = [
+      ["USA - New York - Malta", "US", "Globalfoundries"],
+      ["United States, Ohio, Holland", "US", "Clarios"],
+      ["United States, Michigan, Holland", "US", "Clarios"],
+      ["MI - Holland", "US", "Millerknoll"],
+      ["PA - Lebanon", "US", "CVS Health"],
+      ["IN - Lebanon", "US", "PNC"],
+      ["NY - Jamaica", "US", "CVS Health"],
+      ["NY - Malta", "US", "CVS Health"],
+      ["MS - Grenada", "US", "CVS Health"],
+      ["ENTEK - Lebanon", "US", "ENTEK"],
+      ["Costa Rica - Liberia", "CR", "Coke"],
+    ];
+    for (const [location, country, company] of cases) {
+      expect(postingCountryMismatch({ location, country, company }), location).toBe(false);
+      const d = ld(row({ id: "greenhouse:acme:1", token: "acme", company, location, country, workMode: null }));
+      expect(d, location).toBeTruthy();
+      expect((d!.jobLocation as { address: Record<string, unknown> }).address.addressCountry, location).toBe(country);
+    }
+    expect((ld(row({ id: "greenhouse:acme:1", token: "acme", company: "Globalfoundries", location: "USA - New York - Malta", country: "US", workMode: null }))!.jobLocation as { address: Record<string, unknown> }).address).toMatchObject({ addressCountry: "US", addressRegion: "NY" });
+    // The employer's name opens only a place of two segments: after a town the country still counts.
+    expect(postingCountryMismatch({ location: "ENTEK - Tokyo - Japan", country: "US", company: "ENTEK" })).toBe(true);
+  });
+
+  it("reads the row's own country, one of its states, or the country that governs it anywhere in the location", () => {
+    const cases: Array<[string, string]> = [
+      ["Hong Kong, China", "HK"],
+      ["Kowloon, China", "HK"],
+      ["Charlotte Amalie, Virgin Islands, U.S.", "VI"],
+      ["Fort-de-France, Fort-de-France, Martinique", "FR"],
+      ["Munich, Germany; London, United Kingdom; Paris, France; The Hague, Netherlands", "GB"],
+      ["London, UK or Zurich, Switzerland", "GB"],
+      ["Remote USA · Berlin, Germany · Raleigh, United States · London, United Kingdom", "US"],
+      ["Remote • UK, France, Spain, Germany or Canada", "GB"],
+      ["Toronto, Canada; Denver, Colorado", "US"],
+      ["United States and Ontario, Canada", "US"],
+      ["Central, Hong Kong; Chuo-ku, Japan", "HK"],
+    ];
+    for (const [location, country] of cases) {
+      expect(postingCountryMismatch({ location, country }), location).toBe(false);
+    }
+  });
+
+  it("still withholds a place written town first that ends in another country", () => {
+    const cases: Array<[string, string]> = [
+      ["Lagos, LA, Nigeria", "US"],
+      ["Accra, GA, Ghana", "US"],
+      ["New Brunswick - NJ - US", "CA"],
+      ["Warsaw, Poland", "US"],
+      ["Gent, Belgium", "US"],
+      ["Kwajalein, Marshall Islands", "HK"],
+      ["Malta International Airport, Malta", "US"],
+      ["Edmonton, Canada", "US"],
+      ["Ramstein, Germany", "US"],
+      ["Tokyo - Japan", "US"],
+      ["New York Mets Complex – Dominican Republic", "US"],
+      ["Senai, Non United States Or Canada, Malaysia", "US"],
+      ["9 Av Du Canada, 91940 Les Ulis, France", "CA"],
+      ["Lagos, Nigeria; Accra, Ghana", "US"],
+    ];
+    for (const [location, country] of cases) {
+      expect(postingCountryMismatch({ location, country }), location).toBe(true);
+    }
+  });
+
+
   it("maps every name in the table to a current ISO 3166-1 code, never one Intl files under another", () => {
     const table = countryNameTable();
     expect(table.size, "the table is empty — the loop below would pass vacuously").toBeGreaterThan(200);
@@ -247,6 +319,50 @@ describe("SEO-035: a location that ends in another country's name is not the row
       spy.mockRestore();
       vi.resetModules();
     }
+  });
+});
+
+/**
+ * SEO-035 MEASURED ON THE LIVE BOARD (2026-10-25). A reviewer's examples are a
+ * sample, so the rule is held to a corpus read from the board itself: every
+ * location string the rule at d1d5aa12 or now withholds, every string that
+ * names another country and is withheld by neither, and every recheck input,
+ * each labelled by hand (src/test/fixtures/posting-country-corpus-2026-10-25.json).
+ * Main publishes markup for every row, so withholding a correct row is worse
+ * than main and withholding a misfiled one is better.
+ */
+describe("SEO-035 against a corpus of live rows", () => {
+  type Case = { location: string; country: string; company: string | null; rows: number; label: "correct" | "mismatch" | "unclear"; src: string; before: boolean; note?: string };
+  const corpus = JSON.parse(readFileSync(resolve(__dirname, "fixtures/posting-country-corpus-2026-10-25.json"), "utf8")) as { cases: Case[] };
+  const key = (c: Case) => `${c.location} | ${c.country}`;
+  const now = (c: Case) => postingCountryMismatch({ location: c.location, country: c.country, company: c.company });
+
+  it("holds at least 300 labelled cases, read from the live board, with the recheck's inputs", () => {
+    expect(corpus.cases.length).toBeGreaterThanOrEqual(300);
+    expect(corpus.cases.filter((c) => c.label === "correct").length).toBeGreaterThan(300);
+    expect(corpus.cases.filter((c) => c.label === "mismatch").length).toBeGreaterThan(50);
+    expect(corpus.cases.filter((c) => c.src === "recheck").length).toBeGreaterThanOrEqual(8);
+    expect(new Set(corpus.cases.map(key)).size, "a case is listed twice").toBe(corpus.cases.length);
+  });
+
+  it("withholds no correct row but the three a list of towns would be needed to tell from a misfiled one", () => {
+    const worseThanMain = corpus.cases.filter((c) => c.label === "correct" && now(c)).map(key);
+    expect(worseThanMain).toEqual([
+      "Biloxi, MS, Algeria | US",
+      "Hyderabad, Telangana, Algeria | IN",
+      "UMMC Family Clinic - Grenada | US",
+    ]);
+    // The rule at d1d5aa12 withheld far more of them.
+    expect(corpus.cases.filter((c) => c.label === "correct" && c.before).length).toBeGreaterThan(80);
+  });
+
+  it("still withholds every misfiled row it withheld before but one, and withholds no new kind", () => {
+    const lost = corpus.cases.filter((c) => c.label === "mismatch" && c.before && !now(c)).map(key);
+    expect(lost).toEqual(["Auckland, Australia & New Zealand, New Zealand | AU"]);
+    const gained = corpus.cases.filter((c) => !c.before && now(c)).map(key);
+    expect(gained).toEqual([]);
+    const caught = corpus.cases.filter((c) => c.label === "mismatch" && now(c));
+    expect(caught.length).toBeGreaterThanOrEqual(70);
   });
 });
 

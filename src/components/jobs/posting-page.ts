@@ -585,8 +585,30 @@ export function countryCodeOfName(s: string | null | undefined): string | null {
   return countryTable().get(k) ?? null;
 }
 
-/** US territories a board files under US, so a trailing "Guam" is not another country's posting. */
-const US_TERRITORIES = new Set(["PR", "GU", "VI", "AS", "MP"]);
+/**
+ * Territories and the country that governs each. A board files a territory's
+ * rows under either code, so either way round names one place: "San Juan,
+ * Puerto Rico" on a US row, "Charlotte Amalie, Virgin Islands, U.S." on a VI
+ * row, "Kowloon, China" on an HK row, "Fort-de-France, Martinique" on an FR row.
+ */
+const GOVERNED_BY: Readonly<Record<string, string>> = {
+  PR: "US", GU: "US", VI: "US", AS: "US", MP: "US", UM: "US",
+  HK: "CN", MO: "CN",
+  GP: "FR", MQ: "FR", GF: "FR", RE: "FR", YT: "FR", NC: "FR", PF: "FR", PM: "FR", WF: "FR", BL: "FR", MF: "FR", TF: "FR",
+  JE: "GB", GG: "GB", IM: "GB", GI: "GB", BM: "GB", KY: "GB", VG: "GB", AI: "GB", MS: "GB", TC: "GB", FK: "GB", SH: "GB", IO: "GB", PN: "GB", GS: "GB",
+  AW: "NL", CW: "NL", SX: "NL", BQ: "NL",
+  GL: "DK", FO: "DK", SJ: "NO", BV: "NO", AX: "FI",
+  CX: "AU", CC: "AU", NF: "AU", HM: "AU", CK: "NZ", NU: "NZ", TK: "NZ",
+};
+const sameJurisdiction = (a: string, b: string): boolean => a === b || GOVERNED_BY[a] === b || GOVERNED_BY[b] === a;
+
+/**
+ * The marks that separate one place from the next inside a location string:
+ * "Munich, Germany; London, United Kingdom", "Remote USA · Berlin, Germany",
+ * "Remote • UK, France", "London, UK or Zurich, Switzerland". The lower-case
+ * word only: "OR" is Oregon.
+ */
+const PLACE_LIST = /;|·|•|\s\|\s|\s+or\s+/;
 
 /** The subdivision code a segment names for this country, or null. */
 function subdivisionOf(segment: string, country: string): string | null {
@@ -732,24 +754,54 @@ export function postingRemoteBasis(job: PostingRow): "vendor" | "place-free" | n
 }
 
 /**
- * A LOCATION THAT ENDS IN ANOTHER COUNTRY'S NAME (SEO-035). The board's
+ * A LOCATION THAT PLACES THE JOB IN ANOTHER COUNTRY (SEO-035). The board's
  * country reader files "City, LA, Nigeria" and "City, GA, Ghana" as US by the
- * state code; markup built on that row puts a Nigerian job in Louisiana. When
- * the last of two or more segments is a country's whole name and that country
- * is not the row's (nor a subdivision or territory of it), the row's country
- * cannot be trusted, and the page carries no job markup.
+ * state code, and USAJOBS files "Ramstein, Germany" as US; markup built on
+ * that row puts a Nigerian job in Louisiana. The row's country is not trusted,
+ * and the page carries no job markup, when a place in the location is written
+ * town first and ends in another country's whole name.
+ *
+ * WHAT IS NOT ANOTHER COUNTRY, each one a live row this rule once withheld:
+ *   - the location names the row's own country anywhere, or one of its
+ *     states or provinces at the end of a place, as one of several places or
+ *     at the front ("USA - New York - Malta", "Hong Kong, China" on an HK row,
+ *     "Munich, Germany; London, United Kingdom" on a GB row, "Toronto,
+ *     Canada; Denver, Colorado" on a US row);
+ *   - the place opens with the two-letter code of one of the row's own
+ *     states or provinces, so it is written state first and its last segment
+ *     is the town ("MI - Holland", "NY - Jamaica", "PA - Lebanon"). A code is
+ *     never a town; a full name can be one ("New Brunswick - NJ - US" is a
+ *     town in New Jersey, on a CA row), so only the code says the order;
+ *   - a place of two segments opens with the employer's own name, which is
+ *     a site label, so the other segment is its town ("ENTEK - Lebanon");
+ *   - the named country governs the row's territory or the other way round
+ *     ("Kowloon, China" on HK, "Virgin Islands, U.S." on VI).
+ * Without a list of every town, "Biloxi, MS, Algeria" (a vendor's default
+ * country after a Mississippi town) reads the same as "Lagos, LA, Nigeria"
+ * and is still withheld; docs/seo-round/README.md counts these.
  */
-export function postingCountryMismatch(job: Pick<PostingRow, "location" | "country">): boolean {
+export function postingCountryMismatch(job: Pick<PostingRow, "location" | "country"> & Partial<Pick<PostingRow, "company">>): boolean {
   const own = String(job.country ?? "").trim().toUpperCase();
   if (!own) return false;
-  const segs = String(job.location ?? "").split(/,|\s[-–]\s/).map((s) => placeOfSegment(s)).filter(Boolean);
-  if (segs.length < 2) return false;
-  const last = segs[segs.length - 1];
-  if (subdivisionOf(last, own)) return false;
-  const code = countryCodeOfName(last);
-  if (!code || code === own) return false;
-  if (own === "US" && US_TERRITORIES.has(code)) return false;
-  return true;
+  const places = String(job.location ?? "").split(PLACE_LIST)
+    .map((p) => p.split(/,|\s[-–]\s/).map((s) => placeOfSegment(s)).filter(Boolean))
+    .filter((segs) => segs.length > 0);
+  const isOwn = (s: string): boolean => {
+    const code = countryCodeOfName(s);
+    return s.toUpperCase() === own || (code !== null && sameJurisdiction(own, code));
+  };
+  // "United States and Ontario, Canada": each side of an "and" is read too.
+  const namesOwn = (s: string): boolean => isOwn(s) || s.split(/\s+(?:and|&)\s+/i).some((part) => part !== s && isOwn(part.trim()));
+  if (places.some((segs) => segs.some(namesOwn) || !!subdivisionOf(segs[segs.length - 1], own))) return false;
+  const employer = String(job.company ?? "").trim().toLowerCase();
+  for (const segs of places) {
+    if (segs.length < 2) continue;
+    if (/^[A-Za-z]{2}$/.test(segs[0]) && subdivisionOf(segs[0], own)) continue;
+    if (segs.length === 2 && employer.length >= 3 && segs[0].toLowerCase().includes(employer)) continue;
+    const code = countryCodeOfName(segs[segs.length - 1]);
+    if (code && !sameJurisdiction(own, code)) return true;
+  }
+  return false;
 }
 
 /**
