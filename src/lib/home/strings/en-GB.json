@@ -148,7 +148,7 @@
       "proBody": "The writing tools for an active search: {{perDay}} of each a day and {{perMonth}} of each a month (a package is one of each), and no daily cap on scans.",
       "proIncludesFa": "The Full Analysis is included.",
       "termFinal": "All sales are final.",
-      "termTerritory": "Not yet sold in the EU, the EEA, the UK or India, until we are registered for tax there. Checkout turns away buyers it can place there, from the currency, the browser's time zone and a lookup of the IP address.",
+      "termTerritory": "Not yet sold in the EU, the EEA, the UK or India, until we are registered for tax there. Checkout turns away buyers it can place there, from the currency and the browser's time zone.",
       "termUsd": "Prices in US dollars.",
       "more": "See pricing and limits"
     },

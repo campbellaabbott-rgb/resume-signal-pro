@@ -152,7 +152,7 @@
       "proBody": "Las herramientas de redacción para una búsqueda activa: {{perDay}} de cada una al día y {{perMonth}} de cada una al mes (un paquete es una de cada), y sin tope diario de análisis.",
       "proIncludesFa": "El Análisis completo está incluido.",
       "termFinal": "Todas las ventas son definitivas.",
-      "termTerritory": "Aún no se vende en la UE, el EEE, el Reino Unido ni la India, hasta que estemos registrados allí a efectos fiscales. El pago rechaza a los compradores que puede situar allí, según la moneda, la zona horaria del navegador y una consulta de la dirección IP.",
+      "termTerritory": "Aún no se vende en la UE, el EEE, el Reino Unido ni la India, hasta que estemos registrados allí a efectos fiscales. El pago rechaza a los compradores que puede situar allí, según la moneda y la zona horaria del navegador.",
       "termUsd": "Precios en dólares estadounidenses.",
       "more": "Ver precios y límites"
     },

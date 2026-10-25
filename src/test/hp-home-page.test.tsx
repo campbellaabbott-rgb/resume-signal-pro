@@ -309,7 +309,8 @@ describe("the plan strip", () => {
     expect(main().textContent).toContain("Paid extras are not on sale yet; purchases open soon.");
     expect(main().textContent).toContain("All sales are final.");
     expect(main().textContent).toContain("Not yet sold in the EU, the EEA, the UK or India");
-    expect(main().textContent).toContain("from the currency, the browser's time zone and a lookup of the IP address");
+    expect(main().textContent).toContain("from the currency and the browser's time zone.");
+    expect(main().textContent).not.toMatch(/\bIP\b|lookup/);
     const controls = Array.from(main().querySelectorAll("a, button")).map((e) => `${e.textContent} ${e.getAttribute("href") ?? ""}`);
     expect(controls.filter((c) => /\bbuy\b|go pro|checkout|stripe/i.test(c))).toEqual([]);
     await ready();

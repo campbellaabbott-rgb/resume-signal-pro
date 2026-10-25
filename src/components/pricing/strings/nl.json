@@ -22,7 +22,7 @@
     "before": {
       "h2": "Voordat je koopt",
       "finalBody": "Geen terugbetalingen, behalve waar de wet er een voorschrijft. Niet tevreden over een betaald resultaat? Beantwoord je ontvangstbewijs en we maken het opnieuw, gratis.",
-      "regionBody": "Verkoop daar wacht tot we geregistreerd zijn voor de btw, of voor de GST in India. De kassa weigert kopers die hij daar kan plaatsen, aan de hand van de valuta, de tijdzone die je apparaat doorgeeft en een opzoeking van je IP-adres. Alles wat gratis is, werkt overal.",
+      "regionBody": "Verkoop daar wacht tot we geregistreerd zijn voor de btw, of voor de GST in India. De kassa weigert kopers die hij daar kan plaatsen, aan de hand van de valuta en de tijdzone die je apparaat doorgeeft. Alles wat gratis is, werkt overal.",
       "renewalTitle": "Amerikaanse dollars. Pro wordt elke maand verlengd.",
       "renewalBody": "De prijzen zijn in Amerikaanse dollars. Pro wordt elke maand verlengd voor {{proPrice}} tot je opzegt, en je stemt in met de verlenging via een apart vakje vóór het afrekenen. De Volledige analyse is één betaling en wordt nooit verlengd."
     },
@@ -171,8 +171,8 @@
       "refundQ": "Kan ik mijn geld terugkrijgen?",
       "refundA": "Nee. Alle verkopen zijn definitief, behalve waar de wet een terugbetaling voorschrijft. Ben je niet tevreden over een betaald resultaat, beantwoord dan je ontvangstbewijs en we maken het kosteloos opnieuw, zoals onze voorwaarden zeggen.",
       "regionQ": "Waarom kan ik niet kopen vanuit de EU, de EER, het VK of India?",
-      "regionA": "We zijn nog niet geregistreerd voor de btw in de EU, de EER en het VK, of voor de GST in India. Tot die tijd weigert de kassa kopers die hij daar kan plaatsen, aan de hand van de valuta, de tijdzone die je apparaat doorgeeft en een opzoeking van je IP-adres. Zoeken, meldingen, de tracker, de gratis scan, de match en je AI-verbinding werken overal.",
-      "regionANoAlerts": "We zijn nog niet geregistreerd voor de btw in de EU, de EER en het VK, of voor de GST in India. Tot die tijd weigert de kassa kopers die hij daar kan plaatsen, aan de hand van de valuta, de tijdzone die je apparaat doorgeeft en een opzoeking van je IP-adres. Zoeken, de tracker, de gratis scan, de match en je AI-verbinding werken overal.",
+      "regionA": "We zijn nog niet geregistreerd voor de btw in de EU, de EER en het VK, of voor de GST in India. Tot die tijd weigert de kassa kopers die hij daar kan plaatsen, aan de hand van de valuta en de tijdzone die je apparaat doorgeeft. Zoeken, meldingen, de tracker, de gratis scan, de match en je AI-verbinding werken overal.",
+      "regionANoAlerts": "We zijn nog niet geregistreerd voor de btw in de EU, de EER en het VK, of voor de GST in India. Tot die tijd weigert de kassa kopers die hij daar kan plaatsen, aan de hand van de valuta en de tijdzone die je apparaat doorgeeft. Zoeken, de tracker, de gratis scan, de match en je AI-verbinding werken overal.",
       "fitQ": "Heb ik een account nodig om mijn match te bekijken?",
       "fitA": "Nee. De match is gratis, met of zonder account. Zonder in te loggen gebruikt hij het cv dat je hebt gescand of op het bord hebt neergezet, in deze browser. Met een gratis account werkt je opgeslagen cv op elk apparaat. De match is een woordmatch: hij laat zien welke termen uit een vacature je cv gebruikt. Hij voorspelt geen gesprekken of aanbiedingen.",
       "packageQ": "Wat is een pakket?",

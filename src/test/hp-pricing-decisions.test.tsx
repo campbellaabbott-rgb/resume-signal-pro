@@ -12,7 +12,8 @@
  *      name or address; each paid card then says purchases open soon.
  *   4. "All sales are final." sits in the block of every buy control.
  *   5. The region refusal (EU, EEA, UK, India) and what checkout checks
- *      (currency, time zone, IP address lookup, never a billing address)
+ *      (the currency and the time zone, never a billing address; owner
+ *      decision W5 dropped the third check from the page)
  *      are on screen before any click, above every buy control.
  *   6. Go Pro needs a separate, unchecked, required renewal box.
  *   7. The page never says the word the owner banned for scans.
@@ -259,7 +260,7 @@ describe("5. the region refusal is on screen before any click", () => {
       expect(S.buy.region).toMatch(/EU.*EEA.*UK.*India/);
       expect(text).toMatch(/currency/);
       expect(text).toMatch(/time zone/);
-      expect(text).toMatch(/IP address/);
+      expect(text).not.toMatch(/\bIP\b|lookup/);
       expect(text).not.toMatch(/billing/i);
       const first = buyButtons(container)[0];
       const cards = container.querySelector("[data-plan=free]")!;

@@ -113,7 +113,7 @@ describe("the house rules, in every language", () => {
       expect(b.pricingPlans.buy.finalSale.length, f).toBeGreaterThan(5);
       expect(b.pricingPlans.buy.region, f).toMatch(/EU|UE/);
       expect(b.pricingPlans.buy.region, f).toMatch(/India|Inde|Indien|Índia|भारत/);
-      expect(b.pricingPlans.before.regionBody, f).toMatch(/IP/);
+      expect(b.pricingPlans.before.regionBody, f).not.toMatch(/(?<![\p{L}\p{N}])IP(?![\p{L}\p{N}])/u);
     }
   });
 });

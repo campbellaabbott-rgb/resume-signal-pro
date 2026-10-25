@@ -22,7 +22,7 @@
     "before": {
       "h2": "Before you buy",
       "finalBody": "No refunds, except where the law requires one. Not happy with a paid result? Reply to your receipt and we make it again, free.",
-      "regionBody": "Sales there wait until we are registered for VAT, or for GST in India. Checkout turns away buyers it can place there, from the currency, the time zone your device reports and a lookup of your IP address. Everything free works everywhere.",
+      "regionBody": "Sales there wait until we are registered for VAT, or for GST in India. Checkout turns away buyers it can place there, from the currency and the time zone your device reports. Everything free works everywhere.",
       "renewalTitle": "US dollars. Pro renews monthly.",
       "renewalBody": "Prices are in US dollars. Pro renews every month at {{proPrice}} until you cancel, and you agree to the renewal with a separate tick box before checkout. The Full Analysis is one payment and never renews."
     },
@@ -171,8 +171,8 @@
       "refundQ": "Can I get a refund?",
       "refundA": "No. All sales are final, except where the law requires a refund. If you are not happy with a paid result, reply to your receipt and we make it again at no charge, as our Terms say.",
       "regionQ": "Why can't I buy from the EU, the EEA, the UK or India?",
-      "regionA": "We are not yet registered for VAT in the EU, the EEA and the UK, or for GST in India. Until we are, checkout turns away buyers it can place there, from the currency, the time zone your device reports and a lookup of your IP address. Searching, alerts, the tracker, the free scan, fit and your AI connection work everywhere.",
-      "regionANoAlerts": "We are not yet registered for VAT in the EU, the EEA and the UK, or for GST in India. Until we are, checkout turns away buyers it can place there, from the currency, the time zone your device reports and a lookup of your IP address. Searching, the tracker, the free scan, fit and your AI connection work everywhere.",
+      "regionA": "We are not yet registered for VAT in the EU, the EEA and the UK, or for GST in India. Until we are, checkout turns away buyers it can place there, from the currency and the time zone your device reports. Searching, alerts, the tracker, the free scan, fit and your AI connection work everywhere.",
+      "regionANoAlerts": "We are not yet registered for VAT in the EU, the EEA and the UK, or for GST in India. Until we are, checkout turns away buyers it can place there, from the currency and the time zone your device reports. Searching, the tracker, the free scan, fit and your AI connection work everywhere.",
       "fitQ": "Do I need an account to check my fit?",
       "fitA": "No. Fit is free with or without an account. Signed out, it uses the résumé you scanned or dropped on the board, in this browser. With a free account, your saved résumé works on any device. Fit is a word match: it shows which of a posting's terms your résumé uses. It does not predict interviews or offers.",
       "packageQ": "What is a package?",

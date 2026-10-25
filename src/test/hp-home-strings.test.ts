@@ -141,7 +141,8 @@ describe("the house rules hold in every language", () => {
       expect(h.faq.fitA).toMatch(/free, with no account/);
       expect(h.plans.freeTitle).toMatch(/fit/);
       expect(h.plans.termTerritory).toMatch(/EU.*EEA.*UK.*India/);
-      expect(h.plans.termTerritory).toMatch(/currency.*time zone.*IP address/);
+      expect(h.plans.termTerritory).toMatch(/currency and the browser's time zone\.$/);
+      expect(h.plans.termTerritory).not.toMatch(/\bIP\b|lookup/);
       expect(h.plans.proBody).toMatch(/no daily cap on scans/);
       expect(h.plans.termFinal).toBe("All sales are final.");
     }

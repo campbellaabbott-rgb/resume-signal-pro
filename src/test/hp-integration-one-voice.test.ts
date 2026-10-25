@@ -155,7 +155,7 @@ describe("one wording, in every language", () => {
     }
   });
 
-  it("en: both pages name the same refused territories and the same three checks", () => {
+  it("en: both pages name the same refused territories and the same two checks", () => {
     const h = homeStrings("en");
     const p = pricingStrings("en");
     for (const place of ["the EU", "the EEA", "the UK", "India"]) {
@@ -164,10 +164,11 @@ describe("one wording, in every language", () => {
     }
     const homeChecks = h.termTerritory.toLowerCase();
     const pricingChecks = `${p.before.regionBody}`.toLowerCase();
-    for (const check of ["currency", "time zone", "ip address"]) {
+    for (const check of ["currency", "time zone"]) {
       expect(homeChecks).toContain(check);
       expect(pricingChecks).toContain(check);
     }
+    for (const s of [homeChecks, pricingChecks]) expect(s).not.toMatch(/\bip\b|lookup/);
     for (const s of [homeChecks, pricingChecks]) expect(s).not.toContain("billing address");
   });
 });

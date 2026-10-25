@@ -3,10 +3,11 @@
  * before any click (owner decisions, 2026-10-17).
  *
  *   1. All sales are final (and the Terms' remedy: we make it again, free).
- *   2. Not sold in the EU, the EEA, the UK or India yet, and what checkout
- *      actually checks: the currency, the time zone the device reports and an
- *      IP address lookup. Never "billing address": no code checks one before
- *      payment.
+ *   2. Not sold in the EU, the EEA, the UK or India yet, and the two checks
+ *      checkout always runs: the currency and the time zone the device
+ *      reports (owner decision W5, 2026-10-24: a third check that answers
+ *      only when its key is set is not described). Never "billing address":
+ *      no code checks one before payment.
  *   3. US dollars, and Pro renews monthly with a separate renewal tick box.
  *
  * From lg the three sit side by side, all text shown. Under lg they stack in

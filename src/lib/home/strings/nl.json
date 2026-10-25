@@ -148,7 +148,7 @@
       "proBody": "De schrijftools voor een actieve zoektocht: {{perDay}} van elk per dag en {{perMonth}} van elk per maand (een pakket is één van elk), en geen daglimiet op scans.",
       "proIncludesFa": "De Volledige analyse is inbegrepen.",
       "termFinal": "Alle verkopen zijn definitief.",
-      "termTerritory": "Nog niet verkocht in de EU, de EER, het VK of India, totdat we daar voor belastingen geregistreerd zijn. De checkout weigert kopers die hij daar kan plaatsen, op basis van de valuta, de tijdzone van de browser en een opzoeking van het IP-adres.",
+      "termTerritory": "Nog niet verkocht in de EU, de EER, het VK of India, totdat we daar voor belastingen geregistreerd zijn. De checkout weigert kopers die hij daar kan plaatsen, op basis van de valuta en de tijdzone van de browser.",
       "termUsd": "Prijzen in Amerikaanse dollars.",
       "more": "Prijzen en limieten bekijken"
     },

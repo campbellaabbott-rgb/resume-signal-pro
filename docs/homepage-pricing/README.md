@@ -54,8 +54,8 @@ data calls; nothing reads `get_board_flow`.
 
 **Pricing page** (`src/pages/pricing/PricingPage.tsx`): H1 and a summary that
 leads with what is free; "Before you buy" above the cards (all sales final;
-not sold in the EU, the EEA, the UK or India, naming the currency, time-zone
-and IP checks; Pro renews monthly), the Free, Full Analysis ($5, the only
+not sold in the EU, the EEA, the UK or India, naming the currency and
+time-zone checks; Pro renews monthly), the Free, Full Analysis ($5, the only
 one-off) and Pro ($45) cards, "What the $5 adds", the Builder API (planned,
 $49, "Proposed: 5,000 calls a day; set before launch") and data licence
 cards, the limits table and a seven-question FAQ. "Create a free account" is
@@ -140,6 +140,30 @@ the field chips print the long category names (no short label key exists;
 the switch-over string move may add one); German "du" on the homepage and
 "Sie" on pricing, and Hindi's two spellings of one CTA (hp/i18n's single
 pass); the translated try chips run English queries (Appendix A item 8).
+
+## What changed on 2026-10-24
+
+- **W5 is decided: the IP clause is gone.** The owner dropped it rather
+  than wait on `IPINFO_API_KEY` and the Radar rule (switch-over plan, W5).
+  Both pages now describe only the two checks checkout always runs, the
+  currency and the time zone: `home.plans.termTerritory`,
+  `pricingPlans.before.regionBody`, `faq.regionA` and `faq.regionANoAlerts`,
+  in all nine languages (English: "…from the currency and the time zone your
+  device reports."). `hp-fix-no-ip-lookup`, run red first in every language,
+  holds three things: no string either page carries names an IP address, the
+  lookup service or (in English) a lookup; the four sentences still name the
+  currency and the time zone in each language; and no hp source file writes
+  such a literal, comments stripped. The five tests that pinned the old
+  clause (`hp-home-strings`, `hp-pricing-strings`, `hp-home-page`,
+  `hp-integration-one-voice`, `hp-pricing-decisions`) now refuse it.
+- **Both headlines break only a word too long for a line**
+  (`[overflow-wrap:anywhere]`, above), and every measurement below was re-run
+  on the head after both changes.
+- **The plan is re-read against the branches of 2026-10-24**: it starts from
+  main; wave 4 is pinned at `origin/wave4/integration` 9af3c783, whose new
+  `w4b-fix2-the-homepage-stores-nothing-for-analytics-before-a-choice` test
+  joins step 4; the apply agent still answered true at 2026-10-25 01:02 UTC
+  (W3).
 
 ## How to preview
 
@@ -275,9 +299,10 @@ was deployed on 2026-10-18, so the switch-over branch is cut from
 `origin/main` and takes `hp/integration` by merge; `hp/integration` itself
 does not merge main first. Line numbers are as of `origin/design/integration`
 74439737 (the same lines on main, except the bake's `/pricing` block, 11
-lines lower), wave 4 as of `origin/wave4/integration` fa66a031 (2026-10-24;
-of the files this plan cites, only free-keyword-scan changed since 518afef1,
-step 12) and
+lines lower), wave 4 as of `origin/wave4/integration` 9af3c783 (2026-10-24
+19:18 -0400; of the files this plan cites, only free-keyword-scan changed
+since 518afef1, step 12, and 9af3c783 adds one test that mounts `Index` at
+"/", step 4) and
 `origin/w4b/checkout-catalogue` db74b6c8; wave 4 edits App.tsx, Pricing.tsx
 and the Header, so find each line by its text. Run `node scripts/deploy-ledger.mjs --overlap` before merging.
 The ledger has no `home-pricing` reservation yet (`docs/deploy-ledger.json`
@@ -308,24 +333,27 @@ precondition, and the owner may deploy this first.)
   `w4b/*` branch (account-compliance, agents-api, base, checkout-catalogue,
   generators, job-board, ops-email-tests, payments-delivery).
 - **W3. The apply agent is retired.** `agent_sender_public_status` answers
-  false (it answered true on 2026-10-18), or wave 4's retirement sentence is
-  served on /trust. Verify claim C10.
+  false (it answered true on 2026-10-18 and again at 2026-10-25 01:02 UTC),
+  or wave 4's retirement sentence is served on /trust. Verify claim C10.
 - **W4. hp/honesty and hp/scanner exist on origin and are merged.** Neither
   does today (`git ls-remote --heads origin 'hp/*'` lists hp/home,
   hp/pricing, hp/integration). hp/honesty owns the Footer edit (step 9), the
   quiet Header, `src/config/sales-gate.ts`, PurchaseTerms' final-sale and
   region lines and H0; hp/scanner owns Index (delete-only) and the
   ResumeUploader gate.
-- **W5. G3: the IP lookup is real, or its clause goes.** Both pages say
-  checkout turns buyers away from "a lookup of the IP address". Without
-  `IPINFO_API_KEY`, `_shared/sales-territory.ts` `ipinfoLookup()` returns null
-  and "a lookup that cannot answer refuses nobody". The owner confirms the
-  key is set and the Stripe Radar rule (card country and IP country in the
-  EU-27, IS, LI, NO, GB and IN) is in place, or accepts their absence in
-  writing; in that case the IP clause first comes out of
+- **W5. G3: DECIDED 2026-10-24, the IP clause is dropped; no longer a
+  precondition.** Without `IPINFO_API_KEY`, `_shared/sales-territory.ts`
+  `ipinfoLookup()` returns null and "a lookup that cannot answer refuses
+  nobody", so a sentence naming the IP lookup could be false on the day it
+  ships. The owner chose the second branch of G3: both pages describe only
+  the currency and time-zone checks. Done on this branch:
   `home.plans.termTerritory`, `pricingPlans.before.regionBody`,
-  `faq.regionA` and `faq.regionANoAlerts` in all nine languages, leaving
-  the currency and time-zone checks.
+  `faq.regionA` and `faq.regionANoAlerts` no longer name the lookup in any
+  of the nine languages, held by `hp-fix-no-ip-lookup` (no string either
+  page carries names an IP address or the lookup service). Nothing waits on
+  the key or the Stripe Radar rule for the publish. If the owner later
+  confirms both, bringing the clause back is its own change, made together
+  with that test.
 - **W6. G4: R1 is a verified deploy.** Its `verifiedDeploys` entry is on main
   (ea8acb5e, PR #37: 950 PASS; section 94 passes except the owner's SPF
   record and the Resend webhook secret). Re-read sections 94-96 before the
@@ -414,7 +442,8 @@ until each opens. G7's server side is wave 4's and ships with W2.
   `../components/pricing/strings/` becomes `../i18n/shards/pricing/` in
   `hp-home-strings`, `hp-pricing-strings`, `hp-integration-one-voice`,
   `hp-fix-never-submit`, `hp-fix-alerts-one-answer`, `hp-fix-minors`,
-  `hp-fix-language-swap` and `hp-pricing-decisions` (its `en` import);
+  `hp-fix-language-swap`, `hp-fix-no-ip-lookup` (its `HOME_DIR` and
+  `PRICING_DIR`) and `hp-pricing-decisions` (its `en` import);
   `hp-fix-renewal-box` imports `@/i18n/shards/pricing/en.json`. Delete the
   "home strings loader" block in `hp-home-search-and-strings.test.tsx`, the
   "interim loader" block in `hp-pricing-strings.test.ts`, and the "pricing
@@ -530,6 +559,14 @@ copy: a key in both fails the shard guard's collision rule.
     `w4b-pro-is-the-writing-tools-the-full-analysis-and-no-daily-scan-cap.test.ts`
     line 117 (107 on checkout-catalogue), replace `"src/pages/Pricing.tsx"`
     with `"src/components/pricing/PlanCards.tsx"`.
+- wave 4's `w4b-fix2-the-homepage-stores-nothing-for-analytics-before-a-choice.test.tsx`
+  (9af3c783, line 90) mounts `<Index />` at "/" as "the homepage". After
+  step 1 "/" is `HomePage`: re-point that case to
+  `import HomePage from "@/pages/home/HomePage";` mounted at "/" (it stores
+  nothing: the new "/" mounts no scroll or time hook, step 13), and keep the
+  `Index` mount as a second case at "/resume-checker" with
+  `landing={TOOL_LANDINGS["resume-checker"]}`, where the scanner's hooks
+  now run.
 - Delete `preview-home.html`, `preview-pricing.html`, `src/preview/home.tsx`,
   `src/preview/pricing.tsx`, `src/preview/pricing-network.ts` and
   `src/preview/preview-data.ts` with its fixture, or keep the home preview as
@@ -767,8 +804,9 @@ claim FAILs before the deploy by design.
 - C3 every `/jobs/field/` link on "/" is one of the category list's slugs;
   none is `/jobs/field/retail` or `/jobs/field/hospitality`.
 - C4 "/pricing" serves "All sales are final", names the EU, the EEA, the UK
-  and India, and names the currency, time zone and IP checks, without
-  "billing address".
+  and India, and names the currency and time-zone checks, without "billing
+  address" and without "IP address" or "lookup" (W5); "/" the same for its
+  territory line.
 - C5 while `sellerIdentity(SELLER)` is null in this checkout: no Offer for
   the Full Analysis or Pro in the JSON-LD of "/" or "/pricing", no buy
   control in the baked HTML, and the /pricing description names no price.
@@ -785,8 +823,9 @@ claim FAILs before the deploy by design.
 - C10 the apply agent is retired: `rpc/agent_sender_public_status` answers
   false, or /trust serves wave 4's retirement sentence; while neither holds,
   "/" and "/pricing" carry no "never submit".
-- G3 (W5) and G4 (W6) are owner and ledger preconditions; the section
-  prints them as notes, not claims.
+- G4 (W6) is a ledger precondition; the section prints it as a note, not a
+  claim. G3 (W5) was decided on 2026-10-24 (the IP clause dropped), so C4
+  holds the page to that decision instead.
 
 ### 15. Before and after
 
@@ -929,8 +968,9 @@ replaced). Nothing in the app imports `src/preview/**`; `vite build` builds
   plus "The Full Analysis is included." only once G2 has passed. Terms before
   any click: "All sales are final." · "Not yet sold in the EU, the EEA, the UK
   or India, until we are registered for tax there. Checkout turns away buyers
-  it can place there, from the currency, the browser's time zone and a lookup
-  of the IP address." · "Prices in US dollars."
+  it can place there, from the currency and the browser's time zone." (the
+  IP-lookup clause the builder wrote was dropped by owner decision W5,
+  2026-10-24) · "Prices in US dollars."
 - **4.7 FAQ (P3, P5).** Five questions, answers in the DOM while closed; the
   corrected "How current is a posting?"; fit "free, with no account, in the
   browser where you scanned or dropped your résumé"; systems named from the
@@ -1089,7 +1129,7 @@ checkout. The live reads the shipped page already makes
 | The Full Analysis is the only one-off; Builder API (planned), $49, "Proposed: 5,000 calls a day; set before launch" | `PlanCards.tsx`, `BuilderAndLicence.tsx` (wave 4's `dataApiPage.builder*` words) | decisions 13 ("sells nothing"); mirrors |
 | Buy buttons only with the seller's name AND address in `seller.ts`; until then "purchases open soon" | `sale-gates.ts`, `BuyBlock.tsx` | decisions 3 |
 | "All sales are final" beside every buy control | `SaleTermsLine` in each buy block | decisions 4 |
-| Not sold in the EU, EEA, UK or India, said before any click, naming currency, time zone and IP lookup (never a billing address) | `BeforeYouBuy.tsx` (the region item is always open), the FAQ | decisions 5 |
+| Not sold in the EU, EEA, UK or India, said before any click, naming the currency and time-zone checks (never a billing address; the IP lookup dropped by owner decision W5, 2026-10-24) | `BeforeYouBuy.tsx` (the region item is always open), the FAQ | decisions 5; `hp-fix-no-ip-lookup` |
 | Pro's separate, unchecked, required renewal box (AB 2863) | `ProBuyBlock` | decisions 6 |
 | One open-postings figure (openTotal from `get_board_vendor_counts`, with its `as_of`) | `FreeCard`, through the existing `useBoardVendorCounts` | decisions 10 |
 | Fit is free without an account | Free card ("No account needed"), the table, the FAQ | decisions 9 |
