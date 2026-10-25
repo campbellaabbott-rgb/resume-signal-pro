@@ -493,7 +493,11 @@ const trackPerformance = (startTime: number, operation: string, success: boolean
 // 2026-10-14.30 (wave 4 round 2 fixes): the signed-in account is read from a
 // website session only (CP-J / S9-001): a connected app's token is treated as
 // anonymous and spends no account's credits or scans.
-const FN_BUILD = "free-keyword-scan.2026-10-14.30";
+// 2026-10-25.1 (homepage switch-over, H0; reservation home-pricing): the code
+// is wave 4's; the free report stops printing its interview odds, apply
+// verdict and rank against other applicants, and this build says which
+// bundle ships with that report (verify section 99, C6).
+const FN_BUILD = "free-keyword-scan.2026-10-25.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

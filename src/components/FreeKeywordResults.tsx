@@ -442,8 +442,10 @@ export interface FreeKeywordResultsProps {
   experienceFit?: "underqualified" | "good_fit" | "overqualified";
   titleAlignment?: "poor" | "partial" | "strong";
   jobMatchSummary?: string;
+  /** Sent by the scan; not rendered: the free report makes no apply verdict (H0). */
   applicationRecommendation?: ApplicationRecommendation;
   skillGapActions?: SkillGapAction[];
+  /** Sent by the scan; not rendered: the free report ranks the reader against no one (H0). */
   competitiveAssessment?: CompetitiveAssessment;
   careerSituation?: CareerSituation;
   formatRecommendation?: FormatRecommendation;
@@ -519,6 +521,7 @@ export interface FreeKeywordResultsProps {
   subIndustry?: { id: string; label: string; matchedSignals: string[] };
   jdTargetIndustry?: string;
   industryBlend?: { primary: string; secondary: string; primaryPct: number; secondaryPct: number };
+  /** Sent by the scan; not rendered: the free report predicts no interview (H0). */
   interviewLikelihood?: { band: 'strong' | 'moderate' | 'low' | 'very_low'; composite: number; topFactor: string };
   competitorSilhouette?: {
     archetype: { quantifiedBullets: number; leadershipSignals: number; keywordCoveragePct: number };
@@ -633,9 +636,7 @@ export function FreeKeywordResults({
   experienceFit,
   titleAlignment,
   jobMatchSummary,
-  applicationRecommendation,
   skillGapActions: skillGapActionsProp,
-  competitiveAssessment,
   careerSituation,
   formatRecommendation,
   personalizedCareerInsights,
@@ -685,7 +686,6 @@ export function FreeKeywordResults({
   subIndustry,
   jdTargetIndustry,
   industryBlend,
-  interviewLikelihood,
   competitorSilhouette,
   fixRoadmap,
   reportVerdict,
@@ -830,7 +830,7 @@ export function FreeKeywordResults({
   const fullAnalysisPrice = PRODUCTS.fullAnalysis.priceUsd;
   const priceDisplay = isLocalCurrency ? `$${fullAnalysisPrice} ≈ ${formatPrice(fullAnalysisPrice)}` : `$${fullAnalysisPrice}`;
   
-  const getFirstCtaText = () => t('freeResults.cta.fixIssues', { price: priceDisplay });
+  const getFirstCtaText = () => `${t('uploader.actions.getFullAnalysis')} — ${priceDisplay}`;
   const getSecondCtaText = () => t('freeResults.cta.getFullAnalysis', { price: priceDisplay });
   const getFinalCtaText = () => t('freeScan.cta.button');
 
@@ -1981,68 +1981,9 @@ export function FreeKeywordResults({
             <div className="flex-1">
               <div className="flex items-center gap-2">
                 <h4 className="font-bold text-lg">{t('freeResults.jobMatch.title')}</h4>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-success/20 text-success font-medium">{t('freeResults.jobMatch.badge')}</span>
               </div>
-              <p className="text-xs text-muted-foreground">{t('freeResults.jobMatch.subtitle')}</p>
             </div>
           </div>
-
-          {/* Application Recommendation Banner */}
-          {applicationRecommendation && (
-            <div className={cn(
-              "rounded-xl p-4 mb-4 border-2",
-              applicationRecommendation.recommendation === "strong_apply" ? "bg-success/10 border-success/40" :
-              applicationRecommendation.recommendation === "apply_with_changes" ? "bg-warning/10 border-warning/40" :
-              applicationRecommendation.recommendation === "apply_as_stretch" ? "bg-primary/10 border-primary/40" :
-              "bg-destructive/10 border-destructive/40"
-            )}>
-              <div className="flex items-center gap-3 mb-2">
-                <div className={cn(
-                  "p-2 rounded-full",
-                  applicationRecommendation.recommendation === "strong_apply" ? "bg-success/20" :
-                  applicationRecommendation.recommendation === "apply_with_changes" ? "bg-warning/20" :
-                  applicationRecommendation.recommendation === "apply_as_stretch" ? "bg-primary/20" :
-                  "bg-destructive/20"
-                )}>
-                  {applicationRecommendation.recommendation === "strong_apply" ? (
-                    <CheckCircle2 className="w-5 h-5 text-success" />
-                  ) : applicationRecommendation.recommendation === "apply_with_changes" ? (
-                    <Zap className="w-5 h-5 text-warning" />
-                  ) : applicationRecommendation.recommendation === "apply_as_stretch" ? (
-                    <Target className="w-5 h-5 text-primary" />
-                  ) : (
-                    <XCircle className="w-5 h-5 text-destructive" />
-                  )}
-                </div>
-                <div>
-                  <p className={cn(
-                    "font-bold text-lg",
-                    applicationRecommendation.recommendation === "strong_apply" ? "text-success" :
-                    applicationRecommendation.recommendation === "apply_with_changes" ? "text-warning" :
-                    applicationRecommendation.recommendation === "apply_as_stretch" ? "text-primary" :
-                    "text-destructive"
-                  )}>
-                    {applicationRecommendation.recommendation === "strong_apply" ? t('freeResults.appRecommendation.strongApply') :
-                     applicationRecommendation.recommendation === "apply_with_changes" ? t('freeResults.appRecommendation.applyWithChanges') :
-                     applicationRecommendation.recommendation === "apply_as_stretch" ? t('freeResults.appRecommendation.applyAsStretch') :
-                     t('freeResults.appRecommendation.doNotApply')}
-                  </p>
-                  <p className="text-sm text-muted-foreground">{applicationRecommendation.reasoning}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <span>{t('freeResults.jobMatch.confidence')}</span>
-                <span className={cn(
-                  "px-2 py-0.5 rounded-full font-medium",
-                  applicationRecommendation.confidence === "high" ? "bg-success/20 text-success" :
-                  applicationRecommendation.confidence === "medium" ? "bg-warning/20 text-warning" :
-                  "bg-muted text-muted-foreground"
-                )}>
-                  {applicationRecommendation.confidence}
-                </span>
-              </div>
-            </div>
-          )}
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
             {/* Match Score */}
@@ -2092,40 +2033,6 @@ export function FreeKeywordResults({
               </div>
             )}
           </div>
-
-          {/* Competitive Assessment */}
-          {competitiveAssessment && (
-            <div className="rounded-xl bg-card border border-border p-4 mb-4">
-              <h5 className="font-semibold text-sm mb-3 flex items-center gap-2">
-                <Briefcase className="w-4 h-4 text-primary" />
-                {t('freeResults.jobMatch.howYouCompare')}
-              </h5>
-              <div className="flex items-center gap-3 mb-3">
-                <div className={cn(
-                  "px-3 py-1.5 rounded-lg font-semibold text-sm",
-                  competitiveAssessment.likelyPosition === "top_candidate" ? "bg-success/20 text-success" :
-                  competitiveAssessment.likelyPosition === "competitive" ? "bg-primary/20 text-primary" :
-                  competitiveAssessment.likelyPosition === "middle_of_pack" ? "bg-warning/20 text-warning" :
-                  "bg-destructive/20 text-destructive"
-                )}>
-                  {competitiveAssessment.likelyPosition === "top_candidate" ? t('freeResults.competitivePosition.top') :
-                   competitiveAssessment.likelyPosition === "competitive" ? t('freeResults.competitivePosition.competitive') :
-                   competitiveAssessment.likelyPosition === "middle_of_pack" ? t('freeResults.competitivePosition.middle') :
-                   t('freeResults.competitivePosition.unlikely')}
-                </div>
-              </div>
-              <div className="grid sm:grid-cols-2 gap-3">
-                <div className="p-3 rounded-lg bg-success/5 border border-success/20">
-                  <p className="text-xs text-success font-medium mb-1">{t('freeResults.competitivePosition.yourAdvantage')}</p>
-                  <p className="text-sm text-foreground">{competitiveAssessment.strengthVsField}</p>
-                </div>
-                <div className="p-3 rounded-lg bg-destructive/5 border border-destructive/20">
-                  <p className="text-xs text-destructive font-medium mb-1">{t('freeResults.competitivePosition.yourGap')}</p>
-                  <p className="text-sm text-foreground">{competitiveAssessment.weaknessVsField}</p>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Skills Matching */}
           <div className="grid sm:grid-cols-2 gap-4 mb-4">
@@ -3804,45 +3711,6 @@ export function FreeKeywordResults({
           })()}
           <p className="text-[10px] text-muted-foreground">
             Methodology: percentile is a normal-distribution estimate against your industry's median ATS score; pass rate is banded from your score against common ATS filter thresholds. Both are estimates, not guarantees.
-          </p>
-        </div>
-      )}
-
-      {/* ── Interview Likelihood ─────────────────────────────────────────────── */}
-      {interviewLikelihood && (
-        <div className={cn(
-          "rounded-2xl border p-5",
-          interviewLikelihood.band === 'strong' ? "border-success/30 bg-success/5" :
-          interviewLikelihood.band === 'moderate' ? "border-primary/30 bg-primary/5" :
-          "border-destructive/30 bg-destructive/5"
-        )}>
-          <div className="flex items-center gap-2 mb-2">
-            <Target className="w-4 h-4 text-foreground" />
-            <h4 className="font-semibold text-foreground text-sm">{t('freeResults.enterprise.interviewLikelihood', 'Interview Callback Likelihood')}</h4>
-            <span className={cn(
-              "ml-auto text-xs px-2 py-0.5 rounded-full font-semibold capitalize",
-              interviewLikelihood.band === 'strong' ? "bg-success/15 text-success" :
-              interviewLikelihood.band === 'moderate' ? "bg-primary/15 text-primary" :
-              "bg-destructive/15 text-destructive"
-            )}>
-              {(interviewLikelihood.band ?? '').replace('_', ' ')}
-            </span>
-          </div>
-          <div className="h-2 rounded-full bg-muted overflow-hidden mb-2">
-            <div
-              className={cn(
-                "h-full rounded-full",
-                interviewLikelihood.band === 'strong' ? "bg-success" :
-                interviewLikelihood.band === 'moderate' ? "bg-primary" : "bg-destructive"
-              )}
-              style={{ width: `${interviewLikelihood.composite}%` }}
-            />
-          </div>
-          <p className="text-xs text-muted-foreground">
-            <span className="font-medium text-foreground">Biggest factor:</span> {interviewLikelihood.topFactor}
-          </p>
-          <p className="text-[10px] text-muted-foreground mt-2">
-            Methodology: weighted blend of ATS pass rate (45%), peer percentile (35%), and critical red flags (20%).
           </p>
         </div>
       )}

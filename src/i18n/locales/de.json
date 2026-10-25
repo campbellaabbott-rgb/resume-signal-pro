@@ -180,7 +180,6 @@
       "lever": "Lever-Ratgeber",
       "icims": "iCIMS-Ratgeber",
       "vsJobscan": "vs. Jobscan",
-      "freelanceBoost": "Freelance Boost",
       "builder": "Lebenslauf-Editor",
       "methodology": "Methodik",
       "dataApi": "Einstellungsdaten & API",
@@ -1517,8 +1516,6 @@
     },
     "jobMatch": {
       "title": "Jobübereinstimmungsanalyse",
-      "badge": "Kostenlos & Unbegrenzt",
-      "subtitle": "Vergleiche deinen Lebenslauf mit einer Stelle — keine Limits!",
       "matchScore": "Übereinstimmungswert",
       "matchGrade": "Übereinstimmungsnote",
       "experienceFit": "Erfahrungspassung",
@@ -1540,12 +1537,6 @@
         "title": "Möchtest du das komplette Paket?",
         "subtitle": "Vollständig zugeschnittener Lebenslauf, Anschreiben, ehrliche Kompetenzlücken-Hinweise und eine Einreichungscheckliste — du prüfst und bewirbst dich selbst"
       }
-    },
-    "appRecommendation": {
-      "strongApply": "✓ Starke Übereinstimmung — Jetzt bewerben!",
-      "applyWithChanges": "⚡ Gut geeignet — Nach schnellen Korrekturen bewerben",
-      "applyAsStretch": "🎯 Herausfordernde Stelle — Als ambitionierte Bewerbung einreichen",
-      "doNotApply": "✗ Schlechte Eignung — Andere Stellen in Betracht ziehen"
     },
     "atsBanner": {
       "belowMedian": "Unter dem Median von {{median}} bei {{n}} hier gescannten Lebensläufen aus {{industry}}. Die großen ATS-Plattformen lehnen nicht anhand dieser Zahl ab, aber die Korrekturen unten erhöhen sie.",
@@ -1681,16 +1672,7 @@
       "skillsHighlighted": "Fähigkeiten hervorgehoben",
       "instantDownload": "Sofort-Download"
     },
-    "competitivePosition": {
-      "top": "🏆 Topkandidat",
-      "competitive": "💪 Wettbewerbsfähig",
-      "middle": "📊 Mittelfeld",
-      "unlikely": "⚠️ Kaum Chancen",
-      "yourAdvantage": "Dein Vorteil",
-      "yourGap": "Deine Lücke"
-    },
     "cta": {
-      "fixIssues": "Sehen, was Bewerbungen kostet — {{price}}",
       "getFullAnalysis": "Meinen bewerbungsfertigen Lebenslauf holen — {{price}}",
       "socialProof": "{{count}} Lebensläufe heute geprüft"
     },
@@ -1700,7 +1682,6 @@
       "downloadPdf": "PDF-Zusammenfassung herunterladen",
       "nextActionLabel": "Ihre wichtigste nächste Maßnahme",
       "howYouCompare": "So schneiden Sie ab",
-      "interviewLikelihood": "Wahrscheinlichkeit einer Interview-Einladung",
       "xrayTitle": "Lebenslauf-Röntgen",
       "emailTitle": "Bericht per E-Mail senden",
       "emailDesc": "Erhalten Sie diese Zusammenfassung und Ihren Verbesserungsplan per E-Mail — praktisch zum späteren Abarbeiten.",
@@ -5507,6 +5488,8 @@
     "agentDigest": "Die morgendlichen Shortlist-E-Mails beenden. Ihr Agent läuft weiter, und seine Vorschläge bleiben in Ihrem Konto."
   },
   "purchaseTerms": {
+    "finalSale": "Alle Käufe sind endgültig.",
+    "regionLine": "Noch nicht in der EU, im EWR, im Vereinigten Königreich oder in Indien erhältlich. Der Checkout weist Käufer ab, die er dort verorten kann: anhand der Währung und der Zeitzone, die Ihr Gerät meldet.",
     "agree": "Indem Sie fortfahren, stimmen Sie den <terms>Nutzungsbedingungen</terms> und der <privacy>Datenschutzerklärung</privacy> zu.",
     "renewal": "{{price}} pro Monat, verlängert sich automatisch, bis Sie kündigen. Kündigen Sie jederzeit in Ihrem Konto.",
     "agentTrial": "Neue Abonnenten erhalten {{days}} Tage kostenlos, danach {{price}} pro Monat, automatisch verlängert, bis Sie kündigen. Kündigen Sie vor Ende des Testzeitraums, wird nichts berechnet. Wer schon einmal abonniert hatte, zahlt ab dem ersten Tag.",

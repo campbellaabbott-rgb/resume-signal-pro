@@ -180,7 +180,6 @@
       "lever": "Lever-gids",
       "icims": "iCIMS-gids",
       "vsJobscan": "vs Jobscan",
-      "freelanceBoost": "Freelance Boost",
       "builder": "Cv-maker",
       "methodology": "Methodologie",
       "dataApi": "Wervingsdata en API",
@@ -1517,8 +1516,6 @@
     },
     "jobMatch": {
       "title": "Vacature-matchanalyse",
-      "badge": "Gratis & Onbeperkt",
-      "subtitle": "Vergelijk jouw cv met elke vacature — geen limieten!",
       "matchScore": "Matchscore",
       "matchGrade": "Matchcijfer",
       "experienceFit": "Ervaringsfit",
@@ -1540,12 +1537,6 @@
         "title": "Wil je het complete pakket?",
         "subtitle": "Volledig gepersonaliseerd cv, begeleidingsbrief, eerlijke vaardigheidskloof-opmerkingen en een inzendingenlijst"
       }
-    },
-    "appRecommendation": {
-      "strongApply": "✓ Sterke match — Solliciteer nu!",
-      "applyWithChanges": "⚡ Goede fit — Solliciteer na snelle fixes",
-      "applyAsStretch": "🎯 Uitdagende rol — Solliciteer als ambitieuze keuze",
-      "doNotApply": "✗ Slechte fit — Overweeg andere rollen"
     },
     "atsBanner": {
       "belowMedian": "Onder de mediaan van {{median}} bij {{n}} hier gescande cv's uit {{industry}}. De grote ATS-platforms wijzen niet af op dit getal, maar de verbeteringen hieronder verhogen het.",
@@ -1681,16 +1672,7 @@
       "skillsHighlighted": "Vaardigheden uitgelicht",
       "instantDownload": "Direct downloaden"
     },
-    "competitivePosition": {
-      "top": "🏆 Topper",
-      "competitive": "💪 Competitief",
-      "middle": "📊 In het midden",
-      "unlikely": "⚠️ Weinig kans",
-      "yourAdvantage": "Jouw voordeel",
-      "yourGap": "Jouw kloof"
-    },
     "cta": {
-      "fixIssues": "Zie wat sollicitaties kost — {{price}}",
       "getFullAnalysis": "Mijn recruiter-klaar cv ophalen — {{price}}",
       "socialProof": "{{count}} cv's vandaag gescand"
     },
@@ -1700,7 +1682,6 @@
       "downloadPdf": "PDF-samenvatting downloaden",
       "nextActionLabel": "Jouw belangrijkste volgende stap",
       "howYouCompare": "Hoe je je verhoudt",
-      "interviewLikelihood": "Kans op een sollicitatiegesprek",
       "xrayTitle": "Cv-röntgenfoto",
       "emailTitle": "E-mail mijn rapport",
       "emailDesc": "Ontvang deze samenvatting en je verbeterplan in je inbox — handig om de verbeteringen later door te voeren.",
@@ -5507,6 +5488,8 @@
     "agentDigest": "Stop de e-mails met de ochtendselectie. Je agent blijft draaien en zijn keuzes blijven in je account staan."
   },
   "purchaseTerms": {
+    "finalSale": "Alle verkopen zijn definitief.",
+    "regionLine": "Nog niet te koop in de EU, de EER, het VK of India. De kassa weigert kopers die hij daar kan plaatsen, aan de hand van de valuta en de tijdzone die je apparaat doorgeeft.",
     "agree": "Door verder te gaan ga je akkoord met de <terms>Servicevoorwaarden</terms> en het <privacy>Privacybeleid</privacy>.",
     "renewal": "{{price}} per maand, wordt automatisch verlengd tot je opzegt. Zeg op wanneer je wilt via je account.",
     "agentTrial": "Nieuwe abonnees krijgen {{days}} dagen gratis, daarna {{price}} per maand, automatisch verlengd tot je opzegt. Zeg op voordat de proefperiode eindigt en je betaalt niets. Wie eerder abonnee was, betaalt vanaf de eerste dag.",

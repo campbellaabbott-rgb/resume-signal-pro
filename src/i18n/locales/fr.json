@@ -180,7 +180,6 @@
       "lever": "Guide Lever",
       "icims": "Guide iCIMS",
       "vsJobscan": "vs Jobscan",
-      "freelanceBoost": "Freelance Boost",
       "builder": "Créateur de CV",
       "methodology": "Méthodologie",
       "dataApi": "Données de recrutement et API",
@@ -1523,8 +1522,6 @@
     },
     "jobMatch": {
       "title": "Analyse de correspondance d'emploi",
-      "badge": "Gratuit & Illimité",
-      "subtitle": "Comparez votre CV à n'importe quel emploi — sans limites !",
       "matchScore": "Score de correspondance",
       "matchGrade": "Note de correspondance",
       "experienceFit": "Adéquation de l'expérience",
@@ -1546,12 +1543,6 @@
         "title": "Vous voulez le package complet ?",
         "subtitle": "CV complet personnalisé, lettre de motivation, signalements honnêtes des lacunes de compétences et une liste de contrôle de soumission"
       }
-    },
-    "appRecommendation": {
-      "strongApply": "✓ Excellente correspondance — Postulez maintenant !",
-      "applyWithChanges": "⚡ Bon candidat — Postulez après des corrections rapides",
-      "applyAsStretch": "🎯 Rôle ambitieux — Postulez comme candidature ambitieuse",
-      "doNotApply": "✗ Mauvaise adéquation — Considérez d'autres rôles"
     },
     "atsBanner": {
       "belowMedian": "Sous la médiane de {{median}} parmi {{n}} CV du secteur {{industry}} analysés ici. Les grands ATS ne rejettent pas sur ce chiffre, mais les corrections ci-dessous le font monter.",
@@ -1691,16 +1682,7 @@
       "skillsHighlighted": "Compétences mises en évidence",
       "instantDownload": "Téléchargement instantané"
     },
-    "competitivePosition": {
-      "top": "🏆 Candidat principal",
-      "competitive": "💪 Compétitif",
-      "middle": "📊 Dans la moyenne",
-      "unlikely": "⚠️ Peu de chances",
-      "yourAdvantage": "Votre avantage",
-      "yourGap": "Votre lacune"
-    },
     "cta": {
-      "fixIssues": "Voir ce qui vous coûte des entretiens — {{price}}",
       "getFullAnalysis": "Obtenir mon CV prêt pour les recruteurs — {{price}}",
       "socialProof": "{{count}} CV analysés aujourd'hui"
     },
@@ -1710,7 +1692,6 @@
       "downloadPdf": "Télécharger le résumé PDF",
       "nextActionLabel": "Votre action n°1",
       "howYouCompare": "Votre positionnement",
-      "interviewLikelihood": "Probabilité de rappel pour un entretien",
       "xrayTitle": "Radiographie du CV",
       "emailTitle": "Recevoir mon rapport par e-mail",
       "emailDesc": "Recevez ce résumé et votre plan d’action dans votre boîte mail — pratique pour appliquer les corrections plus tard.",
@@ -5543,6 +5524,8 @@
     "agentDigest": "Arrêter les e-mails de la sélection du matin. Votre agent continue de tourner et ses choix restent dans votre compte."
   },
   "purchaseTerms": {
+    "finalSale": "Toutes les ventes sont définitives.",
+    "regionLine": "Pas encore vendu dans l'UE, l'EEE, au Royaume-Uni ni en Inde. Le paiement refuse les acheteurs qu'il peut y situer, d'après la devise et le fuseau horaire indiqué par votre appareil.",
     "agree": "En continuant, vous acceptez les <terms>Conditions d'utilisation</terms> et la <privacy>Politique de confidentialité</privacy>.",
     "renewal": "{{price}} par mois, renouvelé automatiquement jusqu'à ce que vous résiliiez. Résiliez quand vous voulez depuis votre compte.",
     "agentTrial": "Les nouveaux abonnés ont {{days}} jours gratuits, puis {{price}} par mois, renouvelé automatiquement jusqu'à résiliation. Résiliez avant la fin de l'essai et rien ne vous sera facturé. Un ancien abonné paie dès le premier jour.",

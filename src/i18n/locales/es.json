@@ -180,7 +180,6 @@
       "lever": "Guía de Lever",
       "icims": "Guía de iCIMS",
       "vsJobscan": "vs. Jobscan",
-      "freelanceBoost": "Freelance Boost",
       "builder": "Creador de currículum",
       "methodology": "Metodología",
       "dataApi": "Datos de contratación y API",
@@ -1523,8 +1522,6 @@
     },
     "jobMatch": {
       "title": "Análisis de compatibilidad laboral",
-      "badge": "Gratis e ilimitado",
-      "subtitle": "¡Compara tu currículum con cualquier trabajo — sin límites!",
       "matchScore": "Puntuación de compatibilidad",
       "matchGrade": "Calificación de compatibilidad",
       "experienceFit": "Ajuste de experiencia",
@@ -1546,12 +1543,6 @@
         "title": "¿Quieres el paquete completo?",
         "subtitle": "Currículum completo personalizado, carta de presentación, señalamientos honestos de brechas de habilidades y una lista de verificación de envío"
       }
-    },
-    "appRecommendation": {
-      "strongApply": "✓ Excelente coincidencia — ¡Aplica ahora!",
-      "applyWithChanges": "⚡ Buen candidato — Aplica después de correcciones rápidas",
-      "applyAsStretch": "🎯 Rol desafiante — Aplica como ambicioso",
-      "doNotApply": "✗ Mala compatibilidad — Considera otros puestos"
     },
     "atsBanner": {
       "belowMedian": "Por debajo de la mediana de {{median}} entre {{n}} currículums de {{industry}} escaneados aquí. Los principales ATS no rechazan por esta cifra, pero las correcciones de abajo la suben.",
@@ -1691,16 +1682,7 @@
       "skillsHighlighted": "Habilidades destacadas",
       "instantDownload": "Descarga instantánea"
     },
-    "competitivePosition": {
-      "top": "🏆 Candidato principal",
-      "competitive": "💪 Competitivo",
-      "middle": "📊 En el pelotón",
-      "unlikely": "⚠️ Pocas probabilidades",
-      "yourAdvantage": "Tu ventaja",
-      "yourGap": "Tu brecha"
-    },
     "cta": {
-      "fixIssues": "Ver qué te cuesta entrevistas — {{price}}",
       "getFullAnalysis": "Obtener mi CV listo para reclutadores — {{price}}",
       "socialProof": "{{count}} CV analizados hoy"
     },
@@ -1710,7 +1692,6 @@
       "downloadPdf": "Descargar resumen en PDF",
       "nextActionLabel": "Tu acción #1",
       "howYouCompare": "Cómo te comparas",
-      "interviewLikelihood": "Probabilidad de entrevista",
       "xrayTitle": "Radiografía del currículum",
       "emailTitle": "Envíame mi informe",
       "emailDesc": "Recibe este resumen y tu plan de mejora en tu correo — útil para aplicar los cambios después.",
@@ -5543,6 +5524,8 @@
     "agentDigest": "Dejar de recibir los correos de la lista de la mañana. Tu agente sigue funcionando y sus selecciones siguen en tu cuenta."
   },
   "purchaseTerms": {
+    "finalSale": "Todas las ventas son definitivas.",
+    "regionLine": "Aún no se vende en la UE, el EEE, el Reino Unido ni la India. El pago rechaza a los compradores que puede ubicar allí, por la moneda y la zona horaria que indica tu dispositivo.",
     "agree": "Al continuar, aceptas los <terms>Términos del servicio</terms> y la <privacy>Política de privacidad</privacy>.",
     "renewal": "{{price}} al mes, con renovación automática hasta que canceles. Cancela cuando quieras desde tu cuenta.",
     "agentTrial": "Quienes se suscriben por primera vez tienen {{days}} días gratis; después, {{price}} al mes, con renovación automática hasta que canceles. Cancela antes de que termine la prueba y no se te cobrará. Si ya te suscribiste antes, pagas desde el primer día.",

@@ -10,10 +10,21 @@
  *     buttons said neither.
  *   - While the EU/UK switch is on (off by default), the box the server
  *     requires before a checkout.
- *   - While it is off, to a browser whose time zone is in the EU, the EEA,
- *     the UK or India: that sales there wait for the tax registration
- *     (S12-059), so the buyer reads it beside every buy button before
- *     pressing, not after.
+ *   - "All sales are final.", above every payment and plan (homepage and
+ *     pricing spec of 2026-10-17, "Before you buy": the before-audit found six
+ *     paid entry points and none said it). The pricing page uses the same
+ *     sentence in each language.
+ *   - While the EU/UK switch is off, one region line to every buyer: not sold
+ *     in the EU, the EEA, the UK or India yet (S12-059; India by owner
+ *     decision 2026-10-17), and that checkout turns buyers away by the
+ *     currency and the time zone the device reports. Those are the two checks
+ *     every checkout runs; its third signal answers only with a key that is
+ *     not set, so the line never names it (owner decision W5, 2026-10-24).
+ *     ONE region statement per block: RegionNotice, which only a browser
+ *     whose time zone is in the territory saw, no longer renders here,
+ *     because the line covers every buyer, including one turned away by the
+ *     currency whose time zone the notice could not place. (The Pro card
+ *     still shows RegionNotice in place of its button to such a browser.)
  *   - For Pro, a separate, unticked box agreeing to the automatic renewal
  *     (owner decision 2026-10-17; California's automatic renewal law as
  *     amended by AB 2863). The server refuses a plan without it, and the card
@@ -30,8 +41,6 @@ import {
 } from "@/lib/purchase-terms";
 import { cn } from "@/lib/utils";
 import { SellerIdentity } from "@/components/SellerIdentity";
-import { RegionNotice } from "@/components/checkout/RegionNotice";
-import { inSalesTerritory } from "@/lib/checkout-territory";
 
 type Props = {
   /** What the button starts: a one-time payment, a plan, or a new account. */
@@ -79,14 +88,20 @@ export function PurchaseTerms({ kind, plan, className, onAutoRenewChange }: Prop
   const boxShown = useEuUkBoxShown();
   useEffect(() => { if (kind !== "signup") askServerForEuUkSwitch(); }, [kind]);
   const box = kind === "payment" ? "withdrawalWaiver" : "serviceStartConsent";
-  // Not yet sold where this browser is (S12-059): said before the press.
-  const regionRefused = kind !== "signup" && !boxShown && inSalesTerritory();
+  // A purchase, not a sign-up: final, and (while EU and UK sales are off) not
+  // sold in the territory, said to every buyer before the press.
+  const sale = kind !== "signup";
   const proPrice = `$${SUBSCRIPTIONS.pro.priceUsd}`;
   const agentPrice = `$${SUBSCRIPTIONS.agent.priceUsd}`;
 
   return (
     <div ref={ref} className={cn("space-y-1.5 text-xs text-muted-foreground", className)} data-testid="purchase-terms">
-      {regionRefused && <RegionNotice className="text-left" />}
+      {sale && <p data-final-sale="">{t("purchaseTerms.finalSale", "All sales are final.")}</p>}
+      {sale && !boxShown && (
+        <p data-region-line="">
+          {t("purchaseTerms.regionLine", "Not sold in the EU, the EEA, the UK or India yet. Checkout turns away buyers it can place there, from the currency and the time zone your device reports.")}
+        </p>
+      )}
       {plan === "pro" && (
         <p>{t("purchaseTerms.renewal", { price: proPrice })}</p>
       )}

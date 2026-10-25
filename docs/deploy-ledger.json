@@ -192,6 +192,15 @@
       "status": "phases 0-2 (identity, the hiring-record gate, perks) and the design upgrade (passes A and B, the Track 1 accuracy round, the bake round) deploy TOGETHER from design/integration as one integration PR; design/ and pd/ branches belong to this reservation. Published 2026-10-18 from main 57815de9 (PR #36); not verified until the pd/hotfix PR (migration 20261012137000, then a frontend publish) is deployed and sections 80, 81 and 83 pass, and only then is its verifiedDeploys entry appended",
       "deployOrder": 2
     },
+    "seo-round": {
+      "branches": ["seo/"],
+      "migrations": "none",
+      "jobBoard": "none",
+      "fnBuildDate": "none",
+      "verifySections": ["98-seo-round.sh", "98-seo-speed.sh"],
+      "status": "every open SEO/GEO item (spec 2026-10-12, S12/S13 crawler items, the profiles+design after-audit residuals, the image follow-ups), integrated on seo/integration from seo/bake, seo/react and seo/speed; frontend and bake only, no function and no migration; merges into main after the profiles+design deploy (2026-10-18) is verified, and before wave 4. Verify section 98 is this round's (two files). Its README is docs/seo-round/README.md",
+      "deployOrder": 2.5
+    },
     "wave4": {
       "branches": ["wave4/", "w4/", "w4b/", "connect-apply/"],
       "migrations": "20261011*",
@@ -207,6 +216,15 @@
       "fnBuildDate": "2026-10-13",
       "status": "vendor benefits capture; its branches are profiles-p3/, so they are not taken for phases 0-2's profiles/",
       "deployOrder": 4
+    },
+    "home-pricing": {
+      "branches": ["hp/"],
+      "migrations": "none",
+      "jobBoard": "none",
+      "fnBuildDate": "2026-10-25 (free-keyword-scan only, H0)",
+      "verifySections": ["99-home-pricing.sh"],
+      "status": "the board-first homepage and the new pricing page: hp/integration's new files, hp/honesty (the quiet header, the footer without Freelance Boost, src/config/sales-gate.ts, PurchaseTerms' final-sale and region lines, H0) and hp/scanner (Index delete-only, the scanner's old addresses, the uploader's G1 and G2 gate), both cut from wave4/integration with main merged in; lands with the switch-over in docs/homepage-pricing/README.md, after wave 4; verify section 99",
+      "deployOrder": 5
     },
     "next": {
       "migrations": "20261015* and later, one day per workstream",

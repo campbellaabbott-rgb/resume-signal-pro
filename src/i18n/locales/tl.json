@@ -180,7 +180,6 @@
       "lever": "Gabay sa Lever",
       "icims": "Gabay sa iCIMS",
       "vsJobscan": "vs Jobscan",
-      "freelanceBoost": "Freelance Boost",
       "builder": "Resume Builder",
       "methodology": "Metodolohiya",
       "dataApi": "Hiring data at API",
@@ -1517,8 +1516,6 @@
     },
     "jobMatch": {
       "title": "Pagsusuri ng Pagtutugma sa Trabaho",
-      "badge": "Libre at Walang Limitasyon",
-      "subtitle": "Ikumpara ang iyong resume sa anumang trabaho — walang limitasyon!",
       "matchScore": "Score ng Pagtutugma",
       "matchGrade": "Grado ng Pagtutugma",
       "experienceFit": "Angkop na Karanasan",
@@ -1540,12 +1537,6 @@
         "title": "Gusto mo ba ang Kumpletong Package?",
         "subtitle": "Kumpletong tailored resume, cover letter, tapat na mga tala sa skill gap, at submission checklist"
       }
-    },
-    "appRecommendation": {
-      "strongApply": "✓ Malakas na Pagtutugma — Mag-apply Ngayon!",
-      "applyWithChanges": "⚡ Magandang Angkop — Mag-apply Pagkatapos ng Mabilis na Pag-aayos",
-      "applyAsStretch": "🎯 Mahirap na Papel — Mag-apply Bilang Ambisyoso",
-      "doNotApply": "✗ Mahinang Angkop — Isaalang-alang ang Iba pang mga Papel"
     },
     "atsBanner": {
       "belowMedian": "Mas mababa sa median na {{median}} sa {{n}} resume sa {{industry}} na na-scan dito. Hindi tumatanggi ang mga pangunahing ATS platform dahil sa numerong ito, pero itinataas ito ng mga ayos sa ibaba.",
@@ -1681,16 +1672,7 @@
       "skillsHighlighted": "Mga kasanayan na na-highlight",
       "instantDownload": "Agarang pag-download"
     },
-    "competitivePosition": {
-      "top": "🏆 Nangungunang Kandidato",
-      "competitive": "💪 Kompetitibo",
-      "middle": "📊 Sa Kalagitnaan",
-      "unlikely": "⚠️ Malamang Hindi Makaka-Advance",
-      "yourAdvantage": "Ang Iyong Kalamangan",
-      "yourGap": "Ang Iyong Agwat"
-    },
     "cta": {
-      "fixIssues": "Tingnan kung ano ang pumipigil sa mga interview — {{price}}",
       "getFullAnalysis": "Kunin ang aking recruiter-ready na resume — {{price}}",
       "socialProof": "{{count}} resume ang na-scan ngayong araw"
     },
@@ -1700,7 +1682,6 @@
       "downloadPdf": "I-download ang PDF na buod",
       "nextActionLabel": "Ang iyong #1 susunod na hakbang",
       "howYouCompare": "Paano ka kumpara",
-      "interviewLikelihood": "Posibilidad ng interview callback",
       "xrayTitle": "Resume X-Ray",
       "emailTitle": "I-email ang aking ulat",
       "emailDesc": "Matanggap ang buod at plano ng pag-aayos sa iyong inbox — kapaki-pakinabang sa paggawa ng mga ayos mamaya.",
@@ -5507,6 +5488,8 @@
     "agentDigest": "Itigil ang mga email ng shortlist tuwing umaga. Patuloy na tatakbo ang iyong agent, at mananatili sa iyong account ang mga pinili nito."
   },
   "purchaseTerms": {
+    "finalSale": "Final ang lahat ng benta.",
+    "regionLine": "Hindi pa ibinebenta sa EU, sa EEA, sa UK o sa India. Tinatanggihan ng checkout ang mga mamimiling matutukoy nitong naroon, batay sa currency at sa time zone na ibinibigay ng iyong device.",
     "agree": "Sa pagpapatuloy, sumasang-ayon ka sa <terms>Mga Tuntunin ng Serbisyo</terms> at sa <privacy>Patakaran sa Privacy</privacy>.",
     "renewal": "{{price}} bawat buwan, awtomatikong nire-renew hanggang kanselahin mo. Kanselahin kahit kailan mula sa iyong account.",
     "agentTrial": "Ang mga unang beses na subscriber ay may {{days}} araw na libre, pagkatapos ay {{price}} bawat buwan, awtomatikong nire-renew hanggang kanselahin mo. Kanselahin bago matapos ang trial at hindi ka sisingilin. Ang dating subscriber ay nagbabayad mula sa unang araw.",
