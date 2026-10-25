@@ -46,7 +46,10 @@ import { MARKETING_PAUSED, logMarketingPaused, marketingMailHeader, marketingPau
 // 2026-10-11.25: the monthly batch sends nothing while the seller has no legal
 // name and postal address (S12-010, _shared/marketing-pause.ts); the
 // confirmation a person asks for is not marketing and still goes.
-const FN_BUILD = "send-market-pulse.2026-10-11.25";
+// 2026-10-25.1 (homepage switch-over, step 11; reservation home-pricing): the
+// "Rescan my resume free" link names /resume-checker, since "/" becomes the
+// job board; mail already sent still reaches the scanner through the redirect.
+const FN_BUILD = "send-market-pulse.2026-10-25.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -292,7 +295,7 @@ Deno.serve(async (req) => {
         const unsubParams = { email: sub.cl_email, token };
         const unsubUrl = unsubscribePageUrl("market-pulse", unsubParams);
         const unsubHeaders = oneClickHeaders(oneClickUrl(Deno.env.get("SUPABASE_URL") ?? "", "send-market-pulse", unsubParams));
-        const rescanUrl = `${SITE_URL}/?utm_source=email&utm_medium=market_pulse&utm_campaign=rescan`;
+        const rescanUrl = `${SITE_URL}/resume-checker?utm_source=email&utm_medium=market_pulse&utm_campaign=rescan`;
         const industryLabel = industry.replace(/_/g, " ");
         const confirmedOn = String(sub.cl_confirmed_at ?? "").slice(0, 10);
 

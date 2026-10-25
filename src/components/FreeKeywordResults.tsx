@@ -26,6 +26,7 @@ import { RoleKeywordSuggestions } from "./RoleKeywordSuggestions";
 import { analyzeKeywordPresence } from "@/config/industry-keywords";
 import { PurchaseTerms } from "./PurchaseTerms";
 import { fullAnalysisOnSale } from "@/lib/purchases-open";
+import { scannerReturnPath } from "@/lib/scanner-address";
 import { PurchasesOpenSoon } from "@/components/checkout/PurchasesOpenSoon";
 import { proSummaryOnSale } from "@/config/pro-perks";
 import { Button } from "@/components/ui/button";
@@ -2236,7 +2237,7 @@ export function FreeKeywordResults({
               </Button>
               ) : (
                 <Link
-                  to={`/auth?next=${encodeURIComponent('/')}`}
+                  to={`/auth?next=${encodeURIComponent(scannerReturnPath())}`}
                   data-testid="tailored-resume-sign-in"
                   className="w-full inline-flex items-center justify-center gap-2 rounded-md bg-success px-4 py-2 text-sm font-semibold text-success-foreground hover:bg-success/90"
                 >
@@ -2351,7 +2352,7 @@ export function FreeKeywordResults({
                 {t('freeResults.interviewPrepSignIn.body', 'A free account includes one interview-prep set, one tailored résumé and one cover letter a day.')}
               </p>
               <Link
-                to={`/auth?next=${encodeURIComponent('/')}`}
+                to={`/auth?next=${encodeURIComponent(scannerReturnPath())}`}
                 className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
               >
                 {t('freeResults.interviewPrepSignIn.cta', 'Sign in or create a free account')}

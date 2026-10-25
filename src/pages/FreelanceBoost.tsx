@@ -415,7 +415,7 @@ export default function FreelanceBoost() {
                 >
                   Insert into my resume (builder) <ArrowRight className="w-3.5 h-3.5 ml-1" />
                 </Button>
-                <Button size="sm" variant="outline" asChild><Link to="/?utm_source=freelance_boost">Scan the result free <ArrowRight className="w-3.5 h-3.5 ml-1" /></Link></Button>
+                <Button size="sm" variant="outline" asChild><Link to="/resume-checker?utm_source=freelance_boost">Scan the result free <ArrowRight className="w-3.5 h-3.5 ml-1" /></Link></Button>
                 {sessionId && (
                   <Button size="sm" variant="outline" onClick={regenerate} disabled={generating} className="gap-1.5">
                     <RotateCcw className="w-3.5 h-3.5" />

@@ -115,7 +115,9 @@ describe("the front page states one subject and no frozen totals", () => {
     const app = strip(readFileSync(resolve(__dirname, "../App.tsx"), "utf8"));
     const mounts = app.match(/<Index\b[^>]*\/>/g) ?? [];
     expect(mounts.length, "App.tsx mounts Index").toBeGreaterThan(0);
-    for (const m of mounts) expect(m, "an Index route without a landing").toMatch(/landing=\{TOOL_LANDINGS\[/);
+    // "/" carries the scanner's landing under its own head until step 1
+    // (SCANNER_AT_ROOT, src/lib/scanner-address.ts).
+    for (const m of mounts) expect(m, "an Index route without a landing").toMatch(/landing=\{(?:TOOL_LANDINGS\[|SCANNER_AT_ROOT\})/);
   });
 
   it("no shipped surface hardcodes a board total", () => {

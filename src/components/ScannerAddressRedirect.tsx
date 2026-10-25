@@ -16,12 +16,17 @@ import { scannerAddressFor } from "@/lib/scanner-address";
  *   - "/?outcome=<answer>&rid=<report>": the outcome links in every scan
  *     report email sent so far (send-scan-report), which Index records;
  *   - the other query parameters only Index reads (coupon=, canceled=,
- *     scan_pack_success=, scan_pack_canceled=, session_id=).
+ *     scan_pack_success=, scan_pack_canceled=, session_id=);
+ *   - "/?ref=CODE", every affiliate link (the link builder and /r/:code),
+ *     which only Index's useAffiliateTracking records;
+ *   - the scanner's mail campaigns: the "Rescan free" links of the scan
+ *     report and the market pulse (utm_campaign=rescan) and every scan-report
+ *     link to "/" (utm_medium=scan_report), in mail already sent.
  *
  * This element sits on the "/" route, outside the lazy page, so a redirect
  * loads no page chunk before it moves (spec P27). It keeps the query and the
  * hash: Index reads both at /resume-checker exactly as it did at "/". Any other
- * address of "/" (utm_ tags, a bare visit) renders the route's page.
+ * address of "/" (other utm_ tags, a bare visit) renders the route's page.
  */
 
 export function ScannerAddressRedirect({ children }: { children: ReactNode }) {
