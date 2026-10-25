@@ -58,6 +58,7 @@ vi.mock("@/lib/resilient-edge-function", async (importOriginal) => {
 });
 
 import Index from "@/pages/Index";
+import { TOOL_LANDINGS } from "@/data/tool-landings";
 import { useScrollDepth } from "@/hooks/use-scroll-depth";
 import { useTimeOnPage } from "@/hooks/use-time-on-page";
 import { useFunnelTracking } from "@/hooks/use-funnel-tracking";
@@ -86,8 +87,12 @@ beforeEach(() => { sessionStorage.clear(); localStorage.clear(); resetConsentMem
 afterEach(cleanup);
 
 describe("before a choice", () => {
-  it("the homepage, mounted, leaves sessionStorage empty", async () => {
-    render(<HelmetProvider><MemoryRouter initialEntries={["/"]}><Index /></MemoryRouter></HelmetProvider>);
+  // The scanner's scroll and time hooks run where the scanner lives: since
+  // the homepage switch-over every Index route carries a landing, and the
+  // scanner's address is /resume-checker (the new homepage at "/" mounts no
+  // scroll or time hook; the switch-over adds its own case here).
+  it("the scanner at /resume-checker, mounted, leaves sessionStorage empty", async () => {
+    render(<HelmetProvider><MemoryRouter initialEntries={["/resume-checker"]}><Index landing={TOOL_LANDINGS["resume-checker"]} /></MemoryRouter></HelmetProvider>);
     await act(async () => { await new Promise((r) => setTimeout(r, 100)); });
     expect(keys()).toEqual([]);
   });

@@ -80,7 +80,7 @@ describe("no surface makes a claim the board's own data cannot prove", () => {
   it("the sweep reads what it says it reads", () => {
     expect(LOCALES.length).toBe(9);
     expect(APP.length).toBeGreaterThan(200);
-    expect(APP).toContain("src/components/HomeHero.tsx");
+    expect(APP).toContain("src/pages/Index.tsx");
     expect(statSync(resolve(ROOT, "public/llms.txt")).size).toBeGreaterThan(1000);
     // The shard directories are read too (none may exist before the listing
     // and company groups land; every one that exists is merged per language).
@@ -116,7 +116,9 @@ describe("no surface makes a claim the board's own data cannot prove", () => {
   it("the headline says where the jobs come from, in the shell, the SPA head and the bake", () => {
     const want = /Live Jobs Straight From Employers/;
     expect(read("index.html")).toMatch(want);
-    expect(codeOf(read("src/pages/Index.tsx"))).toMatch(want);
+    // The SPA head of "/" left Index with the homepage switch-over: Index is
+    // the scanner at /resume-checker and takes its head from the landing, and
+    // the new homepage's head is home.seo.title (held by hp-home-strings).
     expect(codeOf(read("scripts/prerender-seo.mjs"))).toMatch(want);
     const en = JSON.parse(read("src/i18n/locales/en.json"));
     expect(en.hero.headline.recruiterGrade).toBe("live jobs straight from employers' own hiring systems");

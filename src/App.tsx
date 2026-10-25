@@ -23,6 +23,7 @@ const TargetRolesDialog = lazy(() => import("./components/TargetRolesDialog").th
 // a spinner-flash on client-side nav to the homepage, not a blank landing.
 const Index = lazy(() => import("./pages/Index"));
 import { TOOL_LANDINGS } from "@/data/tool-landings";
+import { ScannerAddressRedirect } from "@/components/ScannerAddressRedirect";
 const Auth = lazy(() => import("./pages/Auth"));
 const Account = lazy(() => import("./pages/Account"));
 const Agent = lazy(() => import("./pages/Agent"));
@@ -107,7 +108,11 @@ const App = () => (
       <ScrollToTop />
       <Suspense fallback={null}>
         <Routes>
-          <Route path="/" element={<Index />} />
+          {/* The scanner's old addresses ("/#upload", the report emails'
+              "/?outcome=") go to /resume-checker before any page loads. Until
+              the homepage switch-over routes "/" to the new homepage, "/"
+              renders the scanner as /resume-checker does. */}
+          <Route path="/" element={<ScannerAddressRedirect><Index landing={TOOL_LANDINGS["resume-checker"]} /></ScannerAddressRedirect>} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/account" element={<Account />} />
           <Route path="/agent" element={<Agent />} />

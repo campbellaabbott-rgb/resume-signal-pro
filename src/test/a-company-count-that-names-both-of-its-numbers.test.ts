@@ -319,8 +319,10 @@ describe("the denominator obeys the same rule as the numerator", () => {
     expect(c).toMatch(/feeds: number \| null/);
   });
 
-  it("both heroes drop the clause instead of falling back", () => {
-    for (const p of ["src/components/JobBoardHero.tsx", "src/components/HomeHero.tsx"]) {
+  it("the board hero drops the clause instead of falling back", () => {
+    // The scanner's old homepage hero (HomeHero.tsx) left with the homepage
+    // switch-over; the new homepage prints the open-postings count only.
+    for (const p of ["src/components/JobBoardHero.tsx"]) {
       const c = code(read(p));
       expect(c, `${p} must not read companiesCount`).not.toMatch(/companiesCount/);
       expect(c, `${p} must gate on a measured value`).toMatch(/totals\.feeds !== null|feeds !== null/);

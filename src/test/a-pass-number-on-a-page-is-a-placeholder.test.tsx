@@ -292,7 +292,6 @@ function stubTable() {
 import AgentConnect, { MCP_URL } from "../pages/AgentConnect";
 import AgentPass from "../pages/AgentPass";
 import OAuthConsent from "../pages/OAuthConsent";
-import Index, { AgentOfferStrip } from "../pages/Index";
 import { MCP_ANON_CAPS } from "../config/mcp-tools";
 
 const USER = { id: "u1", email: "buyer@example.com" };
@@ -395,7 +394,7 @@ function spelledPassNumbers(code: string): string[] {
   return strip(code).match(re) ?? [];
 }
 
-describe("the connect-your-AI strip on the homepage", () => {
+describe("the homepage's connect line spells no pass number, in Index.tsx or in the crawler copy", () => {
   const INDEX_RAW = read("src/pages/Index.tsx");
 
   beforeEach(() => {
@@ -406,55 +405,20 @@ describe("the connect-your-AI strip on the homepage", () => {
     auth.session = null; auth.loading = false;
   });
 
-  it("mounts the whole homepage and renders the strip inside the hero band, with no number and no price", () => {
-    mount(<Index />, "/");
-    const hero = document.querySelector('section[aria-labelledby="home-hero-heading"]');
-    expect(hero, "the fused hero is on the page").not.toBeNull();
-    const el = hero!.querySelector("[data-agent-offer]");
-    expect(el, "the strip is INSIDE the hero band, not a second hero").not.toBeNull();
-    const text = el!.textContent ?? "";
-    // Count-free on purpose: the allowance's figures move with an owner
-    // decision, and no pass is sold.
-    expect(text).not.toMatch(/\d/);
-    expect(text).toMatch(/no account/i);
-    expect(text).toMatch(/never submits an application for you/);
-    expect(el!.querySelector("h1, h2, h3")).toBeNull();
-    expect(el!.querySelector("button")).toBeNull();
-    expect(document.querySelectorAll("h1").length).toBe(1);
-    // The hero itself claims no submissions either.
-    expect(hero!.textContent ?? "").not.toMatch(/applies for you|can submit for you|submits where/i);
-  });
-
-  for (const signedIn of [false, true]) {
-    it(`${signedIn ? "signed in" : "signed out"}: links /agents, offers no pass page, and calls nothing`, () => {
-      auth.session = signedIn ? { user: USER } : null;
-      mount(<AgentOfferStrip />, "/");
-      expect(screen.getByRole("link", { name: /connect your ai/i }).getAttribute("href")).toBe("/agents");
-      expect(screen.queryByRole("link", { name: /pass/i })).toBeNull();
-      expect(invoke).not.toHaveBeenCalled();
-    });
-  }
-
-  it("Add to Claude appears only behind its flag, as the documented install link", () => {
-    const { unmount } = mount(<AgentOfferStrip />, "/");
-    expect(document.querySelector("[data-add-to-claude]"), "the button shows while the flag is off").toBeNull();
-    unmount();
-    mount(<AgentOfferStrip addToClaude />, "/");
-    const a = document.querySelector("[data-add-to-claude]");
-    expect(a).not.toBeNull();
-    expect(a!.getAttribute("href")).toBe(claudeInstallLink(MCP_URL));
-  });
+  // The connect-your-AI strip (AgentOfferStrip) and the old homepage hero
+  // left Index with the homepage switch-over: the new homepage's AI section
+  // says the same (home.ai.*, interpolated), and its never-submit refusal is
+  // held by hp-fix-never-submit over the new pages.
 
   it("Index.tsx reads no pass mirror and spells none of the pass numbers beside pass/hour/application", () => {
     const code = strip(INDEX_RAW);
     expect(code).not.toMatch(/\bPASS\b/);
     expect(code).not.toMatch(/\{\{pass\w*\}\}/);
-    expect(code).toMatch(/<HomeHero agentOffer=\{<AgentOfferStrip \/>\} \/>/);
     expect(spelledPassNumbers(INDEX_RAW)).toEqual([]);
   });
 
   it("teeth: a copy of Index.tsx with the price, the hours or the applications spelled fails, and a comment does not", () => {
-    const at = "export function AgentOfferStrip(";
+    const at = "export default Index;";
     expect(INDEX_RAW).toContain(at);
     for (const line of [`const X = "a $${PASS.priceUsd} pass";`, `const X = "${PASS.sessionHours} hours";`, `const X = "${PASS.applications} applications";`]) {
       expect(spelledPassNumbers(INDEX_RAW.replace(at, `${line}\n${at}`)).length, line).toBeGreaterThan(0);
