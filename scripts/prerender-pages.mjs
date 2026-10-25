@@ -564,18 +564,26 @@ export function selectLanders(companyFacet, { openOf, displayName = (c) => c.nam
     });
   const nameKey = (c) => c.name.toLowerCase().replace(/\s+/g, " ").trim();
   const groupKey = (c) => `${bakeEmployerKey(c.token)}\u0000${nameKey(c)}`;
-  // One employer under one name: its largest board.
+  // THE PAGE INDEXABLE TODAY STAYS THE CANONICAL ONE (D7): when two boards of
+  // one employer swap places by open roles, the primary used to move with
+  // them, and the URL in the index started pointing its canonical at the
+  // other (PwC's crm board, indexable on 2026-10-24, would have canonicalised
+  // to its Global board). A board in `keep` wins its group; otherwise the
+  // largest does. The pooled count is the same either way.
+  const kept = (c) => !!(keep && typeof keep.has === "function" && keep.has(c.token));
+  const better = (c, prev) => (kept(c) !== kept(prev) ? kept(c) : size(c) > size(prev));
+  // One employer under one name: its board indexable today, else its largest.
   const primaryByGroup = new Map();
   for (const c of top) {
     const prev = primaryByGroup.get(groupKey(c));
-    if (!prev || size(c) > size(prev)) primaryByGroup.set(groupKey(c), c);
+    if (!prev || better(c, prev)) primaryByGroup.set(groupKey(c), c);
   }
-  // Across employers sharing a name: the largest of their primaries carries
-  // the one indexable page for that title.
+  // Across employers sharing a name: the one indexable today, else the
+  // largest of their primaries, carries the one indexable page for that title.
   const largestByName = new Map();
   for (const p of primaryByGroup.values()) {
     const prev = largestByName.get(nameKey(p));
-    if (!prev || size(p) > size(prev)) largestByName.set(nameKey(p), p);
+    if (!prev || better(p, prev)) largestByName.set(nameKey(p), p);
   }
   return top.map((c) => {
     const own = primaryByGroup.get(groupKey(c));

@@ -215,10 +215,22 @@ const pick = (arr, n) => (arr.length <= n ? arr : Array.from({ length: n }, (_, 
   }
   if (bad.length) out("FAIL", `C1 ${bad.join("; ")}`);
   else out(read ? "PASS" : "INFO", `C1 ${read} sampled company pages: no /jobs?job= link, no nineteen-system list, the re-check conditional`);
-  const pwc = await get("/jobs/company/pwc~wd3~crm_experienced_careers_site");
+  // PwC\x27s primary board moves with its open counts (crm_experienced_careers_site
+  // in the 2026-10-24 integration bake, Global_Experienced_Careers in the
+  // fixer\x27s): the page judged is the one /landers.json names for PwC.
+  let pwcPath = "/jobs/company/pwc~wd3~crm_experienced_careers_site";
+  {
+    const lmP = await get("/landers.json", 60000);
+    let m = null;
+    try { m = /json/.test(lmP.type) ? JSON.parse(lmP.body) : null; } catch { m = null; }
+    const b = m && typeof m === "object" ? (m.pages || m.landers || m) : null;
+    const target = b ? b["pwc~wd3~crm_experienced_careers_site"] || b["pwc~wd3~Global_Experienced_Careers"] : null;
+    if (typeof target === "string" && target) pwcPath = target.startsWith("/") ? target : `/jobs/company/${target}`;
+  }
+  const pwc = await get(pwcPath);
   const pwcT = titleOf(pwc.body);
-  if (pwc.status === 200 && / open roles across \d+ (?:hiring-system )?boards$/.test(pwcT)) out("PASS", `C2 the PwC page states its boards summed: "${pwcT}"`);
-  else out(pwc.status === 200 && robotsOf(pwc.body).includes("noindex") ? "INFO" : "FAIL", `C2 the PwC page reads "${pwcT}" (want the sum "across N hiring-system boards")`);
+  if (pwc.status === 200 && / open roles across \d+ (?:hiring-system )?boards$/.test(pwcT)) out("PASS", `C2 the PwC page (${pwcPath}) states its boards summed: "${pwcT}"`);
+  else out(pwc.status === 200 && robotsOf(pwc.body).includes("noindex") ? "INFO" : "FAIL", `C2 the PwC page (${pwcPath}) reads "${pwcT}" (want the sum "across N hiring-system boards")`);
   const ur = await get("/jobs/company/rochester~wd5~UR_Staff");
   if (ur.status === 200 && pathOf(canonOf(ur.body)) === "/jobs/company/rochester~wd5~UR_Staff" && /noindex/.test(robotsOf(ur.body))) out("PASS", "C2 UR_Staff is self-canonical and noindex, with no cross-employer canonical");
   else out(ur.status === 200 && /no longer has a page/.test(ur.body) ? "INFO" : "FAIL", `C2 UR_Staff canonical ${canonOf(ur.body) || "none"}, robots "${robotsOf(ur.body)}"`);

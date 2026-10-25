@@ -54,6 +54,15 @@ describe("the ceiling keeps today's indexable boards near the cut", () => {
     expect(chosen).not.toContain("e");
   });
 
+  it("keeps today's indexable board as its employer's canonical page when a sibling grows past it", () => {
+    const pwc = [board("pwc~wd3~Global_Experienced_Careers", 1050), board("pwc~wd3~crm_experienced_careers_site", 808), board("pwc~wd3~global_campus_careers", 333)].map((c) => ({ ...c, name: "PwC" }));
+    const plain = selectLanders(pwc, { openOf, max: 6 });
+    expect(new Set(plain.map((c) => c.primary))).toEqual(new Set(["pwc~wd3~Global_Experienced_Careers"]));
+    const sticky = selectLanders(pwc, { openOf, max: 6, keep: new Set(["pwc~wd3~crm_experienced_careers_site"]) });
+    expect(new Set(sticky.map((c) => c.primary))).toEqual(new Set(["pwc~wd3~crm_experienced_careers_site"]));
+    expect(new Set(sticky.map((c) => c.employerPrimary))).toEqual(new Set(["pwc~wd3~crm_experienced_careers_site"]));
+  });
+
   it("is what the bake passes: today's indexable company pages", () => {
     const bake = readFileSync(resolve(__dirname, "../../scripts/prerender-seo.mjs"), "utf8");
     expect(bake).toMatch(/nameOf: \(c\) => bakeEmployerName\(c\.token, c\.name, NAME_PARTS\)\.name,\n\s*keep: INDEXABLE_TODAY_TOKENS,/);
