@@ -21687,7 +21687,8 @@ JPMorgan Chase's board is https://jpmc.fa.oraclecloud.com, site CX_1001:
 TotalJobsCount 7,244 (the feed serves 7,243), 3,728 posted within 30 days,
 1,283 within 7 (its own posting-date facet, 2026-10-25). We carried no
 JPMorgan board; it was the largest single gap the 2026-10-24 coverage check
-found, larger than the other twenty adds together.
+found, more than that check's whole 21-board add-list together (about 3,100
+in window, part of it estimated).
 
 Why the token has an empty middle field. The catalogue spells an Oracle
 board tenant~region~site and every place that fetched one built
@@ -21730,9 +21731,16 @@ every big Oracle board: MAX_POSTINGS_PER_VISIT caps a visit at three
 100-row pages, so a full read is 25 visits; visits 14-25 read rows past the
 30-day fence that ingest drops, because a date-sorted feed has no early
 stop. No pages override, no knob. A 100-row page is about 175 KB, far under
-MAX_RESPONSE_BYTES. Appended as the catalogue's last entry so no carried
-board's place in the positional cursor moves; the build bump puts it in the
-bootstrap lane.
+MAX_RESPONSE_BYTES. Appended as the catalogue's last entry, so no carried
+board's catalogue index moves (the test
+src/test/a-host-with-no-region-is-still-an-oracle-host.test.ts pins the
+44,519 boards before it to wave 4's catalogue hash).
+The cold cursor does not walk catalogue order, though: it walks COLD_LIST,
+the catalogue minus the hot boards dealt round-robin by vendor
+(interleaveByVendor), and there JPMorgan lands mid-list (cold index 22,161
+of 44,393 with the fallback hot set) and moves the 22,231 boards after it
+one place. The pass that crosses the deploy reads at most one board a
+second time and skips none. The build bump puts it in the bootstrap lane.
 
 Search. Only "JPMorgan Chase" reaches the employer through the live brand
 keys (and only once the board has 100 open), so employer-aliases.ts and its

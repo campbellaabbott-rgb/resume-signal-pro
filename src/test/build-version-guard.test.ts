@@ -286,8 +286,11 @@ const PINNED = {
   // the .79 redeploy was refused at 4.6MB against the 4.5MB cap). The
   // catalog pins below are UNCHANGED, which is the proof no entry moved.
   // 2026-09-09.95: +JPMorgan Chase (oracle jpmc~~CX_1001, the region-less
-  // host jpmc.fa.oraclecloud.com), appended as the last entry so no carried
-  // board's cursor position moves. The pin moved with the catalogue.
+  // host jpmc.fa.oraclecloud.com), appended as the last entry, so no carried
+  // board's catalogue index moves. The cold cursor walks a vendor-interleaved
+  // list instead, where it lands mid-list and moves about half of it one
+  // place: at most one board read again once, none skipped (n1384). The pin
+  // moved with the catalogue.
   sourcesHash: "f115f86fec5d1de3",
   // The PARSED catalog behind that hash — 44,081 packed + 463 object-literal
   // entries — pinned separately so a re-format is distinguishable from a real
@@ -1453,7 +1456,8 @@ const PINNED = {
   // (jpmc.fa.oraclecloud.com), any other token builds the byte-identical URL
   // it built before. oracleTenantOf accepts the empty region so the rows are
   // keyed by requisition. sources.ts CHANGED: +JPMorgan Chase, jpmc~~CX_1001
-  // (catalogSize 44,520). .94 stays company-profiles-phase3's reservation.
+  // (catalogSize 44,520). company-profiles-phase3 reserves .96 since
+  // 2026-10-25; .94 is never used, because .95 deploys first.
   buildVersion: "2026-09-09.95",
 };
 
