@@ -11,8 +11,9 @@
  * MIRRORED, character for character, from PROTECTED_FACTUAL,
  * PROTECTED_DEMOGRAPHIC and (since the review of 9fe3bc0d, 2026-10-12)
  * PERSONAL_HISTORY, with the work-done exemption's FACTUAL, CLAUSE_BREAK,
- * SECOND_ASK, (since sweep S12-081) PERSON_STATE and (since the recheck of
- * wave 4 round 2) TOPICS, in supabase/functions/_shared/application-questions.ts.
+ * SECOND_ASK, (since sweep S12-081) PERSON_STATE, (since the recheck of
+ * wave 4 round 2) TOPICS and (since fix 3) PERSON_FACT_WORDS, NO_OBJECT,
+ * QUESTION_AUX, ASK_WORDS, PERSON_CIRCUMSTANCE, ADDRESSES_PERSON, WORK_PAST, WORK_CLAUSE and MOTIVE_CLAUSE, in supabase/functions/_shared/application-questions.ts.
  * The worker builds from worker/src alone, so it cannot import that file; a
  * cross-runtime test holds the two sources equal and replays one corpus
  * through both.
@@ -27,7 +28,7 @@ export const PROTECTED_DEMOGRAPHIC = /(lgbt\w*|transgender|\btrans\s+(?:man|woma
  * draftable. Only when it opens as a résumé prompt, names the work, and asks
  * nothing of the candidate's own status. Mirrored from supabase/functions/_shared/application-questions.ts.
  */
-export const RESUME_PROMPT = /^\s*(?:please\s+)?(?:describe|tell\s+(?:us|me)\s+about|explain|share|walk\s+(?:us|me)\s+through|discuss|elaborate\s+on|outline|give\s+(?:us\s+)?an?\s+example|what\s+(?:is|was)\s+your\s+experience|what\s+experience|how\s+many\s+years\s+(?:of\s+)?experience|how\s+much\s+experience)\b/i;
+export const RESUME_PROMPT = /^\s*(?:please\s+)?(?:describe|tell\s+(?:us|me)\s+about|explain|share|walk\s+(?:us|me)\s+through|discuss|elaborate\s+on|outline|give\s+(?:us\s+)?an?\s+example|what\s+(?:is|was)\s+your\s+experience|what\s+experience|how\s+many\s+(?:total\s+)?years\s+(?:of\s+)?(?:[\w/-]+\s+){0,4}?experience|how\s+much\s+experience)\b/i;
 export const ABOUT_WORK_DONE = /\b(?:experience[ds]?|worked|working\s+(?:with|on|in)|handl(?:ed|ing)|process(?:ed|ing)|car(?:ed|ing)\s+for|administer(?:ed|ing)|background\s+in|familiar(?:ity)?\s+with|knowledge\s+of)\b/i;
 export const OWN_STATUS = /\b(?:have|has)\s+you\s+(?:ever\s+)?been\b|\bare\s+you\b|\byou\s+(?:have|are|were)\s+(?:ever\s+)?(?:been\s+)?(?:convicted|arrested|charged|pregnant|vaccinated)\b|\byour\s+(?:own\s+)?(?:age|citizenship|immigration\s+status|visa(?:\s+status)?|criminal|convictions?|medical|health|disabilit\w*|pregnan\w*|vaccination\s+status)\b|\bany\s+(?:criminal|convictions?|arrests?|pending\s+charges?|medical|health|disabilit\w*)|\b(?:convictions?|arrests?|criminal\s+(?:record|history|charges?)|(?:medical|health)\s+conditions?|disabilit\w*)\s+(?:that\s+)?you\b|\bconfirm\s+(?:that\s+)?you\b|\bwhether\s+you\b|\b(?:do|will|would)\s+you\s+(?:need|require|hold|submit)\b|\byour\s+(?:own\s+|current\s+|expected\s+|desired\s+)?(?:hourly\s+|day\s+|daily\s+)?(?:rate|wages?|pay|salary|remuneration)\b/i;
 /**
@@ -36,7 +37,7 @@ export const OWN_STATUS = /\b(?:have|has)\s+you\s+(?:ever\s+)?been\b|\bare\s+you
  * on site, time zone and where they live, prior employment by or a previous
  * application to this employer. Mirrored from PERSONAL_HISTORY.
  */
-export const PERSONAL_HISTORY = /(\b(?:been|ever\s+been|were\s+you|was\s+you)\s+(?:terminated|dismissed|fired|discharged|let\s+go|asked\s+to\s+resign|forced\s+to\s+resign)\b|\b(?:termination|dismissal)\s+(?:from|of\s+employment)\b|\breasons?\s+for\s+(?:leaving|departure|wanting\s+to\s+leave|your\s+(?:departure|leaving))\b|\bwhy\s+(?:are|did|do)\s+you\s+(?:want\s+to\s+)?(?:leav\w*|left|looking\s+to\s+leave)\b|\bgaps?\s+in\s+(?:your\s+)?(?:employment|work\s+history|career|cv|resume|résumé)\b|\bemployment\s+gaps?\b|\bcareer\s+(?:gap|break)s?\b|\bexplain\s+any\s+gaps?\b|\breferees?\b|\b(?:professional|personal|employment|work|character|employer)\s+references?\b|\b(?:list|provide|name|give|share|supply|include|add)\b[^?.]{0,40}\breferences?\b|^\s*references?\s*(?:$|[(:*])|\breferences?\s+(?:available|upon\s+request|contact|details|name)\b|\bgpa\b|\bgrade\s+point\s+average\b|\b(?:your|final|overall|average|cumulative|academic|university|college|degree|school)\s+(?:grades?|marks?)\b|\bclass\s+rank\b|\bdegree\s+classification\b|\bcommut\w*|\bon[-\s]?site\s+(?:\w+\s+){0,2}(?:days?|times?)\b|\b(?:\d|one|two|three|four|five)\s+days?\s+(?:a|per|each)\s+week\s+(?:in|at|on)\b|\b(?:work|be)\s+(?:on[-\s]?site|in\s+(?:the|our)\s+office)\b|\breturn\s+to\s+(?:the\s+)?office\b|\btime\s*-?zones?\b|\bwhere\s+(?:are\s+you|do\s+you)\s+(?:currently\s+)?(?:located|based|live|living|reside)\b|\b(?:currently|presently)\s+(?:located|based|living|residing)\b|\b(?:previously|ever)\s+(?:been\s+)?(?:employed\s+by|worked\s+(?:for|at))\b|\bworked\s+(?:for|at|with)\s+(?:us|this\s+(?:company|organi[sz]ation|employer))\b|\b(?:former|previous|past)\s+employee\b|\bre-?hire\b|\beligible\s+for\s+rehire\b|\b(?:previously|ever|already)\s+applied\b|\bapplied\s+(?:(?:to|with)\s+(?:us|this\s+\w+|\w+)\s+|here\s+)?(?:before|previously)\b)/i;
+export const PERSONAL_HISTORY = /(\b(?:been|ever\s+been|were\s+you|was\s+you)\s+(?:terminated|dismissed|fired|discharged|let\s+go|asked\s+to\s+resign|forced\s+to\s+resign)\b|\b(?:termination|dismissal)\s+(?:from|of\s+employment)\b|\breasons?\s+for\s+(?:leaving|departure|wanting\s+to\s+leave|your\s+(?:departure|leaving))\b|\bwhy\s+(?:are|did|do)\s+you\s+(?:want\s+to\s+)?(?:leav\w*|left|looking\s+to\s+leave)\b|\bgaps?\s+in\s+(?:your\s+)?(?:employment|work\s+history|career|cv|resume|résumé)\b|\bemployment\s+gaps?\b|\bcareer\s+(?:gap|break)s?\b|\bexplain\s+any\s+gaps?\b|\breferees?\b|\b(?:professional|personal|employment|work|character|employer)\s+references?\b|\b(?:list|provide|name|give|share|supply|include|add)\b[^?.]{0,40}\breferences?\b|^\s*references?\s*(?:$|[(:*])|\breferences?\s+(?:available|upon\s+request|contact|details|name)\b|\bgpa\b|\bgrade\s+point\s+average\b|\b(?:your|final|overall|average|cumulative|academic|university|college|degree|school)\s+(?:grades?|marks?)\b|\bclass\s+rank\b|\bdegree\s+classification\b|\bcommut\w*|\bon[-\s]?site\s+(?:\w+\s+){0,2}(?:days?|times?)\b|\b(?:\d|one|two|three|four|five)\s+days?\s+(?:a|per|each)\s+week\s+(?:in|at|on)\b|\b(?:work|be)\s+(?:on[-\s]?site|in\s+(?:the|our)\s+office)\b|\breturn\s+to\s+(?:the\s+)?office\b|\b(?:your|which|what)\s+(?:current\s+|home\s+|preferred\s+)?time\s*-?zones?\b|\btime\s*-?zones?\s+(?:are|do|would|will|can|you)\b|^\s*time\s*-?zones?\s*(?:$|[(:*?])|\bwhere\s+(?:are\s+you|do\s+you)\s+(?:currently\s+)?(?:located|based|live|living|reside)\b|\b(?:currently|presently)\s+(?:located|based|living|residing)\b|\b(?:previously|ever)\s+(?:been\s+)?(?:employed\s+by|worked\s+(?:for|at))\b|\bworked\s+(?:for|at|with)\s+(?:us|this\s+(?:company|organi[sz]ation|employer))\b|\b(?:former|previous|past)\s+employee\b|\bre-?hire\b|\beligible\s+for\s+rehire\b|\b(?:previously|ever|already)\s+applied\b|\bapplied\s+(?:(?:to|with)\s+(?:us|this\s+\w+|\w+)\s+|here\s+)?(?:before|previously)\b)/i;
 /** The server's factual list, read here only for a later sentence of a work-done prompt. */
 export const FACTUAL = /(authori[sz]\w*\s*to\s*work|work\s*authori[sz]|legal\s*authori[sz]\w*|require\s*(?:visa\s*)?sponsor|sponsorship|need\s*sponsor|work\s*(?:visa|permit)|(?:need|requir|hold|hav)\w*\s*(?:a\s*)?(?:valid\s*)?(?:work\s*|employment\s*)?visa|eligible\s*to\s*work|right\s*to\s*work|employment\s*eligib\w*|salary|compensation|desired\s*pay|expected\s*(?:pay|salary|compensation)|pay\s*expectation|notice\s*period|start\s*date|available\s*to\s*start|when\s*(?:can|could|would|will)\s*you\s*(?:be\s*(?:able\s*to\s*)?)?start|willing\s*to\s*relocate|relocat|able\s*to\s*commute|are\s*you\s*(?:at\s*least\s*)?18|legally\s*(?:eligible|authori[sz]ed)|do\s*you\s*now\s*or\s*in\s*the\s*future|earliest\s*(?:possible\s*)?(?:date|start)|date\s*you\s*(?:could|can|would)\s*start|over\s*18|18\s*(?:years\s*)?(?:or\s*(?:older|above)|of\s*age)|legal\s*working\s*age|days\s*(?:are\s*)?you\s*available|what\s*days\s*[\w\s]{0,24}available|willing\s*to\s*travel|willing\s*to\s*work\s*(?:in|at)\s*(?:another|a\s*different)|licen[sc]e|security\s*clearance|dbs\s*check|background\s*check|criminal\s*(?:record|convict\w*)|referred\s*you|who\s*referred|close\s*relative|family\s*member|related\s*to\s*(?:any\s*)?(?:current\s*)?(?:employee|staff)|how\s*did\s*you\s*(?:hear|learn)\s*about|how\s*you\s*(?:heard|learned)\s*about|name\s*of\s*the\s*[\w\/]{0,24}\s*(?:staff|contractor|consultant|employee|colleague|relative|referrer)|able\s*to\s*start\s*(?:work|by|on)|start\s*working\s*(?:with|for)\s*us|how\s*much\s*(?:do\s*)?you\s*(?:currently\s*)?(?:earn|make)\b|(?:currently|presently)\s*earn)/i;
 /**
@@ -54,10 +55,27 @@ export const PERSON_ASKS = /\b(?:your|two|three|four|\d)\s+(?:professional\s+)?r
  * rule PROTECTED_FACTUAL follows. Mirrored from the server.
  */
 export const PERSON_FACT_NOUNS = /\brestrictive\s+covenants?\b|\bnon-?(?:solicit\w*|compete\w*)\b|\bconflicts?\s+of\s+interest\b/i;
+/** Facts about the person in the words the lists miss (fix 3): notice, earned or paid, pay, begin or join, someone to call, availability, hours, eligibility, where they live, travel, visas. Mirrored from the server. */
+export const PERSON_FACT_WORDS = /\bnotice\b|\byou(?:'re|'ve|'d)?(?:\s+\w+){0,2}?\s+(?:earn(?:s|ed|ing)?|paid)\b|\btake[-\s]?home\b|\btook\s+home\b|\b(?:your|the|what|how\s+much|expected|desired|current|last|previous)\s+(?:\w+\s+){0,2}?pay\b(?![-\w])|\bexpect\s+you\s+to\s+(?:start|begin|join)\b|\btimeline\s+(?:for|to)\s+(?:start|begin|join)\w*|\b(?:start|begin|join)(?:ing)?\s+date\b|\bwhen\s+(?:you|we)\s+(?:could|can|would|will|might)\s+(?:\w+\s+){0,3}(?:start|begin|join)\b|\b(?:someone|anyone|somebody|people|persons?|who|whom)\s+(?:we|i)\s+(?:can|could|may|might|should)\s+(?:call|contact|reach|speak\s+(?:to|with)|talk\s+to|ask)\b|\byou\s+(?:are|'re|would\s+be|will\s+be)\s+(?:\w+\s+)?available\b|\bavailable\s+(?:to\s+(?:start|work|begin|join|relocate|travel|interview)|from|for\s+(?:work|full|part|an?\s+interview|interviews))\b|\bhours?\s+(?:per|a|each|every)\s+(?:week|day|month)\b|\bhow\s+many\s+hours\b|\beligib\w*|\byou(?:'re|\s+are|\s+have)?\s+(?:currently\s+)?(?:live|lived|living|reside|resided|residing|located|based)\b|\bwhere\s+(?:do|are|did|were)\s+you\s+(?:currently\s+)?(?:live|living|lived|reside|located|based|from)\b|\b(?:willing|able|open|prepared)\s+to\s+(?:travel|relocate|move|commute)\b|\bbusiness\s+trips?\b|\bvisas?\b|\blooking\s+for\s+(?:a\s+)?(?:new|another|next|different)\s+(?:job|role|position|opportunit\w*)|\bwhy\s+now\b|\b(?:part|full)[-\s]time\b|\badjustments?\s+(?:we|to|for|during|in)\b|\byour\s+(?:\w+\s+)?status(?:es)?\b/i;
 /** A later sentence is its own question; a dotted initialism or "e.g." ends none. */
 export const SENTENCE_BREAK = /[?!;]\s+|(?<=[a-z]{3})\.\s+(?=[A-Z])/;
-/** Where one clause of a sentence ends and the next begins: a comma, or a joining word. */
-export const CLAUSE_BREAK = /(,|\band\b|\bincluding\b|\bas\s+well\s+as\b|\bplus\b|\balong\s+with\b|\btogether\s+with\b)/i;
+/** Where one clause of a sentence ends and the next begins: a comma, a semicolon, an ampersand, a slash, a plus, a spaced dash, or a joining word. */
+export const CLAUSE_BREAK = /(,|;|&|\/|\+|\s[^\p{L}\p{N}\s]{1,3}\s|\band\b|\bincluding\b|\bas\s+well\s+as\b|\bplus\b|\balong\s+with\b|\btogether\s+with\b)/iu;
+/** A later clause about motivation. Mirrored from the server. */
+export const MOTIVE_CLAUSE = /\b(?:excit\w*|interest\w*|attract\w*|appeal\w*|drew|draws|motivat\w*|inspir\w*|passion\w*|love|enjoy\w*|admire|mission|values?|culture|vision|company|our|opportunit\w*|goals?|career|grow\w*|learn\w*|contribut\w*|bring|fit)\b/i;
+/** Work done told in the past by "you" (never a pay verb). Mirrored from the server. */
+export const WORK_PAST = /\byou(?:'ve|\s+have|\s+had)?\s+(?:\w+ly\s+)?(?:(?!(?:receiv|earn|pai|ow|offer|promis|award|grant|need|want|requir|expect|prefer|plann|intend)ed\b)\w+(?<!e)ed|built|led|ran|did|done|drove|grew|won|wrote|taught|sold|brought|kept|met|spent|oversaw|overcame|undertook|saw|found|chose|became|began|knew)\b/i;
+export const WORK_CLAUSE = new RegExp(WORK_PAST.source + /|\b(?:projects?|teams?|work|roles?|responsibilit\w*|clients?|customers?|tools?|results?|outcomes?|impact|approach|process(?:es)?|strateg\w*|skills?|stack|accounts?|pipeline|quotas?|deals?|campaigns?|products?|achievements?|accomplishments?|metrics|stakeholders|lessons?|examples?|challenges?|style|answer|response)\b|\byour\s+(?:biggest|greatest|proudest|best|most\s+\w+)\b/.source, "i");
+/** A later clause that addresses the person is theirs unless it is visibly about work done (WORK_CLAUSE) or motivation (MOTIVE_CLAUSE). Mirrored from the server. */
+export const ADDRESSES_PERSON = /\byou(?:rs?|rself)?\b/i;
+/** A clause about the person's own circumstances, by grammar: a modal or a want after "you", a plan in progress, "your" current or expected anything. Mirrored from the server. */
+export const PERSON_CIRCUMSTANCE = /\byou(?:'d\s+(?!like\b|love\b|enjoy\b)|'ll\b|(?:'re|\s+are)\s+(?:able|willing|available|leaving|moving|looking|planning|considering|expecting|currently)\b|\s+(?:would|could|can|will|might|may|should|must|shall|need|expect|require|prefer|plan|intend)\b(?!\s+(?:like|love|enjoy)\b))|\byour\s+(?:current|expected|desired|preferred|next|ideal|future|minimum|target)\b/i;
+/** The question's own "do you have" right after the work words. Mirrored from the server. */
+export const QUESTION_AUX = /^\s*(?:(?:do|did|would|will|can)\s+you\s+(?:have|had|bring|hold|possess)|(?:that\s+)?you(?:'ve|\s+have|\s+had))\b/i;
+/** Words that point a clause at the person. Mirrored from the server. */
+export const ASK_WORDS = /\b(?:any|whether|when|where|who|whom|how\s+(?:soon|much|many|long)|we\s+(?:can|could|may|might|should|will|would))\b/i;
+/** Text after the work words that begins with a joiner: the work took no object of its own. Mirrored from the server. */
+export const NO_OBJECT = /^\s*(?:[^\p{L}\p{N}\s("'“‘[]|(?:and|or|plus|including|as\s+well\s+as|along\s+with|together\s+with)\b|$)/iu;
 /** A clause that asks something of the person: it names them, or tells them to do something. */
 export const SECOND_ASK = /\byou(?:rs?)?\b|\b(?:list|provide|name|give|share|state|include|add|supply|tell|explain|describe|confirm|indicate|specify|mention)\b/i;
 /** Words that make a protected noun the person's own state, not the work's object (S12-081). Mirrored from the server. */
@@ -67,7 +85,7 @@ export const TOPICS: ReadonlyArray<readonly [string, RegExp]> = [
   ["sponsorship", /sponsor|visa/i],
   ["work_authorisation", /authori[sz]|eligib\w*\s+to\s+work|right\s+to\s+(?:live\s+(?:and|&)\s+)?work|work\s+permit|legally|citizen|permanent\s+resident|green\s+card|immigration|residen(?:cy|ce)\s+(?:status|permit)/i],
   ["salary", /salary|compensation|pay\b|wages?|remuneration|rate\b|\bote\b|\bctc\b|\byour\s+(?:\w+\s+)?(?:earnings|income)\b|\bhow\s+much\s+(?:did\s+|do\s+)?you\s+(?:made|make|earn(?:ed)?)\b|\bwhat\s+you\s+earn(?:ed)?\b|\b(?:currently|presently)\s+(?:earn|make)\b/i],
-  ["start_date", /start|notice\s+period|how\s+much\s+notice|available\s+(?:to|from)|earliest|(?:able|free)\s+to\s+(?:begin|join)|date\s+you\s+(?:can|could|would|will)\s+(?:begin|join)|when\s+you\s+(?:can|could|would|will)\s+(?:begin|join)/i],
+  ["start_date", /\bstart\b(?!-)|\bstart(?:ing)?\s+date|\bnotice\b|available\s+(?:to|from)|earliest|(?:able|free)\s+to\s+(?:begin|join)|date\s+you\s+(?:can|could|would|will)\s+(?:begin|join)|when\s+you\s+(?:can|could|would|will)\s+(?:begin|join)/i],
   ["relocation", /relocat/i],
   ["on_site", /on[-\s]?site|in\s+(?:the\s+)?office|hybrid|days?\s+(?:a|per)\s+week/i],
   ["commute", /commut/i],
@@ -103,32 +121,49 @@ export function topicOf(label: string): string {
  * their own, or when it names the person's state (PERSON_STATE), and a
  * protected status named before the work words is not its object. Since the
  * recheck a later sentence naming any factual topic (topicOf) is its own
- * question, and a later clause naming one follows the clause rule. Mirrored
- * from the server.
+ * question, and a later clause naming one follows the clause rule. Since fix
+ * 3 the first test does not depend on where a clause starts: PERSON_ASKS
+ * anywhere is the person's, and a fact anywhere after the work words is the
+ * work's object only when the work took an object first and nothing after it
+ * points at the person. Mirrored from the server.
  */
 export function asksAboutWorkDone(label: string): boolean {
   if (!RESUME_PROMPT.test(label) || !ABOUT_WORK_DONE.test(label) || OWN_STATUS.test(label)) return false;
+  if (PERSON_ASKS.test(label)) return false;
   const [first, ...later] = label.split(SENTENCE_BREAK);
   // "Tell us about your experience. Green card holder?" is two questions.
-  if (later.some((s) => PROTECTED_FACTUAL.test(s) || PERSONAL_HISTORY.test(s) || FACTUAL.test(s) || PERSON_ASKS.test(s) || PERSON_FACT_NOUNS.test(s) || topicOf(s) !== "other")) return false;
+  if (later.some((s) => mentionsPersonFact(s) || topicOf(s) !== "other" || PERSON_CIRCUMSTANCE.test(s))) return false;
   const work = ABOUT_WORK_DONE.exec(first!);
   if (!work) return false;
   const before = first!.slice(0, work.index);
-  if (PERSONAL_HISTORY.test(before)) return false;
-  if (PROTECTED_FACTUAL.test(before) && PERSON_STATE.test(before)) return false;
-  const parts = first!.slice(work.index + work[0].length).split(CLAUSE_BREAK);
-  const tookObject = /[\p{L}\p{N}]/u.test(parts[0] ?? "");
+  if (PERSONAL_HISTORY.test(before) || PERSON_FACT_WORDS.test(before)) return false;
+  if ((PROTECTED_FACTUAL.test(before) || PERSON_FACT_NOUNS.test(before)) && PERSON_STATE.test(before)) return false;
+  const rest = first!.slice(work.index + work[0].length).replace(QUESTION_AUX, " ");
+  const tookObject = !NO_OBJECT.test(rest);
+  if (mentionsPersonFact(rest) && (!tookObject || pointsAtPerson(rest))) return false;
+  const parts = rest.split(CLAUSE_BREAK);
   for (let i = 2; i < parts.length; i += 2) {
     const clause = parts[i]!;
-    if (PERSONAL_HISTORY.test(clause) || PERSON_ASKS.test(clause)) return false;
-    const factual = PROTECTED_FACTUAL.test(clause) || FACTUAL.test(clause) || PERSON_FACT_NOUNS.test(clause) || topicOf(clause) !== "other";
-    if (factual && (!tookObject || SECOND_ASK.test(clause) || PERSON_STATE.test(clause))) return false;
+    if (PERSONAL_HISTORY.test(clause)) return false;
+    if ((mentionsPersonFact(clause) || topicOf(clause) !== "other") && (!tookObject || pointsAtPerson(clause))) return false;
+    if (PERSON_CIRCUMSTANCE.test(clause) && !WORK_PAST.test(clause)) return false;
+    if (ADDRESSES_PERSON.test(clause) && !WORK_CLAUSE.test(clause) && !MOTIVE_CLAUSE.test(clause)) return false;
   }
   return true;
+}
+
+/** True when the text names a fact about the person anywhere, in any of the lists' words. Mirrored from the server. */
+export function mentionsPersonFact(text: string): boolean {
+  return FACTUAL.test(text) || PROTECTED_FACTUAL.test(text) || PERSONAL_HISTORY.test(text) || PERSON_ASKS.test(text) || PERSON_FACT_NOUNS.test(text) || PERSON_FACT_WORDS.test(text);
+}
+
+/** True when the text points at the person: "you" or "your", an instruction, a state of theirs, or a question word about them. Mirrored from the server. */
+export function pointsAtPerson(text: string): boolean {
+  return SECOND_ASK.test(text) || PERSON_STATE.test(text) || ASK_WORDS.test(text);
 }
 
 /** True when a prepared (model-written) draft must not answer this label. */
 export function isProtectedQuestion(label: string): boolean {
   const l = String(label ?? "").replace(/\s+/g, " ").trim();
-  return ((PROTECTED_FACTUAL.test(l) || PERSONAL_HISTORY.test(l)) && !asksAboutWorkDone(l)) || PROTECTED_DEMOGRAPHIC.test(l);
+  return ((PROTECTED_FACTUAL.test(l) || PERSONAL_HISTORY.test(l) || PERSON_ASKS.test(l) || PERSON_FACT_NOUNS.test(l) || PERSON_FACT_WORDS.test(l)) && !asksAboutWorkDone(l)) || PROTECTED_DEMOGRAPHIC.test(l);
 }

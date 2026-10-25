@@ -22,12 +22,8 @@ export interface AppQuestion {
   type?: string;
 }
 
-// `contact number` and `telephone` added 2026-08-01: the first real Pinpoint
-// forms we ever harvested ask for a "Secondary contact number", which matched
-// neither `phone` nor `mobile` and fell through to draftable — i.e. an LLM
-// would have been asked to write a phone number.
-// UNAMBIGUOUS identity tokens: nobody writes an essay question containing
-// "linkedin" or "postal code". These mean identity wherever they appear.
+// Unambiguous identity tokens ("Secondary contact number" was a live miss,
+// 2026-08-01): nobody writes an essay containing "linkedin" or "postal code".
 const IDENTITY = /\b(first\s*name|last\s*name|full\s*name|legal\s*name|preferred\s*name|middle\s*name|e-?mail|phone|mobile|telephone|contact\s*number|street|zip|postal|linkedin|github|portfolio|personal\s*website|twitter|url)\b/i;
 
 /**
@@ -65,14 +61,8 @@ export function contactLabelIsAField(label: string, fieldType: string): boolean 
 }
 // ── end of the contact-field rule ──
 
-// ORDINARY ENGLISH NOUNS that are identity only when the label is a FIELD, not
-// prose. Found by the real-label corpus on 2026-08-01: "Describe a time you
-// coordinated with government stakeholders, donors, or country partners" was
-// classified identity — because of the word "country" — which would have
-// autofilled the candidate's profile country into an essay box.
-//
-// A pre-existing bug, invisible until the agent saw real questions: the four
-// generic questions it used to see contained none of these words in prose.
+// Ordinary nouns that are identity only on a FIELD: "Describe a time you
+// coordinated with ... country partners" once got the profile's country.
 const IDENTITY_IF_FIELD = /\b(city|state|province|country|address|website|location)\b/i;
 // "your city" is the candidate's own; "country partners" is not.
 const OWN_ATTRIBUTE = /\byour\s+(?:current\s+|home\s+|primary\s+)?(?:city|state|province|country|address|website|location)\b/i;
@@ -82,55 +72,14 @@ const FILE = /\b(resume|résumé|cv|cover\s*letter|upload|attach|transcript|port
 const DEMOGRAPHIC = /\b(gender|sex|race|ethnic\w*|hispanic|latin[ox]|veteran|disab\w*|sexual\s+orientation|pronoun\w*|date\s+of\s+birth|marital|religio\w*|nationalit\w*|citizenship|national\s+origin)/i;
 
 /**
- * CONSENT AND ATTESTATION — the class this classifier was missing, found by
- * measurement on 2026-08-03 and not by reading the code.
- *
- * Two matchers, at deliberately different priorities. Read CONSENT_DOC and
- * CONSENT_ATTEST below for why the split exists; this is the shared reason
- * either of them does.
- *
- * A first sample of 40 live Recruitee forms turned up labels like
- * "Please confirm you've read our Privacy Notice" and its Dutch equivalent.
- * Both classified `draftable`, and apply-agent selected what to send the model
- * with `label.length > 24`, so both were going to it. A language model was
- * about to WRITE AN ATTESTATION THAT THE CANDIDATE HAD READ A DOCUMENT — an
- * assertion about an act a specific person did or did not perform, which no
- * amount of résumé grounding can support, on a question whose entire purpose
- * is that a human followed the link inside it.
- *
- * That is the same principle as `demographic`, and sharper: a declined EEO
- * question is a non-answer, while a drafted consent is a false statement made
- * in the candidate's name to a company they want to work for.
- *
- * THE PATTERNS BELOW ARE FITTED TO A REAL CORPUS, and that is not incidental.
- * The first version of this class was written against a label reconstructed
- * from a TRUNCATED sample — the real one reads "gelezen en begrijp" (read and
- * understand), not "gelezen en ga akkoord" (read and agree), and the deployed
- * regex missed it live while its unit test passed against the invention. So
- * every branch here is now anchored to one of 5,537 questions harvested across
- * all six reader vendors, and `consent-corpus.test.ts` replays them.
- */
-/**
- * CONSENT_DOC — an attestation tied to a DOCUMENT or a data/communication
- * permission. Checked EARLY, ahead of `file` and `identity`, because the live
- * corpus shows those two classes actively stealing consent questions and
- * answering them with a value:
- *
- *   "By selecting YES, I consent to receive recruiting SMS messages from
- *    Bluestone at the phone number provided above."        -> was `identity`
- *
- * That contains "phone number", so identityValue() would have written the
- * candidate's PHONE NUMBER into a yes/no consent box.
- *
- *   "By typing my legal name below, I acknowledge that the information
- *    contained in this document, my resume, and any other materials submitted
- *    on my behalf are true and correct..."                 -> was `file`
- *
- * That contains "resume", so the packet would have put a résumé URL where a
- * signature attesting to truthfulness belongs.
- *
- * Neither was a hypothetical: both are verbatim labels from the 5,537-question
- * corpus harvested across all six reader vendors on 2026-08-03.
+ * CONSENT AND ATTESTATION (2026-08-03, measured on live forms): "Please confirm
+ * you've read our Privacy Notice" was draftable, so a model was about to
+ * attest that the person read a document, a false statement in their name.
+ * Every branch is anchored to a harvested label; consent-corpus.test.ts
+ * replays them. CONSENT_DOC (a document or data permission) runs EARLY,
+ * ahead of file and identity, which stole real consents ("...SMS messages at
+ * the phone number provided" got the phone; "...my resume ... true and
+ * correct" got the résumé URL).
  */
 // "collect" and a bare "my data" / "my information" added 2026-10-11 (wave-4
 // review): "I agree that GLG may collect and process my data for recruitment"
@@ -139,75 +88,23 @@ const CONSENT_DOC =
   /(privacy\s*(?:notice|policy|statement|declaration)|privacyverklaring|privacybeleid|datenschutz\w*|pol[ií]tica\s+de\s+privacidad|politique\s+de\s+confidentialit|data\s*protection|\bgdpr\b|\bccpa\b|terms\s*(?:and|&)\s*conditions|terms\s*of\s*(?:use|service)|algemene\s*voorwaarden|arbitration\s*agreement|non-?disclosure|\bnda\b|at[-\s]?will\s*employ\w*|(?:interview|call|meeting)\s*record(?:ing|ed)|notetaker|\bdo\s+you\s+consent\b|\bi\s+(?:hereby\s+)?consent\b|consent\w*\s*(?:to|for)\s*(?:the\s*)?(?:receiv|process|stor|retain|record|use|collect)\w*|(?:process|collect|stor)\w*\s+(?:and\s+\w+\s+)?my\s+(?:personal\s+)?(?:data|information)|persoonsgegevens|\bi\s+attest\b|\battest\s+that\b|accept\s+(?:all\s+)?(?:the\s+)?terms\b|autoriza\w*\s+que\s+seus\s+dados|\blgpd\b|동의|by\s+(?:typing|signing|submitting|selecting|checking|ticking|initial\w*|entering|clicking)\b[\s\S]{0,70}\b(?:i|you)\s+(?:hereby\s+)?(?:acknowledge|confirm|certify|agree|consent)|(?:i|you)\s+(?:hereby\s+)?(?:agree|confirm|certify|acknowledge)\b[\s\S]{0,90}\b(?:true\s+and\s+(?:correct|complete|accurate)|accurate\s+and\s+complete|truthful))/i;
 
 /**
- * CONSENT_ATTEST — a bare first-person attestation with no document attached.
- *
- * Checked LATE, AFTER `factual`, and that ordering is the whole subtlety.
- * These are all real labels:
- *
- *   "I acknowledge that I am at least 18 years of age"
- *   "I acknowledge that I am authorized to work lawfully in the United States"
- *   "I acknowledge that employees are required to have a valid driver's licence"
- *   "Please acknowledge that you have seen the posted compensation range"
- *
- * Every one is a fact the candidate has ALREADY given as a standing answer.
- * Matching them here would convert four settled profile answers into four
- * blockers and strand packets that were ready to go. `factual` claims them
- * first and fills them from the profile, which is both correct and better.
- *
- * What is left over genuinely has no answer anywhere in our data:
- *
- *   "I confirm to have a valid DNI or NIE (Spanish tax number)"
- *   "I confirm that I'm based in Madrid and able to work from the office 3 days"
- *   "You acknowledge this role will start Monday–Friday 9am–5pm"
- *
- * Those were `draftable`, meaning a model was being asked to assert facts about
- * a person's tax registration and home city. Blocking is the honest outcome.
- */
-/**
- * "Please confirm you are comfortable with late-night trade" is a COMMITMENT.
- * "Please confirm whether you have 3+ years with ASC 606" is a RESUME FACT and
- * must keep being drafted. Both are live labels; the difference the pattern
- * turns on is `you are <state>` versus `you have <experience>`.
+ * CONSENT_ATTEST, a bare first-person attestation, runs LATE, after factual:
+ * "I acknowledge that I am at least 18" or "... authorized to work" are
+ * standing answers factual fills; what is left ("I confirm to have a valid
+ * DNI", "I confirm that I'm based in Madrid") has no answer in our data and
+ * blocks. "Please confirm you are comfortable with late-night trade" is a
+ * commitment; "Please confirm whether you have 3+ years with ASC 606" is a
+ * résumé fact and stays draftable (`you are <state>` vs `you have`).
  */
 const CONSENT_ATTEST =
   /(^\s*i\s+(?:hereby\s+)?(?:acknowledge|confirm|certify|agree|consent|understand)\b|^\s*you\s+(?:acknowledge|understand)\b|\byou\s+hereby\s+agree\b|\bdo\s+you\s+agree\s+to\s+this\b|acknowledge?ments?\s*$|\bconsent\s*$|please\s+confirm\b[\s\S]{0,30}\byou\s+are\s+(?:comfortable|available|willing|happy|aware|ok|okay)\b|confirm\s+(?:that\s+)?you\s+(?:have\s+)?read\b|are\s+you\s+comfortable\s+with\s+this\b|you\s+are\s+aware\s+of\s+(?:this|these)\b|confirmas\s+tu\s+disponibilidad|ik\s+heb\b[\s\S]{0,90}\bgelezen\b|ich\s+habe\b[\s\S]{0,90}\bgelesen\b|\bhe\s+le[ií]do\b|j['’]ai\s+lu\b|ga\s+(?:ik\s+)?akkoord|einverstanden|zustimm\w*|acepto\b)/i;
-// Facts a resume can't establish — must come from the candidate.
-//
-// EVERYTHING FROM `earliest` ONWARD WAS ADDED 2026-08-01, from the first 118
-// REAL question labels ever harvested off Breezy and Pinpoint. Until that day
-// the agent only ever saw four generic questions on those vendors, so every
-// pattern here had been written against phrasings we imagined. Employers do not
-// use them. Each addition below is a live label that fell through to
-// `draftable`, which means a language model would have written the answer:
-//
-//   "If offered the position, what is the earliest date you could start?"
-//        — `start date` and `when can you start` both miss it. The candidate
-//          has ALREADY answered this in their profile; drafting it is not just
-//          a guess, it is ignoring a stated fact.
-//   "Are you over 18 years old?"        — `at least 18` misses "over 18".
-//   "What days are you available to work?"
-//   "Are you Willing to travel to different centers?"
-//   "Are you willing to work in another location? If yes, where?"
-//   "Do you have a current Washington medical assistant ... license"
-//   "If a current skipper referred you, please list their name."
-//        — a THIRD PARTY's name. A model asked to fill this invents a person.
-//   "Do you have a close relative who is a current MCA/MCC staff ...?"
-//   "How did you learn about this job opportunity?"
-//   "If yes, kindly specify what kind of legal authorization you possess"
-//
-// Deliberately NOT added: `certification`, `experience`, `knowledge`,
-// `proficiency`. "Do you have EMR experience?", "Do you have Medical
-// Terminology knowledge?" and "Please describe your proficiency in French" are
-// answerable FROM THE RESUME and must stay draftable — widening this far enough
-// to catch them would block half the corpus and quietly turn the agent off.
-//
-// The review of 9fe3bc0d (2026-10-12) added "When could you start?" (could,
-// would and will, not only can) and how much the person currently earns: both
-// were draftable, so a motivation opening carrying either was drafted whole.
-//
-// British spelling and the -ing forms added 2026-10-10 (review of S8-007):
-// "Are you authorised to work in the UK?" and "...without requiring a visa?"
-// were draftable, so the model was asked to state a work right.
+// Facts a resume can't establish. Each branch from `earliest` on is a live label
+// that fell through to draftable (Breezy and Pinpoint, 2026-08-01): the earliest
+// date you could start, over 18, days available, willing to travel, a licence,
+// who referred you, a close relative, how you heard. Deliberately NOT here:
+// certification, experience, knowledge, proficiency, which a resume answers.
+// Since added: British spellings and -ing forms (S8-007), when could/would/will
+// you start and current earnings (review of 9fe3bc0d).
 export const FACTUAL = /(authori[sz]\w*\s*to\s*work|work\s*authori[sz]|legal\s*authori[sz]\w*|require\s*(?:visa\s*)?sponsor|sponsorship|need\s*sponsor|work\s*(?:visa|permit)|(?:need|requir|hold|hav)\w*\s*(?:a\s*)?(?:valid\s*)?(?:work\s*|employment\s*)?visa|eligible\s*to\s*work|right\s*to\s*work|employment\s*eligib\w*|salary|compensation|desired\s*pay|expected\s*(?:pay|salary|compensation)|pay\s*expectation|notice\s*period|start\s*date|available\s*to\s*start|when\s*(?:can|could|would|will)\s*you\s*(?:be\s*(?:able\s*to\s*)?)?start|willing\s*to\s*relocate|relocat|able\s*to\s*commute|are\s*you\s*(?:at\s*least\s*)?18|legally\s*(?:eligible|authori[sz]ed)|do\s*you\s*now\s*or\s*in\s*the\s*future|earliest\s*(?:possible\s*)?(?:date|start)|date\s*you\s*(?:could|can|would)\s*start|over\s*18|18\s*(?:years\s*)?(?:or\s*(?:older|above)|of\s*age)|legal\s*working\s*age|days\s*(?:are\s*)?you\s*available|what\s*days\s*[\w\s]{0,24}available|willing\s*to\s*travel|willing\s*to\s*work\s*(?:in|at)\s*(?:another|a\s*different)|licen[sc]e|security\s*clearance|dbs\s*check|background\s*check|criminal\s*(?:record|convict\w*)|referred\s*you|who\s*referred|close\s*relative|family\s*member|related\s*to\s*(?:any\s*)?(?:current\s*)?(?:employee|staff)|how\s*did\s*you\s*(?:hear|learn)\s*about|how\s*you\s*(?:heard|learned)\s*about|name\s*of\s*the\s*[\w\/]{0,24}\s*(?:staff|contractor|consultant|employee|colleague|relative|referrer)|able\s*to\s*start\s*(?:work|by|on)|start\s*working\s*(?:with|for)\s*us|how\s*much\s*(?:do\s*)?you\s*(?:currently\s*)?(?:earn|make)\b|(?:currently|presently)\s*earn)/i;
 
 /**
@@ -219,29 +116,16 @@ export const FACTUAL = /(authori[sz]\w*\s*to\s*work|work\s*authori[sz]|legal\s*a
 export const PROTECTED_FACTUAL = /(convict\w*|felon\w*|misdemeanou?r|criminal\s+(?:case|charge|investigation|history|offen[cs]e|background|proceeding|record)s?|pending\s+(?:criminal\s+)?(?:charges?|cases?)|(?:been|ever\s+been)\s+(?:arrested|charged|convicted|indicted|cautioned)|plead(?:ed)?\s+guilty|drug\s+(?:test|screen)\w*|(?:at\s+least|over|older\s+than|aged?)\s+(?:1[4-9]|2[0-5])\s*(?:years?\s+(?:of\s+age|old)|yrs?\s+old|\?|\)|$)|how\s+old\b|your\s+age\b|minimum\s+age|legal\s+age|\bcitizen\b|permanent\s+resident|green\s+card|immigration|\bsponsor\w*|visa\s+(?:status|type|holder|category|requirements?|needs?|situation|details)|current\s+visa|\bh-?1b\b|\bf-?1\s+(?:visa|status|student)|\bstem\s+opt\b|\bopt\s+(?:status|extension|ead)|\bon\s+opt\b|\bead\b|passport|right\s+to\s+(?:live\s+(?:and|&)\s+)?work|legally\s+(?:able\s+to\s+)?(?:live\s+(?:and|&)\s+)?work|eligible\s+to\s+(?:live\s+(?:and|&)\s+)?work|work\s+rights|residen(?:cy|ce)\s+(?:status|permit)|settled\s+status|indefinite\s+leave|\bwages?\b|hourly\s+(?:rate|pay)|(?:expected|desired|current|minimum|target)\s+(?:hourly\s+|day\s+|daily\s+|base\s+)?(?:rate|pay|earnings|income)\b|rate\s+expectations?|base\s+pay\b|rate\s+of\s+pay|pay\s+(?:rate|range|requirements?)|day\s+rate|\bote\b|\bctc\b|cost\s+to\s+(?:the\s+)?company|remuneration|medical\s+(?:condition|history|exam\w*|issue|reason|restriction|clearance|certificate|questionnaire|leave|assessment)s?|health\s+(?:condition|issue|problem|declaration|questionnaire|assessment)s?|physical(?:ly)?\s+(?:able|capable|fit|exam\w*|requirements?)|pregnan\w*|(?:need|require|request)\w*\s+(?:any\s+|an?\s+)?(?:reasonable\s+)?accommodat\w*|reasonable\s+accommodat\w*|accommodat\w*\s+(?:needs?|requests?|requirements?|required|needed)\b|interview\s+accommodat\w*|accommodat\w*\s+(?:during|for|in)\s+(?:the\s+)?(?:interview|hiring|application|recruit\w*|selection)|essential\s+functions|vaccinat\w*|immuni[sz]ation\s+(?:status|records?|history)|(?:able|willing|available|open)\s+to\s+work\s+(?:[\w,/-]+\s+){0,4}?(?:weekends?|nights?|evenings?|overtime|shifts?|holidays?|on[-\s]?call|rotating)\b|(?:can|could|will|would)\s+you\s+(?:be\s+(?:able|willing|available)\s+to\s+)?work\s+(?:[\w,/-]+\s+){0,4}?(?:weekends?|nights?|evenings?|overtime|shifts?|holidays?|on[-\s]?call)\b|which\s+shifts?|shift\s+(?:preference|availability|pattern)s?|your\s+(?:\w+\s+)?availability|relatives?\s+(?:who\s+)?(?:work|employed|currently)|know\s+(?:anyone|someone)\s+(?:who\s+)?(?:works?|employed|currently)|tax\s+(?:id|identification|number|file\s+number|code|reference)|\btin\b|\bnif\b|\bdni\b|\bnie\b|\bssn\b|social\s+security|national\s+insurance)/i;
 /**
  * THE PERSON'S OWN HISTORY AND CIRCUMSTANCES, which no CV establishes (wave-4
- * review, 2026-10-11). Run over the corpus, the classifier called these
- * draftable, so a model was asked to answer them in the person's name:
- *
- *   "Have you ever been terminated from a job?"
- *   "Why are you leaving your current role?"
- *   "Please list two professional references"
- *   "Please explain any gaps in your employment history"
- *   "What was your GPA?"
- *   "Are you able to work on-site three days a week?"
- *   "What time zone are you in?"  /  "Where are you currently located?"
- *   "Have you ever worked for us before?"
- *
- * Termination, reasons for leaving, gaps, references, grades, commuting,
- * days on site, time zone and where the person lives, and prior employment by
- * this employer ("worked for" or "worked at"; "worked with" names a tool or a
- * team, which a CV does establish). Like PROTECTED_FACTUAL it yields to a question about work
- * done: "Describe your experience handling employee terminations" is an HR
- * résumé fact and stays draftable. Since the review of 9fe3bc0d it also covers
- * a previous application to this employer ("Have you previously applied to
- * us?"), and it yields to work done only inside the clause that names the
- * work (asksAboutWorkDone).
+ * review, 2026-10-11): termination, reasons for leaving, gaps, references,
+ * grades, commuting, days on site, time zone and where they live, prior
+ * employment by or a previous application to this employer ("worked for" or
+ * "at"; "worked with" names a tool). It yields to work done only inside the
+ * clause that names the work (asksAboutWorkDone): "Describe your experience
+ * handling employee terminations" stays draftable. Since fix 3 a time zone is
+ * the person's only when the label asks for theirs ("your", "which", "what",
+ * "time zone are you"): "work across multiple time zones" is the work.
  */
-export const PERSONAL_HISTORY = /(\b(?:been|ever\s+been|were\s+you|was\s+you)\s+(?:terminated|dismissed|fired|discharged|let\s+go|asked\s+to\s+resign|forced\s+to\s+resign)\b|\b(?:termination|dismissal)\s+(?:from|of\s+employment)\b|\breasons?\s+for\s+(?:leaving|departure|wanting\s+to\s+leave|your\s+(?:departure|leaving))\b|\bwhy\s+(?:are|did|do)\s+you\s+(?:want\s+to\s+)?(?:leav\w*|left|looking\s+to\s+leave)\b|\bgaps?\s+in\s+(?:your\s+)?(?:employment|work\s+history|career|cv|resume|résumé)\b|\bemployment\s+gaps?\b|\bcareer\s+(?:gap|break)s?\b|\bexplain\s+any\s+gaps?\b|\breferees?\b|\b(?:professional|personal|employment|work|character|employer)\s+references?\b|\b(?:list|provide|name|give|share|supply|include|add)\b[^?.]{0,40}\breferences?\b|^\s*references?\s*(?:$|[(:*])|\breferences?\s+(?:available|upon\s+request|contact|details|name)\b|\bgpa\b|\bgrade\s+point\s+average\b|\b(?:your|final|overall|average|cumulative|academic|university|college|degree|school)\s+(?:grades?|marks?)\b|\bclass\s+rank\b|\bdegree\s+classification\b|\bcommut\w*|\bon[-\s]?site\s+(?:\w+\s+){0,2}(?:days?|times?)\b|\b(?:\d|one|two|three|four|five)\s+days?\s+(?:a|per|each)\s+week\s+(?:in|at|on)\b|\b(?:work|be)\s+(?:on[-\s]?site|in\s+(?:the|our)\s+office)\b|\breturn\s+to\s+(?:the\s+)?office\b|\btime\s*-?zones?\b|\bwhere\s+(?:are\s+you|do\s+you)\s+(?:currently\s+)?(?:located|based|live|living|reside)\b|\b(?:currently|presently)\s+(?:located|based|living|residing)\b|\b(?:previously|ever)\s+(?:been\s+)?(?:employed\s+by|worked\s+(?:for|at))\b|\bworked\s+(?:for|at|with)\s+(?:us|this\s+(?:company|organi[sz]ation|employer))\b|\b(?:former|previous|past)\s+employee\b|\bre-?hire\b|\beligible\s+for\s+rehire\b|\b(?:previously|ever|already)\s+applied\b|\bapplied\s+(?:(?:to|with)\s+(?:us|this\s+\w+|\w+)\s+|here\s+)?(?:before|previously)\b)/i;
+export const PERSONAL_HISTORY = /(\b(?:been|ever\s+been|were\s+you|was\s+you)\s+(?:terminated|dismissed|fired|discharged|let\s+go|asked\s+to\s+resign|forced\s+to\s+resign)\b|\b(?:termination|dismissal)\s+(?:from|of\s+employment)\b|\breasons?\s+for\s+(?:leaving|departure|wanting\s+to\s+leave|your\s+(?:departure|leaving))\b|\bwhy\s+(?:are|did|do)\s+you\s+(?:want\s+to\s+)?(?:leav\w*|left|looking\s+to\s+leave)\b|\bgaps?\s+in\s+(?:your\s+)?(?:employment|work\s+history|career|cv|resume|résumé)\b|\bemployment\s+gaps?\b|\bcareer\s+(?:gap|break)s?\b|\bexplain\s+any\s+gaps?\b|\breferees?\b|\b(?:professional|personal|employment|work|character|employer)\s+references?\b|\b(?:list|provide|name|give|share|supply|include|add)\b[^?.]{0,40}\breferences?\b|^\s*references?\s*(?:$|[(:*])|\breferences?\s+(?:available|upon\s+request|contact|details|name)\b|\bgpa\b|\bgrade\s+point\s+average\b|\b(?:your|final|overall|average|cumulative|academic|university|college|degree|school)\s+(?:grades?|marks?)\b|\bclass\s+rank\b|\bdegree\s+classification\b|\bcommut\w*|\bon[-\s]?site\s+(?:\w+\s+){0,2}(?:days?|times?)\b|\b(?:\d|one|two|three|four|five)\s+days?\s+(?:a|per|each)\s+week\s+(?:in|at|on)\b|\b(?:work|be)\s+(?:on[-\s]?site|in\s+(?:the|our)\s+office)\b|\breturn\s+to\s+(?:the\s+)?office\b|\b(?:your|which|what)\s+(?:current\s+|home\s+|preferred\s+)?time\s*-?zones?\b|\btime\s*-?zones?\s+(?:are|do|would|will|can|you)\b|^\s*time\s*-?zones?\s*(?:$|[(:*?])|\bwhere\s+(?:are\s+you|do\s+you)\s+(?:currently\s+)?(?:located|based|live|living|reside)\b|\b(?:currently|presently)\s+(?:located|based|living|residing)\b|\b(?:previously|ever)\s+(?:been\s+)?(?:employed\s+by|worked\s+(?:for|at))\b|\bworked\s+(?:for|at|with)\s+(?:us|this\s+(?:company|organi[sz]ation|employer))\b|\b(?:former|previous|past)\s+employee\b|\bre-?hire\b|\beligible\s+for\s+rehire\b|\b(?:previously|ever|already)\s+applied\b|\bapplied\s+(?:(?:to|with)\s+(?:us|this\s+\w+|\w+)\s+|here\s+)?(?:before|previously)\b)/i;
 /** Protected self-identification the DEMOGRAPHIC list missed (S8-008). */
 export const PROTECTED_DEMOGRAPHIC = /(lgbt\w*|transgender|\btrans\s+(?:man|woman|person)|\bcaste\b|aboriginal|torres\s+strait|\bindigenous\b|first\s+nations|military\s+(?:service|status|spouse|member|background|affiliation)|served\s+in\s+the\s+(?:military|armed\s+forces)|armed\s+forces|\bage\s+(?:range|group|bracket|band))/i;
 /**
@@ -250,8 +134,10 @@ export const PROTECTED_DEMOGRAPHIC = /(lgbt\w*|transgender|\btrans\s+(?:man|woma
  * "...administering vaccinations", "...processing payroll and wages" stay
  * draftable. Only when it opens as a résumé prompt, names the work, and asks
  * nothing of the candidate's own status. Mirrored in worker/src/questions/protected.ts.
+ * Since fix 3 a years-of-experience question may name the kind of experience
+ * between the two ("How many total years of hands-on UT experience").
  */
-export const RESUME_PROMPT = /^\s*(?:please\s+)?(?:describe|tell\s+(?:us|me)\s+about|explain|share|walk\s+(?:us|me)\s+through|discuss|elaborate\s+on|outline|give\s+(?:us\s+)?an?\s+example|what\s+(?:is|was)\s+your\s+experience|what\s+experience|how\s+many\s+years\s+(?:of\s+)?experience|how\s+much\s+experience)\b/i;
+export const RESUME_PROMPT = /^\s*(?:please\s+)?(?:describe|tell\s+(?:us|me)\s+about|explain|share|walk\s+(?:us|me)\s+through|discuss|elaborate\s+on|outline|give\s+(?:us\s+)?an?\s+example|what\s+(?:is|was)\s+your\s+experience|what\s+experience|how\s+many\s+(?:total\s+)?years\s+(?:of\s+)?(?:[\w/-]+\s+){0,4}?experience|how\s+much\s+experience)\b/i;
 export const ABOUT_WORK_DONE = /\b(?:experience[ds]?|worked|working\s+(?:with|on|in)|handl(?:ed|ing)|process(?:ed|ing)|car(?:ed|ing)\s+for|administer(?:ed|ing)|background\s+in|familiar(?:ity)?\s+with|knowledge\s+of)\b/i;
 export const OWN_STATUS = /\b(?:have|has)\s+you\s+(?:ever\s+)?been\b|\bare\s+you\b|\byou\s+(?:have|are|were)\s+(?:ever\s+)?(?:been\s+)?(?:convicted|arrested|charged|pregnant|vaccinated)\b|\byour\s+(?:own\s+)?(?:age|citizenship|immigration\s+status|visa(?:\s+status)?|criminal|convictions?|medical|health|disabilit\w*|pregnan\w*|vaccination\s+status)\b|\bany\s+(?:criminal|convictions?|arrests?|pending\s+charges?|medical|health|disabilit\w*)|\b(?:convictions?|arrests?|criminal\s+(?:record|history|charges?)|(?:medical|health)\s+conditions?|disabilit\w*)\s+(?:that\s+)?you\b|\bconfirm\s+(?:that\s+)?you\b|\bwhether\s+you\b|\b(?:do|will|would)\s+you\s+(?:need|require|hold|submit)\b|\byour\s+(?:own\s+|current\s+|expected\s+|desired\s+)?(?:hourly\s+|day\s+|daily\s+)?(?:rate|wages?|pay|salary|remuneration)\b/i;
 /**
@@ -270,10 +156,58 @@ export const PERSON_ASKS = /\b(?:your|two|three|four|\d)\s+(?:professional\s+)?r
  * rule PROTECTED_FACTUAL follows. Mirrored in worker/src/questions/protected.ts.
  */
 export const PERSON_FACT_NOUNS = /\brestrictive\s+covenants?\b|\bnon-?(?:solicit\w*|compete\w*)\b|\bconflicts?\s+of\s+interest\b/i;
+/**
+ * Facts about the person in the words the lists above miss (wave 4 fix 3,
+ * measured on a 1,536-label corpus): notice in any form, what the person
+ * earned or was paid, pay, when they could begin or join, someone to call,
+ * their availability, hours a week, eligibility, where they live, willingness
+ * to travel or move, visas, a change of job, adjustments to the process.
+ * Mirrored in worker/src/questions/protected.ts.
+ */
+export const PERSON_FACT_WORDS = /\bnotice\b|\byou(?:'re|'ve|'d)?(?:\s+\w+){0,2}?\s+(?:earn(?:s|ed|ing)?|paid)\b|\btake[-\s]?home\b|\btook\s+home\b|\b(?:your|the|what|how\s+much|expected|desired|current|last|previous)\s+(?:\w+\s+){0,2}?pay\b(?![-\w])|\bexpect\s+you\s+to\s+(?:start|begin|join)\b|\btimeline\s+(?:for|to)\s+(?:start|begin|join)\w*|\b(?:start|begin|join)(?:ing)?\s+date\b|\bwhen\s+(?:you|we)\s+(?:could|can|would|will|might)\s+(?:\w+\s+){0,3}(?:start|begin|join)\b|\b(?:someone|anyone|somebody|people|persons?|who|whom)\s+(?:we|i)\s+(?:can|could|may|might|should)\s+(?:call|contact|reach|speak\s+(?:to|with)|talk\s+to|ask)\b|\byou\s+(?:are|'re|would\s+be|will\s+be)\s+(?:\w+\s+)?available\b|\bavailable\s+(?:to\s+(?:start|work|begin|join|relocate|travel|interview)|from|for\s+(?:work|full|part|an?\s+interview|interviews))\b|\bhours?\s+(?:per|a|each|every)\s+(?:week|day|month)\b|\bhow\s+many\s+hours\b|\beligib\w*|\byou(?:'re|\s+are|\s+have)?\s+(?:currently\s+)?(?:live|lived|living|reside|resided|residing|located|based)\b|\bwhere\s+(?:do|are|did|were)\s+you\s+(?:currently\s+)?(?:live|living|lived|reside|located|based|from)\b|\b(?:willing|able|open|prepared)\s+to\s+(?:travel|relocate|move|commute)\b|\bbusiness\s+trips?\b|\bvisas?\b|\blooking\s+for\s+(?:a\s+)?(?:new|another|next|different)\s+(?:job|role|position|opportunit\w*)|\bwhy\s+now\b|\b(?:part|full)[-\s]time\b|\badjustments?\s+(?:we|to|for|during|in)\b|\byour\s+(?:\w+\s+)?status(?:es)?\b/i;
+/** True when the text names a fact about the person anywhere, in any of the lists' words. */
+export function mentionsPersonFact(text: string): boolean {
+  return FACTUAL.test(text) || PROTECTED_FACTUAL.test(text) || PERSONAL_HISTORY.test(text) || PERSON_ASKS.test(text) || PERSON_FACT_NOUNS.test(text) || PERSON_FACT_WORDS.test(text);
+}
 /** A later sentence is its own question; a dotted initialism or "e.g." ends none. */
 export const SENTENCE_BREAK = /[?!;]\s+|(?<=[a-z]{3})\.\s+(?=[A-Z])/;
-/** Where one clause of a sentence ends and the next begins: a comma, or a joining word. */
-export const CLAUSE_BREAK = /(,|\band\b|\bincluding\b|\bas\s+well\s+as\b|\bplus\b|\balong\s+with\b|\btogether\s+with\b)/i;
+/** Where one clause of a sentence ends and the next begins: a comma, a semicolon, an ampersand, a slash, a plus, any spaced run of symbols (" - ", " | ", " => ", " · "), or a joining word. */
+export const CLAUSE_BREAK = /(,|;|&|\/|\+|\s[^\p{L}\p{N}\s]{1,3}\s|\band\b|\bincluding\b|\bas\s+well\s+as\b|\bplus\b|\balong\s+with\b|\btogether\s+with\b)/iu;
+/**
+ * A clause about the person's own circumstances, by grammar rather than by
+ * topic, so it needs no word list (fix 3's self-break: "... and the hours you
+ * can commit", "... and how much you'd want per hour", "... and when your
+ * current contract ends", "... and the city you'd be working from"): a modal
+ * after "you" (not "you'd like", the extra-box idiom), a plan or a move in
+ * progress, or "your" current, expected, next or ideal anything. Work done is
+ * told in the past or as a plain noun ("the tools you used", "key accounts"),
+ * so a later clause or sentence that reads this way is a second ask, and the
+ * person's.
+ */
+/**
+ * THE DEFAULT FOR A LATER CLAUSE (fix 3's second self-break: "... and your
+ * political views", "... and your union membership", "... and the region
+ * you're in", "... and do you have kids?" carry no word any list holds). A
+ * later clause that addresses the person is a second ask, and theirs, unless
+ * it is visibly about work done (WORK_CLAUSE: told in the past by "you", or
+ * naming the work) or about motivation (MOTIVE_CLAUSE). A clause about their
+ * circumstances (PERSON_CIRCUMSTANCE) is theirs unless it tells work done in
+ * the past (WORK_PAST): "the clients you'd bring from your current employer"
+ * names clients and is still a covenant question. Pay verbs ("received",
+ * "earned", "made") never count as work done. The default is the person, so a
+ * new kind of personal question needs no new word.
+ */
+export const ADDRESSES_PERSON = /\byou(?:rs?|rself)?\b/i;
+export const WORK_PAST = /\byou(?:'ve|\s+have|\s+had)?\s+(?:\w+ly\s+)?(?:(?!(?:receiv|earn|pai|ow|offer|promis|award|grant|need|want|requir|expect|prefer|plann|intend)ed\b)\w+(?<!e)ed|built|led|ran|did|done|drove|grew|won|wrote|taught|sold|brought|kept|met|spent|oversaw|overcame|undertook|saw|found|chose|became|began|knew)\b/i;
+export const WORK_CLAUSE = new RegExp(WORK_PAST.source + /|\b(?:projects?|teams?|work|roles?|responsibilit\w*|clients?|customers?|tools?|results?|outcomes?|impact|approach|process(?:es)?|strateg\w*|skills?|stack|accounts?|pipeline|quotas?|deals?|campaigns?|products?|achievements?|accomplishments?|metrics|stakeholders|lessons?|examples?|challenges?|style|answer|response)\b|\byour\s+(?:biggest|greatest|proudest|best|most\s+\w+)\b/.source, "i");
+export const MOTIVE_CLAUSE = /\b(?:excit\w*|interest\w*|attract\w*|appeal\w*|drew|draws|motivat\w*|inspir\w*|passion\w*|love|enjoy\w*|admire|mission|values?|culture|vision|company|our|opportunit\w*|goals?|career|grow\w*|learn\w*|contribut\w*|bring|fit)\b/i;
+export const PERSON_CIRCUMSTANCE = /\byou(?:'d\s+(?!like\b|love\b|enjoy\b)|'ll\b|(?:'re|\s+are)\s+(?:able|willing|available|leaving|moving|looking|planning|considering|expecting|currently)\b|\s+(?:would|could|can|will|might|may|should|must|shall|need|expect|require|prefer|plan|intend)\b(?!\s+(?:like|love|enjoy)\b))|\byour\s+(?:current|expected|desired|preferred|next|ideal|future|minimum|target)\b/i;
+/** Text after the work words that begins with a joiner: the work took no object of its own. */
+export const NO_OBJECT = /^\s*(?:[^\p{L}\p{N}\s("'“‘[]|(?:and|or|plus|including|as\s+well\s+as|along\s+with|together\s+with)\b|$)/iu;
+/** The question's own "do you have" or "you have" right after the work words ("What experience do you have with ...", "Describe any experience you have with ..."), which asks about the work. */
+export const QUESTION_AUX = /^\s*(?:(?:do|did|would|will|can)\s+you\s+(?:have|had|bring|hold|possess)|(?:that\s+)?you(?:'ve|\s+have|\s+had))\b/i;
+/** Words that point a clause at the person: a question word about them, "any", or what we may do ("someone we may call"). */
+export const ASK_WORDS = /\b(?:any|whether|when|where|who|whom|how\s+(?:soon|much|many|long)|we\s+(?:can|could|may|might|should|will|would))\b/i;
 /** A clause that asks something of the person: it names them, or tells them to do something. */
 export const SECOND_ASK = /\byou(?:rs?)?\b|\b(?:list|provide|name|give|share|state|include|add|supply|tell|explain|describe|confirm|indicate|specify|mention)\b/i;
 /**
@@ -287,7 +221,7 @@ export const TOPICS: ReadonlyArray<readonly [string, RegExp]> = [
   ["sponsorship", /sponsor|visa/i],
   ["work_authorisation", /authori[sz]|eligib\w*\s+to\s+work|right\s+to\s+(?:live\s+(?:and|&)\s+)?work|work\s+permit|legally|citizen|permanent\s+resident|green\s+card|immigration|residen(?:cy|ce)\s+(?:status|permit)/i],
   ["salary", /salary|compensation|pay\b|wages?|remuneration|rate\b|\bote\b|\bctc\b|\byour\s+(?:\w+\s+)?(?:earnings|income)\b|\bhow\s+much\s+(?:did\s+|do\s+)?you\s+(?:made|make|earn(?:ed)?)\b|\bwhat\s+you\s+earn(?:ed)?\b|\b(?:currently|presently)\s+(?:earn|make)\b/i],
-  ["start_date", /start|notice\s+period|how\s+much\s+notice|available\s+(?:to|from)|earliest|(?:able|free)\s+to\s+(?:begin|join)|date\s+you\s+(?:can|could|would|will)\s+(?:begin|join)|when\s+you\s+(?:can|could|would|will)\s+(?:begin|join)/i],
+  ["start_date", /\bstart\b(?!-)|\bstart(?:ing)?\s+date|\bnotice\b|available\s+(?:to|from)|earliest|(?:able|free)\s+to\s+(?:begin|join)|date\s+you\s+(?:can|could|would|will)\s+(?:begin|join)|when\s+you\s+(?:can|could|would|will)\s+(?:begin|join)/i],
   ["relocation", /relocat/i],
   ["on_site", /on[-\s]?site|in\s+(?:the\s+)?office|hybrid|days?\s+(?:a|per)\s+week/i],
   ["commute", /commut/i],
@@ -316,70 +250,58 @@ export function topicOf(label: string): string {
 /**
  * True when a protected word sits in a question about work done, which the model may draft.
  *
- * The exemption covers the work's own object only. A later sentence is its own
- * question, read against every factual list ("Describe your experience; why
- * did you leave your last job?"). In the sentence that names the work, the
- * person's own history counts as the work's object only inside the clause the
- * work words open, so "your experience handling employee terminations and
- * exit interviews" stays a résumé question while "your work experience,
- * including any gaps in employment" does not; and a protected word in a later
- * clause that asks the person something ("and the minimum hourly rate you
- * would accept") is that question too. Mirrored in worker/src/questions/protected.ts.
- *
- * Sweep S12-081 found the clause rule let through a later clause that names a
- * protected status without addressing the person: "Describe your experience
- * and current visa status", "... and expected hourly rate", "..., including
- * vaccination status", "... and any accommodations needed for the interview".
- * So a protected word in a later clause is the work's object only when the
- * work words took an object of their own ("processing payroll and wages") and
- * the clause names no state of the person (PERSON_STATE); after work words
- * with no object ("your experience and ...") every protected later clause is
- * a second ask. A protected status named before the work words ("your current
- * visa status and experience") is not the work's object either.
- *
- * The review of wave 4 round 2 found the clause loop read only protected
- * statuses: "Describe your experience in sales and how soon you could start",
- * "... and the pay you expect", "... and two references we can contact",
- * "... and any restrictive covenants" were drafted. A later clause is now
- * also read against FACTUAL, PERSON_ASKS (always the person's) and
- * PERSON_FACT_NOUNS (the clause rule). Since the recheck, also topicOf.
+ * The exemption covers the work's own object only ("your experience handling
+ * employee terminations", "processing payroll and wages"). A later sentence
+ * is its own question. History or a protected status named before the work
+ * words is not the work's object. Sweep S12-081 and two rounds after it
+ * found the clause rule worked on spelling: a status, pay, a start date or a
+ * referee asked after "and", then after "&" or "/", then in new words, was
+ * drafted. Fix 3 (a 1,536-label corpus) makes the first test independent of
+ * joiners: PERSON_ASKS anywhere is the person's, and any fact about the person
+ * (mentionsPersonFact) after the work words is the work's object only when
+ * the work took an object first and nothing after it points at the person
+ * (pointsAtPerson). The clause loop still reads each later clause, split at
+ * every joiner, against the topics too, and a later clause or sentence about
+ * the person's circumstances (PERSON_CIRCUMSTANCE) is theirs whatever its
+ * words. Mirrored in worker/src/questions/protected.ts.
  */
 export function asksAboutWorkDone(label: string): boolean {
   if (!RESUME_PROMPT.test(label) || !ABOUT_WORK_DONE.test(label) || OWN_STATUS.test(label)) return false;
+  if (PERSON_ASKS.test(label)) return false;
   const [first, ...later] = label.split(SENTENCE_BREAK);
   // "Tell us about your experience. Green card holder?" is two questions.
-  if (later.some((s) => PROTECTED_FACTUAL.test(s) || PERSONAL_HISTORY.test(s) || FACTUAL.test(s) || PERSON_ASKS.test(s) || PERSON_FACT_NOUNS.test(s) || topicOf(s) !== "other")) return false;
+  if (later.some((s) => mentionsPersonFact(s) || topicOf(s) !== "other" || PERSON_CIRCUMSTANCE.test(s))) return false;
   const work = ABOUT_WORK_DONE.exec(first);
   if (!work) return false;
   // History named before the work words is not the work's object, nor is a protected status.
   const before = first.slice(0, work.index);
-  if (PERSONAL_HISTORY.test(before)) return false;
-  if (PROTECTED_FACTUAL.test(before) && PERSON_STATE.test(before)) return false;
-  const parts = first.slice(work.index + work[0].length).split(CLAUSE_BREAK);
+  if (PERSONAL_HISTORY.test(before) || PERSON_FACT_WORDS.test(before)) return false;
+  if ((PROTECTED_FACTUAL.test(before) || PERSON_FACT_NOUNS.test(before)) && PERSON_STATE.test(before)) return false;
+  const rest = first.slice(work.index + work[0].length).replace(QUESTION_AUX, " ");
+  const tookObject = !NO_OBJECT.test(rest);
+  if (mentionsPersonFact(rest) && (!tookObject || pointsAtPerson(rest))) return false;
+  const parts = rest.split(CLAUSE_BREAK);
   // parts: [the work's object, joiner, clause, joiner, clause, ...]
-  const tookObject = /[\p{L}\p{N}]/u.test(parts[0] ?? "");
   for (let i = 2; i < parts.length; i += 2) {
     const clause = parts[i];
-    if (PERSONAL_HISTORY.test(clause) || PERSON_ASKS.test(clause)) return false;
-    const factual = PROTECTED_FACTUAL.test(clause) || FACTUAL.test(clause) || PERSON_FACT_NOUNS.test(clause) || topicOf(clause) !== "other";
-    if (factual && (!tookObject || SECOND_ASK.test(clause) || PERSON_STATE.test(clause))) return false;
+    if (PERSONAL_HISTORY.test(clause)) return false;
+    if ((mentionsPersonFact(clause) || topicOf(clause) !== "other") && (!tookObject || pointsAtPerson(clause))) return false;
+    if (PERSON_CIRCUMSTANCE.test(clause) && !WORK_PAST.test(clause)) return false;
+    if (ADDRESSES_PERSON.test(clause) && !WORK_CLAUSE.test(clause) && !MOTIVE_CLAUSE.test(clause)) return false;
   }
   return true;
 }
 
+/** True when the text points at the person: "you" or "your", an instruction, a state of theirs, or a question word about them. */
+export function pointsAtPerson(text: string): boolean {
+  return SECOND_ASK.test(text) || PERSON_STATE.test(text) || ASK_WORDS.test(text);
+}
+
 /**
- * Real vendor question labels are not always plain text.
- *
- * 2 of 127 live Recruitee labels arrived as HTML — `<p>` wrappers and `<a>`
- * tags around the very link the candidate is being asked to read. Markup in a
- * label breaks it twice: it renders as tag soup wherever the packet is shown,
- * and it defeats the matchers below, which are written against prose. A label
- * whose consent link is spelled `<a href="...">privacy statement</a>` still has
- * to classify as consent.
- *
- * So classification and display both run on text. Entities are decoded AFTER
- * tags are stripped, so an escaped `&lt;p&gt;` in genuine question text cannot
- * become a tag that the strip pass has already gone past.
+ * Labels as text: 2 of 127 live Recruitee labels arrived as HTML, which renders
+ * as tag soup and defeats the matchers (a consent link inside <a> must still
+ * classify as consent). Entities are decoded after tags are stripped, so an
+ * escaped tag in real text cannot become one.
  */
 export function cleanQuestionLabel(raw: unknown): string {
   return String(raw ?? "")
@@ -396,30 +318,11 @@ export function cleanQuestionLabel(raw: unknown): string {
 }
 
 /**
- * THE HONESTY CLASSES, IN THE LANGUAGES EMPLOYERS ACTUALLY WRITE IN.
- *
- * MEASURED 2026-08-03, and it is the widest hole found all day. Ten labels
- * were tested against the classifier — a Dutch date of birth, a Dutch gender,
- * a Swedish personnummer, a French/German/Spanish date of birth, a Dutch
- * address, a Dutch background check. TEN OF TEN came back `draftable`.
- *
- * `draftable` means a language model is asked to write the answer. So on any
- * non-English form this file's entire purpose inverted: the classifier whose
- * header calls it "the honesty core of the apply agent" would have had an LLM
- * invent a DATE OF BIRTH, a GENDER, or a NATIONAL ID NUMBER. The only thing
- * standing behind it was the grounding gate marking the draft unsupported —
- * a backstop, not a design.
- *
- * This is not hypothetical traffic. The same day's dry runs drove live Dutch
- * (velomedi), Swedish (vardaga, attendosverige), Norwegian (compass-group) and
- * Italian (roccofortehotels) application forms.
- *
- * ADDITIVE ON PURPOSE. Each pattern below is OR'd with its English original
- * rather than merged into it, so every existing English case keeps the exact
- * behaviour its tests pin. A regression here can only come from these lines.
- *
- * Word boundaries are avoided around accented terms — JavaScript's \b is
- * ASCII-only, so `\bkön\b` does not do what it looks like it does.
+ * THE HONESTY CLASSES IN OTHER LANGUAGES (measured 2026-08-03): a Dutch date of
+ * birth, a Swedish personnummer, a German gender and seven more all came back
+ * draftable, so a model would have invented them on live Dutch, Swedish,
+ * Norwegian and Italian forms. Each pattern is OR'd with its English original,
+ * so English behaviour is unchanged. No \b around accented terms: it is ASCII-only.
  */
 const DEMOGRAPHIC_INTL =
   /(geboorte\w*|geburts\w*|date\s+de\s+naissance|fecha\s+de\s+nacimiento|data\s+di\s+nascita|data\s+de\s+nascimento|födelsedatum|fødselsdato|syntymäaika|data\s+urodzenia|personnummer|fødselsnummer|\bbsn\b|geslacht|geschlecht|\bsexe\b|\bgénero\b|\bgenere\b|\bsesso\b|\bkön\b|kjønn|sukupuoli|\bpłeć\b|nationaliteit|staatsangehörigkeit|nationalité|nacionalidad|nazionalità|nacionalidade|nationalitet|kansalaisuus|obywatelstwo|burgerlijke\s+staat|familienstand|état\s+civil|estado\s+civil|stato\s+civile|civilstånd|handicap|behinderung|discapacidad|disabilità|deficiência|funktionsnedsättning|funksjonsnedsettelse|etnische|ethnische|origine\s+ethnique|origen\s+étnico)/i;
@@ -484,9 +387,9 @@ export function classifyQuestion(label: string, fieldType?: string): QuestionCla
   // After the attestations: "I confirm to have a valid DNI" is the candidate's
   // own declaration either way, and stays one.
   if (PROTECTED_FACTUAL.test(l) && !asksAboutWorkDone(l)) return "factual";
-  // The person's own history and circumstances (2026-10-11), under the same
-  // work-done exemption.
-  if (PERSONAL_HISTORY.test(l) && !asksAboutWorkDone(l)) return "factual";
+  // The person's own history and circumstances (2026-10-11), and since fix 3
+  // the asks and facts the lists missed, under the same work-done exemption.
+  if ((PERSONAL_HISTORY.test(l) || PERSON_ASKS.test(l) || PERSON_FACT_NOUNS.test(l) || PERSON_FACT_WORDS.test(l)) && !asksAboutWorkDone(l)) return "factual";
   if (IDENTITY_IF_FIELD.test(l) && (bare.split(" ").length <= 4 || OWN_ATTRIBUTE.test(l))) {
     return "identity";
   }
