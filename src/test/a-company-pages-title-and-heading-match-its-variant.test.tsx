@@ -41,6 +41,7 @@ import { buildLanderModel, type LanderInput } from "@/lib/company/lander-model";
 import { rememberLanderName } from "@/lib/display-name";
 import { CompanyHeader } from "@/components/jobs/company/CompanyHeader";
 import { HiringRecordCard } from "@/components/jobs/company/HiringRecordCard";
+import { bakedHeadFor, resetBakedHeadForTests } from "@/components/seo/baked-head";
 
 vi.setConfig({ testTimeout: 30_000 });
 const SLOW = { timeout: 4000 } as const;
@@ -137,6 +138,33 @@ describe("the document title follows the page's variant", () => {
     await waitForZeroHead("Acme");
     expect(document.title).not.toMatch(/open roles|own hiring system/);
     expect(document.querySelector('p[role="status"][aria-live="polite"]')?.textContent).toBe("No roles are listed on this page right now.");
+  });
+
+  it("a baked company page whose board has since gone to zero: the zero head replaces the baked head, which counted roles the page no longer lists", async () => {
+    // The bake writes an indexable page for a board with open roles; the app
+    // keeps that page's baked head (SEO-007). Loaded after the board emptied,
+    // the page renders the zero variant, and its head must say so (round 3).
+    const path = "/jobs/company/acme";
+    window.history.replaceState({}, "", path);
+    document.head.innerHTML = [
+      "<title>Acme jobs: 40 open roles from their own hiring system</title>",
+      '<meta name="description" content="Browse Acme\'s 40 open roles, read from Acme\'s own hiring system.">',
+      '<meta name="robots" content="index, follow">',
+      `<link rel="canonical" href="https://resumebooster.work${path}">`,
+      '<meta name="x-prerendered" content="1">',
+    ].join("");
+    resetBakedHeadForTests();
+    try {
+      expect(bakedHeadFor(path)?.indexable, "the bake's own indexable page").toBe(true);
+      rememberLanderName("acme", "Acme");
+      mount("acme", []);
+      await waitForZeroHead("Acme");
+      expect([...document.head.querySelectorAll("title")].map((t) => t.textContent)).toEqual(["Acme jobs"]);
+    } finally {
+      cleanup();
+      document.head.innerHTML = "";
+      resetBakedHeadForTests();
+    }
   });
 
   it("positive control: an employer's page keeps '{company} jobs: open roles from their own hiring system'", async () => {

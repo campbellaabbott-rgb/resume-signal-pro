@@ -8320,7 +8320,10 @@ function JobsBoard({ boardId }: { boardId: string }) {
         path={landerCompany ? companyLanderPath(landerCompany) : landerCategory ? `/jobs/field/${landerCategory}` : "/jobs"}
         canonicalPath={landerCompany && bakedPrimary ? companyLanderPath(bakedPrimary) : undefined}
         noIndex={landerUncarried}
-        preferBakedHead={!landerUncarried}
+        // A zero page never keeps the baked head: the bake wrote it while the
+        // board had roles and counted them, and this page lists none (round 3
+        // review, 2026-10-25, merged with SEO-007).
+        preferBakedHead={!landerUncarried && landerModel?.variant !== "zero"}
       />
       <Header />
       {/* The site-wide skip link is the first focusable element in the
