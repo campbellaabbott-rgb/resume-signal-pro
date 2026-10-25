@@ -448,8 +448,11 @@ for (const p of probes) {
 # Workday company pages, with the crawler's UA. The bake writes two fact
 # lines on a company page from get_company_intel, exactly
 #   "The countries holding the most of its roles on this board:" and
-#   "The fields holding the most of its roles on this board:",
-# and drops both without failing when the reader is slow: it reads six pages
+#   "The fields holding the most of its roles on this board:"
+# in main's bake of 2026-10-25, and the same two lines with the scope it read
+# in place of "on this board" in the SEO round's bake (S13-116: "across"
+# the employer's hiring system, its possessive HTML-escaped, or "across
+# USAJOBS"); either counts. The bake drops both without failing when the reader is slow: it reads six pages
 # at a time in its own page order (open roles, largest first), and past its
 # 90-second deadline, or after 18 failures in a row, every page after that
 # point states neither. So the line samples the sitemap, which lists the
@@ -508,9 +511,13 @@ const MIN_SHARE = 0.9;
 const HEAD = 4;
 const PLACES = "The countries holding the most of its roles on this board:";
 const FIELDS = "The fields holding the most of its roles on this board:";
+// The SEO round bakes the scope it read in place of "on this board" (S13-116):
+// across the employer\x27s hiring system (its possessive escaped), or across USAJOBS.
+const SCOPED = /<p>The (?:countries|fields) holding the most of its roles across (?:USAJOBS|[^<:]{1,200} hiring system): /g;
 let b = null;
 try { b = JSON.parse(fs.readFileSync("/tmp/vd_81_baked.json", "utf8")); } catch { b = null; }
 const count = (h, s) => String(h || "").split(s).length - 1;
+const facts = (h) => count(h, PLACES) + count(h, FIELDS) + (String(h || "").match(SCOPED) || []).length;
 const titleOf = (h) => (String(h || "").match(/<title>([^<]*)<\/title>/) || [])[1] || "";
 const canonOf = (h) => (String(h || "").match(/<link rel="canonical" href="([^"]*)"/) || [])[1] || "";
 const verdict = (p, homeTitle, site) => {
@@ -518,7 +525,7 @@ const verdict = (p, homeTitle, site) => {
   const t = titleOf(p.body);
   const own = `${site}/jobs/company/${p.token}`;
   if (!t || (homeTitle && t === homeTitle) || canonOf(p.body) !== own) return `the homepage shell (title "${t.slice(0, 60)}", canonical "${canonOf(p.body) || "absent"}")`;
-  return count(p.body, PLACES) + count(p.body, FIELDS) > 0 ? null : "neither fact line";
+  return facts(p.body) > 0 ? null : "neither fact line";
 };
 if (!b) out("FAIL", "81j the baked Workday company pages: not probed");
 else if (b.sitemapStatus !== 200) out("FAIL", `81j the live sitemap answered HTTP ${b.sitemapStatus}: no Workday company page to sample`);
@@ -539,7 +546,7 @@ else {
     const headWant = Math.min(HEAD, b.workdayPages);
     const headGood = head.filter((x) => x.why === null).length;
     const headOk = head.length === headWant && headGood === headWant;
-    const what = `${good.length} of ${pages.length} sampled Workday company pages (sitemap positions ${pages[0].pos + 1} to ${pages[pages.length - 1].pos + 1} of ${b.workdayPages}; the first ${headWant}: ${headGood}${head.length < headWant ? ` of ${head.length} sampled` : ""}, the last ${tail.length}: ${tailGood}) state a fact line ("${PLACES}" or "${FIELDS}"): ${pct}%`;
+    const what = `${good.length} of ${pages.length} sampled Workday company pages (sitemap positions ${pages[0].pos + 1} to ${pages[pages.length - 1].pos + 1} of ${b.workdayPages}; the first ${headWant}: ${headGood}${head.length < headWant ? ` of ${head.length} sampled` : ""}, the last ${tail.length}: ${tailGood}) state a fact line ("${PLACES}" or "${FIELDS}", or the same line across the employer\x27s hiring system or USAJOBS): ${pct}%`;
     if (pages.length >= MIN_SAMPLE && share >= MIN_SHARE && headOk) out("PASS", `81j ${what}, at least 90% and each of the first ${headWant}: the bake read the company reader for its Workday pages, its largest and its tail included`);
     else if (pages.length >= MIN_SAMPLE && share >= MIN_SHARE) out("FAIL", `81j ${what}, but not each of the first ${headWant}: the largest Workday pages baked without facts (is the reader too slow on big tenants for the bake\x27s 8-second per-call timeout?)`);
     else out("FAIL", `81j ${what}, want at least 90% of at least ${MIN_SAMPLE} and each of the first ${headWant}: the bake dropped Workday facts (is 20261012137000 applied, did the publish re-bake after it, and did the bake run past its 90-second intel deadline?)`);
@@ -552,7 +559,7 @@ else {
     for (const x of misses.slice(0, 8)) out("INFO", `81j ${x.p.token} (sitemap Workday position ${x.p.pos + 1}): ${x.why}`);
     if (misses.length > 8) out("INFO", `81j ... and ${misses.length - 8} more sampled page(s) without a fact line`);
     const c = b.control || {};
-    const cn = count(c.body, PLACES) + count(c.body, FIELDS);
+    const cn = facts(c.body);
     out("INFO", `81j control dominos (SmartRecruiters): HTTP ${c.status}, ${cn} fact line(s)${cn ? "" : ": this bake wrote no places or fields on any page it was checked on"}`);
   }
 }
