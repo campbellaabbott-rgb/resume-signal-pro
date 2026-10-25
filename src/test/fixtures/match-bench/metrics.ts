@@ -22,7 +22,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { anyDescription, beforeDescription, FIXTURES, loadCorpus, type CorpusRow } from "./corpus.ts";
 import { RESUMES } from "./dev/manifest.ts";
-import { judge, type PostingRow, type Rubric, type Verdict } from "./judge.ts";
+import { judge, type PostingRow, type Rubric, type Verdict } from "./rubric.ts";
 import type { ResumeTruth } from "./types.ts";
 
 export const round1 = (x: number) => Math.round(x * 10) / 10;

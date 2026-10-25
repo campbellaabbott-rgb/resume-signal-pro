@@ -7,7 +7,7 @@
  * Ofcom-drama / ACMA-fictional ranges. Nothing here may be sent to a model
  * endpoint or uploaded as a real CV.
  *
- * Rubric fields (applied by harness/judge.ts, then reviewed by hand):
+ * Rubric fields (applied by rubric.ts, then reviewed by hand):
  *   target     title patterns the candidate is SEEKING and would be shortlisted for
  *   adjacent   title patterns a recruiter would still shortlist them for
  *   related    same field, a role a recruiter would NOT shortlist them for (counts

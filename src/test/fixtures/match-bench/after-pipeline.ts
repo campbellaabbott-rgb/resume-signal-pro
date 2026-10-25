@@ -12,7 +12,7 @@
  *                            over the corpus loaded into a job_board_postings
  *                            table whose title_tsv and effective_posted are the
  *                            generated columns production declares;
- *   rpc("metro_ring")        rings.ts (the bench has no GeoNames table);
+ *   rpc("metro_ring")        metro-rings.ts (the bench has no GeoNames table);
  *   from("job_board_postings").select("id, description, min_years")
  *                            the corpus descriptions (a row nobody read has none,
  *                            so the engine marks it "requirements not read");
@@ -35,7 +35,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { loadCorpus, type Corpus } from "./corpus.ts";
 import { RESUMES } from "./dev/manifest.ts";
-import { ringFor } from "./rings.ts";
+import { ringFor } from "./metro-rings.ts";
 import type { ResumeTruth } from "./types.ts";
 
 export const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../../..");

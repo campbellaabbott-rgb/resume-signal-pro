@@ -5,7 +5,7 @@
 // This turns those caches into what the regression gate needs, and nothing
 // else:
 //
-//   src/test/fixtures/match-bench/corpus.json.gz
+//   src/test/fixtures/match-bench/postings.json.gz
 //       every posting any of the three runs saw (list rows, plus each list
 //       row's collapsed sibling postings as rows of their own), with the
 //       fields match_candidates returns, and every description any run read
@@ -111,7 +111,7 @@ const corpus = {
   descriptions: Object.fromEntries([...descriptions.entries()].sort(([a], [b]) => a.localeCompare(b))),
 };
 const gz = gzipSync(Buffer.from(JSON.stringify(corpus)), { level: 9 });
-writeFileSync(join(FIX, "corpus.json.gz"), gz);
+writeFileSync(join(FIX, "postings.json.gz"), gz);
 console.log(`corpus: ${corpus.rows.length} rows (${[...origin.values()].filter((o) => o.endsWith(":sibling")).length} siblings), ${descriptions.size} descriptions (${inherited} from a parent), ${(gz.length / 1e6).toFixed(2)} MB gzipped`);
 
 // 3. The BEFORE measurement, frozen.

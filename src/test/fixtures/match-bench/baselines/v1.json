@@ -1,7 +1,7 @@
 {
- "recordedAt": "2026-10-13T00:28:58.075Z",
+ "recordedAt": "2026-10-25T03:16:28.074Z",
  "engine": {
-  "ref": "rm/engine a7e910d3 (committed tree, 2026-10-12 20:04 EDT)",
+  "ref": "rm/engine d549462d (committed tree, 2026-10-12 21:04 EDT)",
   "note": "Recorded offline from the frozen corpus with scripts/match-bench/report.ts --save-after."
  },
  "corpusVersion": "match-bench-corpus.2026-10-12.1",
@@ -15,46 +15,46 @@
   "mode": "extract",
   "exact11": {
    "n": 11,
-   "p10": 81.8,
-   "p20": 75.5,
-   "shown": 186,
-   "shortlisted": 166,
-   "precisionShown": 89.2,
-   "location": 1.1,
+   "p10": 85.5,
+   "p20": 81.8,
+   "shown": 200,
+   "shortlisted": 180,
+   "precisionShown": 90,
+   "location": 1,
    "locationRows": 2,
-   "seniority": 8.2,
+   "seniority": 7.6,
    "seniorityRows": 15,
-   "infield": 183,
-   "wrongField": 1.6,
+   "infield": 197,
+   "wrongField": 1.5,
    "oldCareer": 0,
    "licenceFail": 0,
    "authFail": 1,
-   "descRead": 73,
-   "reviewed": 0,
-   "under10": 2,
-   "under20": 2,
+   "descRead": 74,
+   "reviewed": 1,
+   "under10": 1,
+   "under20": 1,
    "zero": 1
   },
   "all24": {
    "n": 24,
-   "p10": 71.3,
-   "p20": 62.3,
-   "shown": 339,
-   "shortlisted": 299,
-   "precisionShown": 88.2,
-   "location": 0.6,
+   "p10": 73.3,
+   "p20": 67.1,
+   "shown": 364,
+   "shortlisted": 322,
+   "precisionShown": 88.5,
+   "location": 0.5,
    "locationRows": 2,
-   "seniority": 10.4,
-   "seniorityRows": 35,
-   "infield": 336,
-   "wrongField": 0.9,
+   "seniority": 10.2,
+   "seniorityRows": 37,
+   "infield": 361,
+   "wrongField": 0.8,
    "oldCareer": 0,
    "licenceFail": 0,
    "authFail": 1,
-   "descRead": 73,
-   "reviewed": 0,
-   "under10": 8,
-   "under20": 9,
+   "descRead": 74,
+   "reviewed": 1,
+   "under10": 6,
+   "under20": 7,
    "zero": 3
   },
   "zero": [
@@ -96,12 +96,11 @@
     ]
    },
    "rn-mid-chicago": {
-    "rows": 6,
-    "shortlisted": 5,
+    "rows": 20,
+    "shortlisted": 19,
     "family": "rn_icu",
     "steps": [
-     0,
-     1
+     0
     ]
    },
    "rn-sr-manchester": {
@@ -163,12 +162,11 @@
     ]
    },
    "mk-ng-boston": {
-    "rows": 9,
-    "shortlisted": 7,
+    "rows": 20,
+    "shortlisted": 16,
     "family": "marketing_coordinator",
     "steps": [
-     0,
-     1
+     0
     ]
    },
    "mk-mid-denver": {
@@ -265,52 +263,52 @@
     ]
    }
   },
-  "maxWallMs": 919
+  "maxWallMs": 198
  },
  "oracle": {
   "mode": "oracle",
   "exact11": {
    "n": 11,
-   "p10": 81.8,
-   "p20": 75,
-   "shown": 186,
-   "shortlisted": 165,
-   "precisionShown": 88.7,
-   "location": 1.6,
-   "locationRows": 3,
-   "seniority": 8.7,
-   "seniorityRows": 16,
-   "infield": 184,
-   "wrongField": 1.1,
-   "oldCareer": 0,
-   "licenceFail": 0,
-   "authFail": 2,
-   "descRead": 72,
-   "reviewed": 0,
-   "under10": 2,
-   "under20": 2,
-   "zero": 1
-  },
-  "all24": {
-   "n": 24,
-   "p10": 71.7,
-   "p20": 64,
-   "shown": 350,
-   "shortlisted": 307,
-   "precisionShown": 87.7,
-   "location": 0.9,
-   "locationRows": 3,
-   "seniority": 10.9,
-   "seniorityRows": 38,
-   "infield": 348,
-   "wrongField": 0.6,
+   "p10": 84.5,
+   "p20": 80.5,
+   "shown": 200,
+   "shortlisted": 177,
+   "precisionShown": 88.5,
+   "location": 2,
+   "locationRows": 4,
+   "seniority": 8.6,
+   "seniorityRows": 17,
+   "infield": 198,
+   "wrongField": 1,
    "oldCareer": 0,
    "licenceFail": 0,
    "authFail": 2,
    "descRead": 73,
    "reviewed": 0,
-   "under10": 7,
-   "under20": 8,
+   "under10": 1,
+   "under20": 1,
+   "zero": 1
+  },
+  "all24": {
+   "n": 24,
+   "p10": 72.9,
+   "p20": 66.5,
+   "shown": 364,
+   "shortlisted": 319,
+   "precisionShown": 87.6,
+   "location": 1.1,
+   "locationRows": 4,
+   "seniority": 10.8,
+   "seniorityRows": 39,
+   "infield": 362,
+   "wrongField": 0.5,
+   "oldCareer": 0,
+   "licenceFail": 0,
+   "authFail": 2,
+   "descRead": 74,
+   "reviewed": 0,
+   "under10": 6,
+   "under20": 7,
    "zero": 3
   },
   "zero": [
@@ -352,12 +350,11 @@
     ]
    },
    "rn-mid-chicago": {
-    "rows": 6,
-    "shortlisted": 5,
+    "rows": 20,
+    "shortlisted": 18,
     "family": "rn_icu",
     "steps": [
-     0,
-     1
+     0
     ]
    },
    "rn-sr-manchester": {
@@ -497,7 +494,7 @@
    },
    "da-ng-opt-sanjose": {
     "rows": 20,
-    "shortlisted": 17,
+    "shortlisted": 16,
     "family": "data_analyst",
     "steps": [
      0
@@ -520,7 +517,7 @@
     ]
    }
   },
-  "maxWallMs": 471
+  "maxWallMs": 202
  },
  "reader": {
   "n": 60,
@@ -533,8 +530,8 @@
   "authPrecision": 97.1,
   "authRight": 33,
   "authClaimed": 34,
-  "years3": 83.3,
-  "yearsRight": 50,
+  "years3": 86.7,
+  "yearsRight": 52,
   "entryRecall": 59.1,
   "entryRight": 13,
   "entryOf": 22,

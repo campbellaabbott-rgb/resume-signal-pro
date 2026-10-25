@@ -20,15 +20,15 @@ budgeted ledger (`live.ts`). The CI gate makes none.
 | `dev/*.txt`, `dev/manifest.ts` | The 24 dev résumés BEFORE measured, with their ground truth. Ported unchanged from the 2026-10-12 bench. The prototypes and the engine were tuned on these. |
 | `dev/parsed/*.pdf.txt` | Each résumé rendered to PDF and read back through parse-pdf's own core. This is the text the BEFORE run used and the input every pipeline reads. |
 | `heldout/*.txt`, `heldout/manifest.ts`, `heldout/parsed/` | **60 held-out résumés, written blind.** See below. |
-| `corpus.json.gz` | The frozen corpus (1.35 MB). It holds all 4,684 postings the BEFORE run and the two prototypes saw through job-board's read-only calls, plus the 618 descriptions any of them read. Descriptions are cut at 20,000 characters, and emails, phones and profile links are replaced. It contains no apply URLs and nothing about any person. |
+| `postings.json.gz` | The frozen corpus (1.35 MB). It holds all 4,684 postings the BEFORE run and the two prototypes saw through job-board's read-only calls, plus the 618 descriptions any of them read. Descriptions are cut at 20,000 characters, and emails, phones and profile links are replaced. It contains no apply URLs and nothing about any person. |
 | `before/ranked.json` | The BEFORE measurement, frozen. For each résumé: its query, its 60-row pool in fit order, and each row's metadata as the judge saw it. |
 | `baselines/proto-top20.json` | The Requirements-First prototype's shown rows (extractor profile and confirmed "oracle" profile). |
 | `baselines/before.json` | BEFORE and the prototype, under both rubrics (`report.ts --save-before`). |
 | `baselines/v1.json` | The AFTER baseline the CI gate holds (`report.ts --save-after`). |
 | `judgments/overrides.json`, `judgments/posting-facts.json` | The hand review: 14 pair corrections and 121 posting facts. They apply to every rubric and every pipeline. |
-| `judge.ts` | The rubric (below). |
-| `metrics.ts`, `bench.ts`, `reader-score.ts` | The numbers, the gate's rule and its tolerance, and the held-out reader score. |
-| `after-pipeline.ts`, `rings.ts`, `corpus.ts`, `scrub.ts` | The offline AFTER run (below), the commute rings it answers `metro_ring` from, the corpus loader, and the contact-detail scrubber. |
+| `rubric.ts` | The rubric (below). |
+| `metrics.ts`, `gate.ts`, `reader-score.ts` | The numbers, the gate's rule and its tolerance, and the held-out reader score. |
+| `after-pipeline.ts`, `metro-rings.ts`, `corpus.ts`, `scrub.ts` | The offline AFTER run (below), the commute rings it answers `metro_ring` from, the corpus loader, and the contact-detail scrubber. |
 
 ### The held-out set was written blind
 
@@ -62,7 +62,7 @@ tool that does not embed fonts. That is kept as a hazard.
 **Do not tune the engine on the held-out set.** The CI gate prints only its
 aggregates. `report.ts --verbose` lists the misses for the bench owner.
 
-## The rubric (`judge.ts`)
+## The rubric (`rubric.ts`)
 
 "Would a recruiter shortlist this candidate for this job?" The answer is yes
 only when all of these hold:
@@ -110,20 +110,23 @@ AFTER is always reported on those same 11 ids, and separately on all 24. Each
 rate is given with its denominator. BEFORE's all-24 figure is a [low, high]
 bound.
 
-Recorded 2026-10-12. The AFTER column is `rm/engine` a7e910d3 (committed tree),
-offline.
+BEFORE and the prototype were recorded on 2026-10-12. The AFTER column was
+re-recorded on 2026-10-24 from `rm/engine` d549462d (committed tree, clean),
+offline. Its engine modules are byte-identical at 9fa797f2, where rm/engine
+merged origin/main. The first recording, from a7e910d3, read exact-11
+81.8 / 75.5 and location 1.1% (2/186).
 
 | metric | BEFORE legacy (as run) | BEFORE v2 | proto v2 (auto) | AFTER v2 extract |
 |---|---|---|---|---|
-| P@10 / P@20, exact 11 | 14.5 / 10.0 | 14.5 / 10.0 | 85.5 / 84.5 | 81.8 / 75.5 |
-| P@10 / P@20, all 24 | [6.7, 17.1] / [4.6, 9.8] | same | 74.6 / 69.8 | 71.3 / 62.3 |
-| location mismatch, exact-11 top 20 | 85.5% (188/220) | 85.0% (187/220) | 2.0% (4/200) | 1.1% (2/186) |
-| location mismatch, all-24 top 20 | pool 90.6% | pool 90.4% | 1.1% (4/364) | 0.6% (2/339) |
-| seniority mismatch, exact 11 | 15.9% (35/220) | 15.9% (35/220) | 4.5% (9/199) | 8.2% (15/183) |
+| P@10 / P@20, exact 11 | 14.5 / 10.0 | 14.5 / 10.0 | 85.5 / 84.5 | 85.5 / 81.8 |
+| P@10 / P@20, all 24 | [6.7, 17.1] / [4.6, 9.8] | same | 74.6 / 69.8 | 73.3 / 67.1 |
+| location mismatch, exact-11 top 20 | 85.5% (188/220) | 85.0% (187/220) | 2.0% (4/200) | 1.0% (2/200) |
+| location mismatch, all-24 top 20 | pool 90.6% | pool 90.4% | 1.1% (4/364) | 0.5% (2/364) |
+| seniority mismatch, exact 11 | 15.9% (35/220) | 15.9% (35/220) | 4.5% (9/199) | 7.6% (15/197) |
 | licence fails shown, exact 11 | 0 (never checked) | 14 | 0 | 0 |
-| rows with a description read, exact 11 | 220/220 | 220/220 | 67/200 | 73/186 |
-| rows with a hand review, exact 11 | 10/220 | 10/220 | 0/200 | 0/186 |
-| résumés under 10 rows / at zero, all 24 | - | - | 7 / 3 | 8 / 3 |
+| rows with a description read, exact 11 | 220/220 | 220/220 | 67/200 | 74/200 |
+| rows with a hand review, exact 11 | 10/220 | 10/220 | 0/200 | 1/200 |
+| résumés under 10 rows / at zero, all 24 | - | - | 7 / 3 | 6 / 3 |
 
 **Caveats, which hold until the AFTER benchmark has its own budget and hand
 review (owner decision 8):**
@@ -131,7 +134,7 @@ review (owner decision 8):**
   on.
 - The offline AFTER run is a closed world. It finds only postings an earlier run
   retrieved, and reads requirements only where one of them read a description.
-- `metro_ring` is answered from the prototype's hand-written rings (`rings.ts`),
+- `metro_ring` is answered from the prototype's hand-written rings (`metro-rings.ts`),
   not GeoNames.
 
 ### Held-out profile reader (the same engine, aggregates only)
@@ -141,12 +144,12 @@ review (owner decision 8):**
 | country ≥95% | 63.3% | 38/60 |
 | city ≥90% | 61% | 36/59 |
 | authorisation precision 100% | 97.1% | 33/34 declared statuses read right |
-| years within 3 ≥85% | 83.3% | 50/60 |
+| years within 3 ≥85% | 86.7% | 52/60 |
 | entry-level recall ≥90%, ≤1 false positive | 59.1%, 0 | 13/22 |
 | sponsorship need (no target) | 75% | 3/4 |
 
 On the dev set, the reader reads every home. On the blind set it misses about a
-third of them, and on this set it meets none of the spec's targets.
+third of them, and on this set it meets one of the spec's targets (years).
 
 ## The CI gate (`src/test/match-bench-gate.test.ts`)
 
@@ -155,7 +158,7 @@ The gate runs the engine's own code offline:
 - `runMatch` with `match_candidates` executed **from the migration's real
   plpgsql in pglite**, over the corpus loaded into a `job_board_postings` table
   whose generated columns are copied from production's migrations;
-- `metro_ring` answered from `rings.ts`;
+- `metro_ring` answered from `metro-rings.ts`;
 - descriptions answered from the corpus.
 
 It fails when any of these happens:
@@ -169,7 +172,8 @@ It fails when any of these happens:
 - the held-out reader's authorisation precision falls at all.
 
 The run is deterministic and makes no network call: `fetch` throws throughout
-the measurement. It takes about 6 s with `--maxWorkers=2`.
+the measurement. It takes about 4 to 6 s with `--maxWorkers=2` (3.6 s measured
+on 2026-10-24 against rm/engine d549462d).
 
 The gate **skips only while none** of spec §18's modules is on the branch. One
 module without the rest fails, naming what is missing. To try another checkout's
@@ -185,6 +189,33 @@ what was measured:
 ```
 ./node_modules/.bin/tsx scripts/match-bench/report.ts --save-after --ref "<branch> <sha>"
 ```
+
+### rm/engine carries a second bench (for the integrator)
+
+rm/engine's last commit (d549462d, seven minutes after this bench was
+committed) added its own bench under the same folder. It has a 2,731-posting
+corpus with 492 descriptions, `baseline.v1.json`, `bench.ts`, `judge.ts`,
+`rings.ts` and `src/test/match-bench.test.ts`. Its own unit tests also read
+`db.ts`, `endpoint.ts`, `manifest.ts`, `resumes/` and `parsed/` there.
+
+On 2026-10-24 this bench renamed the four files whose paths collided with
+different content:
+- `bench.ts` became `gate.ts`;
+- `judge.ts` became `rubric.ts`;
+- `rings.ts` became `metro-rings.ts`;
+- `corpus.json.gz` became `postings.json.gz`.
+
+The two `judgments/` files are byte-identical on both branches. The two
+branches now merge without a conflict, and each bench keeps passing.
+
+The two benches print different AFTER figures for the same engine. rm/engine's
+reads exact-11 87.3 / 85.9. This one reads 85.5 / 81.8. The corpora differ
+(2,731 postings with 492 descriptions, against 4,684 with 618), and so do the
+rubrics. rm/engine's rubric counts a licence held in another state as a
+transfer, not a fail. This one fails it unless the posting says the licence
+may follow hire. rm/engine's sponsorship wording is US wording only. This one
+also reads UK and German refusals. Keep one gate once both are merged: two
+gates on one metric drift apart.
 
 The other bench tests:
 

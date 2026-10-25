@@ -9,7 +9,7 @@
  * hold, so the prototype's rows were read for 54 of 364; and its sponsorship
  * pattern knew no UK or German refusal.
  *
- * WHAT IS TRUE NOW. judge.ts carries two rubrics: `legacy` (byte for byte as it
+ * WHAT IS TRUE NOW. rubric.ts carries two rubrics: `legacy` (byte for byte as it
  * ran, so BEFORE replays to the decimal) and `v2`, which every comparison from
  * now on uses for BEFORE and AFTER alike. Each v2 rule below has a case that
  * fails without it. The rubric never imports the engine.
@@ -21,7 +21,7 @@ import { anyDescription, beforeDescription, loadCorpus } from "./fixtures/match-
 import {
   autoJudge, CITIZEN_ONLY, clearanceVerdict, judge, licenceVerdict, NO_SPONSOR, NO_SPONSOR_V2, normaliseUS, OVERRIDES, POSTING_FACTS,
   type PostingRow,
-} from "./fixtures/match-bench/judge";
+} from "./fixtures/match-bench/rubric";
 import { RESUMES } from "./fixtures/match-bench/dev/manifest";
 import type { LicenceHeld, ResumeTruth } from "./fixtures/match-bench/types";
 
@@ -182,7 +182,7 @@ describe("what did not move", () => {
   });
 
   it("never imports the engine it grades", () => {
-    const src = readFileSync(join(__dirname, "fixtures/match-bench/judge.ts"), "utf8");
+    const src = readFileSync(join(__dirname, "fixtures/match-bench/rubric.ts"), "utf8");
     expect(src).not.toMatch(/from\s+["'][^"']*(supabase\/functions|licence-rules|posting-requirements|match-tiers|title-families|resume-profile)/);
   });
 });

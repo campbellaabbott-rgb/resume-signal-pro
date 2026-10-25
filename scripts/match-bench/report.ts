@@ -22,7 +22,7 @@ import { OUT, ROOT } from "./paths.ts";
 import {
   AFTER_BASELINE_FILE, BEFORE_BASELINE_FILE, engineReadiness, gateFailures, GATE_TOLERANCE, loadAfterBaseline, loadBeforeBaseline,
   measureAfter, measureReader, readerFailures, withoutMisses, type AfterBaseline, type AfterMeasure, type BeforeBaseline,
-} from "../../src/test/fixtures/match-bench/bench.ts";
+} from "../../src/test/fixtures/match-bench/gate.ts";
 import { judgeLists, judgeShown, protoLegacyDescription, protoShown, replayBefore, summarizeLists, toPostingRow, type SetSummary } from "../../src/test/fixtures/match-bench/metrics.ts";
 import { HELDOUT } from "../../src/test/fixtures/match-bench/heldout/manifest.ts";
 import { targetLines } from "../../src/test/fixtures/match-bench/reader-score.ts";

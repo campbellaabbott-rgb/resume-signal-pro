@@ -1,7 +1,7 @@
 /**
  * The ground-truth shape for every bench résumé (dev and held-out).
  *
- * Rubric fields (applied by judge.ts):
+ * Rubric fields (applied by rubric.ts):
  *   target     title patterns the candidate is SEEKING and would be shortlisted for
  *   adjacent   title patterns a recruiter would still shortlist them for
  *   related    same field, a role a recruiter would NOT shortlist them for (counts

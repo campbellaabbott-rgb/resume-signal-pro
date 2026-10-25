@@ -43,7 +43,7 @@ import { ENGINE_FILES, REPO_ROOT } from "./fixtures/match-bench/after-pipeline";
 import {
   engineReadiness, gateFailures, GATE_TOLERANCE, loadAfterBaseline, loadBeforeBaseline, measureAfter, measureReader,
   readerFailures, withoutMisses, type AfterMeasure, type AfterBaseline,
-} from "./fixtures/match-bench/bench";
+} from "./fixtures/match-bench/gate";
 import type { ReaderScore } from "./fixtures/match-bench/reader-score";
 
 const ENGINE_ROOT = process.env.MATCH_ENGINE_ROOT ? resolve(process.env.MATCH_ENGINE_ROOT) : REPO_ROOT;

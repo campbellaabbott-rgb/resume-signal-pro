@@ -19,7 +19,7 @@
  * re-record them (scripts/match-bench/report.ts --save-before) on purpose.
  */
 import { describe, expect, it } from "vitest";
-import { loadBeforeBaseline } from "./fixtures/match-bench/bench";
+import { loadBeforeBaseline } from "./fixtures/match-bench/gate";
 import { RESUMES } from "./fixtures/match-bench/dev/manifest";
 import { beforeRanked, exactIds, judgeShown, protoLegacyDescription, protoShown, replayBefore, summarizeLists } from "./fixtures/match-bench/metrics";
 

@@ -112,7 +112,7 @@ describe("nothing personal", () => {
 
 describe("the frozen corpus", () => {
   it("is at most 4 MB and names its version and freeze time", () => {
-    expect(statSync(join(FIXTURES, "corpus.json.gz")).size).toBeLessThanOrEqual(4 * 1024 * 1024);
+    expect(statSync(join(FIXTURES, "postings.json.gz")).size).toBeLessThanOrEqual(4 * 1024 * 1024);
     const c = loadCorpus();
     expect(c.version).toMatch(/^match-bench-corpus\.2026-10-12\.\d+$/);
     expect(Number.isNaN(Date.parse(c.frozenAt))).toBe(false);

@@ -15,7 +15,7 @@ import { join, resolve } from "node:path";
 import { OUT, ROOT } from "./paths.ts";
 import { anyDescription } from "../../src/test/fixtures/match-bench/corpus.ts";
 import { RESUMES } from "../../src/test/fixtures/match-bench/dev/manifest.ts";
-import { CITIZEN_OR_PR, CITIZEN_REQUIRED, CLEARANCE_ACTIVE, CLEARANCE_OBTAIN, CLEARANCE_REQUIRED, judge, NO_SPONSOR_V2, normaliseUS } from "../../src/test/fixtures/match-bench/judge.ts";
+import { CITIZEN_OR_PR, CITIZEN_REQUIRED, CLEARANCE_ACTIVE, CLEARANCE_OBTAIN, CLEARANCE_REQUIRED, judge, NO_SPONSOR_V2, normaliseUS } from "../../src/test/fixtures/match-bench/rubric.ts";
 import { beforeRanked, postingRow } from "../../src/test/fixtures/match-bench/metrics.ts";
 
 const arg = (k: string) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : null; };

@@ -3,7 +3,7 @@
 //
 // Spec §19.2: BEFORE and AFTER are judged with full descriptions for every
 // top-20 row. The frozen corpus holds 618; the rest come, in order, from
-//   1. the corpus (src/test/fixtures/match-bench/corpus.json.gz),
+//   1. the corpus (src/test/fixtures/match-bench/postings.json.gz),
 //   2. this bench's cache (cache/board/detail-*.json),
 //   3. a live job-board `detail` call, read-only, from a named ledger (live.ts).
 // `detail` returns the stored description, or fetches and stores one when none
@@ -66,7 +66,7 @@ const have = unique.filter((w) => descs[w.id]?.text).length;
 console.log(`${tag}: ${unique.length} rows, ${have} with a description (corpus ${fromCorpus}, cache ${fromCache}, live ${live}, failed ${failed}); wrote ${outFile}`);
 
 if (process.argv.includes("--freeze")) {
-  const file = join(FIX, "corpus.json.gz");
+  const file = join(FIX, "postings.json.gz");
   const raw = JSON.parse(gunzipSync(readFileSync(file)).toString("utf8"));
   const ids = new Set(raw.rows.map((r: { id: string }) => r.id));
   let rowsAdded = 0, descAdded = 0;

@@ -42,7 +42,7 @@ let cached: Corpus | null = null;
 
 export function loadCorpus(): Corpus {
   if (cached) return cached;
-  const raw = JSON.parse(gunzipSync(readFileSync(join(FIXTURES, "corpus.json.gz"))).toString("utf8")) as {
+  const raw = JSON.parse(gunzipSync(readFileSync(join(FIXTURES, "postings.json.gz"))).toString("utf8")) as {
     version: string; frozenAt: string; rows: CorpusRow[]; descriptions: Record<string, { text: string; source: string }>;
   };
   const rows = new Map(raw.rows.map((r) => [r.id, r]));
