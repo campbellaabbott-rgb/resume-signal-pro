@@ -321,7 +321,8 @@ one, before `"next"` in `reservations`:
   "migrations": "none",
   "jobBoard": "none",
   "fnBuildDate": "<switch-over day> (free-keyword-scan only, H0)",
-  "status": "the board-first homepage and the new pricing page: new files plus the switch-over edits in docs/homepage-pricing/README.md; verify section 98",
+  "verifySections": ["99-home-pricing.sh"],
+  "status": "the board-first homepage and the new pricing page: new files plus the switch-over edits in docs/homepage-pricing/README.md; verify section 99",
   "deployOrder": 5
 }
 ```
@@ -795,9 +796,11 @@ re-derive `VISITOR_BUDGET_PER_HOUR` in
 `supabase/functions/track-ab-event/budget.ts` and the journey in
 `src/test/a-budget-that-charged-the-office-for-one-visitors-loop.test.ts`.
 
-### 14. Verify section 98 (`scripts/verify-deploy.d/98-home-pricing.sh`)
+### 14. Verify section 99 (`scripts/verify-deploy.d/99-home-pricing.sh`)
 
-A frontend and prerender deploy; read-only GETs with the Googlebot UA, one
+The SEO round took section 98 (`98-seo-round.sh` and `98-seo-speed.sh`, its
+`seo-round` reservation on `seo/integration`), so the switch-over's section
+is 99. A frontend and prerender deploy; read-only GETs with the Googlebot UA, one
 headless run for the rendered claims, in the shape of section 83. Every
 claim FAILs before the deploy by design.
 
@@ -817,7 +820,7 @@ claim FAILs before the deploy by design.
   the Full Analysis or Pro in the JSON-LD of "/" or "/pricing", no buy
   control in the baked HTML, and the /pricing description names no price.
 - C6 the free-keyword-scan preflight's `x-fn-build` is H0's own stamp:
-  `build_ge free-keyword-scan "$H98" <switch-over day> 1`.
+  `build_ge free-keyword-scan "$H99" <switch-over day> 1`.
 - C7 the page React renders: the served entry and the English chunks carry
   the homepage H1 and not the retired homepage hero's strings.
 - C8 "/#upload" in a browser lands on `/resume-checker#upload`, and
