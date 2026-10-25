@@ -357,10 +357,15 @@ describe("the head (round 3): a zero page's title and description name no open r
   });
 
   it("the page routes the zero variant to zeroPageHead ahead of the employer's head, and its live region says the page's own line", () => {
-    const seo = JOBS.slice(JOBS.indexOf("const landerSeo"), JOBS.indexOf("jobsPage.companySeoDescription"));
-    expect(seo, "landerSeo moved: RE-ANCHOR").toContain("jobsPage.companySeoTitle");
+    // From landerSeo to the <SEO> it feeds; the employer's head is either the inline
+    // jobsPage.companySeoTitle or seo/react's companyBoardHead builder (its last call).
+    const from = JOBS.indexOf("const landerSeo");
+    const seo = JOBS.slice(from, JOBS.indexOf("<SEO", from));
+    const employerAt = Math.max(seo.indexOf("jobsPage.companySeoTitle"), seo.lastIndexOf("companyBoardHead("));
+    expect(from, "landerSeo moved: RE-ANCHOR").toBeGreaterThan(0);
+    expect(employerAt, "the employer's head moved: RE-ANCHOR").toBeGreaterThan(0);
     expect(seo).toMatch(/landerModel\.variant === "zero"\s*\?\s*zeroPageHead\(t, landerModel, landerCompany\)/);
-    expect(seo.indexOf("zeroPageHead(")).toBeLessThan(seo.indexOf("jobsPage.companySeoTitle"));
+    expect(seo.indexOf("zeroPageHead(")).toBeLessThan(employerAt);
     const live = JOBS.slice(JOBS.indexOf('role="status" aria-live="polite"'), JOBS.indexOf('t("jobsPage.a11yNoResults"'));
     expect(live, "the live region moved: RE-ANCHOR").toContain("a11yError");
     expect(live).toMatch(/shownCount === 0 && landerModel\?\.variant === "zero"\s*\?\s*t\("companyProfile\.zero\.answer"/);
