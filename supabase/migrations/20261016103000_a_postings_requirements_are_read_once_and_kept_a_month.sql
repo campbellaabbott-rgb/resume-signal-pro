@@ -16,8 +16,9 @@
 -- About 1-2 KB a row.
 --
 -- WHAT IT HOLDS: posting text facts only. Never a résumé, a profile, an
--- address or anything about who asked (src/test/match-privacy.test.ts runs
--- resume-match with canary profile values and asserts none reaches an insert).
+-- address or anything about who asked (supabase/functions/resume-match/index_test.ts
+-- runs resume-match with canary profile values and a canary résumé and finds
+-- none in a write, a log line or the answer).
 --
 -- PURGED DAILY: a row older than 30 days, or whose posting is no longer served
 -- (gone, or missing_since set), is deleted. The cron COMMAND sets its own

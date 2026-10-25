@@ -15,12 +15,13 @@
 -- "Ontario", "England"), so "Houston, Texas" and "Houston, TX" both check.
 --
 -- THE ROWS ARRIVE SEPARATELY. scripts/match/build-geo-seed.mjs turns the two
--- GeoNames files into idempotent chunks under 1 MB, stamped
--- 20261016100100 onward (INSERT ... ON CONFLICT (geonameid) DO UPDATE). Until
--- they apply, metro_ring answers nothing and resume-match searches the
--- reader's own city and says so. Judge "applied" by behaviour, not by this
--- file: verify section 97d asks for the Columbus, OH ring and expects
--- Westerville in it and Columbus, GA out of it.
+-- GeoNames files into idempotent chunks under 1 MB, stamped 20261016101100
+-- onward, after metro_ring, so the last chunk can ask it for the Columbus, OH
+-- ring (INSERT ... ON CONFLICT (geonameid) DO UPDATE). Until they apply,
+-- metro_ring answers nothing and resume-match searches the reader's own city
+-- and says so. Judge "applied" by behaviour, not by this file: verify section
+-- 97 reads the Columbus, OH ring resume-match searched and expects
+-- Westerville in it and no Georgia row.
 --
 -- WHO MAY READ IT: the service role, which resume-match uses. RLS is on with no
 -- policy and Supabase's default ALL for anon and authenticated is revoked by

@@ -3,8 +3,8 @@
  *
  * The accuracy prototype wrote a ring of places within about 40 km of each
  * bench city by hand (2026-10-12). Production rings come from geo_places,
- * seeded from GeoNames by scripts/match-bench/build-geo-seed.mjs; that seed is
- * not in the repository yet (the download is an owner step). So the bench
+ * seeded from GeoNames by scripts/match/build-geo-seed.mjs; the seed rows are
+ * not in the repository yet (the GeoNames download is an owner step). So the bench
  * seeds geo_places with the prototype's rings: every member sits at its
  * centre's coordinates with a population that falls in the listed order, so
  * the shipped metro_ring returns exactly the hand-written ring. Members across
