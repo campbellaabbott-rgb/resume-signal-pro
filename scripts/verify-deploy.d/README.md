@@ -3,8 +3,9 @@
 Each `*.sh` file here is sourced by `scripts/verify-deploy.sh` just before it
 prints `done.`, in name order. Name files `<NN>-<topic>.sh` (for example
 `20-email-relays.sh`). Past 99, append a letter to 99 rather than using three
-digits: `100-x.sh` sorts before `10-x.sh`, while `99z-oracle-regionless.sh`
-sorts after every `99-*` file, in byte order and under a collating locale. Every line a file prints must start with `PASS`,
+digits: `100-x.sh` sorts right after `10-x.sh`, before `11-x.sh`, so it would
+not run last, while `99z-oracle-regionless.sh` sorts after every `99-*` file,
+in byte order and under a collating locale. Every line a file prints must start with `PASS`,
 `FAIL` or `INFO`, every probe must be read-only, and the helpers `J`, `R`,
 `MC`, `probe`, `build_ge` and `title`, plus `$K`, `$B`, `$SITE` and `$UA`, are
 in scope.

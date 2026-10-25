@@ -21,7 +21,13 @@
  *     wrong host or went unread by a build over a day old, a status with no
  *     buildSince, and an unreadable list each print FAIL;
  *   - a count before the first full read is proven is INFO, and so is a board
- *     not read yet;
+ *     not read yet, but only for 12 h from the first slice of this build: a
+ *     JPMorgan board with no rows, or no row with an apply link, after that is
+ *     a FAIL, and so is a count still unproven after 72 h while serving under
+ *     half the employer's own; slice stats an older build wrote time nothing,
+ *     and a recent failure naming JPMorgan Chase is printed;
+ *   - the regional control is judged by the board's read stamp (recheckedAt),
+ *     with a row first seen (inserted) after the first slice as the fallback;
  *   - the publishable key is never printed, every call to the board (the
  *     preflight included) carries x-rb-budget: probe, every POST is a
  *     job-board status, list or detail read, the fill-curve read is a GET,
@@ -103,12 +109,12 @@ const jpmcJob = (id: string, over: Record<string, unknown> = {}) => ({
 });
 const ctlJob = (id: string, over: Record<string, unknown> = {}) => ({
   id: `oracle:efet~us2~CX_1:${id}`, source: "oracle", token: "efet~us2~CX_1", company: "Hilton", title: "Front Desk Agent",
-  applyUrl: `https://efet.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/job/${id}`, lastSeen: NOW, ...over,
+  applyUrl: `https://efet.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/job/${id}`, lastSeen: NOW, recheckedAt: NOW, ...over,
 });
 type Over = {
   build?: string | null; list?: string; served?: number; jobs?: unknown[]; unknown?: boolean; bucket?: string | null;
   inWindow?: number | null; ctl?: string; ctlTotal?: number; ctlJobs?: unknown[]; applyStatus?: number; reqItems?: number; description?: string;
-  buildSince?: string | null; status?: string;
+  buildSince?: string | null; status?: string; sliceBuild?: string; recentFailures?: string[];
 };
 function routes(o: Over = {}): Route[] {
   const build = o.build === undefined ? "job-board.2026-09-09.95" : o.build;
@@ -120,7 +126,10 @@ function routes(o: Over = {}): Route[] {
   const feed = JSON.stringify({ items: [{ TotalJobsCount: 7244, postingDatesFacet: o.inWindow === null ? [] : [{ Id: 7, TotalCount: 1283 }, { Id: 30, TotalCount: o.inWindow ?? 3728 }, { Id: 31, TotalCount: 3516 }], requisitionList: [{ Id: "210587260" }] }] });
   const ctl = o.ctl ?? JSON.stringify({ jobs: o.ctlJobs ?? [ctlJob("1"), ctlJob("2")], total: o.ctlTotal ?? 2802, hasMore: true });
   const since = o.buildSince === undefined ? new Date(Date.now() - 2 * 3_600_000).toISOString() : o.buildSince;
-  const status = o.status ?? JSON.stringify({ version: "2026-09-09.95", sliceStats: since === null ? {} : { build: "2026-09-09.95", buildSince: since } });
+  const status = o.status ?? JSON.stringify({
+    version: "2026-09-09.95", sliceStats: since === null ? {} : { build: o.sliceBuild ?? "2026-09-09.95", buildSince: since },
+    recentFailures: o.recentFailures ?? ["Navier (vendor: HTTP 404)"],
+  });
   return [
     { match: `^OPTIONS ${FB}$`, status: 204, headers: build ? { "x-fn-build": build } : {} },
     { match: `^POST ${FB}\\t\\{"action":"status"\\}`, body: status },
@@ -144,7 +153,7 @@ describe("section 99z: Oracle hosts with no region", () => {
     expect(verdicts(lines, "INFO"), show(lines)).toEqual([]);
     const pass = verdicts(lines, "PASS");
     for (const re of [/x-fn-build = job-board\.2026-09-09\.95/, /carries jpmc~~CX_1001/, /serves 3700 rows against 3728/, /apply link is on jpmc\.fa\.oraclecloud\.com/,
-      /answers 200/, /requisition 210587260 answers on the employer detail endpoint with 1 item/, /-character description/, /control efet~us2~CX_1 serves 2802/, /control efet~us2~CX_1 was read by this build: newest row seen 0\.\d h ago, after the first slice of this build 2\.\d h ago/]) {
+      /answers 200/, /requisition 210587260 answers on the employer detail endpoint with 1 item/, /-character description/, /control efet~us2~CX_1 serves 2802/, /control efet~us2~CX_1 was read by this build: its feed was last fetched 0\.\d h ago \(recheckedAt, the board read stamp\), after the first slice of this build 2\.\d h ago/]) {
       expect(pass.some((l) => re.test(l)), `${re}\n${show(lines)}`).toBe(true);
     }
     expect(pass.length).toBe(9);
@@ -199,13 +208,68 @@ describe("section 99z: Oracle hosts with no region", () => {
     expect(hasLine(run(routes({ ctlTotal: 0, ctlJobs: [] })).lines, "FAIL", /control efet~us2~CX_1 serves 0 rows/)).toBe(true);
     expect(hasLine(run(routes({ ctlJobs: [ctlJob("1", { applyUrl: "https://efet.fa.oraclecloud.com/hcmUI/x/job/1" })] })).lines, "FAIL", /apply links on \["efet\.fa\.oraclecloud\.com"\]/)).toBe(true);
     const ago = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString();
-    const old = run(routes({ ctlJobs: [ctlJob("1", { lastSeen: ago(30) })], buildSince: ago(28) }));
-    expect(hasLine(old.lines, "FAIL", /last read 30\.\d h ago, and nothing since the first slice of this build 28\.\d h ago/), show(old.lines)).toBe(true);
-    const young = run(routes({ ctlJobs: [ctlJob("1", { lastSeen: ago(5) })], buildSince: ago(3) }));
-    expect(hasLine(young.lines, "INFO", /last read 5\.\d h ago, before the first slice of this build 3\.\d h ago/), show(young.lines)).toBe(true);
+    const old = run(routes({ ctlJobs: [ctlJob("1", { lastSeen: ago(40), recheckedAt: ago(30) })], buildSince: ago(28) }));
+    expect(hasLine(old.lines, "FAIL", /feed was last fetched 30\.\d h ago, before the first slice of this build 28\.\d h ago, and no row was first seen since: more than 24 h without a read/), show(old.lines)).toBe(true);
+    const young = run(routes({ ctlJobs: [ctlJob("1", { lastSeen: ago(9), recheckedAt: ago(5) })], buildSince: ago(3) }));
+    expect(hasLine(young.lines, "INFO", /feed was last fetched 5\.\d h ago, before the first slice of this build 3\.\d h ago/), show(young.lines)).toBe(true);
     expect(verdicts(young.lines, "FAIL"), show(young.lines)).toEqual([]);
     const blind = run(routes({ buildSince: null }));
     expect(hasLine(blind.lines, "FAIL", /states no sliceStats\.buildSince/), show(blind.lines)).toBe(true);
+  });
+
+  it("judges the control by the board's read stamp, not by when a row was first inserted", () => {
+    const ago = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString();
+    // lastSeen is written once, when a row is inserted: a quiet day adds no row, yet the feed was read.
+    const quiet = run(routes({ ctlJobs: [ctlJob("1", { lastSeen: ago(40), recheckedAt: ago(1) })], buildSince: ago(30) }));
+    expect(hasLine(quiet.lines, "PASS", /control efet~us2~CX_1 was read by this build: its feed was last fetched 1\.\d h ago/), show(quiet.lines)).toBe(true);
+    expect(verdicts(quiet.lines, "FAIL"), show(quiet.lines)).toEqual([]);
+    // The stamp is left off when its lookup misses its deadline; a row this build first saw still proves a read.
+    const nostamp = run(routes({ ctlJobs: [ctlJob("1", { lastSeen: ago(1), recheckedAt: undefined })], buildSince: ago(30) }));
+    expect(hasLine(nostamp.lines, "PASS", /control efet~us2~CX_1 was read by this build: a row it first saw \(inserted\) 1\.\d h ago/), show(nostamp.lines)).toBe(true);
+    const blank = run(routes({ ctlJobs: [ctlJob("1", { lastSeen: null, recheckedAt: undefined })], buildSince: ago(30) }));
+    expect(hasLine(blank.lines, "FAIL", /served no row with a read stamp \(recheckedAt\) or a first-seen time/), show(blank.lines)).toBe(true);
+  });
+
+  it("FAILs a JPMorgan board still unread 12 h after the first slice of this build, and waits before that", () => {
+    const ago = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString();
+    for (const h of [13, 48, 168]) {
+      const dark = run(routes({ served: 0, jobs: [], bucket: null, buildSince: ago(h) }));
+      expect(hasLine(dark.lines, "FAIL", new RegExp(`JPMorgan Chase serves 0 rows ${h}\\.\\d h after the first slice of this build`)), show(dark.lines)).toBe(true);
+      expect(hasLine(dark.lines, "FAIL", new RegExp(`no JPMorgan row with an apply link is served ${h}\\.\\d h after the first slice of this build`)), show(dark.lines)).toBe(true);
+      expect(verdicts(dark.lines, "INFO").filter((l) => /JPMorgan/.test(l)), show(dark.lines)).toEqual([]);
+    }
+    const feedless = run(routes({ served: 0, jobs: [], bucket: null, inWindow: null, buildSince: ago(20) }));
+    expect(hasLine(feedless.lines, "FAIL", /JPMorgan Chase serves 0 rows 20\.\d h after/), show(feedless.lines)).toBe(true);
+    const early = run(routes({ served: 0, jobs: [], bucket: null, buildSince: ago(11) }));
+    expect(verdicts(early.lines, "FAIL"), show(early.lines)).toEqual([]);
+    expect(hasLine(early.lines, "INFO", /serves 0 rows .*re-run later/), show(early.lines)).toBe(true);
+  });
+
+  it("FAILs a count still unproven 72 h after the first slice while serving under half the employer's own", () => {
+    const ago = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString();
+    const stuck = run(routes({ served: 500, bucket: "lap_pending", buildSince: ago(168) }));
+    expect(hasLine(stuck.lines, "FAIL", /serves 500 rows against 3728 .*ratio 0\.134.*168\.\d h after the first slice of this build.*under half/), show(stuck.lines)).toBe(true);
+    const near = run(routes({ served: 3000, bucket: "lap_pending", buildSince: ago(168) }));
+    expect(hasLine(near.lines, "INFO", /serves 3000 rows .*first full read is not proven/), show(near.lines)).toBe(true);
+    expect(verdicts(near.lines, "FAIL"), show(near.lines)).toEqual([]);
+    const youngish = run(routes({ served: 500, bucket: "lap_pending", buildSince: ago(30) }));
+    expect(verdicts(youngish.lines, "FAIL"), show(youngish.lines)).toEqual([]);
+  });
+
+  it("says when job-board's recent failures name JPMorgan Chase", () => {
+    const ago = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString();
+    const { lines } = run(routes({ served: 0, jobs: [], bucket: null, buildSince: ago(20), recentFailures: ["Navier (vendor: HTTP 404)", "JPMorgan Chase (vendor: HTTP 403)"] }));
+    expect(hasLine(lines, "INFO", /recent failures name JPMorgan Chase: \["JPMorgan Chase \(vendor: HTTP 403\)"\]/), show(lines)).toBe(true);
+    expect(run(routes()).lines.some((l) => /recent failures name/.test(l))).toBe(false);
+  });
+
+  it("never dates this build by slice stats an older build wrote", () => {
+    const ago = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString();
+    // Just after the deploy the preflight is .95 while the last slice was the old bundle's.
+    const { lines } = run(routes({ served: 0, jobs: [], bucket: null, sliceBuild: "2026-09-09.93", buildSince: ago(240) }));
+    expect(verdicts(lines, "FAIL"), show(lines)).toEqual([]);
+    expect(hasLine(lines, "INFO", /sliceStats\.build is 2026-09-09\.93, not the serving 2026-09-09\.95: no slice of this build has run yet/), show(lines)).toBe(true);
+    expect(lines.some((l) => /^PASS {2}the regional Oracle control .* was read by this build/.test(l)), show(lines)).toBe(false);
   });
 
   it("FAILs an unreadable list, never crashing into silence", () => {

@@ -5,7 +5,12 @@
 #
 # Named 99z so it sorts after every 99-* section: the loader sources
 # verify-deploy.d/*.sh in name order, and a three-digit name (100-) sorts
-# before 10-.
+# right after 10-, before 11-, so it would not run last.
+#
+# THE CLOCK. Every wait below is measured from status.sliceStats.buildSince,
+# the first slice of the serving build, and only when sliceStats.build is the
+# build the preflight answers (just after a deploy the last slice is still
+# the old bundle's, whose buildSince dates nothing here).
 #
 # THE CLAIMS, one line each below:
 #   - job-board's preflight answers job-board.2026-09-09.95 or later. An older
@@ -13,11 +18,18 @@
 #     read a host with no region, so judging its rows would judge nothing;
 #   - the serving catalogue carries jpmc~~CX_1001 (the list does not name it
 #     an employer we do not carry);
+#   - JPMorgan Chase is read at all: it serves rows, and a row with an apply
+#     link, within 12 h of the build's first slice (its first visit lands 2-3 h
+#     after the deploy). Before 12 h an empty board is INFO; after, FAIL. Any
+#     status.recentFailures entry naming JPMorgan Chase is printed as INFO;
 #   - JPMorgan Chase serves within 10% of the employer's own "less than 30
 #     days" count, read live from its feed, once get_company_fill_curve says
 #     its first full read is proven (full_read or lap_proven). Before that the
 #     comparison is INFO: a 7,244-posting board takes about 25 visits to read
-#     whole, and closed postings stay up until the read completes;
+#     whole, and closed postings stay up until the read completes. Still
+#     unproven 72 h after the first slice while serving under half the
+#     employer's count is a FAIL (every in-window row lands about 15 h after
+#     the first visit);
 #   - a served JPMorgan apply link is on jpmc.fa.oraclecloud.com and answers
 #     200, and the requisition it names answers on the employer's own detail
 #     endpoint. The apply page is a single-page app that answers 200 for a
@@ -26,11 +38,13 @@
 #     detail action (a stored one, or one the region-less detail read fetches
 #     on the spot, as a seeker's click does);
 #   - a regional Oracle board (Hilton, efet~us2~CX_1) still serves, its apply
-#     links on efet.fa.us2.oraclecloud.com, and one of its rows was seen by a
-#     read of THIS build (after status.sliceStats.buildSince, its first slice):
-#     the shared host builder did not break the boards that have a region.
-#     Before such a read it is INFO while the build is under 24 h old (a hot
-#     board laps in about 7 h), and FAIL after.
+#     links on efet.fa.us2.oraclecloud.com, and THIS build read its feed: the
+#     rows' recheckedAt (the board's read stamp, job_board_verifications,
+#     written on every good fetch) is after the build's first slice, or, when
+#     the list leaves that stamp off, a row was first seen (inserted, which is
+#     all lastSeen records) after it. The shared host builder did not break the
+#     boards that have a region. Before such a read it is INFO while the build
+#     is under 24 h old (a hot board laps in about 7 h), and FAIL after.
 #
 # READ-ONLY. One OPTIONS preflight; job-board status, list and detail reads
 # sent with x-rb-budget: probe (detail is the seeker's own read); one anon RPC GET of a
@@ -54,12 +68,20 @@ if [ "$VD99Z_LIVE" = 1 ]; then
   curl -s -m 60 "https://$VD99Z_HOST/hcmRestApi/resources/latest/recruitingCEJobRequisitions?onlyData=true&expand=requisitionList&finder=findReqs%3BsiteNumber%3DCX_1001%2Climit%3D1%2Coffset%3D0%2CsortBy%3DPOSTING_DATES_DESC" > /tmp/vd_99z_feed.json
   J "{\"action\":\"list\",\"companies\":[\"$VD99Z_CTL\"],\"vendor\":[\"oracle\"],\"groupSimilar\":false,\"includeFacets\":false,\"limit\":20}" > /tmp/vd_99z_ctl.json
   J '{"action":"status"}' > /tmp/vd_99z_status.json
-  VD99Z_TOK="$VD99Z_TOK" VD99Z_CTL="$VD99Z_CTL" VD99Z_HOST="$VD99Z_HOST" node -e '
+  VD99Z_TOK="$VD99Z_TOK" VD99Z_CTL="$VD99Z_CTL" VD99Z_HOST="$VD99Z_HOST" VD99Z_H="$VD99Z_H" node -e '
 const fs=require("fs");const E=process.env;
 const read=(f)=>{try{return JSON.parse(fs.readFileSync(f,"utf8"))}catch{return null}};
 const peek=(f)=>{try{return fs.readFileSync(f,"utf8").slice(0,160).replace(/\s+/g," ")}catch{return "(no answer)"}};
 const L=read("/tmp/vd_99z_jpmc.json"),C=read("/tmp/vd_99z_curve.json"),F=read("/tmp/vd_99z_feed.json"),X=read("/tmp/vd_99z_ctl.json"),S=read("/tmp/vd_99z_status.json");
 const pick=[];
+const ss=S&&S.sliceStats&&typeof S.sliceStats==="object"?S.sliceStats:null;const since=ss?Date.parse(ss.buildSince||""):NaN;
+const serving=String(E.VD99Z_H||"").replace(/^job-board\./,"");const ours=!!ss&&ss.build===serving;
+const ageH=ours&&Number.isFinite(since)?(Date.now()-since)/3600000:null;
+const after=()=>ageH.toFixed(1)+" h after the first slice of this build";
+const clock=ss&&!ours?"sliceStats.build is "+ss.build+", not the serving "+serving+": no slice of this build has run yet, so nothing here is timed":(ageH===null?"status states no sliceStats.buildSince, so the wait is not timed here":"the first slice of this build was "+ageH.toFixed(1)+" h ago");
+if(ss&&!ours)console.log("INFO  "+clock+"; re-run once it has");
+const fails=S&&Array.isArray(S.recentFailures)?S.recentFailures.filter((x)=>typeof x==="string"&&/^JPMorgan Chase \(/.test(x)):[];
+if(fails.length)console.log("INFO  job-board recent failures name JPMorgan Chase: "+JSON.stringify(fails));
 if(!L||typeof L!=="object"||Array.isArray(L)){console.log("FAIL  job-board list for "+E.VD99Z_TOK+" is unreadable: "+peek("/tmp/vd_99z_jpmc.json"))}
 else{
   const unknown=Array.isArray(L.unknownCompanies)&&L.unknownCompanies.includes(E.VD99Z_TOK);
@@ -70,16 +92,20 @@ else{
   const facet=F&&Array.isArray(F.items)&&F.items[0]&&Array.isArray(F.items[0].postingDatesFacet)?F.items[0].postingDatesFacet.find((x)=>Number(x.Id)===30):null;
   const vendor=facet&&typeof facet.TotalCount==="number"?facet.TotalCount:null;
   const total=F&&Array.isArray(F.items)&&F.items[0]?F.items[0].TotalJobsCount:null;
-  if(vendor===null){console.log("INFO  JPMorgan Chase serves "+served+" rows; its own feed did not state a less-than-30-days count to compare with: "+peek("/tmp/vd_99z_feed.json"))}
-  else if(served===null||served===0){console.log("INFO  JPMorgan Chase serves "+served+" rows against "+vendor+" posted in the last 30 days on its own feed (TotalJobsCount "+total+"): a new board is first read 2-3 h after the deploy, behind the bootstrap backlog; re-run later (fill-curve bucket "+bucket+")")}
+  const against=vendor===null?"; its own feed did not state a less-than-30-days count: "+peek("/tmp/vd_99z_feed.json"):" against "+vendor+" posted in the last 30 days on its own feed (TotalJobsCount "+total+")";
+  if((served===null||served===0)&&ageH!==null&&ageH>12){console.log("FAIL  JPMorgan Chase serves "+served+" rows "+after()+against+" (fill-curve bucket "+bucket+"): its first visit lands 2-3 h after the deploy, so after 12 h the region-less board is not being read")}
+  else if(served===null||served===0){console.log("INFO  JPMorgan Chase serves "+served+" rows"+against+": a new board is first read 2-3 h after the deploy, behind the bootstrap backlog; "+clock+"; re-run later (fill-curve bucket "+bucket+"; FAIL once 12 h have passed)")}
+  else if(vendor===null){console.log("INFO  JPMorgan Chase serves "+served+" rows"+against)}
   else{
     const ratio=served/vendor;const within=Math.abs(ratio-1)<=0.10;
     const msg="JPMorgan Chase serves "+served+" rows against "+vendor+" posted in the last 30 days on its own feed (ratio "+ratio.toFixed(3)+", tolerance 10%; TotalJobsCount "+total+"; fill-curve bucket "+bucket+")";
-    if(!proven)console.log("INFO  "+msg+": its first full read is not proven yet, so the count is not judged (closed postings stay up until a read completes; about 25 visits a lap)");
+    if(!proven&&ageH!==null&&ageH>72&&ratio<0.5)console.log("FAIL  "+msg+": its first full read is still not proven "+after()+", and it serves under half the count on the employer feed (every in-window row lands about 15 h after the first visit)");
+    else if(!proven)console.log("INFO  "+msg+": its first full read is not proven yet, so the count is not judged (closed postings stay up until a read completes; about 25 visits a lap; FAIL if still unproven and under half after 72 h)");
     else console.log((within?"PASS":"FAIL")+"  "+msg+(within?"":": a proven full read should serve the in-window count"));
   }
   const j=jobs.find((x)=>x&&typeof x.applyUrl==="string"&&x.applyUrl);
-  if(!j){console.log("INFO  no JPMorgan row with an apply link is served yet, so the apply link and description lines wait for the first read")}
+  if(!j&&ageH!==null&&ageH>12){console.log("FAIL  no JPMorgan row with an apply link is served "+after()+": the first visit lands 2-3 h after the deploy, so the region-less read or its apply links are broken")}
+  else if(!j){console.log("INFO  no JPMorgan row with an apply link is served yet, so the apply link and description lines wait for the first read ("+clock+"; FAIL once 12 h have passed)")}
   else{
     let host="";try{host=new URL(j.applyUrl).hostname}catch{}
     const id=String(j.id||"").split(":").pop();
@@ -93,15 +119,18 @@ else{
   const want=E.VD99Z_CTL.split("~")[0]+".fa."+E.VD99Z_CTL.split("~")[1]+".oraclecloud.com";
   const ok=typeof X.total==="number"&&X.total>=100&&hosts.length===1&&hosts[0]===want;
   console.log((ok?"PASS":"FAIL")+"  the regional Oracle control "+E.VD99Z_CTL+" serves "+X.total+" rows (want 100 or more), apply links on "+JSON.stringify(hosts)+" (want [\""+want+"\"])");
-  const seen=X.jobs.map((x)=>Date.parse(x.lastSeen||"")).filter(Number.isFinite);
-  const newest=seen.length?Math.max(...seen):null;
-  const ss=S&&S.sliceStats&&typeof S.sliceStats==="object"?S.sliceStats:null;const since=ss?Date.parse(ss.buildSince||""):NaN;
+  const newestOf=(k)=>{const t=X.jobs.map((x)=>Date.parse((x&&x[k])||"")).filter(Number.isFinite);return t.length?Math.max(...t):null};
+  const stamp=newestOf("recheckedAt"),ins=newestOf("lastSeen");
   const age=(t)=>((Date.now()-t)/3600000).toFixed(1)+" h ago";
-  if(newest===null)console.log("FAIL  the regional Oracle control "+E.VD99Z_CTL+" served no row with a lastSeen, so nothing shows a read reached it");
-  else if(!ss||!Number.isFinite(since))console.log("FAIL  job-board status states no sliceStats.buildSince, so nothing dates this build against the control read last "+age(newest)+": "+peek("/tmp/vd_99z_status.json"));
-  else if(newest>=since)console.log("PASS  the regional Oracle control "+E.VD99Z_CTL+" was read by this build: newest row seen "+age(newest)+", after the first slice of this build "+age(since)+" (sliceStats.build "+ss.build+"): the host builder still reaches a host with a region");
-  else if(Date.now()-since<24*3600000)console.log("INFO  the regional Oracle control "+E.VD99Z_CTL+" was last read "+age(newest)+", before the first slice of this build "+age(since)+": a hot board laps in about 7 h, so re-run once the build is older");
-  else console.log("FAIL  the regional Oracle control "+E.VD99Z_CTL+" was last read "+age(newest)+", and nothing since the first slice of this build "+age(since)+": more than 24 h without a read on a host with a region");
+  const fetched=stamp===null?"the list carried no read stamp (recheckedAt)":"its feed was last fetched "+age(stamp);
+  const host=": the host builder still reaches a host with a region";
+  if(stamp===null&&ins===null)console.log("FAIL  the regional Oracle control "+E.VD99Z_CTL+" served no row with a read stamp (recheckedAt) or a first-seen time (lastSeen), so nothing shows a read reached it");
+  else if(!ss||!Number.isFinite(since))console.log("FAIL  job-board status states no sliceStats.buildSince, so nothing dates this build against the control ("+fetched+"): "+peek("/tmp/vd_99z_status.json"));
+  else if(!ours)console.log("INFO  the regional Oracle control "+E.VD99Z_CTL+" is not judged against this build: "+clock+" ("+fetched+")");
+  else if(stamp!==null&&stamp>=since)console.log("PASS  the regional Oracle control "+E.VD99Z_CTL+" was read by this build: its feed was last fetched "+age(stamp)+" (recheckedAt, the board read stamp), after the first slice of this build "+age(since)+" (sliceStats.build "+ss.build+")"+host);
+  else if(ins!==null&&ins>=since)console.log("PASS  the regional Oracle control "+E.VD99Z_CTL+" was read by this build: a row it first saw (inserted) "+age(ins)+", after the first slice of this build "+age(since)+" (sliceStats.build "+ss.build+"; "+fetched+")"+host);
+  else if(Date.now()-since<24*3600000)console.log("INFO  the regional Oracle control "+E.VD99Z_CTL+": "+fetched+", before the first slice of this build "+age(since)+", and no row was first seen since: a hot board laps in about 7 h, so re-run once the build is older");
+  else console.log("FAIL  the regional Oracle control "+E.VD99Z_CTL+": "+fetched+", before the first slice of this build "+age(since)+", and no row was first seen since: more than 24 h without a read on a host with a region");
 }
 fs.writeFileSync("/tmp/vd_99z_pick.txt",pick.join("\n"));
 ' 2>&1 || echo "FAIL  99z judge threw (see the lines above)"
