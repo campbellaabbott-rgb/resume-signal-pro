@@ -32,7 +32,7 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { boardBudgetRefusal, markBoardBudgetRefused, readBoardBudgetRefusal } from "@/lib/board-budget";
 import { invokeJobBoard } from "@/lib/invoke-job-board";
-import { companyLanderPath } from "@/lib/public-href";
+import { useCompanyBoardHref } from "@/lib/seo/lander-manifest";
 import { postingPagePath } from "@/components/jobs/posting-page";
 import { moreRolesAllowed, sameEmployerRows } from "@/lib/listing/more-roles";
 import type { ListingJob } from "@/lib/listing/types";
@@ -49,6 +49,9 @@ export function MoreRolesAtEmployer({ token, employer, excludeId, source = null 
   source?: string | null;
 }) {
   const { t } = useTranslation();
+  // SEO-010: an employer link goes to its written company page, or to the
+  // live board filtered to the board when the bake wrote none.
+  const companyHref = useCompanyBoardHref();
   const ref = useRef<HTMLElement | null>(null);
   const [rows, setRows] = useState<ListingJob[] | null>(null);
   const [mixed, setMixed] = useState(false);
@@ -111,14 +114,14 @@ export function MoreRolesAtEmployer({ token, employer, excludeId, source = null 
             <JobCard
               key={job.id}
               job={job}
-              href={postingPagePath(job.id) ?? companyLanderPath(token)}
+              href={postingPagePath(job.id) ?? companyHref(token)}
               ctx={{ surface: "posting", density: "compact", hideEmployer: true, selected: false }}
             />
           ))}
         </ul>
       )}
       {!mixed && (
-        <Link to={companyLanderPath(token)} className="text-sm text-primary underline decoration-primary/50 underline-offset-2 hover:decoration-primary" data-more-roles-all="">
+        <Link to={companyHref(token)} className="text-sm text-primary underline decoration-primary/50 underline-offset-2 hover:decoration-primary" data-more-roles-all="">
           {t("listing.more.seeAll", { defaultValue: "See every open role at {{employer}}", employer })}
         </Link>
       )}

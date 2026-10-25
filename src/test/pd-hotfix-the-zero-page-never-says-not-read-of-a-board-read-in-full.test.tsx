@@ -287,8 +287,14 @@ describe("the watch promise (round 3): made only where a watch on this token can
     for (const b of ["unobserved", "lap_pending", "unprovable", "lap_proven", null]) {
       expect(watchPromiseOf({ boardTotal: fromRow({ ...bass, observability_bucket: b, tracking_days: 89 }), token: "bassabatherapy" }), String(b)).toBe(false);
     }
-    // Off the zero page the promise is the page's, unchanged.
-    expect(buildLanderModel(input({ listTotal: 12, boardTotal: fromRow(curveRow(rowOf("eexs~us2~CX_19005"))) })).watchPromise).toBe(true);
+    // Off the zero page the promise holds wherever no sibling site can hold
+    // the board's new roles. On a site a dedupe can empty it was still made
+    // (the toast's "We'll email you when they post new roles"), so Delaney's
+    // standard page promised the requisitions CX_3001 stores (PD fix3/fix4
+    // hand-off, taken by the SEO round's merge review, 2026-10-25).
+    expect(buildLanderModel(input({ token: "eexs~us2~CX_19005", listTotal: 12, boardTotal: fromRow(curveRow(rowOf("eexs~us2~CX_19005"))) })).watchPromise).toBe(false);
+    expect(buildLanderModel(input({ listTotal: 12, boardTotal: fromRow(bass) })).watchPromise, "a single-site board with roles keeps it").toBe(true);
+    expect(buildLanderModel(input({ listTotal: 12, boardTotal: null })).watchPromise, "with no curve at all, off the zero page").toBe(true);
   });
 
   it("the empty column prints the promise on BASS ABA and not on Delaney at the Green, in English, German and Spanish", async () => {
@@ -371,7 +377,9 @@ describe("the head (round 3): a zero page's title and description name no open r
     expect(employerAt, "the employer's head moved: RE-ANCHOR").toBeGreaterThan(0);
     expect(seo).toMatch(/landerModel\.variant === "zero"\s*\?\s*zeroPageHead\(t, landerModel, landerCompany\)/);
     expect(seo.indexOf("zeroPageHead(")).toBeLessThan(employerAt);
-    expect(JOBS).toMatch(/const a11yEmpty = landerModel\?\.variant === "zero"\s*\?\s*t\("companyProfile\.zero\.answer", "No roles are listed on this page right now\."\)\s*:\s*t\("jobsPage\.a11yNoResults"/);
+    // The zero arm first; a page for a board we do not read says its heading
+    // (the SEO round's merge review); every other empty list keeps the filter line.
+    expect(JOBS).toMatch(/const a11yEmpty = landerModel\?\.variant === "zero"\s*\?\s*t\("companyProfile\.zero\.answer", "No roles are listed on this page right now\."\)\s*:\s*(?:landerModel\?\.variant === "uncarried"\s*\?\s*t\("companyProfile\.uncarried\.title", [^\n]*\)\s*:\s*)?t\("jobsPage\.a11yNoResults"/);
     const live = JOBS.slice(JOBS.indexOf('role="status" aria-live="polite"'), JOBS.indexOf('t("jobsPage.a11yResults"'));
     expect(live, "the live region moved: RE-ANCHOR").toContain("a11yError");
     expect(live).toMatch(/: shownCount === 0\s*\?\s*a11yEmpty\s*:/);

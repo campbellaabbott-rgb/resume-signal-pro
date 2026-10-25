@@ -7,7 +7,7 @@
 
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { companyLanderPath } from "@/lib/public-href";
+import { useCompanyProfileLink } from "@/lib/seo/lander-manifest";
 import { Building2, Landmark, FileText, TrendingUp, TrendingDown, ArrowRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { getEmployerCtx, matchDeclaredRole, type EmployerCtx } from "@/lib/employer-context";
@@ -41,6 +41,9 @@ export function EmployerContext({ companyToken, source, companyName, postingTitl
   companyName: string; postingTitle: string;
 }) {
   const { t, i18n } = useTranslation();
+  // The link promises the hiring profile, so it opens the profile: the
+  // written page, or the profile address with rel="nofollow" (SEO-010).
+  const profileLink = useCompanyProfileLink();
   const lng = i18n.language || "en";
   const [ctx, setCtx] = useState<EmployerCtx | null>(null);
   const [loading, setLoading] = useState(false);
@@ -133,7 +136,9 @@ export function EmployerContext({ companyToken, source, companyName, postingTitl
         </p>
       )}
       <Link
-        to={companyLanderPath(companyToken)}
+        to={profileLink(companyToken).href}
+        rel={profileLink(companyToken).rel}
+        data-employer-profile-link=""
         className="inline-flex items-center gap-1 text-xs text-primary underline decoration-primary/50 underline-offset-2 hover:decoration-primary rounded"
       >
         {t("jobsPage.employerCtx.companyPage", "Full {{company}} hiring profile", { company: companyName })}

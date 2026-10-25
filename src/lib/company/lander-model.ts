@@ -258,7 +258,12 @@ export interface LanderModel {
    * Whether the page may promise that a watch counts the board's new
    * postings ("Watch this board and your account will count its new postings
    * when they appear", and the watch toast's "We'll email you when they post
-   * new roles"). Always true off the zero page. On it, see watchPromiseOf.
+   * new roles"). On the zero page, see watchPromiseOf. Off it, true unless
+   * the token is a site a dedupe can empty (siteDedupedToken): a watch is
+   * scoped to this token, and the new roles a sibling site holds are stored
+   * under that sibling, so the toast on an Oracle sub-site's or a multi-site
+   * Workday tenant's standard page promised roles it would never count (PD
+   * fix3/fix4 hand-off, taken by the SEO round's merge review, 2026-10-25).
    */
   watchPromise: boolean;
   /**
@@ -561,7 +566,7 @@ export function buildLanderModel(input: LanderInput): LanderModel {
     boardTotal: employerBoard ? boardTotalFact(input.boardTotal, input.now ?? Date.now()) : null,
     undatedOpen: employerBoard ? undated : null,
     zeroReading: variant === "zero" ? zeroReadingOf(input) : null,
-    watchPromise: variant !== "zero" || watchPromiseOf(input),
+    watchPromise: variant === "zero" ? watchPromiseOf(input) : !siteDedupedToken(input.token),
     nameSettled: !input.loading && (input.error || input.budgetRefusal || finite(input.listTotal)),
   };
 }

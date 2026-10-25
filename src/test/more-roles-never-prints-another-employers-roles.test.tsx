@@ -159,7 +159,7 @@ describe("the posting page", () => {
     page("/jobs/posting/usajobs/usajobs/886982900");
     await screen.findByRole("heading", { level: 1, name: "Supervisory Management and Program Analyst" });
     expect(document.querySelector("[data-more-roles-slot]")).toBeNull();
-    expect(document.body.textContent).not.toMatch(/never an aggregator/);
+    expect(document.body.textContent).not.toMatch(/never copied from another job board/);
   });
 
   it("positive control: an ordinary employer's posting mounts it, and the aggregator note stays", async () => {
@@ -168,6 +168,6 @@ describe("the posting page", () => {
     page("/jobs/posting/greenhouse/acme/1");
     await screen.findByRole("heading", { level: 1, name: "Staff Accountant" });
     expect(document.querySelector("[data-more-roles-slot]")).not.toBeNull();
-    expect(document.body.textContent).toMatch(/never an aggregator/);
+    expect(document.body.textContent).toMatch(/never copied from another job board/);
   });
 });

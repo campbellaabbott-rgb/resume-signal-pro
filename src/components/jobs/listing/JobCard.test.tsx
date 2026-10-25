@@ -3,7 +3,7 @@
  * The shared card, mounted from fixtures (never through Jobs.tsx): what each
  * row prints, what it refuses to print, and the controls a seeker meets.
  */
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
@@ -12,6 +12,11 @@ import { resolve } from "node:path";
 import i18n from "@/i18n";
 import enListing from "@/i18n/shards/listing/en.json";
 import { JobCard, type CardContext } from "./JobCard";
+import { setLanderManifestForTests } from "@/lib/seo/lander-manifest";
+
+// Every board has a written page here (SEO-010): this file holds the card, not which
+// boards the bake wrote.
+beforeEach(() => { setLanderManifestForTests("*"); });
 import type { ListingJob } from "@/lib/listing/types";
 
 const NOW = new Date("2026-10-12T12:00:00Z");

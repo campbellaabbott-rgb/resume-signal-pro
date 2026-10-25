@@ -16,7 +16,8 @@
 // readers once per token (each asked once while in flight, so the rail and
 // the accordion mounted together make one request each) and asks none of
 // them on a board name two hiring systems share.
-import { type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { cn } from "@/lib/utils";
 import { datedHeadcount } from "@/lib/headcount";
 import { useTranslation } from "react-i18next";
 import { useCompanyIntel } from "@/components/jobs/CompanyIntelPanel";
@@ -131,6 +132,11 @@ export function CompanyResultsLine({ model, shown, matching, boardReadAt }: {
   const { t, i18n } = useTranslation();
   const lang = i18n.language || "en";
   const total: { value: number; floor: boolean } | null = model.visitorFiltered ? (matching ?? null) : (model.openRoles as OpenRolesValue | null);
+  // While the list loads the line keeps its place (R9): it used to appear
+  // above the first card and push the list down when the reply landed.
+  if ((!total || shown <= 0) && !model.nameSettled) {
+    return <p aria-hidden="true" className="text-meta min-h-[2lh] sm:min-h-[1lh]" data-company-results-reserve="" />;
+  }
   if (!total || shown <= 0) return null;
   const vars = { shown: fmtCount(shown, { lng: lang }), total: fmtCount(total.value, { floor: total.floor, lng: lang }), days: SERVED_WINDOW_DAYS };
   // The header's split, read from the same helper: a page whose reply counts
@@ -210,6 +216,30 @@ export interface CompanyLanderProps extends Omit<CompanyLanderHeaderProps, "prof
   matching?: { value: number; floor: boolean } | null;
   /** A job opened on a desktop: it takes the rail's place, with its own "Back to {name}". */
   detail?: ReactNode;
+  /** The hiring record's reader has not answered yet (the rail waits for it, R9). */
+  recordPending?: boolean;
+}
+
+/** The longest the rail stays unshown while its readers answer. */
+export const RAIL_SETTLE_MAX_MS = 3500;
+
+/**
+ * THE RAIL APPEARS ONCE, WHOLE (R9). Its sections arrive from different
+ * readers at different moments, and each one that landed above another moved
+ * it: on Domino's the hiring record arrived over the pay card (0.166) and the
+ * page then moved again (0.193), lab CLS 0.354 at 1280. The rail is laid out
+ * but not shown (visibility: hidden, which a layout shift does not count)
+ * until the employer reader and the record reader have both answered, or
+ * RAIL_SETTLE_MAX_MS has passed, and then shown in one paint.
+ */
+export function useRailSettled(settled: boolean, token: string): boolean {
+  const [timedOut, setTimedOut] = useState(false);
+  useEffect(() => {
+    setTimedOut(false);
+    const h = setTimeout(() => setTimedOut(true), RAIL_SETTLE_MAX_MS);
+    return () => clearTimeout(h);
+  }, [token]);
+  return settled || timedOut;
 }
 
 /**
@@ -221,6 +251,7 @@ export interface CompanyLanderProps extends Omit<CompanyLanderHeaderProps, "prof
  */
 export function CompanyLander(p: CompanyLanderProps) {
   const profile = useCompanyProfile(p.token, p.model);
+  const railShown = useRailSettled(!profile.intel.loading && !p.recordPending, p.token);
   const empty = p.model.variant === "zero" || p.model.variant === "uncarried";
   const about: AboutEmployerProps = {
     model: p.model, token: p.token, profile, record: p.record, layoffRows: p.layoffRows,
@@ -252,7 +283,10 @@ export function CompanyLander(p: CompanyLanderProps) {
             {/* Only an opened job sticks: the profile rail is taller than the
                 screen, and a sticky element taller than the viewport hides its
                 own lower sections until the list ends. */}
-            <div className={p.detail ? "sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto space-y-3" : "space-y-3"}>
+            <div
+              className={cn(p.detail ? "sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto space-y-3" : "space-y-3", !p.detail && !railShown && "invisible")}
+              data-company-rail={p.detail || railShown ? "shown" : "settling"}
+            >
               {p.detail ?? (
                 <CompanyLanderRail
                   {...about}

@@ -16,6 +16,7 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import { BrowserRouter, MemoryRouter, Route, Routes } from "react-router-dom";
 import { MOUNT_TEST_BUDGET, SLOW } from "./helpers/mount-budget";
 import { clearBoardBudgetRefusal } from "@/lib/board-budget";
+import { setLanderManifestForTests } from "@/lib/seo/lander-manifest";
 
 const invoke = vi.fn();
 vi.mock("@/integrations/supabase/client", () => ({
@@ -90,6 +91,9 @@ beforeEach(() => {
   invoke.mockReset();
   clearBoardBudgetRefusal();
   mock();
+  // Every board has a written page here (SEO-010): this file holds another
+  // property of the employer link, not which boards the bake wrote.
+  setLanderManifestForTests("*");
 });
 
 describe("a link to another board page loads that board", () => {

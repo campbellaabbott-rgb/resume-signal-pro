@@ -1,6 +1,6 @@
 # Name gate dry run: pages indexable today that a stricter rule would drop
 
-Bake of 2026-10-18, facets from rpc; 484 company pages indexable on the live site that day. Written by `scripts/prerender-name-gate-report.mjs` from the bake's `PRERENDER_NAME_GATE_REPORT` file.
+Bake of 2026-10-25 (the SEO round's last pass before landing, seo-merge-main at fd507af1, a git-archive export with live reads), facets from rpc; 486 company pages indexable on the live site that day. Written by `scripts/prerender-name-gate-report.mjs` from the bake's `PRERENDER_NAME_GATE_REPORT` file.
 
 Owner decision D7: no page indexable today drops out without the owner's sign-off. **Every page in the first table keeps its index in this round.** Sign the rows that may drop; the next round makes the gate act on the signed rows only.
 
@@ -8,12 +8,20 @@ Owner decision D7: no page indexable today drops out without the owner's sign-of
 
 | Page | Kind | Name printed | Why | What the rule would do | Sign (drop? yes/no) |
 | --- | --- | --- | --- | --- | --- |
-| `/jobs/posting/ukg/recruiting2~AME1104ANBT~9474d2f8-2ad2-46f8-bbe3-f435f50628bd/9e54289b-0ce2-47a2-95f1-85b41182a706` | posting | CMYK-WHT midnight background | logo or image text | lose its JobPosting markup and be marked noindex |  |
-| `/jobs/posting/ukg/recruiting~REG1001RWHM~3f9058a6-91f2-4cf1-bf33-bc76cb9f0522/238cdd44-9089-429c-a963-8de91422a9af` | posting | Axia Logo Horizontal | logo or image text | lose its JobPosting markup and be marked noindex |  |
-| `/jobs/company/eexs~us2~CX_3001` | company | All | generic word | be marked noindex |  |
+| `/jobs/posting/ukg/recruiting~REG1001RWHM~3f9058a6-91f2-4cf1-bf33-bc76cb9f0522/238cdd44-9089-429c-a963-8de91422a9af` | posting | Axia Logo Horizontal | logo or image text | be marked noindex (its job markup is already withheld and its head names no employer) |  |
+| `/jobs/posting/smartrecruiters/ThePlace1/744000154839819` | posting | The Place | the location ends in another country's name than the row's (US) | be marked noindex (its job markup is already withheld) |  |
+| `/jobs/posting/workday/bristolmyerssquibb~wd5~BMS/R1607072-1` | posting | Bristol Myers Squibb | the location ends in another country's name than the row's (CA) | be marked noindex (its job markup is already withheld) |  |
+| `/jobs/company/talent.reyesholdings.com` | company | Reyes Beverage Group | same text as /jobs/company/jobportal.martinbrower.com once names and numbers are out | be marked noindex (a different employer name: no canonical) |  |
 | `/jobs/company/icfcjb~ocs~CX_1` | company | Aerospace | generic word | be marked noindex |  |
+| `/jobs/company/eexs~us2~CX_3001` | company | All | generic word | be marked noindex |  |
 
-`Aerospace` may be The Aerospace Corporation, which calls itself "Aerospace" on its own careers site: a name override (the job-board group's `company_name_overrides`) would repair it instead of a drop. The same is the better fix for the other three, where the override can name the employer.
+### Notes on table 1
+
+- `Axia Logo Horizontal` is logo text kept under D7: since the SEO round's review the page keeps its index but not the name. Its JobPosting is withheld and its head and its own sentences say "the employer" (a `company_name_overrides` row naming the employer would restore both).
+- `Aerospace` may be The Aerospace Corporation, which calls itself "Aerospace" on its own careers site, and `All` is a career-site label: a name override (the job-board group's `company_name_overrides`) would repair either instead of a drop.
+- `/jobs/company/talent.reyesholdings.com` and `/jobs/company/jobportal.martinbrower.com` carry one feed under two employer names (SEO-036). The bake keeps one member of the group indexable and never canonicalises between two differently named employers; which member the rule would drop follows the open counts (the integration bake named Martin Brower, this bake Reyes Beverage Group). Dropping either needs the owner's sign-off, and a catalogue override naming the shared feed is the better fix.
+- `smartrecruiters/ThePlace1` is filed as a US job while its location ends in Nigeria (SEO-035). Its job markup is withheld already; the row itself is fixed by the wave-4 country-reader hand-off in docs/seo-round/README.md.
+- `bristolmyerssquibb~wd5~BMS/R1607072-1` is filed under CA while its location reads "New Brunswick - NJ - US". Its job markup is withheld already, as for ThePlace1. The merge review's bake also listed Unilever R-1189545 ("Ho Chi Minh City, Vietnam", filed VN) here. That was the country reader misreading Vietnam as the withdrawn code VD, not the row. Since the last pass before landing, the reader reads it as VN, and the page carries its JobPosting with no ledger flag.
 
 ## 2. Names repaired (printed differently, index unchanged)
 
@@ -24,32 +32,28 @@ Owner decision D7: no page indexable today drops out without the owner's sign-of
 | `/jobs/company/fa-ewjt-saasfaprod1~ocs~CX_1` | EXL Talent Acquisition Team | EXL | yes | yes (add an override if it reads as a place or another employer) |
 | `/jobs/company/fa-euwp-saasfaprod1~ocs~CX_1` | Mayo Career Site US | Mayo | yes | yes (add an override if it reads as a place or another employer) |
 | `/jobs/company/recruiting2~BIG1003BIGC~63b1fe5f-a895-49e4-afdc-7059fb08eea2` | Big 5 Sporting Goods Opt 1 | Big 5 Sporting Goods | yes |  |
-| `/jobs/company/eedu~em3~CX_1003` | WTW External | WTW | yes | yes (add an override if it reads as a place or another employer) |
 | `/jobs/company/recruiting2~AUS1003AUIN~611d5a38-76c4-4f66-a55f-2bc012d98024` | Austin External | Austin | yes | yes (add an override if it reads as a place or another employer) |
-| `/jobs/company/eqtm~us2~CX_1` | FMOL Health Career Portal | FMOL Health | yes |  |
+| `/jobs/company/eedu~em3~CX_1003` | WTW External | WTW | yes | yes (add an override if it reads as a place or another employer) |
 | `/jobs/company/recruiting2~AUS1003AUIN~76c6c58c-a4d3-4a7c-b7a4-8640fc76a703` | Austin External | Austin | no | yes (add an override if it reads as a place or another employer) |
-
-The last column is new (2026-10-18 review): a repair that leaves one word can read as a place or as a different employer. `Austin` reads as the city (the UKG tenant is Austin Industries: "Austin jobs: 382 open roles from their own hiring system"), and `Mayo` is Mayo Clinic. A `company_name_overrides` row for each ("Austin Industries", "Mayo Clinic") is the fix; `Cummins`, `EXL` and `WTW` are the employers' own short names. The bake's report file now carries `singleWord` per repair and the report script prints this column; the rows above are this bake's, marked by that rule.
+| `/jobs/company/eqtm~us2~CX_1` | FMOL Health Career Portal | FMOL Health | yes |  |
+| `/jobs/company/fa-ewgu-saasfaprod1~ocs~CX_2001` | Chubb External | Chubb | yes | yes (add an override if it reads as a place or another employer) |
 
 ## 3. New pages refused (never indexable before this bake)
 
 None in this bake.
 
-Regenerated on the integration branch (`design/integration` with main merged) by the bake of 2026-10-18 UTC (2026-10-17 local), from a fresh build of the branch with live read-only data. The table of 2026-10-12 had five rows: its two other rows (the UKG posting `.../7a287614-...` and `/jobs/posting/greenhouse/notexternal/8272003`) are not on this list (the list moves with the live postings), and a second UKG posting (`.../238cdd44-...`, "Axia Logo Horizontal") now does. The same bake logs 3 company pages still named by a tenant code (`abercrombie~wd108~anf`, `shm~wd5~Summit_CityMD`, `synnex~wd5~tdsynnexcareers`), not about 36: main's name rule keeps the rest indexable, as section 4 predicted.
+## 4. Compared with the live sitemap (2026-10-25)
 
-## 4. Also indexable today and not after this bake, by rules this round did not add (comparison of 2026-10-12)
+From the SEO round's fixer bake (seo-fix at 847e430f, a git-archive export, live reads, 2026-10-25 UTC). The live sitemap (the 2026-10-18 publish) lists 485 company pages; **this bake keeps all 485 indexable** and adds 3 new ones (`dinebrands~wd503~RestaurantCareerSite`, `thirdchannel-inc`, `recruiting2~BUI1005BABW~621885b8-8801-434c-83f1-c5e38d84ac03`), 488 in all. No company page indexable today loses its index or its canonical.
 
-(Sections 1-3 are the report script's output; this section compares the live sitemap with the bake's sitemap by hand.)
+Two rules hold that, both in `selectLanders` (scripts/prerender-pages.mjs), and both answer the integration bake's 24-board rotation at the 500-board ceiling (which this section listed for sign-off before the review):
 
-Compared with the live sitemap of 2026-10-12 (484 company pages), the bake above (from `pd/bake` at its head, with origin/main's name rule laid over it, which is what the integration runs once main is merged) makes 485 company pages indexable: 4 gained, 3 lost. None of the 3 is the name gate's doing:
+- **The ceiling keeps today's boards near the cut.** A board indexable today keeps its place while its open roles are at least half the cut's; it displaces the lowest-ranked new boards, never another of today's and never a board of an employer that has one, so the set stays at 500. In this bake 24 boards indexable today were kept that way, and 24 boards new to the index made way (refusing a page new to the index is what D7 allows): `nyuhs~wd12~nyuhscareers1`, `recruiting2~EDD1000EBLLC~6fb5a475-cea1-435e-89f4-fdc9d00253c1`, `bakertilly~wd5~btcareers`, `shm~wd5~Summit_CityMD`, `rochester~wd5~UR_Staff`, `mcgill~wd3~McGill_Careers`, `iawmqy~ocs~CX_1`, `speechify`, `fa-exvn-saasfaprod1~ocs~CX_1`, `SIXT`, `skilledwoundcare`, `aisle_and_abroad`, `eswt~us6~CX_1`, `jobs.footlocker.com`, `careers.keysight.com`, `papajohns~wd1~PapaJohnsCareers`, `townepark~wd5~ext`, `marmon~wd501~Marmon_Careers`, `virtua~wd1~Virtua_Health_External_Career_Site`, `fa-ewgu-saasfaprod1~ocs~CX_2001`, `hubinternational~wd1~HUBInternational`, `aptiv~wd5~APTIV_CAREERS`, `accenturefederalservices`, `AllianceAnimalHealth` (each under /jobs/company/; none was indexable on the live site).
+- **Today's page stays its employer's canonical page.** When a sibling board grows past it, the page indexable today keeps the canonical and the pooled count: PwC's `crm_experienced_careers_site` (indexable today) would otherwise have canonicalised to its larger `Global_Experienced_Careers` board.
 
-| Page | After this bake | Why (an existing rule, on that day's live counts) |
-| --- | --- | --- |
-| `/jobs/company/disney~wd5~disneycareerdc` | canonical to a larger Disney board | one employer's boards share one page: the board with the most open roles carries it |
-| `/jobs/company/hpe~wd5~Jobsathpe` | canonical to a larger HPE board | the same rule |
-| `/jobs/company/nvent~wd5~nVent` | noindex, follow (its own page, from its cached listing) | it fell out of the top 500 by open roles; such a page used to fall back to the homepage copy, and now keeps a page of its own (SEO-002) |
+Posting pages are not company pages: 226 posting URLs in the live sitemap leave this bake's, each because the posting closed or left its window (a closed posting gets a noindex "gone" page, as Google requires of expired jobs; the integration bake spot-checked three with the read-only API).
 
-Without main's name rule (the S11-013 fix main already carries in `src/lib/company-display.ts`), the same bake also marked 32 pages indexable today noindex as "still named by a tenant code" (Intel, Mastercard, Medtronic, Cigna, Tapestry and 27 more). That rule is on main, so merging main first keeps them indexable. After the merge, the bake log should read "4 still named by a tenant code", not about 36.
+The figures move with the board: Lovable's publish re-reads the counts, so its own list will differ by a few boards at the cut.
 
 ## How the gate decides (`scripts/prerender-names.mjs`)
 

@@ -95,7 +95,7 @@ fi
 VD94_CL_MAIN=$(curl -s -m 30 "$SITE/" | grep -o '/assets/index-[^"]*\.js' | head -1)
 VD94_CL=""; VD94_CL_CHUNK=""
 if [ -n "$VD94_CL_MAIN" ]; then
-  for CH94 in $(curl -s -m 30 "$SITE$VD94_CL_MAIN" | grep -o '"\./en-[A-Za-z0-9_-]*\.js"' | tr -d '"' | sed 's|^\./||' | grep -v '^en-GB-' | sort -u); do
+  for CH94 in $(bash scripts/verify-us-english.sh "$SITE$VD94_CL_MAIN"); do
     VD94_CLT=$(curl -s -m 30 "$SITE/assets/$CH94")
     printf '%s' "$VD94_CLT" | grep -q "signInEmailsHaveASecondSender" || continue
     VD94_CL=$VD94_CLT; VD94_CL_CHUNK=$CH94

@@ -5,6 +5,7 @@
 // canonical ones lead each list) to keep pages substantive, not thin.
 
 import { INDUSTRY_KEYWORDS } from "../../supabase/functions/free-keyword-scan/industry-detection";
+import { displayTitle } from "../lib/seo/display-case";
 
 export interface RolePage {
   slug: string;
@@ -36,7 +37,9 @@ function buildRoles(): Record<string, RolePage> {
       chosen.push(lower);
       out[slug] = {
         slug,
-        title: raw.replace(/\b\w/g, (c) => c.toUpperCase()),
+        // Acronyms stay acronyms: "RN", "CPA", "VP of Product", "UI Designer"
+        // — it upper-cased every word's first letter ("Rn", "Vp Of Product").
+        title: displayTitle(raw),
         industry,
       };
     }

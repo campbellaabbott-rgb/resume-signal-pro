@@ -86,21 +86,27 @@ else
   if [ -n "$FB_EXPL" ] && fb_has "$EXPLJS" '"./BoardBudgetNotice-'; then echo "PASS  $FB_EXPL imports the board-budget notice: a refusal is not called 'our measurement failing'"
   else echo "FAIL  $FB_EXPL does not import the board-budget notice: a refused /explore still blames itself and re-fires probes"; fi
 
-  # The English strings the browser loads carry the retired-and-reminted keys.
-  FB_EN_OK=0; FB_EN_EXACT=0
-  for CH in $(printf '%s' "$FB_MAINJS" | grep -o '"\./en-[A-Za-z0-9_-]*\.js"' | tr -d '"' | sed 's|^\./||' | sort -u); do
+  # The US English strings the browser loads carry the retired-and-reminted
+  # keys: rb-en_all since SEO-040, the entry before it, never en-GB
+  # (scripts/verify-us-english.sh says why).
+  FB_EN_FOUND=0; FB_EN_OK=0; FB_EN_EXACT=0
+  for CH in $(bash scripts/verify-us-english.sh "$SITE$FB_MAIN"); do
     FB_EN=$(curl -s -m 30 "$SITE/assets/$CH")
     printf '%s' "$FB_EN" | grep -q "sortDiscovered2" || continue
+    FB_EN_FOUND=1
     if printf '%s' "$FB_EN" | grep -q "Newest, undated by our date" && ! printf '%s' "$FB_EN" | grep -q "Recently found by us"; then FB_EN_OK=1; fi
     printf '%s' "$FB_EN" | grep -q "title matches first, then employer-name matches" && FB_EN_EXACT=1
     break
   done
-  if [ "$FB_EN_OK" = 1 ]; then echo "PASS  the English strings name the discovery order truthfully ('Newest, undated by our date')"
-  else echo "FAIL  the English strings the browser loads still say 'Recently found by us' (or carry no sortDiscovered2)"; fi
-  # The exact-word tier serves title matches, then employer-name matches, each
-  # block date-ordered on its own; its sentence names the two blocks.
-  if [ "${FB_EN_EXACT:-0}" = 1 ]; then echo "PASS  the exact-word tier's order sentence names its two blocks (title matches first, then employer-name matches)"
-  else echo "FAIL  the English strings claim one date order over the exact-word tier's two concatenated reads"; fi
+  if [ "$FB_EN_FOUND" = 0 ]; then echo "FAIL  could not find the US English strings the browser loads (no chunk the entry names carries sortDiscovered2; frontend not published, or the bundle layout moved)"
+  else
+    if [ "$FB_EN_OK" = 1 ]; then echo "PASS  the English strings name the discovery order truthfully ('Newest, undated by our date')"
+    else echo "FAIL  the English strings the browser loads still say 'Recently found by us'"; fi
+    # The exact-word tier serves title matches, then employer-name matches, each
+    # block date-ordered on its own; its sentence names the two blocks.
+    if [ "${FB_EN_EXACT:-0}" = 1 ]; then echo "PASS  the exact-word tier's order sentence names its two blocks (title matches first, then employer-name matches)"
+    else echo "FAIL  the English strings claim one date order over the exact-word tier's two concatenated reads"; fi
+  fi
 fi
 
 # What a bake cannot show: the pages' crawler HTML is the prerender's, which

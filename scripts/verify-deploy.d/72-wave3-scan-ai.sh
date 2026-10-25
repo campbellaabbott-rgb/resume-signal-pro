@@ -127,8 +127,10 @@ else echo "FAIL  /resume-score (crawler) carries neither report-ID sentence"; fi
 MAIN72=$(curl -s -m 30 "$SITE/" | grep -o '/assets/index-[^"]*\.js' | head -1)
 MAINB72=$( [ -n "$MAIN72" ] && curl -s -m 60 "$SITE$MAIN72" )
 EN72=""
-for CAND in main $(printf '%s' "$MAINB72" | grep -o '"\./en-[A-Za-z0-9_-]*\.js"' | tr -d '"' | sed 's|^\./||' | sort -u); do
-  if [ "$CAND" = main ]; then BODY72=$MAINB72; else BODY72=$(curl -s -m 30 "$SITE/assets/$CAND"); fi
+# The US English strings: rb-en_all since SEO-040, the entry before it, never
+# en-GB (scripts/verify-us-english.sh says why).
+for CAND in $(bash scripts/verify-us-english.sh "$SITE$MAIN72"); do
+  if [ "$CAND" = "${MAIN72#/assets/}" ]; then BODY72=$MAINB72; else BODY72=$(curl -s -m 30 "$SITE/assets/$CAND"); fi
   printf '%s' "$BODY72" | grep -q "timeToResults" || continue
   EN72=$BODY72; break
 done
