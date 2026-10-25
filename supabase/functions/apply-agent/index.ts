@@ -82,7 +82,8 @@ import { APPLY_AGENT_ON } from "../_shared/apply-agent-switch.ts";
 // gaps, covenants) inside a work-done prompt the person's.
 // 2026-10-11.31 (wave 4 round 2 recheck): the same switched-off code, carrying the classifier that reads every later clause and sentence of a work-done or motivation question against the shared factual topics (notice, earliest, earned, who to contact).
 // 2026-10-11.32 (wave 4 fix round 3, corpus-first): the same switched-off code, carrying the classifier that sends a later clause addressed to the person to the person unless it is about work done or motivation.
-const BUILD_VERSION = "2026-10-11.32";
+// 2026-10-11.33 (wave 4 fix round 4): the same switched-off code, carrying the default-deny clause rule.
+const BUILD_VERSION = "2026-10-11.33";
 // Provable from outside with no key: the CORS preflight and every response
 // carry this in x-fn-build.
 const FN_BUILD = `apply-agent.${BUILD_VERSION}`;

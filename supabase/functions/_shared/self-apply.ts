@@ -43,18 +43,21 @@
  * corpus by src/test/a-question-about-your-history-is-never-drafted-from-a-cv.
  */
 import {
-  ADDRESSES_PERSON,
   CLAUSE_BREAK,
-  MOTIVE_CLAUSE,
+  ENDED,
+  FORMAT_NOTE,
   OWN_STATUS,
   PERSON_CIRCUMSTANCE,
-  WORK_CLAUSE,
-  WORK_PAST,
+  anyAsk,
   asksAboutWorkDone,
+  askedText,
   classifyQuestion,
   cleanQuestionLabel,
+  madeOfWork,
+  mentionsLaterFact,
   mentionsPersonFact,
   topicOf,
+  workClause,
   type QuestionClass,
 } from "./application-questions.ts";
 import { sponsorshipSense, type SponsorshipSense } from "./submission-packet.ts";
@@ -89,10 +92,12 @@ export type SelfApplyQuestion = SelfApplyInput & {
  * sentence that merely mentions the role later on is not one.
  */
 export const MOTIVATION =
-  /^\s*(?:please\s+)?(?:(?:tell|share\s+with)\s+us\s+)?(?:(?:in\s+(?:a\s+few|one|two|three|\d+(?:\s*[-–]\s*\d+)?)\s+(?:words|sentences)[,:]?\s+)?(?:why\s+(?:do\s+you\s+want|would\s+you\s+like|are\s+you\s+(?:interested|applying|excited)|have\s+you\s+applied|did\s+you\s+apply)\b|why\s+(?:this\s+(?:role|position|job|company|team|opportunity)|us|our\s+company)\b|what\s+(?:interests|excites|attracts|draws|motivates|appeals\s+to)\s+you\b|what\s+(?:makes|made)\s+you\s+(?:want\s+to\s+apply|interested|apply)\b)|(?:cover\s*-?\s*letter|motivation(?:al)?\s+(?:letter|statement)|letter\s+of\s+motivation)\b|(?:is\s+there\s+)?anything\s+else\s+(?:you['’]?d|you\s+would)\s+like\s+(?:us\s+)?to\s+know\b|additional\s+information\b)/i;
+  /^\s*(?:(?:briefly|in\s+your\s+own\s+words)[,:]?\s+)?(?:please\s+)?(?:(?:tell|share\s+with)\s+us\s+)?(?:(?:in\s+(?:a\s+few|one|two|three|\d+(?:\s*[-–]\s*\d+)?)\s+(?:words|sentences)[,:]?\s+)?(?:(?:describe|explain)\s+)?(?:why\s+(?:do\s+you\s+want|would\s+you\s+like|are\s+you\s+(?:interested|applying|excited)|have\s+you\s+(?:applied|chosen\s+to\s+apply)|did\s+you\s+(?:apply|choose\s+to\s+apply)|you\s+(?:are\s+(?:interested|applying|excited)|want\s+to|would\s+like\s+to|applied)|(?:do\s+you\s+think\s+)?you['’]?d\s+be\s+(?:a\s+)?(?:great|good|strong|ideal|right)\s+(?:fit|candidate|match)|should\s+we\s+hire\s+you)\b|why\s+(?:this\s+(?:role|position|job|company|team|opportunity)|us|our\s+company)\b|what\s+(?:interests|excites|attracts|draws|motivates|appeals\s+to)\s+you\b|what\s+(?:makes|made)\s+you\s+(?:want\s+to\s+apply|interested|apply|(?:a\s+)?(?:great|good|strong|ideal|right)\s+(?:fit|candidate|match))\b|what\s+(?:would|will|can)\s+you\s+bring\b)|(?:cover\s*-?\s*letter|motivation(?:al)?\s+(?:letter|statement)|letter\s+of\s+motivation)\b|(?:is\s+there\s+)?anything\s+else\s+(?:(?:you['’]?d|you\s+would)\s+like\s+(?:us\s+)?to\s+(?:know|share|tell|add)|we\s+should\s+know|you\s+want\s+us\s+to\s+know)\b|additional\s+information\b)/i;
+/** "Why <Employer>?", the whole label. */
+const WHY_NAME = /^\s*[Ww]hy\s+([A-Z][^\s?]*(?:\s+[A-Z][^\s?]*){0,3})\s*\?\s*$/;
 
 /** The opening a motivation question shares with a status question ("why are you ..."), removed before OWN_STATUS reads the rest. */
-const MOTIVATION_OPENING = /^\s*(?:please\s+)?(?:(?:tell|share\s+with)\s+us\s+)?(?:in\s+(?:a\s+few|one|two|three|\d+(?:\s*[-–]\s*\d+)?)\s+(?:words|sentences)[,:]?\s+)?why\s+are\s+you\s+(?:interested|applying|excited)\b/i;
+const MOTIVATION_OPENING = /^\s*(?:(?:briefly|in\s+your\s+own\s+words)[,:]?\s+)?(?:please\s+)?(?:(?:tell|share\s+with)\s+us\s+)?(?:in\s+(?:a\s+few|one|two|three|\d+(?:\s*[-–]\s*\d+)?)\s+(?:words|sentences)[,:]?\s+)?why\s+are\s+you\s+(?:interested|applying|excited)\b/i;
 
 const FREE_TEXT_TYPE = /^(?:input_text|textarea|text|string|longtext|long_text|short_text|shorttext|paragraph|free_?text|multi_?line(?:_text)?|text_?area|text_?field|essay|open|open_question|long_?answer|short_?answer)$/i;
 
@@ -110,18 +115,32 @@ const SENTENCES = /(?<=[?!;])\s+|(?<=[a-z]{3}\.)\s+(?=[A-Z])/;
 /** Leaving a job is the person's history, whatever question it sits in. */
 const LEAVING = /\b(?:leav\w*|left)\b/i;
 
+/** A follow-up about the work just told: "How did you resolve it?", "What was the outcome?". */
+const FOLLOW_UP = /^\s*(?:and\s+)?(?:how|what)\s+(?:did|was|were)\b(?:\s+you\s+[a-z][\w-]*)?/i;
+
 /**
- * True when every sentence after the first is a plain instruction: not a
- * question, nothing the classifier keeps from a model, and no factual topic.
- * Fix 3: no fact in any list's words, nothing about the person's
- * circumstances, and nothing else addressed to them that is not about their
- * work or their motivation ("Include your political affiliation.").
+ * True when every sentence after the first is plain: nothing the classifier
+ * keeps from a model, and every clause of it work (workClause; for a
+ * motivation question, motivation too). Fix 4: default-deny, clause by
+ * clause, so a fact in new words ("Include your results and your union
+ * membership.") is the person's; a later question is plain only as a
+ * follow-up about the work just told.
  */
-export function laterSentencesArePlain(label: string): boolean {
-  return label.split(SENTENCES).slice(1).every((s) =>
-    !s.includes("?") && classifyQuestion(s, "textarea") === "draftable" && topicOf(s) === "other" && !mentionsPersonFact(s) && !PERSON_CIRCUMSTANCE.test(s) &&
-    !(ADDRESSES_PERSON.test(s) && !WORK_CLAUSE.test(s) && !MOTIVE_CLAUSE.test(s)));
+export function laterSentencesArePlain(label: string, motive = false): boolean {
+  return label.split(SENTENCES).slice(1).every((s) => {
+    if (classifyQuestion(s, "textarea") !== "draftable") return false;
+    // A second motivation question in a motivation label ("Why ALO? Why do you think you'd be a great fit?") is the same ask.
+    if (motive && MOTIVATION.test(s)) return isMotivationQuestion(s);
+    if (s.includes("?") && !FOLLOW_UP.test(s)) return false;
+    const clauses = s.replace(FOLLOW_UP, " ").split(CLAUSE_BREAK).filter((_, i) => i % 2 === 0);
+    // "(Limit: two paragraphs.)" is a format instruction.
+    if (FORMAT.test(s) && !mentionsLaterFact(s)) return clauses.every((c) => !/\byour\b(?!\s+(?:answer|response)s?\b)/i.test(c) || madeOfWork(c));
+    return clauses.every((c) => workClause(c, motive));
+  });
 }
+
+/** A length or format instruction ("Max 300 words.", "Please keep responses under 150 words.", "3-4 sentences"). */
+const FORMAT = new RegExp(FORMAT_NOTE.source + /|\b(?:minutes?\s+to\s+complete|under\s+\d+)/.source, "i");
 
 /**
  * THE EMPLOYER'S HINT IS PART OF THE QUESTION (sweep S12-082). A form's note
@@ -133,15 +152,23 @@ export function laterSentencesArePlain(label: string): boolean {
  * factual topic, nothing about the person's own status, no word about leaving.
  * Fix 3: the whole hint is read against every fact list at once
  * (mentionsPersonFact), and a sentence offering a document ("Add a cover
- * letter or anything else you'd like to share") is still plain.
+ * letter or anything else you'd like to share") is still plain. Fix 4: every
+ * other sentence must be a format instruction or work or motivation clause by
+ * clause (recheck 3: "Please also list any disciplinary actions.", "Include
+ * a manager who can vouch for your work.").
  */
 export function hintIsPlain(hint: string | undefined): boolean {
   const h = cleanQuestionLabel(hint ?? "");
   if (!h) return true;
-  if (LEAVING.test(h) || mentionsPersonFact(h) || PERSON_CIRCUMSTANCE.test(h)) return false;
+  if (LEAVING.test(h) || ENDED.test(h) || mentionsLaterFact(h) || PERSON_CIRCUMSTANCE.test(h) || anyAsk(h)) return false;
   return h.split(SENTENCES).every((s) => {
     const cls = classifyQuestion(s, "textarea");
-    return (cls === "draftable" || cls === "file") && topicOf(s) === "other" && !OWN_STATUS.test(s);
+    if ((cls !== "draftable" && cls !== "file") || topicOf(s) !== "other" || OWN_STATUS.test(s)) return false;
+    const clauses = s.replace(FOLLOW_UP, " ").split(CLAUSE_BREAK).filter((_, i) => i % 2 === 0);
+    // A format instruction or a document offer is plain unless it names something of the person's ("your ...").
+    if (cls === "file" || FORMAT.test(s)) return clauses.every((c) => !/\byour\b(?!\s+(?:answer|response)s?\b)/i.test(c) || madeOfWork(c));
+    if (s.includes("?") && !FOLLOW_UP.test(s)) return false;
+    return clauses.every((c) => workClause(c, true));
   });
 }
 
@@ -150,22 +177,21 @@ export function hintIsPlain(hint: string | undefined): boolean {
  * the person's status, and no fact either: "Why do you want to work here, and
  * how soon you could start" carries a second, factual ask (review of wave 4
  * round 2), nor a later clause naming a topic (recheck). Fix 3: the whole
- * label is read against every fact list at once, whatever joins its parts,
- * and a later clause addressed to the person is theirs unless it is about
- * their work or their motivation ("... and do you have kids?").
+ * label is read against every fact list at once, whatever joins its parts.
+ * Fix 4: every later clause must be work or motivation (workClause), so "...
+ * and bring the clients you manage today" is the person's; "Why Stripe?" and
+ * "What makes you a great fit?" are motivation questions.
  */
 export function isMotivationQuestion(label: string): boolean {
-  const opening = MOTIVATION.exec(label);
+  const name = WHY_NAME.exec(label);
+  const opening = MOTIVATION.exec(label) ?? (name && !/^(?:remote|now|here|hybrid|on-?site|relocat)/i.test(name[1]) ? name : null);
   if (!opening || LEAVING.test(label) || mentionsPersonFact(label)) return false;
-  if (!laterSentencesArePlain(label)) return false;
+  if (!laterSentencesArePlain(label, true)) return false;
   const [firstSentence] = label.slice(opening.index + opening[0].length).split(SENTENCES);
   const clauses = (firstSentence ?? "").split(CLAUSE_BREAK);
-  for (let i = 2; i < clauses.length; i += 2) {
-    const c = clauses[i];
-    if (topicOf(c) !== "other") return false;
-    if (PERSON_CIRCUMSTANCE.test(c) && !WORK_PAST.test(c) && !MOTIVE_CLAUSE.test(c)) return false;
-    if (ADDRESSES_PERSON.test(c) && !WORK_CLAUSE.test(c) && !MOTIVE_CLAUSE.test(c)) return false;
-  }
+  // A run-on second ask in the motivation's own words ("Why do you want to work here how many hours you can work").
+  if (PERSON_CIRCUMSTANCE.test(clauses[0] ?? "") || /\b(?:whether|when|where|how\s+(?:soon|much|many|long))\b/i.test(clauses[0] ?? "")) return false;
+  for (let i = 2; i < clauses.length; i += 2) if (!workClause(clauses[i] ?? "", true)) return false;
   return !OWN_STATUS.test(label.replace(MOTIVATION_OPENING, " "));
 }
 
@@ -177,8 +203,10 @@ const CHOICE_TYPE = /select|radio|check|bool|yes_?no/i;
 /** One question, with who answers it and why. */
 export function whoAnswers(q: SelfApplyInput, n: number): SelfApplyQuestion {
   const label = cleanQuestionLabel(q.label);
+  // A line break inside the label is a sentence break for every test (recheck 3: "Describe your experience\nUnion member? Y/N").
+  const asked = askedText(q.label);
   const type = String(q.type ?? "");
-  const cls: QuestionClass = classifyQuestion(label, type);
+  const cls: QuestionClass = classifyQuestion(q.label, type);
   const base: SelfApplyQuestion = {
     n, label, required: !!q.required, type,
     ...(q.options && q.options.length ? { options: q.options } : {}),
@@ -204,8 +232,8 @@ export function whoAnswers(q: SelfApplyInput, n: number): SelfApplyQuestion {
     case "file":
       // A text box that wants the cover letter itself is motivation text the
       // AI may draft; an upload slot is the person's document.
-      if (free && plainHint && COVER_LETTER.test(label) && isMotivationQuestion(label)) return { ...base, answeredBy: "draft_from_your_cv" };
-      if (free && COVER_LETTER.test(label) && isMotivationQuestion(label)) return { ...base, answeredBy: "you", cvMayHelp: true, ...hintExtras };
+      if (free && plainHint && COVER_LETTER.test(label) && isMotivationQuestion(asked)) return { ...base, answeredBy: "draft_from_your_cv" };
+      if (free && COVER_LETTER.test(label) && isMotivationQuestion(asked)) return { ...base, answeredBy: "you", cvMayHelp: true, ...hintExtras };
       // A label naming the résumé on a control with options ("I affirm that my
       // application, resume ... are accurate": I agree) is the person's own
       // declaration, which the AI never ticks; only an upload slot is a document.
@@ -219,7 +247,7 @@ export function whoAnswers(q: SelfApplyInput, n: number): SelfApplyQuestion {
       return { ...base, answeredBy: "you", ...factualExtras };
     case "draftable":
     default: {
-      if (free && plainHint && !LEAVING.test(label) && laterSentencesArePlain(label) && (asksAboutWorkDone(label) || isMotivationQuestion(label))) {
+      if (free && plainHint && !LEAVING.test(asked) && ((asksAboutWorkDone(asked) && laterSentencesArePlain(asked)) || isMotivationQuestion(asked))) {
         return { ...base, answeredBy: "draft_from_your_cv" };
       }
       // A sponsorship or country word in a question the classifier let through

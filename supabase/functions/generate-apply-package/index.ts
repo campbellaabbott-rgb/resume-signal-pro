@@ -38,7 +38,8 @@ import { fencePosting, postingText, POSTING_DATA_RULE } from "../_shared/posting
 // text dropped (S12-147, as the cover letter and tailored résumé do).
 // 2026-10-11.31 (wave 4 round 2 recheck): carries the classifier that reads every later clause and sentence of a work-done or motivation question against the shared factual topics (notice, earliest, earned, who to contact).
 // 2026-10-11.32 (wave 4 fix round 3, corpus-first): carries the classifier that refuses a personal fact or ask unless the label is about work done.
-const FN_BUILD = "generate-apply-package.2026-10-11.32";
+// 2026-10-11.33 (wave 4 fix round 4): carries the classifier that no longer refuses a job word ("full-time", "eligibility") and refuses a status after "without", "on a" or "as a".
+const FN_BUILD = "generate-apply-package.2026-10-11.33";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

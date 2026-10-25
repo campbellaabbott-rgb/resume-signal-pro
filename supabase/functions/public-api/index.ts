@@ -376,7 +376,8 @@ const LIST_FILTERS = [
 // ANSWERED_BY_MEANS already says, and a hint asking for pay is not plain.
 // 2026-10-11.31 (wave 4 round 2 recheck): the application route carries the classifier that reads every later clause and sentence of a work-done or motivation question against the shared factual topics (notice, earliest, earned, who to contact).
 // 2026-10-11.32 (wave 4 fix round 3, corpus-first): the application route carries the classifier that sends a later clause addressed to the person to the person unless it is about work done or motivation.
-const FN_BUILD = "public-api.2026-10-11.32";
+// 2026-10-11.33 (wave 4 fix round 4): the application route carries the default-deny clause rule for work and motivation questions.
+const FN_BUILD = "public-api.2026-10-11.33";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",

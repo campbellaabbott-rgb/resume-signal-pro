@@ -23,8 +23,8 @@ import { whoAnswers } from "../../supabase/functions/_shared/self-apply";
 type Row = { id: string; round: number; label: string; hint?: string; expect: "draft" | "person"; why: string; was: { main: string; r2: string } };
 const ROWS = (JSON.parse(readFileSync(resolve(__dirname, "fixtures/w4b-fix3-questions/self-break.json"), "utf8")) as { rows: Row[] }).rows;
 
-/** Factual asks the rule still drafts: a run-on with no joiner, a hint naming a view, and two past-tense personal facts. */
-const KNOWN_DRAFTED = new Set(["sb3-01", "sb3-10", "sb4-24", "sb4-30"]);
+/** Factual asks the rule still drafts. Round 4's default-deny clause rule closed all four round 3 listed (a run-on, a hint naming a view, two past-tense personal facts). */
+const KNOWN_DRAFTED = new Set<string>([]);
 /**
  * Work and motivation questions sent to the person. Five are HR, payroll or
  * legal work in protected words (the area accepts these); the rest are later
@@ -32,10 +32,10 @@ const KNOWN_DRAFTED = new Set(["sb3-01", "sb3-10", "sb4-24", "sb4-30"]);
  * second ask ("... and how you would scale it", "... and the CRM you prefer").
  */
 const KNOWN_OVER_ROUTED = new Set([
-  "sb-37", "sb-38", "sb-41", "sb-43", "sb-48", "sb-49",
+  "sb-37", "sb-38", "sb-41", "sb-48", "sb-49",
   "sb2-36", "sb2-37", "sb2-44", "sb2-45", "sb2-46", "sb2-47",
   "sb3-29", "sb3-30", "sb3-38", "sb3-39", "sb3-50",
-  "sb4-35", "sb4-36", "sb4-42", "sb4-46", "sb4-49",
+  "sb4-36", "sb4-42", "sb4-46",
 ]);
 
 const drafted = (r: Row) =>

@@ -1,6 +1,6 @@
 /**
  * A FACT JOINED TO A WORK OR MOTIVATION QUESTION IN ANY WAY IS THE PERSON'S
- * (wave 4 fix 3, property-style).
+ * (wave 4 fix rounds 3 and 4, property-style).
  *
  * The corpus test (w4b-fix3-questions-corpus) replays real labels. This one
  * generates every combination of a work-done or motivation opening, a joiner
@@ -11,6 +11,12 @@
  * and holds that none of them is drafted, while the same openings joined to
  * plain work or motivation stay drafted, a protected word that is only the
  * work's object stays drafted, and the worker agrees on every label.
+ * Round 4 adds what recheck 3 broke round 3 with: facts in words no list
+ * holds, with or without "you", after every joiner, on a new line and in the
+ * hint; a fact after "without", "on a", "as a", "since" or "during" in a years
+ * question; a status inside the years opening; and, the other way, the words
+ * that name a job ("full-time", "eligibility", "visa") in the opening ask,
+ * which stay drafted and stay draftable at the classifier.
  */
 import { describe, expect, it } from "vitest";
 import * as server from "../../supabase/functions/_shared/application-questions";
@@ -130,6 +136,78 @@ describe("the worker agrees on every generated label", () => {
     for (const opening of [...WORK, ...MOTIVATION]) for (const j of JOINERS) for (const tail of [...ASKS, ...PLAIN_WORK]) {
       const label = `${opening}${j}${tail}`;
       if (worker.asksAboutWorkDone(label) !== server.asksAboutWorkDone(label) || worker.topicOf(label) !== server.topicOf(label) || worker.mentionsPersonFact(label) !== server.mentionsPersonFact(label)) differ.push(label);
+    }
+    expect(differ).toEqual([]);
+  });
+});
+
+/** Round 4: facts in words no list holds (recheck 3), each a second ask. */
+const UNLISTED = [
+  "any DUIs", "any disciplinary actions you faced", "why it ended", "why you moved on", "how that role came to an end", "time away from the workforce",
+  "a former manager who can vouch for it", "the name of a manager we could reach to confirm it", "total earnings", "W-2 earnings for the last two years",
+  "the OTE attached", "any injuries that limit your work", "any union affiliations", "any party memberships", "your union membership",
+  "your hourly expectations", "the languages spoken at home", "the days off required", "any liens or judgments", "the city you grew up in",
+  "customers you are restricted from soliciting", "the accounts that would follow you here", "your political views", "the commission plan at the last company",
+];
+const WORK_OPENINGS = ["Describe your experience in sales", "Tell us about your experience managing teams", "What experience do you have with Salesforce", "Describe your background in nursing"];
+
+describe("round 4: a fact in words no list holds is the person's, wherever it sits", () => {
+  it("after every joiner, as a second sentence, on a new line, and in the hint", () => {
+    const leaked: string[] = [];
+    for (const opening of [...WORK_OPENINGS, ...MOTIVATION]) for (const ask of UNLISTED) {
+      for (const j of [" and ", ", ", " & ", " / ", " + ", " - ", "; ", " plus ", " including ", ": ", " (", "\n"]) {
+        const label = `${opening}${j}${ask}${close(j)}`;
+        if (drafted(label)) leaked.push(label);
+      }
+      if (drafted(`${opening}. Include ${ask}.`)) leaked.push(`${opening}. Include ${ask}.`);
+      if (drafted(opening, `Please also mention ${ask}.`)) leaked.push(`${opening} | hint: Please also mention ${ask}.`);
+    }
+    expect(leaked).toEqual([]);
+  });
+
+  it("a fact after 'without', 'on a', 'as a', 'since' or 'during' in a years question, and a status inside the years opening", () => {
+    const leaked: string[] = [];
+    const TAILS = ["without a DUI conviction", "without a positive drug test", "without a criminal charge", "without a medical leave", "with no felony convictions",
+      "on an H-1B visa", "on OPT", "on STEM OPT", "on a work permit", "on a tourist visa", "as a green card holder", "as a US citizen", "as an EU citizen",
+      "as a permanent resident", "since becoming a US citizen", "since you were 18", "during a pregnancy", "during a medical leave", "at a wage of $20/hour", "with OTE above $200k"];
+    for (const kind of ["", "CDL driving ", "nursing ", "total ", "warehouse "]) for (const t of TAILS) {
+      for (const label of [`How many years of ${kind}experience ${t}?`, `How many years of ${kind}experience do you have ${t}?`]) if (drafted(label)) leaked.push(label);
+    }
+    for (const gap of ["US citizen-only program", "green card holder", "permanent resident work", "cleared", "TS/SCI", "Secret-cleared", "active-duty military", "union", "OPT"]) {
+      const label = `How many years of ${gap} experience do you have?`;
+      if (drafted(label)) leaked.push(label);
+      if (server.classifyQuestion(label, "textarea") === "draftable" && /citizen|green card|resident/i.test(gap)) leaked.push(`classifier: ${label}`);
+    }
+    expect(leaked).toEqual([]);
+  });
+
+  it("the same openings joined to plain work are drafted, told with a verb of work", () => {
+    const refused: string[] = [];
+    for (const opening of WORK_OPENINGS) for (const j of [" and ", ", ", " including "]) for (const more of ["the grade levels you've taught", "the night shifts you worked", "the conversion rate you achieved", "the charges you reconciled", "the travel you arranged", "the quotas you exceeded", "the industries you sold into", "your biggest win", "your sales methodology"]) {
+      const label = `${opening}${j}${more}`;
+      if (!drafted(label)) refused.push(label);
+    }
+    expect(refused).toEqual([]);
+  });
+
+  it("a word that names a job in the opening ask is drafted and stays draftable at the classifier", () => {
+    const refused: string[] = [];
+    for (const label of ["Why are you interested in this full-time position at Acme?", "What excites you about this part-time opportunity?", "Why do you want to join our full-time engineering team?",
+      "How many years of full-time experience do you have?", "Tell us about your experience with benefits eligibility audits.", "How many years of visa processing experience do you have?",
+      "Tell us about a time you had to give a client bad news at short notice.", "How do you plan business trips for an executive team?"]) {
+      if (server.classifyQuestion(label, "textarea") !== "draftable") refused.push(`classifier: ${label}`);
+    }
+    for (const label of ["Why are you interested in this full-time position at Acme?", "What excites you about this part-time opportunity?", "How many years of full-time experience do you have?", "Tell us about your experience with benefits eligibility audits."]) {
+      if (!drafted(label)) refused.push(label);
+    }
+    expect(refused).toEqual([]);
+  });
+
+  it("the worker agrees on every round-4 label", () => {
+    const differ: string[] = [];
+    for (const opening of [...WORK_OPENINGS, ...MOTIVATION]) for (const ask of UNLISTED) for (const j of [" and ", ", ", " / ", ": "]) {
+      const label = `${opening}${j}${ask}`;
+      if (worker.asksAboutWorkDone(label) !== server.asksAboutWorkDone(label) || worker.mentionsPersonFact(label) !== server.mentionsPersonFact(label)) differ.push(label);
     }
     expect(differ).toEqual([]);
   });

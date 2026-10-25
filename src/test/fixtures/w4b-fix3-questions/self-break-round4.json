@@ -1,0 +1,1061 @@
+{
+ "about": "Fix round 4's self-break inputs: 50 written after the round-4 rule first passed its corpus (batch 1), and 25 more written after batch 1's misses were fixed (batch 2). Each row is labelled by its asker (expect), with each version's verdict and the round-4 rule's verdict at the time the batch was written (whenWritten). Labels are synthetic; none came from a real application form.",
+ "rows": [
+  {
+   "id": "q4sb-01",
+   "batch": 1,
+   "label": "Describe your experience in sales and hobbies",
+   "expect": "person",
+   "why": "a bare personal noun after the work",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "draft"
+   },
+   "whenWritten": "draft"
+  },
+  {
+   "id": "q4sb-02",
+   "batch": 1,
+   "label": "Describe your experience in sales and political leanings",
+   "expect": "person",
+   "why": "a bare personal belief",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "draft"
+   },
+   "whenWritten": "person"
+  },
+  {
+   "id": "q4sb-03",
+   "batch": 1,
+   "label": "Describe your experience in sales and native language",
+   "expect": "person",
+   "why": "a bare personal fact",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "draft"
+   },
+   "whenWritten": "draft"
+  },
+  {
+   "id": "q4sb-04",
+   "batch": 1,
+   "label": "Describe your experience in sales and social media handles",
+   "expect": "person",
+   "why": "identity details",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "draft"
+   },
+   "whenWritten": "draft"
+  },
+  {
+   "id": "q4sb-05",
+   "batch": 1,
+   "label": "Describe your experience in retail and how long you stayed at each job",
+   "expect": "person",
+   "why": "tenure history",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "draft"
+   },
+   "whenWritten": "person"
+  },
+  {
+   "id": "q4sb-06",
+   "batch": 1,
+   "label": "Describe your experience in sales, and the reason for your next move",
+   "expect": "person",
+   "why": "a move",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "person"
+   },
+   "whenWritten": "person"
+  },
+  {
+   "id": "q4sb-07",
+   "batch": 1,
+   "label": "Describe your experience in sales and what motivates you financially",
+   "expect": "person",
+   "why": "pay motive",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "draft"
+   },
+   "whenWritten": "person"
+  },
+  {
+   "id": "q4sb-08",
+   "batch": 1,
+   "label": "Describe your experience in sales and your commission last year",
+   "expect": "person",
+   "why": "past pay in new words",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "person"
+   },
+   "whenWritten": "person"
+  },
+  {
+   "id": "q4sb-09",
+   "batch": 1,
+   "label": "Describe your experience in sales and the bonus you received",
+   "expect": "person",
+   "why": "past pay",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "person"
+   },
+   "whenWritten": "person"
+  },
+  {
+   "id": "q4sb-10",
+   "batch": 1,
+   "label": "Describe your experience (include your graduation year)",
+   "expect": "person",
+   "why": "age in a bracket",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "draft"
+   },
+   "whenWritten": "person"
+  },
+  {
+   "id": "q4sb-11",
+   "batch": 1,
+   "label": "Describe your experience: companies, titles, salaries",
+   "expect": "person",
+   "why": "a list after a colon with pay",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "draft"
+   },
+   "whenWritten": "person"
+  },
+  {
+   "id": "q4sb-12",
+   "batch": 1,
+   "label": "Describe your experience with immigration law as an immigrant yourself",
+   "expect": "person",
+   "why": "their own status after the work",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "draft"
+   },
+   "whenWritten": "draft"
+  },
+  {
+   "id": "q4sb-13",
+   "batch": 1,
+   "label": "Tell us about your experience caring for children and whether you have kids of your own",
+   "expect": "person",
+   "why": "family",
+   "was": {
+    "main": "draft",
+    "fa66a031": "person",
+    "9af3c783": "person",
+    "237bf2e8": "person"
+   },
+   "whenWritten": "person"
+  },
+  {
+   "id": "q4sb-14",
+   "batch": 1,
+   "label": "Describe your experience in sales\n\nExpected salary",
+   "expect": "person",
+   "why": "a second line",
+   "was": {
+    "main": "person",
+    "fa66a031": "person",
+    "9af3c783": "person",
+    "237bf2e8": "person"
+   },
+   "whenWritten": "person"
+  },
+  {
+   "id": "q4sb-15",
+   "batch": 1,
+   "label": "Describe your experience in sales\nNotice period",
+   "expect": "person",
+   "why": "a second line",
+   "was": {
+    "main": "person",
+    "fa66a031": "person",
+    "9af3c783": "person",
+    "237bf2e8": "person"
+   },
+   "whenWritten": "person"
+  },
+  {
+   "id": "q4sb-16",
+   "batch": 1,
+   "label": "How many years of veteran-owned business experience do you have?",
+   "expect": "person",
+   "why": "veteran inside the years opening: safe side",
+   "was": {
+    "main": "person",
+    "fa66a031": "person",
+    "9af3c783": "person",
+    "237bf2e8": "person"
+   },
+   "whenWritten": "person"
+  },
+  {
+   "id": "q4sb-17",
+   "batch": 1,
+   "label": "How many years of experience do you have while holding a green card?",
+   "expect": "person",
+   "why": "status while working",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "draft"
+   },
+   "whenWritten": "draft"
+  },
+  {
+   "id": "q4sb-18",
+   "batch": 1,
+   "label": "How many years of experience do you have under a work visa?",
+   "expect": "person",
+   "why": "status while working",
+   "was": {
+    "main": "person",
+    "fa66a031": "person",
+    "9af3c783": "person",
+    "237bf2e8": "person"
+   },
+   "whenWritten": "person"
+  },
+  {
+   "id": "q4sb-19",
+   "batch": 1,
+   "label": "Describe your experience in sales and the visas you obtained",
+   "expect": "person",
+   "why": "their own visas",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "person",
+    "237bf2e8": "person"
+   },
+   "whenWritten": "person"
+  },
+  {
+   "id": "q4sb-20",
+   "batch": 1,
+   "label": "Describe your experience in finance and the background checks you passed",
+   "expect": "person",
+   "why": "their own checks",
+   "was": {
+    "main": "person",
+    "fa66a031": "person",
+    "9af3c783": "person",
+    "237bf2e8": "person"
+   },
+   "whenWritten": "person"
+  },
+  {
+   "id": "q4sb-21",
+   "batch": 1,
+   "label": "Describe your experience in sales and the customers you owe money to",
+   "expect": "person",
+   "why": "debts",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "draft"
+   },
+   "whenWritten": "person"
+  },
+  {
+   "id": "q4sb-22",
+   "batch": 1,
+   "label": "Describe your experience in nursing and the medications you take",
+   "expect": "person",
+   "why": "health",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "person"
+   },
+   "whenWritten": "person"
+  },
+  {
+   "id": "q4sb-23",
+   "batch": 1,
+   "label": "Describe your experience in sales and the city you would like to live in",
+   "expect": "person",
+   "why": "place preference",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "person"
+   },
+   "whenWritten": "person"
+  },
+  {
+   "id": "q4sb-24",
+   "batch": 1,
+   "label": "Why do you want to join us and what salary would attract you",
+   "expect": "person",
+   "why": "pay",
+   "was": {
+    "main": "person",
+    "fa66a031": "person",
+    "9af3c783": "person",
+    "237bf2e8": "person"
+   },
+   "whenWritten": "person"
+  },
+  {
+   "id": "q4sb-25",
+   "batch": 1,
+   "label": "Why do you want to join us and which of our offices is closest to your home",
+   "expect": "person",
+   "why": "where they live",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "draft"
+   },
+   "whenWritten": "person"
+  },
+  {
+   "id": "q4sb-26",
+   "batch": 1,
+   "label": "What excites you about this role and how many days you could be on site",
+   "expect": "person",
+   "why": "on-site days",
+   "was": {
+    "main": "draft",
+    "fa66a031": "person",
+    "9af3c783": "person",
+    "237bf2e8": "person"
+   },
+   "whenWritten": "person"
+  },
+  {
+   "id": "q4sb-27",
+   "batch": 1,
+   "label": "Describe your experience in sales.",
+   "hint": "Please mention your marital situation.",
+   "expect": "person",
+   "why": "a hint asking marital situation",
+   "was": {
+    "main": "draft",
+    "fa66a031": "person",
+    "9af3c783": "person",
+    "237bf2e8": "person"
+   },
+   "whenWritten": "person"
+  },
+  {
+   "id": "q4sb-28",
+   "batch": 1,
+   "label": "Describe your experience in sales.",
+   "hint": "Share your thoughts on unions.",
+   "expect": "person",
+   "why": "a hint asking a view",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "draft"
+   },
+   "whenWritten": "person"
+  },
+  {
+   "id": "q4sb-29",
+   "batch": 1,
+   "label": "Describe your experience in sales.",
+   "hint": "Also tell us your hobbies.",
+   "expect": "person",
+   "why": "a hint asking hobbies",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "draft"
+   },
+   "whenWritten": "person"
+  },
+  {
+   "id": "q4sb-30",
+   "batch": 1,
+   "label": "Describe your experience in sales.",
+   "hint": "In two sentences, include your date of availability.",
+   "expect": "person",
+   "why": "a hint with format words and a fact",
+   "was": {
+    "main": "draft",
+    "fa66a031": "person",
+    "9af3c783": "person",
+    "237bf2e8": "person"
+   },
+   "whenWritten": "person"
+  },
+  {
+   "id": "q4sb-31",
+   "batch": 1,
+   "label": "Describe your experience in sales and your biggest regret",
+   "expect": "person",
+   "why": "a personal reflection: safe side",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "draft"
+   },
+   "whenWritten": "person"
+  },
+  {
+   "id": "q4sb-32",
+   "batch": 1,
+   "label": "Describe your experience in sales and the personal reasons behind your career change",
+   "expect": "person",
+   "why": "personal reasons",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "draft"
+   },
+   "whenWritten": "person"
+  },
+  {
+   "id": "q4sb-33",
+   "batch": 1,
+   "label": "Describe your experience in logistics and the carriers you negotiated with",
+   "expect": "draft",
+   "why": "past work verb",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "draft"
+   },
+   "whenWritten": "draft"
+  },
+  {
+   "id": "q4sb-34",
+   "batch": 1,
+   "label": "Tell us about your experience with SQL, Python and dbt",
+   "expect": "draft",
+   "why": "a bare list of tools",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "draft"
+   },
+   "whenWritten": "draft"
+  },
+  {
+   "id": "q4sb-35",
+   "batch": 1,
+   "label": "Describe your experience mentoring engineers and the frameworks you taught",
+   "expect": "draft",
+   "why": "past work verb",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "draft"
+   },
+   "whenWritten": "draft"
+  },
+  {
+   "id": "q4sb-36",
+   "batch": 1,
+   "label": "What experience do you have with HIPAA and HITECH?",
+   "expect": "draft",
+   "why": "a bare list of regulations",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "draft"
+   },
+   "whenWritten": "draft"
+  },
+  {
+   "id": "q4sb-37",
+   "batch": 1,
+   "label": "Describe your experience in hospitality and how you handled complaints",
+   "expect": "draft",
+   "why": "past work verb",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "draft"
+   },
+   "whenWritten": "draft"
+  },
+  {
+   "id": "q4sb-38",
+   "batch": 1,
+   "label": "Why do you want to work here and what you'd bring to the team",
+   "expect": "draft",
+   "why": "motivation",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "draft"
+   },
+   "whenWritten": "draft"
+  },
+  {
+   "id": "q4sb-39",
+   "batch": 1,
+   "label": "Cover letter (optional)",
+   "expect": "draft",
+   "why": "cover letter with a format note",
+   "was": {
+    "main": "person",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "draft"
+   },
+   "whenWritten": "draft"
+  },
+  {
+   "id": "q4sb-40",
+   "batch": 1,
+   "label": "Describe your experience in finance. Keep it under 200 words.",
+   "expect": "draft",
+   "why": "a format sentence",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "draft"
+   },
+   "whenWritten": "person"
+  },
+  {
+   "id": "q4sb-41",
+   "batch": 1,
+   "label": "Describe your experience processing payroll, including overtime and tax withholding",
+   "expect": "draft",
+   "why": "payroll work list",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "draft"
+   },
+   "whenWritten": "person"
+  },
+  {
+   "id": "q4sb-42",
+   "batch": 1,
+   "label": "Tell us about your experience running background checks for new hires",
+   "expect": "draft",
+   "why": "a governed fact",
+   "was": {
+    "main": "person",
+    "fa66a031": "person",
+    "9af3c783": "person",
+    "237bf2e8": "person"
+   },
+   "whenWritten": "person"
+  },
+  {
+   "id": "q4sb-43",
+   "batch": 1,
+   "label": "Describe your experience with immigration casework and H-1B filings",
+   "expect": "draft",
+   "why": "governed facts",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "draft"
+   },
+   "whenWritten": "draft"
+  },
+  {
+   "id": "q4sb-44",
+   "batch": 1,
+   "label": "Describe your experience in sales, including the territories you opened",
+   "expect": "draft",
+   "why": "past work verb",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "draft"
+   },
+   "whenWritten": "person"
+  },
+  {
+   "id": "q4sb-45",
+   "batch": 1,
+   "label": "What excites you about this role and what you hope to learn from our team?",
+   "expect": "draft",
+   "why": "motivation",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "draft"
+   },
+   "whenWritten": "draft"
+  },
+  {
+   "id": "q4sb-46",
+   "batch": 1,
+   "label": "Describe your experience leading teams and the coaching approach you used",
+   "expect": "draft",
+   "why": "past work verb",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "draft"
+   },
+   "whenWritten": "draft"
+  },
+  {
+   "id": "q4sb-47",
+   "batch": 1,
+   "label": "Why Datadog?",
+   "expect": "draft",
+   "why": "why <employer>",
+   "was": {
+    "main": "draft",
+    "fa66a031": "person",
+    "9af3c783": "person",
+    "237bf2e8": "person"
+   },
+   "whenWritten": "draft"
+  },
+  {
+   "id": "q4sb-48",
+   "batch": 1,
+   "label": "Approximately how many years of experience do you have with Kubernetes?",
+   "expect": "draft",
+   "why": "lead-in then years",
+   "was": {
+    "main": "draft",
+    "fa66a031": "person",
+    "9af3c783": "person",
+    "237bf2e8": "person"
+   },
+   "whenWritten": "draft"
+  },
+  {
+   "id": "q4sb-49",
+   "batch": 1,
+   "label": "Describe your experience with customer onboarding. What was the outcome?",
+   "expect": "draft",
+   "why": "a work follow-up question",
+   "was": {
+    "main": "draft",
+    "fa66a031": "person",
+    "9af3c783": "person",
+    "237bf2e8": "person"
+   },
+   "whenWritten": "draft"
+  },
+  {
+   "id": "q4sb-50",
+   "batch": 1,
+   "label": "Is there anything else you would like us to know about your work?",
+   "expect": "draft",
+   "why": "anything else about work",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "draft"
+   },
+   "whenWritten": "draft"
+  },
+  {
+   "id": "q4sb2-01",
+   "batch": 2,
+   "label": "Describe your experience in sales and favorite sports teams",
+   "expect": "person",
+   "why": "a bare personal taste",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "draft"
+   },
+   "whenWritten": "draft"
+  },
+  {
+   "id": "q4sb2-02",
+   "batch": 2,
+   "label": "Describe your experience in sales and weekend plans",
+   "expect": "person",
+   "why": "personal plans",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "draft"
+   },
+   "whenWritten": "person"
+  },
+  {
+   "id": "q4sb2-03",
+   "batch": 2,
+   "label": "Describe your experience in sales and the neighborhood you live in",
+   "expect": "person",
+   "why": "where they live",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "person"
+   },
+   "whenWritten": "person"
+  },
+  {
+   "id": "q4sb2-04",
+   "batch": 2,
+   "label": "Describe your experience in sales and the car you drive",
+   "expect": "person",
+   "why": "personal property",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "person"
+   },
+   "whenWritten": "person"
+  },
+  {
+   "id": "q4sb2-05",
+   "batch": 2,
+   "label": "Describe your experience in nursing and the vaccines you have had",
+   "expect": "person",
+   "why": "their own vaccination",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "person",
+    "237bf2e8": "person"
+   },
+   "whenWritten": "person"
+  },
+  {
+   "id": "q4sb2-06",
+   "batch": 2,
+   "label": "Describe your experience in sales and the jobs you lost",
+   "expect": "person",
+   "why": "job loss",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "person"
+   },
+   "whenWritten": "person"
+  },
+  {
+   "id": "q4sb2-07",
+   "batch": 2,
+   "label": "Describe your experience in sales and the employer who let you go",
+   "expect": "person",
+   "why": "dismissal",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "person"
+   },
+   "whenWritten": "person"
+  },
+  {
+   "id": "q4sb2-08",
+   "batch": 2,
+   "label": "How many years of experience do you have after your felony?",
+   "expect": "person",
+   "why": "criminal history",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "person"
+   },
+   "whenWritten": "person"
+  },
+  {
+   "id": "q4sb2-09",
+   "batch": 2,
+   "label": "How many years of experience do you have before your retirement?",
+   "expect": "person",
+   "why": "retirement",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "draft"
+   },
+   "whenWritten": "person"
+  },
+  {
+   "id": "q4sb2-10",
+   "batch": 2,
+   "label": "Describe your experience in sales, plus the year you were born",
+   "expect": "person",
+   "why": "age",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "person"
+   },
+   "whenWritten": "person"
+  },
+  {
+   "id": "q4sb2-11",
+   "batch": 2,
+   "label": "Describe your experience in sales / gender identity",
+   "expect": "person",
+   "why": "demographic",
+   "was": {
+    "main": "person",
+    "fa66a031": "person",
+    "9af3c783": "person",
+    "237bf2e8": "person"
+   },
+   "whenWritten": "person"
+  },
+  {
+   "id": "q4sb2-12",
+   "batch": 2,
+   "label": "Why do you want to join us, and are you pregnant?",
+   "expect": "person",
+   "why": "health",
+   "was": {
+    "main": "person",
+    "fa66a031": "person",
+    "9af3c783": "person",
+    "237bf2e8": "person"
+   },
+   "whenWritten": "person"
+  },
+  {
+   "id": "q4sb2-13",
+   "batch": 2,
+   "label": "What excites you about this role? What is your current salary?",
+   "expect": "person",
+   "why": "pay",
+   "was": {
+    "main": "person",
+    "fa66a031": "person",
+    "9af3c783": "person",
+    "237bf2e8": "person"
+   },
+   "whenWritten": "person"
+  },
+  {
+   "id": "q4sb2-14",
+   "batch": 2,
+   "label": "Describe your experience in sales.",
+   "hint": "Mention your faith if it matters to you.",
+   "expect": "person",
+   "why": "a hint naming religion",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "draft"
+   },
+   "whenWritten": "person"
+  },
+  {
+   "id": "q4sb2-15",
+   "batch": 2,
+   "label": "Describe your experience in sales.",
+   "hint": "Note any lawsuits you were part of.",
+   "expect": "person",
+   "why": "a hint naming a lawsuit",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "draft"
+   },
+   "whenWritten": "person"
+  },
+  {
+   "id": "q4sb2-16",
+   "batch": 2,
+   "label": "Describe your experience in project management and the PMO tools you rolled out",
+   "expect": "draft",
+   "why": "past work verb phrase",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "draft"
+   },
+   "whenWritten": "person"
+  },
+  {
+   "id": "q4sb2-17",
+   "batch": 2,
+   "label": "Describe your experience in sales and the deals you closed last year",
+   "expect": "draft",
+   "why": "past work",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "draft"
+   },
+   "whenWritten": "draft"
+  },
+  {
+   "id": "q4sb2-18",
+   "batch": 2,
+   "label": "Tell us about your experience with Tableau, Looker, and Power BI",
+   "expect": "draft",
+   "why": "a bare list of tools",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "draft"
+   },
+   "whenWritten": "draft"
+  },
+  {
+   "id": "q4sb2-19",
+   "batch": 2,
+   "label": "Describe your experience teaching algebra and the curricula you designed",
+   "expect": "draft",
+   "why": "past work",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "draft"
+   },
+   "whenWritten": "draft"
+  },
+  {
+   "id": "q4sb2-20",
+   "batch": 2,
+   "label": "What excites you about our mission and the impact you hope to have?",
+   "expect": "draft",
+   "why": "motivation",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "draft"
+   },
+   "whenWritten": "draft"
+  },
+  {
+   "id": "q4sb2-21",
+   "batch": 2,
+   "label": "Describe your experience in recruiting, including the roles you filled",
+   "expect": "draft",
+   "why": "past work",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "draft"
+   },
+   "whenWritten": "draft"
+  },
+  {
+   "id": "q4sb2-22",
+   "batch": 2,
+   "label": "Describe your experience with SOC 2 audits and ISO 27001 certification",
+   "expect": "draft",
+   "why": "compliance work",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "draft"
+   },
+   "whenWritten": "draft"
+  },
+  {
+   "id": "q4sb2-23",
+   "batch": 2,
+   "label": "Describe your experience as a nurse. Keep your answer concise.",
+   "expect": "draft",
+   "why": "format sentence",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "draft"
+   },
+   "whenWritten": "person"
+  },
+  {
+   "id": "q4sb2-24",
+   "batch": 2,
+   "label": "Why are you excited about this opportunity, and what you would like to learn?",
+   "expect": "draft",
+   "why": "motivation",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "draft"
+   },
+   "whenWritten": "person"
+  },
+  {
+   "id": "q4sb2-25",
+   "batch": 2,
+   "label": "Describe your experience in warehouse operations and the safety programs you led",
+   "expect": "draft",
+   "why": "past work",
+   "was": {
+    "main": "draft",
+    "fa66a031": "draft",
+    "9af3c783": "draft",
+    "237bf2e8": "draft"
+   },
+   "whenWritten": "draft"
+  }
+ ]
+}
