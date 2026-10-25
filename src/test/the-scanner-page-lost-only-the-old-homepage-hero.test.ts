@@ -12,7 +12,7 @@
  * hash handling stay exactly as they were.
  */
 import { describe, expect, it } from "vitest";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 
 const ROOT = resolve(__dirname, "../..");
@@ -33,6 +33,29 @@ describe("the homepage-only parts of Index are gone", () => {
     expect(INDEX).not.toMatch(/use-board-totals/);
     expect(INDEX).toMatch(/title=\{landing\?\.title\}/);
     expect(INDEX).toMatch(/description=\{landing\?\.description\}/);
+  });
+});
+
+describe("the old hero's words and comments left with it", () => {
+  it("no locale keeps a homeHero block, and nothing outside the tests reads one", () => {
+    const dir = resolve(ROOT, "src/i18n/locales");
+    const files = readdirSync(dir).filter((f) => f.endsWith(".json"));
+    expect(files.length).toBe(9);
+    for (const f of files) expect(JSON.parse(readFileSync(resolve(dir, f), "utf8")).homeHero, f).toBeUndefined();
+    const walk = (d: string): string[] => readdirSync(d).flatMap((n) => {
+      const p = resolve(d, n);
+      if (statSync(p).isDirectory()) return n === "test" || n === "locales" ? [] : walk(p);
+      return /\.(tsx?|mjs)$/.test(n) ? [p] : [];
+    });
+    const readers = [...walk(resolve(ROOT, "src")), ...walk(resolve(ROOT, "scripts")).filter((p) => !p.includes(".prerender-data"))]
+      .filter((p) => /homeHero\./.test(strip(readFileSync(p, "utf8"))));
+    expect(readers).toEqual([]);
+  });
+
+  it("Index's comments describe no deleted part", () => {
+    const raw = readFileSync(resolve(ROOT, "src/pages/Index.tsx"), "utf8");
+    expect(raw).not.toMatch(/agent hero, board hero/);
+    expect(raw).not.toMatch(/Live openings and tracked roles are now both stated/);
   });
 });
 

@@ -5278,19 +5278,6 @@
     "sub2": "Live postings from employers' own hiring systems. You apply on the employer's own site, with your own AI's help if you like. Here are the top matches:",
     "ctaYourAi": "Apply with your own AI's help"
   },
-  "homeHero": {
-    "headlinePre": "Live jobs, straight from employers' own hiring systems.",
-    "statOpenings": "live openings",
-    "statCompanies": "companies",
-    "ctaPrimary": "Upload your CV — free",
-    "ctaSecondary": "Browse the board",
-    "reassure": "Free scan · no card, no signup",
-    "exploreCta": "Explore by field",
-    "statCompanyBoards": "company job boards hiring",
-    "badge2": "Live job board + your own AI",
-    "headlineHighlight2": "Apply yourself, with your own AI's help.",
-    "sub2": "Openings read from companies' own hiring systems and re-checked all day. Scan your CV for free, search the board here or from Claude or ChatGPT, and apply yourself, with your AI's help if you like. We never submit anything for you."
-  },
   "homeAgent": {
     "lead": "Use it from your own AI.",
     "passLine": "Your AI drafts and you decide: Resume Booster never submits an application for you.",

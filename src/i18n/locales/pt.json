@@ -5314,19 +5314,6 @@
     "sub2": "Vagas ativas dos próprios sistemas de contratação dos empregadores. Você se candidata no site do empregador, com a ajuda da sua própria IA se quiser. Estas são as melhores correspondências:",
     "ctaYourAi": "Candidate-se com a ajuda da sua IA"
   },
-  "homeHero": {
-    "headlinePre": "Vagas ao vivo, direto dos sistemas de contratação dos empregadores.",
-    "statOpenings": "vagas ativas",
-    "statCompanies": "empresas",
-    "ctaPrimary": "Carregue o seu CV — grátis",
-    "ctaSecondary": "Explorar o mural",
-    "reassure": "Análise grátis · sem cartão, sem registo",
-    "exploreCta": "Explorar por área",
-    "statCompanyBoards": "portais de emprego de empresas a contratar",
-    "badge2": "Quadro de vagas ao vivo + a sua própria IA",
-    "headlineHighlight2": "Candidate-se por conta própria, com a ajuda da sua IA.",
-    "sub2": "Vagas lidas dos próprios sistemas de contratação das empresas e reverificadas o dia todo. Analise o seu currículo de graça, busque no quadro aqui ou pelo Claude ou ChatGPT e candidate-se por conta própria, com a ajuda da sua IA se quiser. Nunca enviamos nada por você."
-  },
   "homeAgent": {
     "lead": "Use pela sua própria IA.",
     "passLine": "A sua IA faz o rascunho e você decide: o Resume Booster nunca envia uma candidatura por você.",

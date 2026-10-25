@@ -5314,19 +5314,6 @@
     "sub2": "Ofertas activas de los propios sistemas de contratación de las empresas. Te postulas en el sitio del empleador, con la ayuda de tu propia IA si quieres. Estas son las mejores coincidencias:",
     "ctaYourAi": "Postúlate con la ayuda de tu propia IA"
   },
-  "homeHero": {
-    "headlinePre": "Ofertas en vivo, directas de los sistemas de contratación de cada empresa.",
-    "statOpenings": "vacantes activas",
-    "statCompanies": "empresas",
-    "ctaPrimary": "Sube tu CV — gratis",
-    "ctaSecondary": "Explorar el tablón",
-    "reassure": "Análisis gratis · sin tarjeta, sin registro",
-    "exploreCta": "Explorar por campo",
-    "statCompanyBoards": "portales de empleo de empresas con vacantes",
-    "badge2": "Bolsa de empleo en vivo + tu propia IA",
-    "headlineHighlight2": "Postúlate por tu cuenta, con la ayuda de tu propia IA.",
-    "sub2": "Ofertas leídas de los propios sistemas de contratación de las empresas y revisadas durante todo el día. Analiza tu CV gratis, busca en la bolsa aquí o desde Claude o ChatGPT, y postúlate por tu cuenta, con la ayuda de tu IA si quieres. Nunca enviamos nada por ti."
-  },
   "homeAgent": {
     "lead": "Úsalo desde tu propia IA.",
     "passLine": "Tu IA redacta y tú decides: Resume Booster nunca envía una solicitud por ti.",

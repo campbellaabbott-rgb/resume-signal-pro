@@ -331,14 +331,13 @@ describe("the denominator obeys the same rule as the numerator", () => {
 
   it("the changed noun got NEW i18n keys in all nine locales", () => {
     // A locale VALUE overrides an inline English default, so reusing
-    // homeHero.statCompanies / boardHero.companies would leave eight locales
-    // rendering "companies" over a count of BOARDS.
+    // boardHero.companies would leave eight locales rendering "companies"
+    // over a count of BOARDS. (The old homepage hero's key left with it.)
     const dir = resolve(ROOT, "src/i18n/locales");
     const files = readdirSync(dir).filter((f) => f.endsWith(".json"));
     expect(files.length).toBe(9);
     for (const f of files) {
       const j = JSON.parse(readFileSync(resolve(dir, f), "utf8"));
-      expect(j.homeHero?.statCompanyBoards, `${f} homeHero.statCompanyBoards`).toBeTruthy();
       expect(j.boardHero?.companyBoards, `${f} boardHero.companyBoards`).toBeTruthy();
       expect(j.jobsPage?.countLineNoFeeds, `${f} jobsPage.countLineNoFeeds`).toBeTruthy();
       expect(String(j.jobsPage.countLineNoFeeds), `${f} must not carry a feeds clause`)

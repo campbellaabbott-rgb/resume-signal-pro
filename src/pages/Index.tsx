@@ -2027,15 +2027,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
         description: `Free diagnostic resume scan: ATS score with a full audit trail, verified quotes, per-vendor parsing checks, and a fix plan — across ${DETECTED_INDUSTRY_COUNT} industries, with an interface in ${LANGUAGE_COUNT} languages.`,
         offers: { "@type": "Offer", price: "0", priceCurrency: "USD", description: "Free resume scan — no signup required" },
       }) }} />
-      {/* TWO TRUE NUMBERS, EACH UNDER ITS OWN NOUN.
-          These were hardcoded "600,000+ Verified Openings" — the TRACKED figure
-          (678,957) wearing the SERVABLE noun, against a board serving 560,321.
-          Overstating what a visitor can actually page to by ~119,000, in the
-          document title, on a site whose entire pitch is that its numbers are
-          real. The frozen literal was also the exact failure use-board-totals
-          was extracted to end in the first place, and it grew back here.
-          Live openings and tracked roles are now both stated, both derived, and
-          the copy needs NO number when the read fails — never a stale one. */}
+      {/* The head is the landing's: typed copy with no board total. */}
       <SEO
         title={landing?.title}
         description={landing?.description}
@@ -2063,12 +2055,8 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
 
       <main id="main-content" className="pt-16" role="main">
         {/* THE PROVENANCE STRIP SURVIVES EVERY PAGE STATE.
-            The band above — agent hero, board hero, and the strip inside it —
-            is the landing experience and is deliberately replaced once a scan
-            report exists (the report has to lead; a visitor who just uploaded
-            a CV came for their result, not for the pitch). But the fifteen
-            platforms and their live counts are not pitch: they are the answer
-            to "where do these jobs come from", which is the first question a
+            The fifteen platforms and their live counts are not pitch: they
+            are the answer to "where do these jobs come from", which is the first question a
             sceptical reader has and the single strongest thing this product
             can say. Gating them behind "hasn't scanned yet" meant the people
             most likely to act on them — the ones who just engaged — were the

@@ -5278,19 +5278,6 @@
     "sub2": "Mga live na posting mula mismo sa mga hiring system ng mga employer. Sa sariling site ng employer ka mag-a-apply, sa tulong ng sarili mong AI kung gusto mo. Narito ang mga pinakatugma:",
     "ctaYourAi": "Mag-apply sa tulong ng sarili mong AI"
   },
-  "homeHero": {
-    "headlinePre": "Mga live na trabaho, mula mismo sa sariling hiring system ng mga employer.",
-    "statOpenings": "live na bakante",
-    "statCompanies": "kumpanya",
-    "ctaPrimary": "I-upload ang CV mo — libre",
-    "ctaSecondary": "Tingnan ang board",
-    "reassure": "Libreng scan · walang card, walang signup",
-    "exploreCta": "Tuklasin ayon sa larangan",
-    "statCompanyBoards": "job board ng kumpanyang naghi-hire",
-    "badge2": "Live na job board + sarili mong AI",
-    "headlineHighlight2": "Mag-apply nang ikaw mismo, sa tulong ng sarili mong AI.",
-    "sub2": "Mga bakanteng binasa mula mismo sa mga hiring system ng mga kumpanya at sinusuri muli buong araw. I-scan nang libre ang iyong CV, maghanap sa board dito o mula sa Claude o ChatGPT, at mag-apply nang ikaw mismo, sa tulong ng iyong AI kung gusto mo. Hindi kami kailanman nagsusumite ng anuman para sa iyo."
-  },
   "homeAgent": {
     "lead": "Gamitin ito mula sa sarili mong AI.",
     "passLine": "Gumagawa ng draft ang iyong AI at ikaw ang nagpapasya: hindi kailanman nagsusumite ang Resume Booster ng application para sa iyo.",
