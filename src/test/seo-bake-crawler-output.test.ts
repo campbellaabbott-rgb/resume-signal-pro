@@ -357,3 +357,32 @@ describe("no two sitemap pages share a title", () => {
     expect([...byTitle.entries()].filter(([, v]) => v.length > 1)).toEqual([]);
   });
 });
+
+describe("the round's review: what the bake writes now", () => {
+  it("/companies counts employers only, labels USAJOBS and agencies, and says the board's own source sentence", () => {
+    const h = page("/companies");
+    const t = crawlerText(h);
+    expect(t).not.toMatch(/Every posting comes from the company's own hiring system/);
+    expect(t).toMatch(/Every posting is read from the hiring system that published it: an employer's own/);
+    if (/>USAJOBS</.test(h)) expect(h).toMatch(/>USAJOBS<\/a> <span class="text-muted-foreground">\(the federal listing site\)<\/span>/);
+    const rows = [...h.matchAll(/<li><a href="\/jobs\/company\/[^"]+"[^>]*>[^<]*<\/a>( <span class="text-muted-foreground">\((?:the federal listing site|a staffing agency)\)<\/span>)?/g)];
+    const employers = rows.filter((m) => !m[1]).length;
+    expect(rows.length).toBeGreaterThan(100);
+    expect(Number((/<title>([\d,]+) Companies Hiring Now/.exec(h)?.[1] ?? "").replace(/,/g, ""))).toBe(employers);
+  });
+  it("a field page's description says each opening is read from the hiring system that published it", () => {
+    expect(descOf(page("/jobs/field/engineering"))).toMatch(/, each read from the hiring system that published it\.$/);
+    expect(descOf(page("/jobs/field/engineering"))).not.toMatch(/employer's own hiring system/);
+  });
+  it("/agents' MCP server carries a free offer, /about promises no operator, /dev/checkout-test is noindex", () => {
+    const sw = jsonLdBlocks(page("/agents")).find((b) => (b as { "@type"?: string })["@type"] === "SoftwareApplication") as { offers?: { price?: string; priceCurrency?: string } } | undefined;
+    expect(sw?.offers).toMatchObject({ price: "0", priceCurrency: "USD" });
+    expect(descOf(page("/about"))).toMatch(/^What resumebooster\.work is/);
+    expect(robotsOf(page("/dev/checkout-test"))).toBe("noindex, nofollow");
+    expect(sitemapPaths()).not.toContain("/dev/checkout-test");
+    expect(readFileSync(join(DIST, "llms.txt"), "utf8")).toMatch(/the live board asks the employer's system again when you open a posting whose feed it last read more than 6 hours ago, where that system allows it/);
+  });
+  it("logs the D7 ceiling line", () => {
+    expect(LOG).toMatch(/D7 at the ceiling: \d+ board\(s\) indexable today kept near the cut/);
+  });
+});
