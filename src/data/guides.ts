@@ -369,7 +369,7 @@ export const GUIDES: Record<string, Guide> = {
       "The structure decision (one consolidated role vs. a projects section), the bullet formula that translates gigs into employer language, and what to do when a project has no metrics.",
     tldr:
       "Freelance work belongs on your resume as real experience, structured by one decision: continuous freelancing with a coherent focus becomes ONE consolidated role ('Independent UX Consultant, 2021–present') with project bullets under it; scattered or part-time projects become a 'Selected Projects' section. Write every bullet as verb + deliverable + scope + outcome, translate platform language into employer language ('made websites' → 'designed and shipped responsive marketing sites'), and never paste platform stats like Job Success % — recruiters don't hire profiles, they hire experience.",
-    updated: "2026-07-08",
+    updated: "2026-10-25",
     minutes: 6,
     sections: [
       {
@@ -437,7 +437,7 @@ export const GUIDES: Record<string, Guide> = {
       "Concurrent engagements without the job-hopper misread: the umbrella portfolio entry, per-engagement scope lines, where advisory roles sit, and framing fractional work when applying full-time.",
     tldr:
       "Fractional roles belong under ONE umbrella entry — 'Fractional CFO — concurrent engagements, 2022–present' — with each engagement as a scope line beneath it ('PE-backed healthcare services company, ~$40M revenue: owned FP&A and board reporting'), never as separate look-alike jobs, which reads as instability in a six-second skim. Lead every line with executive scope (P&L, budget, headcount, stage), keep client names out unless you have permission, and when applying to a full-time role, frame the portfolio as continuity of leadership at breadth — not as a collection of short stints.",
-    updated: "2026-07-08",
+    updated: "2026-10-25",
     minutes: 6,
     sections: [
       {
@@ -563,10 +563,10 @@ export const GUIDES: Record<string, Guide> = {
     title: "The Apply Agent Is Switched Off: Apply With Your Own AI",
     h1: "The Apply Agent is switched off",
     description:
-      "Resume Booster no longer runs an agent that applies for you, and sends nothing in your name. Here is how to apply yourself with Claude or ChatGPT instead.",
+      "Resume Booster switched its Apply Agent off and sends nothing in your name. Here is how to apply yourself with Claude or ChatGPT instead.",
     tldr:
       "We switched our Apply Agent off and stopped selling the Agent plan, the Agent Pass and the Apply Assistant: Resume Booster does not send applications for anyone. To apply, connect Claude or ChatGPT at resumebooster.work/agents. Your AI reads the posting and, where the employer's hiring system publishes it, the application form; Resume Booster tells it to ask you the questions that look like they are about you and to draft open answers about your work from your CV. That check reads the question's words and can miss one about you that is worded unusually, so you read every answer before you send and press submit on the employer's own site.",
-    updated: "2026-10-12",
+    updated: "2026-10-25",
     minutes: 5,
     grounding: "Describes what changed, and the apply-yourself flow the connector serves today",
     sections: [

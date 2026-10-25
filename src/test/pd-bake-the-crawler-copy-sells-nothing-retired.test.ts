@@ -221,7 +221,12 @@ describe("what the crawler reads instead: search and apply through your own AI",
 
   it("the /agents tool list leaves out the retired agent's tools and the prompt that requested applications", () => {
     const t = crawlerText(page("/agents"));
-    expect(t).not.toMatch(/request_application|application_status|apply_to_my_shortlist/);
+    expect(t).not.toMatch(/request_application|application_status/);
+    // Wave 4 reused the name apply_to_my_shortlist for a prompt that helps the
+    // person apply to each open saved job themselves through apply_myself;
+    // listed, its line says so and requests nothing.
+    const shortlist = /apply_to_my_shortlist[^.]*\./.exec(t)?.[0] ?? "";
+    if (shortlist) expect(shortlist).toMatch(/yourself/);
     // A host's own setup steps may list a read tool's name; no line describes
     // what the retired agent could submit.
     expect(t).not.toMatch(/apply agent can submit|on your behalf/i);

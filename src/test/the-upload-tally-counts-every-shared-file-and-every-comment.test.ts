@@ -191,8 +191,14 @@ describe("the job-board upload, tallied the deploy's way", () => {
     expect(pendingBytes({ "grown.ts": 1_250 }, sizeOf)).toBe(250);
     expect(pendingBytes({ "landed.ts": 5_000 }, sizeOf)).toBe(0);
     expect(pendingBytes({ "missing.ts": 700, "grown.ts": 1_250, "landed.ts": 5_000 }, sizeOf)).toBe(950);
-    // The w4b builders merged at integration; the profiles round's two files are what is still pending.
-    expect(pending, "no other round's growth is counted: the pending list is not being read").toBeGreaterThanOrEqual(23_563 + 49_255);
+    // The w4b builders merged at integration, and the profiles round's two
+    // files arrived with main (merged into this branch on 2026-10-25): each is
+    // on disk at least at its measured size, so the folder tally counts it and
+    // the pending list adds nothing for it.
+    for (const f of ["hiring-record-gate.ts", "perks-extract.ts"]) {
+      expect(files.get(join(SHARED, f)) ?? 0, `${f} is counted on disk`).toBeGreaterThanOrEqual(PENDING_SHARED[f]);
+    }
+    expect(pending).toBe(0);
   });
 
   it("TEETH: the gate refuses a tally one byte over it", () => {

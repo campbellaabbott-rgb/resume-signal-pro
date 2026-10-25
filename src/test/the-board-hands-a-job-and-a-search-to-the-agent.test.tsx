@@ -233,8 +233,14 @@ describe("1. the search mapper", () => {
     expect(args).not.toHaveProperty("sendableOnly");
     expect(args.salaryMin).toBe(90000);
     expect(args.salaryMax).toBe(150000);
-    // The widening switch has no argument and is dropped, not renamed.
-    for (const k of SEARCH_ARG_DROPS) { expect(body).toHaveProperty(k); expect(args).not.toHaveProperty(k); }
+    // The widening switch has no argument and is dropped, not renamed. The
+    // board no longer sends the retired agent-only filter at all (design,
+    // 2026-10-12), so for that one the mapper's drop covers saved searches.
+    for (const k of SEARCH_ARG_DROPS) {
+      if (k === "sendableOnly") expect(body).not.toHaveProperty(k);
+      else expect(body).toHaveProperty(k);
+      expect(args).not.toHaveProperty(k);
+    }
     // The board's array becomes the server's comma list.
     expect(args.companies).toBe("acme,beta");
     expect(args.sort).toBe("salary");
