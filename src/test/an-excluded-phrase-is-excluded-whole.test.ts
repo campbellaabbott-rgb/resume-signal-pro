@@ -9,9 +9,9 @@
  * asked, on the site, in MCP, in ChatGPT's search and on /v1, which all read
  * the board's list.
  *
- * A quoted phrase is one token, negated whole by "-" or "not"; the words after
- * "not" are one phrase up to the next operator; and titleExcluded matches a
- * phrase as adjacent words, plural or singular.
+ * A quoted phrase is one token, negated whole by "-" or "not"; "not" takes one
+ * word, or both words of a pinned compound ("night shift", wave 4 fix 3); and
+ * titleExcluded matches a phrase as adjacent words, plural or singular.
  */
 import { describe, expect, it } from "vitest";
 import { splitExclusions, titleExcluded } from "../../supabase/functions/job-board/search-routing";
@@ -25,7 +25,7 @@ describe("the exclusion parser keeps a phrase together (S12-017)", () => {
     expect(titleExcluded("Lead Supervisor, Team Operations", ex.excluded), "the words apart are not the phrase").toBe(false);
   });
 
-  it("'not' before several words negates them as one phrase, never the first word alone", () => {
+  it("'not' before a compound negates both words, never the first word alone", () => {
     const ex = splitExclusions("nurse not night shift");
     expect(ex).toEqual({ positive: "nurse", excluded: ["night shift"] });
     expect(titleExcluded("Night Shift RN", ex.excluded)).toBe(true);

@@ -11,11 +11,12 @@
  * state aliases, not the metro aliases or the city table the place lift uses,
  * so "nurse not icu nyc" lost nyc too.
  *
- * THE RULE NOW. The phrase stops before any place knownPlace() recognises
- * (state, metro alias, the city table, "City, ST", a country), one to three
- * words long, or any state, metro or country name in any case ("sf", "uk",
- * "us", which the place lift takes only in capitals), unless the place began
- * a word earlier inside the phrase ("not new york" still excludes "new york").
+ * THE RULE NOW (fix 3). Stopping before known places still lost every city
+ * the gazetteer did not know ("forklift san jose"), so "not" takes ONE word,
+ * as origin/main did, unless the two words are a pinned compound ("night
+ * shift") or a place of two or three words the board knows ("not new york"
+ * excludes "new york"). The 591-query corpus behind it is
+ * w4b-fix3-search-negated-phrases-corpus.test.ts.
  */
 import { describe, expect, it } from "vitest";
 import { splitExclusions } from "../../supabase/functions/job-board/search-routing";
