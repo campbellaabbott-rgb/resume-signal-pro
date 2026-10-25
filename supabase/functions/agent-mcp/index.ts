@@ -335,7 +335,8 @@ const SUPPORTED_METHODS = ["initialize", "tools/list", "tools/call", "prompts/li
 // 2026-10-11.32 (wave 4 fix round 3, corpus-first): apply_myself carries the classifier that sends a later clause addressed to the person to the person unless it is about work done or motivation, whatever joins it.
 // 2026-10-11.33 (wave 4 fix round 4): apply_myself carries the default-deny clause rule: a later clause, sentence or hint is the person's unless it is visibly work or motivation, at every joiner, line break, colon or bracket.
 // 2026-10-11.34 (wave 4 descope, 2026-10-25): no rule change. apply_myself's description says answeredBy is read from the words and can be wrong, the call-order resource says the person reads every answer, the apply_myself prompt tells the AI to ask the person about any marked question that asks about them, and the markdown packet carries the same note under its drafting heading.
-const FN_BUILD = "agent-mcp.2026-10-11.34";
+// 2026-10-11.35 (the recheck of the descope, 2026-10-25): no rule change. apply_myself's description says a question about the person, even a plainly worded one, can be marked draft_from_your_cv; the job card's salary field says it can be a pay line read from the description, on rare postings a business figure, and hasStatedPay says the same.
+const FN_BUILD = "agent-mcp.2026-10-11.35";
 /** Where a free key is minted — the page every refusal in this file points at. */
 const MINT_URL = "https://resumebooster.work/data-api";
 /** Where a pass is bought, signed in — the fix every pass refusal names. */
@@ -954,7 +955,7 @@ const SEARCH_PROPERTIES = {
   salaryMin: { type: "number", description: "Annual USD-equivalent floor (filterCoverage gives the share of postings that state one)." },
   salaryMax: { type: "number", description: "Annual USD-equivalent ceiling." },
   includeUnstatedPay: { type: "boolean", description: "With a pay band, also admit postings that state no pay." },
-  hasStatedPay: { type: "boolean", description: "Only postings that state pay." },
+  hasStatedPay: { type: "boolean", description: "Only postings whose salary field holds a figure (see the card's salary: rarely a business figure, not pay)." },
   payBasis: { type: "string", enum: ["hourly", "salaried"] },
   maxYears: { type: "number", description: "Roles asking at most N years of experience." },
   vendor: { type: "string", description: `Comma list of hiring systems (greenhouse, lever, …), max 8; ${NO_REDISTRIBUTION_SOURCES.join(" and ")} are not served here.` },
@@ -984,7 +985,7 @@ const JOB_CARD_SCHEMA = {
     workMode: { type: "string", enum: ["remote", "hybrid", "onsite"], description: "The employer's own statement; absent when it makes none (never read as onsite)." },
     employmentType: { type: "string" },
     department: { type: "string" },
-    salary: { type: "string", description: "The employer's own pay text, verbatim." },
+    salary: { type: "string", description: "The posting's pay text, verbatim: the employer's pay field, or a pay line the board read from the description, which on rare postings is a business figure (a deal size, a revenue), not pay." },
     salaryMinAnnual: { type: "number", description: "Annual USD-equivalent floor parsed by the board; absent when unstated (absence is not zero)." },
     salaryMaxAnnual: { type: "number" },
     salaryPeriod: { type: "string" },
@@ -1289,7 +1290,7 @@ function applyMyselfDescription(vendors: readonly string[]): string {
     "Help the person apply to one posting themselves, on the employer's own site. When the employer uses " +
     `${vendorList(vendors)}, returns the employer's real application form: every question with its options, and who answers it ` +
     "(answeredBy: you, your_details, your_documents, or draft_from_your_cv for open questions about work done or motivation). " +
-    "answeredBy is read from the question's words and can be wrong: a question about the person worded unusually can be marked draft_from_your_cv, and some work questions are marked you. Rule (1) holds whatever the mark. " +
+    "answeredBy is read from the question's words and can be wrong: a question about the person, even a plainly worded one, can be marked draft_from_your_cv, and some work questions are marked you. Rule (1) holds whatever the mark. " +
     "Otherwise returns the posting's apply link and the terms it uses. We never submit anything. " +
     `Rules for helping someone apply: ${HONESTY_RULES}`
   );

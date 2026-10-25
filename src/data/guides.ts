@@ -565,7 +565,7 @@ export const GUIDES: Record<string, Guide> = {
     description:
       "Resume Booster switched its Apply Agent off and sends nothing in your name. Here is how to apply yourself with Claude or ChatGPT instead.",
     tldr:
-      "We switched our Apply Agent off and stopped selling the Agent plan, the Agent Pass and the Apply Assistant: Resume Booster does not send applications for anyone. To apply, connect Claude or ChatGPT at resumebooster.work/agents. Your AI reads the posting and, where the employer's hiring system publishes it, the application form; Resume Booster tells it to ask you the questions that look like they are about you and to draft open answers about your work from your CV. That check reads the question's words and can miss one about you that is worded unusually, so you read every answer before you send and press submit on the employer's own site.",
+      "We switched our Apply Agent off and stopped selling the Agent plan, the Agent Pass and the Apply Assistant: Resume Booster does not send applications for anyone. To apply, connect Claude or ChatGPT at resumebooster.work/agents. Your AI reads the posting and, where the employer's hiring system publishes it, the application form; Resume Booster tells it to ask you the questions that look like they are about you and to draft open answers about your work from your CV. That check reads the question's words and can miss a question about you, even a plainly worded one, so you read every answer before you send and press submit on the employer's own site.",
     updated: "2026-10-25",
     minutes: 5,
     grounding: "Describes what changed, and the apply-yourself flow the connector serves today",
@@ -595,7 +595,7 @@ export const GUIDES: Record<string, Guide> = {
         paras: [
           "The rule is default-deny. Resume Booster marks a question for your AI to draft only when it reads as one of two kinds: open questions about the work you have done, and a short list of motivation questions such as why you want the role. Your AI is told to draft those only from the CV you gave it in that chat, to flag anything your CV does not support, and to show you each draft before it is used.",
           "Every other question is marked for you to answer in your own words, and your AI is told to ask you rather than guess.",
-          "The marking reads the question's words, not its meaning. A question about you that is worded unusually can still be marked for a draft, and some ordinary work questions are marked for you. So read every answer before you send, whoever wrote it.",
+          "The marking reads the question's words, not its meaning. A question about you, even a plainly worded one, can still be marked for a draft, and some ordinary work questions are marked for you. So read every answer before you send, whoever wrote it.",
         ],
         bullets: [
           "Work authorisation and visa sponsorship",
@@ -639,7 +639,7 @@ export const GUIDES: Record<string, Guide> = {
       },
       {
         q: "Will my AI fill in the whole application for me?",
-        a: "It drafts open answers about your work from your CV and asks you the questions that look like they are about you. It can mistake an unusually worded question about you for a work question, so you read every answer, attach your CV and press submit yourself.",
+        a: "It drafts open answers about your work from your CV and asks you the questions that look like they are about you. It can mistake a question about you, even a plainly worded one, for a work question, so you read every answer, attach your CV and press submit yourself.",
       },
       {
         q: "Can my AI read every employer's application form?",

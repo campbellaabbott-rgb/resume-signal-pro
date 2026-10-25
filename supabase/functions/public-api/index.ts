@@ -378,7 +378,8 @@ const LIST_FILTERS = [
 // 2026-10-11.32 (wave 4 fix round 3, corpus-first): the application route carries the classifier that sends a later clause addressed to the person to the person unless it is about work done or motivation.
 // 2026-10-11.33 (wave 4 fix round 4): the application route carries the default-deny clause rule for work and motivation questions.
 // 2026-10-11.34 (wave 4 descope, 2026-10-25): no rule change. The application route's description and answeredByMeans say the marks are read from the words, can mark an unusually worded question about the person for a draft, and that the person reads every answer.
-const FN_BUILD = "public-api.2026-10-11.34";
+// 2026-10-11.35 (the recheck of the descope, 2026-10-25): no rule change. The application route's description and answeredByMeans say the marks can miss a question about the person even when it is plainly worded.
+const FN_BUILD = "public-api.2026-10-11.35";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",

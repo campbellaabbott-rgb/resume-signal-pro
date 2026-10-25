@@ -294,7 +294,7 @@ export function ApplicationAnswers({
               "supported". */}
           {gaps === 0 ? (
             <p className="inline-flex items-center gap-1 text-[11px] font-medium text-success">
-              <ShieldCheck className="w-3 h-3 shrink-0" /> {t("applyAnswers.allGrounded", "Every answer is grounded in your résumé — nothing invented.")}
+              <ShieldCheck className="w-3 h-3 shrink-0" /> {t("applyAnswers.allGrounded", "Our check found no credential, degree, figure, employer or job title in these answers that your résumé does not show.")}
             </p>
           ) : (
             <p className="inline-flex items-start gap-1 text-[11px] font-medium text-warning">
@@ -351,7 +351,7 @@ export function ApplicationAnswers({
       {skipped.length > 0 && (
         <div className="rounded-lg border border-border/60 bg-muted/40 p-2.5">
           <p className="text-[11px] font-medium text-foreground">{t("applyAnswers.yoursTitle", "You'll answer these yourself")}</p>
-          <p className="text-[11px] text-muted-foreground">{t("applyAnswers.yoursBody", "These look like questions about you — your identity, work authorization, salary or demographics — so we left them for you. The check reads the words and can miss one worded unusually: read every answer before you send.")}</p>
+          <p className="text-[11px] text-muted-foreground">{t("applyAnswers.yoursBody", "These look like questions about you — your identity, work authorization, salary or demographics — so we left them for you. The check reads the words and can miss a question about you, even a plainly worded one: read every answer before you send.")}</p>
           <ul className="mt-1.5 space-y-0.5">
             {skipped.map((s, i) => (
               <li key={i} className="text-[11px] text-muted-foreground">• {s.question}</li>

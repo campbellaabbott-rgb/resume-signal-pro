@@ -15,6 +15,20 @@
  * person is never drafted. They say what the marking does and tell the person
  * to read every answer before sending, in all nine languages.
  *
+ * The first rewrite (27e54375) said the marking can miss a question about the
+ * person only when it is worded unusually. The recheck of the descope found
+ * plainly worded ones missed too ("How many years of accident-free driving
+ * experience do you have?" is marked for a draft; the answers panel drafts
+ * "Are you legally permitted to work in Germany?"). So that qualifier is a
+ * removed phrasing in every language, and the copy says the marking can miss a
+ * question about the person, even a plainly worded one. The same recheck found
+ * three more absolutes the marking cannot keep, now removed: the /agent
+ * panel's work-authorisation hints ("on any country you haven't ticked, the
+ * agent stops", "the agent will not assume it"), the setupIsOneStep changelog
+ * line ("never guessed") and the answers panel's "Every answer is grounded in
+ * your résumé", where the fact-check reads only credentials, degrees, figures,
+ * employers and titles.
+ *
  * What this checks: none of the removed phrasings (each language's own) is left
  * on any surface a seeker, a crawler or an AI host reads; the rewritten keys
  * carry the read-every-answer line in their own language; and, as teeth, every
@@ -49,14 +63,27 @@ const REMOVED: Record<Exclude<Lang, "en-GB">, RegExp[]> = {
     /\bwe don't guess your identity/i,
     /\bit never fills them in for you/i,
     /\bblank isn't guessed at/i,
+    /\bworded unusually\b/i,
+    /\bunusually worded\b/i,
+    /\bstart date are never guessed\b/i,
+    /\bon any country you haven.t ticked\b/i,
+    /\bthe agent will not assume it\b/i,
+    /\bEvery answer is grounded in your (?:résumé|resume|CV)/i,
   ],
-  de: [/jede Sachfrage/i, /nur offene Antworten aus deinem Lebenslauf/i, /nur Antworten über deine Arbeit/i, /Wir raten nicht bei Ihrer Identität/i, /Der Agent rät hier nie/i, /wird nicht geraten/i, /füllt sie nie für dich aus/i, /bleiben immer dir überlassen/i],
-  es: [/todas las preguntas sobre datos/i, /redacte solo las respuestas abiertas/i, /redacte solo respuestas sobre tu trabajo/i, /No adivinamos tu identidad/i, /El agente nunca las adivina/i, /blanco no se adivina/i, /nunca las rellena por ti/i, /siempre quedan para ti/i],
-  fr: [/toutes les questions factuelles/i, /ne rédiger que les réponses ouvertes/i, /ne rédiger que des réponses sur votre travail/i, /Nous ne devinons pas votre identité/i, /L'agent ne les devine jamais/i, /n'est jamais deviné/i, /ne les remplit jamais à votre place/i, /vous restent toujours réservées/i],
-  hi: [/हर तथ्य वाला सवाल/, /केवल खुले उत्तरों का मसौदा/, /केवल आपके काम के बारे में उत्तरों/, /जनसांख्यिकीय जानकारी का अनुमान नहीं लगाते/, /एजेंट इनका अनुमान कभी नहीं लगाता/, /उसका अनुमान नहीं लगाया जाता/, /इन्हें आपके लिए कभी नहीं भरता/, /हमेशा आपके लिए छोड़े जाते हैं/],
-  nl: [/elke feitelijke vraag/i, /alleen open antwoorden op basis van je cv/i, /alleen antwoorden over je werk/i, /We raden niet naar je identiteit/i, /De agent raadt hier nooit/i, /leeg laat wordt niet geraden/i, /vult ze nooit voor je in/i, /blijven altijd aan jou/i],
-  pt: [/todas as perguntas factuais/i, /redigir só as respostas abertas/i, /redigir só respostas sobre o seu trabalho/i, /Não adivinhamos a sua identidade/i, /O agente nunca as adivinha/i, /branco não é adivinhado/i, /nunca as preenche por ti/i, /ficam sempre com você/i],
-  tl: [/ang bawat factual na tanong/i, /gumawa lang ng draft ng mga bukas na sagot/i, /gumawa lang ng draft ng mga sagot tungkol sa iyong trabaho/i, /Hindi namin hinuhulaan ang pagkakakilanlan mo/i, /Hindi ito hinuhulaan ng ahente/i, /blangko ay hindi hinuhulaan/i, /hindi niya ito pinupunan para sa iyo/i, /ay laging iniiwan sa iyo/i],
+  de: [/jede Sachfrage/i, /nur offene Antworten aus deinem Lebenslauf/i, /nur Antworten über deine Arbeit/i, /Wir raten nicht bei Ihrer Identität/i, /Der Agent rät hier nie/i, /wird nicht geraten/i, /füllt sie nie für dich aus/i, /bleiben immer dir überlassen/i,
+    /ungewöhnlich formulierte/i, /Startdatum werden nie erraten/i, /Bei jedem nicht gewählten Land/i, /Jede Antwort stützt sich auf Ihren Lebenslauf/i],
+  es: [/todas las preguntas sobre datos/i, /redacte solo las respuestas abiertas/i, /redacte solo respuestas sobre tu trabajo/i, /No adivinamos tu identidad/i, /El agente nunca las adivina/i, /blanco no se adivina/i, /nunca las rellena por ti/i, /siempre quedan para ti/i,
+    /redactada de forma poco habitual/i, /fecha de inicio nunca se adivinan/i, /en cualquier país que no marques/i, /Cada respuesta se basa en tu currículum/i],
+  fr: [/toutes les questions factuelles/i, /ne rédiger que les réponses ouvertes/i, /ne rédiger que des réponses sur votre travail/i, /Nous ne devinons pas votre identité/i, /L'agent ne les devine jamais/i, /n'est jamais deviné/i, /ne les remplit jamais à votre place/i, /vous restent toujours réservées/i,
+    /formulée de façon inhabituelle/i, /date de début ne sont jamais devinés/i, /pour tout pays non coché/i, /Chaque réponse s'appuie sur votre CV/i],
+  hi: [/हर तथ्य वाला सवाल/, /केवल खुले उत्तरों का मसौदा/, /केवल आपके काम के बारे में उत्तरों/, /जनसांख्यिकीय जानकारी का अनुमान नहीं लगाते/, /एजेंट इनका अनुमान कभी नहीं लगाता/, /उसका अनुमान नहीं लगाया जाता/, /इन्हें आपके लिए कभी नहीं भरता/, /हमेशा आपके लिए छोड़े जाते हैं/,
+    /अलग ढंग से लिख/, /तारीख़ का अनुमान कभी नहीं लगाया जाता/, /जिस देश को आपने नहीं चुना, उस पर/, /हर जवाब आपके रिज़्यूमे पर आधारित है/],
+  nl: [/elke feitelijke vraag/i, /alleen open antwoorden op basis van je cv/i, /alleen antwoorden over je werk/i, /We raden niet naar je identiteit/i, /De agent raadt hier nooit/i, /leeg laat wordt niet geraden/i, /vult ze nooit voor je in/i, /blijven altijd aan jou/i,
+    /ongewoon geformuleerde/i, /startdatum raden we nooit/i, /bij elk land dat u niet aanvinkt/i, /Elk antwoord is gebaseerd op je cv/i],
+  pt: [/todas as perguntas factuais/i, /redigir só as respostas abertas/i, /redigir só respostas sobre o seu trabalho/i, /Não adivinhamos a sua identidade/i, /O agente nunca as adivinha/i, /branco não é adivinhado/i, /nunca as preenche por ti/i, /ficam sempre com você/i,
+    /escrita de um jeito incomum/i, /escrita de forma invulgar/i, /data de início nunca são adivinhados/i, /em qualquer país não assinalado/i, /Cada resposta baseia-se no seu currículo/i],
+  tl: [/ang bawat factual na tanong/i, /gumawa lang ng draft ng mga bukas na sagot/i, /gumawa lang ng draft ng mga sagot tungkol sa iyong trabaho/i, /Hindi namin hinuhulaan ang pagkakakilanlan mo/i, /Hindi ito hinuhulaan ng ahente/i, /blangko ay hindi hinuhulaan/i, /hindi niya ito pinupunan para sa iyo/i, /ay laging iniiwan sa iyo/i,
+    /na kakaiba ang pagkakasulat/i, /Hindi kailanman hinuhulaan ang iyong work authorisation/i, /sa anumang bansang hindi mo na-tick/i, /Nakabatay sa resume mo ang bawat sagot/i],
 };
 const ALL_REMOVED = Object.values(REMOVED).flat();
 const hits = (text: string) => ALL_REMOVED.filter((re) => re.test(text)).map(String);
@@ -72,6 +99,19 @@ const READ_EVERY: Record<Lang, RegExp> = {
   nl: /lees elk antwoord voordat je het verstuurt/i,
   pt: /leia cada resposta antes de enviar/i,
   tl: /basahin ang bawat sagot bago mo ipadala/i,
+};
+
+/** "Even a plainly worded one", in each language: the marking can miss a question about the person however it is worded. */
+const EVEN_PLAIN: Record<Lang, RegExp> = {
+  en: /even a plainly worded one/i,
+  "en-GB": /even a plainly worded one/i,
+  de: /auch eine klar formulierte/i,
+  es: /aunque esté redactada con claridad/i,
+  fr: /même formulée clairement/i,
+  hi: /चाहे वह साफ़ शब्दों में लिखा हो/,
+  nl: /ook een duidelijk geformuleerde/i,
+  pt: /mesmo escrita de forma clara/i,
+  tl: /kahit malinaw ang pagkakasulat/i,
 };
 
 const jsonFiles = (dir: string) => readdirSync(resolve(ROOT, dir)).filter((f) => f.endsWith(".json")).map((f) => join(dir, f));
@@ -132,6 +172,14 @@ describe("the rewritten copy tells the person to read every answer, in their lan
 
   it.each(LANGS.filter((l) => l !== "en-GB"))("%s: the retired products' line says the same", (lang) => {
     expect(RETIRED_LINES[lang].free).toMatch(READ_EVERY[lang]);
+    expect(RETIRED_LINES[lang].free).toMatch(EVEN_PLAIN[lang]);
+  });
+
+  it.each(LANGS)("%s: the hedge says the marking can miss a question about the person even when it is plainly worded", (lang) => {
+    const d = locale(lang);
+    for (const s of [d.agentConnect.selfApplyFree, d.agentConnect.applyStep3, d.applyAnswers.yoursBody, d.applyProfile.legalIntro]) {
+      expect(s, `${lang}: ${s}`).toMatch(EVEN_PLAIN[lang]);
+    }
   });
 
   it("every English surface that describes the marking says it can miss a question and says to read every answer", () => {
@@ -146,7 +194,8 @@ describe("the rewritten copy tells the person to read every answer, in their lan
     }
     expect(mcp).toMatch(/answeredBy is read from the question's words and can be wrong/);
     expect(mcp).toMatch(/The marks are read from the words and can be wrong, so the person reads every answer before they send/);
-    expect(api).toMatch(/an unusually worded factual or protected question can be marked draft_from_your_cv/);
+    expect(api).toMatch(/a factual or protected question, even a plainly worded one, can be marked draft_from_your_cv/);
+    expect(mcp).toMatch(/a question about the person, even a plainly worded one, can be marked draft_from_your_cv/);
     expect(guide).toMatch(/can still be marked for a draft, and some ordinary work questions are marked for you/);
   });
 });
@@ -176,6 +225,28 @@ describe("TEETH: every removed sentence is caught", () => {
     ["tl", "Sinasabihan ito ng Resume Booster na itanong sa iyo ang bawat factual na tanong at gumawa lang ng draft ng mga bukas na sagot mula sa iyong CV"],
     ["pt legalIntro", "O agente nunca as adivinha — uma resposta errada aqui pode anular uma candidatura."],
     ["tl changelog", "ang mga tanong sa pagkakakilanlan, sahod, at demograpiko ay laging iniiwan sa iyo."],
+    // The first descope's qualifier, in each language, and the three absolutes its recheck found.
+    ["en qualifier", "That check reads the words and can miss a question about you that is worded unusually, so read every answer before you send."],
+    ["en /v1 qualifier", "The rule reads the question's words, so an unusually worded factual or protected question can be marked draft_from_your_cv."],
+    ["de qualifier", "Diese Prüfung liest nur die Wörter und kann eine ungewöhnlich formulierte Frage zu dir übersehen"],
+    ["es qualifier", "puede pasar por alto una pregunta sobre ti redactada de forma poco habitual"],
+    ["fr qualifier", "peut manquer une question sur vous formulée de façon inhabituelle"],
+    ["hi qualifier", "यह जाँच सिर्फ़ शब्द पढ़ती है और अलग ढंग से लिखा गया आपके बारे में कोई सवाल चूक सकती है"],
+    ["nl qualifier", "kan een ongewoon geformuleerde vraag over jou missen"],
+    ["pt qualifier", "pode deixar passar uma pergunta sobre você escrita de um jeito incomum"],
+    ["pt legalIntro qualifier", "e pode falhar uma escrita de forma invulgar."],
+    ["tl qualifier", "maaaring makaligtaan nito ang tanong tungkol sa iyo na kakaiba ang pagkakasulat"],
+    ["en otherCountriesHint", "Tick only what’s true: on any country you haven’t ticked, the agent stops and asks you rather than answering."],
+    ["en authorizedHint", "Anywhere else, tick it below — the agent will not assume it."],
+    ["en setupIsOneStep", "Your work authorisation, salary and start date are never guessed."],
+    ["en allGrounded", "Every answer is grounded in your résumé — nothing invented."],
+    ["de setupIsOneStep", "Arbeitserlaubnis, Gehalt und Startdatum werden nie erraten."],
+    ["es allGrounded", "Cada respuesta se basa en tu currículum: nada inventado."],
+    ["fr otherCountriesHint", "Ne cochez que ce qui est vrai : pour tout pays non coché, l’agent s’arrête et vous demande au lieu de répondre."],
+    ["hi allGrounded", "हर जवाब आपके रिज़्यूमे पर आधारित है — कुछ भी गढ़ा नहीं गया।"],
+    ["nl setupIsOneStep", "Je werkvergunning, salaris en startdatum raden we nooit."],
+    ["pt otherCountriesHint", "Assinale apenas o que for verdade: em qualquer país não assinalado, o agente pára e pergunta-lhe em vez de responder."],
+    ["tl allGrounded", "Nakabatay sa resume mo ang bawat sagot — walang inimbento."],
   ];
   it.each(BEFORE)("%s", (_name, sentence) => {
     expect(hits(sentence).length, sentence).toBeGreaterThan(0);

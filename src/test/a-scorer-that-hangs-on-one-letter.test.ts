@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  foldName, pickRoute, scoreTitle, splitExclusions, titleExcluded, wordCount,
+  foldName, pickRoute, scoreTitle, splitExclusions, wordCount,
   OCCUPATION_GUARD,
 } from "../../supabase/functions/job-board/search-routing";
 import { EMPLOYER_ALIASES } from "../../supabase/functions/job-board/employer-aliases";
@@ -90,13 +90,8 @@ describe("'not' marks one token, and never a stopword", () => {
 
   it("claims exactly one token — the words after it stay positive", () => {
     // The old remainder rule excluded "er" too, striking every ER nurse title
-    // the query was refining toward. Wave 4's two-word phrase rule did the
-    // same ("travel er", fix 3 corpus). Only a pinned compound takes two words
-    // (S12-017: "nurse not night shift").
+    // the query was refining toward.
     expect(splitExclusions("nurse not travel er")).toEqual({ positive: "nurse er", excluded: ["travel"] });
-    expect(splitExclusions("nurse not night shift")).toEqual({ positive: "nurse", excluded: ["night shift"] });
-    expect(titleExcluded("ER Nurse", ["travel"])).toBe(false);
-    expect(titleExcluded("Travel ER Nurse", ["travel"])).toBe(true);
   });
 
   it("keeps the refuse-to-eat-the-query guards standing", () => {

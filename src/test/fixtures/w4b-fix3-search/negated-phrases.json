@@ -1,13 +1,15 @@
 {
  "meta": {
-  "about": "Negated search phrases (S12-017), round 4. The round-3 builder's 591 cases (labels kept, except the hyphenated words relabelled to the typed word), the round-3 rechecker's 511 (wave4-fix3-recheck3/search), and the recheck-3 findings' inputs plus new cases, each labelled from the query's structure before any version ran. strike/keep list titles the exclusion must and must not strike (checked with that version's own titleExcluded). Ambiguous cases are labelled on the safe side (strike less, take fewer words) and marked. No personal data.",
+  "about": "Negated search phrases (S12-017), round 4. The round-3 builder's 591 cases (labels kept, except the hyphenated words relabelled to the typed word), the round-3 rechecker's 511 (wave4-fix3-recheck3/search), and the recheck-3 findings' inputs plus new cases, each labelled from the query's structure before any version ran. strike/keep list titles the exclusion must and must not strike (checked with that version's own titleExcluded). Ambiguous cases are labelled on the safe side (strike less, take fewer words) and marked. No personal data. The recheck of the descope (2026-10-25, at 27e54375) added 22 cases (dsc-*): single-letter slash pairs ('clerk not a/p'), slash pairs that name one thing ('med/surg', 'tcp/ip') and compounds typed with a space or as a plural against titles that spell them with a hyphen. 27e54375 was worse than origin/main on them at the query or the title level, which a case-level score could not see. Since then the shipped exclusion is origin/main's, byte for byte, so this corpus is a record of what main's rule gets wrong, kept for a separate search project, and its test asserts that the shipped answer equals main's on every query and every title.",
   "measured": {
-   "cases": 1169,
-   "origin/main": 764,
-   "fa66a031": 496,
-   "9af3c783": 737,
-   "237bf2e8": 1017,
-   "round 4": 1161
+   "cases": 1191,
+   "origin/main": 765,
+   "fa66a031": 507,
+   "9af3c783": 748,
+   "237bf2e8": 1028,
+   "round 4": 1171,
+   "descope 27e54375": 1122,
+   "shipped since the descope (origin/main's rule)": 765
   },
   "fields": "expect is the right {positive, excluded}; alsoAccept lists answers that search the same; strike/keep are titles the exclusion must and must not strike, checked with the version's own titleExcluded, besides the generated pair per excluded phrase; main is origin/main's output; correct says whether each version answered the whole case right; gap (round 4 still wrong) says why and gapAnswer pins that answer. Every gap case is wrong on main too."
  },
@@ -29676,6 +29678,657 @@
    },
    "correct": {
     "main": true,
+    "fa66a031": true,
+    "9af3c783": true,
+    "237bf2e8": true
+   }
+  },
+  {
+   "id": "dsc-001",
+   "group": "D1-slash-pair",
+   "q": "clerk not a/p",
+   "expect": {
+    "positive": "clerk",
+    "excluded": [
+     "ap"
+    ]
+   },
+   "strike": [
+    "AP Clerk",
+    "A/P Clerk"
+   ],
+   "reason": "a slash pair of single letters is one term; main joins it ('ap') and searches the head; the A/P spelling stays a title miss",
+   "source": "recheck of the descope (27e54375), 2026-10-25",
+   "main": {
+    "positive": "clerk",
+    "excluded": [
+     "ap"
+    ]
+   },
+   "correct": {
+    "main": false,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": false
+   }
+  },
+  {
+   "id": "dsc-002",
+   "group": "D1-slash-pair",
+   "q": "clerk -a/p",
+   "expect": {
+    "positive": "clerk",
+    "excluded": [
+     "ap"
+    ]
+   },
+   "strike": [
+    "AP Clerk",
+    "A/P Clerk"
+   ],
+   "reason": "the same pair after a minus",
+   "source": "recheck of the descope (27e54375), 2026-10-25",
+   "main": {
+    "positive": "clerk",
+    "excluded": [
+     "ap"
+    ]
+   },
+   "correct": {
+    "main": false,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": false
+   }
+  },
+  {
+   "id": "dsc-003",
+   "group": "D1-slash-pair",
+   "q": "clerk not -a/p",
+   "expect": {
+    "positive": "clerk",
+    "excluded": [
+     "ap"
+    ]
+   },
+   "strike": [
+    "AP Clerk",
+    "A/P Clerk"
+   ],
+   "reason": "'not' then a minus negates once",
+   "source": "recheck of the descope (27e54375), 2026-10-25",
+   "main": {
+    "positive": "clerk",
+    "excluded": [
+     "ap"
+    ]
+   },
+   "correct": {
+    "main": false,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": false
+   }
+  },
+  {
+   "id": "dsc-004",
+   "group": "D1-slash-pair",
+   "q": "accountant not a/r",
+   "expect": {
+    "positive": "accountant",
+    "excluded": [
+     "ar"
+    ]
+   },
+   "strike": [
+    "AR Accountant",
+    "A/R Accountant"
+   ],
+   "reason": "a/r is one term",
+   "source": "recheck of the descope (27e54375), 2026-10-25",
+   "main": {
+    "positive": "accountant",
+    "excluded": [
+     "ar"
+    ]
+   },
+   "correct": {
+    "main": false,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": false
+   }
+  },
+  {
+   "id": "dsc-005",
+   "group": "D1-slash-pair",
+   "q": "accountant not a/r Dallas",
+   "expect": {
+    "positive": "accountant Dallas",
+    "excluded": [
+     "ar"
+    ]
+   },
+   "strike": [
+    "AR Accountant",
+    "A/R Accountant"
+   ],
+   "reason": "a/r is one term; Dallas stays in the search",
+   "source": "recheck of the descope (27e54375), 2026-10-25",
+   "main": {
+    "positive": "accountant Dallas",
+    "excluded": [
+     "ar"
+    ]
+   },
+   "correct": {
+    "main": false,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": false
+   }
+  },
+  {
+   "id": "dsc-006",
+   "group": "D1-slash-pair",
+   "q": "cashier not p/t",
+   "expect": {
+    "positive": "cashier",
+    "excluded": [
+     "pt"
+    ]
+   },
+   "strike": [
+    "Cashier - PT",
+    "P/T Cashier"
+   ],
+   "reason": "p/t is part-time, one term",
+   "source": "recheck of the descope (27e54375), 2026-10-25",
+   "main": {
+    "positive": "cashier",
+    "excluded": [
+     "pt"
+    ]
+   },
+   "correct": {
+    "main": false,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": false
+   }
+  },
+  {
+   "id": "dsc-007",
+   "group": "D1-slash-pair",
+   "q": "nurse not f/t",
+   "expect": {
+    "positive": "nurse",
+    "excluded": [
+     "ft"
+    ]
+   },
+   "strike": [
+    "Nurse - FT",
+    "F/T Nurse"
+   ],
+   "reason": "f/t is full-time, one term",
+   "source": "recheck of the descope (27e54375), 2026-10-25",
+   "main": {
+    "positive": "nurse",
+    "excluded": [
+     "ft"
+    ]
+   },
+   "correct": {
+    "main": false,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": false
+   }
+  },
+  {
+   "id": "dsc-008",
+   "group": "D1-slash-pair",
+   "q": "nurse not l/d",
+   "expect": {
+    "positive": "nurse",
+    "excluded": [
+     "ld"
+    ]
+   },
+   "strike": [
+    "LD Nurse",
+    "L/D Nurse"
+   ],
+   "reason": "l/d is labour and delivery, one term",
+   "source": "recheck of the descope (27e54375), 2026-10-25",
+   "main": {
+    "positive": "nurse",
+    "excluded": [
+     "ld"
+    ]
+   },
+   "correct": {
+    "main": false,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": false
+   }
+  },
+  {
+   "id": "dsc-009",
+   "group": "D1-slash-pair",
+   "q": "rep not a/p or a/r",
+   "expect": {
+    "positive": "rep",
+    "excluded": [
+     "ap",
+     "ar"
+    ]
+   },
+   "strike": [
+    "AP Rep",
+    "AR Rep"
+   ],
+   "reason": "not A or B negates both terms",
+   "source": "recheck of the descope (27e54375), 2026-10-25",
+   "main": {
+    "positive": "rep or a/r",
+    "excluded": [
+     "ap"
+    ]
+   },
+   "correct": {
+    "main": false,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": false
+   }
+  },
+  {
+   "id": "dsc-010",
+   "group": "D2-slash-one-concept",
+   "q": "technician not med/surg",
+   "expect": {
+    "positive": "technician",
+    "excluded": [
+     "medsurg"
+    ]
+   },
+   "keep": [
+    "Certified Med Tech",
+    "Nuclear Med Tech"
+   ],
+   "strike": [
+    "Med/Surg Technician"
+   ],
+   "reason": "med/surg is one specialty: 'med' alone must not strike a Med Tech title",
+   "source": "recheck of the descope (27e54375), 2026-10-25",
+   "main": {
+    "positive": "technician",
+    "excluded": [
+     "medsurg"
+    ]
+   },
+   "correct": {
+    "main": false,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": false
+   }
+  },
+  {
+   "id": "dsc-011",
+   "group": "D2-slash-one-concept",
+   "q": "nurse not med/surg",
+   "expect": {
+    "positive": "nurse",
+    "excluded": [
+     "medsurg"
+    ]
+   },
+   "keep": [
+    "Med Spa Nurse"
+   ],
+   "strike": [
+    "Med/Surg Nurse"
+   ],
+   "reason": "med/surg is one specialty: a Med Spa nurse stays",
+   "source": "recheck of the descope (27e54375), 2026-10-25",
+   "main": {
+    "positive": "nurse",
+    "excluded": [
+     "medsurg"
+    ]
+   },
+   "correct": {
+    "main": false,
+    "fa66a031": false,
+    "9af3c783": false,
+    "237bf2e8": false
+   }
+  },
+  {
+   "id": "dsc-012",
+   "group": "D2-slash-one-concept",
+   "q": "engineer not tcp/ip",
+   "expect": {
+    "positive": "engineer",
+    "excluded": [
+     "tcpip"
+    ]
+   },
+   "keep": [
+    "IP Engineer"
+   ],
+   "reason": "tcp/ip is one protocol: 'ip' alone must not strike an IP engineer",
+   "source": "recheck of the descope (27e54375), 2026-10-25",
+   "main": {
+    "positive": "engineer",
+    "excluded": [
+     "tcpip"
+    ]
+   },
+   "correct": {
+    "main": true,
+    "fa66a031": true,
+    "9af3c783": true,
+    "237bf2e8": true
+   }
+  },
+  {
+   "id": "dsc-013",
+   "group": "D3-compound-spelled-another-way",
+   "q": "cashier not part time",
+   "expect": {
+    "positive": "cashier",
+    "excluded": [
+     "part time"
+    ]
+   },
+   "strike": [
+    "Cashier (Part-Time)",
+    "Cashier - Idlewild - Part-Time",
+    "Part Time Cashier"
+   ],
+   "reason": "a spaced compound: every spelling of it is struck and 'time' is not searched",
+   "source": "recheck of the descope (27e54375), 2026-10-25",
+   "main": {
+    "positive": "cashier time",
+    "excluded": [
+     "part"
+    ]
+   },
+   "correct": {
+    "main": false,
+    "fa66a031": true,
+    "9af3c783": true,
+    "237bf2e8": true
+   }
+  },
+  {
+   "id": "dsc-014",
+   "group": "D3-compound-spelled-another-way",
+   "q": "aide not full time",
+   "expect": {
+    "positive": "aide",
+    "excluded": [
+     "full time"
+    ]
+   },
+   "strike": [
+    "Aide - Full-Time",
+    "Full Time Aide"
+   ],
+   "reason": "a spaced compound, struck in any spelling",
+   "source": "recheck of the descope (27e54375), 2026-10-25",
+   "main": {
+    "positive": "aide time",
+    "excluded": [
+     "full"
+    ]
+   },
+   "correct": {
+    "main": false,
+    "fa66a031": true,
+    "9af3c783": true,
+    "237bf2e8": true
+   }
+  },
+  {
+   "id": "dsc-015",
+   "group": "D3-compound-spelled-another-way",
+   "q": "worker not night shifts",
+   "expect": {
+    "positive": "worker",
+    "excluded": [
+     "night shifts"
+    ]
+   },
+   "strike": [
+    "Night Shift Worker",
+    "Worker (Night-Shift)",
+    "Worker - Night Shifts"
+   ],
+   "reason": "a plural compound strikes the singular and hyphenated titles too",
+   "source": "recheck of the descope (27e54375), 2026-10-25",
+   "main": {
+    "positive": "worker shifts",
+    "excluded": [
+     "night"
+    ]
+   },
+   "correct": {
+    "main": false,
+    "fa66a031": true,
+    "9af3c783": true,
+    "237bf2e8": true
+   }
+  },
+  {
+   "id": "dsc-016",
+   "group": "D3-compound-spelled-another-way",
+   "q": "nurse not entry level",
+   "expect": {
+    "positive": "nurse",
+    "excluded": [
+     "entry level"
+    ]
+   },
+   "strike": [
+    "Entry-Level Nurse",
+    "Nurse - Entry Level"
+   ],
+   "reason": "a spaced compound, struck in any spelling",
+   "source": "recheck of the descope (27e54375), 2026-10-25",
+   "main": {
+    "positive": "nurse level",
+    "excluded": [
+     "entry"
+    ]
+   },
+   "correct": {
+    "main": false,
+    "fa66a031": true,
+    "9af3c783": true,
+    "237bf2e8": true
+   }
+  },
+  {
+   "id": "dsc-017",
+   "group": "D3-compound-spelled-another-way",
+   "q": "cna not per diem",
+   "expect": {
+    "positive": "cna",
+    "excluded": [
+     "per diem"
+    ]
+   },
+   "strike": [
+    "Per-Diem CNA",
+    "CNA - Per Diem"
+   ],
+   "reason": "a spaced compound, struck in any spelling",
+   "source": "recheck of the descope (27e54375), 2026-10-25",
+   "main": {
+    "positive": "cna diem",
+    "excluded": [
+     "per"
+    ]
+   },
+   "correct": {
+    "main": false,
+    "fa66a031": true,
+    "9af3c783": true,
+    "237bf2e8": true
+   }
+  },
+  {
+   "id": "dsc-018",
+   "group": "D3-compound-spelled-another-way",
+   "q": "trucker not long haul",
+   "expect": {
+    "positive": "trucker",
+    "excluded": [
+     "long haul"
+    ]
+   },
+   "strike": [
+    "Long-Haul Trucker",
+    "Trucker - Long Haul"
+   ],
+   "keep": [
+    "Long Beach Trucker"
+   ],
+   "reason": "a spaced compound; 'long' alone must not strike Long Beach",
+   "source": "recheck of the descope (27e54375), 2026-10-25",
+   "main": {
+    "positive": "trucker haul",
+    "excluded": [
+     "long"
+    ]
+   },
+   "correct": {
+    "main": false,
+    "fa66a031": true,
+    "9af3c783": true,
+    "237bf2e8": true
+   }
+  },
+  {
+   "id": "dsc-019",
+   "group": "D3-compound-spelled-another-way",
+   "q": "developer not team lead",
+   "expect": {
+    "positive": "developer",
+    "excluded": [
+     "team lead"
+    ]
+   },
+   "strike": [
+    "Team-Lead Developer",
+    "Developer - Team Lead"
+   ],
+   "reason": "a spaced compound, struck in any spelling",
+   "source": "recheck of the descope (27e54375), 2026-10-25",
+   "main": {
+    "positive": "developer lead",
+    "excluded": [
+     "team"
+    ]
+   },
+   "correct": {
+    "main": false,
+    "fa66a031": true,
+    "9af3c783": true,
+    "237bf2e8": true
+   }
+  },
+  {
+   "id": "dsc-020",
+   "group": "D3-compound-spelled-another-way",
+   "q": "rn not new grad",
+   "expect": {
+    "positive": "rn",
+    "excluded": [
+     "new grad"
+    ]
+   },
+   "strike": [
+    "New-Grad RN",
+    "RN - New Grad"
+   ],
+   "keep": [
+    "RN - New York"
+   ],
+   "reason": "a spaced compound; 'new' alone must not strike New York",
+   "source": "recheck of the descope (27e54375), 2026-10-25",
+   "main": {
+    "positive": "rn grad",
+    "excluded": [
+     "new"
+    ]
+   },
+   "correct": {
+    "main": false,
+    "fa66a031": true,
+    "9af3c783": true,
+    "237bf2e8": true
+   }
+  },
+  {
+   "id": "dsc-021",
+   "group": "D3-compound-spelled-another-way",
+   "q": "aide not home health",
+   "expect": {
+    "positive": "aide",
+    "excluded": [
+     "home health"
+    ]
+   },
+   "strike": [
+    "Home-Health Aide",
+    "Home Health Aide"
+   ],
+   "reason": "a spaced compound, struck in any spelling",
+   "source": "recheck of the descope (27e54375), 2026-10-25",
+   "main": {
+    "positive": "aide health",
+    "excluded": [
+     "home"
+    ]
+   },
+   "correct": {
+    "main": false,
+    "fa66a031": true,
+    "9af3c783": true,
+    "237bf2e8": true
+   }
+  },
+  {
+   "id": "dsc-022",
+   "group": "D3-compound-spelled-another-way",
+   "q": "technician not help desk",
+   "expect": {
+    "positive": "technician",
+    "excluded": [
+     "help desk"
+    ]
+   },
+   "strike": [
+    "Help-Desk Technician",
+    "Help Desk Technician"
+   ],
+   "reason": "a spaced compound, struck in any spelling",
+   "source": "recheck of the descope (27e54375), 2026-10-25",
+   "main": {
+    "positive": "technician desk",
+    "excluded": [
+     "help"
+    ]
+   },
+   "correct": {
+    "main": false,
     "fa66a031": true,
     "9af3c783": true,
     "237bf2e8": true
