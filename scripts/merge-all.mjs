@@ -9,6 +9,7 @@
 // Usage: node scripts/merge-all.mjs <verified.json> [more.json…] [--apply]
 
 import fs from "node:fs";
+import { LABEL_NAMED_VENDORS, agencyScreenText, censusNameReason } from "./census-names.mjs";
 
 const args = process.argv.slice(2);
 const APPLY = args.includes("--apply");
@@ -60,6 +61,13 @@ const NAME_BLOCK = /\b(staffing|recruit(ing|ment|er)?s?|talents?|headhunt|person
 // they tagged employers' own in-house portals (Cummins Talent Acquisition,
 // Molina Talent...) as staffing firms. A true agency almost always carries
 // the remaining words or sits in the conviction list by token.
+//
+// The screen reads only agencyScreenText (scripts/census-names.mjs), never
+// the raw name (trusted-pages round 2026-10-25): a name mined from a label
+// (UKG board labels, Oracle site names, ADP prose) says what a board is for,
+// and "US - LLC Recruiting" made Convergint a flagged agency; an employer's
+// own recruiting portal ("X Recruiting Portal", "X Campus Recruiting") is a
+// department, not a business.
 const AGENCY_NAME = /\b(staffing|recruit(ing|ment|er)?s?|headhunt|personnel|manpower|employment\s+(agency|services)|placements?\b|temp\s|outsourc|bpo\b|int[eé]rim|travail\s+temporaire|trabajo\s+temporal)\b|\b(uitzend|zeitarbeit|personaldienst|jobandtalent)/i;
 // Corporate-only policy: public-sector entities never enter the catalog
 // (mobile audit 2026-07-18 found City of Baltimore et al. had slipped in
@@ -241,6 +249,11 @@ for (const vendor of VENDORS) {
     // the merge gate keeps only the JUNK half: demo/test/sample names are
     // fake boards regardless of charter.
     if (!name || JUNK_NAME.test(name)) { dropped.blockedName++; continue; }
+    // The census rule's backstop: a label, logo text or generic word that a
+    // verify pass let through is held here, counted, never merged as a name.
+    if (censusNameReason(name, { fromLabel: LABEL_NAMED_VENDORS.has(vendor) })) {
+      dropped.labelName = (dropped.labelName ?? 0) + 1; continue;
+    }
     if ((vendor === "paylocity" || vendor === "adp") && headingOnly(name)) {
       dropped.headingOnlyName = (dropped.headingOnlyName ?? 0) + 1; continue;
     }
@@ -321,7 +334,7 @@ for (const vendor of VENDORS) {
     // merge never emits a pages override, so the flag is the last field —
     // when a board later gains one, the override goes BEFORE the flag, the
     // one suffix order every catalog parser tolerates.
-    const isAgency = AGENCY_NAME.test(b.name) || agencyEvidence.has(`${vendor}:${b.token}`);
+    const isAgency = AGENCY_NAME.test(agencyScreenText(vendor, b.name)) || agencyEvidence.has(`${vendor}:${b.token}`);
     if (isAgency) taggedAgencies++;
     lines.push(`  { name: "${esc(b.name)}", source: "${vendor}", token: "${esc(b.token)}"${isAgency ? ", agency: true" : ""} },`);
   }

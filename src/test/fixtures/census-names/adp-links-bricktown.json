@@ -1,0 +1,178 @@
+{
+ "url": "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/content-links/career-center?cid=70cd76e3-8c19-42a4-8d01-5d91b9c3222e&ccId=9201469061155_2",
+ "fetched": "2026-10-25",
+ "kept": "the whole response",
+ "response": {
+  "contentLinks": [
+   {
+    "itemID": "0",
+    "linkTypeCode": {
+     "codeValue": "IMG_LOGO",
+     "shortName": "BTB2.png.jpg"
+    },
+    "contentBody": {
+     "contentTitle": "CL_81871749-bd1f-41c0-90ec-34bb3e62d873",
+     "contentTypeCode": "image/jpeg",
+     "embeddedData": "/apps/wfn/0130/WNVPD0000270534/Client/Recruitment/",
+     "links": [
+      {
+       "title": "BTB2.png.jpg",
+       "method": "GET"
+      }
+     ]
+    }
+   }
+  ],
+  "meta": {
+   "customFieldGroup": {
+    "indicatorFields": [
+     {
+      "indicatorValue": true,
+      "nameCode": {
+       "codeValue": "AdpLogoIndicator"
+      }
+     },
+     {
+      "indicatorValue": true,
+      "nameCode": {
+       "codeValue": "TalentCommunityIndicator"
+      }
+     },
+     {
+      "indicatorValue": false,
+      "nameCode": {
+       "codeValue": "ArticleDisplayIndicator"
+      }
+     },
+     {
+      "indicatorValue": false,
+      "nameCode": {
+       "codeValue": "TemporaryIndicator"
+      }
+     },
+     {
+      "indicatorValue": true,
+      "nameCode": {
+       "codeValue": "PublishedIndicator"
+      }
+     },
+     {
+      "indicatorValue": true,
+      "nameCode": {
+       "codeValue": "EnableReferralsRefresh"
+      }
+     },
+     {
+      "indicatorValue": false,
+      "nameCode": {
+       "codeValue": "NewExperienceOTPDisabled"
+      }
+     },
+     {
+      "indicatorValue": false,
+      "nameCode": {
+       "codeValue": "CloudIndicator"
+      }
+     },
+     {
+      "indicatorValue": true,
+      "nameCode": {
+       "codeValue": "ShowEccJobsFlag"
+      }
+     },
+     {
+      "indicatorValue": true,
+      "nameCode": {
+       "codeValue": "PrimaryCountryUS"
+      }
+     }
+    ],
+    "numberFields": [
+     {
+      "nameCode": {
+       "codeValue": "BrandingCarouselRefresh"
+      },
+      "numberValue": 5
+     }
+    ],
+    "stringFields": [
+     {
+      "nameCode": {
+       "codeValue": "ColorScheme"
+      },
+      "stringValue": "#ebebeb"
+     },
+     {
+      "nameCode": {
+       "codeValue": "Layout"
+      },
+      "stringValue": "SM"
+     },
+     {
+      "nameCode": {
+       "codeValue": "UnpublishURL"
+      }
+     },
+     {
+      "nameCode": {
+       "codeValue": "AdditionalContentPageURL"
+      }
+     },
+     {
+      "nameCode": {
+       "codeValue": "ResonForActivation"
+      }
+     },
+     {
+      "nameCode": {
+       "codeValue": "LinkLocation"
+      },
+      "stringValue": "D"
+     },
+     {
+      "nameCode": {
+       "codeValue": "AccessFlag"
+      },
+      "stringValue": "0"
+     },
+     {
+      "nameCode": {
+       "codeValue": "Locale"
+      },
+      "stringValue": "en_US"
+     },
+     {
+      "nameCode": {
+       "codeValue": "Locale"
+      },
+      "stringValue": "en_CA"
+     },
+     {
+      "nameCode": {
+       "codeValue": "Locale"
+      },
+      "stringValue": "fr_CA"
+     },
+     {
+      "nameCode": {
+       "codeValue": "Locale"
+      },
+      "stringValue": "es_US"
+     },
+     {
+      "nameCode": {
+       "codeValue": "Locale"
+      },
+      "stringValue": "de_DE"
+     },
+     {
+      "nameCode": {
+       "codeValue": "Locale"
+      },
+      "stringValue": "ko_KR"
+     }
+    ]
+   }
+  }
+ }
+}

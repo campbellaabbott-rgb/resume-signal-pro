@@ -26,6 +26,7 @@
 // Usage: node scripts/tag-agencies.mjs [--dry-run]
 
 import fs from "node:fs";
+import { agencyScreenText } from "./census-names.mjs";
 
 const SOURCES = "supabase/functions/job-board/sources.ts";
 const DRY = process.argv.includes("--dry-run");
@@ -55,6 +56,11 @@ const RELEASED_CONVICTIONS = new Set([
   "icims:careers.principal.com",     // hires on behalf of affiliated representatives
   "greenhouse:liquidpersonnel",      // social-work staffing agency, self-described
   "greenhouse:crisprecruit",         // recruitment firm, self-described
+  // 2026-10-25: once names mined from labels stopped counting, this flag lost
+  // its name evidence, but the site names itself a staffing agency in its own
+  // feed (TrueBlue's tenant, recruitingCESites CX_1 "Your Industrial Staffing
+  // Agency | PeopleReady", read that day), which is a self-description.
+  "oracle:ehnn~us2~cx_1",            // PeopleReady, industrial staffing, self-described
 ]);
 
 // The staffing half of merge-all's name gate, canonical spelling. The junk
@@ -64,11 +70,19 @@ const RELEASED_CONVICTIONS = new Set([
 // they tagged employers' own in-house portals (Cummins Talent Acquisition,
 // Molina Talent...) as staffing firms. A true agency almost always carries
 // the remaining words or sits in the conviction list by token.
+//
+// The screen reads agencyScreenText (scripts/census-names.mjs), not the raw
+// name (trusted-pages round 2026-10-25). UKG, Oracle and ADP names were mined
+// from labels, so no word in them is evidence: "US - LLC Recruiting" (a logo
+// label) made Convergint a flagged agency, hidden by the hide-agencies
+// filter. An employer's own recruiting portal ("X Recruiting Portal", "X
+// Campus Recruiting") is a department, so that phrase is read out of the
+// name first, and a name the census rule refuses is not screened at all.
 const AGENCY_NAME = /\b(staffing|recruit(ing|ment|er)?s?|headhunt|personnel|manpower|employment\s+(agency|services)|placements?\b|temp\s|outsourc|bpo\b|int[eé]rim|travail\s+temporaire|trabajo\s+temporal)\b|\b(uitzend|zeitarbeit|personaldienst|jobandtalent)/i;
 
 const unesc = (s) => s.replace(/\\(.)/g, "$1");
 const isAgency = (name, vendor, token) =>
-  RELEASED_CONVICTIONS.has(`${vendor}:${token.toLowerCase()}`) || AGENCY_NAME.test(unesc(name));
+  RELEASED_CONVICTIONS.has(`${vendor}:${token.toLowerCase()}`) || AGENCY_NAME.test(agencyScreenText(vendor, unesc(name)));
 
 // Both catalog entry formats, line by line. Object literals gain the flag in
 // place — AFTER the pages override, always, so parsers meet one suffix order.
@@ -81,8 +95,19 @@ const SFN = /^(\s*)s\("((?:[^"\\]|\\.)*)", "(\w+)", "((?:[^"\\]|\\.)*)"\)(,?)$/;
 let tagged = 0;
 let already = 0;
 const byVendor = {};
+// Flags already in the catalog that neither of this tool's two sources
+// supports any more. The tool never removes a flag (a flag may rest on the
+// mill screen's phrase evidence, which the catalog does not record), so these
+// are printed for a person to judge, never edited.
+const unsupported = [];
+const FLAGGED = /\{ name: "((?:[^"\\]|\\.)*)", source: "(\w+)", token: "((?:[^"\\]|\\.)*)"/;
 const lines = src.split("\n").map((line) => {
-  if (line.includes("agency: true")) { already++; return line; }
+  if (line.includes("agency: true")) {
+    already++;
+    const f = FLAGGED.exec(line);
+    if (f && !isAgency(f[1], f[2], f[3])) unsupported.push(`${f[2]}:${f[3]} "${unesc(f[1])}"`);
+    return line;
+  }
   let m = OBJ.exec(line);
   if (m) {
     const [, head, name, vendor, token, tail] = m;
@@ -104,6 +129,10 @@ const lines = src.split("\n").map((line) => {
 
 console.log(`tagged ${tagged} boards (${already} already carried the flag)`);
 console.log("by vendor:", JSON.stringify(byVendor));
+if (unsupported.length) {
+  console.log(`${unsupported.length} carried flags rest on neither the conviction ledger nor the name screen (left as they are; judge each by its postings):`);
+  for (const u of unsupported) console.log(`  ${u}`);
+}
 
 // The released convictions must all have been reachable — a ledger entry the
 // catalog no longer carries is worth knowing about, not silently skipping.

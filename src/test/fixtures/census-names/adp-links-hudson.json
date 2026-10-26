@@ -1,0 +1,215 @@
+{
+ "url": "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/content-links/career-center?cid=bb661c48-7edc-400c-adfb-40f8f7743374&ccId=19000101_000001",
+ "fetched": "2026-10-25",
+ "kept": "the whole response",
+ "response": {
+  "contentLinks": [
+   {
+    "itemID": "0",
+    "linkTypeCode": {
+     "codeValue": "DOCS-BRND",
+     "shortName": "Benefits Fact Sheet  Revised pdf.pdf",
+     "longName": "Benefits Summary"
+    },
+    "contentBody": {
+     "contentTypeCode": "pdf",
+     "links": [
+      {
+       "href": "/apps/wfn/0020/WNVPD0000106521/Client/Recruitment/",
+       "title": "4a372c0d-b7a2-4bd0-88ce-64d2a4548c67"
+      }
+     ]
+    }
+   },
+   {
+    "itemID": "1",
+    "linkTypeCode": {
+     "codeValue": "IMG_LOGO",
+     "shortName": "HRH-Secaucus University Transparent.png"
+    },
+    "contentBody": {
+     "contentTitle": "CL_c33d4c6d-8b79-4089-94c5-4efc85b7c0a0",
+     "contentTypeCode": "image/png",
+     "embeddedData": "/apps/wfn/0020/WNVPD0000106521/Client/Recruitment/",
+     "links": [
+      {
+       "title": "HRH-Secaucus University Transparent.png",
+       "method": "GET"
+      }
+     ]
+    }
+   },
+   {
+    "itemID": "2",
+    "linkTypeCode": {
+     "codeValue": "LINKS-BRND"
+    },
+    "contentBody": {
+     "links": [
+      {
+       "title": "Careers"
+      }
+     ]
+    }
+   },
+   {
+    "itemID": "3",
+    "linkTypeCode": {
+     "codeValue": "WELCOME-TXT",
+     "longName": "Welcome to Hudson Regional Hospital Career Center"
+    }
+   }
+  ],
+  "meta": {
+   "customFieldGroup": {
+    "indicatorFields": [
+     {
+      "indicatorValue": true,
+      "nameCode": {
+       "codeValue": "AdpLogoIndicator"
+      }
+     },
+     {
+      "indicatorValue": true,
+      "nameCode": {
+       "codeValue": "TalentCommunityIndicator"
+      }
+     },
+     {
+      "indicatorValue": true,
+      "nameCode": {
+       "codeValue": "ArticleDisplayIndicator"
+      }
+     },
+     {
+      "indicatorValue": false,
+      "nameCode": {
+       "codeValue": "TemporaryIndicator"
+      }
+     },
+     {
+      "indicatorValue": true,
+      "nameCode": {
+       "codeValue": "PublishedIndicator"
+      }
+     },
+     {
+      "indicatorValue": true,
+      "nameCode": {
+       "codeValue": "EnableReferralsRefresh"
+      }
+     },
+     {
+      "indicatorValue": false,
+      "nameCode": {
+       "codeValue": "NewExperienceOTPDisabled"
+      }
+     },
+     {
+      "indicatorValue": false,
+      "nameCode": {
+       "codeValue": "CloudIndicator"
+      }
+     },
+     {
+      "indicatorValue": true,
+      "nameCode": {
+       "codeValue": "ShowEccJobsFlag"
+      }
+     },
+     {
+      "indicatorValue": true,
+      "nameCode": {
+       "codeValue": "PrimaryCountryUS"
+      }
+     }
+    ],
+    "numberFields": [
+     {
+      "nameCode": {
+       "codeValue": "BrandingCarouselRefresh"
+      },
+      "numberValue": 5
+     }
+    ],
+    "stringFields": [
+     {
+      "nameCode": {
+       "codeValue": "ColorScheme"
+      },
+      "stringValue": "#ebebeb"
+     },
+     {
+      "nameCode": {
+       "codeValue": "Layout"
+      },
+      "stringValue": "FL"
+     },
+     {
+      "nameCode": {
+       "codeValue": "UnpublishURL"
+      }
+     },
+     {
+      "nameCode": {
+       "codeValue": "AdditionalContentPageURL"
+      }
+     },
+     {
+      "nameCode": {
+       "codeValue": "ResonForActivation"
+      }
+     },
+     {
+      "nameCode": {
+       "codeValue": "LinkLocation"
+      },
+      "stringValue": "D"
+     },
+     {
+      "nameCode": {
+       "codeValue": "AccessFlag"
+      },
+      "stringValue": "0"
+     },
+     {
+      "nameCode": {
+       "codeValue": "Locale"
+      },
+      "stringValue": "en_US"
+     },
+     {
+      "nameCode": {
+       "codeValue": "Locale"
+      },
+      "stringValue": "en_CA"
+     },
+     {
+      "nameCode": {
+       "codeValue": "Locale"
+      },
+      "stringValue": "fr_CA"
+     },
+     {
+      "nameCode": {
+       "codeValue": "Locale"
+      },
+      "stringValue": "es_US"
+     },
+     {
+      "nameCode": {
+       "codeValue": "Locale"
+      },
+      "stringValue": "de_DE"
+     },
+     {
+      "nameCode": {
+       "codeValue": "Locale"
+      },
+      "stringValue": "ko_KR"
+     }
+    ]
+   }
+  }
+ }
+}

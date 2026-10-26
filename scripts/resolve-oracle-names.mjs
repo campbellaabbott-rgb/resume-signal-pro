@@ -8,24 +8,33 @@
 // SeoOrganizationName. Verified live 2026-08-28 on four tenants before this
 // script existed.
 //
-// SELECTION RULE, in order:
-//   1. among ORA_ACTIVE sites, a SiteName that is not Oracle's shipped default
-//      ("Candidate Experience site") and not a template artifact;
-//   2. prefer SeoOrganizationName (stripped of a trailing " Careers") when the
-//      site carries one — it is the name the employer chose for search engines;
-//   3. several distinct branded names on one tenant -> AMBIGUOUS, skipped and
-//      listed for eyeballing (a shared instance may host several employers —
-//      one catalog entry must not claim them all under one name);
-//   4. nothing branded and active -> UNRESOLVED, skipped.
+// SELECTION RULE, in order (oraclePickName in scripts/census-names.mjs):
+//   1. each ORA_ACTIVE site's SeoOrganizationName — the name the employer
+//      chose for search engines — when the census rule finds it a name, else
+//      its SiteName when that is a name. Site labels ("Aerospace", "All
+//      Jobs", "Student", "Community Template", Oracle's shipped defaults) name
+//      no one and are refused, never shortened into a name;
+//   2. several distinct names across the active sites -> AMBIGUOUS, skipped
+//      and listed for eyeballing (a shared instance may host several
+//      employers — one catalog entry must not claim them all under one name);
+//   3. no active site carries a name -> the SeoOrganizationName on the
+//      tenant's INACTIVE sites, when they agree on one. Honeywell's aerospace
+//      tenant kept "Honeywell" there while its only live site was labelled
+//      "Aerospace", and reading active sites alone wrote "Aerospace"
+//      (trusted-pages round 2026-10-25);
+//   4. nothing -> UNRESOLVED, skipped.
+//
+// The whole site list is read (paged), not its first fifty: a tenant with a
+// hundred and fifty community sites hid its corporate site past the cut.
 //
 // Usage: node scripts/resolve-oracle-names.mjs <verified.json> <out.json>
 // Output: { resolved: [{token,name,count,evidence}], ambiguous: [...], unresolved: [...] }
 import { readFileSync, writeFileSync } from "node:fs";
+import { oraclePickName } from "./census-names.mjs";
 
 const [, , VERIFIED_PATH, OUT] = process.argv;
 const verified = JSON.parse(readFileSync(VERIFIED_PATH, "utf8"));
 const boards = verified.oracle ?? [];
-const DEFAULT_NAMES = /^candidate experience site$|^career site$|^careers?$|^cx(_\d+)?$/i;
 const CONCURRENCY = 6;
 
 const hostOf = (token) => {
@@ -34,31 +43,24 @@ const hostOf = (token) => {
 };
 
 async function sitesOf(token) {
-  const url = `https://${hostOf(token)}/hcmRestApi/resources/latest/recruitingCESites?onlyData=true&limit=50`;
-  const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0", Accept: "application/json" }, signal: AbortSignal.timeout(20_000) });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const j = await res.json();
-  return j.items ?? [];
+  const items = [];
+  for (let offset = 0; offset < 2000; offset += 200) {
+    const url = `https://${hostOf(token)}/hcmRestApi/resources/latest/recruitingCESites?onlyData=true&limit=200&offset=${offset}`;
+    const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0", Accept: "application/json" }, signal: AbortSignal.timeout(20_000) });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const j = await res.json();
+    items.push(...(j.items ?? []));
+    if (!j.hasMore) break;
+  }
+  return items;
 }
 
-function pickName(sites) {
-  const active = sites.filter((s) => s.StatusCode === "ORA_ACTIVE");
-  const branded = active
-    .map((s) => ({
-      site: s,
-      name: String(s.SeoOrganizationName ?? "").replace(/\s+Careers?$/i, "").trim() || String(s.SiteName ?? "").trim(),
-    }))
-    .filter((x) => x.name && !DEFAULT_NAMES.test(x.name));
-  if (!branded.length) return { status: "unresolved" };
-  const names = [...new Set(branded.map((x) => x.name.toLowerCase()))];
-  if (names.length > 1) return { status: "ambiguous", names: branded.map((x) => x.name) };
-  // The ACTIVE branded site's number rides along, because the census token's
-  // site is often the tenant's INACTIVE default: Kroger's census token names
-  // CX_1, which serves ZERO requisitions, while the branded CX_2001 serves
-  // 12,544 — TotalJobsCount is tenant-wide, so verification passed anyway.
-  // A merge that keeps the census site ingests nothing.
-  return { status: "resolved", name: branded[0].name, activeSite: String(branded[0].site.SiteNumber ?? ""), evidence: `${branded.length} active branded site(s)` };
-}
+// The ACTIVE named site's number rides along, because the census token's
+// site is often the tenant's INACTIVE default: Kroger's census token names
+// CX_1, which serves ZERO requisitions, while the branded CX_2001 serves
+// 12,544 — TotalJobsCount is tenant-wide, so verification passed anyway.
+// A merge that keeps the census site ingests nothing.
+const pickName = oraclePickName;
 
 const resolved = [], ambiguous = [], unresolved = [];
 let done = 0;

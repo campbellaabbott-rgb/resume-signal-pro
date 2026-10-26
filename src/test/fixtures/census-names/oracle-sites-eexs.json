@@ -1,0 +1,962 @@
+{
+ "url": "https://eexs.fa.us2.oraclecloud.com/hcmRestApi/resources/latest/recruitingCESites?onlyData=true&limit=200",
+ "fetched": "2026-10-25",
+ "kept": "every site, with the four fields the census reads",
+ "hasMore": false,
+ "items": [
+  {
+   "SiteNumber": "CX_1",
+   "SiteName": "LCS",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_2001",
+   "SiteName": "The Village at White River Junction",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_8015",
+   "SiteName": "Heritage Village Assisted Living and Memory Care",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_10007",
+   "SiteName": "Delaney at Lake Waco",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_10009",
+   "SiteName": "Delaney at Georgetown",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_11009",
+   "SiteName": "All Community Jobs",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_10011",
+   "SiteName": "Laurel Circle",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_10029",
+   "SiteName": "Parkwood Retirement",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_12035",
+   "SiteName": "Porters Neck Village",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_12037",
+   "SiteName": "Westminster",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_12053",
+   "SiteName": "Windsor at Celebration",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_12057",
+   "SiteName": "Burcham Hills",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_12061",
+   "SiteName": "Glenview at Pelican Bay",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_12063",
+   "SiteName": "The Village at Woodlands and Waterway",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_12071",
+   "SiteName": "Richmond Place Senior Living",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_12075",
+   "SiteName": "South Port Square",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_12077",
+   "SiteName": "Regency Oaks Clearwater",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_12079",
+   "SiteName": "Lake Seminole Square",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_12081",
+   "SiteName": "Freedom Village at Brandywine",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_12097",
+   "SiteName": "Village at White River Junction",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_14005",
+   "SiteName": "Millcroft",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_14007",
+   "SiteName": "Foulk Manor North",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_15005",
+   "SiteName": "Residences at Vantage Point",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_14035",
+   "SiteName": "Marshes of Skidaway Island",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_16005",
+   "SiteName": "Havenwood of Richfield",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_17009",
+   "SiteName": "The Avalon of New Albany",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_16013",
+   "SiteName": "The Avalon of Bloomfield Township",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_16015",
+   "SiteName": "The Avalon of Auburn Hills",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_28005",
+   "SiteName": "Hearthwood Senior Living",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_36005",
+   "SiteName": "Vi at Aventura",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_INACTIVE"
+  },
+  {
+   "SiteNumber": "CX_6001",
+   "SiteName": "Freedom Square",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_9003",
+   "SiteName": "Sandhill Cove",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_8009",
+   "SiteName": "Magnolia Springs Bridgewater",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_INACTIVE"
+  },
+  {
+   "SiteNumber": "CX_8017",
+   "SiteName": "Clarendale of Mokena",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_8021",
+   "SiteName": "Arbol Residences of Santa Rosa",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_10005",
+   "SiteName": "Oakmont Gardens",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_11011",
+   "SiteName": "Delaney of Bridgewater",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_10021",
+   "SiteName": "Signature Pointe",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_10025",
+   "SiteName": "Parkwood Healthcare",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_11015",
+   "SiteName": "Heritage at Brentwood",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_11019",
+   "SiteName": "Trillium Woods",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_12013",
+   "SiteName": "Clarendale of St Peters",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_12017",
+   "SiteName": "Clarendale Arcadia",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_12021",
+   "SiteName": "Cypress of Hilton Head",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_12023",
+   "SiteName": "Moldaw Residences",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_12039",
+   "SiteName": "Westminster Village Terre Haute",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_12047",
+   "SiteName": "Forum at Rancho Health Center",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_12065",
+   "SiteName": "The Virginian",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_12067",
+   "SiteName": "Harbour Village",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_12087",
+   "SiteName": "Freedom Plaza Sun City Center",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_12091",
+   "SiteName": "Village at Gleannloch Farms",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_14011",
+   "SiteName": "Rolling Green Village",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_14017",
+   "SiteName": "Canterbury on the Lake",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_14019",
+   "SiteName": "Heritage at Irene Woods",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_15009",
+   "SiteName": "Rose Senior Living Carmel",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_14025",
+   "SiteName": "John Knox Village",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_14027",
+   "SiteName": "Friendship Village Kalamazoo",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_17007",
+   "SiteName": "Havenwood of Buffalo",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_17011",
+   "SiteName": "The Avalon of Commerce Township",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_27007",
+   "SiteName": "The Emerson at St. Peters",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_26007",
+   "SiteName": "Bellingham at West Chester",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_31007",
+   "SiteName": "The Lodge of Northbrook",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_34005",
+   "SiteName": "Sterling Estates of West Cobb",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_35005",
+   "SiteName": "Laural Parke",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_37005",
+   "SiteName": "Vi at Bentley Village",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_INACTIVE"
+  },
+  {
+   "SiteNumber": "CX_36009",
+   "SiteName": "Vi at Grayhawk",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_INACTIVE"
+  },
+  {
+   "SiteNumber": "CX_37007",
+   "SiteName": "Vi at Highlands Ranch",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_INACTIVE"
+  },
+  {
+   "SiteNumber": "CX_36011",
+   "SiteName": "Vi at La Jolla",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_INACTIVE"
+  },
+  {
+   "SiteNumber": "CX_37009",
+   "SiteName": "Vi at Lakeside Village",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_INACTIVE"
+  },
+  {
+   "SiteNumber": "CX_36013",
+   "SiteName": "Vi at Silverstone",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_INACTIVE"
+  },
+  {
+   "SiteNumber": "CX_36015",
+   "SiteName": "TidePointe",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_INACTIVE"
+  },
+  {
+   "SiteNumber": "CX_1001",
+   "SiteName": "Green Hills",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_5001",
+   "SiteName": "Wyndemere",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_8001",
+   "SiteName": "Community Template",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_8003",
+   "SiteName": "The Clare",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_8005",
+   "SiteName": "Brandon Wilde",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_8007",
+   "SiteName": "Magnolia Springs Loveland",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_INACTIVE"
+  },
+  {
+   "SiteNumber": "CX_8019",
+   "SiteName": "The Solana Doylestown",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_11007",
+   "SiteName": "Delaney at South Shore",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_10015",
+   "SiteName": "Monarch Landing",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_10031",
+   "SiteName": "Danberry at Inverness",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_10033",
+   "SiteName": "Blakehurst",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_11017",
+   "SiteName": "Sagewood",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_10037",
+   "SiteName": "Clarendale of Algonquin",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_12033",
+   "SiteName": "Marquette",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_12041",
+   "SiteName": "Cottage Grove Place",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_12043",
+   "SiteName": "Green Country Village",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_15013",
+   "SiteName": "Rose Senior Living at Providence Park",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_14023",
+   "SiteName": "Casa De Las Campanas",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_14033",
+   "SiteName": "Cedars of Chapel Hill",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_18005",
+   "SiteName": "Training Community",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_19005",
+   "SiteName": "Delaney at the Green",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_20005",
+   "SiteName": "The Roosevelt at Salt Creek",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_22005",
+   "SiteName": "Clarendale West End",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_26005",
+   "SiteName": "Broadway Cityview",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_3001",
+   "SiteName": "All Jobs",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_9001",
+   "SiteName": "Essex Meadows",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_9007",
+   "SiteName": "Magnolia Springs East",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_INACTIVE"
+  },
+  {
+   "SiteNumber": "CX_8011",
+   "SiteName": "Magnolia Springs Lexington",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_INACTIVE"
+  },
+  {
+   "SiteNumber": "CX_8013",
+   "SiteName": "Magnolia Springs Florence",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_INACTIVE"
+  },
+  {
+   "SiteNumber": "CX_10001",
+   "SiteName": "Delaney at the Vale",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_11013",
+   "SiteName": "The Arlington of Naples",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_10013",
+   "SiteName": "Sedgebrook",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_10017",
+   "SiteName": "Timber Ridge at Talus",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_10019",
+   "SiteName": "Monticello West",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_10027",
+   "SiteName": "Walnut Place",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_12005",
+   "SiteName": "Clarendale of Schereville",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_INACTIVE"
+  },
+  {
+   "SiteNumber": "CX_12007",
+   "SiteName": "Clarendale of Addison",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_12009",
+   "SiteName": "Clarendale of Chandler",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_12015",
+   "SiteName": "Clarendale Clayton",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_12025",
+   "SiteName": "Asbury Village",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_12029",
+   "SiteName": "Friendship Village of Tempe",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_12031",
+   "SiteName": "Harrogate",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_12055",
+   "SiteName": "Gable Pines",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_12073",
+   "SiteName": "Lake Port Square",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_12083",
+   "SiteName": "Freedom Village at Holland",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_12089",
+   "SiteName": "Galleria Woods",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_12095",
+   "SiteName": "Freedom Village Bradenton",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_14009",
+   "SiteName": "Shipley Manor",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_15007",
+   "SiteName": "Rose Senior Living Beachwood",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_15011",
+   "SiteName": "Rose Senior Living Clinton Township",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_14029",
+   "SiteName": "Pomperaug Woods",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_14031",
+   "SiteName": "Sierra Winds",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_15017",
+   "SiteName": "Carillon",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_16009",
+   "SiteName": "Havenwood of Maple Grove",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_33005",
+   "SiteName": "Aldersly",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_6003",
+   "SiteName": "Magnolia Springs Southpointe",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_9005",
+   "SiteName": "Magnolia Springs Louisville",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_INACTIVE"
+  },
+  {
+   "SiteNumber": "CX_10003",
+   "SiteName": "Fountain View Village",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_11005",
+   "SiteName": "Delaney at Parkway Lakes",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_10023",
+   "SiteName": "Autumn Leaves",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_10035",
+   "SiteName": "Stoneridge",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_13005",
+   "SiteName": "Clarendale at Indian Lakes",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_12011",
+   "SiteName": "Clarendale at Bellevue Place",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_12019",
+   "SiteName": "Clarendale Six Corners",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_12027",
+   "SiteName": "Cypress of Raleigh",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_12045",
+   "SiteName": "North Pointe Woods",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_12051",
+   "SiteName": "Eastcasle Place",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_12059",
+   "SiteName": "Bayshore on Hilton Head",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_12069",
+   "SiteName": "Champlin Shores",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_12085",
+   "SiteName": "Cypress Village",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_12093",
+   "SiteName": "Freedom Pointe at the Villages",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_12099",
+   "SiteName": "Sterling Aventura",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_12101",
+   "SiteName": "Presidential Place",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_14013",
+   "SiteName": "Cypress of Charlotte",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_14015",
+   "SiteName": "Greenwood Village South",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_14021",
+   "SiteName": "Rose Senior Living Avon",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_15015",
+   "SiteName": "Masonic Village at Burlington",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_INACTIVE"
+  },
+  {
+   "SiteNumber": "CX_16007",
+   "SiteName": "Havenwood of Minnetonka",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_17005",
+   "SiteName": "Havenwood of Burnsville",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_16011",
+   "SiteName": "The Avalon of Lewis Center",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_21005",
+   "SiteName": "RSL - Farmington Hills",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_23005",
+   "SiteName": "Amavida at Lakes Park",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_24005",
+   "SiteName": "Heritage Pointe",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_30007",
+   "SiteName": "Clarendale Ann Arbor",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_32005",
+   "SiteName": "The Cedars",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_34007",
+   "SiteName": "Sterling Estates of East Cobb",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_36007",
+   "SiteName": "Vi at the Glen",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_INACTIVE"
+  },
+  {
+   "SiteNumber": "CX_37011",
+   "SiteName": "Vi at Palo Alto",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_INACTIVE"
+  }
+ ]
+}

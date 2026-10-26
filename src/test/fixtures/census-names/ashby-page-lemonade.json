@@ -1,0 +1,6 @@
+{
+ "url": "https://jobs.ashbyhq.com/lemonade",
+ "fetched": "2026-10-25",
+ "kept": "the page's lines carrying <img>, the embedded board or app data, <title>, og:site_name, JSON-LD and the footer block, in order, unedited; every other line dropped",
+ "html": "    <title>Jobs</title><meta name=\"title\" content=\"Jobs\" />\n      window.__appData = {\"ddRumApplicationId\":\"80e0bf43-e772-45ac-858b-1e6dc0f1f415\",\"ddRumClientToken\":\"pub1a87c7036063ee7d4b7914b397e6324e\",\"environment\":\"production\",\"maintenanceMode\":false,\"schedulingMaintenanceMode\":false,\"organization\":null,\"posting\":null,\"jobBoard\":null,\"routerPrefix\":\"/\",\"recaptchaPublicSiteKey\":\"6LeFb_YUAAAAALUD5h-BiQEp8JaFChe0e0A6r49Y\",\"recaptchaUniversalPublicSiteKey\":\"6LezdY0tAAAAAEnollNLCAI0z1VDGwM7AzGrU4XZ\",\"customDomainData\":null};"
+}

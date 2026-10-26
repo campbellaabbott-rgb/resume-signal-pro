@@ -1,0 +1,32 @@
+{
+ "url": "https://icfcjb.fa.ocs.oraclecloud.com/hcmRestApi/resources/latest/recruitingCESites?onlyData=true&limit=200",
+ "fetched": "2026-10-25",
+ "kept": "every site, with the four fields the census reads",
+ "hasMore": false,
+ "items": [
+  {
+   "SiteNumber": "CX_1",
+   "SiteName": "HoneywellCareerSite-2",
+   "SeoOrganizationName": "Honeywell",
+   "StatusCode": "ORA_INACTIVE"
+  },
+  {
+   "SiteNumber": "CX_3001",
+   "SiteName": "HoneywellCareerSite-2",
+   "SeoOrganizationName": "Honeywell",
+   "StatusCode": "ORA_INACTIVE"
+  },
+  {
+   "SiteNumber": "CX_3002",
+   "SiteName": "Aero",
+   "SeoOrganizationName": "Honeywell",
+   "StatusCode": "ORA_INACTIVE"
+  },
+  {
+   "SiteNumber": "CX_4001",
+   "SiteName": "Aerospace",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  }
+ ]
+}
