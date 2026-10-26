@@ -126,7 +126,7 @@ export const GUIDES: Record<string, Guide> = {
       },
     ],
     related: [
-      { label: "Run the free 24-point scan", href: "/" },
+      { label: "Run the free 24-point scan", href: "/resume-checker" },
       { label: "The ATS auto-rejection myth", href: "/guides/ats-auto-rejection-myth" },
       { label: "The resume format that survives every ATS", href: "/guides/resume-format-that-survives-ats" },
       { label: "Resume keywords by industry", href: "/industries" },
@@ -304,7 +304,7 @@ export const GUIDES: Record<string, Guide> = {
       },
     ],
     related: [
-      { label: "Scan your resume with a career-change lens — free", href: "/" },
+      { label: "Scan your resume with a career-change lens — free", href: "/resume-checker" },
       { label: "How to choose resume keywords", href: "/guides/resume-keywords-guide" },
     ],
   },
@@ -425,7 +425,7 @@ export const GUIDES: Record<string, Guide> = {
     ],
     related: [
       { label: "Career changer's resume playbook", href: "/guides/career-change-resume" },
-      { label: "Scan your resume free", href: "/" },
+      { label: "Scan your resume free", href: "/resume-checker" },
     ],
   },
 
@@ -491,7 +491,7 @@ export const GUIDES: Record<string, Guide> = {
     ],
     related: [
       { label: "How to put freelance work on your resume", href: "/guides/freelance-work-on-resume" },
-      { label: "Scan your resume free", href: "/" },
+      { label: "Scan your resume free", href: "/resume-checker" },
     ],
   },
 

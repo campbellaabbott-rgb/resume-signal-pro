@@ -1110,7 +1110,7 @@ export function companyLanderPage({ token, name, primaryToken, robots = null, ca
     content: `
             ${lead}
             ${factsHtml}
-            <p><a href="${href}">${browse}</a> — filter by role, location, experience, and remote, and check any posting against your resume with the <a href="/">free resume scan</a> before you spend an application on it.</p>
+            <p><a href="${href}">${browse}</a> — filter by role, location, experience, and remote, and check any posting against your resume with the <a href="/resume-checker">free resume scan</a> before you spend an application on it.</p>
             <p>See <a href="/jobs">the full job board</a>${boardCompanies ? ` for openings across ${fmt(boardCompanies)} company job boards with roles open${countedOn ? ` (counted ${esc(countedOn)})` : " when this page was built"}` : ""}.</p>
           `,
     jsonLd: [{
