@@ -153,7 +153,8 @@
       "codeSearch": "Cota compartilhada, ou {{perDay}} por dia com uma chave grátis",
       "notYet": "Ainda não*",
       "note": "Limites em {{date}}; os dias são dias UTC. * Chega ao Claude e ao ChatGPT quando a entrada na conta pela sua IA for ativada; esta tabela muda nesse dia.",
-      "chatgptNote": "No ChatGPT, o seu plano precisa permitir conectores personalizados."
+      "chatgptNote": "No ChatGPT, o seu plano precisa permitir conectores personalizados.",
+      "fitProKey": "{{n}} por dia, com uma chave da sua conta Pro"
     },
     "faq": {
       "h2": "Perguntas antes de pagar",

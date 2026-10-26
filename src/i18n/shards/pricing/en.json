@@ -153,7 +153,8 @@
       "codeSearch": "Shared allowance, or a free key's {{perDay}} a day",
       "notYet": "Not yet*",
       "note": "Limits as of {{date}}; days are UTC days. * Arrives in Claude and ChatGPT when sign-in from your AI is switched on; this table changes that day.",
-      "chatgptNote": "In ChatGPT, your plan must allow custom connectors."
+      "chatgptNote": "In ChatGPT, your plan must allow custom connectors.",
+      "fitProKey": "{{n}} a day, with a key on your Pro account"
     },
     "faq": {
       "h2": "Questions before you pay",

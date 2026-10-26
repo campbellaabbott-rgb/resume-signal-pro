@@ -153,7 +153,8 @@
       "codeSearch": "Quota partagé, ou {{perDay}} par jour avec une clé gratuite",
       "notYet": "Pas encore*",
       "note": "Limites au {{date}} ; les jours sont des jours UTC. * Arrive dans Claude et ChatGPT quand la connexion depuis votre IA sera activée ; ce tableau change ce jour-là.",
-      "chatgptNote": "Dans ChatGPT, votre formule doit autoriser les connecteurs personnalisés."
+      "chatgptNote": "Dans ChatGPT, votre formule doit autoriser les connecteurs personnalisés.",
+      "fitProKey": "{{n}} par jour, avec une clé de votre compte Pro"
     },
     "faq": {
       "h2": "Questions avant de payer",

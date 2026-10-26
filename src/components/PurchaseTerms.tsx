@@ -47,6 +47,7 @@ import {
   askServerForEuUkSwitch, serverBoxWording, setPurchaseConsent, termsLineMounted, useEuUkBoxShown, usePurchaseConsent,
 } from "@/lib/purchase-terms";
 import { cn } from "@/lib/utils";
+import { money } from "@/lib/format";
 import { SellerIdentity } from "@/components/SellerIdentity";
 
 type Props = {
@@ -89,7 +90,7 @@ function AgreeLine({ text }: { text: string }) {
 }
 
 export function PurchaseTerms({ kind, plan, className, onAutoRenewChange, autoRenewInvalid = false, autoRenewErrorId }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   // The renewal box's label is bound to it by id as well as by nesting, so
   // every reader names the box by its sentence.
   const renewalBoxId = useId();
@@ -110,7 +111,9 @@ export function PurchaseTerms({ kind, plan, className, onAutoRenewChange, autoRe
   // the EU/UK switch is not final: its withdrawal box says what is refunded.
   const sale = kind !== "signup";
   const finalSale = sale && !(boxShown && kind === "subscription");
-  const proPrice = `$${SUBSCRIPTIONS.pro.priceUsd}`;
+  // Written the reader's way, as the Go Pro button beside it writes it
+  // ("45 $" in German), so one block never spells one price two ways.
+  const proPrice = money(SUBSCRIPTIONS.pro.priceUsd, "USD", { lng: i18n.language });
   const agentPrice = `$${SUBSCRIPTIONS.agent.priceUsd}`;
 
   return (

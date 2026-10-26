@@ -153,7 +153,8 @@
       "codeSearch": "Gedeeld limiet, of {{perDay}} per dag met een gratis sleutel",
       "notYet": "Nog niet*",
       "note": "Limieten per {{date}}; dagen zijn UTC-dagen. * Komt naar Claude en ChatGPT zodra inloggen vanuit je AI aanstaat; deze tabel verandert die dag.",
-      "chatgptNote": "In ChatGPT moet je abonnement aangepaste connectors toestaan."
+      "chatgptNote": "In ChatGPT moet je abonnement aangepaste connectors toestaan.",
+      "fitProKey": "{{n}} per dag, met een sleutel van je Pro-account"
     },
     "faq": {
       "h2": "Vragen voordat je betaalt",

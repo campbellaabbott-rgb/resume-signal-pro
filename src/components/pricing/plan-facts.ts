@@ -18,6 +18,8 @@
  *   WRITING                   src/config/writing-allowance.ts WRITING_ALLOWANCE (imported)
  *   FREE_KEY_DAILY_QUOTA      src/config/mcp-tools.ts MCP_FREE_KEY_DAILY_QUOTA
  *   MCP_FIT_FREE_PER_DAY      src/config/mcp-tools.ts MCP_FIT_FREE_PER_DAY (wave 4)
+ *   MCP_FIT_FULL_PER_DAY      src/config/mcp-tools.ts MCP_FIT_FULL_PER_DAY, agent-mcp's FIT_FULL_PER_DAY
+ *                             for a key whose account has Pro (_shared/fit-allowance.ts)
  *   WITHHELD_SOURCE_NAMES     src/config/mcp-tools.ts MCP_WITHHELD_SOURCES, by display name
  *   FREE_REPORT_DAYS          src/lib/resume-retention.ts REPORT_CACHE_DAYS
  *   FULL_ANALYSIS_LINK_DAYS   src/lib/resume-retention.ts SHARED_ANALYSIS_DAYS
@@ -45,6 +47,7 @@ export const WRITING = WRITING_ALLOWANCE;
 
 export const FREE_KEY_DAILY_QUOTA = 1000;
 export const MCP_FIT_FREE_PER_DAY = 25;
+export const MCP_FIT_FULL_PER_DAY = 1000;
 
 /** The source keys the data API and the AI connector leave out, and the names a reader knows them by. */
 export const WITHHELD_SOURCES: readonly string[] = ["usajobs", "smartrecruiters"];
@@ -61,7 +64,7 @@ export const FULL_ANALYSIS_LINK_DAYS: number = SHARED_ANALYSIS_DAYS;
  * Printed under the table ("Limits as of ..."), so it names its date basis.
  * Bump it in the commit that changes any value in this file.
  */
-export const LIMITS_AS_OF = "2026-10-17";
+export const LIMITS_AS_OF = "2026-10-26";
 
 /** The places a buyer cannot buy from yet, as the page names them (owner decisions 13 and G3). */
 export const REFUSED_TERRITORIES = ["EU", "EEA", "UK", "IN"] as const;

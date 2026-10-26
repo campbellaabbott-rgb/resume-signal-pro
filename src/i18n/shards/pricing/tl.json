@@ -153,7 +153,8 @@
       "codeSearch": "Shared na limitasyon, o {{perDay}} bawat araw gamit ang libreng key",
       "notYet": "Hindi pa*",
       "note": "Mga limitasyon noong {{date}}; ang mga araw ay mga araw sa UTC. * Darating sa Claude at ChatGPT kapag naka-on na ang pag-sign in mula sa iyong AI; magbabago ang talahanayang ito sa araw na iyon.",
-      "chatgptNote": "Sa ChatGPT, dapat payagan ng iyong plano ang mga custom connector."
+      "chatgptNote": "Sa ChatGPT, dapat payagan ng iyong plano ang mga custom connector.",
+      "fitProKey": "{{n}} bawat araw, gamit ang key ng iyong Pro account"
     },
     "faq": {
       "h2": "Mga tanong bago magbayad",

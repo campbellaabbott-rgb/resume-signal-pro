@@ -10,6 +10,7 @@ import {
   FREE_SCANS_PER_DAY,
   FULL_ANALYSIS_PRICE_USD,
   MCP_FIT_FREE_PER_DAY,
+  MCP_FIT_FULL_PER_DAY,
   SIGNED_IN_SCANS_PER_DAY,
   WRITING,
 } from "./plan-facts";
@@ -86,7 +87,16 @@ export function limitGroups(
         caption: L("groupCode"),
         rows: [
           { id: "code-search", label: L("rowCodeSearch"), cells: same({ text: L("codeSearch", { perDay: write.count(FREE_KEY_DAILY_QUOTA) }) }) },
-          { id: "code-fit", label: L("rowCodeFit"), cells: same({ text: L("perDay", { n: MCP_FIT_FREE_PER_DAY }) }) },
+          {
+            id: "code-fit",
+            label: L("rowCodeFit"),
+            // A key whose account has Pro scores 1,000 a day (agent-mcp fitStandingOf).
+            cells: [
+              { text: L("perDay", { n: MCP_FIT_FREE_PER_DAY }) },
+              { text: L("perDay", { n: MCP_FIT_FREE_PER_DAY }) },
+              { text: L("fitProKey", { n: write.count(MCP_FIT_FULL_PER_DAY) }) },
+            ],
+          },
         ],
       },
     ],

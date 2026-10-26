@@ -36,6 +36,17 @@ describe("the switches the switch-over imports", () => {
   });
 });
 
+describe("the order they open in", () => {
+  it("Pro goes on sale only once the Full Analysis is: Stripe's description of Pro includes it", async () => {
+    // Pro's Stripe description is built from every PRO_PERK_ITEMS line, the
+    // included Full Analysis among them, and the checkout cannot read these
+    // switches; the pages hide that line while G2 is closed.
+    const { proStripeDescription } = await import("../../supabase/functions/_shared/pro-perks");
+    expect(proStripeDescription()).toMatch(/Full Analysis included/);
+    expect(!gate.PRO_ON_SALE || gate.FULL_ANALYSIS_ON_SALE, "PRO_ON_SALE is true while FULL_ANALYSIS_ON_SALE is false").toBe(true);
+  });
+});
+
 describe("their values today", () => {
   it("G2 is closed: no real purchase has been watched to its delivered report", () => {
     expect(gate.FULL_ANALYSIS_ON_SALE).toBe(false);

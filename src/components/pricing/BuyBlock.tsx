@@ -33,6 +33,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { PurchaseTerms } from "@/components/PurchaseTerms";
 import { SellerIdentity } from "@/components/SellerIdentity";
+import { RegionNotice, useRegionRefused } from "@/components/checkout/RegionNotice";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProSubscription } from "@/hooks/use-pro-subscription";
 import { isOwingStatus } from "@/config/subscription-status";
@@ -73,9 +74,33 @@ export function SaleTermsLine() {
   );
 }
 
+/**
+ * A BROWSER CHECKOUT WILL REFUSE SEES WHY INSTEAD OF A BUY CONTROL (review
+ * round 2026-10-26). Both checkouts refuse a buyer whose device's time zone
+ * is in the EU, the EEA, the UK or India while the EU/UK switch is off
+ * (sales-territory.ts), and the page knows the zone before the press, so it
+ * shows wave 4's time-zone notice where the button would be, as the Pro card
+ * does. Rendered only once a product is on sale: a closed page asks the
+ * server nothing about the territory. The preview's open state keeps its
+ * buttons.
+ */
+function RegionRefusedOr({ children }: { children: ReactNode }) {
+  const refused = useRegionRefused();
+  return refused ? <RegionNotice className="mt-5" /> : <>{children}</>;
+}
+
 export function FullAnalysisBuy({ gates, preview }: { gates: SaleGates; preview?: PreviewFurniture }) {
-  const { t, i18n } = useTranslation();
   if (!gates.fullAnalysis.onSale) return <GateNote closedBy={gates.fullAnalysis.closedBy ?? "seller"} />;
+  if (gates.previewOpen) return <FullAnalysisBuyOpen gates={gates} preview={preview} />;
+  return (
+    <RegionRefusedOr>
+      <FullAnalysisBuyOpen gates={gates} preview={preview} />
+    </RegionRefusedOr>
+  );
+}
+
+function FullAnalysisBuyOpen({ gates, preview }: { gates: SaleGates; preview?: PreviewFurniture }) {
+  const { t, i18n } = useTranslation();
   const price = money(FULL_ANALYSIS_PRICE_USD, "USD", { lng: i18n.language });
   return (
     <div className="mt-5" data-buy-block="full-analysis">
@@ -170,6 +195,9 @@ export function ProBuyConnected({ gates }: { gates: SaleGates }) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  // A member keeps Manage wherever they are; anyone else in a territory
+  // checkout refuses sees the time-zone notice instead of Go Pro.
+  const regionRefused = useRegionRefused();
 
   if (pro.active || isOwingStatus(pro.status)) {
     const owing = !pro.active;
@@ -182,6 +210,8 @@ export function ProBuyConnected({ gates }: { gates: SaleGates }) {
       </div>
     );
   }
+
+  if (regionRefused) return <RegionNotice className="mt-5" />;
 
   return (
     <ProBuyBlock

@@ -45,6 +45,15 @@
  * subscription, its package and its cancellation) are watched without the
  * product appearing on the site. Then the switch is flipped here, in a
  * commit that says what was watched.
+ *
+ * THE ORDER: PRO_ON_SALE FLIPS ONLY AFTER FULL_ANALYSIS_ON_SALE. Pro includes
+ * the Full Analysis, and Stripe's description of Pro says so
+ * (_shared/pro-perks.ts proStripeDescription, read by
+ * create-subscription-checkout, which cannot read these switches), while the
+ * pages leave the included analysis out until G2 opens. Pro on sale with G2
+ * closed would sell, on Stripe's page, a delivery nobody has watched. So G2b
+ * opens after G2, never before; the-sale-switches-say-what-the-owner-has-
+ * watched.test.ts fails on the other order (review round 2026-10-26).
  */
 
 /** The saved-search digest's mail class, as ruled (G6). */

@@ -153,7 +153,8 @@
       "codeSearch": "Gemeinsames Kontingent oder {{perDay}} am Tag mit einem kostenlosen Schlüssel",
       "notYet": "Noch nicht*",
       "note": "Stand der Limits: {{date}}; Tage sind UTC-Tage. * Kommt in Claude und ChatGPT, sobald die Anmeldung aus Ihrer KI freigeschaltet ist; diese Tabelle ändert sich an dem Tag.",
-      "chatgptNote": "In ChatGPT muss Ihr Tarif benutzerdefinierte Connectors erlauben."
+      "chatgptNote": "In ChatGPT muss Ihr Tarif benutzerdefinierte Connectors erlauben.",
+      "fitProKey": "{{n}} am Tag, mit einem Schlüssel Ihres Pro-Kontos"
     },
     "faq": {
       "h2": "Fragen vor dem Bezahlen",
