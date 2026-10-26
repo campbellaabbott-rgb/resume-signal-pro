@@ -20,6 +20,14 @@
  * wave-4 copy is required, and a bake still selling a retired product is INFO
  * naming its owner, never PASS for the sale and never FAIL for the owner's
  * removal. Before that build, each line is exactly what it was.
+ *
+ * MAIN MERGED (2026-10-25). The profiles+design hotfix re-pointed the crawler
+ * lines of 65 (/agent), 74 (/pricing) and 7d, ungated, and main's note on the
+ * merge says wave 4 keeps main's version of each and drops its own gated
+ * branches; pd-hotfix-the-re-pointed-crawler-lines-fail-on-a-homepage-copy-
+ * and-a-retired-offer holds them. What stays wave 4's, and is held here, is
+ * the English-strings swaps of 65 and 74 and the "turns into the paid plan"
+ * FAIL.
  */
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { execFileSync } from "node:child_process";
@@ -143,78 +151,38 @@ describe("section 74: the subscription FAQ", () => {
   const S74 = sectionFile("74-wave3-payments-account.sh");
 
   it("a correct wave-4 deploy (the new FAQ in the strings and on /pricing) reads no FAQ FAIL", () => {
-    const { lines } = run(S74, { curl: [W4, ...bundle(EN_W4), page("/pricing", `<p>${faqOf(EN_W4)}</p>`)] });
-    expect(lines.filter((l) => l.startsWith("FAIL") && /FAQ|paid plan|optional monthly plan/.test(l)), show(lines)).toEqual([]);
+    const { lines } = run(S74, { curl: [W4, ...bundle(EN_W4), page("/pricing", `<p>${faqOf(EN_W4)}</p><p>Pro renews every month until you cancel.</p>`)] });
+    expect(lines.filter((l) => l.startsWith("FAIL") && /FAQ|paid plan|optional monthly plan|renews/.test(l)), show(lines)).toEqual([]);
     expect(has(lines, "PASS", /English strings carry "there is one optional monthly plan"/), show(lines)).toBe(true);
     expect(has(lines, "PASS", /English strings no longer say a trial turns into the paid plan/), show(lines)).toBe(true);
-    expect(has(lines, "PASS", /\/pricing as served to a crawler names the one plan left/), show(lines)).toBe(true);
+    expect(has(lines, "PASS", /\/pricing as served to a crawler says Pro renews every month until you cancel/), show(lines)).toBe(true);
   });
 
   it("with the wave-4 build serving, the old trial sentence FAILs, in the strings and on /pricing", () => {
     const { lines } = run(S74, { curl: [W4, ...bundle(EN_W3), page("/pricing", `<p>${faqOf(EN_W3)}</p>`)] });
     expect(has(lines, "FAIL", /English strings lack "there is one optional monthly plan"/), show(lines)).toBe(true);
     expect(has(lines, "FAIL", /English strings still say a trial turns into the paid plan/), show(lines)).toBe(true);
-    expect(has(lines, "FAIL", /\/pricing as served to a crawler still says a trial turns into the paid plan/), show(lines)).toBe(true);
   });
 
   it("before the wave-4 build, the wave-3 lines are as they were", () => {
     const { lines } = run(S74, { curl: [W3, ...bundle(EN_W3), page("/pricing", `<p>${faqOf(EN_W3)}</p>`)] });
     expect(has(lines, "PASS", /English strings carry "turns into the paid plan when it ends"/), show(lines)).toBe(true);
-    expect(has(lines, "PASS", /\/pricing as served to a crawler says the plans renew and the trial becomes the paid plan/), show(lines)).toBe(true);
   });
 });
 
 describe("section 65: the pass page and the /agent bake", () => {
   const S65 = sectionFile("65-wave2-entitlements.sh");
 
-  it("a wave-4 deploy is judged by the retirement notice, and a trial still on the bake is INFO, not PASS", () => {
+  it("a wave-4 deploy is judged by the retirement notice in the strings, and a trial still on the bake FAILs (main's line)", () => {
     const { lines } = run(S65, { curl: [W4, ...bundle(EN_W4), page("/agent", "<p>See how it works: 7 days free for first-time subscribers</p>")] });
     expect(has(lines, "PASS", /English strings carry "we will honour what you bought"/), show(lines)).toBe(true);
     expect(lines.some((l) => /repairRefunded/.test(l)), show(lines)).toBe(false);
-    expect(has(lines, "INFO", /\/agent as served to a crawler still names the retired plan's free days/), show(lines)).toBe(true);
-    expect(lines.some((l) => l.startsWith("PASS") && /\/agent as served to a crawler names the trial/.test(l)), show(lines)).toBe(false);
-  });
-
-  it("once the bake drops the trial, the /agent line PASSes", () => {
-    const { lines } = run(S65, { curl: [W4, ...bundle(EN_W4), page("/agent", "<p>The apply agent is switched off.</p>")] });
-    expect(has(lines, "PASS", /\/agent as served to a crawler offers no trial of the retired plan/), show(lines)).toBe(true);
+    expect(has(lines, "FAIL", /\/agent as served to a crawler still names the retired agent plan's trial/), show(lines)).toBe(true);
+    expect(lines.some((l) => l.startsWith("PASS") && /\/agent as served to a crawler/.test(l)), show(lines)).toBe(false);
   });
 
   it("before the wave-4 build, the pass page's repair sentence is still required", () => {
     const { lines } = run(S65, { curl: [W3, ...bundle(EN_W4), page("/agent", "<p>7 days free for first-time subscribers</p>")] });
     expect(has(lines, "FAIL", /English strings lack "repairRefunded"/), show(lines)).toBe(true);
-  });
-});
-
-describe("7d: the retired prices", () => {
-  const S7D = section(SCRIPT, "7d.");
-  const priced = (n45: number, n99: number, n29: number, desc: string) =>
-    `<meta name="description" content="${desc}">${"$45 ".repeat(n45)}${"$99 ".repeat(n99)}${"$29 ".repeat(n29)}`;
-
-  it("with the wave-4 build, no $99 and no $29 PASS, and Pro's $45 is still required", () => {
-    const { lines } = run(S7D, { curl: [W4, page("/pricing", priced(6, 0, 0, "Pro is the one plan.")), page("/agents", "<p>Connect your AI.</p>")] });
-    expect(lines.filter((l) => l.startsWith("FAIL")), show(lines)).toEqual([]);
-    expect(has(lines, "PASS", /\/pricing carries \$45 x6/), show(lines)).toBe(true);
-    expect(has(lines, "PASS", /\/pricing carries no \$99: the product wave 4 retired is not sold/), show(lines)).toBe(true);
-    expect(has(lines, "PASS", /\/agents carries no \$29/), show(lines)).toBe(true);
-    expect(has(lines, "PASS", /\/pricing description no longer offers the retired pass/), show(lines)).toBe(true);
-  });
-
-  it("with the wave-4 build, a bake still selling them is INFO naming its owner, never PASS", () => {
-    const { lines } = run(S7D, { curl: [W4, page("/pricing", priced(6, 6, 6, "Plans and a pass for your own agent.")), page("/agents", priced(0, 6, 6, "x"))] });
-    expect(has(lines, "INFO", /\/pricing still carries \$99 x6, a product wave 4 retired: .*prerender-seo\.mjs, company-profiles/), show(lines)).toBe(true);
-    expect(has(lines, "INFO", /\/pricing description still ends with the retired pass sentence/), show(lines)).toBe(true);
-    expect(lines.some((l) => l.startsWith("PASS") && /\$99|\$29|pass sentence/.test(l)), show(lines)).toBe(false);
-    expect(lines.filter((l) => l.startsWith("FAIL")), show(lines)).toEqual([]);
-  });
-
-  it("with the wave-4 build, a missing Pro price still FAILs", () => {
-    const { lines } = run(S7D, { curl: [W4, page("/pricing", priced(0, 0, 0, "x")), page("/agents", "x")] });
-    expect(has(lines, "FAIL", /\/pricing carries \$45 x0/), show(lines)).toBe(true);
-  });
-
-  it("before the wave-4 build, the wave-3 requirement is as it was", () => {
-    const { lines } = run(S7D, { curl: [W3, page("/pricing", priced(6, 0, 0, "x")), page("/agents", "x")] });
-    expect(has(lines, "FAIL", /\/pricing carries \$99 x0 \(want >= 5\)/), show(lines)).toBe(true);
   });
 });

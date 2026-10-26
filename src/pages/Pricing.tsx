@@ -167,7 +167,7 @@ export default function Pricing() {
               name; no pass is sold. */}
           <p className="text-center text-sm text-muted-foreground max-w-4xl mx-auto mb-12" data-connect-free>
             {t('pricingPage.passLine', 'Connecting your own Claude or ChatGPT is free: search the board in your chat and apply yourself on the employer\'s own site, with your AI\'s help. We never submit an application for you.')}{' '}
-            <Link to="/agents" className="text-primary hover:underline">{t('pricingPage.passLink', 'Connect your AI')}</Link>
+            <Link to="/agents" className="link">{t('pricingPage.passLink', 'Connect your AI')}</Link>
           </p>
 
           {/* Where every posting comes from, directly under the plans. */}
@@ -186,7 +186,7 @@ export default function Pricing() {
             <h2 className="text-2xl font-bold mb-4">{t('pricingPage.questions')}</h2>
             <p className="text-muted-foreground mb-6">
               {t('pricingPage.oneTimeAndProLineFa', 'The ${{price}} Full Analysis is paid once and never renews; Pro is a monthly plan you can cancel any time.', { price: PRODUCTS.fullAnalysis.priceUsd })}{' '}{t('pricingPage.freeScanLeadIn', 'Not sure yet? Run the')}{' '}
-              <Link to="/" className="text-primary hover:underline">{t('pricingPage.freeScanLink')}</Link> {t('pricingPage.seeScoreFirst')}
+              <Link to="/" className="link">{t('pricingPage.freeScanLink')}</Link> {t('pricingPage.seeScoreFirst')}
             </p>
             <Button variant="outline" asChild>
               <Link to="/">

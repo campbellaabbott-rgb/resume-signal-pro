@@ -46,41 +46,59 @@ describe("the posting said more than the card did", () => {
     expect(annualizedPayRange({ salaryMinAnnual: 60_000, salaryPeriod: null })).toBeNull();
   });
 
-  it("the card and the panel share one annualization, and the panel's private copy is gone", () => {
-    expect(JOBS, "the card").toMatch(/\{annualizedPayRange\(job\) && \(/);
-    expect(JOBS, "the panel").toMatch(/\{annualizedPayRange\(detailJob\) && \(/);
-    // The hand-rolled arithmetic the panel used to carry alone.
-    expect(JOBS, "a second copy of the range maths").not.toMatch(/salaryMaxAnnual && detailJob\.salaryMaxAnnual > detailJob\.salaryMinAnnual/);
-    // Both surfaces phrase it with the key that already existed.
-    expect((JOBS.match(/t\("jobsPage\.salaryAnnualized"/g) ?? []).length).toBe(2);
+  // Pass B (2026-10-12): the card and the panel are the listing vocabulary's
+  // (JobCard, PostingFacts). The annual estimate, the department, the minimum
+  // years and the posted date are read there, through one reader each.
+  const CARD = strip(readFileSync(resolve(ROOT, "src/components/jobs/listing/JobCard.tsx"), "utf8"));
+  const FACTS = strip(readFileSync(resolve(ROOT, "src/components/jobs/listing/PostingFacts.tsx"), "utf8"));
+  const PAY = strip(readFileSync(resolve(ROOT, "src/lib/listing/pay.ts"), "utf8"));
+  const TEXT = strip(readFileSync(resolve(ROOT, "src/components/jobs/listing/listing-text.ts"), "utf8"));
+
+  it("the card and the panel share one annualization, and no surface carries a private copy", () => {
+    expect(JOBS, "the board mounts the card").toMatch(/<JobCard\b/);
+    expect(JOBS, "the board mounts the pane").toMatch(/<PostingDetail\b/);
+    // One reader: listingPay's `annual`, read from the server's salary_min_annual.
+    expect(CARD, "the card").toMatch(/const pay = listingPay\(job, lng\);/);
+    expect(FACTS, "the panel").toMatch(/const pay = listingPay\(job, lng\);/);
+    expect(CARD).toMatch(/pay\?\.annual \?/);
+    expect(FACTS).toMatch(/pay\.annual/);
+    // The hand-rolled arithmetic no surface may carry alone.
+    for (const [name, src] of [["the card", CARD], ["the panel", FACTS], ["the board", JOBS]] as const) {
+      expect(src, `${name}: a second copy of the range maths`).not.toMatch(/salaryMaxAnnual && \w+\.salaryMaxAnnual > \w+\.salaryMinAnnual/);
+      expect(src, `${name}: multiplies a rate itself`).not.toMatch(/\* ?2_?080\b|\* ?260\b/);
+    }
+    // Both surfaces phrase it as OUR estimate, each with its own key.
+    expect((CARD.match(/t\("listing\.card\.annualEstimate"/g) ?? []).length).toBe(1);
+    expect((FACTS.match(/t\("listing\.facts\.ourEstimate"/g) ?? []).length).toBe(1);
   });
 
   it("the annualized figure can only ever accompany the employer's own pay text", () => {
     // salary_min_annual is parsed from the posting's pay text and is only ever
     // written alongside it, so there is no row where a range exists without one
-    // — and both renders sit inside the `salary &&` branch regardless.
+    // — and the reader answers null before it reads the period when there is no text.
     expect(BOARD).toMatch(/salary: minedSalary,\s*salary_min_annual: minedParse\?\.annualMin \?\? null,/);
-    expect(JOBS).toMatch(/\{job\.salary && \(/);
-    expect(JOBS).toMatch(/\{detailJob\.salary && \(/);
+    expect(PAY).toMatch(/const raw = typeof job\.salary === "string" \? job\.salary\.trim\(\) : "";\s*if \(!raw\) return null;/);
+    expect(PAY, "our arithmetic only where the period is known and is not a year").toMatch(/period && period !== "year" && finitePositive\(job\.salaryMinAnnual\)/);
   });
 
-  it("the panel finally names the department and the employer's own minimum years", () => {
-    expect(JOBS).toMatch(/\{detailJob\.department \? <> · \{detailJob\.department\}<\/> : null\}/);
+  it("the panel names the department and the employer's own minimum years", () => {
+    expect(FACTS).toMatch(/\{department && \(/);
+    expect(FACTS).toMatch(/listing\.facts\.department/);
     // The band is our bucket; the years are what the posting actually demands.
-    expect(JOBS).toMatch(/typeof detailJob\.minYears === "number" && detailJob\.minYears > 0 &&/);
-    expect(JOBS).toMatch(/t\("jobsPage\.minYears", "\{\{n\}\}\+ yrs", \{ n: detailJob\.minYears \}\)/);
-    // `> 0`: zero is not a stated requirement, and the years filter refuses it
-    // for the same reason (1..20). "0+ yrs" would be a chip that says nothing.
-    expect(JOBS, "a zero minimum must not render").not.toMatch(/typeof detailJob\.minYears === "number" &&\s*\(/);
+    expect(FACTS).toMatch(/t\("jobsPage\.minYears", \{ defaultValue: "\{\{n\}\}\+ yrs", n: years \}\)/);
+    expect(FACTS).toMatch(/listing\.facts\.minYearsNote/);
+    expect(FACTS).toMatch(/listing\.facts\.bandNote/);
+    // `> 0`: zero is not a stated requirement. "0+ yrs" would be a chip that says nothing.
+    expect(FACTS, "a zero minimum must not render").toMatch(/minYears === "number" && job\.minYears > 0/);
   });
 
   it("the posting-age wording keeps its provenance untouched", () => {
     // Company-stated date and first-seen are DIFFERENT claims — the 2.8-day
-    // median incident came from substituting one for the other — so surfacing
-    // more fields must not have re-labelled either.
-    expect(JOBS).toMatch(/t\("jobsPage\.postedProvenance", "Posting age from the date the company states on its own careers feed/);
-    expect(JOBS).toMatch(/t\("jobsPage\.firstSeenProvenance", "This employer states no posting date/);
-    expect(JOBS).toMatch(/t\("jobsPage\.firstSeenDaysAgo"/);
+    // median incident came from substituting one for the other — so the posted
+    // row names the employer's system, and an undated row states no age.
+    expect(TEXT).toMatch(/t\("listing\.facts\.postedDated", \{ defaultValue: "\{\{date\}\}, as the employer's system states it", date \}\)/);
+    expect(TEXT).toMatch(/t\("listing\.facts\.postedUndated", "The employer's system states no posting date"\)/);
+    expect(TEXT).not.toMatch(/firstSeen|lastSeen/);
   });
 
   it("reuses the keys that already name these values — no new locale strings needed", () => {
@@ -89,8 +107,10 @@ describe("the posting said more than the card did", () => {
     expect(files.length).toBe(9);
     for (const f of files) {
       const j = JSON.parse(readFileSync(resolve(dir, f), "utf8")) as { jobsPage?: Record<string, unknown> };
-      expect(typeof j.jobsPage?.salaryAnnualized, `${f}: jobsPage.salaryAnnualized`).toBe("string");
-      expect(String(j.jobsPage?.salaryAnnualized), `${f}: the range is interpolated`).toContain("{{range}}");
+      const s = JSON.parse(readFileSync(resolve(ROOT, "src/i18n/shards/listing", f), "utf8")) as { listing: { card: Record<string, unknown>; facts: Record<string, unknown> } };
+      expect(typeof s.listing.card.annualEstimate, `${f}: listing.card.annualEstimate`).toBe("string");
+      expect(String(s.listing.card.annualEstimate), `${f}: the amount is interpolated`).toContain("{{amount}}");
+      expect(String(s.listing.facts.ourEstimate), `${f}: the rule is interpolated`).toContain("{{rule}}");
       expect(typeof j.jobsPage?.minYears, `${f}: jobsPage.minYears`).toBe("string");
       expect(String(j.jobsPage?.minYears), `${f}: the number is interpolated`).toContain("{{n}}");
     }

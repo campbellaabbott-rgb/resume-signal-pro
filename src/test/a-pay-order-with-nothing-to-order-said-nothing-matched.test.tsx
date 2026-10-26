@@ -84,14 +84,14 @@ describe("a pay order with nothing to order said nothing matched", () => {
   it("positive control: an empty pay page the server did not explain keeps the zero state", async () => {
     mock({ total: 0 });
     await open("/jobs?q=nurse&sort=salary");
-    await waitFor(() => expect(text()).toContain("No verified openings match all of that"), SLOW);
+    await waitFor(() => expect(text()).toContain("No openings match all of that"), SLOW);
   });
 
   it("no match states pay: the page says so, and the order is the remedy it offers", async () => {
     mock({ total: null, countUnavailable: true, sortUnavailable: "no-stated-pay", salaryStatedOnly: true });
     await open("/jobs?q=nurse&sort=salary");
     await waitFor(() => expect(text()).toContain("None of these matches states its pay"), SLOW);
-    expect(text(), "the zero state claimed nothing matched a search that matches").not.toContain("No verified openings match all of that");
+    expect(text(), "the zero state claimed nothing matched a search that matches").not.toContain("No openings match all of that");
     expect(text(), "the screen-reader status still announced no matches").not.toContain("No openings match these filters.");
     fireEvent.click(screen.getByRole("button", { name: "Show them newest first" }));
     await waitFor(() => expect(lists.some((b) => b.sort === "newest" && b.q === "nurse")).toBe(true), SLOW);
@@ -102,6 +102,6 @@ describe("a pay order with nothing to order said nothing matched", () => {
     mock({ total: null, countUnavailable: true, sortUnavailable: "unavailable", salaryStatedOnly: true });
     await open("/jobs?q=nurse&sort=salary");
     await waitFor(() => expect(text()).toContain("We couldn't read pay for this search just now"), SLOW);
-    expect(text()).not.toContain("No verified openings match all of that");
+    expect(text()).not.toContain("No openings match all of that");
   });
 });

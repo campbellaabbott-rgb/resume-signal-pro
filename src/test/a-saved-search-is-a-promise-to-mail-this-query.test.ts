@@ -37,7 +37,16 @@ describe("a saved search is a promise to mail this query", () => {
     const emitted = [...(readFileSync(resolve(__dirname, "../lib/job-search-params.ts"), "utf8")
       .matchAll(/qs\.set\("([^"]+)"/g))].map((m) => m[1]);
     expect(emitted.length).toBeGreaterThan(8);
+    // ONE RETIRED PARAMETER: a search saved with the agent-only filter keeps
+    // it (the nightly digest still narrows by it), but the board retired that
+    // filter with the apply agent (2026-10-12), so reopening it there shows
+    // the search without it. Every other parameter must be read.
+    const RETIRED_FROM_BOARD = new Set(["agentOnly"]);
     for (const name of emitted) {
+      if (RETIRED_FROM_BOARD.has(name)) {
+        expect(BOARD.includes(`initial.get("${name}")`), `${name} is retired from the board and came back`).toBe(false);
+        continue;
+      }
       const read = BOARD.includes(`initial.get("${name}")`) || BOARD.includes(`p.set("${name}"`);
       expect(read, `the board never reads "${name}" — that filter is silently dropped on reopen`).toBe(true);
     }

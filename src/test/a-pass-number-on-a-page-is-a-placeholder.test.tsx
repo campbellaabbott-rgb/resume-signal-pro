@@ -159,28 +159,25 @@ describe("the /agents page names no pass and no plan as on offer", () => {
   it("no sentence asks an apply agent or says what applying requires on our side", () => {
     expect(PAGE).not.toMatch(/ask your apply agent|applying also requires/);
   });
-  // The served HTML for /agents is the prerender (scripts/prerender-seo.mjs),
-  // which the profiles and design branches own; this wave may not change it.
-  // Until its owner bakes the new copy, the divergence is DECLARED here and
-  // checked to still be real, so the flag cannot outlive its reason: the day
-  // the bake says what the page says, this fails until the flag is cleared,
-  // and the word-for-word check returns.
-  describe("and the prerendered /agents", () => {
-    const BAKE_STILL_SELLS_THE_PASS = true;
+  // THE PRERENDERED /agents NO LONGER SELLS EITHER (the apply pivot,
+  // 2026-10-11): the plan and the pass are retired, and the crawler copy
+  // names neither, whatever this page still renders until wave 4 rewrites
+  // it. The rendered page is read for the same thing by
+  // src/test/pd-bake-the-crawler-copy-sells-nothing-retired.test.ts.
+  describe("and the prerendered /agents sells neither the plan nor the pass", () => {
     const BAKE = read("scripts/prerender-seo.mjs");
-    const block = BAKE.slice(BAKE.indexOf('path: "/agents",'), BAKE.indexOf("</section>", BAKE.indexOf("Two kinds of key", BAKE.indexOf('path: "/agents",'))));
-    it("the meta description is the page's, word for word — or the bake's pass-selling divergence is declared and still real", () => {
-      const page = /description=\{`([^`]*)`\}/.exec(PAGE)?.[1] ?? "";
-      const bake = /description: `([^`]*)`/.exec(block)?.[1] ?? "";
-      expect(page.length).toBeGreaterThan(0);
-      expect(bake.length).toBeGreaterThan(0);
-      if (BAKE_STILL_SELLS_THE_PASS) {
-        expect(bake, "the bake no longer differs: clear BAKE_STILL_SELLS_THE_PASS so the word-for-word check returns").not.toBe(page);
-        expect(bake, "the declared reason (the bake sells the pass) is gone: clear the flag").toMatch(/pass/i);
-      } else {
-        expect(bake).toBe(page);
-        expect(block).not.toMatch(/\bAgent Pass\b|live pass/);
+    const block = BAKE.slice(BAKE.indexOf('path: "/agents",'), BAKE.indexOf('path: "/mcp",'));
+    it("reads the /agents block, not an empty string", () => {
+      expect(block.length).toBeGreaterThan(1000);
+    });
+    it("its description and hero name no plan, no pass and no agent that submits", () => {
+      const desc = /description: `([^`]*)`/.exec(block)?.[1] ?? "";
+      expect(desc.length).toBeGreaterThan(0);
+      for (const s of [desc, block]) {
+        expect(s).not.toMatch(/Agent plan|live pass|ask your apply agent/);
+        expect(s).not.toMatch(/D\.PASS\.|SUBSCRIPTIONS\.agent/);
       }
+      expect(block).toMatch(/APPLY_YOURSELF_LINE/);
     });
   });
 
@@ -491,30 +488,30 @@ describe("the connect-your-AI strip on the homepage", () => {
     it("the bundle entry exports the PASS mirror", () => {
       expect(BAKE).toMatch(/export \{[^}]*\bPASS\b[^}]*\} from "\.\.\/src\/config\/products"/);
     });
-    it("the sentences are en.json's homeAgent lines — the new ones, under the names the bake reads — and sell nothing", () => {
+    it("the sentences are en.json's homeAgent lines with the mirror filled in, and the pass line is not baked", () => {
       expect(offer.connect).toBe(fill(homeAgent.connectLine2));
-      expect(offer.pass).toBe(fill(homeAgent.passLine));
       expect(offer.lead).toBe(homeAgent.lead);
       expect(offer.cta).toBe(homeAgent.connectCta);
-      // The apply pivot: the line the bake calls "pass" now says we never
-      // submit, and neither sentence carries a number or a price.
-      expect(offer.pass).toMatch(/never submits an application for you/);
-      for (const t of [offer.connect, offer.pass]) expect(t).not.toMatch(/\d|\$/);
+      // The strip's pass line sold a retired product (the apply pivot,
+      // 2026-10-11); the crawler copy does not carry it.
+      expect(Object.keys(offer)).not.toContain("pass");
       expect(offer.connect).toMatch(/no account/i);
     });
     it("a placeholder with no mirror throws instead of baking a raw brace", () => {
       const start = BAKE.indexOf("const AGENT_OFFER = (() => {");
       const end = BAKE.indexOf("})();", start) + "})();".length;
-      const D = { EN_LOCALE: { homeAgent: { ...homeAgent, passLine: "{{passSomethingElse}} hours" } }, PASS, MCP_ANON_CAPS };
+      const D = { EN_LOCALE: { homeAgent: { ...homeAgent, connectLine2: "{{passSomethingElse}} hours" } }, PASS, MCP_ANON_CAPS };
       expect(() => new Function("D", `${FILLER}\n${BAKE.slice(start, end)}; return AGENT_OFFER;`)(D)).toThrow(/no mirror/);
     });
-    it("the homepage block and the llms-full MCP line both emit them", () => {
+    it("the homepage block and the llms-full MCP line emit the connect line and the apply-yourself line, never the pass line", () => {
       const home = BAKE.slice(BAKE.indexOf('path: "/",'), BAKE.indexOf('path: "/cv-standards"'));
       expect(home).toContain("${esc(AGENT_OFFER.connect)}");
-      expect(home).toContain("${esc(AGENT_OFFER.pass)}");
+      expect(home).not.toContain("AGENT_OFFER.pass");
+      expect(home).toContain("${esc(APPLY_YOURSELF_LINE)}");
       expect(home).toContain('<a href="/agents"');
       const llms = BAKE.slice(BAKE.indexOf('lines.push("## Free tools");'), BAKE.indexOf('writeFileSync(join(dist, "llms-full.txt")'));
-      expect(llms).toContain("${AGENT_OFFER.connect} ${AGENT_OFFER.pass}");
+      expect(llms).toContain("${AGENT_OFFER.connect} ${APPLY_YOURSELF_LINE}");
+      expect(llms).not.toContain("AGENT_OFFER.pass");
     });
     it("no crawler sentence spells a pass number of its own", () => {
       // The template must interpolate; a typed price beside the pass in the

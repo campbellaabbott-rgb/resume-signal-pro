@@ -95,7 +95,7 @@ const LOCALE_FILES = readdirSync(LOCALES).filter((f) => f.endsWith(".json"));
 /** Nothing switched on. Every assertion below starts from here and turns on one thing. */
 const OFF: BoardFilterState = {
   q: "", location: "", remoteOnly: false, workMode: "", category: "", inclUncat: false,
-  agentOnly: false, country: "", experience: "", companyTokens: [], salaryFloor: 0,
+  country: "", experience: "", companyTokens: [], salaryFloor: 0,
   salaryCeiling: 0, payBasis: "", statedPayOnly: false, includeUnstatedPay: false, maxYears: 0, department: "",
   employmentType: "",
   // Added 2026-08-31 (agency disclosure): the literal failing the typecheck
@@ -373,7 +373,7 @@ describe("one derivation, and everything downstream reads it", () => {
     expect(relaxBlock.length, "the relaxation table did not parse").toBeGreaterThan(200);
     for (const key of [
       "experience", "maxYears", "salaryFloor", "salaryCeiling", "payBasis",
-      "statedPay", "department", "vendor", "freshness", "agentOnly",
+      "statedPay", "department", "vendor", "freshness",
     ]) {
       expect(chipBlock, `${key} narrows the board with no chip`).toContain(`key: "${key}"`);
       expect(relaxBlock, `${key} has no relaxation, so its rescue button re-counts the same zero`)
@@ -447,9 +447,12 @@ describe("one derivation, and everything downstream reads it", () => {
     // The ones the parser deliberately declines (NL_DECLINED in
     // supabase/functions/nl-search/parse.ts) still hard-reset, or a toggle left
     // on from before constrains an interpreted search silently.
-    for (const reset of ["setIncludeUnstatedPay(false)", "setInclUncat(false)", "setAgentOnly(false)", "setRemoteOnly(false)"]) {
+    for (const reset of ["setIncludeUnstatedPay(false)", "setInclUncat(false)", "setRemoteOnly(false)"]) {
       expect(nl, `a declined filter must still reset: ${reset}`).toContain(reset);
     }
+    // The agent-only toggle left the board with the retired apply agent
+    // (2026-10-12): there is no such state left for a parse to leave standing.
+    expect(JOBS_CODE, "the retired agent filter came back").not.toMatch(/\bsetAgentOnly\b|useState\(initial\.get\("agentOnly"\)/);
   });
 });
 

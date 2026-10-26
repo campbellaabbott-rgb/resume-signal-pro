@@ -1,0 +1,1 @@
+SELECT public._mig_exec(sql) FROM public._mig_stage WHERE name = '20261012135000_a_workday_tenant_that_hosts_another_employer_is_read_one_site_at_a_time.sql';

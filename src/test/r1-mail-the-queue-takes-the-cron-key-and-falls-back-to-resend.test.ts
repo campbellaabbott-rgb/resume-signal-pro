@@ -37,12 +37,30 @@
  *     the next tick (it once dead-lettered after one hiccup), until the code
  *     inside it expires (a sign-in mail is bounded by its TTL, not the retry
  *     count);
- *   - transactional_emails keeps today's behaviour exactly.
+ *   - a Lovable 429 on a sign-in mail (S13-017) ends in ONE Resend send with
+ *     the payload's idempotency key and sets NO cooldown; the run's other
+ *     sign-in mail goes straight to Resend; a cooldown in force (the
+ *     transactional queue's) never stops sign-in mail; a hung Lovable send
+ *     fails after its deadline, leaves a 'failed' row that counts toward the
+ *     fallback, and the run's later sign-in mail goes to Resend. Before the
+ *     hotfix one 429 with Retry-After 3600 stopped the run, set an hour's
+ *     cooldown, and every reset mail queued meanwhile expired unsent;
+ *   - the Resend fallback burst after a 429 is paced at 500 ms or more (Resend's
+ *     limit, 2 a second, is the whole team's), a Resend 429 while Lovable is
+ *     out leaves the rest of the batch for the next tick, and a run never
+ *     starts a message its 30-second claim has no room for, so a second
+ *     drain cannot read a message this run is still sending through Resend;
+ *     the first message is always tried, so a Lovable deadline set as high
+ *     as 30 s is held to 19.5 s, and a Resend answer whose body never ends
+ *     is bounded by the send's deadline (second fixer round: both let the
+ *     fallback outlive the claim);
+ *   - transactional_emails keeps today's behaviour (a 429 still stops the
+ *     run and sets the cooldown).
  *
  * Lovable's "set up emails" step can regenerate this function; this file is
  * the guard that fails CI when the cron key or the fallback disappears.
  */
-import { afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
 
 const jwt = (claims: Record<string, unknown>) => `x.${Buffer.from(JSON.stringify(claims)).toString("base64url")}.y`;
@@ -53,7 +71,7 @@ const CRON_KEY = "c".repeat(64);
 
 const db = new FakeDb();
 const lovable: Array<Record<string, unknown>> = [];
-const resend: Array<{ url: string; headers: Record<string, string>; body: Record<string, unknown> }> = [];
+const resend: Array<{ url: string; headers: Record<string, string>; body: Record<string, unknown>; at: number }> = [];
 const dlq: Array<Record<string, unknown>> = [];
 const deleted: number[] = [];
 const reads: string[] = [];
@@ -80,7 +98,7 @@ beforeAll(async () => {
   g.fetch = async (input: string | URL | Request, init?: RequestInit) => {
     const url = String(input instanceof Request ? input.url : input);
     if (!url.startsWith("https://api.resend.com/")) throw new Error(`unexpected fetch ${url}`);
-    resend.push({ url, headers: Object.fromEntries(new Headers(init?.headers).entries()), body: JSON.parse(String(init?.body ?? "{}")) });
+    resend.push({ url, headers: Object.fromEntries(new Headers(init?.headers).entries()), body: JSON.parse(String(init?.body ?? "{}")), at: Date.now() });
     return resendAnswer();
   };
   handler = await loadEdgeHandler("process-email-queue", {
@@ -90,12 +108,14 @@ beforeAll(async () => {
 }, 60_000);
 
 afterEach(() => {
+  vi.restoreAllMocks();
   g.__peqSend = defaultSend;
   lovable.length = 0; resend.length = 0; dlq.length = 0; deleted.length = 0; reads.length = 0;
   db.tables = {}; db.writes = []; db.rpcs = {}; db.faults = [];
   verdict = () => undefined;
   resendAnswer = () => new Response(JSON.stringify({ id: "re_123" }), { status: 200 });
   queues = {};
+  delete env.LOVABLE_SEND_TIMEOUT_MS;
 });
 
 function install() {
@@ -359,7 +379,216 @@ describe("a transient Resend failure waits for the next tick (review major: one 
   });
 });
 
+describe("a Lovable throttle or hang never stops sign-in mail (S13-017, hotfix 2026-10-14.2)", () => {
+  /** Lovable's own 429, as email-js throws it: an EmailAPIError with status 429 and the Retry-After it read. */
+  const throttled = (retryAfterSeconds = 3600) => async (p: Record<string, unknown>) => {
+    lovable.push(p);
+    throw Object.assign(new Error("Email API error: 429 daily quota exceeded"), { name: "EmailAPIError", status: 429, retryAfterSeconds });
+  };
+  const cooldown = () => db.rows("email_send_state")[0].retry_after_until;
+
+  it("a 429 on a sign-in mail ends in exactly one Resend send with the payload's idempotency key, and sets no cooldown", async () => {
+    install();
+    queues = { auth_emails: [authMsg(60)] };
+    g.__peqSend = throttled();
+    const res = await run({ "x-email-cron": CRON_KEY });
+    expect(await res.json()).toEqual({ processed: 1, viaResend: 1, rateLimited: 1 });
+    expect(resend, "a throttled reset mail never reached the Resend fallback").toHaveLength(1);
+    expect(resend[0].headers["idempotency-key"]).toBe("auth:run-60");
+    expect(resend[0].body).toMatchObject({ from: "Resume Booster <account@resumebooster.work>", to: ["u60@example.com"], subject: "Your sign-in code" });
+    expect(cooldown(), "a 429 on sign-in mail set the global cooldown, which holds every reset mail past its code").toBeNull();
+    expect(db.writes.filter((w) => w.table === "email_send_state"), "the cooldown row was written").toEqual([]);
+    expect(dlq).toEqual([]);
+    expect(deleted).toEqual([60]);
+    expect(rowsFor("m-60"), "the throttle left no trace beside the send").toEqual(["rate_limited", "sent"]);
+  });
+
+  it("after a 429 the run's other sign-in mail goes straight to Resend (Lovable is not asked again), one send each", async () => {
+    install();
+    queues = { auth_emails: [authMsg(61), authMsg(62), authMsg(63)] };
+    g.__peqSend = throttled();
+    expect(await (await run({ "x-email-cron": CRON_KEY })).json()).toEqual({ processed: 3, viaResend: 3, rateLimited: 1 });
+    expect(lovable.map((p) => p.message_id), "the run kept asking a Lovable that had just throttled it").toEqual(["m-61"]);
+    expect(resend.map((r) => r.headers["idempotency-key"])).toEqual(["auth:run-61", "auth:run-62", "auth:run-63"]);
+    expect(cooldown()).toBeNull();
+  });
+
+  it("a 429 and a Resend that cannot send either: the mail stays on the queue, no cooldown, and the next tick tries again", async () => {
+    install();
+    queues = { auth_emails: [authMsg(64)] };
+    g.__peqSend = throttled();
+    resendAnswer = () => new Response("busy", { status: 503 });
+    expect(await (await run({ "x-email-cron": CRON_KEY })).json()).toEqual({ processed: 0, resendFailed: 1, rateLimited: 1 });
+    expect(dlq).toEqual([]);
+    expect(deleted).toEqual([]);
+    expect(cooldown()).toBeNull();
+    resendAnswer = () => new Response(JSON.stringify({ id: "re_next" }), { status: 200 });
+    const next = await (await run({ "x-email-cron": CRON_KEY })).json();
+    expect(next, "the next tick was skipped by a cooldown").toEqual({ processed: 1, viaResend: 1, rateLimited: 1 });
+    expect(resend.map((r) => r.headers["idempotency-key"])).toEqual(["auth:run-64", "auth:run-64"]);
+  });
+
+  it("a cooldown already in force (the transactional queue's) does not stop sign-in mail; it still holds the transactional queue", async () => {
+    install();
+    db.rows("email_send_state")[0].retry_after_until = new Date(Date.now() + 60 * 60_000).toISOString();
+    queues = { auth_emails: [authMsg(65)], transactional_emails: [authMsg(66, { label: "fix-plan-drip" })] };
+    expect(await (await run({ "x-email-cron": CRON_KEY })).json(), "a cooldown stopped the sign-in mail drain").toEqual({ processed: 1 });
+    expect(lovable.map((p) => p.message_id)).toEqual(["m-65"]);
+    expect(await (await run({ authorization: `Bearer ${SERVICE_KEY}`, "content-type": "application/json" }, { queues: ["auth_emails", "transactional_emails"] })).json())
+      .toEqual({ processed: 0, cooledQueues: ["transactional_emails"] });
+    expect(reads, "the transactional queue was read during its cooldown").not.toContain("transactional_emails");
+    expect(await (await run({ authorization: `Bearer ${SERVICE_KEY}`, "content-type": "application/json" }, { queues: ["transactional_emails"] })).json())
+      .toEqual({ skipped: true, reason: "rate_limited" });
+  });
+
+  it("a hung Lovable send fails after its deadline: a 'failed' row counted toward the fallback, and the run's later sign-in mail goes straight to Resend", async () => {
+    install();
+    env.LOVABLE_SEND_TIMEOUT_MS = "60";
+    g.__peqSend = (p: Record<string, unknown>) => { lovable.push(p); return new Promise(() => { /* Lovable never answers */ }); };
+    queues = { auth_emails: [authMsg(70), authMsg(71)] };
+    const started = Date.now();
+    expect(await (await run({ "x-email-cron": CRON_KEY })).json()).toEqual({ processed: 1, viaResend: 1 });
+    expect(Date.now() - started, "the run waited on a hung send far past its deadline").toBeLessThan(5_000);
+    expect(lovable.map((p) => p.message_id), "the run asked a hung Lovable again").toEqual(["m-70"]);
+    expect(rowsFor("m-70"), "a hung send left no row, so it never counted toward the fallback").toEqual(["failed"]);
+    expect(String(db.rows("email_send_log").find((r) => r.message_id === "m-70")!.error_message)).toContain("did not answer within 60 ms");
+    expect(resend.map((r) => r.headers["idempotency-key"]), "the mail Lovable never saw did not go out through Resend").toEqual(["auth:run-71"]);
+    expect(dlq).toEqual([]);
+    expect(cooldown()).toBeNull();
+  });
+
+  it("the third hung send of one mail goes through Resend at once", async () => {
+    install();
+    env.LOVABLE_SEND_TIMEOUT_MS = "60";
+    g.__peqSend = (p: Record<string, unknown>) => { lovable.push(p); return new Promise(() => { /* Lovable never answers */ }); };
+    for (let k = 0; k < 2; k++) db.rows("email_send_log").push({ message_id: "m-72", template_name: "magiclink", recipient_email: "u72@example.com", status: "failed" });
+    queues = { auth_emails: [authMsg(72)] };
+    expect(await (await run({ "x-email-cron": CRON_KEY })).json()).toEqual({ processed: 1, viaResend: 1 });
+    expect(resend.map((r) => r.headers["idempotency-key"])).toEqual(["auth:run-72"]);
+  });
+});
+
+describe("the Resend fallback burst stays inside Resend's limit and inside the run's claim", () => {
+  const throttled = async (p: Record<string, unknown>) => {
+    lovable.push(p);
+    throw Object.assign(new Error("Email API error: 429 daily quota exceeded"), { name: "EmailAPIError", status: 429, retryAfterSeconds: 3600 });
+  };
+
+  it("after a Lovable 429, the run's Resend sends are at least 500 ms apart, whatever send_delay_ms says (here 0)", async () => {
+    install();
+    queues = { auth_emails: [authMsg(90), authMsg(91), authMsg(92)] };
+    g.__peqSend = throttled;
+    expect(await (await run({ "x-email-cron": CRON_KEY })).json()).toEqual({ processed: 3, viaResend: 3, rateLimited: 1 });
+    const gaps = resend.slice(1).map((r, k) => r.at - resend[k].at);
+    expect(gaps, "the fallback burst outran Resend's team-wide limit of 2 a second").toHaveLength(2);
+    for (const gap of gaps) expect(gap).toBeGreaterThanOrEqual(490);
+  });
+
+  it("a Resend 429 while Lovable is out ends the run's sign-in sends: the rest stay on the queue for the next tick, nothing dead-letters", async () => {
+    install();
+    queues = { auth_emails: [authMsg(93), authMsg(94), authMsg(95), authMsg(96)] };
+    g.__peqSend = throttled;
+    resendAnswer = () => new Response(JSON.stringify({ statusCode: 429, name: "rate_limit_exceeded", message: "Too many requests" }), { status: 429 });
+    expect(await (await run({ "x-email-cron": CRON_KEY })).json()).toEqual({ processed: 0, resendFailed: 1, rateLimited: 1, leftForNextTick: 3 });
+    expect(resend, "the run kept hammering a Resend that had answered 429").toHaveLength(1);
+    expect(dlq).toEqual([]);
+    expect(deleted).toEqual([]);
+    expect(db.rows("email_send_state")[0].retry_after_until).toBeNull();
+  });
+
+  it("a run never starts a message its 30-second claim has no room for: with each Resend send taking 9 s, three go and two wait for the next read", async () => {
+    install();
+    queues = { auth_emails: [authMsg(100), authMsg(101), authMsg(102), authMsg(103), authMsg(104)] };
+    g.__peqSend = throttled;
+    const realNow = Date.now.bind(Date);
+    let skew = 0;
+    vi.spyOn(Date, "now").mockImplementation(() => realNow() + skew);
+    resendAnswer = () => { skew += 9_000; return new Response(JSON.stringify({ id: "re_slow" }), { status: 200 }); };
+    expect(await (await run({ "x-email-cron": CRON_KEY })).json()).toEqual({ processed: 3, viaResend: 3, rateLimited: 1, leftForNextTick: 2 });
+    expect(resend.map((r) => r.headers["idempotency-key"]), "a send was started past the claim, where another drain could read the same mail").toEqual(["auth:run-100", "auth:run-101", "auth:run-102"]);
+    expect(deleted).toEqual([100, 101, 102]);
+    expect(dlq).toEqual([]);
+  });
+
+  it("the first message of a batch is always tried, and the claim's room is judged for the rest", async () => {
+    install();
+    env.LOVABLE_SEND_TIMEOUT_MS = "30000";
+    queues = { auth_emails: [authMsg(105), authMsg(106)] };
+    const realNow = Date.now.bind(Date);
+    let skew = 0;
+    vi.spyOn(Date, "now").mockImplementation(() => realNow() + skew);
+    // Lovable takes 1 s to send the first: the second's slowest outcome (the held deadline, 19.5 s, then a Resend fallback) no longer fits.
+    g.__peqSend = async (p: Record<string, unknown>) => { lovable.push(p); skew += 1_000; return { success: true }; };
+    expect(await (await run({ "x-email-cron": CRON_KEY })).json()).toEqual({ processed: 1, leftForNextTick: 1 });
+    expect(lovable.map((p) => p.message_id)).toEqual(["m-105"]);
+  });
+
+  /** Run the drain on a fake clock (timers and Date), so 30-second deadlines take no real time. */
+  async function onAFakeClock(headers: Record<string, string>): Promise<unknown> {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
+    try {
+      const pending = run(headers).then((r) => r.json());
+      await vi.advanceTimersByTimeAsync(60_000);
+      vi.useRealTimers();
+      return await Promise.race([pending, new Promise((r) => setTimeout(() => r("still running"), 2_000))]);
+    } finally {
+      vi.useRealTimers();
+    }
+  }
+
+  it("a Lovable deadline set as high as 30 s is held to what the claim leaves: a third hung send's Resend fallback still ends inside the 30-second claim (second fixer round)", async () => {
+    install();
+    env.LOVABLE_SEND_TIMEOUT_MS = "30000";
+    for (let k = 0; k < 2; k++) db.rows("email_send_log").push({ message_id: "m-300", template_name: "magiclink", recipient_email: "u300@example.com", status: "failed" });
+    queues = { auth_emails: [authMsg(300)] };
+    g.__peqSend = (p: Record<string, unknown>) => { lovable.push(p); return new Promise(() => { /* Lovable never answers */ }); };
+    let claimedAt = 0;
+    db.rpcs.read_email_batch = (a) => { claimedAt = Date.now(); reads.push(String(a.queue_name)); return { data: queues[String(a.queue_name)] ?? [], error: null }; };
+    const legs: Array<{ start: number; end: number }> = [];
+    const fetchBefore = g.fetch as typeof fetch;
+    // Resend takes 7.9 s, inside the fallback's 8-second deadline.
+    g.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+      const start = Date.now();
+      await new Promise((r) => setTimeout(r, 7_900));
+      const res = await fetchBefore(input, init);
+      legs.push({ start, end: Date.now() });
+      return res;
+    }) as typeof fetch;
+    try {
+      expect(await onAFakeClock({ "x-email-cron": CRON_KEY })).toEqual({ processed: 1, viaResend: 1 });
+    } finally {
+      g.fetch = fetchBefore;
+    }
+    expect(legs).toHaveLength(1);
+    expect(legs[0].end - claimedAt, "the Resend fallback ran past the 30-second claim (less its 2 s margin), where another drain can read the mail and ask a recovered Lovable: two providers, one mail twice").toBeLessThanOrEqual(28_000);
+    const failed = db.rows("email_send_log").filter((r) => r.message_id === "m-300" && r.status === "failed").map((r) => String(r.error_message ?? ""));
+    expect(failed.some((m) => m.includes("did not answer within 19500 ms")), `the deadline was not held to the claim: ${failed.join(" | ")}`).toBe(true);
+  });
+
+  it("a Resend 200 whose body never ends does not hold the run past its claim: once the send's deadline passes, the mail is recorded sent (second fixer round)", async () => {
+    install();
+    queues = { auth_emails: [authMsg(400)] };
+    g.__peqSend = throttled;
+    resendAnswer = () => new Response(new ReadableStream({ start(c) { c.enqueue(new TextEncoder().encode('{"id":')); } }), { status: 200 });
+    expect(await onAFakeClock({ "x-email-cron": CRON_KEY }), "a Resend body that never ended held the run until the platform killed it, before the 'sent' row").toEqual({ processed: 1, viaResend: 1, rateLimited: 1 });
+    expect(rowsFor("m-400")).toEqual(["rate_limited", "sent"]);
+    expect(deleted).toEqual([400]);
+  });
+});
+
 describe("transactional mail keeps today's behaviour (for a caller that names that queue)", () => {
+  it("a 429 on a drip mail still stops the run and sets the cooldown, and never calls Resend", async () => {
+    install();
+    queues = { transactional_emails: [authMsg(80, { label: "fix-plan-drip" }), authMsg(81, { label: "fix-plan-drip" })] };
+    g.__peqSend = async (p: Record<string, unknown>) => { lovable.push(p); throw Object.assign(new Error("Email API error: 429"), { status: 429, retryAfterSeconds: 120 }); };
+    const res = await run({ authorization: `Bearer ${SERVICE_KEY}`, "content-type": "application/json" }, { queues: ["transactional_emails"] });
+    expect(await res.json()).toEqual({ processed: 0, stopped: "rate_limited" });
+    expect(lovable.map((p) => p.message_id)).toEqual(["m-80"]);
+    expect(resend).toEqual([]);
+    const until = Date.parse(String(db.rows("email_send_state")[0].retry_after_until));
+    expect(until - Date.now()).toBeGreaterThan(100_000);
+  });
+
   const drip = () => run({ authorization: `Bearer ${SERVICE_KEY}`, "content-type": "application/json" }, { queues: ["transactional_emails"] });
 
   it("a 403 on a drip mail dead-letters it and never calls Resend", async () => {
@@ -383,9 +612,9 @@ describe("transactional mail keeps today's behaviour (for a caller that names th
 });
 
 describe("the build", () => {
-  it("the preflight names process-email-queue.2026-10-14.1 and exposes it", async () => {
+  it("the preflight names process-email-queue.2026-10-14.2 (the S13-017 hotfix) and exposes it", async () => {
     const res = await handler(new Request("https://harness.supabase.co/functions/v1/process-email-queue", { method: "OPTIONS" }));
-    expect(res.headers.get("x-fn-build")).toBe("process-email-queue.2026-10-14.1");
+    expect(res.headers.get("x-fn-build")).toBe("process-email-queue.2026-10-14.2");
     expect(res.headers.get("access-control-expose-headers")).toBe("x-fn-build");
   });
 });

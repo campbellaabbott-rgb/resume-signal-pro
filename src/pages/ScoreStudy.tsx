@@ -10,6 +10,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { SEO } from "@/components/seo/SEO";
+import { PageJsonLd } from "@/components/seo/PageJsonLd";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { supabase } from "@/integrations/supabase/client";
@@ -123,9 +124,7 @@ export default function ScoreStudy() {
         description="Real ATS score benchmarks, updated live from our scan corpus: overall median and quartiles, per-industry distributions, and experience-level medians — not folklore thresholds."
         path="/research/ats-score-benchmarks"
       />
-      {jsonLd.map((b, i) => (
-        <script key={i} type="application/ld+json" dangerouslySetInnerHTML={{ __html: b }} />
-      ))}
+      <PageJsonLd blocks={jsonLd} />
       <Header />
       <main className="pt-20 pb-20">
         <article className="container max-w-3xl">

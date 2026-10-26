@@ -68,6 +68,29 @@ const code = (s: string) =>
     .replace(/^\s*\/\/[^\n]*/gm, " ");
 
 const JOBS = code(read("src/pages/Jobs.tsx"));
+const DETAIL = code(read("src/components/jobs/listing/PostingDetail.tsx"));
+
+/**
+ * Where the pane's evidence goes: the board hands the filing, the filed wages
+ * and the Ontario panel as PostingDetail's record slots (never as the pay row's
+ * context), and PostingDetail renders its records in their own group, apart
+ * from PostingFacts. Returns what is wrong; empty when both hold.
+ */
+function recordsKeptApart(jobs: string, detail: string): string[] {
+  const wrong: string[] = [];
+  const payAt = jobs.indexOf("payContext:");
+  const pay = payAt < 0 ? "" : jobs.slice(payAt, jobs.indexOf("employerContext:", payAt));
+  for (const [slot, name] of [["layoffLine", "LayoffFilingLine"], ["lcaLine", "LcaFiledWagesLine"], ["ontario", "OntarioEsaDisclosures"]] as const) {
+    if (!new RegExp(`${slot}:[^<]{0,120}<${name}\\b`).test(jobs)) wrong.push(`${name} is not handed to the pane as its ${slot} slot`);
+    if (pay.includes(`<${name}`)) wrong.push(`${name} drifted into the pay row's context`);
+  }
+  if (!/const records = \[slots\.layoffLine, slots\.lcaLine, slots\.ontario\]/.test(detail)) wrong.push("the pane no longer groups its records");
+  if (!/data-posting-records/.test(detail)) wrong.push("the records group lost its own container");
+  const facts = /<PostingFacts\b[^>]*\/>/.exec(detail)?.[0] ?? "";
+  if (!facts) wrong.push("the pane no longer prints its facts through PostingFacts");
+  if (/records|slots\.(layoffLine|lcaLine|ontario)/.test(facts)) wrong.push("the records are printed inside the facts");
+  return wrong;
+}
 
 // ── the menu, exercised rather than spelled ─────────────────────────────────
 
@@ -183,21 +206,15 @@ describe("the board's detail panel mounts the evidence it was given", () => {
     }
   });
 
-  it("puts both under the employer-record line, not among the facts of the job", () => {
-    // Order is the claim. These are statements about the EMPLOYER's record
-    // from named government files; the <dl> below them is what this posting
-    // says. A filed wage that drifted into the pay row would read as this
-    // role's pay, which is the one thing the line says it is not.
-    const filing = JOBS.indexOf("<LayoffFilingLine");
-    const lca = JOBS.indexOf("<LcaFiledWagesLine");
-    const esa = JOBS.indexOf("<OntarioEsaDisclosures");
-    const facts = JOBS.indexOf("jobsPage.factPay");
-    expect(filing).toBeGreaterThan(-1);
-    expect(facts).toBeGreaterThan(-1);
-    expect(lca, "the filed-wage line is not in the panel's evidence run").toBeGreaterThan(filing);
-    expect(esa, "the Ontario panel is not in the panel's evidence run").toBeGreaterThan(filing);
-    expect(lca, "the filed-wage line drifted into the facts list").toBeLessThan(facts);
-    expect(esa, "the Ontario panel drifted into the facts list").toBeLessThan(facts);
+  it("puts both beside the employer's filing, kept apart from the facts of the job", () => {
+    // These are statements about the EMPLOYER's record from named government
+    // files; the pane's fact list is what this posting says. A filed wage that
+    // drifted into the pay row would read as this role's pay, which is the one
+    // thing the line says it is not. Since pass B (2026-10-12) the pane is the
+    // listing vocabulary's PostingDetail: the board hands the three as the
+    // record slots, and the pane prints them in a group of their own, never
+    // inside the facts.
+    expect(recordsKeptApart(JOBS, DETAIL)).toEqual([]);
   });
 });
 
@@ -279,10 +296,15 @@ describe("teeth: each property fails on a copy with the property removed", () =>
     expect(mountIsUnconditional('const x = ok ? <LcaFiledWagesLine companyToken={t} /> : null;', "LcaFiledWagesLine")).toBe(false);
   });
 
-  it("an evidence slot moved below the facts list is reported", () => {
-    const facts = JOBS.indexOf("jobsPage.factPay");
-    const moved = JOBS.replace(/<OntarioEsaDisclosures\b[\s\S]*?\/>/, " ") + "\n<OntarioEsaDisclosures postingId={detailJob.id} postingUrl={detailJob.applyUrl} />";
-    expect(moved.indexOf("<OntarioEsaDisclosures"), "the moved copy should sit after the facts").toBeGreaterThan(facts);
-    expect(JOBS.indexOf("<OntarioEsaDisclosures")).toBeLessThan(facts);
+  it("an evidence slot moved into the facts is reported", () => {
+    // The board handing the filed-wage line in as the pay row's context...
+    const intoPay = JOBS.replace("payContext: detailSalaryContext ? (", "payContext: <LcaFiledWagesLine companyToken={detailJob.token} socCode={null} worksiteState={null} />, payContextWas: detailSalaryContext ? (");
+    expect(intoPay, "the mutation did not apply: RE-ANCHOR this tooth").not.toBe(JOBS);
+    expect(recordsKeptApart(intoPay, DETAIL).length).toBeGreaterThan(0);
+    // ...or the pane printing its records inside the fact list.
+    const intoFacts = DETAIL.replace("payContext={slots.payContext}", "payContext={<>{slots.payContext}{records}</>}");
+    expect(intoFacts, "the mutation did not apply: RE-ANCHOR this tooth").not.toBe(DETAIL);
+    expect(recordsKeptApart(JOBS, intoFacts).length).toBeGreaterThan(0);
+    expect(recordsKeptApart(JOBS, DETAIL)).toEqual([]);
   });
 });

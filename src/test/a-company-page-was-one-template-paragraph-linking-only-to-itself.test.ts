@@ -45,7 +45,7 @@ const factsOf = (intel: unknown) => landerFacts(intel, { countryName: (c: string
 const MS = { usd_n: 363, countries: [{ n: 509, country: "US" }, { n: 95, country: "IN" }, { n: 47, country: "GB" }], categories: [{ n: 147, category: "finance" }, { n: 105, category: "customer" }, { n: 78, category: "engineering" }] };
 const DOMINOS = { countries: [{ n: 21828, country: "US" }, { n: 3, country: "CA" }], categories: [{ n: 6126, category: "customer" }, { n: 5743, category: "operations" }, { n: 400, category: "other" }] };
 
-type Opening = { href: string; title: string; place: string };
+type Opening = { href: string | null; title: string; place: string };
 const page = (token: string, name: string, openN: number | null, intel: unknown, openings: Opening[] = [], openingsAt: string | null = null) =>
   companyLanderPage({ token, name, primaryToken: token, openN, facts: factsOf(intel), openings, openingsAt, sources: "Workday, Greenhouse", boardCompanies: 31000, site: SITE, esc, possessive, fmt, href });
 
@@ -58,7 +58,7 @@ describe("a company page carries what the board knows about that employer and no
     const p = page("ms~wd5~external", "Morgan Stanley", 605, MS);
     expect(p.content).toContain(`<a href="/jobs/company/ms~wd5~external?country=IN">India</a>`);
     expect(p.content).toContain(`<a href="/jobs/company/ms~wd5~external?category=finance">Finance &amp; Accounting</a>`);
-    expect(p.title).toBe("Morgan Stanley Jobs — 605 Verified Openings");
+    expect(p.title).toBe("Morgan Stanley jobs: 605 open roles from their own hiring system");
   });
 
   it("links the posting pages this bake wrote for it, in the body and as an ItemList", () => {
@@ -78,9 +78,10 @@ describe("a company page carries what the board knows about that employer and no
     const p = page("dominos", "Domino's", 25792, DOMINOS);
     expect(p.content).not.toMatch(/[A-Z]{3,} [A-Z']{3,} [A-Z]{3,}:/);
     expect(p.content).not.toMatch(/the number below it/);
-    expect(p.content).toContain("has not taken down and whose date falls inside the last 30 days");
+    expect(p.content).toContain("has not taken down whose date falls inside the last 30 days: the employer's own date, or for a posting with no date, the day we last saw it in their feed");
     for (const s of [p.title, p.description, p.content]) expect(s).not.toMatch(/Domino(?:'|&#39;)s(?:'|&#39;)s/);
-    expect(p.content).toContain("Domino's own official job board");
+    expect(p.content).toContain("Domino's own hiring system");
+    expect(`${p.title} ${p.content}`, "the board reads employers' feeds; it does not verify each role").not.toMatch(/verified/i);
   });
 
   it("drops the catch-all bucket and empty rows from the facts", () => {
@@ -134,15 +135,21 @@ describe("a company page lists the employer's own openings, not just a place and
   // openings read the comments described did not exist.
   const listing = (n: number, tag: string) => ({ jobs: Array.from({ length: n }, (_, i) => ({ id: `smartrecruiters:dominos:${tag}${i}`, title: `Delivery Driver ${tag} ${String.fromCharCode(97 + i)}`, location: "Ann Arbor, Michigan" })) });
 
-  it("reads the board's listing into openings, each linked to the posting on the live board", () => {
+  it("reads the board's listing into openings, a row with no page of its own printed as text beside one link to the live board", () => {
+    // SEO-005 (2026-10-18): the rows used to link /jobs?job=<id>, which
+    // answers with the /jobs file under a canonical of /jobs: 4,655 such
+    // links on 488 indexable company pages. The listing is still printed in
+    // full (the page keeps the ten openings that make it its own); only a
+    // row whose posting page this bake wrote is a link.
     const rows = openingsFromList(200, listing(12, "x"));
     expect(rows).toHaveLength(10);
     const { openings, at, answered } = landerOpenings({ postings: [], cached: { at: "2026-10-08", rows }, today: TODAY });
     expect(answered).toBe(true);
     const p = page("dominos", "Domino's", 25792, DOMINOS, openings, at);
-    const jobLinks = p.content.match(/href="\/jobs\?job=[^"]+"/g) ?? [];
-    expect(jobLinks.length, "the report's bar for dominos: 10+ posting or job links").toBeGreaterThanOrEqual(10);
-    expect(p.content).toContain(`href="/jobs?job=smartrecruiters%3Adominos%3Ax0"`);
+    expect(p.content.match(/href="\/jobs\?job=[^"]+"/g) ?? [], "a /jobs?job= link on a company page").toEqual([]);
+    expect((p.content.match(/<li>/g) ?? []).length, "the report's bar for dominos: 10+ openings listed").toBeGreaterThanOrEqual(10);
+    expect(p.content).toContain(rows![0].title);
+    expect(p.content, "the one link to the live board").toContain(`href="/jobs/company/dominos"`);
     expect(p.content).toContain("read 2026-10-08");
     expect((p.jsonLd[0] as { mainEntity?: unknown }).mainEntity, "a board link is the board, not an item of this page").toBeUndefined();
     expect(openingsFromList(429, null), "a refused read is no answer").toBeNull();
@@ -151,7 +158,11 @@ describe("a company page lists the employer's own openings, not just a place and
   it("a posting page of its own comes first and the board row for it is not listed twice", () => {
     const rows = openingsFromList(200, listing(3, "y"))!;
     const { openings } = landerOpenings({ postings: [{ id: rows[0].id, path: "/jobs/posting/smartrecruiters/dominos/y0", title: rows[0].title, place: "" }], cached: { at: TODAY, rows }, today: TODAY });
-    expect(openings.map((o: Opening) => o.href)).toEqual(["/jobs/posting/smartrecruiters/dominos/y0", "/jobs?job=smartrecruiters%3Adominos%3Ay1", "/jobs?job=smartrecruiters%3Adominos%3Ay2"]);
+    // A board row with no posting page of its own carries no link (SEO-005).
+    expect(openings.map((o: Opening) => o.href)).toEqual(["/jobs/posting/smartrecruiters/dominos/y0", null, null]);
+    // One whose posting page this bake wrote is linked to that page.
+    const baked = landerOpenings({ postings: [], cached: { at: TODAY, rows }, today: TODAY, pageFor: (id: string) => (id === rows[1].id ? "/jobs/posting/smartrecruiters/dominos/y1" : null) });
+    expect(baked.openings.map((o: Opening) => o.href)).toEqual([null, "/jobs/posting/smartrecruiters/dominos/y1", null]);
   });
 
   it("a place and a field alone do not make a page its own; an answered short listing is noindex, an unread one keeps its index", () => {
