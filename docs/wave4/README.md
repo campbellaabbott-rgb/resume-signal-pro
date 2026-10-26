@@ -35,7 +35,10 @@ and one stayed with its claims made true. Branch `wave4-descope`, pushed to
 `wave4/integration`. The descope's first form (27e54375) kept rounds 3 and 4's
 search split; a recheck of it (2026-10-25, findings in this section) found
 that mix worse than main too, so the whole search exclusion went back to
-main's and the question copy was weakened once more (823cdc1f, f805722c).
+main's and the question copy was weakened once more (823cdc1f, f805722c). A
+second recheck (2026-10-25) found nine more defects, three of them blockers;
+all nine are fixed under "The second recheck of the descope" at the end of
+this section (21c849c6, f46d1fbe, ad3752a7 and the verifier commit).
 
 **What left, and why.**
 
@@ -93,10 +96,12 @@ project must also correct the sentences that call the served figure stated
 pay, which are main's and which wave 4 did not touch: the board's "Stated pay
 only" and "ordered by stated pay" labels and the changelog's "real published
 pay only, never estimates". The two AI-host lines wave 4 rewrote now say what
-is true: agent-mcp's job-card `salary` is "the posting's pay text, verbatim:
-the employer's pay field, or a pay line the board read from the description,
-which on rare postings is a business figure", and `hasStatedPay` says the
-same.
+is true: agent-mcp's job-card `salary` is "the posting's pay as text: the
+employer's pay field, as the vendor gives it or written out by the board from
+its figures, or a pay line the board read from the description, which on rare
+postings is a business figure" (the second recheck dropped "verbatim": for a
+vendor's structured pay the board writes the string itself), and
+`hasStatedPay` says the same.
 
 **S12-017 is now its own search project.** Its method has to measure titles,
 not only splits: a candidate is never worse than main at the query level and,
@@ -189,10 +194,12 @@ recognises as asking for one; and the answers panel's all-clear
 figure, employer or job title the résumé does not show, which is what
 `validateCandidateClaims` reads.
 
-**Builds.** agent-mcp and public-api `2026-10-11.35`; create-agent-checkout
-and create-pass-checkout `2026-10-11.16`; create-product-checkout
-`2026-10-11.25` (their only change is the refusal line). Each moved twice in
-the descope (`.34`, `.15` and `.24` were the first form, never deployed).
+**Builds.** agent-mcp and public-api `2026-10-11.36`; create-agent-checkout
+and create-pass-checkout `2026-10-11.17`; create-product-checkout
+`2026-10-11.26` (their only change is the refusal line). Each moved three
+times in the descope (`.34`, `.15` and `.24` were its first form and `.35`,
+`.16` and `.25` its recheck, never deployed; the second recheck's are the
+ones above).
 generate-application-answers, generate-apply-package and apply-agent stay
 `2026-10-11.33` (unchanged). job-board keeps its reserved `2026-09-09.93`,
 now with main's salary miner and main's search exclusion.
@@ -230,6 +237,164 @@ seo/integration and hp/integration it lists the same six undeclared files
 27e54375 against each of those branches and main (27, 27, 31 and 22). The full
 suite runs in the push's pre-push hook; its count is in the PR #39 body. Main
 is not merged in this step.
+
+### The second recheck of the descope (2026-10-25)
+
+A recheck of b76e460d (`~/.config/resumebooster/wave4-descope-hp-results-2026-10-25.json`,
+"w4found") confirmed nine findings: three blockers, three majors and three
+minors. Each was reproduced first, each fix has a test that failed on
+b76e460d, and each takes main's behaviour or a true, weaker sentence; none
+adds a heuristic.
+
+- **Blocker: the connector turned an excluded remote into a remote filter.**
+  `agent-mcp/query-place.ts` readQuery moved a trailing "remote" or "anywhere"
+  into `remote: true` with no negation check, and its leading class took a
+  minus, so "nurse -remote", "nurse not remote", "engineer non-remote" and
+  "analyst except remote" asked the board for remote postings only (live,
+  read-only: main's `{q:"nurse -remote"}` served 0 of 40 remote; wave 4's
+  `{q:"nurse", remote:true}` 40 of 40, total 656). Both MCP search tools reach
+  it. The lift now refuses a minus on the word and a negating word before it
+  (the place words plus "no" and "non", with or without "a"); a refused lift
+  leaves the query as typed, which is what origin/main's connector sends and
+  what job-board's own split and negated-remote rule read. 17 negated forms
+  and a server round trip (`the-first-search-answers-the-question-as-asked`)
+  failed first; the positives ("react developer remote", "nurse (remote)",
+  "engineer fully remote", "Notary remote") still lift.
+- **Blocker: the signed-in /agent page described the switched-off agent as
+  running.** The Settings tab showed AgentReachNote ("It submits
+  automatically to 37,909 of the 1,012,399 postings ... Auto-submits on: ..."),
+  AgentControlsPanel ("Never apply to these employers", "Pause, with a date it
+  comes back") and ApplyProfilePanel's readiness block ("Nothing in your
+  profile is holding applications back ... the agent still stops rather than
+  guessing", or "Nothing can be sent yet" and "the agent refuses rather than
+  guessing, so those postings are skipped") beside the notice that says we
+  send nothing; the Today tab told a past subscriber with an active mandate
+  "your first queue arrives after tonight's run". Agent.tsx now renders the
+  controls and the reach note only when `APPLY_AGENT_ON`, as it already did
+  for the setup checklist and the pending questions; ApplyProfilePanel keeps
+  the person's stored answers but shows its intro and readiness block only
+  when the agent is on; MorningQueuePanel's empty line needs the agent on.
+  `w4b-descope-the-agent-console-describes-no-running-agent.test.tsx` mounts
+  the page signed in with production's live `sendable` answer in all nine
+  locales (27 cases failed first) and switches the agent on as its positive
+  control.
+- **Blocker: crawlers and AI hosts were still sold the cut products.**
+  llms.txt said "Paid tools are one-time purchases: resume rewrites, cover
+  letters, interview coaching, Freelance Boost", listed "Freelance Boost ...
+  $29 one-time" and called /pricing "One-time tools and the all-access plan";
+  the /freelance-boost bake sold the product ("in about 15 seconds") from a
+  sitemap entry at 0.8. Wave 4 is what makes them false, so wave 4 carries
+  them: llms.txt says "One paid report (the $5 Full Analysis) and one optional
+  monthly plan, Pro (the writing tools, the Full Analysis and no daily scan
+  cap)", the Freelance Boost line is gone and /pricing is "The free tools,
+  the $5 Full Analysis and Pro"; the bake's /freelance-boost is noindex and
+  says, from the page's own `freelanceBoost.noLongerSold*` strings, that it is
+  no longer sold, and STATIC_ROUTES no longer lists it. The guard in
+  `w4b-the-cut-products-are-sold-nowhere.test.ts` refuses any llms.txt line
+  that names a cut product beside a price or an offer, pins the figure to the
+  catalogue's, and reads the bake's block and sitemap list (4 cases failed
+  first; its teeth catch the old lines).
+- **Major: what ChatGPT reads.** The retired products' refusal line (nine
+  languages) and llms.txt's apply-yourself line named all five form vendors
+  for Claude and ChatGPT alike; inside ChatGPT the server reads only
+  Greenhouse and Recruitee. Both now carry the /agents page's own sentence
+  (`agentConnect.selfApplyChatgpt`) in each language. The refusal line's names
+  come from `RETIRED_FORM_VENDORS` and `RETIRED_FORM_VENDORS_ON_CHATGPT` in
+  `apply-agent-retired.ts`, held equal to application-form.ts's
+  `FORM_READER_VENDORS` and `PUBLIC_API_FORM_VENDORS` and to the page's
+  mirrors, so no sentence types a vendor (11 cases failed first).
+- **Major: the applyAgentCountries changelog line.** "anything asking about a
+  country you haven't listed stops and waits for you instead of guessing"
+  (all nine shards) is untrue: "Can you lawfully take up employment in
+  Ireland?" is classified draftable, on main too. It now says "a question it
+  recognises as asking about a country you haven't listed stops and waits for
+  you", the hedge setupIsOneStep carries, in each language; the copy guard
+  lists the old sentence as removed in every language, with teeth.
+- **Major: the merge of main would break SEO's /affiliates bake.** SEO's bake
+  re-exports `AFFILIATE_COMMISSION_CENTS`, which wave 4 removed; esbuild
+  bundles the missing name as undefined and the bake throws on its first
+  read, inside the never-block-a-publish handler. The per-tool-sale keys
+  (`affiliates.commission` tagline, headline, detail, banner, linkHint,
+  howItWorks and excluded) are deleted in all nine locales (bannerTitle stays;
+  the page reads it), and `the-bake-re-exports-only-names-its-modules-export.test.ts`
+  imports every module the bake's data entry names and fails on any name it
+  does not export: it passes here and fails on SEO's bake against wave 4's
+  module. The merge step is under "Merging main" below.
+- **Minor: a cover-letter text box.** apply_myself and /v1 sent it to a
+  draft while the classifier files it and the answers panel (and origin/main)
+  leave it with the person. whoAnswers now answers `you` with `cvMayHelp`;
+  the question corpus marks its four cover-letter rows as over-routes (cap
+  194) and the round-4 self-break set names q4sb-39 beside q4sb-42.
+- **Minor: "jobs not in London".** negatedTrailingPlace kept a head of only
+  filler, so the board searched the word "jobs". It reads `QUERY_FILLER` as
+  liftTrailingPlace does: the request browses and names `placeExclusion`.
+- **Minor: the job card's salary field** no longer says "verbatim" (above).
+
+**Builds** (the second recheck): agent-mcp and public-api `2026-10-11.36`;
+create-agent-checkout and create-pass-checkout `2026-10-11.17`;
+create-product-checkout `2026-10-11.26`; job-board keeps `2026-09-09.93`. No
+migration. Nine locale files lose seven keys each; no key is added.
+
+**Shared files this round touches.** `public/llms.txt` (seo-round on main,
+company-profiles in this branch's ledger): wave 4's own lines only, the paid
+line, the Freelance Boost line, the apply-yourself line and the Pricing line.
+`scripts/prerender-seo.mjs` (seo-round): one hunk, the /freelance-boost
+write() block and its STATIC_ROUTES line, on text main's bake still has
+unchanged; `git merge-tree` against origin/main 899be058 merges the file
+without a conflict. The nine changelog shards (critical-path) and the nine
+locales (company-profiles): wave 4's own lines and keys.
+
+**Merging main** (the first deploy step; main now holds R1, the profiles
+and design deploy and the SEO round, 899be058). `git merge-tree` finds the
+same 31 conflicted files as b76e460d did. Two need this round's care:
+
+- `public/llms.txt` gains a fourth conflict hunk. Keep main's figures, its
+  vs line and its "Claude, ChatGPT or Claude Code"; take wave 4's paid line,
+  its deletion of the Freelance Boost line, the ChatGPT sentence in the
+  apply-yourself line and its Pricing line.
+- `scripts/prerender-seo.mjs` merges as text, but SEO's /affiliates bake
+  still reads `AFFILIATE_COMMISSION_CENTS` and `affiliates.commission`. In the
+  merge, re-export `AFFILIATE_PRO_FIRST_MONTH_CENTS` in its place, read
+  `D.EN_LOCALE.affiliates.proCommission`, fill `{{amount}}` with
+  `formatUsd(AFFILIATE_PRO_FIRST_MONTH_CENTS)`, and drop the per-tool-sale
+  fallbacks (title, description, tagline, headline, howItWorks). The
+  re-export test fails until it is done.
+
+**Verifier.** `scripts/verify-deploy.d/92-w4b-descope-recheck.sh` (read-only:
+five OPTIONS and three GETs): the five builds above, the crawler's
+/freelance-boost noindex and no longer sold, sitemap.xml without it, llms.txt
+selling no cut product and saying what ChatGPT reads.
+`w4b-descope-recheck-the-section-fails-what-it-claims.test.ts` runs it
+against a fake curl: a healthy deploy prints no FAIL and only reads; an older
+build, the old bake, a sitemap that lists the page and the old llms.txt each
+print FAIL. readQuery and whoAnswers are proved by their tests, not live: no
+read-only route runs them on input we choose without spending the keyless
+allowance.
+
+**Checks** (at the round's head, each through
+`~/.config/resumebooster/heavy.sh`): the pre-commit typecheck passed on all
+four commits; the worker `tsc --noEmit` exits 0; `scripts/check-functions.sh`
+is clean (deno.lock restored); the upload-tally guard passes, and job-board's
+upload, tallied from git's sizes with main's two profiles files, is 4,432,403
+bytes, 67,597 under the 4.5 MB line and 17,597 inside the 50,000 of room
+(2,006 more than b76e460d: the cover-letter and filler lines and comments).
+The targeted runs: the 34 files that mount or read the /agent console (679
+tests), the 125 that read the locales (2,363), the 81 that load or read
+agent-mcp, public-api, self-apply or job-board's query-place (4,584), the 61
+that read llms.txt, the bake, the retired lines, the affiliate copy or the
+cuts (1,566), the 10 that read the changelog (601) and the 25 that read the
+verifier sections (269), all passing. `deploy-ledger --against b76e460d`
+finds 6 functions moved and the one reserved violation (job-board `.93`);
+`--against origin/main` finds the one process-email-queue violation the
+merge clears; `--overlap HEAD origin/design/integration origin/r1/integration`
+and `--overlap HEAD origin/hp/integration` report no undeclared overlap. The
+full suite runs in the push's pre-push hook; its count is in the PR #39 body.
+
+**Left.** The bake's /affiliates block on main is SEO's to merge as above.
+oh/integration (PR #46) and the hp branches merged b76e460d; they take this
+round when they next merge wave4/integration. The /freelance-boost committed
+`public/sitemap.xml` entry stays until the next bake rewrites the file (the
+bake writes both public/ and dist/ from STATIC_ROUTES).
 
 ## What a person can do after this deploy
 
@@ -636,7 +801,9 @@ owned by company-profiles, and wave 4 re-applies its hunks on rebase.
     sentences), `half-of-all-users-were-told-most-ats-require-60-to-pass`
     (the save toast), and the `agentPitchCta` probe in sections 65 and 74's
     English-chunk finder (pick another key the chunk carries).
-- **`scripts/prerender-seo.mjs`** (company-profiles):
+- **`scripts/prerender-seo.mjs`** (company-profiles, now seo-round on main;
+  since the second recheck of the descope wave 4 carries one hunk of it, the
+  /freelance-boost page and its sitemap line, and nothing else below):
   - the homepage: the meta description (line 1633, "An AI agent ranks them
     to your CV and applies where employers allow"), the Service JSON-LD
     (lines 1657-1668: "submits on hiring systems that permit it", and Offers
@@ -1092,7 +1259,11 @@ own nonce, whose count must be 1: the positive control for that 0.
    `ledger/r1-verified` change (PR #37): keep its 20261014100000 in
    `appliedOutsideDrizzle` and its `verifiedDeploys` entry, and do not
    restore 20261008125000 or 20261008128000 there (this branch proves them
-   by behaviour). Re-run the gate,
+   by behaviour). Since the second recheck of the descope, two more merge
+   steps: llms.txt's fourth hunk and SEO's /affiliates bake, which must read
+   `affiliates.proCommission` and `AFFILIATE_PRO_FIRST_MONTH_CENTS` (see
+   "Merging main" under the Descope section; the bake re-export test fails
+   until it does). Re-run the gate,
    then generate the message at the merge commit on main with `node
    scripts/deploy-ledger.mjs --message`: migrations, then the functions, then
    the frontend publish.
