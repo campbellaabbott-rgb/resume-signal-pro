@@ -8,18 +8,23 @@ final board-first mockups in `keep/home-pricing-design/final/` (the scratchpad
 the job search with live postings, the free résumé scanner moves to
 `/resume-checker`, and `/pricing` leads with what is free.
 
-**Nothing live changes until the switch-over.** This work adds new files
-only. App.tsx, Index.tsx, Pricing.tsx, products.ts, the locales,
-merge-shards.ts, the Header, the Footer, PurchaseTerms.tsx and the bake keep
-their current owners (wave 4, the profiles/design train, hp/honesty). The two
-pages are reachable only through the preview pages below. Every change an
-existing file needs is in [the switch-over plan](#the-switch-over-plan).
+**The switch-over is built: `hp/switch-over` routes "/" to the homepage and
+`/pricing` to the new pricing page.** Nothing live changes until that branch
+is merged and published after wave 4; [the switch-over
+record](#the-switch-over-record-2026-10-26) says what each step did, where it
+departed from the plan, what was measured and what is still open. The
+sections from "What was built" to "The switch-over plan" are the record of
+the branches it merged, kept as written; where they say the pages are
+reachable only through the previews, that was true before the switch-over.
 
 | Branch | Head | What |
 |---|---|---|
 | `hp/home` | 7a30bc23 | the homepage (Appendix A) |
 | `hp/pricing` | 50de7209 | the pricing page (Appendix B) |
-| `hp/integration` | this branch | both, the integration (70e4e525) and the fix round of 2026-10-18 below, merged onto `origin/design/integration` 74439737 |
+| `hp/integration` | a7a11712 | both, the integration (70e4e525), the fix round of 2026-10-18 and the rounds of 2026-10-24 and 2026-10-25 below |
+| `hp/honesty` | 5c74e112 | the quiet Header, the Footer without Freelance Boost, `src/config/sales-gate.ts`, PurchaseTerms' final-sale and region lines, H0 |
+| `hp/scanner` | e7040d18 | Index delete-only, the scanner's old addresses, every buy control's gate, the mail links to `/resume-checker` |
+| `hp/switch-over` | this branch | cut from `hp/honesty`, merges `hp/scanner` and `hp/integration`, then the switch-over steps 1-15 |
 
 `origin/design/integration` is merged into main (PR #36, 57815de9) and was
 deployed on 2026-10-18, so the PR (#38, base `design/integration`) now reads
@@ -33,6 +38,101 @@ it, and read every line number below by its text on main. Main has moved
 lines lower). This branch has not merged main, by decision. `git diff --name-status origin/design/integration...hp/integration`
 lists 92 paths, every one of them added (status A). No existing file is
 modified.
+
+## The switch-over record (2026-10-26)
+
+`hp/switch-over` is cut from `origin/hp/honesty` 5c74e112 and merges
+`origin/hp/scanner` e7040d18 and `origin/hp/integration` a7a11712, all three
+on wave 4's f4ccfeae. The draft PR's base is `wave4/integration`, which ships
+first. One commit per step, in this order:
+
+| Step | Commit | What is now true |
+|---|---|---|
+| 9 (the page lines) | 61865c37 | Both pages render `<Header variant="quiet" />`. Before App.tsx routed either page, `HP_ASSUME_ROUTED=1` ran hp-fix-switch-over-gate 5 of 5 (W7). |
+| 1 | c37ae761 | One swap: "/" is `<ScannerAddressRedirect><HomePage /></ScannerAddressRedirect>` (HomePage lazy, the redirect eager), `/pricing` imports `pages/pricing/PricingPage`. `SCANNER_AT_ROOT` is deleted with its test. |
+| 2 | 92bacb81 | `src/i18n/shards/home` ("home") and `src/i18n/shards/pricing` ("pricingPlans") are in `SHARD_ROOT_KEYS`. Both pages wait on `useLocaleReady`, which opens once the reader's main locale (now carrying the shards) has landed, or after 6 s. |
+| 3 | 3608f5d0 | The plan's lighter alternative: the bake reads the two English shards directly, as it reads the company shard. No string moves into the nine main locales. |
+| 4 | 7f53ee64 | `src/pages/Pricing.tsx` and its `pricingPage` strings are deleted in nine languages, with the test that read the old page. |
+| 5 | baa0ca80 | `SALE_SWITCHES` and `resolveSaleGates` read `FULL_ANALYSIS_ON_SALE`, `PRO_ON_SALE` and `DIGEST_MAIL_CLASS` from `src/config/sales-gate.ts` when they are called. |
+| 6 | 8b496cfa | Pro's card lists wave 4's `PRO_PERK_ITEMS`. The noun is "packages": `proPlan.perks.writingToolsPackages` exists in nine languages, and the "sets" key is gone. create-subscription-checkout carries 2026-10-26.1, because its Stripe description is built from that list. |
+| 7 | 29d3a387 | The writing allowance and the Builder price are imported. The Builder card prints /data-api's own strings. |
+| 8 | a770c9d3 | PurchaseTerms' own box is the only renewal box. It sits above Go Pro, is bound to its label by id, and is marked `aria-invalid` and `aria-describedby` the alert when Go Pro is pressed with the box empty. |
+| 10 | 3608f5d0 | The bake writes "/" and "/pricing" from the same facts and gates React reads. The offers on "/" come from `pricingJsonLd(resolveSaleGates()).offers`, and while no seller is named that is one free Offer. `/pricing` is count-bearing. The baked H1 is the size React renders, so the desktop LCP element stays the baked H1. |
+| 11 | 935a37b4 | Every link that meant the scanner opens `/resume-checker` (or `/resume-checker#upload`). Logo, breadcrumb and "back home" links stay on "/". |
+| 12 | 592655e7 | No change: free-keyword-scan already carries H0's 2026-10-25.2. |
+| 13 | 592655e7 | `/pricing` keeps the old page's scroll-depth and time-on-page events under "pricing". "/" adds none. |
+| 14 | 8940ac33, 67749eeb | Verify section 99 and its headless half, `scripts/verify-home-pricing-rendered.mjs`. A fake-curl test proves each line can PASS, FAIL and INFO. |
+| SEO-041 | 8d9f90b8, 82ff0d93 | The posting cards load in their own chunk once the list is asked for. Three sentences render through `TaggedText` instead of `Trans`. The field links read `home.rail.fields.*`, so the board's string namespace loads with the cards. The list's box constants live in `rows-box.ts`, and the AI illustration's place is written out. |
+| ledger | 1b032918, 3ea934fb, 72c793b9 | Every file shared with an in-flight branch has one owner. Section 92 now reads the `PricingPage` chunk. create-product-checkout carries 2026-10-26.1. |
+
+**Where it departs from the plan**
+
+- **Step 3** takes the lighter alternative. It costs about 6.6 KB gzip in the bake's data entry and nothing in the browser.
+- **Step 4** keeps the two previews as development tools. `vite build` builds `index.html` only.
+- **Step 6** also re-stamps create-product-checkout. Its bundle imports `_shared/pro-perks.ts`, so its code differs from wave 4's under the same stamp, and `deploy-ledger --against origin/wave4/integration` refused that (exit 3). Nothing it does changed.
+- **Step 7 is partial.** The scan allowance, the free-key quota, the fit allowance, the withheld systems and the API proposal are still mirrors, each held by its test. No small frontend module holds them yet, and "/" never imports `mcp-tools`.
+- **Step 13** keeps the pricing page's two events, so the pricing funnel reads on and the visitor budget counts what it counted before.
+- **Sections that judged the old pages** now judge the new ones: 72, 73, 74, 83 and 98. 92's checkout-catalogue section reads `PricingPage` (before this change, `Pricing`), and counts the paid cards' `pricingPlans.buy.gateSeller` as its purchases-open-soon line.
+- **SEO-041** was done inside the switch-over (above).
+
+**Measured.** The method:
+
+- Production builds of `git archive` exports, base `origin/hp/honesty` 5c74e112 and after 82ff0d93. No frontend file changed after 82ff0d93.
+- Each was baked under the read-only fetch guard and served the way Lovable resolves paths.
+- Playwright 1.62.1 ran through heavy.sh.
+- Production was read only. GETs passed, an RPC was re-sent as a GET, and a job-board read carried `x-rb-budget: probe`. Every other write was answered inside the browser: 0 on every run.
+- Measurement files and pictures are in `~/.config/resumebooster/home-pricing-switch-over-2026-10-26/`, with `before/`, `after/`, `verify/` and `tools/`.
+
+| What | Before (old "/") | After |
+|---|---|---|
+| "/" static closure (entry plus route chunk, gzip) | 85 files, 420,753 B | 38 files, 299,675 B |
+| "/" JS loaded once the page settles (cards and consent banner included) | 88 files, 423,506 B | 58 files, 350,608 B |
+| `/pricing` static closure | 37 files, 282,649 B | 36 files, 290,681 B |
+| `/pricing` JS loaded | 43 files, 287,040 B | 42 files, 295,080 B |
+| LCP, desktop 1280x800, first visit (3 runs) | baked H1, 167-177k px², 1.44-2.78 s | baked H1, 56-58k px², 0.28-0.56 s |
+| LCP, desktop, consent already chosen | baked H1, 0.44-1.96 s | baked H1, 0.12-0.18 s |
+| LCP, phone 375x812 at 4x CPU, first visit | baked count line, 89k px², 1.02-1.11 s | **the consent banner's text, 30k px², 1.36-1.58 s (not baked)** |
+| LCP, phone, consent already chosen | baked count line, 0.40-0.58 s | baked "Posted in the last 7 days" line, 25k px², 0.23-0.27 s |
+
+**The layout matrix.** It covered 320, 360, 390, 414, 768, 1024, 1280 and 1440 px, light and dark, EN, DE, HI and TL, on both pages: 128 cells. No cell had horizontal overflow, with `<details>` closed or open. None had clipped text or overlapping controls or headings.
+
+**The first screen at 375x812** (both themes, the same):
+
+- the H1 at 76-166 px;
+- the search field at 282-326 px;
+- Search jobs at 408-452 px;
+- the first posting starts at 718 px, so it is cut off at the fold.
+
+Pictures: `after/shots/` (138) and `before/shots/` (16).
+
+**Verify against the local after build** (sections 50, 52, 83, 99, 92-*, 76 and 98, served locally with writes stubbed):
+
+- Section 99 passes every frontend claim: C1-C5, C7-C11.
+- C6 fails only because the six functions are not deployed yet.
+- Every other FAIL also fails on the base build, served the same way. Those are wave 4's functions and migrations not yet deployed, plus canonical-host artifacts of serving on 127.0.0.1.
+
+Against production today, section 99 fails C1-C9 and C11, as it should before the publish. C10 passes.
+
+**Open after the switch-over**
+
+1. **Phone first-visit LCP.** The site-wide ConsentBanner's paragraph (30,115 px², rendered by React, not baked) is larger than any baked block on the new phone "/". Before consent is chosen, the LCP waits for JS. The old "/" had an 89k px² baked paragraph that won. Two possible fixes: bake the banner, or keep its text block under the page's largest baked block. Either one touches a shared component (wave 4's consent work), so it is left to that owner.
+2. The Full Analysis text is still not written from a watched delivery (P18). Both cards stay gated.
+3. Per-language register (German "du" against "Sie", Hindi's two spellings): hp/i18n's single pass.
+4. The phone list packs four rows where the spec says three.
+5. The publish still waits on the WHEN list below. W2: wave 4 must be merged and verified. W3: production still answers `agent_sender_public_status` true, so the apply agent is not retired yet. C10 passes either way, because neither page promises never to submit.
+
+**The deploy step.** Run it once wave 4 is deployed and verified:
+
+1. Deploy the six functions `deploy-ledger --against origin/wave4/integration` names:
+   - free-keyword-scan 2026-10-25.2;
+   - send-scan-report 2026-10-25.1;
+   - send-search-digest 2026-10-25.1;
+   - send-market-pulse 2026-10-25.2;
+   - create-subscription-checkout 2026-10-26.1;
+   - create-product-checkout 2026-10-26.1.
+2. Publish the frontend once. No migration.
+3. Run `bash scripts/verify-deploy.sh` and read section 99, then 83, 92 and 98.
+4. Regenerate the Lovable message at the merge commit on main with `node scripts/deploy-ledger.mjs --message`.
 
 ## What was built
 
@@ -353,6 +453,10 @@ day (step 15).
   passed in the same hook.
 
 ## Open problems
+
+As they stood before the switch-over. Items 1, 2, 3, 6, 8 and 10 are
+closed by it, item 9 stands by decision (step 13), and item 7 is W3; what is still open is listed in [the
+switch-over record](#the-switch-over-record-2026-10-26).
 
 1. **Strings are not in `src/i18n/shards/` yet** (switch-over step 2): an
    unregistered shard directory fails the shard guard, and `SHARD_ROOT_KEYS`
