@@ -79,3 +79,71 @@ describe("only a binding floor is a minimum (S12-126)", () => {
     expect(parseMinYears("Required Qualifications: 4 years of experience. Preferred Qualifications: a CPA")).toBe(4);
   });
 });
+
+/**
+ * THE MERGE RECHECK (2026-10-25). A wish word in the clause dropped a required
+ * minimum when it named something else: Tapestry's 874 sales associate
+ * postings say "Required Qualifications 1+ years of sales experience (luxury
+ * retail preferred)", main read entry/1 and wave 4 read nothing, and the
+ * experience re-derive would have overwritten the stored rows. The rule was
+ * then measured on 1,354 live descriptions against main (corpus-first): every
+ * description where main, the round before and this rule disagree is in
+ * fixtures/experience-merge-recheck-corpus-2026-10-25.json with the value read
+ * by hand, and this rule must give it.
+ */
+describe("a wish that names something else does not drop a required minimum (the merge recheck)", () => {
+  it("Tapestry's line and the recheck's five probes keep main's floor", () => {
+    expect(detectExperience("Coach Sales Associate 32 hrs", "Qualifications\nRequired Qualifications\n1+ years of sales experience (luxury retail preferred); knowledge of fashion trends and competitors.")).toEqual({ band: "entry", minYears: 1 });
+    expect(parseMinYears("Required Qualifications 1+ years of sales experience (luxury retail preferred)")).toBe(1);
+    expect(parseMinYears("Minimum 2 years of experience (bilingual preferred).")).toBe(2);
+    expect(parseMinYears("Requirements: 3+ years experience (healthcare preferred).")).toBe(3);
+    expect(parseMinYears("At least 4 years of nursing experience (ICU preferred).")).toBe(4);
+    expect(parseMinYears("Qualifications: 3+ years of customer service experience (call center preferred)")).toBe(3);
+    expect(parseMinYears("5 years of experience (MBA a plus).")).toBe(5);
+    expect(parseMinYears("What we need from you:\n3-5 years of experience managing benefits preferably in the hospitality industry")).toBe(3);
+  });
+
+  it("a wish on the years themselves is still a wish, under any heading", () => {
+    expect(parseMinYears("Qualifications, Knowledge and Skill Requirements: 1-2 years of cooking experience preferred.")).toBeNull();
+    expect(parseMinYears("BASIC QUALIFICATIONS Bachelor's degree. Preferably 1-2 years of experience working as a production coordinator")).toBeNull();
+    expect(parseMinYears("Tankers endorsement is required. Preferred 2 or more years of relevant driving experience.")).toBeNull();
+    expect(parseMinYears("Minimum Required: Masters in Social Work (MSW)\nPreferred: 3 years post graduate experience")).toBeNull();
+    expect(parseMinYears("2 years L&D experience (strongly preferred)")).toBeNull();
+  });
+
+  it("a heading's two words sit on one line, and a heading line reads alone", () => {
+    // "...is also strongly preferred" ends a line; the next opens "Experience as part of": no Preferred Experience heading.
+    expect(parseMinYears("Qualifications:\nExperience in the semiconductor industry is strongly preferred\nExperience as part of lead left teams is also strongly preferred\n6+ years of investment banking experience, or 3+ years with an MBA")).toBe(6);
+    expect(parseMinYears("The preferred qualifications are a bonus, not a requirement.\nRequirements\nA strong technical background, including 2-5 years of professional software development experience")).toBe(2);
+    expect(parseMinYears("Required: \nBS/BA degree in Finance.\nPreferred: \nEnergy company experience.\nFINANCIAL ANALYST II\nRequired: \n1+ year experience in financial planning")).toBe(1);
+    expect(parseMinYears("Preferred\nIndustry standard certifications may substitute for 1 years work experience each up to 4 years.")).toBeNull();
+  });
+
+  it("an alternative stays on its own line, and '3 to 7 or more years' is no 7-year floor", () => {
+    expect(parseMinYears("REQUIRED QUALIFICATIONS\nBachelor's degree in Electrical Engineering, Robotics, or equivalent\n8+ years of experience in GN&C")).toBe(8);
+    expect(parseMinYears("Bachelor's Degree in Business, Construction Management, or equivalent\nMinimum 10 Years extensive experience in the construction industry")).toBe(10);
+    expect(parseMinYears("High school diploma or equivalent 2 years of related work experience")).toBeNull();
+    expect(parseMinYears("What You Bring\n• 3 to 7 or more years of successful SaaS sales experience")).toBeNull();
+  });
+
+  it("every description in the live corpus where the readings disagree gives the value read by hand", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { resolve } = await import("node:path");
+    const fx = JSON.parse(readFileSync(resolve(__dirname, "fixtures/experience-merge-recheck-corpus-2026-10-25.json"), "utf8")) as {
+      corpus: number; rows: Array<{ id: string; title: string; description: string; main: unknown; want: { band: string | null; minYears: number | null } }>;
+    };
+    expect(fx.corpus).toBeGreaterThanOrEqual(300);
+    const wrong = fx.rows.filter((r) => JSON.stringify(detectExperience(r.title, r.description)) !== JSON.stringify(r.want)).map((r) => `${r.id} ${r.title}`);
+    expect(wrong).toEqual([]);
+    expect(fx.rows.filter((r) => r.title.startsWith("Coach Sales Associate")).every((r) => r.want.minYears === 1)).toBe(true);
+  });
+});
+
+describe("a Senior Community Manager, Support Worker or Associate is a rung anywhere in a title (the merge recheck)", () => {
+  it("the live titles with a prefix stay senior", () => {
+    for (const t of ["TOPS - Senior Community Manager Specialist - Dallas, TX", "TOPS - Senior Community Manager Specialist - Atlanta, GA", "Part-Time Senior Community Support Worker", "Roving Senior Community Manager", "Assistant Senior Community Associate"]) expect(bandFromTitle(t), t).toBe("senior");
+  });
+  it("the clientele forms still are not", () => {
+    for (const t of ["Cook - Senior Community Services - J01710 - 41900", "Life Enrichment Assistant at Luxury Senior Community", "Housekeeper - Senior Community"]) expect(bandFromTitle(t), t).not.toBe("senior");
+  });
+});

@@ -7852,14 +7852,14 @@ async function handleRequest(req: Request): Promise<Response> {
       let named: CompanyScope | null = null;
       const askedNames = askedByName(body, CATALOGUE_TOKENS);
       if (askedNames) {
-        named = resolveCompanyNames(askedNames, CATALOGUE_TOKENS, await suggestEmployers(client));
+        named = resolveCompanyNames(askedNames, CATALOGUE_TOKENS, await suggestEmployers(client), undefined, (t) => JOB_SOURCES.find((s) => s.token === t));
         if (named.resolved.length || named.unresolved.length || named.skipped.length) body = { ...body, companies: named.companies };
         // Every name refused and nothing else asked: the empty scope, never the whole board. A value no
         // token could be (a space, a quote) is a refused filter value, named as normalizeFilters names it.
         if ((named.unresolved.length || named.skipped.length) && !named.companies.length) {
           const notToken = named.skipped.length > 0 || named.unresolved.some((u) => !COMPANY_TOKEN_SHAPE.test(u.asked));
-          // A name two carried employers share is carried: never listed as one the board does not carry.
-          return json({ ...uncarriedListReply(named.unresolved.filter((u) => !u.ambiguous).map((u) => u.asked)), ...companyNameNotes(named), ...(notToken ? { ignoredFilters: ["companies"] } : {}) });
+          // A name two carried employers share, or one small board carries, is carried: never listed as one the board does not carry.
+          return json({ ...uncarriedListReply(named.unresolved.filter((u) => !u.ambiguous && u.held !== "few_open").map((u) => u.asked)), ...companyNameNotes(named), ...(notToken ? { ignoredFilters: ["companies"] } : {}) });
         }
       }
       // An employer scope the catalogue does not carry is named, never read

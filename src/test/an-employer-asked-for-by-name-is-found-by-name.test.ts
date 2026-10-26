@@ -74,8 +74,11 @@ function withFacet() {
         companiesFacet: [
           { token: HUMANA, name: "Humana", count: 300 },
           { token: CENTERWELL, name: "CenterWell (Humana)", count: 900 },
+          // The merge recheck: job-board memoises this list, so every test here reads one list.
+          { token: "Meta1", name: "Meta", count: 4 },
+          { token: "metaline", name: "Metaline", count: 101 },
         ],
-        companiesOpen: { [HUMANA]: 243, [CENTERWELL]: 832 },
+        companiesOpen: { [HUMANA]: 243, [CENTERWELL]: 832, Meta1: 4, metaline: 101 },
       },
       error: null,
     };
@@ -140,5 +143,73 @@ describe("the shipped list resolves a name and names what it could not", () => {
     expect((r.companiesUnresolved as Array<{ asked: string }>)?.map((u) => u.asked)).toEqual(["Nowhere Corp"]);
     expect(r.ignoredFilters, "a dropped value of the filter is named").toContain("companies");
     expect(scopesSent().every((s) => s.includes(HUMANA) && !s.includes("Nowhere Corp"))).toBe(true);
+  });
+});
+
+/**
+ * A BRAND'S NAME IS NOT A FOUR-ROLE STAFFING BOARD'S (the recheck of the
+ * merge of main 899be058, 2026-10-25). companies:["Meta"] resolved to the one
+ * carried board named exactly "Meta": SmartRecruiters' Meta1, a staffing firm
+ * ("My Company support several nationally-known clients"), whose mailroom and
+ * reception roles the AI was handed as Meta's openings, agency false on every
+ * row. Live main answered that the board does not carry Meta. A single exact
+ * match whose boards are all an agency's, or that has fewer than FEW_OPEN open
+ * roles, is now offered as a candidate (its open count, vendor and agency
+ * flag) and never searched under the name; the catalogue labels Meta1 an
+ * agency.
+ */
+describe("a single exact match that is an agency or a handful of roles is a candidate, not a scope", () => {
+  const AGENCY_FACTS = (t: string) => (t === "Meta1" ? { source: "smartrecruiters", agency: true } : t === "surge" ? { source: "workable", agency: true } : { source: "greenhouse", agency: false });
+  const LIST: FacetEmployer[] = [
+    { token: "Meta1", name: "Meta", open: 4 },
+    { token: "metaline", name: "Metaline", open: 101 },
+    { token: "metabase", name: "Metabase", open: 2 },
+    { token: "surge", name: "Surge Staffing", open: 300 },
+    { token: HUMANA, name: "Humana", open: 243 },
+  ];
+  const CAT = new Set(LIST.map((e) => e.token!));
+
+  it('"Meta" is held: the staffing board is offered with its open count, vendor and agency flag, and nothing is scoped', async () => {
+    const { FEW_OPEN } = await import("../../supabase/functions/job-board/company-names");
+    const r = resolveCompanyNames(["Meta"], CAT, LIST, undefined, AGENCY_FACTS);
+    expect(r.companies).toEqual([]);
+    expect(r.resolved).toEqual([]);
+    expect(r.unresolved).toEqual([{ asked: "Meta", candidates: [{ token: "Meta1", name: "Meta", open: 4, vendor: "smartrecruiters", agency: true }], held: "agency" }]);
+    expect(FEW_OPEN).toBe(10);
+  });
+
+  it("an agency's board is held whatever its size; a small employer's board is held as a handful of roles", () => {
+    expect(resolveCompanyNames(["Surge Staffing"], CAT, LIST, undefined, AGENCY_FACTS).unresolved[0]).toMatchObject({ held: "agency", candidates: [{ token: "surge", open: 300, agency: true }] });
+    expect(resolveCompanyNames(["Metabase"], CAT, LIST, undefined, AGENCY_FACTS).unresolved[0]).toMatchObject({ held: "few_open", candidates: [{ token: "metabase", open: 2, vendor: "greenhouse" }] });
+  });
+
+  it("positive control: an employer with its own board of ten or more roles still resolves by name", () => {
+    expect(resolveCompanyNames(["Humana"], CAT, LIST, undefined, AGENCY_FACTS).resolved).toEqual([{ asked: "Humana", name: "Humana", tokens: [HUMANA] }]);
+    expect(resolveCompanyNames(["Metaline"], CAT, LIST, undefined, AGENCY_FACTS).resolved[0].tokens).toEqual(["metaline"]);
+  });
+
+  it("the connector tells the AI what a held name is, with the board's own threshold", async () => {
+    const { FEW_OPEN } = await import("../../supabase/functions/job-board/company-names");
+    const { readFileSync } = await import("node:fs");
+    const { resolve } = await import("node:path");
+    const { codeOf } = await import("./helpers/strip-comments");
+    const mcp = codeOf(readFileSync(resolve(__dirname, "../../supabase/functions/agent-mcp/index.ts"), "utf8"));
+    expect(mcp.match(new RegExp(`staffing agency's board or one with under ${FEW_OPEN} open roles`, "g"))?.length).toBe(2);
+  });
+
+  it("the catalogue labels Meta1 a staffing agency, so its cards say so", async () => {
+    const { JOB_SOURCES } = await import("../../supabase/functions/job-board/sources");
+    expect(JOB_SOURCES.filter((s) => s.token === "Meta1")).toEqual([{ name: "Meta", source: "smartrecruiters", token: "Meta1", agency: true }]);
+  });
+
+  it('the shipped list: companies:["Meta"] searches nothing, says the board does not carry Meta, and offers the agency\'s board', async () => {
+    board.reset();
+    withFacet();
+    const r = await board.post({ action: "list", companies: ["Meta"], limit: 10 });
+    expect(r.unknownCompanies).toEqual(["Meta"]);
+    expect(r.total).toBe(0);
+    expect(r.companiesResolved).toBeUndefined();
+    expect(r.companiesUnresolved).toEqual([{ asked: "Meta", candidates: [{ token: "Meta1", name: "Meta", open: 4, vendor: "smartrecruiters", agency: true }], held: "agency" }]);
+    expect(board.db.queries.some((q: Query) => q.rpc === "search_jobs" || q.table === "job_board_postings"), "the board was searched under the name").toBe(false);
   });
 });
