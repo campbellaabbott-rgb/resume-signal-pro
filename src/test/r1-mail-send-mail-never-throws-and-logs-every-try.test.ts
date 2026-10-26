@@ -99,6 +99,20 @@ describe("a send Resend refuses, or that never reaches it, is a value and a row"
     expect(r).toMatchObject({ ok: false, status: 0, error: "resend timed out" });
   });
 
+  it("an answer whose body stalls is bounded by the same timeout: its status decides, a 2xx is a send (second fixer round of the R1 hotfix)", async () => {
+    // Resend answers its headers, then sends part of the body and never closes it.
+    const stalled = (status: number) => (async () => new Response(new ReadableStream({ start(c) { c.enqueue(new TextEncoder().encode('{"id":')); } }), { status })) as typeof fetch;
+    const settleWithin = <T,>(p: Promise<T>, ms: number) => Promise.race([p, new Promise<"still reading">((r) => setTimeout(() => r("still reading"), ms))]);
+
+    const sent = await settleWithin(sendMail(mail({ cls: "auth", timeoutMs: 500 }), { admin: db, apiKey: "re_k", fetchImpl: stalled(200) }), 3_000);
+    expect(sent, "a body that never ends held the send past its timeout (the drain's claim lapses, and the mail is sent again)").toEqual({ ok: true, id: null, status: 200, error: null });
+    expect(log().map((x) => x.status), "a 2xx whose body stalled was not recorded as sent").toEqual(["sent"]);
+
+    const refused = await settleWithin(sendMail(mail({ cls: "auth", timeoutMs: 500, messageId: "msg-2" }), { admin: db, apiKey: "re_k", fetchImpl: stalled(503) }), 3_000);
+    expect(refused).toMatchObject({ ok: false, status: 503, error: "resend answered 503" });
+    expect(log().map((x) => x.status)).toEqual(["sent", "failed"]);
+  });
+
   it("a log that throws is swallowed; the send's answer still comes back", async () => {
     const broken = { from: () => { throw new Error("db gone"); } };
     const r = await sendMail(mail({ cls: "auth" }), { admin: broken, apiKey: "re_k", fetchImpl: answer(200, { id: "re_x" }) as typeof fetch });

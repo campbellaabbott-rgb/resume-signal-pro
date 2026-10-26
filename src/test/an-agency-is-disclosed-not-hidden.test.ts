@@ -77,8 +77,10 @@ describe("the catalog carries the flag", () => {
       "workable:unitedplacementgroup",  // placement agency
       "smartrecruiters:collabera2",     // IT staffing
       "icims:careers.ctg.com",          // fills roles for singular clients
-      "icims:jobs.statefarm.com",       // hires on behalf of agents' offices
-      "icims:careers.principal.com",    // hires on behalf of representatives
+      // State Farm's and Principal's own boards were convicted here once, for
+      // the roles they post for independent agents' offices; they post their
+      // own roles too, and recheck 3 (2026-10-26) released them: see
+      // an-employer-asked-for-by-name-is-found-by-name.
       "greenhouse:liquidpersonnel",
       "greenhouse:crisprecruit",
       "teamtailor:jobtalentfrance",     // the board the English-only screen once cleared
@@ -251,7 +253,7 @@ describe("the flag is served, badged, and declinable end to end", () => {
   it("the page sends the opt-out under its contract name, literal true only", () => {
     const OFF = {
       q: "", location: "", remoteOnly: false, workMode: "", category: "", inclUncat: false,
-      agentOnly: false, country: "", experience: "", companyTokens: [], salaryFloor: 0,
+      country: "", experience: "", companyTokens: [], salaryFloor: 0,
       salaryCeiling: 0, payBasis: "" as const, statedPayOnly: false, includeUnstatedPay: false,
       maxYears: 0, department: "", employmentType: "", vendor: "", freshness: "",
       hideAgencies: false,
@@ -262,8 +264,12 @@ describe("the flag is served, badged, and declinable end to end", () => {
 
   it("the badge and the toggle exist, and the URL round-trips the choice", () => {
     const JOBS = strip(read("src/pages/Jobs.tsx"));
+    // Pass B (2026-10-12): the card is the listing vocabulary's JobCard, whose
+    // first chip is the agency-board disclosure, read from the served flag.
+    const CARD = strip(read("src/components/jobs/listing/JobCard.tsx"));
+    expect(CARD).toMatch(/job\.agency === true \? <AgencyBoardChip/);
+    expect(JOBS, "the board mounts the card").toMatch(/<JobCard\b/);
     expect(JOBS).toMatch(/jobsPage\.agencyBadge/);
-    expect(JOBS).toMatch(/job\.agency === true/);
     expect(JOBS).toMatch(/jobsPage\.hideAgencies/);
     expect(JOBS).toMatch(/initial\.get\("noAgencies"\)/);
     expect(JOBS).toMatch(/if \(hideAgencies\) p\.set\("noAgencies", "1"\)/);
@@ -275,9 +281,11 @@ describe("the flag is served, badged, and declinable end to end", () => {
   it("every locale carries the disclosure strings", () => {
     for (const f of ["en", "en-GB", "de", "es", "fr", "hi", "nl", "pt", "tl"]) {
       const jp = JSON.parse(read(`src/i18n/locales/${f}.json`)).jobsPage as Record<string, unknown>;
-      for (const k of ["hideAgencies", "hideAgenciesTip", "chipNoAgencies", "agencyBadge", "agencyBadgeTip"]) {
+      for (const k of ["hideAgencies", "hideAgenciesTip", "chipNoAgencies", "agencyBadge"]) {
         expect(typeof jp[k], `${f} is missing jobsPage.${k}`).toBe("string");
       }
+      const card = JSON.parse(read(`src/i18n/shards/listing/${f}.json`)).listing.card as Record<string, unknown>;
+      for (const k of ["agencyBoard", "agencyBoardTip"]) expect(typeof card[k], `${f} is missing listing.card.${k}`).toBe("string");
       expect(typeof (jp.filterName as Record<string, string>)?.excludeAgencies, `${f} cannot name the refused filter`).toBe("string");
     }
   });

@@ -13,12 +13,13 @@
 
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { GraduationCap, ShieldCheck, Briefcase, MapPin } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { supabase } from "@/integrations/supabase/client";
-import { companyLanderPath } from "@/lib/public-href";
+import { useCompanyBoardHref } from "@/lib/seo/lander-manifest";
 import { isBoardCategory } from "@/lib/job-board-categories";
 import { HBarList } from "@/components/DataViz";
 import { HowWeMeasure } from "@/components/HowWeMeasure";
@@ -69,6 +70,10 @@ const ENTRY_PARTS: Record<string, string> = {
 type Basis = { kind: "cache"; at: string | null; stale: string[] } | { kind: "live" };
 
 export default function EntryLevelIndex() {
+  const { t } = useTranslation();
+  // SEO-010: an employer link goes to its written company page, or to the
+  // live board filtered to the board when the bake wrote none.
+  const companyHref = useCompanyBoardHref();
   const [stats, setStats] = useState<Stats | null>(null);
   const [leaders, setLeaders] = useState<Leader[]>([]);
   const [basis, setBasis] = useState<Basis | null>(null);
@@ -117,7 +122,7 @@ export default function EntryLevelIndex() {
     <div className="min-h-screen bg-background">
       <SEO
         title="The Entry-Level Index — who's actually hiring entry-level right now?"
-        description="A live ranking of companies with real entry-level openings — junior, graduate, and early-career roles counted from companies' official job boards, refreshed all day. No aggregators, no dated posting older than 30 days."
+        description={`A live ranking of companies with real entry-level openings — junior, graduate, and early-career roles counted from companies' official job boards, refreshed all day: ${t("boardSource.tailNoOld")}.`}
         path="/entry-level-index"
       />
       <Header />
@@ -142,8 +147,7 @@ export default function EntryLevelIndex() {
               the same defect, which is that this sentence held its own copy of
               a list. It interpolates now, and what it interpolates is the
               serving set, so neither direction can come back. */}
-          Counted from employers' <b>official</b> job boards ({SERVING_SOURCE_LIST}) — never an aggregator,
-          and no dated posting older than 30 days.
+          Counted from employers' <b>official</b> job boards ({SERVING_SOURCE_LIST}) — {t("boardSource.tailNoOld")}.
         </p>
         {basis?.kind === "cache" && basis.at && (
           <p className="text-xs text-muted-foreground -mt-6 mb-8" data-basis="cache">
@@ -161,7 +165,7 @@ export default function EntryLevelIndex() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
           <div className="rounded-xl border border-border bg-card p-4">
             <div className="text-2xl font-bold text-foreground">{fmt(stats?.total_entry)}</div>
-            <div className="text-[11px] text-muted-foreground mt-0.5">verified entry-level openings right now</div>
+            <div className="text-[11px] text-muted-foreground mt-0.5">{t("entryLevelIndex.totalCaption", "live entry-level openings right now")}</div>
           </div>
           <div className="rounded-xl border border-border bg-card p-4">
             <div className="text-2xl font-bold text-foreground">{fmt(stats?.companies_with_entry)}</div>
@@ -189,13 +193,16 @@ export default function EntryLevelIndex() {
         {leaders.length > 0 && (
           <div className="mb-8">
             <h2 className="text-lg font-semibold flex items-center gap-2 mb-3">
-              <Briefcase className="w-4 h-4 text-primary" /> Hiring the most entry-level right now
+              {/* S13-090: the list is ranked by SHARE, so the heading says
+                  where a beginner's chance is best (the bake's words), not who
+                  hires the most. */}
+              <Briefcase className="w-4 h-4 text-primary" /> {t("entryLevelIndex.leadersHeading", "Where a beginner has the best chance right now — ranked by share")}
             </h2>
             <div className="rounded-2xl border border-border bg-card overflow-hidden">
               {leaders.map((c, i) => (
                 <Link
                   key={c.company_token}
-                  to={companyLanderPath(c.company_token, "experience=entry")}
+                  to={companyHref(c.company_token, "experience=entry")}
                   className={`flex items-center gap-3 px-4 py-2.5 hover:bg-muted/40 transition-colors ${i > 0 ? "border-t border-border/60" : ""}`}
                 >
                   <span className="text-xs text-muted-foreground w-5 shrink-0">{i + 1}</span>
@@ -222,7 +229,7 @@ export default function EntryLevelIndex() {
               Ranked by the share of a board's open roles that are early-career — not by who posts the most, which only ranks the
               largest boards — with the raw count as the tie-break. Listed with at least 10 early-career openings and at least 50
               open roles. One row per job board, so an employer running several counts once per board. Every link goes to that
-              board's verified roles here.
+              board's live roles here.
             </p>
           </div>
         )}

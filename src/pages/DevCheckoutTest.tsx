@@ -5,8 +5,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Check, Loader2, AlertTriangle, CreditCard, CheckCircle2, XCircle } from "lucide-react";
 import { PRODUCTS, ProductId } from "@/config/products";
 import { supabase } from "@/integrations/supabase/client";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { SEO } from "@/components/seo/SEO";
 
 function describeStripeMode(sessionId?: string) {
   if (!sessionId) return "unknown";
@@ -25,9 +26,17 @@ export default function DevCheckoutTest() {
   const isCanceled = searchParams.get("canceled") === "true";
   const testedProduct = searchParams.get("product");
 
-  useEffect(() => {
-    document.title = "Dev Checkout Test | Resume Booster";
-  }, []);
+  // AN INTERNAL TOOL IS NEVER INDEXED (S13-131). It set document.title and
+  // nothing else, so a crawler that runs scripts read an indexable page
+  // listing every price and test card. The head now says noindex.
+  const head = (
+    <SEO
+      title="Dev Checkout Test | Resume Booster"
+      description="Internal checkout flow tester. Not a public page."
+      path="/dev/checkout-test"
+      noIndex
+    />
+  );
 
   const productEntries = useMemo(
     () => Object.entries(PRODUCTS) as [ProductId, typeof PRODUCTS[ProductId]][],
@@ -101,6 +110,7 @@ export default function DevCheckoutTest() {
 
   return (
     <div className="min-h-screen bg-background p-8">
+      {head}
       <div className="max-w-4xl mx-auto">
         {/* Success Banner */}
         {isSuccess && (

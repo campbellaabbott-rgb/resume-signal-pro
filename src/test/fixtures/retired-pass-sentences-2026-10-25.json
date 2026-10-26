@@ -1,0 +1,275 @@
+{
+ "about": "The retired pass copy from git history (round 3 review, 2026-10-25): every English string in src/i18n/locales/en.json (23e294ac..9f6f3fce) and every literal of scripts/prerender-seo.mjs (6961adac..f04bf146) that named the pass, with each placeholder filled (a URL before a path, 7 elsewhere). fail: the 50 sentences 76 L9-11 FAILs, each with where it came from: the 49 it FAILed at 474dca30, which round 4 keeps a FAIL with the price backstop turned to INFO, and the bake link to the pass page, which round 4 adds to the names. excluded: the 17 strings it passes, as it did at 474dca30, with why.",
+ "fail": [
+  [
+   "Or a one-off pass for your own AI agent: $29 for 6 hours and 10 applications, counted only when it can send them. Never renews.",
+   "src/i18n/locales/en.json pricingPage.passLine @9f6f3fce"
+  ],
+  [
+   "Agent Pass",
+   "src/i18n/locales/en.json accountPage.passRow @9f6f3fce"
+  ],
+  [
+   "Your Agent Pass funds this agent: 7 applications left. Switch the agent on below, and your connected AI can request applications.",
+   "src/i18n/locales/en.json agentQueue.passFunds @9f6f3fce"
+  ],
+  [
+   "A pass for your agent",
+   "src/i18n/locales/en.json agentPass.cardTitle @9f6f3fce"
+  ],
+  [
+   "6 hours with your agent, 10 applications, $29. Never renews.",
+   "src/i18n/locales/en.json agentPass.cardBody @9f6f3fce"
+  ],
+  [
+   "The clock starts at your agent's first call, not at purchase. An unstarted pass keeps for 7 days.",
+   "src/i18n/locales/en.json agentPass.cardClock @9f6f3fce"
+  ],
+  [
+   "Includes the résumé scorer while it runs. Reading the board stays free; the Agent plan does the same every month and renews — the pass never does.",
+   "src/i18n/locales/en.json agentPass.cardIncludes @9f6f3fce"
+  ],
+  [
+   "Buy the pass — $29",
+   "src/i18n/locales/en.json agentPass.buy @9f6f3fce"
+  ],
+  [
+   "Sign in to buy the pass",
+   "src/i18n/locales/en.json agentPass.signInToBuy @9f6f3fce"
+  ],
+  [
+   "A pass is bound to your account — not to an email address, not to a key.",
+   "src/i18n/locales/en.json agentPass.signInWhy @9f6f3fce"
+  ],
+  [
+   "You hold a pass — open it",
+   "src/i18n/locales/en.json agentPass.holdOpen @9f6f3fce"
+  ],
+  [
+   "Your Agent Pass",
+   "src/i18n/locales/en.json agentPass.pageTitle @9f6f3fce"
+  ],
+  [
+   "Could not read your pass right now. If you just paid, nothing is lost — the purchase is on Stripe's record and shows here once the read succeeds.",
+   "src/i18n/locales/en.json agentPass.readFailed @9f6f3fce"
+  ],
+  [
+   "This checkout is not matched to a pass yet ( 7 ). If you just paid, give it a minute and retry — the receipt arrives on its own.",
+   "src/i18n/locales/en.json agentPass.repairPending @9f6f3fce"
+  ],
+  [
+   "Not started. Your 6 hours begin at your agent's first call — expires unused on 7 .",
+   "src/i18n/locales/en.json agentPass.clockUnstarted @9f6f3fce"
+  ],
+  [
+   "Running — 7 h 7 m of 6 hours left, ends 7 .",
+   "src/i18n/locales/en.json agentPass.clockLive @9f6f3fce"
+  ],
+  [
+   "Your last pass ended on 7 .",
+   "src/i18n/locales/en.json agentPass.clockEnded @9f6f3fce"
+  ],
+  [
+   "Your last pass expired unused on 7 .",
+   "src/i18n/locales/en.json agentPass.clockShelfExpired @9f6f3fce"
+  ],
+  [
+   "No pass on this account yet.",
+   "src/i18n/locales/en.json agentPass.clockNone @9f6f3fce"
+  ],
+  [
+   "Your existing agent key already carries the pass — nothing to paste.",
+   "src/i18n/locales/en.json agentPass.keyCarries @9f6f3fce"
+  ],
+  [
+   "Then add your agent key — it carries the pass:",
+   "src/i18n/locales/en.json agentPass.keyedTitle @9f6f3fce"
+  ],
+  [
+   "Sign-in for this host is not switched on yet, so from here only the unkeyed tools answer. To spend the pass, connect from 7 with your agent key.",
+   "src/i18n/locales/en.json agentPass.connectorNoOauth2 @9f6f3fce"
+  ],
+  [
+   "From 7 the pass can be used only once sign-in is switched on; today, use it from 7 with your agent key.",
+   "src/i18n/locales/en.json agentPass.connectorPassGate @9f6f3fce"
+  ],
+  [
+   "This payment did not create a second pass: an account holds one open pass at a time, and yours is shown here, unchanged. We have been told, and this payment will be refunded — if it is not back on your card within a few days, write to resumeboostersupp@gmail.com.",
+   "src/i18n/locales/en.json agentPass.repairSecondPass @9f6f3fce"
+  ],
+  [
+   "This checkout belongs to a different account from the one you are signed in to, and its pass is on that account. Sign in to the account that paid to see it.",
+   "src/i18n/locales/en.json agentPass.repairNotYours @9f6f3fce"
+  ],
+  [
+   "This payment was refunded, so it does not open a pass.",
+   "src/i18n/locales/en.json agentPass.repairRefunded @9f6f3fce"
+  ],
+  [
+   "No pass on this account. Reading the board is free; applications need a pass or the Agent plan.",
+   "src/i18n/locales/en.json oauthConsent.passNone @9f6f3fce"
+  ],
+  [
+   "Pass not started · 7 applications waiting",
+   "src/i18n/locales/en.json oauthConsent.passUnstarted @9f6f3fce"
+  ],
+  [
+   "Already have an agent? Connect it instead — 6 hours for $29, never renews; the Agent plan does.",
+   "src/i18n/locales/en.json agentPage.connectInstead @9f6f3fce"
+  ],
+  [
+   "The Full Resume Analysis, scan credit top-ups, Pro, Morning Queue and the Agent Pass earn no commission.",
+   "src/i18n/locales/en.json affiliates.commission.excluded @9f6f3fce"
+  ],
+  [
+   "Yes. Reading the board needs no key at all for a first call, and a free key opens every read tool. To have your agent request applications, a $29 pass gives it 6 hours and 10 applications, starting at its first call and never renewing; the Agent plan does the same monthly and renews. Every posting and every search on the board has a control that copies a prompt for your agent, and the setup for each host is at /agents.",
+   "src/i18n/locales/en.json faq.questions.bringYourAgent.answer @4c78b470"
+  ],
+  [
+   "A $29 pass gives your agent 6 hours to search the board and apply to 10 jobs for you. A job counts only when the agent can send the application. Never renews; sign in to buy.",
+   "src/i18n/locales/en.json homeAgent.passLine @4c78b470"
+  ],
+  [
+   "Buy or open your pass",
+   "src/i18n/locales/en.json homeAgent.passCta @4c78b470"
+  ],
+  [
+   "Or a one-off pass for your own AI agent: $29 for 6 hours and 10 applications. Never renews.",
+   "src/i18n/locales/en.json pricingPage.passLine @ddc030b3"
+  ],
+  [
+   "A $29 pass gives it 6 hours at full speed to research the board and apply to 10 jobs for you. Never renews; sign in to buy.",
+   "src/i18n/locales/en.json homeAgent.passLine @ddc030b3"
+  ],
+  [
+   "A $29 pass gives it 6 hours at full speed to research the board and apply to 10 jobs for you. It counts only jobs it can submit itself. Never renews; sign in to buy.",
+   "src/i18n/locales/en.json homeAgent.passLine @e67d5a8b"
+  ],
+  [
+   "6 hours with your agent and 10 applications for $29. An application counts only when the agent can send it. Never renews.",
+   "src/i18n/locales/en.json agentPass.cardBody @84591410"
+  ],
+  [
+   "Sign-in for this host is not live yet, so from here only the unkeyed tools answer. To spend the pass, connect from Claude Code, Cursor or a custom client with your agent key.",
+   "src/i18n/locales/en.json agentPass.connectorNoOauth @ea8ecdc5"
+  ],
+  [
+   "7 requests a minute and 7 calls a day per key; on the MCP server, a live Agent Pass on an account-linked key raises both for its hours, and it never raises them on /v1",
+   "scripts/prerender-seo.mjs @ca4e33ce"
+  ],
+  [
+   "Agent Pass: 6 hours for an agent you bring yourself",
+   "scripts/prerender-seo.mjs @ca4e33ce"
+  ],
+  [
+   "https://resumebooster.work /agents/pass",
+   "scripts/prerender-seo.mjs @ca4e33ce"
+  ],
+  [
+   "Point any MCP-capable AI agent at 7 from employers' own hiring systems. Search free; apply on the $99/month Agent plan or a $29 pass.",
+   "scripts/prerender-seo.mjs @ca4e33ce"
+  ],
+  [
+   "The diagnostic resume scan is free — 7 scans a day, no signup. One-time tools $ 7 –$ 7 ; Pro $ https://resumebooster.work /month; Apply Agent $99/month; a $29 pass for your own agent.",
+   "scripts/prerender-seo.mjs @ca4e33ce"
+  ],
+  [
+   "- MCP server for AI agents: https://resumebooster.work /agents (listed in the official MCP registry as 7 ) — 7 tools ( 7 ) over the same board, over Streamable HTTP. 7 answer with no key at all ( 7 calls a day per network address — an office or a home connection counts as one; from ChatGPT each person has their own 7 , and Claude's users share 7 a day first — 7 a day across every unkeyed caller, search capped at 7 rows), so any host can use those before sign-in; every other read tool needs a free key, 7 a paid key or a live Agent Pass, and the apply tools ( 7 ) an account-linked key with an Agent plan or a live Agent Pass, plus a standing mandate. A key travels in an Authorization header, so the keyed tools are reachable from 7 with a pasted key; 7 have no field for a key and sign a person in instead — but only while the server's sign-in service is switched on: then a keyed tool called with no credential answers a sign-in challenge, the host shows its Connect card, and after Allow on https://resumebooster.work /oauth/consent the call runs on that account's own key; when it is off, the same call answers in words (no card) and the unkeyed tools still answer. Today's state: the Test the server button on https://resumebooster.work /agents, or the initialize result's _meta[\" 7 \"].state; the page's own steps are at https://resumebooster.work /agents# for 7 ; setup for 7 and every other client is in the install repository's README at 7 . 7 7 7",
+   "scripts/prerender-seo.mjs @ca4e33ce"
+  ],
+  [
+   "7 requests a minute and 7 calls a day per key; a live pass raises both for its hours",
+   "scripts/prerender-seo.mjs @5e789de0"
+  ],
+  [
+   "- MCP server for AI agents: https://resumebooster.work /agents — 7 tools ( 7 ) over the same board, over Streamable HTTP. 7 answer with no key at all ( 7 calls a day per network address — an office or a home connection counts as one; from ChatGPT each person has their own 7 , and Claude's users share 7 a day first — 7 a day across every unkeyed caller, search capped at 7 rows), so any host can use those before sign-in; every other read tool needs a free key, 7 a paid key or a live Agent Pass, and the apply tools ( 7 ) an account-linked key with an Agent plan or a live Agent Pass, plus a standing mandate. A key travels in an Authorization header, so the keyed tools are reachable from 7 with a pasted key; 7 have no field for a key and sign a person in instead — but only while the server's sign-in service is switched on: then a keyed tool called with no credential answers a sign-in challenge, the host shows its Connect card, and after Allow on https://resumebooster.work /oauth/consent the call runs on that account's own key; when it is off, the same call answers in words (no card) and the unkeyed tools still answer. Today's state: the Test the server button on https://resumebooster.work /agents, or the initialize result's _meta[\" 7 \"].state; the page's own steps are at https://resumebooster.work /agents# for 7 ; setup for 7 and every other client is in the install repository's README at 7 . 7 7 7",
+   "scripts/prerender-seo.mjs @5e789de0"
+  ],
+  [
+   "- MCP server for AI agents: https://resumebooster.work /agents (listed in the official MCP registry as 7 ) — 7 tools ( 7 ) over the same board, over Streamable HTTP. 7 answer with no key at all ( 7 calls a day per network address — an office, a home connection or a chat service's own servers count as one — 7 a day across every unkeyed caller, search capped at 7 rows), so any host can use those before sign-in; every other read tool needs a free key, 7 a paid key or a live Agent Pass, and the apply tools ( 7 ) an account-linked key with an Agent plan or a live Agent Pass, plus a standing mandate. A key travels in an Authorization header, so the keyed tools are reachable from 7 with a pasted key; 7 have no field for a key and sign a person in instead — but only while the server's sign-in service is switched on: then a keyed tool called with no credential answers a sign-in challenge, the host shows its Connect card, and after Allow on https://resumebooster.work /oauth/consent the call runs on that account's own key; when it is off, the same call answers in words (no card) and the unkeyed tools still answer. Today's state: the Test the server button on https://resumebooster.work /agents, or the initialize result's _meta[\" 7 \"].state; the page's own steps are at https://resumebooster.work /agents# for 7 ; setup for 7 and every other client is in the install repository's README at 7 . 7 7 7",
+   "scripts/prerender-seo.mjs @d61d8b67"
+  ],
+  [
+   "- MCP server for AI agents: https://resumebooster.work /agents — 7 tools ( 7 ) over the same board, over Streamable HTTP. 7 answer with no key at all ( 7 calls a day per network address — an office, a home connection or a chat service's own servers count as one — 7 a day across every unkeyed caller, search capped at 7 rows), so any host can use those before sign-in; every other read tool needs a free key, 7 a paid key or a live Agent Pass, and the apply tools ( 7 ) an account-linked key with an Agent plan or a live Agent Pass, plus a standing mandate. A key travels in an Authorization header, so the keyed tools are reachable from 7 with a pasted key; 7 have no field for a key and sign a person in instead — but only while the server's sign-in service is switched on: then a keyed tool called with no credential answers a sign-in challenge, the host shows its Connect card, and after Allow on https://resumebooster.work /oauth/consent the call runs on that account's own key; when it is off, the same call answers in words (no card) and the unkeyed tools still answer. Today's state: the Test the server button on https://resumebooster.work /agents, or the initialize result's _meta[\" 7 \"].state; the page's own steps are at https://resumebooster.work /agents# for 7 ; setup for 7 and every other client is in the install repository's README at 7 . 7 7 7",
+   "scripts/prerender-seo.mjs @8d6c5c60"
+  ],
+  [
+   "- MCP server for AI agents: https://resumebooster.work /agents — 7 tools ( 7 ) over the same board, over Streamable HTTP. 7 answer with no key at all ( 7 calls a day per network address — an office, a home connection or a chat service's own servers count as one — 7 a day across every unkeyed caller, search capped at 7 rows), so any host can use those before sign-in; every other read tool needs a free key, 7 a paid key or a live Agent Pass, and the apply tools ( 7 ) an account-linked key with an Agent plan or a live Agent Pass, plus a standing mandate. A key travels in an Authorization header, so the keyed tools are reachable from 7 with a pasted key; 7 have no field for a key and sign a person in instead — but only while the server's sign-in service is switched on: then a keyed tool called with no credential answers a sign-in challenge, the host shows its Connect card, and after Allow on https://resumebooster.work /oauth/consent the call runs on that account's own key; when it is off, the same call answers in words (no card) and the unkeyed tools still answer. Today's state: the Test the server button on https://resumebooster.work /agents, or the initialize result's _meta[\" 7 \"].state; every host's steps are at https://resumebooster.work /agents# ( 7 ). 7 7 7",
+   "scripts/prerender-seo.mjs @7266f38c"
+  ],
+  [
+   "- MCP server for AI agents: https://resumebooster.work /agents — 7 tools ( 7 ) over the same board, over Streamable HTTP. 7 answer with no key at all ( 7 calls a day per address, 7 a day across every unkeyed caller, search capped at 7 rows), so any host can use those before sign-in; every other read tool needs a free key, 7 a paid key or a live Agent Pass, and the apply tools ( 7 ) an account-linked key with an Agent plan or a live Agent Pass, plus a standing mandate. A key travels in an Authorization header, so the keyed tools are reachable from 7 with a pasted key; 7 have no field for a key and sign a person in instead — a keyed tool called with no credential answers HTTP 401 with a WWW-Authenticate challenge naming the server's protected-resource metadata, the host shows its Connect card, and after Allow on https://resumebooster.work /oauth/consent the call runs on that account's own key. 7 7 7",
+   "scripts/prerender-seo.mjs @ea8ecdc5"
+  ]
+ ],
+ "excluded": {
+  "This is not a pass mark: major ATS platforms do not reject a resume on a score. The fixes below raise it.": [
+   "src/i18n/locales/en.json freeResults.atsBanner.noPassMark @9f6f3fce",
+   "not the pass: an ATS score is not a pass mark"
+  ],
+  "Your pass — its clock, its applications, and the one block your agent needs.": [
+   "src/i18n/locales/en.json agentPass.metaDescription @9f6f3fce",
+   "a label on the pass page or the consent screen (src/i18n/locales/en.json), which no crawler file printed; 474dca30 passed it too"
+  ],
+  "Reading your pass…": [
+   "src/i18n/locales/en.json agentPass.reading @9f6f3fce",
+   "a label on the pass page or the consent screen (src/i18n/locales/en.json), which no crawler file printed; 474dca30 passed it too"
+  ],
+  "7 of 10 applications": [
+   "src/i18n/locales/en.json agentPass.applications @9f6f3fce",
+   "a label on the pass page or the consent screen (src/i18n/locales/en.json), which no crawler file printed; 474dca30 passed it too"
+  ],
+  "Buy a pass": [
+   "src/i18n/locales/en.json agentPass.buyAnother @9f6f3fce",
+   "a label on the pass page or the consent screen (src/i18n/locales/en.json), which no crawler file printed; 474dca30 passed it too"
+  ],
+  "Pass running · 7 applications left": [
+   "src/i18n/locales/en.json oauthConsent.passLive @9f6f3fce",
+   "a label on the pass page or the consent screen (src/i18n/locales/en.json), which no crawler file printed; 474dca30 passed it too"
+  ],
+  "Your pass": [
+   "src/i18n/locales/en.json oauthConsent.passOpen @9f6f3fce",
+   "a label on the pass page or the consent screen (src/i18n/locales/en.json), which no crawler file printed; 474dca30 passed it too"
+  ],
+  "This is not a pass mark: no ATS rejects a resume on a score. The fixes below raise it.": [
+   "src/i18n/locales/en.json freeResults.atsBanner.noPassMark @0f7cdeba",
+   "not the pass: an ATS score is not a pass mark"
+  ],
+  "Daily re-check: 7 % of 7 decided sample postings still live at the source ( 7 ). A probe that could not be decided leaves the denominator rather than counting as a pass. Run once a day; the live page shows the latest run.": [
+   "scripts/prerender-seo.mjs @f04bf146",
+   "not the pass: a probe that is not counted as a pass"
+  ],
+  "@type": [
+   "scripts/prerender-seo.mjs @ca4e33ce",
+   "a JSON-LD key, a path or a CSS class the bake wrote beside the pass, not copy"
+  ],
+  "Offer": [
+   "scripts/prerender-seo.mjs @ca4e33ce",
+   "a JSON-LD key, a path or a CSS class the bake wrote beside the pass, not copy"
+  ],
+  "USD": [
+   "scripts/prerender-seo.mjs @ca4e33ce",
+   "a JSON-LD key, a path or a CSS class the bake wrote beside the pass, not copy"
+  ],
+  "text-muted-foreground mb-8": [
+   "scripts/prerender-seo.mjs @ca4e33ce",
+   "a JSON-LD key, a path or a CSS class the bake wrote beside the pass, not copy"
+  ],
+  "text-sm text-muted-foreground": [
+   "scripts/prerender-seo.mjs @ca4e33ce",
+   "a JSON-LD key, a path or a CSS class the bake wrote beside the pass, not copy"
+  ],
+  "/agent": [
+   "scripts/prerender-seo.mjs @ca4e33ce",
+   "a JSON-LD key, a path or a CSS class the bake wrote beside the pass, not copy"
+  ],
+  "mb-8": [
+   "scripts/prerender-seo.mjs @ca4e33ce",
+   "a JSON-LD key, a path or a CSS class the bake wrote beside the pass, not copy"
+  ],
+  "text-xl font-bold mb-3": [
+   "scripts/prerender-seo.mjs @ca4e33ce",
+   "a JSON-LD key, a path or a CSS class the bake wrote beside the pass, not copy"
+  ]
+ }
+}

@@ -44,7 +44,8 @@ import { proIncludes } from "../_shared/pro-perks.ts";
 // 2026-10-11.24: the retirement sentence's apply-yourself line says what the question marking does (it reads words and can miss an unusually worded question about the buyer) and asks them to read every answer before they send (wave 4 descope, 2026-10-25); nothing this function does changed.
 // 2026-10-11.25: the retirement sentence's apply-yourself line says the marking can miss a question about the buyer even when it is plainly worded (the recheck of the descope, 2026-10-25); nothing this function does changed.
 // 2026-10-11.26: the retirement sentence's apply-yourself line says that inside ChatGPT the AI reads the application form only for Greenhouse or Recruitee, the server's public-API pair (the second recheck of the descope, 2026-10-25); nothing else changed.
-const FN_BUILD = "create-product-checkout.2026-10-11.26";
+// 2026-10-11.27 (recheck 3, 2026-10-26): while no seller is named, a cut report's sentence says the $5 Full Analysis and Pro open for purchase soon instead of calling the Full Analysis still on sale (_shared/product-cuts.ts reportsClosed).
+const FN_BUILD = "create-product-checkout.2026-10-11.27";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

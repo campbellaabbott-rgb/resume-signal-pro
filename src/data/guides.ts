@@ -50,10 +50,10 @@ export interface Guide {
  * them; the page retracted it and the bake kept serving it (L4-10).
  */
 export const GUIDES_INTRO =
-  "No recycled folklore. Every guide below is grounded in something this product actually does — the checks our scanner runs, the documented behavior of real ATS parsers, or what our apply agent will and will not do on your behalf. Where the popular advice is wrong, we say so.";
-export const GUIDES_INDEX_TITLE = "Resume, ATS & Apply Agent Guides — From Real Data";
+  "No recycled folklore. Every guide below is grounded in something this product actually does — the checks our scanner runs, the documented behavior of real ATS parsers, or how the board reads employers' own hiring systems. Where the popular advice is wrong, we say so.";
+export const GUIDES_INDEX_TITLE = "Resume & ATS Guides, and Applying With Your Own AI — From Real Data";
 export const GUIDES_INDEX_DESCRIPTION =
-  "How ATS systems actually work, how resumes really get rejected, how to fix yours, and how our apply agent works — grounded in what the product does, not folklore.";
+  "How ATS systems work, why resumes get rejected, how to fix yours and how to apply with your own AI, grounded in what the product does.";
 
 export const GUIDE_GROUNDING_DEFAULT =
   "Grounded in the checks our scanner runs on every resume";
@@ -259,10 +259,10 @@ export const GUIDES: Record<string, Guide> = {
     title: "Career Change Resume: Keywords & Framing That Work",
     h1: "The career changer's resume playbook",
     description:
-      "How to write a resume when your experience is in one field and your target is another: bridge keywords, title translation, and the sections that carry a transition.",
+      "How to write a resume when your experience is in one field and your target another: bridge keywords, title translation and transition sections.",
     tldr:
       "A career-change resume fails because every title and keyword points at the old field. Fix it three ways: re-label transferable work in the target field's vocabulary (bridge keywords), name the transition explicitly in a summary line, and add a projects section that carries target-field evidence. Keep the standard reverse-chronological format — functional resumes parse badly and recruiters distrust them.",
-    updated: "2026-07-06",
+    updated: "2026-10-24",
     minutes: 6,
     sections: [
       {
@@ -369,7 +369,7 @@ export const GUIDES: Record<string, Guide> = {
       "The structure decision (one consolidated role vs. a projects section), the bullet formula that translates gigs into employer language, and what to do when a project has no metrics.",
     tldr:
       "Freelance work belongs on your resume as real experience, structured by one decision: continuous freelancing with a coherent focus becomes ONE consolidated role ('Independent UX Consultant, 2021–present') with project bullets under it; scattered or part-time projects become a 'Selected Projects' section. Write every bullet as verb + deliverable + scope + outcome, translate platform language into employer language ('made websites' → 'designed and shipped responsive marketing sites'), and never paste platform stats like Job Success % — recruiters don't hire profiles, they hire experience.",
-    updated: "2026-07-08",
+    updated: "2026-10-25",
     minutes: 6,
     sections: [
       {
@@ -434,10 +434,10 @@ export const GUIDES: Record<string, Guide> = {
     title: "How to Put Fractional Roles on Your Resume (CFO, CMO, CTO)",
     h1: "How to put fractional roles on your resume",
     description:
-      "Concurrent engagements without the job-hopper misread: the umbrella portfolio entry, per-engagement scope lines, where advisory roles sit, and framing fractional work when applying full-time.",
+      "Concurrent engagements without the job-hopper misread: the umbrella portfolio entry, per-engagement scope lines and where advisory roles sit.",
     tldr:
       "Fractional roles belong under ONE umbrella entry — 'Fractional CFO — concurrent engagements, 2022–present' — with each engagement as a scope line beneath it ('PE-backed healthcare services company, ~$40M revenue: owned FP&A and board reporting'), never as separate look-alike jobs, which reads as instability in a six-second skim. Lead every line with executive scope (P&L, budget, headcount, stage), keep client names out unless you have permission, and when applying to a full-time role, frame the portfolio as continuity of leadership at breadth — not as a collection of short stints.",
-    updated: "2026-07-08",
+    updated: "2026-10-25",
     minutes: 6,
     sections: [
       {
@@ -503,7 +503,7 @@ export const GUIDES: Record<string, Guide> = {
       "Resume scores are estimates with error bars, not verdicts. How scoring works, why we show a range, and how to use a score without being fooled by it.",
     tldr:
       "A resume score is a model's estimate built from proxies (parseability, keyword coverage, structure), not a measurement of hiring odds — two reasonable tools will disagree on the same resume by several points. Use scores for prioritization: below ~50 usually means a structural or parsing problem to fix first; above ~80 means stop polishing and start applying. Trust only scores that come with an itemized explanation.",
-    updated: "2026-07-06",
+    updated: "2026-10-10",
     minutes: 5,
     sections: [
       {
@@ -563,17 +563,17 @@ export const GUIDES: Record<string, Guide> = {
     title: "The Apply Agent Is Switched Off: Apply With Your Own AI",
     h1: "The Apply Agent is switched off",
     description:
-      "Resume Booster no longer runs an agent that applies for you, and sends nothing in your name. Here is how to apply yourself with Claude or ChatGPT instead.",
+      "Resume Booster switched its Apply Agent off and sends nothing in your name. Here is how to apply yourself with Claude, ChatGPT or Claude Code instead.",
     tldr:
-      "We switched our Apply Agent off and stopped selling the Agent plan, the Agent Pass and the Apply Assistant: Resume Booster does not send applications for anyone. To apply, connect Claude or ChatGPT at resumebooster.work/agents. Your AI reads the posting and, where the employer's hiring system publishes it, the application form; Resume Booster tells it to ask you the questions that look like they are about you and to draft open answers about your work from your CV. That check reads the question's words and can miss a question about you, even a plainly worded one, so you read every answer before you send and press submit on the employer's own site.",
-    updated: "2026-10-12",
+      "We switched our Apply Agent off and stopped selling the products built around it: Resume Booster does not send applications for anyone. To apply, connect Claude, ChatGPT or Claude Code at resumebooster.work/agents. Your AI reads the posting and, where the employer's hiring system publishes it, the application form; Resume Booster tells it to ask you the questions that look like they are about you and to draft open answers about your work from your CV. That check reads the question's words and can miss a question about you, even a plainly worded one, so you read every answer before you send and press submit on the employer's own site.",
+    updated: "2026-10-25",
     minutes: 5,
     grounding: "Describes what changed, and the apply-yourself flow the connector serves today",
     sections: [
       {
         h2: "What changed",
         paras: [
-          "Our Apply Agent was a service that prepared applications overnight and could send some of them for you. It is switched off, and nothing is prepared or sent any more. We also stopped selling the three products built around it: the Agent plan, the Agent Pass and the Apply Assistant. Their checkouts refuse a purchase and charge nothing.",
+          "Our Apply Agent was a service that prepared applications overnight and could send some of them for you. It is switched off, and nothing is prepared or sent any more. We also stopped selling the products built around it. Their checkouts refuse a purchase and charge nothing.",
           "If you bought one of them, write to resumeboostersupp@gmail.com from the address you paid with and we will honour what you bought.",
           "Your account keeps what it had. The application tracker, your saved jobs and any applications the agent prepared before stay where they were, and none of them will be sent.",
         ],
@@ -581,7 +581,7 @@ export const GUIDES: Record<string, Guide> = {
       {
         h2: "How to apply now: with your own AI",
         paras: [
-          `Connect Claude or ChatGPT to Resume Booster at resumebooster.work/agents. It is free and needs no account. Then give your AI your CV in the chat and ask it to help you apply to a job, either by pasting the job's link from the board or by picking one from a search.`,
+          `Connect Claude, ChatGPT or Claude Code to Resume Booster at resumebooster.work/agents. It is free and needs no account. Then give your AI your CV in the chat and ask it to help you apply to a job, either by pasting the job's link from the board or by picking one from a search.`,
           `Your AI reads the posting. When the employer uses ${orList(MCP_FORM_VENDORS.map((v) => v.label))}, it also reads the employer's real application form, question by question. Inside ChatGPT it reads the form only for ${orList(MCP_FORM_VENDORS.filter((v) => MCP_FORM_VENDORS_ON_CHATGPT.includes(v.key)).map((v) => v.label))}. For every other employer it reads the posting and gives you the employer's apply link, and you fill in their form yourself.`,
         ],
         bullets: [
@@ -634,8 +634,12 @@ export const GUIDES: Record<string, Guide> = {
         a: "No. The Apply Agent is switched off and Resume Booster does not send applications for anyone. You apply yourself, with your own AI's help if you want it.",
       },
       {
-        q: "I paid for the Agent plan, the Agent Pass or the Apply Assistant. What happens now?",
+        q: "I paid for one of the apply agent's products. What happens now?",
         a: "Write to resumeboostersupp@gmail.com from the address you paid with and we will honour what you bought.",
+      },
+      {
+        q: "Which AI can I use?",
+        a: "Claude (on the web, the desktop app or Claude Code) or ChatGPT. The steps for each are on resumebooster.work/agents.",
       },
       {
         q: "Will my AI fill in the whole application for me?",
@@ -649,7 +653,7 @@ export const GUIDES: Record<string, Guide> = {
     related: [
       { label: "Connect Claude or ChatGPT", href: "/agents" },
       { label: "See the live job board", href: "/jobs" },
-      { label: "How we verify every posting", href: "/methodology" },
+      { label: "How the board reads and re-checks postings", href: "/methodology" },
       { label: "Why resumes get rejected", href: "/guides/why-resumes-get-rejected" },
     ],
   },

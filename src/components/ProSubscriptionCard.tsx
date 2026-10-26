@@ -138,11 +138,18 @@ export function ProSubscriptionCard({ compact = false }: { compact?: boolean }) 
             {t("proPlan.retiredPlanTitle", "Your plan is the Apply Agent plan, which we no longer sell.")}
           </p>
           <p className="text-sm text-muted-foreground">
+            {/* A trial of the retired plan gets less than Pro's tools (recheck 3):
+                the writing tools count on the free daily allowance and no Full
+                Analysis is minted without a payment (_shared/pro-standing.ts). */}
             {owing
               ? t("proPlan.retiredPlanOwing", "Its last payment didn't go through. You don't need a card for a plan we no longer sell: cancel it in billing and the retries stop.")
-              : pro.cancelAtPeriodEnd && periodEnd
-                ? t("proPlan.retiredPlanEnds", "It ends on {{date}} and will not renew. Pro's tools stay on until then.", { date: periodEnd })
-                : t("proPlan.retiredPlanLive", "While it runs, Pro's tools stay on. The agent itself is switched off; you can cancel the plan any time in billing.")}
+              : pro.trialing
+                ? pro.cancelAtPeriodEnd && periodEnd
+                  ? t("proPlan.retiredPlanTrialingEnds", "Its trial ends on {{date}} and the plan will not renew. Until then scans have no daily cap, the writing tools count against the free daily allowance, and the Full Analysis is not included.", { date: periodEnd })
+                  : t("proPlan.retiredPlanTrialing", "It is still in its trial: scans have no daily cap, the writing tools count against the free daily allowance, and the Full Analysis is not included during a trial. The agent itself is switched off; you can cancel the plan any time in billing.")
+                : pro.cancelAtPeriodEnd && periodEnd
+                  ? t("proPlan.retiredPlanEnds", "It ends on {{date}} and will not renew. Pro's tools stay on until then.", { date: periodEnd })
+                  : t("proPlan.retiredPlanLive", "While it runs, Pro's tools stay on. The agent itself is switched off; you can cancel the plan any time in billing.")}
           </p>
           {manageButton(t("proPlan.manageRetired", "Manage or cancel in billing"), Settings2)}
         </div>

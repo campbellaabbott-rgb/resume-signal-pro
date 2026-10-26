@@ -5,6 +5,7 @@
 import { useParams, Link, Navigate } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
+import { PageJsonLd } from "@/components/seo/PageJsonLd";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 
@@ -32,7 +33,7 @@ export default function AtsVendorGuide() {
         description={data.behaviors[0].a.slice(0, 155)}
         path={`/ats/${vendor}`}
       />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: faqLd }} />
+      <PageJsonLd blocks={[faqLd]} />
       <Header />
       <main className="pt-20 pb-20">
         <div className="container max-w-3xl">

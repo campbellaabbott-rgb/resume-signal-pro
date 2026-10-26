@@ -6,6 +6,7 @@
 import { useParams, Link, Navigate } from "react-router-dom";
 import { ArrowRight, Check, Minus } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
+import { PageJsonLd } from "@/components/seo/PageJsonLd";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { COMPETITORS, US_PAID_CLAUSE } from "@/data/competitors";
@@ -48,15 +49,17 @@ export default function VsCompetitor() {
         description={`How Resume Booster's free diagnostic scan compares to ${c.name}: free-tier depth, score transparency, verified output — and where ${c.name} is genuinely stronger.`}
         path={`/vs/${slug}`}
       />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
-        "@context": "https://schema.org",
-        "@type": "FAQPage",
-        mainEntity: faqs.map((f) => ({
-          "@type": "Question",
-          name: f.q,
-          acceptedAnswer: { "@type": "Answer", text: f.a },
-        })),
-      }) }} />
+      <PageJsonLd
+        blocks={[{
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          mainEntity: faqs.map((f) => ({
+            "@type": "Question",
+            name: f.q,
+            acceptedAnswer: { "@type": "Answer", text: f.a },
+          })),
+        }]}
+      />
       <Header />
       <main className="pt-20 pb-20">
         <div className="container max-w-3xl">

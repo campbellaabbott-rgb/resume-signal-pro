@@ -42,12 +42,21 @@ export interface AllowedFunction {
   caller: string;
   returns: string;
   writes?: string;
+  /**
+   * The migration that re-issued client_callable_census() with this row in it,
+   * for a function opened after 20261004110000 (absent for the census's own
+   * rows). The census lists are held equal to this file by the NEWEST census
+   * definition; 20261004110000's own arrays hold the rows without it.
+   */
+  since?: string;
 }
 
 const A = (sig: string, caller: string, returns: string, writes?: string): AllowedFunction =>
   ({ sig, roles: "anon", caller, returns, ...(writes ? { writes } : {}) });
 const U = (sig: string, caller: string, returns: string, writes?: string): AllowedFunction =>
   ({ sig, roles: "authenticated", caller, returns, ...(writes ? { writes } : {}) });
+/** A row added by a census re-issue after 20261004110000, stamped with that migration. */
+const since = (stamp: string, row: AllowedFunction): AllowedFunction => ({ ...row, since: stamp });
 
 export const CLIENT_CALLABLE: AllowedFunction[] = [
   // ── public pages: company- and board-level facts derived from public postings
@@ -61,7 +70,7 @@ export const CLIENT_CALLABLE: AllowedFunction[] = [
   A("public.get_company_financials(text)", "src/components/jobs/PublicCompanyCard.tsx", "public record: SEC ticker and revenue series"),
   A("public.get_company_growth(text[])", "src/pages/Jobs.tsx", "aggregates: per-company 7-day growth rate"),
   A("public.get_company_hiring_health(text[])", "src/pages/Jobs.tsx", "aggregates: per-company closure and repost counts"),
-  A("public.get_company_intel(text)", "src/components/jobs/CompanyIntelPanel.tsx", "aggregates: one company's category, country and salary medians"),
+  A("public.get_company_intel(text)", "src/components/jobs/CompanyIntelPanel.tsx", "aggregates: one company's category, country and salary medians, and the token's open roles per hiring system"),
   A("public.get_company_suggest(text)", "src/pages/Explore.tsx", "aggregates: up to 8 company names matching a 3+ letter query, with open-role counts"),
   A("public.get_country_facet()", "src/pages/Jobs.tsx", "aggregates: postings per country"),
   A("public.get_employer_layoff_filings(text[])", "src/components/jobs/LayoffFilingLine.tsx", "public record: WARN / SEC 8-K filings matched to the tokens asked about"),
@@ -84,6 +93,13 @@ export const CLIENT_CALLABLE: AllowedFunction[] = [
   A("public.get_today_scan_count()", "src/hooks/use-shared-data.ts", "aggregates: one count"),
   A("public.get_transparency_cache()", "src/pages/PayTransparencyIndex.tsx", "public record: the cached pay-transparency payload"),
   A("public.get_trending_categories()", "src/pages/HiringTrends.tsx", "aggregates: per-category posting counts, last 7 vs prior 7 days"),
+  // Opened after the census, by the census re-issue that names it. The perk
+  // reader of company profiles (phase 1): only keys that passed their row
+  // audit in the last 45 days, thresholds re-checked, nothing on a token two
+  // vendors share. Its page caller is the lander's perks block (phase 2);
+  // verify section 80 also asks it with the publishable key.
+  since("20261012110100", A("public.get_employer_perks(text)", "src/components/jobs/CompanyPerks.tsx",
+    "aggregates: one board's published perk rows -- k of n readable postings per country, one quoted benefits line and the id of the still-serving posting it came from, the statutory note where one exists, and why a board shows none")),
 
   // ── the owner's tooling, run with the publishable key (verify-deploy, smoke, scan-trends)
   // The two board-meter readers and get_cron_health stay open ONLY because
@@ -252,11 +268,11 @@ export const CLOSED_BY_CENSUS: Array<{ sig: string; why: string; served: string 
  * Tables a client role can read every row of, on purpose. The census test
  * holds that no OTHER table is readable or writable that way.
  */
+// company_financials, company_name_overrides, company_profiles and
+// showcase_excluded left this list on 2026-10-12: 20261012130000 took them
+// from every client role, and the company page reads them only through its
+// SECURITY DEFINER readers.
 export const OPEN_TABLES: Array<{ table: string; access: string; why: string }> = [
-  { table: "company_financials", access: "anon SELECT", why: "public SEC figures" },
-  { table: "company_name_overrides", access: "anon SELECT", why: "display names" },
-  { table: "company_profiles", access: "anon SELECT", why: "employee counts from public records" },
-  { table: "showcase_excluded", access: "anon SELECT", why: "the list of staffing agencies kept off leaderboards" },
   { table: "daily_scan_stats", access: "anon SELECT", why: "one count per day" },
   { table: "job_board_stats_rollup", access: "anon SELECT", why: "aggregates; get_freshness_stats and get_date_coverage read it with INVOKER rights for public pages" },
 ];

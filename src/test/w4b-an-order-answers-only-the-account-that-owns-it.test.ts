@@ -97,7 +97,7 @@ describe("receipt", () => {
   it("answers Stripe's receipt URL and sends nothing", async () => {
     const r = await ask({ action: "receipt", sessionId: MINE });
     expect(r.status).toBe(200);
-    expect(r.build).toBe("account-order.2026-10-14.30");
+    expect(r.build).toBe("account-order.2026-10-14.31");
     expect(r.json.url).toBe(`https://pay.stripe.com/receipts/${MINE}`);
     expect(mailed).toEqual([]);
   });
@@ -125,6 +125,19 @@ describe("mail_again", () => {
     for (const m of mailed) {
       expect(m).toMatchObject({ email: EMAIL, productType: "cover_letter", sessionId: MINE, generatedContent: { letter: "Dear hiring manager" }, auth: "Bearer service" });
     }
+  });
+
+  // Recheck 3 (2026-10-26): the resend went out in English whatever language
+  // the buyer paid in; retry-failed-deliveries already passed the delivery's
+  // metadata.language, and now this does too.
+  it("mails the saved copy in the language the order was bought in, and in no named language when none was recorded", async () => {
+    const row = db.rows("product_deliveries").find((r) => r.stripe_session_id === MINE)!;
+    row.metadata = { language: "es", livemode: true };
+    expect((await ask({ action: "mail_again", sessionId: MINE })).json).toEqual({ sent: true });
+    expect(mailed[0].language).toBe("es");
+    row.metadata = null;
+    await ask({ action: "mail_again", sessionId: MINE });
+    expect(mailed[1]).not.toHaveProperty("language");
   });
 
   it("an order with no saved copy answers 409 and takes no daily slot", async () => {

@@ -17,6 +17,7 @@
 //      says what happened and nothing is re-asked.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { setLanderManifestForTests } from "@/lib/seo/lander-manifest";
 import { MemoryRouter } from "react-router-dom";
 import { clearBoardBudgetRefusal } from "@/lib/board-budget";
 
@@ -98,6 +99,9 @@ describe("1. the employer check's number survives its click", () => {
   });
 
   it("positive control: a single-board employer still links its lander, with the way back", async () => {
+    // SEO-010: an employer link reaches /jobs/company/ only where the bake's
+    // manifest names a written page; this one has one.
+    setLanderManifestForTests({ acme: "acme" });
     suggest([{ name: "Acme", tokens: ["acme"], open_roles: 40, feed_total: null, feed_total_at: null }]);
     mount("/explore?i=check");
     fireEvent.change(screen.getByPlaceholderText("Type a company name…"), { target: { value: "acme" } });
@@ -107,6 +111,7 @@ describe("1. the employer check's number survives its click", () => {
     expect(u.searchParams.get("from")).toBe("explore");
     expect(new URLSearchParams(u.searchParams.get("back")?.split("?")[1] ?? "").get("i")).toBe("check");
     expect(cardFor("Acme")!.textContent).toContain("40");
+    setLanderManifestForTests(null);
   });
 });
 

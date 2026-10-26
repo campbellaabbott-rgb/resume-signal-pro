@@ -36,13 +36,16 @@ vi.mock("@/components/Header", () => ({ Header: () => null }));
 vi.mock("@/components/Footer", () => ({ Footer: () => null }));
 vi.mock("@/components/seo/SEO", () => ({ SEO: () => null }));
 vi.mock("@/components/ProductPreview", () => ({ ProductPreview: () => null }));
+// Whether a seller is named: as shipped (closed) unless a test opens it (recheck 3).
+const gate = vi.hoisted(() => ({ open: false }));
+vi.mock("@/lib/purchases-open", () => ({ purchasesOpen: () => gate.open }));
 
 import Pricing from "../pages/Pricing";
 import { PRODUCTS, SUBSCRIPTIONS, PASS, getAllProducts } from "@/config/products";
 import { PRO_PERKS } from "@/config/pro-perks";
 
 vi.setConfig(MOUNT_TEST_BUDGET);
-afterEach(cleanup);
+afterEach(() => { cleanup(); gate.open = false; });
 
 const mount = () => render(<MemoryRouter initialEntries={["/pricing"]}><Pricing /></MemoryRouter>);
 const ld = () => JSON.parse(document.querySelector('script[type="application/ld+json"]')!.innerHTML) as {
@@ -79,7 +82,14 @@ describe("/pricing after the apply pivot", () => {
     expect(screen.getByText(PRODUCTS.fullAnalysis.name)).toBeInTheDocument();
   });
 
-  it("the structured data quotes no retired price and describes one subscription and no pass", () => {
+  it("while purchases are closed (as shipped) the structured data offers nothing at a price (recheck 3)", () => {
+    mount();
+    const data = ld() as unknown as { offers: { "@type": string; price?: string; highPrice?: string } };
+    expect(data.offers).toEqual({ "@type": "Offer", price: "0", priceCurrency: "USD" });
+  });
+
+  it("once purchases open, the structured data quotes no retired price and describes one subscription and no pass", () => {
+    gate.open = true;
     mount();
     const data = ld();
     expect(data.description).not.toMatch(/pass|two optional subscriptions/i);

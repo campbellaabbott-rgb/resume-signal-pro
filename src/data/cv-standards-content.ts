@@ -37,6 +37,8 @@ export interface CvTemplateStrings {
   photoNorms: Record<"expected" | "common" | "optional" | "discouraged" | "never", string>;
   faqPhoto: string; // {name}
   faqLength: string; // {name}
+  /** The heading over the visible questions (SEO-032). */
+  faqHeading: string;
   ctaTitle: string;
   ctaText: string; // {name}
   ctaButton: string;
@@ -81,9 +83,10 @@ export const EN_TEMPLATE: CvTemplateStrings = {
   },
   faqPhoto: "Should a CV in {name} include a photo?",
   faqLength: "How long should a CV be in {name}?",
+  faqHeading: "Common questions",
   ctaTitle: "Check your resume against these standards",
   ctaText:
-    "The free scan evaluates your resume against {name}'s norms automatically — photo expectations, personal-data conventions, length, and the keywords your industry expects.",
+    "The free scan evaluates your resume against the norms in {name} automatically — photo expectations, personal-data conventions, length, and the keywords your industry expects.",
   ctaButton: "Scan my resume free",
   sourceNote:
     "Source: the country-standards engine of this site's resume scanner. When the engine's data improves, this page updates with it.",
@@ -111,6 +114,7 @@ const ES_T: CvTemplateStrings = {
   },
   faqPhoto: "¿Debe llevar foto un CV en {name}?",
   faqLength: "¿Cuánto debe medir un CV en {name}?",
+  faqHeading: "Preguntas frecuentes",
   ctaTitle: "Comprueba tu currículum contra estas normas",
   ctaText:
     "El escaneo gratuito evalúa tu currículum según las normas de {name} automáticamente — expectativas de foto, datos personales, extensión y las palabras clave de tu sector.",
@@ -141,6 +145,7 @@ const FR_T: CvTemplateStrings = {
   },
   faqPhoto: "Faut-il une photo sur un CV en {name} ?",
   faqLength: "Quelle longueur pour un CV en {name} ?",
+  faqHeading: "Questions fréquentes",
   ctaTitle: "Vérifiez votre CV contre ces normes",
   ctaText:
     "Le scan gratuit évalue votre CV selon les normes de {name} automatiquement — photo, données personnelles, longueur et les mots-clés de votre secteur.",
@@ -171,6 +176,7 @@ const DE_T: CvTemplateStrings = {
   },
   faqPhoto: "Braucht ein Lebenslauf in {name} ein Foto?",
   faqLength: "Wie lang sollte ein Lebenslauf in {name} sein?",
+  faqHeading: "Häufige Fragen",
   ctaTitle: "Prüfen Sie Ihren Lebenslauf gegen diese Standards",
   ctaText:
     "Der kostenlose Scan bewertet Ihren Lebenslauf automatisch nach den Normen von {name} — Foto-Erwartungen, persönliche Daten, Länge und die Keywords Ihrer Branche.",
@@ -201,6 +207,7 @@ const PT_T: CvTemplateStrings = {
   },
   faqPhoto: "Um currículo em {name} deve ter foto?",
   faqLength: "Qual o tamanho ideal de um currículo em {name}?",
+  faqHeading: "Perguntas frequentes",
   ctaTitle: "Verifique seu currículo contra esses padrões",
   ctaText:
     "O escaneamento gratuito avalia seu currículo pelas normas de {name} automaticamente — expectativas de foto, dados pessoais, extensão e as palavras-chave do seu setor.",
@@ -231,6 +238,7 @@ const NL_T: CvTemplateStrings = {
   },
   faqPhoto: "Moet een cv in {name} een foto hebben?",
   faqLength: "Hoe lang moet een cv in {name} zijn?",
+  faqHeading: "Veelgestelde vragen",
   ctaTitle: "Toets je cv aan deze normen",
   ctaText:
     "De gratis scan beoordeelt je cv automatisch volgens de normen van {name} — fotoverwachtingen, persoonsgegevens, lengte en de trefwoorden van jouw sector.",
@@ -398,6 +406,13 @@ export const CV_LOCALES: Record<string, CvLocaleConfig> = {
 export function fill(template: string, vars: Record<string, string>): string {
   return template.replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? `{${k}}`);
 }
+
+/*
+ * The country phrase ("in the United States", "no Brasil", "in der Schweiz")
+ * and the two FAQ questions a country page shows live in
+ * src/lib/cv-country-phrase.ts (cvFill, cvStandardsFaqs): one copy of the
+ * rules, read by the React page and the bake alike.
+ */
 
 /** ISO code for an English country slug, or null. */
 export function isoFromSlug(slug: string): string | null {

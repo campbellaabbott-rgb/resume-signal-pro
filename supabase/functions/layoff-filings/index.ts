@@ -61,9 +61,19 @@ import {
 // wave 3 adds the Oregon/Illinois/Massachusetts map fixes, S8-026/S8-108 and edgar_reread.
 // .3 (wave 3 integration): board-data-ingest stamped .1 and tests-ci .2 (the x-fn-build header via
 // _shared/fn-build.ts stamped()); the merged function carries both, so a build neither shipped alone.
+// 2026-10-11.1 (wave 4): the catalogue copy labels the "Meta" SmartRecruiters board (Meta1) a staffing agency.
+// 2026-10-11.2 (wave 4, recheck 3): the copy no longer labels twelve employers' own boards (State Farm,
+// Principal, Goodwill of Colorado, HKBU, the Scottish Government's two, Nunavut, Emirates NBD's two,
+// Emirates Islamic, Farrans, Calamos) as staffing agencies'.
 // 2026-10-15.1: the catalogue copy carries JPMorgan Chase (oracle jpmc~~CX_1001) and its search key.
-// 2026-10-15.2: the copy carries the five Reyes brand boards (three new) and the iCIMS brand field.
-export const BUILD_VERSION = "2026-10-15.2";
+// Merged onto wave 4's copy, so the one build carries both lines; neither build has deployed.
+// 2026-10-15.2: merged onto wave 4's 2026-10-11.2 copy, so it carries the JPMorgan line and the twelve
+// boards without the agency label. 2026-10-15.1 named the copy before that merge and never deployed.
+// 2026-10-15.2 also named trust/pages' copy before it merged oh/integration at 9005a76f: the five Reyes
+// brand boards (three new) and the iCIMS brand field. Neither 2026-10-15.2 deployed.
+// 2026-10-15.3: trust/pages merged onto oh/integration's 2026-10-15.2 copy, so the one build carries the
+// twelve boards without the agency label, the JPMorgan line and the Reyes brand boards.
+export const BUILD_VERSION = "2026-10-15.3";
 
 // ── mirror constants (src/config/layoffs.ts names this file) ──────────────
 export const LAYOFF_LOOKBACK_DAYS = 90;

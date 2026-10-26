@@ -285,6 +285,18 @@ const PINNED = {
   // the two-character `\v` (same code point, 352KB less deploy source —
   // the .79 redeploy was refused at 4.6MB against the 4.5MB cap). The
   // catalog pins below are UNCHANGED, which is the proof no entry moved.
+  // 2026-09-09.93 (the merge recheck, 2026-10-25): one agency flag. The
+  // SmartRecruiters board named "Meta" (Meta1, a staffing firm whose roles
+  // the AI was handed as Meta's) leaves its packed line as an object literal
+  // with agency: true, at the same position; no board is added, removed or
+  // moved, so catalogSize holds and only the content hash moves. .93 has
+  // never deployed, so the build that ships this is already a new
+  // BUILD_VERSION against live .92 and the bootstrap lane recomputes.
+  // 2026-09-09.93 (recheck 3, 2026-10-26): twelve agency flags come off
+  // employers' own boards (State Farm, Principal, Goodwill of Colorado and
+  // nine Oracle and UKG tenants named "... Recruitment"); each stays an
+  // object literal at its position, so catalogSize holds and only the content
+  // hash moves, inside the same undeployed .93.
   // 2026-09-09.95: +JPMorgan Chase (oracle jpmc~~CX_1001, the region-less
   // host jpmc.fa.oraclecloud.com), appended as the last entry, so no carried
   // board's catalogue index moves. The cold cursor walks a vendor-interleaved
@@ -295,7 +307,8 @@ const PINNED = {
   // string stays): Martin Brower and Reyes Beverage Group gain an iCIMS
   // `brand` in place, and three Reyes brand boards are appended after
   // JPMorgan Chase, so again no carried board's index moves.
-  sourcesHash: "cbcf4375fc236cd4",
+  // Merged with wave 4 at f4ccfeae: every change above, one pin over the merged file.
+  sourcesHash: "c6f33075be1a8d0a",
   // The PARSED catalog behind that hash — 44,081 packed + 463 object-literal
   // entries — pinned separately so a re-format is distinguishable from a real
   // catalog change (see the two-pins note at the top of this file). Read
@@ -319,7 +332,7 @@ const PINNED = {
   // +3, Reyes Coca-Cola Bottling, Reyes Fleet Management and Reyes Holdings
   // (trust/pages). Not yet deployed, so .95's bootstrap lane takes all four.
   catalogSize: 44_523,
-  catalogHash: "87b2e99dbc930392",
+  catalogHash: "966a70d42f7a3d92",
   // 2026-08-21.4: disables the exact-word tier's company matcher, whose index
   // never built. Bumped so the mitigation is externally identifiable.
   // 2026-08-21.5: routed retrieval. index.ts + two new modules; sources.ts

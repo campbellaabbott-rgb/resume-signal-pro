@@ -1573,7 +1573,7 @@ export default function Account() {
                       // shows nothing for a row without them.
                       const chip = trackedEmployerChip(hh);
                       if (chip?.kind === "churn") {
-                        return <p className="text-[11px] text-warning/90 mt-0.5">{t("jobsPage.verdictChurnFloor", "re-lists roles often (at least {{n}}×) — responses may be slow", { n: chip.n })}</p>;
+                        return <p className="text-[11px] text-warning/90 mt-0.5">{t("jobsPage.verdictChurnFloor", "{{n}} roles we watched come down came back under the same posting or had another posting with the same title live when they came down", { n: chip.n })}</p>;
                       }
                       if (chip?.kind === "stayed-down") {
                         return <p className="text-[11px] text-success/80 mt-0.5">{t("jobsPage.verdictTakedownsObserved", "we watched {{n}} of its roles come off the board and stay off", { n: chip.n })}</p>;

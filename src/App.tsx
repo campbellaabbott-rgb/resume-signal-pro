@@ -1,5 +1,4 @@
-import { Suspense, lazy } from "react";
-import { Toaster } from "@/components/ui/toaster";
+import { Suspense, lazy, type ReactNode } from "react";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
@@ -47,6 +46,8 @@ const PayTransparencyIndex = lazy(() => import("./pages/PayTransparencyIndex"));
 const Privacy = lazy(() => import("./pages/Privacy"));
 const Pricing = lazy(() => import("./pages/Pricing"));
 const Methodology = lazy(() => import("./pages/Methodology"));
+const About = lazy(() => import("./pages/About"));
+const ApiAddress = lazy(() => import("./pages/ApiAddress"));
 const DevCheckoutTest = lazy(() => import("./pages/DevCheckoutTest"));
 const Affiliates = lazy(() => import("./pages/Affiliates"));
 const AffiliateRedirect = lazy(() => import("./pages/AffiliateRedirect"));
@@ -78,11 +79,26 @@ const EmailUnsubscribe = lazy(() => import("./pages/EmailUnsubscribe"));
 
 const queryClient = new QueryClient();
 
+/**
+ * The owner's admin pages keep the dark palette whatever the visitor's theme:
+ * they were drawn for it, are read by one person, and are outside the
+ * light-mode work (design spec 2.6). The attribute re-applies the dark tokens
+ * to everything inside it.
+ */
+function ForceDark({ children }: { children: ReactNode }) {
+  return (
+    <div data-theme="dark" className="min-h-screen bg-background text-foreground">
+      {children}
+    </div>
+  );
+}
+
 const App = () => (
   <ErrorBoundary>
   <QueryClientProvider client={queryClient}>
   <AuthProvider>
-    <Toaster />
+    {/* One toast system: sonner. src/hooks/use-toast.ts adapts the old
+        toast() calls onto it, so no caller changed. */}
     <Sonner />
     {/* The roles question every ATS Defense buy button asks (S11-074). */}
     <Suspense fallback={null}><TargetRolesDialog /></Suspense>
@@ -140,6 +156,11 @@ const App = () => (
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/methodology" element={<Methodology />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/v1">
+            <Route index element={<ApiAddress />} />
+            <Route path="*" element={<ApiAddress />} />
+          </Route>
           <Route path="/companies" element={<Companies />} />
           <Route path="/affiliates" element={<Affiliates />} />
           <Route path="/market-pulse/confirm" element={<MarketPulseConfirm />} />
@@ -147,11 +168,11 @@ const App = () => (
           <Route path="/email/unsubscribe" element={<EmailUnsubscribe />} />
           <Route path="/r/:code" element={<AffiliateRedirect />} />
           <Route path="/dev/checkout-test" element={<DevCheckoutTest />} />
-          <Route path="/analytics" element={<AnalyticsDashboard />} />
-          <Route path="/errors" element={<ErrorDashboard />} />
-          <Route path="/admin/claims" element={<AdminClaims />} />
-          <Route path="/health-check" element={<HealthCheck />} />
-          <Route path="/scan-metrics" element={<ScanMetrics />} />
+          <Route path="/analytics" element={<ForceDark><AnalyticsDashboard /></ForceDark>} />
+          <Route path="/errors" element={<ForceDark><ErrorDashboard /></ForceDark>} />
+          <Route path="/admin/claims" element={<ForceDark><AdminClaims /></ForceDark>} />
+          <Route path="/health-check" element={<ForceDark><HealthCheck /></ForceDark>} />
+          <Route path="/scan-metrics" element={<ForceDark><ScanMetrics /></ForceDark>} />
           <Route path="/trust" element={<Trust />} />
           <Route path="/builder" element={<ResumeBuilder />} />
           <Route path="/changelog" element={<Changelog />} />

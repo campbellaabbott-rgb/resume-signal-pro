@@ -1,0 +1,45 @@
+{
+  "_what": "The English chunks two real entries name, and what each chunk holds. 'split' is a production vite build of seo/integration 29eecfa1 (the SEO round's merge head, enNamespaces split): the entry names rb-en_all and no longer carries en.json, and en-GB-CJqqiv7K.js is the only en-* chunk holding the jobsPage, scan and value-table keys. 'entryCarried' is the live publish of 2026-10-25 (entry index-CVlj-9LZ.js): en.json rides in the entry and en-GB-BdzVkx2l.js is the British locale. 'moved' is the split layout with rb-en_all and the US changelog shard gone, so only British chunks hold the keys: a section must FAIL there, never read en-GB. Each source is a file under src/i18n; the test writes each chunk's body from it.",
+  "layouts": {
+    "split": {
+      "entry": "index-DWvXg-wU.js",
+      "chunks": {
+        "Jobs-BTcIuFmU.js": null,
+        "rb-en_all-Bm5_P613.js": "locales/en.json:all",
+        "en-BgrSJevg.js": "changelog/en.json",
+        "en-GB-B7MbTgO-.js": "changelog/en-GB.json",
+        "en-GB-BNkghhaO.js": "shards/listing/en-GB.json",
+        "en-GB-C8RcZVzA.js": "auth/en-GB.json",
+        "en-GB-CJqqiv7K.js": "locales/en-GB.json",
+        "en-GB-CKpsWPVa.js": "shards/company/en-GB.json",
+        "en-TEXb77yQ.js": "auth/en.json"
+      }
+    },
+    "entryCarried": {
+      "entry": "index-CVlj-9LZ.js",
+      "carries": "locales/en.json",
+      "chunks": {
+        "Jobs-CbQa3cTu.js": null,
+        "en-BgrSJevg.js": "changelog/en.json",
+        "en-GB-B7MbTgO-.js": "changelog/en-GB.json",
+        "en-GB-BNkghhaO.js": "shards/listing/en-GB.json",
+        "en-GB-BU1eeV6D.js": "shards/company/en-GB.json",
+        "en-GB-BdzVkx2l.js": "locales/en-GB.json",
+        "en-GB-C8RcZVzA.js": "auth/en-GB.json",
+        "en-TEXb77yQ.js": "auth/en.json"
+      }
+    },
+    "moved": {
+      "entry": "index-DWvXg-wU.js",
+      "chunks": {
+        "Jobs-BTcIuFmU.js": null,
+        "en-GB-B7MbTgO-.js": "changelog/en-GB.json",
+        "en-GB-BNkghhaO.js": "shards/listing/en-GB.json",
+        "en-GB-C8RcZVzA.js": "auth/en-GB.json",
+        "en-GB-CJqqiv7K.js": "locales/en-GB.json",
+        "en-GB-CKpsWPVa.js": "shards/company/en-GB.json",
+        "en-TEXb77yQ.js": "auth/en.json"
+      }
+    }
+  }
+}

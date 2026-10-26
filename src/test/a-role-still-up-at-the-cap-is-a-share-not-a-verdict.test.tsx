@@ -172,9 +172,10 @@ describe("a role still up at the cap is a share, not a verdict — behaviour", (
     expect(text, "R(30) beside it, as the ceiling it is").toContain("at most 44% had been taken down for good");
     expect(text, "X(30) is a floor").toContain("at least 15% re-listed");
     // THE BASIS CLAUSE, BOTH TERMS. The pool is boards we read to the end AND
-    // only those whose own cohort produced events, and the sentence says so.
+    // (20261012122000) only those that showed takedowns before the cohort,
+    // and the sentence says so.
     expect(text, "the population the line was counted on")
-      .toContain("Counted only on boards we read to the end whose own roles we saw come down or go back up in this cohort.");
+      .toContain("Counted only on boards we read to the end that showed us takedowns in the 90 days before this cohort began.");
     // ...and how much of the field survived that pool, from the row.
     expect(text, "the coverage of the pool the figure was computed on")
       .toContain("That is 81% of the dated roles of this field that reached the cap at all.");
@@ -349,7 +350,7 @@ describe("a role still up at the cap is a share, not a verdict — the page's co
 
   it("the day-30 line is drawn through day30Reading and nothing else", () => {
     expect(PAGE).toMatch(/day30Verdict\(r\)/);
-    const i = PAGE.indexOf('"ghostIndex.stillUp30Row2"');
+    const i = PAGE.indexOf('"ghostIndex.stillUp30Row3"');
     expect(i, "the day-30 line moved — re-anchor").toBeGreaterThan(-1);
     expect(PAGE.slice(i - 400, i), "the line must sit inside a `d &&` branch").toMatch(/\{d && \(/);
     // No other JSX reads the raw day-30 columns.
@@ -368,7 +369,7 @@ describe("a role still up at the cap is a share, not a verdict — the page's co
     const gate = PAGE.slice(PAGE.indexOf("export const day30Reading"), PAGE.indexOf("export const day30ColumnPresent"));
     expect(gate.length).toBeGreaterThan(200);
     expect(gate, "a typed cohort date in the gate goes stale by itself; the floor retires itself").not.toMatch(/20\d\d-\d\d-\d\d/);
-    const i = PAGE.indexOf('"ghostIndex.stillUp30Row2"');
+    const i = PAGE.indexOf('"ghostIndex.stillUp30Row3"');
     expect(PAGE.slice(i - 800, i + 800), "the row line prints the row's edges, never a typed date").not.toMatch(/20\d\d-\d\d-\d\d/);
     const u = PAGE.indexOf('"ghostIndex.stillUp30WithheldLead"');
     expect(PAGE.slice(u - 800, u + 800)).not.toMatch(/20\d\d-\d\d-\d\d/);
@@ -391,7 +392,7 @@ describe("a role still up at the cap is a share, not a verdict — the page's co
   });
 
   it("no day-30 placeholder exists to render: no dash or n/a beside the day-30 keys", () => {
-    const i = PAGE.indexOf('"ghostIndex.stillUp30Row2"');
+    const i = PAGE.indexOf('"ghostIndex.stillUp30Row3"');
     const around = PAGE.slice(i - 600, i + 600);
     expect(around).not.toMatch(/n\/a|"—"|'—'/);
   });
@@ -402,7 +403,7 @@ const LOCALES = resolve(ROOT, "src/i18n/locales");
 const CHANGELOG = resolve(ROOT, "src/i18n/changelog");
 const localeFiles = readdirSync(LOCALES).filter((f) => f.endsWith(".json"));
 const changelogFiles = readdirSync(CHANGELOG).filter((f) => f.endsWith(".json"));
-const GI_KEYS = ["stillUp30Row2", "stillUp30Pool", "stillUp30WithheldLead", "stillUp30WithheldGroup", "capTileWithReading"];
+const GI_KEYS = ["stillUp30Row3", "stillUp30Boards", "stillUp30Pool", "stillUp30WithheldLead", "stillUp30WithheldGroup", "capTileWithReading"];
 const NEW_IDS = ["oneRequisitionIsOnePosting", "staleBoardsAreNamed", "stillUpAtThirtyDays", "departmentFilterRemoved"];
 const placeholders = (s: string) => (s.match(/\{\{\w+\}\}/g) ?? []).sort();
 const en = JSON.parse(read("src/i18n/locales/en.json")) as { ghostIndex: Record<string, string> };
@@ -415,7 +416,7 @@ describe("a role still up at the cap is a share, not a verdict — the copy", ()
   });
 
   it("the English row sentence keeps the handed structure: share, population, dates, n, ±, R, X as a floor, the boards it counts", () => {
-    const s = en.ghostIndex.stillUp30Row2;
+    const s = en.ghostIndex.stillUp30Row3;
     expect(placeholders(s)).toEqual(["{{cohortFrom}}", "{{cohortTo}}", "{{field}}", "{{hw}}", "{{n}}", "{{pct}}", "{{r}}", "{{x}}"]);
     expect(s).toMatch(/of dated \{\{field\}\} roles posted \{\{cohortFrom\}\} to \{\{cohortTo\}\}/);
     expect(s).toMatch(/still advertised when they reached our 30-day cap/);
@@ -427,7 +428,10 @@ describe("a role still up at the cap is a share, not a verdict — the copy", ()
     // a contaminated figure. A sentence that states only the first term
     // understates the very restriction that makes the number trustworthy.
     expect(s).toMatch(/Counted only on boards we read to the end/);
-    expect(s, "and the second term, which is what changed").toMatch(/whose own roles we saw come down or go back up/);
+    // 20261012122000: the second term is evidence from BEFORE the cohort,
+    // which no longer selects the pool on the outcome it measures.
+    expect(s, "and the second term, which is what changed").toMatch(/that showed us takedowns in the 90 days before this cohort began/);
+    expect(en.ghostIndex, "the cohort-event basis sentence is retired").not.toHaveProperty("stillUp30Row2");
     // The retired single-term sentence must be gone from English, or eight
     // locales would keep answering with the old basis.
     expect(en.ghostIndex, "the single-term basis sentence is retired").not.toHaveProperty("stillUp30Row");

@@ -3,9 +3,29 @@
 // because 387 of them sat in the sitemap linked from no page at all. This
 // React page takes over after hydration: the board's live top employers plus
 // the full count, each linking into the board filtered to that employer.
+//
+// THE DIRECTORY'S OWN WORDS (design spec 5.7, 2026-10-12): every figure is
+// formatted in the reader's language and every string reads from the company
+// shard in all nine languages. "Verified" is gone from the title: a board is
+// read from the employer's own hiring system, which is the claim this page can
+// stand behind.
+//
+// NOT "NO AGGREGATORS". The list includes USAJOBS, which the company page
+// itself calls a federal listing site, not an employer
+// (usajobs-is-a-listing-site-not-an-employer.test.tsx), and staffing-agency
+// boards, so the intro says whose systems these are instead of a blanket
+// "no aggregators, no reposts".
+//
+// EVERY COUNT IS DATED. The heading's board count and each row's open roles
+// come from the board's last count pass (the reply's refreshedAt), and the
+// page says when that was. A reply that carries no such time prints no
+// counts at all: names only.
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { SEO } from "@/components/seo/SEO";
+import { ago as fmtAgo, count as fmtCount } from "@/lib/format";
+import { tPlural } from "@/lib/company/plural";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { invokeJobBoard } from "@/lib/invoke-job-board";
@@ -56,8 +76,11 @@ export function companyLinkScope(c: { token: string; tokens?: string[] }): strin
 }
 
 export default function Companies() {
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language || "en";
   const [companies, setCompanies] = useState<CompanyChip[]>([]);
   const [openBoards, setOpenBoards] = useState<number | null>(null);
+  const [countedAt, setCountedAt] = useState<string | null>(null);
   // A board-budget refusal rendered as an empty list read as "no companies";
   // it is the board pausing this connection, and the notice says so.
   const budgetRefusal = useBoardBudgetRefusal();
@@ -83,49 +106,65 @@ export default function Companies() {
         //
         // Absent (an older cached pass) means NOT MEASURED, so the heading
         // drops its number rather than falling back to the larger one.
-        const d = data as { companies?: CompanyChip[]; companiesOpenCount?: number } | null;
+        const d = data as { companies?: CompanyChip[]; companiesOpenCount?: number; refreshedAt?: string | null } | null;
         if (Array.isArray(d?.companies)) setCompanies(d.companies.filter((c) => c?.token && c?.name));
         if (typeof d?.companiesOpenCount === "number" && d.companiesOpenCount > 0) setOpenBoards(d.companiesOpenCount);
+        if (typeof d?.refreshedAt === "string" && Number.isFinite(Date.parse(d.refreshedAt))) setCountedAt(d.refreshedAt);
       })
       .catch(() => { /* the count-free copy below stands */ });
     return () => { cancelled = true; };
   }, []);
 
+  // The date the counts are true as of; without one no count is printed.
+  const counted = countedAt ? fmtAgo(countedAt, { lng: lang }) : "";
+
   return (
     <>
       <SEO
-        title="Companies Hiring Now — Verified Job Boards"
-        description="Every employer on the board pulls straight from its own official career system and is re-verified all day. Browse the largest, or search the live board."
+        title={t("companyProfile.directory.seoTitle", "Companies Hiring Now — Jobs Read From Each Hiring System")}
+        description={t("companyProfile.directory.seoDescription", "Each board read from the hiring system that published it: mostly employers' own, with staffing agencies and the federal listing site labeled.")}
         path="/companies"
       />
       <Header />
       <main className="min-h-screen pt-24 pb-20">
         <div className="container max-w-4xl">
-          <h1 className="text-3xl font-bold mb-3">
+          <h1 className="text-3xl font-semibold tracking-tight text-foreground mb-3">
             {/* BOARDS, NOT EMPLOYERS. One employer can run several feed tokens
                 (PwC ships five Workday sub-sites; 76 such employers in the top
                 1,500 alone), and the display-name merge happens after this
                 count — so "N companies" over it would overstate employers. */}
-            {openBoards ? `${openBoards.toLocaleString()} company job boards hiring now` : "Companies hiring now"}
+            {openBoards && counted
+              ? tPlural(t, "companyProfile.directory.h1Count", openBoards, { n: fmtCount(openBoards, { lng: lang }) }, "{{n}} company job board hiring now", "{{n}} company job boards hiring now")
+              : t("companyProfile.directory.h1", "Companies hiring now")}
           </h1>
           {budgetRefusal && <BoardBudgetNotice refusal={budgetRefusal} variant="banner" />}
           <p className="text-muted-foreground mb-8">
-            Every posting comes from the employer's own hiring system — no aggregators, no reposts.
-            The largest boards are below;{" "}
-            <Link to="/jobs" className="text-primary underline">search the live board</Link>{" "}
-            to filter any employer by role, pay, or location.
+            {t("companyProfile.directory.intro2", "Each board is read from its own hiring system: most are employers' own, staffing-agency boards are labelled on their pages, and USAJOBS is the federal government's listing site, where agencies post their roles. The largest boards are below.")}{" "}
+            <Link to="/jobs" className="text-primary underline decoration-primary/50 underline-offset-2 hover:decoration-primary">
+              {t("companyProfile.directory.searchLink", "Search the live board")}
+            </Link>{" "}
+            {t("companyProfile.directory.searchTail", "to filter any employer by role, pay, or location.")}
           </p>
+          {/* Under the intro, not above it: the line arrives with the reply,
+              and above the intro it pushed the paragraph down under the
+              reader (CLS 0.008 -> 0.025 at 375px). Here it arrives with the
+              list it dates. */}
+          {counted && (openBoards || companies.some((c) => typeof c.open === "number")) ? (
+            <p className="-mt-5 mb-4 text-sm text-muted-foreground" data-directory-counted="">
+              {t("companyProfile.directory.countedAgo", "Counts from the board's last count, {{ago}}.", { ago: counted })}
+            </p>
+          ) : null}
           {companies.length > 0 && (
             <ul className="grid gap-x-6 gap-y-1.5 sm:grid-cols-2 text-sm">
               {companies.map((c) => (
                 <li key={c.token}>
-                  <Link to={`/jobs?company=${encodeURIComponent(companyLinkScope(c).join(","))}`} className="text-primary hover:underline">
+                  <Link to={`/jobs?company=${encodeURIComponent(companyLinkScope(c).join(","))}`} className="inline-block py-0.5 text-primary underline decoration-primary/50 underline-offset-2 hover:decoration-primary">
                     {c.name}
                   </Link>{" "}
                   {/* ONLY WHEN THE LINK SERVES THE WHOLE GROUP `open` was
                       summed over; a cut group prints the name alone. */}
-                  {typeof c.open === "number" && companyRowScope(c).complete
-                    ? <span className="text-muted-foreground">— {c.open.toLocaleString()} open roles</span>
+                  {counted && typeof c.open === "number" && companyRowScope(c).complete
+                    ? <span className="text-muted-foreground">— {tPlural(t, "companyProfile.directory.rowOpen", c.open, { n: fmtCount(c.open, { lng: lang }) }, "{{n}} open role", "{{n}} open roles")}</span>
                     : null}
                 </li>
               ))}

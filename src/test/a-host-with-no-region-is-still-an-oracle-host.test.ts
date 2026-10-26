@@ -247,11 +247,13 @@ describe("the catalogue", () => {
 
   it("moved no carried board's catalogue index: every board before it is wave 4's catalogue, entry for entry", () => {
     // build-version-guard's fingerprint, over the boards before JPMorgan only, against the
-    // catalogHash wave 4 pins for its 44,519 boards. Later appends after JPMorgan keep this
-    // true. The cold cursor walks a vendor-interleaved list, not this order, so appending still
-    // moves about half of that list by one place (n1384); what this pins is that no board was
-    // displaced in the catalogue. A census merge that removes or reorders a board before
-    // JPMorgan on purpose re-pins build-version-guard too; delete this test then.
+    // catalogHash wave 4 pins for its 44,519 boards (at f4ccfeae, with Meta1's agency flag in
+    // place and twelve employers' boards without one; flags move the hash and no index). Later
+    // appends after JPMorgan keep this true. The cold cursor walks a vendor-interleaved list,
+    // not this order, so appending still moves about half of that list by one place (n1384);
+    // what this pins is that no board was displaced in the catalogue. A census merge that
+    // removes or reorders a board before JPMorgan on purpose re-pins build-version-guard too;
+    // delete this test then.
     const before = CATALOG.slice(0, jpmc[0]?.index ?? 0);
     const h = createHash("sha256");
     for (const e of before) {
@@ -259,7 +261,7 @@ describe("the catalogue", () => {
       h.update("\n");
     }
     expect(before.length).toBe(44_519);
-    expect(h.digest("hex").slice(0, 16)).toBe("0eca2d501140ab79");
+    expect(h.digest("hex").slice(0, 16)).toBe("000aab18fae6dd65");
   });
 
   it("holds no other region-less token: every other tenant found on such a host was a sandbox or unreachable", () => {

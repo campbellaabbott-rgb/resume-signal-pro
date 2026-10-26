@@ -6,10 +6,12 @@ import { purchaseLinkFor, purchaseReferenceIn } from "../_shared/purchase-links.
 import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
 import { SITE_ORIGIN } from "../_shared/purchase-links.ts";
 import { isKeptProduct, isNeedsReason, MAIL_COPY, mailLanguageOf, type MailLanguage, type NeedsReason } from "./copy.ts";
+import { CUT_PRODUCTS } from "../_shared/product-cuts.ts";
 
 // Provable from outside without sending anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "send-product-email.2026-10-11.22";
+// 2026-10-11.23 (recheck 3, 2026-10-26): a failed payment for a product no longer sold says so and offers no retry or button.
+const FN_BUILD = "send-product-email.2026-10-11.23";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -513,6 +515,12 @@ function generateProductEmailHtml(data: ProductEmailRequest): string {
   `;
 }
 
+/**
+ * Products no longer sold (_shared/product-cuts.ts, and the retired agent
+ * products): a failed payment for one offers nothing to try again.
+ */
+const NO_LONGER_SOLD: ReadonlySet<string> = new Set([...Object.values(CUT_PRODUCTS).map((c) => c.productType), "apply_assistant", "agent_pass", "apply_agent"]);
+
 /** Where a buyer whose delayed payment failed can buy again. */
 function buyAgainLink(productType: string): string {
   if (productType === "freelance_boost" || productType === "freelance_transition_pro") return `${SITE_ORIGIN}/freelance-boost`;
@@ -538,7 +546,7 @@ function noticeMail(
   const name = displayNameFor(data.productType, data.productName, language);
   let subject: string;
   let paragraphs: string[];
-  let button: { href: string; label: string };
+  let button: { href: string; label: string } | null;
   if (kind === "needs_input") {
     const reason = data.reason as NeedsReason;
     subject = copy.needs.subject(name);
@@ -546,8 +554,14 @@ function noticeMail(
     button = { href: purchaseLinkFor(data.productType, data.sessionId), label: copy.shell.open };
   } else {
     subject = copy.failed.subject(name);
-    paragraphs = [copy.failed.body, copy.failed.action];
-    button = { href: buyAgainLink(data.productType), label: copy.failed.button };
+    if (NO_LONGER_SOLD.has(data.productType)) {
+      // A product no longer sold (recheck 3): its page says so, so no retry is offered.
+      paragraphs = [copy.failed.body, copy.failed.notSold(name)];
+      button = null;
+    } else {
+      paragraphs = [copy.failed.body, copy.failed.action];
+      button = { href: buyAgainLink(data.productType), label: copy.failed.button };
+    }
   }
   const reference = purchaseReferenceIn(data.sessionId ?? "");
   const html = `<!DOCTYPE html>
@@ -556,9 +570,9 @@ function noticeMail(
 <body style="margin: 0; padding: 24px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f3f4f6;">
   <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 16px; padding: 32px;">
     ${paragraphs.map((p) => `<p style="color: #374151; font-size: 15px; line-height: 1.6; margin: 0 0 16px;">${escapeHtml(p)}</p>`).join("")}
-    <div style="text-align: center; margin: 24px 0;">
+    ${button ? `<div style="text-align: center; margin: 24px 0;">
       <a href="${escapeHtml(button.href)}" style="display: inline-block; background: #6366f1; color: white; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: 600;">${escapeHtml(button.label)}</a>
-    </div>
+    </div>` : ""}
     ${reference && kind === "needs_input" ? `<p style="color: #6b7280; font-size: 12px; margin: 0 0 12px;">${escapeHtml(copy.shell.keep)} <strong style="font-family: 'Courier New', monospace; color: #374151; word-break: break-all;">${escapeHtml(reference)}</strong></p>` : ""}
     <p style="color: #6b7280; font-size: 13px; margin: 16px 0 0;">${escapeHtml(copy.shell.questions)}</p>
   </div>

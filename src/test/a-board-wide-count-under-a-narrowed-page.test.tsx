@@ -126,7 +126,7 @@ async function openCountryPicker() {
 // The state the page starts from, so a case is one field away from unfiltered.
 const BASE: BoardFilterState = {
   q: "", location: "", remoteOnly: false, workMode: "", category: "", inclUncat: false,
-  agentOnly: false, country: "", experience: "", companyTokens: [], salaryFloor: 0,
+  country: "", experience: "", companyTokens: [], salaryFloor: 0,
   salaryCeiling: 0, payBasis: "", statedPayOnly: false, includeUnstatedPay: false,
   maxYears: 0, department: "", vendor: "", employmentType: "", hideAgencies: false,
   freshness: "",
@@ -153,7 +153,7 @@ describe("a board-wide count under a narrowed page", () => {
     // so a twelfth filter is covered without being named here.
     const NARROWING: Array<Partial<BoardFilterState>> = [
       { q: "designer" }, { location: "Berlin" }, { remoteOnly: true }, { workMode: "remote" },
-      { category: "design" }, { agentOnly: true }, { experience: "senior" },
+      { category: "design" }, { experience: "senior" },
       { companyTokens: ["acme"] }, { salaryFloor: 100000 }, { salaryCeiling: 200000 },
       { payBasis: "hourly" }, { statedPayOnly: true }, { includeUnstatedPay: true },
       { maxYears: 3 }, { department: "Nursing" }, { vendor: "greenhouse" },

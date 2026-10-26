@@ -1,7 +1,7 @@
 # shellcheck shell=bash
 # ── 99z. ORACLE HOSTS WITH NO REGION: JPMorgan Chase is read from
 # jpmc.fa.oraclecloud.com (branch oh/integration, job-board 2026-09-09.95,
-# layoff-filings 2026-10-15.1; docs/job-board-deploy-notes.md, .95).
+# layoff-filings 2026-10-15.2; docs/job-board-deploy-notes.md, .95).
 #
 # Named 99z so it sorts after every 99-* section: the loader sources
 # verify-deploy.d/*.sh in name order, and a three-digit name (100-) sorts

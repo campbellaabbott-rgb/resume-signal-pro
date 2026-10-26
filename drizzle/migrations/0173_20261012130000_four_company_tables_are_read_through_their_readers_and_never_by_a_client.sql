@@ -1,0 +1,1 @@
+SELECT public._mig_exec(sql) FROM public._mig_stage WHERE name = '20261012130000_four_company_tables_are_read_through_their_readers_and_never_by_a_client.sql';

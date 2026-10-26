@@ -31,20 +31,28 @@ export function bandFromYears(minYears: number): ExperienceBand {
 }
 
 // S12-126: a figure that is not a requirement. "Graduate of an MA school or
-// 5+ years of experience" offers the years as one way in, not a floor (a Humana
-// medical assistant was filed mid); "5 years preferred", "a plus", "nice to
-// have" and a "Preferred Qualifications" heading above the line are wishes.
-// "2 or 3 years" stays a requirement: the "or" follows a number. The wish
-// word must belong to the years themselves (right after them, or "ideally" /
-// "preferably" right before), never to another item in the same clause:
-// "Bachelor's degree preferred and 5+ years ... required" is a 5-year floor,
-// and "required" or "must" with the figure always binds. An "Additional
-// Qualifications" heading is not a wish list.
-const WISH = /\b(?:preferred|preferably|a plus|nice[- ]to[- ]have|desired|desirable|ideally|is an asset|an advantage)\b/;
-const WISH_BEFORE = /\b(?:preferably|ideally)\s+(?:at\s+least\s+|a\s+minimum\s+of\s+)?$/;
+// 5+ years of experience" offers the years as one way in (a Humana medical
+// assistant was filed mid); "5 years preferred", "a plus" and a "Preferred
+// Qualifications" heading are wishes; "2 or 3 years" stays a requirement. The
+// wish must be on the years themselves: "(luxury retail preferred)" names
+// something else, so a required minimum binds (merge recheck 2026-10-25,
+// measured on 1,354 live descriptions: docs/wave4/README.md).
+// Recheck 3 (2026-10-26): an adverb on a setting ("preferably in SaaS",
+// "ideally within a hospital") names the setting, as the same words after a
+// comma always did; a participle on one ("desired in a clinical setting")
+// yields to a required heading or a Required/Minimum line; a wish may follow a
+// short phrase ("experience in related field preferred"); and "not required"
+// never binds.
+const WISH_WORDS = "preferred|preferably|a plus|nice[- ]to[- ]have|desired|desirable|ideally|is an asset|an advantage";
+const WISH_ONLY = new RegExp(`^\\(\\s*(?:strongly\\s+|highly\\s+)?(?:${WISH_WORDS})\\s*\\)?$`);
+const WISH_FIRST = new RegExp(`^\\s*(?:(?:of\\s+)?(?:[\\w&/'-]+\\s+){0,3}?experience\\s+)?(?:(?:in|within|of)\\s+(?:[\\w&/'-]+\\s+){1,3}?)?\\(?\\s*(?:(?:is|are)\\s+)?(?:strongly\\s+|highly\\s+)?(${WISH_WORDS})\\b`);
+const WISH_BEFORE = /\b(?:preferably|ideally)\s+(?:at\s+least\s+|a\s+minimum\s+of\s+)?$|^\s*(?:[-*\u2022\u00b7]\s*)?preferred\s*:?\s*$/;
+/** The wish word is followed by where or in what: it names a setting, not the years. */
+const ON_A_SETTING = /^\s+(?:in|within|at|on|with|from)\s+\S/;
 const BINDS = /\b(?:required|must|mandatory)\b/;
-const WISH_HEADING = /\b(?:preferred|desired|nice[- ]to[- ]have|bonus)\s+(?:qualifications|skills|experience|requirements)\b/g;
-const NEED_HEADING = /\b(?:required|minimum|basic|essential)\s+(?:qualifications|skills|experience|requirements)\b|\brequirements\s*:/g;
+const NOT_REQUIRED = /\b(?:but\s+)?not\s+(?:required|mandatory|a\s+must)\b/g;
+const WISH_HEADING = /\b(?:preferred|desired|nice[- ]to[- ]have|bonus)[^\S\n]+(?:qualifications|skills|experience|requirements)\b|^[^\S\n]*(?:preferred|nice[- ]to[- ]have)[^\S\n]*:?[^\S\n]*$/gm;
+const NEED_HEADING = /\b(?:required|minimum|basic|essential)[^\S\n]+(?:qualifications|skills|experience|requirements)\b|\brequirements[^\S\n]*:|^[^\S\n]*(?:minimum[^\S\n]+)?(?:requirements|required|qualifications)[^\S\n]*:?[^\S\n]*$/gm;
 const lastIndexOf = (re: RegExp, s: string): number => {
   let at = -1;
   re.lastIndex = 0;
@@ -52,15 +60,29 @@ const lastIndexOf = (re: RegExp, s: string): number => {
   return at;
 };
 function notBinding(t: string, at: number, end: number, before: string): boolean {
-  if (/\bor\s+(?:an?\s+)?(?:equivalent\s+(?:of\s+)?)?(?:at\s+least\s+|minimum\s+(?:of\s+)?)?$/.test(before) && !/\d\s*or\s+$/.test(before)) return true;
+  const line = before.slice(before.lastIndexOf("\n") + 1);
+  if (/\bor\s+(?:an?\s+)?(?:equivalent\s+(?:of\s+)?)?(?:at\s+least\s+|minimum\s+(?:of\s+)?)?$/.test(line) && !/\d\s*or\s+$/.test(line)) return true;
   const s0 = Math.max(t.lastIndexOf(".", at), t.lastIndexOf(";", at), t.lastIndexOf(",", at), t.lastIndexOf("\n", at), t.lastIndexOf("!", at), t.lastIndexOf("?", at)) + 1;
   const cut = t.slice(end).search(/[.;,!?\n]/);
   const tail = t.slice(end, cut < 0 ? t.length : end + cut).slice(0, 40).split(/\b(?:and|with)\b/)[0];
   const lead = t.slice(Math.max(s0, at - 30), at);
-  if (BINDS.test(tail) || BINDS.test(lead.slice(-16))) return false;
-  if (WISH.test(tail) || WISH_BEFORE.test(lead)) return true;
+  if (BINDS.test(tail.replace(NOT_REQUIRED, " ")) || BINDS.test(lead.slice(-16).replace(NOT_REQUIRED, " "))) return false;
+  const own = tail.replace(/\([^)]*(?:\)|$)/g, (p) => (WISH_ONLY.test(p) ? p : " "));
   const head = t.slice(Math.max(0, at - 3000), at);
-  return lastIndexOf(WISH_HEADING, head) > lastIndexOf(NEED_HEADING, head);
+  const need = lastIndexOf(NEED_HEADING, head);
+  const wish = lastIndexOf(WISH_HEADING, head);
+  const binding = need > wish || (wish < 0 && /^\s*(?:[-*\u2022\u00b7]\s*)?(?:required|minimum)\b/.test(t.slice(t.lastIndexOf("\n", at) + 1, at)));
+  const first = WISH_FIRST.exec(own);
+  if (first) {
+    const onSetting = ON_A_SETTING.test(own.slice(first.index + first[0].length));
+    if (!onSetting) return true;
+    // "preferably in X" names X, as ", preferably in X" does: read on below.
+    // "desired in X" may still be a wish on the years: a required heading or line binds it.
+    if (!/^(?:preferably|ideally)$/.test(first[1])) return !binding;
+  }
+  if (WISH_BEFORE.test(lead)) return true;
+  if (binding) return false;
+  return wish > need;
 }
 
 // Pull the binding minimum-years requirement from posting text. Only counts year
@@ -93,6 +115,7 @@ export function parseMinYears(text: string): number | null {
       const gap = m[2] ?? "";
       const after = t.slice(end, end + 16);
       if (notBinding(t, at, end, before)) continue;
+      if ((/\bor\s+more\b/.test(m[0]) && /\d\s*to\s*$/.test(before)) || /\bsubstitute\s+for\s+$/.test(before)) continue;
       // A MINIMUM AGE IS NOT EXPERIENCE (L8-15): "18 years or older and able
       // to work", "at least 18 years of age".
       if (/\b(?:of\s+age|old|older)\b/.test(gap) || /^\s*(?:of\s+age|old\b|or\s+older)/.test(after) || /\b(?:age|aged)\s*(?:of\s*)?$/.test(before)) continue;
@@ -135,10 +158,11 @@ const FIRM_PARTNER = /\b(?:managing|equity|senior|founding|general|named)\s+part
 // Living", "Senior Living Cook", "Nurse Aide | Senior Care", "Cook - Senior
 // Community Services" were filed senior (55 of 60 live "senior living" rows on
 // 2026-10-12 were entry and hourly jobs). A UK "Senior Carer" or "Senior Care
-// Assistant/Worker" and a "Senior Community Manager" stay rungs: "senior care"
-// before a role noun, and "senior community/services" at the start of a title,
-// are the job's rank.
-const CLIENTELE = /\bsenior\s+(?:living|cent(?:er|re)s?|housing|citizens?|residences?|apartments?|day\s+(?:program|services))\b|\bsenior\s+care\b(?!\s*(?:-\s*)?(?:assistant|worker|manager|supervisor|lead|practitioner|officer|coordinator|carer|support worker))|\bsenior\s+(?:communit(?:y|ies)|services)\b/g;
+// Assistant/Worker" stays a rung, and so does a Senior Community Manager,
+// Support Worker or Associate anywhere in a title; "senior care" before a role
+// noun, and "senior community/services" at the start of a title, are the
+// job's rank.
+const CLIENTELE = /\bsenior\s+(?:living|cent(?:er|re)s?|housing|citizens?|residences?|apartments?|day\s+(?:program|services))\b|\bsenior\s+care\b(?!\s*(?:-\s*)?(?:assistant|worker|manager|supervisor|lead|practitioner|officer|coordinator|carer|support worker))|\bsenior\s+(?:communit(?:y|ies)(?!\s+(?:manager|support\s+worker|associate)s?\b)|services)\b/g;
 const withoutClientele = (t: string): string =>
   t.replace(CLIENTELE, (m, at: number) => (/^senior\s+(?:communit|services)/.test(m) && at === 0 ? m : " "));
 

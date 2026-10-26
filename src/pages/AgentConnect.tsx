@@ -68,7 +68,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBoardTotals, roundedFloor } from "@/hooks/use-board-totals";
 import {
-  MCP_TOOLS, MCP_HOSTS, MCP_PAGE_HOSTS, MCP_PAGE_HOST_IDS, MCP_OTHER_AGENTS_LINE, MCP_COPY_THE_PROMPT, MCP_READ_TOOLS, MCP_PAID_TOOLS,
+  MCP_TOOLS, MCP_PAGE_HOSTS, MCP_PAGE_HOST_IDS, MCP_OTHER_AGENTS_LINE, MCP_COPY_THE_PROMPT, MCP_READ_TOOLS, MCP_PAID_TOOLS, MCP_TIER_BADGE, MCP_FIT_ALLOWANCE,
   MCP_APPLY_TOOLS, MCP_ANON_TOOLS, MCP_ANON_TOOL_NAMES, MCP_ANON_CAPS, MCP_FREE_KEY_DAILY_QUOTA, MCP_PROMPTS, MCP_RESOURCES,
   MCP_SERVER_ADDRESS_NOTE, MCP_ADDRESS_GLOSS, MCP_NEEDS_ACCOUNT_LINE, MCP_WITHHELD_NOTE, MCP_INSTALL_REPO_URL, MCP_TEST_QUERY, MCP_TROUBLESHOOTING,
   MCP_SIGN_IN_META_KEY, MCP_ADD_TO_CLAUDE_LIVE, troubleRowsFor, stepSegments, hostTakesKey, curlInitialize, SIGN_IN_UNKNOWN, andList,
@@ -168,8 +168,6 @@ export function useSignInFact() {
   return { fact, probe, set: setFact };
 }
 
-/** The badge each tier wears in the developer list; the apply tier is dormant (the server-side agent is off). */
-const TIER_BADGE: Record<string, string> = { read: "any free key", paid: "paid key", apply: "dormant" };
 
 /** "a, b and c" from a list of tool names, for prose. */
 const names = (list: ReadonlyArray<{ name: string }>) => andList(list.map((t) => t.name));
@@ -498,9 +496,11 @@ export default function AgentConnect() {
   const countClause = floor !== null ? `${floor.toLocaleString("en-US")}+ live postings` : "the live postings";
   const { fact, probe, set } = useSignInFact();
   const [picked, setPicked] = useState<McpHostId | null>(initialHostId);
-  // The developer disclosure: the server's reach over the FULL table.
-  const hostsWithHeader = MCP_HOSTS.filter((h) => h.header);
-  const hostsWithSignIn = MCP_HOSTS.filter((h) => !h.header && h.oauth);
+  // The developer disclosure names the page's apps only (R7b: seeker pages
+  // name Claude, ChatGPT and Claude Code; every other app's setup lives on
+  // the install repo, linked by the GitHub line).
+  const hostsWithHeader = MCP_PAGE_HOSTS.filter((h) => h.header);
+  const hostsWithSignIn = MCP_PAGE_HOSTS.filter((h) => !h.header && h.oauth);
   const troubleRows = troubleRowsFor(fact.state);
 
   return (
@@ -632,7 +632,7 @@ export default function AgentConnect() {
                           ))}{" "}
                           work with any free API key — the same ones the data API issues. No account, no card.
                           {MCP_PAID_TOOLS.length > 0 && (
-                            <> {names(MCP_PAID_TOOLS)} {MCP_PAID_TOOLS.length === 1 ? "is" : "are"} gated exactly like <code className="text-xs">POST /v1/fit</code> on the data API.</>
+                            <> {names(MCP_PAID_TOOLS)} {MCP_PAID_TOOLS.length === 1 ? "gives" : "give"} {MCP_FIT_ALLOWANCE}, counted together with <code className="text-xs">POST /v1/fit</code> on the data API.</>
                           )}
                         </p>
                         <Link
@@ -661,7 +661,7 @@ export default function AgentConnect() {
                     <h3 className="font-semibold mb-1 flex items-center gap-2"><Plug className="w-4 h-4 text-primary" /> Which hosts can reach which tools</h3>
                     <p className="text-sm text-muted-foreground mb-4">
                       Every keyed tool call carries a credential, and hosts hold it two ways. From{" "}
-                      {andList(hostsWithHeader.map((h) => h.name))}: the key in an Authorization header — every
+                      {andList([...hostsWithHeader.map((h) => h.name), "the other apps set up from GitHub"])}: the key in an Authorization header — every
                       tool your key's tier allows.
                       {hostsWithSignIn.length > 0 && (
                         <>
@@ -673,7 +673,7 @@ export default function AgentConnect() {
                       )}
                     </p>
                     <ul className="text-sm text-muted-foreground space-y-2">
-                      {MCP_HOSTS.map((h) => (
+                      {MCP_PAGE_HOSTS.map((h) => (
                         <li key={h.id} className="flex gap-2">
                           <span className={`shrink-0 mt-0.5 text-xs px-2 py-0.5 rounded-full border ${h.header || h.oauth ? "border-success/40 bg-success/10 text-success" : "border-border bg-muted text-muted-foreground"}`}>
                             {h.header ? "reaches every tool" : h.oauth ? "sign in when needed" : "unkeyed tools only"}
@@ -681,6 +681,12 @@ export default function AgentConnect() {
                           <span><span className="text-foreground font-medium">{h.name}</span> — {h.how}.</span>
                         </li>
                       ))}
+                      <li className="flex gap-2" data-other-apps="">
+                        <span>
+                          {MCP_OTHER_AGENTS_LINE.lead}{" "}
+                          <a href={MCP_OTHER_AGENTS_LINE.href} className="text-primary hover:underline">{MCP_OTHER_AGENTS_LINE.link}</a>
+                        </span>
+                      </li>
                     </ul>
                   </div>
 
@@ -692,7 +698,7 @@ export default function AgentConnect() {
                           <div className="flex items-center gap-3 flex-wrap">
                             <code className="text-sm font-semibold text-primary">{tool.name}</code>
                             <span className={`text-xs px-2 py-0.5 rounded-full border ${tool.tier === "paid" ? "border-primary/30 bg-primary/10 text-primary" : "border-border bg-muted text-muted-foreground"}`}>
-                              {TIER_BADGE[tool.tier]}
+                              {MCP_TIER_BADGE[tool.tier]}
                             </span>
                             {MCP_ANON_TOOL_NAMES.includes(tool.name) && (
                               <span className="text-xs px-2 py-0.5 rounded-full border border-success/40 bg-success/10 text-success">
@@ -714,7 +720,7 @@ export default function AgentConnect() {
                   <div>
                     <h2 className="text-2xl font-bold mb-2">{t("agentConnect.attachTitle", "Prompts and resources your host can list")}</h2>
                     <p className="text-muted-foreground mb-6">
-                      {t("agentConnect.attachLead", "Beside the tools, the server registers ready-made prompts and a few readable documents. Hosts that list them (claude.ai's attach menu, Claude Code's slash list, Cursor's panel) show them under the server's name; listing costs no call and needs no key.")}
+                      {t("agentConnect.attachLead", "Beside the tools, the server registers ready-made prompts and a few readable documents. Hosts that list them (claude.ai's attach menu, Claude Code's slash list) show them under the server's name; listing costs no call and needs no key.")}
                     </p>
                     <div className="grid md:grid-cols-2 gap-6">
                       <div className="rounded-2xl bg-background border border-border divide-y divide-border">
