@@ -51,8 +51,6 @@ const RELEASED_CONVICTIONS = new Set([
   "smartrecruiters:iotagroup",       // sampled postings show agency evidence
   "recruitee:techbizglobal",         // sampled postings show agency evidence
   "icims:careers.ctg.com",           // fills positions for singular clients — IT staffing
-  "icims:jobs.statefarm.com",        // hires on behalf of independent agents' offices
-  "icims:careers.principal.com",     // hires on behalf of affiliated representatives
   "greenhouse:liquidpersonnel",      // social-work staffing agency, self-described
   "greenhouse:crisprecruit",         // recruitment firm, self-described
   "smartrecruiters:meta1",           // "supports several nationally-known clients": staffing (2026-10-25)
@@ -67,9 +65,34 @@ const RELEASED_CONVICTIONS = new Set([
 // the remaining words or sits in the conviction list by token.
 const AGENCY_NAME = /\b(staffing|recruit(ing|ment|er)?s?|headhunt|personnel|manpower|employment\s+(agency|services)|placements?\b|temp\s|outsourc|bpo\b|int[eé]rim|travail\s+temporaire|trabajo\s+temporal)\b|\b(uitzend|zeitarbeit|personaldienst|jobandtalent)/i;
 
+// EMPLOYERS' OWN BOARDS, never tagged (recheck 3, 2026-10-26). The name
+// screen reads "Recruitment" in an employer's own portal name (an Oracle or
+// UKG tenant's career site: "ENBD Recruitment Team", "Calamos Recruiting") as
+// the staffing trade, and two of the convictions above once held State Farm's
+// and Principal's own boards for the roles they post for independent agents'
+// offices. Each of these posts its own roles (State Farm's: attorneys, claim
+// specialists, data scientists), so the "Staffing agency" badge and the
+// agency company page were false on them. Matched like the convictions.
+const EMPLOYERS_OWN_BOARDS = new Set([
+  "icims:jobs.statefarm.com",                                          // State Farm
+  "icims:careers.principal.com",                                       // Principal Financial Group
+  "ukg:recruiting2~dis1007~08caf206-1236-731a-787b-c3376bc8c99f",      // Goodwill of Colorado
+  "oracle:fa-ewqq-saasfaprod1~ocs~cx_1",                               // Hong Kong Baptist University
+  "oracle:fa-evxn-saasfaukgovprod1~ocs~cx_1001",                       // Scottish Government (other departments)
+  "oracle:fa-evxn-saasfaukgovprod1~ocs~cx_1",                          // Scottish Government
+  "oracle:fa-exux-saasfaprod1~ocs~cx_1",                               // Government of Nunavut
+  "oracle:fa-evlo-saasfaprod1~ocs~cx_1",                               // Emirates NBD
+  "oracle:fa-evlo-saasfaprod1~ocs~cx_1001",                            // Emirates NBD India
+  "oracle:fa-evlo-saasfaprod1~ocs~cx_2",                               // Emirates Islamic
+  "oracle:ejgo~em2~cx_1",                                              // Farrans
+  "ukg:recruiting2~cal1001cala~46b96419-fba6-4dd0-a5fa-715bdfcf845b",  // Calamos
+]);
+
 const unesc = (s) => s.replace(/\\(.)/g, "$1");
-const isAgency = (name, vendor, token) =>
-  RELEASED_CONVICTIONS.has(`${vendor}:${token.toLowerCase()}`) || AGENCY_NAME.test(unesc(name));
+const isAgency = (name, vendor, token) => {
+  const key = `${vendor}:${token.toLowerCase()}`;
+  return !EMPLOYERS_OWN_BOARDS.has(key) && (RELEASED_CONVICTIONS.has(key) || AGENCY_NAME.test(unesc(name)));
+};
 
 // Both catalog entry formats, line by line. Object literals gain the flag in
 // place — AFTER the pages override, always, so parsers meet one suffix order.

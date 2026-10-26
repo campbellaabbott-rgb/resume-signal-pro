@@ -62,7 +62,10 @@ import {
 // .3 (wave 3 integration): board-data-ingest stamped .1 and tests-ci .2 (the x-fn-build header via
 // _shared/fn-build.ts stamped()); the merged function carries both, so a build neither shipped alone.
 // 2026-10-11.1 (wave 4): the catalogue copy labels the "Meta" SmartRecruiters board (Meta1) a staffing agency.
-export const BUILD_VERSION = "2026-10-11.1";
+// 2026-10-11.2 (wave 4, recheck 3): the copy no longer labels twelve employers' own boards (State Farm,
+// Principal, Goodwill of Colorado, HKBU, the Scottish Government's two, Nunavut, Emirates NBD's two,
+// Emirates Islamic, Farrans, Calamos) as staffing agencies'.
+export const BUILD_VERSION = "2026-10-11.2";
 
 // ── mirror constants (src/config/layoffs.ts names this file) ──────────────
 export const LAYOFF_LOOKBACK_DAYS = 90;

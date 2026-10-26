@@ -77,8 +77,10 @@ function withFacet() {
           // The merge recheck: job-board memoises this list, so every test here reads one list.
           { token: "Meta1", name: "Meta", count: 4 },
           { token: "metaline", name: "Metaline", count: 101 },
+          // Recheck 3: an employer's own board the catalogue had labelled an agency's.
+          { token: "jobs.statefarm.com", name: "State Farm", count: 104 },
         ],
-        companiesOpen: { [HUMANA]: 243, [CENTERWELL]: 832, Meta1: 4, metaline: 101 },
+        companiesOpen: { [HUMANA]: 243, [CENTERWELL]: 832, Meta1: 4, metaline: 101, "jobs.statefarm.com": 104 },
       },
       error: null,
     };
@@ -151,35 +153,43 @@ describe("the shipped list resolves a name and names what it could not", () => {
  * merge of main 899be058, 2026-10-25). companies:["Meta"] resolved to the one
  * carried board named exactly "Meta": SmartRecruiters' Meta1, a staffing firm
  * ("My Company support several nationally-known clients"), whose mailroom and
- * reception roles the AI was handed as Meta's openings, agency false on every
- * row. Live main answered that the board does not carry Meta. A single exact
- * match whose boards are all an agency's, or that has fewer than FEW_OPEN open
- * roles, is now offered as a candidate (its open count, vendor and agency
- * flag) and never searched under the name; the catalogue labels Meta1 an
- * agency.
+ * reception roles the AI was handed as Meta's openings. A single exact match
+ * with fewer than FEW_OPEN open roles is now offered as a candidate (its open
+ * count, vendor and agency flag) and never searched under the name.
+ *
+ * AN EMPLOYER WE CARRY IS NEVER NAMED AS ONE WE DO NOT (recheck 3,
+ * 2026-10-26). The first form of that hold also held every board labelled a
+ * staffing agency's, whatever its size, and named it in unknownCompanies,
+ * which the connector defines as an employer this board does not carry. The
+ * catalogue labels some real employers' own boards as agencies (State Farm's,
+ * 104 open; Principal Financial Group's, 108), and real agencies are carried
+ * too (Surge Staffing, 303 open), so the AI told seekers each one was not on
+ * the board. Main never said so. The agency test is gone: FEW_OPEN alone
+ * holds Meta1, a held board is never in unknownCompanies, and the employers'
+ * own boards lose the wrong label.
  */
-describe("a single exact match that is an agency or a handful of roles is a candidate, not a scope", () => {
-  const AGENCY_FACTS = (t: string) => (t === "Meta1" ? { source: "smartrecruiters", agency: true } : t === "surge" ? { source: "workable", agency: true } : { source: "greenhouse", agency: false });
+describe("a single exact match with a handful of roles is a candidate, not a scope; an employer we carry is never uncarried", () => {
+  const AGENCY_FACTS = (t: string) => (t === "Meta1" ? { source: "smartrecruiters", agency: true } : t === "surge" ? { source: "breezy", agency: true } : { source: "greenhouse", agency: false });
   const LIST: FacetEmployer[] = [
     { token: "Meta1", name: "Meta", open: 4 },
     { token: "metaline", name: "Metaline", open: 101 },
     { token: "metabase", name: "Metabase", open: 2 },
-    { token: "surge", name: "Surge Staffing", open: 300 },
+    { token: "surge", name: "Surge Staffing", open: 303 },
     { token: HUMANA, name: "Humana", open: 243 },
   ];
   const CAT = new Set(LIST.map((e) => e.token!));
 
-  it('"Meta" is held: the staffing board is offered with its open count, vendor and agency flag, and nothing is scoped', async () => {
+  it('"Meta" is held as a handful of roles: the staffing board is offered with its open count, vendor and agency flag, and nothing is scoped', async () => {
     const { FEW_OPEN } = await import("../../supabase/functions/job-board/company-names");
     const r = resolveCompanyNames(["Meta"], CAT, LIST, undefined, AGENCY_FACTS);
     expect(r.companies).toEqual([]);
     expect(r.resolved).toEqual([]);
-    expect(r.unresolved).toEqual([{ asked: "Meta", candidates: [{ token: "Meta1", name: "Meta", open: 4, vendor: "smartrecruiters", agency: true }], held: "agency" }]);
+    expect(r.unresolved).toEqual([{ asked: "Meta", candidates: [{ token: "Meta1", name: "Meta", open: 4, vendor: "smartrecruiters", agency: true }], held: "few_open" }]);
     expect(FEW_OPEN).toBe(10);
   });
 
-  it("an agency's board is held whatever its size; a small employer's board is held as a handful of roles", () => {
-    expect(resolveCompanyNames(["Surge Staffing"], CAT, LIST, undefined, AGENCY_FACTS).unresolved[0]).toMatchObject({ held: "agency", candidates: [{ token: "surge", open: 300, agency: true }] });
+  it("an agency's own board of ten or more roles resolves by its name like any employer's", () => {
+    expect(resolveCompanyNames(["Surge Staffing"], CAT, LIST, undefined, AGENCY_FACTS).resolved).toEqual([{ asked: "Surge Staffing", name: "Surge Staffing", tokens: ["surge"] }]);
     expect(resolveCompanyNames(["Metabase"], CAT, LIST, undefined, AGENCY_FACTS).unresolved[0]).toMatchObject({ held: "few_open", candidates: [{ token: "metabase", open: 2, vendor: "greenhouse" }] });
   });
 
@@ -188,13 +198,64 @@ describe("a single exact match that is an agency or a handful of roles is a cand
     expect(resolveCompanyNames(["Metaline"], CAT, LIST, undefined, AGENCY_FACTS).resolved[0].tokens).toEqual(["metaline"]);
   });
 
-  it("the connector tells the AI what a held name is, with the board's own threshold", async () => {
+  // The recheck's names, with the open counts live company-suggest gave on
+  // 2026-10-26 and the catalogue's own facts for each board.
+  it("State Farm, Principal Financial Group, Goodwill of Colorado and Surge Staffing, asked for by name, resolve to their own boards", async () => {
+    const { JOB_SOURCES } = await import("../../supabase/functions/job-board/sources");
+    const facts = (t: string) => JOB_SOURCES.find((s) => s.token === t);
+    const live: FacetEmployer[] = [
+      { token: "jobs.statefarm.com", name: "State Farm", open: 104 },
+      { token: "copperstatefarms", name: "Copperstate Farms", open: 11 },
+      { token: "careers.principal.com", name: "Principal Financial Group", open: 108 },
+      { token: "recruiting2~DIS1007~08caf206-1236-731a-787b-c3376bc8c99f", name: "Goodwill of Colorado", open: 152 },
+      { token: "surge", name: "Surge Staffing", open: 303 },
+      { token: "liquidpersonnel", name: "Liquid Personnel", open: 151 },
+    ];
+    const cat = new Set(JOB_SOURCES.map((s) => s.token));
+    for (const [name, token] of [["State Farm", "jobs.statefarm.com"], ["Principal Financial Group", "careers.principal.com"], ["Goodwill of Colorado", "recruiting2~DIS1007~08caf206-1236-731a-787b-c3376bc8c99f"], ["Surge Staffing", "surge"], ["Liquid Personnel", "liquidpersonnel"]]) {
+      const r = resolveCompanyNames([name], cat, live, undefined, facts);
+      expect(r.unresolved, name).toEqual([]);
+      expect(r.resolved, name).toEqual([{ asked: name, name, tokens: [token] }]);
+    }
+  });
+
+  it("the catalogue does not label an employer's own board a staffing agency's", async () => {
+    const { JOB_SOURCES } = await import("../../supabase/functions/job-board/sources");
+    const OWN_BOARDS = [
+      "jobs.statefarm.com", "careers.principal.com", "recruiting2~DIS1007~08caf206-1236-731a-787b-c3376bc8c99f",
+      "fa-ewqq-saasfaprod1~ocs~CX_1", "fa-evxn-saasfaukgovprod1~ocs~CX_1001", "fa-evxn-saasfaukgovprod1~ocs~CX_1", "fa-exux-saasfaprod1~ocs~CX_1",
+      "fa-evlo-saasfaprod1~ocs~CX_1", "fa-evlo-saasfaprod1~ocs~CX_1001", "fa-evlo-saasfaprod1~ocs~CX_2", "ejgo~em2~CX_1",
+      "recruiting2~CAL1001CALA~46b96419-fba6-4dd0-a5fa-715bdfcf845b",
+    ];
+    for (const t of OWN_BOARDS) {
+      const rows = JOB_SOURCES.filter((s) => s.token === t);
+      expect(rows.length, t).toBe(1);
+      expect(rows[0].agency, `${t} (${rows[0].name})`).toBeUndefined();
+    }
+    // Positive control: real agencies keep the label.
+    for (const t of ["surge", "liquidpersonnel", "gotham-enterprises", "Meta1", "careers.ctg.com", "ehnn~us2~CX_1"]) expect(JOB_SOURCES.find((s) => s.token === t)?.agency, t).toBe(true);
+  });
+
+  it("the agency tagger never puts the label back on those boards", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { resolve } = await import("node:path");
+    const { execFileSync } = await import("node:child_process");
+    const tagger = resolve(__dirname, "../../scripts/tag-agencies.mjs");
+    const out = execFileSync("node", [tagger, "--dry-run"], { cwd: resolve(__dirname, "../.."), encoding: "utf8" });
+    expect(out).toMatch(/^tagged 0 boards/m);
+    const convictions = /const RELEASED_CONVICTIONS = new Set\(\[([\s\S]*?)\]\);/.exec(readFileSync(tagger, "utf8"))?.[1] ?? "";
+    expect(convictions).toMatch(/"icims:careers\.ctg\.com"/);
+    expect(convictions).not.toMatch(/statefarm|principal/);
+  });
+
+  it("the connector tells the AI what a held name is, with the board's own threshold, and never calls a carried employer uncarried", async () => {
     const { FEW_OPEN } = await import("../../supabase/functions/job-board/company-names");
     const { readFileSync } = await import("node:fs");
     const { resolve } = await import("node:path");
     const { codeOf } = await import("./helpers/strip-comments");
     const mcp = codeOf(readFileSync(resolve(__dirname, "../../supabase/functions/agent-mcp/index.ts"), "utf8"));
-    expect(mcp.match(new RegExp(`staffing agency's board or one with under ${FEW_OPEN} open roles`, "g"))?.length).toBe(2);
+    expect(mcp.match(new RegExp(`only a board with under ${FEW_OPEN} open roles`, "g"))?.length).toBe(2);
+    expect(mcp).not.toMatch(/staffing agency's board or one with under/);
   });
 
   it("the catalogue labels Meta1 a staffing agency, so its cards say so", async () => {
@@ -202,14 +263,26 @@ describe("a single exact match that is an agency or a handful of roles is a cand
     expect(JOB_SOURCES.filter((s) => s.token === "Meta1")).toEqual([{ name: "Meta", source: "smartrecruiters", token: "Meta1", agency: true }]);
   });
 
-  it('the shipped list: companies:["Meta"] searches nothing, says the board does not carry Meta, and offers the agency\'s board', async () => {
+  it('the shipped list: companies:["Meta"] searches nothing, names nothing uncarried, and offers the small board', async () => {
     board.reset();
     withFacet();
     const r = await board.post({ action: "list", companies: ["Meta"], limit: 10 });
-    expect(r.unknownCompanies).toEqual(["Meta"]);
+    expect(r.unknownCompanies ?? []).not.toContain("Meta");
     expect(r.total).toBe(0);
     expect(r.companiesResolved).toBeUndefined();
-    expect(r.companiesUnresolved).toEqual([{ asked: "Meta", candidates: [{ token: "Meta1", name: "Meta", open: 4, vendor: "smartrecruiters", agency: true }], held: "agency" }]);
+    expect(r.companiesUnresolved).toEqual([{ asked: "Meta", candidates: [{ token: "Meta1", name: "Meta", open: 4, vendor: "smartrecruiters", agency: true }], held: "few_open" }]);
     expect(board.db.queries.some((q: Query) => q.rpc === "search_jobs" || q.table === "job_board_postings"), "the board was searched under the name").toBe(false);
+  });
+
+  it('the shipped list: companies:["State Farm"] searches State Farm\'s own board and never says the board does not carry it', async () => {
+    board.reset();
+    withFacet();
+    const r = await board.post({ action: "list", companies: ["State Farm"], limit: 10 });
+    expect(r.unknownCompanies, JSON.stringify(r).slice(0, 300)).toBeUndefined();
+    expect(r.companiesUnresolved).toBeUndefined();
+    expect((r.companiesResolved as Array<{ tokens: string[] }>)?.[0]?.tokens).toEqual(["jobs.statefarm.com"]);
+    const scopes = scopesSent();
+    expect(scopes.length, "no query was scoped to the employer").toBeGreaterThan(0);
+    expect(scopes.every((s) => s.includes("jobs.statefarm.com")), JSON.stringify(scopes)).toBe(true);
   });
 });

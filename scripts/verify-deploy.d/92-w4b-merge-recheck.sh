@@ -15,7 +15,8 @@
 #     pair fit scoring with "paid" without the free allowance, and each states
 #     "scorings a day on a confirmed free key";
 #   - job-board answers companies:["Meta"] with no rows and the Meta1 board
-#     held as an agency's candidate;
+#     held as a handful of roles (recheck 3: held "few_open", never named in
+#     unknownCompanies, since the board carries it);
 #   - Tapestry's sales associate rows, whose postings say "Required
 #     Qualifications 1+ years of sales experience (luxury retail preferred)",
 #     still carry minYears 1, before the experience re-derive and after it (a
@@ -65,7 +66,7 @@ for (const [name,f] of [["/data-api","/tmp/vd_92m_dataapi.html"],["/agents","/tm
 let m=null;try{m=JSON.parse(rd("/tmp/vd_92m_meta.json"))}catch{}
 const u=m&&Array.isArray(m.companiesUnresolved)?m.companiesUnresolved[0]:null;
 if (!m) line("FAIL","job-board companies:[\"Meta\"] answered no JSON");
-else line(u&&u.held==="agency"&&u.candidates&&u.candidates[0]&&u.candidates[0].token==="Meta1"&&Number(m.total)===0?"PASS":"FAIL","job-board companies:[\"Meta\"] serves "+(m.total??"?")+" rows and holds "+(u?JSON.stringify({held:u.held,candidate:u.candidates&&u.candidates[0]}).slice(0,160):"nothing")+" (want 0 rows and the Meta1 board held as an agency\x27s)");
+else { const unk=Array.isArray(m.unknownCompanies)&&m.unknownCompanies.includes("Meta"); line(u&&u.held==="few_open"&&!unk&&u.candidates&&u.candidates[0]&&u.candidates[0].token==="Meta1"&&Number(m.total)===0?"PASS":"FAIL","job-board companies:[\"Meta\"] serves "+(m.total??"?")+" rows and holds "+(u?JSON.stringify({held:u.held,candidate:u.candidates&&u.candidates[0]}).slice(0,160):"nothing")+(unk?", and names Meta in unknownCompanies":"")+" (want 0 rows, the Meta1 board held as a handful of roles, and Meta never named uncarried)"); }
 let t=null;try{t=JSON.parse(rd("/tmp/vd_92m_tap.json"))}catch{}
 const jobs=t&&Array.isArray(t.jobs)?t.jobs:[];
 const withFig=jobs.filter((j)=>typeof j.minYears==="number"), ones=withFig.filter((j)=>j.minYears===1).length;

@@ -85,7 +85,9 @@ const show = (lines: string[]) => `\n${lines.join("\n")}`;
 
 const FN = "https://p\\.supabase\\.co/functions/v1";
 const pad = "x".repeat(1200);
-const META_NOW = JSON.stringify({ jobs: [], total: 0, unknownCompanies: ["Meta"], companiesUnresolved: [{ asked: "Meta", candidates: [{ token: "Meta1", name: "Meta", open: 4, vendor: "smartrecruiters", agency: true }], held: "agency" }] });
+const META_NOW = JSON.stringify({ jobs: [], total: 0, unknownCompanies: [], companiesUnresolved: [{ asked: "Meta", candidates: [{ token: "Meta1", name: "Meta", open: 4, vendor: "smartrecruiters", agency: true }], held: "few_open" }] });
+// The merge recheck's first form (b9c43d27): held as an agency's and named uncarried (recheck 3).
+const META_AGENCY_HOLD = JSON.stringify({ jobs: [], total: 0, unknownCompanies: ["Meta"], companiesUnresolved: [{ asked: "Meta", candidates: [{ token: "Meta1", name: "Meta", open: 4, vendor: "smartrecruiters", agency: true }], held: "agency" }] });
 const META_OLD = JSON.stringify({ jobs: [{ id: "smartrecruiters:Meta1:1", title: "Mailroom Clerk", agency: false }], total: 4, companiesResolved: [{ asked: "Meta", name: "Meta", tokens: ["Meta1"] }] });
 const tap = (minYears: number | null) => JSON.stringify({ jobs: Array.from({ length: 30 }, (_, i) => ({ id: `t${i}`, title: "Seasonal Sales Associate", ...(minYears === null ? {} : { minYears: i < 20 ? minYears : 2 }) })), total: 874 });
 const PRICING_OLD = `<html><head><title>Pricing — Free Resume Scan, One-Time Tools from $5</title><meta name="description" content="One-time tools $5–$5; Pro $45/month."></head><body><p>Paid tools are one-time purchases, not subscriptions.</p><h2>One-time tools</h2><p>Current bundle discounts are shown live on this page in the app.</p>${pad}</body></html>`;
@@ -137,6 +139,10 @@ describe("section 92, the recheck of the merge of main", () => {
 
   it("Meta resolved to the staffing board reads FAIL", () => {
     expect(has(run(healthy({ meta: META_OLD })).lines, "FAIL", /companies:\["Meta"\] serves 4 rows and holds nothing/)).toBe(true);
+  });
+
+  it("Meta held as an agency's and named uncarried (the hold's first form) reads FAIL", () => {
+    expect(has(run(healthy({ meta: META_AGENCY_HOLD })).lines, "FAIL", /held":"agency".*names Meta in unknownCompanies/)).toBe(true);
   });
 
   it("Tapestry rows whose required year was dropped read FAIL", () => {
