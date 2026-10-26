@@ -228,8 +228,9 @@ export const composeHtml = (
  * Every step is one of the app's own functions: rule 1 (postingRowEligible),
  * the description length, the name gate (D.postingNameVerdict) and
  * D.postingJsonLd, which applies the same rules again before it writes
- * anything. The React posting page writes D.postingJsonLd alone, so it writes
- * markup for exactly the rows this does
+ * anything. The React posting page asks D.postingJsonLd of the same row, so it
+ * never writes markup for a row this refuses, and it writes none on an address
+ * this bake retired (a duplicate, the ceiling, the window's end)
  * (src/test/a-job-page-writes-its-job-markup-only-when-the-bake-would.test.tsx).
  */
 export function bakePostingPage(row, description, { D, SITE, carried }) {

@@ -10,15 +10,33 @@
  * read a JobPosting whose hiringOrganization was the logo text. The board's
  * detail pane (/jobs?job=) wrote its own JobPosting with no gate at all.
  *
- * WHAT IS TRUE NOW. postingJsonLd applies the bake's rules before it writes
- * anything (postingMarkupGate: rule 1 from scripts/prerender-posting-rule.mjs,
- * the description length, the name gate from scripts/prerender-names.mjs),
- * and the bake decides each row through bakePostingPage, which calls the same
- * functions. So this file renders the page for a row and compares what it
- * wrote with what the bake writes for the same row, both read from the app's
- * own modules, whatever the row: a refused name, a place in another country,
- * a closed posting, a good one, a repaired name, a staffing agency, USAJOBS,
- * and a board that names no hirer for its postings.
+ * WHAT IS TRUE NOW. postingJsonLd applies the bake's per-row rules before it
+ * writes anything (postingMarkupGate: rule 1 from
+ * scripts/prerender-posting-rule.mjs, the description length, the name gate
+ * from scripts/prerender-names.mjs), and the bake decides each row through
+ * bakePostingPage, which calls the same functions. So this file renders the
+ * page for a row and compares what it wrote with what the bake writes for the
+ * same row, both read from the app's own modules, whatever the row: a refused
+ * name, a place in another country, a closed posting, a good one, a repaired
+ * name, a staffing agency, USAJOBS, and a board that names no hirer for its
+ * postings.
+ *
+ * WHERE THE TWO SIDES READ A ROW DIFFERENTLY (the review, 2026-10-26). The
+ * page prints the row through shownPosting, which drops half a bracket from a
+ * location cut off mid-field, and the board can answer with no description at
+ * all (a failed re-read of the employer's system). Clearing the head whenever
+ * the page's own markup came out empty deleted the bake's JobPosting in both
+ * cases. Each is seeded here with the bake's own block, which must survive.
+ *
+ * AN ADDRESS THE BAKE RETIRED. A duplicate of a requisition another page
+ * carries, and a page retired at the ceiling, are stubs with no markup in the
+ * bake; the rows on them pass every per-row rule. The page reads the head the
+ * document was loaded with and writes no JobPosting there, and a duplicate
+ * keeps its twin as the canonical.
+ *
+ * THE DETAIL PANE writes the bake's own markup for the row, at its ?job=
+ * address: a repaired name or an override is its hiring organisation, never
+ * the stored label or tenant code.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -68,6 +86,8 @@ import * as postingPage from "@/components/jobs/posting-page";
 import * as companyDisplay from "@/lib/company-display";
 import { POSTING_LD_TAG_ID, postingEmployer, postingJsonLd, postingNameVerdict, postingPagePath, type PostingRow } from "@/components/jobs/posting-page";
 import { clearBoardBudgetRefusal } from "@/lib/board-budget";
+import { shownPosting } from "@/lib/listing/liveness";
+import { resetBakedHeadForTests } from "@/components/seo/baked-head";
 import { setLanderManifestForTests } from "@/lib/seo/lander-manifest";
 import { MOUNT_TEST_BUDGET, SLOW } from "./helpers/mount-budget";
 import { bakePostingPage } from "../../scripts/prerender-seo.mjs";
@@ -158,11 +178,12 @@ const at = (path: string) =>
   );
 
 /** Render the posting page for a row and wait for the board's answer to settle the head. */
-async function renderedMarkup(row: PostingRow) {
+async function renderedMarkup(row: PostingRow, opts: { description?: string | null; seed?: () => void } = {}) {
+  const description = opts.description === undefined ? DESC : opts.description;
   invoke.mockImplementation(async (fn: string, a: { body?: { action?: string } } | undefined) =>
-    fn === "job-board" && a?.body?.action === "detail" ? { data: { job: row, description: DESC }, error: null } : { data: [], error: null },
+    fn === "job-board" && a?.body?.action === "detail" ? { data: { job: row, description }, error: null } : { data: [], error: null },
   );
-  seedBakedJobPosting(row);
+  (opts.seed ?? (() => seedBakedJobPosting(row)))();
   const view = at(pathOf(row));
   const gone = !!row.missingSince || (row.postedAt ? Date.parse(row.postedAt) < Date.now() - 31 * DAY : false);
   await screen.findByRole("heading", { level: 1, name: gone ? /no longer live/i : row.title! }, SLOW);
@@ -229,6 +250,133 @@ describe("the posting page writes the markup the bake writes for the same row", 
     const short = "We are hiring.";
     expect(bakePostingPage(good(), short, { D, SITE, carried: true }).ld).toBeNull();
     expect(postingJsonLd(good(), short, { site: SITE })).toBeNull();
+  });
+});
+
+/** The head as this bake wrote it: the bake's own block for the row, under the shared id. */
+function seedBakesOwnBlock(ld: Record<string, unknown> | null) {
+  if (!ld) throw new Error("the bake writes no block for this row, so there is nothing to seed");
+  const s = document.createElement("script");
+  s.type = "application/ld+json";
+  s.id = POSTING_LD_TAG_ID;
+  s.textContent = JSON.stringify(ld);
+  document.head.appendChild(s);
+}
+/** Effects that run after the board's answer has rendered. */
+const settle = () => new Promise((r) => setTimeout(r, 80));
+
+describe("where the page and the bake read a row differently, the page never takes away markup the bake wrote", () => {
+  // The bake judges and marks up the row as the board returned it. The page
+  // prints the row through shownPosting, which drops half a bracket from a
+  // location cut off mid-field (JL13): "San Jose (Building 5" prints as
+  // nothing, and with no work mode the row as shown has no place. The bake
+  // still marks the raw row up (its address is the country), so the page
+  // keeps that block rather than clearing it.
+  const HALF_BRACKETS = ["San Jose (Building 5", "Chicago (IL", "Remote (US", "(Remote", "Main Campus (Building 4"];
+  HALF_BRACKETS.forEach((location, i) => {
+    it(`a location cut off inside a bracket ("${location}", no work mode): the bake's own JobPosting stays`, async () => {
+      const row = good({ id: `workday:acme~wd3~Careers:HB${i}`, location, workMode: null });
+      const baked = bakePostingPage(row, DESC, { D, SITE, carried: true });
+      // What makes this case: the bake writes a live page with markup, and
+      // the row as the page shows it would earn none on its own.
+      expect(baked.live && !!baked.ld, "the bake writes a live page with markup").toBe(true);
+      expect(postingJsonLd(shownPosting(row), DESC, { site: SITE }), "the row as shown earns none").toBeNull();
+      await renderedMarkup(row, { seed: () => seedBakesOwnBlock(baked.ld) });
+      await settle();
+      expect(jobEntities()).toEqual(asWritten(baked.ld));
+    });
+  });
+
+  it("the board answers with no description (its re-read of the vendor failed): the head stays as the bake wrote it", async () => {
+    const row = good({ id: "workday:acme~wd3~Careers:ND1", location: "San Jose, CA" });
+    const baked = bakePostingPage(row, DESC, { D, SITE, carried: true });
+    expect(baked.ld).toBeTruthy();
+    await renderedMarkup(row, { description: null, seed: () => seedBakesOwnBlock(baked.ld) });
+    await settle();
+    expect(jobEntities()).toEqual(asWritten(baked.ld));
+  });
+
+  it("an undated live posting carries none, whether or not a description came back", async () => {
+    for (const description of [null, DESC]) {
+      const row = good({ id: `workday:acme~wd3~Careers:UD${description ? 1 : 0}`, postedAt: null });
+      const view = await renderedMarkup(row, { description });
+      await waitFor(() => expect(jobEntities(), `description ${description ? "read" : "missing"}`).toEqual([]), SLOW);
+      view.unmount();
+      clearHead();
+    }
+  });
+
+  it("a description the board did return, too short for the bake: the block goes", async () => {
+    const row = good({ id: "workday:acme~wd3~Careers:SH1" });
+    expect(bakePostingPage(row, "We are hiring.", { D, SITE, carried: true }).ld).toBeNull();
+    await renderedMarkup(row, { description: "We are hiring." });
+    await waitFor(() => expect(jobEntities()).toEqual([]), SLOW);
+  });
+});
+
+describe("an address the bake retired keeps the bake's head: no JobPosting, and the canonical the bake chose", () => {
+  // The bake writes a retired stub with no markup for a duplicate of a
+  // requisition another page carries (canonical: the twin), for a page it
+  // retired at the ceiling and for one about to leave the window (noindex).
+  // The page used to write a JobPosting over each, and over a duplicate it
+  // also moved the canonical back to itself, so a crawler that renders read
+  // two indexable JobPostings for one requisition.
+  const twin = good({ id: "workday:acme~wd3~Careers:JR1" });
+  const row = good({ id: "workday:acme~wd3~Careers_Alt:JR1", token: "acme~wd3~Careers_Alt" });
+  function bakeFile(path: string, robots: string, canonical: string) {
+    window.history.replaceState({}, "", path);
+    document.head.innerHTML = [
+      `<meta name="x-prerendered" content="1">`,
+      `<title>This posting no longer has a page of its own</title>`,
+      `<meta name="description" content="This posting no longer has a page of its own. Browse the live openings on the board.">`,
+      `<meta name="robots" content="${robots}">`,
+      `<link rel="canonical" href="${SITE}${canonical}">`,
+    ].join("");
+    resetBakedHeadForTests();
+  }
+  const mount = (path: string) =>
+    render(
+      <HelmetProvider>
+        <MemoryRouter initialEntries={[path]}>
+          <Routes><Route path="/jobs/posting/:source/:token/:key" element={<JobPosting />} /></Routes>
+        </MemoryRouter>
+      </HelmetProvider>,
+    );
+  async function rendered(r: PostingRow) {
+    invoke.mockImplementation(async (fn: string, a: { body?: { action?: string } } | undefined) =>
+      fn === "job-board" && a?.body?.action === "detail" ? { data: { job: r, description: DESC }, error: null } : { data: [], error: null },
+    );
+    mount(pathOf(r));
+    await screen.findByRole("heading", { level: 1, name: r.title! }, SLOW);
+    await settle();
+  }
+  const canonicals = () => [...document.head.querySelectorAll('link[rel="canonical"]')].map((n) => n.getAttribute("href"));
+  const robots = () => [...document.head.querySelectorAll('meta[name="robots"]')].map((n) => n.getAttribute("content"));
+  afterEach(() => { cleanup(); document.head.innerHTML = ""; resetBakedHeadForTests(); window.history.replaceState({}, "", "/"); });
+
+  it("a duplicate pointed at its twin: no JobPosting, and the twin stays the canonical", async () => {
+    bakeFile(pathOf(row), "index, follow", pathOf(twin));
+    expect(bakePostingPage(row, DESC, { D, SITE, carried: true }).ld, "the row alone passes every per-row rule").toBeTruthy();
+    await rendered(row);
+    await waitFor(() => expect(canonicals()).toEqual([`${SITE}${pathOf(twin)}`]), SLOW);
+    expect(jobEntities()).toEqual([]);
+  });
+
+  it("a page retired at the ceiling (noindex): no JobPosting, and the noindex stands", async () => {
+    bakeFile(pathOf(row), "noindex, follow", pathOf(row));
+    await rendered(row);
+    await waitFor(() => expect(canonicals()).toEqual([`${SITE}${pathOf(row)}`]), SLOW);
+    expect(jobEntities()).toEqual([]);
+    expect(robots()).toEqual(["noindex, follow"]);
+  });
+
+  it("positive control: the same row on a page the bake wrote as its own is marked up, under its own canonical", async () => {
+    bakeFile(pathOf(row), "index, follow", pathOf(row));
+    seedBakesOwnBlock(bakePostingPage(row, DESC, { D, SITE, carried: true }).ld);
+    await rendered(row);
+    await waitFor(() => expect(canonicals()).toEqual([`${SITE}${pathOf(row)}`]), SLOW);
+    expect(jobEntities().length).toBe(1);
+    expect(jobEntities()[0].url).toBe(`${SITE}${pathOf(row)}`);
   });
 });
 
@@ -357,9 +505,43 @@ describe("the board's detail pane writes no job markup the bake would not", () =
     expect(await paneMarkup(refused)).toEqual([]);
   });
 
-  it("positive control: a good posting the reader opens is marked up", async () => {
+  /** The bake's markup for the row, at the pane's own address (its canonical while it is open). */
+  const bakesAtPaneUrl = (opened: ReturnType<typeof paneRow>) => {
+    const ld = postingJsonLd(opened as unknown as PostingRow, DESC_PANE, { site: SITE });
+    return ld ? asWritten({ ...ld, url: `${SITE}/jobs?job=${encodeURIComponent(String(opened.id))}` }) : [];
+  };
+  const parsed = (tags: Element[]) => tags.map((s) => JSON.parse(s.textContent || "null"));
+
+  it("positive control: a good posting the reader opens is marked up, with the bake's markup at the pane's address", async () => {
     const opened = paneRow({ id: "greenhouse:acme:9", title: "Medical Assistant III" });
     expect(postingJsonLd(opened as unknown as PostingRow, DESC_PANE, { site: SITE })).toBeTruthy();
-    expect((await paneMarkup(opened)).length).toBe(1);
+    expect(parsed(await paneMarkup(opened))).toEqual(bakesAtPaneUrl(opened));
+  });
+
+  // The pane built its own block, naming the stored company as the hiring
+  // organisation and in the identifier: a row the gate passes BECAUSE its
+  // name is repaired, or overridden, was marked up under the stored label or
+  // the tenant code (F1).
+  it("a career-site label comes off the hiring organisation (Chubb External is Chubb)", async () => {
+    const opened = paneRow({ id: "oracle:chubb~ocs~CX:991", source: "oracle", token: "chubb~ocs~CX", company: "Chubb External", title: "Underwriter", location: "Philadelphia, PA" });
+    const [ld] = parsed(await paneMarkup(opened));
+    expect(ld?.hiringOrganization).toEqual({ "@type": "Organization", name: "Chubb" });
+    expect(ld?.identifier?.name).toBe("Chubb");
+    expect([ld]).toEqual(bakesAtPaneUrl(opened));
+  });
+
+  it("a tenant code is never the hiring organisation (Ms is Morgan Stanley)", async () => {
+    const opened = paneRow({ id: "workday:ms~wd5~External:JR7", source: "workday", token: "ms~wd5~External", company: "Ms", title: "Analyst", location: "New York, NY" });
+    const [ld] = parsed(await paneMarkup(opened));
+    expect(ld?.hiringOrganization).toEqual({ "@type": "Organization", name: "Morgan Stanley" });
+    expect(ld?.identifier?.name).toBe("Morgan Stanley");
+    expect([ld]).toEqual(bakesAtPaneUrl(opened));
+  });
+
+  it("a remote label with no vendor flag is not marked up as telework (SEO-003), as in the bake", async () => {
+    const opened = paneRow({ id: "greenhouse:acme:11", title: "Medical Assistant IV", workMode: "remote", location: "Remote - US" });
+    const tags = parsed(await paneMarkup(opened));
+    expect(tags).toEqual(bakesAtPaneUrl(opened));
+    for (const ld of tags) expect(ld.jobLocationType).toBeUndefined();
   });
 });

@@ -50,6 +50,7 @@ import { ChevronRight, Loader2 } from "lucide-react";
 import { canHandOff, writeJdHandoff } from "@/lib/jd-handoff";
 import { postTrackEvent } from "@/lib/track-transport";
 import { SEO } from "@/components/seo/SEO";
+import { bakedHeadFor } from "@/components/seo/baked-head";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -242,7 +243,7 @@ export default function JobPosting() {
   const shown = useMemo(() => (job ? shownPosting(job) : null), [job]);
   const dated = !!shown?.postedAt;
   //
-  // ONLY WHERE THE BAKE WOULD WRITE IT (the trusted-pages round, 2026-10-25).
+  // THE BAKE'S PER-ROW RULES (the trusted-pages round, 2026-10-25).
   // postingJsonLd applies the bake's own rules before it writes anything: the
   // name gate (a name that is logo text or a bare label is refused, and a
   // career-site label comes off the one it names), rule 1 (no staffing
@@ -250,27 +251,52 @@ export default function JobPosting() {
   // rule and the window. This page used to write it for a name the bake
   // refused, so the static file withheld the markup and the hydrated page
   // put it back. The question is asked of the row as the board returned it,
-  // which is the row the bake judges, and the markup is then built from the
-  // row as this page shows it (shownPosting's decoded title, a location with
-  // no half a bracket), so cleaning a row can never earn it markup the bake
-  // would refuse.
-  const ld = useMemo(
-    () => (live && job && shown && dated && postingJsonLd(job, description, { site: SITE })
-      ? postingJsonLd(shown, description, { site: SITE })
-      : null),
-    [live, job, shown, dated, description],
+  // which is the row the bake judges (bakeLd). When the bake would mark it
+  // up, the markup is built from the row as this page shows it (shownPosting's
+  // decoded title, a location with no half a bracket), and where the shown
+  // row cannot carry markup on its own (a location cut off inside a bracket
+  // leaves it no place) the bake's own markup is written instead: cleaning a
+  // row can neither earn it markup the bake would refuse nor take away
+  // markup the bake wrote.
+  //
+  // AN ADDRESS THE BAKE RETIRED CARRIES NONE. The bake writes a stub with no
+  // markup for a duplicate of a requisition another page carries (its
+  // canonical names that twin), and for a page retired at the ceiling or as
+  // it nears the end of the window (noindex). The row may pass every rule
+  // above, so the page asks the head this document was loaded with: a baked
+  // head that is not an indexable page of its own (bakedHeadFor) gets no
+  // JobPosting from here, and a duplicate keeps the twin as its canonical
+  // (the SEO element below). Only a document load carries a baked head; a
+  // crawler always arrives by one.
+  const bakedHere = useMemo(() => {
+    const p = id ? postingPagePath(id) : null;
+    return p ? bakedHeadFor(p) : null;
+  }, [id]);
+  const bakeRetired = !!bakedHere && !bakedHere.indexable;
+  const bakeLd = useMemo(
+    () => (live && job && dated && !bakeRetired ? postingJsonLd(job, description, { site: SITE }) : null),
+    [live, job, dated, bakeRetired, description],
   );
+  const ld = useMemo(
+    () => (bakeLd && shown ? postingJsonLd(shown, description, { site: SITE }) ?? bakeLd : null),
+    [bakeLd, shown, description],
+  );
+  // WHEN THE BAKE WOULD WRITE NONE, WHATEVER IT LEFT IN THE HEAD GOES: an
+  // undated posting, an address the bake retired, and a row the bake's rules
+  // refuse given the description the board returned. With NO description in
+  // the answer (the board re-reads the employer's system for a short stored
+  // one, and a failed read returns none) the bake's verdict cannot be known,
+  // so the head stays exactly as the bake wrote it.
+  const described = typeof description === "string" && description.trim() !== "";
+  const markupRefused = live && (!dated || bakeRetired || (!ld && described));
   //
   // ONLY "GONE" RETRACTS. While loading, after a failed read and under a
   // budget refusal the posting may well be live, and clearing the baked block
   // then told every early renderer it was not — so the head is left exactly
-  // as the bake wrote it until there is an answer either way. Once the answer
-  // is a live posting the bake would write no markup for (undated, a refused
-  // name, another country's place), any block in the head goes: a file an
-  // older bake wrote may still carry one.
+  // as the bake wrote it until there is an answer either way.
   useEffect(() => {
     if (retracted) { clearJobMarkup(); return; }
-    if (live && !ld) { clearJobMarkup(); return; }
+    if (markupRefused) { clearJobMarkup(); return; }
     if (!ld) return;
     clearJobMarkup();
     const tag = document.createElement("script");
@@ -279,7 +305,7 @@ export default function JobPosting() {
     tag.textContent = JSON.stringify(ld);
     document.head.appendChild(tag);
     return () => { clearJobMarkup(); };
-  }, [ld, retracted, live]);
+  }, [ld, retracted, markupRefused]);
   // Leaving the page takes any posting markup with it, baked or ours.
   useEffect(() => () => { clearJobMarkup(); }, []);
 
@@ -363,7 +389,17 @@ export default function JobPosting() {
           description (SEO-007's rule): the bake may have given this page its
           requisition key to keep its title apart from another posting's
           (postingPageTitleAvoiding), which postingPageTitle alone cannot know. */}
-      {(live || retracted) && <SEO title={seoTitle} description={seoDescription} path={path} preferBakedHead={live && !!shown} />}
+      {/* A duplicate the bake pointed at its twin keeps that canonical while
+          the posting is live (see bakeRetired above). */}
+      {(live || retracted) && (
+        <SEO
+          title={seoTitle}
+          description={seoDescription}
+          path={path}
+          canonicalPath={live && bakeRetired ? bakedHere?.canonicalPath ?? undefined : undefined}
+          preferBakedHead={live && !!shown}
+        />
+      )}
       <Header />
       <main id="main-content" tabIndex={-1} className="min-h-screen pb-20 pt-24 focus:outline-none">
         <div className="mx-auto w-full max-w-3xl px-4 sm:px-6">

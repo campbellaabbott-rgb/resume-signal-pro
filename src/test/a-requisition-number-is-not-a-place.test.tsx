@@ -336,8 +336,15 @@ describe("a requisition number is not a place", () => {
   it("the JSON-LD still carries the employer's own string, untouched", () => {
     // A machine reading structured data wants what the employer wrote. This is
     // a DISPLAY fix and it must not quietly become a structured-data one.
-    expect(JOBS).toMatch(/addressLocality: detailJob\.location\.slice\(0, 120\)/);
+    // The pane writes the posting page's own markup (the trusted-pages round,
+    // 2026-10-25), built from the row the board returned: its address is read
+    // from the employer's location string by postingPostalAddress, never from
+    // what the display helper left of it.
+    expect(JOBS).toMatch(/const baked = postingJsonLd\(detailJob, detailDesc, /);
     expect(JOBS).not.toMatch(/addressLocality: displayLocation/);
+    const POSTING = readFileSync(resolve(ROOT, "src/components/jobs/posting-page.ts"), "utf8");
+    expect(POSTING).toMatch(/const address = postingPostalAddress\(job\);/);
+    expect(POSTING).not.toMatch(/displayLocation/);
   });
 
   it("the reason a short middle number survives stays written down", () => {

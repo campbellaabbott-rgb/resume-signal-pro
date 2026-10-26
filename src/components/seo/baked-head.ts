@@ -35,6 +35,11 @@ export interface BakedHead {
    * but its title describes the stub, not the page React renders over it.
    */
   indexable: boolean;
+  /**
+   * The path of the canonical the bake wrote, spelled as the bake spelled it
+   * (no decoding), or null when it wrote none: a duplicate's names its twin.
+   */
+  canonicalPath: string | null;
 }
 
 const trim = (p: string) => (p.length > 1 ? p.replace(/\/+$/, "") : p);
@@ -82,7 +87,11 @@ function readBakedHead(): BakedHead | null {
     .flatMap((n) => ldTypesOf(n.textContent));
   const robots = [...document.head.querySelectorAll('meta[name="robots"]')].find((n) => !ownedByReact(n))?.getAttribute("content") ?? "";
   let canonicalPath: string | null = null;
-  try { canonicalPath = canonical ? normalisePath(new URL(canonical.getAttribute("href") ?? "", window.location.origin).pathname) : null; } catch { canonicalPath = null; }
+  let canonicalAsWritten: string | null = null;
+  try {
+    canonicalAsWritten = canonical ? new URL(canonical.getAttribute("href") ?? "", window.location.origin).pathname : null;
+    canonicalPath = canonicalAsWritten ? normalisePath(canonicalAsWritten) : null;
+  } catch { canonicalPath = null; canonicalAsWritten = null; }
   const own = normalisePath(path);
   return {
     path: own,
@@ -90,6 +99,7 @@ function readBakedHead(): BakedHead | null {
     description: description?.getAttribute("content") ?? null,
     ldTypes,
     indexable: !/noindex/i.test(robots) && (own === "/" || canonicalPath === own),
+    canonicalPath: canonicalAsWritten,
   };
 }
 

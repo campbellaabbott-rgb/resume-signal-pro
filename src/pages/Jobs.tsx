@@ -2251,13 +2251,6 @@ export function outstaysFieldHorizon(
   // Most of the field resolved inside the horizon, and this one did not.
   return field.still_open_14 <= 0.5 && age > URGENT_FILL_MAX_DAYS;
 }
-// Our five keys mapped to schema.org's JobPosting.employmentType enumeration,
-// for the detail panel's JSON-LD. Google reads these spellings and silently
-// drops anything else, so the column value cannot be emitted raw.
-const LD_EMPLOYMENT_TYPE: Record<EmploymentTypeKey, string> = {
-  full_time: "FULL_TIME", part_time: "PART_TIME", contract: "CONTRACTOR",
-  temporary: "TEMPORARY", internship: "INTERN",
-};
 
 /**
  * "OPEN IN YOUR AGENT" — the posting handed to the person's own agent.
@@ -4502,16 +4495,21 @@ function JobsBoard({ boardId }: { boardId: string }) {
   // nothing), no invented salary. The tag is removed when the panel closes so
   // stale markup never lingers on other views.
   //
-  // validThrough IS emitted, and it clears the fence because it is not the
-  // company's application deadline (which we do not know and must not invent):
-  // it is posted_at + 30 days — THIS BOARD's own serving guarantee. The board
-  // hard-drops any dated posting past 30 days (FRESH_WINDOW_DAYS), so the URL
-  // in this markup genuinely stops serving the posting at that instant. That is
-  // exactly what validThrough means for the page it is on, it is one of
-  // Google's three sanctioned expiry signals, and it is the only one that works
-  // IN ADVANCE: Google learns the expiry on a routine recrawl of the LIVE page,
-  // before the URL dies — instead of soft-404-classifying the corpse later
-  // (GSC flagged exactly that on 2026-08-07, with ~16k URLs/day aging out).
+  // THE MARKUP IS THE BAKE'S (postingJsonLd, src/components/jobs/posting-page.ts),
+  // so its fence is the posting page's: no pay, an employment type only when
+  // the employer stated one, telework only on the hiring system's own remote
+  // field. validThrough clears the fence because it is not the company's
+  // application deadline (which we do not know and must not invent): it is the
+  // end of THIS BOARD's own serving window, counted from the date the employer
+  // stated (BOARD_FRESH_WINDOW_DAYS, the mirror of the board's FRESH_WINDOW_DAYS),
+  // or the employer's own end date when its system states an earlier one. The
+  // board hard-drops a dated posting at the end of that window, so the URL in
+  // this markup genuinely stops serving the posting then. That is exactly what
+  // validThrough means for the page it is on, it is one of Google's three
+  // sanctioned expiry signals, and it is the only one that works IN ADVANCE:
+  // Google learns the expiry on a routine recrawl of the LIVE page, before the
+  // URL dies — instead of soft-404-classifying the corpse later (GSC flagged
+  // exactly that on 2026-08-07, with ~16k URLs/day aging out).
   useEffect(() => {
     const TAG_ID = "job-posting-ld";
     document.getElementById(TAG_ID)?.remove();
@@ -4548,55 +4546,21 @@ function JobsBoard({ boardId }: { boardId: string }) {
     if (!detailJob || !detailDesc || detailDesc.length < 100 || !hasDate || !hasPlace) {
       return restoreCanonical;
     }
-    // AND ONLY WHERE THE BAKE WOULD WRITE JOB MARKUP (the trusted-pages round,
-    // 2026-10-25): postingJsonLd runs the bake's rules (the name gate, rule 1,
-    // the country rule, the window), so a posting whose employer name is logo
-    // text, a staffing agency's row or a place in another country gets no
-    // JobPosting from this pane either.
-    if (!postingJsonLd(detailJob, detailDesc, { site: "https://resumebooster.work" })) return restoreCanonical;
+    // THE BAKE'S OWN MARKUP, AT THE PANE'S ADDRESS (the trusted-pages round,
+    // 2026-10-25). postingJsonLd runs the bake's rules first (the name gate,
+    // rule 1, the country rule, the window), so a posting whose employer name
+    // is logo text, a staffing agency's row or a place in another country gets
+    // no JobPosting from this pane either. And what it writes is what the bake
+    // writes for the row: this pane used to build a block of its own, with the
+    // stored company as the hiring organisation (a repaired name or a tenant
+    // code's override never reached it: "Chubb External", "Ms"), TELECOMMUTE on
+    // any remote label and the location string as the locality. Only the url
+    // differs: while the pane is open its canonical is the ?job= link.
+    const baked = postingJsonLd(detailJob, detailDesc, { site: "https://resumebooster.work" });
+    if (!baked) return restoreCanonical;
     const ld: Record<string, unknown> = {
-      "@context": "https://schema.org",
-      "@type": "JobPosting",
-      title: detailJob.title,
-      description: detailDesc.slice(0, 4000),
-      // Clamp to today (UTC): Workday date-only stamps parse as a future UTC
-      // midnight for western timezones, and Google rejects future datePosted.
-      // A company-stated "tomorrow" is, for every honest purpose, "today".
-      datePosted: (detailJob.postedAt!.slice(0, 10) > new Date().toISOString().slice(0, 10)
-        ? new Date().toISOString().slice(0, 10)
-        : detailJob.postedAt!.slice(0, 10)),
-      // The board's serving window, not a company deadline — see the fence
-      // note above. Computed from the RAW postedAt (not the clamped
-      // datePosted) so an already-old posting gets a validThrough in the
-      // past, which Google correctly reads as "expired" — true, since the
-      // 30-day cap is about to drop it.
-      validThrough: new Date(Date.parse(detailJob.postedAt!.slice(0, 10)) + 30 * 86_400_000)
-        .toISOString().slice(0, 10),
-      hiringOrganization: { "@type": "Organization", name: detailJob.company },
+      ...baked,
       url: `https://resumebooster.work/jobs?job=${encodeURIComponent(detailJob.id)}`,
-      directApply: false,
-      identifier: { "@type": "PropertyValue", name: detailJob.company, value: detailJob.id },
-      // schema.org's own enumeration, not our column values — Google reads
-      // FULL_TIME/PART_TIME/CONTRACTOR/TEMPORARY/INTERN and ignores anything
-      // else. Emitted ONLY when the employer stated a type: an omitted
-      // property means "not stated", while a guessed FULL_TIME would be a
-      // fabricated claim published in structured data.
-      ...(isEmploymentType(detailJob.employmentType)
-        ? { employmentType: LD_EMPLOYMENT_TYPE[detailJob.employmentType] }
-        : {}),
-      ...(detailJob.workMode === "remote"
-        ? {
-            jobLocationType: "TELECOMMUTE",
-            // TELECOMMUTE requires applicantLocationRequirements when no
-            // physical jobLocation is given — emit it only from a KNOWN
-            // country; without one, fall back to the location text as a Place.
-            ...(detailJob.country
-              ? { applicantLocationRequirements: { "@type": "Country", name: detailJob.country } }
-              : detailJob.location
-                ? { jobLocation: { "@type": "Place", address: { "@type": "PostalAddress", addressLocality: detailJob.location.slice(0, 120) } } }
-                : {}),
-          }
-        : { jobLocation: { "@type": "Place", address: { "@type": "PostalAddress", addressLocality: detailJob.location.slice(0, 120) } } }),
     };
     const tag = document.createElement("script");
     tag.type = "application/ld+json";

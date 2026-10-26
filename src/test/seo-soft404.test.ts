@@ -25,6 +25,7 @@ import { describe, expect, it, afterEach } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { markDeadForRobots, clearDeadForRobots } from "../lib/seo-robots";
+import { postingValidThrough, type PostingRow } from "../components/jobs/posting-page";
 
 const read = (p: string) => readFileSync(resolve(__dirname, p), "utf8");
 
@@ -72,29 +73,48 @@ describe("the dead-link state is wired to it", () => {
 
 describe("the JobPosting markup carries the board's own expiry", () => {
   const jobs = read("../pages/Jobs.tsx");
+  const posting = read("../components/jobs/posting-page.ts");
+  const row = (postedAt: string) => ({ id: "greenhouse:acme:1", postedAt, missingSince: null }) as PostingRow;
 
-  it("emits validThrough = postedAt + 30 days", () => {
+  it("the pane writes the posting page's own markup, at its own ?job= address", () => {
+    // One builder for every JobPosting this site writes (the trusted-pages
+    // round, 2026-10-25): the pane's own block named the stored company and
+    // marked any remote label as telework.
+    expect(jobs).toMatch(/const baked = postingJsonLd\(detailJob, detailDesc, \{ site: "https:\/\/resumebooster\.work" \}\);/);
+    expect(jobs).toMatch(/\.\.\.baked,\s*url: `https:\/\/resumebooster\.work\/jobs\?job=\$\{encodeURIComponent\(detailJob\.id\)\}`/);
+  });
+
+  it("validThrough is the end of the board's 30-day window", () => {
     // 30 days is FRESH_WINDOW_DAYS — the serving window the board enforces.
-    // If that constant ever changes, this must change with it or the markup
-    // promises a lifetime the board no longer honors.
-    expect(jobs).toMatch(/validThrough: new Date\(Date\.parse\(detailJob\.postedAt!\.slice\(0, 10\)\) \+ 30 \* 86_400_000\)/);
+    // If that constant ever changes, the mirror must change with it or the
+    // markup promises a lifetime the board no longer honors.
+    expect(posting).toMatch(/export const BOARD_FRESH_WINDOW_DAYS = 30;/);
+    expect(posting).toMatch(/validThrough: `\$\{validThrough\}T23:59:59\+00:00`/);
     const idx = readFileSync(
       resolve(__dirname, "../../supabase/functions/job-board/index.ts"), "utf8");
     expect(idx).toMatch(/const FRESH_WINDOW_DAYS = 30;/);
+    expect(postingValidThrough(row("2026-10-01"), new Date("2026-10-05T12:00:00Z"))).toBe("2026-10-31");
   });
 
-  it("derives it from the RAW postedAt, not the clamped datePosted", () => {
-    // The clamp exists because Workday date-only stamps can parse as future
-    // UTC midnights; validThrough must track the true serving window instead,
-    // so an already-old posting gets a PAST validThrough — which Google reads
-    // as expired, and which is true.
-    const block = jobs.slice(jobs.indexOf("validThrough:"), jobs.indexOf("validThrough:") + 200);
-    expect(block).not.toMatch(/datePosted/);
+  it("an already-old posting gets a validThrough in the past", () => {
+    // Google reads a past validThrough as expired, which is true: the board
+    // drops the posting at the end of its window. Only an employer's
+    // "tomorrow" is read as today (postingDatePosted), so a window never
+    // spans more than 30 days between the markup's own two dates.
+    const now = new Date("2026-10-20T12:00:00Z");
+    expect(postingValidThrough(row("2026-09-01"), now)).toBe("2026-10-01");
+    expect(postingValidThrough(row("2026-10-21"), now)).toBe("2026-11-19");
   });
 
   it("still invents no salary and no company deadline fields", () => {
-    const ldStart = jobs.indexOf('"@type": "JobPosting"');
-    const ldBlock = jobs.slice(ldStart, jobs.indexOf("document.createElement", ldStart));
-    expect(ldBlock).not.toMatch(/baseSalary|applicationDeadline/);
+    const paneStart = jobs.indexOf("const baked = postingJsonLd(");
+    const paneBlock = jobs.slice(paneStart, jobs.indexOf("document.createElement", paneStart));
+    expect(paneStart).toBeGreaterThan(0);
+    expect(paneBlock).not.toMatch(/baseSalary|applicationDeadline/);
+    const ldStart = posting.indexOf("export function postingJsonLd(");
+    const ldBlock = posting.slice(ldStart, posting.indexOf("\n}\n", ldStart));
+    expect(ldStart).toBeGreaterThan(0);
+    expect(ldBlock.replace(/\/\/[^\n]*/g, "")).not.toMatch(/baseSalary|applicationDeadline/);
   });
 });
+

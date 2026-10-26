@@ -1019,7 +1019,10 @@ export function postingNameVerdict(job: Pick<PostingRow, "id" | "token" | "compa
  * (postingRowEligible: no staffing agency, no USAJOBS row, no tenant code, a
  * place, a hirer the board names, still live), the description length, and
  * the name gate. They are applied here, and postingJsonLd applies them first,
- * so no caller can write markup the bake would not.
+ * so no caller can write markup for a row the bake would refuse. (Whether the
+ * bake gave the ADDRESS a page at all, rather than a stub for a duplicate or a
+ * page past the ceiling, is not a property of the row: the posting page reads
+ * that from the head it was loaded with.)
  *
  * Returns the row as the markup names it (the employer's name repaired), or
  * null when the bake would write none. `ignoreNameGate` lets the bake ask
@@ -1078,10 +1081,10 @@ export function postingJsonLd(
   opts: { site: string; now?: Date; ignoreCountryMismatch?: boolean; ignoreNameGate?: boolean } = { site: "" },
 ): Record<string, unknown> | null {
   const now = opts.now ?? new Date();
-  // THE BAKE'S RULES COME FIRST, FOR EVERY CALLER: the bake, the React posting
-  // page and the board's detail pane all write what this returns, so a row the
-  // bake would give no markup gets none anywhere, and a repaired name is the
-  // one every caller's markup names.
+  // THE BAKE'S PER-ROW RULES COME FIRST, FOR EVERY CALLER: the bake, the React
+  // posting page and the board's detail pane all write what this returns, so a
+  // row the bake would give no markup gets none anywhere, and a repaired name
+  // is the one every caller's markup names.
   const job = postingMarkupGate(row, description, { now, ignoreNameGate: opts.ignoreNameGate });
   if (!job) return null;
   const path = postingPagePath(job.id);
