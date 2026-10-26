@@ -164,13 +164,15 @@ describe("commerce copy never denies subscriptions, in any language", () => {
     ["hero", "nofees"],
     ["hero", "benefits", "oneTime"],
     ["finalCta", "guarantee"],
-    ["pricingPage", "noSubscriptions"],
     ["productSelectionModal", "secureCheckout"],
-    ["pricingPage", "metaDescription"],
+    ["pricingPlans", "meta", "description"],
   ];
 
+  // The pricing page's strings are the string shard src/i18n/shards/pricing
+  // (homepage switch-over, step 2): a pricingPlans key is read there.
+  const shardDir = resolve(root, "src/i18n/shards/pricing");
   const read = (file: string, path: string[]): string =>
-    path.reduce<any>((o, k) => o?.[k], JSON.parse(readFileSync(resolve(localeDir, file), "utf8")));
+    path.reduce<any>((o, k) => o?.[k], JSON.parse(readFileSync(resolve(path[0] === "pricingPlans" ? shardDir : localeDir, file), "utf8")));
 
   for (const [file, denial] of Object.entries(DENIALS)) {
     describe(file, () => {
@@ -182,18 +184,27 @@ describe("commerce copy never denies subscriptions, in any language", () => {
         });
       }
 
-      // "$1 Keyword Fix" sat in this description while the product cost $3.
-      // Then it named the HIDDEN keyword fix and said nothing renews, beside
-      // two monthly plans (platform sweep L3-18): it now states the visible
-      // catalogue's one-time range and the plans' starting price, all three
-      // derived in Pricing.tsx, none typed.
-      it("pricingPage.metaDescription interpolates prices instead of stating them", () => {
-        const v = read(file, ["pricingPage", "metaDescription"]);
-        for (const p of ["{{lowPrice}}", "{{highPrice}}", "{{proPrice}}"]) {
-          expect(v.split(p).length - 1, `${p} must appear exactly once`).toBe(1);
+      // "$1 Keyword Fix" sat in the old page's description while the product
+      // cost $3, and later it named a hidden product (platform sweep L3-18).
+      // The rebuilt page's descriptions follow the sale gates
+      // (pricing-meta.ts): each names a price only for what is on sale, every
+      // price interpolated from plan-facts, none typed.
+      it("pricingPlans.meta descriptions interpolate prices", () => {
+        const want: Record<string, string[]> = {
+          description: ["{{faPrice}}", "{{proPrice}}"],
+          descriptionFa: ["{{faPrice}}"],
+          descriptionPro: ["{{proPrice}}"],
+          descriptionClosed: [],
+        };
+        for (const [key, prices] of Object.entries(want)) {
+          const v = read(file, ["pricingPlans", "meta", key]);
+          expect(typeof v, key).toBe("string");
+          for (const p of ["{{faPrice}}", "{{proPrice}}"]) {
+            expect(v.split(p).length - 1, `${key}: ${p}`).toBe(prices.includes(p) ? 1 : 0);
+          }
+          expect(v, key).not.toMatch(/[$£€₹]\s?\d/);
+          expect(v, key).not.toMatch(/keywordFixPrice/);
         }
-        expect(v, "the hidden Keyword Fix is not on sale and must not be advertised").not.toMatch(/keywordFixPrice/);
-        expect(v).not.toMatch(/[$£€₹]\s?\d/);
       });
     });
   }

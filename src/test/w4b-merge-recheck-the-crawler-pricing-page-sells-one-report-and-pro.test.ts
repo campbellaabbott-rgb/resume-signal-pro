@@ -56,7 +56,7 @@ const unescape = (s: string) => s.replace(/&quot;/g, '"').replace(/&#39;/g, "'")
 
 const fa = PRODUCTS.fullAnalysis;
 const pro = SUBSCRIPTIONS.pro;
-const PP = (EN as { pricingPage: Record<string, string> }).pricingPage;
+const PP = (EN as unknown as { pricingPage: Record<string, string> }).pricingPage;
 /** A dollar range that opens and closes at the same price: "$5–$5". */
 const ONE_PRICE_RANGE = /\$\s?(\d[\d,.]*)\s?[–—-]\s?\$\s?\1(?![\d,.]*\d)/;
 

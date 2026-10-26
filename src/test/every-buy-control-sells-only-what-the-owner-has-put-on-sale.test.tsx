@@ -239,7 +239,6 @@ describe("no buy control reads the seller's gate alone", () => {
       "src/components/ComparisonTable.tsx",
       "src/components/FinalCTA.tsx",
       "src/components/ResumeUploader.tsx",
-      "src/pages/Pricing.tsx",
     ]) expect(read(p), p).toMatch(/\bfullAnalysisOnSale\(\)/);
     expect(read("src/components/ProSubscriptionCard.tsx")).toMatch(/\bproOnSale\(\)/);
     // Index's checkout handler: on sale, or a Pro member's included analysis.

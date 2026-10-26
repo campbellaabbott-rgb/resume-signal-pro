@@ -60,14 +60,16 @@ type Doc = Record<string, Record<string, unknown>>;
 const docOf = (file: string): Doc => JSON.parse(readFileSync(resolve(LOCALE_DIR, file), "utf8"));
 const EN = docOf("en.json");
 
-/** Every key that names the pass: the two pass namespaces, the homepage strip, plus the pricing line. */
+/**
+ * Every key that names the pass: the two pass namespaces and the old homepage
+ * strip. The old pricing page's pass line went with src/pages/Pricing.tsx at
+ * the homepage switch-over; the new pricing strings (src/i18n/shards/pricing)
+ * name no pass, which hp-pricing-decisions holds.
+ */
 const passKeys = (d: Doc): Array<[string, string]> => {
   const out: Array<[string, string]> = [];
   for (const ns of ["agentPass", "oauthConsent", "homeAgent"]) {
     for (const [k, v] of Object.entries(d[ns] ?? {})) if (typeof v === "string") out.push([`${ns}.${k}`, v]);
-  }
-  for (const [k, v] of Object.entries(d.pricingPage ?? {})) {
-    if (k.startsWith("pass") && typeof v === "string") out.push([`pricingPage.${k}`, v]);
   }
   return out;
 };
@@ -94,18 +96,18 @@ describe("every sentence that names the pass interpolates its numbers, in every 
   const enPass = new Map(passKeys(EN));
 
   it("finds the pass copy that remains, and the homepage and pricing strings name no pass number", () => {
-    // Not vacuous: the consent screen's pass strip, the retirement notice,
-    // the homepage strip and the pricing line are all in the walk.
+    // Not vacuous: the consent screen's pass strip, the retirement notice
+    // and the old homepage strip are all in the walk.
     expect(enPass.size).toBeGreaterThan(20);
     const used = new Set([...enPass.values()].flatMap(placeholders));
     expect(used.has("left"), "the consent screen's pass strip still interpolates what is left").toBe(true);
-    for (const ns of ["homeAgent.", "pricingPage.", "agentPass."]) {
+    for (const ns of ["homeAgent.", "agentPass."]) {
       expect([...enPass.keys()].filter((k) => k.startsWith(ns)).length, `${ns} is in the walk`).toBeGreaterThanOrEqual(2);
     }
     // The apply pivot: nothing on the homepage, on /pricing or on the
     // retirement notice interpolates a pass number, because no pass is sold.
     for (const [k, v] of enPass) {
-      if (/^(homeAgent|pricingPage|agentPass)\./.test(k)) expect(placeholders(v).filter((x) => /^pass/.test(x)), `${k} still prices a pass`).toEqual([]);
+      if (/^(homeAgent|agentPass)\./.test(k)) expect(placeholders(v).filter((x) => /^pass/.test(x)), `${k} still prices a pass`).toEqual([]);
     }
   });
 

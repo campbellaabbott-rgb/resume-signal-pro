@@ -117,7 +117,7 @@ describe("every page that lists Pro reads the list", () => {
   });
 
   it("no page that sells Pro types its own perk words", () => {
-    for (const file of [...PAGES.map(([f]) => f), "src/pages/Pricing.tsx"]) {
+    for (const file of [...PAGES.map(([f]) => f), "src/components/pricing/PlanCards.tsx"]) {
       const src = code(file);
       expect(src, file).not.toMatch(/unlimited scans|scans without a daily limit|Freelance Boost and Transition Pro included|every paid tool/i);
     }

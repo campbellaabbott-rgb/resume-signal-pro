@@ -109,7 +109,7 @@ const COVERED_FILES = [
 const RATCHET: Record<string, number> = {
   "src/pages/Jobs.tsx": 79,
   "src/pages/JobPosting.tsx": 0,
-  "src/pages/Pricing.tsx": 0,
+  "src/pages/pricing/PricingPage.tsx": 0,
   "src/pages/Index.tsx": 1,
   "src/components/Hero.tsx": 17,
   "src/components/AtsCoverage.tsx": 1,
