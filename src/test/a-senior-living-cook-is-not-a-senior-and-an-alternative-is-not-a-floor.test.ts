@@ -139,6 +139,55 @@ describe("a wish that names something else does not drop a required minimum (the
   });
 });
 
+/**
+ * RECHECK 3 (2026-10-26). The rule's own sentence says a required heading, or
+ * a line opening Required or Minimum, binds; but a wish word right after
+ * "experience" returned before either check ran, so "3+ years of experience
+ * preferably in SaaS" under Minimum Qualifications stated no figure, where
+ * main and the same line with a comma read 3. An adverb on a setting
+ * ("preferably in", "ideally in") names the setting, as the comma form always
+ * did; a participle on one ("desired in a clinical setting") yields to a
+ * required heading or line. And two wishes still read as floors: "preferred
+ * but not required" (the "required" inside "not required" bound it) and a wish
+ * after a short phrase ("4+ years' experience in related field preferred").
+ */
+describe("a wish on a setting leaves a required minimum, and a wish after a phrase or 'but not required' is a wish (recheck 3)", () => {
+  it("the recheck's five probes read main's floor", () => {
+    expect(parseMinYears("Minimum Qualifications\n3+ years of sales experience preferably in SaaS")).toBe(3);
+    expect(parseMinYears("Minimum 2 years of experience preferably in a hospital")).toBe(2);
+    expect(parseMinYears("Required Qualifications\n- 3+ years of experience ideally in B2B sales")).toBe(3);
+    expect(parseMinYears("Requirements\n- 2+ years of experience preferably in a hospital setting")).toBe(2);
+    expect(parseMinYears("Required Qualifications\n- 3+ years of experience desired in a clinical setting")).toBe(3);
+  });
+
+  it("the comma-less adverb reads as the comma form does, under no heading too", () => {
+    for (const [plain, comma] of [
+      ["3+ years of sales experience preferably in SaaS", "3+ years of sales experience, preferably in SaaS"],
+      ["2 years of experience ideally within a hospital", "2 years of experience, ideally within a hospital"],
+    ]) expect(parseMinYears(plain), plain).toBe(parseMinYears(comma));
+    expect(parseMinYears("3+ years of sales experience preferably in SaaS")).toBe(3);
+  });
+
+  it("a participle on a setting is still a wish where nothing binds, and under a wish heading", () => {
+    expect(parseMinYears("3+ years of experience desired in a clinical setting")).toBeNull();
+    expect(parseMinYears("Preferred Qualifications\n3+ years of experience preferably in SaaS")).toBeNull();
+  });
+
+  it("'preferred but not required' and a wish after a short phrase state no floor", () => {
+    expect(detectExperience("Senior Living Cook", "2 years of assisted living experience preferred but not required!")).toEqual({ band: null, minYears: null });
+    expect(parseMinYears("2-3 years of accounting experience preferred but not required")).toBeNull();
+    expect(parseMinYears("4+ years' experience in related field preferred")).toBeNull();
+    expect(parseMinYears("3 years of experience in a retail environment preferred.")).toBeNull();
+  });
+
+  it("positive control: 'required' still binds, and 'not required' elsewhere in the sentence does not drop a floor", () => {
+    expect(parseMinYears("5+ years of experience required, degree not required")).toBe(5);
+    expect(parseMinYears("3+ years of experience; a degree is not required")).toBe(3);
+    expect(parseMinYears("Minimum 2 years of experience, preferably in the hospitality industry")).toBe(2);
+    expect(parseMinYears("Required Qualifications 1+ years of sales experience (luxury retail preferred)")).toBe(1);
+  });
+});
+
 describe("a Senior Community Manager, Support Worker or Associate is a rung anywhere in a title (the merge recheck)", () => {
   it("the live titles with a prefix stay senior", () => {
     for (const t of ["TOPS - Senior Community Manager Specialist - Dallas, TX", "TOPS - Senior Community Manager Specialist - Atlanta, GA", "Part-Time Senior Community Support Worker", "Roving Senior Community Manager", "Assistant Senior Community Associate"]) expect(bandFromTitle(t), t).toBe("senior");
