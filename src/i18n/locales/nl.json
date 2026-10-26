@@ -5184,6 +5184,8 @@
     "renewsOn": "Wordt verlengd op {{date}}",
     "retiredPlanEnds": "Het eindigt op {{date}} en wordt niet verlengd. De Pro-tools blijven tot dan aan.",
     "retiredPlanLive": "Zolang het loopt, blijven de Pro-tools aan. De agent zelf staat uit; je kunt het abonnement altijd opzeggen bij facturering.",
+    "retiredPlanTrialing": "Het zit nog in de proefperiode: scans hebben geen daglimiet, de schrijftools tellen mee voor het gratis daglimiet en de Full Analysis zit er tijdens de proefperiode niet bij. De agent zelf staat uit; je kunt het abonnement altijd opzeggen bij facturering.",
+    "retiredPlanTrialingEnds": "De proefperiode eindigt op {{date}} en het abonnement wordt niet verlengd. Tot dan hebben scans geen daglimiet, tellen de schrijftools mee voor het gratis daglimiet en zit de Full Analysis er niet bij.",
     "retiredPlanOwing": "De laatste betaling is niet gelukt. Voor een abonnement dat we niet meer verkopen heb je geen kaart nodig: zeg het op bij facturering en de nieuwe pogingen stoppen.",
     "retiredPlanTitle": "Je abonnement is het Apply Agent-abonnement, dat we niet meer verkopen.",
     "secureSignedIn": "Veilig afrekenen via Stripe. Altijd opzegbaar — geen vastzitten.",

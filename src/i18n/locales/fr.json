@@ -5220,6 +5220,8 @@
     "renewsOn": "Se renouvelle le {{date}}",
     "retiredPlanEnds": "Il prend fin le {{date}} et ne sera pas renouvelé. Les outils de Pro restent actifs jusque-là.",
     "retiredPlanLive": "Tant qu'il court, les outils de Pro restent actifs. L'agent lui-même est désactivé ; vous pouvez résilier la formule à tout moment dans la facturation.",
+    "retiredPlanTrialing": "Il est encore en période d'essai : les analyses n'ont pas de limite quotidienne, les outils de rédaction comptent sur l'allocation quotidienne gratuite et la Full Analysis n'est pas incluse pendant l'essai. L'agent lui-même est désactivé ; vous pouvez résilier la formule à tout moment dans la facturation.",
+    "retiredPlanTrialingEnds": "Sa période d'essai prend fin le {{date}} et la formule ne sera pas renouvelée. D'ici là, les analyses n'ont pas de limite quotidienne, les outils de rédaction comptent sur l'allocation quotidienne gratuite et la Full Analysis n'est pas incluse.",
     "retiredPlanOwing": "Son dernier paiement n'est pas passé. Vous n'avez pas besoin de carte pour une formule que nous ne vendons plus : résiliez-la dans la facturation et les nouvelles tentatives s'arrêteront.",
     "retiredPlanTitle": "Votre formule est le forfait Apply Agent, que nous ne vendons plus.",
     "secureSignedIn": "Paiement sécurisé via Stripe. Résiliable à tout moment — sans engagement.",

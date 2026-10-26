@@ -5184,6 +5184,8 @@
     "renewsOn": "Renews {{date}}",
     "retiredPlanEnds": "It ends on {{date}} and will not renew. Pro's tools stay on until then.",
     "retiredPlanLive": "While it runs, Pro's tools stay on. The agent itself is switched off; you can cancel the plan any time in billing.",
+    "retiredPlanTrialing": "It is still in its trial: scans have no daily cap, the writing tools count against the free daily allowance, and the Full Analysis is not included during a trial. The agent itself is switched off; you can cancel the plan any time in billing.",
+    "retiredPlanTrialingEnds": "Its trial ends on {{date}} and the plan will not renew. Until then scans have no daily cap, the writing tools count against the free daily allowance, and the Full Analysis is not included.",
     "retiredPlanOwing": "Its last payment didn't go through. You don't need a card for a plan we no longer sell: cancel it in billing and the retries stop.",
     "retiredPlanTitle": "Your plan is the Apply Agent plan, which we no longer sell.",
     "secureSignedIn": "Secure checkout via Stripe. Cancel anytime — no lock-in.",

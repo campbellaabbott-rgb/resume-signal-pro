@@ -123,6 +123,50 @@ describe("a retired Agent plan is not shown as Pro (S12-168)", () => {
   });
 });
 
+/**
+ * A TRIALING RETIRED PLAN IS TOLD WHAT A TRIAL GETS (recheck 3, 2026-10-26).
+ * The Apply Agent plan is the only plan ever sold with a trial, and the
+ * webhook sets every trialing one to end at its period end. The card said
+ * "Pro's tools stay on until then", but a trial gets fewer of them: the
+ * writing tools run on the free daily allowance (writingGate passes "free"
+ * without consumables) and no Full Analysis is minted; only the uncapped
+ * scans hold.
+ */
+describe("a trialing retired Agent plan says what a trial gets (recheck 3)", () => {
+  it("ending at its trial's end: the trial line with the date, never 'Pro's tools stay on'", () => {
+    Object.assign(pro, { active: true, status: "trialing", trialing: true, currentPeriodEnd: DATE, cancelAtPeriodEnd: true, planTier: "agent" });
+    mount();
+    expect(document.querySelector("[data-retired-plan]")).toBeTruthy();
+    expect(card()).toContain("⟦proPlan.retiredPlanTrialingEnds⟧");
+    for (const k of ["proPlan.retiredPlanEnds", "proPlan.retiredPlanLive", "proPlan.trialingNoCap"]) expect(card(), k).not.toContain(k);
+  });
+
+  it("with no end set yet: the trial line, never 'Pro's tools stay on'", () => {
+    Object.assign(pro, { active: true, status: "trialing", trialing: true, currentPeriodEnd: DATE, planTier: "agent" });
+    mount();
+    expect(card()).toContain("⟦proPlan.retiredPlanTrialing⟧");
+    expect(card()).not.toContain("proPlan.retiredPlanLive");
+  });
+
+  it("positive control: a paid retired plan that ends keeps its line", () => {
+    Object.assign(pro, { active: true, status: "active", currentPeriodEnd: DATE, cancelAtPeriodEnd: true, planTier: "agent" });
+    mount();
+    expect(card()).toContain("⟦proPlan.retiredPlanEnds⟧");
+  });
+
+  it("the English says the scans have no daily cap, the writing tools count on the free daily allowance, and no Full Analysis comes with a trial", async () => {
+    const en = (await import("@/i18n/locales/en.json")).default as unknown as { proPlan: Record<string, string> };
+    for (const k of ["retiredPlanTrialing", "retiredPlanTrialingEnds"]) {
+      const line = en.proPlan[k];
+      expect(line, k).toMatch(/no daily cap/);
+      expect(line, k).toMatch(/free daily allowance/);
+      expect(line, k).toMatch(/Full Analysis is not included/);
+      expect(line, k).not.toMatch(/Pro's tools stay on/);
+    }
+    expect(en.proPlan.retiredPlanTrialingEnds).toContain("{{date}}");
+  });
+});
+
 describe("the unlinked-plan line names no control the page lacks (S12-002)", () => {
   it("the new key, not the one that said to sign in with Google", () => {
     Object.assign(pro, { linkPending: true });

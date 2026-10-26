@@ -5220,6 +5220,8 @@
     "renewsOn": "Se renueva el {{date}}",
     "retiredPlanEnds": "Termina el {{date}} y no se renovará. Las herramientas de Pro siguen activas hasta entonces.",
     "retiredPlanLive": "Mientras esté activo, las herramientas de Pro siguen funcionando. El agente en sí está desactivado; puedes cancelar el plan cuando quieras en facturación.",
+    "retiredPlanTrialing": "Todavía está en su periodo de prueba: los escaneos no tienen límite diario, las herramientas de redacción cuentan contra la asignación diaria gratuita y el Full Analysis no está incluido durante la prueba. El agente en sí está desactivado; puedes cancelar el plan cuando quieras en facturación.",
+    "retiredPlanTrialingEnds": "Su periodo de prueba termina el {{date}} y el plan no se renovará. Hasta entonces, los escaneos no tienen límite diario, las herramientas de redacción cuentan contra la asignación diaria gratuita y el Full Analysis no está incluido.",
     "retiredPlanOwing": "Su último pago no se completó. No necesitas una tarjeta para un plan que ya no vendemos: cancélalo en facturación y los reintentos se detendrán.",
     "retiredPlanTitle": "Tu plan es el plan Apply Agent, que ya no vendemos.",
     "secureSignedIn": "Pago seguro con Stripe. Cancela cuando quieras, sin permanencia.",

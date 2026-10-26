@@ -5184,6 +5184,8 @@
     "renewsOn": "Verlängert sich am {{date}}",
     "retiredPlanEnds": "Er endet am {{date}} und verlängert sich nicht. Die Pro-Werkzeuge bleiben bis dahin aktiv.",
     "retiredPlanLive": "Solange er läuft, bleiben die Pro-Werkzeuge aktiv. Der Agent selbst ist abgeschaltet; Sie können den Tarif jederzeit in der Abrechnung kündigen.",
+    "retiredPlanTrialing": "Er ist noch in der Testphase: Scans haben kein Tageslimit, die Schreibwerkzeuge zählen gegen das kostenlose Tageskontingent, und die Full Analysis ist während der Testphase nicht enthalten. Der Agent selbst ist abgeschaltet; Sie können den Tarif jederzeit in der Abrechnung kündigen.",
+    "retiredPlanTrialingEnds": "Seine Testphase endet am {{date}}, und der Tarif verlängert sich nicht. Bis dahin haben Scans kein Tageslimit, die Schreibwerkzeuge zählen gegen das kostenlose Tageskontingent, und die Full Analysis ist nicht enthalten.",
     "retiredPlanOwing": "Seine letzte Zahlung ist nicht durchgegangen. Für einen Tarif, den wir nicht mehr verkaufen, brauchen Sie keine Karte: Kündigen Sie ihn in der Abrechnung, dann hören die Zahlungsversuche auf.",
     "retiredPlanTitle": "Ihr Tarif ist der Apply-Agent-Tarif, den wir nicht mehr verkaufen.",
     "secureSignedIn": "Sicherer Bezahlvorgang über Stripe. Jederzeit kündbar – keine Bindung.",
