@@ -79,7 +79,7 @@ describe("a copy of the catalogue drifts the day the catalogue moves", () => {
     for (const [, copy] of PAIRS) h.update(readFileSync(resolve(FN, copy)));
     const copyHash = h.digest("hex").slice(0, 16);
     const version = /export const BUILD_VERSION = "([^"]+)"/.exec(readFileSync(resolve(FN, "layoff-filings/index.ts"), "utf8"))?.[1];
-    const PINNED = { copyHash: "8066d4c760e94c58", version: "2026-10-15.3" };
+    const PINNED = { copyHash: "63782e62e0e61b72", version: "2026-10-26.1" };
     expect(
       { copyHash, version },
       copyHash !== PINNED.copyHash && version === PINNED.version

@@ -10505,6 +10505,12 @@ file names the census tools took for names: "Axia Logo Horizontal",
 "Aerospace", "All", "US - LLC Recruiting", "BTB2.png"). That migration is
 applied before job-board deploys, so the lane reads the rows; already-named
 boards answer "already correct" from one indexed read each.
+v6 (2026-09-09.96, trust round 3): the 16 boards 20261026100000 names by
+override (HKBU, Nunavut, the Scottish Government's two sites, Emirates NBD's
+two and Emirates Islamic, Farrans, Springfield Clinic, Lafayette 148, Lowell
+Five Bank, Synchron, Harrington Hoists, Nicholson Construction Company and
+two LCS communities) and the 64 bare tokens renamed in sources.ts (n1397),
+the same walk again.
 
 ## n485-embryriddle-wd1-external
 
@@ -15268,6 +15274,13 @@ in the country that code names is that country ("IL - Tel Aviv").
 ahead of province names ("New Brunswick - NJ - US", n1391), and "astana" is
 KZ in the city table (n1392). The backfill sweep fills the BMS row stored
 with no country; the rows filed wrongly are re-derived as each board is read.
+12 (2026-09-09.96, trust round 3): US towns named after countries (n1396):
+"Lake Wales" is not Wales, and Greece, Peru and Turkey before or after an
+upper-case state code with no comma ("NY - Greece", "Store0006 Greece NY")
+are the US. Rows filed wrongly are re-derived as each board is read; Kohl's
+"Lake Wales (1250)" now reads no country, which never overwrites a stored
+one, so migration 20261026110000 files its one open row US from Workday's
+own alpha2Code.
 
 ## n984-if-s-wa-sa-nt-s
 
@@ -21826,6 +21839,91 @@ SmartRecruiters rows in the sample, 372 right) is a separate decision and
 not in this build. The list re-read rewrites country on every pass
 (country is a derived field, so the change is not logged as an employer
 edit) and clears the stale region_code; no migration.
+
+## n1394-oracle-pool-sites
+
+In `supabase/functions/job-board/sources.ts`, above: `export const ORACLE_POOL_SITES: ReadonlySet<string> = new Set([`; and in `supabase/functions/job-board/normalize.ts`, above: `const head = want && sites.includes(want) ? want : sites.find((t) => !pool.has(t)) ?? sites[0];`.
+
+A SITE THAT POOLS THE OTHERS RANKS LAST (2026-09-09.96, trust round 3). The
+dedupe stores a requisition once, under the best-ranked site of its tenant
+that lists it, and rank 0 was the tenant's first-listed site. LCS's first
+two are "All" (CX_3001) and "All Community" (CX_11009), which list nearly
+every community's postings, so 592 postings were stored under a site that
+names no hirer (a publisher-only board: no posting page, no JobPosting)
+although 101 catalogued community sites list the same requisitions under
+their own names ("Friendship Village is seeking"). R+L's first-listed site,
+"Default" (erhk CX_1001), is exactly R+L Carriers' 259 requisitions plus
+Golden Ocala's 12. Measured 2026-10-26 by reading every site's requisition
+ids (~/.config/resumebooster/trust-round-2/oracle). A site in
+ORACLE_POOL_SITES ranks after every other site of its tenant, in catalogue
+order; rank 0 is the canonical site, else the first site not in the set.
+LCS's corporate site CX_1 is its canonical (it shares no requisition with a
+community site, so it owns its 42 either way). Only eexs and erhk move;
+every other tenant keeps its ranks and each multi-site tenant still has one
+rank-0 site. No catalogue reorder (that would move ~680 indexes) and no
+migration: each community's next visit takes its requisitions and sheds the
+pool copies as untracked exits (planOracleSubsiteVisit, 1,000 a visit), and
+those rows take new ids, so their first_seen restarts, as at the .68 dedupe.
+About 13 requisitions listed on no catalogued site stay on CX_3001, still
+publisher-only.
+
+## n1395-icims-org-scope
+
+In `supabase/functions/job-board/index.ts`, above: `const items = icimsOrgScope(all, s.org);`; and in `supabase/functions/job-board/normalize.ts`, above: `export function icimsOrgScope<T>(items: T[], org: string | undefined): T[] {`.
+
+ONE HIRER A BOARD, WHERE THE FEED HAS NO BRAND FILTER (2026-09-09.96, trust
+round 3). Two pairs of catalogued iCIMS hosts read one feed each: Chick-fil-A
+(careers.baycenterfoods.com) with Chick-fil-A Supply LLC
+(careers.chick-fil-a.com), and YNV Group with Teknowledge
+(careers.monifai.com). Every posting names its hiring_organization, but
+&brand= returns nothing and &hiring_organization= is ignored, so the board
+reads the whole feed and keeps its own `org`. Offsets and the empty-first-page
+refusal stay on the raw feed (the walk is unchanged); the feed total a read
+reports is the kept count once the feed ended, since the raw total would
+describe the other employer's rows too. These feeds are one page (75 and 40
+rows), so every read ends. The Exelon pair takes `brand` instead (its feed
+filters on the server, as the Reyes boards' does).
+
+## n1396-us-towns-named-after-countries
+
+In `supabase/functions/job-board/normalize.ts`, above: `const P_COUNTRY_WORD_US_TOWN = /\b(?:peru|turkey|greece)\s*,\s*([A-Za-z]{2})(?![A-Za-z])|^([A-Za-z]{2})\s*[-–—,]\s*(?:peru|turkey|greece)\s*$|\b(?:peru|turkey|greece|lake wales)\s+([A-Za-z]{2})\s*$/i;`.
+
+US TOWNS NAMED AFTER COUNTRIES (COUNTRY_MAP_VERSION 12, trust round 3). Peru
+IN and IL, Turkey TX, Greece NY and Lake Wales FL were filed in Peru, Turkey,
+Greece and Great Britain when the state was not written as ", XX" (13 rows
+"Lake Wales" GB, 8 "Greece, NY #0185" or "NY - Greece" GR, 2 "IN/IL - Peru"
+PE, Dick's "Store0006 Greece NY" GR, live 2026-10-26). The word before the
+country now counts in "Lake Wales" (the GB pattern skips "lake wales" as it
+skips "new south wales"), and three forms place the town in the US, each
+needing an upper-case code that is one of the fifty-one: "Peru, IN" (as
+before, now with Greece), "NY - Greece" as the whole string, and
+"Store0006 Greece NY" with the code last and no comma. Corpus-first:
+19,064 real rows (5,667 distinct strings), 737 naming one of the words, 27
+rows change and every one moves from wrong to right (25 to US, Kohl's 2
+"Lake Wales (1250)" to no country, where Workday says US); "Cardiff, Wales",
+"New South Wales", "Lima, Peru", "PE - Peru", "GR - Greece" and
+"Turkey, Istanbul" keep their countries. Seven rows with no state at all
+(Rochester Regional Health's "SCHI - Greece" and three more, QTS's
+"US TX Turkey 1 DC1" twice) are not fixable from the string; Workday's own
+alpha2Code says US for each, for a later round.
+
+## n1397-renamed-tokens-trust-round-3
+
+In `supabase/functions/job-board/index.ts`, above: `"bb661c48-7edc-400c-adfb-40f8f7743374",`.
+
+THE CATALOGUE RENAMES OF TRUST ROUND 3 (2026-09-09.96). 64 bare tokens (an
+ADP client id alone, an Ashby, Greenhouse, Lever, BambooHR, Rippling or
+Teamtailor board) printed a label the census took for a name: a logo file
+("HRH Secaucus University Transparent", "mc cmyk (3)"), a page title
+("Jobs"), a board title ("Job Board", "Only External Postings") or a bare
+region ("North America"), or the "Recruiting" suffix of an employer's own
+portal ("AlphaSights Campus Recruiting"). Each now carries the name its
+employer uses in its own postings or vendor field, with the evidence in
+company_name_evidence under vendor:token (20261026100000). A bare token
+cannot take an override, so the lane renames its stored rows from the
+catalogue (NAME_SYNC_VERSION 6). "vacancies" is two boards (Lever's United
+Tech, Recruitee's Arc), each renamed by its own vendor and the snapshots left
+alone (SHARED_TOKENS).
 
 ## n1393-pay-to-reparse
 

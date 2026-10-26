@@ -159,7 +159,7 @@ const ROWS: ReadonlyArray<readonly [token: string, boards: ReadonlyArray<readonl
   ["tradinghub", [["ashby", "TradingHub"], ["pinpoint", "Tradinghub"]]],
   ["ultralytics", [["ashby", "Ultralytics"], ["personio", "Ultralytics"]]],
   ["upguard", [["ashby", "UpGuard Inc."], ["lever", "Upguard"]]],
-  ["vacancies", [["lever", "Vacancies"], ["recruitee", "Arc"]]],
+  ["vacancies", [["lever", "United Tech"], ["recruitee", "Arc"]]],
   ["veo", [["lever", "Veo"], ["teamtailor", "VEO"]]],
   ["versapay", [["lever", "Versapay"], ["pinpoint", "Versapay"]]],
   ["vgroup", [["pinpoint", "Vgroup"], ["workable", "V Group"]]],

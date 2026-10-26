@@ -73,7 +73,10 @@ import {
 // brand boards (three new) and the iCIMS brand field. Neither 2026-10-15.2 deployed.
 // 2026-10-15.3: trust/pages merged onto oh/integration's 2026-10-15.2 copy, so the one build carries the
 // twelve boards without the agency label, the JPMorgan line and the Reyes brand boards.
-export const BUILD_VERSION = "2026-10-15.3";
+// 2026-10-26.1 (trust/round3): the copy carries 64 boards renamed to their employers' own names, 20
+// employers' boards without the agency label and Jobandtalent's three with it, the Exelon brand boards
+// in the four duplicate iCIMS hosts' places, the iCIMS org field and the Oracle pool sites.
+export const BUILD_VERSION = "2026-10-26.1";
 
 // ── mirror constants (src/config/layoffs.ts names this file) ──────────────
 export const LAYOFF_LOOKBACK_DAYS = 90;

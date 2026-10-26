@@ -76,9 +76,13 @@ describe("renamed boards are corrected in the catalog", () => {
 
   it("none of them still carries the slug as its display name", () => {
     const titleCased = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+    // Trust round 3: five boards whose employer's own name IS its slug word, read in its
+    // own postings or vendor field (company_name_evidence, 20261026100000). Their old
+    // names were page titles ("Jobs", "Job Board"); the slug is the true name here.
+    const SLUG_IS_THE_NAME = new Set(["lemonade", "skyflow", "didero", "volka", "corelight"]);
     for (const tk of renamedTokens) {
       const e = byToken.get(tk);
-      if (!e) continue;
+      if (!e || SLUG_IS_THE_NAME.has(tk)) continue;
       expect(
         e.name,
         `${tk} display name is still its slug title-cased: "${e.name}"`,
@@ -139,7 +143,8 @@ describe("a rename actually reaches stored rows", () => {
    *  failure this codebase keeps paying for.
    *
    *  Mutation-tested: renaming a board and leaving the version at 2 must fail. */
-  const PINNED = { nameSyncVersion: 5, tokenCount: 38 };
+  // 6 and 102 since trust round 3 (2026-09-09.96): 64 catalogue renames.
+  const PINNED = { nameSyncVersion: 6, tokenCount: 102 };
 
   /** The lane's own block: from its version read to its last log line. It sat
    *  before the salary kick until S11-001 moved the kicks ahead of the slow

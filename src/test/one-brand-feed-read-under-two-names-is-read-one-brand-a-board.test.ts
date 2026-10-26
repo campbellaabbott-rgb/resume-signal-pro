@@ -53,9 +53,10 @@ describe("the catalogue: five Reyes boards, each one brand of the shared feed", 
     }
   });
 
-  it("brand appears on these five iCIMS entries and nowhere else", () => {
+  it("brand appears on these five iCIMS entries, Exelon's six (trust round 3) and nowhere else", () => {
+    const EXELON = ["careers.delmarva.com", "careers.comed.com", "careers.bge.com", "careers.peco.com", "careers.pepco.com", "careers.atlanticcityelectric.com"];
     const branded = (JOB_SOURCES as Src[]).filter((s) => s.brand !== undefined);
-    expect(branded.map((s) => s.token).sort()).toEqual(BRANDS.map(([t]) => t).sort());
+    expect(branded.map((s) => s.token).sort()).toEqual([...BRANDS.map(([t]) => t), ...EXELON].sort());
     for (const s of branded) expect(s.source).toBe("icims");
   });
 

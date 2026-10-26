@@ -54,6 +54,11 @@ const RELEASED_CONVICTIONS = new Set([
   "greenhouse:liquidpersonnel",      // social-work staffing agency, self-described
   "greenhouse:crisprecruit",         // recruitment firm, self-described
   "smartrecruiters:meta1",           // "supports several nationally-known clients": staffing (2026-10-25)
+  // Jobandtalent, a temp-staffing platform (trust round 3, 2026-10-26). Its board names
+  // spell it "Job&Talent", which the name screen's one-word form does not read.
+  "teamtailor:jobandtalent",         // Swedish placements: "Vår kund är ett väletablerat företag"
+  "lever:jobandtalent",              // its own staff: "placing millions of workers ... thousands of blue-chip clients"
+  "teamtailor:multitempo",           // "está a recrutar ... para empresa de referência"; "integração no cliente"
 ]);
 
 // The staffing half of merge-all's name gate, canonical spelling. The junk
@@ -86,6 +91,28 @@ const EMPLOYERS_OWN_BOARDS = new Set([
   "oracle:fa-evlo-saasfaprod1~ocs~cx_2",                               // Emirates Islamic
   "oracle:ejgo~em2~cx_1",                                              // Farrans
   "ukg:recruiting2~cal1001cala~46b96419-fba6-4dd0-a5fa-715bdfcf845b",  // Calamos
+  // Trust round 3 (2026-10-26): the agency audit's other tier-A boards, each read on
+  // its employer's own site or feed (~/.config/resumebooster/agency-flags-2026-10-25).
+  "ukg:recruiting2~con1074cvtg~1831b61a-1945-44fa-afd8-624795c9b30d",   // Convergint
+  "ukg:recruiting~ban1010~e9066a66-c3b9-e25c-d036-116705c05e46",        // Banner Engineering
+  "ukg:recruiting~laf1002lafa~1a07d948-3361-48d7-89f2-002c5a48346c",    // Lafayette 148
+  "ukg:recruiting2~sap1000spid~5e557a61-9707-4f47-8f76-9c11b2bfbf9e",   // Smart City Networks
+  "ukg:recruiting~kil1000~68c62bcb-20f8-3231-d728-9190572df832",        // Kilpatrick Townsend & Stockton
+  "ukg:recruiting~low1003lfcs~cfc2ee58-1207-4e12-a838-876cbc96b1f9",    // Lowell Five Bank
+  "adp:d290c04e-0230-4cd9-8bf0-f116bfab1405~19000101_000003",           // Synchron
+  "adp:4a8a08f1-ff6c-4d60-8308-4b09a199dd38",                           // Highlights for Children
+  "adp:30e05070-07b1-4b26-9028-b97dae32cdd1",                           // The Barkan Companies
+  "oracle:eify~us6~cx_1001",                                            // Springfield Clinic
+  "greenhouse:alphasightsresumedrop",                                   // AlphaSights
+  "greenhouse:placementsio",                                            // Placements.io
+  "greenhouse:studentplacements",                                       // WellPower
+  "lever:crossing-minds",                                               // Crossing Minds
+  "teamtailor:geant",                                                   // GÉANT
+  "rippling:paradise-media-recruitment",                                // Paradise Media
+  "rippling:ferric-recruiting",                                         // Ferric
+  "rippling:meundies-recruiting",                                       // MeUndies
+  "rippling:lylaw-recruitment",                                         // HPL Yamalova & Plewka
+  "rippling:allsup-employment-services",                                // Allsup
 ]);
 
 const unesc = (s) => s.replace(/\\(.)/g, "$1");

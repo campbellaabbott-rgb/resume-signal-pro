@@ -14,7 +14,7 @@
 // never linger. A refresh lock in job_board_meta stops stampedes.
 
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { HOT_TOKENS, JOB_SOURCES, LIGHT_DESC_TOKENS, ORACLE_CANONICAL_SITES, type JobSource } from "./sources.ts";
+import { HOT_TOKENS, JOB_SOURCES, LIGHT_DESC_TOKENS, ORACLE_CANONICAL_SITES, ORACLE_POOL_SITES, type JobSource } from "./sources.ts";
 import { BOARD_DESC_SOURCES, buildEmbedInput, DETAIL_DESC_SOURCES, jobPostingLd, workdayCxsUrl } from "./descriptions.ts";
 import { fetchJazzhr, jazzhrPostingUrl, parseJazzhrDetail } from "./vendors/jazzhr.ts";
 import { uncarriedCompanies, uncarriedListReply } from "./uncarried.ts";
@@ -38,7 +38,7 @@ import {
   sanePostedAt,
   isDatedBefore,
   normalizeCloseTitle,
-  normalizeIcims, normalizeUsajobs, usajobsDescriptions,
+  normalizeIcims, icimsOrgScope, normalizeUsajobs, usajobsDescriptions,
   normalizeRippling,
   normalizePinpoint,
   normalizePaylocity,
@@ -146,11 +146,11 @@ const json = (body: unknown, status = 200) =>
 // a-stripper-that-loses-real-code-passes-every-guard-that-reads-it.test.ts.
 const SITEMAP_DAYS = 30;
 // Rationale: docs/job-board-index-notes.md#n002-build-version
-const BUILD_VERSION = "2026-09-09.95"; // per-version deploy notes: docs/job-board-deploy-notes.md (kept out of the bundle; see the 4.5MB cap note there)
+const BUILD_VERSION = "2026-09-09.96"; // per-version deploy notes: docs/job-board-deploy-notes.md (kept out of the bundle; see the 4.5MB cap note there)
 // Rationale: docs/job-board-index-notes.md#n003-stored-names-do-not-heal-themselves-the-refr
 
 // Rationale: docs/job-board-index-notes.md#n483-const-name_sync_version
-const NAME_SYNC_VERSION = 5;
+const NAME_SYNC_VERSION = 6;
 // Rationale: docs/job-board-index-notes.md#n484-boards-whose-catalog-display-name-was
 
 // Rationale: docs/job-board-index-notes.md#n1135-const-renamed_tokens-readonly-string
@@ -196,6 +196,71 @@ const RENAMED_TOKENS: readonly string[] = [
   "standoutforgood~wd12~StandOutForGood",
   "trilongroup",
   "exactcare~wd1~AnewHealth_Career_Site",
+  // Rationale: docs/job-board-index-notes.md#n1397-renamed-tokens-trust-round-3
+  "bb661c48-7edc-400c-adfb-40f8f7743374",
+  "b3bc545f-6177-4880-8881-2ac6904aec6b",
+  "71562ff3-8368-4253-b712-0c0c15bc181b",
+  "582157cb-34cb-4bca-8237-ec7c1f3fd8d1",
+  "a4238dcf-5c61-4963-9b15-def8050f8004",
+  "6a0a1cc7-b180-45b3-a723-1c8159d2f829",
+  "06ac6923-7485-4dbc-af8c-2d543fd02bde",
+  "98617f59-2ed0-4bd6-9f68-20fa241f2e5a",
+  "61eae558-f513-41ba-9f35-9cd7387146b8",
+  "c65bb879-0106-458b-ba3a-1d1c1287115f",
+  "36278fed-189f-477f-a74e-30a70a38d2c3",
+  "bf5dbe8a-7475-427e-966d-4942d6eddde3",
+  "67bfed39-352a-407e-bb98-1ee7787db55a",
+  "33f858b8-3c41-480e-a1e6-b328430e1cdd",
+  "33719718-bd74-496b-9eb7-d8baee2c8ea7",
+  "a771ec58-05da-4fe2-8ec6-fc8ee1a9e309",
+  "d5874300-92af-4404-8c7d-f22dacd18835",
+  "8d661a1d-66d3-4337-be21-bf05f238bb42",
+  "6aa48373-3ed3-4d60-ad3e-50273d106d20",
+  "ef82fdaa-4e54-44dc-a222-b12d9b478366",
+  "e106c720-c83e-4a46-b5ff-cdf2225d71f8",
+  "d78f952e-d034-4077-9a68-c93dee92e3f7",
+  "b5499531-3dcf-47e8-a051-b12d365cb034",
+  "86896124-2b91-4d23-9046-319fe1a16882",
+  "410ef665-4e61-4022-acec-17e867d3d827",
+  "c5fe07e6-50e2-4c35-959c-bbc803e50f04",
+  "51389d2e-2a8e-4609-8f9f-8feea3ec0c45",
+  "a581af05-9b21-4dfd-b2f0-ae50924865ed",
+  "f2a07ead-ba9a-4ba0-b713-c8c25ed4edcb",
+  "71c26da2-4704-491b-88a3-5f5ea5a7ac35",
+  "4cd83be9-0114-42e8-a339-fe7788450331",
+  "df9f4474-51bf-4d5c-ba2d-f8c1edc1e317",
+  "4a8a08f1-ff6c-4d60-8308-4b09a199dd38",
+  "b077750a-f5a1-4e81-82fd-9f5755b7ecab",
+  "47560b19-b691-4f4c-9de8-ff510ff2a256",
+  "5dab8858-9030-438f-84ab-71856dec3db2",
+  "3e2ad120-703f-4dda-beb3-756a4696c20c",
+  "eae41664-19fb-4412-96f8-43f15d52332b",
+  "30e05070-07b1-4b26-9028-b97dae32cdd1",
+  "lemonade",
+  "ftmo",
+  "elyos",
+  "skyflow",
+  "didero",
+  "volka",
+  "vacancies",
+  "healthcare",
+  "corelight",
+  "notexternal",
+  "xebiausa",
+  "xebiacee",
+  "xebiaapac",
+  "xebiafrance",
+  "xebiamea",
+  "xebialatam",
+  "415",
+  "careers-page",
+  "alphasightsresumedrop",
+  "crossing-minds",
+  "geant",
+  "paradise-media-recruitment",
+  "ferric-recruiting",
+  "meundies-recruiting",
+  "lylaw-recruitment",
 ];
 
 const STALE_MS = 12 * 60_000; // SWR threshold — cron target is 10 min
@@ -1284,7 +1349,7 @@ const WORKDAY_PAGE_CAP = 25; // 25 × 20 = up to 500 postings/board/pass
 const ORACLE_PAGE_SIZE = 100;
 const ORACLE_PAGE_CAP = 20;
 // Rationale: docs/job-board-index-notes.md#n508-const-oracle_site_rank-readonlymap-strin
-const ORACLE_SITE_RANK: ReadonlyMap<string, number> = rankOracleSites(JOB_SOURCES, ORACLE_CANONICAL_SITES);
+const ORACLE_SITE_RANK: ReadonlyMap<string, number> = rankOracleSites(JOB_SOURCES, ORACLE_CANONICAL_SITES, ORACLE_POOL_SITES);
 // Rationale: docs/job-board-index-notes.md#n509-let-oraclereqkeymissinguntil
 let oracleReqKeyMissingUntil = 0;
 const ORACLE_REQ_KEY_BACKOFF_MS = 10 * 60_000;
@@ -1473,7 +1538,9 @@ async function fetchIcims(s: JobSource, startOffset: number, pageSize: number): 
   const advancedIc = base + all.length;
   const nextOffset = exhausted || empty === "restart" || (feedTotal > 0 && advancedIc >= feedTotal) ? 0 : advancedIc;
   // A resumed read is windowed by definition — see the note in fetchOracle.
-  return { items: all, windowed: !exhausted || startOffset > 0, feedTotal, nextOffset, feedEnded: exhausted, endOffset: advancedIc };
+  // Rationale: docs/job-board-index-notes.md#n1395-icims-org-scope
+  const items = icimsOrgScope(all, s.org);
+  return { items, windowed: !exhausted || startOffset > 0, feedTotal: s.org && exhausted ? items.length : feedTotal, nextOffset, feedEnded: exhausted, endOffset: advancedIc };
 }
 
 // Rationale: docs/job-board-index-notes.md#n1154-async-function-fetchicimssized-s-jobsour
