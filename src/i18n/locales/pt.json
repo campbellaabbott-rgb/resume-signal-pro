@@ -62,8 +62,7 @@
     "headline": {
       "get": "O quadro de vagas com",
       "recruiterGrade": "vagas ao vivo direto dos sistemas de contratação dos empregadores",
-      "feedbackLive": "— {{n}}+ vagas ativas, comparadas com o seu CV",
-      "feedbackPlain": "— vagas ativas, comparadas com o seu CV"
+      "tailFreeCheck": "— e uma verificação gratuita do seu CV em relação a qualquer vaga"
     },
     "description": "Carregue o seu currículo e receba reescritas otimizadas para ATS, alertas de red flags e melhorias de palavras‑chave — como recrutadores realmente avaliam currículos.",
     "benefits": {
@@ -152,7 +151,6 @@
     "factNoStorage": "Nunca vendido",
     "measureStrip": "Medições, não opiniões · Cada citação verificada · Uma pontuação que mostra seu trabalho",
     "jobsCta": "Mural de vagas ao vivo — cheque seu encaixe antes de se candidatar →",
-    "browseJobsLive": "Explore {{n}}+ vagas ativas",
     "browseJobsPlain": "Explore o quadro de vagas ao vivo"
   },
   "footer": {
@@ -464,6 +462,12 @@
       },
       "whatDoIGetNamed": {
         "question": "O que recebo com o {{name}}?"
+      },
+      "subscriptionClosed": {
+        "answer": "Hoje não: ainda não há nada à venda. As compras abrem em breve, e a página de preços diz antes do pagamento o que cada opção paga inclui e se ela se renova. A análise do currículo, o quadro de vagas e conectar a sua própria IA são gratuitos."
+      },
+      "subscriptionFaOnly": {
+        "answer": "Não. A Análise completa de ${{price}} é um pagamento único que nunca se renova, e ainda não há nenhum plano mensal à venda. A análise do currículo, o quadro de vagas e conectar a sua própria IA continuam gratuitos. Nada muda o seu plano automaticamente."
       }
     },
     "subtitleNamed": "Tudo o que precisa de saber sobre o {{name}}"
@@ -761,7 +765,6 @@
     "featuresMobile": "As correções do seu escaneamento, aplicadas. Pagamento único."
   },
   "finalCta": {
-    "urgency": "O seu currículo pode estar a perder-lhe entrevistas agora mesmo",
     "title": "Viu os problemas. Agora obtenha as soluções.",
     "subtitle": "O scan gratuito mostra o que está errado. A análise completa dá-lhe conteúdo reescrito para copiar e colar.",
     "heading": "Não Deixe Escapar Mais Uma Oportunidade",
@@ -769,26 +772,8 @@
     "freeScan": "Scan Gratuito",
     "fullAnalysis": "Análise Completa",
     "ctaButton": "Ver Todos os Pacotes",
-    "comparison": {
-      "atsScore": "Pontuação ATS & 24 Diagnósticos",
-      "redFlags": "Sinais de Alerta & Palavras-chave em Falta",
-      "sampleBullet": "1 Tópico de Exemplo Reescrito",
-      "allBullets": "TODOS os Tópicos Reescritos com Métricas",
-      "linkedin": "Otimização do Perfil LinkedIn",
-      "jobKeywords": "Personalização de Palavras-chave por Vaga",
-      "industryTemplates": "Templates Específicos da Indústria",
-      "fullReport": "Relatório Completo de 10 Secções"
-    },
-    "benefits": {
-      "ats": "Pontuação ATS com detalhes de 5 pontos",
-      "keywords": "Lacunas de palavras-chave específicas da indústria",
-      "redFlags": "Sinais de alerta que os recrutadores notam",
-      "linkedin": "Otimização do perfil LinkedIn"
-    },
     "oneTime": "pagamento único",
-    "guarantee": "Resultados instantâneos • Pagamento único",
     "button": "Obter a Minha Análise Agora",
-    "roi": "Uma entrevista = {{price}} que se paga sozinho",
     "freeScanCta": "Analisar o meu currículo grátis"
   },
   "scanProgress": {

@@ -62,8 +62,7 @@
     "headline": {
       "get": "Le site d'emploi avec",
       "recruiterGrade": "des offres en direct, tirées des systèmes de recrutement des employeurs",
-      "feedbackLive": "— {{n}}+ offres actives, comparées à votre CV",
-      "feedbackPlain": "— offres actives, comparées à votre CV"
+      "tailFreeCheck": "— et une vérification gratuite de votre CV face à n'importe quelle offre"
     },
     "description": "Téléchargez votre CV et obtenez des réécritures optimisées ATS, des alertes red flags et des améliorations de mots-clés — comme les recruteurs évaluent réellement les CV.",
     "benefits": {
@@ -152,7 +151,6 @@
     "factNoStorage": "Jamais vendu",
     "measureStrip": "Des mesures, pas des opinions · Chaque citation vérifiée · Un score qui montre son travail",
     "jobsCta": "Offres en direct — vérifiez votre adéquation avant de candidater →",
-    "browseJobsLive": "Parcourir {{n}}+ offres actives",
     "browseJobsPlain": "Parcourir le tableau d'offres en direct"
   },
   "footer": {
@@ -463,6 +461,12 @@
       },
       "whatDoIGetNamed": {
         "question": "Qu'est-ce que j'obtiens avec {{name}} ?"
+      },
+      "subscriptionClosed": {
+        "answer": "Pas aujourd'hui : rien n'est encore en vente. Les achats ouvrent bientôt, et la page des tarifs indique avant le paiement ce que comprend chaque option payante et si elle se renouvelle. L'analyse du CV, le tableau d'offres et la connexion de votre propre IA sont gratuits."
+      },
+      "subscriptionFaOnly": {
+        "answer": "Non. L'Analyse complète à ${{price}} est un paiement unique qui ne se renouvelle jamais, et aucune formule mensuelle n'est encore en vente. L'analyse du CV, le tableau d'offres et la connexion de votre propre IA restent gratuits. Rien ne vous fait passer à une offre supérieure automatiquement."
       }
     },
     "stillHaveQuestions": "Encore des questions ?",
@@ -761,7 +765,6 @@
     "featuresMobile": "Les corrections de votre analyse, appliquées. Un seul paiement."
   },
   "finalCta": {
-    "urgency": "Votre CV vous fait peut-être perdre des entretiens en ce moment",
     "title": "Vous avez vu les problèmes. Maintenant obtenez les solutions.",
     "subtitle": "Le scan gratuit montre ce qui ne va pas. L'analyse complète vous donne du contenu réécrit à copier-coller.",
     "heading": "Ne laissez plus passer d'opportunités",
@@ -769,26 +772,8 @@
     "freeScan": "Scan Gratuit",
     "fullAnalysis": "Analyse Complète",
     "ctaButton": "Voir Tous les Forfaits",
-    "comparison": {
-      "atsScore": "Score ATS & 24 Diagnostics",
-      "redFlags": "Signaux d'Alerte & Mots-clés Manquants",
-      "sampleBullet": "1 Puce Exemple Réécrite",
-      "allBullets": "TOUTES les Puces Réécrites avec Métriques",
-      "linkedin": "Optimisation du Profil LinkedIn",
-      "jobKeywords": "Personnalisation des Mots-clés par Poste",
-      "industryTemplates": "Templates Spécifiques au Secteur",
-      "fullReport": "Rapport Complet en 10 Sections"
-    },
-    "benefits": {
-      "ats": "Score ATS avec analyse en 5 points",
-      "keywords": "Lacunes de mots-clés sectoriels",
-      "redFlags": "Signaux d'alerte pour les recruteurs",
-      "linkedin": "Optimisation du profil LinkedIn"
-    },
     "oneTime": "paiement unique",
-    "guarantee": "Résultats instantanés • Paiement unique",
     "button": "Obtenir mon analyse",
-    "roi": "Un entretien = {{price}} rentabilisés",
     "freeScanCta": "Analyser mon CV gratuitement"
   },
   "scanProgress": {

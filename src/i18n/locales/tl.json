@@ -62,8 +62,7 @@
     "headline": {
       "get": "Ang job board na may",
       "recruiterGrade": "mga live na trabaho mula mismo sa sariling hiring system ng mga employer",
-      "feedbackLive": "— {{n}}+ live na bakante, itinugma sa resume mo",
-      "feedbackPlain": "— live na bakante, itinugma sa resume mo"
+      "tailFreeCheck": "— at libreng pagsusuri ng resume mo laban sa anumang posting"
     },
     "description": "I-upload ang iyong resume at makakuha ng ATS-optimized rewrites, red-flag warnings, at keyword improvements — gaya ng tunay na pag-review ng hiring managers.",
     "benefits": {
@@ -152,7 +151,6 @@
     "factNoStorage": "Hindi kailanman ibinebenta",
     "measureStrip": "Sukat, hindi opinyon · Bawat sipi beripikado · Iskor na nagpapakita ng trabaho nito",
     "jobsCta": "Live na job board — i-check ang fit mo bago mag-apply →",
-    "browseJobsLive": "Tingnan ang {{n}}+ live na trabaho",
     "browseJobsPlain": "Tingnan ang live na job board"
   },
   "footer": {
@@ -462,6 +460,12 @@
       },
       "whatDoIGetNamed": {
         "question": "Ano ang makukuha ko sa {{name}}?"
+      },
+      "subscriptionClosed": {
+        "answer": "Hindi ngayon: wala pang ibinebenta. Magbubukas na ang pagbili sa lalong madaling panahon, at sinasabi ng pricing page bago ka magbayad kung ano ang kasama sa bawat bayad na opsyon at kung nagre-renew ito. Libre ang resume scan, ang job board at ang pagkonekta ng sarili mong AI."
+      },
+      "subscriptionFaOnly": {
+        "answer": "Hindi. Ang ${{price}} na Full Analysis ay isang beses na bayad na hindi kailanman nagre-renew, at wala pang buwanang plan na ibinebenta. Libre pa rin ang resume scan, ang job board at ang pagkonekta ng sarili mong AI. Walang awtomatikong mag-a-upgrade sa iyo."
       }
     },
     "stillHaveQuestions": "May iba ka pang tanong?",
@@ -760,7 +764,6 @@
     "featuresMobile": "Mga ayos ng scan mo, nailapat na. Isang bayad."
   },
   "finalCta": {
-    "urgency": "Maaaring nawawalan ka ng mga interview dahil sa iyong resume ngayon",
     "title": "Nakita mo na ang mga problema. Ngayon kunin ang mga solusyon.",
     "subtitle": "Ang libreng scan ay nagpapakita kung ano ang mali. Ang buong analysis ay nagbibigay ng rewritten content na pwedeng i-copy-paste.",
     "heading": "Huwag Hayaang Mawala ang Isa Pang Pagkakataon",
@@ -768,26 +771,8 @@
     "freeScan": "Libreng Scan",
     "fullAnalysis": "Buong Analysis",
     "ctaButton": "Tingnan Lahat ng Packages",
-    "comparison": {
-      "atsScore": "ATS Score at 24 Diagnostics",
-      "redFlags": "Red Flags at Nawawalang Keywords",
-      "sampleBullet": "1 Sample Bullet Rewrite",
-      "allBullets": "LAHAT ng Bullets na Rewritten na may Metrics",
-      "linkedin": "LinkedIn Profile Optimization",
-      "jobKeywords": "Job-Specific Keyword Tailoring",
-      "industryTemplates": "Industry-Specific Templates na Inilapat",
-      "fullReport": "Kompletong 10-Section Report"
-    },
-    "benefits": {
-      "ats": "ATS score na may 5-point breakdown",
-      "keywords": "Industry-specific na mga kulang na keyword",
-      "redFlags": "Red flags na napapansin ng mga recruiter",
-      "linkedin": "LinkedIn profile optimization"
-    },
     "oneTime": "isang beses lang",
-    "guarantee": "Instant na resulta • Isang beses na bayad",
     "button": "Kunin ang Aking Analysis Ngayon",
-    "roi": "Isang interview = {{price}} na-recover",
     "freeScanCta": "I-scan nang libre ang resume ko"
   },
   "scanProgress": {

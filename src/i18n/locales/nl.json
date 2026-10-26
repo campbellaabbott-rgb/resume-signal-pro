@@ -62,8 +62,7 @@
     "headline": {
       "get": "Het vacaturebord met",
       "recruiterGrade": "live vacatures rechtstreeks uit de wervingssystemen van werkgevers",
-      "feedbackLive": "— {{n}}+ actuele vacatures, afgestemd op uw cv",
-      "feedbackPlain": "— actuele vacatures, afgestemd op uw cv"
+      "tailFreeCheck": "— en een gratis check van uw cv tegen elke vacature"
     },
     "description": "Upload je cv en krijg ATS-geoptimaliseerde herschrijvingen, red-flag waarschuwingen en keyword-verbeteringen — zoals hiring managers cv’s echt beoordelen.",
     "benefits": {
@@ -152,7 +151,6 @@
     "factNoStorage": "Nooit verkocht",
     "measureStrip": "Metingen, geen meningen · Elk citaat geverifieerd · Een score die zijn werk laat zien",
     "jobsCta": "Live vacaturebank — check je match vóór je solliciteert →",
-    "browseJobsLive": "Bekijk {{n}}+ actuele vacatures",
     "browseJobsPlain": "Bekijk het live vacaturebord"
   },
   "footer": {
@@ -462,6 +460,12 @@
       },
       "whatDoIGetNamed": {
         "question": "Wat krijg ik met {{name}}?"
+      },
+      "subscriptionClosed": {
+        "answer": "Vandaag niet: er is nog niets te koop. Aankopen gaan binnenkort open, en de prijspagina zegt vóór je betaalt wat elke betaalde optie bevat en of die wordt verlengd. De cv-scan, het vacaturebord en je eigen AI koppelen zijn gratis."
+      },
+      "subscriptionFaOnly": {
+        "answer": "Nee. De volledige analyse van ${{price}} is een eenmalige betaling die nooit wordt verlengd, en er is nog geen maandabonnement te koop. De cv-scan, het vacaturebord en je eigen AI koppelen blijven hoe dan ook gratis. Niets zet je automatisch over op een duurder plan."
       }
     },
     "stillHaveQuestions": "Nog vragen?",
@@ -760,7 +764,6 @@
     "featuresMobile": "De verbeteringen uit je scan, toegepast. Eenmalige betaling."
   },
   "finalCta": {
-    "urgency": "Je CV kost je misschien nu al gesprekken",
     "title": "Je hebt de problemen gezien. Nu de oplossingen.",
     "subtitle": "De gratis scan toont wat er mis is. De volledige analyse geeft je herschreven content om te kopiëren.",
     "heading": "Laat geen kans meer voorbijgaan",
@@ -768,26 +771,8 @@
     "freeScan": "Gratis Scan",
     "fullAnalysis": "Volledige Analyse",
     "ctaButton": "Bekijk Alle Pakketten",
-    "comparison": {
-      "atsScore": "ATS-Score & 24 Diagnoses",
-      "redFlags": "Red Flags & Ontbrekende Keywords",
-      "sampleBullet": "1 Voorbeeld Bullet Herschrijving",
-      "allBullets": "ALLE Bullets Herschreven met Metrics",
-      "linkedin": "LinkedIn Profiel Optimalisatie",
-      "jobKeywords": "Job-Specifieke Keyword Aanpassing",
-      "industryTemplates": "Branche-Specifieke Templates Toegepast",
-      "fullReport": "Compleet 10-Secties Rapport"
-    },
-    "benefits": {
-      "ats": "ATS-score met 5-punts uitsplitsing",
-      "keywords": "Branchespecifieke keyword-gaps",
-      "redFlags": "Red flags die recruiters opvallen",
-      "linkedin": "LinkedIn-profiel optimalisatie"
-    },
     "oneTime": "eenmalig",
-    "guarantee": "Directe resultaten • Eenmalige betaling",
     "button": "Mijn analyse nu",
-    "roi": "Eén gesprek = {{price}} terugverdiend",
     "freeScanCta": "Mijn cv gratis scannen"
   },
   "scanProgress": {

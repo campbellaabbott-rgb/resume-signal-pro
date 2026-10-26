@@ -62,8 +62,7 @@
     "headline": {
       "get": "El tablón de empleo con",
       "recruiterGrade": "ofertas en vivo directas de los sistemas de contratación de cada empresa",
-      "feedbackLive": "— {{n}}+ vacantes activas, comparadas con tu CV",
-      "feedbackPlain": "— vacantes activas, comparadas con tu CV"
+      "tailFreeCheck": "— y una revisión gratuita de tu CV frente a cualquier vacante"
     },
     "description": "Sube tu CV y obtén reescrituras optimizadas para ATS, alertas de red flags y mejoras de palabras clave — como lo revisan los reclutadores.",
     "benefits": {
@@ -152,7 +151,6 @@
     "factNoStorage": "Nunca se vende",
     "measureStrip": "Mediciones, no opiniones · Cada cita verificada · Una puntuación que muestra su trabajo",
     "jobsCta": "Bolsa de empleo en vivo — comprueba tu encaje antes de postularte →",
-    "browseJobsLive": "Explora {{n}}+ empleos activos",
     "browseJobsPlain": "Explora el tablón de empleo en vivo"
   },
   "footer": {
@@ -463,6 +461,12 @@
       },
       "whatDoIGetNamed": {
         "question": "¿Qué obtengo con {{name}}?"
+      },
+      "subscriptionClosed": {
+        "answer": "Hoy no: todavía no hay nada a la venta. Las compras se abrirán pronto, y la página de precios dice antes de pagar qué incluye cada opción de pago y si se renueva. El análisis del currículum, el tablón de empleo y conectar tu propia IA son gratis."
+      },
+      "subscriptionFaOnly": {
+        "answer": "No. El Análisis completo de ${{price}} es un pago único que nunca se renueva, y todavía no hay ningún plan mensual a la venta. El análisis del currículum, el tablón de empleo y conectar tu propia IA siguen siendo gratis. Nada te cambia de plan automáticamente."
       }
     },
     "stillHaveQuestions": "¿Aún tienes preguntas?",
@@ -761,7 +765,6 @@
     "featuresMobile": "Las correcciones de tu escaneo, aplicadas. Un solo pago."
   },
   "finalCta": {
-    "urgency": "Tu currículum podría estar costándote entrevistas ahora mismo",
     "title": "Has visto los problemas. Ahora obtén las soluciones.",
     "subtitle": "El escaneo gratuito muestra qué está mal. El análisis completo te da contenido reescrito para copiar y pegar.",
     "heading": "No Dejes Escapar Otra Oportunidad",
@@ -769,26 +772,8 @@
     "freeScan": "Escaneo Gratis",
     "fullAnalysis": "Análisis Completo",
     "ctaButton": "Ver Todos los Paquetes",
-    "comparison": {
-      "atsScore": "Puntuación ATS y 24 Diagnósticos",
-      "redFlags": "Señales de Alerta y Keywords Faltantes",
-      "sampleBullet": "1 Viñeta de Ejemplo Reescrita",
-      "allBullets": "TODAS las Viñetas Reescritas con Métricas",
-      "linkedin": "Optimización del Perfil de LinkedIn",
-      "jobKeywords": "Personalización de Keywords por Trabajo",
-      "industryTemplates": "Plantillas Específicas de la Industria",
-      "fullReport": "Informe Completo de 10 Secciones"
-    },
-    "benefits": {
-      "ats": "Puntuación ATS con desglose de 5 puntos",
-      "keywords": "Palabras clave específicas de la industria",
-      "redFlags": "Señales de alerta que notan los reclutadores",
-      "linkedin": "Optimización del perfil de LinkedIn"
-    },
     "oneTime": "pago único",
-    "guarantee": "Resultados instantáneos • Pago único",
     "button": "Obtener Mi Análisis Ahora",
-    "roi": "Una entrevista = {{price}} recuperados",
     "freeScanCta": "Analizar mi currículum gratis"
   },
   "scanProgress": {

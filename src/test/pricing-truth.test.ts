@@ -163,7 +163,6 @@ describe("commerce copy never denies subscriptions, in any language", () => {
   const KEYS = [
     ["hero", "nofees"],
     ["hero", "benefits", "oneTime"],
-    ["finalCta", "guarantee"],
     ["productSelectionModal", "secureCheckout"],
     ["pricingPlans", "meta", "description"],
   ];

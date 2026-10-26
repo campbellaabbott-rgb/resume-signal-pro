@@ -134,25 +134,18 @@ describe("the front page states one subject and no frozen totals", () => {
     }
   });
 
-  it("the live claims degrade to count-free copy, never to a placeholder", () => {
+  it("the scanner hero states no board count: the dated count lives on \"/\"", () => {
+    // The hero printed the total floored ("N+ live openings") with no date
+    // basis and said the openings were matched to the reader's résumé
+    // (review round 2026-10-26). Its headline and board button are
+    // count-free now; the exact count, with when it was counted, is the new
+    // homepage's.
     const code = stripCode(HERO_C);
-    // Both live strings are ternaries against the fetched totals, with a
-    // sibling key that states the same thing without a number.
-    expect(code).toMatch(/boardTotals\s*\?[\s\S]{0,220}browseJobsLive[\s\S]{0,220}browseJobsPlain/);
-    expect(code).toMatch(/boardTotals\s*\?[\s\S]{0,260}feedbackLive[\s\S]{0,260}feedbackPlain/);
-  });
-
-  it("interpolates on `n`, never `count`", () => {
-    // i18next reserves `count` for plural selection: passing it changes which
-    // plural form resolves and forces a number type. Caught by tsc when the
-    // first draft used it.
-    const code = stripCode(HERO_C);
-    expect(code).toMatch(/\{\{n\}\}\+ live jobs/);
-    expect(code, "a board total is interpolated on the reserved `count` key")
-      .not.toMatch(/\{\{count\}\}\+ (live|verified)/);
-    // We read employers' feeds; we do not verify each role, so the inline
-    // defaults say "live", as the main locale does.
-    expect(code).not.toMatch(/\{\{n\}\}\+ verified/);
+    expect(code).not.toMatch(/useBoardTotals|roundedFloor/);
+    expect(code).not.toMatch(/\{\{n\}\}\+/);
+    expect(code).toMatch(/hero\.browseJobsPlain/);
+    expect(code).toMatch(/hero\.headline\.tailFreeCheck/);
+    expect(code).not.toMatch(/\{\{count\}\}\+ (live|verified)/);
   });
 
   it("rounds a published floor DOWN", () => {

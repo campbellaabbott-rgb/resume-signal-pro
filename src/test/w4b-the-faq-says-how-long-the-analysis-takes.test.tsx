@@ -12,8 +12,15 @@
  * Mounted for real, every answer opened. The answers read NEW keys (an
  * existing locale value is never edited), whose English defaults are these.
  */
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+
+// These answers are the ones shown once both products are on sale; while
+// they are not, the FAQ asks no delivery question and says purchases open
+// soon (review round 2026-10-26,
+// hp-fix-the-scanner-page-sells-only-what-is-sold-and-dates-what-it-counts).
+vi.mock("@/lib/purchases-open", () => ({ purchasesOpen: () => true, fullAnalysisOnSale: () => true, proOnSale: () => true }));
+
 import { FAQ } from "@/components/FAQ";
 import { proSummaryOnSale } from "@/config/pro-perks";
 

@@ -62,8 +62,7 @@
     "headline": {
       "get": "The job board with",
       "recruiterGrade": "live jobs straight from employers' own hiring systems",
-      "feedbackLive": "— {{n}}+ live openings, matched to your CV",
-      "feedbackPlain": "— live openings, matched to your CV"
+      "tailFreeCheck": "— and a free check of your CV against any posting"
     },
     "description": "Upload your CV and get ATS-optimised rewrites, red-flag warnings, and keyword improvements — written the way hiring managers actually review CVs.",
     "benefits": {
@@ -152,7 +151,6 @@
     "factNoStorage": "Never sold",
     "measureStrip": "Measurements, not opinions · Every quote verified · A score that shows its work",
     "jobsCta": "Live job board — check your fit before you apply →",
-    "browseJobsLive": "Browse {{n}}+ live jobs",
     "browseJobsPlain": "Browse the live job board"
   },
   "footer": {
@@ -462,6 +460,12 @@
       },
       "whatDoIGetNamed": {
         "question": "What do I get with {{name}}?"
+      },
+      "subscriptionClosed": {
+        "answer": "Not today: nothing is on sale yet. Purchases open soon, and the pricing page says before you pay what each paid option includes and whether it renews. The CV scan, the job board and connecting your own AI are free."
+      },
+      "subscriptionFaOnly": {
+        "answer": "No. The ${{price}} Full Analysis is a one-time payment that never renews, and no monthly plan is on sale yet. The CV scan, the job board and connecting your own AI stay free either way. Nothing upgrades you automatically."
       }
     },
     "stillHaveQuestions": "Still have questions?",
@@ -760,7 +764,6 @@
     "featuresMobile": "Your scan's fixes, applied. One payment."
   },
   "finalCta": {
-    "urgency": "Your CV might be losing you interviews right now",
     "title": "You've seen the problems. Now get the fixes.",
     "subtitle": "The free scan shows what's wrong. The full analysis gives you rewritten content you can copy-paste.",
     "heading": "Don't Let Another Opportunity Slip Away",
@@ -768,26 +771,8 @@
     "freeScan": "Free Scan",
     "fullAnalysis": "Full Analysis",
     "ctaButton": "See All Packages",
-    "comparison": {
-      "atsScore": "ATS Score & 24 Diagnostics",
-      "redFlags": "Red Flags & Missing Keywords",
-      "sampleBullet": "1 Sample Bullet Rewrite",
-      "allBullets": "ALL Bullets Rewritten with Metrics",
-      "linkedin": "LinkedIn Profile Optimisation",
-      "jobKeywords": "Job-Specific Keyword Tailoring",
-      "industryTemplates": "Industry-Specific Templates Applied",
-      "fullReport": "Complete 10-Section Report"
-    },
-    "benefits": {
-      "ats": "ATS score with 5-point breakdown",
-      "keywords": "Industry-specific keyword gaps",
-      "redFlags": "Red flags recruiters notice",
-      "linkedin": "LinkedIn profile optimisation"
-    },
     "oneTime": "one-time",
-    "guarantee": "Instant results • One-time payment",
     "button": "Get My Analysis Now",
-    "roi": "One interview = {{price}} paid for itself",
     "freeScanCta": "Scan my CV free"
   },
   "scanProgress": {

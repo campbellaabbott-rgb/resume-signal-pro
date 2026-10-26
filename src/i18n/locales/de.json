@@ -68,8 +68,7 @@
     "headline": {
       "get": "Die Jobbörse mit",
       "recruiterGrade": "Live-Stellen direkt aus den Bewerbungssystemen der Arbeitgeber",
-      "feedbackLive": "— {{n}}+ aktuelle Stellen, passend zu Ihrem Lebenslauf",
-      "feedbackPlain": "— aktuelle Stellen, passend zu Ihrem Lebenslauf"
+      "tailFreeCheck": "— und ein kostenloser Abgleich Ihres Lebenslaufs mit jeder Stellenanzeige"
     },
     "description": "Laden Sie Ihren Lebenslauf hoch und erhalten Sie ATS-optimierte Umschreibungen, Red-Flag-Warnungen und Keyword-Verbesserungen — so wie Personalverantwortliche Lebensläufe wirklich prüfen.",
     "benefits": {
@@ -152,7 +151,6 @@
     "factNoStorage": "Nie verkauft",
     "measureStrip": "Messungen statt Meinungen · Jedes Zitat verifiziert · Ein Score, der seine Arbeit zeigt",
     "jobsCta": "Live-Jobbörse — Passung prüfen, bevor Sie sich bewerben →",
-    "browseJobsLive": "{{n}}+ aktuelle Stellen durchsuchen",
     "browseJobsPlain": "Aktuelle Jobbörse durchsuchen"
   },
   "footer": {
@@ -462,6 +460,12 @@
       },
       "whatDoIGetNamed": {
         "question": "Was bekomme ich mit {{name}}?"
+      },
+      "subscriptionClosed": {
+        "answer": "Heute nicht: Noch ist nichts im Verkauf. Käufe sind bald möglich, und die Preisseite nennt vor dem Kauf, was jede bezahlte Option umfasst und ob sie sich verlängert. Der Lebenslauf-Scan, die Jobbörse und die Verbindung Ihrer eigenen KI sind kostenlos."
+      },
+      "subscriptionFaOnly": {
+        "answer": "Nein. Die vollständige Analyse für ${{price}} ist eine einmalige Zahlung, die sich nie verlängert, und ein Monatstarif ist noch nicht im Verkauf. Der Lebenslauf-Scan, die Jobbörse und die Verbindung Ihrer eigenen KI bleiben in jedem Fall kostenlos. Nichts stuft Sie automatisch hoch."
       }
     },
     "stillHaveQuestions": "Noch Fragen?",
@@ -760,7 +764,6 @@
     "featuresMobile": "Die Korrekturen Ihres Scans, angewendet. Einmalige Zahlung."
   },
   "finalCta": {
-    "urgency": "Ihr Lebenslauf könnte Sie gerade Vorstellungsgespräche kosten",
     "title": "Sie haben die Probleme gesehen. Jetzt bekommen Sie die Lösungen.",
     "subtitle": "Der kostenlose Scan zeigt, was falsch ist. Die vollständige Analyse liefert umgeschriebene Inhalte zum Kopieren.",
     "heading": "Verpassen Sie keine weitere Chance",
@@ -768,26 +771,8 @@
     "freeScan": "Kostenloser Scan",
     "fullAnalysis": "Vollständige Analyse",
     "ctaButton": "Alle Pakete ansehen",
-    "comparison": {
-      "atsScore": "ATS-Score & 24 Diagnosen",
-      "redFlags": "Red Flags & fehlende Keywords",
-      "sampleBullet": "1 Beispiel-Bullet-Umschreibung",
-      "allBullets": "ALLE Bullets mit Metriken umgeschrieben",
-      "linkedin": "LinkedIn-Profil-Optimierung",
-      "jobKeywords": "Job-spezifisches Keyword-Tailoring",
-      "industryTemplates": "Branchenspezifische Templates angewendet",
-      "fullReport": "Vollständiger 10-Abschnitte-Bericht"
-    },
-    "benefits": {
-      "ats": "ATS-Score mit 5-Punkte-Aufschlüsselung",
-      "keywords": "Branchenspezifische Keyword-Lücken",
-      "redFlags": "Red Flags, die Recruitern auffallen",
-      "linkedin": "LinkedIn-Profil-Optimierung"
-    },
     "oneTime": "einmalig",
-    "guarantee": "Sofortige Ergebnisse • Einmalige Zahlung",
     "button": "Jetzt Analyse erhalten",
-    "roi": "Ein Vorstellungsgespräch = {{price}} amortisiert",
     "freeScanCta": "Meinen Lebenslauf kostenlos scannen"
   },
   "scanProgress": {

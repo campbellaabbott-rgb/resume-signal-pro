@@ -113,7 +113,7 @@ const RATCHET: Record<string, number> = {
   "src/pages/Index.tsx": 1,
   "src/components/Hero.tsx": 17,
   "src/components/AtsCoverage.tsx": 1,
-  "src/components/FinalCTA.tsx": 1,
+  "src/components/FinalCTA.tsx": 0,
 };
 
 const covered = [

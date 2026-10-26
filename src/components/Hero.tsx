@@ -5,7 +5,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useScanTotals } from "@/hooks/use-scan-totals";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useTranslation } from "react-i18next";
-import { useBoardTotals, roundedFloor } from "@/hooks/use-board-totals";
 import { useCurrency } from "@/hooks/use-currency";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { PRODUCTS } from "@/config/products";
@@ -158,7 +157,12 @@ function AddOnsTeaser() {
 
 export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | Promise<void> }) {
   const { t } = useTranslation();
-  const boardTotals = useBoardTotals();
+  // NO BOARD COUNT ON THE SCANNER PAGE (review round 2026-10-26). The hero
+  // printed the board's total floored, with no date basis, and said the
+  // openings were matched to the reader's résumé. The count, with the time
+  // it was counted, is on "/"; fit here is a word match against one posting,
+  // and résumé matching is being rebuilt (home.faq.fitA). So the hero's
+  // headline and its board button need no number and make no matching claim.
   const { formatPrice, isLocalCurrency } = useCurrency();
   const isMobile = useIsMobile();
   const [showAtsInfo, setShowAtsInfo] = useState(false);
@@ -230,15 +234,9 @@ export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | P
           className={`group relative w-full sm:w-auto inline-flex items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-primary via-primary to-blue-500 text-primary-foreground font-bold shadow-xl shadow-primary/30 hover:shadow-2xl hover:shadow-primary/40 active:scale-[0.98] transition-all duration-300 touch-manipulation ${sizeClasses[size]}`}
         >
           <Briefcase className={iconSize[size]} />
-          {/* LIVE, OR NO NUMBER AT ALL. This read "Browse 550,000+ verified
-              jobs" while the board served 603,904 — true, frozen, and
-              understating the product by ~54,000 roles in the direction that
-              makes it look smaller. New key, because a locale value overrides
-              an inline default and the nine translated copies of the old
-              string would have kept rendering the stale figure. */}
-          <span>{boardTotals
-            ? t('hero.browseJobsLive', 'Browse {{n}}+ live jobs', { n: roundedFloor(boardTotals.jobs).toLocaleString() })
-            : t('hero.browseJobsPlain', 'Browse the live job board')}</span>
+          {/* No number: a frozen figure went stale here once, and a live one
+              had no date beside it (see the note at the top of Hero). */}
+          <span>{t('hero.browseJobsPlain', 'Browse the live job board')}</span>
         </Link>
         <button
           onClick={handleFreeScanClick}
@@ -379,9 +377,7 @@ export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | P
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-success via-emerald-400 to-success">
                   {t('hero.headline.recruiterGrade', "live jobs straight from employers' own hiring systems")}
                 </span>{" "}
-                {boardTotals
-                ? t('hero.headline.feedbackLive', '— {{n}}+ live openings, matched to your resume', { n: roundedFloor(boardTotals.jobs).toLocaleString() })
-                : t('hero.headline.feedbackPlain', '— live openings, matched to your resume')}
+                {t('hero.headline.tailFreeCheck', '— and a free check of your resume against any posting')}
               </h1>
               <p className="text-sm sm:text-base text-muted-foreground max-w-xl mx-auto">
                 {t('hero.socialFirst.subheading', { days: REPORT_CACHE_DAYS })}
@@ -515,9 +511,7 @@ export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | P
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-success via-emerald-400 to-success">
                 {t('hero.headline.recruiterGrade', "live jobs straight from employers' own hiring systems")}
               </span>{" "}
-              {boardTotals
-                ? t('hero.headline.feedbackLive', '— {{n}}+ live openings, matched to your resume', { n: roundedFloor(boardTotals.jobs).toLocaleString() })
-                : t('hero.headline.feedbackPlain', '— live openings, matched to your resume')}
+              {t('hero.headline.tailFreeCheck', '— and a free check of your resume against any posting')}
             </h1>
             
             {/* Description - shorter for ultra-compact */}
