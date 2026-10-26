@@ -1676,6 +1676,13 @@ export function icimsOrgScope<T>(items: T[], org: string | undefined): T[] {
   return items.filter((j) => (j as { data?: { hiring_organization?: unknown } } | null)?.data?.hiring_organization === org);
 }
 
+// Rationale: docs/job-board-index-notes.md#n1395-icims-org-scope
+export function icimsOrgRefusal(org: string | undefined, whole: boolean, raw: number, kept: number): string | null {
+  if (!org) return null;
+  if (!whole) return `org ${org}: the feed is larger than one visit`;
+  return raw > 0 && kept === 0 ? `org ${org}: kept none of ${raw}` : null;
+}
+
 export function normalizeIcims(raw: IcimsJobItem[], company: string, token: string): JobPosting[] {
   return (Array.isArray(raw) ? raw : [])
     .map((item) => {

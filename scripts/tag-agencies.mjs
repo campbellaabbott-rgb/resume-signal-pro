@@ -59,6 +59,22 @@ const RELEASED_CONVICTIONS = new Set([
   "teamtailor:jobandtalent",         // Swedish placements: "Vår kund är ett väletablerat företag"
   "lever:jobandtalent",              // its own staff: "placing millions of workers ... thousands of blue-chip clients"
   "teamtailor:multitempo",           // "está a recrutar ... para empresa de referência"; "integração no cliente"
+  // Staffing companies' boards the name screen does not read (review of trust round 3, each
+  // board's own feed read 2026-10-26; ~/.config/resumebooster/trust-round-3-fixes/ev).
+  "greenhouse:ayahealthcare",        // "contingent labor management solutions", locum tenens
+  "ashby:traba",                     // "the fastest growing staffing company in America"
+  "ashby:zenjob",                    // "an AI-powered flexible staffing platform"
+  "bamboohr:staffzone",              // "provides temporary workers for commercial construction"
+  "bamboohr:coople",                 // "we combine flexible staffing with smart technology"
+  "pinpoint:coople",                 // Coople's temp roles at its clients (HelloFresh, Arvato)
+  "workday:ingenovishealth~wd1~ingenovishealth", // VISTA and VitalSolution: "clients' staffing needs"
+  "icims:careers.insightglobal.com", // "one of the world's largest staffing firms"
+  "oracle:ehnn~us2~cx_3001",         // TrueBlue: PeopleReady, PeopleManagement and PeopleScout's own roles
+  "oracle:ehnn~us2~cx",              // TrueBlue's corporate site
+  "oracle:ehnn~us2~cx_4",            // Staff Management | SMX, "a leading staffing partner"
+  "oracle:ehnn~us2~cx_7",            // SIMOS, "flexible staffing solutions"
+  "oracle:ehnn~us2~cx_10",           // Centerline Drivers, "a trusted staffing and compliance partner"
+  "oracle:ehnn~us2~cx_1001",         // PeopleScout, "staffing and recruiting solutions" for RPO clients
 ]);
 
 // The staffing half of merge-all's name gate, canonical spelling. The junk

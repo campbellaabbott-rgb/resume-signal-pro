@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import ts from "typescript";
 import { codeOf } from "./helpers/strip-comments";
 import { emptyFirstPage } from "../../supabase/functions/job-board/read-window";
-import { icimsOrgScope } from "../../supabase/functions/job-board/normalize";
+import { icimsOrgRefusal, icimsOrgScope } from "../../supabase/functions/job-board/normalize";
 
 /**
  * FOUR WALKS THAT REPORTED THE WRONG THING ABOUT WHERE THEY STOPPED (.89).
@@ -142,6 +142,7 @@ describe("iCIMS: the page size comes from the caller, and the offsets it reports
     MAX_POSTINGS_PER_VISIT: MAX,
     emptyFirstPage,
     icimsOrgScope,
+    icimsOrgRefusal,
   });
 
   it("at 25 a row, a visit still stops at the cap and resumes", async () => {
@@ -170,7 +171,7 @@ describe("iCIMS: the page size comes from the caller, and the offsets it reports
       discardBody: () => {}, discardRest: () => {},
       chunkPageRefusal: (e: unknown, first: boolean) => { if (first) throw e; return null; },
       readChunkPage: async (res: Response) => ({ body: await res.json(), over: false }),
-      OVERSIZE_MARKER: "OVERSIZE_BODY", MAX_RESPONSE_BYTES: 4_000_000, MAX_POSTINGS_PER_VISIT: MAX, emptyFirstPage, icimsOrgScope,
+      OVERSIZE_MARKER: "OVERSIZE_BODY", MAX_RESPONSE_BYTES: 4_000_000, MAX_POSTINGS_PER_VISIT: MAX, emptyFirstPage, icimsOrgScope, icimsOrgRefusal,
     });
     await expect(refused({ token: "jobs.zs.com" }, 0, 100)).rejects.toThrow(/empty page but total=278/);
   });
@@ -187,7 +188,7 @@ describe("iCIMS: the page size comes from the caller, and the offsets it reports
       discardBody: () => {}, discardRest: () => {},
       chunkPageRefusal: (e: unknown, first: boolean) => { if (first) throw e; return null; },
       readChunkPage: async (res: Response) => ({ body: await res.json(), over: false }),
-      OVERSIZE_MARKER: "OVERSIZE_BODY", MAX_RESPONSE_BYTES: 4_000_000, MAX_POSTINGS_PER_VISIT: MAX, emptyFirstPage, icimsOrgScope,
+      OVERSIZE_MARKER: "OVERSIZE_BODY", MAX_RESPONSE_BYTES: 4_000_000, MAX_POSTINGS_PER_VISIT: MAX, emptyFirstPage, icimsOrgScope, icimsOrgRefusal,
     });
     const v = await fn({ token: "careers.baycenterfoods.com", org: "Chick-fil-A, Inc." }, 0, 25);
     expect(v.items).toHaveLength(25);
@@ -196,6 +197,33 @@ describe("iCIMS: the page size comes from the caller, and the offsets it reports
     expect(v.feedEnded).toBe(true);
     const whole = await fn({ token: "careers.example.com" }, 0, 25);
     expect([whole.items.length, whole.feedTotal]).toEqual([75, 75]);
+  });
+
+  it("an org read that is not whole, or keeps none of a feed with rows, is refused, so it can close nothing (review of 4efea332)", async () => {
+    const feedOf = (total: number, org: (k: number) => string) => build<(s: { token: string; org?: string }, o: number, p: number) => Promise<R & { feedTotal: number }>>("fetchIcims", {
+      fetchWithTimeout: async (url: string) => {
+        const u = new URL(url);
+        const page = Number(u.searchParams.get("page")), limit = Number(u.searchParams.get("limit"));
+        const start = (page - 1) * limit, n = Math.max(0, Math.min(limit, total - start));
+        return json({ totalCount: total, jobs: Array.from({ length: n }, (_, k) => ({ data: { req_id: String(start + k), hiring_organization: org(start + k) } })) });
+      },
+      discardBody: () => {}, discardRest: () => {},
+      chunkPageRefusal: (e: unknown, first: boolean) => { if (first) throw e; return null; },
+      readChunkPage: async (res: Response) => ({ body: await res.json(), over: false }),
+      OVERSIZE_MARKER: "OVERSIZE_BODY", MAX_RESPONSE_BYTES: 4_000_000, MAX_POSTINGS_PER_VISIT: MAX, emptyFirstPage, icimsOrgScope, icimsOrgRefusal,
+    });
+    // A feed larger than one visit: the last window's kept count could never prove a lap against the raw total.
+    const big = feedOf(MAX + 40, (k) => (k % 2 ? "YNV Group" : "Teknowledge"));
+    await expect(big({ token: "careers.ynvgroup.com", org: "YNV Group" }, 0, 25)).rejects.toThrow(/larger than one visit/);
+    await expect(big({ token: "careers.ynvgroup.com", org: "YNV Group" }, MAX, 25), "a resumed read is never whole").rejects.toThrow(/larger than one visit/);
+    // The same feed without an org still walks in windows, as before.
+    expect((await big({ token: "careers.example.com" }, 0, 25)).feedEnded).toBe(false);
+    // The hirer's spelling drifted: a whole read keeps none of a feed that had rows.
+    const drifted = feedOf(40, () => "YNV Group, Inc.");
+    await expect(drifted({ token: "careers.ynvgroup.com", org: "YNV Group" }, 0, 25)).rejects.toThrow(/kept none of 40/);
+    // An empty feed is the empty-page rule's: an honest empty board, not a refusal here.
+    const empty = await feedOf(0, () => "YNV Group")({ token: "careers.ynvgroup.com", org: "YNV Group" }, 0, 25);
+    expect([empty.items.length, empty.feedTotal, empty.feedEnded]).toEqual([0, 0, true]);
   });
 });
 

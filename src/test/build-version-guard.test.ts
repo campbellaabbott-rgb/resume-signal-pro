@@ -314,8 +314,11 @@ const PINNED = {
   // iCIMS `org` field and six scoped entries (in place), four duplicate iCIMS
   // hosts' positions (38669, 38698, 38760, 41040) repointed to the Exelon brand
   // boards, and ORACLE_POOL_SITES with eexs's canonical. No index moves, so
-  // catalogSize holds.
-  sourcesHash: "326312ec66423e0b",
+  // catalogSize holds. Re-taken in the same unreleased build after the review
+  // of 4efea332: 14 staffing companies' boards gain agency: true (each split
+  // out of its packed literal in place) and careers.pepco.com is named
+  // Potomac Electric Power Co (brand PEPCO kept).
+  sourcesHash: "43b15655ee4749a2",
   // The PARSED catalog behind that hash — 44,081 packed + 463 object-literal
   // entries — pinned separately so a re-format is distinguishable from a real
   // catalog change (see the two-pins note at the top of this file). Read
@@ -341,7 +344,7 @@ const PINNED = {
   // 44,523 still at 2026-09-09.96: names, flags and four repointed positions,
   // nothing added or removed.
   catalogSize: 44_523,
-  catalogHash: "aa10f63619113ac3",
+  catalogHash: "b815524774b6cb04",
   // 2026-08-21.4: disables the exact-word tier's company matcher, whose index
   // never built. Bumped so the mitigation is externally identifiable.
   // 2026-08-21.5: routed retrieval. index.ts + two new modules; sources.ts
@@ -1496,7 +1499,10 @@ const PINNED = {
   // the renames, agency flags, iCIMS scope and Oracle pool sites above;
   // RENAMED_TOKENS + 64 and NAME_SYNC_VERSION 6; fetchIcims keeps an entry's
   // `org` (icimsOrgScope); rankOracleSites ranks ORACLE_POOL_SITES last;
-  // COUNTRY_MAP_VERSION 12 (US towns named after countries).
+  // COUNTRY_MAP_VERSION 12 (US towns named after countries). Still .96 after
+  // the review of 4efea332 (never deployed): 14 more agency flags, the Pepco
+  // name, fetchIcims refuses an org read that is not whole or keeps none
+  // (icimsOrgRefusal), and mergeCompanyFacet folds Blueprint's two stems.
   buildVersion: "2026-09-09.96",
 };
 

@@ -25,7 +25,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { JOB_SOURCES, ORACLE_CANONICAL_SITES, ORACLE_POOL_SITES } from "../../supabase/functions/job-board/sources";
 import { JOB_SOURCES as COPY } from "../../supabase/functions/layoff-filings/board-sources";
-import { icimsOrgScope, oracleReqKey, planOracleSubsiteVisit, rankOracleSites } from "../../supabase/functions/job-board/normalize";
+import { icimsOrgRefusal, icimsOrgScope, oracleReqKey, planOracleSubsiteVisit, rankOracleSites } from "../../supabase/functions/job-board/normalize";
 import { codeOf } from "./helpers/strip-comments";
 import * as L from "../../scripts/deploy-ledger.mjs";
 
@@ -53,16 +53,26 @@ describe("iCIMS: each feed is read once, one brand or one hirer a board", () => 
     for (const s of JOB_SOURCES as Src[]) if (s.org !== undefined) expect([s.source, s.brand], s.token).toEqual(["icims", undefined]);
   });
 
-  it("the four duplicate hosts are gone and their places hold the Exelon brand boards, each brand === name", () => {
+  it("the four duplicate hosts are gone and their places hold the Exelon brand boards, each reading its brand as the feed spells it", () => {
     for (const t of ["careers.bpas.com", "careers.keysight.com", "careers.goldennugget.com", "talent.lla.com"]) expect(at(t), t).toBe(-1);
-    const placed: Array<[number, string, string]> = [
-      [38669, "careers.bge.com", "Baltimore Gas and Electric Company"],
-      [38698, "careers.peco.com", "PECO"],
-      [38760, "careers.pepco.com", "PEPCO"],
-      [41040, "careers.atlanticcityelectric.com", "Atlantic City Electric"],
+    const placed: Array<[number, string, string, string]> = [
+      [38669, "careers.bge.com", "Baltimore Gas and Electric Company", "Baltimore Gas and Electric Company"],
+      [38698, "careers.peco.com", "PECO", "PECO"],
+      // "Pepco" is also PEPCO Germany GmbH's board (personio pepco, the discount retailer), and the bake keys a page on
+      // the lowercased name, so the utility prints the legal name its own careers site files it under (tags3, read
+      // 2026-10-26 on careers.pepco.com) while the feed is still asked for brand PEPCO.
+      [38760, "careers.pepco.com", "Potomac Electric Power Co", "PEPCO"],
+      [41040, "careers.atlanticcityelectric.com", "Atlantic City Electric", "Atlantic City Electric"],
     ];
-    for (const [i, t, n] of placed) expect(JOB_SOURCES[i], t).toMatchObject({ source: "icims", token: t, name: n, brand: n });
+    for (const [i, t, n, b] of placed) expect(JOB_SOURCES[i], t).toMatchObject({ source: "icims", token: t, name: n, brand: b });
     expect(JOB_SOURCES.length).toBe(44_523);
+  });
+
+  it("no Exelon brand board shares its printed name with another employer's board", () => {
+    for (const t of ["careers.bge.com", "careers.peco.com", "careers.pepco.com", "careers.atlanticcityelectric.com", "careers.delmarva.com", "careers.comed.com"]) {
+      const n = entry(t)!.name.toLowerCase();
+      expect(JOB_SOURCES.filter((s) => s.token !== t && s.name.toLowerCase() === n).map((s) => `${s.source}:${s.token}`), t).toEqual([]);
+    }
   });
 
   it("no two unscoped entries read one of the measured shared feeds", () => {
@@ -105,14 +115,29 @@ describe("iCIMS: each feed is read once, one brand or one hirer a board", () => 
     expect(icimsOrgScope(feed, undefined)).toBe(feed);
   });
 
-  it("fetchIcims scopes after the walk: offsets and the empty-page refusal read the raw feed, and an ended read reports the kept count", () => {
+  it("an org-scoped read is judged only whole: the feed read in one visit from the top, keeping some of a feed that had rows", () => {
+    // A board with no org is never refused here.
+    expect(icimsOrgRefusal(undefined, false, 250, 0)).toBeNull();
+    expect(icimsOrgRefusal("YNV Group", true, 40, 2)).toBeNull();
+    expect(icimsOrgRefusal("YNV Group", true, 0, 0), "an empty feed is the empty-page rule's to judge").toBeNull();
+    // A feed larger than one visit: the last window's kept count can never prove a lap against the raw total.
+    expect(icimsOrgRefusal("Chick-fil-A, Inc.", false, 250, 120)).toMatch(/larger than one visit/);
+    // The hirer's spelling drifted (or it has no roles left in a feed that has others): nothing to close on.
+    expect(icimsOrgRefusal("YNV Group", true, 40, 0)).toMatch(/kept none of 40/);
+  });
+
+  it("fetchIcims scopes after the walk: offsets and the empty-page refusal read the raw feed, an org read that is not whole is refused, and a whole one reports its kept count", () => {
     const code = codeOf(readFileSync(resolve(ROOT, "supabase/functions/job-board/index.ts"), "utf8"));
     const fn = /async function fetchIcims\([\s\S]*?\n\}/.exec(code)?.[0] ?? "";
     expect(fn).toContain("const empty = emptyFirstPage(base, all.length, feedTotal);");
     expect(fn).toContain("const advancedIc = base + all.length;");
     expect(fn).toContain("const items = icimsOrgScope(all, s.org);");
-    expect(fn).toContain("return { items, windowed: !exhausted || startOffset > 0, feedTotal: s.org && exhausted ? items.length : feedTotal, nextOffset, feedEnded: exhausted, endOffset: advancedIc };");
+    expect(fn).toContain("const whole = exhausted && startOffset === 0;");
+    expect(fn).toContain("const orgRefused = icimsOrgRefusal(s.org, whole, all.length, items.length);");
+    expect(fn).toContain("if (orgRefused) throw new Error(orgRefused);");
+    expect(fn).toContain("return { items, windowed: !whole, feedTotal: s.org ? items.length : feedTotal, nextOffset, feedEnded: exhausted, endOffset: advancedIc };");
     expect(fn.indexOf("icimsOrgScope(all, s.org)")).toBeGreaterThan(fn.indexOf("const advancedIc"));
+    expect(fn.indexOf("throw new Error(orgRefused)")).toBeLessThan(fn.indexOf("return { items"));
   });
 });
 
@@ -208,29 +233,46 @@ describe("migration 20261026110000 on a real Postgres", () => {
         ${post("careers.delmarva.com", 2, "careers-comed.icims.com")},
         ${post("careers.delmarva.com", 3, "careers-delmarva.icims.com")},
         ${post("careers.delmarva.com", 4, "careers-bge.icims.com")},
+        ${post("careers.delmarva.com", 6, "careers-comed.icims.com")},
         ${post("careers.comed.com", 2, "careers-comed.icims.com")},
         ${post("careers.comed.com", 1, "careers-exeloncorp.icims.com")},
         ${post("careers.comed.com", 5, "careers-peco.icims.com")},
         ${post("careers.baycenterfoods.com", 10, "careers-chickfila.icims.com")},
         ${post("careers.baycenterfoods.com", 11, "canadacareers-chickfila.icims.com")},
         ${post("careers.baycenterfoods.com", 12, "careers-cfasupply.icims.com")},
+        ${post("careers.baycenterfoods.com", 50, "careers-chickfila.icims.com")},
+        ${post("careers.baycenterfoods.com", 51, "canadacareers-chickfila.icims.com")},
         ${post("careers.chick-fil-a.com", 10, "careers-chickfila.icims.com")},
         ${post("careers.chick-fil-a.com", 12, "careers-cfasupply.icims.com")},
         ${post("careers.ynvgroup.com", 20, "careers-ynvgroup.icims.com")},
         ${post("careers.ynvgroup.com", 21, "careers-teknowledge.icims.com")},
+        ${post("careers.ynvgroup.com", 40, "careers-ynvgroup.icims.com")},
+        ${post("careers.ynvgroup.com", 41, "careers-ynvgroup.icims.com")},
         ${post("careers.monifai.com", 20, "careers-ynvgroup.icims.com")},
         ${post("careers.monifai.com", 21, "careers-teknowledge.icims.com")},
         ${post("careers.monifai.com", 22, "elsewhere.example.com")},
+        ${post("careers.monifai.com", 23, "careers-teknowledge.icims.com")},
+        ${post("careers.monifai.com", 42, "careers-ynvgroup.icims.com")},
         ${post("careers.bge.com", 4, "careers-bge.icims.com")},
         ${post("careers.example.com", 9, "careers-comed.icims.com")},
         ('workday:kohls~wd504~kohlscareers:R504030', 'workday', 'kohls~wd504~kohlscareers', 'Kohl''s', 'Advisor', 'retail', 'https://kohls.wd504.myworkdayjobs.com/x', now(), 'Lake Wales (1250)', 'GB'),
-        ('workday:kohls~wd504~kohlscareers:R1', 'workday', 'kohls~wd504~kohlscareers', 'Kohl''s', 'Other', 'retail', 'https://kohls.wd504.myworkdayjobs.com/y', now(), 'Cardiff, Wales', 'GB');
+        ('workday:kohls~wd504~kohlscareers:R503656', 'workday', 'kohls~wd504~kohlscareers', 'Kohl''s', 'Associate', 'retail', 'https://kohls.wd504.myworkdayjobs.com/z', now(), 'Lake Wales (1250)', 'GB'),
+        ('workday:kohls~wd504~kohlscareers:R1', 'workday', 'kohls~wd504~kohlscareers', 'Kohl''s', 'Other', 'retail', 'https://kohls.wd504.myworkdayjobs.com/y', now(), 'Cardiff, Wales', 'GB'),
+        ('workday:other~wd1~x:R9', 'workday', 'other~wd1~x', 'Other', 'Other', 'retail', 'https://other.wd1.myworkdayjobs.com/y', now(), 'Lake Wales (1250)', 'GB');
+      -- Race closures since .96's first slice, each judged by its requisition (stored on a board of the same feed, on
+      -- another portal) and, only on the Exelon pair and only for a requisition no board of the feed stores, by its batch.
       INSERT INTO public.job_board_closures (posting_id, source, company_token, closed_at, batch_removed, batch_live_before) VALUES
         ('icims:careers.comed.com:30', 'icims', 'careers.comed.com', '2026-10-27T12:00:00Z', 50, 100),
-        ('icims:careers.ynvgroup.com:31', 'icims', 'careers.ynvgroup.com', '2026-10-27T12:00:00Z', 7, 9),
+        ('icims:careers.ynvgroup.com:23', 'icims', 'careers.ynvgroup.com', '2026-10-27T12:00:00Z', 7, 9),
         ('icims:careers.comed.com:32', 'icims', 'careers.comed.com', '2026-10-27T13:00:00Z', 2, 56),
         ('icims:careers.comed.com:33', 'icims', 'careers.comed.com', '2026-10-20T12:00:00Z', 60, 100),
-        ('icims:careers.example.com:34', 'icims', 'careers.example.com', '2026-10-27T12:00:00Z', 300, 400);
+        ('icims:careers.example.com:34', 'icims', 'careers.example.com', '2026-10-27T12:00:00Z', 300, 400),
+        ('icims:careers.monifai.com:40', 'icims', 'careers.monifai.com', '2026-10-27T12:00:00Z', 2, 9),
+        ('icims:careers.monifai.com:41', 'icims', 'careers.monifai.com', '2026-10-27T12:00:00Z', 2, 9),
+        ('icims:careers.chick-fil-a.com:50', 'icims', 'careers.chick-fil-a.com', '2026-10-27T12:00:00Z', 8, 27),
+        ('icims:careers.chick-fil-a.com:51', 'icims', 'careers.chick-fil-a.com', '2026-10-27T12:00:00Z', 8, 27),
+        ('icims:careers.ynvgroup.com:42', 'icims', 'careers.ynvgroup.com', '2026-10-27T14:00:00Z', 1, 2),
+        ('icims:careers.comed.com:6', 'icims', 'careers.comed.com', '2026-10-27T14:00:00Z', 1, 40);
     `);
     await db.exec(sql());
   });
@@ -240,43 +282,65 @@ describe("migration 20261026110000 on a real Postgres", () => {
   it("each scoped board keeps its own portal's rows, and a row on a portal the feed does not name stays", async () => {
     expect(await ids("careers.delmarva.com")).toEqual(["1"]);
     expect(await ids("careers.comed.com")).toEqual(["2"]);
-    expect(await ids("careers.baycenterfoods.com")).toEqual(["10", "11"]);
+    expect(await ids("careers.baycenterfoods.com")).toEqual(["10", "11", "50", "51"]);
     expect(await ids("careers.chick-fil-a.com")).toEqual(["12"]);
-    expect(await ids("careers.ynvgroup.com")).toEqual(["20"]);
-    expect(await ids("careers.monifai.com")).toEqual(["21", "22"]);
+    expect(await ids("careers.ynvgroup.com")).toEqual(["20", "40", "41"]);
+    expect(await ids("careers.monifai.com")).toEqual(["21", "22", "23"]);
   });
 
   it("every row it moves is an untracked exit, never a closure, and no other board is touched", async () => {
     const ex = (await db.query<{ posting_id: string; exit_reason: string }>(`SELECT posting_id, exit_reason FROM public.job_board_exits ORDER BY posting_id`)).rows;
     expect(ex.map((r) => r.posting_id.split(":").slice(1).join(":"))).toEqual([
       "careers.baycenterfoods.com:12", "careers.chick-fil-a.com:10", "careers.comed.com:1", "careers.comed.com:5",
-      "careers.delmarva.com:2", "careers.delmarva.com:3", "careers.delmarva.com:4", "careers.monifai.com:20", "careers.ynvgroup.com:21",
+      "careers.delmarva.com:2", "careers.delmarva.com:3", "careers.delmarva.com:4", "careers.delmarva.com:6",
+      "careers.monifai.com:20", "careers.monifai.com:42", "careers.ynvgroup.com:21",
     ]);
     expect(new Set(ex.map((r) => r.exit_reason))).toEqual(new Set(["untracked"]));
     expect(await ids("careers.bge.com")).toEqual(["4"]);
     expect(await ids("careers.example.com")).toEqual(["9"]);
   });
 
-  it("a closure the scoped read wrote before the move, a batch over 30% of the board since .96's first slice, is marked suspect and listed; nothing else", async () => {
-    const c = (await db.query<{ posting_id: string; suspect: boolean }>(`SELECT posting_id, suspect FROM public.job_board_closures ORDER BY event_id`)).rows;
-    expect(c.map((r) => [r.posting_id.split(":").pop(), r.suspect])).toEqual([["30", true], ["31", true], ["32", false], ["33", false], ["34", false]]);
-    expect((await db.query<{ n: number }>(`SELECT count(*)::int AS n FROM public.job_board_closure_repairs WHERE repair = 'icims_scope_trust_round_3'`)).rows[0].n).toBe(2);
+  it("a closure since .96's first slice of a requisition a board of the same feed stores on another portal is marked suspect and listed, whatever the batch", async () => {
+    const c = new Map((await db.query<{ posting_id: string; suspect: boolean }>(`SELECT posting_id, suspect FROM public.job_board_closures`)).rows.map((r) => [r.posting_id.split(":").slice(1).join(":"), r.suspect]));
+    // Teknowledge's two of nine (22%) are YNV Group's postings; Chick-fil-A Supply's eight of 27 (30%) are Chick-fil-A's.
+    expect([c.get("careers.monifai.com:40"), c.get("careers.monifai.com:41")]).toEqual([true, true]);
+    expect([c.get("careers.chick-fil-a.com:50"), c.get("careers.chick-fil-a.com:51")]).toEqual([true, true]);
+    expect(c.get("careers.ynvgroup.com:23"), "YNV Group closing a Teknowledge posting").toBe(true);
   });
 
-  it("files Kohl's Lake Wales row US, from Workday's own alpha2Code, and no other row", async () => {
-    const k = (await db.query<{ id: string; country: string }>(`SELECT id, country FROM public.job_board_postings WHERE company_token = 'kohls~wd504~kohlscareers' ORDER BY id`)).rows;
-    expect(k.map((r) => [r.id.split(":").pop(), r.country])).toEqual([["R1", "GB"], ["R504030", "US"]]);
+  it("a real takedown is never marked: one of YNV Group's two rows, or ComEd's own posting, though a stale copy sits on the other board", async () => {
+    const c = new Map((await db.query<{ posting_id: string; suspect: boolean }>(`SELECT posting_id, suspect FROM public.job_board_closures`)).rows.map((r) => [r.posting_id.split(":").slice(1).join(":"), r.suspect]));
+    expect(c.get("careers.ynvgroup.com:42"), "1 of 2 is 50%, and still YNV Group's own").toBe(false);
+    expect(c.get("careers.comed.com:6"), "ComEd's own posting, its copy on the Exelon board applying on careers-comed").toBe(false);
+  });
+
+  it("on the Exelon pair alone, a requisition no board of the feed stores (Delmarva Power's) is judged by its batch: over 30% is marked; nothing before the first slice or off the six", async () => {
+    const c = new Map((await db.query<{ posting_id: string; suspect: boolean }>(`SELECT posting_id, suspect FROM public.job_board_closures`)).rows.map((r) => [r.posting_id.split(":").slice(1).join(":"), r.suspect]));
+    expect(c.get("careers.comed.com:30"), "50 of 100").toBe(true);
+    expect(c.get("careers.comed.com:32"), "2 of 56").toBe(false);
+    expect(c.get("careers.comed.com:33"), "before the first slice").toBe(false);
+    expect(c.get("careers.example.com:34"), "not one of the six").toBe(false);
+    const listed = (await db.query<{ n: number }>(`SELECT count(*)::int AS n FROM public.job_board_closure_repairs WHERE repair = 'icims_scope_trust_round_3'`)).rows[0].n;
+    expect(listed).toBe(6);
+  });
+
+  it("files every Kohl's row at its Lake Wales store (1250) US, from Workday's own alpha2Code, and no other row", async () => {
+    const k = (await db.query<{ id: string; country: string }>(`SELECT id, country FROM public.job_board_postings WHERE source = 'workday' ORDER BY id`)).rows;
+    expect(k.map((r) => [r.id.split(":").pop(), r.country])).toEqual([["R1", "GB"], ["R503656", "US"], ["R504030", "US"], ["R9", "GB"]]);
   });
 
   it("is safe to run again", async () => {
     await db.exec(sql());
-    expect((await db.query<{ n: number }>(`SELECT count(*)::int AS n FROM public.job_board_exits`)).rows[0].n).toBe(9);
+    expect((await db.query<{ n: number }>(`SELECT count(*)::int AS n FROM public.job_board_exits`)).rows[0].n).toBe(11);
+    expect((await db.query<{ n: number }>(`SELECT count(*)::int AS n FROM public.job_board_closure_repairs`)).rows[0].n).toBe(6);
     expect(await ids("careers.delmarva.com")).toEqual(["1"]);
   });
 
   it("refuses to run while an older build serves, since its unscoped read would put the rows back", async () => {
     await db.exec(`UPDATE public.job_board_meta SET v = '{"build":"2026-09-09.95","buildSince":"2026-10-26T00:00:00Z"}' WHERE k = 'slice_stats'`);
     await expect(db.exec(sql())).rejects.toThrow(/20261026110000.*2026-09-09\.96/);
+    // What a runner reads when it refuses: wait for the first slice, then apply this same file unedited.
+    await expect(db.exec(sql())).rejects.toThrow(/sliceStats\.build.*the same file again, unedited/);
     await db.exec(`UPDATE public.job_board_meta SET v = '{"build":"2026-09-09.96","buildSince":"${SINCE}"}' WHERE k = 'slice_stats'`);
   });
 });

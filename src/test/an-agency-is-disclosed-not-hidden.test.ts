@@ -192,6 +192,40 @@ describe("trust round 3: an employer's own board is not labelled an agency, and 
     expect(byKey.get("oracle:eniy~em3~cx_6001")?.agency).toBe(true);
   });
 
+  // The review of round 3 found staffing companies' boards of the same kind as Jobandtalent's still unlabelled:
+  // the agency audit read only flagged boards and name-screen hits. Each is labelled on its own feed's words, read
+  // 2026-10-26 (~/.config/resumebooster/trust-round-3-fixes/ev). Not a census: other unflagged staffing brands may remain.
+  const STAFFING = [
+    "greenhouse:ayahealthcare", "ashby:traba", "ashby:zenjob", "bamboohr:staffzone", "bamboohr:coople", "pinpoint:coople",
+    "workday:ingenovishealth~wd1~ingenovishealth", "icims:careers.insightglobal.com",
+    "oracle:ehnn~us2~cx_3001", "oracle:ehnn~us2~cx", "oracle:ehnn~us2~cx_4", "oracle:ehnn~us2~cx_7", "oracle:ehnn~us2~cx_10", "oracle:ehnn~us2~cx_1001",
+  ];
+
+  it("the staffing companies' boards the review found unlabelled wear the flag, and the convictions name each one", () => {
+    const conv = ledgerSet("RELEASED_CONVICTIONS");
+    for (const k of STAFFING) {
+      expect(byKey.get(k), `${k} left the catalogue`).toBeTruthy();
+      expect(byKey.get(k)!.agency, `${k} is a staffing company's board`).toBe(true);
+      expect(conv.has(k), `${k} is not in RELEASED_CONVICTIONS`).toBe(true);
+    }
+    expect(JOB_SOURCES.filter((s) => (s as { agency?: boolean }).agency === true).length).toBe(134);
+  });
+
+  it("every TrueBlue site that lists requisitions is labelled, so the label holds wherever the dedupe stores one", () => {
+    // PeopleReady's site (CX_1) was labelled alone, but every one of its requisitions is also on the corporate site
+    // CX_3001, which ranks first, so its rows were stored there unlabelled and the flagged board served none.
+    const sites = JOB_SOURCES.filter((s) => s.source === "oracle" && s.token.startsWith("ehnn~"));
+    const unlabelled = sites.filter((s) => (s as { agency?: boolean }).agency !== true).map((s) => s.token);
+    // RenewableWorks listed no requisition on 2026-10-26 and TrueBlue's own words do not name it: left as it is.
+    expect(unlabelled).toEqual(["ehnn~us2~CX_2001"]);
+    expect(byKey.get("oracle:ehnn~us2~cx_3001")?.agency, "the site the requisitions are stored under").toBe(true);
+  });
+
+  it("a workforce company whose own words do not say staffing stays as it is (Allegis Global Solutions: \"not about filling seats\")", () => {
+    expect(byKey.get("smartrecruiters:allegisglobalsolutions")?.agency).not.toBe(true);
+    expect(ledgerSet("RELEASED_CONVICTIONS").has("smartrecruiters:allegisglobalsolutions")).toBe(false);
+  });
+
   it("the tagger's dry run tags nothing on this catalogue", () => {
     const { execFileSync } = require("node:child_process") as typeof import("node:child_process");
     const out = execFileSync(process.execPath, ["scripts/tag-agencies.mjs", "--dry-run"], { cwd: root, encoding: "utf8" });

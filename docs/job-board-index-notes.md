@@ -21869,7 +21869,7 @@ publisher-only.
 
 ## n1395-icims-org-scope
 
-In `supabase/functions/job-board/index.ts`, above: `const items = icimsOrgScope(all, s.org);`; and in `supabase/functions/job-board/normalize.ts`, above: `export function icimsOrgScope<T>(items: T[], org: string | undefined): T[] {`.
+In `supabase/functions/job-board/index.ts`, above: `const items = icimsOrgScope(all, s.org);`; and in `supabase/functions/job-board/normalize.ts`, above: `export function icimsOrgScope<T>(items: T[], org: string | undefined): T[] {` and `export function icimsOrgRefusal(org: string | undefined, whole: boolean, raw: number, kept: number): string | null {`.
 
 ONE HIRER A BOARD, WHERE THE FEED HAS NO BRAND FILTER (2026-09-09.96, trust
 round 3). Two pairs of catalogued iCIMS hosts read one feed each: Chick-fil-A
@@ -21879,10 +21879,23 @@ round 3). Two pairs of catalogued iCIMS hosts read one feed each: Chick-fil-A
 &brand= returns nothing and &hiring_organization= is ignored, so the board
 reads the whole feed and keeps its own `org`. Offsets and the empty-first-page
 refusal stay on the raw feed (the walk is unchanged); the feed total a read
-reports is the kept count once the feed ended, since the raw total would
-describe the other employer's rows too. These feeds are one page (75 and 40
-rows), so every read ends. The Exelon pair takes `brand` instead (its feed
-filters on the server, as the Reyes boards' does).
+reports is the kept count, since the raw total would describe the other
+employer's rows too. These feeds are one page (76 and 40 rows on 2026-10-26),
+so every read ends. The Exelon pair takes `brand` instead (its feed filters on
+the server, as the Reyes boards' does).
+
+AN ORG READ IS JUDGED ONLY WHOLE (icimsOrgRefusal, review of 4efea332). Two
+reads would close the wrong rows, so fetchIcims throws instead and the visit
+fails with nothing pruned: (1) a feed larger than one visit (250 postings, or
+the page cap): a lap is measured in raw-feed offsets against the raw total its
+opening visit pinned, and the last window's kept count could never reach 90%
+of it, so no lap would ever prove and the stamped total would swing between
+the two numbers; (2) a whole read that keeps none of a feed that had rows: the
+hirer's spelling has drifted (or it has nothing left in a feed that has
+others), and on YNV Group's 2 rows nothing would have marked the closures
+suspect. Either way the board shows as failing, and if it fails for days its
+rows leave through the dormancy prune as board_dormant exits, never as
+takedowns.
 
 ## n1396-us-towns-named-after-countries
 
@@ -21905,7 +21918,11 @@ rows change and every one moves from wrong to right (25 to US, Kohl's 2
 "Turkey, Istanbul" keep their countries. Seven rows with no state at all
 (Rochester Regional Health's "SCHI - Greece" and three more, QTS's
 "US TX Turkey 1 DC1" twice) are not fixable from the string; Workday's own
-alpha2Code says US for each, for a later round.
+alpha2Code says US for each, for a later round. Nor are strings that spell the
+state out ("Peru, Illinois", "Peru, Indiana", "Greece, New York", "North Wales,
+Pennsylvania", "Storm Lake, Iowa"): detectCountry still reads them abroad, and
+a row that has no vendor country keeps that reading (Mattress Firm's "Peru,
+Illinois", filed PE on 2026-10-26).
 
 ## n1397-renamed-tokens-trust-round-3
 
@@ -21924,6 +21941,22 @@ cannot take an override, so the lane renames its stored rows from the
 catalogue (NAME_SYNC_VERSION 6). "vacancies" is two boards (Lever's United
 Tech, Recruitee's Arc), each renamed by its own vendor and the snapshots left
 alone (SHARED_TOKENS).
+
+## n1398-one-employer-two-stems
+
+In `supabase/functions/job-board/clusters.ts`, above: `const SAME_EMPLOYER_STEM = new Map([["notexternal", "bpcs"]]);`.
+
+ONE EMPLOYER, TWO TOKEN STEMS, ONE NAME (2026-09-09.96, review of trust round
+3). mergeCompanyFacet folds an employer's boards by name and token stem, so
+two employers who share a name stay apart. Round 3 named Greenhouse's
+"notexternal" board Blueprint Technologies, the name its own postings use,
+which is also the name of Blueprint's main board, "bpcs". Their stems differ,
+so the merge kept two rows and the by-name path (company-names.ts) refused
+companies:["Blueprint Technologies"] as two employers, where on trust/pages it
+had resolved to bpcs. A stem listed here is folded into the other one, and
+only rows that also share the name merge: notexternal under any other name,
+or any other token, is untouched. An entry belongs here only when the
+employer's own words name both boards (company_name_evidence greenhouse:notexternal).
 
 ## n1393-pay-to-reparse
 

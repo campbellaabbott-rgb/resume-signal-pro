@@ -32,6 +32,8 @@ import { JOB_SOURCES } from "../../supabase/functions/job-board/sources";
 import { boardName, isCodeShapedName } from "../lib/company-display";
 import { employerNameOverride } from "../lib/employer-names";
 import { codeOf } from "./helpers/strip-comments";
+import { mergeCompanyFacet } from "../../supabase/functions/job-board/clusters";
+import { resolveCompanyNames } from "../../supabase/functions/job-board/company-names";
 
 vi.setConfig({ hookTimeout: 120_000, testTimeout: 60_000 });
 
@@ -223,5 +225,39 @@ describe("the deploy order", () => {
   const ledger = JSON.parse(readFileSync(resolve(ROOT, "docs/deploy-ledger.json"), "utf8"));
   it("the names go in before job-board deploys, so the version-6 lane reads them", () => {
     expect(ledger.migrationOrder["20261026100000"]?.before).toEqual(["fn:job-board"]);
+  });
+});
+
+describe("one employer's two boards, now under one name, are found by that name (review of 4efea332)", () => {
+  // Renaming greenhouse notexternal to "Blueprint Technologies" put a second board under bpcs' name with another
+  // token stem. The facet merge keys on name and stem, so the by-name path saw two employers and refused the name
+  // that resolved to bpcs on trust/pages.
+  const facet = [
+    { token: "bpcs", name: "Blueprint Technologies", count: 19, open: 19 },
+    { token: "notexternal", name: "Blueprint Technologies", count: 5, open: 5 },
+    { token: "personio-pepco", name: "Pepco", count: 12, open: 12 },
+    { token: "elsewhere-pepco", name: "Pepco", count: 30, open: 30 },
+  ];
+  const catalogue = new Set(["bpcs", "notexternal", "personio-pepco", "elsewhere-pepco"]);
+
+  it("the facet folds the two Blueprint boards into one employer, and leaves two employers who share a name apart", () => {
+    const merged = mergeCompanyFacet(facet);
+    const bp = merged.filter((e) => e.name === "Blueprint Technologies");
+    expect(bp).toEqual([{ token: "bpcs", name: "Blueprint Technologies", count: 24, open: 24, tokens: ["bpcs", "notexternal"] }]);
+    expect(merged.filter((e) => e.name === "Pepco").length).toBe(2);
+  });
+
+  it("companies: [\"Blueprint Technologies\"] resolves to both boards, as it resolved to bpcs before the rename", () => {
+    const n = resolveCompanyNames(["Blueprint Technologies"], catalogue, mergeCompanyFacet(facet));
+    expect(n.unresolved).toEqual([]);
+    expect(n.resolved).toEqual([{ asked: "Blueprint Technologies", name: "Blueprint Technologies", tokens: ["bpcs", "notexternal"] }]);
+    expect(n.companies).toEqual(["bpcs", "notexternal"]);
+  });
+
+  it("the merge is only for the two stems the evidence names one employer, and only under one name", () => {
+    expect(mergeCompanyFacet([{ token: "bpcs", name: "Blueprint Technologies", count: 1 }, { token: "notexternal", name: "Only External Postings", count: 1 }]).length).toBe(2);
+    expect(mergeCompanyFacet([{ token: "constructor", name: "X", count: 1 }, { token: "x2", name: "X", count: 1 }]).length).toBe(2);
+    expect(EVIDENCE.get("greenhouse:notexternal")?.name).toBe("Blueprint Technologies");
+    expect(JOB_SOURCES.find((s) => s.source === "greenhouse" && s.token === "bpcs")?.name).toBe("Blueprint Technologies");
   });
 });

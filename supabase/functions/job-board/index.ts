@@ -38,7 +38,7 @@ import {
   sanePostedAt,
   isDatedBefore,
   normalizeCloseTitle,
-  normalizeIcims, icimsOrgScope, normalizeUsajobs, usajobsDescriptions,
+  normalizeIcims, icimsOrgScope, icimsOrgRefusal, normalizeUsajobs, usajobsDescriptions,
   normalizeRippling,
   normalizePinpoint,
   normalizePaylocity,
@@ -1540,7 +1540,10 @@ async function fetchIcims(s: JobSource, startOffset: number, pageSize: number): 
   // A resumed read is windowed by definition — see the note in fetchOracle.
   // Rationale: docs/job-board-index-notes.md#n1395-icims-org-scope
   const items = icimsOrgScope(all, s.org);
-  return { items, windowed: !exhausted || startOffset > 0, feedTotal: s.org && exhausted ? items.length : feedTotal, nextOffset, feedEnded: exhausted, endOffset: advancedIc };
+  const whole = exhausted && startOffset === 0;
+  const orgRefused = icimsOrgRefusal(s.org, whole, all.length, items.length);
+  if (orgRefused) throw new Error(orgRefused);
+  return { items, windowed: !whole, feedTotal: s.org ? items.length : feedTotal, nextOffset, feedEnded: exhausted, endOffset: advancedIc };
 }
 
 // Rationale: docs/job-board-index-notes.md#n1154-async-function-fetchicimssized-s-jobsour
