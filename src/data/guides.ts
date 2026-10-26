@@ -565,7 +565,7 @@ export const GUIDES: Record<string, Guide> = {
     description:
       "Resume Booster switched its Apply Agent off and sends nothing in your name. Here is how to apply yourself with Claude or ChatGPT instead.",
     tldr:
-      "We switched our Apply Agent off and stopped selling the Agent plan, the Agent Pass and the Apply Assistant: Resume Booster does not send applications for anyone. To apply, connect Claude or ChatGPT at resumebooster.work/agents. Your AI reads the posting and, where the employer's hiring system publishes it, the application form; Resume Booster tells it to ask you the questions that look like they are about you and to draft open answers about your work from your CV. That check reads the question's words and can miss a question about you, even a plainly worded one, so you read every answer before you send and press submit on the employer's own site.",
+      "We switched our Apply Agent off and stopped selling the products built around it: Resume Booster does not send applications for anyone. To apply, connect Claude or ChatGPT at resumebooster.work/agents. Your AI reads the posting and, where the employer's hiring system publishes it, the application form; Resume Booster tells it to ask you the questions that look like they are about you and to draft open answers about your work from your CV. That check reads the question's words and can miss a question about you, even a plainly worded one, so you read every answer before you send and press submit on the employer's own site.",
     updated: "2026-10-25",
     minutes: 5,
     grounding: "Describes what changed, and the apply-yourself flow the connector serves today",
@@ -573,7 +573,7 @@ export const GUIDES: Record<string, Guide> = {
       {
         h2: "What changed",
         paras: [
-          "Our Apply Agent was a service that prepared applications overnight and could send some of them for you. It is switched off, and nothing is prepared or sent any more. We also stopped selling the three products built around it: the Agent plan, the Agent Pass and the Apply Assistant. Their checkouts refuse a purchase and charge nothing.",
+          "Our Apply Agent was a service that prepared applications overnight and could send some of them for you. It is switched off, and nothing is prepared or sent any more. We also stopped selling the products built around it. Their checkouts refuse a purchase and charge nothing.",
           "If you bought one of them, write to resumeboostersupp@gmail.com from the address you paid with and we will honour what you bought.",
           "Your account keeps what it had. The application tracker, your saved jobs and any applications the agent prepared before stay where they were, and none of them will be sent.",
         ],
@@ -634,7 +634,7 @@ export const GUIDES: Record<string, Guide> = {
         a: "No. The Apply Agent is switched off and Resume Booster does not send applications for anyone. You apply yourself, with your own AI's help if you want it.",
       },
       {
-        q: "I paid for the Agent plan, the Agent Pass or the Apply Assistant. What happens now?",
+        q: "I paid for one of the apply agent's products. What happens now?",
         a: "Write to resumeboostersupp@gmail.com from the address you paid with and we will honour what you bought.",
       },
       {
