@@ -81,6 +81,49 @@ describe("the review's negatives stay titles", () => {
   });
 });
 
+/**
+ * A REMOTE THE PERSON EXCLUDED IS NEVER A REMOTE FILTER (wave 4 recheck of the
+ * descope). The trailing-remote lift had no negation check, and its leading
+ * class took a minus: "nurse -remote" became {query:"nurse", remote:true} and
+ * the board served only remote postings, the opposite of what was asked
+ * (live, read-only: main's body {q:"nurse -remote"} served 0 of 40 remote;
+ * wave 4's {q:"nurse", remote:true} served 40 of 40). The tool descriptions
+ * invite exactly this input ("Exclude with a minus"). origin/main's connector
+ * sends the query as typed, and job-board's own split and negated-remote rule
+ * read it, so that is what a refused lift does.
+ */
+describe("a remote the person excluded stays in the query as typed", () => {
+  it.each([
+    "nurse -remote",
+    "nurse not remote",
+    "engineer non-remote",
+    "analyst except remote",
+    "teacher no remote",
+    "developer not fully remote",
+    "nurse jobs not remote",
+    "analyst not remote",
+    "nurse non remote",
+    "nurse no-remote",
+    "nurse -fully remote",
+    "nurse, not remote",
+    "nurse not (remote)",
+    "nurse not a remote",
+    "driver excluding remote",
+    "designer without remote",
+    "developer but not anywhere",
+  ])("%s", (q) => {
+    expect(readQuery(q)).toEqual({ query: q });
+  });
+
+  it("a remote nobody negated still moves to the filter", () => {
+    expect(readQuery("react developer remote")).toMatchObject({ query: "react developer", remote: true });
+    expect(readQuery("nurse (remote)")).toMatchObject({ query: "nurse", remote: true });
+    expect(readQuery("engineer fully remote")).toMatchObject({ query: "engineer", remote: true });
+    expect(readQuery("developer anywhere")).toMatchObject({ query: "developer", remote: true });
+    expect(readQuery("Notary remote")).toMatchObject({ query: "Notary", remote: true });
+  });
+});
+
 const NURSE = { id: "greenhouse:acme:1", source: "greenhouse", token: "acme", company: "Acme", title: "Nurse" };
 
 describe("the server sends the board the search as meant, and says what it read", () => {
@@ -135,6 +178,16 @@ describe("the server sends the board the search as meant, and says what it read"
     const sc = await search({ query: "nurse jobs in Texas" });
     expect(listBody()).toMatchObject({ q: "nurse", location: "Texas" });
     expect(sc.locationInterpreted).toMatchObject({ query: "nurse", location: "Texas", from: "in Texas" });
+  });
+
+  it("'nurse -remote' and 'nurse not remote' reach the board as typed, with no remote filter", async () => {
+    for (const q of ["nurse -remote", "nurse not remote", "engineer non-remote", "analyst except remote"]) {
+      boardBodies = [];
+      const sc = await search({ query: q });
+      expect(listBody()!.q, q).toBe(q);
+      expect(listBody()!.remote, q).toBeUndefined();
+      expect(sc.locationInterpreted, q).toBeUndefined();
+    }
   });
 
   it("Humana by name goes to the board as typed, and the board's resolution comes back", async () => {
@@ -219,6 +272,17 @@ describe("the schema an agent reads says what the count is (S12-041)", () => {
     for (const k of ["countCapped", "rankedFellBack", "unknownCompanies", "companiesUnresolved", "companiesNotLookedUp", "companiesResolved"]) {
       expect(schema, k).toMatch(new RegExp(`\\b${k}: \\{ type:`));
     }
+  });
+
+  it("the job card's salary field does not call a string the board wrote 'verbatim' (recheck of the descope)", () => {
+    // leverSalary({min:118000,max:142500,...}) answers "USD 118,000.00 – 142,500.00 per year": the
+    // employer's field held numbers, and the board wrote the sentence. Served live as paylocity's
+    // "USD 22.00 – 26.00 per hour".
+    const card = /salary: \{ type: "string", description: "([^"]*)" \}/.exec(MCP);
+    expect(card, "the card's salary field has moved").toBeTruthy();
+    expect(card![1]).not.toMatch(/verbatim/i);
+    expect(card![1]).toMatch(/written out by the board from its figures/);
+    expect(card![1]).toMatch(/business figure/);
   });
 
   it("disclosures() passes every one of them on", () => {

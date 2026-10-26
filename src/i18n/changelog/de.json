@@ -346,7 +346,7 @@
     },
     "setupIsOneStep": {
       "title": "Die Einrichtung Ihres Bewerbungs-Agenten ist jetzt ein Schritt: Lebenslauf hochladen",
-      "description": "Wir lesen Name, E-Mail, Telefonnummer und LinkedIn direkt aus dem Dokument und speichern sie — kein erneutes Eintippen von Angaben, die Sie gerade übergeben haben. Was ein Formular verlangt und der Lebenslauf nicht hergibt, fragen wir genau dann, wenn das Formular es verlangt. Arbeitserlaubnis, Gehalt und Startdatum werden nie erraten."
+      "description": "Wir lesen Name, E-Mail, Telefonnummer und LinkedIn direkt aus dem Dokument und speichern sie — kein erneutes Eintippen von Angaben, die Sie gerade übergeben haben. Was ein Formular verlangt und der Lebenslauf nicht hergibt, fragen wir genau dann, wenn das Formular es verlangt. Bei einer Frage, die er als Frage nach Arbeitserlaubnis, Gehalt oder Startdatum erkennt, rät der Agent die Antwort nicht."
     },
     "sentButUnconfirmed": {
       "title": "Eine Bewerbung ohne Bestätigung sieht nicht mehr aus wie eine, die auf Sie wartet",
@@ -382,7 +382,7 @@
     },
     "applyAgentCountries": {
       "title": "Der Agent behauptet nicht, Sie dürften arbeiten, wo Sie es nicht angegeben haben",
-      "description": "Er hielt ein einziges Ja oder Nein zur Arbeitserlaubnis und nutzte es für jedes Land – wer im Vereinigten Königreich berechtigt war, hätte also „ja“ auf „Sind Sie rechtlich berechtigt, in den USA zu arbeiten?“ geantwortet: eine falsche Aussage über Ihren aufenthaltsrechtlichen Status, in Ihrem Namen an einen Arbeitgeber gesendet, bei genau der Frage, nach der am härtesten gefiltert wird. Sie können nun die Länder angeben, in denen Sie tatsächlich arbeiten dürfen; jede Frage zu einem nicht angegebenen Land hält an und wartet auf Sie, statt zu raten. Auch Straße und Postleitzahl lassen sich speichern – mehrere Formulare verlangen sie, und keines akzeptiert eine Näherung."
+      "description": "Er hielt ein einziges Ja oder Nein zur Arbeitserlaubnis und nutzte es für jedes Land – wer im Vereinigten Königreich berechtigt war, hätte also „ja“ auf „Sind Sie rechtlich berechtigt, in den USA zu arbeiten?“ geantwortet: eine falsche Aussage über Ihren aufenthaltsrechtlichen Status, in Ihrem Namen an einen Arbeitgeber gesendet, bei genau der Frage, nach der am härtesten gefiltert wird. Sie können nun die Länder angeben, in denen Sie tatsächlich arbeiten dürfen; eine Frage, die er als Frage zu einem nicht angegebenen Land erkennt, hält an und wartet auf Sie. Auch Straße und Postleitzahl lassen sich speichern – mehrere Formulare verlangen sie, und keines akzeptiert eine Näherung."
     },
     "searchFixed": {
       "title": "Die Suche funktioniert wieder — die meisten Suchen schlugen fehl",

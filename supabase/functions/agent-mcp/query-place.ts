@@ -14,7 +14,10 @@
 //     titles, and a two-letter code alone ("Director of IN programs") is
 //     never read as a state;
 //   - a trailing "remote" or "anywhere" sets remote:true; a leading one is a
-//     title ("Remote Sensing Analyst");
+//     title ("Remote Sensing Analyst"). A remote the person excluded (a minus
+//     on it, or a negating word before it) is never lifted: the query goes to
+//     the board as typed, which is what origin/main's connector sends, and
+//     job-board's own split and negated-remote rule read it;
 //   - "City, ST" is kept as written, because a city name can span states and
 //     the per-city state shares that would justify dropping the state are not
 //     in this repository; the answer says so in locationInterpreted;
@@ -49,6 +52,14 @@ export type QueryReading = {
  * the connector read one query one way.
  */
 const NEGATION_BEFORE_PLACE = /(?:^|\s)(?:not|except|excluding|exclude|but|outside|without|minus|other than|anywhere but)$/i;
+
+/**
+ * A remote typed after a negation is the remote NOT wanted (wave 4 recheck of
+ * the descope): "nurse not remote" lifted to remote:true served only remote
+ * postings. The place words, plus the two that negate a work mode, and an
+ * article between ("not a remote"). A refused lift leaves the query as typed.
+ */
+const NEGATION_BEFORE_REMOTE = /(?:^|\s)(?:not|no|non|except|excluding|exclude|but|outside|without|minus|other than|anywhere but)(?:\s+(?:a|an))?$/i;
 
 /** Metro shorthands that are also ordinary words or too short to trust at the end of a query. */
 const METRO_SKIP = new Set(["the city", "la"]);
@@ -89,11 +100,13 @@ export function readQuery(raw: string, has: { location?: boolean; country?: bool
   const original = String(raw ?? "").replace(/\s+/g, " ").trim();
   let query = original;
   const out: QueryReading = { query };
-  // remote / anywhere, at the END only.
-  const remote = /(?:^|[\s,(-])(?:fully\s+)?(?:remote|anywhere)\)?\s*$/i.exec(query);
+  // remote / anywhere, at the END only. A minus on it is the board's
+  // exclusion ("nurse -remote", "nurse -fully remote"), captured so the lift
+  // refuses it, as it refuses a negating word before it.
+  const remote = /(?:^|[\s,(])(-?)(?:fully\s+)?(?:remote|anywhere)\)?\s*$/i.exec(query);
   if (remote && !has.remote) {
     const rest = query.slice(0, remote.index).replace(/[\s,(-]+$/, "").trim();
-    if (rest) {
+    if (rest && !remote[1] && !NEGATION_BEFORE_REMOTE.test(rest)) {
       query = rest;
       out.remote = true;
       out.from = original.slice(remote.index).trim();

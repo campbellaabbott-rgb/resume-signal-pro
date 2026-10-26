@@ -28,6 +28,11 @@ import {
 } from "../../supabase/functions/_shared/apply-agent-retired";
 import { AGENT_PRODUCTS_ON_SALE, APPLY_AGENT_ON } from "../../supabase/functions/_shared/apply-agent-switch";
 import { CHECKOUT_LANGUAGES } from "../../supabase/functions/_shared/checkout-policy";
+import * as retired from "../../supabase/functions/_shared/apply-agent-retired";
+import { FORM_READER_VENDORS, PUBLIC_API_FORM_VENDORS } from "../../supabase/functions/_shared/application-form";
+import { MCP_FORM_VENDORS, MCP_FORM_VENDORS_ON_CHATGPT, formVendorPhrase } from "../config/mcp-tools";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 const env: Record<string, string | undefined> = {
   SUPABASE_URL: "https://harness.supabase.co",
@@ -234,5 +239,40 @@ describe("the refusal's words", () => {
     expect(assistant.status).toBe(410);
     expect(assistant.body).toMatchObject({ retired: true, reason: "product_retired", product: "apply_assistant", language: "es" });
     expect(assistant.body.error).toMatch(/^El Apply Assistant ya no se vende/);
+  });
+});
+
+/**
+ * INSIDE CHATGPT THE FORM IS READ ONLY FOR THE PUBLIC-API VENDORS (the second
+ * recheck of the descope). The retired products' line and llms.txt told every
+ * reader that connecting Claude or ChatGPT lets the AI read Greenhouse, Ashby,
+ * Recruitee, Breezy and Pinpoint forms; inside ChatGPT the server reads only
+ * Greenhouse and Recruitee (formVendorsFor, PUBLIC_API_FORM_VENDORS; owner
+ * decision R2). Both now carry the page's own sentence for that limit
+ * (agentConnect.selfApplyChatgpt) in each language, with the names built
+ * from the server's lists, never typed into a sentence.
+ */
+describe("the retired line and llms.txt say what ChatGPT reads", () => {
+  const LOCALE_OF: Record<string, string> = { en: "en", "en-GB": "en-GB", de: "de", es: "es", fr: "fr", hi: "hi", nl: "nl", pt: "pt", tl: "tl" };
+  const locale = (lang: string) => JSON.parse(readFileSync(resolve(__dirname, `../i18n/locales/${LOCALE_OF[lang]}.json`), "utf8"));
+  const chatgptLine = (lang: string) => String(locale(lang).agentConnect.selfApplyChatgpt).replace("{{vendors}}", formVendorPhrase(lang, MCP_FORM_VENDORS_ON_CHATGPT));
+  const mirrors = retired as unknown as { RETIRED_FORM_VENDORS?: readonly string[]; RETIRED_FORM_VENDORS_ON_CHATGPT?: readonly string[] };
+
+  it("the names come from one list each, held equal to the server's and the page's", () => {
+    expect(mirrors.RETIRED_FORM_VENDORS).toEqual(MCP_FORM_VENDORS.map((v) => v.label));
+    expect([...(mirrors.RETIRED_FORM_VENDORS ?? [])].map((v) => v.toLowerCase()).sort()).toEqual([...FORM_READER_VENDORS].sort());
+    expect(mirrors.RETIRED_FORM_VENDORS_ON_CHATGPT).toEqual(MCP_FORM_VENDORS.filter((v) => MCP_FORM_VENDORS_ON_CHATGPT.includes(v.key)).map((v) => v.label));
+    expect([...(mirrors.RETIRED_FORM_VENDORS_ON_CHATGPT ?? [])].map((v) => v.toLowerCase()).sort()).toEqual([...PUBLIC_API_FORM_VENDORS].sort());
+  });
+
+  it.each(CHECKOUT_LANGUAGES)("%s: the free line carries the page's ChatGPT sentence", (lang) => {
+    expect(RETIRED_LINES[lang].free).toContain(chatgptLine(lang));
+  });
+
+  it("llms.txt's apply-yourself line carries it too", () => {
+    const llms = readFileSync(resolve(__dirname, "../../public/llms.txt"), "utf8");
+    const line = llms.split("\n").find((l) => l.startsWith("- [Apply yourself with your AI]"));
+    expect(line, "the apply-yourself line has moved").toBeTruthy();
+    expect(line).toContain(chatgptLine("en"));
   });
 });

@@ -133,7 +133,31 @@ describe("the employer's hint is read with the label (S12-082)", () => {
   it("a cover-letter box whose hint asks for pay is the person's too", () => {
     const q = whoAnswers({ label: "Cover letter", required: false, type: "textarea", hint: "Please include your expected salary." }, 1);
     expect(q.answeredBy).toBe("you");
-    expect(whoAnswers({ label: "Cover letter", required: false, type: "textarea", hint: "Optional." }, 1).answeredBy).toBe("draft_from_your_cv");
+    expect(q.topic).toBe("salary");
+  });
+
+  /**
+   * A COVER-LETTER TEXT BOX IS THE PERSON'S, AS THE ANSWERS PANEL LEAVES IT
+   * (wave 4 recheck of the descope). The classifier marks "Cover letter"
+   * 'file' on origin/main and on this branch, and the answers panel leaves
+   * every 'file' question to the person; apply_myself alone sent a
+   * cover-letter text box to a draft, so the two surfaces disagreed on the
+   * same question. It is now the person's, with the CV offered as help.
+   */
+  it.each([
+    ["Cover letter", "textarea", undefined],
+    ["Cover Letter (optional)", "text", undefined],
+    ["Cover letter", "textarea", "Optional."],
+    ["Cover Letter", "textarea", "Max 500 words."],
+  ])("a %s %s box is the person's, with the CV as help", (label, type, hint) => {
+    expect(classifyQuestion(label, type)).toBe("file");
+    const q = whoAnswers({ label, required: false, type, ...(hint ? { hint } : {}) }, 1);
+    expect(q.answeredBy).toBe("you");
+    expect(q.cvMayHelp).toBe(true);
+  });
+
+  it("an upload slot named for the cover letter stays the person's document", () => {
+    expect(whoAnswers({ label: "Cover Letter", required: false, type: "input_file" }, 1).answeredBy).toBe("your_documents");
   });
 
   it("the packet prints such a hint under the person's heading, never under the drafting one", () => {

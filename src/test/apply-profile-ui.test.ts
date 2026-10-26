@@ -64,7 +64,8 @@ describe("the panel tells the user what a blank field costs", () => {
     expect(panel).toContain("g.consequence");
     const en = JSON.parse(readFileSync(resolve(root, "src/i18n/locales/en.json"), "utf8"));
     expect(en.applyProfile.legalIntro).toMatch(/can void an application/i);
-    expect(en.applyProfile.legalIntro).toMatch(/can miss one worded unusually/i);
+    expect(en.applyProfile.legalIntro).toMatch(/can miss a question about you, even a plainly worded one/i);
+    expect(en.applyProfile.legalIntro).not.toMatch(/unusual/i);
     expect(en.applyProfile.modeAutoHint).toMatch(/CAPTCHA/i);
   });
 

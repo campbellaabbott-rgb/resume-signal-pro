@@ -12,8 +12,8 @@
 // (_shared/self-apply.ts, default-deny: a question is marked for the AI only
 // when it reads as about work done or one of a short list of motivation
 // questions; every other question is marked for the person. The marking reads
-// words, so it can mark an unusually worded question about the person for the
-// AI, and the packet says so under the drafting heading). The rules the AI follows live in the server instructions,
+// words, so it can mark a question about the person, even a plainly worded
+// one, for the AI, and the packet says so under the drafting heading). The rules the AI follows live in the server instructions,
 // the tool description and the apply_myself prompt, never in this result.
 //
 // Pure: the caller hands in the posting, the read and the route, so the Node

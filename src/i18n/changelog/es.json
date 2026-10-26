@@ -346,7 +346,7 @@
     },
     "setupIsOneStep": {
       "title": "Configurar tu agente de candidaturas ahora es un solo paso: sube tu CV",
-      "description": "Leemos tu nombre, correo, teléfono y LinkedIn directamente del documento y los guardamos, sin que tengas que reescribir datos que acabas de darnos. Lo que un formulario necesite y el CV no diga se te pregunta en el momento en que ese formulario lo pide, no antes. Tu permiso de trabajo, salario y fecha de inicio nunca se adivinan."
+      "description": "Leemos tu nombre, correo, teléfono y LinkedIn directamente del documento y los guardamos, sin que tengas que reescribir datos que acabas de darnos. Lo que un formulario necesite y el CV no diga se te pregunta en el momento en que ese formulario lo pide, no antes. En una pregunta que reconoce como pregunta sobre tu permiso de trabajo, salario o fecha de inicio, el agente no adivina la respuesta."
     },
     "sentButUnconfirmed": {
       "title": "Una candidatura que no pudimos confirmar ya no parece que te esté esperando",
@@ -382,7 +382,7 @@
     },
     "applyAgentCountries": {
       "title": "El agente no afirmará que puedes trabajar donde no lo has dicho",
-      "description": "Guardaba un único sí o no sobre autorización laboral y lo usaba para todos los países, así que alguien autorizado en el Reino Unido habría respondido «sí» a «¿tienes autorización legal para trabajar en EE. UU.?»: una afirmación falsa sobre tu situación migratoria, enviada a una empresa en tu nombre, en la pregunta que más filtran. Ahora puedes indicar los países en los que realmente tienes autorización, y cualquier pregunta sobre un país que no hayas indicado se detiene y te espera en lugar de adivinar. También puedes guardar tu dirección y código postal, que varios formularios exigen y ninguno acepta de forma aproximada."
+      "description": "Guardaba un único sí o no sobre autorización laboral y lo usaba para todos los países, así que alguien autorizado en el Reino Unido habría respondido «sí» a «¿tienes autorización legal para trabajar en EE. UU.?»: una afirmación falsa sobre tu situación migratoria, enviada a una empresa en tu nombre, en la pregunta que más filtran. Ahora puedes indicar los países en los que realmente tienes autorización, y una pregunta que reconoce como pregunta sobre un país que no hayas indicado se detiene y te espera. También puedes guardar tu dirección y código postal, que varios formularios exigen y ninguno acepta de forma aproximada."
     },
     "searchFixed": {
       "title": "La búsqueda vuelve a funcionar: la mayoría de las búsquedas fallaban",

@@ -13,11 +13,12 @@
 #     sign_in_required (the writing tools' account gate; asked only once the
 #     build shows the gate, so an older bundle is never asked to write);
 #   - job-board (it keeps 2026-09-09.93): "nurse not night shift in Boston"
-#     excludes "night shift" and keeps Boston as the place; "nurse jobs not in
-#     Texas" names placeExclusion in ignoredFilters; and an anonymous browse
-#     paged by a keyset cursor past 10,000 is served, not refused (judged only
-#     once the round-2 board code serves, by the same offset tell section 92
-#     job-board reads).
+#     excludes "night", origin/main's one word (the phrase rule left wave 4
+#     in the descope of 2026-10-25), and keeps Boston as the place; "nurse
+#     jobs not in Texas" names placeExclusion in ignoredFilters; and an
+#     anonymous browse paged by a keyset cursor past 10,000 is served, not
+#     refused (judged only once the round-2 board code serves, by the same
+#     offset tell section 92 job-board reads).
 # INFO only: the two migrations (20261011210000, 20261011211000) are proved
 # by their own self-checks; the owner's reads are printed.
 #
@@ -56,7 +57,7 @@ const fs=require("fs");const r2=process.env.VD92F_OFF==="400";
 const ok=(c,m)=>console.log((r2?(c?"PASS":"FAIL"):"INFO")+"  "+m+(r2?"":" (not judged: the round-2 board code is not serving)"));
 const rd=(f)=>{try{return JSON.parse(fs.readFileSync(f,"utf8"))}catch{return null}};
 const b=rd("/tmp/vd_92f_boston.json")||{};
-ok(JSON.stringify(b.excludedTerms||[])==="[\"night shift\"]"&&/boston/i.test(JSON.stringify(b.intentFilters||[])),"q \"nurse not night shift in Boston\" excludes "+JSON.stringify(b.excludedTerms||null)+" (want [\"night shift\"]) and lifts "+JSON.stringify(b.intentFilters||null)+" (want Boston)");
+ok(JSON.stringify(b.excludedTerms||[])==="[\"night\"]"&&/boston/i.test(JSON.stringify(b.intentFilters||[])),"q \"nurse not night shift in Boston\" excludes "+JSON.stringify(b.excludedTerms||null)+" (want [\"night\"], origin/main\x27s one word) and lifts "+JSON.stringify(b.intentFilters||null)+" (want Boston)");
 const t=rd("/tmp/vd_92f_tx.json")||{};
 ok((t.ignoredFilters||[]).includes("placeExclusion")&&!/texas/i.test(JSON.stringify(t.intentFilters||[])),"q \"nurse jobs not in Texas\" names placeExclusion ("+JSON.stringify(t.ignoredFilters||null)+") and lifts no Texas ("+JSON.stringify(t.intentFilters||null)+")");
 const c=rd("/tmp/vd_92f_cursor.json")||{};
