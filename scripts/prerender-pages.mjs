@@ -636,28 +636,11 @@ export const bakeLanders = (companyFacet, { D, openOf, max, min, nameOf = null, 
 });
 
 /**
- * Rule 1 of the posting rule: a row may get a page of its own only when it
- * carries everything the page must state, under its employer's own name (F1),
- * from the employer itself (a staffing agency's row is not: the page says the
- * posting came from the employer's own system and names the row's company as
- * the hiring organisation; nor is a row the USAJOBS listing site carries),
- * with a place, and still live. The description
- * gate needs the detail read and is applied after it.
+ * Rule 1 of the posting rule (which rows may get a page and job markup) lives
+ * in a module of its own with no imports, so the app runs the same function
+ * inside postingJsonLd (scripts/prerender-posting-rule.mjs).
  */
-export const postingRowEligible = (j, D) => !!(j
-  && typeof j.id === "string"
-  && D.postingPagePath(j.id)
-  && typeof j.title === "string" && j.title.trim()
-  && typeof j.company === "string" && j.company.trim()
-  && !D.isCodeShapedName(j.token ?? D.postingPathParts(j.id)?.token ?? null, D.postingEmployer(j))
-  && j.agency !== true
-  // USAJOBS is a listing site, not an employer: a page of its own would say
-  // "Apply on <agency>'s own site" and "never an aggregator" of a row the
-  // federal listing site carries.
-  && j.source !== "usajobs" && (j.token ?? D.postingPathParts(j.id)?.token ?? null) !== "usajobs"
-  && j.country
-  && (j.workMode === "remote" || j.location)
-  && D.isPostingLive(j));
+export { postingRowEligible } from "./prerender-posting-rule.mjs";
 
 /**
  * HOW MANY NEW POSTING PAGES ONE BAKE MAY ADD (rule 3 of the bake's posting

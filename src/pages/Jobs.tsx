@@ -84,6 +84,7 @@ import { HowApplyingWorks } from "@/components/jobs/HowApplyingWorks";
 import { applySystem, cleanApplyUrl } from "@/lib/listing/apply-url";
 import { listingEmployer } from "@/lib/listing/employer";
 import { displayLocation as listingDisplayLocation } from "@/lib/listing/location";
+import { postingJsonLd } from "@/components/jobs/posting-page";
 import { LcaFiledWagesLine } from "@/components/jobs/LcaFiledWagesLine";
 import { EmployerLcaFiledWagesLine } from "@/components/jobs/LcaFiledWagesLine";
 import { OntarioEsaDisclosures } from "@/components/jobs/OntarioEsaDisclosures";
@@ -4547,6 +4548,12 @@ function JobsBoard({ boardId }: { boardId: string }) {
     if (!detailJob || !detailDesc || detailDesc.length < 100 || !hasDate || !hasPlace) {
       return restoreCanonical;
     }
+    // AND ONLY WHERE THE BAKE WOULD WRITE JOB MARKUP (the trusted-pages round,
+    // 2026-10-25): postingJsonLd runs the bake's rules (the name gate, rule 1,
+    // the country rule, the window), so a posting whose employer name is logo
+    // text, a staffing agency's row or a place in another country gets no
+    // JobPosting from this pane either.
+    if (!postingJsonLd(detailJob, detailDesc, { site: "https://resumebooster.work" })) return restoreCanonical;
     const ld: Record<string, unknown> = {
       "@context": "https://schema.org",
       "@type": "JobPosting",

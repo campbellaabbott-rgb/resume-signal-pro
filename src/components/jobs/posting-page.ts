@@ -17,6 +17,14 @@
 
 import { employerName, possessive } from "../../lib/company-display";
 
+// The bake's own name gate and its rule for which rows get a page, read here
+// so the job markup the app writes is the markup the bake writes (see
+// postingMarkupGate below). Both modules are plain JavaScript with no imports
+// of their own, which is how plain node runs them for the bake.
+import { bakeEmployerName, type BakeEmployerName } from "../../../scripts/prerender-names.mjs";
+import { postingRowEligible } from "../../../scripts/prerender-posting-rule.mjs";
+import { isCodeShapedName } from "../../lib/company-display";
+
 /**
  * THE BOARD'S OWN SERVING WINDOW, MIRRORED — and the mirror is the point.
  *
@@ -977,6 +985,68 @@ const LD_EMPLOYMENT_TYPE: Record<string, string> = {
 export const ldEmploymentType = (stated: string | null | undefined): string | undefined =>
   stated ? LD_EMPLOYMENT_TYPE[String(stated).toLowerCase().replace(/\s+/g, " ").trim()] : undefined;
 
+/** The shortest description, in display paragraphs, a posting page is written for. */
+export const POSTING_MIN_DESCRIPTION = 100;
+
+/** True when the employer's description is long enough to carry a page (the bake's rule). */
+export function postingDescribedEnough(description: string | null | undefined): boolean {
+  return typeof description === "string" && jdParagraphs(description).join("\n").length >= POSTING_MIN_DESCRIPTION;
+}
+
+/**
+ * THE NAME A POSTING'S PAGE PRINTS, AND WHETHER IT MAY PRINT ONE (SEO-006).
+ *
+ * The bake's name gate (scripts/prerender-names.mjs) run on the employer as
+ * the app names it (postingEmployer's name: the override, then the stored
+ * name): a trailing career-site label comes off ("Chubb External" is Chubb),
+ * and a name that cannot be anyone's (logo or file-name text, a careers
+ * subdomain, a bare generic word, a tenant code) comes back with a reason.
+ * The bake asks this for every posting, and so does postingJsonLd.
+ */
+export function postingNameVerdict(job: Pick<PostingRow, "id" | "token" | "company">): BakeEmployerName {
+  const token = job.token ?? postingPathParts(job.id)?.token ?? null;
+  return bakeEmployerName(token, job.company, { boardName: employerName, isCodeShapedName });
+}
+
+/**
+ * WHETHER THE BAKE WOULD WRITE JOB MARKUP FOR THIS ROW, AND UNDER WHICH NAME.
+ *
+ * The React posting page wrote postingJsonLd after hydration with none of the
+ * bake's gates in front of it, so a page whose static file withheld the
+ * markup (a refused name, owner decision D7) carried a JobPosting naming
+ * that name once a crawler that renders had run the app (the trusted-pages
+ * round, 2026-10-25). The bake applied three rules the app did not: rule 1
+ * (postingRowEligible: no staffing agency, no USAJOBS row, no tenant code, a
+ * place, a hirer the board names, still live), the description length, and
+ * the name gate. They are applied here, and postingJsonLd applies them first,
+ * so no caller can write markup the bake would not.
+ *
+ * Returns the row as the markup names it (the employer's name repaired), or
+ * null when the bake would write none. `ignoreNameGate` lets the bake ask
+ * whether the name is the ONLY thing in the way (a carried page then keeps
+ * its page with no markup, D7); it skips the name rules (the gate and the
+ * tenant-code clause of rule 1) and is never used to emit markup.
+ */
+export function postingMarkupGate(
+  job: PostingRow,
+  description: string | null | undefined,
+  opts: { now?: Date; ignoreNameGate?: boolean } = {},
+): PostingRow | null {
+  const now = opts.now ?? new Date();
+  const rule = {
+    postingPagePath,
+    postingPathParts,
+    postingEmployer,
+    isCodeShapedName: opts.ignoreNameGate ? () => false : isCodeShapedName,
+    isPostingLive: (j: PostingRow) => isPostingLive(j, now),
+  };
+  if (!postingRowEligible(job, rule)) return null;
+  if (!postingDescribedEnough(description)) return null;
+  const named = postingNameVerdict(job);
+  if (named.reason && !opts.ignoreNameGate) return null;
+  return named.repaired ? { ...job, company: named.name } : job;
+}
+
 /**
  * EVERY REQUIRED PROPERTY, OR NOTHING AT ALL.
  *
@@ -999,14 +1069,21 @@ export const ldEmploymentType = (stated: string | null | undefined): string | un
  * text, annualised. The employer's own words stay on the visible page.
  */
 export function postingJsonLd(
-  job: PostingRow,
+  row: PostingRow,
   description: string | null | undefined,
   // `ignoreCountryMismatch` lets the bake ask whether the country is the ONLY
   // thing in the way (a carried page then keeps its page with no markup, D7);
-  // it is never used to emit markup.
-  opts: { site: string; now?: Date; ignoreCountryMismatch?: boolean } = { site: "" },
+  // `ignoreNameGate` asks the same of the name (postingMarkupGate). Neither is
+  // ever used to emit markup.
+  opts: { site: string; now?: Date; ignoreCountryMismatch?: boolean; ignoreNameGate?: boolean } = { site: "" },
 ): Record<string, unknown> | null {
   const now = opts.now ?? new Date();
+  // THE BAKE'S RULES COME FIRST, FOR EVERY CALLER: the bake, the React posting
+  // page and the board's detail pane all write what this returns, so a row the
+  // bake would give no markup gets none anywhere, and a repaired name is the
+  // one every caller's markup names.
+  const job = postingMarkupGate(row, description, { now, ignoreNameGate: opts.ignoreNameGate });
+  if (!job) return null;
   const path = postingPagePath(job.id);
   const desc = typeof description === "string" ? jdText(description).trim() : "";
   // TELECOMMUTE ONLY ON THE HIRING SYSTEM'S OWN REMOTE FIELD (SEO-003's rule).

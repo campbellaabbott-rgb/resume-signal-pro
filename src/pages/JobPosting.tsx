@@ -241,18 +241,36 @@ export default function JobPosting() {
   // written in its place.
   const shown = useMemo(() => (job ? shownPosting(job) : null), [job]);
   const dated = !!shown?.postedAt;
+  //
+  // ONLY WHERE THE BAKE WOULD WRITE IT (the trusted-pages round, 2026-10-25).
+  // postingJsonLd applies the bake's own rules before it writes anything: the
+  // name gate (a name that is logo text or a bare label is refused, and a
+  // career-site label comes off the one it names), rule 1 (no staffing
+  // agency, no USAJOBS row, a place, a hirer the board names), the country
+  // rule and the window. This page used to write it for a name the bake
+  // refused, so the static file withheld the markup and the hydrated page
+  // put it back. The question is asked of the row as the board returned it,
+  // which is the row the bake judges, and the markup is then built from the
+  // row as this page shows it (shownPosting's decoded title, a location with
+  // no half a bracket), so cleaning a row can never earn it markup the bake
+  // would refuse.
   const ld = useMemo(
-    () => (live && shown && dated ? postingJsonLd(shown, description, { site: SITE }) : null),
-    [live, shown, dated, description],
+    () => (live && job && shown && dated && postingJsonLd(job, description, { site: SITE })
+      ? postingJsonLd(shown, description, { site: SITE })
+      : null),
+    [live, job, shown, dated, description],
   );
   //
   // ONLY "GONE" RETRACTS. While loading, after a failed read and under a
   // budget refusal the posting may well be live, and clearing the baked block
   // then told every early renderer it was not — so the head is left exactly
-  // as the bake wrote it until there is an answer either way.
+  // as the bake wrote it until there is an answer either way. Once the answer
+  // is a live posting the bake would write no markup for (undated, a refused
+  // name, another country's place), any block in the head goes: a file an
+  // older bake wrote may still carry one.
   useEffect(() => {
     if (retracted) { clearJobMarkup(); return; }
-    if (live && !dated) { clearJobMarkup(); return; }
+    if (live && !ld) { clearJobMarkup(); return; }
     if (!ld) return;
     clearJobMarkup();
     const tag = document.createElement("script");
@@ -261,7 +279,7 @@ export default function JobPosting() {
     tag.textContent = JSON.stringify(ld);
     document.head.appendChild(tag);
     return () => { clearJobMarkup(); };
-  }, [ld, retracted, live, dated]);
+  }, [ld, retracted, live]);
   // Leaving the page takes any posting markup with it, baked or ours.
   useEffect(() => () => { clearJobMarkup(); }, []);
 
