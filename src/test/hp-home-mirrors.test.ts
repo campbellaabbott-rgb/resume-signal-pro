@@ -70,7 +70,10 @@ describe("what \"/\" loads", () => {
   });
 
   it("mounts JobCard with no save handler, no fit button and no menu", () => {
-    const rows = text("src/components/home/HomeBoardRows.tsx");
+    // The cards live in their own chunk since the switch-over (HomeBoardRowCards).
+    expect(text("src/components/home/HomeBoardRows.tsx")).toMatch(/import\("\.\/HomeBoardRowCards"\)/);
+    expect(text("src/components/home/HomeBoardRows.tsx")).not.toMatch(/from "@\/components\/jobs\/listing\/JobCard"/);
+    const rows = text("src/components/home/HomeBoardRowCards.tsx");
     const cards = rows.match(/<JobCard\b[^>]*\/>/g) ?? [];
     expect(cards.length).toBeGreaterThan(0);
     for (const c of cards) expect(c).not.toMatch(/onToggleSave|onCheckFit|menu=|onOpen/);
