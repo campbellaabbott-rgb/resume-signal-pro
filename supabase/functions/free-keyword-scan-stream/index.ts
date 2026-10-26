@@ -13,7 +13,7 @@ import { FIXED_CHOICES_STAY_ENGLISH, normalizeScanReport } from "../_shared/scan
 import { functionCeiling } from "../_shared/model-spend-gate.ts";
 import { attachScanMailSeal } from "../_shared/scan-mail-seal.ts";
 import { accountProStanding } from "../_shared/pro-standing.ts";
-import { scrubSealedSentences } from "./seal-safe.ts";
+import { attachMailCopy } from "./seal-safe.ts";
 import { evaluateCountryStandards } from "./country-standards.ts";
 import { websiteSessionOf } from "../_shared/website-session.ts";
 import { computeParseQuality, parseResumeStructure, formatStructureForPrompt } from "./resume-structure.ts";
@@ -6512,7 +6512,8 @@ function clampImprovementToScoreGap(report: Record<string, unknown>): void {
 // daily cap on scans, the plan's words (owner decision 2026-10-17).
 // 2026-10-11.30 (wave 4 round 2 fixes): the signed-in account is read from a
 // website session only, as the primary does (CP-J / S9-001).
-const FN_BUILD = "free-keyword-scan-stream.2026-10-11.30";
+// 2026-10-11.31 (recheck 3, 2026-10-26): the report the page shows keeps its red flags and fix steps whole; the mailed sentences are a scrubbed copy in reportMeta.mailSentences, and the seal covers that copy.
+const FN_BUILD = "free-keyword-scan-stream.2026-10-11.31";
 
 /** The primary's report id formula (free-keyword-scan/report-meta.ts reportIdFor): this report's cache key and its score. */
 async function streamReportId(cacheKey: string, score: unknown): Promise<string> {
@@ -7686,8 +7687,7 @@ serve(async (req) => {
               benchmarkSource: 'estimate',
             };
           }
-          scrubSealedSentences(servedFromCache, resumeText);
-          await attachScanMailSeal(servedFromCache, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
+          await attachScanMailSeal(attachMailCopy(servedFromCache, resumeText), Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
           send('complete', servedFromCache);
           close();
           return;
@@ -9014,8 +9014,9 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
 
       // THE PRIMARY'S REPORT META (S12-145): a report id and, below, the mail
       // seal. Without them "email my report" from a backup-scanner report
-      // printed the numbers and none of the issues. Sealed sentences are
-      // scrubbed before the report is cached or sealed (S12-068).
+      // printed the numbers and none of the issues. The mailed sentences are a
+      // scrubbed copy made at the seal (S12-068, recheck 3); the report the
+      // page shows and the cache keeps is the report's own.
       responseData.reportMeta = {
         reportId: await streamReportId(cacheKey, responseData.atsScoreEstimate),
         engineVersion: 'stream',
@@ -9023,7 +9024,6 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
         industry: responseData.industry ?? null,
         benchmarkSource: 'estimate',
       };
-      scrubSealedSentences(responseData, resumeText);
 
       // Store in cache for future requests (non-blocking)
       if (!thinAnalysis) EdgeRuntime.waitUntil(
@@ -9052,7 +9052,7 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
       console.log(`[FREE-KEYWORD-SCAN-STREAM] Complete in ${duration}ms, ATS: ${analysis.atsScoreEstimate}, Recruiter: ${dualScore.recruiterImpact}`);
 
       // Send final result, sealed last over exactly what the browser receives.
-      await attachScanMailSeal(responseData, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
+      await attachScanMailSeal(attachMailCopy(responseData, resumeText), Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
       send('progress', { stage: 'complete', message: 'Analysis complete!', progress: 100 });
       send('complete', responseData);
       close();

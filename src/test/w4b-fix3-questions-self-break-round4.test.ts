@@ -13,7 +13,8 @@
  * about this opportunity, and what you would like to learn?"); fixing them
  * also found "citation tools" read as a citation. Each verdict at writing
  * time is in the fixture (whenWritten); all of them are fixed but one, and
- * that one origin/main also sends to the person.
+ * that one origin/main also sends to the person. The recheck of the descope
+ * sent one more back: q4sb-39, a cover-letter text box (see below).
  */
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
@@ -27,8 +28,13 @@ type Row = {
 };
 const ROWS = (JSON.parse(readFileSync(resolve(__dirname, "fixtures/w4b-fix3-questions/self-break-round4.json"), "utf8")) as { rows: Row[] }).rows;
 
-/** Work questions still sent to the person: HR work in protected words ("running background checks"), which origin/main sends there too. */
-const KNOWN_OVER_ROUTED = new Set(["q4sb-42"]);
+/**
+ * Work questions still sent to the person, each where origin/main sends it:
+ * HR work in protected words ("running background checks"), and a
+ * cover-letter text box, which the classifier files and the answers panel
+ * leaves with the person (wave 4 recheck of the descope).
+ */
+const KNOWN_OVER_ROUTED = new Set(["q4sb-42", "q4sb-39"]);
 
 const verdict = (r: Row): Verdict =>
   whoAnswers({ label: r.label, required: true, type: "textarea", ...(r.hint ? { hint: r.hint } : {}) }, 1).answeredBy === "draft_from_your_cv" ? "draft" : "person";

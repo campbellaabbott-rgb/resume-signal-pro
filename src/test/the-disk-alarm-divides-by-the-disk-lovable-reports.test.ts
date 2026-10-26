@@ -11,10 +11,16 @@
  *
  * Run in pglite over a stand-in meta table.
  */
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { PGlite } from "@electric-sql/pglite";
+
+// A PGLITE TEST IS NOT A 5-SECOND TEST. A case here starts or queries a
+// Postgres in pglite; under load the staged-runner case ran 5.06 seconds and
+// refused a push with nothing wrong (2026-10-25). This is the budget the other
+// pglite files here use.
+vi.setConfig({ hookTimeout: 120_000, testTimeout: 30_000 });
 
 const SQL = readFileSync(
   resolve(__dirname, "../../supabase/migrations/20261017100000_the_disk_is_forty_gb_as_lovable_reads_it.sql"),

@@ -22,19 +22,30 @@
 import { foldTypeahead } from "./search-routing.ts";
 
 export type FacetEmployer = { token?: string; name?: string; open?: number; count?: number; tokens?: string[] };
-export type Candidate = { token: string; name: string; open?: number };
+export type Candidate = { token: string; name: string; open?: number; vendor?: string; agency?: true };
+/** What the catalogue says of a board: its vendor and whether it is a staffing agency's. */
+export type BoardFacts = (token: string) => { source?: string; agency?: boolean } | undefined;
 export type CompanyScope = {
   /** What the list filters by: the tokens asked for, plus every name resolved. */
   companies: unknown[];
   resolved: Array<{ asked: string; name: string; tokens: string[] }>;
-  /** ambiguous: two carried employers share the exact name (we carry it, under more than one employer). */
-  unresolved: Array<{ asked: string; candidates: Candidate[]; ambiguous?: true }>;
+  /** ambiguous: two carried employers share the exact name; held: the one exact match is a board with a handful of roles. Either way we carry it. */
+  unresolved: Array<{ asked: string; candidates: Candidate[]; ambiguous?: true; held?: "few_open" }>;
   /** Names past NAMES_PER_CALL: not looked up, and not in the scope. */
   skipped: string[];
 };
 
 /** Names looked up in one call; agent-mcp looks up the same five. */
 export const NAMES_PER_CALL = 5;
+/**
+ * A lone exact match with fewer open roles than this is offered as a
+ * candidate, never searched under the name: the merge recheck found "Meta"
+ * resolving to a four-role staffing board. Its size alone holds it. Whether
+ * the catalogue labels a board an agency's never holds it (recheck 3): the
+ * label was wrong on some employers' own boards (State Farm, Principal), and a
+ * real agency asked for by its own name is the board that was asked for.
+ */
+export const FEW_OPEN = 10;
 
 /** The scope a request asks for, when it names an employer by name rather than by token; null otherwise. */
 export function askedByName(body: Record<string, unknown>, catalogue: ReadonlySet<string>): unknown[] | null {
@@ -73,7 +84,7 @@ function indexOf(employers: readonly FacetEmployer[]): NameIndex {
  * sub-boards in `tokens`). Entries that are catalogue tokens, or not strings,
  * pass through untouched for normalizeFilters to judge.
  */
-export function resolveCompanyNames(asked: readonly unknown[], catalogue: ReadonlySet<string>, employers: readonly FacetEmployer[], maxNames = NAMES_PER_CALL): CompanyScope {
+export function resolveCompanyNames(asked: readonly unknown[], catalogue: ReadonlySet<string>, employers: readonly FacetEmployer[], maxNames = NAMES_PER_CALL, facts?: BoardFacts): CompanyScope {
   const out: CompanyScope = { companies: [], resolved: [], unresolved: [], skipped: [] };
   const keep = new Set<unknown>();
   const push = (v: unknown) => { if (!keep.has(v)) { keep.add(v); out.companies.push(v); } };
@@ -92,6 +103,14 @@ export function resolveCompanyNames(asked: readonly unknown[], catalogue: Readon
         ? exact
         : employers.filter((_, i) => ix.folded[i].includes(fq)).sort((x, y) => size(y) - size(x));
       out.unresolved.push({ asked: a, candidates: near.slice(0, 5).map(candidate), ...(exact.length > 1 ? { ambiguous: true as const } : {}) });
+      continue;
+    }
+    if (exact.length === 1 && !named.length && size(exact[0]) < FEW_OPEN) {
+      const e = exact[0];
+      const about = tokensOf(e).map((t) => facts?.(t));
+      const agency = about.length > 0 && about.every((f) => f?.agency === true);
+      const c: Candidate = { ...candidate(e), ...(about[0]?.source ? { vendor: about[0].source } : {}), ...(agency ? { agency: true as const } : {}) };
+      out.unresolved.push({ asked: a, candidates: [c], held: "few_open" });
       continue;
     }
     const hits = [...exact, ...named];

@@ -52,7 +52,10 @@ import { sendMail } from "../_shared/send-mail.ts";
 // Provable from outside: every response, the preflight included, carries this.
 // 2026-10-11.29 (wave 4 round 2 integration): R9 judges refusals and 5xx
 // answers only, as scan-heartbeat does; timeouts are reported, not judged.
-const FN_BUILD = "mail-watch.2026-10-11.29";
+// 2026-10-11.30 (wave 4 merges main 899be058): no change of its own; the
+// _shared/send-mail.ts it bundles keeps its deadline armed until the Resend
+// body is read (R1 hotfix, process-email-queue 2026-10-14.2).
+const FN_BUILD = "mail-watch.2026-10-11.30";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",

@@ -113,7 +113,7 @@ VD74_W4=0; build_ge agent-mcp "${VD74_MCP:-}" "2026-10-11" "1" && VD74_W4=1
 # The copy the browser loads (the English strings chunk the main bundle names).
 EN74=""
 MAIN74=$(curl -s -m 30 "$SITE/" | grep -o '/assets/index-[^"]*\.js' | head -1)
-for CH in $(curl -s -m 30 "$SITE$MAIN74" | grep -o '"\./en-[A-Za-z0-9_-]*\.js"' | tr -d '"' | sed 's|^\./||' | sort -u); do
+for CH in $(bash scripts/verify-us-english.sh "$SITE$MAIN74"); do
   BODY74=$(curl -s -m 30 "$SITE/assets/$CH")
   printf '%s' "$BODY74" | grep -q "sourceNote" || continue
   EN74=$BODY74; break

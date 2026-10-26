@@ -66,7 +66,11 @@ import { commissionCentsFor } from "../_shared/affiliate-commission.ts";
 // entitlement, balance or notice: only a completed one-off checkout (the
 // owner's rehearsal) is handled, and with no referral commission; and a
 // delivery row records the currency the buyer paid in.
-const FN_BUILD = "stripe-webhook.2026-10-11.30";
+// 2026-10-11.31 (wave 4 merges main 899be058): no change of its own; the
+// _shared/send-mail.ts it bundles keeps its deadline armed until the Resend
+// body is read (R1 hotfix, process-email-queue 2026-10-14.2).
+// 2026-10-11.32 (recheck 3, 2026-10-26): a test-mode event is acted on only for a Full Analysis checkout; a test scan pack, cut product or any other one-off is acknowledged and ignored, so a rehearsal adds no scan credits and runs no generator.
+const FN_BUILD = "stripe-webhook.2026-10-11.32";
 const BUILD_HEADER = { "x-fn-build": FN_BUILD };
 
 // HOW LONG A MAKER HOLDS AN ORDER (20261011144000, CP-019). The lease
@@ -502,14 +506,18 @@ const ENTITLEMENT_PRODUCT_TYPES = ["pro_subscription", "apply_agent"];
 
 /**
  * The one test-mode event this function acts on: a completed (or async-paid)
- * one-off checkout that is not an entitlement, the owner's rehearsal of a
- * purchase. Everything else a test key can sign is acknowledged and ignored.
+ * Full Analysis checkout, the owner's rehearsal of a purchase, which writes
+ * only its claim, its delivery row and its link mail. Everything else a test
+ * key can sign is acknowledged and ignored (recheck 3, 2026-10-26: any other
+ * one-off ran against the production tables, so a test scan pack added to a
+ * live scan balance and a test cut product ran its generator and mailed the
+ * buyer).
  */
 export function testModeHandles(event: { type: string; data?: { object?: unknown } }): boolean {
   if (event.type !== "checkout.session.completed" && event.type !== "checkout.session.async_payment_succeeded") return false;
   const s = (event.data?.object ?? {}) as { mode?: unknown; metadata?: Record<string, unknown> | null };
   const type = String(s.metadata?.product_type ?? "");
-  return s.mode !== "subscription" && !ENTITLEMENT_PRODUCT_TYPES.includes(type) && type !== PASS_PRODUCT_TYPE;
+  return s.mode !== "subscription" && type === FULL_ANALYSIS_PRODUCT_TYPE;
 }
 const DELIVERED_ELSEWHERE_PRODUCT_TYPES = [FULL_ANALYSIS_PRODUCT_TYPE, "freelance_boost", "freelance_transition_pro"];
 const SCAN_CREDIT_PRODUCT_TYPES = ["scan_pack", "scan_credits", "career_bundle"];
@@ -1401,7 +1409,7 @@ serve(async (req) => {
     // test-mode webhook, signed with STRIPE_TEST_WEBHOOK_SECRET. An event
     // verified by the test secret must say livemode false, and is read with
     // the test-mode client; but it runs against the production tables, so
-    // only the one-off purchase path is handled (testModeHandles below).
+    // only a Full Analysis checkout is handled (testModeHandles below).
     let event: Stripe.Event | null = null;
     let testMode = false;
     try {
@@ -1427,12 +1435,14 @@ serve(async (req) => {
       });
     }
     const stripe: Stripe = testStripe ?? liveStripe;
-    // A TEST-MODE EVENT CHANGES NO LIVE ENTITLEMENT, BALANCE OR NOTICE: a
-    // subscription, an invoice, a refund or dispute, an agent plan or pass
-    // would write pro_subscribers, the agent cache, payment_revoke or an
-    // affiliate's balance in production. Acknowledged, never acted on.
+    // A TEST-MODE EVENT TOUCHES ONLY A FULL ANALYSIS'S CLAIM, DELIVERY ROW
+    // AND LINK MAIL: a subscription, an invoice, a refund or dispute, an agent
+    // plan or pass, a scan pack or another one-off would write
+    // pro_subscribers, the agent cache, payment_revoke, a scan balance or an
+    // affiliate's balance, or run a generator, in production. Acknowledged,
+    // never acted on.
     if (testMode && !testModeHandles(event)) {
-      logStep("Test-mode event acknowledged and ignored: only a completed one-off checkout is rehearsed", { type: event.type });
+      logStep("Test-mode event acknowledged and ignored: only a completed Full Analysis checkout is rehearsed", { type: event.type });
       return new Response(JSON.stringify({ received: true, testMode: true, ignored: event.type }), {
         headers: { "Content-Type": "application/json", ...BUILD_HEADER }, status: 200,
       });

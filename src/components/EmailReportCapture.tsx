@@ -7,6 +7,7 @@ import { Mail, Check, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTranslation } from "react-i18next";
 import { errorBodyOf } from "@/lib/confirm-link";
+import { marketingMailPaused } from "@/lib/marketing-pause";
 
 interface EmailReportCaptureProps {
   payload: {
@@ -57,6 +58,12 @@ export function EmailReportCapture({ payload, variant = "full", hideIfKnown = fa
   // sequence, and nothing is queued until the inbox's owner presses it.
   const [dripOptIn, setDripOptIn] = useState(false);
   const [dripAsked, setDripAsked] = useState(false);
+  // MARKETING MAIL IS PAUSED UNTIL THE SELLER IS NAMED (S12-010, recheck 3):
+  // the pulse batch sends nothing and the report mail carries no button for
+  // the fix-plan emails, so neither is offered here while it is.
+  const marketingPaused = marketingMailPaused();
+  const askDrip = dripOptIn && !marketingPaused;
+  const askPulse = subscribePulse && !marketingPaused;
 
   const send = async () => {
     const trimmed = email.trim();
@@ -71,7 +78,7 @@ export function EmailReportCapture({ payload, variant = "full", hideIfKnown = fa
       // The report request never carries the pulse choice: send-scan-report's
       // own write to the pulse list enrolled an address with no confirmation.
       const { data, error } = await supabase.functions.invoke("send-scan-report", {
-        body: { email: trimmed, dripOptIn, ...payload },
+        body: { email: trimmed, dripOptIn: askDrip, ...payload },
       });
       if (error || !(data as { success?: boolean })?.success) {
         // A refusal says why (an inbox's daily allowance, an address that
@@ -82,8 +89,8 @@ export function EmailReportCapture({ payload, variant = "full", hideIfKnown = fa
         throw new Error(refusal || error?.message || "send failed");
       }
       localStorage.setItem("rb_last_email", trimmed);
-      setDripAsked(dripOptIn);
-      if (subscribePulse) {
+      setDripAsked(askDrip);
+      if (askPulse) {
         // Best effort: the report already went, and a failed pulse request
         // must not turn that into an error. Success means a link was mailed
         // (or one was already due); the address is still not subscribed.
@@ -205,6 +212,7 @@ export function EmailReportCapture({ payload, variant = "full", hideIfKnown = fa
       {suggestedEmail && email === suggestedEmail && (
         <p className="text-[10px] text-primary mt-1.5">{t('freeResults.enterprise.emailSpotted', 'We spotted this address on your resume — nothing is sent unless you click Send.')}</p>
       )}
+      {!marketingPaused && (<>
       <label className="flex items-start gap-2 mt-2.5 cursor-pointer">
         <input
           type="checkbox"
@@ -227,6 +235,7 @@ export function EmailReportCapture({ payload, variant = "full", hideIfKnown = fa
           {t('freeResults.enterprise.dripOptIn', 'Break my fix plan into a short email sequence: top fixes on day 2, the rest on day 4, a rescan reminder on day 6 — and one question on day 14: did it get you interviews? Four short emails, cancel anytime.')}
         </span>
       </label>
+      </>)}
       <p className="text-[10px] text-muted-foreground mt-2">{t('freeResults.enterprise.emailPrivacy', 'Only the analysis results are emailed — never your resume. No spam.')}</p>
     </div>
   );

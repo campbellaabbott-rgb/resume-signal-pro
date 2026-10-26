@@ -1287,7 +1287,8 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
 
       {/* The queue */}
       {queue.length === 0 ? (
-        mandate?.active ? (
+        // No run comes while the agent is switched off, so no promise of one.
+        APPLY_AGENT_ON && mandate?.active ? (
           <p className="text-sm text-muted-foreground italic">{t("agentQueue.emptyActive", "No picks yet — your first queue arrives after tonight's run.")}</p>
         ) : null
       ) : (

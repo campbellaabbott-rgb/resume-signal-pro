@@ -160,7 +160,9 @@ describe("the page says six and the server says eleven", () => {
   it("the host table names both kinds of host, and the page renders it", () => {
     expect(MCP_HOSTS.some((h) => h.header)).toBe(true);
     expect(MCP_HOSTS.some((h) => !h.header)).toBe(true);
-    expect(PAGE).toMatch(/MCP_HOSTS\.map\(/);
+    // The page renders the table of the apps it may name (R7: Claude, ChatGPT,
+    // Claude Code); the header flag property below holds over the whole table.
+    expect(PAGE).toMatch(/MCP_PAGE_HOSTS\.map\(/);
     // The sentence the refuter caught: both named clients "configure the
     // Authorization header in their own UI". Neither can, and the page must
     // not say either can — the property is the host table's `header` flag.

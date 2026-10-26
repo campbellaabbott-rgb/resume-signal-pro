@@ -1,17 +1,18 @@
 /**
- * WHEN THE EMPLOYER'S FEED LAST LISTED A POSTING, NOT WHEN WE FIRST SAW IT
- * (sweep S12-121).
+ * WHEN THE BOARD LAST READ THE EMPLOYER'S FEED, NOT WHEN WE FIRST SAW A
+ * POSTING (sweep S12-121).
  *
  * /v1 published `last_seen`, which job-board writes once, at insert, and never
  * again: it is the discovery time under another name (job-board's own row
  * writer says so). A customer filtering on it for freshness dropped every
  * long-lived posting that is still live. The stamp that moves is the board's
  * verification row (job_board_verifications), written each time an employer's
- * feed is read; a posting /v1 serves has missing_since IS NULL, so the latest
- * read still listed it. That stamp is published as `last_verified_at`, and
- * `last_seen` now carries the same value, which is what its name always
- * claimed. Null when no stamp is known or the read failed: never the insert
- * time.
+ * feed is read. That stamp is published as `last_verified_at`, and
+ * `last_seen` now carries the same value. It says when the board last read
+ * the employer's feed, not that the read listed this posting: a large board
+ * (Workday, Oracle) is read in windows, so a posting outside the window still
+ * gets the board's stamp (recheck 3, 2026-10-26). Null when no stamp is known
+ * or the read failed: never the insert time.
  *
  * KEYED AS job-board KEYS IT. A board on a token that several boards share
  * stamps its own key, `<source>:<token>`, and the bare token too; every other

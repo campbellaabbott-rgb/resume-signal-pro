@@ -189,7 +189,7 @@ describe("a live posting is served as itself", () => {
     invoke.mockResolvedValue({ data: { job: row({ agency: true }), description: DESC }, error: null });
     at(PATH);
     expect(await screen.findByRole("heading", { level: 1, name: "Staff Nurse" })).toBeTruthy();
-    expect(screen.queryByText(/never an aggregator/)).toBeNull();
+    expect(screen.queryByText(/never copied from another job board/)).toBeNull();
     // Everything the employer DID state is still there.
     expect(screen.getByText(/We are hiring a staff nurse/)).toBeTruthy();
   });
@@ -197,7 +197,7 @@ describe("a live posting is served as itself", () => {
   it("keeps the sentence for a posting that really did come from the employer", async () => {
     invoke.mockResolvedValue({ data: { job: row({ agency: false }), description: DESC }, error: null });
     at(PATH);
-    expect(await screen.findByText(/never an aggregator/)).toBeTruthy();
+    expect(await screen.findByText(/never copied from another job board/)).toBeTruthy();
   });
 
   it("prints the employer's pay figures when they stated one, with the stored string one hover away", async () => {

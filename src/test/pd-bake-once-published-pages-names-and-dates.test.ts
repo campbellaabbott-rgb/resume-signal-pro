@@ -142,7 +142,10 @@ describe("SEO-002: a published company URL this bake did not choose", () => {
     expect(companyCarryState({ prior: undefined, today: TODAY, onBoard: false, cachedYoung: true })).toBe("stub");
     expect(companyCarryState({ prior: { state: "stub", since: "2026-08-01" }, today: TODAY, onBoard: false, cachedYoung: false }), `past ${COMPANY_STUB_KEEP_DAYS} days`).toBe("tombstone");
     expect(companyCarryState({ prior: { state: "stub", since: "2026-10-01" }, today: TODAY, onBoard: false, cachedYoung: false })).toBe("stub");
-    expect(companyCarryState({ prior: { state: "tombstone", since: "2026-01-01" }, today: TODAY, onBoard: true, cachedYoung: true })).toBe("tombstone");
+    // S13-047: a tombstone whose employer is back on the board with open
+    // roles is a stub (or its old noindex page) again, never a dead page.
+    expect(companyCarryState({ prior: { state: "tombstone", since: "2026-01-01" }, today: TODAY, onBoard: true, cachedYoung: true })).toBe("noindex");
+    expect(companyCarryState({ prior: { state: "tombstone", since: "2026-01-01" }, today: TODAY, onBoard: false, cachedYoung: false })).toBe("tombstone");
   });
 
   it("a state that holds keeps the day it began, a seed stays marked, and the title is hashed, not stored", () => {

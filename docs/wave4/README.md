@@ -35,7 +35,13 @@ and one stayed with its claims made true. Branch `wave4-descope`, pushed to
 `wave4/integration`. The descope's first form (27e54375) kept rounds 3 and 4's
 search split; a recheck of it (2026-10-25, findings in this section) found
 that mix worse than main too, so the whole search exclusion went back to
-main's and the question copy was weakened once more (823cdc1f, f805722c).
+main's and the question copy was weakened once more (823cdc1f, f805722c). A
+second recheck (2026-10-25) found nine more defects, three of them blockers;
+all nine are fixed under "The second recheck of the descope" at the end of
+this section (21c849c6, f46d1fbe, ad3752a7 and the verifier commit). A recheck of
+the merge of main (883ecd0a) found eleven more, none lost by the merge; all
+eleven are fixed under "The recheck of the merge (2026-10-25)", after "Merged
+main 899be058".
 
 **What left, and why.**
 
@@ -93,10 +99,12 @@ project must also correct the sentences that call the served figure stated
 pay, which are main's and which wave 4 did not touch: the board's "Stated pay
 only" and "ordered by stated pay" labels and the changelog's "real published
 pay only, never estimates". The two AI-host lines wave 4 rewrote now say what
-is true: agent-mcp's job-card `salary` is "the posting's pay text, verbatim:
-the employer's pay field, or a pay line the board read from the description,
-which on rare postings is a business figure", and `hasStatedPay` says the
-same.
+is true: agent-mcp's job-card `salary` is "the posting's pay as text: the
+employer's pay field, as the vendor gives it or written out by the board from
+its figures, or a pay line the board read from the description, which on rare
+postings is a business figure" (the second recheck dropped "verbatim": for a
+vendor's structured pay the board writes the string itself), and
+`hasStatedPay` says the same.
 
 **S12-017 is now its own search project.** Its method has to measure titles,
 not only splits: a candidate is never worse than main at the query level and,
@@ -189,10 +197,12 @@ recognises as asking for one; and the answers panel's all-clear
 figure, employer or job title the résumé does not show, which is what
 `validateCandidateClaims` reads.
 
-**Builds.** agent-mcp and public-api `2026-10-11.35`; create-agent-checkout
-and create-pass-checkout `2026-10-11.16`; create-product-checkout
-`2026-10-11.25` (their only change is the refusal line). Each moved twice in
-the descope (`.34`, `.15` and `.24` were the first form, never deployed).
+**Builds.** agent-mcp and public-api `2026-10-11.36`; create-agent-checkout
+and create-pass-checkout `2026-10-11.17`; create-product-checkout
+`2026-10-11.26` (their only change is the refusal line). Each moved three
+times in the descope (`.34`, `.15` and `.24` were its first form and `.35`,
+`.16` and `.25` its recheck, never deployed; the second recheck's are the
+ones above).
 generate-application-answers, generate-apply-package and apply-agent stay
 `2026-10-11.33` (unchanged). job-board keeps its reserved `2026-09-09.93`,
 now with main's salary miner and main's search exclusion.
@@ -231,6 +241,828 @@ seo/integration and hp/integration it lists the same six undeclared files
 suite runs in the push's pre-push hook; its count is in the PR #39 body. Main
 is not merged in this step.
 
+### The second recheck of the descope (2026-10-25)
+
+A recheck of b76e460d (`~/.config/resumebooster/wave4-descope-hp-results-2026-10-25.json`,
+"w4found") confirmed nine findings: three blockers, three majors and three
+minors. Each was reproduced first, each fix has a test that failed on
+b76e460d, and each takes main's behaviour or a true, weaker sentence; none
+adds a heuristic.
+
+- **Blocker: the connector turned an excluded remote into a remote filter.**
+  `agent-mcp/query-place.ts` readQuery moved a trailing "remote" or "anywhere"
+  into `remote: true` with no negation check, and its leading class took a
+  minus, so "nurse -remote", "nurse not remote", "engineer non-remote" and
+  "analyst except remote" asked the board for remote postings only (live,
+  read-only: main's `{q:"nurse -remote"}` served 0 of 40 remote; wave 4's
+  `{q:"nurse", remote:true}` 40 of 40, total 656). Both MCP search tools reach
+  it. The lift now refuses a minus on the word and a negating word before it
+  (the place words plus "no" and "non", with or without "a"); a refused lift
+  leaves the query as typed, which is what origin/main's connector sends and
+  what job-board's own split and negated-remote rule read. 17 negated forms
+  and a server round trip (`the-first-search-answers-the-question-as-asked`)
+  failed first; the positives ("react developer remote", "nurse (remote)",
+  "engineer fully remote", "Notary remote") still lift.
+- **Blocker: the signed-in /agent page described the switched-off agent as
+  running.** The Settings tab showed AgentReachNote ("It submits
+  automatically to 37,909 of the 1,012,399 postings ... Auto-submits on: ..."),
+  AgentControlsPanel ("Never apply to these employers", "Pause, with a date it
+  comes back") and ApplyProfilePanel's readiness block ("Nothing in your
+  profile is holding applications back ... the agent still stops rather than
+  guessing", or "Nothing can be sent yet" and "the agent refuses rather than
+  guessing, so those postings are skipped") beside the notice that says we
+  send nothing; the Today tab told a past subscriber with an active mandate
+  "your first queue arrives after tonight's run". Agent.tsx now renders the
+  controls and the reach note only when `APPLY_AGENT_ON`, as it already did
+  for the setup checklist and the pending questions; ApplyProfilePanel keeps
+  the person's stored answers but shows its intro and readiness block only
+  when the agent is on; MorningQueuePanel's empty line needs the agent on.
+  `w4b-descope-the-agent-console-describes-no-running-agent.test.tsx` mounts
+  the page signed in with production's live `sendable` answer in all nine
+  locales (27 cases failed first) and switches the agent on as its positive
+  control.
+- **Blocker: crawlers and AI hosts were still sold the cut products.**
+  llms.txt said "Paid tools are one-time purchases: resume rewrites, cover
+  letters, interview coaching, Freelance Boost", listed "Freelance Boost ...
+  $29 one-time" and called /pricing "One-time tools and the all-access plan";
+  the /freelance-boost bake sold the product ("in about 15 seconds") from a
+  sitemap entry at 0.8. Wave 4 is what makes them false, so wave 4 carries
+  them: llms.txt says "One paid report (the $5 Full Analysis) and one optional
+  monthly plan, Pro (the writing tools, the Full Analysis and no daily scan
+  cap)", the Freelance Boost line is gone and /pricing is "The free tools,
+  the $5 Full Analysis and Pro"; the bake's /freelance-boost is noindex and
+  says, from the page's own `freelanceBoost.noLongerSold*` strings, that it is
+  no longer sold, and STATIC_ROUTES no longer lists it. The guard in
+  `w4b-the-cut-products-are-sold-nowhere.test.ts` refuses any llms.txt line
+  that names a cut product beside a price or an offer, pins the figure to the
+  catalogue's, and reads the bake's block and sitemap list (4 cases failed
+  first; its teeth catch the old lines).
+- **Major: what ChatGPT reads.** The retired products' refusal line (nine
+  languages) and llms.txt's apply-yourself line named all five form vendors
+  for Claude and ChatGPT alike; inside ChatGPT the server reads only
+  Greenhouse and Recruitee. Both now carry the /agents page's own sentence
+  (`agentConnect.selfApplyChatgpt`) in each language. The refusal line's names
+  come from `RETIRED_FORM_VENDORS` and `RETIRED_FORM_VENDORS_ON_CHATGPT` in
+  `apply-agent-retired.ts`, held equal to application-form.ts's
+  `FORM_READER_VENDORS` and `PUBLIC_API_FORM_VENDORS` and to the page's
+  mirrors, so no sentence types a vendor (11 cases failed first).
+- **Major: the applyAgentCountries changelog line.** "anything asking about a
+  country you haven't listed stops and waits for you instead of guessing"
+  (all nine shards) is untrue: "Can you lawfully take up employment in
+  Ireland?" is classified draftable, on main too. It now says "a question it
+  recognises as asking about a country you haven't listed stops and waits for
+  you", the hedge setupIsOneStep carries, in each language; the copy guard
+  lists the old sentence as removed in every language, with teeth.
+- **Major: the merge of main would break SEO's /affiliates bake.** SEO's bake
+  re-exports `AFFILIATE_COMMISSION_CENTS`, which wave 4 removed; esbuild
+  bundles the missing name as undefined and the bake throws on its first
+  read, inside the never-block-a-publish handler. The per-tool-sale keys
+  (`affiliates.commission` tagline, headline, detail, banner, linkHint,
+  howItWorks and excluded) are deleted in all nine locales (bannerTitle stays;
+  the page reads it), and `the-bake-re-exports-only-names-its-modules-export.test.ts`
+  imports every module the bake's data entry names and fails on any name it
+  does not export: it passes here and fails on SEO's bake against wave 4's
+  module. The merge step is under "Merging main" below.
+- **Minor: a cover-letter text box.** apply_myself and /v1 sent it to a
+  draft while the classifier files it and the answers panel (and origin/main)
+  leave it with the person. whoAnswers now answers `you` with `cvMayHelp`;
+  the question corpus marks its four cover-letter rows as over-routes (cap
+  194) and the round-4 self-break set names q4sb-39 beside q4sb-42.
+- **Minor: "jobs not in London".** negatedTrailingPlace kept a head of only
+  filler, so the board searched the word "jobs". It reads `QUERY_FILLER` as
+  liftTrailingPlace does: the request browses and names `placeExclusion`.
+- **Minor: the job card's salary field** no longer says "verbatim" (above).
+
+**Builds** (the second recheck): agent-mcp and public-api `2026-10-11.36`;
+create-agent-checkout and create-pass-checkout `2026-10-11.17`;
+create-product-checkout `2026-10-11.26`; job-board keeps `2026-09-09.93`. No
+migration. Nine locale files lose seven keys each; no key is added.
+
+**Shared files this round touches.** `public/llms.txt` (seo-round on main,
+company-profiles in this branch's ledger): wave 4's own lines only, the paid
+line, the Freelance Boost line, the apply-yourself line and the Pricing line.
+`scripts/prerender-seo.mjs` (seo-round): one hunk, the /freelance-boost
+write() block and its STATIC_ROUTES line, on text main's bake still has
+unchanged; `git merge-tree` against origin/main 899be058 merges the file
+without a conflict. The nine changelog shards (critical-path) and the nine
+locales (company-profiles): wave 4's own lines and keys.
+
+**Merging main** (the first deploy step; main now holds R1, the profiles
+and design deploy and the SEO round, 899be058). Done in `9a47faf6`: see
+"Merged main 899be058" below for every conflict and its resolution. `git merge-tree` finds the
+same 31 conflicted files as b76e460d did. Two need this round's care:
+
+- `public/llms.txt` gains a fourth conflict hunk. Keep main's figures, its
+  vs line and its "Claude, ChatGPT or Claude Code"; take wave 4's paid line,
+  its deletion of the Freelance Boost line, the ChatGPT sentence in the
+  apply-yourself line and its Pricing line.
+- `scripts/prerender-seo.mjs` merges as text, but SEO's /affiliates bake
+  still reads `AFFILIATE_COMMISSION_CENTS` and `affiliates.commission`. In the
+  merge, re-export `AFFILIATE_PRO_FIRST_MONTH_CENTS` in its place, read
+  `D.EN_LOCALE.affiliates.proCommission`, fill `{{amount}}` with
+  `formatUsd(AFFILIATE_PRO_FIRST_MONTH_CENTS)`, and drop the per-tool-sale
+  fallbacks (title, description, tagline, headline, howItWorks). The
+  re-export test fails until it is done.
+
+**Verifier.** `scripts/verify-deploy.d/92-w4b-descope-recheck.sh` (read-only:
+five OPTIONS and three GETs): the five builds above, the crawler's
+/freelance-boost noindex and no longer sold, sitemap.xml without it, llms.txt
+selling no cut product and saying what ChatGPT reads.
+`w4b-descope-recheck-the-section-fails-what-it-claims.test.ts` runs it
+against a fake curl: a healthy deploy prints no FAIL and only reads; an older
+build, the old bake, a sitemap that lists the page and the old llms.txt each
+print FAIL. readQuery and whoAnswers are proved by their tests, not live: no
+read-only route runs them on input we choose without spending the keyless
+allowance.
+
+**Checks** (at the round's head, each through
+`~/.config/resumebooster/heavy.sh`): the pre-commit typecheck passed on all
+four commits; the worker `tsc --noEmit` exits 0; `scripts/check-functions.sh`
+is clean (deno.lock restored); the upload-tally guard passes, and job-board's
+upload, tallied from git's sizes with main's two profiles files, is 4,432,403
+bytes, 67,597 under the 4.5 MB line and 17,597 inside the 50,000 of room
+(2,006 more than b76e460d: the cover-letter and filler lines and comments).
+The targeted runs: the 34 files that mount or read the /agent console (679
+tests), the 125 that read the locales (2,363), the 81 that load or read
+agent-mcp, public-api, self-apply or job-board's query-place (4,584), the 61
+that read llms.txt, the bake, the retired lines, the affiliate copy or the
+cuts (1,566), the 10 that read the changelog (601) and the 25 that read the
+verifier sections (269), all passing. `deploy-ledger --against b76e460d`
+finds 6 functions moved and the one reserved violation (job-board `.93`);
+`--against origin/main` finds the one process-email-queue violation the
+merge clears; `--overlap HEAD origin/design/integration origin/r1/integration`
+and `--overlap HEAD origin/hp/integration` report no undeclared overlap. The
+full suite runs in the push's pre-push hook; its count is in the PR #39 body.
+
+**Left.** The bake's /affiliates block is merged as above (`9a47faf6`).
+oh/integration (PR #46) and the hp branches merged b76e460d; they take this
+round when they next merge wave4/integration. The /freelance-boost committed
+`public/sitemap.xml` entry stays until the next bake rewrites the file (the
+bake writes both public/ and dist/ from STATIC_ROUTES).
+
+### Merged main 899be058 (2026-10-25)
+
+Merge commit `9a47faf6` brings origin/main `899be058` into wave4/integration
+at `8874bd13`, in the wave4-descope worktree. Main then held R1 (#40), the
+verified profiles and design deploy and its hotfix (#44, #41), the changelog
+for 17 to 25 October (#45) and the SEO round (#42). The rules were "Merging
+main" above, Deploy order step 3, and main's sharedFiles owners: the owner's
+version wins, and the other side re-applies only its own hunks. The hp base
+(`2fbb3cd8`, settled in `89036c95`) had already merged an older main into an
+older wave 4. Where neither side has touched a file since, its resolution is
+taken as it stands. Where one side has, the later changes were replayed onto
+it and the result checked against these rules. Five commits follow the merge
+(`6939f22a`, `38290564`, `5455ccfa`, `b9135282`, `416f74ea`). Nothing is
+merged to main.
+
+**The 31 conflicted files, each resolution.**
+
+| file | resolution |
+|---|---|
+| nine locales (de, en, en-GB, es, fr, hi, nl, pt, tl) | Merged key by key, with no key lost. Main's values and removals stand. Wave 4's keys are re-applied, and so are its removals: the stale `affiliates.commission` keys apart from bannerTitle, `accountPrivacy.deletedList` and `agentPass.retiredBuyers`. Six keys were changed by both sides; each takes wave 4's sentence, which is true once the agent is off: `faq.questions.subscription.answer`, `faq.questions.dataStorage.answer`, `trustPage.security.neverSold.description`, `trustPage.retention.rows.agent.howLong`, `homeHero.sub2` and `homeAgent.passLine`. es, fr and pt also carry `accountPage.versionInterviews_many` and `versionOffers_many`, which main's plural guard requires for wave 4's two new plural keys. |
+| `public/llms.txt` (4 hunks) | Keeps main's figures (950,000+ from 29,000+ boards, as of 2026-10-18), its accuracy sentences, its API and MCP server addresses, its vs line with ChatGPT & Claude, its renamed Companies and Pay Transparency lines, and "Claude, ChatGPT or Claude Code". Takes wave 4's paid line ("One paid report (the $5 Full Analysis) and one optional monthly plan, Pro ..."), its Pricing line ("The free tools, the $5 Full Analysis and Pro") and its deletion of the Freelance Boost line. The apply-yourself line is wave 4's, with the ChatGPT sentence and main's three apps, and ends with main's how-it-works link. The connector line takes wave 4's free-tools sentence inside main's text. The connect sentence keeps wave 4's "Resume Booster never submits an application for anyone". |
+| `docs/deploy-ledger.json` (5 hunks) | `appliedOutsideDrizzle` is `["20261014100000"]`: R1's entry from #37 is kept, and 20261008125000 and 20261008128000 stay out because appliedByBehaviour proves them. Main's verifiedDeploys (four entries) are kept. Wave 4's hold 20261011103000 is the only hold left; main released 20261012111000. Both notes are kept, with a new paragraph for this merge. sharedFiles is the union of both sides. Where both name an owner, main's wins: llms.txt, sections 65 and 74 and src/main.tsx go to seo-round. |
+| `scripts/verify-deploy.sh` (7d), sections 65, 74 and 76 | Main's crawler lines, ungated. Wave 4 keeps its English-strings swaps (65's "we will honour what you bought", 74's "there is one optional monthly plan") and its "turns into the paid plan" FAIL on the strings. |
+| `src/components/AtsCoverage.tsx` | Wave 4's removal of the strip legend, with main's `text-xs text-subtle-foreground` on the as-of line. |
+| `src/components/HomeHero.tsx` | Wave 4's `homeHero.sub2` default, with "We never submit anything for you." Main cut that sentence only while the agent was live. |
+| `src/config/mcp-tools.ts` | Keeps main's reworded zero-tools row ("Another app: server listed, zero tools", which names no IDE). Drops the ChatGPT search-only row, which is false since wave 4: ChatGPT gets every keyless tool except those not on ChatGPT. Adds wave 4's ChatGPT authentication row. |
+| `src/data/guides.ts` (7 hunks) | The freelance and fractional guides keep main's text, and wave 4's Freelance Boost removals are re-applied to both. Both are dated 2026-10-25 because their text differs from main's. The apply guide is wave 4's, as main's own comment on it asks. Two later commits (below) changed it. |
+| `src/pages/AgentConnect.tsx` | Main's `MCP_PAGE_HOSTS` for the developer disclosure, without `pickedName`, which wave 4's page no longer reads. |
+| `src/pages/DataApi.tsx` | Both sides' imports: wave 4's `Blocks` icon and builder-plan constants, and main's `publicApiBase`. |
+| `src/pages/FreelanceBoost.tsx` (2 hunks) | Main's stash still forgets a delivered purchase, while a Pro grant stays. Main's "Start a new purchase" button and its stash-and-address reset are dropped, because the product is no longer sold. The comment says so. |
+| `src/pages/Index.tsx` (3 hunks) | Wave 4's strip: its imports, its comment and `AgentOfferStrip({ addToClaude })`. Main's other hunks stay, among them "re-read through the day". |
+| `src/pages/PayTransparencyIndex.tsx` | Main's `useCompanyBoardHref` and wave 4's `foldToBoardCategories`. |
+| `src/pages/Pricing.tsx` (2 hunks) | Wave 4's rewrite, with main's `link` class. |
+| six tests: a-pass-number-on-a-page-is-a-placeholder, a-pass-paid-for-forms-the-agent-could-only-prepare, agent-hallmark, apply-agent-guide, pricing-truth, the-board-hands-a-job-and-a-search-to-the-agent | As the hp base resolved them (`2fbb3cd8` with `89036c95`). None of their inputs has changed on either side since. |
+
+**Auto-merged, but the two sides met.**
+
+- **SEO's /affiliates bake** (`scripts/prerender-seo.mjs`): it now
+  re-exports `AFFILIATE_PRO_FIRST_MONTH_CENTS` and reads
+  `affiliates.proCommission`, filling `{{amount}}`, with no per-tool-sale
+  fallback. A missing key throws inside the bake. The title is "Affiliate
+  Program — $10 per Referred First Month of Pro". Main's
+  `seo-bake-crawler-output` /affiliates case asserts that figure and no
+  per-tool-sale wording, and the bake re-export test passes.
+- **The crawler's /privacy had lost its full text** (found by the guarded
+  bake: "legal text NOT baked (headings only): /privacy: no value for
+  {openConsentChoice}"). Main's converter (`scripts/prerender-legal.mjs`,
+  SEO-029) could not read wave 4's Privacy.tsx: the analytics-choice button
+  and the AI table rendered from `MCP_PRIVACY_ROWS.map`. The converter now
+  expands a row list passed in `vars` row by row, writes table tags, drops an
+  attribute's expression along with the attribute, and leaves a `<button>`
+  out. The bake passes `MCP_PRIVACY_ROWS`. `seo-bake-helpers` checks that
+  every row is baked, that the button is not, and that a missing list or
+  field throws (`5455ccfa`).
+- **The apply guide named the retired products** (`b9135282`). Main's
+  section 76 L9-11 FAILs a /llms-full.txt that names the pass, and llms-full
+  bakes the guides. Wave 4's tldr, "What changed" paragraph and past-buyer
+  question named the Agent plan, the Agent Pass and the Apply Assistant. They
+  now say "the products built around it" and "one of the apply agent's
+  products". `416f74ea` gives the guide main's three apps ("Claude, ChatGPT
+  or Claude Code") and main's "Which AI can I use?" answer. Each change
+  records the guide's hash again.
+- **Builds** (`6939f22a`): main's R1 hotfix changed `_shared/send-mail.ts`,
+  which mail-watch and stripe-webhook bundle. They now serve
+  `mail-watch.2026-10-11.30` and `stripe-webhook.2026-10-11.31`.
+  process-email-queue is main's `2026-10-14.2`, and employer-profiles is
+  main's.
+- **Tests that hold both sides.** `89036c95`'s settles are re-applied:
+  Account.tsx's `verdictChurnFloor` default is main's sentence; the
+  verifier-line, old-sections and upload-tally tests; and the crawler-copy
+  test, which lets /agents list wave 4's apply_to_my_shortlist. The guide
+  hashes are recorded at 2026-10-25. R1's Freelance Boost test (S13-082)
+  keeps every case about honouring a purchase until it is delivered; its
+  cases that sold a second Boost now assert that no page offers a new
+  purchase.
+- **Ledger** (`38290564`): the hp ownership round's entries for the owners
+  this ledger reserves are copied from hp/honesty's ledger: 51 wave4, 3
+  seo-round and 2 wave3. pd-bake-the-crawler-copy-sells-nothing-retired goes
+  to wave4, because this merge lands the fix that hp's note said home-pricing
+  should yield to.
+
+**Intentional drops.** `git diff origin/main...HEAD` and
+`git diff 8874bd13...HEAD`, read line by line, lose no main hunk and no wave
+4 hunk except the ones below.
+
+- Main's hunks:
+  - the six locale sentences above, in nine locales;
+  - in llms.txt, the "Paid tools are one-time purchases ... Freelance Boost
+    ... One optional all-access subscription (Pro)" line, the "One-time tools
+    and the all-access plan" Pricing line, the connector line's "No key
+    needed to start ... a paid key opens résumé fit scoring", and the
+    apply-yourself line's shorter body;
+  - the /affiliates per-tool-sale block;
+  - Index.tsx's strip comment about the interpolated allowance;
+  - the apply guide's own text, except its three apps and "Which AI can I
+    use?";
+  - FreelanceBoost's "Start a new purchase";
+  - the test assertions that pinned those: pricing-truth's "Pricing page
+    lists every monthly plan on sale", apply-agent-guide's "holds the
+    retirement sentences", a-pass-number's strip cases,
+    a-pass-paid-for-forms' llms paid-key line, the-board-hands'
+    agentReadyOnly line (now a stricter "no agentReadyOnly and no
+    sendableOnly"), R1's sell-again Boost cases, and seo-bake's
+    per-tool-sale figures.
+- Wave 4's hunks:
+  - the agent-mcp-gated crawler branches of 7d, 65, 74 and 76 (and 76's
+    VD76 read), with their cases in old-sections and verifier-line;
+  - the deletion of the zero-tools troubleshooting row;
+  - the guide sentences naming the Agent plan, the Agent Pass and the Apply
+    Assistant;
+  - "Claude or ChatGPT" where main says three apps;
+  - the upload-tally pending-files assertion;
+  - the builds mail-watch .29 and stripe-webhook .30.
+
+**Gate** (each heavy command through `~/.config/resumebooster/heavy.sh`):
+
+- **Typecheck:** `npm run typecheck` exits 0, and the pre-commit typecheck
+  passed on every commit that touches src.
+- **Worker:** `tsc --noEmit` exits 0.
+- **Edge functions:** `scripts/check-functions.sh` is clean, with deno.lock
+  restored.
+- **Full suite**, run in two shards: 1,262 files passed and 1 skipped;
+  19,678 tests passed and 32 skipped.
+- **Upload tally:** job-board's upload is 4,433,518 bytes over 166 files,
+  from disk, the deploy's way, and git's sizes agree. That is 66,482 under
+  the 4.5 MB line and 16,482 inside the 50,000 of room. The guard passes.
+  The 1,115 bytes over 8874bd13's estimate are main's send-mail.ts.
+- **Guarded bake of `416f74ea`:** git archive export, vite build, read-only
+  safe-fetch. It made 1,105 requests and 0 were refused. It wrote 3,635
+  pages and a 1,370-URL sitemap with no /freelance-boost, and the full text
+  of /terms and /privacy. Its own retired-claim, source-sentence and
+  job-markup checks are clean. The 7 built-output suites pass on this dist
+  (89 tests).
+- **Sections against the bake**, served Lovable-style with J, R and MC
+  stubbed and curl writes refused:
+
+  | section | PASS | INFO | FAIL |
+  |---|---|---|---|
+  | 50 | 12 | 1 | 0 |
+  | 52 | 12 | 0 | 0 |
+  | 76 | 30 | 2 | 0 |
+  | 98 (seo-round 32, speed 13) | 45 | 0 | 0 |
+
+  Wave 4's 92-* sections pass every line that reads the bake, among them the
+  descope recheck's /freelance-boost, sitemap, llms.txt and ChatGPT lines.
+  Every 92-* FAIL is a wave 4 build or migration not yet live, or a stubbed
+  read. The shim refused 38 writes and none was sent.
+- **Ledger:**
+  - `--draft` exits 0 with no MUST BUMP: 70 functions to deploy and the one
+    HOLD.
+  - `--against origin/main` finds 69 functions moved and 0 violations; the
+    process-email-queue sort violation is gone.
+  - `--against 8874bd13` finds 4 moved and 0 violations.
+- **Overlap:** `--overlap HEAD origin/oh/integration origin/hp/honesty
+  origin/hp/scanner` exits 4 with this branch's copy of the tool: 642
+  undeclared. 636 are wave 4 files that all three stacked branches contain,
+  4 are wave 4's recheck files that oh/integration contains, and 2 are
+  between the hp branches. hp/honesty's stack-aware copy of the tool
+  (`087252b7`) leaves 2 undeclared: sales-gate.ts and the sale-switches test,
+  between hp/honesty and hp/scanner, which their own ledger gives to
+  home-pricing.
+
+**Left.**
+
+- oh/integration (PR #46), trust/pages and the hp branches take this merge
+  the next time they merge wave4/integration.
+- They will meet `prerender-legal.mjs`, the guide hashes and the ledger
+  entries above.
+
+### The recheck of the merge (2026-10-25)
+
+A recheck of the merged branch at `883ecd0a` found eleven defects: two
+blockers, five majors and four minors. None was lost by the merge. Five come
+from main's own files (the /pricing template, section 83, the footer), and
+wave 4 made them false or carried them over. Six are wave 4's own: the
+fit-is-paid copy, the experience rule, the name resolver, the senior-community
+rung and the Oracle id. Each was reproduced first. Each fix has a test that
+failed on `883ecd0a`. Each takes main's behaviour or a true, weaker sentence.
+The experience rule was measured on a live corpus first, by the corpus-first
+policy.
+
+- **Blocker: the crawler's /pricing promised bundle discounts.** The bake
+  wrote "Current bundle discounts are shown live on this page in the app".
+  No tree shows a bundle or a discount: the Premium package's checkout
+  answers 410, and the React page renders neither. The line is gone. "bundle
+  discounts" is now a retired claim in `scripts/prerender-retired.mjs`, so
+  the bake's own check and section 83 C1 fail it on any page.
+- **Blocker: six surfaces called fit scoring paid.** These were the React
+  /data-api row ("POST /v1/fit — Paid."), the React /agents badge for
+  fit_resume ("paid key"), the crawler /data-api ("(paid)"), the crawler
+  /agents ("fit_resume needs a paid key"), llms-full.txt and llms.txt.
+  Wave 4 makes scoring free: `_shared/fit-gate.ts` opens a free basis for a
+  confirmed key. Every one of them now reads one sentence from the mirror,
+  `MCP_FIT_ALLOWANCE` in `src/config/mcp-tools.ts`: "25 scorings a day on a
+  confirmed free key, 1,000 on an account with a paid plan". The badge is
+  `MCP_TIER_BADGE`, which the page and the bake both read. The guard
+  (`w4b-merge-recheck-fit-scoring-is-free-on-a-confirmed-key-on-every-page`)
+  checks that fitGate opens a free basis. It then fails any clause, in the
+  page sources, the servers, the bake's output or either llms file, that
+  pairs /v1/fit or fit_resume with "paid" without the free allowance. It
+  also pins llms.txt's typed figure to the constant.
+- **Major (twice): the /pricing head and lead were a list's sentences over
+  one product.** The bake read "One-Time Tools from $5", "One-time tools
+  $5–$5", "Paid tools are one-time purchases" and a plural heading, all over
+  the Full Analysis alone. With one one-time product, the title now names it
+  ("Pricing — Free Scan, $5 Full Resume Analysis or Pro $45/month"). The
+  description and the lead are React's own `pricingPage.metaDescriptionFa`
+  and `oneTimeAndProLineFa`, filled from the catalogue with no English
+  fallback. The heading is "One paid report", and Pro is `PRO_SUMMARY`, the
+  line the page and Stripe read. A list keeps its range. A range whose two
+  ends are one price is now a sales-page claim the bake's check fails
+  (`SALES_PAGE_CLAIMS`).
+- **Major: section 83 C7 failed a correct deploy.** The changelog's lazy
+  bundle is built as `en-*.js` beside the locale chunks. Main's 18 October
+  entry quotes the old hero sentence, which put it in main's bake, in the
+  merged bake and on production. C7 now cuts the changelog's entries from
+  each chunk before matching (`withoutChangelogEntries`). It cuts them
+  whichever way the build spells them, and returns a chunk whole when it
+  cannot find the object's end or when the object holds the hero's keys.
+  `w4b-merge-recheck-section-83-c7-reads-no-changelog-quote` runs section 83
+  in bash against a local site. The changelog chunk alone PASSes, a hero
+  that still says the sentence FAILs, and a chunk carrying both is judged
+  on its hero. On the real chunks of the merge's bake it cuts both changelog
+  chunks to 78 bytes and leaves every other chunk unchanged. **Main's own
+  verification of 899be058 still runs main's copy of section 83 and prints
+  this false FAIL;** read it as this defect, or run section 83 from this
+  branch.
+- **Major: a wish that names something else dropped a required minimum.**
+  Tapestry's 874 sales associate postings say "Required Qualifications 1+
+  years of sales experience (luxury retail preferred)". Main reads entry/1;
+  wave 4 read nothing. The re-derive (EXPERIENCE_VERSION 2) would have
+  overwritten the stored rows, and a maxYears or entry filter drops such a
+  row. Under the corpus-first policy the rule was measured on 1,354 live
+  descriptions against main and the round before
+  (`~/.config/resumebooster/wave4-merge-recheck-2026-10-25/experience/`).
+  That run found five more classes where the round before was worse than
+  main:
+  - a "Preferred Experience" heading read across a line break ("strongly
+    preferred\nExperience as part of");
+  - an "or equivalent" alternative read across a line break ("or
+    equivalent\n8+ years");
+  - "3 to 7 or more years" read as 7;
+  - a standalone "Requirements" or "Required:" line not read as a heading;
+  - "preferably in the hospitality industry" taken as a wish on the years.
+
+  The rule now works as follows. A wish word drops the years only when it is
+  on the years themselves: right after them or their noun phrase,
+  "(preferred)" alone, "ideally" or "preferably" before them, or a
+  "Preferred" label opening the clause. A required heading binds, and so
+  does a line opening "Required" or "Minimum" under no wish heading. A
+  heading's two words sit on one line, and standalone "Requirements",
+  "Required", "Qualifications" and "Preferred" lines are headings. An "or"
+  alternative never reaches across a line break. "N to M or more years" and
+  "substitute for N years" state no floor. Of the 1,354 descriptions, 1,280
+  read the same under main, the round before and this rule. This rule
+  differs from main on 60, each read by hand:
+  - 58 are corrections: wish headings, alternatives, "N or more", wishes on
+    the years, and senior living titles;
+  - 2 state no figure where main stated one, a weaker claim. At Wells Fargo,
+    the required 10+ years sit beyond the reader's 30-character gap, and
+    main's 10 came from a Desired Qualifications line. Winland Foods says
+    "Minimum 5 Years manufacturing experience preferred" (recheck 3 reads
+    it as main does, 5: see below).
+
+  Recheck 3 found that a wish word right after "experience" still returned
+  before the heading checks ran, so the sentence above about a required
+  heading or a Required/Minimum line was not yet true for "3+ years of
+  experience preferably in SaaS"; it is now (see "Recheck 3").
+
+  Every disagreeing description is in
+  `src/test/fixtures/experience-merge-recheck-corpus-2026-10-25.json` with
+  its hand-read value, and the experience test requires this rule to give
+  it. EXPERIENCE_VERSION stays 2, because .93 has never deployed.
+- **Major: "Meta" resolved to a four-role staffing board.** company-suggest's
+  only exact "Meta" is SmartRecruiters' Meta1. Its own posting says "My
+  Company support several nationally-known clients", and the AI was handed
+  its mailroom and reception roles as Meta's, with agency false. Live main
+  answers that the board does not carry Meta. Now `resolveCompanyNames` does
+  not search a lone exact match that has fewer than `FEW_OPEN` (10) open
+  roles. It returns that match in companiesUnresolved, with `held` and the
+  candidate's open count, vendor and agency flag, and never names it in
+  unknownCompanies, since we carry it. (This round also held every board
+  labelled an agency's and named it uncarried; recheck 3 removed that, see
+  below.) The catalogue labels Meta1 an agency: it was split out of its
+  packed line in `job-board/sources.ts` and the byte-identical layoff-filings
+  copy, and added to `scripts/tag-agencies.mjs`'s ledger. agent-mcp's
+  companiesUnresolved description and its guide line say what a held name
+  is. A test pins the threshold they type to `FEW_OPEN`. The famous names
+  the recheck tried still resolve (Uber 437, Oracle 1,126, Intel 522, Nike
+  396, Target 1,870, HP 1,005, Disney 464, Stripe 201, OpenAI 206, Anthropic
+  189, Spotify 39 open, read live).
+- **Minor: a Senior Community Manager with a prefix lost its rung.** "TOPS -
+  Senior Community Manager Specialist", "Roving Senior Community Manager"
+  and "Part-Time Senior Community Support Worker" are senior again.
+  "senior community" is clientele only when it is not followed by manager,
+  support worker or associate. Over 7,130 live titles, this differs from the
+  round before on exactly those four.
+- **Minor: the README's owner step 1, "What a person can do" and "Left for
+  other owners"** still described the /jobs apply-agent pitch and the bake's
+  $99 plan and $29 pass. Main's profiles, design and SEO rounds removed both.
+  All three are rewritten to the state after this round.
+- **Minor: the footer linked Freelance Boost on every page.** The entry is
+  removed. It is the exact hunk hp/honesty carries (the design owners'
+  switch-over), so the two merge as one change. The cut-products guard reads
+  the footer.
+- **Minor: an Oracle requisition id with letters was refused unread.** The
+  plan accepts `[A-Za-z0-9_-]{1,40}`, quoted in the finder as before. A
+  read-only GET of `REQ_820519` on ebwh's CX_1002 through the new plan
+  returned "Sales Commission Stylist, Full Time - Tysons Corner" (3,375
+  characters).
+
+**Builds:**
+- agent-mcp `2026-10-11.37`: companiesUnresolved names a held name.
+- fetch-job-posting `2026-10-11.27`: the Oracle id.
+- layoff-filings `2026-10-11.1`: the catalogue copy labels Meta1. Its hash
+  is pinned in `a-copy-of-the-catalogue-drifts`.
+- job-board keeps its reserved `2026-09-09.93`.
+- public-api stays `2026-10-11.36`.
+
+There is no migration. No locale key is added or removed.
+
+**Shared files this round touches.** Each is wave 4's own hunk on a line
+wave 4 makes false:
+- `scripts/prerender-seo.mjs`, `public/llms.txt`, `src/config/mcp-tools.ts`
+  and `src/pages/AgentConnect.tsx` (seo-round);
+- `src/pages/DataApi.tsx` (critical-path);
+- `src/components/Footer.tsx` (design: hp/honesty's identical hunk);
+- `scripts/prerender-retired.mjs` and section 83 (profiles+design; they
+  have no sharedFiles owner, and no in-flight branch but the hp ones changes
+  them);
+- `supabase/functions/layoff-filings/` (oracle-regionless changes it too;
+  wave 4 ships first and owns it in the ledger).
+
+**When oh/integration and trust/pages next merge this branch,** two lines
+will conflict:
+- layoff-filings' `BUILD_VERSION`: keep theirs (`2026-10-15.x`, later than
+  this round's);
+- the catalogue copy's `PINNED` hash: recompute it over the merged copies.
+
+`job-board/sources.ts` merges as text: Meta1 sits on line 205, and their
+lines are 85, 887, 1,022 and 1,241. Job-board's upload grows by this round's
+job-board bytes. Their size notes must count them: trust/pages measured
+7,539 bytes of room under the guard.
+
+**Before wave 4's frontend publishes,** section 83 C1, run from this branch,
+reads FAIL on production's /pricing: main's bake still promises bundle
+discounts. It turns PASS with this branch's bake.
+
+**Verifier.** `scripts/verify-deploy.d/92-w4b-merge-recheck.sh` is
+read-only: one OPTIONS, five GETs, and two job-board list reads on the probe
+budget. It checks:
+- the layoff-filings build;
+- the crawler /pricing (no One-Time Tools title, no one-price range, no
+  bundle discount, the "One paid report" heading);
+- /data-api, /agents, llms.txt and llms-full.txt (never fit paired with
+  paid, and each states the free allowance);
+- companies:["Meta"] held as an agency's candidate;
+- Tapestry's sales associate rows keeping minYears 1.
+
+Against production on 2026-10-25, before the deploy, it printed FAIL on
+every line but Tapestry's, which main's stored rows pass.
+`w4b-merge-recheck-the-section-fails-what-it-claims` runs it against a fake
+curl. A healthy site, served from this checkout's own offline bake, prints
+eight PASS. The old build, the old /pricing, each old fit page, the old Meta
+answer and dropped Tapestry years each print FAIL. Every call is a read.
+
+**Checks.** Every heavy command ran through
+`~/.config/resumebooster/heavy.sh`.
+- **Typecheck:** the pre-commit typecheck passed on all four code commits.
+- **Worker:** `tsc --noEmit` exits 0.
+- **Edge functions:** `scripts/check-functions.sh` is clean (deno.lock
+  restored).
+- **Targeted runs:**
+  - The 245 test files that read the changed areas ran with 4,311 tests.
+    Three failed first: the two catalogue pins in build-version-guard, moved
+    for the one agency flag, and a-dollar-figure's description-slot reader,
+    which now reads both of the /pricing description's branches.
+  - The 87 files that read the catalogue, the experience rule or the upload
+    size pass, with 2,459 tests.
+- **Upload:** job-board's folder plus `_shared` is 4,435,671 bytes on disk,
+  2,153 more than `883ecd0a` (the experience rule, the held names, the Meta1
+  line). That leaves 14,329 bytes under the upload-tally guard's 4,450,000,
+  and the guard passes.
+- **Guarded bake of `bef1bc7d`** (git archive export, vite build, read-only
+  safe-fetch):
+  - 1,105 requests, 0 refused;
+  - 3,635 pages and a 1,370-URL sitemap;
+  - the full text of /terms and /privacy;
+  - its retired-claim, source-sentence and job-markup checks are clean.
+
+  /pricing reads "Pricing — Free Scan, $5 Full Resume Analysis or Pro
+  $45/month" and React's description. No clause in the 7,271 written files
+  pairs fit scoring with "paid". The 7 built-output suites pass on this dist
+  (89 tests).
+- **Sections against the bake,** served Lovable-style with the writes
+  refused:
+
+  | section | PASS | INFO | FAIL |
+  |---|---|---|---|
+  | 50 | 12 | 1 | 0 |
+  | 52 | 12 | 0 | 0 |
+  | 76 | 30 | 2 | 0 |
+  | 83 | 10 | 0 | 0 |
+  | 98 (seo-round 32, speed 13) | 45 | 0 | 0 |
+
+  C7 PASSes on the real merged chunks. Every 92-* section prints the same
+  counts as the merge's run. The new section passes its five bake lines; its
+  FAILs are the undeployed layoff-filings build and the stubbed job-board
+  reads. The shim refused 40 writes, and none was sent.
+- **Ledger:**
+  - `--draft` exits 0: 71 functions to deploy (layoff-filings joins), no
+    MUST BUMP, and the one HOLD.
+  - `--against 883ecd0a` finds 4 functions moved and the one reserved
+    violation (job-board `.93`).
+  - `--against origin/main` finds 70 moved and 0 violations.
+- **Overlap:** `--overlap HEAD origin/oh/integration origin/trust/pages
+  origin/hp/honesty origin/hp/scanner`, with hp/honesty's stack-aware tool,
+  leaves 5 undeclared, and this branch changes none of them.
+- **Full suite:** runs in the push's pre-push hook; its count is in the PR
+  #39 body.
+
+**Left.**
+- oh/integration, trust/pages and the hp branches take this round when they
+  next merge wave4/integration, with the two catalogue lines above.
+- Main stays frozen until 899be058 verifies, and its section 83 C7 FAIL is
+  the false one described above.
+
+### Recheck 3 of the merged branch (2026-10-26)
+
+A third recheck of `88fe8982` found thirteen defects: five blockers, one
+major and seven minors. It looked where the earlier rechecks had not: the
+name resolver against the catalogue's agency labels, the bake against the
+seller gate, the scanner's page against its mail, the report page and the
+pulse against the marketing pause, the board's prepare modal against the
+writing allowance, the pass repair, the cut products' sentence, the trial
+of a retired plan, the test-mode webhook, the /v1 field notes and the
+account page's resend. Each was reproduced first on `88fe8982`, and each fix
+has a test that failed there. Each takes main's behaviour or a true, weaker
+sentence.
+
+- **Blocker: the board named employers it carries as ones it does not.** The
+  merge recheck's hold also held every lone exact match labelled a staffing
+  agency's and named it in unknownCompanies, which the connector defines as
+  an employer this board does not carry. The catalogue labelled State Farm's
+  own board (jobs.statefarm.com, 104 open) and Principal Financial Group's
+  (108) as agencies, and real agencies are carried too (Surge Staffing 303,
+  Liquid Personnel 151), so the AI told a seeker each was not on the board.
+  Main never says so. Now `FEW_OPEN` alone holds a name (Meta1 still, with 4
+  open), a held name is never in unknownCompanies, and the connector's
+  companiesUnresolved description and guide line say a held name is a board
+  with under 10 open roles that we carry. Twelve employers' own boards lose
+  the agency label in `sources.ts` and the byte-identical layoff-filings
+  copy: State Farm, Principal, Goodwill of Colorado, Hong Kong Baptist
+  University, the Scottish Government's two, the Government of Nunavut,
+  Emirates NBD's two, Emirates Islamic, Farrans and Calamos. Their cards no
+  longer say "Staffing agency" and their company pages are employer pages.
+  `scripts/tag-agencies.mjs` drops State Farm and Principal from its
+  convictions and never tags the twelve again (a dry run tags 0). State
+  Farm's board also posts roles at independent agents' offices; the flag is
+  per board, so it cannot label only those. Live read-only company-suggest
+  on 2026-10-26 gave the open counts above. Tests:
+  `an-employer-asked-for-by-name-is-found-by-name` (State Farm, Principal,
+  Goodwill of Colorado, Surge Staffing and Liquid Personnel resolve against
+  the real catalogue; the shipped list searches State Farm's board and names
+  nothing uncarried; Meta is held `few_open`), and the agency test's
+  convictions list.
+- **Blocker: the crawler's /pricing offered what nobody can buy.** While
+  `src/config/seller.ts` names no seller, the checkouts answer 409 and
+  React's /pricing shows "Purchases open soon", but the bake said the Full
+  Analysis "is a one-time payment that never renews", that Pro "renews every
+  month", and carried an AggregateOffer up to $45; llms.txt sold both. Now,
+  while no seller is named, the bake puts the page's own
+  `checkoutGate.purchasesOpenSoon` in the lead and `purchasesOpenSoonTitle`
+  beside each price and at the end of the description, states the terms for
+  when purchases open, and carries a free Offer only. React's /pricing
+  carries the same structured data (one shape, `src/lib/pricing-offer.ts`)
+  and the same description. llms.txt's paid line carries the sentence and
+  its Pricing line "(purchases open soon)"; the bake restates both from the
+  seller on every build, so naming the seller removes them. Tests:
+  `w4b-recheck3-nothing-is-offered-to-a-crawler-before-it-can-be-bought`
+  (an offline bake as shipped; 5 of 9 failed first) and the /pricing tests
+  that now read the state.
+- **Major: a wish on a setting dropped a required minimum.** The rule said a
+  required heading, or a line opening Required or Minimum, binds; but a wish
+  word right after "experience" returned before either check, so "Minimum
+  Qualifications\n3+ years of sales experience preferably in SaaS" stated no
+  figure where main read 3. Now "preferably in" and "ideally in" name the
+  setting, exactly as the same words after a comma did, and a participle on
+  a setting ("desired in a clinical setting") yields to a required heading
+  or line. The recheck's five probes read main's floor.
+- **Minor: two wishes still read as floors.** "Preferred but not required"
+  bound on the "required" inside "not required"; a wish after a short phrase
+  ("4+ years' experience in related field preferred") bound. Both now state
+  no figure. Measured corpus-first on 1,539 live descriptions (the merge
+  recheck's 1,354 plus 185 read fresh today, read-only): against the round
+  before, this rule differs on 3 (Winland Foods now main's 5; the two
+  "preferred but not required" postings no figure). Every description where
+  it differs from main (71) is in the corpus fixture with its hand-read
+  value; the 12 added rows are corrections of main or weaker claims. Tests:
+  the recheck-3 block in
+  `a-senior-living-cook-is-not-a-senior-and-an-alternative-is-not-a-floor`.
+  Corpus and tooling: `~/.config/resumebooster/wave4-recheck3-fix-2026-10-26/experience/`.
+- **Blocker: the free report's red flags and steps lost their quotes on the
+  page.** The S12-068 scrub ran on the report itself, so "bullets like
+  \"Responsible for managing...\" read as duties" showed as "bullets like read
+  as duties" on the page and from the cache. The page now shows the report
+  as main does. The sentences a mail may print are a separate copy,
+  `reportMeta.mailSentences`, scrubbed (`seal-safe.ts` `mailCopyOf`,
+  byte-identical in both scanner forks), and the seal covers that copy. The
+  page sends the copy in the sealed span (`src/lib/report-mail-copy.ts`), so
+  the mail still never quotes the résumé; a caller sending the page's
+  quoting sentences fails the seal and gets the numbers only.
+  send-scan-report is unchanged. Tests: the S12-068 block in
+  `w4b-the-free-scanner-counts-accounts-networks-and-sealed-sentences-honestly`,
+  with the recheck's own report.
+- **Blocker: the page offered paused marketing mail.** While the seller is
+  unnamed the pulse batch sends nothing and the report mail carries no
+  fix-plan button, yet the report offered both boxes, said a button was on
+  its way, asked for a pulse confirmation, and /market-pulse/confirm
+  promised "The first pulse arrives within a day". Now the capture shows
+  neither box while paused (`src/lib/marketing-pause.ts`, the same seller
+  the server reads); send-market-pulse refuses a subscribe request with the
+  paused reason before any count and mails nothing; a link mailed earlier
+  still confirms and says the pulse is paused (`pulseConfirm.donePaused`,
+  nine locales). Tests:
+  `w4b-recheck3-a-paused-pulse-and-drip-are-offered-nowhere` and the
+  pulse sign-up block in
+  `w4b-marketing-mail-waits-for-a-seller-with-a-name-and-an-address`.
+- **Blocker: the board's prepare modal said "within the hour" of a daily
+  allowance.** Its three tools now read the refusal through
+  `writingToolToast` (`src/lib/writing-refusal.ts`): a daily or monthly
+  allowance spent is said with its reset time, a missing sign-in asks for
+  one; a 429 that is not the allowance keeps main's hourly or busy copy.
+  Tests: `w4b-recheck3-the-board-says-when-the-writing-allowance-comes-back`
+  (the helper on the exact error supabase-js returns, and the three
+  handlers held to it; the page is not mounted).
+- **Minor: the success page's repair granted a retired pass.** While
+  `AGENT_PRODUCTS_ON_SALE` is off, agent-pass-status answers a paid pass
+  session with a terminal "retired" and never calls agent_pass_grant, as
+  stripe-webhook does. Test:
+  `w4b-recheck3-the-success-page-repair-grants-no-retired-pass`.
+- **Minor: a cut report's 410 called the Full Analysis on sale.** While no
+  seller is named, the reports line says "The $5 Full Analysis and Pro open
+  for purchase soon", in nine languages (`product-cuts.ts` `reportsClosed`).
+  Test: `w4b-recheck3-a-cut-report-never-says-the-full-analysis-is-on-sale`.
+- **Minor: a trialing retired plan was told "Pro's tools stay on".** The
+  card now says scans have no daily cap, the writing tools count on the free
+  daily allowance and no Full Analysis comes with a trial
+  (`proPlan.retiredPlanTrialing`, `retiredPlanTrialingEnds`, nine locales).
+- **Minor: a test-mode event could touch live balances.** It is acted on
+  only for a Full Analysis checkout; a test scan pack adds no credits and a
+  test cut product runs no generator. The round-2 owner step says so.
+- **Minor: /v1 and the connector said the feed "listed" the posting.** The
+  stamp is the board's last read of the employer's feed, and a big board is
+  read in windows. public-api's field notes and the connector's recheckedAt
+  and get_job now say that (the connector's wording was wave 4's own, from
+  `5d79e1a5`; main's said the feed was fetched).
+- **Minor: the account page's resend and a cut product's failed payment.**
+  "Email it again" passes the order's metadata.language; a failed payment
+  for a product no longer sold says so and offers no retry or button
+  (`failed.notSold`, nine languages); copy.ts says the Freelance Boost tiers
+  are no longer sold.
+
+Also: `r1-signin-signout` waits for its cleared-password notice, which on a
+loaded machine arrives after one 10 ms flush (two of its tests failed in a
+row at 59234aa4 and here under load, and passed idle).
+
+**Builds:** agent-mcp `2026-10-11.38`, public-api `2026-10-11.37`,
+layoff-filings `2026-10-11.2`, agent-pass-status `2026-10-11.15`,
+create-product-checkout `2026-10-11.27`, create-scan-pack-checkout
+`2026-10-11.24`, stripe-webhook `2026-10-11.32`, free-keyword-scan
+`2026-10-14.31`, free-keyword-scan-stream `2026-10-11.31`, send-market-pulse
+`2026-10-11.26`, send-product-email `2026-10-11.23`, account-order
+`2026-10-14.31`. job-board keeps its reserved `2026-09-09.93`, with the
+catalogue pins moved for the twelve flags. No migration. New locale keys:
+`proPlan.retiredPlanTrialing`, `proPlan.retiredPlanTrialingEnds`,
+`pulseConfirm.donePaused`, each in all nine locales.
+
+**Shared files this round touches.** Each is wave 4's own hunk on a line
+wave 4 makes false: `src/pages/Jobs.tsx` and `src/pages/Pricing.tsx` and the
+nine locale files (company-profiles), `public/llms.txt` and
+`scripts/prerender-seo.mjs` (seo-round), and wave 4's own
+`FreeKeywordResults.tsx`, `EmailReportCapture.tsx`, `MarketPulseConfirm.tsx`,
+`ProSubscriptionCard.tsx`, `sources.ts` and the layoff-filings copy. The
+stack-aware overlap check leaves 2 undeclared files, neither changed here.
+
+**When oh/integration and trust/pages next merge this branch:**
+- layoff-filings' `BUILD_VERSION`: keep theirs (`2026-10-15.x`, later); it
+  must carry the twelve flag removals, and section 92-w4b-recheck3 asks for
+  `2026-10-11.2` or later, which it passes;
+- the catalogue copy's `PINNED` hash, build-version-guard's pins and oh's
+  before-JPMorgan fingerprint: recompute (wave 4's own catalogHash is now
+  `000aab18fae6dd65`);
+- `sources.ts` merges as text: the flag lines sit between 1159 and 1225,
+  theirs at 85, 887, 1,022 and 1,241 and the JPMorgan line last;
+- job-board's upload grows 3,289 bytes over `88fe8982` (4,438,960 on disk,
+  11,040 under the 4,450,000 guard); their size notes must count it.
+
+**When hp/honesty and hp/scanner next merge:** free-keyword-scan's and
+send-market-pulse's `FN_BUILD` lines conflict; keep their `2026-10-25.x` and
+bump past it, since the merged code carries this round. The locale files
+gain three keys, and FreeKeywordResults (the email payload), Pricing (the
+structured data and description), ProSubscriptionCard (the retired-plan
+branch) and llms.txt (two lines) carry this round's hunks.
+
+**Verifier.** New `scripts/verify-deploy.d/92-w4b-recheck3.sh`, read-only (one
+OPTIONS, three GETs, one job-board list read on the probe budget): the
+layoff-filings build, companies:["State Farm"] served from State Farm's own
+board, and /pricing and llms.txt judged against create-checkout's
+`purchasesOpen` (no priced offer and "Purchases open soon" while closed; an
+AggregateOffer and no such line once open). Section 92-w4b-merge-recheck's
+Meta line now wants the hold as a handful of roles and Meta never named
+uncarried. Both have fake-curl tests that fail each old answer. The other
+fixes need a purchase, a mail or a session to read live and are proved by
+their tests.
+
+**Checks.** Every heavy command ran through
+`~/.config/resumebooster/heavy.sh`; the logs are in
+`~/.config/resumebooster/wave4-recheck3-fix-2026-10-26/gate/`.
+- **Typecheck:** the pre-commit typecheck passed on all thirteen commits that
+  touch `src/`.
+- **Worker:** `tsc --noEmit` exits 0.
+- **Edge functions:** `scripts/check-functions.sh` is clean (deno.lock
+  restored).
+- **Targeted runs,** by area, each after its fix: the catalogue and held
+  names (16 files), the experience rule (8), the pricing page and bake (5,
+  then all 102 files that read the bake, llms.txt, the purchase state or the
+  marketing pause: 1,997 tests), the pass repair (10), the cut products (41),
+  the Pro card (3), the webhook (20), the scanners and the report mail (82),
+  the marketing pause (16), the writing refusals (4), the product mail and
+  the account page (19), the docs and ledger (19) and every verify section's
+  test (51, 765 tests).
+- **Upload:** job-board's folder plus `_shared` is 4,438,960 bytes on disk,
+  3,289 more than `88fe8982`, 11,040 under the upload-tally guard.
+- **Ledger:** `--draft` exits 0 with 71 functions, no MUST BUMP and the one
+  HOLD; `--against 88fe8982` finds 13 functions moved and the one reserved
+  violation (job-board `.93`); `--against origin/main` finds 70 moved and 0
+  violations.
+- **Overlap:** hp/honesty's stack-aware `--overlap HEAD origin/oh/integration
+  origin/trust/pages origin/hp/honesty origin/hp/scanner` leaves 2 undeclared
+  files, neither changed by this branch.
+- **The first push** stopped at the pre-push suite: two bake guards still
+  read the /pricing offer as an AggregateOffer (fixed in `5e908aa8`), and
+  four files timed out while the machine slept (single tests ran 957 s; each
+  passes alone). The full suite's count is in the PR #39 body.
+
+**Left.**
+- The /jobs prepare modal is proved through its helper and a wiring guard,
+  not a mount of the page.
+- A failed delayed payment for the Full Analysis still offers a retry while
+  purchases are closed (only a payment opened before the deploy reaches it).
+- verify-product-purchase still reads a `cs_test_` session on a cut
+  product's success page (owner-only; the owner step says to send none).
+- `_shared/apply-agent-switch.ts`'s comment still says agent-pass-status and
+  stripe-webhook grant as before; correcting it restamps its importers, so
+  it waits for a round that restamps them.
+- Only the twelve named employers' boards were reviewed for the agency
+  label. Others flagged by the name screen alone (Dallah Recruitment System,
+  APP Recruitment, Banner Recruiting, KT Staff Recruiting and a few UKG
+  "Recruiting" tenants) are unreviewed.
+- No guarded `vite build` this round; the bake ran offline in three test
+  files.
+
 ## What a person can do after this deploy
 
 - **Connect** Claude or ChatGPT with no key and no account. Every read tool
@@ -259,17 +1091,19 @@ is not merged in this step.
   across `fit_resume` and `/v1/fit` together on a confirmed key, and a
   "Builder API (planned)" card at $49 a month whose only action is an email
   request.
+- **Buy nothing yet, and be told so.** As shipped no seller is named, so the
+  Full Analysis and Pro checkouts answer 409 and every page, the crawler
+  /pricing and llms.txt say purchases open soon; marketing mail (the monthly
+  pulse, the fix-plan emails) is paused and offered nowhere. Naming the
+  seller opens both (owner step 8).
 - **Nothing retired is sold by the server.** The Agent plan, the Agent Pass
   and the $7 Apply Assistant answer a purchase with 410, each behind its own
   switch. The server-side apply agent is switched off; its code is kept,
   dormant, behind `supabase/functions/_shared/apply-agent-switch.ts`. Every
-  page wave 4 may touch says so: `/agents`, the pass page, pricing, the Trust
-  page, the apply-agent guide, and the signed-in console (`/account`,
-  `/agent`). Two places wave 4 may not touch still sell or describe the
-  retired products: the `/jobs` board (`src/pages/Jobs.tsx`) and the crawler
-  bake (`scripts/prerender-seo.mjs`). They are listed under "Left for other
-  owners" with every line, and the deploy order below makes the owner decide
-  how the frontend publishes beside them.
+  page says so: `/agents`, the pass page, pricing, the Trust page, the
+  apply-agent guide, the `/jobs` board, the signed-in console (`/account`,
+  `/agent`), the crawler bake and both llms files; the recheck of the merge
+  took the Freelance Boost link out of the footer.
 
 ## The owner's figures, as built
 
@@ -456,10 +1290,8 @@ apply-broker, create-agent-checkout and create-pass-checkout at
 generate-apply-package `2026-10-11.2`; api-key-request `2026-10-11.1`;
 job-board `2026-09-09.93`.
 
-**3. Publish the frontend**, as the owner decided in owner step 1: either
-after the profiles/design owner has removed the `/jobs` and bake lines under
-"Left for other owners", or now, with them named as a known gap in the
-changelog hold.
+**3. Publish the frontend** with the functions (owner step 1: nothing waits on
+another owner).
 
 **Second message, after wave 4 verifies.** `20261011103000` is in
 `holdUntilVerified`. It schedules the nightly 30-day prune of the connector's
@@ -523,14 +1355,19 @@ form reads.
 
 ## Owner steps
 
-1. **Before the deploy, decide how the frontend publishes beside the two
-   gaps wave 4 may not close** (below): the `/jobs` board's apply-agent pitch
-   ("can fill and submit N of these for you", "7 days free ... then
-   $99/mo", the 5th/12th-save toast, "runs your search nightly", the "Agent
-   can apply" chips and tooltips) and the crawler bake's homepage, `/agents`,
-   `/agent` and `/pricing` copy and JSON-LD Offers for the $99 plan and the
-   $29 pass. Either wait for the profiles/design owner's change, or publish
-   and name both as a known gap in the changelog hold.
+1. **The frontend publishes with this deploy; nothing waits on another
+   owner.** This step used to name two gaps wave 4 could not close: the
+   `/jobs` board's apply-agent pitch and the crawler bake's $99 plan and $29
+   pass. Both are gone. Main's profiles, design and SEO rounds, merged in
+   `9a47faf6`, removed `jobsPage.agentPitchCounted`, `agentPitchCta`,
+   `savedMilestoneDesc`, `queueBridge`, `agentAppliesTip2`, `agentOnlyTip`
+   and the "Agent can apply" chips, and the bake's plan and pass. The recheck's
+   scan of all 3,635 baked pages and both llms files finds no $99, $29, Agent plan,
+   Agent Pass or Apply Assistant outside the dated 2026-10-18 changelog
+   entry. The recheck of the merge (below) fixed what was left: the /pricing
+   bake's list sentences and bundle line, the fit-is-paid copy and the
+   footer's Freelance Boost link. "Left for other owners" lists what remains;
+   none of it sells anything.
 2. **Confirm two figures the review introduced** (each one constant if you
    choose otherwise): the forms pool's split (Claude 2,000 a day at 10 a
    minute, ChatGPT 2,000 at 6, everyone else 1,000 at 4, inside 5,000 at 20;
@@ -569,6 +1406,15 @@ form reads.
    `MCP_SEARCH_PRUNE_LIVE = true` in `src/config/mcp-privacy.ts`; publish the
    frontend with the changelog in nine locales, each entry checked against
    production; thaw main only when section 49 shows no gap.
+8. **Name the seller when you are ready to sell** (not a deploy
+   prerequisite: the deploy ships with purchases closed and marketing mail
+   paused, and every page says so). Put the legal name and postal address in
+   both `src/config/seller.ts` and `supabase/functions/_shared/seller-identity.ts`,
+   redeploy create-checkout, create-subscription-checkout,
+   create-product-checkout, send-market-pulse, send-scan-report and
+   send-agent-digest, and publish the frontend: the bake then drops "Purchases
+   open soon" from /pricing and llms.txt and offers the AggregateOffer again,
+   and section 92-w4b-recheck3 expects that.
 
 ## Before this branch merges
 
@@ -610,65 +1456,34 @@ owned by company-profiles, and wave 4 re-applies its hunks on rebase.
 
 ## Left for other owners (files wave 4 may not touch)
 
-- **`src/pages/Jobs.tsx`** (profiles and design). Each still sells the
-  retired plan or says our agent fills and submits applications, in all nine
-  locales:
-  - about line 11431-11437, shown whenever the page holds one Breezy,
-    Personio, Pinpoint or Teamtailor posting (`agentReadyOnPage` is
-    `isSendableVendor` on the client): `jobsPage.agentPitchCounted` ("The
-    apply agent can fill and submit {{n}} of these for you") and the `/agent`
-    link `jobsPage.agentPitchCta` ("... {{trialDays}} days free for
-    first-time subscribers, then ${{agentPrice}}/mo"); remove the block;
-  - line 3665, the 5th/12th-save toast `jobsPage.savedMilestoneDesc` ("The
-    Apply Agent can prep tailored answers ... a {{trialDays}}-day free
-    trial");
-  - lines 3865 and 5059, `jobsPage.queueBridge` ("The Apply Agent runs your
-    search nightly");
-  - lines 7926-7929 and 12516-12519, the "Agent can apply" chip and its
-    tooltip `jobsPage.agentAppliesTip2` ("our apply agent can fill and
-    submit on its own ... Needs the Agent plan or a live pass");
-  - lines 9192-9201, the "Agent can apply" filter and its tooltip
-    `jobsPage.agentOnlyTip` ("our apply agent can fill and submit for you");
-  - the job pane's "Apply with your AI" label and the "Not connected yet?"
-    install link (spec D1 and D2 §2.7);
-  - with them, the guards that pin the priced pitch:
-    `agent-is-visible-on-the-board`, `pricing-truth` (the board's two trial
-    sentences), `half-of-all-users-were-told-most-ats-require-60-to-pass`
-    (the save toast), and the `agentPitchCta` probe in sections 65 and 74's
-    English-chunk finder (pick another key the chunk carries).
-- **`scripts/prerender-seo.mjs`** (company-profiles):
-  - the homepage: the meta description (line 1633, "An AI agent ranks them
-    to your CV and applies where employers allow"), the Service JSON-LD
-    (lines 1657-1668: "submits on hiring systems that permit it", and Offers
-    at `D.SUBSCRIPTIONS.agent.priceUsd` and `D.PASS.priceUsd` to
-    `/agents/pass`), the H1 (line 1673, "The agent applies for you."), the
-    "What the AI apply agent does" list (line 1676), and line 1685's
-    `AGENT_OFFER` lines;
-  - the `/agents` bake still names the $99 plan and the $29 pass (meta, hero,
-    apply-tools sentences, `SENDABLE_VENDOR_SENTENCE`), and has no install
-    link; line 2916 says "ask your apply agent to submit applications for
-    you";
-  - the `/agent` bake names the plan's free days;
-  - `FREE_KEY_RATE_SENTENCE` names the pass, three times (/data-api and
-    llms-full);
-  - the /pricing bake's description ("pass for your own agent."),
-    `offerPrices` and JSON-LD Offer rows (line 3133) carry the Agent plan and
-    the pass;
-  - llms-full's MCP line (3375) and lines 1616, 2866, 2924 and 2947 read
-    `MCP_ANON_CAPS.perAddressPerDay`, `hostPoolPerDay` and `globalPerDay`. The
-    mirror keeps those three names with the nearest true figure (100, 10,000,
-    20,000) until the bake moves to `otherPerConnection`, `shares.claude` and
-    `overallPerDay`; then delete them (the first-call guard pins them).
-  - When the pass is gone from the bake, set `BAKE_STILL_SELLS_THE_PASS=false`
-    in `src/test/a-pass-number-on-a-page-is-a-placeholder.test.tsx`. The
-    verifier lines that read the bake (7d's $99/$29 and description lines,
-    76's L1-08, 65's `/agent` trial line) turn from INFO to PASS by
-    themselves; nothing in them needs editing.
-- **`public/sitemap.xml`** still lists `/guides/how-the-apply-agent-works`
-  (line 1702). The guide at that address now says the agent is switched off,
-  so the entry can stay; drop it only if the owner wants the page out of the
-  index.
+Rewritten at the recheck of the merge (2026-10-25). The `/jobs` apply-agent
+pitch and the bake's $99 plan and $29 pass that this list used to carry are
+gone: main's profiles, design and SEO rounds removed them. The recheck
+removed the /pricing bake's list sentences and bundle line, the fit-is-paid
+copy and the footer link. Recheck 3 made the /pricing bake and llms.txt say
+purchases open soon, with no priced offer, while no seller is named, and
+gave the /jobs prepare modal the account allowance's refusals. None of what
+remains sells a product, and naming the seller is the owner's step 8, not
+another branch's.
+
+- **`scripts/prerender-seo.mjs`** (seo-round): the bake and llms-full's MCP
+  line read `MCP_ANON_CAPS.perAddressPerDay`, `hostPoolPerDay` and
+  `globalPerDay`, the keyless tier's old names. The mirror keeps those three
+  with the nearest true figure (100, 10,000, 20,000) until the bake moves to
+  `otherPerConnection`, `shares.claude` and `overallPerDay`. Then delete them
+  (the first-call guard pins them).
+- **`src/pages/Jobs.tsx`** (profiles and design) still carries the old
+  English fallback for `jobsPage.excludedTerms` ("Hiding results that
+  mention ..."). It renders only when the key is missing, and all nine
+  locales hold the true sentence. Whoever next edits that line should copy
+  en.json's.
+- **`public/sitemap.xml`** still lists `/guides/how-the-apply-agent-works`.
+  The guide at that address says the agent is switched off, so the entry can
+  stay. Drop it only if the owner wants the page out of the index.
 - **The company lander's "Ask your AI" block** (spec P1, profiles).
+- **Section 83 on main** (profiles+design): main's copy of C7 still reads
+  the changelog's quote of the old hero sentence and FAILs. This branch's
+  copy cuts the changelog first (see "The recheck of the merge").
 
 ## Deferred, with the reason
 
@@ -1075,7 +1890,9 @@ own nonce, whose count must be 1: the positive control for that 0.
    auth-signed-in and process-email-queue, R1's functions; the merge clears
    it.
 2. Company profiles 0-2 and the design upgrade (PR #36, design/integration).
-3. Then this branch: merge origin/main into it first. Expect conflicts in
+3. Then this branch: merge origin/main into it first (done 2026-10-25:
+   `9a47faf6` merges main 899be058; "Merged main 899be058" under the Descope
+   section lists each conflict and its resolution). Expect conflicts in
    the nine locale files, `public/llms.txt`, `src/components/AtsCoverage.tsx`,
    `src/data/guides.ts`, `src/pages/Index.tsx`, `src/pages/Pricing.tsx`,
    `docs/deploy-ledger.json` and six tests (git merge-tree, 2026-10-18),
@@ -1092,7 +1909,11 @@ own nonce, whose count must be 1: the positive control for that 0.
    `ledger/r1-verified` change (PR #37): keep its 20261014100000 in
    `appliedOutsideDrizzle` and its `verifiedDeploys` entry, and do not
    restore 20261008125000 or 20261008128000 there (this branch proves them
-   by behaviour). Re-run the gate,
+   by behaviour). Since the second recheck of the descope, two more merge
+   steps: llms.txt's fourth hunk and SEO's /affiliates bake, which must read
+   `affiliates.proCommission` and `AFFILIATE_PRO_FIRST_MONTH_CENTS` (see
+   "Merging main" under the Descope section; the bake re-export test fails
+   until it does). Re-run the gate,
    then generate the message at the merge commit on main with `node
    scripts/deploy-ledger.mjs --message`: migrations, then the functions, then
    the frontend publish.
@@ -1112,8 +1933,13 @@ Before purchases can open:
   This proves only the webhook's claim, delivery row and link mail: the site's
   own checkout (create-checkout) and the success page's delivery
   (analyze-resume) use the live key only, so a test purchase cannot be
-  carried to an analysis, and a test event touches no plan, dispute or
-  affiliate. The first real proof of a purchase is one live Full Analysis.
+  carried to an analysis. A test event is acted on only for a Full Analysis
+  checkout (recheck 3): any other test event, a scan pack or a cut product
+  included, is acknowledged and touches nothing, so a rehearsal adds no scan
+  credits, runs no generator and touches no plan, dispute or affiliate. Send
+  no test session for another product: verify-product-purchase still reads a
+  `cs_test_` session with the test key on a cut product's success page. The
+  first real proof of a purchase is one live Full Analysis.
 - Get an accountant's ruling on India's GST and register for EU/UK VAT.
   Turning `EU_UK_SALES` on lifts the EU/EEA/UK refusal; India also needs IN,
   INR and Asia/Kolkata removed from `_shared/sales-territory-zones.ts`.
@@ -1192,10 +2018,9 @@ After the deploy:
   `scripts/prerender-*.mjs`, `public/sitemap.xml`, `public/llms*.txt`,
   `src/index.css`, the locale files):
   - Jobs.tsx: on 401 `sign_in_required` from generate-tailored-resume,
-    generate-cover-letter or generate-interview-coach, a sign-in prompt that
-    returns to /jobs; on 429 `daily_limit`/`monthly_limit`, the server's
-    message or the reset time from `resetsAt` (ApplicationAnswers.tsx does
-    this already and can be copied).
+    generate-cover-letter or generate-interview-coach, a sign-in prompt; on
+    429 `daily_limit`/`monthly_limit`, the reset time from `resetsAt`. Done
+    by wave 4 in recheck 3 (writingToolToast), since nobody had.
   - Footer.tsx: remove the Freelance Boost link; switch `footer.copyright`
     (en-GB renders "© {{year}} CV Booster") to a new key
     `footer.copyrightNamed` = "© {{year}} {{name}}. All rights reserved." with
@@ -1206,7 +2031,9 @@ After the deploy:
     list. `/pricing`: the one-time list is the $5 Full Analysis only (fix the
     "$5–$5" description), the Pro line from `PRO_SUMMARY` (not "Unlimited
     scans and every paid tool included"), no Apply Agent plan or pass, and
-    "purchases open soon" while `purchasesOpen()` is false. The FAQ JSON-LD
+    "purchases open soon" while `purchasesOpen()` is false (done by wave 4:
+    the list and Pro line at the recheck of the merge, purchases open soon
+    and no priced offer in recheck 3). The FAQ JSON-LD
     should read the reworded keys (`faq.questions.vsChatGPTTrue.*`,
     `howLongBound`, `subscriptionLineFa`).
   - `public/sitemap.xml`: remove `/freelance-boost`.

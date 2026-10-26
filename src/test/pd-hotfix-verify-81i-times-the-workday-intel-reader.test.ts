@@ -29,6 +29,13 @@
  * first 4 Workday pages, each of which must state a fact line, and an INFO
  * says when the sampled titles' role counts stop falling in sitemap order
  * (the tail is the deadline's only in the bake's order).
+ *
+ * The first live run after the publish (2026-10-25 15:20Z) FAILed all three
+ * real tokens as "not with the reader object" while each answered the full
+ * panel in 0.6 s: the probe kept only the first 400 characters of a reply
+ * of several thousand, so the judge could not parse it. The probe now hands
+ * the judge the whole reply, and the last test below runs the probe itself
+ * against a stand-in server whose replies are longer than 400 characters.
  */
 import { describe, expect, it } from "vitest";
 import { execFileSync } from "node:child_process";
@@ -153,6 +160,25 @@ describe("81i: get_company_intel answers Workday tokens within 3 seconds", () =>
     expect(run({ at: "x", probes: [] })).toEqual(["FAIL  81i get_company_intel on Workday tokens: not probed"]);
   });
 
+  it("the probe hands the judge the whole reply: a panel longer than 400 characters is read, not cut (2026-10-25 15:20Z)", () => {
+    expect(probe.length, "the probe block was not found").toBeGreaterThan(500);
+    const dir = mkdtempSync(join(tmpdir(), "vd-81i-probe-"));
+    const countries = Array.from({ length: 30 }, (_, i) => ({ n: 100 - i, country: `C${i}` }));
+    const panel = JSON.stringify({ usd_n: 428, net_7d: 93, yc_batch: null, countries, categories: [{ n: 9, category: "engineering" }], open_by_source: [{ source: "workday", open_roles: 846 }] });
+    expect(panel.length).toBeGreaterThan(400);
+    const stub = `globalThis.fetch = async (url) => String(url).endsWith("/sitemap.xml")
+      ? { ok: true, status: 200, text: async () => ${JSON.stringify(REAL.map((t) => `<loc>${SITE}/jobs/company/${t}</loc>`).join(""))} }
+      : { ok: true, status: 200, text: async () => ${JSON.stringify(panel)} };\n`;
+    execFileSync(process.execPath, ["-e", stub + probe.split("/tmp/vd_81_").join(join(dir, "vd_81_"))], {
+      encoding: "utf8", env: { ...process.env, SITE, B: "https://stand-in.invalid", K: "anon" },
+    });
+    const written = JSON.parse(readFileSync(join(dir, "vd_81_workday.json"), "utf8"));
+    expect(written.probes.map((p: Probe) => p.body.length)).toEqual([panel.length, panel.length, panel.length, panel.length]);
+    const lines = run(written).filter((l) => !l.startsWith("INFO"));
+    expect(lines.filter((l) => !l.startsWith("PASS")), show(lines)).toEqual([]);
+    expect(lines[0], show(lines)).toMatch(/^PASS {2}81i cat~wd5~caterpillarcareers: .* with facts \[usd_n 428, 30 countries, 1 fields, net_7d 93, workday open 846\]$/);
+  });
+
   it("a token the sitemap no longer lists is still judged, and the section says to swap it", () => {
     const lines = run({ ...AFTER, probes: [probeOf(REAL[0], 200, 500, READER(10), false)] });
     expect(lines[0]).toMatch(/^PASS/);
@@ -221,11 +247,32 @@ describe("81j: at least 90% of a sitemap sample of baked Workday company pages s
   });
 
   it("names the fact lines exactly as the bake writes them (scripts/prerender-pages.mjs)", () => {
+    // The SEO round's bake names the scope it read (S13-116): "across
+    // Boeing's hiring system", or "across USAJOBS", where main's 2026-10-25
+    // bake, live until that round publishes, says "on this board".
     const bake = readFileSync(resolve(ROOT, "scripts/prerender-pages.mjs"), "utf8");
-    for (const marker of [PLACES, FIELDS]) {
-      expect(bake, marker).toContain(`<p>${marker} `);
-      expect(bakedJudge, marker).toContain(`"${marker}"`);
+    expect(bake).toMatch(/const factsScope = usajobs \? "across USAJOBS" : `across \$\{esc\(poss\)\} hiring system`;/);
+    for (const kind of ["countries", "fields"]) {
+      expect(bake, kind).toContain(`<p>The ${kind} holding the most of its roles \${factsScope}: `);
     }
+    for (const marker of [PLACES, FIELDS]) expect(bakedJudge, marker).toContain(`"${marker}"`);
+    const scoped = (scope: string) => (kind: string) => `<p>The ${kind} holding the most of its roles ${scope}: <a href="/jobs/company/x?country=US">United States</a>.</p>`;
+    for (const [label, line] of [
+      ["an employer's hiring system, its possessive escaped as the bake writes it", scoped("across Boeing&#39;s hiring system")],
+      ["an employer whose name ends in s", scoped("across Siemens&#39; hiring system")],
+      ["the federal listing site", scoped("across USAJOBS")],
+    ] as const) {
+      for (const kind of ["countries", "fields"]) {
+        const file = bakedFile(24, () => false);
+        for (const p of file.pages) p.body = baked(p.token, line(kind));
+        const lines = runBaked(file);
+        expect(lines[0], `${label}, ${kind}: ${show(lines)}`).toMatch(/^PASS {2}81j 24 of 24 /);
+      }
+    }
+    // A sentence with no scope, or one cut off before its colon, is not the bake's.
+    const near = bakedFile(24, () => false);
+    for (const p of near.pages) p.body = baked(p.token, "<p>The countries holding the most of its roles: United States.</p><p>The fields holding the most of its roles across Boeing&#39;s hiring system</p>");
+    expect(runBaked(near)[0]).toMatch(/^FAIL {2}81j 0 of 24 /);
   });
 
   it("the sample is the sitemap's first 4 Workday pages, its last 8 and 12 spread between them, in sitemap order, the same every run", () => {

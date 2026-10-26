@@ -96,6 +96,14 @@ const CHUNKS = JSON.parse(readFileSync(resolve(__dirname, "fixtures/verify-81c-s
 };
 const LIVE = CHUNKS.live_57815de9;
 const BRANCH = CHUNKS.branch_474dca30;
+/** Verbatim excerpts of the chunk holding the zero page's site rule: the merge head's build (round 4's Workday arm) and 474dca30's (round 3, Oracle only). */
+const ARM = JSON.parse(readFileSync(resolve(__dirname, "fixtures/verify-81c-served-workday-arm-2026-10-25.json"), "utf8")) as {
+  merged_16ef0483: { chunk: string; rule: string };
+  branch_474dca30: { chunk: string; rule: string };
+  live_57815de9: { at: string; entry: string; jobsChunk: string; chunks: number; oracleArm: boolean; workdayArm: boolean; tenantList: boolean };
+};
+const ROUND4_RULE = ARM.merged_16ef0483.rule;
+const ROUND3_RULE = ARM.branch_474dca30.rule;
 // The served copy of 2026-10-12, reduced to the strings section 81 reads.
 const OLD_BUNDLE = [
   `repostTipRoles:"In the last {{days}} days at least {{n}} of this company's roles that we watched come off the board came back. We only see a role come back under its own posting, so the real number can be higher. Worth knowing before you invest in an application."`,
@@ -118,13 +126,16 @@ const NEW_BUNDLE = [
   // Round 3 as a production build of 474dca30 writes it: the gated watch sentence and the zero page's head.
   BRANCH.body,
   BRANCH.head,
+  // Round 4's site rule as the merge head's production build writes it: the Workday arm beside the Oracle arm.
+  ROUND4_RULE,
 ].join(";");
-/** What the 2026-10-18 publish serves: the zero copy before the hotfix (the older-roles sentence, the list's line, no bucket in the Jobs chunk's input, the watch sentence ungated, no zero head). */
+/** What the 2026-10-18 publish serves: the zero copy before the hotfix (the older-roles sentence, the list's line, no bucket in the Jobs chunk's input, the watch sentence ungated, no zero head, no site rule). */
 const PD_BUNDLE = NEW_BUNDLE
   .replace(`t("companyProfile.zero.answer","No roles are listed on this page right now.")`, `t("companyProfile.zero.older",{count:n});t("companyProfile.zero.answer","No roles dated in the last {{days}} days")`)
   .replace(",bucket:H.observability_bucket,trackingDays:H.tracking_days", "")
   .replace(BRANCH.body, LIVE.body)
-  .replace(`;${BRANCH.head}`, "");
+  .replace(`;${BRANCH.head}`, "")
+  .replace(`;${ROUND4_RULE}`, "");
 /** What 2e3bc5a1 would have served: both refuted sentences, the bucket, and the list's old line. */
 const HEAD_BUNDLE = NEW_BUNDLE
   .replace(`t("companyProfile.zero.answer","No roles are listed on this page right now.")`, `t("companyProfile.zero.older",{count:n});t("companyProfile.zero.fullRead",{days:30});t("companyProfile.zero.answer","No roles dated in the last {{days}} days")`);
@@ -194,6 +205,7 @@ describe("before the deploy (production, 2026-10-12): every Track 1 and lock cla
     expect(line(lines, "FAIL", /81c Stripe: the reply carries no feed_total/), show(lines)).toBe(true);
     expect(line(lines, "FAIL", /81c the served chunks do not ask for companyProfile\.zero\.seoTitle or companyProfile\.zero\.seoDescription/), show(lines)).toBe(true);
     expect(line(lines, "FAIL", /81c the served chunks never ask for companyProfile\.zero\.body/), show(lines)).toBe(true);
+    expect(line(lines, "FAIL", /81c no served chunk carries the zero page's site rule/), show(lines)).toBe(true);
     expect(line(lines, "FAIL", /81d Databricks: the served copy is the old bound/), show(lines)).toBe(true);
     expect(line(lines, "FAIL", /81e 1 of \d+ rows publish a 14-day share outside its own interval.*centriaautism/), show(lines)).toBe(true);
   });
@@ -231,6 +243,7 @@ describe("after the deploy: every claim passes", () => {
     expect(line(lines, "PASS", /81c the served chunks ask for companyProfile\.zero\.seoTitle and companyProfile\.zero\.seoDescription/), show(lines)).toBe(true);
     expect(line(lines, "PASS", /81c the served company chunk prints companyProfile\.zero\.body only where the lander model's watchPromise opens it \(1 call\(s\)\)/), show(lines)).toBe(true);
     expect(line(lines, "PASS", /81c Boeing PRIDE \(.*\): nothing listed \(bucket full_read, 85 tracking days, no stated total\)/), show(lines)).toBe(true);
+    expect(line(lines, "PASS", /81c the served chunk holding the zero page's site rule \(the served bundle\) carries round 4's Workday arm/), show(lines)).toBe(true);
     expect(line(lines, "PASS", /81d Databricks: no "never half"/), show(lines)).toBe(true);
     expect(line(lines, "PASS", /81e all \d+ rows publish their 14-day share inside its own interval/), show(lines)).toBe(true);
     expect(lines.filter((l) => /^PASS +81f .*refused \(HTTP 401, 42501\)/.test(l))).toHaveLength(4);
@@ -411,6 +424,66 @@ describe("81c reads round 3 in the served bundle, not only in this checkout's mo
     const moved = run(files(afterRows, NEW_BUNDLE.replace(BRANCH.body, ""), AFTER));
     expect(line(moved, "FAIL", /81c the served chunks never ask for companyProfile\.zero\.body: the watch sentence moved/), show(moved)).toBe(true);
     for (const l of watchLines(moved)) expect(l, show(moved)).toMatch(/^INFO/);
+  });
+});
+
+describe("81c reads round 4's Workday arm in the served bundle (the SEO round's merge of main, 2026-10-25)", () => {
+  const AFTER = { lock: LOCKED, similar: SIMILAR_AFTER, ext: EXT_AFTER };
+  const ARM_LINE = /81c (?:the served chunk holding the zero page's site rule|no served chunk carries the zero page's site rule)/;
+  const WATCH = /^(\w+) +81c (BASS ABA|Delaney at the Green|Akumin ADG|Boeing PRIDE): (?:the page|this checkout's model) (?:promises|offers|would promise)/;
+  const watchOf = (lines: string[], label: string) => lines.find((l) => WATCH.test(l) && l.includes(`81c ${label}:`)) ?? "";
+  const chunked = (parts: Array<[string, string]>) => parts.map(([name, body]) => `\n/*vd81 chunk ${name}*/\n${body}`).join("");
+
+  it("the fixture's excerpts are the real ones: the merge head's rule tests the Workday pattern against the tenant set; 474dca30's has the Oracle arm only; the live bundle has neither", () => {
+    expect(ROUND4_RULE).toContain("/^([^~]+)~wd\\d+~[^~]+$/");
+    expect(ROUND4_RULE).toContain("/^[^~]+~[^~]+~CX(?:_\\w+)?$/");
+    expect(ROUND4_RULE).toMatch(/const r=T\.exec\(a\);return!!r&&g\.has\(r\[1\]\)/);
+    expect(ROUND4_RULE).toMatch(/"akumincorp",[^\]]*"boeing",[^\]]*\],g=new Set\(m\)/);
+    expect(ARM.merged_16ef0483.chunk).toMatch(/^lander-model-[\w-]+\.js$/);
+    expect(ROUND3_RULE).toContain("/^[^~]+~[^~]+~CX(?:_\\w+)?$/");
+    expect(ROUND3_RULE).not.toContain("~wd");
+    expect(ROUND3_RULE).not.toContain("boeing");
+    expect(ARM.live_57815de9).toMatchObject({ entry: "/assets/index-CVlj-9LZ.js", oracleArm: false, workdayArm: false, tenantList: false });
+  });
+
+  it("TEETH: the live bundle (57815de9) FAILs the line: no served chunk holds the site rule at all", () => {
+    const lines = run(files(afterRows, PD_BUNDLE, AFTER));
+    expect(PD_BUNDLE).not.toContain("~CX(?:_");
+    expect(line(lines, "FAIL", /81c no served chunk carries the zero page's site rule \(its Oracle site pattern\)/), show(lines)).toBe(true);
+    for (const label of ["Akumin ADG", "Boeing PRIDE"]) expect(watchOf(lines, label), show(lines)).toMatch(/^INFO/);
+  });
+
+  it("a build of the merge head PASSes the line, and Akumin's and Boeing's watch lines PASS", () => {
+    const lines = run(files(afterRows, NEW_BUNDLE, AFTER));
+    expect(line(lines, "PASS", /81c the served chunk holding the zero page's site rule \(the served bundle\) carries round 4's Workday arm: the tenant-capturing Workday pattern, tested against a set of 511 multi-site tenants \(akumincorp and boeing among them\)/), show(lines)).toBe(true);
+    for (const label of ["BASS ABA", "Delaney at the Green", "Akumin ADG", "Boeing PRIDE"]) expect(watchOf(lines, label), show(lines)).toMatch(/^PASS/);
+  });
+
+  it("TEETH: a build with round 3's model (474dca30) FAILs the line; Akumin's and Boeing's watch lines print INFO, BASS ABA's and Delaney's still PASS", () => {
+    const lines = run(files(afterRows, NEW_BUNDLE.replace(ROUND4_RULE, ROUND3_RULE), AFTER));
+    expect(line(lines, "FAIL", /81c the served chunk holding the zero page's site rule \(the served bundle\) carries no Workday arm/), show(lines)).toBe(true);
+    expect(line(lines, "PASS", ARM_LINE), show(lines)).toBe(false);
+    for (const label of ["Akumin ADG", "Boeing PRIDE"]) {
+      expect(watchOf(lines, label), show(lines)).toMatch(/^INFO {2}81c [^:]+: this checkout's model offers Watch without promising what it counts .*; the served site rule has no Workday arm \(the line above FAILs\), so the live page promises the watch here whatever this model says$/);
+    }
+    for (const label of ["BASS ABA", "Delaney at the Green"]) expect(watchOf(lines, label), show(lines)).toMatch(/^PASS/);
+  });
+
+  it("the pattern without its use, or a tenant list without boeing, is not the arm", () => {
+    const unused = run(files(afterRows, NEW_BUNDLE.replace("return!!r&&g.has(r[1])", "return!!r"), AFTER));
+    expect(line(unused, "FAIL", /81c the served chunk holding the zero page's site rule .* carries no Workday arm/), show(unused)).toBe(true);
+    const noBoeing = run(files(afterRows, NEW_BUNDLE.replace('"boeing",', ""), AFTER));
+    expect(line(noBoeing, "FAIL", /carries no Workday arm/), show(noBoeing)).toBe(true);
+  });
+
+  it("chunk by chunk: the arm counts only in the chunk that holds the site rule, which the PASS names", () => {
+    const rest = NEW_BUNDLE.replace(ROUND4_RULE, "");
+    const split = run(files(afterRows, chunked([["index-X.js", rest], [ARM.merged_16ef0483.chunk, ROUND4_RULE]]), AFTER));
+    expect(line(split, "PASS", new RegExp(`81c the served chunk holding the zero page's site rule \\(${ARM.merged_16ef0483.chunk.replace(/[.-]/g, "\\$&")}\\) carries round 4's Workday arm`)), show(split)).toBe(true);
+    // Round 3's rule in the Jobs chunk, and the round-4 list and pattern stranded in another chunk without the rule.
+    const stranded = ROUND4_RULE.replace("/^[^~]+~[^~]+~CX(?:_\\w+)?$/", "/x/");
+    const apart = run(files(afterRows, chunked([["Jobs-X.js", `${rest};${ROUND3_RULE}`], ["other-X.js", stranded]]), AFTER));
+    expect(line(apart, "FAIL", /81c the served chunk holding the zero page's site rule \(Jobs-X\.js\) carries no Workday arm/), show(apart)).toBe(true);
   });
 });
 

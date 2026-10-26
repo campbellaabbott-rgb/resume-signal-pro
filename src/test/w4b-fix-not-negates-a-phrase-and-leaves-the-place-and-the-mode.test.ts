@@ -87,4 +87,13 @@ describe("through the shipped handler", () => {
     const rpc = JSON.stringify(board.db.rpcArgs("search_jobs"));
     expect(`${texts.join(" ")} ${rpc}`, "the word texas is not searched").not.toMatch(/texas/i);
   });
+
+  it("'jobs not in London' searches neither the filler nor the place, and says the place could not be left out", async () => {
+    const r = await board.post({ action: "list", q: "jobs not in London", limit: 20, groupSimilar: false });
+    expect(r.ignoredFilters).toContain("placeExclusion");
+    const texts = board.db.queries.filter((q) => q.table === "job_board_postings")
+      .flatMap((q) => q.calls.filter(([m]) => m === "textSearch" || m === "or" || m === "ilike").map(([, a]) => JSON.stringify(a)));
+    const rpc = JSON.stringify(board.db.rpcArgs("search_jobs"));
+    expect(`${texts.join(" ")} ${rpc}`, "neither 'jobs' nor 'london' is searched").not.toMatch(/\bjobs\b|london/i);
+  });
 });

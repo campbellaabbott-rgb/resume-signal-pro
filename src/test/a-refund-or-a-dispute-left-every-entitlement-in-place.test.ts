@@ -28,6 +28,7 @@ import { resolve } from "node:path";
 import type { PGlite } from "@electric-sql/pglite";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
 import { agentDb } from "./helpers/agent-db";
+import { APPLY_AGENT_SWITCH_ON } from "./helpers/apply-agent-switch-on";
 import { PgSupabase } from "./helpers/pglite-supabase";
 import { analyzeResumeHarness, fullAnalysisSession, RESUME } from "./helpers/analyze-resume-harness";
 
@@ -144,8 +145,12 @@ beforeAll(async () => {
     "https://esm.sh/resend@2.0.0": "export class Resend { constructor() { this.emails = { send: async () => ({ data: null, error: null }) }; } }",
   });
   // The pass page's function: a client made with the caller's header answers
-  // getUser for it; the service client is the pglite database.
+  // getUser for it; the service client is the pglite database. With the
+  // agent products back on sale: as shipped, the repair grants no pass at all
+  // (recheck 3, w4b-recheck3-the-success-page-repair-grants-no-retired-pass),
+  // and these tests prove what the dormant grant path does when it runs.
   passStatus = await loadEdgeHandler("agent-pass-status", {
+    ...APPLY_AGENT_SWITCH_ON,
     "https://esm.sh/stripe@18.5.0":
       "export default class Stripe { constructor() { this.checkout = { sessions: { retrieve: async (id) => { const s = globalThis.__refundStripe.sessions[id]; if (!s) throw new Error('No such checkout.session'); return s; } } }; } }",
     "https://esm.sh/@supabase/supabase-js@2.45.0": `export function createClient(_u, _k, opts) {

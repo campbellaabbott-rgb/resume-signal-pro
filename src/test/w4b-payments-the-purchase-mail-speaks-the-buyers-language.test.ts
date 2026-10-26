@@ -113,6 +113,33 @@ describe("the notice that asks for what an order is missing (needs_input)", () =
 });
 
 describe("the notice that a delayed payment failed (payment_failed)", () => {
+  // Recheck 3 (2026-10-26): a cut product's notice said "You can try again
+  // with another payment method" with a button to a page that says the
+  // product is no longer sold. Now it says so, and offers nothing to retry.
+  it("a cut product's notice says it is no longer sold and offers no retry, in the buyer's language", async () => {
+    for (const [type, name] of [["freelance_boost", "Freelance Boost"], ["freelance_transition_pro", "Freelance Boost Transition Pro"], ["career_snapshot", "Career Snapshot"]]) {
+      sent.length = 0;
+      await mail({ kind: "payment_failed", productType: type, productName: name, sessionId: "cs_live_abcdefghijkl", language: "en" });
+      const text = visible(sent[0].html);
+      expect(text, type).not.toMatch(/You can try again|another payment method/i);
+      expect(sent[0].html, type).not.toMatch(/<a href=/);
+      expect(sent[0].html, type).not.toMatch(/freelance-boost|\/pricing/);
+      expect(text, type).toMatch(/is no longer sold, so there is nothing to try again/);
+      expect(text, type).toContain("nothing was charged");
+    }
+    sent.length = 0;
+    await mail({ kind: "payment_failed", productType: "freelance_boost", productName: "Freelance Boost", sessionId: "cs_live_abcdefghijkl", language: "nl" });
+    expect(visible(sent[0].html)).toMatch(/wordt niet meer verkocht/);
+    expect(visible(sent[0].html)).not.toContain("Je kunt het opnieuw proberen");
+  });
+
+  it("every language has the no-longer-sold line, and none of the eight others is the English one", () => {
+    for (const lang of CHECKOUT_LANGUAGES) {
+      expect(typeof MAIL_COPY[lang].failed.notSold, lang).toBe("function");
+      if (lang !== "en" && lang !== "en-GB") expect(MAIL_COPY[lang].failed.notSold("X"), lang).not.toBe(MAIL_COPY.en.failed.notSold("X"));
+    }
+  });
+
   it("says nothing was charged, in the buyer's language, and where to try again", async () => {
     await mail({ kind: "payment_failed", productType: "full_analysis", sessionId: "cs_live_abcdefghijkl", language: "nl" });
     const m = sent[0];

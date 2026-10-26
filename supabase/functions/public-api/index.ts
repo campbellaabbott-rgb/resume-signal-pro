@@ -253,8 +253,9 @@ async function withheldCompanyTokens(client: SupabaseClient): Promise<Set<string
 // would silently publish every column added to the table later — including
 // operational ones nobody agreed to expose. The table's last_seen column is
 // NOT read (sweep S12-121): job-board writes it once, at insert, so it is the
-// discovery time. Every job object carries last_verified_at (when the
-// employer's feed last listed the posting) and last_seen set to the same
+// discovery time. Every job object carries last_verified_at (when the board
+// last read the employer's feed; a large board is read in windows, so that
+// read may not have included this posting) and last_seen set to the same
 // value, attached after the read by last-verified.ts.
 const JOB_FIELDS = [
   "id", "source", "company_token", "company", "title", "location", "country",
@@ -362,7 +363,7 @@ const LIST_FILTERS = [
 // Breezy or Pinpoint page read with no questions was read, and names the CV;
 // the drafting rule refuses a second ask inside a work-done question.
 // 2026-10-11.27 (S12 sweep, wave 4 round 2): every job object carries
-// last_verified_at, when the employer's feed last listed it, and last_seen
+// last_verified_at, when the board last read the employer's feed, and last_seen
 // now holds the same value instead of the insert time (S12-121); the ranked
 // engine passes on the board's employer-scope notes and rankedFellBack, and
 // an empty default-engine page for company_tokens the board has never read
@@ -379,7 +380,9 @@ const LIST_FILTERS = [
 // 2026-10-11.33 (wave 4 fix round 4): the application route carries the default-deny clause rule for work and motivation questions.
 // 2026-10-11.34 (wave 4 descope, 2026-10-25): no rule change. The application route's description and answeredByMeans say the marks are read from the words, can mark an unusually worded question about the person for a draft, and that the person reads every answer.
 // 2026-10-11.35 (the recheck of the descope, 2026-10-25): no rule change. The application route's description and answeredByMeans say the marks can miss a question about the person even when it is plainly worded.
-const FN_BUILD = "public-api.2026-10-11.35";
+// 2026-10-11.36 (the second recheck of the descope, 2026-10-25): the application route marks a cover-letter text box answeredBy "you" with cvMayHelp, as the answers panel and origin/main leave it with the person; it was the one question main leaves to the person that the route sent to a draft.
+// 2026-10-11.37 (recheck 3, 2026-10-26): no rule change. The field notes say last_verified_at (and last_seen) is when the board last read the employer's feed, not proof the read listed the posting: a large board is read in windows.
+const FN_BUILD = "public-api.2026-10-11.37";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -905,8 +908,8 @@ async function listJobsRanked(url: URL, headers: Record<string, string>, lists: 
     work_mode: j.workMode ?? null, department: j.department ?? null, category: j.category ?? null,
     posted_at: j.postedAt ?? null,
     // The ranked engine does not carry first_seen; null rather than a guess.
-    // When the employer's feed last listed it is the board's recheckedAt,
-    // never its lastSeen, which is the insert time (S12-121).
+    // When the board last read the employer's feed is the board's
+    // recheckedAt, never its lastSeen, which is the insert time (S12-121).
     first_seen: null,
     last_verified_at: typeof j.recheckedAt === "string" ? j.recheckedAt : null,
     last_seen: typeof j.recheckedAt === "string" ? j.recheckedAt : null,
@@ -1416,7 +1419,7 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
     const { effective_posted: _sortKey, ...rest } = r;
     return rest;
   });
-  // When each employer's feed last listed the posting (S12-121).
+  // When the board last read each employer's feed (S12-121).
   await attachLastVerified(client, publicRows);
   // An empty page for employers the board has never read is not their hiring
   // (S12-040): named, as the board's own list names them.

@@ -8,7 +8,8 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { INDUSTRY_KEYWORDS } from "../../supabase/functions/free-keyword-scan/industry-detection";
 
-const label = (slug: string) => slug.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+// "HR", not "Hr": acronyms stay acronyms (SEO-019).
+import { industryLabel as label } from "@/lib/seo/display-case";
 
 export default function IndustriesIndex() {
   const slugs = Object.keys(INDUSTRY_KEYWORDS).sort();

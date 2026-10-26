@@ -11,15 +11,24 @@
  * missed numbers split by "/", "·", "_" or U+2011 and domains written
  * "evil[.]com".
  *
- * Before the report is sealed (and cached), each sealed sentence:
+ * The mail copy of each sealed sentence:
  *   - loses any quoted span that is text from the résumé (eight characters or
- *     more); on an issue, the quote moves to the issue's impact line, which
- *     the page shows and the mail never prints;
+ *     more);
  *   - loses any run of seven or more digits, whatever separates them (a year
  *     range such as 2019-2023 is kept);
  *   - loses any domain written around a bracketed or spelled-out dot.
  *
- * Pure: the Node tests load it directly.
+ * THE PAGE'S SENTENCES ARE NOT TOUCHED (recheck 3 of wave 4, 2026-10-26). The
+ * scrub first ran on the report itself, so the free report's red flags and
+ * fix-plan steps that quoted a bullet read "bullets like read as duties, not
+ * results" on the page and in the cache. Now the scrubbed sentences are a
+ * separate copy (reportMeta.mailSentences), and the seal covers that copy;
+ * the page shows the report as main does, and sends the copy when it asks for
+ * the mail (src/lib/report-mail-copy.ts). A caller sending the page's quoting
+ * sentences instead fails the seal and gets the numbers only.
+ *
+ * Pure: the Node tests load it directly. The streaming fork carries a
+ * byte-identical copy.
  */
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -71,33 +80,42 @@ export function stripResumeQuotes(s: string, resumeNorm: string): { text: string
   return { text, quotes };
 }
 
+/** The mail copy of a report's sealed sentences. */
+export type MailCopy = { issues: string[]; steps: string[]; occupation: string };
+
 /**
- * Scrub, in place, exactly the sentences scan-mail-seal seals: redFlags[0..2]
- * .issue, fixRoadmap.steps[0..7].step and keywordSource.occupation.
+ * The copy of exactly the sentences scan-mail-seal seals (redFlags[0..2]
+ * .issue, fixRoadmap.steps[0..7].step, keywordSource.occupation), scrubbed.
+ * The report is not changed. A sentence that is not a string is "", as the
+ * seal reads it.
  */
-export function scrubSealedSentences(report: Record<string, unknown>, resumeText: string): void {
+export function mailCopyOf(report: Record<string, unknown>, resumeText: string): MailCopy {
   const resumeNorm = norm(resumeText ?? "");
-  const scrub = (v: unknown) => {
-    if (typeof v !== "string") return { text: v, quotes: [] as string[] };
-    const q = stripResumeQuotes(v, resumeNorm);
-    return { text: stripDialable(q.text), quotes: q.quotes };
-  };
-  if (Array.isArray(report.redFlags)) {
-    for (const flag of report.redFlags.slice(0, 3)) {
-      if (!isObj(flag)) continue;
-      const { text, quotes } = scrub(flag.issue);
-      flag.issue = text;
-      if (quotes.length) {
-        const impact = typeof flag.impact === "string" ? flag.impact : "";
-        flag.impact = impact ? `${quotes.join(" ")} — ${impact}` : quotes.join(" ");
-      }
-    }
-  }
+  const clean = (v: unknown): string => (typeof v === "string" ? stripDialable(stripResumeQuotes(v, resumeNorm).text) : "");
+  const issues = Array.isArray(report.redFlags) ? report.redFlags.slice(0, 3).map((f) => (isObj(f) ? clean(f.issue) : "")) : [];
   const fr = isObj(report.fixRoadmap) ? report.fixRoadmap : null;
-  if (fr && Array.isArray(fr.steps)) {
-    for (const step of fr.steps.slice(0, 8)) {
-      if (isObj(step)) step.step = scrub(step.step).text;
-    }
-  }
-  if (isObj(report.keywordSource)) report.keywordSource.occupation = scrub(report.keywordSource.occupation).text;
+  const steps = fr && Array.isArray(fr.steps) ? fr.steps.slice(0, 8).map((st) => (isObj(st) ? clean(st.step) : "")) : [];
+  const occupation = isObj(report.keywordSource) ? clean(report.keywordSource.occupation) : "";
+  return { issues, steps, occupation };
+}
+
+/**
+ * What the seal is computed over: the mail copy in the report's shape, sharing
+ * the report's own reportMeta object, so attachScanMailSeal writes the seal
+ * onto the report the browser receives.
+ */
+export function mailSealView(report: Record<string, unknown>, copy: MailCopy): Record<string, unknown> {
+  return {
+    redFlags: copy.issues.map((issue) => ({ issue })),
+    fixRoadmap: { steps: copy.steps.map((step) => ({ step })) },
+    keywordSource: { occupation: copy.occupation },
+    reportMeta: report.reportMeta,
+  };
+}
+
+/** Put the mail copy on the report's reportMeta and return the view to seal. */
+export function attachMailCopy(report: Record<string, unknown>, resumeText: string): Record<string, unknown> {
+  const copy = mailCopyOf(report, resumeText);
+  if (isObj(report.reportMeta)) report.reportMeta.mailSentences = copy;
+  return mailSealView(report, copy);
 }

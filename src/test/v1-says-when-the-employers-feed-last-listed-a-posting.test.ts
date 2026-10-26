@@ -191,3 +191,27 @@ describe("the stamp reader", () => {
     expect(await neverReadTokens(db("error"), ["acme"])).toBeNull();
   });
 });
+
+/**
+ * THE STAMP IS WHEN THE BOARD READ THE FEED, NOT PROOF THE POSTING WAS IN IT
+ * (recheck 3, 2026-10-26). job-board writes job_board_verifications.verified_at
+ * for the whole board after every successful read, the windowed reads of the
+ * big Workday and Oracle boards included, so a posting outside the window gets
+ * a fresh stamp no read listed. /v1's field notes and the connector's
+ * recheckedAt said "when the employer's feed last listed the posting"; main's
+ * connector said the feed was fetched. They now say what the stamp is.
+ */
+describe("the docs say the stamp is the board's last read of the feed", () => {
+  const OVERSTATED = /feed\s+(?:\/\/\s*)?last\s+(?:\/\/\s*)?listed|last\s+listed\s+(?:this|the)\s+posting|still listed it/i;
+  it("public-api, its stamp reader and the connector never say the feed listed the posting", () => {
+    for (const f of ["supabase/functions/public-api/index.ts", "supabase/functions/public-api/last-verified.ts", "supabase/functions/agent-mcp/index.ts"]) {
+      const src = readFileSync(resolve(__dirname, "../..", f), "utf8");
+      expect(src.match(OVERSTATED)?.[0] ?? null, f).toBeNull();
+    }
+  });
+  it("the connector's recheckedAt and get_job say the board last read the employer's feed, which may not have included the posting", () => {
+    const mcp = codeOf(readFileSync(resolve(__dirname, "../../supabase/functions/agent-mcp/index.ts"), "utf8"));
+    expect(mcp).toMatch(/recheckedAt: \{ type: "string", description: "When the board last read this employer's feed[^"]*may not have[^"]*" \}/);
+    expect(mcp).toMatch(/when the board last read the employer's feed/);
+  });
+});

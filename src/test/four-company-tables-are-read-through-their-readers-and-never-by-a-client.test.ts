@@ -20,8 +20,14 @@
 import { PGlite } from "@electric-sql/pglite";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { liveDefinitionOf } from "./helpers/live-sql";
+
+// A PGLITE TEST IS NOT A 5-SECOND TEST. A case here starts or queries a
+// Postgres in pglite; under load the staged-runner case ran 5.06 seconds and
+// refused a push with nothing wrong (2026-10-25). This is the budget the other
+// pglite files here use.
+vi.setConfig({ hookTimeout: 120_000, testTimeout: 30_000 });
 
 const FILE = "20261012130000_four_company_tables_are_read_through_their_readers_and_never_by_a_client.sql";
 const MIGRATION = readFileSync(resolve(__dirname, "../../supabase/migrations", FILE), "utf8");
