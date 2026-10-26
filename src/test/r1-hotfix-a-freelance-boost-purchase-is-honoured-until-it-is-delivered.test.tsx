@@ -44,6 +44,14 @@
  *     after delivery, so a reload, Back from the builder or an in-app link
  *     shows its section again: no purchase email names a grant, so the
  *     "open the link in your purchase email" box was a dead end.
+ *
+ * WAVE 4 MERGED MAIN (2026-10-25). Freelance Boost is no longer sold (wave 4's
+ * product cuts: its checkout answers 410 and the page offers no buy button),
+ * so the parts of this file that sold a second Boost now hold the opposite:
+ * no page offers "Start a new purchase" or a buy button, a delivered
+ * purchase still leaves the stash, and a later visit is still the "bought on
+ * this device" box. Everything above about honouring a paid purchase until
+ * it is delivered holds as written.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -216,7 +224,7 @@ describe("a paid Freelance Boost not yet delivered survives another payment retu
 });
 
 describe("a Pro member's included Boost (a grant: no purchase email names it)", () => {
-  it("stays in the tab after it is delivered: a reload, Back from the builder or an in-app link shows the section again, and 'Start a new purchase' still forgets it", async () => {
+  it("stays in the tab after it is delivered: a reload, Back from the builder or an in-app link shows the section again, and nothing offers a new purchase", async () => {
     arrive(`/freelance-boost?session_id=${GRANT}`);
     page();
     expect(await screen.findByText("The Pro member's section", {}, SLOW)).toBeInTheDocument();
@@ -237,14 +245,15 @@ describe("a Pro member's included Boost (a grant: no purchase email names it)", 
     window.history.pushState(null, "", "/freelance-boost");
     page();
     expect(await screen.findByText("The Pro member's section", {}, SLOW)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: en.freelanceBoost.startNewPurchase }));
-    expect(await screen.findByRole("button", { name: /Boost my experience/ }, SLOW)).toBeInTheDocument();
-    expect(stash().session_id, "'Start a new purchase' kept the grant").toBeUndefined();
+    // Freelance Boost is no longer sold (wave 4): no new purchase is offered.
+    expect(screen.queryByRole("button", { name: en.freelanceBoost.startNewPurchase })).toBeNull();
+    expect(buyButtons()).toBeNull();
+    expect(stash().session_id, "a delivered grant left the stash").toBe(GRANT);
   });
 });
 
 describe("a delivered Freelance Boost is not read back by a later visit in the tab", () => {
-  it("a reload after delivery is a new visit, which can sell again", async () => {
+  it("a reload after delivery is a new visit, which sells nothing (Freelance Boost is no longer sold)", async () => {
     arrive(`/freelance-boost?session_id=${FIRST}`);
     page();
     expect(await screen.findByText("The first purchase's section", {}, SLOW)).toBeInTheDocument();
@@ -258,9 +267,9 @@ describe("a delivered Freelance Boost is not read back by a later visit in the t
     await settle();
     expect(recovered(), "a later visit read the old purchase back").toEqual([]);
     expect(screen.queryByText("The first purchase's section")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: en.freelanceBoost.startNewPurchase }));
-    expect(await screen.findByRole("button", { name: /Boost my experience/ }, SLOW)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Full transition kit/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: en.freelanceBoost.startNewPurchase })).toBeNull();
+    expect(buyButtons()).toBeNull();
+    expect(screen.queryByRole("button", { name: /Full transition kit/ })).toBeNull();
   });
 
   it("an in-app link back to the page (the same document, no new load) is a new visit too", async () => {
@@ -279,27 +288,21 @@ describe("a delivered Freelance Boost is not read back by a later visit in the t
     expect(buyButtons()).toBeNull();
   });
 
-  it("the page showing a delivered purchase offers 'Start a new purchase', which forgets it and brings back the buy buttons", async () => {
+  it("the page showing a delivered purchase offers no new purchase, and the stash still lets the id go", async () => {
     arrive(`/freelance-boost?session_id=${FIRST}`);
     page();
     expect(await screen.findByText("The first purchase's section", {}, SLOW)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: en.freelanceBoost.startNewPurchase }));
-    expect(await screen.findByRole("button", { name: /Boost my experience/ }, SLOW)).toBeInTheDocument();
-    expect(screen.queryByText("The first purchase's section")).toBeNull();
-    expect(stash().session_id, "the old purchase stayed in the stash").toBeUndefined();
-    cleanup();
-    h.invoke.mockClear();
-    page();
-    expect(await screen.findByRole("button", { name: /Boost my experience/ }, SLOW)).toBeInTheDocument();
-    expect(recovered()).toEqual([]);
+    await waitFor(() => expect(stash().session_id, "the delivered purchase stayed in the stash").toBeUndefined());
+    expect(screen.queryByRole("button", { name: en.freelanceBoost.startNewPurchase })).toBeNull();
+    expect(buyButtons()).toBeNull();
+    expect(h.purchaseProduct).not.toHaveBeenCalled();
   });
 
-  it("the purchase id still in the address (storage blocked) is forgotten there too", async () => {
+  it("the purchase id still in the address (storage blocked) shows that purchase and offers no other", async () => {
     window.history.replaceState(null, "", `/freelance-boost?session_id=${FIRST}&utm_source=mail`);
     page();
     expect(await screen.findByText("The first purchase's section", {}, SLOW)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: en.freelanceBoost.startNewPurchase }));
-    await waitFor(() => expect(window.location.search).toBe("?utm_source=mail"));
-    expect(await screen.findByRole("button", { name: /Boost my experience/ }, SLOW)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: en.freelanceBoost.startNewPurchase })).toBeNull();
+    expect(buyButtons()).toBeNull();
   });
 });
