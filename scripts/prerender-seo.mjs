@@ -269,6 +269,7 @@ export { PRIVACY_LAST_UPDATED, SELLER, TERMS_LAST_UPDATED, sellerIdentity } from
 export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
 export { default as EN_CHANGELOG } from "../src/i18n/changelog/en.json";
 export { TEMP_RESUME_HOURS, REPORT_CACHE_DAYS, AI_CACHE_MAX_HOURS, SHARED_ANALYSIS_DAYS, PRIVACY_EMAIL } from "../src/lib/resume-retention";
+export { MCP_PRIVACY_ROWS } from "../src/config/mcp-privacy";
 export { BOARD_SOURCE_LIST, SERVING_SOURCE_LIST, SERVING_SOURCES, DORMANT_SOURCES, servingSourceSummary } from "../src/config/ats-vendors";
 export { MCP_TOOLS, MCP_HOSTS, MCP_READ_TOOLS, MCP_PAID_TOOLS, MCP_APPLY_TOOLS, MCP_ANON_TOOLS, MCP_ANON_TOOL_NAMES, MCP_ANON_CAPS, MCP_FREE_KEY_DAILY_QUOTA, MCP_PROMPTS, MCP_RESOURCES } from "../src/config/mcp-tools";
 export { MCP_MORE_HOSTS, MCP_TROUBLESHOOTING, MCP_SIGN_IN_NEUTRAL, MCP_SERVER_ADDRESS_NOTE, MCP_ADDRESS_GLOSS, MCP_NEEDS_ACCOUNT_LINE, MCP_WITHHELD_NOTE, MCP_INSTALL_REPO_URL, MCP_TEST_QUERY, MCP_SIGN_IN_META_KEY, stepSegments, curlInitialize, andList } from "../src/config/mcp-tools";
@@ -3957,6 +3958,8 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
       TEMP_RESUME_HOURS: D.TEMP_RESUME_HOURS,
       REPORT_CACHE_DAYS: D.REPORT_CACHE_DAYS,
       PRIVACY_EMAIL: D.PRIVACY_EMAIL,
+      // The privacy page's table of what reaches us from an AI, row by row.
+      MCP_PRIVACY_ROWS: D.MCP_PRIVACY_ROWS,
       ...(fullAnalysis && typeof fullAnalysis.priceUsd === "number" ? { fullAnalysisPrice: `$${fullAnalysis.priceUsd.toFixed(2)} USD` } : {}),
     };
     const legalFailed = [];

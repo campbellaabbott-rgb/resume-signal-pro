@@ -17,13 +17,14 @@ import { preloadClosure, routeChunkPrefix, staticImportsOf } from "../../scripts
 import { cvFill } from "@/lib/cv-country-phrase";
 import { CV_LOCALES, EN_TEMPLATE } from "@/data/cv-standards-content";
 import { mcpServerUrl, publicApiBase } from "@/config/public-endpoints";
+import { MCP_PRIVACY_ROWS } from "@/config/mcp-privacy";
 import EN from "@/i18n/locales/en.json";
 
 const ROOT = resolve(__dirname, "../..");
 const esc = (s: string) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 describe("SEO-029: the legal pages' full text, from the files the app renders", () => {
-  const privacy = legalBodyFromTsx(readFileSync(resolve(ROOT, "src/pages/Privacy.tsx"), "utf8"), { locale: EN, vars: { AI_CACHE_MAX_HOURS: 48, SHARED_ANALYSIS_DAYS: 90 }, esc });
+  const privacy = legalBodyFromTsx(readFileSync(resolve(ROOT, "src/pages/Privacy.tsx"), "utf8"), { locale: EN, vars: { AI_CACHE_MAX_HOURS: 48, SHARED_ANALYSIS_DAYS: 90, MCP_PRIVACY_ROWS }, esc });
   const terms = legalBodyFromTsx(readFileSync(resolve(ROOT, "src/pages/Terms.tsx"), "utf8"), { locale: EN, vars: { fullAnalysisPrice: "$5.00 USD" }, esc });
   it("converts every section of both policies", () => {
     expect(legalText(privacy).length).toBeGreaterThan(8000);
@@ -41,6 +42,22 @@ describe("SEO-029: the legal pages' full text, from the files the app renders", 
     expect(privacy).not.toMatch(/className|\{|\}|<Link/);
     expect(() => legalBodyFromTsx("<section><Widget /></section>", { locale: EN, vars: {}, esc })).toThrow(/component/);
     expect(() => legalBodyFromTsx("<section>{UNKNOWN}</section>", { locale: EN, vars: {}, esc })).toThrow(/no value/);
+  });
+  // Wave 4's privacy page (merged with main 2026-10-25): the table of what
+  // each way of reaching us from an AI receives and keeps is rendered from
+  // MCP_PRIVACY_ROWS, and a button reopens the analytics choice. The table is
+  // baked row by row from the same constant; the button, a control, is not.
+  it("bakes the AI table from its rows and leaves the consent button out", () => {
+    const text = legalText(privacy);
+    for (const r of MCP_PRIVACY_ROWS) {
+      expect(text, r.id).toContain(legalText(esc(r.what)));
+      expect(text, r.id).toContain(legalText(esc(r.kept)));
+    }
+    expect(privacy.match(/<tr>/g)?.length).toBe(MCP_PRIVACY_ROWS.length + 1);
+    expect(privacy).not.toMatch(/<button|onClick|data-change-consent/);
+    expect(text).not.toContain(EN.privacy.changeConsent ?? "Change my analytics choice");
+    expect(() => legalBodyFromTsx("<section><table><tbody>{ROWS.map((r) => (\n<tr key={r.id}><td>{r.what}</td></tr>\n))}</tbody></table></section>", { locale: EN, vars: {}, esc })).toThrow(/no row list/);
+    expect(() => legalBodyFromTsx("<section><table><tbody>{ROWS.map((r) => (\n<tr><td>{r.gone}</td></tr>\n))}</tbody></table></section>", { locale: EN, vars: { ROWS: [{ what: "x" }] }, esc })).toThrow(/field gone/);
   });
 });
 

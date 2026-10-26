@@ -17,8 +17,18 @@
 // component, an expression it has no value for) throws, and the caller falls
 // back to the headings page and says so in the log: never a half-converted
 // policy.
+//
+// WAVE 4'S PRIVACY PAGE (merged with main 2026-10-25) adds two shapes the
+// first converter refused, so /privacy fell back to its headings: the table
+// of what each way of reaching us from an AI receives and keeps, rendered
+// from a constant's rows (`{ROWS.map((r) => ( <tr>...{r.field}...</tr> ))}`),
+// and a button that reopens the analytics choice. A row list in `vars` is
+// expanded row by row, each `{r.field}` filled from that row (a missing field
+// throws); the table's tags are written as tags; an attribute's expression
+// (`onClick={...}`, `key={r.id}`) goes with the attribute; and a <button> is
+// left out whole, because a control does nothing on a page with no script.
 
-const ALLOWED = new Set(["section", "h2", "h3", "h4", "p", "ul", "ol", "li", "strong", "em", "b", "i", "a", "br", "div", "span"]);
+const ALLOWED = new Set(["section", "h2", "h3", "h4", "p", "ul", "ol", "li", "strong", "em", "b", "i", "a", "br", "div", "span", "table", "thead", "tbody", "tr", "th", "td"]);
 
 /** A dotted key's value in a locale object, or undefined. */
 const lookup = (obj, key) => key.split(".").reduce((o, k) => (o && typeof o === "object" ? o[k] : undefined), obj);
@@ -36,6 +46,20 @@ export function legalBodyFromTsx(source, { locale, vars = {}, esc }) {
   let body = src.slice(start, end + "</section>".length);
   // JSX comments.
   body = body.replace(/\{\/\*[\s\S]*?\*\/\}/g, "");
+  // A control: nothing to read without a script.
+  body = body.replace(/<button\b[\s\S]*?<\/button>/g, "");
+  // An attribute whose value is an expression goes with the attribute.
+  body = body.replace(/\s+[A-Za-z][\w-]*=\{[^{}]*\}/g, "");
+  // {ROWS.map((r) => ( ... ))}: the template once per row of a row list in vars.
+  body = body.replace(/\{\s*([A-Za-z_$][\w$]*)\.map\(\(\s*([A-Za-z_$][\w$]*)\s*\)\s*=>\s*\(([\s\S]*?)\)\)\s*\}/g, (_, name, item, template) => {
+    const rows = vars[name];
+    if (!Array.isArray(rows)) throw new Error(`no row list for {${name}.map}`);
+    const field = new RegExp(`\\{\\s*${item}\\.([A-Za-z_$][\\w$]*)\\s*\\}`, "g");
+    return rows.map((row) => template.replace(field, (_m, key) => {
+      if (row == null || typeof row[key] !== "string" && typeof row[key] !== "number") throw new Error(`no ${name} field ${key}`);
+      return esc(String(row[key]));
+    })).join("\n");
+  });
   // {t('key')} and {t("key")}: the main locale's string.
   body = body.replace(/\{\s*t\(\s*(['"])([^'"]+)\1\s*(?:,[^)]*)?\)\s*\}/g, (_, _q, key) => {
     const v = lookup(locale, key);
