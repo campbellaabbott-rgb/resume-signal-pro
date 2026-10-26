@@ -12,9 +12,10 @@ export const HOME_ROWS_WINDOW_DAYS = 7;
 export const HOME_ROWS_MAX = 5;
 /**
  * THE RESERVED LIST BOX (review P24). Its height is fixed before any row
- * arrives and never changes: rows are packed into it and a row that would not
- * fit whole is not shown, so the box can neither grow nor shrink when the
- * list lands, and nothing below it moves.
+ * arrives: rows are packed into it and a row that would not fit whole is not
+ * shown, so the box never grows when the list lands. It shrinks to its last
+ * row only where nobody can see anything move, its new bottom still at or
+ * below the fold (list-box.ts packRows, review round 2026-10-26).
  *
  * Under 640px: three rows of the tallest card the corrected spec measured at
  * 375px (175px, here 11rem). From 640px: five rows of 7.5rem, measured over

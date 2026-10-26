@@ -29,7 +29,8 @@ const loadCards = (): Promise<CardsModule> => {
  * (src/lib/home/rows.ts). Skeletons sit inside it and are clipped to it, every
  * row lands in one commit, and rows are packed until the next one would not
  * fit whole; the rest are not shown. The packing runs in a layout effect,
- * before the browser paints, so the box never grows or shrinks on screen.
+ * before the browser paints, so the box never grows on screen; it gives back
+ * the space no row uses only while its end is below the fold (packRows).
  * Until both the rows and the cards' chunk are in, the box holds its
  * skeletons. If the list cannot be shown (or the cards' chunk cannot load),
  * the box goes and "See all postings" stays.
