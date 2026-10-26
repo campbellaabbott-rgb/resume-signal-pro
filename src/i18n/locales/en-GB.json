@@ -3369,7 +3369,6 @@
     "resumeScore": "CV ATS Score",
     "results": "{{name}}'s Results",
     "poweredBy": "Powered by",
-    "brand": "resumescanner.ai",
     "outOf": "/100",
     "industry": "Industry",
     "experience": "Experience",
@@ -3377,7 +3376,7 @@
     "improvement": "Improvement",
     "improvementPts": "+{{pts}} pts",
     "topStrength": "Top Strength",
-    "getScore": "Get your free CV score at resumescanner.ai",
+    "getScore": "Get your free CV score at {{site}}",
     "previewLabel": "Preview of your downloadable score card",
     "download": "Download",
     "downloaded": "Downloaded!",
@@ -3393,8 +3392,7 @@
     "downloadingInstead": "Downloading image instead...",
     "copyNotSupported": "Copy not supported",
     "imageDownloaded": "Image downloaded!",
-    "uploadLinkedIn": "Upload it to your LinkedIn post to stand out",
-    "shareText": "Just scored {{score}}/100 on my CV ATS scan! 📊\n\nIndustry: {{industry}}\nTop Strength: {{strength}}\n\nGet your free CV score → resumescanner.ai\n\n#cv #jobsearch #career #ATS"
+    "uploadLinkedIn": "Upload it to your LinkedIn post to stand out"
   },
   "smartRecommendations": {
     "personalizedFor": "Personalised for you",

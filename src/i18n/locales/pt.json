@@ -3392,7 +3392,6 @@
     "resumeScore": "Pontuação ATS do Currículo",
     "results": "Resultados de {{name}}",
     "poweredBy": "Desenvolvido por",
-    "brand": "resumescanner.ai",
     "outOf": "/100",
     "industry": "Setor",
     "experience": "Experiência",
@@ -3400,7 +3399,7 @@
     "improvement": "Melhoria",
     "improvementPts": "+{{pts}} pts",
     "topStrength": "Principal Ponto Forte",
-    "getScore": "Obtenha sua pontuação gratuita em resumescanner.ai",
+    "getScore": "Obtenha sua pontuação gratuita em {{site}}",
     "previewLabel": "Prévia do seu cartão de pontuação para download",
     "download": "Baixar",
     "downloaded": "Baixado!",
@@ -3416,8 +3415,7 @@
     "downloadingInstead": "Baixando imagem em vez disso...",
     "copyNotSupported": "Copiar não suportado",
     "imageDownloaded": "Imagem baixada!",
-    "uploadLinkedIn": "Envie para sua publicação no LinkedIn para se destacar",
-    "shareText": "Acabei de marcar {{score}}/100 no meu scan ATS de currículo! 📊\n\nSetor: {{industry}}\nPrincipal Força: {{strength}}\n\nObtenha sua pontuação gratuita → resumescanner.ai\n\n#curriculo #empregos #carreira #ATS"
+    "uploadLinkedIn": "Envie para sua publicação no LinkedIn para se destacar"
   },
   "smartRecommendations": {
     "personalizedFor": "Personalizado para você",

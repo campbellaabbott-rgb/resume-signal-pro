@@ -3392,7 +3392,6 @@
     "resumeScore": "Score ATS du CV",
     "results": "Résultats de {{name}}",
     "poweredBy": "Propulsé par",
-    "brand": "resumescanner.ai",
     "outOf": "/100",
     "industry": "Secteur",
     "experience": "Expérience",
@@ -3400,7 +3399,7 @@
     "improvement": "Amélioration",
     "improvementPts": "+{{pts}} pts",
     "topStrength": "Principal atout",
-    "getScore": "Obtenez votre score gratuit sur resumescanner.ai",
+    "getScore": "Obtenez votre score gratuit sur {{site}}",
     "previewLabel": "Aperçu de votre carte de score téléchargeable",
     "download": "Télécharger",
     "downloaded": "Téléchargé !",
@@ -3416,8 +3415,7 @@
     "downloadingInstead": "Téléchargement de l'image à la place...",
     "copyNotSupported": "Copie non prise en charge",
     "imageDownloaded": "Image téléchargée !",
-    "uploadLinkedIn": "Téléchargez-la dans votre publication LinkedIn pour vous démarquer",
-    "shareText": "Je viens d'obtenir {{score}}/100 sur mon scan ATS de CV ! 📊\n\nSecteur : {{industry}}\nPrincipal atout : {{strength}}\n\nObtenez votre score gratuit → resumescanner.ai\n\n#cv #rechercheemploi #carriere #ATS"
+    "uploadLinkedIn": "Téléchargez-la dans votre publication LinkedIn pour vous démarquer"
   },
   "smartRecommendations": {
     "personalizedFor": "Personnalisé pour vous",

@@ -3369,7 +3369,6 @@
     "resumeScore": "ATS Score ng Resume",
     "results": "Mga Resulta ni {{name}}",
     "poweredBy": "Pinapatakbo ng",
-    "brand": "resumescanner.ai",
     "outOf": "/100",
     "industry": "Industriya",
     "experience": "Karanasan",
@@ -3377,7 +3376,7 @@
     "improvement": "Pagpapabuti",
     "improvementPts": "+{{pts}} puntos",
     "topStrength": "Nangungunang Kalakasan",
-    "getScore": "Makuha ang iyong libreng resume score sa resumescanner.ai",
+    "getScore": "Makuha ang iyong libreng resume score sa {{site}}",
     "previewLabel": "Preview ng iyong nada-download na score card",
     "download": "I-download",
     "downloaded": "Na-download!",
@@ -3393,8 +3392,7 @@
     "downloadingInstead": "Nagda-download ng larawan sa halip...",
     "copyNotSupported": "Hindi suportado ang pagkopya",
     "imageDownloaded": "Na-download ang larawan!",
-    "uploadLinkedIn": "I-upload ito sa iyong LinkedIn post para makilala",
-    "shareText": "Nakakuha ng {{score}}/100 sa aking ATS scan ng resume! 📊\n\nIndustriya: {{industry}}\nNangungunang Kalakasan: {{strength}}\n\nKumuha ng iyong libreng resume score → resumescanner.ai\n\n#resume #paghahanap-ng-trabaho #karera #ATS"
+    "uploadLinkedIn": "I-upload ito sa iyong LinkedIn post para makilala"
   },
   "smartRecommendations": {
     "personalizedFor": "Personalisado para sa iyo",

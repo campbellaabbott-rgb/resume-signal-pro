@@ -3369,7 +3369,6 @@
     "resumeScore": "Lebenslauf-ATS-Score",
     "results": "{{name}}s Ergebnisse",
     "poweredBy": "Bereitgestellt von",
-    "brand": "resumescanner.ai",
     "outOf": "/100",
     "industry": "Branche",
     "experience": "Erfahrung",
@@ -3377,7 +3376,7 @@
     "improvement": "Verbesserung",
     "improvementPts": "+{{pts}} Punkte",
     "topStrength": "Top-Stärke",
-    "getScore": "Hol dir deinen kostenlosen Lebenslauf-Score auf resumescanner.ai",
+    "getScore": "Hol dir deinen kostenlosen Lebenslauf-Score auf {{site}}",
     "previewLabel": "Vorschau deiner herunterladbaren Score-Karte",
     "download": "Herunterladen",
     "downloaded": "Heruntergeladen!",
@@ -3393,8 +3392,7 @@
     "downloadingInstead": "Stattdessen Bild herunterladen...",
     "copyNotSupported": "Kopieren nicht unterstützt",
     "imageDownloaded": "Bild heruntergeladen!",
-    "uploadLinkedIn": "Lade es in deinen LinkedIn-Beitrag hoch, um aufzufallen",
-    "shareText": "Gerade {{score}}/100 bei meinem Lebenslauf-ATS-Scan erzielt! 📊\n\nBranche: {{industry}}\nTop-Stärke: {{strength}}\n\nHol dir deinen kostenlosen Lebenslauf-Score → resumescanner.ai\n\n#lebenslauf #jobsuche #karriere #ATS"
+    "uploadLinkedIn": "Lade es in deinen LinkedIn-Beitrag hoch, um aufzufallen"
   },
   "smartRecommendations": {
     "personalizedFor": "Personalisiert für dich",

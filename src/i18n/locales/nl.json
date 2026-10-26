@@ -3369,7 +3369,6 @@
     "resumeScore": "CV ATS-score",
     "results": "Resultaten van {{name}}",
     "poweredBy": "Aangedreven door",
-    "brand": "resumescanner.ai",
     "outOf": "/100",
     "industry": "Branche",
     "experience": "Ervaring",
@@ -3377,7 +3376,7 @@
     "improvement": "Verbetering",
     "improvementPts": "+{{pts}} punten",
     "topStrength": "Topsterkte",
-    "getScore": "Haal je gratis CV-score op resumescanner.ai",
+    "getScore": "Haal je gratis CV-score op {{site}}",
     "previewLabel": "Voorbeeld van je downloadbare scorekaart",
     "download": "Downloaden",
     "downloaded": "Gedownload!",
@@ -3393,8 +3392,7 @@
     "downloadingInstead": "In plaats daarvan afbeelding downloaden...",
     "copyNotSupported": "Kopiëren niet ondersteund",
     "imageDownloaded": "Afbeelding gedownload!",
-    "uploadLinkedIn": "Upload het naar je LinkedIn-bericht om op te vallen",
-    "shareText": "Zojuist {{score}}/100 behaald op mijn CV ATS-scan! 📊\n\nBranche: {{industry}}\nTopsterkte: {{strength}}\n\nHaal je gratis CV-score → resumescanner.ai\n\n#cv #vacature #carriere #ATS"
+    "uploadLinkedIn": "Upload het naar je LinkedIn-bericht om op te vallen"
   },
   "smartRecommendations": {
     "personalizedFor": "Gepersonaliseerd voor jou",

@@ -5,6 +5,16 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { postTrackEvent } from "@/lib/track-transport";
+import { TRADING_NAME } from "@/config/seller";
+
+/**
+ * Where a shared card sends people: this site's scanner. The card used to say
+ * "Powered by" and "Get your free resume score at" a domain that is not ours
+ * (review round 2026-10-26); the trading name is never translated, and the
+ * address is the scanner's own page, not "/" (the job search).
+ */
+export const SHARE_SITE = "resumebooster.work/resume-checker";
+export const SHARE_URL = `https://${SHARE_SITE}`;
 // html2canvas (~99KB gzipped) is only needed when the user actually exports an
 // image, so it's dynamically imported in generateImage() below instead of being
 // bundled into the main chunk that every visitor downloads on page load.
@@ -191,15 +201,9 @@ export function ShareableScoreCard({
     // Track the share
     trackShareEvent('linkedin_share', atsScore, industry);
     
-    // Open LinkedIn share dialog
-    const shareUrl = encodeURIComponent(window.location.origin);
-    const shareText = encodeURIComponent(
-      `Just scored ${atsScore}/100 on my resume ATS scan! 📊\n\n` +
-      `Industry: ${industry}\n` +
-      (topStrength ? `Top Strength: ${topStrength}\n\n` : "") +
-      `Get your free resume score → resumescanner.ai\n\n` +
-      `#resume #jobsearch #career #ATS`
-    );
+    // Open LinkedIn's share dialog on the scanner's page. LinkedIn's
+    // share-offsite takes the address alone: the image carries the score.
+    const shareUrl = encodeURIComponent(SHARE_URL);
     
     window.open(
       `https://www.linkedin.com/sharing/share-offsite/?url=${shareUrl}`,
@@ -234,8 +238,8 @@ export function ShareableScoreCard({
           </h2>
         </div>
         <div style={{ textAlign: "right" }}>
-          <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "12px", margin: 0 }}>Powered by</p>
-          <p style={{ color: "#fff", fontWeight: "600", margin: 0 }}>resumescanner.ai</p>
+          <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "12px", margin: 0 }}>{t('shareableCard.poweredBy')}</p>
+          <p style={{ color: "#fff", fontWeight: "600", margin: 0 }}>{TRADING_NAME}</p>
         </div>
       </div>
 
@@ -332,7 +336,7 @@ export function ShareableScoreCard({
       {/* Footer CTA */}
       <div style={{ textAlign: "center", paddingTop: "16px", borderTop: "1px solid rgba(255,255,255,0.1)" }}>
         <p style={{ color: "rgba(255,255,255,0.6)", fontSize: "14px", margin: 0 }}>
-          Get your free resume score at <span style={{ color: "#fff", fontWeight: "600" }}>resumescanner.ai</span>
+          {t('shareableCard.getScore', { site: SHARE_SITE })}
         </p>
       </div>
     </div>

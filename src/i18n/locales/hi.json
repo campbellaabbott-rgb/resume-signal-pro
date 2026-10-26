@@ -3369,7 +3369,6 @@
     "resumeScore": "रिज़्यूमे ATS स्कोर",
     "results": "{{name}} के परिणाम",
     "poweredBy": "द्वारा संचालित",
-    "brand": "resumescanner.ai",
     "outOf": "/100",
     "industry": "उद्योग",
     "experience": "अनुभव",
@@ -3377,7 +3376,7 @@
     "improvement": "सुधार",
     "improvementPts": "+{{pts}} अंक",
     "topStrength": "शीर्ष ताकत",
-    "getScore": "resumescanner.ai पर अपना मुफ़्त रिज़्यूमे स्कोर प्राप्त करें",
+    "getScore": "{{site}} पर अपना मुफ़्त रिज़्यूमे स्कोर प्राप्त करें",
     "previewLabel": "आपकी डाउनलोड करने योग्य स्कोर कार्ड का पूर्वावलोकन",
     "download": "डाउनलोड करें",
     "downloaded": "डाउनलोड हो गया!",
@@ -3393,8 +3392,7 @@
     "downloadingInstead": "इसके बजाय छवि डाउनलोड हो रही है...",
     "copyNotSupported": "कॉपी समर्थित नहीं",
     "imageDownloaded": "छवि डाउनलोड हो गई!",
-    "uploadLinkedIn": "अलग दिखने के लिए इसे अपनी LinkedIn पोस्ट में अपलोड करें",
-    "shareText": "मैंने अभी अपने रिज़्यूमे ATS स्कैन में {{score}}/100 प्राप्त किया! 📊\n\nउद्योग: {{industry}}\nशीर्ष ताकत: {{strength}}\n\nअपना मुफ़्त रिज़्यूमे स्कोर प्राप्त करें → resumescanner.ai\n\n#resume #jobsearch #career #ATS"
+    "uploadLinkedIn": "अलग दिखने के लिए इसे अपनी LinkedIn पोस्ट में अपलोड करें"
   },
   "smartRecommendations": {
     "personalizedFor": "आपके लिए व्यक्तिगत",
