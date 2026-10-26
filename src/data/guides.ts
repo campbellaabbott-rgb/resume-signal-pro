@@ -563,9 +563,9 @@ export const GUIDES: Record<string, Guide> = {
     title: "The Apply Agent Is Switched Off: Apply With Your Own AI",
     h1: "The Apply Agent is switched off",
     description:
-      "Resume Booster switched its Apply Agent off and sends nothing in your name. Here is how to apply yourself with Claude or ChatGPT instead.",
+      "Resume Booster switched its Apply Agent off and sends nothing in your name. Here is how to apply yourself with Claude, ChatGPT or Claude Code instead.",
     tldr:
-      "We switched our Apply Agent off and stopped selling the products built around it: Resume Booster does not send applications for anyone. To apply, connect Claude or ChatGPT at resumebooster.work/agents. Your AI reads the posting and, where the employer's hiring system publishes it, the application form; Resume Booster tells it to ask you the questions that look like they are about you and to draft open answers about your work from your CV. That check reads the question's words and can miss a question about you, even a plainly worded one, so you read every answer before you send and press submit on the employer's own site.",
+      "We switched our Apply Agent off and stopped selling the products built around it: Resume Booster does not send applications for anyone. To apply, connect Claude, ChatGPT or Claude Code at resumebooster.work/agents. Your AI reads the posting and, where the employer's hiring system publishes it, the application form; Resume Booster tells it to ask you the questions that look like they are about you and to draft open answers about your work from your CV. That check reads the question's words and can miss a question about you, even a plainly worded one, so you read every answer before you send and press submit on the employer's own site.",
     updated: "2026-10-25",
     minutes: 5,
     grounding: "Describes what changed, and the apply-yourself flow the connector serves today",
@@ -581,7 +581,7 @@ export const GUIDES: Record<string, Guide> = {
       {
         h2: "How to apply now: with your own AI",
         paras: [
-          `Connect Claude or ChatGPT to Resume Booster at resumebooster.work/agents. It is free and needs no account. Then give your AI your CV in the chat and ask it to help you apply to a job, either by pasting the job's link from the board or by picking one from a search.`,
+          `Connect Claude, ChatGPT or Claude Code to Resume Booster at resumebooster.work/agents. It is free and needs no account. Then give your AI your CV in the chat and ask it to help you apply to a job, either by pasting the job's link from the board or by picking one from a search.`,
           `Your AI reads the posting. When the employer uses ${orList(MCP_FORM_VENDORS.map((v) => v.label))}, it also reads the employer's real application form, question by question. Inside ChatGPT it reads the form only for ${orList(MCP_FORM_VENDORS.filter((v) => MCP_FORM_VENDORS_ON_CHATGPT.includes(v.key)).map((v) => v.label))}. For every other employer it reads the posting and gives you the employer's apply link, and you fill in their form yourself.`,
         ],
         bullets: [
@@ -636,6 +636,10 @@ export const GUIDES: Record<string, Guide> = {
       {
         q: "I paid for one of the apply agent's products. What happens now?",
         a: "Write to resumeboostersupp@gmail.com from the address you paid with and we will honour what you bought.",
+      },
+      {
+        q: "Which AI can I use?",
+        a: "Claude (on the web, the desktop app or Claude Code) or ChatGPT. The steps for each are on resumebooster.work/agents.",
       },
       {
         q: "Will my AI fill in the whole application for me?",
