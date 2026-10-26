@@ -84,7 +84,6 @@ import { pricingJsonLd } from "@/components/pricing/pricing-jsonld";
 import { resolveSaleGates, type SaleGateInput } from "@/components/pricing/sale-gates";
 import { homePlanRows, saleGates } from "@/lib/home/sale-gates";
 import { useCurrency } from "@/hooks/use-currency";
-import "@/lib/home/strings";
 
 vi.setConfig(MOUNT_TEST_BUDGET);
 beforeAll(() => {
@@ -96,8 +95,8 @@ const LOCALES = ["en", "en-GB", "de", "es", "fr", "hi", "nl", "pt", "tl"] as con
 type Locale = (typeof LOCALES)[number];
 type Tree = Record<string, unknown>;
 
-const HOME_DIR = resolve(__dirname, "../lib/home/strings");
-const PRICING_DIR = resolve(__dirname, "../components/pricing/strings");
+const HOME_DIR = resolve(__dirname, "../i18n/shards/home");
+const PRICING_DIR = resolve(__dirname, "../i18n/shards/pricing");
 const readJson = (dir: string, lng: Locale) => JSON.parse(readFileSync(join(dir, `${lng}.json`), "utf8")) as Tree;
 const read = (rel: string) => readFileSync(resolve(__dirname, rel), "utf8");
 
@@ -256,8 +255,8 @@ function screenText(root: HTMLElement): string {
 const TEST_SELLER = { legalName: "TEST SELLER", postalAddress: "TEST ADDRESS, NOWHERE" };
 const NO_SELLER = { legalName: "", postalAddress: "" };
 const POSTINGS = { openTotal: 1040488, asOf: "2026-10-17T22:45:00Z" };
-const en = JSON.parse(read("../components/pricing/strings/en.json")).pricingPlans as Record<string, Record<string, string>>;
-const enHome = (JSON.parse(read("../lib/home/strings/en.json")).home as Record<string, Record<string, string>>).plans;
+const en = JSON.parse(read("../i18n/shards/pricing/en.json")).pricingPlans as Record<string, Record<string, string>>;
+const enHome = (JSON.parse(read("../i18n/shards/home/en.json")).home as Record<string, Record<string, string>>).plans;
 
 describe("rendered in English, in every sale state", () => {
   for (const [sellerName, seller] of [["no seller", NO_SELLER], ["TEST SELLER", TEST_SELLER]] as const) {

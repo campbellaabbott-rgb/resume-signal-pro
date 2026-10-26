@@ -21,8 +21,8 @@ import { join, resolve } from "node:path";
 const LOCALES = ["en", "en-GB", "de", "es", "fr", "hi", "nl", "pt", "tl"] as const;
 type Locale = (typeof LOCALES)[number];
 
-const HOME_DIR = resolve(__dirname, "../lib/home/strings");
-const PRICING_DIR = resolve(__dirname, "../components/pricing/strings");
+const HOME_DIR = resolve(__dirname, "../i18n/shards/home");
+const PRICING_DIR = resolve(__dirname, "../i18n/shards/pricing");
 
 const readJson = (dir: string, lng: Locale) => JSON.parse(readFileSync(join(dir, `${lng}.json`), "utf8")) as Record<string, unknown>;
 

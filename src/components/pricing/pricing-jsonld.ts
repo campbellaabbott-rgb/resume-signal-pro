@@ -14,7 +14,7 @@
  */
 import { FULL_ANALYSIS_PRICE_USD, PRO_PRICE_USD } from "./plan-facts";
 import type { SaleGates } from "./sale-gates";
-import en from "./strings/en.json";
+import en from "@/i18n/shards/pricing/en.json";
 
 const SITE = "https://resumebooster.work";
 

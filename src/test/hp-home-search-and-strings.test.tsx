@@ -1,22 +1,26 @@
 /**
- * THE SEARCH GOES WHERE THE BOARD READS IT, AND THE HOME STRINGS NEVER STOP
- * THE MAIN LOCALE LOADING.
+ * THE SEARCH GOES WHERE THE BOARD READS IT, AND THE FIRST RENDER WAITS FOR
+ * THE MAIN LOCALE THAT CARRIES THE HOME STRINGS.
  *
  *   - The hero's form asks /jobs with q and location (Jobs.tsx reads both);
  *     "Remote", in English or the reader's own word, is the work mode
  *     (mode=remote), not a place called Remote. The try chips go to the
  *     same addresses.
- *   - src/i18n/index.ts loadLocale skips a language that already has a
- *     bundle, so the homepage's strings for a language are added only after
- *     the main file for it has arrived (or after a wait, when it never does).
+ *   - the homepage's strings are a string shard, so they land with the main
+ *     locale; the first render waits for that main locale (useLocaleReady),
+ *     and stops waiting after MAIN_WAIT_MS when it never lands.
  */
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
+import { act, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
-import i18n from "i18next";
+import i18next from "i18next";
+import { I18nextProvider, initReactI18next } from "react-i18next";
+import i18n from "@/i18n";
+import { mergeShards } from "@/i18n/merge-shards";
 import { HomeSearchHero } from "@/components/home/HomeSearchHero";
 import { searchHref, TRY_CHIPS } from "@/lib/home/search";
-import { homeStringsFile, loadHomeStrings, MAIN_WAIT_MS } from "@/lib/home/strings";
+import { MAIN_WAIT_MS, useLocaleReady } from "@/lib/home/use-locale-ready";
 
 function Where() {
   const l = useLocation();
@@ -56,39 +60,41 @@ describe("the hero's search", () => {
   });
 });
 
-describe("the home strings loader", () => {
-  it("maps each interface language to its file (fr-CA reads fr; an unknown code reads none)", () => {
-    expect(homeStringsFile("de")).toBe("./strings/de.json");
-    expect(homeStringsFile("fr-CA")).toBe("./strings/fr.json");
-    expect(homeStringsFile("en-GB")).toBe("./strings/en-GB.json");
-    expect(homeStringsFile("xx")).toBeNull();
-  });
-
-  it("English is merged on load, under the main bundle", () => {
+describe("the first-render gate reads the main locale, which carries the shards", () => {
+  it("English is ready at once, with the homepage's shard merged under the main bundle", () => {
     expect(i18n.t("home.hero.title", { lng: "en" })).toBe("Live jobs, straight from employers' own hiring systems.");
+    expect(i18n.t("pricingPlans.head.h1", { lng: "en" })).not.toBe("pricingPlans.head.h1");
     expect(i18n.t("header.jobs", { lng: "en" })).toBe("Jobs");
+    const { result } = renderHook(() => useLocaleReady());
+    expect(result.current).toBe(true);
   });
 
-  it("waits for the main file of a language before adding the home strings", async () => {
-    expect(i18n.hasResourceBundle("nl", "translation")).toBe(false);
-    const done = loadHomeStrings("nl");
-    await new Promise((r) => setTimeout(r, 50));
-    // The home file has loaded by now, but adding it would make loadLocale skip Dutch.
-    expect(i18n.hasResourceBundle("nl", "translation")).toBe(false);
-    i18n.addResourceBundle("nl", "translation", { header: { jobs: "Vacatures" } });
-    await done;
-    expect(i18n.t("header.jobs", { lng: "nl" })).toBe("Vacatures");
-    expect(i18n.t("home.hero.submit", { lng: "nl" })).toBe("Vacatures zoeken");
+  it("another language waits for its main locale, and its shard strings arrive with it", async () => {
+    const lng = "nl";
+    const inst = i18next.createInstance();
+    await inst.use(initReactI18next).init({ lng, fallbackLng: "en", resources: { en: { translation: { header: { jobs: "Jobs" } } } }, interpolation: { escapeValue: false } });
+    const wrapper = ({ children }: { children: ReactNode }) => <I18nextProvider i18n={inst}>{children}</I18nextProvider>;
+    const { result } = renderHook(() => useLocaleReady(), { wrapper });
+    expect(result.current, "ready before the Dutch main locale landed").toBe(false);
+    const nl = (await import("@/i18n/locales/nl.json")).default as Record<string, unknown>;
+    const shard = (await import("@/i18n/shards/home/nl.json")).default as Record<string, unknown>;
+    act(() => { inst.addResourceBundle(lng, "translation", mergeShards(nl, [{ name: "home", bundle: shard }])); });
+    await waitFor(() => expect(result.current).toBe(true));
+    expect(inst.t("home.hero.submit")).toBe("Vacatures zoeken");
   });
 
-  it("adds them anyway once the wait runs out, when the main file never arrives", async () => {
+  it("a main locale that never lands still opens the gate after MAIN_WAIT_MS", () => {
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
     try {
-      expect(i18n.hasResourceBundle("pt", "translation")).toBe(false);
-      const done = loadHomeStrings("pt");
-      await vi.advanceTimersByTimeAsync(MAIN_WAIT_MS + 10);
-      await done;
-      expect(i18n.t("home.hero.submit", { lng: "pt" })).toBe("Buscar vagas");
+      const inst = i18next.createInstance();
+      void inst.use(initReactI18next).init({ lng: "pt", fallbackLng: "en", initImmediate: false, resources: { en: { translation: {} } } });
+      const wrapper = ({ children }: { children: ReactNode }) => <I18nextProvider i18n={inst}>{children}</I18nextProvider>;
+      const { result } = renderHook(() => useLocaleReady(), { wrapper });
+      expect(result.current).toBe(false);
+      act(() => { vi.advanceTimersByTime(MAIN_WAIT_MS - 10); });
+      expect(result.current).toBe(false);
+      act(() => { vi.advanceTimersByTime(20); });
+      expect(result.current).toBe(true);
     } finally {
       vi.useRealTimers();
     }

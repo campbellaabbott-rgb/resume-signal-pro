@@ -15,6 +15,9 @@
  *      published-claims.test.ts through helpers/locale-strings.ts);
  *   5. the runtime really merges them: a shard key resolves through i18next.
  *
+ * The homepage and the pricing page joined as the "home" and "pricing"
+ * shards at the homepage switch-over (step 2).
+ *
  * Before the listing and company groups landed there could be no shard on
  * disk, so the rules are also proven on fixture shards below. Design pass B
  * (2026-10-12) wired both groups into the board and added the assertion that
@@ -48,12 +51,12 @@ function pluralGaps(bundle: Bundle, lng: string): string[] {
 describe("the shards on disk", () => {
   const names = shardNames();
 
-  it("both shards exist, in all nine languages, and the board's components read them", () => {
+  it("every shard exists, in all nine languages, and the components that mount it read it", () => {
     // Pass B mounts the listing components (card, pane, sheet) and the
     // company lander on the board: each reads its own group's keys, so a
     // missing shard would print English defaults, or raw keys, to every reader.
-    expect([...names].sort(), "a shard directory is missing").toEqual(expect.arrayContaining(["company", "listing"]));
-    for (const name of ["listing", "company"]) {
+    expect([...names].sort(), "a shard directory is missing").toEqual(expect.arrayContaining(["company", "home", "listing", "pricing"]));
+    for (const name of ["listing", "company", "home", "pricing"]) {
       const langs = LOCALE_FILES.filter((f) => readShards(f).some((x) => x.name === name));
       expect(langs, `shard ${name} is missing languages`).toEqual([...LOCALE_FILES]);
     }
@@ -63,6 +66,9 @@ describe("the shards on disk", () => {
     const board = read("src/pages/Jobs.tsx");
     expect(board, "the board no longer mounts the listing card").toMatch(/<JobCard\b/);
     expect(board, "the board no longer mounts the company lander").toMatch(/<CompanyLanderHeader\b/);
+    // The homepage and the pricing page (switch-over step 2) read their own shards.
+    expect(read("src/components/home/HomeSearchHero.tsx")).toMatch(/t\("home\./);
+    expect(read("src/components/pricing/PricingHead.tsx")).toMatch(/t\("pricingPlans\./);
   });
 
   it("every shard directory is a registered group", () => {

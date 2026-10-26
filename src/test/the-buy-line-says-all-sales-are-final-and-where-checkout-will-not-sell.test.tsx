@@ -142,7 +142,7 @@ describe("in every language", () => {
   });
 
   it("the final-sale sentence is the one the pricing page uses, where its strings are on this tree", () => {
-    const dir = resolve(ROOT, "src/components/pricing/strings");
+    const dir = resolve(ROOT, "src/i18n/shards/pricing");
     let shards: string[] = [];
     try { shards = readdirSync(dir).filter((f) => f.endsWith(".json")); } catch { /* the pricing page ships with hp/integration */ }
     for (const f of shards) {

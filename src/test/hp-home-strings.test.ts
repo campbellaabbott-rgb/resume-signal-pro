@@ -1,10 +1,9 @@
 /**
  * THE HOMEPAGE'S STRINGS: NINE LANGUAGES, THE SHARD RULES, AND THE HOUSE RULES.
  *
- * The home strings live in src/lib/home/strings/<lng>.json until the
- * switch-over moves them to src/i18n/shards/home/ (docs/homepage-pricing/
- * README.md). Until then the design system's shard guard cannot see them, so
- * this file holds them to the same rules (one root key, no collision with the
+ * The home strings are the string shard src/i18n/shards/home/<lng>.json,
+ * registered under "home" (switch-over step 2), so the design system's shard
+ * guard holds them too. This file restates its rules (one root key, no collision with the
  * main locale or another shard, identical key sets with a plural group as one
  * key, every plural category the language uses, no empty value) and to the
  * owner's copy rules of 2026-10-17:
@@ -27,7 +26,7 @@ import { join, resolve } from "node:path";
 import { leafKeys, type Bundle } from "@/i18n/merge-shards";
 import { LISTING_BANNED_PHRASES, LOCALE_FILES, readMainLocale, readShards, stringLeaves } from "./helpers/locale-strings";
 
-const DIR = resolve(__dirname, "../lib/home/strings");
+const DIR = resolve(__dirname, "../i18n/shards/home");
 const FILES = readdirSync(DIR).filter((f) => f.endsWith(".json")).sort();
 const read = (f: string) => JSON.parse(readFileSync(join(DIR, f), "utf8")) as Bundle;
 const PLURAL = /_(zero|one|two|few|many|other)$/;
@@ -42,7 +41,7 @@ describe("the home strings exist in the nine languages the site ships", () => {
   it("each writes only under \"home\", and redefines nothing main or a shard defines", () => {
     for (const f of FILES) {
       expect(Object.keys(read(f)), f).toEqual(["home"]);
-      const owned = new Set([...leafKeys(readMainLocale(f)), ...readShards(f).flatMap((s) => leafKeys(s.bundle))]);
+      const owned = new Set([...leafKeys(readMainLocale(f)), ...readShards(f).filter((s) => s.name !== "home").flatMap((s) => leafKeys(s.bundle))]);
       const clashes = leafKeys(read(f)).filter((k) => owned.has(k) || [...owned].some((o) => o.startsWith(`${k}.`) || k.startsWith(`${o}.`)));
       expect(clashes, f).toEqual([]);
     }

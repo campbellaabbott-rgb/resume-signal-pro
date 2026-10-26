@@ -7,7 +7,7 @@ import { useBoardVendorCounts } from "@/hooks/useBoardVendorCounts";
 import { useBoardFreshness } from "@/lib/home/use-board-freshness";
 import { useHomeRows } from "@/lib/home/use-home-rows";
 import { saleGates, type SaleGates } from "@/lib/home/sale-gates";
-import { useHomeStrings } from "@/lib/home/strings";
+import { useLocaleReady } from "@/lib/home/use-locale-ready";
 import { useStickyReady } from "@/lib/home/use-sticky-ready";
 import { HomeSearchHero } from "@/components/home/HomeSearchHero";
 import { HomeBoardRows } from "@/components/home/HomeBoardRows";
@@ -29,7 +29,8 @@ import { HomeFaq } from "@/components/home/HomeFaq";
  * mcp-tools.ts, the scanner page, the uploader and the checkout hook never
  * load here.
  *
- * THE FIRST RENDER WAITS FOR THE READER'S STRINGS. A German reader would
+ * THE FIRST RENDER WAITS FOR THE READER'S MAIN LOCALE, which carries this
+ * page's shard (useLocaleReady). A German reader would
  * otherwise see the English page swap into German (CLS 0.18 at 375 px,
  * measured); <main> is held empty at full height and the footer waits with
  * it (a footer drawn under an empty main is pushed down when the page lands:
@@ -51,7 +52,7 @@ export interface HomePageProps {
 
 export default function HomePage({ loadRowsForAutomation = false, gates }: HomePageProps) {
   const { t } = useTranslation();
-  const shown = useStickyReady(useHomeStrings());
+  const shown = useStickyReady(useLocaleReady());
   const { session } = useAuth();
   const counts = useBoardVendorCounts();
   const freshness = useBoardFreshness();

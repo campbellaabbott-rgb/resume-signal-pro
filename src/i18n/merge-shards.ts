@@ -4,7 +4,9 @@
  * The main locale files (src/i18n/locales/<lng>.json) belong to the design
  * system. The listing components write only src/i18n/shards/listing/<lng>.json
  * under the top-level key "listing"; the company page writes only
- * src/i18n/shards/company/<lng>.json under "companyProfile". At start-up each
+ * src/i18n/shards/company/<lng>.json under "companyProfile"; the homepage
+ * writes src/i18n/shards/home/ under "home" and the pricing page
+ * src/i18n/shards/pricing/ under "pricingPlans". At start-up each
  * language's shards are deep-merged into its one `translation` namespace, so a
  * component calls t("listing.…") like any other key.
  *
@@ -22,6 +24,8 @@ export type Bundle = Record<string, unknown>;
 export const SHARD_ROOT_KEYS: Readonly<Record<string, string>> = {
   listing: "listing",
   company: "companyProfile",
+  home: "home",
+  pricing: "pricingPlans",
 };
 
 export interface Shard {

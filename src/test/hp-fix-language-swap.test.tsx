@@ -14,12 +14,12 @@
  *   - the pricing loader waited for the main locale with no deadline, so a
  *     main locale that never loads would leave the page blank for good.
  *
- * Both pages now gate only their FIRST render on the reader's strings (the
- * footer waits with the page, so nothing drawn early is pushed down) and keep
- * what they show mounted from then on, footer included; and each loader stops
- * waiting for the main locale after its deadline. Each
- * test uses a language no other test touches: the loaders remember what
- * they merged.
+ * Both pages now gate only their FIRST render on the reader's main locale,
+ * which carries their string shards (useLocaleReady; the footer waits with
+ * the page, so nothing drawn early is pushed down) and keep what they show
+ * mounted from then on, footer included. The gate's deadline, for a main
+ * locale that never lands, is held in hp-home-search-and-strings. Each test
+ * uses a language no other test touches: a main locale stays loaded.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, render, waitFor } from "@testing-library/react";
@@ -56,13 +56,12 @@ function stubTable() {
 
 import HomePage from "@/pages/home/HomePage";
 import PricingPage from "@/pages/pricing/PricingPage";
-import { loadPricingStrings, pricingStringsMerged } from "@/components/pricing/use-pricing-strings";
 
 vi.setConfig({ ...MOUNT_TEST_BUDGET, testTimeout: 30_000 });
 const SLOW = { timeout: 15_000 } as const;
 
 type Tree = Record<string, Record<string, Record<string, string>>>;
-const homeH1 = (lng: string) => (JSON.parse(readFileSync(resolve(__dirname, `../lib/home/strings/${lng}.json`), "utf8")) as Tree).home.hero.title;
+const homeH1 = (lng: string) => (JSON.parse(readFileSync(resolve(__dirname, `../i18n/shards/home/${lng}.json`), "utf8")) as Tree).home.hero.title;
 const EN_H1 = homeH1("en");
 
 beforeEach(async () => {
@@ -128,14 +127,4 @@ describe("a later language change keeps the page and the focus", () => {
       expect(footerLink!.isConnected).toBe(true);
     });
   }
-});
-
-describe("the pricing loader has a deadline", () => {
-  it("a main locale that never lands still lets the page render, after the wait", async () => {
-    const lng = "pt";
-    if (i18n.hasResourceBundle(lng, "translation")) i18n.removeResourceBundle(lng, "translation");
-    expect(pricingStringsMerged(lng)).toBe(false);
-    await loadPricingStrings(lng, 60);
-    expect(pricingStringsMerged(lng)).toBe(true);
-  });
 });

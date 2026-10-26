@@ -35,7 +35,6 @@ import { HomePlanStrip } from "@/components/home/HomePlanStrip";
 import { PricingView } from "@/components/pricing/PricingView";
 import { resolveSaleGates } from "@/components/pricing/sale-gates";
 import { saleGates, type DigestMailClass } from "@/lib/home/sale-gates";
-import "@/lib/home/strings";
 
 vi.setConfig(MOUNT_TEST_BUDGET);
 afterEach(() => cleanup());
@@ -88,7 +87,7 @@ describe("the no-alerts sentences, in every language", () => {
   };
   for (const [lng, word] of Object.entries(WORD)) {
     it(`${lng}: each of the four sentences has a no-alerts form without the word, and the alerts form keeps it`, () => {
-      const p = (JSON.parse(readFileSync(resolve(__dirname, `../components/pricing/strings/${lng}.json`), "utf8")) as {
+      const p = (JSON.parse(readFileSync(resolve(__dirname, `../i18n/shards/pricing/${lng}.json`), "utf8")) as {
         pricingPlans: Record<string, Record<string, string>>;
       }).pricingPlans;
       const pairs: Array<[string, string | undefined, string | undefined]> = [

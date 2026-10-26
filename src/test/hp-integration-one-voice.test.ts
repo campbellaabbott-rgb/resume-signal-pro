@@ -31,8 +31,8 @@ const NO_SELLER = { legalName: "", postalAddress: "" };
 
 type Tree = Record<string, unknown>;
 const readJson = (rel: string): Tree => JSON.parse(readFileSync(resolve(__dirname, rel), "utf8")) as Tree;
-const homeStrings = (lng: string) => (readJson(`../lib/home/strings/${lng}.json`).home as Tree).plans as Record<string, string>;
-const pricingStrings = (lng: string) => readJson(`../components/pricing/strings/${lng}.json`).pricingPlans as Record<string, Record<string, string>>;
+const homeStrings = (lng: string) => (readJson(`../i18n/shards/home/${lng}.json`).home as Tree).plans as Record<string, string>;
+const pricingStrings = (lng: string) => readJson(`../i18n/shards/pricing/${lng}.json`).pricingPlans as Record<string, Record<string, string>>;
 
 describe("one switch decides what both pages sell", () => {
   it("the pricing page's stand-ins read the homepage's switches", () => {
@@ -139,7 +139,7 @@ describe("one wording, in every language", () => {
         else if (o && typeof o === "object") for (const v of Object.values(o)) leaves(v, out);
         return out;
       };
-      const all = [...leaves(readJson(`../lib/home/strings/${lng}.json`)), ...leaves(readJson(`../components/pricing/strings/${lng}.json`))];
+      const all = [...leaves(readJson(`../i18n/shards/home/${lng}.json`)), ...leaves(readJson(`../i18n/shards/pricing/${lng}.json`))];
       expect(all.filter((s) => banned.test(s))).toEqual([]);
     });
   }

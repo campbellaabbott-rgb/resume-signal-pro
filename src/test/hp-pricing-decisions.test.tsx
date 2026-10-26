@@ -75,7 +75,7 @@ import { PRO_PERK_ITEMS, visibleProPerks } from "@/components/pricing/pro-perks-
 import { pricingJsonLd } from "@/components/pricing/pricing-jsonld";
 import { FAQ_IDS } from "@/components/pricing/PricingFaq";
 import { BUILDER_PRICE_USD, FULL_ANALYSIS_PRICE_USD, PRO_PRICE_USD } from "@/components/pricing/plan-facts";
-import en from "@/components/pricing/strings/en.json";
+import en from "@/i18n/shards/pricing/en.json";
 import PricingPage from "@/pages/pricing/PricingPage";
 import { HelmetProvider } from "react-helmet-async";
 

@@ -35,8 +35,6 @@ import { HomeBoardRows } from "@/components/home/HomeBoardRows";
 import { HomeAiSection } from "@/components/home/HomeAiSection";
 import { HomeFaq } from "@/components/home/HomeFaq";
 import { PricingFaq } from "@/components/pricing/PricingFaq";
-import "@/lib/home/strings";
-import "@/components/pricing/use-pricing-strings";
 
 vi.setConfig(MOUNT_TEST_BUDGET);
 
@@ -60,8 +58,8 @@ const OPENS_WITH_NO = /^(No[.,]|Nein[.,]|Non[.,]|नहीं|Nee[.,]|Não[.,]|H
 describe("the strings, in every language", () => {
   for (const lng of LOCALES) {
     it(`${lng}: no page says we never submit, and no apply answer opens with "No"`, () => {
-      const home = leaves(read(`../lib/home/strings/${lng}.json`));
-      const pricing = leaves(read(`../components/pricing/strings/${lng}.json`));
+      const home = leaves(read(`../i18n/shards/home/${lng}.json`));
+      const pricing = leaves(read(`../i18n/shards/pricing/${lng}.json`));
       const all = [...home, ...pricing];
       expect(all.filter(([, v]) => NEVER_SUBMITS.test(v)).map(([k, v]) => `${k}: ${v}`)).toEqual([]);
       const neverLeads = home.filter(([k]) => /^home\.ai\.never\d*Lead$/.test(k));

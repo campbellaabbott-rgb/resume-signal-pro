@@ -53,7 +53,7 @@ vi.mock("@/hooks/use-pro-subscription", () => ({
 
 import { PricingView } from "@/components/pricing/PricingView";
 import { resolveSaleGates, type SaleGateInput } from "@/components/pricing/sale-gates";
-import en from "@/components/pricing/strings/en.json";
+import en from "@/i18n/shards/pricing/en.json";
 
 vi.setConfig(MOUNT_TEST_BUDGET);
 beforeAll(() => {

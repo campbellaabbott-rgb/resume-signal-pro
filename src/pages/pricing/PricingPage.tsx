@@ -1,9 +1,8 @@
 /**
  * /pricing, REBUILT (homepage and pricing redesign, corrected spec 2026-10-17).
  *
- * Not routed yet: src/pages/Pricing.tsx serves /pricing until switch-over,
- * when App.tsx's lazy import points here (docs/homepage-pricing/README.md).
- * The page leads with what is free, states before any click that all sales
+ * App.tsx routes /pricing here (switch-over step 1,
+ * docs/homepage-pricing/README.md). The page leads with what is free, states before any click that all sales
  * are final and where it does not sell, and renders a buy button only while
  * the seller's name and address are published (sale-gates.ts).
  *
@@ -12,8 +11,8 @@
  * front page's platform wall reads). No figure is printed without its time.
  * The Pro account check runs only once Pro is on sale (ProBuyConnected).
  *
- * Only the FIRST render waits for the reader's strings (no English frame
- * swapping into German), and the footer waits with it, so nothing drawn early
+ * Only the FIRST render waits for the reader's main locale, which carries
+ * this page's shard (useLocaleReady: no English frame swapping into German), and the footer waits with it, so nothing drawn early
  * is pushed down when the page lands. A later language change keeps the page
  * and the footer mounted, so the reader's focus and scroll position survive
  * it (useStickyReady).
@@ -31,7 +30,7 @@ import { pricingJsonLd } from "@/components/pricing/pricing-jsonld";
 import { pricingMetaKeys } from "@/components/pricing/pricing-meta";
 import { PricingView } from "@/components/pricing/PricingView";
 import { resolveSaleGates, type SaleGateInput } from "@/components/pricing/sale-gates";
-import { usePricingStrings } from "@/components/pricing/use-pricing-strings";
+import { useLocaleReady } from "@/lib/home/use-locale-ready";
 import { useStickyReady } from "@/lib/home/use-sticky-ready";
 
 export interface PricingPageProps {
@@ -42,7 +41,7 @@ export interface PricingPageProps {
 }
 
 export default function PricingPage({ gateInput, preview, onPreviewPress }: PricingPageProps = {}) {
-  const shown = useStickyReady(usePricingStrings());
+  const shown = useStickyReady(useLocaleReady());
   const { t, i18n } = useTranslation();
   const counts = useBoardVendorCounts();
   const gates = useMemo(

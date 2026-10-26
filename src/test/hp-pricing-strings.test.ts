@@ -1,10 +1,10 @@
 /**
- * THE PRICING STRINGS ARE A SHARD IN ALL BUT ITS FOLDER, AND KEEP THE HOUSE RULES.
+ * THE PRICING STRINGS ARE A SHARD, AND KEEP THE HOUSE RULES.
  *
- * They live in src/components/pricing/strings/<lng>.json until switch-over
- * moves them to src/i18n/shards/pricing/ (an unregistered shard directory
- * fails the shard guard, and SHARD_ROOT_KEYS is in a file this round may not
- * edit). Until then this file holds them to the shard rules the guard would:
+ * They live in src/i18n/shards/pricing/<lng>.json, registered in
+ * SHARD_ROOT_KEYS as "pricingPlans" (switch-over step 2). The shard guard
+ * (every-shard-string-is-loaded-translated-and-scanned) holds every shard to
+ * its rules; this file restates them for this one:
  *
  *   - all nine languages, identical key sets, every value a non-empty string;
  *   - one root key, "pricingPlans", and no key the main locale defines;
@@ -20,21 +20,19 @@
  * because that file is a test and importing it would run its suite twice),
  * and no nowrap anywhere translated text renders.
  *
- * And the loader: another language's strings are merged only after that
- * language's main locale has landed, so the page can never leave a reader
- * with nothing but its own strings.
+ * And the runtime: English is merged into the bundle the page renders with.
  */
 import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import i18n from "@/i18n";
-import { leafKeys, type Bundle } from "@/i18n/merge-shards";
+import { leafKeys, SHARD_ROOT_KEYS, type Bundle } from "@/i18n/merge-shards";
 import { LOCALE_FILES, readMainLocale, stringLeaves } from "./helpers/locale-strings";
 import { codeOf } from "./helpers/strip-comments";
-import { loadPricingStrings, PRICING_ROOT } from "@/components/pricing/use-pricing-strings";
 
+const PRICING_ROOT = SHARD_ROOT_KEYS.pricing;
 const DIR = resolve(__dirname, "../components/pricing");
-const STRINGS = join(DIR, "strings");
+const STRINGS = resolve(__dirname, "../i18n/shards/pricing");
 const read = (f: string) => JSON.parse(readFileSync(join(STRINGS, f), "utf8")) as Bundle;
 const placeholders = (s: string) => [...s.matchAll(/\{\{(\w+)\}\}/g)].map((m) => m[1]).sort().join(",");
 const tags = (s: string) => (s.match(/<\/?(link|b)>/g) ?? []).join("");
@@ -150,26 +148,10 @@ describe("the components keep the design rules", () => {
   });
 });
 
-describe("the interim loader", () => {
-  it("merges English at import, so the page's first render has it", () => {
+describe("the runtime bundle", () => {
+  it("English is merged into the running translation, so the page's first render has it", () => {
+    expect(PRICING_ROOT).toBe("pricingPlans");
     expect(i18n.exists("pricingPlans.head.h1", { lng: "en" })).toBe(true);
     expect(i18n.t("pricingPlans.buy.finalSale", { lng: "en" })).toBe("All sales are final.");
-  });
-
-  it("merges another language only after that language's main locale has landed", async () => {
-    const lng = "nl";
-    if (i18n.hasResourceBundle(lng, "translation")) i18n.removeResourceBundle(lng, "translation");
-    let done = false;
-    const pending = loadPricingStrings(lng).then(() => {
-      done = true;
-    });
-    await new Promise((r) => setTimeout(r, 50));
-    expect(done, "merged before the main locale").toBe(false);
-    expect(i18n.hasResourceBundle(lng, "translation"), "the loader created the bundle itself").toBe(false);
-    i18n.addResourceBundle(lng, "translation", { header: { pricing: "Prijzen" } });
-    await pending;
-    expect(done).toBe(true);
-    expect(i18n.t("pricingPlans.buy.finalSale", { lng })).toBe("Alle verkopen zijn definitief.");
-    expect(i18n.t("header.pricing", { lng }), "the main locale's own strings survive the merge").toBe("Prijzen");
   });
 });

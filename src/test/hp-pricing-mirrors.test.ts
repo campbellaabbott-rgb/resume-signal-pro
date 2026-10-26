@@ -28,7 +28,6 @@ import { LOCALE_FILES, readMainLocale } from "./helpers/locale-strings";
 import * as F from "@/components/pricing/plan-facts";
 import { PRO_PERK_ITEMS } from "@/components/pricing/pro-perks-mirror";
 import { FULL_ANALYSIS_DELIVERY_WATCHED, PRO_SUBSCRIPTION_WATCHED } from "@/components/pricing/sale-gates";
-import "@/components/pricing/use-pricing-strings";
 
 const ROOT = resolve(__dirname, "../..");
 const src = (p: string) => codeOf(readFileSync(resolve(ROOT, p), "utf8"));
@@ -119,7 +118,7 @@ describe("mirrors of constants still on other branches (they pin themselves when
     for (const f of LOCALE_FILES) {
       const main = readMainLocale(f) as { dataApiPage?: Record<string, string> };
       if (!main.dataApiPage?.builderName) continue;
-      const ours = (JSON.parse(readFileSync(resolve(__dirname, `../components/pricing/strings/${f}`), "utf8")) as { pricingPlans: { b2b: Record<string, string> } }).pricingPlans.b2b;
+      const ours = (JSON.parse(readFileSync(resolve(__dirname, `../i18n/shards/pricing/${f}`), "utf8")) as { pricingPlans: { b2b: Record<string, string> } }).pricingPlans.b2b;
       for (const k of ["builderName", "builderNotYet", "builderCta"]) expect(ours[k], `${f} ${k}`).toBe(main.dataApiPage[k]);
       // Two differences are hp's until wave 4 makes the same change to /data-api:
       // the price is {{price}} = money() (no typed "$"), and en-GB writes "licence".

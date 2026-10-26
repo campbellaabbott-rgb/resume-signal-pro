@@ -15,7 +15,6 @@
  * board's open-postings figure and the sale gates. Nothing here is a
  * product the owner cut: the only one-off is the Full Analysis.
  */
-import "./use-pricing-strings";
 import { BeforeYouBuy } from "./BeforeYouBuy";
 import { BuilderAndLicence } from "./BuilderAndLicence";
 import type { PreviewFurniture } from "./BuyBlock";

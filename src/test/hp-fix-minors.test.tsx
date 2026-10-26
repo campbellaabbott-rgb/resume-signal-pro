@@ -53,8 +53,6 @@ import { useHomeRows } from "@/lib/home/use-home-rows";
 import { visibleProPerks } from "@/components/pricing/pro-perks-mirror";
 import { displayLocation } from "@/lib/listing/location";
 import { money } from "@/lib/format";
-import "@/lib/home/strings";
-import "@/components/pricing/use-pricing-strings";
 
 vi.setConfig(MOUNT_TEST_BUDGET);
 afterEach(async () => {
@@ -64,8 +62,8 @@ afterEach(async () => {
 
 const LOCALES = ["en", "en-GB", "de", "es", "fr", "hi", "nl", "pt", "tl"] as const;
 type Tree = Record<string, Record<string, Record<string, string>>>;
-const home = (lng: string) => (JSON.parse(readFileSync(resolve(__dirname, `../lib/home/strings/${lng}.json`), "utf8")) as Tree).home;
-const pricing = (lng: string) => (JSON.parse(readFileSync(resolve(__dirname, `../components/pricing/strings/${lng}.json`), "utf8")) as Tree).pricingPlans;
+const home = (lng: string) => (JSON.parse(readFileSync(resolve(__dirname, `../i18n/shards/home/${lng}.json`), "utf8")) as Tree).home;
+const pricing = (lng: string) => (JSON.parse(readFileSync(resolve(__dirname, `../i18n/shards/pricing/${lng}.json`), "utf8")) as Tree).pricingPlans;
 
 describe("the scan lede says within, as every other page does", () => {
   const APPROX = /\babout\b|\betwa\b|\bunos\b|\benviron\b|लगभग|ongeveer|cerca de|\bmga \{\{seconds/i;
