@@ -183,6 +183,16 @@ describe('the crawler\'s "/" is the board-first homepage', () => {
     expect(html).not.toMatch(/Index-[\w-]+\.js/);
   });
 
+  it("the baked header's links wrap, so a 320 px phone scrolls no page sideways", () => {
+    // In one row the four links made "/" 13 px and "/pricing" 10 px wider
+    // than a 320 px screen, for no-JS readers and during the baked first
+    // paint (review round 2026-10-26).
+    for (const p of ["/", "/pricing"]) {
+      const nav = /<header[\s\S]*?<nav class="([^"]*)"/.exec(page(OUT, p))?.[1] ?? "";
+      expect(nav.split(/\s+/), p).toContain("flex-wrap");
+    }
+  });
+
   it("an unread count prints no figure at all (the offline bake)", () => {
     const html = page(OFFLINE_OUT, "/");
     expect(/<p[^>]*data-home-count="">([\s\S]*?)<\/p>/.exec(html)?.[1].trim()).toBe("");

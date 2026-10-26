@@ -1355,12 +1355,14 @@ export { count as fmtCount, money as fmtMoney, date as fmtDate } from "../src/li
   const SELLER_LINE = SELLER_ID ? `<p class="mt-4 text-center text-xs text-muted-foreground">Sold by ${esc(SELLER_ID.legalName)}, ${esc(SELLER_ID.postalAddress)}.</p>` : "";
   const FOOTER_AGENTS_LABEL = D.EN_LOCALE?.footer?.links?.agents || "Connect your agent";
   // Static shell around page content: simple header/footer so crawlers see
-  // site-wide internal links. The SPA replaces all of it on hydration.
+  // site-wide internal links. The SPA replaces all of it on hydration. The
+  // header's links wrap: in one row they made every baked page 10-13 px
+  // wider than a 320 px phone (review round 2026-10-26).
   const shell = (contentHtml, lang) => `
     <div class="min-h-screen bg-background" ${lang ? `lang="${lang}"` : ""}>
-      <header class="py-4 border-b border-border"><div class="container flex items-center justify-between">
+      <header class="py-4 border-b border-border"><div class="container flex items-center justify-between gap-4">
         <a href="/" class="font-bold text-foreground">Resume Booster</a>
-        <nav class="flex gap-4 text-sm text-muted-foreground">
+        <nav class="flex flex-wrap justify-end gap-x-4 gap-y-1 text-sm text-muted-foreground">
           <a href="/resume-checker" class="hover:text-foreground">Resume checker</a>
           <a href="/industries" class="hover:text-foreground">Industries</a>
           <a href="/pricing" class="hover:text-foreground">Pricing</a>
