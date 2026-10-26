@@ -59,7 +59,7 @@ export default function PricingPage({ gateInput, preview, onPreviewPress }: Pric
         <SEO title={t(meta.title, prices)} description={t(meta.description, prices)} path="/pricing" />
       ) : null}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(pricingJsonLd(gates)) }} />
-      <Header />
+      <Header variant="quiet" />
       <main id="main-content" tabIndex={-1} className="min-h-screen pb-8 focus:outline-none">
         {shown ? (
           <PricingView postings={{ openTotal: counts.openTotal, asOf: counts.asOf }} gates={gates} preview={preview} onPreviewPress={onPreviewPress} />

@@ -63,7 +63,7 @@ export default function HomePage({ loadRowsForAutomation = false, gates }: HomeP
   return (
     <div className="min-h-screen bg-background text-foreground">
       {shown ? <SEO title={t("home.seo.title")} description={t("home.seo.description")} path="/" /> : null}
-      <Header />
+      <Header variant="quiet" />
       {shown ? (
         <main id="main-content" className="pt-14 lg:pt-16">
           <HomeSearchHero openTotal={openTotal} asOf={asOf} />
