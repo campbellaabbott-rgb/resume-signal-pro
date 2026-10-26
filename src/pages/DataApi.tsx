@@ -21,7 +21,7 @@ import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { supabase } from "@/integrations/supabase/client";
-import { MCP_PAGE_HOSTS, andList } from "@/config/mcp-tools";
+import { MCP_FIT_ALLOWANCE, MCP_PAGE_HOSTS, andList } from "@/config/mcp-tools";
 import { servingSourceSummary } from "@/config/ats-vendors";
 import { CLOSURE_RECORD_WINDOW_DAYS, closureCountSpanDays } from "@/lib/hiring-trends-trust";
 import { apiKeyTokenFromHash, errorBodyOf, forgetConfirmFragment } from "@/lib/confirm-link";
@@ -82,7 +82,7 @@ const ENDPOINTS: Array<{ path: string; body: string; params?: string; notes?: st
     ],
   },
   { path: "GET /v1/usage", body: "Your own consumption for the last 30 days, by day and by endpoint, plus what is left of your limits today." },
-  { path: "POST /v1/fit", body: "Paid. POST a résumé and get the board's best matches back scored, with the terms that matched and the terms that are missing. A résumé cannot ride a query string, so this is the one route that takes a body — and it stores nothing." },
+  { path: "POST /v1/fit", body: `${MCP_FIT_ALLOWANCE}, counted together with fit_resume on the MCP server. POST a résumé and get the board's best matches back scored, with the terms that matched and the terms that are missing. A résumé cannot ride a query string, so this is the one route that takes a body — and it stores nothing.` },
 ];
 
 /**

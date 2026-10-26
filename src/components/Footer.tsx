@@ -27,7 +27,6 @@ const RESOURCES: Array<{ to: string; key: string; fallback: string }> = [
   { to: "/ats/lever", key: "footer.links.lever", fallback: "Lever guide" },
   { to: "/ats/icims", key: "footer.links.icims", fallback: "iCIMS guide" },
   { to: "/vs/jobscan", key: "footer.links.vsJobscan", fallback: "vs Jobscan" },
-  { to: "/freelance-boost", key: "footer.links.freelanceBoost", fallback: "Freelance Boost" },
   { to: "/builder", key: "footer.links.builder", fallback: "Resume Builder" },
   { to: "/methodology", key: "footer.links.methodology", fallback: "Methodology" },
   { to: "/data-api", key: "footer.links.dataApi", fallback: "Hiring Data & API" },

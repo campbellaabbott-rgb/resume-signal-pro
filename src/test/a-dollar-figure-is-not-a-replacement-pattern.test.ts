@@ -269,8 +269,12 @@ describe("the prices a crawler reads are the mirrors', never typed", () => {
     expect(b, "the agent plan's mirror is read on /pricing").not.toMatch(/SUBSCRIPTIONS\.agent/);
     expect(b, "the pass's mirror is read on /pricing").not.toMatch(/D\.PASS\./);
     // The description is one of the slots — the snippet is what the query sees.
-    const desc = /description: `([^`]*)`/.exec(b)?.[1] ?? "";
+    // With one one-time product it is React's own sentence filled with Pro's
+    // price from the mirror; with a list, a template that prints it (the merge
+    // recheck, 2026-10-25). Both branches read the mirror.
+    const desc = /description: ([\s\S]*?)\n\s*jsonLd:/.exec(b)?.[1] ?? "";
     expect(prints(desc, pro, ".priceUsd")).toBe(true);
+    expect(pro.some((n) => new RegExp(`proPrice: ${n}\\.priceUsd`).test(desc)), "the one-product sentence is filled from the mirror").toBe(true);
     // The offer ceiling is derived from everything still on sale.
     expect(b).toMatch(/highPrice: String\(Math\.max\(\.\.\.offerPrices\)\)/);
     expect(SCRIPT).toMatch(/const offerPrices = \[\.\.\.paid\.map\(\(p\) => p\.priceUsd\), \w+\.priceUsd\];/);

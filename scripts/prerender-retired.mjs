@@ -58,6 +58,19 @@ export const RETIRED_CLAIMS = [
   // reader's own check, not a claim about the board, and stays.
   ["'re-verified'", /\bre-?verified (?:through|all|throughout|every|continuously|within)\b|\bcontinuously re-?verified\b|\b(?:postings?|openings?|jobs?|roles?|feeds?|boards?) (?:are |is |get |were )?re-?verified\b/i],
   ["'zero ghost'", /\bzero ghost\b/i],
+  // No tree has shown a bundle or a discount on /pricing since the Premium
+  // package was cut, and the bake's closing line still promised them "live on
+  // this page in the app" (the merge recheck, 2026-10-25).
+  ["bundle discounts", /\bbundle discounts?\b|\bbundles? (?:and|or) discounts?\b/i],
+];
+
+/**
+ * Claims a page that SELLS may not make (/, /pricing): a range whose two ends
+ * are one price is a list's sentence rendered from one product (the merge
+ * recheck: "One-time tools $5–$5").
+ */
+export const SALES_PAGE_CLAIMS = [
+  ["a price range that starts and ends at one price", /\$\s?(\d[\d,.]*)\s?[–—-]\s?\$\s?\1(?![\d,.]*\d)/],
 ];
 
 /**
@@ -89,8 +102,48 @@ export function retiredClaimsIn(text, { sales = false } = {}) {
   const t = String(text ?? "");
   const out = [];
   for (const [claim, re] of RETIRED_CLAIMS) { const m = re.exec(t); if (m) out.push([claim, m[0]]); }
-  if (sales) for (const [claim, re] of RETIRED_NAMES_ON_SALES_PAGES) { const m = re.exec(t); if (m) out.push([claim, m[0]]); }
+  if (sales) for (const [claim, re] of [...RETIRED_NAMES_ON_SALES_PAGES, ...SALES_PAGE_CLAIMS]) { const m = re.exec(t); if (m) out.push([claim, m[0]]); }
   return out;
+}
+
+/**
+ * A built chunk without the changelog's entries (the merge recheck,
+ * 2026-10-25). The changelog's lazy bundle is built as en-*.js beside the
+ * locale chunks, and a dated entry may quote a sentence the site no longer
+ * says ("Until 18 October the top of our home page said ..."), so section 83
+ * C7, which reads every en-* chunk, failed a correct deploy. The entries
+ * object is cut whichever way the build spells it: a variable the chunk
+ * exports as changelogEntries, an inline changelogEntries:{...}, or a key
+ * inside a JSON.parse string. A variable is taken at its last assignment
+ * before the namespace names it. The cut reads braces outside strings; when
+ * it cannot find the object's end, or the object holds the home hero's keys,
+ * the chunk is returned whole, so a quote can only fail C7, never hide a
+ * rendered string.
+ */
+export function withoutChangelogEntries(js) {
+  const src = String(js ?? "");
+  const named = /\bchangelogEntries:([A-Za-z_$][\w$]*)[,}]/.exec(src) || /\b([A-Za-z_$][\w$]*) as changelogEntries\b/.exec(src);
+  let opener = null;
+  if (named) {
+    const decl = new RegExp(`(?:^|[^\\w$.])${named[1].replace(/\$/g, "\\$")}=\\{`, "g");
+    for (let m = decl.exec(src); m && m.index < named.index; m = decl.exec(src)) opener = m;
+  } else opener = /["']?changelogEntries["']?\s*:\s*\{/.exec(src);
+  if (!opener) return src;
+  const at = opener.index + opener[0].length - 1;
+  let depth = 0;
+  let quote = null;
+  for (let i = at; i < src.length; i++) {
+    const c = src[i];
+    if (quote) {
+      if (c === "\\") i++;
+      else if (c === quote) quote = null;
+      continue;
+    }
+    if (c === '"' || c === "'" || c === "`") quote = c;
+    else if (c === "{") depth++;
+    else if (c === "}" && --depth === 0) return /\bhomeHero\b/.test(src.slice(at, i)) ? src : `${src.slice(0, at)}{}${src.slice(i + 1)}`;
+  }
+  return src;
 }
 
 /** The JSON-LD blocks of an HTML document, parsed; an unparseable block is returned as { unparseable: true }. */

@@ -39,7 +39,10 @@
 #       the FAQ and /trust used to render ("The agent applies for you",
 #       "submits where employers allow", the pass line, the Morning Queue,
 #       "the employers it applies to for you", "re-verified all day"). C3
-#       read only the pre-script H1 and passed on the bake alone.
+#       read only the pre-script H1 and passed on the bake alone. The
+#       changelog's entries are cut from each chunk first (the merge recheck,
+#       2026-10-25): a dated entry that quotes a removed sentence is a record
+#       on /changelog, not a string the home, FAQ or trust pages render.
 #
 # Read-only: GETs of public pages, the sitemap, the ledger and llms files.
 # Nothing is sent or written. Before the deploy C1-C5 FAIL by design.
@@ -212,8 +215,10 @@ import("node:fs").then(async (fs) => {
     else {
       const mainJs = (await get(main, 60000)).body;
       const chunks = [...new Set([...mainJs.matchAll(/"\.\/((?:en(?:-GB)?|Index)-[A-Za-z0-9_-]+\.js)"/g)].map((m) => m[1]))].slice(0, 12);
-      let bundle = mainJs;
-      for (const c of chunks) bundle += "\n" + (await get(`/assets/${c}`, 60000)).body;
+      // The changelog bundle is an en-* chunk too: its dated entries may quote a removed sentence, which React renders nowhere but /changelog.
+      const rendered = typeof R.withoutChangelogEntries === "function" ? R.withoutChangelogEntries : (js) => js;
+      let bundle = rendered(mainJs);
+      for (const c of chunks) bundle += "\n" + rendered((await get(`/assets/${c}`, 60000)).body);
       const found = RETIRED_SPA.filter((x) => bundle.includes(x));
       const hasIndex = chunks.some((c) => c.startsWith("Index-"));
       if (!bundle.includes("Live jobs, straight from employers")) out("FAIL", `C7 the entry and its ${chunks.length} English/Index chunks do not carry the home hero\x27s headline: the English strings were not found`);

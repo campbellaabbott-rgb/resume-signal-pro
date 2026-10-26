@@ -210,3 +210,22 @@ describe("no crawler or AI host is offered a cut product", () => {
     expect(routes).not.toMatch(/"\/freelance-boost"/);
   });
 });
+
+/**
+ * THE FOOTER LINKS NO CUT PRODUCT (the recheck of the merge of main 899be058,
+ * 2026-10-25). Every page's footer listed "Freelance Boost" under resources,
+ * linking a product whose checkouts answer 410 and whose page says it is no
+ * longer sold; the crawler's footer had already dropped it. The footer is the
+ * design owners' file, and hp/honesty removes the same line: wave 4 carries
+ * that exact hunk because wave 4 is what stops the sale.
+ */
+describe("the shared chrome links no cut product", () => {
+  const footer = codeOf(readFileSync(resolve(__dirname, "../components/Footer.tsx"), "utf8"));
+  const linksCut = (src: string) => Object.values(CUT_PRODUCTS).filter((c) => new RegExp(`fallback: "${c.name}"|to: "/${c.name.toLowerCase().replace(/\s+/g, "-")}"`).test(src)).map((c) => c.name);
+  it("the footer's resources name and link none of them", () => {
+    expect(linksCut(footer)).toEqual([]);
+  });
+  it("the teeth: the line as it stood is caught", () => {
+    expect(linksCut('{ to: "/freelance-boost", key: "footer.links.freelanceBoost", fallback: "Freelance Boost" },')).toEqual(["Freelance Boost"]);
+  });
+});

@@ -97,6 +97,12 @@ export const MCP_ANON_CAPS = {
 /** Fit scorings a day on a confirmed free key, and with a paid plan: _shared/fit-allowance.ts, mirrored and pinned. */
 export const MCP_FIT_FREE_PER_DAY = 25;
 export const MCP_FIT_FULL_PER_DAY = 1000;
+/**
+ * The fit allowance as every page, the bake and llms.txt say it (the merge
+ * recheck, 2026-10-25): scoring is free on a confirmed key, more on a paid
+ * plan, and six surfaces had called it paid. Read, never retyped.
+ */
+export const MCP_FIT_ALLOWANCE = `${MCP_FIT_FREE_PER_DAY} scorings a day on a confirmed free key, ${MCP_FIT_FULL_PER_DAY.toLocaleString("en-US")} on an account with a paid plan`;
 
 /**
  * The two caps a keyed read carries — rows per search page and ids per
@@ -179,7 +185,7 @@ export const MCP_TOOLS: readonly McpTool[] = [
   {
     name: "fit_resume",
     tier: "paid",
-    body: `Score a résumé against the board — the site's résumé drop for an agent holding a CV. Reads the occupation out of the text, searches for it, and scores up to 20 results with matched and missing terms. Needs a key: ${MCP_FIT_FREE_PER_DAY} scorings a day on a confirmed free key, ${MCP_FIT_FULL_PER_DAY.toLocaleString("en-US")} on an account with a paid plan — the same allowance as POST /v1/fit. Never offered inside ChatGPT, and the CV is never stored.`,
+    body: `Score a résumé against the board — the site's résumé drop for an agent holding a CV. Reads the occupation out of the text, searches for it, and scores up to 20 results with matched and missing terms. Needs a key: ${MCP_FIT_ALLOWANCE} — the same allowance as POST /v1/fit. Never offered inside ChatGPT, and the CV is never stored.`,
   },
 ];
 
@@ -187,6 +193,8 @@ export const MCP_TOOL_NAMES = MCP_TOOLS.map((t) => t.name);
 export const MCP_READ_TOOLS = MCP_TOOLS.filter((t) => t.tier === "read");
 export const MCP_PAID_TOOLS = MCP_TOOLS.filter((t) => t.tier === "paid");
 export const MCP_APPLY_TOOLS = MCP_TOOLS.filter((t) => t.tier === "apply");
+/** The badge each tier wears in a tool list (the /agents page and its bake): the fit tier is a confirmed free key's daily allowance; the apply tier is dormant. */
+export const MCP_TIER_BADGE: Record<McpToolTier, string> = { read: "any free key", paid: `free key, ${MCP_FIT_FREE_PER_DAY} scorings a day`, apply: "dormant" };
 
 /**
  * THE UNKEYED TIER, mirrored from the server's ANON_TOOLS. These tools answer

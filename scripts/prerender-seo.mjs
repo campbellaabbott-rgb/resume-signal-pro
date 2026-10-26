@@ -257,6 +257,7 @@ export { buildIndustryFaqs } from "../src/data/industry-faqs";
 export { COUNTRY_STANDARDS } from "../supabase/functions/free-keyword-scan/country-standards";
 export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from "../src/data/cv-standards-content";
 export { getAllProducts, PASS, SUBSCRIPTIONS, PRODUCTS } from "../src/config/products";
+export { PRO_SUMMARY } from "../src/config/pro-perks";
 export { AFFILIATE_PRO_FIRST_MONTH_CENTS, formatUsd } from "../src/config/affiliate-commission";
 export { ALL_BOARD_SOURCES } from "../src/config/ats-vendors";
 export { publicApiBase, mcpServerUrl } from "../src/config/public-endpoints";
@@ -271,7 +272,7 @@ export { default as EN_CHANGELOG } from "../src/i18n/changelog/en.json";
 export { TEMP_RESUME_HOURS, REPORT_CACHE_DAYS, AI_CACHE_MAX_HOURS, SHARED_ANALYSIS_DAYS, PRIVACY_EMAIL } from "../src/lib/resume-retention";
 export { MCP_PRIVACY_ROWS } from "../src/config/mcp-privacy";
 export { BOARD_SOURCE_LIST, SERVING_SOURCE_LIST, SERVING_SOURCES, DORMANT_SOURCES, servingSourceSummary } from "../src/config/ats-vendors";
-export { MCP_TOOLS, MCP_HOSTS, MCP_READ_TOOLS, MCP_PAID_TOOLS, MCP_APPLY_TOOLS, MCP_ANON_TOOLS, MCP_ANON_TOOL_NAMES, MCP_ANON_CAPS, MCP_FREE_KEY_DAILY_QUOTA, MCP_PROMPTS, MCP_RESOURCES } from "../src/config/mcp-tools";
+export { MCP_TOOLS, MCP_HOSTS, MCP_READ_TOOLS, MCP_PAID_TOOLS, MCP_TIER_BADGE, MCP_FIT_ALLOWANCE, MCP_APPLY_TOOLS, MCP_ANON_TOOLS, MCP_ANON_TOOL_NAMES, MCP_ANON_CAPS, MCP_FREE_KEY_DAILY_QUOTA, MCP_PROMPTS, MCP_RESOURCES } from "../src/config/mcp-tools";
 export { MCP_MORE_HOSTS, MCP_TROUBLESHOOTING, MCP_SIGN_IN_NEUTRAL, MCP_SERVER_ADDRESS_NOTE, MCP_ADDRESS_GLOSS, MCP_NEEDS_ACCOUNT_LINE, MCP_WITHHELD_NOTE, MCP_INSTALL_REPO_URL, MCP_TEST_QUERY, MCP_SIGN_IN_META_KEY, stepSegments, curlInitialize, andList } from "../src/config/mcp-tools";
 export { MCP_PAGE_HOSTS, MCP_OFF_PAGE_HOSTS, MCP_OTHER_AGENTS_LINE, MCP_COPY_THE_PROMPT } from "../src/config/mcp-tools";
 export { FREE_KEY_RATE_PER_MIN } from "../src/config/free-key-limits";
@@ -3431,7 +3432,7 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
             <li><code>GET /v1/companies</code> — employers ranked by open postings, from the same cached facet the board renders, with the as-of stamp and its basis.</li>
             <li><code>GET /v1/stats</code> — headline counts, the closure log, feed freshness (p50/p95/max minutes since each feed was last re-read) and per-system coverage, each figure with its own as-of and basis.</li>
             <li><code>GET /v1/usage</code> — your own consumption for the last 30 days and what is left of today's limits.</li>
-            <li><code>POST /v1/fit</code> (paid) — a résumé in, the board's best matches out, scored with matched and missing terms; stores nothing.</li>
+            <li><code>POST /v1/fit</code> — ${esc(D.MCP_FIT_ALLOWANCE)}, counted together with <code>fit_resume</code> on the MCP server: a résumé in, the board's best matches out, scored with matched and missing terms; stores nothing.</li>
           </ul>
           <p>${esc(D.MCP_WITHHELD_NOTE)}</p>
           <p>Pointing an AI agent at this data instead of writing code? The same free keys work on the <a href="/agents">MCP server</a>, which serves the same board to Claude Code and any MCP client that can send a header, at <code>${esc(MCP_URL)}</code>.</p>
@@ -3626,7 +3627,7 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
       // top of the bake, so /agents and the llms files cannot disagree.
       const mcpUrl = typeof MCP_URL === "string" && MCP_URL ? MCP_URL : supaUrl3 ? `${supaUrl3}/functions/v1/agent-mcp` : null;
       const h = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-      const badge = { read: "any free key", paid: "paid key" };
+      const badge = D.MCP_TIER_BADGE;
       const codes = (arr) => arr.map((t) => `<code>${t.name}</code>`).join(", ");
       // Every board total names its date basis (SEO-026).
       const countClause = BOARD_TOTAL ? `${plusClaim(BOARD_TOTAL, 50000)} live postings (${BOARD_AS_OF})` : "the live postings";
@@ -3684,7 +3685,7 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
         : "";
       const hostBadge = (x) => (x.header ? "reaches every tool" : x.oauth ? "sign in when needed" : "unkeyed tools only");
       const paidSentence = D.MCP_PAID_TOOLS.length
-        ? ` ${codes(D.MCP_PAID_TOOLS)} ${D.MCP_PAID_TOOLS.length === 1 ? "needs" : "need"} a paid key, exactly like <code>POST /v1/fit</code> on the data API.`
+        ? ` ${codes(D.MCP_PAID_TOOLS)} ${D.MCP_PAID_TOOLS.length === 1 ? "gives" : "give"} ${h(D.MCP_FIT_ALLOWANCE)}, counted together with <code>POST /v1/fit</code> on the data API.`
         : "";
       // The steps, rendered through the same inline parser the page uses:
       // **label** → <strong>, `code` → <code>, everything else escaped.
@@ -4026,10 +4027,28 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
     // The offer range: every one-time product still on sale and Pro. A
     // ceiling the catalogue has moved past is a rich result that lies.
     const offerPrices = [...paid.map((p) => p.priceUsd), proPlan.priceUsd];
+    // ONE PRODUCT IS NAMED, NOT RANGED (the merge recheck, 2026-10-25). Wave 4
+    // sells one thing once, the Full Analysis, and the writing tools through
+    // Pro; this template, written for a list, rendered a one-item list as
+    // "One-Time Tools from $5" and "$5–$5". With one product the head and the
+    // lead are React's own strings (pricingPage.metaDescriptionFa and
+    // oneTimeAndProLineFa, filled from the catalogue, no English fallback), and
+    // Pro is the summary line the page and Stripe read (pro-perks.ts).
+    const one = paid.length === 1 ? paid[0] : null;
+    const PP = (D.EN_LOCALE && D.EN_LOCALE.pricingPage) || {};
+    const ppFill = (key, vals) => {
+      if (!PP[key]) throw new Error(`[prerender-seo] pricingPage.${key} is missing from the main locale`);
+      return fillCopy(PP[key], vals, `pricingPage.${key}`);
+    };
+    const pricingLead = one
+      ? ppFill("oneTimeAndProLineFa", { price: one.priceUsd })
+      : "Paid tools are one-time purchases, not subscriptions; an optional Pro plan covers everything for people applying at volume.";
     write({
       path: "/pricing",
-      title: `Pricing — Free Resume Scan, One-Time Tools from $${minP}`,
-      description: `The diagnostic resume scan and the job board are free, 7 scans a day with no signup. One-time tools $${minP}–$${maxP}; Pro $${proPlan.priceUsd}/month.`,
+      title: one ? `Pricing — Free Scan, $${one.priceUsd} ${one.name} or Pro $${proPlan.priceUsd}/month` : `Pricing — Free Resume Scan, One-Time Tools from $${minP}`,
+      description: one
+        ? ppFill("metaDescriptionFa", { lowPrice: one.priceUsd, highPrice: one.priceUsd, proPrice: proPlan.priceUsd })
+        : `The diagnostic resume scan and the job board are free, 7 scans a day with no signup. One-time tools $${minP}–$${maxP}; Pro $${proPlan.priceUsd}/month.`,
       jsonLd: [
         breadcrumbLd([{ name: "Home", path: "/" }, { name: "Pricing", path: "/pricing" }]),
         {
@@ -4051,18 +4070,17 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
       content: `
         ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Pricing" }])}
         <h1 class="text-3xl font-bold mb-3">Pricing</h1>
-        <p class="text-muted-foreground mb-6">The core product is free: the full diagnostic resume scan — score with audit trail, missing keywords, weakest bullets rewritten, ATS vendor checks — costs nothing, 7 scans a day with no signup (15 with a free account). The job board and its filters are free too, and so is connecting your own AI to it. Paid tools are one-time purchases, not subscriptions; an optional Pro plan covers everything for people applying at volume.</p>
-        <section class="mb-8"><h2 class="text-xl font-bold mb-3">One-time tools</h2>
+        <p class="text-muted-foreground mb-6">The core product is free: the full diagnostic resume scan — score with audit trail, missing keywords, weakest bullets rewritten, ATS vendor checks — costs nothing, 7 scans a day with no signup (15 with a free account). The job board and its filters are free too, and so is connecting your own AI to it. ${esc(pricingLead)}</p>
+        <section class="mb-8"><h2 class="text-xl font-bold mb-3">${one ? "One paid report" : "One-time tools"}</h2>
           <div class="space-y-2">${paid.map((p) => `<div class="rounded-xl border border-border bg-card p-4 flex items-start justify-between gap-4"><div><p class="text-sm font-semibold text-foreground">${esc(p.name)}</p><p class="text-xs text-muted-foreground mt-0.5">${esc(p.description || "")}</p></div><p class="text-sm font-bold text-foreground whitespace-nowrap">$${p.priceUsd}</p></div>`).join("")}</div>
         </section>
         <section class="mb-8"><h2 class="text-xl font-bold mb-3">One monthly plan</h2>
           <div class="space-y-2">
-            <div class="rounded-xl border border-border bg-card p-4 flex items-start justify-between gap-4"><div><p class="text-sm font-semibold text-foreground">${esc(proPlan.name)}</p><p class="text-xs text-muted-foreground mt-0.5">Unlimited scans and every paid tool included.</p></div><p class="text-sm font-bold text-foreground whitespace-nowrap">$${proPlan.priceUsd}/${esc(proPlan.interval)}</p></div>
+            <div class="rounded-xl border border-border bg-card p-4 flex items-start justify-between gap-4"><div><p class="text-sm font-semibold text-foreground">${esc(proPlan.name)}</p><p class="text-xs text-muted-foreground mt-0.5">${esc(D.PRO_SUMMARY.text)}.</p></div><p class="text-sm font-bold text-foreground whitespace-nowrap">$${proPlan.priceUsd}/${esc(proPlan.interval)}</p></div>
           </div>
-          <p class="text-sm text-muted-foreground mt-3">Every report and tool above is a one-time payment that never renews. Pro renews every month until you cancel; nothing else upgrades you automatically. The resume scan and the job board stay free either way.</p>
+          <p class="text-sm text-muted-foreground mt-3">${one ? `The ${esc(one.name)} is a one-time payment that never renews.` : "Every report and tool above is a one-time payment that never renews."} Pro renews every month until you cancel; nothing else upgrades you automatically. The resume scan and the job board stay free either way.</p>
           <p class="text-sm text-muted-foreground mt-2">${esc(APPLY_YOURSELF_LINE)} <a href="/agents" class="text-primary">${esc(FOOTER_AGENTS_LABEL)} →</a></p>
         </section>
-        <p class="text-sm text-muted-foreground mb-8">Current bundle discounts are shown live on this page in the app.</p>
         ${cta("Start with the free scan", "See the full diagnostic before spending anything — most people need nothing else.", "Scan my resume free")}`,
     });
 
@@ -4366,8 +4384,8 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
     lines.push(`- Pay Transparency Index: ${SITE}/pay-transparency — the share of postings that state pay, by field, hiring system and large job board (one row per board, so an employer running several counts once per board), counted from the postings' own text and ATS fields; never estimated or modelled, and placement cannot be bought.`);
     lines.push(companiesLlmsLine({ site: SITE, count: COMPANY_PAGE_COUNT }));
     lines.push(`- About: ${SITE}/about — what resumebooster.work is, what the board is, and how its counts are made and dated.`);
-    lines.push(`- Hiring Data & API: ${SITE}/data-api — a read-only JSON API over the live board at ${API_BASE}/v1 (every path below is relative to ${API_BASE}; the addresses under ${SITE}/v1 are pages that point here), with free self-serve keys (${FREE_KEY_RATE_SENTENCE}): GET /v1/jobs, /v1/jobs/{id}, /v1/changes (what opened and closed since a timestamp, and whether each close was a genuine takedown or a re-list), /v1/companies, /v1/stats (headline counts, closure log, feed freshness p50/p95/max), /v1/usage, and POST /v1/fit (paid). Cursor pagination and ETags. Licensing beyond the free tier: free for journalists with attribution, at cost for research, custom for commercial feeds.`);
-    lines.push(`- MCP server for AI agents: ${SITE}/agents (listed in the official MCP registry as ${MCP_REGISTRY_NAME}) — search and read tools (${LLMS_TOOLS.map((t) => t.name).join(", ")}) over the same board. MCP server address (Streamable HTTP): ${MCP_URL} — registry name ${MCP_REGISTRY_NAME}. ${D.MCP_ANON_TOOLS.map((t) => t.name).join(", ")} answer with no key at all (${D.MCP_ANON_CAPS.perAddressPerDay} calls a day per network address — an office or a home connection counts as one; from ChatGPT each person has their own ${D.MCP_ANON_CAPS.perAddressPerDay}, and Claude's users share ${D.MCP_ANON_CAPS.hostPoolPerDay} a day first — ${D.MCP_ANON_CAPS.globalPerDay} a day across every unkeyed caller, search capped at ${D.MCP_ANON_CAPS.searchRows} rows), so any host can use those before sign-in; every other read tool needs a free key, and ${D.MCP_PAID_TOOLS.map((t) => t.name).join(", ")} a paid key. A key travels in an Authorization header, so the keyed tools are reachable from ${andHosts(D.MCP_HOSTS.filter((x) => x.page && x.header).map((x) => x.name))}, and any other app that can send a header, with a pasted key; ${andHosts(D.MCP_HOSTS.filter((x) => x.page && !x.header && x.oauth).map((x) => x.name))} have no field for a key and sign a person in instead — but only while the server's sign-in service is switched on: then a keyed tool called with no credential answers a sign-in challenge, the host shows its Connect card, and after Allow on ${SITE}/oauth/consent the call runs on that account's own key; when it is off, the same call answers in words (no card) and the unkeyed tools still answer. Today's state: the Test the server button on ${SITE}/agents, or the initialize result's _meta["${D.MCP_SIGN_IN_META_KEY}"].state; the page's own steps are at ${SITE}/agents#<host> for ${D.MCP_PAGE_HOSTS.map((x) => x.id).join(", ")}; setup for every other app is in the install repository's README at ${D.MCP_INSTALL_REPO_URL}. ${AGENT_OFFER.lead} ${AGENT_OFFER.connect} ${APPLY_YOURSELF_LINE}`);
+    lines.push(`- Hiring Data & API: ${SITE}/data-api — a read-only JSON API over the live board at ${API_BASE}/v1 (every path below is relative to ${API_BASE}; the addresses under ${SITE}/v1 are pages that point here), with free self-serve keys (${FREE_KEY_RATE_SENTENCE}): GET /v1/jobs, /v1/jobs/{id}, /v1/changes (what opened and closed since a timestamp, and whether each close was a genuine takedown or a re-list), /v1/companies, /v1/stats (headline counts, closure log, feed freshness p50/p95/max), /v1/usage, and POST /v1/fit (${D.MCP_FIT_ALLOWANCE}, counted together with fit_resume on the MCP server). Cursor pagination and ETags. Licensing beyond the free tier: free for journalists with attribution, at cost for research, custom for commercial feeds.`);
+    lines.push(`- MCP server for AI agents: ${SITE}/agents (listed in the official MCP registry as ${MCP_REGISTRY_NAME}) — search and read tools (${LLMS_TOOLS.map((t) => t.name).join(", ")}) over the same board. MCP server address (Streamable HTTP): ${MCP_URL} — registry name ${MCP_REGISTRY_NAME}. ${D.MCP_ANON_TOOLS.map((t) => t.name).join(", ")} answer with no key at all (${D.MCP_ANON_CAPS.perAddressPerDay} calls a day per network address — an office or a home connection counts as one; from ChatGPT each person has their own ${D.MCP_ANON_CAPS.perAddressPerDay}, and Claude's users share ${D.MCP_ANON_CAPS.hostPoolPerDay} a day first — ${D.MCP_ANON_CAPS.globalPerDay} a day across every unkeyed caller, search capped at ${D.MCP_ANON_CAPS.searchRows} rows), so any host can use those before sign-in; every other read tool needs a free key, and ${D.MCP_PAID_TOOLS.map((t) => t.name).join(", ")} ${D.MCP_PAID_TOOLS.length === 1 ? "gives" : "give"} ${D.MCP_FIT_ALLOWANCE}. A key travels in an Authorization header, so the keyed tools are reachable from ${andHosts(D.MCP_HOSTS.filter((x) => x.page && x.header).map((x) => x.name))}, and any other app that can send a header, with a pasted key; ${andHosts(D.MCP_HOSTS.filter((x) => x.page && !x.header && x.oauth).map((x) => x.name))} have no field for a key and sign a person in instead — but only while the server's sign-in service is switched on: then a keyed tool called with no credential answers a sign-in challenge, the host shows its Connect card, and after Allow on ${SITE}/oauth/consent the call runs on that account's own key; when it is off, the same call answers in words (no card) and the unkeyed tools still answer. Today's state: the Test the server button on ${SITE}/agents, or the initialize result's _meta["${D.MCP_SIGN_IN_META_KEY}"].state; the page's own steps are at ${SITE}/agents#<host> for ${D.MCP_PAGE_HOSTS.map((x) => x.id).join(", ")}; setup for every other app is in the install repository's README at ${D.MCP_INSTALL_REPO_URL}. ${AGENT_OFFER.lead} ${AGENT_OFFER.connect} ${APPLY_YOURSELF_LINE}`);
     lines.push("");
     if (insights?.overall?.n) {
       const o = insights.overall;
