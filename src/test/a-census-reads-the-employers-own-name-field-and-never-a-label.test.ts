@@ -310,6 +310,8 @@ describe("Ashby: the organization record's name, never the page title", () => {
     }
     // A catalogue label is not kept over the slug: the boards named "Jobs".
     expect(pickAshbyName("", "lemonade", "Jobs").name).toBe("Lemonade");
+    // A slug that names no one is no evidence against the record.
+    expect(pickAshbyName("The L Suite", "jobs-page-4dc2685b-eb82-46d1-a3f9-1f0764dba814", "Jobs Page 4dc2685b Eb82 46d1 A3f9 1f0764dba814").name).toBe("The L Suite");
     // A slug made readable that keeps a label word is not a name.
     expect(pickAshbyName("", "aso-careers").name).toBe("");
     expect(pickAshbyName("", "acme-jobs").name).toBe("");

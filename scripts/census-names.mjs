@@ -776,6 +776,11 @@ export function pickAshbyName(orgName, slug, known = "") {
   const kept = String(known ?? "").trim();
   const keptOk = !!kept && !censusNameReason(kept);
   if (org && nameAgreesWithSlug(org, slug)) return { name: org.slice(0, 60), from: "organization.name" };
+  // A slug that names no one (a generated id, or nothing but label words and
+  // hex: "jobs-page-4dc2685b-...") is no evidence against the record.
+  const slugWords = wordsOf(prettify(slug));
+  const slugNamesNoOne = /[0-9a-f]{8}-[0-9a-f]{4}-/i.test(String(slug)) || slugWords.every((w) => LABEL_WORDS.has(w) || (/^[0-9a-f]+$/.test(w) && /\d/.test(w)));
+  if (org && slugNamesNoOne && !censusNameReason(org)) return { name: org.slice(0, 60), from: "organization.name (the slug names no one)" };
   if (org) {
     return keptOk
       ? { name: kept, from: `catalogue (organization.name "${org}" does not match the slug "${slug}"; review)` }
