@@ -2988,24 +2988,23 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
       });
     }
 
+    // FREELANCE BOOST IS NO LONGER SOLD (wave 4: _shared/product-cuts.ts,
+    // whose checkout answers 410). The page says so and is noindex, so the
+    // served HTML says the same, from the page's own en.json strings, and the
+    // sitemap list below no longer names it. Past buyers' links keep working
+    // in the app; this file is what a crawler reads.
+    const FB = (D.EN_LOCALE && D.EN_LOCALE.freelanceBoost) || {};
     write({
       path: "/freelance-boost",
-      // Verbatim from the page's own <SEO> props — the strings a browser
-      // already renders into the tab; this puts them in the served HTML too.
-      title: "Freelance Boost — Turn Projects Into Resume Experience",
-      description: "Turn freelance projects, gig work, and side hustles into recruiter-grade resume experience. Built for career changers who've already done the work.",
+      robots: "noindex, follow",
+      title: FB.noLongerSoldTitle || "Freelance Boost is no longer sold",
+      description: FB.noLongerSoldMeta || "Freelance Boost and Transition Pro are no longer sold. If you bought one, the link in your purchase email keeps working.",
       jsonLd: [breadcrumbLd([{ name: "Home", path: "/" }, { name: "Freelance Boost", path: "/freelance-boost" }])],
       content: `
         ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Freelance Boost" }])}
-        <h1 class="text-3xl font-bold mb-3">Your freelance work counts. Make recruiters see it.</h1>
-        <p class="text-muted-foreground mb-8">Freelance projects, contract gigs and side work are real experience, and they get read as a gap when they are written like a portfolio instead of a job. Freelance Boost translates the work you have already done into the structure, bullets and keywords a recruiter and an ATS both parse as employment — in about 15 seconds.</p>
-        <section class="mb-8"><h2 class="text-xl font-bold mb-3">What it produces</h2>
-          <ul class="space-y-2 text-sm text-muted-foreground">
-            <li class="rounded-xl border border-border bg-card p-4"><span class="font-semibold text-foreground">A structured experience entry</span> — your projects grouped under one umbrella role rather than scattered one-line gigs, which is the format that stops reading as a job-hopping record.</li>
-            <li class="rounded-xl border border-border bg-card p-4"><span class="font-semibold text-foreground">Recruiter-grade bullets</span> — each project rewritten as an accomplishment with the metric surfaced, in the wording your target role is actually screened on.</li>
-            <li class="rounded-xl border border-border bg-card p-4"><span class="font-semibold text-foreground">A cover-letter transition paragraph</span> — the part that explains the move from independent work to the role you want, without apologising for it.</li>
-          </ul>
-        </section>
+        <h1 class="text-3xl font-bold mb-3">${esc(FB.noLongerSoldTitle || "Freelance Boost is no longer sold")}</h1>
+        <p class="text-muted-foreground mb-6">${esc(FB.noLongerSoldBody || "Freelance Boost and Transition Pro are no longer sold, and they are not part of Pro. If you bought one, open the link in your purchase email: it keeps working for 90 days.")}</p>
+        <p class="text-sm mb-8"><a href="/pricing" class="text-primary underline">${esc(FB.seePricing || "See what is on sale")}</a></p>
         <p class="text-sm text-muted-foreground mb-8">Related reading: <a href="/guides/freelance-work-on-resume" class="text-primary underline">how to put freelance work on your resume</a> and <a href="/guides/fractional-roles-on-resume" class="text-primary underline">how to put fractional roles on your resume</a>.</p>
         ${cta("Start with the free scan", "See how your resume reads today before changing anything — free, no signup.", "Scan my resume free")}`,
     });
@@ -3462,7 +3461,6 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
     const STATIC_ROUTES = [
       { path: "/", changefreq: "weekly", priority: "1.0" },
       { path: "/pricing", changefreq: "weekly", priority: "0.9" },
-      { path: "/freelance-boost", changefreq: "weekly", priority: "0.8" },
       { path: "/builder", changefreq: "monthly", priority: "0.8" },
       { path: "/methodology", changefreq: "monthly", priority: "0.7" },
       { path: "/trust", changefreq: "monthly", priority: "0.6" },

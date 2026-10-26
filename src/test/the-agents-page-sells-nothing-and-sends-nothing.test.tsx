@@ -76,7 +76,8 @@ describe("the apply section", () => {
     for (const v of MCP_FORM_VENDORS) expect(free).toContain(v.label);
     // Model behaviour is our instruction, never a guarantee.
     expect(free).toMatch(/Resume Booster tells it to ask you the questions that look like they are about you/);
-    expect(free).toMatch(/can miss a question about you that is worded unusually, so read every answer before you send/);
+    expect(free).toMatch(/can miss a question about you, even a plainly worded one, so read every answer before you send/);
+    expect(free).not.toMatch(/unusual/i);
     expect(section.textContent).toMatch(/Resume Booster tells your AI to ask you the questions that look like they are about you/);
     expect(section.textContent).toMatch(/some work questions come to you: read every answer before you send/);
     expect(section.textContent).toMatch(/You submit on the employer's own site/);

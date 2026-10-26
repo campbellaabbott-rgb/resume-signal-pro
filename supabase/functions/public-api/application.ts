@@ -14,8 +14,8 @@
 //   - _shared/self-apply.ts decides who answers each question, DEFAULT-DENY:
 //     a question is draft_from_your_cv only when it reads as an open question
 //     about work done or a short motivation question; the rest are the
-//     person's. It reads words, so an unusually worded question about the
-//     person can still be marked draft_from_your_cv, and the text below says so.
+//     person's. It reads words, so a question about the person, even a
+//     plainly worded one, can still be marked draft_from_your_cv, and the text below says so.
 //
 // What this file adds is the /v1 shape around them, and nothing that decides.
 // It never fills or submits anything: route.submitter is always "you".
@@ -51,7 +51,7 @@ export const FORM_UNREACHABLE_RETRY_S = 120;
 
 /** What the /v1 index says this route does. Every clause is something the code below does. */
 export const APPLICATION_DESCRIPTION =
-  `GET /v1/jobs/{id}/application — the employer's own application form for a live posting, when its hiring system publishes one (${VENDOR_PROSE}), and each posting's form is cached for 24 hours. Any other posting answers form.source "not-published" beside its apply_url. Each question carries answeredBy under a default-deny rule: draft_from_your_cv only where the question reads as an open question about work the person has done or a short motivation question, and the person's own everywhere else. The rule reads the question's words, so an unusually worded factual or protected question can be marked draft_from_your_cv and some work questions are marked you; the person reads every answer before they send. Nothing is filled or submitted: route.submitter is always "you". A posting from a withheld hiring system answers 451; a hiring system that does not answer is a 503 with Retry-After. Metered as one call.`;
+  `GET /v1/jobs/{id}/application — the employer's own application form for a live posting, when its hiring system publishes one (${VENDOR_PROSE}), and each posting's form is cached for 24 hours. Any other posting answers form.source "not-published" beside its apply_url. Each question carries answeredBy under a default-deny rule: draft_from_your_cv only where the question reads as an open question about work the person has done or a short motivation question, and the person's own everywhere else. The rule reads the question's words, so a factual or protected question, even a plainly worded one, can be marked draft_from_your_cv and some work questions are marked you; the person reads every answer before they send. Nothing is filled or submitted: route.submitter is always "you". A posting from a withheld hiring system answers 451; a hiring system that does not answer is a 503 with Retry-After. Metered as one call.`;
 
 /** The four answeredBy values, said once, in the body of every 200. */
 export const ANSWERED_BY_MEANS: Readonly<Record<SelfApplyQuestion["answeredBy"], string>> = Object.freeze({
@@ -60,7 +60,7 @@ export const ANSWERED_BY_MEANS: Readonly<Record<SelfApplyQuestion["answeredBy"],
   your_details: "Contact details the person enters: name, email, phone, address, profile links.",
   your_documents: "A file the person attaches themselves: CV, cover letter, portfolio.",
   draft_from_your_cv:
-    "A question that reads as an open question about work the person has done, or a short motivation question (why this role or employer, cover-letter text, anything else to add). The mark is read from the words and can miss an unusually worded question about the person: an assistant asks the person instead whenever the question asks about them. Otherwise it may draft it only from a CV the person supplied, must flag anything the CV does not support, and shows the draft to the person before it is used.",
+    "A question that reads as an open question about work the person has done, or a short motivation question (why this role or employer, cover-letter text, anything else to add). The mark is read from the words and can miss a question about the person, even a plainly worded one: an assistant asks the person instead whenever the question asks about them. Otherwise it may draft it only from a CV the person supplied, must flag anything the CV does not support, and shows the draft to the person before it is used.",
 });
 
 /** Said in the body of every 200. */

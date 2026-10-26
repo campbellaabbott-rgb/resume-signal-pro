@@ -4255,7 +4255,7 @@
     "intentUndone": "Pesquisámos {{phrases}} como palavras, não como um filtro.",
     "intentRedo": "Voltar a aplicá-las como filtros",
     "facetWithheld": "Sem números ao lado das áreas numa pesquisa de texto: contá-los-íamos de outra forma que a lista, por isso não coincidiriam com ela.",
-    "excludedTerms": "A ocultar resultados que mencionam {{terms}}. Remova o “not” ou o “-” para os ver.",
+    "excludedTerms": "A ocultar resultados cujo título contém {{terms}}. Remova o “not” ou o “-” para os ver.",
     "salaryStatedOnly": "Ordenado por salário — só aparecem aqui as vagas que o indicam.",
     "locationExpanded": "Pesquisámos {{from}} como {{places}}.",
     "salaryFromQuery": "Interpretámos {{amount}} na tua pesquisa como salário mínimo.",
@@ -4983,7 +4983,7 @@
     "fResume": "um ficheiro de CV",
     "fSponsor": "patrocínio",
     "intro": "Responde uma vez e o agente deixa de perguntar. Quando uma pergunta que ele reconhece precisa de uma resposta que deixaste em branco, essa candidatura espera por ti.",
-    "legalIntro": "Uma resposta errada aqui pode anular uma candidatura. O agente usa estas respostas nas perguntas que reconhece como sendo sobre ti, e pode falhar uma escrita de forma invulgar. «Não indicado» é uma resposta real: numa pergunta que reconhece, o agente espera por ti.",
+    "legalIntro": "Uma resposta errada aqui pode anular uma candidatura. O agente usa estas respostas nas perguntas que reconhece como sendo sobre ti, e pode falhar uma pergunta sobre ti, mesmo escrita de forma clara. «Não indicado» é uma resposta real: numa pergunta que reconhece, o agente espera por ti.",
     "legalTitle": "As perguntas que um CV não consegue responder",
     "linkedin": "LinkedIn",
     "loading": "A carregar o teu perfil…",
@@ -5019,9 +5019,9 @@
     "consent": "Permitir que o agente aceite por mim os avisos de privacidade dos empregadores e as declarações de “as informações prestadas são verdadeiras”. Se ficar desligado, qualquer formulário que peça isso vai para a sua fila para o assinalar.",
     "authorizedIn": "Tem autorização para trabalhar em {{country}}?",
     "authorizedHome": "Tem autorização para trabalhar no país onde vive?",
-    "authorizedHint": "Esta resposta abrange apenas o seu próprio país. Para qualquer outro, assinale-o abaixo — o agente não o pressupõe.",
+    "authorizedHint": "Esta resposta abrange apenas o seu próprio país. Para qualquer outro, assinale-o abaixo — numa pergunta sobre um país que reconheça, o agente não o pressupõe.",
     "otherCountries": "Outros países onde pode trabalhar sem patrocínio",
-    "otherCountriesHint": "Opcional, e pode ficar vazio. Os empregadores perguntam por um país concreto — «autorização para trabalhar nos EUA?» — e estar autorizado num sítio não é estar autorizado em todo o lado. Assinale apenas o que for verdade: em qualquer país não assinalado, o agente pára e pergunta-lhe em vez de responder.",
+    "otherCountriesHint": "Opcional, e pode ficar vazio. Os empregadores perguntam por um país concreto — «autorização para trabalhar nos EUA?» — e estar autorizado num sítio não é estar autorizado em todo o lado. Assinale apenas o que for verdade: numa pergunta que reconheça sobre um país não assinalado, o agente pára e pergunta-lhe em vez de responder.",
     "address": "Morada",
     "postcode": "Código postal",
     "coverNote": "Uma nota breve para acompanhar as suas candidaturas",
@@ -5374,11 +5374,11 @@
     "stepsChecked": "Estes passos foram conferidos na página do próprio fornecedor em {{date}}:",
     "rateLine2": "Uma chave gratuita permite {{ratePerMin}} solicitações por minuto e {{dailyQuota}} chamadas por dia.",
     "applyTitle": "Candidate-se por conta própria, com a ajuda da sua IA",
-    "selfApplyFree": "Candidatar-se por conta própria é grátis. Sua IA lê a vaga e, se o empregador usa {{vendors}}, também o formulário de candidatura. O Resume Booster orienta a IA a fazer a você as perguntas que parecem ser sobre você e a redigir, a partir do seu currículo, as respostas abertas sobre o seu trabalho. Essa verificação lê as palavras e pode deixar passar uma pergunta sobre você escrita de um jeito incomum, então leia cada resposta antes de enviar: você confere tudo e clica em enviar.",
+    "selfApplyFree": "Candidatar-se por conta própria é grátis. Sua IA lê a vaga e, se o empregador usa {{vendors}}, também o formulário de candidatura. O Resume Booster orienta a IA a fazer a você as perguntas que parecem ser sobre você e a redigir, a partir do seu currículo, as respostas abertas sobre o seu trabalho. Essa verificação lê as palavras e pode deixar passar uma pergunta sobre você, mesmo escrita de forma clara, então leia cada resposta antes de enviar: você confere tudo e clica em enviar.",
     "selfApplyChatgpt": "No ChatGPT, sua IA lê o formulário de candidatura só quando o empregador usa {{vendors}}.",
     "applyStep1": "Dê o seu currículo à sua IA no chat: cole-o ou anexe-o.",
     "applyStep2": "Peça que ela ajude você a se candidatar a uma vaga: cole o link da vaga do quadro ou escolha uma em uma busca.",
-    "applyStep3": "O Resume Booster orienta a sua IA a fazer a você as perguntas que parecem ser sobre você — autorização de trabalho, patrocínio de visto, salário, data de início, referências, períodos sem trabalho — e a usar as suas palavras; a nunca responder por você perguntas demográficas nem marcar caixas de consentimento; e a redigir, a partir do seu currículo, as respostas abertas sobre o seu trabalho, mostrando cada rascunho antes. A verificação lê as palavras da pergunta: uma pergunta sobre você escrita de um jeito incomum ainda pode receber um rascunho, e algumas perguntas sobre o seu trabalho chegam a você. Leia cada resposta antes de enviar.",
+    "applyStep3": "O Resume Booster orienta a sua IA a fazer a você as perguntas que parecem ser sobre você — autorização de trabalho, patrocínio de visto, salário, data de início, referências, períodos sem trabalho — e a usar as suas palavras; a nunca responder por você perguntas demográficas nem marcar caixas de consentimento; e a redigir, a partir do seu currículo, as respostas abertas sobre o seu trabalho, mostrando cada rascunho antes. A verificação lê as palavras da pergunta: uma pergunta sobre você, mesmo escrita de forma clara, ainda pode receber um rascunho, e algumas perguntas sobre o seu trabalho chegam a você. Leia cada resposta antes de enviar.",
     "applyStep4": "Você envia no site do próprio empregador: à mão, ou com o Claude in Chrome ou o agente do ChatGPT preenchendo com você. Você anexa o currículo, cria a conta no empregador se precisar e clica em Enviar.",
     "applyNever": "O Resume Booster nunca envia nada por você.",
     "applyBrowsersTitle": "Se a sua IA puder usar um navegador",
@@ -5504,14 +5504,7 @@
   },
   "affiliates": {
     "commission": {
-      "tagline": "Ganhe comissão pelas ferramentas que suas indicações comprarem.",
-      "headline": "{{other}} por venda de ferramenta ({{small}} nas ferramentas menores)",
-      "detail": "Você ganha {{other}} quando alguém que você indicou compra o Premium Resume Package, ATS Defense, Career Snapshot, Graduate Game Plan ou Freelance Boost, ou {{small}} por uma das ferramentas menores: correção de palavras-chave, carta de apresentação, pacote de análises, coach de entrevista, simulador de carreira ou assistente de candidatura.",
-      "excluded": "O Full Resume Analysis, as recargas de créditos de análise, Pro, Morning Queue e o Agent Pass não geram comissão.",
-      "bannerTitle": "Sua comissão",
-      "banner": "{{other}} por venda de ferramenta indicada, {{small}} nas ferramentas menores",
-      "linkHint": "Compartilhe este link para ganhar {{other}} em cada venda de ferramenta que ele trouxer ({{small}} nas ferramentas menores), com janela de atribuição de 30 dias",
-      "howItWorks": "Quando alguém clica no seu link e compra uma das ferramentas em até 30 dias, você ganha {{other}}, ou {{small}} por uma ferramenta menor. O Full Resume Analysis, as recargas de créditos e as assinaturas não geram nada."
+      "bannerTitle": "Sua comissão"
     },
     "updates": {
       "title": "Atualizações enquanto esta página estiver aberta",
@@ -5678,7 +5671,7 @@
   },
   "applyAnswers": {
     "addSpecifics": "Acrescente pormenores da sua própria experiência — não os inventamos.",
-    "allGrounded": "Cada resposta baseia-se no seu currículo — nada é inventado.",
+    "allGrounded": "A nossa verificação não encontrou nestas respostas nenhuma certificação, diploma, número, empregador ou cargo que o seu currículo não mostre.",
     "copied": "Copiado",
     "copiedAll": "Todas as respostas copiadas",
     "copyAll": "Copiar tudo",
@@ -5698,7 +5691,7 @@
     "unavailable": "A redação está indisponível durante um minuto. Tente novamente daqui a pouco.",
     "undraftedBody": "Redigimos um número limitado de perguntas por candidatura, e estas ficaram para si.",
     "undraftedTitle": "Não redigidas — responda você mesmo",
-    "yoursBody": "Estas parecem perguntas sobre você — a sua identidade, autorização de trabalho, salário ou dados demográficos —, por isso as deixamos para você. A verificação lê as palavras e pode deixar passar uma escrita de um jeito incomum: leia cada resposta antes de enviar.",
+    "yoursBody": "Estas parecem perguntas sobre você — a sua identidade, autorização de trabalho, salário ou dados demográficos —, por isso as deixamos para você. A verificação lê as palavras e pode deixar passar uma pergunta sobre você, mesmo escrita de forma clara: leia cada resposta antes de enviar.",
     "yoursTitle": "Estas responde você"
   },
   "checkoutGate": {

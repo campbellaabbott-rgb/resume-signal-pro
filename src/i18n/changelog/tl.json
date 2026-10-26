@@ -346,7 +346,7 @@
     },
     "setupIsOneStep": {
       "title": "Isang hakbang na lang ang pag-set up ng iyong apply agent: i-upload ang CV mo",
-      "description": "Binabasa namin ang pangalan, email, telepono at LinkedIn mo mismo sa dokumento at sine-save — hindi na kailangang i-type muli ang ibinigay mo pa lang. Ang kailangan ng isang form na wala sa CV ay itatanong sa mismong sandaling hingin iyon ng form, hindi nang maaga. Hindi kailanman hinuhulaan ang iyong work authorisation, sahod at petsa ng pagsisimula."
+      "description": "Binabasa namin ang pangalan, email, telepono at LinkedIn mo mismo sa dokumento at sine-save — hindi na kailangang i-type muli ang ibinigay mo pa lang. Ang kailangan ng isang form na wala sa CV ay itatanong sa mismong sandaling hingin iyon ng form, hindi nang maaga. Sa tanong na kinikilala ng agent na tungkol sa iyong work authorisation, sahod o petsa ng pagsisimula, hindi nito hinuhulaan ang sagot."
     },
     "sentButUnconfirmed": {
       "title": "Ang aplikasyong hindi namin nakumpirma ay hindi na mukhang naghihintay sa iyo",
@@ -382,7 +382,7 @@
     },
     "applyAgentCountries": {
       "title": "Hindi sasabihin ng agent na makakapagtrabaho ka kung saan hindi mo sinabi",
-      "description": "Isang oo-o-hindi lang ang hawak nito para sa work authorization at ginagamit iyon sa bawat bansa, kaya ang isang awtorisado sa UK ay sasagot ng “oo” sa “legal ka bang awtorisadong magtrabaho sa US?” — isang maling pahayag tungkol sa iyong immigration status, ipinadala sa employer sa ilalim ng pangalan mo, sa mismong tanong na pinakamahigpit nilang pinagfi-filter. Maaari mo nang ilista ang mga bansang talagang pinapayagan kang magtrabaho, at anumang tanong tungkol sa bansang hindi mo nailista ay hihinto at maghihintay sa iyo sa halip na manghula. Puwede ring i-save ang iyong address at zip code — hinihingi ito ng ilang form at wala ni isa sa kanila ang tumatanggap ng tantiya."
+      "description": "Isang oo-o-hindi lang ang hawak nito para sa work authorization at ginagamit iyon sa bawat bansa, kaya ang isang awtorisado sa UK ay sasagot ng “oo” sa “legal ka bang awtorisadong magtrabaho sa US?” — isang maling pahayag tungkol sa iyong immigration status, ipinadala sa employer sa ilalim ng pangalan mo, sa mismong tanong na pinakamahigpit nilang pinagfi-filter. Maaari mo nang ilista ang mga bansang talagang pinapayagan kang magtrabaho, at ang tanong na kinikilala ng agent na tungkol sa bansang hindi mo nailista ay hihinto at maghihintay sa iyo. Puwede ring i-save ang iyong address at zip code — hinihingi ito ng ilang form at wala ni isa sa kanila ang tumatanggap ng tantiya."
     },
     "searchFixed": {
       "title": "Gumagana na ulit ang search — karamihan ng paghahanap ay nabibigo",

@@ -42,7 +42,9 @@ import { proIncludes } from "../_shared/pro-perks.ts";
 // the seller's legal name and postal address are unset every purchase is a
 // 409 seller_identity_missing (seller-gate.ts), before the limiter or Stripe.
 // 2026-10-11.24: the retirement sentence's apply-yourself line says what the question marking does (it reads words and can miss an unusually worded question about the buyer) and asks them to read every answer before they send (wave 4 descope, 2026-10-25); nothing this function does changed.
-const FN_BUILD = "create-product-checkout.2026-10-11.24";
+// 2026-10-11.25: the retirement sentence's apply-yourself line says the marking can miss a question about the buyer even when it is plainly worded (the recheck of the descope, 2026-10-25); nothing this function does changed.
+// 2026-10-11.26: the retirement sentence's apply-yourself line says that inside ChatGPT the AI reads the application form only for Greenhouse or Recruitee, the server's public-API pair (the second recheck of the descope, 2026-10-25); nothing else changed.
+const FN_BUILD = "create-product-checkout.2026-10-11.26";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

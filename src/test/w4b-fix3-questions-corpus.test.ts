@@ -62,8 +62,10 @@ describe("the corpus is what it says", () => {
   });
 
   it("every over-routed row is a draftable question, and there are no more of them than measured", () => {
+    // 190 at round 4, plus the four cover-letter text boxes the recheck of
+    // the descope sent back to the person (the answers panel's answer).
     const over = ROWS.filter((r) => r.overRoute);
-    expect(over.length).toBeLessThanOrEqual(190);
+    expect(over.length).toBeLessThanOrEqual(194);
     for (const r of over) expect(r.expect, r.id).toBe("draft");
   });
 });

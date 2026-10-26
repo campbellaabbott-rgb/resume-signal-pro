@@ -346,7 +346,7 @@
     },
     "setupIsOneStep": {
       "title": "Setting up your apply agent is now one step: upload your CV",
-      "description": "We read your name, email, phone and LinkedIn straight off the document and save it — no retyping details you just handed us. Anything an employer's form needs that a CV can't tell us is asked at the moment that form actually asks it, instead of up front. Your work authorisation, salary and start date are never guessed."
+      "description": "We read your name, email, phone and LinkedIn straight off the document and save it — no retyping details you just handed us. Anything an employer's form needs that a CV can't tell us is asked at the moment that form actually asks it, instead of up front. On a question it recognises as asking for your work authorisation, salary or start date, the agent does not guess the answer."
     },
     "sentButUnconfirmed": {
       "title": "An application we couldn't confirm no longer looks like one that needs you",
@@ -382,7 +382,7 @@
     },
     "applyAgentCountries": {
       "title": "The apply agent won't claim you can work somewhere you haven't said",
-      "description": "It held a single yes-or-no for work authorisation and used it for every country, so someone authorised in the UK would have answered \"yes\" to \"are you legally authorized to work in the US?\" — a false statement about your immigration status, sent to an employer under your name, on the question they filter hardest on. You can now list the countries you're actually authorised to work in, and anything asking about a country you haven't listed stops and waits for you instead of guessing. Your street address and postcode can be saved too, which several application forms require and none of them will accept an approximation of."
+      "description": "It held a single yes-or-no for work authorisation and used it for every country, so someone authorised in the UK would have answered \"yes\" to \"are you legally authorized to work in the US?\" — a false statement about your immigration status, sent to an employer under your name, on the question they filter hardest on. You can now list the countries you're actually authorised to work in, and a question it recognises as asking about a country you haven't listed stops and waits for you. Your street address and postcode can be saved too, which several application forms require and none of them will accept an approximation of."
     },
     "searchFixed": {
       "title": "Search works again — most searches were failing",

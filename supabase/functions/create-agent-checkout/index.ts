@@ -63,7 +63,9 @@ import { retiredCheckoutAnswer } from "../_shared/apply-agent-retired.ts";
 // 2026-10-11.13: retired; a POST is a 410 naming applying yourself (wave 4).
 // 2026-10-11.14: apply-agent-switch.ts gained the Apply Assistant's own switch (APPLY_ASSISTANT_ON_SALE); nothing this function does changed. The retirement sentence module's header was corrected too.
 // 2026-10-11.15: the retirement sentence's apply-yourself line says what the question marking does (it reads words and can miss an unusually worded question about the buyer) and asks them to read every answer before they send (wave 4 descope, 2026-10-25); nothing this function does changed.
-const FN_BUILD = "create-agent-checkout.2026-10-11.15";
+// 2026-10-11.16: the retirement sentence's apply-yourself line says the marking can miss a question about the buyer even when it is plainly worded (the recheck of the descope, 2026-10-25); nothing this function does changed.
+// 2026-10-11.17: the retirement sentence's apply-yourself line says that inside ChatGPT the AI reads the application form only for Greenhouse or Recruitee, the server's public-API pair (the second recheck of the descope, 2026-10-25); nothing else changed.
+const FN_BUILD = "create-agent-checkout.2026-10-11.17";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

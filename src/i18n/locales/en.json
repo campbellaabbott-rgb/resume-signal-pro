@@ -4255,7 +4255,7 @@
     "intentUndone": "Searched for {{phrases}} as words, not as a filter.",
     "intentRedo": "Apply them as filters again",
     "facetWithheld": "No counts beside the fields for a text search: we would count them a different way from the list, so they would not match it.",
-    "excludedTerms": "Hiding results that mention {{terms}}. Remove the “not” or the “-” to see them.",
+    "excludedTerms": "Hiding results whose title contains {{terms}}. Remove the “not” or the “-” to see them.",
     "salaryStatedOnly": "Sorted by pay, so only roles that state a salary appear here.",
     "locationExpanded": "Searched {{from}} as {{places}}.",
     "salaryFromQuery": "Read {{amount}} in your search as a minimum pay filter.",
@@ -4983,7 +4983,7 @@
     "fResume": "a résumé file",
     "fSponsor": "sponsorship",
     "intro": "Answer these once and the agent stops having to ask. When a question it recognizes needs an answer you left blank, that application waits for you.",
-    "legalIntro": "A wrong answer here can void an application. The agent uses these answers on the questions it recognizes as asking about you, and it can miss one worded unusually. \"Not stated\" is a real answer: on a question it recognizes, the agent waits for you.",
+    "legalIntro": "A wrong answer here can void an application. The agent uses these answers on the questions it recognizes as asking about you, and it can miss a question about you, even a plainly worded one. \"Not stated\" is a real answer: on a question it recognizes, the agent waits for you.",
     "legalTitle": "The questions a résumé can't answer",
     "linkedin": "LinkedIn",
     "loading": "Loading your apply profile…",
@@ -5019,9 +5019,9 @@
     "consent": "Let the agent accept employers' privacy notices and “the information I have given is true” declarations for me. Left off, any form asking one is sent to your queue so you can tick it yourself.",
     "authorizedIn": "Are you authorised to work in {{country}}?",
     "authorizedHome": "Are you authorised to work in the country you live in?",
-    "authorizedHint": "This answer covers your own country only. Anywhere else, tick it below — the agent will not assume it.",
+    "authorizedHint": "This answer covers your own country only. Anywhere else, tick it below: on a country question it recognizes, the agent does not assume it.",
     "otherCountries": "Anywhere else you may work without sponsorship",
-    "otherCountriesHint": "Optional, and safe to leave empty. Employers ask about a named country — “authorised to work in the US?” — and being authorised somewhere is not being authorised everywhere. Tick only what’s true: on any country you haven’t ticked, the agent stops and asks you rather than answering.",
+    "otherCountriesHint": "Optional, and safe to leave empty. Employers ask about a named country — “authorised to work in the US?” — and being authorised somewhere is not being authorised everywhere. Tick only what’s true: on a question it recognizes as asking about a country you haven’t ticked, the agent stops and asks you rather than answering.",
     "address": "Street address",
     "postcode": "Postcode / ZIP",
     "coverNote": "A short note to go with your applications",
@@ -5374,11 +5374,11 @@
     "stepsChecked": "These steps were checked against the vendor's own page on {{date}}:",
     "rateLine2": "A free key meters at {{ratePerMin}} requests a minute and {{dailyQuota}} calls a day.",
     "applyTitle": "Apply yourself, with your AI's help",
-    "selfApplyFree": "Applying yourself is free. Your AI reads the posting and, when the employer uses {{vendors}}, the application form too. Resume Booster tells it to ask you the questions that look like they are about you and to draft open answers about your work from your CV. That check reads the words and can miss a question about you that is worded unusually, so read every answer before you send: you check everything and press submit.",
+    "selfApplyFree": "Applying yourself is free. Your AI reads the posting and, when the employer uses {{vendors}}, the application form too. Resume Booster tells it to ask you the questions that look like they are about you and to draft open answers about your work from your CV. That check reads the words and can miss a question about you, even a plainly worded one, so read every answer before you send: you check everything and press submit.",
     "selfApplyChatgpt": "Inside ChatGPT, your AI reads the application form only when the employer uses {{vendors}}.",
     "applyStep1": "Give your AI your CV in the chat: paste it or attach it.",
     "applyStep2": "Ask it to help you apply to a job: paste the job's link from the board, or pick one from a search.",
-    "applyStep3": "Resume Booster tells your AI to ask you the questions that look like they are about you — work authorisation, sponsorship, salary, start date, references, gaps — and to use your words; never to answer demographic questions or tick consent boxes for you; and to draft open answers about your work from your CV, showing you each draft first. The check reads the question's words, so a question about you worded unusually can still get a draft, and some work questions come to you: read every answer before you send.",
+    "applyStep3": "Resume Booster tells your AI to ask you the questions that look like they are about you — work authorisation, sponsorship, salary, start date, references, gaps — and to use your words; never to answer demographic questions or tick consent boxes for you; and to draft open answers about your work from your CV, showing you each draft first. The check reads the question's words, so a question about you, even a plainly worded one, can still get a draft, and some work questions come to you: read every answer before you send.",
     "applyStep4": "You submit on the employer's own site: by hand, or with Claude in Chrome or ChatGPT's agent filling it in with you. You attach your CV, create any employer account and press Submit.",
     "applyNever": "Resume Booster never submits anything for you.",
     "applyBrowsersTitle": "If your AI can use a browser",
@@ -5504,14 +5504,7 @@
   },
   "affiliates": {
     "commission": {
-      "tagline": "Earn a commission on the tools your referrals buy.",
-      "headline": "{{other}} per tool sale ({{small}} on smaller tools)",
-      "detail": "Earn {{other}} when someone you refer buys the Premium Resume Package, ATS Defense, Career Snapshot, Graduate Game Plan or Freelance Boost, or {{small}} for one of the smaller tools: keyword fix, cover letter, scan pack, interview coach, career path simulator or apply assistant.",
-      "excluded": "The Full Resume Analysis, scan credit top-ups, Pro, Morning Queue and the Agent Pass earn no commission.",
-      "bannerTitle": "Your commission",
-      "banner": "{{other}} per referred tool sale, {{small}} on smaller tools",
-      "linkHint": "Share this link to earn {{other}} on each tool sale it brings ({{small}} on smaller tools), with a 30-day attribution window",
-      "howItWorks": "When someone clicks your link and buys one of the tools within 30 days, you earn {{other}}, or {{small}} for a smaller tool. The Full Resume Analysis, scan credit top-ups and subscriptions earn nothing."
+      "bannerTitle": "Your commission"
     },
     "updates": {
       "title": "Updates while this page is open",
@@ -5678,7 +5671,7 @@
   },
   "applyAnswers": {
     "addSpecifics": "Add specifics from your own experience — we won't invent them.",
-    "allGrounded": "Every answer is grounded in your résumé — nothing invented.",
+    "allGrounded": "Our check found no credential, degree, figure, employer or job title in these answers that your résumé does not show.",
     "copied": "Copied",
     "copiedAll": "All answers copied",
     "copyAll": "Copy all",
@@ -5698,7 +5691,7 @@
     "unavailable": "Drafting is unavailable for a minute. Please try again shortly.",
     "undraftedBody": "We draft a limited number of questions per application, and these were left for you.",
     "undraftedTitle": "Not drafted — answer these yourself",
-    "yoursBody": "These look like questions about you — your identity, work authorization, salary or demographics — so we left them for you. The check reads the words and can miss one worded unusually: read every answer before you send.",
+    "yoursBody": "These look like questions about you — your identity, work authorization, salary or demographics — so we left them for you. The check reads the words and can miss a question about you, even a plainly worded one: read every answer before you send.",
     "yoursTitle": "You'll answer these yourself"
   },
   "checkoutGate": {

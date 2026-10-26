@@ -759,7 +759,7 @@ export default function AgentConnect() {
                     <p className="text-sm text-muted-foreground mb-4">
                       When your AI is helping you apply, the server's instructions tell it to keep six rules. They are
                       our instructions to the model, not a promise about what any model does. The marks on each question
-                      are read from its words, so an unusually worded question about you can be marked for drafting —
+                      are read from its words, so a question about you, even a plainly worded one, can be marked for drafting —
                       which is why you read every answer before you send, and why you, not your AI, press Submit.
                       Resume Booster never submits anything.
                     </p>

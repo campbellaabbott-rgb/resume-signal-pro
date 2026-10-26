@@ -6126,7 +6126,7 @@ function liftIntentFilters(
     labels.push(place.label);
   }
   // S12-172: a negated place is dropped from the words and named in ignoredFilters ("placeExclusion").
-  const notPlace = place ? null : negatedTrailingPlace(residual);
+  const notPlace = place ? null : negatedTrailingPlace(residual, QUERY_FILLER);
   if (notPlace) residual = notPlace.head;
   if (labels.length === 0 && !notPlace) return null;
   residual = residual.replace(/\u0001(\d+)\u0001/g, (_m, i) => quoted[Number(i)] ?? "").replace(/\s+/g, " ").trim();

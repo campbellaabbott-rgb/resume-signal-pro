@@ -8,7 +8,7 @@
 // application form; Resume Booster's instructions tell it to ask the person
 // the questions that look like they are about them and to draft open answers
 // about their work from the CV they gave it. The marking reads words and can
-// miss an unusually worded question about the person, so the copy says to
+// miss a question about the person, even a plainly worded one, so the copy says to
 // read every answer before sending; the person submits on the employer's own
 // site. We never submit anything.
 //
@@ -38,7 +38,7 @@ export function ApplyYourself() {
   const steps = [
     t("agentConnect.applyStep1", "Give your AI your CV in the chat: paste it or attach it."),
     t("agentConnect.applyStep2", "Ask it to help you apply to a job: paste the job's link from the board, or pick one from a search."),
-    t("agentConnect.applyStep3", "Resume Booster tells your AI to ask you the questions that look like they are about you — work authorisation, sponsorship, salary, start date, references, gaps — and to use your words; never to answer demographic questions or tick consent boxes for you; and to draft open answers about your work from your CV, showing you each draft first. The check reads the question's words, so a question about you worded unusually can still get a draft, and some work questions come to you: read every answer before you send."),
+    t("agentConnect.applyStep3", "Resume Booster tells your AI to ask you the questions that look like they are about you — work authorisation, sponsorship, salary, start date, references, gaps — and to use your words; never to answer demographic questions or tick consent boxes for you; and to draft open answers about your work from your CV, showing you each draft first. The check reads the question's words, so a question about you, even a plainly worded one, can still get a draft, and some work questions come to you: read every answer before you send."),
     t("agentConnect.applyStep4", "You submit on the employer's own site: by hand, or with Claude in Chrome or ChatGPT's agent filling it in with you. You attach your CV, create any employer account and press Submit."),
   ];
   return (
@@ -47,7 +47,7 @@ export function ApplyYourself() {
         <ClipboardCheck className="w-5 h-5 text-primary" aria-hidden /> {t("agentConnect.applyTitle", "Apply yourself, with your AI's help")}
       </h2>
       <p className="text-muted-foreground mb-4" data-self-apply-free>
-        {t("agentConnect.selfApplyFree", "Applying yourself is free. Your AI reads the posting and, when the employer uses {{vendors}}, the application form too. Resume Booster tells it to ask you the questions that look like they are about you and to draft open answers about your work from your CV. That check reads the words and can miss a question about you that is worded unusually, so read every answer before you send: you check everything and press submit.", { vendors: formVendorPhrase(lang) })}{" "}
+        {t("agentConnect.selfApplyFree", "Applying yourself is free. Your AI reads the posting and, when the employer uses {{vendors}}, the application form too. Resume Booster tells it to ask you the questions that look like they are about you and to draft open answers about your work from your CV. That check reads the words and can miss a question about you, even a plainly worded one, so read every answer before you send: you check everything and press submit.", { vendors: formVendorPhrase(lang) })}{" "}
         {/* Owner decision R2: inside ChatGPT the server reads only the
             public-API vendors' forms, so the sentence above is scoped here. */}
         <span data-self-apply-chatgpt>

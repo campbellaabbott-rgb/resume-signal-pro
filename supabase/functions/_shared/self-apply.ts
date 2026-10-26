@@ -230,9 +230,11 @@ export function whoAnswers(q: SelfApplyInput, n: number): SelfApplyQuestion {
     case "identity":
       return { ...base, answeredBy: "your_details" };
     case "file":
-      // A text box that wants the cover letter itself is motivation text the
-      // AI may draft; an upload slot is the person's document.
-      if (free && plainHint && COVER_LETTER.test(label) && isMotivationQuestion(asked)) return { ...base, answeredBy: "draft_from_your_cv" };
+      // A text box that wants the cover letter itself is the person's, with
+      // the CV offered as help: the answers panel leaves every question the
+      // classifier files this way to the person, as origin/main does, and the
+      // two surfaces answer one question one way (wave 4 recheck of the
+      // descope). An upload slot is the person's document.
       if (free && COVER_LETTER.test(label) && isMotivationQuestion(asked)) return { ...base, answeredBy: "you", cvMayHelp: true, ...hintExtras };
       // A label naming the résumé on a control with options ("I affirm that my
       // application, resume ... are accurate": I agree) is the person's own

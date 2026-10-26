@@ -4255,7 +4255,7 @@
     "intentUndone": "Op {{phrases}} gezocht als woorden, niet als filter.",
     "intentRedo": "Weer als filter toepassen",
     "facetWithheld": "Geen aantallen naast de vakgebieden bij een tekstzoekopdracht: we zouden ze anders tellen dan de lijst, dus ze zouden er niet mee overeenkomen.",
-    "excludedTerms": "Resultaten met {{terms}} worden verborgen. Verwijder de “not” of het “-” om ze te zien.",
+    "excludedTerms": "Resultaten met {{terms}} in de titel worden verborgen. Verwijder de “not” of het “-” om ze te zien.",
     "salaryStatedOnly": "Gesorteerd op salaris — alleen vacatures met een vermeld salaris verschijnen hier.",
     "locationExpanded": "{{from}} is gezocht als {{places}}.",
     "salaryFromQuery": "{{amount}} in je zoekopdracht is toegepast als minimumsalaris.",
@@ -4983,7 +4983,7 @@
     "fResume": "een cv-bestand",
     "fSponsor": "sponsoring",
     "intro": "Beantwoord dit één keer en de agent hoeft niet meer te vragen. Heeft een vraag die hij herkent een antwoord nodig dat je leeg liet, dan wacht die sollicitatie op jou.",
-    "legalIntro": "Een fout antwoord kan hier een sollicitatie ongeldig maken. De agent gebruikt deze antwoorden bij de vragen die hij herkent als vragen over jou, en kan een ongewoon geformuleerde missen. 'Niet opgegeven' is een echt antwoord: bij een vraag die hij herkent, wacht de agent op jou.",
+    "legalIntro": "Een fout antwoord kan hier een sollicitatie ongeldig maken. De agent gebruikt deze antwoorden bij de vragen die hij herkent als vragen over jou, en kan een vraag over jou missen, ook een duidelijk geformuleerde. 'Niet opgegeven' is een echt antwoord: bij een vraag die hij herkent, wacht de agent op jou.",
     "legalTitle": "De vragen die een cv niet kan beantwoorden",
     "linkedin": "LinkedIn",
     "loading": "Je sollicitatieprofiel laden…",
@@ -5019,9 +5019,9 @@
     "consent": "Laat de agent privacyverklaringen van werkgevers en verklaringen “de verstrekte informatie is juist” namens mij accepteren. Uit gelaten gaat elk formulier dat hierom vraagt naar je wachtrij zodat je het zelf aanvinkt.",
     "authorizedIn": "Mag u werken in {{country}}?",
     "authorizedHome": "Mag u werken in het land waar u woont?",
-    "authorizedHint": "Dit antwoord geldt alleen voor uw eigen land. Vink elk ander land hieronder aan — de agent gaat er niet vanuit.",
+    "authorizedHint": "Dit antwoord geldt alleen voor uw eigen land. Vink elk ander land hieronder aan — bij een landvraag die hij herkent, gaat de agent er niet vanuit.",
     "otherCountries": "Andere landen waar u zonder sponsoring mag werken",
-    "otherCountriesHint": "Optioneel; leeg laten mag. Werkgevers vragen naar een specifiek land — „toestemming om in de VS te werken?” — en ergens mogen werken is niet overal mogen werken. Vink alleen aan wat klopt: bij elk land dat u niet aanvinkt stopt de agent en vraagt het u, in plaats van te antwoorden.",
+    "otherCountriesHint": "Optioneel; leeg laten mag. Werkgevers vragen naar een specifiek land — „toestemming om in de VS te werken?” — en ergens mogen werken is niet overal mogen werken. Vink alleen aan wat klopt: bij een vraag die hij herkent over een land dat u niet aanvinkt, stopt de agent en vraagt het u, in plaats van te antwoorden.",
     "address": "Straat en huisnummer",
     "postcode": "Postcode",
     "coverNote": "Een korte notitie bij uw sollicitaties",
@@ -5374,11 +5374,11 @@
     "stepsChecked": "Deze stappen zijn op {{date}} gecontroleerd aan de hand van de pagina van de leverancier:",
     "rateLine2": "Een gratis sleutel staat {{ratePerMin}} verzoeken per minuut en {{dailyQuota}} aanroepen per dag toe.",
     "applyTitle": "Zelf solliciteren, met hulp van je AI",
-    "selfApplyFree": "Zelf solliciteren is gratis. Je AI leest de vacature en, als de werkgever {{vendors}} gebruikt, ook het sollicitatieformulier. Resume Booster vraagt je AI om je de vragen te stellen die over jou lijken te gaan en open antwoorden over je werk op basis van je cv te schrijven. Die controle leest alleen de woorden en kan een ongewoon geformuleerde vraag over jou missen, dus lees elk antwoord voordat je het verstuurt: jij controleert alles en drukt zelf op verzenden.",
+    "selfApplyFree": "Zelf solliciteren is gratis. Je AI leest de vacature en, als de werkgever {{vendors}} gebruikt, ook het sollicitatieformulier. Resume Booster vraagt je AI om je de vragen te stellen die over jou lijken te gaan en open antwoorden over je werk op basis van je cv te schrijven. Die controle leest alleen de woorden en kan een vraag over jou missen, ook een duidelijk geformuleerde, dus lees elk antwoord voordat je het verstuurt: jij controleert alles en drukt zelf op verzenden.",
     "selfApplyChatgpt": "In ChatGPT leest je AI het sollicitatieformulier alleen als de werkgever {{vendors}} gebruikt.",
     "applyStep1": "Geef je AI je cv in de chat: plak het of voeg het toe als bijlage.",
     "applyStep2": "Vraag je AI je te helpen solliciteren: plak de link van de vacature van het bord, of kies er een uit een zoekopdracht.",
-    "applyStep3": "Resume Booster vraagt je AI om je de vragen te stellen die over jou lijken te gaan — werkvergunning, sponsoring, salaris, startdatum, referenties, onderbrekingen — en jouw woorden te gebruiken; nooit demografische vragen voor je te beantwoorden of toestemmingsvakjes aan te vinken; en open antwoorden over je werk op basis van je cv te schrijven en je elk concept eerst te laten zien. De controle leest de woorden van de vraag: een ongewoon geformuleerde vraag over jou kan toch een concept krijgen, en sommige vragen over je werk komen bij jou terecht. Lees elk antwoord voordat je het verstuurt.",
+    "applyStep3": "Resume Booster vraagt je AI om je de vragen te stellen die over jou lijken te gaan — werkvergunning, sponsoring, salaris, startdatum, referenties, onderbrekingen — en jouw woorden te gebruiken; nooit demografische vragen voor je te beantwoorden of toestemmingsvakjes aan te vinken; en open antwoorden over je werk op basis van je cv te schrijven en je elk concept eerst te laten zien. De controle leest de woorden van de vraag: ook een duidelijk geformuleerde vraag over jou kan een concept krijgen, en sommige vragen over je werk komen bij jou terecht. Lees elk antwoord voordat je het verstuurt.",
     "applyStep4": "Jij verstuurt de sollicitatie op de site van de werkgever: met de hand, of met Claude in Chrome of de agent van ChatGPT die het formulier met je invult. Jij voegt je cv toe, maakt een eventueel werkgeversaccount aan en drukt op Verzenden.",
     "applyNever": "Resume Booster verstuurt nooit iets namens jou.",
     "applyBrowsersTitle": "Als je AI een browser kan gebruiken",
@@ -5504,14 +5504,7 @@
   },
   "affiliates": {
     "commission": {
-      "tagline": "Verdien commissie op de tools die je verwijzingen kopen.",
-      "headline": "{{other}} per toolverkoop ({{small}} op kleinere tools)",
-      "detail": "Je verdient {{other}} als iemand die je aanbrengt het Premium Resume Package, ATS Defense, Career Snapshot, Graduate Game Plan of Freelance Boost koopt, of {{small}} voor een van de kleinere tools: keyword-fix, sollicitatiebrief, scanpakket, interviewcoach, loopbaansimulator of sollicitatieassistent.",
-      "excluded": "De Full Resume Analysis, bijgekocht scantegoed, Pro, Morning Queue en de Agent Pass leveren geen commissie op.",
-      "bannerTitle": "Je commissie",
-      "banner": "{{other}} per aangebrachte toolverkoop, {{small}} op kleinere tools",
-      "linkHint": "Deel deze link en verdien {{other}} op elke toolverkoop die hij oplevert ({{small}} op kleinere tools), met een attributievenster van 30 dagen",
-      "howItWorks": "Als iemand op je link klikt en binnen 30 dagen een van de tools koopt, verdien je {{other}}, of {{small}} voor een kleinere tool. De Full Resume Analysis, bijgekocht scantegoed en abonnementen leveren niets op."
+      "bannerTitle": "Je commissie"
     },
     "updates": {
       "title": "Updates zolang deze pagina open is",
@@ -5678,7 +5671,7 @@
   },
   "applyAnswers": {
     "addSpecifics": "Voeg details uit je eigen ervaring toe — wij verzinnen ze niet.",
-    "allGrounded": "Elk antwoord is gebaseerd op je cv — niets is verzonnen.",
+    "allGrounded": "Onze controle vond in deze antwoorden geen certificaat, diploma, cijfer, werkgever of functietitel die niet op je cv staat.",
     "copied": "Gekopieerd",
     "copiedAll": "Alle antwoorden gekopieerd",
     "copyAll": "Alles kopiëren",
@@ -5698,7 +5691,7 @@
     "unavailable": "Opstellen is even niet beschikbaar. Probeer het zo opnieuw.",
     "undraftedBody": "We stellen per sollicitatie een beperkt aantal vragen op, en deze zijn voor jou overgebleven.",
     "undraftedTitle": "Niet opgesteld — beantwoord deze zelf",
-    "yoursBody": "Deze lijken over jou te gaan — je identiteit, werkvergunning, salaris of demografische gegevens — dus hebben we ze aan jou gelaten. De controle leest alleen de woorden en kan een ongewoon geformuleerde vraag missen: lees elk antwoord voordat je het verstuurt.",
+    "yoursBody": "Deze lijken over jou te gaan — je identiteit, werkvergunning, salaris of demografische gegevens — dus hebben we ze aan jou gelaten. De controle leest alleen de woorden en kan een vraag over jou missen, ook een duidelijk geformuleerde: lees elk antwoord voordat je het verstuurt.",
     "yoursTitle": "Deze beantwoord je zelf"
   },
   "checkoutGate": {
