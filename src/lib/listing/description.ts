@@ -28,7 +28,7 @@
  * employer's site; the pane says so in hedged words ("may stop short") and
  * links the posting, because a complete description can end that way too.
  */
-import { decodeJdEntities } from "@/components/jobs/posting-page";
+import { jdText } from "@/components/jobs/posting-page";
 
 /** Mirrors STORED_DESC_CAP in supabase/functions/job-board/index.ts (held equal by a test). */
 export const STORED_DESC_CAP = 12_000;
@@ -96,7 +96,9 @@ export interface PreparedDescription {
 }
 
 export function prepareDescription(raw: string): PreparedDescription {
-  const { text, collapsed } = collapseRepeatedParagraphs(decodeJdEntities(raw));
+  // jdText: decoded, without the stray "undefined" lines of the board's
+  // Workday description assembly (the bake drops them the same way).
+  const { text, collapsed } = collapseRepeatedParagraphs(jdText(raw));
   const sections: Array<{ title: string | null; body: string[] }> = [{ title: null, body: [] }];
   for (const line of text.split("\n")) {
     if (line.trim().length <= 60 && JD_HEADING.test(line)) sections.push({ title: line.trim().replace(/:\s*$/, ""), body: [] });

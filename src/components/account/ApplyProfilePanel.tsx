@@ -20,6 +20,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { applyReadiness, worstSeverity } from "@/lib/applyReadiness";
 import { deriveContact, fillGaps, type ContactField } from "@/lib/resumeContact";
 import { resumeTextFrom } from "@/lib/resumeText";
+// THE APPLY PIVOT: while the agent is switched off this panel keeps the
+// person's stored answers and says nothing about applications it would send,
+// wait on or skip (the second recheck of wave 4's descope).
+import { APPLY_AGENT_ON } from "../../../supabase/functions/_shared/apply-agent-switch";
 
 const sb = supabase as unknown as {
   from: (t: string) => any;
@@ -348,12 +352,14 @@ export function ApplyProfilePanel({ userId }: { userId: string }) {
           {t("applyProfile.title", "Apply profile")}
         </h3>
       </div>
+      {APPLY_AGENT_ON && (
       <p className="text-sm text-muted-foreground mb-5">
         {t("applyProfile.intro",
           "Answer these once and the agent stops having to ask. When a question it recognizes needs an answer you left blank, that application waits for you.")}
       </p>
+      )}
 
-      {readiness.gaps.length === 0 ? (
+      {!APPLY_AGENT_ON ? null : readiness.gaps.length === 0 ? (
         <div className="mb-5 rounded-lg border border-primary/40 bg-primary/5 p-3 flex gap-2">
           <ShieldCheck className="w-4 h-4 text-primary shrink-0 mt-0.5" />
           <div className="text-sm text-foreground">

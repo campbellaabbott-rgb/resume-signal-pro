@@ -121,8 +121,8 @@ export default function Companies() {
   return (
     <>
       <SEO
-        title={t("companyProfile.directory.seoTitle", "Companies Hiring Now — Live Jobs From Their Own Hiring Systems")}
-        description={t("companyProfile.directory.seoDescription", "Every employer on the board is read straight from its own hiring system. Browse the largest boards, or search the live board.")}
+        title={t("companyProfile.directory.seoTitle", "Companies Hiring Now — Jobs Read From Each Hiring System")}
+        description={t("companyProfile.directory.seoDescription", "Each board read from the hiring system that published it: mostly employers' own, with staffing agencies and the federal listing site labeled.")}
         path="/companies"
       />
       <Header />

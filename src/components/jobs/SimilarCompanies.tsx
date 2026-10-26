@@ -16,7 +16,7 @@
 
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { companyLanderPath } from "@/lib/public-href";
+import { useCompanyProfileLink } from "@/lib/seo/lander-manifest";
 import { ArrowRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
@@ -25,6 +25,8 @@ import { inflight } from "@/lib/company/inflight";
 import { count as fmtCount, date as fmtDate } from "@/lib/format";
 import { tPlural } from "@/lib/company/plural";
 import { cn } from "@/lib/utils";
+import { isCollidedToken } from "@/lib/board-collisions";
+import { isUsajobsBoard } from "@/lib/company/lander-model";
 
 export interface SimilarRow {
   company: string;
@@ -41,6 +43,17 @@ export interface SimilarRow {
 
 const PLAIN_DATE = /^\d{4}-\d{2}-\d{2}/;
 
+/**
+ * A ROW THE LIST MAY SHOW UNDER "companies … from their own career systems"
+ * (S13-120). The live reader returned the federal listing site as one
+ * employer, named after one agency ('Veterans Health Administration',
+ * /jobs/company/usajobs), and a board name two hiring systems share is not
+ * one employer either. Migration 20261012136000 drops both server-side; until
+ * it is live everywhere, the page drops them too.
+ */
+export const similarRowShown = (r: SimilarRow): boolean =>
+  !!r && typeof r.company === "string" && typeof r.company_token === "string" && !isUsajobsBoard(r.company_token, null) && !isCollidedToken(r.company_token);
+
 /** get_similar_companies for one token, asked once while in flight. Empty until it answers, and on failure. */
 export function useSimilarCompanies(companyToken: string | null | undefined, enabled = true, limit = 6): SimilarRow[] {
   const [rows, setRows] = useState<SimilarRow[]>([]);
@@ -55,7 +68,7 @@ export function useSimilarCompanies(companyToken: string | null | undefined, ena
       return data;
     }).then((data) => {
       if (!cancelled && Array.isArray(data)) {
-        setRows((data as SimilarRow[]).filter((r) => r && typeof r.company === "string" && typeof r.company_token === "string"));
+        setRows((data as SimilarRow[]).filter(similarRowShown));
       }
     }).catch(() => { /* additive module */ });
     return () => { cancelled = true; };
@@ -71,6 +84,11 @@ export function SimilarCompaniesView({ rows, variant = "page", limit, headingLev
   headingLevel?: 2 | 3;
 }) {
   const { t, i18n } = useTranslation();
+  // SEO-010: an employer link goes to its written company page, or to the
+  // live board filtered to the board when the bake wrote none.
+  // A similar employer opens its profile: the written page, or the profile
+  // address with rel="nofollow" when the bake wrote none (SEO-010).
+  const profileLink = useCompanyProfileLink();
   const shown = typeof limit === "number" ? rows.slice(0, limit) : rows;
   if (shown.length === 0) return null;
   const lang = i18n.language || "en";
@@ -100,7 +118,8 @@ export function SimilarCompaniesView({ rows, variant = "page", limit, headingLev
           return (
             <li key={r.company_token}>
               <Link
-                to={companyLanderPath(r.company_token)}
+                to={profileLink(r.company_token).href}
+                rel={profileLink(r.company_token).rel}
                 className="group flex min-h-11 items-center gap-3 rounded-md border border-border bg-card px-3 py-2 hover:border-border-strong hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
                 <span className="min-w-0 flex-1">

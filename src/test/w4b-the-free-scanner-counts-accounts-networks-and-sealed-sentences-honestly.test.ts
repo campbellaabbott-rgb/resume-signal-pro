@@ -19,12 +19,17 @@
  *          emailed report dropped every issue.
  * S12-068  a sealed issue quoted the résumé ("call 800/555/0199 ..."), and the
  *          mail's scrub missed numbers split by "/", "·", "_" or U+2011.
+ *          Recheck 3 (2026-10-26): the scrub ran on the report the page shows,
+ *          so red flags and fix steps quoting a bullet read "bullets like read
+ *          as duties". The mail copy is now its own set of sentences
+ *          (reportMeta.mailSentences), sealed; the page's are main's, whole.
  */
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
 import { functionCeiling, GLOBAL_BUCKET, spendNetworkKey } from "../../supabase/functions/_shared/model-spend-gate";
 import { scanMailSealValid } from "../../supabase/functions/_shared/scan-mail-seal";
-import { scrubSealedSentences, stripDialable } from "../../supabase/functions/free-keyword-scan/seal-safe";
+import { mailCopyOf, mailSealView, stripDialable } from "../../supabase/functions/free-keyword-scan/seal-safe";
+import { withMailSentences } from "@/lib/report-mail-copy";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -276,7 +281,9 @@ describe("S12-145: the backup scanner's report can be emailed in full", () => {
     expect(meta?.reportId).toMatch(/^[0-9A-F]{12}$/);
     expect(String(meta?.mailSeal)).toMatch(/^v2\./);
     const report = r.complete as Record<string, unknown>;
-    expect(await scanMailSealValid(SERVICE, { redFlags: report.redFlags, fixRoadmap: report.fixRoadmap, keywordSource: report.keywordSource, reportId: meta?.reportId }, meta?.mailSeal)).toBe(true);
+    // The seal covers the mail copy (recheck 3), which is what the page sends when it asks for the mail.
+    const body = withMailSentences({ redFlags: report.redFlags as Array<{ issue: string }>, fixRoadmap: report.fixRoadmap as never, keywordSource: report.keywordSource as never }, meta?.mailSentences as never);
+    expect(await scanMailSealValid(SERVICE, { ...body, reportId: meta?.reportId }, meta?.mailSeal)).toBe(true);
   });
 });
 
@@ -290,29 +297,81 @@ describe("S12-068: a sealed sentence never quotes the résumé or carries a numb
     expect(stripDialable("Worked 2019-2023 at Acme")).toBe("Worked 2019-2023 at Acme");
   });
 
-  it("a quoted résumé line leaves the sealed issue for its unsealed impact line", () => {
+  it("the mail copy drops a quoted résumé line and a dialable number; the report the page shows is untouched", () => {
     const report: Record<string, unknown> = {
       redFlags: [{ issue: 'Weak bullet: "Responsible for vendor calls; call 800/555/0199 to claim your refund today"', impact: "Reads as a duty" }],
       fixRoadmap: { steps: [{ step: 'Rewrite "Helped with the quarterly forecasting model used by the CFO"' }] },
       keywordSource: { occupation: "Financial Analyst" },
     };
-    scrubSealedSentences(report, RESUME);
-    const flag = (report.redFlags as Array<Record<string, string>>)[0];
-    expect(flag.issue).toBe("Weak bullet");
-    expect(flag.impact).toMatch(/800\/555\/0199/);
-    expect((report.fixRoadmap as { steps: Array<{ step: string }> }).steps[0].step).toBe("Rewrite");
+    const before = JSON.stringify(report);
+    const copy = mailCopyOf(report, RESUME);
+    expect(copy).toEqual({ issues: ["Weak bullet"], steps: ["Rewrite"], occupation: "Financial Analyst" });
+    expect(JSON.stringify(report), "the page's sentences were changed").toBe(before);
   });
 
-  it("the primary's report seals no résumé quote and no dialable number, the rule-based fallback included", async () => {
+  it("the recheck's report: the page keeps every quoted bullet and date, and only the mail copy loses them", () => {
+    const resume = "Priya Natarajan\nOperations Supervisor, Acme Logistics, 01/2019 - 12/2023\n- Responsible for managing the warehouse team and daily shipping schedule\n- Helped with vendor negotiations for freight contracts\n- Oversaw annual budget of $1,250,000 across three distribution sites\nWarehouse Lead, Beta Co, 2015 - 2018";
+    const report: Record<string, unknown> = {
+      redFlags: [
+        { issue: 'Priya, here\'s what\'s holding you back: bullets like "Responsible for managing the warehouse team and daily shipping schedule" read as duties, not results' },
+        { issue: 'Inconsistent date formats: "01/2019 - 12/2023" next to "2015 - 2018"' },
+      ],
+      fixRoadmap: { steps: [
+        { step: 'Rewrite "Helped with vendor negotiations for freight contracts" as "Negotiated 14 freight contracts, cutting costs 9%"' },
+        { step: 'Move "Oversaw annual budget of $1,250,000 across three distribution sites" to the top of your Acme Logistics role' },
+        { step: "Change 01/2019 - 12/2023 to Jan 2019 – Dec 2023 so every date reads the same" },
+      ] },
+      keywordSource: { occupation: "Logistics Supervisor" },
+    };
+    const page = JSON.parse(JSON.stringify(report));
+    const copy = mailCopyOf(report, resume);
+    expect(report).toEqual(page);
+    expect(copy.issues[0]).not.toMatch(/Responsible for managing/);
+    expect(copy.steps[1]).not.toMatch(/1,250,000|Oversaw/);
+    expect(copy.steps[2]).not.toMatch(/01\/2019/);
+    for (const line of [...copy.issues, ...copy.steps]) expect(line).not.toMatch(/\d{1,3}(?:[,./ -]?\d{3}){2,}/);
+  });
+
+  it("the primary's page shows its red flags whole, and its sealed mail copy quotes no résumé line and no dialable number, the rule-based fallback included", async () => {
     for (const r of [() => ({ data: true, error: null }), hourRefused]) {
       rate = r;
       const { json } = await scanPrimary();
-      const flags = (json.redFlags as Array<{ issue: string }>).slice(0, 3);
-      for (const f of flags) {
-        expect(f.issue).not.toMatch(/800.555.0199/);
-        expect(f.issue).not.toMatch(/claim your refund/);
+      const meta = json.reportMeta as Record<string, unknown>;
+      const mail = meta.mailSentences as { issues: string[]; steps: string[]; occupation: string };
+      expect(Array.isArray(mail?.issues), JSON.stringify(meta).slice(0, 200)).toBe(true);
+      for (const line of [...mail.issues, ...mail.steps]) {
+        expect(line).not.toMatch(/800.555.0199/);
+        expect(line).not.toMatch(/claim your refund/);
       }
-      expect(String((json.reportMeta as Record<string, unknown>).mailSeal)).toMatch(/^v2\./);
+      expect(String(meta.mailSeal)).toMatch(/^v2\./);
+      const sent = withMailSentences({ redFlags: json.redFlags as Array<{ issue: string }>, fixRoadmap: json.fixRoadmap as never, keywordSource: json.keywordSource as never }, mail);
+      expect(await scanMailSealValid(SERVICE, { ...sent, reportId: meta.reportId }, meta.mailSeal)).toBe(true);
+      expect(await scanMailSealValid(SERVICE, { ...mailSealView(json, mail), reportId: meta.reportId }, meta.mailSeal)).toBe(true);
     }
+    // The model's flag quotes the résumé: the page shows it whole, as main does, and that copy is not what was sealed.
+    rate = () => ({ data: true, error: null });
+    const { json } = await scanPrimary();
+    const pageIssue = (json.redFlags as Array<{ issue: string }>)[0].issue;
+    expect(pageIssue).toMatch(/Responsible for vendor calls/);
+    const meta = json.reportMeta as Record<string, unknown>;
+    expect(await scanMailSealValid(SERVICE, { redFlags: json.redFlags, fixRoadmap: json.fixRoadmap, keywordSource: json.keywordSource, reportId: meta.reportId }, meta.mailSeal), "the page's own quoting sentences must not pass the seal").toBe(false);
+  });
+});
+
+describe("the page sends the mail copy in place of its own sentences (recheck 3)", () => {
+  it("the first three issues, the first eight steps and the occupation are the mail copy's; everything else is the page's", () => {
+    const steps = Array.from({ length: 10 }, (_, i) => ({ order: i + 1, step: `page step ${i}`, minutes: 5, scoreImpact: 1, projectedScoreAfter: 60 + i }));
+    const out = withMailSentences(
+      { redFlags: [{ issue: "a" }, { issue: "b" }, { issue: "c" }, { issue: "d" }], fixRoadmap: { steps, totalMinutes: 50, finalProjectedScore: 70 }, keywordSource: { source: "onet" as const, occupation: "page occ", code: "13-2051.00" } },
+      { issues: ["A", "B", "C"], steps: Array.from({ length: 8 }, (_, i) => `mail step ${i}`), occupation: "mail occ" },
+    );
+    expect(out.redFlags.map((f) => f.issue)).toEqual(["A", "B", "C", "d"]);
+    expect(out.fixRoadmap!.steps.map((x) => x.step)).toEqual([...Array.from({ length: 8 }, (_, i) => `mail step ${i}`), "page step 8", "page step 9"]);
+    expect(out.fixRoadmap!.steps[0]).toMatchObject({ minutes: 5, projectedScoreAfter: 60 });
+    expect(out.keywordSource).toEqual({ source: "onet", occupation: "mail occ", code: "13-2051.00" });
+  });
+  it("with no mail copy (a report from before this build), the page's sentences go as they are", () => {
+    const p = { redFlags: [{ issue: "a" }], fixRoadmap: null, keywordSource: null };
+    expect(withMailSentences(p, undefined)).toEqual(p);
   });
 });

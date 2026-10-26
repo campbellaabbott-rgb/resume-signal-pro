@@ -31,7 +31,8 @@ import { requireWebsiteSession } from "../_shared/website-session.ts";
 // 2026-10-14.30 (wave 4 round 2 fixes): a receipt is asked of Stripe at most
 // RECEIPTS_PER_HOUR times an hour per account, counted before Stripe is asked
 // (the account's Stripe reads share one limit with the checkouts).
-const FN_BUILD = "account-order.2026-10-14.30";
+// 2026-10-14.31 (recheck 3, 2026-10-26): "Email it again" sends the order's own language (the delivery's metadata.language) to send-product-email.
+const FN_BUILD = "account-order.2026-10-14.31";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -82,7 +83,7 @@ Deno.serve(async (req) => {
 
     // The order, and whether this account owns it.
     const [{ data: delivery, error: dErr }, { data: content, error: cErr }, bound] = await Promise.all([
-      service.from("product_deliveries").select("customer_email, product_name, product_type, status").eq("stripe_session_id", sessionId).maybeSingle(),
+      service.from("product_deliveries").select("customer_email, product_name, product_type, status, metadata").eq("stripe_session_id", sessionId).maybeSingle(),
       service.from("purchased_content").select("customer_email, product_name, product_type, generated_content").eq("stripe_session_id", sessionId).maybeSingle(),
       service.from("checkout_buyers").select("user_id").eq("stripe_session_id", sessionId).maybeSingle(),
     ]);
@@ -125,10 +126,14 @@ Deno.serve(async (req) => {
 
     const productType = saved.product_type ?? (delivery as { product_type?: string } | null)?.product_type ?? "purchase";
     const productName = saved.product_name ?? (delivery as { product_name?: string } | null)?.product_name ?? "Your purchase";
+    // The language the order was bought in, as retry-failed-deliveries sends
+    // it (recheck 3): the resend went out in English for every buyer.
+    const meta = (delivery as { metadata?: { language?: unknown } | null } | null)?.metadata;
+    const language = typeof meta?.language === "string" ? meta.language : undefined;
     const sent = await fetch(`${url}/functions/v1/send-product-email`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${supabaseServiceKey}`, apikey: supabaseServiceKey },
-      body: JSON.stringify({ email: orderEmail, productType, productName, generatedContent: saved.generated_content, sessionId }),
+      body: JSON.stringify({ email: orderEmail, productType, productName, generatedContent: saved.generated_content, sessionId, ...(language ? { language } : {}) }),
       signal: AbortSignal.timeout(20_000),
     }).catch(() => null);
     if (!sent || !sent.ok) return json({ error: "Could not send it right now. Try again in a minute." }, 502);

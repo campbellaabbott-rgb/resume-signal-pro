@@ -46,10 +46,15 @@ import { MARKETING_PAUSED, logMarketingPaused, marketingMailHeader, marketingPau
 // 2026-10-11.25: the monthly batch sends nothing while the seller has no legal
 // name and postal address (S12-010, _shared/marketing-pause.ts); the
 // confirmation a person asks for is not marketing and still goes.
-// 2026-10-25.1 (homepage switch-over, step 11; reservation home-pricing): the
-// "Rescan my resume free" link names /resume-checker, since "/" becomes the
-// job board; mail already sent still reaches the scanner through the redirect.
-const FN_BUILD = "send-market-pulse.2026-10-25.1";
+// 2026-10-11.26 (recheck 3, 2026-10-26): while paused, a subscribe request is
+// refused before any count and no confirmation is mailed (a confirmed address
+// would hear nothing); a link mailed earlier still confirms, and the answer
+// says the pulse is paused, so the page promises no first pulse.
+// 2026-10-25.2 (homepage switch-over, step 11; reservation home-pricing): the
+// code is wave 4's 2026-10-11.26, and the "Rescan my resume free" link names
+// /resume-checker, since "/" becomes the job board; mail already sent still
+// reaches the scanner through the redirect.
+const FN_BUILD = "send-market-pulse.2026-10-25.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -166,6 +171,13 @@ Deno.serve(async (req) => {
     if (body.action === "subscribe") {
       const email = String(body.email ?? "").trim().toLowerCase().slice(0, 254);
       if (!EMAIL_RE.test(email)) return json({ success: false, error: "Enter a valid email address." }, 400);
+      // NO SIGN-UP WHILE THE PULSE CANNOT BE SENT (recheck 3). The batch sends
+      // nothing while marketing is paused, so a confirmation now would make a
+      // confirmed subscriber who never hears from us. Asked before any count.
+      if (marketingPaused()) {
+        logMarketingPaused("send-market-pulse", "subscribe");
+        return json({ success: false, reason: MARKETING_PAUSED, error: "The monthly market pulse is paused for now, so no confirmation was sent." }, 503);
+      }
       const industry = knownIndustry(body.industry);
       // A confirmation promises a monthly pulse, and the batch can only build
       // one for an industry with a keyword table. Anything else would be a
@@ -247,7 +259,9 @@ Deno.serve(async (req) => {
       if (error) return json({ success: false, error: "Could not confirm right now. Try the link again shortly." }, 503);
       const d = data as { cf_confirmed?: boolean } | null;
       if (!d?.cf_confirmed) return json({ success: false, error: "This link has expired or was already used." }, 410);
-      return json({ success: true, confirmed: true });
+      // A link mailed before the pause still confirms the person's choice; the
+      // answer says the pulse is paused, so the page promises no first pulse.
+      return json({ success: true, confirmed: true, ...(marketingPaused() ? { paused: MARKETING_PAUSED } : {}) });
     }
 
     // ── Batch send: the cron, or our own service role, and nobody else ───

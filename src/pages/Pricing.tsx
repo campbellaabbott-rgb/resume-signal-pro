@@ -14,7 +14,8 @@ import { ProSubscriptionCard } from "@/components/ProSubscriptionCard";
 import { AtsCoverage } from '@/components/AtsCoverage';
 import { PurchaseTerms } from "@/components/PurchaseTerms";
 import { PurchasesOpenSoon } from "@/components/checkout/PurchasesOpenSoon";
-import { fullAnalysisOnSale } from "@/lib/purchases-open";
+import { fullAnalysisOnSale, proOnSale } from "@/lib/purchases-open";
+import { pricingJsonLd } from "@/lib/pricing-offer";
 
 // THE PRODUCT LINE (owner decisions 2026-10-12 and 2026-10-17). The page
 // sells what is still for sale: free search and scans, the $5 Full Analysis
@@ -32,6 +33,7 @@ const offeredHere = (id: ProductId) => !isProductHidden(id);
 export default function Pricing() {
   const { t } = useTranslation();
   const open = fullAnalysisOnSale();
+  const proOpen = proOnSale();
 
   // Track scroll depth for drop-off analysis
   useScrollDepth('pricing');
@@ -44,10 +46,15 @@ export default function Pricing() {
   // — so the offer can never state a ceiling the catalog has outgrown, nor a
   // price for a product the page no longer sells.
   const visibleProducts = (Object.keys(PRODUCTS) as ProductId[]).filter(offeredHere);
+  // Each product enters the offer only while its own gate is open (the Full
+  // Analysis on G1 and G2, Pro on G1 and G2b), so the structured data never
+  // prices a product the page does not sell; with neither open it offers only
+  // what is free, and the description says purchases open soon.
   const offerPrices = [
-    ...visibleProducts.map((k) => PRODUCTS[k].priceUsd),
-    SUBSCRIPTIONS.pro.priceUsd,
+    ...(open ? visibleProducts.map((k) => PRODUCTS[k].priceUsd) : []),
+    ...(proOpen ? [SUBSCRIPTIONS.pro.priceUsd] : []),
   ];
+  const anyOnSale = offerPrices.length > 0;
   // THE DESCRIPTION'S RANGE IS THE CATALOGUE'S, by the same derivation
   // (platform sweep L3-18).
   const oneTimePrices = visibleProducts.map((k) => PRODUCTS[k].priceUsd);
@@ -62,27 +69,13 @@ export default function Pricing() {
       {/* Prices come from the catalog, not the copy. */}
       <SEO
         title={t('pricingPage.metaTitle')}
-        description={t('pricingPage.metaDescriptionFa', 'Free job search and résumé scan. A ${{lowPrice}} Full Analysis paid once, or Pro at ${{proPrice}} a month for the writing tools.', metaPrices)}
+        description={`${t('pricingPage.metaDescriptionFa', 'Free job search and résumé scan. A ${{lowPrice}} Full Analysis paid once, or Pro at ${{proPrice}} a month for the writing tools.', metaPrices)}${anyOnSale ? "" : ` ${t('checkoutGate.purchasesOpenSoonTitle', 'Purchases open soon')}.`}`}
         path="/pricing"
       />
-      {/* SoftwareApplication + AggregateOffer — eligible for price rich results
-          on "resume scanner pricing"-type queries. Prices mirror PRODUCTS. */}
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
-        "@context": "https://schema.org",
-        "@type": "SoftwareApplication",
-        name: "Resume Booster",
-        url: "https://resumebooster.work",
-        applicationCategory: "BusinessApplication",
-        operatingSystem: "Web",
-        description: "Free diagnostic resume scan plus one-time paid tools and one optional subscription.",
-        offers: {
-          "@type": "AggregateOffer",
-          priceCurrency: "USD",
-          lowPrice: "0",
-          highPrice: String(Math.max(...offerPrices)),
-          offerCount: offerPrices.length + 1,
-        },
-      }) }} />
+      {/* SoftwareApplication: once a product is on sale, an AggregateOffer of
+          what is sold (prices mirror PRODUCTS); until then only the free
+          offer, the shape the crawler bake writes too (src/lib/pricing-offer.ts). */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(pricingJsonLd({ open: anyOnSale, offerPrices, url: "https://resumebooster.work/pricing" })) }} />
       <Header />
 
       <main className="pt-24 pb-20">

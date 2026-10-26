@@ -8,6 +8,12 @@
 #     the inline classic stash (no src, module, defer or async), so a token in
 #     a URL is moved into sessionStorage before the host's deferred analytics
 #     records the address;
+#   - that script, RUN here for two Stripe returns to /success in one tab,
+#     drops the first purchase's share when the second arrives (S13-002, the
+#     R1 hotfix): otherwise the second buyer is shown the first analysis; and,
+#     run for a /freelance-boost return then a /success return, keeps each
+#     path's session id (the hotfix's second fixer round): otherwise a Boost
+#     paid and not yet generated is evicted and offered for sale again;
 #   - the live Auth chunk is the R1 page (it carries the rb-auth flags mark)
 #     and has no magic-link copy left;
 #   - each sign-in switch, read from the deployed bundle, and a switch that is
@@ -59,12 +65,14 @@ const get=async(u)=>{try{const r=await fetch(u,{headers:UA});return {status:r.st
 const say=(s,m)=>console.log(s+"  "+m);
 try{
 // 1. The first <head> script on three pages.
+let rootScript="";
 for(const path of ["/","/auth","/jobs"]){
   const r=await get(SITE+path);
   if(r.status!==200){say("FAIL",path+" answered "+r.status+(r.err?" ("+r.err+")":"")+": the stash script could not be read");continue;}
   const head=(r.text.match(/<head[^>]*>([\s\S]*?)<\/head>/i)||[])[1];
   if(!head){say("FAIL",path+" has no <head>: the stash script could not be read");continue;}
   const m=head.match(/<script\b([^>]*)>([\s\S]*?)<\/script>/i);
+  if(path==="/"&&m)rootScript=m[2];
   const attrs=m?m[1]:"";
   const classic=!!m&&!/\bsrc\s*=|\btype\s*=\s*["\x27]?module|\bdefer\b|\basync\b/i.test(attrs);
   const stash=!!m&&/rb_url_stash/.test(m[2])&&/replaceState/.test(m[2]);
@@ -72,6 +80,39 @@ for(const path of ["/","/auth","/jobs"]){
   if(classic&&stash)say("PASS",path+": the first <head> script is the inline classic stash"+(firstChild?", and the first child of <head>":" (something that is not a script precedes it)"));
   else say("FAIL",path+": the first <head> script is "+(!m?"missing":stash?"the stash but not inline classic ("+attrs.trim().slice(0,60)+")":"not the stash ("+(attrs.trim().slice(0,60)||"inline, no rb_url_stash")+")")+": a token in a URL reaches the analytics script before anything moves it");
 }
+
+// 1b. The live stash script, RUN (S13-002): two Stripe returns to /success in
+// one tab, over one stand-in sessionStorage, with the first purchase share
+// stashed between them as the success page stashes it. The second return
+// must drop that share, or the second buyer is shown the first analysis and
+// theirs is never generated. Nothing is sent anywhere.
+const runStash=(src,url,store)=>{
+  const u=new URL(url,"https://vd95.invalid");const loc={pathname:u.pathname,search:u.search,hash:u.hash};
+  const win={sessionStorage:{getItem:(k)=>store.has(k)?store.get(k):null,setItem:(k,v)=>{store.set(k,String(v))},removeItem:(k)=>{store.delete(k)}}};
+  const hist={state:null,replaceState:(s,t,a)=>{const n=new URL(a,"https://vd95.invalid");loc.pathname=n.pathname;loc.search=n.search;loc.hash=n.hash;}};
+  new Function("location","history","window",src)(loc,hist,win);
+};
+if(!rootScript)say("FAIL","the stash script on / could not be read, so its /success rule (S13-002) could not be run");
+else{try{
+  const store=new Map();
+  runStash(rootScript,"/success?session_id=cs_vd95_first",store);
+  const o=JSON.parse(store.get("rb_url_stash")||"{}");
+  o.share="vd95-share-of-the-first";o.share_path="/success";o.share_session="cs_vd95_first";
+  store.set("rb_url_stash",JSON.stringify(o));
+  runStash(rootScript,"/success?session_id=cs_vd95_second",store);
+  const s=JSON.parse(store.get("rb_url_stash")||"{}");
+  if(s.session_id==="cs_vd95_second"&&s.share===undefined)say("PASS","the live stash script, run for two purchases on /success in one tab, drops the first purchase share when the second arrives (S13-002): the second purchase gets its own analysis");
+  else if(s.session_id!=="cs_vd95_second")say("FAIL","the live stash script did not stash the second purchase on /success: "+JSON.stringify(s).slice(0,140));
+  else say("FAIL","the live stash script keeps the first purchase share beside a second purchase on /success (S13-002): the buyer is shown the old analysis and the new one is never generated. Publish the frontend with the R1 hotfix");
+  // 1c. One session id per path (second fixer round): a Freelance Boost paid
+  // and not yet generated, then a /success return in the same tab.
+  const per=new Map();
+  runStash(rootScript,"/freelance-boost?session_id=cs_vd95_boost",per);
+  runStash(rootScript,"/success?session_id=cs_vd95_fa",per);
+  const p=JSON.parse(per.get("rb_url_stash")||"{}");
+  if(p["session_id:/freelance-boost"]==="cs_vd95_boost"&&p["session_id:/success"]==="cs_vd95_fa")say("PASS","the live stash script keeps one session id per path: a /success return leaves a Freelance Boost paid and not yet generated in the stash, so its buyer is never offered the buy buttons again");
+  else say("FAIL","the live stash script keeps one session id for every path: a payment return on /success evicts a Freelance Boost paid and not yet generated, and back on its page the buyer is offered the buy buttons again ("+JSON.stringify(p).slice(0,140)+"). Publish the frontend with the R1 hotfix");
+}catch(e){say("FAIL","the live stash script could not be run here: "+String(e).slice(0,140))}}
 
 // 2. The live Auth chunk, the chunks it imports, and the entry that names it.
 const shell=await get(SITE+"/auth");

@@ -52,8 +52,8 @@
       "rowOpen_other": "{{n}} open roles",
       "searchLink": "Search the live board",
       "searchTail": "to filter any employer by role, pay, or location.",
-      "seoDescription": "Every employer on the board is read straight from its own hiring system. Browse the largest boards, or search the live board.",
-      "seoTitle": "Companies Hiring Now — Live Jobs From Their Own Hiring Systems",
+      "seoDescription": "Each board read from the hiring system that published it: mostly employers' own, with staffing agencies and the federal listing site labeled.",
+      "seoTitle": "Companies Hiring Now — Jobs Read From Each Hiring System",
       "countedAgo": "Counts from the board's last count, {{ago}}.",
       "intro2": "Each board is read from its own hiring system: most are employers' own, staffing-agency boards are labelled on their pages, and USAJOBS is the federal government's listing site, where agencies post their roles. The largest boards are below."
     },
@@ -78,7 +78,10 @@
       "roles": "Open roles",
       "tableCaption": "Open roles by field and by country",
       "title": "Hiring mix",
-      "titleListings": "Roles listed mostly in"
+      "titleListings": "Roles listed mostly in",
+      "titlePooled": "Hiring mix across the employer's hiring system",
+      "basisPooled": "These counts cover every career site this employer runs on the same hiring system (at least {{n}} open roles), not only the {{m}} on this page. Read on {{date}}; roles in no field we recognize are left out.",
+      "basisPooledUndated": "These counts cover every career site this employer runs on the same hiring system (at least {{n}} open roles), not only the {{m}} on this page. Roles in no field we recognize are left out."
     },
     "nameLoading": "Loading the employer's name",
     "openRoles_one": "{{n}} role dated in the last {{days}} days",
@@ -156,7 +159,8 @@
       "searchLabel": "Search jobs",
       "searchPlaceholder": "Employer or job title",
       "searchTitle": "Look for this employer on the live board",
-      "title": "We don't read a board called “{{token}}” yet"
+      "title": "We don't read a board called “{{token}}” yet",
+      "didYouMean": "Did you mean one of these boards?"
     },
     "usajobs": {
       "cap": "Up to {{cap}} results per query; not every federal opening.",

@@ -5,10 +5,13 @@
 // the React intro ("the live data our resume scanner uses when it detects a
 // pilot resume") still presented them as written for the one title.
 
+import { inSentence } from "./seo/display-case";
+
 /** The intro, the two list headings and the structured-data description of one role page. */
 export function roleListCopy(roleTitle: string, industryName: string) {
-  const role = roleTitle.toLowerCase();
-  const field = industryName.toLowerCase();
+  // In a sentence an acronym stays one ("RN resumes", "HR tables"), SEO-019.
+  const role = inSentence(roleTitle);
+  const field = inSentence(industryName);
   return {
     intro: `These are the ${field} keyword tables, certifications and titles our resume scanner checks when it reads a resume in that field, ${role} resumes included. They are the field's lists, not a list written for this one title.`,
     keywordsHeading: `Keywords from the ${industryName} tables`,

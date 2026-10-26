@@ -16,6 +16,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { MOUNT_TEST_BUDGET, SLOW } from "./helpers/mount-budget";
 import { clearBoardBudgetRefusal } from "@/lib/board-budget";
+import { setLanderManifestForTests } from "@/lib/seo/lander-manifest";
 import { companyLanderPath, publicPath } from "@/lib/public-href";
 
 const invoke = vi.fn();
@@ -84,6 +85,9 @@ beforeEach(() => {
   invoke.mockReset(); rpc.mockReset();
   clearBoardBudgetRefusal();
   mock();
+  // Every board has a written page here (SEO-010): this file holds another
+  // property of the employer link, not which boards the bake wrote.
+  setLanderManifestForTests("*");
 });
 
 describe("a dotted employer token links to the address this host serves", () => {

@@ -18,10 +18,16 @@
  *   - re-applying is harmless, and a database without pg_cron refuses the
  *     file instead of publishing a retention nothing enforces.
  */
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
 import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
+
+// A PGLITE TEST IS NOT A 5-SECOND TEST. A case here starts or queries a
+// Postgres in pglite; under load the staged-runner case ran 5.06 seconds and
+// refused a push with nothing wrong (2026-10-25). This is the budget the other
+// pglite files here use.
+vi.setConfig({ hookTimeout: 120_000, testTimeout: 30_000 });
 
 const ROOT = resolve(__dirname, "../..");
 const FILE = readdirSync(resolve(ROOT, "supabase/migrations")).find((f) => f.startsWith("20261004150000_"))!;

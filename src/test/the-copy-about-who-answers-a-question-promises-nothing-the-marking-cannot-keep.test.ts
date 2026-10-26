@@ -27,7 +27,11 @@
  * agent stops", "the agent will not assume it"), the setupIsOneStep changelog
  * line ("never guessed") and the answers panel's "Every answer is grounded in
  * your résumé", where the fact-check reads only credentials, degrees, figures,
- * employers and titles.
+ * employers and titles. The second recheck found one more, in all nine
+ * changelog shards: the applyAgentCountries entry's "anything asking about a
+ * country you haven't listed stops and waits for you instead of guessing"
+ * ("Can you lawfully take up employment in Ireland?" is drafted); it now says
+ * a question the agent recognises as asking about such a country stops.
  *
  * What this checks: none of the removed phrasings (each language's own) is left
  * on any surface a seeker, a crawler or an AI host reads; the rewritten keys
@@ -69,21 +73,29 @@ const REMOVED: Record<Exclude<Lang, "en-GB">, RegExp[]> = {
     /\bon any country you haven.t ticked\b/i,
     /\bthe agent will not assume it\b/i,
     /\bEvery answer is grounded in your (?:résumé|resume|CV)/i,
+    /\banything asking about a country you haven.t listed stops\b/i,
   ],
   de: [/jede Sachfrage/i, /nur offene Antworten aus deinem Lebenslauf/i, /nur Antworten über deine Arbeit/i, /Wir raten nicht bei Ihrer Identität/i, /Der Agent rät hier nie/i, /wird nicht geraten/i, /füllt sie nie für dich aus/i, /bleiben immer dir überlassen/i,
-    /ungewöhnlich formulierte/i, /Startdatum werden nie erraten/i, /Bei jedem nicht gewählten Land/i, /Jede Antwort stützt sich auf Ihren Lebenslauf/i],
+    /ungewöhnlich formulierte/i, /Startdatum werden nie erraten/i, /Bei jedem nicht gewählten Land/i, /Jede Antwort stützt sich auf Ihren Lebenslauf/i,
+    /jede Frage zu einem nicht angegebenen Land hält an/i],
   es: [/todas las preguntas sobre datos/i, /redacte solo las respuestas abiertas/i, /redacte solo respuestas sobre tu trabajo/i, /No adivinamos tu identidad/i, /El agente nunca las adivina/i, /blanco no se adivina/i, /nunca las rellena por ti/i, /siempre quedan para ti/i,
-    /redactada de forma poco habitual/i, /fecha de inicio nunca se adivinan/i, /en cualquier país que no marques/i, /Cada respuesta se basa en tu currículum/i],
+    /redactada de forma poco habitual/i, /fecha de inicio nunca se adivinan/i, /en cualquier país que no marques/i, /Cada respuesta se basa en tu currículum/i,
+    /cualquier pregunta sobre un país que no hayas indicado se detiene/i],
   fr: [/toutes les questions factuelles/i, /ne rédiger que les réponses ouvertes/i, /ne rédiger que des réponses sur votre travail/i, /Nous ne devinons pas votre identité/i, /L'agent ne les devine jamais/i, /n'est jamais deviné/i, /ne les remplit jamais à votre place/i, /vous restent toujours réservées/i,
-    /formulée de façon inhabituelle/i, /date de début ne sont jamais devinés/i, /pour tout pays non coché/i, /Chaque réponse s'appuie sur votre CV/i],
+    /formulée de façon inhabituelle/i, /date de début ne sont jamais devinés/i, /pour tout pays non coché/i, /Chaque réponse s'appuie sur votre CV/i,
+    /toute question portant sur un pays non indiqué s.arrête/i],
   hi: [/हर तथ्य वाला सवाल/, /केवल खुले उत्तरों का मसौदा/, /केवल आपके काम के बारे में उत्तरों/, /जनसांख्यिकीय जानकारी का अनुमान नहीं लगाते/, /एजेंट इनका अनुमान कभी नहीं लगाता/, /उसका अनुमान नहीं लगाया जाता/, /इन्हें आपके लिए कभी नहीं भरता/, /हमेशा आपके लिए छोड़े जाते हैं/,
-    /अलग ढंग से लिख/, /तारीख़ का अनुमान कभी नहीं लगाया जाता/, /जिस देश को आपने नहीं चुना, उस पर/, /हर जवाब आपके रिज़्यूमे पर आधारित है/],
+    /अलग ढंग से लिख/, /तारीख़ का अनुमान कभी नहीं लगाया जाता/, /जिस देश को आपने नहीं चुना, उस पर/, /हर जवाब आपके रिज़्यूमे पर आधारित है/,
+    /उसके बारे में कोई भी प्रश्न अनुमान लगाने के बजाय/],
   nl: [/elke feitelijke vraag/i, /alleen open antwoorden op basis van je cv/i, /alleen antwoorden over je werk/i, /We raden niet naar je identiteit/i, /De agent raadt hier nooit/i, /leeg laat wordt niet geraden/i, /vult ze nooit voor je in/i, /blijven altijd aan jou/i,
-    /ongewoon geformuleerde/i, /startdatum raden we nooit/i, /bij elk land dat u niet aanvinkt/i, /Elk antwoord is gebaseerd op je cv/i],
+    /ongewoon geformuleerde/i, /startdatum raden we nooit/i, /bij elk land dat u niet aanvinkt/i, /Elk antwoord is gebaseerd op je cv/i,
+    /elke vraag over een land dat u niet hebt aangegeven stopt/i],
   pt: [/todas as perguntas factuais/i, /redigir só as respostas abertas/i, /redigir só respostas sobre o seu trabalho/i, /Não adivinhamos a sua identidade/i, /O agente nunca as adivinha/i, /branco não é adivinhado/i, /nunca as preenche por ti/i, /ficam sempre com você/i,
-    /escrita de um jeito incomum/i, /escrita de forma invulgar/i, /data de início nunca são adivinhados/i, /em qualquer país não assinalado/i, /Cada resposta baseia-se no seu currículo/i],
+    /escrita de um jeito incomum/i, /escrita de forma invulgar/i, /data de início nunca são adivinhados/i, /em qualquer país não assinalado/i, /Cada resposta baseia-se no seu currículo/i,
+    /qualquer pergunta sobre um país que não tenha indicado pára/i],
   tl: [/ang bawat factual na tanong/i, /gumawa lang ng draft ng mga bukas na sagot/i, /gumawa lang ng draft ng mga sagot tungkol sa iyong trabaho/i, /Hindi namin hinuhulaan ang pagkakakilanlan mo/i, /Hindi ito hinuhulaan ng ahente/i, /blangko ay hindi hinuhulaan/i, /hindi niya ito pinupunan para sa iyo/i, /ay laging iniiwan sa iyo/i,
-    /na kakaiba ang pagkakasulat/i, /Hindi kailanman hinuhulaan ang iyong work authorisation/i, /sa anumang bansang hindi mo na-tick/i, /Nakabatay sa resume mo ang bawat sagot/i],
+    /na kakaiba ang pagkakasulat/i, /Hindi kailanman hinuhulaan ang iyong work authorisation/i, /sa anumang bansang hindi mo na-tick/i, /Nakabatay sa resume mo ang bawat sagot/i,
+    /anumang tanong tungkol sa bansang hindi mo nailista ay hihinto/i],
 };
 const ALL_REMOVED = Object.values(REMOVED).flat();
 const hits = (text: string) => ALL_REMOVED.filter((re) => re.test(text)).map(String);
@@ -182,6 +194,25 @@ describe("the rewritten copy tells the person to read every answer, in their lan
     }
   });
 
+  /** The applyAgentCountries line's hedge, in each language: only a question the agent recognises stops. */
+  const RECOGNISES_COUNTRY: Record<Lang, RegExp> = {
+    en: /a question it recognises as asking about a country you haven't listed stops and waits for you\./,
+    "en-GB": /a question it recognises as asking about a country you haven't listed stops and waits for you\./,
+    de: /eine Frage, die er als Frage zu einem nicht angegebenen Land erkennt, hält an und wartet auf Sie\./,
+    es: /una pregunta que reconoce como pregunta sobre un país que no hayas indicado se detiene y te espera\./,
+    fr: /une question qu'il reconnaît comme portant sur un pays non indiqué s'arrête et vous attend\./,
+    hi: /जिस प्रश्न को एजेंट ऐसे देश के बारे में पहचानता है जिसे आपने सूचीबद्ध नहीं किया, वह रुककर आपकी प्रतीक्षा करेगा।/,
+    nl: /een vraag die hij herkent als een vraag over een land dat u niet hebt aangegeven, stopt en wacht op u\./,
+    pt: /uma pergunta que reconhece como sendo sobre um país que não tenha indicado pára e espera por si\./,
+    tl: /ang tanong na kinikilala ng agent na tungkol sa bansang hindi mo nailista ay hihinto at maghihintay sa iyo\./,
+  };
+  it.each(LANGS)("%s: the applyAgentCountries changelog line stops only on a question the agent recognises", (lang) => {
+    const shard = JSON.parse(read(`src/i18n/changelog/${lang}.json`));
+    const d = String(shard.changelogEntries.applyAgentCountries.description);
+    expect(d).toMatch(RECOGNISES_COUNTRY[lang]);
+    expect(hits(d)).toEqual([]);
+  });
+
   it("every English surface that describes the marking says it can miss a question and says to read every answer", () => {
     const tool = MCP_TOOLS.find((t) => t.name === "apply_myself")!.body;
     const prompt = MCP_PROMPTS.find((p) => p.name === "apply_myself")!.body;
@@ -247,6 +278,15 @@ describe("TEETH: every removed sentence is caught", () => {
     ["nl setupIsOneStep", "Je werkvergunning, salaris en startdatum raden we nooit."],
     ["pt otherCountriesHint", "Assinale apenas o que for verdade: em qualquer país não assinalado, o agente pára e pergunta-lhe em vez de responder."],
     ["tl allGrounded", "Nakabatay sa resume mo ang bawat sagot — walang inimbento."],
+    // The applyAgentCountries changelog line, in each language, as it stood (the second recheck of the descope).
+    ["en applyAgentCountries", "and anything asking about a country you haven't listed stops and waits for you instead of guessing."],
+    ["de applyAgentCountries", "jede Frage zu einem nicht angegebenen Land hält an und wartet auf Sie, statt zu raten."],
+    ["es applyAgentCountries", "y cualquier pregunta sobre un país que no hayas indicado se detiene y te espera en lugar de adivinar."],
+    ["fr applyAgentCountries", "et toute question portant sur un pays non indiqué s'arrête et vous attend au lieu de deviner."],
+    ["hi applyAgentCountries", "और जिस देश को आपने सूचीबद्ध नहीं किया उसके बारे में कोई भी प्रश्न अनुमान लगाने के बजाय रुककर आपकी प्रतीक्षा करेगा।"],
+    ["nl applyAgentCountries", "en elke vraag over een land dat u niet hebt aangegeven stopt en wacht op u in plaats van te gokken."],
+    ["pt applyAgentCountries", "e qualquer pergunta sobre um país que não tenha indicado pára e espera por si em vez de adivinhar."],
+    ["tl applyAgentCountries", "at anumang tanong tungkol sa bansang hindi mo nailista ay hihinto at maghihintay sa iyo sa halip na manghula."],
   ];
   it.each(BEFORE)("%s", (_name, sentence) => {
     expect(hits(sentence).length, sentence).toBeGreaterThan(0);

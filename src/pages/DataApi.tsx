@@ -21,7 +21,7 @@ import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { supabase } from "@/integrations/supabase/client";
-import { MCP_PAGE_HOSTS, andList } from "@/config/mcp-tools";
+import { MCP_FIT_ALLOWANCE, MCP_PAGE_HOSTS, andList } from "@/config/mcp-tools";
 import { servingSourceSummary } from "@/config/ats-vendors";
 import { CLOSURE_RECORD_WINDOW_DAYS, closureCountSpanDays } from "@/lib/hiring-trends-trust";
 import { apiKeyTokenFromHash, errorBodyOf, forgetConfirmFragment } from "@/lib/confirm-link";
@@ -29,6 +29,7 @@ import { stashedFragment } from "@/lib/auth-fragment";
 import { PurchaseTerms } from "@/components/PurchaseTerms";
 import { purchaseTerms } from "@/lib/purchase-terms";
 import { BUILDER_PLAN_ANCHOR, BUILDER_PLAN_MAIL_SUBJECT, BUILDER_PLAN_PRICE_USD } from "@/config/builder-plan";
+import { publicApiBase } from "@/config/public-endpoints";
 
 const rpc = (fn: string, args?: Record<string, unknown>) =>
   (supabase as unknown as { rpc: (f: string, a?: Record<string, unknown>) => Promise<{ data: unknown }> }).rpc(fn, args);
@@ -38,8 +39,11 @@ const fmt = (n: number | null | undefined) => (typeof n === "number" ? n.toLocal
 const CONTACT = "resumeboostersupp@gmail.com";
 
 // Read from the same env the client is built with, so the documented base URL
-// cannot drift from the project these docs are served by.
-const API_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/public-api`;
+// cannot drift from the project these docs are served by, and spelled by the
+// one builder the bake and both llms files use (SEO-015), which falls back to
+// the project's own address rather than printing "undefined" in a build with
+// no environment.
+const API_BASE = publicApiBase(import.meta.env.VITE_SUPABASE_URL);
 
 // THE PARAMS LINE IS A PROMISE, not a summary. A reader builds against it, so
 // it lists what the function actually accepts — including the ones it will
@@ -78,7 +82,7 @@ const ENDPOINTS: Array<{ path: string; body: string; params?: string; notes?: st
     ],
   },
   { path: "GET /v1/usage", body: "Your own consumption for the last 30 days, by day and by endpoint, plus what is left of your limits today." },
-  { path: "POST /v1/fit", body: "Paid. POST a résumé and get the board's best matches back scored, with the terms that matched and the terms that are missing. A résumé cannot ride a query string, so this is the one route that takes a body — and it stores nothing." },
+  { path: "POST /v1/fit", body: `${MCP_FIT_ALLOWANCE}, counted together with fit_resume on the MCP server. POST a résumé and get the board's best matches back scored, with the terms that matched and the terms that are missing. A résumé cannot ride a query string, so this is the one route that takes a body — and it stores nothing.` },
 ];
 
 /**
@@ -300,6 +304,7 @@ function BuilderCard() {
 }
 
 export default function DataApi() {
+  const { t } = useTranslation();
   const [stats, setStats] = useState<{ total_open?: number; total_companies?: number; total_company_names?: number; closed_90d?: number; tracking_days?: number; observed_days?: number } | null>(null);
 
   useEffect(() => {
@@ -344,7 +349,10 @@ export default function DataApi() {
 
   const notInDataset = [
     { title: "Zero jobseeker data", body: "No job seeker's résumé or profile is in this dataset, at any tier, and that data is not for sale. The résumés our users give us are kept only as long as /trust says, for their own use. This dataset is about employers' public postings only." },
-    { title: "No scraped aggregators", body: "Nothing comes from job aggregators, search-engine scrapes, or third-party lists. Only companies' own official career-site feeds." },
+    // R5b: the dataset carries staffing agencies' boards and the federal
+    // listing site as well as employers' own systems, so it claims only what
+    // holds for every row: read from the system that published it.
+    { title: "Never copied from another job board", body: `${t("boardSource.sentence")} Nothing comes from search-engine scrapes or third-party lists.` },
     { title: "No modeled guesses", body: "No estimated salaries, no inferred headcounts, no synthetic history. Fields we can't observe are null, not imputed." },
   ];
 

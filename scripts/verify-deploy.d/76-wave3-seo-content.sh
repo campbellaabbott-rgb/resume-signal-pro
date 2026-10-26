@@ -14,10 +14,20 @@
 # posting URLs are checked (S11-154: a sitemap the new bake wrote cannot show
 # what became of the old one's URLs).
 # L9-11 FAILs llms-full.txt on the retired pass's own copy, its names and 83
-# C1's retired list. A paraphrase in new words passes it whatever it says;
-# every sentence that prices something at $29 without naming Freelance Boost
-# prints as INFO for a person to read, and one that names no price is not
-# shown at all (round 4, 2026-10-25).
+# C1's retired list. A paraphrase in new words passes it whatever it says.
+# Beside it, a sentence prints as INFO for a person to read when one of its
+# clauses (split at a comma or semicolon followed by a space; at " and ",
+# " or ", " plus ", " with ", " versus " or " vs "; at a slash; or at an
+# opening bracket that holds more than the price) prices something at exactly
+# $29 ($29, $29.00, 29 USD, USD 29; never $295, $29.99 or $29,000) and does
+# not name Freelance Boost.
+# So a sentence passes with no INFO when its only $29 sits in a clause that
+# names Freelance Boost ("Freelance Boost ($29) takes a guided project intake
+# ..."), and prints when the price has a clause of its own ("Freelance
+# Boost, our guided rewrite, costs $29" prints too). A paraphrase that names
+# no price is not shown at all (round 4, 2026-10-25; clause rule, the SEO
+# round's merge; " or " and " plus ", its review; " with ", " versus ",
+# " vs ", "/" and "(", its last pass before landing).
 echo "== 76. wave 3 seo-content: names, published URLs, company pages, data pages, claims =="
 
 REPO_ROOT76="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -90,13 +100,16 @@ const textOf = (h) => h.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<[^>
   if (dom.status === 200 && !isHomeCopy(dom.body)) {
     if (/Domino(?:\x27|&#39;)s(?:\x27|&#39;)s/.test(dom.body)) out("FAIL", "/jobs/company/dominos still says Domino\x27s\x27s");
     else out("PASS", "/jobs/company/dominos never doubles the possessive");
-    // S1 / L4-12: its own openings, linked to posting pages or to the posting
-    // on the live board. A ?country= or ?category= link is this same page to
-    // a crawler, so it is not counted.
+    // S1 / L4-12: its own openings, listed. SEO-005 (2026-10-18): a row links
+    // only to a posting page the bake wrote and is otherwise text, so the
+    // openings are counted as the rows of the list, and a /jobs?job= link (the
+    // /jobs file under a canonical of /jobs) is a FAIL of its own.
     const pagesN = (dom.body.match(/href="\/jobs\/posting\//g) || []).length;
     const jobsN = (dom.body.match(/href="\/jobs\?job=/g) || []).length;
-    if (pagesN + jobsN >= 10) out("PASS", `/jobs/company/dominos lists ${pagesN + jobsN} of its own openings (${pagesN} posting pages, ${jobsN} board postings) (S1)`);
-    else out("FAIL", `/jobs/company/dominos links ${pagesN + jobsN} openings of its own (${pagesN} posting pages, ${jobsN} board postings); the bar is 10 (S1)`);
+    const listedN = Math.max(pagesN, ((dom.body.split(/<h2>Openings at /)[1] || "").split("</ul>")[0].match(/<li>/g) || []).length);
+    if (jobsN) out("FAIL", `/jobs/company/dominos links ${jobsN} /jobs?job= address(es), each the /jobs file to a crawler (SEO-005)`);
+    else if (listedN >= 10) out("PASS", `/jobs/company/dominos lists ${listedN} of its own openings (${pagesN} linked to posting pages, the rest as text), no /jobs?job= link (S1, SEO-005)`);
+    else out("FAIL", `/jobs/company/dominos lists ${listedN} openings of its own (${pagesN} linked to posting pages); the bar is 10 (S1)`);
     if (/THE COUNT\x27S BASIS/.test(dom.body)) out("FAIL", "/jobs/company/dominos still prints the THE COUNT\x27S BASIS annotation (L4-12)");
     else out("PASS", "the company page states its count basis as prose (L4-12)");
   } else out("INFO", `/jobs/company/dominos answered ${dom.status}; F1/S1 judged on other pages only`);
@@ -215,7 +228,7 @@ const textOf = (h) => h.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<[^>
   for (const [t, n] of controls) {
     const r = await get(`/jobs/company/${t}`, 20000);
     if (r.status !== 200 || isHomeCopy(r.body)) continue;
-    const own = (r.body.match(/href="\/jobs\/posting\//g) || []).length + (r.body.match(/href="\/jobs\?job=/g) || []).length;
+    const own = Math.max((r.body.match(/href="\/jobs\/posting\//g) || []).length, ((r.body.split(/<h2>Openings at /)[1] || "").split("</ul>")[0].match(/<li>/g) || []).length);
     if (!/noindex/.test(robotsOf(r.body))) ctl.ok.push(n);
     else if (own >= 3) ctl.bad.push(`${n} (${own} openings listed)`);
     else ctl.thin.push(n);
@@ -225,8 +238,12 @@ const textOf = (h) => h.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<[^>
   else out("INFO", `S11-013 controls not judged: no company page is written for ${controls.map(([, n]) => n).join(", ")}${ctl.thin.length ? ` (noindex with under three openings: ${ctl.thin.join(", ")})` : ""}`);
 
   // ---- S2: the Ghost Job Index ----
+  // SEO-009 puts the sample size and its 95% interval inside the
+  // parenthesis, before the date: "(n = 117, 95% interval 96.8–100%,
+  // 2026-10-25)". The date alone is the wording before the SEO round. The n
+  // must be the decided count the sentence names.
   const g = await get("/ghost-job-index");
-  if (/Daily re-check: \d+(?:\.\d+)?% of [\d,]+ decided sample postings still live at the source \(\d{4}-\d{2}-\d{2}\)/.test(textOf(g.body))) out("PASS", "/ghost-job-index prints its dated daily re-check (S2)");
+  if (/Daily re-check: \d+(?:\.\d+)?% of ([\d,]+) decided sample postings still live at the source \((?:n = \1(?:, 95% interval [^,)]+)?, )?\d{4}-\d{2}-\d{2}\)/.test(textOf(g.body))) out("PASS", "/ghost-job-index prints its dated daily re-check (S2)");
   else out("FAIL", "/ghost-job-index prints no dated daily re-check line (S2; or the audit was unread at bake time)");
   const ds = lds(g.body).find((j) => j["@type"] === "Dataset");
   if (ds && ds.dateModified) out("PASS", `/ghost-job-index is Dataset markup dated ${ds.dateModified}${ds.license ? `, license ${ds.license}` : ", no license named (owner TODO)"}`);
@@ -274,14 +291,25 @@ const textOf = (h) => h.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<[^>
   // (a $29 product delivered within 48 hours, a $29 review returned within 24
   // hours) and missed paraphrases (a 360-minute window for $29), so the price
   // is read as INFO and never FAILs: every sentence that prices something at
-  // $29 ($29.00, 29 USD, USD 29) and does not name Freelance Boost, the
-  // one-time product on sale at that price, is printed for a person to read.
+  // $29 ($29.00, 29 USD, USD 29) in a clause that does not name Freelance
+  // Boost, the one-time product on sale at that price, is printed for a
+  // person to read.
   // A paraphrase that names the price is shown there; one that names no price
   // at all (hours, limits or calls alone) is not shown anywhere.
   const lfPassCopy = retired76 && typeof retired76.retiredPassCopyIn === "function" ? retired76.retiredPassCopyIn(lf.body) : null;
-  const P29 = "(?:\\$\\s?29(?:\\.00)?(?![\\d,.]\\d)|\\b29(?:\\.00)?\\s?(?:USD|US dollars|dollars)\\b|\\bUSD\\s?29(?:\\.00)?(?![\\d,.]\\d))";
+  // After the 29, no digit and no separator followed by a digit: $295,
+  // $29.99 and $29,000 are other prices (the SEO round\x27s merge, 2026-10-25).
+  const P29 = "(?:\\$\\s?29(?:\\.00)?(?!\\d|[,.]\\d)|\\b29(?:\\.00)?\\s?(?:USD|US dollars|dollars)\\b|\\bUSD\\s?29(?:\\.00)?(?!\\d|[,.]\\d))";
   const P29_RE = new RegExp(P29, "i");
-  const lfPriced = lf.body.split(/(?<=[.!?])\s+|\n+/).map((x) => x.trim()).filter((x) => P29_RE.test(x) && !/Freelance Boost/i.test(x));
+  // Only the clause that names Freelance Boost is skipped, not its sentence:
+  // a sentence prints when a clause of it prices something at $29 without the
+  // name. Clauses split at a comma or semicolon before a space; at " and ",
+  // " or ", " plus ", " with ", " versus " and " vs "; at a slash; and at an
+  // opening bracket, except a bracket holding only the price, which stays
+  // with the name before it ("Freelance Boost ($29) ...").
+  const CLAUSE_SPLIT = new RegExp(`,\\s+|;\\s*|\\s+(?:and|or|plus|with|versus|vs\\.?)\\s+|/|\\((?!\\s*${P29}\\s*\\))`, "i");
+  const clausesOf = (x) => x.split(CLAUSE_SPLIT);
+  const lfPriced = lf.body.split(/(?<=[.!?])\s+|\n+/).map((x) => x.trim()).filter((x) => clausesOf(x).some((c) => P29_RE.test(c) && !/Freelance Boost/i.test(c)));
   const lfWhy = [
     /work\.resumebooster\/jobs/.test(lf.body) ? "" : "no registry name",
     /raises both for its hours`?$/m.test(lf.body) ? "still says a pass raises the /v1 limits" : "",

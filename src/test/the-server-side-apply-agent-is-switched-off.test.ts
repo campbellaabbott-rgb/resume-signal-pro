@@ -280,7 +280,7 @@ describe("agent-pass-status: a bought pass reads as before, and says nothing wil
   it("a signed-out caller is still a 401, and the preflight carries the new build", async () => {
     expect((await call(h["agent-pass-status"], "agent-pass-status", {})).status).toBe(401);
     const pre = await h["agent-pass-status"](new Request("https://harness.supabase.co/functions/v1/agent-pass-status", { method: "OPTIONS" }));
-    expect(pre.headers.get("x-fn-build")).toBe("agent-pass-status.2026-10-11.14");
+    expect(pre.headers.get("x-fn-build")).toBe("agent-pass-status.2026-10-11.15");
   });
 
   it("positive control: with the switch on, the same read carries no switched-off flag", async () => {

@@ -91,6 +91,20 @@ export interface PostingRow {
    * `hiringOrganization` names the agency rather than the employer.
    */
   agency?: boolean | null;
+  /**
+   * WHERE THE WORK MODE CAME FROM. "vendor" only when the hiring system's own
+   * structured remote field said it (Workday remoteType, the Greenhouse, Lever
+   * and SmartRecruiters remote fields); anything else, or nothing, means the
+   * board read it off a location label. Not carried by the board yet (SEO-003
+   * hand-off to job-board/normalize.ts): until it is, no row is "vendor".
+   */
+  workModeSource?: string | null;
+  /**
+   * THE EMPLOYER'S OWN END DATE for the posting, when its system states one
+   * (Workday jobPostingInfo.endDate). Not carried by the board yet (SEO-004
+   * hand-off); when it is, the markup's expiry never runs past it.
+   */
+  employerValidThrough?: string | null;
 }
 
 /**
@@ -182,12 +196,68 @@ export function decodeJdEntities(s: string): string {
     .replace(/ /g, " ");
 }
 
+/**
+ * The description's text: decoded, with the lines that are only the word
+ * "undefined" taken out. The board's Workday description assembly writes that
+ * word where a section it joins is missing ("...processes.\nundefined\nThis
+ * role..." on zeissgroup 1054265 and nike R-94383), and it reached the visible
+ * page and the markup's description. It is no part of the employer's text.
+ */
+export function jdText(description: string): string {
+  return decodeJdEntities(description).replace(/^[ \t]*undefined[ \t]*(?:\r?\n|$)/gm, "");
+}
+
 /** The description as display paragraphs: decoded, blank-line split, empties dropped. */
 export function jdParagraphs(description: string): string[] {
-  return decodeJdEntities(description)
+  return jdText(description)
     .split(/\n\s*\n/)
     .map((p) => p.replace(/[ \t]+\n/g, "\n").trim())
     .filter((p) => p.length > 0);
+}
+
+/**
+ * THE LANGUAGE A DESCRIPTION IS WRITTEN IN, or null when the text does not say
+ * clearly (SEO-034). Every one of 500 baked posting pages was lang="en",
+ * including Spanish and German postings. The board carries no language for a
+ * posting and no tenant locale, so this reads the employer's own words: each
+ * language's commonest function words, counted over the whole description
+ * (a bilingual posting with an English intro is judged on all of it). It
+ * answers only when one language leads the next by at least two to one with
+ * enough hits to mean it; a mixed or short text answers null and the page
+ * keeps the site's language rather than a guess.
+ */
+const LANG_MARKERS: Record<string, string[]> = {
+  en: ["the", "and", "with", "you", "our", "will", "your", "this", "that", "are", "for", "have", "from", "we"],
+  es: ["el", "los", "las", "para", "con", "por", "una", "del", "nuestro", "nuestra", "experiencia", "que", "y", "trabajo"],
+  fr: ["les", "des", "et", "pour", "avec", "une", "vous", "nous", "du", "est", "dans", "sur", "au", "votre"],
+  de: ["der", "die", "das", "und", "mit", "für", "ist", "wir", "sie", "ein", "eine", "von", "zu", "den", "bei", "oder"],
+  pt: ["os", "com", "uma", "do", "da", "dos", "das", "você", "na", "no", "em", "não", "seu", "sua"],
+  nl: ["het", "een", "en", "van", "voor", "met", "je", "wij", "zijn", "op", "te", "ons", "als", "bij"],
+  it: ["il", "di", "per", "con", "una", "che", "della", "nel", "sono", "gli", "nostro", "nostra"],
+};
+export function postingLanguage(description: string | null | undefined): string | null {
+  const text = jdText(String(description ?? ""));
+  // CHINESE, JAPANESE AND KOREAN ARE READ BY SCRIPT, not by function words: an
+  // all-Chinese Abbott posting (31140324) was served lang="en" because no word
+  // list here could see it. Kana marks Japanese, Hangul Korean, Han alone
+  // Chinese; the script has to be most of the letters to answer at all.
+  const letters = text.match(/\p{L}/gu)?.length ?? 0;
+  const han = text.match(/\p{Script=Han}/gu)?.length ?? 0;
+  const kana = text.match(/[\p{Script=Hiragana}\p{Script=Katakana}]/gu)?.length ?? 0;
+  const hangul = text.match(/\p{Script=Hangul}/gu)?.length ?? 0;
+  if (letters >= 60 && han + kana + hangul >= letters * 0.5) {
+    if (hangul >= (han + kana) ) return "ko";
+    if (kana >= (han + kana) * 0.1) return "ja";
+    return "zh";
+  }
+  const words = text.toLowerCase().match(/[\p{L}]+/gu)?.slice(0, 3000) ?? [];
+  if (words.length < 40) return null;
+  const sets = Object.entries(LANG_MARKERS).map(([lang, ws]) => [lang, new Set(ws)] as const);
+  const score = sets.map(([lang, set]) => [lang, words.filter((w) => set.has(w)).length] as const).sort((a, b) => b[1] - a[1]);
+  const [top, second] = score;
+  if (!top || top[1] < 12) return null;
+  if (second && top[1] < second[1] * 2) return null;
+  return top[0];
 }
 
 /**
@@ -210,9 +280,38 @@ export function jdParagraphs(description: string): string[] {
  */
 export function postingIdentity(job: PostingRow): string {
   return [job.company, job.title, job.location]
-    .map((v) => (typeof v === "string" ? v.trim().toLowerCase() : ""))
+    .map((v) => (typeof v === "string" ? v.replace(/\s+/g, " ").trim().toLowerCase() : ""))
     .join("|");
 }
+
+/**
+ * THE SAME REQUISITION UNDER ONE EMPLOYER'S SEVERAL CAREER SITES. The identity
+ * above compares the printed company name, and a UKG client publishes one
+ * requisition under two sites with two names: on 2026-10-18 the same
+ * "Quality (QA) Technician" (requisition 68926f4c-…) was live and indexable
+ * twice, as "O'Neal Manufacturing Services" and "O'Neal Industries", the only
+ * duplicate title among the sitemap's 1,368 URLs. The requisition key is the
+ * employer's own identifier, so the same key under the same employer is one
+ * posting whatever the site calls the company. The employer is the bake's
+ * segment rule (scripts/prerender-pages.mjs bakeEmployerKey): the client on a
+ * UKG token, the tenant on Workday and Oracle, the whole token otherwise.
+ * Null when the id is not the three-part shape.
+ */
+export function postingRequisitionIdentity(job: Pick<PostingRow, "id">): string | null {
+  const p = postingPathParts(job.id);
+  if (!p) return null;
+  const parts = p.token.split("~");
+  const first = parts[0];
+  const employer = (first === "recruiting" || first === "recruiting2") && parts.length >= 2
+    ? `${first}~${parts[1]}`
+    : first === "eu" ? p.token
+      : parts.length >= 2 ? first
+        : p.token;
+  return `${p.source}:${employer}:${p.key}`.toLowerCase();
+}
+
+/** A title or a name as one line: an employer's double space is not part of the job. */
+export const postingText = (s: string | null | undefined): string => String(s ?? "").replace(/\s+/g, " ").trim();
 
 /** UTC calendar day of an ISO stamp. */
 const day = (iso: string): string => iso.slice(0, 10);
@@ -263,14 +362,28 @@ export function postingDatePosted(postedAt: string, now: Date = new Date()): str
  * ever stated, chosen from a cadence nobody measured — an invented figure in
  * markup, which is the one thing this module refuses everywhere else.
  */
-export function postingValidThrough(job: PostingRow): string | null {
+export function postingValidThrough(job: PostingRow, now: Date = new Date()): string | null {
   if (!job.postedAt) return null;
-  const capped = new Date(Date.parse(day(job.postedAt)) + BOARD_FRESH_WINDOW_DAYS * 86_400_000)
+  // FROM THE DAY datePosted STATES (postingDatePosted): an employer's
+  // "tomorrow" is today there, and a window counted from the later day gave
+  // three pages a 31-day span between their own two dates. A past date is
+  // unchanged, so an already-old posting still gets a past date.
+  const capped = new Date(Date.parse(postingDatePosted(job.postedAt, now)) + BOARD_FRESH_WINDOW_DAYS * 86_400_000)
     .toISOString()
     .slice(0, 10);
-  if (!job.missingSince) return capped;
-  const gone = day(job.missingSince);
-  return gone < capped ? gone : capped;
+  // THE EMPLOYER'S OWN END DATE, WHEN ITS SYSTEM STATES ONE (SEO-004). Every
+  // one of 500 baked pages carried posted + 30 days exactly, because the board
+  // discarded Workday's jobPostingInfo.endDate; a page whose markup says the
+  // posting runs past the day its employer closes it is a claim no one made.
+  // Only ever shortens the window: the visible page keeps the employer's dates
+  // as stated, and this is the day this URL stops serving the posting.
+  const ends = [capped];
+  if (job.missingSince) ends.push(day(job.missingSince));
+  const stated = typeof job.employerValidThrough === "string" && /^\d{4}-\d{2}-\d{2}/.test(job.employerValidThrough)
+    ? day(job.employerValidThrough)
+    : null;
+  if (stated) ends.push(stated);
+  return ends.reduce((a, b) => (b < a ? b : a));
 }
 
 /**
@@ -281,7 +394,7 @@ export function postingValidThrough(job: PostingRow): string | null {
 export function isPostingLive(job: PostingRow, now: Date = new Date()): boolean {
   if (job.missingSince) return false;
   if (!job.postedAt) return false;
-  const through = postingValidThrough(job);
+  const through = postingValidThrough(job, now);
   return !!through && through >= now.toISOString().slice(0, 10);
 }
 
@@ -350,6 +463,13 @@ const CA_PROVINCE_NAMES: Record<string, string> = {
   saskatchewan: "SK", yukon: "YT",
 };
 
+/**
+ * A postal code written before its town, as most of Europe writes it: four or
+ * five digits (DE, FR, IT, ES, CH, AT, BE, DK, NO), "12-345" (PL), "123 45"
+ * (SE, CZ, SK), "1234 AB" (NL), "1234-567" (PT).
+ */
+const POSTAL_THEN_TOWN = /^(\d{4,5}|\d{2}-\d{3}|\d{3}\s\d{2}|\d{4}\s?[A-Z]{2}|\d{4}-\d{3})\s+(\D.*)$/;
+
 /** US ZIP or ZIP+4, and the Canadian postal code. */
 const US_ZIP = /^\d{5}(?:-\d{4})?$/;
 const CA_POSTAL = /^[A-Za-z]\d[A-Za-z]\s?\d[A-Za-z]\d$/;
@@ -357,6 +477,9 @@ const CA_POSTAL = /^[A-Za-z]\d[A-Za-z]\s?\d[A-Za-z]\d$/;
 /** A segment that is an address line rather than a town. */
 const STREETISH =
   /(?:^\d)|\b(?:st|street|ave|avenue|rd|road|blvd|boulevard|dr|drive|ln|lane|way|pkwy|parkway|hwy|highway|suite|ste|floor|fl|unit|rte|route|bldg|building|campus|center|centre|hospital|plaza|tower)\b\.?/i;
+
+/** A facility, not a town ("Shenzhen Office", "Las Vegas Service Center"): never the locality, never a street either. */
+const FACILITY = /\b(?:office|headquarters?|hq|plant|warehouse|factory|depot)\b/i;
 
 /**
  * Words that name no town, whatever column they arrive in. The work-mode words
@@ -368,6 +491,124 @@ const NOT_A_TOWN = /^(?:remote|hybrid|onsite|on-site|office|various|multiple|fle
 
 /** A country written where a town should be. Three letters is the shortest town we will publish. */
 const NOT_A_TOWN_BUT_A_COUNTRY = /^(?:usa|u\.?s\.?a?\.?|uk|u\.?k\.?|eu)$/i;
+
+/**
+ * A WORK-MODE WORD INSIDE A SEGMENT. Employers write the mode into the place
+ * ("Germany - Bayern Remote", "Remote Worker France", "Utah | Hybrid"), and
+ * every one of those strings reached addressLocality whole in the 2026-10-18
+ * bake (SEO-003). A segment carrying one is not a town; what is left once it
+ * is taken out may still be a place.
+ */
+const WORK_MODE_WORD = /\b(?:remote|hybrid|on-?site|telecommute|telework|work from home|wfh|home[- ]based|virtual)\b/i;
+const WORK_MODE_WORDS = new RegExp(WORK_MODE_WORD.source, "gi");
+
+/** Characters no town name carries: a site code path, a note in brackets, a list separator. */
+const NOT_IN_A_TOWN = /[/_()|\\[\]]/;
+
+/**
+ * Country names, from the runtime's own region names (every two-letter code
+ * the platform names), plus the spellings hiring systems use that it does not
+ * ("United States of America", "UK", "Czech Republic"). Built once, on first
+ * use. Withdrawn and pseudo codes are left out so a name maps to the code in
+ * use ("Myanmar (Burma)" is MM, not the withdrawn BU).
+ *
+ * The runtime names a withdrawn code after the country that holds its
+ * current code, so an A-Z walk that kept the first code met the old one
+ * first for Vietnam, Zimbabwe and Vanuatu and filed every row there as
+ * "another country" (SEO-035 withheld their markup). A code is kept only
+ * when the runtime files it under itself (its canonical region is the same
+ * code); the fixed list below also names every withdrawn code the runtime
+ * still prints, for a runtime that does not canonicalise regions.
+ */
+const WITHDRAWN_REGIONS = new Set((
+  // Withdrawn from ISO 3166-1, or never in it, though the runtime prints a name for them.
+  "AN BU CS DD DY FX HV NH NT QU RH SU TP UK VD YD YU ZR " +
+  // Groupings, pseudo codes and the unknown region.
+  "EU EZ QO UN XA XB ZZ " +
+  // Exceptionally reserved codes and the US minor outlying islands, which no hiring system files a row under.
+  "UM AC CP CQ DG EA IC TA"
+).split(" "));
+/** The code the runtime files a region under, or the code itself when it cannot say. */
+function canonicalRegion(code: string): string {
+  try {
+    return Intl.getCanonicalLocales(`und-${code}`)[0]?.split("-")[1] ?? code;
+  } catch {
+    return code;
+  }
+}
+const COUNTRY_ALIASES: Record<string, string> = {
+  usa: "US", "u s": "US", "u s a": "US", us: "US", "united states of america": "US", america: "US",
+  uk: "GB", "u k": "GB", "great britain": "GB", britain: "GB", england: "GB", scotland: "GB", wales: "GB", "northern ireland": "GB",
+  "czech republic": "CZ", russia: "RU", "russian federation": "RU", korea: "KR", "south korea": "KR", "republic of korea": "KR",
+  "viet nam": "VN", turkey: "TR", turkiye: "TR", "türkiye": "TR", uae: "AE", "hong kong": "HK", "hong kong sar": "HK", macau: "MO", macao: "MO",
+  "the netherlands": "NL", holland: "NL", "ivory coast": "CI", "cote d ivoire": "CI", "côte d ivoire": "CI", "mainland china": "CN",
+  "peoples republic of china": "CN", "the philippines": "PH", "kingdom of saudi arabia": "SA", ksa: "SA", "the bahamas": "BS",
+  "bosnia": "BA", "trinidad": "TT", "myanmar": "MM", burma: "MM", "eswatini": "SZ", swaziland: "SZ", "cabo verde": "CV",
+  "taiwan roc": "TW", "republic of ireland": "IE", eire: "IE", "slovak republic": "SK", "deutschland": "DE", "españa": "ES", espana: "ES",
+};
+const countryKey = (s: string): string => s.toLowerCase().replace(/&/g, " and ").replace(/[.’'`,]/g, " ").replace(/\s+/g, " ").trim();
+let COUNTRY_BY_NAME: Map<string, string> | null = null;
+function countryTable(): Map<string, string> {
+  if (COUNTRY_BY_NAME) return COUNTRY_BY_NAME;
+  const m = new Map<string, string>();
+  try {
+    const dn = new Intl.DisplayNames(["en"], { type: "region" });
+    for (let a = 65; a < 91; a++) {
+      for (let b = 65; b < 91; b++) {
+        const code = String.fromCharCode(a, b);
+        if (WITHDRAWN_REGIONS.has(code) || canonicalRegion(code) !== code) continue;
+        let name: string | undefined;
+        try { name = dn.of(code); } catch { name = undefined; }
+        if (!name || name === code) continue;
+        const k = countryKey(name);
+        if (!m.has(k)) m.set(k, code);
+        // "Hong Kong SAR China", "Myanmar (Burma)": the short form too.
+        const short = countryKey(name.replace(/\s*\(.*\)\s*$/, "").replace(/\s+SAR\s+China$/i, ""));
+        if (short && !m.has(short)) m.set(short, code);
+      }
+    }
+  } catch { /* no Intl.DisplayNames: the aliases below still answer */ }
+  for (const [k, v] of Object.entries(COUNTRY_ALIASES)) m.set(countryKey(k), v);
+  COUNTRY_BY_NAME = m;
+  return m;
+}
+
+/** Every country name the reader knows, with the code it reads it as (tests read the whole table). */
+export function countryNameTable(): ReadonlyMap<string, string> {
+  return countryTable();
+}
+
+/** The two-letter code a whole string names as a country, or null ("United States of America" -> "US"). */
+export function countryCodeOfName(s: string | null | undefined): string | null {
+  const k = countryKey(String(s ?? ""));
+  if (k.length < 2) return null;
+  return countryTable().get(k) ?? null;
+}
+
+/**
+ * Territories and the country that governs each. A board files a territory's
+ * rows under either code, so either way round names one place: "San Juan,
+ * Puerto Rico" on a US row, "Charlotte Amalie, Virgin Islands, U.S." on a VI
+ * row, "Kowloon, China" on an HK row, "Fort-de-France, Martinique" on an FR row.
+ */
+const GOVERNED_BY: Readonly<Record<string, string>> = {
+  PR: "US", GU: "US", VI: "US", AS: "US", MP: "US", UM: "US",
+  HK: "CN", MO: "CN",
+  GP: "FR", MQ: "FR", GF: "FR", RE: "FR", YT: "FR", NC: "FR", PF: "FR", PM: "FR", WF: "FR", BL: "FR", MF: "FR", TF: "FR",
+  JE: "GB", GG: "GB", IM: "GB", GI: "GB", BM: "GB", KY: "GB", VG: "GB", AI: "GB", MS: "GB", TC: "GB", FK: "GB", SH: "GB", IO: "GB", PN: "GB", GS: "GB",
+  AW: "NL", CW: "NL", SX: "NL", BQ: "NL",
+  GL: "DK", FO: "DK", SJ: "NO", BV: "NO", AX: "FI",
+  CX: "AU", CC: "AU", NF: "AU", HM: "AU", CK: "NZ", NU: "NZ", TK: "NZ",
+};
+const sameJurisdiction = (a: string, b: string): boolean => a === b || GOVERNED_BY[a] === b || GOVERNED_BY[b] === a;
+
+/**
+ * The marks that separate one place from the next inside a location string:
+ * "Munich, Germany; London, United Kingdom", "Remote USA · Berlin, Germany",
+ * "Remote • UK, France", "London, UK or Zurich, Switzerland". The lower-case
+ * word only: "OR" is Oregon.
+ */
+const PLACE_LIST = /;|·|•|\s\|\s|\s+or\s+/;
 
 /** The subdivision code a segment names for this country, or null. */
 function subdivisionOf(segment: string, country: string): string | null {
@@ -384,8 +625,50 @@ function subdivisionOf(segment: string, country: string): string | null {
   return null;
 }
 
+/** Punctuation at either end of a word or segment: "USA-" is "USA" once the joined "REMOTE" is out. */
+const trimEdges = (s: string): string => s.replace(/^[\s\-–_/,.:]+|[\s\-–_/,.:]+$/g, "");
+
+/**
+ * The words that may stand beside a country's name in a real town's name:
+ * "Panama City", "Mexico City", "Jersey City", "West Jordan", "South
+ * Holland". Anything else beside it ("Movie Park Germany", "Remote Worker
+ * France") is a facility or a label with the country written on the end.
+ */
+const TOWN_WORD_BESIDE_A_COUNTRY = /^(?:city|town|west|east|north|south|new|port|fort|lake|mount|mt|saint|st)$/i;
+
+/** Does this phrase carry a country's whole name as one or more of its words? */
+function namesACountryInside(s: string): boolean {
+  const words = s.split(/\s+/).map(trimEdges).filter(Boolean);
+  for (let i = 0; i < words.length; i++) {
+    for (let n = 1; n <= 4 && i + n <= words.length; n++) {
+      if (!countryCodeOfName(words.slice(i, i + n).join(" "))) continue;
+      const rest = [...words.slice(0, i), ...words.slice(i + n)];
+      if (rest.length === 1 && TOWN_WORD_BESIDE_A_COUNTRY.test(rest[0])) continue;
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * WHY A STRING IS NOT A TOWN WE WOULD PUBLISH, or null when nothing says so.
+ * The producer (isLocality) and the bake's markup guard read the same rules:
+ * a site code, a bracket or a list separator, the word "only", a work-mode
+ * word, punctuation at either end ("USA-" from "USA-REMOTE"), or a country's
+ * name inside it ("Movie Park Germany").
+ */
+export function localityProblem(locality: string): string | null {
+  const s = String(locality ?? "").trim();
+  if (NOT_IN_A_TOWN.test(s)) return "a site code, a bracket or a list separator";
+  if (/\bonly\b/i.test(s)) return "the word only";
+  if (WORK_MODE_WORD.test(s)) return "a work-mode word";
+  if (trimEdges(s) !== s) return "punctuation at one end";
+  if (namesACountryInside(s)) return "a country's name";
+  return null;
+}
+
 /** Is this segment a town name we are willing to publish as one? */
-function isLocality(segment: string, country = ""): boolean {
+function isLocality(segment: string, country = "", employer = ""): boolean {
   const s = segment.trim();
   if (s.length < 3 || s.length > 60) return false;
   if (NOT_A_TOWN.test(s) || NOT_A_TOWN_BUT_A_COUNTRY.test(s)) return false;
@@ -394,7 +677,131 @@ function isLocality(segment: string, country = ""): boolean {
   if (country && s.toUpperCase() === country.toUpperCase()) return false;
   if (/\d/.test(s)) return false;
   if (/\s-\s|--/.test(s)) return false;
+  // THE 2026-10-18 BAKE'S ELEVEN (SEO-003): "Bangalore ONLY)", "Utah | Hybrid",
+  // "FXE_APAC/VNM/VNHANHQ/Hanoi Rep Office", "Remote Worker France",
+  // "PARSIPPANY (NJPAR)", "Houston (Corporate Office)", "Ottawa (Kanata)",
+  // "Bayern Remote" and "Poland" all went into the town slot. A site code, a
+  // note in brackets, a list separator, the word "only", a work-mode word, a
+  // country's name or the employer's own name is not a town: the locality is
+  // left out and the region and the country stand.
+  // THE ROUND'S OWN BAKE (2026-10-24) still shipped two: "USA-" from
+  // "USA-REMOTE" and "Movie Park Germany". Punctuation at an end and a
+  // country's name anywhere inside are refused with the rest (localityProblem).
+  if (localityProblem(s)) return false;
+  if (FACILITY.test(s)) return false;
+  if (countryCodeOfName(s)) return false;
+  const emp = employer.trim().toLowerCase();
+  if (emp.length >= 3 && s.toLowerCase().includes(emp)) return false;
   return !STREETISH.test(s);
+}
+
+/** A segment with its work-mode words and bracket and list marks taken out ("Utah | Hybrid" -> "Utah"). */
+const placeOfSegment = (segment: string): string => trimEdges(segment
+  .replace(WORK_MODE_WORDS, " ")
+  .replace(/[|()[\]]/g, " ")
+  .replace(/\s+/g, " ")
+  .trim());
+
+/** Words that are neither a work mode nor a place: what is left of "Remote Worker France" once both are out. */
+const PLACE_NOISE = new Set("worker workers based anywhere any location locations from in the of only nationwide countrywide country wide home office field various multiple flexible tbd n/a and or within".split(" "));
+
+/**
+ * WHETHER A REMOTE ROW'S LOCATION NAMES A PLACE BELOW ITS COUNTRY. "Remote -
+ * US", "United States (Remote)", "Remote Worker France" and an empty location
+ * name none; "Germany - Bayern Remote", "Remote, Arizona" and "Chicago" name
+ * one. Hyphenated towns split into words that still name one.
+ */
+export function remoteLocationNamesAPlace(job: Pick<PostingRow, "location" | "country">): boolean {
+  const raw = String(job.location ?? "");
+  const own = String(job.country ?? "").trim().toUpperCase();
+  for (const piece of raw.split(/[,;|/()[\]]+|\s[-–]\s|\s-|-\s/)) {
+    let rest = placeOfSegment(piece);
+    if (!rest) continue;
+    if (own && rest.toUpperCase() === own) continue;
+    if (countryCodeOfName(rest)) continue;
+    // A country named inside a longer phrase ("Worker France") comes out too.
+    // Each word without the punctuation that joined it to a work mode
+    // ("USA-REMOTE" leaves "USA-", which is the country, not a place in it).
+    const words = rest.split(" ").map(trimEdges).filter((w) => w && !PLACE_NOISE.has(w.toLowerCase()));
+    rest = words.join(" ");
+    if (!rest) continue;
+    if (countryCodeOfName(rest) || (own && rest.toUpperCase() === own)) continue;
+    const kept = words.filter((w) => !countryCodeOfName(w) && !(own && w.toUpperCase() === own));
+    if (kept.join("").replace(/[^A-Za-zÀ-ÿ]/g, "").length >= 2) return true;
+  }
+  return false;
+}
+
+/**
+ * WHY A ROW MAY BE MARKED UP AS WORKED FROM ANYWHERE, or null when it may not.
+ *
+ *   "vendor"     the hiring system's own structured remote field said so;
+ *   "place-free" the board says remote and the location names no place below
+ *                the country ("Remote - US"), so remote is all the row states.
+ *
+ * THE INTERIM ASYMMETRIC RULE (SEO-003). The board sets workMode "remote" from
+ * a location label, and Dyson's in-store sales jobs in Bavaria are labelled
+ * "Germany - Bayern Remote": four of them shipped TELECOMMUTE. Until the board
+ * carries workModeSource, a remote row whose location names a region or a town
+ * is marked up as that place, never as TELECOMMUTE. Wrong in that direction a
+ * remote job reads as located where its employer said; wrong in the other, a
+ * shop-floor job reads as work from anywhere.
+ */
+export function postingRemoteBasis(job: PostingRow): "vendor" | "place-free" | null {
+  if (job.workMode !== "remote") return null;
+  if (job.workModeSource === "vendor") return "vendor";
+  return remoteLocationNamesAPlace(job) ? null : "place-free";
+}
+
+/**
+ * A LOCATION THAT PLACES THE JOB IN ANOTHER COUNTRY (SEO-035). The board's
+ * country reader files "City, LA, Nigeria" and "City, GA, Ghana" as US by the
+ * state code, and USAJOBS files "Ramstein, Germany" as US; markup built on
+ * that row puts a Nigerian job in Louisiana. The row's country is not trusted,
+ * and the page carries no job markup, when a place in the location is written
+ * town first and ends in another country's whole name.
+ *
+ * WHAT IS NOT ANOTHER COUNTRY, each one a live row this rule once withheld:
+ *   - the location names the row's own country anywhere, or one of its
+ *     states or provinces at the end of a place, as one of several places or
+ *     at the front ("USA - New York - Malta", "Hong Kong, China" on an HK row,
+ *     "Munich, Germany; London, United Kingdom" on a GB row, "Toronto,
+ *     Canada; Denver, Colorado" on a US row);
+ *   - the place opens with the two-letter code of one of the row's own
+ *     states or provinces, so it is written state first and its last segment
+ *     is the town ("MI - Holland", "NY - Jamaica", "PA - Lebanon"). A code is
+ *     never a town; a full name can be one ("New Brunswick - NJ - US" is a
+ *     town in New Jersey, on a CA row), so only the code says the order;
+ *   - a place of two segments opens with the employer's own name, which is
+ *     a site label, so the other segment is its town ("ENTEK - Lebanon");
+ *   - the named country governs the row's territory or the other way round
+ *     ("Kowloon, China" on HK, "Virgin Islands, U.S." on VI).
+ * Without a list of every town, "Biloxi, MS, Algeria" (a vendor's default
+ * country after a Mississippi town) reads the same as "Lagos, LA, Nigeria"
+ * and is still withheld; docs/seo-round/README.md counts these.
+ */
+export function postingCountryMismatch(job: Pick<PostingRow, "location" | "country"> & Partial<Pick<PostingRow, "company">>): boolean {
+  const own = String(job.country ?? "").trim().toUpperCase();
+  if (!own) return false;
+  const places = String(job.location ?? "").split(PLACE_LIST)
+    .map((p) => p.split(/,|\s[-–]\s/).map((s) => placeOfSegment(s)).filter(Boolean))
+    .filter((segs) => segs.length > 0);
+  const isOwn = (s: string): boolean => {
+    const code = countryCodeOfName(s);
+    return s.toUpperCase() === own || (code !== null && sameJurisdiction(own, code));
+  };
+  // "United States and Ontario, Canada": each side of an "and" is read too.
+  const namesOwn = (s: string): boolean => isOwn(s) || s.split(/\s+(?:and|&)\s+/i).some((part) => part !== s && isOwn(part.trim()));
+  if (places.some((segs) => segs.some(namesOwn) || !!subdivisionOf(segs[segs.length - 1], own))) return false;
+  const employer = String(job.company ?? "").trim().toLowerCase();
+  for (const segs of places) {
+    if (segs.length < 2) continue;
+    if (/^[A-Za-z]{2}$/.test(segs[0]) && subdivisionOf(segs[0], own)) continue;
+    if (segs.length === 2 && employer.length >= 3 && segs[0].toLowerCase().includes(employer)) continue;
+    const code = countryCodeOfName(segs[segs.length - 1]);
+    if (code && !sameJurisdiction(own, code)) return true;
+  }
+  return false;
 }
 
 /**
@@ -407,6 +814,12 @@ export function postingPostalAddress(job: PostingRow): Record<string, unknown> |
   const address: Record<string, unknown> = { "@type": "PostalAddress", addressCountry: country };
   const raw = (job.location ?? "").trim();
   if (!raw) return address;
+  // The employer's own name is never its town (SEO-003): read once, compared
+  // inside isLocality.
+  const employer = job.company ? postingEmployer(job) : "";
+  const town = (seg: string) => isLocality(seg, country, employer);
+  // A subdivision read through a work-mode word or a bracket ("Utah | Hybrid").
+  const sub = (seg: string) => subdivisionOf(seg, country) ?? subdivisionOf(placeOfSegment(seg), country);
 
   const put = (region: string | null, locality: string | null, street: string | null, postal: string | null) => {
     if (region) address.addressRegion = region;
@@ -414,6 +827,24 @@ export function postingPostalAddress(job: PostingRow): Record<string, unknown> |
     if (street) address.streetAddress = street;
     if (postal) address.postalCode = postal;
     return address;
+  };
+
+  // "<PLACE> Remote": THE WORK-MODE WORD COMES OUT AND THE PLACE STAYS (SEO-003).
+  // "Germany - Bayern Remote" names Bavaria, a region, and not a town in it;
+  // which of the two a bare name is cannot be told outside the two countries
+  // whose subdivisions are listed here, so it is given as the region, the less
+  // specific claim. In the US and Canada a listed subdivision is the region
+  // and anything else that reads as a town is the town.
+  const remoteLabel = (seg: string): { region: string | null; locality: string | null } | null => {
+    if (!WORK_MODE_WORD.test(seg)) return null;
+    const words = placeOfSegment(seg).split(" ").map(trimEdges)
+      .filter((w) => w && !PLACE_NOISE.has(w.toLowerCase()) && !countryCodeOfName(w) && w.toUpperCase() !== country);
+    const rest = words.join(" ");
+    if (!rest || countryCodeOfName(rest) || rest.length < 3 || rest.length > 40 || /\d/.test(rest) || NOT_IN_A_TOWN.test(rest) || /\bonly\b/i.test(rest)) return null;
+    const code = subdivisionOf(rest, country);
+    if (code) return { region: code, locality: null };
+    if (country === "US" || country === "CA") return town(rest) ? { region: null, locality: rest } : null;
+    return { region: rest, locality: null };
   };
 
   // DASH FORM first, and only when the string has no comma at all.
@@ -427,8 +858,8 @@ export function postingPostalAddress(job: PostingRow): Record<string, unknown> |
     const parts = raw.split(/\s*[-–]\s*/).map((p) => p.trim()).filter(Boolean);
     if (parts.length >= 2) {
       let at = -1;
-      for (let i = 0; i < parts.length; i++) if (subdivisionOf(parts[i], country)) at = i;
-      const region = at >= 0 ? subdivisionOf(parts[at], country) : null;
+      for (let i = 0; i < parts.length; i++) if (sub(parts[i])) at = i;
+      const region = at >= 0 ? sub(parts[at]) : null;
       let locality: string | null = null;
       // With no subdivision to anchor on, only the two-part form is read, and
       // only when the leading token is a place word rather than a work mode:
@@ -438,13 +869,27 @@ export function postingPostalAddress(job: PostingRow): Record<string, unknown> |
       if (readable) {
         for (let i = parts.length - 1; i >= 1; i--) {
           if (i === at) continue;
-          if (isLocality(parts[i], country)) { locality = parts[i]; break; }
+          if (town(parts[i])) { locality = parts[i]; break; }
         }
       }
       if (region || locality) return put(region, locality, null, null);
+      // The label is read off the SPACED dashes only, so a hyphenated region
+      // stays whole ("Germany - Rheinland-Pfalz Remote" is Rheinland-Pfalz).
+      const spaced = raw.split(/\s+[-–]\s+/).map((p) => p.trim()).filter(Boolean);
+      for (const list of [spaced, parts]) {
+        for (let i = list.length - 1; i >= 0; i--) {
+          const r = remoteLabel(list[i]);
+          if (r) return put(r.region, r.locality, null, null);
+        }
+      }
       return address;
     }
-    return isLocality(raw, country) ? put(null, raw, null, null) : address;
+    // A lone subdivision is the region, never the town: "Utah | Hybrid" is UT.
+    const sole = sub(raw);
+    if (sole) return put(sole, null, null, null);
+    if (town(raw)) return put(null, raw, null, null);
+    const r = remoteLabel(raw);
+    return r ? put(r.region, r.locality, null, null) : address;
   }
 
   // COMMA FORM. Work from the end: postal code, then subdivision, then the
@@ -471,7 +916,7 @@ export function postingPostalAddress(job: PostingRow): Record<string, unknown> |
     // country name ("Remote, Arizona, United States of America") is skipped
     // over rather than mistaken for a town.
     for (let i = segs.length - 1; i >= 0; i--) {
-      const code = subdivisionOf(segs[i], country);
+      const code = sub(segs[i]);
       if (code) { region = code; segs.length = i; break; }
     }
   }
@@ -479,13 +924,26 @@ export function postingPostalAddress(job: PostingRow): Record<string, unknown> |
   let locality: string | null = null;
   if (region) {
     const candidate = segs[segs.length - 1] ?? "";
-    if (isLocality(candidate, country)) { locality = candidate.trim(); segs.pop(); }
+    if (town(candidate)) { locality = candidate.trim(); segs.pop(); }
     else segs.length = 0; // a street or a facility name, not a town: say nothing
   } else {
     // No subdivision (every country but US and CA, and US strings that name
-    // none). The first segment is the town when it reads like one.
+    // none). A "<postal code> <town>" segment names the town outright, the
+    // way European addresses write it ("46244 Bottrop-Kirchhellen": the
+    // first segment there, "Movie Park Germany", is the park). Otherwise the
+    // first segment is the town when it reads like one.
+    if (!postal) {
+      for (const seg of segs) {
+        const m = POSTAL_THEN_TOWN.exec(seg);
+        if (m && town(m[2])) return put(null, m[2].trim(), null, m[1]);
+      }
+    }
     const candidate = segs[0] ?? "";
-    if (isLocality(candidate, country)) locality = candidate.trim();
+    if (town(candidate)) locality = candidate.trim();
+    else {
+      const r = remoteLabel(candidate);
+      if (r) return put(r.region, r.locality, null, postal);
+    }
     return put(null, locality, null, postal);
   }
 
@@ -508,9 +966,16 @@ const LD_EMPLOYMENT_TYPE: Record<string, string> = {
   internship: "INTERN",
   intern: "INTERN",
   volunteer: "VOLUNTEER",
+  // Workday's timeType and several vendors' own words, with a space (SEO-016).
+  "full time": "FULL_TIME",
+  "part time": "PART_TIME",
+  "per diem": "PER_DIEM",
+  per_diem: "PER_DIEM",
 };
 
-const LD_SALARY_UNIT: Record<string, string> = { year: "YEAR" };
+/** The schema type for a stated employment type, read case- and spacing-blind, or undefined. */
+export const ldEmploymentType = (stated: string | null | undefined): string | undefined =>
+  stated ? LD_EMPLOYMENT_TYPE[String(stated).toLowerCase().replace(/\s+/g, " ").trim()] : undefined;
 
 /**
  * EVERY REQUIRED PROPERTY, OR NOTHING AT ALL.
@@ -528,21 +993,31 @@ const LD_SALARY_UNIT: Record<string, string> = { year: "YEAR" };
  * wording is that expired postings are not allowed and one of the sanctioned
  * ways to remove one is to take its structured data off the page; this is that.
  *
- * Nothing optional is guessed. A posting whose employer stated no pay gets no
- * pay property — never a zero, never a range we derived. Pay is emitted only
- * when the employer stated the PERIOD as well: the board hands us an annualised
- * figure, and an annualised number presented as the employer's own is exactly
- * the estimate the reference forbids, so only a stated yearly figure passes.
+ * Nothing optional is guessed, and PAY IS NEVER IN THE MARKUP (owner decision,
+ * growth decision 1, SEO-016): Google's reference says only the employer may
+ * provide baseSalary, and the board's figure is our reading of the employer's
+ * text, annualised. The employer's own words stay on the visible page.
  */
 export function postingJsonLd(
   job: PostingRow,
   description: string | null | undefined,
-  opts: { site: string; now?: Date } = { site: "" },
+  // `ignoreCountryMismatch` lets the bake ask whether the country is the ONLY
+  // thing in the way (a carried page then keeps its page with no markup, D7);
+  // it is never used to emit markup.
+  opts: { site: string; now?: Date; ignoreCountryMismatch?: boolean } = { site: "" },
 ): Record<string, unknown> | null {
   const now = opts.now ?? new Date();
   const path = postingPagePath(job.id);
-  const desc = typeof description === "string" ? decodeJdEntities(description).trim() : "";
-  const remote = job.workMode === "remote";
+  const desc = typeof description === "string" ? jdText(description).trim() : "";
+  // TELECOMMUTE ONLY ON THE HIRING SYSTEM'S OWN REMOTE FIELD (SEO-003's rule).
+  // A place-free remote label ("Remote - US", "China - Remote") is marked up
+  // as its country: the round's bake shipped TELECOMMUTE on a medical
+  // representative whose description asks for twelve hospital visits a day,
+  // and a label cannot tell that job from a home-based one. The board carries
+  // no vendor flag yet (the wave-4 hand-off), so until it does no page says
+  // TELECOMMUTE.
+  const remoteBasis = postingRemoteBasis(job);
+  const telecommute = remoteBasis === "vendor";
   if (!path) return null;
   if (!isPostingLive(job, now)) return null;
   if (!job.title || !job.company || !job.postedAt) return null;
@@ -550,15 +1025,19 @@ export function postingJsonLd(
   // A place needs a country or it is not a place Google accepts; a fully
   // remote posting may state its applicant country instead.
   if (!job.country) return null;
-  if (!remote && !job.location) return null;
-  const validThrough = postingValidThrough(job);
+  if (!remoteBasis && !job.location) return null;
+  // A row whose location ends in another country's name has a country we
+  // cannot stand behind (SEO-035): no markup, and the bake gives the URL no
+  // live page.
+  if (!opts.ignoreCountryMismatch && postingCountryMismatch(job)) return null;
+  const validThrough = postingValidThrough(job, now);
   if (!validThrough) return null;
   const employer = postingEmployer(job);
 
   const ld: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": "JobPosting",
-    title: job.title,
+    title: postingText(job.title),
     // THE WHOLE DESCRIPTION, BECAUSE THAT IS WHAT THE PROPERTY IS FOR. This was
     // cut at 4,000 characters, which fired on 300 of the 399 pages the bake
     // wrote — their visible text ran to a median 7,273 characters and a maximum
@@ -592,7 +1071,7 @@ export function postingJsonLd(
   };
 
   const address = postingPostalAddress(job);
-  if (remote) {
+  if (telecommute) {
     // A FULLY REMOTE POSTING IS DESCRIBED BY THE TELECOMMUTE PAIR, NOT BY A
     // PLACE. The physical jobLocation used to be emitted alongside them with
     // the literal word "Remote" in the locality slot ("Remote, Arizona, United
@@ -605,27 +1084,18 @@ export function postingJsonLd(
     if (address?.addressLocality) ld.jobLocation = { "@type": "Place", address };
   } else {
     if (!address) return null;
+    // A place-free remote row names no place below its country, so its
+    // address is the country and nothing narrower.
+    if (remoteBasis === "place-free") {
+      delete address.addressLocality;
+      delete address.streetAddress;
+      delete address.postalCode;
+    }
     ld.jobLocation = { "@type": "Place", address };
   }
 
-  const empType = job.employmentType ? LD_EMPLOYMENT_TYPE[job.employmentType.toLowerCase()] : undefined;
+  const empType = ldEmploymentType(job.employmentType);
   if (empType) ld.employmentType = empType;
-
-  const unit = job.salaryPeriod ? LD_SALARY_UNIT[job.salaryPeriod.toLowerCase()] : undefined;
-  const min = typeof job.salaryMinAnnual === "number" ? job.salaryMinAnnual : null;
-  const max = typeof job.salaryMaxAnnual === "number" ? job.salaryMaxAnnual : null;
-  if (unit && job.salaryCurrency && min !== null) {
-    ld.baseSalary = {
-      "@type": "MonetaryAmount",
-      currency: job.salaryCurrency,
-      value: {
-        "@type": "QuantitativeValue",
-        minValue: min,
-        ...(max !== null && max >= min ? { maxValue: max } : {}),
-        unitText: unit,
-      },
-    };
-  }
 
   return ld;
 }
@@ -679,9 +1149,11 @@ function clip(s: string, n: number): string {
  * of a job you cannot tell from four others is worth less than one you can.
  */
 export function postingPageTitle(job: PostingRow): string {
-  const title = (job.title ?? "").trim();
+  // One line: "Quality  (QA) Technician" shipped its employer's double space
+  // into two identical sitemap titles (OBS-1).
+  const title = postingText(job.title);
   const company = job.company ? postingEmployer(job) : "";
-  const place = (job.location ?? "").trim();
+  const place = postingText(job.location);
   const key = postingPathParts(job.id)?.key ?? "";
   for (const tail of [place && company ? `${company}, ${place}` : "", place, company]) {
     if (!tail) continue;
@@ -698,6 +1170,35 @@ export function postingPageTitle(job: PostingRow): string {
   // title costs a truncated SERP line, two identical titles cost the page its
   // own identity.
   return `${clip(title, TITLE_MIN_ROOM)}${TITLE_SEP}${key}`;
+}
+
+/**
+ * THE TITLE, DIFFERENT FROM EVERY TITLE THE BAKE HAS ALREADY GIVEN A POSTING.
+ *
+ * postingPageTitle's first half keeps the place and drops the employer when
+ * both do not fit beside a whole job title, so two employers' identical
+ * titles in one city ("Registered Nurse - ICU Night Shift — Boston, MA")
+ * render one title for two different jobs, and a sitemap carrying both is
+ * the duplicate Search Console reports. The bake passes the titles it has
+ * already written; a taken title gets the employer's requisition key as its
+ * tail (with the employer in front where it fits), and in the last resort
+ * the key in brackets, which is unique per URL by construction.
+ */
+export function postingPageTitleAvoiding(job: PostingRow, taken: ReadonlySet<string>): string {
+  const first = postingPageTitle(job);
+  if (!taken.has(first)) return first;
+  const title = postingText(job.title);
+  const company = job.company ? postingEmployer(job) : "";
+  const key = postingPathParts(job.id)?.key ?? "";
+  if (!key) return first;
+  for (const tail of [company ? `${company} ${key}` : "", key]) {
+    if (!tail) continue;
+    const room = TITLE_BUDGET - tail.length - TITLE_SEP.length;
+    if (room < TITLE_MIN_ROOM) continue;
+    const candidate = `${clip(title, room)}${TITLE_SEP}${tail}`;
+    if (!taken.has(candidate)) return candidate;
+  }
+  return `${first} (${key})`;
 }
 
 /** A search result's snippet is cut at about this length. */
@@ -726,17 +1227,20 @@ function servedLength(s: string): number {
  * only if the whole thing still does.
  */
 export function postingPageDescription(job: PostingRow): string {
-  const title = (job.title ?? "").trim();
+  const title = postingText(job.title);
   const company = job.company ? postingEmployer(job) : "";
-  const place = (job.location ?? "").trim();
-  let out = place ? `${title} at ${company}, ${place}.` : `${title} at ${company}.`;
-  if (servedLength(out) > DESCRIPTION_BUDGET) out = `${title} at ${company}.`;
+  const place = postingText(job.location);
+  // NO NAME, NO "at ,": a page whose employer name the bake will not print
+  // (logo text kept under D7) says "the employer" instead.
+  const at = company ? ` at ${company}` : "";
+  let out = place ? `${title}${at}, ${place}.` : `${title}${at}.`;
+  if (servedLength(out) > DESCRIPTION_BUDGET) out = `${title}${at}.`;
   if (servedLength(out) > DESCRIPTION_BUDGET) out = `${title}.`;
   const add = (clause: string) => {
     if (servedLength(out + clause) <= DESCRIPTION_BUDGET) out += clause;
   };
   if (job.salary) add(` Pay as stated by the employer: ${String(job.salary).trim()}.`);
-  add(` Straight from ${possessive(company)} own job board.`);
+  add(` Straight from ${company ? possessive(company) : "the employer's"} own job board.`);
   add(" Check your resume against it before you apply.");
   return out;
 }

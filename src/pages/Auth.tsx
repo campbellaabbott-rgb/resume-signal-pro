@@ -107,11 +107,15 @@ export default function Auth() {
 
 function AuthBody({ mode, next }: { mode: AuthMode; next: string }) {
   const [params] = useSearchParams();
-  // A recovery underway: reset mode from the start, or a confirmation link of type recovery.
-  const [recovery, setRecovery] = useState<{ session: Session | null } | null>(mode === "reset" ? { session: null } : null);
+  // A recovery underway: reset mode from the start, or a confirmation link of
+  // type recovery (adopted, or refused for good: then the reset page says the
+  // link expired and offers a new one, S13-106).
+  const [recovery, setRecovery] = useState<{ session: Session | null; expired?: { email: string | null } } | null>(mode === "reset" ? { session: null } : null);
   const [hasTokenHash] = useState(() => !!(peekStashed("token_hash") ?? params.get("token_hash")));
-  if (recovery) return <ResetFlow next={next} initialSession={recovery.session} />;
-  if (mode === "confirm" && hasTokenHash) return <ConfirmView next={next} onRecovery={(s) => setRecovery({ session: s })} />;
+  if (recovery) return <ResetFlow next={next} initialSession={recovery.session} initialExpired={recovery.expired} />;
+  if (mode === "confirm" && hasTokenHash) {
+    return <ConfirmView next={next} onRecovery={(s) => setRecovery({ session: s })} onRecoveryExpired={(email) => setRecovery({ session: null, expired: { email } })} />;
+  }
   return <ContinueView next={next} mode={mode} />;
 }
 
@@ -455,7 +459,7 @@ function ContinueView({ next, mode }: { next: string; mode: AuthMode }) {
 
 // ── confirm: a link from the mail, spent only by a press ────────────────────
 
-function ConfirmView({ next, onRecovery }: { next: string; onRecovery: (s: Session) => void }) {
+function ConfirmView({ next, onRecovery, onRecoveryExpired }: { next: string; onRecovery: (s: Session) => void; onRecoveryExpired: (email: string | null) => void }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { adoptSession } = useAuth();
@@ -488,8 +492,14 @@ function ConfirmView({ next, onRecovery }: { next: string; onRecovery: (s: Sessi
     const r = await verifyLink(tokenHash, type);
     if ("error" in r) {
       if (r.transient) { setPhase("unreachable"); return; }
+      // The address this browser asked a reset for, read before the refusal spends the marker.
+      const askedFor = readPendingSignIn()?.email ?? null;
       spend();
       clearPendingSignIn();
+      // A reset link refused for good is explained as a reset, with a new
+      // reset link for that address, as the default sender's link is (S13-106):
+      // "sign in again" is no way back for someone who forgot their password.
+      if (type === "recovery" && RECOVERY_LIVE) { onRecoveryExpired(askedFor); return; }
       setPhase("failed");
       return;
     }

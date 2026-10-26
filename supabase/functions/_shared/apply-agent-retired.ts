@@ -35,11 +35,27 @@ export const RETIRED_STATUS = 410;
 
 type Lines = { agent_plan: string; agent_pass: string; apply_assistant: string; free: string; connect: string };
 
+/**
+ * The hiring systems whose published form the person's AI reads, in the
+ * pages' order (application-form.ts FORM_READER_VENDORS, src/config/mcp-tools.ts
+ * MCP_FORM_VENDORS), and the two it reads inside ChatGPT (PUBLIC_API_FORM_VENDORS,
+ * MCP_FORM_VENDORS_ON_CHATGPT; owner decision R2). A test holds both equal to
+ * those lists, so no sentence below types a name.
+ */
+export const RETIRED_FORM_VENDORS: readonly string[] = ["Greenhouse", "Ashby", "Recruitee", "Breezy", "Pinpoint"];
+export const RETIRED_FORM_VENDORS_ON_CHATGPT: readonly string[] = ["Greenhouse", "Recruitee"];
+
+/** "a, b or c", with the language's own word for "or". */
+const orList = (or: string, names: readonly string[]): string =>
+  names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} ${or} ${names[names.length - 1]}`;
+const ALL = (or: string) => orList(or, RETIRED_FORM_VENDORS);
+const ON_CHATGPT = (or: string) => orList(or, RETIRED_FORM_VENDORS_ON_CHATGPT);
+
 const EN: Lines = {
   agent_plan: "The Apply Agent is no longer sold, and nothing was charged.",
   agent_pass: "The Agent Pass is no longer sold, and nothing was charged.",
   apply_assistant: "The Apply Assistant is no longer sold, and nothing was charged.",
-  free: "Applying yourself is free. Your AI reads the posting and, when the employer uses Greenhouse, Ashby, Recruitee, Breezy or Pinpoint, the application form too. Resume Booster tells it to ask you the questions that look like they are about you and to draft open answers about your work from your CV. That check reads the words and can miss a question about you, even a plainly worded one, so read every answer before you send: you check everything and press submit.",
+  free: `Applying yourself is free. Your AI reads the posting and, when the employer uses ${ALL("or")}, the application form too. Inside ChatGPT, your AI reads the application form only when the employer uses ${ON_CHATGPT("or")}. Resume Booster tells it to ask you the questions that look like they are about you and to draft open answers about your work from your CV. That check reads the words and can miss a question about you, even a plainly worded one, so read every answer before you send: you check everything and press submit.`,
   connect: "Connect Claude or ChatGPT at resumebooster.work/agents.",
 };
 
@@ -55,49 +71,49 @@ export const RETIRED_LINES: Readonly<Record<CheckoutLanguage, Lines>> = {
     agent_plan: "Der Bewerbungs-Agent wird nicht mehr verkauft, und dir wurde nichts berechnet.",
     agent_pass: "Der Agent-Pass wird nicht mehr verkauft, und dir wurde nichts berechnet.",
     apply_assistant: "Der Apply Assistant wird nicht mehr verkauft, und dir wurde nichts berechnet.",
-    free: "Selbst bewerben ist kostenlos. Deine KI liest die Stellenanzeige und, wenn der Arbeitgeber Greenhouse, Ashby, Recruitee, Breezy oder Pinpoint nutzt, auch das Bewerbungsformular. Resume Booster weist sie an, dir die Fragen zu stellen, die nach Fragen zu dir aussehen, und offene Antworten über deine Arbeit aus deinem Lebenslauf zu entwerfen. Diese Prüfung liest nur die Wörter und kann eine Frage zu dir übersehen, auch eine klar formulierte, also lies jede Antwort, bevor du sie absendest: Du prüfst alles und klickst selbst auf Absenden.",
+    free: `Selbst bewerben ist kostenlos. Deine KI liest die Stellenanzeige und, wenn der Arbeitgeber ${ALL("oder")} nutzt, auch das Bewerbungsformular. In ChatGPT liest deine KI das Bewerbungsformular nur, wenn der Arbeitgeber ${ON_CHATGPT("oder")} nutzt. Resume Booster weist sie an, dir die Fragen zu stellen, die nach Fragen zu dir aussehen, und offene Antworten über deine Arbeit aus deinem Lebenslauf zu entwerfen. Diese Prüfung liest nur die Wörter und kann eine Frage zu dir übersehen, auch eine klar formulierte, also lies jede Antwort, bevor du sie absendest: Du prüfst alles und klickst selbst auf Absenden.`,
     connect: "Verbinde Claude oder ChatGPT unter resumebooster.work/agents.",
   },
   es: {
     agent_plan: "El Agente de Postulación ya no se vende y no se te ha cobrado nada.",
     agent_pass: "El Agent Pass ya no se vende y no se te ha cobrado nada.",
     apply_assistant: "El Apply Assistant ya no se vende y no se te ha cobrado nada.",
-    free: "Postularte por tu cuenta es gratis. Tu IA lee la oferta y, si el empleador usa Greenhouse, Ashby, Recruitee, Breezy o Pinpoint, también el formulario de solicitud. Resume Booster le indica que te haga las preguntas que parecen ser sobre ti y que redacte a partir de tu CV las respuestas abiertas sobre tu trabajo. Esa comprobación lee las palabras y puede pasar por alto una pregunta sobre ti, aunque esté redactada con claridad, así que lee cada respuesta antes de enviarla: tú lo revisas todo y pulsas enviar.",
+    free: `Postularte por tu cuenta es gratis. Tu IA lee la oferta y, si el empleador usa ${ALL("o")}, también el formulario de solicitud. Dentro de ChatGPT, tu IA lee el formulario de solicitud solo si el empleador usa ${ON_CHATGPT("o")}. Resume Booster le indica que te haga las preguntas que parecen ser sobre ti y que redacte a partir de tu CV las respuestas abiertas sobre tu trabajo. Esa comprobación lee las palabras y puede pasar por alto una pregunta sobre ti, aunque esté redactada con claridad, así que lee cada respuesta antes de enviarla: tú lo revisas todo y pulsas enviar.`,
     connect: "Conecta Claude o ChatGPT en resumebooster.work/agents.",
   },
   fr: {
     agent_plan: "L'Agent de candidature n'est plus vendu, et rien ne vous a été facturé.",
     agent_pass: "L'Agent Pass n'est plus vendu, et rien ne vous a été facturé.",
     apply_assistant: "L'Apply Assistant n'est plus vendu, et rien ne vous a été facturé.",
-    free: "Postuler vous-même est gratuit. Votre IA lit l'offre et, si l'employeur utilise Greenhouse, Ashby, Recruitee, Breezy ou Pinpoint, le formulaire de candidature aussi. Resume Booster lui demande de vous poser les questions qui semblent porter sur vous et de rédiger à partir de votre CV les réponses ouvertes sur votre travail. Ce tri lit les mots et peut manquer une question sur vous, même formulée clairement : relisez donc chaque réponse avant de l'envoyer ; vous vérifiez tout et c'est vous qui cliquez sur Envoyer.",
+    free: `Postuler vous-même est gratuit. Votre IA lit l'offre et, si l'employeur utilise ${ALL("ou")}, le formulaire de candidature aussi. Dans ChatGPT, votre IA ne lit le formulaire de candidature que si l'employeur utilise ${ON_CHATGPT("ou")}. Resume Booster lui demande de vous poser les questions qui semblent porter sur vous et de rédiger à partir de votre CV les réponses ouvertes sur votre travail. Ce tri lit les mots et peut manquer une question sur vous, même formulée clairement : relisez donc chaque réponse avant de l'envoyer ; vous vérifiez tout et c'est vous qui cliquez sur Envoyer.`,
     connect: "Connectez Claude ou ChatGPT sur resumebooster.work/agents.",
   },
   hi: {
     agent_plan: "अप्लाई एजेंट अब नहीं बेचा जाता, और आपसे कोई शुल्क नहीं लिया गया।",
     agent_pass: "Agent Pass अब नहीं बेचा जाता, और आपसे कोई शुल्क नहीं लिया गया।",
     apply_assistant: "Apply Assistant अब नहीं बेचा जाता, और आपसे कोई शुल्क नहीं लिया गया।",
-    free: "खुद आवेदन करना मुफ़्त है। आपका AI नौकरी का विवरण पढ़ता है, और अगर नियोक्ता Greenhouse, Ashby, Recruitee, Breezy या Pinpoint इस्तेमाल करता है, तो आवेदन फ़ॉर्म भी। Resume Booster उसे कहता है कि जो सवाल आपके बारे में लगते हैं वे आपसे पूछे, और आपके काम के बारे में खुले उत्तरों का मसौदा आपके CV से बनाए। यह जाँच सिर्फ़ शब्द पढ़ती है और आपके बारे में कोई सवाल चूक सकती है, चाहे वह साफ़ शब्दों में लिखा हो, इसलिए भेजने से पहले हर उत्तर पढ़ें: आप सब कुछ जाँचते हैं और सबमिट आप दबाते हैं।",
+    free: `खुद आवेदन करना मुफ़्त है। आपका AI नौकरी का विवरण पढ़ता है, और अगर नियोक्ता ${ALL("या")} इस्तेमाल करता है, तो आवेदन फ़ॉर्म भी। ChatGPT में आपका AI आवेदन फ़ॉर्म तभी पढ़ता है जब नियोक्ता ${ON_CHATGPT("या")} इस्तेमाल करता है। Resume Booster उसे कहता है कि जो सवाल आपके बारे में लगते हैं वे आपसे पूछे, और आपके काम के बारे में खुले उत्तरों का मसौदा आपके CV से बनाए। यह जाँच सिर्फ़ शब्द पढ़ती है और आपके बारे में कोई सवाल चूक सकती है, चाहे वह साफ़ शब्दों में लिखा हो, इसलिए भेजने से पहले हर उत्तर पढ़ें: आप सब कुछ जाँचते हैं और सबमिट आप दबाते हैं।`,
     connect: "resumebooster.work/agents पर Claude या ChatGPT जोड़ें।",
   },
   nl: {
     agent_plan: "De Sollicitatie-agent wordt niet meer verkocht, en er is niets in rekening gebracht.",
     agent_pass: "De Agent Pass wordt niet meer verkocht, en er is niets in rekening gebracht.",
     apply_assistant: "De Apply Assistant wordt niet meer verkocht, en er is niets in rekening gebracht.",
-    free: "Zelf solliciteren is gratis. Je AI leest de vacature en, als de werkgever Greenhouse, Ashby, Recruitee, Breezy of Pinpoint gebruikt, ook het sollicitatieformulier. Resume Booster vraagt je AI om je de vragen te stellen die over jou lijken te gaan en open antwoorden over je werk op basis van je cv te schrijven. Die controle leest alleen de woorden en kan een vraag over jou missen, ook een duidelijk geformuleerde, dus lees elk antwoord voordat je het verstuurt: jij controleert alles en drukt zelf op verzenden.",
+    free: `Zelf solliciteren is gratis. Je AI leest de vacature en, als de werkgever ${ALL("of")} gebruikt, ook het sollicitatieformulier. In ChatGPT leest je AI het sollicitatieformulier alleen als de werkgever ${ON_CHATGPT("of")} gebruikt. Resume Booster vraagt je AI om je de vragen te stellen die over jou lijken te gaan en open antwoorden over je werk op basis van je cv te schrijven. Die controle leest alleen de woorden en kan een vraag over jou missen, ook een duidelijk geformuleerde, dus lees elk antwoord voordat je het verstuurt: jij controleert alles en drukt zelf op verzenden.`,
     connect: "Koppel Claude of ChatGPT via resumebooster.work/agents.",
   },
   pt: {
     agent_plan: "O Agente de Candidaturas não é mais vendido, e nada foi cobrado de você.",
     agent_pass: "O Agent Pass não é mais vendido, e nada foi cobrado de você.",
     apply_assistant: "O Apply Assistant não é mais vendido, e nada foi cobrado de você.",
-    free: "Candidatar-se por conta própria é grátis. Sua IA lê a vaga e, se o empregador usa Greenhouse, Ashby, Recruitee, Breezy ou Pinpoint, também o formulário de candidatura. O Resume Booster orienta a IA a fazer a você as perguntas que parecem ser sobre você e a redigir, a partir do seu currículo, as respostas abertas sobre o seu trabalho. Essa verificação lê as palavras e pode deixar passar uma pergunta sobre você, mesmo escrita de forma clara, então leia cada resposta antes de enviar: você confere tudo e clica em enviar.",
+    free: `Candidatar-se por conta própria é grátis. Sua IA lê a vaga e, se o empregador usa ${ALL("ou")}, também o formulário de candidatura. No ChatGPT, sua IA lê o formulário de candidatura só quando o empregador usa ${ON_CHATGPT("ou")}. O Resume Booster orienta a IA a fazer a você as perguntas que parecem ser sobre você e a redigir, a partir do seu currículo, as respostas abertas sobre o seu trabalho. Essa verificação lê as palavras e pode deixar passar uma pergunta sobre você, mesmo escrita de forma clara, então leia cada resposta antes de enviar: você confere tudo e clica em enviar.`,
     connect: "Conecte o Claude ou o ChatGPT em resumebooster.work/agents.",
   },
   tl: {
     agent_plan: "Hindi na ibinebenta ang Apply Agent, at walang siningil sa iyo.",
     agent_pass: "Hindi na ibinebenta ang Agent Pass, at walang siningil sa iyo.",
     apply_assistant: "Hindi na ibinebenta ang Apply Assistant, at walang siningil sa iyo.",
-    free: "Libre ang mag-apply nang ikaw mismo. Binabasa ng iyong AI ang job posting at, kung Greenhouse, Ashby, Recruitee, Breezy o Pinpoint ang gamit ng employer, pati ang application form. Sinasabihan ito ng Resume Booster na itanong sa iyo ang mga tanong na mukhang tungkol sa iyo at gumawa ng draft ng mga bukas na sagot tungkol sa iyong trabaho mula sa iyong CV. Mga salita lang ang binabasa ng pagsusuring ito at maaaring makaligtaan nito ang tanong tungkol sa iyo, kahit malinaw ang pagkakasulat, kaya basahin ang bawat sagot bago mo ipadala: ikaw ang susuri sa lahat at pipindot ng submit.",
+    free: `Libre ang mag-apply nang ikaw mismo. Binabasa ng iyong AI ang job posting at, kung ${ALL("o")} ang gamit ng employer, pati ang application form. Sa loob ng ChatGPT, binabasa lang ng iyong AI ang application form kapag ${ON_CHATGPT("o")} ang gamit ng employer. Sinasabihan ito ng Resume Booster na itanong sa iyo ang mga tanong na mukhang tungkol sa iyo at gumawa ng draft ng mga bukas na sagot tungkol sa iyong trabaho mula sa iyong CV. Mga salita lang ang binabasa ng pagsusuring ito at maaaring makaligtaan nito ang tanong tungkol sa iyo, kahit malinaw ang pagkakasulat, kaya basahin ang bawat sagot bago mo ipadala: ikaw ang susuri sa lahat at pipindot ng submit.`,
     connect: "Ikonekta ang Claude o ChatGPT sa resumebooster.work/agents.",
   },
 };

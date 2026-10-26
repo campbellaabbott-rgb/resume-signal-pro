@@ -25,6 +25,8 @@ import { execFileSync } from "node:child_process";
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, relative, resolve } from "node:path";
+import { purchasesOpen } from "@/lib/purchases-open";
+import { offersAPrice } from "@/lib/pricing-offer";
 import {
   APPLY_YOURSELF_LINE, RETIRED_CLAIMS, crawlerText, jsonLdBlocks, offersIn, retiredClaimsIn,
 } from "../../scripts/prerender-retired.mjs";
@@ -139,8 +141,15 @@ describe("no page, block or llms file sells or describes a retired product", () 
     expect(home.map((b) => (b as { "@type"?: string })["@type"])).not.toContain("Service");
     const pricing = jsonLdBlocks(page("/pricing"));
     const agg = offersIn(pricing).find((o) => o["@type"] === "AggregateOffer") as { highPrice: string } | undefined;
-    expect(agg, "the pricing range is still published").toBeTruthy();
-    expect(Number(agg!.highPrice)).toBeLessThan(99);
+    // Recheck 3: while no seller is named (as shipped) /pricing offers nothing
+    // at a price; once purchases open, the range of what is sold, under $99.
+    if (purchasesOpen()) {
+      expect(agg, "the pricing range is still published").toBeTruthy();
+      expect(Number(agg!.highPrice)).toBeLessThan(99);
+    } else {
+      expect(agg, "a priced range is published while purchases are closed").toBeUndefined();
+      expect(offersAPrice(pricing)).toBe(false);
+    }
   });
 
   it("/pricing lists no retired one-time product and no plan but Pro", () => {

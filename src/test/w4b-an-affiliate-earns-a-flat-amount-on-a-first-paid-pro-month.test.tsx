@@ -133,3 +133,29 @@ describe("the affiliate page promises what the server pays", () => {
     expect(text).not.toMatch(/20%/);
   });
 });
+
+/**
+ * THE OLD PER-TOOL-SALE COPY IS GONE FROM EVERY LOCALE (the second recheck of
+ * the descope). affiliates.commission.{tagline,headline,detail,banner,
+ * linkHint,howItWorks,excluded} still said "{{other}} per tool sale ({{small}}
+ * on smaller tools)" and listed Freelance Boost, the cover letter and the
+ * apply assistant as earning; nothing renders them since the re-base, but the
+ * SEO round's /affiliates bake reads affiliates.commission and the removed
+ * AFFILIATE_COMMISSION_CENTS, so a merge that keeps that bake would tell
+ * crawlers about a commission wave 4 ended. With the keys gone no bake can
+ * read them; bannerTitle ("Your commission") stays, the page reads it.
+ */
+describe("no locale carries the per-tool-sale commission", () => {
+  const STALE = ["tagline", "headline", "detail", "banner", "linkHint", "howItWorks", "excluded"];
+  const files = readdirSync(resolve(ROOT, "src/i18n/locales")).filter((f) => f.endsWith(".json"));
+
+  it.each(files)("%s", (f) => {
+    const d = JSON.parse(readFileSync(resolve(ROOT, "src/i18n/locales", f), "utf8"));
+    const old = d.affiliates?.commission ?? {};
+    expect(STALE.filter((k) => k in old)).toEqual([]);
+    expect(typeof old.bannerTitle).toBe("string");
+    expect(typeof d.affiliates?.proCommission?.headline).toBe("string");
+  });
+
+  it("reads nine locales", () => expect(files.length).toBe(9));
+});

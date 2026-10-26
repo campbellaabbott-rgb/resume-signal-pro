@@ -41,6 +41,7 @@ import { ShareableScoreCard } from "./ShareableScoreCard";
 import { ResumeXRay } from "./ResumeXRay";
 import { ScoreSimulatorCard, AtsVendorChecksCard, WeakestBulletsCard, CareerBridgeCard, ScoreAuditCard, ShareScoreCard, FreelanceGuidanceCard, IndustryChecksCard, CountryStandardsCard, DiagnosticHeader, FindingsIndex, computeVendorChecks, type Finding } from "./ReportInsightCards";
 import { EmailReportCapture } from "./EmailReportCapture";
+import { withMailSentences, type MailSentences } from "@/lib/report-mail-copy";
 import { RoleTargetingCard, CheckAgainstPostingCard } from "./RoleTargeting";
 import { LiveMatches } from "./LiveMatches";
 import { CardErrorBoundary } from "./CardErrorBoundary";
@@ -579,7 +580,7 @@ export interface FreeKeywordResultsProps {
   industrySpecificChecks?: { industry: string; items: Array<{ label: string; present: boolean; note: string }> } | null;
   countryStandards?: import("./ReportInsightCards").CountryStandardsData | null;
   platformProfileDetected?: { signals: string[] } | null;
-  reportMeta?: { reportId: string; engineVersion: string; generatedAt: string; industry: string; industryConfidence: string; benchmarkSource: string; mailSeal?: string } | null;
+  reportMeta?: { reportId: string; engineVersion: string; generatedAt: string; industry: string; industryConfidence: string; benchmarkSource: string; mailSeal?: string; mailSentences?: MailSentences } | null;
   parseQuality?: { verdict: 'good' | 'fair' | 'poor'; wordCount: number; issues: string[] } | null;
   /** Honest score band spanning the rule-based computation and AI estimate */
   scoreBand?: { low: number; high: number } | null;
@@ -1401,8 +1402,10 @@ export function FreeKeywordResults({
     resumeText?.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/)?.[0]?.toLowerCase() ?? null;
 
   // One payload for BOTH email-capture placements (compact at the verdict,
-  // full at the end of the report) — identical email either way.
-  const emailReportPayload = {
+  // full at the end of the report) — identical email either way. The sealed
+  // sentences it sends are the scanner's mail copy, which quotes no résumé
+  // line (reportMeta.mailSentences); the page shows its own (recheck 3).
+  const emailReportPayload = withMailSentences({
     verdict: reportVerdict,
     score: atsScoreEstimate,
     projectedScore: projectedScore ?? null,
@@ -1423,7 +1426,7 @@ export function FreeKeywordResults({
     // The scan's seal over the sentences above: send-scan-report prints them
     // only when it matches, so nobody can mail their own words from our domain.
     mailSeal: reportMeta?.mailSeal ?? null,
-  };
+  }, reportMeta?.mailSentences);
 
   return (
     <TooltipProvider delayDuration={200}>

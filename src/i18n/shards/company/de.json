@@ -52,8 +52,8 @@
       "rowOpen_other": "{{n}} offene Stellen",
       "searchLink": "Live-Jobbörse durchsuchen",
       "searchTail": "und jeden Arbeitgeber nach Stelle, Gehalt oder Ort filtern.",
-      "seoDescription": "Jeder Arbeitgeber auf der Jobbörse wird direkt aus seinem eigenen Bewerbungssystem gelesen. Die größten Jobboards ansehen oder die Live-Jobbörse durchsuchen.",
-      "seoTitle": "Unternehmen, die jetzt einstellen – Live-Jobs aus ihren eigenen Bewerbungssystemen",
+      "seoDescription": "Jedes Jobboard aus dem Bewerbungssystem gelesen, das es veröffentlicht: meist das des Arbeitgebers; Personalvermittler und die US-Bundesjobbörse sind gekennzeichnet.",
+      "seoTitle": "Unternehmen, die jetzt einstellen – Jobs aus dem jeweiligen Bewerbungssystem",
       "countedAgo": "Zahlen aus der letzten Zählung der Jobbörse, {{ago}}.",
       "intro2": "Jedes Jobboard wird aus seinem eigenen Bewerbungssystem gelesen: Die meisten gehören Arbeitgebern selbst, Jobboards von Personalvermittlern sind auf ihren Seiten gekennzeichnet, und USAJOBS ist die Stellenplattform der US-Bundesregierung, auf der Behörden ihre Stellen veröffentlichen. Die größten Jobboards stehen unten."
     },
@@ -78,7 +78,10 @@
       "roles": "Offene Stellen",
       "tableCaption": "Offene Stellen nach Bereich und nach Land",
       "title": "Stellenmix",
-      "titleListings": "Stellen vor allem ausgeschrieben in"
+      "titleListings": "Stellen vor allem ausgeschrieben in",
+      "titlePooled": "Einstellungsmix im gesamten System des Arbeitgebers",
+      "basisPooled": "Diese Zahlen umfassen alle Karriereseiten, die dieser Arbeitgeber im selben System betreibt (mindestens {{n}} offene Stellen), nicht nur die {{m}} auf dieser Seite. Gelesen am {{date}}; Stellen in keinem Bereich, den wir erkennen, sind ausgelassen.",
+      "basisPooledUndated": "Diese Zahlen umfassen alle Karriereseiten, die dieser Arbeitgeber im selben System betreibt (mindestens {{n}} offene Stellen), nicht nur die {{m}} auf dieser Seite. Stellen in keinem Bereich, den wir erkennen, sind ausgelassen."
     },
     "nameLoading": "Name des Arbeitgebers wird geladen",
     "openRoles_one": "{{n}} Stelle mit Datum in den letzten {{days}} Tagen",
@@ -156,7 +159,8 @@
       "searchLabel": "Jobs suchen",
       "searchPlaceholder": "Arbeitgeber oder Jobtitel",
       "searchTitle": "Diesen Arbeitgeber auf der Live-Jobbörse suchen",
-      "title": "Ein Jobboard namens „{{token}}“ lesen wir noch nicht"
+      "title": "Ein Jobboard namens „{{token}}“ lesen wir noch nicht",
+      "didYouMean": "Meintest du eines dieser Boards?"
     },
     "usajobs": {
       "cap": "Bis zu {{cap}} Ergebnisse pro Abfrage; nicht jede Bundesstelle.",

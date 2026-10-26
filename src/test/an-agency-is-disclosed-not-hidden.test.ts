@@ -77,8 +77,10 @@ describe("the catalog carries the flag", () => {
       "workable:unitedplacementgroup",  // placement agency
       "smartrecruiters:collabera2",     // IT staffing
       "icims:careers.ctg.com",          // fills roles for singular clients
-      "icims:jobs.statefarm.com",       // hires on behalf of agents' offices
-      "icims:careers.principal.com",    // hires on behalf of representatives
+      // State Farm's and Principal's own boards were convicted here once, for
+      // the roles they post for independent agents' offices; they post their
+      // own roles too, and recheck 3 (2026-10-26) released them: see
+      // an-employer-asked-for-by-name-is-found-by-name.
       "greenhouse:liquidpersonnel",
       "greenhouse:crisprecruit",
       "teamtailor:jobtalentfrance",     // the board the English-only screen once cleared

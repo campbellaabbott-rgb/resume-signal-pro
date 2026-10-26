@@ -39,7 +39,10 @@
 #       the FAQ and /trust used to render ("The agent applies for you",
 #       "submits where employers allow", the pass line, the Morning Queue,
 #       "the employers it applies to for you", "re-verified all day"). C3
-#       read only the pre-script H1 and passed on the bake alone.
+#       read only the pre-script H1 and passed on the bake alone. The
+#       changelog's entries are cut from each chunk first (the merge recheck,
+#       2026-10-25): a dated entry that quotes a removed sentence is a record
+#       on /changelog, not a string the home, FAQ or trust pages render.
 #
 # Read-only: GETs of public pages, the sitemap, the ledger and llms files.
 # Nothing is sent or written. Before the deploy C1-C5 FAIL by design.
@@ -116,7 +119,10 @@ import("node:fs").then(async (fs) => {
   // open roles", "National Federation of Independent Business (NFIB) jobs"),
   // so requiring the full form failed a correct deploy whenever the sample
   // hit one. The real test is the basis and no "verified".
-  const TITLE_OK = / jobs(?:: [\d,]+ (?:open roles(?: from their own hiring system)?|roles(?: listed by a staffing agency)?)|: (?:open roles from their own hiring system|roles listed by a staffing agency))?$|^Federal openings listed on USAJOBS(?:: [\d,]+ roles)?$/;
+  // The SEO round (2026-10-18) added two forms: an employer page that sums its
+  // boards ("PwC jobs: 3,011 open roles across 3 hiring-system boards") and a
+  // name two hiring systems carry ("Open roles on boards named “lush”").
+  const TITLE_OK = / jobs(?:: [\d,]+ (?:open roles(?: from their own hiring system| across \d+ (?:hiring-system )?boards)?|roles(?: listed by a staffing agency)?)|: (?:open roles from their own hiring system|roles listed by a staffing agency))?$|^Federal openings listed on USAJOBS(?:: [\d,]+ roles)?$|^Open roles on boards named “[^”]+”$/;
   const titles = threeCompanies.map((p) => [p, titleOf((docs.get(p) || {}).body || "")]);
   const badTitles = titles.filter(([, t]) => !TITLE_OK.test(t) || /verified/i.test(t));
   if (!titles.length) out("INFO", "C1 no company page to read a title from");
@@ -209,8 +215,10 @@ import("node:fs").then(async (fs) => {
     else {
       const mainJs = (await get(main, 60000)).body;
       const chunks = [...new Set([...mainJs.matchAll(/"\.\/((?:en(?:-GB)?|Index)-[A-Za-z0-9_-]+\.js)"/g)].map((m) => m[1]))].slice(0, 12);
-      let bundle = mainJs;
-      for (const c of chunks) bundle += "\n" + (await get(`/assets/${c}`, 60000)).body;
+      // The changelog bundle is an en-* chunk too: its dated entries may quote a removed sentence, which React renders nowhere but /changelog.
+      const rendered = typeof R.withoutChangelogEntries === "function" ? R.withoutChangelogEntries : (js) => js;
+      let bundle = rendered(mainJs);
+      for (const c of chunks) bundle += "\n" + rendered((await get(`/assets/${c}`, 60000)).body);
       const found = RETIRED_SPA.filter((x) => bundle.includes(x));
       const hasIndex = chunks.some((c) => c.startsWith("Index-"));
       if (!bundle.includes("Live jobs, straight from employers")) out("FAIL", `C7 the entry and its ${chunks.length} English/Index chunks do not carry the home hero\x27s headline: the English strings were not found`);

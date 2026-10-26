@@ -38,10 +38,17 @@
 #       requisitions; Boeing's PRIDE site, read in full with no stated total,
 #       is one of five Workday sites of its tenant, whose new requisition
 #       copies the Workday cross-site dedupe skips when a sibling holds the
-#       base id, round 4). The watch lines judge this checkout's model, so
-#       they PASS only once the served chunk carries the gate and print INFO
-#       before; Stripe's board total is within 10% of its own Greenhouse feed
-#       (FAIL by decision until job-board records whole-feed totals).
+#       base id, round 4). The served chunk that holds the site rule (the
+#       one with its Oracle site pattern) carries round 4's Workday arm: the
+#       tenant-capturing Workday pattern, exec'd and tested against a Set
+#       built from the generated multi-site tenant list, whose names
+#       minification keeps as string literals (akumincorp and boeing among
+#       them; the SEO round's merge of main, 2026-10-25). The watch lines
+#       judge this checkout's model, so they PASS only once the served chunk
+#       carries the gate, and on a Workday site (Akumin ADG, Boeing PRIDE)
+#       only once it also carries that arm, and print INFO before; Stripe's
+#       board total is within 10% of its own Greenhouse feed (FAIL by
+#       decision until job-board records whole-feed totals).
 #   81d Databricks and Canva print no "never half" (their 30-day share is
 #       under one half).
 #   81e no live 14-day share sits outside its own interval.
@@ -71,7 +78,9 @@
 # through tsx), and the served bundle (the entry, the Jobs chunk, the chunks
 # it imports and the English locale chunks) is searched for the copy and the
 # refusal keys. Both must hold for a PASS; a line that reads only this
-# checkout's model before the bundle carries what it judges prints INFO.
+# checkout's model before the bundle carries what it judges prints INFO. The
+# probe puts a marker line naming each chunk before it, so a line can judge
+# one chunk (the Workday arm must sit in the chunk that holds the site rule).
 # Property names survive minification, so the watch gate is read from the
 # served code itself ("X.watchPromise&&" opening the element whose children
 # call companyProfile.zero.body). Read-only: GETs (PostgREST runs a
@@ -98,17 +107,19 @@ const TOKENS = ["egud~us2~CX_1", "ejwl~us2~CX", "eluq~us2~CX_1", "hcbt~em2~CX_10
   const main = (home.body.match(/\/assets\/index-[^"]*\.js/) || [])[0];
   let bundle = "";
   let jobsChunk = "";
+  // Each chunk is preceded by a marker line naming it, so a line can judge one chunk.
+  const tag = (name) => `\n/*vd81 chunk ${name}*/\n`;
   if (main) {
     const mainJs = (await get(`${SITE}${main}`)).body;
-    bundle = mainJs;
+    bundle = tag(main) + mainJs;
     jobsChunk = ((mainJs.match(/"\.\/Jobs-[A-Za-z0-9_-]*\.js"/) || [])[0] || "").replace(/"/g, "").replace(/^\.\//, "");
     const en = [...new Set([...mainJs.matchAll(/"\.\/(en(?:-GB)?-[A-Za-z0-9_-]+\.js)"/g)].map((m) => m[1]))].slice(0, 8);
-    for (const d of en) bundle += "\n" + (await get(`${SITE}/assets/${d}`)).body;
+    for (const d of en) bundle += tag(d) + (await get(`${SITE}/assets/${d}`)).body;
     if (jobsChunk) {
       const jobsJs = (await get(`${SITE}/assets/${jobsChunk}`)).body;
-      bundle += "\n" + jobsJs;
+      bundle += tag(jobsChunk) + jobsJs;
       const deps = [...new Set([...jobsJs.matchAll(/"\.\/([A-Za-z0-9_.-]+\.js)"/g)].map((m) => m[1]))].slice(0, 60);
-      for (const d of deps) bundle += "\n" + (await get(`${SITE}/assets/${d}`)).body;
+      for (const d of deps) bundle += tag(d) + (await get(`${SITE}/assets/${d}`)).body;
     }
   }
   fs.writeFileSync("/tmp/vd_81_bundle.txt", bundle);
@@ -263,6 +274,44 @@ if (served) {
   else if (ungated.length) out("FAIL", `81c the served company chunk prints companyProfile.zero.body without the lander model\x27s watchPromise (${ungated.length} of ${calls.length} call(s)): every zero page promises a watch counts its new postings, Delaney at the Green included (round 3\x27s gate is not published)`);
   else { watchGateServed = true; out("PASS", `81c the served company chunk prints companyProfile.zero.body only where the lander model\x27s watchPromise opens it (${calls.length} call(s))`); }
 }
+// Round 4 in the served bundle (the SEO round\x27s merge of main, 2026-10-25):
+// the site rule (lander-model\x27s siteDedupedToken) carries its Workday arm.
+// The chunk that holds the rule is the one with its Oracle site pattern
+// (round 3); in that chunk the tenant-capturing Workday pattern must be
+// exec\x27d and its capture tested against a Set built from the generated
+// multi-site tenant list, which minification leaves as string literals, so
+// akumincorp and boeing must be in it. A pattern that is never used, a list
+// without them, or an arm in another chunk is not the arm.
+let workdayArmServed = false;
+if (served) {
+  const ORACLE_ARM = "/^[^~]+~[^~]+~CX(?:_\\w+)?$/";
+  const WORKDAY_ARM = "/^([^~]+)~wd\\d+~[^~]+$/";
+  const ARM_TENANTS = ["akumincorp", "boeing"];
+  const esc = (v) => v.replace(/[$]/g, "\\$");
+  const parts = bundle.split(/\n\/\*vd81 chunk ([^*\n]*)\*\/\n/);
+  const chunks = parts.length === 1 ? [{ name: "the served bundle", body: bundle }] : Array.from({ length: (parts.length - 1) / 2 }, (_, k) => ({ name: parts[2 * k + 1], body: parts[2 * k + 2] }));
+  const armOf = (body) => {
+    const at = body.indexOf(WORKDAY_ARM);
+    if (at < 0) return null;
+    const v = (/([\w$]+)=$/.exec(body.slice(Math.max(0, at - 60), at)) || [])[1];
+    if (!v) return null;
+    const use = new RegExp(`(?<![\\w$.])${esc(v)}\\.exec\\([\\w$]+\\)[;,]\\s*return\\s*!!([\\w$]+)\\s*&&\\s*([\\w$]+)\\.has\\(\\s*\\1\\[1\\]\\s*\\)`).exec(body);
+    if (!use) return null;
+    const set = use[2];
+    const decl = new RegExp(`(?<![\\w$.])${esc(set)}=new Set\\(([\\w$]+)\\)`).exec(body);
+    const list = decl
+      ? (new RegExp(`(?<![\\w$.])${esc(decl[1])}=\\[([^\\[\\]]*)\\]`).exec(body) || [])[1]
+      : (new RegExp(`(?<![\\w$.])${esc(set)}=new Set\\(\\[([^\\[\\]]*)\\]\\)`).exec(body) || [])[1];
+    if (!list) return null;
+    const names = [...list.matchAll(/"([^"]*)"/g)].map((m) => m[1]);
+    return ARM_TENANTS.every((x) => names.includes(x)) ? { tenants: names.length } : null;
+  };
+  const holders = chunks.filter((c) => c.body.includes(ORACLE_ARM));
+  const armed = holders.map((c) => ({ c, arm: armOf(c.body) })).find((x) => x.arm);
+  if (!holders.length) out("FAIL", "81c no served chunk carries the zero page\x27s site rule (its Oracle site pattern): rounds 3 and 4 are not published, or the rule moved (re-anchor this line on lander-model\x27s siteDedupedToken)");
+  else if (!armed) out("FAIL", `81c the served chunk holding the zero page\x27s site rule (${holders.map((c) => c.name).join(", ")}) carries no Workday arm: no tenant-capturing Workday pattern tested against a set holding ${ARM_TENANTS.join(" and ")}, so a zero page on a Workday site of a multi-site tenant (Akumin ADG, Boeing PRIDE) still promises a watch counts its new postings (round 4 is not published)`);
+  else { workdayArmServed = true; out("PASS", `81c the served chunk holding the zero page\x27s site rule (${armed.c.name}) carries round 4\x27s Workday arm: the tenant-capturing Workday pattern, tested against a set of ${armed.arm.tenants} multi-site tenants (${ARM_TENANTS.join(" and ")} among them)`); }
+}
 // The zero boards, each judged by this checkout\x27s model on its live row when nothing is listed.
 const facts81c = (r) => `bucket ${r.observability_bucket ?? "none"}, ${r.tracking_days ?? "no"} tracking days, ${r.feed_total !== null && r.feed_total !== undefined ? `feed_total ${r.feed_total} (${r.feed_state}, read ${r.feed_read_at})` : "no stated total"}`;
 // The fifth field names the dedupe that can empty the site, when one can: an
@@ -295,11 +344,16 @@ for (const [label, t, shape, list, deduped] of ZERO_BOARDS) {
   // gates the sentence on it (the line above), and say INFO before.
   const stated = r.feed_total !== null && r.feed_total !== undefined;
   const why = [stated ? `the board states ${r.feed_total} role(s) this page does not list` : "", deduped || ""].filter(Boolean).join("; ");
-  const live = watchGateServed ? "" : "; the served company chunk does not gate the sentence (the line above FAILs), so the live page prints it whatever this model says";
+  // A Workday site\x27s line also needs the served rule\x27s Workday arm (the
+  // line above): round 3\x27s served rule promised on Boeing\x27s PRIDE site.
+  const workdaySite = /~wd\d+~/.test(t);
+  const servedRule = watchGateServed && (!workdaySite || workdayArmServed);
+  const live = !watchGateServed ? "; the served company chunk does not gate the sentence (the line above FAILs), so the live page prints it whatever this model says"
+    : !servedRule ? "; the served site rule has no Workday arm (the line above FAILs), so the live page promises the watch here whatever this model says" : "";
   if (typeof mm.watchPromise !== "boolean") out("FAIL", `81c ${label}: this checkout\x27s lander model has no watch rule (watchPromiseOf), so the zero page promises every watch counts new postings`);
   else if (mm.watchPromise && why) out("FAIL", `81c ${label}: this checkout\x27s model would promise a watch counts its new postings (${facts81c(r)}; ${why}): a watch on this token can count nothing the board lists`);
-  else if (mm.watchPromise) out(watchGateServed ? "PASS" : "INFO", `81c ${label}: ${watchGateServed ? "the page promises" : "this checkout\x27s model promises"} a watch counts its new postings, where no total is stated, the newest read was whole and neither dedupe can empty the site (${facts81c(r)})${live}`);
-  else out(watchGateServed ? "PASS" : "INFO", `81c ${label}: ${watchGateServed ? "the page offers" : "this checkout\x27s model offers"} Watch without promising what it counts (${facts81c(r)}${why ? `; ${why}` : ""})${live}`);
+  else if (mm.watchPromise) out(servedRule ? "PASS" : "INFO", `81c ${label}: ${servedRule ? "the page promises" : "this checkout\x27s model promises"} a watch counts its new postings, where no total is stated, the newest read was whole and neither dedupe can empty the site (${facts81c(r)})${live}`);
+  else out(servedRule ? "PASS" : "INFO", `81c ${label}: ${servedRule ? "the page offers" : "this checkout\x27s model offers"} Watch without promising what it counts (${facts81c(r)}${why ? `; ${why}` : ""})${live}`);
 }
 {
   const r = rowOf("stripe");
@@ -401,7 +455,7 @@ const MADE_UP = "zzzz-none~wd1~Careers";
     } catch (e) { body = String((e && e.name) || e); }
     const ms = Date.now() - t0;
     const inSitemap = token === MADE_UP || sitemap === null ? null : sitemap.includes(`/jobs/company/${token}</loc>`);
-    probes.push({ token, madeUp: token === MADE_UP, status, ms, body: body.slice(0, 400), inSitemap });
+    probes.push({ token, madeUp: token === MADE_UP, status, ms, body, inSitemap });
   }
   fs.writeFileSync("/tmp/vd_81_workday.json", JSON.stringify({ at: new Date().toISOString(), probes }));
 })();
@@ -448,8 +502,11 @@ for (const p of probes) {
 # Workday company pages, with the crawler's UA. The bake writes two fact
 # lines on a company page from get_company_intel, exactly
 #   "The countries holding the most of its roles on this board:" and
-#   "The fields holding the most of its roles on this board:",
-# and drops both without failing when the reader is slow: it reads six pages
+#   "The fields holding the most of its roles on this board:"
+# in main's bake of 2026-10-25, and the same two lines with the scope it read
+# in place of "on this board" in the SEO round's bake (S13-116: "across"
+# the employer's hiring system, its possessive HTML-escaped, or "across
+# USAJOBS"); either counts. The bake drops both without failing when the reader is slow: it reads six pages
 # at a time in its own page order (open roles, largest first), and past its
 # 90-second deadline, or after 18 failures in a row, every page after that
 # point states neither. So the line samples the sitemap, which lists the
@@ -508,9 +565,13 @@ const MIN_SHARE = 0.9;
 const HEAD = 4;
 const PLACES = "The countries holding the most of its roles on this board:";
 const FIELDS = "The fields holding the most of its roles on this board:";
+// The SEO round bakes the scope it read in place of "on this board" (S13-116):
+// across the employer\x27s hiring system (its possessive escaped), or across USAJOBS.
+const SCOPED = /<p>The (?:countries|fields) holding the most of its roles across (?:USAJOBS|[^<:]{1,200} hiring system): /g;
 let b = null;
 try { b = JSON.parse(fs.readFileSync("/tmp/vd_81_baked.json", "utf8")); } catch { b = null; }
 const count = (h, s) => String(h || "").split(s).length - 1;
+const facts = (h) => count(h, PLACES) + count(h, FIELDS) + (String(h || "").match(SCOPED) || []).length;
 const titleOf = (h) => (String(h || "").match(/<title>([^<]*)<\/title>/) || [])[1] || "";
 const canonOf = (h) => (String(h || "").match(/<link rel="canonical" href="([^"]*)"/) || [])[1] || "";
 const verdict = (p, homeTitle, site) => {
@@ -518,7 +579,7 @@ const verdict = (p, homeTitle, site) => {
   const t = titleOf(p.body);
   const own = `${site}/jobs/company/${p.token}`;
   if (!t || (homeTitle && t === homeTitle) || canonOf(p.body) !== own) return `the homepage shell (title "${t.slice(0, 60)}", canonical "${canonOf(p.body) || "absent"}")`;
-  return count(p.body, PLACES) + count(p.body, FIELDS) > 0 ? null : "neither fact line";
+  return facts(p.body) > 0 ? null : "neither fact line";
 };
 if (!b) out("FAIL", "81j the baked Workday company pages: not probed");
 else if (b.sitemapStatus !== 200) out("FAIL", `81j the live sitemap answered HTTP ${b.sitemapStatus}: no Workday company page to sample`);
@@ -539,7 +600,7 @@ else {
     const headWant = Math.min(HEAD, b.workdayPages);
     const headGood = head.filter((x) => x.why === null).length;
     const headOk = head.length === headWant && headGood === headWant;
-    const what = `${good.length} of ${pages.length} sampled Workday company pages (sitemap positions ${pages[0].pos + 1} to ${pages[pages.length - 1].pos + 1} of ${b.workdayPages}; the first ${headWant}: ${headGood}${head.length < headWant ? ` of ${head.length} sampled` : ""}, the last ${tail.length}: ${tailGood}) state a fact line ("${PLACES}" or "${FIELDS}"): ${pct}%`;
+    const what = `${good.length} of ${pages.length} sampled Workday company pages (sitemap positions ${pages[0].pos + 1} to ${pages[pages.length - 1].pos + 1} of ${b.workdayPages}; the first ${headWant}: ${headGood}${head.length < headWant ? ` of ${head.length} sampled` : ""}, the last ${tail.length}: ${tailGood}) state a fact line ("${PLACES}" or "${FIELDS}", or the same line across the employer\x27s hiring system or USAJOBS): ${pct}%`;
     if (pages.length >= MIN_SAMPLE && share >= MIN_SHARE && headOk) out("PASS", `81j ${what}, at least 90% and each of the first ${headWant}: the bake read the company reader for its Workday pages, its largest and its tail included`);
     else if (pages.length >= MIN_SAMPLE && share >= MIN_SHARE) out("FAIL", `81j ${what}, but not each of the first ${headWant}: the largest Workday pages baked without facts (is the reader too slow on big tenants for the bake\x27s 8-second per-call timeout?)`);
     else out("FAIL", `81j ${what}, want at least 90% of at least ${MIN_SAMPLE} and each of the first ${headWant}: the bake dropped Workday facts (is 20261012137000 applied, did the publish re-bake after it, and did the bake run past its 90-second intel deadline?)`);
@@ -552,7 +613,7 @@ else {
     for (const x of misses.slice(0, 8)) out("INFO", `81j ${x.p.token} (sitemap Workday position ${x.p.pos + 1}): ${x.why}`);
     if (misses.length > 8) out("INFO", `81j ... and ${misses.length - 8} more sampled page(s) without a fact line`);
     const c = b.control || {};
-    const cn = count(c.body, PLACES) + count(c.body, FIELDS);
+    const cn = facts(c.body);
     out("INFO", `81j control dominos (SmartRecruiters): HTTP ${c.status}, ${cn} fact line(s)${cn ? "" : ": this bake wrote no places or fields on any page it was checked on"}`);
   }
 }

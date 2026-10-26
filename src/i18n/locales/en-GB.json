@@ -156,7 +156,7 @@
     "browseJobsPlain": "Browse the live job board"
   },
   "footer": {
-    "copyright": "© {{year}} CV Booster. All rights reserved.",
+    "copyright": "© {{year}} Resume Booster. All rights reserved.",
     "privacy": "Privacy Policy",
     "terms": "Terms of Service",
     "contact": "Contact",
@@ -409,10 +409,10 @@
   },
   "faq": {
     "title": "Frequently Asked Questions",
-    "subtitle": "Everything you need to know about CV Booster",
+    "subtitle": "Everything you need to know about Resume Booster",
     "questions": {
       "whatDoIGet": {
-        "question": "What do I get with CV Booster?",
+        "question": "What do I get with Resume Booster?",
         "answer": "You get a comprehensive analysis including ATS-optimised bullet point rewrites, stronger action verb suggestions, keyword recommendations for your industry, and red flags that recruiters might notice. Everything is written in direct, actionable language."
       },
       "howLong": {
@@ -441,7 +441,7 @@
       },
       "vsChatGPT": {
         "question": "Why is this better than ChatGPT or CV templates?",
-        "answer": "CV Booster is purpose-built for ATS optimisation with a 5-category weighted scoring system, 14 industry-specific templates, and recruiter-calibrated feedback. Unlike ChatGPT, you get consistent 10-section structured output without prompt engineering. Unlike templates, we provide personalised rewrites, LinkedIn analysis, and job description alignment. Your CV is never used for training, and the free scan deletes it within 7 days."
+        "answer": "Resume Booster is purpose-built for ATS optimisation with a 5-category weighted scoring system, 14 industry-specific templates, and recruiter-calibrated feedback. Unlike ChatGPT, you get consistent 10-section structured output without prompt engineering. Unlike templates, we provide personalised rewrites, LinkedIn analysis, and job description alignment. Your CV is never used for training, and the free scan deletes it within 7 days."
       },
       "bringYourAgent": {
         "question": "Can my own AI agent use this?",
@@ -469,7 +469,7 @@
     "subtitleNamed": "Everything you need to know about {{name}}"
   },
   "comparison": {
-    "title": "Why CV Booster?",
+    "title": "Why Resume Booster?",
     "subtitle": "See how we compare to other options",
     "feature": "Feature",
     "templates": "Templates",
@@ -1741,7 +1741,11 @@
       "subtitleIndustry": "We couldn't read a job title from this CV, so these are current openings in your field — scored against your CV, not found by it. Search the board yourself to narrow them.",
       "loading": "Ranking live openings against your resume…",
       "apply": "Apply",
-      "seeAll": "See all matches on the job board — save searches, track applications"
+      "seeAll": "See all matches on the job board — save searches, track applications",
+      "openBoardFallbackLive": "Open the live job board — {{n}}+ openings live now, ranked against your CV",
+      "openBoardFallbackPlain": "Open the live job board — live openings, ranked against your CV",
+      "openBoardNoteLive": "{{n}}+ openings live now · save searches, watch companies, track applications",
+      "openBoardNotePlain": "Live openings · save searches, watch companies, track applications"
     },
     "nextSteps": {
       "eyebrow": "Next steps",
@@ -1819,7 +1823,7 @@
   },
   "valueComparison": {
     "feature": "Feature",
-    "us": "CV Booster",
+    "us": "Resume Booster",
     "them": "Traditional Writer",
     "rows": {
       "timeToResults": {
@@ -3642,10 +3646,10 @@
     }
   },
   "jobsPage": {
-    "seoTitle": "Live Jobs From Companies' Own Boards — Check Your Fit Before You Apply",
-    "seoDescription": "Live openings read straight from thousands of employers' own hiring systems and re-read through the day. See how your CV fits any posting free, then apply on the employer's own site.",
+    "seoTitle": "Live Job Board — Openings Direct From Company Career Pages",
+    "seoDescription": "Browse {{phrase}}, each read from the hiring system that published it, never copied from another job board. No dated posting older than 30 days.",
     "h1": "Live job board",
-    "subtitle": "Every job here comes straight from the company's own careers system — no aggregators, no dead links, and nothing re-listed by us. When a company itself relists a role, the posting says so. Where the employer's system allows it, we re-check a posting when you apply.",
+    "subtitle": "Every job here is read from the hiring system that published it — an employer's own, a staffing agency's (labelled as one) or the federal government's listing site — never copied from another job board, and nothing is re-listed by us. When an employer itself re-lists a role, the posting says so. Where the employer's system allows it, we re-check a posting when you apply.",
     "honestyNote": "Then we do the part other boards skip: check your CV against any posting free and see exactly what to add — so you apply prepared, not hoping.",
     "searchPlaceholder": "Title or keyword — e.g. product designer",
     "locationPlaceholder": "Location",
@@ -3687,14 +3691,15 @@
     "endBrowseCta": "Search for a role",
     "endAlertHint": "Rather than checking back — we'll email you when new postings match this search.",
     "endAlertCta": "Email me new matches",
-    "sourceNote": "Sources: the official public job-board APIs companies publish on {{vendors}}. The largest boards are re-checked most often and the rotation runs continuously — how far behind it is right now is a measurement rather than a promise: the live median and 95th-percentile re-check ages are published on the Ghost Job Index — and postings a company takes down disappear on the next pass. A feed that stops responding drops off the board rather than breaking it.",
+    "sourceNote": "Sources: companies' own hiring systems, on {{vendors}}. The largest boards are re-checked most often and the rotation runs continuously — how far behind it is right now is a measurement rather than a promise: the live median and 95th-percentile re-check ages are published on the Ghost Job Index — and a posting a company takes down leaves the board when the rotation next re-reads that company's feed. A feed that stops responding drops off the board rather than breaking it.",
     "fitFetchErrorTitle": "Couldn't load that posting",
     "fitFetchError": "The company's feed didn't return the description. Open the posting and paste it into the scanner instead.",
     "fitLoadedTitle": "Job description loaded",
     "fitLoadedDesc": "{{title}} at {{company}} — upload or paste your resume and the scan will check fit against this posting.",
     "allFields": "All fields",
     "companySeoTitle": "{{company}} jobs: open roles from their own hiring system",
-    "companySeoDescription": "Browse {{companyPossessive}} open roles dated in the last 30 days, read from {{companyPossessive}} own hiring system. Check your CV's fit against any role free, then apply on {{companyPossessive}} own site.",
+    "companySeoDescription": "Open roles at {{company}}, read from {{companyPossessive}} own hiring system. Check your CV's fit free before you apply.",
+    "companySeoPossessiveIts": "its",
     "openRoles": "{{count}} open roles",
     "openRolesTip": "This company has {{count}} roles dated in the last 30 days on its own board right now.",
     "fitSummaryStrong": "You’re a strong fit for {{count}} of these openings",
@@ -3749,8 +3754,7 @@
     "fitBadge": "fit {{pct}}%",
     "fitNeedsResumeTitle": "Scan your resume first",
     "fitNeedsResume": "Run the free scan (or save a resume version in your account) and the board can rank every posting against it.",
-    "landerSeoTitle": "Live {{category}} Jobs — From Official Company Job Boards",
-    "landerSeoDescription": "Live {{category}} openings read from employers' own hiring systems and re-read through the day. Check your CV's fit free, then apply on the employer's own site.",
+    "landerSeoTitle": "{{category}} Jobs — Live Openings from Company Boards",
     "landerH1": "Live {{category}} jobs",
     "addToCompete": "Add to compete:",
     "matchStrong": "Strong match",
@@ -3916,7 +3920,7 @@
     "signalReading": "Still reading our closure record and posting rates for these employers. An unfinished read is not an empty one, so nothing on screen yet is a finding about anybody.",
     "takedownEmpty": "No employer among the openings loaded here has a closure record that clears the bar. Turn this off to see all roles.",
     "verdictNoRecord": "we hold no closure record for this employer, so we cannot say either way — that can be a board bigger than one visit can read, where no closure of theirs is observable to us, or an employer who took nothing down while we watched",
-    "verdictRecordWithheld": "we hold a closure record for this employer and do not print it: {{why}}",
+    "verdictRecordWithheld": "we hold a closure record for this employer: {{why}}",
     "hhNoClosureRecord": "We hold no closure record for this employer: not one of their postings has been observed coming off the board. On a board bigger than one visit can read, no closure is observable to us until we complete a provable full pass and then watch a role go after it; on a board we do read in full, it means nothing came down while we watched. We cannot tell those apart from here, so this is a gap on our side and not a sign they are not hiring.",
     "hhRelistsOnly": "Every posting of theirs we have watched leave came back re-listed, so we have no clean take-down to count — {{n}} re-listings logged, which is a floor.",
     "compareTip": "Add to compare (up to 3)",
@@ -4517,7 +4521,28 @@
     "verdictTakedownCeiling": "takes up to {{pct}}% of its roles down within {{d}} days, counting every takedown",
     "hhTakedownRateDated": "Up to {{pct}}% of its roles came down within {{d}} days, counting every takedown, measured over the {{n}} roles that carry the company's own posting date.",
     "hhFootnoteCurveListing": "Computed from the full lifecycle of the postings this site lists — when they open and when they come down — not a one-time snapshot. Roles still up, and roles that passed our 30-day cap, are counted as unfinished rather than left out.",
-    "employerOutlivedEveryTakedown": "That is longer than this employer usually leaves a role up: {{gone}}% of its roles are off the board within {{d}} days, counting every takedown."
+    "employerOutlivedEveryTakedown": "That is longer than this employer usually leaves a role up: {{gone}}% of its roles are off the board within {{d}} days, counting every takedown.",
+    "companySeoTitleCount": "{{company}} jobs: {{n}} open roles from their own hiring system",
+    "companySeoTitleCountShort": "{{company}} jobs: {{n}} open roles",
+    "companySeoTitleShort": "{{company}} jobs",
+    "companySeoDescriptionCount": "{{n}} open roles at {{company}}, read from {{companyPossessive}} own hiring system. Check your CV's fit free before you apply.",
+    "agencySeoTitleCount": "{{company}} jobs: {{n}} roles listed by a staffing agency",
+    "agencySeoTitleCountShort": "{{company}} jobs: {{n}} roles",
+    "agencySeoTitle": "{{company}} jobs: roles listed by a staffing agency",
+    "agencySeoDescriptionCount": "{{n}} roles listed by {{company}}, a staffing agency: roles are usually for its clients. Check your CV's fit free before you apply.",
+    "agencySeoDescription": "Roles listed by {{company}}, a staffing agency: roles are usually for its clients. Check your CV's fit free before you apply.",
+    "usajobsSeoTitleCount": "{{h1}}: {{n}} roles",
+    "landerSeoTitleCount": "{{category}} Jobs — {{n}} Live Openings",
+    "landerSeoDescriptionLead": "Live {{category}} openings",
+    "landerSeoDescriptionLeadCount": "{{exact}} live {{category}} openings, {{countsDay}}",
+    "landerSeoDescriptionBoards": ", from {{boards}} company job boards",
+    "landerSeoDescriptionTail": ", each read from the hiring system that published it.",
+    "seoTitleCount": "Live Job Board — {{n}} Openings Direct From Company Career Pages",
+    "seoPhrase": "live openings from companies' own job boards",
+    "seoPhraseCount": "{{n}} live openings",
+    "seoPhraseCountBoards": "{{n}} live openings across {{boards}} company job boards",
+    "usajobsSeoDescriptionCount": "{{n}} federal openings listed on USAJOBS, each naming its agency. {{cap}} Check your CV's fit free.",
+    "usajobsSeoDescription": "Federal openings listed on USAJOBS, each naming its agency. {{cap}} Check your CV's fit free."
   },
   "accountPage": {
     "statusSaveFailed": "Couldn't save that status — please try again.",
@@ -4844,7 +4869,7 @@
     "intentFields2": "Browse the whole board",
     "intentCheck": "Check an employer",
     "seoTitle5": "Explore Every Field on the Board — An Exact Live Count and the Roles Inside Each One",
-    "seoDescription5": "Start from the field you work in, narrow to the actual role, then to remote, pay, experience or country — every number is a live count of the exact search the link runs, with how much of that field each filter can even see. Plus what our closure record does and does not say about the employers hiring in that slice.",
+    "seoDescription5": "Every field on the board with a live count, the roles inside each, and remote, pay, experience and country filters that say how much of the field they can see.",
     "headline2": "Start with your field. Land on a list you can actually read.",
     "staleParts": "{{parts}} could not be recomputed in the last refresh and are shown from an earlier run.",
     "intentAria": "What are you looking for?",
@@ -5159,6 +5184,8 @@
     "renewsOn": "Renews {{date}}",
     "retiredPlanEnds": "It ends on {{date}} and will not renew. Pro's tools stay on until then.",
     "retiredPlanLive": "While it runs, Pro's tools stay on. The agent itself is switched off; you can cancel the plan any time in billing.",
+    "retiredPlanTrialing": "It is still in its trial: scans have no daily cap, the writing tools count against the free daily allowance, and the Full Analysis is not included during a trial. The agent itself is switched off; you can cancel the plan any time in billing.",
+    "retiredPlanTrialingEnds": "Its trial ends on {{date}} and the plan will not renew. Until then scans have no daily cap, the writing tools count against the free daily allowance, and the Full Analysis is not included.",
     "retiredPlanOwing": "Its last payment didn't go through. You don't need a card for a plan we no longer sell: cancel it in billing and the retries stop.",
     "retiredPlanTitle": "Your plan is the Apply Agent plan, which we no longer sell.",
     "secureSignedIn": "Secure checkout via Stripe. Cancel anytime — no lock-in.",
@@ -5377,7 +5404,7 @@
   },
   "agentConnect": {
     "attachTitle": "Prompts and resources your host can list",
-    "attachLead": "Beside the tools, the server registers ready-made prompts and a few readable documents. Hosts that list them (claude.ai's attach menu, Claude Code's slash list, Cursor's panel) show them under the server's name; listing costs no call and needs no key.",
+    "attachLead": "Beside the tools, the server registers ready-made prompts and a few readable documents. Hosts that list them (claude.ai's attach menu, Claude Code's slash list) show them under the server's name; listing costs no call and needs no key.",
     "promptsHeading": "Prompts",
     "resourcesHeading": "Resources",
     "resourceKeyed": "needs a key or sign-in",
@@ -5453,7 +5480,7 @@
     "scoreCta": "Score my CV against this job (free)",
     "scoreNote": "Opens the free scanner with this vacancy's description already filled in.",
     "descHeading": "The employer's own description",
-    "sourceNote": "Pulled straight from {{companyPossessive}} own hiring system — never an aggregator, never a repost. A dated posting is served for at most {{days}} days from the date the employer states, and the board re-checks a posting when you open it.",
+    "sourceNote": "Read from {{companyPossessive}} own hiring system, never copied from another job board. A dated posting is served for at most {{days}} days from the date the employer states. On the live board, opening a posting whose feed we last read more than {{hours}} hours ago asks the employer's system again, where that system allows it.",
     "theEmployer": "the employer",
     "theEmployerPossessive": "the employer's"
   },
@@ -5462,6 +5489,7 @@
     "body": "One email a month with the keywords job postings in your field are screening for, and a free rescan link. Every email has a one-click unsubscribe.",
     "button": "Yes, send me the pulse",
     "done": "You're subscribed. The first pulse arrives within a day.",
+    "donePaused": "You're subscribed. The monthly pulse is paused for now, so nothing arrives until it restarts; every pulse has a one-click unsubscribe.",
     "invalid": "This link has expired or was already used. Tick the box under your next scan report to get a new one.",
     "missing": "This page needs the link from your confirmation email.",
     "error": "Could not confirm right now. Try the link again shortly.",
@@ -5522,14 +5550,7 @@
   },
   "affiliates": {
     "commission": {
-      "tagline": "Earn a commission on the tools your referrals buy.",
-      "headline": "{{other}} per tool sale ({{small}} on smaller tools)",
-      "detail": "Earn {{other}} when someone you refer buys the Premium Resume Package, ATS Defense, Career Snapshot, Graduate Game Plan or Freelance Boost, or {{small}} for one of the smaller tools: keyword fix, cover letter, scan pack, interview coach, career path simulator or apply assistant.",
-      "excluded": "The Full Resume Analysis, scan credit top-ups, Pro, Morning Queue and the Agent Pass earn no commission.",
-      "bannerTitle": "Your commission",
-      "banner": "{{other}} per referred tool sale, {{small}} on smaller tools",
-      "linkHint": "Share this link to earn {{other}} on each tool sale it brings ({{small}} on smaller tools), with a 30-day attribution window",
-      "howItWorks": "When someone clicks your link and buys one of the tools within 30 days, you earn {{other}}, or {{small}} for a smaller tool. The Full Resume Analysis, scan credit top-ups and subscriptions earn nothing."
+      "bannerTitle": "Your commission"
     },
     "updates": {
       "title": "Updates while this page is open",
@@ -5840,6 +5861,53 @@
     "hiringSystem": "Hiring system",
     "country": "Country",
     "agencies": "Staffing agencies",
-    "agenciesHiddenChip": "No staffing agencies"
+    "agenciesHiddenChip": "No staffing agencies",
+    "collisionKeywordPlaceholder_one": "Search {{n}} role on boards named “{{token}}”",
+    "collisionKeywordPlaceholder_other": "Search {{n}} roles on boards named “{{token}}”",
+    "collisionKeywordPlaceholderNoCount": "Search roles on boards named “{{token}}”",
+    "usajobsKeywordPlaceholder_one": "Search {{n}} federal opening listed on USAJOBS",
+    "usajobsKeywordPlaceholder_other": "Search {{n}} federal openings listed on USAJOBS",
+    "usajobsKeywordPlaceholderNoCount": "Search federal openings listed on USAJOBS"
+  },
+  "boardSource": {
+    "notCopied": "read from the hiring system that published it, never copied from another job board",
+    "tailNoOld": "each posting read from the hiring system that published it, never copied from another job board, and no dated posting older than 30 days",
+    "sentence": "Every posting is read from the hiring system that published it — an employer's own, a staffing agency's (labelled as one) or the federal government's listing site — never copied from another job board."
+  },
+  "entryLevelIndex": {
+    "leadersHeading": "Where a beginner has the best chance right now — ranked by share",
+    "totalCaption": "live entry-level openings right now"
+  },
+  "aboutPage": {
+    "metaTitle": "About Resume Booster — a Live Job Board and a Free CV Scan",
+    "metaDescription": "What resumebooster.work is, what its job board is and how its counts are made, each figure dated.",
+    "breadcrumbLabel": "Breadcrumb",
+    "breadcrumbHome": "Home",
+    "breadcrumbHere": "About",
+    "h1": "About Resume Booster",
+    "lead": "Resume Booster, at resumebooster.work, is two things: a live job board of openings read from employers' own hiring systems, not copied from other job boards, and a free CV scanner that shows how an applicant-tracking system reads your file. It is an independent site, not affiliated with any employer or hiring system it reads, and not the same product as resumebooster.io or ResumeBoostAI.",
+    "boardTitle": "What the board is",
+    "asOf": "as of {{date}}",
+    "boardCounted": "{{open}} open postings from {{boards}} company job boards with roles open ({{asOf}}), each read from employers' own hiring systems, not copied from other job boards; a staffing agency's board and a federal listing site, where the board carries one, are labelled as what they are.",
+    "boardUncounted": "Open postings, each read from employers' own hiring systems, not copied from other job boards; a staffing agency's board and a federal listing site, where the board carries one, are labelled as what they are.",
+    "boardRest": "The boards come from {{sources}}. A company job board is one employer's board on one hiring system, and one employer can run several, so the board count is not a count of employers. Applying always happens on the employer's own site.",
+    "countsTitle": "How the counts are made",
+    "countsBody": "An open role is a posting the employer's own feed still serves whose date falls inside the last {{days}} days: the employer's own date, or for a posting with no date, the day we last saw it in the feed. Every count on this site says the day it was taken; a count printed on a page built from a saved reading says so. The feeds are re-read in a rotation, the largest boards most often, and how far behind the rotation runs is published on the <ghost>Ghost Job Index</ghost> as a measurement, not a promise. A posting coming down is logged as a takedown and never called a hire: a hire, a withdrawal and a cancelled requisition look the same from a feed. The scoring behind the CV scan is on the <method>methodology page</method>.",
+    "nextTitle": "Where to go next",
+    "nextBoard": "The live board",
+    "nextCompanies": "Companies with a page of their own",
+    "nextGhost": "Ghost Job Index",
+    "nextData": "Hiring Data & API",
+    "nextAgents": "Connect your own AI",
+    "nextTrust": "Trust & privacy",
+    "nextChangelog": "Changelog",
+    "privacyLine": "Privacy and data questions:",
+    "seller": "Seller: {{name}}, {{address}}"
+  },
+  "apiAddressPage": {
+    "metaTitle": "This is not the API address",
+    "metaDescription": "The data API does not live on this site's own address; the how-to and the free keys are on /data-api.",
+    "lead": "You asked this site for {{path}}. The API does not live here; it lives at:",
+    "keyLine": "Requests carry a key as Authorization: Bearer rb_live_…; free keys and every endpoint are described on"
   }
 }

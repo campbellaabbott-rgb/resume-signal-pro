@@ -469,6 +469,36 @@ describe("a test-mode event changes no live entitlement, balance or notice (roun
     expect(conversions).toEqual([]);
   });
 
+  // Recheck 3 (2026-10-26): every other one-off ran against the production
+  // tables too: a test scan pack added to a live scan balance, and a test cut
+  // product ran its generator and mailed the buyer. Only the Full Analysis,
+  // the one product the rehearsal is for, is handled.
+  it("a test-signed scan pack is acknowledged and adds no credits", async () => {
+    const credited: unknown[] = [];
+    db.rpcs.add_scan_credits = (a) => { credited.push(a); return { data: true, error: null }; };
+    const r = await deliver("checkout.session.completed", paidSession("cs_test_scanpack", { product_type: "scan_pack", credits: "10", user_email: "buyer@example.com" }, { amount_total: 900, livemode: false }), { secret: TEST_SECRET, livemode: false });
+    expect(r.status).toBe(200);
+    expect(r.json).toMatchObject({ testMode: true, ignored: "checkout.session.completed" });
+    expect(credited).toEqual([]);
+    expect(rowOf("cs_test_scanpack")).toBeUndefined();
+  });
+
+  it("a test-signed cut product is acknowledged, runs no generator and mails no one", async () => {
+    const r = await deliver("checkout.session.completed", paidSession("cs_test_snapshot", { product_type: "career_snapshot" }, { amount_total: 700, livemode: false }), { secret: TEST_SECRET, livemode: false });
+    expect(r.status).toBe(200);
+    expect(r.json).toMatchObject({ testMode: true, ignored: "checkout.session.completed" });
+    expect(calls.map((c) => c.fn)).toEqual([]);
+    expect(restMails).toEqual([]);
+    expect(db.rows("used_stripe_sessions")).toHaveLength(0);
+  });
+
+  it("positive control: the same scan pack signed live adds its credits", async () => {
+    const credited: unknown[] = [];
+    db.rpcs.add_scan_credits = (a) => { credited.push(a); return { data: true, error: null }; };
+    await deliver("checkout.session.completed", paidSession("cs_live_scanpack", { product_type: "scan_pack", credits: "10", user_email: "buyer@example.com" }, { amount_total: 900 }));
+    expect(credited.length).toBe(1);
+  });
+
   it("the rehearsed one-off is still handled, and its referral earns nothing", async () => {
     const id = "cs_test_rehearsal_referred";
     const r = await deliver("checkout.session.completed", paidSession(id, { product_type: "full_analysis", referral_code: "ab12cd34" }, { amount_total: 500, livemode: false }), { secret: TEST_SECRET, livemode: false });

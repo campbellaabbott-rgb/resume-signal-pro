@@ -20,6 +20,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import i18n from "@/i18n";
 import enListing from "@/i18n/shards/listing/en.json";
 import { clearBoardBudgetRefusal } from "@/lib/board-budget";
+import { setLanderManifestForTests } from "@/lib/seo/lander-manifest";
 
 const invoke = vi.fn();
 vi.mock("@/integrations/supabase/client", () => ({
@@ -48,7 +49,8 @@ const NAME = "Morgan Stanley";
 const DESC = "We are hiring an analyst for the New York office to support the equity research team. ".repeat(4);
 
 beforeAll(() => { i18n.addResourceBundle("en", "translation", enListing, true, true); });
-beforeEach(() => { invoke.mockReset(); clearBoardBudgetRefusal(); });
+// Every board has a written page here (SEO-010): this file holds the name on the link.
+beforeEach(() => { invoke.mockReset(); clearBoardBudgetRefusal(); setLanderManifestForTests("*"); });
 afterEach(() => { cleanup(); clearBoardBudgetRefusal(); });
 
 it("the seam itself resolves the tenant code to the employer's own name", () => {

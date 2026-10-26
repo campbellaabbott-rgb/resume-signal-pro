@@ -23,7 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { FREELANCE_PURCHASE_KEY } from "@/lib/purchase-proofs";
-import { stashedSessionIdFor } from "@/lib/auth-fragment";
+import { forgetStashedSessionFor, stashedSessionIdFor } from "@/lib/auth-fragment";
 
 interface ProjectIntake {
   clientType: string; problem: string; deliverable: string; toolsSkills: string;
@@ -138,7 +138,22 @@ export default function FreelanceBoost() {
   // purchase. This browser bought one before, without the link → no buy
   // buttons, and the link from the email to see it.
   // The first script in index.html moves session_id out of the address
-  // before any analytics records it; this tab's stash keeps it for a reload.
+  // before any analytics records it. THE STASHED ID IS HONOURED UNTIL ITS
+  // PURCHASE IS DELIVERED (S13-082): a paid purchase with nothing generated
+  // yet is found again by a reload, a tab restore, the app's own reload on a
+  // failed chunk, or a later visit in the tab, so its buyer is never shown
+  // the buy buttons. The stash keeps one id per path, so another payment
+  // return in the tab (a $5 Full Analysis) does not evict it. Once the
+  // section is on screen the stash forgets a Stripe purchase's id, and this
+  // page keeps it only while it stays open (the stash used to keep it for
+  // good, so every later visit to the page in the tab showed the old
+  // purchase and never the buy buttons). A later visit after delivery is a
+  // new visit: the "bought on this device" box, whose link from the
+  // purchase email (stripe-webhook mails it) shows it again.
+  // A PRO MEMBER'S GRANT (pro_<id>) IS KEPT after delivery, until the tab
+  // closes: create-product-checkout minted it and mailed nothing, so no email
+  // link could bring its section back. Nothing here starts a new purchase:
+  // the product is no longer sold (the header above).
   const [stashedSession] = useState(() => stashedSessionIdFor("/freelance-boost", null).id);
   const urlSession = params.get("session_id") || stashedSession;
   const [boughtHere] = useState(readBoughtHere);
@@ -147,6 +162,12 @@ export default function FreelanceBoost() {
     if (!urlSession) return;
     try { localStorage.setItem(PURCHASE_KEY, JSON.stringify({ at: Date.now() })); } catch { /* storage blocked: the link still works */ }
   }, [urlSession]);
+  // DELIVERED: the section is on screen, so the stash lets a Stripe
+  // purchase's id go (a stash holding another purchase's id keeps it). A
+  // grant stays: no purchase email names it.
+  useEffect(() => {
+    if (result && sessionId && !sessionId.startsWith("pro_")) forgetStashedSessionFor("/freelance-boost", sessionId);
+  }, [result, sessionId]);
   const generate = async (d: IntakeDraft) => {
     if (!sessionId) return;
     setGenerating(true);

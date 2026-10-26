@@ -124,7 +124,7 @@ const EMPLOYER_LINE = "longer than this employer usually leaves a role up";
 // whose depth floor is 21 days of watching: below it the clause is the
 // withheld one (COMPANY_ANSWERED_WITHHELD), which answers just as surely.
 const COMPANY_ANSWERED = "come off the board and stay off";
-const COMPANY_ANSWERED_WITHHELD = "we hold a closure record for this employer and do not print it";
+const COMPANY_ANSWERED_WITHHELD = "we hold a closure record for this employer: ";
 
 // serveList emits the client's own shape (see BoardJob) — camelCase, `token`
 // for the company and `postedAt` for the employer's stated date.
