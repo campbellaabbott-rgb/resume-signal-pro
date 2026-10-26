@@ -371,6 +371,8 @@
     "scripts/verify-deploy.d/73-wave3-agents-api.sh": "wave4",
     "scripts/verify-deploy.d/83-profiles-design-bake.sh": "wave4",
     "scripts/verify-deploy.d/92-w4b-merge-recheck.sh": "wave4",
+    "scripts/verify-deploy.d/92-w4b-checkout-catalogue.sh": "wave4",
+    "src/test/w4b-verify-section-92-can-fail-and-never-writes.test.ts": "wave4",
     "src/pages/ProductSuccess.tsx": "wave4",
     "src/pages/ResumeBuilder.tsx": "wave4",
     "src/test/a-buy-button-quoted-25-dollars-for-a-5-dollar-product.test.ts": "wave4",

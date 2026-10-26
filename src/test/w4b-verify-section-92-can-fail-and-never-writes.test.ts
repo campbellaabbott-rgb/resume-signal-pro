@@ -104,10 +104,12 @@ const PRODUCTS: Array<[string, string]> = [
 const PRICING_CHUNK = `import{a as x}from"./PurchaseTerms-AAAA1111.js";const k=["checkoutGate.purchasesOpenSoon","proPlan.perks.noDailyScanCap"];`;
 const TERMS_CHUNK = `const z=["purchaseTerms.autoRenewConsent","Asia/Kolkata","Asia/Calcutta"];`;
 const FB_CHUNK = `const t=["freelanceBoost.noLongerSoldTitle"];`;
-const site = (over: { pricing?: string; terms?: string; fb?: string } = {}): Route[] => [
+// The pricing page's chunk is PricingPage since the homepage switch-over, and
+// was Pricing before it; the section reads whichever the entry names.
+const site = (over: { pricing?: string; terms?: string; fb?: string; pricingName?: string } = {}): Route[] => [
   { match: "^GET https://site\\.test/$", body: `<html><script type="module" src="/assets/index-ENTRY0001.js"></script></html>` },
-  { match: "^GET https://site\\.test/assets/index-ENTRY0001\\.js$", body: `const r={a:()=>import("./Pricing-PRIC0001.js"),b:()=>import("./FreelanceBoost-FBST0001.js")};` },
-  { match: "^GET https://site\\.test/assets/Pricing-PRIC0001\\.js$", body: over.pricing ?? PRICING_CHUNK },
+  { match: "^GET https://site\\.test/assets/index-ENTRY0001\\.js$", body: `const r={a:()=>import("./${over.pricingName ?? "Pricing"}-PRIC0001.js"),b:()=>import("./FreelanceBoost-FBST0001.js")};` },
+  { match: `^GET https://site\\.test/assets/${over.pricingName ?? "Pricing"}-PRIC0001\\.js$`, body: over.pricing ?? PRICING_CHUNK },
   { match: "^GET https://site\\.test/assets/PurchaseTerms-AAAA1111\\.js$", body: over.terms ?? TERMS_CHUNK },
   { match: "^GET https://site\\.test/assets/FreelanceBoost-FBST0001\\.js$", body: over.fb ?? FB_CHUNK },
 ];
@@ -159,6 +161,21 @@ describe("section 92", () => {
     expect(fails.some((l) => /pro_auto_renew_consents does not exist/.test(l))).toBe(true);
     expect(fails.some((l) => /Pricing page .* lacks: the renewal box; India in the refused time zones;/.test(l))).toBe(true);
     expect(fails.some((l) => /Freelance Boost page .* still sells/.test(l))).toBe(true);
+  });
+
+  it("the switch-over's PricingPage chunk is read like the Pricing chunk was, and an entry naming neither FAILs", () => {
+    const base = good().filter((r) => !/site\\\.test/.test(r.match));
+    // The new page's paid cards say purchases open soon through their own gate key.
+    const NEW_PAGE = `import{a as x}from"./PurchaseTerms-AAAA1111.js";const k=["pricingPlans.buy.gateSeller","proPlan.perks.noDailyScanCap"];`;
+    const now = run([...site({ pricingName: "PricingPage", pricing: NEW_PAGE }), ...base]);
+    expect(now.lines.filter((l) => l.startsWith("FAIL")), now.out).toEqual([]);
+    expect(now.lines.some((l) => /^PASS  the published Pricing page \(PricingPage-PRIC0001\.js\) says purchases open soon/.test(l)), now.out).toBe(true);
+    const lacking = run([...site({ pricingName: "PricingPage", pricing: NEW_PAGE, terms: `const z=["Europe/Berlin"];` }), ...base]);
+    expect(lacking.lines.some((l) => /^FAIL  the published Pricing page \(PricingPage-PRIC0001\.js\) lacks: the renewal box; India/.test(l)), lacking.out).toBe(true);
+    const noGate = run([...site({ pricingName: "PricingPage", pricing: NEW_PAGE.replace("pricingPlans.buy.gateSeller", "pricingPlans.buy.cta") }), ...base]);
+    expect(noGate.lines.some((l) => /^FAIL  the published Pricing page \(PricingPage-PRIC0001\.js\) lacks: the purchases-open-soon line;/.test(l)), noGate.out).toBe(true);
+    const neither = run([...site({ pricingName: "PricingTable" }), ...base]);
+    expect(neither.lines.some((l) => /^FAIL  the live entry names no PricingPage or Pricing chunk/.test(l)), neither.out).toBe(true);
   });
 
   it("the old perk naming the cut products on the published page FAILs", () => {
