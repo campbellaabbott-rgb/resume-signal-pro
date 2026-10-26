@@ -19,6 +19,7 @@ import path from "node:path";
 import zlib from "node:zlib";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { oracleTokenOfHost } from "./oracle-host.mjs";
 const execFileP = promisify(execFile);
 
 const [, , CRAWL, OUT] = process.argv;
@@ -239,18 +240,18 @@ for (const s of SURTS) {
         add(s.vendor, label); found++;
         if (s.personioHost) out.personio_hosts[label] = s.personioHost;
       } else if (s.kind === "oracle") {
-        // {tenant}.fa.{region}.oraclecloud.com — everything else under
-        // oraclecloud.com (and there is a great deal of it) is not a careers
-        // site and must not enter the pool.
-        const m = host.match(/^([a-z0-9-]+)\.fa\.([a-z0-9-]+)\.oraclecloud\.com$/);
-        if (!m) continue;
-        if (NOT_COMPANY.has(m[1])) continue;
+        // {tenant}.fa.{region}.oraclecloud.com, or {tenant}.fa.oraclecloud.com
+        // on a host with no region label (JPMorgan Chase's, 2026-10-25) —
+        // everything else under oraclecloud.com (and there is a great deal of
+        // it) is not a careers site and must not enter the pool.
+        const token = oracleTokenOfHost(host);
+        if (!token || NOT_COMPANY.has(token.split("~")[0])) continue;
         // CX_1 is the near-universal default site number and is not carried in
         // the hostname; a tenant on a different site fails verification and is
         // dropped, which is the correct direction to be wrong in — a missing
         // board costs inventory, an unfetchable one costs a refresh slot every
         // rotation forever.
-        add("oracle", `${m[1]}~${m[2]}~CX_1`); found++;
+        add("oracle", token); found++;
       } else if (s.kind === "paylocity") {
         if (host !== s.host) continue;
         // The board id is the GUID segment right after the all-jobs listing

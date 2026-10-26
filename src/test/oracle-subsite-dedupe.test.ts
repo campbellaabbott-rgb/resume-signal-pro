@@ -533,3 +533,21 @@ describe("guard 3 — a dedupe exit is OUR action: untracked, never a closure", 
     expect(sql).not.toMatch(/VALUES \('catalog_highwater'/);
   });
 });
+
+describe("a tenant whose host has no region label is keyed like any other (JPMorgan Chase, 2026-10-25)", () => {
+  // jpmc.fa.oraclecloud.com carries no region, so its token is jpmc~~CX_1001.
+  // Refusing the empty middle field stored every JPMorgan row with a null
+  // req_key: the dedupe could not see it and the repair sweep counted it as
+  // unkeyed.
+  it("keys a requisition by tenant, and ranks a second site of the tenant behind the first", () => {
+    expect(oracleReqKey("jpmc~~CX_1001", "1")).toBe("oracle:jpmc:1");
+    expect(oracleReqKeyOfId("oracle:jpmc~~CX_1001:210587260")).toBe("oracle:jpmc:210587260");
+    const ranks = rankOracleSites([{ source: "oracle", token: "jpmc~~CX_1001" }, { source: "oracle", token: "jpmc~~CX_1002" }], {});
+    expect([ranks.get("jpmc~~CX_1001"), ranks.get("jpmc~~CX_1002")]).toEqual([0, 1]);
+  });
+
+  it("still refuses a token with too few parts or no site", () => {
+    for (const t of ["jpmc~us2", "jpmc~~", "jpmc~us2~", "~~CX_1001", "jpmc"]) expect(oracleReqKey(t, "1"), t).toBeNull();
+    expect(isOracleDevToken("jpmc-dev1~~CX_1001"), "a region-less sandbox is still a sandbox").toBe(true);
+  });
+});

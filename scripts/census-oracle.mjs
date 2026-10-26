@@ -24,6 +24,7 @@
 //   env: OC_PROBE_CAP (0=all), OC_DEADLINE_S (default 540), OC_CDX_PAGES
 
 import fs from "node:fs";
+import { ORACLE_HOST_RE } from "./oracle-host.mjs";
 
 const OUT = process.argv[2] || "oracle-verified.json";
 const PROBE_CAP = Number(process.env.OC_PROBE_CAP) || 0;
@@ -55,11 +56,17 @@ async function fetchTextRetry(url, tries = 6) {
 // What DOES work: `fa.{region}.oraclecloud.com` is itself a valid domain
 // suffix, so a domain-match on it returns ONLY tenant hosts for that region —
 // a narrow, paginable query per region instead of one hopeless global walk.
-const REGIONS = (process.env.OC_REGIONS || "us2,us6,ca2,ap1,em2,eu1,uk1,ap2,us3,sa1").split(",");
-const HOST_RE = /^([a-z0-9-]+)\.fa\.([a-z0-9]+)\.oraclecloud\.com$/;
+// "none" is the domain with no region label, fa.oraclecloud.com: JPMorgan
+// Chase's board is jpmc.fa.oraclecloud.com (2026-10-25), and no regional
+// domain-match can return it. Its token carries an empty region.
+const REGIONS = (process.env.OC_REGIONS || "us2,us6,ca2,ap1,em2,eu1,uk1,ap2,us3,sa1,none").split(",");
+const domainOf = (region) => (region === "none" ? "fa.oraclecloud.com" : `fa.${region}.oraclecloud.com`);
+// Carried tenant~region pairs: object-literal entries, and packed records
+// (`Name\v0\vtoken`, vendor index 0 being oracle in sources.ts's V list).
+const SOURCES_TEXT = fs.readFileSync(new URL("../supabase/functions/job-board/sources.ts", import.meta.url), "utf8");
 const carried = new Set(
-  fs.readFileSync(new URL("../supabase/functions/job-board/sources.ts", import.meta.url), "utf8")
-    .match(/source: "oracle", token: "([^"]+)"/g)?.map((m) => m.match(/token: "([^"]+)"/)[1].split("~").slice(0, 2).join("~").toLowerCase()) ?? [],
+  [...SOURCES_TEXT.matchAll(/source: "oracle", token: "([^"]+)"/g), ...SOURCES_TEXT.matchAll(/\\v0\\v([^"\\]+)/g)]
+    .map((m) => m[1].split("~").slice(0, 2).join("~").toLowerCase()),
 );
 
 const hosts = new Map(); // tenant~region -> host
@@ -67,7 +74,7 @@ for (const region of REGIONS) {
   if (Date.now() > DEADLINE) break;
   for (let page = 0; page < CDX_PAGES; page++) {
     if (Date.now() > DEADLINE) break;
-    const url = `https://web.archive.org/cdx/search/cdx?url=fa.${region}.oraclecloud.com&matchType=domain`
+    const url = `https://web.archive.org/cdx/search/cdx?url=${domainOf(region)}&matchType=domain`
       + `&fl=original&collapse=urlkey&limit=5000&page=${page}`;
     const text = await fetchTextRetry(url);
     if (!text) break;
@@ -77,14 +84,15 @@ for (const region of REGIONS) {
     for (const line of lines) {
       let h;
       try { h = new URL(line.trim()).hostname.toLowerCase(); } catch { continue; }
-      const m = h.match(HOST_RE);
+      const m = h.match(ORACLE_HOST_RE);
       if (!m) continue;
-      const [, tenant, reg] = m;
+      const [, tenant, reg = ""] = m;
       // Junk and mirrors: numeric-only slugs are archive noise, and *-test /
       // *-dev tenants duplicate production feeds verbatim (ekac-test == ekac,
-      // measured during the probe wave).
+      // measured during the probe wave). Numbered too: the region-less domain
+      // is mostly jpmc-dev1..9, jpmc-dev19 and jpmc-test (2026-10-25).
       if (/^\d+$/.test(tenant)) continue;
-      if (/(^|-)(test|dev|stage|uat|demo|sandbox)(-|$)/.test(tenant)) continue;
+      if (/(^|-)(test|dev|stage|uat|demo|sandbox)\d*(-|$)/.test(tenant)) continue;
       const key = `${tenant}~${reg}`;
       if (carried.has(key) || hosts.has(key)) continue;
       hosts.set(key, h);

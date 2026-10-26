@@ -48,6 +48,7 @@ import {
   extractRipplingJobPosts,
   normalizeWorkday,
   normalizeOracle,
+  oracleHost,
   type OracleHolderRow,
   oracleReqIdOfId,
   oracleReqKey,
@@ -144,7 +145,7 @@ const json = (body: unknown, status = 200) =>
 // a-stripper-that-loses-real-code-passes-every-guard-that-reads-it.test.ts.
 const SITEMAP_DAYS = 30;
 // Rationale: docs/job-board-index-notes.md#n002-build-version
-const BUILD_VERSION = "2026-09-09.93"; // per-version deploy notes: docs/job-board-deploy-notes.md (kept out of the bundle; see the 4.5MB cap note there)
+const BUILD_VERSION = "2026-09-09.95"; // per-version deploy notes: docs/job-board-deploy-notes.md (kept out of the bundle; see the 4.5MB cap note there)
 // Rationale: docs/job-board-index-notes.md#n003-stored-names-do-not-heal-themselves-the-refr
 
 // Rationale: docs/job-board-index-notes.md#n483-const-name_sync_version
@@ -1355,9 +1356,9 @@ async function fetchWorkday(s: JobSource, startOffset = 0): Promise<{ jobPosting
 
 // Rationale: docs/job-board-index-notes.md#n032-fetchoracle
 async function fetchOracle(s: JobSource, startOffset = 0): Promise<{ items: unknown[]; raw: unknown; windowed: boolean; feedTotal: number; nextOffset: number; feedEnded: boolean; endOffset: number }> {
-  const [tenant, region, site] = s.token.split("~");
-  if (!tenant || !region || !site) throw new Error("bad oracle token");
-  const base = `https://${tenant}.fa.${region}.oraclecloud.com/hcmRestApi/resources/latest/recruitingCEJobRequisitions`;
+  const site = s.token.split("~")[2], host = oracleHost(s.token);
+  if (!host) throw new Error("bad oracle token");
+  const base = `https://${host}/hcmRestApi/resources/latest/recruitingCEJobRequisitions`;
   const all: unknown[] = [];
   let feedTotal = 0;
   // Rationale: docs/job-board-index-notes.md#n513-let-exhausted-false
@@ -5621,11 +5622,11 @@ async function checkLive(src: JobSource, externalId: string, applyUrl?: string |
     }
     if (src.source === "oracle") {
       // Rationale: docs/job-board-index-notes.md#n671-const-tenant-region-site-src-token
-      const [tenant, region, site] = src.token.split("~");
-      if (!tenant || !region || !site) return null;
+      const site = src.token.split("~")[2], host = oracleHost(src.token);
+      if (!host) return null;
       const finder = `ById;Id=${externalId},siteNumber=${site}`;
       const res = await fetchWithTimeout(
-        `https://${tenant}.fa.${region}.oraclecloud.com/hcmRestApi/resources/latest/recruitingCEJobRequisitionDetails?onlyData=true&finder=${encodeURIComponent(finder)}`,
+        `https://${host}/hcmRestApi/resources/latest/recruitingCEJobRequisitionDetails?onlyData=true&finder=${encodeURIComponent(finder)}`,
       );
       if (res.status === 404) return false;
       if (!res.ok) return null;
@@ -5846,11 +5847,11 @@ async function fetchVendorDetail(
   } else if (src.source === "oracle") {
     // Per-requisition detail carries the full posting: description +
     // qualifications + responsibilities as separate HTML fields.
-    const [tenant, region, site] = src.token.split("~");
-    if (tenant && region && site) {
+    const site = src.token.split("~")[2], host = oracleHost(src.token);
+    if (host) {
       const finder = `ById;Id=${externalId},siteNumber=${site}`;
       const res = await fetchWithTimeout(
-        `https://${tenant}.fa.${region}.oraclecloud.com/hcmRestApi/resources/latest/recruitingCEJobRequisitionDetails?expand=all&onlyData=true&finder=${encodeURIComponent(finder)}`,
+        `https://${host}/hcmRestApi/resources/latest/recruitingCEJobRequisitionDetails?expand=all&onlyData=true&finder=${encodeURIComponent(finder)}`,
       );
       if (res.ok) {
         const j = await res.json().catch(() => null);

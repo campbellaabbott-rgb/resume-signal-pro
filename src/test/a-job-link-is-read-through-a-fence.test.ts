@@ -84,6 +84,8 @@ describe("the host list", () => {
     ["https://acme.pinpointhq.com/en/postings/1d94ace1", "pinpoint"],
     ["https://careers-primehealthcare.icims.com/jobs/284798/job", "icims"],
     ["https://ecwl.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/job/245294", "oracle"],
+    // JPMorgan Chase's board: an Oracle host with no region label (2026-10-25).
+    ["https://jpmc.fa.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1001/job/210587260", "oracle"],
     ["https://ats.rippling.com/zadentech/jobs/9f4c8ecf-200e-4e25-8e2d-9c3f6d4e9b75", "rippling"],
     ["https://recruiting.paylocity.com/recruiting/jobs/Details/4503396", "paylocity"],
     ["https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?jobId=1", "adp"],
@@ -290,11 +292,16 @@ describe("what is read: the JobPosting, or the vendor's API", () => {
     expect(plan("https://ats.rippling.com/acme/jobs/9f4c8ecf-200e-4e25-8e2d-9c3f6d4e9b75", "rippling")).toBe("https://api.rippling.com/platform/api/ats/v1/board/acme/jobs/9f4c8ecf-200e-4e25-8e2d-9c3f6d4e9b75");
     expect(plan("https://acme.bamboohr.com/careers/94", "bamboohr")).toBe("https://acme.bamboohr.com/careers/94/detail");
     expect(plan("https://jobs.ashbyhq.com/acme/ca7a6d04-50bc-4783-842a-3bf742f37ea3", "ashby"), "ashby is read from its page").toBeNull();
+    // An Oracle host with no region label is read on that same host (JPMorgan Chase, 2026-10-25).
+    expect(plan("https://jpmc.fa.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1001/job/210587260", "oracle")).toBe(
+      `https://jpmc.fa.oraclecloud.com/hcmRestApi/resources/latest/recruitingCEJobRequisitionDetails?expand=all&onlyData=true&finder=${encodeURIComponent('ById;Id="210587260",siteNumber=CX_1001')}`,
+    );
     // Every derived API URL is itself on the list: the fence holds it too.
     for (const u of [
       plan("https://job-boards.greenhouse.io/acme/jobs/123", "greenhouse"), plan("https://jobs.eu.lever.co/acme/f7f8c3c8-bb78-47a9-a4c3-a0f0f6f42f9a", "lever"),
       plan("https://jobs.smartrecruiters.com/JYSK/744000154877740", "smartrecruiters"), plan("https://ats.rippling.com/acme/jobs/9f4c8ecf-200e-4e25-8e2d-9c3f6d4e9b75", "rippling"),
       plan("https://ecwl.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/job/245294", "oracle"),
+      plan("https://jpmc.fa.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1001/job/210587260", "oracle"),
     ]) expect(checkFetchUrl(new URL(u!)).ok, u!).toBe(true);
   });
 

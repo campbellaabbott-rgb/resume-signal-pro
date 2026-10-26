@@ -65,7 +65,11 @@ import {
 // 2026-10-11.2 (wave 4, recheck 3): the copy no longer labels twelve employers' own boards (State Farm,
 // Principal, Goodwill of Colorado, HKBU, the Scottish Government's two, Nunavut, Emirates NBD's two,
 // Emirates Islamic, Farrans, Calamos) as staffing agencies'.
-export const BUILD_VERSION = "2026-10-11.2";
+// 2026-10-15.1: the catalogue copy carries JPMorgan Chase (oracle jpmc~~CX_1001) and its search key.
+// Merged onto wave 4's copy, so the one build carries both lines; neither build has deployed.
+// 2026-10-15.2: merged onto wave 4's 2026-10-11.2 copy, so it carries the JPMorgan line and the twelve
+// boards without the agency label. 2026-10-15.1 named the copy before that merge and never deployed.
+export const BUILD_VERSION = "2026-10-15.2";
 
 // ── mirror constants (src/config/layoffs.ts names this file) ──────────────
 export const LAYOFF_LOOKBACK_DAYS = 90;

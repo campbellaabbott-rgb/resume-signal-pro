@@ -19,16 +19,12 @@
 //   output: { resolved: [{token,name,count,evidence}], skipped: [...] }
 //           — same entry shape the merge feed expects, counts probed per site.
 import { readFileSync, writeFileSync } from "node:fs";
+import { oracleHost as hostOf } from "./oracle-host.mjs";
 
 const [, , RESOLVE_PATH, OUT] = process.argv;
 const ambiguous = JSON.parse(readFileSync(RESOLVE_PATH, "utf8")).ambiguous ?? [];
 const DEFAULT_NAMES = /^candidate experience site$|^career site$|^careers?$|^cx(_\d+)?$/i;
 const CONCURRENCY = 4;
-
-const hostOf = (token) => {
-  const [tenant, dc] = token.split("~");
-  return `${tenant}.fa.${dc}.oraclecloud.com`;
-};
 
 async function jget(url) {
   const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0", Accept: "application/json" }, signal: AbortSignal.timeout(20_000) });

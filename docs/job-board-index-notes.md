@@ -907,6 +907,11 @@ startOffset rotates a tenant bigger than ORACLE_PAGE_CAP x ORACLE_PAGE_SIZE
 across passes. No oracle board sits at that 2,000 ceiling today (measured
 2026-08-25: zero), so this is a ceiling being removed before an employer
 grows into it rather than a backlog being drained.
+The host comes from oracleHost(token) in normalize.ts, the one builder the
+list read, checkLive, fetchVendorDetail and normalizeOracle share since
+2026-09-09.95: an empty region is a host with no region label
+(jpmc.fa.oraclecloud.com), anything else is spelled as it always was. See
+n1384.
 
 ## n033-oracle-chunk
 
@@ -12229,11 +12234,13 @@ which is worse than the leak.
 
 ## n671-const-tenant-region-site-src-token
 
-In `supabase/functions/job-board/index.ts`, above: `const [tenant, region, site] = src.token.split("~");`
+In `supabase/functions/job-board/index.ts`, above: `const site = src.token.split("~")[2], host = oracleHost(src.token);`
 
 Per-requisition detail: a pulled posting returns an empty items array
 rather than a 404, so treat "no item" as gone and a bad status as
-unknown (never as closed).
+unknown (never as closed). The host is oracleHost's, so a token with an
+empty region (a host with no region label) is checked like any other
+(n1384); before .95 such a token answered "unknown" for ever.
 
 ## n672-const-cxs-applyurl-workdaycxsurl-applyur
 
@@ -16160,7 +16167,8 @@ applicants, no auth, no scraping:
   GET /hcmRestApi/resources/latest/recruitingCEJobRequisitions
       ?onlyData=true&expand=requisitionList&finder=findReqs;siteNumber=CX_1,limit=N,offset=M
 Token is a compound `tenant~region~site` (the three pieces the host and
-finder need); the host is {tenant}.fa.{region}.oraclecloud.com.
+finder need); the host is {tenant}.fa.{region}.oraclecloud.com, or
+{tenant}.fa.oraclecloud.com when the region is empty (oracleHost, n1384).
 
 Census note (2026-07-24): identity is NOT in this feed — the tenant is an
 opaque 4-letter code and only ~41% of tenants name themselves anywhere. So
@@ -21669,3 +21677,83 @@ has had this lane's budget; unexplained is what is left, and it is the only
 class selectStaleLane() will fetch.
 
 Pure: inputs are never mutated; the same inputs give the same verdicts.
+
+## n1384-oracle-host-without-a-region
+
+In `supabase/functions/job-board/sources.ts`, above: `...u("JPMorgan Chase\v0\vjpmc~~CX_1001"),`
+
+An Oracle CE host with no region label (2026-09-09.95, 2026-10-25).
+JPMorgan Chase's board is https://jpmc.fa.oraclecloud.com, site CX_1001:
+TotalJobsCount 7,244 (the feed serves 7,243), 3,728 posted within 30 days,
+1,283 within 7 (its own posting-date facet, 2026-10-25). We carried no
+JPMorgan board; it was the largest single gap the 2026-10-24 coverage check
+found, more than that check's whole 21-board add-list together (about 3,100
+in window, part of it estimated).
+
+Why the token has an empty middle field. The catalogue spells an Oracle
+board tenant~region~site and every place that fetched one built
+{tenant}.fa.{region}.oraclecloud.com, refusing an empty region: the list
+read threw "bad oracle token" (board failed on every visit), checkLive
+answered unknown (a JPMorgan posting could never be found closed), the
+description read skipped, normalizeOracle returned no rows, and
+oracleTenantOf returned null (every row would have been stored with a null
+req_key, invisible to the sub-site dedupe and counted as unkeyed by the
+repair sweep of migration 20260909216000). No regional token reaches the
+board: jpmc.fa.oraclecloud.com is a DNS alias of an Oracle pod
+(eino.fa.ocs... and fa-rulotw.fa.us-phoenix-1.ocs...), and the certificate
+those names present is valid for jpmc.fa.oraclecloud.com only, so a token
+spelling the pod fails TLS. An empty region can only mean "this host has no
+region label"; a sentinel such as "-" would need a comparison at every
+builder and could be read as a real label.
+
+One builder. oracleHost(token) in normalize.ts is the only place the host
+is spelled; fetchOracle, checkLive, fetchVendorDetail and normalizeOracle
+all call it. A token with a region builds the byte-identical URL it built
+before at all four (src/test/a-host-with-no-region-is-still-an-oracle-host
+runs the four real functions over every Oracle token in the catalogue
+against the old template: zero diffs). The census tooling's mirror is
+scripts/oracle-host.mjs, held equal to it by the same test.
+
+One site. JPMorgan's tenant has seven CE sites: CX_1001 (JPMC), CX_1002
+(Chase) and CX_2001 (Alumni) active, CX_1003, CX_3001, CX_3005 and CX_4001
+inactive. All seven report the same 7,244 and the same facets; full walks
+of the three active sites served the same 7,243 requisition ids (100%
+overlap), and a made-up site number (CX_9999) returns the same pool, so on
+this tenant the list ignores siteNumber. Carry CX_1001 only. A second
+JPMorgan site would serve every requisition twice until the sub-site rank
+caught it; oracleTenantOf now accepts the empty region, so it would.
+
+Capacity, measured 2026-10-25 on .92 live. Upload tally +~0.3 KB. Corpus
+1,033,740 rows against CORPUS_CEILING 1,200,000: JPMorgan adds about 3,728
+in-window rows (about 5,300 if its first lap stays open, Marriott's 1.43x),
+about 86.5% of the ceiling, nothing evicted. The reader takes it as it takes
+every big Oracle board: MAX_POSTINGS_PER_VISIT caps a visit at three
+100-row pages, so a full read is 25 visits; visits 14-25 read rows past the
+30-day fence that ingest drops, because a date-sorted feed has no early
+stop. No pages override, no knob. A 100-row page is about 175 KB, far under
+MAX_RESPONSE_BYTES. Appended as the catalogue's last entry, so no carried
+board's catalogue index moves (the test
+src/test/a-host-with-no-region-is-still-an-oracle-host.test.ts pins the
+44,519 boards before it to wave 4's catalogue hash).
+The cold cursor does not walk catalogue order, though: it walks COLD_LIST,
+the catalogue minus the hot boards dealt round-robin by vendor
+(interleaveByVendor), and there JPMorgan lands mid-list (cold index 22,161
+of 44,393 with the fallback hot set) and moves the 22,231 boards after it
+one place. The pass that crosses the deploy reads at most one board a
+second time and skips none. The build bump puts it in the bootstrap lane.
+
+Search. Only "JPMorgan Chase" reaches the employer through the live brand
+keys (and only once the board has 100 open), so employer-aliases.ts and its
+layoff-filings copy carry one HAND-ADDED key, jpmorgan -> jpmc~~CX_1001,
+for "JPMorgan", "J.P. Morgan" and "JP Morgan" (which otherwise fell to title
+search). Keep it when the file is regenerated from the facet. No "chase"
+key: Capchase, Chase Design Group and HarborChase share the word.
+
+Other region-less hosts (Wayback CDX url=fa.oraclecloud.com 48,080 lines,
+crt.sh 355 certificates, Common Crawl CC-MAIN-2026-39): every other name
+was a JPMorgan sandbox (jpmc-dev1..9, jpmc-dev19, jpmc-test), unreachable
+(jpmc-fa01 timed out, sydtst failed TLS) or Oracle infrastructure that does
+not resolve (faaasvanitypod*). Two host shapes the token still cannot
+express were counted, not chased: the EU sovereign cloud
+{tenant}.fa.ocs.oraclecloud.eu (7 production tenants with CE URLs) and the
+US government cloud {tenant}.fa.ocs.oraclegovcloud.com (2).

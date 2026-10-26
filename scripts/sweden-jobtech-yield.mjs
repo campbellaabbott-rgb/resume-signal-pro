@@ -598,11 +598,13 @@ export function parseAtsRef(rawUrl) {
   // site name sits after the "sites" segment of the candidate-experience path.
   // The EU data centres serve the same product from a different top-level
   // domain -- a real Swedish row proved that, and a com-only rule missed it.
-  m = /^([a-z0-9-]+)\.fa\.([a-z0-9-]+)\.oraclecloud\.(?:com|eu)$/.exec(host);
+  // The region label is absent on some hosts (jpmc.fa.oraclecloud.com, whose
+  // catalogue token is jpmc~~CX_1001, 2026-10-25).
+  m = /^([a-z0-9-]+)\.fa\.(?:([a-z0-9-]+)\.)?oraclecloud\.(?:com|eu)$/.exec(host);
   if (m) {
     const idx = seg.indexOf("sites");
     const site = idx >= 0 ? seg[idx + 1] ?? null : null;
-    return hit("oracle", site ? `${m[1]}~${m[2]}~${site}` : null);
+    return hit("oracle", site ? `${m[1]}~${m[2] ?? ""}~${site}` : null);
   }
 
   // iCIMS: the vendor host carries the tenant as a subdomain, but the

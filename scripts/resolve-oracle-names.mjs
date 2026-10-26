@@ -21,17 +21,13 @@
 // Usage: node scripts/resolve-oracle-names.mjs <verified.json> <out.json>
 // Output: { resolved: [{token,name,count,evidence}], ambiguous: [...], unresolved: [...] }
 import { readFileSync, writeFileSync } from "node:fs";
+import { oracleHost as hostOf } from "./oracle-host.mjs";
 
 const [, , VERIFIED_PATH, OUT] = process.argv;
 const verified = JSON.parse(readFileSync(VERIFIED_PATH, "utf8"));
 const boards = verified.oracle ?? [];
 const DEFAULT_NAMES = /^candidate experience site$|^career site$|^careers?$|^cx(_\d+)?$/i;
 const CONCURRENCY = 6;
-
-const hostOf = (token) => {
-  const [tenant, dc] = token.split("~");
-  return `${tenant}.fa.${dc}.oraclecloud.com`;
-};
 
 async function sitesOf(token) {
   const url = `https://${hostOf(token)}/hcmRestApi/resources/latest/recruitingCESites?onlyData=true&limit=50`;
