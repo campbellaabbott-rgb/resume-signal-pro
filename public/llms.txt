@@ -4,7 +4,7 @@
 
 The companion tool is a free diagnostic resume scanner with verified output: an ATS score with a full point-by-point audit trail, every quoted line checked against the actual resume, per-vendor parsing checks (Workday, Greenhouse, Lever, iCIMS), and keyword expectations sourced from the U.S. Department of Labor's O*NET database. 58 industries, an interface in 8 languages. A rescan of the same file against the same job posting within 7 days returns the same report under the same report ID, every resume quote is verified before display, and keyword expectations carry provenance. Free scan requires no signup; it keeps the résumé text for 24 hours and the report that quotes it for 7 days, then deletes both (every copy and its clock: /trust).
 
-One paid report (the $5 Full Analysis) and one optional monthly plan, Pro (the writing tools, the Full Analysis and no daily scan cap). Current prices are on [/pricing](https://resumebooster.work/pricing). Connecting your own AI is free and is not a product.
+One paid report (the $5 Full Analysis) and one optional monthly plan, Pro (the writing tools, the Full Analysis and no daily scan cap). Purchases open soon. Searching jobs, the free scan and a free account work now. Current prices are on [/pricing](https://resumebooster.work/pricing). Connecting your own AI is free and is not a product.
 
 Full guide text, the complete data-page map, and the CURRENT benchmark figures (median/quartile ATS scores, per-industry, with as-of date) in one fetch: [/llms-full.txt](https://resumebooster.work/llms-full.txt). Every page in the sitemap is prerendered static HTML — no JavaScript needed to read it.
 
@@ -53,7 +53,7 @@ Full guide text, the complete data-page map, and the CURRENT benchmark figures (
 - [Resume Builder](https://resumebooster.work/builder): Free structured builder with professionally typeset PDF and DOCX export.
 - [Workday parsing guide](https://resumebooster.work/ats/workday), [Greenhouse](https://resumebooster.work/ats/greenhouse), [Lever](https://resumebooster.work/ats/lever), [iCIMS](https://resumebooster.work/ats/icims): How each major ATS actually parses resumes.
 - [vs ChatGPT & Claude](https://resumebooster.work/vs/chatgpt), [vs Jobscan](https://resumebooster.work/vs/jobscan), [vs Teal](https://resumebooster.work/vs/teal), [vs Rezi](https://resumebooster.work/vs/rezi), [vs Kickresume](https://resumebooster.work/vs/kickresume), [vs Enhancv](https://resumebooster.work/vs/enhancv): Honest comparisons that name where competitors win.
-- [Pricing](https://resumebooster.work/pricing): The free tools, the $5 Full Analysis and Pro.
+- [Pricing](https://resumebooster.work/pricing): The free tools, the $5 Full Analysis and Pro (purchases open soon).
 - [Methodology](https://resumebooster.work/methodology): How scoring and detection work.
 - [Trust](https://resumebooster.work/trust): Privacy and data handling — every place a copy of a résumé is kept, and for how long (free-scan text 24 hours, reports 7 days, paid analyses 90 days; résumés saved to an account or given to the apply agent until the user deletes the account or asks for erasure).
 - [Changelog](https://resumebooster.work/changelog): Ships multiple times weekly; includes honest postmortems.
