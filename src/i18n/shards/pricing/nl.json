@@ -76,13 +76,6 @@
       "stepFreeUnit": "per dag, gratis account",
       "stepProAmount": "{{n}} pakketten",
       "stepProUnit": "per dag, {{perMonth}} per maand, Pro",
-      "perks": {
-        "everythingFree": "Alles van een gratis account",
-        "writingTools": "Een aangepast cv, een motivatiebrief en gespreksvoorbereiding voor de vacatures die je kiest: {{perDay}} van elk per dag en {{perMonth}} van elk per maand (een pakket is één van elk)",
-        "includedFullAnalysis": "De Volledige analyse van {{faPrice}} inbegrepen",
-        "noScanCap": "Geen daglimiet op scans",
-        "cancel": "Zeg online op via je account, wanneer je wilt"
-      },
       "review": "Je controleert elk concept en verstuurt het zelf.",
       "statusTitle": "In Claude of ChatGPT: nog niet.",
       "statusBody": "De Pro-hulpmiddelen vragen dat je vanuit je AI bent ingelogd, en dat staat nog niet aan. Tot dan werken ze op deze website.",

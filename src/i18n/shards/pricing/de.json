@@ -76,13 +76,6 @@
       "stepFreeUnit": "am Tag, kostenloses Konto",
       "stepProAmount": "{{n}} Pakete",
       "stepProUnit": "am Tag, {{perMonth}} im Monat, Pro",
-      "perks": {
-        "everythingFree": "Alles aus einem kostenlosen Konto",
-        "writingTools": "Ein angepasster Lebenslauf, ein Anschreiben und eine Interviewvorbereitung für die Stellen, die Sie wählen: {{perDay}} von jedem am Tag und {{perMonth}} von jedem im Monat (ein Paket ist je eines davon)",
-        "includedFullAnalysis": "Die Vollanalyse für {{faPrice}} inklusive",
-        "noScanCap": "Keine tägliche Obergrenze für Scans",
-        "cancel": "Jederzeit online in Ihrem Konto kündbar"
-      },
       "review": "Sie prüfen jeden Entwurf und senden ihn selbst ab.",
       "statusTitle": "In Claude oder ChatGPT: noch nicht.",
       "statusBody": "Die Pro-Werkzeuge brauchen eine Anmeldung aus Ihrer KI heraus, und die ist noch nicht freigeschaltet. Bis dahin laufen sie auf dieser Website.",

@@ -76,13 +76,6 @@
       "stepFreeUnit": "bawat araw, libreng account",
       "stepProAmount": "{{n}} package",
       "stepProUnit": "bawat araw, {{perMonth}} bawat buwan, Pro",
-      "perks": {
-        "everythingFree": "Lahat ng nasa libreng account",
-        "writingTools": "Isang iniangkop na resume, cover letter at interview prep para sa mga trabahong pipiliin mo: {{perDay}} sa bawat isa bawat araw at {{perMonth}} sa bawat isa bawat buwan (ang isang package ay isa sa bawat isa)",
-        "includedFullAnalysis": "Kasama ang {{faPrice}} na Buong Pagsusuri",
-        "noScanCap": "Walang pang-araw-araw na limitasyon sa scan",
-        "cancel": "Kanselahin online mula sa iyong account, kahit kailan"
-      },
       "review": "Ikaw ang nagsusuri ng bawat draft at ikaw mismo ang nagpapadala nito.",
       "statusTitle": "Sa Claude o ChatGPT: hindi pa.",
       "statusBody": "Kailangan ng mga tool ng Pro na naka-sign in ka mula sa iyong AI, at hindi pa iyon naka-on. Hanggang doon, tumatakbo sila sa website na ito.",

@@ -76,13 +76,6 @@
       "stepFreeUnit": "por dia, conta grátis",
       "stepProAmount": "{{n}} pacotes",
       "stepProUnit": "por dia, {{perMonth}} por mês, Pro",
-      "perks": {
-        "everythingFree": "Tudo o que uma conta grátis tem",
-        "writingTools": "Um currículo adaptado, uma carta de apresentação e preparação para entrevista para as vagas que você escolher: {{perDay}} de cada por dia e {{perMonth}} de cada por mês (um pacote é um de cada)",
-        "includedFullAnalysis": "A Análise completa de {{faPrice}} incluída",
-        "noScanCap": "Sem limite diário de análises",
-        "cancel": "Cancele on-line pela sua conta, quando quiser"
-      },
       "review": "Você revisa cada rascunho e o envia você mesmo.",
       "statusTitle": "No Claude ou no ChatGPT: ainda não.",
       "statusBody": "As ferramentas do Pro precisam que você entre na conta pela sua IA, e isso ainda não está ativado. Até lá, elas funcionam neste site.",

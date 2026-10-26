@@ -5153,7 +5153,7 @@
       "everythingFree": "Todo lo de una cuenta gratuita, más las herramientas de redacción",
       "fullAnalysisIncluded": "El Análisis completo de 5 $ incluido",
       "noDailyScanCap": "Sin límite diario de análisis",
-      "writingTools": "Un currículum adaptado, una carta de presentación y preparación de entrevistas para tus empleos: hasta 5 sets al día y 60 al mes"
+      "writingToolsPackages": "Un currículum adaptado, una carta de presentación y preparación de entrevistas para tus empleos: hasta 5 paquetes al día y 60 al mes"
     },
     "renewsOn": "Se renueva el {{date}}",
     "retiredPlanEnds": "Termina el {{date}} y no se renovará. Las herramientas de Pro siguen activas hasta entonces.",

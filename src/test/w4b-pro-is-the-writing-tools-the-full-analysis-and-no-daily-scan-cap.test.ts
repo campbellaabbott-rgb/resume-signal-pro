@@ -10,7 +10,8 @@
  *
  * WHAT HOLDS NOW:
  *   - PRO_PERK_ITEMS says exactly the decision: everything in a free account
- *     plus the writing tools (5 sets a day, 60 a month), the $5 Full Analysis
+ *     plus the writing tools (5 packages a day, 60 a month: the noun the
+ *     owner chose at the homepage switch-over), the $5 Full Analysis
  *     included, no daily cap on scans, cancel anytime; never "unlimited",
  *     never Freelance Boost or Transition Pro;
  *   - the one-off products Pro includes are the Full Analysis alone;
@@ -42,7 +43,7 @@ describe("the list says exactly what Pro is", () => {
   it("the writing tools with their numbers, the Full Analysis included, no daily cap on scans, cancel anytime", () => {
     expect(PRO_PERKS).toEqual([
       "Everything in a free account, plus the writing tools",
-      "A tailored résumé, cover letter and interview prep for your jobs: up to 5 sets a day and 60 a month",
+      "A tailored résumé, cover letter and interview prep for your jobs: up to 5 packages a day and 60 a month",
       "The $5 Full Analysis included",
       "No daily cap on scans",
       "Cancel anytime from your account",
@@ -64,6 +65,9 @@ describe("the list says exactly what Pro is", () => {
     expect(keys).not.toContain("proPlan.perks.unlimitedScans");
     expect(keys).not.toContain("proPlan.perks.includedOneOffs");
     expect(keys).not.toContain("proPlan.perks.batchPrep");
+    // "sets" became "packages" (owner decision, homepage switch-over).
+    expect(keys).not.toContain("proPlan.perks.writingTools");
+    expect(keys).toContain("proPlan.perks.writingToolsPackages");
   });
 
   it("Pro includes the Full Analysis, and nothing else a checkout sells", () => {

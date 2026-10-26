@@ -76,13 +76,6 @@
       "stepFreeUnit": "a day, free account",
       "stepProAmount": "{{n}} packages",
       "stepProUnit": "a day, {{perMonth}} a month, Pro",
-      "perks": {
-        "everythingFree": "Everything in a free account",
-        "writingTools": "A tailored résumé, a cover letter and interview prep for the jobs you pick: {{perDay}} of each a day and {{perMonth}} of each a month (a package is one of each)",
-        "includedFullAnalysis": "The {{faPrice}} Full Analysis included",
-        "noScanCap": "No daily cap on scans",
-        "cancel": "Cancel online from your account, any time"
-      },
       "review": "You review every draft and send it yourself.",
       "statusTitle": "In Claude or ChatGPT: not yet.",
       "statusBody": "Pro's tools need you signed in from your AI, and that is not switched on. Until it is, they run on this website.",

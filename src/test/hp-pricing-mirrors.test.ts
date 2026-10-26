@@ -27,7 +27,7 @@ import { REPORT_CACHE_DAYS, SHARED_ANALYSIS_DAYS } from "@/lib/resume-retention"
 import { codeOf } from "./helpers/strip-comments";
 import { LOCALE_FILES, readMainLocale } from "./helpers/locale-strings";
 import * as F from "@/components/pricing/plan-facts";
-import { PRO_PERK_ITEMS } from "@/components/pricing/pro-perks-mirror";
+import { PRO_PERK_ITEMS, PRO_PERK_REQUIRES } from "@/components/pricing/pro-perks-mirror";
 import { FULL_ANALYSIS_DELIVERY_WATCHED, PRO_SUBSCRIPTION_WATCHED } from "@/components/pricing/sale-gates";
 
 const ROOT = resolve(__dirname, "../..");
@@ -107,12 +107,23 @@ describe("mirrors of constants still on other branches (they pin themselves when
     expect(src("src/lib/home/sale-gates.ts")).toMatch(/from "@\/config\/sales-gate"/);
   });
 
-  it("Pro's card says what wave 4's PRO_PERK_ITEMS says, the day that list exists", () => {
-    const theirs = (proPerks as Record<string, unknown>).PRO_PERK_ITEMS as ReadonlyArray<{ key: string; text: string }> | undefined;
-    if (!theirs || theirs === PRO_PERK_ITEMS) return;
-    const vars = { perDay: F.WRITING.proPackagesPerDay, perMonth: F.WRITING.proPackagesPerMonth, faPrice: `$${F.FULL_ANALYSIS_PRICE_USD}` };
-    const ours = PRO_PERK_ITEMS.map((p) => i18n.t(p.key, { ...vars, lng: "en", defaultValue: p.text }));
-    expect(theirs.map((p) => p.text), "switch-over: wave 4's PRO_PERK_ITEMS and pro-perks-mirror.ts disagree").toEqual(ours);
+  it("Pro's card lists wave 4's PRO_PERK_ITEMS itself, in the owner's words, and Stripe's description is that list", () => {
+    // Switch-over step 6: the card's list IS wave 4's (identity), so the card,
+    // every other page that sells Pro and create-subscription-checkout's
+    // Stripe description read one list.
+    expect(PRO_PERK_ITEMS).toBe(proPerks.PRO_PERK_ITEMS);
+    const texts = PRO_PERK_ITEMS.map((p) => p.text);
+    for (const t of texts) expect(t).not.toMatch(new RegExp(["un" + "limited", "all-access", "now and future", "Freelance", "Transition"].join("|"), "i"));
+    expect(texts).toContain("No daily cap on scans");
+    // The noun is "package" (owner decision), as the server's allowance says.
+    const writing = PRO_PERK_ITEMS.find((p) => /interview prep/.test(p.text))!;
+    expect(writing.text).toMatch(new RegExp(`${F.WRITING.proPackagesPerDay} packages a day and ${F.WRITING.proPackagesPerMonth} a month`));
+    expect(writing.text).not.toMatch(/\bsets?\b/);
+    expect(PRO_PERK_ITEMS.filter((p) => PRO_PERK_REQUIRES[p.key] === "fullAnalysisOnSale").map((p) => p.key)).toEqual(["proPlan.perks.fullAnalysisIncluded"]);
+    // The page's English list, joined the way Stripe's description is built (P6).
+    const english = PRO_PERK_ITEMS.map((p) => i18n.t(p.key, { lng: "en", defaultValue: p.text }));
+    expect(english).toEqual(texts);
+    expect(proPerks.proStripeDescription()).toBe(english.map((t) => t.replace(/[.\s]+$/, "")).join(". ") + ".");
   });
 
   it("the Builder strings are /data-api's, byte for byte, once its keys are in the main locales", () => {

@@ -32,6 +32,7 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { MOUNT_TEST_BUDGET } from "./helpers/mount-budget";
 import { codeOf } from "./helpers/strip-comments";
+import { readMainLocale } from "./helpers/locale-strings";
 import { PASS, PRODUCTS, SUBSCRIPTIONS } from "@/config/products";
 
 const h = vi.hoisted(() => ({
@@ -165,12 +166,15 @@ describe("2. Pro's perks come from one typed source", () => {
     expect(keys).toEqual(PRO_PERK_ITEMS.map((p) => p.key));
   });
 
-  it("every mirror key is a shard key whose English matches the mirror's text", () => {
+  it("every item's key is a main-locale key whose English matches the item's text", () => {
+    // Switch-over step 6: the list is wave 4's (proPlan.perks.*, in the main
+    // locales); the pricing shard keeps no perk strings of its own.
+    const main = readMainLocale("en.json") as { proPlan: { perks: Record<string, string> } };
     for (const p of PRO_PERK_ITEMS) {
-      const leaf = p.key.replace(/^pricingPlans\.pro\.perks\./, "") as keyof typeof S.pro.perks;
-      expect(S.pro.perks[leaf], p.key).toBe(p.text);
+      expect(p.key, p.key).toMatch(/^proPlan\.perks\./);
+      expect(main.proPlan.perks[p.key.replace(/^proPlan\.perks\./, "")], p.key).toBe(p.text);
     }
-    expect(Object.keys(S.pro.perks).sort()).toEqual(PRO_PERK_ITEMS.map((p) => p.key.split(".").pop()).sort());
+    expect((S.pro as Record<string, unknown>).perks, "the pricing shard keeps no perk strings").toBeUndefined();
   });
 
   it("no other pricing source types a perk's words", () => {
@@ -353,7 +357,7 @@ describe("7. never the banned word for scans", () => {
 
   it("Pro's scans say 'no daily cap'", () => {
     const { container } = mount(OPEN.input);
-    expect(textOf(container)).toContain(S.pro.perks.noScanCap);
+    expect(container.querySelector('[data-perk="proPlan.perks.noDailyScanCap"]')?.textContent).toBe("No daily cap on scans");
     expect(container.querySelector("[data-row=scans]")?.textContent).toContain(S.limits.noScanCap);
   });
 });
@@ -372,7 +376,7 @@ describe("8. each closed gate gives its own reason", () => {
   });
 
   it("Pro's included Full Analysis shows only while the Full Analysis is on sale", () => {
-    const included = "pricingPlans.pro.perks.includedFullAnalysis";
+    const included = "proPlan.perks.fullAnalysisIncluded";
     let { container } = mount(SELLER_ONLY.input);
     expect(container.querySelector(`[data-perk="${included}"]`)).toBeNull();
     expect(visibleProPerks({ fullAnalysisOnSale: false }).map((p) => p.key)).not.toContain(included);

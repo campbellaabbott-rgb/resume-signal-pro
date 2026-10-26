@@ -19,6 +19,7 @@
  *     running.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { PRO_PERK_ITEMS as WAVE_FOUR_PRO_PERKS } from "@/config/pro-perks";
 import { cleanup, render, renderHook, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { readFileSync } from "node:fs";
@@ -198,16 +199,9 @@ describe("the Builder price is formatted the way every other price is", () => {
   });
 });
 
-describe("Pro's included Full Analysis stays hidden under wave 4's key too (G2)", () => {
-  // Wave 4's list as w4b/checkout-catalogue 2c4aec7b ships it: the line the
-  // switch-over re-exports in place of this mirror's.
-  const WAVE_FOUR = [
-    { key: "proPlan.perks.everythingFree", text: "Everything in a free account, plus the writing tools" },
-    { key: "proPlan.perks.writingTools", text: "A tailored résumé, cover letter and interview prep for your jobs: up to 5 sets a day and 60 a month" },
-    { key: "proPlan.perks.fullAnalysisIncluded", text: "The $5 Full Analysis included" },
-    { key: "proPlan.perks.noDailyScanCap", text: "No daily cap on scans" },
-    { key: "proPlan.perks.cancel", text: "Cancel anytime from your account" },
-  ];
+describe("Pro's included Full Analysis stays hidden under wave 4's key (G2)", () => {
+  // Since switch-over step 6 the card lists wave 4's PRO_PERK_ITEMS itself.
+  const WAVE_FOUR = WAVE_FOUR_PRO_PERKS;
   it("closed: the line is hidden; open: it shows", () => {
     expect(visibleProPerks({ fullAnalysisOnSale: false }, WAVE_FOUR).map((p) => p.key)).not.toContain("proPlan.perks.fullAnalysisIncluded");
     expect(visibleProPerks({ fullAnalysisOnSale: true }, WAVE_FOUR).map((p) => p.key)).toContain("proPlan.perks.fullAnalysisIncluded");

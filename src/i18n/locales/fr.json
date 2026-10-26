@@ -5153,7 +5153,7 @@
       "everythingFree": "Tout ce qu'offre un compte gratuit, plus les outils de rédaction",
       "fullAnalysisIncluded": "L'Analyse complète à 5 $ incluse",
       "noDailyScanCap": "Aucun plafond quotidien d'analyses",
-      "writingTools": "Un CV adapté, une lettre de motivation et une préparation d'entretien pour vos offres : jusqu'à 5 séries par jour et 60 par mois"
+      "writingToolsPackages": "Un CV adapté, une lettre de motivation et une préparation d'entretien pour vos offres : jusqu'à 5 lots par jour et 60 par mois"
     },
     "renewsOn": "Se renouvelle le {{date}}",
     "retiredPlanEnds": "Il prend fin le {{date}} et ne sera pas renouvelé. Les outils de Pro restent actifs jusque-là.",

@@ -5117,7 +5117,7 @@
       "everythingFree": "Alles van een gratis account, plus de schrijftools",
       "fullAnalysisIncluded": "De volledige analyse van $ 5 inbegrepen",
       "noDailyScanCap": "Geen daglimiet op scans",
-      "writingTools": "Een aangepast cv, motivatiebrief en gespreksvoorbereiding voor je vacatures: tot 5 sets per dag en 60 per maand"
+      "writingToolsPackages": "Een aangepast cv, motivatiebrief en gespreksvoorbereiding voor je vacatures: tot 5 pakketten per dag en 60 per maand"
     },
     "renewsOn": "Wordt verlengd op {{date}}",
     "retiredPlanEnds": "Het eindigt op {{date}} en wordt niet verlengd. De Pro-tools blijven tot dan aan.",

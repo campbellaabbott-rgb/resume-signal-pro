@@ -5117,7 +5117,7 @@
       "everythingFree": "Alles aus einem kostenlosen Konto, plus die Schreibwerkzeuge",
       "fullAnalysisIncluded": "Die vollständige Analyse für 5 $ ist enthalten",
       "noDailyScanCap": "Keine tägliche Obergrenze für Scans",
-      "writingTools": "Ein angepasster Lebenslauf, ein Anschreiben und eine Gesprächsvorbereitung für Ihre Stellen: bis zu 5 Sets pro Tag und 60 pro Monat"
+      "writingToolsPackages": "Ein angepasster Lebenslauf, ein Anschreiben und eine Gesprächsvorbereitung für Ihre Stellen: bis zu 5 Pakete pro Tag und 60 pro Monat"
     },
     "renewsOn": "Verlängert sich am {{date}}",
     "retiredPlanEnds": "Er endet am {{date}} und verlängert sich nicht. Die Pro-Werkzeuge bleiben bis dahin aktiv.",

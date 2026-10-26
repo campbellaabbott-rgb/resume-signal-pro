@@ -76,13 +76,6 @@
       "stepFreeUnit": "par jour, compte gratuit",
       "stepProAmount": "{{n}} lots",
       "stepProUnit": "par jour, {{perMonth}} par mois, Pro",
-      "perks": {
-        "everythingFree": "Tout ce qu'offre un compte gratuit",
-        "writingTools": "Un CV adapté, une lettre de motivation et une préparation d'entretien pour les offres que vous choisissez : {{perDay}} de chaque par jour et {{perMonth}} de chaque par mois (un lot comprend un de chaque)",
-        "includedFullAnalysis": "L'Analyse complète à {{faPrice}} incluse",
-        "noScanCap": "Aucune limite quotidienne d'analyses",
-        "cancel": "Résiliation en ligne depuis votre compte, à tout moment"
-      },
       "review": "Vous relisez chaque brouillon et l'envoyez vous-même.",
       "statusTitle": "Dans Claude ou ChatGPT : pas encore.",
       "statusBody": "Les outils Pro demandent que vous soyez connecté depuis votre IA, ce qui n'est pas encore activé. D'ici là, ils fonctionnent sur ce site.",

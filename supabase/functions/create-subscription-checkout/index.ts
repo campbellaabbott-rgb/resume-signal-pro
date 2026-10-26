@@ -71,7 +71,10 @@ import { proStripeDescription } from "../_shared/pro-perks.ts";
 // automatic-renewal box (400 without it, recorded with it), a buyer in India
 // refused with the EU, the EEA and the UK, and Pro's description read from
 // the one list the pages read.
-const FN_BUILD = "create-subscription-checkout.2026-10-11.23";
+// Homepage switch-over (home-pricing, 2026-10-26): that list's writing-tools
+// line says "packages", the owner's noun, as the pages and the server's
+// allowance do, so Pro's Stripe description says it too. No other change.
+const FN_BUILD = "create-subscription-checkout.2026-10-26.1";
 
 /** What Stripe's page and receipts say Pro is: the Pro card's own items (_shared/pro-perks.ts), as sentences. */
 export const PRO_STRIPE_DESCRIPTION = proStripeDescription();

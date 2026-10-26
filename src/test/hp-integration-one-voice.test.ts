@@ -20,7 +20,7 @@ import {
   PRO_SUBSCRIPTION_WATCHED,
   resolveSaleGates,
 } from "@/components/pricing/sale-gates";
-import { visibleProPerks } from "@/components/pricing/pro-perks-mirror";
+import { INCLUDED_FULL_ANALYSIS_KEYS, visibleProPerks } from "@/components/pricing/pro-perks-mirror";
 import * as homeFacts from "@/lib/home/facts";
 import * as planFacts from "@/components/pricing/plan-facts";
 import { HOME_WITHHELD_SOURCES } from "@/lib/home/board-figures";
@@ -69,7 +69,7 @@ describe("one switch decides what both pages sell", () => {
           expect(home.pro !== null).toBe(pricing.pro.onSale);
           if (home.pro) {
             const proCardIncludesFa = visibleProPerks({ fullAnalysisOnSale: pricing.fullAnalysis.onSale })
-              .some((p) => p.key.endsWith("includedFullAnalysis"));
+              .some((p) => (INCLUDED_FULL_ANALYSIS_KEYS as readonly string[]).includes(p.key));
             expect(home.pro.includesFullAnalysis).toBe(proCardIncludesFa);
           }
         });

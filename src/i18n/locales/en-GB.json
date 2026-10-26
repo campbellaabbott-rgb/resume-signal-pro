@@ -5117,7 +5117,7 @@
       "everythingFree": "Everything in a free account, plus the writing tools",
       "fullAnalysisIncluded": "The $5 Full Analysis included",
       "noDailyScanCap": "No daily cap on scans",
-      "writingTools": "A tailored CV, cover letter and interview prep for your jobs: up to 5 sets a day and 60 a month"
+      "writingToolsPackages": "A tailored CV, cover letter and interview prep for your jobs: up to 5 packages a day and 60 a month"
     },
     "renewsOn": "Renews {{date}}",
     "retiredPlanEnds": "It ends on {{date}} and will not renew. Pro's tools stay on until then.",
