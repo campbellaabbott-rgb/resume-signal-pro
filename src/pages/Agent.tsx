@@ -279,11 +279,17 @@ export default function Agent() {
               {/* Controls BEFORE the profile. "Where it may not apply" is the
                   anxious question a new subscriber has, and it should not be
                   below a long form about their phone number. */}
-              <AgentControlsPanel userId={userId} />
+              {/* Switched off (the apply pivot), the agent's controls and the
+                  share of the board it submits to describe an agent that
+                  sends nothing; the notice above says why. The profile stays:
+                  it is the person's stored answers. */}
+              {APPLY_AGENT_ON && <AgentControlsPanel userId={userId} />}
               <ApplyProfilePanel userId={userId} />
-              <Suspense fallback={<div className="h-24 animate-pulse rounded-xl bg-muted" />}>
-                <AgentReachNote />
-              </Suspense>
+              {APPLY_AGENT_ON && (
+                <Suspense fallback={<div className="h-24 animate-pulse rounded-xl bg-muted" />}>
+                  <AgentReachNote />
+                </Suspense>
+              )}
             </>
           )}
         </div>
