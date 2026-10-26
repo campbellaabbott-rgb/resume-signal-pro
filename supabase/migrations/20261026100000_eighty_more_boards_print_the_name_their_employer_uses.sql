@@ -23,7 +23,12 @@
 -- (3)", "OH horz transparent" and the HelloWellness / brello board; Ashby's
 -- seven empty "Jobs" boards; Lever's "APPLY", which the gate refuses as a word
 -- and which the employer now calls itself; Oracle's Dallah Recruitment System,
--- whose group name is shared by several companies).
+-- whose group name is shared by several companies). Not censused at all, and
+-- many: at least 71 more ADP and UKG boards still print a logo file or a file
+-- path ("BradfordHealthServicesLogo Revised Blue LeftAlignedHR", a "C:Users..."
+-- path), 1,021 open roles between them on 2026-10-26 by the review's read
+-- (~/.config/resumebooster/trust-round-3-fixes/junk-counts-review-2026-10-26.json),
+-- for a later census round; this file names none of them.
 --
 -- TWO WRITERS, BY TOKEN SHAPE. A token carrying a "~" (an Oracle or UKG site,
 -- an ADP client with a career-center id) takes a company_name_overrides row
