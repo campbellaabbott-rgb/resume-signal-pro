@@ -243,6 +243,17 @@ describe('the crawler\'s "/pricing" is the new pricing page', () => {
     expect(html).toContain('<link rel="modulepreload" href="/assets/PricingPage-ef56.js">');
   });
 
+  it("the plan cards carry no id a fresh /pricing#pro could anchor to: React's cards own them", () => {
+    // Chrome anchored a fresh /pricing#pro to the baked card, React's page
+    // pushed it down, the baked nodes went and the reader was left at the
+    // footer (review round 2026-10-26, src/lib/scroll-to-fragment.ts).
+    const html = page(OUT, "/pricing");
+    for (const plan of ["free", "full-analysis", "pro"]) {
+      expect(html, plan).toMatch(new RegExp(`<section[^>]*data-plan="${plan}"`));
+      expect(html, plan).not.toMatch(new RegExp(`\\bid="${plan}"`));
+    }
+  });
+
   it("the open-postings figure on the free card names its moment", () => {
     const t = crawlerText(page(OUT, "/pricing"));
     expect(t).toContain("Search 1,040,488 open postings counted 17 Oct 2026, 22:45 UTC");

@@ -4133,6 +4133,11 @@ export { count as fmtCount, money as fmtMoney, date as fmtDate } from "../src/li
     // React's.
     const P = PS;
     const G = PRICING_GATES;
+    // The plan cards below carry data-plan and no id: React's cards own
+    // #free, #full-analysis and #pro (the JSON-LD Offer.url names them), and
+    // a baked id let Chrome anchor a fresh /pricing#pro to the baked card,
+    // which React's page then pushed down before the baked nodes were
+    // removed, leaving the reader at the footer (src/lib/scroll-to-fragment.ts).
     const prices = { faPrice: enMoney(D.FULL_ANALYSIS_PRICE_USD), proPrice: enMoney(D.PRO_PRICE_USD) };
     const meta = D.pricingMetaKeys(G);
     const metaText = (key) => hp(P.meta[String(key).replace(/^pricingPlans\.meta\./, "")], prices, key);
@@ -4176,7 +4181,7 @@ export { count as fmtCount, money as fmtMoney, date as fmtDate } from "../src/li
             <li><strong>${esc(P.before.renewalTitle)}</strong> ${esc(hp(P.before.renewalBody, prices, "pricingPlans.before.renewalBody"))}</li>
           </ul>
         </section>
-        <section id="free" class="mt-8" data-plan="free">
+        <section class="mt-8" data-plan="free">
           <h2 class="text-xl font-bold">${esc(P.free.name)}, ${esc(enMoney(0))}</h2>
           <p class="text-muted-foreground">${esc(P.free.what)}</p>
           <h3 class="text-sm font-semibold mt-3">${esc(P.free.groupNoAccount)}</h3>
@@ -4196,7 +4201,7 @@ export { count as fmtCount, money as fmtMoney, date as fmtDate } from "../src/li
           <p class="mt-3"><a href="/auth?next=%2Fjobs" class="text-primary underline font-semibold">${esc(P.free.cta)}</a></p>
           <p class="mt-1 text-xs text-muted-foreground">${hpLinks(P.free.fine, { link: "/jobs" })}</p>
         </section>
-        <section id="full-analysis" class="mt-8" data-plan="full-analysis">
+        <section class="mt-8" data-plan="full-analysis">
           <h2 class="text-xl font-bold">${esc(P.fa.name)}, ${esc(enMoney(D.FULL_ANALYSIS_PRICE_USD))} ${esc(P.fa.unit)}</h2>
           <p class="text-muted-foreground">${esc(P.fa.what)}</p>
           <ul class="mt-2 space-y-1.5 text-sm">${["b1", "b2", "b3", "b4"].map((k) => li(esc(P.fa[k]))).join("")}${li(esc(hp(P.fa.b5, { days: D.FULL_ANALYSIS_LINK_DAYS }, "pricingPlans.fa.b5")))}</ul>
@@ -4205,7 +4210,7 @@ export { count as fmtCount, money as fmtMoney, date as fmtDate } from "../src/li
             ? `<p class="mt-3 text-sm"><a href="/resume-checker#upload" class="text-primary underline">${esc(hp(P.fa.cta, { price: prices.faPrice }, "pricingPlans.fa.cta"))}</a></p>${saleLines}<p class="mt-1 text-xs text-muted-foreground">${esc(P.fa.fine)}</p><p class="mt-1 text-xs text-muted-foreground">${esc(P.fa.currency)}</p>`
             : gateNote(G.fullAnalysis.closedBy || "seller")}
         </section>
-        <section id="pro" class="mt-8" data-plan="pro">
+        <section class="mt-8" data-plan="pro">
           <h2 class="text-xl font-bold">${esc(P.pro.name)}, ${esc(enMoney(D.PRO_PRICE_USD))} ${esc(P.pro.unit)}</h2>
           <p class="text-muted-foreground">${esc(P.pro.what)}</p>
           <p class="mt-2 text-sm">${esc(P.pro.stepLabel)}: ${esc(hp(P.pro.stepFreeAmount, { n: W.freePerToolPerDay }, "pricingPlans.pro.stepFreeAmount"))} ${esc(P.pro.stepFreeUnit)} → ${esc(hp(P.pro.stepProAmount, { n: W.proPackagesPerDay }, "pricingPlans.pro.stepProAmount"))} ${esc(hp(P.pro.stepProUnit, { perMonth: W.proPackagesPerMonth }, "pricingPlans.pro.stepProUnit"))}</p>
