@@ -94,6 +94,7 @@ HOME72=$(curl -s -m 30 -A "$UA" "$SITE/")
 if printf '%s' "$HOME72" | grep -qF "Same document, same score"; then echo "FAIL  / (crawler) still promises \"Same document, same score, every time\": the prerender with this wave is not published"
 elif printf '%s' "$HOME72" | grep -qF "against the same posting within 7 days and you get the same report"; then echo "PASS  / (crawler) says a rescan of the same file against the same posting within 7 days returns the same report (the report cache's key and window)"
 elif printf '%s' "$HOME72" | grep -qF "Rescan the same file within 7 days"; then echo "FAIL  / (crawler) still promises the same report for the same file alone; the cache is keyed on the posting too (review round 2)"
+elif printf '%s' "$HOME72" | grep -qF 'data-home-count=""'; then echo "INFO  / (crawler) is the board-first homepage (the homepage switch-over, home-pricing): it makes no same-report promise, right or wrong; the scanner lives at /resume-checker"
 else echo "FAIL  / (crawler) carries neither reproducibility sentence (the prerender's hero moved?)"; fi
 SECS72=$(printf '%s' "$HOME72" | grep -oE '[0-9]+ seconds' | sort -u | tr '\n' ' ')
 case "$SECS72" in

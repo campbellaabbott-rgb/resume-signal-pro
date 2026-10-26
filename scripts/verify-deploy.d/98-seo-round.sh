@@ -177,10 +177,12 @@ const pick = (arr, n) => (arr.length <= n ? arr : Array.from({ length: n }, (_, 
     else out("FAIL", `P3 ${one} preloads ${hints.join(", ") || "nothing"}: want JobPosting-*.js and not Jobs-*.js`);
   }
   {
-    const p = "/pricing", want = "Pricing-";
+    // Since the homepage switch-over (home-pricing) /pricing runs PricingPage.
+    const p = "/pricing", wants = ["PricingPage-", "Pricing-"];
     const hints = pre((await get(p)).body);
-    if (hints.some((h) => h.startsWith(want))) out("PASS", `P3 ${p} preloads its route chunk (${hints.filter((h) => h.startsWith(want)).join(", ")})`);
-    else out("FAIL", `P3 ${p} preloads ${hints.join(", ") || "nothing"}: want ${want}*.js`);
+    const route = hints.filter((h) => wants.some((w) => h.startsWith(w)));
+    if (route.length) out("PASS", `P3 ${p} preloads its route chunk (${route.join(", ")})`);
+    else out("FAIL", `P3 ${p} preloads ${hints.join(", ") || "nothing"}: want PricingPage-*.js`);
   }
   // The root file is also the SPA fallback: the homepage\x27s chunks come from
   // its "/"-only script, and a fallback address preloads none of them.
@@ -189,9 +191,12 @@ const pick = (arr, n) => (arr.length <= n ? arr : Array.from({ length: n }, (_, 
     const scripted = ((/<script data-home-preload="1">if\(location\.pathname==="\/"\)\{(\[[^\]]*\])/.exec(home) || [])[1]) || "[]";
     let list = [];
     try { list = JSON.parse(scripted); } catch { list = []; }
-    const staticIndex = pre(home).filter((h) => h.startsWith("Index-"));
-    if (list.some((h) => String(h).startsWith("Index-")) && !staticIndex.length) out("PASS", `P3 / adds ${list.filter((h) => String(h).startsWith("Index-")).join(", ")} from its "/"-only script, not its static head`);
-    else out("FAIL", `P3 / static head preloads ${staticIndex.join(", ") || "no Index chunk"}, its "/"-only script names ${list.join(", ") || "nothing"}: want Index-*.js from the script only`);
+    // The homepage\x27s route chunk: HomePage since the homepage switch-over
+    // (home-pricing), Index before it.
+    const homeChunk = (h) => /^(?:HomePage|Index)-/.test(String(h));
+    const staticIndex = pre(home).filter(homeChunk);
+    if (list.some(homeChunk) && !staticIndex.length) out("PASS", `P3 / adds ${list.filter(homeChunk).join(", ")} from its "/"-only script, not its static head`);
+    else out("FAIL", `P3 / static head preloads ${staticIndex.join(", ") || "no homepage chunk"}, its "/"-only script names ${list.join(", ") || "nothing"}: want HomePage-*.js from the script only`);
     for (const fb of ["/auth", "/some-unknown-route-xyz"]) {
       const d = await get(fb);
       const idx = pre(d.body).filter((h) => !h.startsWith("Footer-"));

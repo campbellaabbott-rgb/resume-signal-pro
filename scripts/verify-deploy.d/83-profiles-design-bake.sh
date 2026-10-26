@@ -148,11 +148,24 @@ import("node:fs").then(async (fs) => {
   else out("PASS", `C2 ${offerCount} Offer(s) on / and /pricing: none at $99, $29 or $7, none naming a retired product; no Service block on /`);
 
   // ---- C3: the one true line ----
+  // Since the homepage switch-over (home-pricing) "/" and "/pricing" are the
+  // new pages, and say what React says: their own FAQ answer to "How do I
+  // apply?" (the employer\x27s own site, by hand or with Claude, ChatGPT or
+  // Claude Code). The old pages\x27 apply-yourself line counts there too.
+  let ownApply = {};
+  try {
+    ownApply = {
+      "/": JSON.parse(fs.readFileSync(`${REPO_ROOT}/src/i18n/shards/home/en.json`, "utf8")).home.faq.applyA,
+      "/pricing": JSON.parse(fs.readFileSync(`${REPO_ROOT}/src/i18n/shards/pricing/en.json`, "utf8")).pricingPlans.faq.applyA,
+    };
+  } catch { ownApply = {}; }
   const lineMissing = ["/", "/agents", "/agent", "/pricing"].filter((p) => {
     const d = docs.get(p);
-    return !d || d.status !== 200 || !R.crawlerText(d.body).includes(R.APPLY_YOURSELF_LINE);
+    if (!d || d.status !== 200) return true;
+    const t = R.crawlerText(d.body);
+    return !t.includes(R.APPLY_YOURSELF_LINE) && !(ownApply[p] && t.includes(ownApply[p]));
   });
-  if (lineMissing.length) out("FAIL", `C3 the apply-yourself line ("${R.APPLY_YOURSELF_LINE.slice(0, 70)}...") is missing on ${lineMissing.join(", ")}`);
+  if (lineMissing.length) out("FAIL", `C3 the apply-yourself line ("${R.APPLY_YOURSELF_LINE.slice(0, 70)}...", or the page\x27s own "How do I apply?" answer on / and /pricing) is missing on ${lineMissing.join(", ")}`);
   else out("PASS", "C3 /, /agents, /agent and /pricing say: search from your own AI (Claude, ChatGPT or Claude Code) and apply yourself on the employer\x27s site");
   if (/applies for you|submits? (?:applications? )?for you/i.test(homeH1)) out("FAIL", `C3 the homepage H1 still says the agent applies: "${homeH1}"`);
   else out("PASS", `C3 the homepage H1 is "${homeH1}"`);
