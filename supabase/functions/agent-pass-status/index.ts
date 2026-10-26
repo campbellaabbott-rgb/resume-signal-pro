@@ -34,7 +34,7 @@ import {
 import { passSessionSettled } from "../_shared/pass-settlement.ts";
 import { paymentRevocationState } from "../_shared/payment-revocation.ts";
 import { firstPassAlert } from "../_shared/owner-alert.ts";
-import { APPLY_AGENT_ON } from "../_shared/apply-agent-switch.ts";
+import { AGENT_PRODUCTS_ON_SALE, APPLY_AGENT_ON } from "../_shared/apply-agent-switch.ts";
 
 // Provable from outside without signing in: the preflight carries it. The
 // name and the date sit on separate lines on purpose: a guard reads every line
@@ -45,7 +45,8 @@ import { APPLY_AGENT_ON } from "../_shared/apply-agent-switch.ts";
 // success-page repair are unchanged.
 const FN_NAME = "agent-pass-status";
 // 2026-10-11.14: apply-agent-switch.ts gained the Apply Assistant's own switch (APPLY_ASSISTANT_ON_SALE); nothing this function does changed.
-const FN_BUILD = `${FN_NAME}.2026-10-11.14`;
+// 2026-10-11.15 (recheck 3, 2026-10-26): while the agent products are off sale, a success-page repair of a paid session grants nothing and answers a terminal "retired", as stripe-webhook does.
+const FN_BUILD = `${FN_NAME}.2026-10-11.15`;
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -66,7 +67,7 @@ const cors = {
  * paid has its pass on that account, and the page says to sign in there).
  * A refunded payment (L6-18) is terminal too: no wait opens a pass from it.
  */
-const TERMINAL_REPAIRS = new Set(["pass_already_open", "not_yours", "payment_revoked"]);
+const TERMINAL_REPAIRS = new Set(["pass_already_open", "not_yours", "payment_revoked", "retired"]);
 
 async function tellOwnerOnce(service: ServiceClient, reason: string, sessionId: string): Promise<void> {
   try {
@@ -170,6 +171,14 @@ async function repairFromSession(service: ServiceClient, userId: string, session
   if (session.metadata?.product_type !== PASS_PRODUCT_TYPE) return "not_a_pass";
   const owner = session.client_reference_id ?? session.metadata?.user_id ?? "";
   if (owner !== userId) return "not_yours";
+  // NO PASS IS GRANTED WHILE THE PASS IS NOT SOLD (recheck 3, 2026-10-26).
+  // stripe-webhook records such a sale undeliverable_retired and tells the
+  // owner no pass was granted; this repair, left as it was, granted one
+  // anyway from the same paid session. It reads the same switch.
+  if (!AGENT_PRODUCTS_ON_SALE) {
+    console.log(`[AGENT-PASS-STATUS] repair ${session.id}: retired (the pass is no longer sold; nothing granted)`);
+    return "retired";
+  }
   const intent = typeof session.payment_intent === "string"
     ? session.payment_intent
     : session.payment_intent?.id ?? "";
