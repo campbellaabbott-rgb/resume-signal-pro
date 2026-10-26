@@ -73,11 +73,14 @@ const RELEASED_CONVICTIONS = new Set([
 //
 // The screen reads agencyScreenText (scripts/census-names.mjs), not the raw
 // name (trusted-pages round 2026-10-25). UKG, Oracle and ADP names were mined
-// from labels, so no word in them is evidence: "US - LLC Recruiting" (a logo
-// label) made Convergint a flagged agency, hidden by the hide-agencies
-// filter. An employer's own recruiting portal ("X Recruiting Portal", "X
-// Campus Recruiting") is a department, so that phrase is read out of the
-// name first, and a name the census rule refuses is not screened at all.
+// from labels by the old tools, so they are read as the census reads a
+// label: what the label adds comes off ("US - LLC Recruiting", a logo label,
+// made Convergint a flagged agency, hidden by the hide-agencies filter;
+// "Calamos Recruiting" is Calamos), and the name that remains IS screened
+// ("Avant Staffing Professionals" stays flagged; the review, 2026-10-26). An
+// employer's own recruiting portal ("X Recruiting Portal", "X Campus
+// Recruiting") is a department, so that phrase is read out of every name,
+// and a name the census rule refuses whole is not screened at all.
 const AGENCY_NAME = /\b(staffing|recruit(ing|ment|er)?s?|headhunt|personnel|manpower|employment\s+(agency|services)|placements?\b|temp\s|outsourc|bpo\b|int[eé]rim|travail\s+temporaire|trabajo\s+temporal)\b|\b(uitzend|zeitarbeit|personaldienst|jobandtalent)/i;
 
 const unesc = (s) => s.replace(/\\(.)/g, "$1");

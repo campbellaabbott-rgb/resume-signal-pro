@@ -315,9 +315,10 @@ describe("the flag is served, badged, and declinable end to end", () => {
 describe("future merges tag on arrival", () => {
   it("merge-all emits the flag from the name screen or the cleared file's evidence bit", () => {
     const MERGE = strip(read("scripts/merge-all.mjs"));
-    // The name screen reads agencyScreenText, never the raw name: a word in a
-    // name mined from a label is no evidence (the census-names test owns why).
-    expect(MERGE).toMatch(/AGENCY_NAME\.test\(agencyScreenText\(vendor, b\.name\)\) \|\| agencyEvidence\.has\(/);
+    // The name screen reads agencyScreenText, never the raw name: what a label
+    // field adds to a name is no evidence, the name that remains is (the
+    // census-names test owns why), so the hit's nameFrom rides along.
+    expect(MERGE).toMatch(/AGENCY_NAME\.test\(agencyScreenText\(vendor, b\.name, \{ nameFrom: b\.nameFrom \}\)\) \|\| agencyEvidence\.has\(/);
     expect(MERGE).toMatch(/x\.agency === true/);
     // The staffing vocabulary must stay a strict subset of the junk-inclusive
     // gate — a spelling drift between the two is a board blocked by one and

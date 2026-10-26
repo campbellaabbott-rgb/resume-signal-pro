@@ -17,18 +17,22 @@
 //   2. several distinct names across the active sites -> AMBIGUOUS, skipped
 //      and listed for eyeballing (a shared instance may host several
 //      employers — one catalog entry must not claim them all under one name);
-//   3. no active site carries a name -> the SeoOrganizationName on the
-//      tenant's INACTIVE sites, when they agree on one. Honeywell's aerospace
-//      tenant kept "Honeywell" there while its only live site was labelled
-//      "Aerospace", and reading active sites alone wrote "Aerospace"
-//      (trusted-pages round 2026-10-25);
-//   4. nothing -> UNRESOLVED, skipped.
+//   3. no active site carries a name but one is named for an institution
+//      ("Community Hospital") -> that name, as the tenant's only one;
+//   4. still nothing -> the SeoOrganizationName on the tenant's INACTIVE
+//      sites, when they agree on one, is listed for REVIEW and never
+//      resolved. Honeywell's aerospace tenant kept "Honeywell" there while its
+//      only live site was labelled "Aerospace"; reading active sites alone
+//      wrote "Aerospace" (trusted-pages round 2026-10-25), but the retired
+//      sites' name is the pre-spin-off one and another tenant's catalogue
+//      name, and this tenant is Honeywell Aerospace (the review, 2026-10-26);
+//   5. nothing -> UNRESOLVED, skipped.
 //
 // The whole site list is read (paged), not its first fifty: a tenant with a
 // hundred and fifty community sites hid its corporate site past the cut.
 //
 // Usage: node scripts/resolve-oracle-names.mjs <verified.json> <out.json>
-// Output: { resolved: [{token,name,count,evidence}], ambiguous: [...], unresolved: [...] }
+// Output: { resolved: [{token,name,count,evidence}], review: [...], ambiguous: [...], unresolved: [...] }
 import { readFileSync, writeFileSync } from "node:fs";
 import { oraclePickName } from "./census-names.mjs";
 
@@ -62,7 +66,7 @@ async function sitesOf(token) {
 // A merge that keeps the census site ingests nothing.
 const pickName = oraclePickName;
 
-const resolved = [], ambiguous = [], unresolved = [];
+const resolved = [], review = [], ambiguous = [], unresolved = [];
 let done = 0;
 const queue = [...boards];
 await Promise.all(Array.from({ length: CONCURRENCY }, async () => {
@@ -73,6 +77,7 @@ await Promise.all(Array.from({ length: CONCURRENCY }, async () => {
       const sites = await sitesOf(b.token);
       const pick = pickName(sites);
       if (pick.status === "resolved") resolved.push({ token: b.token, name: pick.name, count: b.count, activeSite: pick.activeSite, evidence: pick.evidence });
+      else if (pick.status === "review") review.push({ token: b.token, lead: pick.name, count: b.count, evidence: pick.evidence });
       else if (pick.status === "ambiguous") ambiguous.push({ token: b.token, count: b.count, names: [...new Set(pick.names)].slice(0, 6) });
       else unresolved.push({ token: b.token, count: b.count });
     } catch (e) {
@@ -83,7 +88,7 @@ await Promise.all(Array.from({ length: CONCURRENCY }, async () => {
 }));
 
 resolved.sort((a, b) => b.count - a.count);
-writeFileSync(OUT, JSON.stringify({ resolved, ambiguous, unresolved }, null, 1));
+writeFileSync(OUT, JSON.stringify({ resolved, review, ambiguous, unresolved }, null, 1));
 const postings = resolved.reduce((n, b) => n + b.count, 0);
-console.log(`\nresolved ${resolved.length}/${boards.length} boards (${postings.toLocaleString()} postings), ambiguous ${ambiguous.length}, unresolved ${unresolved.length} -> ${OUT}`);
+console.log(`\nresolved ${resolved.length}/${boards.length} boards (${postings.toLocaleString()} postings), for review ${review.length}, ambiguous ${ambiguous.length}, unresolved ${unresolved.length} -> ${OUT}`);
 console.log("top 10:", resolved.slice(0, 10).map((b) => `${b.name} (${b.count})`).join(", "));

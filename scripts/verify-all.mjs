@@ -12,7 +12,7 @@
 import fs from "node:fs";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { LABEL_NAMED_VENDORS, adpWelcomeName, ashbyOrganizationName, censusNameReason, pickAshbyName, ukgName } from "./census-names.mjs";
+import { LABEL_NAMED_VENDORS, adpWelcomeName, ashbyOrganizationName, censusNameReason, pickAshbyName, sameSiteRedirect, ukgName } from "./census-names.mjs";
 const execFileP = promisify(execFile);
 
 const [, , CENSUS_PATH, OUT] = process.argv;
@@ -99,12 +99,12 @@ async function probePost(url, body, tries = 3) {
   return null;
 }
 
-async function probe(url, asText = false, tries = 3, follow = false) {
+async function probe(url, asText = false, tries = 3) {
   for (let i = 0; i < tries; i++) {
     try {
       const { stdout } = await execFileP(
         "/usr/bin/curl",
-        ["-s", "-m", "15", ...(follow ? ["-L", "--max-redirs", "3"] : []), "-H", `User-Agent: ${UA["User-Agent"]}`, "-w", "\n__STATUS__%{http_code}", url],
+        ["-s", "-m", "15", "-H", `User-Agent: ${UA["User-Agent"]}`, "-w", "\n__STATUS__%{http_code}", url],
         { maxBuffer: 32 * 1024 * 1024 },
       );
       const cut = stdout.lastIndexOf("\n__STATUS__");
@@ -151,6 +151,55 @@ const headingOnly = (name) => {
   return words.length === 0 || words.every((w) => HIRING_VOCAB.has(w));
 };
 
+/**
+ * ONE REQUEST A SECOND PER HOST for the pages a census reads beside a
+ * vendor's API: an Ashby board's hosted page (a second Ashby host, read for
+ * every new board) and an employer's homepage (the review, 2026-10-26: the
+ * hosted page ran at the API's 14-way concurrency, and the homepage read
+ * followed redirects to any host). Calls for one host queue behind each
+ * other. A redirect is followed only within the same registrable domain
+ * (sameSiteRedirect), at most three times, and only when asked: a homepage
+ * that moves to another company's site has left its employer's own words.
+ */
+const POLITE_SPACING_MS = 1100;
+const politeLast = new Map();
+const politeChain = new Map();
+async function politeSlot(host) {
+  const prev = politeChain.get(host) ?? Promise.resolve();
+  let release;
+  const mine = new Promise((r) => { release = r; });
+  politeChain.set(host, prev.then(() => mine));
+  await prev;
+  const wait = (politeLast.get(host) ?? 0) + POLITE_SPACING_MS - Date.now();
+  if (wait > 0) await sleep(wait);
+  politeLast.set(host, Date.now());
+  return release;
+}
+async function politeText(url, { sameSiteRedirects = false } = {}) {
+  let at = url;
+  for (let hop = 0; hop < 4; hop++) {
+    let host;
+    try { host = new URL(at).hostname; } catch { return null; }
+    const release = await politeSlot(host);
+    let stdout = "";
+    try {
+      ({ stdout } = await execFileP(
+        "/usr/bin/curl",
+        ["-s", "-m", "15", "-H", `User-Agent: ${UA["User-Agent"]}`, "-w", "\n__STATUS__%{http_code} %{redirect_url}", at],
+        { maxBuffer: 32 * 1024 * 1024 },
+      ));
+    } catch { return null; } finally { release(); }
+    const cut = stdout.lastIndexOf("\n__STATUS__");
+    if (cut < 0) return null;
+    const [code, next = ""] = stdout.slice(cut + 11).trim().split(" ");
+    const status = Number(code);
+    if (status >= 200 && status < 300) return stdout.slice(0, cut);
+    if (status >= 300 && status < 400 && sameSiteRedirects && next && sameSiteRedirect(at, next)) { at = new URL(next, at).href; continue; }
+    return null;
+  }
+  return null;
+}
+
 const verifiers = {
   greenhouse: async (t) => {
     const eu = t.startsWith("eu~");
@@ -165,14 +214,15 @@ const verifiers = {
   // The posting API carries no organization name; the hosted jobs page embeds
   // the organization record, whose name field is the vendor's own. When that
   // record is empty the page title is the bare vendor word, so the title is
-  // never read; the board's own slug is the fallback (and wins over an
-  // organization name that does not match it), and the census rule below
-  // refuses it when it is a label.
+  // never read; the board's own slug is the fallback, unless it keeps a label
+  // word. An organization name that does not match the slug leaves a new
+  // board unnamed for review (pickAshbyName), and the census rule below
+  // refuses a label.
   ashby: async (t) => {
     const d = await probe(`https://api.ashbyhq.com/posting-api/job-board/${t}`);
     const jobs = d?.jobs;
     if (!Array.isArray(jobs) || jobs.length < MIN_POSTINGS) return null;
-    const page = await probe(`https://jobs.ashbyhq.com/${encodeURIComponent(t)}`, true);
+    const page = await politeText(`https://jobs.ashbyhq.com/${encodeURIComponent(t)}`);
     const pick = pickAshbyName(ashbyOrganizationName(page), t);
     return { name: pick.name, count: jobs.length, nameFrom: pick.from };
   },
@@ -339,7 +389,7 @@ const verifiers = {
     const links = await probe(`${base}/content-links/career-center?${qs}`);
     let name = adpWelcomeName(links?.contentLinks);
     if (headingOnly(name)) name = "";
-    return { name: name.slice(0, 60), count };
+    return { name: name.slice(0, 60), count, nameFrom: "welcome prose" };
   },
   ukg: async (t) => {
     // Token is pod~TENANT~guid; all three come from the crawled URL, so the
@@ -361,7 +411,7 @@ const verifiers = {
     // round 2026-10-25), so it is never read. The Name wins when it is a
     // name and agrees with the footer domain; otherwise the employer's own
     // homepage names itself; otherwise the board stays unnamed and out.
-    const read = await ukgName(base, (url) => probe(url, true, 2, url !== base));
+    const read = await ukgName(base, (url) => (url === base ? probe(url, true, 2) : politeText(url, { sameSiteRedirects: true })));
     if (!read) return null;
     const name = headingOnly(read.name) ? "" : read.name;
     return { name: name.slice(0, 60), count, nameFrom: read.evidence };
@@ -437,7 +487,7 @@ await Promise.all(Object.keys(verifiers).map(async (vendor) => {
   // Fold in prior-run hits so the output is complete regardless of restarts.
   const seen = new Set(freshHits.map((h) => h.token));
   for (const h of priorHits) {
-    if (h.vendor === vendor && !seen.has(h.token)) { freshHits.push(refuseLabelName(vendor, { token: h.token, name: h.name, count: h.count })); seen.add(h.token); }
+    if (h.vendor === vendor && !seen.has(h.token)) { freshHits.push(refuseLabelName(vendor, { token: h.token, name: h.name, count: h.count, ...(h.nameFrom ? { nameFrom: h.nameFrom } : {}) })); seen.add(h.token); }
   }
   out[vendor] = freshHits.sort((a, b) => b.count - a.count);
   const postings = out[vendor].reduce((s, x) => s + x.count, 0);

@@ -1,0 +1,32 @@
+{
+ "url": "https://edel.fa.us2.oraclecloud.com/hcmRestApi/resources/latest/recruitingCESites?onlyData=true&limit=200&offset=0",
+ "fetched": "2026-10-25",
+ "kept": "every site, with the four fields the census reads (the census re-run of 2026-10-25, oracle-sites.json)",
+ "hasMore": false,
+ "items": [
+  {
+   "SiteNumber": "CX_1",
+   "SiteName": "Fortinet Careers",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_INACTIVE"
+  },
+  {
+   "SiteNumber": "CX_2001",
+   "SiteName": "Candidate Experience site",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX",
+   "SiteName": "Candidate Experience site",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_INACTIVE"
+  },
+  {
+   "SiteNumber": "CX_1001",
+   "SiteName": "Candidate Experience site for interns",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  }
+ ]
+}

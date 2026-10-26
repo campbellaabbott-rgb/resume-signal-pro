@@ -62,12 +62,14 @@ const NAME_BLOCK = /\b(staffing|recruit(ing|ment|er)?s?|talents?|headhunt|person
 // Molina Talent...) as staffing firms. A true agency almost always carries
 // the remaining words or sits in the conviction list by token.
 //
-// The screen reads only agencyScreenText (scripts/census-names.mjs), never
-// the raw name (trusted-pages round 2026-10-25): a name mined from a label
-// (UKG board labels, Oracle site names, ADP prose) says what a board is for,
-// and "US - LLC Recruiting" made Convergint a flagged agency; an employer's
-// own recruiting portal ("X Recruiting Portal", "X Campus Recruiting") is a
-// department, not a business.
+// The screen reads agencyScreenText (scripts/census-names.mjs), never the
+// raw name (trusted-pages round 2026-10-25): a label's own words say what a
+// board is for, and "US - LLC Recruiting" made Convergint a flagged agency;
+// an employer's own recruiting portal ("X Recruiting Portal", "X Campus
+// Recruiting") is a department, not a business. Only what the label field
+// adds is taken out: the name that remains is screened, and a name the
+// verifier read from a company-name field (its nameFrom says so) is screened
+// as it stands (the review, 2026-10-26).
 const AGENCY_NAME = /\b(staffing|recruit(ing|ment|er)?s?|headhunt|personnel|manpower|employment\s+(agency|services)|placements?\b|temp\s|outsourc|bpo\b|int[eé]rim|travail\s+temporaire|trabajo\s+temporal)\b|\b(uitzend|zeitarbeit|personaldienst|jobandtalent)/i;
 // Corporate-only policy: public-sector entities never enter the catalog
 // (mobile audit 2026-07-18 found City of Baltimore et al. had slipped in
@@ -334,7 +336,7 @@ for (const vendor of VENDORS) {
     // merge never emits a pages override, so the flag is the last field —
     // when a board later gains one, the override goes BEFORE the flag, the
     // one suffix order every catalog parser tolerates.
-    const isAgency = AGENCY_NAME.test(agencyScreenText(vendor, b.name)) || agencyEvidence.has(`${vendor}:${b.token}`);
+    const isAgency = AGENCY_NAME.test(agencyScreenText(vendor, b.name, { nameFrom: b.nameFrom })) || agencyEvidence.has(`${vendor}:${b.token}`);
     if (isAgency) taggedAgencies++;
     lines.push(`  { name: "${esc(b.name)}", source: "${vendor}", token: "${esc(b.token)}"${isAgency ? ", agency: true" : ""} },`);
   }

@@ -38,16 +38,19 @@ import {
   censusName,
   censusNameReason,
   nameAgreesWithHost,
+  nameAgreesWithTenant,
   oraclePickName,
   oracleSiteName,
   pickAshbyName,
   pickUkgName,
+  sameSiteRedirect,
   siteNameFromHomepage,
   ukgBoardFields,
   ukgName,
 } from "../../scripts/census-names.mjs";
 import { resolveBoard } from "../../scripts/resolve-adp-names.mjs";
 import { unpublishableNameReason } from "../../scripts/prerender-names.mjs";
+import { JOB_SOURCES } from "../../supabase/functions/job-board/sources";
 
 const ROOT = resolve(__dirname, "../..");
 const FX = resolve(__dirname, "fixtures/census-names");
@@ -91,21 +94,45 @@ describe("UKG: the board's own Name, checked against the employer's footer domai
 
   // Recorded on the 2026-10-25 population read (board Name, footer link, homepage name).
   it("the tenant code the vendor built from the legal name can vouch for a board Name the footer does not show", () => {
+    // The abbreviation after the digits is what the vendor built from the
+    // legal name (CONPC: Continental Properties Company); the three letters
+    // in front are only the name's first syllable, which any name can share.
+    expect(pickUkgName({ boardName: "Continental Properties Careers", footerUrl: "https://www.cproperties.com/you-belong-here", siteName: "", tenant: "CON1051CONPC" }).name)
+      .toBe("Continental Properties");
     expect(pickUkgName({ boardName: "Continental Careers", footerUrl: "https://www.cproperties.com/you-belong-here", siteName: "", tenant: "CON1051CONPC" }).name)
-      .toBe("Continental");
+      .toBe("");
     expect(pickUkgName({ boardName: "Craft", footerUrl: "https://www.austin-ind.com", siteName: "", tenant: "AUS1003AUIN" }).name).toBe("");
   });
 
   it("a footer that points at a video, a CDN or a compliance site is not the employer's domain", () => {
-    expect(pickUkgName({ boardName: "Redner's Jobs", footerUrl: "https://youtu.be/lRu3qfpYPsI", siteName: "" }).name).toBe("Redner's");
+    // With no employer domain, the tenant code must vouch for the board Name
+    // (RMI: Redner's Markets Inc), and "Redner's" alone does not spell it.
+    expect(pickUkgName({ boardName: "Redner's Jobs", footerUrl: "https://youtu.be/lRu3qfpYPsI", siteName: "", tenant: "RED1001RMI" }).name).toBe("");
+    expect(pickUkgName({ boardName: "Redner's Markets Jobs", footerUrl: "https://youtu.be/lRu3qfpYPsI", siteName: "", tenant: "RED1001RMI" }).name).toBe("Redner's Markets");
     expect(pickUkgName({ boardName: "Career Opportunities", footerUrl: "https://www.e-verify.gov/", siteName: "E-Verify" }).name).toBe("");
   });
 
   it("a homepage name in segments gives the segment its domain spells", () => {
     expect(pickUkgName({
-      boardName: "Denny's Career Opportunities", footerUrl: "https://rremcrestaurants.com",
+      boardName: "Career Opportunities", footerUrl: "https://rremcrestaurants.com",
       siteName: "RREMC Restaurants | American Restaurant in FL, VA, GA, IN, & IL",
     }).name).toBe("RREMC Restaurants");
+  });
+
+  it("a board Name that is a name and a homepage that names another organisation leave the board for a person", () => {
+    // The franchisee's board is named for the brand it runs (Denny's), and a
+    // winery's footer points at its parent's site: the two shapes are the
+    // same, and they point opposite ways (the review, 2026-10-26).
+    const franchise = pickUkgName({
+      boardName: "Denny's Career Opportunities", footerUrl: "https://rremcrestaurants.com",
+      siteName: "RREMC Restaurants | American Restaurant in FL, VA, GA, IN, & IL",
+    });
+    expect(franchise.name).toBe("");
+    expect(franchise.evidence).toMatch(/review/);
+    expect(pickUkgName({ boardName: "CedarCreek Estate Winery Careers", footerUrl: "https://www.markanthony.com", siteName: "The Mark Anthony Group of Companies" }).name).toBe("");
+    // the two agree: the homepage's fuller name is the employer's
+    expect(pickUkgName({ boardName: "Snell & Wilmer Business Professionals", footerUrl: "https://www.swlaw.com", siteName: "Law Offices of Snell & Wilmer" }).name)
+      .toBe("Law Offices of Snell & Wilmer");
   });
 
   it("a board Name that disagrees with the employer's domain is not trusted on its own", () => {
@@ -135,13 +162,19 @@ describe("Oracle: SeoOrganizationName first, from any site; a site label is refu
   const icfcjb = fixture("oracle-sites-icfcjb.json").items;
   const eexs = fixture("oracle-sites-eexs.json").items;
 
-  it("Honeywell's aerospace tenant is not named 'Aerospace'", () => {
+  it("Honeywell's aerospace tenant is not named 'Aerospace', and a name only its inactive sites carry waits for a person", () => {
+    // The inactive sites still carry the pre-spin-off SeoOrganizationName
+    // "Honeywell", which is another tenant's name in the catalogue
+    // (ibqbjb~ocs~CX_1, the remaining Honeywell). This tenant is Honeywell
+    // Aerospace (the trusted-pages round, 2026-10-25), so a name read only
+    // from retired sites is a lead for review, never a resolution.
     const pick = oraclePickName(icfcjb);
-    expect(pick.status).toBe("resolved");
-    expect(pick.name).toBe("Honeywell");
     expect(pick.name).not.toBe("Aerospace");
+    expect(pick.status).toBe("review");
     expect(pick.evidence).toMatch(/inactive/);
-    expect(pick.activeSite).toBe("CX_4001");
+    const others = new Set(JOB_SOURCES.filter((b) => !b.token.startsWith("icfcjb~")).map((b) => b.name));
+    expect(others.has("Honeywell"), "the catalogue's other Honeywell tenant").toBe(true);
+    if (others.has(String(pick.name))) expect(pick.status, "another tenant's name is never resolved onto this one").not.toBe("resolved");
   });
 
   it("LCS's 'All Jobs' site never becomes a board named 'All', and its other labels name no one", () => {
@@ -172,6 +205,8 @@ describe("Oracle: SeoOrganizationName first, from any site; a site label is refu
   it("both resolvers take their rule from the census module and read the whole site list", () => {
     const names = code("scripts/resolve-oracle-names.mjs");
     expect(names).toMatch(/const pickName = oraclePickName;/);
+    expect(names, "a name for review is listed, never resolved").toMatch(/else if \(pick\.status === "review"\) review\.push\(/);
+    expect(names).toMatch(/writeFileSync\(OUT, JSON\.stringify\(\{ resolved, review, ambiguous, unresolved \}/);
     expect(names).toMatch(/limit=200&offset=\$\{offset\}/);
     expect(names).not.toMatch(/limit=50\b/);
     expect(names).not.toMatch(/DEFAULT_NAMES/);
@@ -252,13 +287,39 @@ describe("Ashby: the organization record's name, never the page title", () => {
     expect(pickAshbyName("Vanta", "vanta")).toMatchObject({ name: "Vanta", from: "organization.name" });
   });
 
-  it("an organization name that does not match the board's slug does not replace the slug's name", () => {
-    expect(pickAshbyName("Armitage Labs", "creem").name).toBe("Creem");
+  it("an organization name that does not match the board's slug is not overwritten by the slug", () => {
+    // Which of the two is the employer's name cannot be told from the page:
+    // "OnePay" on oneapp and "ChipAgents" on alpha-design-ai-inc are the
+    // brands, "Armitage Labs" on creem is the legal entity. The catalogue's
+    // name stands where there is one, and a new board waits for a person.
+    expect(pickAshbyName("Armitage Labs", "creem").name).toBe("");
+    expect(pickAshbyName("Armitage Labs", "creem").from).toMatch(/review/);
+    expect(pickAshbyName("Armitage Labs", "creem", "Creem").name).toBe("Creem");
+    // The eleven catalogue names the review found replaced (ashby-final.json,
+    // recorded 2026-10-25): eight whose organization record disagrees with
+    // the slug, and three with no record at all.
+    for (const [org, slug, known] of [
+      ["OnePay", "oneapp", "OnePay"], ["ChipAgents", "alpha-design-ai-inc", "ChipAgents"], ["Multibank Group", "mexdigital", "Multibank Group"],
+      ["9amHealth", "join9am", "9amHealth"], ["The Generalist Company Ltd", "tgc", "The Generalist Company Ltd"],
+      ["Agresta, Storms & O\u2019Leary, PC", "aso-careers", "Agresta, Storms & O\u2019Leary, PC"], ["Jinba.io", "carnot-ai", "Jinba.io"],
+      ["Cubic\u00b3", "cubic3", "Cubic\u00b3"],
+      ["", "savvyinsurance-trellis", "Trellis Technologies"], ["", "workweave", "Weave"], ["", "phare-r1-r37", "R37 Lab, R1 RCM"],
+    ]) {
+      expect(pickAshbyName(org, slug, known).name, slug).toBe(known);
+      if (org) expect(pickAshbyName(org, slug).name, `${slug}, a new board`).toBe("");
+    }
+    // A catalogue label is not kept over the slug: the boards named "Jobs".
+    expect(pickAshbyName("", "lemonade", "Jobs").name).toBe("Lemonade");
+    // A slug made readable that keeps a label word is not a name.
+    expect(pickAshbyName("", "aso-careers").name).toBe("");
+    expect(pickAshbyName("", "acme-jobs").name).toBe("");
     expect(pickAshbyName("Teleport", "goteleport").name).toBe("Teleport");
     expect(pickAshbyName("Binance.US", "binance.us").name).toBe("Binance.US");
     expect(pickAshbyName("", "lemonade").name).toBe("Lemonade");
-    // a shared common word is not a match: the fira-health board's record names another company
-    expect(pickAshbyName("Adaptive Home Health", "fira-health").name).toBe("Fira Health");
+    // a shared common word is not a match: the fira-health board's record names
+    // another company, so the record is not taken (and a new board waits)
+    expect(pickAshbyName("Adaptive Home Health", "fira-health").name).toBe("");
+    expect(pickAshbyName("Adaptive Home Health", "fira-health", "Fira Health").name).toBe("Fira Health");
     expect(nameAgreesWithHost("Bourne Manor Extended Care", "integritushealthcare.com")).toBe(false);
   });
 
@@ -267,6 +328,21 @@ describe("Ashby: the organization record's name, never the page title", () => {
     const ashby = verify.slice(verify.indexOf("  ashby: async (t) =>"), verify.indexOf("  smartrecruiters: async (t) =>"));
     expect(ashby).toMatch(/pickAshbyName\(ashbyOrganizationName\(page\), t\)/);
     expect(ashby).not.toMatch(/<title>/);
+    // The hosted page is a second host, read at most once a second.
+    expect(ashby).toMatch(/await politeText\(`https:\/\/jobs\.ashbyhq\.com\/\$\{encodeURIComponent\(t\)\}`\)/);
+  });
+
+  it("an employer's homepage is read once a second per host, and a redirect is followed only within its own site", () => {
+    const verify = code("scripts/verify-all.mjs");
+    expect(verify).toMatch(/const POLITE_SPACING_MS = 1100;/);
+    const ukg = verify.slice(verify.indexOf("  ukg: async (t) =>"), verify.indexOf("  paylocity: async (t) =>"));
+    expect(ukg).toMatch(/url === base \? probe\(url, true, 2\) : politeText\(url, \{ sameSiteRedirects: true \}\)/);
+    expect(verify, "no census read follows a redirect to any host").not.toMatch(/"-L"/);
+    expect(sameSiteRedirect("https://axiawh.com/", "https://www.axiawh.com/")).toBe(true);
+    expect(sameSiteRedirect("http://www.signalenergy.com/", "https://covolt.com/")).toBe(false);
+    expect(sameSiteRedirect("https://acme.co.uk/", "https://careers.acme.co.uk/home")).toBe(true);
+    expect(sameSiteRedirect("https://acme.com/", "/home")).toBe(true);
+    expect(sameSiteRedirect("https://acme.com/", "javascript:alert(1)")).toBe(false);
   });
 });
 
@@ -278,8 +354,8 @@ describe("the census rule: the bake's rule, plus the label shapes a census meets
     "Welltower Refresh 2025", "PM New", "2024 New", "KemperSports - New", "Envision Header", "Farmers Logo 2022",
     "Corporate", "Career Site", "White Logo Color Background", "Aviation", "All Jobs", "All Community Jobs",
     "Community Template", "Training Community", "Student", "Staff and Faculty", "Internships", "Career Portal",
-    "Global", "Default", "Tiffany - SR Testing", "ADMN Training Career Site V2", "Rice University Minimal Template External",
-    "PCC External Site Minimal Template", "Aerospace", "Jobs", "Opportunities", "Opportunities to Join Our Team",
+    "Global", "Default", "Tiffany - SR Testing", "ADMN Training Career Site V2",
+    "Aerospace", "Jobs", "Opportunities", "Opportunities to Join Our Team",
     "C3 CMYK", "BTB2.png", "HRH Secaucus University Transparent", "Recruiting 2025", "Recruiting - L148 Template",
     "Linamar Career Site - New", "(OLD) EMEA copy", "QSAC 01/13/2023", "All Locations", "156436",
   ];
@@ -293,6 +369,30 @@ describe("the census rule: the bake's rule, plus the label shapes a census meets
 
   it("refuses every census label, read from a label field", () => {
     for (const n of LABELS) expect(censusNameReason(n, { fromLabel: true }), n).not.toBeNull();
+  });
+
+  // An admin screen's version, date and brand tags come off the name they
+  // were appended to; what remains is the employer's own word.
+  const TAGGED: Record<string, string> = {
+    "Westminster Brand 051816": "Westminster", "SCF New Branding 2018": "SCF", "Welltower Refresh 2025": "Welltower",
+    "PM New": "PM", "KemperSports - New": "KemperSports", "Linamar Career Site - New": "Linamar", "QSAC 01/13/2023": "QSAC",
+  };
+  it("and cleaning a label never turns it into a name: what the tools write is censusName's output", () => {
+    // The review (2026-10-26) found the gap this closes: the list above was
+    // only ever judged raw, while every tool writes censusName's cleaned text.
+    for (const n of LABELS) expect(censusName(n, { fromLabel: true }).name, n).toBe(TAGGED[n] ?? "");
+  });
+
+  // An admin screen's template tags come off a name that is there (the
+  // review, 2026-10-26): these were refused whole and counted as label sites.
+  const CLEANED: Array<[string, string]> = [
+    ["Rice University Minimal Template External", "Rice University"],
+    ["Pittsburg State University Career Site Minimal", "Pittsburg State University"],
+    ["PCC External Site Minimal Template", "PCC"],
+  ];
+  it("a template tag comes off a name and the name is kept", () => {
+    for (const [raw, name] of CLEANED) expect(censusName(raw, { fromLabel: true }).name, raw).toBe(name);
+    expect(censusName("Recruiting - L148 Template", { fromLabel: true }).name, "a code is not a name").toBe("");
   });
 
   // Real names read from label fields on 2026-10-25 (board Names, site names, welcome prose).
@@ -343,11 +443,22 @@ describe("the census rule: the bake's rule, plus the label shapes a census meets
 });
 
 describe("agency: no word of a label is evidence of a staffing business", () => {
-  it("names mined from labels are never screened; an employer's own recruiting portal is a department", () => {
+  it("only what a label field adds is taken out; the name inside is still screened, and an employer's own recruiting portal is a department", () => {
+    // A catalogue name of a label-named vendor was mined from a label by the
+    // old tools: its board-label scaffolding ("... Recruiting", "...
+    // Recruitment Team") comes off, and the rest IS screened.
     expect(agencyScreenText("ukg", "US - LLC Recruiting")).toBe("");
-    expect(agencyScreenText("ukg", "Calamos Recruiting")).toBe("");
-    expect(agencyScreenText("oracle", "ENBD Recruitment Team")).toBe("");
-    expect(agencyScreenText("adp", "The Barkan Companies recruitment page")).toBe("");
+    expect(agencyScreenText("ukg", "Calamos Recruiting")).toBe("Calamos");
+    expect(agencyScreenText("oracle", "ENBD Recruitment Team")).toBe("ENBD");
+    expect(agencyScreenText("adp", "The Barkan Companies recruitment page")).toBe("The Barkan Companies");
+    // The review (2026-10-26): exempting three vendors wholesale let these through.
+    expect(agencyScreenText("oracle", "Acme Staffing Services")).toBe("Acme Staffing Services");
+    expect(agencyScreenText("adp", "Acme Staffing")).toBe("Acme Staffing");
+    expect(agencyScreenText("ukg", "Avant Staffing Professionals")).toMatch(/Staffing/);
+    // A hit says where its name came from: a homepage's own name, or welcome
+    // prose, is a company-name field, so nothing is taken out of it.
+    expect(agencyScreenText("ukg", "Acme Recruiting", { nameFrom: "www.acmerecruiting.com names itself" })).toBe("Acme Recruiting");
+    expect(agencyScreenText("ukg", "Acme Recruiting", { nameFrom: "jobBoard.Name, agrees with www.acme.com" })).toBe("Acme");
     expect(agencyScreenText("greenhouse", "mthree Recruiting Portal")).toBe("mthree");
     expect(agencyScreenText("greenhouse", "AlphaSights Campus Recruiting")).toBe("AlphaSights");
     expect(agencyScreenText("recruitee", "Recruitment")).toBe("");
@@ -361,6 +472,7 @@ describe("agency: no word of a label is evidence of a staffing business", () => 
     "export const JOB_SOURCES: JobSource[] = [",
     '  { name: "US - LLC Recruiting", source: "ukg", token: "recruiting2~CON1074CVTG~1831b61a-1945-44fa-afd8-624795c9b30d" },',
     '  { name: "Calamos Recruiting", source: "ukg", token: "recruiting2~CAL1001CALA~46b96419-fba6-4dd0-a5fa-715bdfcf845b" },',
+    '  { name: "Avant Staffing Professionals", source: "ukg", token: "recruiting~AVA1000AVSP~11111111-2222-3333-4444-555555555555" },',
     '  { name: "ENBD Recruitment Team", source: "oracle", token: "fa-evlo-saasfaprod1~ocs~CX_1" },',
     '  { name: "mthree Recruiting Portal", source: "greenhouse", token: "mthreerecruitingportal" },',
     '  { name: "Robbins Recruiting", source: "lever", token: "robbinsrecruiting" },',
@@ -386,7 +498,7 @@ describe("agency: no word of a label is evidence of a staffing business", () => 
       execFileSync(process.execPath, [resolve(ROOT, "scripts/tag-agencies.mjs")], { cwd: dir, stdio: "pipe" });
       const out = readFileSync(join(dir, "supabase/functions/job-board/sources.ts"), "utf8");
       const flagged = out.split("\n").filter((l) => l.includes("agency: true")).map((l) => /name: "([^"]+)"/.exec(l)?.[1]);
-      expect(flagged.sort()).toEqual(["Collabera", "Robbins Recruiting", "Rylem Staffing LLC"]);
+      expect(flagged.sort()).toEqual(["Avant Staffing Professionals", "Collabera", "Robbins Recruiting", "Rylem Staffing LLC"]);
     });
   });
 
@@ -396,6 +508,7 @@ describe("agency: no word of a label is evidence of a staffing business", () => 
         ukg: [
           { token: "recruiting~REG1001RWHM~3f9058a6-91f2-4cf1-bf33-bc76cb9f0522", name: "Axia Logo Horizontal", count: 44 },
           { token: "recruiting2~SAP1000SPID~5e557a61-9707-4f47-8f76-9c11b2bfbf9e", name: "SCN Recruiting", count: 5 },
+          { token: "recruiting~ACM1000ACST~11111111-2222-3333-4444-555555555555", name: "Acme Staffing", count: 6, nameFrom: "www.acmestaffing.com names itself" },
         ],
         greenhouse: [{ token: "alphasightsresumedrop", name: "AlphaSights Campus Recruiting", count: 7 }],
         workable: [{ token: "erg-recruiting", name: "Executive Recruiting Group", count: 9 }],
@@ -410,6 +523,7 @@ describe("agency: no word of a label is evidence of a staffing business", () => 
       expect(line("SCN Recruiting")).not.toMatch(/agency: true/);
       expect(line("AlphaSights Campus Recruiting")).not.toMatch(/agency: true/);
       expect(line("Executive Recruiting Group")).toMatch(/agency: true/);
+      expect(line("Acme Staffing"), "a UKG homepage's own name is screened").toMatch(/agency: true/);
     });
   });
 
@@ -418,6 +532,121 @@ describe("agency: no word of a label is evidence of a staffing business", () => 
     expect(tag).toMatch(/AGENCY_NAME\.test\(agencyScreenText\(vendor, unesc\(name\)\)\)/);
     expect(tag).toMatch(/if \(line\.includes\("agency: true"\)\) \{/);
     const merge = code("scripts/merge-all.mjs");
-    expect(merge).toMatch(/AGENCY_NAME\.test\(agencyScreenText\(vendor, b\.name\)\) \|\| agencyEvidence\.has\(/);
+    expect(merge).toMatch(/AGENCY_NAME\.test\(agencyScreenText\(vendor, b\.name, \{ nameFrom: b\.nameFrom \}\)\) \|\| agencyEvidence\.has\(/);
+  });
+});
+
+/**
+ * THE REVIEW OF 2026-10-26. Every input below was read on the 2026-10-25
+ * population runs (the board's own Name, its footer link and its employer's
+ * homepage name, as recorded in ~/.config/resumebooster/census-tools-2026-10-25/),
+ * and the fixed tools wrote each one as an employer's name: another
+ * organisation, a label, a domain or a sentence.
+ */
+describe("the review of 2026-10-26: no other organisation, label, domain or sentence is written as an employer", () => {
+  const ukg = (boardName: string, footerUrl: string, siteName: string, tenant: string) => pickUkgName({ boardName, footerUrl, siteName, tenant }).name;
+
+  it("a homepage name must agree with the employer's own domain, and a badge, league or parent site is not that domain", () => {
+    expect(ukg("All Open Opportunities", "http://houston.astros.mlb.com/", "MLB.com", "HOU1000")).toBe("");
+    expect(ukg("Job Opportunities", "http://losangeles.dodgers.mlb.com/mlb/help/jobs.jsp?c_id=la", "MLB.com", "LOS1000LADOD")).toBe("");
+    expect(ukg("Career Opportunities", "https://www.greatplacetowork.com/certified-company/7011898", "Great Place To Work®", "DOC1001DOCM")).toBe("");
+    // a homepage that names another company (signalenergy.com's page names covolt.com)
+    expect(ukg("Opportunities", "http://www.signalenergy.com/who-we-are/overview", "Covolt", "SIG1007SGEN")).toBe("");
+    // a homepage name that does not spell the domain is not the employer's
+    expect(ukg("Diversified Careers - Maine Roots. Global Opportunities.", "https://www.divcom.com/about/", "Diversified", "DIV1004DIVHO")).toBe("");
+    // positive controls
+    expect(ukg("Opportunities", "http://www.goodwillky.org/about/", "Goodwill Kentucky - Goodwill Kentucky", "GOO1026")).toBe("Goodwill Kentucky");
+    expect(ukg("Opportunities", "http://www.edens.com/careers/", "EDENS", "ede1001")).toBe("EDENS");
+  });
+
+  it("a board Name with no footer link needs the tenant code to vouch for it", () => {
+    expect(ukg("eQuest", "", "", "OCI1001")).toBe("");
+    expect(ukg("Career Opportunities in Delaware", "", "", "CHI1001CHIM")).toBe("");
+    expect(ukg("International Opportunities", "", "", "WEB1004WEBIN")).toBe("");
+    expect(ukg("Open Opportunities - External Candidates Only", "", "", "AME1104ANBT")).toBe("");
+    expect(ukg("Federal Work Study Jobs  - For more information email FWS@BerkeleyCollege.edu", "", "", "BER1008BESNJ")).toBe("");
+    // positive controls: the name's initials are the abbreviation, or it spells it
+    expect(ukg("Catholic Charities of Southern Nevada", "", "", "CAT1021CCSN")).toBe("Catholic Charities of Southern Nevada");
+    expect(ukg("Austin Industries Careers", "", "", "AUS1003AUIN")).toBe("Austin Industries");
+  });
+
+  it("the tenant code vouches only through its abbreviation, never its first three letters", () => {
+    expect(nameAgreesWithTenant("Diversified Careers - Maine Roots. Global Opportunities.", "DIV1004DIVHO")).toBe(false);
+    expect(nameAgreesWithTenant("Divine Bakery", "DIV1004DIVHO")).toBe(false);
+    expect(nameAgreesWithTenant("eQuest", "OCI1001")).toBe(false);
+    expect(nameAgreesWithTenant("Continental Properties", "CON1051CONPC")).toBe(true);
+    expect(nameAgreesWithTenant("Catholic Charities", "CAT1004CC")).toBe(true);
+  });
+
+  it("a domain, a bare leftover qualifier, an email address, a lead-in and a tail naming another company are not names", () => {
+    for (const n of ["MLB.com", "www.rseden.org", "covolt.com", "SpecialOlympics.org"]) {
+      expect(censusName(n, { fromLabel: true }).name, n).toBe("");
+      expect(censusName(n, { fromSite: true }).name, `${n} as a homepage's name`).toBe("");
+    }
+    expect(censusName("www.acme.com").name, "a leading www. is never a name").toBe("");
+    for (const n of ["Current", "International", "Club", "Candidates Only"]) expect(censusName(n, { fromLabel: true }).name, n).toBe("");
+    expect(censusName("Federal Work Study Jobs - For more information email FWS@BerkeleyCollege.edu", { fromLabel: true }).name).toBe("");
+    expect(censusName("Career Opportunities in Delaware", { fromLabel: true }).name).toBe("");
+    expect(censusName("KENT Nutrition - A member of the KENT WORLDWIDE family of companies", { fromLabel: true }).name).toBe("");
+    expect(censusName("The Lodge at Sea Island - A Benchmark Resorts Property", { fromLabel: true }).name).toBe("");
+    // the employer's own name comes out of a lead-in, a qualifier or a slogan
+    expect(ukg("Potential Employment Opportunities with Quanex", "https://www.quanex.com/", "", "QUA1012QBPC")).toBe("Quanex");
+    expect(ukg("Swisher Current Opportunities", "https://privacy.swisher.com/", "", "SWI1007SWSH")).toBe("Swisher");
+    const kent = ukg("KENT WORLDWIDE™ - US Best Managed Company Award Winner", "http://www.kentww.com/careers/", "", "KEN1011KENT");
+    expect(kent).toMatch(/^KENT WORLDWIDE/);
+    expect(kent).not.toMatch(/award|winner|best/i);
+    // Booking.com and Binance.US name themselves that way in a company-name field
+    expect(censusName("Booking.com").name).toBe("Booking.com");
+  });
+
+  it("Oracle's 'Candidate Experience site' scaffolding comes off whole, joiner and all", () => {
+    expect(censusName("Candidate Experience site for interns", { fromLabel: true }).name).toBe("");
+    expect(censusName("Candidate Experience", { fromLabel: true }).name).toBe("");
+    const edel = fixture("oracle-sites-edel.json").items;
+    const pick = oraclePickName(edel);
+    expect(pick.status, "Fortinet's tenant names no one from its active sites").not.toBe("resolved");
+    expect(JSON.stringify(pick)).not.toMatch(/Candidate Experience/i);
+    const mapei = fixture("oracle-sites-mapei.json").items;
+    const named = mapei.map((x: { SiteNumber: string }) => oracleSiteName(x));
+    expect(named).toEqual(["Mapei", "Vaga", "Mosaico+", "Adesital", "Polyglass", "Vinavil", "Cercol", "Profilpas"]);
+  });
+
+  it("an ADP welcome sentence gives the name without its possessive or its page words", () => {
+    const welcome = (t: string) => adpWelcomeName([{ linkTypeCode: { codeValue: "WELCOME-TXT", longName: t } }]);
+    expect(welcome("Welcome to Prosperity Bank's career website!")).toBe("Prosperity Bank");
+    expect(welcome("Welcome to the Houston Housing Authority's Career Center Page.")).toBe("Houston Housing Authority");
+    expect(welcome("Welcome to the Adara Living Career Center Page!")).toBe("Adara Living");
+    expect(welcome("Welcome to the Sun Tran Job Center.")).toBe("Sun Tran");
+    expect(welcome("Welcome to EDC's career site!")).toBe("EDC");
+    expect(welcome("Welcome to The Doe Fund's Career Center.")).toBe("The Doe Fund");
+    expect(welcome("Welcome to the Lupus Foundation of America's career page.")).toBe("Lupus Foundation of America");
+    expect(welcome("Welcome to the Department of Human Resources.")).toBe("");
+    expect(welcome('Welcome to Cornbread ("Cornbread" is a family of restaurants)')).toBe("");
+    const concept = welcome("Welcome to Concept Careers Join the Concept family of companies.");
+    expect(concept).not.toMatch(/join|careers/i);
+    // a name that ends in a possessive keeps it
+    expect(welcome("Welcome to Trader Joe's career site!")).toBe("Trader Joe's");
+    expect(welcome("Welcome to Denny's!")).toBe("Denny's");
+  });
+
+  it("an Oracle site label is refused or cut to the name it carries, whatever its tail", () => {
+    const cases: Array<[string, string]> = [
+      ["Teaching", ""], ["Substitutes", ""], ["Psychologist", ""], ["Paraprofessional", ""],
+      ["Penske Careers French", "Penske"], ["Chartwell Career Site English", "Chartwell"],
+      ["New Courtesy Posting Site", ""], ["AICC Internal Site", "AICC"], ["Howmet Aerospace Intern Site", "Howmet Aerospace"],
+      ["Scottish Government Recruitment", "Scottish Government"], ["Suffolk County Council Internal Jobs Board", "Suffolk County Council"],
+      ["Yanfeng Human Resources", "Yanfeng"], ["Human Resources", ""], ["Talent Acquisition", ""],
+    ];
+    for (const [raw, name] of cases) expect(censusName(raw, { fromLabel: true }).name, raw).toBe(name);
+    expect(censusName("Human Resources").name, "in a company-name field too").toBe("");
+  });
+
+  it("a hospital is a part of an employer only when its tenant names another site", () => {
+    const site = (SiteName: string, SiteNumber: string) => ({ SiteName, SiteNumber, StatusCode: "ORA_ACTIVE" });
+    for (const n of ["Community Hospital", "University Hospital", "Regional Hospital"]) {
+      expect(oraclePickName([site(n, "CX_1")]), `${n} alone`).toMatchObject({ status: "resolved", name: n });
+      expect(oraclePickName([site(n, "CX_1"), site("Acme Health", "CX_2")]), `${n} beside Acme Health`).toMatchObject({ status: "resolved", name: "Acme Health" });
+    }
+    expect(oraclePickName([site("Retail Stores", "CX_1")]).status, "a store is never the employer").not.toBe("resolved");
   });
 });
