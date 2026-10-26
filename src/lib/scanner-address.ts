@@ -2,18 +2,6 @@
  * The scanner's old addresses, as data (see src/components/ScannerAddressRedirect.tsx
  * for why "/" still hands them to /resume-checker). Pure: no React, no router.
  */
-import { TOOL_LANDINGS, type ToolLanding } from "@/data/tool-landings";
-
-/**
- * UNTIL THE SWITCH-OVER, "/" RENDERS THE SCANNER UNDER ITS OWN HEAD. Index
- * writes the head from its landing (the canonical from its path, hreflang
- * from its language pair), and /resume-checker's own landing would tell a
- * crawler that "/" is a duplicate of /resume-checker. This is the scanner's
- * copy with "/" as its path and no pair. Step 1 of the switch-over swaps
- * "/"'s element for the new homepage and deletes this with it. Not a tool
- * landing: the bake writes no page for it.
- */
-export const SCANNER_AT_ROOT: ToolLanding = { ...TOOL_LANDINGS["resume-checker"], path: "/", alternates: undefined };
 
 /**
  * Every query parameter Index reads from the address, and every one a hook
