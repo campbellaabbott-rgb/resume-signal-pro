@@ -101,6 +101,7 @@ import { readCachedFillCurve } from "@/lib/fill-curve-cache";
 import { postTrackEvent, getVisitorId } from "@/lib/track-transport";
 import { writeJdHandoff } from "@/lib/jd-handoff";
 import { toast } from "@/hooks/use-toast";
+import { writingToolToast } from "@/lib/writing-refusal";
 import { useAuth } from "@/contexts/AuthContext";
 import { searchName, searchToQuery } from "@/lib/job-search-params";
 import { boardName, companyDisplayName, cleanJobTitle, decodeNameEntities, possessive } from "@/lib/company-display";
@@ -5155,15 +5156,9 @@ function JobsBoard({ boardId }: { boardId: string }) {
       });
       const d = data as (TailoredResumeContent & { success?: boolean }) | null;
       if (error || !d?.success) {
-        const status = (error as { context?: { status?: number } })?.context?.status;
-        toast({
-          title: status === 429 ? t("jobsPage.tailorLimitTitle", "Hourly limit reached") : t("jobsPage.tailorErrorTitle", "Couldn't tailor your résumé"),
-          description: status === 429
-            // Honest 429: it's YOUR per-hour tailoring limit resetting, not
-            // "the tailor is busy" — a personal quota misdescribed as load.
-            ? t("jobsPage.tailorLimit", "You\u2019ve used this hour\u2019s résumé-tailoring runs \u2014 they reset within the hour. Everything you\u2019ve generated is saved.")
-            : t("jobsPage.tailorError", "Something went wrong tailoring your résumé. Please try again."),
-        });
+        // The account's daily allowance (wave 4) is said as a day with its
+        // reset time, never "within the hour" (src/lib/writing-refusal.ts).
+        toast(await writingToolToast("tailor", error, (k, f, v) => t(k, f, v), i18n.language));
         setTailoredOpen(false);
         return;
       }
@@ -5196,13 +5191,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
       const d = data as { success?: boolean; data?: { coverLetter?: string } } | null;
       const letter = d?.data?.coverLetter;
       if (error || !d?.success || !letter) {
-        const status = (error as { context?: { status?: number } })?.context?.status;
-        toast({
-          title: status === 429 ? t("jobsPage.coverBusyTitle", "Busy right now") : t("jobsPage.coverErrorTitle", "Couldn't draft a cover letter"),
-          description: status === 429
-            ? t("jobsPage.coverBusy", "The cover-letter writer is busy — try again in a moment.")
-            : t("jobsPage.coverError", "Something went wrong drafting your cover letter. Please try again."),
-        });
+        toast(await writingToolToast("cover", error, (k, f, v) => t(k, f, v), i18n.language));
         setCoverOpen(false);
         return;
       }
@@ -5229,13 +5218,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
       const d = data as { success?: boolean; data?: { questions?: Array<{ category?: string; question?: string; whyAsked?: string }> } } | null;
       const qs = d?.data?.questions;
       if (error || !d?.success || !Array.isArray(qs) || qs.length === 0) {
-        const status = (error as { context?: { status?: number } })?.context?.status;
-        toast({
-          title: status === 429 ? t("jobsPage.coachBusyTitle", "Busy right now") : t("jobsPage.coachErrorTitle", "Couldn't prep interview questions"),
-          description: status === 429
-            ? t("jobsPage.coachBusy", "The interview coach is busy — try again in a moment.")
-            : t("jobsPage.coachError", "Something went wrong preparing questions. Please try again."),
-        });
+        toast(await writingToolToast("coach", error, (k, f, v) => t(k, f, v), i18n.language));
         setCoachOpen(false);
         return;
       }

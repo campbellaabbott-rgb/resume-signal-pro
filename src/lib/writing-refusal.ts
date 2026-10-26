@@ -73,3 +73,46 @@ export function writingRefusalText(r: WritingRefusal, t: Translate, locale?: str
     ? t("writingRefusal.daily", "You've used today's writing allowance. You can make more after {{when}}; what you made so far is saved.", { when })
     : t("writingRefusal.dailyNoTime", "You've used today's writing allowance. You can make more tomorrow; what you made so far is saved.");
 }
+
+/** The three writing tools the /jobs prepare modal runs. */
+export type WritingTool = "tailor" | "cover" | "coach";
+
+type Copy = [key: string, fallback: string];
+const TOOL_COPY: Readonly<Record<WritingTool, { limitTitle: Copy; limit: Copy; errorTitle: Copy; error: Copy }>> = {
+  tailor: {
+    limitTitle: ["jobsPage.tailorLimitTitle", "Hourly limit reached"],
+    limit: ["jobsPage.tailorLimit", "You’ve used this hour’s résumé-tailoring runs — they reset within the hour. Everything you’ve generated is saved."],
+    errorTitle: ["jobsPage.tailorErrorTitle", "Couldn't tailor your résumé"],
+    error: ["jobsPage.tailorError", "Something went wrong tailoring your résumé. Please try again."],
+  },
+  cover: {
+    limitTitle: ["jobsPage.coverBusyTitle", "Busy right now"],
+    limit: ["jobsPage.coverBusy", "The cover-letter writer is busy — try again in a moment."],
+    errorTitle: ["jobsPage.coverErrorTitle", "Couldn't draft a cover letter"],
+    error: ["jobsPage.coverError", "Something went wrong drafting your cover letter. Please try again."],
+  },
+  coach: {
+    limitTitle: ["jobsPage.coachBusyTitle", "Busy right now"],
+    limit: ["jobsPage.coachBusy", "The interview coach is busy — try again in a moment."],
+    errorTitle: ["jobsPage.coachErrorTitle", "Couldn't prep interview questions"],
+    error: ["jobsPage.coachError", "Something went wrong preparing questions. Please try again."],
+  },
+};
+
+/**
+ * The toast the /jobs prepare modal shows when one of its writing tools fails
+ * (recheck 3 of wave 4, 2026-10-26). An account's daily or monthly allowance,
+ * or a missing sign-in, is said as such, with when it comes back: the modal
+ * worded every 429 as "reset within the hour" or "busy", false once the
+ * allowance is a day. Any other 429 (the model-spend gate) keeps that copy,
+ * and anything else the tool's plain error.
+ */
+export async function writingToolToast(tool: WritingTool, error: unknown, t: Translate, locale?: string): Promise<{ title: string; description: string }> {
+  const c = TOOL_COPY[tool];
+  const refusal = error ? await writingRefusalOf(error) : null;
+  if (refusal) return { title: t(...c.errorTitle), description: writingRefusalText(refusal, t, locale) };
+  const status = (error as { context?: { status?: number } } | null)?.context?.status;
+  return status === 429
+    ? { title: t(...c.limitTitle), description: t(...c.limit) }
+    : { title: t(...c.errorTitle), description: t(...c.error) };
+}
