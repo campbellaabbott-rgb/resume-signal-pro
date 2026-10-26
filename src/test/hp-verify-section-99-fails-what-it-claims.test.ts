@@ -242,7 +242,7 @@ describe("what the section cannot judge is INFO, never PASS", () => {
 
 describe("the rendered claims' judge (C8, C9)", () => {
   const page = (o: Partial<{ rendered: boolean; leaks: string[]; filledHeader: string[]; filledMain: string[] }> = {}) => ({ rendered: true, leaks: [], filledHeader: [], filledMain: ["Search jobs"], ...o });
-  const healthy = { upload: { finalUrl: "https://site.test/resume-checker#upload" }, checker: { hasUploader: true }, home: page(), pricing: page({ filledMain: ["Create a free account"] }) };
+  const healthy = { upload: { finalUrl: "https://site.test/resume-checker#upload", uploaderInView: true }, checker: { hasUploader: true }, home: page(), pricing: page({ filledMain: ["Create a free account"] }) };
 
   it("a healthy run passes all four lines", () => {
     const lines = judgeRendered(healthy);
@@ -250,7 +250,10 @@ describe("the rendered claims' judge (C8, C9)", () => {
   });
 
   it("each line can FAIL", () => {
-    expect(judgeRendered({ ...healthy, upload: { finalUrl: "https://site.test/#upload" } })[0]).toMatch(/^FAIL  C8 "\/#upload" lands on \/#upload \(want/);
+    expect(judgeRendered({ ...healthy, upload: { finalUrl: "https://site.test/#upload", uploaderInView: false } })[0]).toMatch(/^FAIL  C8 "\/#upload" lands on \/#upload \(want/);
+    // The scanner clears the hash once it has scrolled to the uploader: judged by where the uploader is.
+    expect(judgeRendered({ ...healthy, upload: { finalUrl: "https://site.test/resume-checker", uploaderInView: true } })[0]).toMatch(/^PASS  C8 .*the uploader in view/);
+    expect(judgeRendered({ ...healthy, upload: { finalUrl: "https://site.test/resume-checker", uploaderInView: false } })[0]).toMatch(/^FAIL  C8 .*but not at the uploader/);
     expect(judgeRendered({ ...healthy, checker: { hasUploader: false } })[1]).toMatch(/^FAIL  C8 \/resume-checker renders no uploader/);
     expect(judgeRendered({ ...healthy, home: page({ leaks: ["Freelance Boost"] }) })[2]).toMatch(/^FAIL  C9 the rendered \/ names "Freelance Boost"/);
     expect(judgeRendered({ ...healthy, pricing: page({ filledHeader: ["Get Started"], filledMain: ["Create a free account"] }) })[3]).toMatch(/^FAIL  C9 the rendered \/pricing the header has 1 filled button/);

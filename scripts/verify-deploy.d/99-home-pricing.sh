@@ -32,8 +32,9 @@
 #       each that build or a later one.
 #   C7  The page React renders: the served entry carries the homepage's H1
 #       sentence and none of the retired homepage hero's strings.
-#   C8  (headless) "/#upload" lands on /resume-checker#upload, and
-#       /resume-checker still renders the scanner's uploader.
+#   C8  (headless) "/#upload" lands on /resume-checker at its uploader (the
+#       scanner scrolls to #upload and then clears the hash, as it always has),
+#       and /resume-checker still renders the scanner's uploader.
 #   C9  (headless, the rendered "/" and "/pricing", header and footer
 #       included) no Freelance Boost, Transition Pro, Premium, Scan Pack or
 #       "unlimited" anywhere, and exactly one filled button across header

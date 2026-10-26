@@ -4,8 +4,9 @@
 // visitor's browser renders, header and footer included: React replaces the
 // baked page, and the shared chrome (the Header, the Footer) is React's.
 //
-//   C8  "/#upload" lands on /resume-checker#upload, and /resume-checker still
-//       renders the scanner's uploader.
+//   C8  "/#upload" lands on /resume-checker at its uploader (the scanner scrolls
+//       to #upload and then clears the hash from the address, as it always
+//       has), and /resume-checker still renders the scanner's uploader.
 //   C9  The rendered "/" and "/pricing" name no cut product anywhere we write
 //       (Freelance Boost, Transition Pro, Premium, Scan Pack, "unlimited"; the
 //       live postings, employers' own words, are left out), and carry exactly
@@ -29,7 +30,7 @@ export const CUT_PATTERN = /Freelance Boost|Transition Pro|\bPremium\b|Scan Pack
 /**
  * The verdict lines for what the browser saw. `facts` (null when a page could
  * not be read):
- *   upload:  { finalUrl }
+ *   upload:  { finalUrl, uploaderInView }
  *   checker: { hasUploader }
  *   home, pricing: { rendered, leaks: string[], filledHeader: string[], filledMain: string[] }
  */
@@ -38,7 +39,12 @@ export function judgeRendered(facts) {
   const line = (s, m) => out.push(`${s.padEnd(5)} ${m}`);
   const up = facts?.upload;
   if (!up) line("FAIL", "C8 \"/#upload\" could not be opened in the browser");
-  else line(/\/resume-checker#upload$/.test(up.finalUrl) ? "PASS" : "FAIL", `C8 "/#upload" lands on ${up.finalUrl.replace(/^https?:\/\/[^/]+/, "") || "(nothing)"}${/\/resume-checker#upload$/.test(up.finalUrl) ? "" : " (want /resume-checker#upload)"}`);
+  else {
+    const where = up.finalUrl.replace(/^https?:\/\/[^/]+/, "") || "(nothing)";
+    const onScanner = /^\/resume-checker(?:[?#]|$)/.test(where);
+    const atUploader = /#upload$/.test(where) || up.uploaderInView === true;
+    line(onScanner && atUploader ? "PASS" : "FAIL", `C8 "/#upload" lands on ${where}${onScanner ? (atUploader ? (up.uploaderInView ? ", the uploader in view" : "") : ", but not at the uploader") : " (want /resume-checker at its uploader)"}`);
+  }
   const ck = facts?.checker;
   if (!ck) line("FAIL", "C8 /resume-checker could not be opened in the browser");
   else line(ck.hasUploader ? "PASS" : "FAIL", `C8 /resume-checker ${ck.hasUploader ? "renders the scanner's uploader (#upload)" : "renders no uploader (#upload)"}`);
@@ -128,7 +134,11 @@ async function main() {
     };
     try { await open("/", "#home-h1"); facts.home = await pageFacts(page); } catch { facts.home = null; }
     try { await open("/pricing", "#pricing-h1"); facts.pricing = await pageFacts(page); } catch { facts.pricing = null; }
-    try { await open("/#upload", "#upload"); facts.upload = { finalUrl: page.url() }; } catch { facts.upload = null; }
+    try {
+      await open("/#upload", "#upload");
+      const uploaderInView = await page.evaluate(() => { const u = document.getElementById("upload"); if (!u) return false; const b = u.getBoundingClientRect(); return b.top < innerHeight && b.bottom > 0; });
+      facts.upload = { finalUrl: page.url(), uploaderInView };
+    } catch { facts.upload = null; }
     try { await open("/resume-checker", "#upload"); facts.checker = { hasUploader: !!(await page.$("#upload")) }; } catch { facts.checker = null; }
   } finally {
     if (browser) await browser.close().catch(() => {});
