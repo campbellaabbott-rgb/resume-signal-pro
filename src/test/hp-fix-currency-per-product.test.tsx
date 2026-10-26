@@ -29,9 +29,24 @@
  * structured data's Full Analysis offer says how it is charged. The facts the
  * sentences rest on are read from the checkout code, so a checkout that moves
  * fails here before the copy goes false.
+ *
+ * THE REVIEW OF 2026-10-25 found two ways "charged in your local currency
+ * where we support it" was still false:
+ *   - the hook maps a fixed list of time zones. A zone not on the list reads
+ *     as the US, so a buyer in Calgary or Brisbane, whose currency
+ *     create-checkout supports, is charged US dollars. The sentence now names
+ *     the mechanism ("the currency of your device's time zone when we
+ *     recognize the zone and support its currency"), the old phrase is gone
+ *     in every language, and the hook's own answers for a listed and an
+ *     unlisted zone are pinned below;
+ *   - with the US-dollar sentence gone, nothing said the printed "$5" was US
+ *     dollars, and CAD, AUD, NZD, SGD, HKD and MXN are written with "$" too.
+ *     Every Full Analysis currency sentence now says it is priced in US
+ *     dollars, the plan strip and the pricing page's buy block say so beside
+ *     the price, and so does the structured data.
  */
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { cleanup, render } from "@testing-library/react";
+import { cleanup, render, renderHook, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -68,6 +83,7 @@ import { PricingView } from "@/components/pricing/PricingView";
 import { pricingJsonLd } from "@/components/pricing/pricing-jsonld";
 import { resolveSaleGates, type SaleGateInput } from "@/components/pricing/sale-gates";
 import { homePlanRows, saleGates } from "@/lib/home/sale-gates";
+import { useCurrency } from "@/hooks/use-currency";
 import "@/lib/home/strings";
 
 vi.setConfig(MOUNT_TEST_BUDGET);
@@ -102,8 +118,20 @@ const sentencesOf = (text: string) =>
 /** Any language's dollar, or the code. */
 const DOLLAR = /dollar|dólar|डॉलर|(?<![\p{L}])USD(?![\p{L}])/iu;
 const PRO = /(?<![\p{L}])Pro(?![\p{L}])/u;
-/** "Your local currency", in each language. */
+/** "The currency of your device's time zone", in each language: what the hook really reads. */
 const LOCAL: Record<Locale, RegExp> = {
+  en: /currency of your device's time zone when we recognize the zone and support its currency/,
+  "en-GB": /currency of your device's time zone when we recognise the zone and support its currency/,
+  de: /Währung der Zeitzone (?:deines|Ihres) Geräts berechnet, wenn wir die Zeitzone kennen und ihre Währung unterstützen/,
+  es: /moneda de la zona horaria de tu dispositivo cuando reconocemos esa zona y admitimos su moneda/,
+  fr: /devise du fuseau horaire de votre appareil quand nous reconnaissons ce fuseau et prenons en charge sa devise/,
+  hi: /डिवाइस के (?:टाइम ज़ोन|समय क्षेत्र) की मुद्रा में लिया जाता है जब हम वह (?:टाइम ज़ोन|समय क्षेत्र) पहचानते हैं और उसकी मुद्रा स्वीकार करते हैं/,
+  nl: /valuta van de tijdzone van je apparaat als we die tijdzone herkennen en de valuta ervan ondersteunen/,
+  pt: /moeda do fuso horário do seu dispositivo quando reconhecemos esse fuso e aceitamos a moeda dele/,
+  tl: /currency ng time zone ng iyong device kung kilala namin ang time zone na iyon at sinusuportahan ang currency nito/,
+};
+/** "Your local currency", the phrase a buyer in an unlisted zone would be misled by. */
+const OLD_LOCAL: Record<Locale, RegExp> = {
   en: /local currency/,
   "en-GB": /local currency/,
   de: /Landeswährung/,
@@ -113,6 +141,18 @@ const LOCAL: Record<Locale, RegExp> = {
   nl: /lokale valuta/,
   pt: /moeda local/,
   tl: /lokal(?: mong| na) currency/,
+};
+/** "Priced in US dollars": the printed "$5" is a US-dollar list price, said wherever its charge is. */
+const PRICED: Record<Locale, RegExp> = {
+  en: /priced in US dollars and charged at about the same value/,
+  "en-GB": /priced in US dollars and charged at about the same value/,
+  de: /in US-Dollar ausgepreist und wird zum etwa gleichen Wert/,
+  es: /precio en dólares estadounidenses,? y se cobra por un valor similar/,
+  fr: /tarifée? en dollars américains et débitée? pour une valeur à peu près égale/,
+  hi: /कीमत अमेरिकी डॉलर में तय है, और उसका शुल्क लगभग उतने ही मूल्य पर/,
+  nl: /geprijsd in Amerikaanse dollars en (?:wordt )?voor ongeveer dezelfde waarde afgerekend/,
+  pt: /preço em dólares americanos,? (?:e é )?cobrad[ao] por um valor parecido/,
+  tl: /[Nn]aka-presyo (?:ito )?sa US dollars/,
 };
 
 /** The Full Analysis's own name in a language, as both pages print it. */
@@ -179,6 +219,26 @@ describe("in every language, no string gives both products one currency", () => 
       const r = readSentence(lng, fa.currency);
       expect(r).toEqual({ dollars: true, pro: false, fa: true, local: true });
     });
+
+    it(`${lng}: no string promises "your local currency", which an unlisted time zone does not get`, () => {
+      for (const dir of [HOME_DIR, PRICING_DIR]) {
+        const found = stringSentences(dir, lng).filter(([, s]) => OLD_LOCAL[lng].test(s)).map(([k, s]) => `${k}: "${s}"`);
+        expect(found).toEqual([]);
+      }
+    });
+
+    it(`${lng}: every sentence that says how the Full Analysis is charged says it is priced in US dollars`, () => {
+      const plans = (readJson(HOME_DIR, lng).home as Record<string, Record<string, string>>).plans;
+      const p = readJson(PRICING_DIR, lng).pricingPlans as Record<string, Record<string, string>>;
+      for (const [k, v] of [["home.plans.termCurrencyFa", plans.termCurrencyFa], ["pricingPlans.fa.currency", p.fa.currency], ["pricingPlans.before.renewalBody", p.before.renewalBody]] as const) {
+        expect(v, `${lng} ${k}`).toMatch(PRICED[lng]);
+      }
+      for (const dir of [HOME_DIR, PRICING_DIR]) {
+        for (const [k, s] of stringSentences(dir, lng)) {
+          if (readSentence(lng, s).local) expect(s, `${lng} ${k}`).toMatch(PRICED[lng]);
+        }
+      }
+    });
   }
 });
 
@@ -216,6 +276,11 @@ describe("rendered in English, in every sale state", () => {
           const text = screenText(container).replace(/\s+/g, " ");
           expect(text).toContain(showsPro ? enHome.termCurrency : enHome.termCurrencyFa);
           if (!showsPro) expect(text).not.toMatch(/Pro is billed/);
+          // The printed "$5" is said to be US dollars on the strip itself.
+          if (homePlanRows(gates).fullAnalysis.state === "onSale") {
+            expect(text).toMatch(/\$5/);
+            expect(text).toMatch(/Full Analysis is priced in US dollars/);
+          }
           expect(offences("en", "homepage", sentencesOf(text))).toEqual([]);
         });
 
@@ -231,7 +296,14 @@ describe("rendered in English, in every sale state", () => {
           const said = screenText(notice).replace(/\s+/g, " ");
           expect(said).toContain(en.before.renewalTitle);
           expect(said).toMatch(/Pro is billed in US dollars/);
-          expect(said).toMatch(/Full Analysis [^.]*local currency where we support it and in US dollars elsewhere\./);
+          expect(said).toMatch(/Full Analysis [^.]*priced in US dollars and charged at about the same value in the currency of your device's time zone when we recognize the zone and support its currency, or in US dollars otherwise\./);
+          // Beside "Buy the Full Analysis, $5", its block says the price is US dollars and how it is charged.
+          const buy = container.querySelector<HTMLElement>("[data-buy-block=full-analysis]");
+          expect(!!buy, "the Full Analysis buy block shows exactly while it is on sale").toBe(resolveSaleGates(input).fullAnalysis.onSale);
+          if (buy) {
+            expect(screenText(buy)).toMatch(/Buy the Full Analysis, \$5/);
+            expect(screenText(buy).replace(/\s+/g, " ")).toContain(en.fa.currency);
+          }
           expect(offences("en", "pricing page", sentencesOf(screenText(container)))).toEqual([]);
         });
       }
@@ -246,6 +318,8 @@ describe("the structured data", () => {
     const fa = offers.find((o) => o.name === "Full Analysis")!;
     const pro = offers.find((o) => o.name === "Pro")!;
     expect(fa.description).toBe(en.fa.currency);
+    expect(String(fa.description)).toMatch(PRICED.en);
+    expect(String(fa.description)).toMatch(LOCAL.en);
     expect(offences("en", "structured data", sentencesOf(String(fa.description)))).toEqual([]);
     expect(pro.priceCurrency).toBe("USD");
     expect(JSON.stringify(pro)).not.toMatch(LOCAL.en);
@@ -269,6 +343,27 @@ describe("the currency words come only from the strings held above", () => {
     expect(files.length).toBeGreaterThan(20);
     expect(files.filter((f) => /dollar|dólar|डॉलर/i.test(codeOf(readFileSync(f, "utf8"))))).toEqual([]);
   });
+});
+
+describe("the hook the sentences describe: a listed time zone gets its currency, an unlisted one US dollars", () => {
+  const zoneIs = (timeZone: string) => {
+    const real = Intl.DateTimeFormat.prototype.resolvedOptions;
+    return vi.spyOn(Intl.DateTimeFormat.prototype, "resolvedOptions").mockImplementation(function (this: Intl.DateTimeFormat) {
+      return { ...real.call(this), timeZone };
+    });
+  };
+  for (const [zone, code] of [["America/Toronto", "CAD"], ["Australia/Sydney", "AUD"], ["America/Edmonton", "USD"], ["Australia/Brisbane", "USD"], ["America/Monterrey", "USD"]] as const) {
+    it(`${zone}: ${code}`, async () => {
+      const spy = zoneIs(zone);
+      try {
+        const { result } = renderHook(() => useCurrency());
+        await waitFor(() => expect(result.current.currency.code).toBe(code));
+        if (code === "USD") expect(result.current.countryCode, "an unlisted zone reads as the US").toBe("US");
+      } finally {
+        spy.mockRestore();
+      }
+    });
+  }
 });
 
 describe("the checkout code the sentences describe", () => {

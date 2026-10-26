@@ -6,9 +6,11 @@
  * Prices are the plan-facts mirrors, never typed here.
  *
  * Each price is stated in US dollars, the currency both list prices are set
- * in. Pro is billed in them; the Full Analysis is charged in the buyer's
- * local currency where create-checkout prices it, so its offer carries the
- * page's own English sentence saying so (owner decision 2026-10-25).
+ * in. Pro is billed in them; the Full Analysis is charged at about that value
+ * in the currency of the device's time zone when the scanner page's hook
+ * recognizes the zone and create-checkout prices its currency, else in US
+ * dollars, so its offer carries the page's own English sentence saying so
+ * (owner decision 2026-10-25). The bake's "/" reuses these offers.
  */
 import { FULL_ANALYSIS_PRICE_USD, PRO_PRICE_USD } from "./plan-facts";
 import type { SaleGates } from "./sale-gates";

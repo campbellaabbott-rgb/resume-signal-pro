@@ -24,7 +24,7 @@
       "finalBody": "Keine Erstattungen, außer wo das Gesetz eine vorschreibt. Mit einem bezahlten Ergebnis nicht zufrieden? Antworten Sie auf Ihre Quittung, und wir erstellen es kostenlos neu.",
       "regionBody": "Verkäufe dort warten, bis wir für die Umsatzsteuer registriert sind, in Indien für die GST. Der Checkout weist Käufer ab, die er dort verorten kann: anhand der Währung und der Zeitzone, die Ihr Gerät meldet. Alles Kostenlose funktioniert überall.",
       "renewalTitle": "Pro: US-Dollar, verlängert sich monatlich.",
-      "renewalBody": "Pro wird in US-Dollar abgerechnet und verlängert sich jeden Monat zu {{proPrice}}, bis Sie kündigen, und Sie stimmen der Verlängerung vor dem Checkout mit einem eigenen Kästchen zu. Die Vollanalyse ist eine einmalige Zahlung, die sich nie verlängert, und wird in Ihrer Landeswährung berechnet, sofern wir diese unterstützen, sonst in US-Dollar."
+      "renewalBody": "Pro wird in US-Dollar abgerechnet und verlängert sich jeden Monat zu {{proPrice}}, bis Sie kündigen, und Sie stimmen der Verlängerung vor dem Checkout mit einem eigenen Kästchen zu. Die Vollanalyse ist eine einmalige Zahlung, die sich nie verlängert; sie ist in US-Dollar ausgepreist und wird zum etwa gleichen Wert in der Währung der Zeitzone Ihres Geräts berechnet, wenn wir die Zeitzone kennen und ihre Währung unterstützen, sonst in US-Dollar."
     },
     "buy": {
       "finalSale": "Alle Käufe sind endgültig.",
@@ -65,7 +65,7 @@
       "how": "Sie laden zuerst Ihren Lebenslauf hoch; der Checkout folgt danach.",
       "cta": "Vollanalyse kaufen, {{price}}",
       "fine": "Eine Zahlung, verlängert sich nie.",
-      "currency": "Die Vollanalyse wird in Ihrer Landeswährung berechnet, sofern wir diese unterstützen, sonst in US-Dollar."
+      "currency": "Die Vollanalyse ist in US-Dollar ausgepreist und wird zum etwa gleichen Wert in der Währung der Zeitzone Ihres Geräts berechnet, wenn wir die Zeitzone kennen und ihre Währung unterstützen, sonst in US-Dollar."
     },
     "pro": {
       "name": "Pro",

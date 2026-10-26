@@ -9,9 +9,10 @@
  *      only when its key is set is not described). Never "billing address":
  *      no code checks one before payment.
  *   3. Pro is billed in US dollars and renews monthly with a separate renewal
- *      tick box; the Full Analysis is charged in the local currency where
- *      create-checkout prices it, and in US dollars elsewhere (owner decision
- *      2026-10-25).
+ *      tick box; the Full Analysis is priced in US dollars and charged at
+ *      about that value in the currency of the device's time zone when the
+ *      hook recognizes the zone and create-checkout prices its currency, and
+ *      in US dollars otherwise (owner decision 2026-10-25).
  *
  * From lg the three sit side by side, all text shown. Under lg they stack in
  * one box; the region line stays open, its mechanism included, so it is read

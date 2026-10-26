@@ -8,6 +8,10 @@
  *
  * Beside every buy button, in the same block:
  *   - "All sales are final." and the region line, directly under the button;
+ *   - for the Full Analysis, how its price is charged: listed in US dollars,
+ *     charged at about that value in the currency of the device's time zone
+ *     when the scanner page's hook recognizes the zone and create-checkout
+ *     supports its currency, else in US dollars (owner decision 2026-10-25);
  *   - for Pro, ABOVE the button, an unchecked, required box agreeing to the
  *     automatic renewal, kept apart from every other term (California's
  *     automatic renewal law as amended by AB 2863). Go Pro with the box empty
@@ -84,6 +88,8 @@ export function FullAnalysisBuy({ gates, preview }: { gates: SaleGates; preview?
       </Button>
       <SaleTermsLine />
       <p className="mt-1 text-xs text-subtle-foreground">{t("pricingPlans.fa.fine")}</p>
+      {/* The price above is a US-dollar list price; how it is charged, said beside it (2026-10-25). */}
+      <p className="mt-1 text-xs text-subtle-foreground" data-fa-currency="">{t("pricingPlans.fa.currency")}</p>
       {gates.seller ? (
         <SellerIdentity variant="soldBy" seller={gates.seller} className="mt-1 text-xs text-subtle-foreground" />
       ) : (

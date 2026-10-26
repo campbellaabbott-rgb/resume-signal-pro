@@ -149,8 +149,8 @@
       "proIncludesFa": "The Full Analysis is included.",
       "termFinal": "All sales are final.",
       "termTerritory": "Not yet sold in the EU, the EEA, the UK or India, until we are registered for tax there. Checkout turns away buyers it can place there, from the currency and the browser's time zone.",
-      "termCurrency": "Pro is billed in US dollars. The Full Analysis is charged in your local currency where we support it, and in US dollars elsewhere.",
-      "termCurrencyFa": "The Full Analysis is charged in your local currency where we support it, and in US dollars elsewhere.",
+      "termCurrency": "Pro is billed in US dollars. The Full Analysis is priced in US dollars and charged at about the same value in the currency of your device's time zone when we recognize the zone and support its currency, or in US dollars otherwise.",
+      "termCurrencyFa": "The Full Analysis is priced in US dollars and charged at about the same value in the currency of your device's time zone when we recognize the zone and support its currency, or in US dollars otherwise.",
       "more": "See pricing and limits"
     },
     "faq": {

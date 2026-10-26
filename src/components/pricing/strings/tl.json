@@ -24,7 +24,7 @@
       "finalBody": "Walang refund, maliban kung hinihingi ito ng batas. Hindi ka kuntento sa bayad na resulta? Sumagot sa iyong resibo at gagawin namin ito ulit, nang libre.",
       "regionBody": "Naghihintay ang benta roon hanggang makapagparehistro kami para sa VAT, o para sa GST sa India. Tinatanggihan ng checkout ang mga mamimiling matutukoy nitong naroon, batay sa currency at sa time zone na ibinibigay ng iyong device. Gumagana kahit saan ang lahat ng libre.",
       "renewalTitle": "Pro: US dollars, nire-renew buwan-buwan.",
-      "renewalBody": "Sinisingil ang Pro sa US dollars at nire-renew bawat buwan sa {{proPrice}} hanggang kanselahin mo, at pumapayag ka sa renewal sa isang hiwalay na kahon bago mag-checkout. Isang bayad lang ang Buong Pagsusuri at hindi kailanman nire-renew, at sinisingil ito sa lokal mong currency kung sinusuportahan namin ito, at sa US dollars kung hindi."
+      "renewalBody": "Sinisingil ang Pro sa US dollars at nire-renew bawat buwan sa {{proPrice}} hanggang kanselahin mo, at pumapayag ka sa renewal sa isang hiwalay na kahon bago mag-checkout. Isang bayad lang ang Buong Pagsusuri at hindi kailanman nire-renew; naka-presyo ito sa US dollars at sinisingil sa halos parehong halaga sa currency ng time zone ng iyong device kung kilala namin ang time zone na iyon at sinusuportahan ang currency nito, at sa US dollars kung hindi."
     },
     "buy": {
       "finalSale": "Final ang lahat ng benta.",
@@ -65,7 +65,7 @@
       "how": "Ia-upload mo muna ang iyong resume; susunod ang checkout.",
       "cta": "Bilhin ang Buong Pagsusuri, {{price}}",
       "fine": "Isang bayad, hindi kailanman nire-renew.",
-      "currency": "Sinisingil ang Buong Pagsusuri sa lokal mong currency kung sinusuportahan namin ito, at sa US dollars kung hindi."
+      "currency": "Naka-presyo sa US dollars ang Buong Pagsusuri, at sinisingil ito sa halos parehong halaga sa currency ng time zone ng iyong device kung kilala namin ang time zone na iyon at sinusuportahan ang currency nito, at sa US dollars kung hindi."
     },
     "pro": {
       "name": "Pro",

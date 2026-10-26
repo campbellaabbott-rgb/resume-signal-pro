@@ -56,8 +56,10 @@ data calls; nothing reads `get_board_flow`.
 leads with what is free; "Before you buy" above the cards (all sales final;
 not sold in the EU, the EEA, the UK or India, naming the currency and
 time-zone checks; Pro billed in US dollars and renewing monthly, the Full
-Analysis charged in the local currency where we support it and in US dollars
-elsewhere), the Free, Full Analysis ($5, the only
+Analysis priced in US dollars and charged at about that value in the
+currency of the device's time zone when the hook recognizes the zone and
+checkout supports its currency, in US dollars otherwise), the Free, Full
+Analysis ($5, the only
 one-off) and Pro ($45) cards, "What the $5 adds", the Builder API (planned,
 $49, "Proposed: 5,000 calls a day; set before launch") and data licence
 cards, the limits table and a seven-question FAQ. "Create a free account" is
@@ -160,24 +162,60 @@ pass); the translated try chips run English queries (Appendix A item 8).
   PLN, CZK, HUF, RON and INR in that table) is refused by
   `_shared/sales-territory.ts`, which leaves USD, CAD, AUD, NZD, JPY, KRW,
   HKD, SGD, TWD, THB, MYR, IDR, PHP, ILS, AED, ZAR, CHF, MXN, BRL and UYU.
-  Checkout is unchanged. In all nine languages the copy now says:
+  Checkout is unchanged. In all nine languages the copy now says (the
+  review round's wording, below):
   - pricing, "Before you buy": the title "Pro: US dollars, renews monthly."
-    (within two characters of the old title in every language) and the body
-    "Pro is billed in US dollars and renews every month at {{proPrice}} until
-    you cancel, … The Full Analysis is one payment that never renews,
-    charged in your local currency where we support it and in US dollars
-    elsewhere.";
+    and the body "Pro is billed in US dollars and renews every month at
+    {{proPrice}} until you cancel, … The Full Analysis is one payment that
+    never renews, priced in US dollars and charged at about the same value
+    in the currency of your device's time zone when we recognize the zone
+    and support its currency, or in US dollars otherwise.";
   - the homepage plan strip: `home.plans.termUsd` is gone. `termCurrency`
-    ("Pro is billed in US dollars. The Full Analysis is charged in your
-    local currency where we support it, and in US dollars elsewhere.")
-    shows while the Pro row does, and `termCurrencyFa` (its second sentence
-    alone) while it does not, so the strip never names Pro's currency
-    without Pro;
+    ("Pro is billed in US dollars. The Full Analysis is priced in US dollars
+    and charged at about the same value in the currency of your device's
+    time zone when we recognize the zone and support its currency, or in US
+    dollars otherwise.") shows while the Pro row does, and `termCurrencyFa`
+    (its second sentence alone) while it does not, so the strip never names
+    Pro's currency without Pro;
+  - the pricing page's Full Analysis buy block: `pricingPlans.fa.currency`
+    (the same sentence) under "One payment, never renews.", beside "Buy the
+    Full Analysis, $5", while the Full Analysis is on sale;
   - the structured data: the Full Analysis offer keeps `price: "5"` and
     `priceCurrency: "USD"` (the list price every local amount is computed
-    from) and gains `description`, the English `pricingPlans.fa.currency`
-    (the strip's second sentence). Pro's offer is unchanged;
+    from) and gains `description`, the English `pricingPlans.fa.currency`.
+    Pro's offer is unchanged;
   - the dollar-sign icon beside both currency lines is a banknote.
+- **The review round (2026-10-25) made the Full Analysis sentence true for
+  every buyer.** Its first wording, "charged in your local currency where we
+  support it, and in US dollars elsewhere", was false twice:
+  - the hook reads a fixed list of time zones, and a zone not on it reads
+    as the US (`tzToCountry[timezone] || "US"`, and "US" is in
+    `CURRENCY_MAP`, so the language fallback never runs). Only Toronto and
+    Vancouver map to CAD, only Sydney and Melbourne to AUD: a buyer in
+    Calgary, Winnipeg, Halifax, Brisbane, Perth, Adelaide, Monterrey or
+    Fortaleza, whose currency `create-checkout` supports, is charged US
+    dollars. The sentence now names the mechanism: the currency of the
+    device's time zone when we recognize the zone and support its currency
+    (German "wenn wir die Zeitzone kennen", French "quand nous reconnaissons
+    ce fuseau", and so on). The test pins the hook's answers for Toronto
+    (CAD), Sydney (AUD), Edmonton, Brisbane and Monterrey (USD). Mapping
+    every zone of each supported country instead is a separate decision: it
+    would also change which buyers the territory check refuses;
+  - with "Prices in US dollars" gone, nothing said the printed "$5" was US
+    dollars, and en, hi and tl print `money(5, "USD")` as "$5" (de "5 $"),
+    which a buyer whose currency is also written with "$" (CAD, AUD, NZD,
+    SGD, HKD, MXN) reads as their own five dollars while `calculateAmount`
+    charges five times the rate (CAD 7.00, AUD 7.90, NZD 8.75, SGD 6.75, HKD
+    39.00, MXN 101.00). Every Full Analysis currency sentence now says it is
+    priced in US dollars and charged at about the same value, and the
+    pricing page's buy block says so beside the price.
+  `hp-fix-currency-per-product` holds both (71 of its 89 tests failed on the
+  first wording): in every language no string carries the old phrase, every
+  sentence that says how the Full Analysis is charged says it is priced in
+  US dollars, the strip with the Full Analysis on sale shows "$5" with "The
+  Full Analysis is priced in US dollars", the buy block carries the
+  sentence exactly while the Full Analysis is on sale, and the JSON-LD
+  description names both.
 
   Held by `hp-fix-currency-per-product`, run red first (62 of its 66 tests
   failed on the old strings): in every language and over every string
@@ -193,11 +231,18 @@ pass); the translated try chips run English queries (Appendix A item 8).
   sends `currency.code` from `useCurrency`), so a checkout that moves fails
   there before the copy goes false. No other hp test pinned the old
   sentences; the 19 hp files pass.
-  Not re-measured: the renewal titles keep their length, so the 375 px first
-  screen should not move; the strip's currency line, below the fold, is one
-  or two lines longer. The next `measure.cjs` run confirms both. The live
-  `/pricing` bake (`AggregateOffer` in USD, the old page's) states no
-  currency sentence and is replaced in step 10.
+  Not re-measured, and so not claimed: the renewal title changed length in
+  every language (old to new, in characters: en 31 to 32, en-GB 31 to 32,
+  de 41 to 42, es 49 to 50, fr 50 to 48, nl 51 to 52, pt 42 to 41, hi 44 to
+  49, tl 43 to 40), within two characters except Hindi (+5) and Tagalog
+  (-3), so the 375 px first screen in those two languages may move by a
+  line; at 1280, where the renewal body shows in full, the body is a clause
+  longer, so the cards may start below 436 px; the strip's currency line,
+  below the fold, is two or three lines longer; the Full Analysis buy block
+  gains one line of fine print while it is on sale. The next `measure.cjs`
+  run (hi at 375 px among its cases) measures all four. The live `/pricing`
+  bake (`AggregateOffer` in USD, the old page's) states no currency sentence
+  and is replaced in step 10.
 
 ## What changed on 2026-10-24
 
@@ -300,7 +345,7 @@ day (step 15).
   commit (the pre-commit hook, run under `~/.config/resumebooster/heavy.sh`
   since 2026-10-24).
 - The hp tests, targeted (`npx vitest run --maxWorkers=1 src/test/hp-`):
-  19 files (`hp-fix-currency-per-product` the newest), 373 tests, all
+  19 files (`hp-fix-currency-per-product` the newest), 396 tests, all
   passing on the head.
 - The full suite: the pre-push hook's run under the heavy-command lock, no
   other suite running: on b8863552, 1,049 files passed and 1 skipped
@@ -548,8 +593,9 @@ copy: a key in both fails the shard guard's collision rule.
   `fa.what`, `fa.b1`-`fa.b5`, `fa.how`, `pro.name`, `pro.unit`, `pro.what`,
   `pro.step*`, `pro.perks.*`, `pro.review`, `pro.statusTitle`,
   `pro.statusBody`, `adds.*`, `b2b.*`, `limits.*`, `faq.*`. They stay in the
-  shard: `fa.cta`, `fa.fine`, `fa.currency` (read from the English shard by
-  `pricing-jsonld.ts`, for the structured data only), `pro.consent`,
+  shard: `fa.cta`, `fa.fine`, `fa.currency` (rendered by `FullAnalysisBuy`
+  while the Full Analysis is on sale, and read from the English shard by
+  `pricing-jsonld.ts` for the structured data), `pro.consent`,
   `pro.consentError`, `pro.cta`,
   `pro.fine`, `pro.memberActive`, `pro.manage`, `pro.owing`,
   `pro.updatePayment` (none renders while the gates are closed).
@@ -804,7 +850,12 @@ sends `autoRenewConsent: true` from the line containing the pressed button;
   flow figure; no never-submit sentence while W3 is open. JSON-LD offers:
   the Full Analysis only when
   `homePlanRows(saleGates()).fullAnalysis.state === "onSale"`, Pro only when
-  `.pro` is non-null. `checkRetired` already covers "/" (line 1296).
+  `.pro` is non-null, each one the offer of the same name in
+  `pricingJsonLd(resolveSaleGates()).offers`, never built by hand, so the
+  Full Analysis offer on "/" carries the same `price`, `priceCurrency` and
+  `description` (the English `pricingPlans.fa.currency`, how the US-dollar
+  list price is charged) as on "/pricing". `checkRetired` already covers
+  "/" (line 1296).
 - The `path: "/pricing"` block (line 3453): title and description from
   `pricingMetaKeys(resolveSaleGates())` (closed today: `meta.titleNoPro`,
   `meta.descriptionClosed`); the body prints the gated page from the
@@ -899,11 +950,15 @@ claim FAILs before the deploy by design.
 - C10 the apply agent is retired: `rpc/agent_sender_public_status` answers
   false, or /trust serves wave 4's retirement sentence; while neither holds,
   "/" and "/pricing" carry no "never submit".
-- C11 (owner decision 2026-10-25) "/pricing" says "Pro is billed in US
-  dollars" and "charged in your local currency where we support it and in
-  US dollars elsewhere", and "/" its strip's currency line for the rows it
-  shows; neither page carries a sentence that puts both products in one
-  currency ("Prices in US dollars", "Prices are in US dollars").
+- C11 (owner decision 2026-10-25, review round the same day) "/pricing"
+  says "Pro is billed in US dollars" and "priced in US dollars and charged
+  at about the same value in the currency of your device's time zone when
+  we recognize the zone and support its currency, or in US dollars
+  otherwise", and "/" its strip's currency line for the rows it shows;
+  neither page carries a sentence that puts both products in one currency
+  ("Prices in US dollars", "Prices are in US dollars") or promises "your
+  local currency"; wherever "/" or "/pricing" publishes a Full Analysis
+  Offer, its `description` is `pricingPlans.fa.currency`.
 - G4 (W6) is a ledger precondition; the section prints it as a note, not a
   claim. G3 (W5) was decided on 2026-10-24 (the IP clause dropped), so C4
   holds the page to that decision instead.
@@ -1051,10 +1106,12 @@ replaced). Nothing in the app imports `src/preview/**`; `vite build` builds
   or India, until we are registered for tax there. Checkout turns away buyers
   it can place there, from the currency and the browser's time zone." (the
   IP-lookup clause the builder wrote was dropped by owner decision W5,
-  2026-10-24) · the currency line (owner decision 2026-10-25): "Pro is billed
-  in US dollars. The Full Analysis is charged in your local currency where
-  we support it, and in US dollars elsewhere." while the Pro row shows, its
-  second sentence alone while it does not.
+  2026-10-24) · the currency line (owner decision 2026-10-25, review round
+  the same day): "Pro is billed in US dollars. The Full Analysis is priced
+  in US dollars and charged at about the same value in the currency of your
+  device's time zone when we recognize the zone and support its currency,
+  or in US dollars otherwise." while the Pro row shows, its second sentence
+  alone while it does not.
 - **4.7 FAQ (P3, P5).** Five questions, answers in the DOM while closed; the
   corrected "How current is a posting?"; fit "free, with no account, in the
   browser where you scanned or dropped your résumé"; systems named from the
@@ -1215,7 +1272,7 @@ checkout. The live reads the shipped page already makes
 | "All sales are final" beside every buy control | `SaleTermsLine` in each buy block | decisions 4 |
 | Not sold in the EU, EEA, UK or India, said before any click, naming the currency and time-zone checks (never a billing address; the IP lookup dropped by owner decision W5, 2026-10-24) | `BeforeYouBuy.tsx` (the region item is always open), the FAQ | decisions 5; `hp-fix-no-ip-lookup` |
 | Pro's separate, unchecked, required renewal box (AB 2863) | `ProBuyBlock` | decisions 6 |
-| Each product in its own currency (2026-10-25): Pro billed in US dollars; the Full Analysis charged in the local currency where `create-checkout` prices it, in US dollars elsewhere; no sentence gives both one currency | `BeforeYouBuy.tsx` (the renewal item), `HomePlanStrip.tsx`, `pricing-jsonld.ts` | `hp-fix-currency-per-product` |
+| Each product in its own currency (2026-10-25): Pro billed in US dollars; the Full Analysis priced in US dollars and charged at about that value in the currency of the device's time zone when `use-currency.ts` recognizes the zone and `create-checkout` prices its currency, in US dollars otherwise; no sentence gives both one currency or promises "your local currency" | `BeforeYouBuy.tsx` (the renewal item), `HomePlanStrip.tsx`, `BuyBlock.tsx` (`FullAnalysisBuy`), `pricing-jsonld.ts` | `hp-fix-currency-per-product` |
 | One open-postings figure (openTotal from `get_board_vendor_counts`, with its `as_of`) | `FreeCard`, through the existing `useBoardVendorCounts` | decisions 10 |
 | Fit is free without an account | Free card ("No account needed"), the table, the FAQ | decisions 9 |
 | Each closed gate gives its own reason (G1, G2, G2b); Pro's included Full Analysis hides with G2; no delivery time printed | `sale-gates.ts`, `pro-perks-mirror.ts` | decisions 8 |

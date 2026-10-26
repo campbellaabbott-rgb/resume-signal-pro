@@ -149,8 +149,8 @@
       "proIncludesFa": "Kasama ang Buong Pagsusuri.",
       "termFinal": "Final ang lahat ng benta.",
       "termTerritory": "Hindi pa ibinebenta sa EU, EEA, UK o India, hanggang makapagparehistro kami roon para sa buwis. Tinatanggihan ng checkout ang mga mamimiling matutukoy nitong naroon, batay sa currency at sa time zone ng browser.",
-      "termCurrency": "Sinisingil ang Pro sa US dollars. Sinisingil ang Buong Pagsusuri sa lokal mong currency kung sinusuportahan namin ito, at sa US dollars kung hindi.",
-      "termCurrencyFa": "Sinisingil ang Buong Pagsusuri sa lokal mong currency kung sinusuportahan namin ito, at sa US dollars kung hindi.",
+      "termCurrency": "Sinisingil ang Pro sa US dollars. Naka-presyo sa US dollars ang Buong Pagsusuri, at sinisingil ito sa halos parehong halaga sa currency ng time zone ng iyong device kung kilala namin ang time zone na iyon at sinusuportahan ang currency nito, at sa US dollars kung hindi.",
+      "termCurrencyFa": "Naka-presyo sa US dollars ang Buong Pagsusuri, at sinisingil ito sa halos parehong halaga sa currency ng time zone ng iyong device kung kilala namin ang time zone na iyon at sinusuportahan ang currency nito, at sa US dollars kung hindi.",
       "more": "Tingnan ang mga presyo at limit"
     },
     "faq": {

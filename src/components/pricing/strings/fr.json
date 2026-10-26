@@ -24,7 +24,7 @@
       "finalBody": "Aucun remboursement, sauf lorsque la loi en impose un. Un résultat payant ne vous convient pas ? Répondez à votre reçu et nous le refaisons, gratuitement.",
       "regionBody": "Les ventes y attendent notre immatriculation à la TVA, ou à la GST en Inde. Le paiement refuse les acheteurs qu'il peut y situer, d'après la devise et le fuseau horaire indiqué par votre appareil. Tout ce qui est gratuit fonctionne partout.",
       "renewalTitle": "Pro : dollars américains, renouvelé chaque mois.",
-      "renewalBody": "Pro est facturé en dollars américains et se renouvelle chaque mois à {{proPrice}} jusqu'à ce que vous résiliiez, et vous acceptez le renouvellement par une case distincte avant le paiement. L'Analyse complète est un paiement unique qui ne se renouvelle jamais, débité dans votre devise locale si nous la prenons en charge, sinon en dollars américains."
+      "renewalBody": "Pro est facturé en dollars américains et se renouvelle chaque mois à {{proPrice}} jusqu'à ce que vous résiliiez, et vous acceptez le renouvellement par une case distincte avant le paiement. L'Analyse complète est un paiement unique qui ne se renouvelle jamais, tarifé en dollars américains et débité pour une valeur à peu près égale dans la devise du fuseau horaire de votre appareil quand nous reconnaissons ce fuseau et prenons en charge sa devise, sinon en dollars américains."
     },
     "buy": {
       "finalSale": "Toutes les ventes sont définitives.",
@@ -65,7 +65,7 @@
       "how": "Vous importez d'abord votre CV ; le paiement vient ensuite.",
       "cta": "Acheter l'Analyse complète, {{price}}",
       "fine": "Un seul paiement, jamais renouvelé.",
-      "currency": "L'Analyse complète est débitée dans votre devise locale si nous la prenons en charge, sinon en dollars américains."
+      "currency": "L'Analyse complète est tarifée en dollars américains et débitée pour une valeur à peu près égale dans la devise du fuseau horaire de votre appareil quand nous reconnaissons ce fuseau et prenons en charge sa devise, sinon en dollars américains."
     },
     "pro": {
       "name": "Pro",

@@ -13,7 +13,9 @@ import { homePlanRows, type SaleGates } from "@/lib/home/sale-gates";
  * terms sit under the rows before any click: final sale, where it is not sold
  * and what checkout looks at to tell, and the currency each product is charged
  * in (owner decision 2026-10-25): Pro's only while its row is shown, and the
- * Full Analysis's local currency with the fallback create-checkout uses.
+ * Full Analysis's US-dollar list price with how it is charged: the currency
+ * of the device's time zone when the hook recognizes the zone and checkout
+ * supports its currency, else US dollars.
  */
 export function HomePlanStrip({ gates }: { gates: SaleGates }) {
   const { t, i18n } = useTranslation();

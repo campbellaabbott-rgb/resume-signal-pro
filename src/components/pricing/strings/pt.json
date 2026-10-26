@@ -24,7 +24,7 @@
       "finalBody": "Sem reembolsos, exceto quando a lei exigir um. Não gostou de um resultado pago? Responda ao seu recibo e nós o refazemos, de graça.",
       "regionBody": "As vendas lá esperam até estarmos registrados para o IVA, ou para o GST na Índia. O pagamento recusa compradores que consegue localizar lá, pela moeda e pelo fuso horário que o seu dispositivo informa. Tudo o que é grátis funciona em todo lugar.",
       "renewalTitle": "Pro: dólares americanos, renova todo mês.",
-      "renewalBody": "O Pro é cobrado em dólares americanos e renova todo mês por {{proPrice}} até você cancelar, e você aceita a renovação em uma caixa separada antes do pagamento. A Análise completa é um pagamento único que nunca renova, cobrado na sua moeda local quando a aceitamos e, nos outros casos, em dólares americanos."
+      "renewalBody": "O Pro é cobrado em dólares americanos e renova todo mês por {{proPrice}} até você cancelar, e você aceita a renovação em uma caixa separada antes do pagamento. A Análise completa é um pagamento único que nunca renova, com preço em dólares americanos, cobrado por um valor parecido na moeda do fuso horário do seu dispositivo quando reconhecemos esse fuso e aceitamos a moeda dele e, nos outros casos, em dólares americanos."
     },
     "buy": {
       "finalSale": "Todas as vendas são definitivas.",
@@ -65,7 +65,7 @@
       "how": "Você envia o currículo primeiro; o pagamento vem depois.",
       "cta": "Comprar a Análise completa, {{price}}",
       "fine": "Um só pagamento, nunca renova.",
-      "currency": "A Análise completa é cobrada na sua moeda local quando a aceitamos e, nos outros casos, em dólares americanos."
+      "currency": "A Análise completa tem preço em dólares americanos e é cobrada por um valor parecido na moeda do fuso horário do seu dispositivo quando reconhecemos esse fuso e aceitamos a moeda dele e, nos outros casos, em dólares americanos."
     },
     "pro": {
       "name": "Pro",

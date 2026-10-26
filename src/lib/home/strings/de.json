@@ -149,8 +149,8 @@
       "proIncludesFa": "Die Vollanalyse ist enthalten.",
       "termFinal": "Alle Käufe sind endgültig.",
       "termTerritory": "Noch nicht verkauft in der EU, im EWR, im Vereinigten Königreich oder in Indien, bis wir dort steuerlich registriert sind. Der Checkout weist Käufer ab, die er dort verorten kann: anhand der Währung und der Zeitzone des Browsers.",
-      "termCurrency": "Pro wird in US-Dollar abgerechnet. Die Vollanalyse wird in deiner Landeswährung berechnet, sofern wir diese unterstützen, sonst in US-Dollar.",
-      "termCurrencyFa": "Die Vollanalyse wird in deiner Landeswährung berechnet, sofern wir diese unterstützen, sonst in US-Dollar.",
+      "termCurrency": "Pro wird in US-Dollar abgerechnet. Die Vollanalyse ist in US-Dollar ausgepreist und wird zum etwa gleichen Wert in der Währung der Zeitzone deines Geräts berechnet, wenn wir die Zeitzone kennen und ihre Währung unterstützen, sonst in US-Dollar.",
+      "termCurrencyFa": "Die Vollanalyse ist in US-Dollar ausgepreist und wird zum etwa gleichen Wert in der Währung der Zeitzone deines Geräts berechnet, wenn wir die Zeitzone kennen und ihre Währung unterstützen, sonst in US-Dollar.",
       "more": "Preise und Limits ansehen"
     },
     "faq": {

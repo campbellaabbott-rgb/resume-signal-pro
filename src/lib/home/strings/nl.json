@@ -149,8 +149,8 @@
       "proIncludesFa": "De Volledige analyse is inbegrepen.",
       "termFinal": "Alle verkopen zijn definitief.",
       "termTerritory": "Nog niet verkocht in de EU, de EER, het VK of India, totdat we daar voor belastingen geregistreerd zijn. De checkout weigert kopers die hij daar kan plaatsen, op basis van de valuta en de tijdzone van de browser.",
-      "termCurrency": "Pro wordt gefactureerd in Amerikaanse dollars. De Volledige analyse wordt afgerekend in je lokale valuta als we die ondersteunen, en anders in Amerikaanse dollars.",
-      "termCurrencyFa": "De Volledige analyse wordt afgerekend in je lokale valuta als we die ondersteunen, en anders in Amerikaanse dollars.",
+      "termCurrency": "Pro wordt gefactureerd in Amerikaanse dollars. De Volledige analyse is geprijsd in Amerikaanse dollars en wordt voor ongeveer dezelfde waarde afgerekend in de valuta van de tijdzone van je apparaat als we die tijdzone herkennen en de valuta ervan ondersteunen, en anders in Amerikaanse dollars.",
+      "termCurrencyFa": "De Volledige analyse is geprijsd in Amerikaanse dollars en wordt voor ongeveer dezelfde waarde afgerekend in de valuta van de tijdzone van je apparaat als we die tijdzone herkennen en de valuta ervan ondersteunen, en anders in Amerikaanse dollars.",
       "more": "Prijzen en limieten bekijken"
     },
     "faq": {

@@ -153,8 +153,8 @@
       "proIncludesFa": "L'Analyse complète est incluse.",
       "termFinal": "Toutes les ventes sont définitives.",
       "termTerritory": "Pas encore vendu dans l'UE, l'EEE, au Royaume-Uni ou en Inde, tant que nous n'y sommes pas enregistrés pour la taxe. Le paiement refuse les acheteurs qu'il peut situer là-bas, d'après la devise et le fuseau horaire du navigateur.",
-      "termCurrency": "Pro est facturé en dollars américains. L'Analyse complète est débitée dans votre devise locale si nous la prenons en charge, sinon en dollars américains.",
-      "termCurrencyFa": "L'Analyse complète est débitée dans votre devise locale si nous la prenons en charge, sinon en dollars américains.",
+      "termCurrency": "Pro est facturé en dollars américains. L'Analyse complète est tarifée en dollars américains et débitée pour une valeur à peu près égale dans la devise du fuseau horaire de votre appareil quand nous reconnaissons ce fuseau et prenons en charge sa devise, sinon en dollars américains.",
+      "termCurrencyFa": "L'Analyse complète est tarifée en dollars américains et débitée pour une valeur à peu près égale dans la devise du fuseau horaire de votre appareil quand nous reconnaissons ce fuseau et prenons en charge sa devise, sinon en dollars américains.",
       "more": "Voir les tarifs et les limites"
     },
     "faq": {
