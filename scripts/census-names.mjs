@@ -166,10 +166,10 @@ const DATED = /(?:^|[^\w.])(?:19[89]\d|20[0-4]\d)(?![\w.])|(?:^|[^\w.])\d{6,8}(?
 /**
  * A board label written as a sentence or a slogan: one that addresses the
  * reader ("Your Next Career", "Discover Your Potential at ...", "*Thanks for
- * your interest in ...") or opens with an instruction. "Our Lady of ..." is a
- * name and is spared.
+ * your interest in ...") or opens with an instruction. "Our Lady of ...",
+ * "Make-A-Wish" and "Build-A-Bear" are names and are spared.
  */
-const SENTENCE = /^\W*(?:your|we|we're|join|start|find|explore|discover|search|view|apply|come|become|grow|build|make|thanks?|thank\s+you|welcome|looking)\b|\b(?:your|thank\s+you|thanks\s+for)\b|^\W*our\b(?!\s+lady\b)/i;
+const SENTENCE = /^\W*(?:your|we|we're|join|start|find|explore|discover|search|view|apply|come|become|grow|build|make|thanks?|thank\s+you|welcome|looking)(?=\s)|\b(?:your|thank\s+you|thanks\s+for)\b|^\W*our\b(?!\s+lady\b)/i;
 /** Template, test and demo sites ("Community Template", "Tiffany - SR Testing", "S&C Minimal"). */
 const TEST_SITE = /\b(?:templates?|sandbox|demo|sample|placeholder|test|minimal)\b|[-\u2013\u2014|:]\s*(?:\S+\s+)?testing\s*$|\b(?:sr|uat|qa|dev|stage|staging)\s+testing\b/i;
 

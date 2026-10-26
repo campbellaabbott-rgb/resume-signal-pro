@@ -296,6 +296,7 @@ describe("the census rule: the bake's rule, plus the label shapes a census meets
   const LABEL_FIELD_NAMES = [
     "Axia Women's Health", "LCS", "Honeywell", "Rice University", "The Village at White River Junction",
     "Hudson Regional Hospital", "Convergint", "Butler University", "City of Boston", "Paradies Lagard\u00e8re",
+    "Make-A-Wish Michigan", "Build-A-Bear Workshop", "Our Lady of the Lake",
   ];
 
   it("keeps every real name", () => {
