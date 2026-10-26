@@ -48,17 +48,16 @@ describe("a number on a page is a promise", () => {
     expect(m?.[0], `${file}: ${why} — derive it or omit it`).toBeUndefined();
   });
 
-  it("the homepage head derives both numbers and has count-free copy", () => {
+  it("the scanner's head is its landing's, with no board number of its own", () => {
+    // The homepage head (board totals floored, a count-free variant) left
+    // Index with the homepage switch-over: Index is the scanner at
+    // /resume-checker and every route mounts it with a landing, whose title
+    // and description are typed copy with no count. The new homepage's head
+    // is home.seo.*, held by hp/integration's tests.
     const c = code(read("src/pages/Index.tsx"));
-    expect(c, "the head must read the live board").toMatch(/useBoardTotals\(\)/);
-    // roundedFloor, never rounded-to-nearest: a rounded-UP figure claims roles
-    // that do not exist, and "+" only reads as honest over a floor.
-    expect(c).toMatch(/roundedFloor\(homeTotals\.jobs\)/);
-    // The tracked figure is stated too — and named as tracked, not as openings.
-    expect(c).toMatch(/roundedFloor\(homeTotals\.tracked\)/);
-    expect(c).toMatch(/tracked including ones we have watched close/);
-    // And a variant that needs no number at all.
-    expect(c).toMatch(/"Resume Booster — Live Jobs Straight From Employers"/);
+    expect(c).toMatch(/title=\{landing\?\.title\}/);
+    expect(c).toMatch(/description=\{landing\?\.description\}/);
+    expect(c, "a board total in the scanner's head").not.toMatch(/useBoardTotals\(\)|homeTotals/);
   });
 
   it("the hook exposes tracked as its own field, not as a bigger `jobs`", () => {

@@ -39,7 +39,9 @@ import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
 // 2026-10-09.25 (wave-3 fix round integration): carries both of the above.
 // 2026-10-11.25 (S12-115): a failed description read in strong-match mode
 // gives the claim back instead of advancing the window.
-const FN_BUILD = "send-search-digest.2026-10-11.25";
+// 2026-10-25.1 (homepage switch-over, step 11; reservation home-pricing): the
+// "scan your resume" tip links /resume-checker, since "/" becomes the job board.
+const FN_BUILD = "send-search-digest.2026-10-25.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -477,7 +479,7 @@ Deno.serve(async (req) => {
       <div style="text-align:center;margin:20px 0 4px">
         <a href="${escapeHtml(viewUrl)}" style="display:inline-block;background:#2563eb;color:#fff;font-size:14px;font-weight:700;padding:11px 22px;border-radius:10px;text-decoration:none">See all ${escapeHtml(shownCount)} on the board</a>
       </div>
-      <p style="font-size:12px;color:#94a3b8;text-align:center;margin:10px 0 0">Tip: <a href="${SITE_URL}" style="color:#2563eb;text-decoration:none">scan your resume</a> against any posting before you apply.</p>
+      <p style="font-size:12px;color:#94a3b8;text-align:center;margin:10px 0 0">Tip: <a href="${SITE_URL}/resume-checker" style="color:#2563eb;text-decoration:none">scan your resume</a> against any posting before you apply.</p>
     </div>
     <p style="font-size:11px;color:#94a3b8;text-align:center;margin:14px 0 0">
       You turned on the digest for this saved search. <a href="${escapeHtml(unsubUrl)}" style="color:#94a3b8">Turn it off</a>.

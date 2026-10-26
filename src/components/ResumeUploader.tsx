@@ -16,9 +16,14 @@ import { ScanGuideArrow } from "@/components/ScanGuideArrow";
 import { useScanPrefetch } from "@/hooks/use-scan-prefetch";
 import { ScanProgressStages } from "@/components/ScanProgressStages";
 import { PurchaseTerms } from "@/components/PurchaseTerms";
-import { purchasesOpen } from "@/lib/purchases-open";
+import { fullAnalysisOnSale } from "@/lib/purchases-open";
 import { PurchasesOpenSoon } from "@/components/checkout/PurchasesOpenSoon";
 import { looksLikeLink, scannableJobDescription } from "@/lib/job-description-input";
+// THE FULL ANALYSIS IS ON SALE HERE ONLY WHEN G1 AND G2 BOTH HOLD (homepage
+// and pricing spec of 2026-10-17): fullAnalysisOnSale() is the seller's name
+// and the owner's switch, read at render, so a switch the owner flips takes
+// effect on the next paint (src/lib/purchases-open.ts).
+
 // Step indicator component for better UX guidance
 interface StepIndicatorProps {
   number: number;
@@ -1439,10 +1444,11 @@ export function ResumeUploader({
 
                 {/* Secondary: Full Analysis link, under the Terms line. It
                     shows only once the seller is named (owner decision
-                    2026-10-17, B&P 17538(d)); until then, purchases open soon. */}
-                {onFreeScan && !purchasesOpen() && <PurchasesOpenSoon className="justify-center text-left" />}
-                {onFreeScan && purchasesOpen() && <PurchaseTerms kind="payment" className="text-center" />}
-                {onFreeScan && purchasesOpen() && (
+                    2026-10-17, B&P 17538(d)) and the owner has watched a
+                    purchase deliver (G2); until then, purchases open soon. */}
+                {onFreeScan && !fullAnalysisOnSale() && <PurchasesOpenSoon className="justify-center text-left" />}
+                {onFreeScan && fullAnalysisOnSale() && <PurchaseTerms kind="payment" className="text-center" />}
+                {onFreeScan && fullAnalysisOnSale() && (
                   <button
                     onClick={resumeMode === "paste" ? handleTextPaste : handleCheckoutClick}
                     disabled={isLoading || !canProceed}
@@ -1460,9 +1466,9 @@ export function ResumeUploader({
                 )}
 
                 {/* Fallback if no free scan available: the priced button
-                    only once the seller is named, as above. */}
-                {!onFreeScan && !purchasesOpen() && <PurchasesOpenSoon className="justify-center text-left" />}
-                {!onFreeScan && purchasesOpen() && (
+                    only under the same two gates, as above. */}
+                {!onFreeScan && !fullAnalysisOnSale() && <PurchasesOpenSoon className="justify-center text-left" />}
+                {!onFreeScan && fullAnalysisOnSale() && (
                   <div className="space-y-3">
                     <PurchaseTerms kind="payment" className="text-center" />
                     <Button

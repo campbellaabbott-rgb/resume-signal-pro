@@ -2,7 +2,7 @@ import { ArrowRight, CheckCircle2, Zap, X, Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useCurrency } from "@/hooks/use-currency";
 import { PRODUCTS } from "@/config/products";
-import { purchasesOpen } from "@/lib/purchases-open";
+import { fullAnalysisOnSale } from "@/lib/purchases-open";
 import { PurchasesOpenSoon } from "@/components/checkout/PurchasesOpenSoon";
 
 interface FinalCTAProps {
@@ -92,10 +92,11 @@ export function FinalCTA({ onGetStarted, isLoading }: FinalCTAProps) {
           Path at $5) were cut on 2026-10-12 (the product line): nothing below
           offers them. */}
           
-          {/* Price + CTA. While no seller is named (owner decision
-              2026-10-17) the analysis is not priced here as something to buy:
-              the box says purchases open soon and offers the free scan. */}
-          {!purchasesOpen() ? (
+          {/* Price + CTA. Until the Full Analysis is on sale (the seller
+              named, owner decision 2026-10-17, and its delivery watched, G2)
+              the analysis is not priced here as something to buy: the box
+              says purchases open soon and offers the free scan. */}
+          {!fullAnalysisOnSale() ? (
             <div className="inline-flex flex-col items-center gap-4 p-8 rounded-2xl bg-primary/10 border border-primary/30" data-final-cta-closed>
               <PurchasesOpenSoon />
               <button

@@ -5208,6 +5208,7 @@
     "secureSignedIn": "Paiement sécurisé via Stripe. Résiliable à tout moment — sans engagement.",
     "secureSignedOut": "Vous vous connecterez d'abord, pour que la formule soit sur votre compte. Paiement sécurisé via Stripe ; résiliable à tout moment.",
     "summaryLine": "Tout ce qu'offre un compte gratuit, plus les outils de rédaction, l'Analyse complète à 5 $ incluse et aucun plafond quotidien d'analyses",
+    "summaryLineWithoutAnalysis": "Tout ce qu'offre un compte gratuit, plus les outils de rédaction et aucun plafond quotidien d'analyses",
     "title": "Resume Booster Pro",
     "toast": {
       "alreadyMemberBody": "Votre formule est déjà active sur ce compte.",
@@ -5320,19 +5321,6 @@
     "headline2": "Offres en ligne correspondant à « {{q}} »",
     "sub2": "Des offres en ligne issues des propres systèmes de recrutement des employeurs. Vous postulez sur le site de l'employeur, avec l'aide de votre propre IA si vous le souhaitez. Voici les meilleures correspondances :",
     "ctaYourAi": "Postuler avec l'aide de votre propre IA"
-  },
-  "homeHero": {
-    "headlinePre": "Des offres en direct, tirées des systèmes de recrutement des employeurs.",
-    "statOpenings": "offres actives",
-    "statCompanies": "entreprises",
-    "ctaPrimary": "Déposez votre CV — gratuit",
-    "ctaSecondary": "Parcourir les offres",
-    "reassure": "Analyse gratuite · sans carte, sans inscription",
-    "exploreCta": "Explorer par domaine",
-    "statCompanyBoards": "sites carrières d'entreprises qui recrutent",
-    "badge2": "Offres en direct + votre propre IA",
-    "headlineHighlight2": "Postulez vous-même, avec l'aide de votre propre IA.",
-    "sub2": "Des offres lues dans les propres systèmes de recrutement des entreprises et revérifiées toute la journée. Analysez votre CV gratuitement, cherchez sur le tableau ici ou depuis Claude ou ChatGPT, et postulez vous-même, avec l'aide de votre IA si vous le souhaitez. Nous n'envoyons jamais rien à votre place."
   },
   "homeAgent": {
     "lead": "Utilisez-le depuis votre propre IA.",

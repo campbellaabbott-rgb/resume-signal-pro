@@ -36,13 +36,15 @@ vi.mock("@/components/Header", () => ({ Header: () => null }));
 vi.mock("@/components/Footer", () => ({ Footer: () => null }));
 vi.mock("@/components/seo/SEO", () => ({ SEO: () => null }));
 vi.mock("@/components/ProductPreview", () => ({ ProductPreview: () => null }));
-// Whether a seller is named: as shipped (closed) unless a test opens it (recheck 3).
+// Whether a seller is named, and with it each product's own gate (the page
+// reads fullAnalysisOnSale() and proOnSale()): as shipped (closed) unless a
+// test opens all three (recheck 3).
 const gate = vi.hoisted(() => ({ open: false }));
-vi.mock("@/lib/purchases-open", () => ({ purchasesOpen: () => gate.open }));
+vi.mock("@/lib/purchases-open", () => ({ purchasesOpen: () => gate.open, fullAnalysisOnSale: () => gate.open, proOnSale: () => gate.open }));
 
 import Pricing from "../pages/Pricing";
 import { PRODUCTS, SUBSCRIPTIONS, PASS, getAllProducts } from "@/config/products";
-import { PRO_PERKS } from "@/config/pro-perks";
+import { proPerksOnSale } from "@/config/pro-perks";
 
 vi.setConfig(MOUNT_TEST_BUDGET);
 afterEach(() => { cleanup(); gate.open = false; });
@@ -56,7 +58,9 @@ describe("/pricing after the apply pivot", () => {
   it("renders the Pro card with today's perks, and no Agent plan card", () => {
     mount();
     expect(screen.getByText("Resume Booster Pro")).toBeInTheDocument();
-    for (const perk of PRO_PERKS) expect(screen.getByText(perk)).toBeInTheDocument();
+    // Today's perks: the included Full Analysis waits for gate G2.
+    for (const perk of proPerksOnSale()) expect(screen.getByText(perk.text)).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/Full Analysis included/);
     expect(document.body.textContent).not.toContain(`$${SUBSCRIPTIONS.agent.priceUsd}`);
     expect(document.body.textContent).not.toMatch(/Morning Queue|Apply Agent|Agent plan|Start the agent/);
   });

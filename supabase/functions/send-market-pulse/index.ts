@@ -50,7 +50,11 @@ import { MARKETING_PAUSED, logMarketingPaused, marketingMailHeader, marketingPau
 // refused before any count and no confirmation is mailed (a confirmed address
 // would hear nothing); a link mailed earlier still confirms, and the answer
 // says the pulse is paused, so the page promises no first pulse.
-const FN_BUILD = "send-market-pulse.2026-10-11.26";
+// 2026-10-25.2 (homepage switch-over, step 11; reservation home-pricing): the
+// code is wave 4's 2026-10-11.26, and the "Rescan my resume free" link names
+// /resume-checker, since "/" becomes the job board; mail already sent still
+// reaches the scanner through the redirect.
+const FN_BUILD = "send-market-pulse.2026-10-25.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -305,7 +309,7 @@ Deno.serve(async (req) => {
         const unsubParams = { email: sub.cl_email, token };
         const unsubUrl = unsubscribePageUrl("market-pulse", unsubParams);
         const unsubHeaders = oneClickHeaders(oneClickUrl(Deno.env.get("SUPABASE_URL") ?? "", "send-market-pulse", unsubParams));
-        const rescanUrl = `${SITE_URL}/?utm_source=email&utm_medium=market_pulse&utm_campaign=rescan`;
+        const rescanUrl = `${SITE_URL}/resume-checker?utm_source=email&utm_medium=market_pulse&utm_campaign=rescan`;
         const industryLabel = industry.replace(/_/g, " ");
         const confirmedOn = String(sub.cl_confirmed_at ?? "").slice(0, 10);
 

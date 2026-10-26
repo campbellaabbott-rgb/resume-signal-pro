@@ -15,6 +15,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { FAQ } from "@/components/FAQ";
+import { proSummaryOnSale } from "@/config/pro-perks";
 
 afterEach(cleanup);
 
@@ -42,7 +43,10 @@ describe("the FAQ", () => {
     // Owner decision 2026-10-17: one one-off, and Pro read from the one list.
     expect(answer).toMatch(/\$5 Full Analysis is a one-time payment/);
     expect(answer).not.toMatch(/Freelance|Transition Pro|unlimited/i);
-    expect(answer).toMatch(/Everything in a free account, plus the writing tools, the \$5 Full Analysis included and no daily cap on scans/);
+    // Pro's summary as a page may print it today: without the included Full
+    // Analysis while that is not on sale (gate G2).
+    expect(answer).toContain(proSummaryOnSale().text);
+    expect(answer).toMatch(/Everything in a free account, plus the writing tools/);
     expect(answer).toMatch(/\$45\/month/);
     expect(answer).toMatch(/Nothing else upgrades you automatically/);
   });

@@ -5172,6 +5172,7 @@
     "secureSignedIn": "Secure na checkout sa Stripe. Kanselahin anumang oras — walang lock-in.",
     "secureSignedOut": "Magsa-sign in ka muna, para nasa account mo ang plan. Secure na checkout sa Stripe; kanselahin anumang oras.",
     "summaryLine": "Lahat ng nasa libreng account, kasama ang mga writing tool, ang $5 na Full Analysis at walang daily cap sa mga scan",
+    "summaryLineWithoutAnalysis": "Lahat ng nasa libreng account, kasama ang mga writing tool at walang daily cap sa mga scan",
     "title": "Resume Booster Pro",
     "toast": {
       "alreadyMemberBody": "Aktibo na ang plan mo sa account na ito.",
@@ -5284,19 +5285,6 @@
     "headline2": "Mga live na bakanteng tugma sa “{{q}}”",
     "sub2": "Mga live na posting mula mismo sa mga hiring system ng mga employer. Sa sariling site ng employer ka mag-a-apply, sa tulong ng sarili mong AI kung gusto mo. Narito ang mga pinakatugma:",
     "ctaYourAi": "Mag-apply sa tulong ng sarili mong AI"
-  },
-  "homeHero": {
-    "headlinePre": "Mga live na trabaho, mula mismo sa sariling hiring system ng mga employer.",
-    "statOpenings": "live na bakante",
-    "statCompanies": "kumpanya",
-    "ctaPrimary": "I-upload ang CV mo — libre",
-    "ctaSecondary": "Tingnan ang board",
-    "reassure": "Libreng scan · walang card, walang signup",
-    "exploreCta": "Tuklasin ayon sa larangan",
-    "statCompanyBoards": "job board ng kumpanyang naghi-hire",
-    "badge2": "Live na job board + sarili mong AI",
-    "headlineHighlight2": "Mag-apply nang ikaw mismo, sa tulong ng sarili mong AI.",
-    "sub2": "Mga bakanteng binasa mula mismo sa mga hiring system ng mga kumpanya at sinusuri muli buong araw. I-scan nang libre ang iyong CV, maghanap sa board dito o mula sa Claude o ChatGPT, at mag-apply nang ikaw mismo, sa tulong ng iyong AI kung gusto mo. Hindi kami kailanman nagsusumite ng anuman para sa iyo."
   },
   "homeAgent": {
     "lead": "Gamitin ito mula sa sarili mong AI.",

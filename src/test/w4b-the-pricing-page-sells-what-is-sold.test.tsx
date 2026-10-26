@@ -49,7 +49,7 @@ vi.mock("@/components/ProductPreview", () => ({ ProductPreview: () => null }));
 // Whether a seller is named: open for the tests of what is sold, closed (as
 // shipped) for the gate's own.
 const gate = vi.hoisted(() => ({ open: true }));
-vi.mock("@/lib/purchases-open", () => ({ purchasesOpen: () => gate.open }));
+vi.mock("@/lib/purchases-open", () => ({ purchasesOpen: () => gate.open, fullAnalysisOnSale: () => gate.open, proOnSale: () => gate.open }));
 
 import Pricing from "../pages/Pricing";
 import { HIDDEN_PRODUCT_IDS, PRODUCTS } from "@/config/products";

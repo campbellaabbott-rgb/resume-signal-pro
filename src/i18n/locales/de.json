@@ -5172,6 +5172,7 @@
     "secureSignedIn": "Sicherer Bezahlvorgang über Stripe. Jederzeit kündbar – keine Bindung.",
     "secureSignedOut": "Sie melden sich zuerst an, damit der Tarif zu Ihrem Konto gehört. Sicherer Bezahlvorgang über Stripe; jederzeit kündbar.",
     "summaryLine": "Alles aus einem kostenlosen Konto, plus die Schreibwerkzeuge, die vollständige Analyse für 5 $ inklusive und keine tägliche Obergrenze für Scans",
+    "summaryLineWithoutAnalysis": "Alles aus einem kostenlosen Konto, plus die Schreibwerkzeuge und keine tägliche Obergrenze für Scans",
     "title": "Resume Booster Pro",
     "toast": {
       "alreadyMemberBody": "Ihr Tarif ist in diesem Konto bereits aktiv.",
@@ -5284,19 +5285,6 @@
     "headline2": "Aktuelle Stellen passend zu „{{q}}“",
     "sub2": "Aktuelle Stellenanzeigen aus den eigenen Bewerbungssystemen der Arbeitgeber. Du bewirbst dich auf der Website des Arbeitgebers, auf Wunsch mit Hilfe deiner eigenen KI. Hier die besten Treffer:",
     "ctaYourAi": "Mit Hilfe deiner eigenen KI bewerben"
-  },
-  "homeHero": {
-    "headlinePre": "Live-Stellen, direkt aus den Bewerbungssystemen der Arbeitgeber.",
-    "statOpenings": "aktuelle Stellen",
-    "statCompanies": "Unternehmen",
-    "ctaPrimary": "Lebenslauf hochladen — kostenlos",
-    "ctaSecondary": "Board durchsuchen",
-    "reassure": "Kostenloser Scan · ohne Karte, ohne Anmeldung",
-    "exploreCta": "Nach Bereich erkunden",
-    "statCompanyBoards": "Unternehmens-Jobportale mit offenen Stellen",
-    "badge2": "Live-Jobbörse + deine eigene KI",
-    "headlineHighlight2": "Bewirb dich selbst, mit Hilfe deiner eigenen KI.",
-    "sub2": "Stellen direkt aus den eigenen Bewerbungssystemen der Unternehmen, den ganzen Tag über neu geprüft. Scanne deinen Lebenslauf kostenlos, durchsuche die Jobbörse hier oder mit Claude oder ChatGPT und bewirb dich selbst, auf Wunsch mit Hilfe deiner KI. Wir senden niemals etwas für dich ab."
   },
   "homeAgent": {
     "lead": "Nutze es mit deiner eigenen KI.",

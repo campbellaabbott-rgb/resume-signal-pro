@@ -5208,6 +5208,7 @@
     "secureSignedIn": "Pagamento seguro através da Stripe. Cancele quando quiser — sem fidelização.",
     "secureSignedOut": "Vai iniciar sessão primeiro, para que o plano fique na sua conta. Pagamento seguro através da Stripe; cancele quando quiser.",
     "summaryLine": "Tudo o que inclui uma conta gratuita, mais as ferramentas de escrita, a Análise completa de 5 $ incluída e sem limite diário de análises",
+    "summaryLineWithoutAnalysis": "Tudo o que inclui uma conta gratuita, mais as ferramentas de escrita e sem limite diário de análises",
     "title": "Resume Booster Pro",
     "toast": {
       "alreadyMemberBody": "O seu plano já está ativo nesta conta.",
@@ -5320,19 +5321,6 @@
     "headline2": "Vagas ativas que correspondem a “{{q}}”",
     "sub2": "Vagas ativas dos próprios sistemas de contratação dos empregadores. Você se candidata no site do empregador, com a ajuda da sua própria IA se quiser. Estas são as melhores correspondências:",
     "ctaYourAi": "Candidate-se com a ajuda da sua IA"
-  },
-  "homeHero": {
-    "headlinePre": "Vagas ao vivo, direto dos sistemas de contratação dos empregadores.",
-    "statOpenings": "vagas ativas",
-    "statCompanies": "empresas",
-    "ctaPrimary": "Carregue o seu CV — grátis",
-    "ctaSecondary": "Explorar o mural",
-    "reassure": "Análise grátis · sem cartão, sem registo",
-    "exploreCta": "Explorar por área",
-    "statCompanyBoards": "portais de emprego de empresas a contratar",
-    "badge2": "Quadro de vagas ao vivo + a sua própria IA",
-    "headlineHighlight2": "Candidate-se por conta própria, com a ajuda da sua IA.",
-    "sub2": "Vagas lidas dos próprios sistemas de contratação das empresas e reverificadas o dia todo. Analise o seu currículo de graça, busque no quadro aqui ou pelo Claude ou ChatGPT e candidate-se por conta própria, com a ajuda da sua IA se quiser. Nunca enviamos nada por você."
   },
   "homeAgent": {
     "lead": "Use pela sua própria IA.",

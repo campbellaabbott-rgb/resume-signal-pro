@@ -93,11 +93,14 @@ describe("the server reads the same list", () => {
 
 describe("every page that lists Pro reads the list", () => {
   const PAGES: Array<[string, RegExp]> = [
-    ["src/components/ProSubscriptionCard.tsx", /PRO_PERK_ITEMS\.map/],
-    ["src/components/FAQ.tsx", /PRO_SUMMARY\.key, PRO_SUMMARY\.text/],
-    ["src/components/RateLimitUpsell.tsx", /PRO_SUMMARY\.key, PRO_SUMMARY\.text/],
+    // The list and the summary as a page may print them today: without the
+    // included Full Analysis while it is not on sale (gate G2,
+    // every-buy-control-sells-only-what-the-owner-has-put-on-sale).
+    ["src/components/ProSubscriptionCard.tsx", /proPerksOnSale\(PRO_PERK_ITEMS\)\.map/],
+    ["src/components/FAQ.tsx", /proSummaryOnSale\(\)\.key, proSummaryOnSale\(\)\.text/],
+    ["src/components/RateLimitUpsell.tsx", /proSummaryOnSale\(\)\.key, proSummaryOnSale\(\)\.text/],
     // The free report's Pro row (integration, 2026-10-18).
-    ["src/components/FreeKeywordResults.tsx", /PRO_SUMMARY\.key, PRO_SUMMARY\.text/],
+    ["src/components/FreeKeywordResults.tsx", /proSummaryOnSale\(\)\.key, proSummaryOnSale\(\)\.text/],
   ];
   it.each(PAGES)("%s reads it", (file, reads) => {
     const src = code(file);

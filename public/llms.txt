@@ -10,7 +10,7 @@ Full guide text, the complete data-page map, and the CURRENT benchmark figures (
 
 ## Free tools
 
-- [Free resume scan](https://resumebooster.work/): Full diagnostic report within 90 seconds — score with audit trail, weakest bullets graded and rewritten, recruiter panel, interview questions the resume will trigger, ATS vendor checks.
+- [Free resume scan](https://resumebooster.work/resume-checker): Full diagnostic report within 90 seconds — score with audit trail, weakest bullets graded and rewritten, recruiter panel, interview questions the resume will trigger, ATS vendor checks.
 - [Resume checker](https://resumebooster.work/resume-checker), [ATS resume test](https://resumebooster.work/ats-resume-test), [Resume score](https://resumebooster.work/resume-score): The same scanner under the query each visitor asked — each page answers its own FAQs.
 - [Revisar currículum (español)](https://resumebooster.work/es/revisar-curriculum): Native Spanish resume checking — the engine detects Spanish terms, titles, and certifications directly.
 

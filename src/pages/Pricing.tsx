@@ -14,7 +14,7 @@ import { ProSubscriptionCard } from "@/components/ProSubscriptionCard";
 import { AtsCoverage } from '@/components/AtsCoverage';
 import { PurchaseTerms } from "@/components/PurchaseTerms";
 import { PurchasesOpenSoon } from "@/components/checkout/PurchasesOpenSoon";
-import { purchasesOpen } from "@/lib/purchases-open";
+import { fullAnalysisOnSale, proOnSale } from "@/lib/purchases-open";
 import { pricingJsonLd } from "@/lib/pricing-offer";
 
 // THE PRODUCT LINE (owner decisions 2026-10-12 and 2026-10-17). The page
@@ -25,13 +25,15 @@ import { pricingJsonLd } from "@/lib/pricing-offer";
 // Coach as one-offs, Scan Packs, and since 2026-10-17 Freelance Boost and
 // Transition Pro) are offered nowhere, and their checkouts answer 410. The
 // apply pivot's retired Apply Assistant, Agent plan and Agent Pass were
-// already gone. While src/config/seller.ts names no seller, the Full Analysis
-// card says purchases open soon instead of offering a button (B&P 17538(d)).
+// already gone. Until the Full Analysis is on sale (src/config/seller.ts names
+// the seller, B&P 17538(d), and the owner's G2 switch is on), its card says
+// purchases open soon instead of offering a button.
 const offeredHere = (id: ProductId) => !isProductHidden(id);
 
 export default function Pricing() {
   const { t } = useTranslation();
-  const open = purchasesOpen();
+  const open = fullAnalysisOnSale();
+  const proOpen = proOnSale();
 
   // Track scroll depth for drop-off analysis
   useScrollDepth('pricing');
@@ -44,10 +46,15 @@ export default function Pricing() {
   // — so the offer can never state a ceiling the catalog has outgrown, nor a
   // price for a product the page no longer sells.
   const visibleProducts = (Object.keys(PRODUCTS) as ProductId[]).filter(offeredHere);
+  // Each product enters the offer only while its own gate is open (the Full
+  // Analysis on G1 and G2, Pro on G1 and G2b), so the structured data never
+  // prices a product the page does not sell; with neither open it offers only
+  // what is free, and the description says purchases open soon.
   const offerPrices = [
-    ...visibleProducts.map((k) => PRODUCTS[k].priceUsd),
-    SUBSCRIPTIONS.pro.priceUsd,
+    ...(open ? visibleProducts.map((k) => PRODUCTS[k].priceUsd) : []),
+    ...(proOpen ? [SUBSCRIPTIONS.pro.priceUsd] : []),
   ];
+  const anyOnSale = offerPrices.length > 0;
   // THE DESCRIPTION'S RANGE IS THE CATALOGUE'S, by the same derivation
   // (platform sweep L3-18).
   const oneTimePrices = visibleProducts.map((k) => PRODUCTS[k].priceUsd);
@@ -62,13 +69,13 @@ export default function Pricing() {
       {/* Prices come from the catalog, not the copy. */}
       <SEO
         title={t('pricingPage.metaTitle')}
-        description={`${t('pricingPage.metaDescriptionFa', 'Free job search and résumé scan. A ${{lowPrice}} Full Analysis paid once, or Pro at ${{proPrice}} a month for the writing tools.', metaPrices)}${open ? "" : ` ${t('checkoutGate.purchasesOpenSoonTitle', 'Purchases open soon')}.`}`}
+        description={`${t('pricingPage.metaDescriptionFa', 'Free job search and résumé scan. A ${{lowPrice}} Full Analysis paid once, or Pro at ${{proPrice}} a month for the writing tools.', metaPrices)}${anyOnSale ? "" : ` ${t('checkoutGate.purchasesOpenSoonTitle', 'Purchases open soon')}.`}`}
         path="/pricing"
       />
-      {/* SoftwareApplication: once purchases open, an AggregateOffer of what
-          is sold (prices mirror PRODUCTS); until then only the free offer,
-          the shape the crawler bake writes too (src/lib/pricing-offer.ts). */}
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(pricingJsonLd({ open, offerPrices, url: "https://resumebooster.work/pricing" })) }} />
+      {/* SoftwareApplication: once a product is on sale, an AggregateOffer of
+          what is sold (prices mirror PRODUCTS); until then only the free
+          offer, the shape the crawler bake writes too (src/lib/pricing-offer.ts). */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(pricingJsonLd({ open: anyOnSale, offerPrices, url: "https://resumebooster.work/pricing" })) }} />
       <Header />
 
       <main className="pt-24 pb-20">

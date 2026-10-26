@@ -29,73 +29,28 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-const HERO = readFileSync(resolve(__dirname, "../components/HomeHero.tsx"), "utf8");
 const PANEL = readFileSync(resolve(__dirname, "../components/AgentMatchesPanel.tsx"), "utf8");
 const INDEX = readFileSync(resolve(__dirname, "../pages/Index.tsx"), "utf8");
 const JOBS = readFileSync(resolve(__dirname, "../pages/Jobs.tsx"), "utf8");
 const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
-const heroCode = strip(HERO);
 const panelCode = strip(PANEL);
 const indexCode = strip(INDEX);
 
-describe("the agent opens the page", () => {
+describe("the scanner page carries one hero", () => {
   it("is ONE hero, not two stacked ones", () => {
     // Two full-height heroes put 6,807px and four competing CTAs between a
-    // visitor and any action; the upload tool — the only path to a paying
-    // customer — began at 10,546px. Consolidated 2026-08-13 to 3,903px.
-    // HomeHero may take the page's agent-offer strip as a prop; it is still
-    // the one hero.
-    expect(indexCode, "HomeHero is not on the page").toMatch(/<HomeHero\b[^>]*\/>/);
+    // visitor and any action; the upload tool began at 10,546px. The old
+    // homepage hero (HomeHero) left with the homepage switch-over: the
+    // scanner at /resume-checker opens with Hero alone, and no second hero
+    // may come back beside it.
+    expect(indexCode, "the old homepage hero is back").not.toMatch(/<HomeHero\b/);
     expect(indexCode, "the second stacked hero is back").not.toMatch(/<JobBoardHero \/>/);
-    expect(indexCode, "the old agent hero is back alongside HomeHero").not.toMatch(/<AgentHero \/>/);
-  });
-
-  it("offers exactly one primary action", () => {
-    // Two equally-loud gradient buttons is the choice paralysis this hero
-    // exists to remove: the secondary is border-weight, never a second
-    // gradient fill.
-    // Counted on FILLED interactive elements only. A first version matched
-    // `bg-gradient-to-r from-primary` anywhere and failed on the headline's
-    // own text gradient — the assertion has to distinguish a painted button
-    // from painted words, which is exactly the distinction it is about.
-    const filled = (heroCode.match(/className="[^"]*\bbg-gradient-to-r from-primary[^"]*text-primary-foreground[^"]*"/g) ?? []).length;
-    expect(filled, "a second primary-weight CTA is back in the hero").toBe(1);
-    // ...and the secondary is border-weight, not a second fill.
-    expect(heroCode).toMatch(/ctaSecondary[\s\S]{0,80}|border border-border bg-card\/60/);
-  });
-
-  it("puts the platform proof inside the hero, under the action", () => {
-    const ctaAt = heroCode.indexOf("ctaPrimary");
-    const stripAt = heroCode.indexOf('<AtsCoverage variant="strip" />');
-    expect(stripAt, "the hero lost the platform strip").toBeGreaterThan(-1);
-    expect(ctaAt).toBeLessThan(stripAt);
+    expect(indexCode, "the old agent hero is back").not.toMatch(/<AgentHero \/>/);
   });
 
   it("replaced the brochure, not doubled it", () => {
     expect(indexCode, "the old static showcase renders alongside the hero")
       .not.toMatch(/<ApplyAgentShowcase/);
-  });
-
-  it("speaks with measured inventory or with none, and claims no submissions", () => {
-    // Each stat renders only when its own payload arrived.
-    expect(heroCode).toMatch(/\{totals && \(/);
-    // The apply pivot: no sendable count, no status read for one, and no
-    // sentence that says the agent applies or submits for the visitor.
-    expect(heroCode).not.toMatch(/sendable/i);
-    expect(heroCode).not.toMatch(/action: "status"/);
-    expect(heroCode).not.toMatch(/applies for you|submit for you|submits where/i);
-    // And no literal inventory anywhere: five-or-more-digit numbers in the
-    // hero are claims only a payload may make.
-    expect(heroCode.replace(/\d{1,2}\b/g, "")).not.toMatch(/\b\d{3,}(?:,\d{3})*\b/);
-  });
-
-  it("its one action targets the uploader anchor that exists", () => {
-    const anchor = /data-scan-button="true"/;
-    expect(HERO).toMatch(anchor);
-    // The anchor must actually exist somewhere in the app, or the CTA is a
-    // no-op — checked against the codebase rather than assumed.
-    const uploader = readFileSync(resolve(__dirname, "../components/ResumeUploader.tsx"), "utf8");
-    expect(uploader, "the uploader lost its data-scan-button anchor").toMatch(/data-scan-button/);
   });
 });
 
@@ -145,26 +100,24 @@ describe("the front page states one subject and no frozen totals", () => {
   const BOARD = readFileSync(resolve(__dirname, "../components/JobBoardHero.tsx"), "utf8");
   const stripCode = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/^\s*\/\/.*$/gm, "");
 
-  it("exactly one h1 renders in every page state", () => {
-    // Three rendered h1s is a hierarchy a screen reader cannot navigate and
-    // three competing subjects to a crawler. But ZERO is worse, and that is
-    // what a first pass shipped: Hero's h1 was demoted while HomeHero owned
-    // it, and HomeHero is gated on `!landing && !freeKeywordResult` — so the
-    // landing variants and the post-scan screen rendered with no h1 at all,
-    // caught by loading /resume-checker.
-    //
-    // The invariant is exclusivity, not a count in one file: HomeHero and Hero
-    // never render together (Index gates them on complementary conditions), so
-    // each carries its own h1 and every state has exactly one.
-    const homeH1 = (HERO.match(/<h1[\s>]/g) ?? []).length;
+  it("Hero owns the h1 on every Index route", () => {
+    // ZERO h1s is what a first pass shipped: Hero's h1 was demoted while the
+    // old homepage hero owned it, so the landing variants and the post-scan
+    // screen rendered with none. Since the homepage switch-over every Index
+    // route carries a landing, so Hero renders on every state of the page and
+    // carries the one h1.
     const heroH1 = (HERO_C.match(/<h1[\s>]/g) ?? []).length;
-    expect(homeH1, "HomeHero must own the default homepage h1").toBe(1);
     expect(heroH1, "Hero must own the h1 on landing and post-scan states").toBeGreaterThanOrEqual(1);
-    // Balanced tags — reopening h1s left </h2> closers behind once.
+    // Balanced tags: reopening h1s left </h2> closers behind once.
     expect((HERO_C.match(/<\/h1>/g) ?? []).length).toBe(heroH1);
-    // The exclusivity itself, read off Index.
-    expect(indexCode).toMatch(/\{!landing && !freeKeywordResult && \(/);
     expect(indexCode).toMatch(/\{\(landing \|\| freeKeywordResult\) && <Hero /);
+    expect(indexCode, "a hero gated on no landing is back").not.toMatch(/!landing && !freeKeywordResult/);
+    const app = strip(readFileSync(resolve(__dirname, "../App.tsx"), "utf8"));
+    const mounts = app.match(/<Index\b[^>]*\/>/g) ?? [];
+    expect(mounts.length, "App.tsx mounts Index").toBeGreaterThan(0);
+    // "/" carries the scanner's landing under its own head until step 1
+    // (SCANNER_AT_ROOT, src/lib/scanner-address.ts).
+    for (const m of mounts) expect(m, "an Index route without a landing").toMatch(/landing=\{(?:TOOL_LANDINGS\[|SCANNER_AT_ROOT\})/);
   });
 
   it("no shipped surface hardcodes a board total", () => {
@@ -175,7 +128,6 @@ describe("the front page states one subject and no frozen totals", () => {
     const surfaces: Array<[string, string]> = [
       ["Hero.tsx", stripCode(HERO_C)],
       ["JobBoardHero.tsx", stripCode(BOARD)],
-      ["HomeHero.tsx", stripCode(HERO)],
       ["LiveMatches.tsx", stripCode(readFileSync(resolve(__dirname, "../components/LiveMatches.tsx"), "utf8"))],
     ];
     for (const [name, code] of surfaces) {

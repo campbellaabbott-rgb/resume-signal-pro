@@ -5172,6 +5172,7 @@
     "secureSignedIn": "Secure checkout via Stripe. Cancel anytime — no lock-in.",
     "secureSignedOut": "You'll sign in first, so the plan is on your account. Secure checkout via Stripe; cancel anytime.",
     "summaryLine": "Everything in a free account, plus the writing tools, the $5 Full Analysis included and no daily cap on scans",
+    "summaryLineWithoutAnalysis": "Everything in a free account, plus the writing tools and no daily cap on scans",
     "title": "Resume Booster Pro",
     "toast": {
       "alreadyMemberBody": "Your plan is already active on this account.",
@@ -5284,19 +5285,6 @@
     "headline2": "Live openings matching “{{q}}”",
     "sub2": "Live postings from employers' own hiring systems. You apply on the employer's own site, with your own AI's help if you like. Here are the top matches:",
     "ctaYourAi": "Apply with your own AI's help"
-  },
-  "homeHero": {
-    "headlinePre": "Live jobs, straight from employers' own hiring systems.",
-    "statOpenings": "live openings",
-    "statCompanies": "companies",
-    "ctaPrimary": "Upload your CV — free",
-    "ctaSecondary": "Browse the board",
-    "reassure": "Free scan · no card, no signup",
-    "exploreCta": "Explore by field",
-    "statCompanyBoards": "company job boards hiring",
-    "badge2": "Live job board + your own AI",
-    "headlineHighlight2": "Apply yourself, with your own AI's help.",
-    "sub2": "Openings read from companies' own hiring systems and re-checked all day. Scan your CV for free, search the board here or from Claude or ChatGPT, and apply yourself, with your AI's help if you like. We never submit anything for you."
   },
   "homeAgent": {
     "lead": "Use it from your own AI.",

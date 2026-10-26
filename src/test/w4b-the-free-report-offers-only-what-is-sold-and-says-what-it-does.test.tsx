@@ -52,6 +52,10 @@ vi.mock("@/integrations/supabase/client", () => {
 });
 
 const auth = vi.hoisted(() => ({ user: null as null | { id: string; email: string } }));
+// G2 and G2b open (src/config/sales-gate.ts), so the seller's name is the one
+// gate under test here; every-buy-control-sells-only-what-the-owner-has-put-on-sale
+// holds the switches themselves.
+vi.mock("@/config/sales-gate", async (importOriginal) => ({ ...(await importOriginal<Record<string, unknown>>()), FULL_ANALYSIS_ON_SALE: true, PRO_ON_SALE: true }));
 // The seller, as shipped (empty) or named by a test.
 const seller = vi.hoisted(() => ({ legalName: "", postalAddress: "" }));
 vi.mock("@/config/seller", async (importOriginal) => {
@@ -217,7 +221,7 @@ describe("no buy button until the seller is named", () => {
   it("the page asks the server for an included analysis instead of refusing first", () => {
     const page = readFileSync(resolve(__dirname, "../pages/Index.tsx"), "utf8");
     expect(page).toMatch(/const proIncludesAnalysis = proPlan\.active && !proPlan\.trialing;/);
-    expect(page).toMatch(/if \(!purchasesOpen\(\) && !proIncludesAnalysis\) \{/);
+    expect(page).toMatch(/if \(!fullAnalysisOnSale\(\) && !proIncludesAnalysis\) \{/);
     expect(page).toMatch(/proIncludesAnalysis=\{proIncludesAnalysis\}/);
     const fn = readFileSync(resolve(__dirname, "../../supabase/functions/create-checkout/index.ts"), "utf8");
     expect(fn.indexOf('.from("pro_grants")'), "the grant is minted before the seller gate").toBeLessThan(fn.indexOf("const closed = sellerGate("));

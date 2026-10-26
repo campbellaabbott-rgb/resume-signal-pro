@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { useCurrency } from "@/hooks/use-currency";
 import { PRODUCTS, SUBSCRIPTIONS } from "@/config/products";
-import { PRO_SUMMARY } from "@/config/pro-perks";
+import { proSummaryOnSale } from "@/config/pro-perks";
 import { TRADING_NAME } from "@/config/seller";
 import {
   Accordion,
@@ -85,7 +85,7 @@ export function FAQ() {
       ? t(moved[0], moved[1], {
         proPrice: SUBSCRIPTIONS.pro.priceUsd,
         price: fullAnalysisPrice,
-        proSummary: t(PRO_SUMMARY.key, PRO_SUMMARY.text),
+        proSummary: t(proSummaryOnSale().key, proSummaryOnSale().text),
         name: TRADING_NAME,
       })
       : t(`faq.questions.${key}.answer`, {

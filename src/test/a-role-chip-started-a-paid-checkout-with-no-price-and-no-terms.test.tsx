@@ -19,7 +19,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 // Purchases open, as once the owner names the seller (owner decision 2026-10-17):
 // what this file tests sits behind the buy button that gate hides.
-vi.mock("@/lib/purchases-open", () => ({ purchasesOpen: () => true }));
+vi.mock("@/lib/purchases-open", () => ({ purchasesOpen: () => true, fullAnalysisOnSale: () => true, proOnSale: () => true }));
+// The Full Analysis buy path also needs the owner's G2 switch (the delivery
+// was watched; src/config/sales-gate.ts), which ships closed.
+vi.mock("@/config/sales-gate", async (importOriginal) => ({ ...(await importOriginal<Record<string, unknown>>()), FULL_ANALYSIS_ON_SALE: true }));
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { TERMS_VERSION } from "@/config/terms";

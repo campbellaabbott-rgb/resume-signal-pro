@@ -25,9 +25,10 @@ import { IndustryKeywordSuggestions } from "./IndustryKeywordSuggestions";
 import { RoleKeywordSuggestions } from "./RoleKeywordSuggestions";
 import { analyzeKeywordPresence } from "@/config/industry-keywords";
 import { PurchaseTerms } from "./PurchaseTerms";
-import { purchasesOpen } from "@/lib/purchases-open";
+import { fullAnalysisOnSale } from "@/lib/purchases-open";
+import { scannerReturnPath } from "@/lib/scanner-address";
 import { PurchasesOpenSoon } from "@/components/checkout/PurchasesOpenSoon";
-import { PRO_SUMMARY } from "@/config/pro-perks";
+import { proSummaryOnSale } from "@/config/pro-perks";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -836,8 +837,9 @@ export function FreeKeywordResults({
   const getFinalCtaText = () => t('freeScan.cta.button');
 
   // Track which CTA converts, then trigger checkout
-  // Whether the report may offer a purchase: only once the seller is named.
-  const canBuy = purchasesOpen();
+  // Whether the report may offer a purchase: the seller is named and the
+  // owner has put the Full Analysis on sale (G1 and G2).
+  const canBuy = fullAnalysisOnSale();
   // A Pro member's included analysis is not a sale: offered while purchases are closed.
   const offerIncluded = !canBuy && proIncludesAnalysis;
 
@@ -2145,7 +2147,7 @@ export function FreeKeywordResults({
               </Button>
               ) : (
                 <Link
-                  to={`/auth?next=${encodeURIComponent('/')}`}
+                  to={`/auth?next=${encodeURIComponent(scannerReturnPath())}`}
                   data-testid="tailored-resume-sign-in"
                   className="w-full inline-flex items-center justify-center gap-2 rounded-md bg-success px-4 py-2 text-sm font-semibold text-success-foreground hover:bg-success/90"
                 >
@@ -2260,7 +2262,7 @@ export function FreeKeywordResults({
                 {t('freeResults.interviewPrepSignIn.body', 'A free account includes one interview-prep set, one tailored résumé and one cover letter a day.')}
               </p>
               <Link
-                to={`/auth?next=${encodeURIComponent('/')}`}
+                to={`/auth?next=${encodeURIComponent(scannerReturnPath())}`}
                 className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
               >
                 {t('freeResults.interviewPrepSignIn.cta', 'Sign in or create a free account')}
@@ -4496,8 +4498,9 @@ export function FreeKeywordResults({
             <span>
               <span className="block text-sm font-medium text-foreground">{t('freeResults.nextSteps.proName')}</span>
               {/* Pro's line is the one summary every page reads (owner
-                  decision 2026-10-17: src/config/pro-perks.ts). */}
-              <span className="block text-xs text-muted-foreground">{t(PRO_SUMMARY.key, PRO_SUMMARY.text)}</span>
+                  decision 2026-10-17: src/config/pro-perks.ts), without the
+                  included Full Analysis until that is on sale (G2). */}
+              <span className="block text-xs text-muted-foreground">{t(proSummaryOnSale().key, proSummaryOnSale().text)}</span>
             </span>
             <span className="text-sm font-semibold text-primary shrink-0 ml-3">{t('freeResults.nextSteps.proPrice', { price: SUBSCRIPTIONS.pro.priceUsd })}</span>
           </Link>
