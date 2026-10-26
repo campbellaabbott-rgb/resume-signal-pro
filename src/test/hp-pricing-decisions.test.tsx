@@ -497,7 +497,10 @@ describe("13. the preview's open state is labelled and never the route's", () =>
     const hrefs = [...card.querySelectorAll("a")].map((a) => a.getAttribute("href"));
     expect(hrefs).toEqual(["/data-api#builder"]);
     expect(card.querySelector("[data-testid=builder-quota]")?.textContent).toBe("Proposed: 5,000 calls a day; set before launch.");
-    expect(textOf(card)).toContain(`$${BUILDER_PRICE_USD} a month, planned`);
+    expect(textOf(card)).toContain(`$${BUILDER_PRICE_USD} a month`);
+    // "Planned" once in the name and once in the chip, never a third time in
+    // the price (review round 2026-10-26).
+    expect(textOf(card)).not.toMatch(/a month, planned/i);
   });
 });
 

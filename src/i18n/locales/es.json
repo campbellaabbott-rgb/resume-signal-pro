@@ -5559,7 +5559,7 @@
   },
   "dataApiPage": {
     "builderName": "API Builder (prevista)",
-    "builderPrice": "${{price}} al mes, previsto",
+    "builderPrice": "${{price}} al mes",
     "builderBody": "Búsqueda clasificada, puntuación de ajuste de currículum a gran escala y 180 días de cierres, para mostrar dentro de tu propio producto citando la fuente. Sin feeds ni reventa; eso corresponde a la licencia comercial. Dinos si lo usarías.",
     "builderNotYet": "Aún no está a la venta: no se cobra nada y respondemos a cada solicitud por correo.",
     "builderCta": "Solicitar Builder"
@@ -5671,7 +5671,7 @@
   "checkoutGate": {
     "purchasesOpenSoon": "Las compras se abrirán pronto. La búsqueda de empleo, el análisis gratuito y una cuenta gratuita ya funcionan.",
     "purchasesOpenSoonTitle": "Las compras se abrirán pronto",
-    "regionNoticeTimeZone": "La zona horaria de tu navegador está en la UE, el EEE, el Reino Unido o la India, donde aún no vendemos: las ventas allí esperan a que se resuelva nuestro registro fiscal. La búsqueda de empleo y el análisis gratuito funcionan en todas partes."
+    "regionNoticeTimeZone": "La zona horaria de tu navegador está en la UE, el EEE, el Reino Unido o la India, donde aún no vendemos: las ventas allí esperan a que se resuelva nuestro registro fiscal. La búsqueda de empleo y el análisis gratuito siguen funcionando allí."
   },
   "checkoutRefusal": {
     "autoRenewTitle": "Marca la casilla de renovación",

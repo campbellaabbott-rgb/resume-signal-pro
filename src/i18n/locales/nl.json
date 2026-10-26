@@ -5523,7 +5523,7 @@
   },
   "dataApiPage": {
     "builderName": "Builder-API (gepland)",
-    "builderPrice": "${{price}} per maand, gepland",
+    "builderPrice": "${{price}} per maand",
     "builderBody": "Gerangschikt zoeken, cv-matchscores op grote schaal en 180 dagen aan sluitingen, om in je eigen product te tonen met bronvermelding. Geen feeds of doorverkoop; daarvoor is de commerciële licentie. Laat ons weten of je het zou gebruiken.",
     "builderNotYet": "Nog niet te koop: er wordt niets in rekening gebracht, en we beantwoorden elk verzoek per e-mail.",
     "builderCta": "Builder aanvragen"
@@ -5635,7 +5635,7 @@
   "checkoutGate": {
     "purchasesOpenSoon": "Aankopen gaan binnenkort open. Vacatures zoeken, de gratis scan en een gratis account werken nu al.",
     "purchasesOpenSoonTitle": "Aankopen gaan binnenkort open",
-    "regionNoticeTimeZone": "De tijdzone van je browser ligt in de EU, de EER, het VK of India, waar we nog niet verkopen: verkoop daar wacht tot onze belastingregistratie is geregeld. Vacatures zoeken en de gratis scan werken overal."
+    "regionNoticeTimeZone": "De tijdzone van je browser ligt in de EU, de EER, het VK of India, waar we nog niet verkopen: verkoop daar wacht tot onze belastingregistratie is geregeld. Vacatures zoeken en de gratis scan werken daar gewoon."
   },
   "checkoutRefusal": {
     "autoRenewTitle": "Vink het vakje voor verlenging aan",

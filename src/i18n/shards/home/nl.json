@@ -1,7 +1,7 @@
 {
   "home": {
     "seo": {
-      "title": "Resume Booster: actuele vacatures, rechtstreeks uit de wervingssystemen van werkgevers",
+      "title": "Actuele vacatures, rechtstreeks uit systemen van werkgevers",
       "description": "Zoek actuele vacatures uit de eigen wervingssystemen van werkgevers en van USAJOBS, en solliciteer op de site van de werkgever. Gratis, en zoeken vraagt geen account."
     },
     "hero": {
@@ -110,7 +110,7 @@
       "neverTitle": "Wat we nooit doen",
       "never2Lead": "Je je kansen vertellen.",
       "never2": "Niemand kan dat, en wij gokken niet.",
-      "never3Lead": "Om je cv vragen.",
+      "never3Lead": "Om je cv vragen om het vacaturebord te doorzoeken.",
       "never3": "De tools die geen sleutel nodig hebben, vragen er nooit om; je AI schrijft aan zijn eigen kant.",
       "claude": "Instellen in Claude",
       "chatgpt": "Instellen in ChatGPT",

@@ -22,7 +22,7 @@
     "before": {
       "h2": "Avant d'acheter",
       "finalBody": "Aucun remboursement, sauf lorsque la loi en impose un. Un résultat payant ne vous convient pas ? Répondez à votre reçu et nous le refaisons, gratuitement.",
-      "regionBody": "Les ventes y attendent notre immatriculation à la TVA, ou à la GST en Inde. Le paiement refuse les acheteurs qu'il peut y situer, d'après la devise et le fuseau horaire indiqué par votre appareil. Tout ce qui est gratuit fonctionne partout.",
+      "regionBody": "Les ventes y attendent notre immatriculation à la TVA, ou à la GST en Inde. Le paiement refuse les acheteurs qu'il peut y situer, d'après la devise et le fuseau horaire indiqué par votre appareil. Tout ce qui est gratuit y fonctionne quand même.",
       "renewalTitle": "Pro : dollars américains, renouvelé chaque mois.",
       "renewalBody": "Pro est facturé en dollars américains et se renouvelle chaque mois à {{proPrice}} jusqu'à ce que vous résiliiez, et vous acceptez le renouvellement par une case distincte avant le paiement. L'Analyse complète est un paiement unique qui ne se renouvelle jamais, tarifé en dollars américains et débité pour une valeur à peu près égale dans la devise du fuseau horaire de votre appareil quand nous reconnaissons ce fuseau et prenons en charge sa devise, sinon en dollars américains."
     },
@@ -109,7 +109,7 @@
     },
     "b2b": {
       "h2": "Pour les développeurs et les entreprises",
-      "builderPrice": "{{price}} par mois, prévu",
+      "builderPrice": "{{price}} par mois",
       "builderChip": "Prévu · pas en vente",
       "builderQuota": "Proposition : {{perDay}} appels par jour ; fixé avant le lancement.",
       "builderFreeKey": "Une clé gratuite fonctionne dès aujourd'hui : {{perDay}} appels par jour.",
@@ -160,8 +160,8 @@
       "refundQ": "Puis-je être remboursé ?",
       "refundA": "Non. Toutes les ventes sont finales, sauf lorsque la loi impose un remboursement. Si un résultat payant ne vous convient pas, répondez à votre reçu et nous le refaisons sans frais, comme le prévoient nos Conditions.",
       "regionQ": "Pourquoi ne puis-je pas acheter depuis l'UE, l'EEE, le Royaume-Uni ou l'Inde ?",
-      "regionA": "Nous ne sommes pas encore immatriculés à la TVA dans l'UE, l'EEE et au Royaume-Uni, ni à la GST en Inde. D'ici là, le paiement refuse les acheteurs qu'il peut y situer, d'après la devise et le fuseau horaire indiqué par votre appareil. La recherche, les alertes, le suivi, l'analyse gratuite, l'adéquation et votre connexion IA fonctionnent partout.",
-      "regionANoAlerts": "Nous ne sommes pas encore immatriculés à la TVA dans l'UE, l'EEE et au Royaume-Uni, ni à la GST en Inde. D'ici là, le paiement refuse les acheteurs qu'il peut y situer, d'après la devise et le fuseau horaire indiqué par votre appareil. La recherche, le suivi, l'analyse gratuite, l'adéquation et votre connexion IA fonctionnent partout.",
+      "regionA": "Nous ne sommes pas encore immatriculés à la TVA dans l'UE, l'EEE et au Royaume-Uni, ni à la GST en Inde. D'ici là, le paiement refuse les acheteurs qu'il peut y situer, d'après la devise et le fuseau horaire indiqué par votre appareil. La recherche, les alertes, le suivi, l'analyse gratuite, l'adéquation et votre connexion IA y fonctionnent quand même.",
+      "regionANoAlerts": "Nous ne sommes pas encore immatriculés à la TVA dans l'UE, l'EEE et au Royaume-Uni, ni à la GST en Inde. D'ici là, le paiement refuse les acheteurs qu'il peut y situer, d'après la devise et le fuseau horaire indiqué par votre appareil. La recherche, le suivi, l'analyse gratuite, l'adéquation et votre connexion IA y fonctionnent quand même.",
       "fitQ": "Ai-je besoin d'un compte pour consulter mon adéquation ?",
       "fitA": "Non. L'adéquation est gratuite, avec ou sans compte. Déconnecté, elle utilise le CV que vous avez analysé ou déposé sur le tableau, dans ce navigateur. Avec un compte gratuit, votre CV enregistré fonctionne sur tous vos appareils. L'adéquation est une correspondance de mots : elle montre les termes d'une offre que votre CV utilise. Elle ne prédit ni entretiens ni offres d'emploi.",
       "packageQ": "Qu'est-ce qu'un lot ?",

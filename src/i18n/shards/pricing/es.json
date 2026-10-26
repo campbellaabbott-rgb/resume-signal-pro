@@ -22,7 +22,7 @@
     "before": {
       "h2": "Antes de comprar",
       "finalBody": "Sin reembolsos, salvo cuando la ley exija uno. ¿No te convence un resultado de pago? Responde a tu recibo y lo hacemos de nuevo, gratis.",
-      "regionBody": "Las ventas allí esperan a que estemos registrados para el IVA, o para el GST en la India. El pago rechaza a los compradores que puede ubicar allí, por la moneda y la zona horaria que indica tu dispositivo. Todo lo gratuito funciona en todas partes.",
+      "regionBody": "Las ventas allí esperan a que estemos registrados para el IVA, o para el GST en la India. El pago rechaza a los compradores que puede ubicar allí, por la moneda y la zona horaria que indica tu dispositivo. Todo lo gratuito sigue funcionando allí.",
       "renewalTitle": "Pro: dólares estadounidenses, se renueva cada mes.",
       "renewalBody": "Pro se cobra en dólares estadounidenses y se renueva cada mes por {{proPrice}} hasta que lo canceles, y aceptas la renovación con una casilla aparte antes del pago. El Análisis completo es un solo pago que nunca se renueva, con su precio en dólares estadounidenses, y se cobra por un valor similar en la moneda de la zona horaria de tu dispositivo cuando reconocemos esa zona y admitimos su moneda o, si no, en dólares estadounidenses."
     },
@@ -109,7 +109,7 @@
     },
     "b2b": {
       "h2": "Para desarrolladores y empresas",
-      "builderPrice": "{{price}} al mes, previsto",
+      "builderPrice": "{{price}} al mes",
       "builderChip": "Previsto · no está a la venta",
       "builderQuota": "Propuesta: {{perDay}} llamadas al día; se fijará antes del lanzamiento.",
       "builderFreeKey": "Una clave gratuita ya funciona hoy: {{perDay}} llamadas al día.",
@@ -160,8 +160,8 @@
       "refundQ": "¿Puedo obtener un reembolso?",
       "refundA": "No. Todas las ventas son finales, salvo cuando la ley exija un reembolso. Si no te convence un resultado de pago, responde a tu recibo y lo hacemos de nuevo sin coste, como dicen nuestros Términos.",
       "regionQ": "¿Por qué no puedo comprar desde la UE, el EEE, el Reino Unido o la India?",
-      "regionA": "Aún no estamos registrados para el IVA en la UE, el EEE y el Reino Unido, ni para el GST en la India. Hasta entonces, el pago rechaza a los compradores que puede ubicar allí, por la moneda y la zona horaria que indica tu dispositivo. Buscar, las alertas, el seguimiento, el análisis gratuito, el ajuste y tu conexión con la IA funcionan en todas partes.",
-      "regionANoAlerts": "Aún no estamos registrados para el IVA en la UE, el EEE y el Reino Unido, ni para el GST en la India. Hasta entonces, el pago rechaza a los compradores que puede ubicar allí, por la moneda y la zona horaria que indica tu dispositivo. Buscar, el seguimiento, el análisis gratuito, el ajuste y tu conexión con la IA funcionan en todas partes.",
+      "regionA": "Aún no estamos registrados para el IVA en la UE, el EEE y el Reino Unido, ni para el GST en la India. Hasta entonces, el pago rechaza a los compradores que puede ubicar allí, por la moneda y la zona horaria que indica tu dispositivo. Buscar, las alertas, el seguimiento, el análisis gratuito, el ajuste y tu conexión con la IA siguen funcionando allí.",
+      "regionANoAlerts": "Aún no estamos registrados para el IVA en la UE, el EEE y el Reino Unido, ni para el GST en la India. Hasta entonces, el pago rechaza a los compradores que puede ubicar allí, por la moneda y la zona horaria que indica tu dispositivo. Buscar, el seguimiento, el análisis gratuito, el ajuste y tu conexión con la IA siguen funcionando allí.",
       "fitQ": "¿Necesito una cuenta para comprobar mi ajuste?",
       "fitA": "No. El ajuste es gratis con o sin cuenta. Sin sesión, usa el currículum que analizaste o soltaste en el tablón, en este navegador. Con una cuenta gratuita, tu currículum guardado funciona en cualquier dispositivo. El ajuste es una coincidencia de palabras: muestra qué términos de una oferta usa tu currículum. No predice entrevistas ni ofertas de trabajo.",
       "packageQ": "¿Qué es un paquete?",

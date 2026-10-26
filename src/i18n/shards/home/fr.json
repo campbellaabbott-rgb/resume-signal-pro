@@ -1,7 +1,7 @@
 {
   "home": {
     "seo": {
-      "title": "Resume Booster : des offres en direct, tirées des systèmes de recrutement des employeurs",
+      "title": "Offres en direct, tirées des systèmes des employeurs",
       "description": "Cherchez des offres en direct lues dans les propres systèmes de recrutement des employeurs et sur USAJOBS, puis postulez sur le site de l'employeur. Gratuit, et la recherche ne demande aucun compte."
     },
     "hero": {
@@ -113,7 +113,7 @@
       "neverTitle": "Ce que nous ne faisons jamais",
       "never2Lead": "Vous dire vos chances.",
       "never2": "Personne ne le peut, et nous ne devinons pas.",
-      "never3Lead": "Demander votre CV.",
+      "never3Lead": "Demander votre CV pour chercher dans les offres.",
       "never3": "Les outils qui ne demandent pas de clé ne le demandent jamais ; votre IA rédige de son côté.",
       "claude": "Configurer dans Claude",
       "chatgpt": "Configurer dans ChatGPT",
@@ -157,7 +157,7 @@
       "faGatedSeller": "Pas encore en vente. Les achats ouvriront bientôt, dès que le nom et l'adresse du vendeur seront publiés sur la page des tarifs.",
       "faGatedDelivery": "Pas encore en vente. Nous contrôlons que le rapport parvient bien aux acheteurs.",
       "proTitle": "Pro",
-      "proBody": "Les outils de rédaction pour une recherche active : {{perDay}} de chaque par jour et {{perMonth}} de chaque par mois (un pack contient un de chaque), et pas de plafond quotidien d'analyses.",
+      "proBody": "Les outils de rédaction pour une recherche active : {{perDay}} de chaque par jour et {{perMonth}} de chaque par mois (un lot contient un de chaque), et pas de plafond quotidien d'analyses.",
       "proIncludesFa": "L'Analyse complète est incluse.",
       "termFinal": "Toutes les ventes sont définitives.",
       "termTerritory": "Pas encore vendu dans l'UE, l'EEE, au Royaume-Uni ou en Inde, tant que nous n'y sommes pas enregistrés pour la taxe. Le paiement refuse les acheteurs qu'il peut situer là-bas, d'après la devise et le fuseau horaire du navigateur.",

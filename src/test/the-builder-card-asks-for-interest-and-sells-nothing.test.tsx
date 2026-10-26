@@ -47,7 +47,10 @@ describe("the Builder API card on /data-api", () => {
     expect(card.hasAttribute("data-builder-card")).toBe(true);
     const text = card.textContent ?? "";
     expect(text).toContain(en.dataApiPage.builderName);
-    expect(text).toContain(`$${BUILDER_PLAN_PRICE_USD} a month, planned`);
+    // The name says it is planned; the price does not say so again (review
+    // round 2026-10-26).
+    expect(text).toContain(`$${BUILDER_PLAN_PRICE_USD} a month`);
+    expect(en.dataApiPage.builderName).toMatch(/planned/);
     expect(BUILDER_PLAN_PRICE_USD).toBe(49);
     expect(text).toContain(en.dataApiPage.builderNotYet);
     expect(text).toMatch(/No feeds or resale/);

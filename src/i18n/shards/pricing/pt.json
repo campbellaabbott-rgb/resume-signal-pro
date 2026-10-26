@@ -22,7 +22,7 @@
     "before": {
       "h2": "Antes de comprar",
       "finalBody": "Sem reembolsos, exceto quando a lei exigir um. Não gostou de um resultado pago? Responda ao seu recibo e nós o refazemos, de graça.",
-      "regionBody": "As vendas lá esperam até estarmos registrados para o IVA, ou para o GST na Índia. O pagamento recusa compradores que consegue localizar lá, pela moeda e pelo fuso horário que o seu dispositivo informa. Tudo o que é grátis funciona em todo lugar.",
+      "regionBody": "As vendas lá esperam até estarmos registrados para o IVA, ou para o GST na Índia. O pagamento recusa compradores que consegue localizar lá, pela moeda e pelo fuso horário que o seu dispositivo informa. Tudo o que é grátis continua funcionando lá.",
       "renewalTitle": "Pro: dólares americanos, renova todo mês.",
       "renewalBody": "O Pro é cobrado em dólares americanos e renova todo mês por {{proPrice}} até você cancelar, e você aceita a renovação em uma caixa separada antes do pagamento. A Análise completa é um pagamento único que nunca renova, com preço em dólares americanos, cobrado por um valor parecido na moeda do fuso horário do seu dispositivo quando reconhecemos esse fuso e aceitamos a moeda dele e, nos outros casos, em dólares americanos."
     },
@@ -109,7 +109,7 @@
     },
     "b2b": {
       "h2": "Para desenvolvedores e empresas",
-      "builderPrice": "{{price}} por mês, planejado",
+      "builderPrice": "{{price}} por mês",
       "builderChip": "Planejado · não está à venda",
       "builderQuota": "Proposta: {{perDay}} chamadas por dia; definida antes do lançamento.",
       "builderFreeKey": "Uma chave grátis já funciona hoje: {{perDay}} chamadas por dia.",
@@ -160,8 +160,8 @@
       "refundQ": "Posso pedir reembolso?",
       "refundA": "Não. Todas as vendas são finais, exceto quando a lei exigir um reembolso. Se não gostar de um resultado pago, responda ao seu recibo e nós o refazemos sem custo, como dizem os nossos Termos.",
       "regionQ": "Por que não posso comprar da UE, do EEE, do Reino Unido ou da Índia?",
-      "regionA": "Ainda não estamos registrados para o IVA na UE, no EEE e no Reino Unido, nem para o GST na Índia. Até lá, o pagamento recusa compradores que consegue localizar lá, pela moeda e pelo fuso horário que o seu dispositivo informa. A busca, os alertas, o acompanhamento, a análise grátis, a compatibilidade e a conexão com a sua IA funcionam em todo lugar.",
-      "regionANoAlerts": "Ainda não estamos registrados para o IVA na UE, no EEE e no Reino Unido, nem para o GST na Índia. Até lá, o pagamento recusa compradores que consegue localizar lá, pela moeda e pelo fuso horário que o seu dispositivo informa. A busca, o acompanhamento, a análise grátis, a compatibilidade e a conexão com a sua IA funcionam em todo lugar.",
+      "regionA": "Ainda não estamos registrados para o IVA na UE, no EEE e no Reino Unido, nem para o GST na Índia. Até lá, o pagamento recusa compradores que consegue localizar lá, pela moeda e pelo fuso horário que o seu dispositivo informa. A busca, os alertas, o acompanhamento, a análise grátis, a compatibilidade e a conexão com a sua IA continuam funcionando lá.",
+      "regionANoAlerts": "Ainda não estamos registrados para o IVA na UE, no EEE e no Reino Unido, nem para o GST na Índia. Até lá, o pagamento recusa compradores que consegue localizar lá, pela moeda e pelo fuso horário que o seu dispositivo informa. A busca, o acompanhamento, a análise grátis, a compatibilidade e a conexão com a sua IA continuam funcionando lá.",
       "fitQ": "Preciso de uma conta para conferir a minha compatibilidade?",
       "fitA": "Não. A compatibilidade é grátis, com ou sem conta. Sem conta, ela usa o currículo que você analisou ou soltou no quadro, neste navegador. Com uma conta grátis, o seu currículo salvo funciona em qualquer dispositivo. A compatibilidade é uma correspondência de palavras: mostra quais termos de uma vaga o seu currículo usa. Ela não prevê entrevistas nem ofertas.",
       "packageQ": "O que é um pacote?",

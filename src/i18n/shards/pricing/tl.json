@@ -22,7 +22,7 @@
     "before": {
       "h2": "Bago ka bumili",
       "finalBody": "Walang refund, maliban kung hinihingi ito ng batas. Hindi ka kuntento sa bayad na resulta? Sumagot sa iyong resibo at gagawin namin ito ulit, nang libre.",
-      "regionBody": "Naghihintay ang benta roon hanggang makapagparehistro kami para sa VAT, o para sa GST sa India. Tinatanggihan ng checkout ang mga mamimiling matutukoy nitong naroon, batay sa currency at sa time zone na ibinibigay ng iyong device. Gumagana kahit saan ang lahat ng libre.",
+      "regionBody": "Naghihintay ang benta roon hanggang makapagparehistro kami para sa VAT, o para sa GST sa India. Tinatanggihan ng checkout ang mga mamimiling matutukoy nitong naroon, batay sa currency at sa time zone na ibinibigay ng iyong device. Gumagana pa rin doon ang lahat ng libre.",
       "renewalTitle": "Pro: US dollars, nire-renew buwan-buwan.",
       "renewalBody": "Sinisingil ang Pro sa US dollars at nire-renew bawat buwan sa {{proPrice}} hanggang kanselahin mo, at pumapayag ka sa renewal sa isang hiwalay na kahon bago mag-checkout. Isang bayad lang ang Buong Pagsusuri at hindi kailanman nire-renew; naka-presyo ito sa US dollars at sinisingil sa halos parehong halaga sa currency ng time zone ng iyong device kung kilala namin ang time zone na iyon at sinusuportahan ang currency nito, at sa US dollars kung hindi."
     },
@@ -109,7 +109,7 @@
     },
     "b2b": {
       "h2": "Para sa mga developer at kumpanya",
-      "builderPrice": "{{price}} bawat buwan, nakaplano",
+      "builderPrice": "{{price}} bawat buwan",
       "builderChip": "Nakaplano · hindi ibinebenta",
       "builderQuota": "Iminumungkahi: {{perDay}} tawag bawat araw; itatakda bago ang paglulunsad.",
       "builderFreeKey": "Gumagana na ngayon ang libreng key: {{perDay}} tawag bawat araw.",
@@ -160,8 +160,8 @@
       "refundQ": "Makakakuha ba ako ng refund?",
       "refundA": "Hindi. Final ang lahat ng benta, maliban kung hinihingi ng batas ang refund. Kung hindi ka kuntento sa bayad na resulta, sumagot sa iyong resibo at gagawin namin ito ulit nang walang bayad, gaya ng sinasabi ng aming Mga Tuntunin.",
       "regionQ": "Bakit hindi ako makabili mula sa EU, EEA, UK o India?",
-      "regionA": "Hindi pa kami nakarehistro para sa VAT sa EU, EEA at UK, o para sa GST sa India. Hanggang doon, tinatanggihan ng checkout ang mga mamimiling matutukoy nitong naroon, batay sa currency at sa time zone na ibinibigay ng iyong device. Gumagana kahit saan ang paghahanap, mga alerto, ang tracker, ang libreng scan, ang fit at ang koneksyon sa iyong AI.",
-      "regionANoAlerts": "Hindi pa kami nakarehistro para sa VAT sa EU, EEA at UK, o para sa GST sa India. Hanggang doon, tinatanggihan ng checkout ang mga mamimiling matutukoy nitong naroon, batay sa currency at sa time zone na ibinibigay ng iyong device. Gumagana kahit saan ang paghahanap, ang tracker, ang libreng scan, ang fit at ang koneksyon sa iyong AI.",
+      "regionA": "Hindi pa kami nakarehistro para sa VAT sa EU, EEA at UK, o para sa GST sa India. Hanggang doon, tinatanggihan ng checkout ang mga mamimiling matutukoy nitong naroon, batay sa currency at sa time zone na ibinibigay ng iyong device. Gumagana pa rin doon ang paghahanap, mga alerto, ang tracker, ang libreng scan, ang fit at ang koneksyon sa iyong AI.",
+      "regionANoAlerts": "Hindi pa kami nakarehistro para sa VAT sa EU, EEA at UK, o para sa GST sa India. Hanggang doon, tinatanggihan ng checkout ang mga mamimiling matutukoy nitong naroon, batay sa currency at sa time zone na ibinibigay ng iyong device. Gumagana pa rin doon ang paghahanap, ang tracker, ang libreng scan, ang fit at ang koneksyon sa iyong AI.",
       "fitQ": "Kailangan ko ba ng account para tingnan ang aking fit?",
       "fitA": "Hindi. Libre ang fit, may account man o wala. Kapag naka-sign out, ginagamit nito ang resume na na-scan mo o na-drop sa board, sa browser na ito. Sa libreng account, gumagana ang naka-save mong resume sa anumang device. Ang fit ay tugma ng mga salita: ipinapakita nito kung aling mga termino ng posting ang ginagamit ng iyong resume. Hindi nito hinuhulaan ang mga interview o alok.",
       "packageQ": "Ano ang package?",

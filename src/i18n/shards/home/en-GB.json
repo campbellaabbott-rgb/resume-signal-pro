@@ -1,7 +1,7 @@
 {
   "home": {
     "seo": {
-      "title": "Resume Booster: Live Jobs Straight From Employers' Own Hiring Systems",
+      "title": "Live Jobs Straight From Employers' Own Hiring Systems",
       "description": "Search live jobs read from employers' own hiring systems and USAJOBS, then apply on the employer's site. Free, and searching needs no account."
     },
     "hero": {
@@ -110,7 +110,7 @@
       "neverTitle": "What we never do",
       "never2Lead": "Tell you your chances.",
       "never2": "Nobody can, and we don't guess.",
-      "never3Lead": "Ask for your CV.",
+      "never3Lead": "Ask for your CV to search the board.",
       "never3": "The tools that need no key never ask for it; your AI drafts on its side.",
       "claude": "Set up in Claude",
       "chatgpt": "Set up in ChatGPT",

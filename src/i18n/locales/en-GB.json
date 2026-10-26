@@ -5523,7 +5523,7 @@
   },
   "dataApiPage": {
     "builderName": "Builder API (planned)",
-    "builderPrice": "${{price}} a month, planned",
+    "builderPrice": "${{price}} a month",
     "builderBody": "Ranked search, résumé fit scoring at volume and 180 days of closures, for display inside your own product with attribution. No feeds or resale; those are the commercial licence. Tell us if you'd use it.",
     "builderNotYet": "Not on sale yet: nothing is charged, and we reply to every request by email.",
     "builderCta": "Request Builder"
@@ -5635,7 +5635,7 @@
   "checkoutGate": {
     "purchasesOpenSoon": "Purchases open soon. Searching jobs, the free scan and a free account work now.",
     "purchasesOpenSoonTitle": "Purchases open soon",
-    "regionNoticeTimeZone": "Your browser's time zone is in the EU, the EEA, the UK or India, where we don't sell yet: sales there wait until our tax registration there is settled. Searching jobs and the free scan work everywhere."
+    "regionNoticeTimeZone": "Your browser's time zone is in the EU, the EEA, the UK or India, where we don't sell yet: sales there wait until our tax registration there is settled. Searching jobs and the free scan still work there."
   },
   "checkoutRefusal": {
     "autoRenewTitle": "Please tick the renewal box",

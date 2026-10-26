@@ -1,7 +1,7 @@
 {
   "home": {
     "seo": {
-      "title": "Resume Booster: vagas ao vivo, direto dos sistemas de recrutamento dos empregadores",
+      "title": "Vagas ao vivo, direto dos sistemas dos empregadores",
       "description": "Busque vagas ao vivo lidas dos próprios sistemas de recrutamento dos empregadores e do USAJOBS e candidate-se no site do empregador. Grátis, e a busca não exige conta."
     },
     "hero": {
@@ -113,7 +113,7 @@
       "neverTitle": "O que nunca fazemos",
       "never2Lead": "Dizer suas chances.",
       "never2": "Ninguém consegue, e não chutamos.",
-      "never3Lead": "Pedir seu currículo.",
+      "never3Lead": "Pedir seu currículo para buscar no quadro de vagas.",
       "never3": "As ferramentas que não precisam de chave nunca pedem; sua IA escreve do lado dela.",
       "claude": "Configurar no Claude",
       "chatgpt": "Configurar no ChatGPT",

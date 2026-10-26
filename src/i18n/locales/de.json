@@ -5523,7 +5523,7 @@
   },
   "dataApiPage": {
     "builderName": "Builder-API (geplant)",
-    "builderPrice": "${{price}} im Monat, geplant",
+    "builderPrice": "${{price}} im Monat",
     "builderBody": "Gerankte Suche, Lebenslauf-Passungsbewertung in großem Umfang und 180 Tage Schließungsdaten, zur Anzeige in Ihrem eigenen Produkt mit Quellenangabe. Keine Feeds und kein Weiterverkauf; dafür gibt es die kommerzielle Lizenz. Sagen Sie uns, ob Sie es nutzen würden.",
     "builderNotYet": "Noch nicht im Verkauf: Es wird nichts berechnet, und wir beantworten jede Anfrage per E-Mail.",
     "builderCta": "Builder anfragen"
@@ -5635,7 +5635,7 @@
   "checkoutGate": {
     "purchasesOpenSoon": "Käufe sind bald möglich. Die Jobsuche, der kostenlose Scan und ein kostenloses Konto funktionieren schon jetzt.",
     "purchasesOpenSoonTitle": "Käufe bald möglich",
-    "regionNoticeTimeZone": "Die Zeitzone Ihres Browsers liegt in der EU, im EWR, im Vereinigten Königreich oder in Indien, wo wir noch nicht verkaufen: Verkäufe dort warten, bis unsere Steuerregistrierung geklärt ist. Die Jobsuche und der kostenlose Scan funktionieren überall."
+    "regionNoticeTimeZone": "Die Zeitzone Ihres Browsers liegt in der EU, im EWR, im Vereinigten Königreich oder in Indien, wo wir noch nicht verkaufen: Verkäufe dort warten, bis unsere Steuerregistrierung geklärt ist. Die Jobsuche und der kostenlose Scan funktionieren dort trotzdem."
   },
   "checkoutRefusal": {
     "autoRenewTitle": "Bitte setzen Sie das Häkchen für die Verlängerung",

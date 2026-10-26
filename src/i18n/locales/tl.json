@@ -5523,7 +5523,7 @@
   },
   "dataApiPage": {
     "builderName": "Builder API (nakaplano)",
-    "builderPrice": "${{price}} bawat buwan, nakaplano",
+    "builderPrice": "${{price}} bawat buwan",
     "builderBody": "Naka-rank na paghahanap, resume fit scoring nang maramihan at 180 araw ng mga pagsasara, para ipakita sa loob ng sarili mong produkto nang may attribution. Walang feed o muling pagbebenta; para doon ang commercial license. Sabihin sa amin kung gagamitin mo ito.",
     "builderNotYet": "Hindi pa ibinebenta: walang sinisingil, at sinasagot namin ang bawat request sa email.",
     "builderCta": "Humiling ng Builder"
@@ -5635,7 +5635,7 @@
   "checkoutGate": {
     "purchasesOpenSoon": "Magbubukas na ang pagbili sa lalong madaling panahon. Gumagana na ngayon ang paghahanap ng trabaho, ang libreng scan at ang libreng account.",
     "purchasesOpenSoonTitle": "Magbubukas na ang pagbili sa lalong madaling panahon",
-    "regionNoticeTimeZone": "Nasa EU, EEA, UK o India ang time zone ng browser mo, kung saan hindi pa kami nagbebenta: naghihintay ang pagbebenta roon hanggang maayos ang tax registration namin doon. Gumagana kahit saan ang paghahanap ng trabaho at ang libreng scan."
+    "regionNoticeTimeZone": "Nasa EU, EEA, UK o India ang time zone ng browser mo, kung saan hindi pa kami nagbebenta: naghihintay ang pagbebenta roon hanggang maayos ang tax registration namin doon. Gumagana pa rin doon ang paghahanap ng trabaho at ang libreng scan."
   },
   "checkoutRefusal": {
     "autoRenewTitle": "Pakilagyan ng tsek ang renewal box",

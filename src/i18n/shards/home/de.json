@@ -1,7 +1,7 @@
 {
   "home": {
     "seo": {
-      "title": "Resume Booster: Aktuelle Jobs direkt aus den Bewerbungssystemen der Arbeitgeber",
+      "title": "Aktuelle Jobs direkt aus den Systemen der Arbeitgeber",
       "description": "Durchsuche aktuelle Stellen aus den eigenen Bewerbungssystemen der Arbeitgeber und von USAJOBS und bewirb dich auf der Website des Arbeitgebers. Kostenlos, und die Suche braucht kein Konto."
     },
     "hero": {
@@ -110,7 +110,7 @@
       "neverTitle": "Was wir nie tun",
       "never2Lead": "Dir deine Chancen nennen.",
       "never2": "Das kann niemand, und wir raten nicht.",
-      "never3Lead": "Nach deinem Lebenslauf fragen.",
+      "never3Lead": "Nach deinem Lebenslauf fragen, um die Jobbörse zu durchsuchen.",
       "never3": "Die Werkzeuge, die keinen Schlüssel brauchen, fragen nie danach; deine KI schreibt auf ihrer Seite.",
       "claude": "In Claude einrichten",
       "chatgpt": "In ChatGPT einrichten",

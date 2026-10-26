@@ -1,7 +1,7 @@
 {
   "home": {
     "seo": {
-      "title": "Resume Booster: Live na trabaho, diretso mula sa sariling hiring system ng mga employer",
+      "title": "Live na trabaho, diretso mula sa hiring system ng employer",
       "description": "Maghanap ng live na trabaho na binasa mula sa sariling hiring system ng mga employer at sa USAJOBS, saka mag-apply sa site ng employer. Libre, at walang account na kailangan para maghanap."
     },
     "hero": {
@@ -110,7 +110,7 @@
       "neverTitle": "Ang hindi namin kailanman ginagawa",
       "never2Lead": "Sabihin ang tsansa mo.",
       "never2": "Walang makakagawa niyan, at hindi kami nanghuhula.",
-      "never3Lead": "Hingin ang résumé mo.",
+      "never3Lead": "Hingin ang résumé mo para maghanap sa board.",
       "never3": "Ang mga tool na hindi kailangan ng key ay hindi ito kailanman hinihingi; ang AI mo ang sumusulat sa panig nito.",
       "claude": "I-set up sa Claude",
       "chatgpt": "I-set up sa ChatGPT",

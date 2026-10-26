@@ -1,7 +1,7 @@
 {
   "home": {
     "seo": {
-      "title": "Resume Booster: empleos en vivo, directos de los sistemas de selección de los empleadores",
+      "title": "Empleos en vivo, directos de los sistemas de las empresas",
       "description": "Busca empleos en vivo leídos de los propios sistemas de selección de los empleadores y de USAJOBS, y postúlate en el sitio del empleador. Gratis, y buscar no requiere cuenta."
     },
     "hero": {
@@ -113,7 +113,7 @@
       "neverTitle": "Lo que nunca hacemos",
       "never2Lead": "Decirte tus posibilidades.",
       "never2": "Nadie puede, y no adivinamos.",
-      "never3Lead": "Pedirte el currículum.",
+      "never3Lead": "Pedirte el currículum para buscar en el tablón.",
       "never3": "Las herramientas que no necesitan clave nunca lo piden; tu IA redacta por su lado.",
       "claude": "Configurar en Claude",
       "chatgpt": "Configurar en ChatGPT",
