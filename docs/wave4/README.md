@@ -1016,6 +1016,36 @@ uncarried. Both have fake-curl tests that fail each old answer. The other
 fixes need a purchase, a mail or a session to read live and are proved by
 their tests.
 
+**Checks.** Every heavy command ran through
+`~/.config/resumebooster/heavy.sh`; the logs are in
+`~/.config/resumebooster/wave4-recheck3-fix-2026-10-26/gate/`.
+- **Typecheck:** the pre-commit typecheck passed on all thirteen commits that
+  touch `src/`.
+- **Worker:** `tsc --noEmit` exits 0.
+- **Edge functions:** `scripts/check-functions.sh` is clean (deno.lock
+  restored).
+- **Targeted runs,** by area, each after its fix: the catalogue and held
+  names (16 files), the experience rule (8), the pricing page and bake (5,
+  then all 102 files that read the bake, llms.txt, the purchase state or the
+  marketing pause: 1,997 tests), the pass repair (10), the cut products (41),
+  the Pro card (3), the webhook (20), the scanners and the report mail (82),
+  the marketing pause (16), the writing refusals (4), the product mail and
+  the account page (19), the docs and ledger (19) and every verify section's
+  test (51, 765 tests).
+- **Upload:** job-board's folder plus `_shared` is 4,438,960 bytes on disk,
+  3,289 more than `88fe8982`, 11,040 under the upload-tally guard.
+- **Ledger:** `--draft` exits 0 with 71 functions, no MUST BUMP and the one
+  HOLD; `--against 88fe8982` finds 13 functions moved and the one reserved
+  violation (job-board `.93`); `--against origin/main` finds 70 moved and 0
+  violations.
+- **Overlap:** hp/honesty's stack-aware `--overlap HEAD origin/oh/integration
+  origin/trust/pages origin/hp/honesty origin/hp/scanner` leaves 2 undeclared
+  files, neither changed by this branch.
+- **The first push** stopped at the pre-push suite: two bake guards still
+  read the /pricing offer as an AggregateOffer (fixed in `5e908aa8`), and
+  four files timed out while the machine slept (single tests ran 957 s; each
+  passes alone). The full suite's count is in the PR #39 body.
+
 **Left.**
 - The /jobs prepare modal is proved through its helper and a wiring guard,
   not a mount of the page.
