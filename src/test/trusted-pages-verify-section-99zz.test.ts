@@ -106,11 +106,15 @@ const company = (name: string, count: number, robots?: string) => shell({
   title: `${name} jobs: ${count} open roles from their own hiring system`, h1: `Open roles at ${name}`, robots,
   lds: [{ "@context": "https://schema.org", "@type": "CollectionPage", name: `Open roles at ${name}`, about: { "@type": "Organization", name } }],
 });
-const MIRROR = 'const m=new Map([["icfcjb~ocs~CX_1","Honeywell Aerospace"],["birch~wd1~FusionCareers","Fusion Connect"]]);';
+const NAMES = 'const m=new Map([["eexs~us2~CX_11009","LCS"],["eexs~us2~CX_3001","LCS"],["icfcjb~ocs~CX_1","Honeywell Aerospace"],["birch~wd1~FusionCareers","Fusion Connect"]]);';
+const RULE = 'const p=new Set(["eexs~us2~CX_11009","eexs~us2~CX_3001"]);';
+const MIRROR = NAMES + RULE;
+const sitemap = (paths: string[]) => `<?xml version="1.0"?><urlset>${paths.map((x) => `<url><loc>https://resumebooster.work${x}</loc></url>`).join("")}</urlset>`;
+const SITEMAP = sitemap(["/jobs/company/eexs~us2~CX_3001", "/jobs/posting/oracle/icfcjb~ocs~CX_1/99123249", "/jobs/posting/ukg/" + "recruiting~REG1001RWHM~3f9058a6-91f2-4cf1-bf33-bc76cb9f0522/238cdd44-9089-429c-a963-8de91422a9af"]);
 
 type Over = {
   build?: string | null; pub?: boolean; axia?: string; honeywell?: string; lcs?: string; talent?: string; mb?: string; place?: string; bms?: string;
-  buildSince?: string; placeRows?: unknown[]; bmsCa?: unknown[]; placeDetail?: unknown; bmsDetail?: unknown;
+  asset?: string; sitemap?: string; buildSince?: string; placeRows?: unknown[]; bmsCa?: unknown[]; bmsNb?: unknown[]; placeDetail?: unknown; bmsDetail?: unknown;
   talentRows?: unknown[]; mbRows?: unknown[]; newRows?: unknown[]; unknownNew?: string[]; nameRows?: unknown[]; namesDetail?: string;
 };
 const place = (id: string, country: string, read: string) => ({ id: `smartrecruiters:ThePlace1:${id}`, token: "ThePlace1", company: "The Place", location: "Lagos, LA, Nigeria", country, recheckedAt: read });
@@ -136,11 +140,13 @@ function routes(o: Over = {}): Route[] {
     { match: `^GET ${SITE}/jobs/company/jobportal\\.martinbrower\\.com/$`, body: o.mb ?? company("Martin Brower", 111) },
     { match: `^GET ${SITE}/jobs/posting/smartrecruiters/`, body: o.place ?? posting("The Place", "NG") },
     { match: `^GET ${SITE}/jobs/posting/workday/`, body: o.bms ?? posting("Bristol Myers Squibb", "US") },
-    { match: `^GET ${SITE}/assets/PostingDetail-BBBB\\.js$`, body: o.pub === false ? "const m=new Map([]);" : MIRROR },
+    { match: `^GET ${SITE}/assets/PostingDetail-BBBB\\.js$`, body: o.asset ?? (o.pub === false ? "const m=new Map([]);" : MIRROR) },
+    { match: `^GET ${SITE}/sitemap\\.xml$`, body: o.sitemap ?? SITEMAP },
     { match: `^GET ${SITE}/assets/index-AAAA\\.js$`, body: "console.log(1)" },
     { match: `^POST ${FB}\\t\\{"action":"status"\\}`, body: status },
     { match: `^POST ${FB}\\t.*"action":"list".*"ThePlace1"`, body: list(o.placeRows ?? [place("744000154839819", "NG", read), place("744000152481767", "NG", read)]) },
     { match: `^POST ${FB}\\t.*"action":"list".*"bristolmyerssquibb~wd5~BMS".*"country":"CA"`, body: list(o.bmsCa ?? []) },
+    { match: `^POST ${FB}\\t.*"action":"list".*"bristolmyerssquibb~wd5~BMS".*"location":"New Brunswick"`, body: list(o.bmsNb ?? [...(o.bmsCa ?? []), bms("R1607072-1", "US", "USD", read)]) },
     { match: `^POST ${FB}\\t.*"action":"detail".*ThePlace1`, body: JSON.stringify(o.placeDetail ?? { job: place("744000154839819", "NG", read) }) },
     { match: `^POST ${FB}\\t.*"action":"detail".*bristolmyerssquibb`, body: JSON.stringify(o.bmsDetail ?? { job: bms("R1607072-1", "US", "USD", read) }) },
     { match: `^POST ${FB}\\t.*"action":"list".*"talent\\.reyesholdings\\.com"`, body: list(T) },
@@ -162,7 +168,8 @@ describe("section 99zz: the six D7 pages", () => {
     for (const re of [/x-fn-build = job-board\.2026-09-09\.95/, /Axia posting page carries a JobPosting naming Axia Women's Health/, /icfcjb~ocs~CX_1 names Honeywell Aerospace/, /eexs~us2~CX_3001 names LCS/,
       /icfcjb~ocs~CX_1 answers 200 with robots "index, follow"/, /talent\.reyesholdings\.com\/ answers 200/, /ThePlace1 rows .*all filed NG/, /ThePlace1 .* page carries a JobPosting with addressCountry NG/,
       /Bristol Myers Squibb .*all filed US and none with the old currency/, /Bristol Myers Squibb .* page carries a JobPosting with addressCountry US/, /0 off Reyes Beverage Group's portal; .* 0 on another brand's portal; 0 requisition/,
-      /three new Reyes brand boards are carried and each serves rows/, /different open counts \(265 and 111\)/, /stored rows read the employer names/]) {
+      /three new Reyes brand boards are carried and each serves rows/, /different open counts \(265 and 111\)/, /stored rows read the employer names/,
+      /served app carries the rule that LCS's two sites .* name no hirer/, /sitemap lists no posting page of LCS's two sites/]) {
       expect(has(lines, "PASS", re), `${re}\n${show(lines)}`).toBe(true);
     }
   });
@@ -194,6 +201,19 @@ describe("section 99zz: the six D7 pages", () => {
     expect(has(run(routes({ honeywell: company("Aerospace", 716), pub: false })).lines, "INFO", /icfcjb~ocs~CX_1 prints title "Aerospace jobs/)).toBe(true);
   });
 
+  it("N5: the names published without the rule, or a posting page of an LCS site in the sitemap, is a FAIL; INFO before the publish", () => {
+    const norule = run(routes({ asset: NAMES }));
+    expect(has(norule.lines, "FAIL", /does not carry the rule that LCS's two sites name no hirer/), show(norule.lines)).toBe(true);
+    const listed = run(routes({ sitemap: sitemap(["/jobs/posting/oracle/eexs~us2~CX_3001/41168", "/jobs/posting/oracle/eexs~us2~CX_11009/40001"]) }));
+    expect(has(listed.lines, "FAIL", /sitemap lists 2 posting page\(s\) of LCS's two sites/), show(listed.lines)).toBe(true);
+    const before = run(routes({ pub: false, sitemap: sitemap(["/jobs/posting/oracle/eexs~us2~CX_3001/41168"]) }));
+    expect(has(before.lines, "INFO", /does not carry the rule .*before the publish that carries the names/), show(before.lines)).toBe(true);
+    expect(has(before.lines, "INFO", /sitemap lists 1 posting page\(s\) of LCS's two sites.*before the publish/), show(before.lines)).toBe(true);
+    // The override map alone is not the rule: "LCS" sits between the two keys there.
+    expect(has(run(routes({ asset: NAMES + 'const q=["eexs~us2~CX_3001","LCS"];' })).lines, "PASS", /carries the rule/)).toBe(false);
+    expect(has(run(routes({ sitemap: "" })).lines, "FAIL", /the sitemap did not answer/)).toBe(true);
+  });
+
   it("N4: a D7 company page marked noindex is a FAIL whatever was published", () => {
     const r = run(routes({ mb: company("Martin Brower", 111, "noindex, follow"), pub: false }));
     expect(has(r.lines, "FAIL", /jobportal\.martinbrower\.com\/ answers 200 with robots "noindex, follow"/), show(r.lines)).toBe(true);
@@ -216,6 +236,18 @@ describe("section 99zz: the six D7 pages", () => {
     expect(has(ca.lines, "FAIL", /Bristol Myers Squibb .*1 of 2 still filed CA .*1 with pay in CAD after this build read the board/), show(ca.lines)).toBe(true);
     const cad = run(routes({ bmsDetail: { job: bms("R1607072-1", "US", "CAD", read) } }));
     expect(has(cad.lines, "FAIL", /Bristol Myers Squibb .*1 with pay in CAD/), show(cad.lines)).toBe(true);
+  });
+
+  it("C2 reads every New Brunswick row whatever its country: one filed US with its pay still CAD is a FAIL, which a CA-filtered list never returns", () => {
+    const read = iso(1 * H);
+    const r = run(routes({ bmsNb: [bms("R1606976-1", "US", "CAD", read), bms("R1607072-1", "US", "USD", read)] }));
+    expect(has(r.lines, "FAIL", /Bristol Myers Squibb .*1 with pay in CAD after this build read the board/), show(r.lines)).toBe(true);
+    expect(r.calls.some((c) => /"bristolmyerssquibb~wd5~BMS".*"location":"New Brunswick"/.test(c)), r.calls.join("\n")).toBe(true);
+    expect(r.calls.some((c) => /"bristolmyerssquibb~wd5~BMS".*"country":"CA"/.test(c)), "a CA filter hides the rows .95 refiles").toBe(false);
+    const nocountry = run(routes({ bmsNb: [bms("R1607660", null as unknown as string, "USD", read), bms("R1607072-1", "US", "USD", read)] }));
+    expect(has(nocountry.lines, "FAIL", /Bristol Myers Squibb .*1 of 2 still filed \(none\)/), show(nocountry.lines)).toBe(true);
+    const clean = run(routes({ bmsNb: [bms("R1606976-1", "US", "USD", read), bms("R1607072-1", "US", "USD", read)] }));
+    expect(has(clean.lines, "PASS", /Bristol Myers Squibb .*2 row\(s\), all filed US and none with the old currency/), show(clean.lines)).toBe(true);
   });
 
   it("C3: a page whose JobPosting states the old country is a FAIL; no JobPosting is a FAIL only after a later bake", () => {
@@ -263,6 +295,9 @@ describe("section 99zz: the six D7 pages", () => {
     const pages = calls.filter((c) => /^curl\tGET https:\/\/site\.test\/jobs\//.test(c));
     expect(pages.length).toBe(7);
     for (const c of pages) expect(c, c).toContain(`ua:${UA}`);
+    const maps = calls.filter((c) => /^curl\tGET https:\/\/site\.test\/sitemap\.xml/.test(c));
+    expect(maps.length).toBe(1);
+    expect(maps[0]).toContain(`ua:${UA}`);
     expect(calls.filter((c) => /^curl\t(?:PUT|DELETE|PATCH) /.test(c))).toEqual([]);
   });
 });

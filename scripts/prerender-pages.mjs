@@ -203,6 +203,8 @@ export const postingRowEligible = (j, D) => !!(j
   && D.postingPagePath(j.id)
   && typeof j.title === "string" && j.title.trim()
   && typeof j.company === "string" && j.company.trim()
+  // A posting that names no hirer (a site named by its publisher) gets no page.
+  && D.postingEmployer(j)
   && !D.isCodeShapedName(j.token ?? D.postingPathParts(j.id)?.token ?? null, D.postingEmployer(j))
   && j.agency !== true
   && j.country

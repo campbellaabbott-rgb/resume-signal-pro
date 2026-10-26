@@ -36,7 +36,14 @@
 -- ONE STATED UNCERTAINTY. eexs~us2~CX_3001 is LCS's tenant-wide "All Jobs"
 -- site, linked from lcsliving.com as "Work for LCS"; most of its postings are
 -- at senior living communities LCS manages, and the feed states no legal
--- employer for them. LCS is the employer that publishes the board.
+-- employer for them. LCS is the employer that publishes the board, so the
+-- board (its company page, its facet chip) is named LCS, but LCS is not
+-- named as the hirer of its postings: requisition 41168's own text says
+-- "Friendship Village is seeking", with LegalEmployer null. The two LCS sites
+-- (CX_3001 and CX_11009) are PUBLISHER_ONLY_BOARDS in
+-- supabase/functions/_shared/employer-names.ts: a posting there names no
+-- hirer, gets no posting page and carries no JobPosting (trust/pages review,
+-- 2026-10-25).
 --
 -- WHAT RENAMES THE STORED ROWS. Not this file (S11-133: a rename in one
 -- transaction holds row locks against ingest and rewrites both generated
@@ -173,7 +180,7 @@ INSERT INTO public.company_name_evidence (slug, display_name, evidence, quote, r
   ('9f16667e-93e9-453a-b7cc-2bfeb3eda460~19000101_000003', 'Circular Action Alliance', ARRAY['https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions?cid=9f16667e-93e9-453a-b7cc-2bfeb3eda460&ccId=19000101_000003&lang=en_US&locale=en_US'], 'posting: "Circular Action Alliance is an equal ..." and "CAA''s Financial Controller"', DATE '2026-10-25'),
   ('eea42ed6-3dcf-47f3-b99b-29a304948b2b~9200441095595_2', 'PURE HomeRiver', ARRAY['https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions?cid=eea42ed6-3dcf-47f3-b99b-29a304948b2b&ccId=9200441095595_2&lang=en_US&locale=en_US'], 'posting: "PURE HomeRiver is looking for an Assistant Property Manager"', DATE '2026-10-25'),
   ('eexs~us2~CX_11009', 'LCS', ARRAY['https://www.lcsliving.com/about-us/careers/', 'https://eexs.fa.us2.oraclecloud.com/hcmRestApi/resources/latest/recruitingCESites?onlyData=true&limit=200'], 'employer site "Senior Living Careers | LCS" links sites/allcommunityjobs, this site (SiteName "All Community Jobs"), as "Community Positions" at communities "managed by LCS Community Operations"', DATE '2026-10-25'),
-  ('eexs~us2~CX_3001', 'LCS', ARRAY['https://www.lcsliving.com/about-us/careers/', 'https://eexs.fa.us2.oraclecloud.com/hcmRestApi/resources/latest/recruitingCESites?onlyData=true&limit=200'], 'employer site "Senior Living Careers | LCS" links sites/AllJobs, this site (SiteName "All Jobs"), as "All Open Positions": "Work for LCS". Most of its postings are at senior living communities LCS manages, and the feed states no legal employer', DATE '2026-10-25'),
+  ('eexs~us2~CX_3001', 'LCS', ARRAY['https://www.lcsliving.com/about-us/careers/', 'https://eexs.fa.us2.oraclecloud.com/hcmRestApi/resources/latest/recruitingCESites?onlyData=true&limit=200', 'https://eexs.fa.us2.oraclecloud.com/hcmRestApi/resources/latest/recruitingCEJobRequisitionDetails?expand=all&onlyData=true&finder=ById%3BId%3D%2241168%22%2CsiteNumber%3DCX_3001'], 'employer site "Senior Living Careers | LCS" links sites/AllJobs, this site (SiteName "All Jobs"), as "All Open Positions": "Work for LCS". Most of its postings are at senior living communities LCS manages, and the feed states no legal employer: requisition 41168 reads "Friendship Village is seeking", LegalEmployer null. LCS names the board, never a posting''s hirer', DATE '2026-10-25'),
   ('ehwy~us2~CX', 'Ithaca College', ARRAY['https://ehwy.fa.us2.oraclecloud.com/hcmRestApi/resources/latest/recruitingCEJobRequisitionDetails?expand=all&onlyData=true&finder=ById%3BId%3D%223645%22%2CsiteNumber%3DCX'], 'posting: "Ithaca College''s student employment program"', DATE '2026-10-25'),
   ('ehwy~us2~CX_1', 'Ithaca College', ARRAY['https://ehwy.fa.us2.oraclecloud.com/hcmRestApi/resources/latest/recruitingCEJobRequisitionDetails?expand=all&onlyData=true&finder=ById%3BId%3D%223895%22%2CsiteNumber%3DCX_1'], 'posting: "At Ithaca College, a comprehensive residential campus community"', DATE '2026-10-25'),
   ('ekpl~us6~CX_1', 'Glaukos', ARRAY['https://ekpl.fa.us6.oraclecloud.com/hcmRestApi/resources/latest/recruitingCEJobRequisitionDetails?expand=all&onlyData=true&finder=ById%3BId%3D%222446%22%2CsiteNumber%3DCX_1', 'https://www.glaukos.com/careers/'], 'posting: "Founded in 1998, Glaukos Corporation is an ophthalmic pharmaceutical and medical technology company"', DATE '2026-10-25'),

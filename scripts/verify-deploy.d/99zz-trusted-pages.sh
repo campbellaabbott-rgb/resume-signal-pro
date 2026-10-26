@@ -27,10 +27,16 @@
 #       in its title, H1 and CollectionPage, never the bare "Aerospace";
 #   N3  the LCS company page (eexs~us2~CX_3001) names LCS, never "All";
 #   N4  all four company pages stay indexable (D7: no page drops);
+#   N5  LCS names its two sites, not their postings' hirers: the served app
+#       carries the rule (PUBLISHER_ONLY_BOARDS in employer-names.ts) and the
+#       sitemap lists no posting page of either site, so no JobPosting names
+#       LCS as the hirer of a community's job;
 #   C1  ThePlace1's rows whose location ends in Nigeria are filed NG, the D7
 #       posting among them;
-#   C2  Bristol Myers Squibb's "New Brunswick - NJ - US" rows are filed US,
-#       none left in CA, and none of their pay is CAD;
+#   C2  Bristol Myers Squibb's "New Brunswick - NJ - US" rows are filed US and
+#       none of their pay is CAD, read from every New Brunswick row on the
+#       board whatever its country (a CA-filtered list stops returning a row
+#       once .95 refiles it, pay and all);
 #   C3  each of those two posting pages carries a JobPosting whose
 #       addressCountry is the row's country (NG, US), never the old one;
 #   R1  talent.reyesholdings.com serves only Reyes Beverage Group's portal and
@@ -41,8 +47,8 @@
 #   S1  the stored rows of the three named boards carry the new names (search,
 #       the API and get_company_intel read the stored rows).
 #
-# READ-ONLY. GETs of seven public pages and of the app scripts they name, as
-# Googlebot; one OPTIONS preflight; job-board status, list and detail reads
+# READ-ONLY. GETs of seven public pages, the sitemap and the app scripts the
+# pages name, as Googlebot; one OPTIONS preflight; job-board status, list and detail reads
 # sent with x-rb-budget: probe. Nothing is written.
 echo "== 99zz. Trusted pages: the six D7 pages are named, placed and marked up honestly =="
 
@@ -62,6 +68,7 @@ VDZZ_P place "/jobs/posting/smartrecruiters/ThePlace1/744000154839819"
 VDZZ_P bms "/jobs/posting/workday/bristolmyerssquibb~wd5~BMS/R1607072-1"
 VDZZ_P talent "/jobs/company/talent.reyesholdings.com/"
 VDZZ_P mb "/jobs/company/jobportal.martinbrower.com/"
+curl -s -m 60 -A "$UA" -o /tmp/vd_99zz_sitemap.xml "$SITE/sitemap.xml" 2>/dev/null
 # The app's own scripts those pages name: the mirror rides one of them.
 : > /tmp/vd_99zz_assets.txt
 node -e '
@@ -80,7 +87,10 @@ done < /tmp/vd_99zz_assets.txt 2>/dev/null
 if [ "$VDZZ_LIVE" = 1 ]; then
   J '{"action":"status"}' > /tmp/vd_99zz_status.json
   J '{"action":"list","companies":["ThePlace1"],"vendor":["smartrecruiters"],"groupSimilar":false,"includeFacets":false,"limit":50}' > /tmp/vd_99zz_place_list.json
-  J '{"action":"list","companies":["bristolmyerssquibb~wd5~BMS"],"country":"CA","groupSimilar":false,"includeFacets":false,"limit":100}' > /tmp/vd_99zz_bms_ca.json
+  for VDZZ_O in 0 100 200; do
+    J "{\"action\":\"list\",\"companies\":[\"bristolmyerssquibb~wd5~BMS\"],\"location\":\"New Brunswick\",\"groupSimilar\":false,\"includeFacets\":false,\"limit\":100,\"offset\":$VDZZ_O}" > "/tmp/vd_99zz_bms_nb_$VDZZ_O.json"
+    node -e 'try{const j=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));process.exit(j&&j.hasMore?0:1)}catch{process.exit(1)}' "/tmp/vd_99zz_bms_nb_$VDZZ_O.json" || break
+  done
   J '{"action":"detail","id":"smartrecruiters:ThePlace1:744000154839819"}' > /tmp/vd_99zz_place_detail.json
   J '{"action":"detail","id":"workday:bristolmyerssquibb~wd5~BMS:R1607072-1"}' > /tmp/vd_99zz_bms_detail.json
   for VDZZ_T in talent.reyesholdings.com jobportal.martinbrower.com; do
@@ -109,7 +119,7 @@ const page=(k)=>{const h=txt("/tmp/vd_99zz_"+k+".html");const code=txt("/tmp/vd_
 const jpName=(jp)=>jp&&jp.hiringOrganization&&jp.hiringOrganization.name;
 const jpCountry=(jp)=>{if(!jp)return null;const locs=Array.isArray(jp.jobLocation)?jp.jobLocation:[jp.jobLocation];const a=locs.map((l)=>l&&l.address&&l.address.addressCountry).filter(Boolean);return a.length?a.join(","):null};
 // The publish that carries the names: an app script holds the Honeywell Aerospace override.
-let assets=0,pub=false;for(let i=1;i<=30;i++){const s=txt("/tmp/vd_99zz_asset_"+i+".js");if(!s)continue;assets++;if(/icfcjb~ocs~CX_1["\x27`]\s*,\s*["\x27`]Honeywell Aerospace/.test(s))pub=true}
+let assets=0,pub=false,rule=false;for(let i=1;i<=30;i++){const s=txt("/tmp/vd_99zz_asset_"+i+".js");if(!s)continue;assets++;if(/icfcjb~ocs~CX_1["\x27`]\s*,\s*["\x27`]Honeywell Aerospace/.test(s))pub=true;if(/["\x27`]eexs~us2~CX_11009["\x27`]\s*,\s*["\x27`]eexs~us2~CX_3001["\x27`]\s*\]/.test(s))rule=true}
 if(pub)out("INFO","the served app carries the employer names (an app script holds the Honeywell Aerospace override, of "+assets+" read): the page lines below are judged");
 else out("INFO","the served app does not carry the employer names yet ("+assets+" app script(s) read, none holds the Honeywell Aerospace override): the page lines below are INFO until the frontend publish after this branch");
 const wait=(m)=>out(pub?"FAIL":"INFO",m+(pub?"":" (before the publish that carries the names)"));
@@ -135,6 +145,13 @@ for(const [k,path] of [["honeywell","/jobs/company/icfcjb~ocs~CX_1"],["lcs","/jo
   if(!p.h)out("FAIL",path+" did not answer: "+p.code);
   else out(/noindex/i.test(p.robots)||p.code!=="200"?"FAIL":"PASS",path+" answers "+p.code+" with robots \""+p.robots+"\" (D7: it stays indexable)");
 }
+// N5
+const lcsPostings=[...txt("/tmp/vd_99zz_sitemap.xml").matchAll(/<loc>[^<]*\/jobs\/posting\/oracle\/(eexs~us2~CX_(?:3001|11009))\/[^<]*<\/loc>/g)].length;
+if(rule)out("PASS","the served app carries the rule that LCS\x27s two sites (eexs~us2~CX_3001, CX_11009) name no hirer for their postings: no posting page, no JobPosting");
+else wait("the served app does not carry the rule that LCS\x27s two sites name no hirer for their postings (no app script holds PUBLISHER_ONLY_BOARDS), so a posting there would be marked up with LCS as its hirer");
+if(!txt("/tmp/vd_99zz_sitemap.xml"))out("FAIL","the sitemap did not answer");
+else if(!lcsPostings)out("PASS","the sitemap lists no posting page of LCS\x27s two sites");
+else wait("the sitemap lists "+lcsPostings+" posting page(s) of LCS\x27s two sites, each a page naming LCS as the hirer of a community\x27s job");
 // The serving build and its first slice.
 const S=json("/tmp/vd_99zz_status.json");const ss=S&&S.sliceStats&&typeof S.sliceStats==="object"?S.sliceStats:null;
 const serving=String(E.VDZZ_H||"").replace(/^job-board\./,"");const ours=!!ss&&ss.build===serving;const since=ours?Date.parse(ss.buildSince||""):NaN;
@@ -147,11 +164,11 @@ const countryCase=(label,rows,want,detailFile,pageKey,extra)=>{
   if(!LIVE)return out("INFO",label+": waits for job-board .95");
   const d=json(detailFile);const dj=d&&d.job;
   if(!Array.isArray(rows))return out("FAIL",label+": the list is unreadable");
-  const wrong=rows.filter((r)=>r.country!==want);const read=readBy(rows);const readSince=read!==null&&Number.isFinite(since)&&read>=since;
+  const wrong=rows.filter((r)=>r.country!==want);const filedAs=(r)=>r.country||"(none)";const read=readBy(rows);const readSince=read!==null&&Number.isFinite(since)&&read>=since;
   const bad=wrong.length||(extra?extra(rows):"");
   if(!rows.length)out("INFO",label+": no such row is served (closed or out of window), so nothing to judge");
   else if(!bad)out("PASS",label+": "+rows.length+" row(s), all filed "+want+(extra?" and none with the old currency":""));
-  else if(readSince||(ageH!==null&&ageH>24))out("FAIL",label+": "+(wrong.length?wrong.length+" of "+rows.length+" still filed "+[...new Set(wrong.map((r)=>r.country))].join("/"):"")+(extra?" "+extra(rows):"")+(readSince?" after this build read the board":" more than 24 h after the first slice"));
+  else if(readSince||(ageH!==null&&ageH>24))out("FAIL",label+": "+(wrong.length?wrong.length+" of "+rows.length+" still filed "+[...new Set(wrong.map(filedAs))].join("/"):"")+(extra?" "+extra(rows):"")+(readSince?" after this build read the board":" more than 24 h after the first slice"));
   else out("INFO",label+": "+wrong.length+" of "+rows.length+" still filed otherwise; the board has not been read by this build yet ("+(ours?"first slice "+ageH.toFixed(1)+" h ago":"no slice of this build yet")+")");
   const p=page(pageKey);const jc=jpCountry(p.jp);const djOk=dj&&dj.country===want;
   if(!p.h)out("FAIL",label+" page did not answer: "+p.code);
@@ -163,9 +180,9 @@ const countryCase=(label,rows,want,detailFile,pageKey,extra)=>{
 };
 const PL=json("/tmp/vd_99zz_place_list.json");
 countryCase("ThePlace1 rows whose location ends in Nigeria",PL&&Array.isArray(PL.jobs)?PL.jobs.filter((r)=>/Nigeria\s*$/.test(String(r.location||""))):null,"NG","/tmp/vd_99zz_place_detail.json","place");
-const BC=json("/tmp/vd_99zz_bms_ca.json");const bmsDetail=json("/tmp/vd_99zz_bms_detail.json");
-const bmsRows=BC&&Array.isArray(BC.jobs)?[...BC.jobs.filter((r)=>/-\s*NJ\s*-\s*US\s*$/.test(String(r.location||""))),...(bmsDetail&&bmsDetail.job?[bmsDetail.job]:[])]:null;
-countryCase("Bristol Myers Squibb rows at \"New Brunswick - NJ - US\" (the CA list plus the D7 posting)",bmsRows?[...new Map(bmsRows.map((r)=>[r.id,r])).values()]:null,"US","/tmp/vd_99zz_bms_detail.json","bms",(rows)=>{const c=rows.filter((r)=>r.salaryCurrency==="CAD").length;return c?c+" with pay in CAD":""});
+const BN=[0,100,200].map((o)=>json("/tmp/vd_99zz_bms_nb_"+o+".json")).filter(Boolean);const bmsDetail=json("/tmp/vd_99zz_bms_detail.json");
+const bmsRows=BN.length&&Array.isArray(BN[0].jobs)?[...BN.flatMap((j)=>Array.isArray(j.jobs)?j.jobs:[]).filter((r)=>/-\s*NJ\s*-\s*US\s*$/.test(String(r.location||""))),...(bmsDetail&&bmsDetail.job?[bmsDetail.job]:[])]:null;
+countryCase("Bristol Myers Squibb rows at \"New Brunswick - NJ - US\" (every New Brunswick row on the board, whatever its country, plus the D7 posting)",bmsRows?[...new Map(bmsRows.map((r)=>[r.id,r])).values()]:null,"US","/tmp/vd_99zz_bms_detail.json","bms",(rows)=>{const c=rows.filter((r)=>r.salaryCurrency==="CAD").length;return c?c+" with pay in CAD":""});
 // R1
 if(LIVE){
   const rows=(t)=>{const a=[];for(const o of [0,100,200,300,400]){const j=json("/tmp/vd_99zz_reyes_"+t+"_"+o+".json");if(j&&Array.isArray(j.jobs))a.push(...j.jobs)}return a};

@@ -79,7 +79,7 @@ import { writeJdHandoff } from "@/lib/jd-handoff";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { searchName, searchToQuery } from "@/lib/job-search-params";
-import { boardName, companyDisplayName, cleanJobTitle, decodeNameEntities, possessive } from "@/lib/company-display";
+import { boardName, boardNamesItsHirer, companyDisplayName, cleanJobTitle, decodeNameEntities, possessive } from "@/lib/company-display";
 import { displaySalary } from "@/lib/salary-display";
 import { adjacentRoles } from "@/lib/role-adjacency";
 import { accentFor } from "@/lib/category-accent";
@@ -4545,7 +4545,9 @@ function JobsBoard({ boardId }: { boardId: string }) {
     const hasPlace = detailJob?.workMode === "remote"
       ? !!(detailJob?.country || detailJob?.location)
       : !!detailJob?.location;
-    if (!detailJob || !detailDesc || detailDesc.length < 100 || !hasDate || !hasPlace) {
+    // A site named by its publisher states no hirer for its postings, and the
+    // markup would name the publisher as one: it emits nothing.
+    if (!detailJob || !detailDesc || detailDesc.length < 100 || !hasDate || !hasPlace || !boardNamesItsHirer(detailJob.token)) {
       return restoreCanonical;
     }
     const ld: Record<string, unknown> = {

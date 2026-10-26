@@ -513,3 +513,18 @@ export const MULTI_EMPLOYER_BOARD_NAMES: ReadonlyMap<string, string> = new Map([
 export function boardDisplayName(token: string | null | undefined, stored: string | null | undefined): string {
   return MULTI_EMPLOYER_BOARD_NAMES.get(String(token ?? "").trim()) ?? employerDisplayName(token, stored);
 }
+
+/**
+ * Career sites an override names by the employer that PUBLISHES them, whose
+ * postings name other hirers: LCS's two sites list jobs at the communities it
+ * manages, a posting's text names its community ("Friendship Village is
+ * seeking"), and no requisition states a legal employer (trust/pages review,
+ * 2026-10-25). The board prints the publisher; a posting names no hirer, so it
+ * gets no page and no JobPosting. Each entry is an override key (a test).
+ */
+export const PUBLISHER_ONLY_BOARDS: ReadonlySet<string> = new Set(["eexs~us2~CX_11009", "eexs~us2~CX_3001"]);
+
+/** False for a site named by its publisher, whose postings state no hirer. */
+export function boardNamesItsHirer(token: string | null | undefined): boolean {
+  return !PUBLISHER_ONLY_BOARDS.has(String(token ?? "").trim());
+}

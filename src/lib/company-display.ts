@@ -14,6 +14,9 @@
 // esbuild, which knows no alias.
 import { boardDisplayName, employerDisplayName, employerNameOverride } from "../../supabase/functions/_shared/employer-names";
 
+/** False for a site named by its publisher, whose postings state no hirer (employer-names.ts). */
+export { boardNamesItsHirer } from "../../supabase/functions/_shared/employer-names";
+
 // Short all-consonant tokens are the tell. English words of 3+ letters
 // essentially always carry a vowel (y counts), so a vowel-less token is an
 // initialism that lost its capitals in transit.
