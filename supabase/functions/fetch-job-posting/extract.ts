@@ -301,7 +301,8 @@ export function apiPlanFor(u: URL, vendor: string): ApiPlan | null {
     const site = si >= 0 ? p[si + 1] ?? "" : "";
     const id = si < 0 ? "" : p[si + 2] === "job" ? p[si + 3] ?? ""
       : p[si + 2] === "requisitions" && p[si + 3] === "preview" ? p[si + 4] ?? "" : "";
-    if (!SAFE.test(site) || !/^\d{1,15}$/.test(id)) return null;
+    // A requisition id may carry letters (REQ_820519, merge recheck 2026-10-25); it sits quoted in the finder.
+    if (!SAFE.test(site) || !/^[A-Za-z0-9_-]{1,40}$/.test(id)) return null;
     const finder = `ById;Id="${id}",siteNumber=${site}`;
     return {
       url: `https://${host}/hcmRestApi/resources/latest/recruitingCEJobRequisitionDetails?expand=all&onlyData=true&finder=${encodeURIComponent(finder)}`,

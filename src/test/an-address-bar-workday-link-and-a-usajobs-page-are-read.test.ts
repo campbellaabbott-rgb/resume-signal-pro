@@ -47,6 +47,18 @@ describe("the shapes a person copies are planned (S12-028)", () => {
     expect(plan("https://eluq.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/requisitions/preview/216799", "oracle")).toContain(encodeURIComponent('ById;Id="216799",siteNumber=CX_1'));
   });
 
+  // The merge recheck (2026-10-25): 6 of 303 live Oracle apply links carry a
+  // requisition id with letters, which the ById finder reads (REQ_820519 on
+  // ebwh's CX_1002 returned its posting); the plan refused them and the early
+  // refusal answered "unreadable link shape" without trying.
+  it("an Oracle requisition id with letters reads through the ById finder, quoted", () => {
+    expect(plan("https://ebwh.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1002/job/REQ_820519", "oracle")).toContain(encodeURIComponent('ById;Id="REQ_820519",siteNumber=CX_1002'));
+    expect(plan("https://efcs.fa.em3.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/job/REQ_Y26_AUTO_GML_238_1", "oracle")).toContain(encodeURIComponent('Id="REQ_Y26_AUTO_GML_238_1"'));
+    expect(unreadableShape(new URL("https://ebwh.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1002/job/REQ_820519"), "oracle")).toBe(false);
+    // Nothing that could leave the quotes or the finder is planned.
+    for (const id of ['REQ"1', "REQ%2C1", "REQ 1", "a".repeat(41), "REQ;1"]) expect(plan(`https://ebwh.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1002/job/${id}`, "oracle"), id).toBeNull();
+  });
+
   it("a Workable account link reads through its v2 API", () => {
     expect(plan("https://apply.workable.com/1-stopasia/j/8BDCFB4350/", "workable")).toBe("https://apply.workable.com/api/v2/accounts/1-stopasia/jobs/8BDCFB4350");
     expect(plan("https://apply.workable.com/j/8BDCFB4350", "workable"), "the short form has no account until it redirects").toBeNull();
