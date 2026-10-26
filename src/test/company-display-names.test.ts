@@ -139,7 +139,7 @@ describe("a rename actually reaches stored rows", () => {
    *  failure this codebase keeps paying for.
    *
    *  Mutation-tested: renaming a board and leaving the version at 2 must fail. */
-  const PINNED = { nameSyncVersion: 4, tokenCount: 38 };
+  const PINNED = { nameSyncVersion: 5, tokenCount: 38 };
 
   /** The lane's own block: from its version read to its last log line. It sat
    *  before the salary kick until S11-001 moved the kicks ahead of the slow

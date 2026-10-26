@@ -1,0 +1,21 @@
+{
+ "jobPostingInfo": {
+  "id": "a02234b6ed7b10003a6861ffef9a0000",
+  "title": "Pharmaceutical Development Technician - CSO CSPO",
+  "location": "New Brunswick - NJ - US",
+  "country": {
+   "descriptor": "United States of America",
+   "id": "bc33aa3152ec42d4995f4791a106ed09"
+  },
+  "jobRequisitionLocation": {
+   "descriptor": "New Brunswick - NJ",
+   "country": {
+    "descriptor": "United States of America",
+    "id": "bc33aa3152ec42d4995f4791a106ed09",
+    "alpha2Code": "US"
+   }
+  },
+  "externalUrl": "https://bristolmyerssquibb.wd5.myworkdayjobs.com/BMS/job/New-Brunswick---NJ---US/Pharmaceutical-Development-Technician---CSO-CSPO_R1607072-1",
+  "jobReqId": "R1607072"
+ }
+}

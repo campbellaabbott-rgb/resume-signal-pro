@@ -1,0 +1,789 @@
+[
+ {
+  "token": "ThePlace1",
+  "id": "744000154839819",
+  "url": "https://api.smartrecruiters.com/v1/companies/ThePlace1/postings/744000154839819",
+  "location": {
+   "city": "Lagos",
+   "region": "LA",
+   "country": "ng",
+   "latitude": "6.4441364",
+   "longitude": "3.4818088",
+   "fullLocation": "Lagos, LA, Nigeria"
+  },
+  "main": "US"
+ },
+ {
+  "token": "AlphaMeadGroup",
+  "id": "744000154192149",
+  "url": "https://api.smartrecruiters.com/v1/companies/AlphaMeadGroup/postings/744000154192149",
+  "location": {
+   "city": "Lagos",
+   "region": "LA",
+   "country": "ng",
+   "latitude": "6.453044299999999",
+   "longitude": "3.4261211",
+   "fullLocation": "Lagos, LA, Nigeria"
+  },
+  "main": "US"
+ },
+ {
+  "token": "AlphaMeadGroup",
+  "id": "744000157079799",
+  "url": "https://api.smartrecruiters.com/v1/companies/AlphaMeadGroup/postings/744000157079799",
+  "location": {
+   "city": "Lagos",
+   "region": "LA",
+   "country": "ng",
+   "latitude": "6.453044299999999",
+   "longitude": "3.4261211",
+   "fullLocation": "Lagos, LA, Nigeria"
+  },
+  "main": "US"
+ },
+ {
+  "token": "CAVISTA",
+  "id": "744000152492519",
+  "url": "https://api.smartrecruiters.com/v1/companies/CAVISTA/postings/744000152492519",
+  "location": {
+   "city": "Lagos",
+   "region": "LA",
+   "country": "ng",
+   "latitude": "6.556631599999999",
+   "longitude": "3.3640205",
+   "fullLocation": "Lagos, LA, Nigeria"
+  },
+  "main": "US"
+ },
+ {
+  "token": "CAVISTA",
+  "id": "744000152657039",
+  "url": "https://api.smartrecruiters.com/v1/companies/CAVISTA/postings/744000152657039",
+  "location": {
+   "city": "Ikeja",
+   "region": "LA",
+   "country": "ng",
+   "latitude": "6.5569507",
+   "longitude": "3.3594914",
+   "fullLocation": "Ikeja, LA, Nigeria"
+  },
+  "main": "US"
+ },
+ {
+  "token": "CAVISTA",
+  "id": "744000157152779",
+  "url": "https://api.smartrecruiters.com/v1/companies/CAVISTA/postings/744000157152779",
+  "location": {
+   "city": "Lagos",
+   "region": "LA",
+   "country": "ng",
+   "latitude": "6.556631599999999",
+   "longitude": "3.3640205",
+   "fullLocation": "Lagos, LA, Nigeria"
+  },
+  "main": "US"
+ },
+ {
+  "token": "CAVISTA",
+  "id": "744000157157170",
+  "url": "https://api.smartrecruiters.com/v1/companies/CAVISTA/postings/744000157157170",
+  "location": {
+   "city": "Lagos",
+   "region": "LA",
+   "country": "ng",
+   "latitude": "6.556631599999999",
+   "longitude": "3.3640205",
+   "fullLocation": "Lagos, LA, Nigeria"
+  },
+  "main": "US"
+ },
+ {
+  "token": "CAVISTA",
+  "id": "744000157159031",
+  "url": "https://api.smartrecruiters.com/v1/companies/CAVISTA/postings/744000157159031",
+  "location": {
+   "city": "Lagos",
+   "region": "LA",
+   "country": "ng",
+   "latitude": "6.556631599999999",
+   "longitude": "3.3640205",
+   "fullLocation": "Lagos, LA, Nigeria"
+  },
+  "main": "US"
+ },
+ {
+  "token": "Deloitte6",
+  "id": "744000156570619",
+  "url": "https://api.smartrecruiters.com/v1/companies/Deloitte6/postings/744000156570619",
+  "location": {
+   "city": "Lagos",
+   "region": "LA",
+   "country": "ng",
+   "latitude": "6.4395347",
+   "longitude": "3.4305824",
+   "fullLocation": "Lagos, LA, Nigeria"
+  },
+  "main": "US"
+ },
+ {
+  "token": "DigitalVirgo",
+  "id": "744000156752829",
+  "url": "https://api.smartrecruiters.com/v1/companies/DigitalVirgo/postings/744000156752829",
+  "location": {
+   "city": "Lagos",
+   "region": "LA",
+   "country": "ng",
+   "latitude": "6.4673499",
+   "longitude": "3.2827913",
+   "fullLocation": "Lagos, LA, Nigeria"
+  },
+  "main": "US"
+ },
+ {
+  "token": "Eurofins",
+  "id": "744000152635559",
+  "url": "https://api.smartrecruiters.com/v1/companies/Eurofins/postings/744000152635559",
+  "location": {
+   "city": "Fort-de-France",
+   "region": "Fort-de-France",
+   "country": "mq",
+   "latitude": "14.6060576",
+   "longitude": "-61.06988399999999",
+   "fullLocation": "Fort-de-France, Fort-de-France, Martinique"
+  },
+  "main": "FR"
+ },
+ {
+  "token": "FilmhouseCinema1",
+  "id": "744000153374469",
+  "url": "https://api.smartrecruiters.com/v1/companies/FilmhouseCinema1/postings/744000153374469",
+  "location": {
+   "city": "Lagos",
+   "region": "LA",
+   "country": "ng",
+   "latitude": "6.4255987",
+   "longitude": "3.4260327",
+   "fullLocation": "Lagos, LA, Nigeria"
+  },
+  "main": "US"
+ },
+ {
+  "token": "FilmhouseCinema1",
+  "id": "744000153797519",
+  "url": "https://api.smartrecruiters.com/v1/companies/FilmhouseCinema1/postings/744000153797519",
+  "location": {
+   "city": "Lagos",
+   "region": "LA",
+   "country": "ng",
+   "latitude": "6.4255987",
+   "longitude": "3.4260327",
+   "fullLocation": "Lagos, LA, Nigeria"
+  },
+  "main": "US"
+ },
+ {
+  "token": "FilmhouseCinema1",
+  "id": "744000155282389",
+  "url": "https://api.smartrecruiters.com/v1/companies/FilmhouseCinema1/postings/744000155282389",
+  "location": {
+   "city": "Lekki",
+   "region": "LA",
+   "country": "ng",
+   "latitude": "6.4800029",
+   "longitude": "3.5960484",
+   "fullLocation": "Lekki, LA, Nigeria"
+  },
+  "main": "US"
+ },
+ {
+  "token": "FilmhouseCinema1",
+  "id": "744000155966930",
+  "url": "https://api.smartrecruiters.com/v1/companies/FilmhouseCinema1/postings/744000155966930",
+  "location": {
+   "city": "Lagos",
+   "region": "LA",
+   "country": "ng",
+   "latitude": "6.435943399999999",
+   "longitude": "3.4466647",
+   "fullLocation": "Lagos, LA, Nigeria"
+  },
+  "main": "US"
+ },
+ {
+  "token": "FilmhouseCinema1",
+  "id": "744000157433329",
+  "url": "https://api.smartrecruiters.com/v1/companies/FilmhouseCinema1/postings/744000157433329",
+  "location": {
+   "city": "Lagos",
+   "region": "LA",
+   "country": "ng",
+   "latitude": "6.4255987",
+   "longitude": "3.4260327",
+   "fullLocation": "Lagos, LA, Nigeria"
+  },
+  "main": "US"
+ },
+ {
+  "token": "Gcore",
+  "id": "744000156620637",
+  "url": "https://api.smartrecruiters.com/v1/companies/Gcore/postings/744000156620637",
+  "location": {
+   "city": "Poland, Serbia, Georgia",
+   "country": "cy",
+   "fullLocation": "Poland, Serbia, Georgia, , Cyprus"
+  },
+  "main": "PL"
+ },
+ {
+  "token": "InternationalSOSGovernmentMedicalServices",
+  "id": "744000155280759",
+  "url": "https://api.smartrecruiters.com/v1/companies/InternationalSOSGovernmentMedicalServices/postings/744000155280759",
+  "location": {
+   "city": "Balad",
+   "region": "SD",
+   "country": "iq",
+   "latitude": "34.0076216",
+   "longitude": "44.148291",
+   "fullLocation": "Balad, SD, Iraq"
+  },
+  "main": "US"
+ },
+ {
+  "token": "InternationalSOSGovernmentMedicalServices",
+  "id": "744000155281059",
+  "url": "https://api.smartrecruiters.com/v1/companies/InternationalSOSGovernmentMedicalServices/postings/744000155281059",
+  "location": {
+   "city": "Balad",
+   "region": "SD",
+   "country": "iq",
+   "latitude": "34.0076216",
+   "longitude": "44.148291",
+   "fullLocation": "Balad, SD, Iraq"
+  },
+  "main": "US"
+ },
+ {
+  "token": "Intertec1",
+  "id": "744000152460589",
+  "url": "https://api.smartrecruiters.com/v1/companies/Intertec1/postings/744000152460589",
+  "location": {
+   "city": "Skopje",
+   "region": "SK",
+   "country": "mk",
+   "latitude": "41.9968232",
+   "longitude": "21.425257",
+   "fullLocation": "Skopje, SK, North Macedonia"
+  },
+  "main": "CA"
+ },
+ {
+  "token": "JobsForHumanity",
+  "id": "744000152658110",
+  "url": "https://api.smartrecruiters.com/v1/companies/JobsForHumanity/postings/744000152658110",
+  "location": {
+   "city": "Australia",
+   "region": "Matanzas",
+   "country": "cu",
+   "latitude": "22.5004036",
+   "longitude": "-81.13522429999999",
+   "fullLocation": "Australia, Matanzas, Cuba"
+  },
+  "main": "AU"
+ },
+ {
+  "token": "LiftedanUpworkCompany",
+  "id": "3743990016345426",
+  "url": "https://api.smartrecruiters.com/v1/companies/LiftedanUpworkCompany/postings/3743990016345426",
+  "location": {
+   "city": "Fort-de-France",
+   "region": "Fort-de-France",
+   "country": "mq",
+   "latitude": "14.6060576",
+   "longitude": "-61.06988399999999",
+   "fullLocation": "Fort-de-France, Fort-de-France, Martinique"
+  },
+  "main": "FR"
+ },
+ {
+  "token": "MyrtleManagementConsultants",
+  "id": "744000155999155",
+  "url": "https://api.smartrecruiters.com/v1/companies/MyrtleManagementConsultants/postings/744000155999155",
+  "location": {
+   "city": "Lagos",
+   "region": "LA",
+   "country": "ng",
+   "fullLocation": "Lagos, LA, Nigeria"
+  },
+  "main": "US"
+ },
+ {
+  "token": "PayzeepSolutions",
+  "id": "744000153567910",
+  "url": "https://api.smartrecruiters.com/v1/companies/PayzeepSolutions/postings/744000153567910",
+  "location": {
+   "city": "Lagos",
+   "region": "LA",
+   "country": "ng",
+   "latitude": "6.556631599999999",
+   "longitude": "3.3640205",
+   "fullLocation": "Lagos, LA, Nigeria"
+  },
+  "main": "US"
+ },
+ {
+  "token": "PayzeepSolutions",
+  "id": "744000153729539",
+  "url": "https://api.smartrecruiters.com/v1/companies/PayzeepSolutions/postings/744000153729539",
+  "location": {
+   "city": "Lagos",
+   "region": "LA",
+   "country": "ng",
+   "latitude": "6.556631599999999",
+   "longitude": "3.3640205",
+   "fullLocation": "Lagos, LA, Nigeria"
+  },
+  "main": "US"
+ },
+ {
+  "token": "PayzeepSolutions",
+  "id": "744000153732909",
+  "url": "https://api.smartrecruiters.com/v1/companies/PayzeepSolutions/postings/744000153732909",
+  "location": {
+   "city": "Lagos",
+   "region": "LA",
+   "country": "ng",
+   "latitude": "6.556631599999999",
+   "longitude": "3.3640205",
+   "fullLocation": "Lagos, LA, Nigeria"
+  },
+  "main": "US"
+ },
+ {
+  "token": "PayzeepSolutions",
+  "id": "744000153734299",
+  "url": "https://api.smartrecruiters.com/v1/companies/PayzeepSolutions/postings/744000153734299",
+  "location": {
+   "city": "Lagos",
+   "region": "LA",
+   "country": "ng",
+   "latitude": "6.556631599999999",
+   "longitude": "3.3640205",
+   "fullLocation": "Lagos, LA, Nigeria"
+  },
+  "main": "US"
+ },
+ {
+  "token": "PayzeepSolutions",
+  "id": "744000154731129",
+  "url": "https://api.smartrecruiters.com/v1/companies/PayzeepSolutions/postings/744000154731129",
+  "location": {
+   "city": "Lagos",
+   "region": "LA",
+   "country": "ng",
+   "latitude": "6.556631599999999",
+   "longitude": "3.3640205",
+   "fullLocation": "Lagos, LA, Nigeria"
+  },
+  "main": "US"
+ },
+ {
+  "token": "PayzeepSolutions",
+  "id": "744000157181175",
+  "url": "https://api.smartrecruiters.com/v1/companies/PayzeepSolutions/postings/744000157181175",
+  "location": {
+   "city": "Lagos",
+   "region": "LA",
+   "country": "ng",
+   "latitude": "6.556631599999999",
+   "longitude": "3.3640205",
+   "fullLocation": "Lagos, LA, Nigeria"
+  },
+  "main": "US"
+ },
+ {
+  "token": "PivotageConsulting",
+  "id": "744000153169419",
+  "url": "https://api.smartrecruiters.com/v1/companies/PivotageConsulting/postings/744000153169419",
+  "location": {
+   "city": "Ikeja",
+   "region": "LA",
+   "country": "ng",
+   "latitude": "6.6086383",
+   "longitude": "3.3713898",
+   "fullLocation": "Ikeja, LA, Nigeria"
+  },
+  "main": "US"
+ },
+ {
+  "token": "PivotageConsulting",
+  "id": "744000154041685",
+  "url": "https://api.smartrecruiters.com/v1/companies/PivotageConsulting/postings/744000154041685",
+  "location": {
+   "city": "Lekki",
+   "region": "LA",
+   "country": "ng",
+   "latitude": "6.4585523",
+   "longitude": "3.4752373",
+   "fullLocation": "Lekki, LA, Nigeria"
+  },
+  "main": "US"
+ },
+ {
+  "token": "PivotageConsulting",
+  "id": "744000154043369",
+  "url": "https://api.smartrecruiters.com/v1/companies/PivotageConsulting/postings/744000154043369",
+  "location": {
+   "city": "Lagos",
+   "region": "LA",
+   "country": "ng",
+   "latitude": "6.4501624",
+   "longitude": "3.455379",
+   "fullLocation": "Lagos, LA, Nigeria"
+  },
+  "main": "US"
+ },
+ {
+  "token": "PivotageConsulting",
+  "id": "744000155184384",
+  "url": "https://api.smartrecruiters.com/v1/companies/PivotageConsulting/postings/744000155184384",
+  "location": {
+   "city": "Lekki",
+   "region": "LA",
+   "country": "ng",
+   "latitude": "6.430770799999999",
+   "longitude": "3.4589402",
+   "fullLocation": "Lekki, LA, Nigeria"
+  },
+  "main": "US"
+ },
+ {
+  "token": "PivotageConsulting",
+  "id": "744000155568230",
+  "url": "https://api.smartrecruiters.com/v1/companies/PivotageConsulting/postings/744000155568230",
+  "location": {
+   "city": "Lekki",
+   "region": "LA",
+   "country": "ng",
+   "latitude": "6.430770799999999",
+   "longitude": "3.4589402",
+   "fullLocation": "Lekki, LA, Nigeria"
+  },
+  "main": "US"
+ },
+ {
+  "token": "SGS",
+  "id": "744000153652789",
+  "url": "https://api.smartrecruiters.com/v1/companies/SGS/postings/744000153652789",
+  "location": {
+   "city": "Senai",
+   "region": "Non United States Or Canada",
+   "country": "my",
+   "fullLocation": "Senai, Non United States Or Canada, Malaysia"
+  },
+  "main": "US"
+ },
+ {
+  "token": "StandardBankGroup",
+  "id": "744000153579277",
+  "url": "https://api.smartrecruiters.com/v1/companies/StandardBankGroup/postings/744000153579277",
+  "location": {
+   "city": "Lagos",
+   "region": "LA",
+   "country": "ng",
+   "latitude": "6.4390843",
+   "longitude": "3.4088352",
+   "fullLocation": "Lagos, LA, Nigeria"
+  },
+  "main": "US"
+ },
+ {
+  "token": "StandardBankGroup",
+  "id": "744000155074509",
+  "url": "https://api.smartrecruiters.com/v1/companies/StandardBankGroup/postings/744000155074509",
+  "location": {
+   "city": "Lagos",
+   "region": "LA",
+   "country": "ng",
+   "latitude": "6.4390843",
+   "longitude": "3.4088352",
+   "fullLocation": ", "
+  },
+  "main": null
+ },
+ {
+  "token": "StandardBankGroup",
+  "id": "744000155076370",
+  "url": "https://api.smartrecruiters.com/v1/companies/StandardBankGroup/postings/744000155076370",
+  "location": {
+   "city": "Lagos",
+   "region": "LA",
+   "country": "ng",
+   "latitude": "6.4390843",
+   "longitude": "3.4088352",
+   "fullLocation": ", "
+  },
+  "main": null
+ },
+ {
+  "token": "StandardBankGroup",
+  "id": "744000155124159",
+  "url": "https://api.smartrecruiters.com/v1/companies/StandardBankGroup/postings/744000155124159",
+  "location": {
+   "city": "Lagos",
+   "region": "LA",
+   "country": "ng",
+   "latitude": "6.4390843",
+   "longitude": "3.4088352",
+   "fullLocation": ", "
+  },
+  "main": null
+ },
+ {
+  "token": "StandardBankGroup",
+  "id": "744000155125029",
+  "url": "https://api.smartrecruiters.com/v1/companies/StandardBankGroup/postings/744000155125029",
+  "location": {
+   "city": "Lagos",
+   "region": "LA",
+   "country": "ng",
+   "latitude": "6.4390843",
+   "longitude": "3.4088352",
+   "fullLocation": ", "
+  },
+  "main": null
+ },
+ {
+  "token": "StandardBankGroup",
+  "id": "744000155772789",
+  "url": "https://api.smartrecruiters.com/v1/companies/StandardBankGroup/postings/744000155772789",
+  "location": {
+   "city": "Lagos",
+   "region": "LA",
+   "country": "ng",
+   "latitude": "6.4390843",
+   "longitude": "3.4088352",
+   "fullLocation": "Lagos, LA, Nigeria"
+  },
+  "main": "US"
+ },
+ {
+  "token": "StandardBankGroup",
+  "id": "744000155966829",
+  "url": "https://api.smartrecruiters.com/v1/companies/StandardBankGroup/postings/744000155966829",
+  "location": {
+   "city": "Lagos",
+   "region": "LA",
+   "country": "ng",
+   "latitude": "6.4390843",
+   "longitude": "3.4088352",
+   "fullLocation": "Lagos, LA, Nigeria"
+  },
+  "main": "US"
+ },
+ {
+  "token": "StandardBankGroup",
+  "id": "744000155991775",
+  "url": "https://api.smartrecruiters.com/v1/companies/StandardBankGroup/postings/744000155991775",
+  "location": {
+   "city": "Lagos",
+   "region": "LA",
+   "country": "ng",
+   "latitude": "6.4390843",
+   "longitude": "3.4088352",
+   "fullLocation": "Lagos, LA, Nigeria"
+  },
+  "main": "US"
+ },
+ {
+  "token": "StandardBankGroup",
+  "id": "744000156774779",
+  "url": "https://api.smartrecruiters.com/v1/companies/StandardBankGroup/postings/744000156774779",
+  "location": {
+   "city": "Lagos",
+   "region": "LA",
+   "country": "ng",
+   "latitude": "6.4390843",
+   "longitude": "3.4088352",
+   "fullLocation": "Lagos, LA, Nigeria"
+  },
+  "main": "US"
+ },
+ {
+  "token": "StandardBankGroup",
+  "id": "744000156814389",
+  "url": "https://api.smartrecruiters.com/v1/companies/StandardBankGroup/postings/744000156814389",
+  "location": {
+   "city": "Lagos",
+   "region": "LA",
+   "country": "ng",
+   "latitude": "6.4390843",
+   "longitude": "3.4088352",
+   "fullLocation": "Lagos, LA, Nigeria"
+  },
+  "main": "US"
+ },
+ {
+  "token": "StandardBankGroup",
+  "id": "744000157183709",
+  "url": "https://api.smartrecruiters.com/v1/companies/StandardBankGroup/postings/744000157183709",
+  "location": {
+   "city": "Lagos",
+   "region": "LA",
+   "country": "ng",
+   "latitude": "6.4390843",
+   "longitude": "3.4088352",
+   "fullLocation": "Lagos, LA, Nigeria"
+  },
+  "main": "US"
+ },
+ {
+  "token": "TechVedika",
+  "id": "744000154959989",
+  "url": "https://api.smartrecruiters.com/v1/companies/TechVedika/postings/744000154959989",
+  "location": {
+   "city": "Hyderabad",
+   "region": "Telangana",
+   "country": "dz",
+   "fullLocation": "Hyderabad, Telangana, Algeria"
+  },
+  "main": "IN"
+ },
+ {
+  "token": "ThePlace1",
+  "id": "744000152481767",
+  "url": "https://api.smartrecruiters.com/v1/companies/ThePlace1/postings/744000152481767",
+  "location": {
+   "city": "Lagos",
+   "region": "LA",
+   "country": "ng",
+   "latitude": "6.44868",
+   "longitude": "3.476008",
+   "fullLocation": "Lagos, LA, Nigeria"
+  },
+  "main": "US"
+ },
+ {
+  "token": "ThePlace1",
+  "id": "744000154839819",
+  "url": "https://api.smartrecruiters.com/v1/companies/ThePlace1/postings/744000154839819",
+  "location": {
+   "city": "Lagos",
+   "region": "LA",
+   "country": "ng",
+   "latitude": "6.4441364",
+   "longitude": "3.4818088",
+   "fullLocation": "Lagos, LA, Nigeria"
+  },
+  "main": "US"
+ },
+ {
+  "token": "ThePlace1",
+  "id": "744000157237009",
+  "url": "https://api.smartrecruiters.com/v1/companies/ThePlace1/postings/744000157237009",
+  "location": {
+   "city": "Lagos",
+   "region": "LA",
+   "country": "ng",
+   "latitude": "6.4437831",
+   "longitude": "3.4596341",
+   "fullLocation": "Lagos, LA, Nigeria"
+  },
+  "main": "US"
+ },
+ {
+  "token": "TurnerTownsend",
+  "id": "744000154213355",
+  "url": "https://api.smartrecruiters.com/v1/companies/TurnerTownsend/postings/744000154213355",
+  "location": {
+   "city": "Auckland",
+   "region": "Australia & New Zealand",
+   "country": "nz",
+   "latitude": "-36.8492",
+   "longitude": "174.7653",
+   "fullLocation": "Auckland, Australia & New Zealand, New Zealand"
+  },
+  "main": "AU"
+ },
+ {
+  "token": "TurnerTownsend",
+  "id": "744000155159875",
+  "url": "https://api.smartrecruiters.com/v1/companies/TurnerTownsend/postings/744000155159875",
+  "location": {
+   "city": "Auckland",
+   "region": "Australia & New Zealand",
+   "country": "nz",
+   "latitude": "-36.8492",
+   "longitude": "174.7653",
+   "fullLocation": "Auckland, Australia & New Zealand, New Zealand"
+  },
+  "main": "AU"
+ },
+ {
+  "token": "UniversidadDelValleDeGuatemala",
+  "id": "744000156378379",
+  "url": "https://api.smartrecruiters.com/v1/companies/UniversidadDelValleDeGuatemala/postings/744000156378379",
+  "location": {
+   "city": "Managua",
+   "region": "MN",
+   "country": "ni",
+   "latitude": "12.1149926",
+   "longitude": "-86.2361744",
+   "fullLocation": "Managua, MN, Nicaragua"
+  },
+  "main": "US"
+ },
+ {
+  "token": "UniversidadDelValleDeGuatemala",
+  "id": "744000156383739",
+  "url": "https://api.smartrecruiters.com/v1/companies/UniversidadDelValleDeGuatemala/postings/744000156383739",
+  "location": {
+   "city": "Managua",
+   "region": "MN",
+   "country": "ni",
+   "latitude": "12.1149926",
+   "longitude": "-86.2361744",
+   "fullLocation": "Managua, MN, Nicaragua"
+  },
+  "main": "US"
+ },
+ {
+  "token": "UniversidadDelValleDeGuatemala",
+  "id": "744000156399651",
+  "url": "https://api.smartrecruiters.com/v1/companies/UniversidadDelValleDeGuatemala/postings/744000156399651",
+  "location": {
+   "city": "Managua",
+   "region": "MN",
+   "country": "ni",
+   "latitude": "12.1149926",
+   "longitude": "-86.2361744",
+   "fullLocation": "Managua, MN, Nicaragua"
+  },
+  "main": "US"
+ },
+ {
+  "token": "Wabtec",
+  "id": "3743990016105496",
+  "url": "https://api.smartrecruiters.com/v1/companies/Wabtec/postings/3743990016105496",
+  "location": {
+   "city": "Astana",
+   "region": "AK",
+   "country": "kz",
+   "fullLocation": "Astana, AK, Kazakhstan"
+  },
+  "main": "US"
+ },
+ {
+  "token": "Dominos",
+  "id": "744000155627289",
+  "url": "https://api.smartrecruiters.com/v1/companies/Dominos/postings/744000155627289",
+  "location": {
+   "city": "Biloxi",
+   "region": "MS",
+   "country": "dz",
+   "latitude": "30.4421539",
+   "longitude": "-88.9450073",
+   "fullLocation": "Biloxi, MS, Algeria"
+  },
+  "main": "US"
+ }
+]

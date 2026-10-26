@@ -61,6 +61,7 @@ import {
   leverApi,
   ldBaseSalaryText,
   statesTheSameMoney,
+  payToReparse,
   sweepRefusesAnnual,
   type JobPosting,
   NEGATED_REMOTE_SOURCE,
@@ -149,7 +150,7 @@ const BUILD_VERSION = "2026-09-09.95"; // per-version deploy notes: docs/job-boa
 // Rationale: docs/job-board-index-notes.md#n003-stored-names-do-not-heal-themselves-the-refr
 
 // Rationale: docs/job-board-index-notes.md#n483-const-name_sync_version
-const NAME_SYNC_VERSION = 4;
+const NAME_SYNC_VERSION = 5;
 // Rationale: docs/job-board-index-notes.md#n484-boards-whose-catalog-display-name-was
 
 // Rationale: docs/job-board-index-notes.md#n1135-const-renamed_tokens-readonly-string
@@ -1429,7 +1430,7 @@ async function fetchIcims(s: JobSource, startOffset: number, pageSize: number): 
   // Rationale: docs/job-board-index-notes.md#n517-const-fetchpage-async-page-number
   const fetchPage = async (page: number) => {
     try {
-      const res = await fetchWithTimeout(`https://${s.token}/api/jobs?page=${page}&limit=${pageSize}`, {
+      const res = await fetchWithTimeout(`https://${s.token}/api/jobs?page=${page}&limit=${pageSize}${s.brand ? `&brand=${encodeURIComponent(s.brand)}` : ""}`, {
         headers: { Accept: "application/json" },
       });
       if (!res.ok) { discardBody(res); throw new Error(`HTTP ${res.status}`); }
@@ -3882,9 +3883,10 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           if (sameMoney || firstVendorRead || ourRewrite) patch.salary = nextPay;
           else put("salary", row.salary, prev.salary, false);
           // Rationale: docs/job-board-index-notes.md#n113-patch-salary-undefined
-          if (patch.salary !== undefined) {
+          const reparse = payToReparse(patch, row.salary, prev.salary);
+          if (reparse !== undefined) {
             const rp = parseSalaryStructured(
-              row.salary as string | null,
+              reparse,
               (patch.country ?? row.country ?? prev.country) as string | null | undefined,
               // Rationale: docs/job-board-index-notes.md#n114-title-row-title-as-string-null-null-d
               { title: (row.title as string | null) ?? null, description: lightDescs ? null : (descs.get(id) ?? null), employmentType: scheduleWordsById.get(id) ?? null },
