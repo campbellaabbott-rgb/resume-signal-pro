@@ -12,7 +12,7 @@
 import fs from "node:fs";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { LABEL_NAMED_VENDORS, adpWelcomeName, ashbyOrganizationName, censusNameReason, ukgName } from "./census-names.mjs";
+import { LABEL_NAMED_VENDORS, adpWelcomeName, ashbyOrganizationName, censusNameReason, pickAshbyName, ukgName } from "./census-names.mjs";
 const execFileP = promisify(execFile);
 
 const [, , CENSUS_PATH, OUT] = process.argv;
@@ -165,15 +165,16 @@ const verifiers = {
   // The posting API carries no organization name; the hosted jobs page embeds
   // the organization record, whose name field is the vendor's own. When that
   // record is empty the page title is the bare vendor word, so the title is
-  // never read; the board's own slug is the fallback, and the census rule
-  // below refuses it when it is a label.
+  // never read; the board's own slug is the fallback (and wins over an
+  // organization name that does not match it), and the census rule below
+  // refuses it when it is a label.
   ashby: async (t) => {
     const d = await probe(`https://api.ashbyhq.com/posting-api/job-board/${t}`);
     const jobs = d?.jobs;
     if (!Array.isArray(jobs) || jobs.length < MIN_POSTINGS) return null;
     const page = await probe(`https://jobs.ashbyhq.com/${encodeURIComponent(t)}`, true);
-    const org = ashbyOrganizationName(page);
-    return { name: (org || prettify(t)).slice(0, 60), count: jobs.length, nameFrom: org ? "organization.name" : "token" };
+    const pick = pickAshbyName(ashbyOrganizationName(page), t);
+    return { name: pick.name, count: jobs.length, nameFrom: pick.from };
   },
   smartrecruiters: async (t) => {
     const d = await probe(`https://api.smartrecruiters.com/v1/companies/${encodeURIComponent(t)}/postings?limit=100`);

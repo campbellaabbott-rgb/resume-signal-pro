@@ -40,6 +40,7 @@ import {
   nameAgreesWithHost,
   oraclePickName,
   oracleSiteName,
+  pickAshbyName,
   pickUkgName,
   siteNameFromHomepage,
   ukgBoardFields,
@@ -86,6 +87,25 @@ describe("UKG: the board's own Name, checked against the employer's footer domai
       .toBe("Paradies Lagardère");
     expect(pickUkgName({ boardName: "Craft", footerUrl: "", siteName: "" }).name).toBe("");
     expect(pickUkgName({ boardName: "ALL STORES", footerUrl: "http://www.careersatbig5.com", siteName: "big5careersite" }).name).toBe("");
+  });
+
+  // Recorded on the 2026-10-25 population read (board Name, footer link, homepage name).
+  it("the tenant code the vendor built from the legal name can vouch for a board Name the footer does not show", () => {
+    expect(pickUkgName({ boardName: "Continental Careers", footerUrl: "https://www.cproperties.com/you-belong-here", siteName: "", tenant: "CON1051CONPC" }).name)
+      .toBe("Continental");
+    expect(pickUkgName({ boardName: "Craft", footerUrl: "https://www.austin-ind.com", siteName: "", tenant: "AUS1003AUIN" }).name).toBe("");
+  });
+
+  it("a footer that points at a video, a CDN or a compliance site is not the employer's domain", () => {
+    expect(pickUkgName({ boardName: "Redner's Jobs", footerUrl: "https://youtu.be/lRu3qfpYPsI", siteName: "" }).name).toBe("Redner's");
+    expect(pickUkgName({ boardName: "Career Opportunities", footerUrl: "https://www.e-verify.gov/", siteName: "E-Verify" }).name).toBe("");
+  });
+
+  it("a homepage name in segments gives the segment its domain spells", () => {
+    expect(pickUkgName({
+      boardName: "Denny's Career Opportunities", footerUrl: "https://rremcrestaurants.com",
+      siteName: "RREMC Restaurants | American Restaurant in FL, VA, GA, IN, & IL",
+    }).name).toBe("RREMC Restaurants");
   });
 
   it("a board Name that disagrees with the employer's domain is not trusted on its own", () => {
@@ -136,6 +156,17 @@ describe("Oracle: SeoOrganizationName first, from any site; a site label is refu
     // 159 sites with many names: the per-site split decides, the tenant gets no one name
     expect(eexs.length).toBe(159);
     expect(oraclePickName(eexs).status).toBe("ambiguous");
+  });
+
+  it("an admin screen's tags come off a site name and the rest is judged; a label site names no one", () => {
+    // Site names recorded from the 2026-10-25 read of every catalogue tenant.
+    expect(oracleSiteName({ SiteName: "CareOne Group NEW", StatusCode: "ORA_ACTIVE" })).toBe("CareOne Group");
+    expect(oracleSiteName({ SiteName: "Trabaje con nosotros | Copa Airlines - NEW", StatusCode: "ORA_ACTIVE" })).toBe("Copa Airlines");
+    expect(oracleSiteName({ SiteName: "Silver Fern Farms External Careers Site - 2022", StatusCode: "ORA_ACTIVE" })).toBe("Silver Fern Farms");
+    expect(oracleSiteName({ SiteName: "Career Site  - New Applicants", StatusCode: "ORA_ACTIVE" })).toBeNull();
+    expect(oracleSiteName({ SiteName: "Contingent Workers", StatusCode: "ORA_ACTIVE" })).toBeNull();
+    expect(oracleSiteName({ SiteName: "Cornwall Career Site", SeoOrganizationName: "Cornwall Council Jobs and Careers", StatusCode: "ORA_ACTIVE" }))
+      .toBe("Cornwall Council");
   });
 
   it("both resolvers take their rule from the census module and read the whole site list", () => {
@@ -213,12 +244,20 @@ describe("Ashby: the organization record's name, never the page title", () => {
 
   it("a page with an organization record yields its name", () => {
     expect(ashbyOrganizationName(fixture("ashby-page-vanta.json").html)).toBe("Vanta");
+    expect(pickAshbyName("Vanta", "vanta")).toMatchObject({ name: "Vanta", from: "organization.name" });
+  });
+
+  it("an organization name that does not match the board's slug does not replace the slug's name", () => {
+    expect(pickAshbyName("Armitage Labs", "creem").name).toBe("Creem");
+    expect(pickAshbyName("Teleport", "goteleport").name).toBe("Teleport");
+    expect(pickAshbyName("Binance.US", "binance.us").name).toBe("Binance.US");
+    expect(pickAshbyName("", "lemonade").name).toBe("Lemonade");
   });
 
   it("verify-all reads the hosted page's organization record", () => {
     const verify = code("scripts/verify-all.mjs");
     const ashby = verify.slice(verify.indexOf("  ashby: async (t) =>"), verify.indexOf("  smartrecruiters: async (t) =>"));
-    expect(ashby).toMatch(/ashbyOrganizationName\(page\)/);
+    expect(ashby).toMatch(/pickAshbyName\(ashbyOrganizationName\(page\), t\)/);
     expect(ashby).not.toMatch(/<title>/);
   });
 });

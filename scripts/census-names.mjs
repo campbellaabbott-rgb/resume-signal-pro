@@ -27,10 +27,15 @@
 // rule (scripts/prerender-names.mjs: repair a trailing career-site label,
 // then refuse what cannot be anyone's name) is applied unchanged, and the
 // census adds the label shapes that rule does not know, because a census
-// writes names before any human has looked at them: dated and versioned
-// labels, brand-asset words, template and test sites, an image word at the
-// end, and names made only of label words. A refused name is never shortened
-// into a name: the census writes nothing, and the board waits for one.
+// writes names before any human has looked at them: names made only of label
+// words, account numbers, slugs and an image word at the end; and, in text
+// read from a LABEL field (a board's label, a career-site name, welcome
+// prose), template and test sites. Scaffolding comes off first ("Careers",
+// "Career Site", "Jobs at", and in a label field the version, date and
+// brand-asset tags an admin screen appends: "NEW", "V2", "2022", "Branding"),
+// and what remains is judged as a name. A remainder that is not a name is
+// refused whole and the census writes nothing: "All Jobs" never becomes
+// "All", and the board waits for a name.
 //
 // The bake's own gate is not touched by this module. It stays as narrow as it
 // is (it judges pages already on the index); the census is stricter because
@@ -54,7 +59,7 @@ export function decodeEntities(s) {
 const tidy = (s) => decodeEntities(s)
   .replace(/[\u200b\u200e\u200f\ufeff]/g, "")
   .replace(/[\s\u00a0]+/g, " ")
-  .replace(/^[\s,;:|\u2013\u2014-]+|[\s,;:|\u2013\u2014-]+$/g, "")
+  .replace(/^[\s,;:|_\u2013\u2014-]+|[\s,;:|_\u2013\u2014-]+$/g, "")
   .trim();
 
 /**
@@ -76,6 +81,11 @@ const LABEL_WORDS = new Set([
   "companies", "us", "team", "work", "global", "emea", "apac", "latam", "template",
   "minimal", "testing", "test", "demo", "sandbox", "sample", "logo",
   "header", "footer",
+  // the same scaffolding in the languages Oracle and SmartRecruiters sites use
+  "trabaje", "trabaja", "trabalhe", "con", "conosco", "nosotros", "carreras",
+  "empleos", "empleo", "vagas", "emplois", "emploi", "carri\u00e8res", "carrieres",
+  "rejoignez", "offres", "karriere", "stellenangebote", "stellen",
+  "vacatures", "werken",
 ]);
 /**
  * The audiences a career site is built for. A site named only for its
@@ -88,12 +98,29 @@ const LABEL_WORDS = new Set([
 const AUDIENCE_WORDS = new Set([
   "student", "students", "staff", "faculty", "internship", "internships",
   "intern", "interns", "campus", "volunteer", "volunteers", "seasonal",
-  "community", "communities", "training", "employees",
+  "community", "communities", "training", "employees", "contingent",
+  "workers", "worker", "contractors", "contractor",
 ]);
+/** Words that only a label field uses as a label ("Career Site - New Applicants"); a company may be "New Opportunities Inc". */
+const LABEL_FIELD_WORDS = new Set(["new", "applicants", "candidates", "existing", "current", "open", "other", "others"]);
+/**
+ * The parts of an employer a label field names a board after ("Retail
+ * Stores", "Hospital & Other", "Property Management - Hospitality"). In a
+ * label field, a name made only of these, the slice words below and the
+ * label words names a part of an employer, not the employer.
+ */
+const DIVISION_WORDS = new Set([
+  "hospital", "hospitals", "store", "stores", "restaurant", "restaurants",
+  "warehouse", "warehouses", "distribution", "property", "properties",
+  "management", "plant", "plants", "facility", "facilities", "clinic",
+  "clinics", "division", "department", "casino", "hotel", "hotels", "roles",
+]);
+/** A legal suffix marks a company's name, so a name carrying one is never "a part of an employer" ("Warehouse Services, Inc."). */
+const LEGAL_SUFFIX = new Set(["inc", "llc", "ltd", "corp", "corporation", "plc", "llp", "pllc", "gmbh", "lp", "co", "company", "sa", "ag", "bv", "nv", "pty"]);
 /** Words that join or qualify a name and carry no identity of their own. */
 const JOINERS = new Set([
   "and", "of", "the", "a", "an", "at", "for", "with", "to", "in", "our",
-  "your", "we", "now", "here", "only",
+  "your",
   "llc", "inc", "ltd", "corp", "plc", "llp", "pllc", "gmbh",
 ]);
 /**
@@ -110,7 +137,11 @@ const SLICE_WORDS = new Set([
   "clinical", "nursing", "university", "college", "graduate", "graduates",
   "hourly", "salaried", "temporary", "worldwide", "regional", "local",
   "north", "south", "east", "west", "usa", "america", "americas", "uk",
-  "europe", "new",
+  "europe", "new", "canada", "mexico", "india", "china", "germany", "france",
+  "australia", "ireland", "japan", "brazil",
+  // a role is not an employer ("Attorney Opportunities")
+  "attorney", "attorneys", "nurse", "nurses", "physician", "physicians",
+  "driver", "drivers", "teacher", "teachers", "technician", "technicians",
 ]);
 
 const wordsOf = (s) => String(s).toLowerCase()
@@ -132,6 +163,13 @@ const VERSION_TAIL = /(?:^|[\s\-\u2013\u2014|:])(?:new|old|v\d+|copy|draft)\s*$|
 const BRAND_TAIL = /\b(?:brand|branding|rebrand(?:ing)?|refresh|updates?)\s*$/i;
 /** A year or a packed date standing alone ("Recruiting 2025", "QSAC 01/13/2023", "SCF New Branding 2018"). */
 const DATED = /(?:^|[^\w.])(?:19[89]\d|20[0-4]\d)(?![\w.])|(?:^|[^\w.])\d{6,8}(?![\w.])/;
+/**
+ * A board label written as a sentence or a slogan: one that addresses the
+ * reader ("Your Next Career", "Discover Your Potential at ...", "*Thanks for
+ * your interest in ...") or opens with an instruction. "Our Lady of ..." is a
+ * name and is spared.
+ */
+const SENTENCE = /^\W*(?:your|we|we're|join|start|find|explore|discover|search|view|apply|come|become|grow|build|make|thanks?|thank\s+you|welcome|looking)\b|\b(?:your|thank\s+you|thanks\s+for)\b|^\W*our\b(?!\s+lady\b)/i;
 /** Template, test and demo sites ("Community Template", "Tiffany - SR Testing", "S&C Minimal"). */
 const TEST_SITE = /\b(?:templates?|sandbox|demo|sample|placeholder|test|minimal)\b|[-\u2013\u2014|:]\s*(?:\S+\s+)?testing\s*$|\b(?:sr|uat|qa|dev|stage|staging)\s+testing\b/i;
 
@@ -153,14 +191,17 @@ export function censusNameReason(raw, { fromLabel = false } = {}) {
   const words = wordsOf(name);
   if (words.length === 0) return "empty";
   if (words.every((w) => /^\d+$/.test(w)) && words.join("").length >= 5) return "account number";
-  if (/^[a-z0-9]+(?:careers?|careersite|jobs|site|portal)$/.test(name) && !LABEL_WORDS.has(name)) return "slug";
+  if (/^[a-z0-9]+(?:careers|careersite|jobsite|portal)$/.test(name) && !LABEL_WORDS.has(name)) return "slug";
   const core = words.filter((w) => !JOINERS.has(w));
   if (!core.length) return "label words only";
-  const labelOrAudience = core.length && core.every((w) => LABEL_WORDS.has(w) || AUDIENCE_WORDS.has(w));
+  const labelOrAudience = core.every((w) => LABEL_WORDS.has(w) || AUDIENCE_WORDS.has(w) || (fromLabel && LABEL_FIELD_WORDS.has(w)));
   if (labelOrAudience && (fromLabel || core.some((w) => LABEL_WORDS.has(w)))) return "label words only";
   if (core.length === 1 && SLICE_WORDS.has(core[0])) return "generic word";
   if (core.length >= 2 && IMAGE_TAIL.test(name)) return "logo or image text";
   if (!fromLabel) return null;
+  const legalName = words.some((w) => LEGAL_SUFFIX.has(w));
+  if (!legalName && core.every((w) => LABEL_WORDS.has(w) || AUDIENCE_WORDS.has(w) || LABEL_FIELD_WORDS.has(w) || SLICE_WORDS.has(w) || DIVISION_WORDS.has(w))) return "names a part of an employer";
+  if (SENTENCE.test(name)) return "a sentence, not a name";
   if (TEST_SITE.test(name)) return "template or test site";
   if (DATED.test(name)) return "dated label";
   if (VERSION_TAIL.test(name)) return "version label";
@@ -169,29 +210,67 @@ export function censusNameReason(raw, { fromLabel = false } = {}) {
   return null;
 }
 
-/** Vendor scaffolding around a name: "Jobs at X", "X Careers", "X Career Opportunities". */
+/**
+ * Vendor scaffolding around a name: "Jobs at X", "X Careers", "X Career
+ * Opportunities", "X - Support Staff Openings". The suffix must stand apart
+ * from the name ("EniJobs" keeps its last letters).
+ */
 const AFFIX_PREFIX = /^(?:jobs?|careers?|career\s+opportunities|opportunities|openings|positions|vacancies|work)\s+(?:at|@|with|for)\s+/i;
-const AFFIX_SUFFIX = /\s*[-\u2013\u2014|:]?\s*(?:career\s+opportunities|job\s+opportunities|employment\s+opportunities|opportunities|careers?\s+(?:site|page|portal|center|centre)|career|careers|jobs?|job\s+board|job\s+openings|openings|positions|vacancies|talent\s+community)\s*$/i;
+const AFFIX_SUFFIX = /(?:^|[\s\-\u2013\u2014|:_]+)(?:(?:(?:support\s+)?staff|faculty|intern(?:ship)?s?|students?|executive|experienced|professionals?|additional|official|training|campus|graduate|hourly|salaried|corporate|external|internal)\s+)?(?:career\s+opportunities|job\s+opportunities|employment\s+opportunities|opportunities|careers?\s+(?:site|page|portal|center|centre|section)(?:\s+\d{1,2})?|careers?\s+website|careersite|candidate\s+experience(?:\s+site)?|(?:jobs?|careers?)\s+(?:and|&)\s+(?:jobs?|careers?|opportunities)|career|careers|jobs?(?:\s+portal)?|job\s+board|job\s+openings|job\s+listings?|openings|positions|vacancies|talent\s+community)\s*$/i;
+/**
+ * In a label field, the tags a vendor's admin screen appends to an asset's
+ * name: a version ("NEW", "V2"), a date ("2022", "01/13/2023", "051816"), a
+ * brand-asset word ("Branding", "Refresh", "updates"). They come off, and
+ * what remains is judged as a name ("CareOne Group NEW" is CareOne Group,
+ * "Westminster Brand 051816" is Westminster, "2024 New" is nothing).
+ */
+const LABEL_TAG_TAIL = /(?:^|[\s\-\u2013\u2014|:_/(]+)(?:new|old|v\d+|copy|draft|updated?|updates|brand|branding|rebrand(?:ing)?|refresh|seasonal|hourly|salaried|interns?|internships?|volunteers?|open|all|19[89]\d|20[0-4]\d|\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}|\d{1,2}[/.-]\d{4}|\d{4}-\d{2}-\d{2}|\d{6,8})\)?\s*$/i;
+/** A region tag after a separator ("Barnes - US", "Store Opportunities - Canada"). */
+const REGION_TAIL = /\s*[-\u2013\u2014|]\s*(?:us|usa|u\.s\.?|uk|canada|emea|apac|latam|na|global|international|north\s+america)\s*$/i;
+/** In a label field, a reader-facing qualifier in front of the label ("Current SEIU Opportunities", "All Opportunities at EOS", "External SA Recycling"). */
+const LABEL_LEAD = /^(?:current\s+|external\s+|open\s+|(?:all|available)\s+(?=(?:job|jobs|career|careers|opportunities|opportunity|openings|positions|vacancies)\b))/i;
+/** "all O'Neal Industries' Affiliates", "All ELLWOOD Groups": the employer is the one named inside. */
+const ALL_OF = /^all\s+(.+?)['\u2019]?\s+(?:affiliates|locations|companies|groups|brands)$/i;
+const COPY_NUMBER = /\s*\(\d{1,2}\)\s*$/;
+
+/**
+ * A site name in segments ("Work with us | Copa Airlines"): when every
+ * segment but one is scaffolding and that one is a name, the name is the
+ * segment. Otherwise the text is judged whole.
+ */
+function nameSegment(text, opts) {
+  const parts = text.split(/\s+[|\u2013\u2014-]\s+|\s*\|\s*$/).map((x) => x.trim()).filter(Boolean);
+  if (parts.length < 2) return text;
+  const named = parts.filter((x) => censusName(x, opts).name);
+  return named.length === 1 ? named[0] : text;
+}
 
 /**
  * The name the census may write for one raw value, or "" with the reason it
- * may not. Scaffolding words come off and the bake's trailing-label repair
- * runs, but only when what remains is a name: "All Jobs" is refused whole, it
- * never becomes "All", and text that is nothing but scaffolding ("our Career
- * Center") is refused.
+ * may not. Scaffolding comes off (and in a label field the admin screen's
+ * tags) and the bake's trailing-label repair runs, but only when what remains
+ * is a name: "All Jobs" is refused whole, it never becomes "All", and text
+ * that is nothing but scaffolding ("our Career Center") is refused.
  */
 export function censusName(raw, opts = {}) {
-  const whole = tidy(raw);
+  let whole = tidy(raw);
+  // A label field's underscores stand for spaces ("UNIPOL_External Career Site").
+  if (opts.fromLabel) whole = tidy(whole.replace(/_+/g, " "));
   if (!whole) return { name: "", reason: "empty", raw: whole };
-  let name = whole;
-  for (let pass = 0; pass < 3; pass++) {
-    const next = name.replace(AFFIX_PREFIX, "").replace(AFFIX_SUFFIX, "").trim();
+  // The bake's verdict on the whole text first, as bakeEmployerName gives it:
+  // "Only External Postings" is a label whole, whatever its end looks like.
+  const wholeWhy = unpublishableNameReason(whole);
+  if (wholeWhy) return { name: "", reason: wholeWhy, raw: whole };
+  let name = nameSegment(whole, opts);
+  for (let pass = 0; pass < 6; pass++) {
+    let next = tidy(name.replace(COPY_NUMBER, "").replace(AFFIX_PREFIX, "").replace(AFFIX_SUFFIX, ""));
+    if (opts.fromLabel) next = tidy(next.replace(ALL_OF, "$1").replace(LABEL_LEAD, "").replace(REGION_TAIL, "").replace(LABEL_TAG_TAIL, "").replace(/(?<=s)['\u2019]$/, ""));
     if (!next) return { name: "", reason: "label words only", raw: whole };
     if (next === name) break;
     name = next;
   }
-  name = repairEmployerName(name).name.replace(/\s*\(\d{1,2}\)\s*$/, "");
-  const reason = censusNameReason(name, opts) ?? censusNameReason(whole, opts);
+  name = tidy(repairEmployerName(name).name);
+  const reason = censusNameReason(name, opts);
   if (reason) return { name: "", reason, raw: whole };
   return { name, reason: null, raw: whole };
 }
@@ -296,7 +375,7 @@ export function ukgBoardFields(html) {
 }
 
 /** Hosts that are never an employer's own site: the vendor, social networks, job sites, shorteners. */
-const NOT_EMPLOYER_HOST = /(?:^|\.)(?:ultipro\.com|ukg\.com|ultimatesoftware\.com|linkedin\.com|facebook\.com|twitter\.com|x\.com|instagram\.com|youtube\.com|glassdoor\.com|indeed\.com|google\.com|bit\.ly|adp\.com|oraclecloud\.com|ashbyhq\.com)$/i;
+const NOT_EMPLOYER_HOST = /(?:^|\.)(?:ultipro\.com|ukg\.com|ultimatesoftware\.com|linkedin\.com|facebook\.com|twitter\.com|x\.com|instagram\.com|youtube\.com|youtu\.be|vimeo\.com|glassdoor\.com|indeed\.com|google\.com|goo\.gl|forms\.gle|bit\.ly|tinyurl\.com|adp\.com|oraclecloud\.com|ashbyhq\.com|squarespace\.com|squarespace-cdn\.com|wixstatic\.com|buttercms\.com|cloudfront\.net|amazonaws\.com|googleusercontent\.com|sharepoint\.com|hubspotusercontent[\w-]*\.net|e-verify\.gov|uscis\.gov|dol\.gov|eeoc\.gov)$|^(?:cdn|static|assets|media|img|images)\d*\./i;
 
 /** The employer's host from a footer link, or "" when the link is missing or points elsewhere. */
 export function employerHost(url) {
@@ -329,7 +408,15 @@ const NAME_STOP = new Set(["the", "of", "and", "for", "a", "an", "at", "inc", "l
  * against axiawh.com and "Hilltop Community Resources" against htop.org agree.
  */
 export function nameAgreesWithHost(name, host) {
-  const label = hostLabel(host);
+  return nameAgreesWithLabel(name, hostLabel(host));
+}
+
+/** The same test against a vendor slug ("binance.us", "sf-tensor", "goteleport"). */
+export function nameAgreesWithSlug(name, slug) {
+  return nameAgreesWithLabel(name, String(slug ?? "").toLowerCase().replace(/^eu~/, "").replace(/[^a-z0-9]/g, ""));
+}
+
+function nameAgreesWithLabel(name, label) {
   if (label.length < 2) return false;
   const words = wordsOf(name).map((w) => w.replace(/'/g, "")).filter((w) => w && !NAME_STOP.has(w));
   if (!words.length) return false;
@@ -380,14 +467,47 @@ export function siteNameFromHomepage(html) {
  * employer's footer domain (or there is no footer); otherwise the employer's
  * homepage names itself; otherwise the board is left unnamed.
  */
-export function pickUkgName({ boardName, footerUrl, siteName }) {
+/**
+ * Whether a name fits the UKG tenant code, which the vendor builds from the
+ * employer's legal name: three letters, digits, an abbreviation
+ * ("CON1051CONPC" for Continental Properties, "AUS1003AUIN" for Austin
+ * Industries). Evidence that a board Name is its employer's when the footer
+ * domain does not show it; never a name source.
+ */
+export function nameAgreesWithTenant(name, tenant) {
+  const m = /^([a-z]{3})\d+([a-z0-9]*)$/i.exec(String(tenant ?? ""));
+  if (!m) return false;
+  const letters = wordsOf(name).filter((w) => !NAME_STOP.has(w)).join("").replace(/'/g, "");
+  if (letters.startsWith(m[1].toLowerCase())) return true;
+  return m[2].length >= 3 && nameAgreesWithLabel(name, m[2].toLowerCase());
+}
+
+/** The name a homepage gives itself, cut to the segment that names its own domain ("RREMC Restaurants | American ..."). */
+function siteNameFor(siteName, host) {
+  const whole = censusName(siteName);
+  const parts = String(siteName ?? "").split(/\s+[|\u2013\u2014-]\s+/).map((x) => censusName(x).name).filter(Boolean);
+  if (parts.length < 2) return whole.name;
+  // How much of a segment the domain spells: the share of its words inside the
+  // domain label, or all of it when its initials are the label.
+  const label = hostLabel(host);
+  const fit = (x) => {
+    const w = wordsOf(x).map((t) => t.replace(/'/g, "")).filter((t) => t && !NAME_STOP.has(t));
+    if (!w.length) return 0;
+    if (w.map((t) => t[0]).join("") === label) return 1;
+    return w.filter((t) => t.length >= 3 && label.includes(t)).length / w.length;
+  };
+  const ranked = parts.filter((x) => nameAgreesWithHost(x, host)).sort((a, b) => fit(b) - fit(a) || b.length - a.length);
+  return ranked[0] ?? whole.name;
+}
+
+export function pickUkgName({ boardName, footerUrl, siteName, tenant = "" }) {
   const host = employerHost(footerUrl);
   const board = censusName(boardName, { fromLabel: true });
-  if (board.name && (!host || nameAgreesWithHost(board.name, host))) {
-    return { name: board.name, evidence: host ? `jobBoard.Name, agrees with ${host}` : "jobBoard.Name (no footer link)" };
-  }
-  const site = censusName(siteName);
-  if (host && site.name) return { name: site.name, evidence: `${host} names itself` };
+  if (board.name && !host) return { name: board.name, evidence: "jobBoard.Name (no footer link)" };
+  if (board.name && nameAgreesWithHost(board.name, host)) return { name: board.name, evidence: `jobBoard.Name, agrees with ${host}` };
+  if (board.name && nameAgreesWithTenant(board.name, tenant)) return { name: board.name, evidence: `jobBoard.Name, agrees with tenant ${tenant}` };
+  const site = host ? siteNameFor(siteName, host) : "";
+  if (site) return { name: site, evidence: `${host} names itself` };
   const why = board.name
     ? `jobBoard.Name "${board.raw}" does not match ${host}`
     : `jobBoard.Name "${board.raw}": ${board.reason}`;
@@ -402,7 +522,7 @@ export function pickUkgName({ boardName, footerUrl, siteName }) {
 export async function ukgName(boardUrl, getText) {
   const html = await getText(boardUrl);
   if (!html) return null;
-  const fields = ukgBoardFields(html);
+  const fields = { ...ukgBoardFields(html), tenant: /\/([^/]+)\/JobBoard\//i.exec(`${boardUrl}/`)?.[1] ?? "" };
   const host = employerHost(fields.footerUrl);
   const first = pickUkgName({ ...fields, siteName: "" });
   if (first.name || !host) return { ...first, ...fields };
@@ -422,6 +542,21 @@ export function ashbyOrganizationName(html) {
   const data = assignedObject(html, "__appData");
   const name = data?.organization?.name;
   return typeof name === "string" ? name.trim() : "";
+}
+
+/**
+ * An Ashby board's name: the organization record's name when it plainly
+ * names the board's own slug's employer, else the slug made readable (the
+ * census's long-standing fallback), which the census rule then judges. An
+ * organization name that disagrees with the slug is usually a legal entity
+ * or a renamed account ("Armitage Labs" on creem, "cfo.ai" on runway), so it
+ * is not written over the name the employer gave its board.
+ */
+export function pickAshbyName(orgName, slug) {
+  const prettify = (t) => String(t).replace(/^eu~/, "").replace(/[-_]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()).trim().slice(0, 60);
+  const org = String(orgName ?? "").trim();
+  if (org && nameAgreesWithSlug(org, slug)) return { name: org.slice(0, 60), from: "organization.name" };
+  return { name: prettify(slug), from: org ? `slug (organization.name "${org}" does not match it)` : "slug (no organization record)" };
 }
 
 /** Words that may sit inside a name between its capitalised words ("City of Boston", "Bed Bath & Beyond"). */
