@@ -195,7 +195,9 @@ describe("the Builder price is formatted the way every other price is", () => {
     expect(container.textContent ?? "").not.toContain("$49");
   });
   it("en-GB says licence", () => {
-    expect(pricing("en-GB").b2b.builderBody).not.toMatch(/license/);
+    // The card reads /data-api's own Builder strings (switch-over step 7).
+    expect((JSON.parse(readFileSync(resolve(__dirname, "../i18n/locales/en-GB.json"), "utf8")) as { dataApiPage: Record<string, string> }).dataApiPage.builderBody).not.toMatch(/license/);
+    expect(pricing("en-GB").b2b.licenceName).not.toMatch(/license/);
   });
 });
 

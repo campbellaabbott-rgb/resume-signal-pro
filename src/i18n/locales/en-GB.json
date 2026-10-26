@@ -5572,7 +5572,7 @@
   "dataApiPage": {
     "builderName": "Builder API (planned)",
     "builderPrice": "${{price}} a month, planned",
-    "builderBody": "Ranked search, résumé fit scoring at volume and 180 days of closures, for display inside your own product with attribution. No feeds or resale; those are the commercial license. Tell us if you'd use it.",
+    "builderBody": "Ranked search, résumé fit scoring at volume and 180 days of closures, for display inside your own product with attribution. No feeds or resale; those are the commercial licence. Tell us if you'd use it.",
     "builderNotYet": "Not on sale yet: nothing is charged, and we reply to every request by email.",
     "builderCta": "Request Builder"
   },

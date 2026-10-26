@@ -126,17 +126,21 @@ describe("mirrors of constants still on other branches (they pin themselves when
     expect(proPerks.proStripeDescription()).toBe(english.map((t) => t.replace(/[.\s]+$/, "")).join(". ") + ".");
   });
 
-  it("the Builder strings are /data-api's, byte for byte, once its keys are in the main locales", () => {
+  it("the Builder strings are /data-api's own keys (switch-over step 7); only the price is the page's", () => {
+    const card = src("src/components/pricing/BuilderAndLicence.tsx");
+    expect(card).toMatch(/t\(`dataApiPage\.\$\{k\}`, vars\)/);
     for (const f of LOCALE_FILES) {
-      const main = readMainLocale(f) as { dataApiPage?: Record<string, string> };
-      if (!main.dataApiPage?.builderName) continue;
+      const main = readMainLocale(f) as { dataApiPage: Record<string, string> };
       const ours = (JSON.parse(readFileSync(resolve(__dirname, `../i18n/shards/pricing/${f}`), "utf8")) as { pricingPlans: { b2b: Record<string, string> } }).pricingPlans.b2b;
-      for (const k of ["builderName", "builderNotYet", "builderCta"]) expect(ours[k], `${f} ${k}`).toBe(main.dataApiPage[k]);
-      // Two differences are hp's until wave 4 makes the same change to /data-api:
-      // the price is {{price}} = money() (no typed "$"), and en-GB writes "licence".
+      for (const k of ["builderName", "builderBody", "builderNotYet", "builderCta"]) {
+        expect(typeof main.dataApiPage[k], `${f} dataApiPage.${k}`).toBe("string");
+        expect(ours[k], `${f}: the pricing shard keeps no copy of ${k}`).toBeUndefined();
+      }
+      // The one difference until wave 4 changes /data-api: the price is
+      // {{price}} = money() (no typed "$").
       expect(ours.builderPrice, `${f} builderPrice`).toBe(main.dataApiPage.builderPrice.replace("${{price}}", "{{price}}"));
-      const body = f === "en-GB.json" ? main.dataApiPage.builderBody.replace(/\blicense\b/g, "licence") : main.dataApiPage.builderBody;
-      expect(ours.builderBody, `${f} builderBody`).toBe(body);
     }
+    // en-GB writes "licence" on both pages.
+    expect((readMainLocale("en-GB.json") as { dataApiPage: Record<string, string> }).dataApiPage.builderBody).not.toMatch(/\blicense\b/);
   });
 });

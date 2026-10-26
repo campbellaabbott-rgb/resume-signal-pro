@@ -4,10 +4,9 @@
  * interest on /data-api#builder and carries no buy button, Stripe link or
  * sign-up flow.
  *
- * ONE SET OF BUILDER STRINGS WITH /data-api (spec P21). The card reads wave
- * 4's dataApiPage.builder* keys whenever they exist, and this shard's copies
- * of them (the same words, copied from wave4/integration) only until they
- * do. The price is the exception: wave 4's builderPrice types a "$" before a
+ * ONE SET OF BUILDER STRINGS WITH /data-api (spec P21). The card reads
+ * /data-api's own dataApiPage.builderName, builderBody, builderNotYet and
+ * builderCta (switch-over step 7). The price is the exception: wave 4's builderPrice types a "$" before a
  * bare number, which reads "$49" beside money()'s "45 $" on a German page,
  * so the card prints this shard's key with {{price}} = money() until wave 4's
  * key drops the "$" too (docs/homepage-pricing/README.md, switch-over step 7).
@@ -28,9 +27,9 @@ const LINK = "inline-flex items-center text-sm font-medium text-primary underlin
 export function BuilderAndLicence() {
   const { t, i18n } = useTranslation();
   const lng = i18n.language;
-  /** wave 4's /data-api key when it exists, this page's copy of it until then. */
+  /** /data-api's own Builder strings: one set of words for both pages. */
   const builder = (k: "builderName" | "builderBody" | "builderNotYet" | "builderCta", vars: Record<string, unknown> = {}) =>
-    t(`dataApiPage.${k}`, { ...vars, defaultValue: t(`pricingPlans.b2b.${k}`, vars) });
+    t(`dataApiPage.${k}`, vars);
   const names = listOf(
     WITHHELD_SOURCES.map((s) => WITHHELD_SOURCE_NAMES[s] ?? s).sort((a, b) => a.localeCompare(b)),
     lng,
