@@ -275,8 +275,11 @@ describe("the prices a crawler reads are the mirrors', never typed", () => {
     const desc = /description: ([\s\S]*?)\n\s*jsonLd:/.exec(b)?.[1] ?? "";
     expect(prints(desc, pro, ".priceUsd")).toBe(true);
     expect(pro.some((n) => new RegExp(`proPrice: ${n}\\.priceUsd`).test(desc)), "the one-product sentence is filled from the mirror").toBe(true);
-    // The offer ceiling is derived from everything still on sale.
-    expect(b).toMatch(/highPrice: String\(Math\.max\(\.\.\.offerPrices\)\)/);
+    // The offer ceiling is derived from everything still on sale, in the one
+    // shape React's /pricing reads too (src/lib/pricing-offer.ts; recheck 3:
+    // only once purchases are open).
+    expect(b).toMatch(/D\.pricingJsonLd\(\{ open: PURCHASES_OPEN, offerPrices, url: /);
+    expect(readFileSync(resolve(__dirname, "../lib/pricing-offer.ts"), "utf8")).toMatch(/highPrice: String\(Math\.max\(\.\.\.offerPrices\)\)/);
     expect(SCRIPT).toMatch(/const offerPrices = \[\.\.\.paid\.map\(\(p\) => p\.priceUsd\), \w+\.priceUsd\];/);
     expect(SCRIPT, "the retired one-time products are filtered out of the list").toMatch(/!RETIRED_PRODUCT_IDS\.includes\(p\.id\)/);
   });

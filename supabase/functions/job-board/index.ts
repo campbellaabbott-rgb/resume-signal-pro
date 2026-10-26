@@ -7860,7 +7860,7 @@ async function handleRequest(req: Request): Promise<Response> {
         if ((named.unresolved.length || named.skipped.length) && !named.companies.length) {
           const notToken = named.skipped.length > 0 || named.unresolved.some((u) => !COMPANY_TOKEN_SHAPE.test(u.asked));
           // A name two carried employers share, or one small board carries, is carried: never listed as one the board does not carry.
-          return json({ ...uncarriedListReply(named.unresolved.filter((u) => !u.ambiguous && u.held !== "few_open").map((u) => u.asked)), ...companyNameNotes(named), ...(notToken ? { ignoredFilters: ["companies"] } : {}) });
+          return json({ ...uncarriedListReply(named.unresolved.filter((u) => !u.ambiguous && !u.held).map((u) => u.asked)), ...companyNameNotes(named), ...(notToken ? { ignoredFilters: ["companies"] } : {}) });
         }
       }
       // An employer scope the catalogue does not carry is named, never read

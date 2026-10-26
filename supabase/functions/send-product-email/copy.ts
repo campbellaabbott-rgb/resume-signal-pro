@@ -2,13 +2,16 @@
  * THE PURCHASE MAIL IN THE BUYER'S LANGUAGE (S12-114).
  *
  * Every delivery mail went out in English whatever language the buyer bought
- * in. The products still sold that this mail serves (the Full Resume Analysis
- * and the two Freelance Boost tiers: their mail is the link back to the page
- * that makes them), the mail that asks a buyer for what an order is missing,
- * and the mail that says a delayed payment failed are written here in the
- * site's nine languages (checkout-policy.ts CHECKOUT_LANGUAGES). en-GB is en,
- * as everywhere on the site. The products no longer sold keep their English
- * mail: only a past buyer's saved copy is ever mailed for them.
+ * in. The products whose purchase mail is written here in the site's nine
+ * languages (checkout-policy.ts CHECKOUT_LANGUAGES) are the Full Resume
+ * Analysis, still sold, and the two Freelance Boost tiers, no longer sold
+ * since 2026-10-17 but still delivered to past buyers through the link back
+ * to the page that makes them; with them, the mail that asks a buyer for what
+ * an order is missing and the mail that says a delayed payment failed. en-GB
+ * is en, as everywhere on the site. The other products no longer sold keep
+ * their English mail: only a past buyer's saved copy is ever mailed for them.
+ * A failed payment for a product no longer sold says so and offers no retry
+ * (failed.notSold, recheck 3, 2026-10-26).
  *
  * Tone follows the site: German, Spanish and Dutch informal, French and Hindi
  * formal, Brazilian Portuguese (você), Tagalog (ikaw). "Freelance Boost" stays
@@ -50,7 +53,7 @@ export type NeedsCopy = {
   action: { job: string; resume: string };
 };
 
-export type FailedCopy = { subject: (name: string) => string; body: string; action: string; button: string };
+export type FailedCopy = { subject: (name: string) => string; body: string; action: string; button: string; notSold: (name: string) => string };
 
 type Lines = { shell: Shell; kept: Record<KeptProduct, ProductCopy>; needs: NeedsCopy; failed: FailedCopy };
 
@@ -130,6 +133,7 @@ const EN: Lines = {
     body: "Your bank did not complete the payment, so nothing was charged and nothing was delivered.",
     action: "You can try again with another payment method.",
     button: "Try again",
+    notSold: (name) => `${name} is no longer sold, so there is nothing to try again.`,
   },
 };
 
@@ -209,6 +213,7 @@ const DE: Lines = {
     body: "Deine Bank hat die Zahlung nicht abgeschlossen. Es wurde nichts berechnet und nichts geliefert.",
     action: "Du kannst es mit einer anderen Zahlungsart erneut versuchen.",
     button: "Erneut versuchen",
+    notSold: (name) => `${name} wird nicht mehr verkauft, daher gibt es nichts erneut zu versuchen.`,
   },
 };
 
@@ -288,6 +293,7 @@ const ES: Lines = {
     body: "Tu banco no completó el pago, así que no se cobró nada y no se entregó nada.",
     action: "Puedes volver a intentarlo con otro método de pago.",
     button: "Intentar de nuevo",
+    notSold: (name) => `${name} ya no se vende, así que no hay nada que volver a intentar.`,
   },
 };
 
@@ -367,6 +373,7 @@ const FR: Lines = {
     body: "Votre banque n'a pas finalisé le paiement : rien n'a été facturé et rien n'a été livré.",
     action: "Vous pouvez réessayer avec un autre moyen de paiement.",
     button: "Réessayer",
+    notSold: (name) => `${name} n'est plus vendu, il n'y a donc rien à retenter.`,
   },
 };
 
@@ -446,6 +453,7 @@ const HI: Lines = {
     body: "आपके बैंक ने भुगतान पूरा नहीं किया, इसलिए न कोई शुल्क लिया गया और न ही कुछ डिलीवर किया गया।",
     action: "आप किसी दूसरे भुगतान तरीके से फिर से कोशिश कर सकते हैं।",
     button: "फिर से कोशिश करें",
+    notSold: (name) => `${name} अब नहीं बेचा जाता, इसलिए दोबारा कोशिश करने के लिए कुछ नहीं है।`,
   },
 };
 
@@ -525,6 +533,7 @@ const NL: Lines = {
     body: "Je bank heeft de betaling niet afgerond, dus er is niets in rekening gebracht en niets geleverd.",
     action: "Je kunt het opnieuw proberen met een andere betaalmethode.",
     button: "Opnieuw proberen",
+    notSold: (name) => `${name} wordt niet meer verkocht, dus er valt niets opnieuw te proberen.`,
   },
 };
 
@@ -604,6 +613,7 @@ const PT: Lines = {
     body: "Seu banco não concluiu o pagamento, então nada foi cobrado e nada foi entregue.",
     action: "Você pode tentar de novo com outra forma de pagamento.",
     button: "Tentar de novo",
+    notSold: (name) => `${name} não é mais vendido, então não há nada para tentar de novo.`,
   },
 };
 
@@ -683,6 +693,7 @@ const TL: Lines = {
     body: "Hindi natapos ng iyong bangko ang bayad, kaya walang siningil at walang naihatid.",
     action: "Maaari mong subukan ulit gamit ang ibang paraan ng pagbabayad.",
     button: "Subukan ulit",
+    notSold: (name) => `Hindi na ibinebenta ang ${name}, kaya walang susubukang muli.`,
   },
 };
 

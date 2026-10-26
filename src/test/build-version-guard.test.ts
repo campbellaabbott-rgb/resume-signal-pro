@@ -292,14 +292,19 @@ const PINNED = {
   // moved, so catalogSize holds and only the content hash moves. .93 has
   // never deployed, so the build that ships this is already a new
   // BUILD_VERSION against live .92 and the bootstrap lane recomputes.
+  // 2026-09-09.93 (recheck 3, 2026-10-26): twelve agency flags come off
+  // employers' own boards (State Farm, Principal, Goodwill of Colorado and
+  // nine Oracle and UKG tenants named "... Recruitment"); each stays an
+  // object literal at its position, so catalogSize holds and only the content
+  // hash moves, inside the same undeployed .93.
   // 2026-09-09.95: +JPMorgan Chase (oracle jpmc~~CX_1001, the region-less
   // host jpmc.fa.oraclecloud.com), appended as the last entry, so no carried
   // board's catalogue index moves. The cold cursor walks a vendor-interleaved
   // list instead, where it lands mid-list and moves about half of it one
   // place: at most one board read again once, none skipped (n1384). The pin
   // moved with the catalogue.
-  // Merged with wave 4 at 88fe8982: both changes above, one pin over the merged file.
-  sourcesHash: "f8dc84c3a2356056",
+  // Merged with wave 4 at f4ccfeae: every change above, one pin over the merged file.
+  sourcesHash: "d307a08ac47118c6",
   // The PARSED catalog behind that hash — 44,081 packed + 463 object-literal
   // entries — pinned separately so a re-format is distinguishable from a real
   // catalog change (see the two-pins note at the top of this file). Read
@@ -321,7 +326,7 @@ const PINNED = {
   // one transient partial rotation, the same as a census merge.
   // 44,520 since 2026-09-09.95: +1, JPMorgan Chase.
   catalogSize: 44_520,
-  catalogHash: "455ec060365870ca",
+  catalogHash: "f6bdca7730b813a3",
   // 2026-08-21.4: disables the exact-word tier's company matcher, whose index
   // never built. Bumped so the mitigation is externally identifiable.
   // 2026-08-21.5: routed retrieval. index.ts + two new modules; sources.ts

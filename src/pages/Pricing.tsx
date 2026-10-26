@@ -15,6 +15,7 @@ import { AtsCoverage } from '@/components/AtsCoverage';
 import { PurchaseTerms } from "@/components/PurchaseTerms";
 import { PurchasesOpenSoon } from "@/components/checkout/PurchasesOpenSoon";
 import { purchasesOpen } from "@/lib/purchases-open";
+import { pricingJsonLd } from "@/lib/pricing-offer";
 
 // THE PRODUCT LINE (owner decisions 2026-10-12 and 2026-10-17). The page
 // sells what is still for sale: free search and scans, the $5 Full Analysis
@@ -61,27 +62,13 @@ export default function Pricing() {
       {/* Prices come from the catalog, not the copy. */}
       <SEO
         title={t('pricingPage.metaTitle')}
-        description={t('pricingPage.metaDescriptionFa', 'Free job search and résumé scan. A ${{lowPrice}} Full Analysis paid once, or Pro at ${{proPrice}} a month for the writing tools.', metaPrices)}
+        description={`${t('pricingPage.metaDescriptionFa', 'Free job search and résumé scan. A ${{lowPrice}} Full Analysis paid once, or Pro at ${{proPrice}} a month for the writing tools.', metaPrices)}${open ? "" : ` ${t('checkoutGate.purchasesOpenSoonTitle', 'Purchases open soon')}.`}`}
         path="/pricing"
       />
-      {/* SoftwareApplication + AggregateOffer — eligible for price rich results
-          on "resume scanner pricing"-type queries. Prices mirror PRODUCTS. */}
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
-        "@context": "https://schema.org",
-        "@type": "SoftwareApplication",
-        name: "Resume Booster",
-        url: "https://resumebooster.work",
-        applicationCategory: "BusinessApplication",
-        operatingSystem: "Web",
-        description: "Free diagnostic resume scan plus one-time paid tools and one optional subscription.",
-        offers: {
-          "@type": "AggregateOffer",
-          priceCurrency: "USD",
-          lowPrice: "0",
-          highPrice: String(Math.max(...offerPrices)),
-          offerCount: offerPrices.length + 1,
-        },
-      }) }} />
+      {/* SoftwareApplication: once purchases open, an AggregateOffer of what
+          is sold (prices mirror PRODUCTS); until then only the free offer,
+          the shape the crawler bake writes too (src/lib/pricing-offer.ts). */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(pricingJsonLd({ open, offerPrices, url: "https://resumebooster.work/pricing" })) }} />
       <Header />
 
       <main className="pt-24 pb-20">

@@ -22,6 +22,7 @@
 
 import { type CheckoutLanguage } from "./checkout-policy.ts";
 import { RETIRED_REASON, RETIRED_STATUS, retiredLanguageOf } from "./apply-agent-retired.ts";
+import { purchasesOpen } from "./seller-gate.ts";
 
 /** How long a past buyer's link and saved copy keep working (owner decision). */
 export const PAST_BUYER_DAYS = 90;
@@ -60,7 +61,14 @@ type Lines = {
   opening: (name: string) => string;
   pastBuyers: string;
   writing: string;
+  /** Once purchases are open: the Full Analysis is on sale. */
   reports: string;
+  /**
+   * While no seller is named (seller-gate.ts purchasesOpen() false), the Full
+   * Analysis and Pro checkouts refuse, so "still on sale" would be false
+   * (recheck 3, 2026-10-26): they open for purchase soon.
+   */
+  reportsClosed: string;
   scans: string;
 };
 
@@ -69,6 +77,7 @@ const EN: Lines = {
   pastBuyers: `If you bought it before, your link keeps working for ${PAST_BUYER_DAYS} days.`,
   writing: "Tailored résumés, cover letters and interview prep now come with a free account and with Pro.",
   reports: "The $5 Full Analysis is still on sale, and tailored résumés, cover letters and interview prep come with a free account and with Pro.",
+  reportsClosed: "The $5 Full Analysis and Pro open for purchase soon, and tailored résumés, cover letters and interview prep come with a free account.",
   scans: "A free account scans more each day, and Pro has no daily cap on scans.",
 };
 
@@ -81,6 +90,7 @@ export const CUT_LINES: Readonly<Record<CheckoutLanguage, Lines>> = {
     pastBuyers: `Wenn du es früher gekauft hast, funktioniert dein Link noch ${PAST_BUYER_DAYS} Tage.`,
     writing: "Angepasste Lebensläufe, Anschreiben und Interviewvorbereitung gibt es jetzt mit einem kostenlosen Konto und mit Pro.",
     reports: "Die Full Analysis für 5 $ gibt es weiterhin, und angepasste Lebensläufe, Anschreiben und Interviewvorbereitung gibt es mit einem kostenlosen Konto und mit Pro.",
+    reportsClosed: "Die Full Analysis für 5 $ und Pro sind bald erhältlich, und angepasste Lebensläufe, Anschreiben und Interviewvorbereitung gibt es mit einem kostenlosen Konto.",
     scans: "Ein kostenloses Konto scannt mehr pro Tag, und Pro scannt ohne Tageslimit.",
   },
   es: {
@@ -88,6 +98,7 @@ export const CUT_LINES: Readonly<Record<CheckoutLanguage, Lines>> = {
     pastBuyers: `Si lo compraste antes, tu enlace sigue funcionando durante ${PAST_BUYER_DAYS} días.`,
     writing: "Los currículums adaptados, las cartas de presentación y la preparación de entrevistas ahora vienen con una cuenta gratuita y con Pro.",
     reports: "El Full Analysis de 5 $ sigue a la venta, y los currículums adaptados, las cartas de presentación y la preparación de entrevistas vienen con una cuenta gratuita y con Pro.",
+    reportsClosed: "El Full Analysis de 5 $ y Pro se podrán comprar pronto, y los currículums adaptados, las cartas de presentación y la preparación de entrevistas vienen con una cuenta gratuita.",
     scans: "Una cuenta gratuita escanea más cada día, y Pro escanea sin límite diario.",
   },
   fr: {
@@ -95,6 +106,7 @@ export const CUT_LINES: Readonly<Record<CheckoutLanguage, Lines>> = {
     pastBuyers: `Si vous l'avez acheté auparavant, votre lien reste valable ${PAST_BUYER_DAYS} jours.`,
     writing: "Les CV adaptés, les lettres de motivation et la préparation aux entretiens sont désormais inclus avec un compte gratuit et avec Pro.",
     reports: "La Full Analysis à 5 $ reste en vente, et les CV adaptés, les lettres de motivation et la préparation aux entretiens sont inclus avec un compte gratuit et avec Pro.",
+    reportsClosed: "La Full Analysis à 5 $ et Pro seront bientôt en vente, et les CV adaptés, les lettres de motivation et la préparation aux entretiens sont inclus avec un compte gratuit.",
     scans: "Un compte gratuit analyse davantage chaque jour, et Pro analyse sans limite quotidienne.",
   },
   hi: {
@@ -102,6 +114,7 @@ export const CUT_LINES: Readonly<Record<CheckoutLanguage, Lines>> = {
     pastBuyers: `अगर आपने इसे पहले खरीदा था, तो आपका लिंक ${PAST_BUYER_DAYS} दिनों तक काम करता रहेगा।`,
     writing: "नौकरी के अनुसार बना रिज़्यूमे, कवर लेटर और इंटरव्यू की तैयारी अब मुफ़्त खाते और Pro के साथ मिलती है।",
     reports: "$5 का Full Analysis अभी भी बिक्री पर है, और नौकरी के अनुसार बना रिज़्यूमे, कवर लेटर और इंटरव्यू की तैयारी मुफ़्त खाते और Pro के साथ मिलती है।",
+    reportsClosed: "$5 का Full Analysis और Pro जल्द ही खरीदे जा सकेंगे, और नौकरी के अनुसार बना रिज़्यूमे, कवर लेटर और इंटरव्यू की तैयारी मुफ़्त खाते के साथ मिलती है।",
     scans: "मुफ़्त खाता हर दिन ज़्यादा स्कैन करता है, और Pro बिना दैनिक सीमा के स्कैन करता है।",
   },
   nl: {
@@ -109,6 +122,7 @@ export const CUT_LINES: Readonly<Record<CheckoutLanguage, Lines>> = {
     pastBuyers: `Heb je het eerder gekocht, dan blijft je link nog ${PAST_BUYER_DAYS} dagen werken.`,
     writing: "Aangepaste cv's, sollicitatiebrieven en sollicitatievoorbereiding krijg je nu bij een gratis account en bij Pro.",
     reports: "De Full Analysis van $5 is nog te koop, en aangepaste cv's, sollicitatiebrieven en sollicitatievoorbereiding krijg je bij een gratis account en bij Pro.",
+    reportsClosed: "De Full Analysis van $5 en Pro zijn binnenkort te koop, en aangepaste cv's, sollicitatiebrieven en sollicitatievoorbereiding krijg je bij een gratis account.",
     scans: "Een gratis account scant meer per dag, en Pro scant zonder daglimiet.",
   },
   pt: {
@@ -116,6 +130,7 @@ export const CUT_LINES: Readonly<Record<CheckoutLanguage, Lines>> = {
     pastBuyers: `Se você comprou antes, seu link continua funcionando por ${PAST_BUYER_DAYS} dias.`,
     writing: "Currículos adaptados, cartas de apresentação e preparação para entrevistas agora vêm com uma conta gratuita e com o Pro.",
     reports: "A Full Analysis de US$ 5 continua à venda, e currículos adaptados, cartas de apresentação e preparação para entrevistas vêm com uma conta gratuita e com o Pro.",
+    reportsClosed: "A Full Analysis de US$ 5 e o Pro estarão à venda em breve, e currículos adaptados, cartas de apresentação e preparação para entrevistas vêm com uma conta gratuita.",
     scans: "Uma conta gratuita faz mais análises por dia, e o Pro analisa sem limite diário.",
   },
   tl: {
@@ -123,16 +138,18 @@ export const CUT_LINES: Readonly<Record<CheckoutLanguage, Lines>> = {
     pastBuyers: `Kung binili mo ito dati, gagana pa ang link mo sa loob ng ${PAST_BUYER_DAYS} araw.`,
     writing: "Kasama na ngayon sa libreng account at sa Pro ang iniangkop na résumé, cover letter at paghahanda sa interview.",
     reports: "Ibinebenta pa rin ang $5 na Full Analysis, at kasama sa libreng account at sa Pro ang iniangkop na résumé, cover letter at paghahanda sa interview.",
+    reportsClosed: "Malapit nang mabili ang $5 na Full Analysis at ang Pro, at kasama sa libreng account ang iniangkop na résumé, cover letter at paghahanda sa interview.",
     scans: "Mas maraming scan bawat araw ang libreng account, at walang pang-araw-araw na limit ang Pro.",
   },
 };
 
-/** The whole sentence a buyer reads, in one language. */
-export function cutSentence(productId: string, language: CheckoutLanguage): string {
+/** The whole sentence a buyer reads, in one language, as the shop stands (open once a seller is named). */
+export function cutSentence(productId: string, language: CheckoutLanguage, open: boolean = purchasesOpen()): string {
   const cut = CUT_PRODUCTS[productId];
   const l = CUT_LINES[language] ?? EN;
   if (!cut) return l.opening("This product");
-  return `${l.opening(cut.name)} ${l.pastBuyers} ${l[cut.tail]}`;
+  const tail = cut.tail === "reports" && !open ? l.reportsClosed : l[cut.tail];
+  return `${l.opening(cut.name)} ${l.pastBuyers} ${tail}`;
 }
 
 export interface CutCheckoutAnswer {
@@ -165,7 +182,7 @@ export function cutCheckoutAnswer(
       cut: true,
       product: CUT_PRODUCTS[productId]?.productType ?? String(productId),
       language,
-      error: cutSentence(productId, language),
+      error: cutSentence(productId, language, purchasesOpen()),
       pricing: `${opts.origin.replace(/\/+$/, "")}/pricing`,
     },
   };

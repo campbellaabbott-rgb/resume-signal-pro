@@ -85,7 +85,8 @@ describe("the identity ships empty, so marketing ships paused", () => {
     for (const fn of ["send-market-pulse", "send-agent-digest", "send-scan-report"]) {
       const res = await h[fn](new Request(`https://harness.supabase.co/functions/v1/${fn}`, { method: "OPTIONS" }));
       expect(res.headers.get("x-marketing-mail"), fn).toBe(MARKETING_PAUSED);
-      expect(res.headers.get("x-fn-build"), fn).toBe(`${fn}.2026-10-11.25`);
+      // send-market-pulse moved to .26 in recheck 3 (the subscribe refusal and the confirm's paused flag).
+      expect(res.headers.get("x-fn-build"), fn).toBe(fn === "send-market-pulse" ? `${fn}.2026-10-11.26` : `${fn}.2026-10-11.25`);
       const filled = await h[`${fn}:filled`](new Request(`https://harness.supabase.co/functions/v1/${fn}`, { method: "OPTIONS" }));
       expect(filled.headers.get("x-marketing-mail"), fn).toBe("on");
     }
@@ -107,6 +108,54 @@ describe("the market pulse batch", () => {
     expect(await res.json()).toMatchObject({ success: true, sent: 1 });
     expect(sent).toHaveLength(1);
     expect(sent[0].html).toContain(ADDRESS);
+  });
+});
+
+/**
+ * RECHECK 3 (2026-10-26). While paused, the batch sent nothing, but the
+ * report page still offered the pulse, send-market-pulse still mailed the
+ * confirmation ("asked us to email this address once a month"), and a
+ * confirmed subscriber was told "the first pulse arrives within a day": the
+ * case this function's own comment calls a confirmed subscriber who never
+ * hears from us. Now a request is refused while paused, before any count or
+ * mail, and a confirmation link mailed earlier still confirms but says the
+ * pulse is paused.
+ */
+describe("the pulse sign-up while marketing is paused (recheck 3)", () => {
+  const ask = (fn: string, body: Record<string, unknown>) => h[fn](new Request("https://harness.supabase.co/functions/v1/send-market-pulse", {
+    method: "POST", headers: { "content-type": "application/json", "cf-connecting-ip": "203.0.113.9" }, body: JSON.stringify(body),
+  }));
+  let asked: string[] = [];
+  const installSignup = () => {
+    asked = [];
+    db.rpcs.mail_door_take = () => { asked.push("mail_door_take"); return { data: true, error: null }; };
+    db.rpcs.market_pulse_request_confirm = () => { asked.push("market_pulse_request_confirm"); return { data: { pc_send: true, pc_reason: "new" }, error: null }; };
+    db.rpcs.market_pulse_confirm = () => { asked.push("market_pulse_confirm"); return { data: { cf_confirmed: true }, error: null }; };
+  };
+
+  it("as shipped: a subscribe request is refused with the paused reason, before any count, and no confirmation is mailed", async () => {
+    installSignup();
+    const res = await ask("send-market-pulse", { action: "subscribe", email: "seeker@example.org", industry: "technology", score: 70 });
+    expect(res.status).toBe(503);
+    expect(await res.json()).toMatchObject({ success: false, reason: MARKETING_PAUSED });
+    expect(asked).toEqual([]);
+    expect(sent).toEqual([]);
+  });
+
+  it("with the seller named, the same request mails the confirmation", async () => {
+    installSignup();
+    const res = await ask("send-market-pulse:filled", { action: "subscribe", email: "seeker@example.org", industry: "technology", score: 70 });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ success: true, pending: true });
+    expect(sent).toHaveLength(1);
+  });
+
+  it("as shipped: a link mailed earlier still confirms, and the answer says the pulse is paused", async () => {
+    installSignup();
+    const res = await ask("send-market-pulse", { action: "confirm", token: "a".repeat(64) });
+    expect(await res.json()).toEqual({ success: true, confirmed: true, paused: MARKETING_PAUSED });
+    const filled = await ask("send-market-pulse:filled", { action: "confirm", token: "b".repeat(64) });
+    expect(await filled.json()).toEqual({ success: true, confirmed: true });
   });
 });
 

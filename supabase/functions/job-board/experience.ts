@@ -37,11 +37,20 @@ export function bandFromYears(minYears: number): ExperienceBand {
 // wish must be on the years themselves: "(luxury retail preferred)" names
 // something else, so a required minimum binds (merge recheck 2026-10-25,
 // measured on 1,354 live descriptions: docs/wave4/README.md).
+// Recheck 3 (2026-10-26): an adverb on a setting ("preferably in SaaS",
+// "ideally within a hospital") names the setting, as the same words after a
+// comma always did; a participle on one ("desired in a clinical setting")
+// yields to a required heading or a Required/Minimum line; a wish may follow a
+// short phrase ("experience in related field preferred"); and "not required"
+// never binds.
 const WISH_WORDS = "preferred|preferably|a plus|nice[- ]to[- ]have|desired|desirable|ideally|is an asset|an advantage";
 const WISH_ONLY = new RegExp(`^\\(\\s*(?:strongly\\s+|highly\\s+)?(?:${WISH_WORDS})\\s*\\)?$`);
-const WISH_FIRST = new RegExp(`^\\s*(?:(?:of\\s+)?(?:[\\w&/'-]+\\s+){0,3}?experience\\s+)?\\(?\\s*(?:(?:is|are)\\s+)?(?:strongly\\s+|highly\\s+)?(?:${WISH_WORDS})\\b`);
+const WISH_FIRST = new RegExp(`^\\s*(?:(?:of\\s+)?(?:[\\w&/'-]+\\s+){0,3}?experience\\s+)?(?:(?:in|within|of)\\s+(?:[\\w&/'-]+\\s+){1,3}?)?\\(?\\s*(?:(?:is|are)\\s+)?(?:strongly\\s+|highly\\s+)?(${WISH_WORDS})\\b`);
 const WISH_BEFORE = /\b(?:preferably|ideally)\s+(?:at\s+least\s+|a\s+minimum\s+of\s+)?$|^\s*(?:[-*\u2022\u00b7]\s*)?preferred\s*:?\s*$/;
+/** The wish word is followed by where or in what: it names a setting, not the years. */
+const ON_A_SETTING = /^\s+(?:in|within|at|on|with|from)\s+\S/;
 const BINDS = /\b(?:required|must|mandatory)\b/;
+const NOT_REQUIRED = /\b(?:but\s+)?not\s+(?:required|mandatory|a\s+must)\b/g;
 const WISH_HEADING = /\b(?:preferred|desired|nice[- ]to[- ]have|bonus)[^\S\n]+(?:qualifications|skills|experience|requirements)\b|^[^\S\n]*(?:preferred|nice[- ]to[- ]have)[^\S\n]*:?[^\S\n]*$/gm;
 const NEED_HEADING = /\b(?:required|minimum|basic|essential)[^\S\n]+(?:qualifications|skills|experience|requirements)\b|\brequirements[^\S\n]*:|^[^\S\n]*(?:minimum[^\S\n]+)?(?:requirements|required|qualifications)[^\S\n]*:?[^\S\n]*$/gm;
 const lastIndexOf = (re: RegExp, s: string): number => {
@@ -57,13 +66,22 @@ function notBinding(t: string, at: number, end: number, before: string): boolean
   const cut = t.slice(end).search(/[.;,!?\n]/);
   const tail = t.slice(end, cut < 0 ? t.length : end + cut).slice(0, 40).split(/\b(?:and|with)\b/)[0];
   const lead = t.slice(Math.max(s0, at - 30), at);
-  if (BINDS.test(tail) || BINDS.test(lead.slice(-16))) return false;
+  if (BINDS.test(tail.replace(NOT_REQUIRED, " ")) || BINDS.test(lead.slice(-16).replace(NOT_REQUIRED, " "))) return false;
   const own = tail.replace(/\([^)]*(?:\)|$)/g, (p) => (WISH_ONLY.test(p) ? p : " "));
-  if (WISH_FIRST.test(own) || WISH_BEFORE.test(lead)) return true;
   const head = t.slice(Math.max(0, at - 3000), at);
   const need = lastIndexOf(NEED_HEADING, head);
   const wish = lastIndexOf(WISH_HEADING, head);
-  if (need > wish || (wish < 0 && /^\s*(?:[-*\u2022\u00b7]\s*)?(?:required|minimum)\b/.test(t.slice(t.lastIndexOf("\n", at) + 1, at)))) return false;
+  const binding = need > wish || (wish < 0 && /^\s*(?:[-*\u2022\u00b7]\s*)?(?:required|minimum)\b/.test(t.slice(t.lastIndexOf("\n", at) + 1, at)));
+  const first = WISH_FIRST.exec(own);
+  if (first) {
+    const onSetting = ON_A_SETTING.test(own.slice(first.index + first[0].length));
+    if (!onSetting) return true;
+    // "preferably in X" names X, as ", preferably in X" does: read on below.
+    // "desired in X" may still be a wish on the years: a required heading or line binds it.
+    if (!/^(?:preferably|ideally)$/.test(first[1])) return !binding;
+  }
+  if (WISH_BEFORE.test(lead)) return true;
+  if (binding) return false;
   return wish > need;
 }
 

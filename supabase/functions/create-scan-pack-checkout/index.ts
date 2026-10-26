@@ -12,7 +12,8 @@ import { cutCheckoutAnswer, SCAN_PACKS_ON_SALE } from "../_shared/product-cuts.t
 // 2026-10-11.23 (wave 4 round 2, checkout-catalogue): scan packs are no longer
 // sold (owner decision 2026-10-12, the product line); a purchase answers 410
 // before the limiter or Stripe. Credits already bought stay spendable.
-const FN_BUILD = "create-scan-pack-checkout.2026-10-11.23";
+// 2026-10-11.24 (recheck 3, 2026-10-26): _shared/product-cuts.ts gained the closed form of the reports line and reads the seller gate; a scan pack's sentence is unchanged.
+const FN_BUILD = "create-scan-pack-checkout.2026-10-11.24";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

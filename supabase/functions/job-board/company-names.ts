@@ -29,8 +29,8 @@ export type CompanyScope = {
   /** What the list filters by: the tokens asked for, plus every name resolved. */
   companies: unknown[];
   resolved: Array<{ asked: string; name: string; tokens: string[] }>;
-  /** ambiguous: two carried employers share the exact name (we carry it, under more than one employer); held: the one exact match is an agency's board or a handful of roles. */
-  unresolved: Array<{ asked: string; candidates: Candidate[]; ambiguous?: true; held?: "agency" | "few_open" }>;
+  /** ambiguous: two carried employers share the exact name; held: the one exact match is a board with a handful of roles. Either way we carry it. */
+  unresolved: Array<{ asked: string; candidates: Candidate[]; ambiguous?: true; held?: "few_open" }>;
   /** Names past NAMES_PER_CALL: not looked up, and not in the scope. */
   skipped: string[];
 };
@@ -38,9 +38,12 @@ export type CompanyScope = {
 /** Names looked up in one call; agent-mcp looks up the same five. */
 export const NAMES_PER_CALL = 5;
 /**
- * A lone exact match with fewer open roles than this, or whose boards are all
- * an agency's, is offered as a candidate, never searched under the name: the
- * merge recheck found "Meta" resolving to a four-role staffing board.
+ * A lone exact match with fewer open roles than this is offered as a
+ * candidate, never searched under the name: the merge recheck found "Meta"
+ * resolving to a four-role staffing board. Its size alone holds it. Whether
+ * the catalogue labels a board an agency's never holds it (recheck 3): the
+ * label was wrong on some employers' own boards (State Farm, Principal), and a
+ * real agency asked for by its own name is the board that was asked for.
  */
 export const FEW_OPEN = 10;
 
@@ -102,15 +105,13 @@ export function resolveCompanyNames(asked: readonly unknown[], catalogue: Readon
       out.unresolved.push({ asked: a, candidates: near.slice(0, 5).map(candidate), ...(exact.length > 1 ? { ambiguous: true as const } : {}) });
       continue;
     }
-    if (exact.length === 1 && !named.length) {
+    if (exact.length === 1 && !named.length && size(exact[0]) < FEW_OPEN) {
       const e = exact[0];
       const about = tokensOf(e).map((t) => facts?.(t));
       const agency = about.length > 0 && about.every((f) => f?.agency === true);
-      if (agency || size(e) < FEW_OPEN) {
-        const c: Candidate = { ...candidate(e), ...(about[0]?.source ? { vendor: about[0].source } : {}), ...(agency ? { agency: true as const } : {}) };
-        out.unresolved.push({ asked: a, candidates: [c], held: agency ? "agency" : "few_open" });
-        continue;
-      }
+      const c: Candidate = { ...candidate(e), ...(about[0]?.source ? { vendor: about[0].source } : {}), ...(agency ? { agency: true as const } : {}) };
+      out.unresolved.push({ asked: a, candidates: [c], held: "few_open" });
+      continue;
     }
     const hits = [...exact, ...named];
     const tokens = [...new Set(hits.flatMap(tokensOf))];

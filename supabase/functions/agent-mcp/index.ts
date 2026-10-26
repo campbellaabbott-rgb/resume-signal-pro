@@ -338,7 +338,8 @@ const SUPPORTED_METHODS = ["initialize", "tools/list", "tools/call", "prompts/li
 // 2026-10-11.35 (the recheck of the descope, 2026-10-25): no rule change. apply_myself's description says a question about the person, even a plainly worded one, can be marked draft_from_your_cv; the job card's salary field says it can be a pay line read from the description, on rare postings a business figure, and hasStatedPay says the same.
 // 2026-10-11.36 (the second recheck of the descope, 2026-10-25): a trailing "remote" or "anywhere" the person excluded (a minus on it, or not, no, non, except and the place words before it) is never lifted into remote:true; the query goes to the board as typed, as origin/main sends it. apply_myself marks a cover-letter text box answeredBy "you" with cvMayHelp, as the answers panel does. The job card's salary field no longer calls a string the board wrote from a vendor's figures verbatim.
 // 2026-10-11.37 (the merge recheck, 2026-10-25): companiesUnresolved also names a name held because its one exact match is a staffing agency's board or has under 10 open roles, and the guide says to ask before using a held candidate.
-const FN_BUILD = "agent-mcp.2026-10-11.37";
+// 2026-10-11.38 (recheck 3, 2026-10-26): a name is held only when its one exact match has under 10 open roles, never because the catalogue labels the board an agency's, and a held name is one the board carries; recheckedAt and get_job say the stamp is when the board last read the employer's feed, which may not have included the posting.
+const FN_BUILD = "agent-mcp.2026-10-11.38";
 /** Where a free key is minted — the page every refusal in this file points at. */
 const MINT_URL = "https://resumebooster.work/data-api";
 /** Where a pass is bought, signed in — the fix every pass refusal names. */
@@ -868,7 +869,7 @@ function compactJob(j: Record<string, unknown>, ctx: Ctx = KEYED_CTX, detail = f
   }
   if (j.closeMatch) out.closeMatch = true;
   if (j.semanticMatch) out.semanticMatch = true;
-  // When the feed last listed it: a detail read's business, not a page's.
+  // When the board last read the feed: a detail read's business, not a page's.
   if (detail && j.recheckedAt) out.recheckedAt = j.recheckedAt;
   // Staffing-agency disclosure (2026-08-31 charter: carried, badged, opt-out
   // by filter). An agent relaying jobs to a person inherits the disclosure
@@ -1000,7 +1001,7 @@ const JOB_CARD_SCHEMA = {
     siteUrl: { type: "string", description: "The posting's page on resumebooster.work." },
     applyForm: { type: "boolean", description: "Present and true when apply_myself can read this employer's application form." },
     agency: { type: "boolean", description: "Present and true for a staffing or recruiting agency's posting." },
-    recheckedAt: { type: "string", description: "When the employer's feed last listed this posting." },
+    recheckedAt: { type: "string", description: "When the board last read this employer's feed; a large board is read in windows, so that read may not have included this posting." },
   },
   required: ["id"],
   additionalProperties: true,
@@ -1032,7 +1033,7 @@ const DISCLOSURE_SCHEMA = {
   locationInterpreted: { type: "object", description: "What was read out of the query: the place moved to location or country, a trailing remote, and the words moved." },
   rankedFellBack: { type: "boolean", description: "The ranked search failed and the board answered with its fallback search: the order may be less relevant." },
   companiesResolved: { type: "array", description: "Employer names in companies, each with the board tokens it resolved to." },
-  companiesUnresolved: { type: "array", description: "Names in companies that matched no single employer, or only a staffing agency's board or one with under 10 open roles (held), each with up to five candidates to offer; nothing was searched for them: ask before using a candidate's token." },
+  companiesUnresolved: { type: "array", description: "Names in companies that matched no single employer, or only a board with under 10 open roles (held: carried, but not searched under that name), each with up to five candidates to offer; nothing was searched for them: ask before using a candidate's token." },
   companiesNotLookedUp: { type: "array", description: "Names past the fifth in companies: not looked up and not searched." },
   unknownCompanies: { type: "array", items: { type: "string" }, description: "Employers asked for that this board does not carry under that name: a total of 0 says nothing about their hiring." },
 };
@@ -1325,7 +1326,7 @@ const TOOLS = [
     name: "get_job",
     title: "Read one job",
     description:
-      "Full detail for one job id (from search_jobs), with the complete description and when the employer's feed last listed it. " +
+      "Full detail for one job id (from search_jobs), with the complete description and when the board last read the employer's feed. " +
       "A resumebooster.work/jobs?job=<id> link's id is this argument (and fetch's and apply_myself's). " +
       "For several ids at once use get_jobs. A dead id answers with what the board knows (closed, aged out, not found), never a stale card.",
     annotations: READS_THE_BOARD,
@@ -2042,7 +2043,7 @@ function guideText(edition: Edition): string {
     ``,
     `- \`countUnavailable\` means the board refuses to guess a total; \`ignoredFilters\` names any filter it could not apply, so the results answer a wider question than was asked.`,
     `- \`countCapped\` means \`total\` is where the board stopped counting: say "at least" that many, never "exactly".`,
-    `- \`unknownCompanies\` names an employer this board does not carry under that name, and \`companiesUnresolved\` a name that matched no single employer, or only a staffing agency's board or one with under 10 open roles, with candidates to ask about before you use one: neither is an employer with no openings.`,
+    `- \`unknownCompanies\` names an employer this board does not carry under that name, and \`companiesUnresolved\` a name that matched no single employer, or only a board with under 10 open roles, which we carry, with candidates to ask about before you use one: neither is an employer with no openings.`,
     `- Pay and seniority arrive parsed (\`salaryMinAnnual\`, \`salaryMaxAnnual\`, \`experienceBand\`, \`minYears\`) and are ABSENT when the posting states none: absence is not zero.`,
     `- \`applyForm: true\` on a card means \`${tool("apply_myself")}\` can read that employer's form for you.`,
     ``,

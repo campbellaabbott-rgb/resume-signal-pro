@@ -19,6 +19,11 @@ vi.mock("@/integrations/supabase/client", () => ({
   supabase: { functions: { invoke: (...a: unknown[]) => invoke(...a) } },
 }));
 
+// The boxes as they are once marketing mail runs (a seller named); while it
+// is paused, as shipped, neither box is offered: w4b-recheck3-a-paused-pulse-
+// and-drip-are-offered-nowhere (recheck 3).
+vi.mock("@/lib/marketing-pause", () => ({ marketingMailPaused: () => false }));
+
 import { EmailReportCapture } from "../components/EmailReportCapture";
 
 const payload = {

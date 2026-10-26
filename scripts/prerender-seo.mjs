@@ -258,6 +258,7 @@ export { COUNTRY_STANDARDS } from "../supabase/functions/free-keyword-scan/count
 export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from "../src/data/cv-standards-content";
 export { getAllProducts, PASS, SUBSCRIPTIONS, PRODUCTS } from "../src/config/products";
 export { PRO_SUMMARY } from "../src/config/pro-perks";
+export { pricingJsonLd, llmsPurchaseLines } from "../src/lib/pricing-offer";
 export { AFFILIATE_PRO_FIRST_MONTH_CENTS, formatUsd } from "../src/config/affiliate-commission";
 export { ALL_BOARD_SOURCES } from "../src/config/ats-vendors";
 export { publicApiBase, mcpServerUrl } from "../src/config/public-endpoints";
@@ -4043,42 +4044,44 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
     const pricingLead = one
       ? ppFill("oneTimeAndProLineFa", { price: one.priceUsd })
       : "Paid tools are one-time purchases, not subscriptions; an optional Pro plan covers everything for people applying at volume.";
+    // NOTHING IS OFFERED BEFORE IT CAN BE BOUGHT (recheck 3, 2026-10-26).
+    // Until src/config/seller.ts names the seller, the checkouts answer 409
+    // and React's /pricing shows "Purchases open soon" where the buttons
+    // would be; this page said "a one-time payment" and offered an
+    // AggregateOffer up to Pro's price. While closed, the lead and each price
+    // carry the page's own checkoutGate sentences, the structured data offers
+    // only the free scan (src/lib/pricing-offer.ts, React's shape too), and
+    // the terms are said for when purchases open.
+    const PURCHASES_OPEN = Boolean(D.sellerIdentity());
+    const GATE = (D.EN_LOCALE && D.EN_LOCALE.checkoutGate) || {};
+    if (!PURCHASES_OPEN && (!GATE.purchasesOpenSoon || !GATE.purchasesOpenSoonTitle)) throw new Error("[prerender-seo] checkoutGate.purchasesOpenSoon(Title) is missing from the main locale");
+    const soonLine = PURCHASES_OPEN ? "" : ` ${GATE.purchasesOpenSoon}`;
+    const soonTag = PURCHASES_OPEN ? "" : `<p class="text-xs text-muted-foreground mt-1" data-purchases-open-soon>${esc(GATE.purchasesOpenSoonTitle)}</p>`;
     write({
       path: "/pricing",
       title: one ? `Pricing — Free Scan, $${one.priceUsd} ${one.name} or Pro $${proPlan.priceUsd}/month` : `Pricing — Free Resume Scan, One-Time Tools from $${minP}`,
-      description: one
+      description: (one
         ? ppFill("metaDescriptionFa", { lowPrice: one.priceUsd, highPrice: one.priceUsd, proPrice: proPlan.priceUsd })
-        : `The diagnostic resume scan and the job board are free, 7 scans a day with no signup. One-time tools $${minP}–$${maxP}; Pro $${proPlan.priceUsd}/month.`,
+        : `The diagnostic resume scan and the job board are free, 7 scans a day with no signup. One-time tools $${minP}–$${maxP}; Pro $${proPlan.priceUsd}/month.`)
+        + (PURCHASES_OPEN ? "" : ` ${GATE.purchasesOpenSoonTitle}.`),
       jsonLd: [
         breadcrumbLd([{ name: "Home", path: "/" }, { name: "Pricing", path: "/pricing" }]),
-        {
-          "@context": "https://schema.org",
-          "@type": "SoftwareApplication",
-          name: "Resume Booster",
-          url: `${SITE}/pricing`,
-          applicationCategory: "BusinessApplication",
-          operatingSystem: "Web",
-          offers: {
-            "@type": "AggregateOffer",
-            priceCurrency: "USD",
-            lowPrice: "0",
-            highPrice: String(Math.max(...offerPrices)),
-            offerCount: offerPrices.length + 1,
-          },
-        },
+        D.pricingJsonLd({ open: PURCHASES_OPEN, offerPrices, url: `${SITE}/pricing` }),
       ],
       content: `
         ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Pricing" }])}
         <h1 class="text-3xl font-bold mb-3">Pricing</h1>
-        <p class="text-muted-foreground mb-6">The core product is free: the full diagnostic resume scan — score with audit trail, missing keywords, weakest bullets rewritten, ATS vendor checks — costs nothing, 7 scans a day with no signup (15 with a free account). The job board and its filters are free too, and so is connecting your own AI to it. ${esc(pricingLead)}</p>
+        <p class="text-muted-foreground mb-6">The core product is free: the full diagnostic resume scan — score with audit trail, missing keywords, weakest bullets rewritten, ATS vendor checks — costs nothing, 7 scans a day with no signup (15 with a free account). The job board and its filters are free too, and so is connecting your own AI to it. ${esc(pricingLead)}${esc(soonLine)}</p>
         <section class="mb-8"><h2 class="text-xl font-bold mb-3">${one ? "One paid report" : "One-time tools"}</h2>
-          <div class="space-y-2">${paid.map((p) => `<div class="rounded-xl border border-border bg-card p-4 flex items-start justify-between gap-4"><div><p class="text-sm font-semibold text-foreground">${esc(p.name)}</p><p class="text-xs text-muted-foreground mt-0.5">${esc(p.description || "")}</p></div><p class="text-sm font-bold text-foreground whitespace-nowrap">$${p.priceUsd}</p></div>`).join("")}</div>
+          <div class="space-y-2">${paid.map((p) => `<div class="rounded-xl border border-border bg-card p-4 flex items-start justify-between gap-4"><div><p class="text-sm font-semibold text-foreground">${esc(p.name)}</p><p class="text-xs text-muted-foreground mt-0.5">${esc(p.description || "")}</p></div><div class="text-right"><p class="text-sm font-bold text-foreground whitespace-nowrap">$${p.priceUsd}</p>${soonTag}</div></div>`).join("")}</div>
         </section>
         <section class="mb-8"><h2 class="text-xl font-bold mb-3">One monthly plan</h2>
           <div class="space-y-2">
-            <div class="rounded-xl border border-border bg-card p-4 flex items-start justify-between gap-4"><div><p class="text-sm font-semibold text-foreground">${esc(proPlan.name)}</p><p class="text-xs text-muted-foreground mt-0.5">${esc(D.PRO_SUMMARY.text)}.</p></div><p class="text-sm font-bold text-foreground whitespace-nowrap">$${proPlan.priceUsd}/${esc(proPlan.interval)}</p></div>
+            <div class="rounded-xl border border-border bg-card p-4 flex items-start justify-between gap-4"><div><p class="text-sm font-semibold text-foreground">${esc(proPlan.name)}</p><p class="text-xs text-muted-foreground mt-0.5">${esc(D.PRO_SUMMARY.text)}.</p></div><div class="text-right"><p class="text-sm font-bold text-foreground whitespace-nowrap">$${proPlan.priceUsd}/${esc(proPlan.interval)}</p>${soonTag}</div></div>
           </div>
-          <p class="text-sm text-muted-foreground mt-3">${one ? `The ${esc(one.name)} is a one-time payment that never renews.` : "Every report and tool above is a one-time payment that never renews."} Pro renews every month until you cancel; nothing else upgrades you automatically. The resume scan and the job board stay free either way.</p>
+          <p class="text-sm text-muted-foreground mt-3">${PURCHASES_OPEN
+            ? `${one ? `The ${esc(one.name)} is a one-time payment that never renews.` : "Every report and tool above is a one-time payment that never renews."} Pro renews every month until you cancel; nothing else upgrades you automatically.`
+            : `When purchases open, ${one ? `the ${esc(one.name)} will be a one-time payment that never renews` : "every report and tool above will be a one-time payment that never renews"}, and Pro will renew every month until you cancel.`} The resume scan and the job board stay free either way.</p>
           <p class="text-sm text-muted-foreground mt-2">${esc(APPLY_YOURSELF_LINE)} <a href="/agents" class="text-primary">${esc(FOOTER_AGENTS_LABEL)} →</a></p>
         </section>
         ${cta("Start with the free scan", "See the full diagnostic before spending anything — most people need nothing else.", "Scan my resume free")}`,
@@ -4418,6 +4421,9 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
     // WARNS on stderr rather than passing silently.
     try {
       let lt = readFileSync(join(root, "public/llms.txt"), "utf8");
+      // The paid line says purchases open soon until a seller is named
+      // (recheck 3): the committed file holds that form, restated here.
+      lt = D.llmsPurchaseLines(lt, Boolean(D.sellerIdentity()), (D.EN_LOCALE.checkoutGate || {}).purchasesOpenSoon || "");
       const missed = [];
       const sub = (re, to) => {
         if (!re.test(lt)) { missed.push(String(re)); return; }

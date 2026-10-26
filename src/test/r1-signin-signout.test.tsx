@@ -220,7 +220,10 @@ describe("the account guard", () => {
     render(<AuthProvider><Probe /></AuthProvider>);
     emit("SIGNED_IN", sessionFor("member@example.com", "sid-c"));
     await flush();
-    expect(h.toast).toHaveBeenCalledTimes(1);
+    // The notice waits for the lazily loaded auth strings, which can take
+    // longer than one flush on a loaded machine; waited for here, so it lands
+    // in this test and not in the next one's count.
+    await waitFor(() => expect(h.toast).toHaveBeenCalledTimes(1));
     expect(JSON.stringify(h.toast.mock.calls[0][0])).toMatch(/cleared a password set on this address before you proved you own it/);
     cleanup();
     h.listeners = [];
@@ -237,7 +240,7 @@ describe("the account guard", () => {
     emit("SIGNED_IN", sessionFor("member@example.com", "sid-409"));
     await flush();
     await waitFor(() => expect(screen.getByTestId("guard").textContent).toBe("failed:false:true"));
-    expect(h.toast).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(h.toast).toHaveBeenCalledTimes(1));
     expect(JSON.stringify(h.toast.mock.calls[0][0])).toMatch(/cleared a password set on this address before you proved you own it/);
   });
 
