@@ -183,8 +183,9 @@ describe("the migration on a real Postgres", () => {
 
 describe("the stored rows are renamed by job-board's name-sync lane, once, at the deploy", () => {
   const IDX = readFileSync(resolve(ROOT, "supabase/functions/job-board/index.ts"), "utf8");
-  it("NAME_SYNC_VERSION is 5, so the lane walks every board an override names again", () => {
-    expect(/const NAME_SYNC_VERSION = (\d+);/.exec(IDX)?.[1]).toBe("5");
+  it("NAME_SYNC_VERSION is past 4 (5 since .95, 6 since trust round 3's .96), so the lane walks every board an override names again", () => {
+    // .93 ran version 4, before these names existed; any later version walks them.
+    expect(Number(/const NAME_SYNC_VERSION = (\d+);/.exec(IDX)?.[1])).toBeGreaterThanOrEqual(5);
   });
   it("the ledger applies the names before job-board deploys, so the lane reads them", () => {
     const ledger = JSON.parse(readFileSync(resolve(ROOT, "docs/deploy-ledger.json"), "utf8"));

@@ -84,6 +84,11 @@ describe("the catalog carries the flag", () => {
       "greenhouse:liquidpersonnel",
       "greenhouse:crisprecruit",
       "teamtailor:jobtalentfrance",     // the board the English-only screen once cleared
+      // Jobandtalent's other three boards, labelled in trust round 3 (2026-10-26): the
+      // screen's one-word "jobandtalent" never read their "Job&Talent".
+      "teamtailor:jobandtalent",
+      "lever:jobandtalent",
+      "teamtailor:multitempo",
     ]) {
       const e = byKey.get(key);
       expect(e, `${key} left the catalog entirely`).toBeTruthy();
@@ -135,6 +140,97 @@ describe("the catalog carries the flag", () => {
       expect(text, `${file} no longer tolerates the disclosure suffix`).toMatch(/agency:\\s\*true|, agency: true\)\?/);
       void marker;
     }
+  });
+});
+
+describe("trust round 3: an employer's own board is not labelled an agency, and a staffing platform is", () => {
+  const byKey = new Map(JOB_SOURCES.map((s) => [`${s.source}:${s.token.toLowerCase()}`, s as { name: string; agency?: boolean }]));
+  const TAGGER = read("scripts/tag-agencies.mjs");
+  const ledgerSet = (name: string) => {
+    const m = new RegExp(`const ${name} = new Set\\(\\[([\\s\\S]*?)\\]\\);`).exec(strip(TAGGER));
+    return new Set([...(m?.[1] ?? "").matchAll(/"([^"]+)"/g)].map((x) => x[1]));
+  };
+  /** The agency audit's tier A (agency-flags-2026-10-25), each read on its employer's own site or feed. */
+  const ROUND3 = [
+    "ukg:recruiting2~con1074cvtg~1831b61a-1945-44fa-afd8-624795c9b30d", // Convergint
+    "ukg:recruiting~ban1010~e9066a66-c3b9-e25c-d036-116705c05e46", // Banner Engineering
+    "ukg:recruiting~laf1002lafa~1a07d948-3361-48d7-89f2-002c5a48346c", // Lafayette 148
+    "ukg:recruiting2~sap1000spid~5e557a61-9707-4f47-8f76-9c11b2bfbf9e", // Smart City Networks
+    "ukg:recruiting~kil1000~68c62bcb-20f8-3231-d728-9190572df832", // Kilpatrick Townsend & Stockton
+    "ukg:recruiting~low1003lfcs~cfc2ee58-1207-4e12-a838-876cbc96b1f9", // Lowell Five Bank
+    "adp:d290c04e-0230-4cd9-8bf0-f116bfab1405~19000101_000003", // Synchron
+    "adp:4a8a08f1-ff6c-4d60-8308-4b09a199dd38", // Highlights for Children
+    "adp:30e05070-07b1-4b26-9028-b97dae32cdd1", // The Barkan Companies
+    "oracle:eify~us6~cx_1001", // Springfield Clinic
+    "greenhouse:alphasightsresumedrop", "greenhouse:placementsio", "greenhouse:studentplacements",
+    "lever:crossing-minds", "teamtailor:geant",
+    "rippling:paradise-media-recruitment", "rippling:ferric-recruiting", "rippling:meundies-recruiting",
+    "rippling:lylaw-recruitment", "rippling:allsup-employment-services",
+  ];
+
+  it("the twenty boards wave 4 had not cleared carry no flag, and the tagger never puts one back", () => {
+    const own = ledgerSet("EMPLOYERS_OWN_BOARDS");
+    for (const k of ROUND3) {
+      expect(byKey.get(k), `${k} left the catalogue`).toBeTruthy();
+      expect(byKey.get(k)!.agency, `${k} is its employer's own board and still wears the agency flag`).not.toBe(true);
+      expect(own.has(k), `${k} is not in tag-agencies' EMPLOYERS_OWN_BOARDS, so a re-run tags it again`).toBe(true);
+    }
+    // Wave 4's twelve (recheck 3) stay cleared too: 32 in all.
+    expect(own.size).toBe(32);
+    for (const k of own) expect(byKey.get(k)?.agency, k).not.toBe(true);
+  });
+
+  it("Jobandtalent's three boards wear the flag and the convictions name them", () => {
+    const conv = ledgerSet("RELEASED_CONVICTIONS");
+    for (const k of ["teamtailor:jobandtalent", "lever:jobandtalent", "teamtailor:multitempo"]) {
+      expect(byKey.get(k)?.agency, `${k} is a staffing platform's board`).toBe(true);
+      expect(conv.has(k), k).toBe(true);
+    }
+  });
+
+  it("Dallah stays flagged until a name is read for it", () => {
+    expect(byKey.get("oracle:eniy~em3~cx_6001")?.agency).toBe(true);
+  });
+
+  // The review of round 3 found staffing companies' boards of the same kind as Jobandtalent's still unlabelled:
+  // the agency audit read only flagged boards and name-screen hits. Each is labelled on its own feed's words, read
+  // 2026-10-26 (~/.config/resumebooster/trust-round-3-fixes/ev). Not a census: other unflagged staffing brands may remain.
+  const STAFFING = [
+    "greenhouse:ayahealthcare", "ashby:traba", "ashby:zenjob", "bamboohr:staffzone", "bamboohr:coople", "pinpoint:coople",
+    "workday:ingenovishealth~wd1~ingenovishealth", "icims:careers.insightglobal.com",
+    "oracle:ehnn~us2~cx_3001", "oracle:ehnn~us2~cx", "oracle:ehnn~us2~cx_4", "oracle:ehnn~us2~cx_7", "oracle:ehnn~us2~cx_10", "oracle:ehnn~us2~cx_1001",
+  ];
+
+  it("the staffing companies' boards the review found unlabelled wear the flag, and the convictions name each one", () => {
+    const conv = ledgerSet("RELEASED_CONVICTIONS");
+    for (const k of STAFFING) {
+      expect(byKey.get(k), `${k} left the catalogue`).toBeTruthy();
+      expect(byKey.get(k)!.agency, `${k} is a staffing company's board`).toBe(true);
+      expect(conv.has(k), `${k} is not in RELEASED_CONVICTIONS`).toBe(true);
+    }
+    expect(JOB_SOURCES.filter((s) => (s as { agency?: boolean }).agency === true).length).toBe(134);
+  });
+
+  it("every TrueBlue site that lists requisitions is labelled, so the label holds wherever the dedupe stores one", () => {
+    // PeopleReady's site (CX_1) was labelled alone, but every one of its requisitions is also on the corporate site
+    // CX_3001, which ranks first, so its rows were stored there unlabelled and the flagged board served none.
+    const sites = JOB_SOURCES.filter((s) => s.source === "oracle" && s.token.startsWith("ehnn~"));
+    const unlabelled = sites.filter((s) => (s as { agency?: boolean }).agency !== true).map((s) => s.token);
+    // RenewableWorks listed no requisition on 2026-10-26 and TrueBlue's own words do not name it: left as it is.
+    expect(unlabelled).toEqual(["ehnn~us2~CX_2001"]);
+    expect(byKey.get("oracle:ehnn~us2~cx_3001")?.agency, "the site the requisitions are stored under").toBe(true);
+  });
+
+  it("a workforce company whose own words do not say staffing stays as it is (Allegis Global Solutions: \"not about filling seats\")", () => {
+    expect(byKey.get("smartrecruiters:allegisglobalsolutions")?.agency).not.toBe(true);
+    expect(ledgerSet("RELEASED_CONVICTIONS").has("smartrecruiters:allegisglobalsolutions")).toBe(false);
+  });
+
+  it("the tagger's dry run tags nothing on this catalogue", () => {
+    const { execFileSync } = require("node:child_process") as typeof import("node:child_process");
+    const out = execFileSync(process.execPath, ["scripts/tag-agencies.mjs", "--dry-run"], { cwd: root, encoding: "utf8" });
+    expect(out).toMatch(/^tagged 0 boards \((\d+) already carried the flag\)/m);
+    expect(Number(/\((\d+) already carried/.exec(out)?.[1])).toBe(JOB_SOURCES.filter((s) => (s as { agency?: boolean }).agency === true).length);
   });
 });
 

@@ -6,8 +6,9 @@ prints `done.`, in name order. Name files `<NN>-<topic>.sh` (for example
 digits: `100-x.sh` sorts right after `10-x.sh`, before `11-x.sh`, so it would
 not run last, while `99z-oracle-regionless.sh` sorts after every `99-*` file,
 in byte order and under a collating locale. After `99z-`, the next name is
-`99zz-` (`99zz-trusted-pages.sh`): "-" sorts before "z" in byte order, and a
-locale that ignores the dash compares "99zz" with "99zo". A name such as
+`99zz-` (`99zz-trusted-pages.sh`), then `99zzz-` (`99zzz-trust-round-3.sh`):
+"-" sorts before "z" in byte order, and a locale that ignores the dash
+compares "99zz" with "99zo", and "99zzt" with "99zzz". A name such as
 `99za-` would sort before `99z-oracle` under such a locale (glibc's
 en_US.UTF-8 ignores it). Every line a file prints must start with `PASS`,
 `FAIL` or `INFO`, every probe must be read-only, and the helpers `J`, `R`,

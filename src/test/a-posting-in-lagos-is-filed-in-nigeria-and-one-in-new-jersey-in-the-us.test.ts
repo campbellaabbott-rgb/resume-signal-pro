@@ -177,13 +177,28 @@ describe("the corpus: every distinct live location string answers what the reade
     "Astana, Astana, Kazakhstan": "KZ",
     "Astana, Kazakhstan": "KZ",
     "Astana, Kazakhstan, Kazakhstan": "KZ",
+    // Trust round 3 (COUNTRY_MAP_VERSION 12, n1396): US towns named after countries, each measured
+    // against the vendor's own country and the 19,064-row corpus in
+    // a-us-town-named-after-a-country-is-filed-in-the-us.test.ts.
+    "606371 Lake Wales, FL - US Highway 27": "US",
+    "FL - Lake Wales": "US",
+    "FL-Lake Wales": "US",
+    "IL - Peru": "US",
+    "IN - Peru": "US",
+    "Lake Wales, FL (Job Posting Location)": "US",
+    "Lake Wales, FL - 1900 Old Bartow Rd": "US",
+    "NY - Greece": "US",
+    "Store 2706993 Lake Wales FL": "US",
+    "Store0006 Greece NY": "US",
   };
+  /** Strings the fix takes from a wrong country to none, where the vendor's own field says US. */
+  const UNPLACED: Record<string, null> = { "Lake Wales (1250)": null };
 
   it(`holds a real corpus (${"5,596"} strings) and pins it`, () => {
     expect(CORPUS.rows.length).toBeGreaterThanOrEqual(5_000);
     const drift: string[] = [];
     for (const [loc, main] of CORPUS.rows) {
-      const want = Object.prototype.hasOwnProperty.call(CHANGED, loc) ? CHANGED[loc] : main;
+      const want = Object.prototype.hasOwnProperty.call(CHANGED, loc) ? CHANGED[loc] : Object.prototype.hasOwnProperty.call(UNPLACED, loc) ? null : main;
       const got = detectCountry(loc);
       if (got !== want) drift.push(`${JSON.stringify(loc)}: ${main} at 8a65d88a, want ${want}, got ${got}`);
     }
@@ -192,14 +207,15 @@ describe("the corpus: every distinct live location string answers what the reade
 
   it("every CHANGED string is in the corpus and really did read otherwise at 8a65d88a", () => {
     const main = new Map(CORPUS.rows);
-    for (const [loc, want] of Object.entries(CHANGED)) {
+    for (const [loc, want] of Object.entries({ ...CHANGED, ...UNPLACED })) {
       expect(main.has(loc), loc).toBe(true);
       expect(main.get(loc), loc).not.toBe(want);
     }
   });
 
   it("the map version moved, so the backfill sweep re-reads the rows stored with no country", () => {
-    expect(COUNTRY_MAP_VERSION).toBe(11);
+    // 11 for this fix; 12 since trust round 3 (US towns named after countries).
+    expect(COUNTRY_MAP_VERSION).toBe(12);
   });
 });
 

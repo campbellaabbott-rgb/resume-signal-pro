@@ -262,7 +262,7 @@ export function vendorWorkMode(v: string | null | undefined): "remote" | "hybrid
 const COUNTRY_PATTERNS: ReadonlyArray<readonly [RegExp, string]> = [
   [/\b(?:united states|u\.?s\.?a\.?|estados unidos)\b/i, "US"],
   // Rationale: docs/job-board-index-notes.md#n976-b-united-kingdom-england-scotland-new
-  [/\b(?:united kingdom|england|scotland|(?<!new south )wales|northern ireland)\b|\bUK\b/i, "GB"],
+  [/\b(?:united kingdom|england|scotland|(?<!new south |lake )wales|northern ireland)\b|\bUK\b/i, "GB"],
   [/\b(?:germany|deutschland)\b/i, "DE"],
   [/\bcanada\b/i, "CA"],
   [/\bfrance\b/i, "FR"],
@@ -335,10 +335,12 @@ const P_CA_PROV_CODE = /,\s*(ON|QC|BC|AB|MB|SK|NS|NB|PE|NL|YT|NT|NU)(?![A-Za-z])
 export const US_STATE_CODES: ReadonlySet<string> = new Set(
   (P_US_STATE_CODE.source.match(/\(([A-Z|]+)\)/)?.[1] ?? "").split("|").filter(Boolean),
 );
-const P_COUNTRY_WORD_US_TOWN = /\b(peru|turkey)\s*,\s*([A-Za-z]{2})(?![A-Za-z])/i;
+// Rationale: docs/job-board-index-notes.md#n1396-us-towns-named-after-countries
+const P_COUNTRY_WORD_US_TOWN = /\b(?:peru|turkey|greece)\s*,\s*([A-Za-z]{2})(?![A-Za-z])|^([A-Za-z]{2})\s*[-–—,]\s*(?:peru|turkey|greece)\s*$|\b(?:peru|turkey|greece|lake wales)\s+([A-Za-z]{2})\s*$/i;
 function countryWordNamesAUsTown(s: string): boolean {
   const m = P_COUNTRY_WORD_US_TOWN.exec(s);
-  return !!m && m[2] === m[2].toUpperCase() && US_STATE_CODES.has(m[2]);
+  const c = m?.[1] ?? m?.[2] ?? m?.[3];
+  return !!c && c === c.toUpperCase() && US_STATE_CODES.has(c);
 }
 // Rationale: docs/job-board-index-notes.md#n980-const-p_us_state_code_leading
 const P_US_STATE_CODE_LEADING =
@@ -393,7 +395,7 @@ const P_US_STATE_NAME = /\b(?:alabama|alaska|arizona|arkansas|california|colorad
 const P_CA_PROV_NAME = /\b(?:ontario|quebec|british columbia|alberta|manitoba|saskatchewan|nova scotia|new brunswick|newfoundland)\b/i;
 
 // Rationale: docs/job-board-index-notes.md#n983-export-const-country_map_version
-export const COUNTRY_MAP_VERSION = 11;
+export const COUNTRY_MAP_VERSION = 12;
 const CITY_COUNTRY = new Map<string, string>([
   ["aarhus", "DK"],
   ["aberdeen", "GB"],
@@ -1668,6 +1670,19 @@ export function icimsCountry(feedCode: unknown, location: string | null | undefi
   return site !== null && site !== code ? site : code;
 }
 
+// Rationale: docs/job-board-index-notes.md#n1395-icims-org-scope
+export function icimsOrgScope<T>(items: T[], org: string | undefined): T[] {
+  if (!org) return items;
+  return items.filter((j) => (j as { data?: { hiring_organization?: unknown } } | null)?.data?.hiring_organization === org);
+}
+
+// Rationale: docs/job-board-index-notes.md#n1395-icims-org-scope
+export function icimsOrgRefusal(org: string | undefined, whole: boolean, raw: number, kept: number): string | null {
+  if (!org) return null;
+  if (!whole) return `org ${org}: the feed is larger than one visit`;
+  return raw > 0 && kept === 0 ? `org ${org}: kept none of ${raw}` : null;
+}
+
 export function normalizeIcims(raw: IcimsJobItem[], company: string, token: string): JobPosting[] {
   return (Array.isArray(raw) ? raw : [])
     .map((item) => {
@@ -2525,6 +2540,7 @@ export function oracleReqIdOfId(id: string): string | null {
 export function rankOracleSites(
   entries: ReadonlyArray<{ source: string; token: string }>,
   canonical: Readonly<Record<string, string>>,
+  pool: ReadonlySet<string> = new Set(),
 ): Map<string, number> {
   const byTenant = new Map<string, string[]>();
   for (const e of entries) {
@@ -2539,8 +2555,9 @@ export function rankOracleSites(
   for (const [tenant, sites] of byTenant) {
     if (sites.length < 2) continue;
     const want = canonical[tenant];
-    const head = want && sites.includes(want) ? want : sites[0];
-    const ordered = [head, ...sites.filter((t) => t !== head)];
+    // Rationale: docs/job-board-index-notes.md#n1394-oracle-pool-sites
+    const head = want && sites.includes(want) ? want : sites.find((t) => !pool.has(t)) ?? sites[0];
+    const ordered = [head, ...sites.filter((t) => t !== head && !pool.has(t)), ...sites.filter((t) => t !== head && pool.has(t))];
     ordered.forEach((t, i) => ranks.set(t, i));
   }
   return ranks;

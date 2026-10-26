@@ -308,7 +308,17 @@ const PINNED = {
   // `brand` in place, and three Reyes brand boards are appended after
   // JPMorgan Chase, so again no carried board's index moves.
   // Merged with wave 4 at f4ccfeae: every change above, one pin over the merged file.
-  sourcesHash: "c6f33075be1a8d0a",
+  // 2026-09-09.96, trust round 3: 64 boards renamed in place (a packed record's
+  // name, or an object line's), 20 agency flags off employers' own boards and
+  // 3 on Jobandtalent's (each split out of its packed literal in place), the
+  // iCIMS `org` field and six scoped entries (in place), four duplicate iCIMS
+  // hosts' positions (38669, 38698, 38760, 41040) repointed to the Exelon brand
+  // boards, and ORACLE_POOL_SITES with eexs's canonical. No index moves, so
+  // catalogSize holds. Re-taken in the same unreleased build after the review
+  // of 4efea332: 14 staffing companies' boards gain agency: true (each split
+  // out of its packed literal in place) and careers.pepco.com is named
+  // Potomac Electric Power Co (brand PEPCO kept).
+  sourcesHash: "43b15655ee4749a2",
   // The PARSED catalog behind that hash — 44,081 packed + 463 object-literal
   // entries — pinned separately so a re-format is distinguishable from a real
   // catalog change (see the two-pins note at the top of this file). Read
@@ -331,8 +341,10 @@ const PINNED = {
   // 44,520 since 2026-09-09.95: +1, JPMorgan Chase. 44,523 in the same build:
   // +3, Reyes Coca-Cola Bottling, Reyes Fleet Management and Reyes Holdings
   // (trust/pages). Not yet deployed, so .95's bootstrap lane takes all four.
+  // 44,523 still at 2026-09-09.96: names, flags and four repointed positions,
+  // nothing added or removed.
   catalogSize: 44_523,
-  catalogHash: "966a70d42f7a3d92",
+  catalogHash: "b815524774b6cb04",
   // 2026-08-21.4: disables the exact-word tier's company matcher, whose index
   // never built. Bumped so the mitigation is externally identifiable.
   // 2026-08-21.5: routed retrieval. index.ts + two new modules; sources.ts
@@ -1482,7 +1494,16 @@ const PINNED = {
   // US is the US; COUNTRY_MAP_VERSION 11), a list visit re-parses stored pay
   // when the country under it moves, NAME_SYNC_VERSION 5, and the Reyes brand
   // boards (catalogSize 44,523).
-  buildVersion: "2026-09-09.95",
+  // 2026-09-09.96: trust round 3 (ledger trust-round-3; .96 was phase 3's until
+  // this round, which ships first, took it on 2026-10-26). sources.ts CHANGED:
+  // the renames, agency flags, iCIMS scope and Oracle pool sites above;
+  // RENAMED_TOKENS + 64 and NAME_SYNC_VERSION 6; fetchIcims keeps an entry's
+  // `org` (icimsOrgScope); rankOracleSites ranks ORACLE_POOL_SITES last;
+  // COUNTRY_MAP_VERSION 12 (US towns named after countries). Still .96 after
+  // the review of 4efea332 (never deployed): 14 more agency flags, the Pepco
+  // name, fetchIcims refuses an org read that is not whole or keeps none
+  // (icimsOrgRefusal), and mergeCompanyFacet folds Blueprint's two stems.
+  buildVersion: "2026-09-09.96",
 };
 
 /**

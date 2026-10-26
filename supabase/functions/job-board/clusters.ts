@@ -112,13 +112,17 @@ export function collapseClusters(
   return { jobs: out, rawConsumed };
 }
 
+// Rationale: docs/job-board-index-notes.md#n1398-one-employer-two-stems
+const SAME_EMPLOYER_STEM = new Map([["notexternal", "bpcs"]]);
+
 // Rationale: docs/job-board-index-notes.md#n1333-export-function-mergecompanyfacet-rows-a
 export function mergeCompanyFacet(rows: Array<{ token?: string; name?: string; count?: number; open?: number }>): Array<{ token?: string; name?: string; count?: number; open?: number; tokens?: string[] }> {
   const byName = new Map<string, { token?: string; name?: string; count: number; open?: number; tokens: string[]; top: number }>();
   const out: Array<{ token?: string; name?: string; count?: number; open?: number; tokens?: string[] }> = [];
   for (const r of rows) {
     // Rationale: docs/job-board-index-notes.md#n1334-const-stem-r-token-split-trim
-    const stem = (r.token ?? "").split("~")[0].trim().toLowerCase();
+    const own = (r.token ?? "").split("~")[0].trim().toLowerCase();
+    const stem = SAME_EMPLOYER_STEM.get(own) ?? own;
     const nm = (r.name ?? "").trim().toLowerCase();
     // Rationale: docs/job-board-index-notes.md#n1335-if-nm-out-push-r-continue
     if (!nm) { out.push(r); continue; }

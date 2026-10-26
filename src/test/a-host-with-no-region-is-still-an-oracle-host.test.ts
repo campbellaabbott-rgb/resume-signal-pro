@@ -245,23 +245,32 @@ describe("the catalogue", () => {
     expect(jpmc.map((e) => [e.name, e.source, e.token])).toEqual([["JPMorgan Chase", "oracle", REGIONLESS]]);
   });
 
-  it("moved no carried board's catalogue index: every board before it is wave 4's catalogue, entry for entry", () => {
-    // build-version-guard's fingerprint, over the boards before JPMorgan only, against the
-    // catalogHash wave 4 pins for its 44,519 boards (at f4ccfeae, with Meta1's agency flag in
-    // place and twelve employers' boards without one; flags move the hash and no index). Later
-    // appends after JPMorgan keep this true. The cold cursor walks a vendor-interleaved list,
-    // not this order, so appending still moves about half of that list by one place (n1384);
-    // what this pins is that no board was displaced in the catalogue. A census merge that
-    // removes or reorders a board before JPMorgan on purpose re-pins build-version-guard too;
-    // delete this test then.
+  it("moved no carried board's catalogue index: every board before it holds wave 4's place, bar four repointed on purpose", () => {
+    // Every position before JPMorgan holds the board (vendor and token) wave 4's catalogue holds
+    // there. Until trust round 3 this pinned build-version-guard's whole fingerprint over those
+    // boards (000aab18fae6dd65, wave 4's catalogHash at f4ccfeae, names and agency flags
+    // included). Round 3 renames boards and moves agency flags in place, which build-version-guard
+    // pins, and gives four duplicate iCIMS hosts' places to four Exelon brand boards, so this pins
+    // the places alone: (index, vendor, token), with the four repointed places read as the hosts
+    // they held. The cold cursor walks a vendor-interleaved list, not this order, so appending
+    // still moves about half of that list by one place (n1384); what this pins is that no board
+    // was displaced in the catalogue. A census merge that removes or reorders a board before
+    // JPMorgan on purpose re-pins build-version-guard too; delete this test then.
+    const REPOINTED: Record<number, [string, string]> = {
+      38669: ["careers.goldennugget.com", "careers.bge.com"],
+      38698: ["careers.keysight.com", "careers.peco.com"],
+      38760: ["careers.bpas.com", "careers.pepco.com"],
+      41040: ["talent.lla.com", "careers.atlanticcityelectric.com"],
+    };
     const before = CATALOG.slice(0, jpmc[0]?.index ?? 0);
     const h = createHash("sha256");
     for (const e of before) {
-      h.update(JSON.stringify([e.index, e.name, e.source, e.token, e.pages ?? null, e.agency ?? false]));
+      h.update(JSON.stringify([e.index, e.source, REPOINTED[e.index]?.[0] ?? e.token]));
       h.update("\n");
     }
     expect(before.length).toBe(44_519);
-    expect(h.digest("hex").slice(0, 16)).toBe("000aab18fae6dd65");
+    expect(h.digest("hex").slice(0, 16)).toBe("8f388176f2692e17");
+    for (const [at, [, now]] of Object.entries(REPOINTED)) expect([CATALOG[Number(at)].source, CATALOG[Number(at)].token], at).toEqual(["icims", now]);
   });
 
   it("holds no other region-less token: every other tenant found on such a host was a sandbox or unreachable", () => {
