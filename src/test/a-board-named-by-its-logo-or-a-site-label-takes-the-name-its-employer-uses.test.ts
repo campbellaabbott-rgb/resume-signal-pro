@@ -34,7 +34,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { JOB_SOURCES } from "../../supabase/functions/job-board/sources";
-import { employerDisplayName, employerNameOverride } from "../../supabase/functions/_shared/employer-names";
+import { employerDisplayName, employerNameOverride } from "../lib/employer-names";
 
 vi.setConfig({ hookTimeout: 120_000, testTimeout: 60_000 });
 

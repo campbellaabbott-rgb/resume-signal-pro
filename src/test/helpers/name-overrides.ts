@@ -3,7 +3,7 @@
  * migration's writes to it in file order: INSERT ... VALUES (with ON CONFLICT
  * DO UPDATE / DO NOTHING / none) and UPDATE ... SET display_name WHERE slug.
  *
- * Used by the mirror test of supabase/functions/_shared/employer-names.ts. A
+ * Used by the mirror test of src/lib/employer-names.ts. A
  * statement shape this reader does not know THROWS, naming the file, so a new
  * way of writing the table cannot quietly drop out of the comparison.
  */

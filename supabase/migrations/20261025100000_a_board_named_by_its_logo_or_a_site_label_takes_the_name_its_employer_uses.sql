@@ -41,7 +41,7 @@
 -- named as the hirer of its postings: requisition 41168's own text says
 -- "Friendship Village is seeking", with LegalEmployer null. The two LCS sites
 -- (CX_3001 and CX_11009) are PUBLISHER_ONLY_BOARDS in
--- supabase/functions/_shared/employer-names.ts: a posting there names no
+-- src/lib/employer-names.ts: a posting there names no
 -- hirer, gets no posting page and carries no JobPosting (trust/pages review,
 -- 2026-10-25).
 --
@@ -53,7 +53,7 @@
 -- 2026-09-09.95 does (4 to 5). So this file is applied BEFORE job-board
 -- deploys (docs/deploy-ledger.json migrationOrder): applied after it, the lane
 -- finishes version 5 before these rows exist. The bake and the app read
--- supabase/functions/_shared/employer-names.ts, which mirrors this table, so
+-- src/lib/employer-names.ts, which mirrors this table, so
 -- the pages print the names at the next frontend publish whatever the stored
 -- rows say.
 --

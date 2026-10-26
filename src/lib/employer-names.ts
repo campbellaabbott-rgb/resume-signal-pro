@@ -6,9 +6,16 @@
 // first, then a Workday tenant's first token segment), and each migration that
 // adds a row backfills the stored rows. This module MIRRORS that table for the
 // readers that render a name the database did not rewrite: the prerender bake
-// (scripts/prerender-seo.mjs bundles it like the other shared data modules) and
-// the React app (src imports supabase/functions/_shared directly). Pure: no I/O,
-// no Deno or browser API.
+// (scripts/prerender-seo.mjs bundles it through src/lib/company-display.ts) and
+// the React app. Pure: no I/O, no Deno or browser API.
+//
+// WHY IT LIVES IN src/lib. It sat in supabase/functions/_shared until
+// 2026-10-26, imported by no edge function. Every file in that folder counts
+// toward every function's upload, comments included, and job-board's tally
+// had 174 bytes left under its guard once trust/pages merged oh/integration
+// (src/test/the-upload-tally-counts-every-shared-file-and-every-comment.test.ts).
+// An edge function that one day needs these names reads company_name_overrides
+// itself; the trigger has already written them into every stored row.
 //
 // One function for every renderer: employerDisplayName(token, stored). The
 // mirror test (src/test/an-employer-named-by-its-system-code-gets-the-name-it-uses.test.ts)

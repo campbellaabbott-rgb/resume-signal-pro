@@ -57,7 +57,7 @@ import {
   boardDisplayName,
   boardNamesItsHirer,
   employerDisplayName,
-} from "../../supabase/functions/_shared/employer-names";
+} from "../lib/employer-names";
 
 vi.setConfig(MOUNT_TEST_BUDGET);
 

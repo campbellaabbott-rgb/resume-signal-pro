@@ -15,7 +15,7 @@
  *     stored rows itself (80,800 postings in one transaction): job-board's
  *     name-sync lane does, and the-name-sync-lane-renames-what-the-migration-
  *     no-longer-does.test.ts runs that lane;
- *  2. supabase/functions/_shared/employer-names.ts, which the prerender and the
+ *  2. src/lib/employer-names.ts, which the prerender and the
  *     app import, is the table the migrations leave (every write replayed);
  *  3. employerDisplayName resolves a token by the trigger's own precedence.
  */
@@ -29,7 +29,7 @@ import {
   employerDisplayName,
   employerNameOverride,
   isSystemCodeName,
-} from "../../supabase/functions/_shared/employer-names";
+} from "../lib/employer-names";
 
 vi.setConfig({ hookTimeout: 120_000, testTimeout: 60_000 });
 

@@ -182,10 +182,10 @@ const textOf = (h) => h.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<[^>
   // override token, so a regression to "Ms" could never fail it. Then the
   // negative half: no page names a reviewed tenant code, or a vowelless code
   // the display left in lower case ("Bb"), as its employer. Both read the
-  // tables the bake uses (supabase/functions/_shared/employer-names.ts,
+  // tables the bake uses (src/lib/employer-names.ts,
   // src/lib/company-display.ts).
   const srcOf = (rel) => { try { return fs.readFileSync(`${REPO_ROOT}/${rel}`, "utf8"); } catch { return ""; } };
-  const overrides = new Map([...((srcOf("supabase/functions/_shared/employer-names.ts").match(/EMPLOYER_NAME_OVERRIDES[^=]*= new Map\(\[([\s\S]*?)\n\]\);/) || [])[1] || "").matchAll(/\["([^"]+)", "([^"]*)"\]/g)].map((m) => [m[1], m[2]]));
+  const overrides = new Map([...((srcOf("src/lib/employer-names.ts").match(/EMPLOYER_NAME_OVERRIDES[^=]*= new Map\(\[([\s\S]*?)\n\]\);/) || [])[1] || "").matchAll(/\["([^"]+)", "([^"]*)"\]/g)].map((m) => [m[1], m[2]]));
   const reviewedCodes = new Set([...((srcOf("src/lib/company-display.ts").match(/REVIEWED_TENANT_CODES = new Set\(\[([\s\S]*?)\]\)/) || [])[1] || "").matchAll(/"([^"]+)"/g)].map((m) => m[1]));
   // employerNameOverride(): the exact full token first, then a Workday tenant slug.
   const overrideOf = (tok) => (tok.includes("~") && overrides.has(tok)) ? overrides.get(tok) : (tok.includes("~wd") && overrides.has(tok.split("~")[0].toLowerCase())) ? overrides.get(tok.split("~")[0].toLowerCase()) : null;
