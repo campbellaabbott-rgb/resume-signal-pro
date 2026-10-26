@@ -79,7 +79,6 @@
       "review": "You review every draft and send it yourself.",
       "statusTitle": "In Claude or ChatGPT: not yet.",
       "statusBody": "Pro's tools need you signed in from your AI, and that is not switched on. Until it is, they run on this website.",
-      "consent": "I agree that Pro renews automatically every month at {{price}} until I cancel, and that I can cancel any time from my account.",
       "consentError": "Tick the box to agree to the renewal before you go to checkout.",
       "cta": "Go Pro, {{price}} a month",
       "fine": "Needs a free account; you sign in first. Pro stays on to the end of the month you paid for.",

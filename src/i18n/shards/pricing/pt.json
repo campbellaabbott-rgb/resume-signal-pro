@@ -79,7 +79,6 @@
       "review": "Você revisa cada rascunho e o envia você mesmo.",
       "statusTitle": "No Claude ou no ChatGPT: ainda não.",
       "statusBody": "As ferramentas do Pro precisam que você entre na conta pela sua IA, e isso ainda não está ativado. Até lá, elas funcionam neste site.",
-      "consent": "Concordo que o Pro seja renovado automaticamente todo mês por {{price}} até eu cancelar, e que posso cancelar a qualquer momento na minha conta.",
       "consentError": "Marque a caixa para concordar com a renovação antes de ir ao pagamento.",
       "cta": "Assinar o Pro, {{price}} por mês",
       "fine": "Requer uma conta grátis; você entra primeiro. O Pro continua ativo até o fim do mês que você pagou.",

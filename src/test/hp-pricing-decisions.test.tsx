@@ -83,6 +83,7 @@ import { HelmetProvider } from "react-helmet-async";
 vi.setConfig(MOUNT_TEST_BUDGET);
 
 const S = en.pricingPlans;
+const MAIN_EN = readMainLocale("en.json") as { purchaseTerms: Record<string, string> };
 /** An obviously fake identity, used only inside tests (owner decision: never invented in src). */
 const TEST_SELLER = { legalName: "TEST SELLER", postalAddress: "TEST ADDRESS, NOWHERE" };
 const POSTINGS = { openTotal: 1040488, asOf: "2026-10-17T22:45:00Z" };
@@ -240,7 +241,10 @@ describe("4. 'All sales are final.' beside every buy control", () => {
           const finals = block!.querySelectorAll("[data-final-sale]");
           expect(finals.length).toBe(1);
           expect(finals[0].textContent).toBe(S.buy.finalSale);
-          expect(block!.querySelector("[data-region-line]")?.textContent).toBe(S.buy.region);
+          // One region wording in every buy block: PurchaseTerms' (switch-over step 8).
+          const regions = block!.querySelectorAll("[data-region-line]");
+          expect(regions.length).toBe(1);
+          expect(regions[0].textContent).toBe(MAIN_EN.purchaseTerms.regionLine);
         }
       });
     }
@@ -283,12 +287,15 @@ describe("6. Go Pro needs a separate, unchecked, required renewal box", () => {
   it("the box starts empty, is required, and sits above Go Pro in the button's block", () => {
     const { container } = mount(PREVIEW.input);
     const block = container.querySelector<HTMLElement>("[data-buy-block=pro]")!;
-    const box = block.querySelector<HTMLInputElement>("input[type=checkbox]")!;
+    // PurchaseTerms' own box, the one purchaseTerms() reads (switch-over step 8).
+    const box = block.querySelector<HTMLInputElement>("[data-auto-renew-box] input")!;
+    expect(block.querySelectorAll("input[type=checkbox]").length).toBe(1);
     expect(box.checked).toBe(false);
     expect(box.required).toBe(true);
     expect(box.getAttribute("aria-required")).toBe("true");
+    expect(box.id).not.toBe("");
     const label = block.querySelector(`label[for="${box.id}"]`)!;
-    expect(label.textContent).toBe(S.pro.consent.replace("{{price}}", `$${PRO_PRICE_USD}`));
+    expect(label.textContent).toBe(MAIN_EN.purchaseTerms.autoRenewConsent.replace("{{price}}", `$${PRO_PRICE_USD}`));
     const button = block.querySelector("[data-buy=pro]")!;
     expect(box.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
@@ -299,9 +306,11 @@ describe("6. Go Pro needs a separate, unchecked, required renewal box", () => {
     const block = container.querySelector<HTMLElement>("[data-buy-block=pro]")!;
     fireEvent.click(block.querySelector("[data-buy=pro]")!);
     expect(pressed).not.toHaveBeenCalled();
-    const box = block.querySelector<HTMLInputElement>("input[type=checkbox]")!;
-    expect(screen.getByRole("alert").textContent).toBe(S.pro.consentError);
+    const box = block.querySelector<HTMLInputElement>("[data-auto-renew-box] input")!;
+    const alert = screen.getByRole("alert");
+    expect(alert.textContent).toBe(S.pro.consentError);
     expect(box.getAttribute("aria-invalid")).toBe("true");
+    expect(box.getAttribute("aria-describedby")).toBe(alert.id);
     expect(document.activeElement).toBe(box);
     fireEvent.click(box);
     fireEvent.click(block.querySelector("[data-buy=pro]")!);

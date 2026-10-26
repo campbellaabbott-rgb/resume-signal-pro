@@ -6,16 +6,13 @@
  * create-subscription-checkout refuses a body without `autoRenewConsent:
  * true`, which purchaseTerms() sends only when PurchaseTerms' own box
  * ([data-auto-renew-box]) beside the pressed button was ticked, and records
- * AUTO_RENEW_CONSENT_VERSION with the time. On this base PurchaseTerms has no
- * such box, so the Pro buy block carries a stand-in with the same attribute
- * and wave 4's exact wording.
+ * AUTO_RENEW_CONSENT_VERSION with the time. The pricing page's Pro block
+ * once carried a stand-in box; switch-over step 8 deleted it, and the block
+ * shows PurchaseTerms (with its box) above Go Pro.
  *
- *   - The Pro buy block renders exactly one renewal box. The day wave 4's
- *     PurchaseTerms lands beside the stand-in this fails, and switch-over
- *     step 8 deletes the stand-in (docs/homepage-pricing/README.md).
- *   - The stand-in's English is wave 4's sentence, read from PurchaseTerms
- *     whenever its default is there, so the words the buyer ticks are the
- *     words the server's version names.
+ *   - The Pro buy block renders exactly one renewal box: PurchaseTerms'.
+ *   - Its English is wave 4's sentence, read from PurchaseTerms, so the words
+ *     the buyer ticks are the words the server's version names.
  *   - The block records no consent version or field of its own.
  */
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
@@ -95,8 +92,11 @@ describe("the Pro buy block", () => {
     });
   }
 
-  it("the stand-in's English is wave 4's sentence", () => {
-    expect(en.pricingPlans.pro.consent).toBe(waveFourSentence());
+  it("the box is PurchaseTerms' own, in wave 4's sentence, and the pricing strings keep no copy of it", () => {
+    // Switch-over step 8 deleted the stand-in and its string.
+    expect((en.pricingPlans.pro as Record<string, unknown>).consent).toBeUndefined();
+    const main = JSON.parse(readFileSync(resolve(__dirname, "../i18n/locales/en.json"), "utf8")) as { purchaseTerms: Record<string, string> };
+    expect(main.purchaseTerms.autoRenewConsent).toBe(waveFourSentence());
   });
 
   it("records no consent version or field of its own: the server stores wave 4's", () => {

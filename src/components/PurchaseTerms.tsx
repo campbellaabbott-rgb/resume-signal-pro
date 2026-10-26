@@ -39,7 +39,7 @@
  *
  * Every number is interpolated from src/config (products, eu-consumer).
  */
-import { useEffect, useRef } from "react";
+import { useEffect, useId, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { SUBSCRIPTIONS } from "@/config/products";
 import { WITHDRAWAL_DAYS } from "@/config/eu-consumer";
@@ -57,6 +57,13 @@ type Props = {
   className?: string;
   /** Told whenever Pro's renewal box changes, so the card can keep its button disabled until it is ticked. */
   onAutoRenewChange?: (ticked: boolean) => void;
+  /**
+   * For a block that says why a press with the renewal box empty started
+   * nothing (the pricing page's Go Pro): the box is marked invalid and
+   * described by that message's element while it shows.
+   */
+  autoRenewInvalid?: boolean;
+  autoRenewErrorId?: string;
 };
 
 /** Renders a translated sentence whose <terms>…</terms> and <privacy>…</privacy> spans become links. */
@@ -81,8 +88,11 @@ function AgreeLine({ text }: { text: string }) {
   return <>{parts}</>;
 }
 
-export function PurchaseTerms({ kind, plan, className, onAutoRenewChange }: Props) {
+export function PurchaseTerms({ kind, plan, className, onAutoRenewChange, autoRenewInvalid = false, autoRenewErrorId }: Props) {
   const { t } = useTranslation();
+  // The renewal box's label is bound to it by id as well as by nesting, so
+  // every reader names the box by its sentence.
+  const renewalBoxId = useId();
   // While this line is on screen, a press on a button in its block sends the
   // Terms version; it must sit in the same element as the buttons it covers.
   // Its box is its own (S11-141).
@@ -115,12 +125,15 @@ export function PurchaseTerms({ kind, plan, className, onAutoRenewChange }: Prop
         <p>{t("purchaseTerms.renewal", { price: proPrice })}</p>
       )}
       {renewalBox && (
-        <label className="flex items-start gap-2 text-left" data-auto-renew-box>
+        <label htmlFor={renewalBoxId} className="flex min-h-6 cursor-pointer items-start gap-2 text-left coarse:min-h-11" data-auto-renew-box>
           <input
+            id={renewalBoxId}
             type="checkbox"
-            className="mt-0.5"
+            className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer"
             required
             aria-required="true"
+            aria-invalid={autoRenewInvalid ? true : undefined}
+            aria-describedby={autoRenewInvalid && autoRenewErrorId ? autoRenewErrorId : undefined}
             checked={consent.autoRenewConsent}
             onChange={(e) => setPurchaseConsent(ref.current, { autoRenewConsent: e.target.checked })}
           />

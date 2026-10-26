@@ -7,31 +7,27 @@
  * says which in one sentence and renders no button at all.
  *
  * Beside every buy button, in the same block:
- *   - "All sales are final." and the region line, directly under the button;
+ *   - "All sales are final." and the region line: for the Full Analysis
+ *     directly under its link (SaleTermsLine), for Pro in the shared
+ *     PurchaseTerms block above Go Pro, in the same words
+ *     (purchaseTerms.finalSale, purchaseTerms.regionLine);
  *   - for the Full Analysis, how its price is charged: listed in US dollars,
  *     charged at about that value in the currency of the device's time zone
  *     when the scanner page's hook recognizes the zone and create-checkout
  *     supports its currency, else in US dollars (owner decision 2026-10-25);
- *   - for Pro, ABOVE the button, an unchecked, required box agreeing to the
- *     automatic renewal, kept apart from every other term (California's
- *     automatic renewal law as amended by AB 2863). Go Pro with the box empty
- *     starts nothing, says why, and moves focus to the box;
- *   - for Pro, the shared PurchaseTerms line (renewal, "By continuing you
- *     agree", the seller): it sits in the button's own block, which is how a
- *     press on this button carries the Terms version (src/lib/purchase-terms.ts).
- *
- * THE RENEWAL BOX IS A STAND-IN FOR WAVE 4'S. Wave 4's PurchaseTerms renders
- * its own box ([data-auto-renew-box]) for kind="subscription" plan="pro";
- * purchaseTerms() sends `autoRenewConsent: true` only when that box was
- * ticked, and create-subscription-checkout refuses a plan without it and
- * records AUTO_RENEW_CONSENT_VERSION with the time. This base's PurchaseTerms
- * has no box, so the block draws one with the same attribute and wave 4's
- * words, and records nothing of its own. When wave 4's PurchaseTerms arrives,
- * src/test/hp-fix-renewal-box.test.tsx finds two boxes and switch-over step 8
- * deletes this one, keeping the focus-and-error press through PurchaseTerms'
- * onAutoRenewChange (docs/homepage-pricing/README.md).
+ *   - for Pro, ABOVE the button, PurchaseTerms (renewal, "By continuing you
+ *     agree", the seller) with its own unchecked, required box agreeing to
+ *     the automatic renewal, kept apart from every other term (California's
+ *     automatic renewal law as amended by AB 2863). It sits in the button's
+ *     block, which is how a press on this button carries the Terms version
+ *     and the renewal consent (src/lib/purchase-terms.ts): purchaseTerms()
+ *     sends autoRenewConsent only when that box was ticked, and
+ *     create-subscription-checkout refuses a plan without it and records
+ *     AUTO_RENEW_CONSENT_VERSION with the time. Go Pro with the box empty
+ *     starts nothing, says why, marks the box invalid and moves focus to it
+ *     (switch-over step 8: the page's own stand-in box is gone).
  */
-import { useId, useRef, useState, type ReactNode } from "react";
+import { useCallback, useId, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -63,12 +59,16 @@ export function GateNote({ closedBy }: { closedBy: FullAnalysisClosedBy | ProClo
   );
 }
 
-/** "All sales are final. Not sold in the EU, the EEA, the UK or India yet." Under every buy button. */
+/**
+ * "All sales are final." and the region line, under the Full Analysis link,
+ * in PurchaseTerms' own words (the Pro block shows PurchaseTerms itself), so
+ * the page says both in one wording.
+ */
 export function SaleTermsLine() {
   const { t } = useTranslation();
   return (
     <p className="mt-2.5 text-xs text-subtle-foreground" data-sale-terms="">
-      <span data-final-sale="">{t("pricingPlans.buy.finalSale")}</span> <span data-region-line="">{t("pricingPlans.buy.region")}</span>
+      <span data-final-sale="">{t("purchaseTerms.finalSale")}</span> <span data-region-line="">{t("purchaseTerms.regionLine")}</span>
     </p>
   );
 }
@@ -107,58 +107,48 @@ export interface ProBuyBlockProps {
   preview?: PreviewFurniture;
 }
 
-/** The renewal box, Go Pro, and the lines beside it. Presentational: the caller decides what Go Pro does. */
+/** PurchaseTerms with its renewal box, then Go Pro. Presentational: the caller decides what Go Pro does. */
 export function ProBuyBlock({ gates, busy = false, onGoPro, preview }: ProBuyBlockProps) {
   const { t, i18n } = useTranslation();
   const [agreed, setAgreed] = useState(false);
   const [missing, setMissing] = useState(false);
-  const box = useRef<HTMLInputElement>(null);
-  const id = useId();
+  const block = useRef<HTMLDivElement>(null);
+  const errorId = useId();
   const price = money(PRO_PRICE_USD, "USD", { lng: i18n.language });
-  const consentText = t("pricingPlans.pro.consent", { price });
+  const onAutoRenewChange = useCallback((ticked: boolean) => {
+    setAgreed(ticked);
+    if (ticked) setMissing(false);
+  }, []);
+  const showError = missing && !agreed;
 
   const press = () => {
     if (!agreed) {
       setMissing(true);
-      box.current?.focus();
+      block.current?.querySelector<HTMLInputElement>("[data-auto-renew-box] input")?.focus();
       return;
     }
     onGoPro();
   };
 
   return (
-    <div className="mt-5" data-buy-block="pro">
+    <div ref={block} className="mt-5" data-buy-block="pro">
       {preview?.label}
-      <div className="rounded-md border border-border bg-background px-3 py-2.5" data-renewal-consent="">
-        <label htmlFor={`${id}-renew`} data-auto-renew-box="" className="flex min-h-6 cursor-pointer items-start gap-2.5 text-sm text-foreground coarse:min-h-11">
-          <input
-            ref={box}
-            id={`${id}-renew`}
-            type="checkbox"
-            required
-            aria-required="true"
-            aria-invalid={missing && !agreed ? true : undefined}
-            aria-describedby={missing && !agreed ? `${id}-renew-err` : undefined}
-            checked={agreed}
-            onChange={(e) => {
-              setAgreed(e.target.checked);
-              if (e.target.checked) setMissing(false);
-            }}
-            className="mt-0.5 h-5 w-5 shrink-0 cursor-pointer rounded-sm border-border-strong accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          />
-          <span>{consentText}</span>
-        </label>
-        {missing && !agreed ? (
-          <p id={`${id}-renew-err`} role="alert" className="mt-2 text-meta text-destructive">
-            {t("pricingPlans.pro.consentError")}
-          </p>
-        ) : null}
-      </div>
+      <PurchaseTerms
+        kind="subscription"
+        plan="pro"
+        onAutoRenewChange={onAutoRenewChange}
+        autoRenewInvalid={showError}
+        autoRenewErrorId={errorId}
+        className="text-subtle-foreground"
+      />
+      {showError ? (
+        <p id={errorId} role="alert" className="mt-2 text-meta text-destructive">
+          {t("pricingPlans.pro.consentError")}
+        </p>
+      ) : null}
       <Button type="button" variant="secondary" size="lg" wrap className={`mt-3 ${BUY_BUTTON}`} onClick={press} disabled={busy} data-buy="pro">
         {t("pricingPlans.pro.cta", { price })}
       </Button>
-      <SaleTermsLine />
-      <PurchaseTerms kind="subscription" plan="pro" className="mt-1 text-subtle-foreground" />
       {!gates.seller ? preview?.sellerNote : null}
       <p className="mt-1 text-xs text-subtle-foreground">{t("pricingPlans.pro.fine")}</p>
     </div>
@@ -170,9 +160,9 @@ export function ProBuyBlock({ gates, busy = false, onGoPro, preview }: ProBuyBlo
  * payment sees Update payment (never a second subscription, platform sweep
  * L6-06), anyone else the buy block. Signed out, Go Pro goes to sign-in first.
  *
- * The renewal consent the server reads is wave 4's PurchaseTerms box (see
- * the head of this file); until it is on this base the stand-in gates the
- * press here and nothing is sent for it.
+ * The renewal consent travels in purchaseTerms(), from PurchaseTerms' box in
+ * the pressed button's block (see the head of this file), so subscribe()
+ * takes no consent argument.
  */
 export function ProBuyConnected({ gates }: { gates: SaleGates }) {
   const { t } = useTranslation();

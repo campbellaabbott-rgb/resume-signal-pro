@@ -79,7 +79,6 @@
       "review": "Sie prüfen jeden Entwurf und senden ihn selbst ab.",
       "statusTitle": "In Claude oder ChatGPT: noch nicht.",
       "statusBody": "Die Pro-Werkzeuge brauchen eine Anmeldung aus Ihrer KI heraus, und die ist noch nicht freigeschaltet. Bis dahin laufen sie auf dieser Website.",
-      "consent": "Ich stimme zu, dass sich Pro jeden Monat automatisch zu {{price}} verlängert, bis ich kündige, und dass ich jederzeit in meinem Konto kündigen kann.",
       "consentError": "Setzen Sie das Häkchen, um der Verlängerung zuzustimmen, bevor Sie zum Checkout gehen.",
       "cta": "Pro abschließen, {{price}} im Monat",
       "fine": "Erfordert ein kostenloses Konto; Sie melden sich zuerst an. Pro bleibt bis zum Ende des bezahlten Monats aktiv.",
