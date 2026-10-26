@@ -28,7 +28,7 @@ import { FIXED_CHOICES_STAY_ENGLISH, normalizeScanReport } from "../_shared/scan
 import { functionCeiling } from "../_shared/model-spend-gate.ts";
 import { buildScoreAudit, reportIdFor } from "./report-meta.ts";
 import { websiteSessionOf } from "../_shared/website-session.ts";
-import { scrubSealedSentences } from "./seal-safe.ts";
+import { attachMailCopy } from "./seal-safe.ts";
 import {
   detectCountryFromResume,
   effectiveCountryOf,
@@ -493,7 +493,8 @@ const trackPerformance = (startTime: number, operation: string, success: boolean
 // 2026-10-14.30 (wave 4 round 2 fixes): the signed-in account is read from a
 // website session only (CP-J / S9-001): a connected app's token is treated as
 // anonymous and spends no account's credits or scans.
-const FN_BUILD = "free-keyword-scan.2026-10-14.30";
+// 2026-10-14.31 (recheck 3, 2026-10-26): the report the page shows keeps its red flags and fix steps whole; the mailed sentences are a scrubbed copy in reportMeta.mailSentences, and the seal covers that copy.
+const FN_BUILD = "free-keyword-scan.2026-10-14.31";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -1699,10 +1700,9 @@ serve(async (req) => {
         normalizeScanReport(cachedReport);
         // Sealed on the way out, so a report cached before the mail seal
         // existed can still be emailed in full (see the seal at the end).
-        // A report cached before S12-068 may still quote the résumé in a
-        // sealed sentence: scrubbed here, before the seal.
-        scrubSealedSentences(cachedReport, resumeText);
-        await attachScanMailSeal(cachedReport, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
+        // The seal covers the mail copy (S12-068, recheck 3), made here from
+        // the cached report, which is shown as it was cached.
+        await attachScanMailSeal(attachMailCopy(cachedReport, resumeText), Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
         return new Response(
           JSON.stringify(cachedReport),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -4660,11 +4660,9 @@ ${resumeText.substring(0, 20000)}
     // before the report is cached or sealed (S11-029).
     normalizeScanReport(responseData);
 
-    // THE SEALED SENTENCES NEVER QUOTE THE RÉSUMÉ OR CARRY A NUMBER TO DIAL
-    // (S12-068): scrubbed before the report is cached or sealed, so the copy
-    // the page shows, the copy the cache replays and the copy a mail prints
-    // are one and the same.
-    scrubSealedSentences(responseData, resumeText);
+    // THE MAILED SENTENCES NEVER QUOTE THE RÉSUMÉ OR CARRY A NUMBER TO DIAL
+    // (S12-068). They are a separate copy, made and sealed at the end; the
+    // page and the cache keep the report's own sentences (recheck 3).
 
     // Cache the finished report for identical rescans (full AI reports only —
     // fallback/partial reports would freeze a degraded experience for 7 days).
@@ -4693,7 +4691,7 @@ ${resumeText.substring(0, 20000)}
     // returned. Every other exit refunds it in the finally, and anything that
     // throws from here on lands in the catch, which un-keeps it.
     creditDelivered = !partialReport;
-    await attachScanMailSeal(responseData, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
+    await attachScanMailSeal(attachMailCopy(responseData, resumeText), Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
     return new Response(
       JSON.stringify(responseData),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

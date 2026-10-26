@@ -467,10 +467,11 @@ describe("a sentence reaches the mail only under the scan's seal", () => {
     const scan = read("supabase/functions/free-keyword-scan/index.ts");
     const seals = scan.match(/await attachScanMailSeal\(/g) ?? [];
     expect(seals, "free-keyword-scan must seal its fresh answer and its cache hit").toHaveLength(2);
-    expect(scan).toMatch(/await attachScanMailSeal\(cachedReport, .*\);\n\s*return new Response\(\s*JSON\.stringify\(cachedReport\)/);
-    expect(scan).toMatch(/await attachScanMailSeal\(responseData, .*\);\n\s*return new Response\(\s*JSON\.stringify\(responseData\)/);
+    // Recheck 3: the seal covers the report's mail copy (seal-safe.ts attachMailCopy), and the page sends that copy.
+    expect(scan).toMatch(/await attachScanMailSeal\(attachMailCopy\(cachedReport, resumeText\), .*\);\n\s*return new Response\(\s*JSON\.stringify\(cachedReport\)/);
+    expect(scan).toMatch(/await attachScanMailSeal\(attachMailCopy\(responseData, resumeText\), .*\);\n\s*return new Response\(\s*JSON\.stringify\(responseData\)/);
     const page = read("src/components/FreeKeywordResults.tsx");
-    expect(page).toMatch(/const emailReportPayload = \{[\s\S]*?mailSeal: reportMeta\?\.mailSeal \?\? null,[\s\S]*?\};/);
+    expect(page).toMatch(/const emailReportPayload = withMailSentences\(\{[\s\S]*?mailSeal: reportMeta\?\.mailSeal \?\? null,[\s\S]*?\}, reportMeta\?\.mailSentences\);/);
     expect(read("src/components/EmailReportCapture.tsx")).toMatch(/body: \{ email: trimmed, dripOptIn, \.\.\.payload \}/);
   });
 });
