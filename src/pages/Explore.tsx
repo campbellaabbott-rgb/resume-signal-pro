@@ -141,7 +141,7 @@
 //     leave seven languages rendering the claim this page stopped making.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { companyLanderPath } from "@/lib/public-href";
+import { useCompanyBoardHref } from "@/lib/seo/lander-manifest";
 import { companyRowScope } from "@/pages/Companies";
 import { useTranslation } from "react-i18next";
 import { ArrowRight, Bookmark, Briefcase, Layers, LucideIcon, MapPin, Search, SlidersHorizontal } from "lucide-react";
@@ -1389,6 +1389,9 @@ function freshEntry<T extends { at: number }>(m: Map<string, T>, key: string): T
 
 export default function Explore() {
   const { t, i18n } = useTranslation();
+  // SEO-010: an employer link goes to its written company page, or to the
+  // live board filtered to the board when the bake wrote none.
+  const companyHref = useCompanyBoardHref();
   const { user } = useAuth();
   // A board-budget refusal is the BOARD pausing this connection, not this
   // page failing: one notice, no "our instrument failing", no retry advice.
@@ -2087,7 +2090,16 @@ export default function Explore() {
    *  A hit means "this employer cleared a rate gate of 5 re-lists per affected
    *  role on 25+ events". A MISS means only that it did not, which includes
    *  every employer whose board we have watched for a week. So there is no "no
-   *  re-posting detected", no green tick and no clean-bill styling anywhere. */
+   *  re-posting detected", no green tick and no clean-bill styling anywhere.
+   *
+   *  NEUTRAL, AND ONLY WHERE THE TEST CAN BE TRUSTED (Track 1, A2). The count
+   *  is title-only: a takedown is a "re-posting" when a posting with the same
+   *  title was live anywhere on the board at that moment, so an employer that
+   *  lists one title at many sites (Centria Autism, BAYADA) read as re-listing
+   *  constantly while the lander, through the shared gate, withheld the same
+   *  count. get_repost_index (20261012120000) now names only boards read in
+   *  full whose titles are not spread over many locations, and the line says
+   *  what the test saw, not what it supposedly means, in a neutral tone. */
   const repostWarn = (token: string | undefined): string | null => {
     if (!token) return null;
     const hit = repostIndex[token];
@@ -2097,7 +2109,7 @@ export default function Explore() {
     // A FLOOR, MARKED IN THE VALUE RATHER THAN IN THE SENTENCE — this file's
     // own idiom ("10,000+" on the tiles), so every translation of
     // explore.repostWarn becomes a floor at once.
-    return t("explore.repostWarn", "Re-lists roles: {{events}} re-postings across {{roles}} roles in {{d}}d", {
+    return t("explore.repostWarn", "{{events}} takedowns here had another posting with the same title live, across {{roles}} titles in {{d}} days", {
       events: `${nf(events)}+`, roles: `${nf(roles)}+`, d: days,
     });
   };
@@ -2177,8 +2189,10 @@ export default function Explore() {
         description={/* seoDescription5, NOT seoDescription4: "how much of the
             board each filter can even see" described the board-wide share the
             chips stopped printing; the share on the page is now the FIELD's.
-            Mirrored in scripts/prerender-seo.mjs. */
-          t("explore.seoDescription5", "Start from the field you work in, narrow to the actual role, then to remote, pay, experience or country — every number is a live count of the exact search the link runs, with how much of that field each filter can even see. Plus what our closure record does and does not say about the employers hiring in that slice.")}
+            Mirrored in scripts/prerender-seo.mjs word for word, and under 160
+            characters in every language: the 316-character sentence it was
+            had its end cut off in every result snippet (OBS-2). */
+          t("explore.seoDescription5", "Every field on the board with a live count, the roles inside each, and remote, pay, experience and country filters that say how much of the field they can see.")}
         path="/explore"
       />
       <Header />
@@ -3210,7 +3224,7 @@ export default function Explore() {
                   const scope = companyRowScope({ token: h.tokens[0], tokens: h.tokens });
                   const backTo = backHere(null, null, "check");
                   const href = single
-                    ? companyLanderPath(h.tokens[0], new URLSearchParams({ from: "explore", back: backTo }).toString())
+                    ? companyHref(h.tokens[0], new URLSearchParams({ from: "explore", back: backTo }).toString())
                     : toBoard({ company: scope.tokens.join(",") }, backTo);
                   const open = scope.complete ? numOr(h.open_roles) : null;
                   // ONE GUARD, TWO CALL SITES. `single` is checked here as well
@@ -3284,7 +3298,7 @@ export default function Explore() {
                           {t("explore.checkFeeds", "{{n}} job boards", { n: h.tokens.length })}
                         </span>
                       )}
-                      {worst && <span className="block text-[11px] text-warning mt-0.5">{worst}</span>}
+                      {worst && <span className="block text-[11px] text-muted-foreground mt-0.5">{worst}</span>}
                     </span>
                     <ArrowRight className="w-4 h-4 text-muted-foreground/50 group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />
                   </Link>

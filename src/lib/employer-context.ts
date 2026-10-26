@@ -1,12 +1,22 @@
 // Shared per-company context loader for the board's decision surfaces (detail
-// panel, compare modal). One promise-cached fetch per company slug bundles the
+// panel, compare modal). One promise-cached fetch per EMPLOYER bundles the
 // three sourced RPCs — headcount intel, SEC financials, H-1B declared wages —
 // so arrowing through postings never refires them. Every field is optional:
 // callers render only what exists (absent data shows nothing, never a guess).
+//
+// ONE EMPLOYER IS ITS HIRING SYSTEM PLUS ITS BOARD (employer_key, migration
+// 20261012100000; mirror src/lib/employer-key.ts). The cache is keyed the way
+// the readers pool: two career sites of one Workday tenant or one UKG client
+// share an entry, and the Workable board "blackstone" never shares one with
+// the Workday tenant blackstone~wd1~... A caller that does not pass the
+// posting's source gets an entry for that token alone. A token two hiring
+// systems carry (src/lib/board-collisions.ts) gets no facts and no request:
+// every reader answers it for both boards at once.
 
 import { supabase } from "@/integrations/supabase/client";
 import { H1B_DATA_AVAILABLE } from "@/lib/h1b-availability";
-import { employerGroupKey } from "@/lib/employer-group";
+import { boardIdentity } from "@/lib/employer-key";
+import { isCollidedToken } from "@/lib/board-collisions";
 
 export interface EmployerCtx {
   employees?: number | null;
@@ -28,11 +38,15 @@ const rpc = (f: string, a?: Record<string, unknown>) =>
 
 const cache = new Map<string, Promise<EmployerCtx>>();
 
-export function getEmployerCtx(companyToken: string): Promise<EmployerCtx> {
-  // One employer per key: a Workday tenant's sites share one, every other
-  // token is its own (eu~ and recruiting~ are hosts, not employers; S8-021).
-  const slug = employerGroupKey(companyToken);
-  const hit = cache.get(slug);
+/** The key getEmployerCtx caches a board's facts under; callers index their own maps by it. */
+export function employerCtxKey(companyToken: string, source?: string | null): string {
+  return boardIdentity(source, companyToken);
+}
+
+export function getEmployerCtx(companyToken: string, source?: string | null): Promise<EmployerCtx> {
+  if (isCollidedToken(companyToken)) return Promise.resolve({});
+  const key = employerCtxKey(companyToken, source);
+  const hit = cache.get(key);
   if (hit) return hit;
   const p = (async (): Promise<EmployerCtx> => {
     // Promise.resolve first: the supabase query builder is a thenable without
@@ -64,7 +78,7 @@ export function getEmployerCtx(companyToken: string): Promise<EmployerCtx> {
     }
     return ctx;
   })();
-  cache.set(slug, p);
+  cache.set(key, p);
   return p;
 }
 

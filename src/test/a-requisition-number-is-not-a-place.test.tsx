@@ -309,12 +309,20 @@ describe("a requisition number is not a place", () => {
   });
 
   it("both surfaces read the place through the same helper, and the country follows what is SHOWN", () => {
-    expect(JOBS, "the card").toMatch(/const cardLoc = displayLocation\(job\.location\);/);
-    expect(JOBS, "the panel").toMatch(/const detailLoc = displayLocation\(detailJob\?\.location\);/);
+    // Pass B (2026-10-12): the card and the pane are the listing vocabulary's,
+    // and the board's displayLocation IS the listing module's (one body, two
+    // names), so no surface can read a location line differently.
+    const CARD = readFileSync(resolve(ROOT, "src/components/jobs/listing/JobCard.tsx"), "utf8");
+    const FACTS = readFileSync(resolve(ROOT, "src/components/jobs/listing/PostingFacts.tsx"), "utf8");
+    expect(CARD, "the card").toMatch(/const loc = displayLocation\(job\.location\);/);
+    expect(CARD).toMatch(/from "@\/lib\/listing\/location"/);
+    expect(FACTS, "the panel").toMatch(/displayLocation\(job\.location\)/);
+    expect(FACTS).toMatch(/from "@\/lib\/listing\/location"/);
+    expect(JOBS, "the board's copy delegates").toMatch(/return listingDisplayLocation\(location\);/);
     // THE SHARP EDGE. Read against job.location, a posting whose location is
     // pure code would have its country suppressed by a country name sitting
     // inside the code — and the card would then show no place at all.
-    expect(JOBS).toMatch(/const cardCountry = countryToName\(cardLoc\.text, job\.country\);/);
+    expect(CARD).toMatch(/const country = countryToName\(loc\.text, job\.country, lng\);/);
     // The folded siblings and the compare tray are the two other places a
     // location reaches a reader, and they read the same helper.
     expect(JOBS).toMatch(/displayLocation\(sib\.location\)/);

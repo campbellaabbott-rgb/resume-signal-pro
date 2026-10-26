@@ -66,7 +66,10 @@ import { commissionCentsFor } from "../_shared/affiliate-commission.ts";
 // entitlement, balance or notice: only a completed one-off checkout (the
 // owner's rehearsal) is handled, and with no referral commission; and a
 // delivery row records the currency the buyer paid in.
-const FN_BUILD = "stripe-webhook.2026-10-11.30";
+// 2026-10-11.31 (wave 4 merges main 899be058): no change of its own; the
+// _shared/send-mail.ts it bundles keeps its deadline armed until the Resend
+// body is read (R1 hotfix, process-email-queue 2026-10-14.2).
+const FN_BUILD = "stripe-webhook.2026-10-11.31";
 const BUILD_HEADER = { "x-fn-build": FN_BUILD };
 
 // HOW LONG A MAKER HOLDS AN ORDER (20261011144000, CP-019). The lease

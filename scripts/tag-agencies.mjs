@@ -55,6 +55,7 @@ const RELEASED_CONVICTIONS = new Set([
   "icims:careers.principal.com",     // hires on behalf of affiliated representatives
   "greenhouse:liquidpersonnel",      // social-work staffing agency, self-described
   "greenhouse:crisprecruit",         // recruitment firm, self-described
+  "smartrecruiters:meta1",           // "supports several nationally-known clients": staffing (2026-10-25)
 ]);
 
 // The staffing half of merge-all's name gate, canonical spelling. The junk

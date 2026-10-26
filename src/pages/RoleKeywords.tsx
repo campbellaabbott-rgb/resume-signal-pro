@@ -13,9 +13,10 @@ import { ONET_EXPECTATIONS } from "../../supabase/functions/free-keyword-scan/on
 import { onetForRole } from "@/lib/onet-match";
 import { roleListCopy } from "@/lib/role-page-copy";
 import { ROLE_PAGES, rolesForIndustry } from "@/data/roles";
-
-const industryLabel = (slug: string) => slug.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-const displayKeyword = (k: string) => (k.length <= 4 && !k.includes(" ") ? k.toUpperCase() : k);
+import { PageJsonLd } from "@/components/seo/PageJsonLd";
+// Letter case by what a word is (SEO-019): "RN", "HR", "SOPs"; never "Rn" or "WIND".
+import { displayKeyword, industryLabel, inSentence } from "@/lib/seo/display-case";
+import { roleKeywordsHead } from "@/lib/seo/keyword-pages";
 
 export default function RoleKeywords() {
   const { slug } = useParams();
@@ -24,7 +25,7 @@ export default function RoleKeywords() {
 
   const structured = useMemo(() => {
     if (!role) return null;
-    return JSON.stringify({
+    return ({
       "@context": "https://schema.org",
       "@type": "WebPage",
       name: `${role.title} Resume Keywords & ATS Expectations`,
@@ -46,6 +47,7 @@ export default function RoleKeywords() {
   const indName = industryLabel(role.industry);
   const copy = roleListCopy(role.title, indName);
   const keywords = [...new Set(data.primary)].slice(0, 20);
+  const head = roleKeywordsHead(role.title, role.industry, keywords);
   const certs = [...new Set(data.certifications)].slice(0, 10);
   // L1-05, S11-152: the industry's occupation is cited only when src/lib/onet-match.ts names this role with it.
   const onet = onetForRole(role, ONET_EXPECTATIONS[role.industry]);
@@ -54,12 +56,8 @@ export default function RoleKeywords() {
 
   return (
     <div className="min-h-screen bg-background">
-      <SEO
-        title={`${role.title} Resume Keywords — What ATS Systems Look For`}
-        description={`${keywords.slice(0, 5).join(", ")} and more: the keywords, certifications, and titles our scanner checks on ${role.title.toLowerCase()} resumes. Free ATS scan included.`}
-        path={`/roles/${role.slug}`}
-      />
-      {structured && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: structured }} />}
+      <SEO title={head.title} description={head.description} path={`/roles/${role.slug}`} />
+      <PageJsonLd blocks={[structured]} />
       <Header />
       <main className="pt-20 pb-20">
         <div className="container max-w-3xl">
@@ -96,7 +94,7 @@ export default function RoleKeywords() {
             </p>
             <div className="flex flex-wrap gap-1.5">
               {keywords.map((k) => (
-                <span key={k} className={`px-2.5 py-1 rounded-lg bg-card border border-border text-sm text-foreground ${k.length <= 4 && !k.includes(" ") ? "" : "capitalize"}`}>{displayKeyword(k)}</span>
+                <span key={k} className="px-2.5 py-1 rounded-lg bg-card border border-border text-sm text-foreground capitalize">{displayKeyword(k, role.industry)}</span>
               ))}
             </div>
           </section>
@@ -120,7 +118,7 @@ export default function RoleKeywords() {
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {relatedTitles.map((t) => (
-                  <span key={t} className="px-2.5 py-1 rounded-lg bg-card border border-border text-sm text-muted-foreground capitalize">{t}</span>
+                  <span key={t} className="px-2.5 py-1 rounded-lg bg-card border border-border text-sm text-muted-foreground capitalize">{displayKeyword(t, role.industry)}</span>
                 ))}
               </div>
             </section>
@@ -128,7 +126,7 @@ export default function RoleKeywords() {
 
           {(SUB_INDUSTRY_TAXONOMY[role.industry]?.length ?? 0) > 0 && (
             <section className="mb-8">
-              <h2 className="text-xl font-bold mb-2 flex items-center gap-2"><CheckCircle2 className="w-5 h-5 text-success" />Specializations our scanner distinguishes in {indName.toLowerCase()}</h2>
+              <h2 className="text-xl font-bold mb-2 flex items-center gap-2"><CheckCircle2 className="w-5 h-5 text-success" />Specializations our scanner distinguishes in {inSentence(indName)}</h2>
               <div className="space-y-2">
                 {SUB_INDUSTRY_TAXONOMY[role.industry].map((sub) => (
                   <div key={sub.id} className="rounded-xl border border-border bg-card p-3">
@@ -141,7 +139,7 @@ export default function RoleKeywords() {
           )}
 
           <section className="rounded-2xl border-2 border-primary bg-card p-6 text-center">
-            <h2 className="text-xl font-bold mb-2">Scan your {role.title.toLowerCase()} resume against this data — free</h2>
+            <h2 className="text-xl font-bold mb-2">Scan your {inSentence(role.title)} resume against this data — free</h2>
             <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
               A full diagnostic report in seconds: which of these keywords you're missing, how ATS platforms parse
               your file, your weakest bullets rewritten, and a fix plan. No signup; your resume is deleted within 7 days.
@@ -163,7 +161,7 @@ export default function RoleKeywords() {
           </nav>
 
           <p className="text-[11px] text-muted-foreground mt-8">
-            Methodology: these lists come directly from the detection tables our scanner runs on every {indName.toLowerCase()} resume,
+            Methodology: these lists come directly from the detection tables our scanner runs on every {inSentence(indName)} resume,
             validated by a pinned regression suite. O*NET data is public domain from the U.S. Department of Labor.
             See <Link to="/methodology" className="underline hover:text-foreground">our methodology</Link>.
           </p>

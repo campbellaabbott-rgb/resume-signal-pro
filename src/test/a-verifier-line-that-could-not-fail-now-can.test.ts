@@ -318,20 +318,18 @@ const curlServing = (build: string) => `#!/bin/sh\ncase "$*" in *agent-mcp*) pri
 const homeWith = (prices: string[]) => HOME.replace("</head>", `<script type="application/ld+json">${JSON.stringify({ "@context": "https://schema.org", "@type": "Service", name: "AI apply agent", offers: prices.map((p) => ({ "@type": "Offer", price: p, priceCurrency: "USD" })) })}</script></head>`);
 const withHome = (home: string) => [route("/", home), ...site76().filter((r) => r.match !== `^${esc(SITE + "/")}$`)];
 
-describe("L1-08: once wave 4 serves, the homepage Service is judged as retired", () => {
-  it("a Service still offering $99 and $29 is INFO naming the bake's owner, never PASS", () => {
-    const lines = runSection("76-wave3-seo-content.sh", { routes: withHome(homeWith(["99", "29"])), curl: curlServing("agent-mcp.2026-10-11.2") });
-    expect(has(lines, "INFO", /homepage Service offers still carry \["99","29"\], products wave 4 retired: .*prerender-seo\.mjs, company-profiles/), show(lines)).toBe(true);
-    expect(lines.some((l) => l.startsWith("PASS") && /\$99 and \$29 \(L1-08\)/.test(l)), show(lines)).toBe(false);
-  });
-
-  it("a Service offering neither PASSes", () => {
-    const lines = runSection("76-wave3-seo-content.sh", { routes: withHome(homeWith([])), curl: curlServing("agent-mcp.2026-10-11.2") });
-    expect(has(lines, "PASS", /homepage Service offers no retired product/), show(lines)).toBe(true);
-  });
-
-  it("before the wave-4 build the wave-3 requirement holds: no prices is a FAIL", () => {
-    const lines = runSection("76-wave3-seo-content.sh", { routes: withHome(homeWith([])), curl: curlServing("agent-mcp.2026-10-09.71") });
-    expect(has(lines, "FAIL", /homepage Service offers carry \[\] \(L1-08/), show(lines)).toBe(true);
-  });
+// Main merged (2026-10-25): the profiles+design hotfix re-pointed L1-08
+// ungated (no Service block and no Offer at 99 or 29 is the PASS), and wave 4
+// dropped its agent-mcp-gated branch of it, as main's sharedFiles note says.
+// pd-hotfix-the-re-pointed-crawler-lines-fail-on-a-homepage-copy-and-a-
+// retired-offer holds the line; what is held here is that the agent-mcp build
+// no longer changes the verdict.
+describe("L1-08: the homepage Service is judged as retired whatever agent-mcp serves", () => {
+  for (const build of ["agent-mcp.2026-10-11.2", "agent-mcp.2026-10-09.71"]) {
+    it(`${build}: a Service still offering $99 and $29 FAILs, never PASS or INFO`, () => {
+      const lines = runSection("76-wave3-seo-content.sh", { routes: withHome(homeWith(["99", "29"])), curl: curlServing(build) });
+      expect(has(lines, "FAIL", /the homepage still sells the retired apply agent: 1 Service block\(s\)/), show(lines)).toBe(true);
+      expect(lines.some((l) => !l.startsWith("FAIL") && /L1-08/.test(l)), show(lines)).toBe(false);
+    });
+  }
 });

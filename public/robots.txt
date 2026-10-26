@@ -17,6 +17,9 @@
 # the PRIVATE_ROUTES allowlist in src/test/sitemap-prerender-parity.test.ts,
 # and src/test/the-board-hands-a-job-and-a-search-to-the-agent.test.tsx fails
 # when any of those routes is missing from any block here.
+# The developer tool at /dev/checkout-test is NOT disallowed: a crawler that
+# may not fetch it can never read its noindex (the app's, and the small page
+# the bake writes there), and a linked URL could still be indexed address-only.
 
 User-agent: Googlebot
 Allow: /

@@ -51,10 +51,21 @@ else
   if fb_has "$JOBSJS" "jobsPage.sortDiscovered2" && ! fb_has "$JOBSJS" '"jobsPage.sortDiscovered"'; then echo "PASS  the discovery sort is labelled by what it orders (sortDiscovered2), the 'Recently found by us' key is gone"
   else echo "FAIL  the board chunk still reads jobsPage.sortDiscovered ('Recently found by us')"; fi
 
-  # L2-19 / L2-07 / L2-20: the posting page.
+  # L2-19 / L2-07 / L2-20: the posting page. Since the design upgrade the pay
+  # facts render in the shared posting component, which rollup puts in its
+  # own chunk imported by the posting page and the board, so the posting
+  # chunk and the chunks it imports are read together (FB_POSTGRAPH).
+  FB_POSTGRAPH=$POSTJS
+  FB_POSTIN=$FB_POST
+  if [ -n "$FB_POST" ] && ! fb_has "$POSTJS" "jobPostingPage.noPayFound"; then
+    for FB_REF in $(printf '%s' "$POSTJS" | grep -oE '\./[A-Za-z0-9_.-]+-[A-Za-z0-9_-]{6,}\.js' | sed 's|^\./||' | sort -u | head -40); do
+      FB_REFJS=$(curl -s -m 30 "$SITE/assets/$FB_REF")
+      if fb_has "$FB_REFJS" "jobPostingPage.noPayFound"; then FB_POSTGRAPH="$POSTJS$FB_REFJS"; FB_POSTIN="$FB_REF (imported by $FB_POST)"; break; fi
+    done
+  fi
   if [ -z "$FB_POST" ]; then echo "FAIL  no JobPosting chunk named by the live entry"
-  elif fb_has "$POSTJS" "jobPostingPage.noPayFound"; then echo "PASS  $FB_POST says WE found no pay figure (never 'this employer states no pay'); the gone-only-on-gone fixes ride this chunk"
-  else echo "FAIL  $FB_POST still reads jobPostingPage.noPay: the posting-page fixes (404 retracted, head kept while loading) are not serving"; fi
+  elif fb_has "$FB_POSTGRAPH" "jobPostingPage.noPayFound"; then echo "PASS  $FB_POSTIN says WE found no pay figure (never 'this employer states no pay'); the gone-only-on-gone fixes ride this chunk"
+  else echo "FAIL  $FB_POST (and the chunks it imports) still read jobPostingPage.noPay: the posting-page fixes (404 retracted, head kept while loading) are not serving"; fi
   # A 404 (no row, no recorded closure) is retracted as 'no longer listed on
   # this board', never as the employer's board dropping it.
   if [ -n "$FB_POST" ] && fb_has "$POSTJS" "jobPostingPage.unlistedMeta"; then echo "PASS  $FB_POST retracts a 404 as 'no longer listed on this board' (unlistedMeta), with no claim about the employer's board"
@@ -75,21 +86,27 @@ else
   if [ -n "$FB_EXPL" ] && fb_has "$EXPLJS" '"./BoardBudgetNotice-'; then echo "PASS  $FB_EXPL imports the board-budget notice: a refusal is not called 'our measurement failing'"
   else echo "FAIL  $FB_EXPL does not import the board-budget notice: a refused /explore still blames itself and re-fires probes"; fi
 
-  # The English strings the browser loads carry the retired-and-reminted keys.
-  FB_EN_OK=0; FB_EN_EXACT=0
-  for CH in $(printf '%s' "$FB_MAINJS" | grep -o '"\./en-[A-Za-z0-9_-]*\.js"' | tr -d '"' | sed 's|^\./||' | sort -u); do
+  # The US English strings the browser loads carry the retired-and-reminted
+  # keys: rb-en_all since SEO-040, the entry before it, never en-GB
+  # (scripts/verify-us-english.sh says why).
+  FB_EN_FOUND=0; FB_EN_OK=0; FB_EN_EXACT=0
+  for CH in $(bash scripts/verify-us-english.sh "$SITE$FB_MAIN"); do
     FB_EN=$(curl -s -m 30 "$SITE/assets/$CH")
     printf '%s' "$FB_EN" | grep -q "sortDiscovered2" || continue
+    FB_EN_FOUND=1
     if printf '%s' "$FB_EN" | grep -q "Newest, undated by our date" && ! printf '%s' "$FB_EN" | grep -q "Recently found by us"; then FB_EN_OK=1; fi
     printf '%s' "$FB_EN" | grep -q "title matches first, then employer-name matches" && FB_EN_EXACT=1
     break
   done
-  if [ "$FB_EN_OK" = 1 ]; then echo "PASS  the English strings name the discovery order truthfully ('Newest, undated by our date')"
-  else echo "FAIL  the English strings the browser loads still say 'Recently found by us' (or carry no sortDiscovered2)"; fi
-  # The exact-word tier serves title matches, then employer-name matches, each
-  # block date-ordered on its own; its sentence names the two blocks.
-  if [ "${FB_EN_EXACT:-0}" = 1 ]; then echo "PASS  the exact-word tier's order sentence names its two blocks (title matches first, then employer-name matches)"
-  else echo "FAIL  the English strings claim one date order over the exact-word tier's two concatenated reads"; fi
+  if [ "$FB_EN_FOUND" = 0 ]; then echo "FAIL  could not find the US English strings the browser loads (no chunk the entry names carries sortDiscovered2; frontend not published, or the bundle layout moved)"
+  else
+    if [ "$FB_EN_OK" = 1 ]; then echo "PASS  the English strings name the discovery order truthfully ('Newest, undated by our date')"
+    else echo "FAIL  the English strings the browser loads still say 'Recently found by us'"; fi
+    # The exact-word tier serves title matches, then employer-name matches, each
+    # block date-ordered on its own; its sentence names the two blocks.
+    if [ "${FB_EN_EXACT:-0}" = 1 ]; then echo "PASS  the exact-word tier's order sentence names its two blocks (title matches first, then employer-name matches)"
+    else echo "FAIL  the English strings claim one date order over the exact-word tier's two concatenated reads"; fi
+  fi
 fi
 
 # What a bake cannot show: the pages' crawler HTML is the prerender's, which

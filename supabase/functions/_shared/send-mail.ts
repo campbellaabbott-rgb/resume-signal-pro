@@ -8,6 +8,8 @@
  *
  *   - never throws: every outcome is a value the caller acts on;
  *   - reads the body of a non-2xx answer, so the refusal's reason is logged;
+ *   - bounds the whole send, body included, by one deadline (timeoutMs): an
+ *     answer whose body stalls is judged by its status once it passes;
  *   - checks suppressed_emails before a transactional or marketing send.
  *     Auth mail is exempt, as it is in the queue: a sign-in code is security
  *     mail the person asked for a moment ago. A transactional mail is held back
@@ -198,6 +200,13 @@ export async function sendMail(mail: OutgoingMail, deps: SendDeps = {}): Promise
     if (mail.text) body.text = mail.text;
     if (mail.replyTo) body.reply_to = mail.replyTo;
 
+    // ONE DEADLINE FOR THE WHOLE SEND, BODY INCLUDED (second fixer round of
+    // the R1 hotfix). The timer used to be cleared once the headers arrived,
+    // so an answer whose body stalled held the caller with no bound:
+    // process-email-queue's run outlived its 30-second claim before writing
+    // the 'sent' row, and the next drain sent the mail again, through Lovable
+    // if it had recovered. Past the deadline the body is given up and the
+    // status decides: a 2xx is a send Resend accepted (its id unread).
     const ctl = new AbortController();
     const timer = setTimeout(() => ctl.abort(), Math.max(500, mail.timeoutMs ?? DEFAULT_TIMEOUT_MS));
     let res: Response;
@@ -209,9 +218,19 @@ export async function sendMail(mail: OutgoingMail, deps: SendDeps = {}): Promise
       await logAttempt(admin, { messageId, kind, to, status: "failed", error: `resend ${why}`, metadata: meta({ http_status: 0 }) }, null);
       return { ok: false, id: null, status: 0, error: `resend ${why}`.slice(0, 300) };
     }
-    clearTimeout(timer);
 
-    const raw = await res.text().catch(() => "");
+    let bodyTimedOut = false;
+    const givenUp = new Promise<string>((done) => {
+      const stop = () => { bodyTimedOut = true; done(""); };
+      if (ctl.signal.aborted) stop();
+      else ctl.signal.addEventListener("abort", stop, { once: true });
+    });
+    let raw: string;
+    try {
+      raw = await Promise.race([res.text().catch(() => ""), givenUp]);
+    } finally {
+      clearTimeout(timer);
+    }
     let parsed: { id?: unknown; message?: unknown; name?: unknown } | null = null;
     try {
       parsed = raw ? JSON.parse(raw) : null;
@@ -221,7 +240,7 @@ export async function sendMail(mail: OutgoingMail, deps: SendDeps = {}): Promise
 
     if (res.status >= 200 && res.status < 300) {
       const id = typeof parsed?.id === "string" ? parsed.id : null;
-      await logAttempt(admin, { messageId, kind, to, status: "sent", metadata: meta({ http_status: res.status }) }, id);
+      await logAttempt(admin, { messageId, kind, to, status: "sent", metadata: meta({ http_status: res.status, ...(bodyTimedOut ? { body_timed_out: true } : {}) }) }, id);
       return { ok: true, id, status: res.status, error: null };
     }
 
@@ -230,7 +249,7 @@ export async function sendMail(mail: OutgoingMail, deps: SendDeps = {}): Promise
       messageId, kind, to,
       status: res.status === 429 ? "rate_limited" : "failed",
       error: `resend ${res.status}: ${reason}`,
-      metadata: meta({ http_status: res.status }),
+      metadata: meta({ http_status: res.status, ...(bodyTimedOut ? { body_timed_out: true } : {}) }),
     }, null);
     return { ok: false, id: null, status: res.status, error: reason };
   } catch (e) {

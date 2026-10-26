@@ -14,13 +14,24 @@ import { toast } from "@/hooks/use-toast";
 interface Props {
   companyToken: string;
   companyName: string;
+  /**
+   * "inline" (the default) prints its own "Work at X? Claim this profile"
+   * link. "menu" prints no link: the company header's ⋯ menu opens the form
+   * through `open`, so the phone header keeps one compact actions row. Both
+   * still handle the emailed confirm link and show the verified chip.
+   */
+  variant?: "inline" | "menu";
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function CompanyClaim({ companyToken, companyName }: Props) {
+export function CompanyClaim({ companyToken, companyName, variant = "inline", open: openProp, onOpenChange }: Props) {
   const { t } = useTranslation();
   const [verified, setVerified] = useState<boolean | null>(null);
   const [website, setWebsite] = useState<string | null>(null);
-  const [open, setOpen] = useState(false);
+  const [openState, setOpenState] = useState(false);
+  const open = openProp ?? openState;
+  const setOpen = (v: boolean) => { setOpenState(v); onOpenChange?.(v); };
   const [email, setEmail] = useState("");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
@@ -88,15 +99,15 @@ export function CompanyClaim({ companyToken, companyName }: Props) {
   };
 
   const confirmBox = pendingVerify ? (
-    <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 max-w-md mb-2">
-      <p className="text-[12px] text-foreground mb-2">
+    <div className="rounded-lg border border-primary bg-primary-tint p-3 max-w-md mb-2">
+      <p className="text-meta text-foreground mb-2">
         {t("jobsPage.claim.confirmPrompt", "You opened a link to confirm your claim of {{company}}. Press the button to finish.", { company: companyName })}
       </p>
       <button
         type="button"
         onClick={confirmVerify}
         disabled={confirming}
-        className="inline-flex items-center gap-1.5 rounded-lg bg-primary text-primary-foreground text-[12px] font-medium px-3 py-1.5 disabled:opacity-60"
+        className="inline-flex min-h-9 items-center gap-1.5 rounded-md bg-primary text-primary-foreground text-sm font-medium px-3 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
         {confirming ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <BadgeCheck className="w-3.5 h-3.5" />}
         {t("jobsPage.claim.confirmButton", "Confirm my claim")}
@@ -132,10 +143,10 @@ export function CompanyClaim({ companyToken, companyName }: Props) {
       {confirmBox}
       <div className="flex flex-wrap items-center gap-2 mb-2">
         <span
-          className="inline-flex items-center gap-1.5 rounded-full bg-success/10 border border-success/30 text-success text-[12px] font-medium px-2.5 py-1"
+          className="inline-flex min-h-6 items-center gap-1 rounded-sm border border-border-strong bg-card text-foreground text-xs font-medium px-2"
           title={t("jobsPage.claim.verifiedTip", "A contact at this company verified a work email at its domain. Verification confirms identity only — it never changes the hiring data shown here.")}
         >
-          <BadgeCheck className="w-3.5 h-3.5" />
+          <BadgeCheck className="w-3.5 h-3.5 text-success" aria-hidden="true" />
           {t("jobsPage.claim.verifiedChip", "Verified employer")}
         </span>
         {website && (
@@ -143,7 +154,7 @@ export function CompanyClaim({ companyToken, companyName }: Props) {
             href={website}
             target="_blank"
             rel="noopener noreferrer nofollow"
-            className="text-[12px] text-primary hover:underline"
+            className="text-meta text-primary underline decoration-primary/50 underline-offset-2 hover:decoration-primary"
           >
             {t("jobsPage.claim.websiteLink", "Website (employer-provided)")}
           </a>
@@ -153,44 +164,51 @@ export function CompanyClaim({ companyToken, companyName }: Props) {
     );
   }
 
+  // The menu variant prints nothing until the header's ⋯ menu opens the form
+  // (or an emailed confirm link lands here).
+  if (variant === "menu" && !open && !confirmBox) return null;
+
   return (
-    <div className="mb-2">
+    <div className="mb-2" data-company-claim={variant}>
       {confirmBox}
       {!open ? (
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          className="inline-flex items-center gap-1.5 text-[12px] text-muted-foreground hover:text-primary transition-colors"
-        >
-          <Building2 className="w-3.5 h-3.5" />
-          {t("jobsPage.claim.cta", "Work at {{company}}? Claim this profile", { company: companyName })}
-        </button>
+        variant === "menu" ? null : (
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            className="inline-flex min-h-6 items-center gap-1.5 text-meta text-muted-foreground hover:text-primary transition-colors"
+          >
+            <Building2 className="w-3.5 h-3.5" aria-hidden="true" />
+            {t("jobsPage.claim.cta", "Work at {{company}}? Claim this profile", { company: companyName })}
+          </button>
+        )
       ) : sent ? (
-        <p className="text-[12px] text-muted-foreground max-w-md">
+        <p className="text-meta text-muted-foreground max-w-md">
           {t("jobsPage.claim.sentNote", "Check your inbox — we sent a verification link to {{email}}. Open it and press Confirm to finish the claim.", { email: email.trim() })}
         </p>
       ) : (
-        <div className="rounded-xl border border-border bg-card p-3 max-w-md">
-          <p className="text-[12px] text-muted-foreground mb-2">
+        <div className="rounded-lg border border-border bg-card p-3 max-w-md">
+          <p className="text-meta text-muted-foreground mb-2">
             {t("jobsPage.claim.boundary", "Verify a work email at {{company}}'s domain to show a Verified employer badge here. Verification proves identity only — it never changes the hiring data we compute.", { company: companyName })}{" "}
-            <Link to="/trust" className="text-primary hover:underline">
+            <Link to="/trust" className="text-primary underline decoration-primary/50 underline-offset-2 hover:decoration-primary">
               {t("jobsPage.claim.policyLink", "Why?")}
             </Link>
           </p>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") void submit(); }}
+              aria-label={t("companyProfile.claim.emailLabel", "Work email")}
               placeholder={t("jobsPage.claim.emailPlaceholder", "you@company.com")}
-              className="flex-1 rounded-lg border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+              className="min-w-0 flex-1 h-10 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             />
             <button
               type="button"
               onClick={() => void submit()}
               disabled={sending || !email.trim()}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium px-3 py-1.5 hover:bg-primary/90 disabled:opacity-50"
+              className="inline-flex h-10 items-center gap-1.5 rounded-md bg-primary text-primary-foreground text-sm font-medium px-3 hover:bg-primary-hover disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
               {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
               {t("jobsPage.claim.send", "Send link")}

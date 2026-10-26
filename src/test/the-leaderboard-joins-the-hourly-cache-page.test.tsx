@@ -125,7 +125,8 @@ describe("2. the date printed is the leaderboard's own", () => {
     await waitFor(() => expect(body()).toContain("Acme Corp"));
     expect(body()).toContain(`Ranking as of ${new Date(boardAt).toLocaleString()}`);
     expect(body(), "the leaderboard borrowed the row's stamp").not.toContain(`Ranking as of ${new Date(rowAt).toLocaleString()}`);
-    expect(body()).toContain("verified open roles right now");
+    expect(body()).toContain("open roles right now");
+    expect(body(), "the tile calls feed reads verified").not.toContain("verified open roles");
     expect(body()).toContain("recomputed hourly");
     expect(body()).not.toContain("carried forward");
     expect(body()).toContain("120 open now");
@@ -149,7 +150,8 @@ describe("3. a carried leaderboard says so beside its date", () => {
     expect(body()).toContain("120 open then");
     expect(body()).not.toContain("120 open now");
     // ...and the tiles beside it keep their own, fresher, wording.
-    expect(body()).toContain("verified open roles right now");
+    expect(body()).toContain("open roles right now");
+    expect(body(), "the tile calls feed reads verified").not.toContain("verified open roles");
     expect(boardCalls(), "a carried list is still a list; the live RPC must not be paid for on top of it").toBe(0);
   });
 

@@ -25,13 +25,43 @@ import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
 import {
   PRERENDER_LEDGER_PATH, POSTING_STUB_KEEP_DAYS, callBudget, companyLanderPage, contentFingerprint, landerFacts, landerHasOwnContent, landerRobots, landerThinBreaker,
-  bakeLanders, carrySitemaps, pageLastmod, postingCarryBase, postingCheckState, postingFreshBudget, postingRowEligible, postingStubEntry, postingStubPage,
-  LANDER_OPENINGS_READS, LANDER_OPENINGS_SHOWN, companiesLlmsLine, duplicateSkeletons, landerBreakers, landerOpenings, landerSkeleton, nextOpeningsCache, openingsFromList, openingsToRead,
+  bakeLanders, employerBoardsOf, employerPageOf, carrySitemaps, pageLastmod, postingCarryBase, postingCheckState, postingFreshBudget, postingRowEligible, postingStubEntry, postingStubPage,
+  LANDER_OPENINGS_READS, LANDER_OPENINGS_SHOWN, LLMS_TXT_COMPANIES, companiesLlmsLine, readCompanyIntel, llmsTxtCompaniesCount, duplicateSkeletons, landerBreakers, landerOpenings, landerSkeleton, nextOpeningsCache, openingsFromList, openingsToRead,
 } from "./prerender-pages.mjs";
+// The once-published pages, the ceiling, the dates and the duplicate groups
+// (SEO-002, SEO-025, SEO-036 and decision 5 of the design upgrade's README).
+import {
+  pageDates, postingCeilingSplit, capPostingEntries, seedPostingLedger, tombstoneHtml,
+  COUNT_BEARING, companyTokenOf, onceCompanyPaths, companyCarryState, companyLedgerEntry, companyStubPage, duplicateSkeletonGroups, resolveDuplicateGroups,
+} from "./prerender-pages.mjs";
+import { bakeEmployerName, repairEmployerName } from "./prerender-names.mjs";
+import { RETIRED_PRODUCT_IDS, APPLY_YOURSELF_LINE, retiredClaimsIn, crawlerText } from "./prerender-retired.mjs";
+import { readAgencyTokens } from "./prerender-agency.mjs";
+// The SEO round of 2026-10-18: one source sentence, the conditional re-check,
+// the banned phrases, the entity graph, the board snapshot, the legal text
+// read from the pages the app renders, and the route-chunk preloads.
+import { postingReserveSplit, boardVendorOf, POSTING_EXPIRY_NEAR_DAYS } from "./prerender-pages.mjs";
+import {
+  SOURCE_SENTENCE, BOARD_SOURCE_SENTENCE, RECHECK_CLAUSE, postingSourceSentence, SEEKER_HOSTS_LABEL, OFF_PAGE_HOST_NAMES,
+  bannedSourcePhrasesIn, orgNode, orgRef, websiteRef, withWebsiteGraph, boardSnapshot, asOfPhrase, ORG_ID,
+} from "./prerender-copy.mjs";
+import { legalBodyFromTsx, legalText } from "./prerender-legal.mjs";
+import { routeChunkPrefix, preloadClosure, fallbackPreloadHtml } from "./prerender-preload.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const dist = join(root, "dist");
+// A BAKE CAN BE POINTED AWAY FROM THE CHECKOUT. PRERENDER_OUT names a
+// directory that takes every file the bake writes (dist/, the public/ copies,
+// the data bundle), and PRERENDER_OFFLINE=1 makes no network read at all, so a
+// test can run the real bake and read the pages it writes
+// (src/test/pd-bake-the-crawler-copy-sells-nothing-retired.test.ts) without
+// rewriting the committed public/ files or reaching production.
+const OUT = process.env.PRERENDER_OUT ? resolve(process.env.PRERENDER_OUT) : null;
+const OFFLINE = process.env.PRERENDER_OFFLINE === "1";
+const dist = OUT ? join(OUT, "dist") : join(root, "dist");
+const publicOut = OUT ? join(OUT, "public") : join(root, "public");
 const SITE = "https://resumebooster.work";
+/** The og:locale a page in each language carries (SEO-034). */
+const OG_LOCALE = { en: "en_US", es: "es_ES", fr: "fr_FR", de: "de_DE", pt: "pt_BR", nl: "nl_NL", it: "it_IT", zh: "zh_CN", ja: "ja_JP", ko: "ko_KR" };
 
 // ---- Substitution that inserts its value as-is ----
 //
@@ -104,10 +134,23 @@ export const composeHtml = (
   // Route-true share URLs: the template hardcodes the homepage, so every
   // page's og:url/twitter:url contradicted its own canonical and shares
   // canonicalized to "/" (audit 2026-07-25).
-  const pageUrl = path === "/" ? `${SITE}/` : `${SITE}${path}`;
+  // Through publicHref, as the canonical is: a dotted company path
+  // (/jobs/company/careers.ulta.com) resolves only with its trailing slash,
+  // and without it og:url pointed at a 9-byte 404 (SEO-030).
+  const pageUrl = path === "/" ? `${SITE}/` : `${SITE}${typeof publicHref === "function" ? publicHref(path) : path}`;
   html = setContent(html, '<meta property="og:url" content="', pageUrl);
   html = setContent(html, '<meta name="twitter:url" content="', pageUrl);
-  if (lang) html = putVerbatim(html, /<html lang="[^"]*"/, `<html lang="${lang}"`);
+  // A PAGE IN ANOTHER LANGUAGE SAYS SO EVERYWHERE A READER LOOKS (SEO-034).
+  // /fr/normes-cv/france and /es/industrias/* set <html lang> and kept
+  // og:locale en_US with no content-language: a share card and a crawler that
+  // reads headers saw an English page.
+  if (lang) {
+    html = putVerbatim(html, /<html lang="[^"]*"/, `<html lang="${lang}"`);
+    if (OG_LOCALE[lang]) html = setContent(html, '<meta property="og:locale" content="', OG_LOCALE[lang]);
+  }
+  // THE SITE'S ONE WebSite NODE, GIVEN ITS @id AND ITS PUBLISHER (SEO-011a).
+  // The template owns the block and its SearchAction; this adds the two keys.
+  html = withWebsiteGraph(html, SITE);
 
   // REPLACE the template's robots tag, never append a second one. The
   // template ships `index, follow`; appending `noindex` left both in the
@@ -122,6 +165,11 @@ export const composeHtml = (
       : putVerbatim(html, "</head>", `${tag}\n</head>`);
   }
   let headExtra = `<link rel="canonical" href="${isFallback ? `${SITE}/` : `${SITE}${publicHref(canonical || path)}`}" />\n<meta name="x-prerendered" content="1" />\n`;
+  if (lang) headExtra += `<meta http-equiv="content-language" content="${lang}" />\n`;
+  // THE ORGANIZATION, ON EVERY PAGE (SEO-011a): '#org' appeared nowhere in
+  // the bake. Everything below that means us points at it by @id. No
+  // legalName, address, contactPoint or sameAs until the owner supplies them.
+  headExtra += `<script type="application/ld+json">${JSON.stringify(orgNode(SITE)).replace(/</g, "\\u003c")}</script>\n`;
   if (hreflang) {
     // hreflang is a { locale: path } map (any number of locales). Every
     // cluster member emits the SAME set of alternates (reciprocity is what
@@ -148,16 +196,24 @@ export const composeHtml = (
   // replaces this element on hydration rather than adding a second entity
   // beside it, and removes it outright when the posting has gone stale since
   // the bake. It finds it by id, and until now there was none to find.
+  // THE HOMEPAGE'S OWN BLOCKS ARE TAGGED, AND THE FALLBACK TAKES THEM OFF
+  // (SEO-033). The root index.html is also the file the host serves for every
+  // address with no page of its own, so the homepage's WebApplication block
+  // was served as the structured data of any unknown URL. Each block of the
+  // fallback page carries data-home-only, and the fallback's script removes
+  // them on any path but "/": that helps a crawler that runs scripts; one that
+  // does not reads the canonical to "/", which says the same thing.
   for (const ld of jsonLd) {
     const tagId = ld && ld["@type"] === "JobPosting" ? ` id="${D.POSTING_LD_TAG_ID}"` : "";
-    headExtra += `<script type="application/ld+json"${tagId}>${JSON.stringify(ld).replace(/</g, "\\u003c")}</script>\n`;
+    const homeOnly = isFallback ? ' data-home-only="1"' : "";
+    headExtra += `<script type="application/ld+json"${tagId}${homeOnly}>${JSON.stringify(ld).replace(/</g, "\\u003c")}</script>\n`;
   }
   // Preload hints last in the head, so they cannot displace the meta tags
   // above them if the template shape ever shifts.
-  headExtra += preloadFor(path);
+  headExtra += preloadFor(path, { fallback: isFallback });
   html = putVerbatim(html, "</head>", `${headExtra}</head>`);
   const clearScript = isFallback
-    ? `<script>if(location.pathname!=="/"){var r=document.getElementById("root");if(r)r.innerHTML="";var c=document.querySelector('link[rel="canonical"]');if(c)c.remove();}</script>`
+    ? `<script>if(location.pathname!=="/"){var r=document.getElementById("root");if(r)r.innerHTML="";var c=document.querySelector('link[rel="canonical"]');if(c)c.remove();document.querySelectorAll('script[data-home-only]').forEach(function(s){s.remove();});}</script>`
     : "";
   html = putVerbatim(html, '<div id="root"></div>', `<div id="root">${shell(content, lang)}</div>${clearScript}`);
   return html;
@@ -177,13 +233,19 @@ const isMain = Boolean(process.argv[1]) && isMainModule(process.argv[1], import.
 
 if (isMain) try {
   // ---- Bundle the pure-data modules for Node import ----
-  const entry = join(root, "scripts", ".prerender-data-entry.ts");
-  writeFileSync(entry, `
+  // Under PRERENDER_OUT the entry and its bundle live in that directory, with
+  // every import made absolute, so a test bake writes nothing into scripts/.
+  if (OUT) { mkdirSync(OUT, { recursive: true }); mkdirSync(publicOut, { recursive: true }); }
+  const entry = OUT ? join(OUT, ".prerender-data-entry.ts") : join(root, "scripts", ".prerender-data-entry.ts");
+  const entryImports = (text) => (OUT ? text.replace(/from "\.\.\//g, `from "${root.replace(/\\/g, "/")}/`) : text);
+  writeFileSync(entry, entryImports(`
 export { INDUSTRY_KEYWORDS, SUB_INDUSTRY_TAXONOMY } from "../supabase/functions/free-keyword-scan/industry-detection";
 export { ONET_EXPECTATIONS } from "../supabase/functions/free-keyword-scan/onet-expectations";
 export { onetForRole } from "../src/lib/onet-match";
 export { roleListCopy } from "../src/lib/role-page-copy";
 export { ROLE_PAGES, rolesForIndustry } from "../src/data/roles";
+export { displayKeyword, industryLabel, inSentence, withArticle } from "../src/lib/seo/display-case";
+export { industryKeywordsHead, roleKeywordsHead } from "../src/lib/seo/keyword-pages";
 export { TOOL_LANDINGS } from "../src/data/tool-landings";
 export { SCAN_RESULTS_WITHIN_SECONDS } from "../src/config/scan-timing";
 export { COMPETITORS } from "../src/data/competitors";
@@ -194,23 +256,33 @@ export { GUIDES, GUIDES_INDEX_DESCRIPTION, GUIDES_INDEX_TITLE, GUIDES_INTRO, gui
 export { buildIndustryFaqs } from "../src/data/industry-faqs";
 export { COUNTRY_STANDARDS } from "../supabase/functions/free-keyword-scan/country-standards";
 export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from "../src/data/cv-standards-content";
-export { getAllProducts, PASS, SUBSCRIPTIONS } from "../src/config/products";
+export { getAllProducts, PASS, SUBSCRIPTIONS, PRODUCTS } from "../src/config/products";
+export { PRO_SUMMARY } from "../src/config/pro-perks";
+export { AFFILIATE_PRO_FIRST_MONTH_CENTS, formatUsd } from "../src/config/affiliate-commission";
+export { ALL_BOARD_SOURCES } from "../src/config/ats-vendors";
+export { publicApiBase, mcpServerUrl } from "../src/config/public-endpoints";
+export { cvFill, cvStandardsFaqs } from "../src/lib/cv-country-phrase";
+export { collidedBoards } from "../src/lib/board-collisions";
+export { localityProblem, postingRemoteBasis, postingRequisitionIdentity, postingText, postingLanguage, postingCountryMismatch, postingValidThrough, remoteLocationNamesAPlace } from "../src/components/jobs/posting-page";
 export { changelog } from "../src/data/changelog";
 export { SCAN_ATS_SYSTEMS, SCORE_AI_BAND, SCORE_AUDIT_PARTS } from "../src/config/score-method";
 export { PRIVACY_LAST_UPDATED, SELLER, TERMS_LAST_UPDATED, sellerIdentity } from "../src/config/seller";
 export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
 export { default as EN_CHANGELOG } from "../src/i18n/changelog/en.json";
 export { TEMP_RESUME_HOURS, REPORT_CACHE_DAYS, AI_CACHE_MAX_HOURS, SHARED_ANALYSIS_DAYS, PRIVACY_EMAIL } from "../src/lib/resume-retention";
+export { MCP_PRIVACY_ROWS } from "../src/config/mcp-privacy";
 export { BOARD_SOURCE_LIST, SERVING_SOURCE_LIST, SERVING_SOURCES, DORMANT_SOURCES, servingSourceSummary } from "../src/config/ats-vendors";
-export { MCP_TOOLS, MCP_HOSTS, MCP_READ_TOOLS, MCP_PAID_TOOLS, MCP_APPLY_TOOLS, MCP_ANON_TOOLS, MCP_ANON_TOOL_NAMES, MCP_ANON_CAPS, MCP_FREE_KEY_DAILY_QUOTA, MCP_PROMPTS, MCP_RESOURCES } from "../src/config/mcp-tools";
+export { MCP_TOOLS, MCP_HOSTS, MCP_READ_TOOLS, MCP_PAID_TOOLS, MCP_TIER_BADGE, MCP_FIT_ALLOWANCE, MCP_APPLY_TOOLS, MCP_ANON_TOOLS, MCP_ANON_TOOL_NAMES, MCP_ANON_CAPS, MCP_FREE_KEY_DAILY_QUOTA, MCP_PROMPTS, MCP_RESOURCES } from "../src/config/mcp-tools";
 export { MCP_MORE_HOSTS, MCP_TROUBLESHOOTING, MCP_SIGN_IN_NEUTRAL, MCP_SERVER_ADDRESS_NOTE, MCP_ADDRESS_GLOSS, MCP_NEEDS_ACCOUNT_LINE, MCP_WITHHELD_NOTE, MCP_INSTALL_REPO_URL, MCP_TEST_QUERY, MCP_SIGN_IN_META_KEY, stepSegments, curlInitialize, andList } from "../src/config/mcp-tools";
 export { MCP_PAGE_HOSTS, MCP_OFF_PAGE_HOSTS, MCP_OTHER_AGENTS_LINE, MCP_COPY_THE_PROMPT } from "../src/config/mcp-tools";
 export { FREE_KEY_RATE_PER_MIN } from "../src/config/free-key-limits";
-export { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "../src/config/sendable-vendors";
-export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPostingLive, jdParagraphs, postingEmployer, postingIdFromPath, postingIdentity, postingJsonLd, postingPageDescription, postingPagePath, postingPageTitle, postingPathParts } from "../src/components/jobs/posting-page";
+export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPostingLive, jdParagraphs, postingEmployer, postingIdFromPath, postingIdentity, postingJsonLd, postingPageDescription, postingPagePath, postingPageTitle, postingPageTitleAvoiding, postingPathParts } from "../src/components/jobs/posting-page";
 export { boardName, employerName, isCodeShapedName, possessive } from "../src/lib/company-display";
-`);
-  const bundle = join(root, "scripts", ".prerender-data.mjs");
+export { isCollidedToken } from "../src/lib/board-collisions";
+export { FEDERAL_LISTING_RESULT_CAP, isFederalListingBoard } from "../src/lib/company/lander-model";
+export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json";
+`));
+  const bundle = OUT ? join(OUT, ".prerender-data.mjs") : join(root, "scripts", ".prerender-data.mjs");
   execSync(`npx esbuild "${entry}" --bundle --format=esm --outfile="${bundle}" --log-level=error`, { cwd: root, stdio: "inherit" });
   const D = await import(bundle + `?t=${Date.now()}`);
   // EVERY BOARD READ THIS BAKE MAKES IS COUNTED HERE: the facets rung, the
@@ -233,6 +305,7 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
   // commits what it writes, so the committed copies are only the fallback for
   // a build that cannot reach the site (SEO report 2026-10-08, F2a and S3).
   const fetchText = async (url) => {
+    if (OFFLINE) return null;
     try {
       const r = await fetch(url, { signal: AbortSignal.timeout(15000), headers: { "User-Agent": "resumebooster-prerender" } });
       return r.ok ? await r.text() : null;
@@ -252,14 +325,34 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
   // migration constants, and false for a pass holder. Every sentence
   // below that states the free key's limits reads this, and the pass clause
   // rides with it because the row is what api_key_check enforces.
-  // L9-11: a live pass raises the limits on the MCP server only, for an
-  // account-linked key (api_key_check's overlay reads /mcp/ endpoints), never
-  // on /v1, where both of these sentences are printed.
+  // The pass clause that rode here is gone with the pass (the apply pivot,
+  // 2026-10-11): the crawler copy sells nothing retired.
   // The server's name in the official MCP registry (listed since 2026-09-18).
   // No served page named it (SEO report 2026-10-08), so an agent or a person
   // searching the registry could not tie the listing to this site.
   const MCP_REGISTRY_NAME = "work.resumebooster/jobs";
-  const FREE_KEY_RATE_SENTENCE = `${D.FREE_KEY_RATE_PER_MIN} requests a minute and ${D.MCP_FREE_KEY_DAILY_QUOTA.toLocaleString("en-US")} calls a day per key; on the MCP server, a live Agent Pass on an account-linked key raises both for its hours, and it never raises them on /v1`;
+  // THE TWO ADDRESSES A MACHINE NEEDS (SEO-014, SEO-015), DECLARED HERE, above
+  // every read of them (the temporal-dead-zone rule: a const read before its
+  // line throws, and the never-throw policy then ships every later page as the
+  // homepage shell). Neither llms file named the MCP server's address, and no
+  // crawler page named the data API's host; /agents, /data-api, the /v1 pages
+  // and both llms files print these and only these.
+  const PROJECT_URL = (() => {
+    let t = "";
+    try { t = readFileSync(join(root, ".env"), "utf8"); } catch { /* hosted builders inject process.env */ }
+    return process.env.VITE_SUPABASE_URL || (t.match(/^VITE_SUPABASE_URL=(.*)$/m) || [])[1]?.trim().replace(/^["']|["']$/g, "") || null;
+  })();
+  const MCP_URL = D.mcpServerUrl(PROJECT_URL);
+  const API_BASE = D.publicApiBase(PROJECT_URL);
+  // THE LICENSE THE PUBLISHED NUMBERS ARE OFFERED UNDER: an owner decision
+  // not yet made (SEO-044; the SEO report recommends CC BY 4.0). Empty means
+  // the markup names none, which claims nothing. Declared up here because the
+  // research page's Dataset reads it before the four data pages do.
+  // TODO(owner): set to a license URL, e.g. "https://creativecommons.org/licenses/by/4.0/".
+  const DATA_LICENSE = "";
+  /** The day /research/ats-score-benchmarks first shipped (e39dc448), its Article's datePublished. */
+  const RESEARCH_PUBLISHED = "2026-07-06";
+  const FREE_KEY_RATE_SENTENCE = `${D.FREE_KEY_RATE_PER_MIN} requests a minute and ${D.MCP_FREE_KEY_DAILY_QUOTA.toLocaleString("en-US")} calls a day per key`;
 
   // ---- Live benchmark numbers for llms-full.txt (GEO: AI engines cite
   // numbers with provenance). Graceful skip offline/CI — the build never
@@ -285,7 +378,7 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
     // Local builds read .env; CI/hosted builders inject process.env instead.
     let envText = "";
     try { envText = readFileSync(join(root, ".env"), "utf8"); } catch { /* no .env on hosted builders */ }
-    const grab = (k) => process.env[k] || (envText.match(new RegExp(`^${k}=(.*)$`, "m")) || [])[1]?.trim().replace(/^["']|["']$/g, "");
+    const grab = (k) => OFFLINE ? undefined : process.env[k] || (envText.match(new RegExp(`^${k}=(.*)$`, "m")) || [])[1]?.trim().replace(/^["']|["']$/g, "");
     const supaUrl = grab("VITE_SUPABASE_URL");
     const supaKey = grab("VITE_SUPABASE_PUBLISHABLE_KEY");
     if (supaUrl && supaKey) {
@@ -335,7 +428,7 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
   // pages actually consume.
   try {
     const envText2 = (() => { try { return readFileSync(join(root, ".env"), "utf8"); } catch { return ""; } })();
-    const grab2 = (k) => process.env[k] || (envText2.match(new RegExp(`^${k}=(.*)$`, "m")) || [])[1]?.trim().replace(/^["']|["']$/g, "");
+    const grab2 = (k) => OFFLINE ? undefined : process.env[k] || (envText2.match(new RegExp(`^${k}=(.*)$`, "m")) || [])[1]?.trim().replace(/^["']|["']$/g, "");
     const supaUrl2 = grab2("VITE_SUPABASE_URL");
     const supaKey2 = grab2("VITE_SUPABASE_PUBLISHABLE_KEY");
     if (!boardFacets && supaUrl2 && supaKey2 && boardBudget.take()) {
@@ -445,7 +538,7 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
       // new list is at least as usable as the one it overwrites.
       if (trimmed.length <= 100) {
         console.log(`[prerender-seo] facet read produced only ${trimmed.length} usable company entries — keeping the committed snapshot rather than overwriting it`);
-      } else writeFileSync(FACETS_SNAPSHOT, JSON.stringify({
+      } else if (!OUT) writeFileSync(FACETS_SNAPSHOT, JSON.stringify({
         // L4-03: BOTH numbers, each by its own name. The snapshot used to keep
         // only `total` (the TRACKED corpus since the RPC changed shape), and
         // the reader, finding no openTotal, took it for the servable count: a
@@ -494,7 +587,7 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
   let auditRow = null;
   try {
     const envText4 = (() => { try { return readFileSync(join(root, ".env"), "utf8"); } catch { return ""; } })();
-    const grab4 = (k) => process.env[k] || (envText4.match(new RegExp(`^${k}=(.*)$`, "m")) || [])[1]?.trim().replace(/^["']|["']$/g, "");
+    const grab4 = (k) => OFFLINE ? undefined : process.env[k] || (envText4.match(new RegExp(`^${k}=(.*)$`, "m")) || [])[1]?.trim().replace(/^["']|["']$/g, "");
     const supaUrl4 = grab4("VITE_SUPABASE_URL");
     const supaKey4 = grab4("VITE_SUPABASE_PUBLISHABLE_KEY");
     if (supaUrl4 && supaKey4) {
@@ -672,7 +765,7 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
       const span = g ? num(g.observed_days) : null;
       const coverage = g ? num(g.posted_coverage_pct) : null;
       const stock = group("What the board holds right now", [
-        { value: openN, label: "verified open roles — postings the employer's own feed still serves, whose company-stated date falls inside the last 30 days" },
+        { value: openN, label: "open roles — postings the employer's own feed still serves, whose company-stated date falls inside the last 30 days" },
         { value: g ? fmt(g.total_company_names) : null, label: "employers with at least one of them, sub-boards merged by employer name" },
         // THE COVERAGE FIGURE IS PRINTED AS MEASURED, NOT ROUNDED. It is 99.5
         // today, and rounding it prints 100% — an absolute, about the one
@@ -715,10 +808,29 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
       const a = isObj(P.audit) ? P.audit : null;
       const aDecided = a ? (num(a.decided) ?? (num(a.live) !== null && num(a.gone) !== null ? a.live + a.gone : null)) : null;
       const aAt = a && typeof a.at === "string" && Number.isFinite(new Date(a.at).getTime()) ? new Date(a.at).toISOString().slice(0, 10) : null;
+      // THE SAMPLE SIZE, ITS 95% INTERVAL AND THE WEIGHTING RULE, BESIDE THE
+      // SHARE (SEO-009). "100% of 117" read as a measured certainty, and
+      // nothing said the draw is even across hiring systems, which
+      // under-samples the largest boards, where most takedowns happen. The
+      // Wilson score interval is computed here (this region runs alone in its
+      // guard, so it imports nothing).
+      const wilson = (k, n) => {
+        if (!(n > 0 && k >= 0 && k <= n)) return null;
+        const z = 1.96;
+        const p = k / n;
+        const den = 1 + (z * z) / n;
+        const mid = (p + (z * z) / (2 * n)) / den;
+        const half = (z * Math.sqrt((p * (1 - p)) / n + (z * z) / (4 * n * n))) / den;
+        return [Math.floor(Math.max(0, mid - half) * 1000) / 10, Math.ceil(Math.min(1, mid + half) * 1000) / 10];
+      };
+      const aLive = a ? (num(a.live) ?? (num(a.accuracyPct) !== null && aDecided !== null ? Math.round((a.accuracyPct * aDecided) / 100) : null)) : null;
+      const aCi = aLive !== null && aDecided !== null ? wilson(aLive, aDecided) : null;
+      const ciText = aCi ? `95% interval ${aCi[0]}–${aCi[1]}%` : null;
+      const weighting = "drawn evenly across hiring systems, so the largest boards, where most takedowns happen, are under-sampled";
       const audit = a && num(a.accuracyPct) !== null && num(a.sampled) !== null && aDecided !== null && aAt
         ? group("The daily re-check", [
-            { value: `${a.accuracyPct}%`, label: `of ${fmt(aDecided)} sampled postings that could be decided were still live at the employer's own source (${fmt(a.sampled)} sampled on ${aAt}, drawn evenly across hiring systems)` },
-          ], `Daily re-check: ${a.accuracyPct}% of ${fmt(aDecided)} decided sample postings still live at the source (${aAt}). A probe that could not be decided leaves the denominator rather than counting as a pass. Run once a day; the live page shows the latest run.`)
+            { value: `${a.accuracyPct}%`, label: `of ${fmt(aDecided)} sampled postings that could be decided were still live at the employer's own source${ciText ? ` (${ciText})` : ""} — ${fmt(a.sampled)} sampled on ${aAt}, ${weighting}` },
+          ], `Daily re-check: ${a.accuracyPct}% of ${fmt(aDecided)} decided sample postings still live at the source (n = ${fmt(aDecided)}${ciText ? `, ${ciText}` : ""}, ${aAt}), ${weighting}. A probe that could not be decided leaves the denominator rather than counting as a pass. Run once a day; the live page shows the latest run.`)
         : "";
       const html = stock + audit + lifecycle + fresh;
       if (!html) return unread();
@@ -895,11 +1007,17 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
       const at = asOf(t?.computed_at);
       // THE DENOMINATOR IS NOT THE SERVED BOARD, and this sentence is the only
       // place a reader can learn that. Both aggregates behind this page count
-      // the whole postings table -- no serving predicate, no 30-day window --
-      // so the population is every posting catalogued, including ones since
-      // taken down. Stating it under the board's own serving word would be the
-      // right number under the wrong noun.
-      const population = "Counted across every posting in our table — including roles since taken down or aged past the board's 30-day cap — not only the ones open today.";
+      // the whole postings table -- no serving predicate, no 30-day window.
+      // THE TABLE HOLDS NO HISTORY, THOUGH (S13-088): closures and the
+      // freshness sweep delete rows, so "including roles since taken down"
+      // was false; the table is the postings the board carries plus the few
+      // awaiting removal (1,032,382 rows against about 1,022,5xx open on
+      // 2026-10-17). The share awaiting removal is printed when this build
+      // read both numbers.
+      const tableTotal = isObj(p?.overall) ? num(p.overall.total) : null;
+      const openNow = num(P.openTotal);
+      const awaitingPct = tableTotal && openNow && tableTotal >= openNow ? Math.round((1000 * (tableTotal - openNow)) / tableTotal) / 10 : null;
+      const population = `Counted across the postings the board currently carries, plus ${awaitingPct !== null ? `about ${awaitingPct < 1 ? "1" : Math.round(awaitingPct)}%` : "the few"} awaiting removal${awaitingPct !== null ? ` (${fmt(tableTotal)} rows in the table against ${fmt(openNow)} open)` : ""}; the table keeps no postings that have come down.`;
       const basis = `A posting states pay when its own description text or its system's structured compensation field carries a figure or a range, in the employer's words; nothing is estimated, modelled or converted. ${population} ${at ? `Measured ${at}` : "Measured when this page was last built"}, ${C["transparency-cache-hourly"]}.`;
       const o = isObj(p?.overall) ? p.overall : null;
       const co = isObj(cov?.overall) ? cov.overall : null;
@@ -928,9 +1046,12 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
         ? p.top_companies.filter((c) => isObj(c) && typeof c.company === "string" && num(c.pay_pct) !== null).slice(0, 15)
             .map((c) => [`<a href="${esc(companyHref(c.company_token))}">${esc(companyName(c.company_token, c.company))}</a>`, `${c.pay_pct}%`, fmt(c.total) ?? "—"])
         : [];
+      // ONE ROW PER JOB BOARD, AND THE TABLE SAYS SO (S13-049): it ranks per
+      // feed token and labelled the rows employers, so the top "PwC" was one of
+      // PwC's five boards. Per-employer aggregation is a migration (hand-off).
       const employers = companyRows.length
-        ? table("Most transparent large employers", ["Employer", "State pay", "Postings"], companyRows,
-            `${basis} Employers with fewer than 50 postings are not ranked. Placement cannot be bought: the only way onto this table is to state pay in your own postings.`)
+        ? table("Most transparent large job boards", ["Board", "State pay", "Postings"], companyRows,
+            `${basis} One row per job board; an employer running several counts once per board. Boards with fewer than 50 postings are not ranked. Placement cannot be bought: the only way onto this table is to state pay in your own postings.`)
         : "";
       const html = head + fields + systems + employers;
       if (!html) return unread();
@@ -1007,6 +1128,17 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
     ? boardFacets.companiesOpenCount
     : null;
   const BOARD_COMPANIES = BOARD_OPEN_BOARDS;
+  // ONE READING OF THE BOARD'S SIZE, AND ITS DAY (SEO-026). llms.txt, the
+  // board page and /agents printed "950,000+" with no date beside it while the
+  // homepage and the field pages printed theirs counted on a day; every
+  // surface that prints a board total now reads this object and says "as of".
+  const BOARD_SNAPSHOT = boardSnapshot({
+    openTotal: BOARD_TOTAL,
+    trackedTotal: BOARD_TRACKED,
+    boards: BOARD_OPEN_BOARDS,
+    measuredAt: facetsSource === "snapshot" ? facetsSavedAt : (boardFacets ? TODAY : null),
+  });
+  const BOARD_AS_OF = asOfPhrase(BOARD_SNAPSHOT);
   // THE SERVABLE PER-EMPLOYER COUNT, from whichever rung of the ladder
   // answered. The RPC returns a whole map (companiesOpen); the board-function
   // fallback and the snapshot fold it onto each entry as `open`. Null means
@@ -1050,16 +1182,37 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
   const chunkFor = (prefix) => assetFiles.find((f) => f.startsWith(`${prefix}-`) && f.endsWith(".js")) ?? null;
   const JOBS_CHUNK = chunkFor("Jobs");
   const FOOTER_CHUNK = chunkFor("Footer");
-  const preloadFor = (path) => {
-    const want = [];
-    // Footer renders on every prerendered page, so it is always on the
-    // critical path — it was simply discovered last.
-    if (FOOTER_CHUNK) want.push(FOOTER_CHUNK);
-    if (JOBS_CHUNK && (path === "/jobs" || path.startsWith("/jobs/"))) want.push(JOBS_CHUNK);
-    return want.map((f) => `<link rel="modulepreload" href="/assets/${f}">`).join("");
+  // THE CHUNK EACH PAGE RUNS, AND WHAT IT IMPORTS (SEO-023). Every posting
+  // page preloaded Jobs (370 KB, never run there) and not JobPosting; / and
+  // /pricing preloaded no route chunk. Each page now preloads its own route
+  // chunk and that chunk's static imports, read from the chunk files (the
+  // build has no manifest), leaving out the entry its script tag loads.
+  const ENTRY_CHUNK = (() => {
+    try { return (/<script type="module"[^>]*src="\/assets\/([^"]+\.js)"/.exec(readFileSync(join(dist, "index.html"), "utf8")) || [])[1] ?? null; } catch { return null; }
+  })();
+  const readChunk = (f) => readFileSync(join(assetDir, f), "utf8");
+  const preloadCache = new Map();
+  const preloadFor = (path, { fallback = false } = {}) => {
+    const prefix = routeChunkPrefix(path);
+    const key = `${prefix}|${fallback ? "fallback" : "page"}`;
+    if (!preloadCache.has(key)) {
+      const route = prefix ? chunkFor(prefix) : null;
+      // Footer renders on every prerendered page, so it is always on the
+      // critical path; a route chunk that imports it lists it anyway.
+      const files = route ? preloadClosure(route, { readChunk, entry: ENTRY_CHUNK }) : [];
+      if (FOOTER_CHUNK && !files.includes(FOOTER_CHUNK)) files.unshift(FOOTER_CHUNK);
+      // The root index.html is every unbaked address's page too: its static
+      // head names Footer only, and the homepage's chunks are added on "/"
+      // alone (fallbackPreloadHtml).
+      preloadCache.set(key, fallback
+        ? fallbackPreloadHtml(files, { always: FOOTER_CHUNK ? [FOOTER_CHUNK] : [] })
+        : files.map((f) => `<link rel="modulepreload" href="/assets/${f}">`).join(""));
+    }
+    return preloadCache.get(key);
   };
-  if (!JOBS_CHUNK || !FOOTER_CHUNK) {
-    console.warn(`[prerender-seo] preload hint skipped — Jobs chunk ${JOBS_CHUNK ?? "MISSING"}, Footer chunk ${FOOTER_CHUNK ?? "MISSING"}`);
+  {
+    const missing = ["Jobs", "JobPosting", "Index", "Pricing", "Footer"].filter((p) => !chunkFor(p));
+    if (missing.length) console.warn(`[prerender-seo] preload hint skipped for the route chunk(s) the build does not have: ${missing.join(", ")} (entry ${ENTRY_CHUNK ?? "MISSING"})`);
   }
 
   const template = readFileSync(join(dist, "index.html"), "utf8");
@@ -1073,11 +1226,39 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
   // renders the SAME string the app renders, and a placeholder the mirror
   // does not name is a build error rather than a blank.
   const fillCopy = (s, vals, who) => String(s || "").replace(/\{\{(\w+)\}\}/g, (_, k) => { if (!(k in vals)) throw new Error(`[prerender-seo] ${who} copy names a placeholder with no mirror: ${k}`); return String(vals[k]); });
-  const label = (slug) => slug.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  // SEO-019 / S13-089: one letter-case rule for both renderers
+  // (src/lib/seo/display-case.ts): acronyms as acronyms ("HR", "RN"), plain
+  // words as words, never every word of four letters upper-cased.
+  const label = (slug) => D.industryLabel(slug);
+  const inSentence = (name) => D.inSentence(name);
   // "Domino's", never "Domino's's" (F1): every possessive of an employer name.
   const possessive = D.possessive;
-  const displayKeyword = (k) => (k.length <= 4 && !k.includes(" ") ? k.toUpperCase() : k);
+  const displayKeyword = (k, industry) => D.displayKeyword(k, industry);
   const uniq = (a) => [...new Set(a)];
+  // DESCRIPTIONS BUILT UP TO THE SNIPPET BUDGET, NOT CUT (OBS-2). The bake
+  // logged 278 descriptions over 160 characters and clamped every one
+  // mid-list ("quota, closed won, …"). fitDesc takes the first option that
+  // fits; listDesc puts as many of a page's own items in front of its
+  // sentence as fit, and drops them all before it would cut the sentence.
+  const fitDesc = (...options) => options.find((o) => typeof o === "string" && o.length <= 160) ?? options[options.length - 1];
+  const listDesc = (items, joiner, tail) => {
+    for (let n = Math.min(items.length, 6); n >= 1; n--) {
+      const d = `${items.slice(0, n).join(", ")}${joiner}${tail}`;
+      if (d.length <= 160) return d;
+    }
+    return `${tail[0].toUpperCase()}${tail.slice(1)}`;
+  };
+  // A description another module owns, kept whole to its last sentence that
+  // fits (never cut mid-sentence); one whose first sentence alone is too long
+  // is left to the clamp, which logs it for its owner.
+  const fitSentence = (text) => {
+    const t = String(text ?? "");
+    if (t.length <= 160) return t;
+    const parts = t.match(/[^.!?]+[.!?]+(?:\s|$)/g) ?? [];
+    let out = "";
+    for (const part of parts) { if ((out + part).trim().length > 160) break; out += part; }
+    return out.trim() || t;
+  };
   // The ONLY industry count: every surface computes from the engine's actual
   // table (the audit found 58 and 59 hardcoded on the same page).
   const NIND = Object.keys(D.INDUSTRY_KEYWORDS).length;
@@ -1109,17 +1290,19 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
   const chip = (text, cls = "px-2.5 py-1 rounded-lg bg-card border border-border text-sm text-foreground capitalize") =>
     `<span class="${cls}">${esc(text)}</span>`;
   const chips = (arr, cls) => `<div class="flex flex-wrap gap-1.5">${arr.map((k) => chip(k, cls)).join("")}</div>`;
-  const kwChips = (arr) =>
+  const kwChips = (arr, industry) =>
     `<div class="flex flex-wrap gap-1.5">${arr
-      .map((k) => chip(displayKeyword(k), `px-2.5 py-1 rounded-lg bg-card border border-border text-sm text-foreground${k.length <= 4 && !k.includes(" ") ? "" : " capitalize"}`))
+      .map((k) => chip(displayKeyword(k, industry), "px-2.5 py-1 rounded-lg bg-card border border-border text-sm text-foreground capitalize"))
       .join("")}</div>`;
   const pill = (href, text) =>
     `<a href="${href}" class="px-3 py-1.5 rounded-full border border-border text-muted-foreground hover:text-foreground transition-colors">${esc(text)}</a>`;
-  const cta = (heading, body, buttonText) => `
+  // `href` is the scan page in the page's own language (SEO-034): a Spanish
+  // page's "Escanear mi currículum gratis" linked the English home.
+  const cta = (heading, body, buttonText, href = "/") => `
     <section class="rounded-2xl border-2 border-primary bg-card p-6 text-center">
       <h2 class="text-xl font-bold mb-2">${esc(heading)}</h2>
       <p class="text-sm text-muted-foreground mb-4 max-w-md mx-auto">${esc(body)}</p>
-      <a href="/" class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-semibold">${esc(buttonText)}</a>
+      <a href="${href}" class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-semibold">${esc(buttonText)}</a>
     </section>`;
   const onetBlock = (onet, heading = "Core skills per the U.S. Department of Labor") =>
     onet
@@ -1150,6 +1333,7 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
   // and then nothing renders: an identity is never invented.
   const SELLER_ID = D.sellerIdentity();
   const SELLER_LINE = SELLER_ID ? `<p class="mt-4 text-center text-xs text-muted-foreground">Sold by ${esc(SELLER_ID.legalName)}, ${esc(SELLER_ID.postalAddress)}.</p>` : "";
+  const FOOTER_AGENTS_LABEL = D.EN_LOCALE?.footer?.links?.agents || "Connect your agent";
   // Static shell around page content: simple header/footer so crawlers see
   // site-wide internal links. The SPA replaces all of it on hydration.
   const shell = (contentHtml, lang) => `
@@ -1185,12 +1369,13 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
                a sitemap-only orphan — the exact condition Footer.tsx warns about. -->
           <a href="/explore" class="hover:text-foreground">Explore employers</a>
           <!-- /companies is the directory that keeps 500 company pages from
-               being sitemap-only orphans (387 measured, audit 2026-08-28);
-               /agent was on the same orphan list — the money page, linked from
-               no prerendered page at all. -->
+               being sitemap-only orphans (387 measured, audit 2026-08-28). The
+               last link is the app footer's own: connecting your own AI, under
+               the label the app prints (footer.links.agents). -->
           <a href="/companies" class="hover:text-foreground">All companies</a>
           <a href="/pay-transparency" class="hover:text-foreground">Pay Transparency Index</a>
-          <a href="/agent" class="hover:text-foreground">Apply Agent</a>
+          <a href="/agents" class="hover:text-foreground">${esc(FOOTER_AGENTS_LABEL)}</a>
+          <a href="/about" class="hover:text-foreground">About</a>
         </nav>
         ${SELLER_LINE}
       </div></footer>
@@ -1246,14 +1431,47 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
   // index it is a contradiction Search Console reports as an error.
   /** path -> { fp, stated } for every page this bake wrote. */
   const pageFingerprints = new Map();
+  /** Retired claims found in what this bake wrote, outside the employers' own posting text: logged at the end, loudly. */
+  const retiredFound = [];
+  const checkRetired = (path, text, sales = false) => {
+    const found = retiredClaimsIn(text, { sales });
+    if (found.length) retiredFound.push({ path, found });
+  };
+  /** Banned source phrases found in what this bake wrote (R5a, R6a): logged at the end, loudly. */
+  const bannedFound = [];
+  const checkBanned = (path, text) => {
+    const found = bannedSourcePhrasesIn(text);
+    if (found.length) bannedFound.push({ path, found });
+  };
+  /** JobPosting markup this bake would not stand behind (SEO-003, SEO-016): logged at the end, loudly. */
+  const markupFound = [];
   const write = (page) => {
     renderFile(page);
+    // Not the posting pages (the employer's own text) and not /changelog (a
+    // dated record of what was announced, not a live offer).
+    if (!String(page.path).startsWith("/jobs/posting/") && page.path !== "/changelog") {
+      const crawlerSaid = crawlerText(`${page.title} ${page.description} ${page.content} ${JSON.stringify(page.jsonLd ?? [])}`);
+      checkRetired(page.path, crawlerSaid, page.path === "/" || page.path === "/pricing");
+      checkBanned(page.path, crawlerSaid);
+    } else if (typeof page.ownText === "string") {
+      // A posting page's own sentences, never the employer's description.
+      checkBanned(page.path, crawlerText(page.ownText));
+    }
     if (!page.canonical && !page.robots) writtenPaths.push(page.path);
     // S3: what the page says, blind to its date stamps, so the sitemap date
-    // moves only when the page does (prerender-pages.mjs pageLastmod).
+    // moves only when the page does; SEO-025: blind to its counts too on a
+    // page whose numbers are measured at the build (prerender-pages.mjs
+    // pageDates). The old fingerprint rides along so the switch itself
+    // re-dates nothing.
+    const said = `${page.title}\n${page.description}\n${page.content}`;
     pageFingerprints.set(page.path, {
-      fp: contentFingerprint(`${page.title}\n${page.description}\n${page.content}`),
+      fp: contentFingerprint(said, { blindCounts: COUNT_BEARING(page.path) }),
+      legacyFp: contentFingerprint(said),
       stated: typeof page.lastmod === "string" ? page.lastmod : null,
+      // SEO-012: the title, count-blind on a page whose numbers are measured
+      // at the build, so IndexNow is told of a page whose title changed and
+      // never of a count that moved.
+      th: contentFingerprint(String(page.title ?? ""), { blindCounts: COUNT_BEARING(page.path) }),
     });
     count++;
   };
@@ -1285,13 +1503,17 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
     const note = D.SCREENER_NOTES[slug];
     const related = Object.keys(D.INDUSTRY_KEYWORDS).filter((s) => s !== slug).sort().slice(0, 8);
     const industryFaqs = D.buildIndustryFaqs({ name, keywords, certifications: certs, screenerNote: note });
+    const head = D.industryKeywordsHead(slug, keywords);
+    const lower = inSentence(name);
     write({
       path: `/industries/${slug}`,
       // hreflang must be declared on BOTH sides of a language pair or
       // crawlers ignore it — the ES pages already point here.
       hreflang: D.ES_INDUSTRIES[slug] ? { en: `/industries/${slug}`, es: `/es/industrias/${slug}` } : null,
-      title: `${name} Resume Keywords — What ATS Systems Look For`,
-      description: `${keywords.slice(0, 6).join(", ")} and more: the actual keywords, job titles, and certifications our resume scanner's ${name.toLowerCase()} detection engine checks for. Free scan included.`,
+      // The head React's /industries page prints (src/lib/seo/keyword-pages.ts):
+      // the field's name first, so no two pages share a description.
+      title: head.title,
+      description: head.description,
       jsonLd: [
         breadcrumbLd([{ name: "Home", path: "/" }, { name: "Industries", path: "/industries" }, { name, path: `/industries/${slug}` }]),
         ...(industryFaqs.length ? [faqLd(industryFaqs)] : []),
@@ -1299,19 +1521,19 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
       content: `
         ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Industries", href: "/industries" }, { name }])}
         <h1 class="text-3xl font-bold mb-3">${esc(name)} Resume Keywords &amp; ATS Expectations</h1>
-        <p class="text-muted-foreground mb-8">This isn't an article — it's the live data our resume scanner uses to analyze ${esc(name.toLowerCase())} resumes. When the engine improves, this page updates with it.</p>
+        <p class="text-muted-foreground mb-8">This isn't an article — it's the live data our resume scanner uses to analyze ${esc(lower)} resumes. When the engine improves, this page updates with it.</p>
         ${onetBlock(onet)}
-        <section class="mb-8"><h2 class="text-xl font-bold mb-2">Keywords ATS systems expect on ${esc(name.toLowerCase())} resumes</h2>${kwChips(keywords)}</section>
-        <section class="mb-8"><h2 class="text-xl font-bold mb-2">Job titles recruiters recognize in this field</h2>${chips(titles, "px-2.5 py-1 rounded-lg bg-card border border-border text-sm text-muted-foreground capitalize")}</section>
-        ${certs.length ? `<section class="mb-8"><h2 class="text-xl font-bold mb-2">Certifications that anchor a ${esc(name.toLowerCase())} resume</h2>${chips(certs, "px-2.5 py-1 rounded-lg bg-success/5 border border-success/25 text-sm text-foreground uppercase")}</section>` : ""}
-        ${subs.length ? `<section class="mb-8"><h2 class="text-xl font-bold mb-2">Specializations our scanner distinguishes within ${esc(name.toLowerCase())}</h2><div class="space-y-2">${subs.map((sub) => `<div class="rounded-xl border border-border bg-card p-3"><p class="text-sm font-medium text-foreground">${esc(sub.label)}</p><p class="text-xs text-muted-foreground capitalize">Signals: ${esc(sub.signals.slice(0, 6).join(", "))}</p></div>`).join("")}</div></section>` : ""}
-        ${note ? `<section class="rounded-2xl border border-warning/30 bg-warning/5 p-5 mb-8"><h2 class="font-semibold text-foreground mb-1">What screeners check first in ${esc(name.toLowerCase())}</h2><p class="text-sm text-muted-foreground">${esc(note)}</p></section>` : ""}
+        <section class="mb-8"><h2 class="text-xl font-bold mb-2">Keywords ATS systems expect on ${esc(lower)} resumes</h2>${kwChips(keywords, slug)}</section>
+        <section class="mb-8"><h2 class="text-xl font-bold mb-2">Job titles recruiters recognize in this field</h2>${chips(titles.map((t) => displayKeyword(t, slug)), "px-2.5 py-1 rounded-lg bg-card border border-border text-sm text-muted-foreground capitalize")}</section>
+        ${certs.length ? `<section class="mb-8"><h2 class="text-xl font-bold mb-2">Certifications that anchor ${esc(D.withArticle(lower))} resume</h2>${chips(certs, "px-2.5 py-1 rounded-lg bg-success/5 border border-success/25 text-sm text-foreground uppercase")}</section>` : ""}
+        ${subs.length ? `<section class="mb-8"><h2 class="text-xl font-bold mb-2">Specializations our scanner distinguishes within ${esc(lower)}</h2><div class="space-y-2">${subs.map((sub) => `<div class="rounded-xl border border-border bg-card p-3"><p class="text-sm font-medium text-foreground">${esc(sub.label)}</p><p class="text-xs text-muted-foreground capitalize">Signals: ${esc(sub.signals.slice(0, 6).join(", "))}</p></div>`).join("")}</div></section>` : ""}
+        ${note ? `<section class="rounded-2xl border border-warning/30 bg-warning/5 p-5 mb-8"><h2 class="font-semibold text-foreground mb-1">What screeners check first in ${esc(lower)}</h2><p class="text-sm text-muted-foreground">${esc(note)}</p></section>` : ""}
         ${industryFaqs.length ? `<section class="mb-8"><h2 class="text-xl font-bold mb-3">Common questions</h2><div class="space-y-3">${industryFaqs.map((f) => `<div class="rounded-2xl border border-border bg-card p-4"><h3 class="font-semibold text-foreground text-sm mb-1.5">${esc(f.q)}</h3><p class="text-xs text-muted-foreground leading-relaxed">${esc(f.a)}</p></div>`).join("")}</div></section>` : ""}
         ${cta(`See how your resume scores against this data — free`, "A full diagnostic report in seconds: missing keywords, ATS parsing, weakest bullets rewritten, and a fix plan. No signup; your resume is deleted within 7 days.", "Scan my resume free")}
         ${D.ES_INDUSTRIES[slug] ? `<p class="text-xs text-muted-foreground mb-4"><a href="/es/industrias/${slug}" class="text-primary">Versión en español →</a></p>` : ""}
         ${roles.length ? `<section class="mt-8"><h2 class="text-xl font-bold mb-2">Role-specific keyword guides</h2><div class="flex flex-wrap gap-1.5">${roles.map((r) => `<a href="/roles/${r.slug}" class="px-3 py-1.5 rounded-full border border-primary/40 text-primary text-sm">${esc(r.title)} resume keywords →</a>`).join("")}</div></section>` : ""}
         <nav class="mt-8 flex flex-wrap gap-2 text-xs">${related.map((s) => pill(`/industries/${s}`, `${label(s)} keywords →`)).join("")}${pill("/industries", "All industries")}</nav>
-        <p class="text-xs text-muted-foreground mt-8">Methodology: keyword and title lists come directly from the detection tables our scanner runs on every ${esc(name.toLowerCase())} resume, validated by a pinned regression suite. O*NET data is public domain from the U.S. Department of Labor. See <a href="/methodology" class="underline">our methodology</a>.</p>`,
+        <p class="text-xs text-muted-foreground mt-8">Methodology: keyword and title lists come directly from the detection tables our scanner runs on every ${esc(lower)} resume, validated by a pinned regression suite. O*NET data is public domain from the U.S. Department of Labor. See <a href="/methodology" class="underline">our methodology</a>.</p>`,
     });
   }
 
@@ -1329,22 +1551,23 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
     const copy = D.roleListCopy(role.title, indName);
     const relatedTitles = uniq(data.titles).filter((t) => t.toLowerCase() !== role.title.toLowerCase()).slice(0, 10);
     const siblings = D.rolesForIndustry(role.industry).filter((r) => r.slug !== role.slug);
+    const head = D.roleKeywordsHead(role.title, role.industry, keywords);
     write({
       path: `/roles/${role.slug}`,
-      title: `${role.title} Resume Keywords — What ATS Systems Look For`.length > 68 ? `${role.title} Resume Keywords — ATS Guide` : `${role.title} Resume Keywords — What ATS Systems Look For`,
-      description: `${keywords.slice(0, 5).join(", ")} and more: the keywords, certifications, and titles our scanner checks on ${role.title.toLowerCase()} resumes. Free ATS scan included.`,
+      title: head.title,
+      description: head.description,
       jsonLd: [breadcrumbLd([{ name: "Home", path: "/" }, { name: "Industries", path: "/industries" }, { name: indName, path: `/industries/${role.industry}` }, { name: role.title, path: `/roles/${role.slug}` }])],
       content: `
         ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Industries", href: "/industries" }, { name: indName, href: `/industries/${role.industry}` }, { name: role.title }])}
         <h1 class="text-3xl font-bold mb-3">${esc(role.title)} Resume Keywords &amp; ATS Expectations</h1>
         <p class="text-muted-foreground mb-8">${esc(copy.intro)}</p>
         ${onetBlock(onet)}
-        <section class="mb-8"><h2 class="text-xl font-bold mb-2">${esc(copy.keywordsHeading)}</h2>${kwChips(keywords)}</section>
+        <section class="mb-8"><h2 class="text-xl font-bold mb-2">${esc(copy.keywordsHeading)}</h2>${kwChips(keywords, role.industry)}</section>
         ${certs.length ? `<section class="mb-8"><h2 class="text-xl font-bold mb-2">${esc(copy.certsHeading)}</h2>${chips(certs, "px-2.5 py-1 rounded-lg bg-success/5 border border-success/25 text-sm text-foreground uppercase")}</section>` : ""}
-        ${relatedTitles.length ? `<section class="mb-8"><h2 class="text-xl font-bold mb-2">Adjacent titles recruiters search alongside "${esc(role.title)}"</h2>${chips(relatedTitles, "px-2.5 py-1 rounded-lg bg-card border border-border text-sm text-muted-foreground capitalize")}</section>` : ""}
-        ${cta(`Scan your ${role.title.toLowerCase()} resume against this data — free`, "A full diagnostic report in seconds: missing keywords, ATS parsing, weakest bullets rewritten, and a fix plan. No signup; your resume is deleted within 7 days.", "Scan my resume free")}
+        ${relatedTitles.length ? `<section class="mb-8"><h2 class="text-xl font-bold mb-2">Adjacent titles recruiters search alongside "${esc(role.title)}"</h2>${chips(relatedTitles.map((t) => displayKeyword(t, role.industry)), "px-2.5 py-1 rounded-lg bg-card border border-border text-sm text-muted-foreground capitalize")}</section>` : ""}
+        ${cta(`Scan your ${inSentence(role.title)} resume against this data — free`, "A full diagnostic report in seconds: missing keywords, ATS parsing, weakest bullets rewritten, and a fix plan. No signup; your resume is deleted within 7 days.", "Scan my resume free")}
         <nav class="mt-8 flex flex-wrap gap-2 text-xs">${siblings.map((r) => pill(`/roles/${r.slug}`, `${r.title} keywords →`)).join("")}${pill(`/industries/${role.industry}`, `All ${indName} keywords →`)}</nav>
-        <p class="text-xs text-muted-foreground mt-8">Methodology: these lists come directly from the detection tables our scanner runs on every ${esc(indName.toLowerCase())} resume, validated by a pinned regression suite. See <a href="/methodology" class="underline">our methodology</a>.</p>`,
+        <p class="text-xs text-muted-foreground mt-8">Methodology: these lists come directly from the detection tables our scanner runs on every ${esc(inSentence(indName))} resume, validated by a pinned regression suite. See <a href="/methodology" class="underline">our methodology</a>.</p>`,
     });
   }
 
@@ -1360,7 +1583,11 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
     write({
       path: `/vs/${c.slug}`,
       title: `Resume Booster vs ${c.name} — An Honest Comparison`,
-      description: `How Resume Booster's free diagnostic scan compares to ${c.name}: free-tier depth, score transparency, verified output — and where ${c.name} is genuinely stronger.`,
+      description: fitDesc(
+        `How Resume Booster's free diagnostic scan compares to ${c.name}: free-tier depth, score transparency, verified output — and where ${c.name} is genuinely stronger.`,
+        `How Resume Booster's free resume scan compares to ${c.name}: free-tier depth and score transparency, and where ${c.name} is genuinely stronger.`,
+        `How Resume Booster's free resume scan compares to ${c.name}, and where ${c.name} is genuinely stronger.`,
+      ),
       jsonLd: [faqLd(faqs)],
       content: `
         <h1 class="text-3xl font-bold mb-3">Resume Booster vs ${esc(c.name)}</h1>
@@ -1409,7 +1636,10 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
       lang: "es",
       hreflang: { en: `/industries/${slug}`, es: `/es/industrias/${slug}` },
       title: `Palabras Clave para Currículum de ${name} — Qué Buscan los ATS`.length > 68 ? `Palabras Clave para CV de ${name} — Guía ATS` : `Palabras Clave para Currículum de ${name} — Qué Buscan los ATS`,
-      description: `${esKeywords.slice(0, 5).join(", ")} y más: las palabras clave, títulos y certificaciones que nuestro escáner de currículums busca en el sector de ${name.toLowerCase()}. Escaneo gratis incluido.`,
+      description: listDesc(esKeywords.slice(0, 5), " y más: ", `las palabras clave, títulos y certificaciones que nuestro escáner busca en ${name.toLowerCase()}. Escaneo gratis.`),
+      // The Spanish pages carried no breadcrumb markup while the English
+      // twins did (SEO-034).
+      jsonLd: [breadcrumbLd([{ name: "Inicio", path: "/" }, { name: "Industrias", path: "/industries" }, { name, path: `/es/industrias/${slug}` }])],
       content: `
         ${breadcrumbNav([{ name: "Inicio", href: "/" }, { name: "Industrias", href: "/industries" }, { name }])}
         <h1 class="text-3xl font-bold mb-3">Palabras clave para currículum de ${esc(name)}</h1>
@@ -1417,7 +1647,7 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
         <section class="mb-8"><h2 class="text-xl font-bold mb-2">Términos en español que nuestro motor reconoce</h2>${chips(esKeywords)}</section>
         ${esTitles.length ? `<section class="mb-8"><h2 class="text-xl font-bold mb-2">Títulos profesionales reconocidos</h2>${chips(esTitles, "px-2.5 py-1 rounded-lg bg-card border border-border text-sm text-muted-foreground capitalize")}</section>` : ""}
         <section class="mb-8"><h2 class="text-xl font-bold mb-2">Términos en inglés que los ATS también esperan</h2>${chips(enKeywords)}</section>
-        ${cta("Escanea tu currículum gratis — también en español", "Informe diagnóstico completo en segundos: palabras clave faltantes, cómo leen tu archivo los sistemas ATS, tus viñetas más débiles reescritas y un plan de mejoras. Sin registro; tu currículum se borra en un máximo de 7 días.", "Escanear mi currículum gratis")}
+        ${cta("Escanea tu currículum gratis — también en español", "Informe diagnóstico completo en segundos: palabras clave faltantes, cómo leen tu archivo los sistemas ATS, tus viñetas más débiles reescritas y un plan de mejoras. Sin registro; tu currículum se borra en un máximo de 7 días.", "Escanear mi currículum gratis", "/es/revisar-curriculum")}
         <nav class="mt-8 flex flex-wrap gap-2 text-xs">${Object.entries(D.ES_INDUSTRIES).filter(([s]) => s !== slug).map(([s, n]) => pill(`/es/industrias/${s}`, `${n} →`)).join("")}${pill("/es/revisar-curriculum", "Revisar mi currículum gratis →")}${pill(`/industries/${slug}`, "English version →")}</nav>`,
     });
   }
@@ -1429,13 +1659,13 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
       lang: cfg.lang || null,
       hreflang: cfg.alternates || null,
       title: cfg.title,
-      description: cfg.description,
+      description: fitSentence(cfg.description),
       jsonLd: [faqLd(cfg.faqs)],
       content: `
         <h1 class="text-3xl font-bold mb-3">${esc(cfg.heading)}</h1>
         <p class="text-muted-foreground mb-6">${esc(cfg.intro)}</p>
         <ul class="space-y-1.5 mb-8">${cfg.bullets.map((b) => `<li class="text-sm text-muted-foreground">✓ ${esc(b)}</li>`).join("")}</ul>
-        ${cta(cfg.lang === "es" ? "Escanea tu currículum gratis" : "Run the free scan now", cfg.lang === "es" ? `Informe completo en ${D.SCAN_RESULTS_WITHIN_SECONDS} segundos como máximo. Sin registro; tu currículum se borra en un máximo de 7 días.` : `Full diagnostic report within ${D.SCAN_RESULTS_WITHIN_SECONDS} seconds. No sign-up; your resume is deleted within 7 days.`, cfg.lang === "es" ? "Escanear mi currículum gratis" : "Scan my resume free")}
+        ${cta(cfg.lang === "es" ? "Escanea tu currículum gratis" : "Run the free scan now", cfg.lang === "es" ? `Informe completo en ${D.SCAN_RESULTS_WITHIN_SECONDS} segundos como máximo. Sin registro; tu currículum se borra en un máximo de 7 días.` : `Full diagnostic report within ${D.SCAN_RESULTS_WITHIN_SECONDS} seconds. No sign-up; your resume is deleted within 7 days.`, cfg.lang === "es" ? "Escanear mi currículum gratis" : "Scan my resume free", cfg.lang === "es" ? "/es/revisar-curriculum" : "/")}
         <section class="mt-10"><h2 class="text-2xl font-bold mb-4">${cfg.lang === "es" ? "Preguntas frecuentes" : "Common questions"}</h2><div class="space-y-4">${cfg.faqs.map((f) => `<div class="rounded-2xl border border-border bg-card p-5"><h3 class="font-semibold text-foreground mb-1.5">${esc(f.q)}</h3><p class="text-sm text-muted-foreground">${esc(f.a)}</p></div>`).join("")}</div></section>`,
     });
   }
@@ -1446,7 +1676,7 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
     write({
       path: "/guides",
       title: D.GUIDES_INDEX_TITLE,
-      description: D.GUIDES_INDEX_DESCRIPTION,
+      description: fitSentence(D.GUIDES_INDEX_DESCRIPTION),
       content: `
         <h1 class="text-3xl font-bold mb-3">Resume &amp; ATS guides</h1>
         <p class="text-muted-foreground mb-8">${esc(D.GUIDES_INTRO)}</p>
@@ -1470,8 +1700,9 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
         headline: g.h1,
         description: g.description,
         dateModified: g.updated,
-        author: { "@type": "Organization", name: "Resume Booster", url: SITE },
-        publisher: { "@type": "Organization", name: "Resume Booster" },
+        // The site's one Organization, by @id (SEO-011a).
+        author: orgRef(SITE),
+        publisher: orgRef(SITE),
         mainEntityOfPage: `${SITE}/guides/${g.slug}`,
       },
       breadcrumbLd([{ name: "Home", path: "/" }, { name: "Guides", path: "/guides" }, { name: g.h1, path: `/guides/${g.slug}` }])];
@@ -1481,7 +1712,7 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
         // S3: a guide's sitemap date is the date its own markup states.
         lastmod: g.updated,
         title: g.title,
-        description: g.description,
+        description: fitSentence(g.description),
         jsonLd,
         content: `
           ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Guides", href: "/guides" }, { name: g.h1 }])}
@@ -1511,7 +1742,7 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
   let scanInsights = null;
   let scanTotals = null;
   try {
-    const env = readFileSync(join(root, ".env"), "utf8");
+    const env = OFFLINE ? "" : readFileSync(join(root, ".env"), "utf8");
     const supaUrl = env.match(/^VITE_SUPABASE_URL\s*=\s*"?([^"\s]+)/m)?.[1];
     const anonKey = env.match(/^VITE_SUPABASE_PUBLISHABLE_KEY\s*=\s*"?([^"\s]+)/m)?.[1];
     if (supaUrl && anonKey) {
@@ -1540,31 +1771,52 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
     const studyFaqs = [
       { q: "What is a good ATS score?", a: "Judge your score against the live distribution on this page, not a folklore threshold: the median and quartiles come from real scans in the last 180 days. Scoring above the 75th percentile means most resumes being checked right now score below yours; below the 25th percentile means parsing or keyword problems are very likely holding you back." },
       { q: "Do ATS systems themselves show scores like this?", a: "Mostly no. Most ATS platforms rank and filter by recruiter searches rather than assigning a universal score. A resume score — ours included — is a diagnostic model of how well your resume will survive parsing and keyword search, not a number Workday or Greenhouse shows a recruiter." },
-      { q: "Where do these numbers come from?", a: "From completed scans run by real users on this site over a rolling 180-day window. Only aggregates are published: each industry or experience bucket must contain at least 25 scans before it appears, and no individual resume, score, or location is ever exposed." },
+      // "SCANS LOGGED", NOT "COMPLETED SCANS" (S13-087): the count includes
+      // failed attempts, and one scan can be logged twice (migration
+      // 20260709124621), until the SQL counts completions.
+      { q: "Where do these numbers come from?", a: "From scans logged by real users on this site over a rolling 180-day window. Only aggregates are published: each industry or experience bucket must contain at least 25 scans before it appears, and no individual resume, score, or location is ever exposed." },
       { q: "Why might this sample skew low or high?", a: "People who check their resume are often mid-job-search and suspect something is wrong, so the sample likely skews toward resumes with fixable problems. Treat the percentiles as a benchmark of active job seekers, not of every employed professional's resume." },
     ];
     write({
       path: "/research/ats-score-benchmarks",
       title: "What's a Good ATS Score? Live Benchmarks From Real Scans",
-      description: "Real ATS score benchmarks, updated live from our scan corpus: overall median and quartiles, per-industry distributions, and experience-level medians — not folklore thresholds.",
+      // Under 160 at the source (OBS-2): it was 175 and the clamp cut it.
+      description: "Real ATS score benchmarks from our scan log: the overall median and quartiles, per-industry distributions and experience-level medians, not folklore thresholds.",
       jsonLd: [
         {
           "@context": "https://schema.org",
           "@type": "Article",
           headline: "ATS resume score benchmarks from real scans",
           description: "Live score distributions from real resume scans: overall median and quartiles, per-industry benchmarks, and experience-level medians over a rolling 180-day window.",
-          author: { "@type": "Organization", name: "Resume Booster", url: SITE },
-          publisher: { "@type": "Organization", name: "Resume Booster" },
+          // DATED BY ITS OWN PAYLOAD (SEO-028): the page llms.txt asks engines
+          // to cite carried no machine date. First published 2026-07-06.
+          datePublished: RESEARCH_PUBLISHED,
+          ...(ins?.as_of ? { dateModified: String(ins.as_of).slice(0, 10) } : {}),
+          image: `${SITE}/og-image.png`,
+          author: orgRef(SITE),
+          publisher: orgRef(SITE),
           mainEntityOfPage: `${SITE}/research/ats-score-benchmarks`,
         },
         {
           "@context": "https://schema.org",
           "@type": "Dataset",
+          "@id": `${SITE}/research/ats-score-benchmarks#dataset`,
           name: "Resume Booster ATS score benchmarks",
           description: "Aggregated ATS score distributions (median, quartiles, decile histogram) from real resume scans, by industry and experience level. Rolling 180-day window; buckets published only at n ≥ 25.",
-          creator: { "@type": "Organization", name: "Resume Booster", url: SITE },
+          creator: { "@id": ORG_ID(SITE) },
           url: `${SITE}/research/ats-score-benchmarks`,
           isAccessibleForFree: true,
+          variableMeasured: ["ATS score median", "ATS score 25th and 75th percentiles", "share of scans per 10-point score band", "median score by industry", "median score by experience level"],
+          ...(ins?.as_of ? {
+            dateModified: String(ins.as_of).slice(0, 10),
+            temporalCoverage: (() => {
+              const end = String(ins.as_of).slice(0, 10);
+              const days = Number(ins.window_days) || 180;
+              const start = new Date(Date.parse(`${end}T00:00:00Z`) - days * 86_400_000).toISOString().slice(0, 10);
+              return `${start}/${end}`;
+            })(),
+          } : {}),
+          ...(DATA_LICENSE ? { license: DATA_LICENSE } : {}),
         },
         faqLd(studyFaqs),
       ],
@@ -1575,14 +1827,14 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
         <p class="text-xs text-muted-foreground mb-6">Computed live from our scan corpus (rolling 180-day window${ins ? `, as of ${esc(ins.as_of)}` : ""}) · Aggregates only, minimum 25 scans per bucket</p>
         <section class="rounded-2xl border border-primary/25 bg-primary/5 p-5 mb-8"><h2 class="text-sm font-semibold text-foreground mb-1.5">The short answer</h2><p class="text-sm text-muted-foreground leading-relaxed">${
           o
-            ? esc(`Across the last ${o.n.toLocaleString("en-US")} completed scans, the median resume scored ${o.median}, with the middle half of resumes landing between ${o.p25} and ${o.p75}.${o.pct_80_plus != null ? ` Only ${o.pct_80_plus}% scored 80 or higher — so a score in the 80s is genuinely strong, not table stakes.` : ""} There is no universal pass mark: use the distribution below to see where you actually stand.`)
+            ? esc(`Across the last ${o.n.toLocaleString("en-US")} scans logged, the median resume scored ${o.median}, with the middle half of resumes landing between ${o.p25} and ${o.p75}.${o.pct_80_plus != null ? ` Only ${o.pct_80_plus}% scored 80 or higher — so a score in the 80s is genuinely strong, not table stakes.` : ""} There is no universal pass mark: use the distribution below to see where you actually stand.`)
             : "There is no universal “good” ATS score — the honest benchmark is where you fall in the distribution of real resumes being scanned right now. This page computes that distribution live from our scan corpus: overall median and quartiles, per-industry benchmarks, and experience-level medians."
         }</p></section>
         ${
           ins
             ? `
         <section class="mb-10"><h2 class="text-xl font-bold mb-3">How real resumes score</h2>
-          <p class="text-sm text-muted-foreground leading-relaxed mb-4">Each row is a 10-point score band across every completed scan in the current window.</p>
+          <p class="text-sm text-muted-foreground leading-relaxed mb-4">Each row is a 10-point score band across every scan logged in the current window.</p>
           <table class="w-full text-sm"><thead><tr class="text-left text-xs text-muted-foreground"><th class="p-2">Score band</th><th class="p-2">Scans</th><th class="p-2">Share</th></tr></thead><tbody>
           ${ins.histogram.map((h) => `<tr class="border-b border-border"><td class="p-2 text-foreground">${h.bucket}–${h.bucket + 9}</td><td class="p-2 text-muted-foreground">${h.n.toLocaleString("en-US")}</td><td class="p-2 text-muted-foreground">${o ? Math.round((1000 * h.n) / o.n) / 10 : 0}%</td></tr>`).join("")}
           </tbody></table></section>
@@ -1599,6 +1851,7 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
           <p class="text-sm text-muted-foreground leading-relaxed mb-3">Two caveats we insist on. First, this sample self-selects: people scan resumes when they suspect a problem, so the distribution likely sits below the true population of working professionals. Second, any resume score — ours included — is a model with error bars, not a measurement; <a href="/guides/what-resume-score-means" class="text-primary">what a resume score actually means</a> explains how to read one without being fooled by false precision.</p>
           <p class="text-sm text-muted-foreground leading-relaxed">What the data is good for: ranking yourself against real peers instead of a made-up "75 is passing" threshold, and seeing that industry context matters — the same resume quality scores differently against different keyword expectations. Our <a href="/methodology" class="text-primary">methodology</a> covers how the score itself is computed.</p></section>
         <section class="mb-10"><h2 class="text-xl font-bold mb-4">Common questions</h2><div class="space-y-3">${studyFaqs.map((f) => `<div class="rounded-2xl border border-border bg-card p-4"><h3 class="font-semibold text-foreground text-sm mb-1.5">${esc(f.q)}</h3><p class="text-xs text-muted-foreground">${esc(f.a)}</p></div>`).join("")}</div></section>
+        <p class="text-xs text-muted-foreground mb-8"><strong>How to cite:</strong> Resume Booster, “ATS score benchmarks from real scans”, ${SITE}/research/ats-score-benchmarks${ins?.as_of ? `, figures as of ${esc(String(ins.as_of).slice(0, 10))}` : ""}.</p>
         ${cta("See where your resume lands in this distribution — free", "The full diagnostic within 90 seconds: your score with an audit trail, missing keywords, and per-vendor parsing checks. No signup; your resume is deleted within 7 days.", "Run the free scan")}
         <nav class="mt-6 flex flex-wrap gap-2 text-xs">${pill("/guides/what-resume-score-means", "What a resume score actually means →")}${pill("/guides/why-resumes-get-rejected", "Why resumes get rejected →")}${pill("/industries", "Keywords by industry →")}</nav>
         </article>`,
@@ -1606,17 +1859,27 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
   }
 
   // ---- Homepage (also the SPA fallback — see renderFile notes) ----
-  // THE AGENT OFFER, the same two sentences the hero strip renders
-  // (src/pages/Index.tsx AgentOfferStrip): read from en.json's homeAgent keys
-  // and filled from the PASS and MCP_ANON_CAPS mirrors — never a second
-  // spelling of the price, the hours, the applications or the daily
-  // allowance, so a Googlebot-UA curl of / says exactly what the page says.
+  // THE CONNECT LINE, the sentences the hero strip renders (src/pages/Index.tsx
+  // AgentOfferStrip): read from en.json's homeAgent keys and filled from the
+  // MCP_ANON_CAPS mirror, never a second spelling of the daily allowance, so a
+  // Googlebot-UA curl of / says what the page says. The strip's third line
+  // sold a pass for an agent; it is not baked (the apply pivot, 2026-10-11).
   const AGENT_OFFER = (() => {
     const A = (D.EN_LOCALE && D.EN_LOCALE.homeAgent) || {};
-    const vals = { passPrice: D.PASS.priceUsd, passHours: D.PASS.sessionHours, passApplications: D.PASS.applications, freeCallsPerDay: D.MCP_ANON_CAPS.perAddressPerDay };
+    const vals = { freeCallsPerDay: D.MCP_ANON_CAPS.perAddressPerDay };
     const fillIn = (s) => fillCopy(s, vals, "homeAgent");
-    return { lead: fillIn(A.lead), connect: fillIn(A.connectLine2), pass: fillIn(A.passLine), cta: fillIn(A.connectCta) };
+    return { lead: fillIn(A.lead), connect: fillIn(A.connectLine2), cta: fillIn(A.connectCta) };
   })();
+  // THE DAY THE HEADLINE COUNTS WERE TAKEN, printed beside them: a live read
+  // is this build's day; a snapshot-fed build is the day its snapshot was
+  // written, or no day at all when the snapshot carries none.
+  // The short form, for a description: "counted 2026-10-18".
+  const COUNTS_DAY = facetsSource === "snapshot"
+    ? (facetsSavedAt ? `counted ${facetsSavedAt}` : "counted by the last build that could reach the board")
+    : `counted ${TODAY}`;
+  const COUNTS_BASIS = facetsSource === "snapshot"
+    ? (facetsSavedAt ? `counted ${facetsSavedAt}, by the last build that could reach the board` : "counted by the last build that could reach the board")
+    : `counted ${TODAY}, when this page was built`;
   write({
     isFallback: true,
     path: "/",
@@ -1627,10 +1890,8 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
       ? `Resume Booster — ${plusClaim(BOARD_TOTAL, 50000)} Live Jobs Straight From Employers`
       : "Resume Booster — Live Jobs Straight From Employers",
     // KEEP THIS UNDER 160 CHARACTERS. The previous one ran to 279 and the
-    // clamp below cut it at "…Upload your CV and an AI…" — the snippet Google
-    // shows literally trailed off before the word "agent", so the change that
-    // made the agent the homepage's headline never reached the search result.
-    description: "Live jobs straight from employers' own hiring systems, re-checked all day. An AI agent ranks them to your CV and applies where employers allow.",
+    // clamp below cut it mid-sentence with nothing saying so.
+    description: "Live jobs straight from employers' own hiring systems, re-read through the day. Search free, here or from your own AI, and apply on the employer's site.",
     jsonLd: [
       {
         "@context": "https://schema.org",
@@ -1649,40 +1910,18 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
       // the block that does not declare it. The SearchAction now lives on the
       // template's single block instead; see index.html.
       //
-      // The agent, though, has no entity anywhere else — without this the
-      // structured data described only the resume scanner while the title and
-      // the page both led with the job board and the agent.
-      {
-        "@context": "https://schema.org",
-        "@type": "Service",
-        name: "AI apply agent",
-        serviceType: "Automated job application assistance",
-        provider: { "@type": "Organization", name: "Resume Booster", url: SITE },
-        areaServed: "Worldwide",
-        description: "Reads your CV, ranks live verified openings against it, writes a tailored application for each, answers the employer's own screening questions, and submits on hiring systems that permit it. It never fabricates experience and never solves a CAPTCHA or evades a bot check.",
-        // L1-08: the offer said "Included with a Resume Booster account" with
-        // no price, for a $99-a-month plan. Both ways to buy it, from the
-        // products mirror the checkouts read.
-        offers: [
-          { "@type": "Offer", price: String(D.SUBSCRIPTIONS.agent.priceUsd), priceCurrency: "USD", description: `Agent plan, billed monthly until cancelled`, url: `${SITE}/agent` },
-          { "@type": "Offer", price: String(D.PASS.priceUsd), priceCurrency: "USD", description: `Agent Pass: ${D.PASS.sessionHours} hours for an agent you bring yourself`, url: `${SITE}/agents/pass` },
-        ],
-      },
+      // NO Service BLOCK EITHER. It described an agent that applied for you,
+      // with its plan and its pass as Offers; the agent and both products are
+      // retired (owner, 2026-10-11), and a Service whose own description says
+      // it submits is a false offer however its prices are dropped.
     ],
     content: `
-      <h1 class="text-3xl font-bold mb-3">Live jobs, straight from employers' own hiring systems. The agent applies for you.</h1>
-      <p class="text-muted-foreground mb-6">${BOARD_TOTAL ? `${plusClaim(BOARD_TOTAL, 50000)} verified openings` : "Verified openings"}${BOARD_COMPANIES ? ` from ${plusClaim(BOARD_COMPANIES, 1000)} company job boards with roles open now` : ""}${BOARD_TRACKED ? ` — ${plusClaim(BOARD_TRACKED, 50000)} roles tracked in all, including the ones we have watched close` : ""}, every one read from the employer's own hiring system and re-checked all day, with no dated posting older than 30 days. Where a company publishes no date we keep the posting and show no age rather than guess one. Upload your CV and an AI apply agent ranks every opening against it, writes each application honestly (it will state what you do not have rather than invent it), and submits on the systems where employers allow it. <a href="/jobs" class="text-primary">Browse the live board →</a></p>
+      <h1 class="text-3xl font-bold mb-3">Live jobs, straight from employers' own hiring systems.</h1>
+      <p class="text-muted-foreground mb-6">${BOARD_TOTAL ? `${plusClaim(BOARD_TOTAL, 50000)} open roles` : "Open roles"}${BOARD_COMPANIES ? ` from ${plusClaim(BOARD_COMPANIES, 1000)} company job boards with roles open now` : ""}${BOARD_TRACKED ? ` — ${plusClaim(BOARD_TRACKED, 50000)} roles tracked in all, including the ones we have watched close` : ""}${BOARD_TOTAL || BOARD_COMPANIES ? ` (${esc(COUNTS_BASIS)})` : ""}, every one read from the employer's own hiring system and re-read through the day, with no dated posting older than 30 days. Where a company publishes no date we keep the posting and show no age rather than guess one. <a href="/jobs" class="text-primary">Browse the live board →</a></p>
       <section class="mt-8 mb-8">
-        <h2 class="text-xl font-bold mb-3">What the AI apply agent does</h2>
-        <ul class="space-y-1.5">
-          <li class="text-sm text-muted-foreground">✓ Reads your CV and scores every live opening against it</li>
-          <li class="text-sm text-muted-foreground">✓ Writes a tailored application per role — never one blast sent everywhere</li>
-          <li class="text-sm text-muted-foreground">✓ Answers the employer's real screening questions, harvested from the actual form</li>
-          <li class="text-sm text-muted-foreground">✓ Refuses to fabricate: asked about experience you lack, it says so</li>
-          <li class="text-sm text-muted-foreground">✓ Submits end-to-end where the employer's system permits; never solves a CAPTCHA or evades a bot check</li>
-          <li class="text-sm text-muted-foreground">✓ Tracks every application and tells you when a role comes down</li>
-        </ul>
-        <p class="text-sm text-muted-foreground mt-4"><strong class="text-foreground">${esc(AGENT_OFFER.lead)}</strong> ${esc(AGENT_OFFER.connect)} ${esc(AGENT_OFFER.pass)} <a href="/agents" class="text-primary">${esc(AGENT_OFFER.cta)} →</a></p>
+        <h2 class="text-xl font-bold mb-3">Search and apply through your own AI</h2>
+        <p class="text-sm text-muted-foreground">${esc(APPLY_YOURSELF_LINE)}</p>
+        <p class="text-sm text-muted-foreground mt-4"><strong class="text-foreground">${esc(AGENT_OFFER.lead)}</strong> ${esc(AGENT_OFFER.connect)} <a href="/agents" class="text-primary">${esc(AGENT_OFFER.cta)} →</a></p>
       </section>
       <h2 class="text-xl font-bold mb-3">Your resume's real score — measured, not guessed</h2>
       <p class="text-muted-foreground mb-6">Rescan the same file against the same posting within ${D.REPORT_CACHE_DAYS} days and you get the same report (Re-analyze builds a fresh one) — benchmarked against real scans in your industry, with every quoted line verified against your actual resume. Not a ChatGPT or Claude opinion: a reading with a full audit trail, missing keywords, weak bullets rewritten, and per-vendor parsing checks for Workday, Greenhouse, Lever, and iCIMS. No sign-up; your resume is deleted within 7 days. <a href="/vs/chatgpt" class="text-primary">How this differs from asking a chatbot →</a></p>
@@ -1728,7 +1967,7 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
     write({
       path: "/cv-standards",
       title: "CV & Resume Standards by Country — Photo, Length, Format Rules",
-      description: `What a resume or CV actually looks like in ${isoList.length} countries: photo norms, expected length, personal-data rules, and formatting conventions — the live data our resume scanner applies per market.`,
+      description: `Resume and CV rules in ${isoList.length} countries: photo norms, expected length, personal-data rules and formatting, from the per-market data our scanner applies.`,
       jsonLd: [breadcrumbLd([{ name: "Home", path: "/" }, { name: "CV Standards", path: "/cv-standards" }])],
       content: `
         ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "CV Standards" }])}
@@ -1737,7 +1976,10 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
         <div class="grid sm:grid-cols-2 gap-2.5">${sorted.map((iso) => `<a href="/cv-standards/${D.COUNTRY_SLUGS[iso]}" class="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground"><span>${esc(D.COUNTRY_STANDARDS[iso].name)}</span></a>`).join("")}</div>`,
     });
 
-    const sectionHtml = (t, std, notes, name) => `
+    // The CTA goes to the scan page in the page's own language where there is
+    // one (SEO-034), and every {name} is filled in the form its phrase needs
+    // ("in the United States", "no Brasil", "in der Schweiz": D.cvFill).
+    const sectionHtml = (t, std, notes, name, locale = "en", faqs = []) => `
       <div class="grid sm:grid-cols-2 gap-3 mb-8">
         <div class="rounded-xl border border-border bg-card p-4"><h2 class="text-sm font-semibold mb-1">${esc(t.docTermLabel)}</h2><p class="font-medium">${esc(std.docTerm)}</p><p class="text-xs text-muted-foreground mt-1">${esc(t.paperLabel)}: ${esc(std.paper)}</p></div>
         <div class="rounded-xl border border-border bg-card p-4"><h2 class="text-sm font-semibold mb-1">${esc(t.lengthLabel)}</h2><p class="font-medium">${esc(notes.lengthNote)}</p></div>
@@ -1745,7 +1987,8 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
       <section class="rounded-2xl border border-primary/25 bg-primary/5 p-5 mb-8"><h2 class="text-lg font-bold mb-1">${esc(t.photoLabel)} <span class="ml-2 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold">${esc(t.photoNorms[std.photo])}</span></h2><p class="text-sm text-muted-foreground">${esc(notes.photoNote)}</p></section>
       <section class="mb-8"><h2 class="text-lg font-bold mb-1">${esc(t.personalLabel)}</h2><p class="text-sm text-muted-foreground">${esc(notes.personalDataNote)}</p></section>
       ${notes.conventions.length ? `<section class="mb-8"><h2 class="text-lg font-bold mb-2">${esc(t.conventionsLabel)}</h2><ul class="space-y-2 text-sm text-muted-foreground">${notes.conventions.map((c) => `<li>• ${esc(c)}</li>`).join("")}</ul></section>` : ""}
-      <section class="rounded-2xl border-2 border-primary bg-card p-6 text-center"><h2 class="text-xl font-bold mb-2">${esc(t.ctaTitle)}</h2><p class="text-sm text-muted-foreground mb-4">${esc(D.fill(t.ctaText, { name }))}</p><a href="/" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm">${esc(t.ctaButton)}</a></section>
+      ${faqs.length ? `<section class="mb-10"><h2 class="text-lg font-bold mb-3">${esc(t.faqHeading)}</h2>${faqs.map((f) => `<div class="rounded-2xl border border-border bg-card p-4 mb-3"><h3 class="font-semibold text-sm mb-1.5">${esc(f.q)}</h3><p class="text-sm text-muted-foreground">${esc(f.a)}</p></div>`).join("")}</section>` : ""}
+      <section class="rounded-2xl border-2 border-primary bg-card p-6 text-center"><h2 class="text-xl font-bold mb-2">${esc(t.ctaTitle)}</h2><p class="text-sm text-muted-foreground mb-4">${esc(D.cvFill(t.ctaText, { name }, locale))}</p><a href="${locale === "es" ? "/es/revisar-curriculum" : "/"}" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm">${esc(t.ctaButton)}</a></section>
       <p class="text-[11px] text-muted-foreground mt-6">${esc(t.sourceNote)}</p>`;
 
     // EN page per country
@@ -1755,24 +1998,24 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
       const name = std.name;
       const vars = { name, docTerm: std.docTerm };
       const notes = { lengthNote: std.lengthNote, photoNote: std.photoNote, personalDataNote: std.personalDataNote, conventions: std.conventions };
+      // SEO-032: the two questions the FAQ markup asks are on the page too,
+      // from the one array React's page prints (src/lib/cv-country-phrase.ts).
+      const faqs = D.cvStandardsFaqs("en", t, { name, docTerm: std.docTerm, photo: std.photo, photoNote: notes.photoNote, lengthNote: notes.lengthNote });
       write({
         path: `/cv-standards/${D.COUNTRY_SLUGS[iso]}`,
         hreflang: D.hreflangCluster(iso),
-        title: D.fill(t.title, vars),
-        description: D.fill(t.metaDescription, vars),
+        title: D.cvFill(t.title, vars, "en"),
+        description: fitDesc(D.cvFill(t.metaDescription, vars, "en"), D.cvFill("Photo norms, expected length, and personal-data rules for a {docTerm} in {name}.", vars, "en")),
         jsonLd: [
           breadcrumbLd([{ name: "Home", path: "/" }, { name: "CV Standards", path: "/cv-standards" }, { name, path: `/cv-standards/${D.COUNTRY_SLUGS[iso]}` }]),
-          faqLd([
-            { q: D.fill(t.faqPhoto, vars), a: `${t.photoNorms[std.photo]}. ${std.photoNote}` },
-            { q: D.fill(t.faqLength, vars), a: std.lengthNote },
-          ]),
+          faqLd(faqs),
         ],
         content: `
           ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "CV Standards", href: "/cv-standards" }, { name }])}
-          <h1 class="text-3xl font-bold mb-3">${esc(D.fill(t.h1, vars))}</h1>
-          <p class="text-muted-foreground mb-8">${esc(D.fill(t.intro, vars))}</p>
+          <h1 class="text-3xl font-bold mb-3">${esc(D.cvFill(t.h1, vars, "en"))}</h1>
+          <p class="text-muted-foreground mb-8">${esc(D.cvFill(t.intro, vars, "en"))}</p>
           ${(() => { const cl = D.hreflangCluster(iso); const names = { es: "Español", fr: "Français", de: "Deutsch", pt: "Português", nl: "Nederlands" }; const alts = Object.entries(cl).filter(([l]) => l !== "en"); return alts.length ? `<p class="text-xs text-muted-foreground mb-6">${alts.map(([l, href]) => `<a href="${href}" class="text-primary mr-3">${names[l] ?? l} →</a>`).join("")}</p>` : ""; })()}
-          ${sectionHtml(t, std, notes, name)}`,
+          ${sectionHtml(t, std, notes, name, "en", faqs)}`,
       });
     }
 
@@ -1785,21 +2028,19 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
         const t = cfg.t;
         const name = notes.countryName;
         const vars = { name, docTerm: std.docTerm };
+        const faqs = D.cvStandardsFaqs(locale, t, { name, docTerm: std.docTerm, photo: std.photo, photoNote: notes.photoNote, lengthNote: notes.lengthNote });
         write({
           path: `/${cfg.pathBase}/${slug}`,
           lang: cfg.htmlLang,
           hreflang: D.hreflangCluster(iso),
-          title: D.fill(t.title, vars),
-          description: D.fill(t.metaDescription, vars),
-          jsonLd: [faqLd([
-            { q: D.fill(t.faqPhoto, vars), a: `${t.photoNorms[std.photo]}. ${notes.photoNote}` },
-            { q: D.fill(t.faqLength, vars), a: notes.lengthNote },
-          ])],
+          title: D.cvFill(t.title, vars, locale),
+          description: D.cvFill(t.metaDescription, vars, locale),
+          jsonLd: [faqLd(faqs)],
           content: `
-            <h1 class="text-3xl font-bold mb-3">${esc(D.fill(t.h1, vars))}</h1>
-            <p class="text-muted-foreground mb-8">${esc(D.fill(t.intro, vars))}</p>
+            <h1 class="text-3xl font-bold mb-3">${esc(D.cvFill(t.h1, vars, locale))}</h1>
+            <p class="text-muted-foreground mb-8">${esc(D.cvFill(t.intro, vars, locale))}</p>
             <p class="text-xs text-muted-foreground mb-6"><a href="/cv-standards/${D.COUNTRY_SLUGS[iso]}" class="text-primary">English version →</a></p>
-            ${sectionHtml(t, std, notes, name)}`,
+            ${sectionHtml(t, std, notes, name, locale, faqs)}`,
         });
       }
     }
@@ -1818,15 +2059,82 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
   // company_name_overrides mirror), and a board whose name is still its vendor
   // tenant code ("Uoflhealth") gets a page but never an indexable one, until
   // the job-board group's override table names it.
-  const LANDERS = bakeLanders(Array.isArray(boardFacets?.companiesFacet) ? boardFacets.companiesFacet : [], { D, openOf: openRolesOf });
+  //
+  // SEO-006, REPAIR FIRST: the name is then repaired (a career-site label
+  // off its end: "Chubb External" prints as "Chubb") and judged
+  // (scripts/prerender-names.mjs). A name that cannot be anyone's (logo text,
+  // a careers subdomain, a bare generic word) refuses a page NEW to the index;
+  // a page indexable on the live site today keeps its index this round (owner
+  // decision D7) and goes on the dry-run list instead.
+  // WHAT IS INDEXABLE ON THE LIVE SITE TODAY: the company pages the live
+  // sitemap lists (the committed one when the live one could not be read),
+  // and any the previous ledger recorded as live. D7 protects exactly these.
+  const sitemapCompanyPaths = (xml) => new Set([...String(xml || "").matchAll(/<loc>([^<]+)<\/loc>/g)]
+    .map((m) => m[1].trim().replace(/^https?:\/\/[^/]+/, "").replace(/\/+$/, "")).filter((p) => companyTokenOf(p)));
+  const priorCompanies = ledgerIn && ledgerIn.companies && typeof ledgerIn.companies === "object" ? ledgerIn.companies : {};
+  const INDEXABLE_TODAY = (() => {
+    const live = liveSitemap ? sitemapCompanyPaths(liveSitemap) : new Set();
+    if (live.size) return live;
+    let committed = "";
+    try { committed = readFileSync(join(root, "public/sitemap.xml"), "utf8"); } catch { /* none */ }
+    return sitemapCompanyPaths(committed);
+  })();
+  for (const [p, e] of Object.entries(priorCompanies)) if (e && e.state === "live") INDEXABLE_TODAY.add(p.replace(/\/+$/, ""));
+  // D7 at the ceiling: the boards indexable today, which keep their place
+  // near the cut (selectLanders `keep`).
+  const INDEXABLE_TODAY_TOKENS = new Set([...INDEXABLE_TODAY].map((p) => companyTokenOf(p)).filter(Boolean));
+  const NAME_PARTS = { boardName: D.boardName, isCodeShapedName: D.isCodeShapedName };
+  const LANDERS = bakeLanders(Array.isArray(boardFacets?.companiesFacet) ? boardFacets.companiesFacet : [], {
+    D, openOf: openRolesOf, nameOf: (c) => bakeEmployerName(c.token, c.name, NAME_PARTS).name,
+    keep: INDEXABLE_TODAY_TOKENS,
+  });
+  {
+    const plain = new Set(bakeLanders(Array.isArray(boardFacets?.companiesFacet) ? boardFacets.companiesFacet : [], { D, openOf: openRolesOf, nameOf: (c) => bakeEmployerName(c.token, c.name, NAME_PARTS).name }).map((c) => c.token));
+    const held = LANDERS.filter((c) => !plain.has(c.token)).map((c) => c.token);
+    const displaced = [...plain].filter((t) => !LANDERS.some((c) => c.token === t));
+    console.log(`[prerender-seo] D7 at the ceiling: ${held.length} board(s) indexable today kept near the cut${held.length ? ` (${held.slice(0, 30).join(", ")})` : ""}; ${displaced.length} new board(s) made way${displaced.length ? ` (${displaced.slice(0, 30).join(", ")})` : ""}`);
+  }
+  const NAME_GATE = new Map(LANDERS.map((c) => [c.token, bakeEmployerName(c.token, c.stored, NAME_PARTS)]));
+  // WHAT EACH BOARD IS, as the live page says it (prerender-pages.mjs
+  // companyLanderPage `kind`): the USAJOBS listing site, a staffing agency's
+  // board (the catalogue's flag, scripts/prerender-agency.mjs), or an
+  // employer. The hub's and the banner's words are the SPA's own English.
+  const AGENCY_TOKENS = readAgencyTokens(root);
+  const landerKindOf = (token) => (D.isFederalListingBoard(token, null) ? "usajobs" : AGENCY_TOKENS.has(token) ? "agency" : "employer");
+  const KIND_COPY = (() => {
+    const cp = (D.EN_COMPANY_SHARD && D.EN_COMPANY_SHARD.companyProfile) || {};
+    return {
+      ...(cp.usajobs?.h1 ? { usajobsH1: cp.usajobs.h1 } : {}),
+      ...(cp.usajobs?.subtitle ? { usajobsSubtitle: cp.usajobs.subtitle } : {}),
+      ...(cp.usajobs?.cap ? { usajobsCap: cp.usajobs.cap } : {}),
+      usajobsCapValue: D.FEDERAL_LISTING_RESULT_CAP,
+      ...(cp.agency?.banner ? { agencyBanner: cp.agency.banner } : {}),
+    };
+  })();
+  const wasIndexable = (token) => INDEXABLE_TODAY.has(`/jobs/company/${token}`);
+  /** The dry run the owner signs under D7: every page indexable today that a stricter rule would drop. */
+  const nameGateDryRun = [];
   const landerByToken = new Map(LANDERS.map((c) => [c.token, c]));
   /** The indexable employer page for a board token, when this bake writes one. */
   const landerFor = (token) => {
     const c = typeof token === "string" ? landerByToken.get(token) : null;
     if (!c) return null;
-    const p = landerByToken.get(c.primary) ?? c;
+    // A board whose page canonicalises to ANOTHER employer that shares its
+    // name has no employer page of its own to link: its postings link the
+    // live board filtered to it, never the other employer's page.
+    const pageToken = employerPageOf(LANDERS, token);
+    if (!pageToken) return null;
+    const p = landerByToken.get(pageToken) ?? c;
     return { name: p.name, href: publicHref(`/jobs/company/${p.token}`) };
   };
+  // THE SAME ANSWER, FOR THE APP (SEO-010). React cannot know which boards
+  // have a page: the bake runs after the bundle is hashed. It reads this file
+  // (src/lib/seo/lander-manifest.ts) and links /jobs?company=<token> for any
+  // board the file does not name, so a crawler that runs scripts is never
+  // sent to an address that serves the homepage's copy.
+  const landersManifest = Object.fromEntries(LANDERS.map((c) => [c.token, landerFor(c.token)?.href ?? null]));
+  writeFileSync(join(dist, "landers.json"), JSON.stringify(landersManifest));
+  console.log(`[prerender-seo] /landers.json written: ${Object.values(landersManifest).filter(Boolean).length} of ${LANDERS.length} chosen boards name a page`);
   /** The href a data-page table or a posting uses for an employer board. */
   const companyHrefFor = (token) => landerFor(token)?.href ?? `/jobs?company=${encodeURIComponent(String(token ?? ""))}`;
   const companyLinkHtml = (token, name) => {
@@ -1896,6 +2204,11 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
   //      cannot reach is "unchecked", never dropped. The ceiling is sized to
   //      fit: the facets head, 500 re-checks, 20 pool pages and 100 new
   //      postings is the 621 (it was 600 when the listings had no reads).
+  //   7. THE CEILING BINDS THE CARRIED PAGES TOO. Carried pages past
+  //      POSTING_PAGE_CEILING give up their page, the oldest employer date
+  //      first, to the honest "retired" page (postingCeilingSplit), and the
+  //      sitemap never names more posting pages than the ceiling
+  //      (capPostingEntries), so the live set's bound is the ceiling itself.
   const POSTING_PAGE_CAP = 400;
   const POSTING_FRESH_RESERVE = 100;
   const POSTING_PAGE_CEILING = 500;
@@ -1918,9 +2231,31 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
   let landerOpeningsCache = ledgerIn && ledgerIn.openings && typeof ledgerIn.openings === "object" ? ledgerIn.openings : {};
   /** Every posting path this bake accounted for and its state, published as the ledger. */
   const postingLedger = {};
+  /** Every company path this site has published, and what it is now (SEO-002), published as the ledger's companies map. */
+  const companyLedger = {};
+  /** Tombstones written (under a kilobyte each, never in the sitemap), counted for the log. */
+  let tombstonesWritten = 0;
+  const writeTombstone = (path, token = null) => {
+    const html = tombstoneHtml({ token, esc });
+    const outDir = join(dist, ...path.split("/").filter(Boolean));
+    mkdirSync(outDir, { recursive: true });
+    writeFileSync(join(outDir, "index.html"), html);
+    writeFileSync(join(dist, ...path.split("/").filter(Boolean)) + ".html", html);
+    tombstonesWritten++;
+  };
+  // THE URLS PUBLISHED BEFORE THE LEDGER EXISTED (SEO-002): every company and
+  // posting path the committed sitemaps of the last months and the live
+  // captures held (scripts/seo-seed/, generated by
+  // scripts/prerender-seed-history.mjs). Each served the homepage copy; each
+  // now gets a noindex page of its own. Read, never fetched.
+  const seedList = (name) => {
+    try { return readFileSync(join(root, "scripts", "seo-seed", name), "utf8").split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("#")); } catch { return []; }
+  };
+  const SEED_COMPANY_PATHS = seedList("published-company-paths.txt");
+  const SEED_POSTING_PATHS = seedList("published-posting-paths.txt");
   {
     const envText5 = (() => { try { return readFileSync(join(root, ".env"), "utf8"); } catch { return ""; } })();
-    const grab5 = (k) => process.env[k] || (envText5.match(new RegExp(`^${k}=(.*)$`, "m")) || [])[1]?.trim().replace(/^["']|["']$/g, "");
+    const grab5 = (k) => OFFLINE ? undefined : process.env[k] || (envText5.match(new RegExp(`^${k}=(.*)$`, "m")) || [])[1]?.trim().replace(/^["']|["']$/g, "");
     const supaUrl5 = grab5("VITE_SUPABASE_URL");
     const supaKey5 = grab5("VITE_SUPABASE_PUBLISHABLE_KEY");
     // The HTTP status rides back with the body: a refusal, an error and "no
@@ -1947,6 +2282,60 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
     const boardRead = async (body) => {
       const r = await boardCall(body);
       return r.status >= 200 && r.status < 300 ? r.body : null;
+    };
+    // RULE 2 — THE CARRY SET IS WHAT THE LIVE SITE PUBLISHED, RESOLVED BY ID.
+    //
+    // It was the COMMITTED sitemap, which a hosted publish never updates, cut
+    // at 300 of 400 (measured 2026-10-08: 364 of 371 published posting URLs
+    // served the homepage copy). Before that it was an intersection with the
+    // newest window, which kept 2 of 397. Every carried id is asked about
+    // directly, and what the board answers decides the page. The URLs
+    // published before the ledger existed join it once, as "retired" pages
+    // never re-read (seedPostingLedger, SEO-002). Decided BEFORE any board
+    // read: the kept pages and the tombstones need none, so a bake that cannot
+    // reach the board still writes them and still carries the ledger forward.
+    let committedSitemap = "";
+    try { committedSitemap = readFileSync(join(root, "public/sitemap.xml"), "utf8"); } catch { /* first build */ }
+    const carrySitemapsNow = carrySitemaps({ ledgerSource, liveSitemap, committedSitemap });
+    const seededPostings = seedPostingLedger({ ledger: ledgerIn, seedPaths: SEED_POSTING_PATHS, sitemaps: carrySitemapsNow, idFromPath: D.postingIdFromPath, today: TODAY });
+    const carryBase = postingCarryBase({
+      ledger: seededPostings.ledger,
+      sitemaps: carrySitemapsNow,
+      idFromPath: D.postingIdFromPath,
+      today: TODAY,
+    });
+    const priorPostingOf = (path) => (seededPostings.ledger.postings && seededPostings.ledger.postings[path]) || {};
+    const writeStub = (s0) => {
+      if (!s0.path) return;
+      // A duplicate canonicalises to its twin only while the twin is a live
+      // page this bake wrote (SEO-039): a twin the ceiling, the reserve or
+      // its own markup retired is not a page to point at, and the duplicate
+      // is then an ordinary retired page.
+      const s = s0.duplicateOf && !postingPaths.includes(s0.duplicateOf) ? { ...s0, duplicateOf: null } : s0;
+      const e = postingStubEntry({
+        stub: s, prior: priorPostingOf(s.path), today: TODAY, first: carryBase.recheck.get(s.path),
+        employerName: D.employerName, tokenOf: (id) => D.postingPathParts(id)?.token ?? null,
+      });
+      write(postingStubPage({
+        path: s.path, id: s.id, state: s.state, since: s.state === "gone" ? e.since : null,
+        title: e.title, company: e.company, windowDays: D.BOARD_FRESH_WINDOW_DAYS, duplicateOf: s.duplicateOf ?? null,
+        basis: s.seed || (e.seed && s.state === "retired") ? "seed" : (s.basis ?? null), ceiling: POSTING_PAGE_CEILING, esc,
+        companyLink: e.token ? companyLinkHtml(e.token, e.company || "this employer") : "",
+      }));
+      postingLedger[s.path] = e;
+    };
+    /** The pages the ledger keeps without a board read: gone and seeded ones in their window, then tombstones. */
+    let keptPostingPagesWritten = false;
+    const writeKeptPostingPages = () => {
+      if (keptPostingPagesWritten) return;
+      keptPostingPagesWritten = true;
+      for (const [path, e] of carryBase.stubs) {
+        writeStub({ id: D.postingIdFromPath(path), path, state: e.state === "gone" ? "gone" : "retired", seed: e.seed === true, title: e.title ?? null, company: e.company ?? null });
+      }
+      for (const [path, e] of carryBase.tombstones) {
+        writeTombstone(path, null);
+        postingLedger[path] = { ...e, state: "tombstone", since: e.state === "tombstone" && typeof e.since === "string" ? e.since : TODAY };
+      }
     };
     try {
       if (!supaUrl5 || !supaKey5) throw new Error("no board credentials — posting pages skipped");
@@ -1986,21 +2375,7 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
         return out;
       };
 
-      // RULE 2 — THE CARRY SET IS WHAT THE LIVE SITE PUBLISHED, RESOLVED BY ID.
-      //
-      // It was the COMMITTED sitemap, which a hosted publish never updates, cut
-      // at 300 of 400 (measured 2026-10-08: 364 of 371 published posting URLs
-      // served the homepage copy). Before that it was an intersection with the
-      // newest window, which kept 2 of 397. Every carried id is asked about
-      // directly, and what the board answers decides the page.
-      let committedSitemap = "";
-      try { committedSitemap = readFileSync(join(root, "public/sitemap.xml"), "utf8"); } catch { /* first build */ }
-      const carryBase = postingCarryBase({
-        ledger: ledgerIn,
-        sitemaps: carrySitemaps({ ledgerSource, liveSitemap, committedSitemap }),
-        idFromPath: D.postingIdFromPath,
-        today: TODAY,
-      });
+      // Rule 2's carry set (carryBase, above), re-checked by id.
       const carriedPaths = [...carryBase.recheck.keys()];
       const carriedChecks = await readDetails(carriedPaths.map((p) => D.postingIdFromPath(p)));
       const firstSeen = (path) => carryBase.recheck.get(path) ?? TODAY;
@@ -2008,22 +2383,56 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
       // Rule 4 — one page per identity. The carried pages claim their
       // identities first, so a duplicate appearing in today's newest window
       // cannot evict a URL that is already published.
+      //
+      // TWO KEYS, ONE POSTING (OBS-1). The identity compares the printed
+      // company, title and place; one UKG requisition under two of a client's
+      // career sites carried two company names and went out as two indexable
+      // pages with one title. The requisition key under one employer is the
+      // second key: the same key under the same employer is one posting,
+      // across the carried pages and the new ones alike.
       const takenIdentity = new Map();
+      const identityKeys = (job) => [D.postingIdentity(job), D.postingRequisitionIdentity(job)].filter(Boolean);
+      const takenBy = (job) => { for (const k of identityKeys(job)) if (takenIdentity.has(k)) return takenIdentity.get(k); return null; };
+      const claimIdentity = (job, path) => { for (const k of identityKeys(job)) takenIdentity.set(k, path); };
       const detailed = [];
       const stubs = [];
       for (const c of carriedChecks) {
         const path = D.postingPagePath(c.id);
         if (c.state === "found" && eligibleRow(c.job) && describedEnough(c.description)) {
-          const k = D.postingIdentity(c.job);
-          if (takenIdentity.has(k)) {
-            stubs.push({ ...c, path, state: "retired", duplicateOf: takenIdentity.get(k) });
+          const twin = takenBy(c.job);
+          if (twin) {
+            stubs.push({ ...c, path, state: "retired", duplicateOf: twin });
             continue;
           }
-          takenIdentity.set(k, path);
+          claimIdentity(c.job, path);
           detailed.push({ job: c.job, description: c.description, first: firstSeen(path), carried: true });
         } else {
           stubs.push({ ...c, path, state: c.state === "found" ? "retired" : c.state });
         }
+      }
+      // Rule 7 — the ceiling. Carried live pages past it give up their page,
+      // the oldest employer date first, to the "retired" page that says why.
+      {
+        const split = postingCeilingSplit(detailed, { ceiling: POSTING_PAGE_CEILING, dateOf: (d) => d.job?.postedAt });
+        const keep = [...split.keep];
+        for (const d of split.retire) stubs.push({ id: d.job.id, path: D.postingPagePath(d.job.id), state: "retired", basis: "ceiling", job: d.job, title: d.job.title, company: d.job.company });
+        detailed.length = 0;
+        detailed.push(...keep);
+      }
+      // THE FRESH RESERVE, MADE REAL (SEO-017): carried pages whose markup
+      // expires within POSTING_EXPIRY_NEAR_DAYS give way, the soonest first,
+      // until the carried set leaves room for POSTING_FRESH_RESERVE new pages.
+      // The ceiling is never broken.
+      let retiredExpiring = 0;
+      {
+        const split = postingReserveSplit(detailed, {
+          ceiling: POSTING_PAGE_CEILING, reserve: POSTING_FRESH_RESERVE, today: TODAY,
+          validThroughOf: (d) => D.postingValidThrough(d.job),
+        });
+        for (const d of split.retire) stubs.push({ id: d.job.id, path: D.postingPagePath(d.job.id), state: "retired", basis: "expiring", job: d.job, title: d.job.title, company: d.job.company });
+        retiredExpiring = split.retire.length;
+        detailed.length = 0;
+        detailed.push(...split.keep);
       }
       const carriedLive = detailed.length;
 
@@ -2069,14 +2478,19 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
       }
       if (poolDuplicates) console.warn(`[prerender-seo] posting pool: ${poolDuplicates} duplicate row(s) across offset pages — the board shifted under the walk; deduped by id`);
 
+      // SEO-006: a NEW posting page is refused when its employer's name cannot
+      // be anyone's (logo text, a careers subdomain, a bare generic word); a
+      // carried one keeps its page this round (owner decision D7).
+      const postingName = (job) => bakeEmployerName(job.token ?? D.postingPathParts(job.id)?.token ?? null, job.company, { boardName: D.employerName, isCodeShapedName: D.isCodeShapedName });
+      let freshNameRefused = 0;
       const fresh = [];
       for (const j of pool) {
         if (fresh.length >= freshBudget) break;
         if (!eligibleRow(j)) continue;
+        if (postingName(j).reason) { freshNameRefused++; continue; }
         if (carryBase.recheck.has(D.postingPagePath(j.id)) || carryBase.stubs.has(D.postingPagePath(j.id))) continue;
-        const k = D.postingIdentity(j);
-        if (takenIdentity.has(k)) continue;
-        takenIdentity.set(k, D.postingPagePath(j.id));
+        if (takenBy(j)) continue;
+        claimIdentity(j, D.postingPagePath(j.id));
         fresh.push(j);
       }
       let freshWritten = 0;
@@ -2087,82 +2501,148 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
       }
       const eligible = pool.filter(eligibleRow);
 
+      // SEO-006: the repaired employer name is the one every part of a
+      // posting page prints, its markup's hiringOrganization included; a
+      // carried page whose name the gate would refuse keeps its page this
+      // round (D7) and goes on the dry-run list.
+      // A CARRIED PAGE WHOSE NAME THE GATE REFUSES keeps its page and its
+      // index (D7), but not the name: its JobPosting is withheld (as a
+      // country mismatch's is) and the page says "the employer" in its head
+      // and its own sentences ("Axia Logo Horizontal" was a hiringOrganization
+      // and a meta description, the round's review, 2026-10-24).
+      for (const d of detailed) {
+        const named = postingName(d.job);
+        if (named.reason) {
+          nameGateDryRun.push({ path: D.postingPagePath(d.job.id), kind: "posting", token: d.job.token ?? null, name: named.name, shown: named.shown, reason: named.reason, would: "be marked noindex (its job markup is already withheld and its head names no employer)" });
+          d.nameRefused = true;
+        }
+        if (named.repaired) d.job = { ...d.job, company: named.name };
+      }
+
+      // The visible pay line stays (the employer's own words); the markup
+      // carries none (SEO-016), so the log counts the visible line.
       let withPay = 0;
-      for (const { job, description, first, carried } of detailed) {
-        const path = D.postingPagePath(job.id);
-        const ld = D.postingJsonLd(job, description, { site: SITE });
+      let countryMismatch = 0;
+      // NO TWO POSTING PAGES SHARE A TITLE (the CI parity test found two live
+      // postings under one title after the 2026-10-18 publish): each written
+      // title is remembered, and a later page that would repeat one carries
+      // its requisition key instead (postingPageTitleAvoiding).
+      const postingTitlesTaken = new Set();
+      let titlesDisambiguated = 0;
+      let nameWithheld = 0;
+      for (const { job: rawJob, description, first, carried, nameRefused } of detailed) {
+        const path = D.postingPagePath(rawJob.id);
+        // A refused name is not printed: the page's own head and sentences say
+        // "the employer", and its markup is withheld below.
+        const job = nameRefused ? { ...rawJob, company: "" } : rawJob;
+        const nameOnly = !!nameRefused && !!path && !!D.postingJsonLd(rawJob, description, { site: SITE });
+        if (nameOnly) nameWithheld++;
+        const ld = nameRefused ? null : D.postingJsonLd(job, description, { site: SITE });
         // A page whose markup we cannot stand behind is not written as a live
         // page. Its URL keeps a noindex page instead and never reaches the
-        // sitemap, which is the whole contract.
-        if (!path || !ld) {
+        // sitemap, which is the whole contract. A location that ends in
+        // another country's name is one of those (SEO-035).
+        // A CARRIED page whose country is the only thing in the way keeps its
+        // page, indexable, with NO job markup (owner decision D7: no page
+        // indexable today loses its index without sign-off), and goes on the
+        // dry-run list as one that would be marked noindex. A new one gets no
+        // page. The markup is withheld either way: a Nigerian job is never
+        // marked up as a Louisiana one.
+        const mismatchOnly = !ld && !!path && D.postingCountryMismatch(job) && !!D.postingJsonLd(job, description, { site: SITE, ignoreCountryMismatch: true });
+        if (mismatchOnly) countryMismatch++;
+        if (!path || (!ld && !((mismatchOnly || nameOnly) && carried))) {
           stubs.push({ id: job.id, path, state: "retired", title: job.title, company: job.company });
           continue;
         }
-        if (ld.baseSalary) withPay++;
+        if (mismatchOnly) nameGateDryRun.push({ path, kind: "posting", token: job.token ?? null, name: D.postingEmployer(rawJob), shown: job.location ?? null, reason: `the location ends in another country's name than the row's (${job.country})`, would: "be marked noindex (its job markup is already withheld)" });
+        if (job.salary) withPay++;
         const paras = D.jdParagraphs(description);
-        const nm = D.postingEmployer(job);
-        const place = job.location ? String(job.location).trim() : "";
+        const nm = nameRefused ? "the employer" : D.postingEmployer(job);
+        const title = D.postingText(job.title);
+        const place = job.location ? D.postingText(job.location) : "";
         const lander = landerFor(job.token);
+        // The page says Remote where the row is remote and names no place
+        // below its country (SEO-003): a remote label that names a place is
+        // that place. The markup says TELECOMMUTE only on the hiring system's
+        // own remote field; a label alone is marked up as its country.
+        const remoteShown = D.postingRemoteBasis(job) !== null;
+        // THE LANGUAGE THE EMPLOYER WROTE IN (SEO-034): every posting page was
+        // lang="en". Read from the description; null keeps the site's own.
+        const lang = D.postingLanguage(description);
+        // THE MARKUP GUARD (SEO-003, SEO-016): what postingJsonLd returned is
+        // read back against the rules it is meant to keep.
+        if (ld) {
+          const locality = ld.jobLocation?.address?.addressLocality;
+          const wrong = [];
+          // TELECOMMUTE stands only on the hiring system's own remote field,
+          // and a locality is refused by the producer's own rules read back
+          // (a dash at an end, a country's name inside it, a site code...).
+          if (ld.jobLocationType === "TELECOMMUTE" && job.workModeSource !== "vendor") wrong.push("TELECOMMUTE with no vendor flag");
+          const why = typeof locality === "string" ? D.localityProblem(locality) : null;
+          if (why) wrong.push(`a junk addressLocality "${locality}" (${why})`);
+          if ("baseSalary" in ld) wrong.push("baseSalary");
+          if (wrong.length) markupFound.push({ path, wrong });
+        }
+        const ownSentence = `${postingSourceSentence(possessive(nm))} A dated posting is served for at most ${D.BOARD_FRESH_WINDOW_DAYS} days from the date the employer states, and this page was checked against the board when it was built, ${TODAY}; the board itself ${RECHECK_CLAUSE}.`;
         write({
           path,
-          title: D.postingPageTitle(job),
+          ...(lang && lang !== "en" ? { lang } : {}),
+          // The page's own sentences, for the banned-phrase check; never the employer's text.
+          ownText: `${D.postingPageDescription(job)} ${ownSentence} the application happens on ${possessive(nm)} own hiring system; this board only links to it.`,
+          title: (() => {
+            const t = D.postingPageTitleAvoiding(job, postingTitlesTaken);
+            if (t !== D.postingPageTitle(job)) titlesDisambiguated++;
+            postingTitlesTaken.add(t);
+            return t;
+          })(),
           description: D.postingPageDescription(job),
           content: `
             <p><a href="/jobs">All openings</a></p>
-            <h1>${esc(job.title)}</h1>
-            <p>${esc(nm)}${place ? ` — ${esc(place)}` : ""}${job.workMode === "remote" ? " — Remote" : ""}</p>
+            <h1>${esc(title)}</h1>
+            <p>${esc(nameRefused ? "The employer" : nm)}${place ? ` — ${esc(place)}` : ""}${remoteShown ? " — Remote" : ""}</p>
             <p>Posted ${esc(String(job.postedAt).slice(0, 10))}, as stated by the employer. ${job.salary
               ? `Pay, in the employer's own words and neither converted nor estimated: ${esc(String(job.salary))}.`
               : "We found no pay figure on this posting. That is our reading, not a statement by the employer — the description may still name one."}</p>
-            ${job.applyUrl ? `<p><a href="${esc(String(job.applyUrl))}" rel="noopener noreferrer nofollow">Apply on ${esc(possessive(nm))} own site</a> — the application happens on ${esc(possessive(nm))} own hiring system. This board never reposts a job and never stands between you and the employer.</p>` : ""}
+            ${job.applyUrl ? `<p><a href="${esc(String(job.applyUrl))}" rel="noopener noreferrer nofollow">Apply on ${esc(possessive(nm))} own site</a> — the application happens on ${esc(possessive(nm))} own hiring system; this board only links to it.</p>` : ""}
             <h2>The employer's own description</h2>
             ${paras.map((p) => `<p>${esc(p)}</p>`).join("\n            ")}
             <p>${companyLinkHtml(job.token, nm)} · <a href="/jobs">Search the live board</a> · <a href="/">Check your resume against this posting free</a></p>
-            <p>Pulled straight from ${esc(possessive(nm))} own hiring system — never an aggregator, never a repost. A dated posting is served for at most ${D.BOARD_FRESH_WINDOW_DAYS} days from the date the employer states, and this page was checked against the board when it was built, ${TODAY}; the board itself re-checks a posting when you open it.</p>
+            <p>${esc(ownSentence)}</p>
           `,
-          jsonLd: [ld, {
+          jsonLd: [...(ld ? [ld] : []), {
             "@context": "https://schema.org",
             "@type": "BreadcrumbList",
             itemListElement: [
               { "@type": "ListItem", position: 1, name: "Job board", item: `${SITE}/jobs` },
               ...(lander ? [{ "@type": "ListItem", position: 2, name: `${lander.name} jobs`, item: `${SITE}${lander.href}` }] : []),
-              { "@type": "ListItem", position: lander ? 3 : 2, name: job.title, item: `${SITE}${path}` },
+              { "@type": "ListItem", position: lander ? 3 : 2, name: title, item: `${SITE}${path}` },
             ],
           }],
         });
         postingPaths.push(path);
         if (job.token) {
           if (!postingsByToken.has(job.token)) postingsByToken.set(job.token, []);
-          postingsByToken.get(job.token).push({ id: job.id, path, title: String(job.title).trim(), place });
+          // The field and the date ride along for the field pages (SEO-018).
+          postingsByToken.get(job.token).push({ id: job.id, path, title, place, category: typeof job.category === "string" ? job.category : null, postedAt: typeof job.postedAt === "string" ? job.postedAt : null, company: nm });
         }
         // `carried` says which side of rule 3 the page came from: re-checked
         // from what the live site published, or new under postingFreshBudget.
         // The built-output guard judges the ceiling from it (the bound on the
         // live set is max(ceiling, carried), never POSTING_PAGE_CAP).
-        postingLedger[path] = { state: "live", since: TODAY, first, carried, title: job.title, company: nm, token: job.token ?? null };
+        // `markupWithheld` names why a page D7 keeps indexable carries no
+        // JobPosting: "name" (the name gate refuses the employer's name) or
+        // "country" (the location ends in another country's name). The
+        // built-output guard accepts a page with no job markup only when its
+        // entry says so, and the page was carried.
+        postingLedger[path] = { state: "live", since: TODAY, first, carried, title, company: nm, token: job.token ?? null, ...(ld ? {} : { markupWithheld: nameRefused ? "name" : "country" }) };
       }
 
       // The URLs this site published that get no live page: each keeps a
       // noindex page saying why (postingStubPage), and the ledger remembers
-      // it, so the next bake neither re-checks a gone posting nor forgets it.
-      const priorOf = (path) => (ledgerIn && ledgerIn.postings && ledgerIn.postings[path]) || {};
-      const writeStub = (s) => {
-        if (!s.path) return;
-        const e = postingStubEntry({
-          stub: s, prior: priorOf(s.path), today: TODAY, first: carryBase.recheck.get(s.path),
-          employerName: D.employerName, tokenOf: (id) => D.postingPathParts(id)?.token ?? null,
-        });
-        write(postingStubPage({
-          path: s.path, id: s.id, state: s.state, since: s.state === "gone" ? e.since : null,
-          title: e.title, company: e.company, windowDays: D.BOARD_FRESH_WINDOW_DAYS, duplicateOf: s.duplicateOf ?? null, esc,
-          companyLink: e.token ? companyLinkHtml(e.token, e.company || "this employer") : "",
-        }));
-        postingLedger[s.path] = e;
-      };
+      // it, so the next bake neither re-checks a gone posting nor forgets it
+      // (writeStub and writeKeptPostingPages, above the board reads).
       for (const s of stubs) writeStub(s);
-      for (const [path, e] of carryBase.stubs) {
-        writeStub({ id: D.postingIdFromPath(path), path, state: "gone", title: e.title ?? null, company: e.company ?? null });
-      }
+      writeKeptPostingPages();
       const stubCount = (st) => Object.values(postingLedger).filter((e) => e.state === st).length;
 
       // SITEMAP-ONLY ORPHANS ARE A KNOWN DEFECT HERE — 387 company pages sat in
@@ -2183,7 +2663,7 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
             </ul>
           </section>`;
       }
-      console.log(`[prerender-seo] posting pages: carried ${carriedPaths.length} / live ${postingPaths.length} (${carriedLive} carried, ${freshWritten} new from a pool of ${pool.length}, ${eligible.length} eligible) / tombstoned ${stubCount("gone")} / retired ${stubCount("retired")} / unchecked ${stubCount("unchecked")}; ${withPay} carry employer-stated pay; carry base: live sitemap ${liveSitemap ? "read" : "UNREAD"}, ledger ${ledgerSource}`);
+      console.log(`[prerender-seo] posting pages: carried ${carriedPaths.length} / live ${postingPaths.length} of a ceiling of ${POSTING_PAGE_CEILING} (${carriedLive} carried, ${freshWritten} new from a pool of ${pool.length}, ${eligible.length} eligible, ${freshNameRefused} new refused for an employer name that cannot be printed) / gone ${stubCount("gone")} / retired ${stubCount("retired")} / seeded ${stubCount("seeded")} (published before the ledger, never re-read; ${seededPostings.added} added this bake) / unchecked ${stubCount("unchecked")} / tombstones ${stubCount("tombstone")}; ${withPay} show employer-stated pay on the page (none in the markup); ${titlesDisambiguated} title${titlesDisambiguated === 1 ? "" : "s"} took a requisition key to stay unique; fresh budget ${freshBudget} (carried live ${carriedLive}, ceiling ${POSTING_PAGE_CEILING}; ${retiredExpiring} expiring within ${POSTING_EXPIRY_NEAR_DAYS} days gave way to the reserve); ${countryMismatch} with a location ending in another country (job markup withheld; a carried one keeps its page under D7 and is on the dry run); ${nameWithheld} carried with an employer name the gate refuses (job markup withheld, "the employer" printed, on the dry run); carry base: live sitemap ${liveSitemap ? "read" : "UNREAD"}, ledger ${ledgerSource}`);
       // A carried page the board did not answer for is the symptom to look at
       // first: it is an "unchecked" noindex page until a later bake reaches it.
       if (stubCount("unchecked")) {
@@ -2194,7 +2674,18 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
       // posting URL in the sitemap. Losing pages for a build is recoverable;
       // advertising URLs that serve the homepage is the defect this exists to
       // end, so there is no fallback rung here on purpose.
+      //
+      // BUT NOTHING THE LEDGER KNOWS IS FORGOTTEN. The pages it keeps without a
+      // board read (gone and seeded ones in their window, and the tombstones)
+      // are written all the same, and every posting it was carrying is carried
+      // forward unchanged, so the next bake that reaches the board re-checks
+      // them instead of finding an empty ledger.
       console.warn(`[prerender-seo] posting pages SKIPPED (${e?.message || e}) — no posting URL enters the sitemap on this bake`);
+      try {
+        writeKeptPostingPages();
+        for (const path of carryBase.recheck.keys()) if (!postingLedger[path]) postingLedger[path] = { ...priorPostingOf(path) };
+        console.log(`[prerender-seo] posting ledger carried forward: ${carryBase.recheck.size} to re-check next bake, ${carryBase.stubs.size} kept pages, ${carryBase.tombstones.size} tombstones (${seededPostings.added} seeded this bake)`);
+      } catch (e2) { console.warn(`[prerender-seo] posting ledger carry-forward failed: ${e2?.message || e2}`); }
     }
   }
 
@@ -2204,6 +2695,8 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
   // employer page only where this bake writes one.
   const DATA_FIGURES = dataPageFigures({
     stats: statsCache, transparency: transparencyCache, freshness: freshnessRow, audit: auditRow,
+    // The board's open count, for the pay page's population sentence (S13-088).
+    openTotal: BOARD_TOTAL,
     companyHref: (token, query) => {
       const href = companyHrefFor(token);
       return query ? `${href}${href.includes("?") ? "&" : "?"}${query}` : href;
@@ -2214,27 +2707,38 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
   for (const [k, v] of Object.entries(DATA_FIGURES)) {
     if (!v.read) console.warn(`[prerender-seo] /${k} data page: figures UNREAD — it ships its prose and says so`);
   }
-  // THE LICENSE THE PUBLISHED NUMBERS ARE OFFERED UNDER: an owner decision
-  // not yet made (the SEO report recommends CC BY 4.0). Empty means the
-  // markup names none, which claims nothing.
-  // TODO(owner): set to a license URL, e.g. "https://creativecommons.org/licenses/by/4.0/".
-  const DATA_LICENSE = "";
   /**
    * S2: each data page is a Dataset (it was a generic WebPage with no date),
    * dated by its own payload's stamp: no stamp, no dateModified.
+   *
+   * SEO-028: and citable. The four Datasets had a date and nothing else: no
+   * @id, no coverage, no variables, a creator object that pointed at nothing.
+   * temporalCoverage is the window the figures are drawn over, ending at the
+   * payload's own stamp; variableMeasured names what is counted. No
+   * distribution: the only machine-readable copy is /v1/stats, which answers
+   * 401 without a key, and a Dataset that says it is free must not point at a
+   * paywall. The license rides only once the owner sets DATA_LICENSE.
    */
-  const datasetLd = ({ name, description, path, modified }) => ({
+  const datasetLd = ({ name, description, path, modified, windowDays = null, variables = [] }) => ({
     "@context": "https://schema.org",
     "@type": "Dataset",
+    "@id": `${SITE}${path}#dataset`,
     name,
     description,
     url: `${SITE}${path}`,
     isAccessibleForFree: true,
-    creator: { "@type": "Organization", name: "Resume Booster", url: SITE },
+    creator: { "@id": ORG_ID(SITE) },
     ...(DATA_LICENSE ? { license: DATA_LICENSE } : {}),
     ...(modified ? { dateModified: modified } : {}),
-    isPartOf: { "@type": "WebSite", name: "Resume Booster", url: SITE },
+    ...(modified && windowDays ? {
+      temporalCoverage: `${new Date(Date.parse(modified) - windowDays * 86_400_000).toISOString().slice(0, 10)}/${String(modified).slice(0, 10)}`,
+    } : {}),
+    ...(variables.length ? { variableMeasured: variables } : {}),
+    isPartOf: websiteRef(SITE),
   });
+  /** The visible citation line every data page carries (SEO-028), with the day its figures were measured. */
+  const howToCite = (name, path, modified) =>
+    `<p class="text-xs text-muted-foreground"><strong>How to cite:</strong> Resume Booster, “${esc(name)}”, ${SITE}${path}${modified ? `, figures measured ${esc(String(modified).slice(0, 10))}` : ""}.</p>`;
 
   // ---- Job-board category landers: the queries people actually type are
   // "healthcare jobs", not "job board". 17 crawlable pages, counts baked
@@ -2250,48 +2754,97 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
     // serving-filtered opening count.
     const boardCompanies = BOARD_OPEN_BOARDS;
     const fmt = (n) => n.toLocaleString("en-US");
-    for (const [slug, label] of CATEGORY_LANDERS) {
-      const n = typeof catCounts[slug] === "number" ? catCounts[slug] : null;
-      const countPhrase = n ? `${fmt(n)} live ${label} openings right now` : `live ${label} openings`;
-      const siblings = CATEGORY_LANDERS.filter(([s]) => s !== slug).slice(0, 6)
-        .map(([s, l]) => `<a href="/jobs/field/${s}" class="underline">${l} jobs</a>`).join(" · ");
-      write({
-        path: `/jobs/field/${slug}`,
-        // L13-37: the "+" is a promise, so it takes the churn margin like every
-        // other headline count (plusClaim), not the exact baked figure.
-        title: n ? `${label} Jobs — ${plusClaim(n, n >= 10000 ? 1000 : 100)} Live Openings` : `${label} Jobs — Live Openings from Company Boards`,
-        // THE NOUN AND THE FALLBACK, both wrong in the same clause. The number
-        // is companiesOpenCount — a count of company_token BOARDS, and one
-        // employer can run several — so "N companies" overstates employers,
-        // which is the wording every other surface here was changed away from.
-        // And the old fallback substituted a hardcoded "3,000+" for a
-        // measurement on exactly the builds that could not take one; the clause
-        // now drops out instead, like every other number on this page.
-        description: `Browse ${countPhrase}${boardCompanies ? `, pulled from ${fmt(boardCompanies)} company job boards with roles open now` : ", pulled from companies' own official job boards"} and re-checked continuously. Check your resume's fit free before you apply.`,
-        content: `
+    // THE 17 FIELD PAGES, DEEPENED (SEO-018, growth plan E-3). Each was one
+    // template paragraph linking 7 of the 17 fields (6 siblings and itself)
+    // and naming no employer, no posting and no figure of its own. They are
+    // written AFTER the employer pages now, because what makes one field's
+    // page its own comes from them: the employers with a page of their own
+    // who carry the most of the field's roles (get_company_intel's field
+    // counts), and the newest posting pages in the field. Each also prints the
+    // field's early-career share (the stats cache, over the postings the board
+    // serves) and its pay-stated share (the transparency cache, over the
+    // postings the board carries), each with its own date basis, and links all
+    // 16 other fields. No remote share and no top places: no cached reading
+    // gives either per field, and a figure nobody measured is not printed.
+    // Noindex and canonical calls stay with the growth plan.
+    /** Field slug -> the employers with an indexable page that carry the field's roles: { token, name, n, href }. */
+    const fieldEmployers = new Map();
+    const writeFieldPages = () => {
+      const entryByCat = statsCache?.entry_stats?.by_category && typeof statsCache.entry_stats.by_category === "object" ? statsCache.entry_stats.by_category : {};
+      const entryAt = typeof statsCache?.computed_at === "string" ? String(statsCache.computed_at).slice(0, 10) : null;
+      const payCats = Array.isArray(transparencyCache?.pay?.categories) ? transparencyCache.pay.categories : [];
+      const payAt = typeof transparencyCache?.computed_at === "string" ? String(transparencyCache.computed_at).slice(0, 10) : null;
+      const fieldPostings = new Map();
+      for (const list of postingsByToken.values()) {
+        for (const p of list) {
+          if (!p.category) continue;
+          if (!fieldPostings.has(p.category)) fieldPostings.set(p.category, []);
+          fieldPostings.get(p.category).push(p);
+        }
+      }
+      for (const [slug, label] of CATEGORY_LANDERS) {
+        const n = typeof catCounts[slug] === "number" ? catCounts[slug] : null;
+        const countPhrase = n ? `${fmt(n)} live ${label} openings` : `live ${label} openings`;
+        // All sixteen other fields, not the first six.
+        const siblings = CATEGORY_LANDERS.filter(([s]) => s !== slug)
+          .map(([s, l]) => `<a href="/jobs/field/${s}" class="underline">${l} jobs</a>`).join(" · ");
+        const entryN = typeof entryByCat[slug] === "number" ? entryByCat[slug] : null;
+        const entryPct = entryN !== null && n ? Math.round((1000 * entryN) / n) / 10 : null;
+        const pay = payCats.find((c) => c && c.category === slug && typeof c.pay_pct === "number");
+        const shares = [
+          entryPct !== null ? `${entryPct}% of them (${fmt(entryN)}) are early-career by our own classification of each posting's title and stated requirements, measured ${entryAt ? esc(entryAt) : "when this page was built"} over the postings the board serves` : "",
+          pay ? `${pay.pay_pct}% of the ${typeof pay.total === "number" ? fmt(pay.total) : ""} ${label} postings the board carries state pay in the employer's own words, measured ${payAt ? esc(payAt) : "when this page was built"}` : "",
+        ].filter(Boolean);
+        const employers = (fieldEmployers.get(slug) ?? []).slice(0, 10);
+        const newest = [...(fieldPostings.get(slug) ?? [])]
+          .sort((a, b) => String(b.postedAt ?? "").localeCompare(String(a.postedAt ?? "")))
+          .slice(0, 8);
+        write({
+          path: `/jobs/field/${slug}`,
+          // L13-37: the "+" is a promise, so it takes the churn margin like every
+          // other headline count (plusClaim), not the exact baked figure.
+          title: n ? `${label} Jobs — ${plusClaim(n, n >= 10000 ? 1000 : 100)} Live Openings` : `${label} Jobs — Live Openings from Company Boards`,
+          // THE NOUN AND THE FALLBACK, both wrong in the same clause. The number
+          // is companiesOpenCount — a count of company_token BOARDS, and one
+          // employer can run several — so "N companies" overstates employers,
+          // which is the wording every other surface here was changed away from.
+          // EVERY NUMBER NAMES ITS DATE BASIS, and no "re-checked continuously"
+          // (Track 1 A3 point 5, GD6): the count is the day this page was built.
+          // The tail React's fieldBoardHead prints (board-heads.ts): the counts
+          // include USAJOBS and staffing agencies' boards, so "the employer's
+          // own hiring system" was not true of every opening counted.
+          description: `${n ? `${fmt(n)} live ${label} openings, ${COUNTS_DAY}` : `Live ${label} openings`}${boardCompanies ? `, from ${fmt(boardCompanies)} company job boards` : ""}${D.EN_LOCALE?.jobsPage?.landerSeoDescriptionTail || ", each read from the hiring system that published it."}`,
+          content: `
           <h1>Live ${label} jobs</h1>
-          <p>${countPhrase[0].toUpperCase()}${countPhrase.slice(1)}${boardTotal && boardCompanies ? ` — part of ${fmt(boardTotal)} live postings across ${fmt(boardCompanies)} company job boards with open roles` : boardTotal ? ` — part of ${fmt(boardTotal)} live postings` : ""}, pulled directly from the official job boards companies publish on ${D.SERVING_SOURCE_LIST}. No aggregators, no reposts: every opening belongs to the company that published it, and applying happens on the company's own site.</p>
-          <p>The largest boards are re-checked most often and the rotation runs continuously — how far behind it is right now is a measurement rather than a promise: the live median and 95th-percentile re-check ages are published on the <a href="/ghost-job-index">Ghost Job Index</a> — so postings a company takes down disappear on the next pass. Counts on this page were measured when it was last built; the board's own count refreshes periodically through the day.</p>
+          <p>${countPhrase[0].toUpperCase()}${countPhrase.slice(1)}${boardTotal && boardCompanies ? ` — part of ${fmt(boardTotal)} live postings across ${fmt(boardCompanies)} company job boards with open roles` : boardTotal ? ` — part of ${fmt(boardTotal)} live postings` : ""}, ${esc(COUNTS_BASIS)}. Every opening is ${BOARD_SOURCE_SENTENCE}. The hiring systems read are ${D.SERVING_SOURCE_LIST}, and applying happens on the employer's own site.</p>
+          ${shares.length ? `<p>${shares.join(". ")}.</p>` : ""}
+          ${employers.length ? `<h2>Employers with the most ${label} roles</h2>
+          <p>Among the employers with a page of their own on this site, the ones whose boards carry the most ${label} roles (counted when this page was built; fields are our own sorting of each posting's title):</p>
+          <ul>${employers.map((e) => `<li><a href="${e.href}">${esc(e.name)}</a> — ${fmt(e.n)} ${label} roles</li>`).join("")}</ul>` : ""}
+          ${newest.length ? `<h2>Newest ${label} openings with a page of their own</h2>
+          <ul>${newest.map((p) => `<li><a href="${p.path}">${esc(p.title)}</a> — ${esc(p.company ?? "")}${p.place ? `, ${esc(p.place)}` : ""}</li>`).join("")}</ul>` : ""}
+          <p>The largest boards are re-read most often, and how far behind the rotation is right now is published on the <a href="/ghost-job-index">Ghost Job Index</a> as a measurement, not a promise. A posting a company takes down leaves the board when the rotation next re-reads that company's feed, and the live board ${RECHECK_CLAUSE}. The counts on this page were ${esc(COUNTS_BASIS)}; the board's own count refreshes through the day.</p>
           <p><a href="/jobs/field/${slug}">Browse ${label} openings on the live board</a> — filter by keyword, location, remote, and company; save searches with a free account; and check any posting against your resume with the <a href="/">free resume scan</a> before you spend an application on it.</p>
           <p>Other fields: ${siblings} — or see <a href="/jobs">the full job board</a>.</p>
         `,
-        jsonLd: [{
-          "@context": "https://schema.org",
-          "@type": "CollectionPage",
-          name: `Live ${label} jobs`,
-          description: `Live ${label} openings from companies' official job boards, re-verified throughout the day.`,
-          url: `${SITE}/jobs/field/${slug}`,
-          isPartOf: { "@type": "WebSite", name: "Resume Booster", url: SITE },
-        }, {
-          "@context": "https://schema.org",
-          "@type": "BreadcrumbList",
-          itemListElement: [
-            { "@type": "ListItem", position: 1, name: "Job board", item: `${SITE}/jobs` },
-            { "@type": "ListItem", position: 2, name: `${label} jobs`, item: `${SITE}/jobs/field/${slug}` },
-          ],
-        }],
-      });
-    }
+          jsonLd: [{
+            "@context": "https://schema.org",
+            "@type": "CollectionPage",
+            name: `Live ${label} jobs`,
+            description: `Live ${label} openings, each read from the hiring system that published it.`,
+            url: `${SITE}/jobs/field/${slug}`,
+            isPartOf: websiteRef(SITE),
+          }, {
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            itemListElement: [
+              { "@type": "ListItem", position: 1, name: "Job board", item: `${SITE}/jobs` },
+              { "@type": "ListItem", position: 2, name: `${label} jobs`, item: `${SITE}/jobs/field/${slug}` },
+            ],
+          }],
+        });
+      }
+    };
 
     // Company landing pages: the employers LANDERS chose (selectLanders, top
     // 500 by OPEN roles, 8 or more; see the block above the posting loop),
@@ -2314,26 +2867,42 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
     // code goes out as noindex, off the sitemap (landerRobots).
     {
       const envText6 = (() => { try { return readFileSync(join(root, ".env"), "utf8"); } catch { return ""; } })();
-      const grab6 = (k) => process.env[k] || (envText6.match(new RegExp(`^${k}=(.*)$`, "m")) || [])[1]?.trim().replace(/^["']|["']$/g, "");
+      const grab6 = (k) => OFFLINE ? undefined : process.env[k] || (envText6.match(new RegExp(`^${k}=(.*)$`, "m")) || [])[1]?.trim().replace(/^["']|["']$/g, "");
       const supaUrl6 = grab6("VITE_SUPABASE_URL");
       const supaKey6 = grab6("VITE_SUPABASE_PUBLISHABLE_KEY");
       const intelOf = new Map();
       const primaries0 = LANDERS.filter((c) => c.primary === c.token);
+      // A token two hiring systems carry (src/lib/board-collisions.ts) states
+      // no places or fields: its intel pools both boards, which may be two
+      // employers. Its page still lists its openings.
+      const intelAsked = primaries0.filter((c) => !D.isCollidedToken(c.token));
       if (supaUrl6 && supaKey6) {
-        for (let i = 0; i < primaries0.length; i += 6) {
-          await Promise.all(primaries0.slice(i, i + 6).map(async (c) => {
-            try {
-              const r = await fetch(`${supaUrl6}/rest/v1/rpc/get_company_intel`, {
-                method: "POST",
-                headers: { apikey: supaKey6, Authorization: `Bearer ${supaKey6}`, "Content-Type": "application/json" },
-                body: JSON.stringify({ p_token: c.token }),
-                signal: AbortSignal.timeout(8000),
-              });
-              const j = r.ok ? await r.json() : null;
-              if (j && typeof j === "object" && !Array.isArray(j)) intelOf.set(c.token, j);
-            } catch { /* that page states no places or fields */ }
-          }));
-        }
+        // A DEADLINE ON THE WHOLE PHASE (2026-10-18): when get_company_intel
+        // is slow, 500 employers x an 8s timeout ran past the publish build's
+        // time limit and the publish failed. Past the deadline, or after a
+        // run of consecutive failures, the remaining pages state no places or
+        // fields — the same graceful outcome as a single failed read.
+        // The loop is readCompanyIntel (prerender-pages.mjs), with the same
+        // 90-second deadline, 18-failure stop, batches of 6 and 8-second
+        // timeout, so a test can run the deadline path. A page whose intel is
+        // missing is still written below, stating no places or fields.
+        const { intelOf: intelRead, skipped: intelSkipped } = await readCompanyIntel({
+          tokens: intelAsked.map((c) => c.token),
+          deadlineMs: 90_000,
+          maxFailRun: 18,
+          batch: 6,
+          fetchIntel: async (token) => {
+            const r = await fetch(`${supaUrl6}/rest/v1/rpc/get_company_intel`, {
+              method: "POST",
+              headers: { apikey: supaKey6, Authorization: `Bearer ${supaKey6}`, "Content-Type": "application/json" },
+              body: JSON.stringify({ p_token: token }),
+              signal: AbortSignal.timeout(8000),
+            });
+            return r.ok ? await r.json() : null;
+          },
+        });
+        for (const [t, j] of intelRead) intelOf.set(t, j);
+        if (intelSkipped) console.warn(`[prerender-seo] company intel: stopped early (deadline or repeated failures) — ${intelSkipped} of ${intelAsked.length} employer pages state no places or fields this bake`);
       }
       // Each employer's listing: the never-read and oldest first, one board
       // read each from openingsBudget; every answer joins the ledger's cache.
@@ -2359,38 +2928,109 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
           } catch { openingsUnread++; }
         }));
       }
-      if (listedTokens.length) landerOpeningsCache = nextOpeningsCache({ prior: landerOpeningsCache, reads: openingsReads, tokens: listedTokens, today: TODAY });
+      // SEO-002: every company path this site has published (the previous
+      // ledger, the live and committed sitemaps, the seed). One this bake did
+      // not choose keeps its own noindex page below; its listing, if the
+      // cache holds a young one, rides along in the cache with no new read.
+      let committedSitemapC = "";
+      try { committedSitemapC = readFileSync(join(root, "public/sitemap.xml"), "utf8"); } catch { /* first build */ }
+      const onceCompany = onceCompanyPaths({ ledger: ledgerIn, sitemaps: [liveSitemap ?? "", committedSitemapC], seedPaths: SEED_COMPANY_PATHS });
+      const seedCompanySet = new Set(SEED_COMPANY_PATHS.map((p) => String(p).trim().replace(/\/+$/, "")));
+      const carriedCompanyPaths = [...onceCompany].filter((p) => !landerByToken.has(companyTokenOf(p)));
+      const priorOpenings = landerOpeningsCache;
+      if (listedTokens.length) landerOpeningsCache = nextOpeningsCache({ prior: landerOpeningsCache, reads: openingsReads, tokens: [...listedTokens, ...carriedCompanyPaths.map(companyTokenOf)], today: TODAY });
       const regionNames = (() => { try { return new Intl.DisplayNames(["en"], { type: "region" }); } catch { return null; } })();
       const countryName = (code) => { try { return regionNames?.of(String(code).toUpperCase()) ?? null; } catch { return null; } };
       const fieldLabelOf = (slug) => CATEGORY_LANDERS.find(([s]) => s === slug)?.[1] ?? null;
       const landerPath = (token) => publicHref(`/jobs/company/${token}`);
       const indexable = new Set();
       let consolidated = 0;
+      // Boards whose page canonicalises to a DIFFERENT employer sharing its
+      // name (bakeEmployerKey differs): counted apart from one employer's
+      // own consolidated boards, because they are not that.
+      let nameShared = 0;
       let thin = 0;
       let codeNamed = 0;
       let duplicated = 0;
-      const pageOf = (c, info, robots) => {
+      let nameRefused = 0;
+      let nameRepaired = 0;
+      // The day the counts on these pages were taken, printed beside them.
+      const COUNTED_ON = facetsSource === "snapshot" ? facetsSavedAt : (boardFacets ? TODAY : null);
+      // A listed opening links only to a posting page this bake wrote (SEO-005).
+      const bakedPostingSet = new Set(postingPaths);
+      const bakedPostingPage = (id) => { const p = D.postingPagePath(id); return p && bakedPostingSet.has(p) ? p : null; };
+      const SOURCE_LABEL = new Map((D.ALL_BOARD_SOURCES ?? []).map((v) => [v.key, v.label]));
+      // THE COUNT AN EMPLOYER'S INDEXABLE PAGE STATES IS THE EMPLOYER'S
+      // (S12-021): the sum over the boards of its own that canonicalise to
+      // this one, and the page says how many. A board that is not its
+      // employer's primary keeps its own count; a sum with any board's count
+      // unread is no sum, and the page states its own.
+      const pooledOpen = (c) => {
+        if (c.primary !== c.token || c.sameEmployer === false) return null;
+        const boards = employerBoardsOf(LANDERS, c.token);
+        if (boards.length < 2) return null;
+        const counts = boards.map((t) => openRolesOf(landerByToken.get(t)));
+        if (counts.some((n) => typeof n !== "number")) return null;
+        return { open: counts.reduce((a, b) => a + b, 0), boards: boards.length };
+      };
+      // THE BOARD'S OWN HIRING SYSTEM (SEO-005), from the ids of what it
+      // lists, never the nineteen-system list.
+      const vendorOfToken = (token) => boardVendorOf(token, {
+        ids: [...(postingsByToken.get(token) ?? []).map((p) => p.id), ...((landerOpeningsCache[token]?.rows) ?? []).map((r) => r.id)],
+        labelOf: (key) => SOURCE_LABEL.get(key) ?? null,
+      });
+      // A TOKEN TWO HIRING SYSTEMS CARRY (S13-117): the SPA collision page's
+      // own words, from the company string shard.
+      const collisionOf = (token) => {
+        if (!D.isCollidedToken(token)) return null;
+        const cp = (D.EN_COMPANY_SHARD && D.EN_COMPANY_SHARD.companyProfile && D.EN_COMPANY_SHARD.companyProfile.collision) || {};
+        const n = (D.collidedBoards(token) ?? []).length || 2;
+        const fillN = (s) => String(s ?? "").replace(/\{\{\s*token\s*\}\}/g, token).replace(/\{\{\s*n\s*\}\}/g, String(n));
+        return { h1: fillN(cp.h1 || "Open roles on boards named “{{token}}”"), lead: fillN(n === 1 ? cp.lead_one : cp.lead_other) };
+      };
+      const pageOf = (c, info, robots, canonicalTo = null) => {
         const openN = openRolesOf(c);
+        const pooled = pooledOpen(c);
+        const nameShared = c.primary !== c.token && c.sameEmployer === false;
         return companyLanderPage({
-          token: c.token, name: c.name, primaryToken: info.primary.token, robots, openN, facts: info.facts,
-          openings: info.openings, openingsAt: info.at, sources: D.SERVING_SOURCE_LIST, boardCompanies,
-          site: SITE, esc, possessive, fmt: (n) => fmt(n), href: landerPath,
+          token: c.token, name: c.name, primaryToken: info.primary.token, robots, canonicalTo, openN: pooled ? pooled.open : openN, boards: pooled ? pooled.boards : 1,
+          countedOn: COUNTED_ON, facts: info.facts, openings: info.openings, openingsAt: info.at, vendor: vendorOfToken(c.token), nameShared, collision: collisionOf(c.token), boardCompanies,
+          site: SITE, esc, possessive, fmt: (n) => fmt(n), href: landerPath, kind: landerKindOf(c.token), copy: KIND_COPY,
         });
       };
       // The facts and openings of each EMPLOYER (every board of it this bake
-      // chose), read first, so the noindex rules can see them all at once.
+      // chose under one name), read first, so the noindex rules can see them
+      // all at once. `primary` is the page a board canonicalises to; the facts
+      // and openings are always its OWN employer's (`employerPrimary`), so a
+      // board that shares a name with a larger, different employer never
+      // prints that employer's openings as its own.
       const landerInfo = new Map(LANDERS.map((c) => {
         const primary = landerByToken.get(c.primary) ?? c;
-        const tokens = LANDERS.filter((x) => x.primary === c.primary).map((x) => x.token);
-        const facts = landerFacts(intelOf.get(primary.token), { countryName, fieldLabel: fieldLabelOf });
-        const listed = landerOpenings({ postings: tokens.flatMap((t) => postingsByToken.get(t) ?? []), cached: landerOpeningsCache[primary.token], today: TODAY });
+        const own = landerByToken.get(c.employerPrimary ?? c.primary) ?? c;
+        const tokens = employerBoardsOf(LANDERS, c.token);
+        const facts = landerFacts(intelOf.get(own.token), { countryName, fieldLabel: fieldLabelOf });
+        const listed = landerOpenings({ postings: tokens.flatMap((t) => postingsByToken.get(t) ?? []), cached: landerOpeningsCache[own.token], today: TODAY, pageFor: bakedPostingPage });
         return [c.token, { primary, facts, openings: listed.openings, at: listed.at, ownContent: landerHasOwnContent({ openings: listed.openings }), answered: listed.answered }];
       }));
       // A page whose text matches another page's once names and numbers are
       // out says nothing of its own (the report's measure: 485 of 487 did).
       const candidates = LANDERS.filter((c) => c.primary === c.token && !c.unreadable);
       const skeletonOf = new Map(candidates.map((c) => [c.token, landerSkeleton(pageOf(c, landerInfo.get(c.token), null).content, [c.name, possessive(c.name), esc(c.name), esc(possessive(c.name))])]));
-      const dupes = duplicateSkeletons(candidates.map((c) => ({ key: c.token, skeleton: skeletonOf.get(c.token) })));
+      // SEO-036: one member of each duplicate group keeps its index (the one
+      // indexable today, every one of them if several are, else the one with
+      // the most open roles); the rest canonicalise to it under the same name,
+      // or go noindex with no canonical under another (prerender-pages.mjs
+      // resolveDuplicateGroups).
+      const dupeGroups = duplicateSkeletonGroups(candidates.map((c) => ({ key: c.token, skeleton: skeletonOf.get(c.token) })));
+      const dupes = new Set(dupeGroups.flat());
+      const nameKeyOfToken = (t) => String(landerByToken.get(t)?.name ?? "").toLowerCase().replace(/\s+/g, " ").trim();
+      const dupeRole = resolveDuplicateGroups({
+        groups: dupeGroups,
+        wasIndexable,
+        openOf: (t) => openRolesOf(landerByToken.get(t)) ?? 0,
+        nameKeyOf: nameKeyOfToken,
+        failsGate: (t) => !!NAME_GATE.get(t)?.reason,
+      });
       // A CIRCUIT BREAKER ON "NOTHING OF ITS OWN". Every employer here has 8+
       // open roles, so a listing with fewer than three is rare; when more
       // than a quarter of the answered primaries say so (or match another
@@ -2404,21 +3044,137 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
       });
       if (thinBreaker) console.warn(`[prerender-seo] company pages: ${thinPrimaries.length} of ${answeredPrimaries.length} answered listings had too few openings — treated as a broken read, none noindexed for it this bake`);
       if (dupeBreaker) console.warn(`[prerender-seo] company pages: ${dupes.size} of ${candidates.length} match another page's text — treated as a cold listing cache, none noindexed for it this bake`);
+      // The stricter rule (one keeper per group) would demote a second member
+      // indexable today; under D7 it keeps its index and is listed instead.
+      for (const g of dupeBreaker ? [] : dupeGroups) {
+        const today = g.filter((t) => wasIndexable(t));
+        if (today.length < 2) continue;
+        const best = today.reduce((a, b) => ((openRolesOf(landerByToken.get(b)) ?? 0) > (openRolesOf(landerByToken.get(a)) ?? 0) ? b : a), today[0]);
+        for (const t of today.filter((x) => x !== best)) {
+          nameGateDryRun.push({ path: `/jobs/company/${t}`, kind: "company", token: t, name: landerByToken.get(t)?.name ?? null, shown: null, reason: `same text as /jobs/company/${best} once names and numbers are out`, would: nameKeyOfToken(t) === nameKeyOfToken(best) ? `canonicalise to /jobs/company/${best}` : "be marked noindex (a different employer name: no canonical)" });
+        }
+      }
+      let dupesKept = 0;
+      for (const g of dupeGroups) if (!dupeBreaker && g.some((t) => dupeRole.get(t)?.role === "keep")) dupesKept++;
       for (const c of LANDERS) {
         const isPrimary = c.primary === c.token;
-        if (!isPrimary) consolidated++;
+        if (!isPrimary && c.sameEmployer !== false) consolidated++;
+        if (!isPrimary && c.sameEmployer === false) nameShared++;
         const info = landerInfo.get(c.token);
         const answered = info.answered && !thinBreaker;
-        const duplicate = !dupeBreaker && dupes.has(c.token);
-        const robots = landerRobots({ isPrimary, unreadable: c.unreadable, answered, ownContent: info.ownContent, duplicate });
+        const role = !dupeBreaker && dupes.has(c.token) ? dupeRole.get(c.token) : null;
+        const duplicate = role?.role === "noindex";
+        const canonicalTo = isPrimary && role?.role === "canonical" ? role.to : null;
+        let robots = landerRobots({ isPrimary, unreadable: c.unreadable, answered, ownContent: info.ownContent, duplicate });
+        // The name gate: a NEW page with a name that cannot be anyone's is
+        // refused its index; a page indexable today keeps it (D7) and is listed.
+        const gate = NAME_GATE.get(c.token);
+        if (gate?.repaired) nameRepaired++;
+        if (isPrimary && !c.unreadable && gate?.reason) {
+          if (wasIndexable(c.token)) {
+            nameGateDryRun.push({ path: `/jobs/company/${c.token}`, kind: "company", token: c.token, name: gate.name, shown: gate.shown, reason: gate.reason, would: "be marked noindex" });
+          } else if (!robots && !canonicalTo) {
+            robots = "noindex, follow";
+            nameRefused++;
+          }
+        }
         if (isPrimary && c.unreadable) codeNamed++;
         else if (isPrimary && answered && !info.ownContent) thin++;
         else if (isPrimary && duplicate) duplicated++;
-        if (isPrimary && !robots) indexable.add(c.token);
-        write(pageOf(c, info, robots));
+        if (isPrimary && !robots && !canonicalTo) indexable.add(c.token);
+        const page = pageOf(c, info, robots, canonicalTo);
+        write(page);
+        const path = `/jobs/company/${c.token}`;
+        companyLedger[path] = companyLedgerEntry({
+          prior: priorCompanies[path], today: TODAY, token: c.token, name: c.name, title: page.title,
+          state: !isPrimary && c.sameEmployer === false ? "noindex" : !isPrimary || canonicalTo ? "canonical" : robots ? "noindex" : "live",
+        });
       }
+      // The field pages' employer lists (SEO-018): every employer with an
+      // indexable page, under each field its board carries roles in.
+      // Employers only: not the federal listing site, not an agency, not a
+      // name two hiring systems carry.
+      for (const c of LANDERS) {
+        if (!indexable.has(c.token) || landerKindOf(c.token) !== "employer" || D.isCollidedToken(c.token)) continue;
+        const intel = intelOf.get(c.token);
+        for (const r of Array.isArray(intel?.categories) ? intel.categories : []) {
+          if (!r || typeof r.category !== "string" || r.category === "other" || typeof r.n !== "number" || r.n <= 0) continue;
+          if (!fieldEmployers.has(r.category)) fieldEmployers.set(r.category, []);
+          fieldEmployers.get(r.category).push({ token: c.token, name: c.name, n: r.n, href: landerPath(c.token) });
+        }
+      }
+      for (const list of fieldEmployers.values()) list.sort((a, b) => b.n - a.n || a.name.localeCompare(b.name));
       const distinct = new Set([...indexable].map((t) => skeletonOf.get(t))).size;
-      console.log(`[prerender-seo] company pages: ${LANDERS.length} (${consolidated} canonicalized to a larger board of the same employer; ${indexable.size} indexable, ${distinct} distinct once names and numbers are out; noindex: ${thin} with too few openings of their own, ${duplicated} matching another page, ${codeNamed} still named by a tenant code${codeNamed ? `: ${LANDERS.filter((c) => c.primary === c.token && c.unreadable).slice(0, 40).map((c) => c.token).join(", ")}` : ""}); intel read for ${intelOf.size} of ${primaries0.length}; listings read ${openingsReads.size} of ${toRead.length} (${openingsUnread} unread), ${Object.keys(landerOpeningsCache).length} of ${listedTokens.length} carried`);
+      console.log(`[prerender-seo] company pages: ${LANDERS.length} (${consolidated} canonicalized to a larger board of the same employer; ${nameShared} sharing a name with a larger board we cannot tie to them (self-canonical, noindex, SEO-037); ${indexable.size} indexable, ${distinct} distinct once names and numbers are out; noindex: ${thin} with too few openings of their own, ${duplicated} matching another page, ${codeNamed} still named by a tenant code${codeNamed ? `: ${LANDERS.filter((c) => c.primary === c.token && c.unreadable).slice(0, 40).map((c) => c.token).join(", ")}` : ""}, ${nameRefused} new pages refused for a name that cannot be printed; ${nameRepaired} names repaired); duplicates: kept ${dupesKept} of ${dupeGroups.length} groups${dupeBreaker ? " (breaker on: none demoted)" : ""}; labelled: ${LANDERS.filter((c) => landerKindOf(c.token) === "usajobs").length} federal listing site, ${LANDERS.filter((c) => landerKindOf(c.token) === "agency").length} staffing agency (${AGENCY_TOKENS.size} agency boards in the catalogue); intel read for ${intelOf.size} of ${primaries0.length}; listings read ${openingsReads.size} of ${toRead.length} (${openingsUnread} unread), ${Object.keys(landerOpeningsCache).length} of ${listedTokens.length} carried`);
+
+      // ---- Once-published company pages this bake did not choose (SEO-002) ----
+      //
+      // Each keeps a page of its own, marked noindex, follow, and none enters
+      // the sitemap: its old page from a young cached listing while the board
+      // still carries the token (no new board read), else a stub that says it
+      // no longer has a page of its own, kept COMPANY_STUB_KEEP_DAYS, then a
+      // tombstone of under a kilobyte. A path that re-enters the chosen set
+      // went straight back to live in the loop above, with no stub between.
+      {
+        const facetByToken = new Map((Array.isArray(boardFacets?.companiesFacet) ? boardFacets.companiesFacet : []).filter((c) => c && typeof c.token === "string").map((c) => [c.token, c]));
+        const tally = { noindex: 0, stub: 0, tombstone: 0 };
+        // A BAKE THAT CHOSE (ALMOST) NOTHING IS A BROKEN READ, NOT 500
+        // EMPLOYERS LEAVING. With fewer than 100 employer pages chosen, a page
+        // indexable today is left unwritten (it keeps last bake's sitemap
+        // entry, which the ratchet below holds) rather than stubbed noindex
+        // on the strength of a failed facet read.
+        const choseEnough = LANDERS.length >= 100;
+        let heldForBrokenRead = 0;
+        for (const path of carriedCompanyPaths) {
+          const token = companyTokenOf(path);
+          if (!token) continue;
+          if (!choseEnough && INDEXABLE_TODAY.has(path)) { heldForBrokenRead++; if (priorCompanies[path]) companyLedger[path] = priorCompanies[path]; continue; }
+          const prior = priorCompanies[path];
+          const f = facetByToken.get(token);
+          const openN = f ? openRolesOf(f) : null;
+          const onBoard = !!f && ((typeof openN === "number" ? openN : (f.count ?? 0)) > 0);
+          const listed = landerOpenings({ postings: postingsByToken.get(token) ?? [], cached: priorOpenings[token], today: TODAY, pageFor: bakedPostingPage });
+          const state = companyCarryState({ prior, today: TODAY, onBoard, cachedYoung: listed.answered });
+          const name = f ? bakeEmployerName(token, f.name, NAME_PARTS).name : (prior && typeof prior.name === "string" ? prior.name : null);
+          const seed = !prior && seedCompanySet.has(path);
+          tally[state]++;
+          if (state === "tombstone") {
+            writeTombstone(path, token);
+            companyLedger[path] = companyLedgerEntry({ prior, state, today: TODAY, token, name, seed });
+            continue;
+          }
+          const page = state === "noindex" && name
+            ? companyLanderPage({
+              token, name, primaryToken: token, robots: "noindex, follow", openN: typeof openN === "number" ? openN : null, countedOn: COUNTED_ON, facts: null,
+              openings: listed.openings, openingsAt: listed.at, vendor: vendorOfToken(token), collision: collisionOf(token), boardCompanies,
+              site: SITE, esc, possessive, fmt: (n) => fmt(n), href: landerPath, kind: landerKindOf(token), copy: KIND_COPY,
+            })
+            : companyStubPage({ path, token, name, esc });
+          write(page);
+          companyLedger[path] = companyLedgerEntry({ prior, state: state === "noindex" && name ? "noindex" : "stub", today: TODAY, token, name, title: page.title, seed });
+        }
+        console.log(`[prerender-seo] company pages: carried ${carriedCompanyPaths.length} once-published paths this bake did not choose / noindex ${tally.noindex} / stubbed ${tally.stub} / tombstoned ${tally.tombstone}${heldForBrokenRead ? ` / ${heldForBrokenRead} indexable today held unwritten (only ${LANDERS.length} chosen: a broken facet read)` : ""}; ${seedCompanySet.size} seed paths, ${INDEXABLE_TODAY.size} indexable on the live site today`);
+      }
+      // THE NAME GATE'S DRY RUN (owner decision D7): every page indexable on
+      // the live site today that a stricter rule would drop, with the reason.
+      // Logged, and written as JSON where PRERENDER_NAME_GATE_REPORT points
+      // (scripts/prerender-name-gate-report.mjs turns it into the owner's
+      // list, docs/company-profiles/name-gate-dry-run.md). Nothing on it is
+      // dropped in this round.
+      console.log(`[prerender-seo] name gate dry run: ${nameGateDryRun.length} page(s) indexable today that a stricter rule would drop, kept this round (D7)${nameGateDryRun.length ? `: ${nameGateDryRun.slice(0, 12).map((x) => `${x.path} (${x.reason})`).join(", ")}` : ""}`);
+      if (process.env.PRERENDER_NAME_GATE_REPORT) {
+        try {
+          writeFileSync(resolve(process.env.PRERENDER_NAME_GATE_REPORT), JSON.stringify({
+            builtAt: TODAY, facetsSource, indexableToday: INDEXABLE_TODAY.size, entries: nameGateDryRun,
+            // A repair that leaves one word ("Austin External" -> "Austin",
+            // "Mayo Career Site US" -> "Mayo") can read as a place or another
+            // employer: flagged for the owner, who adds a company_name_overrides
+            // row where it does.
+            repaired: LANDERS.filter((c) => NAME_GATE.get(c.token)?.repaired).map((c) => ({ path: `/jobs/company/${c.token}`, shown: NAME_GATE.get(c.token).shown, printed: c.name, indexableToday: wasIndexable(c.token), singleWord: !/\s/.test(String(c.name).trim()) })),
+            refusedNew: LANDERS.filter((c) => c.primary === c.token && !c.unreadable && NAME_GATE.get(c.token)?.reason && !wasIndexable(c.token)).map((c) => ({ path: `/jobs/company/${c.token}`, name: c.name, reason: NAME_GATE.get(c.token).reason })),
+          }, null, 1));
+        } catch (e) { console.warn(`[prerender-seo] name gate report not written: ${e?.message || e}`); }
+      }
       // The SEO report's bar for this family: at least 400 pages that say
       // something of their own. Below it the listings have not filled in yet
       // (the first bakes) or the reads are being refused.
@@ -2433,6 +3189,21 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
       // send the same mixed signal the canonical exists to prevent.
       {
         const primaries = LANDERS.filter((c) => indexable.has(c.token));
+        // NOT EVERY ROW IS AN EMPLOYER (the round's review): the list holds
+        // USAJOBS, the federal listing site, and staffing agencies' boards,
+        // and the page said each was "read from its own hiring system". The
+        // count names employers only, the others are counted and labelled as
+        // what they are, and the source sentence is the board's own.
+        const employersListed = primaries.filter((c) => landerKindOf(c.token) === "employer").length;
+        const agenciesListed = primaries.filter((c) => landerKindOf(c.token) === "agency").length;
+        const federalListed = primaries.some((c) => landerKindOf(c.token) === "usajobs");
+        const othersListed = [
+          ...(federalListed ? ["the federal listing site"] : []),
+          ...(agenciesListed ? [`${fmt(agenciesListed)} staffing ${agenciesListed === 1 ? "agency" : "agencies"}`] : []),
+        ].join(" and ");
+        const kindsRead = ["an employer's own", ...(agenciesListed ? ["a staffing agency's (labelled)"] : []), ...(federalListed ? ["the federal listing site (labelled)"] : [])];
+        const kindsSentence = kindsRead.length === 1 ? kindsRead[0] : `${kindsRead.slice(0, -1).join(", ")} or ${kindsRead[kindsRead.length - 1]}`;
+        const KIND_LABEL = { usajobs: "the federal listing site", agency: "a staffing agency" };
         const byLetter = new Map();
         for (const c of [...primaries].sort((a, b) => a.name.localeCompare(b.name))) {
           const letter = /^[a-z]/i.test(c.name.trim()) ? c.name.trim()[0].toUpperCase() : "#";
@@ -2447,21 +3218,29 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
               // count or no count. An A-Z row that disagreed with the page one
               // click away is the same defect at directory scale.
               const o = openRolesOf(c);
-              return `<li><a href="${landerPath(c.token)}" class="text-primary hover:underline">${esc(c.name)}</a>${typeof o === "number" ? ` <span class="text-muted-foreground">— ${fmt(o)} open roles</span>` : ""}</li>`;
+              const kind = KIND_LABEL[landerKindOf(c.token)];
+              return `<li><a href="${landerPath(c.token)}" class="text-primary hover:underline">${esc(c.name)}</a>${kind ? ` <span class="text-muted-foreground">(${kind})</span>` : ""}${typeof o === "number" ? ` <span class="text-muted-foreground">— ${fmt(o)} open roles</span>` : ""}</li>`;
             }).join("\n            ")}
           </ul>`).join("\n");
         COMPANY_PAGE_COUNT = primaries.length;
         write({
           path: "/companies",
-          title: `${fmt(primaries.length)} Companies Hiring Now — Verified Job Boards`,
-          description: `The ${fmt(primaries.length)} employers on the board with a page of their own, each pulled straight from its own official career system and re-checked continuously.`,
+          title: `${fmt(employersListed)} Companies Hiring Now, From Their Own Hiring Systems`,
+          description: fitDesc(
+            `The ${fmt(employersListed)} employers with a page of their own, each read from its own hiring system${othersListed ? `, plus ${othersListed}, labelled` : ""}${COUNTED_ON ? `; open roles counted ${COUNTED_ON}` : ""}.`,
+            `${fmt(employersListed)} employers read from their own hiring systems${othersListed ? `, plus ${othersListed}, labelled` : ""}${COUNTED_ON ? `; counted ${COUNTED_ON}` : ""}.`,
+            `${fmt(employersListed)} employers read from their own hiring systems${othersListed ? `, plus ${othersListed}, labelled` : ""}.`,
+          ),
           content: `
             <h1 class="text-2xl font-bold mb-3">Companies hiring on the board</h1>
-            <p class="text-muted-foreground mb-6">The ${fmt(primaries.length)} employers with a page of their own, listed A–Z; the board itself carries far more (${boardCompanies ? `${fmt(boardCompanies)} company job boards with roles open now` : "every one is searchable"} on <a href="/jobs" class="text-primary underline">the live board</a>). Every posting comes from the company's own hiring system. Where a count is shown it means postings the employer has not taken down, dated inside the last 30 days: the same rule the linked page serves, measured when this index was last built.</p>
+            <p class="text-muted-foreground mb-6">The ${fmt(employersListed)} employers with a page of their own${othersListed ? `, and ${othersListed}` : ""}, listed A–Z; the board itself carries far more (${boardCompanies ? `${fmt(boardCompanies)} company job boards with roles open now` : "every one is searchable"} on <a href="/jobs" class="text-primary underline">the live board</a>). Every posting is read from the hiring system that published it: ${kindsSentence}, never copied from another job board. Where a count is shown it means postings the employer has not taken down whose date falls inside the last 30 days (the employer's own date, or for a posting with no date, the day we last saw it): the same rule the linked page serves, measured when this index was last built${COUNTED_ON ? `, ${esc(COUNTED_ON)}` : ""}.</p>
             ${sections}`,
         });
       }
     }
+
+    // The field pages, now that the employer pages and the posting pages are known.
+    writeFieldPages();
 
     // Main board page — the parent of the field landers. Without its own write()
     // it fell back to the homepage (scanner) meta, wasting the single most
@@ -2491,10 +3270,16 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
         title: boardTotal
           ? `Live Job Board — ${plusClaim(boardTotal, 50000)} Openings Direct From Company Career Pages`
           : "Live Job Board — Openings Direct From Company Career Pages",
-        description: `Browse ${jobsPhrase} — straight from official company job boards. No aggregators; no dated posting older than 30 days.`,
+        // Dated (SEO-026) and in the one source sentence (R5a), inside the
+        // snippet budget (OBS-2).
+        description: fitDesc(
+          `Browse ${jobsPhrase} (${BOARD_AS_OF}), ${SOURCE_SENTENCE}; no dated posting older than 30 days.`,
+          `Browse ${jobsPhrase} (${BOARD_AS_OF}), read from employers' own hiring systems.`,
+          `Browse ${jobsPhrase}, read from employers' own hiring systems.`,
+        ),
         content: `
           <h1>Live job board</h1>
-          <p>${jobsPhrase[0].toUpperCase()}${jobsPhrase.slice(1)}, pulled directly from the official job boards companies publish on ${D.SERVING_SOURCE_LIST}. No aggregators, no reposts — every opening belongs to the company that published it, applying happens on the company's own site, and no dated posting older than 30 days stays on the board. Where a company states no date at all we can't judge the posting old, so we keep it and show no age rather than guess one. Counts were measured when this page was last built; the board's own count refreshes periodically through the day.</p>
+          <p>${jobsPhrase[0].toUpperCase()}${jobsPhrase.slice(1)} (${esc(BOARD_AS_OF)}), ${BOARD_SOURCE_SENTENCE}. They come from ${D.SERVING_SOURCE_LIST}; applying happens on the employer's own site, and no dated posting older than 30 days stays on the board. Where a company states no date at all we can't judge the posting old, so we keep it and show no age rather than guess one. The counts were ${esc(COUNTS_BASIS)}; the board's own count refreshes periodically through the day.</p>
           <p>Browse by field: ${CATEGORY_LANDERS.map(([s, l]) => `<a href="/jobs/field/${s}">${l} jobs</a>`).join(" · ")}.</p>
           <p>Check any posting against your resume with the <a href="/">free resume scan</a> before you spend an application on it, and save searches with a free account.</p>
           <p>Bring your own AI agent: every posting and every search on this board has a control that copies a prompt naming the posting's id, or the search's arguments, and our MCP server's URL — <a href="/agents">connect your agent</a>. A <code>/jobs?job=&lt;id&gt;</code> link's id is the argument the server's detail tools take.</p>
@@ -2504,9 +3289,9 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
           "@context": "https://schema.org",
           "@type": "CollectionPage",
           name: "Live job board",
-          description: `Live openings from companies' official job boards (${D.SERVING_SOURCE_LIST}), re-verified throughout the day — no aggregators, no dated posting older than 30 days.`,
+          description: `Live openings ${SOURCE_SENTENCE}; no dated posting older than 30 days.`,
           url: `${SITE}/jobs`,
-          isPartOf: { "@type": "WebSite", name: "Resume Booster", url: SITE },
+          isPartOf: websiteRef(SITE),
         }],
       });
     }
@@ -2524,16 +3309,20 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
       write({
         path: "/ghost-job-index",
         title: "The Ghost Job Index — how many job postings are actually real?",
-        description: DATA_FIGURES.ghost.desc ?? "A live measure of job-posting reality: how many roles are open, how long postings stay up, how often they come down, and a daily re-check against employers' own systems.",
+        description: DATA_FIGURES.ghost.desc ?? "How many roles are open, how long postings stay up, how often they come down, and a daily re-check against employers' own systems.",
         content: `
           <h1>The Ghost Job Index</h1>
-          <p>Ghost jobs — postings that are stale, already filled, or never real — waste job seekers' time everywhere. This page is our live, honest measure of the opposite: postings that are verified, fresh, and from companies actually hiring.</p>
-          <p>Every figure is computed from the full lifecycle of postings on companies' official job boards (${D.SERVING_SOURCE_LIST}), never an aggregator. Any posting whose company-stated date passes 30 days is dropped automatically, we log every takedown we see (a takedown is never called a hire: a hire, a withdrawal and a cancelled requisition look the same from a feed), and we sample listings daily and re-check them against the companies' own systems. Where a company states no date at all we can't judge the posting old, so we keep it and show no age rather than guess one.</p>
+          <p>Ghost jobs — postings that are stale, already filled, or never real — waste job seekers' time everywhere. This page is our live, honest measure of the opposite: how fresh the postings on this board are, read from companies' own hiring systems, and how often they come down.</p>
+          <p>Every figure is computed from the full lifecycle of postings on companies' official job boards (${D.SERVING_SOURCE_LIST}), each ${SOURCE_SENTENCE}. Any posting whose company-stated date passes 30 days is dropped automatically, we log every takedown we see (a takedown is never called a hire: a hire, a withdrawal and a cancelled requisition look the same from a feed), and we sample listings daily and re-check them against the companies' own systems. Where a company states no date at all we can't judge the posting old, so we keep it and show no age rather than guess one.</p>
           ${DATA_FIGURES.ghost.html}
+          ${howToCite("Ghost Job Index", "/ghost-job-index", DATA_FIGURES.ghost.modified)}
           <p><a href="/jobs">Browse the live board</a> — or check any posting against your resume with the <a href="/">free resume scan</a> first.</p>
         `,
         jsonLd: [datasetLd({
-          name: "The Ghost Job Index",
+          // Brand-qualified (SEO-028): "The Ghost Job Index" is another site's name too.
+          name: "Resume Booster Ghost Job Index",
+          windowDays: 90,
+          variables: ["open roles", "employers with an open role", "median posting age (days, by the employer's stated date)", "closure events logged in 90 days", "median and 95th-percentile feed re-check age", "daily re-check share still live, with sample size"],
           description: "A live measure of job-posting freshness computed from official company job boards: open roles, posting age by the employer's stated date, takedowns logged over 90 days (a takedown is never called a hire), and a daily re-check of sampled postings against the employers' own systems.",
           path: "/ghost-job-index",
           modified: DATA_FIGURES.ghost.modified,
@@ -2547,16 +3336,19 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
       write({
         path: "/entry-level-index",
         title: "The Entry-Level Index — who's actually hiring entry-level right now?",
-        description: DATA_FIGURES.entry.desc ?? "A live ranking of companies with real entry-level openings — junior, graduate, and early-career roles counted from companies' official job boards, refreshed all day. No aggregators, no dated posting older than 30 days.",
+        description: DATA_FIGURES.entry.desc ?? "Job boards ranked by the share of their open roles that are early-career, counted from the postings' own titles and stated requirements.",
         content: `
           <h1>The Entry-Level Index</h1>
           <p>"Entry-level, 5 years' experience required" is a running joke for a reason. This page counts the real thing: openings whose own titles and requirements say early-career — internships, junior, graduate, and 0–2 year roles — and ranks each job board by the SHARE of its open roles that are early-career, with the raw count as the tie-break. Not by who posts the most, which only ever ranks the largest boards. One row per board, so an employer running several counts once per board.</p>
-          <p>Every count comes live from companies' official job boards (${D.SERVING_SOURCE_LIST}) — never an aggregator, and no dated posting older than 30 days (undated ones show no age rather than a guessed one). A role counts as entry-level when its own title or stated requirements say so; we never guess.</p>
+          <p>Every count comes live from companies' official job boards (${D.SERVING_SOURCE_LIST}), each posting ${SOURCE_SENTENCE}, and no dated posting older than 30 days (undated ones show no age rather than a guessed one). A role counts as entry-level when its own title or stated requirements say so; we never guess.</p>
           ${DATA_FIGURES.entry.html}
-          <p><a href="/jobs?experience=entry">Browse all verified entry-level openings</a>, check the <a href="/hiring-trends">weekly hiring trends</a>, or scan your resume against any posting with the <a href="/">free resume scan</a>.</p>
+          ${howToCite("Entry-Level Index", "/entry-level-index", DATA_FIGURES.entry.modified)}
+          <p><a href="/jobs?experience=entry">Browse all entry-level openings</a>, check the <a href="/hiring-trends">weekly hiring trends</a>, or scan your resume against any posting with the <a href="/">free resume scan</a>.</p>
         `,
         jsonLd: [datasetLd({
-          name: "The Entry-Level Index",
+          name: "Resume Booster Entry-Level Index",
+          windowDays: 30,
+          variables: ["early-career openings", "early-career share of open postings", "job boards with an early-career opening", "early-career openings stating a remote work mode", "early-career openings by field"],
           description: "Early-career openings counted from official company job boards, by our classification of each posting's own title and stated requirements, with the job boards ranked by the share of their open roles that are early-career.",
           path: "/entry-level-index",
           modified: DATA_FIGURES.entry.modified,
@@ -2569,16 +3361,19 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
       write({
         path: "/hiring-trends",
         title: "Weekly Hiring Trends — how many jobs were really posted this week?",
-        description: DATA_FIGURES.trends.desc ?? "Live weekly hiring data from companies' official job boards: new postings per week, which fields are hiring, entry-level and remote counts as floors, and closure events logged per week — no estimates, no surveys.",
+        description: DATA_FIGURES.trends.desc ?? "Roles employers dated each week, the fields they are in, and the closure events logged each week, counted from employers' own job boards.",
         content: `
           <h1>Weekly Hiring Trends</h1>
           <p>Is hiring up or down this week? This page answers with counted postings, not vibes: every new role companies dated this week on their own boards, which fields they're in, and how many closure events the lifecycle log recorded. A posting coming down is never called a hire — a hire, a withdrawal, a cancelled requisition and a retitle are indistinguishable from a feed.</p>
           <p>Counts use each posting's own stated date from the company's official applicant-tracking feed. Postings from companies newly added to our catalog are excluded from weekly counts, so growth in our coverage never shows up as a fake hiring spike. Closure counts come from our lifecycle log — the moment a company takes a posting down, we record it.</p>
           ${DATA_FIGURES.trends.html}
+          ${howToCite("Weekly Hiring Trends", "/hiring-trends", DATA_FIGURES.trends.modified)}
           <p><a href="/jobs">Browse the live board</a>, see <a href="/entry-level-index">who's hiring entry-level</a>, or check the <a href="/ghost-job-index">Ghost Job Index</a>.</p>
         `,
         jsonLd: [datasetLd({
-          name: "Weekly Hiring Trends",
+          name: "Resume Booster Weekly Hiring Trends",
+          windowDays: 35,
+          variables: ["roles employers dated each week", "closure events logged each week", "remote and early-career roles each week (floors)", "new postings by field, last 7 days against the 7 before"],
           description: "Weekly hiring data computed from official company job boards: roles employers dated each week, the fields they are in, and the closure events logged each week, where a posting coming down is never called a hire.",
           path: "/hiring-trends",
           modified: DATA_FIGURES.trends.modified,
@@ -2592,17 +3387,20 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
       write({
         path: "/pay-transparency",
         title: "Pay Transparency Index — who actually states salaries?",
-        description: DATA_FIGURES.pay.desc ?? "A live ranking of fields, hiring systems, and large employers by the share of job postings that state pay — counted from companies' own posting text and ATS fields. No estimates, no modeled ranges.",
+        description: DATA_FIGURES.pay.desc ?? "The share of postings that state pay, by field, hiring system and large job board, counted from the employers' own words; nothing modelled.",
         content: `
           <h1>The Pay Transparency Index</h1>
-          <p>Which employers actually state salaries? This page counts it: the share of postings whose own text or ATS compensation field states pay, ranked by field, by hiring system, and across large employers. Every figure is the company's verbatim words — never an estimate, never a modeled range.</p>
+          <p>Which employers actually state salaries? This page counts it: the share of postings whose own text or ATS compensation field states pay, ranked by field, by hiring system, and across large job boards, one row per board. Every figure is the company's verbatim words — never an estimate, never a modeled range.</p>
           <p>The same rules apply to work modes: a posting is tagged remote, hybrid, or on-site only when the employer's own ATS field or explicit posting text says so. Postings that don't say carry no tag — we show nothing rather than a guess.</p>
           ${DATA_FIGURES.pay.html}
+          ${howToCite("Pay Transparency Index", "/pay-transparency", DATA_FIGURES.pay.modified)}
           <p>Placement on this page cannot be bought. Browse <a href="/jobs?mode=remote">remote roles</a>, check the <a href="/ghost-job-index">Ghost Job Index</a>, or license the underlying data at <a href="/data-api">Hiring Data &amp; API</a>.</p>
         `,
         jsonLd: [datasetLd({
-          name: "Pay Transparency Index",
-          description: "The share of job postings that state pay, by field, by hiring system and across large employers, counted from the employers' own posting text and applicant-tracking fields; nothing estimated or modelled.",
+          name: "Resume Booster Pay Transparency Index",
+          windowDays: 30,
+          variables: ["share of postings that state pay", "share of postings that state a work mode", "pay-stated share by field", "pay-stated share by hiring system", "pay-stated share by job board"],
+          description: "The share of job postings that state pay, by field, by hiring system and across large job boards (one row per board), counted from the employers' own posting text and applicant-tracking fields; nothing estimated or modelled.",
           path: "/pay-transparency",
           modified: DATA_FIGURES.pay.modified,
         })],
@@ -2622,10 +3420,11 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
         description: "A read-only JSON API over the live board: lifecycle-tracked postings from official company career sites, genuine takedowns vs re-listing, stated pay. Free keys.",
         content: `
           <h1>Hiring Data &amp; API</h1>
-          <p>Most job data stops at "posted." Ours follows every posting to the end: when it closed, whether it was genuinely taken down or quietly re-listed under a new ID, and what the company itself said it paid. Everything is collected from companies' own official career sites — never aggregators — and audited against them daily.</p>
+          <p>Most job data stops at "posted." Ours follows every posting to the end: when it closed, whether it was genuinely taken down or quietly re-listed under a new ID, and what the company itself said it paid. Everything is ${SOURCE_SENTENCE}, and a daily sample is re-checked against them.</p>
           <p>The dataset contains zero jobseeker data: no job seeker's résumé or profile is in it, at any tier, and that data is not for sale. And no license, at any price, changes what the data says about any company — including the licensee.</p>
           <h2>Query it yourself</h2>
           <p>A read-only JSON API over the live board: free tier, self-serve, no card. Request a key on this page with an email address: we email that address a single-use link, and the key is shown once, on the page the link opens. Only its hash is stored. A free key meters at ${FREE_KEY_RATE_SENTENCE}. Send it as <code>Authorization: Bearer rb_live_…</code>.</p>
+          <p>The API lives at <code>${esc(API_BASE)}</code>: every path below is relative to it, so a search is <code>GET ${esc(API_BASE)}/v1/jobs</code>. The addresses under resumebooster.work/v1 are pages that point here, not the API.</p>
           <ul>
             <li><code>GET /v1/jobs</code> — live postings, newest first; every result is still open in the employer's own feed and dated within the last 30 days. Filters for country, category, company, work mode, source system, experience band, department, pay basis and floor, posting date; paginate with <code>cursor=</code>, never a deep offset. <code>explain=1</code> names every filter that bound; <code>engine=ranked</code> (paid) swaps the title match for the site's full relevance engine.</li>
             <li><code>GET /v1/jobs/{id}</code> — one posting with its description; a 404 once the employer withdraws it, never a stale 200.</li>
@@ -2633,10 +3432,10 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
             <li><code>GET /v1/companies</code> — employers ranked by open postings, from the same cached facet the board renders, with the as-of stamp and its basis.</li>
             <li><code>GET /v1/stats</code> — headline counts, the closure log, feed freshness (p50/p95/max minutes since each feed was last re-read) and per-system coverage, each figure with its own as-of and basis.</li>
             <li><code>GET /v1/usage</code> — your own consumption for the last 30 days and what is left of today's limits.</li>
-            <li><code>POST /v1/fit</code> (paid) — a résumé in, the board's best matches out, scored with matched and missing terms; stores nothing.</li>
+            <li><code>POST /v1/fit</code> — ${esc(D.MCP_FIT_ALLOWANCE)}, counted together with <code>fit_resume</code> on the MCP server: a résumé in, the board's best matches out, scored with matched and missing terms; stores nothing.</li>
           </ul>
           <p>${esc(D.MCP_WITHHELD_NOTE)}</p>
-          <p>Pointing an AI agent at this data instead of writing code? The same free keys work on the <a href="/agents">MCP server</a>, which serves the same board to Claude Code, Cursor and any MCP client that can send a header.</p>
+          <p>Pointing an AI agent at this data instead of writing code? The same free keys work on the <a href="/agents">MCP server</a>, which serves the same board to Claude Code and any MCP client that can send a header, at <code>${esc(MCP_URL)}</code>.</p>
           <h2>Access beyond the free tier</h2>
           <p>Free for journalists with attribution, at cost for academic and nonprofit research, and custom-priced for commercial feeds — volume, history and bulk export. Every request gets a human reply.</p>
           <p>A live slice is already public: see the <a href="/ghost-job-index">Ghost Job Index</a>, <a href="/hiring-trends">Weekly Hiring Trends</a>, the <a href="/entry-level-index">Entry-Level Index</a> and the <a href="/pay-transparency">Pay Transparency Index</a>.</p>
@@ -2645,9 +3444,9 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
           "@context": "https://schema.org",
           "@type": "WebPage",
           name: "Hiring Data & API",
-          description: "A read-only JSON API (/v1) over the live board and the lifecycle-tracked dataset behind it: takedowns vs re-listing, stated pay, daily audits. Free self-serve keys; free for journalists with attribution.",
+          description: `A read-only JSON API at ${API_BASE}/v1 over the live board and the lifecycle-tracked dataset behind it: takedowns vs re-listing, stated pay, daily audits. Free self-serve keys; free for journalists with attribution.`,
           url: `${SITE}/data-api`,
-          isPartOf: { "@type": "WebSite", name: "Resume Booster", url: SITE },
+          isPartOf: websiteRef(SITE),
         }],
       });
     }
@@ -2709,20 +3508,11 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
       path: "/methodology",
       title: M.metaTitle || "Methodology — How Resume Booster Scores Resumes",
       description: M.metaDescription,
+      // SEO-031: the breadcrumb only. The page's steps were also marked up as
+      // a how-to entity, which Google no longer shows and which React's own
+      // copy duplicated after hydration with different text.
       jsonLd: [
         breadcrumbLd([{ name: "Home", path: "/" }, { name: "Methodology", path: "/methodology" }]),
-        {
-          "@context": "https://schema.org",
-          "@type": "HowTo",
-          name: "How Resume Booster analyzes your resume",
-          description: fillM(M.heroSubtitle),
-          step: Object.values(steps).map((s, i) => ({
-            "@type": "HowToStep",
-            position: i + 1,
-            name: s.title,
-            text: s.description,
-          })),
-        },
       ],
       content: `
         ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Methodology" }])}
@@ -2770,44 +3560,34 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
     });
 
     // ---- /agent ----
-    // FOUND 2026-08-18 by the post-recovery SEO sweep: /agent — the page the
-    // agent plan's checkout, the board pitch, and the welcome redirect all
-    // land on — served the HOMEPAGE SHELL, byte-identical (16,183B), homepage
-    // title, homepage description, no canonical. To a crawler the money page
-    // was a duplicate of the front page; to an answer engine the price, the
-    // trial, the four-vendor scope and the CAPTCHA boundary were INVISIBLE,
-    // because they existed only in JS. The claims below are the SAME countable
-    // claims the board pitch makes (Jobs.tsx, agent-is-visible-on-the-board
-    // guard) — a crawler and a visitor must read the same product.
-    // The figure is the mirror's, the one pricing-truth pins to the checkout
-    // function's constant; it was typed here three times.
-    const agentMonthly = D.SUBSCRIPTIONS.agent.priceUsd;
-    // The trial is offered once per customer (L6-29); its length is the
-    // mirror of AGENT_TRIAL_DAYS, and the page says who gets it.
-    const agentTrialDays = D.SUBSCRIPTIONS.agent.trialDays;
+    // THE ADDRESS STAYS; IT SAYS HOW TO APPLY NOW. /agent was the Apply
+    // Agent's sales page (its price, its trial, the hiring systems it
+    // submitted on). Owner decision 2026-10-11 (the apply pivot): applying
+    // happens through the person's own AI. The page keeps its URL, its index
+    // and its sitemap entry, names no price and no product, and offers one
+    // path: applying yourself.
+    //
+    // NO "RETIRED" AND NO "WE STOPPED SELLING" YET (2026-10-18 review). This
+    // publish (deployOrder 2) goes out before wave 4 (deployOrder 3), whose
+    // frontend removes the plan's and the pass's sale paths (Pricing's agent
+    // card, the pass page, AgentConnect's pass card) and whose checkouts
+    // refuse them. Until then those pages still sell both, so a crawler page
+    // saying they are retired and no longer sold would be false beside them.
+    // Wave 4 restores the retirement sentences when its deploy lands
+    // (docs/design-upgrade/README.md, deploy procedure step 3).
     write({
       path: "/agent",
-      title: `Apply Agent — $${agentMonthly}/mo, Applications Prepared For You`,
-      // The vendor count is RENDERED from the sendable mirror (pinned to the
-      // Deno list by the-page-says-six guard), never typed: this line said
-      // "four" for weeks while the list held five (project_claim_drift). The
-      // board share is not on hand at bake time (no per-vendor facet here),
-      // so it is absent rather than a stale figure — the SPA derives it live.
-      description: `The agent prepares an application for each matching posting; you approve before it sends unless you turn on auto. $${agentMonthly}/mo; ${agentTrialDays} days free for first-time subscribers.`,
-      jsonLd: [breadcrumbLd([{ name: "Home", path: "/" }, { name: "Apply Agent", path: "/agent" }])],
+      title: "Apply with your own AI: Claude, ChatGPT or Claude Code",
+      description: "Search the board from your own AI and apply yourself on the employer's own site: you check every answer and you press submit.",
+      jsonLd: [breadcrumbLd([{ name: "Home", path: "/" }, { name: "Apply with your own AI", path: "/agent" }])],
       content: `
-        ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Apply Agent" }])}
-        <h1 class="text-3xl font-bold mb-3">The agent applies. You interview.</h1>
-        <p class="text-muted-foreground mb-8">Tell it the roles you want and it watches the board for you — every morning it queues fresh, matching postings with your resume and answers prepared. In review mode, the default, nothing is sent until you approve it. Switch on auto mode and it submits for you on the hiring systems it can drive end to end, holding your first releases for review.</p>
-        <section class="mb-8"><h2 class="text-xl font-bold mb-3">What it costs, and what you get</h2>
-          <div class="rounded-xl border border-border bg-card p-4 mb-2"><p class="text-sm font-semibold text-foreground mb-1">$${agentMonthly}/month; ${agentTrialDays} days free for first-time subscribers</p><p class="text-xs text-muted-foreground">Cancel any time. The trial runs the same pipeline as the paid plan — real applications, not samples. A returning subscriber is charged from the first day.</p></div>
-          <div class="rounded-xl border border-border bg-card p-4"><p class="text-sm font-semibold text-foreground mb-1">A morning queue, not a spray</p><p class="text-xs text-muted-foreground">Matches come from the same live board the site serves — fresh postings only, matched against your resume, deduplicated against everything already sent.</p></div>
+        ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Apply with your own AI" }])}
+        <h1 class="text-3xl font-bold mb-3">Apply with your own AI</h1>
+        <p class="text-muted-foreground mb-8">${esc(APPLY_YOURSELF_LINE)}</p>
+        <section class="mb-8"><h2 class="text-xl font-bold mb-3">How to connect it</h2>
+          <p class="text-sm text-muted-foreground">Connecting your AI to the board is free and needs no account. The steps for Claude, ChatGPT and Claude Code are on <a href="/agents" class="text-primary">${esc(FOOTER_AGENTS_LABEL)}</a>; the board itself is at <a href="/jobs" class="text-primary">/jobs</a>.</p>
         </section>
-        <section class="mb-8"><h2 class="text-xl font-bold mb-3">The limits, stated up front</h2>
-          <div class="rounded-xl border border-border bg-card p-4 mb-2"><p class="text-sm font-semibold text-foreground mb-1">${D.SENDABLE_VENDOR_LABELS.length} hiring systems: ${D.SENDABLE_VENDOR_SENTENCE}</p><p class="text-xs text-muted-foreground">The agent submits only where it can complete a real application end to end. The board labels every posting it can send to, so the scope is countable on the page, not a claim.</p></div>
-          <div class="rounded-xl border border-border bg-card p-4"><p class="text-sm font-semibold text-foreground mb-1">It never solves CAPTCHAs or evades bot checks</p><p class="text-xs text-muted-foreground">Where a site gates applying, the agent prepares the application — answers, resume, cover note — and you press send. That boundary is permanent.</p></div>
-        </section>
-        ${cta("Set up the agent", `Upload a resume, pick your targets, and the first morning queue is ready tomorrow. ${agentTrialDays} days free for first-time subscribers.`, "Start the agent")}`,
+        ${cta("Check your resume first", "See how your resume reads to an applicant-tracking system before you apply anywhere: free, no signup.", "Scan my resume free")}`,
     });
 
     // ---- /agents: the MCP server's human page ----
@@ -2843,36 +3623,69 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
       const envText3 = (() => { try { return readFileSync(join(root, ".env"), "utf8"); } catch { return ""; } })();
       const supaUrl3 = process.env.VITE_SUPABASE_URL
         || (envText3.match(/^VITE_SUPABASE_URL=(.*)$/m) || [])[1]?.trim().replace(/^["']|["']$/g, "");
-      const mcpUrl = supaUrl3 ? `${supaUrl3}/functions/v1/agent-mcp` : null;
+      // THE ADDRESS BOTH llms FILES PRINT (SEO-014): MCP_URL, declared at the
+      // top of the bake, so /agents and the llms files cannot disagree.
+      const mcpUrl = typeof MCP_URL === "string" && MCP_URL ? MCP_URL : supaUrl3 ? `${supaUrl3}/functions/v1/agent-mcp` : null;
       const h = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-      const badge = { read: "any free key", paid: "paid key", apply: "agent key" };
+      const badge = D.MCP_TIER_BADGE;
       const codes = (arr) => arr.map((t) => `<code>${t.name}</code>`).join(", ");
-      const countClause = BOARD_TOTAL ? `${plusClaim(BOARD_TOTAL, 50000)} live postings` : "the live postings";
-      // What applying costs, from the mirrors — the page named the plan and
-      // the pass and served neither figure to a crawler.
-      const agentPlanPrice = D.SUBSCRIPTIONS.agent.priceUsd;
-      const passPrice = D.PASS.priceUsd;
-      const passHours = D.PASS.sessionHours;
+      // Every board total names its date basis (SEO-026).
+      const countClause = BOARD_TOTAL ? `${plusClaim(BOARD_TOTAL, 50000)} live postings (${BOARD_AS_OF})` : "the live postings";
+      // NOTHING RETIRED IS BAKED (the apply pivot, 2026-10-11). The server-side
+      // agent, its plan and its pass are retired; applying is the person's own,
+      // on the employer's site, with their AI's help. The mirror below
+      // (src/config/mcp-tools.ts) describes what the server registers, so the
+      // crawler copy takes the retired clauses out of each mirror string and
+      // leaves out a tool, prompt or troubleshooting row whose purpose was the
+      // retired agent. DECLARED HERE, inside the block: the guard executes this
+      // block alone (which-agent-do-you-use.test.tsx).
+      const RETIRED_CLAUSES = [
+        /\s*[;,]?\s*an Agent Pass raises the limit for its hours/gi,
+        /\s*[—–-]\s*and a live pass\b/gi,
+        /,?\s*or a live (?:Agent )?pass\b/gi,
+        /,?\s*or \/agents\/pass\b/gi,
+        /,?\s*and the pass if the account holds one/gi,
+      ];
+      const RETIRED_MENTION = /\bapply agent\b|\bagent plan\b|\bagent pass\b|\blive pass\b|\bthe pass\b|\/agents\/pass|\bmandate\b|\brequests? (?:one |an )?applications?\b|\bsubmit/i;
+      const scrubRetired = (text) => {
+        let s = String(text ?? "");
+        for (const re of RETIRED_CLAUSES) s = s.replace(re, "");
+        return s.split(/(?<=[.!?])\s+/).filter((x) => x && !RETIRED_MENTION.test(x)).join(" ").trim();
+      };
+      const firstSentence = (text) => String(text ?? "").split(/(?<=[.!?])\s+/)[0];
+      const toolKept = (t) => t.tier !== "apply" && !RETIRED_MENTION.test(firstSentence(t.body));
+      const keptTools = D.MCP_TOOLS.filter(toolKept);
+      const keptPrompts = D.MCP_PROMPTS.filter((p) => !RETIRED_MENTION.test(p.title ?? "") && scrubRetired(p.body));
+      // THIS PAGE NAMES ONLY CLAUDE, CHATGPT AND CLAUDE CODE (owner,
+      // 2026-09-18; R7a). It named Cursor, VS Code and Cline in its GitHub
+      // line, a troubleshooting row and the reach list; the IDE hosts live in
+      // the install repository's README. DECLARED HERE, inside the block (the
+      // guard executes this block alone).
+      const IDE_HOST = /\b(?:Cursor|VS Code|Visual Studio Code|Cline|Windsurf|Zed|Gemini CLI|Codex CLI)\b|More…/;
+      const seekerHosts = D.MCP_HOSTS.filter((x) => x.page);
+      const keptTrouble = D.MCP_TROUBLESHOOTING
+        .map((r) => ({ ...r, see: scrubRetired(r.see), why: scrubRetired(r.why), fix: scrubRetired(r.fix) }))
+        .filter((r) => r.see && r.why && r.fix && !IDE_HOST.test(`${r.see} ${r.why} ${r.fix}`));
       // The joiner the mirror exports: commas and one final "and", and
       // semicolons when an item carries its own "and" — never "and … and".
       const andList = D.andList;
-      const withHeader = andList(D.MCP_HOSTS.filter((x) => x.header).map((x) => x.name));
-      const withSignIn = andList(D.MCP_HOSTS.filter((x) => !x.header && x.oauth).map((x) => x.name));
-      const withoutHeader = andList(D.MCP_HOSTS.filter((x) => !x.header && !x.oauth).map((x) => x.name));
+      const withHeader = andList(seekerHosts.filter((x) => x.header).map((x) => x.name));
+      const withSignIn = andList(seekerHosts.filter((x) => !x.header && x.oauth).map((x) => x.name));
+      const withoutHeader = andList(seekerHosts.filter((x) => !x.header && !x.oauth).map((x) => x.name));
       // The unkeyed tier: names and caps from the same mirror the server's
       // constants are pinned to (a-first-call-with-no-key guard), never typed.
       // DECLARED BEFORE THE TWO SENTENCES THAT READ THEM (the 2026-09-16 bake).
-      const unkeyedNames = codes(D.MCP_ANON_TOOLS);
+      const unkeyedNames = codes(D.MCP_ANON_TOOLS.filter(toolKept));
       const unkeyedCaps = `${D.MCP_ANON_CAPS.perAddressPerDay} calls a day per network address (from ChatGPT, per person; from Claude, a shared pool of ${D.MCP_ANON_CAPS.hostPoolPerDay} first), search capped at ${D.MCP_ANON_CAPS.searchRows} rows`;
       const signInSentence = withSignIn
-        ? ` From ${h(withSignIn)}: a sign-in instead of a key, while the server's sign-in service is on — the call then runs on your own account key (the same row, quota and pass a pasted key would use); before sign-in, or while it is off, the unkeyed tools — ${unkeyedNames} — still answer, ${unkeyedCaps}.`
+        ? ` From ${h(withSignIn)}: a sign-in instead of a key, while the server's sign-in service is on — the call then runs on your own account key (the same row and quota a pasted key would use); before sign-in, or while it is off, the unkeyed tools — ${unkeyedNames} — still answer, ${unkeyedCaps}.`
         : "";
       const unkeyedOnlySentence = withoutHeader
         ? ` From ${h(withoutHeader)}: the unkeyed tools only, under the same caps — there is no field for the key and no sign-in.`
         : "";
       const hostBadge = (x) => (x.header ? "reaches every tool" : x.oauth ? "sign in when needed" : "unkeyed tools only");
       const paidSentence = D.MCP_PAID_TOOLS.length
-        ? ` ${codes(D.MCP_PAID_TOOLS)} ${D.MCP_PAID_TOOLS.length === 1 ? "needs" : "need"} a paid key, exactly like <code>POST /v1/fit</code> on the data API.`
+        ? ` ${codes(D.MCP_PAID_TOOLS)} ${D.MCP_PAID_TOOLS.length === 1 ? "gives" : "give"} ${h(D.MCP_FIT_ALLOWANCE)}, counted together with <code>POST /v1/fit</code> on the data API.`
         : "";
       // The steps, rendered through the same inline parser the page uses:
       // **label** → <strong>, `code` → <code>, everything else escaped.
@@ -2902,18 +3715,49 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
       // THE TILES: the page hosts only, in the mirror's order; then the one
       // line for everyone else, its names and its link off the mirror.
       const hostButtons = D.MCP_PAGE_HOSTS.map((x) => `<a href="#${x.id}" class="block p-3 rounded-2xl border border-border"><span class="block font-semibold text-foreground">${h(x.name)}</span>${x.small ? `<span class="block text-xs text-muted-foreground">${h(x.small)}</span>` : ""}</a>`).join("");
-      const otherAgentsLine = `<p class="text-sm text-muted-foreground text-center mb-6">${h(D.MCP_OTHER_AGENTS_LINE.lead)} <a href="${h(D.MCP_OTHER_AGENTS_LINE.href)}">${h(D.MCP_OTHER_AGENTS_LINE.link)}</a></p>`;
+      // The one line for every other app, naming none of them (R7a); the link
+      // is the mirror's, the install repository.
+      const otherAgentsLine = `<p class="text-sm text-muted-foreground text-center mb-6">Using a different app? Setup for other apps is in <a href="${h(D.MCP_OTHER_AGENTS_LINE.href)}">the install repository on GitHub →</a></p>`;
       const whenLabel = (r) => (r.when === "on" ? " (while sign-in is on)" : r.when === "off" ? " (while sign-in is off)" : "");
-      const troubleRows = D.MCP_TROUBLESHOOTING.map((r) => `<tr class="border-b border-border align-top"><td class="py-2 pr-3 text-foreground">${inline(r.see)}${whenLabel(r)}</td><td class="py-2 pr-3 text-muted-foreground">${inline(r.why)}</td><td class="py-2 text-muted-foreground">${inline(r.fix)}</td></tr>`).join("");
+      const troubleRows = keptTrouble.map((r) => `<tr class="border-b border-border align-top"><td class="py-2 pr-3 text-foreground">${inline(r.see)}${whenLabel(r)}</td><td class="py-2 pr-3 text-muted-foreground">${inline(r.why)}</td><td class="py-2 text-muted-foreground">${inline(r.fix)}</td></tr>`).join("");
       write({
         path: "/agents",
         title: "Connect Your Agent — MCP Server for the Live Job Board",
-        description: `Point any MCP-capable AI agent at ${countClause} from employers' own hiring systems. Search free; apply on the $${agentPlanPrice}/month Agent plan or a $${passPrice} pass.`,
-        jsonLd: [breadcrumbLd([{ name: "Home", path: "/" }, { name: "Connect your agent", path: "/agents" }])],
+        // Inside the snippet budget with its date (OBS-2, SEO-026); spelled
+        // inline, because the guard runs this block alone.
+        description: [
+          `Connect Claude, ChatGPT or Claude Code to ${countClause} from employers' own hiring systems. Search free; apply yourself on the employer's site.`,
+          `Connect Claude, ChatGPT or Claude Code to ${countClause} from employers' own hiring systems, free.`,
+        ].find((d) => d.length <= 160) ?? `Connect Claude, ChatGPT or Claude Code to the live job board, free.`,
+        jsonLd: [
+          breadcrumbLd([{ name: "Home", path: "/" }, { name: "Connect your agent", path: "/agents" }]),
+          // THE MCP SERVER AS SOFTWARE (SEO-011a): /agents carried only a
+          // WebSite and a BreadcrumbList. The install repository and the
+          // registry entry describe the software, so they are its sameAs, not
+          // the Organization's.
+          {
+            "@context": "https://schema.org",
+            "@type": "SoftwareApplication",
+            "@id": `${SITE}/agents#mcp-server`,
+            name: "Resume Booster job board MCP server",
+            alternateName: "work.resumebooster/jobs",
+            applicationCategory: "DeveloperApplication",
+            operatingSystem: "Any MCP client (remote server, Streamable HTTP)",
+            url: `${SITE}/agents`,
+            ...(mcpUrl ? { installUrl: mcpUrl } : {}),
+            description: `A remote MCP server over the live job board: search and read tools for ${countClause}, free to start with no key.`,
+            // Google's software-app result asks for an offer; the server is
+            // free to start (the keyless allowance). No rating is claimed: none
+            // exists that could be stated honestly.
+            offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+            publisher: { "@id": `${SITE}/#org` },
+            sameAs: [D.MCP_INSTALL_REPO_URL, "https://registry.modelcontextprotocol.io/v0/servers?search=work.resumebooster/jobs"],
+          },
+        ],
         content: `
           ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Connect your agent" }])}
           <h1 class="text-3xl font-bold mb-3">Your AI agent can use this job board directly</h1>
-          <p class="text-muted-foreground mb-8">Search ${countClause} from employers' own hiring systems, read full postings, check a shortlist is still open, and — on the Agent plan ($${agentPlanPrice}/month) or a live pass ($${passPrice} for ${passHours} hours) — ask your apply agent to submit applications for you. The server is listed in the official MCP registry as <code>work.resumebooster/jobs</code>.</p>
+          <p class="text-muted-foreground mb-8">Search ${countClause} from employers' own hiring systems, read full postings and check a shortlist is still open, from the AI you already use. ${h(APPLY_YOURSELF_LINE)} The server is listed in the official MCP registry as <code>work.resumebooster/jobs</code>.</p>
           <section class="mb-8"><h2 class="text-xl font-bold mb-2">Which agent do you use?</h2>
             <p class="text-sm text-muted-foreground mb-3">Pick one. You will see only the steps for that app.</p>
             <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">${hostButtons}</div>
@@ -2936,35 +3780,29 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
             <p class="text-sm text-muted-foreground mt-2">${h(D.MCP_WITHHELD_NOTE)}</p>
           </section>
           <section class="mb-8"><h2 class="text-xl font-bold mb-3">Two kinds of key</h2>
-            <p class="text-sm text-muted-foreground mb-2">Read tools — ${codes(D.MCP_READ_TOOLS)} — work with any free API key from <a href="/data-api">Hiring Data &amp; API</a>: no account, no card.${paidSentence}</p>
-            <p class="text-sm text-muted-foreground">Apply tools — ${codes(D.MCP_APPLY_TOOLS)} — act on your account, so they need an agent key minted from a signed-in session on this page, plus an active <a href="/agent">Agent plan</a> ($${agentPlanPrice}/month) or a live pass ($${passPrice} for ${passHours} hours, sold on the page) and the mandate set up in Account. Read-only keys stay read-only by design. A free key meters at ${FREE_KEY_RATE_SENTENCE}.</p>
+            <p class="text-sm text-muted-foreground mb-2">Read tools — ${codes(D.MCP_READ_TOOLS.filter(toolKept))} — work with any free API key from <a href="/data-api">Hiring Data &amp; API</a>: no account, no card.${paidSentence}</p>
+            <p class="text-sm text-muted-foreground">Read-only keys stay read-only by design. A free key meters at ${FREE_KEY_RATE_SENTENCE}.</p>
           </section>
           <section class="mb-8"><h2 class="text-xl font-bold mb-3">Which hosts can reach which tools</h2>
             <p class="text-sm text-muted-foreground mb-2">Every keyed tool call carries a credential, and hosts hold it two ways. From ${h(withHeader)}: the key in an Authorization header — every tool your key's tier allows.${signInSentence}${unkeyedOnlySentence} Each host's own note below says which.</p>
-            <ul class="space-y-1.5">${D.MCP_HOSTS.map((x) => `<li class="text-sm text-muted-foreground"><strong class="text-foreground">${h(x.name)}</strong> — ${hostBadge(x)}: ${h(x.how)}.</li>`).join("")}</ul>
+            <ul class="space-y-1.5">${seekerHosts.map((x) => `<li class="text-sm text-muted-foreground"><strong class="text-foreground">${h(x.name)}</strong> — ${hostBadge(x)}: ${h(x.how)}.</li>`).join("")}</ul>
+            <p class="text-sm text-muted-foreground mt-2">Any other app reaches every tool your key allows when it can send an Authorization header; how to set each one up is in <a href="${h(D.MCP_INSTALL_REPO_URL)}">the install repository</a>.</p>
           </section>
-          <section class="mb-8"><h2 class="text-xl font-bold mb-3">All ${D.MCP_TOOLS.length} tools</h2>
-            <ul class="space-y-1.5">${D.MCP_TOOLS.map((t) => `<li class="text-sm text-muted-foreground"><code>${t.name}</code> (${badge[t.tier]}${D.MCP_ANON_TOOL_NAMES.includes(t.name) ? `; answers with no key, ${D.MCP_ANON_CAPS.perAddressPerDay}/day per network address` : ""}) — ${h(t.body)}</li>`).join("")}</ul>
+          <section class="mb-8"><h2 class="text-xl font-bold mb-3">The search and read tools</h2>
+            <ul class="space-y-1.5">${keptTools.map((t) => `<li class="text-sm text-muted-foreground"><code>${t.name}</code> (${badge[t.tier] ?? "key"}${D.MCP_ANON_TOOL_NAMES.includes(t.name) ? `; answers with no key, ${D.MCP_ANON_CAPS.perAddressPerDay}/day per network address` : ""}) — ${h(scrubRetired(t.body))}</li>`).join("")}</ul>
           </section>
           <section class="mb-8"><h2 class="text-xl font-bold mb-3">Prompts and resources your host can list</h2>
             <p class="text-sm text-muted-foreground mb-2">Beside the tools, the server registers ready-made prompts and a few readable documents. Hosts that list them show them under the server's name; listing costs no call and needs no key.</p>
             <h3 class="text-sm font-semibold mt-3 mb-1">Prompts</h3>
-            <ul class="space-y-1.5">${D.MCP_PROMPTS.map((p) => `<li class="text-sm text-muted-foreground"><code>${p.name}</code> — ${h(p.title)}: ${h(p.body)}</li>`).join("")}</ul>
+            <ul class="space-y-1.5">${keptPrompts.map((p) => `<li class="text-sm text-muted-foreground"><code>${p.name}</code> — ${h(p.title)}: ${h(scrubRetired(p.body))}</li>`).join("")}</ul>
             <h3 class="text-sm font-semibold mt-3 mb-1">Resources</h3>
-            <ul class="space-y-1.5">${D.MCP_RESOURCES.map((r) => `<li class="text-sm text-muted-foreground"><code>${h(r.uri)}</code> (${r.keyed ? "needs a key or sign-in" : "reads with no key"}) — ${h(r.body)}</li>`).join("")}</ul>
+            <ul class="space-y-1.5">${D.MCP_RESOURCES.filter((r) => scrubRetired(r.body)).map((r) => `<li class="text-sm text-muted-foreground"><code>${h(r.uri)}</code> (${r.keyed ? "needs a key or sign-in" : "reads with no key"}) — ${h(scrubRetired(r.body))}</li>`).join("")}</ul>
             <p class="text-sm text-muted-foreground mt-3">On the <a href="/jobs">board</a>, every posting and every search has a control that copies a prompt for your agent — it names the posting's id or the search's arguments and this server's URL.</p>
           </section>
-          <section class="mb-8"><h2 class="text-xl font-bold mb-3">What your agent can and cannot do</h2>
-            <p class="text-sm text-muted-foreground mb-2">Applications requested here go through the exact same pipeline as the signed-in flow — the MCP layer is a translator, never a bypass. Your agent can do at most what you could do yourself, signed in.</p>
-            <ul class="space-y-1.5">
-              <li class="text-sm text-muted-foreground"><strong class="text-foreground">Your mandate's off switch always wins.</strong> Agent switched off or paused in Account? Every request refuses, including from this endpoint.</li>
-              <li class="text-sm text-muted-foreground"><strong class="text-foreground">The honesty classifier never invents answers.</strong> Application answers are drawn from your own profile; any answer it cannot support blocks the send and waits for you.</li>
-              <li class="text-sm text-muted-foreground"><strong class="text-foreground">Only ${D.SENDABLE_VENDOR_LABELS.length} hiring systems are agent-submittable today:</strong> ${h(D.SENDABLE_VENDOR_SENTENCE)}. Jobs on other systems get prepared for you to send yourself — <code>check_apply_support</code> tells you which is which before you ask.</li>
-              <li class="text-sm text-muted-foreground"><strong class="text-foreground">Daily caps apply.</strong> The same release caps as the signed-in agent — a connected agent does not get a bigger allowance.</li>
-              <li class="text-sm text-muted-foreground"><strong class="text-foreground">Every refusal is named.</strong> A request that does not go out shows up in <code>application_status</code> with the refusing gate stated, not a silent disappearance.</li>
-            </ul>
+          <section id="apply-yourself" class="mb-8"><h2 class="text-xl font-bold mb-3">Applying stays yours</h2>
+            <p class="text-sm text-muted-foreground">${h(APPLY_YOURSELF_LINE)} Your AI can read a posting in full and help you draft; you check every answer before it goes anywhere.</p>
           </section>
-          <p class="text-sm text-muted-foreground">Rather integrate with code? The plain JSON API at <a href="/data-api">Hiring Data &amp; API</a> (/v1) covers the same data with cursors and ETags. The install blocks for every host — the apps above and the rest — are published as a repository with a README that says the same things in the same order: <a href="${h(D.MCP_INSTALL_REPO_URL)}">${h(D.MCP_INSTALL_REPO_URL)}</a>. The board itself is at <a href="/jobs">/jobs</a>; the apply agent is described at <a href="/agent">/agent</a>.</p>`,
+          <p class="text-sm text-muted-foreground">Rather integrate with code? The plain JSON API at <a href="/data-api">Hiring Data &amp; API</a> (/v1) covers the same data with cursors and ETags. The install blocks for every host — the apps above and the rest — are published as a repository with a README that says the same things in the same order: <a href="${h(D.MCP_INSTALL_REPO_URL)}">${h(D.MCP_INSTALL_REPO_URL)}</a>. The board itself is at <a href="/jobs">/jobs</a>.</p>`,
       });
 
       // /mcp is NOT the server address. Measured 2026-09-16: the branded URL
@@ -3054,23 +3892,49 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
         <p class="text-muted-foreground mb-6">This page needs an account. <a href="/auth" class="text-primary underline">Sign in</a> to continue, or <a href="/" class="text-primary underline">run the free resume scan</a> — that needs no account at all.</p>`,
     });
 
+    // WHAT AN AFFILIATE IS PAID, FROM THE MIRROR THE SERVER'S PAYOUTS ARE
+    // PINNED TO (S12-133). The title, the description and the body said
+    // "20% on every sale" while stripe-webhook and verify-product-purchase
+    // credit a flat amount (src/config/affiliate-commission.ts, held equal to
+    // the server's rule by w4b-an-affiliate-earns-a-flat-amount-on-a-first-
+    // paid-pro-month). Since wave 4's re-base of the product line the one
+    // commission is a flat amount on a referred first paid month of Pro
+    // (AFFILIATE_PRO_FIRST_MONTH_CENTS); React renders it from the same
+    // constant and the main locale's affiliates.proCommission strings, and so
+    // does this: nothing here types a figure, and there is no English
+    // fallback, so a missing key fails the bake's own check instead of
+    // printing a commission the server does not pay. "Paid monthly" is gone
+    // too: a payout is requested from the dashboard and arranged by email
+    // (affiliates.payout.received).
+    const AFF = (D.EN_LOCALE && D.EN_LOCALE.affiliates && D.EN_LOCALE.affiliates.proCommission) || {};
+    const affRate = { amount: D.formatUsd(D.AFFILIATE_PRO_FIRST_MONTH_CENTS) };
+    const affFill = (s, key) => {
+      if (!s) throw new Error(`[prerender-seo] affiliates.proCommission.${key} is missing from the main locale`);
+      return fillCopy(s, affRate, "affiliates.proCommission");
+    };
+    const affHeadline = affFill(AFF.headline, "headline");
+    const affHow = affFill(AFF.howItWorks, "howItWorks");
+    const affTagline = affFill(AFF.tagline, "tagline");
     write({
       path: "/affiliates",
-      title: "Affiliate Program — Earn 20% on Every Referral",
-      description: "Earn 20% commission on every sale you refer, with a 30-day cookie and monthly payouts. Join the Resume Booster affiliate program or sign in to your dashboard.",
+      title: `Affiliate Program — ${affRate.amount} per Referred First Month of Pro`,
+      description: fitDesc(
+        `Earn ${affHeadline} from the people you refer to Resume Booster, with a 30-day attribution window. Join the affiliate program or sign in to your dashboard.`,
+        `Earn ${affHeadline} from the people you refer to Resume Booster, with a 30-day attribution window.`,
+      ),
       jsonLd: [breadcrumbLd([{ name: "Home", path: "/" }, { name: "Affiliate Program", path: "/affiliates" }])],
       content: `
         ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Affiliate Program" }])}
         <h1 class="text-3xl font-bold mb-3">Join the Resume Booster affiliate program</h1>
-        <p class="text-muted-foreground mb-8">Earn 20% commission on every sale you refer. 30-day cookie, paid monthly, and a dashboard that shows referrals and earnings over any date range you pick.</p>
+        <p class="text-muted-foreground mb-8">${esc(affTagline)} ${esc(affHeadline)}, a 30-day attribution window, and a dashboard that shows referrals and earnings over any date range you pick.</p>
         <section class="mb-8"><h2 class="text-xl font-bold mb-3">The terms</h2>
           <ul class="space-y-2 text-sm text-muted-foreground">
-            <li class="rounded-xl border border-border bg-card p-4"><span class="font-semibold text-foreground">20% commission</span> on every sale from someone you referred.</li>
-            <li class="rounded-xl border border-border bg-card p-4"><span class="font-semibold text-foreground">30-day cookie</span> — you are credited if they buy within 30 days of clicking your link.</li>
-            <li class="rounded-xl border border-border bg-card p-4"><span class="font-semibold text-foreground">Paid monthly</span>, with per-referral detail in your dashboard.</li>
+            <li class="rounded-xl border border-border bg-card p-4"><span class="font-semibold text-foreground">${esc(affHeadline)}</span>: ${esc(affHow)}</li>
+            <li class="rounded-xl border border-border bg-card p-4"><span class="font-semibold text-foreground">30-day attribution window</span> — you are credited if they buy within 30 days of clicking your link.</li>
+            <li class="rounded-xl border border-border bg-card p-4"><span class="font-semibold text-foreground">Payouts on request</span> — you request one from your dashboard and we email you to arrange payment.</li>
           </ul>
         </section>
-        <p class="text-sm text-muted-foreground mb-8">What you would be referring people to: a resume scanner whose full diagnostic is free with no signup, and a job board of verified openings pulled straight from employers' own hiring systems. Sign-up and login are on this page in the app.</p>
+        <p class="text-sm text-muted-foreground mb-8">What you would be referring people to: a resume scanner whose full diagnostic is free with no signup, and a job board of live openings read from employers' own hiring systems. Sign-up and login are on this page in the app.</p>
         ${cta("See the product first", "Run the free scan yourself before you recommend it — that is the honest order.", "Scan my resume free")}`,
     });
   }
@@ -3084,25 +3948,61 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
   // section headings from the same locale keys the app renders, and the
   // contact address. The full text renders in the browser at the same URL.
   {
-    const legal = (path, key, updated, partyLine) => {
+    // THE FULL TEXT, NOT ITS HEADINGS (SEO-029, S13-133): read from the page
+    // files the app renders (scripts/prerender-legal.mjs), the interpolations
+    // filled from the same constants those pages import. A file the converter
+    // cannot read falls back to the headings and says so in the log.
+    const fullAnalysis = (D.PRODUCTS && D.PRODUCTS.fullAnalysis) || D.getAllProducts().find((p) => p.id === "fullAnalysis" || p.id === "full_analysis");
+    const LEGAL_VARS = {
+      AI_CACHE_MAX_HOURS: D.AI_CACHE_MAX_HOURS,
+      SHARED_ANALYSIS_DAYS: D.SHARED_ANALYSIS_DAYS,
+      TEMP_RESUME_HOURS: D.TEMP_RESUME_HOURS,
+      REPORT_CACHE_DAYS: D.REPORT_CACHE_DAYS,
+      PRIVACY_EMAIL: D.PRIVACY_EMAIL,
+      // The privacy page's table of what reaches us from an AI, row by row.
+      MCP_PRIVACY_ROWS: D.MCP_PRIVACY_ROWS,
+      ...(fullAnalysis && typeof fullAnalysis.priceUsd === "number" ? { fullAnalysisPrice: `$${fullAnalysis.priceUsd.toFixed(2)} USD` } : {}),
+    };
+    const legalFailed = [];
+    const legal = (path, key, updated, partyLine, file) => {
       const L = (D.EN_LOCALE && D.EN_LOCALE[key]) || {};
       const heads = Object.values(L.sections || {}).filter((h) => typeof h === "string");
+      let body = null;
+      try {
+        body = legalBodyFromTsx(readFileSync(join(root, file), "utf8"), { locale: D.EN_LOCALE, vars: LEGAL_VARS, esc });
+        if (legalText(body).length < 3000) throw new Error(`only ${legalText(body).length} characters converted`);
+      } catch (e) {
+        legalFailed.push(`${path}: ${e?.message || e}`);
+        body = null;
+      }
+      // Built up to the snippet budget (OBS-2): as many section names as fit.
+      const names = heads.filter((h) => /^\d+\.\s/.test(h)).map((h) => h.replace(/^[\d.]+\s*/, ""));
+      let description = `${L.title} for resumebooster.work, last updated ${updated}.`;
+      for (let n = Math.min(names.length, 6); n >= 1; n--) {
+        const d = `${L.title} for resumebooster.work, last updated ${updated}: ${names.slice(0, n).join(", ")} and more.`;
+        if (d.length <= 160) { description = d; break; }
+      }
       write({
         path,
         title: `${L.title} — Resume Booster`,
-        description: `${L.title} for resumebooster.work, last updated ${updated}: ${heads.slice(0, 4).map((h) => h.replace(/^[\d.]+\s*/, "")).join(", ")} and more.`,
+        description,
         content: `
           <h1 class="text-3xl font-bold mb-3">${esc(L.title)}</h1>
           <p class="text-sm text-muted-foreground mb-4">Last updated: ${esc(updated)}</p>
           ${partyLine ? `<p class="text-sm text-muted-foreground mb-4">${partyLine}</p>` : ""}
-          <p class="text-sm text-muted-foreground mb-6">The full text renders at this address in your browser. Its sections:</p>
-          <ol class="text-sm space-y-1">${heads.map((h) => `<li>${esc(h)}</li>`).join("")}</ol>
+          ${L.legalNotice ? `<p class="text-sm text-muted-foreground mb-6"><em>${esc(L.legalNotice)}</em></p>` : ""}
+          ${body
+            ? `<div class="legal-text">${body}</div>`
+            : `<p class="text-sm text-muted-foreground mb-6">The full text renders at this address in your browser. Its sections:</p>
+          <ol class="text-sm space-y-1">${heads.map((h) => `<li>${esc(h)}</li>`).join("")}</ol>`}
           <p class="text-sm text-muted-foreground mt-6">Questions: <a href="mailto:${D.PRIVACY_EMAIL}">${D.PRIVACY_EMAIL}</a>.</p>`,
         jsonLd: [breadcrumbLd([{ name: "Home", path: "/" }, { name: L.title, path }])],
       });
     };
-    legal("/terms", "terms", D.TERMS_LAST_UPDATED, SELLER_ID ? `These Terms are an agreement between you and ${esc(SELLER_ID.legalName)}, ${esc(SELLER_ID.postalAddress)}.` : "");
-    legal("/privacy", "privacy", D.PRIVACY_LAST_UPDATED, SELLER_ID ? `The controller of your personal data is ${esc(SELLER_ID.legalName)}, ${esc(SELLER_ID.postalAddress)}.` : "");
+    legal("/terms", "terms", D.TERMS_LAST_UPDATED, SELLER_ID ? `These Terms are an agreement between you and ${esc(SELLER_ID.legalName)}, ${esc(SELLER_ID.postalAddress)}.` : "", "src/pages/Terms.tsx");
+    legal("/privacy", "privacy", D.PRIVACY_LAST_UPDATED, SELLER_ID ? `The controller of your personal data is ${esc(SELLER_ID.legalName)}, ${esc(SELLER_ID.postalAddress)}.` : "", "src/pages/Privacy.tsx");
+    if (legalFailed.length) console.error(`[prerender-seo] legal text NOT baked (headings only): ${legalFailed.join(" | ")}`);
+    else console.log("[prerender-seo] /terms and /privacy: full text baked from the pages the app renders");
   }
 
   // ---- /pricing, /changelog, /explore ----
@@ -3110,30 +4010,45 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
   // (audit 2026-07-25): the money page had no pricing title/description/
   // canonical in served HTML, and /explore wasn't in the sitemap at all.
   {
-    const paid = D.getAllProducts().filter((p) => typeof p.priceUsd === "number" && p.priceUsd > 0);
+    // ONLY WHAT IS ON SALE. The products mirror (src/config/products.ts) still
+    // carries the retired one-time products and the agent's plan and pass, for
+    // the checkouts and the records of past buyers; a crawler must not be
+    // offered any of them (the apply pivot, 2026-10-11, and the Premium
+    // package's retirement, 2026-10-12). RETIRED_PRODUCT_IDS
+    // (scripts/prerender-retired.mjs) leaves them out of the list and the
+    // offer range, and the one monthly plan baked is Pro.
+    const paid = D.getAllProducts().filter((p) => typeof p.priceUsd === "number" && p.priceUsd > 0 && !RETIRED_PRODUCT_IDS.includes(p.id));
     const minP = Math.min(...paid.map((p) => p.priceUsd));
     const maxP = Math.max(...paid.map((p) => p.priceUsd));
-    // THE TWO MONTHLY PLANS AND THE PASS, FROM THE MIRRORS THE CHECKOUT
-    // FUNCTIONS ARE PINNED TO (pricing-truth), never typed. Until now this
-    // page told a crawler the plans existed and sent it to the app for the
-    // figure — so the page a pricing query lands on served no monthly price
-    // to anything that does not run JavaScript. The sentences are the app's
-    // own locale strings with the same placeholders filled from the same
-    // mirrors; the plan rows read the mirror directly, so the prices stand
-    // even if a locale key goes missing.
+    // THE MONTHLY PLAN, FROM THE MIRROR THE CHECKOUT FUNCTIONS ARE PINNED TO
+    // (pricing-truth), never typed: the page a pricing query lands on states
+    // the monthly price to anything that does not run JavaScript.
     const proPlan = D.SUBSCRIPTIONS.pro;
-    const agentPlan = D.SUBSCRIPTIONS.agent;
-    const passCopy = { passPrice: D.PASS.priceUsd, passHours: D.PASS.sessionHours, passApplications: D.PASS.applications };
-    const subscriptionAnswer = fillCopy(D.EN_LOCALE?.faq?.questions?.subscription?.answer, { proPrice: proPlan.priceUsd, agentPrice: agentPlan.priceUsd }, "faq.subscription");
-    const passLine = fillCopy(D.EN_LOCALE?.pricingPage?.passLine, passCopy, "pricingPage.passLine");
-    // The offer range mirrors Pricing.tsx: every visible one-time product,
-    // both plans and the pass — a ceiling the catalogue has outgrown is a
-    // rich result that lies.
-    const offerPrices = [...paid.map((p) => p.priceUsd), proPlan.priceUsd, agentPlan.priceUsd, D.PASS.priceUsd];
+    // The offer range: every one-time product still on sale and Pro. A
+    // ceiling the catalogue has moved past is a rich result that lies.
+    const offerPrices = [...paid.map((p) => p.priceUsd), proPlan.priceUsd];
+    // ONE PRODUCT IS NAMED, NOT RANGED (the merge recheck, 2026-10-25). Wave 4
+    // sells one thing once, the Full Analysis, and the writing tools through
+    // Pro; this template, written for a list, rendered a one-item list as
+    // "One-Time Tools from $5" and "$5–$5". With one product the head and the
+    // lead are React's own strings (pricingPage.metaDescriptionFa and
+    // oneTimeAndProLineFa, filled from the catalogue, no English fallback), and
+    // Pro is the summary line the page and Stripe read (pro-perks.ts).
+    const one = paid.length === 1 ? paid[0] : null;
+    const PP = (D.EN_LOCALE && D.EN_LOCALE.pricingPage) || {};
+    const ppFill = (key, vals) => {
+      if (!PP[key]) throw new Error(`[prerender-seo] pricingPage.${key} is missing from the main locale`);
+      return fillCopy(PP[key], vals, `pricingPage.${key}`);
+    };
+    const pricingLead = one
+      ? ppFill("oneTimeAndProLineFa", { price: one.priceUsd })
+      : "Paid tools are one-time purchases, not subscriptions; an optional Pro plan covers everything for people applying at volume.";
     write({
       path: "/pricing",
-      title: `Pricing — Free Resume Scan, One-Time Tools from $${minP}`,
-      description: `The diagnostic resume scan is free — 7 scans a day, no signup. One-time tools $${minP}–$${maxP}; Pro $${proPlan.priceUsd}/month; Apply Agent $${agentPlan.priceUsd}/month; a $${D.PASS.priceUsd} pass for your own agent.`,
+      title: one ? `Pricing — Free Scan, $${one.priceUsd} ${one.name} or Pro $${proPlan.priceUsd}/month` : `Pricing — Free Resume Scan, One-Time Tools from $${minP}`,
+      description: one
+        ? ppFill("metaDescriptionFa", { lowPrice: one.priceUsd, highPrice: one.priceUsd, proPrice: proPlan.priceUsd })
+        : `The diagnostic resume scan and the job board are free, 7 scans a day with no signup. One-time tools $${minP}–$${maxP}; Pro $${proPlan.priceUsd}/month.`,
       jsonLd: [
         breadcrumbLd([{ name: "Home", path: "/" }, { name: "Pricing", path: "/pricing" }]),
         {
@@ -3155,19 +4070,17 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
       content: `
         ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Pricing" }])}
         <h1 class="text-3xl font-bold mb-3">Pricing</h1>
-        <p class="text-muted-foreground mb-6">The core product is free: the full diagnostic resume scan — score with audit trail, missing keywords, weakest bullets rewritten, ATS vendor checks — costs nothing, 7 scans a day with no signup (15 with a free account). The job board and its filters are free too. Paid tools are one-time purchases, not subscriptions; an optional Pro plan covers everything for people applying at volume.</p>
-        <section class="mb-8"><h2 class="text-xl font-bold mb-3">One-time tools</h2>
+        <p class="text-muted-foreground mb-6">The core product is free: the full diagnostic resume scan — score with audit trail, missing keywords, weakest bullets rewritten, ATS vendor checks — costs nothing, 7 scans a day with no signup (15 with a free account). The job board and its filters are free too, and so is connecting your own AI to it. ${esc(pricingLead)}</p>
+        <section class="mb-8"><h2 class="text-xl font-bold mb-3">${one ? "One paid report" : "One-time tools"}</h2>
           <div class="space-y-2">${paid.map((p) => `<div class="rounded-xl border border-border bg-card p-4 flex items-start justify-between gap-4"><div><p class="text-sm font-semibold text-foreground">${esc(p.name)}</p><p class="text-xs text-muted-foreground mt-0.5">${esc(p.description || "")}</p></div><p class="text-sm font-bold text-foreground whitespace-nowrap">$${p.priceUsd}</p></div>`).join("")}</div>
         </section>
-        <section class="mb-8"><h2 class="text-xl font-bold mb-3">Two monthly plans, and a pass</h2>
+        <section class="mb-8"><h2 class="text-xl font-bold mb-3">One monthly plan</h2>
           <div class="space-y-2">
-            <div class="rounded-xl border border-border bg-card p-4 flex items-start justify-between gap-4"><div><p class="text-sm font-semibold text-foreground">${esc(proPlan.name)}</p><p class="text-xs text-muted-foreground mt-0.5">Unlimited scans and every paid tool included.</p></div><p class="text-sm font-bold text-foreground whitespace-nowrap">$${proPlan.priceUsd}/${esc(proPlan.interval)}</p></div>
-            <div class="rounded-xl border border-border bg-card p-4 flex items-start justify-between gap-4"><div><p class="text-sm font-semibold text-foreground">Apply Agent (${esc(agentPlan.name)})</p><p class="text-xs text-muted-foreground mt-0.5">Includes everything in Pro; the agent prepares a shortlist for you overnight.</p></div><p class="text-sm font-bold text-foreground whitespace-nowrap">$${agentPlan.priceUsd}/${esc(agentPlan.interval)}</p></div>
+            <div class="rounded-xl border border-border bg-card p-4 flex items-start justify-between gap-4"><div><p class="text-sm font-semibold text-foreground">${esc(proPlan.name)}</p><p class="text-xs text-muted-foreground mt-0.5">${esc(D.PRO_SUMMARY.text)}.</p></div><p class="text-sm font-bold text-foreground whitespace-nowrap">$${proPlan.priceUsd}/${esc(proPlan.interval)}</p></div>
           </div>
-          <p class="text-sm text-muted-foreground mt-3">${esc(subscriptionAnswer)}</p>
-          <p class="text-sm text-muted-foreground mt-2">${esc(passLine)} <a href="/agents" class="text-primary">Connect your agent →</a></p>
+          <p class="text-sm text-muted-foreground mt-3">${one ? `The ${esc(one.name)} is a one-time payment that never renews.` : "Every report and tool above is a one-time payment that never renews."} Pro renews every month until you cancel; nothing else upgrades you automatically. The resume scan and the job board stay free either way.</p>
+          <p class="text-sm text-muted-foreground mt-2">${esc(APPLY_YOURSELF_LINE)} <a href="/agents" class="text-primary">${esc(FOOTER_AGENTS_LABEL)} →</a></p>
         </section>
-        <p class="text-sm text-muted-foreground mb-8">Current bundle discounts are shown live on this page in the app.</p>
         ${cta("Start with the free scan", "See the full diagnostic before spending anything — most people need nothing else.", "Scan my resume free")}`,
     });
 
@@ -3238,7 +4151,9 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
       // this path with a Googlebot UA, never in a browser -- a browser runs the
       // React render and cannot see this document at all.
       title: "Explore Every Field on the Board — An Exact Live Count and the Roles Inside Each One",
-      description: "Start from the field you work in, narrow to the actual role, then to remote, pay, experience or country — every number is a live count of the exact search the link runs, with how much of that field each filter can even see. Plus what our closure record does and does not say about the employers hiring in that slice.",
+      // Under 160 at the source (OBS-2): it ran to 316 and the clamp cut it.
+      // The React head (Explore.tsx seoDescription5) is the react group's.
+      description: "Every field on the board with a live count, the roles inside each, and remote, pay, experience and country filters that say how much of the field they can see.",
       jsonLd: [
         breadcrumbLd([{ name: "Home", path: "/" }, { name: "Explore", path: "/explore" }]),
         {
@@ -3247,7 +4162,7 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
           name: "Explore every field on the board",
           description: "Every field on the board, ordered by how many roles are open in it right now and each printed with its count, plus the bucket of roles our own field rules could not sort. Open a field for the roles inside it priced by live counts, the narrowings that say how much of that field each one can even see, and what our own closure record does and does not say about the employers hiring in that slice.",
           url: `${SITE}/explore`,
-          isPartOf: { "@type": "WebSite", name: "Resume Booster", url: SITE },
+          isPartOf: websiteRef(SITE),
         },
       ],
       content: `
@@ -3306,6 +4221,100 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
     });
   }
 
+  // ---- /about (SEO-011a) ----
+  // /about answered with the homepage copy (canonical "/", 22,727 bytes) on
+  // the live site and in the bake. It now says who runs the site, what the
+  // board is, how its counts are made and on what date basis, from the same
+  // snapshot and sentences every other page uses, and it is linked from the
+  // footer, llms.txt and the sitemap. No legal name, address or contact
+  // point: the owner has not supplied them (SEO-045), so the page names none.
+  // The app's own /about (src/pages/About.tsx) prints these sentences from
+  // the main locale's aboutPage keys. Neither promises that nothing is ever
+  // sent to an employer for anyone: the server-side apply agent is still live.
+  {
+    const snap = BOARD_SNAPSHOT;
+    const fmtN = (n) => Number(n).toLocaleString("en-US");
+    write({
+      path: "/about",
+      title: "About Resume Booster — a Live Job Board and a Free Resume Scan",
+      description: fitDesc(
+        // Until the owner supplies the seller's identity (SEO-045) the page
+        // names no operator, so the description does not promise one.
+        `What resumebooster.work is, what its job board is and how its counts are made: open roles ${SOURCE_SENTENCE}, each figure dated.`,
+        "What resumebooster.work is, what its job board is and how its counts are made, each figure dated.",
+      ),
+      jsonLd: [
+        breadcrumbLd([{ name: "Home", path: "/" }, { name: "About", path: "/about" }]),
+        {
+          "@context": "https://schema.org",
+          "@type": "AboutPage",
+          name: "About Resume Booster",
+          url: `${SITE}/about`,
+          about: { "@id": ORG_ID(SITE) },
+          isPartOf: websiteRef(SITE),
+        },
+      ],
+      content: `
+        ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "About" }])}
+        <h1 class="text-3xl font-bold mb-3">About Resume Booster</h1>
+        <p class="text-muted-foreground mb-6">Resume Booster, at resumebooster.work, is two things: a live job board of openings ${SOURCE_SENTENCE}, and a free resume scanner that shows how an applicant-tracking system reads your file. It is an independent site, not affiliated with any employer or hiring system it reads, and not the same product as resumebooster.io or ResumeBoostAI.</p>
+        <section class="mb-8"><h2 class="text-xl font-bold mb-2">What the board is</h2>
+          <p class="text-sm text-muted-foreground">${snap.openTotal ? `${fmtN(snap.openTotal)} open postings` : "Open postings"}${snap.boards ? ` from ${fmtN(snap.boards)} company job boards with roles open` : ""} (${esc(asOfPhrase(snap))}), each ${BOARD_SOURCE_SENTENCE}. The boards come from ${D.SERVING_SOURCE_LIST}. A company job board is one employer's board on one hiring system, and one employer can run several, so the board count is not a count of employers. Applying always happens on the employer's own site.</p>
+        </section>
+        <section class="mb-8"><h2 class="text-xl font-bold mb-2">How the counts are made</h2>
+          <p class="text-sm text-muted-foreground">An open role is a posting the employer's own feed still serves whose date falls inside the last 30 days: the employer's own date, or for a posting with no date, the day we last saw it in the feed. Every count on this site says the day it was taken; a count printed on a page built from a saved reading says so. The feeds are re-read in a rotation, the largest boards most often, and how far behind the rotation runs is published on the <a href="/ghost-job-index">Ghost Job Index</a> as a measurement, not a promise. A posting coming down is logged as a takedown and never called a hire: a hire, a withdrawal and a cancelled requisition look the same from a feed. The scoring behind the resume scan is on the <a href="/methodology">methodology page</a>.</p>
+        </section>
+        <section class="mb-8"><h2 class="text-xl font-bold mb-2">Where to go next</h2>
+          <p class="text-sm text-muted-foreground"><a href="/jobs">The live board</a> · <a href="/companies">Companies with a page of their own</a> · <a href="/ghost-job-index">Ghost Job Index</a> · <a href="/data-api">Hiring Data &amp; API</a> · <a href="/agents">Connect your own AI</a> · <a href="/trust">Trust &amp; privacy</a> · <a href="/changelog">Changelog</a></p>
+          <p class="text-sm text-muted-foreground mt-3">Privacy and data questions: <a href="mailto:${D.PRIVACY_EMAIL}">${D.PRIVACY_EMAIL}</a>.</p>
+        </section>`,
+    });
+  }
+
+  // ---- /v1 and its paths: pages that point at the API (SEO-015) ----
+  // resumebooster.work/v1, /v1/jobs and /v1/stats answered 200 with the
+  // homepage copy (index, follow; canonical "/"), so a person or an agent who
+  // typed the API's paths onto the site's own address got the homepage. Each
+  // now says where the API lives and links /data-api; noindex, follow, and
+  // out of the sitemap.
+  for (const [path, what] of [
+    ["/v1", "the data API"],
+    ["/v1/jobs", "GET /v1/jobs, the live postings"],
+    ["/v1/changes", "GET /v1/changes, what opened and closed since a timestamp"],
+    ["/v1/companies", "GET /v1/companies, employers ranked by open postings"],
+    ["/v1/stats", "GET /v1/stats, the headline counts"],
+    ["/v1/usage", "GET /v1/usage, your own key's consumption"],
+  ]) {
+    const apiPath = path === "/v1" ? `${API_BASE}/v1` : `${API_BASE}${path}`;
+    write({
+      path,
+      robots: "noindex, follow",
+      title: "This is not the API address",
+      description: fitDesc(`The data API lives at ${API_BASE}/v1, not on this site's own address; the how-to is on /data-api.`, "The data API does not live on this site's own address; the how-to and the free keys are on /data-api."),
+      content: `
+        <h1 class="text-2xl font-bold mb-3">This is not the API address</h1>
+        <p class="text-muted-foreground mb-4">You asked this site for ${esc(what)}. The API does not live here; it lives at:</p>
+        <p class="text-sm mb-4"><code>${esc(apiPath)}</code></p>
+        <p class="text-sm text-muted-foreground">Requests carry a key as <code>Authorization: Bearer rb_live_…</code>; free keys and every endpoint are described on <a href="/data-api" class="text-primary underline">Hiring Data &amp; API</a>.</p>`,
+    });
+  }
+
+  // ---- /dev/checkout-test: an internal tool, said noindex to every crawler ----
+  //
+  // robots.txt disallowed /dev/, so a crawler could never fetch the page to
+  // read its noindex, and a crawler that runs no scripts was served the
+  // homepage shell there (S13-131). The Disallow is gone; this small page says
+  // noindex without script, and the app's own head says it with script.
+  write({
+    path: "/dev/checkout-test",
+    robots: "noindex, nofollow",
+    title: "Internal checkout test",
+    description: "An internal page for testing checkout. It is not part of the site for visitors and is not for search.",
+    content: `
+        <h1 class="text-2xl font-bold mb-3">Internal checkout test</h1>
+        <p class="text-muted-foreground">An internal page for testing checkout. It is not part of the site for visitors; <a href="/" class="text-primary underline">the home page</a> is.</p>`,
+  });
+
   // ---- /llms-full.txt: complete citable text in one fetch ----
   // Companion to the hand-written public/llms.txt overview. AI engines that
   // find llms.txt can pull this for full guide text and the data-page map
@@ -3320,7 +4329,7 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
     // nothing: a snapshot-fed bake prints no board total here (L4-03).
     if (BOARD_TOTAL && facetsSource !== "snapshot") {
       lines.push("");
-      lines.push(`> Live job board (/jobs): ${Number(BOARD_TOTAL).toLocaleString("en-US")} live postings${BOARD_TRACKED ? ` (${Number(BOARD_TRACKED).toLocaleString("en-US")} tracked in all, including roles since closed)` : ""} from ${BOARD_COMPANIES ? `${BOARD_COMPANIES.toLocaleString("en-US")} company job boards that have roles open right now, read through their` : "company job boards, read through their"} OFFICIAL job-board APIs (${D.SERVING_SOURCE_LIST}), no aggregators; the largest boards are re-checked most often and the rotation runs continuously (how far behind it is right now is a measurement rather than a promise — live median and 95th-percentile re-check ages: ${SITE}/ghost-job-index). Per-field pages at /jobs/field/{engineering,healthcare,finance,...}. Free deterministic resume-fit scoring against any posting.`);
+      lines.push(`> Live job board (/jobs): ${Number(BOARD_TOTAL).toLocaleString("en-US")} live postings${BOARD_COMPANIES ? ` from ${BOARD_COMPANIES.toLocaleString("en-US")} company job boards that have roles open right now` : ""} (${BOARD_AS_OF}), ${BOARD_SOURCE_SENTENCE} (${D.SERVING_SOURCE_LIST}); the largest boards are re-checked most often and the rotation runs continuously (how far behind it is right now is a measurement rather than a promise — live median and 95th-percentile re-check ages: ${SITE}/ghost-job-index). Per-field pages at /jobs/field/{engineering,healthcare,finance,...}. Free deterministic resume-fit scoring against any posting.`);
     }
     lines.push("");
     lines.push("## Guides (full text)");
@@ -3363,15 +4372,20 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
     // Host names carry their own "and" (claude.ai and Claude Desktop): commas
     // and one final "and", the same joiner the /agents page and its prerender use.
     const andHosts = (xs) => (xs.length < 2 ? xs.join("") : `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}`);
+    // The tools the crawler copy describes: the search and read ones. A tool
+    // whose purpose was the retired apply agent is not offered here, the same
+    // rule the /agents page applies (the apply pivot, 2026-10-11).
+    const LLMS_TOOLS = D.MCP_TOOLS.filter((t) => t.tier !== "apply" && !/\bapply agent\b|\bsubmit/i.test(String(t.body ?? "").split(/(?<=[.!?])\s+/)[0]));
     lines.push("## The live job board and its data pages (from the board's own lifecycle log)");
-    lines.push(`- Live job board: ${SITE}/jobs — every posting read from the employer's own hiring system (${D.SERVING_SOURCE_LIST}); no aggregators; no dated posting older than 30 days, undated ones shown with no age rather than a guessed one. Per-field pages at /jobs/field/{slug}, per-employer pages at /jobs/company/{token}.`);
+    lines.push(`- Live job board: ${SITE}/jobs — every posting ${SOURCE_SENTENCE} (${D.SERVING_SOURCE_LIST}); no dated posting older than 30 days, undated ones shown with no age rather than a guessed one. Per-field pages at /jobs/field/{slug}, per-employer pages at /jobs/company/{token}.`);
     lines.push(`- Ghost Job Index: ${SITE}/ghost-job-index — the board's live measure of posting reality: how many roles are open, how long postings stay up, how fast they come down, and which employers are actively hiring, from the closure log the board keeps for every posting it has watched. A posting coming down is never called a hire — a hire, a withdrawal, a cancelled requisition and a retitle are indistinguishable from the feed.`);
     lines.push(`- Weekly Hiring Trends: ${SITE}/hiring-trends — counted postings per week by each posting's own stated date, which fields are hiring, entry-level and remote counts as floors (they are counted over a narrower population than the weekly total, so they are never divided into it), and closure events per week from the lifecycle log; newly catalogued employers are excluded from weekly counts so coverage growth never reads as a hiring spike.`);
     lines.push(`- Entry-Level Index: ${SITE}/entry-level-index — employers ranked by real early-career openings (internships, junior, graduate, 0–2 year roles), counted only where the posting's own title or stated requirements say so.`);
-    lines.push(`- Pay Transparency Index: ${SITE}/pay-transparency — the share of postings that state pay, by field, hiring system and large employer, counted from the postings' own text and ATS fields; never estimated or modelled, and placement cannot be bought.`);
+    lines.push(`- Pay Transparency Index: ${SITE}/pay-transparency — the share of postings that state pay, by field, hiring system and large job board (one row per board, so an employer running several counts once per board), counted from the postings' own text and ATS fields; never estimated or modelled, and placement cannot be bought.`);
     lines.push(companiesLlmsLine({ site: SITE, count: COMPANY_PAGE_COUNT }));
-    lines.push(`- Hiring Data & API: ${SITE}/data-api — a read-only JSON API (/v1) over the live board with free self-serve keys (${FREE_KEY_RATE_SENTENCE}): GET /v1/jobs, /v1/jobs/{id}, /v1/changes (what opened and closed since a timestamp, and whether each close was a genuine takedown or a re-list), /v1/companies, /v1/stats (headline counts, closure log, feed freshness p50/p95/max), /v1/usage, and POST /v1/fit (paid). Cursor pagination and ETags. Licensing beyond the free tier: free for journalists with attribution, at cost for research, custom for commercial feeds.`);
-    lines.push(`- MCP server for AI agents: ${SITE}/agents (listed in the official MCP registry as ${MCP_REGISTRY_NAME}) — ${D.MCP_TOOLS.length} tools (${D.MCP_TOOLS.map((t) => t.name).join(", ")}) over the same board, over Streamable HTTP. ${D.MCP_ANON_TOOLS.map((t) => t.name).join(", ")} answer with no key at all (${D.MCP_ANON_CAPS.perAddressPerDay} calls a day per network address — an office or a home connection counts as one; from ChatGPT each person has their own ${D.MCP_ANON_CAPS.perAddressPerDay}, and Claude's users share ${D.MCP_ANON_CAPS.hostPoolPerDay} a day first — ${D.MCP_ANON_CAPS.globalPerDay} a day across every unkeyed caller, search capped at ${D.MCP_ANON_CAPS.searchRows} rows), so any host can use those before sign-in; every other read tool needs a free key, ${D.MCP_PAID_TOOLS.map((t) => t.name).join(", ")} a paid key, a live Agent Pass or the Agent plan on the key's account, and the apply tools (${D.MCP_APPLY_TOOLS.map((t) => t.name).join(", ")}) an account-linked key with an Agent plan or a live Agent Pass, plus a standing mandate. A key travels in an Authorization header, so the keyed tools are reachable from ${andHosts(D.MCP_HOSTS.filter((x) => x.header).map((x) => x.name))} with a pasted key; ${andHosts(D.MCP_HOSTS.filter((x) => !x.header && x.oauth).map((x) => x.name))} have no field for a key and sign a person in instead — but only while the server's sign-in service is switched on: then a keyed tool called with no credential answers a sign-in challenge, the host shows its Connect card, and after Allow on ${SITE}/oauth/consent the call runs on that account's own key; when it is off, the same call answers in words (no card) and the unkeyed tools still answer. Today's state: the Test the server button on ${SITE}/agents, or the initialize result's _meta["${D.MCP_SIGN_IN_META_KEY}"].state; the page's own steps are at ${SITE}/agents#<host> for ${D.MCP_PAGE_HOSTS.map((x) => x.id).join(", ")}; setup for ${andHosts(D.MCP_OFF_PAGE_HOSTS.map((x) => x.name))} and every other client is in the install repository's README at ${D.MCP_INSTALL_REPO_URL}. ${AGENT_OFFER.lead} ${AGENT_OFFER.connect} ${AGENT_OFFER.pass}`);
+    lines.push(`- About: ${SITE}/about — what resumebooster.work is, what the board is, and how its counts are made and dated.`);
+    lines.push(`- Hiring Data & API: ${SITE}/data-api — a read-only JSON API over the live board at ${API_BASE}/v1 (every path below is relative to ${API_BASE}; the addresses under ${SITE}/v1 are pages that point here), with free self-serve keys (${FREE_KEY_RATE_SENTENCE}): GET /v1/jobs, /v1/jobs/{id}, /v1/changes (what opened and closed since a timestamp, and whether each close was a genuine takedown or a re-list), /v1/companies, /v1/stats (headline counts, closure log, feed freshness p50/p95/max), /v1/usage, and POST /v1/fit (${D.MCP_FIT_ALLOWANCE}, counted together with fit_resume on the MCP server). Cursor pagination and ETags. Licensing beyond the free tier: free for journalists with attribution, at cost for research, custom for commercial feeds.`);
+    lines.push(`- MCP server for AI agents: ${SITE}/agents (listed in the official MCP registry as ${MCP_REGISTRY_NAME}) — search and read tools (${LLMS_TOOLS.map((t) => t.name).join(", ")}) over the same board. MCP server address (Streamable HTTP): ${MCP_URL} — registry name ${MCP_REGISTRY_NAME}. ${D.MCP_ANON_TOOLS.map((t) => t.name).join(", ")} answer with no key at all (${D.MCP_ANON_CAPS.perAddressPerDay} calls a day per network address — an office or a home connection counts as one; from ChatGPT each person has their own ${D.MCP_ANON_CAPS.perAddressPerDay}, and Claude's users share ${D.MCP_ANON_CAPS.hostPoolPerDay} a day first — ${D.MCP_ANON_CAPS.globalPerDay} a day across every unkeyed caller, search capped at ${D.MCP_ANON_CAPS.searchRows} rows), so any host can use those before sign-in; every other read tool needs a free key, and ${D.MCP_PAID_TOOLS.map((t) => t.name).join(", ")} ${D.MCP_PAID_TOOLS.length === 1 ? "gives" : "give"} ${D.MCP_FIT_ALLOWANCE}. A key travels in an Authorization header, so the keyed tools are reachable from ${andHosts(D.MCP_HOSTS.filter((x) => x.page && x.header).map((x) => x.name))}, and any other app that can send a header, with a pasted key; ${andHosts(D.MCP_HOSTS.filter((x) => x.page && !x.header && x.oauth).map((x) => x.name))} have no field for a key and sign a person in instead — but only while the server's sign-in service is switched on: then a keyed tool called with no credential answers a sign-in challenge, the host shows its Connect card, and after Allow on ${SITE}/oauth/consent the call runs on that account's own key; when it is off, the same call answers in words (no card) and the unkeyed tools still answer. Today's state: the Test the server button on ${SITE}/agents, or the initialize result's _meta["${D.MCP_SIGN_IN_META_KEY}"].state; the page's own steps are at ${SITE}/agents#<host> for ${D.MCP_PAGE_HOSTS.map((x) => x.id).join(", ")}; setup for every other app is in the install repository's README at ${D.MCP_INSTALL_REPO_URL}. ${AGENT_OFFER.lead} ${AGENT_OFFER.connect} ${APPLY_YOURSELF_LINE}`);
     lines.push("");
     if (insights?.overall?.n) {
       const o = insights.overall;
@@ -3389,6 +4403,7 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
     }
     lines.push("Citation policy: everything above is publishable product truth — keyword tables are the scanner's real detection data, O*NET data is U.S. public domain, and vendor behaviors are the documented checks the scanner runs. Cite freely with a link.");
     writeFileSync(join(dist, "llms-full.txt"), lines.join("\n"));
+    checkRetired("/llms-full.txt", lines.join("\n"));
 
     // llms.txt headline counts: rewritten from live data each bake so the
     // hand-written overview can't drift 100k+ behind the board again
@@ -3428,7 +4443,10 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
         // whose pattern only matched the old wording would rewrite the file
         // once and then silently never match again — which is exactly the
         // ratchet the header of this file warns about.
-        sub(/[\d,]+\+ openings from [\d,]+\+ (?:companies|company job boards)/, `${plusClaim(BOARD_TOTAL, 50000)} openings from ${plusClaim(BOARD_COMPANIES, 1000)} company job boards`);
+        // DATED (SEO-026): the figure carries the day of the reading it
+        // restates. The pattern takes the date it wrote last time, so it
+        // matches again on the next bake.
+        sub(/[\d,]+\+ openings from [\d,]+\+ (?:companies|company job boards)(?: \(as of [^)]*\))?/, `${plusClaim(BOARD_TOTAL, 50000)} openings from ${plusClaim(BOARD_COMPANIES, 1000)} company job boards (${BOARD_AS_OF})`);
         // Second corpus figure in the same file (the /explore line). It was
         // NOT on any pattern list, so it never refreshed — the exact defect
         // this whole finding is about, one file down from the sentence.
@@ -3440,15 +4458,53 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
       // on every bake from the same constant the board's own source note
       // renders — the committed file had fourteen systems typed by hand while
       // the board served more, the shape published-claims guards on /jobs.
-      sub(/own hiring system \([^)]+\) — never an aggregator/, `own hiring system (${D.SERVING_SOURCE_LIST}) — never an aggregator`);
+      // In the one source sentence (R5a): the committed file said "never an
+      // aggregator" beside agency and federal-listing boards.
+      sub(/own hiring system \([^)]+\), not copied from other job boards/, `own hiring system (${D.SERVING_SOURCE_LIST}), not copied from other job boards`);
+      // THE TWO ADDRESSES (SEO-014, SEO-015), restated from the bake's own
+      // constants so the file and /agents and /data-api cannot disagree.
+      sub(/MCP server address \(Streamable HTTP\): \S+/, `MCP server address (Streamable HTTP): ${MCP_URL}`);
+      sub(/API address: \S+/, `API address: ${API_BASE}/v1`);
+      // THE GUIDE AND COMPARISON LISTS, GENERATED (SEO-027) from the same
+      // modules the pages render, filtered to the pages this bake made
+      // indexable: the hand-written list left out /vs/chatgpt and listed
+      // /shortlist, a noindex page.
+      const indexableNow = new Set(writtenPaths);
+      const guideLines = Object.values(D.GUIDES)
+        .filter((g) => indexableNow.has(`/guides/${g.slug}`))
+        .map((g) => `- [${g.h1}](${SITE}/guides/${g.slug}): ${g.description}`);
+      if (guideLines.length) {
+        const re = /(## Guides[^\n]*\n\n)(?:- [^\n]*\n)+/;
+        if (re.test(lt)) lt = lt.replace(re, (_, head) => `${head}${guideLines.join("\n")}\n`);
+        else missed.push("the ## Guides list");
+      }
+      const vsLinks = Object.values(D.COMPETITORS)
+        .filter((c) => indexableNow.has(`/vs/${c.slug}`))
+        .map((c) => `[vs ${c.name}](${SITE}/vs/${c.slug})`);
+      if (vsLinks.length) sub(/^- \[vs [^\n]*: Honest comparisons that name where competitors win\.$/m, `- ${vsLinks.join(", ")}: Honest comparisons that name where competitors win.`);
+      // A line linking a page this bake did not make indexable is dropped:
+      // llms.txt promises that every page it lists reads as itself.
+      lt = lt.split("\n").filter((line) => {
+        const m = /^- \[[^\]]+\]\(https:\/\/resumebooster\.work(\/[^)#]*)?[^)]*\)/.exec(line);
+        if (!m) return true;
+        const p = (m[1] || "/").replace(/\/+$/, "") || "/";
+        return p === "/" || p === "/llms-full.txt" || indexableNow.has(p);
+      }).join("\n");
+      // The /companies line: the number of employer pages THIS bake made
+      // indexable, the same count the A–Z page and llms-full print. It
+      // describes this build's own output, so it is restated from a snapshot-
+      // fed bake too, and dropped (not left standing) when none was counted.
+      if (!LLMS_TXT_COMPANIES.test(lt)) missed.push(String(LLMS_TXT_COMPANIES));
+      else lt = llmsTxtCompaniesCount(lt, COMPANY_PAGE_COUNT);
       if (missed.length) {
         // Not fatal to the bake, but never silent: an orphaned figure is a
         // number nothing updates, which is how a true "+" claim rots into a
         // false one.
         console.warn(`[prerender-seo] llms.txt figure patterns matched nothing — those numbers are now ORPHANED and will not refresh: ${missed.join(", ")}`);
       }
-      writeFileSync(join(root, "public/llms.txt"), lt);
+      writeFileSync(join(publicOut, "llms.txt"), lt);
       writeFileSync(join(dist, "llms.txt"), lt);
+      checkRetired("/llms.txt", lt);
     } catch { /* llms.txt absent — nothing to refresh */ }
   }
 
@@ -3464,7 +4520,7 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
       { path: "/builder", changefreq: "monthly", priority: "0.8" },
       { path: "/methodology", changefreq: "monthly", priority: "0.7" },
       { path: "/trust", changefreq: "monthly", priority: "0.6" },
-      { path: "/agent", changefreq: "weekly", priority: "0.9" }, // the money page — was fallback-only and sitemap-absent until 2026-08-18
+      { path: "/agent", changefreq: "monthly", priority: "0.5" }, // the Apply Agent's old address: it says how to apply with your own AI (the apply pivot, 2026-10-11)
       { path: "/agents", changefreq: "weekly", priority: "0.7" }, // the MCP page — fallback-only and sitemap-absent until 2026-09-15
       { path: "/affiliates", changefreq: "monthly", priority: "0.6" },
       // /shortlist deliberately absent: it is an auth wall with no public
@@ -3488,11 +4544,15 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
         priority: postingPage ? "0.5" : "0.7",
       });
     }
-    const lastmodOf = (path) => {
+    const datesOf = new Map();
+    const pageDatesOf = (path) => {
+      if (datesOf.has(path)) return datesOf.get(path);
       const fp = pageFingerprints.get(path);
-      if (!fp) return TODAY;
-      return pageLastmod({ fingerprint: fp.fp, prior: priorPages[path], today: TODAY, stated: fp.stated });
+      const d = fp ? pageDates({ fp: fp.fp, legacyFp: fp.legacyFp, prior: priorPages[path], today: TODAY, stated: fp.stated }) : null;
+      datesOf.set(path, d);
+      return d;
     };
+    const lastmodOf = (path) => pageDatesOf(path)?.lastmod ?? TODAY;
     // THE LEDGER THE NEXT BAKE READS (F2a, S3): every posting URL this bake
     // accounted for and what became of it, and every page's fingerprint with
     // the date it last changed. Served beside the sitemap, so the next
@@ -3505,11 +4565,26 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
       builtAt: TODAY,
       postings: postingLedger,
       openings: landerOpeningsCache,
-      pages: Object.fromEntries([...pageFingerprints.entries()].map(([path, fp]) => [path, { fp: fp.fp, lastmod: lastmodOf(path) }])),
+      companies: companyLedger,
+      pages: Object.fromEntries([...pageFingerprints.keys()].map((path) => {
+        const d = pageDatesOf(path);
+        // `th` is the count-blind title hash and `thChanged` the day it last
+        // moved (SEO-012, read by scripts/indexnow-ping.mjs --changed). An
+        // entry written before `th` existed keeps its own changed day, so the
+        // switch itself flags nothing.
+        const th = pageFingerprints.get(path)?.th ?? null;
+        const prior = priorPages[path];
+        const thChanged = !prior ? TODAY
+          : typeof prior.th !== "string" ? (typeof prior.thChanged === "string" ? prior.thChanged : (prior.changed ?? prior.lastmod ?? TODAY))
+            : prior.th === th ? (typeof prior.thChanged === "string" ? prior.thChanged : (prior.changed ?? TODAY))
+              : TODAY;
+        const entry = { fp: d.fp, fpv: d.fpv, lastmod: d.lastmod, changed: d.changed };
+        return [path, th ? { ...entry, th, thChanged } : entry];
+      })),
     };
     const ledgerJson = JSON.stringify(ledgerOut);
     writeFileSync(join(dist, PRERENDER_LEDGER_PATH.slice(1)), ledgerJson);
-    writeFileSync(join(root, "public", PRERENDER_LEDGER_PATH.slice(1)), ledgerJson);
+    writeFileSync(join(publicOut, PRERENDER_LEDGER_PATH.slice(1)), ledgerJson);
     console.log(`[prerender-seo] ${PRERENDER_LEDGER_PATH} written: ${Object.keys(postingLedger).length} posting URLs, ${pageFingerprints.size} pages (read from: ${ledgerSource})`);
 
     // THE SITEMAP MAY NOT NAME A POSTING URL THIS BAKE DID NOT WRITE.
@@ -3537,6 +4612,15 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
         console.warn(`[prerender-seo] DROPPING ${unwritten.length} posting URL(s) from the sitemap with no prerendered file — each would serve the homepage shell: ${unwritten.slice(0, 5).join(", ")}`);
         const drop = new Set(unwritten);
         entries = entries.filter((e) => !drop.has(e.path));
+      }
+      // AND IT NEVER NAMES MORE POSTING PAGES THAN THE CEILING THE GENERATOR
+      // STATES (POSTING_PAGE_CEILING): the bake that logged 454 against a
+      // stated 400 is the case. The posting rule above already keeps the live
+      // set under it; this is the last word, and it says so when it acts.
+      const capped = capPostingEntries(entries, { isPosting: (e) => e.path.startsWith(`${D.POSTING_PATH_PREFIX}/`), ceiling: POSTING_PAGE_CEILING });
+      if (capped.dropped.length) {
+        console.warn(`[prerender-seo] DROPPING ${capped.dropped.length} posting URL(s) past the ceiling of ${POSTING_PAGE_CEILING} from the sitemap`);
+        entries = capped.kept;
       }
     }
     if (entries.length < 100) throw new Error(`sitemap suspiciously small (${entries.length} URLs) — refusing to overwrite`);
@@ -3584,11 +4668,37 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
       ...entries.map((e) => `  <url>\n    <loc>${SITE}${publicHref(e.path)}</loc>\n    <lastmod>${lastmodOf(e.path)}</lastmod>\n    <changefreq>${e.changefreq}</changefreq>\n    <priority>${e.priority}</priority>\n  </url>`),
       `</urlset>`,
     ].join("\n");
-    writeFileSync(join(root, "public/sitemap.xml"), xml);
+    writeFileSync(join(publicOut, "sitemap.xml"), xml);
     writeFileSync(join(dist, "sitemap.xml"), xml);
     console.log(`[prerender-seo] sitemap.xml regenerated: ${entries.length} URLs (public/ + dist/), ${new Set(entries.map((e) => lastmodOf(e.path))).size} distinct lastmod dates`);
 
   }
+
+  // THE CRAWLER COPY SELLS NOTHING RETIRED, and the bake reads its own output
+  // to say so (scripts/prerender-retired.mjs): a page that still carries a
+  // retired product, a price for one, or a sentence that says we apply for
+  // the person is named here. Not fatal (a publish is never blocked), and the
+  // tests that run this bake fail on it.
+  if (retiredFound.length) {
+    console.error(`[prerender-seo] RETIRED CLAIMS in ${retiredFound.length} written page(s): ${retiredFound.slice(0, 20).map((r) => `${r.path}: ${r.found.map(([c, m]) => `${c} (${JSON.stringify(m)})`).join("; ")}`).join(" | ")}`);
+  } else console.log("[prerender-seo] retired-claim check: no written page outside the employers' posting text sells or describes a retired product");
+  // THE SOURCE SENTENCE AND THE RE-CHECK'S CONDITION (R5a, R6a), read back
+  // from every page this bake wrote (a posting page's own sentences only) and
+  // both llms files; and the seeker-facing host rule (R7a) on /agents and the
+  // llms files.
+  for (const f of ["llms.txt", "llms-full.txt"]) {
+    let t = "";
+    try { t = readFileSync(join(dist, f), "utf8"); } catch { t = ""; }
+    checkBanned(`/${f}`, t);
+    const host = OFF_PAGE_HOST_NAMES.exec(t);
+    if (host) bannedFound.push({ path: `/${f}`, found: [["an IDE host on a seeker-facing file", host[0]]] });
+  }
+  if (bannedFound.length) {
+    console.error(`[prerender-seo] BANNED SOURCE PHRASES in ${bannedFound.length} written page(s): ${bannedFound.slice(0, 20).map((r) => `${r.path}: ${r.found.map(([c, m]) => `${c} (${JSON.stringify(m)})`).join("; ")}`).join(" | ")}`);
+  } else console.log("[prerender-seo] source-sentence check: no written page or llms file says 'never an aggregator', 'no aggregators', 'never a repost' or an unconditional re-check");
+  if (markupFound.length) {
+    console.error(`[prerender-seo] JOB MARKUP the bake would not stand behind on ${markupFound.length} page(s): ${markupFound.slice(0, 20).map((r) => `${r.path}: ${r.wrong.join("; ")}`).join(" | ")}`);
+  } else console.log("[prerender-seo] job-markup check: no TELECOMMUTE without a vendor flag, no junk locality (a dash at an end, a country inside, a site code, a work mode), no baseSalary");
 
   // Say out loud what the clamp had to cut. Silent truncation is how the
   // homepage shipped a snippet ending "…Upload your CV and an AI…".

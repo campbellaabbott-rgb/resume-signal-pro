@@ -23,7 +23,8 @@
 #     renewal line, the pass in Purchases, the withdrawal panel, the builder's
 #     import prompt, the FAQ's renewal sentence, the seller line, and the
 #     2026-10-10 round's delete notes, Freelance Boost mark and Pro give-up line);
-#   - the crawler's /pricing FAQ says the plans renew and the trial converts;
+#   - the crawler's /pricing says Pro renews every month until you cancel
+#     (since the apply pivot the bake lists one plan, with no trial);
 #   - the owner steps no read can prove are named as INFO.
 #
 # READ-ONLY. OPTIONS preflights and the webhook's GET (405) run no function
@@ -112,9 +113,9 @@ VD74_W4=0; build_ge agent-mcp "${VD74_MCP:-}" "2026-10-11" "1" && VD74_W4=1
 # The copy the browser loads (the English strings chunk the main bundle names).
 EN74=""
 MAIN74=$(curl -s -m 30 "$SITE/" | grep -o '/assets/index-[^"]*\.js' | head -1)
-for CH in $(curl -s -m 30 "$SITE$MAIN74" | grep -o '"\./en-[A-Za-z0-9_-]*\.js"' | tr -d '"' | sed 's|^\./||' | sort -u); do
+for CH in $(bash scripts/verify-us-english.sh "$SITE$MAIN74"); do
   BODY74=$(curl -s -m 30 "$SITE/assets/$CH")
-  printf '%s' "$BODY74" | grep -q "agentPitchCta" || continue
+  printf '%s' "$BODY74" | grep -q "sourceNote" || continue
   EN74=$BODY74; break
 done
 if [ -z "$EN74" ]; then
@@ -143,16 +144,16 @@ else
   fi
 fi
 
-# The page a crawler reads for /pricing (Googlebot UA, read-only GET): the
-# prerender bakes the FAQ's subscription answer from en.json.
+# The page a crawler reads for /pricing (Googlebot UA, read-only GET).
+# Re-pointed 2026-10-24 (profiles+design verify triage): the bake no longer
+# prints en.json's FAQ answer, whose trial clause described the agent plan the
+# apply pivot retired; it writes its own line for the one plan it lists, and
+# Pro has no trial. So item 11 is Pro's renewal said in so many words, and the
+# old false absolute ("nothing upgrades", with no "else") still fails.
 PR74=$(curl -s -m 30 -A "$UA" "$SITE/pricing")
-if [ "$VD74_W4" = 1 ]; then
-  if printf '%s' "$PR74" | grep -qF "turns into the paid plan"; then echo "FAIL  /pricing as served to a crawler still says a trial turns into the paid plan: the Morning Queue trial wave 4 retired (the prerender with wave 4 is not published)"
-  elif printf '%s' "$PR74" | grep -qF "there is one optional monthly plan"; then echo "PASS  /pricing as served to a crawler names the one plan left and says it renews until cancelled (wave 4)"
-  else echo "FAIL  /pricing as served to a crawler carries neither FAQ sentence ($(printf '%s' "$PR74" | wc -c | tr -d ' ') bytes)"; fi
-elif printf '%s' "$PR74" | grep -qF "turns into the paid plan"; then echo "PASS  /pricing as served to a crawler says the plans renew and the trial becomes the paid plan"
-elif printf '%s' "$PR74" | grep -qF "nothing upgrades you automatically"; then echo "FAIL  /pricing as served to a crawler still says nothing upgrades you automatically (the prerender with this wave is not published)"
-else echo "FAIL  /pricing as served to a crawler carries neither FAQ sentence ($(printf '%s' "$PR74" | wc -c | tr -d ' ') bytes)"; fi
+if printf '%s' "$PR74" | grep -qF "nothing upgrades you automatically"; then echo "FAIL  /pricing as served to a crawler still says nothing upgrades you automatically (item 11)"
+elif printf '%s' "$PR74" | grep -qF "Pro renews every month until you cancel"; then echo "PASS  /pricing as served to a crawler says Pro renews every month until you cancel (item 11)"
+else echo "FAIL  /pricing as served to a crawler does not say Pro renews until you cancel ($(printf '%s' "$PR74" | wc -c | tr -d ' ') bytes): item 11's renewal line is missing"; fi
 
 # The owner steps and the measurements no read can prove.
 echo "INFO  OWNER STEP (receipts, item 1): Stripe Dashboard > Settings > Customer emails: turn on 'Successful payments' -- REQUIRED for anonymous one-time buyers (most \$5 Full Analysis sales: no address is known when the session is made, so no receipt_email is set) as well as for plan renewals; a one-time checkout names receipt_email only when the buyer is signed in or typed an address. Also, under Subscriptions and invoices, 'Send finalized invoices and credit notes to customers'"

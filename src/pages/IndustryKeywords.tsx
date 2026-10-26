@@ -15,13 +15,11 @@ import { ONET_EXPECTATIONS } from "../../supabase/functions/free-keyword-scan/on
 import { INDUSTRY_TO_CATEGORY } from "@/lib/job-board-categories";
 import { SUB_INDUSTRY_TAXONOMY } from "../../supabase/functions/free-keyword-scan/industry-detection";
 import { rolesForIndustry } from "@/data/roles";
-
-const label = (slug: string) => slug.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-
-// Keyword chips: short tokens are abbreviations (OR, ICU, EHR, GAAP) — render
-// them uppercase; "Or" alone reads like a stray conjunction. Longer terms keep
-// CSS title-casing.
-const displayKeyword = (k: string) => (k.length <= 4 && !k.includes(" ") ? k.toUpperCase() : k);
+import { PageJsonLd } from "@/components/seo/PageJsonLd";
+// Letter case by what a word is, not by its length (SEO-019, S13-089): an
+// acronym is upper-case ("HR", "ICU", "SOPs"), a plain word is not ("wind").
+import { displayKeyword, industryLabel as label, inSentence, withArticle } from "@/lib/seo/display-case";
+import { industryKeywordsHead } from "@/lib/seo/keyword-pages";
 
 import { SCREENER_NOTES } from "@/data/screener-notes";
 import { buildIndustryFaqs } from "@/data/industry-faqs";
@@ -33,11 +31,11 @@ export default function IndustryKeywords() {
 
   const structured = useMemo(() => {
     if (!slug || !data) return null;
-    return JSON.stringify({
+    return ({
       "@context": "https://schema.org",
       "@type": "WebPage",
       name: `${label(slug)} Resume Keywords & ATS Expectations`,
-      description: `The keywords, titles, and certifications ATS systems and recruiters look for on ${label(slug)} resumes — from the detection engine of a real resume scanner.`,
+      description: `The keywords, titles, and certifications ATS systems and recruiters look for on ${inSentence(label(slug))} resumes — from the detection engine of a real resume scanner.`,
       breadcrumb: {
         "@type": "BreadcrumbList",
         itemListElement: [
@@ -52,26 +50,26 @@ export default function IndustryKeywords() {
   if (!slug || !data) return <Navigate to="/industries" replace />;
 
   const name = label(slug);
+  const lower = inSentence(name);
   const keywords = [...new Set(data.primary)].slice(0, 24);
+  const head = industryKeywordsHead(slug, keywords);
   const titles = [...new Set(data.titles)].slice(0, 18);
   const certs = [...new Set(data.certifications)].slice(0, 12);
   const faqs = buildIndustryFaqs({ name, keywords, certifications: certs, screenerNote: SCREENER_NOTES[slug] });
 
   return (
     <div className="min-h-screen bg-background">
-      <SEO
-        title={`${name} Resume Keywords — What ATS Systems Look For`}
-        description={`${keywords.slice(0, 6).join(", ")} and more: the actual keywords, job titles, and certifications our resume scanner's ${name.toLowerCase()} detection engine checks for. Free scan included.`}
-        path={`/industries/${slug}`}
+      <SEO title={head.title} description={head.description} path={`/industries/${slug}`} />
+      <PageJsonLd
+        blocks={[
+          structured,
+          faqs.length > 0 && {
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            mainEntity: faqs.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })),
+          },
+        ]}
       />
-      {structured && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: structured }} />}
-      {faqs.length > 0 && (
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "FAQPage",
-          mainEntity: faqs.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })),
-        }) }} />
-      )}
       <Header />
       <main className="pt-20 pb-20">
         <div className="container max-w-3xl">
@@ -86,16 +84,16 @@ export default function IndustryKeywords() {
             </p>
           )}
           <p className="text-muted-foreground mb-8">
-            This isn't an article — it's the live data our resume scanner uses to analyze {name.toLowerCase()} resumes.
+            This isn't an article — it's the live data our resume scanner uses to analyze {lower} resumes.
             When the engine improves, this page updates with it.
           </p>
 
           {slug && INDUSTRY_TO_CATEGORY[slug] && (
             <p className="mb-8 -mt-4">
               <Link to={`/jobs/field/${INDUSTRY_TO_CATEGORY[slug]}`} className="text-primary font-medium">
-                See live {name.toLowerCase()} openings on the job board →
+                See live {lower} openings on the job board →
               </Link>{" "}
-              <span className="text-xs text-muted-foreground">pulled from companies' official job boards, re-verified all day</span>
+              <span className="text-xs text-muted-foreground">pulled from companies' official job boards, re-read through the day</span>
             </p>
           )}
 
@@ -119,13 +117,13 @@ export default function IndustryKeywords() {
           )}
 
           <section className="mb-8">
-            <h2 className="text-xl font-bold mb-2">Keywords ATS systems expect on {name.toLowerCase()} resumes</h2>
+            <h2 className="text-xl font-bold mb-2">Keywords ATS systems expect on {lower} resumes</h2>
             <p className="text-sm text-muted-foreground mb-3">
-              These terms carry the most weight in our {name.toLowerCase()} detection and scoring:
+              These terms carry the most weight in our {lower} detection and scoring:
             </p>
             <div className="flex flex-wrap gap-1.5">
               {keywords.map((k) => (
-                <span key={k} className={`px-2.5 py-1 rounded-lg bg-card border border-border text-sm text-foreground ${k.length <= 4 && !k.includes(" ") ? "" : "capitalize"}`}>{displayKeyword(k)}</span>
+                <span key={k} className="px-2.5 py-1 rounded-lg bg-card border border-border text-sm text-foreground capitalize">{displayKeyword(k, slug)}</span>
               ))}
             </div>
           </section>
@@ -134,14 +132,14 @@ export default function IndustryKeywords() {
             <h2 className="text-xl font-bold mb-2">Job titles recruiters recognize in this field</h2>
             <div className="flex flex-wrap gap-1.5">
               {titles.map((t) => (
-                <span key={t} className="px-2.5 py-1 rounded-lg bg-card border border-border text-sm text-muted-foreground capitalize">{t}</span>
+                <span key={t} className="px-2.5 py-1 rounded-lg bg-card border border-border text-sm text-muted-foreground capitalize">{displayKeyword(t, slug)}</span>
               ))}
             </div>
           </section>
 
           {certs.length > 0 && (
             <section className="mb-8">
-              <h2 className="text-xl font-bold mb-2">Certifications that anchor a {name.toLowerCase()} resume</h2>
+              <h2 className="text-xl font-bold mb-2">Certifications that anchor {withArticle(lower)} resume</h2>
               <div className="flex flex-wrap gap-1.5">
                 {certs.map((c) => (
                   <span key={c} className="px-2.5 py-1 rounded-lg bg-success/5 border border-success/25 text-sm text-foreground uppercase">{c}</span>
@@ -152,7 +150,7 @@ export default function IndustryKeywords() {
 
           {(SUB_INDUSTRY_TAXONOMY[slug]?.length ?? 0) > 0 && (
             <section className="mb-8">
-              <h2 className="text-xl font-bold mb-2">Specializations our scanner distinguishes within {name.toLowerCase()}</h2>
+              <h2 className="text-xl font-bold mb-2">Specializations our scanner distinguishes within {lower}</h2>
               <div className="space-y-2">
                 {SUB_INDUSTRY_TAXONOMY[slug].map((sub) => (
                   <div key={sub.id} className="rounded-xl border border-border bg-card p-3">
@@ -166,7 +164,7 @@ export default function IndustryKeywords() {
 
           {SCREENER_NOTES[slug] && (
             <section className="rounded-2xl border border-warning/30 bg-warning/5 p-5 mb-8">
-              <h2 className="font-semibold text-foreground mb-1 flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-warning" />What screeners check first in {name.toLowerCase()}</h2>
+              <h2 className="font-semibold text-foreground mb-1 flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-warning" />What screeners check first in {lower}</h2>
               <p className="text-sm text-muted-foreground">{SCREENER_NOTES[slug]}</p>
             </section>
           )}
@@ -222,7 +220,7 @@ export default function IndustryKeywords() {
           </nav>
 
           <p className="text-[11px] text-muted-foreground mt-8">
-            Methodology: keyword and title lists come directly from the detection tables our scanner runs on every {name.toLowerCase()} resume,
+            Methodology: keyword and title lists come directly from the detection tables our scanner runs on every {lower} resume,
             validated by a pinned regression suite. O*NET data is public domain from the U.S. Department of Labor.
             See <Link to="/methodology" className="underline hover:text-foreground">our methodology</Link>.
           </p>

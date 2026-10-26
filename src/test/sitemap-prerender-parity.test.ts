@@ -92,6 +92,10 @@ const PRIVATE_PREFIXES = ["/dev/", "/admin/", "/r/"];
  * Each one is a debt, named so it cannot hide: legal pages whose text lives
  * only in the component. Adding to this list is a decision, not a default.
  */
+//
+// /about (SEO-011b) left this list in the SEO round's integration
+// (2026-10-24): the React route and the bake's write({ path: "/about" })
+// landed together, and the honesty test below asked for it.
 const KNOWN_FALLBACK_ROUTES = ["/privacy", "/terms"];
 
 const PRERENDERED_PATHS = (): Set<string> => {
@@ -109,7 +113,12 @@ const PRERENDERED_PATHS = (): Set<string> => {
   const landings = /path:\s*cfg\.path/.test(src)
     ? [...readFileSync(resolve(ROOT, "src/data/tool-landings.ts"), "utf8").matchAll(/path:\s*"(\/[^"]+)"/g)].map((m) => m[1])
     : [];
-  return new Set([...literal, ...landings]);
+  // The /v1 guidance pages are written from a list of [path, what] pairs
+  // (SEO-015), so they count as written only where that loop writes them.
+  const apiPages = /for \(const \[path, what\] of \[\s*\["\/v1", /.test(src)
+    ? [...src.matchAll(/\["(\/v1(?:\/[a-z]+)?)", "/g)].map((m) => m[1])
+    : [];
+  return new Set([...literal, ...landings, ...apiPages]);
 };
 
 describe("every public route in the router has a prerendered page", () => {

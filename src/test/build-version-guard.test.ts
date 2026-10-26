@@ -285,13 +285,21 @@ const PINNED = {
   // the two-character `\v` (same code point, 352KB less deploy source —
   // the .79 redeploy was refused at 4.6MB against the 4.5MB cap). The
   // catalog pins below are UNCHANGED, which is the proof no entry moved.
+  // 2026-09-09.93 (the merge recheck, 2026-10-25): one agency flag. The
+  // SmartRecruiters board named "Meta" (Meta1, a staffing firm whose roles
+  // the AI was handed as Meta's) leaves its packed line as an object literal
+  // with agency: true, at the same position; no board is added, removed or
+  // moved, so catalogSize holds and only the content hash moves. .93 has
+  // never deployed, so the build that ships this is already a new
+  // BUILD_VERSION against live .92 and the bootstrap lane recomputes.
   // 2026-09-09.95: +JPMorgan Chase (oracle jpmc~~CX_1001, the region-less
   // host jpmc.fa.oraclecloud.com), appended as the last entry, so no carried
   // board's catalogue index moves. The cold cursor walks a vendor-interleaved
   // list instead, where it lands mid-list and moves about half of it one
   // place: at most one board read again once, none skipped (n1384). The pin
   // moved with the catalogue.
-  sourcesHash: "f115f86fec5d1de3",
+  // Merged with wave 4 at 88fe8982: both changes above, one pin over the merged file.
+  sourcesHash: "f8dc84c3a2356056",
   // The PARSED catalog behind that hash — 44,081 packed + 463 object-literal
   // entries — pinned separately so a re-format is distinguishable from a real
   // catalog change (see the two-pins note at the top of this file). Read
@@ -313,7 +321,7 @@ const PINNED = {
   // one transient partial rotation, the same as a census merge.
   // 44,520 since 2026-09-09.95: +1, JPMorgan Chase.
   catalogSize: 44_520,
-  catalogHash: "e8e8c870cef6aa49",
+  catalogHash: "455ec060365870ca",
   // 2026-08-21.4: disables the exact-word tier's company matcher, whose index
   // never built. Bumped so the mitigation is externally identifiable.
   // 2026-08-21.5: routed retrieval. index.ts + two new modules; sources.ts

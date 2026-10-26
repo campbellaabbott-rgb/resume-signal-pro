@@ -170,7 +170,7 @@ describe("a const read before its line is a page that never renders -- has teeth
   });
 
   it("the current file, with the two declarations moved back below the sentence, fails the first property", () => {
-    const decl = /\n\s*const unkeyedNames = codes\(D\.MCP_ANON_TOOLS\);\n\s*const unkeyedCaps = [^\n]+\n/.exec(src);
+    const decl = /\n\s*const unkeyedNames = codes\(D\.MCP_ANON_TOOLS[^\n]*\);\n\s*const unkeyedCaps = [^\n]+\n/.exec(src);
     expect(decl, "re-anchor this teeth case: the two declarations moved").not.toBeNull();
     const without = src.replace(decl![0], "\n");
     const after = without.indexOf("const unkeyedOnlySentence");

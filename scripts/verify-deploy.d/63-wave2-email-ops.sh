@@ -92,8 +92,15 @@ for(const [n,s,m] of [["send-search-digest","23 14 * * *","20261008125000"],["in
   console.log("INFO  "+n+" last 48h: runs "+r.ch_runs+", failed "+r.ch_failed+", last "+r.ch_last_status+" at "+r.ch_last_start+" (a 401 in the function log means the job is not sending the key)");}
 const hb=job("scan-heartbeat-sentinel");
 console.log((hb&&hb.ch_active?"PASS":"FAIL")+"  scan-heartbeat-sentinel cron "+(hb?"schedule "+hb.ch_schedule+", active "+hb.ch_active+", runs "+hb.ch_runs+"/48h":"is missing"));
-const q=job("process-email-queue");
-console.log(q?"INFO  process-email-queue cron: schedule "+q.ch_schedule+", active "+q.ch_active+", runs "+q.ch_runs+"/48h":"INFO  no process-email-queue cron job: queued mail (auth mails, the fix-plan drip) is never sent until Lovable Cloud\x27s email setup re-creates it (owner)");'
+// The drain, reported as section 94 judges it (re-pointed 2026-10-24: since R1
+// the job is our own rb-auth-mail-drain, 20261014100000; a job Lovable names
+// after the queue function is reported beside it, never required).
+const lov=job("process-email-queue");
+if(lov)console.log("INFO  Lovable\x27s own process-email-queue cron: schedule "+lov.ch_schedule+", active "+lov.ch_active+", runs "+lov.ch_runs+"/48h (left as it is; ours runs beside it)");
+const q=job("rb-auth-mail-drain");
+if(!q)console.log("INFO  no rb-auth-mail-drain cron job: queued sign-in mail is drained only by Lovable\x27s own job, if any (section 94 FAILs on this)");
+else{const last=String(q.ch_last_status??"");const good=q.ch_active&&Number(q.ch_runs)>0&&Number(q.ch_failed)===0&&last==="succeeded";
+console.log("INFO  rb-auth-mail-drain cron: schedule "+JSON.stringify(q.ch_schedule)+", active "+q.ch_active+", runs "+q.ch_runs+"/48h, failed "+q.ch_failed+", last run "+(last||"none")+" ("+(good?"clean by":"NOT clean by")+" section 94 rule; it carries auth_emails only, and the fix-plan drip waits for CP-G)");}'
 
 # The sentinel, from its public status reader (it is never run from here).
 R get_scan_health_status '{}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{}const r=Array.isArray(j)?j[0]:j;if(!r){console.log("INFO  get_scan_health_status unreadable: "+s.slice(0,120));return}
@@ -103,5 +110,13 @@ console.log("INFO  last_successful_scan "+r.last_successful_scan+", scans_last_h
 # The heartbeat's uncached scan is not a resume anyone scanned: the public counter must not climb 6 an hour by itself.
 R get_today_scan_count '{}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const n=Number(s);const h=new Date().getUTCHours()+new Date().getUTCMinutes()/60;
 console.log(Number.isFinite(n)?"INFO  get_today_scan_count = "+n+" at "+new Date().toISOString().slice(11,16)+" UTC; the heartbeat alone would add about "+Math.floor(h*6)+" by now if free-keyword-scan .10-08 counted it (it must not: compare day over day after the deploy)":"INFO  get_today_scan_count unreadable: "+s.slice(0,120))})'
-echo "INFO  OWNER: notify.resumebooster.work has no DNS (register L10-01): auth mails and the fix-plan drip are refused by the provider. process-email-queue now dead-letters each refused message with the sender named and keeps going; re-verify the domain in Lovable Cloud or restore its delegation, then send one magic link and check a pending+sent pair"
+# L10-01, re-pointed 2026-10-24 (profiles+design verify triage): the notify
+# subdomain was delegated to Lovable on 2026-10-12, so the owner line prints
+# only while an NS lookup (DNS-over-HTTPS, as section 94 reads it) finds no
+# Lovable delegation; section 94 judges the delegation itself.
+NS63=$(curl -s -m 20 "https://dns.google/resolve?name=notify.resumebooster.work&type=NS" -H 'accept: application/dns-json' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const j=JSON.parse(s);const a=(j.Answer||[]).map((x)=>String(x.data||"")).filter((x)=>/lovable\.cloud/i.test(x));console.log(a.length?"YES "+a.join(" "):"NO status "+j.Status)}catch{console.log("NO unreadable")}})')
+case "$NS63" in
+  YES*) echo "INFO  notify.resumebooster.work is delegated to Lovable (${NS63#YES }): the L10-01 owner step is done; section 94 judges the delegation and the sending DNS";;
+  *) echo "INFO  OWNER: notify.resumebooster.work has no Lovable delegation (${NS63#NO }; register L10-01): auth mails and the fix-plan drip are refused by the provider. process-email-queue dead-letters each refused message with the sender named and keeps going; re-verify the domain in Lovable Cloud or restore its delegation, then send one magic link and check a pending+sent pair";;
+esac
 echo "INFO  OWNER: affiliate payout requests now arrive by email and sit in affiliate_payout_requests (status requested). A request covers APPROVED conversions only (nothing in the code approves one: set a conversion approved once its refund window has passed). Setting a request paid settles it: its conversions become paid and the amount leaves pending_payout for paid_out, in that one update"

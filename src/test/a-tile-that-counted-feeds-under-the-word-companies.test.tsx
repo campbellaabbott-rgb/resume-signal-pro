@@ -145,6 +145,8 @@ describe("2. a /companies row links the scope its number was summed over", () =>
           { token: "acme", name: "Acme", open: 12 },
         ],
         companiesOpenCount: 2,
+        // The reply's count time: /companies prints no count without it.
+        refreshedAt: new Date(Date.now() - 20 * 60_000).toISOString(),
       },
     }));
     render(<MemoryRouter><Companies /></MemoryRouter>);
@@ -178,6 +180,8 @@ describe("2. a /companies row links the scope its number was summed over", () =>
           { token: "pwc-us", name: "PwC", open: 500, tokens: ["pwc-us", "pwc-uk"] },
         ],
         companiesOpenCount: 2,
+        // The reply's count time: /companies prints no count without it.
+        refreshedAt: new Date(Date.now() - 20 * 60_000).toISOString(),
       },
     }));
     render(<MemoryRouter><Companies /></MemoryRouter>);

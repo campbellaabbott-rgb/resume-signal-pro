@@ -247,7 +247,8 @@ describe("the catalogue", () => {
 
   it("moved no carried board's catalogue index: every board before it is wave 4's catalogue, entry for entry", () => {
     // build-version-guard's fingerprint, over the boards before JPMorgan only, against the
-    // catalogHash wave 4 pins for its 44,519 boards. Later appends after JPMorgan keep this
+    // catalogHash wave 4 pins for its 44,519 boards (at 88fe8982, with Meta1's agency flag
+    // in place, which moves the hash and no index). Later appends after JPMorgan keep this
     // true. The cold cursor walks a vendor-interleaved list, not this order, so appending still
     // moves about half of that list by one place (n1384); what this pins is that no board was
     // displaced in the catalogue. A census merge that removes or reorders a board before
@@ -259,7 +260,7 @@ describe("the catalogue", () => {
       h.update("\n");
     }
     expect(before.length).toBe(44_519);
-    expect(h.digest("hex").slice(0, 16)).toBe("0eca2d501140ab79");
+    expect(h.digest("hex").slice(0, 16)).toBe("04b7c79298d8b95b");
   });
 
   it("holds no other region-less token: every other tenant found on such a host was a sandbox or unreachable", () => {

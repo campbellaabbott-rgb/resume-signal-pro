@@ -437,19 +437,45 @@ describe("the migration carries exactly these lists and checks every one", () =>
     expect(sqlArray(census, /WITH lists AS \(\s*SELECT\s+ARRAY\s*\[/).sort()).toEqual(want);
   });
 
-  it("the census function's allowlists are the allowlist file", () => {
-    const census = code.slice(code.indexOf("FUNCTION public.client_callable_census()"));
-    const anonAt = census.indexOf("]::text[] AS closed,");
-    const anon = arrayLiteralAt(census, census.indexOf("ARRAY[", anonAt));
-    expect(anon.sort()).toEqual(CLIENT_CALLABLE.filter((a) => a.roles === "anon").map((a) => a.sig).sort());
-    const authAt = census.indexOf("]::text[] AS allow_anon,");
-    expect(arrayLiteralAt(census, census.indexOf("ARRAY[", authAt)).sort())
-      .toEqual(CLIENT_CALLABLE.filter((a) => a.roles === "authenticated").map((a) => a.sig).sort());
-    const elseAt = census.indexOf("]::text[] AS allow_auth,");
-    expect(arrayLiteralAt(census, census.indexOf("ARRAY[", elseAt)).sort()).toEqual([...ELSEWHERE].sort());
-    const tabAt = census.indexOf("]::text[] AS elsewhere,");
-    expect(arrayLiteralAt(census, census.indexOf("ARRAY[", tabAt)).sort())
-      .toEqual(CLOSED_TABLES.map((t) => `public.${t.table}`).sort());
+  /** The four lists of a census definition, read out of its body. */
+  const censusLists = (sql: string) => {
+    const census = sql.slice(sql.indexOf("FUNCTION public.client_callable_census()"));
+    const after = (anchor: string) => arrayLiteralAt(census, census.indexOf("ARRAY[", census.indexOf(anchor))).sort();
+    return {
+      closed: sqlArray(census, /WITH lists AS \(\s*SELECT\s+ARRAY\s*\[/).sort(),
+      anon: after("]::text[] AS closed,"),
+      auth: after("]::text[] AS allow_anon,"),
+      elsewhere: after("]::text[] AS allow_auth,"),
+      tables: after("]::text[] AS elsewhere,"),
+    };
+  };
+  // The census is re-issued whole when a reader opens after it (20261012110100
+  // added the perk reader), so the lists the live catalogue answers with are
+  // the NEWEST definition's; 20261004110000's own arrays hold the rows it
+  // wrote, every row but the ones a later re-issue stamped `since`.
+  const CENSUS_NOW_FILE = fns.get("public.client_callable_census()")?.file ?? CENSUS_FILE;
+  const CENSUS_NOW = read(`supabase/migrations/${CENSUS_NOW_FILE}`).replace(/--[^\n]*/g, "");
+
+  it("the census function's allowlists are the allowlist file (its newest definition)", () => {
+    const now = censusLists(CENSUS_NOW);
+    expect(now.anon).toEqual(CLIENT_CALLABLE.filter((a) => a.roles === "anon").map((a) => a.sig).sort());
+    expect(now.auth).toEqual(CLIENT_CALLABLE.filter((a) => a.roles === "authenticated").map((a) => a.sig).sort());
+    expect(now.elsewhere).toEqual([...ELSEWHERE].sort());
+    expect(now.tables).toEqual(CLOSED_TABLES.map((t) => `public.${t.table}`).sort());
+    expect(now.closed).toEqual([...CLOSED].sort());
+  });
+
+  it("20261004110000 lists every row but the ones a re-issue added, and each of those names a re-issue that lists it", () => {
+    const first = censusLists(code);
+    expect(first.anon).toEqual(CLIENT_CALLABLE.filter((a) => a.roles === "anon" && !a.since).map((a) => a.sig).sort());
+    expect(first.auth).toEqual(CLIENT_CALLABLE.filter((a) => a.roles === "authenticated" && !a.since).map((a) => a.sig).sort());
+    for (const a of CLIENT_CALLABLE.filter((x) => x.since)) {
+      const f = readdirSync(MIG_DIR).find((n) => n.startsWith(`${a.since}_`));
+      expect(f, `${a.sig}: no migration ${a.since}_*.sql`).toBeTruthy();
+      expect(f! <= CENSUS_NOW_FILE, `${a.sig}: ${f} sorts after the newest census`).toBe(true);
+      const lists = censusLists(read(`supabase/migrations/${f}`).replace(/--[^\n]*/g, ""));
+      expect([...lists.anon, ...lists.auth], `${f} does not list ${a.sig}`).toContain(a.sig);
+    }
   });
 
   it("the overload sweep names every closed function whose every overload closes, and only those", () => {

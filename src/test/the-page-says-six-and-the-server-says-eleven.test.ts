@@ -160,7 +160,9 @@ describe("the page says six and the server says eleven", () => {
   it("the host table names both kinds of host, and the page renders it", () => {
     expect(MCP_HOSTS.some((h) => h.header)).toBe(true);
     expect(MCP_HOSTS.some((h) => !h.header)).toBe(true);
-    expect(PAGE).toMatch(/MCP_HOSTS\.map\(/);
+    // The page renders the table of the apps it may name (R7: Claude, ChatGPT,
+    // Claude Code); the header flag property below holds over the whole table.
+    expect(PAGE).toMatch(/MCP_PAGE_HOSTS\.map\(/);
     // The sentence the refuter caught: both named clients "configure the
     // Authorization header in their own UI". Neither can, and the page must
     // not say either can — the property is the host table's `header` flag.
@@ -232,7 +234,9 @@ describe("the page says six and the server says eleven", () => {
     // from a second copy typed into the script.
     expect(PRERENDER).toMatch(/path: "\/agents"/);
     expect(PRERENDER).toMatch(/D\.MCP_TOOLS/);
-    expect(PRERENDER).toMatch(/D\.SENDABLE_VENDOR_(?:SENTENCE|LABELS)/);
+    // The sendable-vendor mirror described where the retired agent submitted
+    // (the apply pivot, 2026-10-11): the crawler copy names none of it now.
+    expect(PRERENDER).not.toMatch(/D\.SENDABLE_VENDOR_(?:SENTENCE|LABELS)/);
     expect(PRERENDER).toMatch(/D\.MCP_HOSTS/);
     expect(/\b\d{3}k\+/.exec(PRERENDER)?.[0], "prerender spells a corpus count").toBeUndefined();
     // The 2026-08-27 incident, one page over: /agent's crawler copy said

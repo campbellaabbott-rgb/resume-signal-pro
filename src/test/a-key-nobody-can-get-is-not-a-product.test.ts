@@ -7,6 +7,7 @@ import type { PGlite } from "@electric-sql/pglite";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
 import { buildIsAtLeast } from "./helpers/fn-build";
 import { MAIL_DOOR_SQL, MAIL_DOOR_VERIFY, bootMailDoorDb, h64, rows } from "./helpers/mail-door-db";
+import { publicApiBase } from "@/config/public-endpoints";
 
 /**
  * AN API NOBODY CAN TRY IS AN API NOBODY BECOMES A CUSTOMER OF -- AND A KEY
@@ -454,7 +455,12 @@ describe("the page says what the code does", () => {
   });
 
   it("the documented base URL cannot drift from the deployed project", () => {
-    expect(PAGE_CODE).toMatch(/const API_BASE = `\$\{import\.meta\.env\.VITE_SUPABASE_URL\}\/functions\/v1\/public-api`/);
+    // Built from the env the client is built with, through the one builder the
+    // bake and both llms files use (SEO-015), which answers that URL plus the
+    // function's path.
+    expect(PAGE_CODE).toMatch(/const API_BASE = publicApiBase\(import\.meta\.env\.VITE_SUPABASE_URL\);/);
+    expect(publicApiBase("https://abc.supabase.co")).toBe("https://abc.supabase.co/functions/v1/public-api");
+    expect(publicApiBase("https://abc.supabase.co/")).toBe("https://abc.supabase.co/functions/v1/public-api");
   });
 
   it("the free-tier numbers shown come from the response, not from copy", () => {
