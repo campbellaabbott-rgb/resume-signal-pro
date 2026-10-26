@@ -104,11 +104,25 @@ describe("the same openings joined to plain work or motivation are still drafted
 
   it("every motivation opening with a plain second clause", () => {
     const refused: string[] = [];
-    for (const opening of MOTIVATION) for (const j of [" and ", ", ", " & ", " / ", " + ", " - ", " plus "]) for (const more of PLAIN_MOTIVATION) {
+    // A cover-letter box is the person's whatever follows (next test).
+    for (const opening of MOTIVATION.filter((o) => o !== "Cover letter")) for (const j of [" and ", ", ", " & ", " / ", " + ", " - ", " plus "]) for (const more of PLAIN_MOTIVATION) {
       const label = `${opening}${j}${more}`;
       if (!drafted(label)) refused.push(label);
     }
     expect(refused).toEqual([]);
+  });
+
+  it("a cover-letter box the classifier files is never drafted, whatever plain clause follows (the answers panel's answer)", () => {
+    const drafts: string[] = [];
+    let filed = 0;
+    for (const j of [" and ", ", ", " & ", " / ", " + ", " - ", " plus "]) for (const more of ["", ...PLAIN_MOTIVATION]) {
+      const label = more ? `Cover letter${j}${more}` : "Cover letter";
+      if (server.classifyQuestion(label, "textarea") !== "file") continue;
+      filed++;
+      if (drafted(label)) drafts.push(label);
+    }
+    expect(filed).toBeGreaterThan(PLAIN_MOTIVATION.length);
+    expect(drafts).toEqual([]);
   });
 
   it("a protected word that is only the work's object is drafted, and pointing it at the person is not", () => {

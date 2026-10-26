@@ -379,7 +379,8 @@ const LIST_FILTERS = [
 // 2026-10-11.33 (wave 4 fix round 4): the application route carries the default-deny clause rule for work and motivation questions.
 // 2026-10-11.34 (wave 4 descope, 2026-10-25): no rule change. The application route's description and answeredByMeans say the marks are read from the words, can mark an unusually worded question about the person for a draft, and that the person reads every answer.
 // 2026-10-11.35 (the recheck of the descope, 2026-10-25): no rule change. The application route's description and answeredByMeans say the marks can miss a question about the person even when it is plainly worded.
-const FN_BUILD = "public-api.2026-10-11.35";
+// 2026-10-11.36 (the second recheck of the descope, 2026-10-25): the application route marks a cover-letter text box answeredBy "you" with cvMayHelp, as the answers panel and origin/main leave it with the person; it was the one question main leaves to the person that the route sent to a draft.
+const FN_BUILD = "public-api.2026-10-11.36";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",

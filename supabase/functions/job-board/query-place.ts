@@ -107,15 +107,18 @@ export function liftTrailingPlace(q: string, filler: ReadonlySet<string>): Place
  * cannot leave a place out, and left as words the search matched nurse AND
  * texas, all Texas rows. The head without the negation and the place, which
  * the caller searches instead and discloses as an exclusion it could not apply.
+ * `filler` as liftTrailingPlace reads it: a head of only those words is ""
+ * ("jobs not in London" browses, rather than search titles saying "Jobs").
  */
-export function negatedTrailingPlace(q: string): { head: string; place: string } | null {
+export function negatedTrailingPlace(q: string, filler: ReadonlySet<string> = new Set()): { head: string; place: string } | null {
   const m = TRAILING_PLACE.exec(q.trim());
   if (!m || !NEGATION_BEFORE_PLACE.test(m[1])) return null;
   const place = m[3].replace(/’/g, "'").replace(/\s+/g, " ").trim();
   if (!place || place.split(" ").length > 4 || !knownPlace(place)) return null;
   let head = m[1];
   while (NEGATION_BEFORE_PLACE.test(head)) head = head.replace(NEGATION_BEFORE_PLACE, "").trim();
-  return { head, place };
+  const onlyFiller = head.toLowerCase().split(/\s+/).every((w) => filler.has(w));
+  return { head: onlyFiller ? "" : head, place };
 }
 
 /**

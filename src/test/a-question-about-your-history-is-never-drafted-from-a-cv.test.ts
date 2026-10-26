@@ -78,10 +78,12 @@ describe("the person's own history goes to the person, as a factual question wit
 
 describe("the AI drafts only free-text work-done and motivation questions (default-deny)", () => {
   it("motivation questions in free text are drafted; the same words with options are the person's", () => {
-    for (const label of ["Why do you want to work at Acme?", "What interests you about this role?", "Cover letter", "Is there anything else you'd like us to know?"]) {
+    for (const label of ["Why do you want to work at Acme?", "What interests you about this role?", "Is there anything else you'd like us to know?"]) {
       expect(whoAnswers({ label, required: false, type: "textarea" }, 1).answeredBy, label).toBe("draft_from_your_cv");
       expect(whoAnswers({ label, required: false, type: "select", options: ["A", "B"] }, 1).answeredBy, `${label} (select)`).not.toBe("draft_from_your_cv");
     }
+    // A cover-letter text box is the person's, as the answers panel leaves it (wave 4 recheck of the descope).
+    expect(whoAnswers({ label: "Cover letter", required: false, type: "textarea" }, 1)).toMatchObject({ answeredBy: "you", cvMayHelp: true });
   });
 
   it("a motivation opening that asks the person's own status is not motivation", () => {

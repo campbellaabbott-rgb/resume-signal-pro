@@ -336,7 +336,8 @@ const SUPPORTED_METHODS = ["initialize", "tools/list", "tools/call", "prompts/li
 // 2026-10-11.33 (wave 4 fix round 4): apply_myself carries the default-deny clause rule: a later clause, sentence or hint is the person's unless it is visibly work or motivation, at every joiner, line break, colon or bracket.
 // 2026-10-11.34 (wave 4 descope, 2026-10-25): no rule change. apply_myself's description says answeredBy is read from the words and can be wrong, the call-order resource says the person reads every answer, the apply_myself prompt tells the AI to ask the person about any marked question that asks about them, and the markdown packet carries the same note under its drafting heading.
 // 2026-10-11.35 (the recheck of the descope, 2026-10-25): no rule change. apply_myself's description says a question about the person, even a plainly worded one, can be marked draft_from_your_cv; the job card's salary field says it can be a pay line read from the description, on rare postings a business figure, and hasStatedPay says the same.
-const FN_BUILD = "agent-mcp.2026-10-11.35";
+// 2026-10-11.36 (the second recheck of the descope, 2026-10-25): a trailing "remote" or "anywhere" the person excluded (a minus on it, or not, no, non, except and the place words before it) is never lifted into remote:true; the query goes to the board as typed, as origin/main sends it. apply_myself marks a cover-letter text box answeredBy "you" with cvMayHelp, as the answers panel does. The job card's salary field no longer calls a string the board wrote from a vendor's figures verbatim.
+const FN_BUILD = "agent-mcp.2026-10-11.36";
 /** Where a free key is minted — the page every refusal in this file points at. */
 const MINT_URL = "https://resumebooster.work/data-api";
 /** Where a pass is bought, signed in — the fix every pass refusal names. */
@@ -985,7 +986,7 @@ const JOB_CARD_SCHEMA = {
     workMode: { type: "string", enum: ["remote", "hybrid", "onsite"], description: "The employer's own statement; absent when it makes none (never read as onsite)." },
     employmentType: { type: "string" },
     department: { type: "string" },
-    salary: { type: "string", description: "The posting's pay text, verbatim: the employer's pay field, or a pay line the board read from the description, which on rare postings is a business figure (a deal size, a revenue), not pay." },
+    salary: { type: "string", description: "The posting's pay as text: the employer's pay field, as the vendor gives it or written out by the board from its figures, or a pay line the board read from the description, which on rare postings is a business figure (a deal size, a revenue), not pay." },
     salaryMinAnnual: { type: "number", description: "Annual USD-equivalent floor parsed by the board; absent when unstated (absence is not zero)." },
     salaryMaxAnnual: { type: "number" },
     salaryPeriod: { type: "string" },
