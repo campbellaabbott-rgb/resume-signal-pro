@@ -20,7 +20,11 @@ import { HomeDetails } from "./HomeDetails";
  *     growth (measured 5.8x; the board shrank on the day the mockup said it
  *     grew). Nothing here reads get_board_flow.
  *
- * Field links come from the board's category list (src/lib/home/fields.ts).
+ * Field links come from the board's category list (src/lib/home/fields.ts),
+ * labelled home.rail.fields.<slug>: the board's own category names
+ * (jobsPage.categories), copied into this page's shard and held equal to them
+ * by hp-home-strings, so "/" does not load the board's whole namespace of
+ * strings before its first paint (the cards load it later, with their chunk).
  * From 1024px they are a card; under it, a disclosure whose links stay in the
  * DOM.
  */
@@ -37,7 +41,7 @@ export function HomeBoardRail({ freshness }: { freshness: BoardFreshness | null 
             to={fieldPath(slug)}
             className="inline-flex !min-h-8 items-center rounded-md border border-border-strong px-2.5 py-1 text-meta text-foreground transition-colors duration-fast hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background coarse:!min-h-11"
           >
-            {t(`jobsPage.categories.${slug}`)}
+            {t(`home.rail.fields.${slug}`)}
           </Link>
         </li>
       ))}

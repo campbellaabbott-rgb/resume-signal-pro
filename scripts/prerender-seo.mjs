@@ -1957,7 +1957,7 @@ export { count as fmtCount, money as fmtMoney, date as fmtDate } from "../src/li
     : `counted ${TODAY}, when this page was built`;
   {
     const H = HS;
-    const CATS = (D.EN_LOCALE && D.EN_LOCALE.jobsPage && D.EN_LOCALE.jobsPage.categories) || {};
+    const CATS = (H.rail && H.rail.fields) || {};
     const table = BOARD_VENDOR ? D.sourcesTable(BOARD_VENDOR.counts) : null;
     const reach = BOARD_VENDOR ? D.aiReach(BOARD_VENDOR.counts, VENDOR_TOTAL) : null;
     const named = BOARD_VENDOR ? D.namedSystems(BOARD_VENDOR.counts) : null;

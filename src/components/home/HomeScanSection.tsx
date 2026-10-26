@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
-import { Trans, useTranslation } from "react-i18next";
+import { useTranslation } from "react-i18next";
+import { TaggedText } from "./TaggedText";
 import { Check } from "lucide-react";
 import {
   HOME_FREE_REPORT_DAYS,
@@ -20,7 +21,7 @@ import { SampleReport } from "./SampleReport";
  */
 export function HomeScanSection() {
   const { t } = useTranslation();
-  const trust = <Link to="/trust" className="link" />;
+  const trust = (inner: string, key: number) => <Link key={key} to="/trust" className="link">{inner}</Link>;
   return (
     <section aria-labelledby="home-scan" className="border-t border-border py-8 sm:py-10 lg:py-16">
       <div className="container grid gap-6 lg:grid-cols-2 lg:items-start lg:gap-14">
@@ -48,10 +49,9 @@ export function HomeScanSection() {
             </Link>
           </div>
           <p className="mt-3 text-meta text-muted-foreground">
-            <Trans
-              i18nKey="home.scan.retention"
-              values={{ hours: HOME_RESUME_TEXT_HOURS, days: HOME_FREE_REPORT_DAYS, paidDays: HOME_PAID_REPORT_DAYS }}
-              components={{ trust }}
+            <TaggedText
+              text={t("home.scan.retention", { hours: HOME_RESUME_TEXT_HOURS, days: HOME_FREE_REPORT_DAYS, paidDays: HOME_PAID_REPORT_DAYS })}
+              tags={{ trust }}
             />
           </p>
         </div>

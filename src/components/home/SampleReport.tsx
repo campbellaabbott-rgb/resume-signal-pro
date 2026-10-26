@@ -1,4 +1,5 @@
-import { Trans, useTranslation } from "react-i18next";
+import { useTranslation } from "react-i18next";
+import { TaggedText } from "./TaggedText";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import { Chip } from "@/components/ui/chip";
 import { WRAP_CHIP } from "@/lib/home/wrap-chip";
@@ -12,7 +13,7 @@ import { WRAP_CHIP } from "@/lib/home/wrap-chip";
  */
 export function SampleReport() {
   const { t } = useTranslation();
-  const ph = <span className="font-mono text-meta text-primary" />;
+  const ph = (inner: string, key: number) => <span key={key} className="font-mono text-meta text-primary">{inner}</span>;
   return (
     <div role="group" aria-label={t("home.sample.label")} className="overflow-hidden rounded-lg border border-border bg-card">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3.5">
@@ -56,7 +57,7 @@ export function SampleReport() {
             </p>
             <p className="rounded-md border border-border bg-background px-2.5 py-2">
               <span className="block text-xs font-semibold text-subtle-foreground">{t("home.sample.after")}</span>
-              <Trans i18nKey="home.sample.afterText" components={{ ph }} />
+              <TaggedText text={t("home.sample.afterText")} tags={{ ph }} />
             </p>
           </div>
         </div>

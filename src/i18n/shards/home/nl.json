@@ -43,7 +43,15 @@
       "boards_other": "vacaturesites die we lezen, met een actieve vacature",
       "readBasis": "De helft is gelezen in de {{p50}} vóór {{date}}, {{time}} UTC; 95% binnen {{p95}}. Bij de grootste borden is één lezing een deel van het bord.",
       "fieldsTitle": "Bladeren per vakgebied",
-      "allFields": "Alle vakgebieden"
+      "allFields": "Alle vakgebieden",
+      "fields": {
+        "healthcare": "Zorg & klinisch",
+        "engineering": "Engineering & IT",
+        "sales": "Sales & partnerships",
+        "finance": "Financiën & boekhouding",
+        "education": "Onderwijs",
+        "hospitality_retail": "Horeca & retail"
+      }
     },
     "account": {
       "title": "Bewaar je zoektocht met een gratis account",

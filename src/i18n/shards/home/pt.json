@@ -46,7 +46,15 @@
       "boards_other": "sites de vagas que lemos, com uma vaga ativa",
       "readBasis": "Metade foi lida nas {{p50}} antes de {{date}}, {{time}} UTC; 95% em até {{p95}}. Nos maiores quadros, uma leitura é uma parte do quadro.",
       "fieldsTitle": "Navegar por área",
-      "allFields": "Todas as áreas"
+      "allFields": "Todas as áreas",
+      "fields": {
+        "healthcare": "Saúde e clínica",
+        "engineering": "Engenharia e TI",
+        "sales": "Vendas e parcerias",
+        "finance": "Finanças e contabilidade",
+        "education": "Educação",
+        "hospitality_retail": "Hotelaria e varejo"
+      }
     },
     "account": {
       "title": "Guarde sua busca com uma conta grátis",

@@ -19,6 +19,7 @@
  *     running.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { ILLUSTRATION_LOCATION, ILLUSTRATION_PLACE } from "@/components/home/HomeAiSection";
 import { HOME_H1_CLASS } from "@/lib/home/hero-classes";
 import { PRO_PERK_ITEMS as WAVE_FOUR_PRO_PERKS } from "@/config/pro-perks";
 import { cleanup, render, renderHook, waitFor } from "@testing-library/react";
@@ -122,6 +123,10 @@ describe("the AI illustration prints the board's own location", () => {
     const printed = displayLocation("US - Cambridge Kendall SQ - MA").text!;
     expect(container.querySelector("figure")?.textContent ?? "").toContain(`AstraZeneca · ${printed} · Workday`);
     expect(container.querySelector("figure")?.textContent ?? "").not.toContain("Cambridge, MA");
+  });
+
+  it("the written-out place is exactly what displayLocation prints for the stored location", () => {
+    expect(ILLUSTRATION_PLACE).toBe(displayLocation(ILLUSTRATION_LOCATION).text);
   });
 });
 

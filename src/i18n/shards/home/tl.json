@@ -43,7 +43,15 @@
       "boards_other": "job board na binabasa namin, na may aktibong posting",
       "readBasis": "Kalahati ang nabasa sa loob ng {{p50}} bago ang {{date}}, {{time}} UTC; 95% sa loob ng {{p95}}. Sa pinakamalalaking board, ang isang pagbasa ay isang bahagi ng board.",
       "fieldsTitle": "Mag-browse ayon sa larangan",
-      "allFields": "Lahat ng larangan"
+      "allFields": "Lahat ng larangan",
+      "fields": {
+        "healthcare": "Kalusugan at klinikal",
+        "engineering": "Engineering at IT",
+        "sales": "Sales at partnership",
+        "finance": "Pananalapi at accounting",
+        "education": "Edukasyon",
+        "hospitality_retail": "Hospitality at retail"
+      }
     },
     "account": {
       "title": "Itago ang iyong paghahanap gamit ang libreng account",

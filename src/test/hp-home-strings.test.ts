@@ -24,6 +24,7 @@ import { describe, expect, it } from "vitest";
 import { readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { leafKeys, type Bundle } from "@/i18n/merge-shards";
+import { HOME_FIELD_SLUGS } from "@/lib/home/fields";
 import { LISTING_BANNED_PHRASES, LOCALE_FILES, readMainLocale, readShards, stringLeaves } from "./helpers/locale-strings";
 
 const DIR = resolve(__dirname, "../i18n/shards/home");
@@ -144,6 +145,17 @@ describe("the house rules hold in every language", () => {
       expect(h.plans.termTerritory).not.toMatch(/\bIP\b|lookup/);
       expect(h.plans.proBody).toMatch(/no daily cap on scans/);
       expect(h.plans.termFinal).toBe("All sales are final.");
+    }
+  });
+});
+
+describe("the field links' labels are the board's own category names", () => {
+  it("home.rail.fields.<slug> equals jobsPage.categories.<slug>, slug for slug, in every language", () => {
+    for (const f of FILES) {
+      const fields = ((read(f).home as Bundle).rail as Bundle).fields as Record<string, string>;
+      const cats = ((readMainLocale(f).jobsPage as Bundle).categories as Record<string, string>);
+      expect(Object.keys(fields).sort(), f).toEqual([...HOME_FIELD_SLUGS].sort());
+      for (const slug of HOME_FIELD_SLUGS) expect(fields[slug], `${f} ${slug}`).toBe(cats[slug]);
     }
   });
 });

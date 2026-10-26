@@ -103,7 +103,11 @@ async function main() {
             delete headers["content-type"];
             delete headers["content-length"];
             const response = await route.fetch({ url: url.href, method: "GET", headers });
-            return route.fulfill({ response });
+            // The body arrives decoded, so a copied content-encoding would be decoded twice.
+            const out = { ...response.headers() };
+            delete out["content-encoding"];
+            delete out["content-length"];
+            return route.fulfill({ status: response.status(), headers: out, body: await response.body() });
           }
         }
         if (url.pathname === "/functions/v1/job-board" && method === "POST") {

@@ -46,7 +46,15 @@
       "boards_other": "bolsas de empleo que leemos, con una oferta activa",
       "readBasis": "La mitad se leyó en las {{p50}} antes del {{date}}, {{time}} UTC; el 95 % en menos de {{p95}}. En los tablones más grandes, una lectura es una parte del tablón.",
       "fieldsTitle": "Explorar por área",
-      "allFields": "Todas las áreas"
+      "allFields": "Todas las áreas",
+      "fields": {
+        "healthcare": "Salud y clínica",
+        "engineering": "Ingeniería e IT",
+        "sales": "Ventas y alianzas",
+        "finance": "Finanzas y contabilidad",
+        "education": "Educación",
+        "hospitality_retail": "Hostelería y retail"
+      }
     },
     "account": {
       "title": "Conserva tu búsqueda con una cuenta gratuita",

@@ -46,7 +46,15 @@
       "boards_other": "sites carrières que nous lisons, avec une offre active",
       "readBasis": "La moitié a été lue dans les {{p50}} avant le {{date}}, {{time}} UTC ; 95 % en moins de {{p95}}. Pour les plus grands tableaux, une lecture couvre une partie du tableau.",
       "fieldsTitle": "Parcourir par domaine",
-      "allFields": "Tous les domaines"
+      "allFields": "Tous les domaines",
+      "fields": {
+        "healthcare": "Santé & clinique",
+        "engineering": "Ingénierie & IT",
+        "sales": "Ventes & partenariats",
+        "finance": "Finance & comptabilité",
+        "education": "Éducation",
+        "hospitality_retail": "Hôtellerie & commerce"
+      }
     },
     "account": {
       "title": "Gardez votre recherche avec un compte gratuit",

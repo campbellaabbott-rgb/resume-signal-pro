@@ -43,7 +43,15 @@
       "boards_other": "job boards we read, with a live posting",
       "readBasis": "Half had a read in the {{p50}} before {{date}}, {{time}} UTC; 95% within {{p95}}. For the largest boards, a read is one part of the board.",
       "fieldsTitle": "Browse by field",
-      "allFields": "All fields"
+      "allFields": "All fields",
+      "fields": {
+        "healthcare": "Healthcare & Clinical",
+        "engineering": "Engineering & IT",
+        "sales": "Sales & Partnerships",
+        "finance": "Finance & Accounting",
+        "education": "Education",
+        "hospitality_retail": "Hospitality & Retail"
+      }
     },
     "account": {
       "title": "Keep your search with a free account",

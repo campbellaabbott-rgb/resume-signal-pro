@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { invokeJobBoard } from "@/lib/invoke-job-board";
 import type { ListingJob } from "@/lib/listing/types";
 import { isAutomatedAgent } from "./automation";
-import { applyFeedReadGate, curveTokens, HOME_LIST_BODY, selectHomeRows, withoutFeedRead, type FeedReadCurveRow } from "./rows";
+import type { FeedReadCurveRow } from "./rows";
 
 /**
  * THE HOMEPAGE'S LIVE ROWS (corrected spec 4.2, "Data").
@@ -22,6 +21,10 @@ import { applyFeedReadGate, curveTokens, HOME_LIST_BODY, selectHomeRows, without
  *
  * Any failure, or a reply with nothing the rules allow, is "hidden": the page
  * drops the list and keeps "See all postings" and the field links.
+ *
+ * The code that makes the call and picks the rows (the job-board door,
+ * rows.ts with the board's collision table and the feed-read gate) loads
+ * when the call is made, after the first paint, not ahead of it.
  */
 export type HomeRowsStatus = "off" | "loading" | "ready" | "hidden";
 
@@ -86,6 +89,11 @@ export function useHomeRows(opts: UseHomeRowsOptions = {}): HomeRowsState {
     const curveCall = new AbortController();
     const run = async () => {
       try {
+        const [{ invokeJobBoard }, { applyFeedReadGate, curveTokens, HOME_LIST_BODY, selectHomeRows, withoutFeedRead }] = await Promise.all([
+          import("@/lib/invoke-job-board"),
+          import("./rows"),
+        ]);
+        if (!alive) return;
         const listed = await within(
           invokeJobBoard<{ jobs?: ListingJob[] }>({ body: { ...HOME_LIST_BODY }, signal: listCall.signal }),
           opts.listWaitMs ?? LIST_WAIT_MS,

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { Trans, useTranslation } from "react-i18next";
+import { useTranslation } from "react-i18next";
+import { TaggedText } from "./TaggedText";
 import { namedSystems } from "@/lib/home/board-figures";
 import { HOME_FREE_REPORT_DAYS, HOME_PAID_REPORT_DAYS, HOME_RESUME_TEXT_HOURS } from "@/lib/home/facts";
 import { BOARD_FRESH_WINDOW_DAYS } from "@/components/jobs/posting-page";
@@ -16,7 +17,7 @@ import { HomeDetails } from "./HomeDetails";
 export function HomeFaq({ counts }: { counts: Record<string, number> }) {
   const { t } = useTranslation();
   const named = namedSystems(counts);
-  const trust = <Link to="/trust" className="link" />;
+  const trust = (inner: string, key: number) => <Link key={key} to="/trust" className="link">{inner}</Link>;
 
   const items: Array<{ key: string; q: string; a: ReactNode }> = [
     {
@@ -33,10 +34,9 @@ export function HomeFaq({ counts }: { counts: Record<string, number> }) {
       key: "resume",
       q: t("home.faq.resumeQ"),
       a: (
-        <Trans
-          i18nKey="home.faq.resumeA"
-          values={{ hours: HOME_RESUME_TEXT_HOURS, days: HOME_FREE_REPORT_DAYS, paidDays: HOME_PAID_REPORT_DAYS }}
-          components={{ trust }}
+        <TaggedText
+          text={t("home.faq.resumeA", { hours: HOME_RESUME_TEXT_HOURS, days: HOME_FREE_REPORT_DAYS, paidDays: HOME_PAID_REPORT_DAYS })}
+          tags={{ trust }}
         />
       ),
     },

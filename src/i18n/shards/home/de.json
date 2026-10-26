@@ -43,7 +43,15 @@
       "boards_other": "Jobbörsen, die wir lesen, mit einer aktiven Anzeige",
       "readBasis": "Die Hälfte wurde in den {{p50}} vor dem {{date}}, {{time}} UTC gelesen, 95 % innerhalb von {{p95}}. Bei den größten Boards ist ein Lesen ein Teil des Boards.",
       "fieldsTitle": "Nach Bereich stöbern",
-      "allFields": "Alle Bereiche"
+      "allFields": "Alle Bereiche",
+      "fields": {
+        "healthcare": "Gesundheit & Klinik",
+        "engineering": "Engineering & IT",
+        "sales": "Vertrieb & Partnerschaften",
+        "finance": "Finanzen & Buchhaltung",
+        "education": "Bildung",
+        "hospitality_retail": "Gastgewerbe & Handel"
+      }
     },
     "account": {
       "title": "Behalte deine Suche mit einem kostenlosen Konto",
