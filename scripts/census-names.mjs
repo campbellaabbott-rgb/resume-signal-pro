@@ -400,6 +400,18 @@ function hostLabel(host) {
 }
 
 const NAME_STOP = new Set(["the", "of", "and", "for", "a", "an", "at", "inc", "llc", "ltd", "corp", "co", "company", "group", "plc", "llp"]);
+/**
+ * Words too common in names to show, by themselves, that a name and a domain
+ * or slug belong together: "Adaptive Home Health" shares only "health" with
+ * the fira-health board, and is another company.
+ */
+const COMMON_NAME_WORDS = new Set([
+  "health", "healthcare", "care", "medical", "group", "services", "service", "solutions", "systems",
+  "labs", "lab", "media", "energy", "capital", "partners", "technologies", "technology", "tech",
+  "home", "homes", "bank", "financial", "finance", "consulting", "management", "international",
+  "global", "america", "american", "national", "foods", "food", "company", "companies", "network",
+  "industries", "enterprises", "holdings", "resources", "software", "digital", "ai", "data",
+]);
 
 /**
  * Whether a board's name and its employer's domain plausibly name the same
@@ -421,7 +433,7 @@ function nameAgreesWithLabel(name, label) {
   if (label.length < 2) return false;
   const words = wordsOf(name).map((w) => w.replace(/'/g, "")).filter((w) => w && !NAME_STOP.has(w));
   if (!words.length) return false;
-  if (words.some((w) => w.length >= 3 && label.includes(w))) return true;
+  if (words.some((w) => w.length >= 3 && !COMMON_NAME_WORDS.has(w) && label.includes(w))) return true;
   const letters = words.join("");
   if (label.includes(letters)) return true;
   if (label.length >= 3 && label[0] === letters[0]) {

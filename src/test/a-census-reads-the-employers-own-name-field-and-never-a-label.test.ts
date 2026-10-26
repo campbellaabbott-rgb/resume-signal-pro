@@ -257,6 +257,9 @@ describe("Ashby: the organization record's name, never the page title", () => {
     expect(pickAshbyName("Teleport", "goteleport").name).toBe("Teleport");
     expect(pickAshbyName("Binance.US", "binance.us").name).toBe("Binance.US");
     expect(pickAshbyName("", "lemonade").name).toBe("Lemonade");
+    // a shared common word is not a match: the fira-health board's record names another company
+    expect(pickAshbyName("Adaptive Home Health", "fira-health").name).toBe("Fira Health");
+    expect(nameAgreesWithHost("Bourne Manor Extended Care", "integritushealthcare.com")).toBe(false);
   });
 
   it("verify-all reads the hosted page's organization record", () => {
