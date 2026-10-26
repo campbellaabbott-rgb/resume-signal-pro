@@ -204,6 +204,11 @@ describe("ADP: welcome prose or the employer's posting prose, never the logo's f
     expect(adpWelcomeName(links("Welcome to Taco Bell and be part of a team that supports your success!"))).toBe("Taco Bell");
     expect(adpWelcomeName(links("Welcome to our Career Center."))).toBe("");
     expect(adpWelcomeName(links("Welcome to the City of Boston Career Center."))).toBe("City of Boston");
+    // recorded on the 2026-10-25 read of every ADP career centre in the catalogue
+    expect(adpWelcomeName(links("Welcome to Wagoner Community Hospital, We are Glad You&#39;re Here! Our Mission:"))).toBe("Wagoner Community Hospital");
+    expect(adpWelcomeName(links("Welcome to Outdoor Cap &amp; JUNK Brands Careers We're glad you are here! Established in 1977"))).toBe("Outdoor Cap & JUNK Brands");
+    expect(adpWelcomeName(links("Welcome to the Career Center of Landhope Farms! &nbsp; We are excited"))).toBe("Landhope Farms");
+    expect(adpWelcomeName(links("Welcome to Jiffy Lube, Start tomorrow! No resume required."))).toBe("Jiffy Lube");
   });
 
   it("the unnamed board then gets its name from its own postings: Community Care Cooperative", async () => {

@@ -191,6 +191,7 @@ export function censusNameReason(raw, { fromLabel = false } = {}) {
   const words = wordsOf(name);
   if (words.length === 0) return "empty";
   if (words.every((w) => /^\d+$/.test(w)) && words.join("").length >= 5) return "account number";
+  if (words.join("").length < 2) return "too short";
   if (/^[a-z0-9]+(?:careers|careersite|jobsite|portal)$/.test(name) && !LABEL_WORDS.has(name)) return "slug";
   const core = words.filter((w) => !JOINERS.has(w));
   if (!core.length) return "label words only";
@@ -215,8 +216,8 @@ export function censusNameReason(raw, { fromLabel = false } = {}) {
  * Opportunities", "X - Support Staff Openings". The suffix must stand apart
  * from the name ("EniJobs" keeps its last letters).
  */
-const AFFIX_PREFIX = /^(?:jobs?|careers?|career\s+opportunities|opportunities|openings|positions|vacancies|work)\s+(?:at|@|with|for)\s+/i;
-const AFFIX_SUFFIX = /(?:^|[\s\-\u2013\u2014|:_]+)(?:(?:(?:support\s+)?staff|faculty|intern(?:ship)?s?|students?|executive|experienced|professionals?|additional|official|training|campus|graduate|hourly|salaried|corporate|external|internal)\s+)?(?:career\s+opportunities|job\s+opportunities|employment\s+opportunities|opportunities|careers?\s+(?:site|page|portal|center|centre|section)(?:\s+\d{1,2})?|careers?\s+website|careersite|candidate\s+experience(?:\s+site)?|(?:jobs?|careers?)\s+(?:and|&)\s+(?:jobs?|careers?|opportunities)|career|careers|jobs?(?:\s+portal)?|job\s+board|job\s+openings|job\s+listings?|openings|positions|vacancies|talent\s+community)\s*$/i;
+const AFFIX_PREFIX = /^(?:(?:jobs?|careers?|career\s+opportunities|opportunities|openings|positions|vacancies|work)\s+(?:at|@|with|for)|careers?\s+(?:center|centre|page|site|portal)\s+(?:of|for|at))\s+/i;
+const AFFIX_SUFFIX = /(?:^|[\s\-\u2013\u2014|:_]+)(?:(?:(?:support\s+)?staff|faculty|intern(?:ship)?s?|students?|executive|experienced|professionals?|additional|official|training|campus|graduate|hourly|salaried|corporate|external|internal)\s+)?(?:career\s+opportunities|job\s+opportunities|employment\s+opportunities|opportunities|careers?\s+(?:site|page|portal|center|centre|section)(?:\s+\d{1,2})?|careers?\s+website|careersite|candidate\s+experience(?:\s+site)?|(?:jobs?|careers?)\s+(?:and|&)\s+(?:jobs?|careers?|opportunities)|career|careers|jobs?(?:\s+portal)?|job\s+board|job\s+openings|jobs?\s+listings?|employment\s+(?:portal|site|page|center|centre)|openings|positions|vacancies|talent\s+community)\s*$/i;
 /**
  * In a label field, the tags a vendor's admin screen appends to an asset's
  * name: a version ("NEW", "V2"), a date ("2022", "01/13/2023", "051816"), a
@@ -576,6 +577,15 @@ function leadingNameRun(phrase) {
     const tok = toks[i];
     // a capital letter alone before a lowercase word is a broken word ("C entral"), not a name word
     if (/^\p{Lu}$/u.test(tok) && /^\p{Ll}/u.test(toks[i + 1] ?? "")) break;
+    // the prose turns to the reader ("... Brands Careers We're hiring")
+    if (/^(?:we|we're|we\u2019re|our|you|your|you're|i|us)$/i.test(tok.replace(/[^\w'\u2019]/g, ""))) break;
+    // a comma ends the name unless a legal suffix follows ("Kawasaki Robotics (USA), Inc")
+    if (/,$/.test(tok) && /[\p{Lu}\p{N}]/u.test(tok)) {
+      const legalNext = /^(?:inc|llc|ltd|co|corp|l\.?p|p\.?c|plc|llp|pllc)\b\.?/i.test(toks[i + 1] ?? "");
+      kept.push(legalNext ? tok : tok.slice(0, -1));
+      if (!legalNext) break;
+      continue;
+    }
     if (/[\p{Lu}\p{N}]/u.test(tok)) { kept.push(tok); continue; }
     if (kept.length && NAME_CONNECTORS.has(tok.toLowerCase())) { kept.push(tok); continue; }
     break;
