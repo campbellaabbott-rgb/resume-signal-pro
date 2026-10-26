@@ -36,9 +36,11 @@ vi.mock("@/components/Header", () => ({ Header: () => null }));
 vi.mock("@/components/Footer", () => ({ Footer: () => null }));
 vi.mock("@/components/seo/SEO", () => ({ SEO: () => null }));
 vi.mock("@/components/ProductPreview", () => ({ ProductPreview: () => null }));
-// Whether a seller is named: as shipped (closed) unless a test opens it (recheck 3).
+// Whether a seller is named, and with it each product's own gate (the page
+// reads fullAnalysisOnSale() and proOnSale()): as shipped (closed) unless a
+// test opens all three (recheck 3).
 const gate = vi.hoisted(() => ({ open: false }));
-vi.mock("@/lib/purchases-open", () => ({ purchasesOpen: () => gate.open }));
+vi.mock("@/lib/purchases-open", () => ({ purchasesOpen: () => gate.open, fullAnalysisOnSale: () => gate.open, proOnSale: () => gate.open }));
 
 import Pricing from "../pages/Pricing";
 import { PRODUCTS, SUBSCRIPTIONS, PASS, getAllProducts } from "@/config/products";
