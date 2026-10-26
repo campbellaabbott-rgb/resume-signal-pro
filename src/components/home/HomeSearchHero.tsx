@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { count as fmtCount } from "@/lib/format";
 import { utcStamp } from "@/lib/home/stamps";
 import { searchHref, TRY_CHIPS } from "@/lib/home/search";
+import { HOME_H1_CLASS, HOME_SUB_CLASS } from "@/lib/home/hero-classes";
 
 /**
  * 4.1 THE SEARCH IS THE HERO. One filled button on the page: "Search jobs".
@@ -35,10 +36,10 @@ export function HomeSearchHero({ openTotal, asOf }: HomeSearchHeroProps) {
   return (
     <section aria-labelledby="home-h1" className="pt-5 lg:pt-10">
       <div className="container">
-        <h1 id="home-h1" className="min-h-[3lh] text-[clamp(1.5rem,6vw,2.25rem)] font-semibold leading-tight tracking-tight [overflow-wrap:anywhere] md:min-h-0 md:text-4xl md:leading-[2.75rem]">
+        <h1 id="home-h1" className={HOME_H1_CLASS}>
           {t("home.hero.title")}
         </h1>
-        <p className="mt-2 max-w-[62ch] text-base text-muted-foreground md:text-lg">{t("home.hero.sub")}</p>
+        <p className={HOME_SUB_CLASS}>{t("home.hero.sub")}</p>
 
         <form
           action="/jobs"

@@ -469,12 +469,13 @@ describe("the homepage's connect line spells no pass number, in Index.tsx or in 
       const D = { EN_LOCALE: { homeAgent: { ...homeAgent, connectLine2: "{{passSomethingElse}} hours" } }, PASS, MCP_ANON_CAPS };
       expect(() => new Function("D", `${FILLER}\n${BAKE.slice(start, end)}; return AGENT_OFFER;`)(D)).toThrow(/no mirror/);
     });
-    it("the homepage block and the llms-full MCP line emit the connect line and the apply-yourself line, never the pass line", () => {
+    it("the homepage block links the three AI setups and never the pass line; the llms-full MCP line emits the connect line and the apply-yourself line", () => {
+      // Since the homepage switch-over "/" prints the AI section (home.ai.*):
+      // its links are the three setups on /agents, and its allowance is the
+      // section's own sentence, interpolated.
       const home = BAKE.slice(BAKE.indexOf('path: "/",'), BAKE.indexOf('path: "/cv-standards"'));
-      expect(home).toContain("${esc(AGENT_OFFER.connect)}");
       expect(home).not.toContain("AGENT_OFFER.pass");
-      expect(home).toContain("${esc(APPLY_YOURSELF_LINE)}");
-      expect(home).toContain('<a href="/agents"');
+      for (const anchor of ["claude", "chatgpt", "claude-code"]) expect(home).toContain(`<a href="/agents#${anchor}"`);
       const llms = BAKE.slice(BAKE.indexOf('lines.push("## Free tools");'), BAKE.indexOf('writeFileSync(join(dist, "llms-full.txt")'));
       expect(llms).toContain("${AGENT_OFFER.connect} ${APPLY_YOURSELF_LINE}");
       expect(llms).not.toContain("AGENT_OFFER.pass");

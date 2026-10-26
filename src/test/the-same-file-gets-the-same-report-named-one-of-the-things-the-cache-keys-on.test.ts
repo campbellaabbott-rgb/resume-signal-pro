@@ -227,10 +227,12 @@ describe("every published promise of the same report names the posting", () => {
     for (const t of promises) expect(t, t).toMatch(/posting|oferta/);
   });
 
-  it("the Why-not-ChatGPT card, the privacy page, the prerendered homepage and llms.txt", () => {
+  it("the Why-not-ChatGPT card, the privacy page, the crawler bake and llms.txt", () => {
+    // The board-first homepage (the switch-over) makes no same-report promise,
+    // so the bake may carry none; any it carries still names the posting.
     for (const file of ["src/components/WhyNotChatGPT.tsx", "src/pages/Privacy.tsx", "scripts/prerender-seo.mjs", "public/llms.txt"]) {
       const lines = read(file).split("\n").filter((l) => /same report/i.test(l) && !/^\s*(?:\/\/|\*)/.test(l));
-      expect(lines.length, file).toBeGreaterThan(0);
+      if (file !== "scripts/prerender-seo.mjs") expect(lines.length, file).toBeGreaterThan(0);
       for (const l of lines) expect(l, file).toMatch(/posting/);
     }
   });

@@ -15,8 +15,10 @@
 export function routeChunkPrefix(path) {
   const p = String(path ?? "");
   if (p.startsWith("/jobs/posting/")) return "JobPosting";
-  if (p === "/") return "Index";
-  if (p === "/pricing") return "Pricing";
+  // The board-first homepage and the new pricing page (homepage switch-over,
+  // step 10): their lazy chunks are named after their files.
+  if (p === "/") return "HomePage";
+  if (p === "/pricing") return "PricingPage";
   if (p === "/jobs" || p.startsWith("/jobs/field/") || p.startsWith("/jobs/company/")) return "Jobs";
   return null;
 }

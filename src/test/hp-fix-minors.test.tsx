@@ -19,6 +19,7 @@
  *     running.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { HOME_H1_CLASS } from "@/lib/home/hero-classes";
 import { PRO_PERK_ITEMS as WAVE_FOUR_PRO_PERKS } from "@/config/pro-perks";
 import { cleanup, render, renderHook, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
@@ -147,7 +148,13 @@ describe("a long compound word in a headline breaks instead of widening the page
   // overflow-wrap: anywhere breaks only a word too long for a line by itself,
   // and counts toward the min-content width, so nothing else moves.
   const H1_FILES = ["../components/home/HomeSearchHero.tsx", "../components/pricing/PricingHead.tsx"];
-  const h1Class = (rel: string) => readFileSync(resolve(__dirname, rel), "utf8").match(/<h1\b[^>]*className="([^"]*)"/)?.[1] ?? "";
+  // The homepage's H1 takes its classes from src/lib/home/hero-classes.ts,
+  // which the crawler bake writes too (so the baked headline stays the LCP).
+  const h1Class = (rel: string) => {
+    const src = readFileSync(resolve(__dirname, rel), "utf8");
+    if (/<h1\b[^>]*className=\{HOME_H1_CLASS\}/.test(src)) return HOME_H1_CLASS;
+    return src.match(/<h1\b[^>]*className="([^"]*)"/)?.[1] ?? "";
+  };
   it("both pages' H1 break a word only when it cannot fit a line", () => {
     for (const rel of H1_FILES) expect(h1Class(rel), rel).toMatch(/(^|\s)\[overflow-wrap:anywhere\](\s|$)/);
   });

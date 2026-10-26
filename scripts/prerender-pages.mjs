@@ -718,9 +718,10 @@ export function contentFingerprint(text, { blindCounts = false } = {}) {
 }
 
 /** Page families whose numbers are counts measured at the build, not what the page says. */
-export const COUNT_BEARING = (path) => path === "/" || path === "/jobs" || path === "/companies" || path === "/explore" || path === "/agents"
+export const COUNT_BEARING = (path) => path === "/" || path === "/pricing" || path === "/jobs" || path === "/companies" || path === "/explore" || path === "/agents"
   // The four data pages print measured counts too (SEO-025's remainder: two
-  // bakes 15 minutes apart re-dated all four on counts alone).
+  // bakes 15 minutes apart re-dated all four on counts alone), and so does
+  // /pricing since the homepage switch-over (its free card's open postings).
   || path === "/ghost-job-index" || path === "/entry-level-index" || path === "/hiring-trends" || path === "/pay-transparency"
   || String(path).startsWith("/jobs/company/") || String(path).startsWith("/jobs/field/");
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { parseVendorCounts } from "@/lib/home/vendor-counts";
 
 /**
  * Live per-vendor open-posting counts for the front page's platform wall.
@@ -64,36 +65,13 @@ export function useBoardVendorCounts(): BoardVendorCounts {
         }
         if (!alive || error || !data || typeof data !== "object") return;
 
-        const payload = data as {
-          sourcesFacet?: Record<string, unknown>;
-          openTotal?: unknown;
-          as_of?: unknown;
-        };
-
-        // A cold cache returns sourcesFacet {} and openTotal null. That is not a
-        // measurement, so it must not flip `ready` — an empty object would
-        // otherwise render every vendor as blank while claiming to be current.
-        const raw = payload.sourcesFacet;
-        if (!raw || typeof raw !== "object" || Array.isArray(raw)) return;
-
-        const counts: Record<string, number> = {};
-        for (const [k, v] of Object.entries(raw)) {
-          // Only finite positive integers count. A malformed value is dropped
-          // rather than coerced — Number(null) is 0, and a 0 here is precisely
-          // the false claim this hook exists to prevent.
-          const n = typeof v === "number" ? v : Number(v);
-          if (Number.isFinite(n) && n > 0) counts[k] = Math.round(n);
-        }
-        if (Object.keys(counts).length === 0) return;
-
-        const totalRaw = payload.openTotal;
-        const total = typeof totalRaw === "number" ? totalRaw : Number(totalRaw);
-        const asOfMs = Date.parse(String(payload.as_of ?? ""));
-
+        // One parser for this hook and the crawler bake (src/lib/home/vendor-counts.ts).
+        const reading = parseVendorCounts(data);
+        if (!reading) return;
         setState({
-          counts,
-          openTotal: Number.isFinite(total) && total > 0 ? Math.round(total) : null,
-          asOf: Number.isFinite(asOfMs) ? new Date(asOfMs) : null,
+          counts: reading.counts,
+          openTotal: reading.openTotal,
+          asOf: reading.asOf ? new Date(reading.asOf) : null,
           ready: true,
         });
       } catch {

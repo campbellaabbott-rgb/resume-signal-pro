@@ -13,33 +13,10 @@
 import { Check, Minus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { count, date, money } from "@/lib/format";
-import {
-  FREE_KEY_DAILY_QUOTA,
-  FREE_SCANS_PER_DAY,
-  FULL_ANALYSIS_PRICE_USD,
-  LIMITS_AS_OF,
-  MCP_FIT_FREE_PER_DAY,
-  SIGNED_IN_SCANS_PER_DAY,
-  WRITING,
-} from "./plan-facts";
+import { LIMITS_AS_OF } from "./plan-facts";
+import { limitGroups, type Cell, type Group } from "./limit-groups";
 import type { SaleGates } from "./sale-gates";
 import { useMinWidth } from "./use-media";
-
-type Tone = "ok" | "no" | undefined;
-interface Cell {
-  text: string;
-  tone?: Tone;
-}
-interface Row {
-  id: string;
-  label: string;
-  cells: [Cell, Cell, Cell];
-}
-interface Group {
-  id: string;
-  caption: string;
-  rows: Row[];
-}
 
 function Value({ cell }: { cell: Cell }) {
   return (
@@ -51,62 +28,14 @@ function Value({ cell }: { cell: Cell }) {
   );
 }
 
+/** The table's rows in the reader's language (limit-groups.ts holds them, for the bake too). */
 export function useLimitGroups(gates: SaleGates): { columns: [string, string, string]; groups: Group[] } {
   const { t, i18n } = useTranslation();
   const lng = i18n.language;
-  const L = (k: string, v?: Record<string, unknown>) => t(`pricingPlans.limits.${k}`, v);
-  const inc: Cell = { text: L("included"), tone: "ok" };
-  const no: Cell = { text: L("notIncluded"), tone: "no" };
-  const same = (c: Cell): [Cell, Cell, Cell] => [c, c, c];
-  const faPrice = money(FULL_ANALYSIS_PRICE_USD, "USD", { lng });
-  const faCells: [Cell, Cell, Cell] = gates.fullAnalysis.onSale
-    ? [{ text: L("faEach", { price: faPrice }) }, { text: L("faEach", { price: faPrice }) }, inc]
-    : same({ text: L("faNotOnSale"), tone: "no" });
-  return {
-    columns: [L("colOut"), L("colFree"), L("colPro")],
-    groups: [
-      {
-        id: "site",
-        caption: L("groupSite"),
-        rows: [
-          { id: "search", label: L("rowSearch"), cells: same(inc) },
-          {
-            id: "scans",
-            label: L("rowScans"),
-            cells: [{ text: L("perDay", { n: FREE_SCANS_PER_DAY }) }, { text: L("perDay", { n: SIGNED_IN_SCANS_PER_DAY }) }, { text: L("noScanCap") }],
-          },
-          { id: "fit", label: L("rowFit"), cells: [{ text: L("fitBrowser"), tone: "ok" }, { text: L("fitSaved"), tone: "ok" }, inc] },
-          { id: "saved", label: L(gates.alertsStatable ? "rowSaved" : "rowSavedNoAlerts"), cells: [no, inc, inc] },
-          {
-            id: "writing",
-            label: L("rowWriting"),
-            cells: [
-              no,
-              { text: L("writingFree", { perDay: WRITING.freePerToolPerDay }) },
-              { text: L("writingPro", { perDay: WRITING.proPackagesPerDay, perMonth: WRITING.proPackagesPerMonth }) },
-            ],
-          },
-          { id: "fa", label: L("rowFa"), cells: faCells },
-        ],
-      },
-      {
-        id: "ai",
-        caption: L("groupAi"),
-        rows: [
-          { id: "ai-search", label: L("rowAiSearch"), cells: same({ text: L("sharedAllowance") }) },
-          { id: "ai-account", label: L("rowAiAccount"), cells: [no, { text: L("notYet") }, { text: L("notYet") }] },
-        ],
-      },
-      {
-        id: "code",
-        caption: L("groupCode"),
-        rows: [
-          { id: "code-search", label: L("rowCodeSearch"), cells: same({ text: L("codeSearch", { perDay: count(FREE_KEY_DAILY_QUOTA, { lng }) }) }) },
-          { id: "code-fit", label: L("rowCodeFit"), cells: same({ text: L("perDay", { n: MCP_FIT_FREE_PER_DAY }) }) },
-        ],
-      },
-    ],
-  };
+  return limitGroups((k, v) => t(`pricingPlans.limits.${k}`, v), gates, {
+    money: (usd) => money(usd, "USD", { lng }),
+    count: (n) => count(n, { lng }),
+  });
 }
 
 export function PlanLimitsTable({ gates }: { gates: SaleGates }) {

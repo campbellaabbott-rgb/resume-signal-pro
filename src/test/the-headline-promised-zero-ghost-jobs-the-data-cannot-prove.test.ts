@@ -118,8 +118,13 @@ describe("no surface makes a claim the board's own data cannot prove", () => {
     expect(read("index.html")).toMatch(want);
     // The SPA head of "/" left Index with the homepage switch-over: Index is
     // the scanner at /resume-checker and takes its head from the landing, and
-    // the new homepage's head is home.seo.title (held by hp-home-strings).
-    expect(codeOf(read("scripts/prerender-seo.mjs"))).toMatch(want);
+    // the new homepage's head is home.seo.title (held by hp-home-strings),
+    // which the bake's "/" prints too.
+    const homeTitle = JSON.parse(read("src/i18n/shards/home/en.json")).home.seo.title as string;
+    expect(homeTitle).toMatch(want);
+    const bake = codeOf(read("scripts/prerender-seo.mjs"));
+    expect(bake).toMatch(/const HS = \(D\.EN_HOME_SHARD && D\.EN_HOME_SHARD\.home\) \|\| null;/);
+    expect(bake.slice(bake.indexOf('path: "/",'))).toMatch(/^path: "\/",\s*title: H\.seo\.title,/);
     const en = JSON.parse(read("src/i18n/locales/en.json"));
     expect(en.hero.headline.recruiterGrade).toBe("live jobs straight from employers' own hiring systems");
   });

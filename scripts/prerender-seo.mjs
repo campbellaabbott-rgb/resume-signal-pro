@@ -282,6 +282,24 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
 export { isCollidedToken } from "../src/lib/board-collisions";
 export { FEDERAL_LISTING_RESULT_CAP, isFederalListingBoard } from "../src/lib/company/lander-model";
 export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json";
+export { default as EN_HOME_SHARD } from "../src/i18n/shards/home/en.json";
+export { default as EN_PRICING_SHARD } from "../src/i18n/shards/pricing/en.json";
+export { pricingJsonLd as hpPricingJsonLd } from "../src/components/pricing/pricing-jsonld";
+export { pricingMetaKeys } from "../src/components/pricing/pricing-meta";
+export { resolveSaleGates, GATE_TEXT_KEY } from "../src/components/pricing/sale-gates";
+export { limitGroups } from "../src/components/pricing/limit-groups";
+export { visibleProPerks } from "../src/components/pricing/pro-perks-mirror";
+export { FREE_SCANS_PER_DAY as PLAN_FREE_SCANS_PER_DAY, SIGNED_IN_SCANS_PER_DAY as PLAN_SIGNED_IN_SCANS_PER_DAY, WRITING as PLAN_WRITING, FULL_ANALYSIS_PRICE_USD, PRO_PRICE_USD, BUILDER_PRICE_USD, BUILDER_PROPOSED_PER_DAY, FREE_KEY_DAILY_QUOTA as PLAN_FREE_KEY_DAILY_QUOTA, WITHHELD_SOURCES as PLAN_WITHHELD_SOURCES, WITHHELD_SOURCE_NAMES as PLAN_WITHHELD_SOURCE_NAMES, FREE_REPORT_DAYS, FULL_ANALYSIS_LINK_DAYS, LIMITS_AS_OF } from "../src/components/pricing/plan-facts";
+export { saleGates, homePlanRows } from "../src/lib/home/sale-gates";
+export { HOME_FIELD_SLUGS, fieldPath, ALL_FIELDS_PATH } from "../src/lib/home/fields";
+export { sourcesTable, namedSystems, aiReach } from "../src/lib/home/board-figures";
+export { HOME_FREE_SCANS_PER_DAY, HOME_SIGNED_IN_SCANS_PER_DAY, HOME_SCAN_SECONDS, HOME_RESUME_TEXT_HOURS, HOME_FREE_REPORT_DAYS, HOME_PAID_REPORT_DAYS, HOME_FULL_ANALYSIS_USD, HOME_PRO_USD_PER_MONTH, HOME_PRO_WRITING_PER_DAY, HOME_PRO_WRITING_PER_MONTH } from "../src/lib/home/facts";
+export { HOME_ROWS_WINDOW_DAYS } from "../src/lib/home/rows";
+export { TRY_CHIPS } from "../src/lib/home/search";
+export { HOME_H1_CLASS, HOME_SUB_CLASS } from "../src/lib/home/hero-classes";
+export { parseVendorCounts } from "../src/lib/home/vendor-counts";
+export { utcStamp, andList as homeAndList } from "../src/lib/home/stamps";
+export { count as fmtCount, money as fmtMoney, date as fmtDate } from "../src/lib/format";
 `));
   const bundle = OUT ? join(OUT, ".prerender-data.mjs") : join(root, "scripts", ".prerender-data.mjs");
   execSync(`npx esbuild "${entry}" --bundle --format=esm --outfile="${bundle}" --log-level=error`, { cwd: root, stdio: "inherit" });
@@ -1212,7 +1230,7 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
     return preloadCache.get(key);
   };
   {
-    const missing = ["Jobs", "JobPosting", "Index", "Pricing", "Footer"].filter((p) => !chunkFor(p));
+    const missing = ["Jobs", "JobPosting", "HomePage", "PricingPage", "Footer"].filter((p) => !chunkFor(p));
     if (missing.length) console.warn(`[prerender-seo] preload hint skipped for the route chunk(s) the build does not have: ${missing.join(", ")} (entry ${ENTRY_CHUNK ?? "MISSING"})`);
   }
 
@@ -1859,12 +1877,67 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
     });
   }
 
+  // ---- The homepage and /pricing: their strings, their figure, their gates ----
+  // THE BOARD-FIRST HOMEPAGE AND THE NEW PRICING PAGE (docs/homepage-pricing/
+  // README.md, switch-over step 10). Their English strings are the string
+  // shards React renders (src/i18n/shards/home, src/i18n/shards/pricing, read
+  // here directly as EN_COMPANY_SHARD is: the README's step 3 alternative), so
+  // a crawler reads the page's own sentences, never a second spelling.
+  const HS = (D.EN_HOME_SHARD && D.EN_HOME_SHARD.home) || null;
+  const PS = (D.EN_PRICING_SHARD && D.EN_PRICING_SHARD.pricingPlans) || null;
+  if (!HS || !HS.hero || !HS.seo || !PS || !PS.meta || !PS.head) throw new Error("[prerender-seo] the homepage's or the pricing page's English strings (src/i18n/shards/home|pricing/en.json) are missing");
+  /** A shard sentence, its placeholders filled; a placeholder with no value is a build error, never a blank. */
+  const hp = (s, vals = {}, who = "hp") => {
+    if (typeof s !== "string") throw new Error(`[prerender-seo] ${who}: a homepage or pricing string is missing`);
+    return fillCopy(s, vals, who);
+  };
+  /** An escaped sentence whose <tag>…</tag> spans become the links named in `links`. */
+  const hpLinks = (s, links) => esc(s).replace(/&lt;(\w+)&gt;(.*?)&lt;\/\1&gt;/g, (_m, tag, inner) => (links[tag] ? `<a href="${links[tag]}" class="text-primary underline">${inner}</a>` : inner));
+  const enMoney = (usd) => D.fmtMoney(usd, "USD", { lng: "en" });
+  const enCount = (n) => D.fmtCount(n, { lng: "en" });
+
+  // THE ONE OPEN-POSTINGS FIGURE BOTH PAGES PRINT (owner decision D1):
+  // openTotal from get_board_vendor_counts, the cached facets row React reads
+  // through useBoardVendorCounts, with that row's own as_of in UTC ("counted
+  // 26 Oct 2026, 14:15 UTC"). Parsed by the hook's own parser
+  // (src/lib/home/vendor-counts.ts). A read that fails prints no figure at
+  // all: never BOARD_TOTAL's floored "950,000+", never this build's day.
+  const BOARD_VENDOR = await (async () => {
+    if (OFFLINE) return null;
+    try {
+      const envT = (() => { try { return readFileSync(join(root, ".env"), "utf8"); } catch { return ""; } })();
+      const g = (k) => process.env[k] || (envT.match(new RegExp(`^${k}=(.*)$`, "m")) || [])[1]?.trim().replace(/^["']|["']$/g, "");
+      const url = g("VITE_SUPABASE_URL");
+      const key = g("VITE_SUPABASE_PUBLISHABLE_KEY");
+      if (!url || !key) return null;
+      const r = await fetch(`${url}/rest/v1/rpc/get_board_vendor_counts`, {
+        method: "POST",
+        headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+        body: "{}",
+        signal: AbortSignal.timeout(15000),
+      });
+      return r.ok ? D.parseVendorCounts(await r.json()) : null;
+    } catch { return null; }
+  })();
+  const VENDOR_TOTAL = BOARD_VENDOR && BOARD_VENDOR.openTotal !== null && BOARD_VENDOR.asOf ? BOARD_VENDOR.openTotal : null;
+  const VENDOR_STAMP = VENDOR_TOTAL !== null ? D.utcStamp(BOARD_VENDOR.asOf, "en") : null;
+  console.log(`[prerender-seo] "/" and "/pricing" open postings: ${VENDOR_STAMP ? `${VENDOR_TOTAL} counted ${VENDOR_STAMP.iso}` : "UNREAD (no figure printed)"}`);
+
+  // THE SALE GATES, AS BOTH PAGES RESOLVE THEM: the seller's name and address
+  // (src/config/seller.ts, never invented) and the owner's switches
+  // (src/config/sales-gate.ts). While no seller is named nothing is offered at
+  // a price, here or in React; the day the owner fills seller.ts and flips a
+  // switch, the next publish offers exactly what the pages sell.
+  const HOME_GATES = D.saleGates();
+  const HOME_ROWS = D.homePlanRows(HOME_GATES);
+  const PRICING_GATES = D.resolveSaleGates();
+  const PRICING_LD = D.hpPricingJsonLd(PRICING_GATES);
+  const pricingOffer = (name) => (Array.isArray(PRICING_LD.offers) ? PRICING_LD.offers.find((o) => o.name === name) : null) || null;
+
   // ---- Homepage (also the SPA fallback — see renderFile notes) ----
-  // THE CONNECT LINE, the sentences the hero strip renders (src/pages/Index.tsx
-  // AgentOfferStrip): read from en.json's homeAgent keys and filled from the
-  // MCP_ANON_CAPS mirror, never a second spelling of the daily allowance, so a
-  // Googlebot-UA curl of / says what the page says. The strip's third line
-  // sold a pass for an agent; it is not baked (the apply pivot, 2026-10-11).
+  // THE CONNECT LINE (homeAgent's keys, filled from the MCP_ANON_CAPS mirror)
+  // is no longer on "/": the homepage's AI section says it (home.ai.*). The
+  // llms-full MCP line below still reads it.
   const AGENT_OFFER = (() => {
     const A = (D.EN_LOCALE && D.EN_LOCALE.homeAgent) || {};
     const vals = { freeCallsPerDay: D.MCP_ANON_CAPS.perAddressPerDay };
@@ -1881,85 +1954,119 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
   const COUNTS_BASIS = facetsSource === "snapshot"
     ? (facetsSavedAt ? `counted ${facetsSavedAt}, by the last build that could reach the board` : "counted by the last build that could reach the board")
     : `counted ${TODAY}, when this page was built`;
-  write({
-    isFallback: true,
-    path: "/",
-    title: BOARD_TOTAL
-      // Owner decision 2026-10-08: say where the jobs come from (the
-      // employers' own hiring systems), never an absolute the data cannot
-      // prove. Mirrored by src/pages/Index.tsx's head.
-      ? `Resume Booster — ${plusClaim(BOARD_TOTAL, 50000)} Live Jobs Straight From Employers`
-      : "Resume Booster — Live Jobs Straight From Employers",
-    // KEEP THIS UNDER 160 CHARACTERS. The previous one ran to 279 and the
-    // clamp below cut it mid-sentence with nothing saying so.
-    description: "Live jobs straight from employers' own hiring systems, re-read through the day. Search free, here or from your own AI, and apply on the employer's site.",
-    jsonLd: [
-      {
-        "@context": "https://schema.org",
-        "@type": "WebApplication",
-        name: "Resume Booster",
-        url: SITE,
-        applicationCategory: "BusinessApplication",
-        operatingSystem: "Web",
-        description: `Free diagnostic resume scan: ATS score with a full audit trail, verified quotes, per-vendor parsing checks, and a fix plan — across ${NIND} industries, with an interface in ${UI_LANGUAGES} languages.`,
-        offers: { "@type": "Offer", price: "0", priceCurrency: "USD", description: "Free resume scan — no signup required" },
-      },
-      // NO WebSite ENTITY HERE — index.html already ships one in the template,
-      // so emitting a second gave the homepage TWO WebSite blocks with the same
-      // name and url and only one carrying the SearchAction. Two competing
-      // entities for one URL is how a sitelinks searchbox gets attributed to
-      // the block that does not declare it. The SearchAction now lives on the
-      // template's single block instead; see index.html.
-      //
-      // NO Service BLOCK EITHER. It described an agent that applied for you,
-      // with its plan and its pass as Offers; the agent and both products are
-      // retired (owner, 2026-10-11), and a Service whose own description says
-      // it submits is a false offer however its prices are dropped.
-    ],
-    content: `
-      <h1 class="text-3xl font-bold mb-3">Live jobs, straight from employers' own hiring systems.</h1>
-      <p class="text-muted-foreground mb-6">${BOARD_TOTAL ? `${plusClaim(BOARD_TOTAL, 50000)} open roles` : "Open roles"}${BOARD_COMPANIES ? ` from ${plusClaim(BOARD_COMPANIES, 1000)} company job boards with roles open now` : ""}${BOARD_TRACKED ? ` — ${plusClaim(BOARD_TRACKED, 50000)} roles tracked in all, including the ones we have watched close` : ""}${BOARD_TOTAL || BOARD_COMPANIES ? ` (${esc(COUNTS_BASIS)})` : ""}, every one read from the employer's own hiring system and re-read through the day, with no dated posting older than 30 days. Where a company publishes no date we keep the posting and show no age rather than guess one. <a href="/jobs" class="text-primary">Browse the live board →</a></p>
-      <section class="mt-8 mb-8">
-        <h2 class="text-xl font-bold mb-3">Search and apply through your own AI</h2>
-        <p class="text-sm text-muted-foreground">${esc(APPLY_YOURSELF_LINE)}</p>
-        <p class="text-sm text-muted-foreground mt-4"><strong class="text-foreground">${esc(AGENT_OFFER.lead)}</strong> ${esc(AGENT_OFFER.connect)} <a href="/agents" class="text-primary">${esc(AGENT_OFFER.cta)} →</a></p>
+  {
+    const H = HS;
+    const CATS = (D.EN_LOCALE && D.EN_LOCALE.jobsPage && D.EN_LOCALE.jobsPage.categories) || {};
+    const table = BOARD_VENDOR ? D.sourcesTable(BOARD_VENDOR.counts) : null;
+    const reach = BOARD_VENDOR ? D.aiReach(BOARD_VENDOR.counts, VENDOR_TOTAL) : null;
+    const named = BOARD_VENDOR ? D.namedSystems(BOARD_VENDOR.counts) : null;
+    const stampHtml = (s, key) => (s ? `<time datetime="${s.iso}">${esc(hp(key, { date: s.date, time: s.time }, "home"))}</time>` : "");
+    // The count line under the search, exactly as React prints it (HomeSearchHero).
+    const countLine = VENDOR_STAMP
+      ? `<strong class="font-medium text-foreground">${esc(hp(VENDOR_TOTAL === 1 ? H.hero.count_one : H.hero.count_other, { formatted: enCount(VENDOR_TOTAL) }, "home.hero.count"))}</strong> · ${stampHtml(VENDOR_STAMP, H.hero.counted)}`
+      : "";
+    const fa = HOME_ROWS.fullAnalysis;
+    const faText = fa.state === "onSale" ? H.plans.faBody : fa.state === "gatedSeller" ? H.plans.faGatedSeller : H.plans.faGatedDelivery;
+    const lede = HOME_ROWS.onSale === 2 ? H.plans.ledeTwo : HOME_ROWS.onSale === 1 ? H.plans.ledeOne : H.plans.ledeNone;
+    const sourcesRows = table
+      ? [...table.top.map((r) => `<tr><td class="py-1.5">${esc(r.name)}</td><td class="py-1.5 text-right">${enCount(r.total)}</td></tr>`),
+        ...(table.federal ? [`<tr><td class="py-1.5">${esc(table.federal.name)} <span class="text-muted-foreground">(${esc(H.sources.federalNote)})</span></td><td class="py-1.5 text-right">${enCount(table.federal.total)}</td></tr>`] : []),
+        ...(table.more.length ? [`<tr><td class="py-1.5" colspan="2">${esc(hp(table.more.length === 1 ? H.sources.more_one : H.sources.more_other, { formatted: enCount(table.more.length), sum: enCount(table.moreSum) }, "home.sources.more"))}</td></tr>`] : [])].join("")
+      : "";
+    const sourcesCaption = table && VENDOR_STAMP
+      ? hp(VENDOR_TOTAL !== null && table.sum === VENDOR_TOTAL ? H.sources.caption : H.sources.captionSum, { date: VENDOR_STAMP.date, time: VENDOR_STAMP.time, total: enCount(VENDOR_TOTAL !== null && table.sum === VENDOR_TOTAL ? VENDOR_TOTAL : table.sum) }, "home.sources.caption")
+      : "";
+    const faqs = [
+      { q: H.faq.sourcesQ, a: named ? hp(H.faq.sourcesA, { names: named.names.join(", "), more: named.more, freshDays: D.BOARD_FRESH_WINDOW_DAYS }, "home.faq.sourcesA") : hp(H.faq.sourcesAPlain, { freshDays: D.BOARD_FRESH_WINDOW_DAYS }, "home.faq.sourcesAPlain") },
+      { q: H.faq.applyQ, a: H.faq.applyA },
+      { q: H.faq.currentQ, a: H.faq.currentA },
+      { q: H.faq.fitQ, a: H.faq.fitA },
+      { q: H.faq.resumeQ, a: hp(H.faq.resumeA, { hours: D.HOME_RESUME_TEXT_HOURS, days: D.HOME_FREE_REPORT_DAYS, paidDays: D.HOME_PAID_REPORT_DAYS }, "home.faq.resumeA"), links: { trust: "/trust" } },
+    ];
+    // JSON-LD: the pricing page's own offers (pricingJsonLd, never built by
+    // hand), each only while the homepage's plan strip shows it on sale; the
+    // free offer always. While no seller is named that is the free offer alone.
+    const homeOffers = [
+      pricingOffer("Free"),
+      fa.state === "onSale" ? pricingOffer("Full Analysis") : null,
+      HOME_ROWS.pro ? pricingOffer("Pro") : null,
+    ].filter(Boolean);
+    write({
+      isFallback: true,
+      path: "/",
+      title: H.seo.title,
+      description: H.seo.description,
+      jsonLd: [{ ...PRICING_LD, description: H.seo.description, offers: homeOffers }],
+      // The headline and the line under it carry React's classes
+      // (src/lib/home/hero-classes.ts): the baked paint is as large as
+      // React's, so it stays the page's Largest Contentful Paint.
+      content: `
+      <section aria-labelledby="home-h1" class="pt-5 lg:pt-10">
+        <h1 id="home-h1" class="${D.HOME_H1_CLASS}">${esc(H.hero.title)}</h1>
+        <p class="${D.HOME_SUB_CLASS}">${esc(H.hero.sub)}</p>
+        <form action="/jobs" method="get" role="search" aria-label="${esc(H.hero.formLabel)}" class="mt-3.5 grid gap-2">
+          <label for="home-q" class="text-sm text-muted-foreground">${esc(H.hero.qLabel)}</label>
+          <input id="home-q" name="q" type="search" placeholder="${esc(H.hero.qPlaceholder)}" class="h-11 rounded-md border border-input bg-background px-3" />
+          <label for="home-location" class="text-sm text-muted-foreground">${esc(H.hero.locationLabel)}</label>
+          <input id="home-location" name="location" type="text" placeholder="${esc(H.hero.locationPlaceholder)}" class="h-11 rounded-md border border-input bg-background px-3" />
+          <button type="submit" class="h-11 rounded-md bg-primary px-4 font-semibold text-primary-foreground">${esc(H.hero.submit)}</button>
+        </form>
+        <p class="mt-2.5 text-sm text-muted-foreground">${esc(H.hero.tryLabel)} ${D.TRY_CHIPS.map((c) => `<a href="${esc(c.to)}" class="text-primary underline">${esc(H.hero.try[c.key])}</a>`).join(" · ")}</p>
+        <p class="mt-3 text-sm text-muted-foreground" data-home-count="">${countLine}</p>
+        <p class="mt-1.5 text-sm text-muted-foreground">${esc(H.hero.scanLead)} <a href="/resume-checker#upload" class="text-primary underline">${esc(H.hero.scanLink)}</a></p>
       </section>
-      <h2 class="text-xl font-bold mb-3">Your resume's real score — measured, not guessed</h2>
-      <p class="text-muted-foreground mb-6">Rescan the same file against the same posting within ${D.REPORT_CACHE_DAYS} days and you get the same report (Re-analyze builds a fresh one) — benchmarked against real scans in your industry, with every quoted line verified against your actual resume. Not a ChatGPT or Claude opinion: a reading with a full audit trail, missing keywords, weak bullets rewritten, and per-vendor parsing checks for Workday, Greenhouse, Lever, and iCIMS. No sign-up; your resume is deleted within 7 days. <a href="/vs/chatgpt" class="text-primary">How this differs from asking a chatbot →</a></p>
-      ${cta("Check my resume now — free", "Upload or paste your resume and get the complete diagnostic report. 7 scans a day free, 15 with a free account.", "Check my resume free")}
-      <section class="mt-10 mb-8">
-        <h2 class="text-xl font-bold mb-3">What the free scan covers</h2>
-        <ul class="space-y-1.5">
-          <li class="text-sm text-muted-foreground">✓ ATS parse simulation — see the text extraction from your actual file</li>
-          <li class="text-sm text-muted-foreground">✓ Score with its modeling band and a point-by-point audit trail</li>
-          <li class="text-sm text-muted-foreground">✓ Missing keywords from your job posting, or your occupation's O*NET profile</li>
-          <li class="text-sm text-muted-foreground">✓ Weakest bullets identified and rewritten</li>
-          <li class="text-sm text-muted-foreground">✓ Industry detection across ${NIND} fields, including Spanish-language resumes</li>
-          <li class="text-sm text-muted-foreground">✓ Red flags: gaps, vague duties, date inconsistencies, credential visibility</li>
+      <section class="mt-8">
+        <h2 class="text-xl font-bold mb-2">${esc(H.board.title)}</h2>
+        <p class="text-sm text-muted-foreground">${esc(hp(H.board.note, { days: D.HOME_ROWS_WINDOW_DAYS }, "home.board.note"))}</p>
+        <p class="text-sm mt-2"><a href="/jobs" class="text-primary underline">${esc(H.board.seeAll)}</a> · ${esc(H.board.applyNote)}</p>
+        <h3 class="text-base font-semibold mt-5 mb-2">${esc(H.rail.fieldsTitle)}</h3>
+        <ul class="flex flex-wrap gap-2 text-sm">${D.HOME_FIELD_SLUGS.map((s) => `<li><a href="${D.fieldPath(s)}" class="text-primary underline">${esc(CATS[s] || s)}</a></li>`).join("")}<li><a href="${D.ALL_FIELDS_PATH}" class="text-primary underline">${esc(H.rail.allFields)}</a></li></ul>
+      </section>
+      <section class="mt-10">
+        <h2 class="text-xl font-bold mb-2">${esc(H.scan.title)}</h2>
+        <p class="text-muted-foreground">${esc(hp(H.scan.lede, { seconds: D.HOME_SCAN_SECONDS }, "home.scan.lede"))}</p>
+        <ul class="mt-3 space-y-1.5 text-sm text-muted-foreground">${["checkAts", "checkTerms", "checkBullets"].map((k) => `<li>${esc(H.scan[k])}</li>`).join("")}</ul>
+        <p class="mt-3 text-sm text-muted-foreground">${esc(H.scan.noAccount)} · ${esc(hp(H.scan.allowance, { free: D.HOME_FREE_SCANS_PER_DAY, signedIn: D.HOME_SIGNED_IN_SCANS_PER_DAY }, "home.scan.allowance"))}</p>
+        <p class="mt-3"><a href="/resume-checker#upload" class="text-primary underline font-semibold">${esc(H.scan.cta)}</a></p>
+        <p class="mt-3 text-xs text-muted-foreground">${hpLinks(hp(H.scan.retention, { hours: D.HOME_RESUME_TEXT_HOURS, days: D.HOME_FREE_REPORT_DAYS, paidDays: D.HOME_PAID_REPORT_DAYS }, "home.scan.retention"), { trust: "/trust" })}</p>
+      </section>
+      <section class="mt-10">
+        <h2 class="text-xl font-bold mb-2">${esc(H.ai.title)}</h2>
+        <p class="text-muted-foreground">${esc(H.ai.lede)}</p>
+        <h3 class="text-sm font-semibold mt-4">${esc(H.ai.neverTitle)}</h3>
+        <ul class="mt-2 space-y-1.5 text-sm text-muted-foreground">${[2, 3].map((n) => `<li><b class="text-foreground">${esc(H.ai[`never${n}Lead`])}</b> ${esc(H.ai[`never${n}`])}</li>`).join("")}</ul>
+        <p class="mt-4 flex flex-wrap gap-3 text-sm"><a href="/agents#claude" class="text-primary underline">${esc(H.ai.claude)}</a> <a href="/agents#chatgpt" class="text-primary underline">${esc(H.ai.chatgpt)}</a> <a href="/agents#claude-code" class="text-primary underline">${esc(H.ai.claudeCode)}</a></p>
+        ${reach && VENDOR_STAMP ? `<p class="mt-3 text-xs text-muted-foreground">${esc(hp(H.ai.reach, { searchable: enCount(reach.searchable), total: enCount(VENDOR_TOTAL), names: D.homeAndList(reach.names, "en"), withheld: enCount(reach.withheld), date: VENDOR_STAMP.date, time: VENDOR_STAMP.time }, "home.ai.reach"))}</p>` : ""}
+      </section>
+      <section class="mt-10">
+        <h2 class="text-xl font-bold mb-2">${esc(H.sources.title)}</h2>
+        <p class="text-muted-foreground">${esc(hp(H.sources.lede, { freshDays: D.BOARD_FRESH_WINDOW_DAYS }, "home.sources.lede"))}</p>
+        <p class="mt-2 text-sm"><a href="/methodology" class="text-primary underline">${esc(H.sources.method)}</a></p>
+        ${table ? `<details open class="mt-3"><summary class="font-medium">${esc(H.sources.summary)}</summary>
+          <table class="mt-2 w-full text-sm"><caption class="text-left text-xs text-muted-foreground">${esc(sourcesCaption)}</caption><thead><tr><th class="text-left">${esc(H.sources.colSystem)}</th><th class="text-right">${esc(H.sources.colCount)}</th></tr></thead><tbody>${sourcesRows}</tbody></table>
+        </details>` : ""}
+      </section>
+      <section class="mt-10">
+        <h2 class="text-xl font-bold mb-2">${esc(H.plans.title)}</h2>
+        <p class="text-muted-foreground">${esc(lede)}</p>
+        <ul class="mt-3 space-y-3 text-sm" data-home-plans="">
+          <li data-plan="free"><strong>${esc(H.plans.free)}</strong>: ${esc(H.plans.freeTitle)}. ${esc(HOME_GATES.alertsStatable ? H.plans.freeBody : H.plans.freeBodyNoAlerts)}</li>
+          <li data-plan="full-analysis" data-plan-state="${fa.state}"><strong>${esc(enMoney(D.HOME_FULL_ANALYSIS_USD))} ${esc(H.plans.once)}</strong>, ${esc(H.plans.faTitle)}: ${esc(faText)}</li>
+          ${HOME_ROWS.pro ? `<li data-plan="pro"><strong>${esc(enMoney(D.HOME_PRO_USD_PER_MONTH))} ${esc(H.plans.perMonth)}</strong>, ${esc(H.plans.proTitle)}: ${esc(hp(H.plans.proBody, { perDay: D.HOME_PRO_WRITING_PER_DAY, perMonth: D.HOME_PRO_WRITING_PER_MONTH }, "home.plans.proBody"))}${HOME_ROWS.pro.includesFullAnalysis ? ` ${esc(H.plans.proIncludesFa)}` : ""}</li>` : ""}
         </ul>
+        <ul class="mt-3 space-y-1.5 text-xs text-muted-foreground">
+          <li>${esc(H.plans.termFinal)}</li>
+          <li>${esc(H.plans.termTerritory)}</li>
+          <li>${esc(HOME_ROWS.pro ? H.plans.termCurrency : H.plans.termCurrencyFa)}</li>
+        </ul>
+        <p class="mt-3 text-sm"><a href="/pricing" class="text-primary underline">${esc(H.plans.more)}</a></p>
       </section>
-      <section class="mb-8">
-        <h2 class="text-xl font-bold mb-3">Why use this instead of ChatGPT or Claude?</h2>
-        <p class="text-sm text-muted-foreground leading-relaxed mb-3">A general chatbot gives useful generic advice, and if that's all you need, use it — it's free too. This scanner does the parts a chat can't: it runs your actual file through real text extraction (the step that silently breaks resumes), checks documented per-vendor ATS behaviors, verifies every quoted finding against your document so nothing is invented, scores against a consistent rubric with a report ID that a rescan of the same file within 7 days returns again, and cites its keyword sources (your posting, or U.S. Department of Labor O*NET data).</p>
-      </section>
-      ${scanInsights?.overall ? `<section class="mb-8">
-        <h2 class="text-xl font-bold mb-3">How real resumes actually score</h2>
-        <p class="text-sm text-muted-foreground leading-relaxed">Live from our scan corpus (as of ${scanInsights.as_of}, rolling ${scanInsights.window_days}-day window): across ${scanInsights.overall.n.toLocaleString("en-US")} completed scans, the median resume scored <strong class="text-foreground">${scanInsights.overall.median}</strong>, with the middle half between ${scanInsights.overall.p25} and ${scanInsights.overall.p75}${scanInsights.overall.pct_80_plus != null ? `; only ${scanInsights.overall.pct_80_plus}% scored 80 or higher` : ""}. Aggregates only, no individual resume data — full per-industry and experience-level distributions in the <a href="/research/ats-score-benchmarks" class="text-primary">live benchmark study</a>.${scanTotals ? ` All-time, the scanner has completed ${scanTotals.total_scans.toLocaleString("en-US")} scans${scanTotals.countries > 1 ? ` from ${scanTotals.countries.toLocaleString("en-US")} countries` : ""}.` : ""}</p>
-      </section>` : ""}
-      <section class="mb-8">
-        <h2 class="text-xl font-bold mb-3">Free tools and data</h2>
-        <div class="flex flex-wrap gap-2 text-xs">
-          ${pill("/resume-checker", "Free resume checker →")}
-          ${pill("/ats-resume-test", "ATS resume test →")}
-          ${pill("/resume-score", "Resume score →")}
-          ${pill("/industries", `Keywords for ${NIND} industries →`)}
-          ${pill("/guides", "Resume & ATS guides →")}
-          ${pill("/es/revisar-curriculum", "Revisar currículum (español) →")}
-          ${pill("/builder", "Free resume builder →")}
-          ${pill("/methodology", "How the scoring works →")}
-        </div>
+      <section class="mt-10">
+        <h2 class="text-xl font-bold mb-3">${esc(H.faq.title)}</h2>
+        ${faqs.map((f) => `<details open class="border-b border-border py-2"><summary class="font-medium">${esc(f.q)}</summary><p class="mt-1 text-sm text-muted-foreground">${f.links ? hpLinks(f.a, f.links) : esc(f.a)}</p></details>`).join("\n        ")}
       </section>`,
-  });
+    });
+  }
 
   // ---- /cv-standards: per-country CV norms (EN for all countries, localized per CV_LOCALES) ----
   {
@@ -4011,81 +4118,140 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
   // (audit 2026-07-25): the money page had no pricing title/description/
   // canonical in served HTML, and /explore wasn't in the sitemap at all.
   {
-    // ONLY WHAT IS ON SALE. The products mirror (src/config/products.ts) still
-    // carries the retired one-time products and the agent's plan and pass, for
-    // the checkouts and the records of past buyers; a crawler must not be
-    // offered any of them (the apply pivot, 2026-10-11, and the Premium
-    // package's retirement, 2026-10-12). RETIRED_PRODUCT_IDS
-    // (scripts/prerender-retired.mjs) leaves them out of the list and the
-    // offer range, and the one monthly plan baked is Pro.
-    const paid = D.getAllProducts().filter((p) => typeof p.priceUsd === "number" && p.priceUsd > 0 && !RETIRED_PRODUCT_IDS.includes(p.id));
-    const minP = Math.min(...paid.map((p) => p.priceUsd));
-    const maxP = Math.max(...paid.map((p) => p.priceUsd));
-    // THE MONTHLY PLAN, FROM THE MIRROR THE CHECKOUT FUNCTIONS ARE PINNED TO
-    // (pricing-truth), never typed: the page a pricing query lands on states
-    // the monthly price to anything that does not run JavaScript.
-    const proPlan = D.SUBSCRIPTIONS.pro;
-    // The offer range: every one-time product still on sale and Pro. A
-    // ceiling the catalogue has moved past is a rich result that lies.
-    const offerPrices = [...paid.map((p) => p.priceUsd), proPlan.priceUsd];
-    // ONE PRODUCT IS NAMED, NOT RANGED (the merge recheck, 2026-10-25). Wave 4
-    // sells one thing once, the Full Analysis, and the writing tools through
-    // Pro; this template, written for a list, rendered a one-item list as
-    // "One-Time Tools from $5" and "$5–$5". With one product the head and the
-    // lead are React's own strings (pricingPage.metaDescriptionFa and
-    // oneTimeAndProLineFa, filled from the catalogue, no English fallback), and
-    // Pro is the summary line the page and Stripe read (pro-perks.ts).
-    const one = paid.length === 1 ? paid[0] : null;
-    const PP = (D.EN_LOCALE && D.EN_LOCALE.pricingPage) || {};
-    const ppFill = (key, vals) => {
-      if (!PP[key]) throw new Error(`[prerender-seo] pricingPage.${key} is missing from the main locale`);
-      return fillCopy(PP[key], vals, `pricingPage.${key}`);
+  {
+    // THE NEW PRICING PAGE, AS REACT RENDERS IT (src/pages/pricing/PricingPage
+    // .tsx; switch-over step 10). Every sentence is the pricing shard's
+    // English, filled from the same facts (src/components/pricing/plan-facts
+    // .ts); the gates are the page's own (resolveSaleGates: the seller's name
+    // and address, then the owner's switches), so each paid card says why it
+    // is not on sale, nothing is offered at a price while no seller is named,
+    // and the day the owner fills src/config/seller.ts and flips a switch the
+    // next publish prints exactly what the page sells. The title and the
+    // description follow the gates (pricingMetaKeys); the comparison and the
+    // FAQ sit in open <details>. No buy control: the page's own controls are
+    // React's.
+    const P = PS;
+    const G = PRICING_GATES;
+    const prices = { faPrice: enMoney(D.FULL_ANALYSIS_PRICE_USD), proPrice: enMoney(D.PRO_PRICE_USD) };
+    const meta = D.pricingMetaKeys(G);
+    const metaText = (key) => hp(P.meta[String(key).replace(/^pricingPlans\.meta\./, "")], prices, key);
+    const W = D.PLAN_WRITING;
+    const li = (text, note = "") => `<li>${text}${note ? ` <span class="text-xs text-muted-foreground">${note}</span>` : ""}</li>`;
+    const gateNote = (closedBy) => `<p class="mt-3 text-sm text-muted-foreground" data-gate="${closedBy}">${esc(hp(P.buy[String(D.GATE_TEXT_KEY[closedBy]).replace(/^pricingPlans\.buy\./, "")], {}, "pricingPlans.buy"))}</p>`;
+    const PT = (D.EN_LOCALE && D.EN_LOCALE.purchaseTerms) || {};
+    const saleLines = `<p class="mt-2 text-xs text-muted-foreground">${esc(PT.finalSale || P.buy.finalSale)} ${esc(PT.regionLine || P.buy.region)}</p>`;
+    const freeCount = VENDOR_STAMP
+      ? li(esc(hp(P.free.search, { n: enCount(VENDOR_TOTAL) }, "pricingPlans.free.search")), `<time datetime="${VENDOR_STAMP.iso}">${esc(hp(P.free.counted, { date: VENDOR_STAMP.date, time: VENDOR_STAMP.time }, "pricingPlans.free.counted"))}</time>`)
+      : li(esc(P.free.searchNoCount));
+    const proPerks = D.visibleProPerks({ fullAnalysisOnSale: G.fullAnalysis.onSale });
+    const proPerkText = (p) => {
+      const parts = String(p.key).split(".");
+      const fromLocale = parts.reduce((o, k) => (o && typeof o === "object" ? o[k] : undefined), D.EN_LOCALE);
+      return typeof fromLocale === "string" ? fromLocale : p.text;
     };
-    const pricingLead = one
-      ? ppFill("oneTimeAndProLineFa", { price: one.priceUsd })
-      : "Paid tools are one-time purchases, not subscriptions; an optional Pro plan covers everything for people applying at volume.";
-    // NOTHING IS OFFERED BEFORE IT CAN BE BOUGHT (recheck 3, 2026-10-26).
-    // Until src/config/seller.ts names the seller, the checkouts answer 409
-    // and React's /pricing shows "Purchases open soon" where the buttons
-    // would be; this page said "a one-time payment" and offered an
-    // AggregateOffer up to Pro's price. While closed, the lead and each price
-    // carry the page's own checkoutGate sentences, the structured data offers
-    // only the free scan (src/lib/pricing-offer.ts, React's shape too), and
-    // the terms are said for when purchases open.
-    const PURCHASES_OPEN = Boolean(D.sellerIdentity());
-    const GATE = (D.EN_LOCALE && D.EN_LOCALE.checkoutGate) || {};
-    if (!PURCHASES_OPEN && (!GATE.purchasesOpenSoon || !GATE.purchasesOpenSoonTitle)) throw new Error("[prerender-seo] checkoutGate.purchasesOpenSoon(Title) is missing from the main locale");
-    const soonLine = PURCHASES_OPEN ? "" : ` ${GATE.purchasesOpenSoon}`;
-    const soonTag = PURCHASES_OPEN ? "" : `<p class="text-xs text-muted-foreground mt-1" data-purchases-open-soon>${esc(GATE.purchasesOpenSoonTitle)}</p>`;
+    const limits = D.limitGroups((k, v) => hp(P.limits[k], v || {}, `pricingPlans.limits.${k}`), G, { money: enMoney, count: enCount });
+    const limitsNote = hp(P.limits.note, { date: D.fmtDate(D.LIMITS_AS_OF, { lng: "en" }) }, "pricingPlans.limits.note");
+    const faqVars = { perDay: W.proPackagesPerDay, perMonth: W.proPackagesPerMonth, freePerDay: W.freePerToolPerDay };
+    const faqIds = ["refund", "region", "fit", "package", "cancel", "apply", "interviews"];
+    const DA = (D.EN_LOCALE && D.EN_LOCALE.dataApiPage) || {};
+    const withheldNames = D.homeAndList(D.PLAN_WITHHELD_SOURCES.map((s) => D.PLAN_WITHHELD_SOURCE_NAMES[s] || s).sort((a, b) => a.localeCompare(b)), "en");
     write({
       path: "/pricing",
-      title: one ? `Pricing — Free Scan, $${one.priceUsd} ${one.name} or Pro $${proPlan.priceUsd}/month` : `Pricing — Free Resume Scan, One-Time Tools from $${minP}`,
-      description: (one
-        ? ppFill("metaDescriptionFa", { lowPrice: one.priceUsd, highPrice: one.priceUsd, proPrice: proPlan.priceUsd })
-        : `The diagnostic resume scan and the job board are free, 7 scans a day with no signup. One-time tools $${minP}–$${maxP}; Pro $${proPlan.priceUsd}/month.`)
-        + (PURCHASES_OPEN ? "" : ` ${GATE.purchasesOpenSoonTitle}.`),
+      title: metaText(meta.title),
+      description: metaText(meta.description),
       jsonLd: [
         breadcrumbLd([{ name: "Home", path: "/" }, { name: "Pricing", path: "/pricing" }]),
-        D.pricingJsonLd({ open: PURCHASES_OPEN, offerPrices, url: `${SITE}/pricing` }),
+        PRICING_LD,
       ],
       content: `
         ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Pricing" }])}
-        <h1 class="text-3xl font-bold mb-3">Pricing</h1>
-        <p class="text-muted-foreground mb-6">The core product is free: the full diagnostic resume scan — score with audit trail, missing keywords, weakest bullets rewritten, ATS vendor checks — costs nothing, 7 scans a day with no signup (15 with a free account). The job board and its filters are free too, and so is connecting your own AI to it. ${esc(pricingLead)}${esc(soonLine)}</p>
-        <section class="mb-8"><h2 class="text-xl font-bold mb-3">${one ? "One paid report" : "One-time tools"}</h2>
-          <div class="space-y-2">${paid.map((p) => `<div class="rounded-xl border border-border bg-card p-4 flex items-start justify-between gap-4"><div><p class="text-sm font-semibold text-foreground">${esc(p.name)}</p><p class="text-xs text-muted-foreground mt-0.5">${esc(p.description || "")}</p></div><div class="text-right"><p class="text-sm font-bold text-foreground whitespace-nowrap">$${p.priceUsd}</p>${soonTag}</div></div>`).join("")}</div>
+        <h1 id="pricing-h1" class="text-3xl font-semibold tracking-tight [overflow-wrap:anywhere] md:text-4xl">${esc(P.head.h1)}</h1>
+        <p class="mt-3 text-muted-foreground">${esc(G.alertsStatable ? P.head.sub : P.head.subNoAlerts)}</p>
+        <section class="mt-6" data-notice="before">
+          <h2 class="text-xl font-bold mb-2">${esc(P.before.h2)}</h2>
+          <ul class="space-y-3 text-sm">
+            <li><strong>${esc(P.buy.finalSale)}</strong> ${esc(P.before.finalBody)}</li>
+            <li data-notice="region"><strong>${esc(P.buy.region)}</strong> ${esc(P.before.regionBody)}</li>
+            <li><strong>${esc(P.before.renewalTitle)}</strong> ${esc(hp(P.before.renewalBody, prices, "pricingPlans.before.renewalBody"))}</li>
+          </ul>
         </section>
-        <section class="mb-8"><h2 class="text-xl font-bold mb-3">One monthly plan</h2>
-          <div class="space-y-2">
-            <div class="rounded-xl border border-border bg-card p-4 flex items-start justify-between gap-4"><div><p class="text-sm font-semibold text-foreground">${esc(proPlan.name)}</p><p class="text-xs text-muted-foreground mt-0.5">${esc(D.PRO_SUMMARY.text)}.</p></div><div class="text-right"><p class="text-sm font-bold text-foreground whitespace-nowrap">$${proPlan.priceUsd}/${esc(proPlan.interval)}</p>${soonTag}</div></div>
-          </div>
-          <p class="text-sm text-muted-foreground mt-3">${PURCHASES_OPEN
-            ? `${one ? `The ${esc(one.name)} is a one-time payment that never renews.` : "Every report and tool above is a one-time payment that never renews."} Pro renews every month until you cancel; nothing else upgrades you automatically.`
-            : `When purchases open, ${one ? `the ${esc(one.name)} will be a one-time payment that never renews` : "every report and tool above will be a one-time payment that never renews"}, and Pro will renew every month until you cancel.`} The resume scan and the job board stay free either way.</p>
-          <p class="text-sm text-muted-foreground mt-2">${esc(APPLY_YOURSELF_LINE)} <a href="/agents" class="text-primary">${esc(FOOTER_AGENTS_LABEL)} →</a></p>
+        <section id="free" class="mt-8" data-plan="free">
+          <h2 class="text-xl font-bold">${esc(P.free.name)}, ${esc(enMoney(0))}</h2>
+          <p class="text-muted-foreground">${esc(P.free.what)}</p>
+          <h3 class="text-sm font-semibold mt-3">${esc(P.free.groupNoAccount)}</h3>
+          <ul class="mt-1 space-y-1.5 text-sm">
+            ${freeCount}
+            ${li(esc(hp(P.free.scans, { n: D.PLAN_FREE_SCANS_PER_DAY }, "pricingPlans.free.scans")))}
+            ${li(esc(P.free.fit), esc(P.free.fitNote))}
+            ${li(esc(P.free.ai))}
+          </ul>
+          <h3 class="text-sm font-semibold mt-3">${esc(P.free.groupAccount)}</h3>
+          <ul class="mt-1 space-y-1.5 text-sm">
+            ${li(esc(G.alertsStatable ? P.free.saved : P.free.savedNoAlerts))}
+            ${li(esc(P.free.savedResume))}
+            ${li(esc(hp(P.free.writing, { perDay: W.freePerToolPerDay }, "pricingPlans.free.writing")))}
+            ${li(esc(hp(P.free.scansAccount, { n: D.PLAN_SIGNED_IN_SCANS_PER_DAY }, "pricingPlans.free.scansAccount")))}
+          </ul>
+          <p class="mt-3"><a href="/auth?next=%2Fjobs" class="text-primary underline font-semibold">${esc(P.free.cta)}</a></p>
+          <p class="mt-1 text-xs text-muted-foreground">${hpLinks(P.free.fine, { link: "/jobs" })}</p>
         </section>
-        ${cta("Start with the free scan", "See the full diagnostic before spending anything — most people need nothing else.", "Scan my resume free")}`,
+        <section id="full-analysis" class="mt-8" data-plan="full-analysis">
+          <h2 class="text-xl font-bold">${esc(P.fa.name)}, ${esc(enMoney(D.FULL_ANALYSIS_PRICE_USD))} ${esc(P.fa.unit)}</h2>
+          <p class="text-muted-foreground">${esc(P.fa.what)}</p>
+          <ul class="mt-2 space-y-1.5 text-sm">${["b1", "b2", "b3", "b4"].map((k) => li(esc(P.fa[k]))).join("")}${li(esc(hp(P.fa.b5, { days: D.FULL_ANALYSIS_LINK_DAYS }, "pricingPlans.fa.b5")))}</ul>
+          <p class="mt-2 text-sm text-muted-foreground">${esc(P.fa.how)}</p>
+          ${G.fullAnalysis.onSale
+            ? `<p class="mt-3 text-sm"><a href="/resume-checker#upload" class="text-primary underline">${esc(hp(P.fa.cta, { price: prices.faPrice }, "pricingPlans.fa.cta"))}</a></p>${saleLines}<p class="mt-1 text-xs text-muted-foreground">${esc(P.fa.fine)}</p><p class="mt-1 text-xs text-muted-foreground">${esc(P.fa.currency)}</p>`
+            : gateNote(G.fullAnalysis.closedBy || "seller")}
+        </section>
+        <section id="pro" class="mt-8" data-plan="pro">
+          <h2 class="text-xl font-bold">${esc(P.pro.name)}, ${esc(enMoney(D.PRO_PRICE_USD))} ${esc(P.pro.unit)}</h2>
+          <p class="text-muted-foreground">${esc(P.pro.what)}</p>
+          <p class="mt-2 text-sm">${esc(P.pro.stepLabel)}: ${esc(hp(P.pro.stepFreeAmount, { n: W.freePerToolPerDay }, "pricingPlans.pro.stepFreeAmount"))} ${esc(P.pro.stepFreeUnit)} → ${esc(hp(P.pro.stepProAmount, { n: W.proPackagesPerDay }, "pricingPlans.pro.stepProAmount"))} ${esc(hp(P.pro.stepProUnit, { perMonth: W.proPackagesPerMonth }, "pricingPlans.pro.stepProUnit"))}</p>
+          <ul class="mt-2 space-y-1.5 text-sm">${proPerks.map((p) => li(esc(proPerkText(p)))).join("")}</ul>
+          <p class="mt-2 text-sm text-muted-foreground">${esc(P.pro.review)}</p>
+          <p class="mt-2 text-sm"><strong>${esc(P.pro.statusTitle)}</strong> ${esc(P.pro.statusBody)}</p>
+          ${G.pro.onSale
+            ? `${saleLines}<p class="mt-1 text-xs text-muted-foreground">${esc(fillCopy(PT.renewal || "", { price: prices.proPrice }, "purchaseTerms.renewal"))}</p><p class="mt-2 text-sm">${esc(hp(P.pro.cta, { price: prices.proPrice }, "pricingPlans.pro.cta"))}</p><p class="mt-1 text-xs text-muted-foreground">${esc(P.pro.fine)}</p>`
+            : gateNote(G.pro.closedBy || "seller")}
+        </section>
+        <section class="mt-10">
+          <h2 class="text-xl font-bold mb-2">${esc(hp(P.adds.h2, { price: prices.faPrice }, "pricingPlans.adds.h2"))}</h2>
+          <p class="text-muted-foreground">${esc(P.adds.lede)}</p>
+          <details open class="mt-3"><summary class="font-medium">${esc(P.adds.summary)}</summary>
+            <h3 class="text-sm font-semibold mt-2">${esc(P.adds.freeTitle)} (${esc(P.adds.freeUnit)})</h3>
+            <ul class="mt-1 space-y-1 text-sm">${["free1", "free2", "free3", "free4"].map((k) => li(esc(P.adds[k]))).join("")}</ul>
+            <p class="mt-1 text-xs text-muted-foreground">${esc(P.adds.freeBrackets)} ${esc(hp(P.adds.freeKept, { days: D.FREE_REPORT_DAYS }, "pricingPlans.adds.freeKept"))}</p>
+            <h3 class="text-sm font-semibold mt-3">${esc(P.adds.faTitle)} (${esc(hp(P.adds.faUnit, { price: prices.faPrice }, "pricingPlans.adds.faUnit"))})</h3>
+            <ul class="mt-1 space-y-1 text-sm">${["fa1", "fa2", "fa3", "fa4"].map((k) => li(esc(P.adds[k]))).join("")}</ul>
+            <p class="mt-1 text-xs text-muted-foreground">${esc(hp(P.adds.faKept, { days: D.FULL_ANALYSIS_LINK_DAYS }, "pricingPlans.adds.faKept"))}</p>
+          </details>
+        </section>
+        <section class="mt-10">
+          <h2 class="text-xl font-bold mb-2">${esc(P.b2b.h2)}</h2>
+          <h3 class="text-base font-semibold">${esc(DA.builderName || "")}, ${esc(hp(P.b2b.builderPrice, { price: enMoney(D.BUILDER_PRICE_USD) }, "pricingPlans.b2b.builderPrice"))}</h3>
+          <p class="text-xs text-muted-foreground">${esc(P.b2b.builderChip)}</p>
+          <p class="mt-1 text-sm text-muted-foreground">${esc(DA.builderBody || "")}</p>
+          <p class="mt-1 text-sm text-muted-foreground">${esc(hp(P.b2b.builderQuota, { perDay: enCount(D.BUILDER_PROPOSED_PER_DAY) }, "pricingPlans.b2b.builderQuota"))} ${esc(hp(P.b2b.builderFreeKey, { perDay: enCount(D.PLAN_FREE_KEY_DAILY_QUOTA) }, "pricingPlans.b2b.builderFreeKey"))}</p>
+          <p class="mt-1 text-sm text-muted-foreground">${esc(DA.builderNotYet || "")} <a href="/data-api#builder" class="text-primary underline">${esc(DA.builderCta || "")}</a></p>
+          <h3 class="text-base font-semibold mt-4">${esc(P.b2b.licenceName)}, ${esc(P.b2b.licencePrice)}</h3>
+          <p class="mt-1 text-sm text-muted-foreground">${esc(P.b2b.licenceBody)} <a href="/data-api" class="text-primary underline">${esc(P.b2b.licenceCta)}</a></p>
+          <p class="mt-3 text-xs text-muted-foreground">${esc(hp(P.b2b.withheld, { names: withheldNames }, "pricingPlans.b2b.withheld"))}</p>
+        </section>
+        <section class="mt-10">
+          <h2 class="text-xl font-bold mb-2">${esc(P.limits.h2)}</h2>
+          <table class="w-full text-left text-sm" data-testid="limits-table">
+            <thead><tr><th scope="col">${esc(P.limits.feature)}</th>${limits.columns.map((c) => `<th scope="col">${esc(c)}</th>`).join("")}</tr></thead>
+            ${limits.groups.map((g) => `<tbody data-group="${g.id}"><tr><th colspan="4" scope="rowgroup" class="pt-4 text-xs">${esc(g.caption)}</th></tr>${g.rows.map((r) => `<tr data-row="${r.id}"><th scope="row" class="font-normal">${esc(r.label)}</th>${r.cells.map((c) => `<td>${esc(c.text)}</td>`).join("")}</tr>`).join("")}</tbody>`).join("")}
+          </table>
+          <p class="mt-2 text-xs text-muted-foreground">${esc(limitsNote)} ${esc(P.limits.chatgptNote)}</p>
+        </section>
+        <section class="mt-10">
+          <h2 class="text-xl font-bold mb-3">${esc(P.faq.h2)}</h2>
+          ${faqIds.map((id) => `<details open class="border-b border-border py-2" data-faq="${id}"><summary class="font-medium">${esc(P.faq[`${id}Q`])}</summary><p class="mt-1 text-sm text-muted-foreground">${esc(hp(id === "region" && !G.alertsStatable ? P.faq.regionANoAlerts : P.faq[`${id}A`], faqVars, `pricingPlans.faq.${id}A`))}</p></details>`).join("\n          ")}
+        </section>`,
     });
+  }
 
     // THE CHANGELOG'S TEXT IS NOT IN THE MAIN LOCALE FILE. It moved to
     // src/i18n/changelog/en.json on 2026-07-26 (its own lazy bundle), and this

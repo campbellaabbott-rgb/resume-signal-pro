@@ -20,6 +20,7 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { SEO } from "@/components/seo/SEO";
+import { PageJsonLd } from "@/components/seo/PageJsonLd";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { useBoardVendorCounts } from "@/hooks/useBoardVendorCounts";
@@ -57,7 +58,9 @@ export default function PricingPage({ gateInput, preview, onPreviewPress }: Pric
       {shown ? (
         <SEO title={t(meta.title, prices)} description={t(meta.description, prices)} path="/pricing" />
       ) : null}
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(pricingJsonLd(gates)) }} />
+      {/* One source of structured data (SEO-031): on the baked /pricing the
+          bake's block, which is this same pricingJsonLd, is the only one. */}
+      <PageJsonLd blocks={[pricingJsonLd(gates)]} />
       <Header variant="quiet" />
       <main id="main-content" tabIndex={-1} className="min-h-screen pb-8 focus:outline-none">
         {shown ? (
