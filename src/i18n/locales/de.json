@@ -5501,6 +5501,7 @@
     "body": "Eine E-Mail pro Monat mit den Keywords, auf die Stellenanzeigen in Ihrem Bereich achten, und einem kostenlosen Rescan-Link. Jede E-Mail lässt sich mit einem Klick abbestellen.",
     "button": "Ja, Markt-Puls senden",
     "done": "Sie sind angemeldet. Der erste Puls kommt innerhalb eines Tages.",
+    "donePaused": "Du bist angemeldet. Der monatliche Puls ist im Moment pausiert, daher kommt nichts an, bis er wieder startet; jeder Puls hat einen Abmeldelink mit einem Klick.",
     "invalid": "Dieser Link ist abgelaufen oder wurde bereits verwendet. Setzen Sie beim nächsten Scan-Bericht das Häkchen, um einen neuen zu erhalten.",
     "missing": "Diese Seite benötigt den Link aus Ihrer Bestätigungs-E-Mail.",
     "error": "Bestätigung gerade nicht möglich. Versuchen Sie den Link gleich noch einmal.",

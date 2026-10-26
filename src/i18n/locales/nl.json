@@ -5501,6 +5501,7 @@
     "body": "Eén e-mail per maand met de trefwoorden waarop vacatures in jouw vakgebied screenen, en een gratis rescan-link. Elke e-mail heeft een afmelding met één klik.",
     "button": "Ja, stuur me de puls",
     "done": "Je bent aangemeld. De eerste puls komt binnen een dag.",
+    "donePaused": "Je bent aangemeld. De maandelijkse pulse is voorlopig gepauzeerd, dus er komt niets tot hij weer start; elke pulse heeft een afmeldlink met één klik.",
     "invalid": "Deze link is verlopen of al gebruikt. Vink het vakje aan onder je volgende scanrapport om een nieuwe te krijgen.",
     "missing": "Deze pagina heeft de link uit je bevestigingsmail nodig.",
     "error": "Bevestigen lukt nu niet. Probeer de link zo opnieuw.",

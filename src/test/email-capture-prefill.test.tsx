@@ -2,8 +2,12 @@
 // only PRE-FILL the visible input with a disclosure line — never auto-send.
 // These tests are the contract that keeps the prefill on the right side of
 // the site's own promises ("never your resume. No spam.") and GDPR.
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+// The boxes as they are once marketing mail runs (a seller named); while it
+// is paused, as shipped, neither box is offered: w4b-recheck3-a-paused-pulse-
+// and-drip-are-offered-nowhere (recheck 3).
+vi.mock("@/lib/marketing-pause", () => ({ marketingMailPaused: () => false }));
 import { EmailReportCapture } from "../components/EmailReportCapture";
 
 const payload = {

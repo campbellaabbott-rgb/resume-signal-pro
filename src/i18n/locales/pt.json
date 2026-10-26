@@ -5537,6 +5537,7 @@
     "body": "Um e-mail por mês com as palavras-chave que as vagas da sua área estão filtrando e um link para escanear de novo grátis. Todo e-mail tem cancelamento com um clique.",
     "button": "Sim, quero o pulso",
     "done": "Inscrição confirmada. O primeiro pulso chega em até um dia.",
+    "donePaused": "Você está inscrito. O pulso mensal está pausado por enquanto, então nada chega até ele voltar; cada pulso tem um link para cancelar com um clique.",
     "invalid": "Este link expirou ou já foi usado. Marque a caixa no seu próximo relatório de escaneamento para receber um novo.",
     "missing": "Esta página precisa do link do seu e-mail de confirmação.",
     "error": "Não foi possível confirmar agora. Tente o link novamente em instantes.",

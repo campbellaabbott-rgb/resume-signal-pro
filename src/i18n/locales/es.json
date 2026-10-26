@@ -5537,6 +5537,7 @@
     "body": "Un correo al mes con las palabras clave que buscan las ofertas de empleo de tu sector y un enlace para volver a escanear gratis. Cada correo incluye una baja con un clic.",
     "button": "Sí, envíame el pulso",
     "done": "Ya estás suscrito. El primer pulso llegará en un día.",
+    "donePaused": "Te has suscrito. El pulso mensual está en pausa por ahora, así que no llegará nada hasta que se reanude; cada pulso trae una baja con un clic.",
     "invalid": "Este enlace ha caducado o ya se usó. Marca la casilla en tu próximo informe de escaneo para recibir uno nuevo.",
     "missing": "Esta página necesita el enlace de tu correo de confirmación.",
     "error": "No se pudo confirmar ahora. Vuelve a abrir el enlace en un momento.",

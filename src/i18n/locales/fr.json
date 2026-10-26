@@ -5537,6 +5537,7 @@
     "body": "Un e-mail par mois avec les mots-clés que recherchent les offres d'emploi de votre domaine, et un lien pour un nouveau scan gratuit. Chaque e-mail permet de se désabonner en un clic.",
     "button": "Oui, envoyez-moi le pouls",
     "done": "Vous êtes inscrit. Le premier pouls arrive sous un jour.",
+    "donePaused": "Vous êtes inscrit. Le pouls mensuel est en pause pour le moment : rien n'arrivera avant sa reprise, et chaque envoi comporte un lien de désinscription en un clic.",
     "invalid": "Ce lien a expiré ou a déjà été utilisé. Cochez la case sous votre prochain rapport de scan pour en recevoir un nouveau.",
     "missing": "Cette page a besoin du lien de votre e-mail de confirmation.",
     "error": "Confirmation impossible pour le moment. Réessayez le lien dans un instant.",

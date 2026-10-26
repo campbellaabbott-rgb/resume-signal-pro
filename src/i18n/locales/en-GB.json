@@ -5501,6 +5501,7 @@
     "body": "One email a month with the keywords job postings in your field are screening for, and a free rescan link. Every email has a one-click unsubscribe.",
     "button": "Yes, send me the pulse",
     "done": "You're subscribed. The first pulse arrives within a day.",
+    "donePaused": "You're subscribed. The monthly pulse is paused for now, so nothing arrives until it restarts; every pulse has a one-click unsubscribe.",
     "invalid": "This link has expired or was already used. Tick the box under your next scan report to get a new one.",
     "missing": "This page needs the link from your confirmation email.",
     "error": "Could not confirm right now. Try the link again shortly.",
