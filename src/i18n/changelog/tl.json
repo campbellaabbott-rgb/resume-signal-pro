@@ -382,7 +382,7 @@
     },
     "applyAgentCountries": {
       "title": "Hindi sasabihin ng agent na makakapagtrabaho ka kung saan hindi mo sinabi",
-      "description": "Isang oo-o-hindi lang ang hawak nito para sa work authorization at ginagamit iyon sa bawat bansa, kaya ang isang awtorisado sa UK ay sasagot ng “oo” sa “legal ka bang awtorisadong magtrabaho sa US?” — isang maling pahayag tungkol sa iyong immigration status, ipinadala sa employer sa ilalim ng pangalan mo, sa mismong tanong na pinakamahigpit nilang pinagfi-filter. Maaari mo nang ilista ang mga bansang talagang pinapayagan kang magtrabaho, at anumang tanong tungkol sa bansang hindi mo nailista ay hihinto at maghihintay sa iyo sa halip na manghula. Puwede ring i-save ang iyong address at zip code — hinihingi ito ng ilang form at wala ni isa sa kanila ang tumatanggap ng tantiya."
+      "description": "Isang oo-o-hindi lang ang hawak nito para sa work authorization at ginagamit iyon sa bawat bansa, kaya ang isang awtorisado sa UK ay sasagot ng “oo” sa “legal ka bang awtorisadong magtrabaho sa US?” — isang maling pahayag tungkol sa iyong immigration status, ipinadala sa employer sa ilalim ng pangalan mo, sa mismong tanong na pinakamahigpit nilang pinagfi-filter. Maaari mo nang ilista ang mga bansang talagang pinapayagan kang magtrabaho, at ang tanong na kinikilala ng agent na tungkol sa bansang hindi mo nailista ay hihinto at maghihintay sa iyo. Puwede ring i-save ang iyong address at zip code — hinihingi ito ng ilang form at wala ni isa sa kanila ang tumatanggap ng tantiya."
     },
     "searchFixed": {
       "title": "Gumagana na ulit ang search — karamihan ng paghahanap ay nabibigo",

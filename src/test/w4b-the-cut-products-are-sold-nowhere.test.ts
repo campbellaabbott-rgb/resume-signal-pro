@@ -23,7 +23,7 @@ import type { EdgeHandler } from "./helpers/edge-harness";
 import { freshWorld, installDeno, loadCheckouts, post, type W4bWorld } from "./helpers/w4b-checkout-harness";
 import { buildIsAtLeast } from "./helpers/fn-build";
 import { codeOf } from "./helpers/strip-comments";
-import { CUT_PRODUCT_IDS, cutSentence, PAST_BUYER_DAYS } from "../../supabase/functions/_shared/product-cuts";
+import { CUT_PRODUCT_IDS, CUT_PRODUCTS, cutSentence, PAST_BUYER_DAYS } from "../../supabase/functions/_shared/product-cuts";
 import { getAllProducts, HIDDEN_PRODUCT_IDS, oneTimePriceRangeUsd, PRODUCTS, type ProductId } from "@/config/products";
 
 let h: Record<string, EdgeHandler>;
@@ -146,5 +146,67 @@ describe("the post-publish smoke asks the cut checkout for its refusal, not for 
     const pinned = section.match(/j\.product === "([a-z_]+)"/)?.[1];
     const body = await (await post(h["create-product-checkout"], "create-product-checkout", { productId: "premiumPackage", language: "en" })).json();
     expect(body.product).toBe(pinned);
+  });
+});
+
+/**
+ * NO CRAWLER OR AI HOST IS OFFERED A CUT PRODUCT (the second recheck of the
+ * descope). After the checkouts refused them, llms.txt still told AI hosts
+ * "Paid tools are one-time purchases: resume rewrites, cover letters,
+ * interview coaching, Freelance Boost", listed "Freelance Boost ... $29
+ * one-time" and called /pricing "One-time tools and the all-access plan",
+ * and the /freelance-boost bake still sold the product to crawlers ("in about
+ * 15 seconds") from a sitemap entry at 0.8, while the page itself says "no
+ * longer sold" and is noindex. Wave 4 makes those sentences false, so wave 4
+ * carries them.
+ */
+describe("no crawler or AI host is offered a cut product", () => {
+  const OFFER = /[$€£]\s?\d|\bone-time\b|\bpurchases?\b|\bbuy\b|\bprices?\b|\bpaid\b/i;
+  const named = (line: string) => Object.values(CUT_PRODUCTS).filter((c) => new RegExp(`\\b${c.name.replace(/ /g, "\\s+")}(?:es|s|ing)?\\b`, "i").test(line)).map((c) => c.name);
+  const llms = readFileSync(resolve(__dirname, "../../public/llms.txt"), "utf8");
+
+  it("no line of llms.txt names a cut product beside a price or an offer", () => {
+    const offered = llms.split("\n").filter((l) => named(l).length && OFFER.test(l) && !/no longer sold/i.test(l)).map((l) => `${named(l).join(", ")}: ${l.slice(0, 120)}`);
+    expect(offered).toEqual([]);
+  });
+
+  it("llms.txt sells what is on sale: the Full Analysis and Pro, and calls nothing else a one-time tool", () => {
+    expect(llms).not.toMatch(/one-time tools|Paid tools are one-time purchases/i);
+    expect(llms).not.toMatch(/\]\(https:\/\/resumebooster\.work\/freelance-boost\)/);
+    // The figure is the catalogue's, not a second copy that drifts.
+    expect(llms).toContain(`One paid report (the $${PRODUCTS.fullAnalysis.priceUsd} Full Analysis)`);
+    expect(llms).toContain(`: The free tools, the $${PRODUCTS.fullAnalysis.priceUsd} Full Analysis and Pro.`);
+    expect(llms.match(/\$\d+ Full Analysis/g)?.every((m) => m === `$${PRODUCTS.fullAnalysis.priceUsd} Full Analysis`)).toBe(true);
+    expect(llms).toMatch(/Pro \(the writing tools, the Full Analysis and no daily scan cap\)/);
+  });
+
+  it("the teeth: the lines as they stood are caught", () => {
+    for (const before of [
+      "Paid tools are one-time purchases: resume rewrites, cover letters, interview coaching, Freelance Boost (turns freelance/gig projects into recruiter-grade experience sections for career changers).",
+      "- [Freelance Boost](https://resumebooster.work/freelance-boost): Guided flow converting freelance projects, gig work, and side hustles into recruiter-grade resume experience. $29 one-time.",
+    ]) expect(named(before).length && OFFER.test(before), before).toBeTruthy();
+  });
+
+  const bake = codeOf(readFileSync(resolve(__dirname, "../../scripts/prerender-seo.mjs"), "utf8"));
+  const block = (path: string) => {
+    const at = bake.indexOf(`path: "${path}",`);
+    expect(at, `${path} has no write()`).toBeGreaterThan(-1);
+    return bake.slice(at, bake.indexOf("write({", at));
+  };
+
+  it("the /freelance-boost bake is noindex and says the product is no longer sold, from the page's own strings", () => {
+    const fb = block("/freelance-boost");
+    expect(fb).toMatch(/robots: "noindex, follow"/);
+    expect(fb).toMatch(/noLongerSoldTitle/);
+    expect(fb).toMatch(/noLongerSoldBody/);
+    expect(fb).not.toMatch(/translates the work you have already done|What it produces|in about 15 seconds/);
+    // A price or a buy control; "the link in your purchase email" is the past buyer's sentence.
+    expect(fb).not.toMatch(/[$€£]\s?\d|\bone-time\b|\bbuy\b/i);
+  });
+
+  it("the sitemap's static list names no /freelance-boost", () => {
+    const routes = bake.slice(bake.indexOf("const STATIC_ROUTES = ["), bake.indexOf("];", bake.indexOf("const STATIC_ROUTES = [")));
+    expect(routes.length).toBeGreaterThan(100);
+    expect(routes).not.toMatch(/"\/freelance-boost"/);
   });
 });

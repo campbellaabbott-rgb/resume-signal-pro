@@ -5504,14 +5504,7 @@
   },
   "affiliates": {
     "commission": {
-      "tagline": "Earn a commission on the tools your referrals buy.",
-      "headline": "{{other}} per tool sale ({{small}} on smaller tools)",
-      "detail": "Earn {{other}} when someone you refer buys the Premium Resume Package, ATS Defense, Career Snapshot, Graduate Game Plan or Freelance Boost, or {{small}} for one of the smaller tools: keyword fix, cover letter, scan pack, interview coach, career path simulator or apply assistant.",
-      "excluded": "The Full Resume Analysis, scan credit top-ups, Pro, Morning Queue and the Agent Pass earn no commission.",
-      "bannerTitle": "Your commission",
-      "banner": "{{other}} per referred tool sale, {{small}} on smaller tools",
-      "linkHint": "Share this link to earn {{other}} on each tool sale it brings ({{small}} on smaller tools), with a 30-day attribution window",
-      "howItWorks": "When someone clicks your link and buys one of the tools within 30 days, you earn {{other}}, or {{small}} for a smaller tool. The Full Resume Analysis, scan credit top-ups and subscriptions earn nothing."
+      "bannerTitle": "Your commission"
     },
     "updates": {
       "title": "Updates while this page is open",

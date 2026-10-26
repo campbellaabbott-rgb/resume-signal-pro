@@ -382,7 +382,7 @@
     },
     "applyAgentCountries": {
       "title": "The apply agent won't claim you can work somewhere you haven't said",
-      "description": "It held a single yes-or-no for work authorisation and used it for every country, so someone authorised in the UK would have answered \"yes\" to \"are you legally authorized to work in the US?\" — a false statement about your immigration status, sent to an employer under your name, on the question they filter hardest on. You can now list the countries you're actually authorised to work in, and anything asking about a country you haven't listed stops and waits for you instead of guessing. Your street address and postcode can be saved too, which several application forms require and none of them will accept an approximation of."
+      "description": "It held a single yes-or-no for work authorisation and used it for every country, so someone authorised in the UK would have answered \"yes\" to \"are you legally authorized to work in the US?\" — a false statement about your immigration status, sent to an employer under your name, on the question they filter hardest on. You can now list the countries you're actually authorised to work in, and a question it recognises as asking about a country you haven't listed stops and waits for you. Your street address and postcode can be saved too, which several application forms require and none of them will accept an approximation of."
     },
     "searchFixed": {
       "title": "Search works again — most searches were failing",

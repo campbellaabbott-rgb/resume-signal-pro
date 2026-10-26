@@ -4,7 +4,7 @@
 
 The companion tool is a free diagnostic resume scanner with verified output: an ATS score with a full point-by-point audit trail, every quoted line checked against the actual resume, per-vendor parsing checks (Workday, Greenhouse, Lever, iCIMS), and keyword expectations sourced from the U.S. Department of Labor's O*NET database. 58 industries, an interface in 8 languages. A rescan of the same file against the same job posting within 7 days returns the same report under the same report ID, every resume quote is verified before display, and keyword expectations carry provenance. Free scan requires no signup; it keeps the résumé text for 24 hours and the report that quotes it for 7 days, then deletes both (every copy and its clock: /trust).
 
-Paid tools are one-time purchases: resume rewrites, cover letters, interview coaching, Freelance Boost (turns freelance/gig projects into recruiter-grade experience sections for career changers). One optional all-access subscription (Pro). Current prices are on [/pricing](https://resumebooster.work/pricing). Connecting your own AI is free and is not a product.
+One paid report (the $5 Full Analysis) and one optional monthly plan, Pro (the writing tools, the Full Analysis and no daily scan cap). Current prices are on [/pricing](https://resumebooster.work/pricing). Connecting your own AI is free and is not a product.
 
 Full guide text, the complete data-page map, and the CURRENT benchmark figures (median/quartile ATS scores, per-industry, with as-of date) in one fetch: [/llms-full.txt](https://resumebooster.work/llms-full.txt). Every page in the sitemap is prerendered static HTML — no JavaScript needed to read it.
 
@@ -16,7 +16,7 @@ Full guide text, the complete data-page map, and the CURRENT benchmark figures (
 
 ## Apply yourself, with your own AI
 
-- [Apply yourself with your AI](https://resumebooster.work/agents#apply-yourself): Connect Resume Booster to Claude or ChatGPT and your AI can search the board, read postings in full and help you apply on the employer's own site. When the employer uses Greenhouse, Ashby, Recruitee, Breezy or Pinpoint, your AI can read the employer's published application form; otherwise it reads the posting and you fill in the employer's form. Resume Booster tells your AI to ask you the questions that look like they are about you (work authorisation, sponsorship, salary, references, gaps) and to draft open answers about your work from the CV you give it. That check reads the question's words, so it can miss a question about you, even a plainly worded one, and it sends some work questions to you: read every answer before you send. You check everything and press Submit yourself: Resume Booster never submits an application.
+- [Apply yourself with your AI](https://resumebooster.work/agents#apply-yourself): Connect Resume Booster to Claude or ChatGPT and your AI can search the board, read postings in full and help you apply on the employer's own site. When the employer uses Greenhouse, Ashby, Recruitee, Breezy or Pinpoint, your AI can read the employer's published application form; otherwise it reads the posting and you fill in the employer's form. Inside ChatGPT, your AI reads the application form only when the employer uses Greenhouse or Recruitee. Resume Booster tells your AI to ask you the questions that look like they are about you (work authorisation, sponsorship, salary, references, gaps) and to draft open answers about your work from the CV you give it. That check reads the question's words, so it can miss a question about you, even a plainly worded one, and it sends some work questions to you: read every answer before you send. You check everything and press Submit yourself: Resume Booster never submits an application.
 
 ## Guides (answer-first, grounded in scanner data)
 
@@ -49,11 +49,10 @@ Full guide text, the complete data-page map, and the CURRENT benchmark figures (
 - Role keyword pages (174): /roles/{slug} — each title's industry keyword data, certifications, and adjacent titles (e.g. /roles/software-engineer, /roles/registered-nurse).
 - Spanish industry pages (15): /es/industrias/{slug} — native Spanish keyword data paired with English ATS terms.
 - [CV standards by country](https://resumebooster.work/cv-standards): Photo, length, and personal-data norms for 56 countries — the scanner's own per-market rules, with localized pages in Spanish, French, German, Portuguese, and Dutch.
-- [Freelance Boost](https://resumebooster.work/freelance-boost): Guided flow converting freelance projects, gig work, and side hustles into recruiter-grade resume experience. $29 one-time.
 - [Resume Builder](https://resumebooster.work/builder): Free structured builder with professionally typeset PDF and DOCX export.
 - [Workday parsing guide](https://resumebooster.work/ats/workday), [Greenhouse](https://resumebooster.work/ats/greenhouse), [Lever](https://resumebooster.work/ats/lever), [iCIMS](https://resumebooster.work/ats/icims): How each major ATS actually parses resumes.
 - [vs Jobscan](https://resumebooster.work/vs/jobscan), [vs Teal](https://resumebooster.work/vs/teal), [vs Rezi](https://resumebooster.work/vs/rezi), [vs Kickresume](https://resumebooster.work/vs/kickresume), [vs Enhancv](https://resumebooster.work/vs/enhancv): Honest comparisons that name where competitors win.
-- [Pricing](https://resumebooster.work/pricing): One-time tools and the all-access plan.
+- [Pricing](https://resumebooster.work/pricing): The free tools, the $5 Full Analysis and Pro.
 - [Methodology](https://resumebooster.work/methodology): How scoring and detection work.
 - [Trust](https://resumebooster.work/trust): Privacy and data handling — every place a copy of a résumé is kept, and for how long (free-scan text 24 hours, reports 7 days, paid analyses 90 days; résumés saved to an account or given to the apply agent until the user deletes the account or asks for erasure).
 - [Changelog](https://resumebooster.work/changelog): Ships multiple times weekly; includes honest postmortems.

@@ -382,7 +382,7 @@
     },
     "applyAgentCountries": {
       "title": "El agente no afirmará que puedes trabajar donde no lo has dicho",
-      "description": "Guardaba un único sí o no sobre autorización laboral y lo usaba para todos los países, así que alguien autorizado en el Reino Unido habría respondido «sí» a «¿tienes autorización legal para trabajar en EE. UU.?»: una afirmación falsa sobre tu situación migratoria, enviada a una empresa en tu nombre, en la pregunta que más filtran. Ahora puedes indicar los países en los que realmente tienes autorización, y cualquier pregunta sobre un país que no hayas indicado se detiene y te espera en lugar de adivinar. También puedes guardar tu dirección y código postal, que varios formularios exigen y ninguno acepta de forma aproximada."
+      "description": "Guardaba un único sí o no sobre autorización laboral y lo usaba para todos los países, así que alguien autorizado en el Reino Unido habría respondido «sí» a «¿tienes autorización legal para trabajar en EE. UU.?»: una afirmación falsa sobre tu situación migratoria, enviada a una empresa en tu nombre, en la pregunta que más filtran. Ahora puedes indicar los países en los que realmente tienes autorización, y una pregunta que reconoce como pregunta sobre un país que no hayas indicado se detiene y te espera. También puedes guardar tu dirección y código postal, que varios formularios exigen y ninguno acepta de forma aproximada."
     },
     "searchFixed": {
       "title": "La búsqueda vuelve a funcionar: la mayoría de las búsquedas fallaban",

@@ -5504,14 +5504,7 @@
   },
   "affiliates": {
     "commission": {
-      "tagline": "Kumita ng komisyon sa mga tool na binibili ng mga ini-refer mo.",
-      "headline": "{{other}} bawat benta ng tool ({{small}} sa mas maliliit na tool)",
-      "detail": "Kumita ng {{other}} kapag ang ini-refer mo ay bumili ng Premium Resume Package, ATS Defense, Career Snapshot, Graduate Game Plan o Freelance Boost, o {{small}} para sa isa sa mas maliliit na tool: keyword fix, cover letter, scan pack, interview coach, career path simulator o apply assistant.",
-      "excluded": "Walang komisyon ang Full Resume Analysis, mga top-up ng scan credit, Pro, Morning Queue at Agent Pass.",
-      "bannerTitle": "Ang komisyon mo",
-      "banner": "{{other}} bawat benta ng tool na ini-refer, {{small}} sa mas maliliit na tool",
-      "linkHint": "Ibahagi ang link na ito para kumita ng {{other}} sa bawat benta ng tool na dala nito ({{small}} sa mas maliliit na tool), na may 30-araw na attribution window",
-      "howItWorks": "Kapag may nag-click sa link mo at bumili ng isa sa mga tool sa loob ng 30 araw, kikita ka ng {{other}}, o {{small}} para sa mas maliit na tool. Walang kita sa Full Resume Analysis, mga credit top-up at mga subscription."
+      "bannerTitle": "Ang komisyon mo"
     },
     "updates": {
       "title": "Mga update habang bukas ang pahinang ito",

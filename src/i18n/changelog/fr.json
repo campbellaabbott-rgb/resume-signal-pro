@@ -382,7 +382,7 @@
     },
     "applyAgentCountries": {
       "title": "L'agent ne prétendra pas que vous pouvez travailler là où vous ne l'avez pas dit",
-      "description": "Il ne conservait qu'un seul oui ou non pour l'autorisation de travail et l'appliquait à tous les pays : une personne autorisée au Royaume-Uni aurait donc répondu « oui » à « êtes-vous légalement autorisé à travailler aux États-Unis ? » — une déclaration fausse sur votre statut d'immigration, transmise à un employeur en votre nom, sur la question qu'ils filtrent le plus. Vous pouvez maintenant indiquer les pays où vous êtes réellement autorisé, et toute question portant sur un pays non indiqué s'arrête et vous attend au lieu de deviner. Votre adresse et votre code postal peuvent aussi être enregistrés : plusieurs formulaires les exigent et aucun n'en accepte une approximation."
+      "description": "Il ne conservait qu'un seul oui ou non pour l'autorisation de travail et l'appliquait à tous les pays : une personne autorisée au Royaume-Uni aurait donc répondu « oui » à « êtes-vous légalement autorisé à travailler aux États-Unis ? » — une déclaration fausse sur votre statut d'immigration, transmise à un employeur en votre nom, sur la question qu'ils filtrent le plus. Vous pouvez maintenant indiquer les pays où vous êtes réellement autorisé, et une question qu'il reconnaît comme portant sur un pays non indiqué s'arrête et vous attend. Votre adresse et votre code postal peuvent aussi être enregistrés : plusieurs formulaires les exigent et aucun n'en accepte une approximation."
     },
     "searchFixed": {
       "title": "La recherche fonctionne de nouveau : la plupart des recherches échouaient",
