@@ -1434,11 +1434,11 @@ export function FreeKeywordResults({
     <TooltipProvider delayDuration={200}>
     <div className="w-full max-w-3xl mx-auto animate-fade-in">
       {/* ── The report's summary. The scan's verdict marks a complete report,
-          and its sentence is not printed: it put a pass rate on the résumé
-          ("will pass roughly 85% of ATS filters"), and the line under it
-          placed the score among other people's scans. The report predicts no
-          outcome and ranks the reader against no one (H0, review round
-          2026-10-26); it states the score and the findings. ── */}
+          and its sentence is not printed: it put a pass rate on the résumé,
+          and the line under it placed the score among other people's scans.
+          The report predicts no outcome and ranks the reader against no one
+          (H0, review round 2026-10-26); it states the score and the
+          findings. ── */}
       {reportVerdict && (
         <div className="rounded-2xl border-2 border-primary/40 bg-gradient-to-r from-primary/10 to-primary/5 p-5 mb-4">
           <p className="text-[10px] font-bold uppercase tracking-widest text-primary mb-1.5">{t('freeResults.enterprise.summaryLabel', 'Your report')}</p>
@@ -2401,13 +2401,12 @@ export function FreeKeywordResults({
         </div>
       )}
 
-      {/* Timeline Analysis. The industry benchmark beside it ("How You
-          Compare": you against others, a peer percentile, callback
-          multipliers and a recruiter's likely verdict) is gone: the scan
-          names its comparison above_average / below_average / average and
-          the card tested above / at / below, so every reader was told their
-          résumé ranked below their peers. The report ranks the reader
-          against no one (H0, review round 2026-10-26). */}
+      {/* Timeline Analysis. The industry benchmark beside it (you against
+          others, a peer percentile, callback multipliers and a recruiter's
+          likely verdict) is gone: the scan names its comparison with an
+          _average suffix and the card tested the bare words, so every reader
+          was told their résumé ranked below their peers. The report ranks
+          the reader against no one (H0, review round 2026-10-26). */}
       {timelineAnalysis && (
       <div className="grid grid-cols-1 gap-4 mb-5">
         {/* Timeline Analysis */}
@@ -3506,9 +3505,9 @@ export function FreeKeywordResults({
         </div>
       )}
 
-      {/* The peer percentile and the "Est. ATS pass rate" card ("Likely to
-          pass", "High rejection risk") are not shown: both are estimates of
-          an outcome the report cannot know (H0, review round 2026-10-26). */}
+      {/* The peer percentile and the estimated pass-rate card are not
+          shown: both are estimates of an outcome the report cannot know (H0,
+          review round 2026-10-26). */}
 
       {/* ── Competitor Silhouette ────────────────────────────────────────────── */}
       {competitorSilhouette && (
