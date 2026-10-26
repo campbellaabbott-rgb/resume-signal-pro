@@ -33,6 +33,8 @@ import { PricingView } from "@/components/pricing/PricingView";
 import { resolveSaleGates, type SaleGateInput } from "@/components/pricing/sale-gates";
 import { useLocaleReady } from "@/lib/home/use-locale-ready";
 import { useStickyReady } from "@/lib/home/use-sticky-ready";
+import { useScrollDepth } from "@/hooks/use-scroll-depth";
+import { useTimeOnPage } from "@/hooks/use-time-on-page";
 
 export interface PricingPageProps {
   /** Tests and the preview only. The route passes nothing: the shipped seller and gates decide. */
@@ -43,6 +45,12 @@ export interface PricingPageProps {
 
 export default function PricingPage({ gateInput, preview, onPreviewPress }: PricingPageProps = {}) {
   const shown = useStickyReady(useLocaleReady());
+  // The old /pricing's scroll-depth and time-on-page events, kept under the
+  // same page name so the pricing funnel reads on across the switch-over
+  // (step 13); the visitor budget already counted them. They store and send
+  // nothing before an analytics choice.
+  useScrollDepth("pricing");
+  useTimeOnPage("pricing");
   const { t, i18n } = useTranslation();
   const counts = useBoardVendorCounts();
   const gates = useMemo(

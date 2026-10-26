@@ -59,6 +59,7 @@ vi.mock("@/lib/resilient-edge-function", async (importOriginal) => {
 
 import Index from "@/pages/Index";
 import HomePage from "@/pages/home/HomePage";
+import PricingPage from "@/pages/pricing/PricingPage";
 import { TOOL_LANDINGS } from "@/data/tool-landings";
 import { useScrollDepth } from "@/hooks/use-scroll-depth";
 import { useTimeOnPage } from "@/hooks/use-time-on-page";
@@ -94,6 +95,14 @@ describe("before a choice", () => {
     render(<HelmetProvider><MemoryRouter initialEntries={["/"]}><HomePage /></MemoryRouter></HelmetProvider>);
     await act(async () => { await new Promise((r) => setTimeout(r, 100)); });
     expect(document.getElementById("home-h1"), "the homepage rendered").not.toBeNull();
+    expect(keys()).toEqual([]);
+  });
+
+  // The new /pricing keeps the old page's scroll and time events (step 13).
+  it("the pricing page, mounted, leaves sessionStorage empty", async () => {
+    render(<HelmetProvider><MemoryRouter initialEntries={["/pricing"]}><PricingPage /></MemoryRouter></HelmetProvider>);
+    await act(async () => { await new Promise((r) => setTimeout(r, 100)); });
+    expect(document.getElementById("pricing-h1"), "the pricing page rendered").not.toBeNull();
     expect(keys()).toEqual([]);
   });
 
