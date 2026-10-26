@@ -277,7 +277,7 @@ export default function Methodology() {
                 {t('methodologyPage.ctaSubtitle')}
               </p>
               <Link
-                to="/"
+                to="/resume-checker"
                 className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors"
               >
                 {t('methodologyPage.ctaButton')}

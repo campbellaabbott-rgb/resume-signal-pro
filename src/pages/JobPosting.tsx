@@ -317,7 +317,7 @@ export default function JobPosting() {
     if (!job || !description) return;
     if (!writeJdHandoff({ jd: description, title: shown?.title ?? undefined, company: company || undefined, applyUrl: job.applyUrl ?? undefined })) return;
     postTrackEvent({ testName: "job_page", variant: "score_against_job", eventType: "view", metadata: { page: path } });
-    navigate("/#upload");
+    navigate("/resume-checker#upload");
   };
   // THE GONE COPY IS FOR "GONE" ONLY. It used to cover every state that was
   // not ready, so a renderer that snapshotted while loading, after a transient

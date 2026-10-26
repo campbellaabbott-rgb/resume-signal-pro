@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { proSummaryOnSale } from "@/config/pro-perks";
+import { scannerReturnPath } from "@/lib/scanner-address";
 import { useConversionTracking } from "@/hooks/use-conversion-tracking";
 
 interface RateLimitUpselProps {
@@ -65,7 +66,7 @@ export function RateLimitUpsell({ onClose, resetHours = null, signedIn = false }
               <p className="flex items-center gap-2 font-semibold"><UserPlus className="w-4 h-4 text-primary" />{t('rateLimitUpsell.freeAccountTitle', 'Create a free account')}</p>
               <p className="mt-1 text-sm text-muted-foreground">{t('rateLimitUpsell.freeAccountBody', 'A free account scans more each day, and keeps your score and checklist.')}</p>
               <Button asChild className="mt-3 w-full">
-                <Link to={`/auth?next=${encodeURIComponent('/#upload')}`} onClick={() => trackButtonClick('free_account', 'rate_limit_upsell')}>
+                <Link to={`/auth?next=${encodeURIComponent(`${scannerReturnPath()}#upload`)}`} onClick={() => trackButtonClick('free_account', 'rate_limit_upsell')}>
                   {t('rateLimitUpsell.freeAccountCta', 'Create a free account')}
                 </Link>
               </Button>

@@ -5082,7 +5082,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
       if (!writeJdHandoff({ jd: description, title: job.title, company: job.company, applyUrl: job.applyUrl })) {
         throw new Error("description too short to hand over");
       }
-      navigate("/#upload");
+      navigate("/resume-checker#upload");
     } catch (e) {
       console.error("[Jobs] detail failed:", e);
       toast({
@@ -5107,7 +5107,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
           title: t("jobsPage.prepNeedsResumeTitle", "Scan your resume first"),
           description: t("jobsPage.prepNeedsResume", "Run the free scan (or save a resume version in your account) so the agent can ground every answer in your real experience."),
         });
-        navigate("/#upload");
+        navigate("/resume-checker#upload");
         return;
       }
       // Dedup guard: if this posting is already marked applied, warn before we
@@ -5502,7 +5502,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
         title: t("jobsPage.fitNeedsResumeTitle", "Scan your resume first"),
         description: t("jobsPage.fitNeedsResume", "Run the free scan (or save a resume version in your account) and the board can rank every posting against it."),
       });
-      navigate("/#upload");
+      navigate("/resume-checker#upload");
       return;
     }
     // THE SAME RETRIEVAL THE RÉSUMÉ DROP DOES. Without it this button only
@@ -7039,7 +7039,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
     // The uploader's anchor is #upload (ResumeUploader, and Index's hash
     // handler reads only that). The old "scan" anchor named no element and
     // landed at the top of the homepage; navigate() also skips the reload.
-    { id: "scan", label: t("jobsPage.paScan", "Scan my resume (free)"), run: () => navigate("/#upload") },
+    { id: "scan", label: t("jobsPage.paScan", "Scan my resume (free)"), run: () => navigate("/resume-checker#upload") },
     { id: "help", label: t("jobsPage.paHelp", "Keyboard shortcuts"), hint: "?", run: () => setHelpOpen(true) },
   // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [remoteOnly, workMode, activeFilters, navigate, t]);
@@ -8225,7 +8225,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                 </label>
                 {/* Secondary link folds away below sm — it wrapped the banner to
                     a third row on 375px screens; the primary path stays. */}
-                <button onClick={() => navigate("/#upload")} className="hidden sm:block text-[12px] text-muted-foreground hover:text-foreground hover:underline">
+                <button onClick={() => navigate("/resume-checker#upload")} className="hidden sm:block text-[12px] text-muted-foreground hover:text-foreground hover:underline">
                   {t("jobsPage.dropScannerLink", "or run the full free scan")}
                 </button>
               </div>
@@ -10925,7 +10925,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                             ? t("jobsPage.skillUnlockPossible", "is missing from {{n}} of these postings — including {{p}} where you're already a possible match.", { n: skillUnlock.n, p: skillUnlock.possible })
                             : t("jobsPage.skillUnlockPlain", "is missing from {{n}} of these postings.", { n: skillUnlock.n })}
                         </span>{" "}
-                        <Link to="/#upload" className="link">
+                        <Link to="/resume-checker#upload" className="link">
                           {t("jobsPage.skillUnlockCta", "Have it? Add it to your resume honestly →")}
                         </Link>
                       </p>

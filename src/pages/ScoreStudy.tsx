@@ -287,7 +287,7 @@ export default function ScoreStudy() {
               per-vendor parsing checks. No signup; your resume is deleted within 7 days.
             </p>
             <Link
-              to="/"
+              to="/resume-checker"
               className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:opacity-90 transition-opacity"
             >
               Run the free scan

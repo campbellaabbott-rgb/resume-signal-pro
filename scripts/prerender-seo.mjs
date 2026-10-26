@@ -1316,8 +1316,9 @@ export { count as fmtCount, money as fmtMoney, date as fmtDate } from "../src/li
   const pill = (href, text) =>
     `<a href="${href}" class="px-3 py-1.5 rounded-full border border-border text-muted-foreground hover:text-foreground transition-colors">${esc(text)}</a>`;
   // `href` is the scan page in the page's own language (SEO-034): a Spanish
-  // page's "Escanear mi currículum gratis" linked the English home.
-  const cta = (heading, body, buttonText, href = "/") => `
+  // page's "Escanear mi currículum gratis" linked the English home. Since the
+  // homepage switch-over the scanner lives at /resume-checker, not "/".
+  const cta = (heading, body, buttonText, href = "/resume-checker") => `
     <section class="rounded-2xl border-2 border-primary bg-card p-6 text-center">
       <h2 class="text-xl font-bold mb-2">${esc(heading)}</h2>
       <p class="text-sm text-muted-foreground mb-4 max-w-md mx-auto">${esc(body)}</p>
@@ -1684,7 +1685,7 @@ export { count as fmtCount, money as fmtMoney, date as fmtDate } from "../src/li
         <h1 class="text-3xl font-bold mb-3">${esc(cfg.heading)}</h1>
         <p class="text-muted-foreground mb-6">${esc(cfg.intro)}</p>
         <ul class="space-y-1.5 mb-8">${cfg.bullets.map((b) => `<li class="text-sm text-muted-foreground">✓ ${esc(b)}</li>`).join("")}</ul>
-        ${cta(cfg.lang === "es" ? "Escanea tu currículum gratis" : "Run the free scan now", cfg.lang === "es" ? `Informe completo en ${D.SCAN_RESULTS_WITHIN_SECONDS} segundos como máximo. Sin registro; tu currículum se borra en un máximo de 7 días.` : `Full diagnostic report within ${D.SCAN_RESULTS_WITHIN_SECONDS} seconds. No sign-up; your resume is deleted within 7 days.`, cfg.lang === "es" ? "Escanear mi currículum gratis" : "Scan my resume free", cfg.lang === "es" ? "/es/revisar-curriculum" : "/")}
+        ${cta(cfg.lang === "es" ? "Escanea tu currículum gratis" : "Run the free scan now", cfg.lang === "es" ? `Informe completo en ${D.SCAN_RESULTS_WITHIN_SECONDS} segundos como máximo. Sin registro; tu currículum se borra en un máximo de 7 días.` : `Full diagnostic report within ${D.SCAN_RESULTS_WITHIN_SECONDS} seconds. No sign-up; your resume is deleted within 7 days.`, cfg.lang === "es" ? "Escanear mi currículum gratis" : "Scan my resume free", cfg.lang === "es" ? "/es/revisar-curriculum" : "/resume-checker")}
         <section class="mt-10"><h2 class="text-2xl font-bold mb-4">${cfg.lang === "es" ? "Preguntas frecuentes" : "Common questions"}</h2><div class="space-y-4">${cfg.faqs.map((f) => `<div class="rounded-2xl border border-border bg-card p-5"><h3 class="font-semibold text-foreground mb-1.5">${esc(f.q)}</h3><p class="text-sm text-muted-foreground">${esc(f.a)}</p></div>`).join("")}</div></section>`,
     });
   }
@@ -2714,7 +2715,7 @@ export { count as fmtCount, money as fmtMoney, date as fmtDate } from "../src/li
             ${job.applyUrl ? `<p><a href="${esc(String(job.applyUrl))}" rel="noopener noreferrer nofollow">Apply on ${esc(possessive(nm))} own site</a> — the application happens on ${esc(possessive(nm))} own hiring system; this board only links to it.</p>` : ""}
             <h2>The employer's own description</h2>
             ${paras.map((p) => `<p>${esc(p)}</p>`).join("\n            ")}
-            <p>${companyLinkHtml(job.token, nm)} · <a href="/jobs">Search the live board</a> · <a href="/">Check your resume against this posting free</a></p>
+            <p>${companyLinkHtml(job.token, nm)} · <a href="/jobs">Search the live board</a> · <a href="/resume-checker">Check your resume against this posting free</a></p>
             <p>${esc(ownSentence)}</p>
           `,
           jsonLd: [...(ld ? [ld] : []), {
@@ -2932,7 +2933,7 @@ export { count as fmtCount, money as fmtMoney, date as fmtDate } from "../src/li
           ${newest.length ? `<h2>Newest ${label} openings with a page of their own</h2>
           <ul>${newest.map((p) => `<li><a href="${p.path}">${esc(p.title)}</a> — ${esc(p.company ?? "")}${p.place ? `, ${esc(p.place)}` : ""}</li>`).join("")}</ul>` : ""}
           <p>The largest boards are re-read most often, and how far behind the rotation is right now is published on the <a href="/ghost-job-index">Ghost Job Index</a> as a measurement, not a promise. A posting a company takes down leaves the board when the rotation next re-reads that company's feed, and the live board ${RECHECK_CLAUSE}. The counts on this page were ${esc(COUNTS_BASIS)}; the board's own count refreshes through the day.</p>
-          <p><a href="/jobs/field/${slug}">Browse ${label} openings on the live board</a> — filter by keyword, location, remote, and company; save searches with a free account; and check any posting against your resume with the <a href="/">free resume scan</a> before you spend an application on it.</p>
+          <p><a href="/jobs/field/${slug}">Browse ${label} openings on the live board</a> — filter by keyword, location, remote, and company; save searches with a free account; and check any posting against your resume with the <a href="/resume-checker">free resume scan</a> before you spend an application on it.</p>
           <p>Other fields: ${siblings} — or see <a href="/jobs">the full job board</a>.</p>
         `,
           jsonLd: [{
@@ -3389,7 +3390,7 @@ export { count as fmtCount, money as fmtMoney, date as fmtDate } from "../src/li
           <h1>Live job board</h1>
           <p>${jobsPhrase[0].toUpperCase()}${jobsPhrase.slice(1)} (${esc(BOARD_AS_OF)}), ${BOARD_SOURCE_SENTENCE}. They come from ${D.SERVING_SOURCE_LIST}; applying happens on the employer's own site, and no dated posting older than 30 days stays on the board. Where a company states no date at all we can't judge the posting old, so we keep it and show no age rather than guess one. The counts were ${esc(COUNTS_BASIS)}; the board's own count refreshes periodically through the day.</p>
           <p>Browse by field: ${CATEGORY_LANDERS.map(([s, l]) => `<a href="/jobs/field/${s}">${l} jobs</a>`).join(" · ")}.</p>
-          <p>Check any posting against your resume with the <a href="/">free resume scan</a> before you spend an application on it, and save searches with a free account.</p>
+          <p>Check any posting against your resume with the <a href="/resume-checker">free resume scan</a> before you spend an application on it, and save searches with a free account.</p>
           <p>Bring your own AI agent: every posting and every search on this board has a control that copies a prompt naming the posting's id, or the search's arguments, and our MCP server's URL — <a href="/agents">connect your agent</a>. A <code>/jobs?job=&lt;id&gt;</code> link's id is the argument the server's detail tools take.</p>
           ${postingIndexSection}
         `,
@@ -3424,7 +3425,7 @@ export { count as fmtCount, money as fmtMoney, date as fmtDate } from "../src/li
           <p>Every figure is computed from the full lifecycle of postings on companies' official job boards (${D.SERVING_SOURCE_LIST}), each ${SOURCE_SENTENCE}. Any posting whose company-stated date passes 30 days is dropped automatically, we log every takedown we see (a takedown is never called a hire: a hire, a withdrawal and a cancelled requisition look the same from a feed), and we sample listings daily and re-check them against the companies' own systems. Where a company states no date at all we can't judge the posting old, so we keep it and show no age rather than guess one.</p>
           ${DATA_FIGURES.ghost.html}
           ${howToCite("Ghost Job Index", "/ghost-job-index", DATA_FIGURES.ghost.modified)}
-          <p><a href="/jobs">Browse the live board</a> — or check any posting against your resume with the <a href="/">free resume scan</a> first.</p>
+          <p><a href="/jobs">Browse the live board</a> — or check any posting against your resume with the <a href="/resume-checker">free resume scan</a> first.</p>
         `,
         jsonLd: [datasetLd({
           // Brand-qualified (SEO-028): "The Ghost Job Index" is another site's name too.
@@ -3451,7 +3452,7 @@ export { count as fmtCount, money as fmtMoney, date as fmtDate } from "../src/li
           <p>Every count comes live from companies' official job boards (${D.SERVING_SOURCE_LIST}), each posting ${SOURCE_SENTENCE}, and no dated posting older than 30 days (undated ones show no age rather than a guessed one). A role counts as entry-level when its own title or stated requirements say so; we never guess.</p>
           ${DATA_FIGURES.entry.html}
           ${howToCite("Entry-Level Index", "/entry-level-index", DATA_FIGURES.entry.modified)}
-          <p><a href="/jobs?experience=entry">Browse all entry-level openings</a>, check the <a href="/hiring-trends">weekly hiring trends</a>, or scan your resume against any posting with the <a href="/">free resume scan</a>.</p>
+          <p><a href="/jobs?experience=entry">Browse all entry-level openings</a>, check the <a href="/hiring-trends">weekly hiring trends</a>, or scan your resume against any posting with the <a href="/resume-checker">free resume scan</a>.</p>
         `,
         jsonLd: [datasetLd({
           name: "Resume Booster Entry-Level Index",
@@ -3978,7 +3979,7 @@ export { count as fmtCount, money as fmtMoney, date as fmtDate } from "../src/li
         <p class="text-muted-foreground mb-8">A guided builder that produces a resume an ATS can actually parse: standard section headings, a single-column layout, real text rather than tables or graphics, and dates in a format parsers read. Export to PDF when you are done. Free, and no signup.</p>
         <section class="mb-8"><h2 class="text-xl font-bold mb-3">Why layout decides whether you are read</h2>
           <p class="text-sm text-muted-foreground mb-3">Most resumes that never get a reply were never rejected by a person. They were parsed into the wrong fields — a two-column layout read across instead of down, experience buried in a text box, a header the parser dropped — and the recruiter saw a record with gaps that were never in the resume. The builder avoids those constructs rather than fixing them afterwards.</p>
-          <p class="text-sm text-muted-foreground">If you already have a resume, run the <a href="/" class="text-primary underline">free scan</a> first — it shows what an ATS extracts from your current file, which usually tells you whether you need a rebuild or an edit. The scoring rubric behind it is documented on the <a href="/methodology" class="text-primary underline">methodology page</a>.</p>
+          <p class="text-sm text-muted-foreground">If you already have a resume, run the <a href="/resume-checker" class="text-primary underline">free scan</a> first — it shows what an ATS extracts from your current file, which usually tells you whether you need a rebuild or an edit. The scoring rubric behind it is documented on the <a href="/methodology" class="text-primary underline">methodology page</a>.</p>
         </section>
         ${cta("Check your current resume first", "See exactly what a parser pulls out of the file you have today — free, no signup.", "Scan my resume free")}`,
     });
@@ -3997,7 +3998,7 @@ export { count as fmtCount, money as fmtMoney, date as fmtDate } from "../src/li
       description: "Sign in to manage your shortlist.",
       content: `
         <h1 class="text-2xl font-bold mb-3">Shortlist</h1>
-        <p class="text-muted-foreground mb-6">This page needs an account. <a href="/auth" class="text-primary underline">Sign in</a> to continue, or <a href="/" class="text-primary underline">run the free resume scan</a> — that needs no account at all.</p>`,
+        <p class="text-muted-foreground mb-6">This page needs an account. <a href="/auth" class="text-primary underline">Sign in</a> to continue, or <a href="/resume-checker" class="text-primary underline">run the free resume scan</a> — that needs no account at all.</p>`,
     });
 
     // WHAT AN AFFILIATE IS PAID, FROM THE MIRROR THE SERVER'S PAYOUTS ARE

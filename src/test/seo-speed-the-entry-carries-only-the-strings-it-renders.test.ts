@@ -39,9 +39,9 @@ describe("what counts as naming a namespace", () => {
       "t(`jobsPage.categories.${slug}`)",
       `useTranslation("translation", { keyPrefix: 'hero' })`,
       `<Trans i18nKey='faq.items.0.q' />`,
-      `const KEYS = { a: "pricingPage.title" };`,
+      `const KEYS = { a: "tieredPricing.title" };`,
     ].join("\n");
-    expect(namespacesNamedIn(code, NAMES)).toEqual(["faq", "hero", "jobsPage", "pricingPage"]);
+    expect(namespacesNamedIn(code, NAMES)).toEqual(["faq", "hero", "jobsPage", "tieredPricing"]);
   });
 
   it("ignores identifiers, longer words and strings that are not en.json namespaces", () => {
