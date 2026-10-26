@@ -96,6 +96,7 @@ const BUILDS: Record<string, string> = {
   "send-search-digest": "send-search-digest.2026-10-25.1",
   "send-market-pulse": "send-market-pulse.2026-10-25.2",
   "create-subscription-checkout": "create-subscription-checkout.2026-10-26.1",
+  "create-product-checkout": "create-product-checkout.2026-10-26.1",
 };
 const FN = "https://p\\.supabase\\.co";
 
@@ -191,6 +192,7 @@ describe("each claim can FAIL", () => {
   it("C6: an older build, and a preflight with no build", () => {
     expect(has(run({ builds: { "free-keyword-scan": "free-keyword-scan.2026-10-14.31" } }).lines, "FAIL", /^C6 free-keyword-scan x-fn-build = free-keyword-scan\.2026-10-14\.31/)).toBe(true);
     expect(has(run({ builds: { "create-subscription-checkout": "create-subscription-checkout.2026-10-11.23" } }).lines, "FAIL", /^C6 create-subscription-checkout/)).toBe(true);
+    expect(has(run({ builds: { "create-product-checkout": "create-product-checkout.2026-10-11.27" } }).lines, "FAIL", /^C6 create-product-checkout x-fn-build = create-product-checkout\.2026-10-11\.27 \(want create-product-checkout\.2026-10-26\.1 or later\)/)).toBe(true);
     expect(has(run({ builds: { "send-market-pulse": null } }).lines, "FAIL", /^C6 send-market-pulse preflight carries no x-fn-build/)).toBe(true);
   });
 

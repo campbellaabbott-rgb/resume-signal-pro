@@ -224,7 +224,7 @@
       "branches": ["hp/"],
       "migrations": "none",
       "jobBoard": "none",
-      "fnBuildDate": "2026-10-25 (free-keyword-scan for H0; send-scan-report, send-market-pulse and send-search-digest for the scanner's own address in their links) and 2026-10-26 (create-subscription-checkout: Pro's list, and so its Stripe description, says packages)",
+      "fnBuildDate": "2026-10-25 (free-keyword-scan for H0; send-scan-report, send-market-pulse and send-search-digest for the scanner's own address in their links) and 2026-10-26 (create-subscription-checkout: Pro's list, and so its Stripe description, says packages; create-product-checkout: its bundle carries that list)",
       "verifySections": ["99-home-pricing.sh"],
       "status": "the board-first homepage and the new pricing page: hp/integration's new files, hp/honesty (the quiet header, the footer without Freelance Boost, src/config/sales-gate.ts, PurchaseTerms' final-sale and region lines, H0) and hp/scanner (Index delete-only, the scanner's old addresses including affiliate links and the mail's rescan links, every buy control's G1 and G2 or G2b gate, the mail links to /resume-checker), both cut from wave4/integration with main merged in; lands with the switch-over in docs/homepage-pricing/README.md, after wave 4; verify section 99",
       "deployOrder": 5

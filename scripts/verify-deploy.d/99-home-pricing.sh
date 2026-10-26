@@ -28,8 +28,9 @@
 #   C6  The builds home-pricing carries: free-keyword-scan 2026-10-25.2 (H0),
 #       send-scan-report and send-search-digest 2026-10-25.1, send-market-pulse
 #       2026-10-25.2 (the scanner's own address in their links), and
-#       create-subscription-checkout 2026-10-26.1 (Pro's list says packages),
-#       each that build or a later one.
+#       create-subscription-checkout 2026-10-26.1 (Pro's list says packages)
+#       and create-product-checkout 2026-10-26.1 (it bundles that list), each
+#       that build or a later one.
 #   C7  The page React renders: the served entry carries the homepage's H1
 #       sentence and none of the retired homepage hero's strings.
 #   C8  (headless) "/#upload" lands on /resume-checker at its uploader (the
@@ -67,7 +68,7 @@ VD99_ENTRY=$(grep -oE '/assets/index-[A-Za-z0-9_-]+\.js' /tmp/vd_99_home.html | 
 if [ -n "$VD99_ENTRY" ]; then curl -s -m 60 "$SITE$VD99_ENTRY" > /tmp/vd_99_entry.js; fi
 
 # ---- C6: the builds the reservation carries ----
-for VD99_PAIR in "free-keyword-scan|2026-10-25|2" "send-scan-report|2026-10-25|1" "send-search-digest|2026-10-25|1" "send-market-pulse|2026-10-25|2" "create-subscription-checkout|2026-10-26|1"; do
+for VD99_PAIR in "free-keyword-scan|2026-10-25|2" "send-scan-report|2026-10-25|1" "send-search-digest|2026-10-25|1" "send-market-pulse|2026-10-25|2" "create-subscription-checkout|2026-10-26|1" "create-product-checkout|2026-10-26|1"; do
   VD99_FN="${VD99_PAIR%%|*}"; VD99_REST="${VD99_PAIR#*|}"; VD99_DAY="${VD99_REST%%|*}"; VD99_N="${VD99_REST#*|}"
   VD99_H=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$VD99_FN" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+: *//')
   if [ -z "$VD99_H" ]; then echo "FAIL  C6 $VD99_FN preflight carries no x-fn-build (not deployed, or the previous bundle is serving)"
