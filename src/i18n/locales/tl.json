@@ -1368,18 +1368,6 @@
     "fixChecklistTitle": "Fix Checklist",
     "checklistCompleted": "{{completed}}/{{total}} natapos",
     "trackProgress": "I-track ang progress",
-    "peerBenchmark": {
-      "above": "Mas mataas sa average",
-      "at": "Katumbas ng average",
-      "below": "Mas mababa sa average",
-      "forAtsReadinessAmong": "para sa ATS readiness sa gitna ng {{cohort}}",
-      "strongPosition": "✓ Malakas na posisyon sa iyong industriya",
-      "roomForImprovement": "→ May puwang para sa pagpapabuti",
-      "belowAverage": "⚠ Mas mababa sa industry average",
-      "strongResult": "Mahusay ang score ng iyong resume kumpara sa mga peers. Magtuon sa pag-angkop sa specific na role para sa pinakamagandang resulta.",
-      "competitiveResult": "Competitive ang iyong resume pero maaari pang mas patibayin. Tutulong ang mga suhestyon sa baba para makatayo ka.",
-      "weakResult": "Mas mataas ang score ng ibang kandidato sa iyong larangan. Gamitin ang mga fix sa baba para mapabuti ang iyong tsansa."
-    },
     "timelineProgression": {
       "rapidLabel": "🚀 Mabilis",
       "steadyLabel": "📈 Matatag",
@@ -1558,13 +1546,6 @@
       "whyLabel": "Bakit:",
       "whyNote": "Nais ng mga tao ang kalinawan muna — ang mga dahilan ay mas mahalaga kaysa sa mga solusyon."
     },
-    "howYouCompare": {
-      "title": "Paano Ka Nagkukumpara",
-      "subtitle": "Tingnan kung paano nagkukumpara ang iyong resume sa ibang mga propesyonal sa {{industry}}",
-      "you": "Ikaw",
-      "others": "Iba",
-      "getJobSpecific": "Kumuha ng Trabaho-Specific na Pagsusuri"
-    },
     "careerTimeline": {
       "title": "Career Timeline",
       "totalExp": "Kabuuang Karanasan",
@@ -1677,11 +1658,9 @@
       "socialProof": "{{count}} resume ang na-scan ngayong araw"
     },
     "enterprise": {
-      "verdictLabel": "Ang Hatol",
       "verdictEvidence": "Lahat ng nasa ibaba ay ang ebidensya — at ang solusyon.",
       "downloadPdf": "I-download ang PDF na buod",
       "nextActionLabel": "Ang iyong #1 susunod na hakbang",
-      "howYouCompare": "Paano ka kumpara",
       "xrayTitle": "Resume X-Ray",
       "emailTitle": "I-email ang aking ulat",
       "emailDesc": "Matanggap ang buod at plano ng pag-aayos sa iyong inbox — kapaki-pakinabang sa paggawa ng mga ayos mamaya.",
@@ -1692,12 +1671,10 @@
       "pulseConfirmSent": "Kung hindi pa nakukumpirma ng address na ito ang buwanang market pulse, pinadalhan namin ito ng confirmation link. Magsisimula lang ang pulse kapag na-click na ang link na iyon.",
       "pulseNotCovered": "Hindi pa sakop ng buwanang market pulse ang iyong larangan, kaya walang ipinadalang kumpirmasyon.",
       "dripConfirmSent": "May button ang email ng iyong report para simulan ang mga email ng fix plan. Walang ibang ipapadala hangga't hindi mo ito pinipindot.",
-      "placementTopQuartile": "Nangungunang quartile ng {{n}} tunay na {{industry}} scan",
-      "placementAboveMedian": "Lampas sa median ng {{n}} tunay na {{industry}} scan",
-      "placementBelowMedian": "Mababa sa median ng {{n}} tunay na {{industry}} scan",
-      "placementBottomQuartile": "Pinakamababang quartile ng {{n}} tunay na {{industry}} scan — malaking pag-angat mula sa mga ayos sa ibaba",
       "emailSpotted": "Nakita namin ang address na ito sa resume mo — walang ipapadala maliban kung i-click mo ang Ipadala.",
-      "dripOptIn": "Hatiin ang fix plan ko sa maikling email sequence: pangunahing ayos sa araw 2, ang iba sa araw 4, paalala sa muling pag-scan sa araw 6 — at isang tanong sa araw 14: nakakuha ka ba ng interview? Apat na maikling email, kanselahin anumang oras."
+      "dripOptIn": "Hatiin ang fix plan ko sa maikling email sequence: pangunahing ayos sa araw 2, ang iba sa araw 4, paalala sa muling pag-scan sa araw 6 — at isang tanong sa araw 14: nakakuha ka ba ng interview? Apat na maikling email, kanselahin anumang oras.",
+      "summaryLabel": "Buod",
+      "summaryLine": "ATS score {{score}}/100: {{critical}} kritikal, {{warnings}} na susuriin, {{passed}} pasado."
     },
     "targeting": {
       "title": "Mga role na papasa ang resume na ito sa screening",
@@ -2577,13 +2554,6 @@
     "strong": "Malakas",
     "keyMetricsToInclude": "Mga mahalagang sukatan na isama:",
     "commonMistakesFor": "Karaniwang mga pagkakamali sa {{name}}:",
-    "howYouCompareIn": "Paano Ka Naihahambing sa {{name}}",
-    "yourScore": "Ang Iyong Score",
-    "industryAverage": "Average ng {{name}}",
-    "topPerformers": "Mga Nangungunang Kandidato",
-    "benchmarkTop": "Higit sa karaniwang kahandaan sa ATS para sa iyong industriya.",
-    "benchmarkAverage": "Malapit sa average ng ATS para sa iyong industriya.",
-    "benchmarkBelow": "Mas mababa sa average ng ATS para sa iyong industriya (maaayos).",
     "yourTopPriorities": "Ang Iyong Mga Pangunahing Prayoridad",
     "commonIndustryMistakes": "Karaniwang Pagkakamali sa Resume sa {{name}}",
     "industryBulletExamples": "Mga Halimbawa ng Bullet Point sa {{name}}",
@@ -3100,7 +3070,6 @@
   },
   "competitorBenchmark": {
     "title": "Paano Nangunguna ang mga Nangungunang {{role}}",
-    "basedOnAnalysis": "Batay sa pagsusuri ng mga matagumpay na resume ng {{role}} na nakakakuha ng mga interbyu",
     "competitiveStanding": "Ang Iyong Posisyon sa Kompetisyon",
     "topElements": "Mayroon kang mga elementong kasama ng mga nangungunang kandidato!",
     "addFewMore": "Magdagdag ng ilang elemento pa para makipagkumpitensya sa mga nangungunang kandidato",

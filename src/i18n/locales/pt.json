@@ -1374,18 +1374,6 @@
     "fixChecklistTitle": "Lista de Correções",
     "checklistCompleted": "{{completed}}/{{total}} concluído",
     "trackProgress": "Acompanhar progresso",
-    "peerBenchmark": {
-      "above": "Acima da média",
-      "at": "Na média",
-      "below": "Abaixo da média",
-      "forAtsReadinessAmong": "para preparação ATS entre {{cohort}}",
-      "strongPosition": "✓ Posição forte na sua indústria",
-      "roomForImprovement": "→ Margem para melhoria",
-      "belowAverage": "⚠ Abaixo da média da indústria",
-      "strongResult": "O seu currículo pontua bem comparado com colegas. Foque-se em adaptar para funções específicas para os melhores resultados.",
-      "competitiveResult": "O seu currículo é competitivo mas poderia ser mais forte. As sugestões abaixo ajudarão a destacar-se.",
-      "weakResult": "Outros candidatos na sua área estão a pontuar mais alto. Aplique as correções abaixo para melhorar as suas hipóteses."
-    },
     "timelineProgression": {
       "rapidLabel": "🚀 Rápido",
       "steadyLabel": "📈 Estável",
@@ -1564,13 +1552,6 @@
       "whyLabel": "Por quê:",
       "whyNote": "As pessoas querem clareza primeiro — os motivos importam mais do que as soluções."
     },
-    "howYouCompare": {
-      "title": "Como você se compara",
-      "subtitle": "Veja como seu currículo se compara a outros profissionais de {{industry}}",
-      "you": "Você",
-      "others": "Outros",
-      "getJobSpecific": "Obter análise específica do trabalho"
-    },
     "careerTimeline": {
       "title": "Linha do tempo de carreira",
       "totalExp": "Experiência total",
@@ -1687,11 +1668,9 @@
       "socialProof": "{{count}} currículos analisados hoje"
     },
     "enterprise": {
-      "verdictLabel": "O Veredito",
       "verdictEvidence": "Tudo abaixo é a evidência — e a solução.",
       "downloadPdf": "Baixar resumo em PDF",
       "nextActionLabel": "Sua ação nº 1",
-      "howYouCompare": "Como você se compara",
       "xrayTitle": "Raio-X do currículo",
       "emailTitle": "Enviar meu relatório por e-mail",
       "emailDesc": "Receba este resumo e seu plano de melhorias no seu e-mail — útil para aplicar as correções depois.",
@@ -1702,12 +1681,10 @@
       "pulseConfirmSent": "Se este endereço ainda não confirmou o pulso mensal do mercado, enviamos a ele um link de confirmação. O pulso só começa depois que esse link for clicado.",
       "pulseNotCovered": "O pulso mensal do mercado ainda não cobre sua área, então nenhuma confirmação foi enviada.",
       "dripConfirmSent": "O e-mail do seu relatório tem um botão para iniciar os e-mails do plano de ajustes. Nada mais é enviado até você clicar nele.",
-      "placementTopQuartile": "Quartil superior de {{n}} escaneamentos reais de {{industry}}",
-      "placementAboveMedian": "Acima da mediana de {{n}} escaneamentos reais de {{industry}}",
-      "placementBelowMedian": "Abaixo da mediana de {{n}} escaneamentos reais de {{industry}}",
-      "placementBottomQuartile": "Quartil inferior de {{n}} escaneamentos reais de {{industry}} — grande potencial com as correções abaixo",
       "emailSpotted": "Encontramos este endereço no seu currículo — nada é enviado a menos que você clique em Enviar.",
-      "dripOptIn": "Divida meu plano em uma sequência curta de e-mails: os ajustes principais no dia 2, o resto no dia 4, um lembrete de nova análise no dia 6 — e uma pergunta no dia 14: conseguiu entrevistas? Quatro e-mails curtos, cancele quando quiser."
+      "dripOptIn": "Divida meu plano em uma sequência curta de e-mails: os ajustes principais no dia 2, o resto no dia 4, um lembrete de nova análise no dia 6 — e uma pergunta no dia 14: conseguiu entrevistas? Quatro e-mails curtos, cancele quando quiser.",
+      "summaryLabel": "Resumo",
+      "summaryLine": "Pontuação ATS {{score}}/100: {{critical}} críticos, {{warnings}} a verificar, {{passed}} aprovados."
     },
     "targeting": {
       "title": "Cargos para os quais este currículo passa na triagem",
@@ -2589,13 +2566,6 @@
     "strong": "Forte",
     "keyMetricsToInclude": "Métricas-chave a incluir:",
     "commonMistakesFor": "Erros comuns de {{name}}:",
-    "howYouCompareIn": "Como se compara em {{name}}",
-    "yourScore": "A sua pontuação",
-    "industryAverage": "Média de {{name}}",
-    "topPerformers": "Melhores candidatos",
-    "benchmarkTop": "Preparação ATS acima da média para a sua indústria.",
-    "benchmarkAverage": "Em torno da média ATS para a sua indústria.",
-    "benchmarkBelow": "Abaixo da média ATS para a sua indústria (corrigível).",
     "yourTopPriorities": "As suas principais prioridades",
     "commonIndustryMistakes": "Erros comuns de currículo em {{name}}",
     "industryBulletExamples": "Exemplos de tópicos de {{name}}",
@@ -3118,7 +3088,6 @@
   },
   "competitorBenchmark": {
     "title": "Como os melhores {{role}}s se destacam",
-    "basedOnAnalysis": "Baseado na análise de currículos bem-sucedidos de {{role}} que conseguem entrevistas",
     "competitiveStanding": "Sua posição competitiva",
     "topElements": "Você tem elementos que os melhores candidatos incluem!",
     "addFewMore": "Adicione mais alguns elementos para competir com os melhores candidatos",

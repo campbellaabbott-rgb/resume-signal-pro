@@ -67,10 +67,6 @@ export function CompetitorBenchmark({
         {t('competitorBenchmark.title', { role: roleConfig.name })}
       </h4>
 
-      <p className="text-xs text-muted-foreground mb-4">
-        {t('competitorBenchmark.basedOnAnalysis', { role: roleConfig.name })}
-      </p>
-
       {/* Competitive Score */}
       <div className="p-3 rounded-lg bg-card border border-border mb-4">
         <div className="flex items-center justify-between mb-2">

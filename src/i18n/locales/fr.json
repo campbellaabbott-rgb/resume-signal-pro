@@ -1374,18 +1374,6 @@
     "fixChecklistTitle": "Liste de corrections",
     "checklistCompleted": "{{completed}}/{{total}} terminé(s)",
     "trackProgress": "Suivre la progression",
-    "peerBenchmark": {
-      "above": "Au-dessus de la moyenne",
-      "at": "Dans la moyenne",
-      "below": "En dessous de la moyenne",
-      "forAtsReadinessAmong": "pour la préparation ATS parmi {{cohort}}",
-      "strongPosition": "✓ Position solide dans votre secteur",
-      "roomForImprovement": "→ Marge d'amélioration",
-      "belowAverage": "⚠ Sous la moyenne du secteur",
-      "strongResult": "Votre CV obtient de bons résultats par rapport à vos pairs. Concentrez-vous sur l'adaptation à des postes spécifiques pour de meilleurs résultats.",
-      "competitiveResult": "Votre CV est compétitif mais pourrait être plus solide. Les suggestions ci-dessous vous aideront à vous démarquer.",
-      "weakResult": "D'autres candidats de votre domaine obtiennent de meilleurs scores. Appliquez les corrections ci-dessous pour améliorer vos chances."
-    },
     "timelineProgression": {
       "rapidLabel": "🚀 Rapide",
       "steadyLabel": "📈 Constant",
@@ -1564,13 +1552,6 @@
       "whyLabel": "Pourquoi :",
       "whyNote": "Les gens veulent d'abord la clarté — les raisons comptent plus que les solutions."
     },
-    "howYouCompare": {
-      "title": "Comment vous vous comparez",
-      "subtitle": "Voyez comment votre CV se compare à d'autres professionnels de {{industry}}",
-      "you": "Vous",
-      "others": "Autres",
-      "getJobSpecific": "Obtenir une analyse spécifique au poste"
-    },
     "careerTimeline": {
       "title": "Chronologie de carrière",
       "totalExp": "Expérience totale",
@@ -1687,11 +1668,9 @@
       "socialProof": "{{count}} CV analysés aujourd'hui"
     },
     "enterprise": {
-      "verdictLabel": "Le Verdict",
       "verdictEvidence": "Tout ce qui suit en est la preuve — et la solution.",
       "downloadPdf": "Télécharger le résumé PDF",
       "nextActionLabel": "Votre action n°1",
-      "howYouCompare": "Votre positionnement",
       "xrayTitle": "Radiographie du CV",
       "emailTitle": "Recevoir mon rapport par e-mail",
       "emailDesc": "Recevez ce résumé et votre plan d’action dans votre boîte mail — pratique pour appliquer les corrections plus tard.",
@@ -1702,12 +1681,10 @@
       "pulseConfirmSent": "Si cette adresse n'a pas encore confirmé le pouls mensuel du marché, nous lui avons envoyé un lien de confirmation. Le pouls ne commence qu'une fois ce lien cliqué.",
       "pulseNotCovered": "Le pouls mensuel du marché ne couvre pas encore votre domaine, donc aucune confirmation n'a été envoyée.",
       "dripConfirmSent": "L'e-mail de votre rapport contient un bouton pour lancer les e-mails du plan de correction. Rien d'autre n'est envoyé tant que vous ne l'avez pas cliqué.",
-      "placementTopQuartile": "Quartile supérieur de {{n}} vrais scans {{industry}}",
-      "placementAboveMedian": "Au-dessus de la médiane de {{n}} vrais scans {{industry}}",
-      "placementBelowMedian": "Sous la médiane de {{n}} vrais scans {{industry}}",
-      "placementBottomQuartile": "Quartile inférieur de {{n}} vrais scans {{industry}} — fort potentiel avec les corrections ci-dessous",
       "emailSpotted": "Nous avons repéré cette adresse sur votre CV — rien n'est envoyé tant que vous ne cliquez pas sur Envoyer.",
-      "dripOptIn": "Découpez mon plan en une courte séquence d'e-mails : les corrections clés au jour 2, le reste au jour 4, un rappel de re-scan au jour 6 — et une question au jour 14 : avez-vous décroché des entretiens ? Quatre courts e-mails, annulable à tout moment."
+      "dripOptIn": "Découpez mon plan en une courte séquence d'e-mails : les corrections clés au jour 2, le reste au jour 4, un rappel de re-scan au jour 6 — et une question au jour 14 : avez-vous décroché des entretiens ? Quatre courts e-mails, annulable à tout moment.",
+      "summaryLabel": "Synthèse",
+      "summaryLine": "Score ATS {{score}}/100 : {{critical}} critiques, {{warnings}} à vérifier, {{passed}} validés."
     },
     "targeting": {
       "title": "Postes pour lesquels ce CV passe le filtre",
@@ -2589,13 +2566,6 @@
     "strong": "Fort",
     "keyMetricsToInclude": "Indicateurs clés à inclure :",
     "commonMistakesFor": "Erreurs courantes pour {{name}} :",
-    "howYouCompareIn": "Comment vous vous comparez en {{name}}",
-    "yourScore": "Votre score",
-    "industryAverage": "Moyenne {{name}}",
-    "topPerformers": "Meilleurs candidats",
-    "benchmarkTop": "Préparation ATS supérieure à la moyenne pour votre secteur.",
-    "benchmarkAverage": "Autour de la moyenne ATS pour votre secteur.",
-    "benchmarkBelow": "En dessous de la moyenne ATS pour votre secteur (corrigible).",
     "yourTopPriorities": "Vos principales priorités",
     "commonIndustryMistakes": "Erreurs courantes de CV en {{name}}",
     "industryBulletExamples": "Exemples de puces pour {{name}}",
@@ -3118,7 +3088,6 @@
   },
   "competitorBenchmark": {
     "title": "Comment les meilleurs {{role}}s se démarquent",
-    "basedOnAnalysis": "Basé sur l’analyse de CV réussis de {{role}} qui obtiennent des entretiens",
     "competitiveStanding": "Votre positionnement concurrentiel",
     "topElements": "Vous avez les éléments que les meilleurs candidats incluent !",
     "addFewMore": "Ajoutez quelques éléments pour rivaliser avec les meilleurs candidats",

@@ -1368,18 +1368,6 @@
     "fixChecklistTitle": "Fix Checklist",
     "checklistCompleted": "{{completed}}/{{total}} completed",
     "trackProgress": "Track progress",
-    "peerBenchmark": {
-      "above": "Above average",
-      "at": "Around average",
-      "below": "Below average",
-      "forAtsReadinessAmong": "for ATS readiness among {{cohort}}",
-      "strongPosition": "✓ Strong position in your industry",
-      "roomForImprovement": "→ Room for improvement",
-      "belowAverage": "⚠ Below industry average",
-      "strongResult": "Your resume scores well against peers. Focus on tailoring to specific roles for best results.",
-      "competitiveResult": "Your resume is competitive but could be stronger. The suggestions below will help you stand out.",
-      "weakResult": "Other candidates in your field are scoring higher. Apply the fixes below to improve your chances."
-    },
     "timelineProgression": {
       "rapidLabel": "🚀 Rapid",
       "steadyLabel": "📈 Steady",
@@ -1558,13 +1546,6 @@
       "whyLabel": "Why:",
       "whyNote": "People want clarity first — reasons matter more than solutions."
     },
-    "howYouCompare": {
-      "title": "How You Compare",
-      "subtitle": "See how your resume stacks up against other {{industry}} professionals",
-      "you": "You",
-      "others": "Others",
-      "getJobSpecific": "Get Job-Specific Analysis"
-    },
     "careerTimeline": {
       "title": "Career Timeline",
       "totalExp": "Total Experience",
@@ -1677,11 +1658,9 @@
       "socialProof": "{{count}} resumes scanned today"
     },
     "enterprise": {
-      "verdictLabel": "The Verdict",
       "verdictEvidence": "Everything below is the evidence — and the fix.",
       "downloadPdf": "Download PDF summary",
       "nextActionLabel": "Your #1 Next Action",
-      "howYouCompare": "How You Compare",
       "xrayTitle": "Resume X-Ray",
       "emailTitle": "Email me my report",
       "emailDesc": "Get this summary and your fix plan in your inbox — handy for working through the fixes later.",
@@ -1692,12 +1671,10 @@
       "pulseConfirmSent": "If this address isn't confirmed for the monthly market pulse yet, we've emailed it a confirmation link. The pulse starts only after that link is clicked.",
       "pulseNotCovered": "The monthly market pulse doesn't cover your field yet, so no confirmation was sent.",
       "dripConfirmSent": "Your report email has a button to start the fix-plan emails. Nothing more is sent until you press it.",
-      "placementTopQuartile": "Top quartile of {{n}} real {{industry}} scans",
-      "placementAboveMedian": "Above the median of {{n}} real {{industry}} scans",
-      "placementBelowMedian": "Below the median of {{n}} real {{industry}} scans",
-      "placementBottomQuartile": "Bottom quartile of {{n}} real {{industry}} scans — big upside from the fixes below",
       "emailSpotted": "We spotted this address on your resume — nothing is sent unless you click Send.",
-      "dripOptIn": "Break my fix plan into a short email sequence: top fixes on day 2, the rest on day 4, a rescan reminder on day 6 — and one question on day 14: did it get you interviews? Four short emails, cancel anytime."
+      "dripOptIn": "Break my fix plan into a short email sequence: top fixes on day 2, the rest on day 4, a rescan reminder on day 6 — and one question on day 14: did it get you interviews? Four short emails, cancel anytime.",
+      "summaryLabel": "Summary",
+      "summaryLine": "ATS score {{score}}/100: {{critical}} critical, {{warnings}} to check, {{passed}} passed."
     },
     "targeting": {
       "title": "Roles this resume screens for",
@@ -2577,13 +2554,6 @@
     "strong": "Strong",
     "keyMetricsToInclude": "Key metrics to include:",
     "commonMistakesFor": "Common {{name}} mistakes:",
-    "howYouCompareIn": "How You Compare in {{name}}",
-    "yourScore": "Your Score",
-    "industryAverage": "{{name}} Average",
-    "topPerformers": "Top Performers",
-    "benchmarkTop": "Above-average ATS readiness for your industry.",
-    "benchmarkAverage": "Around the ATS average for your industry.",
-    "benchmarkBelow": "Below the ATS average for your industry (fixable).",
     "yourTopPriorities": "Your Top Priorities",
     "commonIndustryMistakes": "Common {{name}} Resume Mistakes",
     "industryBulletExamples": "{{name}} Bullet Examples",
@@ -3100,7 +3070,6 @@
   },
   "competitorBenchmark": {
     "title": "How Top {{role}}s Stand Out",
-    "basedOnAnalysis": "Based on analysis of successful {{role}} resumes that get interviews",
     "competitiveStanding": "Your Competitive Standing",
     "topElements": "You have elements that top candidates include!",
     "addFewMore": "Add a few more elements to compete with top candidates",

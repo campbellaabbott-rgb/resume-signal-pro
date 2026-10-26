@@ -1374,18 +1374,6 @@
     "fixChecklistTitle": "Lista de correcciones",
     "checklistCompleted": "{{completed}}/{{total}} completado",
     "trackProgress": "Seguir progreso",
-    "peerBenchmark": {
-      "above": "Por encima del promedio",
-      "at": "Alrededor del promedio",
-      "below": "Por debajo del promedio",
-      "forAtsReadinessAmong": "en preparación ATS entre {{cohort}}",
-      "strongPosition": "✓ Posición sólida en tu industria",
-      "roomForImprovement": "→ Margen de mejora",
-      "belowAverage": "⚠ Por debajo del promedio de la industria",
-      "strongResult": "Tu currículum puntúa bien frente a tus pares. Concéntrate en adaptarlo a roles específicos para mejores resultados.",
-      "competitiveResult": "Tu currículum es competitivo pero podría ser más fuerte. Las sugerencias a continuación te ayudarán a destacar.",
-      "weakResult": "Otros candidatos en tu campo están obteniendo puntuaciones más altas. Aplica las correcciones a continuación para mejorar tus posibilidades."
-    },
     "timelineProgression": {
       "rapidLabel": "🚀 Rápido",
       "steadyLabel": "📈 Constante",
@@ -1564,13 +1552,6 @@
       "whyLabel": "Por qué:",
       "whyNote": "Las personas quieren claridad primero — las razones importan más que las soluciones."
     },
-    "howYouCompare": {
-      "title": "Cómo te comparas",
-      "subtitle": "Ve cómo tu currículum se compara con otros profesionales de {{industry}}",
-      "you": "Tú",
-      "others": "Otros",
-      "getJobSpecific": "Obtener análisis específico del trabajo"
-    },
     "careerTimeline": {
       "title": "Línea de tiempo de carrera",
       "totalExp": "Experiencia total",
@@ -1687,11 +1668,9 @@
       "socialProof": "{{count}} CV analizados hoy"
     },
     "enterprise": {
-      "verdictLabel": "El Veredicto",
       "verdictEvidence": "Todo lo de abajo es la evidencia — y la solución.",
       "downloadPdf": "Descargar resumen en PDF",
       "nextActionLabel": "Tu acción #1",
-      "howYouCompare": "Cómo te comparas",
       "xrayTitle": "Radiografía del currículum",
       "emailTitle": "Envíame mi informe",
       "emailDesc": "Recibe este resumen y tu plan de mejora en tu correo — útil para aplicar los cambios después.",
@@ -1702,12 +1681,10 @@
       "pulseConfirmSent": "Si esta dirección aún no ha confirmado el pulso mensual del mercado, le hemos enviado un enlace de confirmación. El pulso solo empieza cuando se hace clic en ese enlace.",
       "pulseNotCovered": "El pulso mensual del mercado aún no cubre tu sector, así que no se envió ninguna confirmación.",
       "dripConfirmSent": "El correo de tu informe tiene un botón para iniciar los correos del plan de arreglos. No enviamos nada más hasta que lo pulses.",
-      "placementTopQuartile": "Cuartil superior de {{n}} escaneos reales de {{industry}}",
-      "placementAboveMedian": "Por encima de la mediana de {{n}} escaneos reales de {{industry}}",
-      "placementBelowMedian": "Por debajo de la mediana de {{n}} escaneos reales de {{industry}}",
-      "placementBottomQuartile": "Cuartil inferior de {{n}} escaneos reales de {{industry}} — gran margen de mejora con los arreglos de abajo",
       "emailSpotted": "Encontramos esta dirección en tu currículum — no se envía nada a menos que pulses Enviar.",
-      "dripOptIn": "Divide mi plan en una secuencia breve de correos: los arreglos clave el día 2, el resto el día 4, un recordatorio de reescaneo el día 6 — y una pregunta el día 14: ¿conseguiste entrevistas? Cuatro correos breves, cancela cuando quieras."
+      "dripOptIn": "Divide mi plan en una secuencia breve de correos: los arreglos clave el día 2, el resto el día 4, un recordatorio de reescaneo el día 6 — y una pregunta el día 14: ¿conseguiste entrevistas? Cuatro correos breves, cancela cuando quieras.",
+      "summaryLabel": "Resumen",
+      "summaryLine": "Puntuación ATS {{score}}/100: {{critical}} críticos, {{warnings}} por revisar, {{passed}} superados."
     },
     "targeting": {
       "title": "Puestos para los que tu currículum pasa el filtro",
@@ -2589,13 +2566,6 @@
     "strong": "Fuerte",
     "keyMetricsToInclude": "Métricas clave a incluir:",
     "commonMistakesFor": "Errores comunes de {{name}}:",
-    "howYouCompareIn": "Cómo te comparas en {{name}}",
-    "yourScore": "Tu puntuación",
-    "industryAverage": "Promedio de {{name}}",
-    "topPerformers": "Mejores candidatos",
-    "benchmarkTop": "Preparación ATS superior al promedio para tu industria.",
-    "benchmarkAverage": "Alrededor del promedio ATS para tu industria.",
-    "benchmarkBelow": "Por debajo del promedio ATS para tu industria (solucionable).",
     "yourTopPriorities": "Tus principales prioridades",
     "commonIndustryMistakes": "Errores comunes de currículum en {{name}}",
     "industryBulletExamples": "Ejemplos de viñetas de {{name}}",
@@ -3118,7 +3088,6 @@
   },
   "competitorBenchmark": {
     "title": "Cómo destacan los mejores {{role}}s",
-    "basedOnAnalysis": "Basado en el análisis de currículums exitosos de {{role}} que consiguen entrevistas",
     "competitiveStanding": "Tu posición competitiva",
     "topElements": "¡Tienes elementos que incluyen los mejores candidatos!",
     "addFewMore": "Agrega algunos elementos más para competir con los mejores candidatos",

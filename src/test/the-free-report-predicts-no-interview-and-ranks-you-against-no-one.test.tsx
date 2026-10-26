@@ -42,6 +42,13 @@ vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: null, session
 // per-product gates (G2 and G2b), which are open here too.
 vi.mock("@/lib/purchases-open", () => ({ purchasesOpen: () => true, fullAnalysisOnSale: () => true, proOnSale: () => true }));
 vi.stubGlobal("fetch", vi.fn(async () => { throw new Error("no network in this test"); }));
+// The mail capture's payload is what send-scan-report prints: the verdict line
+// and the percentile and pass-rate cells come from these numbers (review
+// round 2026-10-26), so the payload is read here.
+const mailPayloads: Array<Record<string, unknown>> = [];
+vi.mock("@/components/EmailReportCapture", () => ({
+  EmailReportCapture: (p: { payload: Record<string, unknown> }) => { mailPayloads.push(p.payload); return null; },
+}));
 Element.prototype.scrollIntoView = vi.fn();
 if (!(globalThis as { IntersectionObserver?: unknown }).IntersectionObserver) {
   (globalThis as { IntersectionObserver?: unknown }).IntersectionObserver = class { observe() {} unobserve() {} disconnect() {} takeRecords() { return []; } };
@@ -92,6 +99,75 @@ describe("the rendered report", () => {
     // The rest of the job match stays.
     expect(text).toMatch(/Job Match Analysis/);
     expect(text).toMatch(/Match Score/);
+  });
+});
+
+/**
+ * THE REST OF THE PREDICTIONS (review round of 2026-10-26). The fixture above
+ * carried none of the scan's ranking and pass-rate fields, so the report's
+ * other predictions were never rendered here: the verdict sentence ("will
+ * pass roughly 85% of ATS filters"), the "Est. ATS pass rate" card with
+ * "Likely to pass" / "High rejection risk", the peer percentile with "Top
+ * tier", the "How You Compare" block (whose "below" branch every reader got,
+ * because the scan names its comparison above_average / below_average /
+ * average and the report tested above / at / below), its callback multipliers
+ * and recruiter line, the placement among real scans and the share card's
+ * "Better than N% of peers". The scan still sends every field (the data
+ * contract); the report renders none, and the mail payload carries neither
+ * number, so send-scan-report prints no verdict, percentile or pass rate.
+ */
+const RANKING = {
+  ...PREDICTING,
+  atsScoreEstimate: 88,
+  reportVerdict: "Jane, this resume will pass roughly 85% of ATS filters for Data Engineer — the fundamentals are in place.",
+  peerPercentile: 91,
+  applicationPassRate: 85,
+  industryBenchmark: { industryAvg: 65, comparison: "above_average", percentile: "" },
+  realBenchmark: { n: 1234, median: 61, p25: 50, p75: 72, industry: "data_engineering" },
+  scanSituation: "exploring",
+} as const;
+
+describe("a report with every ranking field the scan sends", () => {
+  it("prints no pass rate, no percentile, no rank against other résumés and no callback odds", () => {
+    mailPayloads.length = 0;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    render(<MemoryRouter><FreeKeywordResults {...(RANKING as any)} onReset={() => {}} /></MemoryRouter>);
+    const text = document.body.textContent ?? "";
+    for (const said of [
+      /will pass roughly/i, /of ATS filters/i, /pass rate/i, /Likely to pass/, /High rejection risk/, /\bAt risk\b/,
+      /percentile/i, /Top tier/, /Bottom tier/, /Bottom 40%/, /Top 25%/, /Top quartile/i, /Bottom quartile/i,
+      /Better than \d+%/, /that get interviews/i, /How You Compare/i, /industry average/i, /scores below most/i,
+      /outperforms most/i, /called back/i, /interview callbacks/i, /will likely pass/i, /your chances/i,
+      /The Verdict/,
+    ]) expect(text, `the report still says ${said}`).not.toMatch(said);
+    // The report still opens with its summary and the PDF.
+    expect(text).toMatch(/Download PDF summary/);
+    expect(text).toMatch(/88\/100/);
+  });
+
+  it("the mail payload carries no pass rate and no percentile, so the mail prints neither", () => {
+    mailPayloads.length = 0;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    render(<MemoryRouter><FreeKeywordResults {...(RANKING as any)} onReset={() => {}} /></MemoryRouter>);
+    expect(mailPayloads.length).toBeGreaterThan(0);
+    for (const p of mailPayloads) {
+      expect(p.peerPercentile).toBeNull();
+      expect(p.applicationPassRate).toBeNull();
+    }
+  });
+
+  it("no language keeps the peer sentences", () => {
+    const files = readdirSync(resolve(ROOT, "src/i18n/locales")).filter((f) => f.endsWith(".json"));
+    for (const f of files) {
+      const fr = JSON.parse(read(`src/i18n/locales/${f}`)).freeResults ?? {};
+      expect(fr.peerBenchmark, `${f} freeResults.peerBenchmark`).toBeUndefined();
+      expect(fr.howYouCompare, `${f} freeResults.howYouCompare`).toBeUndefined();
+      for (const k of ["placementTopQuartile", "placementAboveMedian", "placementBelowMedian", "placementBottomQuartile", "verdictLabel", "howYouCompare"]) {
+        expect(fr.enterprise?.[k], `${f} freeResults.enterprise.${k}`).toBeUndefined();
+      }
+      expect(fr.enterprise?.summaryLabel, `${f} freeResults.enterprise.summaryLabel`).toBeTruthy();
+      expect(fr.enterprise?.summaryLine, `${f} freeResults.enterprise.summaryLine`).toMatch(/\{\{score\}\}/);
+    }
   });
 });
 

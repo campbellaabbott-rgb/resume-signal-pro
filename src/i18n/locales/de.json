@@ -1368,18 +1368,6 @@
     "fixChecklistTitle": "Korrektur-Checkliste",
     "checklistCompleted": "{{completed}}/{{total}} abgeschlossen",
     "trackProgress": "Fortschritt verfolgen",
-    "peerBenchmark": {
-      "above": "Überdurchschnittlich",
-      "at": "Durchschnittlich",
-      "below": "Unterdurchschnittlich",
-      "forAtsReadinessAmong": "für ATS-Bereitschaft unter {{cohort}}",
-      "strongPosition": "✓ Starke Position in deiner Branche",
-      "roomForImprovement": "→ Verbesserungspotenzial",
-      "belowAverage": "⚠ Unter dem Branchendurchschnitt",
-      "strongResult": "Dein Lebenslauf schneidet im Vergleich zu Mitbewerbern gut ab. Konzentriere dich auf die Anpassung an bestimmte Rollen für beste Ergebnisse.",
-      "competitiveResult": "Dein Lebenslauf ist wettbewerbsfähig, könnte aber stärker sein. Die folgenden Vorschläge helfen dir, dich abzuheben.",
-      "weakResult": "Andere Kandidaten in deinem Bereich erzielen höhere Werte. Wende die folgenden Korrekturen an, um deine Chancen zu verbessern."
-    },
     "timelineProgression": {
       "rapidLabel": "🚀 Schnell",
       "steadyLabel": "📈 Stetig",
@@ -1558,13 +1546,6 @@
       "whyLabel": "Warum:",
       "whyNote": "Menschen wollen zuerst Klarheit — Gründe sind wichtiger als Lösungen."
     },
-    "howYouCompare": {
-      "title": "Wie du abschneidest",
-      "subtitle": "Sieh, wie dein Lebenslauf im Vergleich zu anderen {{industry}}-Fachleuten abschneidet",
-      "you": "Du",
-      "others": "Andere",
-      "getJobSpecific": "Jobspezifische Analyse erhalten"
-    },
     "careerTimeline": {
       "title": "Karrierezeitstrahl",
       "totalExp": "Gesamterfahrung",
@@ -1677,11 +1658,9 @@
       "socialProof": "{{count}} Lebensläufe heute geprüft"
     },
     "enterprise": {
-      "verdictLabel": "Das Urteil",
       "verdictEvidence": "Alles darunter ist der Beweis — und die Lösung.",
       "downloadPdf": "PDF-Zusammenfassung herunterladen",
       "nextActionLabel": "Ihre wichtigste nächste Maßnahme",
-      "howYouCompare": "So schneiden Sie ab",
       "xrayTitle": "Lebenslauf-Röntgen",
       "emailTitle": "Bericht per E-Mail senden",
       "emailDesc": "Erhalten Sie diese Zusammenfassung und Ihren Verbesserungsplan per E-Mail — praktisch zum späteren Abarbeiten.",
@@ -1692,12 +1671,10 @@
       "pulseConfirmSent": "Falls diese Adresse den monatlichen Markt-Puls noch nicht bestätigt hat, haben wir ihr einen Bestätigungslink gesendet. Der Puls startet erst, wenn dieser Link angeklickt wird.",
       "pulseNotCovered": "Der monatliche Markt-Puls deckt Ihr Fachgebiet noch nicht ab, daher wurde keine Bestätigung gesendet.",
       "dripConfirmSent": "Ihre Bericht-E-Mail enthält einen Button, mit dem Sie die Fix-Plan-E-Mails starten. Bis Sie ihn drücken, senden wir nichts weiter.",
-      "placementTopQuartile": "Oberstes Quartil von {{n}} echten {{industry}}-Scans",
-      "placementAboveMedian": "Über dem Median von {{n}} echten {{industry}}-Scans",
-      "placementBelowMedian": "Unter dem Median von {{n}} echten {{industry}}-Scans",
-      "placementBottomQuartile": "Unterstes Quartil von {{n}} echten {{industry}}-Scans — großes Potenzial mit den Fixes unten",
       "emailSpotted": "Diese Adresse stand auf Ihrem Lebenslauf — gesendet wird nur, wenn Sie auf Senden klicken.",
-      "dripOptIn": "Meinen Plan als kurze E-Mail-Sequenz: die wichtigsten Fixes an Tag 2, der Rest an Tag 4, eine Rescan-Erinnerung an Tag 6 — und eine Frage an Tag 14: gab es Vorstellungsgespräche? Vier kurze E-Mails, jederzeit abbestellbar."
+      "dripOptIn": "Meinen Plan als kurze E-Mail-Sequenz: die wichtigsten Fixes an Tag 2, der Rest an Tag 4, eine Rescan-Erinnerung an Tag 6 — und eine Frage an Tag 14: gab es Vorstellungsgespräche? Vier kurze E-Mails, jederzeit abbestellbar.",
+      "summaryLabel": "Zusammenfassung",
+      "summaryLine": "ATS-Score {{score}}/100: {{critical}} kritisch, {{warnings}} zu prüfen, {{passed}} bestanden."
     },
     "targeting": {
       "title": "Rollen, für die dieser Lebenslauf durchs Screening kommt",
@@ -2577,13 +2554,6 @@
     "strong": "Stark",
     "keyMetricsToInclude": "Wichtige Kennzahlen zum Einbeziehen:",
     "commonMistakesFor": "Häufige {{name}}-Fehler:",
-    "howYouCompareIn": "Wie du in {{name}} abschneidest",
-    "yourScore": "Dein Score",
-    "industryAverage": "{{name}}-Durchschnitt",
-    "topPerformers": "Top-Performer",
-    "benchmarkTop": "Überdurchschnittliche ATS-Bereitschaft für deine Branche.",
-    "benchmarkAverage": "Im ATS-Durchschnitt für deine Branche.",
-    "benchmarkBelow": "Unter dem ATS-Durchschnitt für deine Branche (behebbar).",
     "yourTopPriorities": "Deine wichtigsten Prioritäten",
     "commonIndustryMistakes": "Häufige Lebenslauffehler in {{name}}",
     "industryBulletExamples": "{{name}}-Beispielpunkte",
@@ -3100,7 +3070,6 @@
   },
   "competitorBenchmark": {
     "title": "So stechen Top-{{role}}s hervor",
-    "basedOnAnalysis": "Basierend auf der Analyse erfolgreicher {{role}}-Lebensläufe, die Vorstellungsgespräche erhalten",
     "competitiveStanding": "Deine Wettbewerbsposition",
     "topElements": "Du hast Elemente, die Top-Kandidaten enthalten!",
     "addFewMore": "Füge einige weitere Elemente hinzu, um mit Spitzenkandidaten zu konkurrieren",

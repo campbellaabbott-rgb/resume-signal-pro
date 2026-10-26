@@ -80,15 +80,6 @@ export function PersonalizedInsights({
     executive: t('personalizedInsights.levels.executive')
   }[expConfig.level] || t('personalizedInsights.levels.professional');
 
-  // Calculate where user stands vs industry benchmarks
-  const benchmarkComparison = industryConfig.industryBenchmarks 
-    ? atsScore >= industryConfig.industryBenchmarks.topScore 
-      ? 'top' 
-      : atsScore >= industryConfig.industryBenchmarks.avgScore 
-        ? 'average' 
-        : 'below'
-    : 'unknown';
-
   return (
     <div className={cn("space-y-6", className)}>
       {/* Personalization Header */}
@@ -210,42 +201,11 @@ export function PersonalizedInsights({
 
       {/* Geographic/Regional Advice section removed - was considered overkill */}
 
-      {/* Industry Benchmark Comparison */}
-      {industryConfig.industryBenchmarks && (
-        <div className="p-4 rounded-lg bg-card border border-border">
-          <h4 className="font-semibold text-foreground flex items-center gap-2 mb-3">
-            <BarChart3 className="w-4 h-4 text-primary" />
-            {t('personalizedInsights.howYouCompareIn', { name: industryConfig.name })}
-          </h4>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">{t('personalizedInsights.yourScore')}</span>
-              <span className={cn(
-                "font-bold",
-                atsScore >= 70 ? "text-success" : atsScore >= 50 ? "text-amber-500" : "text-destructive"
-              )}>{atsScore}%</span>
-            </div>
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">{t('personalizedInsights.industryAverage', { name: industryConfig.name })}</span>
-              <span className="font-medium text-foreground">{industryConfig.industryBenchmarks.avgScore}%</span>
-            </div>
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">{t('personalizedInsights.topPerformers')}</span>
-              <span className="font-medium text-success">{industryConfig.industryBenchmarks.topScore}%</span>
-            </div>
-            <div className={cn(
-              "mt-3 p-2 rounded text-xs",
-              benchmarkComparison === 'top' ? "bg-success/10 text-success" :
-              benchmarkComparison === 'average' ? "bg-amber-500/10 text-amber-600" :
-              "bg-destructive/10 text-destructive"
-            )}>
-              {benchmarkComparison === 'top' && t('personalizedInsights.benchmarkTop')}
-              {benchmarkComparison === 'average' && t('personalizedInsights.benchmarkAverage')}
-              {benchmarkComparison === 'below' && t('personalizedInsights.benchmarkBelow')}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* The industry comparison that sat here (your score against a
+          configured industry average and "top performers", with a verdict
+          on where you stand) is gone: those figures are configuration, not
+          measurements, and the free report ranks the reader against no one
+          (H0, review round 2026-10-26). */}
 
       {/* Priority Actions */}
       <div className="space-y-3">
