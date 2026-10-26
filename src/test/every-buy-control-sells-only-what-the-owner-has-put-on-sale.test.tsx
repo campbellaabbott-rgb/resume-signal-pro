@@ -85,6 +85,9 @@ import { ComparisonTable } from "@/components/ComparisonTable";
 import { FinalCTA } from "@/components/FinalCTA";
 import { FreeKeywordResults } from "@/components/FreeKeywordResults";
 import { ProSubscriptionCard } from "@/components/ProSubscriptionCard";
+import { HelmetProvider } from "react-helmet-async";
+import PricingPage from "@/pages/pricing/PricingPage";
+import { resolveSaleGates } from "@/components/pricing/sale-gates";
 import { PRODUCTS } from "@/config/products";
 import { fullAnalysisOnSale, proOnSale } from "@/lib/purchases-open";
 
@@ -208,6 +211,52 @@ describe("control: both switches open, the same controls sell", () => {
     const card = proCard();
     expect(screen.getByRole("button", { name: /Go Pro/ })).not.toBeNull();
     expect(card.textContent).toMatch(INCLUDED);
+  });
+});
+
+/**
+ * The rebuilt /pricing (the homepage switch-over) resolves its own gates, so
+ * it can give each closed card its reason (the seller, the delivery, the
+ * watched subscription); it reads the same seller and the same switches, and
+ * sells exactly what fullAnalysisOnSale() and proOnSale() say.
+ */
+describe("the rebuilt /pricing sells what fullAnalysisOnSale() and proOnSale() say", () => {
+  const pricing = () => {
+    render(<HelmetProvider><MemoryRouter initialEntries={["/pricing"]}><PricingPage /></MemoryRouter></HelmetProvider>);
+    return [...document.querySelectorAll("[data-buy]")].map((b) => b.getAttribute("data-buy")).sort();
+  };
+
+  it("its gates agree with src/lib/purchases-open.ts in every state of the seller and the switches", () => {
+    for (const named of [false, true]) for (const fa of [false, true]) for (const pro of [false, true]) {
+      seller.legalName = named ? "Example Seller LLC" : "";
+      seller.postalAddress = named ? "1 Example Street, Springfield" : "";
+      gate.fa = fa;
+      gate.pro = pro;
+      const g = resolveSaleGates();
+      expect([g.fullAnalysis.onSale, g.pro.onSale], `seller ${named}, G2 ${fa}, G2b ${pro}`).toEqual([fullAnalysisOnSale(), proOnSale()]);
+    }
+  });
+
+  it("a named seller with both switches closed: no buy control, each card says why", () => {
+    nameSeller();
+    expect(pricing()).toEqual([]);
+    expect(document.querySelector("[data-plan='full-analysis'] [data-gate='delivery']")).not.toBeNull();
+    expect(document.querySelector("[data-plan='pro'] [data-gate='watched']")).not.toBeNull();
+    expect(document.querySelector("[data-plan='pro']")?.textContent).not.toMatch(INCLUDED);
+  });
+
+  it("G2b open, G2 closed: Pro is sold without the Full Analysis among its perks, and the Full Analysis is not", () => {
+    nameSeller();
+    gate.pro = true;
+    expect(pricing()).toEqual(["pro"]);
+    expect(document.querySelector("[data-plan='pro']")?.textContent).not.toMatch(INCLUDED);
+  });
+
+  it("control: both switches open, both are sold", () => {
+    nameSeller();
+    gate.fa = true;
+    gate.pro = true;
+    expect(pricing()).toEqual(["full-analysis", "pro"]);
   });
 });
 

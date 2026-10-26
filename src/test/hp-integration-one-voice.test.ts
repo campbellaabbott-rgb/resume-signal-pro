@@ -35,7 +35,7 @@ const homeStrings = (lng: string) => (readJson(`../i18n/shards/home/${lng}.json`
 const pricingStrings = (lng: string) => readJson(`../i18n/shards/pricing/${lng}.json`).pricingPlans as Record<string, Record<string, string>>;
 
 describe("one switch decides what both pages sell", () => {
-  it("the pricing page's stand-ins read the homepage's switches", () => {
+  it("the pricing page's gates read the homepage's switches, which are src/config/sales-gate.ts's", () => {
     expect(FULL_ANALYSIS_DELIVERY_WATCHED).toBe(SALE_SWITCHES.fullAnalysisOnSale);
     expect(PRO_SUBSCRIPTION_WATCHED).toBe(SALE_SWITCHES.proOnSale);
   });

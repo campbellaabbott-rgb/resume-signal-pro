@@ -14,6 +14,7 @@
 import { describe, expect, it } from "vitest";
 import { SELLER, sellerIdentity } from "@/config/seller";
 import { homePlanRows, saleGates, SALE_SWITCHES } from "@/lib/home/sale-gates";
+import { DIGEST_MAIL_CLASS, FULL_ANALYSIS_ON_SALE, PRO_ON_SALE } from "@/config/sales-gate";
 
 const TEST_SELLER = { legalName: "TEST SELLER", postalAddress: "TEST ADDRESS, NOWHERE" };
 const NO_SELLER = { legalName: "", postalAddress: "" };
@@ -21,6 +22,8 @@ const NO_SELLER = { legalName: "", postalAddress: "" };
 describe("the sale gates", () => {
   it("this branch ships with every gate closed and no seller identity", () => {
     expect(sellerIdentity(SELLER)).toBeNull();
+    // The switches are the owner's, in src/config/sales-gate.ts (switch-over step 5).
+    expect(SALE_SWITCHES).toEqual({ fullAnalysisOnSale: FULL_ANALYSIS_ON_SALE, proOnSale: PRO_ON_SALE, digestMailClass: DIGEST_MAIL_CLASS });
     expect(SALE_SWITCHES).toEqual({ fullAnalysisOnSale: false, proOnSale: false, digestMailClass: "unruled" });
     const g = saleGates();
     expect(g).toEqual({ seller: false, fullAnalysisOnSale: false, proOnSale: false, fullAnalysisDelivers: false, alertsStatable: false });

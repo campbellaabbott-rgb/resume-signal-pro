@@ -14,23 +14,26 @@
  *        printed only when the digest is ruled transactional or the seller is
  *        known.
  *
- * The switches for G2, G2b and G6 belong in src/config/sales-gate.ts
- * (hp/honesty). It does not exist on this branch, so they are mirrored here,
- * all closed, and the switch-over replaces SALE_SWITCHES with that module.
- * The homepage has no buy control; it only says what is and is not on sale.
+ * The switches for G2, G2b and G6 are the owner's, in src/config/sales-gate.ts
+ * (FULL_ANALYSIS_ON_SALE, PRO_ON_SALE, DIGEST_MAIL_CLASS), the module every buy
+ * control on the site reads through src/lib/purchases-open.ts. SALE_SWITCHES
+ * reads them when asked, so both new pages follow the same switches as every
+ * other control (switch-over step 5). The homepage has no buy control; it only
+ * says what is and is not on sale.
  */
 import { sellerIdentity, SELLER, type SellerIdentity } from "@/config/seller";
+import { DIGEST_MAIL_CLASS, FULL_ANALYSIS_ON_SALE, PRO_ON_SALE, type DigestMailClass } from "@/config/sales-gate";
 
-export type DigestMailClass = "transactional" | "marketing" | "unruled";
+export type { DigestMailClass };
 
 export const SALE_SWITCHES: {
   readonly fullAnalysisOnSale: boolean;
   readonly proOnSale: boolean;
   readonly digestMailClass: DigestMailClass;
 } = {
-  fullAnalysisOnSale: false,
-  proOnSale: false,
-  digestMailClass: "unruled",
+  get fullAnalysisOnSale() { return FULL_ANALYSIS_ON_SALE; },
+  get proOnSale() { return PRO_ON_SALE; },
+  get digestMailClass() { return DIGEST_MAIL_CLASS; },
 };
 
 export interface SaleGates {

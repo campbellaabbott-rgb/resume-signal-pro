@@ -22,6 +22,7 @@ import { PRODUCTS, SUBSCRIPTIONS } from "@/config/products";
 import { MCP_FREE_KEY_DAILY_QUOTA, MCP_WITHHELD_SOURCES } from "@/config/mcp-tools";
 import * as mcpTools from "@/config/mcp-tools";
 import * as proPerks from "@/config/pro-perks";
+import * as salesGate from "@/config/sales-gate";
 import { REPORT_CACHE_DAYS, SHARED_ANALYSIS_DAYS } from "@/lib/resume-retention";
 import { codeOf } from "./helpers/strip-comments";
 import { LOCALE_FILES, readMainLocale } from "./helpers/locale-strings";
@@ -39,7 +40,6 @@ const num = (code: string, re: RegExp, where: string) => {
 
 const writingModules = import.meta.glob<{ WRITING_ALLOWANCE: Record<string, number> }>("../config/writing-allowance.ts", { eager: true });
 const builderModules = import.meta.glob<{ BUILDER_PLAN_PRICE_USD: number }>("../config/builder-plan.ts", { eager: true });
-const salesGateModules = import.meta.glob<{ FULL_ANALYSIS_ON_SALE?: boolean; PRO_ON_SALE?: boolean }>("../config/sales-gate.ts", { eager: true });
 
 describe("mirrors of constants on this base", () => {
   it("the Full Analysis price is the catalogue's", () => {
@@ -98,12 +98,13 @@ describe("mirrors of constants still on other branches (they pin themselves when
     expect(F.MCP_FIT_FREE_PER_DAY).toBe(typeof v === "number" ? v : 25);
   });
 
-  it("the sale gates' stand-ins are the safe value until hp/honesty's flags exist, then equal them", () => {
-    const mod = Object.values(salesGateModules)[0];
-    if (mod && typeof mod.FULL_ANALYSIS_ON_SALE === "boolean") expect(FULL_ANALYSIS_DELIVERY_WATCHED).toBe(mod.FULL_ANALYSIS_ON_SALE);
-    else expect(FULL_ANALYSIS_DELIVERY_WATCHED).toBe(false);
-    if (mod && typeof mod.PRO_ON_SALE === "boolean") expect(PRO_SUBSCRIPTION_WATCHED).toBe(mod.PRO_ON_SALE);
-    else expect(PRO_SUBSCRIPTION_WATCHED).toBe(false);
+  it("the sale gates are hp/honesty's switches (src/config/sales-gate.ts), not stand-ins", () => {
+    expect(FULL_ANALYSIS_DELIVERY_WATCHED).toBe(salesGate.FULL_ANALYSIS_ON_SALE);
+    expect(PRO_SUBSCRIPTION_WATCHED).toBe(salesGate.PRO_ON_SALE);
+    const gates = src("src/components/pricing/sale-gates.ts");
+    expect(gates).toMatch(/from "@\/config\/sales-gate"/);
+    expect(gates).not.toMatch(/(?:FULL_ANALYSIS_DELIVERY_WATCHED|PRO_SUBSCRIPTION_WATCHED): boolean = (?:true|false)/);
+    expect(src("src/lib/home/sale-gates.ts")).toMatch(/from "@\/config\/sales-gate"/);
   });
 
   it("Pro's card says what wave 4's PRO_PERK_ITEMS says, the day that list exists", () => {

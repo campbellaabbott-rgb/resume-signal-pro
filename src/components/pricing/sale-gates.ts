@@ -12,10 +12,10 @@
  *   G2b Pro is on sale only after one watched subscription: subscribe, one
  *       package, cancel, still on until the period ends.
  *
- * G2 and G2b are owned by hp/honesty as FULL_ANALYSIS_ON_SALE and PRO_ON_SALE
- * in src/config/sales-gate.ts, a file that does not exist on this base. The
- * two stand-ins below are false, the safe value; at switch-over they are
- * replaced by imports of those flags (docs/homepage-pricing/README.md).
+ * G2 and G2b are the owner's switches FULL_ANALYSIS_ON_SALE and PRO_ON_SALE in
+ * src/config/sales-gate.ts, read when the gates are resolved (switch-over
+ * step 5), the same switches src/lib/purchases-open.ts gives every other buy
+ * control on the site.
  *
  * Each closed gate has its own sentence, so the page never gives the seller's
  * missing address as the reason when the reason is an unwatched delivery.
@@ -23,14 +23,8 @@
 import { SELLER, sellerIdentity, type SellerIdentity } from "@/config/seller";
 import { saleGates as homeSaleGates, SALE_SWITCHES, type DigestMailClass } from "@/lib/home/sale-gates";
 
-/**
- * Stand-in for FULL_ANALYSIS_ON_SALE (src/config/sales-gate.ts, hp/honesty).
- * It reads the homepage's switch, so the two pages flip together and can
- * never disagree about what is on sale.
- */
-export const FULL_ANALYSIS_DELIVERY_WATCHED: boolean = SALE_SWITCHES.fullAnalysisOnSale;
-/** Stand-in for PRO_ON_SALE (src/config/sales-gate.ts, hp/honesty); the homepage's switch. */
-export const PRO_SUBSCRIPTION_WATCHED: boolean = SALE_SWITCHES.proOnSale;
+/** G2, the owner's switch (src/config/sales-gate.ts FULL_ANALYSIS_ON_SALE), under the name this page's gates use. */
+export { FULL_ANALYSIS_ON_SALE as FULL_ANALYSIS_DELIVERY_WATCHED, PRO_ON_SALE as PRO_SUBSCRIPTION_WATCHED } from "@/config/sales-gate";
 
 export type FullAnalysisClosedBy = "seller" | "delivery";
 export type ProClosedBy = "seller" | "watched";
@@ -65,8 +59,8 @@ export interface SaleGateInput {
 
 export function resolveSaleGates(input: SaleGateInput = {}): SaleGates {
   const seller = sellerIdentity(input.seller ?? SELLER);
-  const delivered = input.fullAnalysisDelivered ?? FULL_ANALYSIS_DELIVERY_WATCHED;
-  const watched = input.proWatched ?? PRO_SUBSCRIPTION_WATCHED;
+  const delivered = input.fullAnalysisDelivered ?? SALE_SWITCHES.fullAnalysisOnSale;
+  const watched = input.proWatched ?? SALE_SWITCHES.proOnSale;
   const alertsStatable = homeSaleGates({ seller: input.seller, digestMailClass: input.digestMailClass }).alertsStatable;
   if (input.previewOpen) {
     return {
