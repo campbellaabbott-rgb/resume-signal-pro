@@ -69,7 +69,11 @@ import {
 // Merged onto wave 4's copy, so the one build carries both lines; neither build has deployed.
 // 2026-10-15.2: merged onto wave 4's 2026-10-11.2 copy, so it carries the JPMorgan line and the twelve
 // boards without the agency label. 2026-10-15.1 named the copy before that merge and never deployed.
-export const BUILD_VERSION = "2026-10-15.2";
+// 2026-10-15.2 also named trust/pages' copy before it merged oh/integration at 9005a76f: the five Reyes
+// brand boards (three new) and the iCIMS brand field. Neither 2026-10-15.2 deployed.
+// 2026-10-15.3: trust/pages merged onto oh/integration's 2026-10-15.2 copy, so the one build carries the
+// twelve boards without the agency label, the JPMorgan line and the Reyes brand boards.
+export const BUILD_VERSION = "2026-10-15.3";
 
 // ── mirror constants (src/config/layoffs.ts names this file) ──────────────
 export const LAYOFF_LOOKBACK_DAYS = 90;

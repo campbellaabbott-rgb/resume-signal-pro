@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { JOB_SOURCES } from "../../supabase/functions/job-board/sources";
-import { employerDisplayName, employerNameOverride } from "../../supabase/functions/_shared/employer-names";
+import { employerDisplayName, employerNameOverride } from "../lib/employer-names";
 
 /**
  * S11-134: get_company_suggest groups by display name and the board's clusters

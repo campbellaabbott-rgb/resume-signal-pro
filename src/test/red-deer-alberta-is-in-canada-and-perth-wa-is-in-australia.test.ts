@@ -46,6 +46,7 @@ describe("country placement residuals (S12-037)", () => {
     expect(detectCountry("IL - Chicago")).toBe("US");
     expect(detectCountry("TX - Houston")).toBe("US");
     expect(detectCountry("SD, Aberdeen")).toBe("US");
-    expect(COUNTRY_MAP_VERSION).toBe(10);
+    // 10 shipped these rules; 11 (the trusted-pages fix, a state code before a closing US) keeps them.
+    expect(COUNTRY_MAP_VERSION).toBeGreaterThanOrEqual(10);
   });
 });

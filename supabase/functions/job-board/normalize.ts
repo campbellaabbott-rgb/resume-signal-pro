@@ -352,6 +352,8 @@ const STATE_CODES_THAT_ARE_COUNTRIES_WE_CARRY: ReadonlySet<string> = new Set([
   "AL", "AR", "AZ", "CA", "CO", "DE", "ID", "IL", "IN", "KY", "MA", "MO", "MT", "PA", "TN",
 ]);
 const P_CA_PROV_SEGMENT = /^(?:ON|QC|BC|AB|MB|SK|NS|NB|PE|NL|YT|NT|NU)$/;
+// Rationale: docs/job-board-index-notes.md#n1391-a-state-code-before-a-closing-us
+const P_STATE_THEN_US = new RegExp(`(?:,|\\s[-–—])\\s*(${[...US_STATE_CODES].join("|")})\\s*(?:,|[-–—])\\s*USA?\\s*$`);
 const P_US_WORDS = /\b(?:US|USA|United States)\b/;
 
 /** The state a location's punctuated state-first form names ("SD, Aberdeen"), or null. */
@@ -391,7 +393,7 @@ const P_US_STATE_NAME = /\b(?:alabama|alaska|arizona|arkansas|california|colorad
 const P_CA_PROV_NAME = /\b(?:ontario|quebec|british columbia|alberta|manitoba|saskatchewan|nova scotia|new brunswick|newfoundland)\b/i;
 
 // Rationale: docs/job-board-index-notes.md#n983-export-const-country_map_version
-export const COUNTRY_MAP_VERSION = 10;
+export const COUNTRY_MAP_VERSION = 11;
 const CITY_COUNTRY = new Map<string, string>([
   ["aarhus", "DK"],
   ["aberdeen", "GB"],
@@ -406,6 +408,7 @@ const CITY_COUNTRY = new Map<string, string>([
   ["ankara", "TR"],
   ["antwerp", "BE"],
   ["antwerpen", "BE"],
+  ["astana", "KZ"],
   ["atlanta", "US"],
   ["auckland", "NZ"],
   ["austin", "US"],
@@ -748,6 +751,7 @@ function countryOf(location: string | null | undefined, guessFromCity: boolean):
   if (countryWordNamesAUsTown(s)) return "US";
   // Rationale: docs/job-board-index-notes.md#n984-if-s-wa-sa-nt-s
   if (/,\s*(?:WA|SA|NT)(?:\s+\d{4})?\s*$/.test(s) && cityCountry(s.split(",")[0]) === "AU") return "AU";
+  if (P_STATE_THEN_US.test(s)) return "US";
   const tail = P_TRAILING_CODE.exec(s);
   if (tail) {
     const city = cityCountry(s.split(",")[0]);
@@ -1179,6 +1183,14 @@ export function statesTheSameMoney(a: string | null, b: string | null, country?:
   return samePeriod && x.min === y.min && x.max === y.max && x.currency === y.currency;
 }
 
+// Rationale: docs/job-board-index-notes.md#n1393-pay-to-reparse
+export function payToReparse(patch: { salary?: unknown; country?: unknown }, rowSalary: unknown, prevSalary: unknown): string | null | undefined {
+  if (patch.salary !== undefined) return (rowSalary ?? null) as string | null;
+  if (patch.country === undefined) return undefined;
+  const t = rowSalary ?? prevSalary;
+  return typeof t === "string" && t.trim() ? t : undefined;
+}
+
 // Rationale: docs/job-board-index-notes.md#n1239-export-const-schedule_words_not_stored-r
 export const SCHEDULE_WORDS_NOT_STORED: ReadonlySet<string> = new Set(["personio"]);
 
@@ -1308,10 +1320,26 @@ interface SmartRecruitersPosting {
   id: string | number;
   name: string;
   releasedDate?: string;
-  location?: { city?: string; region?: string; country?: string; remote?: boolean; hybrid?: boolean; fullLocation?: string };
+  location?: { city?: string; region?: string; country?: string; remote?: boolean; hybrid?: boolean; fullLocation?: string; latitude?: string; longitude?: string };
   function?: { label?: string };
   department?: { label?: string };
   typeOfEmployment?: { id?: string; label?: string };
+}
+
+const inNorthAmerica = (lat: number, lon: number) => lat >= 18 && lat <= 84 && lon >= -180 && lon <= -52;
+const coord = (v: unknown) => (typeof v === "string" && v.trim() !== "" ? Number(v) : NaN);
+// Rationale: docs/job-board-index-notes.md#n1392-smartrecruiters-states-the-country
+export function smartRecruitersCountry(loc: SmartRecruitersPosting["location"], location: string): string | null {
+  const read = detectCountry(location);
+  const raw = String(loc?.country ?? "").trim();
+  const stated = /^[a-z]{2}$/i.test(raw) ? raw.toUpperCase() : null;
+  if (!stated || stated === read) return read;
+  if ((read === "US" || read === "CA") && stated !== "US" && stated !== "CA" && /^[A-Z]{2}$/.test(String(loc?.region ?? "").trim())) {
+    const lat = coord(loc?.latitude), lon = coord(loc?.longitude);
+    const placed = Number.isFinite(lat) && Number.isFinite(lon);
+    if (placed ? !inNorthAmerica(lat, lon) : cityCountry(String(loc?.city ?? "")) === stated) return stated;
+  }
+  return read;
 }
 
 export function normalizeSmartRecruiters(raw: { content?: SmartRecruitersPosting[] }, company: string, token: string): JobPosting[] {
@@ -1332,6 +1360,7 @@ export function normalizeSmartRecruiters(raw: { content?: SmartRecruitersPosting
         company,
         title: p.name ?? "",
         location,
+        country: smartRecruitersCountry(p.location, location),
         workMode,
         remote: workMode === "remote",
         department,

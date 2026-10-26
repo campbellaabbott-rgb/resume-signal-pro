@@ -143,9 +143,9 @@ the order as `deployOrder`.
 | 1 | wave 3 (`wave3`; wave3/, the S11 round's w31/, post-wave3/). Deployed 2026-10-11. Its closeout is the post-wave-3 tooling PR, then the three released migrations | 20261009* | 2026-09-09.92 | 2026-10-09 |
 | 2 | company profiles phases 0-2 (`company-profiles`; profiles/) | 20261012* | none: no job-board change | 2026-10-12 |
 | 3 | wave 4 (`wave4`; wave4/, the builders' w4/, connect-apply/): the S12 sweep fixes, the connect-search-apply build and the profiles MCP and /v1 tools, built and integrated as ONE wave. Until 2026-10-11 this was the connect-and-apply reservation | 20261011* | 2026-09-09.93 | 2026-10-11 |
-| 3.5 | Oracle hosts with no region: JPMorgan Chase (`oracle-regionless`; oh/). Deploys before phase 3, so phase 3 takes a job-board build after .95 when it merges | none | 2026-09-09.95 | 2026-10-15 |
+| 3.5 | Oracle hosts with no region: JPMorgan Chase (`oracle-regionless`; oh/, and trust/ for the trusted-pages fix that rides the same deploy). Deploys before phase 3, so phase 3 takes a job-board build after .95 when it merges | 20261025* (trust/ only) | 2026-09-09.95 | 2026-10-15 |
 | 4 | company profiles phase 3, vendor benefits capture (`company-profiles-phase3`; profiles-p3/). Reserved .94 until 2026-10-25; .94 is never used, because .95 deploys first | 20261013* | 2026-09-09.96 | 2026-10-13 |
-| after | next | 20261015* onwards, one day each; taken: 2026-10-15 (oracle-regionless's function day), 20261016* (resume-match's), 20261017* (the disk-plan migration's) | 2026-09-09.97+ | that day |
+| after | next | 20261015* onwards, one day each; taken: 2026-10-15 (oracle-regionless's function day), 20261016* (resume-match's), 20261017* (the disk-plan migration's), 20261025* (oracle-regionless's, for trust/) | 2026-09-09.97+ | that day |
 
 A migration stamp need not sort in deploy order. Wave 4's 20261011* deploys
 after profiles' 20261012*, and the ledger lists whatever the staged runner has

@@ -303,8 +303,12 @@ const PINNED = {
   // list instead, where it lands mid-list and moves about half of it one
   // place: at most one board read again once, none skipped (n1384). The pin
   // moved with the catalogue.
+  // 2026-09-09.95, trust/pages (it rides the JPMorgan deploy, so the build
+  // string stays): Martin Brower and Reyes Beverage Group gain an iCIMS
+  // `brand` in place, and three Reyes brand boards are appended after
+  // JPMorgan Chase, so again no carried board's index moves.
   // Merged with wave 4 at f4ccfeae: every change above, one pin over the merged file.
-  sourcesHash: "d307a08ac47118c6",
+  sourcesHash: "c6f33075be1a8d0a",
   // The PARSED catalog behind that hash — 44,081 packed + 463 object-literal
   // entries — pinned separately so a re-format is distinguishable from a real
   // catalog change (see the two-pins note at the top of this file). Read
@@ -324,9 +328,11 @@ const PINNED = {
   // catalog until it learned the packed form. Removing them shifts every
   // later index by two and the refresh cursor is positional, so this costs
   // one transient partial rotation, the same as a census merge.
-  // 44,520 since 2026-09-09.95: +1, JPMorgan Chase.
-  catalogSize: 44_520,
-  catalogHash: "f6bdca7730b813a3",
+  // 44,520 since 2026-09-09.95: +1, JPMorgan Chase. 44,523 in the same build:
+  // +3, Reyes Coca-Cola Bottling, Reyes Fleet Management and Reyes Holdings
+  // (trust/pages). Not yet deployed, so .95's bootstrap lane takes all four.
+  catalogSize: 44_523,
+  catalogHash: "966a70d42f7a3d92",
   // 2026-08-21.4: disables the exact-word tier's company matcher, whose index
   // never built. Bumped so the mitigation is externally identifiable.
   // 2026-08-21.5: routed retrieval. index.ts + two new modules; sources.ts
@@ -1470,7 +1476,12 @@ const PINNED = {
   // it built before. oracleTenantOf accepts the empty region so the rows are
   // keyed by requisition. sources.ts CHANGED: +JPMorgan Chase, jpmc~~CX_1001
   // (catalogSize 44,520). company-profiles-phase3 reserves .96 since
-  // 2026-10-25; .94 is never used, because .95 deploys first.
+  // 2026-10-25; .94 is never used, because .95 deploys first. trust/pages
+  // rides .95: the country reader (a two-letter region is not a US state
+  // where SmartRecruiters places the job abroad; a state code before a closing
+  // US is the US; COUNTRY_MAP_VERSION 11), a list visit re-parses stored pay
+  // when the country under it moves, NAME_SYNC_VERSION 5, and the Reyes brand
+  // boards (catalogSize 44,523).
   buildVersion: "2026-09-09.95",
 };
 

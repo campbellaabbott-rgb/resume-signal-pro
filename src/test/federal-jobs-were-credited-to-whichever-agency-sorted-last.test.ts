@@ -16,7 +16,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { boardDisplayName, employerDisplayName, MULTI_EMPLOYER_BOARD_NAMES } from "../../supabase/functions/_shared/employer-names";
+import { boardDisplayName, employerDisplayName, MULTI_EMPLOYER_BOARD_NAMES } from "../lib/employer-names";
 import { NON_ATS_SOURCES } from "../../src/config/ats-vendors";
 
 vi.setConfig({ hookTimeout: 120_000, testTimeout: 60_000 });

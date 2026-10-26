@@ -10499,6 +10499,12 @@ In `supabase/functions/job-board/index.ts`, above: `/** Boards whose catalog dis
 v4 (S11-133): every board a company_name_overrides row names, including
 wave 3's 179, is renamed here instead of in 20261009100100's one
 transaction, with its closures, snapshots and closure-rollup rows.
+v5 (2026-09-09.95, trust/pages): the same walk again, for the 88 boards
+20261025100000 names by their employer (logo text, site labels and logo
+file names the census tools took for names: "Axia Logo Horizontal",
+"Aerospace", "All", "US - LLC Recruiting", "BTB2.png"). That migration is
+applied before job-board deploys, so the lane reads the rows; already-named
+boards answer "already correct" from one indexed read each.
 
 ## n485-embryriddle-wd1-external
 
@@ -15258,6 +15264,10 @@ location on every read); the backfill sweep re-runs the null-country rows.
 10 (S12-037): ", AB, CA" with a province before the code is Canada, "WA"
 after an Australian city is Australia, and a leading code followed by a city
 in the country that code names is that country ("IL - Tel Aviv").
+11 (2026-09-09.95, trust/pages): a state code before a closing US is the US,
+ahead of province names ("New Brunswick - NJ - US", n1391), and "astana" is
+KZ in the city table (n1392). The backfill sweep fills the BMS row stored
+with no country; the rows filed wrongly are re-derived as each board is read.
 
 ## n984-if-s-wa-sa-nt-s
 
@@ -21757,3 +21767,77 @@ not resolve (faaasvanitypod*). Two host shapes the token still cannot
 express were counted, not chased: the EU sovereign cloud
 {tenant}.fa.ocs.oraclecloud.eu (7 production tenants with CE URLs) and the
 US government cloud {tenant}.fa.ocs.oraclegovcloud.com (2).
+
+## n1391-a-state-code-before-a-closing-us
+
+In `supabase/functions/job-board/normalize.ts`, above: `const P_STATE_THEN_US = new RegExp(...)` (and its use, first after the Australian rule in countryOf).
+
+A STATE CODE BEFORE A CLOSING US IS THE US (2026-09-09.95, trust/pages,
+2026-10-25). Workday writes its own places as Town - ST - CC: Bristol Myers
+Squibb's "New Brunswick - NJ - US" has no comma, so the trailing-code rule,
+the comma-prefixed state code and the leading-state rules all missed it, the
+country words missed a bare "US", and the Canadian province NAME "new
+brunswick" matched before the bare-US fallback: 10 live rows filed CA (8 with
+their pay stored as CAD), and one with no country. The Workday detail reader
+then refused the payload's own alpha2Code US, because statedCountry read the
+location as CA and called it a contradiction. A state code between a comma
+or a spaced dash and a closing US or USA is now the US, ahead of every
+province and country word. It only ever returns US, so no string that reads
+US today moves; measured over 18,826 distinct live rows (every row
+containing "- US", the SEO round's corpus, the spot reads), it changes 11
+BMS rows to US and five ADP strings ("Brazil, IN, US", "Norway, ME, US",
+"Mexico, IN, US", "CHINA GROVE, San Antonio, TX, US") whose stored country
+was already US through adpCountry, and nothing else. A list of countries
+("Remote - US & Canada") does not end in a state code before US and stays as
+it was. Not fixed here, and measured: 17 Workday rows where a US town named
+after a country loses to the country word ("Lake Wales" filed GB, "NY -
+Greece", "IN - Peru"); that fix needs its own corpus first. The corpus of this
+change is src/test/fixtures/trust-pages-country/location-corpus.json, pinned
+string for string by
+src/test/a-posting-in-lagos-is-filed-in-nigeria-and-one-in-new-jersey-in-the-us.test.ts.
+
+## n1392-smartrecruiters-states-the-country
+
+In `supabase/functions/job-board/normalize.ts`, above: `export function smartRecruitersCountry(loc, location)`.
+
+SMARTRECRUITERS STATES THE COUNTRY (2026-09-09.95, trust/pages, 2026-10-25).
+The vendor's posting carries location.country (ISO alpha-2, lower case), the
+city, the region and coordinates, and normalizeSmartRecruiters kept only the
+display string, so ingest read the country out of "Lagos, LA, Nigeria" and
+the comma-prefixed "LA" matched as Louisiana (Nigeria, Nicaragua, Iraq,
+Kazakhstan and North Macedonia are not in COUNTRY_PATTERNS). 47 live rows on
+15 boards were misfiled that way on 2026-10-25, the D7 page
+smartrecruiters/ThePlace1/744000154839819 among them, and their region_code
+put them under the US state filter. The vendor's country now overrules a
+reading only when that reading is the US or Canada, the vendor says another
+country, the region is a two-letter code (the thing that was misread), and
+the vendor's own coordinates are outside North America, or, with no
+coordinates, the city table already places the city in the vendor's country.
+Measured on the captured feed rows: 43 better (36 NG, 3 NI, 2 IQ, 1 MK, 1 KZ:
+"astana" joined the city table), none worse; the other four live rows are
+StandardBankGroup postings whose detail capture carries a bare "," where the
+list the board reads carries "Lagos, LA, Nigeria", and with the list's
+string they are filed NG too (47 of 47). It refuses the vendor where the
+vendor is wrong: Dominos' Biloxi, MS row says "dz" beside a US street, ZIP
+and coordinates, and stays US; TechVedika's Hyderabad, Telangana says "dz"
+and stays IN (a reading that is not the US or Canada is never overruled).
+Filling rows that today have no country from the vendor's field (373
+SmartRecruiters rows in the sample, 372 right) is a separate decision and
+not in this build. The list re-read rewrites country on every pass
+(country is a derived field, so the change is not logged as an employer
+edit) and clears the stale region_code; no migration.
+
+## n1393-pay-to-reparse
+
+In `supabase/functions/job-board/normalize.ts`, above: `export function payToReparse(patch, rowSalary, prevSalary)`.
+
+A LIST VISIT RE-READS STORED PAY WHEN THE COUNTRY UNDER IT MOVES (2026-09-09.95,
+trust/pages). The list upsert re-parsed the structured pay columns only when
+the pay text changed, and the currency of a "$" figure depends on the
+country: once n1391 moves the 8 salaried BMS rows from CA to US, their text
+is the same and their salary_currency would have stayed CAD (and their USD
+rank wrong). payToReparse answers the text to parse: the row's text when the
+text moved (as before), the stored text (the row's, or the one the detail
+sweep wrote, since the Workday list carries none) when only the country
+moved, and nothing otherwise. The lighter alternative to a
+SALARY_PARSE_VERSION bump, which would re-read every salaried row.

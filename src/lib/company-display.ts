@@ -11,8 +11,13 @@
 // Health System".
 
 // Relative, not "@/": scripts/prerender-seo.mjs bundles this module with
-// esbuild, which knows no alias.
-import { boardDisplayName, employerDisplayName, employerNameOverride } from "../../supabase/functions/_shared/employer-names";
+// esbuild, which knows no alias. The name table lives beside this file: no
+// edge function reads it, and every file in supabase/functions/_shared counts
+// toward every function's upload.
+import { boardDisplayName, employerDisplayName, employerNameOverride } from "./employer-names";
+
+/** False for a site named by its publisher, whose postings state no hirer (employer-names.ts). */
+export { boardNamesItsHirer } from "./employer-names";
 
 // Short all-consonant tokens are the tell. English words of 3+ letters
 // essentially always carry a vowel (y counts), so a vowel-less token is an
@@ -73,7 +78,7 @@ export function companyDisplayName(name: string | null | undefined): string {
 /**
  * The name to print for an employer board, everywhere a reader or a crawler
  * sees one: the database's override for the board's token when it has one
- * (supabase/functions/_shared/employer-names.ts mirrors that table), then the
+ * (src/lib/employer-names.ts mirrors that table), then the
  * entity decode and the initialism fix above. "Ms" on ms~wd5~external is
  * Morgan Stanley; a stored name no override covers passes through as before.
  */
@@ -118,7 +123,7 @@ const REAL_TENANT_NAMES = new Set([
  * Tenant codes a reviewer read on the employer's own careers site and found
  * to be a code, not the name it uses (docs/wave3/seo-content.md, SEO F1, the
  * 24 on the committed snapshot, plus BCBS). Grows only from such a read. A
- * code here that gains an override in _shared/employer-names.ts is named by
+ * code here that gains an override in employer-names.ts is named by
  * the override and stops being flagged.
  */
 const REVIEWED_TENANT_CODES = new Set([

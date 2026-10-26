@@ -6,9 +6,16 @@
 // first, then a Workday tenant's first token segment), and each migration that
 // adds a row backfills the stored rows. This module MIRRORS that table for the
 // readers that render a name the database did not rewrite: the prerender bake
-// (scripts/prerender-seo.mjs bundles it like the other shared data modules) and
-// the React app (src imports supabase/functions/_shared directly). Pure: no I/O,
-// no Deno or browser API.
+// (scripts/prerender-seo.mjs bundles it through src/lib/company-display.ts) and
+// the React app. Pure: no I/O, no Deno or browser API.
+//
+// WHY IT LIVES IN src/lib. It sat in supabase/functions/_shared until
+// 2026-10-26, imported by no edge function. Every file in that folder counts
+// toward every function's upload, comments included, and job-board's tally
+// had 174 bytes left under its guard once trust/pages merged oh/integration
+// (src/test/the-upload-tally-counts-every-shared-file-and-every-comment.test.ts).
+// An edge function that one day needs these names reads company_name_overrides
+// itself; the trigger has already written them into every stored row.
 //
 // One function for every renderer: employerDisplayName(token, stored). The
 // mirror test (src/test/an-employer-named-by-its-system-code-gets-the-name-it-uses.test.ts)
@@ -22,8 +29,13 @@
 
 /** company_name_overrides: full token or Workday tenant slug -> display name. */
 export const EMPLOYER_NAME_OVERRIDES: ReadonlyMap<string, string> = new Map([
+  ["149c7964-ca14-4211-b982-ef50dfb8b504~9200868940886_2", "Community Care Cooperative"],
   ["2020companies", "2020 Companies"],
+  ["214ae4ed-5f0a-4657-b50a-6e318870a1f6~9200797842407_3", "HLW"],
   ["3m", "3M"],
+  ["70cd76e3-8c19-42a4-8d01-5d91b9c3222e~9201469061155_2", "Bricktown Brewery"],
+  ["8a680274-0b2e-46cf-b2cc-49bd2ef0c20f~9201289910657_2", "Parallels"],
+  ["9f16667e-93e9-453a-b7cc-2bfeb3eda460~19000101_000003", "Circular Action Alliance"],
   ["aah", "Advocate Health"],
   ["abb", "ABB"],
   ["abglobal", "AllianceBernstein"],
@@ -122,7 +134,16 @@ export const EMPLOYER_NAME_OVERRIDES: ReadonlyMap<string, string> = new Map([
   ["easyservice~wd5~MercyHealthCareers", "Mercy Health"],
   ["ebay", "eBay"],
   ["ebqb~us2~CX_1", "BDO USA"],
+  ["eea42ed6-3dcf-47f3-b99b-29a304948b2b~9200441095595_2", "PURE HomeRiver"],
+  ["eexs~us2~CX_11009", "LCS"],
+  ["eexs~us2~CX_3001", "LCS"],
+  ["ehwy~us2~CX", "Ithaca College"],
+  ["ehwy~us2~CX_1", "Ithaca College"],
+  ["ekpl~us6~CX_1", "Glaukos"],
+  ["emdz~us2~CX_1", "Rice University"],
   ["everythingbutwater", "Everything But Water"],
+  ["fa-exer-saasfaprod1~ocs~CX_1", "Butler University"],
+  ["fa-exer-saasfaprod1~ocs~CX_1001", "Butler University"],
   ["fanshawec", "Fanshawe College"],
   ["fedex", "FedEx"],
   ["fifththird", "Fifth Third Bank"],
@@ -170,6 +191,7 @@ export const EMPLOYER_NAME_OVERRIDES: ReadonlyMap<string, string> = new Map([
   ["hyperiongrp", "Howden"],
   ["hyvee", "Hy-Vee"],
   ["ia", "iA Financial Group"],
+  ["icfcjb~ocs~CX_1", "Honeywell Aerospace"],
   ["iko~wd3~IKO_Careers", "IKO"],
   ["iko~wd3~Roofmart_Careers", "Roofmart"],
   ["imh", "Intermountain Health"],
@@ -280,6 +302,79 @@ export const EMPLOYER_NAME_OVERRIDES: ReadonlyMap<string, string> = new Map([
   ["rbc", "RBC"],
   ["rbnz", "Reserve Bank of New Zealand"],
   ["reagroup", "REA Group"],
+  ["recruiting2~AME1033ABHOW~8819f2ba-041d-48c2-9cfe-c854415f43d2", "HumanGood"],
+  ["recruiting2~AME1104ANBT~9474d2f8-2ad2-46f8-bbe3-f435f50628bd", "American National Bank of Texas"],
+  ["recruiting2~ARC1033ARCHS~ec1bad7b-421b-4c92-bf84-dae0f2173612", "ARCHER Systems"],
+  ["recruiting2~ART1010AICH~d263cd2b-c4ef-4e10-8876-a2896406a573", "Art Institute of Chicago"],
+  ["recruiting2~ASI1002AAMF~9e5e0e8e-237d-4ca6-91c0-a4f1fdd16163", "Asian Art Museum"],
+  ["recruiting2~AUS1003AUIN~611d5a38-76c4-4f66-a55f-2bc012d98024", "Austin Industries"],
+  ["recruiting2~AUS1003AUIN~76c6c58c-a4d3-4a7c-b7a4-8640fc76a703", "Austin Industries"],
+  ["recruiting2~AUS1003AUIN~b8542df4-bc14-47ac-9e01-2eb2423bd205", "Austin Industries"],
+  ["recruiting2~CAL1001CALA~46b96419-fba6-4dd0-a5fa-715bdfcf845b", "Calamos Investments"],
+  ["recruiting2~CKE1000CKER~8d7aeff6-90f7-47bf-9f70-771c5260877f", "CKE"],
+  ["recruiting2~CON1051CONPC~4c5261a3-56a0-4867-9d86-1673f2d804c2", "Continental Properties"],
+  ["recruiting2~CON1074CVTG~1831b61a-1945-44fa-afd8-624795c9b30d", "Convergint"],
+  ["recruiting2~GOL1019GDWC~07a2cf6e-052c-4ffa-b81d-99900254b1f5", "Goldenwest Credit Union"],
+  ["recruiting2~HUS1001HUSCH~b6637591-8c8d-49b8-b093-5524b203b157", "Husch Blackwell"],
+  ["recruiting2~KEM1000~4ca2399d-585f-4556-b3a0-94af57ab68ea", "KemperSports"],
+  ["recruiting2~LUB1000LUBT~287e5d40-e2cb-41a7-8c5d-756dc9c5a838", "Ascentek"],
+  ["recruiting2~LUB1000LUBT~2dc69741-bb0f-433d-96a9-d7731bfa452a", "Ascentek"],
+  ["recruiting2~MCF1000~d8a61458-fc16-88c5-cdbe-b242fca9113e", "McFarland Clinic"],
+  ["recruiting2~MID1025MIDF~de6dc764-d7e7-4ebc-99c5-bb453e31e24b", "MidFirst Bank"],
+  ["recruiting2~MUN1001MCHK~acccd54e-ac6e-44a1-a6d4-8a1f25cceea3", "Munchkin"],
+  ["recruiting2~PAP1001~7297d137-c573-4bf4-8ab4-09ad7dac6ec8", "Papé"],
+  ["recruiting2~RES1015RPLLC~dc0817a6-b35b-4938-ae2a-d5d14087e134", "RESA Power"],
+  ["recruiting2~SAP1000SPID~5e557a61-9707-4f47-8f76-9c11b2bfbf9e", "Smart City Networks"],
+  ["recruiting2~STA1013~94aec289-5757-a8f0-d3bb-77f9cd846172", "Minnesota Star Tribune"],
+  ["recruiting2~SUN1000SUNCO~5882c1c5-18e3-8740-5e61-37d8f7574d64", "Sun Country Airlines"],
+  ["recruiting~AHF1000AHFP~eb870e08-1b72-44d8-a4c4-d8b21f6f9297", "AHF Products"],
+  ["recruiting~AME1068~34b788f5-e07e-3fb3-8e73-08c36602a07b", "AFSC"],
+  ["recruiting~AME1101AMRI~f0aaafcc-5031-43d3-b658-e19a8bac98ee", "American Commercial Barge Line"],
+  ["recruiting~AMG1002AMGC~f40ecd9c-1926-422b-82bf-5d5df3c0ad54", "AM General"],
+  ["recruiting~ANA1003ALOG~a4de26ba-aa2d-4502-9d0f-577ea07dc7ca", "Analogic"],
+  ["recruiting~BYR1000BYRNE~d5855859-9eae-dd60-5965-11eeffbec7a1", "Byrne Electrical Specialists"],
+  ["recruiting~COM1052~2e5d0965-0540-a0b3-7480-d7e4ddca0af6", "CommuniCare Health Centers"],
+  ["recruiting~ENV1004ERLL~01ddc4d3-605b-44e6-9b43-4abf0d1399b1", "Envision Radiology"],
+  ["recruiting~EOS1000EOSI~1170f284-cf46-4ff7-b32f-76e224e7a2d4", "EOS Hospitality"],
+  ["recruiting~EPR1000EPSUS~10653576-f6a1-4d69-8a9c-a0a96124abda", "CAI Software"],
+  ["recruiting~EUL1000EULEN~7f63c405-6579-4eb2-954a-482585dd4149", "Grupo Eulen USA"],
+  ["recruiting~FAR1008FNBC~2ed885d0-15e6-4548-ac9c-d5c9607e02d7", "Farmers National Banc Corp."],
+  ["recruiting~GEN1025~37481dc2-ddb2-1941-a0f9-befbbf45ab11", "Genesee & Wyoming"],
+  ["recruiting~GRA1010GRAY~8d18afb5-245e-4c7e-a198-6a682201a90e", "GrayRobinson"],
+  ["recruiting~GUA1000GACM~14ab0bd3-29ec-43fc-ba76-27a9beaf97f5", "Guardian Alarm"],
+  ["recruiting~HIL1004~783ada32-210a-ecf9-eab4-00a5ed980db3", "Hilltop Community Resources"],
+  ["recruiting~IFL1000IFLY~1cbe2e6c-5bff-312c-9bbb-ac39038cb6bb", "iFLY"],
+  ["recruiting~JAC1008JACAM2~78f93132-0f92-4d96-92fd-6bc9a0e91b52", "JACAM Catalyst"],
+  ["recruiting~KIL1000~68c62bcb-20f8-3231-d728-9190572df832", "Kilpatrick Townsend & Stockton"],
+  ["recruiting~LUM1000NWL~c00e73a9-0a5f-4082-8257-fcddd1029261", "Nemacolin"],
+  ["recruiting~MAR1033MBL~4c3007c3-6354-41de-a13f-d95be60d91e9", "MBL"],
+  ["recruiting~MEL1004MHTC~fbc00c76-0292-40eb-b052-02b511393eac", "Melwood"],
+  ["recruiting~MER1020MERZ~84f5dbc2-c467-5a9e-3a37-6174c98926eb", "Merz North America"],
+  ["recruiting~MER1020MERZ~a6b53edd-7e9e-4bfb-bd93-0f6a6f0f275d", "Merz Aesthetics"],
+  ["recruiting~MES1002MESSD~888390fa-f9e8-4b6f-9977-7e3a214369f0", "Meso Scale Diagnostics"],
+  ["recruiting~MES1005MESR~dbd63926-d756-486f-a254-b2a6ede1d26e", "Messer"],
+  ["recruiting~MES1005MESR~fa3fc0aa-75f1-4eac-9152-b4e8b8cbe849", "Messer"],
+  ["recruiting~MIC1003MEI~e3674ed3-2699-442b-aa28-c0b8436281b9", "Micro Center"],
+  ["recruiting~MIC1008MICPT~9f087488-7494-c18e-5713-c97b9f3d8219", "MicroPort"],
+  ["recruiting~MID1029MISO~362b6b1d-f1c3-46f5-9554-4aa90e2bda64", "MISO"],
+  ["recruiting~MIM1000MMEDX~1d9bee39-4128-4512-aa23-005f0e124469", "MIMEDX"],
+  ["recruiting~MOD1003MWA~8990acfc-04f3-d65f-0565-a772e1a0157b", "Modern Woodmen of America"],
+  ["recruiting~ORA1000OLCC~17560d62-b19a-4c09-9909-fe2b9c713df3", "Holiday Inn Club Vacations"],
+  ["recruiting~PAR1026PARS~b9883763-2d52-4511-a00a-57166395312c", "Paradies Lagardère"],
+  ["recruiting~PEN1019PMOI~9c2e3b43-1929-4405-b387-470097c98b4a", "Penn-Mar Human Services"],
+  ["recruiting~PGW1000PAUT~f1df8566-65d8-4efe-8046-4e96e46eeadf", "PGW Auto Glass"],
+  ["recruiting~POL1006~c0e3f015-388f-2bf6-e3ac-af081fcad685", "PM Hotel Group"],
+  ["recruiting~QSA1000QSAC~d1dee834-9977-44db-8afd-d97fd6e60e44", "QSAC"],
+  ["recruiting~REG1001RWHM~3f9058a6-91f2-4cf1-bf33-bc76cb9f0522", "Axia Women's Health"],
+  ["recruiting~SAV1002STCF~7d92e82b-af74-464d-859b-c5b8cba6e92e", "Save the Children"],
+  ["recruiting~SEA1007SEACO~7851737e-66c7-908f-77e9-6d69f4eb0ead", "Seacoast Bank"],
+  ["recruiting~SER1005SEIU~e131b2ae-a5ce-4fb1-a93c-84c36a485721", "SEIU"],
+  ["recruiting~WEI1003~0e982683-539b-1a76-d39a-221637b5ef2e", "Weiler"],
+  ["recruiting~WEL1008WLLT~30969ce4-3b7e-40a6-b86c-34d3616fe0ed", "Welltower"],
+  ["recruiting~WES1010~9ca96e8c-accb-8dab-a29c-32c8da6f8d67", "Westminster Communities of Florida"],
+  ["recruiting~WES1010~dc686796-57ca-4fa7-a2d7-68f4e5612bd8", "Westminster Communities of Florida"],
+  ["recruiting~ban1010~e9066a66-c3b9-e25c-d036-116705c05e46", "Banner Engineering"],
+  ["recruiting~map1002mapmg~9c5b2d47-fac0-4e56-9f06-b9cc2013276d", "Mid-Atlantic Permanente Medical Group"],
   ["redhat", "Red Hat"],
   ["relx", "RELX"],
   ["republic", "Republic Services"],
@@ -424,4 +519,19 @@ export const MULTI_EMPLOYER_BOARD_NAMES: ReadonlyMap<string, string> = new Map([
  */
 export function boardDisplayName(token: string | null | undefined, stored: string | null | undefined): string {
   return MULTI_EMPLOYER_BOARD_NAMES.get(String(token ?? "").trim()) ?? employerDisplayName(token, stored);
+}
+
+/**
+ * Career sites an override names by the employer that PUBLISHES them, whose
+ * postings name other hirers: LCS's two sites list jobs at the communities it
+ * manages, a posting's text names its community ("Friendship Village is
+ * seeking"), and no requisition states a legal employer (trust/pages review,
+ * 2026-10-25). The board prints the publisher; a posting names no hirer, so it
+ * gets no page and no JobPosting. Each entry is an override key (a test).
+ */
+export const PUBLISHER_ONLY_BOARDS: ReadonlySet<string> = new Set(["eexs~us2~CX_11009", "eexs~us2~CX_3001"]);
+
+/** False for a site named by its publisher, whose postings state no hirer. */
+export function boardNamesItsHirer(token: string | null | undefined): boolean {
+  return !PUBLISHER_ONLY_BOARDS.has(String(token ?? "").trim());
 }

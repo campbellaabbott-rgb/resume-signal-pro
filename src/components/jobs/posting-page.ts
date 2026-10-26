@@ -15,7 +15,7 @@
  * entry; src/pages/JobPosting.tsx imports it directly.
  */
 
-import { employerName, possessive } from "../../lib/company-display";
+import { boardNamesItsHirer, employerName, possessive } from "../../lib/company-display";
 
 /**
  * THE BOARD'S OWN SERVING WINDOW, MIRRORED — and the mirror is the point.
@@ -35,9 +35,14 @@ export const BOARD_FRESH_WINDOW_DAYS = 30;
  * names the employer (title, meta description, hiringOrganization) used to
  * print that code straight into Google for Jobs (SEO report 2026-10-08, F1:
  * 292 of 399 posting pages). One function names it for every reader.
+ *
+ * A site named by its publisher (LCS's two career sites, whose postings name
+ * the communities it manages) states no hirer for a posting, so this names
+ * none: "", which postingJsonLd refuses and the bake gives no page.
  */
 export function postingEmployer(job: Pick<PostingRow, "id" | "token" | "company">): string {
   const token = job.token ?? postingPathParts(job.id)?.token ?? null;
+  if (!boardNamesItsHirer(token)) return "";
   return employerName(token, job.company);
 }
 
@@ -1033,6 +1038,8 @@ export function postingJsonLd(
   const validThrough = postingValidThrough(job, now);
   if (!validThrough) return null;
   const employer = postingEmployer(job);
+  // No hirer named, no hiringOrganization: never the publisher of a site in its place.
+  if (!employer) return null;
 
   const ld: Record<string, unknown> = {
     "@context": "https://schema.org",
