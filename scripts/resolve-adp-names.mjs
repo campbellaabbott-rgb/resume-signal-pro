@@ -174,8 +174,10 @@ const PRONOUN_START = /^(?:we|our|you|your|it|this|that|these|those|there|i|are|
 // application boilerplate, translation notes.
 // Policy headings joined the list 2026-10-25: with the logo's file name gone
 // as a source, a board whose postings open with "Non-Discrimination and ADA
-// Reasonable Accommodation" offered that heading as its employer.
-const JUNK_RE = /\bnon-?discrimination\b|\breasonable\s+accommodations?\b|\baccommodations?\s+(?:policy|request|statement)\b|\b(?:privacy|eeo|equal\s+opportunity)\s+(?:policy|notice|statement)\b|\bdisclaimer\b|\b(?:salary|compensation|wage|pay|hourly|base)\s+ranges?\b|version of this|\bper hour\b|\bbenefits? package\b|page to complete|online application|\bcover letter\b|\bbackground check\b|\bjob description\b|\b(?:coordinator|manager|director|recruiter|assistant|specialist|supervisor|technician|officer)s?\s+at\s+|\bwanted\b|\bnow hiring\b/i;
+// Reasonable Accommodation" offered that heading as its employer, and the
+// sample read that day met "Diversity, Equity & Inclusion ..." and "The ...
+// operation" the same way.
+const JUNK_RE = /\bnon-?discrimination\b|\bdiversity\b|\binclusion\b|\boperations?\s*$|\breasonable\s+accommodations?\b|\baccommodations?\s+(?:policy|request|statement)\b|\b(?:privacy|eeo|equal\s+opportunity)\s+(?:policy|notice|statement)\b|\bdisclaimer\b|\b(?:salary|compensation|wage|pay|hourly|base)\s+ranges?\b|version of this|\bper hour\b|\bbenefits? package\b|page to complete|online application|\bcover letter\b|\bbackground check\b|\bjob description\b|\b(?:coordinator|manager|director|recruiter|assistant|specialist|supervisor|technician|officer)s?\s+at\s+|\bwanted\b|\bnow hiring\b/i;
 const CONNECTORS = new Set(["of", "and", "the", "for", "at", "de", "la", "del", "di", "da", "van", "von", "&", "dba", "by"]);
 
 export function hygieneOk(name, token) {
