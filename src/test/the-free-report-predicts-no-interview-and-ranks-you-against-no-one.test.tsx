@@ -25,8 +25,10 @@ import { cleanup, render } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
+import { existsSync } from "node:fs";
 import { MOUNT_TEST_BUDGET } from "./helpers/mount-budget";
 import { codeOf } from "./helpers/strip-comments";
+import { bothReadings } from "./helpers/visible-text";
 
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
@@ -133,13 +135,16 @@ describe("a report with every ranking field the scan sends", () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     render(<MemoryRouter><FreeKeywordResults {...(RANKING as any)} onReset={() => {}} /></MemoryRouter>);
     const text = document.body.textContent ?? "";
-    for (const said of [
+    // Both readings: text nodes joined by spaces (so "score" and a following
+    // capitalised word never glue into one word a \b cannot split), and the
+    // glued textContent (so a phrase split across nodes is still seen).
+    for (const reading of bothReadings()) for (const said of [
       /will pass roughly/i, /of ATS filters/i, /pass rate/i, /Likely to pass/, /High rejection risk/, /\bAt risk\b/,
       /percentile/i, /Top tier/, /Bottom tier/, /Bottom 40%/, /Top 25%/, /Top quartile/i, /Bottom quartile/i,
       /Better than \d+%/, /that get interviews/i, /How You Compare/i, /industry average/i, /scores below most/i,
       /outperforms most/i, /called back/i, /interview callbacks/i, /will likely pass/i, /your chances/i,
-      /The Verdict/,
-    ]) expect(text, `the report still says ${said}`).not.toMatch(said);
+      /The Verdict/, /Likely to clear/i, /Strong candidate for clearing/i, /filtered/i,
+    ]) expect(reading, `the report still says ${said}`).not.toMatch(said);
     // The report still opens with its summary and the PDF.
     expect(text).toMatch(/Download PDF summary/);
     expect(text).toMatch(/88\/100/);
@@ -168,6 +173,75 @@ describe("a report with every ranking field the scan sends", () => {
       expect(fr.enterprise?.summaryLabel, `${f} freeResults.enterprise.summaryLabel`).toBeTruthy();
       expect(fr.enterprise?.summaryLine, `${f} freeResults.enterprise.summaryLine`).toMatch(/\{\{score\}\}/);
     }
+  });
+});
+
+/**
+ * THE SCORES MOST READERS GET (the review of 2026-10-27). The fixtures above
+ * scored 62 and 88: the 88 hid the score banner (it shows under 75) and the
+ * score header's line for 62 glued onto the heading before it, so neither
+ * test saw what most readers read. The score header predicted what an ATS
+ * would do from three thresholds the module itself said had no data behind
+ * them, the banner placed technology readers among 2,472 other scans (this
+ * site's own, over 180 days, never named in the line) under a heading about
+ * competing, the two-field line promised that recruiters in both fields
+ * would consider the reader, and the recruiter panel's first persona carried
+ * a pass badge. These are the scores a nurse (57), a marketer (64) and a
+ * technology reader under 75 with the real distribution on hand get; none of
+ * them is told what a screen, a recruiter or other applicants will do.
+ */
+const PANEL = {
+  screener: { verdict: "Clear title, but the first bullet is a duty.", wouldPass: false },
+  hiringManager: { verdict: "Wants numbers.", biggestDoubt: "Scope" },
+  hrScreener: { verdict: "Reads mid-level.", levelRead: "Mid" },
+};
+const ORDINARY = [
+  { ...PREDICTING, candidateName: "Ana Silva", currentRole: "Registered Nurse", industry: "healthcare", atsScoreEstimate: 57, recruiterPanel: PANEL,
+    realBenchmark: { n: 29, median: 60, p25: 52, p75: 66, industry: "healthcare" } },
+  { ...PREDICTING, candidateName: "Max Weber", currentRole: "Marketing Manager", industry: "marketing", atsScoreEstimate: 64,
+    recruiterPanel: { ...PANEL, screener: { ...PANEL.screener, wouldPass: true } },
+    industryBlend: { primary: "marketing", primaryPct: 70, secondary: "sales", secondaryPct: 30 } },
+  // The production distribution read on 2026-10-27 (get_real_score_distribution,
+  // technology): over the scan's own threshold, so every technology report
+  // under 75 carried it.
+  { ...PREDICTING, candidateName: "Lee Park", currentRole: "Software Engineer", industry: "technology", atsScoreEstimate: 64,
+    realBenchmark: { n: 2472, median: 62, p25: 59, p75: 65, industry: "technology" } },
+] as const;
+
+describe("the scores most readers get: 57, 64, and a technology 64 with this site's own scan distribution", () => {
+  for (const fx of ORDINARY) {
+    it(`${fx.industry} at ${fx.atsScoreEstimate}: no outcome, no placement among other scans, no pass badge`, () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      render(<MemoryRouter><FreeKeywordResults {...(fx as any)} onReset={() => {}} /></MemoryRouter>);
+      for (const reading of bothReadings()) for (const said of [
+        /\bAt risk\b/, /Likely to clear/i, /Strong candidate for clearing/i, /filtered/i, /before a (?:human|recruiter)/i,
+        /screening hundreds/i, /\bmedian\b/i, /top quarter/i, /scanned here/i, /to compete/i, /being missed/i,
+        /will consider you/i, /Survives the pile/i, /of the pile/i,
+      ]) expect(reading, `the ${fx.industry} report still says ${said}`).not.toMatch(said);
+      // The banner (under 75) says only that the score is no pass mark.
+      expect(document.body.textContent ?? "").toMatch(/not a pass mark/);
+    });
+  }
+
+  it("no language keeps the outcome tiers, their filter phrases or the placement among scans", () => {
+    const files = readdirSync(resolve(ROOT, "src/i18n/locales")).filter((f) => f.endsWith(".json"));
+    expect(files).toHaveLength(9);
+    for (const f of files) {
+      const json = JSON.parse(read(`src/i18n/locales/${f}`));
+      expect(json.scoreHero?.outcome, `${f} scoreHero.outcome`).toBeUndefined();
+      expect(json.scoreHero?.filterPhrase, `${f} scoreHero.filterPhrase`).toBeUndefined();
+      expect(json.scoreHero?.basis, `${f} scoreHero.basis`).toBeTruthy();
+      expect(Object.keys(json.freeResults.atsBanner).sort(), `${f} freeResults.atsBanner`).toEqual(["heading", "noPassMark"]);
+      expect(json.freeResults.atRiskOrNeedsImprovement, `${f} freeResults.atRiskOrNeedsImprovement`).toBeUndefined();
+    }
+  });
+
+  it("the source holds no outcome tier and no placement among scans", () => {
+    expect(existsSync(resolve(ROOT, "src/lib/score-outcome-message.ts")), "the outcome-tier module").toBe(false);
+    const hero = codeOf(read("src/components/scorecard/ScoreHero.tsx"));
+    expect(hero).not.toMatch(/scoreHero\.(?:outcome|filterPhrase)\b|getOutcome/);
+    const report = codeOf(read("src/components/FreeKeywordResults.tsx"));
+    expect(report).not.toMatch(/atsBanner\.(?:belowMedian|belowTopQuarter|topQuarter)|atRiskOrNeedsImprovement|realBenchmark\.p75/);
   });
 });
 

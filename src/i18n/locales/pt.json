@@ -857,19 +857,7 @@
       "impact": "Impacto",
       "flags": "Alertas"
     },
-    "filterPhrase": {
-      "compliance": "filtros ATS rígidos e focados em conformidade",
-      "credential": "sistemas de rastreamento de candidatos focados em credenciais",
-      "recruiterScreen": "filtros automáticos antes de um recrutador o ver",
-      "volume": "sistemas ATS que filtram centenas de candidatos por vaga",
-      "generic": "filtros ATS automáticos"
-    },
-    "outcome": {
-      "strong": "Candidato forte para superar {{filterPhrase}}",
-      "likely": "Provavelmente irá superar a maioria dos {{filterPhrase}}",
-      "atRisk": "Em risco de ser filtrado por {{filterPhrase}}",
-      "highRisk": "Alto risco de ser filtrado por {{filterPhrase}} antes de um humano o ver"
-    },
+    "basis": "Pontuado pelas palavras-chave, secções, formato e resultados mensuráveis deste currículo",
     "gauge": {
       "excellent": "Excelente",
       "good": "Bom",
@@ -1268,10 +1256,6 @@
       "should": "Recomendado",
       "nice": "Desejável"
     },
-    "atRiskOrNeedsImprovement": {
-      "atRisk": "Em risco de passar despercebido nas buscas dos recrutadores",
-      "needsImprovement": "Precisa de melhorar para competir"
-    },
     "personalizedTipsSection": {
       "title": "Dicas Personalizadas",
       "subtitle": "Informações adaptadas ao seu perfil"
@@ -1326,11 +1310,6 @@
       "naturalProgression": "Próximo passo natural",
       "lateralMove": "Movimento lateral",
       "stretchGoal": "Objetivo ambicioso"
-    },
-    "marketPosition": {
-      "aboveMarket": "Acima do Mercado",
-      "atMarket": "No Mercado",
-      "belowMarket": "Abaixo do Mercado"
     },
     "formatRecommendationSection": {
       "title": "Recomendação de Formato de Currículo",
@@ -1458,10 +1437,8 @@
       }
     },
     "atsBanner": {
-      "belowMedian": "Abaixo da mediana de {{median}} entre {{n}} currículos de {{industry}} analisados aqui. As principais plataformas de ATS não rejeitam por este número, mas as correções abaixo aumentam-no.",
-      "belowTopQuarter": "Acima da mediana de {{median}}; o quartil superior dos {{n}} currículos de {{industry}} analisados aqui pontua {{p75}} ou mais.",
-      "noPassMark": "Não é uma nota de aprovação: as principais plataformas de ATS não rejeitam um currículo por uma pontuação. As correções abaixo aumentam-na.",
-      "topQuarter": "Quartil superior: {{p75}}+"
+      "heading": "Margem para subir esta pontuação",
+      "noPassMark": "Não é uma nota de aprovação: as principais plataformas de ATS não rejeitam um currículo por uma pontuação. As correções abaixo aumentam-na."
     },
     "eliteSignals": {
       "title": "Sinais que atraem recrutadores"
@@ -1482,7 +1459,7 @@
       "totalExp": "Experiência total",
       "totalExpDesc": "Há quanto tempo você trabalha na sua área",
       "avgTenure": "Tempo médio em cada emprego",
-      "tenureGood": "✓ Boa estabilidade — recrutadores gostam de 2+ anos por cargo",
+      "tenureGood": "✓ Dois anos ou mais por cargo, em média",
       "tenureWarning": "⚠ Curto período pode levantar questões",
       "tenurePoor": "⚠ Muito curto — pode ser visto como mudança excessiva de emprego",
       "careerGrowth": "Crescimento de carreira"
@@ -1497,9 +1474,6 @@
       "uniqueValue": "Seu valor único",
       "nextMoves": "Seus próximos movimentos de carreira",
       "interviewStories": "Ideias para histórias de entrevista",
-      "salaryInsightTitle": "Perspectiva salarial",
-      "estimatedRange": "faixa estimada",
-      "negotiationLeverage": "Sua alavancagem de negociação:",
       "hiddenStrengths": "Pontos fortes ocultos que você está subestimando",
       "personalBrand": "Sua marca pessoal",
       "currentLabel": "Atual:",

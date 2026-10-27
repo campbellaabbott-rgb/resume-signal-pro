@@ -857,19 +857,7 @@
       "impact": "Impacto",
       "flags": "Alertas"
     },
-    "filterPhrase": {
-      "compliance": "filtros ATS rígidos y orientados al cumplimiento normativo",
-      "credential": "sistemas de seguimiento de candidatos centrados en credenciales",
-      "recruiterScreen": "filtros automáticos antes de que un reclutador lo vea",
-      "volume": "sistemas ATS que filtran cientos de candidatos por puesto",
-      "generic": "filtros ATS automáticos"
-    },
-    "outcome": {
-      "strong": "Candidato sólido para superar {{filterPhrase}}",
-      "likely": "Probablemente supere la mayoría de {{filterPhrase}}",
-      "atRisk": "En riesgo de ser filtrado por {{filterPhrase}}",
-      "highRisk": "Alto riesgo de ser filtrado por {{filterPhrase}} antes de que un humano lo vea"
-    },
+    "basis": "Puntuado según las palabras clave, las secciones, el formato y los resultados medibles de este currículum",
     "gauge": {
       "excellent": "Excelente",
       "good": "Bueno",
@@ -1268,10 +1256,6 @@
       "should": "Debería",
       "nice": "Agradable"
     },
-    "atRiskOrNeedsImprovement": {
-      "atRisk": "En riesgo de pasar desapercibido en las búsquedas de reclutadores",
-      "needsImprovement": "Necesita mejorar para competir"
-    },
     "personalizedTipsSection": {
       "title": "Consejos personalizados",
       "subtitle": "Información adaptada a tu perfil"
@@ -1326,11 +1310,6 @@
       "naturalProgression": "Siguiente paso natural",
       "lateralMove": "Movimiento lateral",
       "stretchGoal": "Meta ambiciosa"
-    },
-    "marketPosition": {
-      "aboveMarket": "Por encima del mercado",
-      "atMarket": "En el mercado",
-      "belowMarket": "Por debajo del mercado"
     },
     "formatRecommendationSection": {
       "title": "Recomendación de formato de currículum",
@@ -1458,10 +1437,8 @@
       }
     },
     "atsBanner": {
-      "belowMedian": "Por debajo de la mediana de {{median}} entre {{n}} currículums de {{industry}} escaneados aquí. Los principales ATS no rechazan por esta cifra, pero las correcciones de abajo la suben.",
-      "belowTopQuarter": "Por encima de la mediana de {{median}}; el cuartil superior de los {{n}} currículums de {{industry}} escaneados aquí puntúa {{p75}} o más.",
-      "noPassMark": "No es una nota de aprobado: los principales ATS no rechazan un currículum por una puntuación. Las correcciones de abajo la suben.",
-      "topQuarter": "Cuartil superior: {{p75}}+"
+      "heading": "Margen para subir esta puntuación",
+      "noPassMark": "No es una nota de aprobado: los principales ATS no rechazan un currículum por una puntuación. Las correcciones de abajo la suben."
     },
     "eliteSignals": {
       "title": "Señales que atraen a reclutadores"
@@ -1482,7 +1459,7 @@
       "totalExp": "Experiencia total",
       "totalExpDesc": "Cuánto tiempo has trabajado en tu campo",
       "avgTenure": "Tiempo prom. en cada trabajo",
-      "tenureGood": "✓ Buena estabilidad — a los reclutadores les gustan 2+ años por puesto",
+      "tenureGood": "✓ Dos años o más por puesto, de media",
       "tenureWarning": "⚠ La permanencia corta puede generar preguntas",
       "tenurePoor": "⚠ Muy corto — puede verse como saltar de trabajo en trabajo",
       "careerGrowth": "Crecimiento profesional"
@@ -1497,9 +1474,6 @@
       "uniqueValue": "Tu valor único",
       "nextMoves": "Tus próximos movimientos de carrera",
       "interviewStories": "Ideas para historias de entrevista",
-      "salaryInsightTitle": "Perspectiva salarial",
-      "estimatedRange": "rango estimado",
-      "negotiationLeverage": "Tu ventaja en la negociación:",
       "hiddenStrengths": "Fortalezas ocultas que estás subestimando",
       "personalBrand": "Tu marca personal",
       "currentLabel": "Actual:",

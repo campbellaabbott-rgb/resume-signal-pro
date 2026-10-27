@@ -15,11 +15,12 @@ import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import i18n from "@/i18n";
 import { TRADING_NAME } from "@/config/seller";
-import { ShareableScoreCard } from "@/components/ShareableScoreCard";
+import { ShareableScoreCard, SHARE_SITE } from "@/components/ShareableScoreCard";
+import { ShareScoreCard } from "@/components/ReportInsightCards";
 import { codeOf } from "./helpers/strip-comments";
 
 vi.mock("@/lib/track-transport", () => ({ postTrackEvent: () => {} }));
-afterEach(async () => { cleanup(); await i18n.changeLanguage("en"); });
+afterEach(async () => { cleanup(); vi.restoreAllMocks(); await i18n.changeLanguage("en"); });
 
 const ROOT = resolve(__dirname, "../..");
 const OTHER_DOMAIN = /resumescanner/i;
@@ -63,5 +64,63 @@ describe("the card's strings", () => {
       expect(s.brand, `${f} brand`).toBeUndefined();
       expect(s.shareText, `${f} shareText`).toBeUndefined();
     }
+  });
+});
+
+/**
+ * THE CANVAS CARD TOO (the review of 2026-10-27). The report draws a second
+ * share card, an image on a canvas (ShareScoreCard), and shares it through the
+ * phone's share sheet. It still sent readers to the bare domain for the scan,
+ * which since the switch-over is the job search; the card's figures are all
+ * the reader's own (the score, and a before/after from this browser's history).
+ */
+describe("the canvas share card", () => {
+  const BARE_ROOT = /resumebooster\.work(?!\/resume-checker)/;
+
+  function fakeCanvas() {
+    const drawn: string[] = [];
+    const target: Record<string, unknown> = {
+      fillText: (s: string) => { drawn.push(String(s)); },
+      measureText: () => ({ width: 10 }),
+      createLinearGradient: () => ({ addColorStop() {} }),
+    };
+    const ctx = new Proxy(target, { get: (t, k: string) => (k in t ? t[k] : () => {}), set: () => true });
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx as never);
+    vi.spyOn(HTMLCanvasElement.prototype, "toDataURL").mockReturnValue("data:image/png;base64,");
+    vi.spyOn(HTMLCanvasElement.prototype, "toBlob").mockImplementation(function (cb: BlobCallback) { cb(new Blob(["x"], { type: "image/png" })); });
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    return drawn;
+  }
+
+  for (const [label, props] of [
+    ["a first score", { atsScore: 71, industry: "technology" }],
+    ["a before/after", { atsScore: 71, industry: "technology", previousScore: 58 }],
+  ] as const) {
+    it(`${label}: the image and the share text name the scanner's own address`, async () => {
+      const drawn = fakeCanvas();
+      const shared: Array<{ text?: string }> = [];
+      const nav = navigator as Navigator & { share?: unknown; canShare?: unknown };
+      const before = { share: nav.share, canShare: nav.canShare };
+      Object.assign(nav, { share: async (d: { text?: string }) => { shared.push(d); }, canShare: () => true });
+      try {
+        render(<ShareScoreCard {...props} />);
+        fireEvent.click(screen.getByRole("button", { name: /^png$/i }));
+        const image = drawn.join(" | ");
+        expect(image).toContain(SHARE_SITE);
+        expect(image).not.toMatch(BARE_ROOT);
+        fireEvent.click(screen.getByRole("button", { name: /^share$/i }));
+        await vi.waitFor(() => expect(shared.length).toBe(1));
+        expect(shared[0].text).toContain(SHARE_SITE);
+        expect(shared[0].text).not.toMatch(BARE_ROOT);
+      } finally {
+        Object.assign(nav, before);
+      }
+    });
+  }
+
+  it("the source names the scanner through SHARE_SITE, never the bare domain", () => {
+    const code = codeOf(readFileSync(resolve(ROOT, "src/components/ReportInsightCards.tsx"), "utf8"));
+    expect(code).not.toMatch(BARE_ROOT);
+    expect(code).toMatch(/\bSHARE_SITE\b/);
   });
 });

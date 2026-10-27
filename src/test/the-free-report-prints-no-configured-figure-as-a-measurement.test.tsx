@@ -51,9 +51,13 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { dirname, relative, resolve } from "node:path";
 import { codeOf } from "./helpers/strip-comments";
 import { MOUNT_TEST_BUDGET } from "./helpers/mount-budget";
+import { bothReadings, textNodes } from "./helpers/visible-text";
 import { COUNTRY_STANDARDS, evaluateCountryStandards } from "../../supabase/functions/free-keyword-scan/country-standards";
 import { COUNTRY_STANDARDS as STREAM_COUNTRY_STANDARDS } from "../../supabase/functions/free-keyword-scan-stream/country-standards";
-import { getMarketInsight } from "../../supabase/functions/free-keyword-scan/market-intelligence";
+import {
+  getMarketInsight, MARKET_DATA_AS_OF, getKeywordFrequencyWeight, analyzeSkillsRecency, analyzeCompetitiveKeywordGap,
+  formatGeoContextForPrompt, detectCountryFromResume,
+} from "../../supabase/functions/free-keyword-scan/market-intelligence";
 import { getMarketInsight as streamMarketInsight } from "../../supabase/functions/free-keyword-scan-stream/market-intelligence";
 
 vi.mock("@/integrations/supabase/client", () => ({
@@ -237,6 +241,20 @@ const COMPUTED_SITES: Record<string, Record<string, string>> = {
   },
 };
 
+/**
+ * Prose the report's modules must not print (the review of 2026-10-27): the
+ * keyword heat map's claim about postings and its bar labels, a hand-typed
+ * skills list called current with a year, "hot" and "rising" lists presented
+ * as live readings, recruiter-speed figures, ATS behaviour stated as fact,
+ * pass badges, and a projection called the score a rescan lands near.
+ */
+const BANNED_SOURCE_PROSE: RegExp[] = [
+  /Keyword Gap Heat Map/, /how often this keyword appears/i, /["'>]\s*Very common\s*["'<]/, /["'>]\s*Occasional\s*["'<]/,
+  /high demand 20\d\d/i, /Hot skills right now/i, /Rising keywords in job postings/i, /declining in job postings/i,
+  /\d+-second/i, /\b\d+ seconds?\b/i, /flagged by many ATS/i, /Survives the pile/i, /of the pile/i,
+  /Recruiters will skip/i, /will consider you/i, /prevent filtering/i, /rescan should land near/i,
+];
+
 /* ------------------------------------------------------------------ */
 /* 1. The locales                                                      */
 /* ------------------------------------------------------------------ */
@@ -275,6 +293,24 @@ function strings(o: unknown, path: string, out: Array<[string, string]> = []): A
 
 const pluralBase = (key: string) => key.replace(/_(zero|one|two|few|many|other)$/, "");
 
+/**
+ * Durations and "N+" thresholds stated as recruiter or ATS behaviour, in any
+ * of the nine languages: "6-second", "6 seconds", "6 Sekunden", "6 segundos",
+ * "6 secondes", "6 seconden", "6 सेकंड", "6 segundo", and "2+ years" style
+ * thresholds. None of them is the reader's own number.
+ */
+const BANNED_STRING_FIGURES: RegExp[] = [
+  new RegExp(`${NUM}\\s?-?\\s?(?:second|sec\\b|sekunde|segundo|seconde|सेकंड)`, "iu"),
+  new RegExp(`${NUM}\\+\\s?(?:years?|jahre|años|ans|jaar|anos|taon|साल)`, "iu"),
+  /screening hundreds/i,
+];
+
+/** Strings whose duration or "N+" is not a claim about recruiters or an ATS, and why. */
+const FIGURE_PHRASE_EXEMPT: Record<string, string> = {
+  "freeResults.elevatorPitchSection.title": "the length of the pitch the reader is shown how to write (a format's name)",
+  "personalization.experience.senior.avoidAreas": "advice about the reader's own history: how far back to go into detail",
+};
+
 describe("the report's strings, in all nine locales", () => {
   const { whole, exact } = keysUsed();
 
@@ -299,6 +335,21 @@ describe("the report's strings, in all nine locales", () => {
         if (typeof v === "string" && ([...v.matchAll(PROSE_FIGURE)].length || /%/.test(v))) found.push(`${key} = ${JSON.stringify(v)}`);
       }
       expect(found, "a figure in the report that is not the reader's own").toEqual([]);
+    });
+  }
+
+  // The review of 2026-10-27: claims about how fast a recruiter reads, what an
+  // ATS flags and what recruiters like carried figures the guard did not
+  // count (a duration, a "2+"), so they passed it in every language.
+  for (const lng of LOCALES) {
+    it(`${lng}: no recruiter or ATS behaviour stated with a figure`, () => {
+      const json = JSON.parse(read(`src/i18n/locales/${lng}.json`)) as Record<string, unknown>;
+      const found: string[] = [];
+      for (const ns of whole) for (const [k, v] of strings(json[ns], ns)) {
+        if (FIGURE_PHRASE_EXEMPT[k.replace(/\.\d+$/, "")]) continue;
+        for (const re of BANNED_STRING_FIGURES) if (re.test(v)) found.push(`${k} = ${JSON.stringify(v)} (${re.source})`);
+      }
+      expect(found).toEqual([]);
     });
   }
 });
@@ -340,6 +391,15 @@ describe("the report's modules", () => {
       }
       // A role's configured weights may decide whether a guideline shows, never print as a share.
       for (const m of code.matchAll(/\b(portfolioRate|certificationRate|metricsRate)\b(?!\s*>=\s*\d+)/g)) printed.push(`${f}: ${m[0]} used as a value`);
+    }
+    expect(printed).toEqual([]);
+  });
+
+  it("print no recruiter or ATS behaviour with a figure, no hand-typed list as current demand, and no forecast of the next scan", () => {
+    const printed: string[] = [];
+    for (const f of MODULES) {
+      const code = codeOf(read(f));
+      for (const re of BANNED_SOURCE_PROSE) if (re.test(code)) printed.push(`${f}: ${re.source}`);
     }
     expect(printed).toEqual([]);
   });
@@ -401,6 +461,62 @@ describe("the scan's printed data", () => {
   }
 });
 
+/**
+ * THE SCAN'S OWN MATCHING (the review of 2026-10-27). The heat map's
+ * "how often" weight, the skills-freshness lists and the expected-keywords
+ * share all matched by substring, so "digital payments" took technology's
+ * weight for "git", "algorithms" took "go", a nurse's "storage" and "NHS
+ * Foundation Trust" were her "rag" and "rust", and a field with no list of
+ * its own was matched against technology's. They now match whole words, and
+ * the skills lists apply only to the fields that have their own.
+ */
+describe("the scan matches its hand-typed lists by whole word, and only for the field the list is for", () => {
+  it("a keyword takes a table weight only for a whole-word match", () => {
+    for (const kw of ["digital payments", "algorithms", "Google Cloud", "governance", "digital marketing"]) {
+      expect(getKeywordFrequencyWeight(kw, "technology"), kw).toBe(1);
+    }
+    expect(getKeywordFrequencyWeight("Python scripting", "technology")).toBe(3);
+    expect(getKeywordFrequencyWeight("Go", "technology")).toBe(2);
+    expect(getKeywordFrequencyWeight("CI/CD pipelines", "technology")).toBe(3);
+  });
+
+  it("the skills lists read a résumé by whole word, and a field without its own lists gets none", () => {
+    const nurse = "Registered Nurse, Leeds Teaching Hospitals NHS Foundation Trust. Medication storage audits, safeguarding, infection control.";
+    for (const field of ["healthcare", "education", "legal"]) {
+      expect(analyzeSkillsRecency(nurse, field), field).toMatchObject({ freshSkills: [], agingSkills: [], hasAgingSignals: false });
+    }
+    const teacher = "Teacher in Chicago. Used leverage of a bundle of resources and storage.";
+    expect(analyzeSkillsRecency(teacher, "technology").freshSkills).toEqual([]);
+    const engineer = "Built a RAG pipeline in Rust and Go; replaced jQuery.";
+    const r = analyzeSkillsRecency(engineer, "technology");
+    expect(r.freshSkills).toEqual(expect.arrayContaining(["rag", "rust", "go"]));
+    expect(r.agingSkills).toEqual(["jquery"]);
+  });
+
+  it("the expected-keywords share counts whole words", () => {
+    const gap = analyzeCompetitiveKeywordGap("Rapid growth, capital interest, restaurant staffing.", "technology", "entry");
+    expect(gap.presentHighFrequency).toEqual([]);
+    expect(gap.gapScore).toBe(0);
+    const real = analyzeCompetitiveKeywordGap("REST API work, SQL, Git and GitHub, agile.", "technology", "entry");
+    // Six of the eight entry-level terms (the list keeps five of them to print).
+    expect(real.gapScore).toBe(75);
+    expect(real.missingHighFrequency).toEqual(["unit testing", "pull request"]);
+  });
+
+  it("the scan sends the lists' date with them, and its prompt carries no typed salary range and asks for none", () => {
+    const index = codeOf(read("supabase/functions/free-keyword-scan/index.ts"));
+    const market = index.slice(index.indexOf("responseData.marketIntelligence = {"), index.indexOf("responseData.careerTrajectory = {"));
+    expect(market.match(/listsAsOf: MARKET_DATA_AS_OF/g) ?? []).toHaveLength(2);
+    expect(index).not.toMatch(/salaryInsight|realistic salary ranges/i);
+    const geo = detectCountryFromResume("London, UK");
+    for (const c of ["GB", "US", "DE"]) expect(formatGeoContextForPrompt(c, "technology", geo, "resume"), c).not.toMatch(/salary/i);
+  });
+
+  it("the stream fork's copy of the market module is the same file", () => {
+    expect(read("supabase/functions/free-keyword-scan-stream/market-intelligence.ts")).toBe(read("supabase/functions/free-keyword-scan/market-intelligence.ts"));
+  });
+});
+
 /* ------------------------------------------------------------------ */
 /* 4. A rendered report whose scan answer carries every configured field */
 /* ------------------------------------------------------------------ */
@@ -431,14 +547,31 @@ describe("a report whose scan answer carries every configured field", () => {
       formatIssue: "",
       redFlags: [],
       keywords: [{ keyword: "terraform", reason: "Standard for the role", frequencyWeight: 3, suggestedSection: "skills" }],
-      quickWins: [],
       hasJobDescription: false,
       resumeText: RESUME,
       countryStandards: de,
-      marketIntelligence: { country: "GB", countryName: gb.countryName, countrySource: "resume", hotSkills: gb.hotSkills, risingKeywords: gb.risingKeywords, cvNorms: gb.cvNorms, salaryContext: gb.salaryContext ?? null, marketSummary: gb.marketSummary },
+      marketIntelligence: { country: "GB", countryName: gb.countryName, countrySource: "resume", hotSkills: gb.hotSkills, risingKeywords: gb.risingKeywords, cvNorms: gb.cvNorms, salaryContext: gb.salaryContext ?? null, marketSummary: gb.marketSummary, listsAsOf: MARKET_DATA_AS_OF },
       competitiveGap: { missingHighFrequency: ["system design", "observability"], presentHighFrequency: ["kubernetes"], gapScore: 47 },
       competitorSilhouette: { archetype: { quantifiedBullets: 8, leadershipSignals: 3, keywordCoveragePct: 70 }, user: { quantifiedBullets: 1, leadershipSignals: 1, keywordCoveragePct: 31 } },
       dualIndustryComparison: { primary: { industry: "technology", score: 61, keywordCoveragePct: 31, benchmarkMedian: 68 }, secondary: { industry: "data_engineering", score: 57, keywordCoveragePct: 22, benchmarkMedian: 69 } },
+      // The review of 2026-10-27: the fields that still printed a hand-typed
+      // table as a measurement or a forecast.
+      skillsRecency: { agingSkills: ["jquery"], freshSkills: ["rag", "rust"], freshnessScore: 80, hasAgingSignals: true, listsAsOf: MARKET_DATA_AS_OF },
+      personalizedCareerInsights: {
+        suggestedHeadline: "Jane Doe | Platform Engineer",
+        salaryInsight: { estimatedRange: "$141,000 - $177,000", marketPosition: "below_market", leveragePoints: ["Kubernetes depth"] },
+      },
+      recruiterFirstPassSummary: "Clear title and a recent role; the first bullet is a duty.",
+      recruiterPanel: {
+        screener: { verdict: "Clear title.", wouldPass: true },
+        hiringManager: { verdict: "Wants numbers.", biggestDoubt: "Scope" },
+        hrScreener: { verdict: "Reads mid-level.", levelRead: "Mid" },
+      },
+      resumeTimeline: { totalExperienceMonths: 80, hasSignificantGap: true, hasShortTenures: true, gapPeriods: [{ afterTitle: "Software Engineer", monthsGap: 9 }], averageTenureMonths: 20, rolesDetected: 3, summary: "" },
+      quickWins: [{ fix: "Add the size of the billing team", timeEstimate: "5 min", impact: "high", scoreImpact: 6, category: "quantification" }],
+      projectedScore: 77,
+      fixRoadmap: { steps: [{ order: 1, step: "Add the size of the billing team", minutes: 5, scoreImpact: 6, projectedScoreAfter: 67 }], totalMinutes: 5, finalProjectedScore: 67 },
+      readabilityScore: { score: 82, verdict: "easy_to_scan" },
     };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     render(<MemoryRouter><FreeKeywordResults {...(props as any)} onReset={() => {}} /></MemoryRouter>);
@@ -447,11 +580,27 @@ describe("a report whose scan answer carries every configured field", () => {
     expect(text).toMatch(/Local standards: Germany/);
     expect(text).toMatch(/Market Intelligence/);
     expect(text).toMatch(/47% of this list/);
-    for (const said of [
+    for (const reading of bothReadings()) for (const said of [
       /top candidates/i, /top performers/i, /top-quartile/i, /top quartile/i, /Industry median/i, /Competitive Standing/i,
       /Salary context/i, /of top resumes/i, /Fortune 500/i, /of applicants/i, /interview chances/i,
       /Avg bullets per role/i, /\b78%/, /\b55%/, /\b85%/, /70%\+/, /15-25%/,
-    ]) expect(text, `the report still says ${said}`).not.toMatch(said);
+      // The review of 2026-10-27.
+      /Keyword Gap Heat Map/, /how often this keyword appears/i, /high demand/i, /Hot skills right now/i,
+      /Rising keywords in job postings/i, /declining in job postings/i, /Skills Freshness\s*\d/, /\d+-second/i, /\b6 seconds\b/i,
+      /flagged by many ATS/i, /recruiters like/i, /screening hundreds/i, /Survives the pile/i, /of the pile/i,
+      /Recruiters will skip/i, /rescan should land near/i, /\$141,000/, /Below Market/i, /At Market/i, /Above Market/i,
+    ]) expect(reading, `the report still says ${said}`).not.toMatch(said);
     if (gb.salaryContext) expect(text).not.toContain(gb.salaryContext);
+    // The heat map's bar labels, as the words they were.
+    const nodes = textNodes();
+    for (const label of ["Very common", "Common", "Occasional"]) expect(nodes, `a node reading "${label}"`).not.toContain(label);
+    // The cards those checks are about rendered.
+    for (const card of [/Skills Freshness/, /Employment Timeline/, /First-Glance Screener/, /A Recruiter's First Read/, /Minute Fix Plan/, /What happens if you fix it/, /Your Score Potential/]) {
+      expect(text, `the report rendered ${card}`).toMatch(card);
+    }
+    // The lists and the projections name their basis.
+    expect(text).toMatch(/hand-compiled/i);
+    expect(text).toContain(MARKET_DATA_AS_OF);
+    expect(text).toMatch(/rough guide/i);
   });
 });

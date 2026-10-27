@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { codeOf } from "./helpers/strip-comments";
-import { scoreBannerLine } from "@/lib/score-banner";
 import { LANGUAGE_COUNT } from "@/i18n";
 
 /**
@@ -26,27 +25,25 @@ import { LANGUAGE_COUNT } from "@/i18n";
 const ROOT = resolve(__dirname, "../..");
 const read = (p: string) => readFileSync(resolve(ROOT, p), "utf8");
 const LOCALES = readdirSync(resolve(ROOT, "src/i18n/locales")).filter((f) => f.endsWith(".json"));
-const bench = { n: 379, median: 58, p25: 49, p75: 78, industry: "software_engineering" };
-
-describe("the score banner places a score in the real distribution, never against a pass mark", () => {
-  it("a 55 is below this industry's median, a 62 below its top quarter", () => {
-    expect(scoreBannerLine(55, bench)).toEqual({ key: "freeResults.atsBanner.belowMedian", vars: { median: 58, p75: 78, n: "379", industry: "software engineering" } });
-    expect(scoreBannerLine(62, bench).key).toBe("freeResults.atsBanner.belowTopQuarter");
-  });
-
-  it("with no distribution large enough to read, it says only that the score is no pass mark", () => {
-    expect(scoreBannerLine(40, null).key).toBe("freeResults.atsBanner.noPassMark");
-    expect(scoreBannerLine(40, { ...bench, n: 12 }).key).toBe("freeResults.atsBanner.noPassMark");
-  });
-
+// The banner said for a while where the score sat in this industry's own
+// scanned distribution (a median and a top quarter). That placed the reader
+// among other people's scans, which the free report no longer does (H0, the
+// review of 2026-10-27): under 75 the banner now says only that the score is
+// no pass mark, for everyone.
+describe("the score banner never states a pass mark and places the score among no one", () => {
   for (const file of LOCALES) {
-    it(`${file}: the banner keys exist and none states a pass mark`, () => {
+    it(`${file}: the banner says the score is no pass mark, and none of its keys states a pass mark or a placement`, () => {
       const b = JSON.parse(read(`src/i18n/locales/${file}`)).freeResults.atsBanner;
-      expect(Object.keys(b).sort()).toEqual(["belowMedian", "belowTopQuarter", "noPassMark", "topQuarter"]);
-      expect(b.belowMedian).toContain("{{median}}");
-      expect(JSON.stringify(b)).not.toMatch(/\b60\b|\b75\b/);
+      expect(Object.keys(b).sort()).toEqual(["heading", "noPassMark"]);
+      expect(JSON.stringify(b)).not.toMatch(/\b60\b|\b75\b|\{\{(?:median|p75|n)\}\}/);
     });
   }
+
+  it("the report prints the no-pass-mark line itself, with no placement", () => {
+    const report = codeOf(read("src/components/FreeKeywordResults.tsx"));
+    expect(report).toContain("t('freeResults.atsBanner.noPassMark')");
+    expect(report).not.toMatch(/scoreBannerLine|atsBanner\.(?:belowMedian|belowTopQuarter|topQuarter)/);
+  });
 
   it("the FAQ points at the live distribution instead of typing a range", () => {
     expect(codeOf(read("src/data/tool-landings.ts"))).not.toMatch(/55[–-]75/);

@@ -856,19 +856,7 @@
       "impact": "Wirkung",
       "flags": "Warnsignale"
     },
-    "filterPhrase": {
-      "compliance": "starre, compliance-orientierte ATS-Filter",
-      "credential": "qualifikationsorientierte Bewerbermanagement-Systeme",
-      "recruiterScreen": "automatisierte Filter, bevor ein Recruiter ihn überhaupt sieht",
-      "volume": "ATS-Systeme, die Hunderte von Bewerbern pro Stelle filtern",
-      "generic": "automatisierte ATS-Filter"
-    },
-    "outcome": {
-      "strong": "Starker Kandidat, um {{filterPhrase}} zu bestehen",
-      "likely": "Wird voraussichtlich die meisten {{filterPhrase}} bestehen",
-      "atRisk": "Risiko, von {{filterPhrase}} herausgefiltert zu werden",
-      "highRisk": "Hohes Risiko, von {{filterPhrase}} herausgefiltert zu werden, bevor ein Mensch ihn sieht"
-    },
+    "basis": "Bewertet nach Schlüsselwörtern, Abschnitten, Format und messbaren Ergebnissen dieses Lebenslaufs",
     "gauge": {
       "excellent": "Ausgezeichnet",
       "good": "Gut",
@@ -1262,10 +1250,6 @@
       "should": "Sollte",
       "nice": "Nett"
     },
-    "atRiskOrNeedsImprovement": {
-      "atRisk": "Risiko, in Recruiter-Suchen übersehen zu werden",
-      "needsImprovement": "Verbesserung nötig, um wettbewerbsfähig zu sein"
-    },
     "personalizedTipsSection": {
       "title": "Personalisierte Tipps",
       "subtitle": "Maßgeschneiderte Einblicke für dein Profil"
@@ -1320,11 +1304,6 @@
       "naturalProgression": "Natürlicher nächster Schritt",
       "lateralMove": "Seitlicher Wechsel",
       "stretchGoal": "Ambitioniertes Ziel"
-    },
-    "marketPosition": {
-      "aboveMarket": "Über dem Markt",
-      "atMarket": "Auf Marktniveau",
-      "belowMarket": "Unter dem Markt"
     },
     "formatRecommendationSection": {
       "title": "Lebenslaufformat-Empfehlung",
@@ -1452,10 +1431,8 @@
       }
     },
     "atsBanner": {
-      "belowMedian": "Unter dem Median von {{median}} bei {{n}} hier gescannten Lebensläufen aus {{industry}}. Die großen ATS-Plattformen lehnen nicht anhand dieser Zahl ab, aber die Korrekturen unten erhöhen sie.",
-      "belowTopQuarter": "Über dem Median von {{median}}; das oberste Viertel der {{n}} hier gescannten Lebensläufe aus {{industry}} erreicht {{p75}} oder mehr.",
-      "noPassMark": "Das ist keine Bestehensgrenze: Die großen ATS-Plattformen lehnen einen Lebenslauf nicht anhand einer Punktzahl ab. Die Korrekturen unten erhöhen sie.",
-      "topQuarter": "Oberstes Viertel: {{p75}}+"
+      "heading": "Spielraum, diese Punktzahl zu erhöhen",
+      "noPassMark": "Das ist keine Bestehensgrenze: Die großen ATS-Plattformen lehnen einen Lebenslauf nicht anhand einer Punktzahl ab. Die Korrekturen unten erhöhen sie."
     },
     "eliteSignals": {
       "title": "Recruiter-anziehende Signale"
@@ -1476,7 +1453,7 @@
       "totalExp": "Gesamterfahrung",
       "totalExpDesc": "Wie lange du in deinem Bereich gearbeitet hast",
       "avgTenure": "Durchschn. Zeit pro Job",
-      "tenureGood": "✓ Gute Stabilität — Recruiter bevorzugen 2+ Jahre pro Stelle",
+      "tenureGood": "✓ Im Schnitt zwei Jahre oder mehr pro Stelle",
       "tenureWarning": "⚠ Kurze Beschäftigungsdauer könnte Fragen aufwerfen",
       "tenurePoor": "⚠ Sehr kurz — könnte als Job-Hopping gesehen werden",
       "careerGrowth": "Karrierewachstum"
@@ -1491,9 +1468,6 @@
       "uniqueValue": "Dein einzigartiger Wert",
       "nextMoves": "Deine nächsten Karriereschritte",
       "interviewStories": "Interview-Story-Ideen",
-      "salaryInsightTitle": "Gehaltseinblick",
-      "estimatedRange": "geschätzte Spanne",
-      "negotiationLeverage": "Deine Verhandlungshebel:",
       "hiddenStrengths": "Verstärkte Stärken, die du unterschätzt",
       "personalBrand": "Deine persönliche Marke",
       "currentLabel": "Aktuell:",

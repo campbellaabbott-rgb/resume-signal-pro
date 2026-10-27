@@ -1,5 +1,5 @@
-import { BANNER_MIN_SAMPLE, scoreBannerLine } from "@/lib/score-banner";
 import { useState, useEffect, useMemo } from "react";
+import { FIX_POINTS_BASIS, marketBasis, skillsBasis } from "@/lib/report-basis";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useConversionTracking } from "@/hooks/use-conversion-tracking";
@@ -8,7 +8,7 @@ import {
   Sparkles, ArrowRight, CheckCircle2, Target, Zap, Lock, Mail, Loader2, ListChecks, Award,
   FileCheck, FileText, AlertTriangle, Type, User, LayoutList, Phone, 
   Trophy, Hash, Pencil, XCircle, CheckCircle, HelpCircle, Briefcase, Download, Apple, X,
-  TrendingUp, RefreshCw, Share2, Star, DollarSign, MessageSquare, Lightbulb, Copy, Rocket,
+  TrendingUp, RefreshCw, Share2, Star, MessageSquare, Lightbulb, Copy, Rocket,
   BarChart3, Shield, Search, Settings2, FileEdit, Send
 } from "lucide-react";
 import { LockedPremiumInsight } from "./LockedPremiumInsight";
@@ -375,12 +375,6 @@ interface PersonalBrand {
   brandGap: string;
 }
 
-interface SalaryInsight {
-  estimatedRange: string;
-  marketPosition: "below_market" | "at_market" | "above_market";
-  leveragePoints: string[];
-}
-
 interface PersonalizedCareerInsights {
   suggestedHeadline: string;
   nextRoleSuggestions: NextRoleSuggestion[];
@@ -388,7 +382,6 @@ interface PersonalizedCareerInsights {
   interviewTalkingPoints: InterviewTalkingPoint[];
   hiddenStrengths: string[];
   personalBrand: PersonalBrand;
-  salaryInsight: SalaryInsight;
   personalizedEncouragement: string;
 }
 
@@ -489,8 +482,10 @@ export interface FreeKeywordResultsProps {
     country: string; countryName: string; countrySource: string;
     hotSkills: string[]; risingKeywords: string[]; cvNorms: string[];
     salaryContext: string | null; marketSummary: string;
+    /** When the hand-compiled market notes were last updated (MARKET_DATA_AS_OF). */
+    listsAsOf?: string;
   };
-  skillsRecency?: { agingSkills: string[]; freshSkills: string[]; freshnessScore: number; hasAgingSignals: boolean };
+  skillsRecency?: { agingSkills: string[]; freshSkills: string[]; freshnessScore: number; hasAgingSignals: boolean; listsAsOf?: string };
   careerTrajectory?: { trajectory: string; promotionCount: number; industryTransitionDetected: boolean; fromIndustry: string | null; progressionSummary: string };
   atsSystemDetected?: { system: string; name: string; parsingStrength: string } | null;
   competitiveGap?: { missingHighFrequency: string[]; presentHighFrequency: string[]; gapScore: number };
@@ -705,7 +700,6 @@ export function FreeKeywordResults({
   isRescanning,
   industryTransition,
   freelanceGuidance,
-  realBenchmark,
   industrySpecificChecks,
   countryStandards,
   platformProfileDetected,
@@ -1785,17 +1779,11 @@ export function FreeKeywordResults({
         </div>
       )}
 
-      {/* Real-corpus benchmark badge — only shown when the comparison data
-          is our own observed distribution, not an estimate */}
-      {realBenchmark && (
-        <div className="mt-3 rounded-xl border border-success/25 bg-success/5 p-3">
-          <p className="text-xs text-muted-foreground">
-            <span className="font-semibold text-foreground">Real benchmark:</span> comparisons in this report are measured against{' '}
-            <span className="font-semibold text-foreground">{realBenchmark.n.toLocaleString()} actual {realBenchmark.industry.replace(/_/g, ' ')} resumes</span>{' '}
-            scanned here in the last 6 months (median {Math.round(realBenchmark.median)}, middle half {Math.round(realBenchmark.p25)}–{Math.round(realBenchmark.p75)}) — not industry estimates.
-          </p>
-        </div>
-      )}
+      {/* No benchmark badge: it said the report's comparisons were measured
+          against this site's own scans and printed their median and middle
+          half; the report makes no such comparison (H0, the review of
+          2026-10-27). The scan still sends realBenchmark (the data
+          contract). */}
 
       {/* JD-industry arbitration note */}
       {benchmarkIndustry && (
@@ -1873,7 +1861,7 @@ export function FreeKeywordResults({
               <span className="font-semibold text-foreground">{industryBlend.primaryPct}% {(industryBlend.primary ?? '').replace(/_/g, ' ')}</span>
               {' / '}
               <span className="font-semibold text-foreground">{industryBlend.secondaryPct}% {(industryBlend.secondary ?? '').replace(/_/g, ' ')}</span>
-              {' '}— recruiters in both fields will consider you, and the advice below covers both.
+              {' '}— the advice below covers both.
             </p>
           )}
           {jdTargetIndustry && (
@@ -2175,7 +2163,11 @@ export function FreeKeywordResults({
       {/* ═══════════════════════════════════════════════════════════ */}
       <div id="section-metrics">
 
-      {/* ATS Score Context Banner - Only shown for below-passing scores */}
+      {/* ATS Score Context Banner — under 75, the score says it is no pass
+          mark. It used to place the score among this site's own scans (a
+          median and a top quarter over 180 days, never named in the line)
+          under a heading about competing; the free report ranks the reader
+          against no one (H0, the review of 2026-10-27). */}
       {atsScoreEstimate < 75 && (
         <div className={cn(
           "rounded-xl border p-3 mb-4",
@@ -2183,26 +2175,14 @@ export function FreeKeywordResults({
             ? "bg-destructive/5 border-destructive/20" 
             : "bg-warning/5 border-warning/20"
         )}>
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className={cn("w-4 h-4", atsScoreEstimate < 60 ? "text-destructive" : "text-warning")} />
-              <div>
-                <p className={cn("text-sm font-semibold", atsScoreEstimate < 60 ? "text-destructive" : "text-warning")}>
-                  {atsScoreEstimate < 60 ? t('freeResults.atRiskOrNeedsImprovement.atRisk') : t('freeResults.atRiskOrNeedsImprovement.needsImprovement')}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {/* L4-06: "Most ATS require 60+ to pass" told about half of all
-                      users (median 58) something the site's own guides call a
-                      myth. The line now places the score in this industry's
-                      own scanned distribution, or says plainly it is no pass
-                      mark when that distribution is not on hand. */}
-                  {(() => { const line = scoreBannerLine(atsScoreEstimate, realBenchmark); return t(line.key, line.vars); })()}
-                </p>
-              </div>
+          <div className="flex items-center gap-2">
+            <AlertTriangle className={cn("w-4 h-4 shrink-0", atsScoreEstimate < 60 ? "text-destructive" : "text-warning")} />
+            <div>
+              <p className={cn("text-sm font-semibold", atsScoreEstimate < 60 ? "text-destructive" : "text-warning")}>
+                {t('freeResults.atsBanner.heading')}
+              </p>
+              <p className="text-xs text-muted-foreground">{t('freeResults.atsBanner.noPassMark')}</p>
             </div>
-            {realBenchmark && realBenchmark.n >= BANNER_MIN_SAMPLE && (
-              <span className="text-sm font-bold text-success shrink-0">{t('freeResults.atsBanner.topQuarter', { p75: Math.round(realBenchmark.p75) })}</span>
-            )}
           </div>
         </div>
       )}
@@ -2694,51 +2674,10 @@ export function FreeKeywordResults({
               )}
             </div>
 
-            {/* Salary Insight */}
-            {personalizedCareerInsights.salaryInsight && (gateDeepInsights ? (
-              <div className="mt-5">
-                <LockedPremiumInsight
-                  title={t('freeResults.personalizedCareerInsights.salaryInsightTitle')}
-                  description={t('freeResults.lockedInsights.careerSalary')}
-                  previewLines={[`💰 ${personalizedCareerInsights.salaryInsight?.estimatedRange}`, ...(personalizedCareerInsights.salaryInsight?.leveragePoints?.slice(0,2) ?? [])]}
-                  onUnlock={() => handleUpgradeClick('locked_salary')}
-                  isLoading={isLoading}
-                  variant="highlight"
-                />
-              </div>
-            ) : (
-              <div className="mt-5 p-4 rounded-xl bg-gradient-to-r from-success/5 to-primary/5 border border-success/20">
-                <div className="flex items-center gap-2 mb-3">
-                  <DollarSign className="w-4 h-4 text-success" />
-                  <h5 className="font-semibold text-sm">{t('freeResults.personalizedCareerInsights.salaryInsightTitle')}</h5>
-                  <span className={cn(
-                    "text-xs px-2 py-0.5 rounded-full ml-auto",
-                    personalizedCareerInsights.salaryInsight?.marketPosition === "above_market" ? "bg-success/20 text-success" :
-                    personalizedCareerInsights.salaryInsight?.marketPosition === "at_market" ? "bg-primary/20 text-primary" :
-                    "bg-warning/20 text-warning"
-                  )}>
-                    {personalizedCareerInsights.salaryInsight?.marketPosition === "above_market" ? t('freeResults.marketPosition.aboveMarket') :
-                     personalizedCareerInsights.salaryInsight?.marketPosition === "at_market" ? t('freeResults.marketPosition.atMarket') : t('freeResults.marketPosition.belowMarket')}
-                  </span>
-                </div>
-                <div className="flex items-baseline gap-2 mb-2">
-                  <span className="text-2xl font-bold text-success">{personalizedCareerInsights.salaryInsight?.estimatedRange}</span>
-                  <span className="text-xs text-muted-foreground">{t('freeResults.personalizedCareerInsights.estimatedRange')}</span>
-                </div>
-                {personalizedCareerInsights.salaryInsight?.leveragePoints && personalizedCareerInsights.salaryInsight?.leveragePoints.length > 0 && (
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-2">{t('freeResults.personalizedCareerInsights.negotiationLeverage')}</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {(personalizedCareerInsights.salaryInsight?.leveragePoints ?? []).map((point, index) => (
-                        <span key={index} className="text-xs px-2 py-1 rounded-full bg-success/10 text-success">
-                          {point}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
+            {/* No salary card: the scan asked the AI for "realistic" salary
+                ranges beside a typed range per market with no source, and
+                printed its estimate with a market-position badge (the review
+                of 2026-10-27). The scan no longer asks for one. */}
 
             {/* Hidden Strengths & Personal Brand */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-5">
@@ -3127,7 +3066,7 @@ export function FreeKeywordResults({
           <p className="text-xs text-muted-foreground mb-3 leading-relaxed">{marketIntelligence.marketSummary}</p>
           {marketIntelligence.hotSkills?.length > 0 && (
             <div className="mb-3">
-              <p className="text-xs font-semibold text-foreground mb-1.5">🔥 Hot skills right now</p>
+              <p className="text-xs font-semibold text-foreground mb-1.5">🔥 Skills in demand (hand-compiled)</p>
               <div className="flex flex-wrap gap-1.5">
                 {(marketIntelligence.hotSkills ?? []).map((skill, i) => (
                   <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-success/10 text-success border border-success/20 font-medium">{skill}</span>
@@ -3137,7 +3076,7 @@ export function FreeKeywordResults({
           )}
           {marketIntelligence.risingKeywords?.length > 0 && (
             <div className="mb-3">
-              <p className="text-xs font-semibold text-foreground mb-1.5">📈 Rising keywords in job postings</p>
+              <p className="text-xs font-semibold text-foreground mb-1.5">📈 Rising keywords (hand-compiled)</p>
               <div className="flex flex-wrap gap-1.5">
                 {(marketIntelligence.risingKeywords ?? []).map((kw, i) => (
                   <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-warning/10 text-warning border border-warning/20 font-medium">{kw}</span>
@@ -3160,10 +3099,16 @@ export function FreeKeywordResults({
           {/* No salary line: the scan's salaryContext is a typed range per
               market (and two typed percentage gaps) with no source, so the
               report does not print it (the report sweep of 2026-10-27). */}
+          <p className="text-[11px] text-muted-foreground mt-2">
+            {marketBasis(marketIntelligence.listsAsOf)}
+          </p>
         </div>
       )}
 
-      {/* ── SKILLS RECENCY CARD ── */}
+      {/* ── SKILLS RECENCY CARD ── the scan's hand-compiled lists for the
+          reader's field, matched by whole word; fields without lists of their
+          own get none. No score is printed: it started every résumé at 70 and
+          moved by hand-set steps (the review of 2026-10-27). */}
       {skillsRecency && (skillsRecency.agingSkills?.length > 0 || skillsRecency.freshSkills?.length > 0) && (
         <div className={cn(
           "rounded-2xl border p-5 mb-5",
@@ -3172,28 +3117,21 @@ export function FreeKeywordResults({
           <div className="flex items-center gap-2 mb-3">
             <RefreshCw className={cn("w-4 h-4", skillsRecency.hasAgingSignals ? "text-warning" : "text-success")} />
             <h4 className="font-semibold text-foreground">Skills Freshness</h4>
-            <span className={cn(
-              "ml-auto text-xs px-2 py-0.5 rounded-full font-semibold",
-              skillsRecency.freshnessScore >= 75 ? "bg-success/15 text-success" :
-              skillsRecency.freshnessScore >= 50 ? "bg-warning/15 text-warning" : "bg-destructive/15 text-destructive"
-            )}>
-              {skillsRecency.freshnessScore}/100
-            </span>
           </div>
           {skillsRecency.agingSkills?.length > 0 && (
             <div className="mb-3">
-              <p className="text-xs font-semibold text-warning mb-1.5">⚠️ Aging skills (declining in job postings)</p>
+              <p className="text-xs font-semibold text-warning mb-1.5">⚠️ On our list of aging skills</p>
               <div className="flex flex-wrap gap-1.5">
                 {(skillsRecency.agingSkills ?? []).map((s, i) => (
                   <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-warning/10 text-warning border border-warning/20 line-through">{s}</span>
                 ))}
               </div>
-              <p className="text-xs text-muted-foreground mt-1.5">These appear in fewer current job postings — consider pairing with modern equivalents.</p>
+              <p className="text-xs text-muted-foreground mt-1.5">Consider pairing these with their modern equivalents.</p>
             </div>
           )}
           {skillsRecency.freshSkills?.length > 0 && (
             <div>
-              <p className="text-xs font-semibold text-success mb-1.5">✓ Current skills (high demand 2025)</p>
+              <p className="text-xs font-semibold text-success mb-1.5">✓ On our list of in-demand skills</p>
               <div className="flex flex-wrap gap-1.5">
                 {(skillsRecency.freshSkills ?? []).map((s, i) => (
                   <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-success/10 text-success border border-success/20 font-medium">{s}</span>
@@ -3201,6 +3139,9 @@ export function FreeKeywordResults({
               </div>
             </div>
           )}
+          <p className="text-[11px] text-muted-foreground mt-3">
+            {skillsBasis(skillsRecency.listsAsOf)}
+          </p>
         </div>
       )}
 
@@ -3309,7 +3250,7 @@ export function FreeKeywordResults({
             <div className="mb-2 p-2.5 rounded-lg bg-warning/10 border border-warning/20">
               <p className="text-xs font-semibold text-warning mb-0.5">Employment gap detected</p>
               <p className="text-xs text-muted-foreground">
-                Gaps longer than 6 months are flagged by many ATS systems. Add a brief explanation in your summary (freelance consulting, caregiving, upskilling) or add a short consulting/contract entry.
+                Your timeline shows a gap of more than six months between roles. A brief explanation in your summary (freelance consulting, caregiving, upskilling) or a short consulting/contract entry answers the question before anyone asks it.
               </p>
               {resumeTimeline.gapPeriods.filter(g => g.monthsGap > 6).map((g, i) => (
                 <p key={i} className="text-xs text-warning mt-1 font-medium">
@@ -3322,7 +3263,7 @@ export function FreeKeywordResults({
             <div className="p-2.5 rounded-lg bg-warning/10 border border-warning/20">
               <p className="text-xs font-semibold text-warning mb-0.5">Short tenure detected</p>
               <p className="text-xs text-muted-foreground">
-                One or more roles under 12 months may raise recruiter questions. Add context (contract role, startup folded, layoff) to prevent filtering.
+                One or more roles under 12 months may raise recruiter questions. Add context (contract role, startup folded, layoff).
               </p>
             </div>
           )}
@@ -3412,7 +3353,7 @@ export function FreeKeywordResults({
               <p className="text-xs text-muted-foreground">After fixes</p>
             </div>
           </div>
-          <p className="text-xs text-muted-foreground mt-2">Estimated after addressing top quick wins above.</p>
+          <p className="text-xs text-muted-foreground mt-2">The points of the top quick wins above added to your score. {FIX_POINTS_BASIS}</p>
         </div>
       )}
 
@@ -3517,42 +3458,11 @@ export function FreeKeywordResults({
           (the data contract); the report prints none of it (the report
           sweep of 2026-10-27). */}
 
-      {/* ── Skill Gap Heat Map ───────────────────────────────────────────────── */}
-      {keywords.length > 0 && keywords.some(k => k.frequencyWeight != null) && (
-        <div className="rounded-2xl border border-border bg-card p-5">
-          <h4 className="font-semibold text-foreground text-sm mb-3">Keyword Gap Heat Map</h4>
-          <p className="text-xs text-muted-foreground mb-3">Bar width = how often this keyword appears in job postings for your role.</p>
-          <div className="space-y-2">
-            {keywords.map((kw, i) => {
-              const w = kw.frequencyWeight ?? 1;
-              const pct = w === 3 ? 100 : w === 2 ? 65 : 35;
-              const color = w === 3 ? "bg-destructive" : w === 2 ? "bg-warning" : "bg-muted-foreground/50";
-              const label = w === 3 ? "Very common" : w === 2 ? "Common" : "Occasional";
-              const sectionBadge = kw.suggestedSection
-                ? ({ summary: "Summary", experience: "Experience", skills: "Skills" })[kw.suggestedSection]
-                : null;
-              return (
-                <div key={i} className="space-y-1">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm font-medium text-foreground">{kw.keyword}</span>
-                    <div className="flex items-center gap-1.5">
-                      {sectionBadge && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-full border border-primary/30 bg-primary/10 text-primary">
-                          → {sectionBadge}
-                        </span>
-                      )}
-                      <span className="text-[10px] text-muted-foreground">{label}</span>
-                    </div>
-                  </div>
-                  <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                    <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      {/* No keyword heat map: its bars and labels stood for how often each
+          keyword appears in postings, read from a hand-set table in
+          free-keyword-scan that names no dataset (the review of
+          2026-10-27). The scan still sends each keyword's weight, which only
+          orders the gaps. */}
 
       {/* ── Executive Scope Check — senior/exec resumes are judged on scope ── */}
       {executiveScopeCheck && (
@@ -3783,7 +3693,7 @@ export function FreeKeywordResults({
         <div className="rounded-2xl border border-primary/20 bg-primary/5 p-5">
           <div className="flex items-center gap-2 mb-3">
             <User className="w-4 h-4 text-primary" />
-            <h4 className="font-semibold text-foreground text-sm">How a Recruiter Sees You (6-Second Scan)</h4>
+            <h4 className="font-semibold text-foreground text-sm">A Recruiter's First Read</h4>
           </div>
           <p className="text-sm text-foreground/90 leading-relaxed italic">"{recruiterFirstPassSummary}"</p>
         </div>
@@ -3799,7 +3709,7 @@ export function FreeKeywordResults({
             </h4>
           </div>
           <p className="text-xs text-muted-foreground mb-3">
-            Work top to bottom — ordered by points gained per minute. Finishing all steps takes you from {atsScoreEstimate} to ~{fixRoadmap.finalProjectedScore}.
+            Work top to bottom — ordered by points per minute. {FIX_POINTS_BASIS} By that guide, all steps take {atsScoreEstimate} to about {fixRoadmap.finalProjectedScore}.
           </p>
           <div className="space-y-2">
             {fixRoadmap.steps.map((s) => (
@@ -3867,17 +3777,14 @@ export function FreeKeywordResults({
         <div className="rounded-2xl border border-border bg-card p-5">
           <h4 className="font-semibold text-foreground text-sm mb-1">The Recruiter Panel</h4>
           <p className="text-xs text-muted-foreground mb-3">
-            Three people read your resume before anyone calls you. Here's what each one sees.
+            Three reader viewpoints, written by AI from your resume: what each would notice first.
           </p>
           <div className="space-y-2.5">
-            <div className={cn("rounded-xl border p-3", recruiterPanel.screener.wouldPass === false ? "border-destructive/30 bg-destructive/5" : "border-success/30 bg-success/5")}>
+            {/* No pass badge: the screener's yes/no is the AI's guess at a
+                screen's outcome, which the free report does not predict. */}
+            <div className="rounded-xl border border-border bg-muted/20 p-3">
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-xs font-bold text-foreground">⏱️ The 6-Second Screener</span>
-                {recruiterPanel.screener.wouldPass != null && (
-                  <span className={cn("ml-auto text-[10px] px-2 py-0.5 rounded-full font-semibold", recruiterPanel.screener.wouldPass ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive")}>
-                    {recruiterPanel.screener.wouldPass ? "Survives the pile" : "At risk of the pile"}
-                  </span>
-                )}
+                <span className="text-xs font-bold text-foreground">👀 The First-Glance Screener</span>
               </div>
               <p className="text-sm text-foreground/90 italic">"{recruiterPanel.screener.verdict}"</p>
             </div>

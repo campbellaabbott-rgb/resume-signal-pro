@@ -856,19 +856,7 @@
       "impact": "Impact",
       "flags": "Flags"
     },
-    "filterPhrase": {
-      "compliance": "rigid, compliance-style ATS screens",
-      "credential": "credential-focused applicant tracking systems",
-      "recruiterScreen": "automated filters before a recruiter ever sees it",
-      "volume": "ATS systems screening hundreds of applicants per role",
-      "generic": "automated ATS screens"
-    },
-    "outcome": {
-      "strong": "Strong candidate for clearing {{filterPhrase}}",
-      "likely": "Likely to clear most {{filterPhrase}}",
-      "atRisk": "At risk of being filtered by {{filterPhrase}}",
-      "highRisk": "High risk of being filtered by {{filterPhrase}} before a human sees it"
-    },
+    "basis": "Scored on this resume's keywords, sections, format and measurable results",
     "gauge": {
       "excellent": "Excellent",
       "good": "Good",
@@ -1262,10 +1250,6 @@
       "should": "Should",
       "nice": "Nice"
     },
-    "atRiskOrNeedsImprovement": {
-      "atRisk": "At risk of being missed in recruiter searches",
-      "needsImprovement": "Needs improvement to compete"
-    },
     "personalizedTipsSection": {
       "title": "Personalized Tips",
       "subtitle": "Tailored insights for your profile"
@@ -1320,11 +1304,6 @@
       "naturalProgression": "Natural next step",
       "lateralMove": "Lateral move",
       "stretchGoal": "Stretch goal"
-    },
-    "marketPosition": {
-      "aboveMarket": "Above Market",
-      "atMarket": "At Market",
-      "belowMarket": "Below Market"
     },
     "formatRecommendationSection": {
       "title": "Resume Format Recommendation",
@@ -1452,10 +1431,8 @@
       }
     },
     "atsBanner": {
-      "belowMedian": "Below the median of {{median}} among {{n}} {{industry}} resumes scanned here. Major ATS platforms do not reject on this number, but the fixes below raise it.",
-      "belowTopQuarter": "Above the median of {{median}}; the top quarter of the {{n}} {{industry}} resumes scanned here score {{p75}} or more.",
-      "noPassMark": "This is not a pass mark: major ATS platforms do not reject a resume on a score. The fixes below raise it.",
-      "topQuarter": "Top quarter: {{p75}}+"
+      "heading": "Room to raise this score",
+      "noPassMark": "This is not a pass mark: major ATS platforms do not reject a resume on a score. The fixes below raise it."
     },
     "eliteSignals": {
       "title": "Recruiter-Attracting Signals"
@@ -1476,7 +1453,7 @@
       "totalExp": "Total Experience",
       "totalExpDesc": "How long you've been working in your field",
       "avgTenure": "Avg Time at Each Job",
-      "tenureGood": "✓ Good stability — recruiters like 2+ years per role",
+      "tenureGood": "✓ Two years or more per role, on average",
       "tenureWarning": "⚠ Short tenure may raise questions",
       "tenurePoor": "⚠ Very short — may be seen as job hopping",
       "careerGrowth": "Career Growth"
@@ -1491,9 +1468,6 @@
       "uniqueValue": "Your Unique Value",
       "nextMoves": "Your Next Career Moves",
       "interviewStories": "Interview Story Ideas",
-      "salaryInsightTitle": "Salary Insight",
-      "estimatedRange": "estimated range",
-      "negotiationLeverage": "Your negotiation leverage:",
       "hiddenStrengths": "Hidden Strengths You're Underselling",
       "personalBrand": "Your Personal Brand",
       "currentLabel": "Current:",

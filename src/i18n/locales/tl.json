@@ -856,19 +856,7 @@
       "impact": "Impact",
       "flags": "Mga Flag"
     },
-    "filterPhrase": {
-      "compliance": "mahigpit, compliance-style na ATS screens",
-      "credential": "applicant tracking systems na nakatutok sa kredensyal",
-      "recruiterScreen": "awtomatikong filter bago pa makita ng recruiter",
-      "volume": "mga ATS system na sumasala ng daan-daang aplikante kada role",
-      "generic": "awtomatikong ATS screens"
-    },
-    "outcome": {
-      "strong": "Malakas na kandidato para makapasa sa {{filterPhrase}}",
-      "likely": "Malamang na makapasa sa karamihan ng {{filterPhrase}}",
-      "atRisk": "May panganib na ma-filter ng {{filterPhrase}}",
-      "highRisk": "Mataas ang panganib na ma-filter ng {{filterPhrase}} bago pa makita ng tao"
-    },
+    "basis": "Batay sa mga keyword, seksyon, format at nasusukat na resulta ng resume na ito",
     "gauge": {
       "excellent": "Napakahusay",
       "good": "Maganda",
@@ -1262,10 +1250,6 @@
       "should": "Maganda",
       "nice": "Bonus"
     },
-    "atRiskOrNeedsImprovement": {
-      "atRisk": "Nanganganib na hindi mapansin sa paghahanap ng mga recruiter",
-      "needsImprovement": "Kailangan ng pagpapabuti para makompetensya"
-    },
     "personalizedTipsSection": {
       "title": "Mga Personalized na Tip",
       "subtitle": "Mga insight na naangkop sa iyong profile"
@@ -1320,11 +1304,6 @@
       "naturalProgression": "Natural na susunod na hakbang",
       "lateralMove": "Lateral na paglipat",
       "stretchGoal": "Mapanghamong layunin"
-    },
-    "marketPosition": {
-      "aboveMarket": "Mas Mataas sa Market",
-      "atMarket": "Katumbas ng Market",
-      "belowMarket": "Mas Mababa sa Market"
     },
     "formatRecommendationSection": {
       "title": "Rekomendasyon sa Format ng Resume",
@@ -1452,10 +1431,8 @@
       }
     },
     "atsBanner": {
-      "belowMedian": "Mas mababa sa median na {{median}} sa {{n}} resume sa {{industry}} na na-scan dito. Hindi tumatanggi ang mga pangunahing ATS platform dahil sa numerong ito, pero itinataas ito ng mga ayos sa ibaba.",
-      "belowTopQuarter": "Mas mataas sa median na {{median}}; ang nangungunang ikaapat ng {{n}} resume sa {{industry}} na na-scan dito ay may score na {{p75}} o higit pa.",
-      "noPassMark": "Hindi ito pasadong marka: hindi tinatanggihan ng mga pangunahing ATS platform ang resume dahil sa score. Itinataas ito ng mga ayos sa ibaba.",
-      "topQuarter": "Nangungunang ikaapat: {{p75}}+"
+      "heading": "May puwang pang itaas ang score na ito",
+      "noPassMark": "Hindi ito pasadong marka: hindi tinatanggihan ng mga pangunahing ATS platform ang resume dahil sa score. Itinataas ito ng mga ayos sa ibaba."
     },
     "eliteSignals": {
       "title": "Mga Senyales na Nakakaakit ng mga Recruiter"
@@ -1476,7 +1453,7 @@
       "totalExp": "Kabuuang Karanasan",
       "totalExpDesc": "Gaano katagal ka nang nagtatrabaho sa iyong larangan",
       "avgTenure": "Avg na Oras sa Bawat Trabaho",
-      "tenureGood": "✓ Magandang katatagan — gusto ng mga recruiter ang 2+ taon bawat papel",
+      "tenureGood": "✓ Dalawang taon o higit pa bawat papel, sa karaniwan",
       "tenureWarning": "⚠ Maikling pagtatrabaho ay maaaring magdulot ng mga katanungan",
       "tenurePoor": "⚠ Napakaikli — maaaring makita bilang paglipat ng trabaho",
       "careerGrowth": "Pag-unlad ng Karera"
@@ -1491,9 +1468,6 @@
       "uniqueValue": "Ang Iyong Natatanging Halaga",
       "nextMoves": "Ang Iyong Susunod na mga Hakbang sa Karera",
       "interviewStories": "Mga Ideya para sa Interview na Kwento",
-      "salaryInsightTitle": "Kaalaman sa Suweldo",
-      "estimatedRange": "tinatayang hanay",
-      "negotiationLeverage": "Ang iyong kapangyarihan sa negosasyon:",
       "hiddenStrengths": "Mga Nakatagong Lakas na Iyong Pinababa ng Halaga",
       "personalBrand": "Ang Iyong Personal na Brand",
       "currentLabel": "Kasalukuyan:",

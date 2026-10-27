@@ -11,7 +11,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { getOutcome } from "@/lib/score-outcome-message";
+import { FIX_POINTS_BASIS } from "@/lib/report-basis";
 
 interface ScoreHeroProps {
   candidateName?: string | null;
@@ -257,16 +257,11 @@ export function ScoreHero({
                 : t("scoreHero.defaultTitle")
               }
             </h3>
-            {(() => {
-              const outcome = getOutcome(atsScoreEstimate, industry);
-              const outcomeColor = outcome.status === "success" ? "text-success" : outcome.status === "warning" ? "text-warning" : "text-destructive";
-              const filterPhrase = t(`scoreHero.filterPhrase.${outcome.filterPhraseKey}`);
-              return (
-                <p className={cn("text-sm font-medium mb-2", outcomeColor)}>
-                  {t(`scoreHero.outcome.${outcome.tier}`, { filterPhrase })}
-                </p>
-              );
-            })()}
+            {/* What the score reads, not what a screen will do with it: the
+                line under the greeting used to predict an ATS outcome from
+                three score thresholds with no data behind them (the review of
+                2026-10-27). */}
+            <p className="text-sm font-medium mb-2 text-muted-foreground">{t("scoreHero.basis")}</p>
             {currentRole && (
               <div className="inline-flex items-center gap-1.5 px-2.5 py-1 mb-2 rounded-lg bg-primary/10 border border-primary/20 text-xs font-medium text-primary">
                 <Briefcase className="w-3 h-3" />
@@ -305,8 +300,10 @@ export function ScoreHero({
             {projectedScore && projectedScore > atsScoreEstimate && (
               <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-success/10 border border-success/20 text-xs font-medium text-success">
                 <TrendingUp className="w-3.5 h-3.5" />
-                Fix the issues below → estimated <span className="font-bold text-sm">{projectedScore}</span>
-                <span className="text-success/70 ml-0.5">(+{projectedScore - atsScoreEstimate} pts)</span>
+                <span title={FIX_POINTS_BASIS}>
+                  Fix the issues below → about <span className="font-bold text-sm">{projectedScore}</span>
+                  <span className="text-success/70 ml-0.5">(+{projectedScore - atsScoreEstimate} pts, a rough guide)</span>
+                </span>
               </div>
             )}
           </div>

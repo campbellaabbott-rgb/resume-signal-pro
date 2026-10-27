@@ -857,19 +857,7 @@
       "impact": "Impact",
       "flags": "Alertes"
     },
-    "filterPhrase": {
-      "compliance": "filtres ATS rigides axés sur la conformité",
-      "credential": "systèmes de suivi des candidatures axés sur les qualifications",
-      "recruiterScreen": "filtres automatisés avant qu'un recruteur ne le voie",
-      "volume": "systèmes ATS filtrant des centaines de candidats par poste",
-      "generic": "filtres ATS automatisés"
-    },
-    "outcome": {
-      "strong": "Candidat solide pour passer {{filterPhrase}}",
-      "likely": "Susceptible de passer la plupart des {{filterPhrase}}",
-      "atRisk": "Risque d'être filtré par {{filterPhrase}}",
-      "highRisk": "Risque élevé d'être filtré par {{filterPhrase}} avant qu'un humain ne le voie"
-    },
+    "basis": "Noté sur les mots-clés, les sections, la mise en forme et les résultats chiffrés de ce CV",
     "gauge": {
       "excellent": "Excellent",
       "good": "Bon",
@@ -1268,10 +1256,6 @@
       "should": "Recommandé",
       "nice": "Agréable"
     },
-    "atRiskOrNeedsImprovement": {
-      "atRisk": "Risque de passer inaperçu dans les recherches des recruteurs",
-      "needsImprovement": "Doit être amélioré pour être compétitif"
-    },
     "personalizedTipsSection": {
       "title": "Conseils personnalisés",
       "subtitle": "Analyses adaptées à votre profil"
@@ -1326,11 +1310,6 @@
       "naturalProgression": "Prochaine étape naturelle",
       "lateralMove": "Mouvement latéral",
       "stretchGoal": "Objectif ambitieux"
-    },
-    "marketPosition": {
-      "aboveMarket": "Au-dessus du marché",
-      "atMarket": "Au niveau du marché",
-      "belowMarket": "En dessous du marché"
     },
     "formatRecommendationSection": {
       "title": "Recommandation de format de CV",
@@ -1458,10 +1437,8 @@
       }
     },
     "atsBanner": {
-      "belowMedian": "Sous la médiane de {{median}} parmi {{n}} CV du secteur {{industry}} analysés ici. Les grands ATS ne rejettent pas sur ce chiffre, mais les corrections ci-dessous le font monter.",
-      "belowTopQuarter": "Au-dessus de la médiane de {{median}} ; le quart supérieur des {{n}} CV du secteur {{industry}} analysés ici obtient {{p75}} ou plus.",
-      "noPassMark": "Ce n'est pas une note éliminatoire : les grands ATS ne rejettent pas un CV sur un score. Les corrections ci-dessous le font monter.",
-      "topQuarter": "Quart supérieur : {{p75}}+"
+      "heading": "De la marge pour faire monter ce score",
+      "noPassMark": "Ce n'est pas une note éliminatoire : les grands ATS ne rejettent pas un CV sur un score. Les corrections ci-dessous le font monter."
     },
     "eliteSignals": {
       "title": "Signaux attractifs pour les recruteurs"
@@ -1482,7 +1459,7 @@
       "totalExp": "Expérience totale",
       "totalExpDesc": "Depuis combien de temps vous travaillez dans votre domaine",
       "avgTenure": "Durée moy. dans chaque emploi",
-      "tenureGood": "✓ Bonne stabilité — les recruteurs aiment 2+ ans par poste",
+      "tenureGood": "✓ Deux ans ou plus par poste, en moyenne",
       "tenureWarning": "⚠ Une courte durée peut soulever des questions",
       "tenurePoor": "⚠ Très court — peut être perçu comme du job-hopping",
       "careerGrowth": "Évolution de carrière"
@@ -1497,9 +1474,6 @@
       "uniqueValue": "Votre valeur unique",
       "nextMoves": "Vos prochaines évolutions de carrière",
       "interviewStories": "Idées d'histoires pour les entretiens",
-      "salaryInsightTitle": "Aperçu salarial",
-      "estimatedRange": "fourchette estimée",
-      "negotiationLeverage": "Vos leviers de négociation :",
       "hiddenStrengths": "Forces cachées que vous sous-estimez",
       "personalBrand": "Votre marque personnelle",
       "currentLabel": "Actuel :",

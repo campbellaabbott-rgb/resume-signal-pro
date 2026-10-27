@@ -447,9 +447,11 @@ type CountryIndustryKey = `${string}:${string}` | string;
 
 // When the market tables below (and the skill-recency lists) were last
 // compiled. Prompts cite this date instead of asserting a year as "now", and
-// no sentence a reader sees names a year: a report rendered in October 2026
-// used to say "US tech hiring in 2025 is..." as if it were current
-// (register L5-18). Update it when the tables are refreshed.
+// no sentence a reader sees names a year as the present: a report rendered in
+// October 2026 used to say "US tech hiring in 2025 is..." as if it were
+// current (register L5-18). The scan sends this date with the lists
+// (listsAsOf), and the report prints it as their basis. Update it when the
+// tables are refreshed.
 export const MARKET_DATA_AS_OF = 'mid-2025';
 
 // Market data keyed by "country:industry" with country-only fallbacks.
@@ -706,10 +708,36 @@ export function formatGeoContextForPrompt(
     lines.push('Market-Specific Differentiators:');
     insight.uniqueSignals.forEach(s => lines.push(`  - ${s}`));
   }
-  if (insight.salaryContext) lines.push(`Salary Context: ${insight.salaryContext}`);
+  // No salary line: salaryContext is a typed range per market with no source,
+  // and the report prints no salary (the report sweep of 2026-10-27).
   lines.push('\nINSTRUCTION: Incorporate the above market context into your analysis. If the resume is missing any country-specific credentials or norm elements (e.g., license numbers, visa status, degree classification), flag them. If the candidate\'s skills match the "hot skills" list, explicitly affirm this as a strength. Reference the candidate\'s country market in your insights.');
   lines.push('</geo_market_context>');
   return lines.join('\n');
+}
+
+// ─── WHOLE-WORD MATCHING ─────────────────────────────────────────────────────
+
+// The hand-typed lists below hold short terms ("go", "git", "rag", "rust",
+// "api", "rest"). Matched as substrings they found "go" in "algorithms" and
+// "Chicago", "git" in "digital", "rag" in "storage" and "rust" in "Trust",
+// and the report printed those as the reader's skills (the review of
+// 2026-10-27). A term now counts only where it stands as a whole word: no
+// letter or digit on either side.
+const termPatternCache = new Map<string, RegExp>();
+function termPattern(term: string): RegExp {
+  const key = term.toLowerCase().trim();
+  let re = termPatternCache.get(key);
+  if (!re) {
+    const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    re = new RegExp(`(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`, 'u');
+    termPatternCache.set(key, re);
+  }
+  return re;
+}
+
+/** True when `term` appears in `text` as a whole word or phrase, ignoring case. */
+export function hasWholeTerm(text: string, term: string): boolean {
+  return termPattern(term).test(text.toLowerCase());
 }
 
 // ─── 3. SKILLS RECENCY SCORING ────────────────────────────────────────────────
@@ -798,12 +826,14 @@ export interface SkillsRecencyResult {
 }
 
 export function analyzeSkillsRecency(resumeText: string, industry: string): SkillsRecencyResult {
-  const lower = resumeText.toLowerCase();
-  const agingList = AGING_SKILLS_BY_INDUSTRY[industry] || AGING_SKILLS_BY_INDUSTRY.technology;
-  const freshList = FRESH_SKILLS_BY_INDUSTRY[industry] || FRESH_SKILLS_BY_INDUSTRY.technology;
+  // Only the fields with lists of their own are read: technology's lists used
+  // to stand in for every other field, so a nurse or a teacher was scored on
+  // software skills (the review of 2026-10-27).
+  const agingList = AGING_SKILLS_BY_INDUSTRY[industry] ?? [];
+  const freshList = FRESH_SKILLS_BY_INDUSTRY[industry] ?? [];
 
-  const agingSkills = agingList.filter(s => lower.includes(s.toLowerCase()));
-  const freshSkills = freshList.filter(s => lower.includes(s.toLowerCase()));
+  const agingSkills = agingList.filter(s => hasWholeTerm(resumeText, s));
+  const freshSkills = freshList.filter(s => hasWholeTerm(resumeText, s));
 
   // Score: start at 70, +5 per fresh skill (max +30), -8 per aging skill (min 20)
   const freshnessScore = Math.max(20, Math.min(100,
@@ -1187,8 +1217,8 @@ export function analyzeCompetitiveKeywordGap(
   const level = ['entry', 'mid', 'senior', 'executive'].includes(seniorityLevel) ? seniorityLevel : 'mid';
   const industryKws = COMPETITIVE_KEYWORDS[industry]?.[level] || COMPETITIVE_KEYWORDS['technology'][level];
 
-  const present = industryKws.filter(kw => lower.includes(kw.toLowerCase()));
-  const missing = industryKws.filter(kw => !lower.includes(kw.toLowerCase()));
+  const present = industryKws.filter(kw => hasWholeTerm(lower, kw));
+  const missing = industryKws.filter(kw => !hasWholeTerm(lower, kw));
 
   const gapScore = industryKws.length > 0
     ? Math.round((present.length / industryKws.length) * 100)
@@ -1410,9 +1440,10 @@ export function formatTimelineForPrompt(timeline: TimelineResult): string {
 
 // ─── 7. KEYWORD FREQUENCY WEIGHTS (gap prioritization) ───────────────────────
 
-// Relative frequency in job postings per industry × seniority tier.
-// Scale: 3 = appears in 80%+ of postings, 2 = 50-79%, 1 = 20-49%.
-// Used to sort missing keywords so the highest-impact gaps appear first.
+// A hand-set priority per industry: 3 for the terms we judged most often
+// asked for, 2 for common ones, 1 for the rest. No dataset stands behind the
+// numbers, so the report prints none of them; they only sort the missing
+// keywords so the likeliest gaps come first.
 
 export const KEYWORD_FREQUENCY: Record<string, Record<string, number>> = {
   technology: {
@@ -1475,18 +1506,22 @@ export const KEYWORD_FREQUENCY: Record<string, Record<string, number>> = {
 };
 
 /**
- * Return a frequency weight (3/2/1/0) for a keyword in the given industry.
- * Also checks bigram/trigram partial matches.
+ * Return a hand-set priority weight (3/2/1) for a keyword in the given
+ * industry, used only to order the keyword gaps. A keyword takes a table
+ * term's weight when it is that term, or one holds the other as a whole word
+ * or phrase ("Python scripting" takes "python"; "digital payments" does not
+ * take "git").
  */
 export function getKeywordFrequencyWeight(keyword: string, industry: string): number {
   const table = KEYWORD_FREQUENCY[industry];
   if (!table) return 1;
   const norm = keyword.toLowerCase().trim();
+  if (!norm) return 1;
   // Exact match
   if (table[norm] !== undefined) return table[norm];
-  // Partial: keyword contains a high-freq term or vice versa
+  // Partial: the keyword holds a table term as a whole word, or the reverse
   for (const [kw, freq] of Object.entries(table)) {
-    if (norm.includes(kw) || kw.includes(norm)) return freq;
+    if (hasWholeTerm(norm, kw) || hasWholeTerm(kw, norm)) return freq;
   }
   return 1;
 }

@@ -1,6 +1,8 @@
 import { useMemo, useRef, useState } from "react";
 import { ChevronDown, Download, Share2, Wrench, ArrowRight, Scale, Globe } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { FIX_POINTS_BASIS } from "@/lib/report-basis";
+import { SHARE_SITE } from "./ShareableScoreCard";
 
 /* ============================================================
  * New free-report insight cards:
@@ -35,7 +37,7 @@ export function ScoreSimulatorCard({
         <h3 className="font-semibold text-foreground">What happens if you fix it?</h3>
       </div>
       <p className="text-xs text-muted-foreground mb-4">
-        Check the fixes you're willing to make — this is the score a rescan should land near.
+        Check the fixes you're willing to make. {FIX_POINTS_BASIS}
       </p>
 
       <div className="relative h-8 rounded-full bg-muted overflow-hidden mb-1" role="img" aria-label={`Score ${atsScore}, projected ${projected}`}>
@@ -605,7 +607,9 @@ export function ShareScoreCard({
     }
     ctx.fillStyle = scoreColor;
     ctx.font = "600 30px system-ui, sans-serif";
-    ctx.fillText("Get your free scan → resumebooster.work", 560, 470);
+    // The scanner's own address: since the switch-over the bare domain is the
+    // job search (the review of 2026-10-27).
+    ctx.fillText(`Get your free scan → ${SHARE_SITE}`, 560, 470);
 
     return canvas;
   };
@@ -634,8 +638,8 @@ export function ShareScoreCard({
           files: [file],
           title: "My resume score",
           text: isDelta
-            ? `Took my resume from ${previousScore} to ${atsScore} — free scan at resumebooster.work`
-            : `My resume scored ${atsScore}/100 — free scan at resumebooster.work`,
+            ? `Took my resume from ${previousScore} to ${atsScore} — free scan at ${SHARE_SITE}`
+            : `My resume scored ${atsScore}/100 — free scan at ${SHARE_SITE}`,
         }).catch(() => { /* user cancelled the share sheet */ });
       } else {
         download();

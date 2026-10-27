@@ -398,7 +398,7 @@ export function MetricCardsGrid({
       label: t('freeScan.readability'),
       tooltipKey: "readability",
       value: `${readabilityScore.score}%`,
-      subtext: readabilityScore.verdict === "easy_to_scan" ? "✓ Quick 6-second scan friendly" : readabilityScore.verdict === "readable" ? "⚠ Some sections hard to scan" : "✗ Recruiters will skip this",
+      subtext: readabilityScore.verdict === "easy_to_scan" ? "✓ Easy to scan" : readabilityScore.verdict === "readable" ? "⚠ Some sections hard to scan" : "✗ Hard to scan",
       status: statusFromScore(readabilityScore.score, 70, 45),
       progress: readabilityScore.score,
     }] : []),

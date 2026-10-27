@@ -856,19 +856,7 @@
       "impact": "Impact",
       "flags": "Signalen"
     },
-    "filterPhrase": {
-      "compliance": "strikte, compliance-gerichte ATS-filters",
-      "credential": "op kwalificaties gerichte sollicitantvolgsystemen",
-      "recruiterScreen": "geautomatiseerde filters voordat een recruiter het ziet",
-      "volume": "ATS-systemen die honderden kandidaten per functie filteren",
-      "generic": "geautomatiseerde ATS-filters"
-    },
-    "outcome": {
-      "strong": "Sterke kandidaat om {{filterPhrase}} te doorstaan",
-      "likely": "Komt waarschijnlijk door de meeste {{filterPhrase}}",
-      "atRisk": "Risico om uitgefilterd te worden door {{filterPhrase}}",
-      "highRisk": "Hoog risico om uitgefilterd te worden door {{filterPhrase}} voordat een mens het ziet"
-    },
+    "basis": "Beoordeeld op de trefwoorden, secties, opmaak en meetbare resultaten van dit cv",
     "gauge": {
       "excellent": "Uitstekend",
       "good": "Goed",
@@ -1262,10 +1250,6 @@
       "should": "Zou moeten",
       "nice": "Leuk"
     },
-    "atRiskOrNeedsImprovement": {
-      "atRisk": "Risico om gemist te worden in recruiter-zoekopdrachten",
-      "needsImprovement": "Moet beter om te kunnen concurreren"
-    },
     "personalizedTipsSection": {
       "title": "Gepersonaliseerde tips",
       "subtitle": "Op maat gemaakte inzichten voor jouw profiel"
@@ -1320,11 +1304,6 @@
       "naturalProgression": "Natuurlijke volgende stap",
       "lateralMove": "Zijwaartse stap",
       "stretchGoal": "Ambitieus doel"
-    },
-    "marketPosition": {
-      "aboveMarket": "Boven de markt",
-      "atMarket": "Op marktniveau",
-      "belowMarket": "Onder de markt"
     },
     "formatRecommendationSection": {
       "title": "Cv-formaataanbeveling",
@@ -1452,10 +1431,8 @@
       }
     },
     "atsBanner": {
-      "belowMedian": "Onder de mediaan van {{median}} bij {{n}} hier gescande cv's uit {{industry}}. De grote ATS-platforms wijzen niet af op dit getal, maar de verbeteringen hieronder verhogen het.",
-      "belowTopQuarter": "Boven de mediaan van {{median}}; het bovenste kwart van de {{n}} hier gescande cv's uit {{industry}} scoort {{p75}} of meer.",
-      "noPassMark": "Dit is geen voldoende-grens: de grote ATS-platforms wijzen een cv niet af op een score. De verbeteringen hieronder verhogen hem.",
-      "topQuarter": "Bovenste kwart: {{p75}}+"
+      "heading": "Ruimte om deze score te verhogen",
+      "noPassMark": "Dit is geen voldoende-grens: de grote ATS-platforms wijzen een cv niet af op een score. De verbeteringen hieronder verhogen hem."
     },
     "eliteSignals": {
       "title": "Signalen die recruiters aantrekken"
@@ -1476,7 +1453,7 @@
       "totalExp": "Totale ervaring",
       "totalExpDesc": "Hoe lang je al in jouw vakgebied werkt",
       "avgTenure": "Gem. tijd per baan",
-      "tenureGood": "✓ Goede stabiliteit — recruiters houden van 2+ jaar per rol",
+      "tenureGood": "✓ Gemiddeld twee jaar of langer per rol",
       "tenureWarning": "⚠ Korte diensttijd kan vragen oproepen",
       "tenurePoor": "⚠ Zeer kort — kan worden gezien als job-hopping",
       "careerGrowth": "Carrièregroei"
@@ -1491,9 +1468,6 @@
       "uniqueValue": "Jouw unieke waarde",
       "nextMoves": "Jouw volgende carrièrestappen",
       "interviewStories": "Ideeën voor interviewverhalen",
-      "salaryInsightTitle": "Salarisoverzicht",
-      "estimatedRange": "geschatte bandbreedte",
-      "negotiationLeverage": "Jouw onderhandelingsvoordeel:",
       "hiddenStrengths": "Verborgen krachten die je onderschat",
       "personalBrand": "Jouw persoonlijk merk",
       "currentLabel": "Huidig:",
