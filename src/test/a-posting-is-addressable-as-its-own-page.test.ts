@@ -203,10 +203,14 @@ describe("the route and the generator agree about where a posting lives", () => 
     // agencies on every row (NOT NULL, on the list payload, with a badge and a
     // documented opt-out filter) and nothing here read it, so for an agency row
     // both statements were false. The eligibility filter is where that belongs.
-    // The predicate is postingRowEligible (scripts/prerender-pages.mjs) since
-    // the reviewer pass of 2026-10-10; the bake must still call it.
+    // The predicate is postingRowEligible since the reviewer pass of
+    // 2026-10-10; the bake must still call it. Since the trusted-pages round
+    // (2026-10-25) it lives in scripts/prerender-posting-rule.mjs, a module
+    // with no imports the app also runs inside postingJsonLd, and
+    // scripts/prerender-pages.mjs re-exports it to the bake.
     expect(GEN, "the bake no longer judges rows by postingRowEligible").toMatch(/const eligibleRow = \(j\) => postingRowEligible\(j, D\);/);
-    expect(codeOf(read("scripts/prerender-pages.mjs")), "the bake still writes pages for staffing-agency rows").toMatch(/j\.agency !== true/);
+    expect(codeOf(read("scripts/prerender-pages.mjs")), "the bake's helpers no longer hand it the shared rule").toMatch(/export \{ postingRowEligible \} from "\.\/prerender-posting-rule\.mjs";/);
+    expect(codeOf(read("scripts/prerender-posting-rule.mjs")), "the bake still writes pages for staffing-agency rows").toMatch(/j\.agency !== true/);
   });
 
   it("bounds the set with a cap it states, not with hope", () => {

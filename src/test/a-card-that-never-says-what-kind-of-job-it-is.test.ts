@@ -21,6 +21,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { isEmploymentType } from "../pages/Jobs";
 import { statedEmploymentType } from "@/lib/listing/types";
+import { ldEmploymentType } from "@/components/jobs/posting-page";
 
 const ROOT = resolve(__dirname, "../..");
 const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
@@ -32,6 +33,7 @@ const FACTS = strip(read("src/components/jobs/listing/PostingFacts.tsx"));
 // The BoardJob row type moved to a shared module (design pass A); Jobs.tsx imports it.
 const BOARD_JOB = strip(read("src/lib/board-job.ts"));
 const BOARD = strip(read("supabase/functions/job-board/index.ts"));
+const POSTING = strip(read("src/components/jobs/posting-page.ts"));
 
 const TYPES = ["full_time", "part_time", "contract", "temporary", "internship"] as const;
 
@@ -92,12 +94,19 @@ describe("a card that never says what kind of job it is", () => {
     // Google reads FULL_TIME/PART_TIME/CONTRACTOR/TEMPORARY/INTERN and drops
     // anything else, so the column value cannot be emitted raw — and a guessed
     // FULL_TIME would be a fabricated claim published as structured data.
-    expect(JOBS).toMatch(/const LD_EMPLOYMENT_TYPE: Record<EmploymentTypeKey, string> = \{/);
-    for (const v of ["FULL_TIME", "PART_TIME", "CONTRACTOR", "TEMPORARY", "INTERN"]) {
-      expect(JOBS, v).toContain(`"${v}"`);
-    }
-    expect(JOBS, "emitted only when the employer stated one")
-      .toMatch(/\.\.\.\(isEmploymentType\(detailJob\.employmentType\)\s*\?\s*\{ employmentType: LD_EMPLOYMENT_TYPE\[detailJob\.employmentType\] \}/);
+    // The pane's markup is the posting page's own (postingJsonLd, the
+    // trusted-pages round 2026-10-25), so ONE map spells the type for every
+    // JobPosting this site writes: ldEmploymentType.
+    expect(JOBS, "the pane writes the posting page's markup").toMatch(/const baked = postingJsonLd\(detailJob, detailDesc, /);
+    expect(JOBS).toMatch(/\.\.\.baked,/);
+    expect(JOBS, "no second hand-typed map in the pane").not.toMatch(/LD_EMPLOYMENT_TYPE/);
+    const want: Record<(typeof TYPES)[number], string> = {
+      full_time: "FULL_TIME", part_time: "PART_TIME", contract: "CONTRACTOR", temporary: "TEMPORARY", internship: "INTERN",
+    };
+    for (const k of TYPES) expect(ldEmploymentType(k), k).toBe(want[k]);
+    for (const unstated of [null, undefined, "", "seasonal"]) expect(ldEmploymentType(unstated), String(unstated)).toBeUndefined();
+    expect(POSTING, "emitted only when the employer stated one")
+      .toMatch(/const empType = ldEmploymentType\(job\.employmentType\);\s*if \(empType\) ld\.employmentType = empType;/);
   });
 
   it("the five names and the provenance line exist in all nine locales", () => {

@@ -219,6 +219,55 @@ export const composeHtml = (
   return html;
 };
 
+/**
+ * ONE POSTING ROW AS THE BAKE WRITES IT: whether it keeps a live page, the row
+ * its page prints, and the job markup the page carries. `row` is the board's
+ * detail row, `D` the bake's bundle of the app's own modules and `carried`
+ * whether the live site published the page already (owner decision D7).
+ *
+ * Every step is one of the app's own functions: rule 1 (postingRowEligible),
+ * the description length, the name gate (D.postingNameVerdict) and
+ * D.postingJsonLd, which applies the same rules again before it writes
+ * anything. The React posting page asks D.postingJsonLd of the same row, so it
+ * never writes markup for a row this refuses, and it writes none on an address
+ * this bake retired (a duplicate, the ceiling, the window's end)
+ * (src/test/a-job-page-writes-its-job-markup-only-when-the-bake-would.test.tsx).
+ */
+export function bakePostingPage(row, description, { D, SITE, carried }) {
+  const named = D.postingNameVerdict(row);
+  // SEO-006: the repaired employer name is the one every part of a posting
+  // page prints, its markup's hiringOrganization included.
+  const rawJob = named.repaired ? { ...row, company: named.name } : row;
+  // A refused name is not printed: the page's own head and sentences say
+  // "the employer", and its markup is withheld below.
+  const nameRefused = !!named.reason;
+  const path = D.postingPagePath(rawJob.id);
+  const job = nameRefused ? { ...rawJob, company: "" } : rawJob;
+  // Rule 1 and the description length: the bake reads only rows that pass
+  // both (eligibleRow, describedEnough), and a row that does not gets no page.
+  if (!postingRowEligible(row, D) || !D.postingDescribedEnough(description)) {
+    return { path, named, nameRefused, rawJob, job, ld: null, live: false, nameOnly: false, mismatchOnly: false, nm: null };
+  }
+  const nameOnly = !!nameRefused && !!path && !!D.postingJsonLd(rawJob, description, { site: SITE, ignoreNameGate: true });
+  const ld = nameRefused ? null : D.postingJsonLd(job, description, { site: SITE });
+  // A page whose markup we cannot stand behind is not written as a live
+  // page. Its URL keeps a noindex page instead and never reaches the
+  // sitemap, which is the whole contract. A location that ends in
+  // another country's name is one of those (SEO-035).
+  // A CARRIED page whose country is the only thing in the way keeps its
+  // page, indexable, with NO job markup (owner decision D7: no page
+  // indexable today loses its index without sign-off), and goes on the
+  // dry-run list as one that would be marked noindex. A new one gets no
+  // page. The markup is withheld either way: a Nigerian job is never
+  // marked up as a Louisiana one.
+  const mismatchOnly = !ld && !!path && D.postingCountryMismatch(job) && !!D.postingJsonLd(job, description, { site: SITE, ignoreCountryMismatch: true });
+  if (!path || (!ld && !((mismatchOnly || nameOnly) && carried))) {
+    return { path, named, nameRefused, rawJob, job, ld: null, live: false, nameOnly, mismatchOnly, nm: null };
+  }
+  const nm = nameRefused ? "the employer" : D.postingEmployer(job);
+  return { path, named, nameRefused, rawJob, job, ld, live: true, nameOnly, mismatchOnly, nm };
+}
+
 // Importable for its pure functions (the guard renders a template through
 // composeHtml) and RUN only as a script — the rule load-oflc-lca.mjs uses.
 // The vite plugin invokes `node scripts/prerender-seo.mjs`, which is main.
@@ -279,6 +328,7 @@ export { MCP_PAGE_HOSTS, MCP_OFF_PAGE_HOSTS, MCP_OTHER_AGENTS_LINE, MCP_COPY_THE
 export { FREE_KEY_RATE_PER_MIN } from "../src/config/free-key-limits";
 export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPostingLive, jdParagraphs, postingEmployer, postingIdFromPath, postingIdentity, postingJsonLd, postingPageDescription, postingPagePath, postingPageTitle, postingPageTitleAvoiding, postingPathParts } from "../src/components/jobs/posting-page";
 export { boardName, employerName, isCodeShapedName, possessive } from "../src/lib/company-display";
+export { POSTING_MIN_DESCRIPTION, postingDescribedEnough, postingMarkupGate, postingNameVerdict } from "../src/components/jobs/posting-page";
 export { isCollidedToken } from "../src/lib/board-collisions";
 export { FEDERAL_LISTING_RESULT_CAP, isFederalListingBoard } from "../src/lib/company/lander-model";
 export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json";
@@ -2219,7 +2269,6 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
   // the pool below stops at three times the page cap, 1,200 rows.
   const POSTING_LIST_PAGES = 20;
   const POSTING_LIST_PAGE_ROWS = 60;
-  const POSTING_MIN_DESCRIPTION = 100;
   /** Rendered into /jobs so the selection is visible from the board itself. */
   let postingIndexSection = "";
   /** Paths this block wrote as live pages, for the sitemap assertion. */
@@ -2347,7 +2396,7 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
       // fetch, because the list does not return one. The agency flag is latent
       // today: 0 of the 200 newest rows probed carried it.
       const eligibleRow = (j) => postingRowEligible(j, D);
-      const describedEnough = (text) => D.jdParagraphs(text).join("\n").length >= POSTING_MIN_DESCRIPTION;
+      const describedEnough = (text) => D.postingDescribedEnough(text);
 
       // One detail read per item, at a concurrency measured against this board
       // rather than guessed. Each answer keeps its state: "found" with the row
@@ -2482,7 +2531,7 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
       // SEO-006: a NEW posting page is refused when its employer's name cannot
       // be anyone's (logo text, a careers subdomain, a bare generic word); a
       // carried one keeps its page this round (owner decision D7).
-      const postingName = (job) => bakeEmployerName(job.token ?? D.postingPathParts(job.id)?.token ?? null, job.company, { boardName: D.employerName, isCodeShapedName: D.isCodeShapedName });
+      const postingName = (job) => D.postingNameVerdict(job);
       let freshNameRefused = 0;
       const fresh = [];
       for (const j of pool) {
@@ -2511,13 +2560,15 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
       // country mismatch's is) and the page says "the employer" in its head
       // and its own sentences ("Axia Logo Horizontal" was a hiringOrganization
       // and a meta description, the round's review, 2026-10-24).
+      // Each row is decided once, by bakePostingPage, from the row the board
+      // returned: the name, the page and the markup.
       for (const d of detailed) {
-        const named = postingName(d.job);
+        d.page = bakePostingPage(d.job, d.description, { D, SITE, carried: d.carried });
+        const { named } = d.page;
         if (named.reason) {
           nameGateDryRun.push({ path: D.postingPagePath(d.job.id), kind: "posting", token: d.job.token ?? null, name: named.name, shown: named.shown, reason: named.reason, would: "be marked noindex (its job markup is already withheld and its head names no employer)" });
-          d.nameRefused = true;
         }
-        if (named.repaired) d.job = { ...d.job, company: named.name };
+        d.job = d.page.rawJob;
       }
 
       // The visible pay line stays (the employer's own words); the markup
@@ -2531,34 +2582,20 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
       const postingTitlesTaken = new Set();
       let titlesDisambiguated = 0;
       let nameWithheld = 0;
-      for (const { job: rawJob, description, first, carried, nameRefused } of detailed) {
-        const path = D.postingPagePath(rawJob.id);
-        // A refused name is not printed: the page's own head and sentences say
-        // "the employer", and its markup is withheld below.
-        const job = nameRefused ? { ...rawJob, company: "" } : rawJob;
-        const nameOnly = !!nameRefused && !!path && !!D.postingJsonLd(rawJob, description, { site: SITE });
+      for (const { description, first, carried, page } of detailed) {
+        // What bakePostingPage decided for this row (above): the page's path,
+        // the row its page prints (a refused name blanked), its markup, and
+        // whether it keeps a live page.
+        const { path, rawJob, job, ld, nameRefused, nameOnly, mismatchOnly, live, nm } = page;
         if (nameOnly) nameWithheld++;
-        const ld = nameRefused ? null : D.postingJsonLd(job, description, { site: SITE });
-        // A page whose markup we cannot stand behind is not written as a live
-        // page. Its URL keeps a noindex page instead and never reaches the
-        // sitemap, which is the whole contract. A location that ends in
-        // another country's name is one of those (SEO-035).
-        // A CARRIED page whose country is the only thing in the way keeps its
-        // page, indexable, with NO job markup (owner decision D7: no page
-        // indexable today loses its index without sign-off), and goes on the
-        // dry-run list as one that would be marked noindex. A new one gets no
-        // page. The markup is withheld either way: a Nigerian job is never
-        // marked up as a Louisiana one.
-        const mismatchOnly = !ld && !!path && D.postingCountryMismatch(job) && !!D.postingJsonLd(job, description, { site: SITE, ignoreCountryMismatch: true });
         if (mismatchOnly) countryMismatch++;
-        if (!path || (!ld && !((mismatchOnly || nameOnly) && carried))) {
+        if (!live) {
           stubs.push({ id: job.id, path, state: "retired", title: job.title, company: job.company });
           continue;
         }
         if (mismatchOnly) nameGateDryRun.push({ path, kind: "posting", token: job.token ?? null, name: D.postingEmployer(rawJob), shown: job.location ?? null, reason: `the location ends in another country's name than the row's (${job.country})`, would: "be marked noindex (its job markup is already withheld)" });
         if (job.salary) withPay++;
         const paras = D.jdParagraphs(description);
-        const nm = nameRefused ? "the employer" : D.postingEmployer(job);
         const title = D.postingText(job.title);
         const place = job.location ? D.postingText(job.location) : "";
         const lander = landerFor(job.token);
