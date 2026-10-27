@@ -15,7 +15,9 @@ record](#the-switch-over-record-2026-10-26) says what each step did, where it
 departed from the plan, what was measured and what is still open, and [the
 owner's decisions and the report sweep](#the-owners-decisions-and-the-report-sweep-2026-10-27)
 replace step 15's two speed targets and take the configured figures out of the
-free report. The
+free report, and [the review of the sweep](#the-review-of-the-report-sweep-2026-10-27)
+fixes what that round left (predictions, a placement among scans, hand-typed
+lists shown as current, the speed gate's margin and consequence). The
 sections from "What was built" to "The switch-over plan" are the record of
 the branches it merged, kept as written; where they say the pages are
 reachable only through the previews, that was true before the switch-over.
@@ -368,6 +370,62 @@ hp/switch-over (13 among the others, as before); the full battery at the
 push of f4ca2057 (pre-push, through heavy.sh): 1,320 test files and 20,488
 tests pass (1 file and 32 tests skipped), plus the frontend typecheck and the
 deno check.
+
+## The review of the report sweep (2026-10-27)
+
+A review of the round above found eleven things still wrong in what the free
+report prints and in step 15: five major, six minor. All are fixed here, each
+with a test that failed on the code before it (the failing run, 23 tests in
+four files, is
+`~/.config/resumebooster/hp-switch-over-2026-10-26/review-fix-round/before.txt`).
+
+| Finding | What is now true | Commit |
+|---|---|---|
+| The keyword heat map said its bars were "how often this keyword appears in job postings", read from a hand-set table in free-keyword-scan that names no dataset and matched by substring ("digital payments" took "git"'s weight) | The card is gone. `getKeywordFrequencyWeight` matches whole words and only orders the gaps; the table's comment calls it a hand-set priority | e6ed61ab |
+| Skills Freshness matched by substring (a nurse's "storage" and "NHS Foundation Trust" read as "rag" and "rust"), gave technology's lists to every field, and said "high demand 2025"; the market card called hand-typed lists "Hot skills right now" and "Rising keywords in job postings" | Whole-word matching; only the five fields with lists of their own (technology, data science, data engineering, marketing, finance) get the card; no N/100 (it started every résumé at 70 and moved by hand-set steps); the labels say "on our list"; both cards print their basis, hand-compiled and last updated mid-2025 (`MARKET_DATA_AS_OF`, which the scan now sends as `listsAsOf`) | e6ed61ab |
+| The score header predicted what an ATS would do (three thresholds the module said had no data behind them, nine locales), the two-field line said recruiters in both fields would consider the reader, and the recruiter panel's first persona carried a pass badge | The header says what the score reads ("Scored on this resume's keywords, sections, format and measurable results", nine locales); `src/lib/score-outcome-message.ts`, its test and its strings are deleted; the two-field line and the badge are gone, and the panel says its three readers are written by AI. H0's test reads text nodes joined by spaces and renders scores of 57 and 64 (a nurse, a marketer, a technology reader) | e6ed61ab |
+| The ATS banner placed technology readers among 2,472 of this site's scans ("Above the median of 62…", "Top quarter: 65+") under "Needs improvement to compete", without naming the 180-day window, and a benchmark badge said the report's comparisons were measured against those scans | The owner's call, taken the way H0 reads (the report ranks the reader against no one): under 75 the banner says "Room to raise this score" and the no-pass-mark line, for everyone; the median and top-quarter lines, the badge and the "at risk / to compete" headings are gone in nine locales (`src/lib/score-banner.ts` is deleted). The scan still sends `realBenchmark` (the data contract). If the owner wants the placement back, it returns with its window named in the line | e6ed61ab |
+| Step 15's speed gate had lost its consequence when it moved out of the lab-checks bullet | "A re-measure that fails is a fix before anything else ships", and a slower new "/" on either gated profile at the re-measure is a rollback trigger; the speed test asserts both | 8605e2f1 |
+| "6-Second" headings and a "6-second scan friendly" subtext, "flagged by many ATS systems", "recruiters like 2+ years per role", "ATS systems screening hundreds of applicants per role" | Reworded without the figures (the tenure line in nine locales; the filter phrase is deleted with the outcome tiers). The scan's prompt no longer asks for a recruiter's 6-second scan or a pass/fail verdict, and its fallback summary no longer says the résumé would survive or is at risk. The guard bans durations and "N+ years" claims in the report's strings in every language, and these phrases in its modules | e6ed61ab |
+| The fix plan's minutes and points, fixed per kind of fix, were printed as a forecast ("this is the score a rescan should land near", "→ score ~77", "estimated 83") | Every place that adds them up names the basis: a rough guide (the AI's estimate per fix, or fixed points per kind of fix), not a forecast of the next scan (`src/lib/report-basis.ts`) | e6ed61ab |
+| The canvas share card sent readers to the bare domain, which is the job search since the switch-over | It draws and shares `resumebooster.work/resume-checker` (`SHARE_SITE`); the share-card test covers it | e6ed61ab |
+| Rounding each median to a tenth made the speed verdict depend on the rounding edges | The owner's reading stays the verdict; the judge prints the unrounded difference, each median's distance from the nearer edge, the shift that flips the verdict and the runs' spread, and a re-measure takes five runs a case (step 15, "The margin") | 8605e2f1 |
+| This README said the report's strings ride with the scanner's chunk, not with "/" | They ride in the entry "/" loads, which the sweep made about 0.9 kB gzip lighter; the first-load figure is dated 2026-10-26 | 8605e2f1 |
+| A latent salary path: the prompt still asked for "realistic salary ranges" beside the typed ranges, and the card printed any range the AI added | The salary card and the prompt's career-insights lines are gone, and the typed salary ranges no longer reach the prompt; the guard's rendered report carries a salary range and fails if it prints | e6ed61ab |
+
+The expected-keywords share ("N% of this list") counts whole words too: "api"
+no longer matches "rapid", nor "rest" "interest". The market module changed
+in free-keyword-scan and in the stream fork's copy (byte for byte, and the
+guard now checks that), both still 2026-10-27.1: neither is deployed, so the
+deploy step is unchanged (eight functions).
+
+**What "/" loads.** `en.json`, which the entry carries, shrank again:
+102,725 to 102,336 B (`gzip -9` from stdin; the other eight locale files
+shrank by 389-520 B each). The new `src/lib/report-basis.ts` is imported only
+by the report's components, which load with the scanner.
+
+**Not changed here:** `RecruiterViewMode.tsx` still says "6-Second Recruiter
+Scan", but nothing imports it; the locked career-strategy preview still lists
+salary guidance, but it renders only when `diagnosticLayout` is false, and it
+is always true; send-market-pulse's own market module
+(`supabase/functions/_shared/market-intelligence.ts`) keeps substring matching
+and its salary line (another function, another deploy); the prompt's
+readability rubric still says "6 seconds" as an anchor for the AI, which the
+report does not print.
+
+**Gate** (this round): the frontend typecheck (standalone and pre-commit on both commits,
+through heavy.sh); `scripts/check-functions.sh` through heavy.sh (every edge
+function typechecks, the Deno tests pass; `deno.lock` restored); 23 tests in
+the four changed test files failed first, and those files and the rewritten
+score-banner test pass after (102 tests); 252 targeted files over
+the report, its components, the locales, the scan, the market module, the
+speed gate, section 99, the ledger and every test that reads this README:
+3,885 tests pass and 6 skipped, with the one failure (the speed test reading
+a wrapped sentence) fixed after and its file re-run (13 of 13);
+`deploy-ledger --draft` exit 0; `--against origin/wave4/integration` 8
+functions differ, 0 violations; `--overlap` exit 0 over both required lists,
+and over every in-flight branch no undeclared file involves hp/switch-over
+(the same 13 among the others). The pre-push battery's result is in PR #54.
 
 ## What was built
 
