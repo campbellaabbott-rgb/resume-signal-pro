@@ -1,0 +1,30 @@
+{
+ "url": "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions?cid=149c7964-ca14-4211-b982-ef50dfb8b504&ccId=9200868940886_2&$top=6&$skip=1",
+ "fetched": "2026-10-25",
+ "kept": "each requisition's itemID and the advertised total",
+ "response": {
+  "jobRequisitions": [
+   {
+    "itemID": "9201176446413_1"
+   },
+   {
+    "itemID": "9201197936155_1"
+   },
+   {
+    "itemID": "9201197946549_1"
+   },
+   {
+    "itemID": "9201197819459_1"
+   },
+   {
+    "itemID": "9201197715469_1"
+   },
+   {
+    "itemID": "9201197715728_1"
+   }
+  ],
+  "meta": {
+   "totalNumber": 29
+  }
+ }
+}

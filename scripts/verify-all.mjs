@@ -13,6 +13,7 @@ import fs from "node:fs";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { oracleHost } from "./oracle-host.mjs";
+import { LABEL_NAMED_VENDORS, adpWelcomeName, ashbyOrganizationName, censusNameReason, pickAshbyName, sameSiteRedirect, ukgName } from "./census-names.mjs";
 const execFileP = promisify(execFile);
 
 const [, , CENSUS_PATH, OUT] = process.argv;
@@ -151,6 +152,55 @@ const headingOnly = (name) => {
   return words.length === 0 || words.every((w) => HIRING_VOCAB.has(w));
 };
 
+/**
+ * ONE REQUEST A SECOND PER HOST for the pages a census reads beside a
+ * vendor's API: an Ashby board's hosted page (a second Ashby host, read for
+ * every new board) and an employer's homepage (the review, 2026-10-26: the
+ * hosted page ran at the API's 14-way concurrency, and the homepage read
+ * followed redirects to any host). Calls for one host queue behind each
+ * other. A redirect is followed only within the same registrable domain
+ * (sameSiteRedirect), at most three times, and only when asked: a homepage
+ * that moves to another company's site has left its employer's own words.
+ */
+const POLITE_SPACING_MS = 1100;
+const politeLast = new Map();
+const politeChain = new Map();
+async function politeSlot(host) {
+  const prev = politeChain.get(host) ?? Promise.resolve();
+  let release;
+  const mine = new Promise((r) => { release = r; });
+  politeChain.set(host, prev.then(() => mine));
+  await prev;
+  const wait = (politeLast.get(host) ?? 0) + POLITE_SPACING_MS - Date.now();
+  if (wait > 0) await sleep(wait);
+  politeLast.set(host, Date.now());
+  return release;
+}
+async function politeText(url, { sameSiteRedirects = false } = {}) {
+  let at = url;
+  for (let hop = 0; hop < 4; hop++) {
+    let host;
+    try { host = new URL(at).hostname; } catch { return null; }
+    const release = await politeSlot(host);
+    let stdout = "";
+    try {
+      ({ stdout } = await execFileP(
+        "/usr/bin/curl",
+        ["-s", "-m", "15", "-H", `User-Agent: ${UA["User-Agent"]}`, "-w", "\n__STATUS__%{http_code} %{redirect_url}", at],
+        { maxBuffer: 32 * 1024 * 1024 },
+      ));
+    } catch { return null; } finally { release(); }
+    const cut = stdout.lastIndexOf("\n__STATUS__");
+    if (cut < 0) return null;
+    const [code, next = ""] = stdout.slice(cut + 11).trim().split(" ");
+    const status = Number(code);
+    if (status >= 200 && status < 300) return stdout.slice(0, cut);
+    if (status >= 300 && status < 400 && sameSiteRedirects && next && sameSiteRedirect(at, next)) { at = new URL(next, at).href; continue; }
+    return null;
+  }
+  return null;
+}
+
 const verifiers = {
   greenhouse: async (t) => {
     const eu = t.startsWith("eu~");
@@ -162,11 +212,20 @@ const verifiers = {
     const meta = await probe(`https://${host}/v1/boards/${tok}`);
     return { name: (meta?.name || prettify(tok)).slice(0, 60), count: jobs.length };
   },
+  // The posting API carries no organization name; the hosted jobs page embeds
+  // the organization record, whose name field is the vendor's own. When that
+  // record is empty the page title is the bare vendor word, so the title is
+  // never read; the board's own slug is the fallback, unless it keeps a label
+  // word. An organization name that does not match the slug leaves a new
+  // board unnamed for review (pickAshbyName), and the census rule below
+  // refuses a label.
   ashby: async (t) => {
     const d = await probe(`https://api.ashbyhq.com/posting-api/job-board/${t}`);
     const jobs = d?.jobs;
     if (!Array.isArray(jobs) || jobs.length < MIN_POSTINGS) return null;
-    return { name: prettify(t), count: jobs.length };
+    const page = await politeText(`https://jobs.ashbyhq.com/${encodeURIComponent(t)}`);
+    const pick = pickAshbyName(ashbyOrganizationName(page), t);
+    return { name: pick.name, count: jobs.length, nameFrom: pick.from };
   },
   smartrecruiters: async (t) => {
     const d = await probe(`https://api.smartrecruiters.com/v1/companies/${encodeURIComponent(t)}/postings?limit=100`);
@@ -303,10 +362,15 @@ const verifiers = {
   // employer — not the list, not the detail, not the page shell (measured
   // across six live boards 2026-08-31; the page <title> is the vendor's own
   // generic word). What the branding config DOES carry is the employer's own
-  // welcome prose ("Welcome to League School!") and a logo filename, so the
-  // name is resolved from those, hygiene-checked, and left EMPTY when neither
-  // carries identity — merge-all's name gate then holds the board back, the
-  // oracle discipline, instead of shipping a GUID as a display name.
+  // welcome prose ("Welcome to League School!"), so the name is read from
+  // that, held to the census rule, and left EMPTY when it carries no identity
+  // — resolve-adp-names then reads the employer's own posting prose, and
+  // merge-all's name gate holds a board neither can name.
+  //
+  // The logo's file name is NOT a source (trusted-pages round 2026-10-25): its
+  // residue shipped "C3 CMYK", "BTB2.png" and "HRH Secaucus University
+  // Transparent" as employers, and a board named that way never reached the
+  // posting-prose resolver, which only reads boards that arrive unnamed.
   adp: async (t) => {
     const [cid, ccIdRaw] = String(t).split("~");
     const ccId = ccIdRaw || "19000101_000001";
@@ -324,29 +388,10 @@ const verifiers = {
     const externalShare = reqs.length > 0 ? external.length / reqs.length : 1;
     const count = total > reqs.length ? Math.round(total * externalShare) : external.length;
     if (count < MIN_POSTINGS) return null;
-    let name = "";
     const links = await probe(`${base}/content-links/career-center?${qs}`);
-    for (const cl of links?.contentLinks ?? []) {
-      const code = cl?.linkTypeCode?.codeValue;
-      if (code === "WELCOME-TXT") {
-        const prose = String(cl?.linkTypeCode?.longName ?? "").replace(/<[^>]+>/g, " ").replace(/&nbsp;|\s+/g, " ").trim();
-        const m = prose.match(/\bwelcome to ([^.!?|]{2,60}?)\s*[.!?|]/i) ||
-          prose.match(/\b(?:employment|a career|careers?|a position|positions?|opportunit\w+|working) (?:with|at) ([A-Z][^.!?,|]{1,60}?)\s*[.!?,|]/);
-        if (m) name = m[1].trim();
-      } else if (code === "IMG_LOGO" && !name) {
-        // Logo filenames often lead with the employer's name; strip asset
-        // vocabulary and sizes, keep what identity remains, and let the
-        // hygiene gate below throw the residue away.
-        const stem = String(cl?.linkTypeCode?.shortName ?? "").replace(/\.[a-z0-9]+$/i, "");
-        const cleaned = stem.split(/[-_\s]+/)
-          .filter((w) => w && !/^(logos?|untitled|images?|img|icons?|headers?|banners?|brand(ing)?|final|web|blk|wht|black|white|colou?r|rgb|png|jpe?g|small|large|horiz\w*|vert\w*|stacked|primary|copy|new|old|updated|\d+x\d+|v?\d+)$/i.test(w))
-          .join(" ").trim();
-        if (/[a-z]{3,}/i.test(cleaned)) name = cleaned;
-      }
-    }
-    name = name.replace(/[\s:;|,–—-]+$/, "").trim();
+    let name = adpWelcomeName(links?.contentLinks);
     if (headingOnly(name)) name = "";
-    return { name: name.slice(0, 60), count };
+    return { name: name.slice(0, 60), count, nameFrom: "welcome prose" };
   },
   ukg: async (t) => {
     // Token is pod~TENANT~guid; all three come from the crawled URL, so the
@@ -359,26 +404,19 @@ const verifiers = {
     if (!d || !Array.isArray(d.opportunities)) return null;
     const count = Number(d.totalCount) || d.opportunities.length;
     if (count < MIN_POSTINGS) return null;
-    // THE NAME COMES FROM THE EMPLOYER'S OWN LOGO. No payload on this vendor
-    // carries a company name — the detail JSON's board-name fields are null —
-    // but the board page renders the employer's logo with its own alt text
-    // ("Sub-Zero Group, Inc.", "AAM Brand", both verified 2026-09-01). The
-    // employer's logo appears twice and UKG's browser-support notice adds one
-    // logo per browser, so the most frequent alt that is not browser chrome is
-    // the employer. A tie or nothing but chrome means unnamed, and unnamed
-    // stays out of the catalog.
-    const html = await probe(base, true);
-    if (!html) return null;
-    const counts = new Map();
-    for (const m of html.matchAll(/alt="([^"]{2,60})"/gi)) {
-      const a = m[1].trim();
-      if (/\b(firefox|chrome|edge|safari|internet explorer|opera|browser|ukg|ultipro|logo of)\b/i.test(a)) continue;
-      counts.set(a, (counts.get(a) ?? 0) + 1);
-    }
-    const ranked = [...counts.entries()].sort((x, y) => y[1] - x[1]);
-    const name = ranked.length ? ranked[0][0].replace(/\s+(logo|brand)$/i, "").trim() : "";
-    if (!name || headingOnly(name)) return null;
-    return { name: name.slice(0, 60), count };
+    // THE NAME COMES FROM THE BOARD'S OWN NAME FIELD. The board page embeds
+    // its jobBoard record, whose Name is the vendor's name field for the
+    // board, and a footer link the employer set to its own domain. The image
+    // text on the page is the brand asset's internal label in UKG's admin
+    // screens, not a name: it shipped "Axia Logo Horizontal", "US - LLC
+    // Recruiting" and "Westminster Brand 051816" as employers (trusted-pages
+    // round 2026-10-25), so it is never read. The Name wins when it is a
+    // name and agrees with the footer domain; otherwise the employer's own
+    // homepage names itself; otherwise the board stays unnamed and out.
+    const read = await ukgName(base, (url) => (url === base ? probe(url, true, 2) : politeText(url, { sameSiteRedirects: true })));
+    if (!read) return null;
+    const name = headingOnly(read.name) ? "" : read.name;
+    return { name: name.slice(0, 60), count, nameFrom: read.evidence };
   },
   paylocity: async (t) => {
     const html = await probe(`https://recruiting.paylocity.com/recruiting/jobs/All/${t}`, true);
@@ -410,6 +448,17 @@ const verifiers = {
 const CONCURRENCY = { greenhouse: 14, ashby: 14, smartrecruiters: 8, workable: 8, bamboohr: 14, recruitee: 14, teamtailor: 14, breezy: 14, personio: 2, rippling: 10, lever: 14, pinpoint: 14, paylocity: 6, adp: 5, oracle: 6, ukg: 6 };
 const SPACING_MS = { greenhouse: 60, ashby: 60, smartrecruiters: 150, workable: 150, bamboohr: 60, recruitee: 60, teamtailor: 60, breezy: 60, personio: 1600, rippling: 120, lever: 60, pinpoint: 60, paylocity: 250, adp: 250, oracle: 250, ukg: 250 };
 
+// EVERY vendor's name meets the census rule (scripts/census-names.mjs, which
+// applies the bake's own rule and adds the label shapes a census meets) before
+// it is written. A refused name is written as no name, with the refused text
+// and the reason beside it for whoever reads the hits: merge-all holds an
+// unnamed board back and counts it, so nothing is shortened into a name.
+function refuseLabelName(vendor, hit) {
+  if (!hit?.name) return hit;
+  const why = censusNameReason(hit.name, { fromLabel: LABEL_NAMED_VENDORS.has(vendor) });
+  return why ? { ...hit, name: "", refusedName: hit.name, refusedWhy: why } : hit;
+}
+
 async function run(vendor, tokens) {
   const verified = [];
   let done = 0;
@@ -418,7 +467,7 @@ async function run(vendor, tokens) {
     for (;;) {
       const t = queue.shift();
       if (!t) return;
-      const r = await verifiers[vendor](t).catch(() => null);
+      const r = refuseLabelName(vendor, await verifiers[vendor](t).catch(() => null));
       fs.appendFileSync(PROGRESS_PATH, `${vendor}:${t}\n`);
       if (r) {
         verified.push({ token: t, ...r });
@@ -440,7 +489,7 @@ await Promise.all(Object.keys(verifiers).map(async (vendor) => {
   // Fold in prior-run hits so the output is complete regardless of restarts.
   const seen = new Set(freshHits.map((h) => h.token));
   for (const h of priorHits) {
-    if (h.vendor === vendor && !seen.has(h.token)) { freshHits.push({ token: h.token, name: h.name, count: h.count }); seen.add(h.token); }
+    if (h.vendor === vendor && !seen.has(h.token)) { freshHits.push(refuseLabelName(vendor, { token: h.token, name: h.name, count: h.count, ...(h.nameFrom ? { nameFrom: h.nameFrom } : {}) })); seen.add(h.token); }
   }
   out[vendor] = freshHits.sort((a, b) => b.count - a.count);
   const postings = out[vendor].reduce((s, x) => s + x.count, 0);

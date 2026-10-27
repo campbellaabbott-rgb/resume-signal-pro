@@ -69,32 +69,22 @@
 // Output: { resolved: [{token,name,count,evidence}], unresolved: [...],
 //           flagged: [...], stats: {...} } — resolved is the shape
 //           merge-all's adp input expects.
+//
+// Importable (2026-10-25): the extraction and the per-board resolution are
+// exported so the tests can run them on recorded responses, and the sweep
+// below runs only when this file is the command.
 import fs from "node:fs";
 import { execFile } from "node:child_process";
+import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
+import { censusNameReason } from "./census-names.mjs";
 const execFileP = promisify(execFile);
-
-const [, , VERIFIED_PATH, OUT] = process.argv;
-if (!VERIFIED_PATH || !OUT) {
-  console.error("usage: node scripts/resolve-adp-names.mjs <adp-verified.json> <out.json>");
-  process.exit(1);
-}
-const verified = JSON.parse(fs.readFileSync(VERIFIED_PATH, "utf8"));
-const boards = (verified.adp ?? []).filter((b) => !b.name);
-console.log(`${boards.length} nameless adp boards to resolve`);
 
 const CONCURRENCY = 5;
 const SPACING_MS = 250;
 const DETAILS_PER_BOARD = 4;
 const UA = "resumebooster.work job board (contact: support@resumebooster.work)";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
-// ── resume sidecars (verify-all's protocol) ────────────────────────────────
-const PROGRESS_PATH = `${OUT}.progress`;
-const HITS_PATH = `${OUT}.hits`;
-const probed = new Set(fs.existsSync(PROGRESS_PATH) ? fs.readFileSync(PROGRESS_PATH, "utf8").split("\n").filter(Boolean) : []);
-const priorRecords = fs.existsSync(HITS_PATH) ? fs.readFileSync(HITS_PATH, "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l)) : [];
-if (probed.size) console.log(`resuming: ${probed.size} already probed, ${priorRecords.length} prior records`);
 
 // curl-backed like verify-all: node's fetch gets ECONNREFUSED from background
 // contexts in this environment; async execFile keeps the concurrency real.
@@ -123,7 +113,7 @@ async function probe(url, asText = false, tries = 3) {
 // never bleed across a heading, list item, or paragraph the way it does when
 // tags collapse to plain spaces (a sampled library's status line glued onto
 // its own name until this marker existed).
-function strip(html) {
+export function strip(html) {
   return String(html ?? "")
     .replace(/<\s*(?:\/p|\/div|\/li|\/h[1-6]|\/tr|\/td|\/th|\/ul|\/ol|\/table|\/section|br\s*\/?)\s*>/gi, " ¶ ")
     .replace(/<[^>]+>/g, " ")
@@ -182,11 +172,19 @@ const ROLE_WORDS = new Set([
 const PRONOUN_START = /^(?:we|our|you|your|it|this|that|these|those|there|i|are|is|do|does|did|if|when|come|ready|looking|thank|thanks|please|for|since|over|during|from|take|click|contact|actual)\b/i;
 // Sentence shrapnel that passed the word-set test in round 1: pay ranges,
 // application boilerplate, translation notes.
-const JUNK_RE = /\b(?:salary|compensation|wage|pay|hourly|base)\s+ranges?\b|version of this|\bper hour\b|\bbenefits? package\b|page to complete|online application|\bcover letter\b|\bbackground check\b|\bjob description\b|\b(?:coordinator|manager|director|recruiter|assistant|specialist|supervisor|technician|officer)s?\s+at\s+|\bwanted\b|\bnow hiring\b/i;
+// Policy headings joined the list 2026-10-25: with the logo's file name gone
+// as a source, a board whose postings open with "Non-Discrimination and ADA
+// Reasonable Accommodation" offered that heading as its employer, and the
+// sample read that day met "Diversity, Equity & Inclusion ..." and "The ...
+// operation" the same way.
+const JUNK_RE = /\bnon-?discrimination\b|\bdiversity\b|\binclusion\b|\boperations?\s*$|\breasonable\s+accommodations?\b|\baccommodations?\s+(?:policy|request|statement)\b|\b(?:privacy|eeo|equal\s+opportunity)\s+(?:policy|notice|statement)\b|\bdisclaimer\b|\b(?:salary|compensation|wage|pay|hourly|base)\s+ranges?\b|version of this|\bper hour\b|\bbenefits? package\b|page to complete|online application|\bcover letter\b|\bbackground check\b|\bjob description\b|\b(?:coordinator|manager|director|recruiter|assistant|specialist|supervisor|technician|officer)s?\s+at\s+|\bwanted\b|\bnow hiring\b/i;
 const CONNECTORS = new Set(["of", "and", "the", "for", "at", "de", "la", "del", "di", "da", "van", "von", "&", "dba", "by"]);
 
-function hygieneOk(name, token) {
+export function hygieneOk(name, token) {
   const n = String(name);
+  // The census rule first (scripts/census-names.mjs): prose candidates are
+  // read from a label-like source, so its label shapes apply in full.
+  if (censusNameReason(n, { fromLabel: true })) return false;
   if (n.length < 2 || n.length > 60) return false;
   if (!/[a-z]/i.test(n)) return false;
   if (/^[0-9a-f]{8}-[0-9a-f]{4}/i.test(n)) return false; // guid-shaped
@@ -200,7 +198,7 @@ function hygieneOk(name, token) {
   return true;
 }
 
-function cleanup(name) {
+export function cleanup(name) {
   let n = String(name).replace(/\s+/g, " ").trim();
   // heading labels that ride in front of the name in the same block
   n = n.replace(/^(?:AAP\/?\s*)?EEO(?:\/AAP?)?(?:\s+Statement)?\s+/i, "")
@@ -314,8 +312,14 @@ const FWD_PATTERNS = [
 // Opening-sentence self-description — position 0 only, the way an employer
 // introduces itself at the top of its own prose.
 const LEAD_RE = new RegExp(`^([A-Z]${NAME_BODY}{1,58}?)\\s+(?:is|has been|was founded)\\s`);
+// The same self-introduction under the employer's own heading for it
+// ("Organization Summary: Community Care Cooperative (C3) is a non-profit"),
+// measured 2026-10-25 on a board whose only other source was its logo's file
+// name. A trailing parenthetical acronym is the employer's short form, not
+// part of the name.
+const SUMMARY_LEAD_RE = new RegExp(`\\b(?:About\\s+(?:Us|the\\s+Company|the\\s+Organi[sz]ation)|Organi[sz]ation(?:al)?\\s+(?:Summary|Overview)|Company\\s+(?:Overview|Summary|Description|Profile)|Who\\s+We\\s+Are)\\s*:?\\s*(?:\u00B6\\s*)*([A-Z]${NAME_BODY}{1,58}?)\\s+(?:is|are|has been|was founded)\\s`, "g");
 
-function candidatesFrom(text, token) {
+export function candidatesFrom(text, token) {
   const found = [];
   for (const [tag, re] of BACK_ANCHORS) for (const raw of backNames(text, re)) found.push({ raw, tag });
   for (const [tag, re] of FWD_PATTERNS) {
@@ -325,6 +329,10 @@ function candidatesFrom(text, token) {
   }
   const lead = text.match(LEAD_RE);
   if (lead) found.push({ raw: lead[1], tag: "lead" });
+  SUMMARY_LEAD_RE.lastIndex = 0;
+  for (const m of text.matchAll(SUMMARY_LEAD_RE)) {
+    found.push({ raw: m[1].replace(/\s*\([A-Z0-9&.]{2,10}\)\s*$/, ""), tag: "summary-lead" });
+  }
   const out = [];
   for (const f of found) {
     const name = cleanup(f.raw);
@@ -336,7 +344,7 @@ function candidatesFrom(text, token) {
 // ── per-board resolution ───────────────────────────────────────────────────
 const BASE = "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1";
 
-function pickWinner(cands, jdTexts) {
+export function pickWinner(cands, jdTexts) {
   // bucket by normalized key first — one voice, several spellings
   const byKey = new Map(); // normKey -> {variants: Map(display -> Set(jd)), jds:Set, tags:Set}
   for (const c of cands) {
@@ -387,7 +395,7 @@ function pickWinner(cands, jdTexts) {
 // address. Round 1 flagged eight boards on capitalized-run scraping and all
 // eight hints were slogans; only pattern-extracted names (plus capitalized
 // runs carrying a legal suffix) accuse now.
-function brandingConflicts(welcomeProse, videoTitles, name, token) {
+export function brandingConflicts(welcomeProse, videoTitles, name, token) {
   const cands = [];
   if (welcomeProse) for (const c of candidatesFrom(welcomeProse, token)) cands.push(c.name);
   for (const t of videoTitles) {
@@ -411,12 +419,13 @@ function brandingConflicts(welcomeProse, videoTitles, name, token) {
   return conflicts.length ? conflicts.slice(0, 3) : null;
 }
 
-async function resolveBoard(b) {
+/** One board's resolution. `get(url)` returns parsed JSON or null; the sweep passes its polite curl probe. */
+export async function resolveBoard(b, get = probe) {
   const [cid, ccIdRaw] = String(b.token).split("~");
   const ccId = ccIdRaw || "19000101_000001";
   const qs = () => `cid=${cid}&ccId=${ccId}&timeStamp=${Date.now()}&lang=en_US&locale=en_US`;
 
-  const list = await probe(`${BASE}/job-requisitions?${qs()}&$top=6&$skip=1`);
+  const list = await get(`${BASE}/job-requisitions?${qs()}&$top=6&$skip=1`);
   const reqs = list?.jobRequisitions;
   if (!Array.isArray(reqs)) return { token: b.token, count: b.count, status: "unresolved", reason: "list unreadable" };
   const ids = reqs.map((r) => r.itemID).filter(Boolean).slice(0, DETAILS_PER_BOARD);
@@ -424,7 +433,7 @@ async function resolveBoard(b) {
   const jdTexts = [];
   const cands = []; // {name, tag, jd}
   for (const id of ids) {
-    const det = await probe(`${BASE}/job-requisitions/${id}?${qs()}`);
+    const det = await get(`${BASE}/job-requisitions/${id}?${qs()}`);
     const text = strip(det?.requisitionDescription);
     if (!text) continue;
     jdTexts.push(text);
@@ -432,7 +441,7 @@ async function resolveBoard(b) {
   }
 
   // branding config: welcome prose for the cross-check, other types as fallback
-  const links = await probe(`${BASE}/content-links/career-center?${qs()}`);
+  const links = await get(`${BASE}/content-links/career-center?${qs()}`);
   let welcomeProse = "";
   const videoTitles = [];
   for (const cl of links?.contentLinks ?? []) {
@@ -483,6 +492,23 @@ async function resolveBoard(b) {
 }
 
 // ── sweep ──────────────────────────────────────────────────────────────────
+async function main() {
+const [, , VERIFIED_PATH, OUT] = process.argv;
+if (!VERIFIED_PATH || !OUT) {
+  console.error("usage: node scripts/resolve-adp-names.mjs <adp-verified.json> <out.json>");
+  process.exit(1);
+}
+const verified = JSON.parse(fs.readFileSync(VERIFIED_PATH, "utf8"));
+const boards = (verified.adp ?? []).filter((b) => !b.name);
+console.log(`${boards.length} nameless adp boards to resolve`);
+
+// resume sidecars (verify-all's protocol)
+const PROGRESS_PATH = `${OUT}.progress`;
+const HITS_PATH = `${OUT}.hits`;
+const probed = new Set(fs.existsSync(PROGRESS_PATH) ? fs.readFileSync(PROGRESS_PATH, "utf8").split("\n").filter(Boolean) : []);
+const priorRecords = fs.existsSync(HITS_PATH) ? fs.readFileSync(HITS_PATH, "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l)) : [];
+if (probed.size) console.log(`resuming: ${probed.size} already probed, ${priorRecords.length} prior records`);
+
 const queue = boards.filter((b) => !probed.has(b.token));
 const records = [...priorRecords];
 const total = queue.length;
@@ -519,3 +545,6 @@ const postings = resolved.reduce((n, b) => n + b.count, 0);
 console.log(`\nresolved ${resolved.length}/${boards.length} boards (${postings.toLocaleString()} postings), flagged ${flagged.length}, unresolved ${unresolved.length} -> ${OUT}`);
 console.log("by source:", JSON.stringify(stats));
 console.log("top 10:", resolved.slice(0, 10).map((b) => `${b.name} (${b.count})`).join(", "));
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) await main();

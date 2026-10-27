@@ -24,6 +24,7 @@
 // Usage: node scripts/merge-oracle.mjs <oracle-names.json> [--cap 85000] [--apply]
 import { readFileSync, writeFileSync } from "node:fs";
 import { oracleHost as hostOf } from "./oracle-host.mjs";
+import { censusNameReason } from "./census-names.mjs";
 
 const args = process.argv.slice(2);
 const APPLY = args.includes("--apply");
@@ -114,12 +115,17 @@ const MILL_REVIEWED_CLEAR = new Set([
   "fa-evuf-saasfaprod1~ocs~CX_1", // Startek — BPO; hires its own agents
 ]);
 
-const dropped = { blockedName: [], blockedGov: [], blockedToken: [], dupe: [], nameCollision: [], mill: [], millUnreadable: [] };
+const dropped = { blockedName: [], labelName: [], blockedGov: [], blockedToken: [], dupe: [], nameCollision: [], mill: [], millUnreadable: [] };
 const kept = [];
 let budget = CAP;
 for (const b of resolved) {
   const name = cleanName(b.name);
   if (!name) continue;
+  // cleanName takes "Jobs" off the end, so a site label such as "All Jobs"
+  // arrives here as a generic word; the census rule holds it, and any other
+  // label, rather than merge it as an employer's name.
+  const labelWhy = censusNameReason(name, { fromLabel: true });
+  if (labelWhy) { dropped.labelName.push(`${name} (${b.token}): ${labelWhy}`); continue; }
   // The census token is kept verbatim. A missing `expand=requisitionList`
   // once made every site look empty and nearly caused a token rebuild onto
   // the "active" site — measured afterwards, CX_1 and the branded site serve

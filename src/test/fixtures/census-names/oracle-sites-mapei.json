@@ -1,0 +1,56 @@
+{
+ "url": "https://fa-elhu-saasfaprod1.fa.ocs.oraclecloud.com/hcmRestApi/resources/latest/recruitingCESites?onlyData=true&limit=200&offset=0",
+ "fetched": "2026-10-25",
+ "kept": "every site, with the four fields the census reads (the census re-run of 2026-10-25, oracle-sites.json)",
+ "hasMore": false,
+ "items": [
+  {
+   "SiteNumber": "CX",
+   "SiteName": "Mapei Candidate Experience Site",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_4013",
+   "SiteName": "Candidate Experience Site Vaga",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_4005",
+   "SiteName": "Candidate Experience Site Mosaico+",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_4009",
+   "SiteName": "Candidate Experience Site Adesital",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_1005",
+   "SiteName": "Candidate Experience Site Polyglass",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_2001",
+   "SiteName": "Candidate Experience Site Vinavil",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_3005",
+   "SiteName": "Candidate Experience Site Cercol",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  },
+  {
+   "SiteNumber": "CX_5009",
+   "SiteName": "Candidate Experience Site Profilpas",
+   "SeoOrganizationName": null,
+   "StatusCode": "ORA_ACTIVE"
+  }
+ ]
+}

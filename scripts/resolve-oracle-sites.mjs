@@ -20,10 +20,10 @@
 //           — same entry shape the merge feed expects, counts probed per site.
 import { readFileSync, writeFileSync } from "node:fs";
 import { oracleHost as hostOf } from "./oracle-host.mjs";
+import { oracleSiteName } from "./census-names.mjs";
 
 const [, , RESOLVE_PATH, OUT] = process.argv;
 const ambiguous = JSON.parse(readFileSync(RESOLVE_PATH, "utf8")).ambiguous ?? [];
-const DEFAULT_NAMES = /^candidate experience site$|^career site$|^careers?$|^cx(_\d+)?$/i;
 const CONCURRENCY = 4;
 
 async function jget(url) {
@@ -33,8 +33,13 @@ async function jget(url) {
 }
 
 async function sitesOf(token) {
-  const j = await jget(`https://${hostOf(token)}/hcmRestApi/resources/latest/recruitingCESites?onlyData=true&limit=200`);
-  return j.items ?? [];
+  const items = [];
+  for (let offset = 0; offset < 2000; offset += 200) {
+    const j = await jget(`https://${hostOf(token)}/hcmRestApi/resources/latest/recruitingCESites?onlyData=true&limit=200&offset=${offset}`);
+    items.push(...(j.items ?? []));
+    if (!j.hasMore) break;
+  }
+  return items;
 }
 
 // The public list endpoint states the site's own total; requisitionList rides
@@ -49,12 +54,13 @@ async function countOf(token, siteNumber) {
   return Array.isArray(it.requisitionList) ? it.requisitionList.length : null;
 }
 
-function brandName(site) {
-  const seo = String(site.SeoOrganizationName ?? "").replace(/\s+(Careers?|Jobs?)$/i, "").trim();
-  const raw = String(site.SiteName ?? "").replace(/\s+(Careers?|Jobs?)$/i, "").trim();
-  const name = seo || raw;
-  return name && !DEFAULT_NAMES.test(name) ? name : null;
-}
+// One site's employer name, or null (oracleSiteName in scripts/census-names.mjs):
+// its SeoOrganizationName when that is a name, else its SiteName when that is
+// a name. Stripping a trailing "Jobs" used to turn LCS's tenant-wide "All
+// Jobs" site into a board named "All", and "All Community Jobs" into "All
+// Community" (trusted-pages round 2026-10-25); a label is now refused whole,
+// and a site that names no one is not split out as an employer.
+const brandName = oracleSiteName;
 
 const resolved = [], skipped = [];
 let done = 0;
