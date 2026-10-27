@@ -24,7 +24,7 @@ reachable only through the previews, that was true before the switch-over.
 | `hp/integration` | a7a11712 | both, the integration (70e4e525), the fix round of 2026-10-18 and the rounds of 2026-10-24 and 2026-10-25 below |
 | `hp/honesty` | 5c74e112 | the quiet Header, the Footer without Freelance Boost, `src/config/sales-gate.ts`, PurchaseTerms' final-sale and region lines, H0 |
 | `hp/scanner` | e7040d18 | Index delete-only, the scanner's old addresses, every buy control's gate, the mail links to `/resume-checker` |
-| `hp/switch-over` | this branch | cut from `hp/honesty`, merges `hp/scanner` and `hp/integration`, then the switch-over steps 1-15 |
+| `hp/switch-over` | this branch | cut from `hp/honesty`, merges `hp/scanner` and `hp/integration`, then the switch-over steps 1-15 and [the review round](#the-review-round-2026-10-26) |
 
 `origin/design/integration` is merged into main (PR #36, 57815de9) and was
 deployed on 2026-10-18, so the PR (#38, base `design/integration`) now reads
@@ -58,7 +58,7 @@ first. One commit per step, in this order:
 | 7 | 29d3a387 | The writing allowance and the Builder price are imported. The Builder card prints /data-api's own strings. |
 | 8 | a770c9d3 | PurchaseTerms' own box is the only renewal box. It sits above Go Pro, is bound to its label by id, and is marked `aria-invalid` and `aria-describedby` the alert when Go Pro is pressed with the box empty. |
 | 10 | 3608f5d0 | The bake writes "/" and "/pricing" from the same facts and gates React reads. The offers on "/" come from `pricingJsonLd(resolveSaleGates()).offers`, and while no seller is named that is one free Offer. `/pricing` is count-bearing. The baked H1 is the size React renders, so the desktop LCP element stays the baked H1. |
-| 11 | 935a37b4 | Every link that meant the scanner opens `/resume-checker` (or `/resume-checker#upload`). Logo, breadcrumb and "back home" links stay on "/". |
+| 11 | 935a37b4, c20f793e | Every link that meant the scanner opens `/resume-checker` (or `/resume-checker#upload`). Logo, breadcrumb and "back home" links stay on "/". The first commit read only `src/pages` and `src/components`, and missed four guides' scan pills (`src/data/guides.ts`), every company page's "free resume scan" link (`prerender-pages.mjs`) and the CV-standards button (`prerender-seo.mjs`); the review round points them at `/resume-checker`, with a guard over every link to "/" in `src/pages`, `src/components`, `src/data` and both prerender scripts. One mail link is left: send-product-email's "buy again" button for a failed Full Analysis payment still opens "/", and changes on that function's next restamp (it can fire only once the Full Analysis is on sale). |
 | 12 | 592655e7 | No change: free-keyword-scan already carries H0's 2026-10-25.2. |
 | 13 | 592655e7 | `/pricing` keeps the old page's scroll-depth and time-on-page events under "pricing". "/" adds none. |
 | 14 | 8940ac33, 67749eeb | Verify section 99 and its headless half, `scripts/verify-home-pricing-rendered.mjs`. A fake-curl test proves each line can PASS, FAIL and INFO. |
@@ -83,7 +83,7 @@ first. One commit per step, in this order:
 - Production was read only. GETs passed, an RPC was re-sent as a GET, and a job-board read carried `x-rb-budget: probe`. Every other write was answered inside the browser: 0 on every run.
 - Measurement files and pictures are in `~/.config/resumebooster/home-pricing-switch-over-2026-10-26/`, with `before/`, `after/`, `verify/` and `tools/`.
 
-| What | Before (old "/") | After |
+| What | Before (old "/") | After (82ff0d93) |
 |---|---|---|
 | "/" static closure (entry plus route chunk, gzip) | 85 files, 420,753 B | 38 files, 299,675 B |
 | "/" JS loaded once the page settles (cards and consent banner included) | 88 files, 423,506 B | 58 files, 350,608 B |
@@ -91,8 +91,16 @@ first. One commit per step, in this order:
 | `/pricing` JS loaded | 43 files, 287,040 B | 42 files, 295,080 B |
 | LCP, desktop 1280x800, first visit (3 runs) | baked H1, 167-177k px², 1.44-2.78 s | baked H1, 56-58k px², 0.28-0.56 s |
 | LCP, desktop, consent already chosen | baked H1, 0.44-1.96 s | baked H1, 0.12-0.18 s |
-| LCP, phone 375x812 at 4x CPU, first visit | baked count line, 89k px², 1.02-1.11 s | **the consent banner's text, 30k px², 1.36-1.58 s (not baked)** |
-| LCP, phone, consent already chosen | baked count line, 0.40-0.58 s | baked "Posted in the last 7 days" line, 25k px², 0.23-0.27 s |
+| LCP, phone 375x812 at 4x CPU, first visit, network unthrottled | baked count line, 89k px², 1.02-1.11 s | the consent banner's text, 30k px², 1.36-1.58 s (not baked) |
+| LCP, phone, consent already chosen, network unthrottled | baked count line, 0.40-0.58 s | baked "Posted in the last 7 days" line, 25k px², 0.23-0.27 s |
+
+These phone rows named no network profile and were taken on an unthrottled
+local network, so they understated the regression. The review round re-measured
+under the Lighthouse mobile profile (150 ms RTT, 1.6 Mbps, 4x CPU): this build
+was 5.66-5.69 s on a first visit against the old page's 2.18-2.38 s, and the
+claimed gain with consent chosen did not reproduce (2.25-2.27 s against
+2.18-2.19 s). [The review round](#the-review-round-2026-10-26) closes the
+regression and has the current numbers.
 
 **The layout matrix.** It covered 320, 360, 390, 414, 768, 1024, 1280 and 1440 px, light and dark, EN, DE, HI and TL, on both pages: 128 cells. No cell had horizontal overflow, with `<details>` closed or open. None had clipped text or overlapping controls or headings.
 
@@ -113,13 +121,13 @@ Pictures: `after/shots/` (138) and `before/shots/` (16).
 
 Against production today, section 99 fails C1-C9 and C11, as it should before the publish. C10 passes.
 
-**Open after the switch-over**
+**Open after the switch-over** (as of the review round; the round's own list is below)
 
-1. **Phone first-visit LCP.** The site-wide ConsentBanner's paragraph (30,115 px², rendered by React, not baked) is larger than any baked block on the new phone "/". Before consent is chosen, the LCP waits for JS. The old "/" had an 89k px² baked paragraph that won. Two possible fixes: bake the banner, or keep its text block under the page's largest baked block. Either one touches a shared component (wave 4's consent work), so it is left to that owner.
+1. The phone first-visit LCP regression is closed (the review round).
 2. The Full Analysis text is still not written from a watched delivery (P18). Both cards stay gated.
 3. Per-language register (German "du" against "Sie", Hindi's two spellings): hp/i18n's single pass.
-4. The phone list packs four rows where the spec says three.
-5. The publish still waits on the WHEN list below. W2: wave 4 must be merged and verified. W3: production still answers `agent_sender_public_status` true, so the apply agent is not retired yet. C10 passes either way, because neither page promises never to submit.
+4. The phone list now ends at its last packed row (the review round); with today's tall rows a phone shows two or three.
+5. The publish still waits on the WHEN list below. W2: wave 4 must be merged and verified. W3: production still answers `agent_sender_public_status` true. Section 99's C10 now also reads `/llms.txt` and the FAQ `/resume-checker` renders, both of which say we never submit an application, so C10 fails until W3 holds.
 
 **The deploy step.** Run it once wave 4 is deployed and verified:
 
@@ -133,6 +141,109 @@ Against production today, section 99 fails C1-C9 and C11, as it should before th
 2. Publish the frontend once. No migration.
 3. Run `bash scripts/verify-deploy.sh` and read section 99, then 83, 92 and 98.
 4. Regenerate the Lovable message at the merge commit on main with `node scripts/deploy-ledger.mjs --message`.
+
+## The review round (2026-10-26)
+
+A review of the switch-over (layout, terms, crawler and route lenses, each
+finding re-verified) confirmed 37 findings. This round fixes them on
+`hp/switch-over`, test first: each commit's test failed on the code before it.
+No edge function changed, so the deploy step above is unchanged.
+
+| Finding | What is now true | Commit |
+|---|---|---|
+| Scan links to "/" (guides, company pages, CV-standards, manifest) | They open `/resume-checker`; the manifest's shortcut opens `/resume-checker#upload` and its description drops "matched to your resume"; a guard reads every link to "/" | c20f793e |
+| The free report predicted outcomes and ranked the reader (the comparison vocabulary mismatch told every reader "below") | The report opens with its score and findings; the verdict sentence, the placement among scans, "How You Compare", callback multipliers, the recruiter line, the peer percentile and pass-rate cards, the spotlight percentile, the PDF line, the share card's percentile, the personalised section's configured average and "resumes that get interviews" are gone; the mail payload carries no percentile or pass rate, so the mail prints none | d13885b9, 396f2bae |
+| The share card named resumescanner.ai | It names Resume Booster and `resumebooster.work/resume-checker`, in the reader's language | 8f0fdde0 |
+| The scanner FAQ sold both products and printed a delivery time; the closing grid sold retired features; the hero printed an undated floored count and "matched to your resume" | The FAQ follows the sale gates (closed, Full Analysis only, both); the grid, the interview badge, "Instant results" and the interview arithmetic are gone; the hero has no count and ends with a free check against any posting | d785adb2 |
+| "Ask for your résumé." as a blanket promise; "works everywhere"; French "pack"; the 69-character title; "planned" twice | "Ask for your résumé to search the board."; "still work there"; "lot"; every "/" title 60 characters or fewer; the Builder price says no "planned" (on `/data-api` too) | 6955350f |
+| Go Pro and the Full Analysis link shown to a refused territory; Pro's Claude Code fit printed 25; two spellings of $45; Pro could go on sale before the Full Analysis | The time-zone notice replaces both buy controls there (members keep Manage); Pro's cell says 1,000 a day with a key on a Pro account; PurchaseTerms uses `money()`; `sales-gate.ts` orders the switches and its test fails on the other order | ffcba0fb |
+| `/pricing#pro` ended at the footer; `/auth` back to `#pro` and `/data-api#builder` opened at the top | `scroll-to-fragment` lands every fragment on React's element; the baked cards carry no id | db581c20 |
+| A 150-170 px hole under three phone rows | `packRows` ends the box at its last row whenever its new bottom stays at or below the fold | ea7da4fd |
+| The banner hid focused controls (WCAG 2.2 SC 2.4.11); its text was the phone LCP; the baked header overflowed 320 px | While open: bottom scroll padding, body end room and `--consent-banner-h` for the help button; its body is two paragraphs; the headline starts at 30 px on phones; the baked nav wraps | 74a85bcd, 90ff2212, 8d8113ed |
+| llms.txt followed the seller alone; llms-full.txt called the root the scanner | llms.txt follows the pages' gates (`llms-lines.ts`); llms-full.txt leads with the board and names `/resume-checker` | 0d22493c |
+| Any `?ref=` went to the scanner; the fallback's scripts showed and preloaded the homepage on a scanner address and left its JSON-LD on the scanner; `/resume-checker` preloaded no route chunk | Only a 12-hex code redirects; the fallback's scripts read the route's rule (cleared page, scanner preloads); the redirect removes the home-only blocks; the landings preload `Index` | c78cfcd8 |
+| The two shards rode in every page's entry | They load with their pages (`home-strings.ts`, `pricing-strings.ts`); section 99's C7 reads the HomePage chunk | f3d4513d |
+| The dashboard labelled the scanner's events "Home" | "Scanner pages" | 8545d7fc |
+| Section 99 missed the query-carrying addresses, the fragment landing and three never-submit surfaces | C8 opens the rescan link, `/?ref=<12-hex>` and `/?ref=producthunt`; C12 opens `/pricing#pro`; C10 reads `/resume-checker`, `/llms.txt` and the FAQ | 7609f92d |
+| The "/" JS gate's meaning was unstated | Decided below; the homepage no longer imports `posting-page.ts` | 1c2e5374 |
+
+**Measured** (production builds of `git archive` exports, baked under the
+read-only fetch guard, served the way Lovable resolves paths, Playwright
+1.62.1 through heavy.sh, 0 writes answered on every run). Before = the old
+"/" (wave 4, `hp/honesty` 5c74e112); first build = 82ff0d93 (0364bdd7's
+frontend); now = 8d8113ed. Files are in
+`~/.config/resumebooster/home-pricing-switch-over-2026-10-26/fix-round/`.
+
+| What | Before | First build | Now |
+|---|---|---|---|
+| Entry chunk, gzip | 205,726 B | 212,466 B | 207,144 B |
+| "/" static closure | 85 files, 420,753 B | 38 files, 299,675 B | 38 files, 287,049 B |
+| "/" JS loaded once the cards render | 88 files, 423,506 B | 58 files, 350,608 B | 58 files, 349,482 B |
+| `/pricing` static closure | 37 files, 282,649 B | 36 files, 290,681 B | 36 files, 289,594 B |
+| `/jobs` static closure | 78 files, 482,925 B | 86 files, 493,719 B | 86 files, 488,137 B |
+| A posting page's static closure | 39 files, 327,040 B | 44 files, 337,065 B | 44 files, 331,501 B |
+| LCP, phone 375x812, Lighthouse mobile profile, first visit (3 runs) | baked count line, 89k px², 2.18-2.21 s | consent text, 30k px², 5.66-5.69 s | baked H1, 37k px², 2.22-2.34 s |
+| the same, consent chosen | 2.17-2.19 s | 2.25-2.27 s | 2.22-2.23 s |
+| the same at 320x640 and 414x896, first visit | 2.17-2.19 s | not measured | baked H1, 2.22-2.24 s (31k and 45k px²) |
+| LCP, phone 375 at 4x CPU, network unthrottled, first visit / consent chosen | 0.23-0.26 / 0.22-0.24 s | 0.30 / 0.24 s | 0.22-0.25 / 0.21-0.22 s |
+| LCP, desktop 1280x800, first visit / consent chosen | baked H1, 0.44-0.46 / 0.44-0.45 s | 0.12-0.14 s | baked H1, 0.13-0.20 / 0.11-0.12 s |
+
+The first build's columns are the reviewers' measurements; "before" and "now"
+were measured together on one machine.
+
+- **Fragments** (fresh loads, 375 px at 4x CPU and 150 ms RTT, and 1280 px):
+  `#free`, `#full-analysis`, `#pro`, `#pricing-limits` and `#pricing-faq`
+  each end with their element's top at 56 px (375) or 64 px (1280), one pixel
+  above the header's bottom edge, never at the page's end.
+- **The list**: six languages (en, de, es, fr, hi, tl) at 320, 360, 375, 390,
+  414 and 768 px, 740 and 812 px tall, live rows: the blank under the last row
+  is 0-2 px in all 66 cells (the first build: up to 170 px). Today's rows are
+  tall, so phones show two or three of five.
+- **Focus under the banner** (Tab walk, judged after scrolling settles, five
+  points per control): 0 fully hidden stops on "/" and `/pricing`, at
+  1280x800 and 390x740, forward and back (the first build: 34 of 77 and 34 of
+  63 on "/"). With consent chosen, 0 as before.
+- **The first screen at 375x812**: the H1 at 76-191 px, search at 307-351,
+  Search jobs at 433-477, the first posting from 743 px (cut at the fold).
+- **No JavaScript at 320 and 360 px**: no sideways scroll on "/" or `/pricing`
+  (the first build: 13 and 10 px at 320).
+
+**README step 15's gates, judged on these numbers**
+
+- *First-load JS of "/" 340 kB gzip or less.* The gate's words are "first-load
+  JS", and its prediction (Appendix A: entry, CSS, home chunk and the listing
+  chunk) counted what loads for the first view, cards included. So it judges
+  the JavaScript loaded once the cards render, the stricter reading: **349,482
+  B, 9.5 kB over: FAIL.** (The static closure, 287,049 B, would pass; the
+  stylesheet, 19,960 B, is not JavaScript.) Removing the homepage's own import
+  of `posting-page.ts` took 11 kB off the static closure but not the loaded
+  set, because the cards load the same employer-name code. The excess is the
+  board's own card: the `jobsPage` string namespace (22,765 B), the
+  employer-name tables (12,021 B) and `PostingMenu` (6,717 B), which the cards
+  never render. A lighter home card or a JobCard split is the listing owner's
+  change; until then this gate fails, and the owner decides whether to publish
+  with it.
+- *LCP at 375 throttled, 1.2 s or less.* The gate names no profile. Under
+  Lighthouse's mobile profile the new "/" measures 2.22-2.34 s and the old one
+  2.18-2.21 s on the same machine (the network carries the HTML and the
+  stylesheet first); with the network unthrottled both are 0.21-0.26 s. The
+  regression is closed; the 1.2 s line passes on the unthrottled reading and
+  fails on Lighthouse's, for the old page and the new. Name the profile before
+  the +1 day check.
+
+**Still open after the review round**
+
+1. The first-load JS gate (above): the board card's strings, employer tables and menu, a listing change.
+2. send-product-email's "buy again" link for a failed Full Analysis payment opens "/"; it changes on that function's next restamp.
+3. The free report's competitor card still prints configured percentages ("55% of top candidates have certifications") as if measured; only its "resumes that get interviews" line went. A sweep of the report's remaining configured figures is its own change.
+4. W3, P18, the register pass and step 7's five mirrors, as listed above.
+5. Thirteen undeclared overlaps among the other in-flight branches (trust/round3, trust/census-tools, trust/pages, oh/integration, wave4/integration); none involves hp/switch-over.
+
+**Gate** (this round): the frontend typecheck on every commit (pre-commit,
+through heavy.sh); every new and touched test; the full battery at the push
+(pre-push); worker tsc and `scripts/check-functions.sh` through heavy.sh;
+`deploy-ledger --draft` exit 0; `--against origin/wave4/integration` 6
+functions, 0 violations; `--overlap` exit 0 over both required lists.
 
 ## What was built
 
@@ -1240,7 +1351,9 @@ replaced). Nothing in the app imports `src/preview/**`; `vite build` builds
    150px) and never changes height: a layout effect shows the leading rows
    that fit whole and hides the rest before paint. So the box can neither grow
    nor shrink, and the empty band under a short list is at most one card. A
-   phone usually shows three or four rows.
+   phone usually shows three or four rows. (Since the review round of
+   2026-10-26 the box ends at its last row whenever its new bottom stays at
+   or below the fold, so that band is gone where nobody can see it move.)
 3. **Header and Footer are today's** (`Header` with Start and credits; the
    Footer still lists Freelance Boost). The quiet header and the Footer fix are
    hp/honesty's; the HomePage switches to them at switch-over.
