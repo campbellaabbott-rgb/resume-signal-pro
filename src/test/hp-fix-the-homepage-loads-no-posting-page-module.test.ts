@@ -5,9 +5,11 @@
  * (its URL, head copy, structured data and honesty gates): about 11.9 kB
  * gzip. "/" pulled all of it in for one constant (the board's 30-day window,
  * in the FAQ and the sources section) and one six-line function (a card's
- * address), which put the JavaScript a visitor's browser loads on "/" at
- * about 349 kB gzip, over README step 15's 340 kB "first-load JS" gate. The
- * homepage now carries a copy of each, held equal to the original here.
+ * address), which put all of it in the static closure of "/" (the review
+ * round measured 11 kB off that closure once it was gone; step 15's
+ * JavaScript cap, which this was measured against, was retired by the owner
+ * on 2026-10-27). The homepage carries a copy of each, held equal to the
+ * original here.
  */
 import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";

@@ -12,7 +12,10 @@ the job search with live postings, the free résumé scanner moves to
 `/pricing` to the new pricing page.** Nothing live changes until that branch
 is merged and published after wave 4; [the switch-over
 record](#the-switch-over-record-2026-10-26) says what each step did, where it
-departed from the plan, what was measured and what is still open. The
+departed from the plan, what was measured and what is still open, and [the
+owner's decisions and the report sweep](#the-owners-decisions-and-the-report-sweep-2026-10-27)
+replace step 15's two speed targets and take the configured figures out of the
+free report. The
 sections from "What was built" to "The switch-over plan" are the record of
 the branches it merged, kept as written; where they say the pages are
 reachable only through the previews, that was true before the switch-over.
@@ -58,7 +61,7 @@ first. One commit per step, in this order:
 | 7 | 29d3a387 | The writing allowance and the Builder price are imported. The Builder card prints /data-api's own strings. |
 | 8 | a770c9d3 | PurchaseTerms' own box is the only renewal box. It sits above Go Pro, is bound to its label by id, and is marked `aria-invalid` and `aria-describedby` the alert when Go Pro is pressed with the box empty. |
 | 10 | 3608f5d0 | The bake writes "/" and "/pricing" from the same facts and gates React reads. The offers on "/" come from `pricingJsonLd(resolveSaleGates()).offers`, and while no seller is named that is one free Offer. `/pricing` is count-bearing. The baked H1 is the size React renders, so the desktop LCP element stays the baked H1. |
-| 11 | 935a37b4, c20f793e | Every link that meant the scanner opens `/resume-checker` (or `/resume-checker#upload`). Logo, breadcrumb and "back home" links stay on "/". The first commit read only `src/pages` and `src/components`, and missed four guides' scan pills (`src/data/guides.ts`), every company page's "free resume scan" link (`prerender-pages.mjs`) and the CV-standards button (`prerender-seo.mjs`); the review round points them at `/resume-checker`, with a guard over every link to "/" in `src/pages`, `src/components`, `src/data` and both prerender scripts. One mail link is left: send-product-email's "buy again" button for a failed Full Analysis payment still opens "/", and changes on that function's next restamp (it can fire only once the Full Analysis is on sale). |
+| 11 | 935a37b4, c20f793e | Every link that meant the scanner opens `/resume-checker` (or `/resume-checker#upload`). Logo, breadcrumb and "back home" links stay on "/". The first commit read only `src/pages` and `src/components`, and missed four guides' scan pills (`src/data/guides.ts`), every company page's "free resume scan" link (`prerender-pages.mjs`) and the CV-standards button (`prerender-seo.mjs`); the review round points them at `/resume-checker`, with a guard over every link to "/" in `src/pages`, `src/components`, `src/data` and both prerender scripts. The last mail link, send-product-email's "try again" button for a failed Full Analysis payment, opens `/resume-checker` since the round of 2026-10-27 (send-product-email 2026-10-27.1). |
 | 12 | 592655e7 | No change: free-keyword-scan already carries H0's 2026-10-25.2. |
 | 13 | 592655e7 | `/pricing` keeps the old page's scroll-depth and time-on-page events under "pricing". "/" adds none. |
 | 14 | 8940ac33, 67749eeb | Verify section 99 and its headless half, `scripts/verify-home-pricing-rendered.mjs`. A fake-curl test proves each line can PASS, FAIL and INFO. |
@@ -131,13 +134,15 @@ Against production today, section 99 fails C1-C9 and C11, as it should before th
 
 **The deploy step.** Run it once wave 4 is deployed and verified:
 
-1. Deploy the six functions `deploy-ledger --against origin/wave4/integration` names:
-   - free-keyword-scan 2026-10-25.2;
+1. Deploy the eight functions `deploy-ledger --against origin/wave4/integration` names (six since the review round; the round of 2026-10-27 re-stamps free-keyword-scan and adds free-keyword-scan-stream and send-product-email):
+   - free-keyword-scan 2026-10-27.1;
+   - free-keyword-scan-stream 2026-10-27.1;
    - send-scan-report 2026-10-25.1;
    - send-search-digest 2026-10-25.1;
    - send-market-pulse 2026-10-25.2;
    - create-subscription-checkout 2026-10-26.1;
-   - create-product-checkout 2026-10-26.1.
+   - create-product-checkout 2026-10-26.1;
+   - send-product-email 2026-10-27.1.
 2. Publish the frontend once. No migration.
 3. Run `bash scripts/verify-deploy.sh` and read section 99, then 83, 92 and 98.
 4. Regenerate the Lovable message at the merge commit on main with `node scripts/deploy-ledger.mjs --message`.
@@ -147,7 +152,7 @@ Against production today, section 99 fails C1-C9 and C11, as it should before th
 A review of the switch-over (layout, terms, crawler and route lenses, each
 finding re-verified) confirmed 37 findings. This round fixes them on
 `hp/switch-over`, test first: each commit's test failed on the code before it.
-No edge function changed, so the deploy step above is unchanged.
+No edge function changed in this round; the round of 2026-10-27 changes three (the deploy step above names them).
 
 | Finding | What is now true | Commit |
 |---|---|---|
@@ -230,12 +235,17 @@ were measured together on one machine.
   regression is closed; the 1.2 s line passes on the unthrottled reading and
   fails on Lighthouse's, for the old page and the new. Name the profile before
   the +1 day check.
+- *Decided by the owner on 2026-10-27*: "/" ships with this JavaScript and
+  the 340 kB target is retired (slimming the job card is a later change); the
+  speed gate is never slower than the old "/" on both profiles, with the old
+  build's measurement as the baseline in the repo. Step 15 now says so; the
+  two verdicts above stay as the record.
 
 **Still open after the review round**
 
-1. The first-load JS gate (above): the board card's strings, employer tables and menu, a listing change.
-2. send-product-email's "buy again" link for a failed Full Analysis payment opens "/"; it changes on that function's next restamp.
-3. The free report's competitor card still prints configured percentages ("55% of top candidates have certifications") as if measured; only its "resumes that get interviews" line went. A sweep of the report's remaining configured figures is its own change.
+1. ~~The first-load JS gate~~: decided by the owner on 2026-10-27 ("/" ships as measured; the card's slimming is a later listing change).
+2. ~~send-product-email's "buy again" link~~: opens `/resume-checker` (2026-10-27.1).
+3. ~~The free report's configured figures~~: swept on 2026-10-27, with a guard ([below](#the-owners-decisions-and-the-report-sweep-2026-10-27)).
 4. W3, P18, the register pass and step 7's five mirrors, as listed above.
 5. Thirteen undeclared overlaps among the other in-flight branches (trust/round3, trust/census-tools, trust/pages, oh/integration, wave4/integration); none involves hp/switch-over.
 
@@ -546,9 +556,10 @@ Measured by the builders and not re-run here: the home chunk was 15.7 kB
 gzip. The fix round adds `src/lib/board-collisions.ts` (139 rows, about 2 kB
 gzip) and the small gate modules to the home chunk, and the switch-over adds
 the pricing strings to the eager English bundle (3.7 kB gzip), so the
-predicted first load of "/" is about 331 kB against the 340 kB cap. No
-production build of the real routes and no LCP figure yet: lab gates at +1
-day (step 15).
+predicted first load of "/" is about 331 kB against the 340 kB cap (measured
+at the switch-over: 349,482 B; the owner retired the cap on 2026-10-27, step
+15). No production build of the real routes and no LCP figure yet: lab gates
+at +1 day (step 15).
 
 ## Gate (fix round)
 
@@ -605,7 +616,7 @@ switch-over record](#the-switch-over-record-2026-10-26).
 7. **The apply agent is live.** The pages no longer promise never to submit;
    wave 4 restores the sentence, with its own test, once its retirement is
    live (WHEN, W3).
-8. **No production build, no LCP** until the switch-over build (step 15).
+8. **No production build, no LCP** until the switch-over build (step 15; the speed gate became "never slower than the old '/'" on 2026-10-27).
 9. **No scroll-depth or time-on-page events on the new "/"**: adding them
    took the visitor-budget journey to 69 events against 60 (step 13).
 10. **Links that mean the scanner**: 16 `/#upload` links, `ResumeBuilder.tsx`'s
@@ -1180,26 +1191,78 @@ claim FAILs before the deploy by design.
 
 ### 15. Before and after
 
+The speed gate and the JavaScript budget below are the owner's decisions of
+2026-10-27. They replace the two targets this step was first written with:
+a first-load JavaScript cap for "/" and an LCP ceiling "at 375 throttled"
+that named no network profile. The switch-over build was measured against
+both (the review round, above): the cap failed by 9.5 kB on the shared job
+card, and the ceiling passed with the network unthrottled and failed on
+Lighthouse's mobile profile, for the old page and the new alike. Those
+measurements stay the record, in the review round and in
+`docs/homepage-pricing/speed-baseline.json`.
+
 - **Baseline (the day before):** run
   `~/.config/resumebooster/home-pricing-2026-10-18/tools/measure.cjs` against
   the live "/" and "/pricing" (`PAGES_HOME=https://resumebooster.work/`
   `PAGES_PRICING=https://resumebooster.work/pricing ONLY=shots,checks,coarse,cls`),
-  plus a Googlebot curl of both, and save the numbers: live LCP is 1.12 s at
-  375 per the spec. The tool has no LCP probe yet; add one before the
-  baseline.
-- **Lab gates at +1 day, on production:** LCP at 375 throttled 1.2 s or
-  less, at 1280 2.5 s or less; CLS 0.02 or less with a scroll started before
-  the list answers, in English AND in a cold German and Spanish load at 375
-  (browser locale, as `measure.cjs`'s CLS cases do); axe 0 violations; 44 px
-  targets under a coarse pointer (CDP touch emulation); no horizontal
-  overflow at 320, 360 and 375 px in the nine languages with every
-  `<details>` open, and none under text spacing in German at 320; the
-  search box and first posting on the 375x812 first screen; first-load JS of
-  "/" 340 kB gzip or less on the build (predicted about 331 kB); at most four
-  Supabase data calls on "/" (vendor counts, freshness, list, fill curve)
-  plus analytics; mcp-tools, the Index chunk, ResumeUploader and
-  use-product-checkout not loaded on "/". Any gate failing is a fix before
-  anything else ships.
+  plus a Googlebot curl of both, and save the numbers. The speed baseline is
+  not a live reading: it is the old build measured beside the switch-over
+  build in the lab, below. (The spec's "1.12 s at 375" named no network
+  profile, so nothing is compared with it.)
+- **The speed gate: never slower than today** (owner decision 2026-10-27).
+  On the Lighthouse mobile profile (150 ms RTT, 1.6 Mbps down, 750 kbps up,
+  4x CPU, applied through the DevTools protocol) and on the unthrottled
+  4x-CPU profile, the new "/" LCP is no worse than the old "/": for every
+  case measured (375, 320 and 414 px; a first visit and a visit with consent
+  already chosen), the new build's median of three runs, rounded to the
+  0.1 s Lighthouse prints, is no more than the old build's.
+  - *The baseline* is the old build's measurement, stored in the repo:
+    `docs/homepage-pricing/speed-baseline.json` holds the old "/" (5c74e112)
+    and the switch-over's "/" (8d8113ed), three runs a case, measured
+    together on one machine on 2026-10-26, with the method and both profiles
+    written out. `node scripts/home-speed-gate.mjs` judges it, and
+    `src/test/hp-speed-the-new-home-is-never-slower-than-the-old.test.ts`
+    holds the rule and the stored runs.
+  - *Today it holds.* Lighthouse mobile profile, 375 px: 2.2 s against
+    2.2 s on a first visit (medians 2,236 ms and 2,180 ms) and with consent
+    chosen (2,232 and 2,172 ms); at 320 and 414 px, 2.2 s against 2.2 s. The
+    new page is 36-60 ms slower by median there, inside the tenth of a second
+    the rule reads. Unthrottled 4x CPU: 0.2 s against 0.2 s (228 and 244 ms;
+    220 and 220 ms with consent chosen). Desktop, kept as the record and not
+    gated: 0.1 s against 0.5 s (136 and 456 ms).
+  - *A re-measure* (at +1 day, or after any change to "/") builds and
+    measures BOTH commits again, on one machine, the same way (the method in
+    the baseline file; the tool is
+    `~/.config/resumebooster/home-pricing-switch-over-2026-10-26/fix-round/tools/lcp2.cjs`),
+    and judges the probe's output with
+    `node scripts/home-speed-gate.mjs --new <new runs> --old <old runs>`.
+    Absolute LCP moves with the machine, so the stored runs are the record,
+    not a target for another machine's numbers; judged against them alone,
+    the script says the verdict is indicative.
+- **First-load JavaScript** (owner decision 2026-10-27): "/" ships with the
+  JavaScript it has, 349,482 B gzip once the cards render and a 287,049 B
+  static closure (2026-10-26; `firstLoadJs` in the baseline file). The
+  earlier 340 kB target is retired. Slimming the shared job card (the
+  `jobsPage` strings, the employer-name tables and `PostingMenu`, which the
+  home cards never render) is a later change.
+- **Real visitors (owner step):** read Search Console's Core Web Vitals
+  report, mobile, for "/" and "/pricing" before the publish and again about
+  28 days after it (the report reads Chrome's field data over a trailing 28
+  days, so the second reading is the first that covers only the new pages).
+  Note LCP, INP and CLS with each reading's date. Where Search Console shows
+  no data for a page (too few Chrome visits), write that down; a lab number
+  never stands in for it.
+- **Lab checks at +1 day, on production:** LCP at 1280 2.5 s or less; CLS
+  0.02 or less with a scroll started before the list answers, in English
+  AND in a cold German and Spanish load at 375 (browser locale, as
+  `measure.cjs`'s CLS cases do); axe 0 violations; 44 px targets under a
+  coarse pointer (CDP touch emulation); no horizontal overflow at 320, 360
+  and 375 px in the nine languages with every `<details>` open, and none
+  under text spacing in German at 320; the search box and first posting on
+  the 375x812 first screen; at most four Supabase data calls on "/" (vendor
+  counts, freshness, list, fill curve) plus analytics; mcp-tools, the Index
+  chunk, ResumeUploader and use-product-checkout not loaded on "/". Any
+  check failing is a fix before anything else ships.
 - **Funnel at +7 and +28 days**, deduplicated by visitor, against the 28
   days before: sessions landing on "/" (`landing_view`, `landingPage` "/"),
   the share that reach the board (`job_board`) and a posting page
@@ -1391,7 +1454,7 @@ measurements are in "What was measured" above.
 | Overflow at 320, 360, 375, every `<details>` open | none in en, en-GB, de, es, fr, hi, nl, pt, tl (`checks.i18n.json`) |
 | Targets under 24px, text under 12px | none |
 | Copy sweep on the rendered page | only "Freelance" (today's Footer) |
-| Home chunk (`lazy(HomePage)`'s own code, English strings included; every other module external), gzip -9 | 15.7 kB (63.3 kB raw), built from an archive export of 37310bdb in the scratch directory; each other language's strings 3.8 to 5.0 kB, loaded with the page. Predicted first load of "/": design entry 279.3 + CSS 18.9 + home 15.7 + shared listing chunk 13.5 = 327.4 kB, under the 340 kB cap; confirm on the switch-over build |
+| Home chunk (`lazy(HomePage)`'s own code, English strings included; every other module external), gzip -9 | 15.7 kB (63.3 kB raw), built from an archive export of 37310bdb in the scratch directory; each other language's strings 3.8 to 5.0 kB, loaded with the page. Predicted first load of "/": design entry 279.3 + CSS 18.9 + home 15.7 + shared listing chunk 13.5 = 327.4 kB, under the 340 kB cap; confirm on the switch-over build (measured there: 349,482 B once the cards render; the cap was retired on 2026-10-27, step 15) |
 | Live rows (data=live) | Bass Pro (lap_proven) printed no feed-read time; four full_read boards did (the curve the page received was logged) |
 
 ### Tests (`npx vitest run --maxWorkers=2 src/test/hp-home-*`)

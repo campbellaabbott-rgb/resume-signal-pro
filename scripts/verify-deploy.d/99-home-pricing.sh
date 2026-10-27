@@ -25,12 +25,14 @@
 #   C5  While this checkout's src/config/seller.ts names no seller: no Offer
 #       at a price in the JSON-LD of "/" or "/pricing", no buy control in the
 #       baked HTML, and the /pricing description names no price.
-#   C6  The builds home-pricing carries: free-keyword-scan 2026-10-25.2 (H0),
-#       send-scan-report and send-search-digest 2026-10-25.1, send-market-pulse
-#       2026-10-25.2 (the scanner's own address in their links), and
-#       create-subscription-checkout 2026-10-26.1 (Pro's list says packages)
-#       and create-product-checkout 2026-10-26.1 (it bundles that list), each
-#       that build or a later one.
+#   C6  The builds home-pricing carries: free-keyword-scan 2026-10-27.1 (H0,
+#       then the report sweep's photo notes) and free-keyword-scan-stream
+#       2026-10-27.1 (the same notes), send-scan-report and send-search-digest
+#       2026-10-25.1, send-market-pulse 2026-10-25.2 (the scanner's own address
+#       in their links), create-subscription-checkout 2026-10-26.1 (Pro's list
+#       says packages) and create-product-checkout 2026-10-26.1 (it bundles that
+#       list), and send-product-email 2026-10-27.1 (a failed Full Analysis
+#       payment's button opens /resume-checker), each that build or a later one.
 #   C7  The page React renders: the homepage's own chunk (named in the served
 #       "/") carries its sentences and none of the retired homepage hero's
 #       strings, and the entry every page loads does not carry them (they ride
@@ -58,6 +60,17 @@
 #       in one currency or promises "your local currency"; a Full Analysis
 #       Offer anywhere carries pricingPlans.fa.currency as its description.
 #   G4  (W6, a ledger precondition) is printed as a note.
+#   SPEED (owner decision 2026-10-27) is not judged here, and is printed as a
+#       note: the new "/" is never slower than the old one, on the Lighthouse
+#       mobile profile and on the unthrottled 4x-CPU profile. It is a lab
+#       comparison of two builds on one machine, so a curl of production cannot
+#       judge it: the old build's measurement, the baseline, is
+#       docs/homepage-pricing/speed-baseline.json, and
+#       scripts/home-speed-gate.mjs judges it and any re-measure (README step
+#       15). The first-load JavaScript ships as measured (349,482 B gzip once
+#       the cards render), by the same decision. Real visitors' Core Web Vitals
+#       are the owner's read in Search Console, before the publish and about 28
+#       days after it.
 #
 # READ-ONLY: GETs of the site and of two anon RPCs (PostgREST runs a GET in a
 # read-only transaction), OPTIONS preflights, and one headless browser whose
@@ -81,7 +94,7 @@ VD99_HOMECHUNK=$(grep -oE 'HomePage-[A-Za-z0-9_-]+\.js' /tmp/vd_99_home.html | h
 if [ -n "$VD99_HOMECHUNK" ]; then curl -s -m 60 "$SITE/assets/$VD99_HOMECHUNK" > /tmp/vd_99_homechunk.js; fi
 
 # ---- C6: the builds the reservation carries ----
-for VD99_PAIR in "free-keyword-scan|2026-10-25|2" "send-scan-report|2026-10-25|1" "send-search-digest|2026-10-25|1" "send-market-pulse|2026-10-25|2" "create-subscription-checkout|2026-10-26|1" "create-product-checkout|2026-10-26|1"; do
+for VD99_PAIR in "free-keyword-scan|2026-10-27|1" "free-keyword-scan-stream|2026-10-27|1" "send-scan-report|2026-10-25|1" "send-search-digest|2026-10-25|1" "send-market-pulse|2026-10-25|2" "create-subscription-checkout|2026-10-26|1" "create-product-checkout|2026-10-26|1" "send-product-email|2026-10-27|1"; do
   VD99_FN="${VD99_PAIR%%|*}"; VD99_REST="${VD99_PAIR#*|}"; VD99_DAY="${VD99_REST%%|*}"; VD99_N="${VD99_REST#*|}"
   VD99_H=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$VD99_FN" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+: *//')
   if [ -z "$VD99_H" ]; then echo "FAIL  C6 $VD99_FN preflight carries no x-fn-build (not deployed, or the previous bundle is serving)"
@@ -220,3 +233,4 @@ elif [ ! -f "$REPO_ROOT99/scripts/verify-home-pricing-rendered.mjs" ]; then echo
 else SITE="$SITE" REPO_ROOT="$REPO_ROOT99" node "$REPO_ROOT99/scripts/verify-home-pricing-rendered.mjs" || echo "FAIL  C8 C9 the headless run exited with an error"; fi
 
 echo "INFO  G4 (W6): R1 is a verified deploy (its verifiedDeploys entry, ea8acb5e); sections 94-96 read it again"
+echo "INFO  SPEED (owner decision 2026-10-27): never slower than the old \"/\" on the Lighthouse mobile and unthrottled 4x-CPU profiles, a lab comparison this section cannot make: node scripts/home-speed-gate.mjs judges docs/homepage-pricing/speed-baseline.json and any re-measure; real-visitor Core Web Vitals are the owner's Search Console read, before the publish and about 28 days after"
