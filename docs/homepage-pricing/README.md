@@ -255,6 +255,108 @@ through heavy.sh); every new and touched test; the full battery at the push
 `deploy-ledger --draft` exit 0; `--against origin/wave4/integration` 6
 functions, 0 violations; `--overlap` exit 0 over both required lists.
 
+## The owner's decisions and the report sweep (2026-10-27)
+
+**The owner's decisions, 2026-10-27.**
+
+1. "/" ships with the first-load JavaScript it has: 349,482 B gzip once the
+   cards render, a 287,049 B static closure (measured 2026-10-26). The 340 kB
+   target is retired; slimming the shared job card is a later change.
+2. The speed gate is "never slower than today": on the Lighthouse mobile
+   profile and on the unthrottled 4x-CPU profile, the new "/" LCP is no worse
+   than the old "/". It holds today (step 15 has the numbers and the rule).
+   Real visitors' Core Web Vitals in Search Console are read before the
+   publish and about 28 days after it, an owner step.
+
+**What this round made true** (test first: each new or changed test failed
+on the code before it; the failing runs are in
+`~/.config/resumebooster/hp-switch-over-2026-10-26/owner-decisions-round/`).
+
+| What | Now | Commit |
+|---|---|---|
+| Step 15's speed targets | Step 15, section 99 (its header and an INFO line), the PR and this README state the owner's decisions. `docs/homepage-pricing/speed-baseline.json` holds the old build's runs (the baseline) and the switch-over build's, with the method; `scripts/home-speed-gate.mjs` judges them and any re-measure; `src/test/hp-speed-the-new-home-is-never-slower-than-the-old.test.ts` holds the rule. The earlier measurements stay as the record (the review round, above) | b00d8fcf |
+| The free report printed configured figures as measurements | None is printed (the list below); a guard reads the report's strings in nine locales, every module it imports, the scan's printed data and a rendered report | b767dadd |
+| send-product-email's "try again" button for a failed Full Analysis payment opened "/" | It opens `/resume-checker` (2026-10-27.1) | da381a07 |
+| The deploy step named six functions | It names eight: free-keyword-scan and free-keyword-scan-stream 2026-10-27.1 and send-product-email 2026-10-27.1 join the five others, and section 99's C6 asks for all eight | b00d8fcf |
+
+**The configured figures that are gone** from the free report the
+switch-over links to, in all nine languages:
+
+- *The role card* (`CompetitorBenchmark`, under the personalized tips): the
+  share of "top candidates" with a portfolio, a certification or a quantified
+  bullet, an average bullet count, all hand-set per role in
+  `src/config/personalization.ts`, and a "competitive standing" read from
+  three props the report never passed, so every reader saw 0% and the same
+  checklist. It now says what résumés for the role usually include, with no
+  figure; the role's configured weights only decide which guideline shows.
+- *"Keywords that appear in 70%+ of top-quartile resumes"*, for a list typed
+  into free-keyword-scan (`COMPETITIVE_KEYWORDS`): the card is "Keywords
+  Expected at Your Level", says the list is chosen by hand, and prints "N% of
+  this list", the share the reader's own résumé uses.
+- *"You vs. a Top-Quartile Candidate"*: eight quantified bullets, three
+  leadership verbs and 70% keyword coverage, literals in free-keyword-scan.
+  Not printed.
+- *"Industry median"* beside the two-field comparison (a configured table).
+  Not printed.
+- *The market card's salary line*: twelve typed salary ranges, two with
+  percentage gaps, no source. Not printed.
+- *The ATS tooltip's "98% of Fortune 500 companies"* and two tooltips' "6
+  seconds" and "6-7 seconds": reworded without the figures.
+- *Dead copy that would have printed figures*: `freeResults.ctaCopy` ("Beat
+  87% of Applicants", "3x more interview callbacks"), the unmounted
+  `PeerBenchmark` (a percentile from configured averages) with its strings,
+  and the share card's dormant "Better than N% of peers". Deleted.
+- *The local-standards card's photo notes* for Germany (about 80% of
+  applicants, about 19% of recruiters), Italy (60-70% of CVs) and Taiwan (a
+  survey's "3×" interview chances). The 52-country review they came from is
+  not in this repository, so the notes say what is usual without the numbers.
+  The notes live in free-keyword-scan's `country-standards.ts` and its stream
+  fork's copy (byte for byte), so both functions carry 2026-10-27.1. The
+  CV-standards pages read the same module; the German page's hand
+  translation (`src/data/cv-standards-content.ts`) says the same, and its
+  render test reads the new sentence.
+
+Kept, each named in the guard's allowlist with where its number comes from:
+the reader's own shares (keyword coverage, quantified bullets, readability,
+bullet impact, the posting match, the parse simulator's confidence, the
+industry blend, the fit badge) and two example bullet rewrites shown only
+when the résumé gave none to quote. The guard is
+`src/test/the-free-report-prints-no-configured-figure-as-a-measurement.test.tsx`;
+a new % or × figure fails it until the allowlist says which of the reader's
+numbers it is.
+
+**What "/" loads did not change.** The report's strings ride with the
+scanner's chunk, not with "/"; each of the nine locale files lost the deleted
+strings (English 103,633 to 102,725 B gzip, German 118,887 to 117,750, Hindi
+137,031 to 135,847), and nothing grew. The speed record in step 15 was not
+re-measured for this round.
+
+**Not changed here:** the scanner page's hero still says "Over 98% of Fortune
+500 companies use them" (`hero.atsTooltip`, `hero.atsExplainerRest`, outside
+the report); the local-standards card still credits "our 52-country standards
+review (July 2026)", which is not in the repository; the scan still sends
+`competitorSilhouette`, `benchmarkMedian` and `salaryContext` (the data
+contract), and the market data's `salaryContext` still reaches the scan's
+prompt; nothing prints them.
+
+**The ledger.** Six files and functions this round shares with wave 4 take
+wave4 (ReportInsightCards.tsx, free-keyword-scan-stream and send-product-email
+with their index.ts files, and the purchase-mail test); the switch-over
+re-applies its hunks on wave 4's versions.
+
+**Gate** (this round): the frontend typecheck (pre-commit on every src
+commit and standalone, through heavy.sh); `scripts/check-functions.sh`
+through heavy.sh (every edge function typechecks, the Deno tests pass;
+`deno.lock` restored); the new guard (20 tests), the speed test (10),
+section 99's test (19), and 281 targeted files over the report, its
+components, the locales, the scan, the CV-standards pages, the purchase
+mail, the hp suite and the 17 ledger tests, run after the last change
+(4,476 tests pass, 6 skipped); `deploy-ledger --draft` exit 0; `--against origin/wave4/integration`
+8 functions differ, 0 violations; `--overlap` exit 0 over both required
+lists, and over every in-flight branch no undeclared file involves
+hp/switch-over (13 among the others, as before); the full battery at the
+push (pre-push, through heavy.sh).
+
 ## What was built
 
 **Homepage** (`src/pages/home/HomePage.tsx`, default export, ready for `lazy()`):
