@@ -17,6 +17,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, render } from "@testing-library/react";
 import { CONSENT_EVENT } from "@/lib/consent";
 import en from "@/i18n/locales/en.json";
+import { HOME_H1_CLASS } from "@/lib/home/hero-classes";
 
 vi.mock("@/lib/consent", async (orig) => ({ ...(await orig<typeof import("@/lib/consent")>()), analyticsConsent: () => "unset" }));
 
@@ -61,3 +62,16 @@ describe("while the banner is open", () => {
     expect(body).not.toBe(host);
   });
 });
+
+describe("the phone's largest baked block", () => {
+  it("is the headline: its phone size starts at 30 px, so a 375 px first visit's LCP is the baked H1, not the banner", () => {
+    // Measured 2026-10-26 (slow 4G, 4x CPU): with the banner split, its body
+    // was 25,043 px² at 375 px against the baked "Posted in the last 7 days"
+    // line's 24,563, so the LCP still waited 5.6 s for the banner's script.
+    const m = /text-\[clamp\(([\d.]+)rem,([\d.]+)vw,([\d.]+)rem\)\]/.exec(HOME_H1_CLASS);
+    expect(m, "the headline's phone size is a clamp").not.toBeNull();
+    expect(Number(m![1]) * 16).toBeGreaterThanOrEqual(30);
+    expect(Number(m![3])).toBe(2.25);
+  });
+});
+
