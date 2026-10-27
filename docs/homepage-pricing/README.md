@@ -327,11 +327,18 @@ when the résumé gave none to quote. The guard is
 a new % or × figure fails it until the allowlist says which of the reader's
 numbers it is.
 
-**What "/" loads did not change.** The report's strings ride with the
-scanner's chunk, not with "/"; each of the nine locale files lost the deleted
-strings (`gzip -9` of the file: English 103,633 to 102,725 B, German 118,887
-to 117,750, Hindi 137,031 to 135,847), and nothing grew. The speed record in step 15 was not
-re-measured for this round.
+**What "/" loads shrank a little.** The report's English strings
+(`freeResults` and the rest of `en.json`) ride in the entry every page
+loads, "/" included: `src/main.tsx` imports `src/i18n`, which imports
+`en.json` eagerly (the other eight languages load with the reader's locale).
+Each of the nine locale files lost the deleted strings (`gzip -9` of the
+file read from stdin: English 103,633 to 102,725 B, so the entry "/" loads is
+about 0.9 kB lighter; German 118,887 to 117,750, Hindi 137,031 to 135,847),
+and nothing grew. The first-load figure in step 15 (349,482 B) was measured
+on 2026-10-26, before this round, so it is slightly high now. The speed
+record in step 15 was not re-measured for this round. (This paragraph first
+said the report's strings ride with the scanner's chunk, not with "/"; the
+review of 2026-10-27 found that wrong.)
 
 **Not changed here:** the scanner page's hero still says "Over 98% of Fortune
 500 companies use them" (`hero.atsTooltip`, `hero.atsExplainerRest`, outside
@@ -339,7 +346,8 @@ the report); the local-standards card still credits "our 52-country standards
 review (July 2026)", which is not in the repository; the scan still sends
 `competitorSilhouette`, `benchmarkMedian` and `salaryContext` (the data
 contract), and the market data's `salaryContext` still reaches the scan's
-prompt; nothing prints them.
+prompt; nothing prints them. (The review of the sweep, below, took
+`salaryContext` out of the prompt.)
 
 **The ledger.** Six files and functions this round shares with wave 4 take
 wave4 (ReportInsightCards.tsx, free-keyword-scan-stream and send-product-email
@@ -1320,8 +1328,10 @@ measurements stay the record, in the review round and in
   4x CPU, applied through the DevTools protocol) and on the unthrottled
   4x-CPU profile, the new "/" LCP is no worse than the old "/": for every
   case measured (375, 320 and 414 px; a first visit and a visit with consent
-  already chosen), the new build's median of three runs, rounded to the
-  0.1 s Lighthouse prints, is no more than the old build's.
+  already chosen), the new build's median, rounded to the 0.1 s Lighthouse
+  prints, is no more than the old build's (three runs a case in the stored
+  baseline, five runs a case in a re-measure). A re-measure that fails is a
+  fix before anything else ships.
   - *The baseline* is the old build's measurement, stored in the repo:
     `docs/homepage-pricing/speed-baseline.json` holds the old "/" (5c74e112)
     and the switch-over's "/" (8d8113ed), three runs a case, measured
@@ -1336,9 +1346,23 @@ measurements stay the record, in the review round and in
     the rule reads. Unthrottled 4x CPU: 0.2 s against 0.2 s (228 and 244 ms;
     220 and 220 ms with consent chosen). Desktop, kept as the record and not
     gated: 0.1 s against 0.5 s (136 and 456 ms).
+  - *The margin* (the review of 2026-10-27). Read in tenths, the rule passes
+    a regression of up to 99 ms when both medians sit inside one tenth, and
+    fails on a shift of a few ms across a rounding edge. So
+    `scripts/home-speed-gate.mjs` prints, beside each verdict, the unrounded
+    difference, each median's distance from the nearer edge of its tenth,
+    the shift in one median that flips the verdict, and the runs' own
+    spread. On the stored runs the closest case is the 375 px first visit on
+    the Lighthouse mobile profile: +56 ms by median, the new median 14 ms
+    below the 2.25 s edge, so a 14 ms shift flips it, which is inside that
+    case's 128 ms spread of runs (one new run took 2,344 ms). The other gated
+    cases flip at 18-31 ms (Lighthouse mobile) and 22-30 ms (unthrottled).
+    That is why a re-measure takes five runs a case: one slow run moves a
+    median of five less than a median of three.
   - *A re-measure* (at +1 day, or after any change to "/") builds and
-    measures BOTH commits again, on one machine, the same way (the method in
-    the baseline file; the tool is
+    measures BOTH commits again, on one machine, the same way, five runs a
+    case of each (the script refuses fewer; the method is in the baseline
+    file; the tool is
     `~/.config/resumebooster/home-pricing-switch-over-2026-10-26/fix-round/tools/lcp2.cjs`),
     and judges the probe's output with
     `node scripts/home-speed-gate.mjs --new <new runs> --old <old runs>`.
@@ -1381,7 +1405,8 @@ measurements stay the record, in the review round and in
   social.
 - **Rollback triggers:** the board's anonymous-budget refusals rise;
   uploads site-wide fall by half or more at +7 with no recovery at +28;
-  errors on "/" rise in the error dashboard.
+  errors on "/" rise in the error dashboard; the new "/" slower than the
+  old on either gated profile at the re-measure.
 
 ## Appendix A. The homepage builder's notes (`hp/home`)
 

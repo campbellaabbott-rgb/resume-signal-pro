@@ -20,13 +20,17 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { judge, median, tenths, runsFromProbe, GATED_PROFILES } from "../../scripts/home-speed-gate.mjs";
+import { judge, median, tenths, runsFromProbe, formatRow, GATED_PROFILES, RE_MEASURE_RUNS } from "../../scripts/home-speed-gate.mjs";
 
 const ROOT = resolve(__dirname, "../..");
 const read = (p: string) => readFileSync(resolve(ROOT, p), "utf8");
 const BASELINE = JSON.parse(read("docs/homepage-pricing/speed-baseline.json"));
 
-type Row = { profile: string; case: string; gated: boolean; oldMs: number; newMs: number; oldS: number; newS: number; pass: boolean };
+type Row = {
+  profile: string; case: string; gated: boolean; oldMs: number; newMs: number; oldS: number; newS: number; pass: boolean;
+  deltaMs: number; flipMs: number; spreadMs: number; nearEdge: boolean;
+  oldEdge: { belowMs: number; aboveMs: number }; newEdge: { belowMs: number; aboveMs: number };
+};
 
 describe("the stored baseline", () => {
   it("names its basis: the day, both commits, the profiles and three runs a case for each build", () => {
@@ -83,6 +87,55 @@ describe("the rule", () => {
     expect(judge(fast).filter((r: Row) => r.gated && !r.pass).map((r: Row) => r.case)).toEqual(["375x812 consent chosen"]);
   });
 
+  /**
+   * THE MARGIN (the review of 2026-10-27). Rounding each median to a tenth
+   * makes the verdict depend on where the medians sit against the rounding
+   * edges, not on how far apart they are: today the new build's 2,236 ms sits
+   * 14 ms under the edge that rounds to 2.3 s, so a 14 ms shift fails it,
+   * while a regression of up to 99 ms inside one tenth passes. The owner's
+   * reading stays the verdict; every row now carries the unrounded
+   * difference, each median's distance from the edges of its tenth, the shift
+   * that flips the verdict and the runs' own spread, and the printed line
+   * says all four.
+   */
+  it("states the margin: the unrounded difference, each median's distance from its edges, the shift that flips the verdict and the runs' spread", () => {
+    const rows = judge(BASELINE.runs);
+    const first = rows.find((r: Row) => r.profile === "lighthouseMobile" && r.case === "375x812 first visit");
+    expect(first).toMatchObject({
+      deltaMs: 56,
+      oldEdge: { belowMs: 30, aboveMs: 70 },
+      newEdge: { belowMs: 86, aboveMs: 14 },
+      flipMs: 14,
+      spreadMs: 128,
+      nearEdge: true,
+    });
+    const consent = rows.find((r: Row) => r.profile === "unthrottled4xCpu" && r.case === "375x812 consent chosen");
+    expect(consent).toMatchObject({ deltaMs: 0, flipMs: 30, spreadMs: 24, nearEdge: false });
+    const line = formatRow(first);
+    expect(line).toMatch(/^PASS/);
+    expect(line).toContain("+56 ms");
+    expect(line).toContain("14 ms below the 2.25 s edge");
+    expect(line).toContain("30 ms above the 2.15 s edge");
+    expect(line).toMatch(/flips with a shift of 14 ms/);
+    expect(line).toMatch(/inside the runs' own 128 ms spread/);
+    // A failing row says how far it is from passing.
+    const slower = structuredClone(BASELINE.runs);
+    slower.lighthouseMobile["375x812 first visit"].switchOver.lcpMs = [2252, 2260, 2255];
+    const failing = judge(slower).find((r: Row) => r.profile === "lighthouseMobile" && r.case === "375x812 first visit");
+    expect(failing).toMatchObject({ pass: false, deltaMs: 75, flipMs: 6 });
+    expect(formatRow(failing)).toMatch(/^FAIL/);
+  });
+
+  it("a re-measure takes five runs a case of every build it measures; the stored baseline's three are the record", () => {
+    expect(RE_MEASURE_RUNS).toBe(5);
+    expect(() => judge(BASELINE.runs, { minRuns: { old: 3, switchOver: RE_MEASURE_RUNS } })).toThrow(/five runs|5 runs/);
+    const five = structuredClone(BASELINE.runs);
+    for (const p of GATED_PROFILES) for (const c of Object.keys(five[p])) {
+      five[p][c].switchOver.lcpMs = [...five[p][c].switchOver.lcpMs, ...five[p][c].switchOver.lcpMs.slice(0, 2)];
+    }
+    expect(() => judge(five, { minRuns: { old: 3, switchOver: RE_MEASURE_RUNS } })).not.toThrow();
+  });
+
   it("refuses a gated case that one build did not measure", () => {
     const partial = structuredClone(BASELINE.runs);
     delete partial.unthrottled4xCpu["375x812 first visit"].switchOver;
@@ -122,6 +175,17 @@ describe("where the gate is written", () => {
   it("step 15 no longer gates on the retired JavaScript cap or the profile-less LCP ceiling", () => {
     expect(step15).not.toMatch(/340\s?kB gzip or less/);
     expect(step15).not.toMatch(/1\.2\s?s or\s+less/);
+  });
+
+  it("a failed re-measure is a fix before anything else ships, and a slower new \"/\" is a rollback trigger", () => {
+    // Read with the line wrapping folded, so a sentence broken across lines still counts.
+    const gate = step15.slice(step15.indexOf("**The speed gate"), step15.indexOf("- **First-load JavaScript**")).replace(/\s+/g, " ");
+    expect(gate.length).toBeGreaterThan(500);
+    expect(gate).toContain("A re-measure that fails is a fix before anything else ships.");
+    expect(gate).toMatch(/five runs a case/);
+    expect(gate).toMatch(/margin/i);
+    const rollback = step15.slice(step15.indexOf("**Rollback triggers:**")).replace(/\s+/g, " ");
+    expect(rollback).toContain('the new "/" slower than the old on either gated profile at the re-measure');
   });
 
   it("section 99 says where the speed gate is judged", () => {
