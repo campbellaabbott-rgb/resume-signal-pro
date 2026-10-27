@@ -145,6 +145,9 @@ describe("the notice that a delayed payment failed (payment_failed)", () => {
     const m = sent[0];
     expect(m.subject).toBe("Je betaling voor Volledige cv-analyse is niet gelukt");
     expect(visible(m.html)).toContain("er is niets in rekening gebracht en niets geleverd");
-    expect(m.html).toContain('href="https://resumebooster.work/"');
+    // Since the homepage switch-over "/" is the job search; the scanner and
+    // the Full Analysis live at /resume-checker (send-product-email 2026-10-27.1).
+    expect(m.html).toContain('href="https://resumebooster.work/resume-checker"');
+    expect(m.html).not.toContain('href="https://resumebooster.work/"');
   });
 });

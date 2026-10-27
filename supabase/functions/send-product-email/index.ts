@@ -11,7 +11,10 @@ import { CUT_PRODUCTS } from "../_shared/product-cuts.ts";
 // Provable from outside without sending anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
 // 2026-10-11.23 (recheck 3, 2026-10-26): a failed payment for a product no longer sold says so and offers no retry or button.
-const FN_BUILD = "send-product-email.2026-10-11.23";
+// 2026-10-27.1 (homepage switch-over; reservation home-pricing): a failed Full
+// Analysis payment's "try again" button opens /resume-checker, where the scanner
+// and the Full Analysis now live, instead of "/", which is the job search.
+const FN_BUILD = "send-product-email.2026-10-27.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -524,7 +527,7 @@ const NO_LONGER_SOLD: ReadonlySet<string> = new Set([...Object.values(CUT_PRODUC
 /** Where a buyer whose delayed payment failed can buy again. */
 function buyAgainLink(productType: string): string {
   if (productType === "freelance_boost" || productType === "freelance_transition_pro") return `${SITE_ORIGIN}/freelance-boost`;
-  if (productType === "full_analysis") return `${SITE_ORIGIN}/`;
+  if (productType === "full_analysis") return `${SITE_ORIGIN}/resume-checker`;
   return `${SITE_ORIGIN}/pricing`;
 }
 
