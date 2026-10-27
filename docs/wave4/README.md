@@ -24,6 +24,89 @@ The job-board group's notes are in
 [job-board-deploy-notes.md](../job-board-deploy-notes.md) under `## 2026-09-09.93`.
 The other groups' notes are their commit messages; this file is the summary.
 
+## Sales stay on (owner, 2026-10-27)
+
+The owner, 2026-10-27: "there is no sales pause ... no one told you to do
+that." This overrides the 2026-10-17 design decisions D3 and D4 and every
+part of this wave that waited for the seller's legal name and postal address.
+Built on `land/all` (the one-deploy branch), commit `927e0215`. With
+`src/config/seller.ts` and `supabase/functions/_shared/seller-identity.ts`
+still empty (an identity is never invented), everything main sells is as
+sellable as on main, and marketing mail sends as on main:
+
+- **The checkouts sell.** `_shared/seller-gate.ts` and its 409
+  `seller_identity_missing` are gone from create-checkout (the $5 Full
+  Analysis), create-subscription-checkout (Pro) and create-product-checkout;
+  create-checkout's GET carries no `purchasesOpen`. create-product-checkout
+  sells nothing wave 4 kept, so a cut product is its 410 and an id it does not
+  sell is main's 400. The retired products stay retired: the Agent plan, the
+  Agent Pass, the $7 Apply Assistant, the scan packs and the cut catalogue.
+- **The pages show the buy buttons and prices as on main**: /pricing (the
+  Full Analysis link with its Terms line, Pro's card with its renewal box),
+  the uploader's priced link and fallback, the homepage comparison, the
+  closing call to action, the sticky bar, the free report and the homepage's
+  Full Analysis press. `src/lib/purchases-open.ts`,
+  `src/components/checkout/PurchasesOpenSoon.tsx`, the free report's
+  Pro-only "included" button (made only for the closed shop; a member presses
+  the priced button, and create-checkout mints the included analysis, as on
+  main) and their locale keys (`checkoutGate.purchasesOpenSoon`,
+  `checkoutGate.purchasesOpenSoonTitle`, `finalCta.freeScanCta`,
+  `freeResults.nextSteps.fullAnalysisIncluded`, `...IncludedCta`) are removed
+  in all nine languages; `checkout-refusal.ts` has no `seller_missing` kind.
+- **The crawler is offered what checkout sells.** The bake's /pricing carries
+  the AggregateOffer up to Pro (`src/lib/pricing-offer.ts`, React's shape
+  too), states the terms as a sale open now and says nothing opens soon;
+  `public/llms.txt` and the baked copy name the paid report and Pro with no
+  "purchases open soon".
+- **Marketing mail sends as on main.** `_shared/marketing-pause.ts` and
+  `src/lib/marketing-pause.ts` are gone: the pulse batch claims and mails, a
+  pulse sign-up mails its confirmation, a confirmation confirms with no
+  paused flag, the agent digest claims its batch, the report mail carries the
+  fix-plan button when its box is ticked and the button queues the four
+  mails; no response carries `x-marketing-mail`; the report capture shows
+  both boxes, unticked. `/market-pulse/confirm` and `/fix-plan/confirm` lose
+  their paused states (`pulseConfirm.donePaused`, `fixPlanConfirm.paused`).
+  Migration `20261011172000`, which archived queued fix-plan mail because of
+  the pause, was never applied and is deleted; nothing archives that mail.
+- **Builds** (every changed function, restamped `2026-10-27.1`):
+  create-checkout, create-subscription-checkout, create-product-checkout,
+  send-market-pulse, send-scan-report, send-agent-digest, and
+  create-scan-pack-checkout and send-product-email (their
+  `_shared/product-cuts.ts` lost the closed form of the reports line;
+  nothing they do changed). A cut report's 410 says the $5 Full Analysis is
+  still on sale, in every language.
+- **Verifier.** Section 92 checkout-catalogue asks for the three checkouts at
+  `2026-10-27.1` and FAILs a GET with `purchasesOpen` false or a published
+  Pricing page that still says purchases open soon; section 92
+  account-compliance asks for the three senders at `2026-10-27.1` and FAILs
+  `x-marketing-mail: paused_no_seller_identity`; section 92-w4b-recheck3
+  wants the crawler /pricing priced and neither it nor llms.txt saying
+  purchases open soon. Each has fake-curl tests that fail each old answer.
+- **Tests that failed first** on `18b8b04f` (25 of 30 cases):
+  `sales-stay-on-the-checkouts-sell-with-no-seller-named`,
+  `sales-stay-on-marketing-mail-sends-with-no-seller-named`,
+  `sales-stay-on-the-homepage-sells-the-full-analysis-with-no-seller-named`,
+  `sales-stay-on-every-buy-control-shows-with-no-seller-named`,
+  `sales-stay-on-the-crawler-pricing-page-offers-what-checkout-sells`; and
+  `sales-stay-on-a-cut-report-says-the-full-analysis-is-on-sale`. The tests
+  that proved the closed shop or the pause are deleted
+  (`w4b-nothing-is-sold-until-the-seller-is-named`,
+  `w4b-no-buy-button-until-the-seller-is-named`,
+  `w4b-the-uploader-and-the-comparison-sell-nothing-until-the-seller-is-named`,
+  `w4b-marketing-mail-waits-for-a-seller-with-a-name-and-an-address`,
+  `w4b-recheck3-a-paused-pulse-and-drip-are-offered-nowhere`,
+  `w4b-recheck3-nothing-is-offered-to-a-crawler-before-it-can-be-bought`,
+  `w4b-recheck3-a-cut-report-never-says-the-full-analysis-is-on-sale`,
+  `w4b-a-fix-plan-mail-queued-before-the-pause-is-archived`) and the
+  checkout tests no longer stand in a named seller (`w4b-seller-named.ts` is
+  gone): they run as shipped.
+
+The seller's name and address still show (footer, Terms, Privacy, beside the
+buy buttons, in the mail footers) only once the owner fills both files in;
+an empty identity blocks nothing. Where the sections below describe the
+closed shop, the pause or owner step 8 as gating a sale, this section
+supersedes them.
+
 ## Descope 2026-10-25
 
 Four fix rounds went around three heuristics, and the final recheck of round 4
@@ -1049,8 +1132,8 @@ their tests.
 **Left.**
 - The /jobs prepare modal is proved through its helper and a wiring guard,
   not a mount of the page.
-- A failed delayed payment for the Full Analysis still offers a retry while
-  purchases are closed (only a payment opened before the deploy reaches it).
+- (Moot since 2026-10-27, sales stay on: purchases are never closed, so a
+  failed delayed payment's retry for the Full Analysis is correct.)
 - verify-product-purchase still reads a `cs_test_` session on a cut
   product's success page (owner-only; the owner step says to send none).
 - `_shared/apply-agent-switch.ts`'s comment still says agent-pass-status and
@@ -1091,11 +1174,9 @@ their tests.
   across `fit_resume` and `/v1/fit` together on a confirmed key, and a
   "Builder API (planned)" card at $49 a month whose only action is an email
   request.
-- **Buy nothing yet, and be told so.** As shipped no seller is named, so the
-  Full Analysis and Pro checkouts answer 409 and every page, the crawler
-  /pricing and llms.txt say purchases open soon; marketing mail (the monthly
-  pulse, the fix-plan emails) is paused and offered nowhere. Naming the
-  seller opens both (owner step 8).
+- **Buy as on main.** The Full Analysis and Pro are sold with no seller
+  named, and marketing mail sends as on main (sales stay on, owner
+  2026-10-27; the section of that name above).
 - **Nothing retired is sold by the server.** The Agent plan, the Agent Pass
   and the $7 Apply Assistant answer a purchase with 410, each behind its own
   switch. The server-side apply agent is switched off; its code is kept,
@@ -1406,15 +1487,12 @@ form reads.
    `MCP_SEARCH_PRUNE_LIVE = true` in `src/config/mcp-privacy.ts`; publish the
    frontend with the changelog in nine locales, each entry checked against
    production; thaw main only when section 49 shows no gap.
-8. **Name the seller when you are ready to sell** (not a deploy
-   prerequisite: the deploy ships with purchases closed and marketing mail
-   paused, and every page says so). Put the legal name and postal address in
-   both `src/config/seller.ts` and `supabase/functions/_shared/seller-identity.ts`,
-   redeploy create-checkout, create-subscription-checkout,
-   create-product-checkout, send-market-pulse, send-scan-report and
-   send-agent-digest, and publish the frontend: the bake then drops "Purchases
-   open soon" from /pricing and llms.txt and offers the AggregateOffer again,
-   and section 92-w4b-recheck3 expects that.
+8. **Name the seller when you have it** (never a prerequisite: nothing waits
+   for it; sales stay on, owner 2026-10-27). Put the legal name and postal
+   address in both `src/config/seller.ts` and
+   `supabase/functions/_shared/seller-identity.ts`, publish the frontend and
+   redeploy the mail senders: the footer, Terms, Privacy, the line beside the
+   buy buttons and every marketing mail's footer then name the seller.
 
 ## Before this branch merges
 
@@ -1461,10 +1539,9 @@ pitch and the bake's $99 plan and $29 pass that this list used to carry are
 gone: main's profiles, design and SEO rounds removed them. The recheck
 removed the /pricing bake's list sentences and bundle line, the fit-is-paid
 copy and the footer link. Recheck 3 made the /pricing bake and llms.txt say
-purchases open soon, with no priced offer, while no seller is named, and
-gave the /jobs prepare modal the account allowance's refusals. None of what
-remains sells a product, and naming the seller is the owner's step 8, not
-another branch's.
+purchases open soon while no seller was named (reversed on 2026-10-27: sales
+stay on), and gave the /jobs prepare modal the account allowance's refusals.
+None of what remains sells a product.
 
 - **`scripts/prerender-seo.mjs`** (seo-round): the bake and llms-full's MCP
   line read `MCP_ANON_CAPS.perAddressPerDay`, `hostPoolPerDay` and
@@ -1557,12 +1634,9 @@ differ:
    products: off pricing, the free report and Pro; their checkouts answer
    410; `/freelance-boost` says they are no longer sold and is noindex; a past
    buyer's link still generates.
-3. **No buy button until the seller is named.** The Full Analysis and Pro
-   buttons render only once `src/config/seller.ts` carries the seller's legal
-   name and postal address (California B&P 17538(d)); until then the pages
-   say purchases open soon, and create-checkout, create-subscription-checkout
-   and create-product-checkout refuse with 409 `seller_identity_missing`.
-   Both stay on sale otherwise.
+3. **No buy button until the seller is named** (D3) — OVERRIDDEN by the
+   owner on 2026-10-27 ("there is no sales pause"): the Full Analysis and Pro
+   are sold with no seller named, as on main; see "Sales stay on" above.
 4. **India** is refused at checkout with the EU, the EEA and the UK until an
    accountant rules on GST.
 5. **Pro needs its own unticked, required renewal box** (California ARL as
@@ -1576,8 +1650,9 @@ writing tools gated by account on the server (signed out 401
 `sign_in_required`; free 1 of each a day on Flash; Pro 5 packages a day and
 60 a month on the quality chain; 429 `daily_limit`/`monthly_limit` with
 `resetsAt`); saved searches, alerts and the tracker free; affiliates a flat
-$10 on a referred customer's first paid Pro month; marketing mail paused
-until the seller is named (`paused_no_seller_identity`); our own analytics
+$10 on a referred customer's first paid Pro month; marketing mail sends as
+on main (the 2026-10-12 pause until the seller is named was removed on
+2026-10-27, sales stay on); our own analytics
 only after consent; the server-side Apply Agent, the $29 pass and the $7 Apply
 Assistant retired; critical-path D8 (no signed-out Pro lookup by a typed
 address), D9 (payment records only are kept) and D14 (no shortlist
@@ -1677,7 +1752,8 @@ renewal box; deno.lock stays the base's) and account-compliance's final head
   integrator, applied here because every builder had finished):
   - no button that prices the Full Analysis until the seller is named: the
     free report's offer, the uploader's $5 link and fallback button, and the
-    homepage comparison's call to action (owner decision 3);
+    homepage comparison's call to action (owner decision 3; reversed on
+    2026-10-27, sales stay on: all three price the analysis as on main);
   - the free report's platform-profile note sells no Freelance Boost and its
     Pro row reads `PRO_SUMMARY`; both scanners' daily refusals say Pro has no
     daily cap on scans instead of promising unlimited scans (owner decisions
@@ -1730,11 +1806,10 @@ reader is in wave 4's files).
 
 ### Gating and the money rules, as built
 
-- **Purchases** open only when both `src/config/seller.ts` and
-  `supabase/functions/_shared/seller-identity.ts` carry the legal name and
-  postal address (a test holds the two equal). Until then: no Full Analysis
-  or Pro button anywhere, the checkouts answer 409, and `GET create-checkout`
-  reports `purchasesOpen: false`.
+- **Purchases** are open as on main, whatever `src/config/seller.ts` and
+  `supabase/functions/_shared/seller-identity.ts` hold (a test holds the two
+  equal; both ship empty and the seller line shows once they are filled in).
+  The seller gate built here was removed on 2026-10-27 (sales stay on).
 - **Territory**: while `EU_UK_SALES` is off, create-checkout and
   create-subscription-checkout answer 451 to a buyer placed in the EU-27, the
   EEA, the UK or India by currency, time zone, the cf-ipcountry header or an
@@ -1745,9 +1820,9 @@ reader is in wave 4's files).
   writes on the free allowance until its first paid invoice.
 - **Writing tools**: counted per account in `writing_tool_uses`
   (20261011160000); a failed call gives its use back.
-- **Marketing mail** skips and logs `paused_no_seller_identity`; fix-plan
-  mails queued before the pause are archived (20261011172000). Transactional
-  mail continues.
+- **Marketing mail** sends as on main (the pause built here, and
+  20261011172000 which archived queued fix-plan mail for it, were removed on
+  2026-10-27). Transactional mail continues.
 
 ### New migrations, in order
 
@@ -1769,7 +1844,7 @@ functions:
 9. `20261011160000` writing_tool_uses and its two definers (before the writing tools)
 10. `20261011170000` account_erase_personal_data and account_mailbox_proven (before delete-account, get-account-data)
 11. `20261011171000` shortlist records no candidate sex or race
-12. `20261011172000` fix-plan mails queued before the pause are archived
+12. ~~`20261011172000` fix-plan mails queued before the pause are archived~~ deleted on 2026-10-27, never applied (sales stay on: no pause, so nothing is archived)
 13. `20261011200000` cron_http_answers and the visitors-only scan health reader (before scan-heartbeat, mail-watch, check-alerts)
 14. `20261011210000` a deleted account takes the documents made for it and its Pro grants (the fixes; replaces account_erase_personal_data, same signature, so no function waits on it)
 15. `20261011211000` an affiliate is paid once per customer and never for themselves, and a refunded or disputed payment takes the commission back (the fixes; replaces record_affiliate_conversion, same single signature, plus a trigger on payment_revocations)
@@ -1873,10 +1948,9 @@ fix rounds 3 and 4 `92-w4b-fixer3.sh` (the five question builds at `.33` or
 later, and, since the descope, eight negations that must answer as main's
 rule does; its salary re-sweep lines left in the descope). `verify-deploy.sh` runs
 them with the rest, behind section 0's positive control and the tally that
-fails a section which prints no verdict. Expected FAILs while the seller is
-unnamed: section 92 account-compliance FAILs the three marketing senders on
-purpose, and checkout-catalogue reports `purchasesOpen` false as a PASS plus
-an owner step. From agent-mcp 2026-10-11.27 on, the owner's count on the
+fails a section which prints no verdict. Sales stay on (2026-10-27): no
+section expects a FAIL because the seller is unnamed; section 92 FAILs the
+closed shop and the marketing pause if either is still serving. From agent-mcp 2026-10-11.27 on, the owner's count on the
 ChatGPT nonce is 0 in both section 86 and section 92, and from the fixes on
 section 92 agents-api spends one more keyless search, a plain one with its
 own nonce, whose count must be 1: the positive control for that 0.
@@ -1920,13 +1994,12 @@ own nonce, whose count must be 1: the positive control for that 0.
 
 ### Owner steps
 
-Before purchases can open:
+Purchases are open as on main (sales stay on, owner 2026-10-27):
 
-- Put the seller's legal name and postal address in both
+- When you have them, put the seller's legal name and postal address in both
   `src/config/seller.ts` and `supabase/functions/_shared/seller-identity.ts`
-  (never a placeholder), then publish the frontend and redeploy
-  create-checkout, create-subscription-checkout and create-product-checkout.
-  Marketing mail resumes at the same time.
+  (never a placeholder), then publish the frontend and redeploy the mail
+  senders, so the pages and the mail name the seller. Nothing waits for it.
 - Optionally rehearse the webhook in Stripe test mode (set
   `STRIPE_TEST_SECRET_KEY` and `STRIPE_TEST_WEBHOOK_SECRET` from a test-mode
   endpoint and send a test checkout.session.completed for a Full Analysis).
@@ -2046,10 +2119,10 @@ After the deploy:
     out because a per-zone body would split the board's response cache.
 - **R1** (auth-email-hook, process-email-queue): render GoTrue's
   `password_changed_notification` as a notice with no link to the account's
-  address, like EmailChangeNoticeEmail (CP-007); optionally refuse purpose
-  "marketing" payloads in process-email-queue while the seller identity is
-  empty, as a second guard behind 20261011172000. (R1's verified deploy is
-  recorded on main already, PR #37.)
+  address, like EmailChangeNoticeEmail (CP-007). (The optional refusal of
+  "marketing" payloads while the seller identity is empty is withdrawn: sales
+  stay on, owner 2026-10-27.) (R1's verified deploy is recorded on main
+  already, PR #37.)
 - **ops-email-tests, next round**: scan-heartbeat still counts
   `content_generated` as delivered and its named-order mail lists neither
   `email_failed` nor made-but-unmailed orders (CP-021; the verdict is right,
@@ -2166,8 +2239,9 @@ Major:
 
 Minor: the affiliate's flat $10 is earned once per customer and never for
 the affiliate's own purchase, and a refund or dispute takes it back
-(20261011211000); a paid Pro member can run the included Full Analysis while
-purchases are closed (Index, FreeKeywordResults); the test-mode owner step
+(20261011211000); a paid Pro member's included Full Analysis is minted by
+create-checkout from the priced button, as on main (the closed-shop
+"included" button is gone with the gate, 2026-10-27); the test-mode owner step
 above says what a rehearsal proves; a test-mode event acts only on a one-off
 checkout, with no commission (stripe-webhook); check-subscription tells an
 account that is not Pro only `linkPending` for an address's live plan; the
