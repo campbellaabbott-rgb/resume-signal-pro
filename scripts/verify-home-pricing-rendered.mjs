@@ -7,10 +7,16 @@
 //   C8  "/#upload" lands on /resume-checker at its uploader (the scanner scrolls
 //       to #upload and then clears the hash from the address, as it always
 //       has), and /resume-checker still renders the scanner's uploader.
+//       The addresses mail already sent and affiliates carry reach it too, the
+//       query kept: a scan report's rescan link and "/?ref=<a 12-hex code>";
+//       a directory's own "/?ref=producthunt" stays on "/".
 //   C9  The rendered "/" and "/pricing" name no cut product anywhere we write
 //       (Freelance Boost, Transition Pro, Premium, Scan Pack, "unlimited"; the
 //       live postings, employers' own words, are left out), and carry exactly
 //       one filled button across the header and main.
+//   C12 A fresh load of "/pricing#pro" (the JSON-LD Offer.url's address)
+//       lands with the Pro card's top inside the first screen, below the
+//       header (review round 2026-10-26: it ended at the footer).
 //
 // READ-ONLY. One headless Chromium, closed in a finally. Every request that is
 // not a GET, HEAD or OPTIONS is answered inside the browser, except an RPC
@@ -27,12 +33,24 @@ import { fileURLToPath } from "node:url";
 
 export const CUT_PATTERN = /Freelance Boost|Transition Pro|\bPremium\b|Scan Pack|\bunlimited\b/gi;
 
+/** A code in an affiliate's shape that no affiliate holds, so its click is nobody's. */
+export const AFFILIATE_PROBE = "000000000000";
+
+/** The query-carrying addresses C8 opens, and where each must land. */
+export const C8_ADDRESSES = [
+  { from: "/?utm_source=email&utm_medium=scan_report&utm_campaign=rescan", want: "scanner" },
+  { from: `/?ref=${AFFILIATE_PROBE}`, want: "scanner" },
+  { from: "/?ref=producthunt", want: "home" },
+];
+
 /**
  * The verdict lines for what the browser saw. `facts` (null when a page could
  * not be read):
  *   upload:  { finalUrl, uploaderInView }
  *   checker: { hasUploader }
  *   home, pricing: { rendered, leaks: string[], filledHeader: string[], filledMain: string[] }
+ *   addresses: [{ from, want: "scanner" | "home", finalUrl }]  (C8_ADDRESSES as opened)
+ *   fragment: { top, headerBottom, innerHeight }  ("/pricing#pro" after it settled)
  */
 export function judgeRendered(facts) {
   const out = [];
@@ -56,6 +74,21 @@ export function judgeRendered(facts) {
     if (p.filledHeader.length) bad.push(`the header has ${p.filledHeader.length} filled button(s) (${p.filledHeader.join(", ")})`);
     if (p.filledMain.length !== 1) bad.push(`main has ${p.filledMain.length} filled buttons${p.filledMain.length ? ` (${p.filledMain.join(", ")})` : ""}`);
     line(bad.length ? "FAIL" : "PASS", `C9 the rendered ${path} ${bad.length ? bad.join("; ") : `names no cut product, header to footer, and has one filled button ("${p.filledMain[0]}")`}`);
+  }
+  for (const a of C8_ADDRESSES) {
+    const seen = (facts?.addresses ?? []).find((x) => x && x.from === a.from);
+    if (!seen || !seen.finalUrl) { line("FAIL", `C8 "${a.from}" could not be opened in the browser`); continue; }
+    const where = seen.finalUrl.replace(/^https?:\/\/[^/]+/, "") || "(nothing)";
+    const search = a.from.slice(1).split("#")[0];
+    const ok = a.want === "scanner" ? where.split("#")[0] === `/resume-checker${search}` : where.split("#")[0] === a.from;
+    line(ok ? "PASS" : "FAIL", `C8 "${a.from}" lands on ${where}${ok ? "" : a.want === "scanner" ? ` (want /resume-checker${search}, the query kept)` : " (want it to stay on the homepage)"}`);
+  }
+  const fr = facts?.fragment;
+  if (!fr || typeof fr.top !== "number") line("FAIL", "C12 \"/pricing#pro\" could not be opened in the browser, or has no #pro");
+  else {
+    const floor = Math.max(0, fr.headerBottom ?? 0) - 4;
+    const ok = fr.top >= floor && fr.top < fr.innerHeight;
+    line(ok ? "PASS" : "FAIL", `C12 a fresh "/pricing#pro" puts the Pro card's top at ${Math.round(fr.top)} px${ok ? `, inside the first screen and below the header (${Math.round(Math.max(0, fr.headerBottom ?? 0))} px)` : ` (want between the header's bottom, ${Math.round(Math.max(0, fr.headerBottom ?? 0))} px, and ${fr.innerHeight} px)`}`);
   }
   return out;
 }
@@ -89,7 +122,7 @@ async function main() {
   const { chromium } = createRequire(import.meta.url)(at);
   let browser = null;
   let answered = 0;
-  const facts = { upload: null, checker: null, home: null, pricing: null };
+  const facts = { upload: null, checker: null, home: null, pricing: null, addresses: [], fragment: null };
   try {
     browser = await chromium.launch({ headless: true });
     const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: "en-US" });
@@ -140,11 +173,24 @@ async function main() {
       facts.upload = { finalUrl: page.url(), uploaderInView };
     } catch { facts.upload = null; }
     try { await open("/resume-checker", "#upload"); facts.checker = { hasUploader: !!(await page.$("#upload")) }; } catch { facts.checker = null; }
+    for (const a of C8_ADDRESSES) {
+      try { await open(a.from, a.want === "scanner" ? "#upload" : "#home-h1"); facts.addresses.push({ ...a, finalUrl: page.url() }); } catch { /* judged as not opened */ }
+    }
+    try {
+      await open("/pricing#pro", "#pricing-h1");
+      await page.waitForTimeout(1200);
+      facts.fragment = await page.evaluate(() => {
+        const el = document.getElementById("pro");
+        if (!el) return null;
+        const header = document.querySelector("header");
+        return { top: el.getBoundingClientRect().top, headerBottom: header ? header.getBoundingClientRect().bottom : 0, innerHeight: window.innerHeight };
+      });
+    } catch { facts.fragment = null; }
   } finally {
     if (browser) await browser.close().catch(() => {});
   }
   for (const l of judgeRendered(facts)) console.log(l);
-  console.log(`INFO  C8 C9 the headless run answered ${answered} write request(s) inside the browser; nothing it sent could write`);
+  console.log(`INFO  C8 C9 C12 the headless run answered ${answered} write request(s) inside the browser; nothing it sent could write`);
 }
 
 const isMain = (() => {

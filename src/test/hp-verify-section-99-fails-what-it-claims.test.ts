@@ -19,7 +19,7 @@ import { chmodSync, copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, 
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
-import { judgeRendered } from "../../scripts/verify-home-pricing-rendered.mjs";
+import { AFFILIATE_PROBE, C8_ADDRESSES, judgeRendered } from "../../scripts/verify-home-pricing-rendered.mjs";
 
 vi.setConfig({ testTimeout: 90_000 });
 
@@ -61,6 +61,7 @@ const pad = "x".repeat(1500);
 // The homepage's strings ride in its own chunk, not the entry (review round 2026-10-26).
 const ENTRY = `${pad};const s={header:{jobs:"Jobs"}};`;
 const HOME_CHUNK = `${pad};const s={hero:{sub:"Search postings from employers' own job boards and USAJOBS, then apply on the employer's site."}};`;
+const LLMS = readFileSync(resolve(ROOT, "public/llms.txt"), "utf8");
 const TRUST_ON = `<html><body><main><h1>Trust</h1><p>${pad}</p></main></body></html>`;
 const TRUST_OFF = `<html><body><main><h1>Trust</h1><p>The apply agent is switched off and sends it to no one.</p><p>${pad}</p></main></body></html>`;
 
@@ -90,6 +91,7 @@ afterAll(() => { for (const d of dirs) { try { rmSync(d, { recursive: true, forc
 
 interface Over {
   home?: string; pricing?: string; trust?: string; vc?: string; agent?: string; entry?: string | null; homeChunk?: string | null;
+  checker?: string; llms?: string;
   builds?: Record<string, string | null>; root?: string;
 }
 const BUILDS: Record<string, string> = {
@@ -109,8 +111,11 @@ function routes(over: Over = {}): Route[] {
     { match: "^GET https://site\\.test/$", body: over.home ?? HOME },
     { match: "^GET https://site\\.test/pricing$", body: over.pricing ?? PRICING },
     { match: "^GET https://site\\.test/trust$", body: over.trust ?? TRUST_ON },
+    { match: "^GET https://site\\.test/resume-checker$", body: over.checker ?? `<html><body><main><h1>Resume checker</h1><p>${pad}</p></main></body></html>` },
+    { match: "^GET https://site\\.test/llms\\.txt$", body: over.llms ?? LLMS },
     { match: `^GET ${FN}/rest/v1/rpc/get_board_vendor_counts$`, body: over.vc ?? JSON.stringify(ROW) },
-    { match: `^GET ${FN}/rest/v1/rpc/agent_sender_public_status$`, body: over.agent ?? "true" },
+    // A healthy deploy follows W3: the apply agent is retired before the publish.
+    { match: `^GET ${FN}/rest/v1/rpc/agent_sender_public_status$`, body: over.agent ?? "false" },
     ...(over.entry === null ? [] : [{ match: "^GET https://site\\.test/assets/index-Abc123\\.js$", body: over.entry ?? ENTRY }]),
     ...(over.homeChunk === null ? [] : [{ match: "^GET https://site\\.test/assets/HomePage-Def456\\.js$", body: over.homeChunk ?? HOME_CHUNK }]),
   ];
@@ -149,7 +154,7 @@ describe("section 99 on a healthy deploy", () => {
     const { lines, calls } = run();
     expect(fails(lines), show(lines)).toEqual([]);
     for (const c of ["C1", "C2", "C3", "C4", "C5", "C6", "C7", "C10", "C11"]) expect(has(lines, "PASS", new RegExp(`^${c} `)), `${c}${show(lines)}`).toBe(true);
-    expect(has(lines, "INFO", /^C8 C9 the headless run is skipped/), show(lines)).toBe(true);
+    expect(has(lines, "INFO", /^C8 C9 C12 the headless run is skipped/), show(lines)).toBe(true);
     expect(has(lines, "INFO", /^G4 /), show(lines)).toBe(true);
     for (const l of lines) expect(l, l).toMatch(/^(PASS|FAIL|INFO|==) /);
     expect(calls.length).toBeGreaterThan(5);
@@ -206,8 +211,12 @@ describe("each claim can FAIL", () => {
     expect(has(run({ entry: null }).lines, "FAIL", /^C7 the served \/ names no readable/)).toBe(true);
   });
 
-  it("C10: a live agent beside a never-submit promise", () => {
-    expect(has(run({ home: HOME.replace("</main>", "<p>We never submit an application for you.</p></main>") }).lines, "FAIL", /^C10 the apply agent is live .* \/ still promise never to submit/)).toBe(true);
+  it("C10: a live agent beside a never-submit promise, on the pages, in llms.txt or in the scanner's FAQ", () => {
+    expect(has(run({ agent: "true", home: HOME.replace("</main>", "<p>We never submit an application for you.</p></main>") }).lines, "FAIL", /^C10 the apply agent is live .* \/ and .* still promise never to submit/)).toBe(true);
+    // llms.txt and the FAQ /resume-checker renders say it today (review round 2026-10-26).
+    const live = run({ agent: "true" }).lines;
+    expect(has(live, "FAIL", /^C10 the apply agent is live .*\/llms\.txt and the FAQ \/resume-checker renders .* still promise never to submit/), show(live)).toBe(true);
+    expect(has(run({ agent: "true", checker: `<html><body><main><h1>x</h1><p>We never submit an application for you. ${pad}</p></main></body></html>` }).lines, "FAIL", /^C10 .*\/resume-checker and \/llms\.txt/)).toBe(true);
   });
 
   it("C11: no Pro currency sentence, a promise of your local currency, an offer without its sentence", () => {
@@ -242,17 +251,35 @@ describe("what the section cannot judge is INFO, never PASS", () => {
 
   it("C10 passes once the agent is off, by the RPC or by /trust", () => {
     expect(has(run({ agent: "false" }).lines, "PASS", /^C10 the apply agent is retired \(agent_sender_public_status answers false\)/)).toBe(true);
-    expect(has(run({ trust: TRUST_OFF }).lines, "PASS", /^C10 the apply agent is retired \(\/trust says it is switched off\)/)).toBe(true);
+    expect(has(run({ agent: "true", trust: TRUST_OFF }).lines, "PASS", /^C10 the apply agent is retired \(\/trust says it is switched off\)/)).toBe(true);
   });
 });
 
 describe("the rendered claims' judge (C8, C9)", () => {
   const page = (o: Partial<{ rendered: boolean; leaks: string[]; filledHeader: string[]; filledMain: string[] }> = {}) => ({ rendered: true, leaks: [], filledHeader: [], filledMain: ["Search jobs"], ...o });
-  const healthy = { upload: { finalUrl: "https://site.test/resume-checker#upload", uploaderInView: true }, checker: { hasUploader: true }, home: page(), pricing: page({ filledMain: ["Create a free account"] }) };
+  const landed = (a: { from: string; want: string }) => ({ ...a, finalUrl: `https://site.test${a.want === "scanner" ? `/resume-checker${a.from.slice(1)}` : a.from}` });
+  const healthy = {
+    upload: { finalUrl: "https://site.test/resume-checker#upload", uploaderInView: true }, checker: { hasUploader: true }, home: page(), pricing: page({ filledMain: ["Create a free account"] }),
+    addresses: C8_ADDRESSES.map(landed),
+    fragment: { top: 72, headerBottom: 64, innerHeight: 900 },
+  };
 
-  it("a healthy run passes all four lines", () => {
+  it("a healthy run passes all eight lines", () => {
     const lines = judgeRendered(healthy);
-    expect(lines.filter((l) => l.startsWith("PASS")), lines.join("\n")).toHaveLength(4);
+    expect(lines.filter((l) => l.startsWith("PASS")), lines.join("\n")).toHaveLength(8);
+    expect(C8_ADDRESSES.map((a) => a.from)).toEqual(["/?utm_source=email&utm_medium=scan_report&utm_campaign=rescan", `/?ref=${AFFILIATE_PROBE}`, "/?ref=producthunt"]);
+  });
+
+  it("the query-carrying addresses and the fragment landing can FAIL (review round 2026-10-26)", () => {
+    const stuck = judgeRendered({ ...healthy, addresses: C8_ADDRESSES.map((a) => ({ ...a, finalUrl: "https://site.test/" })) });
+    expect(stuck[4]).toMatch(/^FAIL  C8 "\/\?utm_source=email.*" lands on \/ \(want \/resume-checker\?utm_source=email/);
+    expect(stuck[5]).toMatch(/^FAIL  C8 "\/\?ref=000000000000" lands on \/ \(want/);
+    const sent = judgeRendered({ ...healthy, addresses: C8_ADDRESSES.map((a) => ({ ...a, finalUrl: `https://site.test/resume-checker${a.from.slice(1)}` })) });
+    expect(sent[6]).toMatch(/^FAIL  C8 "\/\?ref=producthunt" lands on \/resume-checker\?ref=producthunt \(want it to stay on the homepage\)/);
+    expect(judgeRendered({ ...healthy, addresses: [] })[4]).toMatch(/^FAIL  C8 .* could not be opened/);
+    expect(judgeRendered({ ...healthy, fragment: { top: -4884, headerBottom: 64, innerHeight: 800 } })[7]).toMatch(/^FAIL  C12 a fresh "\/pricing#pro" puts the Pro card's top at -4884 px/);
+    expect(judgeRendered({ ...healthy, fragment: { top: 12, headerBottom: 64, innerHeight: 800 } })[7]).toMatch(/^FAIL  C12 /);
+    expect(judgeRendered({ ...healthy, fragment: null })[7]).toMatch(/^FAIL  C12 .*could not be opened/);
   });
 
   it("each line can FAIL", () => {

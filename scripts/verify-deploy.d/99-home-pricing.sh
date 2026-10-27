@@ -42,9 +42,16 @@
 #       included) no Freelance Boost, Transition Pro, Premium, Scan Pack or
 #       "unlimited" anywhere, and exactly one filled button across header
 #       and main.
+#   C8  also: the scan report's rescan link and "/?ref=<a 12-hex code>" land
+#       on /resume-checker with their query, and a directory's "/?ref=" tag
+#       stays on "/".
 #   C10 The apply agent is retired (agent_sender_public_status false, or
-#       /trust says it is switched off); while neither holds, "/" and
-#       "/pricing" carry no "never submit".
+#       /trust says it is switched off); while neither holds, no surface that
+#       makes the promise says "never submit": "/", "/pricing", the baked
+#       "/resume-checker", /llms.txt and the FAQ /resume-checker renders (this
+#       checkout's faq.questions.bringYourAgent).
+#   C12 (headless) a fresh "/pricing#pro" lands with the Pro card's top inside
+#       the first screen, below the header.
 #   C11 (owner decision 2026-10-25) "/pricing" says Pro is billed in US
 #       dollars and how the Full Analysis is charged, "/" its strip's
 #       currency line for the rows it shows; neither page puts both products
@@ -60,10 +67,12 @@
 echo "== 99. home-pricing: the board-first homepage and the new pricing page =="
 
 REPO_ROOT99="${VD99_REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
-rm -f /tmp/vd_99_home.html /tmp/vd_99_pricing.html /tmp/vd_99_trust.html /tmp/vd_99_vc.json /tmp/vd_99_agent.json /tmp/vd_99_entry.js /tmp/vd_99_homechunk.js
+rm -f /tmp/vd_99_home.html /tmp/vd_99_pricing.html /tmp/vd_99_trust.html /tmp/vd_99_vc.json /tmp/vd_99_agent.json /tmp/vd_99_entry.js /tmp/vd_99_homechunk.js /tmp/vd_99_checker.html /tmp/vd_99_llms.txt
 curl -s -m 30 -A "$UA" "$SITE/" > /tmp/vd_99_home.html
 curl -s -m 30 -A "$UA" "$SITE/pricing" > /tmp/vd_99_pricing.html
 curl -s -m 30 -A "$UA" "$SITE/trust" > /tmp/vd_99_trust.html
+curl -s -m 30 -A "$UA" "$SITE/resume-checker" > /tmp/vd_99_checker.html
+curl -s -m 30 -A "$UA" "$SITE/llms.txt" > /tmp/vd_99_llms.txt
 curl -s -m 30 -o /tmp/vd_99_vc.json "$B/rest/v1/rpc/get_board_vendor_counts" -H "apikey: $K" -H "Authorization: Bearer $K"
 curl -s -m 30 -o /tmp/vd_99_agent.json "$B/rest/v1/rpc/agent_sender_public_status" -H "apikey: $K" -H "Authorization: Bearer $K"
 VD99_ENTRY=$(grep -oE '/assets/index-[A-Za-z0-9_-]+\.js' /tmp/vd_99_home.html | head -1)
@@ -182,10 +191,12 @@ if (home.length>=500) {
   const a=rd("/tmp/vd_99_agent.json").trim();
   const off=a==="false", on=a==="true";
   const trustOff=/The apply agent is switched off/.test(text(trust));
-  const promise=["/","/pricing"].filter((p)=>/never submit/i.test(p==="/"?ht:pt));
+  let faq="";try{faq=JSON.parse(rd(R+"/src/i18n/locales/en.json")).faq.questions.bringYourAgent.answer||""}catch{}
+  const surfaces=[["/",ht],["/pricing",pt],["/resume-checker",text(rd("/tmp/vd_99_checker.html"))],["/llms.txt",rd("/tmp/vd_99_llms.txt")],["the FAQ /resume-checker renders (faq.questions.bringYourAgent)",faq]];
+  const promise=surfaces.filter(([,t])=>/never submits?\b/i.test(t)).map(([p])=>p);
   if (off||trustOff) line("PASS","C10 the apply agent is retired ("+(off?"agent_sender_public_status answers false":"/trust says it is switched off")+")"+(promise.length?"; "+promise.join(" and ")+" may say it never submits":""));
-  else if (!on) line("INFO","C10 agent_sender_public_status answered "+(a.slice(0,60)||"nothing")+" and /trust does not say the agent is off: "+(promise.length?promise.join(" and ")+" say never submit":"neither page says never submit"));
-  else line(promise.length?"FAIL":"PASS","C10 the apply agent is live (agent_sender_public_status true), and "+(promise.length?promise.join(" and ")+" still promise never to submit":"neither / nor /pricing promises never to submit"));
+  else if (!on) line("INFO","C10 agent_sender_public_status answered "+(a.slice(0,60)||"nothing")+" and /trust does not say the agent is off: "+(promise.length?promise.join(" and ")+" say never submit":"no surface it reads says never submit"));
+  else line(promise.length?"FAIL":"PASS","C10 the apply agent is live (agent_sender_public_status true), and "+(promise.length?promise.join(" and ")+" still promise never to submit":"no surface it reads promises never to submit"));
 }
 
 // ---- C11: each product in its own currency ----
@@ -204,7 +215,7 @@ if (H.plans&&P.fa&&pricing.length>=500&&home.length>=500) {
 '
 
 # ---- C8, C9: the rendered pages, in one headless browser ----
-if [ "${VD99_RENDER:-1}" = "0" ]; then echo "INFO  C8 C9 the headless run is skipped (VD99_RENDER=0): hp-routes and hp-fix-switch-over-gate hold both in the suite"
+if [ "${VD99_RENDER:-1}" = "0" ]; then echo "INFO  C8 C9 C12 the headless run is skipped (VD99_RENDER=0): hp-routes, hp-fix-switch-over-gate and hp-fix-an-address-with-a-fragment-lands-on-its-element hold them in the suite"
 elif [ ! -f "$REPO_ROOT99/scripts/verify-home-pricing-rendered.mjs" ]; then echo "FAIL  C8 C9 this checkout has no scripts/verify-home-pricing-rendered.mjs: the rendered pages were not read"
 else SITE="$SITE" REPO_ROOT="$REPO_ROOT99" node "$REPO_ROOT99/scripts/verify-home-pricing-rendered.mjs" || echo "FAIL  C8 C9 the headless run exited with an error"; fi
 
