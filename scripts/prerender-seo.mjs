@@ -259,6 +259,7 @@ export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from ".
 export { getAllProducts, PASS, SUBSCRIPTIONS, PRODUCTS } from "../src/config/products";
 export { PRO_SUMMARY } from "../src/config/pro-perks";
 export { pricingJsonLd, llmsPurchaseLines } from "../src/lib/pricing-offer";
+export { llmsSaleLines } from "../src/components/pricing/llms-lines";
 export { AFFILIATE_PRO_FIRST_MONTH_CENTS, formatUsd } from "../src/config/affiliate-commission";
 export { ALL_BOARD_SOURCES } from "../src/config/ats-vendors";
 export { publicApiBase, mcpServerUrl } from "../src/config/public-endpoints";
@@ -4501,7 +4502,7 @@ export { count as fmtCount, money as fmtMoney, date as fmtDate } from "../src/li
     const lines = [];
     lines.push("# Resume Booster — full text for AI/answer engines");
     lines.push("");
-    lines.push(`> Free diagnostic resume scanner (resumebooster.work): ATS score with a point-by-point audit trail, every quoted finding verified against the actual document, per-vendor parsing checks (Workday, Greenhouse, Lever, iCIMS), keyword expectations sourced from the U.S. Department of Labor's O*NET database. ${NIND} industries, an interface in ${UI_LANGUAGES} languages, native Spanish résumé detection. Free scan, no signup; the résumé text is deleted after 24 hours and the report that quotes it after 7 days. See /llms.txt for the short overview.`);
+    lines.push(`> A live job board of jobs straight from employers' own hiring systems (resumebooster.work), with a free diagnostic résumé scanner at https://resumebooster.work/resume-checker: ATS score with a point-by-point audit trail, every quoted finding verified against the actual document, per-vendor parsing checks (Workday, Greenhouse, Lever, iCIMS), keyword expectations sourced from the U.S. Department of Labor's O*NET database. ${NIND} industries, an interface in ${UI_LANGUAGES} languages, native Spanish résumé detection. Free scan, no signup; the résumé text is deleted after 24 hours and the report that quotes it after 7 days. See /llms.txt for the short overview.`);
     // A corpus line in the file answer engines quote is a live reading or
     // nothing: a snapshot-fed bake prints no board total here (L4-03).
     if (BOARD_TOTAL && facetsSource !== "snapshot") {
@@ -4595,9 +4596,11 @@ export { count as fmtCount, money as fmtMoney, date as fmtDate } from "../src/li
     // WARNS on stderr rather than passing silently.
     try {
       let lt = readFileSync(join(root, "public/llms.txt"), "utf8");
-      // The paid line says purchases open soon until a seller is named
-      // (recheck 3): the committed file holds that form, restated here.
-      lt = D.llmsPurchaseLines(lt, Boolean(D.sellerIdentity()), (D.EN_LOCALE.checkoutGate || {}).purchasesOpenSoon || "");
+      // The paid line and the Pricing line name only what the pages have on
+      // sale: the seller AND the owner's switches (PRICING_GATES), never the
+      // seller alone (review round 2026-10-26, src/components/pricing/
+      // llms-lines.ts). The committed file holds the closed form.
+      lt = D.llmsSaleLines(lt, { fullAnalysis: PRICING_GATES.fullAnalysis.onSale, pro: PRICING_GATES.pro.onSale }, (D.EN_LOCALE.checkoutGate || {}).purchasesOpenSoon || "");
       const missed = [];
       const sub = (re, to) => {
         if (!re.test(lt)) { missed.push(String(re)); return; }
