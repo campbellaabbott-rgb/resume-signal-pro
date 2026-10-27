@@ -1144,7 +1144,7 @@
     "metricTooltips": {
       "atsScore": {
         "title": "AI-ATS Score",
-        "description": "Sinisimulate ng aming AI kung paano ni-scan ang iyong resume ng mga modernong AI-powered Applicant Tracking System — ang parehong teknolohiyang ginagamit ng 98% ng Fortune 500 companies.",
+        "description": "Sinisimulate ng aming AI kung paano ni-scan ang iyong resume ng mga modernong AI-powered Applicant Tracking System.",
         "whyMatters": "Ang mababang score ay nangangahulugang malamang na inilalayo ka ng mga puwang sa parsing o keywords sa mga paghahanap na talagang ginagawa ng mga recruiter."
       },
       "format": {
@@ -1155,7 +1155,7 @@
       "metrics": {
         "title": "Quantification Score",
         "description": "Sinusukat kung gaano karaming achievement mo ang may numero, porsyento, o metrics.",
-        "whyMatters": "6 segundo lang ang ginugol ng mga recruiter sa pag-scan — ang mga numero ang unang nakakuha ng atensyon."
+        "whyMatters": "Mabilis lang magbasa ang mga recruiter — ang mga numero ang unang nakakakuha ng atensyon."
       },
       "verbs": {
         "title": "Action Verb Grade",
@@ -1185,7 +1185,7 @@
       "readability": {
         "title": "Readability Score",
         "description": "Sinusukat kung gaano madaling i-scan ang iyong resume.",
-        "whyMatters": "Karaniwang 6-7 segundo lang ang ginugol ng recruiter kada resume — pahalagahan ang bawat salita."
+        "whyMatters": "Mabilis lang basahin ng recruiter ang bawat resume — pahalagahan ang bawat salita."
       },
       "bulletImpact": {
         "title": "Bullet Impact",
@@ -1216,66 +1216,6 @@
         "title": "AI-ATS System Compatibility",
         "description": "Ipinapakita kung gaano maayos na nababasa ang iyong resume sa mga pangunahing AI-powered Applicant Tracking System tulad ng Workday, Greenhouse, at Taleo.",
         "whyMatters": "Iba-iba ang AI-ATS system na ginagamit ng mga kumpanya — alamin kung alin ang tama ang pagbasa sa iyong resume."
-      }
-    },
-    "ctaCopy": {
-      "coverLetter": {
-        "control": {
-          "button": "Gawin ang Cover Letter — {{price}}",
-          "description": "AI-generated cover letter na naangkop sa iyong resume at target na trabaho. Handa nang ipadala sa ilang minuto."
-        },
-        "benefitFocused": {
-          "button": "Kunin ang Interview-Winning Letter Mo",
-          "description": "Mag-stand out sa 100+ aplikante gamit ang personalized cover letter na pumupukaw sa interes ng mga recruiter."
-        },
-        "scarcity": {
-          "button": "Gawin Na ang Cover Letter — {{price}}",
-          "description": "Karamihan sa mga aplikante ay nililaktawan ang cover letter. Manguna sa kompetisyon gamit ang custom na letter sa 2 minuto."
-        }
-      },
-      "keywordFix": {
-        "control": {
-          "button": "Kunin ang Buong Keyword Report",
-          "headline": "Gusto mo ng 50+ Industry Keywords?"
-        },
-        "benefitFocused": {
-          "button": "I-unlock ang Mga Hidden Keyword",
-          "headline": "Makalampas sa ATS Filter"
-        },
-        "scarcity": {
-          "button": "Kunin ang Keywords Bago ang Iba",
-          "headline": "Talunin ang 87% ng Aplikante"
-        }
-      },
-      "premiumPackage": {
-        "control": {
-          "button": "Bilhin ang Premium Package — {{price}}",
-          "headline": "Premium Resume Package",
-          "subtext": "Lahat ng kailangan mo para makakuha ng interview"
-        },
-        "benefitFocused": {
-          "button": "Maging Handa sa Interview Ngayon",
-          "headline": "Mas Mabilis na Makuha ang Dream Job Mo",
-          "subtext": "3x mas marami pang interview callback sa aming kumpletong package"
-        },
-        "scarcity": {
-          "button": "I-claim ang Package Mo — Limitado",
-          "headline": "Premium Resume Package"
-        }
-      },
-      "tailoredResume": {
-        "control": {
-          "button": "I-preview ang Naangkop na Resume",
-          "description": "Libreng preview, pagkatapos i-unlock ang buong Premium Package na may naangkop na resume + cover letter"
-        },
-        "benefitFocused": {
-          "button": "Tingnan ang Pinabuting Resume Mo",
-          "description": "Tingnan kung paano talaga magmumukha ang resume mo kapag na-optimize para sa target role mo"
-        },
-        "scarcity": {
-          "button": "I-generate Bago Magsara",
-          "description": "Limitadong preview available — tingnan ang naangkop na resume mo bago mag-upgrade"
-        }
       }
     },
     "addJobDescriptionToUnlock": "Magdagdag ng job description sa itaas para mai-unlock",
@@ -2978,20 +2918,6 @@
       "fix3": "Magsama ng 3 pang keyword sa industriya"
     }
   },
-  "peerBenchmark": {
-    "howYouCompare": "Kung Paano Ka Nagkukumpara",
-    "percentile": "porsyentil",
-    "industryAverage": "Average ng Industriya: {{score}}",
-    "topPerformers": "Mga Nangungunang Kandidato: {{score}}+",
-    "toAverage": "Sa Average",
-    "toTopTier": "Sa Nangungunang Antas",
-    "topPerformer": "Ikaw ay isang Nangungunang Kandidato!",
-    "levelTip": "Tip sa Antas na {{level}}",
-    "benchmarkedAgainst": "Kinukumpara sa ibang mga kandidatong {{role}}",
-    "topPct": "Nangungunang {{pct}}% sa kahandaan ng ATS sa {{cohort}}",
-    "aroundAverage": "Average na kahandaan ng ATS sa {{cohort}}",
-    "belowAverage": "Mas mababa sa average na kahandaan ng ATS sa {{cohort}} (maaaring ayusin)"
-  },
   "skillsGapAnalysis": {
     "title": "Pagsusuri ng Pagitan ng Kasanayan para sa {{role}}",
     "roleMatchScore": "Marka ng Pagtutugma sa Papel",
@@ -3054,27 +2980,13 @@
     }
   },
   "competitorBenchmark": {
-    "title": "Paano Nangunguna ang mga Nangungunang {{role}}",
-    "competitiveStanding": "Ang Iyong Posisyon sa Kompetisyon",
-    "topElements": "Mayroon kang mga elementong kasama ng mga nangungunang kandidato!",
-    "addFewMore": "Magdagdag ng ilang elemento pa para makipagkumpitensya sa mga nangungunang kandidato",
-    "addElements": "Idagdag ang mga elementong ito para makatugma sa mga nangungunang kandidato",
-    "sectionsAlwaysInclude": "Mga seksyon na palaging isinasama ng mga nangungunang {{role}}:",
-    "whatMakesStandOut": "Ano ang nagpapakilala sa mga nangungunang resume:",
-    "pctTopCandidates": "Anong % ng mga nangungunang kandidato ang nagsasama:",
-    "avgBullets": "Average na mga bullet bawat papel:",
-    "youBullets": "Ikaw: {{count}}",
-    "topBullets": "Nangungunang: {{count}}",
-    "quickWins": "Mabilis na tagumpay para makipagkumpitensya:",
-    "addPortfolio": "Magdagdag ng mga link sa portfolio/GitHub ({{pct}}% ng mga nangungunang kandidato ay may mga ito)",
-    "addCerts": "Ilista ang mga kaugnay na sertipikasyon ({{pct}}% ng mga nangungunang kandidato ay may mga ito)",
-    "addMetrics": "Magdagdag ng mga sukatan sa iyong mga bullet ({{pct}}% ng mga nangungunang resume ay nagkukuantipika ng mga tagumpay)",
-    "addBullets": "Magdagdag ng {{count}} pang bullet bawat papel",
-    "checklistItems": {
-      "portfolio": "Mga Link sa Portfolio/GitHub",
-      "certifications": "Mga Sertipikasyon",
-      "quantifiedAchievements": "Mga Nasusukat na Tagumpay"
-    }
+    "title": "Ano ang Karaniwang Laman ng Resume ng {{role}}",
+    "sectionsAlwaysInclude": "Mga seksyong karaniwang nasa resume ng {{role}}:",
+    "whatMakesStandOut": "Ano ang nakakatulong para mapansin:",
+    "quickWins": "Sulit idagdag kung angkop sa iyo:",
+    "addPortfolio": "Mga link sa portfolio o GitHub",
+    "addCerts": "Mga kaugnay na sertipikasyon, kahit kasalukuyang kinukuha",
+    "addMetrics": "Mga numero sa iyong mga bullet: saklaw, natipid na oras, resulta"
   },
   "jobComparisonCTA": {
     "compareToRoles": "Tingnan kung paano ka nagkukumpara sa iyong mga target na papel:"

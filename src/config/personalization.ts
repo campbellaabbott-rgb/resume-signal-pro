@@ -24,6 +24,8 @@ export interface IndustryConfig {
   strongActionVerbs: string[];
   bulletExamples: { weak: string; strong: string }[];
   keyMetrics: string[];
+  // Configured, not measured: no page prints these (the free report ranks
+  // the reader against no one, H0).
   industryBenchmarks: { avgScore: number; topScore: number };
 }
 
@@ -59,14 +61,18 @@ export interface RoleConfig {
   keyMetrics: string[];
   commonMistakes: string[];
   interviewTopics: string[];
-  // Competitor benchmarking - what top resumes include
+  // What résumés for the role usually include: hand-written guidance, not a
+  // measurement of anyone's résumés. The numbers below are configured
+  // weights, not shares of real résumés, so the report never prints them:
+  // CompetitorBenchmark reads portfolioRate and certificationRate only to
+  // decide whether those guidelines apply to the role.
   topResumeElements?: {
-    sections: string[]; // Sections top candidates always include
-    differentiators: string[]; // What makes top resumes stand out
-    avgBulletCount: number; // Average bullet points per role
-    certificationRate: number; // % of top resumes that include certs
-    portfolioRate: number; // % that include portfolio/GitHub links
-    metricsRate: number; // % that quantify achievements
+    sections: string[]; // Sections résumés for the role usually have
+    differentiators: string[]; // What makes one stand out
+    avgBulletCount: number; // configured, not measured; unused by the report
+    certificationRate: number; // configured weight 0-100; 40 or more shows the certifications guideline
+    portfolioRate: number; // configured weight 0-100; 50 or more shows the portfolio guideline
+    metricsRate: number; // configured, not measured; unused by the report
   };
 }
 

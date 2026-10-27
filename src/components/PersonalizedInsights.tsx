@@ -42,10 +42,6 @@ interface PersonalizedInsightsProps {
   className?: string;
   // New props for enhanced personalization
   detectedSkills?: string[];
-  userHasPortfolio?: boolean;
-  userHasCertifications?: boolean;
-  userHasMetrics?: boolean;
-  userBulletCount?: number;
 }
 
 export function PersonalizedInsights({
@@ -56,10 +52,6 @@ export function PersonalizedInsights({
   currentRole,
   className,
   detectedSkills = [],
-  userHasPortfolio = false,
-  userHasCertifications = false,
-  userHasMetrics = false,
-  userBulletCount = 3
 }: PersonalizedInsightsProps) {
   const { t } = useTranslation();
   const industryConfig = getIndustryAdvice(industry);
@@ -188,15 +180,9 @@ export function PersonalizedInsights({
         />
       )}
 
-      {/* NEW: Competitor Benchmark */}
+      {/* What résumés for this role usually include: guidance, no figures */}
       {roleConfig && roleConfig.topResumeElements && (
-        <CompetitorBenchmark 
-          roleConfig={roleConfig}
-          userHasPortfolio={userHasPortfolio}
-          userHasCertifications={userHasCertifications}
-          userHasMetrics={userHasMetrics}
-          userBulletCount={userBulletCount}
-        />
+        <CompetitorBenchmark roleConfig={roleConfig} />
       )}
 
       {/* Geographic/Regional Advice section removed - was considered overkill */}

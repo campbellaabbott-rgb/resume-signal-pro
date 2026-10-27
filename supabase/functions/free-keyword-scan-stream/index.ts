@@ -6513,7 +6513,12 @@ function clampImprovementToScoreGap(report: Record<string, unknown>): void {
 // 2026-10-11.30 (wave 4 round 2 fixes): the signed-in account is read from a
 // website session only, as the primary does (CP-J / S9-001).
 // 2026-10-11.31 (recheck 3, 2026-10-26): the report the page shows keeps its red flags and fix steps whole; the mailed sentences are a scrubbed copy in reportMeta.mailSentences, and the seal covers that copy.
-const FN_BUILD = "free-keyword-scan-stream.2026-10-11.31";
+// 2026-10-27.1 (homepage switch-over, the report sweep; reservation
+// home-pricing): the local-standards card's photo notes for Germany, Italy
+// and Taiwan say what is usual without the shares of applicants and recruiters
+// or the survey's interview multiplier, as the primary's do (country-standards.ts,
+// the primary's copy byte for byte). Nothing else changed since 2026-10-11.31.
+const FN_BUILD = "free-keyword-scan-stream.2026-10-27.1";
 
 /** The primary's report id formula (free-keyword-scan/report-meta.ts reportIdFor): this report's cache key and its score. */
 async function streamReportId(cacheKey: string, score: unknown): Promise<string> {

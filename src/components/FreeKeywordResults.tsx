@@ -19,7 +19,6 @@ import { InterviewCoach } from "./InterviewCoach";
 import { useAuth } from "@/contexts/AuthContext";
 import { JobKeywordMatcher } from "./JobKeywordMatcher";
 import { ATSParseSimulator } from "./ATSParseSimulator";
-import { PeerBenchmark } from "./PeerBenchmark";
 import { ReturningUserInsights } from "./ReturningUserInsights";
 import { IndustryKeywordSuggestions } from "./IndustryKeywordSuggestions";
 import { RoleKeywordSuggestions } from "./RoleKeywordSuggestions";
@@ -688,7 +687,6 @@ export function FreeKeywordResults({
   subIndustry,
   jdTargetIndustry,
   industryBlend,
-  competitorSilhouette,
   fixRoadmap,
   reportVerdict,
   dualIndustryComparison,
@@ -1899,7 +1897,7 @@ export function FreeKeywordResults({
                 <p className="text-xs font-semibold text-foreground capitalize mb-1">As a {(side.industry ?? '').replace(/_/g, ' ')} candidate</p>
                 <p className="text-2xl font-bold text-foreground">{side.score}</p>
                 <p className="text-[10px] text-muted-foreground mt-1">
-                  Keyword coverage: {side.keywordCoveragePct}% · Industry median: {side.benchmarkMedian}
+                  Keyword coverage: {side.keywordCoveragePct}%
                 </p>
               </div>
             ))}
@@ -3159,11 +3157,9 @@ export function FreeKeywordResults({
               </ul>
             </div>
           )}
-          {marketIntelligence.salaryContext && (
-            <p className="text-xs text-muted-foreground mt-2 border-t border-border/40 pt-2">
-              <span className="font-medium text-foreground">💰 Salary context: </span>{marketIntelligence.salaryContext}
-            </p>
-          )}
+          {/* No salary line: the scan's salaryContext is a typed range per
+              market (and two typed percentage gaps) with no source, so the
+              report does not print it (the report sweep of 2026-10-27). */}
         </div>
       )}
 
@@ -3241,22 +3237,26 @@ export function FreeKeywordResults({
         </div>
       )}
 
-      {/* ── COMPETITIVE KEYWORD GAP CARD ── */}
+      {/* ── KEYWORDS EXPECTED AT YOUR LEVEL ──
+          The list is free-keyword-scan's hand-picked COMPETITIVE_KEYWORDS for
+          the field and level, not a count of anyone's résumés, so the card
+          says so; the share is how much of that list the reader's own résumé
+          uses (the report sweep of 2026-10-27). */}
       {competitiveGap && competitiveGap.missingHighFrequency?.length > 0 && (
         <div className="rounded-2xl border border-destructive/20 bg-card p-5 mb-5">
           <div className="flex items-center gap-2 mb-3">
             <Target className="w-4 h-4 text-destructive" />
-            <h4 className="font-semibold text-foreground">Competitive Keyword Gap</h4>
+            <h4 className="font-semibold text-foreground">Keywords Expected at Your Level</h4>
             <span className={cn(
               "ml-auto text-xs px-2 py-0.5 rounded-full font-semibold",
               competitiveGap.gapScore >= 70 ? "bg-success/15 text-success" :
               competitiveGap.gapScore >= 40 ? "bg-warning/15 text-warning" : "bg-destructive/15 text-destructive"
             )}>
-              {competitiveGap.gapScore}% coverage
+              {competitiveGap.gapScore}% of this list
             </span>
           </div>
           <p className="text-xs text-muted-foreground mb-3">
-            Keywords that appear in 70%+ of top-quartile resumes at your level — and are missing from yours.
+            Keywords from our list for {industry.replace(/_/g, ' ')} resumes at your level that yours doesn't use yet. The list is chosen by hand, not counted from other resumes.
           </p>
           <div className="flex flex-wrap gap-1.5 mb-2">
             {(competitiveGap.missingHighFrequency ?? []).map((kw, i) => (
@@ -3509,34 +3509,12 @@ export function FreeKeywordResults({
           shown: both are estimates of an outcome the report cannot know (H0,
           review round 2026-10-26). */}
 
-      {/* ── Competitor Silhouette ────────────────────────────────────────────── */}
-      {competitorSilhouette && (
-        <div className="rounded-2xl border border-border bg-card p-5">
-          <h4 className="font-semibold text-foreground text-sm mb-1">You vs. a Top-Quartile Candidate</h4>
-          <p className="text-xs text-muted-foreground mb-3">
-            What shortlisted {industry.replace(/_/g, ' ')} resumes typically show, next to {candidateName ? `${candidateName.split(' ')[0]}'s` : 'your'} resume today.
-          </p>
-          <div className="space-y-3">
-            {([
-              { label: 'Quantified bullets', them: competitorSilhouette.archetype.quantifiedBullets, you: competitorSilhouette.user.quantifiedBullets, max: 12 },
-              { label: 'Leadership signals', them: competitorSilhouette.archetype.leadershipSignals, you: competitorSilhouette.user.leadershipSignals, max: 8 },
-              { label: 'Keyword coverage %', them: competitorSilhouette.archetype.keywordCoveragePct, you: competitorSilhouette.user.keywordCoveragePct, max: 100 },
-            ]).map((row, i) => (
-              <div key={i} className="space-y-1">
-                <div className="flex justify-between text-xs">
-                  <span className="text-foreground font-medium">{row.label}</span>
-                  <span className="text-muted-foreground">You: <span className={cn("font-semibold", row.you >= row.them ? "text-success" : "text-destructive")}>{row.you}</span> · Top quartile: <span className="font-semibold text-foreground">{row.them}</span></span>
-                </div>
-                <div className="relative h-2 rounded-full bg-muted overflow-hidden">
-                  <div className="absolute h-full rounded-full bg-primary/80" style={{ width: `${Math.min((row.you / row.max) * 100, 100)}%` }} />
-                  <div className="absolute h-full w-0.5 bg-foreground/70" style={{ left: `${Math.min((row.them / row.max) * 100, 100)}%` }} />
-                </div>
-              </div>
-            ))}
-          </div>
-          <p className="text-[10px] text-muted-foreground mt-2">Dark marker = top-quartile benchmark.</p>
-        </div>
-      )}
+      {/* The "top-quartile candidate" card that sat here is gone: its
+          figures (quantified bullets, leadership verbs, keyword coverage)
+          were literals in free-keyword-scan, printed beside the reader's own
+          counts as if measured. The scan still sends competitorSilhouette
+          (the data contract); the report prints none of it (the report
+          sweep of 2026-10-27). */}
 
       {/* ── Skill Gap Heat Map ───────────────────────────────────────────────── */}
       {keywords.length > 0 && keywords.some(k => k.frequencyWeight != null) && (

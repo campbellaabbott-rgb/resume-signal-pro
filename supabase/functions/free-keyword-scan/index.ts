@@ -498,7 +498,13 @@ const trackPerformance = (startTime: number, operation: string, success: boolean
 // is wave 4's 2026-10-14.31; the free report stops printing its interview
 // odds, apply verdict and rank against other applicants, and this build says
 // which bundle ships with that report (verify section 99, C6).
-const FN_BUILD = "free-keyword-scan.2026-10-25.2";
+// 2026-10-27.1 (homepage switch-over, the report sweep; reservation
+// home-pricing): the local-standards card's photo notes for Germany, Italy
+// and Taiwan say what is usual without the shares of applicants and recruiters
+// or the survey's interview multiplier, whose source is not in this repository
+// (country-standards.ts, the stream fork's copy byte for byte). Nothing else
+// in the bundle changed since 2026-10-25.2.
+const FN_BUILD = "free-keyword-scan.2026-10-27.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

@@ -1150,7 +1150,7 @@
     "metricTooltips": {
       "atsScore": {
         "title": "Puntuación de IA-ATS",
-        "description": "Nuestra IA simula cómo los sistemas modernos de seguimiento de candidatos impulsados por IA escanean tu currículum, la misma tecnología que usa el 98% de las empresas Fortune 500.",
+        "description": "Nuestra IA simula cómo los sistemas modernos de seguimiento de candidatos impulsados por IA escanean tu currículum.",
         "whyMatters": "Un puntaje bajo significa que fallos de análisis o palabras clave ausentes probablemente te dejan fuera de las búsquedas que los reclutadores realmente hacen."
       },
       "format": {
@@ -1161,7 +1161,7 @@
       "metrics": {
         "title": "Puntuación de cuantificación",
         "description": "Mide cuántos de tus logros incluyen números, porcentajes o métricas.",
-        "whyMatters": "Los reclutadores pasan 6 segundos escaneando — los números captan su atención primero."
+        "whyMatters": "Los reclutadores leen en diagonal — los números captan su atención primero."
       },
       "verbs": {
         "title": "Calificación de verbos de acción",
@@ -1191,7 +1191,7 @@
       "readability": {
         "title": "Puntuación de legibilidad",
         "description": "Mide qué tan fácil es escanear rápidamente tu currículum.",
-        "whyMatters": "Los reclutadores promedian 6-7 segundos por currículum — haz que cada palabra cuente."
+        "whyMatters": "Los reclutadores leen cada currículum en diagonal — haz que cada palabra cuente."
       },
       "bulletImpact": {
         "title": "Impacto de las viñetas",
@@ -1222,66 +1222,6 @@
         "title": "Compatibilidad con sistemas IA-ATS",
         "description": "Muestra qué tan bien se analiza tu currículum en los principales sistemas de seguimiento de candidatos impulsados por IA como Workday, Greenhouse y Taleo.",
         "whyMatters": "Diferentes empresas usan diferentes sistemas IA-ATS — sabe cuáles leerán tu currículum correctamente."
-      }
-    },
-    "ctaCopy": {
-      "coverLetter": {
-        "control": {
-          "button": "Generar carta de presentación — {{price}}",
-          "description": "Carta de presentación generada por IA, adaptada a tu currículum y trabajo objetivo. Lista para enviar en minutos."
-        },
-        "benefitFocused": {
-          "button": "Obtén tu carta que gana entrevistas",
-          "description": "Destaca entre más de 100 candidatos con una carta de presentación personalizada que emociona a los reclutadores."
-        },
-        "scarcity": {
-          "button": "Crear carta de presentación ahora — {{price}}",
-          "description": "La mayoría de los candidatos omiten las cartas de presentación. Adelántate a la competencia con una carta personalizada en 2 minutos."
-        }
-      },
-      "keywordFix": {
-        "control": {
-          "button": "Obtener informe completo de palabras clave",
-          "headline": "¿Quieres más de 50 palabras clave de la industria?"
-        },
-        "benefitFocused": {
-          "button": "Desbloquear palabras clave ocultas",
-          "headline": "Supera el filtro ATS"
-        },
-        "scarcity": {
-          "button": "Obtén palabras clave antes que otros",
-          "headline": "Supera al 87% de los candidatos"
-        }
-      },
-      "premiumPackage": {
-        "control": {
-          "button": "Comprar paquete premium — {{price}}",
-          "headline": "Paquete Premium de Currículum",
-          "subtext": "Todo lo que necesitas para conseguir entrevistas"
-        },
-        "benefitFocused": {
-          "button": "Prepárate para entrevistas ahora",
-          "headline": "Consigue tu trabajo soñado más rápido",
-          "subtext": "3 veces más llamadas de entrevista con nuestro paquete completo"
-        },
-        "scarcity": {
-          "button": "Reclama tu paquete — Limitado",
-          "headline": "Paquete Premium de Currículum"
-        }
-      },
-      "tailoredResume": {
-        "control": {
-          "button": "Vista previa del currículum adaptado",
-          "description": "Vista previa gratuita, luego desbloquea el Paquete Premium completo con currículum adaptado + carta de presentación"
-        },
-        "benefitFocused": {
-          "button": "Ve tu currículum mejorado",
-          "description": "Ve exactamente cómo se verá tu currículum cuando se optimice para tu puesto objetivo"
-        },
-        "scarcity": {
-          "button": "Generar antes de que cierre",
-          "description": "Vista previa limitada disponible — ve tu currículum adaptado antes de actualizar"
-        }
       }
     },
     "addJobDescriptionToUnlock": "Añade una descripción del puesto arriba para desbloquear",
@@ -2996,20 +2936,6 @@
       "fix3": "Incluye 3 palabras clave del sector más"
     }
   },
-  "peerBenchmark": {
-    "howYouCompare": "Cómo te comparas",
-    "percentile": "percentil",
-    "industryAverage": "Promedio del sector: {{score}}",
-    "topPerformers": "Mejores candidatos: {{score}}+",
-    "toAverage": "Al promedio",
-    "toTopTier": "Al nivel superior",
-    "topPerformer": "¡Eres un candidato destacado!",
-    "levelTip": "Consejo nivel {{level}}",
-    "benchmarkedAgainst": "Comparado con otros candidatos de {{role}}",
-    "topPct": "Top {{pct}} % en preparación ATS entre {{cohort}}",
-    "aroundAverage": "Preparación ATS promedio entre {{cohort}}",
-    "belowAverage": "Preparación ATS por debajo del promedio entre {{cohort}} (se puede mejorar)"
-  },
   "skillsGapAnalysis": {
     "title": "Análisis de brechas de habilidades para {{role}}",
     "roleMatchScore": "Puntuación de coincidencia con el puesto",
@@ -3072,27 +2998,13 @@
     }
   },
   "competitorBenchmark": {
-    "title": "Cómo destacan los mejores {{role}}s",
-    "competitiveStanding": "Tu posición competitiva",
-    "topElements": "¡Tienes elementos que incluyen los mejores candidatos!",
-    "addFewMore": "Agrega algunos elementos más para competir con los mejores candidatos",
-    "addElements": "Agrega estos elementos para igualar a los mejores candidatos",
-    "sectionsAlwaysInclude": "Secciones que los mejores {{role}}s siempre incluyen:",
-    "whatMakesStandOut": "Qué hace destacar a los mejores currículums:",
-    "pctTopCandidates": "Qué % de los mejores candidatos incluye:",
-    "avgBullets": "Puntos promedio por puesto:",
-    "youBullets": "Tú: {{count}}",
-    "topBullets": "Top: {{count}}",
-    "quickWins": "Victorias rápidas para competir:",
-    "addPortfolio": "Agrega enlaces de portafolio/GitHub ({{pct}} % de los mejores candidatos los incluyen)",
-    "addCerts": "Enumera certificaciones relevantes ({{pct}} % de los mejores candidatos las tienen)",
-    "addMetrics": "Agrega métricas a tus puntos ({{pct}} % de los mejores currículums cuantifican logros)",
-    "addBullets": "Agrega {{count}} puntos más por puesto",
-    "checklistItems": {
-      "portfolio": "Enlaces de portafolio/GitHub",
-      "certifications": "Certificaciones",
-      "quantifiedAchievements": "Logros cuantificados"
-    }
+    "title": "Lo que suelen incluir los currículums de {{role}}",
+    "sectionsAlwaysInclude": "Secciones que suelen tener los currículums de {{role}}:",
+    "whatMakesStandOut": "Qué ayuda a destacar:",
+    "quickWins": "Vale la pena añadir si te corresponde:",
+    "addPortfolio": "Enlaces de portafolio o GitHub",
+    "addCerts": "Certificaciones relevantes, incluso en curso",
+    "addMetrics": "Cifras en tus puntos: alcance, tiempo ahorrado, resultados"
   },
   "jobComparisonCTA": {
     "compareToRoles": "Mira cómo te comparas con tus puestos objetivo:"

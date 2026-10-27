@@ -1144,7 +1144,7 @@
     "metricTooltips": {
       "atsScore": {
         "title": "AI-ATS-score",
-        "description": "Onze AI simuleert hoe moderne AI-gestuurde sollicitantvolgsystemen je cv scannen — dezelfde technologie die 98% van de Fortune 500-bedrijven gebruikt.",
+        "description": "Onze AI simuleert hoe moderne AI-gestuurde sollicitantvolgsystemen je cv scannen.",
         "whyMatters": "Een lage score betekent dat parsing- of trefwoordgaten je waarschijnlijk buiten de zoekopdrachten houden die recruiters echt uitvoeren."
       },
       "format": {
@@ -1155,7 +1155,7 @@
       "metrics": {
         "title": "Kwantificeringsscore",
         "description": "Meet hoeveel van je prestaties cijfers, percentages of statistieken bevatten.",
-        "whyMatters": "Recruiters scannen 6 seconden — cijfers trekken het eerst hun aandacht."
+        "whyMatters": "Recruiters scannen snel — cijfers trekken het eerst hun aandacht."
       },
       "verbs": {
         "title": "Actiewerkwoordcijfer",
@@ -1185,7 +1185,7 @@
       "readability": {
         "title": "Leesbaarheidsscore",
         "description": "Meet hoe gemakkelijk je cv snel te scannen is.",
-        "whyMatters": "Recruiters besteden gemiddeld 6-7 seconden per cv — elk woord moet tellen."
+        "whyMatters": "Recruiters scannen elk cv snel — elk woord moet tellen."
       },
       "bulletImpact": {
         "title": "Impact van bulletpoints",
@@ -1216,66 +1216,6 @@
         "title": "AI-ATS-systeemcompatibiliteit",
         "description": "Laat zien hoe goed je cv wordt verwerkt door belangrijke AI-gestuurde sollicitantvolgsystemen zoals Workday, Greenhouse en Taleo.",
         "whyMatters": "Verschillende bedrijven gebruiken verschillende AI-ATS-systemen — weet welke je cv correct zullen lezen."
-      }
-    },
-    "ctaCopy": {
-      "coverLetter": {
-        "control": {
-          "button": "Motivatiebrief genereren — {{price}}",
-          "description": "Door AI gegenereerde motivatiebrief, afgestemd op je cv en doelfunctie. Binnen minuten verzendklaar."
-        },
-        "benefitFocused": {
-          "button": "Krijg je interview-winnende brief",
-          "description": "Onderscheid je van 100+ sollicitanten met een gepersonaliseerde motivatiebrief die recruiters enthousiast maakt."
-        },
-        "scarcity": {
-          "button": "Nu motivatiebrief maken — {{price}}",
-          "description": "De meeste sollicitanten slaan motivatiebrieven over. Loop voor op de concurrentie met een aangepaste brief in 2 minuten."
-        }
-      },
-      "keywordFix": {
-        "control": {
-          "button": "Volledig zoekwoordrapport ontvangen",
-          "headline": "Wil je 50+ branchezoekwoorden?"
-        },
-        "benefitFocused": {
-          "button": "Verborgen zoekwoorden ontgrendelen",
-          "headline": "Kom door het ATS-filter"
-        },
-        "scarcity": {
-          "button": "Krijg zoekwoorden vóór anderen",
-          "headline": "Versla 87% van de sollicitanten"
-        }
-      },
-      "premiumPackage": {
-        "control": {
-          "button": "Premiumpakket kopen — {{price}}",
-          "headline": "Premium Cv-pakket",
-          "subtext": "Alles wat je nodig hebt om sollicitatiegesprekken te krijgen"
-        },
-        "benefitFocused": {
-          "button": "Word nu gespreksklaar",
-          "headline": "Land je droombaan sneller",
-          "subtext": "3x meer terugbelacties voor gesprekken met ons complete pakket"
-        },
-        "scarcity": {
-          "button": "Claim je pakket — Beperkt",
-          "headline": "Premium Cv-pakket"
-        }
-      },
-      "tailoredResume": {
-        "control": {
-          "button": "Voorbeeld aangepast cv bekijken",
-          "description": "Gratis voorbeeld, ontgrendel daarna het volledige Premiumpakket met aangepast cv + motivatiebrief"
-        },
-        "benefitFocused": {
-          "button": "Bekijk je verbeterde cv",
-          "description": "Zie precies hoe je cv eruitziet wanneer het is geoptimaliseerd voor je doelfunctie"
-        },
-        "scarcity": {
-          "button": "Genereer voordat het sluit",
-          "description": "Beperkte preview beschikbaar — bekijk je aangepaste cv voordat je upgradet"
-        }
       }
     },
     "addJobDescriptionToUnlock": "Voeg hierboven een functiebeschrijving toe om te ontgrendelen",
@@ -2978,20 +2918,6 @@
       "fix3": "Voeg 3 extra branchezoekwoorden toe"
     }
   },
-  "peerBenchmark": {
-    "howYouCompare": "Hoe je vergelijkt",
-    "percentile": "percentiel",
-    "industryAverage": "Branchegemiddelde: {{score}}",
-    "topPerformers": "Toppresteerders: {{score}}+",
-    "toAverage": "Naar gemiddeld",
-    "toTopTier": "Naar topniveau",
-    "topPerformer": "Je bent een toppresteerder!",
-    "levelTip": "Tip voor {{level}}",
-    "benchmarkedAgainst": "Vergeleken met andere {{role}}-kandidaten",
-    "topPct": "Top {{pct}} % voor ATS-gereedheid onder {{cohort}}",
-    "aroundAverage": "Gemiddelde ATS-gereedheid onder {{cohort}}",
-    "belowAverage": "Onder gemiddelde ATS-gereedheid onder {{cohort}} (oplosbaar)"
-  },
   "skillsGapAnalysis": {
     "title": "Vaardigheidskloof-analyse voor {{role}}",
     "roleMatchScore": "Functie-matchscore",
@@ -3054,27 +2980,13 @@
     }
   },
   "competitorBenchmark": {
-    "title": "Hoe top-{{role}}s opvallen",
-    "competitiveStanding": "Jouw concurrentiepositie",
-    "topElements": "Je hebt elementen die topkandidaten opnemen!",
-    "addFewMore": "Voeg nog een paar elementen toe om te concurreren met topkandidaten",
-    "addElements": "Voeg deze elementen toe om gelijk te zijn aan toppresteerders",
-    "sectionsAlwaysInclude": "Secties die top-{{role}}s altijd opnemen:",
-    "whatMakesStandOut": "Wat topcv’s onderscheidt:",
-    "pctTopCandidates": "Welk % van topkandidaten opneemt:",
-    "avgBullets": "Gemiddeld aantal punten per functie:",
-    "youBullets": "Jij: {{count}}",
-    "topBullets": "Top: {{count}}",
-    "quickWins": "Snelle winsten om te concurreren:",
-    "addPortfolio": "Voeg portfolio/GitHub-links toe ({{pct}} % van topkandidaten heeft ze)",
-    "addCerts": "Vermeld relevante certificeringen ({{pct}} % van topkandidaten heeft ze)",
-    "addMetrics": "Voeg statistieken toe aan je punten ({{pct}} % van topcv’s kwantificeert prestaties)",
-    "addBullets": "Voeg {{count}} extra punten per functie toe",
-    "checklistItems": {
-      "portfolio": "Portfolio/GitHub-links",
-      "certifications": "Certificeringen",
-      "quantifiedAchievements": "Gekwantificeerde prestaties"
-    }
+    "title": "Wat cv’s voor {{role}} meestal bevatten",
+    "sectionsAlwaysInclude": "Secties die cv’s voor {{role}} meestal hebben:",
+    "whatMakesStandOut": "Wat helpt om op te vallen:",
+    "quickWins": "De moeite waard als het op jou van toepassing is:",
+    "addPortfolio": "Portfolio- of GitHub-links",
+    "addCerts": "Relevante certificeringen, ook lopende",
+    "addMetrics": "Cijfers in je punten: omvang, bespaarde tijd, resultaten"
   },
   "jobComparisonCTA": {
     "compareToRoles": "Zie hoe je vergelijkt met je doelfuncties:"

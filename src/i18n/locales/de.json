@@ -1144,7 +1144,7 @@
     "metricTooltips": {
       "atsScore": {
         "title": "AI-ATS-Score",
-        "description": "Unsere KI simuliert, wie moderne KI-gestützte Bewerbermanagementsysteme deinen Lebenslauf scannen — dieselbe Technologie, die 98 % der Fortune-500-Unternehmen verwenden.",
+        "description": "Unsere KI simuliert, wie moderne KI-gestützte Bewerbermanagementsysteme deinen Lebenslauf scannen.",
         "whyMatters": "Ein niedriger Score bedeutet, dass Parsing- oder Keyword-Lücken Sie wahrscheinlich aus den Suchen heraushalten, die Recruiter tatsächlich ausführen."
       },
       "format": {
@@ -1155,7 +1155,7 @@
       "metrics": {
         "title": "Quantifizierungs-Score",
         "description": "Misst, wie viele deiner Erfolge Zahlen, Prozentsätze oder Kennzahlen enthalten.",
-        "whyMatters": "Recruiter scannen 6 Sekunden lang — Zahlen fallen ihnen zuerst ins Auge."
+        "whyMatters": "Recruiter überfliegen Lebensläufe — Zahlen fallen ihnen zuerst ins Auge."
       },
       "verbs": {
         "title": "Aktionsverb-Note",
@@ -1185,7 +1185,7 @@
       "readability": {
         "title": "Lesbarkeits-Score",
         "description": "Misst, wie leicht dein Lebenslauf schnell zu überblicken ist.",
-        "whyMatters": "Recruiter brauchen im Durchschnitt 6-7 Sekunden pro Lebenslauf — jedes Wort muss zählen."
+        "whyMatters": "Recruiter überfliegen jeden Lebenslauf schnell — jedes Wort muss zählen."
       },
       "bulletImpact": {
         "title": "Stichpunkt-Wirkung",
@@ -1216,66 +1216,6 @@
         "title": "KI-ATS-Systemkompatibilität",
         "description": "Zeigt, wie gut dein Lebenslauf von wichtigen KI-gestützten Bewerbermanagementsystemen wie Workday, Greenhouse und Taleo gelesen wird.",
         "whyMatters": "Verschiedene Unternehmen nutzen unterschiedliche KI-ATS-Systeme — wisse, welche deinen Lebenslauf korrekt lesen."
-      }
-    },
-    "ctaCopy": {
-      "coverLetter": {
-        "control": {
-          "button": "Anschreiben erstellen — {{price}}",
-          "description": "KI-generiertes Anschreiben, abgestimmt auf deinen Lebenslauf und die Zielstelle. In Minuten versandfertig."
-        },
-        "benefitFocused": {
-          "button": "Hol dir dein Interview-gewinnendes Anschreiben",
-          "description": "Hebe dich von über 100 Bewerbern ab mit einem personalisierten Anschreiben, das Recruiter begeistert."
-        },
-        "scarcity": {
-          "button": "Jetzt Anschreiben erstellen — {{price}}",
-          "description": "Die meisten Bewerber überspringen Anschreiben. Verschaffe dir einen Vorteil mit einem individuellen Anschreiben in 2 Minuten."
-        }
-      },
-      "keywordFix": {
-        "control": {
-          "button": "Vollständigen Keyword-Bericht erhalten",
-          "headline": "50+ Branchen-Keywords gewünscht?"
-        },
-        "benefitFocused": {
-          "button": "Versteckte Keywords freischalten",
-          "headline": "Komm am ATS-Filter vorbei"
-        },
-        "scarcity": {
-          "button": "Hol dir Keywords vor anderen",
-          "headline": "Schlage 87 % der Bewerber"
-        }
-      },
-      "premiumPackage": {
-        "control": {
-          "button": "Premium-Paket kaufen — {{price}}",
-          "headline": "Premium-Lebenslaufpaket",
-          "subtext": "Alles, was du brauchst, um Vorstellungsgespräche zu bekommen"
-        },
-        "benefitFocused": {
-          "button": "Jetzt interviewbereit werden",
-          "headline": "Lande deinen Traumjob schneller",
-          "subtext": "3x mehr Interview-Rückrufe mit unserem Komplettpaket"
-        },
-        "scarcity": {
-          "button": "Sichere dir dein Paket — begrenzt",
-          "headline": "Premium-Lebenslaufpaket"
-        }
-      },
-      "tailoredResume": {
-        "control": {
-          "button": "Angepassten Lebenslauf ansehen",
-          "description": "Kostenlose Vorschau, dann das vollständige Premium-Paket mit angepasstem Lebenslauf + Anschreiben freischalten"
-        },
-        "benefitFocused": {
-          "button": "Sieh deinen verbesserten Lebenslauf",
-          "description": "Sieh genau, wie dein Lebenslauf aussehen wird, wenn er für deine Zielrolle optimiert ist"
-        },
-        "scarcity": {
-          "button": "Jetzt generieren, bevor es endet",
-          "description": "Begrenzte Vorschau verfügbar — sieh deinen angepassten Lebenslauf, bevor du upgradest"
-        }
       }
     },
     "addJobDescriptionToUnlock": "Füge oben eine Stellenbeschreibung hinzu, um freizuschalten",
@@ -2978,20 +2918,6 @@
       "fix3": "3 weitere Branchenbegriffe einfügen"
     }
   },
-  "peerBenchmark": {
-    "howYouCompare": "Wie du abschneidest",
-    "percentile": "Perzentil",
-    "industryAverage": "Branchendurchschnitt: {{score}}",
-    "topPerformers": "Spitzenreiter: {{score}}+",
-    "toAverage": "Zum Durchschnitt",
-    "toTopTier": "Zur Spitzengruppe",
-    "topPerformer": "Du bist ein Spitzenkandidat!",
-    "levelTip": "Tipp für {{level}}",
-    "benchmarkedAgainst": "Verglichen mit anderen {{role}}-Kandidaten",
-    "topPct": "Top {{pct}} % bei ATS-Bereitschaft unter {{cohort}}",
-    "aroundAverage": "Durchschnittliche ATS-Bereitschaft unter {{cohort}}",
-    "belowAverage": "Unterdurchschnittliche ATS-Bereitschaft unter {{cohort}} (behebbar)"
-  },
   "skillsGapAnalysis": {
     "title": "Kompetenzlückenanalyse für {{role}}",
     "roleMatchScore": "Rollenübereinstimmungswert",
@@ -3054,27 +2980,13 @@
     }
   },
   "competitorBenchmark": {
-    "title": "So stechen Top-{{role}}s hervor",
-    "competitiveStanding": "Deine Wettbewerbsposition",
-    "topElements": "Du hast Elemente, die Top-Kandidaten enthalten!",
-    "addFewMore": "Füge einige weitere Elemente hinzu, um mit Spitzenkandidaten zu konkurrieren",
-    "addElements": "Füge diese Elemente hinzu, um mit Spitzenreitern mithalten zu können",
-    "sectionsAlwaysInclude": "Abschnitte, die Top-{{role}}s immer enthalten:",
-    "whatMakesStandOut": "Was Top-Lebensläufe auszeichnet:",
-    "pctTopCandidates": "Wie viel % der Top-Kandidaten enthalten:",
-    "avgBullets": "Durchschn. Aufzählungspunkte pro Stelle:",
-    "youBullets": "Du: {{count}}",
-    "topBullets": "Top: {{count}}",
-    "quickWins": "Schnelle Erfolge im Wettbewerb:",
-    "addPortfolio": "Portfolio/GitHub-Links hinzufügen ({{pct}} % der Top-Kandidaten haben sie)",
-    "addCerts": "Relevante Zertifizierungen auflisten ({{pct}} % der Top-Kandidaten haben sie)",
-    "addMetrics": "Kennzahlen zu deinen Aufzählungspunkten hinzufügen ({{pct}} % der Top-Lebensläufe quantifizieren Leistungen)",
-    "addBullets": "{{count}} weitere Aufzählungspunkte pro Stelle hinzufügen",
-    "checklistItems": {
-      "portfolio": "Portfolio/GitHub-Links",
-      "certifications": "Zertifizierungen",
-      "quantifiedAchievements": "Quantifizierte Leistungen"
-    }
+    "title": "Was Lebensläufe als {{role}} meist enthalten",
+    "sectionsAlwaysInclude": "Abschnitte, die Lebensläufe als {{role}} meist haben:",
+    "whatMakesStandOut": "Was hilft, aufzufallen:",
+    "quickWins": "Lohnt sich, wenn es auf dich zutrifft:",
+    "addPortfolio": "Portfolio- oder GitHub-Links",
+    "addCerts": "Relevante Zertifizierungen, auch laufende",
+    "addMetrics": "Zahlen in deinen Aufzählungspunkten: Umfang, eingesparte Zeit, Ergebnisse"
   },
   "jobComparisonCTA": {
     "compareToRoles": "Sieh, wie du im Vergleich zu deinen Zielstellen abschneidest:"

@@ -1144,7 +1144,7 @@
     "metricTooltips": {
       "atsScore": {
         "title": "AI-ATS Score",
-        "description": "Our AI simulates how modern AI-powered Applicant Tracking Systems scan your resume—the same technology 98% of Fortune 500 companies use.",
+        "description": "Our AI simulates how modern AI-powered Applicant Tracking Systems scan your resume.",
         "whyMatters": "A low score means parsing or keyword gaps are likely keeping you out of the searches recruiters actually run."
       },
       "format": {
@@ -1155,7 +1155,7 @@
       "metrics": {
         "title": "Quantification Score",
         "description": "Measures how many of your achievements include numbers, percentages, or metrics.",
-        "whyMatters": "Recruiters spend 6 seconds scanning—numbers catch their eye first."
+        "whyMatters": "Recruiters skim, and numbers catch their eye first."
       },
       "verbs": {
         "title": "Action Verb Grade",
@@ -1185,7 +1185,7 @@
       "readability": {
         "title": "Readability Score",
         "description": "Measures how easy your resume is to scan quickly.",
-        "whyMatters": "Recruiters average 6-7 seconds per resume—make every word count."
+        "whyMatters": "Recruiters skim each resume quickly, so make every word count."
       },
       "bulletImpact": {
         "title": "Bullet Impact",
@@ -1216,66 +1216,6 @@
         "title": "AI-ATS System Compatibility",
         "description": "Shows how well your resume parses across major AI-powered Applicant Tracking Systems like Workday, Greenhouse, and Taleo.",
         "whyMatters": "Different companies use different AI-ATS systems—know which ones will read your resume correctly."
-      }
-    },
-    "ctaCopy": {
-      "coverLetter": {
-        "control": {
-          "button": "Generate Cover Letter — {{price}}",
-          "description": "AI-generated cover letter tailored to your resume and target job. Ready to send in minutes."
-        },
-        "benefitFocused": {
-          "button": "Get Your Interview-Winning Letter",
-          "description": "Stand out from 100+ applicants with a personalized cover letter that gets recruiters excited."
-        },
-        "scarcity": {
-          "button": "Create Cover Letter Now — {{price}}",
-          "description": "Most applicants skip cover letters. Get ahead of the competition with a custom letter in 2 minutes."
-        }
-      },
-      "keywordFix": {
-        "control": {
-          "button": "Get Full Keyword Report",
-          "headline": "Want 50+ Industry Keywords?"
-        },
-        "benefitFocused": {
-          "button": "Unlock Hidden Keywords",
-          "headline": "Get Past the ATS Filter"
-        },
-        "scarcity": {
-          "button": "Get Keywords Before Others Do",
-          "headline": "Beat 87% of Applicants"
-        }
-      },
-      "premiumPackage": {
-        "control": {
-          "button": "Buy Premium Package — {{price}}",
-          "headline": "Premium Resume Package",
-          "subtext": "Everything you need to land interviews"
-        },
-        "benefitFocused": {
-          "button": "Get Interview-Ready Now",
-          "headline": "Land Your Dream Job Faster",
-          "subtext": "3x more interview callbacks with our complete package"
-        },
-        "scarcity": {
-          "button": "Claim Your Package — Limited",
-          "headline": "Premium Resume Package"
-        }
-      },
-      "tailoredResume": {
-        "control": {
-          "button": "Preview Tailored Resume",
-          "description": "Preview for free, then unlock the full Premium Package with tailored resume + cover letter"
-        },
-        "benefitFocused": {
-          "button": "See Your Improved Resume",
-          "description": "See exactly how your resume will look when optimized for your target role"
-        },
-        "scarcity": {
-          "button": "Generate Before It Closes",
-          "description": "Limited preview available — see your tailored resume before upgrading"
-        }
       }
     },
     "addJobDescriptionToUnlock": "Add a job description above to unlock",
@@ -2978,20 +2918,6 @@
       "fix3": "Include 3 more industry keywords"
     }
   },
-  "peerBenchmark": {
-    "howYouCompare": "How You Compare",
-    "percentile": "percentile",
-    "industryAverage": "Industry Average: {{score}}",
-    "topPerformers": "Top Performers: {{score}}+",
-    "toAverage": "To Average",
-    "toTopTier": "To Top Tier",
-    "topPerformer": "You're a Top Performer!",
-    "levelTip": "{{level}} Level Tip",
-    "benchmarkedAgainst": "Benchmarked against other {{role}} candidates",
-    "topPct": "Top {{pct}}% for ATS readiness among {{cohort}}",
-    "aroundAverage": "Around average ATS readiness among {{cohort}}",
-    "belowAverage": "Below average ATS readiness among {{cohort}} (fixable)"
-  },
   "skillsGapAnalysis": {
     "title": "Skills Gap Analysis for {{role}}",
     "roleMatchScore": "Role Match Score",
@@ -3054,27 +2980,13 @@
     }
   },
   "competitorBenchmark": {
-    "title": "How Top {{role}}s Stand Out",
-    "competitiveStanding": "Your Competitive Standing",
-    "topElements": "You have elements that top candidates include!",
-    "addFewMore": "Add a few more elements to compete with top candidates",
-    "addElements": "Add these elements to match top performers",
-    "sectionsAlwaysInclude": "Sections top {{role}}s always include:",
-    "whatMakesStandOut": "What makes top resumes stand out:",
-    "pctTopCandidates": "What % of top candidates include:",
-    "avgBullets": "Avg bullets per role:",
-    "youBullets": "You: {{count}}",
-    "topBullets": "Top: {{count}}",
-    "quickWins": "Quick wins to compete:",
-    "addPortfolio": "Add portfolio/GitHub links ({{pct}}% of top candidates include them)",
-    "addCerts": "List relevant certifications ({{pct}}% of top candidates have them)",
-    "addMetrics": "Add metrics to your bullets ({{pct}}% of top resumes quantify achievements)",
-    "addBullets": "Add {{count}} more bullet points per role",
-    "checklistItems": {
-      "portfolio": "Portfolio/GitHub links",
-      "certifications": "Certifications",
-      "quantifiedAchievements": "Quantified achievements"
-    }
+    "title": "What {{role}} Resumes Usually Include",
+    "sectionsAlwaysInclude": "Sections {{role}} resumes usually have:",
+    "whatMakesStandOut": "What helps one stand out:",
+    "quickWins": "Worth adding if it applies to you:",
+    "addPortfolio": "Portfolio or GitHub links",
+    "addCerts": "Relevant certifications, even ones in progress",
+    "addMetrics": "Numbers in your bullets: scale, time saved, results"
   },
   "jobComparisonCTA": {
     "compareToRoles": "See how you compare to your target roles:"

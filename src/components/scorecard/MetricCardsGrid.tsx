@@ -104,7 +104,7 @@ const metricTooltips: Record<string, { title: string; description: string; whyMa
   metrics: {
     title: "Quantification Score",
     description: "Measures how many of your achievements include numbers, percentages, or metrics.",
-    whyMatters: "Recruiters spend 6 seconds scanning—numbers catch their eye first."
+    whyMatters: "Recruiters skim, and numbers catch their eye first."
   },
   verbs: {
     title: "Action Verb Grade",
@@ -134,7 +134,7 @@ const metricTooltips: Record<string, { title: string; description: string; whyMa
   readability: {
     title: "Readability Score",
     description: "Measures how easy your resume is to scan quickly.",
-    whyMatters: "Recruiters average 6-7 seconds per resume—make every word count."
+    whyMatters: "Recruiters skim each resume quickly, so make every word count."
   },
   bulletImpact: {
     title: "Bullet Impact",

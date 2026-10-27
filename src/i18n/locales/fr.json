@@ -1150,7 +1150,7 @@
     "metricTooltips": {
       "atsScore": {
         "title": "Score IA-ATS",
-        "description": "Notre IA simule comment les systèmes modernes de suivi des candidatures alimentés par l'IA analysent votre CV — la même technologie utilisée par 98 % des entreprises du Fortune 500.",
+        "description": "Notre IA simule comment les systèmes modernes de suivi des candidatures alimentés par l'IA analysent votre CV.",
         "whyMatters": "Un score bas signifie que des lacunes de parsing ou de mots-clés vous excluent probablement des recherches que les recruteurs effectuent réellement."
       },
       "format": {
@@ -1161,7 +1161,7 @@
       "metrics": {
         "title": "Score de quantification",
         "description": "Mesure combien de vos réalisations incluent des chiffres, des pourcentages ou des indicateurs.",
-        "whyMatters": "Les recruteurs passent 6 secondes à parcourir — les chiffres attirent leur attention en premier."
+        "whyMatters": "Les recruteurs lisent en diagonale — les chiffres attirent leur attention en premier."
       },
       "verbs": {
         "title": "Note des verbes d'action",
@@ -1191,7 +1191,7 @@
       "readability": {
         "title": "Score de lisibilité",
         "description": "Mesure la facilité avec laquelle votre CV peut être parcouru rapidement.",
-        "whyMatters": "Les recruteurs passent en moyenne 6 à 7 secondes par CV — chaque mot doit compter."
+        "whyMatters": "Les recruteurs parcourent chaque CV rapidement — chaque mot doit compter."
       },
       "bulletImpact": {
         "title": "Impact des puces",
@@ -1222,66 +1222,6 @@
         "title": "Compatibilité avec les systèmes IA-ATS",
         "description": "Montre à quel point votre CV est correctement analysé par les principaux systèmes de suivi des candidatures alimentés par l'IA comme Workday, Greenhouse et Taleo.",
         "whyMatters": "Différentes entreprises utilisent différents systèmes IA-ATS — sachez lesquels liront correctement votre CV."
-      }
-    },
-    "ctaCopy": {
-      "coverLetter": {
-        "control": {
-          "button": "Générer une lettre de motivation — {{price}}",
-          "description": "Lettre de motivation générée par IA, adaptée à votre CV et au poste visé. Prête à envoyer en quelques minutes."
-        },
-        "benefitFocused": {
-          "button": "Obtenez votre lettre qui décroche des entretiens",
-          "description": "Démarquez-vous parmi plus de 100 candidats avec une lettre de motivation personnalisée qui enthousiasme les recruteurs."
-        },
-        "scarcity": {
-          "button": "Créer une lettre de motivation maintenant — {{price}}",
-          "description": "La plupart des candidats négligent les lettres de motivation. Prenez l'avantage avec une lettre personnalisée en 2 minutes."
-        }
-      },
-      "keywordFix": {
-        "control": {
-          "button": "Obtenir le rapport complet de mots-clés",
-          "headline": "Envie de plus de 50 mots-clés du secteur ?"
-        },
-        "benefitFocused": {
-          "button": "Débloquer les mots-clés cachés",
-          "headline": "Passez le filtre ATS"
-        },
-        "scarcity": {
-          "button": "Obtenez les mots-clés avant les autres",
-          "headline": "Devancez 87 % des candidats"
-        }
-      },
-      "premiumPackage": {
-        "control": {
-          "button": "Acheter le forfait Premium — {{price}}",
-          "headline": "Forfait CV Premium",
-          "subtext": "Tout ce dont vous avez besoin pour décrocher des entretiens"
-        },
-        "benefitFocused": {
-          "button": "Soyez prêt pour l'entretien dès maintenant",
-          "headline": "Décrochez le poste de vos rêves plus vite",
-          "subtext": "3 fois plus de rappels pour entretien avec notre forfait complet"
-        },
-        "scarcity": {
-          "button": "Réservez votre forfait — Offre limitée",
-          "headline": "Forfait CV Premium"
-        }
-      },
-      "tailoredResume": {
-        "control": {
-          "button": "Aperçu du CV personnalisé",
-          "description": "Aperçu gratuit, puis débloquez le forfait Premium complet avec CV personnalisé + lettre de motivation"
-        },
-        "benefitFocused": {
-          "button": "Voyez votre CV amélioré",
-          "description": "Voyez exactement à quoi ressemblera votre CV une fois optimisé pour le poste visé"
-        },
-        "scarcity": {
-          "button": "Générer avant la fermeture",
-          "description": "Aperçu limité disponible — voyez votre CV personnalisé avant de passer à la version supérieure"
-        }
       }
     },
     "addJobDescriptionToUnlock": "Ajoutez une description de poste ci-dessus pour débloquer",
@@ -2996,20 +2936,6 @@
       "fix3": "Incluez 3 mots-clés sectoriels supplémentaires"
     }
   },
-  "peerBenchmark": {
-    "howYouCompare": "Comment vous vous comparez",
-    "percentile": "percentile",
-    "industryAverage": "Moyenne du secteur : {{score}}",
-    "topPerformers": "Meilleurs candidats : {{score}}+",
-    "toAverage": "Vers la moyenne",
-    "toTopTier": "Vers le niveau supérieur",
-    "topPerformer": "Vous êtes un candidat d’élite !",
-    "levelTip": "Conseil niveau {{level}}",
-    "benchmarkedAgainst": "Comparé aux autres candidats {{role}}",
-    "topPct": "Top {{pct}} % pour la préparation ATS parmi {{cohort}}",
-    "aroundAverage": "Préparation ATS dans la moyenne parmi {{cohort}}",
-    "belowAverage": "Préparation ATS en dessous de la moyenne parmi {{cohort}} (corrigeable)"
-  },
   "skillsGapAnalysis": {
     "title": "Analyse des lacunes de compétences pour {{role}}",
     "roleMatchScore": "Score de correspondance au poste",
@@ -3072,27 +2998,13 @@
     }
   },
   "competitorBenchmark": {
-    "title": "Comment les meilleurs {{role}}s se démarquent",
-    "competitiveStanding": "Votre positionnement concurrentiel",
-    "topElements": "Vous avez les éléments que les meilleurs candidats incluent !",
-    "addFewMore": "Ajoutez quelques éléments pour rivaliser avec les meilleurs candidats",
-    "addElements": "Ajoutez ces éléments pour égaler les meilleurs candidats",
-    "sectionsAlwaysInclude": "Sections que les meilleurs {{role}}s incluent toujours :",
-    "whatMakesStandOut": "Ce qui fait se démarquer les meilleurs CV :",
-    "pctTopCandidates": "Quel % des meilleurs candidats incluent :",
-    "avgBullets": "Nombre moyen de points par poste :",
-    "youBullets": "Vous : {{count}}",
-    "topBullets": "Top : {{count}}",
-    "quickWins": "Gains rapides pour concurrencer :",
-    "addPortfolio": "Ajoutez des liens portfolio/GitHub ({{pct}} % des meilleurs candidats en ont)",
-    "addCerts": "Listez les certifications pertinentes ({{pct}} % des meilleurs candidats en ont)",
-    "addMetrics": "Ajoutez des métriques à vos points ({{pct}} % des meilleurs CV quantifient leurs réalisations)",
-    "addBullets": "Ajoutez {{count}} points supplémentaires par poste",
-    "checklistItems": {
-      "portfolio": "Liens portfolio/GitHub",
-      "certifications": "Certifications",
-      "quantifiedAchievements": "Réalisations quantifiées"
-    }
+    "title": "Ce que contiennent souvent les CV de {{role}}",
+    "sectionsAlwaysInclude": "Sections qu’ont souvent les CV de {{role}} :",
+    "whatMakesStandOut": "Ce qui aide à se démarquer :",
+    "quickWins": "À ajouter si cela vous concerne :",
+    "addPortfolio": "Liens vers un portfolio ou GitHub",
+    "addCerts": "Certifications pertinentes, même en cours",
+    "addMetrics": "Des chiffres dans vos points : ampleur, temps gagné, résultats"
   },
   "jobComparisonCTA": {
     "compareToRoles": "Voyez comment vous vous comparez à vos postes cibles :"

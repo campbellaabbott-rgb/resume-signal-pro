@@ -535,12 +535,10 @@ export function ScoreAuditCard({
 export function ShareScoreCard({
   atsScore,
   industry,
-  percentile,
   previousScore,
 }: {
   atsScore: number;
   industry: string;
-  percentile?: number;
   /** When the same candidate scanned before, the card becomes a before/after
    *  ("58 → 74") — measured improvement is what people actually share. */
   previousScore?: number;
@@ -604,9 +602,6 @@ export function ShareScoreCard({
       ctx.font = "400 34px system-ui, sans-serif";
       ctx.fillStyle = "#cbd5e1";
       ctx.fillText(`Industry: ${industry.replace(/_/g, " ")}`, 560, 280);
-      if (typeof percentile === "number") {
-        ctx.fillText(`Better than ${percentile}% of peers`, 560, 335);
-      }
     }
     ctx.fillStyle = scoreColor;
     ctx.font = "600 30px system-ui, sans-serif";
