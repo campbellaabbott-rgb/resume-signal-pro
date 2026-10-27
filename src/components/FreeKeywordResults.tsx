@@ -3239,9 +3239,10 @@ export function FreeKeywordResults({
 
       {/* ── KEYWORDS EXPECTED AT YOUR LEVEL ──
           The list is free-keyword-scan's hand-picked COMPETITIVE_KEYWORDS for
-          the field and level, not a count of anyone's résumés, so the card
-          says so; the share is how much of that list the reader's own résumé
-          uses (the report sweep of 2026-10-27). */}
+          the level, in seven fields with technology's standing in for the
+          rest, not a count of anyone's résumés, so the card says so; the share
+          is how much of that list the reader's own résumé uses (the report
+          sweep of 2026-10-27). */}
       {competitiveGap && competitiveGap.missingHighFrequency?.length > 0 && (
         <div className="rounded-2xl border border-destructive/20 bg-card p-5 mb-5">
           <div className="flex items-center gap-2 mb-3">
@@ -3256,7 +3257,7 @@ export function FreeKeywordResults({
             </span>
           </div>
           <p className="text-xs text-muted-foreground mb-3">
-            Keywords from our list for {industry.replace(/_/g, ' ')} resumes at your level that yours doesn't use yet. The list is chosen by hand, not counted from other resumes.
+            Keywords from a list for your level that your resume doesn't use yet. The list is chosen by hand (for seven fields; technology's stands in for the rest), not counted from other resumes.
           </p>
           <div className="flex flex-wrap gap-1.5 mb-2">
             {(competitiveGap.missingHighFrequency ?? []).map((kw, i) => (

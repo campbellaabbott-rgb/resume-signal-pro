@@ -290,9 +290,11 @@ switch-over links to, in all nine languages:
   checklist. It now says what résumés for the role usually include, with no
   figure; the role's configured weights only decide which guideline shows.
 - *"Keywords that appear in 70%+ of top-quartile resumes"*, for a list typed
-  into free-keyword-scan (`COMPETITIVE_KEYWORDS`): the card is "Keywords
-  Expected at Your Level", says the list is chosen by hand, and prints "N% of
-  this list", the share the reader's own résumé uses.
+  into free-keyword-scan (`COMPETITIVE_KEYWORDS`, seven fields by level, with
+  technology's list standing in for every other field): the card is
+  "Keywords Expected at Your Level", says the list is chosen by hand and
+  names no field (for most fields it is technology's), and prints "N% of this
+  list", the share the reader's own résumé uses.
 - *"You vs. a Top-Quartile Candidate"*: eight quantified bullets, three
   leadership verbs and 70% keyword coverage, literals in free-keyword-scan.
   Not printed.
@@ -327,8 +329,8 @@ numbers it is.
 
 **What "/" loads did not change.** The report's strings ride with the
 scanner's chunk, not with "/"; each of the nine locale files lost the deleted
-strings (English 103,633 to 102,725 B gzip, German 118,887 to 117,750, Hindi
-137,031 to 135,847), and nothing grew. The speed record in step 15 was not
+strings (`gzip -9` of the file: English 103,633 to 102,725 B, German 118,887
+to 117,750, Hindi 137,031 to 135,847), and nothing grew. The speed record in step 15 was not
 re-measured for this round.
 
 **Not changed here:** the scanner page's hero still says "Over 98% of Fortune
@@ -355,7 +357,9 @@ mail, the hp suite and the 17 ledger tests, run after the last change
 8 functions differ, 0 violations; `--overlap` exit 0 over both required
 lists, and over every in-flight branch no undeclared file involves
 hp/switch-over (13 among the others, as before); the full battery at the
-push (pre-push, through heavy.sh).
+push of f4ca2057 (pre-push, through heavy.sh): 1,320 test files and 20,488
+tests pass (1 file and 32 tests skipped), plus the frontend typecheck and the
+deno check.
 
 ## What was built
 
