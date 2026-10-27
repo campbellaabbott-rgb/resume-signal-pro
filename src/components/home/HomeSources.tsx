@@ -5,7 +5,7 @@ import { ChevronDown } from "lucide-react";
 import { count as fmtCount } from "@/lib/format";
 import { sourcesTable, type SourceRow } from "@/lib/home/board-figures";
 import { utcStamp } from "@/lib/home/stamps";
-import { BOARD_FRESH_WINDOW_DAYS } from "@/components/jobs/posting-page";
+import { HOME_BOARD_FRESH_WINDOW_DAYS } from "@/lib/home/posting-href";
 import { HomeDetails } from "./HomeDetails";
 
 /**
@@ -57,7 +57,7 @@ export function HomeSources({ counts, openTotal, asOf }: { counts: Record<string
       <div className="container grid gap-6 lg:grid-cols-2 lg:items-start lg:gap-14">
         <div className="min-w-0">
           <h2 id="home-sources" className="text-[clamp(1.25rem,5vw,1.875rem)] font-semibold leading-tight md:text-3xl">{t("home.sources.title")}</h2>
-          <p className="mt-2.5 max-w-[62ch] text-muted-foreground">{t("home.sources.lede", { freshDays: BOARD_FRESH_WINDOW_DAYS })}</p>
+          <p className="mt-2.5 max-w-[62ch] text-muted-foreground">{t("home.sources.lede", { freshDays: HOME_BOARD_FRESH_WINDOW_DAYS })}</p>
           <div className="mt-5">
             <Link to="/methodology" className="link inline-flex items-center">{t("home.sources.method")}</Link>
           </div>

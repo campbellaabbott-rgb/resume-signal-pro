@@ -8,13 +8,13 @@
  * before the browser paints.
  */
 import type { CardContext } from "@/components/jobs/listing/JobCard";
-import { postingPagePath } from "@/components/jobs/posting-page";
+import { homePostingPath } from "@/lib/home/posting-href";
 import type { ListingJob } from "@/lib/listing/types";
 
 export const HOME_CARD_CONTEXT: CardContext = { surface: "board", density: "comfortable", hideEmployer: false, selected: false };
 
 export function homePostingHref(job: Pick<ListingJob, "id">): string {
-  return postingPagePath(job.id) ?? `/jobs?job=${encodeURIComponent(job.id)}`;
+  return homePostingPath(job.id) ?? `/jobs?job=${encodeURIComponent(job.id)}`;
 }
 
 /** The list's gap between rows (gap-2): a hole no bigger than this is just the gap. */

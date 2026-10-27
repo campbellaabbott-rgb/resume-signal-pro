@@ -5,7 +5,7 @@ import "@/i18n/home-strings";
 import { TaggedText } from "./TaggedText";
 import { namedSystems } from "@/lib/home/board-figures";
 import { HOME_FREE_REPORT_DAYS, HOME_PAID_REPORT_DAYS, HOME_RESUME_TEXT_HOURS } from "@/lib/home/facts";
-import { BOARD_FRESH_WINDOW_DAYS } from "@/components/jobs/posting-page";
+import { HOME_BOARD_FRESH_WINDOW_DAYS } from "@/lib/home/posting-href";
 import { HomeDetails } from "./HomeDetails";
 
 /**
@@ -25,8 +25,8 @@ export function HomeFaq({ counts }: { counts: Record<string, number> }) {
       key: "sources",
       q: t("home.faq.sourcesQ"),
       a: named && named.more > 0
-        ? t("home.faq.sourcesA", { names: named.names.join(", "), more: named.more, freshDays: BOARD_FRESH_WINDOW_DAYS })
-        : t("home.faq.sourcesAPlain", { freshDays: BOARD_FRESH_WINDOW_DAYS }),
+        ? t("home.faq.sourcesA", { names: named.names.join(", "), more: named.more, freshDays: HOME_BOARD_FRESH_WINDOW_DAYS })
+        : t("home.faq.sourcesAPlain", { freshDays: HOME_BOARD_FRESH_WINDOW_DAYS }),
     },
     { key: "apply", q: t("home.faq.applyQ"), a: t("home.faq.applyA") },
     { key: "current", q: t("home.faq.currentQ"), a: t("home.faq.currentA") },
