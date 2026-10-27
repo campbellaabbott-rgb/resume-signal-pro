@@ -31,8 +31,10 @@
 #       create-subscription-checkout 2026-10-26.1 (Pro's list says packages)
 #       and create-product-checkout 2026-10-26.1 (it bundles that list), each
 #       that build or a later one.
-#   C7  The page React renders: the served entry carries the homepage's H1
-#       sentence and none of the retired homepage hero's strings.
+#   C7  The page React renders: the homepage's own chunk (named in the served
+#       "/") carries its sentences and none of the retired homepage hero's
+#       strings, and the entry every page loads does not carry them (they ride
+#       with the page since the review round of 2026-10-26).
 #   C8  (headless) "/#upload" lands on /resume-checker at its uploader (the
 #       scanner scrolls to #upload and then clears the hash, as it always has),
 #       and /resume-checker still renders the scanner's uploader.
@@ -58,7 +60,7 @@
 echo "== 99. home-pricing: the board-first homepage and the new pricing page =="
 
 REPO_ROOT99="${VD99_REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
-rm -f /tmp/vd_99_home.html /tmp/vd_99_pricing.html /tmp/vd_99_trust.html /tmp/vd_99_vc.json /tmp/vd_99_agent.json /tmp/vd_99_entry.js
+rm -f /tmp/vd_99_home.html /tmp/vd_99_pricing.html /tmp/vd_99_trust.html /tmp/vd_99_vc.json /tmp/vd_99_agent.json /tmp/vd_99_entry.js /tmp/vd_99_homechunk.js
 curl -s -m 30 -A "$UA" "$SITE/" > /tmp/vd_99_home.html
 curl -s -m 30 -A "$UA" "$SITE/pricing" > /tmp/vd_99_pricing.html
 curl -s -m 30 -A "$UA" "$SITE/trust" > /tmp/vd_99_trust.html
@@ -66,6 +68,8 @@ curl -s -m 30 -o /tmp/vd_99_vc.json "$B/rest/v1/rpc/get_board_vendor_counts" -H 
 curl -s -m 30 -o /tmp/vd_99_agent.json "$B/rest/v1/rpc/agent_sender_public_status" -H "apikey: $K" -H "Authorization: Bearer $K"
 VD99_ENTRY=$(grep -oE '/assets/index-[A-Za-z0-9_-]+\.js' /tmp/vd_99_home.html | head -1)
 if [ -n "$VD99_ENTRY" ]; then curl -s -m 60 "$SITE$VD99_ENTRY" > /tmp/vd_99_entry.js; fi
+VD99_HOMECHUNK=$(grep -oE 'HomePage-[A-Za-z0-9_-]+\.js' /tmp/vd_99_home.html | head -1)
+if [ -n "$VD99_HOMECHUNK" ]; then curl -s -m 60 "$SITE/assets/$VD99_HOMECHUNK" > /tmp/vd_99_homechunk.js; fi
 
 # ---- C6: the builds the reservation carries ----
 for VD99_PAIR in "free-keyword-scan|2026-10-25|2" "send-scan-report|2026-10-25|1" "send-search-digest|2026-10-25|1" "send-market-pulse|2026-10-25|2" "create-subscription-checkout|2026-10-26|1" "create-product-checkout|2026-10-26|1"; do
@@ -161,12 +165,15 @@ if (home.length>=500) {
 
 // ---- C7: what React renders ----
 {
-  const entry=rd("/tmp/vd_99_entry.js");
+  const entry=rd("/tmp/vd_99_entry.js"), chunk=rd("/tmp/vd_99_homechunk.js");
   if (entry.length<1000) line("FAIL","C7 the served / names no readable /assets/index-*.js entry ("+entry.length+" bytes): the React strings were not read");
   else {
-    const ours=entry.includes("Search postings from employers")&&entry.includes("own job boards and USAJOBS");
-    const old=["Apply yourself, with your own AI","Live job board + your own AI","Scan your CV for free, search the board here or from Claude or ChatGPT"].filter((x)=>entry.includes(x));
-    line(ours&&!old.length?"PASS":"FAIL","C7 the React entry "+(ours?"carries the homepage\x27s sentences":"does not carry the homepage\x27s sentences (home.hero.sub)")+(old.length?", and still carries the retired hero\x27s "+old.map((x)=>"\""+x+"\"").join(", "):", and none of the retired hero\x27s"));
+    const both=entry+"\n"+chunk;
+    const ours=both.includes("Search postings from employers")&&both.includes("own job boards and USAJOBS");
+    const inEntry=entry.includes("Search postings from employers");
+    const old=["Apply yourself, with your own AI","Live job board + your own AI","Scan your CV for free, search the board here or from Claude or ChatGPT"].filter((x)=>both.includes(x));
+    const where=chunk.length?"the homepage\x27s chunk":"the React entry (the served / names no HomePage chunk)";
+    line(ours&&!old.length&&!inEntry?"PASS":"FAIL","C7 "+where+" "+(ours?"carries the homepage\x27s sentences":"does not carry the homepage\x27s sentences (home.hero.sub)")+(inEntry?", and the entry every page loads still carries them":", the entry every page loads does not")+(old.length?", and the retired hero\x27s "+old.map((x)=>"\""+x+"\"").join(", ")+" are still served":", and none of the retired hero\x27s"));
   }
 }
 

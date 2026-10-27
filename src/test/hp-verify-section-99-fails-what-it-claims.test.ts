@@ -58,7 +58,9 @@ const ROW = {
 let HOME = "";
 let PRICING = "";
 const pad = "x".repeat(1500);
-const ENTRY = `${pad};const s={hero:{sub:"Search postings from employers' own job boards and USAJOBS, then apply on the employer's site."}};`;
+// The homepage's strings ride in its own chunk, not the entry (review round 2026-10-26).
+const ENTRY = `${pad};const s={header:{jobs:"Jobs"}};`;
+const HOME_CHUNK = `${pad};const s={hero:{sub:"Search postings from employers' own job boards and USAJOBS, then apply on the employer's site."}};`;
 const TRUST_ON = `<html><body><main><h1>Trust</h1><p>${pad}</p></main></body></html>`;
 const TRUST_OFF = `<html><body><main><h1>Trust</h1><p>The apply agent is switched off and sends it to no one.</p><p>${pad}</p></main></body></html>`;
 
@@ -81,13 +83,13 @@ globalThis.fetch = async (input) => {
     encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], maxBuffer: 64 * 1024 * 1024,
   });
   // The served "/" names its entry; the bake keeps the template's script tag.
-  HOME = readFileSync(join(out, "dist", "index.html"), "utf8").replace("</head>", '<script type="module" crossorigin src="/assets/index-Abc123.js"></script></head>');
+  HOME = readFileSync(join(out, "dist", "index.html"), "utf8").replace("</head>", '<script type="module" crossorigin src="/assets/index-Abc123.js"></script><script data-home-preload="1">if(location.pathname==="/"){["HomePage-Def456.js"].forEach(function(f){})}</script></head>');
   PRICING = readFileSync(join(out, "dist", "pricing", "index.html"), "utf8");
 }, 300_000);
 afterAll(() => { for (const d of dirs) { try { rmSync(d, { recursive: true, force: true }); } catch { /* best effort */ } } });
 
 interface Over {
-  home?: string; pricing?: string; trust?: string; vc?: string; agent?: string; entry?: string | null;
+  home?: string; pricing?: string; trust?: string; vc?: string; agent?: string; entry?: string | null; homeChunk?: string | null;
   builds?: Record<string, string | null>; root?: string;
 }
 const BUILDS: Record<string, string> = {
@@ -110,6 +112,7 @@ function routes(over: Over = {}): Route[] {
     { match: `^GET ${FN}/rest/v1/rpc/get_board_vendor_counts$`, body: over.vc ?? JSON.stringify(ROW) },
     { match: `^GET ${FN}/rest/v1/rpc/agent_sender_public_status$`, body: over.agent ?? "true" },
     ...(over.entry === null ? [] : [{ match: "^GET https://site\\.test/assets/index-Abc123\\.js$", body: over.entry ?? ENTRY }]),
+    ...(over.homeChunk === null ? [] : [{ match: "^GET https://site\\.test/assets/HomePage-Def456\\.js$", body: over.homeChunk ?? HOME_CHUNK }]),
   ];
 }
 
@@ -196,9 +199,10 @@ describe("each claim can FAIL", () => {
     expect(has(run({ builds: { "send-market-pulse": null } }).lines, "FAIL", /^C6 send-market-pulse preflight carries no x-fn-build/)).toBe(true);
   });
 
-  it("C7: an entry without the homepage's sentences, one with the retired hero's, and none at all", () => {
-    expect(has(run({ entry: `${pad};const s="Upload a résumé";` }).lines, "FAIL", /^C7 the React entry does not carry the homepage's sentences/)).toBe(true);
-    expect(has(run({ entry: `${ENTRY}const o="Apply yourself, with your own AI's help.";` }).lines, "FAIL", /^C7 .*retired hero's "Apply yourself, with your own AI"/)).toBe(true);
+  it("C7: a chunk without the homepage's sentences, the retired hero's, the strings back in the entry, and no entry at all", () => {
+    expect(has(run({ homeChunk: `${pad};const s="Upload a résumé";` }).lines, "FAIL", /^C7 the homepage's chunk does not carry the homepage's sentences/)).toBe(true);
+    expect(has(run({ homeChunk: `${HOME_CHUNK}const o="Apply yourself, with your own AI's help.";` }).lines, "FAIL", /^C7 .*retired hero's "Apply yourself, with your own AI"/)).toBe(true);
+    expect(has(run({ entry: `${ENTRY}${HOME_CHUNK}` }).lines, "FAIL", /^C7 .*the entry every page loads still carries them/)).toBe(true);
     expect(has(run({ entry: null }).lines, "FAIL", /^C7 the served \/ names no readable/)).toBe(true);
   });
 

@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import "@/i18n/home-strings";
 import { TaggedText } from "./TaggedText";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import { Chip } from "@/components/ui/chip";

@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import "@/i18n/home-strings";
 import { MapPin, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { count as fmtCount } from "@/lib/format";

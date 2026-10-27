@@ -29,6 +29,7 @@
  */
 import { useCallback, useId, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import "@/i18n/pricing-strings";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { PurchaseTerms } from "@/components/PurchaseTerms";

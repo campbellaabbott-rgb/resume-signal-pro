@@ -13,6 +13,7 @@
 import { ArrowRight, Check } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import "@/i18n/pricing-strings";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Surface } from "@/components/ui/card";

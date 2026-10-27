@@ -12,7 +12,10 @@ import { mergeShards, shardsFor, type Bundle } from './merge-shards';
 // STRING SHARDS (see merge-shards.ts). English shards ride in the bundle with
 // en.json; every other language's shards load in the same Promise.all as that
 // language's main file, so a shard key never flashes its English fallback.
-const enShardModules = import.meta.glob('./shards/*/en.json', { eager: true, import: 'default' }) as Record<string, Bundle>;
+// The homepage's and the pricing page's English shards are the exception:
+// they arrive with those pages' code (./home-strings.ts, ./pricing-strings.ts),
+// not in the entry every page loads (review round 2026-10-26).
+const enShardModules = import.meta.glob(['./shards/*/en.json', '!./shards/home/en.json', '!./shards/pricing/en.json'], { eager: true, import: 'default' }) as Record<string, Bundle>;
 const lazyShardModules = import.meta.glob(['./shards/*/*.json', '!./shards/*/en.json'], { import: 'default' }) as Record<string, () => Promise<Bundle>>;
 
 /** English, with its shards merged in: what the bundle serves and what tests read. */

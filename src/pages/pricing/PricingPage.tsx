@@ -19,6 +19,7 @@
  */
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import "@/i18n/pricing-strings";
 import { SEO } from "@/components/seo/SEO";
 import { PageJsonLd } from "@/components/seo/PageJsonLd";
 import { Header } from "@/components/Header";

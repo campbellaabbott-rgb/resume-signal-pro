@@ -7,6 +7,7 @@
  */
 import { ChevronDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import "@/i18n/pricing-strings";
 import { WRITING } from "./plan-facts";
 
 export const FAQ_IDS = ["refund", "region", "fit", "package", "cancel", "apply", "interviews"] as const;

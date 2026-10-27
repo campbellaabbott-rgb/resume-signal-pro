@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import "@/i18n/home-strings";
 import { XCircle } from "lucide-react";
 import { Chip } from "@/components/ui/chip";
 import { count as fmtCount, date as fmtDate } from "@/lib/format";

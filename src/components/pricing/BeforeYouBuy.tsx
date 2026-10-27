@@ -22,6 +22,7 @@
 import { Banknote, ChevronDown, Globe, Receipt } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import "@/i18n/pricing-strings";
 import { money } from "@/lib/format";
 import { PRO_PRICE_USD } from "./plan-facts";
 import { useMinWidth } from "./use-media";

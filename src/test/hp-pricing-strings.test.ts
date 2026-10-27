@@ -149,7 +149,10 @@ describe("the components keep the design rules", () => {
 });
 
 describe("the runtime bundle", () => {
-  it("English is merged into the running translation, so the page's first render has it", () => {
+  it("English is merged into the running translation once the page's code loads, so its first render has it", async () => {
+    // It arrives with the page's code, not in the entry (review round
+    // 2026-10-26, hp-fix-the-page-strings-ride-with-their-pages).
+    await import("@/i18n/pricing-strings");
     expect(PRICING_ROOT).toBe("pricingPlans");
     expect(i18n.exists("pricingPlans.head.h1", { lng: "en" })).toBe(true);
     expect(i18n.t("pricingPlans.buy.finalSale", { lng: "en" })).toBe("All sales are final.");

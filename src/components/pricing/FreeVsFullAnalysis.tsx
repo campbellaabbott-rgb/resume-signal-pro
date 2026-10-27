@@ -7,6 +7,7 @@
 import { Check, ChevronDown } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import "@/i18n/pricing-strings";
 import { Surface } from "@/components/ui/card";
 import { money } from "@/lib/format";
 import { FREE_REPORT_DAYS, FULL_ANALYSIS_LINK_DAYS, FULL_ANALYSIS_PRICE_USD } from "./plan-facts";

@@ -119,7 +119,9 @@ describe("the shards on disk", () => {
     });
   }
 
-  it("the English shards are merged into the running translation", () => {
+  it("the English shards are merged into the running translation (the two pages' once their code loads)", async () => {
+    await import("@/i18n/home-strings");
+    await import("@/i18n/pricing-strings");
     for (const s of readShards("en.json")) {
       for (const k of leafKeys(s.bundle).slice(0, 25)) {
         expect(i18n.exists(k, { lng: "en" }), `${s.name}: ${k} does not resolve`).toBe(true);
@@ -177,11 +179,22 @@ describe("the merge rules, on fixture shards", () => {
 });
 
 describe("the runtime bundle", () => {
-  it("English is the main file with its shards merged", () => {
+  it("English is the main file with its shards merged; the two pages' arrive with their pages", async () => {
     expect((enTranslation.header as Bundle).jobs).toBe((readMainLocale("en.json").header as Bundle).jobs);
+    // The homepage's and the pricing page's English strings load with those
+    // pages' code (src/i18n/home-strings.ts, pricing-strings.ts), not in the
+    // entry (review round 2026-10-26, hp-fix-the-page-strings-ride-with-their-pages).
+    // (i18next merges added strings into the same object, so the entry's
+    // English is read from the eager glob, before a page's module loads.)
+    const PAGE_SHARDS = new Set(["home", "pricing"]);
+    const index = readFileSync(resolve(__dirname, "../i18n/index.ts"), "utf8");
     for (const s of readShards("en.json")) {
       const root = SHARD_ROOT_KEYS[s.name];
-      expect(enTranslation[root], `${s.name} did not reach the bundle`).toBeTruthy();
+      if (PAGE_SHARDS.has(s.name)) {
+        expect(index, `${s.name} rides in the entry`).toContain(`'!./shards/${s.name}/en.json'`);
+        await import(s.name === "home" ? "@/i18n/home-strings" : "@/i18n/pricing-strings");
+        expect(i18n.getResource("en", "translation", root), `${s.name} did not reach i18n with its page`).toBeTruthy();
+      } else expect(enTranslation[root], `${s.name} did not reach the bundle`).toBeTruthy();
     }
   });
 });

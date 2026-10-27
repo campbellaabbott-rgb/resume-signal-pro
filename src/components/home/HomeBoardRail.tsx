@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import "@/i18n/home-strings";
 import { count as fmtCount } from "@/lib/format";
 import { ALL_FIELDS_PATH, fieldPath, homeFields } from "@/lib/home/fields";
 import { minutesText, utcStamp } from "@/lib/home/stamps";

@@ -14,6 +14,7 @@
  * owner decision 7, option A).
  */
 import { useTranslation } from "react-i18next";
+import "@/i18n/pricing-strings";
 import { Link } from "react-router-dom";
 import { Chip } from "@/components/ui/chip";
 import { Surface } from "@/components/ui/card";

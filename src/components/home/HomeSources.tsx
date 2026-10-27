@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import "@/i18n/home-strings";
 import { ChevronDown } from "lucide-react";
 import { count as fmtCount } from "@/lib/format";
 import { sourcesTable, type SourceRow } from "@/lib/home/board-figures";

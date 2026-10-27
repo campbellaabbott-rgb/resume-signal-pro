@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import "@/i18n/home-strings";
 import { Banknote, Globe, Receipt } from "lucide-react";
 import { money } from "@/lib/format";
 import { HOME_FULL_ANALYSIS_USD, HOME_PRO_USD_PER_MONTH, HOME_PRO_WRITING_PER_DAY, HOME_PRO_WRITING_PER_MONTH } from "@/lib/home/facts";

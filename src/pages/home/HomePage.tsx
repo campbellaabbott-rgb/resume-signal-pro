@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import "@/i18n/home-strings";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { SEO } from "@/components/seo/SEO";

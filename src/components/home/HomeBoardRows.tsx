@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import "@/i18n/home-strings";
 import { CardSkeleton } from "@/components/ui/skeletons";
 import { count as fmtCount } from "@/lib/format";
 import { HOME_LIST_BOX_PHONE_REM, HOME_LIST_BOX_WIDE_REM, HOME_ROWS_MAX, HOME_ROWS_WINDOW_DAYS } from "@/lib/home/rows-box";

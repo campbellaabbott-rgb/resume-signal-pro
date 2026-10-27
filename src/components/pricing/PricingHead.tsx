@@ -4,6 +4,7 @@
  * each plan. The links may wrap; none of them carries a nowrap.
  */
 import { useTranslation } from "react-i18next";
+import "@/i18n/pricing-strings";
 import { money } from "@/lib/format";
 import { FULL_ANALYSIS_PRICE_USD, PRO_PRICE_USD } from "./plan-facts";
 

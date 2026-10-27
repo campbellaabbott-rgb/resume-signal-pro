@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import "@/i18n/home-strings";
 import { TaggedText } from "./TaggedText";
 import { Check } from "lucide-react";
 import {

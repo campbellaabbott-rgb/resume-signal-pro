@@ -61,7 +61,11 @@ describe("the hero's search", () => {
 });
 
 describe("the first-render gate reads the main locale, which carries the shards", () => {
-  it("English is ready at once, with the homepage's shard merged under the main bundle", () => {
+  it("English is ready at once, with the homepage's shard merged under the main bundle once its code loads", async () => {
+    // The page's English strings arrive with its code, not in the entry
+    // (review round 2026-10-26, hp-fix-the-page-strings-ride-with-their-pages).
+    await import("@/i18n/home-strings");
+    await import("@/i18n/pricing-strings");
     expect(i18n.t("home.hero.title", { lng: "en" })).toBe("Live jobs, straight from employers' own hiring systems.");
     expect(i18n.t("pricingPlans.head.h1", { lng: "en" })).not.toBe("pricingPlans.head.h1");
     expect(i18n.t("header.jobs", { lng: "en" })).toBe("Jobs");

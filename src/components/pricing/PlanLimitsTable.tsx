@@ -12,6 +12,7 @@
  */
 import { Check, Minus } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import "@/i18n/pricing-strings";
 import { count, date, money } from "@/lib/format";
 import { LIMITS_AS_OF } from "./plan-facts";
 import { limitGroups, type Cell, type Group } from "./limit-groups";
