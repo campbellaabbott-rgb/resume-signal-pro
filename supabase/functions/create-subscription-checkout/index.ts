@@ -5,10 +5,6 @@
 // pages read too). Uses inline recurring price_data so no Price object needs
 // to exist in the Stripe dashboard.
 //
-// NOT SOLD WITHOUT A NAMED SELLER (owner decision 2026-10-17, B&P 17538(d)):
-// while the seller's legal name and postal address are unset this answers
-// 409 seller_identity_missing (_shared/seller-gate.ts) before anything else.
-//
 // RENEWS ONLY WITH THE BUYER'S OWN TICK (owner decision 2026-10-17;
 // California's automatic renewal law as amended by AB 2863): a body without
 // autoRenewConsent is a 400 before Stripe is asked anything, and the consent
@@ -53,7 +49,6 @@ import { ipinfoLookup, territoryAnswer, territoryRefusal, withBillingAddress } f
 import { reusableCustomer } from "../_shared/customer-ownership.ts";
 import { recordCheckoutBuyer, refusedCallerBody, websiteTokenRefusal } from "../_shared/checkout-buyer.ts";
 import { PRO_FIRST_MONTH_MARKER, withReferralCommission } from "../_shared/affiliate-commission.ts";
-import { sellerGate } from "../_shared/seller-gate.ts";
 import { autoRenewConsentOf, autoRenewMetadata, autoRenewRefusal, recordAutoRenewConsent } from "../_shared/auto-renew-consent.ts";
 import { proStripeDescription } from "../_shared/pro-perks.ts";
 
@@ -67,11 +62,13 @@ import { proStripeDescription } from "../_shared/pro-perks.ts";
 // the account is written to checkout_buyers; the billing address is collected;
 // a connected app's token, or one issued for another audience, is refused
 // with a 401 (critical-path CP-D).
-// Owner decisions 2026-10-17, same build: the seller gate (409), the
-// automatic-renewal box (400 without it, recorded with it), a buyer in India
-// refused with the EU, the EEA and the UK, and Pro's description read from
-// the one list the pages read.
-const FN_BUILD = "create-subscription-checkout.2026-10-11.23";
+// Owner decisions 2026-10-17, same build: the automatic-renewal box (400
+// without it, recorded with it), a buyer in India refused with the EU, the
+// EEA and the UK, and Pro's description read from the one list the pages
+// read.
+// 2026-10-27.1 (sales stay on, owner 2026-10-27): Pro is sold whether or not
+// the seller's name and address are filled in, as on main.
+const FN_BUILD = "create-subscription-checkout.2026-10-27.1";
 
 /** What Stripe's page and receipts say Pro is: the Pro card's own items (_shared/pro-perks.ts), as sentences. */
 export const PRO_STRIPE_DESCRIPTION = proStripeDescription();
@@ -111,9 +108,6 @@ serve(async (req) => {
     const notWebsite = websiteTokenRefusal(req.headers);
     if (notWebsite) return json(refusedCallerBody(notWebsite), 401);
     const body = await req.json().catch(() => ({}));
-    // NO SALE WITHOUT A NAMED SELLER, said before asking anyone to sign in.
-    const closed = sellerGate({ body, acceptLanguage: req.headers.get("accept-language") });
-    if (closed) return json(closed.body, closed.status);
     const buyer = await signedInUser(supabase.auth, req.headers, Deno.env.get("SUPABASE_ANON_KEY") ?? "");
     const email = buyer?.email ?? null;
     if (!buyer?.id || !email) {

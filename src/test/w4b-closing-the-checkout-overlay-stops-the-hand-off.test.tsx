@@ -82,10 +82,6 @@ vi.mock("@/components/ResumeUploader", () => ({
 }));
 const toasts: Array<{ title?: string; description?: string }> = [];
 vi.mock("@/hooks/use-toast", () => ({ useToast: () => ({ toast: (t: { title?: string; description?: string }) => { toasts.push(t); } }), toast: () => {} }));
-// Purchases open, as once the owner names the seller: the overlay is what is
-// tested here. The shipped gate (no seller, no purchase) is tested in
-// w4b-no-buy-button-until-the-seller-is-named.test.tsx.
-vi.mock("@/lib/purchases-open", () => ({ purchasesOpen: () => true }));
 
 import Index from "@/pages/Index";
 

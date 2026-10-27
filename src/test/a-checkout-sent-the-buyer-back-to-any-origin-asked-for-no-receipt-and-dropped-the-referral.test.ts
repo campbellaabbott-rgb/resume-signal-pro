@@ -33,7 +33,6 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
 import { APPLY_AGENT_SWITCH_ON } from "./helpers/apply-agent-switch-on";
-import { SELLER_NAMED_STUB } from "./helpers/w4b-seller-named";
 import { TERMS_VERSION } from "@/config/terms";
 import { TERMS_VERSION as SERVER_TERMS_VERSION } from "../../supabase/functions/_shared/checkout-policy";
 import { SUBSCRIPTIONS } from "@/config/products";
@@ -93,12 +92,10 @@ beforeAll(async () => {
   g.__polState = state;
   g.__polClient = client;
   const stripe = { "https://esm.sh/stripe@18.5.0": STRIPE_STUB };
-  // A seller named (owner decision 2026-10-17): with the shipped, empty
-  // identity these checkouts answer 409 before the policy this file tests.
-  handlers["create-checkout"] = await loadEdgeHandler("create-checkout", { ...SERVE, ...stripe, "_shared/supabase-client.ts": "export const getServiceClient = () => globalThis.__polClient();", ...SELLER_NAMED_STUB });
-  handlers["create-product-checkout"] = await loadEdgeHandler("create-product-checkout", { ...SERVE, ...stripe, "https://esm.sh/@supabase/supabase-js@2.39.3": CLIENT, ...SELLER_NAMED_STUB });
+  handlers["create-checkout"] = await loadEdgeHandler("create-checkout", { ...SERVE, ...stripe, "_shared/supabase-client.ts": "export const getServiceClient = () => globalThis.__polClient();" });
+  handlers["create-product-checkout"] = await loadEdgeHandler("create-product-checkout", { ...SERVE, ...stripe, "https://esm.sh/@supabase/supabase-js@2.39.3": CLIENT });
   handlers["create-scan-pack-checkout"] = await loadEdgeHandler("create-scan-pack-checkout", { ...SERVE, ...stripe, "https://esm.sh/@supabase/supabase-js@2": CLIENT });
-  handlers["create-subscription-checkout"] = await loadEdgeHandler("create-subscription-checkout", { ...SERVE, ...stripe, "https://esm.sh/@supabase/supabase-js@2.39.3": CLIENT, ...SELLER_NAMED_STUB });
+  handlers["create-subscription-checkout"] = await loadEdgeHandler("create-subscription-checkout", { ...SERVE, ...stripe, "https://esm.sh/@supabase/supabase-js@2.39.3": CLIENT });
   // The two retired agent checkouts, with their dormant purchase code switched on.
   handlers["create-agent-checkout"] = await loadEdgeHandler("create-agent-checkout", { ...SERVE, ...stripe, "https://esm.sh/@supabase/supabase-js@2.39.3": CLIENT, ...APPLY_AGENT_SWITCH_ON });
   handlers["create-pass-checkout"] = await loadEdgeHandler("create-pass-checkout", { ...stripe, "https://esm.sh/@supabase/supabase-js@2.45.0": CLIENT, ...APPLY_AGENT_SWITCH_ON });

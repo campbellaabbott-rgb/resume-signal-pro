@@ -789,8 +789,7 @@
     "oneTime": "paiement unique",
     "guarantee": "Résultats instantanés • Paiement unique",
     "button": "Obtenir mon analyse",
-    "roi": "Un entretien = {{price}} rentabilisés",
-    "freeScanCta": "Analyser mon CV gratuitement"
+    "roi": "Un entretien = {{price}} rentabilisés"
   },
   "scanProgress": {
     "title": "Analyse IA en cours",
@@ -1766,9 +1765,7 @@
       "proName": "Pro",
       "proDesc": "Formule mensuelle : scans illimités et tous les outils payants, Analyse complète comprise. Résiliable à tout moment depuis votre compte.",
       "proPrice": "{{price}} $/mois",
-      "fullAnalysisDescOwn": "Une analyse distincte et plus approfondie de votre CV : une ventilation complète du score, des réécritures point par point et un plan d'action priorisé. Un seul paiement, sans abonnement.",
-      "fullAnalysisIncluded": "Inclus dans votre offre Pro : une analyse distincte et plus poussée de votre CV, avec le détail complet du score, des réécritures point par point et un plan d'action priorisé.",
-      "fullAnalysisIncludedCta": "Lancer"
+      "fullAnalysisDescOwn": "Une analyse distincte et plus approfondie de votre CV : une ventilation complète du score, des réécritures point par point et un plan d'action priorisé. Un seul paiement, sans abonnement."
     },
     "interviewPrepSignIn": {
       "body": "Un compte gratuit comprend chaque jour une série de préparation aux entretiens, un CV adapté et une lettre de motivation.",
@@ -5537,7 +5534,6 @@
     "body": "Un e-mail par mois avec les mots-clés que recherchent les offres d'emploi de votre domaine, et un lien pour un nouveau scan gratuit. Chaque e-mail permet de se désabonner en un clic.",
     "button": "Oui, envoyez-moi le pouls",
     "done": "Vous êtes inscrit. Le premier pouls arrive sous un jour.",
-    "donePaused": "Vous êtes inscrit. Le pouls mensuel est en pause pour le moment : rien n'arrivera avant sa reprise, et chaque envoi comporte un lien de désinscription en un clic.",
     "invalid": "Ce lien a expiré ou a déjà été utilisé. Cochez la case sous votre prochain rapport de scan pour en recevoir un nouveau.",
     "missing": "Cette page a besoin du lien de votre e-mail de confirmation.",
     "error": "Confirmation impossible pour le moment. Réessayez le lien dans un instant.",
@@ -5554,8 +5550,7 @@
     "missing": "Cette page a besoin du bouton de l'e-mail de votre rapport.",
     "error": "Impossible de lancer pour le moment. Réessayez le bouton dans un instant.",
     "errorFinal": "Impossible de lancer toute la série, et appuyer de nouveau sur le bouton ne la relancera pas ce mois-ci.",
-    "home": "Retour à Resume Booster",
-    "paused": "Les e-mails du plan de corrections sont en pause pour le moment : rien n'a donc été lancé. L'e-mail de votre rapport contient déjà tout le plan."
+    "home": "Retour à Resume Booster"
   },
   "emailUnsubscribe": {
     "title": "Ne plus recevoir ces e-mails",
@@ -5789,8 +5784,6 @@
     "yoursTitle": "Vous répondrez vous-même à celles-ci"
   },
   "checkoutGate": {
-    "purchasesOpenSoon": "Les achats ouvrent bientôt. La recherche d'emploi, l'analyse gratuite et un compte gratuit fonctionnent dès maintenant.",
-    "purchasesOpenSoonTitle": "Les achats ouvrent bientôt",
     "regionNoticeTimeZone": "Le fuseau horaire de votre navigateur se trouve dans l'UE, l'EEE, le Royaume-Uni ou en Inde, où nous ne vendons pas encore : les ventes y attendent le règlement de notre enregistrement fiscal. La recherche d'emploi et l'analyse gratuite fonctionnent partout."
   },
   "checkoutRefusal": {

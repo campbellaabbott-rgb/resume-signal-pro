@@ -37,7 +37,6 @@ import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { FakeDb, loadEdgeHandler } from "./helpers/edge-harness";
-import { SELLER_NAMED_STUB } from "./helpers/w4b-seller-named";
 import { codeOf, sqlCodeOf } from "./helpers/strip-comments";
 import { RESUME_BEARING_METADATA_KEYS, withoutResumeText } from "../../supabase/functions/_shared/webhook-payload";
 import {
@@ -102,9 +101,6 @@ describe("create-checkout sends Stripe no résumé text", () => {
         }
       }`,
       "_shared/supabase-client.ts": "export const getServiceClient = () => globalThis.__fakeSupabase;",
-      // A seller named (owner decision 2026-10-17): the shipped, empty
-      // identity answers 409 before the session this file inspects.
-      ...SELLER_NAMED_STUB,
     });
   }, 60_000);
 
@@ -237,7 +233,6 @@ describe("create-product-checkout keeps the résumé reference on our side", () 
       // product sold here again: the cut list is stubbed empty and a seller
       // is named.
       "_shared/product-cuts.ts": "export const PAST_BUYER_DAYS = 90; export const isCutProduct = () => false; export const cutCheckoutAnswer = () => { throw new Error('unreached'); };",
-      ...SELLER_NAMED_STUB,
     });
   }, 60_000);
 

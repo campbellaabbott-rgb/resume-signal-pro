@@ -68,13 +68,15 @@ describe("the seller line in a marketing mail", () => {
     expect(sellerFooterHtml()).toBe("");
   });
 
-  // S12-010 (owner decision 2026-10-12): a marketing mail with no postal
-  // address is not sent at all. As shipped, the digest waits for the identity.
-  it("as shipped, the morning digest is not sent: a marketing mail with no seller waits", async () => {
+  // Sales stay on (owner, 2026-10-27): no marketing mail waits for the
+  // identity, as on main; as shipped, it goes with no seller line.
+  it("as shipped, the morning digest carries no seller line, and its replies reach a person", async () => {
     install();
-    const res = await run(shipped);
-    expect(sent).toHaveLength(0);
-    expect(await res.json()).toMatchObject({ sent: 0, paused: "paused_no_seller_identity" });
+    await run(shipped);
+    expect(sent).toHaveLength(1);
+    expect(sent[0].html).not.toContain(ADDRESS);
+    expect(sent[0].html).not.toMatch(/&middot;\s*<\/p>|Sent by/);
+    expect(sent[0].reply_to).toBe("resumeboostersupp@gmail.com");
   });
 
   it("once the owner fills the identity, the mail goes, prints the name and the address escaped, and its replies reach a person", async () => {

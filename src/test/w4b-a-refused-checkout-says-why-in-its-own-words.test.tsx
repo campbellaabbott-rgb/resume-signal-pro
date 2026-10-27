@@ -14,8 +14,8 @@
  *
  * Since 2026-10-17 no product is sold through this hook (Freelance Boost and
  * Transition Pro were cut too), so Freelance Boost stands in, unhidden here,
- * for a product a page still offers; and the seller gate's 409 is shown in
- * its own words too.
+ * for a product a page still offers. (Wave 4's seller gate and its 409 are
+ * gone: sales stay on, owner 2026-10-27.)
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, renderHook } from "@testing-library/react";
@@ -69,17 +69,6 @@ describe("a checkout's refusal is shown in its own words", () => {
     const { result } = renderHook(() => useProductCheckout());
     await act(async () => { await result.current.purchaseProduct("freelanceBoost"); });
     expect(h.toasts.at(-1)).toMatchObject({ title: "Not yet sold where you are", description: sentence });
-  });
-
-  it("the seller gate's 409: its sentence under 'Purchases open soon', never 'Something went wrong'", async () => {
-    const { sellerGate } = await import("../../supabase/functions/_shared/seller-gate");
-    const answer = sellerGate({ body: { language: "de" } }, { legalName: "", postalAddress: "" })!;
-    h.invoke.mockResolvedValue(refusedWith(answer.status, answer.body));
-    const { result } = renderHook(() => useProductCheckout());
-    await act(async () => { await result.current.purchaseProduct("freelanceBoost"); });
-    expect(h.toasts.at(-1)).toMatchObject({ title: "Purchases open soon", description: answer.body.message });
-    expect(answer.body.message).toMatch(/Käufe/);
-    expect(h.toasts.some((t) => /something went wrong/i.test(String(t.title) + String(t.description)))).toBe(false);
   });
 
   it("the fair-use 429", async () => {

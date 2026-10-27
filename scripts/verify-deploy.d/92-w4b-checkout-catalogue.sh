@@ -5,57 +5,60 @@
 # its signed-in buyer, and a Pro grant has a cap (owner decisions 2026-10-12;
 # S12-059, S12-067, S12-070, S12-076, S12-099, S12-168, S12-170; critical-path
 # CP-022, CP-025, CP-033, CP-037; D7, D8). And the owner's decisions of
-# 2026-10-17: Freelance Boost and Transition Pro are cut too, nothing is sold
-# while the seller is unnamed, Pro needs its own renewal box, and Pro is the
-# writing tools, the Full Analysis and no daily cap on scans.
+# 2026-10-17: Freelance Boost and Transition Pro are cut too, Pro needs its
+# own renewal box, and Pro is the writing tools, the Full Analysis and no
+# daily cap on scans. SALES STAY ON (owner, 2026-10-27, overriding the
+# 2026-10-17 decisions D3 and D4): nothing waits for the seller's legal name
+# and postal address, so the three checkouts serve the build that dropped
+# that wait, and no page says purchases open soon.
 #
 # THE CLAIMS, one line each below:
 #   - the checkouts and the plan readers serve the round-2 builds:
-#     create-checkout, create-product-checkout, create-subscription-checkout,
 #     create-scan-pack-checkout, create-test-checkout and check-subscription
 #     2026-10-11.23 or later; create-portal-session 2026-10-14.23 or later
-#     (R1 stamped it on that later day);
+#     (R1 stamped it on that later day); create-checkout,
+#     create-product-checkout and create-subscription-checkout 2026-10-27.1
+#     or later (sales stay on);
 #   - create-checkout's public GET says the territory is refused while the
 #     EU/UK switch is off (territoryRefused true beside euUkSales false), and
-#     whether purchases are open (purchasesOpen: false while the seller's
-#     legal name and postal address are unset, which is a PASS for the gate
-#     and an owner step, never a FAIL);
+#     reports no closed shop (no purchasesOpen false: wave 4's seller gate is
+#     not serving);
 #   - create-product-checkout answers a purchase of each cut product with 410
 #     (retired, cut, the product, a sentence naming the 90 days a past buyer
 #     keeps, and no Stripe url), Freelance Boost and Transition Pro included,
 #     and create-scan-pack-checkout and create-test-checkout answer 410 too;
-#   - the published Pricing page carries the purchases-open-soon line, Pro's
-#     renewal box and India's time zone in the refused list, and none of the
-#     old perk naming the cut products; the published Freelance Boost page
+#   - the published Pricing page carries Pro's renewal box and India's time
+#     zone in the refused list, and neither the purchases-open-soon line nor
+#     the old perk naming the cut products; the published Freelance Boost page
 #     says it is no longer sold and offers no buy button;
 #   - 20261011150000 applied: checkout_buyers exists and refuses anon by name,
 #     with a negative control; 20261011151000 applied: pro_auto_renew_consents
 #     exists and refuses anon by name;
 #   - what no read here can prove is INFO: the cap (the migration's own
 #     self-check exercises it), the territory refusal of a POST, the buyer
-#     binding, the refusal of a token minted for a connected app, the seller
-#     gate's and the renewal box's refusals of a POST, and the owner's steps.
+#     binding, the refusal of a token minted for a connected app, the renewal
+#     box's refusal of a POST, and the owner's steps.
 #
 # READ-ONLY. Preflights run no function logic. A checkout is POSTed only once
 # its preflight shows the round-2 build, whose cut and switched-off answers
 # come before the rate limiter, a token read, a grant or Stripe: nothing is
 # counted or written. No POST is sent that could reach a limiter (the
 # territory refusal is judged from the GET and the tests, never by a POST).
-echo "== 92. w4b checkout and catalogue: the cut is enforced, the EU, the EEA, the UK and India are refused until the tax registration, nothing sells without a named seller, checkouts name their buyer =="
+echo "== 92. w4b checkout and catalogue: the cut is enforced, the EU, the EEA, the UK and India are refused until the tax registration, sales do not wait for a named seller, checkouts name their buyer =="
 
 vd92_build() { # $1 fn -> the x-fn-build its preflight answers
   curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$1" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | sed -E 's/^[^:]+: *//'
 }
 
 VD92_LIVE=" "
-for VD92_PAIR in "create-checkout|2026-10-11|23" "create-product-checkout|2026-10-11|23" "create-subscription-checkout|2026-10-11|23" \
+for VD92_PAIR in "create-checkout|2026-10-27|1" "create-product-checkout|2026-10-27|1" "create-subscription-checkout|2026-10-27|1" \
   "create-scan-pack-checkout|2026-10-11|23" "create-test-checkout|2026-10-11|23" "check-subscription|2026-10-11|23" \
   "create-portal-session|2026-10-14|23"; do
   VD92_FN=${VD92_PAIR%%|*}; VD92_REST=${VD92_PAIR#*|}; VD92_DAY=${VD92_REST%%|*}; VD92_N=${VD92_REST#*|}
   VD92_H=$(vd92_build "$VD92_FN")
   if [ -z "$VD92_H" ]; then echo "FAIL  $VD92_FN preflight carries no x-fn-build (the function is not deployed, or its preflight does not answer)"
   elif build_ge "$VD92_FN" "$VD92_H" "$VD92_DAY" "$VD92_N"; then echo "PASS  $VD92_FN preflight x-fn-build = $VD92_H ($VD92_FN.$VD92_DAY.$VD92_N or later)"; VD92_LIVE="$VD92_LIVE$VD92_FN "
-  else echo "FAIL  $VD92_FN preflight x-fn-build = $VD92_H (want $VD92_FN.$VD92_DAY.$VD92_N or later: the round-2 checkout build is not serving)"; fi
+  else echo "FAIL  $VD92_FN preflight x-fn-build = $VD92_H (want $VD92_FN.$VD92_DAY.$VD92_N or later: the round-2 checkout build, or for the three checkouts the build that sells with no seller named, is not serving)"; fi
 done
 
 VD92_GET=$(curl -s -m 30 "$B/functions/v1/create-checkout" -H "apikey: $K" -H "Authorization: Bearer $K")
@@ -66,10 +69,9 @@ case "$VD92_GET" in
   *) echo "FAIL  create-checkout GET -> ${VD92_GET:0:160} (want JSON with euUkSales and territoryRefused)";;
 esac
 case "$VD92_GET" in
-  *'"purchasesOpen":false'*) echo "PASS  create-checkout GET: purchasesOpen false (no seller is named, so every checkout refuses 409 seller_identity_missing and the pages show no buy button)"
-    echo "INFO  owner: purchases stay closed until the seller's legal name and postal address are written in src/config/seller.ts AND supabase/functions/_shared/seller-identity.ts (one publish and one deploy); never a placeholder";;
-  *'"purchasesOpen":true'*) echo "INFO  create-checkout GET: purchasesOpen true (a seller is named in _shared/seller-identity.ts): correct only once the owner has filled both seller files";;
-  *) echo "FAIL  create-checkout GET -> ${VD92_GET:0:160} (no purchasesOpen: the 2026-10-17 seller gate is not serving)";;
+  *'"purchasesOpen":false'*) echo "FAIL  create-checkout GET -> ${VD92_GET:0:160} (purchasesOpen false: wave 4's seller gate is serving, so every checkout refuses 409 while no seller is named; sales stay on, owner 2026-10-27)";;
+  '{'*) echo "PASS  create-checkout GET reports no closed shop (no purchasesOpen false: the Full Analysis and Pro are sold with no seller named, as on main)";;
+  *) echo "FAIL  create-checkout GET -> ${VD92_GET:0:160} (want a JSON answer)";;
 esac
 
 vd92_cut() { # $1 fn, $2 body, $3 expected product type, $4 Accept-Language, $5 a phrase the sentence must hold
@@ -147,13 +149,13 @@ else
       curl -s -m 60 -A "$UA" "$SITE/assets/${VD92_DEP#./}" >> /tmp/vd_92cc_pricing_all.js
     done
     VD92_MISS=""
-    grep -q 'checkoutGate.purchasesOpenSoon' /tmp/vd_92cc_pricing_all.js || VD92_MISS="$VD92_MISS the purchases-open-soon line;"
     grep -q 'purchaseTerms.autoRenewConsent' /tmp/vd_92cc_pricing_all.js || VD92_MISS="$VD92_MISS the renewal box;"
     grep -q 'Asia/Kolkata' /tmp/vd_92cc_pricing_all.js || VD92_MISS="$VD92_MISS India in the refused time zones;"
     grep -q 'proPlan.perks.noDailyScanCap' /tmp/vd_92cc_pricing_all.js || VD92_MISS="$VD92_MISS Pro's no-daily-cap line;"
     if [ -n "$VD92_MISS" ]; then echo "FAIL  the published Pricing page ($VD92_PRICING) lacks:$VD92_MISS the 2026-10-17 frontend is not published"
     elif grep -q 'proPlan.perks.includedOneOffs' /tmp/vd_92cc_pricing_all.js; then echo "FAIL  the published Pricing page ($VD92_PRICING) still carries the old Pro perk that included Freelance Boost and Transition Pro"
-    else echo "PASS  the published Pricing page ($VD92_PRICING) says purchases open soon while no seller is named, carries Pro's own renewal box and India in the refused list, and reads Pro's perks from the one list"; fi
+    elif grep -q 'checkoutGate.purchasesOpenSoon' /tmp/vd_92cc_pricing_all.js; then echo "FAIL  the published Pricing page ($VD92_PRICING) still says purchases open soon where the buy buttons go (wave 4's seller gate; sales stay on, owner 2026-10-27): publish the frontend"
+    else echo "PASS  the published Pricing page ($VD92_PRICING) offers the buy buttons with no purchases-open-soon line, carries Pro's own renewal box and India in the refused list, and reads Pro's perks from the one list"; fi
   fi
   VD92_FB=$(vd92_chunk FreelanceBoost)
   if [ -z "$VD92_FB" ]; then echo "FAIL  the live entry names no FreelanceBoost chunk: the page a past buyer's link opens cannot be judged"
@@ -161,5 +163,5 @@ else
   else echo "FAIL  the published Freelance Boost page ($VD92_FB) still sells, or does not say it is no longer sold"; fi
 fi
 
-echo "INFO  not provable read-only: the grant cap (10 a day, 60 a month per account; 20261011150000's own self-check inserts ten grants, is refused the eleventh and rolls back, so an applied migration proves it ran), the territory refusal of a POST (it comes after the rate limiter, which counts) including India, a signed-in buyer's client_reference_id and checkout_buyers row, the cancel flag on pro_subscribers, the 503 when a grant cannot be minted, the 401 for a connected app's token (or one for another audience) on the four money functions, which no anon probe can mint, the 409 seller_identity_missing of a POST and Pro's 400 without its renewal box (both come after a rate limiter), and the consent row a Pro checkout writes -- each is run in src/test/w4b-*.test.ts"
+echo "INFO  not provable read-only: the grant cap (10 a day, 60 a month per account; 20261011150000's own self-check inserts ten grants, is refused the eleventh and rolls back, so an applied migration proves it ran), the territory refusal of a POST (it comes after the rate limiter, which counts) including India, a signed-in buyer's client_reference_id and checkout_buyers row, the cancel flag on pro_subscribers, the 503 when a grant cannot be minted, the 401 for a connected app's token (or one for another audience) on the four money functions, which no anon probe can mint, Pro's 400 without its renewal box (it comes after a rate limiter), the Full Analysis and Pro reaching Stripe with no seller named (src/test/sales-stay-on-the-checkouts-sell-with-no-seller-named.test.ts), and the consent row a Pro checkout writes -- each is run in src/test/w4b-*.test.ts"
 echo "INFO  owner, in Stripe: (1) expire any open checkout session for a cut product (Premium Package, ATS Defense, Career Snapshot, Graduate Game Plan, Career Path, Keyword Fix, Cover Letter, Interview Coach, scan packs, and since 2026-10-17 Freelance Boost and Transition Pro, whose sessions use inline prices): they live 24 hours and a payment on one still delivers; (2) archive their dashboard Prices (price_1Sgv32HBplUUV1CgAdw6PnV3 Premium, price_1Sgv3LHBplUUV1CgpCF5pDLO ATS Defense, price_1SibLiHBplUUV1CgHmRy7ayi Snapshot, price_1SibRNHBplUUV1CgEj5L8eH1 Game Plan, price_1T8u4NHBplUUV1CggBvfeDT0 Career Path, price_1Sgv2hHBplUUV1Cgjdqw9kHi Keyword Fix, price_1Sgv2tHBplUUV1CgoXHF6GjD Cover Letter, price_1T8u3pHBplUUV1CgN5CDJGEF Interview Coach, price_1Sgv2THBplUUV1CgntHsXlDK scan pack); (3) as a backstop for a buyer no signal placed, a Radar block rule on :card_country: (and :ip_country:) for the EU-27, IS, LI, NO, GB and IN, if the plan allows custom rules; (4) count live Pro subscriptions: any that exist were promised every paid tool (and Freelance Boost) and should be emailed the new perk list (the writing tools, the Full Analysis, no daily cap on scans) with a cancel link"

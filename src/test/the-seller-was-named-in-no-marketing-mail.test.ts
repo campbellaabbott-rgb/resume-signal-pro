@@ -54,14 +54,13 @@ const press = async (handler: EdgeHandler) => {
 };
 
 describe("the fix-plan drip's footer", () => {
-  // S12-010 (owner decision 2026-10-12): with no seller set, the sequence,
-  // which is marketing, does not start at all rather than go out unsigned.
-  it("as shipped, with no seller set, queues nothing", async () => {
+  // Sales stay on (owner, 2026-10-27): the sequence does not wait for the
+  // seller, as on main; as shipped it goes with no sender line.
+  it("as shipped, with no seller set, carries no sender line", async () => {
     install();
-    const res = await press(shipped);
-    expect(res.status).toBe(503);
-    expect(await res.json()).toMatchObject({ queued: false, reason: "paused_no_seller_identity" });
-    expect(enqueued).toHaveLength(0);
+    expect(await (await press(shipped)).json()).toEqual({ success: true, queued: true });
+    expect(enqueued).toHaveLength(4);
+    for (const e of enqueued) expect(e.payload.html).not.toMatch(/Example|·\s*\d/);
   });
 
   it("with the seller set, every mail ends with the name and postal address, escaped", async () => {

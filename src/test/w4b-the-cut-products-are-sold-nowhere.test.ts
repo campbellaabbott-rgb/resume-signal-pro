@@ -45,8 +45,7 @@ describe("create-product-checkout refuses every cut product before anything is c
     expect(res.status).toBe(410);
     const body = await res.json();
     expect(body).toMatchObject({ retired: true, cut: true, reason: "product_retired", language: "en" });
-    // The handlers here run with a seller named (loadCheckouts), so the open form of the sentence (recheck 3).
-    expect(body.error).toBe(cutSentence(productId, "en", true));
+    expect(body.error).toBe(cutSentence(productId, "en"));
     expect(body.error).toContain(`${PAST_BUYER_DAYS} days`);
     expect(body.pricing).toBe("https://resumebooster.work/pricing");
     expect(body).not.toHaveProperty("url");
@@ -57,7 +56,7 @@ describe("create-product-checkout refuses every cut product before anything is c
   it("the sentence follows the page's language, then the browser's", async () => {
     const de = await (await post(h["create-product-checkout"], "create-product-checkout", { productId: "coverLetter", language: "de" })).json();
     expect(de.language).toBe("de");
-    expect(de.error).toBe(cutSentence("coverLetter", "de", true));
+    expect(de.error).toBe(cutSentence("coverLetter", "de"));
     expect(de.error).toMatch(/nicht mehr verkauft/);
     const fr = await (await post(h["create-product-checkout"], "create-product-checkout", { productId: "premiumPackage" }, { headers: { "accept-language": "fr-FR,fr;q=0.9" } })).json();
     expect(fr.language).toBe("fr");
@@ -69,7 +68,7 @@ describe("create-product-checkout refuses every cut product before anything is c
       expect(res.status, id).toBe(410);
       const body = await res.json();
       expect(body).toMatchObject({ retired: true, cut: true, product: type, language: "es" });
-      expect(body.error).toBe(cutSentence(id, "es", true));
+      expect(body.error).toBe(cutSentence(id, "es"));
       expect(body.error).toMatch(/ya no se vende/);
     }
     expect(world.stripe.created).toEqual([]);
@@ -96,7 +95,7 @@ describe("scan packs and the dev checkout are switched off", () => {
     expect(res.status).toBe(410);
     const body = await res.json();
     expect(body).toMatchObject({ retired: true, cut: true, product: "scan_pack" });
-    expect(body.error).toBe(cutSentence("scanPack", "en", true));
+    expect(body.error).toBe(cutSentence("scanPack", "en"));
     expect(limiterAsked).toBe(false);
     expect(ran()).toEqual([]);
     const pre = await h["create-scan-pack-checkout"](new Request("https://harness.supabase.co/functions/v1/create-scan-pack-checkout", { method: "OPTIONS" }));
@@ -176,8 +175,7 @@ describe("no crawler or AI host is offered a cut product", () => {
     expect(llms).not.toMatch(/\]\(https:\/\/resumebooster\.work\/freelance-boost\)/);
     // The figure is the catalogue's, not a second copy that drifts.
     expect(llms).toContain(`One paid report (the $${PRODUCTS.fullAnalysis.priceUsd} Full Analysis)`);
-    // While purchases are closed the line carries "(purchases open soon)" (recheck 3).
-    expect(llms).toMatch(new RegExp(`: The free tools, the \\$${PRODUCTS.fullAnalysis.priceUsd} Full Analysis and Pro(?: \\(purchases open soon\\))?\\.`));
+    expect(llms).toMatch(new RegExp(`: The free tools, the \\$${PRODUCTS.fullAnalysis.priceUsd} Full Analysis and Pro\\.`));
     expect(llms.match(/\$\d+ Full Analysis/g)?.every((m) => m === `$${PRODUCTS.fullAnalysis.priceUsd} Full Analysis`)).toBe(true);
     expect(llms).toMatch(/Pro \(the writing tools, the Full Analysis and no daily scan cap\)/);
   });

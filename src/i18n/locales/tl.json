@@ -788,8 +788,7 @@
     "oneTime": "isang beses lang",
     "guarantee": "Instant na resulta • Isang beses na bayad",
     "button": "Kunin ang Aking Analysis Ngayon",
-    "roi": "Isang interview = {{price}} na-recover",
-    "freeScanCta": "I-scan nang libre ang resume ko"
+    "roi": "Isang interview = {{price}} na-recover"
   },
   "scanProgress": {
     "title": "AI Analysis na Ginagawa",
@@ -1756,9 +1755,7 @@
       "proName": "Pro",
       "proDesc": "Buwanang plan: walang limitasyong scan at bawat bayad na tool, kasama ang Full Analysis. Puwedeng i-cancel kahit kailan mula sa iyong account.",
       "proPrice": "${{price}}/buwan",
-      "fullAnalysisDescOwn": "Hiwalay at mas malalim na analysis ng resume mo: buong breakdown ng score, rewrite ng bawat bullet at action plan na naka-prioritize. Isang bayad, walang subscription.",
-      "fullAnalysisIncluded": "Kasama sa Pro plan mo: isang hiwalay at mas malalim na pagsusuri ng resume mo, na may buong breakdown ng score, muling pagsulat bawat bullet at plano ng aksyon ayon sa prayoridad.",
-      "fullAnalysisIncludedCta": "Patakbuhin"
+      "fullAnalysisDescOwn": "Hiwalay at mas malalim na analysis ng resume mo: buong breakdown ng score, rewrite ng bawat bullet at action plan na naka-prioritize. Isang bayad, walang subscription."
     },
     "interviewPrepSignIn": {
       "body": "Kasama sa libreng account ang isang interview-prep set, isang tailored resume at isang cover letter bawat araw.",
@@ -5501,7 +5498,6 @@
     "body": "Isang email bawat buwan na may mga keyword na hinahanap ng mga job posting sa iyong larangan, at isang libreng rescan link. May one-click unsubscribe ang bawat email.",
     "button": "Oo, ipadala sa akin ang pulse",
     "done": "Naka-subscribe ka na. Darating ang unang pulse sa loob ng isang araw.",
-    "donePaused": "Naka-subscribe ka na. Naka-pause muna ang buwanang pulse, kaya walang darating hangga't hindi ito muling nagsisimula; may one-click na unsubscribe ang bawat pulse.",
     "invalid": "Nag-expire na o nagamit na ang link na ito. I-tick ang kahon sa ilalim ng susunod mong scan report para makakuha ng bago.",
     "missing": "Kailangan ng page na ito ang link mula sa iyong confirmation email.",
     "error": "Hindi makumpirma ngayon. Subukang muli ang link maya-maya.",
@@ -5518,8 +5514,7 @@
     "missing": "Kailangan ng page na ito ang button mula sa email ng iyong report.",
     "error": "Hindi masimulan ngayon. Subukan ulit ang button maya-maya.",
     "errorFinal": "Hindi nasimulan ang buong sequence, at hindi ito mauulit ngayong buwan kahit pindutin ulit ang button.",
-    "home": "Bumalik sa Resume Booster",
-    "paused": "Naka-pause muna ang mga email ng fix plan, kaya walang sinimulan. Nasa report email mo na ang buong plan."
+    "home": "Bumalik sa Resume Booster"
   },
   "emailUnsubscribe": {
     "title": "Itigil ang mga email na ito",
@@ -5753,8 +5748,6 @@
     "yoursTitle": "Ikaw ang sasagot sa mga ito"
   },
   "checkoutGate": {
-    "purchasesOpenSoon": "Magbubukas na ang pagbili sa lalong madaling panahon. Gumagana na ngayon ang paghahanap ng trabaho, ang libreng scan at ang libreng account.",
-    "purchasesOpenSoonTitle": "Magbubukas na ang pagbili sa lalong madaling panahon",
     "regionNoticeTimeZone": "Nasa EU, EEA, UK o India ang time zone ng browser mo, kung saan hindi pa kami nagbebenta: naghihintay ang pagbebenta roon hanggang maayos ang tax registration namin doon. Gumagana kahit saan ang paghahanap ng trabaho at ang libreng scan."
   },
   "checkoutRefusal": {

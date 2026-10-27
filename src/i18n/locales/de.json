@@ -788,8 +788,7 @@
     "oneTime": "einmalig",
     "guarantee": "Sofortige Ergebnisse • Einmalige Zahlung",
     "button": "Jetzt Analyse erhalten",
-    "roi": "Ein Vorstellungsgespräch = {{price}} amortisiert",
-    "freeScanCta": "Meinen Lebenslauf kostenlos scannen"
+    "roi": "Ein Vorstellungsgespräch = {{price}} amortisiert"
   },
   "scanProgress": {
     "title": "KI-Analyse läuft",
@@ -1756,9 +1755,7 @@
       "proName": "Pro",
       "proDesc": "Monatsplan: unbegrenzte Scans und jedes kostenpflichtige Tool, die vollständige Analyse inklusive. Jederzeit in Ihrem Konto kündbar.",
       "proPrice": "{{price}} $/Monat",
-      "fullAnalysisDescOwn": "Eine eigene, tiefere Analyse Ihres Lebenslaufs: eine vollständige Aufschlüsselung des Werts, Umformulierungen Punkt für Punkt und ein priorisierter Aktionsplan. Eine Zahlung, kein Abo.",
-      "fullAnalysisIncluded": "In Ihrem Pro-Plan enthalten: eine eigene, tiefere Analyse Ihres Lebenslaufs mit vollständiger Punkteaufschlüsselung, Umformulierungen Punkt für Punkt und einem priorisierten Aktionsplan.",
-      "fullAnalysisIncludedCta": "Starten"
+      "fullAnalysisDescOwn": "Eine eigene, tiefere Analyse Ihres Lebenslaufs: eine vollständige Aufschlüsselung des Werts, Umformulierungen Punkt für Punkt und ein priorisierter Aktionsplan. Eine Zahlung, kein Abo."
     },
     "interviewPrepSignIn": {
       "body": "Ein kostenloses Konto umfasst pro Tag ein Set zur Gesprächsvorbereitung, einen angepassten Lebenslauf und ein Anschreiben.",
@@ -5501,7 +5498,6 @@
     "body": "Eine E-Mail pro Monat mit den Keywords, auf die Stellenanzeigen in Ihrem Bereich achten, und einem kostenlosen Rescan-Link. Jede E-Mail lässt sich mit einem Klick abbestellen.",
     "button": "Ja, Markt-Puls senden",
     "done": "Sie sind angemeldet. Der erste Puls kommt innerhalb eines Tages.",
-    "donePaused": "Du bist angemeldet. Der monatliche Puls ist im Moment pausiert, daher kommt nichts an, bis er wieder startet; jeder Puls hat einen Abmeldelink mit einem Klick.",
     "invalid": "Dieser Link ist abgelaufen oder wurde bereits verwendet. Setzen Sie beim nächsten Scan-Bericht das Häkchen, um einen neuen zu erhalten.",
     "missing": "Diese Seite benötigt den Link aus Ihrer Bestätigungs-E-Mail.",
     "error": "Bestätigung gerade nicht möglich. Versuchen Sie den Link gleich noch einmal.",
@@ -5518,8 +5514,7 @@
     "missing": "Diese Seite benötigt den Button aus Ihrer Bericht-E-Mail.",
     "error": "Start gerade nicht möglich. Versuchen Sie den Button gleich noch einmal.",
     "errorFinal": "Die Serie konnte nicht vollständig gestartet werden, und ein erneuter Klick startet sie diesen Monat nicht neu.",
-    "home": "Zurück zu Resume Booster",
-    "paused": "Die E-Mails zum Korrekturplan sind vorerst pausiert, daher wurde nichts gestartet. Ihre Bericht-E-Mail enthält bereits den ganzen Plan."
+    "home": "Zurück zu Resume Booster"
   },
   "emailUnsubscribe": {
     "title": "Diese E-Mails abbestellen",
@@ -5753,8 +5748,6 @@
     "yoursTitle": "Diese beantworten Sie selbst"
   },
   "checkoutGate": {
-    "purchasesOpenSoon": "Käufe sind bald möglich. Die Jobsuche, der kostenlose Scan und ein kostenloses Konto funktionieren schon jetzt.",
-    "purchasesOpenSoonTitle": "Käufe bald möglich",
     "regionNoticeTimeZone": "Die Zeitzone Ihres Browsers liegt in der EU, im EWR, im Vereinigten Königreich oder in Indien, wo wir noch nicht verkaufen: Verkäufe dort warten, bis unsere Steuerregistrierung geklärt ist. Die Jobsuche und der kostenlose Scan funktionieren überall."
   },
   "checkoutRefusal": {

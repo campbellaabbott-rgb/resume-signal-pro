@@ -472,7 +472,7 @@ describe("a sentence reaches the mail only under the scan's seal", () => {
     expect(scan).toMatch(/await attachScanMailSeal\(attachMailCopy\(responseData, resumeText\), .*\);\n\s*return new Response\(\s*JSON\.stringify\(responseData\)/);
     const page = read("src/components/FreeKeywordResults.tsx");
     expect(page).toMatch(/const emailReportPayload = withMailSentences\(\{[\s\S]*?mailSeal: reportMeta\?\.mailSeal \?\? null,[\s\S]*?\}, reportMeta\?\.mailSentences\);/);
-    expect(read("src/components/EmailReportCapture.tsx")).toMatch(/body: \{ email: trimmed, dripOptIn: askDrip, \.\.\.payload \}/);
+    expect(read("src/components/EmailReportCapture.tsx")).toMatch(/body: \{ email: trimmed, dripOptIn, \.\.\.payload \}/);
   });
 });
 

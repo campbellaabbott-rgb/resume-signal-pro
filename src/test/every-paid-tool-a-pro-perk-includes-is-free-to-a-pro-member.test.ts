@@ -24,7 +24,6 @@ import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harnes
 import { analyzeResumeHarness, RESUME, type Harness } from "./helpers/analyze-resume-harness";
 import { isProductHidden, PRODUCTS, type ProductId } from "@/config/products";
 import { PRO_INCLUDED_PRODUCT_IDS, PRO_PERKS } from "@/config/pro-perks";
-import { SELLER_NAMED_STUB } from "./helpers/w4b-seller-named";
 
 vi.setConfig({ testTimeout: 60_000, hookTimeout: 180_000 });
 
@@ -72,9 +71,6 @@ beforeAll(async () => {
     "https://esm.sh/stripe@18.5.0": STRIPE_STUB,
     "https://esm.sh/@supabase/supabase-js@2.39.3": "export function createClient() { return globalThis.__perkClient; }",
     "_shared/supabase-client.ts": CLIENT,
-    // A seller named: the stranger's purchase below reaches Stripe, not the
-    // 409 the checkouts answer while the shipped identity is empty.
-    ...SELLER_NAMED_STUB,
   };
   handlers["create-checkout"] = await loadEdgeHandler("create-checkout", stubs);
   handlers["create-product-checkout"] = await loadEdgeHandler("create-product-checkout", stubs);

@@ -5,7 +5,6 @@ import { useTranslation } from "react-i18next";
 import { useCurrency } from "@/hooks/use-currency";
 import { PRODUCTS } from "@/config/products";
 import { setStickyBarVisible } from "@/lib/sticky-bar";
-import { purchasesOpen } from "@/lib/purchases-open";
 
 interface StickyBottomCTAProps {
   isLoading?: boolean;
@@ -39,13 +38,11 @@ export function StickyBottomCTA({ isLoading }: StickyBottomCTAProps) {
 
   // The help button lifts above the bar while it shows (src/lib/sticky-bar.ts).
   useEffect(() => {
-    setStickyBarVisible(isVisible && purchasesOpen());
+    setStickyBarVisible(isVisible);
     return () => setStickyBarVisible(false);
   }, [isVisible]);
 
-  // The bar prices the Full Analysis; while no seller is named (owner
-  // decision 2026-10-17) nothing is sold, so it does not show.
-  if (!isVisible || !purchasesOpen()) return null;
+  if (!isVisible) return null;
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-sticky animate-fade-in safe-bottom">

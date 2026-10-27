@@ -10,8 +10,7 @@
  * renewal sentence beside the Terms line, and nothing asked for, or kept, the
  * buyer's separate consent to automatic renewal.
  *
- * WHAT HOLDS NOW, on the shipped handler (with a seller named, so the gate
- * does not answer first) and the shipped migration:
+ * WHAT HOLDS NOW, on the shipped handler and the shipped migration:
  *   - a Pro checkout without autoRenewConsent: true is a 400 that says which
  *     box, in the buyer's language, and asks Stripe for nothing; it carries no
  *     consentRequired field, which a page would read as the EU switch;

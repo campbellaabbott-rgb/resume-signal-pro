@@ -85,7 +85,6 @@ const PENDING_SHARED: Record<string, number> = {
   // w4b/account-compliance
   "account-billing.ts": 6_605,
   "account-proof.ts": 1_632,
-  "marketing-pause.ts": 2_100,
   "planted-instructions.ts": 3_317,
   "shortlist-attestation.ts": 935,
   "subscription-notice.ts": 17_344,

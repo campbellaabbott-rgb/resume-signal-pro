@@ -254,8 +254,7 @@ export function refusalTitle(kind: CheckoutRefusal['kind']): string {
     case 'territory': return i18n.t('checkoutRefusal.territoryTitle', 'Not yet sold where you are');
     case 'fair_use': return i18n.t('checkoutRefusal.fairUseTitle', "You've reached Pro's fair-use limit");
     case 'plan_unpaid': return i18n.t('checkoutRefusal.planUnpaidTitle', 'Your plan is not paid yet');
-    // Owner decisions 2026-10-17: no sale without a named seller; Pro's own renewal box.
-    case 'seller_missing': return i18n.t('checkoutGate.purchasesOpenSoonTitle', 'Purchases open soon');
+    // Owner decision 2026-10-17: Pro's own renewal box.
     case 'auto_renew': return i18n.t('checkoutRefusal.autoRenewTitle', 'Please tick the renewal box');
   }
 }

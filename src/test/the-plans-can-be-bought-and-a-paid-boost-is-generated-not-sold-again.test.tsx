@@ -59,9 +59,6 @@ vi.mock("@/components/Header", () => ({ Header: () => null }));
 vi.mock("@/components/Footer", () => ({ Footer: () => null }));
 const seo: Array<Record<string, unknown>> = [];
 vi.mock("@/components/seo/SEO", () => ({ SEO: (p: Record<string, unknown>) => { seo.push(p); return null; } }));
-// Purchases open, as once the owner names the seller (owner decision
-// 2026-10-17): the Pro card's button is what is tested here.
-vi.mock("@/lib/purchases-open", () => ({ purchasesOpen: () => true }));
 vi.mock("@/components/ProductPreview", () => ({ ProductPreview: () => null }));
 
 import { AgentSubscriptionCard } from "@/components/AgentSubscriptionCard";

@@ -789,8 +789,7 @@
     "oneTime": "pagamento único",
     "guarantee": "Resultados instantâneos • Pagamento único",
     "button": "Obter a Minha Análise Agora",
-    "roi": "Uma entrevista = {{price}} que se paga sozinho",
-    "freeScanCta": "Analisar o meu currículo grátis"
+    "roi": "Uma entrevista = {{price}} que se paga sozinho"
   },
   "scanProgress": {
     "title": "Análise IA em Progresso",
@@ -1766,9 +1765,7 @@
       "proName": "Pro",
       "proDesc": "Plano mensal: análises ilimitadas e todas as ferramentas pagas, incluindo a Análise completa. Cancele quando quiser na sua conta.",
       "proPrice": "${{price}}/mês",
-      "fullAnalysisDescOwn": "Uma análise à parte e mais profunda do seu currículo: uma decomposição completa da pontuação, reescritas tópico a tópico e um plano de ação com prioridades. Um só pagamento, sem subscrição.",
-      "fullAnalysisIncluded": "Incluído no seu plano Pro: uma análise separada e mais profunda do seu currículo, com a pontuação completa discriminada, reescritas ponto a ponto e um plano de ação priorizado.",
-      "fullAnalysisIncludedCta": "Executar"
+      "fullAnalysisDescOwn": "Uma análise à parte e mais profunda do seu currículo: uma decomposição completa da pontuação, reescritas tópico a tópico e um plano de ação com prioridades. Um só pagamento, sem subscrição."
     },
     "interviewPrepSignIn": {
       "body": "Uma conta gratuita inclui por dia um conjunto de preparação para entrevistas, um currículo adaptado e uma carta de apresentação.",
@@ -5537,7 +5534,6 @@
     "body": "Um e-mail por mês com as palavras-chave que as vagas da sua área estão filtrando e um link para escanear de novo grátis. Todo e-mail tem cancelamento com um clique.",
     "button": "Sim, quero o pulso",
     "done": "Inscrição confirmada. O primeiro pulso chega em até um dia.",
-    "donePaused": "Você está inscrito. O pulso mensal está pausado por enquanto, então nada chega até ele voltar; cada pulso tem um link para cancelar com um clique.",
     "invalid": "Este link expirou ou já foi usado. Marque a caixa no seu próximo relatório de escaneamento para receber um novo.",
     "missing": "Esta página precisa do link do seu e-mail de confirmação.",
     "error": "Não foi possível confirmar agora. Tente o link novamente em instantes.",
@@ -5554,8 +5550,7 @@
     "missing": "Esta página precisa do botão do e-mail do seu relatório.",
     "error": "Não foi possível iniciar agora. Tente o botão de novo em instantes.",
     "errorFinal": "Não foi possível iniciar a sequência completa, e tocar no botão de novo não vai reiniciá-la este mês.",
-    "home": "Voltar para o Resume Booster",
-    "paused": "Os e-mails do plano de correções estão em pausa por agora, por isso nada foi iniciado. O e-mail do seu relatório já contém o plano completo."
+    "home": "Voltar para o Resume Booster"
   },
   "emailUnsubscribe": {
     "title": "Deixar de receber estes e-mails",
@@ -5789,8 +5784,6 @@
     "yoursTitle": "Estas responde você"
   },
   "checkoutGate": {
-    "purchasesOpenSoon": "As compras abrem em breve. A pesquisa de empregos, a análise gratuita e uma conta gratuita já funcionam.",
-    "purchasesOpenSoonTitle": "As compras abrem em breve",
     "regionNoticeTimeZone": "O fuso horário do seu navegador está na UE, no EEE, no Reino Unido ou na Índia, onde ainda não vendemos: as vendas aí aguardam a regularização do nosso registo fiscal. A pesquisa de empregos e a análise gratuita funcionam em todo o lado."
   },
   "checkoutRefusal": {

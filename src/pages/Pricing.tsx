@@ -13,8 +13,6 @@ import { useTimeOnPage } from "@/hooks/use-time-on-page";
 import { ProSubscriptionCard } from "@/components/ProSubscriptionCard";
 import { AtsCoverage } from '@/components/AtsCoverage';
 import { PurchaseTerms } from "@/components/PurchaseTerms";
-import { PurchasesOpenSoon } from "@/components/checkout/PurchasesOpenSoon";
-import { purchasesOpen } from "@/lib/purchases-open";
 import { pricingJsonLd } from "@/lib/pricing-offer";
 
 // THE PRODUCT LINE (owner decisions 2026-10-12 and 2026-10-17). The page
@@ -25,13 +23,11 @@ import { pricingJsonLd } from "@/lib/pricing-offer";
 // Coach as one-offs, Scan Packs, and since 2026-10-17 Freelance Boost and
 // Transition Pro) are offered nowhere, and their checkouts answer 410. The
 // apply pivot's retired Apply Assistant, Agent plan and Agent Pass were
-// already gone. While src/config/seller.ts names no seller, the Full Analysis
-// card says purchases open soon instead of offering a button (B&P 17538(d)).
+// already gone.
 const offeredHere = (id: ProductId) => !isProductHidden(id);
 
 export default function Pricing() {
   const { t } = useTranslation();
-  const open = purchasesOpen();
 
   // Track scroll depth for drop-off analysis
   useScrollDepth('pricing');
@@ -62,13 +58,13 @@ export default function Pricing() {
       {/* Prices come from the catalog, not the copy. */}
       <SEO
         title={t('pricingPage.metaTitle')}
-        description={`${t('pricingPage.metaDescriptionFa', 'Free job search and résumé scan. A ${{lowPrice}} Full Analysis paid once, or Pro at ${{proPrice}} a month for the writing tools.', metaPrices)}${open ? "" : ` ${t('checkoutGate.purchasesOpenSoonTitle', 'Purchases open soon')}.`}`}
+        description={`${t('pricingPage.metaDescriptionFa', 'Free job search and résumé scan. A ${{lowPrice}} Full Analysis paid once, or Pro at ${{proPrice}} a month for the writing tools.', metaPrices)}`}
         path="/pricing"
       />
-      {/* SoftwareApplication: once purchases open, an AggregateOffer of what
-          is sold (prices mirror PRODUCTS); until then only the free offer,
-          the shape the crawler bake writes too (src/lib/pricing-offer.ts). */}
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(pricingJsonLd({ open, offerPrices, url: "https://resumebooster.work/pricing" })) }} />
+      {/* SoftwareApplication: an AggregateOffer of what is sold (prices
+          mirror PRODUCTS), the shape the crawler bake writes too
+          (src/lib/pricing-offer.ts). */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(pricingJsonLd({ offerPrices, url: "https://resumebooster.work/pricing" })) }} />
       <Header />
 
       <main className="pt-24 pb-20">
@@ -113,7 +109,7 @@ export default function Pricing() {
             <h2 className="text-2xl md:text-3xl font-bold mb-1">{t('pricingPage.ladderTitle')}</h2>
             <p className="text-muted-foreground">{t('pricingPage.ladderSubtitleLine', 'Most people need exactly one of these.')}</p>
           </div>
-          {open && <PurchaseTerms kind="payment" className="mb-4 text-center" />}
+          <PurchaseTerms kind="payment" className="mb-4 text-center" />
           <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto mb-14">
             <div className="flex flex-col p-6 rounded-2xl border-2 border-success/50 bg-card">
               <h3 className="font-bold text-lg mb-1">{t('pricingPage.ladderFreeTitle')}</h3>
@@ -128,16 +124,10 @@ export default function Pricing() {
               <h3 className="font-bold text-lg mb-1">{PRODUCTS.fullAnalysis.name}</h3>
               <p className="text-3xl font-bold mb-2">${PRODUCTS.fullAnalysis.priceUsd}</p>
               <p className="text-sm text-muted-foreground mb-4 flex-1">{t('pricingPage.ladderAnalysisDesc', 'Every keyword gap and ATS issue in your résumé, scored against the job you paste, with the fix for each. No account needed; included in Pro.')}</p>
-              {open ? (
-                <>
-                  <Button asChild className="w-full gap-2">
-                    <a href="/#upload">{t('pricingPage.buyProduct', 'Get {{name}}', { name: PRODUCTS.fullAnalysis.name })}<ArrowRight className="w-4 h-4" /></a>
-                  </Button>
-                  <p className="text-xs text-muted-foreground text-center mt-2">{t('pricingPage.requiresUpload')}</p>
-                </>
-              ) : (
-                <PurchasesOpenSoon />
-              )}
+              <Button asChild className="w-full gap-2">
+                <a href="/#upload">{t('pricingPage.buyProduct', 'Get {{name}}', { name: PRODUCTS.fullAnalysis.name })}<ArrowRight className="w-4 h-4" /></a>
+              </Button>
+              <p className="text-xs text-muted-foreground text-center mt-2">{t('pricingPage.requiresUpload')}</p>
             </div>
           </div>
 

@@ -25,7 +25,6 @@ import { crawlerText, retiredClaimsIn } from "../../scripts/prerender-retired.mj
 import { getAllProducts, PRODUCTS, SUBSCRIPTIONS } from "@/config/products";
 import { PRO_SUMMARY } from "@/config/pro-perks";
 import EN from "@/i18n/locales/en.json";
-import { purchasesOpen } from "@/lib/purchases-open";
 
 vi.setConfig({ testTimeout: 120_000 });
 
@@ -80,10 +79,9 @@ describe("the crawler's /pricing names the one report and Pro in React's own sen
     expect(title).not.toMatch(ONE_PRICE_RANGE);
   });
 
-  it("the description is React's metaDescriptionFa with the catalogue's figures (and, while purchases are closed, React's 'Purchases open soon')", () => {
-    // Recheck 3: while no seller is named, React's /pricing ends its description with checkoutGate.purchasesOpenSoonTitle, and so does the bake.
-    const soon = purchasesOpen() ? "" : ` ${(EN as { checkoutGate: Record<string, string> }).checkoutGate.purchasesOpenSoonTitle}.`;
-    const want = fill(PP.metaDescriptionFa, { lowPrice: fa.priceUsd, highPrice: fa.priceUsd, proPrice: pro.priceUsd }) + soon;
+  it("the description is React's metaDescriptionFa with the catalogue's figures, and nothing after it", () => {
+    // Sales stay on (owner, 2026-10-27): no purchases-open-soon tail.
+    const want = fill(PP.metaDescriptionFa, { lowPrice: fa.priceUsd, highPrice: fa.priceUsd, proPrice: pro.priceUsd });
     expect(unescape(descOf(HTML))).toBe(want);
     expect(unescape(descOf(HTML))).not.toMatch(ONE_PRICE_RANGE);
   });
@@ -100,8 +98,9 @@ describe("the crawler's /pricing names the one report and Pro in React's own sen
     expect(text).not.toMatch(/One-time tools/);
     expect(text).toContain(PRO_SUMMARY.text);
     expect(text).not.toMatch(/every paid tool included/i);
-    // Recheck 3: the terms are a sale open now only once purchases open.
-    expect(text).toContain(purchasesOpen() ? `The ${fa.name} is a one-time payment that never renews.` : `When purchases open, the ${fa.name} will be a one-time payment that never renews`);
+    // Sales stay on (owner, 2026-10-27): the terms are a sale open now.
+    expect(text).toContain(`The ${fa.name} is a one-time payment that never renews.`);
+    expect(text).not.toMatch(/When purchases open/);
   });
 
   it("no bundle discount and no one-price range anywhere on the page", () => {

@@ -19,7 +19,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { forgetConfirmFragment, pulseTokenFromHash } from "@/lib/confirm-link";
 import { stashedFragment, takeStashed } from "@/lib/auth-fragment";
 
-type State = "ready" | "confirming" | "done" | "donePaused" | "invalid" | "error" | "missing";
+type State = "ready" | "confirming" | "done" | "invalid" | "error" | "missing";
 
 export default function MarketPulseConfirm() {
   const { t } = useTranslation();
@@ -28,7 +28,7 @@ export default function MarketPulseConfirm() {
   const [state, setState] = useState<State>(token ? "ready" : "missing");
 
   useEffect(() => {
-    if (state === "done" || state === "donePaused" || state === "invalid") { forgetConfirmFragment(); takeStashed("fragment"); }
+    if (state === "done" || state === "invalid") { forgetConfirmFragment(); takeStashed("fragment"); }
   }, [state]);
 
   const confirm = async () => {
@@ -36,10 +36,7 @@ export default function MarketPulseConfirm() {
     setState("confirming");
     try {
       const { data, error } = await supabase.functions.invoke("send-market-pulse", { body: { action: "confirm", token } });
-      // While marketing mail is paused (no seller named yet) the server still
-      // confirms, and says so: the page then promises no first pulse (recheck 3).
-      const d = data as { confirmed?: boolean; paused?: string } | null;
-      if (!error && d?.confirmed) { setState(d.paused ? "donePaused" : "done"); return; }
+      if (!error && (data as { confirmed?: boolean } | null)?.confirmed) { setState("done"); return; }
       const status = (error as { context?: { status?: number } } | null)?.context?.status;
       setState(status === 410 || status === 400 ? "invalid" : "error");
     } catch {
@@ -57,7 +54,7 @@ export default function MarketPulseConfirm() {
       />
       <div className="max-w-md w-full rounded-2xl border border-border bg-card p-6 text-center">
         <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-          {state === "done" || state === "donePaused" ? <Check className="w-6 h-6 text-success" /> : <Mail className="w-6 h-6 text-primary" />}
+          {state === "done" ? <Check className="w-6 h-6 text-success" /> : <Mail className="w-6 h-6 text-primary" />}
         </div>
         <h1 className="text-xl font-semibold text-foreground mb-2">
           {t("pulseConfirm.title", "Confirm your monthly market pulse")}
@@ -82,9 +79,6 @@ export default function MarketPulseConfirm() {
 
         {state === "done" && (
           <p className="text-sm text-foreground">{t("pulseConfirm.done", "You're subscribed. The first pulse arrives within a day.")}</p>
-        )}
-        {state === "donePaused" && (
-          <p className="text-sm text-foreground" data-state="paused">{t("pulseConfirm.donePaused", "You're subscribed. The monthly pulse is paused for now, so nothing arrives until it restarts; every pulse has a one-click unsubscribe.")}</p>
         )}
         {state === "invalid" && (
           <p className="text-sm text-muted-foreground">{t("pulseConfirm.invalid", "This link has expired or was already used. Tick the box under your next scan report to get a new one.")}</p>

@@ -12,11 +12,13 @@
  *   - a cut product that still sells, a GET with no territory flag, and a
  *     readable checkout_buyers each print FAIL;
  *   - (owner decisions 2026-10-17) Freelance Boost and Transition Pro are
- *     asked for their 410; a GET with no purchasesOpen, a published Pricing
- *     page without the purchases-open-soon line, the renewal box or India,
- *     a Freelance Boost page that still sells, and a missing or readable
- *     pro_auto_renew_consents each print FAIL; purchasesOpen false is a PASS
- *     with the owner's step beside it, never a FAIL;
+ *     asked for their 410; a published Pricing page without the renewal box
+ *     or India, a Freelance Boost page that still sells, and a missing or
+ *     readable pro_auto_renew_consents each print FAIL;
+ *   - (sales stay on, owner 2026-10-27) the three checkouts must serve the
+ *     2026-10-27.1 build or later; a GET that says purchasesOpen false (wave
+ *     4's seller gate serving) and a published Pricing page that still says
+ *     purchases open soon each print FAIL;
  *   - the only POSTs are to the cut and switched-off checkouts (answered
  *     before any limiter); create-checkout is only ever sent a GET or an
  *     OPTIONS, and the publishable key is never printed.
@@ -83,9 +85,9 @@ function run(routes: Route[]): { lines: string[]; calls: string[]; out: string }
 }
 
 const builds: Record<string, string> = {
-  "create-checkout": "create-checkout.2026-10-11.23",
-  "create-product-checkout": "create-product-checkout.2026-10-11.23",
-  "create-subscription-checkout": "create-subscription-checkout.2026-10-11.23",
+  "create-checkout": "create-checkout.2026-10-27.1",
+  "create-product-checkout": "create-product-checkout.2026-10-27.1",
+  "create-subscription-checkout": "create-subscription-checkout.2026-10-27.1",
   "create-scan-pack-checkout": "create-scan-pack-checkout.2026-10-11.23",
   "create-test-checkout": "create-test-checkout.2026-10-11.23",
   "check-subscription": "check-subscription.2026-10-11.23",
@@ -101,7 +103,7 @@ const PRODUCTS: Array<[string, string]> = [
   ["careerPathSimulator", "career_path_simulator"], ["scanPack", "scan_pack"],
   ["freelanceBoost", "freelance_boost"], ["freelanceTransitionPro", "freelance_transition_pro"],
 ];
-const PRICING_CHUNK = `import{a as x}from"./PurchaseTerms-AAAA1111.js";const k=["checkoutGate.purchasesOpenSoon","proPlan.perks.noDailyScanCap"];`;
+const PRICING_CHUNK = `import{a as x}from"./PurchaseTerms-AAAA1111.js";const k=["proPlan.perks.noDailyScanCap"];`;
 const TERMS_CHUNK = `const z=["purchaseTerms.autoRenewConsent","Asia/Kolkata","Asia/Calcutta"];`;
 const FB_CHUNK = `const t=["freelanceBoost.noLongerSoldTitle"];`;
 const site = (over: { pricing?: string; terms?: string; fb?: string } = {}): Route[] => [
@@ -113,7 +115,7 @@ const site = (over: { pricing?: string; terms?: string; fb?: string } = {}): Rou
 ];
 const good = (): Route[] => [
   ...preflights(),
-  { match: "^GET https://p\\.supabase\\.co/functions/v1/create-checkout$", body: JSON.stringify({ euUkSales: false, withdrawalDays: 14, waiverVersion: "2026-10-09", territoryRefused: true, purchasesOpen: false }) },
+  { match: "^GET https://p\\.supabase\\.co/functions/v1/create-checkout$", body: JSON.stringify({ euUkSales: false, withdrawalDays: 14, waiverVersion: "2026-10-09", territoryRefused: true }) },
   { match: "^POST https://p\\.supabase\\.co/functions/v1/create-product-checkout .*\"coverLetter\",\"language\":\"de\"", status: 410, body: cutAnswer("coverLetter", "cover_letter", "de") },
   ...PRODUCTS.map(([id, type]): Route => ({ match: `^POST https://p\\.supabase\\.co/functions/v1/create-product-checkout .*"${id}"`, status: 410, body: cutAnswer(id, type) })),
   { match: "^POST https://p\\.supabase\\.co/functions/v1/create-scan-pack-checkout", status: 410, body: cutAnswer("scanPack", "scan_pack") },
@@ -135,10 +137,10 @@ describe("section 92", () => {
     expect(pass.filter((l) => /answers 410/.test(l)).length).toBe(PRODUCTS.length + 3);
     expect(pass.some((l) => /checkout_buyers -> 42501/.test(l))).toBe(true);
     expect(pass.some((l) => /pro_auto_renew_consents -> 42501/.test(l))).toBe(true);
-    // Closed purchases are the gate working: a PASS, and the owner's step.
-    expect(pass.some((l) => /purchasesOpen false/.test(l))).toBe(true);
-    expect(lines.some((l) => /^INFO  owner: purchases stay closed/.test(l))).toBe(true);
-    expect(pass.some((l) => /published Pricing page .* purchases open soon/.test(l))).toBe(true);
+    // Sales stay on (owner, 2026-10-27): the GET reports no closed shop.
+    expect(pass.some((l) => /create-checkout GET reports no closed shop/.test(l))).toBe(true);
+    expect(lines.some((l) => /purchases stay closed/.test(l))).toBe(false);
+    expect(pass.some((l) => /published Pricing page .* offers the buy buttons with no purchases-open-soon line/.test(l))).toBe(true);
     expect(pass.some((l) => /published Freelance Boost page .* no longer sold/.test(l))).toBe(true);
     for (const [id] of PRODUCTS.filter(([x]) => x.startsWith("freelance"))) {
       expect(pass.some((l) => l.includes(`answers 410 for ${PRODUCTS.find(([x]) => x === id)![1]}`)), id).toBe(true);
@@ -149,16 +151,28 @@ describe("section 92", () => {
   it("the 2026-10-17 claims each FAIL when the deploy does not carry them", () => {
     const base = good().filter((r) => !/create-checkout\$|site\\\.test|pro_auto_renew_consents/.test(r.match));
     const { lines } = run([
-      { match: "^GET https://p\\.supabase\\.co/functions/v1/create-checkout$", body: JSON.stringify({ euUkSales: false, territoryRefused: true }) },
+      { match: "^GET https://p\\.supabase\\.co/functions/v1/create-checkout$", body: JSON.stringify({ euUkSales: false, territoryRefused: true, purchasesOpen: false }) },
       { match: "^GET https://p\\.supabase\\.co/rest/v1/pro_auto_renew_consents\\?", status: 404, body: JSON.stringify({ code: "PGRST205" }) },
       ...site({ terms: `const z=["Europe/Berlin"];`, fb: `const t=["Boost my experience — $29"];` }),
       ...base,
     ]);
     const fails = lines.filter((l) => l.startsWith("FAIL"));
-    expect(fails.some((l) => /no purchasesOpen/.test(l))).toBe(true);
+    expect(fails.some((l) => /purchasesOpen false: wave 4's seller gate is serving/.test(l))).toBe(true);
     expect(fails.some((l) => /pro_auto_renew_consents does not exist/.test(l))).toBe(true);
     expect(fails.some((l) => /Pricing page .* lacks: the renewal box; India in the refused time zones;/.test(l))).toBe(true);
     expect(fails.some((l) => /Freelance Boost page .* still sells/.test(l))).toBe(true);
+  });
+
+  it("sales stay on: a Pricing page that still says purchases open soon FAILs, and so does a checkout on the gated build", () => {
+    const base = good().filter((r) => !/site\\\.test|OPTIONS .*create-checkout\$/.test(r.match));
+    const { lines } = run([
+      ...site({ pricing: PRICING_CHUNK + `const g="checkoutGate.purchasesOpenSoon";` }),
+      { match: "^OPTIONS https://p\\.supabase\\.co/functions/v1/create-checkout$", headers: { "x-fn-build": "create-checkout.2026-10-11.29" } },
+      ...base,
+    ]);
+    const fails = lines.filter((l) => l.startsWith("FAIL"));
+    expect(fails.some((l) => /Pricing page .* still says purchases open soon/.test(l)), lines.join("\n")).toBe(true);
+    expect(fails.some((l) => /create-checkout preflight x-fn-build = create-checkout\.2026-10-11\.29 \(want create-checkout\.2026-10-27\.1 or later/.test(l)), lines.join("\n")).toBe(true);
   });
 
   it("the old perk naming the cut products on the published page FAILs", () => {

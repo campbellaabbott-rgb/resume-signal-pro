@@ -37,27 +37,23 @@ import { alertOwnerOnce } from "../_shared/owner-alert.ts";
 import { oneClickHeaders, oneClickUrl, redirectToConfirm, unsubscribeParams, unsubscribePageUrl } from "../_shared/unsubscribe-link.ts";
 import { sellerFooterHtml } from "../_shared/seller.ts";
 import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
-import { MARKETING_PAUSED, logMarketingPaused, marketingMailHeader, marketingPaused } from "../_shared/marketing-pause.ts";
 
 // Provable from outside without sending anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
 // 2026-10-09.24: no change of its own; _shared/unsubscribe-link.ts gained the
 // agent-digest list it imports beside (S11-132).
-// 2026-10-11.25: the monthly batch sends nothing while the seller has no legal
-// name and postal address (S12-010, _shared/marketing-pause.ts); the
-// confirmation a person asks for is not marketing and still goes.
-// 2026-10-11.26 (recheck 3, 2026-10-26): while paused, a subscribe request is
-// refused before any count and no confirmation is mailed (a confirmed address
-// would hear nothing); a link mailed earlier still confirms, and the answer
-// says the pulse is paused, so the page promises no first pulse.
-const FN_BUILD = "send-market-pulse.2026-10-11.26";
+// 2026-10-11.25 and .26 (wave 4): the batch, the sign-up and the confirmation
+// waited for the seller's legal name and postal address.
+// 2026-10-27.1 (sales stay on, owner 2026-10-27): nothing waits for them, as
+// on main: the batch claims and mails, a sign-up mails its confirmation, a
+// confirmation confirms, and no response carries a marketing-state header.
+// The seller line prints in the footer once both are filled in.
+const FN_BUILD = "send-market-pulse.2026-10-27.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Expose-Headers": "x-fn-build, x-marketing-mail",
   "x-fn-build": FN_BUILD,
-  ...marketingMailHeader(),
 };
 
 const SITE_URL = "https://resumebooster.work";
@@ -167,13 +163,6 @@ Deno.serve(async (req) => {
     if (body.action === "subscribe") {
       const email = String(body.email ?? "").trim().toLowerCase().slice(0, 254);
       if (!EMAIL_RE.test(email)) return json({ success: false, error: "Enter a valid email address." }, 400);
-      // NO SIGN-UP WHILE THE PULSE CANNOT BE SENT (recheck 3). The batch sends
-      // nothing while marketing is paused, so a confirmation now would make a
-      // confirmed subscriber who never hears from us. Asked before any count.
-      if (marketingPaused()) {
-        logMarketingPaused("send-market-pulse", "subscribe");
-        return json({ success: false, reason: MARKETING_PAUSED, error: "The monthly market pulse is paused for now, so no confirmation was sent." }, 503);
-      }
       const industry = knownIndustry(body.industry);
       // A confirmation promises a monthly pulse, and the batch can only build
       // one for an industry with a keyword table. Anything else would be a
@@ -255,9 +244,7 @@ Deno.serve(async (req) => {
       if (error) return json({ success: false, error: "Could not confirm right now. Try the link again shortly." }, 503);
       const d = data as { cf_confirmed?: boolean } | null;
       if (!d?.cf_confirmed) return json({ success: false, error: "This link has expired or was already used." }, 410);
-      // A link mailed before the pause still confirms the person's choice; the
-      // answer says the pulse is paused, so the page promises no first pulse.
-      return json({ success: true, confirmed: true, ...(marketingPaused() ? { paused: MARKETING_PAUSED } : {}) });
+      return json({ success: true, confirmed: true });
     }
 
     // ── Batch send: the cron, or our own service role, and nobody else ───
@@ -265,13 +252,6 @@ Deno.serve(async (req) => {
       if (!(await isScheduledCaller(req.headers, supabase, serviceKey))) {
         return json({ error: "The batch send is for the scheduler only." }, 401);
       }
-      // A MARKETING MAIL NEEDS THE SELLER'S NAME AND POSTAL ADDRESS (S12-010).
-      // Nothing is claimed, so no subscriber loses a month while it waits.
-      if (marketingPaused()) {
-        logMarketingPaused("send-market-pulse", "batch");
-        return json({ success: true, sent: 0, skipped: 0, handedBack: 0, paused: MARKETING_PAUSED });
-      }
-
       const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
       if (!RESEND_API_KEY) return json({ error: "RESEND_API_KEY not configured" }, 503);
       const resend = new Resend(RESEND_API_KEY);

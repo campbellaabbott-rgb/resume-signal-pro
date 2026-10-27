@@ -1,23 +1,24 @@
 # shellcheck shell=bash
 # ── 92. WAVE 4, SECOND ROUND, ACCOUNT-COMPLIANCE (branch w4b/account-compliance):
-# the account home, account deletion, the legal notice, the marketing pause,
-# analytics consent, the Privacy page and Shortlist (S12 account-compliance
-# items; critical-path plan CP-F, CP-G, CP-H, CP-J's account functions).
+# the account home, account deletion, the legal notice, analytics consent, the
+# Privacy page and Shortlist (S12 account-compliance items; critical-path plan
+# CP-F, CP-G, CP-H, CP-J's account functions). Wave 4's marketing pause is
+# gone: sales stay on (owner, 2026-10-27), and marketing mail sends as on main.
 #
 # THE CLAIMS, one line each below:
-#   - send-agent-digest, send-market-pulse, send-scan-report, send-search-digest
-#     and shortlist-evaluate serve 2026-10-11.25 or later, and so do
-#     stripe-webhook and withdraw-subscription, which bundle the legal notice
-#     that is now rendered once and resent with that body (S12-102); delete-account,
+#   - send-search-digest and shortlist-evaluate serve 2026-10-11.25 or later,
+#     and so do stripe-webhook and withdraw-subscription, which bundle the
+#     legal notice that is now rendered once and resent with that body
+#     (S12-102); send-agent-digest, send-market-pulse and send-scan-report
+#     serve 2026-10-27.1 or later (the build that dropped the pause); delete-account,
 #     get-account-data and the new account-order and account-settings serve
 #     2026-10-14.25 or later (they import _shared/mailbox-proof.ts, which R1
 #     stamped 2026-10-14.1 and deploys first);
-#   - MARKETING MAIL IS SENT ONLY WITH A SELLER IDENTITY (S12-010): each
-#     marketing sender's preflight says x-marketing-mail. While it says
-#     paused_no_seller_identity this is a FAIL that only the owner can clear,
-#     by putting the seller's legal name and postal address in
-#     src/config/seller.ts and supabase/functions/_shared/seller-identity.ts;
-#     a missing header on a current build is a FAIL too;
+#   - NO MARKETING PAUSE (sales stay on, owner 2026-10-27): no marketing
+#     sender's preflight says x-marketing-mail paused_no_seller_identity
+#     (wave 4's pause, which waited for the seller's legal name and postal
+#     address); the seller line prints in the mail once the owner fills both
+#     in, and nothing waits for it;
 #   - 20261011170000 applied: account_erase_personal_data exists and anon may
 #     not run it (a GET probe: PostgREST runs it read-only);
 #   - the published frontend carries this round: the consent banner chunk and
@@ -29,13 +30,13 @@
 #     and a Shortlist chunk that asks for the uploader's attestation and reads
 #     no demographics table (D14);
 #   - what no read here can prove is INFO: 20261011171000's revoked writes
-#     and 20261011172000's archived fix-plan mail (the owner's reads below),
-#     and the host's own analytics script (owner decision D5).
+#     (the owner's read below) and the host's own analytics script (owner
+#     decision D5).
 #
 # READ-ONLY. OPTIONS preflights run no function logic; the RPC probe is a GET,
 # which PostgREST runs in a read-only transaction; the rest are GETs of public
 # pages and static assets. Nothing is signed in, sent or written.
-echo "== 92. w4b account-compliance: the account home, deletion, the legal notice, the marketing pause, analytics consent, Privacy and Shortlist =="
+echo "== 92. w4b account-compliance: the account home, deletion, the legal notice, no marketing pause, analytics consent, Privacy and Shortlist =="
 
 vd92ac_head() { # $1 fn -> the preflight's response headers
   curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$1" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r'
@@ -44,22 +45,31 @@ vd92ac_hdr() { # $1 headers, $2 name -> that header's value
   printf '%s\n' "$1" | grep -i "^$2:" | head -1 | sed -E 's/^[^:]+: *//'
 }
 
-for VD92AC_FN in send-agent-digest send-market-pulse send-scan-report send-search-digest shortlist-evaluate stripe-webhook withdraw-subscription; do
+for VD92AC_FN in send-search-digest shortlist-evaluate stripe-webhook withdraw-subscription; do
   VD92AC_H=$(vd92ac_head "$VD92AC_FN")
   VD92AC_BUILD=$(vd92ac_hdr "$VD92AC_H" x-fn-build)
   if build_ge "$VD92AC_FN" "$VD92AC_BUILD" "2026-10-11" "25"; then
     echo "PASS  $VD92AC_FN preflight x-fn-build = $VD92AC_BUILD ($VD92AC_FN.2026-10-11.25 or later)"
-    case "$VD92AC_FN" in
-      send-agent-digest|send-market-pulse|send-scan-report)
-        VD92AC_MAIL=$(vd92ac_hdr "$VD92AC_H" x-marketing-mail)
-        case "$VD92AC_MAIL" in
-          on) echo "PASS  $VD92AC_FN x-marketing-mail = on (the seller's legal name and postal address are set, so its marketing mail carries them)" ;;
-          paused_no_seller_identity) echo "FAIL  $VD92AC_FN x-marketing-mail = paused_no_seller_identity: its marketing mail is paused because the seller's legal name and postal address are empty (S12-010). OWNER: put both in src/config/seller.ts and supabase/functions/_shared/seller-identity.ts; they are never invented" ;;
-          *) echo "FAIL  $VD92AC_FN carries no x-marketing-mail on build $VD92AC_BUILD (want on or paused_no_seller_identity): the pause cannot be read" ;;
-        esac ;;
-    esac
   else
     echo "FAIL  $VD92AC_FN preflight x-fn-build = ${VD92AC_BUILD:-none} (want $VD92AC_FN.2026-10-11.25 or later)"
+  fi
+done
+
+# The marketing senders: the build that dropped wave 4's pause, and no pause
+# announced on the preflight.
+for VD92AC_FN in send-agent-digest send-market-pulse send-scan-report; do
+  VD92AC_H=$(vd92ac_head "$VD92AC_FN")
+  VD92AC_BUILD=$(vd92ac_hdr "$VD92AC_H" x-fn-build)
+  if build_ge "$VD92AC_FN" "$VD92AC_BUILD" "2026-10-27" "1"; then
+    echo "PASS  $VD92AC_FN preflight x-fn-build = $VD92AC_BUILD ($VD92AC_FN.2026-10-27.1 or later)"
+  else
+    echo "FAIL  $VD92AC_FN preflight x-fn-build = ${VD92AC_BUILD:-none} (want $VD92AC_FN.2026-10-27.1 or later)"
+  fi
+  VD92AC_MAIL=$(vd92ac_hdr "$VD92AC_H" x-marketing-mail)
+  if [ "$VD92AC_MAIL" = "paused_no_seller_identity" ]; then
+    echo "FAIL  $VD92AC_FN x-marketing-mail = paused_no_seller_identity: wave 4's marketing pause is serving, so its mail waits for the seller's legal name and postal address (sales stay on, owner 2026-10-27: deploy the 2026-10-27.1 build)"
+  elif [ -n "$VD92AC_BUILD" ]; then
+    echo "PASS  $VD92AC_FN says no marketing pause on build $VD92AC_BUILD (its mail does not wait for the seller's name and address, as on main)"
   fi
 done
 
@@ -115,5 +125,4 @@ else
 fi
 
 echo "INFO  20261011171000 (no client role may write shortlist_demographics) is proven by the owner's read: select has_table_privilege('authenticated', 'public.shortlist_demographics', 'INSERT') (false); erasing the rows already recorded is the owner's choice: DELETE FROM public.shortlist_demographics"
-echo "INFO  20261011172000 (fix-plan mail queued before the marketing pause is archived, never sent) is proven by the owner's read: select count(*) from pgmq.q_transactional_emails where message->>'label' = 'fix-plan-drip' (0; the archived ones are in pgmq.a_transactional_emails)"
 echo "INFO  the host's own analytics script is not gated by our banner: turning it off is owner decision D5 (check that /~flock.js is gone from the page source of /auth)"

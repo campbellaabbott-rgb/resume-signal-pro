@@ -26,7 +26,6 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
-import { SELLER_NAMED_STUB } from "./helpers/w4b-seller-named";
 import { agentDb } from "./helpers/agent-db";
 import { buildIsAtLeast } from "./helpers/fn-build";
 import {
@@ -211,9 +210,6 @@ const STUBS: Record<string, string> = {
   // A proxy: create-checkout builds its client at module load, before a test
   // has made its world.
   "_shared/supabase-client.ts": "export const getServiceClient = () => new Proxy({}, { get: (_t, p) => globalThis.__proClient[p] });",
-  // A seller named (owner decision 2026-10-17): the shipped, empty identity
-  // answers 409 before the purchase paths this file proves.
-  ...SELLER_NAMED_STUB,
   "_shared/ai-fallback.ts":
     "export const chainFrom = (m) => [m]; export const callAIWithModelFallback = async () => { globalThis.__proAiCalls++; return { response: new Response('{}', { status: 500 }), modelUsed: 'fake' }; };",
 };

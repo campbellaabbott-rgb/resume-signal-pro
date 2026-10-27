@@ -4,12 +4,12 @@
  *
  * scripts/verify-deploy.d/92-w4b-recheck3.sh runs here in bash against a fake
  * curl, with the real build_ge cut from the verifier. The healthy site is this
- * checkout's own offline bake with purchases closed, as it ships; the old one
- * is what production served on 2026-10-26 (an AggregateOffer up to $45 on
- * /pricing, no "Purchases open soon", State Farm held as an agency's board and
- * named uncarried). A healthy deploy prints no FAIL, each old answer prints
- * FAIL, an open shop with an offer passes, and the section only sends OPTIONS,
- * GET and one job-board list read on the probe budget.
+ * checkout's own offline bake, as it ships (no seller named, and sales stay
+ * on: owner, 2026-10-27). A healthy deploy prints no FAIL; the old layoff
+ * build, State Farm held as an agency's board and named uncarried, wave 4's
+ * closed-shop /pricing (a free Offer only and "Purchases open soon") and an
+ * llms.txt that says purchases open soon each print FAIL; and the section
+ * only sends OPTIONS, GET and one job-board list read on the probe budget.
  */
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { chmodSync, copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -85,26 +85,27 @@ const FN = "https://p\\.supabase\\.co/functions/v1";
 const pad = "x".repeat(1200);
 const SF_NOW = JSON.stringify({ jobs: [{ id: "icims:jobs.statefarm.com:1", title: "Claim Specialist", company: "State Farm" }], total: 104, companiesResolved: [{ asked: "State Farm", name: "State Farm", tokens: ["jobs.statefarm.com"] }] });
 const SF_OLD = JSON.stringify({ jobs: [], total: 0, unknownCompanies: ["State Farm"], companiesUnresolved: [{ asked: "State Farm", candidates: [{ token: "jobs.statefarm.com", name: "State Farm", open: 104, vendor: "icims", agency: true }], held: "agency" }] });
-const PRICING_OLD = `<html><head><title>Pricing — Free Scan, $5 Full Resume Analysis or Pro $45/month</title><script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","offers":{"@type":"AggregateOffer","priceCurrency":"USD","lowPrice":"0","highPrice":"45","offerCount":3}}</script></head><body><p>The Full Resume Analysis is a one-time payment that never renews.</p>${pad}</body></html>`;
-const PRICING_OPEN = `<html><head><script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","offers":{"@type":"AggregateOffer","priceCurrency":"USD","lowPrice":"0","highPrice":"45","offerCount":3}}</script></head><body><p>The Full Resume Analysis is a one-time payment that never renews.</p>${pad}</body></html>`;
-const LLMS_OLD = `${pad}\nOne paid report (the $5 Full Analysis) and one optional monthly plan, Pro. Current prices are on [/pricing](https://resumebooster.work/pricing).\n`;
+const PRICING_CLOSED = `<html><head><script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}</script></head><body><p>The free tools. Purchases open soon. Searching jobs, the free scan and a free account work now.</p>${pad}</body></html>`;
+const PRICING_SOON_BESIDE_A_PRICE = `<html><head><script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","offers":{"@type":"AggregateOffer","priceCurrency":"USD","lowPrice":"0","highPrice":"45","offerCount":3}}</script></head><body><p>$5</p><p data-purchases-open-soon>Purchases open soon</p>${pad}</body></html>`;
+const LLMS_CLOSED = `${pad}\nOne paid report (the $5 Full Analysis) and one optional monthly plan, Pro. Purchases open soon. Searching jobs, the free scan and a free account work now. Current prices are on [/pricing](https://resumebooster.work/pricing).\n`;
 
-function healthy(over: Partial<Record<"build" | "sf" | "cc" | "pricing" | "llms", string>> = {}): Route[] {
+function healthy(over: Partial<Record<"build" | "sf" | "pricing" | "llms", string>> = {}): Route[] {
   return [
     { match: `^OPTIONS ${FN}/layoff-filings$`, headers: over.build === "" ? {} : { "x-fn-build": over.build ?? "layoff-filings.2026-10-11.2" } },
     { match: `^POST ${FN}/job-board .*"companies":\\["State Farm"\\]`, body: over.sf ?? SF_NOW },
-    { match: `^GET ${FN}/create-checkout$`, body: over.cc ?? JSON.stringify({ euSales: false, purchasesOpen: false }) },
     { match: "^GET https://site\\.test/pricing$", body: over.pricing ?? readFileSync(join(BAKE, "dist", "pricing", "index.html"), "utf8") },
     { match: "^GET https://site\\.test/llms\\.txt$", body: over.llms ?? readFileSync(join(BAKE, "dist", "llms.txt"), "utf8") },
   ];
 }
 
 describe("section 92, recheck 3", () => {
-  it("a healthy deploy, read from this checkout's own bake with purchases closed, prints no FAIL, and only reads", () => {
+  it("a healthy deploy, read from this checkout's own bake as it ships, prints no FAIL, and only reads", () => {
     const { lines, calls } = run(healthy());
     expect(fails(lines), show(lines)).toEqual([]);
     expect(lines.filter((l) => l.startsWith("PASS")), show(lines)).toHaveLength(4);
-    expect(calls).toHaveLength(5);
+    expect(has(lines, "PASS", /the crawler \/pricing offers what checkout sells .* and never says Purchases open soon/), show(lines)).toBe(true);
+    expect(has(lines, "PASS", /\/llms\.txt never says Purchases open soon/), show(lines)).toBe(true);
+    expect(calls).toHaveLength(4);
     for (const c of calls) {
       if (c.startsWith("POST ")) expect(c, "a POST is a job-board list read on the probe budget").toMatch(/\/functions\/v1\/job-board \{"action":"list".*\[x-rb-budget: probe\]$/);
       else expect(c).toMatch(/^(OPTIONS|GET) /);
@@ -121,20 +122,14 @@ describe("section 92, recheck 3", () => {
     expect(has(lines, "FAIL", /companies:\["State Farm"\] serves 0 rows, and names State Farm in unknownCompanies/), show(lines)).toBe(true);
   });
 
-  it("the old /pricing (an offer up to $45, no purchases-open-soon line) reads FAIL while purchases are closed, and so does the old llms.txt", () => {
-    const { lines } = run(healthy({ pricing: PRICING_OLD, llms: LLMS_OLD }));
-    expect(has(lines, "FAIL", /purchases are closed .* still offers a price in its structured data, but never says Purchases open soon/), show(lines)).toBe(true);
-    expect(has(lines, "FAIL", /\/llms\.txt does not say Purchases open soon while purchases are closed/), show(lines)).toBe(true);
+  it("wave 4's closed-shop /pricing (a free Offer only, Purchases open soon) reads FAIL, and so does an llms.txt that says purchases open soon", () => {
+    const { lines } = run(healthy({ pricing: PRICING_CLOSED, llms: LLMS_CLOSED }));
+    expect(has(lines, "FAIL", /the crawler \/pricing offers nothing at a price, though checkout sells the Full Analysis and Pro, and still says Purchases open soon/), show(lines)).toBe(true);
+    expect(has(lines, "FAIL", /\/llms\.txt still says Purchases open soon/), show(lines)).toBe(true);
   });
 
-  it("once purchases open, an offered price passes and a stale purchases-open-soon line in llms.txt fails", () => {
-    const cc = JSON.stringify({ purchasesOpen: true });
-    const { lines } = run(healthy({ cc, pricing: PRICING_OPEN }));
-    expect(has(lines, "PASS", /purchases are open .* offers what is sold/), show(lines)).toBe(true);
-    expect(has(lines, "FAIL", /\/llms\.txt says Purchases open soon while purchases are open/), show(lines)).toBe(true);
-  });
-
-  it("a create-checkout GET without purchasesOpen cannot be judged and reads FAIL", () => {
-    expect(has(run(healthy({ cc: "{}" })).lines, "FAIL", /create-checkout GET carries no purchasesOpen/)).toBe(true);
+  it("an offered price beside a purchases-open-soon line still reads FAIL", () => {
+    const { lines } = run(healthy({ pricing: PRICING_SOON_BESIDE_A_PRICE }));
+    expect(has(lines, "FAIL", /the crawler \/pricing offers what checkout sells .* and still says Purchases open soon/), show(lines)).toBe(true);
   });
 });

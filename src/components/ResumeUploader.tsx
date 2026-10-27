@@ -16,8 +16,6 @@ import { ScanGuideArrow } from "@/components/ScanGuideArrow";
 import { useScanPrefetch } from "@/hooks/use-scan-prefetch";
 import { ScanProgressStages } from "@/components/ScanProgressStages";
 import { PurchaseTerms } from "@/components/PurchaseTerms";
-import { purchasesOpen } from "@/lib/purchases-open";
-import { PurchasesOpenSoon } from "@/components/checkout/PurchasesOpenSoon";
 import { looksLikeLink, scannableJobDescription } from "@/lib/job-description-input";
 // Step indicator component for better UX guidance
 interface StepIndicatorProps {
@@ -1437,12 +1435,9 @@ export function ResumeUploader({
                   </div>
                 )}
 
-                {/* Secondary: Full Analysis link, under the Terms line. It
-                    shows only once the seller is named (owner decision
-                    2026-10-17, B&P 17538(d)); until then, purchases open soon. */}
-                {onFreeScan && !purchasesOpen() && <PurchasesOpenSoon className="justify-center text-left" />}
-                {onFreeScan && purchasesOpen() && <PurchaseTerms kind="payment" className="text-center" />}
-                {onFreeScan && purchasesOpen() && (
+                {/* Secondary: Full Analysis link, under the Terms line. */}
+                {onFreeScan && <PurchaseTerms kind="payment" className="text-center" />}
+                {onFreeScan && (
                   <button
                     onClick={resumeMode === "paste" ? handleTextPaste : handleCheckoutClick}
                     disabled={isLoading || !canProceed}
@@ -1459,10 +1454,8 @@ export function ResumeUploader({
                   </button>
                 )}
 
-                {/* Fallback if no free scan available: the priced button
-                    only once the seller is named, as above. */}
-                {!onFreeScan && !purchasesOpen() && <PurchasesOpenSoon className="justify-center text-left" />}
-                {!onFreeScan && purchasesOpen() && (
+                {/* Fallback if no free scan available */}
+                {!onFreeScan && (
                   <div className="space-y-3">
                     <PurchaseTerms kind="payment" className="text-center" />
                     <Button

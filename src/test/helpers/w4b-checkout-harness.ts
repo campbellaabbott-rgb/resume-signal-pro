@@ -7,7 +7,6 @@
  * create-portal-session.
  */
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./edge-harness";
-import { SELLER_NAMED_STUB } from "./w4b-seller-named";
 
 export const W4B_ENV: Record<string, string | undefined> = {
   SUPABASE_URL: "https://harness.supabase.co",
@@ -132,15 +131,12 @@ export function installDeno(env: Record<string, string | undefined> = W4B_ENV): 
 }
 
 /**
- * The handlers, by default with a seller named (w4b-seller-named.ts), so a
- * test of what a checkout does once it sells is not answered by the seller
- * gate. `{ seller: "as-shipped" }` loads them with the shipped, empty
- * identity, for the tests of the gate itself.
+ * The handlers, with the seller's identity as it ships (empty): no checkout
+ * waits for it (sales stay on, owner 2026-10-27).
  */
-export async function loadCheckouts(fns: string[], opts: { seller?: "named" | "as-shipped" } = {}): Promise<Record<string, EdgeHandler>> {
-  const stubs = opts.seller === "as-shipped" ? W4B_STUBS : { ...W4B_STUBS, ...SELLER_NAMED_STUB };
+export async function loadCheckouts(fns: string[]): Promise<Record<string, EdgeHandler>> {
   const out: Record<string, EdgeHandler> = {};
-  for (const fn of fns) out[fn] = await loadEdgeHandler(fn, stubs);
+  for (const fn of fns) out[fn] = await loadEdgeHandler(fn, W4B_STUBS);
   return out;
 }
 

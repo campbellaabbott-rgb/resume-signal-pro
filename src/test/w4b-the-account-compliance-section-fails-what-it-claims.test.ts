@@ -7,19 +7,18 @@
  * after this round deploys. A PASS is worth something only if a regression
  * could have turned it into a FAIL (verify-deploy.d/README), so the section
  * runs here in bash against a fake curl, with the real build_ge cut from the
- * verifier. The marketing header it reads is the one the real
- * _shared/marketing-pause.ts produces for the identity this repository
- * carries, and the published chunks it reads are this repository's own
- * sources, so a pause that stops being announced, or a chunk that loses what
- * the section looks for, reads FAIL here first. Every request it makes is an
- * OPTIONS preflight or a GET.
+ * verifier. The published chunks it reads are this repository's own sources,
+ * so a chunk that loses what the section looks for reads FAIL here first.
+ * Sales stay on (owner, 2026-10-27): wave 4's marketing pause is gone, so the
+ * three marketing senders must serve the build that dropped it, and a
+ * preflight that still says the pause is serving reads FAIL. Every request it
+ * makes is an OPTIONS preflight or a GET.
  */
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
-import { marketingMailHeader } from "../../supabase/functions/_shared/marketing-pause";
 
 vi.setConfig({ testTimeout: 120_000 });
 
@@ -75,13 +74,14 @@ const show = (lines: string[]) => `\n${lines.join("\n")}`;
 
 const FN = (fn: string) => `^OPTIONS https://p\\.supabase\\.co/functions/v1/${fn}$`;
 const MARKETING = ["send-agent-digest", "send-market-pulse", "send-scan-report"];
-const ROUND_11 = [...MARKETING, "send-search-digest", "shortlist-evaluate", "stripe-webhook", "withdraw-subscription"];
+const ROUND_11 = ["send-search-digest", "shortlist-evaluate", "stripe-webhook", "withdraw-subscription"];
 const ROUND_14 = ["delete-account", "get-account-data", "account-order", "account-settings"];
 const ENTRY = `import"./x.js";const a=()=>import("./ConsentBanner-Ab12.js");const b=()=>import("./Account-Cd34.js");const c=()=>import("./Privacy-Ef56.js");const d=()=>import("./Shortlist-Gh78.js");\n${src("src/lib/consent.ts")}`;
 
-function routes(over: Record<string, Route | null> = {}, mail: Record<string, string> = { "x-marketing-mail": "on" }): Route[] {
+function routes(over: Record<string, Route | null> = {}, mail: Record<string, string> = {}): Route[] {
   const base: Record<string, Route> = {};
-  for (const fn of ROUND_11) base[fn] = { match: FN(fn), headers: { "x-fn-build": `${fn}.2026-10-11.25`, ...(MARKETING.includes(fn) ? mail : {}) } };
+  for (const fn of MARKETING) base[fn] = { match: FN(fn), headers: { "x-fn-build": `${fn}.2026-10-27.1`, ...mail } };
+  for (const fn of ROUND_11) base[fn] = { match: FN(fn), headers: { "x-fn-build": `${fn}.2026-10-11.25` } };
   for (const fn of ROUND_14) base[fn] = { match: FN(fn), headers: { "x-fn-build": `${fn}.2026-10-14.25` } };
   base.erase = { match: "^GET https://p\\.supabase\\.co/rest/v1/rpc/account_erase_personal_data\\?", status: 401, body: JSON.stringify({ code: "42501", message: "permission denied" }) };
   base.shell = { match: "^GET https://site\\.test/$", body: `<html><head><script type="module" src="/assets/index-Zz99.js"></script></head></html>` };
@@ -95,16 +95,17 @@ function routes(over: Record<string, Route | null> = {}, mail: Record<string, st
 }
 
 describe("section 92 account-compliance on a deploy of this round", () => {
-  it("with a seller identity set, every claim reads PASS, and every request is a preflight or a GET", () => {
+  it("with no seller named, every claim reads PASS, and every request is a preflight or a GET", () => {
     const { lines, calls } = run(routes());
     expect(fails(lines), show(lines)).toEqual([]);
     for (const fn of ROUND_11) expect(has(lines, "PASS", new RegExp(`${fn} preflight x-fn-build = ${fn}\\.2026-10-11\\.25`)), show(lines)).toBe(true);
+    for (const fn of MARKETING) expect(has(lines, "PASS", new RegExp(`${fn} preflight x-fn-build = ${fn}\\.2026-10-27\\.1`)), show(lines)).toBe(true);
     for (const fn of ROUND_14) expect(has(lines, "PASS", new RegExp(`${fn} preflight x-fn-build = ${fn}\\.2026-10-14\\.25`)), show(lines)).toBe(true);
-    for (const fn of MARKETING) expect(has(lines, "PASS", new RegExp(`${fn} x-marketing-mail = on`)), show(lines)).toBe(true);
+    for (const fn of MARKETING) expect(has(lines, "PASS", new RegExp(`${fn} says no marketing pause on build ${fn}\\.2026-10-27\\.1`)), show(lines)).toBe(true);
     expect(has(lines, "PASS", /account_erase_personal_data exists and anon may not run it/), show(lines)).toBe(true);
     expect(has(lines, "PASS", /ConsentBanner-Ab12\.js and carries the analytics consent key/), show(lines)).toBe(true);
     expect(has(lines, "PASS", /Account-Cd34\.js carries the connected-AIs card, .* and the line saying how and when the address was proven/), show(lines)).toBe(true);
-    expect(has(lines, "INFO", /20261011172000 .*fix-plan-drip/), show(lines)).toBe(true);
+    expect(lines.some((l) => /20261011172000/.test(l)), "the fix-plan archive migration is gone with the pause").toBe(false);
     expect(has(lines, "PASS", /Privacy-Ef56\.js names Mailgun and ipinfo/), show(lines)).toBe(true);
     expect(has(lines, "PASS", /Shortlist-Gh78\.js asks for the uploader's attestation/), show(lines)).toBe(true);
     expect(calls.length).toBeGreaterThan(10);
@@ -113,24 +114,22 @@ describe("section 92 account-compliance on a deploy of this round", () => {
 });
 
 describe("section 92 account-compliance fails each regression", () => {
-  it("S12-010: while this repository's seller identity is empty, the real header reads FAIL with the owner's step", () => {
-    const real = marketingMailHeader();
-    const { lines } = run(routes({}, real));
-    if (real["x-marketing-mail"] === "on") {
-      for (const fn of MARKETING) expect(has(lines, "PASS", new RegExp(`${fn} x-marketing-mail = on`)), show(lines)).toBe(true);
-    } else {
-      for (const fn of MARKETING) expect(has(lines, "FAIL", new RegExp(`${fn} x-marketing-mail = paused_no_seller_identity: .*OWNER: put both in src/config/seller\\.ts`)), show(lines)).toBe(true);
+  it("sales stay on: wave 4's paused marketing build reads FAIL, on its build and on its header", () => {
+    const paused = { "x-marketing-mail": "paused_no_seller_identity" };
+    const { lines } = run(routes(Object.fromEntries(MARKETING.map((fn) => [fn, { match: FN(fn), headers: { "x-fn-build": `${fn}.2026-10-11.25`, ...paused } }]))));
+    for (const fn of MARKETING) {
+      expect(has(lines, "FAIL", new RegExp(`${fn} preflight x-fn-build = ${fn}\\.2026-10-11\\.25 \\(want ${fn}\\.2026-10-27\\.1 or later\\)`)), show(lines)).toBe(true);
+      expect(has(lines, "FAIL", new RegExp(`${fn} x-marketing-mail = paused_no_seller_identity: wave 4's marketing pause is serving`)), show(lines)).toBe(true);
     }
   });
 
-  it("a current marketing build that stops announcing the pause", () => {
-    const { lines } = run(routes({}, {}));
-    expect(has(lines, "FAIL", /send-market-pulse carries no x-marketing-mail/), show(lines)).toBe(true);
+  it("the shipped marketing senders announce no pause: their code sends no x-marketing-mail", () => {
+    for (const fn of MARKETING) expect(src(`supabase/functions/${fn}/index.ts`), fn).not.toMatch(/x-marketing-mail|paused_no_seller_identity/);
   });
 
   it("an older bundle, of either day", () => {
     const { lines } = run(routes({
-      "send-scan-report": { match: FN("send-scan-report"), headers: { "x-fn-build": "send-scan-report.2026-10-09.24", "x-marketing-mail": "on" } },
+      "send-scan-report": { match: FN("send-scan-report"), headers: { "x-fn-build": "send-scan-report.2026-10-09.24" } },
       "delete-account": { match: FN("delete-account"), headers: { "x-fn-build": "delete-account.2026-10-14.1" } },
       "account-settings": null,
       "stripe-webhook": { match: FN("stripe-webhook"), status: 405, headers: { "x-fn-build": "stripe-webhook.2026-10-11.22" } },

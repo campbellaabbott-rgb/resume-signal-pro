@@ -6,9 +6,8 @@
  * cut catalogue), 451 for a buyer in the EU, the EEA, the UK or India while
  * sales there wait for the tax registration, 429 for a Pro member's included
  * tool over the fair-use cap, 409 for a plan whose first payment is not
- * through, 409 `seller_identity_missing` while purchases wait for the
- * seller's name and address (owner decision 2026-10-17), and 400 for a Pro
- * checkout pressed without its automatic-renewal box ticked.
+ * through, and 400 for a Pro checkout pressed without its automatic-renewal
+ * box ticked.
  * The generic error parser drops any sentence over 200 characters and knows
  * no 410 or 451, so the retired sentence showed as "Something went wrong —
  * try again", which invites the retry the 410 exists to stop.
@@ -18,10 +17,7 @@
  * and what kind of refusal it is, or null when the answer is none of these.
  */
 
-export type CheckoutRefusalKind = "retired" | "territory" | "fair_use" | "plan_unpaid" | "seller_missing" | "auto_renew";
-
-/** The English fallback when a seller_identity_missing body carries no sentence. */
-export const PURCHASES_OPEN_SOON = "Purchases open soon. Nothing was charged.";
+export type CheckoutRefusalKind = "retired" | "territory" | "fair_use" | "plan_unpaid" | "auto_renew";
 
 export interface CheckoutRefusal {
   kind: CheckoutRefusalKind;
@@ -36,11 +32,6 @@ type Body = Record<string, unknown>;
 function fromBody(body: unknown, status: number | null): CheckoutRefusal | null {
   if (!body || typeof body !== "object") return null;
   const b = body as Body;
-  // The seller gate names a code in `error` and its sentence in `message`.
-  if (b.error === "seller_identity_missing") {
-    const said = typeof b.message === "string" ? b.message.trim() : "";
-    return { kind: "seller_missing", message: said || PURCHASES_OPEN_SOON, link: null };
-  }
   const message = typeof b.error === "string" ? b.error.trim() : "";
   if (!message) return null;
   const link = typeof b.pricing === "string" ? b.pricing : typeof b.applyYourself === "string" ? b.applyYourself : null;

@@ -16,9 +16,9 @@
  *     2026-10-17, src/config/pro-perks.ts): everything in a free account,
  *     plus the writing tools, the $5 Full Analysis included and no daily cap
  *     on scans.
- *   - The Full Analysis button shows only once the seller's legal name and
- *     postal address are on the site (owner decision 2026-10-17, B&P
- *     17538(d)); until then the report says purchases open soon.
+ *   - The Full Analysis button shows with no seller named (sales stay on,
+ *     owner 2026-10-27), with its Terms line, and nothing says purchases open
+ *     soon.
  *   - Freelance Boost is no longer sold, so the platform-profile note names
  *     it nowhere and links to no page that sells it.
  */
@@ -52,12 +52,6 @@ vi.mock("@/integrations/supabase/client", () => {
 });
 
 const auth = vi.hoisted(() => ({ user: null as null | { id: string; email: string } }));
-// The seller, as shipped (empty) or named by a test.
-const seller = vi.hoisted(() => ({ legalName: "", postalAddress: "" }));
-vi.mock("@/config/seller", async (importOriginal) => {
-  const real = await importOriginal<typeof import("@/config/seller")>();
-  return { ...real, SELLER: seller, sellerIdentity: (x = seller) => real.sellerIdentity(x) };
-});
 vi.mock("@/contexts/AuthContext", async (orig) => {
   const real = await orig<typeof import("@/contexts/AuthContext")>();
   return { ...real, useAuth: () => ({ ...real.useAuth(), user: auth.user }) };
@@ -74,8 +68,7 @@ import { FreeKeywordResults } from "@/components/FreeKeywordResults";
 import { supabase } from "@/integrations/supabase/client";
 import { PRO_SUMMARY } from "@/config/pro-perks";
 
-afterEach(() => { cleanup(); auth.user = null; seller.legalName = ""; seller.postalAddress = ""; });
-const nameSeller = () => { seller.legalName = "Example Seller LLC"; seller.postalAddress = "1 Example Street, Springfield"; };
+afterEach(() => { cleanup(); auth.user = null; });
 
 const tailor = vi.fn();
 
@@ -163,7 +156,6 @@ describe("the tailored résumé is counted by account", () => {
 
 describe("the two offers say what they are", () => {
   it("the Full Analysis is its own analysis, never 'the fixes from this report'", async () => {
-    nameSeller();
     const { getByTestId } = await mount();
     const full = getByTestId("report-next-steps").querySelector('[data-offer="fullAnalysis"]')!;
     expect(full.textContent).toMatch(/separate, deeper analysis of your résumé/);
@@ -179,48 +171,21 @@ describe("the two offers say what they are", () => {
   });
 });
 
-describe("no buy button until the seller is named", () => {
-  it("with no seller named, the report offers no Full Analysis button and says purchases open soon", async () => {
-    const { getByTestId } = await mount();
-    const steps = getByTestId("report-next-steps");
-    expect(steps.querySelector('[data-offer="fullAnalysis"]')).toBeNull();
-    expect(steps.querySelector("[data-purchases-open-soon]")).not.toBeNull();
-    // Pro's row stays: it opens /pricing, which gates its own button.
-    expect(steps.querySelector('[data-offer="pro"]')).not.toBeNull();
-  });
-
-  it("control: with a seller named, the button is back and the line is gone", async () => {
-    nameSeller();
+describe("the Full Analysis button, with no seller named (sales stay on, owner 2026-10-27)", () => {
+  it("the report offers the priced Full Analysis with its Terms line, and nothing says purchases open soon", async () => {
     const { getByTestId } = await mount();
     const steps = getByTestId("report-next-steps");
     expect(steps.querySelector('[data-offer="fullAnalysis"]')).not.toBeNull();
+    expect(steps.querySelector("[data-testid='purchase-terms']")).not.toBeNull();
     expect(steps.querySelector("[data-purchases-open-soon]")).toBeNull();
+    expect(steps.querySelector('[data-offer="pro"]')).not.toBeNull();
   });
 
-  // Wave 4 round 2 review (money lens): a Pro member's included analysis is
-  // not a sale (create-checkout mints it before its seller gate), but every
-  // surface hid it and the page refused before asking the server.
-  it("a paid Pro member is offered the included analysis, unpriced, while purchases are closed", async () => {
-    const run = vi.fn();
-    const { getByTestId } = await mount({ proIncludesAnalysis: true, onGetFullAnalysis: run });
-    const steps = getByTestId("report-next-steps");
-    expect(steps.querySelector('[data-offer="fullAnalysis"]'), "nothing is priced").toBeNull();
-    const included = steps.querySelector('[data-offer="fullAnalysisIncluded"]') as HTMLButtonElement | null;
-    expect(included).not.toBeNull();
-    expect(included!.textContent).toMatch(/Included with your Pro plan/);
-    expect(included!.textContent).not.toMatch(/\$\d/);
-    expect(steps.querySelector("[data-purchases-open-soon]")).toBeNull();
-    await act(async () => { included!.click(); });
-    expect(run).toHaveBeenCalledTimes(1);
-  });
-
-  it("the page asks the server for an included analysis instead of refusing first", () => {
+  it("the page asks create-checkout for the analysis on every press, as main does, and the server mints a member's included one", () => {
     const page = readFileSync(resolve(__dirname, "../pages/Index.tsx"), "utf8");
-    expect(page).toMatch(/const proIncludesAnalysis = proPlan\.active && !proPlan\.trialing;/);
-    expect(page).toMatch(/if \(!purchasesOpen\(\) && !proIncludesAnalysis\) \{/);
-    expect(page).toMatch(/proIncludesAnalysis=\{proIncludesAnalysis\}/);
+    expect(page).not.toMatch(/purchasesOpen|proIncludesAnalysis/);
     const fn = readFileSync(resolve(__dirname, "../../supabase/functions/create-checkout/index.ts"), "utf8");
-    expect(fn.indexOf('.from("pro_grants")'), "the grant is minted before the seller gate").toBeLessThan(fn.indexOf("const closed = sellerGate("));
+    expect(fn).toMatch(/\.from\("pro_grants"\)/);
   });
 });
 

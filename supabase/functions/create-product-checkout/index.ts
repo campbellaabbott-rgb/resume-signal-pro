@@ -17,7 +17,6 @@ import {
   refusedCallerBody,
 } from "../_shared/checkout-buyer.ts";
 import { planPaid, UNPAID_PLAN_NOTE } from "../_shared/consumable-paid.ts";
-import { sellerGate } from "../_shared/seller-gate.ts";
 import { proIncludes } from "../_shared/pro-perks.ts";
 
 // Provable from outside without a purchase: every response, the CORS
@@ -38,14 +37,13 @@ import { proIncludes } from "../_shared/pro-perks.ts";
 // issued for another audience, is refused with a 401 (critical-path CP-D).
 // Owner decisions 2026-10-17, same build: Freelance Boost and Transition Pro
 // are cut too (410), so nothing here is sold; a member mints only what Pro
-// includes (pro-perks.ts), which is nothing this function sells; and while
-// the seller's legal name and postal address are unset every purchase is a
-// 409 seller_identity_missing (seller-gate.ts), before the limiter or Stripe.
+// includes (pro-perks.ts), which is nothing this function sells.
 // 2026-10-11.24: the retirement sentence's apply-yourself line says what the question marking does (it reads words and can miss an unusually worded question about the buyer) and asks them to read every answer before they send (wave 4 descope, 2026-10-25); nothing this function does changed.
 // 2026-10-11.25: the retirement sentence's apply-yourself line says the marking can miss a question about the buyer even when it is plainly worded (the recheck of the descope, 2026-10-25); nothing this function does changed.
 // 2026-10-11.26: the retirement sentence's apply-yourself line says that inside ChatGPT the AI reads the application form only for Greenhouse or Recruitee, the server's public-API pair (the second recheck of the descope, 2026-10-25); nothing else changed.
-// 2026-10-11.27 (recheck 3, 2026-10-26): while no seller is named, a cut report's sentence says the $5 Full Analysis and Pro open for purchase soon instead of calling the Full Analysis still on sale (_shared/product-cuts.ts reportsClosed).
-const FN_BUILD = "create-product-checkout.2026-10-11.27";
+// 2026-10-11.27 (recheck 3, 2026-10-26): a cut report's sentence depended on whether a seller was named.
+// 2026-10-27.1 (sales stay on, owner 2026-10-27): no purchase waits for the seller's name and address, as on main, so an id this function does not sell is main's 400 again, and a cut report's sentence always says the $5 Full Analysis is still on sale, which it is (_shared/product-cuts.ts).
+const FN_BUILD = "create-product-checkout.2026-10-27.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -172,14 +170,6 @@ serve(async (req) => {
     console.log(`[CREATE-PRODUCT-CHECKOUT] refused: ${String(askedId)} is no longer sold`);
     return new Response(JSON.stringify(answer.body), { status: answer.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
-  // NO SALE WITHOUT A NAMED SELLER (owner decision 2026-10-17, B&P 17538(d)):
-  // before the limiter, a grant or Stripe.
-  const closed = sellerGate({ body: asked, acceptLanguage: req.headers.get("accept-language") });
-  if (closed) {
-    console.log("[CREATE-PRODUCT-CHECKOUT] refused: seller_identity_missing");
-    return new Response(JSON.stringify(closed.body), { status: closed.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-  }
-
   // The platform's word for the caller's address, never the first forwarded
   // hop, which the caller writes itself and could rotate per request.
   const clientIp = clientAddressOr(req.headers);

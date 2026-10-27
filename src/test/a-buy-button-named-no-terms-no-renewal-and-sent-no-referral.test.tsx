@@ -43,9 +43,6 @@ vi.mock("@/integrations/supabase/client", () => ({
 const user = { email: "member@example.com" };
 vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user, session: { access_token: "jwt" } }) }));
 vi.mock("@/hooks/useAgentSender", () => ({ useAgentSender: () => ({ online: false }) }));
-// Purchases open, as once the owner names the seller (owner decision
-// 2026-10-17): the Pro card's button is what this file tests.
-vi.mock("@/lib/purchases-open", () => ({ purchasesOpen: () => true }));
 
 import { AgentSubscriptionCard } from "@/components/AgentSubscriptionCard";
 import { ProSubscriptionCard } from "@/components/ProSubscriptionCard";

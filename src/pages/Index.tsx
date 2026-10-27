@@ -63,8 +63,6 @@ import { FloatingUploadButton, FloatingSeeReportButton } from "@/components/Floa
 import { CheckoutOverlay, type CheckoutStep } from "@/components/CheckoutOverlay";
 import { FreeReportSignupNudge } from "@/components/FreeReportSignupNudge";
 import { checkoutRefusalOfBody } from "@/lib/checkout-refusal";
-import { purchasesOpen } from "@/lib/purchases-open";
-import { useProSubscription } from "@/hooks/use-pro-subscription";
 import { territoryHint } from "@/lib/checkout-territory";
 import { useToast } from "@/hooks/use-toast";
 import { useCurrency } from "@/hooks/use-currency";
@@ -491,11 +489,6 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [landing?.lang]);
   const { session } = useAuth();
-  // A paid Pro plan includes the Full Analysis, which is minted, not sold:
-  // create-checkout issues the grant before its seller gate, so a member can
-  // run it while purchases are closed (round 2 review).
-  const { pro: proPlan } = useProSubscription();
-  const proIncludesAnalysis = proPlan.active && !proPlan.trialing;
   // Per-scan user context: stated intent + target role, confirmed labels.
   const [scanContext, setScanContext] = useState<{
     situation: string | null;
@@ -1801,17 +1794,6 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
     // one: by the time the body is built, a tap on the overlay (or anywhere
     // else) during the awaits below would be (review of the integration).
     const terms = purchaseTerms();
-    // NO PURCHASE WITHOUT A NAMED SELLER (owner decision 2026-10-17, B&P
-    // 17538(d)): until src/config/seller.ts carries the legal name and postal
-    // address, nothing is stored, counted or sent to the checkout, which
-    // would refuse with 409 seller_identity_missing anyway.
-    if (!purchasesOpen() && !proIncludesAnalysis) {
-      toast({
-        title: t('checkoutGate.purchasesOpenSoonTitle', 'Purchases open soon'),
-        description: t('checkoutGate.purchasesOpenSoon', 'Purchases open soon. Searching jobs, the free scan and a free account work now.'),
-      });
-      return;
-    }
     const contentToAnalyze = text || resumeText;
     const linkedInContent = linkedIn || linkedInText;
     const jobDescriptionContent = jobDescription || jobDescriptionText;
@@ -2426,7 +2408,6 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
                 formatRecommendation={freeKeywordResult.formatRecommendation}
                 personalizedCareerInsights={freeKeywordResult.personalizedCareerInsights}
                 onGetFullAnalysis={() => handleCheckout(resumeText, linkedInText, jobDescriptionText)}
-                proIncludesAnalysis={proIncludesAnalysis}
                 onGetJobAnalysis={handleJobAnalysis}
                 onGenerateTailoredResume={handleGenerateTailoredResume}
                 isGeneratingTailored={isGeneratingTailored}

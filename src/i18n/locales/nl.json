@@ -788,8 +788,7 @@
     "oneTime": "eenmalig",
     "guarantee": "Directe resultaten • Eenmalige betaling",
     "button": "Mijn analyse nu",
-    "roi": "Eén gesprek = {{price}} terugverdiend",
-    "freeScanCta": "Mijn cv gratis scannen"
+    "roi": "Eén gesprek = {{price}} terugverdiend"
   },
   "scanProgress": {
     "title": "AI-analyse bezig",
@@ -1756,9 +1755,7 @@
       "proName": "Pro",
       "proDesc": "Maandabonnement: onbeperkt scannen en elke betaalde tool, de volledige analyse inbegrepen. Altijd opzegbaar vanuit je account.",
       "proPrice": "$ {{price}}/maand",
-      "fullAnalysisDescOwn": "Een aparte, diepere analyse van je cv: een volledige uitsplitsing van de score, herschrijvingen punt voor punt en een actieplan met prioriteiten. Eén betaling, geen abonnement.",
-      "fullAnalysisIncluded": "Inbegrepen bij je Pro-abonnement: een aparte, diepere analyse van je cv, met een volledige scoreopbouw, herschrijvingen per bullet en een geprioriteerd actieplan.",
-      "fullAnalysisIncludedCta": "Starten"
+      "fullAnalysisDescOwn": "Een aparte, diepere analyse van je cv: een volledige uitsplitsing van de score, herschrijvingen punt voor punt en een actieplan met prioriteiten. Eén betaling, geen abonnement."
     },
     "interviewPrepSignIn": {
       "body": "Een gratis account bevat per dag één set gespreksvoorbereiding, één aangepast cv en één motivatiebrief.",
@@ -5501,7 +5498,6 @@
     "body": "Eén e-mail per maand met de trefwoorden waarop vacatures in jouw vakgebied screenen, en een gratis rescan-link. Elke e-mail heeft een afmelding met één klik.",
     "button": "Ja, stuur me de puls",
     "done": "Je bent aangemeld. De eerste puls komt binnen een dag.",
-    "donePaused": "Je bent aangemeld. De maandelijkse pulse is voorlopig gepauzeerd, dus er komt niets tot hij weer start; elke pulse heeft een afmeldlink met één klik.",
     "invalid": "Deze link is verlopen of al gebruikt. Vink het vakje aan onder je volgende scanrapport om een nieuwe te krijgen.",
     "missing": "Deze pagina heeft de link uit je bevestigingsmail nodig.",
     "error": "Bevestigen lukt nu niet. Probeer de link zo opnieuw.",
@@ -5518,8 +5514,7 @@
     "missing": "Deze pagina heeft de knop uit je rapportmail nodig.",
     "error": "Starten lukt nu niet. Probeer de knop zo meteen opnieuw.",
     "errorFinal": "De hele reeks kon niet worden gestart, en opnieuw op de knop drukken start hem deze maand niet opnieuw.",
-    "home": "Terug naar Resume Booster",
-    "paused": "De e-mails van het verbeterplan staan voorlopig op pauze, dus er is niets gestart. De e-mail met je rapport bevat al het hele plan."
+    "home": "Terug naar Resume Booster"
   },
   "emailUnsubscribe": {
     "title": "Deze e-mails uitzetten",
@@ -5753,8 +5748,6 @@
     "yoursTitle": "Deze beantwoord je zelf"
   },
   "checkoutGate": {
-    "purchasesOpenSoon": "Aankopen gaan binnenkort open. Vacatures zoeken, de gratis scan en een gratis account werken nu al.",
-    "purchasesOpenSoonTitle": "Aankopen gaan binnenkort open",
     "regionNoticeTimeZone": "De tijdzone van je browser ligt in de EU, de EER, het VK of India, waar we nog niet verkopen: verkoop daar wacht tot onze belastingregistratie is geregeld. Vacatures zoeken en de gratis scan werken overal."
   },
   "checkoutRefusal": {

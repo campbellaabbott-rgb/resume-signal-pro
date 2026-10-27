@@ -55,24 +55,23 @@ import { alertOwnerOnce } from "../_shared/owner-alert.ts";
 import { redirectToConfirm, unsubscribeParams, unsubscribePageUrl } from "../_shared/unsubscribe-link.ts";
 import { sellerFooterHtml, sellerFooterText } from "../_shared/seller.ts";
 import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
-import { MARKETING_PAUSED, logMarketingPaused, marketingMailHeader, marketingPaused } from "../_shared/marketing-pause.ts";
 
 // Provable from outside without sending anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
 // 2026-10-09.24: no change of its own; _shared/unsubscribe-link.ts gained the
 // agent-digest list it imports beside (S11-132).
-// 2026-10-11.25: the fix-plan sequence is marketing (S12-010, CP-016): while
-// the seller has no legal name and postal address the report mail offers no
-// button for it and confirm-drip queues nothing; once it starts, every mail
-// in it is queued as marketing, with a plain-text part and the seller line.
-const FN_BUILD = "send-scan-report.2026-10-11.25";
+// 2026-10-11.25: the fix-plan sequence is marketing (S12-010, CP-016): every
+// mail in it is queued as marketing, with a plain-text part and the seller
+// line once the seller is named.
+// 2026-10-27.1 (sales stay on, owner 2026-10-27): the button and the
+// sequence no longer wait for the seller's legal name and postal address, as
+// on main, and no response carries a marketing-state header.
+const FN_BUILD = "send-scan-report.2026-10-27.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Expose-Headers": "x-fn-build, x-marketing-mail",
   "x-fn-build": FN_BUILD,
-  ...marketingMailHeader(),
 };
 
 /**
@@ -410,19 +409,6 @@ Deno.serve(async (req) => {
     if (raw.action === "confirm-drip") {
       const plan = await openDripLink(serviceKey, raw.token);
       if (!plan) return reply({ success: false, error: "This link has expired or is not valid." }, 410);
-      // THE SEQUENCE IS MARKETING, AND MARKETING WAITS FOR THE SELLER'S NAME
-      // AND POSTAL ADDRESS (S12-010). Asked before any count, so the month's
-      // slot is not spent on a sequence that cannot start.
-      if (marketingPaused()) {
-        logMarketingPaused("send-scan-report", "confirm-drip");
-        return reply({
-          success: false,
-          queued: false,
-          reason: MARKETING_PAUSED,
-          retry: false,
-          error: "The fix-plan emails are paused for now, so nothing was started. Your report mail already holds the whole plan.",
-        }, 503);
-      }
       const admin = createClient(Deno.env.get("SUPABASE_URL") ?? "", serviceKey);
       const net = await networkBucket(req.headers, serviceKey, "scan-report");
       const atNet = await take(admin, "send-scan-report:drip-confirm", net, 20, 60);
@@ -657,10 +643,7 @@ Deno.serve(async (req) => {
     // its page is opened and its button pressed. Sealed reports only: the
     // sequence is the fix plan's steps, and an unsealed request has none.
     let dripLink = "";
-    // No button while marketing mail is paused (S12-010): it could only open
-    // a page that says the sequence cannot start.
-    if (body.dripOptIn && body.sealed && marketingPaused()) logMarketingPaused("send-scan-report", "drip-button");
-    if (body.dripOptIn && body.sealed && !marketingPaused()) {
+    if (body.dripOptIn && body.sealed) {
       const token = await signDripLink(serviceKey, {
         email,
         score,
