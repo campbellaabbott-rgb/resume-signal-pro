@@ -37,14 +37,21 @@ export function ConsentBanner() {
   // FOCUS IS NEVER HIDDEN UNDER THE BANNER (WCAG 2.2 SC 2.4.11; review round
   // 2026-10-26). The banner is fixed over the bottom of the screen, and the
   // controls keyboard focus landed on scrolled in under it: 35 of 78 Tab
-  // stops on "/" at 1280x800. While it is open, the page's bottom scroll
+  // stops on "/" at 1280x800. While it is open: the page's bottom scroll
   // padding is its height, which the browser honours when it scrolls a
-  // focused control into view; it goes when the banner does.
+  // focused control into view; the body gains that much room at its end, so
+  // the footer's last links can scroll clear of it too; and --consent-banner-h
+  // lifts the fixed help button above it. All of it goes with the banner.
   useEffect(() => {
     const el = banner.current;
     if (!open || !el) return;
     const root = document.documentElement;
-    const apply = () => { root.style.scrollPaddingBottom = `${Math.ceil(el.getBoundingClientRect().height) + FOCUS_CLEARANCE_PX}px`; };
+    const apply = () => {
+      const h = Math.ceil(el.getBoundingClientRect().height);
+      root.style.setProperty("--consent-banner-h", `${h}px`);
+      root.style.scrollPaddingBottom = `${h + FOCUS_CLEARANCE_PX}px`;
+      document.body.style.paddingBottom = `${h}px`;
+    };
     apply();
     const Observer = typeof window.ResizeObserver === "function" ? window.ResizeObserver : null;
     const ro = Observer ? new Observer(apply) : null;
@@ -54,6 +61,8 @@ export function ConsentBanner() {
       ro?.disconnect();
       window.removeEventListener("resize", apply);
       root.style.removeProperty("scroll-padding-bottom");
+      root.style.removeProperty("--consent-banner-h");
+      document.body.style.removeProperty("padding-bottom");
     };
   }, [open]);
 

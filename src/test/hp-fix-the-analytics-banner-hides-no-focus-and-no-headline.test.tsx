@@ -42,14 +42,30 @@ afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
   document.documentElement.style.removeProperty("scroll-padding-bottom");
+  document.documentElement.style.removeProperty("--consent-banner-h");
+  document.body.style.removeProperty("padding-bottom");
 });
 
 describe("while the banner is open", () => {
   it("the page's bottom scroll padding is the banner's height, and it goes when the reader chooses", () => {
     render(<ConsentBanner />);
     expect(document.documentElement.style.scrollPaddingBottom).toBe("180px");
+    // The page can scroll its last links (the footer's) clear of the banner,
+    // and the fixed help button sits above it (measured: the 8-10 stops
+    // still hidden after the padding alone were exactly these).
+    expect(document.body.style.paddingBottom).toBe("172px");
+    expect(document.documentElement.style.getPropertyValue("--consent-banner-h")).toBe("172px");
     act(() => { window.dispatchEvent(new Event(CONSENT_EVENT)); });
     expect(document.documentElement.style.scrollPaddingBottom).toBe("");
+    expect(document.body.style.paddingBottom).toBe("");
+    expect(document.documentElement.style.getPropertyValue("--consent-banner-h")).toBe("");
+  });
+
+  it("the floating help button rises above the banner", async () => {
+    const { FloatingHelpButton } = await import("@/components/FloatingHelpButton");
+    const { container } = render(<FloatingHelpButton />);
+    const box = container.querySelector<HTMLElement>("[data-floating-help]")!;
+    expect(box.style.marginBottom).toBe("var(--consent-banner-h, 0px)");
   });
 
   it("the body is two paragraphs, so neither is the page's largest painted block", () => {
