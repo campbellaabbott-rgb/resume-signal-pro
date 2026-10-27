@@ -96,7 +96,7 @@ describe("every address that meant the scanner lands on /resume-checker, without
     ["/?rescan=1#upload", "/resume-checker?rescan=1#upload"],
     ["/?outcome=interview&rid=r-123", "/resume-checker?outcome=interview&rid=r-123"],
     ["/?coupon=SPRING", "/resume-checker?coupon=SPRING"],
-    ["/?ref=AFF123", "/resume-checker?ref=AFF123"],
+    ["/?ref=0a1b2c3d4e5f", "/resume-checker?ref=0a1b2c3d4e5f"],
     ["/?utm_source=email&utm_medium=scan_report&utm_campaign=rescan", "/resume-checker?utm_source=email&utm_medium=scan_report&utm_campaign=rescan"],
   ];
   for (const [from, to] of cases) {

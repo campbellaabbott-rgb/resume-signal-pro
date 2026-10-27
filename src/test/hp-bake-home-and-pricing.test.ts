@@ -65,6 +65,8 @@ function bake(out: string, env: Record<string, string>) {
   writeFileSync(join(out, "dist", "assets", "HomePage-abc123.js"), 'import{a}from"./HomeSearchHero-d4.js";');
   writeFileSync(join(out, "dist", "assets", "HomeSearchHero-d4.js"), "");
   writeFileSync(join(out, "dist", "assets", "PricingPage-ef56.js"), "");
+  writeFileSync(join(out, "dist", "assets", "Index-gh78.js"), 'import{u}from"./ResumeUploader-ij90.js";');
+  writeFileSync(join(out, "dist", "assets", "ResumeUploader-ij90.js"), "");
   return execFileSync("node", [join(ROOT, "scripts/prerender-seo.mjs")], {
     cwd: ROOT,
     env: { ...process.env, PRERENDER_OUT: out, ...env },
@@ -176,11 +178,39 @@ describe('the crawler\'s "/" is the board-first homepage', () => {
     expect(JSON.stringify(blocks)).not.toMatch(/verified/i);
   });
 
-  it("the homepage's chunks are preloaded on \"/\" only, the scanner's never", () => {
+  it("the homepage's chunks are preloaded on \"/\", and the scanner's only on a scanner address of it", () => {
     expect(routeChunkPrefix("/")).toBe("HomePage");
     const html = page(OUT, "/");
-    expect(html).toMatch(/data-home-preload="1">if\(location\.pathname==="\/"\)\{\["HomePage-abc123\.js","HomeSearchHero-d4\.js"\]/);
-    expect(html).not.toMatch(/Index-[\w-]+\.js/);
+    const script = /<script data-home-preload="1">([\s\S]*?)<\/script>/.exec(html)?.[1] ?? "";
+    expect(script).toMatch(/^if\(location\.pathname==="\/"\)\{\(\(function\(\)\{var p=new URLSearchParams/);
+    expect(script).toMatch(/\?\["Index-gh78\.js","ResumeUploader-ij90\.js"\]:\["HomePage-abc123\.js","HomeSearchHero-d4\.js"\]\)/);
+    expect(html).not.toMatch(/<link rel="modulepreload" href="\/assets\/(?:Index|HomePage)-/);
+  });
+
+  it("a scanner address of the fallback file clears the baked homepage and its home-only blocks (review round 2026-10-26)", () => {
+    const html = page(OUT, "/");
+    const clear = [...html.matchAll(/<script>(if\(location\.pathname!=="\/"\|\|[\s\S]*?)<\/script>/g)].map((m) => m[1])[0] ?? "";
+    expect(clear, "the fallback's clear script reads the scanner rule").toContain('location.hash==="#upload"');
+    const run = (search: string, hash: string) => {
+      let cleared = false;
+      const removed: string[] = [];
+      const doc = {
+        getElementById: () => ({ set innerHTML(_v: string) { cleared = true; } }),
+        querySelector: () => ({ remove: () => removed.push("canonical") }),
+        querySelectorAll: () => [{ remove: () => removed.push("home-only") }],
+      };
+      // eslint-disable-next-line @typescript-eslint/no-implied-eval
+      new Function("location", "document", "URLSearchParams", clear)({ pathname: "/", search, hash }, doc, URLSearchParams);
+      return { cleared, removed };
+    };
+    expect(run("", "#upload")).toEqual({ cleared: true, removed: ["canonical", "home-only"] });
+    expect(run("?ref=0a1b2c3d4e5f", "")).toEqual({ cleared: true, removed: ["canonical", "home-only"] });
+    expect(run("", "")).toEqual({ cleared: false, removed: [] });
+    expect(run("?ref=producthunt", "")).toEqual({ cleared: false, removed: [] });
+  });
+
+  it("/resume-checker preloads the scanner's own chunk", () => {
+    expect(page(OUT, "/resume-checker")).toContain('<link rel="modulepreload" href="/assets/Index-gh78.js">');
   });
 
   it("the baked header's links wrap, so a 320 px phone scrolls no page sideways", () => {

@@ -212,8 +212,14 @@ export const composeHtml = (
   // above them if the template shape ever shifts.
   headExtra += preloadFor(path, { fallback: isFallback });
   html = putVerbatim(html, "</head>", `${headExtra}</head>`);
+  // A scanner address of "/" ("/#upload", "/?ref=<code>", the mails'
+  // outcome and rescan links) is not the homepage either: React sends it to
+  // /resume-checker, so the baked board must not stay on screen under the
+  // scanner's address, and its home-only blocks must not stay in the
+  // scanner's head (review round 2026-10-26). The rule is the route's own
+  // (src/lib/scanner-address.ts scannerAddressScript).
   const clearScript = isFallback
-    ? `<script>if(location.pathname!=="/"){var r=document.getElementById("root");if(r)r.innerHTML="";var c=document.querySelector('link[rel="canonical"]');if(c)c.remove();document.querySelectorAll('script[data-home-only]').forEach(function(s){s.remove();});}</script>`
+    ? `<script>if(location.pathname!=="/"||${D.scannerAddressScript()}){var r=document.getElementById("root");if(r)r.innerHTML="";var c=document.querySelector('link[rel="canonical"]');if(c)c.remove();document.querySelectorAll('script[data-home-only]').forEach(function(s){s.remove();});}</script>`
     : "";
   html = putVerbatim(html, '<div id="root"></div>', `<div id="root">${shell(content, lang)}</div>${clearScript}`);
   return html;
@@ -293,6 +299,7 @@ export { visibleProPerks } from "../src/components/pricing/pro-perks-mirror";
 export { FREE_SCANS_PER_DAY as PLAN_FREE_SCANS_PER_DAY, SIGNED_IN_SCANS_PER_DAY as PLAN_SIGNED_IN_SCANS_PER_DAY, WRITING as PLAN_WRITING, FULL_ANALYSIS_PRICE_USD, PRO_PRICE_USD, BUILDER_PRICE_USD, BUILDER_PROPOSED_PER_DAY, FREE_KEY_DAILY_QUOTA as PLAN_FREE_KEY_DAILY_QUOTA, WITHHELD_SOURCES as PLAN_WITHHELD_SOURCES, WITHHELD_SOURCE_NAMES as PLAN_WITHHELD_SOURCE_NAMES, FREE_REPORT_DAYS, FULL_ANALYSIS_LINK_DAYS, LIMITS_AS_OF } from "../src/components/pricing/plan-facts";
 export { saleGates, homePlanRows } from "../src/lib/home/sale-gates";
 export { HOME_FIELD_SLUGS, fieldPath, ALL_FIELDS_PATH } from "../src/lib/home/fields";
+export { scannerAddressScript } from "../src/lib/scanner-address";
 export { sourcesTable, namedSystems, aiReach } from "../src/lib/home/board-figures";
 export { HOME_FREE_SCANS_PER_DAY, HOME_SIGNED_IN_SCANS_PER_DAY, HOME_SCAN_SECONDS, HOME_RESUME_TEXT_HOURS, HOME_FREE_REPORT_DAYS, HOME_PAID_REPORT_DAYS, HOME_FULL_ANALYSIS_USD, HOME_PRO_USD_PER_MONTH, HOME_PRO_WRITING_PER_DAY, HOME_PRO_WRITING_PER_MONTH } from "../src/lib/home/facts";
 export { HOME_ROWS_WINDOW_DAYS } from "../src/lib/home/rows";
@@ -1224,14 +1231,17 @@ export { count as fmtCount, money as fmtMoney, date as fmtDate } from "../src/li
       // The root index.html is every unbaked address's page too: its static
       // head names Footer only, and the homepage's chunks are added on "/"
       // alone (fallbackPreloadHtml).
+      // A scanner address of "/" preloads the scanner's chunks instead.
+      const scannerRoute = fallback ? chunkFor("Index") : null;
+      const scanner = scannerRoute ? { files: preloadClosure(scannerRoute, { readChunk, entry: ENTRY_CHUNK, skip: FOOTER_CHUNK ? [FOOTER_CHUNK] : [] }), predicate: D.scannerAddressScript() } : null;
       preloadCache.set(key, fallback
-        ? fallbackPreloadHtml(files, { always: FOOTER_CHUNK ? [FOOTER_CHUNK] : [] })
+        ? fallbackPreloadHtml(files, { always: FOOTER_CHUNK ? [FOOTER_CHUNK] : [], scanner })
         : files.map((f) => `<link rel="modulepreload" href="/assets/${f}">`).join(""));
     }
     return preloadCache.get(key);
   };
   {
-    const missing = ["Jobs", "JobPosting", "HomePage", "PricingPage", "Footer"].filter((p) => !chunkFor(p));
+    const missing = ["Jobs", "JobPosting", "HomePage", "PricingPage", "Index", "Footer"].filter((p) => !chunkFor(p));
     if (missing.length) console.warn(`[prerender-seo] preload hint skipped for the route chunk(s) the build does not have: ${missing.join(", ")} (entry ${ENTRY_CHUNK ?? "MISSING"})`);
   }
 

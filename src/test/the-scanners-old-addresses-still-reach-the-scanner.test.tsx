@@ -70,8 +70,8 @@ describe("every address that meant the scanner lands on /resume-checker, query a
     ["/?outcome=interview&rid=r-123", "/resume-checker?outcome=interview&rid=r-123"],
     ["/?outcome=no_response&rid=r-9&utm_source=email", "/resume-checker?outcome=no_response&rid=r-9&utm_source=email"],
     ["/?coupon=SPRING", "/resume-checker?coupon=SPRING"],
-    ["/?ref=AFF123", "/resume-checker?ref=AFF123"],
-    ["/?ref=AFF123&utm_source=x", "/resume-checker?ref=AFF123&utm_source=x"],
+    ["/?ref=0a1b2c3d4e5f", "/resume-checker?ref=0a1b2c3d4e5f"],
+    ["/?ref=0a1b2c3d4e5f&utm_source=x", "/resume-checker?ref=0a1b2c3d4e5f&utm_source=x"],
     ["/?utm_source=email&utm_medium=scan_report&utm_campaign=rescan", "/resume-checker?utm_source=email&utm_medium=scan_report&utm_campaign=rescan"],
     ["/?utm_source=email&utm_medium=market_pulse&utm_campaign=rescan", "/resume-checker?utm_source=email&utm_medium=market_pulse&utm_campaign=rescan"],
     ["/?utm_source=email&utm_medium=scan_report&utm_campaign=free_scan#pricing", "/resume-checker?utm_source=email&utm_medium=scan_report&utm_campaign=free_scan#pricing"],
@@ -81,6 +81,10 @@ describe("every address that meant the scanner lands on /resume-checker, query a
       expect(landAt(from)).toBe(to);
     });
   }
+
+  it("a directory's own ?ref= tag is not an affiliate code: it stays on the homepage", () => {
+    expect(landAt("/?ref=producthunt")).toBe("home");
+  });
 
   it("a plain visit, and one with only campaign tags, stays on the homepage", () => {
     expect(landAt("/")).toBe("home");
@@ -158,7 +162,7 @@ describe("the redirect knows every query parameter the scanner reads", () => {
   it("an affiliate's link, from the link builder and from /r/:code, reaches the scanner that records it", () => {
     expect(read("src/hooks/use-affiliate-auth.ts")).toMatch(/\?ref=\$\{/);
     expect(read("src/pages/AffiliateRedirect.tsx")).toMatch(/\/\?ref=/);
-    expect(scannerAddressFor("?ref=AFF123", "")).toBe("/resume-checker?ref=AFF123");
+    expect(scannerAddressFor("?ref=0a1b2c3d4e5f", "")).toBe("/resume-checker?ref=0a1b2c3d4e5f");
   });
 
   it("every link to \"/\" left in the scan report's, the market pulse's and the digest's mail reaches the scanner", () => {

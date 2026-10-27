@@ -19,6 +19,10 @@ export function routeChunkPrefix(path) {
   // step 10): their lazy chunks are named after their files.
   if (p === "/") return "HomePage";
   if (p === "/pricing") return "PricingPage";
+  // The scanner's landings (App.tsx renders Index at each): every old address
+  // of the scanner lands on /resume-checker now, so its chunk is preloaded
+  // there as the old "/" preloaded it (review round 2026-10-26).
+  if (p === "/resume-checker" || p === "/ats-resume-test" || p === "/resume-score" || p === "/es/revisar-curriculum") return "Index";
   if (p === "/jobs" || p.startsWith("/jobs/field/") || p.startsWith("/jobs/company/")) return "Jobs";
   return null;
 }
@@ -34,11 +38,18 @@ export function routeChunkPrefix(path) {
  * 103 KB gzip a page never runs), /auth measured LCP 3,192 ms on a phone
  * against 2,696 ms without them (the round's review, 2026-10-24).
  */
-export function fallbackPreloadHtml(files, { always = [] } = {}) {
+export function fallbackPreloadHtml(files, { always = [], scanner = null } = {}) {
   const head = always.map((f) => `<link rel="modulepreload" href="/assets/${f}">`).join("");
-  const rest = (files ?? []).filter((f) => !always.includes(f) && /^[\w.-]+\.js$/.test(f));
-  if (!rest.length) return head;
-  return `${head}<script data-home-preload="1">if(location.pathname==="/"){${JSON.stringify(rest)}.forEach(function(f){var l=document.createElement("link");l.rel="modulepreload";l.href="/assets/"+f;document.head.appendChild(l);});}</script>`;
+  const ok = (list) => (list ?? []).filter((f) => !always.includes(f) && /^[\w.-]+\.js$/.test(f));
+  const rest = ok(files);
+  // A scanner address of "/" (src/lib/scanner-address.ts scannerAddressScript)
+  // is redirected to /resume-checker before the homepage loads: it preloads
+  // the scanner's chunks, never the homepage's (review round 2026-10-26).
+  const scannerFiles = scanner && scanner.predicate ? ok(scanner.files) : [];
+  if (!rest.length && !scannerFiles.length) return head;
+  const add = 'function(f){var l=document.createElement("link");l.rel="modulepreload";l.href="/assets/"+f;document.head.appendChild(l);}';
+  const pick = scanner && scanner.predicate ? `(${scanner.predicate}?${JSON.stringify(scannerFiles)}:${JSON.stringify(rest)})` : JSON.stringify(rest);
+  return `${head}<script data-home-preload="1">if(location.pathname==="/"){${pick}.forEach(${add});}</script>`;
 }
 
 /** The chunk files a chunk imports statically, by file name, in the order they appear. */
