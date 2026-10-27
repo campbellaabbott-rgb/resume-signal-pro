@@ -53,10 +53,23 @@ const DATE_PRESETS = [
   { label: "Last 30 days", days: 30 },
 ];
 
+/**
+ * What each engagement bucket holds. The "home" bucket's events come from
+ * Index (useScrollDepth("home"), useTimeOnPage("home")), which since the
+ * homepage switch-over is the scanner at /resume-checker and the other tool
+ * landings; the new "/" sends none (README step 13). The key stays "home",
+ * since the events and the visitor budget are keyed on it, and the label
+ * says the scanner (review round 2026-10-26).
+ */
+export const ENGAGEMENT_PAGE_LABEL: Readonly<Record<"home" | "pricing", string>> = {
+  home: "Scanner pages",
+  pricing: "Pricing",
+};
+
 const PAGE_FILTERS = [
   { label: "All Pages", value: "all" },
-  { label: "Home", value: "home" },
-  { label: "Pricing", value: "pricing" },
+  { label: ENGAGEMENT_PAGE_LABEL.home, value: "home" },
+  { label: ENGAGEMENT_PAGE_LABEL.pricing, value: "pricing" },
 ];
 
 function AnalyticsDashboardContent() {
@@ -484,7 +497,7 @@ function AnalyticsDashboardContent() {
                       <thead>
                         <tr className="border-b">
                           <th className="text-left py-2 px-2">Milestone</th>
-                          <th className="text-right py-2 px-2">Home</th>
+                          <th className="text-right py-2 px-2">{ENGAGEMENT_PAGE_LABEL.home}</th>
                           <th className="text-right py-2 px-2">Pricing</th>
                           <th className="text-right py-2 px-2">Diff</th>
                         </tr>
@@ -533,7 +546,7 @@ function AnalyticsDashboardContent() {
                       <thead>
                         <tr className="border-b">
                           <th className="text-left py-2 px-2">Duration</th>
-                          <th className="text-right py-2 px-2">Home</th>
+                          <th className="text-right py-2 px-2">{ENGAGEMENT_PAGE_LABEL.home}</th>
                           <th className="text-right py-2 px-2">Pricing</th>
                           <th className="text-right py-2 px-2">Diff</th>
                         </tr>
@@ -576,7 +589,7 @@ function AnalyticsDashboardContent() {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  {['home', 'pricing'].map((page) => {
+                  {(['home', 'pricing'] as const).map((page) => {
                     const pageData = data.pageMetrics?.[page];
                     const scrollData = pageData?.scrollDepth || [];
                     const first = scrollData[0]?.views || 0;
@@ -586,7 +599,7 @@ function AnalyticsDashboardContent() {
                     return (
                       <div key={page} className="space-y-3">
                         <div className="flex justify-between items-center">
-                          <span className="font-medium capitalize">{page}</span>
+                          <span className="font-medium">{ENGAGEMENT_PAGE_LABEL[page]}</span>
                           <Badge variant={retentionRate > 30 ? "default" : "destructive"}>
                             {retentionRate.toFixed(1)}% retention
                           </Badge>
