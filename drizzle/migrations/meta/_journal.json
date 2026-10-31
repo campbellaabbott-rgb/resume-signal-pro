@@ -1387,6 +1387,13 @@
       "when": 1793472104641,
       "tag": "0197_20261011213000_a_confirmed_past_career_path_buyer_is_remembered",
       "breakpoints": true
+    },
+    {
+      "idx": 198,
+      "version": "7",
+      "when": 1793472542155,
+      "tag": "0198_20261025110000_the_reyes_boards_keep_only_their_own_brand",
+      "breakpoints": true
     }
   ]
 }
