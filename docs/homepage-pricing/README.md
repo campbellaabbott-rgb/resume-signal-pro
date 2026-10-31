@@ -136,9 +136,9 @@ Against production today, section 99 fails C1-C9 and C11, as it should before th
 
 **The deploy step.** Run it once wave 4 is deployed and verified:
 
-1. Deploy the eight functions `deploy-ledger --against origin/wave4/integration` names (six since the review round; the round of 2026-10-27 re-stamps free-keyword-scan and adds free-keyword-scan-stream and send-product-email):
-   - free-keyword-scan 2026-10-27.1;
-   - free-keyword-scan-stream 2026-10-27.1;
+1. Deploy the eight functions `deploy-ledger --against origin/wave4/integration` names (six since the review round; the round of 2026-10-27 re-stamps free-keyword-scan and adds free-keyword-scan-stream and send-product-email; the review of that round re-stamps both scan functions 2026-10-31.1):
+   - free-keyword-scan 2026-10-31.1;
+   - free-keyword-scan-stream 2026-10-31.1;
    - send-scan-report 2026-10-25.1;
    - send-search-digest 2026-10-25.1;
    - send-market-pulse 2026-10-25.2;
@@ -396,8 +396,9 @@ four files, is
 The expected-keywords share ("N% of this list") counts whole words too: "api"
 no longer matches "rapid", nor "rest" "interest". The market module changed
 in free-keyword-scan and in the stream fork's copy (byte for byte, and the
-guard now checks that), both still 2026-10-27.1: neither is deployed, so the
-deploy step is unchanged (eight functions).
+guard now checks that). This paragraph first said both stayed at 2026-10-27.1
+because neither is deployed; a build string names one bundle, so both now
+carry 2026-10-31.1 (below), and the deploy step still names eight functions.
 
 **What "/" loads.** `en.json`, which the entry carries, shrank again:
 102,725 to 102,336 B (`gzip -9` from stdin; the other eight locale files
@@ -426,6 +427,56 @@ a wrapped sentence) fixed after and its file re-run (13 of 13);
 functions differ, 0 violations; `--overlap` exit 0 over both required lists,
 and over every in-flight branch no undeclared file involves hp/switch-over
 (the same 13 among the others). The pre-push battery's result is in PR #54.
+
+## The restamp and a second look (2026-10-31)
+
+The review fixes above (e6ed61ab, 8605e2f1, 340c80ff) were not pushed on
+2026-10-27: the pre-push battery failed in twelve files (eleven tests and one
+hook), nine on timeouts on a loaded machine and three in verify-section tests
+(sections 99, 96 and 92) that pass when their files run alone, as they do in
+this round's targeted runs. Before pushing them, this round:
+
+- **Re-stamps both scan functions 2026-10-31.1.** 2026-10-27.1 had already
+  named the sweep's bundle on `origin/hp/switch-over`, and the review changed
+  both bundles again (the market module, the prompt, `listsAsOf`), so the
+  same string would have named two bundles. free-keyword-scan and
+  free-keyword-scan-stream are 2026-10-31.1; section 99's C6 asks for that
+  build or a later one, and fails on 2026-10-27.1. The stream fork reads only
+  the module's country detection, which did not change, so what it answers is
+  the same. send-product-email stays 2026-10-27.1 (unchanged).
+- **Names the basis of the minutes too.** The fix plan's minutes are set the
+  way its points are (the AI's time estimate per quick win, or 15 and 10
+  minutes per kind of fix), so the plan says "Minutes and points are a rough
+  guide … not a forecast of your next scan" (`FIX_PLAN_BASIS`). The PDF
+  summary printed "→ 83 after fixes" and each step's minutes and points with
+  no basis; it now says "about 83 after fixes, a rough guide" and prints the
+  same basis under the plan.
+- **Removes two predictions the review did not list.** The AI-ATS score
+  card's subtext read "Keyword gaps may hide you from searches" (60-79) and
+  "Likely invisible in recruiter searches" (under 60), chosen by two score
+  thresholds: it now says what the score reads ("Gaps to close: see the fixes
+  below"). The career-change card opened with how career changers get
+  filtered, a claim with no source: it now says what transfers and what to
+  reword. The guard bans all three phrases in the report's modules and the
+  first two in the rendered report.
+
+Each change failed a test first
+(`~/.config/resumebooster/hp-switch-over-2026-10-26/restamp-round-2026-10-31/`,
+`before.txt` and `before-2.txt`: six tests in three files).
+
+**Gate** (this round): the frontend typecheck (standalone and pre-commit on
+both src commits, through heavy.sh); `scripts/check-functions.sh` through
+heavy.sh (every edge function typechecks, the Deno tests pass; `deno.lock`
+restored); 271 targeted files over the report, its components, the locales,
+the scan, the market module, the speed gate, section 99, the ledger, every hp
+test and the section 96 and 92 tests, through heavy.sh: 4,196 tests pass, 6
+skipped; `deploy-ledger --draft` exit 0 (free-keyword-scan and
+free-keyword-scan-stream 2026-10-31.1, send-product-email 2026-10-27.1);
+`--against origin/wave4/integration` 8 functions differ, 0 violations;
+`--against origin/hp/switch-over` 2 functions differ, 0 violations (at
+340c80ff it found both scan functions reusing 2026-10-27.1 on different
+code); `--overlap` exit 0 over both required lists and over HEAD with
+`origin/land/all`. The pre-push battery's result is in PR #54.
 
 ## What was built
 
