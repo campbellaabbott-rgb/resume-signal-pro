@@ -5465,6 +5465,30 @@ export type Database = {
         }
         Relationships: []
       }
+      writing_tool_uses: {
+        Row: {
+          id: string
+          tier: string
+          tool: string
+          used_at: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          tier: string
+          tool: string
+          used_at?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          tier?: string
+          tool?: string
+          used_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -7772,6 +7796,10 @@ export type Database = {
       refresh_recency_ladder: { Args: never; Returns: Json }
       refresh_stats_cache: { Args: never; Returns: undefined }
       refresh_transparency_cache: { Args: never; Returns: undefined }
+      refund_writing_tools: {
+        Args: { p_use_ids: string[]; p_user_id: string }
+        Returns: number
+      }
       register_affiliate: {
         Args: { p_email: string; p_password: string }
         Returns: Json
@@ -8015,6 +8043,16 @@ export type Database = {
           p_stripe_session_id: string
         }
         Returns: string
+      }
+      take_writing_tools: {
+        Args: {
+          p_per_day: number
+          p_per_month: number
+          p_tier: string
+          p_tools: string[]
+          p_user_id: string
+        }
+        Returns: Json
       }
       track_ab_event: {
         Args: {
