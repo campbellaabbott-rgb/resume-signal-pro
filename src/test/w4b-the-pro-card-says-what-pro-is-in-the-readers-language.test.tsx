@@ -46,7 +46,7 @@ vi.mock("@/hooks/use-pro-subscription", () => ({
 }));
 
 import { ProSubscriptionCard } from "@/components/ProSubscriptionCard";
-import { PRO_PERK_ITEMS } from "@/config/pro-perks";
+import { PRO_PERK_ITEMS, proPerksOnSale } from "@/config/pro-perks";
 
 vi.setConfig(MOUNT_TEST_BUDGET);
 
@@ -83,7 +83,10 @@ describe("every word on the card goes through the translator (S12-044)", () => {
 
   it("each perk renders by its own key", () => {
     mount();
-    for (const p of PRO_PERK_ITEMS) expect(card()).toContain(`⟦${p.key}⟧`);
+    // Today's list: the included Full Analysis waits for gate G2.
+    const shown = proPerksOnSale(PRO_PERK_ITEMS);
+    expect(shown.length).toBe(PRO_PERK_ITEMS.length - 1);
+    for (const p of shown) expect(card()).toContain(`⟦${p.key}⟧`);
   });
 });
 

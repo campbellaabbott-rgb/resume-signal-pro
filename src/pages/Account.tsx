@@ -817,7 +817,7 @@ export default function Account() {
                 </div>
               ))}
             </div>
-            <Link to="/#upload" className="inline-block px-5 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors">
+            <Link to="/resume-checker#upload" className="inline-block px-5 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors">
               {t("accountPage.welcomeCta", "Scan my resume free →")}
             </Link>
           </div>
@@ -909,7 +909,7 @@ export default function Account() {
               ))}
             </div>
             {doneFixes === latestFixPlan.fix_plan.length && (
-              <Link to="/#upload" className="mt-3 inline-block px-4 py-2 rounded-lg bg-success text-success-foreground text-xs font-semibold hover:bg-success/90 transition-colors">
+              <Link to="/resume-checker#upload" className="mt-3 inline-block px-4 py-2 rounded-lg bg-success text-success-foreground text-xs font-semibold hover:bg-success/90 transition-colors">
                 {t("accountPage.fixAllDone", "All done: rescan to see your new score →")}
               </Link>
             )}
@@ -927,7 +927,7 @@ export default function Account() {
             <div className="text-center py-8">
               <ScanSearch className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
               <p className="text-sm text-muted-foreground mb-3">{t("accountPage.noScans", "No scans saved yet. Run a free scan while signed in and it lands here automatically.")}</p>
-              <Link to="/#upload" className="inline-block px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors">
+              <Link to="/resume-checker#upload" className="inline-block px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors">
                 {t("accountPage.scanCta", "Scan my resume")}
               </Link>
             </div>
@@ -1367,7 +1367,7 @@ export default function Account() {
                 ))}
               </ul>
               <p className="text-[11px] text-muted-foreground mt-2">
-                {t("accountPage.skillGapHave", "If you genuinely have these, put them on your résumé:")} <Link to="/#upload" className="text-primary hover:underline">{t("accountPage.skillGapRescan", "rescan to see the difference")}</Link>. {t("accountPage.skillGapLearn", "If not, they're your clearest learning targets.")}
+                {t("accountPage.skillGapHave", "If you genuinely have these, put them on your résumé:")} <Link to="/resume-checker#upload" className="text-primary hover:underline">{t("accountPage.skillGapRescan", "rescan to see the difference")}</Link>. {t("accountPage.skillGapLearn", "If not, they're your clearest learning targets.")}
               </p>
             </div>
           )}

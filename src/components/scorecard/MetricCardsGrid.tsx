@@ -104,7 +104,7 @@ const metricTooltips: Record<string, { title: string; description: string; whyMa
   metrics: {
     title: "Quantification Score",
     description: "Measures how many of your achievements include numbers, percentages, or metrics.",
-    whyMatters: "Recruiters spend 6 seconds scanning—numbers catch their eye first."
+    whyMatters: "Recruiters skim, and numbers catch their eye first."
   },
   verbs: {
     title: "Action Verb Grade",
@@ -134,7 +134,7 @@ const metricTooltips: Record<string, { title: string; description: string; whyMa
   readability: {
     title: "Readability Score",
     description: "Measures how easy your resume is to scan quickly.",
-    whyMatters: "Recruiters average 6-7 seconds per resume—make every word count."
+    whyMatters: "Recruiters skim each resume quickly, so make every word count."
   },
   bulletImpact: {
     title: "Bullet Impact",
@@ -322,7 +322,9 @@ export function MetricCardsGrid({
       label: t('freeScan.atsScore'),
       tooltipKey: "atsScore",
       value: `${atsScoreEstimate}/100`,
-      subtext: atsScoreEstimate >= 80 ? "✓ Solid — searchable and parseable" : atsScoreEstimate >= 60 ? "⚠ Keyword gaps may hide you from searches" : "✗ Likely invisible in recruiter searches",
+      // What the score reads, not what a recruiter's search will do with it
+      // (the review of 2026-10-27, finding 3's class).
+      subtext: atsScoreEstimate >= 80 ? "✓ Strong on keywords, format and results" : atsScoreEstimate >= 60 ? "⚠ Gaps to close: see the fixes below" : "✗ Many gaps to close: see the fixes below",
       status: statusFromScore(atsScoreEstimate, 80, 60),
       progress: atsScoreEstimate,
     },
@@ -398,7 +400,7 @@ export function MetricCardsGrid({
       label: t('freeScan.readability'),
       tooltipKey: "readability",
       value: `${readabilityScore.score}%`,
-      subtext: readabilityScore.verdict === "easy_to_scan" ? "✓ Quick 6-second scan friendly" : readabilityScore.verdict === "readable" ? "⚠ Some sections hard to scan" : "✗ Recruiters will skip this",
+      subtext: readabilityScore.verdict === "easy_to_scan" ? "✓ Easy to scan" : readabilityScore.verdict === "readable" ? "⚠ Some sections hard to scan" : "✗ Hard to scan",
       status: statusFromScore(readabilityScore.score, 70, 45),
       progress: readabilityScore.score,
     }] : []),

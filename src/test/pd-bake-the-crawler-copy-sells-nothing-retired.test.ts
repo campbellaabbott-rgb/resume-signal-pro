@@ -148,10 +148,12 @@ describe("no page, block or llms file sells or describes a retired product", () 
   });
 
   it("/pricing lists no retired one-time product and no plan but Pro", () => {
+    // Since the homepage switch-over the crawler /pricing is the new page:
+    // the Free, Full Analysis and Pro cards, nothing else on offer.
     const t = crawlerText(page("/pricing"));
     expect(t).not.toMatch(/Premium Resume Package|Apply Assistant|Morning Queue|Agent plan|Agent Pass/);
-    expect(t).toMatch(/One monthly plan/);
-    expect(t).toMatch(/Pro .*\$45\/month/);
+    expect(t).toMatch(/Full Analysis, \$5 once/);
+    expect(t).toMatch(/Pro, \$45 a month/);
   });
 
   it("teeth: a page carrying a retired claim, planted in a copy of the real output, is caught", () => {
@@ -172,18 +174,28 @@ describe("no page, block or llms file sells or describes a retired product", () 
 });
 
 describe("what the crawler reads instead: search and apply through your own AI", () => {
-  it("the homepage, /agents, /agent and /pricing carry the one true line, naming only Claude, ChatGPT and Claude Code", () => {
-    for (const p of ["/", "/agents", "/agent", "/pricing"]) {
+  it("/agents and /agent carry the one true line, and / and /pricing their own answer, naming only Claude, ChatGPT and Claude Code", () => {
+    for (const p of ["/agents", "/agent"]) {
       expect(crawlerText(page(p)), p).toContain(APPLY_YOURSELF_LINE);
     }
     expect(APPLY_YOURSELF_LINE).toMatch(/Claude, ChatGPT or Claude Code/);
     expect(APPLY_YOURSELF_LINE).toMatch(/you press submit/);
+    // Since the homepage switch-over "/" and "/pricing" print what React
+    // prints: their FAQ's "How do I apply?" answer (the employer's own site,
+    // by hand or with Claude, ChatGPT or Claude Code). Never "we submit".
+    const home = JSON.parse(readFileSync(resolve(ROOT, "src/i18n/shards/home/en.json"), "utf8")).home.faq.applyA as string;
+    const pricing = JSON.parse(readFileSync(resolve(ROOT, "src/i18n/shards/pricing/en.json"), "utf8")).pricingPlans.faq.applyA as string;
+    for (const [p, line] of [["/", home], ["/pricing", pricing]] as const) {
+      expect(line).toMatch(/Claude, ChatGPT or Claude Code/);
+      expect(crawlerText(page(p)), p).toContain(line);
+      expect(crawlerText(page(p)), p).not.toMatch(/\bwe (?:submit|apply)\b|applies for you/i);
+    }
   });
 
   it("the homepage H1 is the headline, and keeps the host-allowance sentence section 73 reads", () => {
     const html = page("/");
     expect(/<h1[^>]*>([^<]*)<\/h1>/.exec(html)?.[1]).toBe("Live jobs, straight from employers' own hiring systems.");
-    expect(crawlerText(html)).toMatch(/from ChatGPT each person has their own|within a free daily allowance/);
+    expect(crawlerText(html)).toMatch(/from ChatGPT each person has their own|within a free daily allowance|within a shared daily allowance/);
   });
 
   it("/agent says how to apply with your own AI: no price, indexable, linking /agents, and no 'retired' until wave 4 removes the sale paths", () => {

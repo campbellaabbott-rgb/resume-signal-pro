@@ -50,7 +50,6 @@ const OURS_CHECKED: Record<string, number[]> = {
   "proPlan.perks.fullAnalysisIncluded": [PRODUCTS.fullAnalysis.priceUsd],
   "proPlan.summaryLine": [PRODUCTS.fullAnalysis.priceUsd],
   "proPlan.trialingNoCap": [PRODUCTS.fullAnalysis.priceUsd],
-  "pricingPage.heroBadgeLine": [PRODUCTS.fullAnalysis.priceUsd],
   // The affiliate page states Pro's monthly price beside the commission.
   "affiliates.proCommission.detail": [SUBSCRIPTIONS.pro.priceUsd],
 };

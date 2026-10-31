@@ -12,9 +12,10 @@
  * closing line about bundle discounts that no tree has ever shown. React's
  * /pricing says "A $5 Full Analysis paid once, or Pro at $45 a month for the
  * writing tools". This runs the real bake offline and reads what it wrote: one
- * product is named in React's own sentences, Pro is described by the line the
+ * product is named in React's own sentences, Pro is described by the list the
  * page and Stripe read, and the bake's own retired-claim check now fails a
- * bundle-discount line and a range that starts and ends at one price.
+ * bundle-discount line and a range that starts and ends at one price. Since
+ * the homepage switch-over the page it reads is the new pricing page.
  */
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { execFileSync } from "node:child_process";
@@ -23,8 +24,10 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { crawlerText, retiredClaimsIn } from "../../scripts/prerender-retired.mjs";
 import { getAllProducts, PRODUCTS, SUBSCRIPTIONS } from "@/config/products";
-import { PRO_SUMMARY } from "@/config/pro-perks";
-import EN from "@/i18n/locales/en.json";
+import { GATE_TEXT_KEY, resolveSaleGates } from "@/components/pricing/sale-gates";
+import { pricingMetaKeys } from "@/components/pricing/pricing-meta";
+import { visibleProPerks } from "@/components/pricing/pro-perks-mirror";
+import PRICING_EN from "@/i18n/shards/pricing/en.json";
 
 vi.setConfig({ testTimeout: 120_000 });
 
@@ -55,7 +58,7 @@ const unescape = (s: string) => s.replace(/&quot;/g, '"').replace(/&#39;/g, "'")
 
 const fa = PRODUCTS.fullAnalysis;
 const pro = SUBSCRIPTIONS.pro;
-const PP = (EN as { pricingPage: Record<string, string> }).pricingPage;
+const PS = PRICING_EN.pricingPlans;
 /** A dollar range that opens and closes at the same price: "$5–$5". */
 const ONE_PRICE_RANGE = /\$\s?(\d[\d,.]*)\s?[–—-]\s?\$\s?\1(?![\d,.]*\d)/;
 
@@ -66,41 +69,56 @@ describe("the catalogue the bake reads holds one one-time product", () => {
 });
 
 describe("the crawler's /pricing names the one report and Pro in React's own sentences", () => {
+  // Since the homepage switch-over the crawler /pricing is the new pricing
+  // page (src/pages/pricing/PricingPage.tsx): its strings
+  // (src/i18n/shards/pricing), its gates (resolveSaleGates) and its head
+  // (pricingMetaKeys). What this file held stays held: one report and one
+  // plan, each named with its price, never "One-Time Tools", never a range
+  // whose ends are one price, never a bundle discount.
+  const gates = resolveSaleGates();
+  const meta = pricingMetaKeys(gates);
+  const prices = { faPrice: `$${fa.priceUsd}`, proPrice: `$${pro.priceUsd}` };
+  const key = (k: string) => PS.meta[k.replace(/^pricingPlans\.meta\./, "") as keyof typeof PS.meta];
+
   it("the bake ran and its retired-claim check is clean", () => {
     expect(LOG).toMatch(/Wrote \d+ static HTML pages/);
     expect(LOG).toMatch(/retired-claim check: no written page/);
   });
 
-  it("the title names the report and Pro's price, never 'One-Time Tools'", () => {
+  it("the title is the page's own for its gates, never 'One-Time Tools'", () => {
     const title = unescape(titleOf(HTML));
+    expect(title).toBe(fill(key(meta.title), prices));
     expect(title).not.toMatch(/one-time tools/i);
-    expect(title).toContain(`$${fa.priceUsd} ${fa.name}`);
-    expect(title).toContain(`Pro $${pro.priceUsd}/month`);
     expect(title).not.toMatch(ONE_PRICE_RANGE);
+    // Pro's price is in the title only while Pro is on sale.
+    expect(title.includes(`$${pro.priceUsd}`)).toBe(gates.pro.onSale);
   });
 
-  it("the description is React's metaDescriptionFa with the catalogue's figures, and nothing after it", () => {
-    // Sales stay on (owner, 2026-10-27): no purchases-open-soon tail.
-    const want = fill(PP.metaDescriptionFa, { lowPrice: fa.priceUsd, highPrice: fa.priceUsd, proPrice: pro.priceUsd });
-    expect(unescape(descOf(HTML))).toBe(want);
-    expect(unescape(descOf(HTML))).not.toMatch(ONE_PRICE_RANGE);
+  it("the description is the page's own for its gates, both products priced, and nothing opens soon", () => {
+    // Sales stay on (owner, 2026-10-27): both switches are on with no seller
+    // named, so the description prices both and has no purchases-open-soon tail.
+    const desc = unescape(descOf(HTML));
+    expect(meta.description).toBe("pricingPlans.meta.description");
+    expect(desc).toBe(fill(key(meta.description), prices));
+    expect(desc).not.toMatch(ONE_PRICE_RANGE);
+    expect(desc).not.toMatch(/open soon/i);
   });
 
-  it("the lead says React's oneTimeAndProLineFa, not 'Paid tools are one-time purchases'", () => {
+  it("the one report and the one plan are each named with their price, and Pro by wave 4's list", () => {
     const text = crawlerText(HTML);
-    expect(text).toContain(fill(PP.oneTimeAndProLineFa, { price: fa.priceUsd }));
-    expect(text).not.toMatch(/Paid tools are one-time purchases/);
-  });
-
-  it("one report sits under a singular heading, and Pro is described by the line the page and Stripe read", () => {
-    const text = crawlerText(HTML);
-    expect(text).toMatch(/One paid report/);
-    expect(text).not.toMatch(/One-time tools/);
-    expect(text).toContain(PRO_SUMMARY.text);
+    expect(text).toContain(`${PS.fa.name}, $${fa.priceUsd} ${PS.fa.unit}`);
+    expect(text).toContain(`${PS.pro.name}, $${pro.priceUsd} ${PS.pro.unit}`);
+    expect(text).not.toMatch(/One-time tools|Paid tools are one-time purchases/);
     expect(text).not.toMatch(/every paid tool included/i);
-    // Sales stay on (owner, 2026-10-27): the terms are a sale open now.
-    expect(text).toContain(`The ${fa.name} is a one-time payment that never renews.`);
-    expect(text).not.toMatch(/When purchases open/);
+    for (const perk of visibleProPerks({ fullAnalysisOnSale: gates.fullAnalysis.onSale })) expect(text).toContain(perk.text);
+    // Sales stay on (owner, 2026-10-27): both cards are on sale, so neither
+    // prints a gate sentence; one would, in the page's own words, if its
+    // switch were off.
+    expect(gates.fullAnalysis.onSale && gates.pro.onSale).toBe(true);
+    if (!gates.fullAnalysis.onSale) expect(text).toContain(PS.buy[GATE_TEXT_KEY[gates.fullAnalysis.closedBy!].replace("pricingPlans.buy.", "") as keyof typeof PS.buy]);
+    if (!gates.pro.onSale) expect(text).toContain(PS.buy[GATE_TEXT_KEY[gates.pro.closedBy!].replace("pricingPlans.buy.", "") as keyof typeof PS.buy]);
+    expect(text).not.toMatch(/open soon/i);
+    for (const gate of [PS.buy.gateFaDelivery, PS.buy.gateProWatched]) expect(text).not.toContain(gate);
   });
 
   it("no bundle discount and no one-price range anywhere on the page", () => {

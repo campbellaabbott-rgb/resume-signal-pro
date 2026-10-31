@@ -62,10 +62,11 @@ describe("SEO-029: the legal pages' full text, from the files the app renders", 
 });
 
 describe("SEO-023: each page preloads the chunk it runs", () => {
-  it("maps posting pages to JobPosting, / to Index, /pricing to Pricing and the board family to Jobs", () => {
+  it("maps posting pages to JobPosting, / to HomePage, /pricing to PricingPage and the board family to Jobs", () => {
     expect(routeChunkPrefix("/jobs/posting/workday/a~wd1~b/R1")).toBe("JobPosting");
-    expect(routeChunkPrefix("/")).toBe("Index");
-    expect(routeChunkPrefix("/pricing")).toBe("Pricing");
+    // The board-first homepage and the new pricing page (homepage switch-over).
+    expect(routeChunkPrefix("/")).toBe("HomePage");
+    expect(routeChunkPrefix("/pricing")).toBe("PricingPage");
     expect(routeChunkPrefix("/jobs")).toBe("Jobs");
     expect(routeChunkPrefix("/jobs/company/dominos")).toBe("Jobs");
     expect(routeChunkPrefix("/jobs/field/engineering")).toBe("Jobs");

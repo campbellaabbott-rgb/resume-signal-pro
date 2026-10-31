@@ -62,8 +62,7 @@
     "headline": {
       "get": "The job board with",
       "recruiterGrade": "live jobs straight from employers' own hiring systems",
-      "feedbackLive": "— {{n}}+ live openings, matched to your CV",
-      "feedbackPlain": "— live openings, matched to your CV"
+      "tailFreeCheck": "— and a free check of your CV against any posting"
     },
     "description": "Upload your CV and get ATS-optimised rewrites, red-flag warnings, and keyword improvements — written the way hiring managers actually review CVs.",
     "benefits": {
@@ -152,7 +151,6 @@
     "factNoStorage": "Never sold",
     "measureStrip": "Measurements, not opinions · Every quote verified · A score that shows its work",
     "jobsCta": "Live job board — check your fit before you apply →",
-    "browseJobsLive": "Browse {{n}}+ live jobs",
     "browseJobsPlain": "Browse the live job board"
   },
   "footer": {
@@ -180,7 +178,6 @@
       "lever": "Lever guide",
       "icims": "iCIMS guide",
       "vsJobscan": "vs Jobscan",
-      "freelanceBoost": "Freelance Boost",
       "builder": "CV Builder",
       "methodology": "Methodology",
       "dataApi": "Hiring Data & API",
@@ -463,6 +460,12 @@
       },
       "whatDoIGetNamed": {
         "question": "What do I get with {{name}}?"
+      },
+      "subscriptionClosed": {
+        "answer": "Not today: nothing is on sale yet. The pricing page says before you pay what each paid option includes and whether it renews. The CV scan, the job board and connecting your own AI are free."
+      },
+      "subscriptionFaOnly": {
+        "answer": "No. The ${{price}} Full Analysis is a one-time payment that never renews, and no monthly plan is on sale yet. The CV scan, the job board and connecting your own AI stay free either way. Nothing upgrades you automatically."
       }
     },
     "stillHaveQuestions": "Still have questions?",
@@ -761,7 +764,6 @@
     "featuresMobile": "Your scan's fixes, applied. One payment."
   },
   "finalCta": {
-    "urgency": "Your CV might be losing you interviews right now",
     "title": "You've seen the problems. Now get the fixes.",
     "subtitle": "The free scan shows what's wrong. The full analysis gives you rewritten content you can copy-paste.",
     "heading": "Don't Let Another Opportunity Slip Away",
@@ -769,26 +771,9 @@
     "freeScan": "Free Scan",
     "fullAnalysis": "Full Analysis",
     "ctaButton": "See All Packages",
-    "comparison": {
-      "atsScore": "ATS Score & 24 Diagnostics",
-      "redFlags": "Red Flags & Missing Keywords",
-      "sampleBullet": "1 Sample Bullet Rewrite",
-      "allBullets": "ALL Bullets Rewritten with Metrics",
-      "linkedin": "LinkedIn Profile Optimisation",
-      "jobKeywords": "Job-Specific Keyword Tailoring",
-      "industryTemplates": "Industry-Specific Templates Applied",
-      "fullReport": "Complete 10-Section Report"
-    },
-    "benefits": {
-      "ats": "ATS score with 5-point breakdown",
-      "keywords": "Industry-specific keyword gaps",
-      "redFlags": "Red flags recruiters notice",
-      "linkedin": "LinkedIn profile optimisation"
-    },
     "oneTime": "one-time",
-    "guarantee": "Instant results • One-time payment",
     "button": "Get My Analysis Now",
-    "roi": "One interview = {{price}} paid for itself"
+    "freeScanCta": "Scan my CV free"
   },
   "scanProgress": {
     "title": "AI Analysis in Progress",
@@ -871,19 +856,7 @@
       "impact": "Impact",
       "flags": "Flags"
     },
-    "filterPhrase": {
-      "compliance": "rigid, compliance-style ATS screens",
-      "credential": "credential-focused applicant tracking systems",
-      "recruiterScreen": "automated filters before a recruiter ever sees it",
-      "volume": "ATS systems screening hundreds of applicants per role",
-      "generic": "automated ATS screens"
-    },
-    "outcome": {
-      "strong": "Strong candidate for clearing {{filterPhrase}}",
-      "likely": "Likely to clear most {{filterPhrase}}",
-      "atRisk": "At risk of being filtered by {{filterPhrase}}",
-      "highRisk": "High risk of being filtered by {{filterPhrase}} before a human sees it"
-    },
+    "basis": "Scored on this CV's keywords, sections, format and measurable results",
     "gauge": {
       "excellent": "Excellent",
       "good": "Good",
@@ -1159,7 +1132,7 @@
     "metricTooltips": {
       "atsScore": {
         "title": "AI-ATS Score",
-        "description": "Our AI simulates how modern AI-powered Applicant Tracking Systems scan your CV—the same technology 98% of Fortune 500 companies use.",
+        "description": "Our AI simulates how modern AI-powered Applicant Tracking Systems scan your CV.",
         "whyMatters": "A low score means parsing or keyword gaps are likely keeping you out of the searches recruiters actually run."
       },
       "format": {
@@ -1170,7 +1143,7 @@
       "metrics": {
         "title": "Quantification Score",
         "description": "Measures how many of your achievements include numbers, percentages, or metrics.",
-        "whyMatters": "Recruiters spend 6 seconds scanning—numbers catch their eye first."
+        "whyMatters": "Recruiters skim, and numbers catch their eye first."
       },
       "verbs": {
         "title": "Action Verb Grade",
@@ -1200,7 +1173,7 @@
       "readability": {
         "title": "Readability Score",
         "description": "Measures how easy your CV is to scan quickly.",
-        "whyMatters": "Recruiters average 6-7 seconds per CV—make every word count."
+        "whyMatters": "Recruiters skim each CV quickly, so make every word count."
       },
       "bulletImpact": {
         "title": "Bullet Impact",
@@ -1231,66 +1204,6 @@
         "title": "AI-ATS System Compatibility",
         "description": "Shows how well your CV parses across major AI-powered Applicant Tracking Systems like Workday, Greenhouse, and Taleo.",
         "whyMatters": "Different companies use different AI-ATS systems—know which ones will read your CV correctly."
-      }
-    },
-    "ctaCopy": {
-      "coverLetter": {
-        "control": {
-          "button": "Generate Cover Letter — {{price}}",
-          "description": "AI-generated cover letter tailored to your CV and target job. Ready to send in minutes."
-        },
-        "benefitFocused": {
-          "button": "Get Your Interview-Winning Letter",
-          "description": "Stand out from 100+ applicants with a personalised cover letter that gets recruiters excited."
-        },
-        "scarcity": {
-          "button": "Create Cover Letter Now — {{price}}",
-          "description": "Most applicants skip cover letters. Get ahead of the competition with a custom letter in 2 minutes."
-        }
-      },
-      "keywordFix": {
-        "control": {
-          "button": "Get Full Keyword Report",
-          "headline": "Want 50+ Industry Keywords?"
-        },
-        "benefitFocused": {
-          "button": "Unlock Hidden Keywords",
-          "headline": "Get Past the ATS Filter"
-        },
-        "scarcity": {
-          "button": "Get Keywords Before Others Do",
-          "headline": "Beat 87% of Applicants"
-        }
-      },
-      "premiumPackage": {
-        "control": {
-          "button": "Buy Premium Package — {{price}}",
-          "headline": "Premium CV Package",
-          "subtext": "Everything you need to land interviews"
-        },
-        "benefitFocused": {
-          "button": "Get Interview-Ready Now",
-          "headline": "Land Your Dream Job Faster",
-          "subtext": "3x more interview callbacks with our complete package"
-        },
-        "scarcity": {
-          "button": "Claim Your Package — Limited",
-          "headline": "Premium CV Package"
-        }
-      },
-      "tailoredResume": {
-        "control": {
-          "button": "Preview Tailored CV",
-          "description": "Preview for free, then unlock the full Premium Package with tailored CV + cover letter"
-        },
-        "benefitFocused": {
-          "button": "See Your Improved CV",
-          "description": "See exactly how your CV will look when optimised for your target role"
-        },
-        "scarcity": {
-          "button": "Generate Before It Closes",
-          "description": "Limited preview available — see your tailored CV before upgrading"
-        }
       }
     },
     "addJobDescriptionToUnlock": "Add a job description above to unlock",
@@ -1337,10 +1250,6 @@
       "should": "Should",
       "nice": "Nice"
     },
-    "atRiskOrNeedsImprovement": {
-      "atRisk": "At risk of being missed in recruiter searches",
-      "needsImprovement": "Needs improvement to compete"
-    },
     "personalizedTipsSection": {
       "title": "Personalised Tips",
       "subtitle": "Tailored insights for your profile"
@@ -1368,18 +1277,6 @@
     "fixChecklistTitle": "Fix Checklist",
     "checklistCompleted": "{{completed}}/{{total}} completed",
     "trackProgress": "Track progress",
-    "peerBenchmark": {
-      "above": "Above average",
-      "at": "Around average",
-      "below": "Below average",
-      "forAtsReadinessAmong": "for ATS readiness among {{cohort}}",
-      "strongPosition": "✓ Strong position in your industry",
-      "roomForImprovement": "→ Room for improvement",
-      "belowAverage": "⚠ Below industry average",
-      "strongResult": "Your CV scores well against peers. Focus on tailoring to specific roles for best results.",
-      "competitiveResult": "Your CV is competitive but could be stronger. The suggestions below will help you stand out.",
-      "weakResult": "Other candidates in your field are scoring higher. Apply the fixes below to improve your chances."
-    },
     "timelineProgression": {
       "rapidLabel": "🚀 Rapid",
       "steadyLabel": "📈 Steady",
@@ -1407,11 +1304,6 @@
       "naturalProgression": "Natural next step",
       "lateralMove": "Lateral move",
       "stretchGoal": "Stretch goal"
-    },
-    "marketPosition": {
-      "aboveMarket": "Above Market",
-      "atMarket": "At Market",
-      "belowMarket": "Below Market"
     },
     "formatRecommendationSection": {
       "title": "CV Format Recommendation",
@@ -1516,8 +1408,6 @@
     },
     "jobMatch": {
       "title": "Job Match Analysis",
-      "badge": "Free & Unlimited",
-      "subtitle": "Compare your CV against any job — no limits!",
       "matchScore": "Match Score",
       "matchGrade": "Match Grade",
       "experienceFit": "Experience Fit",
@@ -1540,17 +1430,9 @@
         "subtitle": "Full tailored CV, cover letter, honest skill-gap callouts, and a submission checklist — you review and apply yourself, nothing is auto-submitted"
       }
     },
-    "appRecommendation": {
-      "strongApply": "✓ Strong Match — Apply Now!",
-      "applyWithChanges": "⚡ Good Fit — Apply After Quick Fixes",
-      "applyAsStretch": "🎯 Stretch Role — Apply as Reach",
-      "doNotApply": "✗ Poor Fit — Consider Other Roles"
-    },
     "atsBanner": {
-      "belowMedian": "Below the median of {{median}} among {{n}} {{industry}} CVs scanned here. Major ATS platforms do not reject on this number, but the fixes below raise it.",
-      "belowTopQuarter": "Above the median of {{median}}; the top quarter of the {{n}} {{industry}} CVs scanned here score {{p75}} or more.",
-      "noPassMark": "This is not a pass mark: major ATS platforms do not reject a CV on a score. The fixes below raise it.",
-      "topQuarter": "Top quarter: {{p75}}+"
+      "heading": "Room to raise this score",
+      "noPassMark": "This is not a pass mark: major ATS platforms do not reject a CV on a score. The fixes below raise it."
     },
     "eliteSignals": {
       "title": "Recruiter-Attracting Signals"
@@ -1566,19 +1448,12 @@
       "whyLabel": "Why:",
       "whyNote": "People want clarity first — reasons matter more than solutions."
     },
-    "howYouCompare": {
-      "title": "How You Compare",
-      "subtitle": "See how your CV stacks up against other {{industry}} professionals",
-      "you": "You",
-      "others": "Others",
-      "getJobSpecific": "Get Job-Specific Analysis"
-    },
     "careerTimeline": {
       "title": "Career Timeline",
       "totalExp": "Total Experience",
       "totalExpDesc": "How long you've been working in your field",
       "avgTenure": "Avg Time at Each Job",
-      "tenureGood": "✓ Good stability — recruiters like 2+ years per role",
+      "tenureGood": "✓ Two years or more per role, on average",
       "tenureWarning": "⚠ Short tenure may raise questions",
       "tenurePoor": "⚠ Very short — may be seen as job hopping",
       "careerGrowth": "Career Growth"
@@ -1593,9 +1468,6 @@
       "uniqueValue": "Your Unique Value",
       "nextMoves": "Your Next Career Moves",
       "interviewStories": "Interview Story Ideas",
-      "salaryInsightTitle": "Salary Insight",
-      "estimatedRange": "estimated range",
-      "negotiationLeverage": "Your negotiation leverage:",
       "hiddenStrengths": "Hidden Strengths You're Underselling",
       "personalBrand": "Your Personal Brand",
       "currentLabel": "Current:",
@@ -1680,26 +1552,14 @@
       "skillsHighlighted": "Skills highlighted",
       "instantDownload": "Instant download"
     },
-    "competitivePosition": {
-      "top": "🏆 Top Candidate",
-      "competitive": "💪 Competitive",
-      "middle": "📊 Middle of Pack",
-      "unlikely": "⚠️ Unlikely to Advance",
-      "yourAdvantage": "Your Advantage",
-      "yourGap": "Your Gap"
-    },
     "cta": {
-      "fixIssues": "See What's Costing You Interviews — {{price}}",
       "getFullAnalysis": "Get My Recruiter-Ready CV — {{price}}",
       "socialProof": "{{count}} CVs scanned today"
     },
     "enterprise": {
-      "verdictLabel": "The Verdict",
       "verdictEvidence": "Everything below is the evidence — and the fix.",
       "downloadPdf": "Download PDF summary",
       "nextActionLabel": "Your #1 Next Action",
-      "howYouCompare": "How You Compare",
-      "interviewLikelihood": "Interview Callback Likelihood",
       "xrayTitle": "CV X-Ray",
       "emailTitle": "Email me my report",
       "emailDesc": "Get this summary and your fix plan in your inbox — handy for working through the fixes later.",
@@ -1710,12 +1570,10 @@
       "pulseConfirmSent": "If this address isn't confirmed for the monthly market pulse yet, we've emailed it a confirmation link. The pulse starts only after that link is clicked.",
       "pulseNotCovered": "The monthly market pulse doesn't cover your field yet, so no confirmation was sent.",
       "dripConfirmSent": "Your report email has a button to start the fix-plan emails. Nothing more is sent until you press it.",
-      "placementTopQuartile": "Top quartile of {{n}} real {{industry}} scans",
-      "placementAboveMedian": "Above the median of {{n}} real {{industry}} scans",
-      "placementBelowMedian": "Below the median of {{n}} real {{industry}} scans",
-      "placementBottomQuartile": "Bottom quartile of {{n}} real {{industry}} scans — big upside from the fixes below",
       "emailSpotted": "We spotted this address on your resume — nothing is sent unless you click Send.",
-      "dripOptIn": "Break my fix plan into a short email sequence: top fixes on day 2, the rest on day 4, a rescan reminder on day 6 — and one question on day 14: did it get you interviews? Four short emails, cancel anytime."
+      "dripOptIn": "Break my fix plan into a short email sequence: top fixes on day 2, the rest on day 4, a rescan reminder on day 6 — and one question on day 14: did it get you interviews? Four short emails, cancel anytime.",
+      "summaryLabel": "Summary",
+      "summaryLine": "ATS score {{score}}/100: {{critical}} critical, {{warnings}} to check, {{passed}} passed."
     },
     "targeting": {
       "title": "Roles this resume screens for",
@@ -2593,13 +2451,6 @@
     "strong": "Strong",
     "keyMetricsToInclude": "Key metrics to include:",
     "commonMistakesFor": "Common {{name}} mistakes:",
-    "howYouCompareIn": "How You Compare in {{name}}",
-    "yourScore": "Your Score",
-    "industryAverage": "{{name}} Average",
-    "topPerformers": "Top Performers",
-    "benchmarkTop": "Above-average ATS readiness for your industry.",
-    "benchmarkAverage": "Around the ATS average for your industry.",
-    "benchmarkBelow": "Below the ATS average for your industry (fixable).",
     "yourTopPriorities": "Your Top Priorities",
     "commonIndustryMistakes": "Common {{name}} CV Mistakes",
     "industryBulletExamples": "{{name}} Bullet Examples",
@@ -2824,49 +2675,6 @@
       }
     }
   },
-  "pricingPage": {
-    "metaTitle": "Pricing — Resume Booster",
-    "metaDescription": "One-off tools from ${{lowPrice}} to ${{highPrice}} that never renew, or Pro at ${{proPrice}} a month with every tool included. Recruiter-grade CV rewrites.",
-    "noSubscriptions": "One-time payments • Never auto-renew",
-    "titlePrefix": "Choose Your",
-    "titleHighlight": "CV Boost",
-    "subtitle": "From quick fixes to complete career packages. One-time products are paid once; Pro renews monthly until you cancel.",
-    "secureCheckout": "Secure checkout",
-    "instantAccess": "Instant access",
-    "stripeProtected": "Stripe protected",
-    "premiumPackages": "Premium Packages",
-    "premiumSubtitle": "Complete career transformation tools",
-    "oneTime": "one-time",
-    "processing": "Processing...",
-    "uploadResumeFirst": "Upload CV First",
-    "getProduct": "Get {{name}}",
-    "requiresUpload": "Requires uploading your CV to analyse",
-    "whyResumeBooster": "Why Resume Booster?",
-    "questions": "Questions?",
-    "allProductsOneTime": "Every tool is a one-time purchase with instant access, and never renews. Pro is a monthly plan you can cancel any time.",
-    "freeScanLink": "free scan",
-    "seeScoreFirst": "to see your score first.",
-    "tryFreeScanFirst": "Try Free Scan First",
-    "ladderTitle": "Three ways in",
-    "ladderSubtitle": "Most people need exactly one of these — the rest of the catalog is below if you want it.",
-    "ladderFreeTitle": "Start free",
-    "ladderFreeDesc": "The full diagnostic scan — score, benchmarks, weakest bullets rewritten, role targeting. No sign-up.",
-    "ladderFreeCta": "Scan my resume free",
-    "ladderFixDesc": "The complete fix: full analysis, your resume rewritten ATS-clean, and a tailored cover letter.",
-    "ladderSpecialistDesc": "For career changers: freelance, gig, and side-hustle work translated into recruiter-grade experience.",
-    "allToolsToggle": "See every tool ({{count}} more)",
-    "guarantee": "Every paid tool is covered: not happy with the output? We'll regenerate it free — just reply to your receipt.",
-    "passLine": "Connecting your own Claude or ChatGPT is free: search the board in your chat and apply yourself on the employer's own site, with your AI's help. We never submit an application for you.",
-    "passLink": "Connect your AI",
-    "buyProduct": "Get {{name}}",
-    "freeScanLeadIn": "Not sure yet? Run the",
-    "heroBadgeLine": "Free to search, $5 for one deep analysis, or Pro for the writing tools",
-    "ladderAnalysisDesc": "Every keyword gap and ATS issue in your CV, scored against the job you paste, with the fix for each. No account needed; included in Pro.",
-    "ladderSubtitleLine": "Most people need exactly one of these.",
-    "metaDescriptionFa": "Free job search and CV scan. A ${{lowPrice}} Full Analysis paid once, or Pro at ${{proPrice}} a month for the writing tools.",
-    "oneTimeAndProLineFa": "The ${{price}} Full Analysis is paid once and never renews; Pro is a monthly plan you can cancel any time.",
-    "subtitleLine": "Search and scan for free. Pay once for one deep CV analysis, or go Pro for the writing tools on the jobs you apply to."
-  },
   "scanPackPurchase": {
     "topUpCredits": "Top Up Credits",
     "perCreditUseAnytime": "{{price}} per credit • Use anytime",
@@ -3082,20 +2890,6 @@
       "fix3": "Include 3 more industry keywords"
     }
   },
-  "peerBenchmark": {
-    "howYouCompare": "How You Compare",
-    "percentile": "percentile",
-    "industryAverage": "Industry Average: {{score}}",
-    "topPerformers": "Top Performers: {{score}}+",
-    "toAverage": "To Average",
-    "toTopTier": "To Top Tier",
-    "topPerformer": "You're a Top Performer!",
-    "levelTip": "{{level}} Level Tip",
-    "benchmarkedAgainst": "Benchmarked against other {{role}} candidates",
-    "topPct": "Top {{pct}}% for ATS readiness among {{cohort}}",
-    "aroundAverage": "Around average ATS readiness among {{cohort}}",
-    "belowAverage": "Below average ATS readiness among {{cohort}} (fixable)"
-  },
   "skillsGapAnalysis": {
     "title": "Skills Gap Analysis for {{role}}",
     "roleMatchScore": "Role Match Score",
@@ -3158,28 +2952,13 @@
     }
   },
   "competitorBenchmark": {
-    "title": "How Top {{role}}s Stand Out",
-    "basedOnAnalysis": "Based on analysis of successful {{role}} CVs that get interviews",
-    "competitiveStanding": "Your Competitive Standing",
-    "topElements": "You have elements that top candidates include!",
-    "addFewMore": "Add a few more elements to compete with top candidates",
-    "addElements": "Add these elements to match top performers",
-    "sectionsAlwaysInclude": "Sections top {{role}}s always include:",
-    "whatMakesStandOut": "What makes top CVs stand out:",
-    "pctTopCandidates": "What % of top candidates include:",
-    "avgBullets": "Avg bullets per role:",
-    "youBullets": "You: {{count}}",
-    "topBullets": "Top: {{count}}",
-    "quickWins": "Quick wins to compete:",
-    "addPortfolio": "Add portfolio/GitHub links ({{pct}}% of top candidates include them)",
-    "addCerts": "List relevant certifications ({{pct}}% of top candidates have them)",
-    "addMetrics": "Add metrics to your bullets ({{pct}}% of top CVs quantify achievements)",
-    "addBullets": "Add {{count}} more bullet points per role",
-    "checklistItems": {
-      "portfolio": "Portfolio/GitHub links",
-      "certifications": "Certifications",
-      "quantifiedAchievements": "Quantified achievements"
-    }
+    "title": "What {{role}} CVs Usually Include",
+    "sectionsAlwaysInclude": "Sections {{role}} CVs usually have:",
+    "whatMakesStandOut": "What helps one stand out:",
+    "quickWins": "Worth adding if it applies to you:",
+    "addPortfolio": "Portfolio or GitHub links",
+    "addCerts": "Relevant certifications, even ones in progress",
+    "addMetrics": "Numbers in your bullet points: scale, time saved, results"
   },
   "jobComparisonCTA": {
     "compareToRoles": "See how you compare to your target roles:"
@@ -3459,7 +3238,6 @@
     "resumeScore": "CV ATS Score",
     "results": "{{name}}'s Results",
     "poweredBy": "Powered by",
-    "brand": "resumescanner.ai",
     "outOf": "/100",
     "industry": "Industry",
     "experience": "Experience",
@@ -3467,7 +3245,7 @@
     "improvement": "Improvement",
     "improvementPts": "+{{pts}} pts",
     "topStrength": "Top Strength",
-    "getScore": "Get your free CV score at resumescanner.ai",
+    "getScore": "Get your free CV score at {{site}}",
     "previewLabel": "Preview of your downloadable score card",
     "download": "Download",
     "downloaded": "Downloaded!",
@@ -3483,8 +3261,7 @@
     "downloadingInstead": "Downloading image instead...",
     "copyNotSupported": "Copy not supported",
     "imageDownloaded": "Image downloaded!",
-    "uploadLinkedIn": "Upload it to your LinkedIn post to stand out",
-    "shareText": "Just scored {{score}}/100 on my CV ATS scan! 📊\n\nIndustry: {{industry}}\nTop Strength: {{strength}}\n\nGet your free CV score → resumescanner.ai\n\n#cv #jobsearch #career #ATS"
+    "uploadLinkedIn": "Upload it to your LinkedIn post to stand out"
   },
   "smartRecommendations": {
     "personalizedFor": "Personalised for you",
@@ -5176,7 +4953,7 @@
       "everythingFree": "Everything in a free account, plus the writing tools",
       "fullAnalysisIncluded": "The $5 Full Analysis included",
       "noDailyScanCap": "No daily cap on scans",
-      "writingTools": "A tailored CV, cover letter and interview prep for your jobs: up to 5 sets a day and 60 a month"
+      "writingToolsPackages": "A tailored CV, cover letter and interview prep for your jobs: up to 5 packages a day and 60 a month"
     },
     "renewsOn": "Renews {{date}}",
     "retiredPlanEnds": "It ends on {{date}} and will not renew. Pro's tools stay on until then.",
@@ -5188,6 +4965,7 @@
     "secureSignedIn": "Secure checkout via Stripe. Cancel anytime — no lock-in.",
     "secureSignedOut": "You'll sign in first, so the plan is on your account. Secure checkout via Stripe; cancel anytime.",
     "summaryLine": "Everything in a free account, plus the writing tools, the $5 Full Analysis included and no daily cap on scans",
+    "summaryLineWithoutAnalysis": "Everything in a free account, plus the writing tools and no daily cap on scans",
     "title": "Resume Booster Pro",
     "toast": {
       "alreadyMemberBody": "Your plan is already active on this account.",
@@ -5300,19 +5078,6 @@
     "headline2": "Live openings matching “{{q}}”",
     "sub2": "Live postings from employers' own hiring systems. You apply on the employer's own site, with your own AI's help if you like. Here are the top matches:",
     "ctaYourAi": "Apply with your own AI's help"
-  },
-  "homeHero": {
-    "headlinePre": "Live jobs, straight from employers' own hiring systems.",
-    "statOpenings": "live openings",
-    "statCompanies": "companies",
-    "ctaPrimary": "Upload your CV — free",
-    "ctaSecondary": "Browse the board",
-    "reassure": "Free scan · no card, no signup",
-    "exploreCta": "Explore by field",
-    "statCompanyBoards": "company job boards hiring",
-    "badge2": "Live job board + your own AI",
-    "headlineHighlight2": "Apply yourself, with your own AI's help.",
-    "sub2": "Openings read from companies' own hiring systems and re-checked all day. Scan your CV for free, search the board here or from Claude or ChatGPT, and apply yourself, with your AI's help if you like. We never submit anything for you."
   },
   "homeAgent": {
     "lead": "Use it from your own AI.",
@@ -5530,6 +5295,7 @@
     "agentDigest": "Stop the morning shortlist emails. Your agent keeps running, and its picks stay in your account."
   },
   "purchaseTerms": {
+    "finalSale": "All sales are final.",
     "agree": "By continuing you agree to the <terms>Terms of Service</terms> and the <privacy>Privacy Policy</privacy>.",
     "renewal": "{{price}} a month, renewing automatically until you cancel. Cancel any time from your account.",
     "agentTrial": "First-time subscribers get {{days}} days free, then {{price}} a month, renewing automatically until you cancel. Cancel before the trial ends and you are not charged. Returning subscribers pay from the first day.",
@@ -5638,8 +5404,8 @@
   },
   "dataApiPage": {
     "builderName": "Builder API (planned)",
-    "builderPrice": "${{price}} a month, planned",
-    "builderBody": "Ranked search, résumé fit scoring at volume and 180 days of closures, for display inside your own product with attribution. No feeds or resale; those are the commercial license. Tell us if you'd use it.",
+    "builderPrice": "${{price}} a month",
+    "builderBody": "Ranked search, résumé fit scoring at volume and 180 days of closures, for display inside your own product with attribution. No feeds or resale; those are the commercial licence. Tell us if you'd use it.",
     "builderNotYet": "Not on sale yet: nothing is charged, and we reply to every request by email.",
     "builderCta": "Request Builder"
   },

@@ -8,10 +8,11 @@
  * purchases open", and tagged llms.txt the same way, all while
  * src/config/seller.ts was empty, which is how it ships. The checkouts sell
  * the $5 Full Analysis and Pro with that identity, so this runs the real bake
- * offline, as it ships, and reads what it wrote: the structured data offers
- * the paid range up to Pro, the terms are stated as a sale open now, and
- * neither the page nor llms.txt (committed or baked) says anything opens
- * soon.
+ * offline, as it ships, and reads what it wrote: the crawler /pricing (the
+ * homepage switch-over's page, src/pages/pricing/PricingPage.tsx) offers the
+ * Full Analysis and Pro in its structured data, the terms are stated as a
+ * sale open now, and neither the page nor llms.txt (committed or baked) says
+ * anything opens soon.
  */
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { execFileSync } from "node:child_process";
@@ -19,7 +20,9 @@ import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { crawlerText } from "../../scripts/prerender-retired.mjs";
-import { offersAPrice, pricingJsonLd } from "@/lib/pricing-offer";
+import { offersAPrice } from "@/lib/pricing-offer";
+import { pricingJsonLd } from "@/components/pricing/pricing-jsonld";
+import { resolveSaleGates } from "@/components/pricing/sale-gates";
 import { PRODUCTS, SUBSCRIPTIONS } from "@/config/products";
 import { SELLER } from "@/config/seller";
 
@@ -56,19 +59,20 @@ describe("the premise", () => {
 });
 
 describe("the crawler's /pricing, with no seller named", () => {
-  it("offers the paid range in its structured data, from free up to Pro", () => {
+  it("offers the free plan, the Full Analysis and Pro in its structured data, each at its price", () => {
     const blocks = ldBlocks(HTML);
     expect(offersAPrice(blocks), JSON.stringify(blocks).slice(0, 400)).toBe(true);
-    const offer = blocks.map((b) => b.offers).find(Boolean);
-    expect(offer).toMatchObject({ "@type": "AggregateOffer", lowPrice: "0", highPrice: String(SUBSCRIPTIONS.pro.priceUsd) });
+    const offers = blocks.map((b) => b.offers).find(Boolean) as Array<{ name: string; price: string }>;
+    expect(offers.map((o) => [o.name, Number(o.price)])).toEqual([["Free", 0], ["Full Analysis", PRODUCTS.fullAnalysis.priceUsd], ["Pro", SUBSCRIPTIONS.pro.priceUsd]]);
   });
 
   it("states the terms of a sale open now, with both prices", () => {
     const text = crawlerText(HTML);
-    expect(text).toContain(`The ${PRODUCTS.fullAnalysis.name} is a one-time payment that never renews.`);
-    expect(text).toMatch(/Pro renews every month until you cancel/);
-    expect(text).toContain(`$${PRODUCTS.fullAnalysis.priceUsd}`);
-    expect(text).toContain(`$${SUBSCRIPTIONS.pro.priceUsd}/month`);
+    expect(text).toContain("All sales are final.");
+    expect(text).toContain(`Buy the Full Analysis, $${PRODUCTS.fullAnalysis.priceUsd}`);
+    expect(text).toContain(`Go Pro, $${SUBSCRIPTIONS.pro.priceUsd} a month`);
+    expect(text).toMatch(/renews every month at \$45 until you cancel/);
+    expect(text).toMatch(/The Full Analysis is one payment that never renews/);
   });
 
   it("says nothing opens soon, in the page or its description", () => {
@@ -79,10 +83,10 @@ describe("the crawler's /pricing, with no seller named", () => {
 });
 
 describe("the one structured-data shape React's /pricing and the bake share", () => {
-  it("is the AggregateOffer of what is sold, from free up to Pro", () => {
-    const ld = pricingJsonLd({ offerPrices: [PRODUCTS.fullAnalysis.priceUsd, SUBSCRIPTIONS.pro.priceUsd], url: "https://x.test/pricing" });
+  it("is pricingJsonLd of the page's gates: the Full Analysis and Pro, with no seller named", () => {
+    const ld = pricingJsonLd(resolveSaleGates());
     expect(offersAPrice(ld)).toBe(true);
-    expect(ld.offers).toEqual({ "@type": "AggregateOffer", priceCurrency: "USD", lowPrice: "0", highPrice: String(SUBSCRIPTIONS.pro.priceUsd), offerCount: 3 });
+    expect(ldBlocks(HTML).find((b) => b["@type"] === "SoftwareApplication")).toEqual(ld);
   });
   it("positive control: offersAPrice finds a priced Offer nested anywhere, and passes a free one", () => {
     expect(offersAPrice([{ "@graph": [{ offers: { "@type": "Offer", price: "5" } }] }])).toBe(true);

@@ -207,6 +207,17 @@ ref). It exits 4 when any of them has no owner in `sharedFiles`, or an owner
 that no reservation names. Pure git: no network, no fetch (run
 `git fetch origin` first).
 
+A branch cut from another in-flight branch (hp/honesty and hp/scanner from
+wave4/integration, 2026-10-25) carries every change of the branch under it,
+and diffed from main alone each of those reads as its own: 677 overlaps with
+wave 4. So when two listed refs share commits main does not have, the one
+that went further is BUILT ON the other, and it keeps only the files it holds
+differently from what `git merge-tree --write-tree <fork> <its main base>`
+makes of them: a file it inherited, or one git merged on its own, is not its
+change; a conflict it resolved, and an edit on top of the stack's version,
+are. A change two refs share from before they forked is neither's. Each such
+ref prints "built on <ref> (fork <commit>)".
+
 Run it on every in-flight branch:
 
 - **before launching parallel builders**, on the branches they will start

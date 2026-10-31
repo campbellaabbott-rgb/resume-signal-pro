@@ -1,8 +1,9 @@
 import { useTranslation } from "react-i18next";
 import { useCurrency } from "@/hooks/use-currency";
 import { PRODUCTS, SUBSCRIPTIONS } from "@/config/products";
-import { PRO_SUMMARY } from "@/config/pro-perks";
+import { proSummaryOnSale } from "@/config/pro-perks";
 import { TRADING_NAME } from "@/config/seller";
+import { fullAnalysisOnSale, proOnSale } from "@/lib/purchases-open";
 import {
   Accordion,
   AccordionContent,
@@ -65,9 +66,33 @@ export const FAQ_REWORDED: Readonly<Record<string, { question?: [string, string]
   },
 };
 
+/**
+ * WHAT THE FAQ MAY SAY IS ON SALE (review round of 2026-10-26). The scanner
+ * page is the FAQ's only home after the homepage switch-over, and it said
+ * both paid options exist and how soon the analysis arrives while /pricing
+ * says "Not on sale yet" and the owner prints no delivery time until a
+ * delivery has been watched (P18). So the answers follow the sale gates
+ * (src/lib/purchases-open.ts), which read the owner's switches and never the
+ * seller (both on, as on main, so the answer that names both shows):
+ *   - nothing on sale: "Is this a subscription?" says nothing is on sale, and
+ *     "How long does the analysis take?" is not asked;
+ *   - the Full Analysis on sale (G2): it alone is described, and the
+ *     delivery time is printed;
+ *   - both on sale: the answer that names both.
+ * Pro never goes on sale before the Full Analysis (src/config/sales-gate.ts,
+ * held by a test), so Pro alone is not a state the FAQ has to describe.
+ */
+export const FAQ_SALE_ANSWERS = {
+  closed: ["faq.questions.subscriptionClosed.answer", "Not today: nothing is on sale yet. The pricing page says before you pay what each paid option includes and whether it renews. The resume scan, the job board and connecting your own AI are free."],
+  fullAnalysisOnly: ["faq.questions.subscriptionFaOnly.answer", "No. The ${{price}} Full Analysis is a one-time payment that never renews, and no monthly plan is on sale yet. The resume scan, the job board and connecting your own AI stay free either way. Nothing upgrades you automatically."],
+} as const satisfies Record<string, readonly [string, string]>;
+
 export function FAQ() {
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
+  const faOnSale = fullAnalysisOnSale();
+  const bothOnSale = faOnSale && proOnSale();
+  const keys = faqKeys.filter((key) => key !== "howLong" || faOnSale);
 
   // Replace $25 with local currency in answers (using actual product price)
   const fullAnalysisPrice = PRODUCTS.fullAnalysis.priceUsd;
@@ -80,12 +105,14 @@ export function FAQ() {
     // the "is this a subscription?" answer used to deny that any recurring
     // charge existed while Pro and the Morning Queue were both on sale. Pro is
     // the one plan on sale since the apply pivot retired the agent's.
-    const moved = FAQ_REWORDED[key]?.answer;
+    const moved = key === "subscription" && !bothOnSale
+      ? (faOnSale ? FAQ_SALE_ANSWERS.fullAnalysisOnly : FAQ_SALE_ANSWERS.closed)
+      : FAQ_REWORDED[key]?.answer;
     let answer = moved
       ? t(moved[0], moved[1], {
         proPrice: SUBSCRIPTIONS.pro.priceUsd,
         price: fullAnalysisPrice,
-        proSummary: t(PRO_SUMMARY.key, PRO_SUMMARY.text),
+        proSummary: t(proSummaryOnSale().key, proSummaryOnSale().text),
         name: TRADING_NAME,
       })
       : t(`faq.questions.${key}.answer`, {
@@ -116,7 +143,7 @@ export function FAQ() {
           </p>
           
           <Accordion type="single" collapsible className="w-full">
-            {faqKeys.map((key, index) => (
+            {keys.map((key, index) => (
               <AccordionItem key={index} value={`item-${index}`}>
                 <AccordionTrigger className="text-left">
                   {questionOf(key)}

@@ -7,8 +7,9 @@
  * pulse and fix-plan boxes while src/config/seller.ts was empty, which is how
  * it ships. Mounted for real with the shipped identity (nothing mocks the
  * seller or the purchase state):
- *   - /pricing links to the Full Analysis checkout and offers "Go Pro", with
- *     their terms, and says nothing opens soon;
+ *   - /pricing (the switch-over's page) links to the Full Analysis and offers
+ *     "Go Pro", with their terms, prints no gate note, and says nothing opens
+ *     soon;
  *   - the uploader's priced link under the free scan and its priced fallback
  *     with no free scan are there;
  *   - the homepage comparison's priced call to action is there;
@@ -19,6 +20,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
+import { HelmetProvider } from "react-helmet-async";
 import { MOUNT_TEST_BUDGET } from "./helpers/mount-budget";
 
 const invoke = vi.fn();
@@ -59,7 +61,7 @@ if (!(globalThis as { IntersectionObserver?: unknown }).IntersectionObserver) {
   };
 }
 
-import Pricing from "@/pages/Pricing";
+import PricingPage from "@/pages/pricing/PricingPage";
 import { ResumeUploader } from "@/components/ResumeUploader";
 import { ComparisonTable } from "@/components/ComparisonTable";
 import { FreeKeywordResults } from "@/components/FreeKeywordResults";
@@ -90,8 +92,9 @@ describe("the premise", () => {
 
 describe("/pricing", () => {
   it("links to the Full Analysis, offers Go Pro with its terms, and says nothing opens soon", () => {
-    render(<MemoryRouter initialEntries={["/pricing"]}><Pricing /></MemoryRouter>);
-    expect(screen.getByRole("link", { name: /Get Full Resume Analysis/ })).toBeInTheDocument();
+    render(<HelmetProvider><MemoryRouter initialEntries={["/pricing"]}><PricingPage /></MemoryRouter></HelmetProvider>);
+    expect(document.querySelector("a[data-buy='full-analysis'][href='/resume-checker#upload']")).not.toBeNull();
+    expect(document.querySelector("[data-gate]")).toBeNull();
     expect(screen.getByRole("button", { name: /Go Pro/ })).toBeInTheDocument();
     expect(document.querySelector("[data-testid='purchase-terms']")).not.toBeNull();
     nothingOpensSoon();

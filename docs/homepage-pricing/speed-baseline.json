@@ -1,0 +1,157 @@
+{
+  "_what": "The speed gate of the switch-over (owner decision 2026-10-27): on the Lighthouse mobile profile and on the unthrottled 4x-CPU profile, the new \"/\" LCP is never slower than the old \"/\". This file is the old build's measurement, the baseline, kept in the repo with the switch-over build measured beside it on the same machine. Judged by scripts/home-speed-gate.mjs; docs/homepage-pricing/README.md, step 15, says how a re-measure is run.",
+  "decided": "2026-10-27",
+  "measured": "2026-10-26",
+  "builds": {
+    "old": {
+      "what": "the old \"/\" (the scanner page, wave 4's tree as hp/honesty carries it)",
+      "commit": "5c74e112"
+    },
+    "switchOver": {
+      "what": "the board-first \"/\" of the switch-over (the review round's frontend; later commits touch only tests, docs and the ledger)",
+      "commit": "8d8113ed"
+    }
+  },
+  "method": {
+    "build": "a production build (vite build) of a git archive export of each commit, baked under a read-only fetch guard and served the way Lovable resolves paths (a file, then <path>.html, then <path>/index.html, else the root index.html)",
+    "browser": "Playwright 1.62.1, headless Chromium, one fresh context per run, locale en-US",
+    "lcp": "the startTime of the last largest-contentful-paint entry, read after the load event, network idle (up to 20 s) and a further 4 s",
+    "runsPerCase": 3,
+    "production": "read only: GETs, RPCs re-sent as GETs, job-board reads with x-rb-budget: probe; every other write answered inside the browser (0 on every run)",
+    "tool": "~/.config/resumebooster/home-pricing-switch-over-2026-10-26/fix-round/tools/lcp2.cjs (with serve.cjs, safe-fetch.cjs and build.sh beside it)"
+  },
+  "profiles": {
+    "lighthouseMobile": {
+      "gated": true,
+      "what": "Lighthouse's mobile profile (150 ms RTT, 1.6 Mbps down, 750 kbps up, 4x CPU), applied through the DevTools protocol rather than Lighthouse's own simulation",
+      "cpuThrottlingRate": 4,
+      "latencyMs": 150,
+      "downloadBytesPerSecond": 200000,
+      "uploadBytesPerSecond": 93750,
+      "deviceScaleFactor": 2,
+      "mobile": true,
+      "touch": true
+    },
+    "unthrottled4xCpu": {
+      "gated": true,
+      "what": "4x CPU slowdown, network unthrottled (a local server)",
+      "cpuThrottlingRate": 4,
+      "latencyMs": 0,
+      "deviceScaleFactor": 2,
+      "mobile": true,
+      "touch": true
+    },
+    "desktop": {
+      "gated": false,
+      "what": "no throttling; kept as the record, not part of the gate",
+      "cpuThrottlingRate": 1,
+      "latencyMs": 0,
+      "deviceScaleFactor": 1,
+      "mobile": false,
+      "touch": false
+    }
+  },
+  "rule": "For each case of a gated profile, the median of the new build's runs, rounded to the 0.1 s Lighthouse prints, is no more than the old build's median rounded the same way.",
+  "runs": {
+    "lighthouseMobile": {
+      "375x812 first visit": {
+        "old": {
+          "lcpMs": [2208, 2176, 2180],
+          "element": "P, the old page's count line, 89,180 px²"
+        },
+        "switchOver": {
+          "lcpMs": [2344, 2216, 2236],
+          "element": "H1, the baked headline, 36,822 px²"
+        }
+      },
+      "375x812 consent chosen": {
+        "old": {
+          "lcpMs": [2188, 2168, 2172],
+          "element": "P, the old page's count line, 89,180 px²"
+        },
+        "switchOver": {
+          "lcpMs": [2232, 2216, 2232],
+          "element": "H1, the baked headline, 36,822 px²"
+        }
+      },
+      "320x640 first visit": {
+        "old": {
+          "lcpMs": [2176, 2168, 2192],
+          "element": "P, the old page's count line, 88,088 px²"
+        },
+        "switchOver": {
+          "lcpMs": [2216, 2228, 2216],
+          "element": "H1, the baked headline, 30,747 px²"
+        }
+      },
+      "414x896 first visit": {
+        "old": {
+          "lcpMs": [2180, 2180, 2168],
+          "element": "P, the old page's count line, 89,680 px²"
+        },
+        "switchOver": {
+          "lcpMs": [2224, 2216, 2216],
+          "element": "H1, the baked headline, 44,982 px²"
+        }
+      }
+    },
+    "unthrottled4xCpu": {
+      "375x812 first visit": {
+        "old": {
+          "lcpMs": [244, 228, 256],
+          "element": "P, the old page's count line, 89,180 px²"
+        },
+        "switchOver": {
+          "lcpMs": [248, 228, 224],
+          "element": "H1, the baked headline, 36,822 px²"
+        }
+      },
+      "375x812 consent chosen": {
+        "old": {
+          "lcpMs": [240, 216, 220],
+          "element": "P, the old page's count line, 89,180 px²"
+        },
+        "switchOver": {
+          "lcpMs": [220, 224, 212],
+          "element": "H1, the baked headline, 36,822 px²"
+        }
+      }
+    },
+    "desktop": {
+      "1280x800 first visit": {
+        "old": {
+          "lcpMs": [456, 440, 460],
+          "element": "H1, the baked headline, 167,486 px²"
+        },
+        "switchOver": {
+          "lcpMs": [204, 136, 132],
+          "element": "H1, the baked headline, 57,992 px²"
+        }
+      },
+      "1280x800 consent chosen": {
+        "old": {
+          "lcpMs": [448, 452, 452],
+          "element": "H1, the baked headline, 176,904 px²"
+        },
+        "switchOver": {
+          "lcpMs": [108, 116, 120],
+          "element": "H1, the baked headline, 57,992 px²"
+        }
+      }
+    }
+  },
+  "firstLoadJs": {
+    "_what": "Recorded, not gated: the owner shipped with this first-load JavaScript on 2026-10-27 and retired the earlier 340 kB target; slimming the shared job card is a later change.",
+    "measured": "2026-10-26",
+    "gzipBytes": {
+      "staticClosure": {
+        "old": 420753,
+        "switchOver": 287049
+      },
+      "loadedOnceTheCardsRender": {
+        "old": 423506,
+        "switchOver": 349482
+      }
+    }
+  }
+}

@@ -336,7 +336,7 @@ export const CV_LOCALES: Record<string, CvLocaleConfig> = {
       DE: {
         countryName: "Deutschland",
         lengthNote: "1–2 Seiten, tabellarisch",
-        photoNote: "Seit dem AGG 2006 optional — Arbeitgeber dürfen kein Foto verlangen — aber ~80% der Bewerber fügen eines bei und ~19% der Recruiter sortieren Bewerbungen ohne Foto aus. Standard im Mittelstand, rückläufig in Tech/Startups.",
+        photoNote: "Seit dem AGG 2006 optional — Arbeitgeber dürfen kein Foto verlangen — aber weiterhin weit verbreitet, und manche Recruiter erwarten eines. Standard im Mittelstand, rückläufig in Tech/Startups.",
         personalDataNote: "Geburtsdatum üblich; Familienstand rückläufig.",
         conventions: ["Strikt tabellarischer Aufbau; Datum + Unterschrift unten traditionell", "Alle Lücken erklärt", "Vollständige Bewerbung = Anschreiben + Lebenslauf + Zeugnisse"],
       },

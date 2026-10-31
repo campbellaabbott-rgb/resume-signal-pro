@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { useCurrency } from "@/hooks/use-currency";
 import { PRODUCTS } from "@/config/products";
 import { setStickyBarVisible } from "@/lib/sticky-bar";
+import { fullAnalysisOnSale } from "@/lib/purchases-open";
 
 interface StickyBottomCTAProps {
   isLoading?: boolean;
@@ -38,11 +39,13 @@ export function StickyBottomCTA({ isLoading }: StickyBottomCTAProps) {
 
   // The help button lifts above the bar while it shows (src/lib/sticky-bar.ts).
   useEffect(() => {
-    setStickyBarVisible(isVisible);
+    setStickyBarVisible(isVisible && fullAnalysisOnSale());
     return () => setStickyBarVisible(false);
   }, [isVisible]);
 
-  if (!isVisible) return null;
+  // The bar prices the Full Analysis, so it shows while the analysis's sale
+  // switch is on (G2: on, as on main); it never waits for the seller's name.
+  if (!isVisible || !fullAnalysisOnSale()) return null;
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-sticky animate-fade-in safe-bottom">

@@ -8,9 +8,10 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProSubscription } from "@/hooks/use-pro-subscription";
 import { SUBSCRIPTIONS } from "@/config/products";
-import { PRO_PERK_ITEMS, PRO_SUMMARY } from "@/config/pro-perks";
+import { PRO_PERK_ITEMS, proPerksOnSale, proSummaryOnSale } from "@/config/pro-perks";
 import { isOwingStatus } from "@/config/subscription-status";
 import { PurchaseTerms } from "@/components/PurchaseTerms";
+import { proOnSale } from "@/lib/purchases-open";
 
 // What the plan includes lives in src/config/pro-perks.ts, where the pricing
 // guards read it without mounting this card.
@@ -35,6 +36,12 @@ export const PRO_SUPPORT_EMAIL = "resumeboostersupp@gmail.com";
  *   "$45/month ... Renews" or a prompt to pay for it.
  * - WHAT PRO IS comes from one list (src/config/pro-perks.ts, owner decision
  *   2026-10-17), which the server's Stripe description reads too.
+ * - GO PRO WHILE PRO IS ON SALE (gate G2b, src/config/sales-gate.ts: on, as
+ *   on main). It never waits for the seller's name and address (the owner,
+ *   2026-10-27: sales stay on); with the switch off the card offers no button.
+ * - NO INCLUDED FULL ANALYSIS WHILE IT IS OFF SALE (gate G2): the list and
+ *   the summary leave it out only while FULL_ANALYSIS_ON_SALE is off, so Pro
+ *   never promises a report the pages do not sell (as the pricing card does).
  * - A SEPARATE, UNTICKED RENEWAL BOX (California's automatic renewal law as
  *   amended by AB 2863): a signed-in buyer's "Go Pro" stays disabled until it
  *   is ticked, and the server refuses a plan without it.
@@ -45,6 +52,8 @@ export function ProSubscriptionCard({ compact = false }: { compact?: boolean }) 
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const open = proOnSale();
+  const summary = proSummaryOnSale();
   const [renewTicked, setRenewTicked] = useState(false);
   const price = SUBSCRIPTIONS.pro.priceUsd;
   const owing = isOwingStatus(pro.status);
@@ -86,7 +95,7 @@ export function ProSubscriptionCard({ compact = false }: { compact?: boolean }) 
         <div>
           <h3 className="font-bold text-xl">{t("proPlan.title", "Resume Booster Pro")}</h3>
           <p className="text-sm text-muted-foreground">
-            {t(PRO_SUMMARY.key, PRO_SUMMARY.text)}
+            {t(summary.key, summary.text)}
           </p>
         </div>
       </div>
@@ -98,7 +107,7 @@ export function ProSubscriptionCard({ compact = false }: { compact?: boolean }) 
 
       {!compact && (
         <ul className="space-y-2 mb-6 flex-1">
-          {PRO_PERK_ITEMS.map((perk) => (
+          {proPerksOnSale(PRO_PERK_ITEMS).map((perk) => (
             <li key={perk.key} className="flex items-start gap-2 text-sm">
               <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
               <span>{t(perk.key, perk.text)}</span>
@@ -169,7 +178,7 @@ export function ProSubscriptionCard({ compact = false }: { compact?: boolean }) 
           </p>
           {manageButton(t("proPlan.updatePayment", "Update payment method"), CreditCard, "default")}
         </div>
-      ) : (
+      ) : !open ? null : (
         <div className="space-y-3">
           {pro.linkPending && (
             <p className="text-sm text-muted-foreground">

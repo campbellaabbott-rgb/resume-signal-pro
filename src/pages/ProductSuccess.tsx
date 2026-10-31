@@ -2174,7 +2174,7 @@ export default function ProductSuccess() {
             {/* Main CTA */}
             <div className="text-center space-y-4">
               <Button asChild size="lg" className="gap-2 shadow-lg shadow-primary/20">
-                <Link to="/">
+                <Link to="/resume-checker">
                   <Sparkles className="w-4 h-4" />
                   {(isKeywordFix || isCoverLetter || isPremiumPackage) && generatedContent ? 'Scan Another Resume' : 'Get Started Now'}
                   <ArrowRight className="w-4 h-4" />

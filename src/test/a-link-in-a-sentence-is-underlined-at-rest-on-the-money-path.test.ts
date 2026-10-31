@@ -11,12 +11,15 @@
  * pane's employer link, which sits in a sentence in Jobs.tsx.
  */
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { codeOf } from "./helpers/strip-comments";
 
 const ROOT = resolve(__dirname, "../..");
-const FILES = ["src/pages/Pricing.tsx", "src/pages/JobPosting.tsx", "src/components/jobs/listing/MoreRolesAtEmployer.tsx", "src/components/LiveScanStats.tsx"];
+// The pricing page is src/pages/pricing/PricingPage.tsx and its components
+// since the homepage switch-over (the old src/pages/Pricing.tsx is deleted).
+const PRICING = ["src/pages/pricing/PricingPage.tsx", ...readdirSync(resolve(ROOT, "src/components/pricing")).filter((f) => f.endsWith(".tsx")).map((f) => `src/components/pricing/${f}`)];
+const FILES = [...PRICING, "src/pages/JobPosting.tsx", "src/components/jobs/listing/MoreRolesAtEmployer.tsx", "src/components/LiveScanStats.tsx"];
 
 /** Link classNames whose only link cue is colour: a primary colour, an underline only on hover. */
 export function colourOnlyLinks(src: string): string[] {

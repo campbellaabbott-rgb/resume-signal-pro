@@ -20,7 +20,9 @@
 #     2026-10-11.23 or later; create-portal-session 2026-10-14.23 or later
 #     (R1 stamped it on that later day); create-checkout,
 #     create-product-checkout and create-subscription-checkout 2026-10-31.1
-#     or later (sales stay on, and nobody is refused for where they are);
+#     or later (sales stay on, and nobody is refused for where they are;
+#     section 99's C6 asks for the two later builds that also carry the
+#     homepage switch-over's Pro line, 2026-10-31.2);
 #   - create-checkout's public GET answers the EU/UK switch (euUkSales false)
 #     and refuses no territory (no territoryRefused true: wave 4's refusal of
 #     the EU, the EEA, the UK and India is not serving), and reports no closed
@@ -129,8 +131,11 @@ case "$VD92_RC" in
   *) echo "FAIL  anon GET pro_auto_renew_consents -> $VD92_RC";;
 esac
 
-# The published frontend: the entry, the Pricing and Freelance Boost chunks,
-# and the chunks the Pricing chunk imports (the Pro card, the Terms line).
+# The published frontend: the entry, the pricing page's chunk (PricingPage
+# since the switch-over, Pricing before it) and Freelance Boost's, and the
+# chunks the pricing chunk imports (the Pro card, the Terms line). Neither the
+# old purchases-open-soon line nor the new page's seller gate key may ship
+# (sales stay on, owner 2026-10-27), and no region line or note may either.
 VD92_ENTRY=$(curl -s -m 30 -A "$UA" "$SITE/" | grep -oE '/assets/index-[A-Za-z0-9_-]+\.js' | head -1)
 if [ -z "$VD92_ENTRY" ]; then
   echo "FAIL  the site's shell names no /assets/index-*.js entry: the published pages cannot be judged"
@@ -142,11 +147,13 @@ else
     [ -n "$f" ] && curl -s -m 60 -A "$UA" "$SITE/assets/$f" > "/tmp/vd_92cc_$1.js"
     printf '%s' "$f"
   }
-  VD92_PRICING=$(vd92_chunk Pricing)
-  if [ -z "$VD92_PRICING" ]; then echo "FAIL  the live entry names no Pricing chunk: the pricing page cannot be judged"
+  VD92_PN=PricingPage
+  VD92_PRICING=$(vd92_chunk "$VD92_PN")
+  if [ -z "$VD92_PRICING" ]; then VD92_PN=Pricing; VD92_PRICING=$(vd92_chunk "$VD92_PN"); fi
+  if [ -z "$VD92_PRICING" ]; then echo "FAIL  the live entry names no PricingPage or Pricing chunk: the pricing page cannot be judged"
   else
-    cat /tmp/vd_92cc_entry.js /tmp/vd_92cc_Pricing.js > /tmp/vd_92cc_pricing_all.js
-    for VD92_DEP in $(grep -oE '\./[A-Za-z0-9_-]+\.js' /tmp/vd_92cc_Pricing.js | sort -u | head -40); do
+    cat /tmp/vd_92cc_entry.js "/tmp/vd_92cc_$VD92_PN.js" > /tmp/vd_92cc_pricing_all.js
+    for VD92_DEP in $(grep -oE '\./[A-Za-z0-9_-]+\.js' "/tmp/vd_92cc_$VD92_PN.js" | sort -u | head -40); do
       curl -s -m 60 -A "$UA" "$SITE/assets/${VD92_DEP#./}" >> /tmp/vd_92cc_pricing_all.js
     done
     VD92_MISS=""
@@ -154,8 +161,8 @@ else
     grep -q 'proPlan.perks.noDailyScanCap' /tmp/vd_92cc_pricing_all.js || VD92_MISS="$VD92_MISS Pro's no-daily-cap line;"
     if [ -n "$VD92_MISS" ]; then echo "FAIL  the published Pricing page ($VD92_PRICING) lacks:$VD92_MISS the 2026-10-17 frontend is not published"
     elif grep -q 'proPlan.perks.includedOneOffs' /tmp/vd_92cc_pricing_all.js; then echo "FAIL  the published Pricing page ($VD92_PRICING) still carries the old Pro perk that included Freelance Boost and Transition Pro"
-    elif grep -q 'checkoutGate.purchasesOpenSoon' /tmp/vd_92cc_pricing_all.js; then echo "FAIL  the published Pricing page ($VD92_PRICING) still says purchases open soon where the buy buttons go (wave 4's seller gate; sales stay on, owner 2026-10-27): publish the frontend"
-    elif grep -q -e 'checkoutGate.regionNoticeTimeZone' -e 'data-region-notice' /tmp/vd_92cc_pricing_all.js; then echo "FAIL  the published Pricing page ($VD92_PRICING) still carries the region note that hides Go Pro from a browser in the EU, the EEA, the UK or India (wave 4's territory refusal; the owner, 2026-10-27: keep selling as today): publish the frontend"
+    elif grep -q -e 'checkoutGate.purchasesOpenSoon' -e 'pricingPlans.buy.gateSeller' /tmp/vd_92cc_pricing_all.js; then echo "FAIL  the published Pricing page ($VD92_PRICING) still says purchases open soon where the buy buttons go (wave 4's seller gate; sales stay on, owner 2026-10-27): publish the frontend"
+    elif grep -q -e 'checkoutGate.regionNoticeTimeZone' -e 'data-region-notice' -e 'purchaseTerms.regionLine' -e 'pricingPlans.before.regionBody' /tmp/vd_92cc_pricing_all.js; then echo "FAIL  the published Pricing page ($VD92_PRICING) still carries the region line, or the region note that hides Go Pro from a browser in the EU, the EEA, the UK or India (wave 4's territory refusal; the owner, 2026-10-27: keep selling as today): publish the frontend"
     else echo "PASS  the published Pricing page ($VD92_PRICING) offers the buy buttons with no purchases-open-soon line and no region note, carries Pro's own renewal box, and reads Pro's perks from the one list"; fi
   fi
   VD92_FB=$(vd92_chunk FreelanceBoost)

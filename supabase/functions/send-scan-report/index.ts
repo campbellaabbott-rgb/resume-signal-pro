@@ -63,10 +63,16 @@ import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
 // 2026-10-11.25: the fix-plan sequence is marketing (S12-010, CP-016): every
 // mail in it is queued as marketing, with a plain-text part and the seller
 // line once the seller is named.
+// 2026-10-25.1 (homepage switch-over, step 11; reservation home-pricing): the
+// "Rescan free" and "Get the full analysis" links name the scanner's own
+// address, /resume-checker, since "/" becomes the job board; mail already
+// sent with "/" still reaches the scanner through the "/" route's redirect.
 // 2026-10-27.1 (sales stay on, owner 2026-10-27): the button and the
 // sequence no longer wait for the seller's legal name and postal address, as
 // on main, and no response carries a marketing-state header.
-const FN_BUILD = "send-scan-report.2026-10-27.1";
+// 2026-10-31.1 (land/all carries the homepage switch-over): 2026-10-27.1's
+// sending with 2026-10-25.1's /resume-checker links, neither branch's build.
+const FN_BUILD = "send-scan-report.2026-10-31.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -283,7 +289,7 @@ async function queueDrip(admin: Admin, plan: DripPlan): Promise<void> {
     await admin.from("email_unsubscribe_tokens").insert({ token, email });
   }
   const score = plan.score;
-  const rescanUrl = `${SITE_URL}/?utm_source=email&utm_medium=scan_report&utm_campaign=rescan`;
+  const rescanUrl = `${SITE_URL}/resume-checker?utm_source=email&utm_medium=scan_report&utm_campaign=rescan`;
   const unsubUrl = unsubscribePageUrl("scan-report", { token: token ?? "" });
   const footer = `<p style="font-size:11px;color:#94a3b8;text-align:center;margin-top:18px">Part of the fix-plan emails started from the button in your scan report from resumebooster.work. <a href="${unsubUrl}" style="color:#94a3b8">Unsubscribe</a> any time — remaining emails cancel too.</p>${sellerFooterHtml()}`;
   const wrap = (inner: string) => `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f1f5f9;font-family:Helvetica,Arial,sans-serif"><div style="max-width:560px;margin:0 auto;padding:24px 16px"><div style="background:#fff;border-radius:14px;padding:26px 24px;border:1px solid #e2e8f0">${inner}</div>${footer}</div></body></html>`;
@@ -536,8 +542,8 @@ Deno.serve(async (req) => {
       return reply({ success: false, error: "Email service not configured" }, 503);
     }
 
-    const ctaUrl = `${SITE_URL}/?utm_source=email&utm_medium=scan_report&utm_campaign=free_scan#pricing`;
-    const rescanUrl = `${SITE_URL}/?utm_source=email&utm_medium=scan_report&utm_campaign=rescan`;
+    const ctaUrl = `${SITE_URL}/resume-checker?utm_source=email&utm_medium=scan_report&utm_campaign=free_scan#pricing`;
+    const rescanUrl = `${SITE_URL}/resume-checker?utm_source=email&utm_medium=scan_report&utm_campaign=rescan`;
 
     const score = Math.round(body.score);
     const scoreColor = score >= 70 ? "#16a34a" : score >= 50 ? "#d97706" : "#dc2626";

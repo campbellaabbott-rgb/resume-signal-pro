@@ -9,8 +9,9 @@
  * sales-stay-on page test passed only on a machine set to an American zone.
  * main has no such note. Mounted for real with the browser's zone set to each
  * of those places:
- *   - /pricing links to the Full Analysis and offers "Go Pro", with their
- *     terms and no region note;
+ *   - /pricing (the switch-over's page, src/pages/pricing/PricingPage.tsx)
+ *     links to the Full Analysis and offers "Go Pro", with their terms and no
+ *     region note, line or question;
  *   - the terms beside a payment and beside a plan carry no region note;
  *   - no page module reads the zone list or sends the browser's zone with a
  *     checkout (main's bodies carry none).
@@ -18,6 +19,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
+import { HelmetProvider } from "react-helmet-async";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { MOUNT_TEST_BUDGET } from "./helpers/mount-budget";
@@ -61,7 +63,7 @@ if (!(globalThis as { IntersectionObserver?: unknown }).IntersectionObserver) {
   };
 }
 
-import Pricing from "@/pages/Pricing";
+import PricingPage from "@/pages/pricing/PricingPage";
 import { PurchaseTerms } from "@/components/PurchaseTerms";
 
 const ROOT = resolve(__dirname, "../..");
@@ -86,7 +88,8 @@ afterEach(() => {
 
 const noRegionNote = (where: string) => {
   expect(document.querySelector("[data-region-notice]"), where).toBeNull();
-  expect(document.body.textContent ?? "", where).not.toMatch(/don.t sell|tax registration|not yet sold/i);
+  expect(document.querySelector("[data-region-line], [data-notice=region], [data-faq=region]"), where).toBeNull();
+  expect(document.body.textContent ?? "", where).not.toMatch(/don.t sell|tax registration|not yet sold|not sold in|EU, the EEA, the UK or India/i);
 };
 
 describe("/pricing, from a browser in each of those places", () => {
@@ -94,8 +97,8 @@ describe("/pricing, from a browser in each of those places", () => {
     it(`${zone}: links to the Full Analysis and offers Go Pro, with their terms and no region note`, () => {
       inZone(zone);
       expect(Intl.DateTimeFormat().resolvedOptions().timeZone).toBe(zone);
-      render(<MemoryRouter initialEntries={["/pricing"]}><Pricing /></MemoryRouter>);
-      expect(screen.getByRole("link", { name: /Get Full Resume Analysis/ })).toBeInTheDocument();
+      render(<HelmetProvider><MemoryRouter initialEntries={["/pricing"]}><PricingPage /></MemoryRouter></HelmetProvider>);
+      expect(document.querySelector("a[data-buy='full-analysis'][href='/resume-checker#upload']")).not.toBeNull();
       expect(screen.getByRole("button", { name: /Go Pro/ })).toBeInTheDocument();
       expect(document.querySelector("[data-testid='purchase-terms']")).not.toBeNull();
       noRegionNote(zone);
@@ -124,6 +127,8 @@ describe("no page module reads the zone list or sends the browser's zone", () =>
     for (const f of [
       "src/components/ProSubscriptionCard.tsx", "src/components/PurchaseTerms.tsx", "src/hooks/use-pro-subscription.ts",
       "src/hooks/use-product-checkout.ts", "src/pages/Index.tsx", "src/lib/checkout-refusal.ts",
+      "src/components/pricing/BuyBlock.tsx", "src/components/pricing/BeforeYouBuy.tsx", "src/components/pricing/PricingFaq.tsx",
+      "src/components/home/HomePlanStrip.tsx",
     ]) {
       expect(codeOf(readFileSync(resolve(ROOT, f), "utf8")), f).not.toMatch(/RegionNotice|useRegionRefused|inSalesTerritory|territoryHint|checkout-territory|sales-territory|territoryRefused/);
     }

@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspense } from "react";
 import { useTranslation } from "react-i18next";
-import { useBoardTotals, roundedFloor } from "@/hooks/use-board-totals";
 import { SEO } from "@/components/seo/SEO";
-import { useSearchParams, Link } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { useScrollDepth } from "@/hooks/use-scroll-depth";
 import { useTimeOnPage } from "@/hooks/use-time-on-page";
 import { useFunnelTracking } from "@/hooks/use-funnel-tracking";
@@ -49,11 +48,7 @@ import { LazySection } from "@/components/LazySection";
 import { type JobEntry } from "@/components/JobSelector";
 
 import { HowItWorks } from "@/components/HowItWorks";
-import { HomeHero } from "@/components/HomeHero";
-import { Bot, ArrowRight } from "lucide-react";
 import { PRODUCTS } from "@/config/products";
-import { MCP_ADD_TO_CLAUDE_LIVE, claudeInstallLink } from "@/config/mcp-tools";
-import { MCP_URL } from "@/lib/mcp-test";
 import { AgentMatchesPanel } from "@/components/AgentMatchesPanel";
 import { TrustIndicators } from "@/components/TrustIndicators";
 import { WhatYouGetSection } from "@/components/WhatYouGetSection";
@@ -395,87 +390,11 @@ interface FreeKeywordResult {
 
 const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024; // Matches parse-pdf/parse-docx's server-side limit
 
-/**
- * THE CONNECT-YOUR-AI STRIP ON THE FRONT PAGE, inside the hero band. Since
- * the apply pivot (owner decision 2026-10-11) it sells nothing: the Agent
- * plan, the Agent Pass and the Apply Assistant are retired and the
- * server-side apply agent is switched off, so the strip says the one thing
- * that is on offer — connect your own Claude or ChatGPT for free, search the
- * board, and apply yourself on the employer's own site with your AI's help —
- * and links to the page that sets it up.
- *
- * COUNT-FREE ON PURPOSE. The free allowance's figures are the server's
- * constants and move with an owner decision; the sentence states its shape
- * (free, no account, a daily allowance) and never a figure, so it cannot go
- * false the day they move. The figures live on /agents' developer disclosure,
- * read off the mirror the first-call guard pins to the server.
- *
- * "Add to Claude" sits behind MCP_ADD_TO_CLAUDE_LIVE (off until the owner's
- * check of the documented install link), exactly as on /agents.
- *
- * THE KEY NAMES ARE KEPT, THE SENTENCES ARE NEW in all nine locales: the
- * homepage's crawler bake (scripts/prerender-seo.mjs, AGENT_OFFER) reads
- * homeAgent.lead, .connectLine2, .passLine and .connectCta by name, so new
- * values under the same names reach a Googlebot fetch of / with no change to
- * the bake. .passLine now carries the "never submits" sentence; no pass is
- * sold.
- */
-export function AgentOfferStrip({ addToClaude = MCP_ADD_TO_CLAUDE_LIVE }: { addToClaude?: boolean } = {}) {
-  const { t } = useTranslation();
-  return (
-    <div
-      data-agent-offer
-      className="mt-6 mx-auto max-w-2xl rounded-2xl border border-primary/25 bg-primary/5 px-4 py-3 text-left sm:flex sm:items-start sm:gap-3"
-    >
-      <Bot className="hidden sm:block w-5 h-5 text-primary shrink-0 mt-0.5" aria-hidden />
-      <div className="text-sm text-muted-foreground leading-relaxed">
-        <p>
-          <span className="font-semibold text-foreground">{t("homeAgent.lead", "Use it from your own AI.")}</span>{" "}
-          {t("homeAgent.connectLine2", "Connect Resume Booster to Claude or ChatGPT for free, with no account: search the board in your chat, read postings in full, and apply yourself on the employer's own site with your AI's help, within a free daily allowance.")}
-        </p>
-        <p className="mt-1">
-          {t("homeAgent.passLine", "Your AI drafts and you decide: Resume Booster never submits an application for you.")}
-        </p>
-        <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[13px] font-medium">
-          {addToClaude && (
-            <a href={claudeInstallLink(MCP_URL)} data-add-to-claude className="inline-flex items-center gap-1 text-primary hover:underline">
-              {t("homeAgent.addToClaude", "Add to Claude")} <ArrowRight className="w-3.5 h-3.5" aria-hidden />
-            </a>
-          )}
-          <Link to="/agents" className="inline-flex items-center gap-1 text-primary hover:underline">
-            {t("homeAgent.connectCta", "Connect your AI")} <ArrowRight className="w-3.5 h-3.5" aria-hidden />
-          </Link>
-        </p>
-      </div>
-    </div>
-  );
-}
-
 // `landing` renders this same page (real scanner included) under a head-term
 // SEO route like /resume-checker — unique title/description/FAQ per query
 // intent, one scan implementation. See src/data/tool-landings.ts.
 const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLanding } = {}) => {
   const { t, i18n } = useTranslation();
-
-  // THE HEAD'S NUMBERS, DERIVED. See the comment at the <SEO> tag below.
-  //
-  // roundedFloor is a floor, never a nearest — a rounded-UP figure claims roles
-  // that do not exist, and the "+" only reads as honest over a floor. The
-  // count-free variants are not a degraded fallback; they are the correct copy
-  // when the board's own count is unavailable, because no number beats a stale
-  // one.
-  const homeTotals = useBoardTotals();
-  const homeTitle = homeTotals
-    // Mirrors the homepage write() in prerender-seo.mjs — the two must not
-    // drift (claim-drift rule). Owner decision 2026-10-08: the headline says
-    // where the jobs come from, never an absolute about them.
-    ? `Resume Booster — ${roundedFloor(homeTotals.jobs).toLocaleString()}+ Live Jobs Straight From Employers`
-    : "Resume Booster — Live Jobs Straight From Employers";
-  const homeDescription = homeTotals
-    ? `Live jobs straight from employers' own hiring systems: ${roundedFloor(homeTotals.jobs).toLocaleString()}+ openings, re-read through the day${
-        homeTotals.tracked ? `, and ${roundedFloor(homeTotals.tracked).toLocaleString()}+ roles tracked including ones we have watched close` : ""
-      }. Scan your resume free and see your match score on every posting.`
-    : "Live jobs straight from employers' own hiring systems, re-read through the day. Scan your resume free and see your match score on every posting.";
 
   // Spanish landing routes flip the whole app chrome to Spanish — the visitor
   // searched in Spanish; showing an English page under a Spanish URL would be
@@ -2083,18 +2002,10 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
         description: `Free diagnostic resume scan: ATS score with a full audit trail, verified quotes, per-vendor parsing checks, and a fix plan — across ${DETECTED_INDUSTRY_COUNT} industries, with an interface in ${LANGUAGE_COUNT} languages.`,
         offers: { "@type": "Offer", price: "0", priceCurrency: "USD", description: "Free resume scan — no signup required" },
       }) }} />
-      {/* TWO TRUE NUMBERS, EACH UNDER ITS OWN NOUN.
-          These were hardcoded "600,000+ Verified Openings" — the TRACKED figure
-          (678,957) wearing the SERVABLE noun, against a board serving 560,321.
-          Overstating what a visitor can actually page to by ~119,000, in the
-          document title, on a site whose entire pitch is that its numbers are
-          real. The frozen literal was also the exact failure use-board-totals
-          was extracted to end in the first place, and it grew back here.
-          Live openings and tracked roles are now both stated, both derived, and
-          the copy needs NO number when the read fails — never a stale one. */}
+      {/* The head is the landing's: typed copy with no board total. */}
       <SEO
-        title={landing?.title ?? homeTitle}
-        description={landing?.description ?? homeDescription}
+        title={landing?.title}
+        description={landing?.description}
         path={landing?.path ?? "/"}
       />
       {landing?.alternates && (
@@ -2118,33 +2029,9 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
       <Header />
 
       <main id="main-content" className="pt-16" role="main">
-        {/* Board-first: the live job board leads the page; the resume tools
-            below are the toolkit to land what's on it. Hidden on landing-page
-            variants (they keep their query-specific message) and once a scan
-            result is showing (the report takes over). */}
-        {!landing && !freeKeywordResult && (
-          <>
-            {/* ONE HERO. Two stacked full-height heroes — the agent's and the
-                board's — put 6,807px and four competing calls to action
-                between a visitor and anything they could do; the upload tool,
-                the only path to a paying customer, began at 10,546px. HomeHero
-                fuses the claim (every job real, straight from the employer),
-                states the live numbers, offers ONE primary action, and
-                puts the fifteen hiring systems and their counts directly
-                underneath — proof under the claim, where a sceptic can check
-                it without scrolling. Connecting your own AI is ONE strip
-                handed into that band, not a second hero above the scanner. */}
-            <HomeHero agentOffer={<AgentOfferStrip />} />
-          </>
-        )}
-
         {/* THE PROVENANCE STRIP SURVIVES EVERY PAGE STATE.
-            The band above — agent hero, board hero, and the strip inside it —
-            is the landing experience and is deliberately replaced once a scan
-            report exists (the report has to lead; a visitor who just uploaded
-            a CV came for their result, not for the pitch). But the fifteen
-            platforms and their live counts are not pitch: they are the answer
-            to "where do these jobs come from", which is the first question a
+            The fifteen platforms and their live counts are not pitch: they
+            are the answer to "where do these jobs come from", which is the first question a
             sceptical reader has and the single strongest thing this product
             can say. Gating them behind "hasn't scanned yet" meant the people
             most likely to act on them — the ones who just engaged — were the
@@ -2157,18 +2044,6 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
             <AtsCoverage variant="strip" />
           </section>
         )}
-        {/* MUTUALLY EXCLUSIVE WITH HomeHero, which is the whole point.
-            This block headlined "The job board with zero ghost jobs —
-            600,000+ verified openings" directly beneath HomeHero's "Every job
-            here is real" — 3,643px restating the claim above it, with its own
-            pair of CTAs competing with the one primary action. Making the same
-            promise twice does not make it twice as believable.
-            It is NOT deleted, because it is the only hero the other two page
-            states have: HomeHero is gated on `!landing && !freeKeywordResult`,
-            so landing variants (which carry their own query-specific promise)
-            and the post-scan screen would otherwise render with no hero at
-            all. The condition here is the exact complement of that gate —
-            one hero on every page state, never two, never none. */}
         {(landing || freeKeywordResult) && <Hero onFileSelect={handleFileSelect} />}
 
         {/* Landing-variant copy: the query-specific promise, right under the tool */}

@@ -63,13 +63,11 @@ describe("C1 reads the trust pages and C7 reads the strings React renders", () =
   });
   it("none of those sentences is left in this checkout's English strings or the home components", () => {
     const en = readFileSync(resolve(__dirname, "../i18n/locales/en.json"), "utf8");
-    const hero = readFileSync(resolve(__dirname, "../components/HomeHero.tsx"), "utf8");
     const index = readFileSync(resolve(__dirname, "../pages/Index.tsx"), "utf8");
     const list = [...SH.matchAll(/^\s+"([^"]+)", (?:"[^"]+",? ?)+$/gm)].flatMap((m) => [...m[0].matchAll(/"([^"]+)"/g)].map((x) => x[1]));
     expect(list.length, "the C7 list was read").toBeGreaterThanOrEqual(11);
     for (const s of list) {
       expect(en, `en.json still carries "${s}"`).not.toContain(s);
-      expect(hero, `HomeHero.tsx still carries "${s}"`).not.toContain(s);
       expect(index, `Index.tsx still carries "${s}"`).not.toContain(s);
     }
   });

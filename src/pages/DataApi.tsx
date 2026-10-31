@@ -285,7 +285,7 @@ function BuilderCard() {
       </div>
       <h3 className="text-lg font-semibold">{t("dataApiPage.builderName", "Builder API (planned)")}</h3>
       <div className="text-2xl font-bold text-primary mb-3">
-        {t("dataApiPage.builderPrice", "${{price}} a month, planned", { price: BUILDER_PLAN_PRICE_USD })}
+        {t("dataApiPage.builderPrice", "${{price}} a month", { price: BUILDER_PLAN_PRICE_USD })}
       </div>
       <p className="text-sm text-muted-foreground mb-3 flex-1">
         {t("dataApiPage.builderBody", "Ranked search, résumé fit scoring at volume and 180 days of closures, for display inside your own product with attribution. No feeds or resale; those are the commercial licence. Tell us if you'd use it.")}

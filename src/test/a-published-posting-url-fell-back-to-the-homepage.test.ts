@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { scannerAddressScript } from "@/lib/scanner-address";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { codeOf } from "./helpers/strip-comments";
@@ -126,7 +127,9 @@ describe("the homepage file names itself canonical", () => {
   const TEMPLATE = `<html lang="en"><head><title>x</title><meta name="description" content="" /><meta property="og:title" content="" /><meta property="og:description" content="" /><meta name="twitter:title" content="" /><meta name="twitter:description" content="" /><meta property="og:url" content="" /><meta name="twitter:url" content="" /></head><body><div id="root"></div></body></html>`;
   const render = (page: Record<string, unknown>) => composeHtml(
     { title: "Resume Booster", description: "d", content: "<h1>Home</h1>", ...page } as never,
-    { template: TEMPLATE, D: { POSTING_LD_TAG_ID: "posting-jsonld" }, esc, shell: (c: string) => c, preloadFor: () => "", publicHref: (p: string) => p, onTruncated: () => {} } as never,
+    // The fallback's inline script also clears a scanner address of "/"
+    // (review round 2026-10-26), by the route's own rule.
+    { template: TEMPLATE, D: { POSTING_LD_TAG_ID: "posting-jsonld", scannerAddressScript }, esc, shell: (c: string) => c, preloadFor: () => "", publicHref: (p: string) => p, onTruncated: () => {} } as never,
   );
 
   it("an unknown address served the homepage with no canonical; the fallback now says it is a copy of /", () => {

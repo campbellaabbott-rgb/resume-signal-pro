@@ -1,7 +1,7 @@
 {
   "name": "Resume Booster — Live Job Board",
   "short_name": "Resume Booster",
-  "description": "Live jobs straight from employers' own hiring systems, matched to your resume.",
+  "description": "Live jobs straight from employers' own hiring systems, and a free check of your resume against any posting.",
   "id": "/",
   "start_url": "/jobs",
   "scope": "/",
@@ -15,6 +15,6 @@
   ],
   "shortcuts": [
     { "name": "Job board", "url": "/jobs", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
-    { "name": "Scan my resume", "url": "/#upload", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] }
+    { "name": "Scan my resume", "url": "/resume-checker#upload", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] }
   ]
 }

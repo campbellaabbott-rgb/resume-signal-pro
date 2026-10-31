@@ -3,6 +3,7 @@ import { Check, X, Minus } from "lucide-react";
 import { useCurrency } from "@/hooks/use-currency";
 import { PRODUCTS } from "@/config/products";
 import { TRADING_NAME } from "@/config/seller";
+import { fullAnalysisOnSale } from "@/lib/purchases-open";
 
 type FeatureStatus = "yes" | "no" | "partial";
 
@@ -148,14 +149,28 @@ export function ComparisonTable() {
             ))}
           </div>
 
-          {/* CTA */}
+          {/* CTA. The priced call to action shows while the Full Analysis's
+              sale switch is on (G2: on, as on main), seller named or not (the
+              owner, 2026-10-27). With the switch off it offers the free scan,
+              as the closing call to action does. */}
           <div className="mt-8 text-center">
-            <button
-              onClick={() => document.getElementById("upload")?.scrollIntoView({ behavior: "smooth" })}
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-all duration-300 hover:scale-105"
-            >
-              {t("comparison.ctaText")} — ${PRODUCTS.fullAnalysis.priceUsd} {isLocalCurrency && <span className="opacity-80">≈ {formatPrice(PRODUCTS.fullAnalysis.priceUsd)}</span>}
-            </button>
+            {fullAnalysisOnSale() ? (
+              <button
+                onClick={() => document.getElementById("upload")?.scrollIntoView({ behavior: "smooth" })}
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-all duration-300 hover:scale-105"
+              >
+                {t("comparison.ctaText")} — ${PRODUCTS.fullAnalysis.priceUsd} {isLocalCurrency && <span className="opacity-80">≈ {formatPrice(PRODUCTS.fullAnalysis.priceUsd)}</span>}
+              </button>
+            ) : (
+              <div className="inline-flex flex-col items-center gap-3" data-comparison-closed>
+                <button
+                  onClick={() => document.getElementById("upload")?.scrollIntoView({ behavior: "smooth" })}
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-all duration-300 hover:scale-105"
+                >
+                  {t("finalCta.freeScanCta", "Scan my résumé free")}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

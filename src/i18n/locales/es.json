@@ -62,8 +62,7 @@
     "headline": {
       "get": "El tablón de empleo con",
       "recruiterGrade": "ofertas en vivo directas de los sistemas de contratación de cada empresa",
-      "feedbackLive": "— {{n}}+ vacantes activas, comparadas con tu CV",
-      "feedbackPlain": "— vacantes activas, comparadas con tu CV"
+      "tailFreeCheck": "— y una revisión gratuita de tu CV frente a cualquier vacante"
     },
     "description": "Sube tu CV y obtén reescrituras optimizadas para ATS, alertas de red flags y mejoras de palabras clave — como lo revisan los reclutadores.",
     "benefits": {
@@ -152,7 +151,6 @@
     "factNoStorage": "Nunca se vende",
     "measureStrip": "Mediciones, no opiniones · Cada cita verificada · Una puntuación que muestra su trabajo",
     "jobsCta": "Bolsa de empleo en vivo — comprueba tu encaje antes de postularte →",
-    "browseJobsLive": "Explora {{n}}+ empleos activos",
     "browseJobsPlain": "Explora el tablón de empleo en vivo"
   },
   "footer": {
@@ -180,7 +178,6 @@
       "lever": "Guía de Lever",
       "icims": "Guía de iCIMS",
       "vsJobscan": "vs. Jobscan",
-      "freelanceBoost": "Freelance Boost",
       "builder": "Creador de currículum",
       "methodology": "Metodología",
       "dataApi": "Datos de contratación y API",
@@ -464,6 +461,12 @@
       },
       "whatDoIGetNamed": {
         "question": "¿Qué obtengo con {{name}}?"
+      },
+      "subscriptionClosed": {
+        "answer": "Hoy no: todavía no hay nada a la venta. La página de precios dice antes de pagar qué incluye cada opción de pago y si se renueva. El análisis del currículum, el tablón de empleo y conectar tu propia IA son gratis."
+      },
+      "subscriptionFaOnly": {
+        "answer": "No. El Análisis completo de ${{price}} es un pago único que nunca se renueva, y todavía no hay ningún plan mensual a la venta. El análisis del currículum, el tablón de empleo y conectar tu propia IA siguen siendo gratis. Nada te cambia de plan automáticamente."
       }
     },
     "stillHaveQuestions": "¿Aún tienes preguntas?",
@@ -762,7 +765,6 @@
     "featuresMobile": "Las correcciones de tu escaneo, aplicadas. Un solo pago."
   },
   "finalCta": {
-    "urgency": "Tu currículum podría estar costándote entrevistas ahora mismo",
     "title": "Has visto los problemas. Ahora obtén las soluciones.",
     "subtitle": "El escaneo gratuito muestra qué está mal. El análisis completo te da contenido reescrito para copiar y pegar.",
     "heading": "No Dejes Escapar Otra Oportunidad",
@@ -770,26 +772,9 @@
     "freeScan": "Escaneo Gratis",
     "fullAnalysis": "Análisis Completo",
     "ctaButton": "Ver Todos los Paquetes",
-    "comparison": {
-      "atsScore": "Puntuación ATS y 24 Diagnósticos",
-      "redFlags": "Señales de Alerta y Keywords Faltantes",
-      "sampleBullet": "1 Viñeta de Ejemplo Reescrita",
-      "allBullets": "TODAS las Viñetas Reescritas con Métricas",
-      "linkedin": "Optimización del Perfil de LinkedIn",
-      "jobKeywords": "Personalización de Keywords por Trabajo",
-      "industryTemplates": "Plantillas Específicas de la Industria",
-      "fullReport": "Informe Completo de 10 Secciones"
-    },
-    "benefits": {
-      "ats": "Puntuación ATS con desglose de 5 puntos",
-      "keywords": "Palabras clave específicas de la industria",
-      "redFlags": "Señales de alerta que notan los reclutadores",
-      "linkedin": "Optimización del perfil de LinkedIn"
-    },
     "oneTime": "pago único",
-    "guarantee": "Resultados instantáneos • Pago único",
     "button": "Obtener Mi Análisis Ahora",
-    "roi": "Una entrevista = {{price}} recuperados"
+    "freeScanCta": "Analizar mi currículum gratis"
   },
   "scanProgress": {
     "title": "Análisis IA en Progreso",
@@ -872,19 +857,7 @@
       "impact": "Impacto",
       "flags": "Alertas"
     },
-    "filterPhrase": {
-      "compliance": "filtros ATS rígidos y orientados al cumplimiento normativo",
-      "credential": "sistemas de seguimiento de candidatos centrados en credenciales",
-      "recruiterScreen": "filtros automáticos antes de que un reclutador lo vea",
-      "volume": "sistemas ATS que filtran cientos de candidatos por puesto",
-      "generic": "filtros ATS automáticos"
-    },
-    "outcome": {
-      "strong": "Candidato sólido para superar {{filterPhrase}}",
-      "likely": "Probablemente supere la mayoría de {{filterPhrase}}",
-      "atRisk": "En riesgo de ser filtrado por {{filterPhrase}}",
-      "highRisk": "Alto riesgo de ser filtrado por {{filterPhrase}} antes de que un humano lo vea"
-    },
+    "basis": "Puntuado según las palabras clave, las secciones, el formato y los resultados medibles de este currículum",
     "gauge": {
       "excellent": "Excelente",
       "good": "Bueno",
@@ -1165,7 +1138,7 @@
     "metricTooltips": {
       "atsScore": {
         "title": "Puntuación de IA-ATS",
-        "description": "Nuestra IA simula cómo los sistemas modernos de seguimiento de candidatos impulsados por IA escanean tu currículum, la misma tecnología que usa el 98% de las empresas Fortune 500.",
+        "description": "Nuestra IA simula cómo los sistemas modernos de seguimiento de candidatos impulsados por IA escanean tu currículum.",
         "whyMatters": "Un puntaje bajo significa que fallos de análisis o palabras clave ausentes probablemente te dejan fuera de las búsquedas que los reclutadores realmente hacen."
       },
       "format": {
@@ -1176,7 +1149,7 @@
       "metrics": {
         "title": "Puntuación de cuantificación",
         "description": "Mide cuántos de tus logros incluyen números, porcentajes o métricas.",
-        "whyMatters": "Los reclutadores pasan 6 segundos escaneando — los números captan su atención primero."
+        "whyMatters": "Los reclutadores leen en diagonal — los números captan su atención primero."
       },
       "verbs": {
         "title": "Calificación de verbos de acción",
@@ -1206,7 +1179,7 @@
       "readability": {
         "title": "Puntuación de legibilidad",
         "description": "Mide qué tan fácil es escanear rápidamente tu currículum.",
-        "whyMatters": "Los reclutadores promedian 6-7 segundos por currículum — haz que cada palabra cuente."
+        "whyMatters": "Los reclutadores leen cada currículum en diagonal — haz que cada palabra cuente."
       },
       "bulletImpact": {
         "title": "Impacto de las viñetas",
@@ -1237,66 +1210,6 @@
         "title": "Compatibilidad con sistemas IA-ATS",
         "description": "Muestra qué tan bien se analiza tu currículum en los principales sistemas de seguimiento de candidatos impulsados por IA como Workday, Greenhouse y Taleo.",
         "whyMatters": "Diferentes empresas usan diferentes sistemas IA-ATS — sabe cuáles leerán tu currículum correctamente."
-      }
-    },
-    "ctaCopy": {
-      "coverLetter": {
-        "control": {
-          "button": "Generar carta de presentación — {{price}}",
-          "description": "Carta de presentación generada por IA, adaptada a tu currículum y trabajo objetivo. Lista para enviar en minutos."
-        },
-        "benefitFocused": {
-          "button": "Obtén tu carta que gana entrevistas",
-          "description": "Destaca entre más de 100 candidatos con una carta de presentación personalizada que emociona a los reclutadores."
-        },
-        "scarcity": {
-          "button": "Crear carta de presentación ahora — {{price}}",
-          "description": "La mayoría de los candidatos omiten las cartas de presentación. Adelántate a la competencia con una carta personalizada en 2 minutos."
-        }
-      },
-      "keywordFix": {
-        "control": {
-          "button": "Obtener informe completo de palabras clave",
-          "headline": "¿Quieres más de 50 palabras clave de la industria?"
-        },
-        "benefitFocused": {
-          "button": "Desbloquear palabras clave ocultas",
-          "headline": "Supera el filtro ATS"
-        },
-        "scarcity": {
-          "button": "Obtén palabras clave antes que otros",
-          "headline": "Supera al 87% de los candidatos"
-        }
-      },
-      "premiumPackage": {
-        "control": {
-          "button": "Comprar paquete premium — {{price}}",
-          "headline": "Paquete Premium de Currículum",
-          "subtext": "Todo lo que necesitas para conseguir entrevistas"
-        },
-        "benefitFocused": {
-          "button": "Prepárate para entrevistas ahora",
-          "headline": "Consigue tu trabajo soñado más rápido",
-          "subtext": "3 veces más llamadas de entrevista con nuestro paquete completo"
-        },
-        "scarcity": {
-          "button": "Reclama tu paquete — Limitado",
-          "headline": "Paquete Premium de Currículum"
-        }
-      },
-      "tailoredResume": {
-        "control": {
-          "button": "Vista previa del currículum adaptado",
-          "description": "Vista previa gratuita, luego desbloquea el Paquete Premium completo con currículum adaptado + carta de presentación"
-        },
-        "benefitFocused": {
-          "button": "Ve tu currículum mejorado",
-          "description": "Ve exactamente cómo se verá tu currículum cuando se optimice para tu puesto objetivo"
-        },
-        "scarcity": {
-          "button": "Generar antes de que cierre",
-          "description": "Vista previa limitada disponible — ve tu currículum adaptado antes de actualizar"
-        }
       }
     },
     "addJobDescriptionToUnlock": "Añade una descripción del puesto arriba para desbloquear",
@@ -1343,10 +1256,6 @@
       "should": "Debería",
       "nice": "Agradable"
     },
-    "atRiskOrNeedsImprovement": {
-      "atRisk": "En riesgo de pasar desapercibido en las búsquedas de reclutadores",
-      "needsImprovement": "Necesita mejorar para competir"
-    },
     "personalizedTipsSection": {
       "title": "Consejos personalizados",
       "subtitle": "Información adaptada a tu perfil"
@@ -1374,18 +1283,6 @@
     "fixChecklistTitle": "Lista de correcciones",
     "checklistCompleted": "{{completed}}/{{total}} completado",
     "trackProgress": "Seguir progreso",
-    "peerBenchmark": {
-      "above": "Por encima del promedio",
-      "at": "Alrededor del promedio",
-      "below": "Por debajo del promedio",
-      "forAtsReadinessAmong": "en preparación ATS entre {{cohort}}",
-      "strongPosition": "✓ Posición sólida en tu industria",
-      "roomForImprovement": "→ Margen de mejora",
-      "belowAverage": "⚠ Por debajo del promedio de la industria",
-      "strongResult": "Tu currículum puntúa bien frente a tus pares. Concéntrate en adaptarlo a roles específicos para mejores resultados.",
-      "competitiveResult": "Tu currículum es competitivo pero podría ser más fuerte. Las sugerencias a continuación te ayudarán a destacar.",
-      "weakResult": "Otros candidatos en tu campo están obteniendo puntuaciones más altas. Aplica las correcciones a continuación para mejorar tus posibilidades."
-    },
     "timelineProgression": {
       "rapidLabel": "🚀 Rápido",
       "steadyLabel": "📈 Constante",
@@ -1413,11 +1310,6 @@
       "naturalProgression": "Siguiente paso natural",
       "lateralMove": "Movimiento lateral",
       "stretchGoal": "Meta ambiciosa"
-    },
-    "marketPosition": {
-      "aboveMarket": "Por encima del mercado",
-      "atMarket": "En el mercado",
-      "belowMarket": "Por debajo del mercado"
     },
     "formatRecommendationSection": {
       "title": "Recomendación de formato de currículum",
@@ -1522,8 +1414,6 @@
     },
     "jobMatch": {
       "title": "Análisis de compatibilidad laboral",
-      "badge": "Gratis e ilimitado",
-      "subtitle": "¡Compara tu currículum con cualquier trabajo — sin límites!",
       "matchScore": "Puntuación de compatibilidad",
       "matchGrade": "Calificación de compatibilidad",
       "experienceFit": "Ajuste de experiencia",
@@ -1546,17 +1436,9 @@
         "subtitle": "Currículum completo personalizado, carta de presentación, señalamientos honestos de brechas de habilidades y una lista de verificación de envío"
       }
     },
-    "appRecommendation": {
-      "strongApply": "✓ Excelente coincidencia — ¡Aplica ahora!",
-      "applyWithChanges": "⚡ Buen candidato — Aplica después de correcciones rápidas",
-      "applyAsStretch": "🎯 Rol desafiante — Aplica como ambicioso",
-      "doNotApply": "✗ Mala compatibilidad — Considera otros puestos"
-    },
     "atsBanner": {
-      "belowMedian": "Por debajo de la mediana de {{median}} entre {{n}} currículums de {{industry}} escaneados aquí. Los principales ATS no rechazan por esta cifra, pero las correcciones de abajo la suben.",
-      "belowTopQuarter": "Por encima de la mediana de {{median}}; el cuartil superior de los {{n}} currículums de {{industry}} escaneados aquí puntúa {{p75}} o más.",
-      "noPassMark": "No es una nota de aprobado: los principales ATS no rechazan un currículum por una puntuación. Las correcciones de abajo la suben.",
-      "topQuarter": "Cuartil superior: {{p75}}+"
+      "heading": "Margen para subir esta puntuación",
+      "noPassMark": "No es una nota de aprobado: los principales ATS no rechazan un currículum por una puntuación. Las correcciones de abajo la suben."
     },
     "eliteSignals": {
       "title": "Señales que atraen a reclutadores"
@@ -1572,19 +1454,12 @@
       "whyLabel": "Por qué:",
       "whyNote": "Las personas quieren claridad primero — las razones importan más que las soluciones."
     },
-    "howYouCompare": {
-      "title": "Cómo te comparas",
-      "subtitle": "Ve cómo tu currículum se compara con otros profesionales de {{industry}}",
-      "you": "Tú",
-      "others": "Otros",
-      "getJobSpecific": "Obtener análisis específico del trabajo"
-    },
     "careerTimeline": {
       "title": "Línea de tiempo de carrera",
       "totalExp": "Experiencia total",
       "totalExpDesc": "Cuánto tiempo has trabajado en tu campo",
       "avgTenure": "Tiempo prom. en cada trabajo",
-      "tenureGood": "✓ Buena estabilidad — a los reclutadores les gustan 2+ años por puesto",
+      "tenureGood": "✓ Dos años o más por puesto, de media",
       "tenureWarning": "⚠ La permanencia corta puede generar preguntas",
       "tenurePoor": "⚠ Muy corto — puede verse como saltar de trabajo en trabajo",
       "careerGrowth": "Crecimiento profesional"
@@ -1599,9 +1474,6 @@
       "uniqueValue": "Tu valor único",
       "nextMoves": "Tus próximos movimientos de carrera",
       "interviewStories": "Ideas para historias de entrevista",
-      "salaryInsightTitle": "Perspectiva salarial",
-      "estimatedRange": "rango estimado",
-      "negotiationLeverage": "Tu ventaja en la negociación:",
       "hiddenStrengths": "Fortalezas ocultas que estás subestimando",
       "personalBrand": "Tu marca personal",
       "currentLabel": "Actual:",
@@ -1690,26 +1562,14 @@
       "skillsHighlighted": "Habilidades destacadas",
       "instantDownload": "Descarga instantánea"
     },
-    "competitivePosition": {
-      "top": "🏆 Candidato principal",
-      "competitive": "💪 Competitivo",
-      "middle": "📊 En el pelotón",
-      "unlikely": "⚠️ Pocas probabilidades",
-      "yourAdvantage": "Tu ventaja",
-      "yourGap": "Tu brecha"
-    },
     "cta": {
-      "fixIssues": "Ver qué te cuesta entrevistas — {{price}}",
       "getFullAnalysis": "Obtener mi CV listo para reclutadores — {{price}}",
       "socialProof": "{{count}} CV analizados hoy"
     },
     "enterprise": {
-      "verdictLabel": "El Veredicto",
       "verdictEvidence": "Todo lo de abajo es la evidencia — y la solución.",
       "downloadPdf": "Descargar resumen en PDF",
       "nextActionLabel": "Tu acción #1",
-      "howYouCompare": "Cómo te comparas",
-      "interviewLikelihood": "Probabilidad de entrevista",
       "xrayTitle": "Radiografía del currículum",
       "emailTitle": "Envíame mi informe",
       "emailDesc": "Recibe este resumen y tu plan de mejora en tu correo — útil para aplicar los cambios después.",
@@ -1720,12 +1580,10 @@
       "pulseConfirmSent": "Si esta dirección aún no ha confirmado el pulso mensual del mercado, le hemos enviado un enlace de confirmación. El pulso solo empieza cuando se hace clic en ese enlace.",
       "pulseNotCovered": "El pulso mensual del mercado aún no cubre tu sector, así que no se envió ninguna confirmación.",
       "dripConfirmSent": "El correo de tu informe tiene un botón para iniciar los correos del plan de arreglos. No enviamos nada más hasta que lo pulses.",
-      "placementTopQuartile": "Cuartil superior de {{n}} escaneos reales de {{industry}}",
-      "placementAboveMedian": "Por encima de la mediana de {{n}} escaneos reales de {{industry}}",
-      "placementBelowMedian": "Por debajo de la mediana de {{n}} escaneos reales de {{industry}}",
-      "placementBottomQuartile": "Cuartil inferior de {{n}} escaneos reales de {{industry}} — gran margen de mejora con los arreglos de abajo",
       "emailSpotted": "Encontramos esta dirección en tu currículum — no se envía nada a menos que pulses Enviar.",
-      "dripOptIn": "Divide mi plan en una secuencia breve de correos: los arreglos clave el día 2, el resto el día 4, un recordatorio de reescaneo el día 6 — y una pregunta el día 14: ¿conseguiste entrevistas? Cuatro correos breves, cancela cuando quieras."
+      "dripOptIn": "Divide mi plan en una secuencia breve de correos: los arreglos clave el día 2, el resto el día 4, un recordatorio de reescaneo el día 6 — y una pregunta el día 14: ¿conseguiste entrevistas? Cuatro correos breves, cancela cuando quieras.",
+      "summaryLabel": "Resumen",
+      "summaryLine": "Puntuación ATS {{score}}/100: {{critical}} críticos, {{warnings}} por revisar, {{passed}} superados."
     },
     "targeting": {
       "title": "Puestos para los que tu currículum pasa el filtro",
@@ -2605,13 +2463,6 @@
     "strong": "Fuerte",
     "keyMetricsToInclude": "Métricas clave a incluir:",
     "commonMistakesFor": "Errores comunes de {{name}}:",
-    "howYouCompareIn": "Cómo te comparas en {{name}}",
-    "yourScore": "Tu puntuación",
-    "industryAverage": "Promedio de {{name}}",
-    "topPerformers": "Mejores candidatos",
-    "benchmarkTop": "Preparación ATS superior al promedio para tu industria.",
-    "benchmarkAverage": "Alrededor del promedio ATS para tu industria.",
-    "benchmarkBelow": "Por debajo del promedio ATS para tu industria (solucionable).",
     "yourTopPriorities": "Tus principales prioridades",
     "commonIndustryMistakes": "Errores comunes de currículum en {{name}}",
     "industryBulletExamples": "Ejemplos de viñetas de {{name}}",
@@ -2837,49 +2688,6 @@
       }
     }
   },
-  "pricingPage": {
-    "metaTitle": "Precios — Resume Booster",
-    "metaDescription": "Herramientas de pago único desde ${{lowPrice}} hasta ${{highPrice}} que nunca se renuevan, o Pro por ${{proPrice}} al mes con todas las herramientas incluidas. Reescrituras de nivel reclutador.",
-    "noSubscriptions": "Pagos únicos • Nunca se renuevan automáticamente",
-    "titlePrefix": "Elige tu",
-    "titleHighlight": "Impulso de Currículum",
-    "subtitle": "Desde correcciones rápidas hasta paquetes completos de carrera. Los productos de pago único se pagan una vez; Pro se renueva cada mes hasta que canceles.",
-    "secureCheckout": "Pago seguro",
-    "instantAccess": "Acceso instantáneo",
-    "stripeProtected": "Protegido por Stripe",
-    "premiumPackages": "Paquetes Premium",
-    "premiumSubtitle": "Herramientas completas de transformación profesional",
-    "oneTime": "pago único",
-    "processing": "Procesando...",
-    "uploadResumeFirst": "Sube tu currículum primero",
-    "getProduct": "Obtener {{name}}",
-    "requiresUpload": "Requiere subir tu currículum para analizarlo",
-    "whyResumeBooster": "¿Por qué Resume Booster?",
-    "questions": "¿Preguntas?",
-    "allProductsOneTime": "Cada herramienta es una compra única con acceso instantáneo y nunca se renueva. Pro es un plan mensual que puedes cancelar cuando quieras.",
-    "freeScanLink": "escaneo gratuito",
-    "seeScoreFirst": "para ver primero tu puntuación.",
-    "tryFreeScanFirst": "Probar el escaneo gratuito primero",
-    "ladderTitle": "Tres puertas de entrada",
-    "ladderSubtitle": "La mayoría necesita exactamente una de estas — el resto del catálogo está abajo si lo quieres.",
-    "ladderFreeTitle": "Empieza gratis",
-    "ladderFreeDesc": "El escaneo diagnóstico completo — puntuación, comparativas, tus peores líneas reescritas, puestos objetivo. Sin registro.",
-    "ladderFreeCta": "Escanear mi currículum gratis",
-    "ladderFixDesc": "El arreglo completo: análisis total, tu currículum reescrito para los ATS y una carta de presentación a medida.",
-    "ladderSpecialistDesc": "Para quienes cambian de carrera: trabajo freelance y por proyectos traducido a experiencia de nivel profesional.",
-    "allToolsToggle": "Ver todas las herramientas ({{count}} más)",
-    "guarantee": "Cada herramienta de pago está cubierta: ¿no te convence el resultado? Lo regeneramos gratis — solo responde a tu recibo.",
-    "passLine": "Conectar tu propio Claude o ChatGPT es gratis: busca en la bolsa de empleo desde tu chat y postúlate por tu cuenta en el sitio del empleador, con la ayuda de tu IA. Nunca enviamos una solicitud por ti.",
-    "passLink": "Conecta tu IA",
-    "buyProduct": "Obtener {{name}}",
-    "freeScanLeadIn": "¿Aún no lo tienes claro? Haz el",
-    "heroBadgeLine": "Buscar es gratis, 5 $ por un análisis profundo, o Pro para las herramientas de redacción",
-    "ladderAnalysisDesc": "Cada carencia de palabras clave y cada problema de ATS de tu currículum, puntuados frente al empleo que pegues, con la solución para cada uno. No necesitas cuenta; incluido en Pro.",
-    "ladderSubtitleLine": "La mayoría necesita exactamente uno de estos.",
-    "metaDescriptionFa": "Búsqueda de empleo y análisis de currículum gratis. Un Análisis completo de ${{lowPrice}} pagado una vez, o Pro a ${{proPrice}} al mes para las herramientas de redacción.",
-    "oneTimeAndProLineFa": "El Análisis completo de ${{price}} se paga una vez y nunca se renueva; Pro es un plan mensual que puedes cancelar cuando quieras.",
-    "subtitleLine": "Busca y analiza gratis. Paga una vez por un análisis profundo de tu currículum, o hazte Pro para las herramientas de redacción en los empleos a los que te postulas."
-  },
   "scanPackPurchase": {
     "topUpCredits": "Recargar créditos",
     "perCreditUseAnytime": "{{price}} por crédito • Usa en cualquier momento",
@@ -3100,20 +2908,6 @@
       "fix3": "Incluye 3 palabras clave del sector más"
     }
   },
-  "peerBenchmark": {
-    "howYouCompare": "Cómo te comparas",
-    "percentile": "percentil",
-    "industryAverage": "Promedio del sector: {{score}}",
-    "topPerformers": "Mejores candidatos: {{score}}+",
-    "toAverage": "Al promedio",
-    "toTopTier": "Al nivel superior",
-    "topPerformer": "¡Eres un candidato destacado!",
-    "levelTip": "Consejo nivel {{level}}",
-    "benchmarkedAgainst": "Comparado con otros candidatos de {{role}}",
-    "topPct": "Top {{pct}} % en preparación ATS entre {{cohort}}",
-    "aroundAverage": "Preparación ATS promedio entre {{cohort}}",
-    "belowAverage": "Preparación ATS por debajo del promedio entre {{cohort}} (se puede mejorar)"
-  },
   "skillsGapAnalysis": {
     "title": "Análisis de brechas de habilidades para {{role}}",
     "roleMatchScore": "Puntuación de coincidencia con el puesto",
@@ -3176,28 +2970,13 @@
     }
   },
   "competitorBenchmark": {
-    "title": "Cómo destacan los mejores {{role}}s",
-    "basedOnAnalysis": "Basado en el análisis de currículums exitosos de {{role}} que consiguen entrevistas",
-    "competitiveStanding": "Tu posición competitiva",
-    "topElements": "¡Tienes elementos que incluyen los mejores candidatos!",
-    "addFewMore": "Agrega algunos elementos más para competir con los mejores candidatos",
-    "addElements": "Agrega estos elementos para igualar a los mejores candidatos",
-    "sectionsAlwaysInclude": "Secciones que los mejores {{role}}s siempre incluyen:",
-    "whatMakesStandOut": "Qué hace destacar a los mejores currículums:",
-    "pctTopCandidates": "Qué % de los mejores candidatos incluye:",
-    "avgBullets": "Puntos promedio por puesto:",
-    "youBullets": "Tú: {{count}}",
-    "topBullets": "Top: {{count}}",
-    "quickWins": "Victorias rápidas para competir:",
-    "addPortfolio": "Agrega enlaces de portafolio/GitHub ({{pct}} % de los mejores candidatos los incluyen)",
-    "addCerts": "Enumera certificaciones relevantes ({{pct}} % de los mejores candidatos las tienen)",
-    "addMetrics": "Agrega métricas a tus puntos ({{pct}} % de los mejores currículums cuantifican logros)",
-    "addBullets": "Agrega {{count}} puntos más por puesto",
-    "checklistItems": {
-      "portfolio": "Enlaces de portafolio/GitHub",
-      "certifications": "Certificaciones",
-      "quantifiedAchievements": "Logros cuantificados"
-    }
+    "title": "Lo que suelen incluir los currículums de {{role}}",
+    "sectionsAlwaysInclude": "Secciones que suelen tener los currículums de {{role}}:",
+    "whatMakesStandOut": "Qué ayuda a destacar:",
+    "quickWins": "Vale la pena añadir si te corresponde:",
+    "addPortfolio": "Enlaces de portafolio o GitHub",
+    "addCerts": "Certificaciones relevantes, incluso en curso",
+    "addMetrics": "Cifras en tus puntos: alcance, tiempo ahorrado, resultados"
   },
   "jobComparisonCTA": {
     "compareToRoles": "Mira cómo te comparas con tus puestos objetivo:"
@@ -3482,7 +3261,6 @@
     "resumeScore": "Puntaje ATS del currículum",
     "results": "Resultados de {{name}}",
     "poweredBy": "Desarrollado por",
-    "brand": "resumescanner.ai",
     "outOf": "/100",
     "industry": "Industria",
     "experience": "Experiencia",
@@ -3490,7 +3268,7 @@
     "improvement": "Mejora",
     "improvementPts": "+{{pts}} pts",
     "topStrength": "Principal fortaleza",
-    "getScore": "Obtén tu puntaje gratuito en resumescanner.ai",
+    "getScore": "Obtén tu puntaje gratuito en {{site}}",
     "previewLabel": "Vista previa de tu tarjeta de puntaje descargable",
     "download": "Descargar",
     "downloaded": "¡Descargado!",
@@ -3506,8 +3284,7 @@
     "downloadingInstead": "Descargando imagen en su lugar...",
     "copyNotSupported": "Copia no compatible",
     "imageDownloaded": "¡Imagen descargada!",
-    "uploadLinkedIn": "Súbela a tu publicación de LinkedIn para destacar",
-    "shareText": "¡Acabo de obtener {{score}}/100 en mi escaneo ATS de currículum! 📊\n\nIndustria: {{industry}}\nPrincipal fortaleza: {{strength}}\n\nObtén tu puntaje gratuito → resumescanner.ai\n\n#curriculum #busquedaempleo #carrera #ATS"
+    "uploadLinkedIn": "Súbela a tu publicación de LinkedIn para destacar"
   },
   "smartRecommendations": {
     "personalizedFor": "Personalizado para ti",
@@ -5212,7 +4989,7 @@
       "everythingFree": "Todo lo de una cuenta gratuita, más las herramientas de redacción",
       "fullAnalysisIncluded": "El Análisis completo de 5 $ incluido",
       "noDailyScanCap": "Sin límite diario de análisis",
-      "writingTools": "Un currículum adaptado, una carta de presentación y preparación de entrevistas para tus empleos: hasta 5 sets al día y 60 al mes"
+      "writingToolsPackages": "Un currículum adaptado, una carta de presentación y preparación de entrevistas para tus empleos: hasta 5 paquetes al día y 60 al mes"
     },
     "renewsOn": "Se renueva el {{date}}",
     "retiredPlanEnds": "Termina el {{date}} y no se renovará. Las herramientas de Pro siguen activas hasta entonces.",
@@ -5224,6 +5001,7 @@
     "secureSignedIn": "Pago seguro con Stripe. Cancela cuando quieras, sin permanencia.",
     "secureSignedOut": "Primero iniciarás sesión, para que el plan quede en tu cuenta. Pago seguro con Stripe; cancela cuando quieras.",
     "summaryLine": "Todo lo de una cuenta gratuita, más las herramientas de redacción, el Análisis completo de 5 $ incluido y sin límite diario de análisis",
+    "summaryLineWithoutAnalysis": "Todo lo de una cuenta gratuita, más las herramientas de redacción y sin límite diario de análisis",
     "title": "Resume Booster Pro",
     "toast": {
       "alreadyMemberBody": "Tu plan ya está activo en esta cuenta.",
@@ -5336,19 +5114,6 @@
     "headline2": "Ofertas activas que coinciden con «{{q}}»",
     "sub2": "Ofertas activas de los propios sistemas de contratación de las empresas. Te postulas en el sitio del empleador, con la ayuda de tu propia IA si quieres. Estas son las mejores coincidencias:",
     "ctaYourAi": "Postúlate con la ayuda de tu propia IA"
-  },
-  "homeHero": {
-    "headlinePre": "Ofertas en vivo, directas de los sistemas de contratación de cada empresa.",
-    "statOpenings": "vacantes activas",
-    "statCompanies": "empresas",
-    "ctaPrimary": "Sube tu CV — gratis",
-    "ctaSecondary": "Explorar el tablón",
-    "reassure": "Análisis gratis · sin tarjeta, sin registro",
-    "exploreCta": "Explorar por campo",
-    "statCompanyBoards": "portales de empleo de empresas con vacantes",
-    "badge2": "Bolsa de empleo en vivo + tu propia IA",
-    "headlineHighlight2": "Postúlate por tu cuenta, con la ayuda de tu propia IA.",
-    "sub2": "Ofertas leídas de los propios sistemas de contratación de las empresas y revisadas durante todo el día. Analiza tu CV gratis, busca en la bolsa aquí o desde Claude o ChatGPT, y postúlate por tu cuenta, con la ayuda de tu IA si quieres. Nunca enviamos nada por ti."
   },
   "homeAgent": {
     "lead": "Úsalo desde tu propia IA.",
@@ -5566,6 +5331,7 @@
     "agentDigest": "Dejar de recibir los correos de la lista de la mañana. Tu agente sigue funcionando y sus selecciones siguen en tu cuenta."
   },
   "purchaseTerms": {
+    "finalSale": "Todas las ventas son definitivas.",
     "agree": "Al continuar, aceptas los <terms>Términos del servicio</terms> y la <privacy>Política de privacidad</privacy>.",
     "renewal": "{{price}} al mes, con renovación automática hasta que canceles. Cancela cuando quieras desde tu cuenta.",
     "agentTrial": "Quienes se suscriben por primera vez tienen {{days}} días gratis; después, {{price}} al mes, con renovación automática hasta que canceles. Cancela antes de que termine la prueba y no se te cobrará. Si ya te suscribiste antes, pagas desde el primer día.",
@@ -5674,7 +5440,7 @@
   },
   "dataApiPage": {
     "builderName": "API Builder (prevista)",
-    "builderPrice": "${{price}} al mes, previsto",
+    "builderPrice": "${{price}} al mes",
     "builderBody": "Búsqueda clasificada, puntuación de ajuste de currículum a gran escala y 180 días de cierres, para mostrar dentro de tu propio producto citando la fuente. Sin feeds ni reventa; eso corresponde a la licencia comercial. Dinos si lo usarías.",
     "builderNotYet": "Aún no está a la venta: no se cobra nada y respondemos a cada solicitud por correo.",
     "builderCta": "Solicitar Builder"

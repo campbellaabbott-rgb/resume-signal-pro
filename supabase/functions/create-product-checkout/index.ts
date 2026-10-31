@@ -41,9 +41,11 @@ import { proIncludes } from "../_shared/pro-perks.ts";
 // 2026-10-11.25: the retirement sentence's apply-yourself line says the marking can miss a question about the buyer even when it is plainly worded (the recheck of the descope, 2026-10-25); nothing this function does changed.
 // 2026-10-11.26: the retirement sentence's apply-yourself line says that inside ChatGPT the AI reads the application form only for Greenhouse or Recruitee, the server's public-API pair (the second recheck of the descope, 2026-10-25); nothing else changed.
 // 2026-10-11.27 (recheck 3, 2026-10-26): a cut report's sentence depended on whether a seller was named.
+// Homepage switch-over (home-pricing, 2026-10-26.1 on hp/switch-over): _shared/pro-perks.ts, which this function imports for proIncludes, says "packages" in Pro's writing-tools line; what Pro includes is unchanged.
 // 2026-10-27.1 (sales stay on, owner 2026-10-27): no purchase waits for the seller's name and address, as on main, so an id this function does not sell is main's 400 again, and a cut report's sentence always says the $5 Full Analysis is still on sale, which it is (_shared/product-cuts.ts).
 // 2026-10-31.1 (owner 2026-10-27, on the EU, the EEA, the UK and India: "keep selling as today"): nobody is refused for where they are, as on main: no territory refusal, and a billing address only with the EU/UK switch on, as sessionPolicy always did. Nothing here is sold today, so only that dead path changed.
-const FN_BUILD = "create-product-checkout.2026-10-31.1";
+// 2026-10-31.2 (land/all carries the homepage switch-over): the bundle is 2026-10-31.1's code with the switch-over's "packages" line in _shared/pro-perks.ts, so it is neither branch's build; what this function does is unchanged.
+const FN_BUILD = "create-product-checkout.2026-10-31.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

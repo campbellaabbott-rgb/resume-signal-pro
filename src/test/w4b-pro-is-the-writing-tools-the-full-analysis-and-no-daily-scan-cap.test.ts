@@ -10,7 +10,8 @@
  *
  * WHAT HOLDS NOW:
  *   - PRO_PERK_ITEMS says exactly the decision: everything in a free account
- *     plus the writing tools (5 sets a day, 60 a month), the $5 Full Analysis
+ *     plus the writing tools (5 packages a day, 60 a month: the noun the
+ *     owner chose at the homepage switch-over), the $5 Full Analysis
  *     included, no daily cap on scans, cancel anytime; never "unlimited",
  *     never Freelance Boost or Transition Pro;
  *   - the one-off products Pro includes are the Full Analysis alone;
@@ -42,7 +43,7 @@ describe("the list says exactly what Pro is", () => {
   it("the writing tools with their numbers, the Full Analysis included, no daily cap on scans, cancel anytime", () => {
     expect(PRO_PERKS).toEqual([
       "Everything in a free account, plus the writing tools",
-      "A tailored résumé, cover letter and interview prep for your jobs: up to 5 sets a day and 60 a month",
+      "A tailored résumé, cover letter and interview prep for your jobs: up to 5 packages a day and 60 a month",
       "The $5 Full Analysis included",
       "No daily cap on scans",
       "Cancel anytime from your account",
@@ -64,6 +65,9 @@ describe("the list says exactly what Pro is", () => {
     expect(keys).not.toContain("proPlan.perks.unlimitedScans");
     expect(keys).not.toContain("proPlan.perks.includedOneOffs");
     expect(keys).not.toContain("proPlan.perks.batchPrep");
+    // "sets" became "packages" (owner decision, homepage switch-over).
+    expect(keys).not.toContain("proPlan.perks.writingTools");
+    expect(keys).toContain("proPlan.perks.writingToolsPackages");
   });
 
   it("Pro includes the Full Analysis, and nothing else a checkout sells", () => {
@@ -93,11 +97,14 @@ describe("the server reads the same list", () => {
 
 describe("every page that lists Pro reads the list", () => {
   const PAGES: Array<[string, RegExp]> = [
-    ["src/components/ProSubscriptionCard.tsx", /PRO_PERK_ITEMS\.map/],
-    ["src/components/FAQ.tsx", /PRO_SUMMARY\.key, PRO_SUMMARY\.text/],
-    ["src/components/RateLimitUpsell.tsx", /PRO_SUMMARY\.key, PRO_SUMMARY\.text/],
+    // The list and the summary as a page may print them today: without the
+    // included Full Analysis while it is not on sale (gate G2,
+    // every-buy-control-sells-only-what-the-owner-has-put-on-sale).
+    ["src/components/ProSubscriptionCard.tsx", /proPerksOnSale\(PRO_PERK_ITEMS\)\.map/],
+    ["src/components/FAQ.tsx", /proSummaryOnSale\(\)\.key, proSummaryOnSale\(\)\.text/],
+    ["src/components/RateLimitUpsell.tsx", /proSummaryOnSale\(\)\.key, proSummaryOnSale\(\)\.text/],
     // The free report's Pro row (integration, 2026-10-18).
-    ["src/components/FreeKeywordResults.tsx", /PRO_SUMMARY\.key, PRO_SUMMARY\.text/],
+    ["src/components/FreeKeywordResults.tsx", /proSummaryOnSale\(\)\.key, proSummaryOnSale\(\)\.text/],
   ];
   it.each(PAGES)("%s reads it", (file, reads) => {
     const src = code(file);
@@ -114,7 +121,7 @@ describe("every page that lists Pro reads the list", () => {
   });
 
   it("no page that sells Pro types its own perk words", () => {
-    for (const file of [...PAGES.map(([f]) => f), "src/pages/Pricing.tsx"]) {
+    for (const file of [...PAGES.map(([f]) => f), "src/components/pricing/PlanCards.tsx"]) {
       const src = code(file);
       expect(src, file).not.toMatch(/unlimited scans|scans without a daily limit|Freelance Boost and Transition Pro included|every paid tool/i);
     }

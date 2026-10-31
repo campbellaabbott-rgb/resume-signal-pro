@@ -5,7 +5,8 @@
 // uploader is id="upload" (ResumeUploader) and Index's hash handler reads only
 // "#upload" -- so the visitor landed at the top of the homepage, after a full
 // reload, with the tool they asked for nowhere in view. Every other entry
-// point on the board navigates to "/#upload". Judged by where the router goes.
+// point on the board navigates to "/resume-checker#upload" (the scanner's
+// address since the homepage switch-over). Judged by where the router goes.
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
@@ -56,13 +57,13 @@ beforeEach(() => {
 });
 
 describe("the palette's scan entry reaches the uploader", () => {
-  it("routes to /#upload, the anchor the uploader carries", async () => {
+  it("routes to /resume-checker#upload, the anchor the uploader carries", async () => {
     window.history.replaceState({}, "", "/jobs");
     render(
       <MemoryRouter initialEntries={["/jobs"]}>
         <Routes>
           <Route path="/jobs" element={<Jobs />} />
-          <Route path="/" element={<Landing />} />
+          <Route path="/resume-checker" element={<Landing />} />
         </Routes>
       </MemoryRouter>,
     );
@@ -70,6 +71,6 @@ describe("the palette's scan entry reaches the uploader", () => {
     await act(async () => { fireEvent.keyDown(window, { key: "k", ctrlKey: true }); });
     const entry = await screen.findByText("Scan my resume (free)");
     try { fireEvent.click(entry); } catch { /* a full-page navigation is not implemented in jsdom */ }
-    await waitFor(() => expect(screen.getByTestId("landed").textContent, "the entry did not reach the uploader's anchor").toBe("/#upload"), SLOW);
+    await waitFor(() => expect(screen.getByTestId("landed").textContent, "the entry did not reach the uploader's anchor").toBe("/resume-checker#upload"), SLOW);
   });
 });

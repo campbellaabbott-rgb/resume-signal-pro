@@ -337,7 +337,7 @@ export default function ResumeBuilder() {
                   const builderText = builderResumeToText(resume);
                   try { sessionStorage.setItem("rb_resume_text", builderText); } catch { /* ignore */ }
                   writeImportedFrom(builderText);
-                  window.location.href = "/?rescan=1#upload";
+                  window.location.href = "/resume-checker?rescan=1#upload";
                 }}
               >
                 Rescan this version →

@@ -44,11 +44,16 @@ import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
 // agent-digest list it imports beside (S11-132).
 // 2026-10-11.25 and .26 (wave 4): the batch, the sign-up and the confirmation
 // waited for the seller's legal name and postal address.
+// 2026-10-25.2 (homepage switch-over, step 11; reservation home-pricing): the
+// "Rescan my resume free" link names /resume-checker, since "/" becomes the
+// job board; mail already sent still reaches the scanner through the redirect.
 // 2026-10-27.1 (sales stay on, owner 2026-10-27): nothing waits for them, as
 // on main: the batch claims and mails, a sign-up mails its confirmation, a
 // confirmation confirms, and no response carries a marketing-state header.
 // The seller line prints in the footer once both are filled in.
-const FN_BUILD = "send-market-pulse.2026-10-27.1";
+// 2026-10-31.1 (land/all carries the homepage switch-over): 2026-10-27.1's
+// sending with 2026-10-25.2's /resume-checker link, neither branch's build.
+const FN_BUILD = "send-market-pulse.2026-10-31.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -285,7 +290,7 @@ Deno.serve(async (req) => {
         const unsubParams = { email: sub.cl_email, token };
         const unsubUrl = unsubscribePageUrl("market-pulse", unsubParams);
         const unsubHeaders = oneClickHeaders(oneClickUrl(Deno.env.get("SUPABASE_URL") ?? "", "send-market-pulse", unsubParams));
-        const rescanUrl = `${SITE_URL}/?utm_source=email&utm_medium=market_pulse&utm_campaign=rescan`;
+        const rescanUrl = `${SITE_URL}/resume-checker?utm_source=email&utm_medium=market_pulse&utm_campaign=rescan`;
         const industryLabel = industry.replace(/_/g, " ");
         const confirmedOn = String(sub.cl_confirmed_at ?? "").slice(0, 10);
 

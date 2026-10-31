@@ -155,7 +155,7 @@ export default function CvStandards({ locale }: CvStandardsProps) {
             <h2 className="text-xl font-bold mb-2">{t.ctaTitle}</h2>
             <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">{cvFill(t.ctaText, vars, locale)}</p>
             <Button asChild className="gap-2">
-              <Link to="/">
+              <Link to={locale === "es" ? "/es/revisar-curriculum" : "/resume-checker"}>
                 {t.ctaButton}
                 <ArrowRight className="w-4 h-4" />
               </Link>

@@ -1,0 +1,67 @@
+/**
+ * EVERY NUMBER THE PRICING PAGE PRINTS, IN ONE PLACE, EACH NAMED WITH THE
+ * SOURCE IT MIRRORS.
+ *
+ * The page never types a price, a limit or a retention period into a
+ * sentence: every string interpolates one of these. Each value is a mirror of
+ * the constant that decides it, and src/test/hp-pricing-mirrors.test.ts reads
+ * that constant and fails on drift. Where the deciding constant lives on a
+ * branch that has not merged yet (wave 4), the test pins it the day the file
+ * appears, and docs/homepage-pricing/README.md lists the switch-over pin.
+ *
+ *   FULL_ANALYSIS_PRICE_USD   src/config/products.ts PRODUCTS.fullAnalysis.priceUsd
+ *   PRO_PRICE_USD             supabase/functions/_shared/pro.ts PRO_PRICE_CENTS / 100
+ *   BUILDER_PRICE_USD         src/config/builder-plan.ts BUILDER_PLAN_PRICE_USD (imported)
+ *   BUILDER_PROPOSED_PER_DAY  supabase/functions/public-api BUILDER_PROPOSED.perDay (wave 4)
+ *   FREE_SCANS_PER_DAY        supabase/functions/free-keyword-scan FREE_SCANS_PER_DAY
+ *   SIGNED_IN_SCANS_PER_DAY   supabase/functions/free-keyword-scan SIGNED_IN_SCANS_PER_DAY
+ *   WRITING                   src/config/writing-allowance.ts WRITING_ALLOWANCE (imported)
+ *   FREE_KEY_DAILY_QUOTA      src/config/mcp-tools.ts MCP_FREE_KEY_DAILY_QUOTA
+ *   MCP_FIT_FREE_PER_DAY      src/config/mcp-tools.ts MCP_FIT_FREE_PER_DAY (wave 4)
+ *   MCP_FIT_FULL_PER_DAY      src/config/mcp-tools.ts MCP_FIT_FULL_PER_DAY, agent-mcp's FIT_FULL_PER_DAY
+ *                             for a key whose account has Pro (_shared/fit-allowance.ts)
+ *   WITHHELD_SOURCE_NAMES     src/config/mcp-tools.ts MCP_WITHHELD_SOURCES, by display name
+ *   FREE_REPORT_DAYS          src/lib/resume-retention.ts REPORT_CACHE_DAYS
+ *   FULL_ANALYSIS_LINK_DAYS   src/lib/resume-retention.ts SHARED_ANALYSIS_DAYS
+ *
+ * The writing allowance and the Builder price are imported from the frontend
+ * modules that hold them (switch-over step 7). mcp-tools.ts is about 1,200
+ * lines, so the free-key quota, fit allowance and withheld systems stay
+ * mirrors until wave 4 moves them into small modules of their own; the scan
+ * allowance and the API's proposal live only in edge functions.
+ */
+import { REPORT_CACHE_DAYS, SHARED_ANALYSIS_DAYS } from "@/lib/resume-retention";
+import { WRITING_ALLOWANCE } from "@/config/writing-allowance";
+import { BUILDER_PLAN_PRICE_USD } from "@/config/builder-plan";
+
+export const FULL_ANALYSIS_PRICE_USD = 5;
+export const PRO_PRICE_USD = 45;
+export const BUILDER_PRICE_USD: number = BUILDER_PLAN_PRICE_USD;
+export const BUILDER_PROPOSED_PER_DAY = 5000;
+
+export const FREE_SCANS_PER_DAY = 7;
+export const SIGNED_IN_SCANS_PER_DAY = 15;
+
+/** The writing tools: one of each a UTC day on a free account; Pro five packages a day and sixty a month. */
+export const WRITING = WRITING_ALLOWANCE;
+
+export const FREE_KEY_DAILY_QUOTA = 1000;
+export const MCP_FIT_FREE_PER_DAY = 25;
+export const MCP_FIT_FULL_PER_DAY = 1000;
+
+/** The source keys the data API and the AI connector leave out, and the names a reader knows them by. */
+export const WITHHELD_SOURCES: readonly string[] = ["usajobs", "smartrecruiters"];
+export const WITHHELD_SOURCE_NAMES: Readonly<Record<string, string>> = {
+  smartrecruiters: "SmartRecruiters",
+  usajobs: "USAJOBS",
+};
+
+export const FREE_REPORT_DAYS: number = REPORT_CACHE_DAYS;
+export const FULL_ANALYSIS_LINK_DAYS: number = SHARED_ANALYSIS_DAYS;
+
+/**
+ * The day the limits table was last read against the server constants above.
+ * Printed under the table ("Limits as of ..."), so it names its date basis.
+ * Bump it in the commit that changes any value in this file.
+ */
+export const LIMITS_AS_OF = "2026-10-26";

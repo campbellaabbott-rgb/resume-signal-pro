@@ -1,6 +1,8 @@
 import { useMemo, useRef, useState } from "react";
 import { ChevronDown, Download, Share2, Wrench, ArrowRight, Scale, Globe } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { FIX_POINTS_BASIS } from "@/lib/report-basis";
+import { SHARE_SITE } from "./ShareableScoreCard";
 
 /* ============================================================
  * New free-report insight cards:
@@ -35,7 +37,7 @@ export function ScoreSimulatorCard({
         <h3 className="font-semibold text-foreground">What happens if you fix it?</h3>
       </div>
       <p className="text-xs text-muted-foreground mb-4">
-        Check the fixes you're willing to make — this is the score a rescan should land near.
+        Check the fixes you're willing to make. {FIX_POINTS_BASIS}
       </p>
 
       <div className="relative h-8 rounded-full bg-muted overflow-hidden mb-1" role="img" aria-label={`Score ${atsScore}, projected ${projected}`}>
@@ -216,7 +218,7 @@ export function CareerBridgeCard({
         Your bridge: {bridge.fromField} → {bridge.toField}
       </h3>
       <p className="text-xs text-muted-foreground mb-4">
-        Career changers get filtered when their resume speaks the old field's language. Here's what already transfers — and what to reword.
+        What already transfers from {bridge.fromField} to {bridge.toField}, and what to reword in the new field's language.
       </p>
 
       <p className="text-xs font-semibold text-foreground mb-1.5">✅ Carries over as-is</p>
@@ -535,12 +537,10 @@ export function ScoreAuditCard({
 export function ShareScoreCard({
   atsScore,
   industry,
-  percentile,
   previousScore,
 }: {
   atsScore: number;
   industry: string;
-  percentile?: number;
   /** When the same candidate scanned before, the card becomes a before/after
    *  ("58 → 74") — measured improvement is what people actually share. */
   previousScore?: number;
@@ -604,13 +604,12 @@ export function ShareScoreCard({
       ctx.font = "400 34px system-ui, sans-serif";
       ctx.fillStyle = "#cbd5e1";
       ctx.fillText(`Industry: ${industry.replace(/_/g, " ")}`, 560, 280);
-      if (typeof percentile === "number") {
-        ctx.fillText(`Better than ${percentile}% of peers`, 560, 335);
-      }
     }
     ctx.fillStyle = scoreColor;
     ctx.font = "600 30px system-ui, sans-serif";
-    ctx.fillText("Get your free scan → resumebooster.work", 560, 470);
+    // The scanner's own address: since the switch-over the bare domain is the
+    // job search (the review of 2026-10-27).
+    ctx.fillText(`Get your free scan → ${SHARE_SITE}`, 560, 470);
 
     return canvas;
   };
@@ -639,8 +638,8 @@ export function ShareScoreCard({
           files: [file],
           title: "My resume score",
           text: isDelta
-            ? `Took my resume from ${previousScore} to ${atsScore} — free scan at resumebooster.work`
-            : `My resume scored ${atsScore}/100 — free scan at resumebooster.work`,
+            ? `Took my resume from ${previousScore} to ${atsScore} — free scan at ${SHARE_SITE}`
+            : `My resume scored ${atsScore}/100 — free scan at ${SHARE_SITE}`,
         }).catch(() => { /* user cancelled the share sheet */ });
       } else {
         download();

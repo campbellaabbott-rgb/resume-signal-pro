@@ -46,7 +46,9 @@ describe("the SPA fallback's static head preloads only what every page runs", ()
   });
   it("is what the bake writes into the fallback's head", () => {
     expect(BAKE).toMatch(/headExtra \+= preloadFor\(path, \{ fallback: isFallback \}\);/);
-    expect(BAKE).toMatch(/\? fallbackPreloadHtml\(files, \{ always: FOOTER_CHUNK \? \[FOOTER_CHUNK\] : \[\] \}\)/);
+    // A scanner address of "/" preloads the scanner's chunks instead (review
+    // round 2026-10-26, hp-fix-a-scanner-address-is-only-the-scanners).
+    expect(BAKE).toMatch(/\? fallbackPreloadHtml\(files, \{ always: FOOTER_CHUNK \? \[FOOTER_CHUNK\] : \[\], scanner \}\)/);
   });
   it("never writes a file name the script could be broken by", () => {
     expect(fallbackPreloadHtml(['x"];alert(1);//.js', "Index-a.js"], { always: [] })).not.toContain("alert");

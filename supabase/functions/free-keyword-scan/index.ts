@@ -48,6 +48,7 @@ import {
   phraseMatchesResume,
   findPhraseMatches,
   getKeywordFrequencyWeight,
+  MARKET_DATA_AS_OF,
 } from "./market-intelligence.ts";
 
 // Metric tracking - logs to scan_metrics table for dashboard visibility
@@ -494,7 +495,25 @@ const trackPerformance = (startTime: number, operation: string, success: boolean
 // website session only (CP-J / S9-001): a connected app's token is treated as
 // anonymous and spends no account's credits or scans.
 // 2026-10-14.31 (recheck 3, 2026-10-26): the report the page shows keeps its red flags and fix steps whole; the mailed sentences are a scrubbed copy in reportMeta.mailSentences, and the seal covers that copy.
-const FN_BUILD = "free-keyword-scan.2026-10-14.31";
+// 2026-10-25.2 (homepage switch-over, H0; reservation home-pricing): the code
+// is wave 4's 2026-10-14.31; the free report stops printing its interview
+// odds, apply verdict and rank against other applicants, and this build says
+// which bundle ships with that report (verify section 99, C6).
+// 2026-10-27.1 (homepage switch-over, the report sweep; reservation
+// home-pricing): the local-standards card's photo notes for Germany, Italy
+// and Taiwan say what is usual without the shares of applicants and recruiters
+// or the survey's interview multiplier, whose source is not in this repository
+// (country-standards.ts, the stream fork's copy byte for byte). Nothing else
+// in the bundle changed since 2026-10-25.2.
+// 2026-10-31.1 (homepage switch-over, the review of the report sweep;
+// reservation home-pricing): the market module (the stream fork's copy byte
+// for byte) matches its hand-typed lists by whole word, reads the skills lists
+// only for the five fields that have their own and puts no typed salary range
+// in the prompt; the scan sends the lists' date as listsAsOf; the prompt asks
+// the AI for no salary range, no pass verdict and no timed recruiter scan, and
+// the fallback first-pass summary predicts no screen. The 2026-10-27.1 bundle
+// had none of this, so it takes a new build.
+const FN_BUILD = "free-keyword-scan.2026-10-31.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -1996,11 +2015,11 @@ CRITICAL LANGUAGE HANDLING:
 - careerSituationAdvice: Speak directly to their situation with empathy and actionable steps
 - scoreBreakdown: Three sub-scores (keywords 0-100, format 0-100, quantification 0-100) that are mathematically consistent with atsScoreEstimate. A 60/100 overall can't have all three sub-scores at 80+.
 - nextBestAction: The single most impactful action for THIS specific candidate. Name a specific section, company, or bullet. One clear imperative sentence.
-- recruiterFirstPassSummary: 2-3 sentences written as a recruiter speaking after a 6-second scan. First impression, first question, pass/fail verdict. Be honest — if the resume would struggle, say so clearly but constructively.
+- recruiterFirstPassSummary: 2-3 sentences written as a recruiter speaking after a first quick read. First impression, first question, and the first thing to fix. Be honest and constructive; do not predict whether the resume passes a screen or gets an interview.
 - powerWords: Each entry must include the word AND a one-line "why" explaining why it's effective for this specific role/industry.
 - resumeTriggeredQuestions: EXACTLY 3 questions derived from THIS resume's actual weak spots — employment gaps, vague or inflated claims, title/level mismatches, missing scope numbers, short tenures, or unexplained transitions. Phrase each as a recruiter would actually say it in a screen. The trigger field must quote the specific resume content. If the resume is genuinely strong, ask the questions a top-tier interviewer would still probe (depth of ownership, verification of the biggest claim).
 - recruiterPanel: Three distinct persona voices, each referencing specific resume content:
-  * screener (6 seconds): first visual impression, does it survive the pile — blunt, fast.
+  * screener (first glance): first visual impression, what stands out and what is missing at a glance — blunt, fast.
   * hiringManager (skeptical): which specific claim they doubt most and what evidence is missing.
   * hrScreener (level/comp): what seniority level this resume READS as (which may differ from the title claimed) — this persona catches level mismatches.
   The three verdicts must NOT agree by default — real committees disagree, and divergence is the insight.
@@ -2009,13 +2028,6 @@ CRITICAL LANGUAGE HANDLING:
 - industryVote: Your one-word industry verdict from the VALID INDUSTRIES list, judged by the roles actually HELD. Ignore aspirations, target roles, and client industries. Be honest about confidence — "low" is a valid answer for genuinely ambiguous resumes.
 - formatGradeDrivers: 2-3 specific issues that drove the format grade. Name the actual problem found (e.g. "3-column layout will break in Workday's ATS parser"), not generic advice.
 - sectionCheck.sectionQuality: Rate each section strong | adequate | thin | missing based on actual content depth, not just presence.
-- personalizedCareerInsights: This is where you REALLY shine:
-  * suggestedHeadline: Create a compelling headline USING THEIR NAME and their strongest positioning
-  * nextRoleSuggestions: Suggest realistic next roles based on THEIR specific trajectory - not generic advice
-  * uniqueValue: What makes THIS person unique? Reference their specific achievements
-  * interviewTalkingPoints: Pick their BEST stories from the resume and show how to frame them
-  * salaryInsight: Give realistic salary ranges based on their industry/level/location signals
-  * personalizedEncouragement: Write something heartfelt that shows you actually READ their resume
 
 ANALYSIS RULES:
 1. ATS Score (0-100): Calculate using INDUSTRY-SPECIFIC WEIGHTS below. First detect industry, then apply appropriate weights.
@@ -2904,7 +2916,7 @@ ${resumeText.substring(0, 20000)}
                   properties: {
                     screener: {
                       type: "object",
-                      description: "The 6-second screener: what they see in the first glance and whether it survives the pile.",
+                      description: "The first-glance screener: what they see at a glance and what is missing.",
                       properties: { verdict: { type: "string" }, wouldPass: { type: "boolean" } },
                       required: ["verdict", "wouldPass"]
                     },
@@ -2992,7 +3004,7 @@ ${resumeText.substring(0, 20000)}
                 },
                 recruiterFirstPassSummary: {
                   type: "string",
-                  description: "Write 2-3 sentences in first-person, as if a recruiter is speaking about this resume after a 6-second glance. What do they immediately notice? What's their first impression? What question does the resume leave unanswered? E.g. 'In the first 6 seconds, I see [role] with [years] at [recognizable company]. My first question is [gap or ambiguity]. The resume [passes/struggles] my initial scan because [reason].'"
+                  description: "Write 2-3 sentences in first-person, as if a recruiter is speaking about this resume after a first quick read. What do they immediately notice? What's their first impression? What question does the resume leave unanswered? E.g. 'At a glance I see [role] with [years] at [recognizable company]. My first question is [gap or ambiguity]. The first thing I would change is [specific fix].' Do not predict whether it passes a screen."
                 },
                 atsCompatibility: {
                   type: "object",
@@ -3950,6 +3962,9 @@ ${resumeText.substring(0, 20000)}
       cvNorms: marketInsight.cvNorms,
       salaryContext: marketInsight.salaryContext || null,
       marketSummary: marketInsight.marketSummary,
+      // The day the hand-compiled market notes were last updated: the report
+      // prints it as their basis (the review of 2026-10-27).
+      listsAsOf: MARKET_DATA_AS_OF,
     };
 
     responseData.skillsRecency = {
@@ -3957,6 +3972,7 @@ ${resumeText.substring(0, 20000)}
       freshSkills: skillsRecency.freshSkills,
       freshnessScore: skillsRecency.freshnessScore,
       hasAgingSignals: skillsRecency.hasAgingSignals,
+      listsAsOf: MARKET_DATA_AS_OF,
     };
 
     responseData.careerTrajectory = {
@@ -4607,7 +4623,7 @@ ${resumeText.substring(0, 20000)}
       }
       if (!responseData.recruiterFirstPassSummary) {
         responseData.recruiterFirstPassSummary =
-          `At ${analysis.atsScoreEstimate}/100, this resume ${analysis.atsScoreEstimate >= 70 ? 'would likely survive' : 'is at risk in'} a 6-second recruiter scan. ` +
+          `This resume scores ${analysis.atsScoreEstimate}/100 on our rubric. ` +
           (bulletAnalysis.weakBullets.length > 0
             ? `The first thing a recruiter would question: "${bulletAnalysis.weakBullets[0].text.slice(0, 70)}…"`
             : 'Strengthening quantified impact would improve the first impression.');

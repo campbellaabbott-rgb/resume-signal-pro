@@ -16,7 +16,13 @@ import { ScanGuideArrow } from "@/components/ScanGuideArrow";
 import { useScanPrefetch } from "@/hooks/use-scan-prefetch";
 import { ScanProgressStages } from "@/components/ScanProgressStages";
 import { PurchaseTerms } from "@/components/PurchaseTerms";
+import { fullAnalysisOnSale } from "@/lib/purchases-open";
 import { looksLikeLink, scannableJobDescription } from "@/lib/job-description-input";
+// THE FULL ANALYSIS IS ON SALE HERE WHILE ITS SWITCH IS ON (homepage and
+// pricing spec of 2026-10-17, G2; on, as on main): fullAnalysisOnSale() is the
+// owner's switch, read at render, so a switch the owner flips takes effect on
+// the next paint (src/lib/purchases-open.ts). It never reads the seller.
+
 // Step indicator component for better UX guidance
 interface StepIndicatorProps {
   number: number;
@@ -1435,9 +1441,11 @@ export function ResumeUploader({
                   </div>
                 )}
 
-                {/* Secondary: Full Analysis link, under the Terms line. */}
-                {onFreeScan && <PurchaseTerms kind="payment" className="text-center" />}
-                {onFreeScan && (
+                {/* Secondary: Full Analysis link, under the Terms line. It
+                    shows while the analysis's sale switch is on (G2: on, as
+                    on main), seller named or not (the owner, 2026-10-27). */}
+                {onFreeScan && fullAnalysisOnSale() && <PurchaseTerms kind="payment" className="text-center" />}
+                {onFreeScan && fullAnalysisOnSale() && (
                   <button
                     onClick={resumeMode === "paste" ? handleTextPaste : handleCheckoutClick}
                     disabled={isLoading || !canProceed}
@@ -1454,8 +1462,9 @@ export function ResumeUploader({
                   </button>
                 )}
 
-                {/* Fallback if no free scan available */}
-                {!onFreeScan && (
+                {/* Fallback if no free scan available: the priced button
+                    under the same switch, as above. */}
+                {!onFreeScan && fullAnalysisOnSale() && (
                   <div className="space-y-3">
                     <PurchaseTerms kind="payment" className="text-center" />
                     <Button

@@ -90,8 +90,8 @@ function run(routes: Route[]): { lines: string[]; calls: string[]; out: string }
 
 const builds: Record<string, string> = {
   "create-checkout": "create-checkout.2026-10-31.1",
-  "create-product-checkout": "create-product-checkout.2026-10-31.1",
-  "create-subscription-checkout": "create-subscription-checkout.2026-10-31.1",
+  "create-product-checkout": "create-product-checkout.2026-10-31.2",
+  "create-subscription-checkout": "create-subscription-checkout.2026-10-31.2",
   "create-scan-pack-checkout": "create-scan-pack-checkout.2026-10-11.23",
   "create-test-checkout": "create-test-checkout.2026-10-11.23",
   "check-subscription": "check-subscription.2026-10-11.23",
@@ -110,10 +110,12 @@ const PRODUCTS: Array<[string, string]> = [
 const PRICING_CHUNK = `import{a as x}from"./PurchaseTerms-AAAA1111.js";const k=["proPlan.perks.noDailyScanCap"];`;
 const TERMS_CHUNK = `const z=["purchaseTerms.autoRenewConsent"];`;
 const FB_CHUNK = `const t=["freelanceBoost.noLongerSoldTitle"];`;
-const site = (over: { pricing?: string; terms?: string; fb?: string } = {}): Route[] => [
+// The pricing page's chunk is PricingPage since the homepage switch-over, and
+// was Pricing before it; the section reads whichever the entry names.
+const site = (over: { pricing?: string; terms?: string; fb?: string; pricingName?: string } = {}): Route[] => [
   { match: "^GET https://site\\.test/$", body: `<html><script type="module" src="/assets/index-ENTRY0001.js"></script></html>` },
-  { match: "^GET https://site\\.test/assets/index-ENTRY0001\\.js$", body: `const r={a:()=>import("./Pricing-PRIC0001.js"),b:()=>import("./FreelanceBoost-FBST0001.js")};` },
-  { match: "^GET https://site\\.test/assets/Pricing-PRIC0001\\.js$", body: over.pricing ?? PRICING_CHUNK },
+  { match: "^GET https://site\\.test/assets/index-ENTRY0001\\.js$", body: `const r={a:()=>import("./${over.pricingName ?? "Pricing"}-PRIC0001.js"),b:()=>import("./FreelanceBoost-FBST0001.js")};` },
+  { match: `^GET https://site\\.test/assets/${over.pricingName ?? "Pricing"}-PRIC0001\\.js$`, body: over.pricing ?? PRICING_CHUNK },
   { match: "^GET https://site\\.test/assets/PurchaseTerms-AAAA1111\\.js$", body: over.terms ?? TERMS_CHUNK },
   { match: "^GET https://site\\.test/assets/FreelanceBoost-FBST0001\\.js$", body: over.fb ?? FB_CHUNK },
 ];
@@ -194,6 +196,23 @@ describe("section 92", () => {
     expect(fails.some((l) => /Pricing page .* still carries the region note/.test(l)), lines.join("\n")).toBe(true);
     expect(fails.some((l) => /create-checkout preflight x-fn-build = create-checkout\.2026-10-27\.1 \(want create-checkout\.2026-10-31\.1 or later/.test(l)), lines.join("\n")).toBe(true);
     expect(lines.some((l) => /^PASS .*no territory refused/.test(l))).toBe(false);
+  });
+
+  it("the switch-over's PricingPage chunk is read like the Pricing chunk was, and an entry naming neither FAILs", () => {
+    const base = good().filter((r) => !/site\\\.test/.test(r.match));
+    // The new page's paid cards: both on sale with no seller named (sales stay on, owner 2026-10-27).
+    const NEW_PAGE = `import{a as x}from"./PurchaseTerms-AAAA1111.js";const k=["pricingPlans.buy.gateFaDelivery","proPlan.perks.noDailyScanCap"];`;
+    const now = run([...site({ pricingName: "PricingPage", pricing: NEW_PAGE }), ...base]);
+    expect(now.lines.filter((l) => l.startsWith("FAIL")), now.out).toEqual([]);
+    expect(now.lines.some((l) => /^PASS  the published Pricing page \(PricingPage-PRIC0001\.js\) offers the buy buttons with no purchases-open-soon line and no region note/.test(l)), now.out).toBe(true);
+    const lacking = run([...site({ pricingName: "PricingPage", pricing: NEW_PAGE, terms: `const z=["Europe/Berlin"];` }), ...base]);
+    expect(lacking.lines.some((l) => /^FAIL  the published Pricing page \(PricingPage-PRIC0001\.js\) lacks: the renewal box;/.test(l)), lacking.out).toBe(true);
+    const sellerGate = run([...site({ pricingName: "PricingPage", pricing: NEW_PAGE.replace("pricingPlans.buy.gateFaDelivery", "pricingPlans.buy.gateSeller") }), ...base]);
+    expect(sellerGate.lines.some((l) => /^FAIL  the published Pricing page \(PricingPage-PRIC0001\.js\) still says purchases open soon/.test(l)), sellerGate.out).toBe(true);
+    const regionLine = run([...site({ pricingName: "PricingPage", pricing: NEW_PAGE + `const r="purchaseTerms.regionLine";` }), ...base]);
+    expect(regionLine.lines.some((l) => /^FAIL  the published Pricing page \(PricingPage-PRIC0001\.js\) still carries the region line/.test(l)), regionLine.out).toBe(true);
+    const neither = run([...site({ pricingName: "PricingTable" }), ...base]);
+    expect(neither.lines.some((l) => /^FAIL  the live entry names no PricingPage or Pricing chunk/.test(l)), neither.out).toBe(true);
   });
 
   it("the old perk naming the cut products on the published page FAILs", () => {

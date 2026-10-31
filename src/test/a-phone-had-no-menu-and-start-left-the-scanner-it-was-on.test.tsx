@@ -85,9 +85,11 @@ describe("Start left the scanner it was on", () => {
     expect(where, "Start navigated away from the uploader the visitor was on").toBe("/resume-checker");
   });
 
-  it("positive control: a page with no uploader still goes to the homepage's", () => {
+  it("positive control: a page with no uploader goes to the scanner's own uploader", () => {
+    // Since the homepage switch-over the scanner lives at /resume-checker,
+    // and "/" (the job board) has no #upload of its own.
     mount("/pricing");
     fireEvent.click(screen.getByRole("button", { name: /^Get started$/i }));
-    expect(where).toBe("/#upload");
+    expect(where).toBe("/resume-checker#upload");
   });
 });

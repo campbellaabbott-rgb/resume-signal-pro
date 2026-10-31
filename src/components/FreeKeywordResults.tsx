@@ -1,5 +1,5 @@
-import { BANNER_MIN_SAMPLE, scoreBannerLine } from "@/lib/score-banner";
 import { useState, useEffect, useMemo } from "react";
+import { FIX_PLAN_BASIS, FIX_POINTS_BASIS, marketBasis, skillsBasis } from "@/lib/report-basis";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useConversionTracking } from "@/hooks/use-conversion-tracking";
@@ -8,7 +8,7 @@ import {
   Sparkles, ArrowRight, CheckCircle2, Target, Zap, Lock, Mail, Loader2, ListChecks, Award,
   FileCheck, FileText, AlertTriangle, Type, User, LayoutList, Phone, 
   Trophy, Hash, Pencil, XCircle, CheckCircle, HelpCircle, Briefcase, Download, Apple, X,
-  TrendingUp, RefreshCw, Share2, Star, DollarSign, MessageSquare, Lightbulb, Copy, Rocket,
+  TrendingUp, RefreshCw, Share2, Star, MessageSquare, Lightbulb, Copy, Rocket,
   BarChart3, Shield, Search, Settings2, FileEdit, Send
 } from "lucide-react";
 import { LockedPremiumInsight } from "./LockedPremiumInsight";
@@ -19,13 +19,14 @@ import { InterviewCoach } from "./InterviewCoach";
 import { useAuth } from "@/contexts/AuthContext";
 import { JobKeywordMatcher } from "./JobKeywordMatcher";
 import { ATSParseSimulator } from "./ATSParseSimulator";
-import { PeerBenchmark } from "./PeerBenchmark";
 import { ReturningUserInsights } from "./ReturningUserInsights";
 import { IndustryKeywordSuggestions } from "./IndustryKeywordSuggestions";
 import { RoleKeywordSuggestions } from "./RoleKeywordSuggestions";
 import { analyzeKeywordPresence } from "@/config/industry-keywords";
 import { PurchaseTerms } from "./PurchaseTerms";
-import { PRO_SUMMARY } from "@/config/pro-perks";
+import { fullAnalysisOnSale } from "@/lib/purchases-open";
+import { scannerReturnPath } from "@/lib/scanner-address";
+import { proSummaryOnSale } from "@/config/pro-perks";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -373,12 +374,6 @@ interface PersonalBrand {
   brandGap: string;
 }
 
-interface SalaryInsight {
-  estimatedRange: string;
-  marketPosition: "below_market" | "at_market" | "above_market";
-  leveragePoints: string[];
-}
-
 interface PersonalizedCareerInsights {
   suggestedHeadline: string;
   nextRoleSuggestions: NextRoleSuggestion[];
@@ -386,7 +381,6 @@ interface PersonalizedCareerInsights {
   interviewTalkingPoints: InterviewTalkingPoint[];
   hiddenStrengths: string[];
   personalBrand: PersonalBrand;
-  salaryInsight: SalaryInsight;
   personalizedEncouragement: string;
 }
 
@@ -439,8 +433,10 @@ export interface FreeKeywordResultsProps {
   experienceFit?: "underqualified" | "good_fit" | "overqualified";
   titleAlignment?: "poor" | "partial" | "strong";
   jobMatchSummary?: string;
+  /** Sent by the scan; not rendered: the free report makes no apply verdict (H0). */
   applicationRecommendation?: ApplicationRecommendation;
   skillGapActions?: SkillGapAction[];
+  /** Sent by the scan; not rendered: the free report ranks the reader against no one (H0). */
   competitiveAssessment?: CompetitiveAssessment;
   careerSituation?: CareerSituation;
   formatRecommendation?: FormatRecommendation;
@@ -483,8 +479,10 @@ export interface FreeKeywordResultsProps {
     country: string; countryName: string; countrySource: string;
     hotSkills: string[]; risingKeywords: string[]; cvNorms: string[];
     salaryContext: string | null; marketSummary: string;
+    /** When the hand-compiled market notes were last updated (MARKET_DATA_AS_OF). */
+    listsAsOf?: string;
   };
-  skillsRecency?: { agingSkills: string[]; freshSkills: string[]; freshnessScore: number; hasAgingSignals: boolean };
+  skillsRecency?: { agingSkills: string[]; freshSkills: string[]; freshnessScore: number; hasAgingSignals: boolean; listsAsOf?: string };
   careerTrajectory?: { trajectory: string; promotionCount: number; industryTransitionDetected: boolean; fromIndustry: string | null; progressionSummary: string };
   atsSystemDetected?: { system: string; name: string; parsingStrength: string } | null;
   competitiveGap?: { missingHighFrequency: string[]; presentHighFrequency: string[]; gapScore: number };
@@ -516,6 +514,7 @@ export interface FreeKeywordResultsProps {
   subIndustry?: { id: string; label: string; matchedSignals: string[] };
   jdTargetIndustry?: string;
   industryBlend?: { primary: string; secondary: string; primaryPct: number; secondaryPct: number };
+  /** Sent by the scan; not rendered: the free report predicts no interview (H0). */
   interviewLikelihood?: { band: 'strong' | 'moderate' | 'low' | 'very_low'; composite: number; topFactor: string };
   competitorSilhouette?: {
     archetype: { quantifiedBullets: number; leadershipSignals: number; keywordCoveragePct: number };
@@ -629,9 +628,7 @@ export function FreeKeywordResults({
   experienceFit,
   titleAlignment,
   jobMatchSummary,
-  applicationRecommendation,
   skillGapActions: skillGapActionsProp,
-  competitiveAssessment,
   careerSituation,
   formatRecommendation,
   personalizedCareerInsights,
@@ -681,8 +678,6 @@ export function FreeKeywordResults({
   subIndustry,
   jdTargetIndustry,
   industryBlend,
-  interviewLikelihood,
-  competitorSilhouette,
   fixRoadmap,
   reportVerdict,
   dualIndustryComparison,
@@ -701,7 +696,6 @@ export function FreeKeywordResults({
   isRescanning,
   industryTransition,
   freelanceGuidance,
-  realBenchmark,
   industrySpecificChecks,
   countryStandards,
   platformProfileDetected,
@@ -826,11 +820,14 @@ export function FreeKeywordResults({
   const fullAnalysisPrice = PRODUCTS.fullAnalysis.priceUsd;
   const priceDisplay = isLocalCurrency ? `$${fullAnalysisPrice} ≈ ${formatPrice(fullAnalysisPrice)}` : `$${fullAnalysisPrice}`;
   
-  const getFirstCtaText = () => t('freeResults.cta.fixIssues', { price: priceDisplay });
+  const getFirstCtaText = () => `${t('uploader.actions.getFullAnalysis')} — ${priceDisplay}`;
   const getSecondCtaText = () => t('freeResults.cta.getFullAnalysis', { price: priceDisplay });
   const getFinalCtaText = () => t('freeScan.cta.button');
 
   // Track which CTA converts, then trigger checkout
+  // Whether the report offers the Full Analysis: its sale switch (G2: on, as
+  // on main). It never waits for the seller's name (the owner, 2026-10-27).
+  const canBuy = fullAnalysisOnSale();
 
   const handleUpgradeClick = (source: string) => {
     trackButtonClick('fullAnalysis', source);
@@ -1087,7 +1084,6 @@ export function FreeKeywordResults({
   const powerWords = powerWordsProp || [];
   const weakPhrases = weakPhrasesProp || [];
   const timelineAnalysis = timelineAnalysisProp ?? null;
-  const industryBenchmark = industryBenchmarkProp ?? null;
   const quickWins = quickWinsProp || [];
   const sampleRewrite = sampleRewriteProp;
   // No fallback, deliberately: the old hardcoded default showed every user
@@ -1399,8 +1395,11 @@ export function FreeKeywordResults({
     score: atsScoreEstimate,
     projectedScore: projectedScore ?? null,
     scoreBreakdown: scoreBreakdown ?? null,
-    peerPercentile: peerPercentile ?? null,
-    applicationPassRate: applicationPassRate ?? null,
+    // No percentile and no pass rate: send-scan-report prints its verdict
+    // line and its two number cells from these, and the report states
+    // neither (review round 2026-10-26).
+    peerPercentile: null,
+    applicationPassRate: null,
     redFlags: redFlags.map(f => ({ issue: f.issue })),
     fixRoadmap: fixRoadmap ?? null,
     industry: effectiveIndustry,
@@ -1420,25 +1419,23 @@ export function FreeKeywordResults({
   return (
     <TooltipProvider delayDuration={200}>
     <div className="w-full max-w-3xl mx-auto animate-fade-in">
-      {/* ── Verdict-first hero — one sentence the whole report is evidence for ── */}
+      {/* ── The report's summary. The scan's verdict marks a complete report,
+          and its sentence is not printed: it put a pass rate on the résumé,
+          and the line under it placed the score among other people's scans.
+          The report predicts no outcome and ranks the reader against no one
+          (H0, review round 2026-10-26); it states the score and the
+          findings. ── */}
       {reportVerdict && (
         <div className="rounded-2xl border-2 border-primary/40 bg-gradient-to-r from-primary/10 to-primary/5 p-5 mb-4">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-primary mb-1.5">{t('freeResults.enterprise.verdictLabel', 'The Verdict')}</p>
-          <p className="text-base md:text-lg font-semibold text-foreground leading-snug">{reportVerdict}</p>
-          {/* Lead with the thing a chatbot can't say: placement in a REAL
-              distribution. Quartile language only — exact percentiles aren't
-              derivable from the published quartiles, so we don't invent them. */}
-          {realBenchmark && realBenchmark.n >= 20 && (
-            <p className="text-sm font-semibold text-primary mt-1.5">
-              {t(
-                atsScoreEstimate >= realBenchmark.p75 ? 'freeResults.enterprise.placementTopQuartile'
-                : atsScoreEstimate >= realBenchmark.median ? 'freeResults.enterprise.placementAboveMedian'
-                : atsScoreEstimate >= realBenchmark.p25 ? 'freeResults.enterprise.placementBelowMedian'
-                : 'freeResults.enterprise.placementBottomQuartile',
-                { n: realBenchmark.n.toLocaleString(), industry: realBenchmark.industry.replace(/_/g, ' ') },
-              )}
-            </p>
-          )}
+          <p className="text-[10px] font-bold uppercase tracking-widest text-primary mb-1.5">{t('freeResults.enterprise.summaryLabel', 'Your report')}</p>
+          <p className="text-base md:text-lg font-semibold text-foreground leading-snug" data-report-summary="">
+            {t('freeResults.enterprise.summaryLine', 'ATS score {{score}}/100: {{critical}} critical, {{warnings}} to check, {{passed}} passed.', {
+              score: atsScoreEstimate,
+              critical: findings.filter(f => f.severity === 'critical').length,
+              warnings: findings.filter(f => f.severity === 'warning').length,
+              passed: findings.filter(f => f.severity === 'pass').length,
+            })}
+          </p>
           <div className="flex items-center justify-between gap-3 mt-2 flex-wrap">
             <p className="text-xs text-muted-foreground">{t('freeResults.enterprise.verdictEvidence', 'Everything below is the evidence — and the fix.')}</p>
             <button
@@ -1466,11 +1463,8 @@ export function FreeKeywordResults({
                   line(new Date().toLocaleDateString(), 9, false, [120, 120, 120]);
                 }
                 y += 8;
-                line(reportVerdict, 11, true);
-                y += 4;
-                line(`ATS Score: ${atsScoreEstimate}/100${scoreBand ? `  (modeling band ${scoreBand.low}–${scoreBand.high})` : ''}${projectedScore ? `  →  ${projectedScore} after fixes` : ''}`, 12, true);
+                line(`ATS Score: ${atsScoreEstimate}/100${scoreBand ? `  (modeling band ${scoreBand.low}–${scoreBand.high})` : ''}${projectedScore ? `  →  about ${projectedScore} after fixes, a rough guide` : ''}`, 12, true);
                 if (scoreBreakdown) line(`Breakdown — Keywords: ${scoreBreakdown.keywords}%  ·  Format: ${scoreBreakdown.format}%  ·  Quantification: ${scoreBreakdown.quantification}%`, 10);
-                if (peerPercentile != null) line(`Peer percentile: ${peerPercentile} of 100 ${industry.replace(/_/g, ' ')} candidates  ·  Est. ATS pass rate: ${applicationPassRate ?? '—'}%`, 10);
                 y += 6;
                 {
                   const crit = findings.filter(f => f.severity === 'critical');
@@ -1483,6 +1477,7 @@ export function FreeKeywordResults({
                 if (fixRoadmap && fixRoadmap.steps.length > 0) {
                   line(`Your ${fixRoadmap.totalMinutes}-minute fix plan:`, 11, true);
                   fixRoadmap.steps.forEach(s => line(`${s.order}. ${s.step} (~${s.minutes} min, +${s.scoreImpact} pts)`, 10));
+                  line(FIX_PLAN_BASIS, 8.5, false, [120, 120, 120]);
                   y += 4;
                 }
                 if (keywordSource?.source === 'onet') line(`Keyword expectations sourced from O*NET ${keywordSource.code} (U.S. Department of Labor — ${keywordSource.occupation}).`, 8.5, false, [120, 120, 120]);
@@ -1627,9 +1622,7 @@ export function FreeKeywordResults({
           },
           exploring: {
             title: "🧭 You're exploring — here's where you stand",
-            body: peerPercentile != null
-              ? `You're at the ${peerPercentile}th percentile for ${effectiveIndustry.replace(/_/g, " ")} candidates. The market intelligence and career trajectory sections below show what's rising in your field and where your profile points next.`
-              : "The market intelligence and career trajectory sections below show what's rising in your field and where your profile points next.",
+            body: "The market intelligence and career trajectory sections below show what's rising in your field and where your profile points next.",
           },
           career_change: {
             title: "🔄 You're changing careers — framing is everything",
@@ -1781,17 +1774,11 @@ export function FreeKeywordResults({
         </div>
       )}
 
-      {/* Real-corpus benchmark badge — only shown when the comparison data
-          is our own observed distribution, not an estimate */}
-      {realBenchmark && (
-        <div className="mt-3 rounded-xl border border-success/25 bg-success/5 p-3">
-          <p className="text-xs text-muted-foreground">
-            <span className="font-semibold text-foreground">Real benchmark:</span> comparisons in this report are measured against{' '}
-            <span className="font-semibold text-foreground">{realBenchmark.n.toLocaleString()} actual {realBenchmark.industry.replace(/_/g, ' ')} resumes</span>{' '}
-            scanned here in the last 6 months (median {Math.round(realBenchmark.median)}, middle half {Math.round(realBenchmark.p25)}–{Math.round(realBenchmark.p75)}) — not industry estimates.
-          </p>
-        </div>
-      )}
+      {/* No benchmark badge: it said the report's comparisons were measured
+          against this site's own scans and printed their median and middle
+          half; the report makes no such comparison (H0, the review of
+          2026-10-27). The scan still sends realBenchmark (the data
+          contract). */}
 
       {/* JD-industry arbitration note */}
       {benchmarkIndustry && (
@@ -1869,7 +1856,7 @@ export function FreeKeywordResults({
               <span className="font-semibold text-foreground">{industryBlend.primaryPct}% {(industryBlend.primary ?? '').replace(/_/g, ' ')}</span>
               {' / '}
               <span className="font-semibold text-foreground">{industryBlend.secondaryPct}% {(industryBlend.secondary ?? '').replace(/_/g, ' ')}</span>
-              {' '}— recruiters in both fields will consider you, and the advice below covers both.
+              {' '}— the advice below covers both.
             </p>
           )}
           {jdTargetIndustry && (
@@ -1893,7 +1880,7 @@ export function FreeKeywordResults({
                 <p className="text-xs font-semibold text-foreground capitalize mb-1">As a {(side.industry ?? '').replace(/_/g, ' ')} candidate</p>
                 <p className="text-2xl font-bold text-foreground">{side.score}</p>
                 <p className="text-[10px] text-muted-foreground mt-1">
-                  Keyword coverage: {side.keywordCoveragePct}% · Industry median: {side.benchmarkMedian}
+                  Keyword coverage: {side.keywordCoveragePct}%
                 </p>
               </div>
             ))}
@@ -1975,68 +1962,9 @@ export function FreeKeywordResults({
             <div className="flex-1">
               <div className="flex items-center gap-2">
                 <h4 className="font-bold text-lg">{t('freeResults.jobMatch.title')}</h4>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-success/20 text-success font-medium">{t('freeResults.jobMatch.badge')}</span>
               </div>
-              <p className="text-xs text-muted-foreground">{t('freeResults.jobMatch.subtitle')}</p>
             </div>
           </div>
-
-          {/* Application Recommendation Banner */}
-          {applicationRecommendation && (
-            <div className={cn(
-              "rounded-xl p-4 mb-4 border-2",
-              applicationRecommendation.recommendation === "strong_apply" ? "bg-success/10 border-success/40" :
-              applicationRecommendation.recommendation === "apply_with_changes" ? "bg-warning/10 border-warning/40" :
-              applicationRecommendation.recommendation === "apply_as_stretch" ? "bg-primary/10 border-primary/40" :
-              "bg-destructive/10 border-destructive/40"
-            )}>
-              <div className="flex items-center gap-3 mb-2">
-                <div className={cn(
-                  "p-2 rounded-full",
-                  applicationRecommendation.recommendation === "strong_apply" ? "bg-success/20" :
-                  applicationRecommendation.recommendation === "apply_with_changes" ? "bg-warning/20" :
-                  applicationRecommendation.recommendation === "apply_as_stretch" ? "bg-primary/20" :
-                  "bg-destructive/20"
-                )}>
-                  {applicationRecommendation.recommendation === "strong_apply" ? (
-                    <CheckCircle2 className="w-5 h-5 text-success" />
-                  ) : applicationRecommendation.recommendation === "apply_with_changes" ? (
-                    <Zap className="w-5 h-5 text-warning" />
-                  ) : applicationRecommendation.recommendation === "apply_as_stretch" ? (
-                    <Target className="w-5 h-5 text-primary" />
-                  ) : (
-                    <XCircle className="w-5 h-5 text-destructive" />
-                  )}
-                </div>
-                <div>
-                  <p className={cn(
-                    "font-bold text-lg",
-                    applicationRecommendation.recommendation === "strong_apply" ? "text-success" :
-                    applicationRecommendation.recommendation === "apply_with_changes" ? "text-warning" :
-                    applicationRecommendation.recommendation === "apply_as_stretch" ? "text-primary" :
-                    "text-destructive"
-                  )}>
-                    {applicationRecommendation.recommendation === "strong_apply" ? t('freeResults.appRecommendation.strongApply') :
-                     applicationRecommendation.recommendation === "apply_with_changes" ? t('freeResults.appRecommendation.applyWithChanges') :
-                     applicationRecommendation.recommendation === "apply_as_stretch" ? t('freeResults.appRecommendation.applyAsStretch') :
-                     t('freeResults.appRecommendation.doNotApply')}
-                  </p>
-                  <p className="text-sm text-muted-foreground">{applicationRecommendation.reasoning}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <span>{t('freeResults.jobMatch.confidence')}</span>
-                <span className={cn(
-                  "px-2 py-0.5 rounded-full font-medium",
-                  applicationRecommendation.confidence === "high" ? "bg-success/20 text-success" :
-                  applicationRecommendation.confidence === "medium" ? "bg-warning/20 text-warning" :
-                  "bg-muted text-muted-foreground"
-                )}>
-                  {applicationRecommendation.confidence}
-                </span>
-              </div>
-            </div>
-          )}
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
             {/* Match Score */}
@@ -2086,40 +2014,6 @@ export function FreeKeywordResults({
               </div>
             )}
           </div>
-
-          {/* Competitive Assessment */}
-          {competitiveAssessment && (
-            <div className="rounded-xl bg-card border border-border p-4 mb-4">
-              <h5 className="font-semibold text-sm mb-3 flex items-center gap-2">
-                <Briefcase className="w-4 h-4 text-primary" />
-                {t('freeResults.jobMatch.howYouCompare')}
-              </h5>
-              <div className="flex items-center gap-3 mb-3">
-                <div className={cn(
-                  "px-3 py-1.5 rounded-lg font-semibold text-sm",
-                  competitiveAssessment.likelyPosition === "top_candidate" ? "bg-success/20 text-success" :
-                  competitiveAssessment.likelyPosition === "competitive" ? "bg-primary/20 text-primary" :
-                  competitiveAssessment.likelyPosition === "middle_of_pack" ? "bg-warning/20 text-warning" :
-                  "bg-destructive/20 text-destructive"
-                )}>
-                  {competitiveAssessment.likelyPosition === "top_candidate" ? t('freeResults.competitivePosition.top') :
-                   competitiveAssessment.likelyPosition === "competitive" ? t('freeResults.competitivePosition.competitive') :
-                   competitiveAssessment.likelyPosition === "middle_of_pack" ? t('freeResults.competitivePosition.middle') :
-                   t('freeResults.competitivePosition.unlikely')}
-                </div>
-              </div>
-              <div className="grid sm:grid-cols-2 gap-3">
-                <div className="p-3 rounded-lg bg-success/5 border border-success/20">
-                  <p className="text-xs text-success font-medium mb-1">{t('freeResults.competitivePosition.yourAdvantage')}</p>
-                  <p className="text-sm text-foreground">{competitiveAssessment.strengthVsField}</p>
-                </div>
-                <div className="p-3 rounded-lg bg-destructive/5 border border-destructive/20">
-                  <p className="text-xs text-destructive font-medium mb-1">{t('freeResults.competitivePosition.yourGap')}</p>
-                  <p className="text-sm text-foreground">{competitiveAssessment.weaknessVsField}</p>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Skills Matching */}
           <div className="grid sm:grid-cols-2 gap-4 mb-4">
@@ -2229,7 +2123,7 @@ export function FreeKeywordResults({
               </Button>
               ) : (
                 <Link
-                  to={`/auth?next=${encodeURIComponent('/')}`}
+                  to={`/auth?next=${encodeURIComponent(scannerReturnPath())}`}
                   data-testid="tailored-resume-sign-in"
                   className="w-full inline-flex items-center justify-center gap-2 rounded-md bg-success px-4 py-2 text-sm font-semibold text-success-foreground hover:bg-success/90"
                 >
@@ -2264,7 +2158,11 @@ export function FreeKeywordResults({
       {/* ═══════════════════════════════════════════════════════════ */}
       <div id="section-metrics">
 
-      {/* ATS Score Context Banner - Only shown for below-passing scores */}
+      {/* ATS Score Context Banner — under 75, the score says it is no pass
+          mark. It used to place the score among this site's own scans (a
+          median and a top quarter over 180 days, never named in the line)
+          under a heading about competing; the free report ranks the reader
+          against no one (H0, the review of 2026-10-27). */}
       {atsScoreEstimate < 75 && (
         <div className={cn(
           "rounded-xl border p-3 mb-4",
@@ -2272,26 +2170,14 @@ export function FreeKeywordResults({
             ? "bg-destructive/5 border-destructive/20" 
             : "bg-warning/5 border-warning/20"
         )}>
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className={cn("w-4 h-4", atsScoreEstimate < 60 ? "text-destructive" : "text-warning")} />
-              <div>
-                <p className={cn("text-sm font-semibold", atsScoreEstimate < 60 ? "text-destructive" : "text-warning")}>
-                  {atsScoreEstimate < 60 ? t('freeResults.atRiskOrNeedsImprovement.atRisk') : t('freeResults.atRiskOrNeedsImprovement.needsImprovement')}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {/* L4-06: "Most ATS require 60+ to pass" told about half of all
-                      users (median 58) something the site's own guides call a
-                      myth. The line now places the score in this industry's
-                      own scanned distribution, or says plainly it is no pass
-                      mark when that distribution is not on hand. */}
-                  {(() => { const line = scoreBannerLine(atsScoreEstimate, realBenchmark); return t(line.key, line.vars); })()}
-                </p>
-              </div>
+          <div className="flex items-center gap-2">
+            <AlertTriangle className={cn("w-4 h-4 shrink-0", atsScoreEstimate < 60 ? "text-destructive" : "text-warning")} />
+            <div>
+              <p className={cn("text-sm font-semibold", atsScoreEstimate < 60 ? "text-destructive" : "text-warning")}>
+                {t('freeResults.atsBanner.heading')}
+              </p>
+              <p className="text-xs text-muted-foreground">{t('freeResults.atsBanner.noPassMark')}</p>
             </div>
-            {realBenchmark && realBenchmark.n >= BANNER_MIN_SAMPLE && (
-              <span className="text-sm font-bold text-success shrink-0">{t('freeResults.atsBanner.topQuarter', { p75: Math.round(realBenchmark.p75) })}</span>
-            )}
           </div>
         </div>
       )}
@@ -2344,7 +2230,7 @@ export function FreeKeywordResults({
                 {t('freeResults.interviewPrepSignIn.body', 'A free account includes one interview-prep set, one tailored résumé and one cover letter a day.')}
               </p>
               <Link
-                to={`/auth?next=${encodeURIComponent('/')}`}
+                to={`/auth?next=${encodeURIComponent(scannerReturnPath())}`}
                 className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
               >
                 {t('freeResults.interviewPrepSignIn.cta', 'Sign in or create a free account')}
@@ -2488,166 +2374,14 @@ export function FreeKeywordResults({
         </div>
       )}
 
-      {/* Industry Benchmark & Timeline Analysis */}
-      {(industryBenchmark || timelineAnalysis) && (
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
-        {/* Industry Benchmark */}
-        {industryBenchmark && (
-        <div className="rounded-2xl bg-card border border-border p-5">
-          <div className="flex items-center gap-2 mb-2">
-            <Target className="w-4 h-4 text-primary" />
-            <h4 className="font-semibold flex-1">{t('freeResults.howYouCompare.title')}</h4>
-            <MetricTooltip metricKey="industryBenchmark" />
-          </div>
-          <p className="text-xs text-muted-foreground mb-4">{t('freeResults.howYouCompare.subtitle', { industry })}</p>
-          
-          {/* Score Comparison */}
-          <div className="flex items-center gap-3 mb-4">
-            {/* Your Score */}
-            <div className="flex-1">
-              <div className="flex items-baseline gap-2 mb-1.5">
-                <span className="text-xs font-medium text-foreground">{t('freeResults.howYouCompare.you')}</span>
-                <span className={cn("text-lg font-bold", getScoreColor(atsScoreEstimate))}>{atsScoreEstimate}</span>
-              </div>
-              <div className="h-3 bg-muted rounded-full overflow-hidden">
-                <div 
-                  className={cn("h-full rounded-full transition-all", 
-                    atsScoreEstimate >= 75 ? "bg-success" : atsScoreEstimate >= 60 ? "bg-warning" : "bg-destructive"
-                  )}
-                  style={{ width: `${atsScoreEstimate}%` }}
-                />
-              </div>
-            </div>
-            
-            {/* VS Divider */}
-            <div className="flex-shrink-0 w-8 text-center">
-              <span className="text-xs font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded">vs</span>
-            </div>
-            
-            {/* Industry Avg */}
-            <div className="flex-1">
-              <div className="flex items-baseline gap-2 mb-1.5 justify-end">
-                <span className="text-xs font-medium text-foreground">{t('freeResults.howYouCompare.others')}</span>
-                <span className="text-lg font-bold text-muted-foreground">{industryBenchmark.industryAvg}</span>
-              </div>
-              <div className="h-3 bg-muted rounded-full overflow-hidden">
-                <div className="h-full bg-muted-foreground/40 rounded-full" style={{ width: `${industryBenchmark.industryAvg}%` }} />
-              </div>
-            </div>
-          </div>
-          
-          {/* Peer Percentile — emotionally specific: names the person, role, seniority */}
-          {(() => {
-            const isTop = industryBenchmark.comparison === "above";
-            const isAt = industryBenchmark.comparison === "at";
-            const isBelow = industryBenchmark.comparison === "below";
-            const firstName = candidateName?.split(' ')[0];
-            const roleLabel = industryDetection?.detectedRole || currentRole || null;
-            const senLabel = seniorityLevel || industryDetection?.seniorityLevel || null;
-            // Build cohort label: "Senior Software Engineer" or "Technology" fallback
-            const cohortLabel = [senLabel, roleLabel].filter(Boolean).join(' ') || (industry ?? 'your industry').replace(/_/g, ' ');
-            // Compute numeric percentile for emotional framing
-            // Cached payloads from before the percentile field exists — an
-            // empty string degrades every downstream use safely.
-            const pctRaw = industryBenchmark.percentile ?? "";
-            const numMatch = pctRaw.match(/\d+/);
-            const numPct = numMatch ? parseInt(numMatch[0]) : null;
-            // bottom X% or top X%
-            const isBottomFrame = pctRaw.toLowerCase().includes("bottom") || (!isTop && !isAt && numPct !== null && numPct <= 50);
-            const pctDisplay = pctRaw.includes("%") || pctRaw.toLowerCase().includes("top") || pctRaw.toLowerCase().includes("bottom")
-              ? pctRaw
-              : isTop ? "Top 25%" : isAt ? "Top 50%" : "Bottom 40%";
-
-            const headlineText = (() => {
-              if (isTop) return `${firstName ? firstName + "'s" : "Your"} resume outperforms most ${cohortLabel} resumes`;
-              if (isAt) return `${firstName ? firstName + "'s" : "Your"} resume is average among ${cohortLabel} resumes`;
-              return `${firstName ? firstName + "'s" : "Your"} resume scores below most ${cohortLabel} resumes`;
-            })();
-
-            const bodyText = (() => {
-              if (isTop) return `Recruiters scanning ${cohortLabel} candidates will likely pass your resume to the next round based on ATS score alone.`;
-              if (isAt) return `Half the ${cohortLabel} resumes we've analyzed score the same or higher. A few targeted fixes could move you into the top quarter.`;
-              return `Most ${cohortLabel} resumes that make it to a recruiter's desk score higher than yours. The gap is fixable — but it needs to close before you apply.`;
-            })();
-
-            return (
-              <div className={cn(
-                "rounded-lg mb-3 overflow-hidden border",
-                isTop ? "border-success/30" : isAt ? "border-warning/30" : "border-destructive/30"
-              )}>
-                <div className={cn(
-                  "px-4 py-3 flex items-center gap-3",
-                  isTop ? "bg-success/10" : isAt ? "bg-warning/10" : "bg-destructive/10"
-                )}>
-                  <div className={cn(
-                    "text-2xl font-black tabular-nums shrink-0",
-                    isTop ? "text-success" : isAt ? "text-warning" : "text-destructive"
-                  )}>
-                    {pctDisplay}
-                  </div>
-                  <div>
-                    <p className={cn("text-sm font-semibold leading-tight",
-                      isTop ? "text-success" : isAt ? "text-warning" : "text-destructive"
-                    )}>{headlineText}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{bodyText}</p>
-                  </div>
-                </div>
-                {!isTop && (
-                  <div className="px-4 py-2 bg-background/60 border-t border-border/40">
-                    <p className="text-xs text-muted-foreground">
-                      {isBelow
-                        ? "Resumes that score in the top 25% get 3× more interview callbacks in your field."
-                        : "Top-quartile resumes in your field get called back 2× more often."}
-                      {!diagnosticLayout && <>{" "}<button onClick={() => handleUpgradeClick('peer_percentile_cta')} className="text-primary font-semibold hover:underline">See what's holding you back →</button></>}
-                    </p>
-                  </div>
-                )}
-              </div>
-            );
-          })()}
-
-          {/* What This Means - Clear, non-contradictory guidance */}
-          <div className="p-3 rounded-lg bg-muted/30 border border-border/50">
-            <p className="text-xs font-medium text-foreground mb-1">
-              {industryBenchmark.comparison === "above"
-                ? t('freeResults.peerBenchmark.strongPosition')
-                : industryBenchmark.comparison === "at"
-                  ? t('freeResults.peerBenchmark.roomForImprovement')
-                  : t('freeResults.peerBenchmark.belowAverage')}
-            </p>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              {industryBenchmark.comparison === "above"
-                ? t('freeResults.peerBenchmark.strongResult')
-                : industryBenchmark.comparison === "at"
-                  ? t('freeResults.peerBenchmark.competitiveResult')
-                : t('freeResults.peerBenchmark.weakResult')}
-            </p>
-          </div>
-          
-          {/* Job-Specific CTA - show when jobs are uploaded (FREE) */}
-          {uploadedJobs.length > 0 && (
-            <div className="mt-4 p-3 rounded-lg bg-gradient-to-r from-success/10 to-success/5 border border-success/20">
-              <p className="text-xs font-medium text-foreground mb-2">
-                🎯 Want to see how you compare for <span className="text-success font-semibold">{uploadedJobs[0].title}</span> at <span className="text-success font-semibold">{uploadedJobs[0].company}</span>?
-              </p>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => onGetJobAnalysis?.(uploadedJobs[0].title, uploadedJobs[0].company)}
-                disabled={isLoading}
-                className="w-full gap-2 text-xs h-8 border-success/30 hover:bg-success/10 hover:border-success"
-              >
-                <Target className="w-3 h-3 text-success" />
-                {t('freeResults.howYouCompare.getJobSpecific')}
-                <ArrowRight className="w-3 h-3" />
-              </Button>
-              <p className="text-[10px] text-success/70 mt-1.5 text-center">✨ Free</p>
-            </div>
-          )}
-        </div>
-
-        )}
-
+      {/* Timeline Analysis. The industry benchmark beside it (you against
+          others, a peer percentile, callback multipliers and a recruiter's
+          likely verdict) is gone: the scan names its comparison with an
+          _average suffix and the card tested the bare words, so every reader
+          was told their résumé ranked below their peers. The report ranks
+          the reader against no one (H0, review round 2026-10-26). */}
+      {timelineAnalysis && (
+      <div className="grid grid-cols-1 gap-4 mb-5">
         {/* Timeline Analysis */}
         {timelineAnalysis && (
         <div className="rounded-2xl bg-card border border-border p-5">
@@ -2935,51 +2669,10 @@ export function FreeKeywordResults({
               )}
             </div>
 
-            {/* Salary Insight */}
-            {personalizedCareerInsights.salaryInsight && (gateDeepInsights ? (
-              <div className="mt-5">
-                <LockedPremiumInsight
-                  title={t('freeResults.personalizedCareerInsights.salaryInsightTitle')}
-                  description={t('freeResults.lockedInsights.careerSalary')}
-                  previewLines={[`💰 ${personalizedCareerInsights.salaryInsight?.estimatedRange}`, ...(personalizedCareerInsights.salaryInsight?.leveragePoints?.slice(0,2) ?? [])]}
-                  onUnlock={() => handleUpgradeClick('locked_salary')}
-                  isLoading={isLoading}
-                  variant="highlight"
-                />
-              </div>
-            ) : (
-              <div className="mt-5 p-4 rounded-xl bg-gradient-to-r from-success/5 to-primary/5 border border-success/20">
-                <div className="flex items-center gap-2 mb-3">
-                  <DollarSign className="w-4 h-4 text-success" />
-                  <h5 className="font-semibold text-sm">{t('freeResults.personalizedCareerInsights.salaryInsightTitle')}</h5>
-                  <span className={cn(
-                    "text-xs px-2 py-0.5 rounded-full ml-auto",
-                    personalizedCareerInsights.salaryInsight?.marketPosition === "above_market" ? "bg-success/20 text-success" :
-                    personalizedCareerInsights.salaryInsight?.marketPosition === "at_market" ? "bg-primary/20 text-primary" :
-                    "bg-warning/20 text-warning"
-                  )}>
-                    {personalizedCareerInsights.salaryInsight?.marketPosition === "above_market" ? t('freeResults.marketPosition.aboveMarket') :
-                     personalizedCareerInsights.salaryInsight?.marketPosition === "at_market" ? t('freeResults.marketPosition.atMarket') : t('freeResults.marketPosition.belowMarket')}
-                  </span>
-                </div>
-                <div className="flex items-baseline gap-2 mb-2">
-                  <span className="text-2xl font-bold text-success">{personalizedCareerInsights.salaryInsight?.estimatedRange}</span>
-                  <span className="text-xs text-muted-foreground">{t('freeResults.personalizedCareerInsights.estimatedRange')}</span>
-                </div>
-                {personalizedCareerInsights.salaryInsight?.leveragePoints && personalizedCareerInsights.salaryInsight?.leveragePoints.length > 0 && (
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-2">{t('freeResults.personalizedCareerInsights.negotiationLeverage')}</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {(personalizedCareerInsights.salaryInsight?.leveragePoints ?? []).map((point, index) => (
-                        <span key={index} className="text-xs px-2 py-1 rounded-full bg-success/10 text-success">
-                          {point}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
+            {/* No salary card: the scan asked the AI for "realistic" salary
+                ranges beside a typed range per market with no source, and
+                printed its estimate with a market-position badge (the review
+                of 2026-10-27). The scan no longer asks for one. */}
 
             {/* Hidden Strengths & Personal Brand */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-5">
@@ -3368,7 +3061,7 @@ export function FreeKeywordResults({
           <p className="text-xs text-muted-foreground mb-3 leading-relaxed">{marketIntelligence.marketSummary}</p>
           {marketIntelligence.hotSkills?.length > 0 && (
             <div className="mb-3">
-              <p className="text-xs font-semibold text-foreground mb-1.5">🔥 Hot skills right now</p>
+              <p className="text-xs font-semibold text-foreground mb-1.5">🔥 Skills in demand (hand-compiled)</p>
               <div className="flex flex-wrap gap-1.5">
                 {(marketIntelligence.hotSkills ?? []).map((skill, i) => (
                   <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-success/10 text-success border border-success/20 font-medium">{skill}</span>
@@ -3378,7 +3071,7 @@ export function FreeKeywordResults({
           )}
           {marketIntelligence.risingKeywords?.length > 0 && (
             <div className="mb-3">
-              <p className="text-xs font-semibold text-foreground mb-1.5">📈 Rising keywords in job postings</p>
+              <p className="text-xs font-semibold text-foreground mb-1.5">📈 Rising keywords (hand-compiled)</p>
               <div className="flex flex-wrap gap-1.5">
                 {(marketIntelligence.risingKeywords ?? []).map((kw, i) => (
                   <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-warning/10 text-warning border border-warning/20 font-medium">{kw}</span>
@@ -3398,15 +3091,19 @@ export function FreeKeywordResults({
               </ul>
             </div>
           )}
-          {marketIntelligence.salaryContext && (
-            <p className="text-xs text-muted-foreground mt-2 border-t border-border/40 pt-2">
-              <span className="font-medium text-foreground">💰 Salary context: </span>{marketIntelligence.salaryContext}
-            </p>
-          )}
+          {/* No salary line: the scan's salaryContext is a typed range per
+              market (and two typed percentage gaps) with no source, so the
+              report does not print it (the report sweep of 2026-10-27). */}
+          <p className="text-[11px] text-muted-foreground mt-2">
+            {marketBasis(marketIntelligence.listsAsOf)}
+          </p>
         </div>
       )}
 
-      {/* ── SKILLS RECENCY CARD ── */}
+      {/* ── SKILLS RECENCY CARD ── the scan's hand-compiled lists for the
+          reader's field, matched by whole word; fields without lists of their
+          own get none. No score is printed: it started every résumé at 70 and
+          moved by hand-set steps (the review of 2026-10-27). */}
       {skillsRecency && (skillsRecency.agingSkills?.length > 0 || skillsRecency.freshSkills?.length > 0) && (
         <div className={cn(
           "rounded-2xl border p-5 mb-5",
@@ -3415,28 +3112,21 @@ export function FreeKeywordResults({
           <div className="flex items-center gap-2 mb-3">
             <RefreshCw className={cn("w-4 h-4", skillsRecency.hasAgingSignals ? "text-warning" : "text-success")} />
             <h4 className="font-semibold text-foreground">Skills Freshness</h4>
-            <span className={cn(
-              "ml-auto text-xs px-2 py-0.5 rounded-full font-semibold",
-              skillsRecency.freshnessScore >= 75 ? "bg-success/15 text-success" :
-              skillsRecency.freshnessScore >= 50 ? "bg-warning/15 text-warning" : "bg-destructive/15 text-destructive"
-            )}>
-              {skillsRecency.freshnessScore}/100
-            </span>
           </div>
           {skillsRecency.agingSkills?.length > 0 && (
             <div className="mb-3">
-              <p className="text-xs font-semibold text-warning mb-1.5">⚠️ Aging skills (declining in job postings)</p>
+              <p className="text-xs font-semibold text-warning mb-1.5">⚠️ On our list of aging skills</p>
               <div className="flex flex-wrap gap-1.5">
                 {(skillsRecency.agingSkills ?? []).map((s, i) => (
                   <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-warning/10 text-warning border border-warning/20 line-through">{s}</span>
                 ))}
               </div>
-              <p className="text-xs text-muted-foreground mt-1.5">These appear in fewer current job postings — consider pairing with modern equivalents.</p>
+              <p className="text-xs text-muted-foreground mt-1.5">Consider pairing these with their modern equivalents.</p>
             </div>
           )}
           {skillsRecency.freshSkills?.length > 0 && (
             <div>
-              <p className="text-xs font-semibold text-success mb-1.5">✓ Current skills (high demand 2025)</p>
+              <p className="text-xs font-semibold text-success mb-1.5">✓ On our list of in-demand skills</p>
               <div className="flex flex-wrap gap-1.5">
                 {(skillsRecency.freshSkills ?? []).map((s, i) => (
                   <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-success/10 text-success border border-success/20 font-medium">{s}</span>
@@ -3444,6 +3134,9 @@ export function FreeKeywordResults({
               </div>
             </div>
           )}
+          <p className="text-[11px] text-muted-foreground mt-3">
+            {skillsBasis(skillsRecency.listsAsOf)}
+          </p>
         </div>
       )}
 
@@ -3480,22 +3173,27 @@ export function FreeKeywordResults({
         </div>
       )}
 
-      {/* ── COMPETITIVE KEYWORD GAP CARD ── */}
+      {/* ── KEYWORDS EXPECTED AT YOUR LEVEL ──
+          The list is free-keyword-scan's hand-picked COMPETITIVE_KEYWORDS for
+          the level, in seven fields with technology's standing in for the
+          rest, not a count of anyone's résumés, so the card says so; the share
+          is how much of that list the reader's own résumé uses (the report
+          sweep of 2026-10-27). */}
       {competitiveGap && competitiveGap.missingHighFrequency?.length > 0 && (
         <div className="rounded-2xl border border-destructive/20 bg-card p-5 mb-5">
           <div className="flex items-center gap-2 mb-3">
             <Target className="w-4 h-4 text-destructive" />
-            <h4 className="font-semibold text-foreground">Competitive Keyword Gap</h4>
+            <h4 className="font-semibold text-foreground">Keywords Expected at Your Level</h4>
             <span className={cn(
               "ml-auto text-xs px-2 py-0.5 rounded-full font-semibold",
               competitiveGap.gapScore >= 70 ? "bg-success/15 text-success" :
               competitiveGap.gapScore >= 40 ? "bg-warning/15 text-warning" : "bg-destructive/15 text-destructive"
             )}>
-              {competitiveGap.gapScore}% coverage
+              {competitiveGap.gapScore}% of this list
             </span>
           </div>
           <p className="text-xs text-muted-foreground mb-3">
-            Keywords that appear in 70%+ of top-quartile resumes at your level — and are missing from yours.
+            Keywords from a list for your level that your resume doesn't use yet. The list is chosen by hand (for seven fields; technology's stands in for the rest), not counted from other resumes.
           </p>
           <div className="flex flex-wrap gap-1.5 mb-2">
             {(competitiveGap.missingHighFrequency ?? []).map((kw, i) => (
@@ -3547,7 +3245,7 @@ export function FreeKeywordResults({
             <div className="mb-2 p-2.5 rounded-lg bg-warning/10 border border-warning/20">
               <p className="text-xs font-semibold text-warning mb-0.5">Employment gap detected</p>
               <p className="text-xs text-muted-foreground">
-                Gaps longer than 6 months are flagged by many ATS systems. Add a brief explanation in your summary (freelance consulting, caregiving, upskilling) or add a short consulting/contract entry.
+                Your timeline shows a gap of more than six months between roles. A brief explanation in your summary (freelance consulting, caregiving, upskilling) or a short consulting/contract entry answers the question before anyone asks it.
               </p>
               {resumeTimeline.gapPeriods.filter(g => g.monthsGap > 6).map((g, i) => (
                 <p key={i} className="text-xs text-warning mt-1 font-medium">
@@ -3560,7 +3258,7 @@ export function FreeKeywordResults({
             <div className="p-2.5 rounded-lg bg-warning/10 border border-warning/20">
               <p className="text-xs font-semibold text-warning mb-0.5">Short tenure detected</p>
               <p className="text-xs text-muted-foreground">
-                One or more roles under 12 months may raise recruiter questions. Add context (contract role, startup folded, layoff) to prevent filtering.
+                One or more roles under 12 months may raise recruiter questions. Add context (contract role, startup folded, layoff).
               </p>
             </div>
           )}
@@ -3650,7 +3348,7 @@ export function FreeKeywordResults({
               <p className="text-xs text-muted-foreground">After fixes</p>
             </div>
           </div>
-          <p className="text-xs text-muted-foreground mt-2">Estimated after addressing top quick wins above.</p>
+          <p className="text-xs text-muted-foreground mt-2">The points of the top quick wins above added to your score. {FIX_POINTS_BASIS}</p>
         </div>
       )}
 
@@ -3744,168 +3442,22 @@ export function FreeKeywordResults({
         </div>
       )}
 
-      {/* ── Peer Percentile + Application Pass Rate ─────────────────────────── */}
-      {(peerPercentile != null || applicationPassRate != null) && (
-        <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
-          <h4 className="font-semibold text-foreground text-sm">{t('freeResults.enterprise.howYouCompare', 'How You Compare')}</h4>
-          <div className="grid grid-cols-2 gap-3">
-            {peerPercentile != null && (
-              <div className={cn(
-                "rounded-xl border p-3 text-center",
-                peerPercentile >= 60 ? "border-success/30 bg-success/5" : peerPercentile >= 40 ? "border-warning/30 bg-warning/5" : "border-destructive/30 bg-destructive/5"
-              )}>
-                <p className="text-2xl font-bold text-foreground">{peerPercentile}<span className="text-sm font-normal text-muted-foreground">{(() => { const v = peerPercentile % 100; if (v >= 11 && v <= 13) return 'th'; return ['th', 'st', 'nd', 'rd'][v % 10] ?? 'th'; })()}</span></p>
-                <p className="text-xs text-muted-foreground mt-0.5">Percentile vs {industry.replace(/_/g, ' ')} candidates</p>
-                <p className={cn("text-[10px] font-semibold mt-1", peerPercentile >= 60 ? "text-success" : peerPercentile >= 40 ? "text-warning" : "text-destructive")}>
-                  {peerPercentile >= 70 ? "Top tier" : peerPercentile >= 50 ? "Above average" : peerPercentile >= 30 ? "Below average" : "Bottom tier"}
-                </p>
-              </div>
-            )}
-            {applicationPassRate != null && (
-              <div className={cn(
-                "rounded-xl border p-3 text-center",
-                applicationPassRate >= 70 ? "border-success/30 bg-success/5" : applicationPassRate >= 50 ? "border-warning/30 bg-warning/5" : "border-destructive/30 bg-destructive/5"
-              )}>
-                <p className="text-2xl font-bold text-foreground">{applicationPassRate}<span className="text-sm font-normal text-muted-foreground">%</span></p>
-                <p className="text-xs text-muted-foreground mt-0.5">Est. ATS pass rate</p>
-                <p className={cn("text-[10px] font-semibold mt-1", applicationPassRate >= 70 ? "text-success" : applicationPassRate >= 50 ? "text-warning" : "text-destructive")}>
-                  {applicationPassRate >= 70 ? "Likely to pass" : applicationPassRate >= 50 ? "At risk" : "High rejection risk"}
-                </p>
-              </div>
-            )}
-          </div>
-          {/* Percentile bell curve — "you're here, they're there" in one glance */}
-          {peerPercentile != null && (() => {
-            const W = 300, H = 70, sigma = 18, mu = 50;
-            const pts = Array.from({ length: 61 }, (_, i) => {
-              const x = (i / 60) * 100;
-              const y = Math.exp(-((x - mu) ** 2) / (2 * sigma ** 2));
-              return `${(x / 100) * W},${H - 8 - y * (H - 18)}`;
-            }).join(' ');
-            const markerX = (peerPercentile / 100) * W;
-            const topQuartileX = (75 / 100) * W;
-            return (
-              <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-16" role="img" aria-label={`Score distribution: you are at the ${peerPercentile}th percentile`}>
-                {/* top-quartile zone */}
-                <rect x={topQuartileX} y={6} width={W - topQuartileX} height={H - 14} className="fill-success/10" rx={3} />
-                <polyline points={pts} className="fill-none stroke-muted-foreground/50" strokeWidth={1.5} />
-                <line x1={markerX} y1={4} x2={markerX} y2={H - 8} className={cn("stroke-2", peerPercentile >= 60 ? "stroke-success" : peerPercentile >= 40 ? "stroke-warning" : "stroke-destructive")} />
-                <circle cx={markerX} cy={4} r={3} className={cn(peerPercentile >= 60 ? "fill-success" : peerPercentile >= 40 ? "fill-warning" : "fill-destructive")} />
-                <text x={Math.min(Math.max(markerX, 18), W - 18)} y={H} textAnchor="middle" className="fill-current text-[9px] text-muted-foreground">You</text>
-                <text x={topQuartileX + (W - topQuartileX) / 2} y={14} textAnchor="middle" className="fill-current text-[8px] text-success">Top 25%</text>
-              </svg>
-            );
-          })()}
-          <p className="text-[10px] text-muted-foreground">
-            Methodology: percentile is a normal-distribution estimate against your industry's median ATS score; pass rate is banded from your score against common ATS filter thresholds. Both are estimates, not guarantees.
-          </p>
-        </div>
-      )}
+      {/* The peer percentile and the estimated pass-rate card are not
+          shown: both are estimates of an outcome the report cannot know (H0,
+          review round 2026-10-26). */}
 
-      {/* ── Interview Likelihood ─────────────────────────────────────────────── */}
-      {interviewLikelihood && (
-        <div className={cn(
-          "rounded-2xl border p-5",
-          interviewLikelihood.band === 'strong' ? "border-success/30 bg-success/5" :
-          interviewLikelihood.band === 'moderate' ? "border-primary/30 bg-primary/5" :
-          "border-destructive/30 bg-destructive/5"
-        )}>
-          <div className="flex items-center gap-2 mb-2">
-            <Target className="w-4 h-4 text-foreground" />
-            <h4 className="font-semibold text-foreground text-sm">{t('freeResults.enterprise.interviewLikelihood', 'Interview Callback Likelihood')}</h4>
-            <span className={cn(
-              "ml-auto text-xs px-2 py-0.5 rounded-full font-semibold capitalize",
-              interviewLikelihood.band === 'strong' ? "bg-success/15 text-success" :
-              interviewLikelihood.band === 'moderate' ? "bg-primary/15 text-primary" :
-              "bg-destructive/15 text-destructive"
-            )}>
-              {(interviewLikelihood.band ?? '').replace('_', ' ')}
-            </span>
-          </div>
-          <div className="h-2 rounded-full bg-muted overflow-hidden mb-2">
-            <div
-              className={cn(
-                "h-full rounded-full",
-                interviewLikelihood.band === 'strong' ? "bg-success" :
-                interviewLikelihood.band === 'moderate' ? "bg-primary" : "bg-destructive"
-              )}
-              style={{ width: `${interviewLikelihood.composite}%` }}
-            />
-          </div>
-          <p className="text-xs text-muted-foreground">
-            <span className="font-medium text-foreground">Biggest factor:</span> {interviewLikelihood.topFactor}
-          </p>
-          <p className="text-[10px] text-muted-foreground mt-2">
-            Methodology: weighted blend of ATS pass rate (45%), peer percentile (35%), and critical red flags (20%).
-          </p>
-        </div>
-      )}
+      {/* The "top-quartile candidate" card that sat here is gone: its
+          figures (quantified bullets, leadership verbs, keyword coverage)
+          were literals in free-keyword-scan, printed beside the reader's own
+          counts as if measured. The scan still sends competitorSilhouette
+          (the data contract); the report prints none of it (the report
+          sweep of 2026-10-27). */}
 
-      {/* ── Competitor Silhouette ────────────────────────────────────────────── */}
-      {competitorSilhouette && (
-        <div className="rounded-2xl border border-border bg-card p-5">
-          <h4 className="font-semibold text-foreground text-sm mb-1">You vs. a Top-Quartile Candidate</h4>
-          <p className="text-xs text-muted-foreground mb-3">
-            What shortlisted {industry.replace(/_/g, ' ')} resumes typically show, next to {candidateName ? `${candidateName.split(' ')[0]}'s` : 'your'} resume today.
-          </p>
-          <div className="space-y-3">
-            {([
-              { label: 'Quantified bullets', them: competitorSilhouette.archetype.quantifiedBullets, you: competitorSilhouette.user.quantifiedBullets, max: 12 },
-              { label: 'Leadership signals', them: competitorSilhouette.archetype.leadershipSignals, you: competitorSilhouette.user.leadershipSignals, max: 8 },
-              { label: 'Keyword coverage %', them: competitorSilhouette.archetype.keywordCoveragePct, you: competitorSilhouette.user.keywordCoveragePct, max: 100 },
-            ]).map((row, i) => (
-              <div key={i} className="space-y-1">
-                <div className="flex justify-between text-xs">
-                  <span className="text-foreground font-medium">{row.label}</span>
-                  <span className="text-muted-foreground">You: <span className={cn("font-semibold", row.you >= row.them ? "text-success" : "text-destructive")}>{row.you}</span> · Top quartile: <span className="font-semibold text-foreground">{row.them}</span></span>
-                </div>
-                <div className="relative h-2 rounded-full bg-muted overflow-hidden">
-                  <div className="absolute h-full rounded-full bg-primary/80" style={{ width: `${Math.min((row.you / row.max) * 100, 100)}%` }} />
-                  <div className="absolute h-full w-0.5 bg-foreground/70" style={{ left: `${Math.min((row.them / row.max) * 100, 100)}%` }} />
-                </div>
-              </div>
-            ))}
-          </div>
-          <p className="text-[10px] text-muted-foreground mt-2">Dark marker = top-quartile benchmark.</p>
-        </div>
-      )}
-
-      {/* ── Skill Gap Heat Map ───────────────────────────────────────────────── */}
-      {keywords.length > 0 && keywords.some(k => k.frequencyWeight != null) && (
-        <div className="rounded-2xl border border-border bg-card p-5">
-          <h4 className="font-semibold text-foreground text-sm mb-3">Keyword Gap Heat Map</h4>
-          <p className="text-xs text-muted-foreground mb-3">Bar width = how often this keyword appears in job postings for your role.</p>
-          <div className="space-y-2">
-            {keywords.map((kw, i) => {
-              const w = kw.frequencyWeight ?? 1;
-              const pct = w === 3 ? 100 : w === 2 ? 65 : 35;
-              const color = w === 3 ? "bg-destructive" : w === 2 ? "bg-warning" : "bg-muted-foreground/50";
-              const label = w === 3 ? "Very common" : w === 2 ? "Common" : "Occasional";
-              const sectionBadge = kw.suggestedSection
-                ? ({ summary: "Summary", experience: "Experience", skills: "Skills" })[kw.suggestedSection]
-                : null;
-              return (
-                <div key={i} className="space-y-1">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm font-medium text-foreground">{kw.keyword}</span>
-                    <div className="flex items-center gap-1.5">
-                      {sectionBadge && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-full border border-primary/30 bg-primary/10 text-primary">
-                          → {sectionBadge}
-                        </span>
-                      )}
-                      <span className="text-[10px] text-muted-foreground">{label}</span>
-                    </div>
-                  </div>
-                  <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                    <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      {/* No keyword heat map: its bars and labels stood for how often each
+          keyword appears in postings, read from a hand-set table in
+          free-keyword-scan that names no dataset (the review of
+          2026-10-27). The scan still sends each keyword's weight, which only
+          orders the gaps. */}
 
       {/* ── Executive Scope Check — senior/exec resumes are judged on scope ── */}
       {executiveScopeCheck && (
@@ -4136,7 +3688,7 @@ export function FreeKeywordResults({
         <div className="rounded-2xl border border-primary/20 bg-primary/5 p-5">
           <div className="flex items-center gap-2 mb-3">
             <User className="w-4 h-4 text-primary" />
-            <h4 className="font-semibold text-foreground text-sm">How a Recruiter Sees You (6-Second Scan)</h4>
+            <h4 className="font-semibold text-foreground text-sm">A Recruiter's First Read</h4>
           </div>
           <p className="text-sm text-foreground/90 leading-relaxed italic">"{recruiterFirstPassSummary}"</p>
         </div>
@@ -4152,7 +3704,7 @@ export function FreeKeywordResults({
             </h4>
           </div>
           <p className="text-xs text-muted-foreground mb-3">
-            Work top to bottom — ordered by points gained per minute. Finishing all steps takes you from {atsScoreEstimate} to ~{fixRoadmap.finalProjectedScore}.
+            Work top to bottom — ordered by points per minute. {FIX_PLAN_BASIS} By that guide, all steps take {atsScoreEstimate} to about {fixRoadmap.finalProjectedScore}.
           </p>
           <div className="space-y-2">
             {fixRoadmap.steps.map((s) => (
@@ -4220,17 +3772,14 @@ export function FreeKeywordResults({
         <div className="rounded-2xl border border-border bg-card p-5">
           <h4 className="font-semibold text-foreground text-sm mb-1">The Recruiter Panel</h4>
           <p className="text-xs text-muted-foreground mb-3">
-            Three people read your resume before anyone calls you. Here's what each one sees.
+            Three reader viewpoints, written by AI from your resume: what each would notice first.
           </p>
           <div className="space-y-2.5">
-            <div className={cn("rounded-xl border p-3", recruiterPanel.screener.wouldPass === false ? "border-destructive/30 bg-destructive/5" : "border-success/30 bg-success/5")}>
+            {/* No pass badge: the screener's yes/no is the AI's guess at a
+                screen's outcome, which the free report does not predict. */}
+            <div className="rounded-xl border border-border bg-muted/20 p-3">
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-xs font-bold text-foreground">⏱️ The 6-Second Screener</span>
-                {recruiterPanel.screener.wouldPass != null && (
-                  <span className={cn("ml-auto text-[10px] px-2 py-0.5 rounded-full font-semibold", recruiterPanel.screener.wouldPass ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive")}>
-                    {recruiterPanel.screener.wouldPass ? "Survives the pile" : "At risk of the pile"}
-                  </span>
-                )}
+                <span className="text-xs font-bold text-foreground">👀 The First-Glance Screener</span>
               </div>
               <p className="text-sm text-foreground/90 italic">"{recruiterPanel.screener.verdict}"</p>
             </div>
@@ -4307,7 +3856,6 @@ export function FreeKeywordResults({
         <ShareScoreCard
           atsScore={atsScoreEstimate}
           industry={effectiveIndustry}
-          percentile={peerPercentile ?? undefined}
           previousScore={(() => {
             // Same-candidate guard as the delta banner: a household member's
             // earlier scan must not produce a bogus before/after card.
@@ -4574,7 +4122,8 @@ export function FreeKeywordResults({
         <h3 className="font-semibold text-foreground mb-1">{t('freeResults.nextSteps.title')}</h3>
         <p className="text-xs text-muted-foreground mb-4">{t('freeResults.nextSteps.body')}</p>
         <div className="space-y-2.5">
-          <PurchaseTerms kind="payment" />
+          {canBuy && <PurchaseTerms kind="payment" />}
+          {canBuy && (
           <button
             data-offer="fullAnalysis"
             onClick={() => handleUpgradeClick('next_steps_full_analysis')}
@@ -4590,6 +4139,7 @@ export function FreeKeywordResults({
             </span>
             <span className="text-sm font-semibold text-primary shrink-0 ml-3">{priceDisplay}</span>
           </button>
+          )}
           <Link
             data-offer="pro"
             to="/pricing"
@@ -4599,8 +4149,9 @@ export function FreeKeywordResults({
             <span>
               <span className="block text-sm font-medium text-foreground">{t('freeResults.nextSteps.proName')}</span>
               {/* Pro's line is the one summary every page reads (owner
-                  decision 2026-10-17: src/config/pro-perks.ts). */}
-              <span className="block text-xs text-muted-foreground">{t(PRO_SUMMARY.key, PRO_SUMMARY.text)}</span>
+                  decision 2026-10-17: src/config/pro-perks.ts), without the
+                  included Full Analysis until that is on sale (G2). */}
+              <span className="block text-xs text-muted-foreground">{t(proSummaryOnSale().key, proSummaryOnSale().text)}</span>
             </span>
             <span className="text-sm font-semibold text-primary shrink-0 ml-3">{t('freeResults.nextSteps.proPrice', { price: SUBSCRIPTIONS.pro.priceUsd })}</span>
           </Link>

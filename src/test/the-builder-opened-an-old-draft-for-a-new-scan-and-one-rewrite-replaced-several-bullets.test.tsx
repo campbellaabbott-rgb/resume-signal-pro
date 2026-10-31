@@ -150,7 +150,7 @@ describe("the builder's own loops do not re-import", () => {
     await screen.findByDisplayValue("Imported Person");
     fireEvent.click(screen.getByRole("button", { name: /export pdf/i }));
     fireEvent.click(await screen.findByRole("button", { name: /rescan this version/i }));
-    expect(hrefs).toEqual(["/?rescan=1#upload"]);
+    expect(hrefs).toEqual(["/resume-checker?rescan=1#upload"]);
     expect(sessionStorage.getItem("rb_resume_text")).not.toBe(SCAN_A);
     cleanup();
     invoke.mockClear();

@@ -886,7 +886,7 @@ const Success = () => {
                   <p className="text-muted-foreground text-lg">
                     Please complete the checkout process first.
                   </p>
-                  <Link to="/">
+                  <Link to="/resume-checker">
                     <Button variant="default" size="lg" className="gap-2">
                       <Sparkles className="w-4 h-4" />
                       Analyze Your Resume

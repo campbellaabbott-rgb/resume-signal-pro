@@ -18,13 +18,22 @@
  *            buttons with no seller named, and nothing says purchases open
  *            soon.
  *
+ * Since the homepage switch-over (docs/homepage-pricing/README.md, step 4)
+ * /pricing is src/pages/pricing/PricingPage.tsx. The old page's ladder, its
+ * "Get <product>" links and its FAQ line went with src/pages/Pricing.tsx;
+ * hp-pricing-decisions tests 1, 3 and 12 hold the new page's cards, gates and
+ * structured data. Kept here: no cut or retired product, both buy buttons
+ * with no seller named (sales stay on; a TEST seller changes nothing), each
+ * product named whole on its button, and no promise nobody keeps.
+ *
  * Mounted for real, plus a guard over the catalogue and the product cards
  * (the claim literals live only in this file).
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { readFileSync } from "node:fs";
+import { HelmetProvider } from "react-helmet-async";
+import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { MOUNT_TEST_BUDGET } from "./helpers/mount-budget";
 import { codeOf } from "./helpers/strip-comments";
@@ -41,67 +50,79 @@ vi.mock("@/integrations/supabase/client", () => ({
 }));
 vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: null, session: null }) }));
 vi.mock("@/hooks/use-pro-subscription", () => ({
-  useProSubscription: () => ({ pro: { active: false, status: null, currentPeriodEnd: null, loading: false, planTier: null, cancelAtPeriodEnd: false }, subscribe: vi.fn(), manage: vi.fn(), actionLoading: false, knownEmail: "", refresh: vi.fn() }),
+  PRO_CONFIRM_INTERVAL_MS: 3000,
+  useProSubscription: () => ({ pro: { active: false, status: null, currentPeriodEnd: null, loading: false, planTier: null, cancelAtPeriodEnd: false }, subscribe: vi.fn(), manage: vi.fn(), actionLoading: false, knownEmail: "", refresh: vi.fn(), justSubscribed: false, notConfirmedYet: false }),
 }));
 vi.mock("@/components/Header", () => ({ Header: () => null }));
 vi.mock("@/components/Footer", () => ({ Footer: () => null }));
 vi.mock("@/components/seo/SEO", () => ({ SEO: () => null }));
-vi.mock("@/components/ProductPreview", () => ({ ProductPreview: () => null }));
 
-import Pricing from "../pages/Pricing";
+import PricingPage from "../pages/pricing/PricingPage";
+import type { SaleGateInput } from "@/components/pricing/sale-gates";
 import { HIDDEN_PRODUCT_IDS, PRODUCTS } from "@/config/products";
 
 vi.setConfig(MOUNT_TEST_BUDGET);
-afterEach(cleanup);
+afterEach(() => cleanup());
 
-const mount = () => render(<MemoryRouter initialEntries={["/pricing"]}><Pricing /></MemoryRouter>);
+/** An obviously fake identity, used only inside tests (owner decision: never invented in src). */
+const TEST_SELLER = { legalName: "TEST SELLER", postalAddress: "TEST ADDRESS, NOWHERE" };
+const OPEN: SaleGateInput = { seller: TEST_SELLER, fullAnalysisDelivered: true, proWatched: true };
+
+const mount = (gateInput?: SaleGateInput) =>
+  render(
+    <HelmetProvider>
+      <MemoryRouter initialEntries={["/pricing"]}>
+        <PricingPage gateInput={gateInput} />
+      </MemoryRouter>
+    </HelmetProvider>,
+  );
 const ROOT = resolve(__dirname, "../..");
+const buyControls = () => [...document.querySelectorAll<HTMLElement>("[data-buy]")];
 
 describe("/pricing offers only what is still sold", () => {
-  it("no cut or retired product appears anywhere on the page", () => {
-    mount();
-    const text = document.body.textContent ?? "";
-    for (const id of HIDDEN_PRODUCT_IDS) expect(text, `${id} is offered`).not.toContain(PRODUCTS[id].name);
-    expect(text).not.toMatch(/Best Value|Premium Packages|See every tool/);
+  it("no cut or retired product appears anywhere on the page, closed or open", () => {
+    for (const input of [undefined, OPEN]) {
+      mount(input);
+      const text = document.body.textContent ?? "";
+      for (const id of HIDDEN_PRODUCT_IDS) expect(text, `${id} is offered`).not.toContain(PRODUCTS[id].name);
+      expect(text).not.toMatch(/Best Value|Premium Packages|See every tool|Transition Pro/);
+      expect(document.querySelector("a[href='/freelance-boost']")).toBeNull();
+      cleanup();
+    }
   });
 
-  it("the ladder is the free scan and the $5 Full Analysis; Freelance Boost is gone (2026-10-17)", () => {
-    mount();
-    expect(document.querySelector("[data-ladder='fullAnalysis']")?.textContent).toContain(`$${PRODUCTS.fullAnalysis.priceUsd}`);
-    const text = document.body.textContent ?? "";
-    expect(text).not.toContain(PRODUCTS.freelanceBoost.name);
-    expect(text).not.toMatch(/Transition Pro/);
-    expect(document.querySelector("a[href='/freelance-boost']")).toBeNull();
+  it("the Full Analysis card prices the $5 report", () => {
+    mount(OPEN);
+    expect(document.querySelector("[data-plan='full-analysis']")?.textContent).toContain(`$${PRODUCTS.fullAnalysis.priceUsd}`);
   });
 });
 
 describe("both buy buttons, with no seller named (sales stay on, owner 2026-10-27)", () => {
-  it("the Full Analysis card and the Pro card each offer their button, with the Terms line", () => {
+  it("the Full Analysis card and the Pro card each offer their button, with the Terms line, and nothing opens soon", () => {
     mount();
-    const card = document.querySelector("[data-ladder='fullAnalysis']")!;
-    expect(card.querySelector("a[href='/#upload']")).not.toBeNull();
-    expect(screen.getByRole("link", { name: /Get Full Resume Analysis/ })).toBeInTheDocument();
-    const pro = document.querySelector("[data-pro-card]")!;
-    expect([...pro.querySelectorAll("button")].some((b) => /Go Pro/.test(b.textContent ?? ""))).toBe(true);
+    expect(buyControls().map((b) => b.getAttribute("data-buy")).sort()).toEqual(["full-analysis", "pro"]);
+    expect(document.querySelector("[data-plan='full-analysis'] a[href='/resume-checker#upload']")).not.toBeNull();
     expect(document.querySelector("[data-testid='purchase-terms']")).not.toBeNull();
-    expect(document.querySelector("[data-purchases-open-soon]")).toBeNull();
+    expect(document.querySelector("[data-gate]")).toBeNull();
+    expect(document.body.textContent ?? "").not.toMatch(/open soon/i);
+  });
+
+  it("control: with a seller named too, the same two buttons and no gate note", () => {
+    mount(OPEN);
+    expect(buyControls().map((b) => b.getAttribute("data-buy")).sort()).toEqual(["full-analysis", "pro"]);
+    expect(document.querySelector("[data-gate]")).toBeNull();
   });
 });
 
 describe("each product is named whole (S12-045)", () => {
   it("the buttons say the product's full name, never its first word alone", () => {
-    mount();
-    expect(screen.getByRole("link", { name: /Get Full Resume Analysis/ })).toBeInTheDocument();
-    for (const stub of [/^Get Full$/, /^Get Freelance$/, /^Get ATS$/, /^Get Cover$/]) {
-      expect(screen.queryAllByRole("button").concat(screen.queryAllByRole("link")).some((b) => stub.test((b.textContent ?? "").trim())), String(stub)).toBe(false);
+    mount(OPEN);
+    const labels = buyControls().map((b) => (b.textContent ?? "").trim());
+    expect(labels.some((l) => /Full Analysis/.test(l)), labels.join(" | ")).toBe(true);
+    expect(labels.some((l) => /^Go Pro\b/.test(l)), labels.join(" | ")).toBe(true);
+    for (const stub of [/^Get Full$/, /^Get Freelance$/, /^Get ATS$/, /^Get Cover$/, /^Buy the Full$/]) {
+      expect(labels.some((l) => stub.test(l)), String(stub)).toBe(false);
     }
-  });
-
-  it("the FAQ's free-scan line is a sentence, not a fragment", () => {
-    mount();
-    const para = [...document.querySelectorAll("p")].find((p) => /free scan/.test(p.textContent ?? "") && /score first/.test(p.textContent ?? ""));
-    expect(para?.textContent).toMatch(/Not sure yet\? Run the free scan to see your score first\./);
-    expect(para?.textContent).not.toMatch(/Every tool is a one-time purchase/);
   });
 });
 
@@ -118,7 +139,8 @@ describe("no promise nobody keeps (S12-008)", () => {
   });
 
   it("no product card or sale surface says them either", () => {
-    const files = ["src/pages/Pricing.tsx", "src/components/ProSubscriptionCard.tsx", "src/components/MiniPricingCards.tsx",
+    const pricing = ["src/pages/pricing/PricingPage.tsx", ...readdirSync(resolve(ROOT, "src/components/pricing")).filter((f) => /\.tsx?$/.test(f)).map((f) => `src/components/pricing/${f}`)];
+    const files = [...pricing, "src/i18n/shards/pricing/en.json", "src/components/ProSubscriptionCard.tsx", "src/components/MiniPricingCards.tsx",
       "src/components/AddOnsShowcase.tsx", "src/components/FinalCTA.tsx", "src/components/RateLimitUpsell.tsx",
       "src/config/pro-perks.ts", "supabase/functions/create-subscription-checkout/index.ts", "supabase/functions/_shared/product-cuts.ts"];
     for (const f of files) {
@@ -128,8 +150,11 @@ describe("no promise nobody keeps (S12-008)", () => {
   });
 
   it("the rendered page says none of them (the guard reads a page that runs)", () => {
-    mount();
-    expect(document.body.textContent?.length ?? 0).toBeGreaterThan(500);
-    for (const c of CLAIMS) expect(document.body.textContent ?? "", String(c)).not.toMatch(c);
+    for (const input of [undefined, OPEN]) {
+      mount(input);
+      expect(document.body.textContent?.length ?? 0).toBeGreaterThan(500);
+      for (const c of CLAIMS) expect(document.body.textContent ?? "", String(c)).not.toMatch(c);
+      cleanup();
+    }
   });
 });

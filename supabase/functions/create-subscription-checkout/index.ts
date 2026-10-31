@@ -65,6 +65,9 @@ import { proStripeDescription } from "../_shared/pro-perks.ts";
 // without it, recorded with it), a buyer in India refused with the EU, the
 // EEA and the UK, and Pro's description read from the one list the pages
 // read.
+// Homepage switch-over (home-pricing, 2026-10-26.1 on hp/switch-over): that
+// list's writing-tools line says "packages", the owner's noun, as the pages
+// and the server's allowance do, so Pro's Stripe description says it too.
 // 2026-10-27.1 (sales stay on, owner 2026-10-27): Pro is sold whether or not
 // the seller's name and address are filled in, as on main.
 // 2026-10-31.1 (owner 2026-10-27, on the EU, the EEA, the UK and India: "keep
@@ -72,7 +75,10 @@ import { proStripeDescription } from "../_shared/pro-perks.ts";
 // subscribes as on main: no time zone, country header or address lookup
 // refuses a plan, and the session asks for a billing address only with the
 // EU/UK switch on, as sessionPolicy always did.
-const FN_BUILD = "create-subscription-checkout.2026-10-31.1";
+// 2026-10-31.2 (land/all carries the homepage switch-over): 2026-10-31.1's
+// code with the switch-over's "packages" line in Pro's Stripe description;
+// neither branch's build, and nothing else changed.
+const FN_BUILD = "create-subscription-checkout.2026-10-31.2";
 
 /** What Stripe's page and receipts say Pro is: the Pro card's own items (_shared/pro-perks.ts), as sentences. */
 export const PRO_STRIPE_DESCRIPTION = proStripeDescription();

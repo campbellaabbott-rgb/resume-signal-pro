@@ -33,7 +33,7 @@ const PaymentFailed = () => {
     // The guided flow keeps the buyer's intake on this device; send them back to it.
     if (known.startsWith("freelance")) return navigate("/freelance-boost");
     // The analysis is bought from the scan results; the credits from their own picker.
-    if (known === "fullAnalysis") return navigate("/");
+    if (known === "fullAnalysis") return navigate("/resume-checker");
     if (known === "scanPack") return navigate("/pricing");
     // THE SAME BINDING AS THE CHECKOUT THAT WAS CANCELLED (S8-056): its stored
     // résumé copy and its job, never the tab's homepage scan.
