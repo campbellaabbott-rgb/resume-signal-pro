@@ -53,4 +53,8 @@ export function sellerIdentity(s: SellerIdentity = SELLER): SellerIdentity | nul
  * date in the same commit that changes the page's words.
  */
 export const TERMS_LAST_UPDATED: string = TERMS_VERSION;
-export const PRIVACY_LAST_UPDATED = "2026-10-12";
+// The one deploy from land/all publishes the Privacy page's AI table, whose
+// search row names the day the connector log changes (mcp-privacy.ts), so this
+// is that deploy's day too: set at the merge into main, and the ledger refuses
+// a deploy message otherwise (docs/deploy-ledger.json datedAtDeploy).
+export const PRIVACY_LAST_UPDATED = "2026-10-31";

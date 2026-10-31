@@ -699,9 +699,18 @@ function afterRule(after) {
   if (sl) return { kind: "slice", fn: sl[1], build: sl[2] };
   return null;
 }
-/** The note a slice-gated migration carries in the message: what to read, and the remedy if it refuses. */
-export function sliceNote(build) {
-  return `once the job-board status action's sliceStats.build reads ${build} or later: the first slice of that build writes it, minutes after an OPTIONS request already answers ${build}, so an OPTIONS answer is not enough. If the file refuses, wait for the next slice and apply the same file again, unedited`;
+/**
+ * The note a slice-gated migration carries in the message: what to read, and
+ * the remedy if it refuses. `deploying` is the job-board build main carries
+ * (the one this deploy ships): a rule written for .95 is met by .96, and the
+ * OPTIONS clause names the build that will answer, since .95 never will (land/all
+ * final recheck, 2026-10-31). The retry has an end: an hour of refusals after
+ * that build first answers is an error to send, not a reason to keep applying.
+ */
+export function sliceNote(build, deploying = build) {
+  const serving = deploying && buildAtLeast(`job-board.${deploying}`, `job-board.${build}`) ? deploying : build;
+  const qualifier = serving !== build ? ` (this deploy's ${serving} qualifies)` : "";
+  return `once the job-board status action's sliceStats.build reads ${build} or later${qualifier}: the first slice of that build writes it, minutes after an OPTIONS request already answers ${serving}, so an OPTIONS answer is not enough. If the file refuses, wait for the next slice and apply the same file again, unedited; if it still refuses an hour after job-board first answers ${serving} to an OPTIONS request, stop and send the error`;
 }
 
 /**
@@ -767,7 +776,7 @@ export function migrationPhases(pending, policy, rows) {
       continue;
     }
     // Deploying in this message, or its live build could not be read: wait for it.
-    const waitNote = rule.kind === "slice" ? sliceNote(b) : `once ${fn} answers ${need} or later`;
+    const waitNote = rule.kind === "slice" ? sliceNote(b, String(r.want).slice(fn.length + 1)) : `once ${fn} answers ${need} or later`;
     out.afterFunctions.push({ file, note: [beforeNote, waitNote].filter(Boolean).join("; "), ...(rule.kind === "slice" ? { slice: true } : {}) });
   }
   return out;
@@ -852,17 +861,41 @@ export function checkoutRefusal({ head, originMain, fetched = true, behind = 0, 
  *   5. migrations that wait for the frontend
  * Functions whose preflight never answered head the message as a STOP: the
  * ledger could not say whether they are live (S11-048).
+ *
+ * THE MERGE PUBLISHES THE FRONTEND (land/all final recheck, 2026-10-31).
+ * Production served main's newest pages hours after the last driven Lovable
+ * session, while every function still answered its old build: Lovable
+ * publishes the frontend from main by itself, and only a driven session
+ * deploys functions and migrations. So a draft tells the owner to merge only
+ * when the message can go to Lovable at once, a deploy message tells Lovable
+ * to work straight through, and one line says that a failing migration is
+ * sent back, never edited (Lovable edits failing migrations and stages them
+ * under other names, 20260909212000, and the ledger's title matching would
+ * count such a copy as applied). `dated` is datedAtDeploy's checks: a draft
+ * names each one still due.
  */
-export function lovableMessage({ head, draftOf = null, phases, hold = [], holds = null, neverApply = [], toDeploy = [], unreachable = [], liveAhead = [] }) {
+export function lovableMessage({ head, draftOf = null, phases, hold = [], holds = null, neverApply = [], toDeploy = [], unreachable = [], liveAhead = [], dated = [] }) {
   const L = [];
-  if (draftOf) L.push(`DRAFT from ${draftOf} at ${head}: NOT a deploy message. Lovable pulls GitHub main; regenerate this at the merge commit on main.`, "");
-  else L.push(`Pull GitHub main at commit **${head}** (or later ONLY if the deploy ledger is re-run on it).`, "");
+  const holdsAny = hold.length || (holds && holds.length) || neverApply.length;
+  const backendSteps = (phases.pre.length || holdsAny ? 1 : 0) + (toDeploy.length ? 1 : 0) + (phases.afterFunctions.length ? 1 : 0);
+  if (draftOf) {
+    const gap = backendSteps ? `, in front of the functions that serve until step ${backendSteps} is done` : "";
+    L.push(`DRAFT from ${draftOf} at ${head}: NOT a deploy message. Lovable pulls GitHub main; regenerate this at the merge commit on main. Merge into main only when this message can go to Lovable at once: the merge publishes the frontend by itself${gap}.`);
+    for (const d of dated.filter((x) => x.due)) {
+      L.push(`On the merge day, before merging, set ${d.file} ${d.constant} (it reads ${d.value ?? "nothing readable"}) to that day (UTC): the deploy message refuses another day while ${d.fn} is older than ${d.need}${d.why ? ` (${d.why})` : ""}.`);
+    }
+    L.push("");
+  } else {
+    L.push(`Pull GitHub main at commit **${head}** (or later ONLY if the deploy ledger is re-run on it).`, "");
+  }
   if (unreachable.length) {
     L.push(`STOP: could not check ${unreachable.length} function(s), so this message may leave them out. Their preflight did not answer, twice. Re-run the deploy ledger before sending: ${unreachable.map((r) => r.fn).join(", ")}.`, "");
   }
   if (liveAhead.length) {
     L.push(`STOP: ${liveAhead.length} function(s) answer a build later than the one main carries, and this message leaves them out: ${liveAhead.map((r) => `${r.fn} (live ${r.have}, main ${r.want})`).join(", ")}. Merge the code that is live into main, or, to roll one back on purpose, declare it under rollbacks in docs/deploy-ledger.json and regenerate this message.`, "");
   }
+  L.push("Merging into main publishes the frontend by itself, so this commit's pages may already be serving in front of the old edge functions: work the steps below straight through, without a pause.");
+  L.push("If a migration fails, stop and send its error (only a file whose own note below says to wait and apply it again may be retried, unedited): never edit, rename or re-stage a migration file.", "");
   let step = 0;
   const migs = (list, lead) => {
     L.push(`${++step}. ${lead}`);
@@ -874,19 +907,22 @@ export function lovableMessage({ head, draftOf = null, phases, hold = [], holds 
   const heldNow = holds ? holds.filter((h) => !h.releasable) : null;
   const releasable = holds ? holds.filter((h) => h.releasable) : [];
   const waits = (h) => h.conditions.filter((c) => !c.met).map((c) => `${c.need} or later, live ${c.have ?? "unknown"}`).join("; ");
+  // HELD FOR THE SESSION (land/all final recheck): a hold waits for builds this
+  // same message deploys, so "Do NOT apply yet ... (waits for ...)" came true
+  // mid-session and read as permission. A hold is released by a later message.
   const holdLines = () => {
     if (heldNow) {
-      if (heldNow.length) L.push(`   Do NOT apply yet: ${heldNow.map((h) => `${h.file} (waits for ${waits(h) || "its conditions"})`).join(", ")}.`);
+      if (heldNow.length) L.push(`   Do NOT apply in this session, even once the builds it waits for serve: ${heldNow.map((h) => `${h.file} (waits for ${[waits(h) || "its conditions", `a later message releases it once ${h.until || "its hold is checked"}`].join("; ")})`).join(", ")}.`);
       for (const h of releasable) {
         L.push(`   RELEASABLE, still held: ${h.file}. Every condition it names is live (${h.conditions.map((c) => `${c.fn} answers ${c.have}`).join("; ")}). Confirm what only you can check (${h.until || "see its hold"}), then release it in docs/deploy-ledger.json and regenerate this message; do not apply it from this one.`);
       }
-    } else if (hold.length) L.push(`   Do NOT apply yet: ${hold.join(", ")}.`);
+    } else if (hold.length) L.push(`   Do NOT apply in this session: ${hold.join(", ")} (a later message releases ${hold.length === 1 ? "it" : "them"}).`);
     if (neverApply.length) L.push(`   NEVER apply: ${neverApply.join(", ")} (superseded).`);
   };
   if (phases.pre.length) {
     migs(phases.pre, phases.pre.length === 1 ? `Apply this migration (it is self-verifying and safe to re-run):` : `Apply these ${phases.pre.length} migrations, in this order, one at a time (each is self-verifying and safe to re-run):`);
     holdLines();
-  } else if (hold.length || (holds && holds.length) || neverApply.length) {
+  } else if (holdsAny) {
     L.push(`${++step}. Apply no migration before the functions.`);
     holdLines();
   }
@@ -903,11 +939,54 @@ export function lovableMessage({ head, draftOf = null, phases, hold = [], holds 
       : `Only once the function each one names answers its build (check with an OPTIONS request), apply ${these(phases.afterFunctions.length)}:`;
     migs(phases.afterFunctions, lead);
   }
-  L.push(`${++step}. Publish the frontend.`);
+  L.push(`${++step}. Publish the frontend. The merge into main has usually published it already: publish again only if the site does not serve this commit.`);
   if (phases.afterFrontend.length) {
     migs(phases.afterFrontend.map((m) => ({ file: m.file })), `Only once the frontend is published, apply ${these(phases.afterFrontend.length)}:`);
   }
   return L;
+}
+
+/**
+ * DATED AT THE DEPLOY (land/all final recheck, 2026-10-31). Some text names
+ * the day a change goes live: the Privacy page's "Last updated", and the day
+ * connector searches stop naming the postings shown. Typed when the branch
+ * was made, it was false for every day the merge slipped. docs/deploy-ledger.json
+ * `datedAtDeploy` lists each such constant:
+ *   { file, constant, whenDeploying: "fn:<name>@<YYYY-MM-DD.N>", why }
+ * While <name> answers an earlier build (the change is not live), the constant
+ * must read the day the message is made (UTC); once it answers that build or
+ * later, the date is history and is not checked. A constant or rule the ledger
+ * cannot read is an error. Pure: read(file) gives the file's text or null.
+ *
+ *   returns { checks: [{ file, constant, value, fn, need, due, ok, why }], errors }
+ */
+export function datedAtDeploy(policy, rows, read, today) {
+  const byFn = new Map((rows ?? []).map((r) => [r.fn, r]));
+  const out = { checks: [], errors: [] };
+  for (const d of policy?.datedAtDeploy ?? []) {
+    const file = String(d?.file ?? ""), constant = String(d?.constant ?? "");
+    const m = AFTER_FN.exec(String(d?.whenDeploying ?? ""));
+    if (!m) { out.errors.push(`datedAtDeploy ${file} ${constant}: whenDeploying "${d?.whenDeploying}" is not "fn:<name>@<YYYY-MM-DD.N>"`); continue; }
+    const [, fn, b] = m;
+    const need = `${fn}.${b}`;
+    const r = byFn.get(fn);
+    if (!r) { out.errors.push(`datedAtDeploy ${file} ${constant} waits for ${need}, but main has no function ${fn}`); continue; }
+    const text = read(file);
+    if (text == null) { out.errors.push(`datedAtDeploy: ${file} cannot be read`); continue; }
+    const v = new RegExp(`export const ${constant.replace(/[^A-Za-z0-9_$]/g, "")}(?::\\s*string)?\\s*=\\s*"(\\d{4}-\\d{2}-\\d{2})"`).exec(text);
+    if (!v) { out.errors.push(`datedAtDeploy: ${file} has no ${constant} = "YYYY-MM-DD"`); continue; }
+    const live = (r.state === "live" || r.state === "live-ahead") && buildAtLeast(r.have, need);
+    out.checks.push({ file, constant, value: v[1], fn, need, due: !live, ok: live || v[1] === today, today, why: d?.why ? String(d.why) : "" });
+  }
+  return out;
+}
+
+/** Why a deploy message may not be printed today, from datedAtDeploy's result (empty when it may). */
+export function datedRefusals(dated) {
+  return [
+    ...dated.errors,
+    ...dated.checks.filter((c) => !c.ok).map((c) => `${c.file} ${c.constant} reads ${c.value}, not today (${c.today}, UTC), and ${c.fn} is older than ${c.need}: set it to ${c.today} on main, then regenerate this message`),
+  ];
 }
 
 // ── report ──────────────────────────────────────────────────────────────────
@@ -976,6 +1055,9 @@ async function main(argv) {
   phases.errors.push(...holds.errors);
   const late = lateStampViolations([...mig.pending, ...mig.hold], mig.applied, (f) => readFileSync(join(MIG_DIR, f), "utf8"));
   const liveAhead = liveAheadRows(rows);
+  // Text that names the deploy day must read today while its change is not live (datedAtDeploy).
+  const dated = datedAtDeploy(POLICY, rows, (f) => { try { return readFileSync(join(ROOT, f), "utf8"); } catch { return null; } }, new Date().toISOString().slice(0, 10));
+  const datedBad = datedRefusals(dated);
 
   // Is this checkout GitHub main? (S11-127) Fetched, never assumed.
   let fetched = true;
@@ -990,6 +1072,12 @@ async function main(argv) {
     // Untrimmed: a porcelain line opens with its two status columns, the first often a space.
     dirty = execFileSync("git", ["status", "--porcelain", "--untracked-files=all", "--", ...DEPLOY_INPUTS], { cwd: ROOT, encoding: "utf8" })
       .split("\n").filter(Boolean).map((l) => l.slice(3));
+    // The files a datedAtDeploy constant is read from are inputs too.
+    const datedFiles = [...new Set(dated.checks.map((c) => c.file))];
+    if (datedFiles.length) {
+      dirty.push(...execFileSync("git", ["status", "--porcelain", "--untracked-files=all", "--", ...datedFiles], { cwd: ROOT, encoding: "utf8" })
+        .split("\n").filter(Boolean).map((l) => l.slice(3)));
+    }
   } catch { dirty = ["(git status failed)"]; }
   const refusal = checkoutRefusal({ head: headFull, originMain, fetched, behind, ahead, dirty });
   const checkout = { head: headFull, originMain, behind, ahead, refusal };
@@ -999,13 +1087,16 @@ async function main(argv) {
   // function could not be checked, 2 MUST BUMP. (3 is --against's.)
   const exitFor = (withMessage) => (withMessage && refusal ? 5 : phases.errors.length ? 6 : late.length ? 7 : liveAhead.length ? 8
     : unreachable.length ? 4 : unbumped.length ? 2 : 0);
+  // 9: a constant dated at the deploy does not read today (datedAtDeploy), with
+  // --message only, after every refusal that stops the message before it.
+  const exitWithDated = (withMessage) => { const e = exitFor(withMessage); return withMessage && datedBad.length && ![5, 6, 7, 8].includes(e) ? 9 : e; };
 
   if (args.has("--json")) {
     // The applied list is the late-stamp rule's input, not the report: hundreds of
     // names would push the JSON past the 64 KB a pipe takes before exit cuts it
     // off (section 49 reads it through one), so only its length is printed.
     const { applied, ...migOut } = mig;
-    console.log(JSON.stringify({ head, checkout, stubs, toDeploy, unreachable, unbumped, sharedOnly, noMarker, migrations: { ...migOut, appliedCount: applied.length }, phases, holds: holds.holds, staleHolds: holds.stale, staleRollbacks: rb.stale, late, liveAhead, rows }, null, 2));
+    console.log(JSON.stringify({ head, checkout, stubs, toDeploy, unreachable, unbumped, sharedOnly, noMarker, migrations: { ...migOut, appliedCount: applied.length }, phases, holds: holds.holds, staleHolds: holds.stale, staleRollbacks: rb.stale, late, liveAhead, dated, rows }, null, 2));
     process.exit(exitFor(false));
   }
   if (args.has("--record-deploy")) {
@@ -1051,6 +1142,11 @@ async function main(argv) {
   }
   for (const st of holds.stale) console.log(`  STALE HOLD  ${st}: holdUntilVerified names no pending migration (applied, or no such file): remove it`);
   if (mig.neverApplyPresent.length) console.log(`NEVER apply (superseded): ${mig.neverApplyPresent.join(", ")}`);
+  if (dated.checks.length || dated.errors.length) {
+    console.log(`Dated at the deploy (docs/deploy-ledger.json datedAtDeploy):`);
+    for (const c of dated.checks) console.log(`  ${!c.due ? "HISTORY" : c.ok ? "TODAY" : "WRONG DAY"}  ${c.file} ${c.constant} = ${c.value}${c.due ? ` (must read the deploy day while ${c.fn} is older than ${c.need}; today is ${c.today})` : ` (${c.fn} answers ${c.need} or later)`}`);
+    for (const e of dated.errors) console.log(`  CANNOT CHECK  ${e}`);
+  }
   if (phases.errors.length) {
     console.log(`\nORDER RULES THAT CANNOT BE MET (docs/deploy-ledger.json migrationOrder): no message until they are fixed:`);
     for (const e of phases.errors) console.log(`  ${e}`);
@@ -1073,14 +1169,16 @@ async function main(argv) {
       console.log(`REFUSED: a late-stamped migration above would revert a later one; resolve it before any message is printed.`);
     } else if (args.has("--message") && refusal) {
       console.log(`REFUSED: ${refusal}. Lovable pulls GitHub main, so a message from this checkout would name the wrong commit or re-list migrations already applied. Check out origin/main and re-run (or pass --draft for a labelled preview that is not a deploy message).`);
+    } else if (args.has("--message") && datedBad.length) {
+      console.log(`REFUSED: text this deploy publishes names the deploy day, and it would be false: ${datedBad.join("; ")}.`);
     } else {
       let branch = "";
       try { branch = git("rev-parse", "--abbrev-ref", "HEAD"); } catch { /* detached */ }
       const draftOf = args.has("--message") ? null : (branch && branch !== "HEAD" ? branch : head);
-      for (const l of lovableMessage({ head, draftOf, phases, hold: mig.hold, holds: holds.holds, neverApply: mig.neverApplyPresent, toDeploy, unreachable, liveAhead })) console.log(l);
+      for (const l of lovableMessage({ head, draftOf, phases, hold: mig.hold, holds: holds.holds, neverApply: mig.neverApplyPresent, toDeploy, unreachable, liveAhead, dated: dated.checks })) console.log(l);
     }
   }
-  process.exitCode = exitFor(args.has("--message"));
+  process.exitCode = exitWithDated(args.has("--message"));
 }
 
 // The entry point, compared by real path (a symlinked checkout must still run).

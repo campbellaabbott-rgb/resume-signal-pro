@@ -105,7 +105,7 @@ describe("S11-049: a migration sits in the step its constraint names", () => {
     // 131000 only after the frontend
     expect(at(/20261009131000_tracker/)).toBeGreaterThan(at(/^\d+\. Publish the frontend\./));
     expect(msg[at(/^\d+\. Publish the frontend\./) + 1]).toMatch(/^5\. Only once the frontend is published, apply this migration:/);
-    expect(at(/Do NOT apply yet: 20261009100300_held\.sql/)).toBeLessThan(at(/^2\. Deploy these 4 edge functions/));
+    expect(at(/Do NOT apply in this session: 20261009100300_held\.sql/)).toBeLessThan(at(/^2\. Deploy these 4 edge functions/));
   });
 
   it("refuses a rule that can never be met, instead of guessing an order", () => {

@@ -97,8 +97,9 @@ describe("the ledger's order for one message, with .93 and .95 never served", ()
     expect(names(phases.afterFunctions)).toEqual(["20261014120000", "20261025110000", "20261026110000"]);
     const note = (s: string) => phases.afterFunctions.find((p) => p.file.startsWith(s))?.note;
     // Each waits for its build's first slice (sliceStats.build), which comes after the OPTIONS answer (land/all recheck).
-    expect(note("20261025110000")).toBe(L.sliceNote("2026-09-09.95"));
-    expect(note("20261026110000")).toBe(L.sliceNote("2026-09-09.96"));
+    // The OPTIONS clause names the build this deploy carries (.96), never .95, which never serves (final recheck).
+    expect(note("20261025110000")).toBe(L.sliceNote("2026-09-09.95", "2026-09-09.96"));
+    expect(note("20261026110000")).toBe(L.sliceNote("2026-09-09.96", "2026-09-09.96"));
     expect(L.buildAtLeast(repoBuild("job-board"), "job-board.2026-09-09.95")).toBe(true);
     expect(L.buildAtLeast(repoBuild("job-board"), "job-board.2026-09-09.96")).toBe(true);
     expect(L.buildAtLeast(repoBuild("process-email-queue"), "process-email-queue.2026-10-14.2")).toBe(true);

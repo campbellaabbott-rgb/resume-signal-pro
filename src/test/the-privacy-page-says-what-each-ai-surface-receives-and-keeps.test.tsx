@@ -35,7 +35,8 @@ vi.mock("@/integrations/supabase/client", () => ({
 vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: null, session: null }) }));
 
 import Privacy from "../pages/Privacy";
-import { MCP_PRIVACY_ROWS, MCP_SEARCH_PRUNE_LIVE } from "@/config/mcp-privacy";
+import { CONNECTOR_SEARCH_LOG_CHANGED, MCP_PRIVACY_ROWS, MCP_SEARCH_PRUNE_LIVE, writtenDay } from "@/config/mcp-privacy";
+import { PRIVACY_LAST_UPDATED } from "@/config/seller";
 
 afterEach(cleanup);
 const mount = () => render(<HelmetProvider><MemoryRouter initialEntries={["/privacy"]}><Privacy /></MemoryRouter></HelmetProvider>);
@@ -57,16 +58,45 @@ describe("the MCP section of the Privacy page", () => {
     const [, claude, chatgpt, kept] = cells("search");
     expect(claude).toBe("Received");
     expect(chatgpt).toBe("Received");
+    const day = writtenDay(CONNECTOR_SEARCH_LOG_CHANGED);
     if (MCP_SEARCH_PRUNE_LIVE) {
-      expect(kept).toMatch(/kept for 30 days, without a record of which postings were shown/);
+      expect(kept).toMatch(/kept for 30 days/);
     } else {
       // The review of 9fe3bc0d: the 30-day prune is held for the second
       // deploy message, so until it runs the page must not claim 30 days.
       expect(kept).not.toMatch(/30 days/);
       expect(kept).toMatch(/kept for up to 180 days/);
-      expect(kept).toMatch(/searches made after this policy's last update keep no record of which postings were shown/);
+      // Searches logged before the deploy still name the postings shown, and
+      // ChatGPT's were logged like any other (the live .92 wrote shown ids for
+      // every caller and ignored the no-log flag): the page says so.
+      expect(kept).toContain(`searches made from ${day} on keep no record of which postings were shown, and earlier ones still do.`);
+      expect(kept).toContain(`From ChatGPT: searches made from ${day} on are not kept; earlier ones are kept like the site's own search log.`);
     }
-    expect(kept).toMatch(/From ChatGPT: not kept\./);
+    expect(kept).toContain(`From ChatGPT: searches made from ${day} on are not kept`);
+  });
+
+  // THE FINAL RECHECK OF LAND/ALL (2026-10-31). The cell said "searches made
+  // after this policy's last update keep no record of which postings were
+  // shown. From ChatGPT: not kept." under "Last updated: October 12, 2026",
+  // written for job-board .93, which never served: the live .92 kept writing
+  // the postings shown for every connector search and ignored ChatGPT's no-log
+  // flag, so every connector search from 12 October to the deploy contradicted
+  // it. The cell now names the day the log changes, never the policy's date,
+  // and the ledger refuses a deploy message whose day is not the deploy day.
+  it("names the day the connector log changes, which the page's own date is not earlier than, and the ledger checks both at the deploy", () => {
+    mount();
+    const kept = cells("search")[3];
+    expect(kept).not.toMatch(/this policy's last update/);
+    expect(CONNECTOR_SEARCH_LOG_CHANGED).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(writtenDay("2026-10-31")).toBe("October 31, 2026");
+    expect(writtenDay("2026-11-02")).toBe("November 2, 2026");
+    expect(PRIVACY_LAST_UPDATED >= CONNECTOR_SEARCH_LOG_CHANGED, "the page's Last updated is not earlier than the change its text dates").toBe(true);
+    const ledger = JSON.parse(readFileSync(resolve(__dirname, "../../docs/deploy-ledger.json"), "utf8")) as { datedAtDeploy?: Array<{ file: string; constant: string; whenDeploying: string }> };
+    const dated = (ledger.datedAtDeploy ?? []).map((d) => `${d.file}#${d.constant}@${d.whenDeploying}`);
+    expect(dated).toEqual(expect.arrayContaining([
+      "src/config/mcp-privacy.ts#CONNECTOR_SEARCH_LOG_CHANGED@fn:job-board@2026-09-09.93",
+      "src/config/seller.ts#PRIVACY_LAST_UPDATED@fn:job-board@2026-09-09.93",
+    ]));
   });
 
   it("claims the 30-day limit only once its prune is released from the ledger's hold", () => {

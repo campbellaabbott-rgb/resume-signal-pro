@@ -82,11 +82,12 @@ describe("S12-032: a hold is checked by machine", () => {
     const msg = L.lovableMessage({ head: "abc", phases: p, hold: [HELD], holds: met }).join("\n");
     expect(msg).toMatch(/RELEASABLE, still held: 20261011103000_a_prune\.sql\. Every condition it names is live \(job-board answers job-board\.2026-09-09\.93; agent-mcp answers agent-mcp\.2026-10-11\.3\)/);
     expect(msg).toMatch(/section 86 passes/);
-    expect(msg).not.toMatch(/Do NOT apply yet: 20261011103000/);
+    expect(msg).not.toMatch(/Do NOT apply in this session[^\n]*20261011103000/);
 
     const waiting = L.holdStates([HELD], holdPolicy(WHEN), rows("job-board.2026-09-09.92", "agent-mcp.2026-10-11.3")).holds;
     const msg2 = L.lovableMessage({ head: "abc", phases: p, hold: [HELD], holds: waiting }).join("\n");
-    expect(msg2).toMatch(/Do NOT apply yet: 20261011103000_a_prune\.sql \(waits for job-board\.2026-09-09\.93 or later, live job-board\.2026-09-09\.92\)/);
+    // Held for the whole session, even once this message's builds serve (land/all final recheck).
+    expect(msg2).toMatch(/Do NOT apply in this session, even once the builds it waits for serve: 20261011103000_a_prune\.sql \(waits for job-board\.2026-09-09\.93 or later, live job-board\.2026-09-09\.92; a later message releases it once [^)]*section 86 passes/);
     expect(msg2).not.toMatch(/RELEASABLE/);
   });
 

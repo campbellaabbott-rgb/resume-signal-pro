@@ -6,12 +6,15 @@
 //
 // The facts each row states, and where they are made true:
 //   - search words: from Claude and other connections, with no record of
-//     which postings were shown (job-board .93 writes none for connector
-//     searches), kept for 30 days once the connector prune (20261011103000)
-//     runs and, until then, for the demand log's general 180 days (see
-//     MCP_SEARCH_PRUNE_LIVE); NOT written from ChatGPT (job-board .93 honours
-//     the no-log flag agent-mcp sets on the ChatGPT surface, only with the
-//     reader proof);
+//     which postings were shown from CONNECTOR_SEARCH_LOG_CHANGED on (job-board
+//     .93 and later write none for connector searches; .93 and .95 never
+//     served, so the first such build live is the one deploy's .96), kept for
+//     30 days once the connector prune (20261011103000) runs and, until then,
+//     for the demand log's general 180 days (see MCP_SEARCH_PRUNE_LIVE); NOT
+//     written from ChatGPT from that day on (job-board .93 and later honour the
+//     no-log flag agent-mcp sets on the ChatGPT surface, only with the reader
+//     proof). Searches logged before that day, by the live .92, name the
+//     postings shown and include ChatGPT's, and the page says so;
 //   - the caller's address and ChatGPT's per-person id: only ever a hashed
 //     allowance bucket, the address buckets kept 7 days and ChatGPT's dropped
 //     when their day ends (mcp_anon_rate);
@@ -29,17 +32,36 @@
  * (20261011103000) is held in docs/deploy-ledger.json holdUntilVerified and
  * goes out in the second deploy message, after the frontend that carries this
  * table is published; until then connector searches follow the demand log's
- * general 180-day prune, and searches logged before job-board .93 still name
- * the postings shown. The owner sets this true in the frontend publish that
+ * general 180-day prune, and searches logged before CONNECTOR_SEARCH_LOG_CHANGED
+ * still name the postings shown. The owner sets this true in the frontend publish that
  * follows the release (docs/wave4/README.md, owner steps), and
  * src/test/the-privacy-page-says-what-each-ai-surface-receives-and-keeps.test.tsx
  * fails while it is true and the migration is still held.
  */
 export const MCP_SEARCH_PRUNE_LIVE: boolean = false;
 
+/**
+ * The day connector searches stop naming the postings shown and ChatGPT's stop
+ * being kept: the day job-board 2026-09-09.93 or later (the one deploy's .96)
+ * starts serving. The live .92 writes the postings shown for every search and
+ * ignores ChatGPT's no-log flag, so the cell names this day, never the
+ * policy's own date. It is the deploy day, set at the merge into main:
+ * docs/deploy-ledger.json datedAtDeploy makes the ledger refuse a deploy
+ * message while job-board is older than .93 and this reads another day (UTC).
+ */
+export const CONNECTOR_SEARCH_LOG_CHANGED = "2026-10-31";
+
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+/** "2026-10-31" as "October 31, 2026", the way the page writes its own date. */
+export function writtenDay(iso: string): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  return `${MONTHS[m - 1]} ${d}, ${y}`;
+}
+
+const SINCE = writtenDay(CONNECTOR_SEARCH_LOG_CHANGED);
 const SEARCH_KEPT = MCP_SEARCH_PRUNE_LIVE
-  ? "From Claude and other connections: the search words and filters, kept for 30 days, without a record of which postings were shown. From ChatGPT: not kept."
-  : "From Claude and other connections: the search words and filters, kept for up to 180 days, like the site's own search log; searches made after this policy's last update keep no record of which postings were shown. From ChatGPT: not kept.";
+  ? `From Claude and other connections: the search words and filters, kept for 30 days; searches made from ${SINCE} on keep no record of which postings were shown. From ChatGPT: searches made from ${SINCE} on are not kept.`
+  : `From Claude and other connections: the search words and filters, kept for up to 180 days, like the site's own search log; searches made from ${SINCE} on keep no record of which postings were shown, and earlier ones still do. From ChatGPT: searches made from ${SINCE} on are not kept; earlier ones are kept like the site's own search log.`;
 
 export interface McpPrivacyRow {
   id: "search" | "job-ids" | "address" | "chatgpt-id" | "usage" | "cv" | "chat";
