@@ -126,8 +126,10 @@ case "$VD92_RC" in
   *) echo "FAIL  anon GET pro_auto_renew_consents -> $VD92_RC";;
 esac
 
-# The published frontend: the entry, the Pricing and Freelance Boost chunks,
-# and the chunks the Pricing chunk imports (the Pro card, the Terms line).
+# The published frontend: the entry, the pricing page's chunk (PricingPage
+# since the switch-over, Pricing before it) and Freelance Boost's, and the
+# chunks the pricing chunk imports (the Pro card, the Terms line). The new
+# page's paid cards say purchases open soon through their own gate key.
 VD92_ENTRY=$(curl -s -m 30 -A "$UA" "$SITE/" | grep -oE '/assets/index-[A-Za-z0-9_-]+\.js' | head -1)
 if [ -z "$VD92_ENTRY" ]; then
   echo "FAIL  the site's shell names no /assets/index-*.js entry: the published pages cannot be judged"
@@ -139,15 +141,17 @@ else
     [ -n "$f" ] && curl -s -m 60 -A "$UA" "$SITE/assets/$f" > "/tmp/vd_92cc_$1.js"
     printf '%s' "$f"
   }
-  VD92_PRICING=$(vd92_chunk Pricing)
-  if [ -z "$VD92_PRICING" ]; then echo "FAIL  the live entry names no Pricing chunk: the pricing page cannot be judged"
+  VD92_PN=PricingPage
+  VD92_PRICING=$(vd92_chunk "$VD92_PN")
+  if [ -z "$VD92_PRICING" ]; then VD92_PN=Pricing; VD92_PRICING=$(vd92_chunk "$VD92_PN"); fi
+  if [ -z "$VD92_PRICING" ]; then echo "FAIL  the live entry names no PricingPage or Pricing chunk: the pricing page cannot be judged"
   else
-    cat /tmp/vd_92cc_entry.js /tmp/vd_92cc_Pricing.js > /tmp/vd_92cc_pricing_all.js
-    for VD92_DEP in $(grep -oE '\./[A-Za-z0-9_-]+\.js' /tmp/vd_92cc_Pricing.js | sort -u | head -40); do
+    cat /tmp/vd_92cc_entry.js "/tmp/vd_92cc_$VD92_PN.js" > /tmp/vd_92cc_pricing_all.js
+    for VD92_DEP in $(grep -oE '\./[A-Za-z0-9_-]+\.js' "/tmp/vd_92cc_$VD92_PN.js" | sort -u | head -40); do
       curl -s -m 60 -A "$UA" "$SITE/assets/${VD92_DEP#./}" >> /tmp/vd_92cc_pricing_all.js
     done
     VD92_MISS=""
-    grep -q 'checkoutGate.purchasesOpenSoon' /tmp/vd_92cc_pricing_all.js || VD92_MISS="$VD92_MISS the purchases-open-soon line;"
+    grep -qE 'checkoutGate\.purchasesOpenSoon|pricingPlans\.buy\.gateSeller' /tmp/vd_92cc_pricing_all.js || VD92_MISS="$VD92_MISS the purchases-open-soon line;"
     grep -q 'purchaseTerms.autoRenewConsent' /tmp/vd_92cc_pricing_all.js || VD92_MISS="$VD92_MISS the renewal box;"
     grep -q 'Asia/Kolkata' /tmp/vd_92cc_pricing_all.js || VD92_MISS="$VD92_MISS India in the refused time zones;"
     grep -q 'proPlan.perks.noDailyScanCap' /tmp/vd_92cc_pricing_all.js || VD92_MISS="$VD92_MISS Pro's no-daily-cap line;"

@@ -58,6 +58,9 @@ vi.mock("@/lib/resilient-edge-function", async (importOriginal) => {
 });
 
 import Index from "@/pages/Index";
+import HomePage from "@/pages/home/HomePage";
+import PricingPage from "@/pages/pricing/PricingPage";
+import { TOOL_LANDINGS } from "@/data/tool-landings";
 import { useScrollDepth } from "@/hooks/use-scroll-depth";
 import { useTimeOnPage } from "@/hooks/use-time-on-page";
 import { useFunnelTracking } from "@/hooks/use-funnel-tracking";
@@ -86,8 +89,27 @@ beforeEach(() => { sessionStorage.clear(); localStorage.clear(); resetConsentMem
 afterEach(cleanup);
 
 describe("before a choice", () => {
-  it("the homepage, mounted, leaves sessionStorage empty", async () => {
-    render(<HelmetProvider><MemoryRouter initialEntries={["/"]}><Index /></MemoryRouter></HelmetProvider>);
+  // Since the homepage switch-over "/" is the board-first homepage, which
+  // mounts no scroll or time hook (docs/homepage-pricing/README.md, step 13).
+  it("the homepage at \"/\", mounted, leaves sessionStorage empty", async () => {
+    render(<HelmetProvider><MemoryRouter initialEntries={["/"]}><HomePage /></MemoryRouter></HelmetProvider>);
+    await act(async () => { await new Promise((r) => setTimeout(r, 100)); });
+    expect(document.getElementById("home-h1"), "the homepage rendered").not.toBeNull();
+    expect(keys()).toEqual([]);
+  });
+
+  // The new /pricing keeps the old page's scroll and time events (step 13).
+  it("the pricing page, mounted, leaves sessionStorage empty", async () => {
+    render(<HelmetProvider><MemoryRouter initialEntries={["/pricing"]}><PricingPage /></MemoryRouter></HelmetProvider>);
+    await act(async () => { await new Promise((r) => setTimeout(r, 100)); });
+    expect(document.getElementById("pricing-h1"), "the pricing page rendered").not.toBeNull();
+    expect(keys()).toEqual([]);
+  });
+
+  // The scanner's scroll and time hooks run where the scanner lives: every
+  // Index route carries a landing, and the scanner's address is /resume-checker.
+  it("the scanner at /resume-checker, mounted, leaves sessionStorage empty", async () => {
+    render(<HelmetProvider><MemoryRouter initialEntries={["/resume-checker"]}><Index landing={TOOL_LANDINGS["resume-checker"]} /></MemoryRouter></HelmetProvider>);
     await act(async () => { await new Promise((r) => setTimeout(r, 100)); });
     expect(keys()).toEqual([]);
   });

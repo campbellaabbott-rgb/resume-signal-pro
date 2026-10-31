@@ -334,7 +334,7 @@ export default function Trust() {
                 {t('trustPage.ctaSubtitle')}
               </p>
               <Link
-                to="/"
+                to="/resume-checker"
                 className="inline-flex items-center gap-2 px-8 py-4 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20"
               >
                 <Sparkles className="w-5 h-5" />

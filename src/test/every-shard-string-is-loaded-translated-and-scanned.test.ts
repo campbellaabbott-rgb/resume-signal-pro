@@ -15,6 +15,9 @@
  *      published-claims.test.ts through helpers/locale-strings.ts);
  *   5. the runtime really merges them: a shard key resolves through i18next.
  *
+ * The homepage and the pricing page joined as the "home" and "pricing"
+ * shards at the homepage switch-over (step 2).
+ *
  * Before the listing and company groups landed there could be no shard on
  * disk, so the rules are also proven on fixture shards below. Design pass B
  * (2026-10-12) wired both groups into the board and added the assertion that
@@ -48,12 +51,12 @@ function pluralGaps(bundle: Bundle, lng: string): string[] {
 describe("the shards on disk", () => {
   const names = shardNames();
 
-  it("both shards exist, in all nine languages, and the board's components read them", () => {
+  it("every shard exists, in all nine languages, and the components that mount it read it", () => {
     // Pass B mounts the listing components (card, pane, sheet) and the
     // company lander on the board: each reads its own group's keys, so a
     // missing shard would print English defaults, or raw keys, to every reader.
-    expect([...names].sort(), "a shard directory is missing").toEqual(expect.arrayContaining(["company", "listing"]));
-    for (const name of ["listing", "company"]) {
+    expect([...names].sort(), "a shard directory is missing").toEqual(expect.arrayContaining(["company", "home", "listing", "pricing"]));
+    for (const name of ["listing", "company", "home", "pricing"]) {
       const langs = LOCALE_FILES.filter((f) => readShards(f).some((x) => x.name === name));
       expect(langs, `shard ${name} is missing languages`).toEqual([...LOCALE_FILES]);
     }
@@ -63,6 +66,9 @@ describe("the shards on disk", () => {
     const board = read("src/pages/Jobs.tsx");
     expect(board, "the board no longer mounts the listing card").toMatch(/<JobCard\b/);
     expect(board, "the board no longer mounts the company lander").toMatch(/<CompanyLanderHeader\b/);
+    // The homepage and the pricing page (switch-over step 2) read their own shards.
+    expect(read("src/components/home/HomeSearchHero.tsx")).toMatch(/t\("home\./);
+    expect(read("src/components/pricing/PricingHead.tsx")).toMatch(/t\("pricingPlans\./);
   });
 
   it("every shard directory is a registered group", () => {
@@ -113,7 +119,9 @@ describe("the shards on disk", () => {
     });
   }
 
-  it("the English shards are merged into the running translation", () => {
+  it("the English shards are merged into the running translation (the two pages' once their code loads)", async () => {
+    await import("@/i18n/home-strings");
+    await import("@/i18n/pricing-strings");
     for (const s of readShards("en.json")) {
       for (const k of leafKeys(s.bundle).slice(0, 25)) {
         expect(i18n.exists(k, { lng: "en" }), `${s.name}: ${k} does not resolve`).toBe(true);
@@ -171,11 +179,22 @@ describe("the merge rules, on fixture shards", () => {
 });
 
 describe("the runtime bundle", () => {
-  it("English is the main file with its shards merged", () => {
+  it("English is the main file with its shards merged; the two pages' arrive with their pages", async () => {
     expect((enTranslation.header as Bundle).jobs).toBe((readMainLocale("en.json").header as Bundle).jobs);
+    // The homepage's and the pricing page's English strings load with those
+    // pages' code (src/i18n/home-strings.ts, pricing-strings.ts), not in the
+    // entry (review round 2026-10-26, hp-fix-the-page-strings-ride-with-their-pages).
+    // (i18next merges added strings into the same object, so the entry's
+    // English is read from the eager glob, before a page's module loads.)
+    const PAGE_SHARDS = new Set(["home", "pricing"]);
+    const index = readFileSync(resolve(__dirname, "../i18n/index.ts"), "utf8");
     for (const s of readShards("en.json")) {
       const root = SHARD_ROOT_KEYS[s.name];
-      expect(enTranslation[root], `${s.name} did not reach the bundle`).toBeTruthy();
+      if (PAGE_SHARDS.has(s.name)) {
+        expect(index, `${s.name} rides in the entry`).toContain(`'!./shards/${s.name}/en.json'`);
+        await import(s.name === "home" ? "@/i18n/home-strings" : "@/i18n/pricing-strings");
+        expect(i18n.getResource("en", "translation", root), `${s.name} did not reach i18n with its page`).toBeTruthy();
+      } else expect(enTranslation[root], `${s.name} did not reach the bundle`).toBeTruthy();
     }
   });
 });

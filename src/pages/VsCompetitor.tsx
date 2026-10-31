@@ -115,7 +115,7 @@ export default function VsCompetitor() {
               Our free scan gives you the full diagnostic — no signup, no gating, and your resume is deleted within 7 days.
               Compare the reports yourself; that's the honest test.
             </p>
-            <Link to="/" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors">
+            <Link to="/resume-checker" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors">
               Run the free scan <ArrowRight className="w-4 h-4" />
             </Link>
           </section>

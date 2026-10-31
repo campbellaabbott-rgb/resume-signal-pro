@@ -2,7 +2,8 @@ import { describe, it, expect, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { codeOf } from "./helpers/strip-comments";
-import { PASS, SUBSCRIPTIONS } from "@/config/products";
+import { PASS, PRODUCTS, SUBSCRIPTIONS } from "@/config/products";
+import * as F from "@/components/pricing/plan-facts";
 
 /**
  * THE PRICE WAS WRITTEN INTO A REPLACEMENT STRING, AND A REPLACEMENT STRING
@@ -261,27 +262,28 @@ describe("the prices a crawler reads are the mirrors', never typed", () => {
   // are retired, so the crawler copy prints Pro's price from its mirror and
   // no price of a retired product at all. The rendered pages are read for the
   // same thing by src/test/pd-bake-the-crawler-copy-sells-nothing-retired.test.ts.
-  it("/pricing prints Pro from the mirror, and neither the agent's plan nor its pass", () => {
-    const pro = boundTo("D.SUBSCRIPTIONS.pro");
-    expect(pro.length, "a binding to the Pro mirror").toBeGreaterThan(0);
+  it("/pricing prints each price from its mirror, and neither the agent's plan nor its pass", () => {
+    // Since the homepage switch-over the crawler /pricing is the new page's
+    // own strings (src/i18n/shards/pricing), filled from plan-facts.ts, whose
+    // prices hp-pricing-mirrors holds to products.ts and _shared/pro.ts.
     const b = block("/pricing");
-    expect(prints(b, pro, ".priceUsd"), "Pro's price, from the mirror").toBe(true);
+    expect(SCRIPT).toMatch(/const prices = \{ faPrice: enMoney\(D\.FULL_ANALYSIS_PRICE_USD\), proPrice: enMoney\(D\.PRO_PRICE_USD\) \};/);
+    expect(SCRIPT).toMatch(/const enMoney = \(usd\) => D\.fmtMoney\(usd, "USD", \{ lng: "en" \}\);/);
+    expect(F.FULL_ANALYSIS_PRICE_USD).toBe(PRODUCTS.fullAnalysis.priceUsd);
+    expect(F.PRO_PRICE_USD).toBe(SUBSCRIPTIONS.pro.priceUsd);
     expect(b, "the agent plan's mirror is read on /pricing").not.toMatch(/SUBSCRIPTIONS\.agent/);
     expect(b, "the pass's mirror is read on /pricing").not.toMatch(/D\.PASS\./);
-    // The description is one of the slots — the snippet is what the query sees.
-    // With one one-time product it is React's own sentence filled with Pro's
-    // price from the mirror; with a list, a template that prints it (the merge
-    // recheck, 2026-10-25). Both branches read the mirror.
+    // The description is one of the slots: the page's own, picked by its gates
+    // and filled with those prices.
     const desc = /description: ([\s\S]*?)\n\s*jsonLd:/.exec(b)?.[1] ?? "";
-    expect(prints(desc, pro, ".priceUsd")).toBe(true);
-    expect(pro.some((n) => new RegExp(`proPrice: ${n}\\.priceUsd`).test(desc)), "the one-product sentence is filled from the mirror").toBe(true);
-    // The offer ceiling is derived from everything still on sale, in the one
-    // shape React's /pricing reads too (src/lib/pricing-offer.ts; recheck 3:
-    // only once purchases are open).
-    expect(b).toMatch(/D\.pricingJsonLd\(\{ open: PURCHASES_OPEN, offerPrices, url: /);
-    expect(readFileSync(resolve(__dirname, "../lib/pricing-offer.ts"), "utf8")).toMatch(/highPrice: String\(Math\.max\(\.\.\.offerPrices\)\)/);
-    expect(SCRIPT).toMatch(/const offerPrices = \[\.\.\.paid\.map\(\(p\) => p\.priceUsd\), \w+\.priceUsd\];/);
-    expect(SCRIPT, "the retired one-time products are filtered out of the list").toMatch(/!RETIRED_PRODUCT_IDS\.includes\(p\.id\)/);
+    expect(desc).toMatch(/metaText\(meta\.description\)/);
+    expect(SCRIPT).toMatch(/const meta = D\.pricingMetaKeys\(G\);/);
+    expect(SCRIPT).toMatch(/const metaText = \(key\) => hp\(P\.meta\[[^\]]+\], prices, key\);/);
+    // The structured data is the page's own (pricingJsonLd over the page's
+    // gates): an offer only while it can be bought.
+    expect(b).toMatch(/PRICING_LD,/);
+    expect(SCRIPT).toMatch(/const PRICING_LD = D\.hpPricingJsonLd\(PRICING_GATES\);/);
+    expect(SCRIPT).toMatch(/const PRICING_GATES = D\.resolveSaleGates\(\);/);
   });
 
   it("/agents and /agent print no price of the retired plan or pass", () => {

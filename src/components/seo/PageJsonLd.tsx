@@ -9,10 +9,11 @@
  * its own: the bake is the source. A page without one — an SPA navigation,
  * or a build whose bake did not run — keeps React's blocks.
  *
- * supersedeBakedJsonLd covers the pages that still render their own blocks
- * on a baked route (the homepage and /pricing belong to another workstream):
- * a baked head block whose @type React has written is removed, so a type is
- * never stated twice.
+ * supersedeBakedJsonLd covers any page that still renders its own blocks on
+ * a baked route: a baked head block whose @type React has written is
+ * removed, so a type is never stated twice. (Since the homepage switch-over
+ * the new homepage renders no JSON-LD, and /pricing renders its block
+ * through this component.)
  */
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";

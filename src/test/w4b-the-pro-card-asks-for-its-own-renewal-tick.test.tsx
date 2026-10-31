@@ -30,7 +30,7 @@ vi.mock("@/integrations/supabase/client", () => ({
 }));
 vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: { email: "m@example.com" }, session: { access_token: "jwt" } }) }));
 vi.mock("@/lib/checkout-territory", () => ({ inSalesTerritory: () => false, territoryHint: () => ({}), buyerTimeZone: () => "" }));
-vi.mock("@/lib/purchases-open", () => ({ purchasesOpen: () => true }));
+vi.mock("@/lib/purchases-open", () => ({ purchasesOpen: () => true, fullAnalysisOnSale: () => true, proOnSale: () => true }));
 const sent = vi.hoisted(() => ({ bodies: [] as Array<Record<string, unknown>> }));
 vi.mock("@/hooks/use-pro-subscription", async () => {
   const terms = await import("@/lib/purchase-terms");

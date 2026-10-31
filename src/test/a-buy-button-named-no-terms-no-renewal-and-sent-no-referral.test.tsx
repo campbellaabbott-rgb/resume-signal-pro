@@ -45,7 +45,7 @@ vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user, session: { ac
 vi.mock("@/hooks/useAgentSender", () => ({ useAgentSender: () => ({ online: false }) }));
 // Purchases open, as once the owner names the seller (owner decision
 // 2026-10-17): the Pro card's button is what this file tests.
-vi.mock("@/lib/purchases-open", () => ({ purchasesOpen: () => true }));
+vi.mock("@/lib/purchases-open", () => ({ purchasesOpen: () => true, fullAnalysisOnSale: () => true, proOnSale: () => true }));
 
 import { AgentSubscriptionCard } from "@/components/AgentSubscriptionCard";
 import { ProSubscriptionCard } from "@/components/ProSubscriptionCard";

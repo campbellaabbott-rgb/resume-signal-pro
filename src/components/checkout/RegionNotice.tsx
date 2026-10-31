@@ -31,7 +31,7 @@ export function RegionNotice({ className }: { className?: string }) {
     <p role="note" data-region-notice className={cn("flex items-start gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground", className)}>
       <Globe className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
       <span>
-        {t("checkoutGate.regionNoticeTimeZone", "Your browser's time zone is in the EU, the EEA, the UK or India, where we don't sell yet: sales there wait until our tax registration there is settled. Searching jobs and the free scan work everywhere.")}
+        {t("checkoutGate.regionNoticeTimeZone", "Your browser's time zone is in the EU, the EEA, the UK or India, where we don't sell yet: sales there wait until our tax registration there is settled. Searching jobs and the free scan still work there.")}
       </span>
     </p>
   );

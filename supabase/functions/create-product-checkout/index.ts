@@ -45,7 +45,8 @@ import { proIncludes } from "../_shared/pro-perks.ts";
 // 2026-10-11.25: the retirement sentence's apply-yourself line says the marking can miss a question about the buyer even when it is plainly worded (the recheck of the descope, 2026-10-25); nothing this function does changed.
 // 2026-10-11.26: the retirement sentence's apply-yourself line says that inside ChatGPT the AI reads the application form only for Greenhouse or Recruitee, the server's public-API pair (the second recheck of the descope, 2026-10-25); nothing else changed.
 // 2026-10-11.27 (recheck 3, 2026-10-26): while no seller is named, a cut report's sentence says the $5 Full Analysis and Pro open for purchase soon instead of calling the Full Analysis still on sale (_shared/product-cuts.ts reportsClosed).
-const FN_BUILD = "create-product-checkout.2026-10-11.27";
+// Homepage switch-over (home-pricing, 2026-10-26): _shared/pro-perks.ts, which this function imports for proIncludes, says "packages" in Pro's writing-tools line; what Pro includes, and so everything this function does, is unchanged. A new stamp because its bundle changed.
+const FN_BUILD = "create-product-checkout.2026-10-26.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

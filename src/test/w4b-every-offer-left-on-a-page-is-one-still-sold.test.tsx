@@ -101,20 +101,21 @@ describe("the free report's sign-up link lands on the account page (S12-025)", (
 });
 
 describe("the Terms line above a buy button says when sales here wait for the tax registration (S12-059)", () => {
-  it("a browser in the territory reads it above a payment and a plan, never above a sign-up", () => {
-    territory = true;
-    inRouter(<><PurchaseTerms kind="payment" /><PurchaseTerms kind="subscription" plan="pro" /><PurchaseTerms kind="signup" /></>);
-    const notices = document.querySelectorAll("[data-region-notice]");
-    expect(notices).toHaveLength(2);
-    // It names what the page checked (the browser's time zone) and India (owner decision 2026-10-17).
-    expect(notices[0].textContent).toMatch(/Your browser's time zone is in the EU, the EEA, the UK or India, where we don't sell yet/);
-    expect(notices[0].textContent).not.toMatch(/billing/i);
-    const terms = [...document.querySelectorAll("[data-testid='purchase-terms']")];
-    expect(terms[2].querySelector("[data-region-notice]")).toBeNull();
-  });
-
-  it("control: a browser outside it reads no notice", () => {
-    inRouter(<><PurchaseTerms kind="payment" /><PurchaseTerms kind="subscription" plan="pro" /></>);
-    expect(document.querySelectorAll("[data-region-notice]")).toHaveLength(0);
-  });
+  // Since hp/honesty (2026-10-25) the block says it to every buyer, as one
+  // region line naming the currency and time-zone checks, instead of a notice
+  // only a browser in the territory saw (the-buy-line-says-all-sales-are-
+  // final-and-where-checkout-will-not-sell holds the line and the switch).
+  for (const inTerritory of [true, false]) {
+    it(`${inTerritory ? "a browser in the territory" : "a browser outside it"} reads it above a payment and a plan, never above a sign-up`, () => {
+      territory = inTerritory;
+      inRouter(<><PurchaseTerms kind="payment" /><PurchaseTerms kind="subscription" plan="pro" /><PurchaseTerms kind="signup" /></>);
+      const lines = document.querySelectorAll("[data-region-line]");
+      expect(lines).toHaveLength(2);
+      expect(lines[0].textContent).toMatch(/Not sold in the EU, the EEA, the UK or India yet/);
+      expect(lines[0].textContent).not.toMatch(/billing/i);
+      const terms = [...document.querySelectorAll("[data-testid='purchase-terms']")];
+      expect(terms[2].querySelector("[data-region-line]")).toBeNull();
+      expect(document.querySelectorAll("[data-testid='purchase-terms'] [data-region-notice]")).toHaveLength(0);
+    });
+  }
 });

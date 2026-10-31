@@ -25,6 +25,11 @@ vi.mock("@/config/seller", async (importOriginal) => {
   const real = await importOriginal<typeof import("@/config/seller")>();
   return { ...real, SELLER: seller, sellerIdentity: (x = seller) => real.sellerIdentity(x) };
 });
+// The uploader's Full Analysis also waits for the owner's G2 switch (the
+// delivery was watched; src/config/sales-gate.ts); the control opens it, so
+// what this file proves is the seller gate. G2 closed is
+// the-scanner-sells-the-full-analysis-only-once-its-delivery-was-watched.
+vi.mock("@/config/sales-gate", async (importOriginal) => ({ ...(await importOriginal<Record<string, unknown>>()), FULL_ANALYSIS_ON_SALE: true }));
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: { functions: { invoke: vi.fn() }, rpc: vi.fn(async () => ({ data: null, error: null })), auth: { getSession: async () => ({ data: { session: null } }) } },
 }));

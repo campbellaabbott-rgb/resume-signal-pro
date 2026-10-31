@@ -62,8 +62,7 @@
     "headline": {
       "get": "Le site d'emploi avec",
       "recruiterGrade": "des offres en direct, tirées des systèmes de recrutement des employeurs",
-      "feedbackLive": "— {{n}}+ offres actives, comparées à votre CV",
-      "feedbackPlain": "— offres actives, comparées à votre CV"
+      "tailFreeCheck": "— et une vérification gratuite de votre CV face à n'importe quelle offre"
     },
     "description": "Téléchargez votre CV et obtenez des réécritures optimisées ATS, des alertes red flags et des améliorations de mots-clés — comme les recruteurs évaluent réellement les CV.",
     "benefits": {
@@ -152,7 +151,6 @@
     "factNoStorage": "Jamais vendu",
     "measureStrip": "Des mesures, pas des opinions · Chaque citation vérifiée · Un score qui montre son travail",
     "jobsCta": "Offres en direct — vérifiez votre adéquation avant de candidater →",
-    "browseJobsLive": "Parcourir {{n}}+ offres actives",
     "browseJobsPlain": "Parcourir le tableau d'offres en direct"
   },
   "footer": {
@@ -180,7 +178,6 @@
       "lever": "Guide Lever",
       "icims": "Guide iCIMS",
       "vsJobscan": "vs Jobscan",
-      "freelanceBoost": "Freelance Boost",
       "builder": "Créateur de CV",
       "methodology": "Méthodologie",
       "dataApi": "Données de recrutement et API",
@@ -464,6 +461,12 @@
       },
       "whatDoIGetNamed": {
         "question": "Qu'est-ce que j'obtiens avec {{name}} ?"
+      },
+      "subscriptionClosed": {
+        "answer": "Pas aujourd'hui : rien n'est encore en vente. Les achats ouvrent bientôt, et la page des tarifs indique avant le paiement ce que comprend chaque option payante et si elle se renouvelle. L'analyse du CV, le tableau d'offres et la connexion de votre propre IA sont gratuits."
+      },
+      "subscriptionFaOnly": {
+        "answer": "Non. L'Analyse complète à ${{price}} est un paiement unique qui ne se renouvelle jamais, et aucune formule mensuelle n'est encore en vente. L'analyse du CV, le tableau d'offres et la connexion de votre propre IA restent gratuits. Rien ne vous fait passer à une offre supérieure automatiquement."
       }
     },
     "stillHaveQuestions": "Encore des questions ?",
@@ -762,7 +765,6 @@
     "featuresMobile": "Les corrections de votre analyse, appliquées. Un seul paiement."
   },
   "finalCta": {
-    "urgency": "Votre CV vous fait peut-être perdre des entretiens en ce moment",
     "title": "Vous avez vu les problèmes. Maintenant obtenez les solutions.",
     "subtitle": "Le scan gratuit montre ce qui ne va pas. L'analyse complète vous donne du contenu réécrit à copier-coller.",
     "heading": "Ne laissez plus passer d'opportunités",
@@ -770,26 +772,8 @@
     "freeScan": "Scan Gratuit",
     "fullAnalysis": "Analyse Complète",
     "ctaButton": "Voir Tous les Forfaits",
-    "comparison": {
-      "atsScore": "Score ATS & 24 Diagnostics",
-      "redFlags": "Signaux d'Alerte & Mots-clés Manquants",
-      "sampleBullet": "1 Puce Exemple Réécrite",
-      "allBullets": "TOUTES les Puces Réécrites avec Métriques",
-      "linkedin": "Optimisation du Profil LinkedIn",
-      "jobKeywords": "Personnalisation des Mots-clés par Poste",
-      "industryTemplates": "Templates Spécifiques au Secteur",
-      "fullReport": "Rapport Complet en 10 Sections"
-    },
-    "benefits": {
-      "ats": "Score ATS avec analyse en 5 points",
-      "keywords": "Lacunes de mots-clés sectoriels",
-      "redFlags": "Signaux d'alerte pour les recruteurs",
-      "linkedin": "Optimisation du profil LinkedIn"
-    },
     "oneTime": "paiement unique",
-    "guarantee": "Résultats instantanés • Paiement unique",
     "button": "Obtenir mon analyse",
-    "roi": "Un entretien = {{price}} rentabilisés",
     "freeScanCta": "Analyser mon CV gratuitement"
   },
   "scanProgress": {
@@ -873,19 +857,7 @@
       "impact": "Impact",
       "flags": "Alertes"
     },
-    "filterPhrase": {
-      "compliance": "filtres ATS rigides axés sur la conformité",
-      "credential": "systèmes de suivi des candidatures axés sur les qualifications",
-      "recruiterScreen": "filtres automatisés avant qu'un recruteur ne le voie",
-      "volume": "systèmes ATS filtrant des centaines de candidats par poste",
-      "generic": "filtres ATS automatisés"
-    },
-    "outcome": {
-      "strong": "Candidat solide pour passer {{filterPhrase}}",
-      "likely": "Susceptible de passer la plupart des {{filterPhrase}}",
-      "atRisk": "Risque d'être filtré par {{filterPhrase}}",
-      "highRisk": "Risque élevé d'être filtré par {{filterPhrase}} avant qu'un humain ne le voie"
-    },
+    "basis": "Noté sur les mots-clés, les sections, la mise en forme et les résultats chiffrés de ce CV",
     "gauge": {
       "excellent": "Excellent",
       "good": "Bon",
@@ -1166,7 +1138,7 @@
     "metricTooltips": {
       "atsScore": {
         "title": "Score IA-ATS",
-        "description": "Notre IA simule comment les systèmes modernes de suivi des candidatures alimentés par l'IA analysent votre CV — la même technologie utilisée par 98 % des entreprises du Fortune 500.",
+        "description": "Notre IA simule comment les systèmes modernes de suivi des candidatures alimentés par l'IA analysent votre CV.",
         "whyMatters": "Un score bas signifie que des lacunes de parsing ou de mots-clés vous excluent probablement des recherches que les recruteurs effectuent réellement."
       },
       "format": {
@@ -1177,7 +1149,7 @@
       "metrics": {
         "title": "Score de quantification",
         "description": "Mesure combien de vos réalisations incluent des chiffres, des pourcentages ou des indicateurs.",
-        "whyMatters": "Les recruteurs passent 6 secondes à parcourir — les chiffres attirent leur attention en premier."
+        "whyMatters": "Les recruteurs lisent en diagonale — les chiffres attirent leur attention en premier."
       },
       "verbs": {
         "title": "Note des verbes d'action",
@@ -1207,7 +1179,7 @@
       "readability": {
         "title": "Score de lisibilité",
         "description": "Mesure la facilité avec laquelle votre CV peut être parcouru rapidement.",
-        "whyMatters": "Les recruteurs passent en moyenne 6 à 7 secondes par CV — chaque mot doit compter."
+        "whyMatters": "Les recruteurs parcourent chaque CV rapidement — chaque mot doit compter."
       },
       "bulletImpact": {
         "title": "Impact des puces",
@@ -1238,66 +1210,6 @@
         "title": "Compatibilité avec les systèmes IA-ATS",
         "description": "Montre à quel point votre CV est correctement analysé par les principaux systèmes de suivi des candidatures alimentés par l'IA comme Workday, Greenhouse et Taleo.",
         "whyMatters": "Différentes entreprises utilisent différents systèmes IA-ATS — sachez lesquels liront correctement votre CV."
-      }
-    },
-    "ctaCopy": {
-      "coverLetter": {
-        "control": {
-          "button": "Générer une lettre de motivation — {{price}}",
-          "description": "Lettre de motivation générée par IA, adaptée à votre CV et au poste visé. Prête à envoyer en quelques minutes."
-        },
-        "benefitFocused": {
-          "button": "Obtenez votre lettre qui décroche des entretiens",
-          "description": "Démarquez-vous parmi plus de 100 candidats avec une lettre de motivation personnalisée qui enthousiasme les recruteurs."
-        },
-        "scarcity": {
-          "button": "Créer une lettre de motivation maintenant — {{price}}",
-          "description": "La plupart des candidats négligent les lettres de motivation. Prenez l'avantage avec une lettre personnalisée en 2 minutes."
-        }
-      },
-      "keywordFix": {
-        "control": {
-          "button": "Obtenir le rapport complet de mots-clés",
-          "headline": "Envie de plus de 50 mots-clés du secteur ?"
-        },
-        "benefitFocused": {
-          "button": "Débloquer les mots-clés cachés",
-          "headline": "Passez le filtre ATS"
-        },
-        "scarcity": {
-          "button": "Obtenez les mots-clés avant les autres",
-          "headline": "Devancez 87 % des candidats"
-        }
-      },
-      "premiumPackage": {
-        "control": {
-          "button": "Acheter le forfait Premium — {{price}}",
-          "headline": "Forfait CV Premium",
-          "subtext": "Tout ce dont vous avez besoin pour décrocher des entretiens"
-        },
-        "benefitFocused": {
-          "button": "Soyez prêt pour l'entretien dès maintenant",
-          "headline": "Décrochez le poste de vos rêves plus vite",
-          "subtext": "3 fois plus de rappels pour entretien avec notre forfait complet"
-        },
-        "scarcity": {
-          "button": "Réservez votre forfait — Offre limitée",
-          "headline": "Forfait CV Premium"
-        }
-      },
-      "tailoredResume": {
-        "control": {
-          "button": "Aperçu du CV personnalisé",
-          "description": "Aperçu gratuit, puis débloquez le forfait Premium complet avec CV personnalisé + lettre de motivation"
-        },
-        "benefitFocused": {
-          "button": "Voyez votre CV amélioré",
-          "description": "Voyez exactement à quoi ressemblera votre CV une fois optimisé pour le poste visé"
-        },
-        "scarcity": {
-          "button": "Générer avant la fermeture",
-          "description": "Aperçu limité disponible — voyez votre CV personnalisé avant de passer à la version supérieure"
-        }
       }
     },
     "addJobDescriptionToUnlock": "Ajoutez une description de poste ci-dessus pour débloquer",
@@ -1344,10 +1256,6 @@
       "should": "Recommandé",
       "nice": "Agréable"
     },
-    "atRiskOrNeedsImprovement": {
-      "atRisk": "Risque de passer inaperçu dans les recherches des recruteurs",
-      "needsImprovement": "Doit être amélioré pour être compétitif"
-    },
     "personalizedTipsSection": {
       "title": "Conseils personnalisés",
       "subtitle": "Analyses adaptées à votre profil"
@@ -1375,18 +1283,6 @@
     "fixChecklistTitle": "Liste de corrections",
     "checklistCompleted": "{{completed}}/{{total}} terminé(s)",
     "trackProgress": "Suivre la progression",
-    "peerBenchmark": {
-      "above": "Au-dessus de la moyenne",
-      "at": "Dans la moyenne",
-      "below": "En dessous de la moyenne",
-      "forAtsReadinessAmong": "pour la préparation ATS parmi {{cohort}}",
-      "strongPosition": "✓ Position solide dans votre secteur",
-      "roomForImprovement": "→ Marge d'amélioration",
-      "belowAverage": "⚠ Sous la moyenne du secteur",
-      "strongResult": "Votre CV obtient de bons résultats par rapport à vos pairs. Concentrez-vous sur l'adaptation à des postes spécifiques pour de meilleurs résultats.",
-      "competitiveResult": "Votre CV est compétitif mais pourrait être plus solide. Les suggestions ci-dessous vous aideront à vous démarquer.",
-      "weakResult": "D'autres candidats de votre domaine obtiennent de meilleurs scores. Appliquez les corrections ci-dessous pour améliorer vos chances."
-    },
     "timelineProgression": {
       "rapidLabel": "🚀 Rapide",
       "steadyLabel": "📈 Constant",
@@ -1414,11 +1310,6 @@
       "naturalProgression": "Prochaine étape naturelle",
       "lateralMove": "Mouvement latéral",
       "stretchGoal": "Objectif ambitieux"
-    },
-    "marketPosition": {
-      "aboveMarket": "Au-dessus du marché",
-      "atMarket": "Au niveau du marché",
-      "belowMarket": "En dessous du marché"
     },
     "formatRecommendationSection": {
       "title": "Recommandation de format de CV",
@@ -1523,8 +1414,6 @@
     },
     "jobMatch": {
       "title": "Analyse de correspondance d'emploi",
-      "badge": "Gratuit & Illimité",
-      "subtitle": "Comparez votre CV à n'importe quel emploi — sans limites !",
       "matchScore": "Score de correspondance",
       "matchGrade": "Note de correspondance",
       "experienceFit": "Adéquation de l'expérience",
@@ -1547,17 +1436,9 @@
         "subtitle": "CV complet personnalisé, lettre de motivation, signalements honnêtes des lacunes de compétences et une liste de contrôle de soumission"
       }
     },
-    "appRecommendation": {
-      "strongApply": "✓ Excellente correspondance — Postulez maintenant !",
-      "applyWithChanges": "⚡ Bon candidat — Postulez après des corrections rapides",
-      "applyAsStretch": "🎯 Rôle ambitieux — Postulez comme candidature ambitieuse",
-      "doNotApply": "✗ Mauvaise adéquation — Considérez d'autres rôles"
-    },
     "atsBanner": {
-      "belowMedian": "Sous la médiane de {{median}} parmi {{n}} CV du secteur {{industry}} analysés ici. Les grands ATS ne rejettent pas sur ce chiffre, mais les corrections ci-dessous le font monter.",
-      "belowTopQuarter": "Au-dessus de la médiane de {{median}} ; le quart supérieur des {{n}} CV du secteur {{industry}} analysés ici obtient {{p75}} ou plus.",
-      "noPassMark": "Ce n'est pas une note éliminatoire : les grands ATS ne rejettent pas un CV sur un score. Les corrections ci-dessous le font monter.",
-      "topQuarter": "Quart supérieur : {{p75}}+"
+      "heading": "De la marge pour faire monter ce score",
+      "noPassMark": "Ce n'est pas une note éliminatoire : les grands ATS ne rejettent pas un CV sur un score. Les corrections ci-dessous le font monter."
     },
     "eliteSignals": {
       "title": "Signaux attractifs pour les recruteurs"
@@ -1573,19 +1454,12 @@
       "whyLabel": "Pourquoi :",
       "whyNote": "Les gens veulent d'abord la clarté — les raisons comptent plus que les solutions."
     },
-    "howYouCompare": {
-      "title": "Comment vous vous comparez",
-      "subtitle": "Voyez comment votre CV se compare à d'autres professionnels de {{industry}}",
-      "you": "Vous",
-      "others": "Autres",
-      "getJobSpecific": "Obtenir une analyse spécifique au poste"
-    },
     "careerTimeline": {
       "title": "Chronologie de carrière",
       "totalExp": "Expérience totale",
       "totalExpDesc": "Depuis combien de temps vous travaillez dans votre domaine",
       "avgTenure": "Durée moy. dans chaque emploi",
-      "tenureGood": "✓ Bonne stabilité — les recruteurs aiment 2+ ans par poste",
+      "tenureGood": "✓ Deux ans ou plus par poste, en moyenne",
       "tenureWarning": "⚠ Une courte durée peut soulever des questions",
       "tenurePoor": "⚠ Très court — peut être perçu comme du job-hopping",
       "careerGrowth": "Évolution de carrière"
@@ -1600,9 +1474,6 @@
       "uniqueValue": "Votre valeur unique",
       "nextMoves": "Vos prochaines évolutions de carrière",
       "interviewStories": "Idées d'histoires pour les entretiens",
-      "salaryInsightTitle": "Aperçu salarial",
-      "estimatedRange": "fourchette estimée",
-      "negotiationLeverage": "Vos leviers de négociation :",
       "hiddenStrengths": "Forces cachées que vous sous-estimez",
       "personalBrand": "Votre marque personnelle",
       "currentLabel": "Actuel :",
@@ -1691,26 +1562,14 @@
       "skillsHighlighted": "Compétences mises en évidence",
       "instantDownload": "Téléchargement instantané"
     },
-    "competitivePosition": {
-      "top": "🏆 Candidat principal",
-      "competitive": "💪 Compétitif",
-      "middle": "📊 Dans la moyenne",
-      "unlikely": "⚠️ Peu de chances",
-      "yourAdvantage": "Votre avantage",
-      "yourGap": "Votre lacune"
-    },
     "cta": {
-      "fixIssues": "Voir ce qui vous coûte des entretiens — {{price}}",
       "getFullAnalysis": "Obtenir mon CV prêt pour les recruteurs — {{price}}",
       "socialProof": "{{count}} CV analysés aujourd'hui"
     },
     "enterprise": {
-      "verdictLabel": "Le Verdict",
       "verdictEvidence": "Tout ce qui suit en est la preuve — et la solution.",
       "downloadPdf": "Télécharger le résumé PDF",
       "nextActionLabel": "Votre action n°1",
-      "howYouCompare": "Votre positionnement",
-      "interviewLikelihood": "Probabilité de rappel pour un entretien",
       "xrayTitle": "Radiographie du CV",
       "emailTitle": "Recevoir mon rapport par e-mail",
       "emailDesc": "Recevez ce résumé et votre plan d’action dans votre boîte mail — pratique pour appliquer les corrections plus tard.",
@@ -1721,12 +1580,10 @@
       "pulseConfirmSent": "Si cette adresse n'a pas encore confirmé le pouls mensuel du marché, nous lui avons envoyé un lien de confirmation. Le pouls ne commence qu'une fois ce lien cliqué.",
       "pulseNotCovered": "Le pouls mensuel du marché ne couvre pas encore votre domaine, donc aucune confirmation n'a été envoyée.",
       "dripConfirmSent": "L'e-mail de votre rapport contient un bouton pour lancer les e-mails du plan de correction. Rien d'autre n'est envoyé tant que vous ne l'avez pas cliqué.",
-      "placementTopQuartile": "Quartile supérieur de {{n}} vrais scans {{industry}}",
-      "placementAboveMedian": "Au-dessus de la médiane de {{n}} vrais scans {{industry}}",
-      "placementBelowMedian": "Sous la médiane de {{n}} vrais scans {{industry}}",
-      "placementBottomQuartile": "Quartile inférieur de {{n}} vrais scans {{industry}} — fort potentiel avec les corrections ci-dessous",
       "emailSpotted": "Nous avons repéré cette adresse sur votre CV — rien n'est envoyé tant que vous ne cliquez pas sur Envoyer.",
-      "dripOptIn": "Découpez mon plan en une courte séquence d'e-mails : les corrections clés au jour 2, le reste au jour 4, un rappel de re-scan au jour 6 — et une question au jour 14 : avez-vous décroché des entretiens ? Quatre courts e-mails, annulable à tout moment."
+      "dripOptIn": "Découpez mon plan en une courte séquence d'e-mails : les corrections clés au jour 2, le reste au jour 4, un rappel de re-scan au jour 6 — et une question au jour 14 : avez-vous décroché des entretiens ? Quatre courts e-mails, annulable à tout moment.",
+      "summaryLabel": "Synthèse",
+      "summaryLine": "Score ATS {{score}}/100 : {{critical}} critiques, {{warnings}} à vérifier, {{passed}} validés."
     },
     "targeting": {
       "title": "Postes pour lesquels ce CV passe le filtre",
@@ -2608,13 +2465,6 @@
     "strong": "Fort",
     "keyMetricsToInclude": "Indicateurs clés à inclure :",
     "commonMistakesFor": "Erreurs courantes pour {{name}} :",
-    "howYouCompareIn": "Comment vous vous comparez en {{name}}",
-    "yourScore": "Votre score",
-    "industryAverage": "Moyenne {{name}}",
-    "topPerformers": "Meilleurs candidats",
-    "benchmarkTop": "Préparation ATS supérieure à la moyenne pour votre secteur.",
-    "benchmarkAverage": "Autour de la moyenne ATS pour votre secteur.",
-    "benchmarkBelow": "En dessous de la moyenne ATS pour votre secteur (corrigible).",
     "yourTopPriorities": "Vos principales priorités",
     "commonIndustryMistakes": "Erreurs courantes de CV en {{name}}",
     "industryBulletExamples": "Exemples de puces pour {{name}}",
@@ -2840,49 +2690,6 @@
       }
     }
   },
-  "pricingPage": {
-    "metaTitle": "Tarifs — Resume Booster",
-    "metaDescription": "Outils à paiement unique de ${{lowPrice}} à ${{highPrice}}, jamais renouvelés, ou Pro à ${{proPrice}} par mois avec tous les outils inclus. Réécritures niveau recruteur.",
-    "noSubscriptions": "Paiements uniques • Ne se renouvellent jamais automatiquement",
-    "titlePrefix": "Choisissez votre",
-    "titleHighlight": "Boost de CV",
-    "subtitle": "Des corrections rapides aux forfaits de carrière complets. Les produits à l'unité se paient une fois ; Pro se renouvelle chaque mois jusqu'à résiliation.",
-    "secureCheckout": "Paiement sécurisé",
-    "instantAccess": "Accès instantané",
-    "stripeProtected": "Protégé par Stripe",
-    "premiumPackages": "Forfaits Premium",
-    "premiumSubtitle": "Outils complets de transformation de carrière",
-    "oneTime": "paiement unique",
-    "processing": "Traitement en cours...",
-    "uploadResumeFirst": "Téléverser le CV d'abord",
-    "getProduct": "Obtenir {{name}}",
-    "requiresUpload": "Nécessite de téléverser votre CV pour l'analyser",
-    "whyResumeBooster": "Pourquoi Resume Booster ?",
-    "questions": "Des questions ?",
-    "allProductsOneTime": "Chaque outil est un achat unique avec accès instantané, jamais renouvelé. Pro est une formule mensuelle résiliable à tout moment.",
-    "freeScanLink": "scan gratuit",
-    "seeScoreFirst": "pour voir d'abord votre score.",
-    "tryFreeScanFirst": "Essayer le scan gratuit d'abord",
-    "ladderTitle": "Trois portes d'entrée",
-    "ladderSubtitle": "La plupart des gens n'ont besoin que d'une seule — le reste du catalogue est en dessous si vous y tenez.",
-    "ladderFreeTitle": "Commencez gratuitement",
-    "ladderFreeDesc": "Le scan diagnostic complet — score, comparatifs, vos pires lignes réécrites, postes cibles. Sans inscription.",
-    "ladderFreeCta": "Scanner mon CV gratuitement",
-    "ladderFixDesc": "La correction complète : analyse totale, votre CV réécrit compatible ATS et une lettre de motivation sur mesure.",
-    "ladderSpecialistDesc": "Pour les reconversions : le travail freelance et les missions traduits en expérience de niveau recruteur.",
-    "allToolsToggle": "Voir tous les outils ({{count}} de plus)",
-    "guarantee": "Chaque outil payant est couvert : pas satisfait du résultat ? Nous le régénérons gratuitement — répondez simplement à votre reçu.",
-    "passLine": "Connecter votre propre Claude ou ChatGPT est gratuit : cherchez sur le tableau depuis votre conversation et postulez vous-même sur le site de l'employeur, avec l'aide de votre IA. Nous n'envoyons jamais de candidature à votre place.",
-    "passLink": "Connectez votre IA",
-    "buyProduct": "Obtenir {{name}}",
-    "freeScanLeadIn": "Pas encore sûr ? Lancez le",
-    "heroBadgeLine": "Recherche gratuite, 5 $ pour une analyse approfondie, ou Pro pour les outils de rédaction",
-    "ladderAnalysisDesc": "Chaque mot-clé manquant et chaque problème ATS de votre CV, notés par rapport à l'offre que vous collez, avec la correction pour chacun. Aucun compte nécessaire ; inclus dans Pro.",
-    "ladderSubtitleLine": "La plupart des gens n'ont besoin que d'un seul de ces choix.",
-    "metaDescriptionFa": "Recherche d'emploi et analyse de CV gratuites. Une Analyse complète à ${{lowPrice}} payée une fois, ou Pro à ${{proPrice}} par mois pour les outils de rédaction.",
-    "oneTimeAndProLineFa": "L'Analyse complète à ${{price}} se paie une fois et ne se renouvelle jamais ; Pro est une formule mensuelle résiliable à tout moment.",
-    "subtitleLine": "Cherchez et analysez gratuitement. Payez une fois pour une analyse approfondie de votre CV, ou passez à Pro pour les outils de rédaction sur les offres auxquelles vous postulez."
-  },
   "scanPackPurchase": {
     "topUpCredits": "Recharger les crédits",
     "perCreditUseAnytime": "{{price}} par crédit • Utilisable à tout moment",
@@ -3103,20 +2910,6 @@
       "fix3": "Incluez 3 mots-clés sectoriels supplémentaires"
     }
   },
-  "peerBenchmark": {
-    "howYouCompare": "Comment vous vous comparez",
-    "percentile": "percentile",
-    "industryAverage": "Moyenne du secteur : {{score}}",
-    "topPerformers": "Meilleurs candidats : {{score}}+",
-    "toAverage": "Vers la moyenne",
-    "toTopTier": "Vers le niveau supérieur",
-    "topPerformer": "Vous êtes un candidat d’élite !",
-    "levelTip": "Conseil niveau {{level}}",
-    "benchmarkedAgainst": "Comparé aux autres candidats {{role}}",
-    "topPct": "Top {{pct}} % pour la préparation ATS parmi {{cohort}}",
-    "aroundAverage": "Préparation ATS dans la moyenne parmi {{cohort}}",
-    "belowAverage": "Préparation ATS en dessous de la moyenne parmi {{cohort}} (corrigeable)"
-  },
   "skillsGapAnalysis": {
     "title": "Analyse des lacunes de compétences pour {{role}}",
     "roleMatchScore": "Score de correspondance au poste",
@@ -3179,28 +2972,13 @@
     }
   },
   "competitorBenchmark": {
-    "title": "Comment les meilleurs {{role}}s se démarquent",
-    "basedOnAnalysis": "Basé sur l’analyse de CV réussis de {{role}} qui obtiennent des entretiens",
-    "competitiveStanding": "Votre positionnement concurrentiel",
-    "topElements": "Vous avez les éléments que les meilleurs candidats incluent !",
-    "addFewMore": "Ajoutez quelques éléments pour rivaliser avec les meilleurs candidats",
-    "addElements": "Ajoutez ces éléments pour égaler les meilleurs candidats",
-    "sectionsAlwaysInclude": "Sections que les meilleurs {{role}}s incluent toujours :",
-    "whatMakesStandOut": "Ce qui fait se démarquer les meilleurs CV :",
-    "pctTopCandidates": "Quel % des meilleurs candidats incluent :",
-    "avgBullets": "Nombre moyen de points par poste :",
-    "youBullets": "Vous : {{count}}",
-    "topBullets": "Top : {{count}}",
-    "quickWins": "Gains rapides pour concurrencer :",
-    "addPortfolio": "Ajoutez des liens portfolio/GitHub ({{pct}} % des meilleurs candidats en ont)",
-    "addCerts": "Listez les certifications pertinentes ({{pct}} % des meilleurs candidats en ont)",
-    "addMetrics": "Ajoutez des métriques à vos points ({{pct}} % des meilleurs CV quantifient leurs réalisations)",
-    "addBullets": "Ajoutez {{count}} points supplémentaires par poste",
-    "checklistItems": {
-      "portfolio": "Liens portfolio/GitHub",
-      "certifications": "Certifications",
-      "quantifiedAchievements": "Réalisations quantifiées"
-    }
+    "title": "Ce que contiennent souvent les CV de {{role}}",
+    "sectionsAlwaysInclude": "Sections qu’ont souvent les CV de {{role}} :",
+    "whatMakesStandOut": "Ce qui aide à se démarquer :",
+    "quickWins": "À ajouter si cela vous concerne :",
+    "addPortfolio": "Liens vers un portfolio ou GitHub",
+    "addCerts": "Certifications pertinentes, même en cours",
+    "addMetrics": "Des chiffres dans vos points : ampleur, temps gagné, résultats"
   },
   "jobComparisonCTA": {
     "compareToRoles": "Voyez comment vous vous comparez à vos postes cibles :"
@@ -3485,7 +3263,6 @@
     "resumeScore": "Score ATS du CV",
     "results": "Résultats de {{name}}",
     "poweredBy": "Propulsé par",
-    "brand": "resumescanner.ai",
     "outOf": "/100",
     "industry": "Secteur",
     "experience": "Expérience",
@@ -3493,7 +3270,7 @@
     "improvement": "Amélioration",
     "improvementPts": "+{{pts}} pts",
     "topStrength": "Principal atout",
-    "getScore": "Obtenez votre score gratuit sur resumescanner.ai",
+    "getScore": "Obtenez votre score gratuit sur {{site}}",
     "previewLabel": "Aperçu de votre carte de score téléchargeable",
     "download": "Télécharger",
     "downloaded": "Téléchargé !",
@@ -3509,8 +3286,7 @@
     "downloadingInstead": "Téléchargement de l'image à la place...",
     "copyNotSupported": "Copie non prise en charge",
     "imageDownloaded": "Image téléchargée !",
-    "uploadLinkedIn": "Téléchargez-la dans votre publication LinkedIn pour vous démarquer",
-    "shareText": "Je viens d'obtenir {{score}}/100 sur mon scan ATS de CV ! 📊\n\nSecteur : {{industry}}\nPrincipal atout : {{strength}}\n\nObtenez votre score gratuit → resumescanner.ai\n\n#cv #rechercheemploi #carriere #ATS"
+    "uploadLinkedIn": "Téléchargez-la dans votre publication LinkedIn pour vous démarquer"
   },
   "smartRecommendations": {
     "personalizedFor": "Personnalisé pour vous",
@@ -5215,7 +4991,7 @@
       "everythingFree": "Tout ce qu'offre un compte gratuit, plus les outils de rédaction",
       "fullAnalysisIncluded": "L'Analyse complète à 5 $ incluse",
       "noDailyScanCap": "Aucun plafond quotidien d'analyses",
-      "writingTools": "Un CV adapté, une lettre de motivation et une préparation d'entretien pour vos offres : jusqu'à 5 séries par jour et 60 par mois"
+      "writingToolsPackages": "Un CV adapté, une lettre de motivation et une préparation d'entretien pour vos offres : jusqu'à 5 lots par jour et 60 par mois"
     },
     "renewsOn": "Se renouvelle le {{date}}",
     "retiredPlanEnds": "Il prend fin le {{date}} et ne sera pas renouvelé. Les outils de Pro restent actifs jusque-là.",
@@ -5227,6 +5003,7 @@
     "secureSignedIn": "Paiement sécurisé via Stripe. Résiliable à tout moment — sans engagement.",
     "secureSignedOut": "Vous vous connecterez d'abord, pour que la formule soit sur votre compte. Paiement sécurisé via Stripe ; résiliable à tout moment.",
     "summaryLine": "Tout ce qu'offre un compte gratuit, plus les outils de rédaction, l'Analyse complète à 5 $ incluse et aucun plafond quotidien d'analyses",
+    "summaryLineWithoutAnalysis": "Tout ce qu'offre un compte gratuit, plus les outils de rédaction et aucun plafond quotidien d'analyses",
     "title": "Resume Booster Pro",
     "toast": {
       "alreadyMemberBody": "Votre formule est déjà active sur ce compte.",
@@ -5339,19 +5116,6 @@
     "headline2": "Offres en ligne correspondant à « {{q}} »",
     "sub2": "Des offres en ligne issues des propres systèmes de recrutement des employeurs. Vous postulez sur le site de l'employeur, avec l'aide de votre propre IA si vous le souhaitez. Voici les meilleures correspondances :",
     "ctaYourAi": "Postuler avec l'aide de votre propre IA"
-  },
-  "homeHero": {
-    "headlinePre": "Des offres en direct, tirées des systèmes de recrutement des employeurs.",
-    "statOpenings": "offres actives",
-    "statCompanies": "entreprises",
-    "ctaPrimary": "Déposez votre CV — gratuit",
-    "ctaSecondary": "Parcourir les offres",
-    "reassure": "Analyse gratuite · sans carte, sans inscription",
-    "exploreCta": "Explorer par domaine",
-    "statCompanyBoards": "sites carrières d'entreprises qui recrutent",
-    "badge2": "Offres en direct + votre propre IA",
-    "headlineHighlight2": "Postulez vous-même, avec l'aide de votre propre IA.",
-    "sub2": "Des offres lues dans les propres systèmes de recrutement des entreprises et revérifiées toute la journée. Analysez votre CV gratuitement, cherchez sur le tableau ici ou depuis Claude ou ChatGPT, et postulez vous-même, avec l'aide de votre IA si vous le souhaitez. Nous n'envoyons jamais rien à votre place."
   },
   "homeAgent": {
     "lead": "Utilisez-le depuis votre propre IA.",
@@ -5571,6 +5335,8 @@
     "agentDigest": "Arrêter les e-mails de la sélection du matin. Votre agent continue de tourner et ses choix restent dans votre compte."
   },
   "purchaseTerms": {
+    "finalSale": "Toutes les ventes sont définitives.",
+    "regionLine": "Pas encore vendu dans l'UE, l'EEE, au Royaume-Uni ni en Inde. Le paiement refuse les acheteurs qu'il peut y situer, d'après la devise et le fuseau horaire indiqué par votre appareil.",
     "agree": "En continuant, vous acceptez les <terms>Conditions d'utilisation</terms> et la <privacy>Politique de confidentialité</privacy>.",
     "renewal": "{{price}} par mois, renouvelé automatiquement jusqu'à ce que vous résiliiez. Résiliez quand vous voulez depuis votre compte.",
     "agentTrial": "Les nouveaux abonnés ont {{days}} jours gratuits, puis {{price}} par mois, renouvelé automatiquement jusqu'à résiliation. Résiliez avant la fin de l'essai et rien ne vous sera facturé. Un ancien abonné paie dès le premier jour.",
@@ -5679,7 +5445,7 @@
   },
   "dataApiPage": {
     "builderName": "API Builder (prévue)",
-    "builderPrice": "${{price}} par mois, prévu",
+    "builderPrice": "${{price}} par mois",
     "builderBody": "Recherche classée, évaluation de l'adéquation des CV à grande échelle et 180 jours de clôtures, à afficher dans votre propre produit avec attribution. Pas de flux ni de revente : cela relève de la licence commerciale. Dites-nous si vous l'utiliseriez.",
     "builderNotYet": "Pas encore en vente : rien n'est facturé, et nous répondons à chaque demande par e-mail.",
     "builderCta": "Demander Builder"
@@ -5791,7 +5557,7 @@
   "checkoutGate": {
     "purchasesOpenSoon": "Les achats ouvrent bientôt. La recherche d'emploi, l'analyse gratuite et un compte gratuit fonctionnent dès maintenant.",
     "purchasesOpenSoonTitle": "Les achats ouvrent bientôt",
-    "regionNoticeTimeZone": "Le fuseau horaire de votre navigateur se trouve dans l'UE, l'EEE, le Royaume-Uni ou en Inde, où nous ne vendons pas encore : les ventes y attendent le règlement de notre enregistrement fiscal. La recherche d'emploi et l'analyse gratuite fonctionnent partout."
+    "regionNoticeTimeZone": "Le fuseau horaire de votre navigateur se trouve dans l'UE, l'EEE, le Royaume-Uni ou en Inde, où nous ne vendons pas encore : les ventes y attendent le règlement de notre enregistrement fiscal. La recherche d'emploi et l'analyse gratuite y fonctionnent quand même."
   },
   "checkoutRefusal": {
     "autoRenewTitle": "Veuillez cocher la case de renouvellement",

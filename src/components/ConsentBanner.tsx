@@ -12,7 +12,7 @@
  * no route has to know about it, and the prerendered pages never carry it.
  * Every string goes through t(key, English default).
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { useTranslation } from "react-i18next";
 import { CONSENT_EVENT, analyticsConsent } from "@/lib/consent";
@@ -26,9 +26,45 @@ export function openConsentChoice(): void {
   try { window.dispatchEvent(new CustomEvent(OPEN_CONSENT_EVENT)); } catch { /* no window */ }
 }
 
+/** Room left between a focused control and the banner's top edge. */
+const FOCUS_CLEARANCE_PX = 8;
+
 export function ConsentBanner() {
   const { t } = useTranslation();
   const [open, setOpen] = useState(() => analyticsConsent() === "unset");
+  const banner = useRef<HTMLDivElement>(null);
+
+  // FOCUS IS NEVER HIDDEN UNDER THE BANNER (WCAG 2.2 SC 2.4.11; review round
+  // 2026-10-26). The banner is fixed over the bottom of the screen, and the
+  // controls keyboard focus landed on scrolled in under it: 35 of 78 Tab
+  // stops on "/" at 1280x800. While it is open: the page's bottom scroll
+  // padding is its height, which the browser honours when it scrolls a
+  // focused control into view; the body gains that much room at its end, so
+  // the footer's last links can scroll clear of it too; and --consent-banner-h
+  // lifts the fixed help button above it. All of it goes with the banner.
+  useEffect(() => {
+    const el = banner.current;
+    if (!open || !el) return;
+    const root = document.documentElement;
+    const apply = () => {
+      const h = Math.ceil(el.getBoundingClientRect().height);
+      root.style.setProperty("--consent-banner-h", `${h}px`);
+      root.style.scrollPaddingBottom = `${h + FOCUS_CLEARANCE_PX}px`;
+      document.body.style.paddingBottom = `${h}px`;
+    };
+    apply();
+    const Observer = typeof window.ResizeObserver === "function" ? window.ResizeObserver : null;
+    const ro = Observer ? new Observer(apply) : null;
+    ro?.observe(el);
+    window.addEventListener("resize", apply);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener("resize", apply);
+      root.style.removeProperty("scroll-padding-bottom");
+      root.style.removeProperty("--consent-banner-h");
+      document.body.style.removeProperty("padding-bottom");
+    };
+  }, [open]);
 
   useEffect(() => {
     const reopen = () => setOpen(true);
@@ -44,6 +80,7 @@ export function ConsentBanner() {
   if (!open) return null;
   return (
     <div
+      ref={banner}
       role="dialog"
       aria-modal="false"
       aria-label={t("consent.label", "Analytics choice")}
@@ -52,8 +89,14 @@ export function ConsentBanner() {
     >
       <div className="mx-auto max-w-3xl rounded-2xl border border-border bg-card/95 backdrop-blur p-4 shadow-lg">
         <p className="text-sm text-foreground mb-1">{t("consent.title", "May we count how this site is used?")}</p>
+        {/* Two paragraphs, not one: as one block the text was larger than
+            anything the new "/" bakes, so a phone's first-visit Largest
+            Contentful Paint waited for this banner's JavaScript (review
+            round 2026-10-26). */}
+        <p className="text-xs text-muted-foreground mb-1">
+          {t("consent.body", "If you allow it, we keep an anonymous visitor id in this browser and record which pages and steps you use, so we can see what works. Nothing is stored or sent for this until you choose, and the site works the same either way.")}
+        </p>
         <p className="text-xs text-muted-foreground mb-3">
-          {t("consent.body", "If you allow it, we keep an anonymous visitor id in this browser and record which pages and steps you use, so we can see what works. Nothing is stored or sent for this until you choose, and the site works the same either way.")}{" "}
           {t("consent.host", "Our hosting provider runs its own page-visit counter, which this choice does not control.")}{" "}
           <a href="/privacy#cookies" className="text-primary underline">{t("consent.more", "Details")}</a>
         </p>

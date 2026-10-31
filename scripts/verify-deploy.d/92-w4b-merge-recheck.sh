@@ -10,7 +10,9 @@
 #     the "Meta" SmartRecruiters board a staffing agency);
 #   - the crawler's /pricing (Googlebot) names the one report and Pro: no
 #     "One-Time Tools" title, no range whose two ends are one price, no bundle
-#     discount, the "One paid report" heading;
+#     discount, the "One paid report" heading (or, after the homepage
+#     switch-over, the new page's "Full Analysis, $5 once" and "Pro, $45 a
+#     month" cards);
 #   - the crawler's /data-api and /agents, llms.txt and llms-full.txt never
 #     pair fit scoring with "paid" without the free allowance, and each states
 #     "scorings a day on a confirmed free key";
@@ -53,7 +55,11 @@ if (pr.length<500) line("FAIL","the crawler /pricing answered no page ("+pr.leng
 else {
   const t=text(pr);
   const bad=[/one-time tools/i.test(title)&&"a One-Time Tools title", ONE.test(pr)&&"a one-price range ("+(pr.match(ONE)||[""])[0]+")", /bundle discount/i.test(t)&&"a bundle discount", /Paid tools are one-time purchases/.test(t)&&"the list lead"].filter(Boolean);
-  line(!bad.length&&/One paid report/.test(t)?"PASS":"FAIL", "the crawler /pricing names the one report and Pro (\""+title.slice(0,90)+"\")"+(bad.length?": still says "+bad.join(", "):/One paid report/.test(t)?"":": no One paid report heading"));
+  // The one report and the one plan, each named: the wave 4 heading, or (since
+  // the homepage switch-over, home-pricing) the two paid cards of the new page,
+  // "Full Analysis, $5 once" and "Pro, $45 a month".
+  const named=/One paid report/.test(t)||(/Full Analysis, \$\d+ once/.test(t)&&/Pro, \$\d+ a month/.test(t));
+  line(!bad.length&&named?"PASS":"FAIL", "the crawler /pricing names the one report and Pro (\""+title.slice(0,90)+"\")"+(bad.length?": still says "+bad.join(", "):named?"":": neither the One paid report heading nor the two paid cards"));
 }
 const FIT=/\/v1\/fit\b|\bfit_resume\b/;
 const paired=(s)=>s.split(/(?<=[.!?])\s+|;|\n|<\/?(?:li|p|td|tr|div|h\d)\b[^>]*>|,\s+and\s+/).filter((c)=>FIT.test(c)&&/\bpaid\b/i.test(c)&&!/\bfree\b/i.test(c));

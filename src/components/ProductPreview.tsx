@@ -49,7 +49,7 @@ export function ProductPreview({
     // sells through the main scan flow. Without this branch the unlock button
     // 400s ("Invalid product selected"). Mirrors Pricing.tsx's handlePurchase.
     if ("useMainCheckout" in product && product.useMainCheckout) {
-      window.location.href = "/#upload";
+      window.location.href = "/resume-checker#upload";
       return;
     }
     // Bound to the résumé and posting this card previews, never to another

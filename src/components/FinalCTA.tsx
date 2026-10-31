@@ -1,8 +1,8 @@
-import { ArrowRight, CheckCircle2, Zap, X, Check } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useCurrency } from "@/hooks/use-currency";
 import { PRODUCTS } from "@/config/products";
-import { purchasesOpen } from "@/lib/purchases-open";
+import { fullAnalysisOnSale } from "@/lib/purchases-open";
 import { PurchasesOpenSoon } from "@/components/checkout/PurchasesOpenSoon";
 
 interface FinalCTAProps {
@@ -22,16 +22,12 @@ export function FinalCTA({ onGetStarted, isLoading }: FinalCTAProps) {
     onGetStarted();
   };
 
-  const comparisonItems = [
-    { featureKey: "finalCta.comparison.atsScore", free: true, paid: true },
-    { featureKey: "finalCta.comparison.redFlags", free: true, paid: true },
-    { featureKey: "finalCta.comparison.sampleBullet", free: true, paid: false },
-    { featureKey: "finalCta.comparison.allBullets", free: false, paid: true },
-    { featureKey: "finalCta.comparison.linkedin", free: false, paid: true },
-    { featureKey: "finalCta.comparison.jobKeywords", free: false, paid: true },
-    { featureKey: "finalCta.comparison.industryTemplates", free: false, paid: true },
-    { featureKey: "finalCta.comparison.fullReport", free: false, paid: true },
-  ];
+  // THE FREE-AGAINST-PAID GRID AND THE URGENCY BADGE ARE GONE (review
+  // round 2026-10-26). The grid sold the Full Analysis with features it no
+  // longer has (S12-049) or never had in its definition, which /pricing
+  // states, and the badge claimed an outcome for the reader's job search.
+  // What the analysis contains is said once, on /pricing, and rewritten from
+  // a watched delivery before it goes on sale (P18).
 
   return (
     <section className="py-20 relative overflow-hidden">
@@ -43,12 +39,6 @@ export function FinalCTA({ onGetStarted, isLoading }: FinalCTAProps) {
       
       <div className="container relative">
         <div className="max-w-4xl mx-auto text-center">
-          {/* Urgency badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-destructive/10 border border-destructive/30 text-destructive text-sm font-medium mb-6 animate-pulse">
-            <Zap className="w-4 h-4" />
-            {t('finalCta.urgency')}
-          </div>
-          
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4">
             {t('finalCta.title')}
           </h2>
@@ -56,46 +46,15 @@ export function FinalCTA({ onGetStarted, isLoading }: FinalCTAProps) {
             {t('finalCta.subtitle')}
           </p>
           
-          {/* Free vs Paid Comparison */}
-          <div className="bg-card/80 border border-border/50 rounded-2xl p-6 md:p-8 mb-10 backdrop-blur-sm">
-            <div className="grid grid-cols-3 gap-4 mb-4 text-sm font-semibold">
-              <div className="text-left"></div>
-              <div className="text-center text-muted-foreground">{t('finalCta.freeScan')}</div>
-              <div className="text-center text-primary">{t('finalCta.fullAnalysis')}</div>
-            </div>
-            
-            <div className="space-y-3">
-              {comparisonItems.map((item, index) => (
-                <div 
-                  key={index} 
-                  className={`grid grid-cols-3 gap-4 py-2 text-sm ${
-                    index < comparisonItems.length - 1 ? 'border-b border-border/30' : ''
-                  }`}
-                >
-                  <div className="text-left text-foreground">{t(item.featureKey)}</div>
-                  <div className="flex justify-center">
-                    {item.free ? (
-                      <Check className="w-5 h-5 text-success" />
-                    ) : (
-                      <X className="w-5 h-5 text-muted-foreground/40" />
-                    )}
-                  </div>
-                  <div className="flex justify-center">
-                    <Check className="w-5 h-5 text-primary" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
           {/* The add-ons that sat here (Resume Roast, Interview Coach and Career
           Path at $5) were cut on 2026-10-12 (the product line): nothing below
           offers them. */}
           
-          {/* Price + CTA. While no seller is named (owner decision
-              2026-10-17) the analysis is not priced here as something to buy:
-              the box says purchases open soon and offers the free scan. */}
-          {!purchasesOpen() ? (
+          {/* Price + CTA. Until the Full Analysis is on sale (the seller
+              named, owner decision 2026-10-17, and its delivery watched, G2)
+              the analysis is not priced here as something to buy: the box
+              says purchases open soon and offers the free scan. */}
+          {!fullAnalysisOnSale() ? (
             <div className="inline-flex flex-col items-center gap-4 p-8 rounded-2xl bg-primary/10 border border-primary/30" data-final-cta-closed>
               <PurchasesOpenSoon />
               <button
@@ -118,8 +77,9 @@ export function FinalCTA({ onGetStarted, isLoading }: FinalCTAProps) {
                 ≈ {formatPrice(PRODUCTS.fullAnalysis.priceUsd)}
               </p>
             )}
-            <p className="text-sm text-muted-foreground mb-4">{t('finalCta.guarantee')}</p>
-            
+            {/* No delivery time and no interview arithmetic beside the price:
+                the analysis's timing is printed only from a watched delivery
+                (P18), and no page says what a job application will do. */}
             <button
               onClick={handleGetStarted}
               disabled={isLoading}
@@ -128,10 +88,7 @@ export function FinalCTA({ onGetStarted, isLoading }: FinalCTAProps) {
               {getCtaText()}
               <ArrowRight className="w-5 h-5" />
             </button>
-            
-            <p className="text-xs text-muted-foreground mt-4">
-              {t('finalCta.roi', { price: `$${PRODUCTS.fullAnalysis.priceUsd}` })}
-            </p>
+
           </div>
           )}
         </div>

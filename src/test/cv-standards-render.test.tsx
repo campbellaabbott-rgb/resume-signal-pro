@@ -25,14 +25,14 @@ describe("CvStandards SPA routes", () => {
     expect(screen.getByRole("heading", { level: 1 }).textContent).toMatch(/standards in Germany/i);
     expect(screen.getAllByText(/Lebenslauf/).length).toBeGreaterThan(0); // docTerm from the engine
     // The page states it in its section and again in the visible FAQ answer (SEO-032).
-    expect(screen.getAllByText(/80% of applicants still include a photo/i)[0]).toBeInTheDocument();
+    expect(screen.getAllByText(/still widely included, and some recruiters still expect one/i)[0]).toBeInTheDocument();
   });
 
   it("renders the localized German page in German", () => {
     renderAt("/de/lebenslauf-standards/deutschland", "/de/lebenslauf-standards/:country", "de");
     expect(screen.getByRole("heading", { level: 1 }).textContent).toMatch(/Lebenslauf-Standards in Deutschland/);
     // The page states it in its section and again in the visible FAQ answer (SEO-032).
-    expect(screen.getAllByText(/80% der Bewerber/)[0]).toBeInTheDocument(); // hand-translated note
+    expect(screen.getAllByText(/weiterhin weit verbreitet/)[0]).toBeInTheDocument(); // hand-translated note
   });
 
   it("renders the localized Spanish Argentina page with the Ley 6471 detail", () => {

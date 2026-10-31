@@ -19,6 +19,10 @@ import en from "../i18n/locales/en.json";
 import { SUBSCRIPTIONS } from "@/config/products";
 
 vi.mock("@/hooks/use-currency", () => ({ useCurrency: () => ({ formatPrice: (n: number) => `$${n}`, isLocalCurrency: false }) }));
+// The answer that names both plans is the one shown once both are on sale;
+// while they are not, the FAQ says so (review round 2026-10-26,
+// hp-fix-the-scanner-page-sells-only-what-is-sold-and-dates-what-it-counts).
+vi.mock("@/lib/purchases-open", () => ({ purchasesOpen: () => true, fullAnalysisOnSale: () => true, proOnSale: () => true }));
 
 import { FAQ } from "@/components/FAQ";
 

@@ -3,7 +3,7 @@ import { Check, X, Minus } from "lucide-react";
 import { useCurrency } from "@/hooks/use-currency";
 import { PRODUCTS } from "@/config/products";
 import { TRADING_NAME } from "@/config/seller";
-import { purchasesOpen } from "@/lib/purchases-open";
+import { fullAnalysisOnSale } from "@/lib/purchases-open";
 import { PurchasesOpenSoon } from "@/components/checkout/PurchasesOpenSoon";
 
 type FeatureStatus = "yes" | "no" | "partial";
@@ -150,12 +150,13 @@ export function ComparisonTable() {
             ))}
           </div>
 
-          {/* CTA. The priced call to action shows only once the seller's
-              legal name and postal address are on the site (owner decision
-              2026-10-17, B&P 17538(d)); until then it offers the free scan
+          {/* CTA. The priced call to action shows only once the Full Analysis
+              is on sale: the seller's legal name and postal address are on
+              the site (owner decision 2026-10-17, B&P 17538(d)) and its
+              delivery was watched (G2). Until then it offers the free scan
               and says purchases open soon, as the closing call to action does. */}
           <div className="mt-8 text-center">
-            {purchasesOpen() ? (
+            {fullAnalysisOnSale() ? (
               <button
                 onClick={() => document.getElementById("upload")?.scrollIntoView({ behavior: "smooth" })}
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-all duration-300 hover:scale-105"

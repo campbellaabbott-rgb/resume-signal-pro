@@ -718,9 +718,10 @@ export function contentFingerprint(text, { blindCounts = false } = {}) {
 }
 
 /** Page families whose numbers are counts measured at the build, not what the page says. */
-export const COUNT_BEARING = (path) => path === "/" || path === "/jobs" || path === "/companies" || path === "/explore" || path === "/agents"
+export const COUNT_BEARING = (path) => path === "/" || path === "/pricing" || path === "/jobs" || path === "/companies" || path === "/explore" || path === "/agents"
   // The four data pages print measured counts too (SEO-025's remainder: two
-  // bakes 15 minutes apart re-dated all four on counts alone).
+  // bakes 15 minutes apart re-dated all four on counts alone), and so does
+  // /pricing since the homepage switch-over (its free card's open postings).
   || path === "/ghost-job-index" || path === "/entry-level-index" || path === "/hiring-trends" || path === "/pay-transparency"
   || String(path).startsWith("/jobs/company/") || String(path).startsWith("/jobs/field/");
 
@@ -1109,7 +1110,7 @@ export function companyLanderPage({ token, name, primaryToken, robots = null, ca
     content: `
             ${lead}
             ${factsHtml}
-            <p><a href="${href}">${browse}</a> — filter by role, location, experience, and remote, and check any posting against your resume with the <a href="/">free resume scan</a> before you spend an application on it.</p>
+            <p><a href="${href}">${browse}</a> — filter by role, location, experience, and remote, and check any posting against your resume with the <a href="/resume-checker">free resume scan</a> before you spend an application on it.</p>
             <p>See <a href="/jobs">the full job board</a>${boardCompanies ? ` for openings across ${fmt(boardCompanies)} company job boards with roles open${countedOn ? ` (counted ${esc(countedOn)})` : " when this page was built"}` : ""}.</p>
           `,
     jsonLd: [{

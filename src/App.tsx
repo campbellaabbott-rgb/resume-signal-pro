@@ -12,17 +12,19 @@ import { SkipLinkFallback } from "./components/SkipLinkFallback";
 
 const TargetRolesDialog = lazy(() => import("./components/TargetRolesDialog").then((m) => ({ default: m.TargetRolesDialog })));
 
-// Index is the landing page almost every visitor hits first, so it stays eagerly
-// imported. Every other route is lazy-loaded so visitors to "/" aren't downloading
-// code for /pricing, /terms, internal dashboards, etc. — these were all previously
-// bundled into one ~3.3MB chunk regardless of which route was actually visited.
-// Index is now lazy like every other route: the homepage chain (Hero,
-// ResumeUploader, AnalysisPreview, CheckoutOverlay — measured ~60-70KB gz)
-// was riding the entry bundle to every /jobs visitor and all 872 SEO landers.
-// First paint on / is covered by the prerendered HTML, so the tradeoff is
-// a spinner-flash on client-side nav to the homepage, not a blank landing.
+// Every route is lazy-loaded, so a visitor to one page does not download the
+// code for /pricing, /terms, internal dashboards and the rest (they were all
+// once one ~3.3MB chunk). The scanner page (Index: Hero, ResumeUploader,
+// AnalysisPreview, CheckoutOverlay, ~60-70KB gz) serves /resume-checker and
+// the other tool landings; first paint on every baked address is the
+// prerendered HTML, so the tradeoff is a spinner-flash on client-side
+// navigation, not a blank landing.
 const Index = lazy(() => import("./pages/Index"));
+// "/" is the job search with live postings (the board-first homepage); the
+// free scanner lives at /resume-checker (docs/homepage-pricing/README.md).
+const HomePage = lazy(() => import("./pages/home/HomePage"));
 import { TOOL_LANDINGS } from "@/data/tool-landings";
+import { ScannerAddressRedirect } from "@/components/ScannerAddressRedirect";
 const Auth = lazy(() => import("./pages/Auth"));
 const Account = lazy(() => import("./pages/Account"));
 const Agent = lazy(() => import("./pages/Agent"));
@@ -44,7 +46,7 @@ const McpNotHere = lazy(() => import("./pages/McpNotHere"));
 const OAuthConsent = lazy(() => import("./pages/OAuthConsent"));
 const PayTransparencyIndex = lazy(() => import("./pages/PayTransparencyIndex"));
 const Privacy = lazy(() => import("./pages/Privacy"));
-const Pricing = lazy(() => import("./pages/Pricing"));
+const Pricing = lazy(() => import("./pages/pricing/PricingPage"));
 const Methodology = lazy(() => import("./pages/Methodology"));
 const About = lazy(() => import("./pages/About"));
 const ApiAddress = lazy(() => import("./pages/ApiAddress"));
@@ -109,7 +111,12 @@ const App = () => (
       <ScrollToTop />
       <Suspense fallback={null}>
         <Routes>
-          <Route path="/" element={<Index />} />
+          {/* The scanner's old addresses ("/#upload", the report emails'
+              "/?outcome=", affiliate links, the mail's rescan links) go to
+              /resume-checker before any page loads: the redirect is eager
+              and the homepage lazy, so a redirect costs no homepage chunk.
+              Every other address of "/" is the board-first homepage. */}
+          <Route path="/" element={<ScannerAddressRedirect><HomePage /></ScannerAddressRedirect>} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/account" element={<Account />} />
           <Route path="/agent" element={<Agent />} />

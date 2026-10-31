@@ -12,9 +12,17 @@
  * Mounted for real, every answer opened. The answers read NEW keys (an
  * existing locale value is never edited), whose English defaults are these.
  */
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+
+// These answers are the ones shown once both products are on sale; while
+// they are not, the FAQ asks no delivery question and says purchases open
+// soon (review round 2026-10-26,
+// hp-fix-the-scanner-page-sells-only-what-is-sold-and-dates-what-it-counts).
+vi.mock("@/lib/purchases-open", () => ({ purchasesOpen: () => true, fullAnalysisOnSale: () => true, proOnSale: () => true }));
+
 import { FAQ } from "@/components/FAQ";
+import { proSummaryOnSale } from "@/config/pro-perks";
 
 afterEach(cleanup);
 
@@ -42,7 +50,10 @@ describe("the FAQ", () => {
     // Owner decision 2026-10-17: one one-off, and Pro read from the one list.
     expect(answer).toMatch(/\$5 Full Analysis is a one-time payment/);
     expect(answer).not.toMatch(/Freelance|Transition Pro|unlimited/i);
-    expect(answer).toMatch(/Everything in a free account, plus the writing tools, the \$5 Full Analysis included and no daily cap on scans/);
+    // Pro's summary as a page may print it today: without the included Full
+    // Analysis while that is not on sale (gate G2).
+    expect(answer).toContain(proSummaryOnSale().text);
+    expect(answer).toMatch(/Everything in a free account, plus the writing tools/);
     expect(answer).toMatch(/\$45\/month/);
     expect(answer).toMatch(/Nothing else upgrades you automatically/);
   });

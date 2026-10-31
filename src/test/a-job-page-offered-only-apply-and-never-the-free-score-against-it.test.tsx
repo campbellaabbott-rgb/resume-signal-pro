@@ -14,7 +14,7 @@
  * ("Check my fit, free" since the page took the board's listing vocabulary,
  * 2026-10-12; it read "Score my résumé against this job (free)" before);
  * pressing it stores the posting for the scanner through the same hand-off
- * the scanner reads, lands on "/#upload", and is counted (with the page view
+ * the scanner reads, lands on "/resume-checker#upload" (the scanner's address since the homepage switch-over), and is counted (with the page view
  * that is its denominator). A description too short for the scanner to accept
  * offers no button that would do nothing. Apply on the employer's site stays
  * the first action.
@@ -55,7 +55,7 @@ const at = () =>
     <MemoryRouter initialEntries={[PATH]}>
       <Routes>
         <Route path="/jobs/posting/:source/:token/:key" element={<JobPosting />} />
-        <Route path="/" element={<Scanner />} />
+        <Route path="/resume-checker" element={<Scanner />} />
       </Routes>
     </MemoryRouter>,
   );
@@ -82,7 +82,7 @@ describe("a job page offers the free score against its own posting", () => {
     expect(sent().find((b) => b.variant === "posting_view")!.metadata?.page).toBe(PATH);
 
     fireEvent.click(button);
-    expect((await screen.findByTestId("scanner")).textContent).toBe("/#upload");
+    expect((await screen.findByTestId("scanner")).textContent).toBe("/resume-checker#upload");
     await waitFor(() => expect(sent().some((b) => b.testName === "job_page" && b.variant === "score_against_job")).toBe(true));
     // What the scanner will read on mount: this posting, whole.
     expect(takeJdHandoff()).toEqual({

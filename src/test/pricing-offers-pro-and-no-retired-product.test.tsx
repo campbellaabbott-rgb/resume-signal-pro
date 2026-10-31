@@ -5,15 +5,21 @@
  * The Agent plan ($99 a month), the Agent Pass ($29) and the $7 Apply
  * Assistant are retired: none of them may be offered on the page that sells,
  * and the structured data a search engine reads may quote none of their
- * prices. Pro is presented by what it does today — the perks in
- * src/config/pro-perks.ts, each a shipped capability — and nothing promises
- * AI tools that do not exist yet. Connecting your own AI is said once, with no
- * price, pointing at /agents. Mounted for real with only the backend, auth and
- * checkout faked.
+ * prices. Pro is presented by what it does today (the perks in
+ * src/config/pro-perks.ts, each a shipped capability), and nothing promises
+ * AI tools that do not exist yet.
+ *
+ * Since the homepage switch-over (docs/homepage-pricing/README.md, step 4)
+ * /pricing is src/pages/pricing/PricingPage.tsx: the old page's ladder and its
+ * connect-your-AI line went with src/pages/Pricing.tsx, and the new page's
+ * own decisions are held in hp-pricing-decisions. Mounted for real with only
+ * the backend, auth and the Pro account check faked; the gates are passed as
+ * the page's test input (a TEST seller, never one in src).
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
+import { HelmetProvider } from "react-helmet-async";
 import { MOUNT_TEST_BUDGET } from "./helpers/mount-budget";
 
 const invoke = vi.fn(async () => ({ data: null, error: null }));
@@ -28,87 +34,85 @@ vi.mock("@/integrations/supabase/client", () => ({
   },
 }));
 vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: null, session: null }) }));
-vi.mock("@/hooks/useAgentSender", () => ({ useAgentSender: () => ({ online: true, checked: true }) }));
 vi.mock("@/hooks/use-pro-subscription", () => ({
-  useProSubscription: () => ({ pro: { active: false, status: null, currentPeriodEnd: null, loading: false }, subscribe: vi.fn(), manage: vi.fn(), actionLoading: false, knownEmail: "", refresh: vi.fn() }),
+  PRO_CONFIRM_INTERVAL_MS: 3000,
+  useProSubscription: () => ({ pro: { active: false, status: null, currentPeriodEnd: null, loading: false }, subscribe: vi.fn(), manage: vi.fn(), actionLoading: false, knownEmail: "", refresh: vi.fn(), justSubscribed: false, notConfirmedYet: false }),
 }));
 vi.mock("@/components/Header", () => ({ Header: () => null }));
 vi.mock("@/components/Footer", () => ({ Footer: () => null }));
 vi.mock("@/components/seo/SEO", () => ({ SEO: () => null }));
-vi.mock("@/components/ProductPreview", () => ({ ProductPreview: () => null }));
-// Whether a seller is named: as shipped (closed) unless a test opens it (recheck 3).
-const gate = vi.hoisted(() => ({ open: false }));
-vi.mock("@/lib/purchases-open", () => ({ purchasesOpen: () => gate.open }));
 
-import Pricing from "../pages/Pricing";
-import { PRODUCTS, SUBSCRIPTIONS, PASS, getAllProducts } from "@/config/products";
-import { PRO_PERKS } from "@/config/pro-perks";
+import PricingPage from "../pages/pricing/PricingPage";
+import type { SaleGateInput } from "@/components/pricing/sale-gates";
+import { PRODUCTS, SUBSCRIPTIONS, PASS } from "@/config/products";
+import { offersAPrice } from "@/lib/pricing-offer";
 
 vi.setConfig(MOUNT_TEST_BUDGET);
-afterEach(() => { cleanup(); gate.open = false; });
+afterEach(() => cleanup());
 
-const mount = () => render(<MemoryRouter initialEntries={["/pricing"]}><Pricing /></MemoryRouter>);
+const TEST_SELLER = { legalName: "TEST SELLER", postalAddress: "TEST ADDRESS, NOWHERE" };
+const OPEN: SaleGateInput = { seller: TEST_SELLER, fullAnalysisDelivered: true, proWatched: true };
+
+const mount = (gateInput?: SaleGateInput) =>
+  render(
+    <HelmetProvider>
+      <MemoryRouter initialEntries={["/pricing"]}>
+        <PricingPage gateInput={gateInput} />
+      </MemoryRouter>
+    </HelmetProvider>,
+  );
 const ld = () => JSON.parse(document.querySelector('script[type="application/ld+json"]')!.innerHTML) as {
-  description: string; offers: { highPrice: string; offerCount: number };
+  offers: Array<{ name: string; price: string }>;
 };
 
 describe("/pricing after the apply pivot", () => {
-  it("renders the Pro card with today's perks, and no Agent plan card", () => {
-    mount();
-    expect(screen.getByText("Resume Booster Pro")).toBeInTheDocument();
-    for (const perk of PRO_PERKS) expect(screen.getByText(perk)).toBeInTheDocument();
-    expect(document.body.textContent).not.toContain(`$${SUBSCRIPTIONS.agent.priceUsd}`);
-    expect(document.body.textContent).not.toMatch(/Morning Queue|Apply Agent|Agent plan|Start the agent/);
-  });
-
-  it("offers no pass and prices no pass, and says connecting your own AI is free, pointing at /agents", () => {
-    mount();
+  it("renders the Pro card and no Agent plan card", () => {
+    mount(OPEN);
+    expect(document.querySelector("[data-plan='pro'] h2")?.textContent).toBe("Pro");
     const text = document.body.textContent ?? "";
-    expect(text).not.toContain(`$${PASS.priceUsd} for`);
-    expect(text).not.toMatch(/one-off pass|Agent Pass/);
-    const line = document.querySelector("[data-connect-free]")!;
-    expect(line.textContent).toMatch(/is free/);
-    expect(line.textContent).toMatch(/never submit an application for you/);
-    expect(line.textContent).not.toMatch(/\$\d/);
-    expect(line.querySelector("a")!.getAttribute("href")).toBe("/agents");
+    expect(text).not.toContain(`$${SUBSCRIPTIONS.agent.priceUsd}`);
+    expect(text).not.toMatch(/Morning Queue|Apply Agent|Agent plan|Start the agent/);
   });
 
-  // The collapsed catalogue is gone with the product line's cut (2026-10-12):
-  // w4b-the-pricing-page-sells-what-is-sold.test.tsx runs the page against
-  // every hidden product.
-  it("does not offer the Apply Assistant, and the ladder still offers the Full Analysis", () => {
-    mount();
+  it("offers no pass and prices no pass", () => {
+    for (const input of [undefined, OPEN]) {
+      mount(input);
+      const text = document.body.textContent ?? "";
+      expect(text).not.toContain(`$${PASS.priceUsd} for`);
+      expect(text).not.toMatch(/one-off pass|Agent Pass/);
+      cleanup();
+    }
+  });
+
+  it("does not offer the Apply Assistant, and the Full Analysis card is there", () => {
+    mount(OPEN);
     expect(screen.queryByText(PRODUCTS.applyAssistant.name)).toBeNull();
-    expect(screen.getByText(PRODUCTS.fullAnalysis.name)).toBeInTheDocument();
+    expect(document.querySelector("[data-plan='full-analysis'] h2")?.textContent).toBe("Full Analysis");
   });
 
-  it("while purchases are closed (as shipped) the structured data offers nothing at a price (recheck 3)", () => {
-    mount();
-    const data = ld() as unknown as { offers: { "@type": string; price?: string; highPrice?: string } };
-    expect(data.offers).toEqual({ "@type": "Offer", price: "0", priceCurrency: "USD" });
-  });
-
-  it("once purchases open, the structured data quotes no retired price and describes one subscription and no pass", () => {
-    gate.open = true;
+  it("while no seller is named (as shipped) the structured data offers nothing at a price", () => {
     mount();
     const data = ld();
-    expect(data.description).not.toMatch(/pass|two optional subscriptions/i);
-    const retired = [SUBSCRIPTIONS.agent.priceUsd, PASS.priceUsd, PRODUCTS.applyAssistant.priceUsd];
-    const offered: number[] = [
-      ...getAllProducts().map((p): number => p.priceUsd),
-      SUBSCRIPTIONS.pro.priceUsd,
-    ];
-    expect(Number(data.offers.highPrice)).toBe(Math.max(...offered));
-    expect(data.offers.offerCount).toBe(offered.length + 1);
-    // The Agent plan was the catalogue's ceiling; a range that still counted it would quote it.
-    expect(Number(data.offers.highPrice)).not.toBe(SUBSCRIPTIONS.agent.priceUsd);
-    expect(retired.every((r) => Number.isFinite(r))).toBe(true);
+    expect(offersAPrice(data)).toBe(false);
+    expect(data.offers).toEqual([expect.objectContaining({ "@type": "Offer", name: "Free", price: "0", priceCurrency: "USD" })]);
   });
 
-  it("starts no checkout of a retired product on load", () => {
-    mount();
+  it("once purchases open, the structured data quotes only what is sold and no retired price", () => {
+    mount(OPEN);
+    const prices = ld().offers.map((o) => Number(o.price));
+    expect(prices.sort((a, b) => a - b)).toEqual([0, PRODUCTS.fullAnalysis.priceUsd, SUBSCRIPTIONS.pro.priceUsd]);
+    for (const retired of [SUBSCRIPTIONS.agent.priceUsd, PASS.priceUsd, PRODUCTS.applyAssistant.priceUsd]) expect(prices).not.toContain(retired);
+  });
+
+  it("starts no checkout on load", () => {
+    for (const input of [undefined, OPEN]) {
+      mount(input);
+      cleanup();
+    }
     const fns = invoke.mock.calls.map((c) => (c as unknown[])[0]);
     expect(fns).not.toContain("create-agent-checkout");
     expect(fns).not.toContain("create-pass-checkout");
+    expect(fns).not.toContain("create-checkout");
+    expect(fns).not.toContain("create-subscription-checkout");
   });
 });

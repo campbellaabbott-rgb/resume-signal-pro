@@ -82,11 +82,19 @@ describe("the identity ships empty, so marketing ships paused", () => {
   });
 
   it("every marketing sender says so on its preflight", async () => {
+    // The pause shipped in .2026-10-11.25 and send-market-pulse moved to .26
+    // in wave 4's recheck 3 (the subscribe refusal and the confirm's paused
+    // flag); the homepage switch-over's builds (the rescan links name
+    // /resume-checker) carry it: .2026-10-25.2 over .26, .2026-10-25.1 over .25.
+    const BUILD: Record<string, string> = {
+      "send-market-pulse": "send-market-pulse.2026-10-25.2",
+      "send-agent-digest": "send-agent-digest.2026-10-11.25",
+      "send-scan-report": "send-scan-report.2026-10-25.1",
+    };
     for (const fn of ["send-market-pulse", "send-agent-digest", "send-scan-report"]) {
       const res = await h[fn](new Request(`https://harness.supabase.co/functions/v1/${fn}`, { method: "OPTIONS" }));
       expect(res.headers.get("x-marketing-mail"), fn).toBe(MARKETING_PAUSED);
-      // send-market-pulse moved to .26 in recheck 3 (the subscribe refusal and the confirm's paused flag).
-      expect(res.headers.get("x-fn-build"), fn).toBe(fn === "send-market-pulse" ? `${fn}.2026-10-11.26` : `${fn}.2026-10-11.25`);
+      expect(res.headers.get("x-fn-build"), fn).toBe(BUILD[fn]);
       const filled = await h[`${fn}:filled`](new Request(`https://harness.supabase.co/functions/v1/${fn}`, { method: "OPTIONS" }));
       expect(filled.headers.get("x-marketing-mail"), fn).toBe("on");
     }

@@ -9,7 +9,7 @@
  * productFeatures.<productId> from the locale files.
  */
 import { afterAll, describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import i18n from "@/i18n";
 import { PRODUCTS } from "@/config/products";
@@ -59,8 +59,11 @@ describe("ATS Defense's bullets in nine locales", () => {
   });
 
   it("every surface that lists a product's bullets reads them through productFeatures", () => {
-    // /pricing lists no product's bullets since the cut (its catalogue grid is gone).
-    expect(readFileSync(resolve(__dirname, "..", "pages/Pricing.tsx"), "utf8")).not.toMatch(/product\.features\.(map|slice)\(/);
+    // /pricing lists no product's bullets since the cut (its catalogue grid is
+    // gone), and the rebuilt page reads no product's features at all.
+    for (const f of ["pages/pricing/PricingPage.tsx", ...readdirSync(resolve(__dirname, "..", "components/pricing")).filter((x) => x.endsWith(".tsx")).map((x) => `components/pricing/${x}`)]) {
+      expect(readFileSync(resolve(__dirname, "..", f), "utf8"), f).not.toMatch(/\.features\.(map|slice)\(/);
+    }
     for (const f of ["components/ProductPreview.tsx", "pages/ProductSuccess.tsx", "components/TieredPricingSection.tsx", "components/AddOnsShowcase.tsx", "components/ProductSelectionModal.tsx"]) {
       const src = readFileSync(resolve(__dirname, "..", f), "utf8");
       expect(src, f).toMatch(/productFeatures\(t, /);

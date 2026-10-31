@@ -32,7 +32,7 @@ export function SetupChecklist({ hasScan, hasApplication }: { hasScan: boolean; 
 
   if (dismissed || !hasScan || searches === null) return null;
   const steps = [
-    { done: hasScan, label: t("accountPage.setupScan", "Scan your résumé"), to: "/#upload" },
+    { done: hasScan, label: t("accountPage.setupScan", "Scan your résumé"), to: "/resume-checker#upload" },
     { done: searches.n > 0, label: t("accountPage.setupSearch", "Save a job search on the board"), to: "/jobs" },
     { done: searches.digestOn, label: t("accountPage.setupDigest", "Turn on the weekly match email for a search"), to: "#searches" },
     { done: hasApplication, label: t("accountPage.setupTrack", "Save or apply to your first role"), to: "/jobs" },

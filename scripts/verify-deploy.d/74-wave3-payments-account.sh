@@ -152,7 +152,7 @@ fi
 # old false absolute ("nothing upgrades", with no "else") still fails.
 PR74=$(curl -s -m 30 -A "$UA" "$SITE/pricing")
 if printf '%s' "$PR74" | grep -qF "nothing upgrades you automatically"; then echo "FAIL  /pricing as served to a crawler still says nothing upgrades you automatically (item 11)"
-elif printf '%s' "$PR74" | grep -qF "Pro renews every month until you cancel"; then echo "PASS  /pricing as served to a crawler says Pro renews every month until you cancel (item 11)"
+elif printf '%s' "$PR74" | grep -qE "Pro renews every month until you cancel|renews every month at \\\$[0-9]+ until you cancel"; then echo "PASS  /pricing as served to a crawler says Pro renews every month until you cancel (item 11; since the homepage switch-over, the new page's Before you buy)"
 else echo "FAIL  /pricing as served to a crawler does not say Pro renews until you cancel ($(printf '%s' "$PR74" | wc -c | tr -d ' ') bytes): item 11's renewal line is missing"; fi
 
 # The owner steps and the measurements no read can prove.

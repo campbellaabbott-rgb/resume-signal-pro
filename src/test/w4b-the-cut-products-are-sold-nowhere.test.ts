@@ -179,7 +179,10 @@ describe("no crawler or AI host is offered a cut product", () => {
     // While purchases are closed the line carries "(purchases open soon)" (recheck 3).
     expect(llms).toMatch(new RegExp(`: The free tools, the \\$${PRODUCTS.fullAnalysis.priceUsd} Full Analysis and Pro(?: \\(purchases open soon\\))?\\.`));
     expect(llms.match(/\$\d+ Full Analysis/g)?.every((m) => m === `$${PRODUCTS.fullAnalysis.priceUsd} Full Analysis`)).toBe(true);
-    expect(llms).toMatch(/Pro \(the writing tools, the Full Analysis and no daily scan cap\)/);
+    // The committed file is the closed form: Pro without the Full Analysis,
+    // which the pages leave out of Pro until it is on sale; the bake adds it
+    // back once both are (src/components/pricing/llms-lines.ts).
+    expect(llms).toMatch(/Pro \(the writing tools and no daily scan cap\)/);
   });
 
   it("the teeth: the lines as they stood are caught", () => {

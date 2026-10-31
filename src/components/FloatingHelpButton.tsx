@@ -12,7 +12,9 @@ export function FloatingHelpButton() {
   const barVisible = useStickyBarVisible();
 
   return (
-    <div data-floating-help="" className={cn("fixed right-4 z-help flex flex-col items-end gap-3 transition-[bottom] duration-base sm:right-6", barVisible ? "bottom-28" : "bottom-6")}>
+    // Above the analytics banner while it is open (ConsentBanner sets
+    // --consent-banner-h), so neither the banner nor focus hides it.
+    <div data-floating-help="" style={{ marginBottom: "var(--consent-banner-h, 0px)" }} className={cn("fixed right-4 z-help flex flex-col items-end gap-3 transition-[bottom] duration-base sm:right-6", barVisible ? "bottom-28" : "bottom-6")}>
       {isOpen && (
         <div className="bg-popover border border-border-strong rounded-lg shadow-overlay p-4 animate-in fade-in duration-base">
           <div className="flex items-center justify-between gap-4 mb-2">

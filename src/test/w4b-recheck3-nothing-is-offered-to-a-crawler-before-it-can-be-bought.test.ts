@@ -23,11 +23,13 @@ import { LLMS_PRICING_TAG, llmsPurchaseLines, offersAPrice, pricingJsonLd } from
 import { purchasesOpen } from "@/lib/purchases-open";
 import { PRODUCTS, SUBSCRIPTIONS } from "@/config/products";
 import EN from "@/i18n/locales/en.json";
+import PRICING_EN from "@/i18n/shards/pricing/en.json";
 
 vi.setConfig({ testTimeout: 120_000 });
 
 const ROOT = resolve(__dirname, "../..");
 const GATE = (EN as { checkoutGate: Record<string, string> }).checkoutGate;
+const PRICING = PRICING_EN.pricingPlans;
 let OUT = "";
 let HTML = "";
 let LLMS = "";
@@ -65,21 +67,30 @@ describe("the crawler's /pricing while purchases are closed", () => {
     expect(HTML).not.toMatch(/AggregateOffer/);
   });
 
-  it("says purchases open soon in the lead and beside each price, in the page's own words", () => {
+  // Since the homepage switch-over the crawler /pricing is the new pricing
+  // page: each paid card says why it is not on sale in the page's own
+  // sentence (pricingPlans.buy.gateSeller while no seller is named), and its
+  // head is the page's closed description.
+  it("says purchases open soon on each paid card and in the description, in the page's own words", () => {
     const text = crawlerText(HTML);
-    expect(text).toContain(GATE.purchasesOpenSoon);
-    expect((HTML.match(/data-purchases-open-soon/g) ?? []).length).toBe(2);
-    expect(descOf(HTML)).toMatch(new RegExp(`${GATE.purchasesOpenSoonTitle}\\.$`));
+    const soon = PRICING.buy.gateSeller;
+    expect(soon).toMatch(/Purchases open soon/);
+    expect(text).toContain(soon);
+    expect((HTML.match(/data-gate="seller"/g) ?? []).length).toBe(2);
+    expect(descOf(HTML)).toBe(PRICING.meta.descriptionClosed);
+    expect(descOf(HTML)).toMatch(/purchases open soon\.$/);
   });
 
-  it("never states the payment terms as a sale open now", () => {
+  it("never states the payment terms as a sale open now, and offers no way to buy", () => {
     const text = crawlerText(HTML);
     expect(text).not.toContain(`The ${PRODUCTS.fullAnalysis.name} is a one-time payment that never renews.`);
     expect(text).not.toMatch(/Pro renews every month until you cancel/);
-    expect(text).toContain(`When purchases open, the ${PRODUCTS.fullAnalysis.name} will be a one-time payment that never renews, and Pro will renew every month until you cancel.`);
+    // No call to buy while closed: neither card's button text is baked.
+    expect(text).not.toContain(PRICING.fa.cta.replace("{{price}}", `$${PRODUCTS.fullAnalysis.priceUsd}`));
+    expect(text).not.toContain(PRICING.pro.cta.replace("{{price}}", `$${SUBSCRIPTIONS.pro.priceUsd}`));
     // The prices themselves are still stated: they are what purchases will open at.
-    expect(text).toContain(`$${PRODUCTS.fullAnalysis.priceUsd}`);
-    expect(text).toContain(`$${SUBSCRIPTIONS.pro.priceUsd}/month`);
+    expect(text).toContain(`$${PRODUCTS.fullAnalysis.priceUsd} once`);
+    expect(text).toContain(`$${SUBSCRIPTIONS.pro.priceUsd} a month`);
   });
 
   it("llms.txt says purchases open soon on its paid line and its Pricing line, committed and baked", () => {

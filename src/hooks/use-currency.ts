@@ -128,8 +128,11 @@ const CURRENCY_MAP: Record<string, CurrencyInfo> = {
   MK: { code: "MKD", symbol: "ден", rate: 57 },       // North Macedonia
   AL: { code: "ALL", symbol: "L", rate: 93 },         // Albania
   BA: { code: "BAM", symbol: "KM", rate: 1.80 },      // Bosnia and Herzegovina
-  ME: { code: "EUR", symbol: "€", rate: 0.92 },       // Montenegro (uses EUR)
-  XK: { code: "EUR", symbol: "€", rate: 0.92 },       // Kosovo (uses EUR)
+  // Montenegro and Kosovo use the euro but are outside the EU/EEA/UK/India
+  // territory: priced in euros, create-checkout would refuse them on the
+  // currency (TERRITORY_CURRENCIES) though checkout sells there. US dollars.
+  ME: { code: "USD", symbol: "$", rate: 1 },          // Montenegro (outside the territory)
+  XK: { code: "USD", symbol: "$", rate: 1 },          // Kosovo (outside the territory)
   SI: { code: "EUR", symbol: "€", rate: 0.92 },       // Slovenia
   SK: { code: "EUR", symbol: "€", rate: 0.92 },       // Slovakia
   EE: { code: "EUR", symbol: "€", rate: 0.92 },       // Estonia

@@ -68,8 +68,7 @@
     "headline": {
       "get": "Die Jobbörse mit",
       "recruiterGrade": "Live-Stellen direkt aus den Bewerbungssystemen der Arbeitgeber",
-      "feedbackLive": "— {{n}}+ aktuelle Stellen, passend zu Ihrem Lebenslauf",
-      "feedbackPlain": "— aktuelle Stellen, passend zu Ihrem Lebenslauf"
+      "tailFreeCheck": "— und ein kostenloser Abgleich Ihres Lebenslaufs mit jeder Stellenanzeige"
     },
     "description": "Laden Sie Ihren Lebenslauf hoch und erhalten Sie ATS-optimierte Umschreibungen, Red-Flag-Warnungen und Keyword-Verbesserungen — so wie Personalverantwortliche Lebensläufe wirklich prüfen.",
     "benefits": {
@@ -152,7 +151,6 @@
     "factNoStorage": "Nie verkauft",
     "measureStrip": "Messungen statt Meinungen · Jedes Zitat verifiziert · Ein Score, der seine Arbeit zeigt",
     "jobsCta": "Live-Jobbörse — Passung prüfen, bevor Sie sich bewerben →",
-    "browseJobsLive": "{{n}}+ aktuelle Stellen durchsuchen",
     "browseJobsPlain": "Aktuelle Jobbörse durchsuchen"
   },
   "footer": {
@@ -180,7 +178,6 @@
       "lever": "Lever-Ratgeber",
       "icims": "iCIMS-Ratgeber",
       "vsJobscan": "vs. Jobscan",
-      "freelanceBoost": "Freelance Boost",
       "builder": "Lebenslauf-Editor",
       "methodology": "Methodik",
       "dataApi": "Einstellungsdaten & API",
@@ -463,6 +460,12 @@
       },
       "whatDoIGetNamed": {
         "question": "Was bekomme ich mit {{name}}?"
+      },
+      "subscriptionClosed": {
+        "answer": "Heute nicht: Noch ist nichts im Verkauf. Käufe sind bald möglich, und die Preisseite nennt vor dem Kauf, was jede bezahlte Option umfasst und ob sie sich verlängert. Der Lebenslauf-Scan, die Jobbörse und die Verbindung Ihrer eigenen KI sind kostenlos."
+      },
+      "subscriptionFaOnly": {
+        "answer": "Nein. Die vollständige Analyse für ${{price}} ist eine einmalige Zahlung, die sich nie verlängert, und ein Monatstarif ist noch nicht im Verkauf. Der Lebenslauf-Scan, die Jobbörse und die Verbindung Ihrer eigenen KI bleiben in jedem Fall kostenlos. Nichts stuft Sie automatisch hoch."
       }
     },
     "stillHaveQuestions": "Noch Fragen?",
@@ -761,7 +764,6 @@
     "featuresMobile": "Die Korrekturen Ihres Scans, angewendet. Einmalige Zahlung."
   },
   "finalCta": {
-    "urgency": "Ihr Lebenslauf könnte Sie gerade Vorstellungsgespräche kosten",
     "title": "Sie haben die Probleme gesehen. Jetzt bekommen Sie die Lösungen.",
     "subtitle": "Der kostenlose Scan zeigt, was falsch ist. Die vollständige Analyse liefert umgeschriebene Inhalte zum Kopieren.",
     "heading": "Verpassen Sie keine weitere Chance",
@@ -769,26 +771,8 @@
     "freeScan": "Kostenloser Scan",
     "fullAnalysis": "Vollständige Analyse",
     "ctaButton": "Alle Pakete ansehen",
-    "comparison": {
-      "atsScore": "ATS-Score & 24 Diagnosen",
-      "redFlags": "Red Flags & fehlende Keywords",
-      "sampleBullet": "1 Beispiel-Bullet-Umschreibung",
-      "allBullets": "ALLE Bullets mit Metriken umgeschrieben",
-      "linkedin": "LinkedIn-Profil-Optimierung",
-      "jobKeywords": "Job-spezifisches Keyword-Tailoring",
-      "industryTemplates": "Branchenspezifische Templates angewendet",
-      "fullReport": "Vollständiger 10-Abschnitte-Bericht"
-    },
-    "benefits": {
-      "ats": "ATS-Score mit 5-Punkte-Aufschlüsselung",
-      "keywords": "Branchenspezifische Keyword-Lücken",
-      "redFlags": "Red Flags, die Recruitern auffallen",
-      "linkedin": "LinkedIn-Profil-Optimierung"
-    },
     "oneTime": "einmalig",
-    "guarantee": "Sofortige Ergebnisse • Einmalige Zahlung",
     "button": "Jetzt Analyse erhalten",
-    "roi": "Ein Vorstellungsgespräch = {{price}} amortisiert",
     "freeScanCta": "Meinen Lebenslauf kostenlos scannen"
   },
   "scanProgress": {
@@ -872,19 +856,7 @@
       "impact": "Wirkung",
       "flags": "Warnsignale"
     },
-    "filterPhrase": {
-      "compliance": "starre, compliance-orientierte ATS-Filter",
-      "credential": "qualifikationsorientierte Bewerbermanagement-Systeme",
-      "recruiterScreen": "automatisierte Filter, bevor ein Recruiter ihn überhaupt sieht",
-      "volume": "ATS-Systeme, die Hunderte von Bewerbern pro Stelle filtern",
-      "generic": "automatisierte ATS-Filter"
-    },
-    "outcome": {
-      "strong": "Starker Kandidat, um {{filterPhrase}} zu bestehen",
-      "likely": "Wird voraussichtlich die meisten {{filterPhrase}} bestehen",
-      "atRisk": "Risiko, von {{filterPhrase}} herausgefiltert zu werden",
-      "highRisk": "Hohes Risiko, von {{filterPhrase}} herausgefiltert zu werden, bevor ein Mensch ihn sieht"
-    },
+    "basis": "Bewertet nach Schlüsselwörtern, Abschnitten, Format und messbaren Ergebnissen dieses Lebenslaufs",
     "gauge": {
       "excellent": "Ausgezeichnet",
       "good": "Gut",
@@ -1160,7 +1132,7 @@
     "metricTooltips": {
       "atsScore": {
         "title": "AI-ATS-Score",
-        "description": "Unsere KI simuliert, wie moderne KI-gestützte Bewerbermanagementsysteme deinen Lebenslauf scannen — dieselbe Technologie, die 98 % der Fortune-500-Unternehmen verwenden.",
+        "description": "Unsere KI simuliert, wie moderne KI-gestützte Bewerbermanagementsysteme deinen Lebenslauf scannen.",
         "whyMatters": "Ein niedriger Score bedeutet, dass Parsing- oder Keyword-Lücken Sie wahrscheinlich aus den Suchen heraushalten, die Recruiter tatsächlich ausführen."
       },
       "format": {
@@ -1171,7 +1143,7 @@
       "metrics": {
         "title": "Quantifizierungs-Score",
         "description": "Misst, wie viele deiner Erfolge Zahlen, Prozentsätze oder Kennzahlen enthalten.",
-        "whyMatters": "Recruiter scannen 6 Sekunden lang — Zahlen fallen ihnen zuerst ins Auge."
+        "whyMatters": "Recruiter überfliegen Lebensläufe — Zahlen fallen ihnen zuerst ins Auge."
       },
       "verbs": {
         "title": "Aktionsverb-Note",
@@ -1201,7 +1173,7 @@
       "readability": {
         "title": "Lesbarkeits-Score",
         "description": "Misst, wie leicht dein Lebenslauf schnell zu überblicken ist.",
-        "whyMatters": "Recruiter brauchen im Durchschnitt 6-7 Sekunden pro Lebenslauf — jedes Wort muss zählen."
+        "whyMatters": "Recruiter überfliegen jeden Lebenslauf schnell — jedes Wort muss zählen."
       },
       "bulletImpact": {
         "title": "Stichpunkt-Wirkung",
@@ -1232,66 +1204,6 @@
         "title": "KI-ATS-Systemkompatibilität",
         "description": "Zeigt, wie gut dein Lebenslauf von wichtigen KI-gestützten Bewerbermanagementsystemen wie Workday, Greenhouse und Taleo gelesen wird.",
         "whyMatters": "Verschiedene Unternehmen nutzen unterschiedliche KI-ATS-Systeme — wisse, welche deinen Lebenslauf korrekt lesen."
-      }
-    },
-    "ctaCopy": {
-      "coverLetter": {
-        "control": {
-          "button": "Anschreiben erstellen — {{price}}",
-          "description": "KI-generiertes Anschreiben, abgestimmt auf deinen Lebenslauf und die Zielstelle. In Minuten versandfertig."
-        },
-        "benefitFocused": {
-          "button": "Hol dir dein Interview-gewinnendes Anschreiben",
-          "description": "Hebe dich von über 100 Bewerbern ab mit einem personalisierten Anschreiben, das Recruiter begeistert."
-        },
-        "scarcity": {
-          "button": "Jetzt Anschreiben erstellen — {{price}}",
-          "description": "Die meisten Bewerber überspringen Anschreiben. Verschaffe dir einen Vorteil mit einem individuellen Anschreiben in 2 Minuten."
-        }
-      },
-      "keywordFix": {
-        "control": {
-          "button": "Vollständigen Keyword-Bericht erhalten",
-          "headline": "50+ Branchen-Keywords gewünscht?"
-        },
-        "benefitFocused": {
-          "button": "Versteckte Keywords freischalten",
-          "headline": "Komm am ATS-Filter vorbei"
-        },
-        "scarcity": {
-          "button": "Hol dir Keywords vor anderen",
-          "headline": "Schlage 87 % der Bewerber"
-        }
-      },
-      "premiumPackage": {
-        "control": {
-          "button": "Premium-Paket kaufen — {{price}}",
-          "headline": "Premium-Lebenslaufpaket",
-          "subtext": "Alles, was du brauchst, um Vorstellungsgespräche zu bekommen"
-        },
-        "benefitFocused": {
-          "button": "Jetzt interviewbereit werden",
-          "headline": "Lande deinen Traumjob schneller",
-          "subtext": "3x mehr Interview-Rückrufe mit unserem Komplettpaket"
-        },
-        "scarcity": {
-          "button": "Sichere dir dein Paket — begrenzt",
-          "headline": "Premium-Lebenslaufpaket"
-        }
-      },
-      "tailoredResume": {
-        "control": {
-          "button": "Angepassten Lebenslauf ansehen",
-          "description": "Kostenlose Vorschau, dann das vollständige Premium-Paket mit angepasstem Lebenslauf + Anschreiben freischalten"
-        },
-        "benefitFocused": {
-          "button": "Sieh deinen verbesserten Lebenslauf",
-          "description": "Sieh genau, wie dein Lebenslauf aussehen wird, wenn er für deine Zielrolle optimiert ist"
-        },
-        "scarcity": {
-          "button": "Jetzt generieren, bevor es endet",
-          "description": "Begrenzte Vorschau verfügbar — sieh deinen angepassten Lebenslauf, bevor du upgradest"
-        }
       }
     },
     "addJobDescriptionToUnlock": "Füge oben eine Stellenbeschreibung hinzu, um freizuschalten",
@@ -1338,10 +1250,6 @@
       "should": "Sollte",
       "nice": "Nett"
     },
-    "atRiskOrNeedsImprovement": {
-      "atRisk": "Risiko, in Recruiter-Suchen übersehen zu werden",
-      "needsImprovement": "Verbesserung nötig, um wettbewerbsfähig zu sein"
-    },
     "personalizedTipsSection": {
       "title": "Personalisierte Tipps",
       "subtitle": "Maßgeschneiderte Einblicke für dein Profil"
@@ -1369,18 +1277,6 @@
     "fixChecklistTitle": "Korrektur-Checkliste",
     "checklistCompleted": "{{completed}}/{{total}} abgeschlossen",
     "trackProgress": "Fortschritt verfolgen",
-    "peerBenchmark": {
-      "above": "Überdurchschnittlich",
-      "at": "Durchschnittlich",
-      "below": "Unterdurchschnittlich",
-      "forAtsReadinessAmong": "für ATS-Bereitschaft unter {{cohort}}",
-      "strongPosition": "✓ Starke Position in deiner Branche",
-      "roomForImprovement": "→ Verbesserungspotenzial",
-      "belowAverage": "⚠ Unter dem Branchendurchschnitt",
-      "strongResult": "Dein Lebenslauf schneidet im Vergleich zu Mitbewerbern gut ab. Konzentriere dich auf die Anpassung an bestimmte Rollen für beste Ergebnisse.",
-      "competitiveResult": "Dein Lebenslauf ist wettbewerbsfähig, könnte aber stärker sein. Die folgenden Vorschläge helfen dir, dich abzuheben.",
-      "weakResult": "Andere Kandidaten in deinem Bereich erzielen höhere Werte. Wende die folgenden Korrekturen an, um deine Chancen zu verbessern."
-    },
     "timelineProgression": {
       "rapidLabel": "🚀 Schnell",
       "steadyLabel": "📈 Stetig",
@@ -1408,11 +1304,6 @@
       "naturalProgression": "Natürlicher nächster Schritt",
       "lateralMove": "Seitlicher Wechsel",
       "stretchGoal": "Ambitioniertes Ziel"
-    },
-    "marketPosition": {
-      "aboveMarket": "Über dem Markt",
-      "atMarket": "Auf Marktniveau",
-      "belowMarket": "Unter dem Markt"
     },
     "formatRecommendationSection": {
       "title": "Lebenslaufformat-Empfehlung",
@@ -1517,8 +1408,6 @@
     },
     "jobMatch": {
       "title": "Jobübereinstimmungsanalyse",
-      "badge": "Kostenlos & Unbegrenzt",
-      "subtitle": "Vergleiche deinen Lebenslauf mit einer Stelle — keine Limits!",
       "matchScore": "Übereinstimmungswert",
       "matchGrade": "Übereinstimmungsnote",
       "experienceFit": "Erfahrungspassung",
@@ -1541,17 +1430,9 @@
         "subtitle": "Vollständig zugeschnittener Lebenslauf, Anschreiben, ehrliche Kompetenzlücken-Hinweise und eine Einreichungscheckliste — du prüfst und bewirbst dich selbst"
       }
     },
-    "appRecommendation": {
-      "strongApply": "✓ Starke Übereinstimmung — Jetzt bewerben!",
-      "applyWithChanges": "⚡ Gut geeignet — Nach schnellen Korrekturen bewerben",
-      "applyAsStretch": "🎯 Herausfordernde Stelle — Als ambitionierte Bewerbung einreichen",
-      "doNotApply": "✗ Schlechte Eignung — Andere Stellen in Betracht ziehen"
-    },
     "atsBanner": {
-      "belowMedian": "Unter dem Median von {{median}} bei {{n}} hier gescannten Lebensläufen aus {{industry}}. Die großen ATS-Plattformen lehnen nicht anhand dieser Zahl ab, aber die Korrekturen unten erhöhen sie.",
-      "belowTopQuarter": "Über dem Median von {{median}}; das oberste Viertel der {{n}} hier gescannten Lebensläufe aus {{industry}} erreicht {{p75}} oder mehr.",
-      "noPassMark": "Das ist keine Bestehensgrenze: Die großen ATS-Plattformen lehnen einen Lebenslauf nicht anhand einer Punktzahl ab. Die Korrekturen unten erhöhen sie.",
-      "topQuarter": "Oberstes Viertel: {{p75}}+"
+      "heading": "Spielraum, diese Punktzahl zu erhöhen",
+      "noPassMark": "Das ist keine Bestehensgrenze: Die großen ATS-Plattformen lehnen einen Lebenslauf nicht anhand einer Punktzahl ab. Die Korrekturen unten erhöhen sie."
     },
     "eliteSignals": {
       "title": "Recruiter-anziehende Signale"
@@ -1567,19 +1448,12 @@
       "whyLabel": "Warum:",
       "whyNote": "Menschen wollen zuerst Klarheit — Gründe sind wichtiger als Lösungen."
     },
-    "howYouCompare": {
-      "title": "Wie du abschneidest",
-      "subtitle": "Sieh, wie dein Lebenslauf im Vergleich zu anderen {{industry}}-Fachleuten abschneidet",
-      "you": "Du",
-      "others": "Andere",
-      "getJobSpecific": "Jobspezifische Analyse erhalten"
-    },
     "careerTimeline": {
       "title": "Karrierezeitstrahl",
       "totalExp": "Gesamterfahrung",
       "totalExpDesc": "Wie lange du in deinem Bereich gearbeitet hast",
       "avgTenure": "Durchschn. Zeit pro Job",
-      "tenureGood": "✓ Gute Stabilität — Recruiter bevorzugen 2+ Jahre pro Stelle",
+      "tenureGood": "✓ Im Schnitt zwei Jahre oder mehr pro Stelle",
       "tenureWarning": "⚠ Kurze Beschäftigungsdauer könnte Fragen aufwerfen",
       "tenurePoor": "⚠ Sehr kurz — könnte als Job-Hopping gesehen werden",
       "careerGrowth": "Karrierewachstum"
@@ -1594,9 +1468,6 @@
       "uniqueValue": "Dein einzigartiger Wert",
       "nextMoves": "Deine nächsten Karriereschritte",
       "interviewStories": "Interview-Story-Ideen",
-      "salaryInsightTitle": "Gehaltseinblick",
-      "estimatedRange": "geschätzte Spanne",
-      "negotiationLeverage": "Deine Verhandlungshebel:",
       "hiddenStrengths": "Verstärkte Stärken, die du unterschätzt",
       "personalBrand": "Deine persönliche Marke",
       "currentLabel": "Aktuell:",
@@ -1681,26 +1552,14 @@
       "skillsHighlighted": "Fähigkeiten hervorgehoben",
       "instantDownload": "Sofort-Download"
     },
-    "competitivePosition": {
-      "top": "🏆 Topkandidat",
-      "competitive": "💪 Wettbewerbsfähig",
-      "middle": "📊 Mittelfeld",
-      "unlikely": "⚠️ Kaum Chancen",
-      "yourAdvantage": "Dein Vorteil",
-      "yourGap": "Deine Lücke"
-    },
     "cta": {
-      "fixIssues": "Sehen, was Bewerbungen kostet — {{price}}",
       "getFullAnalysis": "Meinen bewerbungsfertigen Lebenslauf holen — {{price}}",
       "socialProof": "{{count}} Lebensläufe heute geprüft"
     },
     "enterprise": {
-      "verdictLabel": "Das Urteil",
       "verdictEvidence": "Alles darunter ist der Beweis — und die Lösung.",
       "downloadPdf": "PDF-Zusammenfassung herunterladen",
       "nextActionLabel": "Ihre wichtigste nächste Maßnahme",
-      "howYouCompare": "So schneiden Sie ab",
-      "interviewLikelihood": "Wahrscheinlichkeit einer Interview-Einladung",
       "xrayTitle": "Lebenslauf-Röntgen",
       "emailTitle": "Bericht per E-Mail senden",
       "emailDesc": "Erhalten Sie diese Zusammenfassung und Ihren Verbesserungsplan per E-Mail — praktisch zum späteren Abarbeiten.",
@@ -1711,12 +1570,10 @@
       "pulseConfirmSent": "Falls diese Adresse den monatlichen Markt-Puls noch nicht bestätigt hat, haben wir ihr einen Bestätigungslink gesendet. Der Puls startet erst, wenn dieser Link angeklickt wird.",
       "pulseNotCovered": "Der monatliche Markt-Puls deckt Ihr Fachgebiet noch nicht ab, daher wurde keine Bestätigung gesendet.",
       "dripConfirmSent": "Ihre Bericht-E-Mail enthält einen Button, mit dem Sie die Fix-Plan-E-Mails starten. Bis Sie ihn drücken, senden wir nichts weiter.",
-      "placementTopQuartile": "Oberstes Quartil von {{n}} echten {{industry}}-Scans",
-      "placementAboveMedian": "Über dem Median von {{n}} echten {{industry}}-Scans",
-      "placementBelowMedian": "Unter dem Median von {{n}} echten {{industry}}-Scans",
-      "placementBottomQuartile": "Unterstes Quartil von {{n}} echten {{industry}}-Scans — großes Potenzial mit den Fixes unten",
       "emailSpotted": "Diese Adresse stand auf Ihrem Lebenslauf — gesendet wird nur, wenn Sie auf Senden klicken.",
-      "dripOptIn": "Meinen Plan als kurze E-Mail-Sequenz: die wichtigsten Fixes an Tag 2, der Rest an Tag 4, eine Rescan-Erinnerung an Tag 6 — und eine Frage an Tag 14: gab es Vorstellungsgespräche? Vier kurze E-Mails, jederzeit abbestellbar."
+      "dripOptIn": "Meinen Plan als kurze E-Mail-Sequenz: die wichtigsten Fixes an Tag 2, der Rest an Tag 4, eine Rescan-Erinnerung an Tag 6 — und eine Frage an Tag 14: gab es Vorstellungsgespräche? Vier kurze E-Mails, jederzeit abbestellbar.",
+      "summaryLabel": "Zusammenfassung",
+      "summaryLine": "ATS-Score {{score}}/100: {{critical}} kritisch, {{warnings}} zu prüfen, {{passed}} bestanden."
     },
     "targeting": {
       "title": "Rollen, für die dieser Lebenslauf durchs Screening kommt",
@@ -2596,13 +2453,6 @@
     "strong": "Stark",
     "keyMetricsToInclude": "Wichtige Kennzahlen zum Einbeziehen:",
     "commonMistakesFor": "Häufige {{name}}-Fehler:",
-    "howYouCompareIn": "Wie du in {{name}} abschneidest",
-    "yourScore": "Dein Score",
-    "industryAverage": "{{name}}-Durchschnitt",
-    "topPerformers": "Top-Performer",
-    "benchmarkTop": "Überdurchschnittliche ATS-Bereitschaft für deine Branche.",
-    "benchmarkAverage": "Im ATS-Durchschnitt für deine Branche.",
-    "benchmarkBelow": "Unter dem ATS-Durchschnitt für deine Branche (behebbar).",
     "yourTopPriorities": "Deine wichtigsten Prioritäten",
     "commonIndustryMistakes": "Häufige Lebenslauffehler in {{name}}",
     "industryBulletExamples": "{{name}}-Beispielpunkte",
@@ -2827,49 +2677,6 @@
       }
     }
   },
-  "pricingPage": {
-    "metaTitle": "Preise — Resume Booster",
-    "metaDescription": "Einmal-Tools von ${{lowPrice}} bis ${{highPrice}}, die sich nie verlängern, oder Pro für ${{proPrice}} im Monat mit allen Tools inklusive. Lebenslauf auf Recruiter-Niveau.",
-    "noSubscriptions": "Einmalzahlungen • Verlängern sich nie automatisch",
-    "titlePrefix": "Wähle deinen",
-    "titleHighlight": "Lebenslauf-Boost",
-    "subtitle": "Von schnellen Korrekturen bis zu kompletten Karrierepaketen. Einmalprodukte zahlen Sie einmal; Pro verlängert sich monatlich, bis Sie kündigen.",
-    "secureCheckout": "Sicherer Checkout",
-    "instantAccess": "Sofortiger Zugang",
-    "stripeProtected": "Durch Stripe geschützt",
-    "premiumPackages": "Premium-Pakete",
-    "premiumSubtitle": "Komplette Tools für die Karrieretransformation",
-    "oneTime": "einmalig",
-    "processing": "Verarbeitung läuft...",
-    "uploadResumeFirst": "Zuerst Lebenslauf hochladen",
-    "getProduct": "{{name}} erhalten",
-    "requiresUpload": "Erfordert das Hochladen deines Lebenslaufs zur Analyse",
-    "whyResumeBooster": "Warum Resume Booster?",
-    "questions": "Fragen?",
-    "allProductsOneTime": "Jedes Tool ist ein Einmalkauf mit sofortigem Zugang und verlängert sich nie. Pro ist ein Monatsplan, jederzeit kündbar.",
-    "freeScanLink": "kostenlosen Scan",
-    "seeScoreFirst": "um zuerst deine Punktzahl zu sehen.",
-    "tryFreeScanFirst": "Zuerst kostenlosen Scan ausprobieren",
-    "ladderTitle": "Drei Wege hinein",
-    "ladderSubtitle": "Die meisten brauchen genau einen davon — der restliche Katalog steht darunter, falls gewünscht.",
-    "ladderFreeTitle": "Kostenlos starten",
-    "ladderFreeDesc": "Der vollständige Diagnose-Scan — Score, Benchmarks, Ihre schwächsten Zeilen umgeschrieben, Zielrollen. Ohne Anmeldung.",
-    "ladderFreeCta": "Lebenslauf kostenlos scannen",
-    "ladderFixDesc": "Die Komplettlösung: vollständige Analyse, Ihr Lebenslauf ATS-sauber umgeschrieben und ein passendes Anschreiben.",
-    "ladderSpecialistDesc": "Für Quereinsteiger: Freelance-, Gig- und Projektarbeit übersetzt in Recruiter-taugliche Berufserfahrung.",
-    "allToolsToggle": "Alle Tools ansehen ({{count}} weitere)",
-    "guarantee": "Jedes kostenpflichtige Tool ist abgesichert: nicht zufrieden mit dem Ergebnis? Wir generieren es kostenlos neu — antworten Sie einfach auf Ihre Quittung.",
-    "passLine": "Ihr eigenes Claude oder ChatGPT zu verbinden ist kostenlos: Durchsuchen Sie die Jobbörse im Chat und bewerben Sie sich selbst auf der Website des Arbeitgebers, mit Hilfe Ihrer KI. Wir senden niemals eine Bewerbung für Sie ab.",
-    "passLink": "Verbinden Sie Ihre KI",
-    "buyProduct": "{{name}} holen",
-    "freeScanLeadIn": "Noch unsicher? Starten Sie den",
-    "heroBadgeLine": "Kostenlos suchen, 5 $ für eine tiefe Analyse oder Pro für die Schreibwerkzeuge",
-    "ladderAnalysisDesc": "Jede Schlüsselwortlücke und jedes ATS-Problem in Ihrem Lebenslauf, bewertet an der Stelle, die Sie einfügen, mit der Lösung für jedes. Kein Konto nötig; in Pro enthalten.",
-    "ladderSubtitleLine": "Die meisten brauchen genau eines davon.",
-    "metaDescriptionFa": "Kostenlose Jobsuche und Lebenslauf-Scan. Eine vollständige Analyse für ${{lowPrice}}, einmal bezahlt, oder Pro für ${{proPrice}} im Monat für die Schreibwerkzeuge.",
-    "oneTimeAndProLineFa": "Die vollständige Analyse für ${{price}} wird einmal bezahlt und verlängert sich nie; Pro ist ein Monatstarif, den Sie jederzeit kündigen können.",
-    "subtitleLine": "Suchen und scannen Sie kostenlos. Zahlen Sie einmal für eine tiefe Lebenslaufanalyse, oder nehmen Sie Pro für die Schreibwerkzeuge bei den Stellen, auf die Sie sich bewerben."
-  },
   "scanPackPurchase": {
     "topUpCredits": "Credits aufladen",
     "perCreditUseAnytime": "{{price}} pro Credit • Jederzeit nutzbar",
@@ -3085,20 +2892,6 @@
       "fix3": "3 weitere Branchenbegriffe einfügen"
     }
   },
-  "peerBenchmark": {
-    "howYouCompare": "Wie du abschneidest",
-    "percentile": "Perzentil",
-    "industryAverage": "Branchendurchschnitt: {{score}}",
-    "topPerformers": "Spitzenreiter: {{score}}+",
-    "toAverage": "Zum Durchschnitt",
-    "toTopTier": "Zur Spitzengruppe",
-    "topPerformer": "Du bist ein Spitzenkandidat!",
-    "levelTip": "Tipp für {{level}}",
-    "benchmarkedAgainst": "Verglichen mit anderen {{role}}-Kandidaten",
-    "topPct": "Top {{pct}} % bei ATS-Bereitschaft unter {{cohort}}",
-    "aroundAverage": "Durchschnittliche ATS-Bereitschaft unter {{cohort}}",
-    "belowAverage": "Unterdurchschnittliche ATS-Bereitschaft unter {{cohort}} (behebbar)"
-  },
   "skillsGapAnalysis": {
     "title": "Kompetenzlückenanalyse für {{role}}",
     "roleMatchScore": "Rollenübereinstimmungswert",
@@ -3161,28 +2954,13 @@
     }
   },
   "competitorBenchmark": {
-    "title": "So stechen Top-{{role}}s hervor",
-    "basedOnAnalysis": "Basierend auf der Analyse erfolgreicher {{role}}-Lebensläufe, die Vorstellungsgespräche erhalten",
-    "competitiveStanding": "Deine Wettbewerbsposition",
-    "topElements": "Du hast Elemente, die Top-Kandidaten enthalten!",
-    "addFewMore": "Füge einige weitere Elemente hinzu, um mit Spitzenkandidaten zu konkurrieren",
-    "addElements": "Füge diese Elemente hinzu, um mit Spitzenreitern mithalten zu können",
-    "sectionsAlwaysInclude": "Abschnitte, die Top-{{role}}s immer enthalten:",
-    "whatMakesStandOut": "Was Top-Lebensläufe auszeichnet:",
-    "pctTopCandidates": "Wie viel % der Top-Kandidaten enthalten:",
-    "avgBullets": "Durchschn. Aufzählungspunkte pro Stelle:",
-    "youBullets": "Du: {{count}}",
-    "topBullets": "Top: {{count}}",
-    "quickWins": "Schnelle Erfolge im Wettbewerb:",
-    "addPortfolio": "Portfolio/GitHub-Links hinzufügen ({{pct}} % der Top-Kandidaten haben sie)",
-    "addCerts": "Relevante Zertifizierungen auflisten ({{pct}} % der Top-Kandidaten haben sie)",
-    "addMetrics": "Kennzahlen zu deinen Aufzählungspunkten hinzufügen ({{pct}} % der Top-Lebensläufe quantifizieren Leistungen)",
-    "addBullets": "{{count}} weitere Aufzählungspunkte pro Stelle hinzufügen",
-    "checklistItems": {
-      "portfolio": "Portfolio/GitHub-Links",
-      "certifications": "Zertifizierungen",
-      "quantifiedAchievements": "Quantifizierte Leistungen"
-    }
+    "title": "Was Lebensläufe als {{role}} meist enthalten",
+    "sectionsAlwaysInclude": "Abschnitte, die Lebensläufe als {{role}} meist haben:",
+    "whatMakesStandOut": "Was hilft, aufzufallen:",
+    "quickWins": "Lohnt sich, wenn es auf dich zutrifft:",
+    "addPortfolio": "Portfolio- oder GitHub-Links",
+    "addCerts": "Relevante Zertifizierungen, auch laufende",
+    "addMetrics": "Zahlen in deinen Aufzählungspunkten: Umfang, eingesparte Zeit, Ergebnisse"
   },
   "jobComparisonCTA": {
     "compareToRoles": "Sieh, wie du im Vergleich zu deinen Zielstellen abschneidest:"
@@ -3462,7 +3240,6 @@
     "resumeScore": "Lebenslauf-ATS-Score",
     "results": "{{name}}s Ergebnisse",
     "poweredBy": "Bereitgestellt von",
-    "brand": "resumescanner.ai",
     "outOf": "/100",
     "industry": "Branche",
     "experience": "Erfahrung",
@@ -3470,7 +3247,7 @@
     "improvement": "Verbesserung",
     "improvementPts": "+{{pts}} Punkte",
     "topStrength": "Top-Stärke",
-    "getScore": "Hol dir deinen kostenlosen Lebenslauf-Score auf resumescanner.ai",
+    "getScore": "Hol dir deinen kostenlosen Lebenslauf-Score auf {{site}}",
     "previewLabel": "Vorschau deiner herunterladbaren Score-Karte",
     "download": "Herunterladen",
     "downloaded": "Heruntergeladen!",
@@ -3486,8 +3263,7 @@
     "downloadingInstead": "Stattdessen Bild herunterladen...",
     "copyNotSupported": "Kopieren nicht unterstützt",
     "imageDownloaded": "Bild heruntergeladen!",
-    "uploadLinkedIn": "Lade es in deinen LinkedIn-Beitrag hoch, um aufzufallen",
-    "shareText": "Gerade {{score}}/100 bei meinem Lebenslauf-ATS-Scan erzielt! 📊\n\nBranche: {{industry}}\nTop-Stärke: {{strength}}\n\nHol dir deinen kostenlosen Lebenslauf-Score → resumescanner.ai\n\n#lebenslauf #jobsuche #karriere #ATS"
+    "uploadLinkedIn": "Lade es in deinen LinkedIn-Beitrag hoch, um aufzufallen"
   },
   "smartRecommendations": {
     "personalizedFor": "Personalisiert für dich",
@@ -5179,7 +4955,7 @@
       "everythingFree": "Alles aus einem kostenlosen Konto, plus die Schreibwerkzeuge",
       "fullAnalysisIncluded": "Die vollständige Analyse für 5 $ ist enthalten",
       "noDailyScanCap": "Keine tägliche Obergrenze für Scans",
-      "writingTools": "Ein angepasster Lebenslauf, ein Anschreiben und eine Gesprächsvorbereitung für Ihre Stellen: bis zu 5 Sets pro Tag und 60 pro Monat"
+      "writingToolsPackages": "Ein angepasster Lebenslauf, ein Anschreiben und eine Gesprächsvorbereitung für Ihre Stellen: bis zu 5 Pakete pro Tag und 60 pro Monat"
     },
     "renewsOn": "Verlängert sich am {{date}}",
     "retiredPlanEnds": "Er endet am {{date}} und verlängert sich nicht. Die Pro-Werkzeuge bleiben bis dahin aktiv.",
@@ -5191,6 +4967,7 @@
     "secureSignedIn": "Sicherer Bezahlvorgang über Stripe. Jederzeit kündbar – keine Bindung.",
     "secureSignedOut": "Sie melden sich zuerst an, damit der Tarif zu Ihrem Konto gehört. Sicherer Bezahlvorgang über Stripe; jederzeit kündbar.",
     "summaryLine": "Alles aus einem kostenlosen Konto, plus die Schreibwerkzeuge, die vollständige Analyse für 5 $ inklusive und keine tägliche Obergrenze für Scans",
+    "summaryLineWithoutAnalysis": "Alles aus einem kostenlosen Konto, plus die Schreibwerkzeuge und keine tägliche Obergrenze für Scans",
     "title": "Resume Booster Pro",
     "toast": {
       "alreadyMemberBody": "Ihr Tarif ist in diesem Konto bereits aktiv.",
@@ -5303,19 +5080,6 @@
     "headline2": "Aktuelle Stellen passend zu „{{q}}“",
     "sub2": "Aktuelle Stellenanzeigen aus den eigenen Bewerbungssystemen der Arbeitgeber. Du bewirbst dich auf der Website des Arbeitgebers, auf Wunsch mit Hilfe deiner eigenen KI. Hier die besten Treffer:",
     "ctaYourAi": "Mit Hilfe deiner eigenen KI bewerben"
-  },
-  "homeHero": {
-    "headlinePre": "Live-Stellen, direkt aus den Bewerbungssystemen der Arbeitgeber.",
-    "statOpenings": "aktuelle Stellen",
-    "statCompanies": "Unternehmen",
-    "ctaPrimary": "Lebenslauf hochladen — kostenlos",
-    "ctaSecondary": "Board durchsuchen",
-    "reassure": "Kostenloser Scan · ohne Karte, ohne Anmeldung",
-    "exploreCta": "Nach Bereich erkunden",
-    "statCompanyBoards": "Unternehmens-Jobportale mit offenen Stellen",
-    "badge2": "Live-Jobbörse + deine eigene KI",
-    "headlineHighlight2": "Bewirb dich selbst, mit Hilfe deiner eigenen KI.",
-    "sub2": "Stellen direkt aus den eigenen Bewerbungssystemen der Unternehmen, den ganzen Tag über neu geprüft. Scanne deinen Lebenslauf kostenlos, durchsuche die Jobbörse hier oder mit Claude oder ChatGPT und bewirb dich selbst, auf Wunsch mit Hilfe deiner KI. Wir senden niemals etwas für dich ab."
   },
   "homeAgent": {
     "lead": "Nutze es mit deiner eigenen KI.",
@@ -5535,6 +5299,8 @@
     "agentDigest": "Die morgendlichen Shortlist-E-Mails beenden. Ihr Agent läuft weiter, und seine Vorschläge bleiben in Ihrem Konto."
   },
   "purchaseTerms": {
+    "finalSale": "Alle Käufe sind endgültig.",
+    "regionLine": "Noch nicht in der EU, im EWR, im Vereinigten Königreich oder in Indien erhältlich. Der Checkout weist Käufer ab, die er dort verorten kann: anhand der Währung und der Zeitzone, die Ihr Gerät meldet.",
     "agree": "Indem Sie fortfahren, stimmen Sie den <terms>Nutzungsbedingungen</terms> und der <privacy>Datenschutzerklärung</privacy> zu.",
     "renewal": "{{price}} pro Monat, verlängert sich automatisch, bis Sie kündigen. Kündigen Sie jederzeit in Ihrem Konto.",
     "agentTrial": "Neue Abonnenten erhalten {{days}} Tage kostenlos, danach {{price}} pro Monat, automatisch verlängert, bis Sie kündigen. Kündigen Sie vor Ende des Testzeitraums, wird nichts berechnet. Wer schon einmal abonniert hatte, zahlt ab dem ersten Tag.",
@@ -5643,7 +5409,7 @@
   },
   "dataApiPage": {
     "builderName": "Builder-API (geplant)",
-    "builderPrice": "${{price}} im Monat, geplant",
+    "builderPrice": "${{price}} im Monat",
     "builderBody": "Gerankte Suche, Lebenslauf-Passungsbewertung in großem Umfang und 180 Tage Schließungsdaten, zur Anzeige in Ihrem eigenen Produkt mit Quellenangabe. Keine Feeds und kein Weiterverkauf; dafür gibt es die kommerzielle Lizenz. Sagen Sie uns, ob Sie es nutzen würden.",
     "builderNotYet": "Noch nicht im Verkauf: Es wird nichts berechnet, und wir beantworten jede Anfrage per E-Mail.",
     "builderCta": "Builder anfragen"
@@ -5755,7 +5521,7 @@
   "checkoutGate": {
     "purchasesOpenSoon": "Käufe sind bald möglich. Die Jobsuche, der kostenlose Scan und ein kostenloses Konto funktionieren schon jetzt.",
     "purchasesOpenSoonTitle": "Käufe bald möglich",
-    "regionNoticeTimeZone": "Die Zeitzone Ihres Browsers liegt in der EU, im EWR, im Vereinigten Königreich oder in Indien, wo wir noch nicht verkaufen: Verkäufe dort warten, bis unsere Steuerregistrierung geklärt ist. Die Jobsuche und der kostenlose Scan funktionieren überall."
+    "regionNoticeTimeZone": "Die Zeitzone Ihres Browsers liegt in der EU, im EWR, im Vereinigten Königreich oder in Indien, wo wir noch nicht verkaufen: Verkäufe dort warten, bis unsere Steuerregistrierung geklärt ist. Die Jobsuche und der kostenlose Scan funktionieren dort trotzdem."
   },
   "checkoutRefusal": {
     "autoRenewTitle": "Bitte setzen Sie das Häkchen für die Verlängerung",

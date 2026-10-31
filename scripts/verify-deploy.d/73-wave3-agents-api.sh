@@ -168,7 +168,9 @@ ok(d.includes(W),"/data-api crawler copy names the withheld systems");
 // sentence or the wave-4 one must be there, so the line holds on either side
 // of the frontend publish and still fails a copy that states neither.
 ok(/from Claude, whose servers carry every user, calls come first from a pool of \d+ a day/.test(a)||a.includes("Claude users share one allowance"),"/agents crawler copy states the host allowance (the address gloss, wave 3 or the count-free wave-4 sentence)");
-ok(h.includes("from ChatGPT each person has their own")||h.includes("within a free daily allowance"),"/ crawler copy (the agent strip) states the host allowance");
+// Since the homepage switch-over (home-pricing) the allowance is the AI
+// section of the board-first homepage: "within a shared daily allowance".
+ok(h.includes("from ChatGPT each person has their own")||h.includes("within a free daily allowance")||h.includes("within a shared daily allowance"),"/ crawler copy (the agent strip, or the homepage AI section) states the host allowance");
 ok(/Claude(&#39;|'"'"')s users share (a larger daily pool first|one allowance)/.test(l),"llms.txt states the host allowance");'
 
 # The agent card and the front-page split are client-rendered; their English
