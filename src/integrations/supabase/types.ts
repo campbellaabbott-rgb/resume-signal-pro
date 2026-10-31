@@ -3905,21 +3905,75 @@ export type Database = {
         }
         Relationships: []
       }
+      mcp_allowance_alerts: {
+        Row: {
+          at: string
+          cap: number
+          day: string
+          share: string
+          used: number
+        }
+        Insert: {
+          at?: string
+          cap: number
+          day: string
+          share: string
+          used: number
+        }
+        Update: {
+          at?: string
+          cap?: number
+          day?: string
+          share?: string
+          used?: number
+        }
+        Relationships: []
+      }
       mcp_anon_rate: {
         Row: {
           bucket: string
           calls: number
+          cap: number | null
           day: string
         }
         Insert: {
           bucket: string
           calls?: number
+          cap?: number | null
           day: string
         }
         Update: {
           bucket?: string
           calls?: number
+          cap?: number | null
           day?: string
+        }
+        Relationships: []
+      }
+      mcp_calls_daily: {
+        Row: {
+          calls: number
+          day: string
+          host: string
+          outcome: string
+          surface: string
+          tool: string
+        }
+        Insert: {
+          calls?: number
+          day: string
+          host: string
+          outcome: string
+          surface: string
+          tool: string
+        }
+        Update: {
+          calls?: number
+          day?: string
+          host?: string
+          outcome?: string
+          surface?: string
+          tool?: string
         }
         Relationships: []
       }
@@ -7389,6 +7443,10 @@ export type Database = {
           pc_send: boolean
         }[]
       }
+      mcp_allowance_alert_claim: {
+        Args: { p_cap: number; p_share: string; p_used: number }
+        Returns: boolean
+      }
       mcp_anon_check: {
         Args: { p_global_cap: number; p_ip_cap: number; p_ip_hash: string }
         Returns: {
@@ -7397,6 +7455,38 @@ export type Database = {
           global_used: number
           ip_cap: number
           ip_used: number
+        }[]
+      }
+      mcp_connector_report: {
+        Args: { p_days?: number }
+        Returns: {
+          calls: number
+          cap: number
+          host: string
+          kind: string
+          outcome: string
+          report_day: string
+          surface: string
+          tool: string
+        }[]
+      }
+      mcp_count_call: {
+        Args: {
+          p_host: string
+          p_outcome: string
+          p_surface: string
+          p_tool: string
+        }
+        Returns: undefined
+      }
+      mcp_free_key_leads: {
+        Args: { p_days?: number }
+        Returns: {
+          busy_days: number
+          daily_quota: number
+          key_id: string
+          key_prefix: string
+          max_day_calls: number
         }[]
       }
       move_to_dlq: {
