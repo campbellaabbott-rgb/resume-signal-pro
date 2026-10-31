@@ -6148,6 +6148,10 @@ export type Database = {
         Args: { p_note?: string; p_publish?: boolean; p_sweep?: boolean }
         Returns: Json
       }
+      employer_profiles_cron_key_matches: {
+        Args: { p_key: string }
+        Returns: boolean
+      }
       employer_segment: { Args: { p_token: string }; Returns: string }
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
