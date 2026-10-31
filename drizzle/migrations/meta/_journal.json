@@ -1359,6 +1359,13 @@
       "when": 1793471974405,
       "tag": "0193_20261011200000_a_cron_that_errors_every_run_and_a_heartbeat_that_stopped_are_seen",
       "breakpoints": true
+    },
+    {
+      "idx": 194,
+      "version": "7",
+      "when": 1793472003582,
+      "tag": "0194_20261011210000_a_deleted_account_takes_the_documents_made_for_it_and_its_pro_grants",
+      "breakpoints": true
     }
   ]
 }
