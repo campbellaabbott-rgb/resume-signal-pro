@@ -1089,7 +1089,7 @@ export type Database = {
           last_used_at: string | null
           name: string
           notes: string | null
-          owner_email: string
+          owner_email: string | null
           rate_per_min: number
           revoked_at: string | null
           tier: string
@@ -1104,7 +1104,7 @@ export type Database = {
           last_used_at?: string | null
           name: string
           notes?: string | null
-          owner_email: string
+          owner_email?: string | null
           rate_per_min?: number
           revoked_at?: string | null
           tier?: string
@@ -1119,7 +1119,7 @@ export type Database = {
           last_used_at?: string | null
           name?: string
           notes?: string | null
-          owner_email?: string
+          owner_email?: string | null
           rate_per_min?: number
           revoked_at?: string | null
           tier?: string
@@ -5495,6 +5495,10 @@ export type Database = {
     }
     Functions: {
       _mig_exec: { Args: { p_sql: string }; Returns: undefined }
+      account_erase_personal_data: {
+        Args: { p_email: string; p_email_proven: boolean; p_user_id: string }
+        Returns: Json
+      }
       account_mailbox_proven: { Args: { p_user_id: string }; Returns: boolean }
       acquire_scan_slot: {
         Args: { p_max: number; p_ttl_seconds: number }
