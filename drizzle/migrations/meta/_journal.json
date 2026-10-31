@@ -1373,6 +1373,13 @@
       "when": 1793472049040,
       "tag": "0195_20261011211000_an_affiliate_is_paid_once_per_customer_and_a_disputed_payment_takes_it_back",
       "breakpoints": true
+    },
+    {
+      "idx": 196,
+      "version": "7",
+      "when": 1793472083904,
+      "tag": "0196_20261011212000_a_deleted_account_takes_its_full_analysis_not_only_the_pointer",
+      "breakpoints": true
     }
   ]
 }
