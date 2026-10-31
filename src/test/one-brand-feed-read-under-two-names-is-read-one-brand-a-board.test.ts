@@ -96,7 +96,8 @@ describe("the deploy: this branch rides job-board .95 with JPMorgan Chase", () =
     expect([...L.sharedReservation(policy, { ref: "origin/oh/integration", head: "trust/pages", mainJobBoard: "job-board.2026-09-09.93" })]).toEqual(["job-board.2026-09-09.95"]);
   });
   it("the Reyes migration waits for .95 to serve, and the names migration goes before it", () => {
-    expect(policy.migrationOrder["20261025110000"]?.after).toBe("fn:job-board@2026-09-09.95");
+    // A slice rule since the land/all recheck: the file waits for .95's first slice, which comes after its OPTIONS answer.
+    expect(policy.migrationOrder["20261025110000"]?.after).toBe("slice:job-board@2026-09-09.95");
     expect(policy.migrationOrder["20261025100000"]?.before).toEqual(["fn:job-board"]);
   });
 });

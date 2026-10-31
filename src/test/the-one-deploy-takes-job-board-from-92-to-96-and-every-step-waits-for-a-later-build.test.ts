@@ -11,8 +11,9 @@
  * policy (docs/deploy-ledger.json) and the real files:
  *   - the ledger orders the two name migrations (20261025100000,
  *     20261026100000) before the functions, and the two scope migrations
- *     (20261025110000 waiting for .95, 20261026110000 for .96) after them,
- *     each "or later", so .96 releases both and no rule is unmeetable;
+ *     (20261025110000 waiting for .95's first slice, 20261026110000 for
+ *     .96's) after them, each "or later", so .96 releases both and no rule is
+ *     unmeetable;
  *   - R1's 20261014120000 waits for process-email-queue .14.2 or later, and
  *     the perk sweep's 20261012111000 goes first (its function already serves);
  *   - wave 4's held 20261011103000 stays held in this message and is
@@ -95,8 +96,9 @@ describe("the ledger's order for one message, with .93 and .95 never served", ()
   it("R1's drain and both scope migrations wait for the build they name or later, which .96 and .14.2 are", () => {
     expect(names(phases.afterFunctions)).toEqual(["20261014120000", "20261025110000", "20261026110000"]);
     const note = (s: string) => phases.afterFunctions.find((p) => p.file.startsWith(s))?.note;
-    expect(note("20261025110000")).toBe("once job-board answers job-board.2026-09-09.95 or later");
-    expect(note("20261026110000")).toBe("once job-board answers job-board.2026-09-09.96 or later");
+    // Each waits for its build's first slice (sliceStats.build), which comes after the OPTIONS answer (land/all recheck).
+    expect(note("20261025110000")).toBe(L.sliceNote("2026-09-09.95"));
+    expect(note("20261026110000")).toBe(L.sliceNote("2026-09-09.96"));
     expect(L.buildAtLeast(repoBuild("job-board"), "job-board.2026-09-09.95")).toBe(true);
     expect(L.buildAtLeast(repoBuild("job-board"), "job-board.2026-09-09.96")).toBe(true);
     expect(L.buildAtLeast(repoBuild("process-email-queue"), "process-email-queue.2026-10-14.2")).toBe(true);

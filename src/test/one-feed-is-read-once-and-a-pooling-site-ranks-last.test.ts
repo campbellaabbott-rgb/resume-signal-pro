@@ -355,7 +355,8 @@ describe("the deploy: trust/round3 is its own reservation, and the order holds",
     expect(policy.reservations["company-profiles-phase3"].jobBoard).toBe("2026-09-09.97");
   });
   it("the scope migration waits for .96 to serve, and the names migration goes before it", () => {
-    expect(policy.migrationOrder["20261026110000"]?.after).toBe("fn:job-board@2026-09-09.96");
+    // A slice rule since the land/all recheck: the file waits for .96's first slice, which comes after its OPTIONS answer.
+    expect(policy.migrationOrder["20261026110000"]?.after).toBe("slice:job-board@2026-09-09.96");
     expect(policy.migrationOrder["20261026100000"]?.before).toEqual(["fn:job-board"]);
   });
 });

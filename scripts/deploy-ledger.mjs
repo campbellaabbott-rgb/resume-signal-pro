@@ -625,6 +625,32 @@ function migrations(policy) {
 // ── order inside one deploy ─────────────────────────────────────────────────
 const AFTER_FN = /^fn:([a-z0-9-]+)@(\d{4}-\d{2}-\d{2}\.(?:0|[1-9]\d*))$/;
 const BEFORE_FN = /^fn:([a-z0-9-]+)$/;
+/**
+ * A migration that waits for a job-board build's FIRST SLICE, not its
+ * preflight (land/all recheck, 2026-10-27). 20261025110000 and 20261026110000
+ * RAISE until job_board_meta.slice_stats.build names their build or later,
+ * and only a slice of that build writes it, at the end of its board loop
+ * (stampSliceWork), minutes after an OPTIONS request already answers it. A
+ * message that said "check with an OPTIONS request" handed Lovable a failing
+ * migration, and Lovable edits failing migrations (20261011212000). The rule
+ * orders exactly like fn:job-board@<build>; the message says what to read
+ * (the status action's sliceStats.build) and that re-applying the same file,
+ * unedited, is the remedy. Only job-board has a status action with slices.
+ */
+const AFTER_SLICE = /^slice:(job-board)@(\d{4}-\d{2}-\d{2}\.(?:0|[1-9]\d*))$/;
+/** The `after` rule's function, build and kind ("fn" or "slice"), or null for anything else. */
+function afterRule(after) {
+  const s = String(after ?? "");
+  const f = AFTER_FN.exec(s);
+  if (f) return { kind: "fn", fn: f[1], build: f[2] };
+  const sl = AFTER_SLICE.exec(s);
+  if (sl) return { kind: "slice", fn: sl[1], build: sl[2] };
+  return null;
+}
+/** The note a slice-gated migration carries in the message: what to read, and the remedy if it refuses. */
+export function sliceNote(build) {
+  return `once the job-board status action's sliceStats.build reads ${build} or later: the first slice of that build writes it, minutes after an OPTIONS request already answers ${build}, so an OPTIONS answer is not enough. If the file refuses, wait for the next slice and apply the same file again, unedited`;
+}
 
 /**
  * THE ORDER INSIDE ONE DEPLOY (S11-049). Lovable works the message top to
@@ -634,6 +660,11 @@ const BEFORE_FN = /^fn:([a-z0-9-]+)$/;
  * docs/deploy-ledger.json `migrationOrder` names, per migration stamp:
  *
  *   after:  "fn:<name>@<YYYY-MM-DD.N>"  apply once <name> answers that build or later
+ *           "slice:job-board@<YYYY-MM-DD.N>"
+ *                                       apply once job-board's status action reads
+ *                                       that build or later in sliceStats.build
+ *                                       (its first slice writes it, after OPTIONS
+ *                                       answers it; ordered as fn:job-board@...)
  *           "frontend"                  apply once the frontend is published
  *   before: ["fn:<name>", ...]          apply before <name> deploys (printed beside
  *                                       it; an `after` that puts it later is an error)
@@ -654,8 +685,8 @@ export function migrationPhases(pending, policy, rows) {
   const rules = Object.entries(order).filter(([k]) => !k.startsWith("_"));
   for (const [stamp, e] of rules) {
     if (!/^\d{14}$/.test(stamp)) out.errors.push(`migrationOrder key "${stamp}" is not a 14-digit migration stamp`);
-    if (e?.after !== undefined && e.after !== "frontend" && !AFTER_FN.test(String(e.after))) {
-      out.errors.push(`migrationOrder ${stamp}: after "${e.after}" is neither "frontend" nor "fn:<name>@<YYYY-MM-DD.N>"`);
+    if (e?.after !== undefined && e.after !== "frontend" && !afterRule(e.after)) {
+      out.errors.push(`migrationOrder ${stamp}: after "${e.after}" is neither "frontend" nor "fn:<name>@<YYYY-MM-DD.N>" nor "slice:job-board@<YYYY-MM-DD.N>"`);
     }
     for (const b of Array.isArray(e?.before) ? e.before : []) if (!BEFORE_FN.test(String(b))) out.errors.push(`migrationOrder ${stamp}: before "${b}" is not "fn:<name>"`);
   }
@@ -671,9 +702,9 @@ export function migrationPhases(pending, policy, rows) {
       out.afterFrontend.push({ file, note: "after the frontend is published" });
       continue;
     }
-    const m = AFTER_FN.exec(String(e.after));
-    if (!m) { out.pre.push({ file, note: beforeNote }); continue; } // its rule is reported above
-    const [, fn, b] = m;
+    const rule = afterRule(e.after);
+    if (!rule) { out.pre.push({ file, note: beforeNote }); continue; } // its rule is reported above
+    const { fn, build: b } = rule;
     const need = `${fn}.${b}`;
     const r = byFn.get(fn);
     if (!r) { out.errors.push(`${file} waits for ${need}, but main has no function ${fn}`); continue; }
@@ -684,7 +715,8 @@ export function migrationPhases(pending, policy, rows) {
       continue;
     }
     // Deploying in this message, or its live build could not be read: wait for it.
-    out.afterFunctions.push({ file, note: [beforeNote, `once ${fn} answers ${need} or later`].filter(Boolean).join("; ") });
+    const waitNote = rule.kind === "slice" ? sliceNote(b) : `once ${fn} answers ${need} or later`;
+    out.afterFunctions.push({ file, note: [beforeNote, waitNote].filter(Boolean).join("; "), ...(rule.kind === "slice" ? { slice: true } : {}) });
   }
   return out;
 }
@@ -812,7 +844,12 @@ export function lovableMessage({ head, draftOf = null, phases, hold = [], holds 
   }
   const these = (n) => (n === 1 ? "this migration" : `these ${n} migrations, in this order`);
   if (phases.afterFunctions.length) {
-    migs(phases.afterFunctions, `Only once the function each one names answers its build (check with an OPTIONS request), apply ${these(phases.afterFunctions.length)}:`);
+    // A slice-gated file waits for something an OPTIONS request cannot show
+    // (AFTER_SLICE): the lead says so, and each file's note says what to read.
+    const lead = phases.afterFunctions.some((m) => m.slice)
+      ? `Only once the condition after each one holds, apply ${these(phases.afterFunctions.length)}. "Answers" a build means an OPTIONS request's x-fn-build; "sliceStats.build" is what the job-board status action (a POST of {"action":"status"}) reports, which comes later:`
+      : `Only once the function each one names answers its build (check with an OPTIONS request), apply ${these(phases.afterFunctions.length)}:`;
+    migs(phases.afterFunctions, lead);
   }
   L.push(`${++step}. Publish the frontend.`);
   if (phases.afterFrontend.length) {

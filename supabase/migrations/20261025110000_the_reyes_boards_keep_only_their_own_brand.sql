@@ -25,18 +25,35 @@
 -- job_board_closures: each is still open, on its own brand's board.
 --
 -- APPLY AFTER job-board 2026-09-09.95 SERVES (docs/deploy-ledger.json
--- migrationOrder). Run while an older build serves, the unscoped read puts
--- the rows back on its next visit, so the file refuses unless
--- job_board_meta.slice_stats names .95 or later.
+-- migrationOrder), and after its first slice. Run while an older build
+-- serves, the unscoped read puts the rows back on its next visit, so the file
+-- refuses unless job_board_meta.slice_stats names .95 or later (the job-board
+-- status action's sliceStats.build), which the first slice after the deploy
+-- writes, minutes after an OPTIONS request already answers the build. If it
+-- refuses, wait for that slice and apply this same file again, unedited.
 --
 -- THE RACE THE ORDER LEAVES. Between the deploy and this file, a scoped read
 -- that reaches either board stamps the other brands' rows missing and, after
 -- the grace, closes them as takedowns. Those closures are marked suspect and
 -- listed in job_board_closure_repairs under 'reyes_brand_scope_trust_pages':
--- a closure on either board, written since .95's first slice, in a batch that
--- took more than 30% of the board at once (the scoped read removes about 47%
--- of talent.reyesholdings.com and 78% of jobportal.martinbrower.com; a real
--- day's takedowns are a few rows). Reversible:
+-- a closure on either board, written since 30 minutes before the first slice
+-- slice_stats names (buildSince), in a batch that took more than 30% of the
+-- board at once (the scoped read removes about 47% of
+-- talent.reyesholdings.com and 78% of jobportal.martinbrower.com; a real
+-- day's takedowns are a few rows).
+--
+-- WHY 30 MINUTES BEFORE IT. job-board keeps buildSince only while the build
+-- that wrote slice_stats last is its own (firstSliceOf): a slice of the older
+-- build that began before the deploy and stamps after the new build's first
+-- slice flips the record back, and the new build's next slice restarts
+-- buildSince at its own start. Closures the new build wrote in between would
+-- fall before that later bound (land/all recheck, 2026-10-27). Such a slice
+-- stops its board loop at 120 s (SLICE_WALL_BUDGET_MS) and stamps right after
+-- it, and the two refresh crons start a slice every 5 minutes (4-59/10 and
+-- 9-59/10), so the reset moves buildSince by minutes; 30 minutes covers that
+-- several times over. The cost is the 30 minutes before the first slice: a
+-- real takedown batch of more than 30% of either board then would be marked
+-- too, and is listed and reversible like every other. Reversible:
 --   UPDATE public.job_board_closures c SET suspect = false
 --     FROM public.job_board_closure_repairs r
 --    WHERE r.event_id = c.event_id AND r.repair = 'reyes_brand_scope_trust_pages';
@@ -74,9 +91,11 @@ BEGIN
   IF NOT (v_build ~ '^\d{4}-\d{2}-\d{2}\.\d{1,6}$' AND v_since ~ '^\d{4}-\d{2}-\d{2}T'
           AND (split_part(v_build, '.', 1) > '2026-09-09'
                OR (split_part(v_build, '.', 1) = '2026-09-09' AND split_part(v_build, '.', 2)::int >= 95))) THEN
-    RAISE EXCEPTION 'self-check 20261025110000: job_board_meta.slice_stats names build %, not job-board 2026-09-09.95 or later; apply this file once .95 serves, or the unscoped read puts the rows back', coalesce(v_build, '(none)');
+    RAISE EXCEPTION 'self-check 20261025110000: job_board_meta.slice_stats names build %, not job-board 2026-09-09.95 or later (applied under an older build, its unscoped read puts the rows back). Wait until the job-board status action''s sliceStats.build reads 2026-09-09.95 or later (the first slice after the deploy writes it), then apply the same file again, unedited', coalesce(v_build, '(none)');
   END IF;
-  v_bound := v_since::timestamptz;
+  -- 30 minutes before the first slice: an older slice stamping last can move
+  -- buildSince later by minutes (WHY 30 MINUTES BEFORE IT, above).
+  v_bound := v_since::timestamptz - interval '30 minutes';
 
   SELECT coalesce(array_agg(p.id), ARRAY[]::text[]) INTO v_ids
     FROM public.job_board_postings p
@@ -149,5 +168,5 @@ BEGIN
   IF v_left > 0 THEN
     RAISE EXCEPTION 'self-check 20261025110000: % listed closure(s) are still not suspect', v_left;
   END IF;
-  RAISE NOTICE 'self-check 20261025110000: % row(s) moved off the two Reyes boards as untracked exits, % closure(s) marked suspect (build %, first slice %)', v_moved, v_marked, v_build, v_since;
+  RAISE NOTICE 'self-check 20261025110000: % row(s) moved off the two Reyes boards as untracked exits, % closure(s) marked suspect (build %, first slice %, closures judged from %)', v_moved, v_marked, v_build, v_since, v_bound;
 END $$;

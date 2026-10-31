@@ -39,7 +39,13 @@ closes the gap. Policy lives in `docs/deploy-ledger.json`:
   could deploy it).
 - `drizzleBaseline`: the staged-runner record is complete from this stamp on.
 - `migrationOrder`: per migration stamp, `after` is `fn:<name>@<YYYY-MM-DD.N>`
-  (apply once that function answers that build or later) or `frontend`
+  (apply once that function answers that build or later),
+  `slice:job-board@<YYYY-MM-DD.N>` (apply once the job-board status action's
+  `sliceStats.build` reads that build or later: the build's first slice
+  writes it, minutes after an OPTIONS request answers it, so the message names
+  the status action and says a refusing file is re-applied unedited after the
+  next slice; it orders exactly like `fn:job-board@...`; land/all recheck,
+  2026-10-27) or `frontend`
   (apply once the frontend is published), and `before` lists `fn:<name>`
   the migration must precede. The message prints five steps: migrations
   before the functions, the functions, migrations after the function each

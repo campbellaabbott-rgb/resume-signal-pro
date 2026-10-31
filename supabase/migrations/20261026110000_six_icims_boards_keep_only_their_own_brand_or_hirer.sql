@@ -53,7 +53,8 @@
 -- implausible and the feed came back short). They are marked suspect here and listed
 -- in job_board_closure_repairs under 'icims_scope_trust_round_3', judged by
 -- the requisition, never by the batch alone: a closure on one of the six
--- boards since .96's first slice whose requisition a board of the same feed
+-- boards since 30 minutes before .96's first slice (buildSince; why, below)
+-- whose requisition a board of the same feed
 -- still stores with an apply link on another brand's or hirer's portal of
 -- that board's feed. That is checked before the move below, while those rows
 -- are still stored. A real takedown is never marked by it, even beside a
@@ -62,6 +63,20 @@
 -- feed stores (Delmarva Power's 3, which no board carries, or one whose every
 -- copy was closed) is marked when its batch took more than 30% of the board.
 -- The Chick-fil-A and YNV feeds have no such brand, so they have no fallback.
+--
+-- WHY 30 MINUTES BEFORE THE FIRST SLICE. job-board keeps buildSince only while
+-- the build that wrote slice_stats last is its own (firstSliceOf): a slice of
+-- the older build that began before the deploy and stamps after .96's first
+-- slice flips the record back, and .96's next slice restarts buildSince at
+-- its own start, so closures .96 wrote in between would fall before the bound
+-- (land/all recheck, 2026-10-27). A slice stops its board loop at 120 s
+-- (SLICE_WALL_BUDGET_MS) and stamps right after it, and the refresh crons
+-- start one every 5 minutes, so the reset moves buildSince by minutes. Under
+-- the older build's unscoped read every board of a feed stored every
+-- requisition, so a real takedown closed it everywhere and no other portal's
+-- copy remains to mark it by: the 30 minutes add no false mark through the
+-- requisition test, and only the Exelon fallback's batch test can mark a real
+-- takedown in them, listed and reversible like every other.
 -- Reversible:
 --   UPDATE public.job_board_closures c SET suspect = false
 --     FROM public.job_board_closure_repairs r
@@ -115,7 +130,9 @@ BEGIN
                OR (split_part(v_build, '.', 1) = '2026-09-09' AND split_part(v_build, '.', 2)::int >= 96))) THEN
     RAISE EXCEPTION 'self-check 20261026110000: job_board_meta.slice_stats names build %, not job-board 2026-09-09.96 or later (applied under an older build, its unscoped read puts the rows back). Wait until the job-board status action''s sliceStats.build reads 2026-09-09.96 (the first slice after the deploy writes it), then apply the same file again, unedited', coalesce(v_build, '(none)');
   END IF;
-  v_bound := v_since::timestamptz;
+  -- 30 minutes before the first slice: an older slice stamping last can move
+  -- buildSince later by minutes (WHY 30 MINUTES BEFORE THE FIRST SLICE, above).
+  v_bound := v_since::timestamptz - interval '30 minutes';
 
   SELECT array_agg(k) INTO v_tokens FROM jsonb_object_keys(v_scope) k;
 
@@ -213,5 +230,5 @@ BEGIN
                 AND location = 'Lake Wales (1250)' AND country = 'GB') THEN
     RAISE EXCEPTION 'self-check 20261026110000: a Kohl''s row at Lake Wales (1250) is still filed GB';
   END IF;
-  RAISE NOTICE 'self-check 20261026110000: % row(s) moved off the six iCIMS boards as untracked exits, % closure(s) marked suspect, % Kohl''s row(s) at the Lake Wales store placed in the US (build %, first slice %)', v_moved, v_marked, v_placed, v_build, v_since;
+  RAISE NOTICE 'self-check 20261026110000: % row(s) moved off the six iCIMS boards as untracked exits, % closure(s) marked suspect, % Kohl''s row(s) at the Lake Wales store placed in the US (build %, first slice %, closures judged from %)', v_moved, v_marked, v_placed, v_build, v_since, v_bound;
 END $$;
