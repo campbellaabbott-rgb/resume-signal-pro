@@ -1256,6 +1256,24 @@ export type Database = {
         }
         Relationships: []
       }
+      career_path_past_buyers: {
+        Row: {
+          confirmed_at: string
+          regenerate_until: string
+          stripe_session_id: string
+        }
+        Insert: {
+          confirmed_at?: string
+          regenerate_until: string
+          stripe_session_id: string
+        }
+        Update: {
+          confirmed_at?: string
+          regenerate_until?: string
+          stripe_session_id?: string
+        }
+        Relationships: []
+      }
       checkout_buyers: {
         Row: {
           checkout_function: string
