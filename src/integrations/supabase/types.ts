@@ -4359,6 +4359,8 @@ export type Database = {
           generation_success: boolean | null
           id: string
           last_retry_error: string | null
+          lease_token: string | null
+          lease_until: string | null
           max_retries: number
           metadata: Json | null
           next_retry_at: string | null
@@ -4388,6 +4390,8 @@ export type Database = {
           generation_success?: boolean | null
           id?: string
           last_retry_error?: string | null
+          lease_token?: string | null
+          lease_until?: string | null
           max_retries?: number
           metadata?: Json | null
           next_retry_at?: string | null
@@ -4417,6 +4421,8 @@ export type Database = {
           generation_success?: boolean | null
           id?: string
           last_retry_error?: string | null
+          lease_token?: string | null
+          lease_until?: string | null
           max_retries?: number
           metadata?: Json | null
           next_retry_at?: string | null
@@ -6026,6 +6032,16 @@ export type Database = {
       enqueue_email_delayed: {
         Args: { delay_seconds: number; payload: Json; queue_name: string }
         Returns: number
+      }
+      finish_delivery_generation: {
+        Args: {
+          p_duration_ms?: number
+          p_lease_token: string
+          p_model?: string
+          p_status?: string
+          p_stripe_session_id: string
+        }
+        Returns: boolean
       }
       fuzzy_title_search: {
         Args: {
@@ -7700,6 +7716,10 @@ export type Database = {
         Args: { p_email: string; p_password: string }
         Returns: Json
       }
+      release_delivery_lease: {
+        Args: { p_lease_token: string; p_stripe_session_id: string }
+        Returns: boolean
+      }
       release_scan_slot: { Args: { p_id: string }; Returns: undefined }
       repair_oracle_subsite_duplicates: {
         Args: { p_max_rows?: number; p_restart?: boolean }
@@ -7926,6 +7946,16 @@ export type Database = {
             Returns: string
           }
       strip_resume_keys: { Args: { p: Json }; Returns: Json }
+      take_delivery_lease: {
+        Args: {
+          p_email?: string
+          p_minutes?: number
+          p_product_type?: string
+          p_seen_status: string
+          p_stripe_session_id: string
+        }
+        Returns: string
+      }
       track_ab_event: {
         Args: {
           p_event_type: string
@@ -7964,6 +7994,7 @@ export type Database = {
           p_error?: string
           p_id: string
           p_increment_retry?: boolean
+          p_lease_token?: string
           p_status: string
         }
         Returns: boolean
