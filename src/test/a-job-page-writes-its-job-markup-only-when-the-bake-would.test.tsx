@@ -46,12 +46,17 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 // THE PUBLISHER-ONLY SET, WHATEVER IT HOLDS. The set of boards that name no
-// hirer for their postings (PUBLISHER_ONLY_BOARDS) is built on the
-// trusted-pages branch, in this module. Each test below fills it as it needs;
-// the module's own members, when it has any, are kept for the case that
-// reads them.
+// hirer for their postings (PUBLISHER_ONLY_BOARDS) lives in
+// src/lib/employer-names.ts (trust/pages moved the module there from
+// supabase/functions/_shared; company-display re-exports its
+// boardNamesItsHirer, which postingEmployer asks). Each test below fills it as
+// it needs; the module's own members are kept for the case that reads them.
+// A mock of a path that no longer resolves never runs, and this file then
+// proved nothing about the real set while every case passed (land/all
+// recheck, 2026-10-27): the first publisher-only case asserts the factory ran
+// and found a non-empty set, so a later move fails here instead.
 const hoisted = vi.hoisted(() => ({ publisherOnly: new Set<string>(), realPublisherOnly: null as ReadonlySet<string> | null }));
-vi.mock("../../supabase/functions/_shared/employer-names", async (importOriginal) => {
+vi.mock("../lib/employer-names", async (importOriginal) => {
   const real = await importOriginal<Record<string, unknown>>();
   const realSet = real.PUBLISHER_ONLY_BOARDS;
   hoisted.realPublisherOnly = realSet instanceof Set ? (realSet as ReadonlySet<string>) : null;
@@ -394,6 +399,11 @@ describe("a board that names no hirer for its postings: the page and the bake ag
   });
 
   it("for every board the module's own set holds, and for one it does not", () => {
+    // The mock above ran on the real module and found its set: without this,
+    // a moved module leaves realPublisherOnly null and every line below
+    // passes vacuously.
+    expect(hoisted.realPublisherOnly, "the employer-names mock never ran: its path resolves to no module").toBeInstanceOf(Set);
+    expect(hoisted.realPublisherOnly!.size, "the real publisher-only set is empty").toBeGreaterThan(0);
     const tokens = [...(hoisted.realPublisherOnly ?? []), "pubonly~us2~CX_9"];
     for (const token of tokens) {
       hoisted.publisherOnly.clear();
