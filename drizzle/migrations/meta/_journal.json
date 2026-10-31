@@ -1254,6 +1254,13 @@
       "when": 1793471291770,
       "tag": "0178_20261011101000_every_connector_call_is_counted_by_host_and_outcome_and_never_by_who",
       "breakpoints": true
+    },
+    {
+      "idx": 179,
+      "version": "7",
+      "when": 1793471353170,
+      "tag": "0179_20261011102000_a_hosts_users_can_spend_only_their_hosts_share_of_the_day",
+      "breakpoints": true
     }
   ]
 }

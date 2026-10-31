@@ -7457,6 +7457,40 @@ export type Database = {
           ip_used: number
         }[]
       }
+      mcp_anon_check_v2: {
+        Args: {
+          p_bucket: string
+          p_bucket_cap: number
+          p_global_bucket: string
+          p_global_cap: number
+          p_minute_cap?: number
+          p_overall_bucket?: string
+          p_overall_cap?: number
+          p_overall_minute_cap?: number
+        }
+        Returns: {
+          allowed: boolean
+          bucket_cap: number
+          bucket_used: number
+          minute_cap: number
+          minute_used: number
+          overall_cap: number
+          overall_used: number
+          refused_by: string
+          share_cap: number
+          share_used: number
+        }[]
+      }
+      mcp_anon_refund: {
+        Args: {
+          p_bucket: string
+          p_global_bucket: string
+          p_max?: number
+          p_overall: boolean
+          p_overall_bucket?: string
+        }
+        Returns: boolean
+      }
       mcp_connector_report: {
         Args: { p_days?: number }
         Returns: {
