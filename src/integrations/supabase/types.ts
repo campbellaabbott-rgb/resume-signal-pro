@@ -6000,6 +6000,24 @@ export type Database = {
           n: number
         }[]
       }
+      cron_http_answers: {
+        Args: { p_error_minutes?: number; p_minutes?: number }
+        Returns: {
+          available: boolean
+          error_window_responses: number
+          last_error_at: string
+          last_error_sample: string
+          last_error_status: number
+          last_refused_at: string
+          last_refused_sample: string
+          last_refused_status: number
+          not_found: number
+          refused: number
+          responses: number
+          server_errors: number
+          timed_out: number
+        }[]
+      }
       cron_http_refusals: {
         Args: { p_minutes?: number }
         Returns: {

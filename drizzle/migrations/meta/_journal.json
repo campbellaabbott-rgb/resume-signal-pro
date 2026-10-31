@@ -1352,6 +1352,13 @@
       "when": 1793471935577,
       "tag": "0192_20261011171000_shortlist_records_no_candidate_sex_or_race",
       "breakpoints": true
+    },
+    {
+      "idx": 193,
+      "version": "7",
+      "when": 1793471974405,
+      "tag": "0193_20261011200000_a_cron_that_errors_every_run_and_a_heartbeat_that_stopped_are_seen",
+      "breakpoints": true
     }
   ]
 }
