@@ -48,7 +48,10 @@ export function StickyBottomCTA({ isLoading }: StickyBottomCTAProps) {
   if (!isVisible || !fullAnalysisOnSale()) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-sticky animate-fade-in safe-bottom">
+    // Above the analytics banner while it is open (ConsentBanner sets
+    // --consent-banner-h), as the floating help button is, so the banner
+    // never covers the bar's price, button or dismiss control.
+    <div style={{ marginBottom: "var(--consent-banner-h, 0px)" }} className="fixed bottom-0 left-0 right-0 z-sticky animate-fade-in safe-bottom">
       <div className="bg-card border-t border-border-strong shadow-overlay">
         <div className="container py-3 sm:py-4">
           <div className="flex items-center justify-between gap-3 sm:gap-4">
