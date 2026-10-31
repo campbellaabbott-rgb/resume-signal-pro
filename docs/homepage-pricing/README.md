@@ -22,6 +22,15 @@ sections from "What was built" to "The switch-over plan" are the record of
 the branches it merged, kept as written; where they say the pages are
 reachable only through the previews, that was true before the switch-over.
 
+**On land/all (merged 2026-10-31), sales stay on and no place is refused.**
+[Landing on land/all](#landing-on-landall-2026-10-31) says what the merge
+changed in this branch's design: the owner's rules of 2026-10-27 (no sales
+pause; the EU, the EEA, the UK and India buy as today) win over the closed
+states and the region lines described below, so where a section below says a
+page shows "purchases open soon", names the territory or waits for the
+seller's name, that is the record of `hp/switch-over`, not what land/all
+ships.
+
 | Branch | Head | What |
 |---|---|---|
 | `hp/home` | 7a30bc23 | the homepage (Appendix A) |
@@ -1819,3 +1828,35 @@ checkout. The live reads the shipped page already makes
 - Screenshots, compare sheets and the JSON were in
   `keep/home-pricing-design/build/pricing/{shots,data,tools}`, emptied on
   2026-10-23; the current measurements are in "What was measured" above.
+
+## Landing on land/all (2026-10-31)
+
+`hp/switch-over` at 1890d7c7 is merged into `land/all` (wave 4, JPMorgan,
+trusted pages, trust round 3, the SPA markup gate and the census tools, with
+sales staying on), for the one deploy. The owner's rules of 2026-10-27 bind
+the merge: no sales pause (every product main sells stays sellable wherever
+main sells it, a gate defaults to today's live behaviour, and no seller
+identity is invented), and on the EU, the EEA, the UK and India, "Keep
+selling as today". What that changed here:
+
+| What `hp/switch-over` had | On land/all |
+|---|---|
+| `src/config/sales-gate.ts` shipped `FULL_ANALYSIS_ON_SALE` and `PRO_ON_SALE` false (G2, G2b) | Both true: the $5 Full Analysis and Pro are on sale, as on main. `DIGEST_MAIL_CLASS` stays "unruled" |
+| G1: every buy control, both pages and the bake waited for the seller's name and address (`purchasesOpen()`, the "seller" gate, `gateSeller`, `faGatedSeller`) | Gone. `src/lib/purchases-open.ts` keeps `fullAnalysisOnSale()` (G2) and `proOnSale()` (G2b) and reads no seller; `saleGates` and `resolveSaleGates` read the switches alone. The seller line still prints only once the owner fills `src/config/seller.ts` |
+| A switched-off control said purchases open soon | It shows no button (the comparison and the closing call to action offer the free scan); no sentence in nine languages promises a sale soon, the closed descriptions and the FAQ's closed answer included |
+| G6: "alerts" only with a transactional ruling or the seller's name | Alerts are named unless the digest is ruled marketing mail while the seller is unknown: send-search-digest sends whatever the seller's state, as on main, and no mail waits for the seller on land/all |
+| The region line in PurchaseTerms and under the Full Analysis, the "Before you buy" region notice, the pricing FAQ's region question, the homepage's territory term, the pricing descriptions' "not sold in the EU, the EEA, the UK or India yet", the buy blocks' time-zone notice | Removed in nine languages; `checkout/RegionNotice.tsx` stays deleted. "Before you buy" says all sales are final and how each product is charged |
+| Index's checkout handler refused while the Full Analysis was off sale | No switch read: the checkouts sell what main sells (land/all's handler) |
+| llms.txt committed in the closed form, `llms-lines.ts` wrote "opens for purchase soon" | llms.txt keeps land/all's open form; `llms-lines.ts` names only what the pages sell and never a later opening |
+| Builds: create-product-checkout and create-subscription-checkout 2026-10-26.1, send-market-pulse 2026-10-25.2, send-scan-report 2026-10-25.1, send-product-email 2026-10-27.1 | Each takes a build past both branches: 2026-10-31.2 for the two checkouts, 2026-10-31.1 for the three senders (send-product-email was 2026-10-27.1 on both branches, on different code). free-keyword-scan, its stream fork (2026-10-31.1) and send-search-digest (2026-10-25.1) are this branch's builds unchanged |
+| Section 99: C4 asked both pages to name the territory and the two checks; C5 asked for no priced offer while no seller is named; C6 asked for this branch's builds | C4 fails a page that names a place as unsold or drops "All sales are final"; C5 fails a page that offers no Full Analysis or Pro at a price, prints a gate note, drops a price from the /pricing description or says purchases open soon, seller named or not; C6 asks for the merged builds, and each branch's own earlier build of those five fails |
+| The old `src/pages/Pricing.tsx` | Retired, as this branch retired it; land/all's tests that mounted it mount `PricingPage` |
+
+The tests that held the closed shop or the territory now prove both gone
+(every-buy-control, the scanner's G2 test, hp-home-gates, hp-pricing-decisions,
+hp-integration-one-voice, hp-fix-alerts-one-answer, hp-bake-home-and-pricing,
+the section 99 test, the buy-line test, now named
+`the-buy-line-says-all-sales-are-final-and-names-no-place-it-does-not-sell`);
+`the-currency-signal-turns-away-no-buyer-outside-the-territory`, whose refusal
+no longer exists, is removed (its Montenegro and Kosovo prices in US dollars
+stay in `use-currency.ts`).
