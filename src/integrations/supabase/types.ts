@@ -4283,6 +4283,39 @@ export type Database = {
         }
         Relationships: []
       }
+      pro_auto_renew_consents: {
+        Row: {
+          consented_at: string
+          created_at: string
+          price_cents: number
+          renewal_interval: string
+          renewal_terms_version: string
+          stripe_session_id: string
+          terms_version: string | null
+          user_id: string | null
+        }
+        Insert: {
+          consented_at: string
+          created_at?: string
+          price_cents: number
+          renewal_interval?: string
+          renewal_terms_version: string
+          stripe_session_id: string
+          terms_version?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          consented_at?: string
+          created_at?: string
+          price_cents?: number
+          renewal_interval?: string
+          renewal_terms_version?: string
+          stripe_session_id?: string
+          terms_version?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       pro_grants: {
         Row: {
           consumed_at: string | null

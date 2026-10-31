@@ -1324,6 +1324,13 @@
       "when": 1793471812519,
       "tag": "0188_20261011150000_a_pro_member_mints_ten_grants_a_day_a_checkout_names_its_buyer_and_a_cancelled_plan_says_so",
       "breakpoints": true
+    },
+    {
+      "idx": 189,
+      "version": "7",
+      "when": 1793471836151,
+      "tag": "0189_20261011151000_a_pro_plan_renews_only_for_a_buyer_whose_consent_is_on_record",
+      "breakpoints": true
     }
   ]
 }
