@@ -599,7 +599,7 @@ export function applyRollbacks(rows, policy) {
  * only its file's command begins with, which get_cron_health reports as
  * ch_timeout. Another timeout, or none, leaves the migration pending.
  *
- *   returns { pending: [file], proven: [{ file, jobs }], unproven: [{ file, why }] }
+ *   returns { pending: [file], proven: [{ file, jobs, timeouts? }], unproven: [{ file, why }] }
  */
 export function behaviourApplied(pending, policy, cronRows) {
   const proofs = Object.entries(policy?.appliedByBehaviour ?? {}).filter(([k]) => /^\d{14}$/.test(k));
