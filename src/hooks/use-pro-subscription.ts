@@ -6,7 +6,6 @@ import i18n from "@/i18n";
 import { checkoutContext } from "@/lib/track-transport";
 import { consentWasRequired, purchaseTerms, purchaseTermsUnused } from "@/lib/purchase-terms";
 import { checkoutRefusalOf } from "@/lib/checkout-refusal";
-import { territoryHint } from "@/lib/checkout-territory";
 import { stashedSessionIdFor } from "@/lib/auth-fragment";
 
 /** How often, and how many times, a buyer back from Stripe is re-checked until the plan reads live. */
@@ -161,16 +160,15 @@ export function useProSubscription() {
       try {
         const { data, error } = await supabase.functions.invoke("create-subscription-checkout", {
           // The page's language: Stripe shows the renewal terms in it.
-          body: { email, language: i18n.language, ...checkoutContext(), ...purchaseTerms(), ...territoryHint() },
+          body: { email, language: i18n.language, ...checkoutContext(), ...purchaseTerms() },
         });
         if (await consentWasRequired(error, data)) {
           purchaseTermsUnused();
           toast({ title: i18n.t("purchaseTerms.consentNeeded"), variant: "destructive" });
           return false;
         }
-        // A refusal written for the buyer: the territory's 451 (S12-059), the
-        // seller gate's 409 and the renewal box's 400 (owner decisions
-        // 2026-10-17). Nothing started, so the ticked box goes back.
+        // A refusal written for the buyer: the renewal box's 400 (owner
+        // decision 2026-10-17). Nothing started, so the ticked box goes back.
         const refusal = error ? await checkoutRefusalOf(error) : null;
         if (refusal) {
           purchaseTermsUnused();

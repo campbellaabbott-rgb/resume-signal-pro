@@ -7,7 +7,6 @@ import { clientAddressOr } from "../_shared/client-address.ts";
 import { accountProStanding } from "../_shared/pro.ts";
 import { FULL_ANALYSIS_PRODUCT_NAME, FULL_ANALYSIS_PRODUCT_TYPE } from "../_shared/full-analysis.ts";
 import { checkoutOrigin, euConsentAnswer, euConsentRefusal, euSalesPolicy, policyMetadata, sessionPolicy } from "../_shared/checkout-policy.ts";
-import { ipinfoLookup, territoryAnswer, territoryPolicy, territoryRefusal, withBillingAddress } from "../_shared/sales-territory.ts";
 import {
   buyerMetadata, buyerSessionFields, CALLER_UNAVAILABLE_BODY, checkoutCaller, fairUseAnswer, grantCapOf, recordCheckoutBuyer,
   refusedCallerBody,
@@ -32,7 +31,14 @@ import { planPaid, UNPAID_PLAN_NOTE } from "../_shared/consumable-paid.ts";
 // 2026-10-27.1 (sales stay on, owner 2026-10-27): the analysis is sold
 // whether or not the seller's name and address are filled in, as on main;
 // the GET answers the EU/UK switch and the territory only, as before.
-const FN_BUILD = "create-checkout.2026-10-27.1";
+// 2026-10-31.1 (owner 2026-10-27, on the EU, the EEA, the UK and India: "keep
+// selling as today"): nobody is refused for where they are. A buyer there
+// checks out as on main: no currency, time zone, country header or address
+// lookup refuses a sale, the GET answers the EU/UK switch alone (no
+// territoryRefused), and the session asks for a billing address only with the
+// switch on, as sessionPolicy always did. The RU/NG/PK block is main's, as
+// before.
+const FN_BUILD = "create-checkout.2026-10-31.1";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -308,7 +314,7 @@ serve(async (req) => {
   // buy buttons can show the box the moment the owner turns it on.
   if (req.method === "GET") {
     const env = (k: string) => Deno.env.get(k);
-    return new Response(JSON.stringify({ ...euSalesPolicy(env), ...territoryPolicy(env) }), {
+    return new Response(JSON.stringify(euSalesPolicy(env)), {
       headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "public, max-age=60" },
     });
   }
@@ -533,19 +539,6 @@ serve(async (req) => {
       if (standing.trialing) logStep("Trialing plan: the full analysis is bought, not minted, while the trial runs");
     }
 
-    // NO SALE INTO THE EU, THE EEA, THE UK OR INDIA WHILE THE SWITCH IS OFF
-    // (S12-059): a euro or pound price is itself the page saying so, and no
-    // such session is minted. After the grant (a member's included analysis
-    // is not a sale), before Stripe.
-    const territory = await territoryRefusal({
-      env, headers: req.headers, body: requestBody, currency: requestedCurrency ?? null, address: clientIp, lookup: ipinfoLookup(env),
-    });
-    if (territory) {
-      const answer = territoryAnswer(territory, { body: requestBody, acceptLanguage: req.headers.get("accept-language") });
-      logStep("Refused: the buyer is in the VAT territory", { signal: territory.signal });
-      return new Response(JSON.stringify(answer.body), { status: answer.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
-
     // The EU/UK switch (off by default): a paid report delivered at once
     // needs the buyer's waiver of the withdrawal period first.
     const consentMissing = euConsentRefusal(env, "payment", requestBody);
@@ -638,8 +631,8 @@ serve(async (req) => {
       ...(receiptEmail ? { customer_email: receiptEmail } : {}),
       // Additional reliability settings
       expires_at: Math.floor(Date.now() / 1000) + 30 * 60, // Session expires in 30 minutes
-      // A signed-in buyer's receipt; the billing address; tax only with the EU/UK switch on.
-      ...(withBillingAddress(sessionPolicy({ mode: "payment", env, receiptEmail })) as Partial<Stripe.Checkout.SessionCreateParams>),
+      // A signed-in buyer's receipt; tax and the billing address only with the EU/UK switch on.
+      ...(sessionPolicy({ mode: "payment", env, receiptEmail }) as Partial<Stripe.Checkout.SessionCreateParams>),
     };
 
     if (promotionCodeId) {

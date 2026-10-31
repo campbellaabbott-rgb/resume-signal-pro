@@ -10,10 +10,6 @@
  *     buttons said neither.
  *   - While the EU/UK switch is on (off by default), the box the server
  *     requires before a checkout.
- *   - While it is off, to a browser whose time zone is in the EU, the EEA,
- *     the UK or India: that sales there wait for the tax registration
- *     (S12-059), so the buyer reads it beside every buy button before
- *     pressing, not after.
  *   - For Pro, a separate, unticked box agreeing to the automatic renewal
  *     (owner decision 2026-10-17; California's automatic renewal law as
  *     amended by AB 2863). The server refuses a plan without it, and the card
@@ -30,8 +26,6 @@ import {
 } from "@/lib/purchase-terms";
 import { cn } from "@/lib/utils";
 import { SellerIdentity } from "@/components/SellerIdentity";
-import { RegionNotice } from "@/components/checkout/RegionNotice";
-import { inSalesTerritory } from "@/lib/checkout-territory";
 
 type Props = {
   /** What the button starts: a one-time payment, a plan, or a new account. */
@@ -79,14 +73,11 @@ export function PurchaseTerms({ kind, plan, className, onAutoRenewChange }: Prop
   const boxShown = useEuUkBoxShown();
   useEffect(() => { if (kind !== "signup") askServerForEuUkSwitch(); }, [kind]);
   const box = kind === "payment" ? "withdrawalWaiver" : "serviceStartConsent";
-  // Not yet sold where this browser is (S12-059): said before the press.
-  const regionRefused = kind !== "signup" && !boxShown && inSalesTerritory();
   const proPrice = `$${SUBSCRIPTIONS.pro.priceUsd}`;
   const agentPrice = `$${SUBSCRIPTIONS.agent.priceUsd}`;
 
   return (
     <div ref={ref} className={cn("space-y-1.5 text-xs text-muted-foreground", className)} data-testid="purchase-terms">
-      {regionRefused && <RegionNotice className="text-left" />}
       {plan === "pro" && (
         <p>{t("purchaseTerms.renewal", { price: proPrice })}</p>
       )}

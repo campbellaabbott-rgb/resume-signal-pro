@@ -9,16 +9,20 @@
  * curl that answers from routes and logs every call:
  *   - a good deploy prints PASS (and INFO) lines and no FAIL;
  *   - nothing deployed prints FAIL for the builds and asks no checkout;
- *   - a cut product that still sells, a GET with no territory flag, and a
- *     readable checkout_buyers each print FAIL;
+ *   - a cut product that still sells and a readable checkout_buyers each
+ *     print FAIL;
  *   - (owner decisions 2026-10-17) Freelance Boost and Transition Pro are
- *     asked for their 410; a published Pricing page without the renewal box
- *     or India, a Freelance Boost page that still sells, and a missing or
- *     readable pro_auto_renew_consents each print FAIL;
+ *     asked for their 410; a published Pricing page without the renewal box,
+ *     a Freelance Boost page that still sells, and a missing or readable
+ *     pro_auto_renew_consents each print FAIL;
  *   - (sales stay on, owner 2026-10-27) the three checkouts must serve the
- *     2026-10-27.1 build or later; a GET that says purchasesOpen false (wave
+ *     2026-10-31.1 build or later; a GET that says purchasesOpen false (wave
  *     4's seller gate serving) and a published Pricing page that still says
  *     purchases open soon each print FAIL;
+ *   - (the EU, the EEA, the UK and India keep buying as today, owner
+ *     2026-10-27) a GET that says territoryRefused true (wave 4's territory
+ *     refusal serving) and a published Pricing page that still carries the
+ *     region note each print FAIL, and a GET with no territory flag PASSes;
  *   - the only POSTs are to the cut and switched-off checkouts (answered
  *     before any limiter); create-checkout is only ever sent a GET or an
  *     OPTIONS, and the publishable key is never printed.
@@ -85,9 +89,9 @@ function run(routes: Route[]): { lines: string[]; calls: string[]; out: string }
 }
 
 const builds: Record<string, string> = {
-  "create-checkout": "create-checkout.2026-10-27.1",
-  "create-product-checkout": "create-product-checkout.2026-10-27.1",
-  "create-subscription-checkout": "create-subscription-checkout.2026-10-27.1",
+  "create-checkout": "create-checkout.2026-10-31.1",
+  "create-product-checkout": "create-product-checkout.2026-10-31.1",
+  "create-subscription-checkout": "create-subscription-checkout.2026-10-31.1",
   "create-scan-pack-checkout": "create-scan-pack-checkout.2026-10-11.23",
   "create-test-checkout": "create-test-checkout.2026-10-11.23",
   "check-subscription": "check-subscription.2026-10-11.23",
@@ -104,7 +108,7 @@ const PRODUCTS: Array<[string, string]> = [
   ["freelanceBoost", "freelance_boost"], ["freelanceTransitionPro", "freelance_transition_pro"],
 ];
 const PRICING_CHUNK = `import{a as x}from"./PurchaseTerms-AAAA1111.js";const k=["proPlan.perks.noDailyScanCap"];`;
-const TERMS_CHUNK = `const z=["purchaseTerms.autoRenewConsent","Asia/Kolkata","Asia/Calcutta"];`;
+const TERMS_CHUNK = `const z=["purchaseTerms.autoRenewConsent"];`;
 const FB_CHUNK = `const t=["freelanceBoost.noLongerSoldTitle"];`;
 const site = (over: { pricing?: string; terms?: string; fb?: string } = {}): Route[] => [
   { match: "^GET https://site\\.test/$", body: `<html><script type="module" src="/assets/index-ENTRY0001.js"></script></html>` },
@@ -115,7 +119,7 @@ const site = (over: { pricing?: string; terms?: string; fb?: string } = {}): Rou
 ];
 const good = (): Route[] => [
   ...preflights(),
-  { match: "^GET https://p\\.supabase\\.co/functions/v1/create-checkout$", body: JSON.stringify({ euUkSales: false, withdrawalDays: 14, waiverVersion: "2026-10-09", territoryRefused: true }) },
+  { match: "^GET https://p\\.supabase\\.co/functions/v1/create-checkout$", body: JSON.stringify({ euUkSales: false, withdrawalDays: 14, waiverVersion: "2026-10-09" }) },
   { match: "^POST https://p\\.supabase\\.co/functions/v1/create-product-checkout .*\"coverLetter\",\"language\":\"de\"", status: 410, body: cutAnswer("coverLetter", "cover_letter", "de") },
   ...PRODUCTS.map(([id, type]): Route => ({ match: `^POST https://p\\.supabase\\.co/functions/v1/create-product-checkout .*"${id}"`, status: 410, body: cutAnswer(id, type) })),
   { match: "^POST https://p\\.supabase\\.co/functions/v1/create-scan-pack-checkout", status: 410, body: cutAnswer("scanPack", "scan_pack") },
@@ -132,7 +136,8 @@ describe("section 92", () => {
     expect(lines.filter((l) => l.startsWith("FAIL")), out).toEqual([]);
     const pass = lines.filter((l) => l.startsWith("PASS"));
     expect(pass.filter((l) => /preflight x-fn-build/.test(l))).toHaveLength(BUILDS);
-    expect(pass.some((l) => /territoryRefused true/.test(l))).toBe(true);
+    // The EU, the EEA, the UK and India buy as today (owner, 2026-10-27).
+    expect(pass.some((l) => /create-checkout GET: euUkSales false and no territory refused/.test(l))).toBe(true);
     // The cut products, the de sentence, the scan packs and the dev checkout.
     expect(pass.filter((l) => /answers 410/.test(l)).length).toBe(PRODUCTS.length + 3);
     expect(pass.some((l) => /checkout_buyers -> 42501/.test(l))).toBe(true);
@@ -140,7 +145,7 @@ describe("section 92", () => {
     // Sales stay on (owner, 2026-10-27): the GET reports no closed shop.
     expect(pass.some((l) => /create-checkout GET reports no closed shop/.test(l))).toBe(true);
     expect(lines.some((l) => /purchases stay closed/.test(l))).toBe(false);
-    expect(pass.some((l) => /published Pricing page .* offers the buy buttons with no purchases-open-soon line/.test(l))).toBe(true);
+    expect(pass.some((l) => /published Pricing page .* offers the buy buttons with no purchases-open-soon line and no region note/.test(l))).toBe(true);
     expect(pass.some((l) => /published Freelance Boost page .* no longer sold/.test(l))).toBe(true);
     for (const [id] of PRODUCTS.filter(([x]) => x.startsWith("freelance"))) {
       expect(pass.some((l) => l.includes(`answers 410 for ${PRODUCTS.find(([x]) => x === id)![1]}`)), id).toBe(true);
@@ -151,15 +156,16 @@ describe("section 92", () => {
   it("the 2026-10-17 claims each FAIL when the deploy does not carry them", () => {
     const base = good().filter((r) => !/create-checkout\$|site\\\.test|pro_auto_renew_consents/.test(r.match));
     const { lines } = run([
-      { match: "^GET https://p\\.supabase\\.co/functions/v1/create-checkout$", body: JSON.stringify({ euUkSales: false, territoryRefused: true, purchasesOpen: false }) },
+      { match: "^GET https://p\\.supabase\\.co/functions/v1/create-checkout$", body: JSON.stringify({ euUkSales: false, purchasesOpen: false }) },
       { match: "^GET https://p\\.supabase\\.co/rest/v1/pro_auto_renew_consents\\?", status: 404, body: JSON.stringify({ code: "PGRST205" }) },
-      ...site({ terms: `const z=["Europe/Berlin"];`, fb: `const t=["Boost my experience — $29"];` }),
+      ...site({ terms: `const z=[];`, fb: `const t=["Boost my experience — $29"];` }),
       ...base,
     ]);
     const fails = lines.filter((l) => l.startsWith("FAIL"));
     expect(fails.some((l) => /purchasesOpen false: wave 4's seller gate is serving/.test(l))).toBe(true);
     expect(fails.some((l) => /pro_auto_renew_consents does not exist/.test(l))).toBe(true);
-    expect(fails.some((l) => /Pricing page .* lacks: the renewal box; India in the refused time zones;/.test(l))).toBe(true);
+    expect(fails.some((l) => /Pricing page .* lacks: the renewal box;/.test(l))).toBe(true);
+    expect(fails.some((l) => /India/.test(l)), "India is no longer a refused territory").toBe(false);
     expect(fails.some((l) => /Freelance Boost page .* still sells/.test(l))).toBe(true);
   });
 
@@ -172,7 +178,22 @@ describe("section 92", () => {
     ]);
     const fails = lines.filter((l) => l.startsWith("FAIL"));
     expect(fails.some((l) => /Pricing page .* still says purchases open soon/.test(l)), lines.join("\n")).toBe(true);
-    expect(fails.some((l) => /create-checkout preflight x-fn-build = create-checkout\.2026-10-11\.29 \(want create-checkout\.2026-10-27\.1 or later/.test(l)), lines.join("\n")).toBe(true);
+    expect(fails.some((l) => /create-checkout preflight x-fn-build = create-checkout\.2026-10-11\.29 \(want create-checkout\.2026-10-31\.1 or later/.test(l)), lines.join("\n")).toBe(true);
+  });
+
+  it("the EU, the EEA, the UK and India buy as today: a GET that refuses the territory FAILs, and so do a Pricing page with the region note and a checkout on the 2026-10-27.1 build that still refused it", () => {
+    const base = good().filter((r) => !/site\\.test|create-checkout\$/.test(r.match));
+    const { lines } = run([
+      { match: "^GET https://p\\.supabase\\.co/functions/v1/create-checkout$", body: JSON.stringify({ euUkSales: false, withdrawalDays: 14, territoryRefused: true }) },
+      { match: "^OPTIONS https://p\\.supabase\\.co/functions/v1/create-checkout$", headers: { "x-fn-build": "create-checkout.2026-10-27.1" } },
+      ...site({ terms: TERMS_CHUNK + `const r="checkoutGate.regionNoticeTimeZone";` }),
+      ...base,
+    ]);
+    const fails = lines.filter((l) => l.startsWith("FAIL"));
+    expect(fails.some((l) => /territoryRefused true: wave 4's territory refusal is serving/.test(l)), lines.join("\n")).toBe(true);
+    expect(fails.some((l) => /Pricing page .* still carries the region note/.test(l)), lines.join("\n")).toBe(true);
+    expect(fails.some((l) => /create-checkout preflight x-fn-build = create-checkout\.2026-10-27\.1 \(want create-checkout\.2026-10-31\.1 or later/.test(l)), lines.join("\n")).toBe(true);
+    expect(lines.some((l) => /^PASS .*no territory refused/.test(l))).toBe(false);
   });
 
   it("the old perk naming the cut products on the published page FAILs", () => {
@@ -188,7 +209,7 @@ describe("section 92", () => {
     expect(calls.some((c) => / POST /.test(c)), "a POST went to an old bundle").toBe(false);
   });
 
-  it("a cut product that still sells, a GET with no territory flag, and a readable table each FAIL", () => {
+  it("a cut product that still sells and a readable table each FAIL, while a GET with no territory flag PASSes", () => {
     const routes = good().filter((r) => !/coverLetter|create-checkout\$|checkout_buyers\\\?/.test(r.match));
     routes.unshift(
       { match: "^POST https://p\\.supabase\\.co/functions/v1/create-product-checkout .*\"coverLetter\"", status: 200, body: JSON.stringify({ url: "https://checkout.stripe.com/c/x", sessionId: "cs_x" }) },
@@ -198,7 +219,8 @@ describe("section 92", () => {
     const { lines } = run(routes);
     const fails = lines.filter((l) => l.startsWith("FAIL"));
     expect(fails.some((l) => /create-product-checkout did not refuse the purchase: HTTP 200/.test(l))).toBe(true);
-    expect(fails.some((l) => /no territoryRefused/.test(l))).toBe(true);
+    expect(fails.some((l) => /territoryRefused/.test(l))).toBe(false);
+    expect(lines.some((l) => /^PASS  create-checkout GET: euUkSales false and no territory refused/.test(l))).toBe(true);
     expect(fails.some((l) => /checkout_buyers -> ROWS:0/.test(l))).toBe(true);
   });
 

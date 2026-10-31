@@ -1,6 +1,6 @@
 /**
  * CLOSING THE CHECKOUT OVERLAY STOPS THE HAND-OFF (S12-108, critical-path
- * CP-035), AND A REFUSAL IS SAID, NOT RETRIED (S12-059).
+ * CP-035), AND A REFUSAL IS SAID, NOT RETRIED (S12-170).
  *
  * WHAT WAS WRONG. The $5 Full Analysis overlay offers Close after a few
  * seconds, and Close only hid it: the checkout request already in flight
@@ -10,8 +10,9 @@
  * WHAT HOLDS NOW, on the mounted homepage: a press takes a number, Close
  * moves the number on, and every step after an await checks it is still the
  * wanted press, so a Close at any point means nothing navigates. The control
- * (no Close) still hands off. A territory refusal from create-checkout is
- * shown with its own sentence and nothing navigates.
+ * (no Close) still hands off. A refusal from create-checkout (a Pro member's
+ * fair-use 429) is shown with its own sentence and nothing navigates. Wave
+ * 4's territory 451 is gone (owner, 2026-10-27: "keep selling as today").
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -119,10 +120,10 @@ describe("Close on the Full Analysis overlay", () => {
 });
 
 describe("a refusal written for the buyer", () => {
-  it("the territory's 451 is said in its own words, and nothing navigates", async () => {
+  it("the fair-use 429 is said in its own words, and nothing navigates", async () => {
     await start();
-    const sentence = "We don't sell to buyers in the EU, the EEA, the UK or India yet: sales there wait until our tax registration there is settled. Your browser's time zone is one of theirs. Nothing was charged.";
-    await answer({ data: null, error: { title: "x", description: "x", isRetryable: false }, httpStatus: 451, errorBody: { error: sentence, territoryRefused: true } });
+    const sentence = "Pro includes up to 10 Full Analyses a day and 60 a month, and this account has used today's. Nothing was charged.";
+    await answer({ data: null, error: { title: "x", description: "x", isRetryable: false }, httpStatus: 429, errorBody: { error: sentence, fairUse: true, reason: "pro_grant_cap" } });
     expect(toasts.some((t) => t.description === sentence)).toBe(true);
     expect(redirects).not.toContain(true);
   });

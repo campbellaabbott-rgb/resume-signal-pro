@@ -11,7 +11,6 @@ import { SUBSCRIPTIONS } from "@/config/products";
 import { PRO_PERK_ITEMS, PRO_SUMMARY } from "@/config/pro-perks";
 import { isOwingStatus } from "@/config/subscription-status";
 import { PurchaseTerms } from "@/components/PurchaseTerms";
-import { RegionNotice, useRegionRefused } from "@/components/checkout/RegionNotice";
 
 // What the plan includes lives in src/config/pro-perks.ts, where the pricing
 // guards read it without mounting this card.
@@ -34,8 +33,6 @@ export const PRO_SUPPORT_EMAIL = "resumeboostersupp@gmail.com";
  * - THE RETIRED AGENT PLAN IS NOT SHOWN AS PRO (S12-168): an account whose
  *   standing rests on it sees that it is retired and how to cancel, never
  *   "$45/month ... Renews" or a prompt to pay for it.
- * - A buyer in the EU, the EEA, the UK or India sees why it is not sold
- *   there yet instead of a button the checkout would refuse (S12-059).
  * - WHAT PRO IS comes from one list (src/config/pro-perks.ts, owner decision
  *   2026-10-17), which the server's Stripe description reads too.
  * - A SEPARATE, UNTICKED RENEWAL BOX (California's automatic renewal law as
@@ -48,7 +45,6 @@ export function ProSubscriptionCard({ compact = false }: { compact?: boolean }) 
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const regionRefused = useRegionRefused();
   const [renewTicked, setRenewTicked] = useState(false);
   const price = SUBSCRIPTIONS.pro.priceUsd;
   const owing = isOwingStatus(pro.status);
@@ -173,8 +169,6 @@ export function ProSubscriptionCard({ compact = false }: { compact?: boolean }) 
           </p>
           {manageButton(t("proPlan.updatePayment", "Update payment method"), CreditCard, "default")}
         </div>
-      ) : regionRefused ? (
-        <RegionNotice />
       ) : (
         <div className="space-y-3">
           {pro.linkPending && (

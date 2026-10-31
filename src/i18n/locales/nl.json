@@ -5747,16 +5747,12 @@
     "yoursBody": "Deze lijken over jou te gaan — je identiteit, werkvergunning, salaris of demografische gegevens — dus hebben we ze aan jou gelaten. De controle leest alleen de woorden en kan een vraag over jou missen, ook een duidelijk geformuleerde: lees elk antwoord voordat je het verstuurt.",
     "yoursTitle": "Deze beantwoord je zelf"
   },
-  "checkoutGate": {
-    "regionNoticeTimeZone": "De tijdzone van je browser ligt in de EU, de EER, het VK of India, waar we nog niet verkopen: verkoop daar wacht tot onze belastingregistratie is geregeld. Vacatures zoeken en de gratis scan werken overal."
-  },
   "checkoutRefusal": {
     "autoRenewTitle": "Vink het vakje voor verlenging aan",
     "fairUseTitle": "Je hebt de fair-use-limiet van Pro bereikt",
     "planUnpaidTitle": "Je abonnement is nog niet betaald",
     "retiredBody": "Dit product wordt niet meer verkocht en er is niets afgeschreven. Als je het eerder hebt gekocht, blijft je link nog 90 dagen werken.",
-    "retiredTitle": "Niet meer te koop",
-    "territoryTitle": "Nog niet te koop waar je bent"
+    "retiredTitle": "Niet meer te koop"
   },
   "consent": {
     "allow": "Analyse toestaan",

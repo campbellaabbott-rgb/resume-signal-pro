@@ -3,13 +3,11 @@
  *
  * A checkout that will not sell answers with a sentence written for the
  * buyer: 410 for a product no longer sold (the retired agent products and the
- * cut catalogue), 451 for a buyer in the EU, the EEA, the UK or India while
- * sales there wait for the tax registration, 429 for a Pro member's included
- * tool over the fair-use cap, 409 for a plan whose first payment is not
+ * cut catalogue), 429 for a Pro member's included tool over the fair-use cap, 409 for a plan whose first payment is not
  * through, and 400 for a Pro checkout pressed without its automatic-renewal
  * box ticked.
  * The generic error parser drops any sentence over 200 characters and knows
- * no 410 or 451, so the retired sentence showed as "Something went wrong —
+ * no 410, so the retired sentence showed as "Something went wrong —
  * try again", which invites the retry the 410 exists to stop.
  *
  * This reads the body of a supabase-js FunctionsHttpError (error.context is
@@ -17,7 +15,7 @@
  * and what kind of refusal it is, or null when the answer is none of these.
  */
 
-export type CheckoutRefusalKind = "retired" | "territory" | "fair_use" | "plan_unpaid" | "auto_renew";
+export type CheckoutRefusalKind = "retired" | "fair_use" | "plan_unpaid" | "auto_renew";
 
 export interface CheckoutRefusal {
   kind: CheckoutRefusalKind;
@@ -36,7 +34,6 @@ function fromBody(body: unknown, status: number | null): CheckoutRefusal | null 
   if (!message) return null;
   const link = typeof b.pricing === "string" ? b.pricing : typeof b.applyYourself === "string" ? b.applyYourself : null;
   if (b.retired === true || status === 410) return { kind: "retired", message, link };
-  if (b.territoryRefused === true || status === 451) return { kind: "territory", message, link: null };
   if (b.fairUse === true) return { kind: "fair_use", message, link: null };
   if (b.planUnpaid === true) return { kind: "plan_unpaid", message, link: null };
   if (b.autoRenewConsentRequired === true) return { kind: "auto_renew", message, link: null };

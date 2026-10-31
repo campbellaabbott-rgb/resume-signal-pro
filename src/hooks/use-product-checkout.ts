@@ -3,7 +3,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { PRODUCTS, ProductId, isProductHidden } from '@/config/products';
 import { checkoutRefusalOf, type CheckoutRefusal } from '@/lib/checkout-refusal';
-import { territoryHint } from '@/lib/checkout-territory';
 import { useConversionTracking } from '@/hooks/use-conversion-tracking';
 import { useFunnelTracking } from '@/hooks/use-funnel-tracking';
 import { parseEdgeFunctionError } from '@/lib/edge-function-errors';
@@ -251,7 +250,6 @@ export type ResumeBinding = { sessionId?: string; refused?: boolean };
 export function refusalTitle(kind: CheckoutRefusal['kind']): string {
   switch (kind) {
     case 'retired': return i18n.t('checkoutRefusal.retiredTitle', 'No longer sold');
-    case 'territory': return i18n.t('checkoutRefusal.territoryTitle', 'Not yet sold where you are');
     case 'fair_use': return i18n.t('checkoutRefusal.fairUseTitle', "You've reached Pro's fair-use limit");
     case 'plan_unpaid': return i18n.t('checkoutRefusal.planUnpaidTitle', 'Your plan is not paid yet');
     // Owner decision 2026-10-17: Pro's own renewal box.
@@ -385,10 +383,6 @@ export function useProductCheckout() {
           ...checkoutContext(),
           // The referral, the Terms line's version, the EU/UK box.
           ...terms,
-          // The browser's time zone: the server may refuse a buyer in the
-          // EU, the EEA, the UK or India on it while those sales are off
-          // (S12-059).
-          ...territoryHint(),
         }
       });
 
@@ -397,7 +391,7 @@ export function useProductCheckout() {
         return null;
       }
       // A REFUSAL WRITTEN FOR THE BUYER (S12-170): the retired or cut
-      // product's 410, the territory's 451, the fair-use 429. Its sentence is
+      // product's 410, the fair-use 429. Its sentence is
       // shown whole; the generic parser would print "Something went wrong".
       const refusal = error ? await checkoutRefusalOf(error) : null;
       if (refusal) {

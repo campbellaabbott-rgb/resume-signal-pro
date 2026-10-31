@@ -38,8 +38,6 @@ vi.mock("@/integrations/supabase/client", () => ({
 }));
 let signedIn = true;
 vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => (signedIn ? { user: { email: "m@example.com" }, session: { access_token: "jwt" } } : { user: null, session: null }) }));
-let territory = false;
-vi.mock("@/lib/checkout-territory", () => ({ inSalesTerritory: () => territory, territoryHint: () => ({}), buyerTimeZone: () => "" }));
 
 const base = { active: false, status: null as string | null, currentPeriodEnd: null as string | null, loading: false, trialing: false, linkPending: false, cancelAtPeriodEnd: false, planTier: null as "pro" | "agent" | null };
 const pro = { ...base };
@@ -58,8 +56,8 @@ const card = () => document.querySelector("[data-pro-card]")?.textContent ?? "";
 const untranslated = () => card().replace(/⟦[^⟧]*⟧/g, " ").replace(/\$\d+/g, " ").replace(/[^A-Za-zÀ-ÿ]+/g, " ").trim();
 const DATE = new Date(Date.now() + 9 * 86_400_000).toISOString();
 
-beforeEach(() => { Object.assign(pro, base); signedIn = true; territory = false; });
-afterEach(cleanup);
+beforeEach(() => { Object.assign(pro, base); signedIn = true; });
+afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
 describe("every word on the card goes through the translator (S12-044)", () => {
   const states: Array<[string, Partial<typeof base>]> = [
@@ -176,11 +174,16 @@ describe("the unlinked-plan line names no control the page lacks (S12-002)", () 
   });
 });
 
-describe("a buyer in the EU, the EEA or the UK is told before pressing (S12-059)", () => {
-  it("the region notice stands where Go Pro would", () => {
-    territory = true;
-    mount();
-    expect(document.querySelector("[data-region-notice]")).toBeTruthy();
-    expect(card()).not.toContain("proPlan.goPro");
-  });
+describe("a buyer in the EU, the EEA, the UK or India is offered Pro, as on main (owner, 2026-10-27: \"keep selling as today\")", () => {
+  const realOptions = Intl.DateTimeFormat.prototype.resolvedOptions;
+  for (const zone of ["Europe/Berlin", "Europe/London", "Asia/Kolkata"]) {
+    it(`${zone}: Go Pro stands on the card, and no region note`, () => {
+      vi.spyOn(Intl.DateTimeFormat.prototype, "resolvedOptions").mockImplementation(function (this: Intl.DateTimeFormat) {
+        return { ...realOptions.call(this), timeZone: zone };
+      });
+      mount();
+      expect(document.querySelector("[data-region-notice]")).toBeNull();
+      expect(card()).toContain("⟦proPlan.goPro⟧");
+    });
+  }
 });

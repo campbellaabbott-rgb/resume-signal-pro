@@ -45,7 +45,6 @@ import { signedInUser } from "../_shared/signed-in-email.ts";
 import { clientAddressOr } from "../_shared/client-address.ts";
 import { checkoutContextOf, recordCheckoutStart } from "../_shared/checkout-start.ts";
 import { checkoutLanguageOf, checkoutOrigin, euConsentAnswer, euConsentRefusal, policyMetadata, renewalTerms, sessionPolicy } from "../_shared/checkout-policy.ts";
-import { ipinfoLookup, territoryAnswer, territoryRefusal, withBillingAddress } from "../_shared/sales-territory.ts";
 import { reusableCustomer } from "../_shared/customer-ownership.ts";
 import { recordCheckoutBuyer, refusedCallerBody, websiteTokenRefusal } from "../_shared/checkout-buyer.ts";
 import { PRO_FIRST_MONTH_MARKER, withReferralCommission } from "../_shared/affiliate-commission.ts";
@@ -68,7 +67,12 @@ import { proStripeDescription } from "../_shared/pro-perks.ts";
 // read.
 // 2026-10-27.1 (sales stay on, owner 2026-10-27): Pro is sold whether or not
 // the seller's name and address are filled in, as on main.
-const FN_BUILD = "create-subscription-checkout.2026-10-27.1";
+// 2026-10-31.1 (owner 2026-10-27, on the EU, the EEA, the UK and India: "keep
+// selling as today"): nobody is refused for where they are. A buyer there
+// subscribes as on main: no time zone, country header or address lookup
+// refuses a plan, and the session asks for a billing address only with the
+// EU/UK switch on, as sessionPolicy always did.
+const FN_BUILD = "create-subscription-checkout.2026-10-31.1";
 
 /** What Stripe's page and receipts say Pro is: the Pro card's own items (_shared/pro-perks.ts), as sentences. */
 export const PRO_STRIPE_DESCRIPTION = proStripeDescription();
@@ -118,16 +122,6 @@ serve(async (req) => {
     // for the service to start inside the withdrawal period.
     const consentMissing = euConsentRefusal(env, "subscription", body);
     if (consentMissing) return json(euConsentAnswer(consentMissing), 400);
-
-    // NO SALE INTO THE EU, THE EEA, THE UK OR INDIA WHILE THE SWITCH IS OFF (S12-059).
-    const territory = await territoryRefusal({
-      env, headers: req.headers, body, address: clientAddressOr(req.headers), lookup: ipinfoLookup(env),
-    });
-    if (territory) {
-      const answer = territoryAnswer(territory, { body, acceptLanguage: req.headers.get("accept-language") });
-      console.log(`[CREATE-SUBSCRIPTION-CHECKOUT] refused: the buyer is where we do not sell yet (${territory.signal})`);
-      return json(answer.body, answer.status);
-    }
 
     // THE BUYER'S OWN TICK ON THE AUTOMATIC-RENEWAL BOX, before Stripe.
     if (!autoRenewConsentOf(body)) {
@@ -197,13 +191,13 @@ serve(async (req) => {
       success_url: `${origin}/account?pro=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/pricing?pro=cancelled`,
       metadata: { product_type: "pro_subscription", customer_email: email, user_id: buyer.id, ...policy, ...autoRenewMetadata(consentedAt) },
-      // Renewal terms beside Stripe's pay button, tax only with the EU/UK switch on.
-      // In the buyer's site language, with Stripe's page in the same one.
-      // The billing address on every session (S12-059, withBillingAddress).
-      ...withBillingAddress(sessionPolicy({
+      // Renewal terms beside Stripe's pay button; tax and the billing address
+      // only with the EU/UK switch on. In the buyer's site language, with
+      // Stripe's page in the same one.
+      ...sessionPolicy({
         mode: "subscription", env, hasCustomer: !!reuseCustomerId,
         renewal: renewalTerms(PRO_PRICE_CENTS, null, checkoutLanguageOf(body)), language: checkoutLanguageOf(body),
-      })),
+      }),
     });
 
     // THE CONSENT ON OUR SIDE, before the browser has the url. A plan sold

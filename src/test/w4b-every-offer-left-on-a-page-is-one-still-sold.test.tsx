@@ -13,9 +13,11 @@
  *            come back to; the homepage keeps no copy of the report, so they
  *            came back to nothing. The account page is where the scans run
  *            before signing up are imported, with their checklists.
- *   S12-059  A buyer in the EU, the EEA or the UK learned that sales there
- *            wait for the VAT registration only after pressing a buy button.
- *            The Terms line above every buy button now says it first.
+ *   S12-059  Wave 4 refused buyers in the EU, the EEA, the UK and India and
+ *            put a "we don't sell here yet" note above every buy button for a
+ *            browser in one of their time zones. The owner, 2026-10-27:
+ *            "keep selling as today". The Terms line carries no such note,
+ *            from any time zone, as on main.
  *
  * Mounted for real, with only the network faked.
  */
@@ -40,8 +42,6 @@ vi.mock("@/integrations/supabase/client", () => ({
 }));
 vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: null, session: null }) }));
 vi.mock("@/components/ProductPreview", () => ({ ProductPreview: () => null }));
-let territory = false;
-vi.mock("@/lib/checkout-territory", () => ({ inSalesTerritory: () => territory, territoryHint: () => ({}), buyerTimeZone: () => "" }));
 // The Terms line asks create-checkout for the EU/UK switch once: never the network here.
 vi.stubGlobal("fetch", vi.fn(async () => { throw new Error("no network in this test"); }));
 
@@ -55,7 +55,7 @@ import { HIDDEN_PRODUCT_IDS, PRODUCTS } from "@/config/products";
 import { safeNextPath } from "@/lib/auth-fragment";
 
 vi.setConfig(MOUNT_TEST_BUDGET);
-afterEach(() => { cleanup(); territory = false; });
+afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
 const ROOT = resolve(__dirname, "../..");
 const inRouter = (ui: React.ReactElement) => render(<MemoryRouter>{ui}</MemoryRouter>);
@@ -100,21 +100,17 @@ describe("the free report's sign-up link lands on the account page (S12-025)", (
   });
 });
 
-describe("the Terms line above a buy button says when sales here wait for the tax registration (S12-059)", () => {
-  it("a browser in the territory reads it above a payment and a plan, never above a sign-up", () => {
-    territory = true;
-    inRouter(<><PurchaseTerms kind="payment" /><PurchaseTerms kind="subscription" plan="pro" /><PurchaseTerms kind="signup" /></>);
-    const notices = document.querySelectorAll("[data-region-notice]");
-    expect(notices).toHaveLength(2);
-    // It names what the page checked (the browser's time zone) and India (owner decision 2026-10-17).
-    expect(notices[0].textContent).toMatch(/Your browser's time zone is in the EU, the EEA, the UK or India, where we don't sell yet/);
-    expect(notices[0].textContent).not.toMatch(/billing/i);
-    const terms = [...document.querySelectorAll("[data-testid='purchase-terms']")];
-    expect(terms[2].querySelector("[data-region-notice]")).toBeNull();
-  });
-
-  it("control: a browser outside it reads no notice", () => {
-    inRouter(<><PurchaseTerms kind="payment" /><PurchaseTerms kind="subscription" plan="pro" /></>);
-    expect(document.querySelectorAll("[data-region-notice]")).toHaveLength(0);
-  });
+describe("the Terms line above a buy button sells everywhere it sells today (owner, 2026-10-27)", () => {
+  const realOptions = Intl.DateTimeFormat.prototype.resolvedOptions;
+  for (const zone of ["Europe/Berlin", "Europe/London", "Asia/Kolkata", "America/Chicago"]) {
+    it(`a browser in ${zone} reads no region note above a payment, a plan or a sign-up`, () => {
+      vi.spyOn(Intl.DateTimeFormat.prototype, "resolvedOptions").mockImplementation(function (this: Intl.DateTimeFormat) {
+        return { ...realOptions.call(this), timeZone: zone };
+      });
+      inRouter(<><PurchaseTerms kind="payment" /><PurchaseTerms kind="subscription" plan="pro" /><PurchaseTerms kind="signup" /></>);
+      expect(document.querySelectorAll("[data-testid='purchase-terms']")).toHaveLength(3);
+      expect(document.querySelectorAll("[data-region-notice]")).toHaveLength(0);
+      expect(document.body.textContent ?? "").not.toMatch(/don't sell|tax registration/);
+    });
+  }
 });

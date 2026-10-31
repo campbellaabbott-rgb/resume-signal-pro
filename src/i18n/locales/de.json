@@ -5747,16 +5747,12 @@
     "yoursBody": "Diese Fragen sehen nach Fragen zu Ihnen aus – Identität, Arbeitserlaubnis, Gehaltsvorstellung oder demografische Angaben – deshalb haben wir sie Ihnen überlassen. Die Prüfung liest nur die Wörter und kann eine Frage zu Ihnen übersehen, auch eine klar formulierte: Lesen Sie jede Antwort, bevor Sie sie absenden.",
     "yoursTitle": "Diese beantworten Sie selbst"
   },
-  "checkoutGate": {
-    "regionNoticeTimeZone": "Die Zeitzone Ihres Browsers liegt in der EU, im EWR, im Vereinigten Königreich oder in Indien, wo wir noch nicht verkaufen: Verkäufe dort warten, bis unsere Steuerregistrierung geklärt ist. Die Jobsuche und der kostenlose Scan funktionieren überall."
-  },
   "checkoutRefusal": {
     "autoRenewTitle": "Bitte setzen Sie das Häkchen für die Verlängerung",
     "fairUseTitle": "Sie haben die Fair-Use-Grenze von Pro erreicht",
     "planUnpaidTitle": "Ihr Tarif ist noch nicht bezahlt",
     "retiredBody": "Dieses Produkt wird nicht mehr verkauft, und es wurde nichts berechnet. Wenn Sie es früher gekauft haben, funktioniert Ihr Link noch 90 Tage.",
-    "retiredTitle": "Nicht mehr erhältlich",
-    "territoryTitle": "An Ihrem Standort noch nicht erhältlich"
+    "retiredTitle": "Nicht mehr erhältlich"
   },
   "consent": {
     "allow": "Analyse erlauben",

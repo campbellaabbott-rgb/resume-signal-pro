@@ -72,8 +72,8 @@ const PENDING_SHARED: Record<string, number> = {
   "customer-ownership.ts": 2_372,
   "pro-cancel.ts": 4_157,
   "product-cuts.ts": 10_139,
-  "sales-territory-zones.ts": 1_803,
-  "sales-territory.ts": 8_515,
+  // sales-territory.ts and sales-territory-zones.ts left _shared on land/all
+  // (the owner, 2026-10-27: "keep selling as today"), so they add nothing.
   // w4b/generators
   "model-spend-gate.ts": 27_126,
   "posting-language.ts": 7_332,

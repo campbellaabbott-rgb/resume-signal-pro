@@ -5783,16 +5783,12 @@
     "yoursBody": "Estas parecen preguntas sobre ti —tu identidad, tu permiso de trabajo, tu salario o tus datos demográficos—, así que te las dejamos a ti. La comprobación lee las palabras y puede pasar por alto una pregunta sobre ti, aunque esté redactada con claridad: lee cada respuesta antes de enviarla.",
     "yoursTitle": "Estas las respondes tú"
   },
-  "checkoutGate": {
-    "regionNoticeTimeZone": "La zona horaria de tu navegador está en la UE, el EEE, el Reino Unido o la India, donde aún no vendemos: las ventas allí esperan a que se resuelva nuestro registro fiscal. La búsqueda de empleo y el análisis gratuito funcionan en todas partes."
-  },
   "checkoutRefusal": {
     "autoRenewTitle": "Marca la casilla de renovación",
     "fairUseTitle": "Has alcanzado el límite de uso razonable de Pro",
     "planUnpaidTitle": "Tu plan aún no está pagado",
     "retiredBody": "Este producto ya no se vende y no se cobró nada. Si lo compraste antes, tu enlace sigue funcionando durante 90 días.",
-    "retiredTitle": "Ya no se vende",
-    "territoryTitle": "Aún no se vende donde estás"
+    "retiredTitle": "Ya no se vende"
   },
   "consent": {
     "allow": "Permitir analítica",

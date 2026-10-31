@@ -5783,16 +5783,12 @@
     "yoursBody": "Estas parecem perguntas sobre você — a sua identidade, autorização de trabalho, salário ou dados demográficos —, por isso as deixamos para você. A verificação lê as palavras e pode deixar passar uma pergunta sobre você, mesmo escrita de forma clara: leia cada resposta antes de enviar.",
     "yoursTitle": "Estas responde você"
   },
-  "checkoutGate": {
-    "regionNoticeTimeZone": "O fuso horário do seu navegador está na UE, no EEE, no Reino Unido ou na Índia, onde ainda não vendemos: as vendas aí aguardam a regularização do nosso registo fiscal. A pesquisa de empregos e a análise gratuita funcionam em todo o lado."
-  },
   "checkoutRefusal": {
     "autoRenewTitle": "Assinale a caixa de renovação",
     "fairUseTitle": "Atingiu o limite de utilização razoável do Pro",
     "planUnpaidTitle": "O seu plano ainda não está pago",
     "retiredBody": "Este produto já não é vendido e nada foi cobrado. Se o comprou antes, a sua ligação continua a funcionar durante 90 dias.",
-    "retiredTitle": "Já não é vendido",
-    "territoryTitle": "Ainda não é vendido onde está"
+    "retiredTitle": "Já não é vendido"
   },
   "consent": {
     "allow": "Permitir estatísticas",

@@ -5,12 +5,13 @@
  * ("... is no longer sold, and nothing was charged ..."), but the generic
  * error parser drops any message over 200 characters and knows no 410, so
  * the page toasted "Something went wrong — try again": the retry the 410
- * exists to stop. The territory's 451 and the fair-use 429 had the same fate.
+ * exists to stop. The fair-use 429 had the same fate.
  *
  * WHAT HOLDS NOW, through the real hook with only the network faked: the
  * refusal's own sentence is the toast, under a title for its kind; a product
- * the catalogue hides is refused before any network call; and every checkout
- * body carries the browser's time zone.
+ * the catalogue hides is refused before any network call; and no checkout
+ * body carries the browser's time zone (wave 4 sent it for a territory
+ * refusal, which is gone: the owner, 2026-10-27, "keep selling as today").
  *
  * Since 2026-10-17 no product is sold through this hook (Freelance Boost and
  * Transition Pro were cut too), so Freelance Boost stands in, unhidden here,
@@ -33,7 +34,6 @@ vi.mock("@/hooks/use-toast", () => ({ useToast: () => ({ toast: (t: { title?: st
 vi.mock("@/hooks/use-conversion-tracking", () => ({ useConversionTracking: () => ({ trackButtonClick: vi.fn() }) }));
 vi.mock("@/hooks/use-funnel-tracking", () => ({ useFunnelTracking: () => ({ trackProductClicked: vi.fn(), trackCheckoutStarted: vi.fn() }) }));
 vi.mock("@/hooks/use-checkout-prefetch", () => ({ useCheckoutPrefetch: () => ({ prefetch: vi.fn(), prefetchProps: {} }) }));
-vi.mock("@/lib/checkout-territory", () => ({ territoryHint: () => ({ timeZone: "America/Chicago" }), inSalesTerritory: () => false, buyerTimeZone: () => "America/Chicago" }));
 
 vi.mock("@/config/products", async (importOriginal) => {
   const real = await importOriginal<typeof import("@/config/products")>();
@@ -62,15 +62,6 @@ describe("a checkout's refusal is shown in its own words", () => {
     expect(h.toasts.some((t) => /something went wrong/i.test(String(t.title) + String(t.description)))).toBe(false);
   });
 
-  it("the territory's 451", async () => {
-    const { territorySentence } = await import("../../supabase/functions/_shared/sales-territory");
-    const sentence = territorySentence("time_zone", "en");
-    h.invoke.mockResolvedValue(refusedWith(451, { territoryRefused: true, reason: "tax_territory", signal: "time_zone", error: sentence }));
-    const { result } = renderHook(() => useProductCheckout());
-    await act(async () => { await result.current.purchaseProduct("freelanceBoost"); });
-    expect(h.toasts.at(-1)).toMatchObject({ title: "Not yet sold where you are", description: sentence });
-  });
-
   it("the fair-use 429", async () => {
     h.invoke.mockResolvedValue(refusedWith(429, { fairUse: true, reason: "pro_grant_cap", error: "Pro includes up to 10 of these a day and 60 a month." }));
     const { result } = renderHook(() => useProductCheckout());
@@ -85,7 +76,7 @@ describe("a checkout's refusal is shown in its own words", () => {
     expect(h.toasts.at(-1)?.title).toBe("No longer sold");
   });
 
-  it("every checkout body carries the browser's time zone", async () => {
+  it("no checkout body carries the browser's time zone, as on main", async () => {
     h.invoke.mockResolvedValue({ data: { url: "https://checkout.stripe.com/c/x" }, error: null });
     const assign = vi.fn();
     const loc = window.location;
@@ -93,7 +84,7 @@ describe("a checkout's refusal is shown in its own words", () => {
     try {
       const { result } = renderHook(() => useProductCheckout());
       await act(async () => { await result.current.purchaseProduct("freelanceBoost"); });
-      expect(h.invoke.mock.calls[0][1].body.timeZone).toBe("America/Chicago");
+      expect(h.invoke.mock.calls[0][1].body).not.toHaveProperty("timeZone");
     } finally {
       Object.defineProperty(window, "location", { configurable: true, value: loc });
     }

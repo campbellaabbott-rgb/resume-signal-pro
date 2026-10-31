@@ -5747,16 +5747,12 @@
     "yoursBody": "Mukhang tungkol sa iyo ang mga ito — ang pagkakakilanlan mo, ang pahintulot mong magtrabaho, ang suweldo o ang demograpiko mo — kaya iniwan namin ang mga ito sa iyo. Mga salita lang ang binabasa ng pagsusuri at maaaring makaligtaan nito ang tanong tungkol sa iyo, kahit malinaw ang pagkakasulat: basahin ang bawat sagot bago mo ipadala.",
     "yoursTitle": "Ikaw ang sasagot sa mga ito"
   },
-  "checkoutGate": {
-    "regionNoticeTimeZone": "Nasa EU, EEA, UK o India ang time zone ng browser mo, kung saan hindi pa kami nagbebenta: naghihintay ang pagbebenta roon hanggang maayos ang tax registration namin doon. Gumagana kahit saan ang paghahanap ng trabaho at ang libreng scan."
-  },
   "checkoutRefusal": {
     "autoRenewTitle": "Pakilagyan ng tsek ang renewal box",
     "fairUseTitle": "Naabot mo na ang fair-use limit ng Pro",
     "planUnpaidTitle": "Hindi pa bayad ang plan mo",
     "retiredBody": "Hindi na ibinebenta ang produktong ito, at walang siningil. Kung binili mo ito dati, gagana pa ang link mo nang 90 araw.",
-    "retiredTitle": "Hindi na ibinebenta",
-    "territoryTitle": "Hindi pa ibinebenta kung nasaan ka"
+    "retiredTitle": "Hindi na ibinebenta"
   },
   "consent": {
     "allow": "Payagan ang analytics",

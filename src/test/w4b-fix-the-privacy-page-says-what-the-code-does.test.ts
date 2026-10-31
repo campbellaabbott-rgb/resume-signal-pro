@@ -4,11 +4,12 @@
  * and coverage lenses).
  *
  * WHAT WAS WRONG.
- *   - The page said ipinfo receives only a free scan's IP. This round made
+ *   - The page said ipinfo receives only a free scan's IP while wave 4 made
  *     every Full Analysis and Pro checkout send the buyer's IP to ipinfo.io
- *     for the sales-territory check (sales-territory.ts ipinfoLookup, called
- *     by create-checkout, create-subscription-checkout and
- *     create-product-checkout), undisclosed.
+ *     for its sales-territory check, undisclosed. That check is gone (owner,
+ *     2026-10-27, on the EU, the EEA, the UK and India: "keep selling as
+ *     today"), so no checkout sends ipinfo anything and the line says the
+ *     free scan only, as it did before the check.
  *   - The cookie paragraph said nothing is sent for analytics before the
  *     visitor chooses, while Lovable's injected page counter still posts until
  *     the owner switches it off: the sentence now speaks for our own analytics.
@@ -16,37 +17,30 @@
  *     you ask; deleting an account now erases them (20261011210000), and the
  *     card's list says so.
  *
- * WHAT HOLDS NOW. Each sentence is pinned AND its path is run: ipinfoLookup
- * really asks ipinfo.io with the buyer's address, and the three checkouts
- * really pass it.
+ * WHAT HOLDS NOW. Each sentence is pinned AND its path is checked: the free
+ * scan asks ipinfo.io, and no checkout does.
  */
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { ipinfoLookup } from "../../supabase/functions/_shared/sales-territory";
+import { codeOf } from "./helpers/strip-comments";
 
 const read = (p: string) => readFileSync(resolve(__dirname, "../..", p), "utf8");
 const privacy = read("src/pages/Privacy.tsx");
 
-describe("ipinfo is disclosed for the checkout's country check", () => {
-  it("the processors list names the purchase-time lookup", () => {
+describe("ipinfo is disclosed for what it is asked: a free scan's country", () => {
+  it("the processors list names the free scan, and no purchase-time lookup", () => {
     const line = /<li data-ipinfo>([^<]+)<\/li>/.exec(privacy)?.[1] ?? "";
     expect(line).toMatch(/free scan/);
-    expect(line).toMatch(/purchase/);
-    expect(line).toMatch(/tax/);
+    expect(line).not.toMatch(/purchase|tax/);
   });
 
-  it("the path runs: the lookup sends the buyer's address to ipinfo.io, and every selling checkout passes it", async () => {
-    const asked: string[] = [];
-    const lookup = ipinfoLookup(((k: string) => (k === "IPINFO_API_KEY" ? "tok" : undefined)) as never, (async (url: string) => {
-      asked.push(String(url));
-      return new Response(JSON.stringify({ country: "US" }), { status: 200 });
-    }) as unknown as typeof fetch);
-    await lookup("203.0.113.9");
-    expect(asked.some((u) => u.startsWith("https://ipinfo.io/203.0.113.9"))).toBe(true);
+  it("the path: the free scan asks ipinfo.io, and no checkout does", () => {
+    expect(read("supabase/functions/free-keyword-scan/index.ts")).toMatch(/https:\/\/ipinfo\.io\//);
     for (const fn of ["create-checkout", "create-subscription-checkout", "create-product-checkout"]) {
-      expect(read(`supabase/functions/${fn}/index.ts`), fn).toMatch(/lookup:\s*ipinfoLookup\(env\)/);
+      expect(codeOf(read(`supabase/functions/${fn}/index.ts`)), fn).not.toMatch(/ipinfo/i);
     }
+    expect(existsSync(resolve(__dirname, "../..", "supabase/functions/_shared/sales-territory.ts"))).toBe(false);
   });
 });
 

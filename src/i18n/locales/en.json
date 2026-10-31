@@ -5747,16 +5747,12 @@
     "yoursBody": "These look like questions about you — your identity, work authorization, salary or demographics — so we left them for you. The check reads the words and can miss a question about you, even a plainly worded one: read every answer before you send.",
     "yoursTitle": "You'll answer these yourself"
   },
-  "checkoutGate": {
-    "regionNoticeTimeZone": "Your browser's time zone is in the EU, the EEA, the UK or India, where we don't sell yet: sales there wait until our tax registration there is settled. Searching jobs and the free scan work everywhere."
-  },
   "checkoutRefusal": {
     "autoRenewTitle": "Please tick the renewal box",
     "fairUseTitle": "You've reached Pro's fair-use limit",
     "planUnpaidTitle": "Your plan is not paid yet",
     "retiredBody": "This product is no longer sold, and nothing was charged. If you bought it before, your link keeps working for 90 days.",
-    "retiredTitle": "No longer sold",
-    "territoryTitle": "Not yet sold where you are"
+    "retiredTitle": "No longer sold"
   },
   "consent": {
     "allow": "Allow analytics",

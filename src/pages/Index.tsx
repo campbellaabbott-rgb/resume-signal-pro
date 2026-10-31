@@ -63,7 +63,6 @@ import { FloatingUploadButton, FloatingSeeReportButton } from "@/components/Floa
 import { CheckoutOverlay, type CheckoutStep } from "@/components/CheckoutOverlay";
 import { FreeReportSignupNudge } from "@/components/FreeReportSignupNudge";
 import { checkoutRefusalOfBody } from "@/lib/checkout-refusal";
-import { territoryHint } from "@/lib/checkout-territory";
 import { useToast } from "@/hooks/use-toast";
 import { useCurrency } from "@/hooks/use-currency";
 import { useScanCredits, creditSessions, CREDITS_UPDATED_EVENT } from "@/hooks/use-scan-credits";
@@ -1914,9 +1913,6 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
         ...checkoutContext(),
         // The affiliate's code, and the Terms line's version while one is shown.
         ...terms,
-        // The browser's time zone: the server may refuse a buyer in the EU,
-        // the EEA or the UK on it while those sales are off (S12-059).
-        ...territoryHint(),
         // The page's language, so the purchase mail is written in it (S12-114).
         language: i18n.language,
       });
@@ -1931,9 +1927,8 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
         toast({ title: t('purchaseTerms.consentNeeded'), variant: "destructive" });
         return;
       }
-      // A REFUSAL WRITTEN FOR THE BUYER: the EU/UK territory's 451 while
-      // those sales wait for the VAT registration (S12-059), a Pro member's
-      // fair-use 429, a plan whose first payment is not through. Its sentence
+      // A REFUSAL WRITTEN FOR THE BUYER: a Pro member's fair-use 429, a plan
+      // whose first payment is not through. Its sentence
       // is the overlay's message, and nothing is retried.
       const refusal = checkoutRefusalOfBody(checkoutResult.errorBody, checkoutResult.httpStatus ?? null);
       if (refusal) {

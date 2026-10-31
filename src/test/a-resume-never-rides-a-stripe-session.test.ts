@@ -135,12 +135,10 @@ describe("create-checkout sends Stripe no résumé text", () => {
   });
 
   it("the body the page sends now carries no résumé, and the checkout still works", async () => {
-    // CAD, not EUR: while the EU/UK switch is off a euro price is refused
-    // (w4b-a-buyer-in-the-vat-territory-is-refused-until-vat).
-    const res = await checkout({ currency: "cad", hasLinkedIn: true, tempSessionId: "8a6f7d3e-1b2c-4d5e-9f00-112233445566" });
+    const res = await checkout({ currency: "eur", hasLinkedIn: true, tempSessionId: "8a6f7d3e-1b2c-4d5e-9f00-112233445566" });
     expect(res.status).toBe(200);
     expect((await res.json()).url).toBe("https://checkout.stripe.test/x");
-    expect(stripeCalls.at(-1)!.params.metadata).toMatchObject({ originalCurrency: "cad", product_type: "full_analysis" });
+    expect(stripeCalls.at(-1)!.params.metadata).toMatchObject({ originalCurrency: "eur", product_type: "full_analysis" });
   });
 
   it("answers its build on the preflight, so the deploy is provable without minting a session", async () => {

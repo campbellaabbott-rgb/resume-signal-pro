@@ -11,7 +11,6 @@ import { targetRolesMetadata } from "../_shared/target-roles.ts";
 import { APPLY_ASSISTANT_ON_SALE } from "../_shared/apply-agent-switch.ts";
 import { retiredCheckoutAnswer } from "../_shared/apply-agent-retired.ts";
 import { cutCheckoutAnswer, isCutProduct } from "../_shared/product-cuts.ts";
-import { ipinfoLookup, territoryAnswer, territoryRefusal, withBillingAddress } from "../_shared/sales-territory.ts";
 import {
   buyerMetadata, buyerSessionFields, CALLER_UNAVAILABLE_BODY, checkoutCaller, fairUseAnswer, grantCapOf, recordCheckoutBuyer,
   refusedCallerBody,
@@ -43,7 +42,8 @@ import { proIncludes } from "../_shared/pro-perks.ts";
 // 2026-10-11.26: the retirement sentence's apply-yourself line says that inside ChatGPT the AI reads the application form only for Greenhouse or Recruitee, the server's public-API pair (the second recheck of the descope, 2026-10-25); nothing else changed.
 // 2026-10-11.27 (recheck 3, 2026-10-26): a cut report's sentence depended on whether a seller was named.
 // 2026-10-27.1 (sales stay on, owner 2026-10-27): no purchase waits for the seller's name and address, as on main, so an id this function does not sell is main's 400 again, and a cut report's sentence always says the $5 Full Analysis is still on sale, which it is (_shared/product-cuts.ts).
-const FN_BUILD = "create-product-checkout.2026-10-27.1";
+// 2026-10-31.1 (owner 2026-10-27, on the EU, the EEA, the UK and India: "keep selling as today"): nobody is refused for where they are, as on main: no territory refusal, and a billing address only with the EU/UK switch on, as sessionPolicy always did. Nothing here is sold today, so only that dead path changed.
+const FN_BUILD = "create-product-checkout.2026-10-31.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -361,18 +361,6 @@ serve(async (req) => {
     // any address. The page now sends no address for a signed-out buyer, and
     // a subscriber who wants their included tool signs in first.
 
-    // NO SALE INTO THE EU, THE EEA OR THE UK WHILE THE SWITCH IS OFF
-    // (S12-059): after the grant (a member's included tool is not a sale),
-    // before Stripe.
-    const territory = await territoryRefusal({
-      env, headers: req.headers, body, address: clientIp, lookup: ipinfoLookup(env),
-    });
-    if (territory) {
-      const answer = territoryAnswer(territory, { body, acceptLanguage: req.headers.get("accept-language") });
-      console.log(`[CREATE-PRODUCT-CHECKOUT] refused: the buyer is in the VAT territory (${territory.signal})`);
-      return new Response(JSON.stringify(answer.body), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: answer.status });
-    }
-
     // The EU/UK switch (off by default): delivery at once needs the waiver.
     const consentMissing = euConsentRefusal(env, "payment", body);
     if (consentMissing) {
@@ -406,10 +394,10 @@ serve(async (req) => {
       ],
       mode: "payment",
       allow_promotion_codes: true,
-      // The receipt, and tax only with the EU/UK switch on (it was off here
-      // by a literal; it still is unless the owner turns the switch on); the
-      // billing address on every session (S12-059, withBillingAddress).
-      ...withBillingAddress(sessionPolicy({ mode: "payment", env, receiptEmail: buyerEmail })),
+      // The receipt; tax and the billing address only with the EU/UK switch
+      // on (tax was off here by a literal; it still is unless the owner turns
+      // the switch on).
+      ...sessionPolicy({ mode: "payment", env, receiptEmail: buyerEmail }),
       // THE ACCOUNT THAT BOUGHT IT (CP-022): a signed-in buyer's id on the
       // session and its metadata, and in checkout_buyers below.
       ...buyerSessionFields(caller),

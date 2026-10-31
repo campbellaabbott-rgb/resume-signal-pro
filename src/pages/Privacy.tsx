@@ -101,7 +101,7 @@ export default function Privacy() {
                     <li>Google and OpenAI, whose AI models analyze resume text, reached through Lovable's AI gateway</li>
                     <li>Lovable Emails, which sends sign-in emails through Mailgun from the EU</li>
                     <li>Resend (receipts, reports and our other email, from the United States)</li>
-                    <li data-ipinfo>ipinfo (the country of the IP address a free scan comes from, to set its limits; and, when you start a purchase, the country of your IP address, to refuse sales where we are not registered for tax)</li>
+                    <li data-ipinfo>ipinfo (the country of the IP address a free scan comes from, to set its limits)</li>
                     <li>Google Fonts (your browser loads the site's fonts from Google, which sees your IP address)</li>
                   </ul>
                 </li>
