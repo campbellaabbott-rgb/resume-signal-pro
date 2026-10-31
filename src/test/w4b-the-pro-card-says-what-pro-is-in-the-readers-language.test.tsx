@@ -83,9 +83,10 @@ describe("every word on the card goes through the translator (S12-044)", () => {
 
   it("each perk renders by its own key", () => {
     mount();
-    // Today's list: the included Full Analysis waits for gate G2.
+    // Today's list: G2 is on (sales stay on, the owner, 2026-10-27), so the
+    // included Full Analysis is shown with the rest.
     const shown = proPerksOnSale(PRO_PERK_ITEMS);
-    expect(shown.length).toBe(PRO_PERK_ITEMS.length - 1);
+    expect(shown.length).toBe(PRO_PERK_ITEMS.length);
     for (const p of shown) expect(card()).toContain(`⟦${p.key}⟧`);
   });
 });

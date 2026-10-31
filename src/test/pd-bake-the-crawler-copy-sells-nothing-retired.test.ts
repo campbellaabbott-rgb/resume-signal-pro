@@ -139,11 +139,11 @@ describe("no page, block or llms file sells or describes a retired product", () 
     const home = jsonLdBlocks(page("/"));
     expect(home.map((b) => (b as { "@type"?: string })["@type"])).not.toContain("Service");
     const pricing = jsonLdBlocks(page("/pricing"));
-    const agg = offersIn(pricing).find((o) => o["@type"] === "AggregateOffer") as { highPrice: string } | undefined;
-    // Sales stay on (owner, 2026-10-27): /pricing offers the range of what
-    // is sold, under $99, with no seller named.
-    expect(agg, "the pricing range is still published").toBeTruthy();
-    expect(Number(agg!.highPrice)).toBeLessThan(99);
+    // Sales stay on (owner, 2026-10-27): /pricing offers what is sold, the
+    // free plan, the Full Analysis and Pro, each under $99, with no seller named.
+    const named = offersIn(pricing).map((o) => [String(o.name), Number(o.price)] as const);
+    expect(named.map(([n]) => n)).toEqual(["Free", "Full Analysis", "Pro"]);
+    for (const [, p] of named) expect(p).toBeLessThan(99);
     expect(offersAPrice(pricing)).toBe(true);
   });
 

@@ -193,7 +193,7 @@ describe("section 92", () => {
     ]);
     const fails = lines.filter((l) => l.startsWith("FAIL"));
     expect(fails.some((l) => /territoryRefused true: wave 4's territory refusal is serving/.test(l)), lines.join("\n")).toBe(true);
-    expect(fails.some((l) => /Pricing page .* still carries the region note/.test(l)), lines.join("\n")).toBe(true);
+    expect(fails.some((l) => /Pricing page .* still carries the region line, or the region note/.test(l)), lines.join("\n")).toBe(true);
     expect(fails.some((l) => /create-checkout preflight x-fn-build = create-checkout\.2026-10-27\.1 \(want create-checkout\.2026-10-31\.1 or later/.test(l)), lines.join("\n")).toBe(true);
     expect(lines.some((l) => /^PASS .*no territory refused/.test(l))).toBe(false);
   });

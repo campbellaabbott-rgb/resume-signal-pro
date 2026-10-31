@@ -177,10 +177,10 @@ describe("no crawler or AI host is offered a cut product", () => {
     expect(llms).toContain(`One paid report (the $${PRODUCTS.fullAnalysis.priceUsd} Full Analysis)`);
     expect(llms).toMatch(new RegExp(`: The free tools, the \\$${PRODUCTS.fullAnalysis.priceUsd} Full Analysis and Pro\\.`));
     expect(llms.match(/\$\d+ Full Analysis/g)?.every((m) => m === `$${PRODUCTS.fullAnalysis.priceUsd} Full Analysis`)).toBe(true);
-    // The committed file is the closed form: Pro without the Full Analysis,
-    // which the pages leave out of Pro until it is on sale; the bake adds it
-    // back once both are (src/components/pricing/llms-lines.ts).
-    expect(llms).toMatch(/Pro \(the writing tools and no daily scan cap\)/);
+    // The committed file is the form with both on sale (sales stay on, the
+    // owner, 2026-10-27): Pro with the Full Analysis, as the pages say it; the
+    // bake rewrites it from the pages' switches (src/components/pricing/llms-lines.ts).
+    expect(llms).toMatch(/Pro \(the writing tools, the Full Analysis and no daily scan cap\)/);
   });
 
   it("the teeth: the lines as they stood are caught", () => {
