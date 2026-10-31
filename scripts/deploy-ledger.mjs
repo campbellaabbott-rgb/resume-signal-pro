@@ -593,25 +593,35 @@ export function applyRollbacks(rows, policy) {
  * could not be read: then nothing is proven, and each such migration stays
  * pending with the reason. Pure.
  *
+ * A job two files schedule proves neither by being active (2026-10-31:
+ * 20261014120000 re-schedules 20261014100000's rb-auth-mail-drain). Such an
+ * entry names `cronTimeouts`, { "<job>": "<timeout>" }: the statement_timeout
+ * only its file's command begins with, which get_cron_health reports as
+ * ch_timeout. Another timeout, or none, leaves the migration pending.
+ *
  *   returns { pending: [file], proven: [{ file, jobs }], unproven: [{ file, why }] }
  */
 export function behaviourApplied(pending, policy, cronRows) {
   const proofs = Object.entries(policy?.appliedByBehaviour ?? {}).filter(([k]) => /^\d{14}$/.test(k));
   const active = Array.isArray(cronRows) ? new Map(cronRows.map((r) => [String(r?.ch_jobname ?? ""), r?.ch_active === true])) : null;
+  const timeout = new Map((Array.isArray(cronRows) ? cronRows : []).map((r) => [String(r?.ch_jobname ?? ""), typeof r?.ch_timeout === "string" && r.ch_timeout ? r.ch_timeout : null]));
   const out = { pending: [], proven: [], unproven: [] };
   for (const file of pending ?? []) {
     const proof = proofs.find(([stamp]) => file.startsWith(`${stamp}_`))?.[1];
     if (!proof) { out.pending.push(file); continue; }
     const jobs = (Array.isArray(proof.cronJobs) ? proof.cronJobs : []).filter((j) => typeof j === "string" && j);
+    const want = proof.cronTimeouts && typeof proof.cronTimeouts === "object" ? Object.entries(proof.cronTimeouts) : [];
     let why = "";
     if (!jobs.length) why = "its appliedByBehaviour entry names no cronJobs";
     else if (!active) why = "get_cron_health could not be read, so its jobs could not be seen";
     else {
       const missing = jobs.filter((j) => active.get(j) !== true);
       if (missing.length) why = `get_cron_health lists no active ${missing.join(", ")}`;
+      const off = want.find(([j, t]) => timeout.get(j) !== String(t));
+      if (!why && off) why = `get_cron_health reports ${off[0]}'s statement_timeout as ${timeout.get(off[0]) ?? "none"}, not ${off[1]}`;
     }
     if (why) { out.pending.push(file); out.unproven.push({ file, why }); continue; }
-    out.proven.push({ file, jobs });
+    out.proven.push({ file, jobs, ...(want.length ? { timeouts: Object.fromEntries(want.map(([j, t]) => [j, String(t)])) } : {}) });
   }
   return out;
 }
@@ -729,6 +739,15 @@ export function sliceNote(build, deploying = build) {
  *           "frontend"                  apply once the frontend is published
  *   before: ["fn:<name>", ...]          apply before <name> deploys (printed beside
  *                                       it; an `after` that puts it later is an error)
+ *   afterMigrations: ["<stamp>", ...]   apply after these migrations (2026-10-31: the
+ *                                       name-sync re-arm, 20261030100000, refuses
+ *                                       until 20261025100000 and 20261026100000 are
+ *                                       applied). Inside a step files go in filename
+ *                                       order, so each must sort before this one; one
+ *                                       pending in a later step, held or never to
+ *                                       apply is an error. The note names those still
+ *                                       pending and, with no other rule, says the
+ *                                       file waits for nothing else.
  *
  * A migration with no `after` goes before the functions, as every migration
  * did. An `after` function that already answers the named build (or later)
@@ -750,17 +769,34 @@ export function migrationPhases(pending, policy, rows) {
       out.errors.push(`migrationOrder ${stamp}: after "${e.after}" is neither "frontend" nor "fn:<name>@<YYYY-MM-DD.N>" nor "slice:job-board@<YYYY-MM-DD.N>"`);
     }
     for (const b of Array.isArray(e?.before) ? e.before : []) if (!BEFORE_FN.test(String(b))) out.errors.push(`migrationOrder ${stamp}: before "${b}" is not "fn:<name>"`);
+    if (e?.afterMigrations !== undefined) {
+      const am = e.afterMigrations;
+      if (!Array.isArray(am) || !am.length || am.some((x) => !/^\d{14}$/.test(String(x)))) {
+        out.errors.push(`migrationOrder ${stamp}: afterMigrations must list one or more 14-digit migration stamps`);
+        continue;
+      }
+      for (const x of am.map(String)) {
+        if (x >= stamp) out.errors.push(`migrationOrder ${stamp}: afterMigrations names ${x}, which does not sort before it, so filename order cannot put it first`);
+        else if ((policy?.holdUntilVerified ?? []).some((h) => h?.stamp === x)) out.errors.push(`migrationOrder ${stamp}: afterMigrations names ${x}, which is held (holdUntilVerified), so this file could apply before it`);
+        else if ((policy?.neverApply ?? []).some((n) => x.startsWith(String(n)) || String(n).startsWith(x))) out.errors.push(`migrationOrder ${stamp}: afterMigrations names ${x}, which must never apply (neverApply)`);
+      }
+    }
   }
+  const pendingStamp = (x) => (pending ?? []).find((f) => f.startsWith(`${x}_`)) ?? null;
+  // The predecessors still pending, for the note and the step check below.
+  const predsOf = (e) => (Array.isArray(e?.afterMigrations) ? e.afterMigrations.map(String).filter((x) => /^\d{14}$/.test(x) && pendingStamp(x)) : []);
   for (const file of pending) {
     // Only a whole stamp matches: a short key would claim every file it prefixes.
     const e = rules.find(([stamp]) => /^\d{14}$/.test(stamp) && file.startsWith(`${stamp}_`))?.[1] ?? null;
     const before = (Array.isArray(e?.before) ? e.before : []).map((b) => BEFORE_FN.exec(String(b))?.[1]).filter(Boolean);
-    const beforeNote = before.length ? `before ${before.join(" and ")}` : "";
+    const preds = predsOf(e);
+    const afterMigNote = preds.length ? `after ${preds.join(" and ")}${!e?.after && !before.length ? "; it waits for nothing else" : ""}` : "";
+    const beforeNote = [afterMigNote, before.length ? `before ${before.join(" and ")}` : ""].filter(Boolean).join("; ");
     for (const fn of before) if (!byFn.has(fn)) out.errors.push(`${file} must apply before ${fn}, but main has no function ${fn}`);
     if (!e?.after) { out.pre.push({ file, note: beforeNote }); continue; }
     if (e.after === "frontend") {
       if (before.length) out.errors.push(`${file} waits for the frontend, yet it must apply before ${before.join(" and ")}`);
-      out.afterFrontend.push({ file, note: "after the frontend is published" });
+      out.afterFrontend.push({ file, note: [afterMigNote, "after the frontend is published"].filter(Boolean).join("; ") });
       continue;
     }
     const rule = afterRule(e.after);
@@ -778,6 +814,19 @@ export function migrationPhases(pending, policy, rows) {
     // Deploying in this message, or its live build could not be read: wait for it.
     const waitNote = rule.kind === "slice" ? sliceNote(b, String(r.want).slice(fn.length + 1)) : `once ${fn} answers ${need} or later`;
     out.afterFunctions.push({ file, note: [beforeNote, waitNote].filter(Boolean).join("; "), ...(rule.kind === "slice" ? { slice: true } : {}) });
+  }
+  // A file ordered after another must not sit in an earlier step than it.
+  const steps = [out.pre, out.afterFunctions, out.afterFrontend];
+  const stepOf = (f) => steps.findIndex((list) => list.some((m) => m.file === f));
+  for (const [i, list] of steps.entries()) {
+    for (const m of list) {
+      const e = rules.find(([stamp]) => /^\d{14}$/.test(stamp) && m.file.startsWith(`${stamp}_`))?.[1] ?? null;
+      for (const x of predsOf(e)) {
+        const pf = pendingStamp(x);
+        const j = stepOf(pf);
+        if (j > i) out.errors.push(`${m.file} must apply after ${x}, which waits for a later step (${steps[j].find((q) => q.file === pf)?.note || "a later step"})`);
+      }
+    }
   }
   return out;
 }
@@ -1132,7 +1181,7 @@ async function main(argv) {
   pr("before the functions", phases.pre);
   pr("after the functions they wait for", phases.afterFunctions);
   pr("after the frontend", phases.afterFrontend);
-  for (const p of behaviour.proven) console.log(`  APPLIED BY BEHAVIOUR (no stub)  ${p.file}: get_cron_health lists ${p.jobs.join(", ")} active`);
+  for (const p of behaviour.proven) console.log(`  APPLIED BY BEHAVIOUR (no stub)  ${p.file}: get_cron_health lists ${p.jobs.join(", ")} active${p.timeouts ? `, ${Object.entries(p.timeouts).map(([j, t]) => `${j} at statement_timeout ${t}`).join(", ")}` : ""}`);
   for (const u of behaviour.unproven) console.log(`  NOT PROVEN  ${u.file}: ${u.why}`);
   if (holds.holds.length) {
     console.log(`Held until the step before is verified live:`);

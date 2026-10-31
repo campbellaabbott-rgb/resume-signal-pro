@@ -34,8 +34,13 @@ closes the gap. Policy lives in `docs/deploy-ledger.json`:
   production shows applied, per stamp the `cronJobs` it schedules, each
   listed active by get_cron_health (anon, read with a GET). Unreadable or
   missing, it stays pending with the reason (S12-162: four of wave 3's
-  eleven FAILs were stub-less migrations that were live). Prefer it to
-  `appliedOutsideDrizzle`, which nothing re-checks.
+  eleven FAILs were stub-less migrations that were live). A job that another
+  applied file also schedules proves nothing by being active, so such an
+  entry names `cronTimeouts`, `{ "<job>": "<timeout>" }`: the
+  statement_timeout only its own command begins with, which get_cron_health
+  reports as ch_timeout (2026-10-31: 20261014120000 re-schedules
+  20261014100000's rb-auth-mail-drain, and only its command begins with
+  '10s'). Prefer it to `appliedOutsideDrizzle`, which nothing re-checks.
 - `rollbacks`: a rollback on purpose, `"<fn>": { "from": "<live build>" }`.
   That function is deployed at main's build by the next message and FAILs
   section 49 until it answers it; any other function live ahead of main
@@ -53,7 +58,13 @@ closes the gap. Policy lives in `docs/deploy-ledger.json`:
   later than the rule's, and the note says to stop and send the error after
   an hour of refusals; final recheck, 2026-10-31) or `frontend`
   (apply once the frontend is published), and `before` lists `fn:<name>`
-  the migration must precede. The message prints five steps: migrations
+  the migration must precede. `afterMigrations` lists the stamps it must
+  follow (2026-10-31: 20261030100000 re-arms the name-sync lane and refuses
+  until 20261025100000 and 20261026100000 are applied): each must sort
+  earlier, since inside a step files go in filename order, and one pending in
+  a later step, held or never to apply stops the message (exit 6); the note
+  names those still pending and, with no other rule, says the file waits for
+  nothing else. The message prints five steps: migrations
   before the functions, the functions, migrations after the function each
   waits for, the frontend, migrations after the frontend. A rule that cannot
   be met (main carries an earlier build, or no such function) stops the
