@@ -1208,6 +1208,30 @@ export type Database = {
           },
         ]
       }
+      application_form_cache: {
+        Row: {
+          form: Json
+          ok: boolean
+          posting_id: string
+          read_at: string
+          vendor: string
+        }
+        Insert: {
+          form?: Json
+          ok: boolean
+          posting_id: string
+          read_at?: string
+          vendor: string
+        }
+        Update: {
+          form?: Json
+          ok?: boolean
+          posting_id?: string
+          read_at?: string
+          vendor?: string
+        }
+        Relationships: []
+      }
       apply_tenant_walls: {
         Row: {
           checked_at: string
@@ -3881,21 +3905,75 @@ export type Database = {
         }
         Relationships: []
       }
+      mcp_allowance_alerts: {
+        Row: {
+          at: string
+          cap: number
+          day: string
+          share: string
+          used: number
+        }
+        Insert: {
+          at?: string
+          cap: number
+          day: string
+          share: string
+          used: number
+        }
+        Update: {
+          at?: string
+          cap?: number
+          day?: string
+          share?: string
+          used?: number
+        }
+        Relationships: []
+      }
       mcp_anon_rate: {
         Row: {
           bucket: string
           calls: number
+          cap: number | null
           day: string
         }
         Insert: {
           bucket: string
           calls?: number
+          cap?: number | null
           day: string
         }
         Update: {
           bucket?: string
           calls?: number
+          cap?: number | null
           day?: string
+        }
+        Relationships: []
+      }
+      mcp_calls_daily: {
+        Row: {
+          calls: number
+          day: string
+          host: string
+          outcome: string
+          surface: string
+          tool: string
+        }
+        Insert: {
+          calls?: number
+          day: string
+          host: string
+          outcome: string
+          surface: string
+          tool: string
+        }
+        Update: {
+          calls?: number
+          day?: string
+          host?: string
+          outcome?: string
+          surface?: string
+          tool?: string
         }
         Relationships: []
       }
@@ -4281,6 +4359,8 @@ export type Database = {
           generation_success: boolean | null
           id: string
           last_retry_error: string | null
+          lease_token: string | null
+          lease_until: string | null
           max_retries: number
           metadata: Json | null
           next_retry_at: string | null
@@ -4310,6 +4390,8 @@ export type Database = {
           generation_success?: boolean | null
           id?: string
           last_retry_error?: string | null
+          lease_token?: string | null
+          lease_until?: string | null
           max_retries?: number
           metadata?: Json | null
           next_retry_at?: string | null
@@ -4339,6 +4421,8 @@ export type Database = {
           generation_success?: boolean | null
           id?: string
           last_retry_error?: string | null
+          lease_token?: string | null
+          lease_until?: string | null
           max_retries?: number
           metadata?: Json | null
           next_retry_at?: string | null
@@ -5624,6 +5708,15 @@ export type Database = {
           rate_used: number
         }[]
       }
+      api_key_fit_allowance: {
+        Args: { p_endpoint: string; p_key_id: string }
+        Returns: {
+          fa_confirmed: boolean
+          fa_proven: boolean
+          fa_used: number
+          fa_user_id: string
+        }[]
+      }
       api_key_issue: {
         Args: {
           p_key_hash: string
@@ -5672,6 +5765,15 @@ export type Database = {
         }[]
       }
       api_key_retire_idle: { Args: never; Returns: number }
+      application_form_cache_put: {
+        Args: {
+          p_form: Json
+          p_ok: boolean
+          p_posting_id: string
+          p_vendor: string
+        }
+        Returns: undefined
+      }
       apply_posting_corrections: { Args: { p_patches: Json }; Returns: number }
       auth_changed_since: {
         Args: { p_since: string; p_user_id: string }
@@ -5930,6 +6032,16 @@ export type Database = {
       enqueue_email_delayed: {
         Args: { delay_seconds: number; payload: Json; queue_name: string }
         Returns: number
+      }
+      finish_delivery_generation: {
+        Args: {
+          p_duration_ms?: number
+          p_lease_token: string
+          p_model?: string
+          p_status?: string
+          p_stripe_session_id: string
+        }
+        Returns: boolean
       }
       fuzzy_title_search: {
         Args: {
@@ -6543,7 +6655,11 @@ export type Database = {
       get_explore_denominators: { Args: never; Returns: Json }
       get_explore_field_grid: { Args: never; Returns: Json }
       get_failed_deliveries_for_retry: {
-        Args: { p_include_generating?: boolean; p_limit?: number }
+        Args: {
+          p_include_generating?: boolean
+          p_include_unmailed?: boolean
+          p_limit?: number
+        }
         Returns: {
           customer_email: string
           id: string
@@ -7356,6 +7472,10 @@ export type Database = {
           pc_send: boolean
         }[]
       }
+      mcp_allowance_alert_claim: {
+        Args: { p_cap: number; p_share: string; p_used: number }
+        Returns: boolean
+      }
       mcp_anon_check: {
         Args: { p_global_cap: number; p_ip_cap: number; p_ip_hash: string }
         Returns: {
@@ -7364,6 +7484,72 @@ export type Database = {
           global_used: number
           ip_cap: number
           ip_used: number
+        }[]
+      }
+      mcp_anon_check_v2: {
+        Args: {
+          p_bucket: string
+          p_bucket_cap: number
+          p_global_bucket: string
+          p_global_cap: number
+          p_minute_cap?: number
+          p_overall_bucket?: string
+          p_overall_cap?: number
+          p_overall_minute_cap?: number
+        }
+        Returns: {
+          allowed: boolean
+          bucket_cap: number
+          bucket_used: number
+          minute_cap: number
+          minute_used: number
+          overall_cap: number
+          overall_used: number
+          refused_by: string
+          share_cap: number
+          share_used: number
+        }[]
+      }
+      mcp_anon_refund: {
+        Args: {
+          p_bucket: string
+          p_global_bucket: string
+          p_max?: number
+          p_overall: boolean
+          p_overall_bucket?: string
+        }
+        Returns: boolean
+      }
+      mcp_connector_report: {
+        Args: { p_days?: number }
+        Returns: {
+          calls: number
+          cap: number
+          host: string
+          kind: string
+          outcome: string
+          report_day: string
+          surface: string
+          tool: string
+        }[]
+      }
+      mcp_count_call: {
+        Args: {
+          p_host: string
+          p_outcome: string
+          p_surface: string
+          p_tool: string
+        }
+        Returns: undefined
+      }
+      mcp_free_key_leads: {
+        Args: { p_days?: number }
+        Returns: {
+          busy_days: number
+          daily_quota: number
+          key_id: string
+          key_prefix: string
+          max_day_calls: number
         }[]
       }
       move_to_dlq: {
@@ -7530,6 +7716,10 @@ export type Database = {
         Args: { p_email: string; p_password: string }
         Returns: Json
       }
+      release_delivery_lease: {
+        Args: { p_lease_token: string; p_stripe_session_id: string }
+        Returns: boolean
+      }
       release_scan_slot: { Args: { p_id: string }; Returns: undefined }
       repair_oracle_subsite_duplicates: {
         Args: { p_max_rows?: number; p_restart?: boolean }
@@ -7611,7 +7801,7 @@ export type Database = {
         Returns: number
       }
       scan_credit_redeem: {
-        Args: { p_email: string; p_session_hash?: string }
+        Args: { p_email: string; p_session_hash?: string; p_user_id?: string }
         Returns: boolean
       }
       scan_credit_refund: {
@@ -7756,6 +7946,16 @@ export type Database = {
             Returns: string
           }
       strip_resume_keys: { Args: { p: Json }; Returns: Json }
+      take_delivery_lease: {
+        Args: {
+          p_email?: string
+          p_minutes?: number
+          p_product_type?: string
+          p_seen_status: string
+          p_stripe_session_id: string
+        }
+        Returns: string
+      }
       track_ab_event: {
         Args: {
           p_event_type: string
@@ -7794,6 +7994,7 @@ export type Database = {
           p_error?: string
           p_id: string
           p_increment_retry?: boolean
+          p_lease_token?: string
           p_status: string
         }
         Returns: boolean

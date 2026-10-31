@@ -1240,6 +1240,83 @@
       "when": 1792937794688,
       "tag": "0176_20261012137000_a_company_page_asks_once_per_read_whether_its_workday_tenant_hosts_another_employer",
       "breakpoints": true
+    },
+    {
+      "idx": 177,
+      "version": "7",
+      "when": 1793471258554,
+      "tag": "0177_20261011100000_an_employers_application_form_is_read_once_a_day_not_once_a_question",
+      "breakpoints": true
+    },
+    {
+      "idx": 178,
+      "version": "7",
+      "when": 1793471291770,
+      "tag": "0178_20261011101000_every_connector_call_is_counted_by_host_and_outcome_and_never_by_who",
+      "breakpoints": true
+    },
+    {
+      "idx": 179,
+      "version": "7",
+      "when": 1793471353170,
+      "tag": "0179_20261011102000_a_hosts_users_can_spend_only_their_hosts_share_of_the_day",
+      "breakpoints": true
+    },
+    {
+      "idx": 180,
+      "version": "7",
+      "when": 1793471391289,
+      "tag": "0180_20261011102100_the_adoption_reader_counts_addresses_not_shares_minutes_or_forms",
+      "breakpoints": true
+    },
+    {
+      "idx": 181,
+      "version": "7",
+      "when": 1793471410646,
+      "tag": "0181_20261011110000_a_confirmed_free_key_scores_fit_twenty_five_times_a_day",
+      "breakpoints": true
+    },
+    {
+      "idx": 182,
+      "version": "7",
+      "when": 1793471431337,
+      "tag": "0182_20261011130000_the_apply_agents_schedules_are_removed_by_name_and_the_removal_checks_itself",
+      "breakpoints": true
+    },
+    {
+      "idx": 183,
+      "version": "7",
+      "when": 1793471450937,
+      "tag": "0183_20261011140000_a_closed_paid_order_stays_closed",
+      "breakpoints": true
+    },
+    {
+      "idx": 184,
+      "version": "7",
+      "when": 1793471483899,
+      "tag": "0184_20261011141000_a_claimed_credit_purchase_is_spent_only_by_the_account_that_claimed_it",
+      "breakpoints": true
+    },
+    {
+      "idx": 185,
+      "version": "7",
+      "when": 1793471542347,
+      "tag": "0185_20261011143000_a_paid_order_made_but_never_mailed_is_mailed_from_its_copy",
+      "breakpoints": true
+    },
+    {
+      "idx": 186,
+      "version": "7",
+      "when": 1793471568922,
+      "tag": "0186_20261011143500_a_paid_order_whose_mail_never_left_counts_as_stuck",
+      "breakpoints": true
+    },
+    {
+      "idx": 187,
+      "version": "7",
+      "when": 1793471701845,
+      "tag": "0187_20261011144000_a_generation_in_progress_is_leased_and_a_stale_maker_is_refused",
+      "breakpoints": true
     }
   ]
 }
