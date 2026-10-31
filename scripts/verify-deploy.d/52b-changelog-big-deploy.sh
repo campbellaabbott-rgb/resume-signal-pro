@@ -2,21 +2,34 @@
 # ── 52b. THE CHANGELOG OF THE ONE DEPLOY (land/all): the seventeen entries of
 # the R1 hotfix, the SEO round, wave 4, JPMorgan Chase, the trusted pages,
 # trust round 3, the SPA job-markup gate (PR #51) and the homepage and
-# pricing switch-over (PR #54), dated 2026-10-31, the day land/all took them.
-# They ship in the deploy's frontend publish.
+# pricing switch-over (PR #54). They do NOT ride in the deploy's merge:
+# merging into main publishes the frontend by itself, ahead of the functions
+# (land/all final recheck, 2026-10-31), and the owner's rule is that entries
+# follow a verified deploy, dated the day its change went live. They wait in
+# docs/changelog-pending/one-deploy.json, and the changelog step (deploy notes,
+# after verify and --record-deploy) applies them with
+# scripts/apply-pending-changelog.mjs in a frontend-only publish.
 # With the twelve entries section 52 judges (17, 18 and 25 October) they are
 # 29 of the newest 30 entries the crawler copy of /changelog lists, so each
 # title must be on that page. Section 52 has no fallback for a title pushed
 # past the newest 30: one more entry above these (an 18th) is the most the
 # page can take before section 52 FAILs.
 #
-# BEFORE AND AFTER THE PUBLISH. The US English changelog chunk the browser
+# BEFORE AND AFTER THAT PUBLISH. The US English changelog chunk the browser
 # loads (scripts/verify-us-english.sh, never en-GB) tells the two apart: it
 # is found by a key every recent publish carries
 # (workdayCompanyPagesLostTheirFacts), and once it carries this batch's first
 # key (theHomePageIsTheJobSearch) the publish has happened. Before it, every
 # line below is INFO; after it, a missing title or a broken precondition of
 # an entry's text is FAIL.
+#
+# THE DATE. Once published, the entries' date must lie between 2026-10-31
+# (land/all's last change: nothing in it went live earlier) and the day
+# docs/deploy-ledger.json verifiedDeploys recorded the deploy that serves
+# job-board 2026-09-09.96 or later (the record follows the verify, which
+# follows the day the change went live). Published with no such record is a
+# FAIL: the entries went out before the deploy was verified. VD52B_LEDGER
+# names another policy file (the tests' fixture).
 #
 # THE ENTRIES' PRECONDITIONS, judged after the publish, because the text is
 # only true when they hold: the crawler /pricing prints no gate note
@@ -32,8 +45,8 @@
 #
 # Read-only: crawler GETs of /changelog and /pricing, GETs of the entry
 # script and its chunks, one PostgREST GET of a reader (a read-only
-# transaction), and OPTIONS preflights (no function logic runs). Nothing is
-# sent, bought or written.
+# transaction), OPTIONS preflights (no function logic runs) and a read of the
+# local docs/deploy-ledger.json. Nothing is sent, bought or written.
 echo "== 52b. changelog of the one deploy (17 entries) on the crawler copy of /changelog =="
 rm -f /tmp/vd_52b_agent.json
 VD52B_CL=$(curl -s -m 30 -A "$UA" "$SITE/changelog")
@@ -54,7 +67,7 @@ elif printf '%s' "$VD52B_US" | grep -q "theHomePageIsTheJobSearch"; then
   VD52B_PUB=1
   echo "PASS  the US English changelog chunk ($VD52B_CH) carries this deploy's entries: the frontend publish has happened, so every line below is judged"
 else
-  echo "INFO  the US English changelog chunk ($VD52B_CH) does not carry this deploy's entries yet: the deploy's frontend publish has not happened, so every line below is INFO"
+  echo "INFO  the US English changelog chunk ($VD52B_CH) does not carry this deploy's entries yet: the changelog step after the deploy verifies has not been published, so every line below is INFO"
 fi
 
 # Every title, on the crawler page.
@@ -63,7 +76,7 @@ while IFS= read -r T; do
   if printf '%s' "$VD52B_CL" | grep -qF "$T"; then echo "PASS  /changelog serves crawlers \"$T\""
   elif [ "$VD52B_PUB" = 1 ] && printf '%s' "$VD52B_US" | grep -qF "$T"; then echo "FAIL  the US English changelog strings carry \"$T\", but the crawler copy of /changelog does not (the prerender did not rebuild, or newer entries pushed it past the newest 30)"
   elif [ "$VD52B_PUB" = 1 ]; then echo "FAIL  this deploy's entries are published, but neither /changelog nor the US English changelog strings carry \"$T\" (an entry was dropped or retitled when it landed)"
-  else echo "INFO  /changelog does not serve \"$T\" yet (the deploy's frontend publish has not happened)"; fi
+  else echo "INFO  /changelog does not serve \"$T\" yet (the changelog step after the deploy verifies has not been published)"; fi
 done <<'VD52B_TITLES'
 The home page is now the job search
 A pricing page that starts with what is free
@@ -84,14 +97,18 @@ A second analysis in one tab, a throttled sign-in email and an expired reset lin
 Pages that hold still, and what search engines read
 VD52B_TITLES
 
-# The date the landing step wrote, and the page's description, which quotes the newest title.
+# The date the changelog step wrote, against the deploy's record, and the page's description, which quotes the newest title.
+VD52B_LEDGER=${VD52B_LEDGER:-docs/deploy-ledger.json}
+VD52B_REC=$(node -e 'let p={};try{p=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"))}catch{};const ok=(b)=>{const m=/^job-board\.(\d{4}-\d{2}-\d{2})\.(\d+)$/.exec(String(b||""));return !!m&&(m[1]>"2026-09-09"||(m[1]==="2026-09-09"&&Number(m[2])>=96))};const d=(p.verifiedDeploys||[]).filter((e)=>ok(e&&e.functions&&e.functions["job-board"])).map((e)=>String(e.date||"")).filter((x)=>/^\d{4}-\d{2}-\d{2}$/.test(x)).sort();process.stdout.write(d[0]||"")' "$VD52B_LEDGER" 2>/dev/null)
 if printf '%s' "$VD52B_CL" | grep -q "DATE_OF_DEPLOY"; then
-  echo "FAIL  /changelog prints the placeholder DATE_OF_DEPLOY: the landing step did not fill the entries' date"
+  echo "FAIL  /changelog prints the placeholder DATE_OF_DEPLOY: the changelog step did not fill the entries' date"
 elif [ "$VD52B_PUB" = 1 ]; then
   VD52B_DATE=$(printf '%s' "$VD52B_CL" | grep -oE '[0-9]{4}-[0-9]{2}-[0-9]{2} · [A-Za-z ·]*</p><h2[^>]*>The home page is now the job search<' | head -1 | cut -c1-10)
   if [ -z "$VD52B_DATE" ]; then echo "FAIL  /changelog lists no date beside \"The home page is now the job search\""
-  elif [ "$VD52B_DATE" \< "2026-10-27" ]; then echo "FAIL  /changelog dates this deploy's entries $VD52B_DATE, before the deploy could have happened (2026-10-27 or later)"
-  else echo "PASS  /changelog dates this deploy's entries $VD52B_DATE"; fi
+  elif [ -z "$VD52B_REC" ]; then echo "FAIL  /changelog carries this deploy's entries (dated $VD52B_DATE), but $VD52B_LEDGER verifiedDeploys records no deploy serving job-board 2026-09-09.96 or later: the entries went out before the deploy was verified and recorded"
+  elif [ "$VD52B_DATE" \< "2026-10-31" ]; then echo "FAIL  /changelog dates this deploy's entries $VD52B_DATE, before land/all's last change (2026-10-31): nothing they describe was live then"
+  elif [ "$VD52B_DATE" \> "$VD52B_REC" ]; then echo "FAIL  /changelog dates this deploy's entries $VD52B_DATE, after the deploy was recorded ($VD52B_REC): an entry is dated by the day its change went live, which comes before the record"
+  else echo "PASS  /changelog dates this deploy's entries $VD52B_DATE (the deploy was recorded $VD52B_REC)"; fi
   if printf '%s' "$VD52B_CL" | grep -qE 'Latest \([0-9]{4}-[0-9]{2}-[0-9]{2}\): The home page is now the job search\.'; then echo "PASS  /changelog's description names the newest entry, \"The home page is now the job search\""
   else echo "FAIL  /changelog's description does not name \"The home page is now the job search\" as the newest entry (another entry sits above it in changelog.ts, or the bake did not rebuild)"; fi
 else
@@ -141,5 +158,5 @@ for PAIR in "process-email-queue|2026-10-14|2|a throttled sign-in or reset email
     if [ "$VD52B_PUB" = 1 ]; then echo "FAIL  $FN preflight carries no x-fn-build, and the changelog describes $WHY as live"; else echo "INFO  $FN preflight carries no x-fn-build (judged after the publish)"; fi
   elif build_ge "$FN" "$H" "$D" "$N"; then echo "PASS  $FN x-fn-build = $H ($FN.$D.$N or later: $WHY)"
   elif [ "$VD52B_PUB" = 1 ]; then echo "FAIL  $FN x-fn-build = $H, older than $FN.$D.$N, but the published changelog describes $WHY as live"
-  else echo "INFO  $FN x-fn-build = $H: $FN.$D.$N is not serving yet (the deploy order publishes the frontend after it)"; fi
+  else echo "INFO  $FN x-fn-build = $H: $FN.$D.$N is not serving yet (the changelog step comes only after it serves and verifies)"; fi
 done

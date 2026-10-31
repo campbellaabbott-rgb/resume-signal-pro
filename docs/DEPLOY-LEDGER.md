@@ -25,7 +25,11 @@ closes the gap. Policy lives in `docs/deploy-ledger.json`:
   apply yet"). When every condition is live the hold is RELEASABLE: the
   message says so instead of "Do NOT apply", and section 49 FAILs until the
   owner releases it. A hold with no `releaseWhen` the ledger can read stops
-  the message (exit 6).
+  the message (exit 6). Until then the message says "Do NOT apply in this
+  session, even once the builds it waits for serve", with `until` as what
+  the later message waits for: a hold usually waits for builds the same
+  message deploys, and "Do NOT apply yet ... (waits for ...)" came true
+  mid-session (land/all final recheck, 2026-10-31).
 - `appliedByBehaviour`: a migration with no staged-runner stub that
   production shows applied, per stamp the `cronJobs` it schedules, each
   listed active by get_cron_health (anon, read with a GET). Unreadable or
@@ -45,7 +49,9 @@ closes the gap. Policy lives in `docs/deploy-ledger.json`:
   writes it, minutes after an OPTIONS request answers it, so the message names
   the status action and says a refusing file is re-applied unedited after the
   next slice; it orders exactly like `fn:job-board@...`; land/all recheck,
-  2026-10-27) or `frontend`
+  2026-10-27; the OPTIONS clause names the build main carries when it is
+  later than the rule's, and the note says to stop and send the error after
+  an hour of refusals; final recheck, 2026-10-31) or `frontend`
   (apply once the frontend is published), and `before` lists `fn:<name>`
   the migration must precede. The message prints five steps: migrations
   before the functions, the functions, migrations after the function each
@@ -57,6 +63,29 @@ closes the gap. Policy lives in `docs/deploy-ledger.json`:
   deploy in (`deployOrder`, §3).
 - `sharedFiles`: the owner of each file that two parallel branches both
   change (§6; checked by `--overlap`).
+- `datedAtDeploy`: constants that name the day a change goes live, each
+  `{ file, constant, whenDeploying: "fn:<name>@<YYYY-MM-DD.N>", why }`. While
+  that function answers an earlier build, the constant must read the day the
+  message is made (UTC): `--message` refuses another day (exit 9) and
+  `--draft` says, in its header, to set it on the merge day. Once the
+  function answers the build the date is history and is not checked. An
+  entry the ledger cannot read refuses the message too. (Land/all final
+  recheck, 2026-10-31: the Privacy page said "after this policy's last
+  update" under a date three weeks before the build that made it true.)
+
+MERGING INTO MAIN PUBLISHES THE FRONTEND (land/all final recheck,
+2026-10-31): production served main's newest pages hours after the last
+driven Lovable session while every function still answered its old build.
+So a draft tells the owner to merge only when the message can go to Lovable
+at once, every message tells Lovable to work straight through because the
+new pages may already be serving in front of the old functions, and one line
+says a failing migration is sent back, never edited, renamed or re-staged
+(Lovable edits failing migrations and stages them under other names, and the
+title matching here would count such a copy as applied). The frontend step
+says the merge has usually published it already. Changelog entries never
+ride in the deploy's merge: they wait in `docs/changelog-pending/` and
+`scripts/apply-pending-changelog.mjs` applies them after the deploy verifies
+and is recorded, dated the day its functions went live.
 
 `--message` runs `git fetch origin main` and refuses (exit 5) unless HEAD is
 origin/main: Lovable pulls main, and a stale checkout re-lists migrations
