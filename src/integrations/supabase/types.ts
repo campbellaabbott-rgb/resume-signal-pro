@@ -7777,7 +7777,7 @@ export type Database = {
         Returns: number
       }
       scan_credit_redeem: {
-        Args: { p_email: string; p_session_hash?: string }
+        Args: { p_email: string; p_session_hash?: string; p_user_id?: string }
         Returns: boolean
       }
       scan_credit_refund: {

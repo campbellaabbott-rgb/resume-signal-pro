@@ -1289,6 +1289,13 @@
       "when": 1793471450937,
       "tag": "0183_20261011140000_a_closed_paid_order_stays_closed",
       "breakpoints": true
+    },
+    {
+      "idx": 184,
+      "version": "7",
+      "when": 1793471483899,
+      "tag": "0184_20261011141000_a_claimed_credit_purchase_is_spent_only_by_the_account_that_claimed_it",
+      "breakpoints": true
     }
   ]
 }
