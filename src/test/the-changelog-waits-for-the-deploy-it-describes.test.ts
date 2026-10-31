@@ -90,6 +90,28 @@ describe.skipIf(!pending)("the one deploy's entries wait in docs/changelog-pendi
   });
 });
 
+// THE HELD ENTRY (the changelog step, 2026-10-31). Re-checked against
+// production, the entry on employers named by a logo file was not yet true:
+// neither name migration (20261025100000, 20261026100000) had run, and its
+// boards still served their old labels after job-board .96's name-sync lane
+// finished. It waits in its own pending file until they serve their new names.
+const HELD_FILE = resolve(ROOT, "docs/changelog-pending/name-overrides.json");
+const held = existsSync(HELD_FILE) ? (JSON.parse(readFileSync(HELD_FILE, "utf8")) as { date: string; entries: Entry[] }) : null;
+
+describe.skipIf(!held)("the held entry waits in docs/changelog-pending/name-overrides.json", () => {
+  it("one entry in nine languages, dated nothing, absent from the tree, and the applier takes it as it stands", () => {
+    const h = held!;
+    expect(h.date).toBe("DATE_OF_DEPLOY");
+    expect(h.entries.map((e) => e.key)).toEqual(["employersNamedByALogoFile"]);
+    const ts = read("src/data/changelog.ts")!;
+    expect(ts).not.toMatch(/id: "employersNamedByALogoFile"/);
+    for (const lng of LOCALES) expect(Object.keys(JSON.parse(read(`src/i18n/changelog/${lng}.json`)!).changelogEntries), lng).not.toContain("employersNamedByALogoFile");
+    const out = applyPending({ pending: h, date: "2026-11-02", read });
+    expect(out.error).toBeUndefined();
+    expect(out.count).toBe(1);
+  });
+});
+
 describe("the changelog step is the script the deploy notes name", () => {
   it("the deploy notes apply the pending file after the record, never in the merge", () => {
     const notes = read("docs/job-board-deploy-notes.md")!;

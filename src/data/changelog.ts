@@ -31,7 +31,6 @@ export const changelog: ChangelogEntry[] = [
   { id: "fitScoringIsFreeWithAKey", date: "2026-10-31", tags: ["new"] },
   { id: "theFreeReportStoppedPredictingOutcomes", date: "2026-10-31", tags: ["fixed"] },
   { id: "jpMorganChaseJoinsTheBoard", date: "2026-10-31", tags: ["new"] },
-  { id: "employersNamedByALogoFile", date: "2026-10-31", tags: ["fixed"] },
   { id: "agencyLabelsAndFeedsListedTwice", date: "2026-10-31", tags: ["fixed"] },
   { id: "jobsFiledInTheWrongCountry", date: "2026-10-31", tags: ["fixed"] },
   { id: "searchesForCvsAccountantsAndToday", date: "2026-10-31", tags: ["fixed"] },

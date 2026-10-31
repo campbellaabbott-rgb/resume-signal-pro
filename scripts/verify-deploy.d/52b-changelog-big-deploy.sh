@@ -1,5 +1,5 @@
 # shellcheck shell=bash
-# ── 52b. THE CHANGELOG OF THE ONE DEPLOY (land/all): the seventeen entries of
+# ── 52b. THE CHANGELOG OF THE ONE DEPLOY (land/all): the entries of
 # the R1 hotfix, the SEO round, wave 4, JPMorgan Chase, the trusted pages,
 # trust round 3, the SPA job-markup gate (PR #51) and the homepage and
 # pricing switch-over (PR #54). They do NOT ride in the deploy's merge:
@@ -9,11 +9,25 @@
 # docs/changelog-pending/one-deploy.json, and the changelog step (deploy notes,
 # after verify and --record-deploy) applies them with
 # scripts/apply-pending-changelog.mjs in a frontend-only publish.
+#
+# SIXTEEN OF THE SEVENTEEN SHIP (the changelog step, 2026-10-31). The step
+# re-checks each entry against production before it applies it, and
+# "Employers named by a logo file or a page label now carry their own names"
+# failed: neither name migration (20261025100000, 20261026100000) has a
+# Lovable runner stub, and after job-board .96's name-sync lane reported
+# "name sync v6 complete" at 19:19 UTC its boards still served their old
+# labels from the list action (Honeywell Aerospace's icfcjb~ocs~CX_1 as
+# "Aerospace", Convergint's UKG board as "US - LLC Recruiting", HKBU's as
+# "HKBU e-Recruitment System"), while a Workday override of 9 October
+# (db~wd3~DBWebsite, "Deutsche Bank") served its override. That entry waits
+# in docs/changelog-pending/name-overrides.json until both files have run and
+# those boards serve their new names; this section judges the sixteen.
+#
 # With the twelve entries section 52 judges (17, 18 and 25 October) they are
-# 29 of the newest 30 entries the crawler copy of /changelog lists, so each
+# 28 of the newest 30 entries the crawler copy of /changelog lists, so each
 # title must be on that page. Section 52 has no fallback for a title pushed
-# past the newest 30: one more entry above these (an 18th) is the most the
-# page can take before section 52 FAILs.
+# past the newest 30: two more entries above these (the held one and one
+# other) are the most the page can take before section 52 FAILs.
 #
 # BEFORE AND AFTER THAT PUBLISH. The US English changelog chunk the browser
 # loads (scripts/verify-us-english.sh, never en-GB) tells the two apart: it
@@ -47,7 +61,7 @@
 # script and its chunks, one PostgREST GET of a reader (a read-only
 # transaction), OPTIONS preflights (no function logic runs) and a read of the
 # local docs/deploy-ledger.json. Nothing is sent, bought or written.
-echo "== 52b. changelog of the one deploy (17 entries) on the crawler copy of /changelog =="
+echo "== 52b. changelog of the one deploy (16 entries; one held) on the crawler copy of /changelog =="
 rm -f /tmp/vd_52b_agent.json
 VD52B_CL=$(curl -s -m 30 -A "$UA" "$SITE/changelog")
 VD52B_MAIN=$(curl -s -m 30 "$SITE/" | grep -o '/assets/index-[^"]*\.js' | head -1)
@@ -86,7 +100,6 @@ Apply yourself, with Claude or ChatGPT reading the form
 Résumé fit scoring is free with a confirmed key
 The free report stopped predicting outcomes and printing figures we did not measure
 JPMorgan Chase's jobs join the board
-Employers named by a logo file or a page label now carry their own names
 Staffing-agency labels set right, and job feeds no longer listed twice
 Jobs filed in the wrong country
 Board searches for CVS, accountants, today's jobs and the best paid

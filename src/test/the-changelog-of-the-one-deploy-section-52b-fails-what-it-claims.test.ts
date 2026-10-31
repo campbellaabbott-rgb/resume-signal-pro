@@ -20,6 +20,13 @@
  * live. This test reads them from wherever they are: the pending file before
  * that step, the tree after it.
  *
+ * SIXTEEN SHIP, ONE IS HELD (the changelog step, 2026-10-31). Re-checked
+ * against production before it was applied, the entry on employers named by a
+ * logo file was not yet true: neither name migration had run, and the boards
+ * it names still served their old labels after job-board .96's name-sync lane
+ * finished. It waits in docs/changelog-pending/name-overrides.json, and 52b
+ * judges the other sixteen.
+ *
  * Then each claim, broken on its own, prints its FAIL: a gate note or "open
  * soon" on /pricing, a territory refusal on /pricing or in the changelog
  * (land/all removed it: the owner, 2026-10-27, "Keep selling as today"), a
@@ -46,14 +53,19 @@ const TREE_EN = (JSON.parse(readFileSync(resolve(ROOT, "src/i18n/changelog/en.js
 const TREE = [...readFileSync(resolve(ROOT, "src/data/changelog.ts"), "utf8").matchAll(/\{ id: "([A-Za-z0-9]+)", date: "(\d{4}-\d{2}-\d{2})", tags: \[([^\]]*)\] \}/g)]
   .map((m) => ({ id: m[1], date: m[2], tags: m[3].split(",").map((t) => t.trim().replace(/"/g, "")).filter(Boolean) }));
 const PENDING_FILE = resolve(ROOT, "docs/changelog-pending/one-deploy.json");
+/** The entry the changelog step held back until the name migrations serve, and where it waits. */
+const HELD_KEY = "employersNamedByALogoFile";
+const HELD_FILE = resolve(ROOT, "docs/changelog-pending/name-overrides.json");
+/** How many of the deploy's seventeen entries ship, and 52b judges. */
+const SHIPPED = 16;
 const PENDING = existsSync(PENDING_FILE)
   ? (JSON.parse(readFileSync(PENDING_FILE, "utf8")) as { date: string; entries: Array<{ key: string; category: string; en: Text }> })
   : null;
 /** The day the healthy fixture's deploy went live and was recorded. */
 const DAY = "2026-11-02";
 const THIS_DEPLOY = PENDING
-  ? PENDING.entries.map((e) => ({ id: e.key, date: DAY, tags: e.category.split(",").map((t) => t.trim()).filter(Boolean) }))
-  : TREE.slice(0, 17);
+  ? PENDING.entries.filter((e) => e.key !== HELD_KEY).map((e) => ({ id: e.key, date: DAY, tags: e.category.split(",").map((t) => t.trim()).filter(Boolean) }))
+  : TREE.slice(0, SHIPPED);
 /** The site after the changelog step: this deploy's entries above the tree's, and their English text. */
 const ENTRIES = PENDING ? [...THIS_DEPLOY, ...TREE] : TREE;
 const EN: Record<string, Text> = PENDING ? { ...TREE_EN, ...Object.fromEntries(PENDING.entries.map((e) => [e.key, e.en])) } : TREE_EN;
@@ -86,7 +98,7 @@ const TAG = { new: "New", improved: "Improved", fixed: "Fixed" } as Record<strin
 
 /** The crawler /changelog as the bake writes it (scripts/prerender-seo.mjs): its description and the newest 30 articles. */
 function changelogPage(over: { titles?: (t: string) => string | null; date?: string; first?: string } = {}): string {
-  const items = ENTRIES.slice(0, 30).map((e, i) => ({ ...e, title: i < 17 && over.titles ? over.titles(EN[e.id].title) : EN[e.id]?.title, date: i < 17 && over.date ? over.date : e.date }));
+  const items = ENTRIES.slice(0, 30).map((e, i) => ({ ...e, title: i < SHIPPED && over.titles ? over.titles(EN[e.id].title) : EN[e.id]?.title, date: i < SHIPPED && over.date ? over.date : e.date }));
   const shown = items.filter((e) => e.title);
   const first = over.first ?? `${shown[0].date}): ${shown[0].title}`;
   return `<html><head><meta name="description" content="What changed and when, newest first — including honest postmortems. Latest (${esc(first)}."></head><body><main><h1>Changelog</h1><div class="space-y-4">${shown
@@ -163,13 +175,25 @@ const fails = (lines: string[]) => lines.filter((l) => l.startsWith("FAIL"));
 const has = (lines: string[], s: "PASS" | "FAIL" | "INFO", re: RegExp) => lines.some((l) => l.startsWith(`${s}  `) && re.test(l.slice(s.length + 2)));
 const show = (lines: string[]) => `\n${lines.join("\n")}`;
 
-describe("the premise: the seventeen entries 52b names wait for the deploy, or follow it", () => {
+describe("the premise: the sixteen entries 52b names wait for the deploy, or follow it", () => {
   it("52b's titles are this deploy's, in its order, each with an English title", () => {
     const listed = /<<'VD52B_TITLES'\n([\s\S]*?)\nVD52B_TITLES/.exec(SECTION)?.[1].split("\n") ?? [];
-    expect(THIS_DEPLOY).toHaveLength(17);
+    expect(THIS_DEPLOY).toHaveLength(SHIPPED);
     expect(listed).toEqual(TITLES);
     expect(THIS_DEPLOY[0].id).toBe("theHomePageIsTheJobSearch");
-    expect(ENTRIES[17].id).toBe("workdayCompanyPagesLostTheirFacts");
+    expect(ENTRIES[SHIPPED].id).toBe("workdayCompanyPagesLostTheirFacts");
+  });
+
+  it("the held entry waits in its own pending file, dated nothing, and neither the tree nor 52b's titles carry it", () => {
+    expect(existsSync(HELD_FILE), "the held entry was applied: teach 52b its title and its own date").toBe(true);
+    const held = JSON.parse(readFileSync(HELD_FILE, "utf8")) as { date: string; entries: Array<{ key: string; en: Text }> };
+    expect(held.date).toBe("DATE_OF_DEPLOY");
+    expect(held.entries.map((e) => e.key)).toEqual([HELD_KEY]);
+    expect(TREE.some((t) => t.id === HELD_KEY), `${HELD_KEY} is in changelog.ts before its names serve`).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(TREE_EN, HELD_KEY), `${HELD_KEY} is in en.json before its names serve`).toBe(false);
+    expect(THIS_DEPLOY.some((e) => e.id === HELD_KEY)).toBe(false);
+    const listed = /<<'VD52B_TITLES'\n([\s\S]*?)\nVD52B_TITLES/.exec(SECTION)?.[1].split("\n") ?? [];
+    expect(listed).not.toContain(held.entries[0].en.title);
   });
 
   it("while they are pending the tree carries none of them, and the pending file dates nothing", () => {
