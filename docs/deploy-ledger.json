@@ -309,6 +309,8 @@
     "src/test/a-pass-number-on-a-page-is-a-placeholder.test.tsx": "company-profiles",
     "src/test/agent-hallmark.test.ts": "company-profiles",
     "src/test/apply-agent-guide.test.ts": "company-profiles",
+    "scripts/verify-deploy.d/81-profiles-design-accuracy.sh": "company-profiles",
+    "src/test/the-accuracy-verifier-can-fail-every-claim-it-makes.test.ts": "company-profiles",
     "src/test/pricing-truth.test.ts": "company-profiles",
     "src/test/the-page-says-six-and-the-server-says-eleven.test.ts": "company-profiles",
     "src/test/which-agent-do-you-use.test.tsx": "company-profiles",
