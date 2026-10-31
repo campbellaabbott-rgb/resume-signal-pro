@@ -61,6 +61,21 @@ export function analysisFixture(marker: string) {
   };
 }
 
+/**
+ * What the model answers one call: the core fixture when the call asks for the
+ * résumé analysis, and a marked stand-in for each LinkedIn or posting section
+ * it asks for. Since S13-001 a posting or a LinkedIn profile is asked in a
+ * second, parallel call whose schema holds only those sections.
+ */
+export function answerFor(opts: unknown, marker: string): Record<string, unknown> {
+  const props = (opts as { tools?: Array<{ function?: { parameters?: { properties?: Record<string, unknown> } } }> } | undefined)
+    ?.tools?.[0]?.function?.parameters?.properties ?? {};
+  const asked = Object.keys(props);
+  const reply: Record<string, unknown> = asked.length === 0 || asked.includes("optimizedBullets") ? analysisFixture(marker) : { marker };
+  for (const k of ["linkedInAnalysis", "jobDescriptionAlignment"]) if (asked.includes(k)) reply[k] = { marker, section: k };
+  return reply;
+}
+
 const STUBS: Record<string, string> = {
   "https://deno.land/std@0.168.0/http/server.ts": "export function serve(h) { globalThis.__edgeHandler = h; }",
   "https://esm.sh/stripe@18.5.0":
@@ -87,8 +102,11 @@ export type Harness = {
   reset: () => void;
 };
 
-/** Load the shipped handler once; reset() gives each test a clean database and Stripe. */
-export async function analyzeResumeHarness(): Promise<Harness> {
+/**
+ * Load the shipped handler once; reset() gives each test a clean database and Stripe.
+ * `stubs` replaces modules for one test file (the model chain, to walk past a bad reply).
+ */
+export async function analyzeResumeHarness(stubs: Record<string, string> = {}): Promise<Harness> {
   const g = globalThis as Record<string, unknown>;
   const env: Record<string, string> = {
     STRIPE_SECRET_KEY: "sk_test_harness",
@@ -150,7 +168,7 @@ export async function analyzeResumeHarness(): Promise<Harness> {
       return JSON.parse(JSON.stringify(s));
     },
   };
-  g.__fakeAI = async () => {
+  g.__fakeAI = async (opts: unknown) => {
     state.calls++;
     const n = state.calls;
     const step = state.plan.length ? state.plan.shift()! : "ok";
@@ -158,11 +176,11 @@ export async function analyzeResumeHarness(): Promise<Harness> {
     if (typeof step === "number") {
       return { response: new Response(JSON.stringify({ error: "upstream" }), { status: step }), modelUsed: "fake" };
     }
-    const body = { choices: [{ message: { tool_calls: [{ function: { arguments: JSON.stringify(analysisFixture(`ai-call-${n}`)) } }] } }] };
+    const body = { choices: [{ message: { tool_calls: [{ function: { arguments: JSON.stringify(answerFor(opts, `ai-call-${n}`)) } }] } }] };
     return { response: new Response(JSON.stringify(body), { status: 200 }), modelUsed: "fake" };
   };
 
-  const handler = await loadEdgeHandler("analyze-resume", STUBS);
+  const handler = await loadEdgeHandler("analyze-resume", { ...STUBS, ...stubs });
 
   const harness: Harness = {
     handler,

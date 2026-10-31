@@ -1,6 +1,16 @@
 // deploy-stamp: 2026-10-09T13:00Z
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { callAIWithModelFallback, chainFrom } from "../_shared/ai-fallback.ts";
+import {
+  ANALYSIS_BUDGET_MS,
+  ANALYSIS_TOOL_NAME,
+  PRO_ATTEMPT_MS,
+  analysisParts,
+  mergeParts,
+  readToolReply,
+  usablePart,
+  type AnalysisPart,
+} from "./analysis-parts.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { getServiceClient } from "../_shared/supabase-client.ts";
 import { scannableJobDescription } from "../_shared/job-description-input.ts";
@@ -127,6 +137,8 @@ const ERROR_MESSAGES = {
   RATE_LIMITED: 'Too many requests. Please try again later.',
   PAYMENT_REQUIRED: 'Payment verification required.',
   SESSION_USED: 'This session has already been used for analysis.',
+  // Under 200 characters: the success page shows a message that short as it is.
+  TIMED_OUT: 'The analysis took too long and was stopped before anything was saved. Your purchase is safe: nothing was charged twice, and trying again is free.',
 };
 
 // Helper to get client IP from request (prioritize Cloudflare's trusted header)
@@ -263,383 +275,88 @@ async function rpcWithRetry<T>(
   return { data: null, error: lastError };
 }
 
-// Tool definition for structured resume analysis output
-const getAnalysisTools = (hasLinkedIn: boolean, hasJobDescription: boolean) => [{
-  type: "function",
-  function: {
-    name: "submit_resume_analysis",
-    description: "Submit the complete resume analysis with all sections",
-    parameters: {
-      type: "object",
-      properties: {
-        industry: {
-          type: "string",
-          enum: ["technology", "data_engineering", "data_science", "machine_learning", "healthcare", "finance", "marketing", "sales", "engineering", "education", "hr", "consulting", "legal", "retail", "hospitality", "manufacturing", "government", "product_management", "creative", "general"],
-          description: "Detected industry. Use EXACTLY one of the enum values. Key disambiguation rules: (1) 'technology': ONLY software engineers, web/mobile developers, DevOps, SRE, security engineers, cloud engineers — NOT data or AI roles. (2) 'data_engineering': roles building data INFRASTRUCTURE — data engineers, analytics engineers (especially dbt+Airflow+Snowflake/BigQuery), ETL engineers, data architects, data platform engineers, BI engineers who build pipelines. Anchor keywords: dbt, Airflow, Spark, Kafka, Snowflake, BigQuery, Databricks, ETL, data pipeline, data warehouse. (3) 'data_science': roles doing ANALYTICS and MODELING — data scientists, data analysts, quant analysts, experimentation analysts, decision scientists, BI analysts who analyze not build. Anchor keywords: statistical analysis, A/B testing, hypothesis testing, regression, scikit-learn, Tableau, Power BI, pandas, forecasting. DO NOT use data_science for pipeline builders. (4) 'machine_learning': roles building PRODUCTION ML SYSTEMS — ML engineers, AI engineers, LLM/GenAI engineers, prompt engineers, MLOps engineers, ranking engineers, RecSys engineers, NLP engineers, CV engineers. Anchor keywords: PyTorch, TensorFlow, model deployment, inference, fine-tuning, RAG, embeddings, LangChain, MLflow, vector database. NOT for analysts doing one-off modeling. (5) 'product_management': PMs, TPMs, product owners, scrum masters, group PMs, CPOs. (6) 'engineering': ONLY non-software engineering — civil, mechanical, electrical, chemical, aerospace. (7) 'creative': designers, UX, art directors, animators, copywriters, photographers. (8) 'general': only when truly no other category fits."
-        },
-        experienceLevel: { type: "string", enum: ["entry", "mid", "senior", "executive"], description: "Career experience level" },
-        atsScore: {
-          type: "object",
-          properties: {
-            score: { type: "number", description: "ATS compatibility score from 0-100 (sum of all breakdown scores)" },
-            breakdown: {
-              type: "object",
-              properties: {
-                jobTitleMatch: { type: "number", description: "How well job titles match target roles (0-15 points)" },
-                skillsMatch: { type: "number", description: "Relevant skills coverage (0-30 points)" },
-                actionVerbUsage: { type: "number", description: "Strong action verbs at bullet starts (0-15 points)" },
-                keywordCoverage: { type: "number", description: "Industry keywords present (0-20 points)" },
-                formattingScore: { type: "number", description: "ATS-friendly formatting (0-20 points, deduct for tables/graphics/fancy fonts)" }
-              },
-              required: ["jobTitleMatch", "skillsMatch", "actionVerbUsage", "keywordCoverage", "formattingScore"]
-            },
-            improvements: { type: "array", items: { type: "string" }, description: "Top 3-5 ways to improve ATS score" }
-          },
-          required: ["score", "breakdown", "improvements"]
-        },
-        readabilityMetrics: {
-          type: "object",
-          properties: {
-            grade: { type: "string", enum: ["A", "B", "C", "D", "F"], description: "Overall readability grade" },
-            bulletPointClarity: { type: "string", description: "Assessment of bullet point clarity" },
-            jargonLevel: { type: "string", enum: ["low", "moderate", "high"], description: "Amount of industry jargon used" },
-            suggestions: { type: "array", items: { type: "string" }, description: "Readability improvement suggestions" }
-          },
-          required: ["grade", "bulletPointClarity", "jargonLevel", "suggestions"]
-        },
-        formatRecommendations: {
-          type: "object",
-          properties: {
-            currentIssues: { type: "array", items: { type: "string" }, description: "Current formatting issues detected" },
-            recommendations: { type: "array", items: { type: "string" }, description: "Specific formatting improvements" },
-            sectionOrder: { type: "array", items: { type: "string" }, description: "Recommended section order for this candidate" }
-          },
-          required: ["currentIssues", "recommendations", "sectionOrder"]
-        },
-        atsParsingIssues: {
-          type: "object",
-          properties: {
-            detectedIssues: { 
-              type: "array", 
-              items: { type: "string" }, 
-              description: "Specific formatting/parsing issues that will break ATS systems (e.g., headers not readable, tables/text boxes used, unicode bullets, contact info format, graphics/images, multi-column layouts)" 
-            },
-            severity: { type: "string", enum: ["low", "medium", "high"], description: "Overall severity of parsing issues" },
-            criticalFixes: { 
-              type: "array", 
-              items: { type: "string" }, 
-              description: "Most critical fixes needed for ATS compatibility" 
-            }
-          },
-          required: ["detectedIssues", "severity", "criticalFixes"]
-        },
-        summaryRewrite: {
-          type: "object",
-          properties: {
-            professionalSummary: { type: "string", description: "2-3 sentence professional summary for resume" },
-            linkedInHeadline: { type: "string", description: "Optimized LinkedIn headline under 120 chars" }
-          },
-          required: ["professionalSummary", "linkedInHeadline"]
-        },
-        optimizedBullets: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              original: { type: "string", description: "Original weak bullet from resume" },
-              improved: { type: "string", description: "Rewritten with metrics and impact" },
-              reason: { type: "string", description: "Brief explanation of improvement" }
-            },
-            required: ["original", "improved", "reason"]
-          },
-          description: "3-5 bullet point improvements"
-        },
-        quantificationOpportunities: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              context: { type: "string", description: "Vague statement from resume" },
-              suggestion: { type: "string", description: "How to add metrics" },
-              example: { type: "string", description: "Example with numbers" }
-            },
-            required: ["context", "suggestion", "example"]
-          },
-          description: "3-4 quantification opportunities"
-        },
-        achievementMetrics: {
-          type: "object",
-          properties: {
-            roleType: { type: "string", description: "The detected role type (e.g., 'Software Engineer', 'Sales Manager', 'Product Manager')" },
-            typicalMetrics: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  category: { type: "string", description: "Metric category (e.g., 'Revenue Impact', 'Efficiency', 'Scale')" },
-                  metricName: { type: "string", description: "Specific metric name (e.g., 'Revenue Generated', 'Time Saved', 'Users Impacted')" },
-                  howToMeasure: { type: "string", description: "How candidate can calculate/find this number" },
-                  exampleRange: { type: "string", description: "Typical range for this role (e.g., '$50K-$500K', '20-50%', '1K-100K users')" },
-                  bulletExample: { type: "string", description: "Complete bullet point example using this metric" }
-                },
-                required: ["category", "metricName", "howToMeasure", "exampleRange", "bulletExample"]
-              },
-              description: "5-7 metrics this role should quantify"
-            },
-            missingFromResume: {
-              type: "array",
-              items: { type: "string" },
-              description: "Specific metric types missing from their current resume"
-            },
-            quickWins: {
-              type: "array",
-              items: { type: "string" },
-              description: "3 easy metrics they could add right now based on their experience"
-            }
-          },
-          required: ["roleType", "typicalMetrics", "missingFromResume", "quickWins"]
-        },
-        skillsGap: {
-          type: "object",
-          properties: {
-            missingTechnical: { type: "array", items: { type: "string" }, description: "3-5 missing technical skills" },
-            missingSoft: { type: "array", items: { type: "string" }, description: "2-3 missing soft skills" },
-            recommendations: { type: "string", description: "How to address skill gaps" }
-          },
-          required: ["missingTechnical", "missingSoft", "recommendations"]
-        },
-        industryInsights: {
-          type: "object",
-          properties: {
-            whatRecruitersLookFor: { type: "string", description: "What recruiters in this industry prioritize" },
-            competitiveAdvantage: { type: "string", description: "What would make candidate stand out" },
-            commonMistakes: { type: "string", description: "Common resume mistakes in this industry" }
-          },
-          required: ["whatRecruitersLookFor", "competitiveAdvantage", "commonMistakes"]
-        },
-        actionVerbs: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              weak: { type: "string", description: "Weak verb found in resume" },
-              strong: { type: "string", description: "Stronger replacement" }
-            },
-            required: ["weak", "strong"]
-          },
-          description: "4-6 verb improvements"
-        },
-        keywords: { type: "array", items: { type: "string" }, description: "6-8 industry keywords to add" },
-        redFlags: { type: "array", items: { type: "string" }, description: "3-5 issues recruiters would notice" },
-        resumeLength: {
-          type: "object",
-          properties: {
-            recommendedPages: { type: "number", description: "Recommended number of pages (1, 2, or 3)" },
-            currentAssessment: { type: "string", description: "Assessment of their current resume length" },
-            reasoning: { type: "string", description: "Why this page count is recommended based on their experience level and industry" }
-          },
-          required: ["recommendedPages", "currentAssessment", "reasoning"]
-        },
-        actionPlan: {
-          type: "array",
-          items: { type: "string" },
-          description: "4-6 specific, prioritized action items for the candidate to implement immediately. Each should be concrete and actionable (e.g., 'Add X keyword to top 3 bullets', 'Rewrite summary to highlight Y skill', 'Fix red flag: remove Z'). Order by impact - most important first."
-        },
-        ...(hasLinkedIn ? {
-          linkedInAnalysis: {
-            type: "object",
-            properties: {
-              profileScore: {
-                type: "object",
-                properties: {
-                  overall: { type: "number", description: "Overall LinkedIn profile optimization score 0-100" },
-                  breakdown: {
-                    type: "object",
-                    properties: {
-                      headline: { type: "number", description: "Headline effectiveness 0-20" },
-                      about: { type: "number", description: "About section quality 0-20" },
-                      experience: { type: "number", description: "Experience descriptions 0-20" },
-                      skills: { type: "number", description: "Skills relevance 0-20" },
-                      engagement: { type: "number", description: "Profile engagement potential 0-20" }
-                    },
-                    required: ["headline", "about", "experience", "skills", "engagement"]
-                  }
-                },
-                required: ["overall", "breakdown"]
-              },
-              completenessChecklist: {
-                type: "object",
-                properties: {
-                  hasPhoto: { type: "boolean", description: "Whether profile appears to have a professional photo" },
-                  hasBanner: { type: "boolean", description: "Whether they mention or seem to have a custom banner" },
-                  hasCustomUrl: { type: "boolean", description: "Whether they have a custom LinkedIn URL" },
-                  hasCertifications: { type: "boolean", description: "Whether certifications section is utilized" },
-                  hasRecommendations: { type: "boolean", description: "Whether they have recommendations" },
-                  hasProjects: { type: "boolean", description: "Whether projects section is utilized" },
-                  missingItems: { type: "array", items: { type: "string" }, description: "List of missing profile elements with why they matter" }
-                },
-                required: ["hasPhoto", "hasBanner", "hasCustomUrl", "hasCertifications", "hasRecommendations", "hasProjects", "missingItems"]
-              },
-              headlineOptimization: {
-                type: "object",
-                properties: {
-                  current: { type: "string" },
-                  improved: { type: "string" },
-                  whyBetter: { type: "string" }
-                },
-                required: ["current", "improved", "whyBetter"]
-              },
-              aboutSectionRewrite: { type: "string", description: "3-4 paragraph About section" },
-              experienceOptimization: {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    role: { type: "string" },
-                    issue: { type: "string" },
-                    improved: { type: "string" }
-                  },
-                  required: ["role", "issue", "improved"]
-                }
-              },
-              skillsToAdd: { type: "array", items: { type: "string" } },
-              skillsToRemove: { type: "array", items: { type: "string" } },
-              seoKeywords: { type: "array", items: { type: "string" } },
-              contentStrategy: {
-                type: "object",
-                properties: {
-                  postIdeas: { 
-                    type: "array", 
-                    items: { 
-                      type: "object",
-                      properties: {
-                        topic: { type: "string" },
-                        hook: { type: "string", description: "First line that grabs attention" },
-                        format: { type: "string", enum: ["text", "carousel", "poll", "video", "article"] }
-                      },
-                      required: ["topic", "hook", "format"]
-                    },
-                    description: "3-4 content ideas tailored to their industry" 
-                  },
-                  postingFrequency: { type: "string", description: "Recommended posting schedule" },
-                  bestTimes: { type: "string", description: "Best times to post for their industry" },
-                  engagementTips: { type: "array", items: { type: "string" }, description: "3-4 tips for engaging with others' content" },
-                  hashtagStrategy: { type: "array", items: { type: "string" }, description: "5-7 hashtags to use" }
-                },
-                required: ["postIdeas", "postingFrequency", "bestTimes", "engagementTips", "hashtagStrategy"]
-              },
-              connectionStrategy: {
-                type: "object",
-                properties: {
-                  targetConnections: { type: "array", items: { type: "string" }, description: "Types of people to connect with (job titles, companies)" },
-                  connectionMessageTemplate: { type: "string", description: "Template for personalized connection request" },
-                  networkingTips: { type: "array", items: { type: "string" }, description: "3-4 strategic networking tips" },
-                  groupsToJoin: { type: "array", items: { type: "string" }, description: "3-4 LinkedIn groups relevant to their field" }
-                },
-                required: ["targetConnections", "connectionMessageTemplate", "networkingTips", "groupsToJoin"]
-              },
-              profileVisibilityTips: { type: "array", items: { type: "string" } },
-              featuredSectionIdeas: { type: "array", items: { type: "string" } },
-              recommendationStrategy: { type: "string" }
-            },
-            required: ["profileScore", "completenessChecklist", "headlineOptimization", "aboutSectionRewrite", "experienceOptimization", "skillsToAdd", "skillsToRemove", "seoKeywords", "contentStrategy", "connectionStrategy", "profileVisibilityTips", "featuredSectionIdeas", "recommendationStrategy"]
-          }
-        } : {}),
-        ...(hasJobDescription ? {
-          jobDescriptionAlignment: {
-            type: "object",
-            properties: {
-              matchScore: { type: "number", description: "Percentage match between resume and job description (0-100)" },
-              extractedKeywords: { type: "array", items: { type: "string" }, description: "8-12 key requirements/skills extracted from the job description" },
-              missingKeywords: { type: "array", items: { type: "string" }, description: "5-8 important keywords from the JD that are missing from the resume" },
-              suggestedEdits: {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    section: { type: "string", description: "Which section of resume to edit (e.g., 'Summary', 'Experience - Role X', 'Skills')" },
-                    currentText: { type: "string", description: "Relevant text from the resume" },
-                    suggestedText: { type: "string", description: "Rewritten text that better matches the JD" },
-                    jdAlignment: { type: "string", description: "Which JD requirement this addresses" }
-                  },
-                  required: ["section", "currentText", "suggestedText", "jdAlignment"]
-                },
-                description: "3-5 specific resume edits to better match the job description"
-              },
-              roleMatchAnalysis: { type: "string", description: "2-3 sentences analyzing how well the candidate's experience aligns with the target role" },
-              gapAnalysis: { type: "string", description: "2-3 sentences on skill/experience gaps vs the JD requirements" },
-              toneAnalysis: {
-                type: "object",
-                properties: {
-                  jdTone: { type: "string", enum: ["formal", "casual", "technical", "creative", "corporate", "startup"], description: "The dominant tone/voice of the job description" },
-                  resumeTone: { type: "string", enum: ["formal", "casual", "technical", "creative", "corporate", "startup"], description: "The current tone/voice of the resume" },
-                  toneMatch: { type: "boolean", description: "Whether the tones match well" },
-                  toneGuidance: { type: "string", description: "Specific advice on adjusting resume tone to match the JD" },
-                  phraseSwaps: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        current: { type: "string", description: "Current phrase from resume" },
-                        suggested: { type: "string", description: "Phrase rewritten to match JD tone" },
-                        reason: { type: "string", description: "Why this change matches the company's voice" }
-                      },
-                      required: ["current", "suggested", "reason"]
-                    },
-                    description: "3-5 specific phrase changes to match the JD tone"
-                  }
-                },
-                required: ["jdTone", "resumeTone", "toneMatch", "toneGuidance", "phraseSwaps"]
-              },
-              companyInsights: {
-                type: "object",
-                properties: {
-                  companyName: { type: "string", description: "Company name extracted from JD (or 'Unknown' if not found)" },
-                  companyType: { type: "string", enum: ["startup", "scaleup", "enterprise", "agency", "nonprofit", "government", "unknown"], description: "Type of company based on JD signals" },
-                  cultureSignals: {
-                    type: "array",
-                    items: { type: "string" },
-                    description: "3-5 company culture traits detected from JD (e.g., 'fast-paced', 'collaborative', 'data-driven', 'innovative')"
-                  },
-                  valueKeywords: {
-                    type: "array",
-                    items: { type: "string" },
-                    description: "Specific company values or buzzwords from JD to mirror (e.g., 'customer-obsessed', 'ownership', 'bias for action')"
-                  },
-                  languageToUse: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        value: { type: "string", description: "Company value/trait detected" },
-                        resumeLanguage: { type: "string", description: "How to express this value in resume bullets" },
-                        bulletExample: { type: "string", description: "Example bullet demonstrating this value" }
-                      },
-                      required: ["value", "resumeLanguage", "bulletExample"]
-                    },
-                    description: "3-4 ways to incorporate company values into resume"
-                  },
-                  redFlagsForThisCompany: {
-                    type: "array",
-                    items: { type: "string" },
-                    description: "Things in the resume that might not resonate with this specific company culture"
-                  }
-                },
-                required: ["companyName", "companyType", "cultureSignals", "valueKeywords", "languageToUse", "redFlagsForThisCompany"]
-              }
-            },
-            required: ["matchScore", "extractedKeywords", "missingKeywords", "suggestedEdits", "roleMatchAnalysis", "gapAnalysis", "toneAnalysis", "companyInsights"]
-          }
-        } : {})
-      },
-      required: [
-        "industry", "experienceLevel", "atsScore", "readabilityMetrics", "formatRecommendations",
-        "atsParsingIssues", "summaryRewrite", "optimizedBullets", "quantificationOpportunities", 
-        "skillsGap", "industryInsights", "actionVerbs", "keywords", "redFlags", "resumeLength", "actionPlan", "achievementMetrics"
-      ]
-    }
+/** A part of the analysis that ended in an answer for the buyer (busy, credits, unusable): it is the request's answer. */
+class PartAnswer extends Error {
+  constructor(public readonly response: Response) {
+    super(`analysis part answered ${response.status}`);
+    this.name = "PartAnswer";
   }
-}];
+}
+
+/** The model chain ran out of time: our own abort, or the chain's budget spent before any model answered. */
+const isChainTimeout = (error: unknown): boolean =>
+  error instanceof Error && (error.name === 'AbortError' || error.name === 'TimeoutError' || /abort|timed? ?out/i.test(error.message));
+
+/** A part's budget spent on replies it could not deliver: out of time, as the buyer sees it, so a retryable 504 too. */
+const partOutOfTime = (part: AnalysisPart) =>
+  Object.assign(new Error(`ANALYZE-RESUME ${part.label}: the budget ran out before a usable reply`), { name: 'TimeoutError' });
+
+const answer = (status: number, error: string) =>
+  new Response(JSON.stringify({ error }), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+
+/**
+ * ONE PART OF THE ANALYSIS, ON THE PAID CHAIN (S13-001). gemini-2.5-pro
+ * first, cut at PRO_ATTEMPT_MS so the next model keeps a real window; a
+ * reply this part cannot deliver (unparseable, truncated at the cap, missing
+ * what it was asked for) asks the next model with the time that is left, as
+ * generate-career-snapshot does, and with under 5 s left the part is out of
+ * time. A gateway refusal is answered as the single call answered it; a
+ * timeout is thrown for the caller's retryable 504.
+ */
+async function askPart(apiKey: string, part: AnalysisPart, systemPrompt: string, userMessage: string): Promise<Record<string, unknown>> {
+  const models = chainFrom("google/gemini-2.5-pro");
+  const startedAt = Date.now();
+  for (let i = 0; i < models.length;) {
+    const left = ANALYSIS_BUDGET_MS - (Date.now() - startedAt);
+    if (left < 5_000) throw partOutOfTime(part);
+    const { response, modelUsed } = await callAIWithModelFallback(apiKey, {
+      messages: [
+        { role: "system", content: systemPrompt + part.scopeNote },
+        { role: "user", content: userMessage },
+      ],
+      tools: part.tools,
+      toolChoice: { type: "function", function: { name: ANALYSIS_TOOL_NAME } },
+      maxTokens: part.maxTokens,
+      models: models.slice(i),
+      deadlineMs: left,
+      ...(i === 0 ? { attemptTimeoutMs: PRO_ATTEMPT_MS } : {}),
+      context: `ANALYZE-RESUME ${part.label}`,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[ANALYZE-RESUME] (${part.label}) AI gateway error:`, response.status, errorText);
+      if (response.status === 429) throw new PartAnswer(answer(429, ERROR_MESSAGES.RATE_LIMITED));
+      if (response.status === 402) throw new PartAnswer(answer(503, ERROR_MESSAGES.SERVICE_UNAVAILABLE));
+      throw new PartAnswer(answer(500, ERROR_MESSAGES.INTERNAL));
+    }
+
+    const reply = readToolReply(await response.json().catch(() => null));
+    if (reply && usablePart(part, reply)) {
+      console.log(`[ANALYZE-RESUME] (${part.label}) answered by ${modelUsed} in ${Date.now() - startedAt}ms`);
+      return reply;
+    }
+    console.error(`[ANALYZE-RESUME] (${part.label}) ${modelUsed} returned no usable ${part.label} analysis; asking the next model`);
+    i = models.indexOf(modelUsed) + 1;
+    if (i <= 0) break;
+  }
+  throw new PartAnswer(answer(500, ERROR_MESSAGES.INTERNAL));
+}
+
+/** Every part at once, merged into the object the old single call produced. */
+async function analyzeInParts(
+  apiKey: string,
+  systemPrompt: string,
+  userMessage: string,
+  hasLinkedIn: boolean,
+  hasJobDescription: boolean,
+): Promise<Record<string, unknown>> {
+  const parts = analysisParts(hasLinkedIn, hasJobDescription);
+  const startedAt = Date.now();
+  const replies = await Promise.all(parts.map((part) => askPart(apiKey, part, systemPrompt, userMessage)));
+  console.log(`[ANALYZE-RESUME] ${parts.map((p) => p.label).join(" + ")} answered in ${Date.now() - startedAt}ms`);
+  return mergeParts(parts, replies);
+}
 
 serve(async (req) => {
   const requestStartTime = Date.now();
@@ -1311,95 +1028,31 @@ Use their actual resume content in examples. Prioritize highest-impact fixes fir
       userMessage += `\n\n<job_description>\n${escapeXml(jobDescriptionText)}\n</job_description>`;
     }
 
-    // gemini-2.5-pro stays the primary for paid analysis (quality matters); on a
-    // pro outage the chain falls back cross-provider rather than failing the scan.
-    const { response } = await callAIWithModelFallback(LOVABLE_API_KEY, {
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userMessage }
-      ],
-      tools: getAnalysisTools(hasLinkedIn, hasJobDescription),
-      toolChoice: { type: "function", function: { name: "submit_resume_analysis" } },
-      models: chainFrom("google/gemini-2.5-pro"),
-      context: "ANALYZE-RESUME",
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("[ANALYZE-RESUME] AI gateway error:", response.status, errorText);
-      
-      if (response.status === 429) {
+    // THE ANALYSIS IN PARALLEL PARTS (S13-001; analysis-parts.ts): the
+    // résumé analysis in one call and, only when the buyer gave them, the
+    // LinkedIn and posting sections in another, each capped at its measured
+    // largest reply, on gemini-2.5-pro first with a real window left for
+    // flash. Nothing is redeemed until deliver(), so every failure here
+    // leaves the purchase redeemable.
+    let analysis: Record<string, any>;
+    try {
+      analysis = await analyzeInParts(LOVABLE_API_KEY, systemPrompt, userMessage, !!hasLinkedIn, hasJobDescription);
+    } catch (failure) {
+      if (failure instanceof PartAnswer) return failure.response;
+      // OUT OF TIME IS NOT "AN ERROR OCCURRED" (S13-001, S10-014). This used
+      // to fall to the catch below: a 500 with no retryable flag, for a
+      // purchase that was never redeemed and that a retry delivers.
+      if (isChainTimeout(failure)) {
+        trackPerformance(requestStartTime, 'analyze-resume', false, { error: 'timed out', hasLinkedIn: !!linkedInText, hasJobDesc: !!jobDescriptionText }, clientIp);
+        console.error("[ANALYZE-RESUME] The model chain ran out of time; nothing was redeemed:", failure);
         return new Response(
-          JSON.stringify({ error: ERROR_MESSAGES.RATE_LIMITED }),
-          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify({ error: ERROR_MESSAGES.TIMED_OUT, code: 'analysis_timed_out', retryable: true }),
+          { status: 504, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: ERROR_MESSAGES.SERVICE_UNAVAILABLE }),
-          { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      return new Response(
-        JSON.stringify({ error: ERROR_MESSAGES.INTERNAL }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      throw failure;
     }
-
-    const data = await response.json();
     console.log("[ANALYZE-RESUME] AI response received");
-
-    // Extract analysis from tool call
-    let analysis;
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-    
-    if (toolCall && toolCall.function?.arguments) {
-      try {
-        analysis = JSON.parse(toolCall.function.arguments);
-        console.log("[ANALYZE-RESUME] Successfully parsed tool call response");
-      } catch (parseError) {
-        console.error("[ANALYZE-RESUME] Failed to parse tool call arguments:", parseError);
-        return new Response(
-          JSON.stringify({ error: ERROR_MESSAGES.INTERNAL }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-    } else {
-      // Fallback: try to parse from message content
-      const content = data.choices?.[0]?.message?.content;
-      if (!content) {
-        console.error("[ANALYZE-RESUME] No content or tool call in AI response:", data);
-        return new Response(
-          JSON.stringify({ error: ERROR_MESSAGES.INTERNAL }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      try {
-        let cleanContent = content.trim();
-        if (cleanContent.startsWith('```json')) cleanContent = cleanContent.slice(7);
-        if (cleanContent.startsWith('```')) cleanContent = cleanContent.slice(3);
-        if (cleanContent.endsWith('```')) cleanContent = cleanContent.slice(0, -3);
-        analysis = JSON.parse(cleanContent.trim());
-        console.log("[ANALYZE-RESUME] Parsed fallback content response");
-      } catch (parseError) {
-        console.error("[ANALYZE-RESUME] Failed to parse AI response:", parseError);
-        return new Response(
-          JSON.stringify({ error: ERROR_MESSAGES.INTERNAL }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-    }
-
-    // Validate core fields
-    if (!analysis.optimizedBullets || !analysis.actionVerbs || !analysis.keywords || !analysis.redFlags) {
-      console.error("[ANALYZE-RESUME] Invalid analysis structure - missing core fields");
-      return new Response(
-        JSON.stringify({ error: ERROR_MESSAGES.INTERNAL }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
 
     // Ensure all fields have defaults
     analysis.industry = analysis.industry || "General";
