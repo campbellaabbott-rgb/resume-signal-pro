@@ -1256,6 +1256,30 @@ export type Database = {
         }
         Relationships: []
       }
+      checkout_buyers: {
+        Row: {
+          checkout_function: string
+          created_at: string
+          product_type: string | null
+          stripe_session_id: string
+          user_id: string | null
+        }
+        Insert: {
+          checkout_function: string
+          created_at?: string
+          product_type?: string | null
+          stripe_session_id: string
+          user_id?: string | null
+        }
+        Update: {
+          checkout_function?: string
+          created_at?: string
+          product_type?: string | null
+          stripe_session_id?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       checkout_resume_refs: {
         Row: {
           created_at: string
@@ -4259,6 +4283,39 @@ export type Database = {
         }
         Relationships: []
       }
+      pro_auto_renew_consents: {
+        Row: {
+          consented_at: string
+          created_at: string
+          price_cents: number
+          renewal_interval: string
+          renewal_terms_version: string
+          stripe_session_id: string
+          terms_version: string | null
+          user_id: string | null
+        }
+        Insert: {
+          consented_at: string
+          created_at?: string
+          price_cents: number
+          renewal_interval?: string
+          renewal_terms_version: string
+          stripe_session_id: string
+          terms_version?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          consented_at?: string
+          created_at?: string
+          price_cents?: number
+          renewal_interval?: string
+          renewal_terms_version?: string
+          stripe_session_id?: string
+          terms_version?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       pro_grants: {
         Row: {
           consumed_at: string | null
@@ -4315,6 +4372,7 @@ export type Database = {
       }
       pro_subscribers: {
         Row: {
+          cancel_at_period_end: boolean
           current_period_end: string | null
           email: string
           status: string
@@ -4323,6 +4381,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          cancel_at_period_end?: boolean
           current_period_end?: string | null
           email: string
           status?: string
@@ -4331,6 +4390,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          cancel_at_period_end?: boolean
           current_period_end?: string | null
           email?: string
           status?: string
@@ -5402,6 +5462,30 @@ export type Database = {
           processed?: boolean | null
           processing_error?: string | null
           processing_time_ms?: number | null
+        }
+        Relationships: []
+      }
+      writing_tool_uses: {
+        Row: {
+          id: string
+          tier: string
+          tool: string
+          used_at: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          tier: string
+          tool: string
+          used_at?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          tier?: string
+          tool?: string
+          used_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -7712,6 +7796,10 @@ export type Database = {
       refresh_recency_ladder: { Args: never; Returns: Json }
       refresh_stats_cache: { Args: never; Returns: undefined }
       refresh_transparency_cache: { Args: never; Returns: undefined }
+      refund_writing_tools: {
+        Args: { p_use_ids: string[]; p_user_id: string }
+        Returns: number
+      }
       register_affiliate: {
         Args: { p_email: string; p_password: string }
         Returns: Json
@@ -7955,6 +8043,16 @@ export type Database = {
           p_stripe_session_id: string
         }
         Returns: string
+      }
+      take_writing_tools: {
+        Args: {
+          p_per_day: number
+          p_per_month: number
+          p_tier: string
+          p_tools: string[]
+          p_user_id: string
+        }
+        Returns: Json
       }
       track_ab_event: {
         Args: {
