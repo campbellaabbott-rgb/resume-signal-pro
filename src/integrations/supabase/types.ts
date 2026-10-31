@@ -1208,6 +1208,30 @@ export type Database = {
           },
         ]
       }
+      application_form_cache: {
+        Row: {
+          form: Json
+          ok: boolean
+          posting_id: string
+          read_at: string
+          vendor: string
+        }
+        Insert: {
+          form?: Json
+          ok: boolean
+          posting_id: string
+          read_at?: string
+          vendor: string
+        }
+        Update: {
+          form?: Json
+          ok?: boolean
+          posting_id?: string
+          read_at?: string
+          vendor?: string
+        }
+        Relationships: []
+      }
       apply_tenant_walls: {
         Row: {
           checked_at: string
@@ -5672,6 +5696,15 @@ export type Database = {
         }[]
       }
       api_key_retire_idle: { Args: never; Returns: number }
+      application_form_cache_put: {
+        Args: {
+          p_form: Json
+          p_ok: boolean
+          p_posting_id: string
+          p_vendor: string
+        }
+        Returns: undefined
+      }
       apply_posting_corrections: { Args: { p_patches: Json }; Returns: number }
       auth_changed_since: {
         Args: { p_since: string; p_user_id: string }

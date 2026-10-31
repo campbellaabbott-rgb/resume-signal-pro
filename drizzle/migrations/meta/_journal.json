@@ -1240,6 +1240,13 @@
       "when": 1792937794688,
       "tag": "0176_20261012137000_a_company_page_asks_once_per_read_whether_its_workday_tenant_hosts_another_employer",
       "breakpoints": true
+    },
+    {
+      "idx": 177,
+      "version": "7",
+      "when": 1793471258554,
+      "tag": "0177_20261011100000_an_employers_application_form_is_read_once_a_day_not_once_a_question",
+      "breakpoints": true
     }
   ]
 }
