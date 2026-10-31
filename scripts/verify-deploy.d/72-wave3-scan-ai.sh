@@ -154,8 +154,12 @@ else
   else echo "PASS  the resetting results countdown is gone from the English strings"; fi
   if printf '%s' "$EN72" | grep -qF "being auto-rejected"; then echo "FAIL  English strings still carry the \"auto-rejected\" Premium card shown under the report (review round 2)"
   else echo "PASS  the \"auto-rejected\" Premium card under the report is gone from the English strings"; fi
+  # Since the final recheck of land/all (2026-10-31) the bar names the Full
+  # Analysis in the report's words, a separate, deeper analysis, where it said
+  # it applies the free scan's fixes (which the report no longer claims).
   if printf '%s' "$EN72" | grep -qF "Premium packages from"; then echo "FAIL  the sticky bar still says \"Premium packages from\" the hidden \$3 product"
-  elif printf '%s' "$EN72" | grep -qF "Applies the fixes your free scan finds"; then echo "PASS  the sticky bar names the Full Analysis and what it does"
+  elif printf '%s' "$EN72" | grep -qF "A separate, deeper analysis of your résumé. One payment"; then echo "PASS  the sticky bar names the Full Analysis in the report's words (a separate, deeper analysis)"
+  elif printf '%s' "$EN72" | grep -qF "Applies the fixes your free scan finds"; then echo "FAIL  the sticky bar still says the Full Analysis applies the free scan's fixes, which the report no longer claims: the frontend with the final recheck of land/all is not published"
   else echo "FAIL  the sticky bar's line is neither the old nor the new one"; fi
 fi
 IDX72=$(printf '%s' "$MAINB72" | grep -o '\./Index-[A-Za-z0-9_-]*\.js' | head -1)
