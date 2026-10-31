@@ -1338,6 +1338,55 @@
       "when": 1793471869863,
       "tag": "0190_20261011160000_the_writing_tools_are_counted_by_account_one_a_day_free_five_on_pro",
       "breakpoints": true
+    },
+    {
+      "idx": 191,
+      "version": "7",
+      "when": 1793471918894,
+      "tag": "0191_20261011170000_a_deleted_account_takes_its_keys_and_lists_and_a_proven_mailbox_counts_where_plans_are_read",
+      "breakpoints": true
+    },
+    {
+      "idx": 192,
+      "version": "7",
+      "when": 1793471935577,
+      "tag": "0192_20261011171000_shortlist_records_no_candidate_sex_or_race",
+      "breakpoints": true
+    },
+    {
+      "idx": 193,
+      "version": "7",
+      "when": 1793471974405,
+      "tag": "0193_20261011200000_a_cron_that_errors_every_run_and_a_heartbeat_that_stopped_are_seen",
+      "breakpoints": true
+    },
+    {
+      "idx": 194,
+      "version": "7",
+      "when": 1793472003582,
+      "tag": "0194_20261011210000_a_deleted_account_takes_the_documents_made_for_it_and_its_pro_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 195,
+      "version": "7",
+      "when": 1793472049040,
+      "tag": "0195_20261011211000_an_affiliate_is_paid_once_per_customer_and_a_disputed_payment_takes_it_back",
+      "breakpoints": true
+    },
+    {
+      "idx": 196,
+      "version": "7",
+      "when": 1793472083904,
+      "tag": "0196_20261011212000_a_deleted_account_takes_its_full_analysis_not_only_the_pointer",
+      "breakpoints": true
+    },
+    {
+      "idx": 197,
+      "version": "7",
+      "when": 1793472104641,
+      "tag": "0197_20261011213000_a_confirmed_past_career_path_buyer_is_remembered",
+      "breakpoints": true
     }
   ]
 }

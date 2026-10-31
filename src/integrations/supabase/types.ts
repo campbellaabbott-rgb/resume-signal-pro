@@ -1089,7 +1089,7 @@ export type Database = {
           last_used_at: string | null
           name: string
           notes: string | null
-          owner_email: string
+          owner_email: string | null
           rate_per_min: number
           revoked_at: string | null
           tier: string
@@ -1104,7 +1104,7 @@ export type Database = {
           last_used_at?: string | null
           name: string
           notes?: string | null
-          owner_email: string
+          owner_email?: string | null
           rate_per_min?: number
           revoked_at?: string | null
           tier?: string
@@ -1119,7 +1119,7 @@ export type Database = {
           last_used_at?: string | null
           name?: string
           notes?: string | null
-          owner_email?: string
+          owner_email?: string | null
           rate_per_min?: number
           revoked_at?: string | null
           tier?: string
@@ -1253,6 +1253,24 @@ export type Database = {
           vendor?: string
           walled?: boolean
           walls?: string[]
+        }
+        Relationships: []
+      }
+      career_path_past_buyers: {
+        Row: {
+          confirmed_at: string
+          regenerate_until: string
+          stripe_session_id: string
+        }
+        Insert: {
+          confirmed_at?: string
+          regenerate_until: string
+          stripe_session_id: string
+        }
+        Update: {
+          confirmed_at?: string
+          regenerate_until?: string
+          stripe_session_id?: string
         }
         Relationships: []
       }
@@ -5495,6 +5513,10 @@ export type Database = {
     }
     Functions: {
       _mig_exec: { Args: { p_sql: string }; Returns: undefined }
+      account_erase_personal_data: {
+        Args: { p_email: string; p_email_proven: boolean; p_user_id: string }
+        Returns: Json
+      }
       account_mailbox_proven: { Args: { p_user_id: string }; Returns: boolean }
       acquire_scan_slot: {
         Args: { p_max: number; p_ttl_seconds: number }
@@ -5994,6 +6016,24 @@ export type Database = {
         Returns: {
           capped: boolean
           n: number
+        }[]
+      }
+      cron_http_answers: {
+        Args: { p_error_minutes?: number; p_minutes?: number }
+        Returns: {
+          available: boolean
+          error_window_responses: number
+          last_error_at: string
+          last_error_sample: string
+          last_error_status: number
+          last_refused_at: string
+          last_refused_sample: string
+          last_refused_status: number
+          not_found: number
+          refused: number
+          responses: number
+          server_errors: number
+          timed_out: number
         }[]
       }
       cron_http_refusals: {
