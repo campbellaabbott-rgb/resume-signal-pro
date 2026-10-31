@@ -218,7 +218,7 @@ export function CareerBridgeCard({
         Your bridge: {bridge.fromField} → {bridge.toField}
       </h3>
       <p className="text-xs text-muted-foreground mb-4">
-        Career changers get filtered when their resume speaks the old field's language. Here's what already transfers — and what to reword.
+        What already transfers from {bridge.fromField} to {bridge.toField}, and what to reword in the new field's language.
       </p>
 
       <p className="text-xs font-semibold text-foreground mb-1.5">✅ Carries over as-is</p>

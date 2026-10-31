@@ -322,7 +322,9 @@ export function MetricCardsGrid({
       label: t('freeScan.atsScore'),
       tooltipKey: "atsScore",
       value: `${atsScoreEstimate}/100`,
-      subtext: atsScoreEstimate >= 80 ? "✓ Solid — searchable and parseable" : atsScoreEstimate >= 60 ? "⚠ Keyword gaps may hide you from searches" : "✗ Likely invisible in recruiter searches",
+      // What the score reads, not what a recruiter's search will do with it
+      // (the review of 2026-10-27, finding 3's class).
+      subtext: atsScoreEstimate >= 80 ? "✓ Strong on keywords, format and results" : atsScoreEstimate >= 60 ? "⚠ Gaps to close: see the fixes below" : "✗ Many gaps to close: see the fixes below",
       status: statusFromScore(atsScoreEstimate, 80, 60),
       progress: atsScoreEstimate,
     },

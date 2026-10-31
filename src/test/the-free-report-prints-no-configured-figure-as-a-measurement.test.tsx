@@ -253,6 +253,10 @@ const BANNED_SOURCE_PROSE: RegExp[] = [
   /high demand 20\d\d/i, /Hot skills right now/i, /Rising keywords in job postings/i, /declining in job postings/i,
   /\d+-second/i, /\b\d+ seconds?\b/i, /flagged by many ATS/i, /Survives the pile/i, /of the pile/i,
   /Recruiters will skip/i, /will consider you/i, /prevent filtering/i, /rescan should land near/i,
+  // The score card's subtext predicted recruiter searches from two score
+  // thresholds, and the transfer card stated how career changers get filtered
+  // (the same class as the review's findings 3 and 6, found on 2026-10-31).
+  /invisible in recruiter searches/i, /hide you from searches/i, /get filtered when/i,
 ];
 
 /* ------------------------------------------------------------------ */
@@ -406,6 +410,18 @@ describe("the report's modules", () => {
 
   it("the share card draws no percentile", () => {
     expect(codeOf(read("src/components/ReportInsightCards.tsx"))).not.toMatch(/Better than \$\{/);
+  });
+
+  it("the PDF summary names the basis of its projection and of its fix plan's minutes and points", () => {
+    // The downloadable summary printed "→ 83 after fixes" and each step's
+    // "~15 min, +5 pts" with no basis, the same fixed amounts the page now
+    // calls a rough guide (the review of 2026-10-27, finding 7).
+    const code = codeOf(read(ENTRY));
+    const pdf = code.slice(code.indexOf("line(`ATS Score: ${atsScoreEstimate}/100"), code.indexOf("doc.save("));
+    expect(pdf.length, "the PDF block was found").toBeGreaterThan(400);
+    expect(pdf).not.toMatch(/\$\{projectedScore\} after fixes`/);
+    expect(pdf).toMatch(/about \$\{projectedScore\} after fixes, a rough guide/);
+    expect(pdf).toMatch(/fixRoadmap\.steps\.forEach\([^\n]*\n\s*line\(FIX_PLAN_BASIS\b/);
   });
 });
 
@@ -589,6 +605,7 @@ describe("a report whose scan answer carries every configured field", () => {
       /Rising keywords in job postings/i, /declining in job postings/i, /Skills Freshness\s*\d/, /\d+-second/i, /\b6 seconds\b/i,
       /flagged by many ATS/i, /recruiters like/i, /screening hundreds/i, /Survives the pile/i, /of the pile/i,
       /Recruiters will skip/i, /rescan should land near/i, /\$141,000/, /Below Market/i, /At Market/i, /Above Market/i,
+      /invisible in recruiter searches/i, /hide you from searches/i,
     ]) expect(reading, `the report still says ${said}`).not.toMatch(said);
     if (gb.salaryContext) expect(text).not.toContain(gb.salaryContext);
     // The heat map's bar labels, as the words they were.
@@ -602,5 +619,7 @@ describe("a report whose scan answer carries every configured field", () => {
     expect(text).toMatch(/hand-compiled/i);
     expect(text).toContain(MARKET_DATA_AS_OF);
     expect(text).toMatch(/rough guide/i);
+    // The fix plan's minutes are fixed amounts too, and its basis says so.
+    expect(text).toMatch(/Minutes and points are a rough guide/);
   });
 });

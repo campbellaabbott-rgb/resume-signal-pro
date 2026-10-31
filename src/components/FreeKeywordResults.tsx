@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { FIX_POINTS_BASIS, marketBasis, skillsBasis } from "@/lib/report-basis";
+import { FIX_PLAN_BASIS, FIX_POINTS_BASIS, marketBasis, skillsBasis } from "@/lib/report-basis";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useConversionTracking } from "@/hooks/use-conversion-tracking";
@@ -1469,7 +1469,7 @@ export function FreeKeywordResults({
                   line(new Date().toLocaleDateString(), 9, false, [120, 120, 120]);
                 }
                 y += 8;
-                line(`ATS Score: ${atsScoreEstimate}/100${scoreBand ? `  (modeling band ${scoreBand.low}–${scoreBand.high})` : ''}${projectedScore ? `  →  ${projectedScore} after fixes` : ''}`, 12, true);
+                line(`ATS Score: ${atsScoreEstimate}/100${scoreBand ? `  (modeling band ${scoreBand.low}–${scoreBand.high})` : ''}${projectedScore ? `  →  about ${projectedScore} after fixes, a rough guide` : ''}`, 12, true);
                 if (scoreBreakdown) line(`Breakdown — Keywords: ${scoreBreakdown.keywords}%  ·  Format: ${scoreBreakdown.format}%  ·  Quantification: ${scoreBreakdown.quantification}%`, 10);
                 y += 6;
                 {
@@ -1483,6 +1483,7 @@ export function FreeKeywordResults({
                 if (fixRoadmap && fixRoadmap.steps.length > 0) {
                   line(`Your ${fixRoadmap.totalMinutes}-minute fix plan:`, 11, true);
                   fixRoadmap.steps.forEach(s => line(`${s.order}. ${s.step} (~${s.minutes} min, +${s.scoreImpact} pts)`, 10));
+                  line(FIX_PLAN_BASIS, 8.5, false, [120, 120, 120]);
                   y += 4;
                 }
                 if (keywordSource?.source === 'onet') line(`Keyword expectations sourced from O*NET ${keywordSource.code} (U.S. Department of Labor — ${keywordSource.occupation}).`, 8.5, false, [120, 120, 120]);
@@ -3709,7 +3710,7 @@ export function FreeKeywordResults({
             </h4>
           </div>
           <p className="text-xs text-muted-foreground mb-3">
-            Work top to bottom — ordered by points per minute. {FIX_POINTS_BASIS} By that guide, all steps take {atsScoreEstimate} to about {fixRoadmap.finalProjectedScore}.
+            Work top to bottom — ordered by points per minute. {FIX_PLAN_BASIS} By that guide, all steps take {atsScoreEstimate} to about {fixRoadmap.finalProjectedScore}.
           </p>
           <div className="space-y-2">
             {fixRoadmap.steps.map((s) => (

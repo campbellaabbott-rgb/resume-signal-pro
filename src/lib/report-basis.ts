@@ -11,7 +11,9 @@
  *   - the market card's notes (summary, in-demand skills, rising keywords):
  *     typed by hand per country and field, last compiled at the date the scan
  *     sends as listsAsOf (MARKET_DATA_AS_OF in its market module);
- *   - the skills-freshness lists: typed by hand for five fields, same date.
+ *   - the skills-freshness lists: typed by hand for five fields, same date;
+ *   - the fix plan's minutes: the AI's time estimate per quick win, or fixed
+ *     minutes per kind of fix (FIX_PLAN_BASIS).
  *
  * An older build of the scan sends no date; the lines then name the basis
  * without one.
@@ -19,6 +21,14 @@
 
 export const FIX_POINTS_BASIS =
   "Points are a rough guide (the AI's estimate per fix, or fixed points per kind of fix), not a forecast of your next scan.";
+
+/**
+ * The fix plan prints minutes beside the points, and they are set the same
+ * way: the AI's time estimate per quick win, or fixed minutes per kind of fix
+ * (15 for rewriting weak bullets, 10 for working keywords in).
+ */
+export const FIX_PLAN_BASIS =
+  "Minutes and points are a rough guide (the AI's estimate per fix, or fixed amounts per kind of fix), not a forecast of your next scan.";
 
 export function marketBasis(asOf?: string | null): string {
   return asOf
