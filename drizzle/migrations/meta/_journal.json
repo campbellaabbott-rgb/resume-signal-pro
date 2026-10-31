@@ -1345,6 +1345,13 @@
       "when": 1793471918894,
       "tag": "0191_20261011170000_a_deleted_account_takes_its_keys_and_lists_and_a_proven_mailbox_counts_where_plans_are_read",
       "breakpoints": true
+    },
+    {
+      "idx": 192,
+      "version": "7",
+      "when": 1793471935577,
+      "tag": "0192_20261011171000_shortlist_records_no_candidate_sex_or_race",
+      "breakpoints": true
     }
   ]
 }
