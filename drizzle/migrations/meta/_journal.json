@@ -1282,6 +1282,13 @@
       "when": 1793471431337,
       "tag": "0182_20261011130000_the_apply_agents_schedules_are_removed_by_name_and_the_removal_checks_itself",
       "breakpoints": true
+    },
+    {
+      "idx": 183,
+      "version": "7",
+      "when": 1793471450937,
+      "tag": "0183_20261011140000_a_closed_paid_order_stays_closed",
+      "breakpoints": true
     }
   ]
 }
