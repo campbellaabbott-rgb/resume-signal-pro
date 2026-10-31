@@ -637,7 +637,8 @@
       "backHome": "Bumalik sa Home",
       "analysisNotFound": "Hindi nakita ang analysis. Maaaring invalid o expired na ang link.",
       "analyzeFailed": "Hindi ma-analyze ang resume",
-      "loadFailed": "Hindi ma-load ang analysis."
+      "loadFailed": "Hindi ma-load ang analysis.",
+      "timedOut": "Masyadong natagalan ang analysis at huminto ito bago may ma-save. Valid pa rin ang binili mo at walang dobleng singil, kaya ligtas at libre ang subukan ulit."
     },
     "toast": {
       "paymentSuccess": "Matagumpay ang pagbabayad!",

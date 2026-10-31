@@ -53,6 +53,21 @@ import { parseEdgeFunctionError } from "@/lib/edge-function-errors";
 import { PRODUCTS } from "@/config/products";
 import { forgetStashedSessionFor, forgetStashedShare, stashShareFor, stashedSessionIdFor, stashedShareFor } from "@/lib/auth-fragment";
 
+/**
+ * AN ANALYSIS THAT RAN OUT OF TIME IS ASKED AGAIN, NOT REPORTED TO SUPPORT
+ * (S13-001). analyze-resume answers a model chain that ran out of time 504
+ * with retryable: true, and the platform's gateway answers 504 too when a
+ * function outlives it. Either way nothing was saved and the purchase was not
+ * redeemed, so the buyer is told so in their language and offered Try again.
+ */
+class AnalysisTimedOut extends Error {}
+
+/** The error a failed analyze-resume call is shown as. */
+async function analysisFailure(fnError: unknown, timedOutText: string): Promise<Error> {
+  const parsed = await parseEdgeFunctionError(fnError, "analyze-resume");
+  return parsed.statusCode === 504 ? new AnalysisTimedOut(timedOutText) : new Error(parsed.description);
+}
+
 const Success = () => {
   const { t } = useTranslation();
   const { trackAllConversions } = useABConversion();
@@ -86,6 +101,9 @@ const Success = () => {
   const [hasTrackedConversion, setHasTrackedConversion] = useState(false);
   const [localDataCleared, setLocalDataCleared] = useState(false);
   const analysisRef = useRef<HTMLDivElement>(null);
+  // The résumé the buyer pasted on this page, kept while its analysis can be
+  // asked again in place: a reload starts over with no résumé in this tab.
+  const pastedResume = useRef<string | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -174,8 +192,7 @@ const Success = () => {
 
         if (fnError) {
           console.error("Function error:", fnError);
-          const parsedError = await parseEdgeFunctionError(fnError);
-          throw new Error(parsedError.description);
+          throw await analysisFailure(fnError, t('success.error.timedOut'));
         }
 
         if (data.error) {
@@ -224,7 +241,9 @@ const Success = () => {
         setError(err instanceof Error ? err.message : t('success.error.generic'));
         toast({
           title: t('success.toast.analysisFailed'),
-          description: t('success.toast.analysisFailedDesc'),
+          description: err instanceof AnalysisTimedOut
+            ? t('success.toast.analysisFailedRetryDesc')
+            : t('success.toast.analysisFailedDesc'),
           variant: "destructive",
         });
       } finally {
@@ -325,6 +344,49 @@ const Success = () => {
   }, [sessionId, shareIdParam, toast]);
 
   // Email sent notification is handled by the response from analyze-resume
+
+  /**
+   * The résumé the buyer pasted, sent straight to the analysis (they already
+   * paid; it is not stored locally). A timeout keeps the text, so Try again
+   * asks again in place; any other failure lets it go, and Try again reloads
+   * to ask for the résumé again.
+   */
+  const analyzePastedResume = (text: string) => {
+    pastedResume.current = text;
+    setNeedsResume(false);
+    setIsLoading(true);
+    setCurrentStep(2);
+    setError(null);
+
+    void supabase.functions
+      .invoke("analyze-resume", { body: { resumeText: text, sessionId } })
+      .then(async ({ data, error: fnError }) => {
+        if (fnError) throw await analysisFailure(fnError, t('success.error.timedOut'));
+        if (data?.error) throw new Error(data.error);
+
+        pastedResume.current = null;
+        const { shareId: newShareId, ...analysisResult } = data;
+        setAnalysisData(analysisResult);
+        setShareId(newShareId);
+        rememberShareInUrl(newShareId);
+
+        toast({
+          title: t('success.toast.recoveredReady', 'Analysis ready'),
+          description: t('success.toast.recoveredReadyDesc', 'Your resume analysis is ready below.'),
+        });
+      })
+      .catch((err) => {
+        console.error("Analysis error:", err);
+        if (!(err instanceof AnalysisTimedOut)) pastedResume.current = null;
+        setError(err instanceof Error ? err.message : t('success.error.analyzeFailed', 'Failed to analyze resume'));
+        toast({
+          title: t('success.toast.analysisFailed', 'Analysis failed'),
+          description: t('success.toast.analysisFailedRetryDesc', 'There was an issue analyzing your resume. Please try again.'),
+          variant: "destructive",
+        });
+      })
+      .finally(() => setIsLoading(false));
+  };
 
   const handleSaveAsPdf = async () => {
     if (!analysisRef.current) return;
@@ -596,40 +658,7 @@ const Success = () => {
                 <div className="animate-fade-in">
                   <ResumeRecovery
                     disabled={isLoading}
-                    onResumeTextReady={(text) => {
-                      // User already paid - send directly to analysis without storing locally
-                      setNeedsResume(false);
-                      setIsLoading(true);
-                      setCurrentStep(2);
-                      setError(null);
-
-                      void supabase.functions
-                        .invoke("analyze-resume", { body: { resumeText: text, sessionId } })
-                        .then(({ data, error: fnError }) => {
-                          if (fnError) throw fnError;
-                          if (data?.error) throw new Error(data.error);
-
-                          const { shareId: newShareId, ...analysisResult } = data;
-                          setAnalysisData(analysisResult);
-                          setShareId(newShareId);
-                          rememberShareInUrl(newShareId);
-
-                          toast({
-                            title: t('success.toast.recoveredReady', 'Analysis ready'),
-                            description: t('success.toast.recoveredReadyDesc', 'Your resume analysis is ready below.'),
-                          });
-                        })
-                        .catch((err) => {
-                          console.error("Analysis error:", err);
-                          setError(err instanceof Error ? err.message : t('success.error.analyzeFailed', 'Failed to analyze resume'));
-                          toast({
-                            title: t('success.toast.analysisFailed', 'Analysis failed'),
-                            description: t('success.toast.analysisFailedRetryDesc', 'There was an issue analyzing your resume. Please try again.'),
-                            variant: "destructive",
-                          });
-                        })
-                        .finally(() => setIsLoading(false));
-                    }}
+                    onResumeTextReady={analyzePastedResume}
                   />
                 </div>
               ) : error ? (
@@ -648,7 +677,11 @@ const Success = () => {
                         used to offer only the way home, after a server that
                         answered every retry with "already used". */}
                     {sessionId && !shareIdParam && (
-                      <Button size="lg" className="gap-2" onClick={() => window.location.reload()}>
+                      <Button
+                        size="lg"
+                        className="gap-2"
+                        onClick={() => (pastedResume.current ? analyzePastedResume(pastedResume.current) : window.location.reload())}
+                      >
                         <RefreshCw className="w-4 h-4" />
                         {t('productSuccess.tryAgain')}
                       </Button>

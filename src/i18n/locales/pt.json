@@ -638,7 +638,8 @@
       "backHome": "Voltar ao Início",
       "analysisNotFound": "Análise não encontrada. A ligação pode ser inválida ou ter expirado.",
       "analyzeFailed": "Não foi possível analisar o currículo",
-      "loadFailed": "Não foi possível carregar a análise."
+      "loadFailed": "Não foi possível carregar a análise.",
+      "timedOut": "A análise demorou demasiado e foi interrompida antes de qualquer coisa ser guardada. A sua compra continua válida e nada foi cobrado duas vezes, por isso pode tentar novamente com segurança e sem custo."
     },
     "toast": {
       "paymentSuccess": "Pagamento bem-sucedido!",

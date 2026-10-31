@@ -638,7 +638,8 @@
       "backHome": "Retour à l'accueil",
       "analysisNotFound": "Analyse introuvable. Le lien est peut-être invalide ou expiré.",
       "analyzeFailed": "Impossible d'analyser le CV",
-      "loadFailed": "Impossible de charger l'analyse."
+      "loadFailed": "Impossible de charger l'analyse.",
+      "timedOut": "L'analyse a pris trop de temps et s'est arrêtée avant que quoi que ce soit ne soit enregistré. Votre achat reste valable et rien n'a été facturé deux fois : vous pouvez réessayer sans risque et sans frais."
     },
     "toast": {
       "paymentSuccess": "Paiement réussi !",

@@ -637,7 +637,8 @@
       "backHome": "Zurück zur Startseite",
       "analysisNotFound": "Analyse nicht gefunden. Der Link ist möglicherweise ungültig oder abgelaufen.",
       "analyzeFailed": "Der Lebenslauf konnte nicht analysiert werden",
-      "loadFailed": "Die Analyse konnte nicht geladen werden."
+      "loadFailed": "Die Analyse konnte nicht geladen werden.",
+      "timedOut": "Die Analyse hat zu lange gedauert und wurde beendet, bevor etwas gespeichert wurde. Ihr Kauf bleibt gültig und nichts wurde doppelt berechnet. Ein neuer Versuch ist sicher und kostenlos."
     },
     "toast": {
       "paymentSuccess": "Zahlung erfolgreich!",

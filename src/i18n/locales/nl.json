@@ -637,7 +637,8 @@
       "backHome": "Terug naar home",
       "analysisNotFound": "Analyse niet gevonden. De link is mogelijk ongeldig of verlopen.",
       "analyzeFailed": "Het cv kon niet worden geanalyseerd",
-      "loadFailed": "De analyse kon niet worden geladen."
+      "loadFailed": "De analyse kon niet worden geladen.",
+      "timedOut": "De analyse duurde te lang en is gestopt voordat er iets werd opgeslagen. Je aankoop blijft geldig en er is niets dubbel in rekening gebracht, dus opnieuw proberen is veilig en gratis."
     },
     "toast": {
       "paymentSuccess": "Betaling succesvol!",

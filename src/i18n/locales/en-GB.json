@@ -637,7 +637,8 @@
       "backHome": "Back to Home",
       "analysisNotFound": "Analysis not found. The link may be invalid or expired.",
       "analyzeFailed": "Failed to analyse CV",
-      "loadFailed": "Failed to load analysis."
+      "loadFailed": "Failed to load analysis.",
+      "timedOut": "The analysis took too long and stopped before anything was saved. Your purchase is still valid and nothing was charged twice, so trying again is safe and free."
     },
     "toast": {
       "paymentSuccess": "Payment successful!",

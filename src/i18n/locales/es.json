@@ -638,7 +638,8 @@
       "backHome": "Volver al Inicio",
       "analysisNotFound": "No se encontró el análisis. Puede que el enlace no sea válido o haya caducado.",
       "analyzeFailed": "No se pudo analizar el currículum",
-      "loadFailed": "No se pudo cargar el análisis."
+      "loadFailed": "No se pudo cargar el análisis.",
+      "timedOut": "El análisis tardó demasiado y se detuvo antes de guardar nada. Tu compra sigue siendo válida y no se te cobró dos veces, así que volver a intentarlo es seguro y gratuito."
     },
     "toast": {
       "paymentSuccess": "¡Pago exitoso!",
