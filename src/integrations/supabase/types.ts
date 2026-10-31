@@ -5702,6 +5702,15 @@ export type Database = {
           rate_used: number
         }[]
       }
+      api_key_fit_allowance: {
+        Args: { p_endpoint: string; p_key_id: string }
+        Returns: {
+          fa_confirmed: boolean
+          fa_proven: boolean
+          fa_used: number
+          fa_user_id: string
+        }[]
+      }
       api_key_issue: {
         Args: {
           p_key_hash: string

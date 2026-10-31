@@ -1268,6 +1268,13 @@
       "when": 1793471391289,
       "tag": "0180_20261011102100_the_adoption_reader_counts_addresses_not_shares_minutes_or_forms",
       "breakpoints": true
+    },
+    {
+      "idx": 181,
+      "version": "7",
+      "when": 1793471410646,
+      "tag": "0181_20261011110000_a_confirmed_free_key_scores_fit_twenty_five_times_a_day",
+      "breakpoints": true
     }
   ]
 }
