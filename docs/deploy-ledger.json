@@ -254,7 +254,7 @@
       "deployOrder": 3.75
     },
     "next": {
-      "migrations": "20261015* and later, one day per workstream; taken: 2026-10-15 (oracle-regionless's function day), 20261016* (resume-match's, on rm/integration), 20261017* (the disk-plan migration on main), 20261025* (oracle-regionless's, for trust/pages), 20261026* and 2026-10-26 (trust-round-3's), 2026-10-27 (land/all's function day: sales stay on, the owner's 2026-10-27 override of wave 4's seller gate and marketing pause; no migration)",
+      "migrations": "20261015* and later, one day per workstream; taken: 2026-10-15 (oracle-regionless's function day), 20261016* (resume-match's, on rm/integration), 20261017* (the disk-plan migration on main), 20261025* (oracle-regionless's, for trust/pages), 20261026* and 2026-10-26 (trust-round-3's), 2026-10-27 (land/all's function day: sales stay on, the owner's 2026-10-27 override of wave 4's seller gate and marketing pause; no migration), 2026-10-31 (land/all's second function day: the territory refusal removed by the owner's 2026-10-27 'keep selling as today', create-checkout, create-subscription-checkout and create-product-checkout at 2026-10-31.1; home-pricing stamps free-keyword-scan and free-keyword-scan-stream 2026-10-31.1 too, different functions, so hp/switch-over's merge must stamp the three checkouts above 2026-10-31.1; no migration)",
       "jobBoard": "2026-09-09.98+"
     }
   },

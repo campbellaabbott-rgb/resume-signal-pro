@@ -32,7 +32,8 @@ part of this wave that waited for the seller's legal name and postal address.
 Built on `land/all` (the one-deploy branch), commit `927e0215`. With
 `src/config/seller.ts` and `supabase/functions/_shared/seller-identity.ts`
 still empty (an identity is never invented), everything main sells is as
-sellable as on main, and marketing mail sends as on main:
+sellable as on main, everywhere main sells it, and marketing mail is handled
+as on main:
 
 - **The checkouts sell.** `_shared/seller-gate.ts` and its 409
   `seller_identity_missing` are gone from create-checkout (the $5 Full
@@ -41,6 +42,29 @@ sellable as on main, and marketing mail sends as on main:
   sells nothing wave 4 kept, so a cut product is its 410 and an id it does not
   sell is main's 400. The retired products stay retired: the Agent plan, the
   Agent Pass, the $7 Apply Assistant, the scan packs and the cut catalogue.
+- **The EU, the EEA, the UK and India buy as today** (owner, 2026-10-27:
+  "Keep selling as today"; land/all, 2026-10-31). The first sales-stay-on
+  commit left wave 4's territory refusal in place: with `EU_UK_SALES` unset,
+  as it ships and as it is live, create-checkout and
+  create-subscription-checkout answered 451 to any buyer a territory
+  currency (eur, gbp, inr and seven more of the 30 main prices in), a browser
+  time zone, a cf-ipcountry header or an ipinfo lookup placed in the EU-27,
+  the EEA, the UK or India, and the pages hid Pro's Go Pro and put a "we
+  don't sell here yet" note beside the Full Analysis for a browser in one of
+  their time zones. All of it is removed, not switched off:
+  `_shared/sales-territory.ts` and `_shared/sales-territory-zones.ts` (the
+  451, its sentences in nine languages, India's refusal, the ipinfo lookup at
+  checkout and the billing address every session was forced to ask for),
+  `src/lib/checkout-territory.ts` and `src/components/checkout/RegionNotice.tsx`
+  (the note, and the time zone every checkout body carried), the
+  `territory` refusal kind in `src/lib/checkout-refusal.ts`, the locale keys
+  `checkoutGate.regionNoticeTimeZone` and `checkoutRefusal.territoryTitle`
+  in all nine languages, and the Privacy page's line that ipinfo is asked at
+  purchase. create-checkout's GET answers the EU/UK switch alone, as main's
+  does. main's own behaviour stays: the switch off adds nothing and refuses
+  nobody, the switch on asks for the waiver and adds tax and the billing
+  address (`_shared/checkout-policy.ts`, unchanged from main), and the
+  RU/NG/PK block in create-checkout is main's.
 - **The pages show the buy buttons and prices as on main**: /pricing (the
   Full Analysis link with its Terms line, Pro's card with its renewal box),
   the uploader's priced link and fallback, the homepage comparison, the
@@ -58,26 +82,43 @@ sellable as on main, and marketing mail sends as on main:
   too), states the terms as a sale open now and says nothing opens soon;
   `public/llms.txt` and the baked copy name the paid report and Pro with no
   "purchases open soon".
-- **Marketing mail sends as on main.** `_shared/marketing-pause.ts` and
+- **Marketing mail is handled as on main.** `_shared/marketing-pause.ts` and
   `src/lib/marketing-pause.ts` are gone: the pulse batch claims and mails, a
   pulse sign-up mails its confirmation, a confirmation confirms with no
-  paused flag, the agent digest claims its batch, the report mail carries the
-  fix-plan button when its box is ticked and the button queues the four
-  mails; no response carries `x-marketing-mail`; the report capture shows
-  both boxes, unticked. `/market-pulse/confirm` and `/fix-plan/confirm` lose
-  their paused states (`pulseConfirm.donePaused`, `fixPlanConfirm.paused`).
-  Migration `20261011172000`, which archived queued fix-plan mail because of
-  the pause, was never applied and is deleted; nothing archives that mail.
+  paused flag, the agent digest claims its batch, and the report mail carries
+  the fix-plan button when its box is ticked; no response carries
+  `x-marketing-mail`; the report capture shows both boxes, unticked.
+  `/market-pulse/confirm` and `/fix-plan/confirm` lose their paused states
+  (`pulseConfirm.donePaused`, `fixPlanConfirm.paused`). Migration
+  `20261011172000`, which archived queued fix-plan mail because of the pause,
+  was never applied and is deleted; nothing archives that mail.
+- **The fix-plan drip is queued, and nothing sends it: on live, on main and
+  here alike.** The button queues the four drip mails into pgmq
+  `transactional_emails` (send-scan-report), and since R1 nothing drains that
+  queue: process-email-queue drains `auth_emails` alone when its caller
+  names no queue (`queuesToDrain`, "the drip waits for CP-G"), R1's
+  `rb-auth-mail-drain` names only `auth_emails` (20261014120000), and
+  Lovable's dispatcher names none. process-email-queue is byte-identical to
+  main's here, and live answers process-email-queue.2026-10-14.1. So "sends
+  again" is not true of the drip; nothing in this deploy changes it. R1 held
+  it for CP-G (its text part, its marketing purpose, the seller footer and the
+  apex sender), partly the seller condition the owner has now disowned: an
+  OWNER QUESTION, whether a drain should name `transactional_emails`.
 - **Builds** (every changed function, restamped `2026-10-27.1`):
   create-checkout, create-subscription-checkout, create-product-checkout,
   send-market-pulse, send-scan-report, send-agent-digest, and
   create-scan-pack-checkout and send-product-email (their
   `_shared/product-cuts.ts` lost the closed form of the reports line;
   nothing they do changed). A cut report's 410 says the $5 Full Analysis is
-  still on sale, in every language.
+  still on sale, in every language, which is now true for every buyer. The
+  territory's removal restamps the three checkouts `2026-10-31.1`
+  (create-product-checkout sells nothing today, so only its dead path
+  changed).
 - **Verifier.** Section 92 checkout-catalogue asks for the three checkouts at
-  `2026-10-27.1` and FAILs a GET with `purchasesOpen` false or a published
-  Pricing page that still says purchases open soon; section 92
+  `2026-10-31.1` and FAILs a GET with `purchasesOpen` false or
+  `territoryRefused` true, and a published Pricing page that still says
+  purchases open soon or still carries the region note (it PASSes a GET with
+  no territory flag, which is what main and live answer); section 92
   account-compliance asks for the three senders at `2026-10-27.1` and FAILs
   `x-marketing-mail: paused_no_seller_identity`; section 92-w4b-recheck3
   wants the crawler /pricing priced and neither it nor llms.txt saying
@@ -88,8 +129,16 @@ sellable as on main, and marketing mail sends as on main:
   `sales-stay-on-the-homepage-sells-the-full-analysis-with-no-seller-named`,
   `sales-stay-on-every-buy-control-shows-with-no-seller-named`,
   `sales-stay-on-the-crawler-pricing-page-offers-what-checkout-sells`; and
-  `sales-stay-on-a-cut-report-says-the-full-analysis-is-on-sale`. The tests
-  that proved the closed shop or the pause are deleted
+  `sales-stay-on-a-cut-report-says-the-full-analysis-is-on-sale`. On
+  `c08678b2` (the territory still refusing), 12 of 13 cases of
+  `sales-stay-on-a-buyer-in-the-eu-the-uk-or-india-checks-out-as-on-main`
+  and `sales-stay-on-a-browser-in-the-eu-the-uk-or-india-sees-every-buy-control`
+  failed, each on a 451, a hidden Go Pro or a region note (the thirteenth is
+  the control that main's RU/NG/PK block and the switch's waiver still
+  hold); the first sales-stay-on page test had passed only because the
+  machine ran in an American time zone, and passes now under Europe/Berlin and
+  Asia/Kolkata. `w4b-a-buyer-in-the-vat-territory-is-refused-until-vat` is
+  deleted. The tests that proved the closed shop or the pause are deleted
   (`w4b-nothing-is-sold-until-the-seller-is-named`,
   `w4b-no-buy-button-until-the-seller-is-named`,
   `w4b-the-uploader-and-the-comparison-sell-nothing-until-the-seller-is-named`,
@@ -104,8 +153,8 @@ sellable as on main, and marketing mail sends as on main:
 The seller's name and address still show (footer, Terms, Privacy, beside the
 buy buttons, in the mail footers) only once the owner fills both files in;
 an empty identity blocks nothing. Where the sections below describe the
-closed shop, the pause or owner step 8 as gating a sale, this section
-supersedes them.
+closed shop, the pause, owner step 8, the territory refusal or India's
+refusal as gating a sale, this section supersedes them.
 
 ## Descope 2026-10-25
 
@@ -1638,12 +1687,15 @@ differ:
    owner on 2026-10-27 ("there is no sales pause"): the Full Analysis and Pro
    are sold with no seller named, as on main; see "Sales stay on" above.
 4. **India** is refused at checkout with the EU, the EEA and the UK until an
-   accountant rules on GST.
+   accountant rules on GST (D13) — OVERRIDDEN by the owner on 2026-10-27
+   ("Keep selling as today"): India, the EU, the EEA and the UK buy as on
+   main; see "Sales stay on" above.
 5. **Pro needs its own unticked, required renewal box** (California ARL as
    amended by AB 2863); create-subscription-checkout refuses without it and
    records the wording version, the Terms version and the time.
 6. **The territory refusal names the check that placed the buyer there**
-   (currency, time zone or IP lookup), never "billing address".
+   (currency, time zone or IP lookup), never "billing address" — moot since
+   2026-10-27: the territory refusal is removed.
 
 Decisions not reopened: no refunds (disputes still revoke entitlements); the
 writing tools gated by account on the server (signed out 401
@@ -1790,7 +1842,7 @@ only Career Snapshot and Graduate Game Plan); CP-020; CP-042; the Freelance
 generators' bugs beyond what a past buyer receives.
 
 **Not built, with the reason**: CP-C item 7 K3 (refunds are never automatic;
-the territory is refused at checkout instead); CP-023 (a résumé copy per
+the territory refusal built in its place is removed, 2026-10-27); CP-023 (a résumé copy per
 session needs the delivery side to read and delete it); CP-033's admin test
 mode on the real checkouts (needs the webhook's test secret first); CP-026
 (Stripe's receipt setting, an owner step); CP-040 (no change needed: the
@@ -1810,10 +1862,11 @@ reader is in wave 4's files).
   `supabase/functions/_shared/seller-identity.ts` hold (a test holds the two
   equal; both ship empty and the seller line shows once they are filled in).
   The seller gate built here was removed on 2026-10-27 (sales stay on).
-- **Territory**: while `EU_UK_SALES` is off, create-checkout and
-  create-subscription-checkout answer 451 to a buyer placed in the EU-27, the
-  EEA, the UK or India by currency, time zone, the cf-ipcountry header or an
-  ipinfo lookup, and say which.
+- **Territory**: nobody is refused for where they are (owner, 2026-10-27:
+  "Keep selling as today"). With `EU_UK_SALES` off, as it ships, a buyer in
+  the EU-27, the EEA, the UK or India checks out as on main; with it on, the
+  waiver, tax and the billing address apply, as on main. The 451 built here
+  is removed (see "Sales stay on"); the RU/NG/PK block is main's.
 - **Pro**: grants capped at 10 a day and 60 a month (trigger in
   20261011150000); the renewal consent recorded in `pro_auto_renew_consents`
   (20261011151000) or the session is expired and the answer is 503; a trial
@@ -1949,8 +2002,9 @@ later, and, since the descope, eight negations that must answer as main's
 rule does; its salary re-sweep lines left in the descope). `verify-deploy.sh` runs
 them with the rest, behind section 0's positive control and the tally that
 fails a section which prints no verdict. Sales stay on (2026-10-27): no
-section expects a FAIL because the seller is unnamed; section 92 FAILs the
-closed shop and the marketing pause if either is still serving. From agent-mcp 2026-10-11.27 on, the owner's count on the
+section expects a FAIL because the seller is unnamed or a buyer is in the
+EU, the EEA, the UK or India; section 92 FAILs the closed shop, the marketing
+pause and the territory refusal if any is still serving. From agent-mcp 2026-10-11.27 on, the owner's count on the
 ChatGPT nonce is 0 in both section 86 and section 92, and from the fixes on
 section 92 agents-api spends one more keyless search, a plain one with its
 own nonce, whose count must be 1: the positive control for that 0.
@@ -2013,9 +2067,10 @@ Purchases are open as on main (sales stay on, owner 2026-10-27):
   no test session for another product: verify-product-purchase still reads a
   `cs_test_` session with the test key on a cut product's success page. The
   first real proof of a purchase is one live Full Analysis.
-- Get an accountant's ruling on India's GST and register for EU/UK VAT.
-  Turning `EU_UK_SALES` on lifts the EU/EEA/UK refusal; India also needs IN,
-  INR and Asia/Kolkata removed from `_shared/sales-territory-zones.ts`.
+- EU/UK VAT and India's GST: sales there continue as today, by your word of
+  2026-10-27, so nothing in the code waits for either. Turning `EU_UK_SALES`
+  on (once the VAT registration exists) adds the withdrawal waiver, Stripe
+  Tax and the billing address to EU/UK sales, as on main; it refuses nobody.
 
 In Stripe:
 
@@ -2030,8 +2085,10 @@ In Stripe:
   and `checkout.session.async_payment_failed`, and say whether delayed
   payment methods are on (CP-029).
 - Turn on "Successful payments" customer emails (receipts, CP-026).
-- If Radar custom rules are available, block `:card_country:` and
-  `:ip_country:` for the EU-27, IS, LI, NO, GB and IN as a backstop.
+- Add no Radar rule that blocks the EU-27, IS, LI, NO, GB or IN by
+  `:card_country:` or `:ip_country:` (an earlier draft of this list asked
+  for one, as a backstop to the territory refusal that is now removed): those
+  buyers are sold to as today.
 - Count live Pro subscriptions; any that exist were promised every paid tool
   and Freelance Boost: email them the new perk list with a cancel link.
 - Honour each open Apply Assistant order by hand with generate-apply-package;
@@ -2066,8 +2123,7 @@ After the deploy:
   `pg_trigger` has `product_delivery_stays_closed` enabled;
   `product_delivery_health`'s definition contains `email_failed`;
   `has_table_privilege('authenticated','public.shortlist_demographics','INSERT')`
-  is false; `select count(*) from pgmq.q_transactional_emails where
-  message->>'label'='fix-plan-drip'` is 0; the ChatGPT nonces of sections 86
+  is false; the ChatGPT nonces of sections 86
   and 92 count 0 in `job_board_search_events` and `job_board_search_misses`,
   and section 92's plain nonce counts 1 (the positive control; a 0 there
   means connector searches are not logged and the 0s prove nothing); the
@@ -2246,7 +2302,8 @@ above says what a rehearsal proves; a test-mode event acts only on a one-off
 checkout, with no commission (stripe-webhook); check-subscription tells an
 account that is not Pro only `linkPending` for an address's live plan; the
 funnel and cohort hooks store nothing before consent and a no forgets them
-(src/lib/analytics-session-store.ts); Privacy names ipinfo's checkout lookup
+(src/lib/analytics-session-store.ts); Privacy named ipinfo's checkout lookup
+(both went with the territory refusal on 2026-10-31; it names the free scan's)
 and speaks for our own analytics only; account-order counts receipts (30 an
 hour) before Stripe; generate-apply-package and both free scanners read a
 website session only (CP-J); live brand keys never claim a country, and a
