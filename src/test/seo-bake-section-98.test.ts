@@ -125,3 +125,24 @@ describe("section 98 judges what it says it judges", () => {
     expect(has(good, "FAIL", /G3 .*\/jobs: "No aggregators"/), show(good)).toBe(false);
   });
 });
+
+describe("P3 reads the homepage's preload script as the switch-over writes it (land/all, 2026-10-31)", () => {
+  // The "/"-only script picks the scanner's chunks for a scanner address of
+  // "/" and the homepage's otherwise; the section read only a script that
+  // opened on one list, so a correct served "/" FAILed P3.
+  const SCRIPT = `<script data-home-preload="1">if(location.pathname==="/"){((function(){var p=new URLSearchParams(location.search);return location.hash==="#upload"||["outcome","rid"].some(function(k){return p.has(k);});})()?["Index-AAAA1111.js","ResumeUploader-BBBB2222.js"]:["HomePage-CCCC3333.js","HomeSearchHero-DDDD4444.js"]).forEach(function(f){})}</script>`;
+  const others = site(true).filter((r) => r.match !== `^${esc(`${SITE}/`)}$`);
+  const homeWith = (extra: string) => route("/", head(630, "/apple-touch-icon.png").replace("</head>", `${extra}</head>`));
+
+  it("PASSes when the homepage's list names HomePage and the static head preloads no homepage chunk", () => {
+    const lines = runSection([homeWith(SCRIPT), ...others]);
+    expect(has(lines, "PASS", /P3 \/ adds HomePage-CCCC3333\.js from its "\/"-only script, not its static head/), show(lines)).toBe(true);
+  });
+
+  it("FAILs a static homepage preload beside the script, and a script whose homepage list names no homepage chunk", () => {
+    const stat = runSection([homeWith(`${SCRIPT}<link rel="modulepreload" href="/assets/HomePage-CCCC3333.js">`), ...others]);
+    expect(has(stat, "FAIL", /P3 \/ static head preloads HomePage-CCCC3333\.js/), show(stat)).toBe(true);
+    const none = runSection([homeWith(SCRIPT.replace("HomePage-CCCC3333.js", "Footer-EEEE5555.js")), ...others]);
+    expect(has(none, "FAIL", /P3 \/ static head preloads no homepage chunk, its "\/"-only script names Footer-EEEE5555\.js, HomeSearchHero-DDDD4444\.js/), show(none)).toBe(true);
+  });
+});

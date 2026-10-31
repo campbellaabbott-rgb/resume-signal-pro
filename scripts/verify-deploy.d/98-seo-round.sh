@@ -188,9 +188,13 @@ const pick = (arr, n) => (arr.length <= n ? arr : Array.from({ length: n }, (_, 
   // its "/"-only script, and a fallback address preloads none of them.
   {
     const home = (await get("/")).body;
-    const scripted = ((/<script data-home-preload="1">if\(location\.pathname==="\/"\)\{(\[[^\]]*\])/.exec(home) || [])[1]) || "[]";
-    let list = [];
-    try { list = JSON.parse(scripted); } catch { list = []; }
+    // Since the switch-over the "/"-only script picks one of two lists: the
+    // scanner\x27s chunks for a scanner address of "/" (#upload, a 12-hex ref,
+    // a rescan link), the homepage\x27s otherwise, the last list in the script.
+    // Before it the script held one list. Each list holds only chunk names.
+    const script = ((/<script data-home-preload="1">if\(location\.pathname==="\/"\)\{([\s\S]*?)<\/script>/.exec(home) || [])[1]) || "";
+    const lists = [...script.matchAll(/\[((?:"[^"]+\.js",?)+)\]/g)].map((m) => { try { return JSON.parse("[" + m[1].replace(/,$/, "") + "]"); } catch { return []; } });
+    const list = lists.length ? lists[lists.length - 1] : [];
     // The homepage\x27s route chunk: HomePage since the homepage switch-over
     // (home-pricing), Index before it.
     const homeChunk = (h) => /^(?:HomePage|Index)-/.test(String(h));
