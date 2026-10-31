@@ -1256,6 +1256,30 @@ export type Database = {
         }
         Relationships: []
       }
+      checkout_buyers: {
+        Row: {
+          checkout_function: string
+          created_at: string
+          product_type: string | null
+          stripe_session_id: string
+          user_id: string | null
+        }
+        Insert: {
+          checkout_function: string
+          created_at?: string
+          product_type?: string | null
+          stripe_session_id: string
+          user_id?: string | null
+        }
+        Update: {
+          checkout_function?: string
+          created_at?: string
+          product_type?: string | null
+          stripe_session_id?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       checkout_resume_refs: {
         Row: {
           created_at: string
@@ -4315,6 +4339,7 @@ export type Database = {
       }
       pro_subscribers: {
         Row: {
+          cancel_at_period_end: boolean
           current_period_end: string | null
           email: string
           status: string
@@ -4323,6 +4348,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          cancel_at_period_end?: boolean
           current_period_end?: string | null
           email: string
           status?: string
@@ -4331,6 +4357,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          cancel_at_period_end?: boolean
           current_period_end?: string | null
           email?: string
           status?: string

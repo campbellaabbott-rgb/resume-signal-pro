@@ -1317,6 +1317,13 @@
       "when": 1793471701845,
       "tag": "0187_20261011144000_a_generation_in_progress_is_leased_and_a_stale_maker_is_refused",
       "breakpoints": true
+    },
+    {
+      "idx": 188,
+      "version": "7",
+      "when": 1793471812519,
+      "tag": "0188_20261011150000_a_pro_member_mints_ten_grants_a_day_a_checkout_names_its_buyer_and_a_cancelled_plan_says_so",
+      "breakpoints": true
     }
   ]
 }
