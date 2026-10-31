@@ -8,7 +8,11 @@ import { clipField, modelSpendGate } from "../_shared/model-spend-gate.ts";
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "generate-recruiter-view.2026-10-11.24";
+// 2026-10-28.1 (S13-001, fix/full-analysis-timeout): _shared/ai-fallback.ts
+// no longer retries a model that timed out; the chain moves to the next
+// model, which keeps at least 40 s of the budget. Nothing else in this bundle
+// changed.
+const FN_BUILD = "generate-recruiter-view.2026-10-28.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

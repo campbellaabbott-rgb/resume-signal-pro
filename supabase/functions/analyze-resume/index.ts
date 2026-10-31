@@ -26,7 +26,12 @@ import { REFUNDED_PURCHASE_MESSAGE, sessionWasRefunded } from "../_shared/paymen
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
 // 2026-10-09.62 (wave-3 fix round integration): carries both 2026-10-09.3 and the payments-account group's 2026-10-09.61.
-const FN_BUILD = "analyze-resume.2026-10-09.62";
+// 2026-10-28.1 (S13-001, fix/full-analysis-timeout): the Full Analysis is
+// asked in parallel parts (analysis-parts.ts: the core, and the LinkedIn and
+// posting sections when given) with measured max_tokens, pro first with an
+// 80 s attempt so the next model keeps 45 s, and a chain that runs out of time
+// answers 504 retryable instead of 500. _shared/ai-fallback.ts changed too.
+const FN_BUILD = "analyze-resume.2026-10-28.1";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

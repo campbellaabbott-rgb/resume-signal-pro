@@ -19,7 +19,11 @@ import { websiteSessionOf } from "../_shared/website-session.ts";
 // and is bounded by the spend gate, not the daily set. Past Interview Coach
 // buyers (a purchase this function delivers) and our own servers are not
 // counted here.
-const FN_BUILD = "generate-interview-coach.2026-10-11.24";
+// 2026-10-28.1 (S13-001, fix/full-analysis-timeout): _shared/ai-fallback.ts
+// no longer retries a model that timed out; the chain moves to the next
+// model, which keeps at least 40 s of the budget. Nothing else in this bundle
+// changed.
+const FN_BUILD = "generate-interview-coach.2026-10-28.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
