@@ -9,9 +9,9 @@
  *     the device's time zone (src/hooks/use-currency.ts), sent as `currency`
  *     to create-checkout, which prices it from CURRENCY_RATES when
  *     the table carries that currency and in US dollars when it does not
- *     (calculateAmount's fallback). A currency of the EU, the EEA, the UK or
- *     India is refused by wave 4's territory check, which the region sentence
- *     already says.
+ *     (calculateAmount's fallback). No currency is refused for where the
+ *     buyer is: land/all removed wave 4's territory check (owner 2026-10-27,
+ *     "keep selling as today").
  *
  * Both pages used to give one currency to everything they sell. Now, in all
  * nine languages, over every string either page carries, each sentence is
@@ -363,6 +363,36 @@ describe("the hook the sentences describe: a listed time zone gets its currency,
       }
     });
   }
+});
+
+// THE FINAL RECHECK OF LAND/ALL (2026-10-31). The switch-over priced Montenegro
+// and Kosovo in US dollars (6e4b9105) only to step around wave 4's currency
+// refusal; land/all removed that refusal (owner 2026-10-27, "keep selling as
+// today"), so a browser in Europe/Podgorica saw $5 and was charged in US
+// dollars where main shows and charges about 4.60 euros. Both are priced in
+// euros again, as on main, and create-checkout takes a euro body from anywhere.
+describe("Montenegro and Kosovo are priced in euros, as on main", () => {
+  it("Europe/Podgorica reads as Montenegro and gets the euro", async () => {
+    const real = Intl.DateTimeFormat.prototype.resolvedOptions;
+    const spy = vi.spyOn(Intl.DateTimeFormat.prototype, "resolvedOptions").mockImplementation(function (this: Intl.DateTimeFormat) {
+      return { ...real.call(this), timeZone: "Europe/Podgorica" };
+    });
+    try {
+      const { result } = renderHook(() => useCurrency());
+      await waitFor(() => expect(result.current.countryCode).toBe("ME"));
+      expect(result.current.currency).toEqual({ code: "EUR", symbol: "€", rate: 0.92 });
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("the hook's map prices ME and XK in euros at main's rate, and create-checkout has no currency it refuses", () => {
+    const hook = codeOf(read("../hooks/use-currency.ts"));
+    for (const cc of ["ME", "XK"]) expect(hook, cc).toMatch(new RegExp(`\\b${cc}: \\{ code: "EUR", symbol: "€", rate: 0\\.92 \\}`));
+    const checkout = codeOf(read("../../supabase/functions/create-checkout/index.ts"));
+    expect(checkout).toMatch(/\beur: \{ rate: 0\.92/);
+    expect(checkout).not.toMatch(/TERRITORY_CURRENCIES|sales-territory/);
+  });
 });
 
 describe("the checkout code the sentences describe", () => {
