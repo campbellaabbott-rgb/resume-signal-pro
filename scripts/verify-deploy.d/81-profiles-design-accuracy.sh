@@ -46,9 +46,16 @@
 #       them; the SEO round's merge of main, 2026-10-25). The watch lines
 #       judge this checkout's model, so they PASS only once the served chunk
 #       carries the gate, and on a Workday site (Akumin ADG, Boeing PRIDE)
-#       only once it also carries that arm, and print INFO before; Stripe's
-#       board total is within 10% of its own Greenhouse feed (FAIL by
-#       decision until job-board records whole-feed totals).
+#       only once it also carries that arm, and print INFO before; the board
+#       total the page prints on three SmartRecruiters boards one visit reads
+#       whole (LLNL, Clifford Chance, Sodexo) is within 10% of the total
+#       their own feed states, and if none of the three can be judged while
+#       their feeds answer, the line FAILs. Until 2026-10-25 this judged
+#       Stripe, which can never state one: job-board records no total for a
+#       whole-feed board (Greenhouse, Lever, Ashby and the rest), and
+#       Greenhouse's meta.total is only the length of the list it ships (719
+#       of 719 on Stripe), which the n130 rule keeps out as it keeps JazzHR's.
+#       The 2026-10-12 fixture had invented Stripe's total.
 #   81d Databricks and Canva print no "never half" (their 30-day share is
 #       under one half).
 #   81e no live 14-day share sits outside its own interval.
@@ -84,8 +91,8 @@
 # Property names survive minification, so the watch gate is read from the
 # served code itself ("X.watchPromise&&" opening the element whose children
 # call companyProfile.zero.body). Read-only: GETs (PostgREST runs a
-# GET RPC in a read-only transaction), the job-board's read-only list, and one
-# public Greenhouse feed.
+# GET RPC in a read-only transaction), the job-board's read-only list, and three
+# public SmartRecruiters feeds.
 echo "== 81. profiles + design accuracy: Track 1 on named pages, the four-table lock =="
 
 REPO_ROOT81="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -96,7 +103,9 @@ const fs = require("fs");
 const H = { apikey: K, Authorization: `Bearer ${K}` };
 const get = async (url, headers = {}) => { try { const r = await fetch(url, { headers, signal: AbortSignal.timeout(60000) }); return { status: r.status, body: await r.text() }; } catch (e) { return { status: 0, body: "" }; } };
 const json = (s) => { try { return JSON.parse(s); } catch { return null; } };
-const TOKENS = ["egud~us2~CX_1", "ejwl~us2~CX", "eluq~us2~CX_1", "hcbt~em2~CX_1001", "databricks", "Canva", "centriaautism", "bayada", "stripe", "bassabatherapy", "eexs~us2~CX_19005", "akumincorp~wd5~adgcareers", "boeing~wd1~PRIDE"];
+// The boards whose own feed states a total (SmartRecruiters totalFound), read whole in one visit (at most 250 roles).
+const STATED = ["LLNL", "CliffordChance", "Sodexo"];
+const TOKENS = ["egud~us2~CX_1", "ejwl~us2~CX", "eluq~us2~CX_1", "hcbt~em2~CX_1001", "databricks", "Canva", "centriaautism", "bayada", "bassabatherapy", "eexs~us2~CX_19005", "akumincorp~wd5~adgcareers", "boeing~wd1~PRIDE", ...STATED];
 (async () => {
   // The rows the employer pages read, over a read-only GET.
   const arr = "{" + TOKENS.map((t) => JSON.stringify(t)).join(",") + "}";
@@ -135,10 +144,14 @@ const TOKENS = ["egud~us2~CX_1", "ejwl~us2~CX", "eluq~us2~CX_1", "hcbt~em2~CX_10
   const bass = await listed("bassabatherapy");
   const zeroLists = {};
   for (const t of ["eexs~us2~CX_19005", "akumincorp~wd5~adgcareers", "boeing~wd1~PRIDE"]) zeroLists[t] = await listed(t);
-  // Stripe: its own Greenhouse feed states the total.
-  const gh = await get("https://boards-api.greenhouse.io/v1/boards/stripe/jobs");
-  const ghj = json(gh.body);
-  fs.writeFileSync("/tmp/vd_81_ext.json", JSON.stringify({ bass, zeroLists, stripeFeed: { status: gh.status, total: ghj && ghj.meta && typeof ghj.meta.total === "number" ? ghj.meta.total : (ghj && Array.isArray(ghj.jobs) ? ghj.jobs.length : null) } }));
+  // The STATED boards: the total each states on its own feed, the number job-board records verbatim.
+  const statedFeeds = {};
+  for (const t of STATED) {
+    const r = await get(`https://api.smartrecruiters.com/v1/companies/${encodeURIComponent(t)}/postings?limit=1`);
+    const j = json(r.body);
+    statedFeeds[t] = { status: r.status, total: j && typeof j.totalFound === "number" ? j.totalFound : null };
+  }
+  fs.writeFileSync("/tmp/vd_81_ext.json", JSON.stringify({ bass, zeroLists, statedFeeds }));
   // The four locked tables, each by a real column, as anon.
   const lock = {};
   for (const [t, col] of [["showcase_excluded", "company_token"], ["company_profiles", "company_token"], ["company_financials", "slug"], ["company_name_overrides", "slug"]]) {
@@ -189,7 +202,7 @@ const curves = read("/tmp/vd_81_curves.json", { status: 0, body: null });
 const gate = read("/tmp/vd_81_gate.json", null);
 const model = read("/tmp/vd_81_model.json", null);
 const meta = read("/tmp/vd_81_meta.json", {});
-const ext = read("/tmp/vd_81_ext.json", { bass: {}, stripeFeed: {} });
+const ext = read("/tmp/vd_81_ext.json", { bass: {}, statedFeeds: {} });
 const lock = read("/tmp/vd_81_lock.json", {});
 const readers = read("/tmp/vd_81_readers.json", {});
 let bundle = ""; try { bundle = fs.readFileSync("/tmp/vd_81_bundle.txt", "utf8"); } catch { bundle = ""; }
@@ -355,18 +368,41 @@ for (const [label, t, shape, list, deduped] of ZERO_BOARDS) {
   else if (mm.watchPromise) out(servedRule ? "PASS" : "INFO", `81c ${label}: ${servedRule ? "the page promises" : "this checkout\x27s model promises"} a watch counts its new postings, where no total is stated, the newest read was whole and neither dedupe can empty the site (${facts81c(r)})${live}`);
   else out(servedRule ? "PASS" : "INFO", `81c ${label}: ${servedRule ? "the page offers" : "this checkout\x27s model offers"} Watch without promising what it counts (${facts81c(r)}${why ? `; ${why}` : ""})${live}`);
 }
+// The board total the page prints ("Their board listed N roles in all when we
+// read it ..."), judged by this checkout\x27s print rule (boardTotalFact) on
+// boards whose vendor states its own count and one visit reads whole. Not on
+// Stripe, which this line judged until 2026-10-25: a whole-feed board states
+// no total (job-board records none for Greenhouse, Lever, Ashby and the rest;
+// the Greenhouse meta.total is the length of the list it ships, 719 of 719),
+// as BASS ABA above says. A board that grows past one visit, or whose total
+// is too old to print, is INFO; three INFOs while their feeds answer FAIL.
+const STATED_BOARDS = [["LLNL", "LLNL"], ["Clifford Chance", "CliffordChance"], ["Sodexo", "Sodexo"]];
 {
-  const r = rowOf("stripe");
-  const feed = ext.stripeFeed || {};
-  if (!r) out("INFO", "81c Stripe: no curve row answered, nothing to judge");
-  else if (!Object.prototype.hasOwnProperty.call(r, "feed_total")) out("FAIL", "81c Stripe: the reply carries no feed_total, so 20261012121000 is not applied and no board total prints");
-  else if (typeof feed.total !== "number" || feed.total <= 0) out("INFO", `81c Stripe: its Greenhouse feed answered HTTP ${feed.status} with no total; nothing to compare`);
-  else if (r.feed_total === null || r.feed_total === undefined) out("FAIL", `81c Stripe: no board total from a complete read (state ${r.feed_state ?? "none"}) while its feed states ${feed.total}`);
-  else {
-    const rel = Math.abs(Number(r.feed_total) - feed.total) / feed.total;
-    if (rel <= 0.1) out("PASS", `81c Stripe: board total ${r.feed_total} (read ${r.feed_read_at}) within 10% of its Greenhouse feed (${feed.total})`);
-    else out("FAIL", `81c Stripe: board total ${r.feed_total} is ${Math.round(rel * 100)}% off its Greenhouse feed (${feed.total})`);
+  const feedOf = (t) => (ext.statedFeeds || {})[t] || {};
+  const answered = STATED_BOARDS.filter(([, t]) => typeof feedOf(t).total === "number" && feedOf(t).total > 0).length;
+  let judged = 0;
+  for (const [label, t] of STATED_BOARDS) {
+    const r = rowOf(t);
+    const mm = model && model[t];
+    const feed = feedOf(t);
+    if (!r) { out("INFO", `81c ${label}: no curve row answered, nothing to judge`); continue; }
+    if (!Object.prototype.hasOwnProperty.call(r, "feed_total")) { judged++; out("FAIL", `81c ${label}: the reply carries no feed_total, so 20261012121000 is not applied and no board total prints`); continue; }
+    if (typeof feed.total !== "number" || feed.total <= 0) { out("INFO", `81c ${label}: its SmartRecruiters feed answered HTTP ${feed.status} with no total; nothing to compare`); continue; }
+    if (!mm) { out("INFO", `81c ${label}: this checkout\x27s lander model did not run, so the printed total cannot be judged`); continue; }
+    const printed = mm.boardTotal;
+    if (r.feed_total === null || r.feed_total === undefined) {
+      if (r.observability_bucket !== "full_read") { out("INFO", `81c ${label}: no complete read stated a total (bucket ${r.observability_bucket ?? "none"}) while its feed states ${feed.total}: one visit reads at most 250, so pick a board it reads whole`); continue; }
+      judged++;
+      out("FAIL", `81c ${label}: read in full (bucket full_read) with no board total from a complete read while its SmartRecruiters feed states ${feed.total}: job-board did not record the vendor\x27s own count, or the curve did not find it`);
+    } else if (!printed) out("INFO", `81c ${label}: feed_total ${r.feed_total} (${r.feed_state}, read ${r.feed_read_at}) is one the page may not print (older than 48 hours or capped), so it prints no total`);
+    else {
+      judged++;
+      const rel = Math.abs(Number(printed.total) - feed.total) / feed.total;
+      if (rel <= 0.1) out("PASS", `81c ${label}: the page prints board total ${printed.total} (read ${printed.readAt}), within 10% of its own SmartRecruiters feed (${feed.total})`);
+      else out("FAIL", `81c ${label}: the page prints board total ${printed.total} (read ${printed.readAt}), ${Math.round(rel * 100)}% off its own SmartRecruiters feed (${feed.total})`);
+    }
   }
+  if (model && answered > 0 && judged === 0) out("FAIL", `81c none of the ${STATED_BOARDS.length} named boards whose own feed states a total could be judged (each INFO above) while ${answered} of their feeds answered: the printed board total goes unjudged; re-pick boards one visit reads whole`);
 }
 
 // ---- 81d: never half ----
