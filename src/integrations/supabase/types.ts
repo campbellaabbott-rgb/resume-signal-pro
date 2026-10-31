@@ -6639,7 +6639,11 @@ export type Database = {
       get_explore_denominators: { Args: never; Returns: Json }
       get_explore_field_grid: { Args: never; Returns: Json }
       get_failed_deliveries_for_retry: {
-        Args: { p_include_generating?: boolean; p_limit?: number }
+        Args: {
+          p_include_generating?: boolean
+          p_include_unmailed?: boolean
+          p_limit?: number
+        }
         Returns: {
           customer_email: string
           id: string
