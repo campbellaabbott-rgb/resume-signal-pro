@@ -747,18 +747,35 @@ export function sliceNote(build, deploying = build) {
  *                                       pending in a later step, held or never to
  *                                       apply is an error. The note names those still
  *                                       pending and, with no other rule, says the
- *                                       file waits for nothing else.
+ *                                       file waits for nothing else. Handed the
+ *                                       listing (`onDisk`, every migration file),
+ *                                       a stamp no file carries is an error: it
+ *                                       was dropped as "not pending" before, so a
+ *                                       typo emptied the order (review of
+ *                                       fix/name-sync-rerun).
+ *   repairedBy: "<stamp>"               the `before` function already deployed
+ *                                       (2026-10-31: job-board .96 went out
+ *                                       without 20261025100000 and 20261026100000)
+ *                                       and this pending migration repairs that;
+ *                                       its afterMigrations must name this one.
  *
  * A migration with no `after` goes before the functions, as every migration
  * did. An `after` function that already answers the named build (or later)
- * makes the migration wait for nothing. A rule that cannot be met (main
- * carries an earlier build, or no such function) is an error, never a guess.
- * Pure: `rows` are the report's rows ({ fn, want, have, state }).
+ * makes the migration wait for nothing. A `before` function that already
+ * answers main's build (or later) deployed first: the order is broken, and
+ * the message said "before job-board" in a deploy with no job-board step, so
+ * it is an error unless `repairedBy` names a pending repair, and the note
+ * says the function went first. A function this message deploys, or one
+ * whose build could not be read, keeps "before <fn>". A rule that cannot be
+ * met (main carries an earlier build, or no such function) is an error,
+ * never a guess. Pure: `rows` are the report's rows ({ fn, want, have,
+ * state }); `onDisk`, optional, is every migration file name on disk (the
+ * report always passes it).
  *
  *   returns { pre, afterFunctions, afterFrontend, errors }, each phase
  *   [{ file, note }] in filename order
  */
-export function migrationPhases(pending, policy, rows) {
+export function migrationPhases(pending, policy, rows, onDisk = null) {
   const order = policy?.migrationOrder ?? {};
   const byFn = new Map((rows ?? []).map((r) => [r.fn, r]));
   const out = { pre: [], afterFunctions: [], afterFrontend: [], errors: [] };
@@ -777,8 +794,18 @@ export function migrationPhases(pending, policy, rows) {
       }
       for (const x of am.map(String)) {
         if (x >= stamp) out.errors.push(`migrationOrder ${stamp}: afterMigrations names ${x}, which does not sort before it, so filename order cannot put it first`);
+        else if (Array.isArray(onDisk) && !onDisk.some((f) => String(f).startsWith(`${x}_`))) out.errors.push(`migrationOrder ${stamp}: afterMigrations names ${x}, which no migration file carries, so nothing orders this file after it`);
         else if ((policy?.holdUntilVerified ?? []).some((h) => h?.stamp === x)) out.errors.push(`migrationOrder ${stamp}: afterMigrations names ${x}, which is held (holdUntilVerified), so this file could apply before it`);
         else if ((policy?.neverApply ?? []).some((n) => x.startsWith(String(n)) || String(n).startsWith(x))) out.errors.push(`migrationOrder ${stamp}: afterMigrations names ${x}, which must never apply (neverApply)`);
+      }
+    }
+    if (e?.repairedBy !== undefined) {
+      const y = e.repairedBy;
+      if (typeof y !== "string" || !/^\d{14}$/.test(y)) out.errors.push(`migrationOrder ${stamp}: repairedBy must be one 14-digit migration stamp`);
+      else if (!(Array.isArray(e?.before) && e.before.length)) out.errors.push(`migrationOrder ${stamp}: repairedBy names ${y}, but the entry has no before rule for it to repair`);
+      else {
+        const follows = order[y]?.afterMigrations;
+        if (!Array.isArray(follows) || !follows.map(String).includes(stamp)) out.errors.push(`migrationOrder ${stamp}: repairedBy names ${y}, whose afterMigrations does not name ${stamp}, so it could apply first`);
       }
     }
   }
@@ -791,7 +818,19 @@ export function migrationPhases(pending, policy, rows) {
     const before = (Array.isArray(e?.before) ? e.before : []).map((b) => BEFORE_FN.exec(String(b))?.[1]).filter(Boolean);
     const preds = predsOf(e);
     const afterMigNote = preds.length ? `after ${preds.join(" and ")}${!e?.after && !before.length ? "; it waits for nothing else" : ""}` : "";
-    const beforeNote = [afterMigNote, before.length ? `before ${before.join(" and ")}` : ""].filter(Boolean).join("; ");
+    // A before function already serving main's build (or later) went first: this message deploys none of it.
+    const wentFirst = before.filter((fn) => { const r = byFn.get(fn); return r && (r.state === "live" || r.state === "live-ahead"); });
+    const stillBefore = before.filter((fn) => !wentFirst.includes(fn));
+    const stamp = file.slice(0, 14);
+    const repair = typeof e?.repairedBy === "string" && /^\d{14}$/.test(e.repairedBy) ? e.repairedBy : null;
+    const repairPending = repair && pendingStamp(repair) ? repair : null;
+    const wentFirstNotes = wentFirst.map((fn) => `${fn} already answers ${byFn.get(fn).have}: it deployed first${repairPending ? `, and ${repairPending} repairs that` : ""}`);
+    for (const fn of wentFirst) {
+      const have = byFn.get(fn).have;
+      if (!repair) out.errors.push(`${file} must apply before ${fn}, but ${fn} already answers ${have} and this message deploys none: it deployed first. Name the pending migration that repairs that (migrationOrder ${stamp} repairedBy, ordered after it by its afterMigrations), or drop the rule if it waits for a build main does not carry yet`);
+      else if (!repairPending) out.errors.push(`${file} must apply before ${fn}, but ${fn} already answers ${have}, and its repairedBy ${repair} is not pending, so nothing in this message repairs that`);
+    }
+    const beforeNote = [afterMigNote, stillBefore.length ? `before ${stillBefore.join(" and ")}` : "", ...wentFirstNotes].filter(Boolean).join("; ");
     for (const fn of before) if (!byFn.has(fn)) out.errors.push(`${file} must apply before ${fn}, but main has no function ${fn}`);
     if (!e?.after) { out.pre.push({ file, note: beforeNote }); continue; }
     if (e.after === "frontend") {
@@ -1098,7 +1137,9 @@ async function main(argv) {
   const unbumped = liveStamped.filter((r) => r.changedSinceStamp.some((p) => p.startsWith(`supabase/functions/${r.fn}/`)));
   const sharedOnly = liveStamped.filter((r) => !unbumped.includes(r));
   const noMarker = rows.filter((r) => r.state === "no-marker");
-  const phases = migrationPhases(mig.pending, POLICY, rows);
+  // Every migration file on disk, so an afterMigrations stamp that names none is an error.
+  const onDisk = [...mig.applied, ...mig.pending, ...mig.hold, ...mig.neverApplyPresent];
+  const phases = migrationPhases(mig.pending, POLICY, rows, onDisk);
   // A hold the ledger cannot check stops the message like an order rule (S12-032).
   const holds = holdStates(mig.hold, POLICY, rows);
   phases.errors.push(...holds.errors);

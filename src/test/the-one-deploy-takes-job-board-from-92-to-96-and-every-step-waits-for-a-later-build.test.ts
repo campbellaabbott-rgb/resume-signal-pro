@@ -106,7 +106,13 @@ describe("the ledger's order for one message, with .93 and .95 never served", ()
   });
 
   it("once .96 serves, the Reyes rule written for .95 is met: an after rule is 'or later', never equality", () => {
-    const after = L.migrationPhases(ORDERED, policy, rowsWith({ ...LIVE, "job-board": "job-board.2026-09-09.96", "process-email-queue": "process-email-queue.2026-10-14.2" }));
+    // .96 serving with the two name files still pending is the 2026-10-31 incident: their `before: fn:job-board`
+    // broke, which stops the message unless the re-arm that repairs it (20261030100000, repairedBy) is pending too.
+    const served = rowsWith({ ...LIVE, "job-board": "job-board.2026-09-09.96", "process-email-queue": "process-email-queue.2026-10-14.2" });
+    const broken: string[] = L.migrationPhases(ORDERED, policy, served).errors;
+    expect(broken.map((e) => e.slice(0, 14))).toEqual(["20261025100000", "20261026100000"]);
+    expect(broken.every((e) => /already answers job-board\.2026-09-09\.96, and its repairedBy 20261030100000 is not pending/.test(e))).toBe(true);
+    const after = L.migrationPhases([...ORDERED, fileOf("20261030100000")].sort(), policy, served);
     expect(after.errors).toEqual([]);
     expect(after.afterFunctions).toEqual([]);
     expect(after.pre.find((p) => p.file.startsWith("20261025110000"))?.note).toBe("job-board already answers job-board.2026-09-09.96");

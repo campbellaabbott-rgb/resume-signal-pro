@@ -47,7 +47,7 @@
     { "file": "src/config/seller.ts", "constant": "PRIVACY_LAST_UPDATED", "whenDeploying": "fn:job-board@2026-09-09.93", "why": "the Privacy page's Last updated dates its new AI table" }
   ],
   "migrationOrder": {
-    "_note": "Per migration stamp: `after` is \"fn:<name>@<YYYY-MM-DD.N>\" (apply once that function answers that build or later) or \"frontend\" (apply once the frontend is published); `before` lists \"fn:<name>\" a migration must precede; `afterMigrations` lists the stamps it must follow (each sorts earlier, so filename order puts them first inside a step; one pending in a later step, held or never to apply stops the message), and its note names those still pending. No entry: before the functions. The ledger prints five steps: migrations before the functions, the functions, migrations after the functions they wait for, the frontend, migrations after the frontend (docs/DEPLOY-LEDGER.md §1).",
+    "_note": "Per migration stamp: `after` is \"fn:<name>@<YYYY-MM-DD.N>\" (apply once that function answers that build or later) or \"frontend\" (apply once the frontend is published); `before` lists \"fn:<name>\" a migration must precede; `afterMigrations` lists the stamps it must follow (each sorts earlier, so filename order puts them first inside a step; one pending in a later step, held or never to apply stops the message), and its note names those still pending (a stamp no migration file carries stops it too); `repairedBy` names the pending migration that repairs a `before` whose function already answers main's build (it deployed first; without one, that stops the message), and that migration's afterMigrations must name this one. No entry: before the functions. The ledger prints five steps: migrations before the functions, the functions, migrations after the functions they wait for, the frontend, migrations after the frontend (docs/DEPLOY-LEDGER.md §1).",
     "20261009101000": {
       "before": ["fn:job-board"],
       "why": "S11-009: the new job-board retries a missed ranked search with p_title_only, which only this migration's search_jobs takes (against the old SQL that retry fails into today's unranked fallback); the old job-board never sends it"
@@ -181,11 +181,13 @@
     },
     "20261025100000": {
       "before": ["fn:job-board"],
-      "why": "trusted pages (trust/pages, riding oracle-regionless's job-board .95): .95 moves NAME_SYNC_VERSION from 4 to 5, and its name-sync lane renames the stored rows of every board company_name_overrides names, once. Applied after the function, the lane finishes version 5 before this file's 88 names exist, and the stored rows keep the logo and label names until a later version"
+      "repairedBy": "20261030100000",
+      "why": "trusted pages (trust/pages, riding oracle-regionless's job-board .95): .95 moves NAME_SYNC_VERSION from 4 to 5, and its name-sync lane renames the stored rows of every board company_name_overrides names, once. Applied after the function, the lane finishes version 5 before this file's 88 names exist, and the stored rows keep the logo and label names until a later version (2026-10-31: Lovable deployed main f8d72a9b, job-board .96, without this file, and the lane ran version 6 without its names; repairedBy 20261030100000, applied right after it, re-arms the lane, so the message says job-board deployed first and does not stop)"
     },
     "20261026100000": {
       "before": ["fn:job-board"],
-      "why": "trust round 3 (trust/round3, job-board .96): .96 moves NAME_SYNC_VERSION from 5 to 6, and its name-sync lane renames the stored rows of every board company_name_overrides names and every token in RENAMED_TOKENS, once. Applied after the function, the lane can finish version 6 before this file's 16 overrides exist, and those boards' stored rows keep their label names until a later version"
+      "repairedBy": "20261030100000",
+      "why": "trust round 3 (trust/round3, job-board .96): .96 moves NAME_SYNC_VERSION from 5 to 6, and its name-sync lane renames the stored rows of every board company_name_overrides names and every token in RENAMED_TOKENS, once. Applied after the function, the lane can finish version 6 before this file's 16 overrides exist, and those boards' stored rows keep their label names until a later version (2026-10-31: Lovable deployed main f8d72a9b, job-board .96, without this file, and the lane ran version 6 without its names; repairedBy 20261030100000, applied right after it, re-arms the lane, so the message says job-board deployed first and does not stop)"
     },
     "20261026110000": {
       "after": "slice:job-board@2026-09-09.96",

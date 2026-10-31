@@ -62,9 +62,19 @@ closes the gap. Policy lives in `docs/deploy-ledger.json`:
   follow (2026-10-31: 20261030100000 re-arms the name-sync lane and refuses
   until 20261025100000 and 20261026100000 are applied): each must sort
   earlier, since inside a step files go in filename order, and one pending in
-  a later step, held or never to apply stops the message (exit 6); the note
-  names those still pending and, with no other rule, says the file waits for
-  nothing else. The message prints five steps: migrations
+  a later step, held or never to apply stops the message (exit 6), and so does
+  a stamp no migration file carries (the report hands the rule every file on
+  disk); the note names those still pending and, with no other rule, says the
+  file waits for nothing else. A `before` whose function already answers
+  main's build (or a later one) deployed first, so this message has no step
+  for it to precede: that stops the message (exit 6) unless the entry names
+  `repairedBy`, the pending migration that repairs it, whose afterMigrations
+  names this one, and then the note says the function already answers that
+  build, went first, and which file repairs that (2026-10-31: job-board .96
+  went out without 20261025100000 and 20261026100000, the next message still
+  said "before job-board", and 20261030100000 is their repair). A function
+  this message deploys, or one whose build could not be read, keeps "before
+  <fn>". The message prints five steps: migrations
   before the functions, the functions, migrations after the function each
   waits for, the frontend, migrations after the frontend. A rule that cannot
   be met (main carries an earlier build, or no such function) stops the

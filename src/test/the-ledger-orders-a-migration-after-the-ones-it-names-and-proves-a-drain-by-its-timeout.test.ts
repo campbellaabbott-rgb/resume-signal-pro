@@ -25,6 +25,7 @@ import { describe, expect, it } from "vitest";
 import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import * as L from "../../scripts/deploy-ledger.mjs";
+import { codeOf } from "./helpers/strip-comments";
 
 const ROOT = resolve(__dirname, "../..");
 const MIG_DIR = resolve(ROOT, "supabase/migrations");
@@ -78,6 +79,32 @@ describe("afterMigrations: a migration ordered after the ones it names", () => {
     expect(err({ afterMigrations: ["20261025100000"] }, { neverApply: ["20261025100000"] })).toEqual(["migrationOrder 20261030100000: afterMigrations names 20261025100000, which must never apply (neverApply)"]);
     expect(err({ afterMigrations: [] })).toEqual(["migrationOrder 20261030100000: afterMigrations must list one or more 14-digit migration stamps"]);
     expect(err({ afterMigrations: "20261025100000" })).toEqual(["migrationOrder 20261030100000: afterMigrations must list one or more 14-digit migration stamps"]);
+  });
+
+  // Review of fix/name-sync-rerun: a stamp naming no file was filtered out as
+  // "not pending", so a typo dropped the order and emptied the note silently.
+  it("is an error when a named stamp matches no migration file in the listing it is handed", () => {
+    const p = L.migrationPhases([a, b, n], P({ afterMigrations: ["20261025100001", "20261026100000"] }), live, [a, b, n]);
+    expect(p.errors).toEqual(["migrationOrder 20261030100000: afterMigrations names 20261025100001, which no migration file carries, so nothing orders this file after it"]);
+  });
+
+  it("a named stamp on disk and already applied is no error, and the note leaves it out", () => {
+    const p = L.migrationPhases([b, n], P({ afterMigrations: ["20261025100000", "20261026100000"] }), live, [a, b, n]);
+    expect(p.errors).toEqual([]);
+    expect(p.pre[1].note).toBe("after 20261026100000; it waits for nothing else");
+  });
+
+  it("every stamp the live policy's afterMigrations names is a file in supabase/migrations", () => {
+    const onDisk = readdirSync(MIG_DIR).filter((f) => /^\d{14}_.+\.sql$/.test(f));
+    expect(L.migrationPhases([], POLICY, live, onDisk).errors).toEqual([]);
+    expect(L.migrationPhases([], { migrationOrder: { "20261030100000": { afterMigrations: ["20261025100001"] } } }, live, onDisk).errors)
+      .toEqual(["migrationOrder 20261030100000: afterMigrations names 20261025100001, which no migration file carries, so nothing orders this file after it"]);
+  });
+
+  it("the report hands migrationPhases every migration file on disk", () => {
+    const src = codeOf(readFileSync(resolve(ROOT, "scripts/deploy-ledger.mjs"), "utf8"));
+    expect(src).toMatch(/const onDisk = \[\.\.\.mig\.applied, \.\.\.mig\.pending, \.\.\.mig\.hold, \.\.\.mig\.neverApplyPresent\];/);
+    expect(src).toMatch(/migrationPhases\(mig\.pending, POLICY, rows, onDisk\)/);
   });
 });
 
@@ -141,8 +168,9 @@ describe("the three stub-less files the one deploy applied are read applied, and
     const step = msg.findIndex((l) => /^1\. Apply these 3 migrations, in this order/.test(l));
     expect(step, msg.join("\n")).toBeGreaterThan(0);
     expect(msg.slice(step + 1, step + 4)).toEqual([
-      `   1. ${names[0]} (before job-board)`,
-      `   2. ${names[1]} (before job-board)`,
+      // job-board .96 already serves: no "(before job-board)" in a message that deploys no function (review).
+      `   1. ${names[0]} (job-board already answers job-board.2026-09-09.96: it deployed first, and 20261030100000 repairs that)`,
+      `   2. ${names[1]} (job-board already answers job-board.2026-09-09.96: it deployed first, and 20261030100000 repairs that)`,
       `   3. ${names[2]} (after 20261025100000 and 20261026100000; it waits for nothing else)`,
     ]);
     expect(msg[step + 4]).toMatch(/^ {3}RELEASABLE, still held: 20261011103000_.*do not apply it from this one\.$/);
