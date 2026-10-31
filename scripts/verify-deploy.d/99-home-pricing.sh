@@ -25,9 +25,10 @@
 #   C5  While this checkout's src/config/seller.ts names no seller: no Offer
 #       at a price in the JSON-LD of "/" or "/pricing", no buy control in the
 #       baked HTML, and the /pricing description names no price.
-#   C6  The builds home-pricing carries: free-keyword-scan 2026-10-27.1 (H0,
-#       then the report sweep's photo notes) and free-keyword-scan-stream
-#       2026-10-27.1 (the same notes), send-scan-report and send-search-digest
+#   C6  The builds home-pricing carries: free-keyword-scan 2026-10-31.1 (H0,
+#       the report sweep's photo notes, then its review's whole-word lists and
+#       prompt) and free-keyword-scan-stream 2026-10-31.1 (the same market and
+#       country modules), send-scan-report and send-search-digest
 #       2026-10-25.1, send-market-pulse 2026-10-25.2 (the scanner's own address
 #       in their links), create-subscription-checkout 2026-10-26.1 (Pro's list
 #       says packages) and create-product-checkout 2026-10-26.1 (it bundles that
@@ -94,7 +95,7 @@ VD99_HOMECHUNK=$(grep -oE 'HomePage-[A-Za-z0-9_-]+\.js' /tmp/vd_99_home.html | h
 if [ -n "$VD99_HOMECHUNK" ]; then curl -s -m 60 "$SITE/assets/$VD99_HOMECHUNK" > /tmp/vd_99_homechunk.js; fi
 
 # ---- C6: the builds the reservation carries ----
-for VD99_PAIR in "free-keyword-scan|2026-10-27|1" "free-keyword-scan-stream|2026-10-27|1" "send-scan-report|2026-10-25|1" "send-search-digest|2026-10-25|1" "send-market-pulse|2026-10-25|2" "create-subscription-checkout|2026-10-26|1" "create-product-checkout|2026-10-26|1" "send-product-email|2026-10-27|1"; do
+for VD99_PAIR in "free-keyword-scan|2026-10-31|1" "free-keyword-scan-stream|2026-10-31|1" "send-scan-report|2026-10-25|1" "send-search-digest|2026-10-25|1" "send-market-pulse|2026-10-25|2" "create-subscription-checkout|2026-10-26|1" "create-product-checkout|2026-10-26|1" "send-product-email|2026-10-27|1"; do
   VD99_FN="${VD99_PAIR%%|*}"; VD99_REST="${VD99_PAIR#*|}"; VD99_DAY="${VD99_REST%%|*}"; VD99_N="${VD99_REST#*|}"
   VD99_H=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$VD99_FN" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+: *//')
   if [ -z "$VD99_H" ]; then echo "FAIL  C6 $VD99_FN preflight carries no x-fn-build (not deployed, or the previous bundle is serving)"

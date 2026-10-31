@@ -505,7 +505,15 @@ const trackPerformance = (startTime: number, operation: string, success: boolean
 // or the survey's interview multiplier, whose source is not in this repository
 // (country-standards.ts, the stream fork's copy byte for byte). Nothing else
 // in the bundle changed since 2026-10-25.2.
-const FN_BUILD = "free-keyword-scan.2026-10-27.1";
+// 2026-10-31.1 (homepage switch-over, the review of the report sweep;
+// reservation home-pricing): the market module (the stream fork's copy byte
+// for byte) matches its hand-typed lists by whole word, reads the skills lists
+// only for the five fields that have their own and puts no typed salary range
+// in the prompt; the scan sends the lists' date as listsAsOf; the prompt asks
+// the AI for no salary range, no pass verdict and no timed recruiter scan, and
+// the fallback first-pass summary predicts no screen. The 2026-10-27.1 bundle
+// had none of this, so it takes a new build.
+const FN_BUILD = "free-keyword-scan.2026-10-31.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

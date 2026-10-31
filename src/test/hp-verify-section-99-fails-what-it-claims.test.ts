@@ -95,8 +95,8 @@ interface Over {
   builds?: Record<string, string | null>; root?: string;
 }
 const BUILDS: Record<string, string> = {
-  "free-keyword-scan": "free-keyword-scan.2026-10-27.1",
-  "free-keyword-scan-stream": "free-keyword-scan-stream.2026-10-27.1",
+  "free-keyword-scan": "free-keyword-scan.2026-10-31.1",
+  "free-keyword-scan-stream": "free-keyword-scan-stream.2026-10-31.1",
   "send-scan-report": "send-scan-report.2026-10-25.1",
   "send-search-digest": "send-search-digest.2026-10-25.1",
   "send-market-pulse": "send-market-pulse.2026-10-25.2",
@@ -207,11 +207,21 @@ describe("each claim can FAIL", () => {
   });
 
   it("C6: the report sweep's builds (2026-10-27): H0's scan, wave 4's stream fork and wave 4's purchase mail are each one build short", () => {
-    expect(has(run({ builds: { "free-keyword-scan": "free-keyword-scan.2026-10-25.2" } }).lines, "FAIL", /^C6 free-keyword-scan x-fn-build = free-keyword-scan\.2026-10-25\.2 \(want free-keyword-scan\.2026-10-27\.1 or later\)/)).toBe(true);
-    expect(has(run({ builds: { "free-keyword-scan-stream": "free-keyword-scan-stream.2026-10-11.31" } }).lines, "FAIL", /^C6 free-keyword-scan-stream x-fn-build = free-keyword-scan-stream\.2026-10-11\.31 \(want free-keyword-scan-stream\.2026-10-27\.1 or later\)/)).toBe(true);
+    expect(has(run({ builds: { "free-keyword-scan": "free-keyword-scan.2026-10-25.2" } }).lines, "FAIL", /^C6 free-keyword-scan x-fn-build = free-keyword-scan\.2026-10-25\.2 \(want free-keyword-scan\.2026-10-31\.1 or later\)/)).toBe(true);
+    expect(has(run({ builds: { "free-keyword-scan-stream": "free-keyword-scan-stream.2026-10-11.31" } }).lines, "FAIL", /^C6 free-keyword-scan-stream x-fn-build = free-keyword-scan-stream\.2026-10-11\.31 \(want free-keyword-scan-stream\.2026-10-31\.1 or later\)/)).toBe(true);
     expect(has(run({ builds: { "send-product-email": "send-product-email.2026-10-11.23" } }).lines, "FAIL", /^C6 send-product-email x-fn-build = send-product-email\.2026-10-11\.23 \(want send-product-email\.2026-10-27\.1 or later\)/)).toBe(true);
     const ok = run().lines;
-    for (const fn of ["free-keyword-scan", "free-keyword-scan-stream", "send-product-email"]) expect(has(ok, "PASS", new RegExp(`^C6 ${fn} x-fn-build = ${fn}\\.2026-10-27\\.1 `)), fn).toBe(true);
+    expect(has(ok, "PASS", /^C6 send-product-email x-fn-build = send-product-email\.2026-10-27\.1 /)).toBe(true);
+  });
+
+  it("C6: the review of the sweep (2026-10-31): the scan and its stream fork at the sweep's own 2026-10-27.1 are a build short", () => {
+    // 2026-10-27.1 named a bundle whose market module still matched by
+    // substring and sent a typed salary range to the prompt; the review's
+    // bundle is 2026-10-31.1, and the older one must not pass for it.
+    expect(has(run({ builds: { "free-keyword-scan": "free-keyword-scan.2026-10-27.1" } }).lines, "FAIL", /^C6 free-keyword-scan x-fn-build = free-keyword-scan\.2026-10-27\.1 \(want free-keyword-scan\.2026-10-31\.1 or later\)/)).toBe(true);
+    expect(has(run({ builds: { "free-keyword-scan-stream": "free-keyword-scan-stream.2026-10-27.1" } }).lines, "FAIL", /^C6 free-keyword-scan-stream x-fn-build = free-keyword-scan-stream\.2026-10-27\.1 \(want free-keyword-scan-stream\.2026-10-31\.1 or later\)/)).toBe(true);
+    const ok = run().lines;
+    for (const fn of ["free-keyword-scan", "free-keyword-scan-stream"]) expect(has(ok, "PASS", new RegExp(`^C6 ${fn} x-fn-build = ${fn}\\.2026-10-31\\.1 `)), fn).toBe(true);
   });
 
   it("names where the speed gate is judged, as a note", () => {

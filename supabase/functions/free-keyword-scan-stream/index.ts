@@ -6518,7 +6518,13 @@ function clampImprovementToScoreGap(report: Record<string, unknown>): void {
 // and Taiwan say what is usual without the shares of applicants and recruiters
 // or the survey's interview multiplier, as the primary's do (country-standards.ts,
 // the primary's copy byte for byte). Nothing else changed since 2026-10-11.31.
-const FN_BUILD = "free-keyword-scan-stream.2026-10-27.1";
+// 2026-10-31.1 (homepage switch-over, the review of the report sweep;
+// reservation home-pricing): market-intelligence.ts is the primary's
+// 2026-10-31.1 copy byte for byte (whole-word matching of the hand-typed
+// lists, no typed salary range in the prompt text it builds). This fork reads
+// only its country detection, which did not change, so what it answers is the
+// same; the bundle differs from 2026-10-27.1, so it takes a new build.
+const FN_BUILD = "free-keyword-scan-stream.2026-10-31.1";
 
 /** The primary's report id formula (free-keyword-scan/report-meta.ts reportIdFor): this report's cache key and its score. */
 async function streamReportId(cacheKey: string, score: unknown): Promise<string> {

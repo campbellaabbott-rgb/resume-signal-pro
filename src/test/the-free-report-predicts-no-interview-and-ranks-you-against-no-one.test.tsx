@@ -276,10 +276,11 @@ describe("the rest of H0", () => {
   it("free-keyword-scan carries H0's own build or a later home-pricing one, later than every wave-4 and R1 stamp", () => {
     const stamp = read("supabase/functions/free-keyword-scan/index.ts").match(/^const FN_BUILD = "free-keyword-scan\.(\d{4}-\d\d-\d\d)\.(\d+)";$/m);
     expect(stamp, "a literal FN_BUILD").not.toBeNull();
-    // H0 stamped 2026-10-25.2; the report sweep of 2026-10-27 stamped 2026-10-27.1.
+    // H0 stamped 2026-10-25.2; the report sweep of 2026-10-27 stamped
+    // 2026-10-27.1; its review changed the bundle again and stamped 2026-10-31.1.
     const [day, n] = [stamp![1], Number(stamp![2])];
     expect(day > "2026-10-25" || (day === "2026-10-25" && n >= 2), `${day}.${n} is H0's 2026-10-25.2 or later`).toBe(true);
-    expect(`${day}.${n}`).toBe("2026-10-27.1");
+    expect(`${day}.${n}`).toBe("2026-10-31.1");
     expect(stamp![1] > "2026-10-14").toBe(true);
     const ledger = JSON.parse(read("docs/deploy-ledger.json"));
     expect(ledger.reservations["home-pricing"]?.fnBuildDate, "the home-pricing reservation's day").toMatch(/^2026-10-25\b/);
