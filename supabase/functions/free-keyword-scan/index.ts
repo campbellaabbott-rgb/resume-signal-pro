@@ -7,6 +7,7 @@ import { evaluateCountryStandards } from "./country-standards.ts";
 import { computeParseQuality, parseResumeStructure, formatStructureForPrompt } from "./resume-structure.ts";
 import { detectResumeLanguage } from "./resume-language.ts";
 import { groundedIn, normalizeForGrounding } from "./grounding.ts";
+import { hasMetric } from "./bullet-metrics.ts";
 import { getServiceClient } from "../_shared/supabase-client.ts";
 import { attachScanMailSeal } from "../_shared/scan-mail-seal.ts";
 import { clientAddressOr } from "../_shared/client-address.ts";
@@ -669,8 +670,6 @@ const WEAK_OPENERS = [
   'helped manage', 'helped develop', 'helped create', 'helped build',
 ];
 
-// Quantification pattern — does a bullet contain a concrete number/metric?
-const QUANT_PATTERN = /\b(\d+[\d,]*(\.\d+)?(%|k|m|b|x|\+|million|billion|thousand|percent|employees|users|customers|clients|accounts|deals|projects|revenue|savings|reduction|increase|improvement|growth|hours|days|weeks|months|years))\b/i;
 
 interface BulletAnalysis {
   weakBullets: Array<{ text: string; role: string; reason: string }>;
@@ -711,8 +710,9 @@ function analyzeBullets(parsed: ReturnType<typeof parseResumeSections>): BulletA
       weakBullets.push({ text: text.replace(/^[•\-*‣◦⁃∙]\s*/, '').trim(), role, reason: `starts with "${matchedOpener}"` });
     }
 
-    // Check for quantification
-    if (QUANT_PATTERN.test(text)) {
+    // Check for quantification: "40%", "25 hours", "team of 12" and "50+
+    // clients" all measure something (S10-006, bullet-metrics.ts).
+    if (hasMetric(text)) {
       quantifiedCount++;
     } else if (unquantifiedBullets.length < 6) {
       // Collect unquantified bullets from most recent role first (roles[0])
