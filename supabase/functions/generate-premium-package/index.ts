@@ -4,7 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { assertPaidSession } from "../_shared/paid-session.ts";
 import { clipField, clipText, modelSpendGate } from "../_shared/model-spend-gate.ts";
 import { checkInputLimits, MAX_JOB_DESCRIPTION_LENGTH } from "../_shared/input-limits.ts";
-import { looksLikeBrokenJson, UnusableModelOutput } from "../_shared/ai-fallback.ts";
+import { CHAIN_DEADLINE_MS, callAIWithModelFallback, chainRanOutOfTime, looksLikeBrokenJson, UnusableModelOutput } from "../_shared/ai-fallback.ts";
 import { autoFixContent, validateContent } from "./auto-fix.ts";
 import { stripInventedContact } from "../_shared/contact-guard.ts";
 import { restoreUnsupportedLines, rewrittenResumeFigureIssues, validateProseClaims } from "../_shared/resume-grounding.ts";
@@ -12,14 +12,16 @@ import { restoreUnsupportedLines, rewrittenResumeFigureIssues, validateProseClai
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
 // 2026-10-09.62 (wave-3 fix round integration): carries both 2026-10-09.4 and the payments-account group's 2026-10-09.61.
-// 2026-10-28.1 (S13-001, fix/full-analysis-timeout): this bundle imports only
-// looksLikeBrokenJson and UnusableModelOutput from _shared/ai-fallback.ts, so
-// the chain change (a timed-out model is not asked again) does not reach it:
-// its own callAIWithFallback still retries a timed-out model once and has no
-// chain deadline (follow-up, sibling of S13-001). Rebuilt so the deployed
-// bundle matches the repo's ai-fallback.ts. Nothing else in this bundle
-// changed since main's f8d72a9b, the build the 2026-10-31 deploy put live
-// (docs/deploy-ledger.json, verifiedDeploys).
+// 2026-10-28.1 (S13-001, fix/full-analysis-timeout): the résumé, the letter
+// and their figure repairs walk the shared chain (_shared/ai-fallback.ts), not
+// this function's own: a model that timed out is not asked again, and every
+// call ends inside the request's one 125 s budget (the private chain retried
+// a timed-out model and gave each repair a fresh clock); a repair with no time
+// left fails like any failed repair. A chain that ran out of time answers the
+// 504 that says try again. Body (model, messages, max_completion_tokens),
+// model order (gpt-5, gemini-2.5-pro, gpt-5-mini) and reply are unchanged; the
+// never-called fetchWithRetry is gone. Nothing of main's past f8d72a9b, the
+// build the 2026-10-31 deploy put live, rides along.
 const FN_BUILD = "generate-premium-package.2026-10-28.1";
 
 const corsHeaders = {
@@ -32,19 +34,12 @@ const logStep = (step: string, details?: Record<string, unknown>) => {
   console.log(`[GENERATE-PREMIUM-PACKAGE] ${step}`, details ? JSON.stringify(details) : '');
 };
 
-// Retry and fallback configuration
-const MAX_RETRIES = 1; // Reduced since we have model fallback
-const REQUEST_TIMEOUT_MS = 55000; // 55 seconds per model attempt
-const RETRY_DELAY_MS = 1000;
-
 // Model fallback order: primary -> same-quality different provider -> faster model
 const MODEL_FALLBACK_ORDER = [
   'openai/gpt-5',           // Primary: best quality
   'google/gemini-2.5-pro',  // Fallback 1: same quality, different provider
   'openai/gpt-5-mini',      // Fallback 2: faster, slightly lower quality
 ];
-
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 interface AIRequestOptions {
   messages: Array<{ role: string; content: string }>;
@@ -53,156 +48,40 @@ interface AIRequestOptions {
   tool_choice?: unknown;
 }
 
+// ONE CHAIN, ONE DEADLINE (S13-001's sibling). This function had its own
+// chain, which asked a model that timed out again (55 s, then 55 s more) and
+// had no deadline, and each figure repair started a fresh clock: a slow
+// gateway ran a delivery past the platform's 150 s, whose 504 the webhook and
+// the retry sweep cannot tell from a crash. Every call now walks the shared
+// chain (_shared/ai-fallback.ts: a timed-out model is not asked again, the
+// next keeps its window) inside what is left of the request's one 125 s
+// budget; a repair that finds no time left fails like any failed repair. The
+// body is the one this function always sent, to every model: model,
+// messages, max_completion_tokens, tools and tool_choice when given. (A
+// legacy fetchWithRetry, never called, is gone.)
 async function callAIWithFallback(
   apiKey: string,
   options: AIRequestOptions,
-  context: string = 'AI call'
+  context: string,
+  deadlineAt: number,
 ): Promise<{ response: Response; modelUsed: string }> {
-  let lastError: Error | null = null;
-  
-  for (const model of MODEL_FALLBACK_ORDER) {
-    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-        
-        const startTime = Date.now();
-        logStep(`${context} - trying ${model}`, { attempt: attempt + 1, model });
-        
-        const requestBody: Record<string, unknown> = {
-          model,
-          messages: options.messages,
-        };
-        
-        if (options.max_completion_tokens) {
-          requestBody.max_completion_tokens = options.max_completion_tokens;
-        }
-        if (options.tools) {
-          requestBody.tools = options.tools;
-        }
-        if (options.tool_choice) {
-          requestBody.tool_choice = options.tool_choice;
-        }
-        
-        const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(requestBody),
-          signal: controller.signal,
-        });
-        
-        clearTimeout(timeoutId);
-        const duration = Date.now() - startTime;
-        
-        // Success
-        if (response.ok) {
-          logStep(`${context} - succeeded with ${model}`, { duration, model });
-          return { response, modelUsed: model };
-        }
-        
-        // Rate limit or payment required - don't retry, don't fallback
-        if (response.status === 429 || response.status === 402) {
-          logStep(`${context} - rate limit/payment issue`, { status: response.status, model });
-          return { response, modelUsed: model };
-        }
-        
-        // Client error (4xx) - don't retry same model, try fallback
-        if (response.status >= 400 && response.status < 500) {
-          const errorText = await response.text();
-          logStep(`${context} - client error, trying next model`, { status: response.status, error: errorText.substring(0, 100), model });
-          lastError = new Error(`Client error ${response.status}: ${errorText.substring(0, 100)}`);
-          break; // Try next model
-        }
-        
-        // Server error (5xx) - retry same model once, then fallback
-        if (response.status >= 500) {
-          const errorText = await response.text();
-          logStep(`${context} - server error`, { status: response.status, attempt: attempt + 1, model });
-          lastError = new Error(`Server error: ${response.status}`);
-          
-          if (attempt < MAX_RETRIES) {
-            await sleep(RETRY_DELAY_MS);
-            continue;
-          }
-          break; // Try next model
-        }
-        
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        
-        if (errorMessage.includes('aborted')) {
-          logStep(`${context} - timeout with ${model}`, { model });
-          lastError = new Error(`Timeout with ${model}`);
-        } else {
-          logStep(`${context} - network error with ${model}`, { error: errorMessage, model });
-          lastError = error instanceof Error ? error : new Error(errorMessage);
-        }
-        
-        if (attempt < MAX_RETRIES) {
-          await sleep(RETRY_DELAY_MS);
-          continue;
-        }
-        break; // Try next model
-      }
-    }
-    
-    logStep(`${context} - ${model} failed, trying next model`);
-  }
-  
-  // All models failed
-  throw lastError || new Error('All AI models failed');
-}
-
-// Legacy function for backward compatibility
-async function fetchWithRetry(
-  url: string, 
-  options: RequestInit, 
-  maxRetries = MAX_RETRIES
-): Promise<Response> {
-  let lastError: Error | null = null;
-  
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-      
-      const response = await fetch(url, {
-        ...options,
-        signal: controller.signal,
-      });
-      
-      clearTimeout(timeoutId);
-      
-      if (response.ok || (response.status >= 400 && response.status < 500)) {
-        return response;
-      }
-      
-      if (response.status >= 500 && attempt < maxRetries) {
-        await sleep(RETRY_DELAY_MS * (attempt + 1));
-        continue;
-      }
-      
-      return response;
-      
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error));
-      if (attempt < maxRetries) {
-        await sleep(RETRY_DELAY_MS * (attempt + 1));
-        continue;
-      }
-    }
-  }
-  
-  throw lastError || new Error('Max retries exceeded');
+  return await callAIWithModelFallback(apiKey, {
+    messages: options.messages,
+    ...(options.max_completion_tokens ? { maxCompletionTokens: options.max_completion_tokens } : {}),
+    ...(options.tools ? { tools: options.tools } : {}),
+    ...(options.tool_choice ? { toolChoice: options.tool_choice } : {}),
+    models: MODEL_FALLBACK_ORDER,
+    context: `GENERATE-PREMIUM-PACKAGE ${context}`,
+    deadlineMs: deadlineAt - Date.now(),
+  });
 }
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+  // The request's one budget: every model call in it ends inside this.
+  const deadlineAt = Date.now() + CHAIN_DEADLINE_MS;
 
   const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
   try {
@@ -472,7 +351,8 @@ Write a cover letter that sounds like it was written by this specific person - c
           ],
           max_completion_tokens: 12000,
         },
-        'Resume generation'
+        'Resume generation',
+        deadlineAt,
       ),
       callAIWithFallback(
         apiKey,
@@ -483,7 +363,8 @@ Write a cover letter that sounds like it was written by this specific person - c
           ],
           max_completion_tokens: 4000,
         },
-        'Cover letter generation'
+        'Cover letter generation',
+        deadlineAt,
       )
     ]);
 
@@ -641,7 +522,7 @@ Write a cover letter that sounds like it was written by this specific person - c
             },
           ],
           max_completion_tokens: field === 'rewrittenResume' ? 12000 : 4000,
-        }, `${label} figure repair`);
+        }, `${label} figure repair`, deadlineAt);
         if (!response.ok) return null;
         const json = await response.json();
         const content = json.choices?.[0]?.message?.content;
@@ -768,7 +649,7 @@ Write a cover letter that sounds like it was written by this specific person - c
     }
 
     // Check for timeout errors and return a more helpful message
-    if (errorMessage.includes('timed out') || errorMessage.includes('timeout')) {
+    if (chainRanOutOfTime(error) || errorMessage.includes('timed out') || errorMessage.includes('timeout')) {
       return new Response(
         JSON.stringify({ 
           error: "The AI took too long to respond. Please try again.", 

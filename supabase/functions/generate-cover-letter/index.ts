@@ -3,7 +3,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { validateCandidateClaims, validateProseClaims } from "../_shared/resume-grounding.ts";
 import { stripInventedContact } from "../_shared/contact-guard.ts";
-import { looksLikeBrokenJson } from "../_shared/ai-fallback.ts";
+import { CHAIN_DEADLINE_MS, callAIWithModelFallback, chainRanOutOfTime, looksLikeBrokenJson } from "../_shared/ai-fallback.ts";
 import { checkInputLimits, MAX_JOB_DESCRIPTION_LENGTH } from "../_shared/input-limits.ts";
 import { clipField, clipText, deliversProduct, isServiceCaller, modelSpendGate } from "../_shared/model-spend-gate.ts";
 import { postingLanguageInstruction } from "../_shared/posting-language.ts";
@@ -18,14 +18,15 @@ import { refundWriting, writingChain, writingGate, type WritingPass } from "../_
 // chain); written in the posting's own language (S12-003); claims about the
 // candidate checked for credentials, employers and titles as well as figures
 // (S12-071); the posting fenced as data with its hidden text dropped (S12-147).
-// 2026-10-28.1 (S13-001, fix/full-analysis-timeout): this bundle imports only
-// looksLikeBrokenJson from _shared/ai-fallback.ts, so the chain change (a
-// timed-out model is not asked again) does not reach it: its own
-// callAIWithFallback still retries a timed-out model once and has no chain
-// deadline (follow-up, sibling of S13-001). Rebuilt so the deployed bundle
-// matches the repo's ai-fallback.ts. Nothing else in this bundle changed since
-// main's f8d72a9b, the build the 2026-10-31 deploy put live
-// (docs/deploy-ledger.json, verifiedDeploys).
+// 2026-10-28.1 (S13-001, fix/full-analysis-timeout): the letter and its
+// grounding retry walk the shared chain (_shared/ai-fallback.ts), not this
+// function's own: a model that timed out is not asked again, and both calls
+// end inside the request's one 125 s budget (the private chain retried a
+// timed-out model and gave the retry a fresh clock). A chain that ran out of
+// time answers the 504 that says try again. Body (model, messages,
+// max_completion_tokens 4,000), chains, reply and the use given back are
+// unchanged. Nothing of main's past f8d72a9b, the build the 2026-10-31 deploy
+// put live, rides along.
 const FN_BUILD = "generate-cover-letter.2026-10-28.1";
 
 const corsHeaders = {
@@ -44,13 +45,6 @@ const logStep = (step: string, details?: Record<string, unknown>) => {
   console.log(`[GENERATE-COVER-LETTER] ${step}`, details ? JSON.stringify(details) : '');
 };
 
-// Retry and fallback configuration
-const MAX_RETRIES = 1;
-const REQUEST_TIMEOUT_MS = 55000;
-const RETRY_DELAY_MS = 1000;
-
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
 const jsonResponse = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
@@ -59,85 +53,40 @@ interface AIRequestOptions {
   max_completion_tokens?: number;
 }
 
-// The chain is chosen per call (writingChain): the quality chain for Pro,
-// paid deliveries and past buyers; Flash for a free account's daily letter.
+// ONE CHAIN, ONE DEADLINE (S13-001's sibling). This function had its own
+// chain, which asked a model that timed out again (55 s, then 55 s more) and
+// had no deadline, and the grounding retry started a fresh clock: a slow
+// gateway ran a request past the platform's 150 s, whose 504 no caller reads
+// as this function's retryable answer. Every call now walks the shared chain
+// (_shared/ai-fallback.ts: a timed-out model is not asked again, the next
+// keeps its window) inside what is left of the request's one 125 s budget.
+// The body is the one this function always sent, to every model: model,
+// messages, max_completion_tokens. The chain is chosen per call
+// (writingChain): the quality chain for Pro, paid deliveries and past buyers;
+// Flash for a free account's daily letter.
 async function callAIWithFallback(
   apiKey: string,
   options: AIRequestOptions,
   context: string,
   models: readonly string[],
+  deadlineAt: number,
 ): Promise<{ response: Response; modelUsed: string }> {
-  let lastError: Error | null = null;
-
-  for (const model of models) {
-    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-
-        logStep(`${context} - trying ${model}`, { attempt: attempt + 1, model });
-
-        const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model,
-            messages: options.messages,
-            max_completion_tokens: options.max_completion_tokens,
-          }),
-          signal: controller.signal,
-        });
-
-        clearTimeout(timeoutId);
-
-        if (response.ok) {
-          logStep(`${context} - succeeded with ${model}`);
-          return { response, modelUsed: model };
-        }
-
-        if (response.status === 429 || response.status === 402) {
-          return { response, modelUsed: model };
-        }
-
-        if (response.status >= 400 && response.status < 500) {
-          logStep(`${context} - client error, trying next model`, { status: response.status, model });
-          break;
-        }
-
-        if (response.status >= 500) {
-          logStep(`${context} - server error`, { status: response.status, model });
-          if (attempt < MAX_RETRIES) {
-            await sleep(RETRY_DELAY_MS);
-            continue;
-          }
-          break;
-        }
-
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        logStep(`${context} - error with ${model}`, { error: errorMessage });
-        lastError = error instanceof Error ? error : new Error(errorMessage);
-
-        if (attempt < MAX_RETRIES) {
-          await sleep(RETRY_DELAY_MS * Math.pow(2, attempt));
-          continue;
-        }
-        break;
-      }
-    }
-    logStep(`${context} - ${model} failed, trying next model`);
-  }
-
-  throw lastError || new Error('All AI models failed');
+  logStep(`${context} - chain`, { models: [...models] });
+  return await callAIWithModelFallback(apiKey, {
+    messages: options.messages,
+    maxCompletionTokens: options.max_completion_tokens,
+    models: [...models],
+    context: `GENERATE-COVER-LETTER ${context}`,
+    deadlineMs: deadlineAt - Date.now(),
+  });
 }
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+  // The request's one budget: every model call in it ends inside this.
+  const deadlineAt = Date.now() + CHAIN_DEADLINE_MS;
 
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
@@ -215,6 +164,7 @@ serve(async (req) => {
     const delivered = await writeLetter({
       resumeText, jobDescription, jobTitle, jobCompany, tone, personalizationContext,
       models: writingChain(pass),
+      deadlineAt,
     });
     if (delivered.status >= 400) await refundWriting(supabase, pass);
     return delivered;
@@ -224,11 +174,12 @@ serve(async (req) => {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error("[GENERATE-COVER-LETTER] Error:", errorMessage);
 
-    if (errorMessage.includes('timed out') || errorMessage.includes('timeout')) {
+    if (chainRanOutOfTime(error) || errorMessage.includes('timed out') || errorMessage.includes('timeout')) {
       return jsonResponse({ error: "The AI took too long to respond. Please try again.", retryable: true }, 504);
     }
 
-    if (errorMessage.includes('All AI models failed')) {
+    // The shared chain's words for every model refusing the request.
+    if (/all (AI )?models failed/i.test(errorMessage)) {
       return jsonResponse({ error: "The AI service is temporarily unavailable. Please try again in a few minutes.", retryable: true }, 503);
     }
 
@@ -244,8 +195,9 @@ async function writeLetter(input: {
   tone: string;
   personalizationContext?: string;
   models: readonly string[];
+  deadlineAt: number;
 }): Promise<Response> {
-  const { resumeText, jobDescription, jobTitle, jobCompany, tone, personalizationContext, models } = input;
+  const { resumeText, jobDescription, jobTitle, jobCompany, tone, personalizationContext, models, deadlineAt } = input;
 
   logStep("Starting cover letter generation", {
     jobTitle,
@@ -381,6 +333,7 @@ Write something that sounds like this specific person wrote it - confident, spec
     },
     'Cover letter generation',
     models,
+    deadlineAt,
   );
 
   if (!response.ok) {
@@ -478,6 +431,7 @@ Write something that sounds like this specific person wrote it - confident, spec
         },
         "Cover letter grounding retry",
         models,
+        deadlineAt,
       );
       if (retry.response.ok) {
         const retryJson = await retry.response.json();

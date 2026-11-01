@@ -15,7 +15,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-import { callAIWithModelFallback } from "../_shared/ai-fallback.ts";
+import { CHAIN_DEADLINE_MS, callAIWithModelFallback } from "../_shared/ai-fallback.ts";
 import { clipField, clipText, modelSpendGate, purchaseSpendGate } from "../_shared/model-spend-gate.ts";
 import { proGrantRefusal } from "../_shared/pro.ts";
 import { checkoutSessionSettled } from "../_shared/pass-settlement.ts";
@@ -32,14 +32,12 @@ import { BOOST_MAX_TOKENS, decideStructure, readBoostReply, type BoostReply } fr
 // marked delivered (S12-105); one to three projects alongside a job get the
 // Projects section (S12-107).
 // 2026-10-28.1 (S13-001, fix/full-analysis-timeout): _shared/ai-fallback.ts no
-// longer asks a model that timed out again. This function walks its own chain
-// one model per call (models: [model]), so a slow model now costs one
-// 55-second attempt instead of two and the worst case drops from about five
-// minutes to about 165 seconds; each call still has its own budget and no
-// window is kept for the next model, so that worst case is still past the
-// platform's 150 seconds (follow-up). Nothing else in this bundle changed
-// since main's f8d72a9b, the build the 2026-10-31 deploy put live
-// (docs/deploy-ledger.json, verifiedDeploys).
+// longer asks a model that timed out again, and the three models this
+// function walks one call at a time share the request's one 125 s budget
+// (the first keeps the next model's 40 s window), so the worst case drops
+// from about five minutes to 125 seconds, inside the platform's 150. Body,
+// models, reply and the 402/429/502 answers are unchanged. Nothing of main's
+// past f8d72a9b, the build the 2026-10-31 deploy put live, rides along.
 const FN_BUILD = "generate-freelance-boost.2026-10-28.1";
 
 const corsHeaders = {
@@ -88,6 +86,8 @@ const jsonRes = (body: unknown, status: number, extra: Record<string, string> = 
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  // The request's one budget: the model walk below ends inside this.
+  const deadlineAt = Date.now() + CHAIN_DEADLINE_MS;
 
   try {
     const body: BoostRequest = await req.json();
@@ -245,16 +245,30 @@ ${p.paymentBand ? `Payment band (context only, do not display): ${p.paymentBand}
 ${p.repeatOrReferral ? `Repeat/referral: ${p.repeatOrReferral}` : ""}`).join("\n")}`;
 
     // A paid product: pro-first for quality, and NEVER a hard failure on one
-    // model's bad reply. Each model in turn gets the whole budget; a reply
-    // that is not a deliverable (truncated JSON, no projects, a Transition
-    // Pro reply missing its letter or About) moves on to the next model
-    // (S12-055, S12-105). The server's own enforcement (banned phrasings,
-    // posting keywords) runs inside readBoostReply, so "usable" means usable
-    // after it.
+    // model's bad reply. A reply that is not a deliverable (truncated JSON,
+    // no projects, a Transition Pro reply missing its letter or About) moves
+    // on to the next model (S12-055, S12-105). The server's own enforcement
+    // (banned phrasings, posting keywords) runs inside readBoostReply, so
+    // "usable" means usable after it.
+    //
+    // ONE DEADLINE FOR THE WALK (S13-001's sibling). Each model was its own
+    // chain call with its own 125 s, so three slow models ran about 165 s,
+    // past the platform's 150 s. The three now share what is left of the
+    // request's 125 s: each call gets the rest of it, the first keeps the
+    // next model's window (BOOST_NEXT_MODEL_WINDOW_MS, as the shared chain
+    // keeps one for its own first model), and a model with less than
+    // BOOST_MIN_MODEL_MS left is not asked (counted as a timeout).
     const BOOST_CHAIN = ["google/gemini-2.5-pro", "google/gemini-2.5-flash", "openai/gpt-5-mini"];
+    const BOOST_NEXT_MODEL_WINDOW_MS = 40_000;
+    const BOOST_MIN_MODEL_MS = 5_000;
     let out: BoostReply | null = null;
     const statuses: number[] = [];
-    for (const model of BOOST_CHAIN) {
+    for (const [index, model] of BOOST_CHAIN.entries()) {
+      const left = deadlineAt - Date.now();
+      if (left < BOOST_MIN_MODEL_MS) {
+        statuses.push(504);
+        break;
+      }
       const { response: aiRes } = await callAIWithModelFallback(apiKey, {
         messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
         temperature: 0.5,
@@ -262,6 +276,7 @@ ${p.repeatOrReferral ? `Repeat/referral: ${p.repeatOrReferral}` : ""}`).join("\n
         jsonResponse: true,
         models: [model],
         context: "FREELANCE-BOOST",
+        deadlineMs: index === 0 ? Math.max(BOOST_MIN_MODEL_MS, left - BOOST_NEXT_MODEL_WINDOW_MS) : left,
       }).catch(() => ({ response: new Response(null, { status: 504 }) }));
       statuses.push(aiRes.status);
       if (aiRes.status === 402) break; // credits are account-wide: no model will answer
