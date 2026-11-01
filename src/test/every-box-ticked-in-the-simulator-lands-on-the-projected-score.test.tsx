@@ -11,15 +11,18 @@
  * a fourth projection on the same report. This holds the simulator to the
  * engine's list.
  *
- * Review fix (2026-11-01). The simulator added every ticked box with no cap,
- * so a 92 with three boxes ticked read "Projected: 105 (+13 points)" while the
- * engine capped the same list at 95. It now reads max(score, min(95, score +
- * ticked)) with the engine's own constant, prints that gain, and says there
- * is no gain left when the cap leaves none. The scanner's own fix steps and
+ * Review fix (2026-11-01). The simulator capped the score at 95 but printed
+ * the uncapped sum: a 92 with three boxes ticked read "Projected: 95 (+13
+ * points)", and a 98 read "Projected: 95 (+6 points)", below its own score.
+ * It now reads max(score, min(95, score + ticked)) with the engine's own
+ * constant, prints that gain, and says there is no gain left when the cap
+ * leaves none. On the synthetic corpus below (640 cases) the old card printed
+ * a wrong gain on the 396 where the cap binds; the card now prints the
+ * engine's projection on all 640. The scanner's own fix steps and
  * the hero's projection line are said in the reader's language (S13-122).
  */
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -210,11 +213,16 @@ describe("the cap: a ticked box never adds a point past the ceiling", () => {
     expect(aboveCeiling).toBeGreaterThan(50);
   });
 
-  it("the reviewer's case: a 92 with +13 ticked reads 95 (+3), not 105", () => {
+  it("the reviewer's case: a 92 with +13 ticked reads 95 (+3), not (+13); a 98 reads no gain, not 95", () => {
     const { container } = render(<ScoreSimulatorCard atsScore={92} fixes={[{ label: "A", impact: 6 }, { label: "B", impact: 4 }, { label: "C", impact: 3 }]} />);
     for (const box of within(container).getAllByRole("checkbox")) fireEvent.click(box);
     expect(lineOf(container)).toBe("Projected: 95 (+3 points)");
     expect(container.textContent).not.toMatch(/105|\+13 points/);
+    cleanup();
+    const high = render(<ScoreSimulatorCard atsScore={98} fixes={[{ label: "A", impact: 6 }]} />);
+    for (const box of within(high.container).getAllByRole("checkbox")) fireEvent.click(box);
+    expect(lineOf(high.container)).toBe(en.freeResults.scoreSimulator.noGainCeiling.replace("{{ceiling}}", "95"));
+    expect(high.container.textContent).not.toMatch(/Projected: 95|\+6 points/);
   });
 
   it("nothing ticked reads the current score line, never a projection", () => {
