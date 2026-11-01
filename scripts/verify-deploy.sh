@@ -352,7 +352,24 @@ echo "== 5g. the leaderboard is timed (its own aggregation, 9-25s live) =="
 T0=$(date +%s.%N); R get_actively_hiring_companies '{"p_limit":20}' > /dev/null; T1=$(date +%s.%N); echo "INFO  get_actively_hiring_companies answered in $(echo "$T1 - $T0" | bc)s"
 
 echo "== 5i. the leaderboard answers from the hourly cache =="
-R get_stats_cache '{}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);const a=j.actively_hiring;const sp=j.stale_parts||[];if(!a)return console.log("INFO  no actively_hiring in the cache yet");const rows=Array.isArray(a.rows)?a.rows.length:(Array.isArray(a)?a.length:null);console.log((rows===20?"PASS":"FAIL")+"  cache.actively_hiring carries "+rows+" rows");console.log((a.computed_at?"PASS":"FAIL")+"  own computed_at = "+a.computed_at);console.log((sp.includes("actively_hiring")?"INFO":"PASS")+"  stale_parts="+JSON.stringify(sp))})'
+# Twenty is a ceiling, not a promise: get_actively_hiring_companies(20) lists
+# at most twenty employers, and only those whose fill curve is sufficient (the
+# sample-size gate, 20260909201000, has no fallback ordering). Until
+# 2026-10-31 this line wanted exactly twenty and failed the gate doing its job
+# (19 rows at 18:27Z and 23:27Z that day, 20 at 20:27Z). It FAILs what breaks
+# the page: no part the page can read (readCachedLeaderboard wants an object
+# with rows), an empty or non-list rows (the page then waits on the live call,
+# which runs into its 25 s header), more rows than the page asks for, a row
+# naming no employer, or rows out of the function's own order (the page lists
+# them in that order until its curve guard answers).
+R get_stats_cache '{}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{return console.log("FAIL  get_stats_cache answered no JSON: "+s.slice(0,120))}
+const a=j&&j.actively_hiring;const sp=Array.isArray(j&&j.stale_parts)?j.stale_parts:[];
+if(!a||typeof a!=="object"||Array.isArray(a))return console.log("FAIL  the cache carries no actively_hiring part the page can read ("+JSON.stringify(a===undefined?j:a).slice(0,140)+"): the leaderboard is read live, into its 25 s header");
+const rows=Array.isArray(a.rows)?a.rows:null;const n=rows?rows.length:null;
+console.log((rows&&n>=1&&n<=20?"PASS":"FAIL")+"  cache.actively_hiring carries "+n+" rows (want 1 to 20: the page asks for twenty and the sample gate admits only employers whose curve is sufficient)");
+if(rows&&n){const named=rows.filter(r=>r&&typeof r.company_token==="string"&&r.company_token.length>0).length;const rate=rows.map(r=>(r&&r.fill_incidence_14d!==null&&r.fill_incidence_14d!==undefined)?Number(r.fill_incidence_14d):NaN);const ranked=rate.every(Number.isFinite)&&rate.every((x,i)=>i===0||x<=rate[i-1]);
+console.log((named===n&&ranked?"PASS":"FAIL")+"  "+(named===n?"every row names an employer":named+" of "+n+" rows name an employer")+" and the list is "+(ranked?"":"not ")+"ranked by fill_incidence_14d, the function\x27s own order ("+rate.slice(0,3).join(", ")+(n>3?", ...":"")+")")}
+console.log((a.computed_at?"PASS":"FAIL")+"  own computed_at = "+(a.computed_at===undefined?null:a.computed_at));console.log((sp.includes("actively_hiring")?"INFO":"PASS")+"  stale_parts="+JSON.stringify(sp))})'
 
 echo "== 5j. the Other-bucket machinery is closed to every client role =="
 probe promote_category '{"p_basis":"rule","p_key":"commis","p_target":"hospitality_retail"}'
@@ -380,7 +397,16 @@ echo "== 5n/5q. agent-mcp: version, tiers, prompts, resources, the unkeyed tier,
 MC -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"verify-deploy","version":"0"}}}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{return console.log("INFO  initialize non-JSON")}const r=j.result||{};const v=r.serverInfo&&r.serverInfo.version;const c=r.capabilities||{};const ins=String(r.instructions||"");const si=(r._meta||{})["work.resumebooster/sign-in"]||{};const m=/^(\d{4}-\d\d-\d\d)\.(\d+)$/.exec(String(v));console.log((!!m&&(m[1]>"2026-09-04"||(m[1]==="2026-09-04"&&Number(m[2])>=10))?"PASS":"FAIL")+"  serverInfo.version = "+v+" (want 2026-09-04.10 or later)");console.log((c.prompts&&c.resources?"PASS":"FAIL")+"  capabilities: prompts="+!!c.prompts+" resources="+!!c.resources);console.log((/^Live job search/.test(ins)?"PASS":"FAIL")+"  instructions open with the plan head; bytes="+ins.length+(ins.length>2048?" FAIL >2048":""));console.log((/\/jobs\?job=/.test(ins)?"PASS":"FAIL")+"  instructions carry the URL->id sentence");console.log("INFO  sign-in state="+si.state+(si.reason?" reason="+si.reason:"")+" (off = the owner has not enabled the Supabase OAuth server; the server says so in words)")})'
 MC -d '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const t=((JSON.parse(s).result||{}).tools)||[];const miss=t.filter(x=>!x.outputSchema).map(x=>x.name);console.log("INFO  tools/list: "+t.length+" tools");console.log((miss.length===0?"PASS":"FAIL")+"  every tool declares outputSchema (missing: "+JSON.stringify(miss)+")");for(const n of ["employer_hiring_record","employer_growth","search","fetch"])console.log((t.some(x=>x.name===n)?"PASS":"FAIL")+"  tool present: "+n)})'
 MC -d '{"jsonrpc":"2.0","id":3,"method":"prompts/list","params":{}}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const p=((JSON.parse(s).result||{}).prompts)||[];if(p.some(x=>x.name==="browse_jobs"))return console.log("INFO  prompts/list -> "+p.length+": "+p.map(x=>x.name).join(",")+" (the wave-4 keyless prompt set, judged in section 82)");console.log((p.length===3?"PASS":"FAIL")+"  prompts/list -> "+p.length+": "+p.map(x=>x.name).join(","))})'
-MC -d '{"jsonrpc":"2.0","id":4,"method":"resources/list","params":{}}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const r=((JSON.parse(s).result||{}).resources)||[];console.log((r.length===3?"PASS":"FAIL")+"  resources/list -> "+r.length)})'
+# resources/list names only what the caller can use (wave 4, 5d79e1a5): a
+# keyless caller is listed the guide and the board statistics, and the key's
+# own status (me/key) only a caller holding a credential. Until 2026-10-31 this
+# line wanted three resources from a keyless call, the wave-3 list, and failed
+# agent-mcp .38 listing two. Listing is free and reads no key, so the keyed
+# half needs only RB_API_KEY to be present, not valid.
+MC -d '{"jsonrpc":"2.0","id":4,"method":"resources/list","params":{}}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j=null;try{j=JSON.parse(s)}catch{}if(!j)return console.log("FAIL  keyless resources/list answered no JSON: "+s.slice(0,120));const r=((j.result||{}).resources)||[];const u=r.map(x=>x&&x.uri).filter(Boolean).sort();const want=["resumebooster://board/stats","resumebooster://guide"];console.log((u.length===r.length&&JSON.stringify(u)===JSON.stringify(want)?"PASS":"FAIL")+"  keyless resources/list -> "+r.length+": "+u.join(", ")+" (want exactly "+want.join(", ")+"; the key status is listed only to a credential)")})'
+if [ -n "$RB" ]; then
+  MC -H "Authorization: Bearer $RB" -d '{"jsonrpc":"2.0","id":41,"method":"resources/list","params":{}}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j=null;try{j=JSON.parse(s)}catch{}if(!j)return console.log("FAIL  keyed resources/list answered no JSON: "+s.slice(0,120));const r=((j.result||{}).resources)||[];const u=r.map(x=>x&&x.uri).filter(Boolean).sort();const want=["resumebooster://board/stats","resumebooster://guide","resumebooster://me/key"];console.log((u.length===r.length&&JSON.stringify(u)===JSON.stringify(want)?"PASS":"FAIL")+"  keyed resources/list -> "+r.length+": "+u.join(", ")+" (want exactly "+want.join(", ")+")")})'
+else echo "INFO  no RB_API_KEY in .env.local: the keyed resources/list is not run (it lists the key status beside the two keyless resources)"; fi
 MC -d '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"board_stats","arguments":{}}}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const r=(JSON.parse(s).result)||{};const txt=JSON.stringify(r.content||"");const spent=/allowance is spent/.test(txt);console.log((r.isError?(spent?"INFO":"FAIL"):"PASS")+"  keyless board_stats "+(r.isError?(spent?"refused: this address is over its daily allowance (our own probes) — the wall works":"isError "+txt.slice(0,120)):"answers"+((r.structuredContent||{}).withKey?" with a withKey block":"")))})'
 MC -w '\nHTTPSTATUS:%{http_code}' -d '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"request_application","arguments":{"jobId":"zz"}}}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const st=(s.match(/HTTPSTATUS:(\d+)/)||[])[1];s=s.replace(/\nHTTPSTATUS:\d+$/,"");if(st==="401")return console.log("PASS  keyless request_application -> 401 (sign-in is ON and the challenge is answered)");let j;try{j=JSON.parse(s)}catch{j=null}const r=(j&&j.result)||{};const txt=JSON.stringify(r).slice(0,300);console.log((r.isError&&/key|sign-in|The apply agent is switched off and this tool is retired/i.test(txt)?"PASS":"FAIL")+"  keyless request_application refused in band (a key or sign-in before wave 4; retired since): "+txt.slice(0,120))})'
 probe mcp_anon_check '{"p_ip_hash":"0000000000000000","p_global_cap":1,"p_ip_cap":1}'
@@ -729,20 +755,36 @@ echo "== 7d. the crawler reads the prices: /pricing sells Pro at \$45 and nothin
 # page and its PASS state would trip 83 C1. Retired claims are judged with
 # 83 C1's own list (scripts/prerender-retired.mjs); a bare 29 dollars is not one,
 # because a one-time product at that price is still on sale.
+# Re-pointed again 2026-10-31 (live verify run 1 after the deploy): the
+# switch-over (hp/switch-over, PR #54) is the newer, owner-approved pricing
+# page, and it writes "$45 a month", never "$45/month", with a description
+# that ends "All sales final." (section 99 C5 wants it to name both prices).
+# The description is judged against the English shard's own sentence at $5
+# and $45 (src/i18n/shards/pricing/en.json pricingPlans.meta.description, or
+# descriptionPro while the Full Analysis is off sale), and both it and the
+# body (not the title) must price Pro at $45 a month and at nothing else.
 PR=$(curl -s -m 30 -A "$UA" "$SITE/pricing")
 AG=$(curl -s -m 30 -A "$UA" "$SITE/agents")
 VD7D_PR="$PR" VD7D_AG="$AG" VD7D_ROOT="$(pwd)" VD7D_SITE="$SITE" node --input-type=module -e '
 const { VD7D_PR: pr, VD7D_AG: ag, VD7D_ROOT: root, VD7D_SITE: site } = process.env;
 const out = (s, m) => console.log(`${s.padEnd(5)} ${m}`);
-import(`${root}/scripts/prerender-retired.mjs`).then((R) => {
+import(`${root}/scripts/prerender-retired.mjs`).then(async (R) => {
+  const { readFileSync } = await import("node:fs");
   const bare = (h, n) => (h.match(new RegExp(`\\$${n}(?![0-9])`, "g")) || []).length;
   const served = (h) => `${R.crawlerText(h)} ${JSON.stringify(R.jsonLdBlocks(h))}`;
   if (!pr || pr.length < 2000) { out("FAIL", `/pricing answered ${pr.length} bytes: nothing to judge`); }
   else {
-    const desc = (pr.match(/<meta name="description" content="([^"]*)"/) || [])[1] || "";
-    const body = R.crawlerText(pr);
-    if (desc.includes("Pro $45/month") && body.includes("$45/month")) out("PASS", `/pricing states Pro at $45/month in its description and its body ($45 x${bare(pr, 45)} in the document; baseline 0)`);
-    else out("FAIL", `/pricing does not state Pro at $45/month in both its description and its body (description ${desc.includes("Pro $45/month") ? "yes" : "no"}, body ${body.includes("$45/month") ? "yes" : "no"}; $45 x${bare(pr, 45)})`);
+    const unent = (t) => t.replace(/&quot;/g, "\"").replace(/&#39;|&apos;/g, "\x27").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+    const desc = unent((pr.match(/<meta name="description" content="([^"]*)"/) || [])[1] || "");
+    // The body, not the head: the title also says "Pro $45 a month".
+    const bodyAt = pr.search(/<body[\s>]/i);
+    const body = R.crawlerText(bodyAt >= 0 ? pr.slice(bodyAt) : pr);
+    const MONTH = "(?:/month|\\s+a month|\\s+per month)";
+    const proAt45 = (t) => new RegExp(`\\bPro\\b[^.$]{0,40}\\$45${MONTH}(?![0-9])`).test(t) || new RegExp(`\\$45${MONTH}\\s+for\\s+Pro\\b`).test(t);
+    const otherPro = (t) => [...new Set([...t.matchAll(new RegExp(`\\bPro\\b,?:?\\s+\\$(\\d[\\d,.]*)${MONTH}`, "g")), ...t.matchAll(new RegExp(`\\$(\\d[\\d,.]*)${MONTH}\\s+for\\s+Pro\\b`, "g"))].map((m) => m[1]))].filter((p) => p !== "45");
+    const dYes = proAt45(desc), bYes = proAt45(body), bOther = otherPro(body);
+    if (dYes && bYes && !bOther.length) out("PASS", `/pricing states Pro at $45 a month in its description and its body ($45 x${bare(pr, 45)} in the document)`);
+    else out("FAIL", `/pricing does not state Pro at $45 a month in both its description and its body (description ${dYes ? "yes" : "no"}, body ${bYes ? "yes" : "no"}${bOther.length ? `; the body also prices Pro at ${bOther.map((p) => "$" + p).join(", ")}` : ""}; $45 x${bare(pr, 45)})`);
     const hits = R.retiredClaimsIn(served(pr), { sales: true });
     // Its JSON-LD offers are walked as /agents\x27 are (round 3 review,
     // 2026-10-25: an @type array and a nested priceSpecification at 29 or 99
@@ -752,9 +794,23 @@ import(`${root}/scripts/prerender-retired.mjs`).then((R) => {
     if (hits.length) out("FAIL", `/pricing sells or names a retired product: ${hits.map(([c, m]) => `${c} ("${m.slice(0, 60)}")`).join("; ")}`);
     else if (prOffers.length) out("FAIL", `/pricing offers a retired price in its JSON-LD: ${prOffers.join(", ")} (the agent plan and the pass are retired; 83 C2 refuses an Offer at either)`);
     else out("PASS", `/pricing carries no retired claim by 83 C1\x27s list and no JSON-LD offer at 99 or 29 (bare $99 x${bare(pr, 99)}; bare $29 x${bare(pr, 29)}, a one-time product still on sale, never a pass)`);
-    const descBad = !/Pro \$45\/month\.$/.test(desc) ? "does not end with \x27Pro $45/month.\x27" : /\bpass\b/i.test(desc) ? "names a pass" : /Apply Agent/.test(desc) ? "names the Apply Agent" : /purchases \($/.test(desc) ? "is cut at \x27purchases (\x27" : "";
+    // The approved wording: the sentence of the English shard at $5 and $45.
+    let meta = {};
+    try { meta = JSON.parse(readFileSync(`${root}/src/i18n/shards/pricing/en.json`, "utf8")).pricingPlans.meta || {}; } catch { meta = {}; }
+    const fill = (t) => (typeof t === "string" && t ? t.replace(/\{\{faPrice\}\}/g, () => "$5").replace(/\{\{proPrice\}\}/g, () => "$45") : null);
+    const approved = [fill(meta.description), fill(meta.descriptionPro)].filter(Boolean);
+    const offSale = [...new Set([...desc.matchAll(/\$\s?(\d+(?:[.,]\d+)?)/g)].map((m) => m[1]))].filter((p) => p !== "5" && p !== "45");
+    const dHits = R.retiredClaimsIn(desc, { sales: true });
+    const descBad = !dYes ? "does not price Pro at $45 a month"
+      : offSale.length ? `names a price not on sale (${offSale.map((p) => "$" + p).join(", ")})`
+      : /\bpass\b/i.test(desc) ? "names a pass"
+      : /Apply Agent/.test(desc) ? "names the Apply Agent"
+      : dHits.length ? `sells or names a retired product: ${dHits.map(([c]) => c).join("; ")}`
+      : !approved.length ? "cannot be judged: this checkout has no src/i18n/shards/pricing/en.json pricingPlans.meta.description"
+      : !approved.includes(desc) ? `is not the approved wording (want "${approved[0]}", src/i18n/shards/pricing/en.json pricingPlans.meta.description at $5 and $45)`
+      : "";
     if (descBad) out("FAIL", `/pricing description ${descBad}: "${desc.slice(0, 200)}"`);
-    else out("PASS", `/pricing description is whole and names only what is on sale: "${desc}"`);
+    else out("PASS", `/pricing description is the approved wording, prices Pro at $45 a month and names nothing else for sale: "${desc}"`);
   }
   if (!ag || ag.length < 2000) { out("FAIL", `/agents answered ${ag.length} bytes: nothing to judge`); return; }
   // The homepage file is what the host serves at a path it has no page for,

@@ -640,7 +640,8 @@
       "backHome": "Volver al Inicio",
       "analysisNotFound": "No se encontró el análisis. Puede que el enlace no sea válido o haya caducado.",
       "analyzeFailed": "No se pudo analizar el currículum",
-      "loadFailed": "No se pudo cargar el análisis."
+      "loadFailed": "No se pudo cargar el análisis.",
+      "timedOut": "El análisis tardó demasiado y se detuvo antes de guardar nada. Tu compra sigue siendo válida y no se te cobró dos veces, así que volver a intentarlo es seguro y gratuito."
     },
     "toast": {
       "paymentSuccess": "¡Pago exitoso!",
@@ -2434,7 +2435,78 @@
     "bottomCta": "¡Aplica estos cambios a tu currículum y observa cómo mejora tu tasa de entrevistas!",
     "bottomCtaWithLinkedIn": "¡Aplica estos cambios a tu currículum y perfil de LinkedIn y observa cómo mejora tu tasa de entrevistas!",
     "analysisSaved": "Este análisis se conserva {{analysisDays}} días tras el enlace para compartir de arriba y después se borra. Descárgalo en PDF para guardar tu propia copia.",
-    "pageCount_many": "{{count}} páginas"
+    "pageCount_many": "{{count}} páginas",
+    "enum": {
+      "industry": {
+        "technology": "Tecnología",
+        "data_engineering": "Ingeniería de datos",
+        "data_science": "Ciencia de datos",
+        "machine_learning": "Aprendizaje automático",
+        "healthcare": "Salud",
+        "finance": "Finanzas",
+        "marketing": "Marketing",
+        "sales": "Ventas",
+        "engineering": "Ingeniería",
+        "education": "Educación",
+        "hr": "Recursos humanos",
+        "consulting": "Consultoría",
+        "legal": "Legal",
+        "retail": "Comercio minorista",
+        "hospitality": "Hostelería",
+        "manufacturing": "Fabricación",
+        "government": "Sector público",
+        "product_management": "Gestión de producto",
+        "creative": "Sector creativo",
+        "general": "General"
+      },
+      "experienceLevel": {
+        "entry": "inicial",
+        "mid": "intermedio",
+        "senior": "sénior",
+        "executive": "ejecutivo"
+      },
+      "jargonLevel": {
+        "low": "Bajo",
+        "moderate": "Moderado",
+        "high": "Alto"
+      },
+      "severity": {
+        "low": "baja",
+        "medium": "media",
+        "high": "alta"
+      },
+      "postFormat": {
+        "text": "Texto",
+        "carousel": "Carrusel",
+        "poll": "Encuesta",
+        "video": "Vídeo",
+        "article": "Artículo"
+      },
+      "tone": {
+        "formal": "Formal",
+        "casual": "Informal",
+        "technical": "Técnico",
+        "creative": "Creativo",
+        "corporate": "Corporativo",
+        "startup": "Startup"
+      },
+      "companyType": {
+        "startup": "Startup",
+        "scaleup": "Scale-up",
+        "enterprise": "Gran empresa",
+        "agency": "Agencia",
+        "nonprofit": "Sin ánimo de lucro",
+        "government": "Sector público",
+        "unknown": "Desconocido"
+      },
+      "linkedInSection": {
+        "headline": "Titular",
+        "about": "Acerca de",
+        "experience": "Experiencia",
+        "skills": "Aptitudes",
+        "engagement": "Interacción"
+      }
+    }
   },
   "personalization": {
     "experience": {

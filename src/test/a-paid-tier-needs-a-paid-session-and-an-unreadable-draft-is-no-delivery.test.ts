@@ -97,7 +97,9 @@ async function call(fn: string, body: Record<string, unknown>, bearer = "anon_ha
 }
 
 const PAID: Array<{ fn: string; session: string; budget: number }> = [
-  { fn: "generate-interview-coach", session: "cs_coach", budget: 9000 },
+  // S10-009: the paid set is two measured calls of 7; the first asks for the
+  // profile, tips and 7 questions with model answers (prep-set.ts).
+  { fn: "generate-interview-coach", session: "cs_coach", budget: 14_600 + 8_192 },
   { fn: "generate-career-path", session: "cs_path", budget: 5500 },
 ];
 const budgetOf = (b: Record<string, unknown>) => Number(b.max_tokens ?? b.max_completion_tokens);

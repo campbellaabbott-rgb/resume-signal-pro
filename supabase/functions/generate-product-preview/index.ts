@@ -8,13 +8,24 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { checkAiGatewayResponse } from "../_shared/ai-gateway-response.ts";
-import { callAIWithModelFallback, chainFrom } from "../_shared/ai-fallback.ts";
+import { THINKING_TOKENS, UnusableModelOutput, callAIForUsableReply, chainFrom } from "../_shared/ai-fallback.ts";
 import { buildLanguageInstruction } from "../_shared/language-instruction.ts";
 import { clipField, modelSpendGate } from "../_shared/model-spend-gate.ts";
+import { PREVIEW_FORMAT, PREVIEW_OUTPUT_TOKENS, readPreviewReply } from "./preview-reply.ts";
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "generate-product-preview.2026-10-11.24";
+// 2026-10-28.1 (S13-001, S13-065, fix/full-analysis-timeout):
+// _shared/ai-fallback.ts no longer asks a model that timed out again: this
+// function's chain moves to the next model, which keeps at least 40 s of the
+// 125 s budget when the first model times out. The cap is the largest
+// legitimate preview measured from its fields, 380, plus the model's thinking
+// (was 600 with the thinking in it; preview-reply.ts), and a reply cut off at
+// it, empty, not JSON or with no body asks the next model; when none writes
+// one the person is told to try again in words. Request, reply shape, the
+// 429/402 answers and the prompt's text are unchanged. Nothing of main's past
+// f8d72a9b, the build the 2026-10-31 deploy put live, rides along.
+const FN_BUILD = "generate-product-preview.2026-10-28.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -163,12 +174,7 @@ INTEGRITY (non-negotiable): never invent employers, job titles, metrics, dates, 
 TASK: ${spec.instruction}
 
 Return ONLY this JSON, nothing else:
-{
-  "heading": "a short 3-6 word label for this sample",
-  "body": "the sample itself — concise, high-quality, ready to use",
-  "before": "the original weak version (ONLY for rewrite/tailoring tasks; otherwise null)",
-  "note": "one short supporting line if the task asks for one; otherwise null"
-}${buildLanguageInstruction(language)}`;
+${PREVIEW_FORMAT}${buildLanguageInstruction(language)}`;
 
     const userPrompt = `Candidate resume:
 <resume>
@@ -178,57 +184,38 @@ ${industry ? `\nDetected field: ${industry}` : ""}${jd ? `\n\nTarget job posting
 
 Produce the single preview slice described in your instructions.`;
 
-    const { response } = await callAIWithModelFallback(apiKey, {
+    // The cap is the largest legitimate preview plus the model's thinking
+    // (preview-reply.ts; it was 600 with the thinking in it), and a reply cut
+    // off at it, empty, not JSON or with no body asks the next model (S13-065).
+    const reply = await callAIForUsableReply(apiKey, {
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
       ],
       temperature: 0.6,
-      maxTokens: 600,
+      maxTokens: PREVIEW_OUTPUT_TOKENS + THINKING_TOKENS,
       jsonResponse: true,
       models: chainFrom("google/gemini-2.5-flash"), // flash primary keeps the teaser cheap
       context: "PRODUCT-PREVIEW",
+      read: readPreviewReply,
     });
 
-    const rateLimitResponse = await checkAiGatewayResponse(response, corsHeaders);
-    if (rateLimitResponse) return rateLimitResponse;
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`AI API error: ${response.status} - ${errorText}`);
+    if (!reply.ok) {
+      const rateLimitResponse = await checkAiGatewayResponse(reply.response, corsHeaders);
+      if (rateLimitResponse) return rateLimitResponse;
+      throw new Error(`AI API error: ${reply.response.status}`);
     }
 
-    const result = await response.json();
-    const content = result.choices?.[0]?.message?.content;
-    if (!content) throw new Error("No content returned from AI");
-
-    let parsed: Record<string, unknown>;
-    try {
-      parsed = JSON.parse(content);
-    } catch {
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (jsonMatch) parsed = JSON.parse(jsonMatch[0]);
-      else throw new Error("Failed to parse preview");
-    }
-
-    const clean = (v: unknown): string | null => {
-      if (typeof v !== "string") return null;
-      const trimmed = v.trim();
-      if (!trimmed || trimmed.toLowerCase() === "null") return null;
-      return trimmed;
-    };
-
+    const parsed = reply.value;
     const preview = {
       productId,
       kind: spec.kind,
       label: spec.label,
-      heading: clean(parsed.heading) ?? spec.label,
-      body: clean(parsed.body) ?? "",
-      before: clean(parsed.before),
-      note: clean(parsed.note),
+      heading: parsed.heading ?? spec.label,
+      body: parsed.body,
+      before: parsed.before,
+      note: parsed.note,
     };
-
-    if (!preview.body) throw new Error("Empty preview generated");
 
     return new Response(JSON.stringify({ success: true, preview }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -236,7 +223,9 @@ Produce the single preview slice described in your instructions.`;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error("[PRODUCT-PREVIEW] Error:", errorMessage);
-    return new Response(JSON.stringify({ error: errorMessage }), {
+    // No model writing a preview is said in words, not in model names.
+    const shown = error instanceof UnusableModelOutput ? "We couldn't write a preview just now. Please try again." : errorMessage;
+    return new Response(JSON.stringify({ error: shown }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

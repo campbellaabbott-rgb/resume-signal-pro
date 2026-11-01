@@ -639,7 +639,8 @@
       "backHome": "Back to Home",
       "analysisNotFound": "Analysis not found. The link may be invalid or expired.",
       "analyzeFailed": "Failed to analyze resume",
-      "loadFailed": "Failed to load analysis."
+      "loadFailed": "Failed to load analysis.",
+      "timedOut": "The analysis took too long and stopped before anything was saved. Your purchase is still valid and nothing was charged twice, so trying again is safe and free."
     },
     "toast": {
       "paymentSuccess": "Payment successful!",
@@ -2415,7 +2416,78 @@
     "analysisProcessingDescription": "We could not extract detailed recommendations from your resume. This might happen if the resume format is unusual or if there was an issue during processing.",
     "bottomCta": "Apply these changes to your resume and watch your interview rate improve!",
     "bottomCtaWithLinkedIn": "Apply these changes to your resume and LinkedIn profile and watch your interview rate improve!",
-    "analysisSaved": "This analysis is kept for {{analysisDays}} days behind the share link above, then deleted. Download it as a PDF to keep your own copy."
+    "analysisSaved": "This analysis is kept for {{analysisDays}} days behind the share link above, then deleted. Download it as a PDF to keep your own copy.",
+    "enum": {
+      "industry": {
+        "technology": "Technology",
+        "data_engineering": "Data Engineering",
+        "data_science": "Data Science",
+        "machine_learning": "Machine Learning",
+        "healthcare": "Healthcare",
+        "finance": "Finance",
+        "marketing": "Marketing",
+        "sales": "Sales",
+        "engineering": "Engineering",
+        "education": "Education",
+        "hr": "HR",
+        "consulting": "Consulting",
+        "legal": "Legal",
+        "retail": "Retail",
+        "hospitality": "Hospitality",
+        "manufacturing": "Manufacturing",
+        "government": "Government",
+        "product_management": "Product Management",
+        "creative": "Creative",
+        "general": "General"
+      },
+      "experienceLevel": {
+        "entry": "Entry",
+        "mid": "Mid",
+        "senior": "Senior",
+        "executive": "Executive"
+      },
+      "jargonLevel": {
+        "low": "Low",
+        "moderate": "Moderate",
+        "high": "High"
+      },
+      "severity": {
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High"
+      },
+      "postFormat": {
+        "text": "Text",
+        "carousel": "Carousel",
+        "poll": "Poll",
+        "video": "Video",
+        "article": "Article"
+      },
+      "tone": {
+        "formal": "Formal",
+        "casual": "Casual",
+        "technical": "Technical",
+        "creative": "Creative",
+        "corporate": "Corporate",
+        "startup": "Startup"
+      },
+      "companyType": {
+        "startup": "Startup",
+        "scaleup": "Scale-up",
+        "enterprise": "Enterprise",
+        "agency": "Agency",
+        "nonprofit": "Nonprofit",
+        "government": "Government",
+        "unknown": "Unknown"
+      },
+      "linkedInSection": {
+        "headline": "Headline",
+        "about": "About",
+        "experience": "Experience",
+        "skills": "Skills",
+        "engagement": "Engagement"
+      }
+    }
   },
   "personalization": {
     "experience": {

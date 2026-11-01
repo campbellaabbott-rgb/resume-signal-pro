@@ -3,7 +3,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { validateCandidateClaims, validateProseClaims } from "../_shared/resume-grounding.ts";
 import { stripInventedContact } from "../_shared/contact-guard.ts";
-import { looksLikeBrokenJson } from "../_shared/ai-fallback.ts";
+import { CHAIN_DEADLINE_MS, UnusableModelOutput, callAIForUsableReply, chainRanOutOfTime, looksLikeBrokenJson, type UsableReply } from "../_shared/ai-fallback.ts";
 import { checkInputLimits, MAX_JOB_DESCRIPTION_LENGTH } from "../_shared/input-limits.ts";
 import { clipField, clipText, deliversProduct, isServiceCaller, modelSpendGate } from "../_shared/model-spend-gate.ts";
 import { postingLanguageInstruction } from "../_shared/posting-language.ts";
@@ -18,7 +18,49 @@ import { refundWriting, writingChain, writingGate, type WritingPass } from "../_
 // chain); written in the posting's own language (S12-003); claims about the
 // candidate checked for credentials, employers and titles as well as figures
 // (S12-071); the posting fenced as data with its hidden text dropped (S12-147).
-const FN_BUILD = "generate-cover-letter.2026-10-11.24";
+// 2026-10-28.1 (S13-001, fix/full-analysis-timeout): the letter and its
+// grounding retry walk the shared chain (_shared/ai-fallback.ts), not this
+// function's own: a model that timed out is not asked again, and both calls
+// end inside the request's one 125 s budget (the private chain retried a
+// timed-out model and gave the retry a fresh clock). A chain that ran out of
+// time answers the 504 that says try again. Body (model, messages,
+// max_completion_tokens 4,000), chains, reply and the use given back are
+// unchanged. Two things the shared chain does differently, said here so
+// the stamp names them: a 429 on one model now asks the next model (the
+// private chain answered the first 429 at once), and the 429 answer comes
+// only when every model is rate-limited; and a 200 that is cut off at its
+// cap, empty, or broken JSON is no letter: the next model is asked with what
+// is left of the budget (callAIForUsableReply), and only when none writes
+// one is the person told the draft was unreadable (the same retryable 502,
+// the use given back).
+// _shared/posting-text.ts reads an HTML posting in one linear pass now
+// (S12-147, finished), as a browser reads it: an unclosed script, style or
+// comment block runs to the end of the page; a quoted '>' does not end a tag
+// and '/>' closes only a void element; attributes are read by name, so
+// "hidden" in a title or class list hides nothing; !important and
+// visibility:collapse hide, as do framework hiding classes (d-none, sr-only,
+// a Tailwind hidden with no responsive class) and classes the page's own
+// <style> hides; a <p>, <li>, <td> or <tr> whose end tag is left out ends
+// where a browser ends it, so a hidden one takes only its own words.
+// Recheck of that reader: a self-closing svg icon, or a page that leaves out
+// its closing head tag, no longer drops the visible posting after it (both
+// were skipped to their own end tag; a browser closes the icon at once and
+// ends a head at its first body content); character references in an
+// attribute value are decoded before it is read (display&#58;none hides);
+// an end tag closes only an element in scope, as a browser's does (one never
+// leaves the hidden table cell it sits in, and the body's end closes
+// nothing); and a hidden bold, italic, link or other formatting element that
+// a paragraph's end closes keeps hiding the text after it until its own end
+// tag or the end of its table cell, as a browser rebuilds it.
+// A reply is a letter only when it carries one (recheck of S13-001): JSON
+// with no coverLetter, or an empty one, passed the fact check on an empty
+// string and shipped as the paid letter, first draft and grounding rewrite
+// alike; now the next model is asked, and when none writes one the person
+// gets the retryable 502 (or, for the rewrite, the grounding refusal) with
+// the use given back.
+// Nothing of main's past f8d72a9b, the build the 2026-10-31 deploy put live,
+// rides along.
+const FN_BUILD = "generate-cover-letter.2026-10-28.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -36,13 +78,6 @@ const logStep = (step: string, details?: Record<string, unknown>) => {
   console.log(`[GENERATE-COVER-LETTER] ${step}`, details ? JSON.stringify(details) : '');
 };
 
-// Retry and fallback configuration
-const MAX_RETRIES = 1;
-const REQUEST_TIMEOUT_MS = 55000;
-const RETRY_DELAY_MS = 1000;
-
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
 const jsonResponse = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
@@ -51,85 +86,96 @@ interface AIRequestOptions {
   max_completion_tokens?: number;
 }
 
-// The chain is chosen per call (writingChain): the quality chain for Pro,
-// paid deliveries and past buyers; Flash for a free account's daily letter.
-async function callAIWithFallback(
+// ONE CHAIN, ONE DEADLINE (S13-001's sibling). This function had its own
+// chain, which asked a model that timed out again (55 s, then 55 s more) and
+// had no deadline, and the grounding retry started a fresh clock: a slow
+// gateway ran a request past the platform's 150 s, whose 504 no caller reads
+// as this function's retryable answer. Every call now walks the shared chain
+// (_shared/ai-fallback.ts: a timed-out model is not asked again, the next
+// keeps its window) inside what is left of the request's one 125 s budget.
+// A 200 IS NOT A LETTER (review of S13-001): a reply cut off at its cap (the
+// thinking counts against the 4,000), empty, or broken JSON asks the next
+// model (callAIForUsableReply) instead of ending the request.
+// The body is the one this function always sent, to every model: model,
+// messages, max_completion_tokens. The chain is chosen per call
+// (writingChain): the quality chain for Pro, paid deliveries and past buyers;
+// Flash for a free account's daily letter.
+async function askAI<T>(
   apiKey: string,
   options: AIRequestOptions,
   context: string,
   models: readonly string[],
-): Promise<{ response: Response; modelUsed: string }> {
-  let lastError: Error | null = null;
+  deadlineAt: number,
+  read: (data: unknown) => T | null,
+): Promise<UsableReply<T>> {
+  logStep(`${context} - chain`, { models: [...models] });
+  return await callAIForUsableReply(apiKey, {
+    messages: options.messages,
+    maxCompletionTokens: options.max_completion_tokens,
+    models: [...models],
+    context: `GENERATE-COVER-LETTER ${context}`,
+    deadlineMs: deadlineAt - Date.now(),
+    read,
+  });
+}
 
-  for (const model of models) {
-    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+/** The text a reply wrote, or null when it wrote none. */
+function contentOf(data: unknown): string | null {
+  const content = (data as { choices?: Array<{ message?: { content?: unknown } }> } | null)?.choices?.[0]?.message?.content;
+  return typeof content === "string" && content.trim() ? content : null;
+}
 
-        logStep(`${context} - trying ${model}`, { attempt: attempt + 1, model });
-
-        const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model,
-            messages: options.messages,
-            max_completion_tokens: options.max_completion_tokens,
-          }),
-          signal: controller.signal,
-        });
-
-        clearTimeout(timeoutId);
-
-        if (response.ok) {
-          logStep(`${context} - succeeded with ${model}`);
-          return { response, modelUsed: model };
-        }
-
-        if (response.status === 429 || response.status === 402) {
-          return { response, modelUsed: model };
-        }
-
-        if (response.status >= 400 && response.status < 500) {
-          logStep(`${context} - client error, trying next model`, { status: response.status, model });
-          break;
-        }
-
-        if (response.status >= 500) {
-          logStep(`${context} - server error`, { status: response.status, model });
-          if (attempt < MAX_RETRIES) {
-            await sleep(RETRY_DELAY_MS);
-            continue;
-          }
-          break;
-        }
-
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        logStep(`${context} - error with ${model}`, { error: errorMessage });
-        lastError = error instanceof Error ? error : new Error(errorMessage);
-
-        if (attempt < MAX_RETRIES) {
-          await sleep(RETRY_DELAY_MS * Math.pow(2, attempt));
-          continue;
-        }
-        break;
-      }
-    }
-    logStep(`${context} - ${model} failed, trying next model`);
+/** The JSON object a reply carries, or null. */
+function jsonObjectOf(content: string): Record<string, unknown> | null {
+  const match = content.match(/\{[\s\S]*\}/);
+  if (!match) return null;
+  try {
+    const parsed = JSON.parse(match[0]);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as Record<string, unknown> : null;
+  } catch {
+    return null;
   }
+}
 
-  throw lastError || new Error('All AI models failed');
+/**
+ * A reply's JSON when it carries a letter: a non-empty coverLetter string.
+ * JSON without one ({"error": "..."}, an empty letter) passed the fact
+ * check on an empty string and shipped as the paid letter (recheck of
+ * S13-001), so it is no letter: the next model is asked.
+ */
+function letterJsonOf(content: string): Record<string, unknown> | null {
+  const parsed = jsonObjectOf(content);
+  return parsed && typeof parsed.coverLetter === "string" && parsed.coverLetter.trim() ? parsed : null;
+}
+
+/**
+ * The letter a reply carries: its JSON with a letter in it, or prose, which
+ * is a letter. Null (the next model is asked) when it wrote nothing, broken
+ * or truncated JSON, or JSON with no letter: shipping that as the paid
+ * letter was a delivery in name only (register L5-12).
+ */
+function readLetter(data: unknown, subjectLine: string): Record<string, unknown> | null {
+  const content = contentOf(data);
+  if (!content) return null;
+  if (jsonObjectOf(content)) return letterJsonOf(content);
+  if (looksLikeBrokenJson(content)) return null;
+  logStep("No JSON in the reply; the prose is the letter");
+  return {
+    coverLetter: content,
+    openingLine: content.split('\n')[0] || "",
+    keySkillsHighlighted: [],
+    personalizedElements: [],
+    suggestedSubjectLine: subjectLine,
+    alternateOpenings: [],
+  };
 }
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+  // The request's one budget: every model call in it ends inside this.
+  const deadlineAt = Date.now() + CHAIN_DEADLINE_MS;
 
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
@@ -207,6 +253,7 @@ serve(async (req) => {
     const delivered = await writeLetter({
       resumeText, jobDescription, jobTitle, jobCompany, tone, personalizationContext,
       models: writingChain(pass),
+      deadlineAt,
     });
     if (delivered.status >= 400) await refundWriting(supabase, pass);
     return delivered;
@@ -216,11 +263,12 @@ serve(async (req) => {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error("[GENERATE-COVER-LETTER] Error:", errorMessage);
 
-    if (errorMessage.includes('timed out') || errorMessage.includes('timeout')) {
+    if (chainRanOutOfTime(error) || errorMessage.includes('timed out') || errorMessage.includes('timeout')) {
       return jsonResponse({ error: "The AI took too long to respond. Please try again.", retryable: true }, 504);
     }
 
-    if (errorMessage.includes('All AI models failed')) {
+    // The shared chain's words for every model refusing the request.
+    if (/all (AI )?models failed/i.test(errorMessage)) {
       return jsonResponse({ error: "The AI service is temporarily unavailable. Please try again in a few minutes.", retryable: true }, 503);
     }
 
@@ -236,8 +284,9 @@ async function writeLetter(input: {
   tone: string;
   personalizationContext?: string;
   models: readonly string[];
+  deadlineAt: number;
 }): Promise<Response> {
-  const { resumeText, jobDescription, jobTitle, jobCompany, tone, personalizationContext, models } = input;
+  const { resumeText, jobDescription, jobTitle, jobCompany, tone, personalizationContext, models, deadlineAt } = input;
 
   logStep("Starting cover letter generation", {
     jobTitle,
@@ -362,20 +411,35 @@ Write something that sounds like this specific person wrote it - confident, spec
 
   logStep("Calling AI API with fallback");
 
-  const { response, modelUsed } = await callAIWithFallback(
-    apiKey,
-    {
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt }
-      ],
-      max_completion_tokens: 4000,
-    },
-    'Cover letter generation',
-    models,
-  );
+  const subjectLine = `Application for ${jobTitle || 'Position'}${jobCompany ? ` at ${jobCompany}` : ''}`;
+  let reply: UsableReply<Record<string, unknown>>;
+  try {
+    reply = await askAI(
+      apiKey,
+      {
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt }
+        ],
+        max_completion_tokens: 4000,
+      },
+      'Cover letter generation',
+      models,
+      deadlineAt,
+      (data) => readLetter(data, subjectLine),
+    );
+  } catch (error) {
+    // Every model that answered wrote no letter: a retryable failure keeps
+    // the delivery open instead (register L5-12).
+    if (error instanceof UnusableModelOutput) {
+      logStep("No model wrote a readable letter", { error: error.message });
+      return jsonResponse({ error: "The AI returned an unreadable draft. Please try again.", retryable: true }, 502);
+    }
+    throw error;
+  }
 
-  if (!response.ok) {
+  if (!reply.ok) {
+    const { response, modelUsed } = reply;
     const errorText = await response.text();
     logStep("AI API error", { status: response.status, error: errorText, model: modelUsed });
 
@@ -389,39 +453,10 @@ Write something that sounds like this specific person wrote it - confident, spec
     throw new Error(`AI API error: ${response.status}`);
   }
 
-  const aiResponse = await response.json();
+  const modelUsed = reply.modelUsed;
+  // deno-lint-ignore no-explicit-any
+  let result: Record<string, any> = reply.value;
   logStep("AI response received", { model: modelUsed });
-
-  const content = aiResponse.choices?.[0]?.message?.content;
-  if (!content) {
-    throw new Error("No content in AI response");
-  }
-
-  let result;
-  try {
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      result = JSON.parse(jsonMatch[0]);
-    } else {
-      throw new Error("No JSON found in response");
-    }
-  } catch (parseError) {
-    logStep("JSON parse error, extracting cover letter", { error: String(parseError) });
-    // Prose is a letter; a broken or truncated JSON object is not one, and
-    // shipping it as the paid letter was a delivery in name only (register
-    // L5-12). A retryable failure keeps the delivery open instead.
-    if (looksLikeBrokenJson(content)) {
-      return jsonResponse({ error: "The AI returned an unreadable draft. Please try again.", retryable: true }, 502);
-    }
-    result = {
-      coverLetter: content,
-      openingLine: content.split('\n')[0] || "",
-      keySkillsHighlighted: [],
-      personalizedElements: [],
-      suggestedSubjectLine: `Application for ${jobTitle || 'Position'}${jobCompany ? ` at ${jobCompany}` : ''}`,
-      alternateOpenings: []
-    };
-  }
 
   // THE CONTACT GUARD, AS THE PREMIUM PACKAGE RUNS IT (S11-018). A letter's
   // sign-off can carry a phone, an address or a profile link: any the
@@ -454,7 +489,7 @@ Write something that sounds like this specific person wrote it - confident, spec
   if (proseIssues.length > 0) {
     logStep("Cover letter failed grounding, retrying with feedback", { issues: proseIssues.slice(0, 5) });
     try {
-      const retry = await callAIWithFallback(
+      const retry = await askAI(
         apiKey,
         {
           messages: [
@@ -470,16 +505,21 @@ Write something that sounds like this specific person wrote it - confident, spec
         },
         "Cover letter grounding retry",
         models,
+        deadlineAt,
+        // The rewrite in the JSON asked for, with a letter in it; a cut-off,
+        // empty, unreadable or letterless one asks the next model, and none
+        // leaves the first draft's issues (refused, never shipped empty).
+        (data) => {
+          const content = contentOf(data);
+          return content ? letterJsonOf(content) : null;
+        },
       );
-      if (retry.response.ok) {
-        const retryJson = await retry.response.json();
-        const retryContent = retryJson.choices?.[0]?.message?.content;
-        const retryMatch = typeof retryContent === "string" ? retryContent.match(/\{[\s\S]*\}/) : null;
-        if (retryMatch) {
-          result = JSON.parse(retryMatch[0]);
-          guardContact(result);
-          proseIssues = checkLetter(result);
-        }
+      if (retry.ok) {
+        result = retry.value;
+        guardContact(result);
+        proseIssues = checkLetter(result);
+      } else {
+        await retry.response.body?.cancel().catch(() => {});
       }
     } catch (retryError) {
       logStep("Grounding retry failed", { error: String(retryError) });

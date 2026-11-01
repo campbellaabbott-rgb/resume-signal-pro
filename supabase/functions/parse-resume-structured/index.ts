@@ -2,11 +2,22 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { getServiceClient } from "../_shared/supabase-client.ts";
 import { modelSpendGate } from "../_shared/model-spend-gate.ts";
-import { callAIWithModelFallback } from "../_shared/ai-fallback.ts";
+import { callAIWithModelFallback, describeError, describeReply } from "../_shared/ai-fallback.ts";
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "parse-resume-structured.2026-10-11.24";
+// 2026-10-28.1 (S13-001, S13-064, fix/full-analysis-timeout):
+// _shared/ai-fallback.ts no longer asks a model that timed out again: this
+// function's chain moves to the next model, which keeps at least 40 s of the
+// 125 s budget when the first model times out. A reply in an unexpected
+// format is logged by its shape and lengths (describeReply), no longer as the
+// whole reply, which carried the person's résumé; and a tool call whose
+// arguments do not parse is logged by the parse error's position only
+// (describeError, recheck of S13-064), since the engine's message quoted the
+// text around it, which could be the person's name or email. Nothing else in
+// this function changed, and nothing of main's past f8d72a9b, the build the
+// 2026-10-31 deploy put live, rides along.
+const FN_BUILD = "parse-resume-structured.2026-10-28.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -191,7 +202,8 @@ serve(async (req) => {
     const data = await response.json();
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
     if (!toolCall || toolCall.function.name !== "submit_structured_resume") {
-      console.error("[PARSE-RESUME-STRUCTURED] Unexpected response format:", JSON.stringify(data));
+      // Its shape, never its words: the reply carries the person's résumé (S13-064).
+      console.error("[PARSE-RESUME-STRUCTURED] Unexpected response format:", describeReply(data));
       return new Response(
         JSON.stringify({ error: "Invalid AI response format" }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -204,7 +216,8 @@ serve(async (req) => {
     } catch (parseError) {
       // A response cut off at the output cap is malformed JSON: a retry may
       // well succeed, so say so rather than throwing to a bare 500.
-      console.error("[PARSE-RESUME-STRUCTURED] tool-call JSON parse failed:", String(parseError).slice(0, 120));
+      // Its name and position, never the arguments it quotes (S13-064).
+      console.error("[PARSE-RESUME-STRUCTURED] tool-call JSON parse failed:", describeError(parseError), `(${String(toolCall.function.arguments ?? "").length} chars)`);
       return new Response(
         JSON.stringify({ error: "The parser returned a malformed draft. Please try again.", retryable: true }),
         { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

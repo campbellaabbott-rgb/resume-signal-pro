@@ -85,7 +85,8 @@ describe("Interview Coach answer evaluation", () => {
     const user = ai[0].messages.find((m) => m.role === "user")!.content;
     expect(user).toContain("Tell me about a hard migration.");
     expect(user).toContain("we cut errors by 40%");
-    expect(ai[0].max_tokens).toBe(1500);
+    // S10-009: the largest legitimate score (prep-set.ts) plus the model's thinking.
+    expect(ai[0].max_tokens).toBe(1_700 + 8_192);
     expect(counted).toBe(2);
   });
 

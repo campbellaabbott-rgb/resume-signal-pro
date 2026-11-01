@@ -12,12 +12,25 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { modelSpendGate } from "../_shared/model-spend-gate.ts";
-import { callAIWithModelFallback, DEFAULT_MODELS } from "../_shared/ai-fallback.ts";
+import { callAIForUsableReply, DEFAULT_MODELS, THINKING_TOKENS } from "../_shared/ai-fallback.ts";
 import { SCAN_MODEL_CHAIN } from "../_shared/scan-models.ts";
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "test-ai-fallback.2026-10-11.24";
+// 2026-10-28.1 (S13-001, S13-065, fix/full-analysis-timeout):
+// _shared/ai-fallback.ts no longer asks a model that timed out again; with
+// this diagnostic's 40 s budget the first model's attempt still has the whole
+// budget. A chain passes only when a model WROTE text (a 200 cut off by its
+// thinking, or with no text, passed before): such a reply asks the next
+// model, each result names the model that wrote and carries the text as
+// proof (reply), and the cap is the 50-token answer plus the thinking
+// production allows (THINKING_TOKENS). Mode "all" asks its models at once,
+// each with the 40 s budget, so it answers in about 40 s: one after another
+// it took 40 s a model, 160 s for the four when the gateway hangs, past the
+// platform's 150 s, and ended in the platform's 504 instead of this report
+// at the moment the report matters most. Nothing of main's past f8d72a9b,
+// the build the 2026-10-31 deploy put live, rides along.
+const FN_BUILD = "test-ai-fallback.2026-10-28.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -45,25 +58,39 @@ const TEST_MESSAGES = [
   { role: "user", content: "Say 'AI fallback test successful' and nothing else." },
 ];
 
-type ChainResult = { name: string; models: string[]; success: boolean; modelUsed: string | null; usedFallback: boolean; totalTime: number; status?: number; error?: string };
+type ChainResult = { name: string; models: string[]; success: boolean; modelUsed: string | null; usedFallback: boolean; totalTime: number; status?: number; reply?: string; error?: string };
+
+/** The answer's own tokens ("AI fallback test successful" is about 9); the thinking production allows comes on top. */
+const TEST_OUTPUT_TOKENS = 50;
+
+/** The text a model wrote, or null when it wrote none (so the next model is asked). */
+const writtenText = (data: unknown): string | null => {
+  const content = (data as { choices?: Array<{ message?: { content?: unknown } }> } | null)?.choices?.[0]?.message?.content;
+  return typeof content === "string" && content.trim() ? content.trim() : null;
+};
 
 async function testChain(apiKey: string, name: string, models: readonly string[]): Promise<ChainResult> {
   const start = Date.now();
   try {
-    const { response, modelUsed } = await callAIWithModelFallback(apiKey, {
+    // A 200 IS NOT A PASS (S13-065): the chain passes when a model wrote text.
+    const reply = await callAIForUsableReply(apiKey, {
       messages: TEST_MESSAGES,
-      maxTokens: 50,
+      maxTokens: TEST_OUTPUT_TOKENS + THINKING_TOKENS,
       models: [...models],
       context: `TEST-AI-FALLBACK ${name}`,
       deadlineMs: CHAIN_BUDGET_MS,
+      read: writtenText,
     });
-    const ok = response.ok;
-    if (!ok) await response.body?.cancel().catch(() => {});
-    else await response.json().catch(() => null);
+    if (!reply.ok) {
+      await reply.response.body?.cancel().catch(() => {});
+      return {
+        name, models: [...models], success: false, modelUsed: reply.modelUsed, usedFallback: reply.modelUsed !== models[0],
+        totalTime: Date.now() - start, status: reply.response.status, error: `HTTP ${reply.response.status} from ${reply.modelUsed}`,
+      };
+    }
     return {
-      name, models: [...models], success: ok, modelUsed, usedFallback: modelUsed !== models[0],
-      totalTime: Date.now() - start, status: response.status,
-      ...(ok ? {} : { error: `HTTP ${response.status} from ${modelUsed}` }),
+      name, models: [...models], success: true, modelUsed: reply.modelUsed, usedFallback: reply.modelUsed !== models[0],
+      totalTime: Date.now() - start, status: 200, reply: reply.value.slice(0, 80),
     };
   } catch (e) {
     return { name, models: [...models], success: false, modelUsed: null, usedFallback: false, totalTime: Date.now() - start, error: e instanceof Error ? e.message : String(e) };
@@ -99,13 +126,15 @@ serve(async (req) => {
     if (mode === "all") {
       // Every model either chain can reach, each alone, called the way the
       // shared helper calls it (max_tokens for Google, max_completion_tokens
-      // for OpenAI).
+      // for OpenAI). All at once, each inside its own 40 s: the whole report
+      // inside about 40 s, well inside the platform's 150 s, whatever hangs.
       const models = [...new Set(PRODUCTION_CHAINS.flatMap((c) => [...c.models]))];
-      const results: Array<{ model: string; success: boolean; responseTime: number; statusCode?: number; error?: string }> = [];
-      for (const model of models) {
-        const r = await testChain(apiKey, model, [model]);
-        results.push({ model, success: r.success, responseTime: r.totalTime, statusCode: r.status, ...(r.error ? { error: r.error } : {}) });
-      }
+      const results: Array<{ model: string; success: boolean; responseTime: number; statusCode?: number; error?: string }> = await Promise.all(
+        models.map(async (model) => {
+          const r = await testChain(apiKey, model, [model]);
+          return { model, success: r.success, responseTime: r.totalTime, statusCode: r.status, ...(r.error ? { error: r.error } : {}) };
+        }),
+      );
       const ok = results.filter((r) => r.success);
       return json({
         success: PRODUCTION_CHAINS.every((c) => c.models.some((m) => ok.some((r) => r.model === m))),

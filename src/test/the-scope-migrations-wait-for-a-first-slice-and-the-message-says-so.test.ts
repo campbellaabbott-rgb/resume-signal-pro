@@ -92,10 +92,11 @@ describe("the message says what to read, and what to do if a file refuses", () =
   });
 
   it("a slice rule orders like fn:job-board: met once that build serves, an error when main never reaches it or it names another function", () => {
-    const met = L.migrationPhases(FILES, policy, rows({ "job-board": "job-board.2026-09-09.96", "process-email-queue": "process-email-queue.2026-10-14.2" }));
+    // Main's own build serving (.96 when written, .98 since 2026-10-31): a slice rule is "or later".
+    const met = L.migrationPhases(FILES, policy, rows({ "job-board": repoBuild("job-board")!, "process-email-queue": "process-email-queue.2026-10-14.2" }));
     expect(met.errors).toEqual([]);
     expect(met.afterFunctions).toEqual([]);
-    expect(met.pre.find((p: { file: string }) => p.file.startsWith("20261025110000"))?.note).toBe("job-board already answers job-board.2026-09-09.96");
+    expect(met.pre.find((p: { file: string }) => p.file.startsWith("20261025110000"))?.note).toBe(`job-board already answers ${repoBuild("job-board")}`);
     const never = L.migrationPhases([FILES[1]], { migrationOrder: { "20261025110000": { after: "slice:job-board@2026-09-09.99" } } }, rows(LIVE));
     expect(never.errors.join("\n")).toMatch(/waits for job-board\.2026-09-09\.99, but main carries job-board\.2026-09-09\.\d+: that step can never come/);
     const other = L.migrationPhases([FILES[1]], { migrationOrder: { "20261025110000": { after: "slice:agent-mcp@2026-10-11.38" } } }, rows(LIVE));

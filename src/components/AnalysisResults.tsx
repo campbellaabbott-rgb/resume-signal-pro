@@ -7,6 +7,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { SHARED_ANALYSIS_DAYS } from "@/lib/resume-retention";
+import { analysisEnumLabel, namedCompany, type AnalysisEnumGroup } from "@/lib/analysis-enums";
 import { Progress } from "@/components/ui/progress";
 import { useState, useEffect } from "react";
 
@@ -368,6 +369,9 @@ function BackToTop() {
 
 export function AnalysisResults({ data }: AnalysisResultsProps) {
   const { t } = useTranslation();
+  // The analysis keeps its fixed choices in English (the colours below pick by
+  // them); the reader sees them in their language (S13-052).
+  const label = (group: AnalysisEnumGroup, value: unknown) => analysisEnumLabel(t, group, value);
   const [activeSection, setActiveSection] = useState("overview");
   
   // Safe array access
@@ -455,13 +459,13 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                   {data.industry && (
                     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted text-xs font-medium">
                       <Briefcase className="w-3 h-3" />
-                      {data.industry}
+                      {label("industry", data.industry)}
                     </span>
                   )}
                   {data.experienceLevel && (
                     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted text-xs font-medium capitalize">
                       <User className="w-3 h-3" />
-                      {t('analysisResults.experienceLevel', { level: data.experienceLevel })}
+                      {t('analysisResults.experienceLevel', { level: label("experienceLevel", data.experienceLevel) })}
                     </span>
                   )}
                   {data.hasLinkedIn && (
@@ -727,11 +731,11 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                       <div className="grid grid-cols-2 gap-3 mb-3">
                         <div className="p-2 rounded-lg bg-muted/30 text-center">
                           <span className="text-xs text-muted-foreground block">{t('analysisResults.jdTone')}</span>
-                          <span className="text-sm font-semibold capitalize">{data.jobDescriptionAlignment.toneAnalysis.jdTone}</span>
+                          <span className="text-sm font-semibold capitalize">{label("tone", data.jobDescriptionAlignment.toneAnalysis.jdTone)}</span>
                         </div>
                         <div className="p-2 rounded-lg bg-muted/30 text-center">
                           <span className="text-xs text-muted-foreground block">{t('analysisResults.resumeTone')}</span>
-                          <span className="text-sm font-semibold capitalize">{data.jobDescriptionAlignment.toneAnalysis.resumeTone}</span>
+                          <span className="text-sm font-semibold capitalize">{label("tone", data.jobDescriptionAlignment.toneAnalysis.resumeTone)}</span>
                         </div>
                       </div>
                       
@@ -762,12 +766,12 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                       <div className="flex items-center gap-2 mb-3">
                         <Briefcase className="w-4 h-4 text-accent-foreground" />
                         <span className="text-sm font-semibold text-foreground">
-                          {data.jobDescriptionAlignment.companyInsights.companyName !== 'Unknown'
-                            ? t('analysisResults.companyCultureFit', { company: data.jobDescriptionAlignment.companyInsights.companyName })
+                          {namedCompany(data.jobDescriptionAlignment.companyInsights.companyName)
+                            ? t('analysisResults.companyCultureFit', { company: namedCompany(data.jobDescriptionAlignment.companyInsights.companyName) })
                             : t('analysisResults.genericCultureFit')}
                         </span>
                         <span className="ml-auto px-2 py-0.5 rounded-full text-xs font-medium bg-muted capitalize">
-                          {data.jobDescriptionAlignment.companyInsights.companyType}
+                          {label("companyType", data.jobDescriptionAlignment.companyInsights.companyType)}
                         </span>
                       </div>
                       
@@ -854,7 +858,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                       data.atsParsingIssues.severity === "medium" ? "bg-warning/20 text-warning" :
                       "bg-success/20 text-success"
                     )}>
-                      {t('analysisResults.severitySuffix', { severity: data.atsParsingIssues.severity })}
+                      {t('analysisResults.severitySuffix', { severity: label("severity", data.atsParsingIssues.severity) })}
                     </span>
                   </div>
 
@@ -956,7 +960,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                           data.readabilityMetrics.jargonLevel === "moderate" ? "text-warning" :
                           "text-destructive"
                         )}>
-                          {data.readabilityMetrics.jargonLevel}
+                          {label("jargonLevel", data.readabilityMetrics.jargonLevel)}
                         </span>
                       </div>
                       {data.readabilityMetrics.bulletPointClarity && (
@@ -1096,7 +1100,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                         )}>
                           {value}/20
                         </div>
-                        <div className="text-xs text-muted-foreground capitalize">{key}</div>
+                        <div className="text-xs text-muted-foreground capitalize">{label("linkedInSection", key)}</div>
                       </div>
                     ))}
                   </div>
@@ -1201,7 +1205,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                                   idea.format === "article" ? "bg-blue-500/20 text-blue-500" :
                                   "bg-muted text-muted-foreground"
                                 )}>
-                                  {idea.format}
+                                  {label("postFormat", idea.format)}
                                 </span>
                               </div>
                               <div className="flex items-start gap-2">
@@ -1597,7 +1601,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
             <div id="industry">
               <ResultCard
                 icon={Target}
-                title={t('analysisResults.industryInsightsTitle', { industry: data.industry || t('analysisResults.industryFallback') })}
+                title={t('analysisResults.industryInsightsTitle', { industry: data.industry ? label("industry", data.industry) : t('analysisResults.industryFallback') })}
                 subtitle={t('analysisResults.industryInsightsSubtitle')}
                 iconColor="text-cyan-500"
                 bgColor="bg-cyan-500/10"

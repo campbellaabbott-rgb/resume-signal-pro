@@ -1,36 +1,23 @@
-// Model-fallback chain for PAID deliverables — a paying customer should never
-// lose their generation to a transient model error. Tries each model in order:
-//   - 5xx / network / timeout → one retry, then next model
-//   - 429 on a model → advance to the NEXT model (a capacity limit on one
-//     model shouldn't kill the delivery; if every model 429s, the last 429 is
-//     returned so callers keep their existing "try again shortly" handling)
-//   - 402 (credits exhausted) → return immediately; it hits every model alike
-//   - other 4xx → next model (bad interaction with that model's API shape)
-// Derived from generate-cover-letter's proven in-house pattern, extracted so
-// generate-freelance-boost and generate-interview-coach share one copy, with
-// one deliberate change: 429 falls through to the next model instead of
-// returning right away.
-//
-// Pure Deno/fetch, no imports — safe to import from any edge function.
+// Model-fallback chain for PAID deliverables (no imports): docs/shared-notes.md#s1
 
 const MAX_RETRIES = 1;
 const REQUEST_TIMEOUT_MS = 55000;
 const RETRY_DELAY_MS = 1000;
-// THE WHOLE CHAIN'S CLOCK (register L5-11). Three models x two attempts x
-// 55 s could run five minutes, far past the platform's 150-second limit, so a
-// stalled gateway ended in the platform's 504 instead of this function's own
-// retryable error. Each attempt now gets at most what is left of this budget.
-const CHAIN_DEADLINE_MS = 125_000;
+// The whole chain's clock, inside the platform's 150 s: docs/shared-notes.md#s2
+export const CHAIN_DEADLINE_MS = 125_000;
 const MIN_ATTEMPT_MS = 5_000;
+// Thinking headroom a caller adds to its cap: docs/shared-notes.md#s3
+export const THINKING_TOKENS = 8_192;
+// A timed-out model is not asked again; time kept for the next: docs/shared-notes.md#s4
+const FALLBACK_WINDOW_MS = 40_000;
+
+/** The caller stopped the chain; not a timeout. docs/shared-notes.md#s5 */
+const chainStopped = (context: string) =>
+  Object.assign(new Error(`${context}: stopped by the caller`), { name: "ChainStopped" });
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-/**
- * A model answered, but with nothing a paid delivery can use (unparseable or
- * truncated JSON). Callers turn it into a retryable 5xx so the delivery stays
- * open for the retry sweep, instead of shipping an invented placeholder as a
- * successful delivery (register L5-12).
- */
+/** A 200 a paid delivery cannot use. docs/shared-notes.md#s6 */
 export class UnusableModelOutput extends Error {
   constructor(message: string) {
     super(message);
@@ -48,6 +35,8 @@ export interface FallbackAIOptions {
   messages: Array<{ role: string; content: string }>;
   temperature?: number;
   maxTokens?: number;
+  /** max_completion_tokens for every model. docs/shared-notes.md#s7 */
+  maxCompletionTokens?: number;
   jsonResponse?: boolean;
   /** Function-calling tools (passed through to every model in the chain). */
   tools?: unknown[];
@@ -59,6 +48,10 @@ export interface FallbackAIOptions {
   context?: string;
   /** The whole chain's budget in ms (default 125 s, inside the platform's 150 s). */
   deadlineMs?: number;
+  /** The first model's per-attempt limit in ms. docs/shared-notes.md#s8 */
+  attemptTimeoutMs?: number;
+  /** Stops the chain; the call throws ChainStopped. docs/shared-notes.md#s9 */
+  signal?: AbortSignal;
 }
 
 // Default order: the paid-quality primary, then the same-family model the
@@ -69,11 +62,7 @@ export const DEFAULT_MODELS = [
   'openai/gpt-5-mini',
 ];
 
-// Build a fallback chain that KEEPS a function's current primary model first (so
-// its latency/quality profile is unchanged on the happy path) and appends
-// cross-provider fallbacks for resilience, de-duped. Use when converting a
-// single-model call site: chainFrom("google/gemini-2.5-flash-lite") preserves the
-// fast primary, then falls back across family and provider only on failure.
+// The function's primary first, then the default tail: docs/shared-notes.md#s10
 export function chainFrom(primary: string): string[] {
   const tail = ['google/gemini-2.5-pro', 'google/gemini-2.5-flash', 'openai/gpt-5-mini'];
   return [primary, ...tail.filter((m) => m !== primary)];
@@ -87,38 +76,51 @@ export async function callAIWithModelFallback(
   const context = options.context ?? 'AI call';
   let lastError: Error | null = null;
   let lastRateLimited: { response: Response; modelUsed: string } | null = null;
-  const deadlineAt = Date.now() + (options.deadlineMs ?? CHAIN_DEADLINE_MS);
+  const budgetMs = options.deadlineMs ?? CHAIN_DEADLINE_MS;
+  const deadlineAt = Date.now() + budgetMs;
+  const firstAttemptMs = options.attemptTimeoutMs ?? REQUEST_TIMEOUT_MS;
+  // What the first model's attempts leave the next: docs/shared-notes.md#s11
+  const nextModelWindowMs = models.length > 1 ? Math.min(FALLBACK_WINDOW_MS, Math.max(0, budgetMs - firstAttemptMs)) : 0;
 
-  chain: for (const model of models) {
+  chain: for (let index = 0; index < models.length; index++) {
+    const model = models[index];
+    const isFirst = index === 0;
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      if (options.signal?.aborted) throw chainStopped(context);
       const left = deadlineAt - Date.now();
       if (left < MIN_ATTEMPT_MS) {
         console.warn(`[${context}] chain deadline reached before ${model} attempt ${attempt + 1}`);
         lastError = lastError ?? new Error(`${context}: timed out before any model answered`);
         break chain;
       }
+      const room = isFirst ? left - nextModelWindowMs : left;
+      if (room < MIN_ATTEMPT_MS) {
+        console.warn(`[${context}] ${model} attempt ${attempt + 1} not made: the next model's ${nextModelWindowMs} ms are kept`);
+        break;
+      }
+      const attemptMs = Math.min(isFirst ? firstAttemptMs : REQUEST_TIMEOUT_MS, room);
+      let timedOut = false;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        timedOut = true;
+        controller.abort();
+      }, attemptMs);
+      const stop = () => controller.abort();
+      options.signal?.addEventListener("abort", stop);
       try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), Math.min(REQUEST_TIMEOUT_MS, left));
-
         const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${apiKey}`,
             'Content-Type': 'application/json',
           },
-          // OpenAI gpt-5-family models reject temperature and use
-          // max_completion_tokens (see generate-cover-letter / -apply-package —
-          // none send temperature or response_format to openai/*). Google
-          // models take the standard params. Callers' JSON parsing already has
-          // a regex fallback, so dropping response_format on the last-resort
-          // leg is safe.
+          // openai models get no temperature or response_format: docs/shared-notes.md#s12
           body: JSON.stringify(
             model.startsWith('openai/')
               ? {
                   model,
                   messages: options.messages,
-                  ...(options.maxTokens !== undefined ? { max_completion_tokens: options.maxTokens } : {}),
+                  ...((options.maxCompletionTokens ?? options.maxTokens) !== undefined ? { max_completion_tokens: options.maxCompletionTokens ?? options.maxTokens } : {}),
                   ...(options.tools ? { tools: options.tools } : {}),
                   ...(options.toolChoice ? { tool_choice: options.toolChoice } : {}),
                 }
@@ -127,6 +129,7 @@ export async function callAIWithModelFallback(
                   messages: options.messages,
                   ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),
                   ...(options.maxTokens !== undefined ? { max_tokens: options.maxTokens } : {}),
+                  ...(options.maxCompletionTokens !== undefined ? { max_completion_tokens: options.maxCompletionTokens } : {}),
                   ...(options.jsonResponse ? { response_format: { type: 'json_object' } } : {}),
                   ...(options.tools ? { tools: options.tools } : {}),
                   ...(options.toolChoice ? { tool_choice: options.toolChoice } : {}),
@@ -170,16 +173,29 @@ export async function callAIWithModelFallback(
         console.warn(`[${context}] ${response.status} on ${model} — trying next model`);
         break;
       } catch (error) {
+        clearTimeout(timeoutId);
+        if (options.signal?.aborted && !timedOut) throw chainStopped(context);
         const msg = error instanceof Error ? error.message : String(error);
-        console.warn(`[${context}] ${model} attempt ${attempt + 1} failed: ${msg}`);
         lastError = error instanceof Error ? error : new Error(msg);
+        if (timedOut) {
+          // Slow, not broken: asking it again spends the next model's time on
+          // the same wait. The AbortError stays lastError, so a chain that
+          // ends here still reads as a timeout to every caller.
+          console.warn(`[${context}] ${model} attempt ${attempt + 1} failed: ${msg} (timed out after ${attemptMs} ms; not retried, next model)`);
+          break;
+        }
+        console.warn(`[${context}] ${model} attempt ${attempt + 1} failed: ${msg}`);
         if (attempt < MAX_RETRIES) {
           await sleep(RETRY_DELAY_MS);
           continue;
         }
+      } finally {
+        options.signal?.removeEventListener("abort", stop);
       }
     }
   }
+
+  if (options.signal?.aborted) throw chainStopped(context);
 
   // Every model rate-limited → hand back the last 429 so callers keep their
   // existing retryable-error handling.
@@ -187,24 +203,120 @@ export async function callAIWithModelFallback(
   throw lastError ?? new Error(`${context}: all models failed`);
 }
 
-/**
- * READS THE GATEWAY'S STREAMED REPLY (OpenAI-style SSE) INTO CONTENT DELTAS.
- *
- * Network chunks do not respect line boundaries. generate-cover-letter-stream
- * decoded each chunk on its own and split it on newlines with no carry-over,
- * so a `data:` line cut across two reads failed to parse in its first half,
- * lost its prefix in its second, and both halves were dropped: paid cover
- * letters arrived with words missing (register L5-04). Multibyte characters
- * cut across reads broke the same way. generate-premium-package-stream had
- * the carry-over, but put an unparseable COMPLETE line back on the buffer,
- * where the newline loop took it straight out again: a synchronous infinite
- * loop on one malformed line (register L5-19).
- *
- * Here: bytes are decoded with { stream: true }, only complete lines are
- * handled, the remainder waits for the next read, and a complete line that
- * does not parse is reported and dropped, never re-queued. flush() handles
- * the last line when the stream ends without a trailing newline.
- */
+/** True when a chain call failed for want of time. docs/shared-notes.md#s13 */
+export function chainRanOutOfTime(error: unknown): boolean {
+  if (!(error instanceof Error) || error.name === "ChainStopped") return false;
+  return error.name === "AbortError" || error.name === "TimeoutError" || /\babort|timed? ?out/i.test(error.message);
+}
+
+type GatewayReply = {
+  choices?: Array<{
+    finish_reason?: unknown;
+    message?: { content?: unknown; tool_calls?: Array<{ function?: { name?: unknown; arguments?: unknown } }> };
+  }>;
+};
+
+/** True when a 200 reply was cut off at its token cap (finish_reason "length"). */
+export function replyWasCutOff(data: unknown): boolean {
+  return (data as GatewayReply | null)?.choices?.[0]?.finish_reason === "length";
+}
+
+/** A reply's shape for a log line, never its words. docs/shared-notes.md#s14 */
+export function describeReply(data: unknown): string {
+  if (!data || typeof data !== "object") return `reply: ${data === null ? "null" : typeof data}`;
+  const keys = Object.keys(data as Record<string, unknown>).filter((k) => /^[A-Za-z_][\w-]{0,40}$/.test(k)).slice(0, 8);
+  const choices = (data as GatewayReply).choices;
+  const choice = Array.isArray(choices) ? choices[0] : undefined;
+  const message = choice?.message;
+  const content = message?.content;
+  const calls = Array.isArray(message?.tool_calls) ? message!.tool_calls! : [];
+  const finish = typeof choice?.finish_reason === "string" && /^[a-z_]{1,30}$/.test(choice.finish_reason) ? choice.finish_reason : choice?.finish_reason === undefined ? "none" : "?";
+  const called = calls.map((c) => {
+    const name = typeof c?.function?.name === "string" && /^[A-Za-z0-9_-]{1,64}$/.test(c.function.name) ? c.function.name : "?";
+    const args = c?.function?.arguments;
+    return `${name}: ${typeof args === "string" ? `${args.length} chars` : "no arguments"}`;
+  });
+  return [
+    `keys=[${keys.join(",")}]`,
+    `choices=${Array.isArray(choices) ? choices.length : "none"}`,
+    `finish_reason=${finish}`,
+    `content=${typeof content === "string" ? `${content.length} chars` : content === undefined || content === null ? "none" : typeof content}`,
+    `tool_calls=${calls.length}${called.length ? ` (${called.join(", ")})` : ""}`,
+  ].join(" ");
+}
+
+/** An error for a log line, without the text it read. docs/shared-notes.md#s15 */
+export function describeError(error: unknown): string {
+  if (error instanceof SyntaxError) {
+    const at = /\bposition (\d+)/.exec(error.message)?.[1];
+    if (at) return `SyntaxError at position ${at}`;
+    return /\bend of (?:JSON )?input\b/i.test(error.message) ? "SyntaxError at the end of the input" : "SyntaxError";
+  }
+  if (error instanceof Error) return `${error.name}: ${error.message.slice(0, 120)}`;
+  return typeof error;
+}
+
+/** What a usable-reply walk hands back: the caller's value, or a gateway refusal (429, 402) for its own handling. */
+export type UsableReply<T> =
+  | { ok: true; value: T; modelUsed: string }
+  | { ok: false; response: Response; modelUsed: string };
+
+export interface UsableReplyOptions<T> extends FallbackAIOptions {
+  /** A 200 reply to what is delivered, or null to refuse it. docs/shared-notes.md#s16 */
+  read: (data: unknown, modelUsed: string) => T | null | undefined;
+}
+
+/** The same chain, until a reply the caller can use. docs/shared-notes.md#s17 */
+export async function callAIForUsableReply<T>(
+  apiKey: string,
+  options: UsableReplyOptions<T>,
+): Promise<UsableReply<T>> {
+  const { read, attemptTimeoutMs, ...chain } = options;
+  const models = chain.models ?? DEFAULT_MODELS;
+  const context = chain.context ?? 'AI call';
+  const budgetMs = chain.deadlineMs ?? CHAIN_DEADLINE_MS;
+  const startedAt = Date.now();
+  const refused: string[] = [];
+  for (let i = 0; i < models.length;) {
+    const left = budgetMs - (Date.now() - startedAt);
+    if (left < MIN_ATTEMPT_MS) {
+      if (refused.length === 0) {
+        throw Object.assign(new Error(`${context}: timed out before any model answered`), { name: "TimeoutError" });
+      }
+      break;
+    }
+    const { response, modelUsed } = await callAIWithModelFallback(apiKey, {
+      ...chain,
+      models: models.slice(i),
+      deadlineMs: left,
+      ...(i === 0 && attemptTimeoutMs !== undefined ? { attemptTimeoutMs } : {}),
+    });
+    if (!response.ok) return { ok: false, response, modelUsed };
+    const data = await response.json().catch(() => null);
+    const cutOff = replyWasCutOff(data);
+    let value: T | null | undefined = null;
+    if (!cutOff) {
+      try {
+        value = read(data, modelUsed);
+      } catch {
+        value = null;
+      }
+    }
+    if (value !== null && value !== undefined) {
+      if (refused.length) console.log(`[${context}] usable reply from ${modelUsed} after ${refused.length} refused`);
+      return { ok: true, value, modelUsed };
+    }
+    const why = `${modelUsed} ${cutOff ? "was cut off at its token cap" : "gave no usable reply"} (${describeReply(data)})`;
+    refused.push(why);
+    console.warn(`[${context}] ${why}; asking the next model`);
+    const at = models.indexOf(modelUsed);
+    if (at < 0) break;
+    i = at + 1;
+  }
+  throw new UnusableModelOutput(`${context}: no usable reply (${refused.join("; ")})`);
+}
+
+/** The gateway's streamed reply to content deltas. docs/shared-notes.md#s18 */
 export function createGatewayDeltaReader(handlers: {
   onContent: (text: string) => void;
   onDone?: () => void;

@@ -352,7 +352,8 @@ describe("the deploy: trust/round3 is its own reservation, and the order holds",
     expect(L.workstreamOf(policy, "origin/trust/round3")).toBe("trust-round-3");
     expect(L.workstreamOf(policy, "trust/pages")).toBe("oracle-regionless");
     expect(policy.reservations["trust-round-3"]).toMatchObject({ jobBoard: "2026-09-09.96", migrations: expect.stringMatching(/^20261026\*/), fnBuildDate: "2026-10-26" });
-    expect(policy.reservations["company-profiles-phase3"].jobBoard).toBe("2026-09-09.97");
+    // .98 went to pd-job-board on 2026-11-01, so phase 3 moved past it.
+    expect(policy.reservations["company-profiles-phase3"].jobBoard).toBe("2026-09-09.99");
   });
   it("the scope migration waits for .96 to serve, and the names migration goes before it", () => {
     // A slice rule since the land/all recheck: the file waits for .96's first slice, which comes after its OPTIONS answer.

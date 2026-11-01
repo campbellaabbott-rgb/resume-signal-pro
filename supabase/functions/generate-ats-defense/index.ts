@@ -2,6 +2,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@18.5.0";
+import { CHAIN_DEADLINE_MS, callAIWithModelFallback, chainRanOutOfTime, describeError } from "../_shared/ai-fallback.ts";
 import { buildLanguageInstruction } from "../_shared/language-instruction.ts";
 import { assertPaidSession } from "../_shared/paid-session.ts";
 import { checkoutSessionSettled } from "../_shared/pass-settlement.ts";
@@ -12,7 +13,18 @@ import { isServiceRoleCaller } from "../_shared/service-caller.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "generate-ats-defense.2026-10-11.24";
+// 2026-10-28.1 (S13-001's sibling, fix/full-analysis-timeout): gpt-5 is asked
+// through the shared chain (_shared/ai-fallback.ts) with the same 90 s
+// attempt: an attempt that ran out of time is not made again (it was made up
+// to three times, past the platform's 150 s), a server error is asked again
+// once, and the call ends inside 125 s of the request. Body (model, messages,
+// tools, tool_choice), model and the 504/503/500 answers are unchanged. A
+// tool call whose arguments do not parse is logged by the parse error's
+// position only (describeError, recheck of S13-064), never the error
+// itself, whose message quoted the report text around it.
+// Nothing of main's past f8d72a9b, the build the 2026-10-31 deploy put live,
+// rides along.
+const FN_BUILD = "generate-ats-defense.2026-10-28.1";
 /** Reports one purchase may generate in a day (regenerations included). */
 const ATS_DEFENSE_PER_PURCHASE_DAY = 10;
 
@@ -539,86 +551,45 @@ Analyze this resume for ATS compatibility and provide a complete ATS Defense rep
 
     console.log("[ATS-DEFENSE] Calling AI gateway");
 
-    // Retry logic with timeout cap
-    const maxRetries = 2;
-    const REQUEST_TIMEOUT_MS = 90000; // 90 seconds for this complex analysis
-    const RETRY_DELAY_MS = 2000;
-    let lastError: Error | null = null;
-    let response: Response | null = null;
-
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-        
-        console.log(`[ATS-DEFENSE] API call attempt ${attempt + 1}/${maxRetries + 1}`);
-        
-        response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${LOVABLE_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: "openai/gpt-5",
-            messages: [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: userMessage }
-            ],
-            tools: getATSDefenseTools(),
-            tool_choice: { type: "function", function: { name: "submit_ats_defense_report" } }
-          }),
-          signal: controller.signal,
-        });
-        
-        clearTimeout(timeoutId);
-        
-        // If we got a response (success or client error), break out
-        if (response.ok || (response.status >= 400 && response.status < 500)) {
-          break;
-        }
-        
-        // Server errors - retry
-        if (response.status >= 500 && attempt < maxRetries) {
-          const errorText = await response.text();
-          console.log(`[ATS-DEFENSE] Server error ${response.status}, retrying...`, errorText.substring(0, 200));
-          lastError = new Error(`Server error: ${response.status}`);
-          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS * (attempt + 1)));
-          response = null;
-          continue;
-        }
-        
-        break;
-        
-      } catch (fetchError) {
-        const errorMessage = fetchError instanceof Error ? fetchError.message : String(fetchError);
-        
-        if (errorMessage.includes('aborted')) {
-          console.log(`[ATS-DEFENSE] Request timed out after ${REQUEST_TIMEOUT_MS}ms`);
-          lastError = new Error(`Request timed out after ${REQUEST_TIMEOUT_MS / 1000}s`);
-        } else {
-          console.error(`[ATS-DEFENSE] Fetch attempt ${attempt + 1}/${maxRetries + 1} failed:`, errorMessage);
-          lastError = fetchError as Error;
-        }
-        
-        if (attempt < maxRetries) {
-          const delay = RETRY_DELAY_MS * (attempt + 1);
-          console.log(`[ATS-DEFENSE] Retrying in ${delay}ms...`);
-          await new Promise(resolve => setTimeout(resolve, delay));
-        }
-      }
-    }
-
-    if (!response) {
-      console.error("[ATS-DEFENSE] All retry attempts failed:", lastError?.message);
-      
-      if (lastError?.message.includes('timed out') || lastError?.message.includes('timeout')) {
+    // ONE ATTEMPT THAT RAN OUT OF TIME IS NOT MADE AGAIN (S13-001's sibling).
+    // gpt-5 was asked up to three times at 90 s each with no deadline, so a
+    // slow gateway ran the delivery to the platform's 150 s, whose 504 the
+    // webhook and the retry sweep cannot tell from a crash. The shared chain
+    // (_shared/ai-fallback.ts) asks gpt-5 alone, as before, with the same 90 s
+    // attempt; a timeout is not retried, a server error is asked again once,
+    // and the whole call ends inside 125 s of the request. The body is the
+    // one this function always sent: model, messages, tools, tool_choice.
+    let response: Response;
+    try {
+      ({ response } = await callAIWithModelFallback(LOVABLE_API_KEY, {
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userMessage }
+        ],
+        tools: getATSDefenseTools(),
+        toolChoice: { type: "function", function: { name: "submit_ats_defense_report" } },
+        models: ["openai/gpt-5"],
+        attemptTimeoutMs: 90_000, // this complex analysis' attempt, as before
+        deadlineMs: startTime + CHAIN_DEADLINE_MS - Date.now(),
+        context: "ATS-DEFENSE",
+      }));
+    } catch (chainError) {
+      const message = chainError instanceof Error ? chainError.message : String(chainError);
+      console.error("[ATS-DEFENSE] The model call failed:", message);
+      if (chainRanOutOfTime(chainError)) {
         return new Response(
           JSON.stringify({ error: "The AI took too long to respond. Please try again.", retryable: true }),
           { status: 504, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-      
+      // Every answer was a refusal (a server error asked twice, a 4xx): the
+      // 500 this function gave for a refused answer.
+      if (/all models failed/i.test(message)) {
+        return new Response(
+          JSON.stringify({ error: ERROR_MESSAGES.INTERNAL }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
       return new Response(
         JSON.stringify({ error: "AI service temporarily unavailable. Please try again in a few moments." }),
         { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -646,7 +617,8 @@ Analyze this resume for ATS compatibility and provide a complete ATS Defense rep
         analysis = JSON.parse(toolCall.function.arguments);
         console.log("[ATS-DEFENSE] Successfully parsed tool call response");
       } catch (parseError) {
-        console.error("[ATS-DEFENSE] Failed to parse tool call:", parseError);
+        // Its name and position, never the report text it quotes (S13-064).
+        console.error("[ATS-DEFENSE] Failed to parse tool call:", describeError(parseError));
         return new Response(
           JSON.stringify({ error: ERROR_MESSAGES.INTERNAL }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
