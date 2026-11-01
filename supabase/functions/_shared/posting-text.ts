@@ -386,6 +386,16 @@ export function dropHiddenElements(html: string): string {
   const special = new Marks(SPECIAL);
   const markers = new Marks(MARKERS);
   const marks = [p, li, definition, cell, row, heading, defaultScope, buttonScope, listItemScope, listStop, definitionStop, tableScope, special, markers];
+  /** The marks a name is kept in, worked out once per name rather than per push and pop. */
+  const marksOf = new Map<string, Marks[]>();
+  const marksFor = (name: string): Marks[] => {
+    let found = marksOf.get(name);
+    if (!found) {
+      found = marks.filter((m) => m.names.has(name));
+      marksOf.set(name, found);
+    }
+    return found;
+  };
   let hiddenDepth = 0;
   // Hidden formatting elements a browser would rebuild around the next text,
   // each with the marker depth it was opened at: it hides only at that depth.
@@ -423,7 +433,7 @@ export function dropHiddenElements(html: string): string {
   };
 
   const push = (name: string, tag: string, hidden: boolean, bySight: boolean) => {
-    for (const m of marks) if (m.names.has(name)) m.at.push(stack.length);
+    for (const m of marksFor(name)) m.at.push(stack.length);
     const at = openAt.get(name) ?? [];
     at.push(stack.length);
     openAt.set(name, at);
@@ -440,7 +450,7 @@ export function dropHiddenElements(html: string): string {
    */
   const pop = (implied: boolean, ownEnd = false) => {
     const top = stack.pop()!;
-    for (const m of marks) if (m.names.has(top.name)) m.at.pop();
+    for (const m of marksFor(top.name)) m.at.pop();
     openAt.get(top.name)?.pop();
     if (top.hidden) hiddenDepth--;
     if (!ownEnd && top.bySight && FORMATTING.has(top.name)) linger(top.name);

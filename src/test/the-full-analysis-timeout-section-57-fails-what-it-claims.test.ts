@@ -158,5 +158,6 @@ describe("each claim can fail", () => {
     expect(noChunk.filter((l) => l.startsWith("PASS") && /success page|report|English strings/.test(l))).toEqual([]);
     const noAsk = run({ success: "const nothing=1;" }).lines;
     expect(has(noAsk, "FAIL", /has no analyze-resume ask in the shape this line reads/), show(noAsk)).toBe(true);
-  });
+    // Two runs of the section in one case: past the 5 s default on a loaded machine.
+  }, 20_000);
 });

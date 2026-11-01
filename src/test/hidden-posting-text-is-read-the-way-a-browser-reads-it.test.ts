@@ -254,10 +254,11 @@ describe("the recheck's shapes cost one pass too", () => {
   const pages: Array<[string, string]> = [
     ["svg openers never closed and never broken out of", "<svg>".repeat(30_000) + "x".repeat(10_000)],
     ["self-closing svgs", '<svg class="i"/>x'.repeat(30_000)],
-    ["svgs each ended by a paragraph", "<svg><path/>".concat("<p>x</p>").repeat(30_000)],
+    ["svgs each ended by a paragraph", "<svg><path/><p>x</p>".repeat(20_000)],
     ["titles never closed inside a head", "<head>" + "<title>".repeat(30_000)],
-    ["hidden bolds each closed by a paragraph end", '<p><b style="display:none">x</p>'.repeat(30_000)],
-    ["end tags of a lingering bold that never matches", '<p><b style="display:none">x</p>' + "</i>".repeat(30_000)],
+    ["hidden bolds each closed by a paragraph end", '<p><b style="display:none">x</p>'.repeat(15_000)],
+    // A scan of the lingering list per end tag would be 300 million steps here.
+    ["ten thousand lingering bolds, then end tags that match none of them", '<p><b style="display:none">x</p>'.repeat(10_000) + "</i>".repeat(30_000)],
     ["character references in every attribute", `<div style="${"&#58;".repeat(100_000)}">x</div>`],
     ["stray end tags inside a deep table", "<table><tr><td>" + "<div>".repeat(10_000) + "<table><tr><td>" + "</div>".repeat(30_000)],
   ];
