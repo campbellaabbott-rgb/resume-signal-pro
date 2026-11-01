@@ -2,6 +2,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { CHAIN_DEADLINE_MS, callAIWithModelFallback, chainRanOutOfTime, describeReply } from "../_shared/ai-fallback.ts";
+import { checkInputLimits } from "../_shared/input-limits.ts";
 import { clipField, clipList, clipText, isServiceCaller, modelSpendGate } from "../_shared/model-spend-gate.ts";
 import { tailoredLanguageNote } from "../_shared/posting-language.ts";
 import { fencePosting, postingText, POSTING_DATA_RULE } from "../_shared/posting-text.ts";
@@ -22,8 +23,11 @@ import { refundWriting, writingChain, writingGate, type WritingPass } from "../_
 // 8,000 cap as max_tokens or max_completion_tokens, tools, tool_choice),
 // chains and reply are unchanged. A reply in an unexpected format is logged
 // by its shape and lengths (describeReply, S13-064), no longer as the whole
-// reply, which carried the person's résumé. Nothing of main's past f8d72a9b,
-// the build the 2026-10-31 deploy put live, rides along.
+// reply, which carried the person's résumé. The résumé reaches the model
+// whole (it was cut at 15,000 characters without a word, S13-008); one over
+// the shared 50,000-character cap is refused in the shared words before the
+// account's use is taken. Nothing of main's past f8d72a9b, the build the
+// 2026-10-31 deploy put live, rides along.
 const FN_BUILD = "generate-tailored-resume.2026-10-28.1";
 
 const corsHeaders = {
@@ -97,9 +101,12 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    // The résumé and posting are sliced where the prompt reads them (15,000 and
-    // 5,000); every other field is bounded here (defect sweep 1.64). A posting
-    // that arrives as HTML is read as the text a reader sees (S12-147).
+    // The résumé is read whole up to the shared cap and refused past it, before
+    // the account's use is taken (S13-008: it was cut at 15,000 characters
+    // without a word, losing a long résumé's later roles and certifications).
+    // The posting is sliced where the prompt reads it (5,000); every other
+    // field is bounded here (defect sweep 1.64). A posting that arrives as
+    // HTML is read as the text a reader sees (S12-147).
     const resumeText = typeof body?.resumeText === "string" ? body.resumeText : undefined;
     const jobDescription = typeof body?.jobDescription === "string" ? postingText(body.jobDescription) : undefined;
     const jobTitle = clipField(body?.jobTitle, 200);
@@ -111,6 +118,13 @@ serve(async (req) => {
     if (!resumeText || !jobTitle) {
       return new Response(
         JSON.stringify({ error: 'Resume text and job title are required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    const limitError = checkInputLimits({ resumeText });
+    if (limitError) {
+      return new Response(
+        JSON.stringify({ error: limitError }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -192,7 +206,7 @@ ${matchingSkills?.length ? `\nMATCHING SKILLS TO EMPHASIZE: ${matchingSkills.joi
 ${missingSkills?.length ? `\nGAP SKILLS TO ADDRESS WITH TRANSFERABLE EXPERIENCE: ${missingSkills.join(', ')}` : ''}
 
 CANDIDATE'S RESUME:
-${resumeText.slice(0, 15000)}
+${resumeText}
 
 Provide enhancement suggestions. Remember: suggest how to IMPROVE wording, not what to remove.`;
 
