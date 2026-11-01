@@ -7,7 +7,7 @@ import { detectIndustry as detectIndustryShared } from "./industry-detection.ts"
 // 52-market resume standards must run HERE to reach users (the non-stream
 // free-keyword-scan has copies but is never invoked by the client). Modules are
 // byte-identical copies of free-keyword-scan/*.ts — keep them in sync.
-import { detectCountryFromResume, effectiveCountryOf } from "./market-intelligence.ts";
+import { detectCountryFromResume, effectiveCountryOf, phraseMatchesResume, resumeHasTerm } from "./market-intelligence.ts";
 import { resolveLanguageName } from "../_shared/language-instruction.ts";
 import { FIXED_CHOICES_STAY_ENGLISH, normalizeScanReport } from "../_shared/scan-report-shape.ts";
 import { functionCeiling } from "../_shared/model-spend-gate.ts";
@@ -7321,21 +7321,13 @@ function computeIndustryKeywordSuggestions(
     return null;
   }
   
-  const resumeLower = resumeText.toLowerCase();
   const present: IndustryKeywordSuggestion[] = [];
   const missing: IndustryKeywordSuggestion[] = [];
   
   for (const kw of industryConfig.keywords) {
-    const keywordLower = kw.keyword.toLowerCase();
-    // Check for keyword presence with variations
-    const variations = [
-      keywordLower,
-      keywordLower.replace(/\s+/g, ''),
-      keywordLower.replace(/\//g, ''),
-      keywordLower.replace(/&/g, 'and'),
-    ];
-    
-    const isPresent = variations.some(v => resumeLower.includes(v));
+    // The primary's presence test (S13-004): a token of its own, never a
+    // substring, so "git" is not in "digital" and "rest" not in "interest".
+    const isPresent = resumeHasTerm(resumeText, kw.keyword);
     
     if (isPresent) {
       present.push({ ...kw, present: true });
@@ -7635,7 +7627,7 @@ serve(async (req) => {
       // the résumé the IP country decides it, so it is part of the key
       // (sweep S8-070; the wave 2 notes' open follow-up).
       const keyCountry = effectiveCountryOf(validTargetCountry, detectCountryFromResume(resumeText), ipCountry);
-      const cacheInput = `v6|${normalizedResume}|${normalizedJob}|${keyCountry}|${languageKey}`;
+      const cacheInput = `v7|${normalizedResume}|${normalizedJob}|${keyCountry}|${languageKey}`;
       const cacheKey = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(cacheInput))
         .then(hash => Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join(''))
         .then(hex => hex.substring(0, 32));
@@ -8902,42 +8894,11 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
           const keyword = (kw.keyword || '').toLowerCase().trim();
           if (!keyword) return false;
           
-          const resumeLower = resumeText.toLowerCase();
-          
-          // Common keyword variations to check
-          const variations: Record<string, string[]> = {
-            'react': ['react', 'reactjs', 'react.js'],
-            'node': ['node', 'nodejs', 'node.js'],
-            'aws': ['aws', 'amazon web services', 'amazon aws'],
-            'javascript': ['javascript', 'js', 'ecmascript'],
-            'typescript': ['typescript', 'ts'],
-            'python': ['python', 'py'],
-            'docker': ['docker', 'containerization'],
-            'kubernetes': ['kubernetes', 'k8s'],
-            'github': ['github', 'git'],
-            'postgresql': ['postgresql', 'postgres', 'psql'],
-            'mongodb': ['mongodb', 'mongo'],
-            'graphql': ['graphql', 'gql'],
-            'rest api': ['rest api', 'restful', 'rest'],
-            'ci/cd': ['ci/cd', 'cicd', 'continuous integration', 'continuous deployment'],
-            'agile': ['agile', 'scrum', 'kanban'],
-            'salesforce': ['salesforce', 'sfdc', 'crm'],
-          };
-          
-          // Check if keyword or any variation exists in resume
-          const keywordBase = keyword.replace(/[^a-z0-9]/g, '');
-          const toCheck = variations[keyword] || variations[keywordBase] || [keyword];
-          
-          for (const variant of toCheck) {
-            if (resumeLower.includes(variant)) {
-              console.log(`[KEYWORD-FILTER] Filtered out "${keyword}" - already present as "${variant}"`);
-              return false;
-            }
-          }
-          
-          // Also do a direct check for the keyword itself
-          if (resumeLower.includes(keyword)) {
-            console.log(`[KEYWORD-FILTER] Filtered out "${keyword}" - direct match found`);
+          // The primary's presence test (S13-004). The variations table this
+          // replaced read "ts" in "results" as TypeScript, "git" in "digital" as
+          // GitHub, "rest" in "interest" as REST API and "crm" as Salesforce.
+          if (phraseMatchesResume(keyword, resumeText)) {
+            console.log(`[KEYWORD-FILTER] Filtered out "${keyword}" - on the résumé`);
             return false;
           }
           
