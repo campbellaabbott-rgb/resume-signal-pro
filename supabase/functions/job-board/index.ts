@@ -113,7 +113,7 @@ import {
 import { splitTombstoned, type Tombstone } from "./tombstone.ts";
 import { laneRows, stampKeyOfJob, stampPlan, stampRows } from "./verification-stamp.ts";
 import { isStateCodeAlias, locationBranch, partMatchesTerm } from "./location-match.ts";
-import { cursorAfterFailure, emptyFirstPage, emptyInsideLapTotal, lapTotal, stampFeedTotal, workdayWindowed } from "./read-window.ts";
+import { belowCapFloor, capLapCovers, cursorAfterFailure, emptyFirstPage, emptyInsideLapTotal, lapTotal, ORACLE_RESULT_CAP, resumeAt, stampFeedTotal, workdayWindowed } from "./read-window.ts";
 import { clearOversize, heldOversize, loadOversizeEntries, noteOversize, oversizeStatusRows } from "./oversize-registry.ts";
 import { startGate } from "./start-gate.ts";
 import { addLightReread, lightReread, lightRereadStats, type LightRereadStats } from "./light-reread.ts";
@@ -1090,7 +1090,7 @@ async function fetchWithTimeout(url: string, init?: RequestInit, limit = MAX_RES
     return bodyDeadline(res, bodyMs);
   };
   // Workday: English only where the runtime's language is refused (S8-003, n437).
-  const once = () => withWorkdayLanguage(url, init?.headers, send, discardBody);
+  const once = () => withWorkdayLanguage(url, init?.headers, send, discardBody, init?.body);
   const res = await once();
   // Rationale: docs/job-board-index-notes.md#n500-if-res-status
   if (res.status === 429) {
@@ -1186,7 +1186,7 @@ async function fetchPaylocity(s: JobSource): Promise<{ items: unknown[]; raw: st
 const UKG_PAGE = 50;
 const UKG_PAGE_CAP = 12; // 12 × 50 = 600 postings/board/pass
 const UKG_CHUNK = 4;     // same politeness ceiling as oracle/icims/adp
-async function fetchUkg(s: JobSource): Promise<{ items: unknown[]; raw: unknown; windowed: boolean; feedTotal: number }> {
+async function fetchUkg(s: JobSource, startOffset = 0): Promise<{ items: unknown[]; raw: unknown; windowed: boolean; feedTotal: number; nextOffset: number; feedEnded: boolean; endOffset: number }> {
   const parts = ukgBoardParams(s.token);
   if (!parts) throw new Error("bad ukg token");
   const url = `https://${parts.pod}.ultipro.com/${parts.tenant}/JobBoard/${parts.board}/JobBoardView/LoadSearchResults`;
@@ -1203,7 +1203,7 @@ async function fetchUkg(s: JobSource): Promise<{ items: unknown[]; raw: unknown;
         const res = await fetchWithTimeout(url, {
           method: "POST",
           headers: { "Content-Type": "application/json", Accept: "application/json" },
-          body: JSON.stringify({ opportunitySearch: { Top: UKG_PAGE, Skip: page * UKG_PAGE, QueryString: "", OrderBy: [], Filters: [] } }),
+          body: JSON.stringify({ opportunitySearch: { Top: UKG_PAGE, Skip: startOffset + page * UKG_PAGE, QueryString: "", OrderBy: [], Filters: [] } }),
         });
         if (!res.ok) { discardBody(res); if (page === 0) throw new Error(`HTTP ${res.status}`); return null; }
         return res;
@@ -1231,10 +1231,8 @@ async function fetchUkg(s: JobSource): Promise<{ items: unknown[]; raw: unknown;
       }
     } finally { discardRest(responses, read); }
   }
-  // Same refusal guard as every other vendor: an empty read against a non-zero
-  // advertised total is a rate-limit or a bot-wall, not an empty board.
-  if (all.length === 0 && feedTotal > 0) throw new Error(`empty page but total=${feedTotal}`);
-  return { items: all, raw: { opportunities: all }, windowed: !exhausted, feedTotal };
+  // The cursor contract of fetchOracle (S10-004, n1431).
+  return { items: all, raw: { opportunities: all }, ...resumeAt(startOffset, all.length, feedTotal, exhausted) };
 }
 
 // Rationale: docs/job-board-index-notes.md#n027-adp-page
@@ -1243,12 +1241,12 @@ const ADP_PAGE_CAP = 15; // 15 × 20 = 300 postings/board/pass
 // Four concurrent page fetches per board, matching the census tooling's
 // politeness ceiling — same chunking rationale as oracle and icims.
 const ADP_CHUNK = 4;
-async function fetchAdp(s: JobSource): Promise<{ items: unknown[]; raw: unknown; windowed: boolean; feedTotal: number }> {
+async function fetchAdp(s: JobSource, startOffset = 0): Promise<{ items: unknown[]; raw: unknown; windowed: boolean; feedTotal: number; nextOffset: number; feedEnded: boolean; endOffset: number }> {
   const { cid, ccId } = adpBoardParams(s.token);
   if (!cid) throw new Error("bad adp token");
   const base = "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions";
   const pageUrl = (p: number) =>
-    `${base}?cid=${cid}&ccId=${ccId}&timeStamp=${Date.now()}&lang=en_US&locale=en_US&$top=${ADP_PAGE}&$skip=${1 + p * ADP_PAGE}`;
+    `${base}?cid=${cid}&ccId=${ccId}&timeStamp=${Date.now()}&lang=en_US&locale=en_US&$top=${ADP_PAGE}&$skip=${1 + startOffset + p * ADP_PAGE}`;
   const pageCap = Math.max(1, s.pages ?? ADP_PAGE_CAP);
   const all: unknown[] = [];
   let feedTotal = 0;
@@ -1288,8 +1286,7 @@ async function fetchAdp(s: JobSource): Promise<{ items: unknown[]; raw: unknown;
     } finally { discardRest(responses, read); }
   }
   // Rationale: docs/job-board-index-notes.md#n507-if-all-length-feedtotal-throw-new
-  if (all.length === 0 && feedTotal > 0) throw new Error(`empty page but total=${feedTotal}`);
-  return { items: all, raw: { jobRequisitions: all }, windowed: !exhausted, feedTotal };
+  return { items: all, raw: { jobRequisitions: all }, ...resumeAt(startOffset, all.length, feedTotal, exhausted) };
 }
 
 // Rationale: docs/job-board-index-notes.md#n028-
@@ -1422,7 +1419,7 @@ async function fetchWorkday(s: JobSource, startOffset = 0): Promise<{ jobPosting
 }
 
 // Rationale: docs/job-board-index-notes.md#n032-fetchoracle
-async function fetchOracle(s: JobSource, startOffset = 0): Promise<{ items: unknown[]; raw: unknown; windowed: boolean; feedTotal: number; nextOffset: number; feedEnded: boolean; endOffset: number }> {
+async function fetchOracle(s: JobSource, startOffset = 0): Promise<{ items: unknown[]; raw: unknown; windowed: boolean; feedTotal: number; nextOffset: number; feedEnded: boolean; endOffset: number; capFloor?: string }> {
   const site = s.token.split("~")[2], host = oracleHost(s.token);
   if (!host) throw new Error("bad oracle token");
   const base = `https://${host}/hcmRestApi/resources/latest/recruitingCEJobRequisitions`;
@@ -1436,7 +1433,8 @@ async function fetchOracle(s: JobSource, startOffset = 0): Promise<{ items: unkn
   const ORACLE_CHUNK = 4;
   outer: for (let start = 0; start < oraclePageCap; start += ORACLE_CHUNK) {
     const pages: number[] = [];
-    for (let p = start; p < Math.min(start + ORACLE_CHUNK, oraclePageCap); p++) pages.push(p);
+    for (let p = start; p < Math.min(start + ORACLE_CHUNK, oraclePageCap); p++) if (startOffset + (p + 1) * ORACLE_PAGE_SIZE <= ORACLE_RESULT_CAP) pages.push(p);
+    if (!pages.length) break;
     // Fetch concurrently, read one at a time — see MAX_RESPONSE_BYTES.
     const responses = await Promise.all(pages.map(async (page) => {
       try {
@@ -1475,9 +1473,13 @@ async function fetchOracle(s: JobSource, startOffset = 0): Promise<{ items: unkn
   if (empty === "refused") throw new Error(`empty page but total=${feedTotal}`);
   if (empty) exhausted = empty === "ended";
   const advancedOr = startOffset + all.length;
-  const nextOffset = exhausted || empty === "restart" || (feedTotal > 0 && advancedOr >= feedTotal) ? 0 : advancedOr;
+  // At the vendor's cap: the end only when the total says so, else a wrap naming its floor (S10-003, n1430).
+  const atCap = !exhausted && advancedOr >= ORACLE_RESULT_CAP;
+  if (atCap && feedTotal <= advancedOr) exhausted = true;
+  const capFloor = atCap && !exhausted ? String((all.at(-1) as { PostedDate?: string } | undefined)?.PostedDate ?? "") : undefined;
+  const nextOffset = exhausted || capFloor !== undefined || empty === "restart" || (feedTotal > 0 && advancedOr >= feedTotal) ? 0 : advancedOr;
   // Rationale: docs/job-board-index-notes.md#n034-return-items-all-raw-items-all-window
-  return { items: all, raw: { items: all }, windowed: !exhausted || startOffset > 0, feedTotal, nextOffset, feedEnded: exhausted, endOffset: advancedOr };
+  return { items: all, raw: { items: all }, windowed: !exhausted || startOffset > 0, feedTotal, nextOffset, feedEnded: exhausted, endOffset: advancedOr, capFloor };
 }
 
 /** iCIMS page sizes, largest first: a first page over the byte bound is retried smaller (n414). */
@@ -1486,7 +1488,8 @@ const ICIMS_SIZE_HINT = new Map<string, number>();
 
 // Rationale: docs/job-board-index-notes.md#n516-async-function-fetchicims-s-jobsource-st
 async function fetchIcims(s: JobSource, startOffset: number, pageSize: number): Promise<{ items: unknown[]; windowed: boolean; feedTotal: number; nextOffset: number; feedEnded: boolean; endOffset: number }> {
-  const ICIMS_MAX_PAGES = Math.max(1, s.pages ?? 12), ICIMS_CHUNK = 5;
+  // A chunk asks only for pages the visit can keep (S13-035, n1432).
+  const ICIMS_MAX_PAGES = Math.max(1, s.pages ?? 12), ICIMS_CHUNK = Math.min(5, Math.ceil(MAX_POSTINGS_PER_VISIT / pageSize));
   const startPage = Math.floor(startOffset / pageSize) + 1;
   // Where the first page really starts: a cursor from another page size may fall inside one.
   const base = (startPage - 1) * pageSize;
@@ -1499,7 +1502,7 @@ async function fetchIcims(s: JobSource, startOffset: number, pageSize: number): 
       const res = await fetchWithTimeout(`https://${s.token}/api/jobs?page=${page}&limit=${pageSize}${s.brand ? `&brand=${encodeURIComponent(s.brand)}` : ""}`, {
         headers: { Accept: "application/json" },
       });
-      if (!res.ok) { discardBody(res); throw new Error(`HTTP ${res.status}`); }
+      if (!res.ok) { discardBody(res); if (page === startPage) throw new Error(`HTTP ${res.status}`); return null; }
       return res;
     } catch (e) { return chunkPageRefusal(e, page === startPage); }
   };
@@ -1694,11 +1697,11 @@ async function fetchBoard(
   onFail?: (reason: string) => void,
   // Rationale: docs/job-board-index-notes.md#n522-startoffset
   startOffset = 0,
-): Promise<{ jobs: JobPosting[]; raw: unknown; windowed?: boolean; feedTotal?: number; nextOffset?: number; feedEnded?: boolean; endOffset?: number } | null> {
+): Promise<{ jobs: JobPosting[]; raw: unknown; windowed?: boolean; feedTotal?: number; nextOffset?: number; feedEnded?: boolean; endOffset?: number; capFloor?: string } | null> {
   try {
     if (s.source === "oracle") {
-      const { items, raw, windowed, feedTotal, nextOffset, feedEnded, endOffset } = await fetchOracle(s, startOffset);
-      return { jobs: normalizeOracle(items as never, s.name, s.token), raw, windowed, feedTotal, nextOffset, feedEnded, endOffset };
+      const { items, ...r } = await fetchOracle(s, startOffset);
+      return { jobs: normalizeOracle(items as never, s.name, s.token), ...r };
     }
     if (s.source === "icims") {
       // Rationale: docs/job-board-index-notes.md#n035-icims-page
@@ -1736,16 +1739,16 @@ async function fetchBoard(
       return { jobs, raw, windowed, feedTotal };
     }
     if (s.source === "ukg") {
-    const { items, raw, windowed, feedTotal } = await fetchUkg(s);
-    return { jobs: normalizeUkg(items as never, s.name, s.token), raw, windowed, feedTotal };
+    const { items, ...r } = await fetchUkg(s, startOffset);
+    return { jobs: normalizeUkg(items as never, s.name, s.token), ...r };
   }
   if (s.source === "paylocity") {
       const { items, raw } = await fetchPaylocity(s);
       return { jobs: normalizePaylocity(items as never, s.name, s.token), raw };
     }
     if (s.source === "adp") {
-      const { items, raw, windowed, feedTotal } = await fetchAdp(s);
-      return { jobs: normalizeAdp(items as never, s.name, s.token), raw, windowed, feedTotal };
+      const { items, ...r } = await fetchAdp(s, startOffset);
+      return { jobs: normalizeAdp(items as never, s.name, s.token), ...r };
     }
     if (s.source === "workday") {
       const { jobPostings, raw, windowed, feedTotal, nextOffset, feedEnded, endOffset } = await fetchWorkday(s, startOffset);
@@ -3325,9 +3328,9 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             const totalRef = Math.max(totalNow, 0);
             const tailSlack = Math.min(LAP_TAIL_SLACK, Math.floor((1 - LAP_COVERAGE_MIN) * totalRef));
             if (r.nextOffset === 0 && cursorBefore > 0 && rec.f === 0 &&
-                r.feedEnded === true && !emptyInsideLapTotal(cursorBefore, r.endOffset, rec.t0) &&
-                totalRef > 0 && totalNow >= LAP_COVERAGE_MIN * rec.t0 &&
-                lapSeen >= totalRef - tailSlack) {
+                (typeof r.capFloor === "string" ? capLapCovers(lapSeen, r.capFloor, freshCutoffMs)
+                  : r.feedEnded === true && !emptyInsideLapTotal(cursorBefore, r.endOffset, rec.t0) && lapSeen >= totalRef - tailSlack) &&
+                totalRef > 0 && totalNow >= LAP_COVERAGE_MIN * rec.t0) {
               lapProven = true;
             }
           }
@@ -3533,7 +3536,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           title?: string | null; location?: string | null; country?: string | null;
           apply_url?: string | null; work_mode?: string | null; remote?: boolean | null;
           salary?: string | null; agency?: boolean | null; employment_type?: string | null;
-          region_code?: string | null; first_seen?: string | null;
+          region_code?: string | null; first_seen?: string | null; posted_at?: string | null;
           /** Which lap last SERVED this row. See deepLaps. Absent/NULL = never, or not read this visit. */
           lap_epoch?: number | null;
         };
@@ -3548,7 +3551,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           // Rationale: docs/job-board-index-notes.md#n094-res
           let res = await client
             .from("job_board_postings")
-            .select("id,lap_epoch,missing_since,title,location,country,region_code,apply_url,work_mode,employment_type,remote,salary,agency,first_seen")
+            .select("id,lap_epoch,missing_since,title,location,country,region_code,apply_url,work_mode,employment_type,remote,salary,agency,first_seen,posted_at")
             .eq("company_token", s.token)
             .order("id")
             .range(from, from + 999);
@@ -3771,7 +3774,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             console.warn(`[JOB-BOARD] aged-out check skipped for ${s.token}:`, String((e as Error)?.message ?? e).slice(0, 120));
           }
         }
-        const vanishedAll = [...existing].filter((id) => !liveIds.has(id));
+        const vanishedAll = [...existing].filter((id) => !liveIds.has(id) && (agedOutIds.has(id) || !belowCapFloor(existingById.get(id)?.posted_at, r.capFloor)));
 
         // Rationale: docs/job-board-index-notes.md#n100-grace-ms
         const GRACE_MS = 5 * 60 * 1000;

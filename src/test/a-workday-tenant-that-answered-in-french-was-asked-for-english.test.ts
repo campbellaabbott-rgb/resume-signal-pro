@@ -24,6 +24,18 @@ import * as requestHeaders from "../../supabase/functions/job-board/request-head
  * request-headers.ts exports) against stand-in tenants. Only the network
  * address is redirected; the host the language is decided from is the
  * tenant's own.
+ *
+ * THE STAND-INS ARE THE MEASURED TENANTS (S8-003, n1433). Read 2026-11-01:
+ * 52 of the 53 Workday boards the 2026-10-25 corpus logged as HTTP 500
+ * (Truist, Geico, WVU Medicine UHA and WVUH, 7-Eleven, Wawa, Nordstrom,
+ * Signet, Red Robin...) answer the runtime's `*` with 500 ONLY on the list's
+ * first page, the one that carries the facets, and with 200 at offset 20,
+ * byte-identical to their en-US answer; 7-Eleven also refuses `*` past its
+ * last page (where Workday serves the first page again). The old stand-in
+ * refused every page, so the shipped rule passed it while every real one
+ * failed: a chunk-mate's 200 under `*` vetoed the first page's English retry
+ * on every visit. Desjardins, CBC/Radio-Canada and CDPQ answer the first page
+ * under `*` (200), so the rule never reaches them.
  */
 const FN = readFileSync(resolve(__dirname, "../../supabase/functions/job-board/index.ts"), "utf8");
 
@@ -39,7 +51,10 @@ type Tenant = (lang: string, nth: number, offset: number) => { status: number; t
 const FRENCH = "Conseiller ou conseillère, Gouvernance de l’IA";
 const ENGLISH = "Senior Advisor, Data governance";
 const bilingual: Tenant = (lang) => ({ status: 200, title: lang.startsWith("en") ? ENGLISH : FRENCH });
-const englishOnly: Tenant = (lang) => (lang.startsWith("en") ? { status: 200, title: "Teller" } : { status: 500 });
+// Refuses `*` on the list's first page (the facets) and nowhere else (Truist, Geico, WVU Medicine).
+const facetRefuser: Tenant = (lang, _nth, offset) => (!lang.startsWith("en") && offset === 0 ? { status: 500 } : { status: 200, title: "Teller" });
+// 7-Eleven: the first page, and offset 40 past its 21 postings, refuse `*`.
+const sevenEleven: Tenant = (lang, _nth, offset) => (!lang.startsWith("en") && (offset === 0 || offset === 40) ? { status: 500 } : { status: 200, title: "Team Member" });
 // Answers its default, then one passing 500, then its default again.
 const flaky: Tenant = (lang, nth, offset) => (nth === 2 ? { status: 500 } : bilingual(lang, nth, offset));
 // Its very first answer, in a fresh isolate, is a passing 500 (review 2026-10-10).
@@ -51,11 +66,14 @@ const oneBadPage: Tenant = (lang, nth, offset) =>
 const TENANTS: Record<string, Tenant> = {
   "desjardins.wd10.myworkdayjobs.com": bilingual,
   "cbcrc.wd3.myworkdayjobs.com": bilingual,
-  "truist.wd1.myworkdayjobs.com": englishOnly,
-  "geico.wd1.myworkdayjobs.com": englishOnly,
+  "truist.wd1.myworkdayjobs.com": facetRefuser,
+  "geico.wd1.myworkdayjobs.com": facetRefuser,
+  "wvumedicine.wd1.myworkdayjobs.com": facetRefuser,
+  "7eleven.wd3.myworkdayjobs.com": sevenEleven,
   "cdpq.wd10.myworkdayjobs.com": flaky,
   "bbva.wd3.myworkdayjobs.com": coldBlip,
   "hydroquebec.wd3.myworkdayjobs.com": oneBadPage,
+  "bnc.wd3.myworkdayjobs.com": flaky,
 };
 
 let server: Server;
@@ -141,12 +159,23 @@ describe("a Workday tenant is read in the language it answers by default", () =>
 
   it("a tenant seen answering the default is not re-read in English after one passing 500", async () => {
     const fetch = shippedFetch();
+    const page2 = { ...LIST_INIT, body: JSON.stringify({ limit: 20, offset: 20, searchText: "", appliedFacets: {} }) };
     const ok = await fetch(list("cdpq.wd10.myworkdayjobs.com", "CDPQ"), LIST_INIT);
     expect(await title(ok)).toBe(FRENCH);
-    const blip = await fetch(list("cdpq.wd10.myworkdayjobs.com", "CDPQ"), LIST_INIT);
+    const blip = await fetch(list("cdpq.wd10.myworkdayjobs.com", "CDPQ"), page2);
     expect(blip.status).toBe(500);
     await blip.body?.cancel();
     expect(asked("cdpq.wd10.myworkdayjobs.com")).toEqual(["*", "*"]);
+  });
+
+  it("a passing 500 on the facet page of a tenant seen answering the default is asked again in that language, never in English", async () => {
+    const host = "bnc.wd3.myworkdayjobs.com";
+    const fetch = shippedFetch();
+    expect(await title(await fetch(list(host, "BNC"), LIST_INIT))).toBe(FRENCH);
+    const again = await fetch(list(host, "BNC"), LIST_INIT);
+    expect(again.status, "one passing 500 failed the read").toBe(200);
+    expect(await title(again)).toBe(FRENCH);
+    expect(asked(host)).toEqual(["*", "*", "*"]);
   });
 
   it("a bilingual tenant whose first answer in a fresh isolate is a passing 500 is asked in its own language again, never in English", async () => {
@@ -172,6 +201,27 @@ describe("a Workday tenant is read in the language it answers by default", () =>
     const detail = await fetch("https://hydroquebec.wd3.myworkdayjobs.com/wday/cxs/hydroquebec/Emplois/job/Montreal/Monteur_R1");
     expect(await title(detail), "the rest of the site was read in English after one page's refusal").toBe(FRENCH);
     expect(asked(host)).not.toContain(requestHeaders.WORKDAY_ACCEPT_LANGUAGE);
+  });
+
+  it("a tenant whose facet page refuses the default is read on that page in English while its chunk-mates answer in the default (as fetchWorkday sends a chunk)", async () => {
+    const host = "wvumedicine.wd1.myworkdayjobs.com";
+    const fetch = shippedFetch();
+    const page = (n: number) => ({ ...LIST_INIT, body: JSON.stringify({ limit: 20, offset: n * 20, searchText: "", appliedFacets: {} }) });
+    const chunk = await Promise.all([0, 1, 2, 3].map((n) => fetch(list(host, "UHA"), page(n))));
+    expect(chunk.map((r) => r.status), "the first page failed and failed the whole visit").toEqual([200, 200, 200, 200]);
+    for (const r of chunk) expect(await title(r)).toBe("Teller");
+    expect(asked(host).filter((l) => l === requestHeaders.WORKDAY_ACCEPT_LANGUAGE), "only the refused facet page is asked in English").toHaveLength(1);
+  });
+
+  it("7-Eleven's first two pages (its 21 postings) are read in a fresh isolate, its first page in English", async () => {
+    const host = "7eleven.wd3.myworkdayjobs.com";
+    const fetch = shippedFetch();
+    const page = (n: number) => ({ ...LIST_INIT, body: JSON.stringify({ limit: 20, offset: n * 20, searchText: "", appliedFacets: {} }) });
+    const [p0, p1] = await Promise.all([0, 1].map((n) => fetch(list(host, "7eleven"), page(n))));
+    expect([p0.status, p1.status]).toEqual([200, 200]);
+    expect(await title(p0)).toBe("Team Member");
+    await p1.body?.cancel();
+    expect(asked(host)).toEqual(expect.arrayContaining(["*", requestHeaders.WORKDAY_ACCEPT_LANGUAGE]));
   });
 
   it("a caller that names its own language keeps it, and another vendor is left to the runtime", async () => {

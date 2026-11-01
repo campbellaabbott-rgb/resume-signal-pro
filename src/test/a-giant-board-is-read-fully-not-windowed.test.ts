@@ -34,7 +34,8 @@ describe("giant iCIMS boards are read fully without wedging a slice", () => {
   });
 
   it("pages fetch in bounded parallel chunks, and a short page ends the walk", () => {
-    expect(FN).toMatch(/ICIMS_CHUNK = 5/);
+    // At most five pages in flight, fewer when the visit's cap needs fewer (S13-035, n1432).
+    expect(FN).toMatch(/ICIMS_CHUNK = Math\.min\(5, Math\.ceil\(MAX_POSTINGS_PER_VISIT \/ pageSize\)\)/);
     // The early-exit must survive the chunking: a short page inside a chunk
     // ends the whole walk, or out-of-range pages would be read as data.
     expect(FN).toMatch(/break outer;/);

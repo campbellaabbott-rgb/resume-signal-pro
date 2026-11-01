@@ -115,3 +115,26 @@ export function cursorAfterFailure(cursor: number, streakBefore: number, failing
   if (typeof failingSinceMs === "number" && Number.isFinite(failingSinceMs) && nowMs - failingSinceMs < CURSOR_STRAND_MS) return cursor;
   return 0;
 }
+
+/** Oracle CE REST answers no page whose end passes offset 10,000 (n1430). */
+export const ORACLE_RESULT_CAP = 10_000;
+
+/** A walk that reached ORACLE_RESULT_CAP proves its lap only when its floor (the last readable row's posting date) is older than the fence (n1430). */
+export function capLapCovers(lapSeen: number, floor: string | null | undefined, fenceMs: number): boolean {
+  const f = Date.parse(String(floor ?? ""));
+  return lapSeen >= ORACLE_RESULT_CAP && f + 86_400_000 < fenceMs;
+}
+
+/** True when a capped read could not have reached a stored row: undated, or posted on or before the floor's day (n1430). */
+export function belowCapFloor(postedAt: string | null | undefined, floor: string | null | undefined): boolean {
+  return floor != null && !(Date.parse(String(postedAt ?? "")) >= Date.parse(floor) + 86_400_000);
+}
+
+/** Where a walk from `startOffset` resumes (UKG, ADP; n1431): the fetchOracle contract, and its refusal of an empty first page. */
+export function resumeAt(startOffset: number, fetched: number, feedTotal: number, exhausted: boolean) {
+  const empty = emptyFirstPage(startOffset, fetched, feedTotal);
+  if (empty === "refused") throw new Error(`empty page but total=${feedTotal}`);
+  const ended = empty ? empty === "ended" : exhausted, endOffset = startOffset + fetched;
+  const nextOffset = ended || empty === "restart" || (feedTotal > 0 && endOffset >= feedTotal) ? 0 : endOffset;
+  return { windowed: !ended || startOffset > 0, feedTotal, nextOffset, feedEnded: ended, endOffset };
+}
