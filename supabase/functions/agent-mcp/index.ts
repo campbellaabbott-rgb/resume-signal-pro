@@ -100,7 +100,7 @@ import { applyMyselfAnswer, applyMyselfMarkdown, type ApplyPosting } from "./app
 // The first search answers the question as asked: a place moved out of the
 // query (spec D2 §2.3). An employer name is resolved by job-board itself, one
 // rule for every spelling (sweep S12-080).
-import { readQuery, type QueryReading } from "./query-place.ts";
+import { type LocationReading, readLocation, readQuery, type QueryReading } from "./query-place.ts";
 // OpenAI's published ChatGPT egress as last read, for when the live list
 // cannot be (sweep S12-085).
 import { BUNDLED_CHATGPT_EGRESS_V4 } from "./chatgpt-egress.ts";
@@ -1031,6 +1031,7 @@ const DISCLOSURE_SCHEMA = {
   agenciesExcluded: { type: "boolean", description: "Row-selecting: agency postings are hidden from this page." },
   withheld: { type: "integer", description: "Rows on this page the connector may not hand on (the board's total still counts them)." },
   locationInterpreted: { type: "object", description: "What was read out of the query: the place moved to location or country, a trailing remote, and the words moved." },
+  locationReadAs: { type: "object", description: "The location sent, read as the filter it names: a country, remote, or a city in a country; location is the text still searched (absent: none)." },
   rankedFellBack: { type: "boolean", description: "The ranked search failed and the board answered with its fallback search: the order may be less relevant." },
   companiesResolved: { type: "array", description: "Employer names in companies, each with the board tokens it resolved to." },
   companiesUnresolved: { type: "array", description: "Names in companies that matched no single employer, or only a board with under 10 open roles (held: carried, but not searched under that name), each with up to five candidates to offer; nothing was searched for them: ask before using a candidate's token." },
@@ -1860,6 +1861,9 @@ type Prompt = {
 const argText = (v: string | undefined, max = 120): string =>
   JSON.stringify(String(v ?? "").replace(/\s+/g, " ").trim().slice(0, max));
 
+/** S9-002: a place that is only a country, or only remote, has its own argument. */
+const PLACE_ARGS = "a place that is only a country goes in country as its ISO-2 code instead, and only 'remote' as remote = true.";
+
 const PROMPTS: readonly Prompt[] = [
   {
     name: "browse_jobs",
@@ -1867,11 +1871,11 @@ const PROMPTS: readonly Prompt[] = [
     description: `Search the live board for a role and a place, read postings, check a shortlist is still open, and hand any posting to ${tool("apply_myself")}.`,
     arguments: [
       { name: "what", description: "The role, e.g. 'registered nurse' or 'React developer'.", required: false },
-      { name: "where", description: "City, state, country or 'remote'.", required: false },
+      { name: "where", description: "A city, state or metro (e.g. 'Austin, TX'), a country, or 'remote'.", required: false },
     ],
     body: (a) =>
       `1) Call ${tool("search_jobs")} with query = ${a.what?.trim() ? argText(a.what) : "the role I name (ask me if I have not)"}, ` +
-      `location = ${a.where?.trim() ? argText(a.where) : "the place I name (leave it out if I name none)"}, limit = ${ANON_SEARCH_LIMIT}. ` +
+      `location = ${a.where?.trim() ? argText(a.where) : "the place I name (leave it out if I name none)"}, limit = ${ANON_SEARCH_LIMIT}; ${PLACE_ARGS} ` +
       `Show the jobs as a table: title, employer, location, pay only when the card states it (salary, or salaryMinAnnual/salaryMaxAnnual), posted date. ` +
       `Relay ignoredFilters (a filter the board could not apply) and countUnavailable as the board says them. ` +
       `2) For more, call again with offset = nextOffset; if pageLimitReached is true, suggest narrowing the search instead. ` +
@@ -1884,13 +1888,13 @@ const PROMPTS: readonly Prompt[] = [
     title: "Find roles that fit my CV",
     description: "Read the job titles out of the CV in this chat (it is never sent to the server), search the live board for them, and check the shortlist is still open.",
     arguments: [
-      { name: "location", description: "City, state, country or 'remote'.", required: false },
+      { name: "location", description: "A city, state or metro (e.g. 'Austin, TX'), a country, or 'remote'.", required: false },
     ],
     body: (a) =>
       `1) Use the CV I gave in this chat; if there is none, ask me to paste it. Never invent one, and never send CV text to any tool. ` +
       `2) Read the job titles I have held, most recent first, and up to three skills. ` +
       `3) Call ${tool("search_jobs")} with query = the most recent title (then the next title if the first finds little), ` +
-      `location = ${a.location?.trim() ? argText(a.location) : "the place the CV or I name (leave it out if neither does)"}, limit = ${ANON_SEARCH_LIMIT}. ` +
+      `location = ${a.location?.trim() ? argText(a.location) : "the place the CV or I name (leave it out if neither does)"}, limit = ${ANON_SEARCH_LIMIT}; ${PLACE_ARGS} ` +
       `4) Call ${tool("check_jobs_open")} with the ids you are about to show. ` +
       `5) Show a table: title, employer, location, pay only when the card states it, posted date, and in a few words why it matches (titles and skills only). ` +
       `Relay ignoredFilters and countUnavailable as the board says them. ` +
@@ -2506,7 +2510,7 @@ async function servableSearchBody(args: Record<string, unknown>): Promise<Record
  * and names what it did (companiesResolved, companiesUnresolved,
  * companiesNotLookedUp, unknownCompanies); disclosures() forwards all four.
  */
-function searchAsMeant(input: Record<string, unknown>): { args: Record<string, unknown>; reading: QueryReading | null } {
+function searchAsMeant(input: Record<string, unknown>): { args: Record<string, unknown>; reading: QueryReading | null; place: LocationReading | null } {
   let args = { ...input };
   let reading: QueryReading | null = null;
   const set = (v: unknown) => v !== undefined && v !== null && v !== "";
@@ -2517,7 +2521,13 @@ function searchAsMeant(input: Record<string, unknown>): { args: Record<string, u
       args = { ...args, query: r.query, ...(r.location ? { location: r.location } : {}), ...(r.country ? { country: r.country } : {}), ...(r.remote ? { remote: true } : {}) };
     }
   }
-  return { args, reading };
+  // S9-002: a location that names a country, remote, or "City, Country" becomes that filter (readLocation).
+  const place = typeof args.location === "string" ? readLocation(args.location, { country: args.country, remote: args.remote, workMode: args.workMode }) : null;
+  if (place) {
+    const { location: _sent, ...rest } = args;
+    args = { ...rest, ...(place.location ? { location: place.location } : {}), ...(place.country ? { country: place.country } : {}), ...(place.remote ? { remote: true } : {}) };
+  }
+  return { args, reading, place };
 }
 
 /** The board's own notes on an employer scope: present whenever it read one by name. */
@@ -2543,10 +2553,10 @@ function unboundScope(asked: readonly string[], r: Record<string, unknown>): Rec
 }
 
 async function runSearchJobs(input: Record<string, unknown>, ctx: Ctx = KEYED_CTX): Promise<unknown> {
-  const { args, reading } = searchAsMeant(input);
+  const { args, reading, place } = searchAsMeant(input);
   const r = await board(await servableSearchBody(args), ctx);
   const unbound = unboundScope(companyTokens(args.companies), r);
-  if (unbound) return { ...unbound, ...(reading ? { locationInterpreted: reading } : {}) };
+  if (unbound) return { ...unbound, ...(reading ? { locationInterpreted: reading } : {}), ...(place ? { locationReadAs: place } : {}) };
   // How many rows the board answered, before the redistribution filter: a
   // count only, never the rows.
   const answered = Number((r.jobs as unknown[] | undefined)?.length ?? 0);
@@ -2554,6 +2564,7 @@ async function runSearchJobs(input: Record<string, unknown>, ctx: Ctx = KEYED_CT
   const offset = Math.max(0, Number(args.offset ?? 0) || 0);
   const out: Record<string, unknown> = { jobs: jobs.map((j) => compactJob(j, ctx)), ...disclosures(r) };
   if (reading) out.locationInterpreted = reading;
+  if (place) out.locationReadAs = place;
   // The board's `total` beside them still counts what it counted, so rows
   // dropped on the way out are NAMED (the reason is in board_stats, the
   // instructions and the guide; a card budget has no room for it per page).
@@ -4224,6 +4235,9 @@ async function answerUnkeyed(
   params: Record<string, unknown> = {},
 ): Promise<{ rpc: unknown; headers: Record<string, string> }> {
   const A = ANON_ALLOWANCE;
+  // Here, not at the door: a junk bearer or an unrecognised key also answers keyless (S13-103).
+  const past = pastKeylessPage(toolName, args);
+  if (past) return { rpc: rpcResult(rpcId, toolOk(past)), headers: {} };
   const address = callerAddress(req.headers);
   const edition = editionOf(req.headers, params);
   const claimsChatGpt = isChatGptCaller(req.headers, params);
@@ -4746,10 +4760,6 @@ Deno.serve(async (req) => {
     } catch (e) {
       if (e instanceof ToolArgumentError) return json(rpcResult(id, toolErr(e.message, e.fix)));
       throw e;
-    }
-    if (!bearer) {
-      const past = pastKeylessPage(toolName, toolArgs);
-      if (past) return json(rpcResult(id, toolOk(past)));
     }
   }
 
