@@ -512,10 +512,13 @@ describe("a filter over a column employers leave blank says so", () => {
     expect(JOBS_CODE).toContain("jobsPage.savedWithoutFilters");
     expect(JOBS_CODE, "the toast still names a filter that now rides along")
       .not.toMatch(/payBasis \? filterLabel/);
-    // The digest sends `companies: p.company ? [p.company] : undefined` — ONE
-    // element — so a comma-joined "a,b" reaches the board as a single employer
-    // token spelled "a,b" and matches nothing. Save what the runner honours.
-    expect(digest).toContain("companies: p.company ? [p.company] : undefined");
+    // The digest sends a LIST OF TOKENS: the saved `companies` array when the
+    // watch has one (an employer page's watch over the boards the bake pools,
+    // S12-021), else ONE element from `company`, so a comma-joined "a,b" saved
+    // in `company` reaches the board as a single employer token spelled "a,b"
+    // and matches nothing. Save what the runner honours.
+    expect(digest).toContain("companies: companiesOf(p),");
+    expect(digest).toMatch(/Array\.isArray\(p\.companies\)[\s\S]{0,200}: p\.company \? \[p\.company\] : undefined;/);
     expect(JOBS_CODE).toMatch(/company: companyTokens\.length === 1 \? companyTokens\[0\] : undefined,/);
   });
 });

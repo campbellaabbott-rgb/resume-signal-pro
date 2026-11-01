@@ -157,6 +157,8 @@ export interface LanderInput {
   boardTotal?: BoardTotalInput | null;
   /** EXTENSION (A3): served roles with no employer date (get_company_fill_curve.undated_open). */
   undatedOpen?: number | null;
+  /** EXTENSION (S12-021): the list counts this many of the employer's boards (the bake's pooled set). */
+  pooledBoards?: number | null;
   /** EXTENSION: the clock the 48-hour freshness rule reads (tests pin it). */
   now?: number;
 }
@@ -252,6 +254,8 @@ export interface LanderModel {
   boardTotal: BoardTotalFact | null;
   /** Served roles carrying no employer date, when the curve says (A3's "({{u}} more carry no date)"). */
   undatedOpen: number | null;
+  /** How many of the employer's boards the figure counts, when more than one (S12-021). */
+  pooledBoards: number | null;
   /** On the zero page only: what may be said about the board. */
   zeroReading: ZeroReading | null;
   /**
@@ -565,6 +569,7 @@ export function buildLanderModel(input: LanderInput): LanderModel {
     visitorFiltered: input.visitorFilters.length > 0,
     boardTotal: employerBoard ? boardTotalFact(input.boardTotal, input.now ?? Date.now()) : null,
     undatedOpen: employerBoard ? undated : null,
+    pooledBoards: employerBoard && typeof input.pooledBoards === "number" && input.pooledBoards > 1 ? input.pooledBoards : null,
     zeroReading: variant === "zero" ? zeroReadingOf(input) : null,
     watchPromise: variant === "zero" ? watchPromiseOf(input) : !siteDedupedToken(input.token),
     nameSettled: !input.loading && (input.error || input.budgetRefusal || finite(input.listTotal)),

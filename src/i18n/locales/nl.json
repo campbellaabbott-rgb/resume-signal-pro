@@ -4316,7 +4316,12 @@
     "seoPhraseCount": "{{n}} live vacatures",
     "seoPhraseCountBoards": "{{n}} live vacatures op {{boards}} vacaturebanken van bedrijven",
     "usajobsSeoDescriptionCount": "{{n}} federale vacatures op USAJOBS, elk met de eigen dienst. {{cap}} Check gratis hoe je cv past.",
-    "usajobsSeoDescription": "Federale vacatures op USAJOBS, elk met de eigen dienst. {{cap}} Check gratis hoe je cv past."
+    "usajobsSeoDescription": "Federale vacatures op USAJOBS, elk met de eigen dienst. {{cap}} Check gratis hoe je cv past.",
+    "resultsSummaryTitleOnly": "{{shown}} van {{total}} vacatures met je zoekopdracht in de titel getoond",
+    "relatedUnavailable": "Vacatures die je zoekopdracht alleen in de beschrijving noemen, konden nu niet worden doorzocht; ze worden hier niet geteld of getoond. Probeer het zo opnieuw.",
+    "watchNameBoards": "Nieuwe vacatures op vacatureborden met de naam ‘{{token}}’",
+    "watchSavedBoards": "Je volgt vacatureborden met de naam ‘{{token}}’",
+    "watchExistsBoards": "Je volgt vacatureborden met de naam ‘{{token}}’ al."
   },
   "accountPage": {
     "statusSaveFailed": "Kon die status niet opslaan — probeer het opnieuw.",

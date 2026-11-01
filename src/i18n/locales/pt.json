@@ -4344,7 +4344,12 @@
     "seoPhraseCount": "{{n}} vagas ao vivo",
     "seoPhraseCountBoards": "{{n}} vagas ao vivo em {{boards}} murais de vagas de empresas",
     "usajobsSeoDescriptionCount": "{{n}} vagas federais publicadas no USAJOBS, cada uma com sua agência. {{cap}} Confira grátis o encaixe do seu currículo.",
-    "usajobsSeoDescription": "Vagas federais publicadas no USAJOBS, cada uma com sua agência. {{cap}} Confira grátis o encaixe do seu currículo."
+    "usajobsSeoDescription": "Vagas federais publicadas no USAJOBS, cada uma com sua agência. {{cap}} Confira grátis o encaixe do seu currículo.",
+    "resultsSummaryTitleOnly": "A mostrar {{shown}} de {{total}} vagas com a sua pesquisa no título",
+    "relatedUnavailable": "As vagas que mencionam a sua pesquisa apenas na descrição não puderam ser pesquisadas agora, por isso não são contadas nem mostradas aqui. Tente novamente daqui a pouco.",
+    "watchNameBoards": "Novas vagas em portais chamados «{{token}}»",
+    "watchSavedBoards": "A acompanhar os portais chamados «{{token}}»",
+    "watchExistsBoards": "Já está a acompanhar os portais chamados «{{token}}»."
   },
   "accountPage": {
     "statusSaveFailed": "Não foi possível salvar esse status — tente novamente.",

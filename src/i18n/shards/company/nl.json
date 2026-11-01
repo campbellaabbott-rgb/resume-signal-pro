@@ -181,6 +181,7 @@
     "countedAgo": "geteld {{ago}}",
     "undatedMore": "({{u}} meer zonder datum)",
     "boardTotal_one": "Hun vacaturebord toonde in totaal {{total}} vacature toen we het {{ago}} lazen.",
-    "boardTotal_other": "Hun vacaturebord toonde in totaal {{total}} vacatures toen we het {{ago}} lazen."
+    "boardTotal_other": "Hun vacaturebord toonde in totaal {{total}} vacatures toen we het {{ago}} lazen.",
+    "pooledBoards": "Geteld over {{n}} vacatureborden in het wervingssysteem van deze werkgever"
   }
 }

@@ -22,6 +22,9 @@ export interface BoardJob {
   // 1-based ABSOLUTE rank (offset + index + 1). Position on the page would make
   // page two's first result look like a first-place click.
   rank?: number;
+  /** The offset of the list page that brought this row: the employer weave
+   *  runs within one page, so Load more appends below (S10-008). */
+  listOffset?: number;
   /**
    * WHICH HIRING SYSTEM THIS POSTING WAS READ FROM — greenhouse | workday | …
    *

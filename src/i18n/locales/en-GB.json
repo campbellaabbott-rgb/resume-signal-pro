@@ -4316,7 +4316,12 @@
     "seoPhraseCount": "{{n}} live openings",
     "seoPhraseCountBoards": "{{n}} live openings across {{boards}} company job boards",
     "usajobsSeoDescriptionCount": "{{n}} federal openings listed on USAJOBS, each naming its agency. {{cap}} Check your CV's fit free.",
-    "usajobsSeoDescription": "Federal openings listed on USAJOBS, each naming its agency. {{cap}} Check your CV's fit free."
+    "usajobsSeoDescription": "Federal openings listed on USAJOBS, each naming its agency. {{cap}} Check your CV's fit free.",
+    "resultsSummaryTitleOnly": "Showing {{shown}} of {{total}} openings with your search in the title",
+    "relatedUnavailable": "Postings that mention your search only in their description could not be searched just now, so they are not counted or listed here. Try again in a moment.",
+    "watchNameBoards": "New roles on boards named “{{token}}”",
+    "watchSavedBoards": "Watching boards named “{{token}}”",
+    "watchExistsBoards": "You're already watching boards named “{{token}}”."
   },
   "accountPage": {
     "statusSaveFailed": "Couldn't save that status — please try again.",
