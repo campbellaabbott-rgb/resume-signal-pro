@@ -38,6 +38,8 @@
  * tailored-resume stream answers 410 without reading anything.
  */
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { SET_OUTPUT_TOKENS } from "../../supabase/functions/generate-interview-coach/prep-set";
+import { THINKING_TOKENS } from "../../supabase/functions/_shared/ai-fallback";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
@@ -257,7 +259,10 @@ describe("the gate is in front of every public model endpoint", () => {
         for (const b of aiBodies) {
           const cap = (b.max_tokens ?? b.max_completion_tokens) as number | undefined;
           expect(typeof cap, `${c.fn} -> ${String(b.model)} sent no output cap`).toBe("number");
-          expect(cap!).toBeLessThanOrEqual(16_000);
+          // A sanity ceiling, except where a cap was measured above it: the
+          // interview prep set's largest legitimate reply plus the model's
+          // thinking (S10-009, prep-set.ts).
+          expect(cap!).toBeLessThanOrEqual(c.fn === "generate-interview-coach" ? SET_OUTPUT_TOKENS + THINKING_TOKENS : 16_000);
         }
       });
 
