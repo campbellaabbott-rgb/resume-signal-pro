@@ -106,12 +106,13 @@ function chain(result: unknown): unknown {
   return p;
 }
 
-async function callReal(name: string, init: { method?: string; body?: string; ua?: string; path?: string }) {
+async function callReal(name: string, init: { method?: string; body?: string; ua?: string; path?: string; auth?: string }) {
   const res = await handler(new Request(`https://harness.supabase.co/functions/v1/agent-mcp${init.path ?? ""}`, {
     method: init.method ?? "POST",
     headers: {
       "content-type": "application/json", accept: "application/json, text/event-stream", "x-forwarded-for": "203.0.113.7",
       ...(init.ua ? { "user-agent": init.ua } : {}),
+      ...(init.auth ? { authorization: init.auth } : {}),
       ...(init.method === "OPTIONS" ? { origin: "https://claude.ai", "access-control-request-method": "POST" } : {}),
     },
     ...(init.body !== undefined ? { body: init.body } : {}),
@@ -157,6 +158,10 @@ beforeAll(async () => {
   await callReal("tools", { body: rpcBody("tools/list") });
   await callReal("toolsGpt", { body: rpcBody("tools/list"), ua: GPT_UA });
   await callReal("prompts", { body: rpcBody("prompts/list") });
+  // resources/list as each caller: listing is free and answers before any key
+  // is read, so a pasted key string is all the keyed listing needs.
+  await callReal("resources", { body: rpcBody("resources/list") });
+  await callReal("resourcesKeyed", { body: rpcBody("resources/list"), auth: "Bearer rb_live_harness_listing_only" });
   await callReal("guide", { body: rpcBody("resources/read", { uri: "resumebooster://guide" }) });
   await callReal("stats", { body: rpcBody("tools/call", { name: "board_stats", arguments: {} }) });
   await callReal("search", { body: rpcBody("tools/call", { name: "search_jobs", arguments: { query: "nurse", location: "Texas", limit: 10 } }) });
@@ -247,7 +252,7 @@ const parse = (s: string) => JSON.parse(s) as Record<string, any>;
 
 describe("the free answers the sections read are the shipped connector's", () => {
   it("the real handler served every fixture the healthy run is built on", () => {
-    for (const k of ["options", "init", "tools", "toolsGpt", "prompts", "guide", "stats", "search", "badid", "null", "prm"]) expect(real[k], k).toBeTruthy();
+    for (const k of ["options", "init", "tools", "toolsGpt", "prompts", "resources", "resourcesKeyed", "guide", "stats", "search", "badid", "null", "prm"]) expect(real[k], k).toBeTruthy();
     expect(real.options.headers["x-fn-build"]).toMatch(/^agent-mcp\.2026-10-11\./);
     expect(parse(real.search.body).result.structuredContent.unkeyed).toMatchObject({ partition: "other", allowance: "connection", ipCap: 100, partitionCap: 4000, globalCap: 20000 });
     expect(real.search.headers["x-unkeyed-remaining"]).toBeTruthy();
@@ -485,14 +490,34 @@ describe("the wave-3 agent lines judge what replaced the agent once a wave-4 bui
     expect(has(blank, "FAIL", /\/agents crawler copy states the host allowance/), show(blank)).toBe(true);
   });
 
-  it("5n: a wave-4 prompt set is INFO, the retired tool's answer PASSes, and the PRM's 404 while sign-in is off PASSes", () => {
+  /** The 5n block, cut from the verifier and run in bash against the fake curl. */
+  const run5n = (routes: Route[], rb = ""): string[] => {
     const block = /echo "== 5n\/5q\.[\s\S]*?(?=\necho "== 5p\.)/.exec(SCRIPT)?.[0] ?? "";
     expect(block, "the 5n block is gone from verify-deploy.sh").toContain("prompts/list");
-    const retired = (() => { const r = parse(real.badid.body); r.result.content[0].text = JSON.stringify({ error: "The apply agent is switched off and this tool is retired: request_application belonged to it." }); r.result.isError = true; return JSON.stringify(r); })();
     const dir = mkdtempSync(join(tmpdir(), "vd-w4-5n-"));
     dirs.push(dir);
-    writeFileSync(join(dir, "5n.sh"), block);
-    const routes: Route[] = [
+    const prelude = `set -u\nK=pk_test; RB=${JSON.stringify(rb)}; B=https://p.supabase.co; SITE=https://site.test; UA=ua\n${HELPERS}\n`;
+    mkdirSync(join(dir, "bin"));
+    writeFileSync(join(dir, "bin", "curl"), FAKE_CURL);
+    chmodSync(join(dir, "bin", "curl"), 0o755);
+    writeFileSync(join(dir, "routes.json"), JSON.stringify(routes));
+    writeFileSync(join(dir, "calls.log"), "");
+    writeFileSync(join(dir, "run.sh"), prelude + block.split("/tmp/").join(`${dir}/`));
+    let out = "";
+    try {
+      out = execFileSync("bash", [join(dir, "run.sh")], {
+        env: { ...process.env, PATH: `${join(dir, "bin")}:${dirname(process.execPath)}:${process.env.PATH ?? ""}`, VD_ROUTES: join(dir, "routes.json"), VD_CALLS: join(dir, "calls.log") },
+        encoding: "utf8", timeout: 110_000, stdio: ["ignore", "pipe", "pipe"],
+      });
+    } catch (e) { out = String((e as { stdout?: string }).stdout ?? ""); }
+    return out.split("\n").filter(Boolean);
+  };
+  /** The verifier's two listings: the keyless one (id 4) and the keyed one (id 41). */
+  const KEYLESS_LIST = `^POST ${esc(MCP)} ua= .*"id":4,"method":"resources/list"`;
+  const KEYED_LIST = `^POST ${esc(MCP)} ua= .*"id":41,"method":"resources/list"`;
+  const routes5n = (over: { keyless?: Route; keyed?: Route } = {}): Route[] => {
+    const retired = (() => { const r = parse(real.badid.body); r.result.content[0].text = JSON.stringify({ error: "The apply agent is switched off and this tool is retired: request_application belonged to it." }); r.result.isError = true; return JSON.stringify(r); })();
+    return [
       fromReal("init", `^POST ${esc(MCP)} ua= .*"method":"initialize"`),
       fromReal("tools", `^POST ${esc(MCP)} ua= .*"method":"tools/list"`),
       fromReal("prompts", `^POST ${esc(MCP)} ua= .*"method":"prompts/list"`),
@@ -501,26 +526,55 @@ describe("the wave-3 agent lines judge what replaced the agent once a wave-4 bui
       fromReal("prm", `^GET ${esc(MCP)}/\\.well-known/oauth-protected-resource `),
       { match: "^GET https://p\\.supabase\\.co/rest/v1/rpc/", status: 401, body: JSON.stringify({ code: "42501" }) },
       { match: "^GET https://p\\.supabase\\.co/rest/v1/", status: 401, body: JSON.stringify({ code: "42501" }) },
-      { match: "^POST https://p\\.supabase\\.co/functions/v1/agent-mcp ua= .*resources/list", body: JSON.stringify({ result: { resources: [{}, {}, {}] } }) },
+      over.keyless ?? fromReal("resources", KEYLESS_LIST),
+      over.keyed ?? fromReal("resourcesKeyed", KEYED_LIST),
     ];
-    const prelude = `set -u\nK=pk_test; RB=""; B=https://p.supabase.co; SITE=https://site.test; UA=ua\n${HELPERS}\n`;
-    mkdirSync(join(dir, "bin"));
-    writeFileSync(join(dir, "bin", "curl"), FAKE_CURL);
-    chmodSync(join(dir, "bin", "curl"), 0o755);
-    writeFileSync(join(dir, "routes.json"), JSON.stringify(routes));
-    writeFileSync(join(dir, "calls.log"), "");
-    writeFileSync(join(dir, "run.sh"), prelude + block);
-    let out = "";
-    try {
-      out = execFileSync("bash", [join(dir, "run.sh")], {
-        env: { ...process.env, PATH: `${join(dir, "bin")}:${dirname(process.execPath)}:${process.env.PATH ?? ""}`, VD_ROUTES: join(dir, "routes.json"), VD_CALLS: join(dir, "calls.log") },
-        encoding: "utf8", timeout: 110_000, stdio: ["ignore", "pipe", "pipe"],
-      });
-    } catch (e) { out = String((e as { stdout?: string }).stdout ?? ""); }
-    const lines = out.split("\n").filter(Boolean);
+  };
+  const uris = (name: string) => ((parse(real[name].body).result?.resources ?? []) as Array<{ uri: string }>).map((r) => r.uri).sort();
+
+  it("5n: a wave-4 prompt set is INFO, the retired tool's answer PASSes, and the PRM's 404 while sign-in is off PASSes", () => {
+    const lines = run5n(routes5n());
     expect(has(lines, "INFO", /the wave-4 keyless prompt set, judged in section 82/), show(lines)).toBe(true);
     expect(has(lines, "PASS", /keyless request_application refused in band/), show(lines)).toBe(true);
     expect(has(lines, "PASS", /PRM answers 404 in words while sign-in is off/), show(lines)).toBe(true);
     expect(has(lines, "FAIL", /prompts\/list|request_application|PRM/), show(lines)).toBe(false);
+  });
+
+  /*
+   * resources/list (2026-10-31). The 5n line wanted three resources from a
+   * KEYLESS call, the wave-3 list, and its fixture here was three empty
+   * objects, not the connector's answer. Since wave 4 (5d79e1a5) the listing
+   * names only what the caller can use: a keyless caller the guide and the
+   * board statistics, and the key's own status only to a caller holding a
+   * credential. So the live verify after the 2026-10-31 deploy printed a FAIL
+   * of "resources/list -> 2" against agent-mcp .38 doing exactly that.
+   */
+  it("5n resources: the shipped connector lists two resources keyless and three to a credential, and both lines PASS on its answers", () => {
+    expect(uris("resources"), real.resources.body.slice(0, 300)).toEqual(["resumebooster://board/stats", "resumebooster://guide"]);
+    expect(uris("resourcesKeyed"), real.resourcesKeyed.body.slice(0, 300)).toEqual(["resumebooster://board/stats", "resumebooster://guide", "resumebooster://me/key"]);
+    const keyless = run5n(routes5n());
+    expect(has(keyless, "PASS", /keyless resources\/list -> 2: resumebooster:\/\/board\/stats, resumebooster:\/\/guide/), show(keyless)).toBe(true);
+    expect(has(keyless, "INFO", /keyed resources\/list is not run/), show(keyless)).toBe(true);
+    expect(has(keyless, "FAIL", /resources/), show(keyless)).toBe(false);
+    const keyed = run5n(routes5n(), "rb_live_harness");
+    expect(has(keyed, "PASS", /keyless resources\/list -> 2/), show(keyed)).toBe(true);
+    expect(has(keyed, "PASS", /keyed resources\/list -> 3: .*resumebooster:\/\/me\/key/), show(keyed)).toBe(true);
+    expect(has(keyed, "FAIL", /resources/), show(keyed)).toBe(false);
+  });
+
+  it("5n resources TEETH: the key's status listed to a keyless caller, an empty list, a missing guide, the old three-empty fixture and a keyed list without the key's status each FAIL", () => {
+    const keyedToEveryone = run5n(routes5n({ keyless: fromReal("resourcesKeyed", KEYLESS_LIST) }));
+    expect(has(keyedToEveryone, "FAIL", /keyless resources\/list -> 3: .*me\/key/), show(keyedToEveryone)).toBe(true);
+    const empty = run5n(routes5n({ keyless: { match: KEYLESS_LIST, body: JSON.stringify({ jsonrpc: "2.0", id: 4, result: { resources: [] } }) } }));
+    expect(has(empty, "FAIL", /keyless resources\/list -> 0/), show(empty)).toBe(true);
+    const noGuide = run5n(routes5n({ keyless: { match: KEYLESS_LIST, body: JSON.stringify({ jsonrpc: "2.0", id: 4, result: { resources: [{ uri: "resumebooster://board/stats" }] } }) } }));
+    expect(has(noGuide, "FAIL", /keyless resources\/list -> 1: resumebooster:\/\/board\/stats /), show(noGuide)).toBe(true);
+    const oldFixture = run5n(routes5n({ keyless: { match: KEYLESS_LIST, body: JSON.stringify({ result: { resources: [{}, {}, {}] } }) } }));
+    expect(has(oldFixture, "FAIL", /keyless resources\/list -> 3/), show(oldFixture)).toBe(true);
+    const notJson = run5n(routes5n({ keyless: { match: KEYLESS_LIST, status: 502, body: "<html>bad gateway</html>" } }));
+    expect(has(notJson, "FAIL", /keyless resources\/list/), show(notJson)).toBe(true);
+    const keyedShort = run5n(routes5n({ keyed: fromReal("resources", KEYED_LIST) }), "rb_live_harness");
+    expect(has(keyedShort, "PASS", /keyless resources\/list -> 2/), show(keyedShort)).toBe(true);
+    expect(has(keyedShort, "FAIL", /keyed resources\/list -> 2/), show(keyedShort)).toBe(true);
   });
 });
