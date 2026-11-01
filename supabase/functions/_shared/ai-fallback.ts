@@ -1,66 +1,23 @@
-// Model-fallback chain for PAID deliverables — a paying customer should never
-// lose their generation to a transient model error. Tries each model in order:
-//   - 5xx / dropped connection → one retry, then next model
-//   - timeout → next model at once, never the same model again (S13-001)
-//   - 429 on a model → advance to the NEXT model (a capacity limit on one
-//     model shouldn't kill the delivery; if every model 429s, the last 429 is
-//     returned so callers keep their existing "try again shortly" handling)
-//   - 402 (credits exhausted) → return immediately; it hits every model alike
-//   - other 4xx → next model (bad interaction with that model's API shape)
-//   - the caller's signal aborted (a caller that passes options.signal) →
-//     the chain stops at once and throws ChainStopped: no retry, no next model
-// Derived from generate-cover-letter's proven in-house pattern, extracted so
-// generate-freelance-boost and generate-interview-coach share one copy, with
-// one deliberate change: 429 falls through to the next model instead of
-// returning right away.
-//
-// Pure Deno/fetch, no imports — safe to import from any edge function.
+// Model-fallback chain for PAID deliverables (no imports): docs/shared-notes.md#s1
 
 const MAX_RETRIES = 1;
 const REQUEST_TIMEOUT_MS = 55000;
 const RETRY_DELAY_MS = 1000;
-// THE WHOLE CHAIN'S CLOCK (register L5-11). Three models x two attempts x
-// 55 s could run five minutes, far past the platform's 150-second limit, so a
-// stalled gateway ended in the platform's 504 instead of this function's own
-// retryable error. Each attempt now gets at most what is left of this budget.
-// Exported so a caller that makes more than one chain call in a request (a
-// draft, then its repair) can hold the whole request to the same 125 s.
+// The whole chain's clock, inside the platform's 150 s: docs/shared-notes.md#s2
 export const CHAIN_DEADLINE_MS = 125_000;
 const MIN_ATTEMPT_MS = 5_000;
-// Gemini 2.5's thinking counts against max_tokens, and gpt-5's reasoning
-// against max_completion_tokens (S12-055: a 3,000-token cap, thinking
-// included, cut a paid reply in half; S10-009: 14 STAR answers in 9,000).
-// 8,192 is Gemini's "medium" thinking budget. A caller sizes its cap as its
-// largest legitimate reply, measured from what it asks for, plus this.
+// Thinking headroom a caller adds to its cap: docs/shared-notes.md#s3
 export const THINKING_TOKENS = 8_192;
-// A MODEL THAT RAN OUT OF TIME IS NOT ASKED AGAIN (S13-001, S10-009). A
-// timed-out attempt used to be caught like a dropped connection and retried
-// on the same model: a slow gemini-2.5-pro was aborted at 55 s, asked again
-// and aborted at 111 s, flash got the 14 s left of the budget and gpt-5-mini
-// nothing, and the caller met an AbortError at 126 s. A timeout now goes to
-// the next model with what is left. And the first model's attempts never run
-// into the last FALLBACK_WINDOW_MS of the budget while another model follows:
-// with the default chain the fallback has at least 40 s whenever the first
-// model times out, even on the retry after a slow 5xx. A caller that raises
-// attemptTimeoutMs past budget - 40 s gives the next model what is left.
+// A timed-out model is not asked again; time kept for the next: docs/shared-notes.md#s4
 const FALLBACK_WINDOW_MS = 40_000;
 
-/**
- * The caller stopped the chain (options.signal): its reply is no longer
- * wanted. Named apart from an AbortError on purpose: callers answer a
- * timeout as retryable, and a stop is not a timeout.
- */
+/** The caller stopped the chain; not a timeout. docs/shared-notes.md#s5 */
 const chainStopped = (context: string) =>
   Object.assign(new Error(`${context}: stopped by the caller`), { name: "ChainStopped" });
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-/**
- * A model answered, but with nothing a paid delivery can use (unparseable or
- * truncated JSON). Callers turn it into a retryable 5xx so the delivery stays
- * open for the retry sweep, instead of shipping an invented placeholder as a
- * successful delivery (register L5-12).
- */
+/** A 200 a paid delivery cannot use. docs/shared-notes.md#s6 */
 export class UnusableModelOutput extends Error {
   constructor(message: string) {
     super(message);
@@ -78,12 +35,7 @@ export interface FallbackAIOptions {
   messages: Array<{ role: string; content: string }>;
   temperature?: number;
   maxTokens?: number;
-  /**
-   * Sent as max_completion_tokens to EVERY model, Google's included, instead
-   * of maxTokens: the body generate-cover-letter and generate-premium-package
-   * always sent from their own chains, kept byte for byte now that they walk
-   * this one.
-   */
+  /** max_completion_tokens for every model. docs/shared-notes.md#s7 */
   maxCompletionTokens?: number;
   jsonResponse?: boolean;
   /** Function-calling tools (passed through to every model in the chain). */
@@ -96,20 +48,9 @@ export interface FallbackAIOptions {
   context?: string;
   /** The whole chain's budget in ms (default 125 s, inside the platform's 150 s). */
   deadlineMs?: number;
-  /**
-   * The longest one attempt on the FIRST model may take, in ms (default 55 s,
-   * as for every other model). A caller whose first model is slow on a big
-   * reply sets it so the next model keeps a real window: with the default
-   * 125 s budget, 80 s leaves the fallback 45 s. Never sent to the gateway.
-   */
+  /** The first model's per-attempt limit in ms. docs/shared-notes.md#s8 */
   attemptTimeoutMs?: number;
-  /**
-   * Stops the chain when it fires: the attempt in flight is aborted, nothing
-   * is retried, no further model is asked, and the call throws ChainStopped.
-   * For a caller that asks several calls at once and no longer needs this
-   * one (analyze-resume's section calls once the core has failed). Never
-   * sent to the gateway.
-   */
+  /** Stops the chain; the call throws ChainStopped. docs/shared-notes.md#s9 */
   signal?: AbortSignal;
 }
 
@@ -121,11 +62,7 @@ export const DEFAULT_MODELS = [
   'openai/gpt-5-mini',
 ];
 
-// Build a fallback chain that KEEPS a function's current primary model first (so
-// its latency/quality profile is unchanged on the happy path) and appends
-// cross-provider fallbacks for resilience, de-duped. Use when converting a
-// single-model call site: chainFrom("google/gemini-2.5-flash-lite") preserves the
-// fast primary, then falls back across family and provider only on failure.
+// The function's primary first, then the default tail: docs/shared-notes.md#s10
 export function chainFrom(primary: string): string[] {
   const tail = ['google/gemini-2.5-pro', 'google/gemini-2.5-flash', 'openai/gpt-5-mini'];
   return [primary, ...tail.filter((m) => m !== primary)];
@@ -142,10 +79,7 @@ export async function callAIWithModelFallback(
   const budgetMs = options.deadlineMs ?? CHAIN_DEADLINE_MS;
   const deadlineAt = Date.now() + budgetMs;
   const firstAttemptMs = options.attemptTimeoutMs ?? REQUEST_TIMEOUT_MS;
-  // The time the first model's attempts leave the next one: 40 s, or what a
-  // budget that cannot hold a full first attempt plus 40 s has left after it.
-  // A first attempt therefore always gets min(firstAttemptMs, budget), as it
-  // did before; only a retry can meet this line.
+  // What the first model's attempts leave the next: docs/shared-notes.md#s11
   const nextModelWindowMs = models.length > 1 ? Math.min(FALLBACK_WINDOW_MS, Math.max(0, budgetMs - firstAttemptMs)) : 0;
 
   chain: for (let index = 0; index < models.length; index++) {
@@ -180,12 +114,7 @@ export async function callAIWithModelFallback(
             Authorization: `Bearer ${apiKey}`,
             'Content-Type': 'application/json',
           },
-          // OpenAI gpt-5-family models reject temperature and use
-          // max_completion_tokens (see generate-cover-letter / -apply-package —
-          // none send temperature or response_format to openai/*). Google
-          // models take the standard params. Callers' JSON parsing already has
-          // a regex fallback, so dropping response_format on the last-resort
-          // leg is safe.
+          // openai models get no temperature or response_format: docs/shared-notes.md#s12
           body: JSON.stringify(
             model.startsWith('openai/')
               ? {
@@ -274,11 +203,7 @@ export async function callAIWithModelFallback(
   throw lastError ?? new Error(`${context}: all models failed`);
 }
 
-/**
- * True when a chain call failed for want of time: an attempt aborted on its
- * clock, or the budget spent before any model answered. Never true for a
- * caller's stop (ChainStopped), which is not a timeout.
- */
+/** True when a chain call failed for want of time. docs/shared-notes.md#s13 */
 export function chainRanOutOfTime(error: unknown): boolean {
   if (!(error instanceof Error) || error.name === "ChainStopped") return false;
   return error.name === "AbortError" || error.name === "TimeoutError" || /\babort|timed? ?out/i.test(error.message);
@@ -296,12 +221,7 @@ export function replyWasCutOff(data: unknown): boolean {
   return (data as GatewayReply | null)?.choices?.[0]?.finish_reason === "length";
 }
 
-/**
- * WHAT A REPLY WAS, FOR A LOG LINE: its shape and lengths, never its words
- * (S13-064). "Unexpected response format" lines used to print the whole
- * reply, which for a résumé parser or a tailored résumé is the person's name,
- * email, phone and employers, into the function logs.
- */
+/** A reply's shape for a log line, never its words. docs/shared-notes.md#s14 */
 export function describeReply(data: unknown): string {
   if (!data || typeof data !== "object") return `reply: ${data === null ? "null" : typeof data}`;
   const keys = Object.keys(data as Record<string, unknown>).filter((k) => /^[A-Za-z_][\w-]{0,40}$/.test(k)).slice(0, 8);
@@ -325,16 +245,7 @@ export function describeReply(data: unknown): string {
   ].join(" ");
 }
 
-/**
- * WHAT AN ERROR WAS, FOR A LOG LINE, WITHOUT THE TEXT IT WAS READING (recheck
- * of S13-064). V8's JSON.parse message quotes up to about ten characters
- * either side of where it failed (Unexpected token 'J', ...", "name": Jane
- * Doe, "... is not valid JSON), so the lines kept for a tool call whose
- * arguments did not parse still put a fragment of the person's résumé into
- * the function logs. A SyntaxError is named by its position only; any other
- * error by its name and message (a timeout, a refused request), which quote
- * no reply; anything else thrown by its type.
- */
+/** An error for a log line, without the text it read. docs/shared-notes.md#s15 */
 export function describeError(error: unknown): string {
   if (error instanceof SyntaxError) {
     const at = /\bposition (\d+)/.exec(error.message)?.[1];
@@ -351,28 +262,11 @@ export type UsableReply<T> =
   | { ok: false; response: Response; modelUsed: string };
 
 export interface UsableReplyOptions<T> extends FallbackAIOptions {
-  /**
-   * Turns a 200 reply into what the caller delivers, or null when it cannot
-   * be delivered (empty, unparseable, missing what was asked). A reply cut
-   * off at its token cap is refused before this is asked.
-   */
+  /** A 200 reply to what is delivered, or null to refuse it. docs/shared-notes.md#s16 */
   read: (data: unknown, modelUsed: string) => T | null | undefined;
 }
 
-/**
- * A 200 IS NOT A DELIVERY (S10-009, S13-065). callAIWithModelFallback hands
- * back the first 200, whatever it holds: a reply cut off at its token cap
- * (the thinking spent it), an empty message or JSON that does not parse
- * counted as success, and the caller failed with no fallback. This walks the
- * same chain and asks the NEXT model, with what is left of the budget,
- * whenever the reply is cut off (finish_reason "length") or `read` refuses
- * it. The first model keeps the caller's attemptTimeoutMs; every later one
- * gets the chain's own. A gateway refusal (429 on every model, 402) comes
- * back as { ok: false } exactly as callAIWithModelFallback returns it; a
- * timeout or a caller's stop is thrown as it throws them. When every model
- * that answered was refused, or the budget is spent after a refused reply,
- * it throws UnusableModelOutput.
- */
+/** The same chain, until a reply the caller can use. docs/shared-notes.md#s17 */
 export async function callAIForUsableReply<T>(
   apiKey: string,
   options: UsableReplyOptions<T>,
@@ -422,24 +316,7 @@ export async function callAIForUsableReply<T>(
   throw new UnusableModelOutput(`${context}: no usable reply (${refused.join("; ")})`);
 }
 
-/**
- * READS THE GATEWAY'S STREAMED REPLY (OpenAI-style SSE) INTO CONTENT DELTAS.
- *
- * Network chunks do not respect line boundaries. generate-cover-letter-stream
- * decoded each chunk on its own and split it on newlines with no carry-over,
- * so a `data:` line cut across two reads failed to parse in its first half,
- * lost its prefix in its second, and both halves were dropped: paid cover
- * letters arrived with words missing (register L5-04). Multibyte characters
- * cut across reads broke the same way. generate-premium-package-stream had
- * the carry-over, but put an unparseable COMPLETE line back on the buffer,
- * where the newline loop took it straight out again: a synchronous infinite
- * loop on one malformed line (register L5-19).
- *
- * Here: bytes are decoded with { stream: true }, only complete lines are
- * handled, the remainder waits for the next read, and a complete line that
- * does not parse is reported and dropped, never re-queued. flush() handles
- * the last line when the stream ends without a trailing newline.
- */
+/** The gateway's streamed reply to content deltas. docs/shared-notes.md#s18 */
 export function createGatewayDeltaReader(handlers: {
   onContent: (text: string) => void;
   onDone?: () => void;
