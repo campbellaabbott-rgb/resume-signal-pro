@@ -8,6 +8,7 @@ import { detectIndustry as detectIndustryShared } from "./industry-detection.ts"
 // free-keyword-scan has copies but is never invoked by the client). Modules are
 // byte-identical copies of free-keyword-scan/*.ts — keep them in sync.
 import { detectCountryFromResume, effectiveCountryOf, phraseMatchesResume, resumeHasTerm } from "./market-intelligence.ts";
+import { detectCredibilityIssues } from "./date-credibility.ts";
 import { resolveLanguageName } from "../_shared/language-instruction.ts";
 import { FIXED_CHOICES_STAY_ENGLISH, normalizeScanReport } from "../_shared/scan-report-shape.ts";
 import { functionCeiling } from "../_shared/model-spend-gate.ts";
@@ -5598,92 +5599,8 @@ function detectEliteSignals(resumeText: string): EliteSignal[] {
 }
 
 // ======================== Credibility Issue Detection ========================
-
-interface CredibilityIssue {
-  type: 'date_inconsistency' | 'timeline_overlap' | 'impossible_timeline' | 'gap';
-  severity: 'high' | 'medium' | 'low';
-  description: string;
-  location?: string;
-}
-
-function detectCredibilityIssues(resumeText: string): CredibilityIssue[] {
-  const issues: CredibilityIssue[] = [];
-  const currentYear = new Date().getFullYear();
-  const currentMonth = new Date().getMonth() + 1;
-  
-  // Extract all date ranges
-  const dateRangePattern = /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|january|february|march|april|may|june|july|august|september|october|november|december)?\s*'?(\d{4}|\d{2})\s*[-–—]\s*(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|january|february|march|april|may|june|july|august|september|october|november|december)?\s*'?(\d{4}|\d{2}|present|current|now)/gi;
-  
-  const ranges: Array<{ start: number; end: number; text: string }> = [];
-  let match;
-  
-  while ((match = dateRangePattern.exec(resumeText)) !== null) {
-    let startYear = parseInt(match[2]);
-    let endYear = match[4].toLowerCase();
-    
-    // Handle 2-digit years
-    if (startYear < 100) startYear += startYear > 50 ? 1900 : 2000;
-    
-    let endNum: number;
-    if (['present', 'current', 'now'].includes(endYear)) {
-      endNum = currentYear;
-    } else {
-      endNum = parseInt(endYear);
-      if (endNum < 100) endNum += endNum > 50 ? 1900 : 2000;
-    }
-    
-    if (!isNaN(startYear) && !isNaN(endNum)) {
-      ranges.push({ start: startYear, end: endNum, text: match[0] });
-    }
-  }
-  
-  // Check for impossible timelines (end before start)
-  for (const range of ranges) {
-    if (range.end < range.start) {
-      issues.push({
-        type: 'impossible_timeline',
-        severity: 'high',
-        description: `Date range "${range.text}" shows end date before start date`,
-        location: range.text
-      });
-    }
-  }
-  
-  // Check for future dates
-  for (const range of ranges) {
-    if (range.start > currentYear || (range.end > currentYear && range.end !== currentYear)) {
-      issues.push({
-        type: 'date_inconsistency',
-        severity: 'high',
-        description: `Date "${range.text}" contains future year`,
-        location: range.text
-      });
-    }
-  }
-  
-  // Check for overlapping roles (might be intentional for consulting/side projects)
-  const sortedRanges = [...ranges].sort((a, b) => a.start - b.start);
-  for (let i = 0; i < sortedRanges.length - 1; i++) {
-    const current = sortedRanges[i];
-    const next = sortedRanges[i + 1];
-    
-    // If current role ends after next role starts
-    if (current.end > next.start + 1) { // Allow 1 year overlap for transitions
-      // Only flag if significant overlap
-      const overlapYears = current.end - next.start;
-      if (overlapYears > 2) {
-        issues.push({
-          type: 'timeline_overlap',
-          severity: 'medium',
-          description: `Significant overlap (${overlapYears}+ years) between roles may need clarification`,
-          location: `${current.text} and ${next.text}`
-        });
-      }
-    }
-  }
-  
-  return issues;
-}
+// detectCredibilityIssues lives in date-credibility.ts (S13-022): ranges read
+// by employment-gaps.ts, the primary's own date reader.
 
 // ======================== Content Location Detection ========================
 

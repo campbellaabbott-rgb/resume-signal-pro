@@ -40,6 +40,12 @@ export interface GapAnalysis {
 }
 
 export interface DatedRange { start: DatePoint; end: DatePoint | 'present'; line: string }
+/** A range as written, kept even when it reads backwards, for the fallback's date checks. */
+export interface ReadRange extends DatedRange {
+  text: string;        // the range as written, "05/2019 - 08/2022"
+  reversed: boolean;   // the end is before the start at month precision
+  education: boolean;  // under an education heading, or a degree on the same line
+}
 
 // Month names in the languages the scan reads (en, es, fr, de, pt, nl, it),
 // keyed by a prefix long enough to be unambiguous.
@@ -104,12 +110,21 @@ const monthsBetween = (a: DatePoint, b: DatePoint) => key(b) - key(a);
 const NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const formatDatePoint = (d: DatePoint) => `${NAMES[d.month]} ${d.year}`;
 
-/** Every "start – end" range on the page, with the line it sits on. */
-export function extractDateRanges(resumeText: string): DatedRange[] {
-  const ranges: DatedRange[] = [];
+// A heading line: short, and nothing but the heading's words.
+const EDUCATION_HEADING = /^(?:education(?:al)?(?:\s+(?:and|&)\s+[\p{L} ]+)?|academic(?:\s+[\p{L}]+)?|qualifications|ausbildung|bildung|formation|formaci[óo]n|educaci[óo]n|istruzione|formazione|forma[çc][ãa]o|educa[çc][ãa]o|opleiding(?:en)?|studies|studium)\s*:?$/iu;
+const OTHER_HEADING = /^(?:(?:professional|work|relevant|employment|career)\s+)?(?:experience|history|employment|projects?|skills|certifications?|licen[cs]es?|volunteer(?:ing)?|awards|publications|languages|summary|profile|berufserfahrung|exp[ée]riences?(?:\s+professionnelles?)?|experiencia(?:\s+profesional)?|esperienz[ae](?:\s+professionali)?|experi[êe]ncia(?:\s+profissional)?|werkervaring)\s*:?$/iu;
+const DEGREE = /\b(?:bachelor(?:'s|s)?|master(?:'s|s)?\s+(?:of|in|degree)|master of|mba|ph\.?\s?d|doctorate|b\.?sc|m\.?sc|b\.a\.|m\.a\.|b\.s\.|m\.s\.|diploma|degree|associate of|high school|ged|licenciatura|laurea|abitur|baccalaur[ée]at|bachillerato)\b/iu;
+
+/** Every "start – end" range on the page as written, backwards ones included. */
+export function readDateRanges(resumeText: string): ReadRange[] {
+  const ranges: ReadRange[] = [];
+  let section: 'education' | 'other' | null = null;
   for (const rawLine of resumeText.split(/\r?\n/)) {
     const line = rawLine.replace(/\s+/g, ' ').trim();
     if (!line) continue;
+    if (line.length <= 40 && EDUCATION_HEADING.test(line)) { section = 'education'; continue; }
+    if (line.length <= 40 && OTHER_HEADING.test(line)) { section = 'other'; continue; }
+    const education = section === 'education' || DEGREE.test(line);
     RANGE_RE.lastIndex = 0;
     let m: RegExpExecArray | null;
     while ((m = RANGE_RE.exec(line)) !== null) {
@@ -117,14 +132,23 @@ export function extractDateRanges(resumeText: string): DatedRange[] {
       // "Summer 2019 – 2020": no month in "Summer"; read on from the next
       // character so "2019 – 2020" is still found.
       if (!start) { RANGE_RE.lastIndex = m.index + 1; continue; }
-      if (PRESENT_ONLY.test(m[2].trim())) { ranges.push({ start, end: 'present', line: line.slice(0, 60) }); continue; }
+      const base = { start, line: line.slice(0, 60), text: m[0].trim(), education };
+      if (PRESENT_ONLY.test(m[2].trim())) { ranges.push({ ...base, end: 'present', reversed: false }); continue; }
       const end = parseDateToken(m[2], 'end');
-      if (!end || key(end) < key(start)) continue; // an end before its start is not a range we can read
-      ranges.push({ start, end, line: line.slice(0, 60) });
+      if (!end) continue;
+      ranges.push({ ...base, end, reversed: key(end) < key(start) });
     }
   }
   return ranges;
 }
+
+/** Every "start – end" range on the page that reads forwards, with the line it sits on. */
+export function extractDateRanges(resumeText: string): ReadRange[] {
+  return readDateRanges(resumeText).filter(r => !r.reversed);
+}
+
+/** Months since year 0: compare and subtract date points with it. */
+export const monthIndex = (d: DatePoint) => d.year * 12 + d.month;
 
 export function detectEmploymentGaps(resumeText: string, now: Date = new Date()): GapAnalysis {
   const today: DatePoint = { year: now.getFullYear(), month: now.getMonth() };
