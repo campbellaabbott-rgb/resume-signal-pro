@@ -15,7 +15,8 @@ import { normalizeCloseTitle } from "../../supabase/functions/job-board/normaliz
  * alone, so a requisition re-listed under a new id that an EARLIER window of
  * the lap served was written to the ledger as a fill. Live on .96, 2026-11-01:
  * get_company_hiring_health gave superseded_90d = 0 on all five against 1,291
- * to 46,214 closures, where whole-read Greenhouse boards give 2-34%.
+ * to 46,214 closures, where ten whole-read Greenhouse boards log 3-27% of
+ * theirs superseded (a floor: one per title per day).
  *
  * This runs the SHIPPED code: the liveTitles statement of the refresh worker
  * and closeVanishedChunk, lifted from index.ts and transpiled, over a fake

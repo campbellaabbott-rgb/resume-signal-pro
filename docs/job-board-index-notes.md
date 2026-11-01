@@ -22015,7 +22015,8 @@ that an earlier window of the lap served was written to the ledger as a fill,
 and the 24h superseded dedupe (n621) missed for the same reason. Live on .96,
 2026-11-01, get_company_hiring_health gave superseded_90d = 0 against 1,291
 (O'Reilly), 3,917 (Dollar Tree), 3,961 (Marriott), 5,430 (CVS) and 46,214
-(Domino's) closures, where whole-read Greenhouse boards give 2-34%. The live
+(Domino's) closures, where ten whole-read Greenhouse boards log 3-27% of
+theirs superseded (a floor: n621 logs one per title per day). The live
 set on a lap is now this visit's rows plus every stored row this lap served
 (lap_epoch = lapMark, no missing stamp, not aged out by this visit): the lap's
 own evidence, at the lap's scale, as n121 already reads its counts. A whole read
