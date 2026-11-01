@@ -498,6 +498,21 @@ export function rowState(want, have) {
   return buildAtLeast(have, want) ? (have === want ? "live" : "live-ahead") : "deploy";
 }
 
+/**
+ * Does the row's function answer `need` or later now, and still after this
+ * message? Its live build must reach `need`, and a deploy in the message
+ * (a rollback included) must not take it below. State "deploy" alone does not
+ * say no: with job-board .96 live and main at .98 (fix/post-deploy,
+ * 2026-11-01), the rules that asked `state === "live" || "live-ahead"` read
+ * .96 as short of .93, re-dated the Privacy page in the draft and printed the
+ * held prune's condition "not live". No live header or no answer is never
+ * enough. Pure.
+ */
+export function answersAtLeast(r, need) {
+  if (!r || !buildAtLeast(r.have, need)) return false;
+  return r.state === "live" || r.state === "live-ahead" || buildAtLeast(r.want, need);
+}
+
 async function pool(items, n, f) {
   const out = new Array(items.length); let i = 0;
   await Promise.all(Array.from({ length: n }, async () => { while (i < items.length) { const k = i++; out[k] = await f(items[k]); } }));
@@ -593,25 +608,35 @@ export function applyRollbacks(rows, policy) {
  * could not be read: then nothing is proven, and each such migration stays
  * pending with the reason. Pure.
  *
- *   returns { pending: [file], proven: [{ file, jobs }], unproven: [{ file, why }] }
+ * A job two files schedule proves neither by being active (2026-10-31:
+ * 20261014120000 re-schedules 20261014100000's rb-auth-mail-drain). Such an
+ * entry names `cronTimeouts`, { "<job>": "<timeout>" }: the statement_timeout
+ * only its file's command begins with, which get_cron_health reports as
+ * ch_timeout. Another timeout, or none, leaves the migration pending.
+ *
+ *   returns { pending: [file], proven: [{ file, jobs, timeouts? }], unproven: [{ file, why }] }
  */
 export function behaviourApplied(pending, policy, cronRows) {
   const proofs = Object.entries(policy?.appliedByBehaviour ?? {}).filter(([k]) => /^\d{14}$/.test(k));
   const active = Array.isArray(cronRows) ? new Map(cronRows.map((r) => [String(r?.ch_jobname ?? ""), r?.ch_active === true])) : null;
+  const timeout = new Map((Array.isArray(cronRows) ? cronRows : []).map((r) => [String(r?.ch_jobname ?? ""), typeof r?.ch_timeout === "string" && r.ch_timeout ? r.ch_timeout : null]));
   const out = { pending: [], proven: [], unproven: [] };
   for (const file of pending ?? []) {
     const proof = proofs.find(([stamp]) => file.startsWith(`${stamp}_`))?.[1];
     if (!proof) { out.pending.push(file); continue; }
     const jobs = (Array.isArray(proof.cronJobs) ? proof.cronJobs : []).filter((j) => typeof j === "string" && j);
+    const want = proof.cronTimeouts && typeof proof.cronTimeouts === "object" ? Object.entries(proof.cronTimeouts) : [];
     let why = "";
     if (!jobs.length) why = "its appliedByBehaviour entry names no cronJobs";
     else if (!active) why = "get_cron_health could not be read, so its jobs could not be seen";
     else {
       const missing = jobs.filter((j) => active.get(j) !== true);
       if (missing.length) why = `get_cron_health lists no active ${missing.join(", ")}`;
+      const off = want.find(([j, t]) => timeout.get(j) !== String(t));
+      if (!why && off) why = `get_cron_health reports ${off[0]}'s statement_timeout as ${timeout.get(off[0]) ?? "none"}, not ${off[1]}`;
     }
     if (why) { out.pending.push(file); out.unproven.push({ file, why }); continue; }
-    out.proven.push({ file, jobs });
+    out.proven.push({ file, jobs, ...(want.length ? { timeouts: Object.fromEntries(want.map(([j, t]) => [j, String(t)])) } : {}) });
   }
   return out;
 }
@@ -729,19 +754,56 @@ export function sliceNote(build, deploying = build) {
  *           "frontend"                  apply once the frontend is published
  *   before: ["fn:<name>", ...]          apply before <name> deploys (printed beside
  *                                       it; an `after` that puts it later is an error)
+ *   afterMigrations: ["<stamp>", ...]   apply after these migrations (2026-10-31: the
+ *                                       name-sync re-arm, 20261030100000, refuses
+ *                                       until 20261025100000 and 20261026100000 are
+ *                                       applied). Inside a step files go in filename
+ *                                       order, so each must sort before this one; one
+ *                                       pending in a later step, held or never to
+ *                                       apply is an error. The note names those still
+ *                                       pending and, with no other rule, says the
+ *                                       file waits for nothing else. Handed the
+ *                                       listing (`onDisk`, every migration file),
+ *                                       a stamp no file carries is an error: it
+ *                                       was dropped as "not pending" before, so a
+ *                                       typo emptied the order (review of
+ *                                       fix/name-sync-rerun).
+ *   repairedBy: "<stamp>"               the `before` function already deployed
+ *                                       (2026-10-31: job-board .96 went out
+ *                                       without 20261025100000 and 20261026100000)
+ *                                       and this pending migration repairs that;
+ *                                       its afterMigrations must name this one.
  *
  * A migration with no `after` goes before the functions, as every migration
  * did. An `after` function that already answers the named build (or later)
- * makes the migration wait for nothing. A rule that cannot be met (main
- * carries an earlier build, or no such function) is an error, never a guess.
- * Pure: `rows` are the report's rows ({ fn, want, have, state }).
+ * makes the migration wait for nothing. A `before` function that already
+ * answers main's build (or later) deployed first: the order is broken, and
+ * the message said "before job-board" in a deploy with no job-board step, so
+ * it is an error unless `repairedBy` names a pending repair, and the note
+ * says the function went first. An entry with `repairedBy` records that its
+ * function went first at a deploy the ledger recorded, so it still has while
+ * the function's live build reaches the build the newest verifiedDeploys
+ * entry lists for it, whatever later build main carries (with .98 in the repo
+ * over the live .96, the name migrations read "before job-board" and their
+ * missing repair stopped nothing). A function this message deploys (with no
+ * repair recorded, or a live build short of that record), or one whose build
+ * could not be read, keeps "before <fn>". A rule that cannot be
+ * met (main carries an earlier build, or no such function) is an error,
+ * never a guess. Pure: `rows` are the report's rows ({ fn, want, have,
+ * state }); `onDisk`, optional, is every migration file name on disk (the
+ * report always passes it).
  *
  *   returns { pre, afterFunctions, afterFrontend, errors }, each phase
  *   [{ file, note }] in filename order
  */
-export function migrationPhases(pending, policy, rows) {
+export function migrationPhases(pending, policy, rows, onDisk = null) {
   const order = policy?.migrationOrder ?? {};
   const byFn = new Map((rows ?? []).map((r) => [r.fn, r]));
+  // Each function's build in the newest verified deploy that recorded it (verifiedDeploys, oldest first).
+  const recordedBuild = new Map();
+  for (const d of Array.isArray(policy?.verifiedDeploys) ? policy.verifiedDeploys : []) {
+    for (const [fn, b] of Object.entries(d?.functions ?? {})) if (typeof b === "string") recordedBuild.set(fn, b);
+  }
   const out = { pre: [], afterFunctions: [], afterFrontend: [], errors: [] };
   const rules = Object.entries(order).filter(([k]) => !k.startsWith("_"));
   for (const [stamp, e] of rules) {
@@ -750,17 +812,67 @@ export function migrationPhases(pending, policy, rows) {
       out.errors.push(`migrationOrder ${stamp}: after "${e.after}" is neither "frontend" nor "fn:<name>@<YYYY-MM-DD.N>" nor "slice:job-board@<YYYY-MM-DD.N>"`);
     }
     for (const b of Array.isArray(e?.before) ? e.before : []) if (!BEFORE_FN.test(String(b))) out.errors.push(`migrationOrder ${stamp}: before "${b}" is not "fn:<name>"`);
+    if (e?.afterMigrations !== undefined) {
+      const am = e.afterMigrations;
+      if (!Array.isArray(am) || !am.length || am.some((x) => !/^\d{14}$/.test(String(x)))) {
+        out.errors.push(`migrationOrder ${stamp}: afterMigrations must list one or more 14-digit migration stamps`);
+        continue;
+      }
+      for (const x of am.map(String)) {
+        if (x >= stamp) out.errors.push(`migrationOrder ${stamp}: afterMigrations names ${x}, which does not sort before it, so filename order cannot put it first`);
+        else if (Array.isArray(onDisk) && !onDisk.some((f) => String(f).startsWith(`${x}_`))) out.errors.push(`migrationOrder ${stamp}: afterMigrations names ${x}, which no migration file carries, so nothing orders this file after it`);
+        else if ((policy?.holdUntilVerified ?? []).some((h) => h?.stamp === x)) out.errors.push(`migrationOrder ${stamp}: afterMigrations names ${x}, which is held (holdUntilVerified), so this file could apply before it`);
+        else if ((policy?.neverApply ?? []).some((n) => x.startsWith(String(n)) || String(n).startsWith(x))) out.errors.push(`migrationOrder ${stamp}: afterMigrations names ${x}, which must never apply (neverApply)`);
+      }
+    }
+    if (e?.repairedBy !== undefined) {
+      const y = e.repairedBy;
+      if (typeof y !== "string" || !/^\d{14}$/.test(y)) out.errors.push(`migrationOrder ${stamp}: repairedBy must be one 14-digit migration stamp`);
+      else if (!(Array.isArray(e?.before) && e.before.length)) out.errors.push(`migrationOrder ${stamp}: repairedBy names ${y}, but the entry has no before rule for it to repair`);
+      else {
+        const follows = order[y]?.afterMigrations;
+        if (!Array.isArray(follows) || !follows.map(String).includes(stamp)) out.errors.push(`migrationOrder ${stamp}: repairedBy names ${y}, whose afterMigrations does not name ${stamp}, so it could apply first`);
+      }
+    }
   }
+  const pendingStamp = (x) => (pending ?? []).find((f) => f.startsWith(`${x}_`)) ?? null;
+  // The predecessors still pending, for the note and the step check below.
+  const predsOf = (e) => (Array.isArray(e?.afterMigrations) ? e.afterMigrations.map(String).filter((x) => /^\d{14}$/.test(x) && pendingStamp(x)) : []);
   for (const file of pending) {
     // Only a whole stamp matches: a short key would claim every file it prefixes.
     const e = rules.find(([stamp]) => /^\d{14}$/.test(stamp) && file.startsWith(`${stamp}_`))?.[1] ?? null;
     const before = (Array.isArray(e?.before) ? e.before : []).map((b) => BEFORE_FN.exec(String(b))?.[1]).filter(Boolean);
-    const beforeNote = before.length ? `before ${before.join(" and ")}` : "";
+    const preds = predsOf(e);
+    const afterMigNote = preds.length ? `after ${preds.join(" and ")}${!e?.after && !before.length ? "; it waits for nothing else" : ""}` : "";
+    // A before function already serving main's build (or later) went first: this message deploys none of it.
+    // An entry with repairedBy records that it went first, at a deploy the ledger recorded: it still has while
+    // its live build reaches the newest verifiedDeploys build of it, whatever later build main carries
+    // (fix/post-deploy: .98 over the live .96 read the two name migrations "before job-board" again, and with
+    // their repair not pending nothing stopped the message, which on main at .96 stops it).
+    const brokeAt = typeof e?.repairedBy === "string";
+    const wentFirst = before.filter((fn) => {
+      const r = byFn.get(fn);
+      if (!r) return false;
+      if (r.state === "live" || r.state === "live-ahead") return true;
+      const at = brokeAt ? recordedBuild.get(fn) : null;
+      return Boolean(at && r.have && buildAtLeast(r.have, at));
+    });
+    const stillBefore = before.filter((fn) => !wentFirst.includes(fn));
+    const stamp = file.slice(0, 14);
+    const repair = typeof e?.repairedBy === "string" && /^\d{14}$/.test(e.repairedBy) ? e.repairedBy : null;
+    const repairPending = repair && pendingStamp(repair) ? repair : null;
+    const wentFirstNotes = wentFirst.map((fn) => `${fn} already answers ${byFn.get(fn).have}: it deployed first${repairPending ? `, and ${repairPending} repairs that` : ""}`);
+    for (const fn of wentFirst) {
+      const have = byFn.get(fn).have;
+      if (!repair) out.errors.push(`${file} must apply before ${fn}, but ${fn} already answers ${have} and this message deploys none: it deployed first. Name the pending migration that repairs that (migrationOrder ${stamp} repairedBy, ordered after it by its afterMigrations), or drop the rule if it waits for a build main does not carry yet`);
+      else if (!repairPending) out.errors.push(`${file} must apply before ${fn}, but ${fn} already answers ${have}, and its repairedBy ${repair} is not pending, so nothing in this message repairs that`);
+    }
+    const beforeNote = [afterMigNote, stillBefore.length ? `before ${stillBefore.join(" and ")}` : "", ...wentFirstNotes].filter(Boolean).join("; ");
     for (const fn of before) if (!byFn.has(fn)) out.errors.push(`${file} must apply before ${fn}, but main has no function ${fn}`);
     if (!e?.after) { out.pre.push({ file, note: beforeNote }); continue; }
     if (e.after === "frontend") {
       if (before.length) out.errors.push(`${file} waits for the frontend, yet it must apply before ${before.join(" and ")}`);
-      out.afterFrontend.push({ file, note: "after the frontend is published" });
+      out.afterFrontend.push({ file, note: [afterMigNote, "after the frontend is published"].filter(Boolean).join("; ") });
       continue;
     }
     const rule = afterRule(e.after);
@@ -771,13 +883,26 @@ export function migrationPhases(pending, policy, rows) {
     if (!r) { out.errors.push(`${file} waits for ${need}, but main has no function ${fn}`); continue; }
     if (!r.want || !buildAtLeast(r.want, need)) { out.errors.push(`${file} waits for ${need}, but main carries ${r.want ?? "no build the ledger can read"}: that step can never come`); continue; }
     if (before.includes(fn)) { out.errors.push(`${file} must apply both before and after ${fn}`); continue; }
-    if ((r.state === "live" || r.state === "live-ahead") && buildAtLeast(r.have, need)) {
+    if (answersAtLeast(r, need)) {
       out.pre.push({ file, note: [beforeNote, `${fn} already answers ${r.have}`].filter(Boolean).join("; ") });
       continue;
     }
     // Deploying in this message, or its live build could not be read: wait for it.
     const waitNote = rule.kind === "slice" ? sliceNote(b, String(r.want).slice(fn.length + 1)) : `once ${fn} answers ${need} or later`;
     out.afterFunctions.push({ file, note: [beforeNote, waitNote].filter(Boolean).join("; "), ...(rule.kind === "slice" ? { slice: true } : {}) });
+  }
+  // A file ordered after another must not sit in an earlier step than it.
+  const steps = [out.pre, out.afterFunctions, out.afterFrontend];
+  const stepOf = (f) => steps.findIndex((list) => list.some((m) => m.file === f));
+  for (const [i, list] of steps.entries()) {
+    for (const m of list) {
+      const e = rules.find(([stamp]) => /^\d{14}$/.test(stamp) && m.file.startsWith(`${stamp}_`))?.[1] ?? null;
+      for (const x of predsOf(e)) {
+        const pf = pendingStamp(x);
+        const j = stepOf(pf);
+        if (j > i) out.errors.push(`${m.file} must apply after ${x}, which waits for a later step (${steps[j].find((q) => q.file === pf)?.note || "a later step"})`);
+      }
+    }
   }
   return out;
 }
@@ -818,7 +943,7 @@ export function holdStates(heldFiles, policy, rows) {
       const r = byFn.get(fn);
       if (!r) { out.errors.push(`hold ${file} waits for ${need}, but main has no function ${fn}`); continue; }
       if (!r.want || !buildAtLeast(r.want, need)) { out.errors.push(`hold ${file} waits for ${need}, but main carries ${r.want ?? "no build the ledger can read"}: it can never be released`); continue; }
-      conditions.push({ fn, need, have: r.have ?? null, met: (r.state === "live" || r.state === "live-ahead") && buildAtLeast(r.have, need) });
+      conditions.push({ fn, need, have: r.have ?? null, met: answersAtLeast(r, need) });
     }
     const releasable = when.length > 0 && conditions.length === when.length && conditions.every((c) => c.met);
     out.holds.push({ file, stamp, until: String(h?.until ?? ""), conditions, releasable });
@@ -975,7 +1100,7 @@ export function datedAtDeploy(policy, rows, read, today) {
     if (text == null) { out.errors.push(`datedAtDeploy: ${file} cannot be read`); continue; }
     const v = new RegExp(`export const ${constant.replace(/[^A-Za-z0-9_$]/g, "")}(?::\\s*string)?\\s*=\\s*"(\\d{4}-\\d{2}-\\d{2})"`).exec(text);
     if (!v) { out.errors.push(`datedAtDeploy: ${file} has no ${constant} = "YYYY-MM-DD"`); continue; }
-    const live = (r.state === "live" || r.state === "live-ahead") && buildAtLeast(r.have, need);
+    const live = answersAtLeast(r, need);
     out.checks.push({ file, constant, value: v[1], fn, need, due: !live, ok: live || v[1] === today, today, why: d?.why ? String(d.why) : "" });
   }
   return out;
@@ -1049,7 +1174,9 @@ async function main(argv) {
   const unbumped = liveStamped.filter((r) => r.changedSinceStamp.some((p) => p.startsWith(`supabase/functions/${r.fn}/`)));
   const sharedOnly = liveStamped.filter((r) => !unbumped.includes(r));
   const noMarker = rows.filter((r) => r.state === "no-marker");
-  const phases = migrationPhases(mig.pending, POLICY, rows);
+  // Every migration file on disk, so an afterMigrations stamp that names none is an error.
+  const onDisk = [...mig.applied, ...mig.pending, ...mig.hold, ...mig.neverApplyPresent];
+  const phases = migrationPhases(mig.pending, POLICY, rows, onDisk);
   // A hold the ledger cannot check stops the message like an order rule (S12-032).
   const holds = holdStates(mig.hold, POLICY, rows);
   phases.errors.push(...holds.errors);
@@ -1132,7 +1259,7 @@ async function main(argv) {
   pr("before the functions", phases.pre);
   pr("after the functions they wait for", phases.afterFunctions);
   pr("after the frontend", phases.afterFrontend);
-  for (const p of behaviour.proven) console.log(`  APPLIED BY BEHAVIOUR (no stub)  ${p.file}: get_cron_health lists ${p.jobs.join(", ")} active`);
+  for (const p of behaviour.proven) console.log(`  APPLIED BY BEHAVIOUR (no stub)  ${p.file}: get_cron_health lists ${p.jobs.join(", ")} active${p.timeouts ? `, ${Object.entries(p.timeouts).map(([j, t]) => `${j} at statement_timeout ${t}`).join(", ")}` : ""}`);
   for (const u of behaviour.unproven) console.log(`  NOT PROVEN  ${u.file}: ${u.why}`);
   if (holds.holds.length) {
     console.log(`Held until the step before is verified live:`);

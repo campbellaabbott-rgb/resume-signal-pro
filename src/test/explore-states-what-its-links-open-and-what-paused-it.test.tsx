@@ -32,6 +32,26 @@ vi.mock("@/integrations/supabase/client", () => ({
   },
 }));
 vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: null, session: null }) }));
+// THE FIELD ROWS CAN LAND AFTER THE BUDGET NOTICE. Under a refusal the notice
+// and the rows are two renders: readBoardFacets marks the refusal (the notice,
+// through the budget store) and only then answers null, and the page sets
+// facetFailed -- which swaps the skeleton for the rows -- on that answer. Which
+// one reaches the DOM first is up to React's scheduler and the runner's speed.
+// Case 3 read the rows the moment the notice showed, and on CI run 41231872346
+// (f8d72a9b) the rows were still the skeleton. facetLate holds the facet's answer
+// back after the refusal is marked, so the order CI saw is run every time.
+const facetLate = vi.hoisted(() => ({ ms: 0 }));
+vi.mock("@/lib/board-facets", async (importOriginal) => {
+  const real = await importOriginal<typeof import("@/lib/board-facets")>();
+  return {
+    ...real,
+    readBoardFacets: async (...a: Parameters<typeof real.readBoardFacets>) => {
+      const r = await real.readBoardFacets(...a);
+      if (facetLate.ms > 0) await new Promise((res) => setTimeout(res, facetLate.ms));
+      return r;
+    },
+  };
+});
 function stubTable() {
   const th: Record<string, unknown> = {};
   const self = () => th;
@@ -143,7 +163,9 @@ describe("2. a tab round-trip does not leave the closure panel reading forever",
 });
 
 describe("3. a budget refusal is the board's, said once, and never re-asked", () => {
-  it("explore: the notice, none of 'our instrument failing', and no stream of refused probes", async () => {
+  afterEach(() => { facetLate.ms = 0; });
+
+  async function refusedExplore() {
     rpc.mockImplementation(async (fn: string) => {
       if (fn === "get_explore_cache") return cache();
       return { data: [], error: null };
@@ -155,6 +177,10 @@ describe("3. a budget refusal is the board's, said once, and never re-asked", ()
     expect(text()).not.toMatch(/our measurement failing/);
     const before = boardCalls().length;
     // ...and opening a field, then closing and reopening it, asks nothing more.
+    // The rows are a render of their own (see facetLate): wait for them rather
+    // than reading them off the notice's render. `before` is counted first, so
+    // anything fired while they land still counts against the page.
+    await screen.findAllByRole("button", { name: /Healthcare/ }, SLOW);
     const row = () => screen.getAllByRole("button", { name: /Healthcare/ })[0];
     fireEvent.click(row());
     await settle(1200);
@@ -164,6 +190,13 @@ describe("3. a budget refusal is the board's, said once, and never re-asked", ()
     await settle(1200);
     expect(boardCalls().length - before, "refused probes kept firing on every open").toBe(0);
     expect(text()).not.toMatch(/our instrument failing|reopen it to try again|our measurement failing/);
+  }
+
+  it("explore: the notice, none of 'our instrument failing', and no stream of refused probes", refusedExplore);
+
+  it("explore: the same when the rows land well after the notice, the order CI rendered them in", async () => {
+    facetLate.ms = 400;
+    await refusedExplore();
   });
 
   it("companies: the notice instead of an empty list", async () => {

@@ -71,7 +71,8 @@ const ORDERED = PENDING.filter((f) => !HELD.includes(f));
 
 describe("the repository's builds are the ones the one deploy ships", () => {
   it("job-board .96 and layoff-filings 2026-10-26.1, over the live .92 and 2026-10-09.3", () => {
-    expect(repoBuild("job-board")).toBe("job-board.2026-09-09.96");
+    // .96 or later: fix/pd-job-board carries .98 (2026-10-31), the same deploy's rules.
+    expect(L.buildAtLeast(repoBuild("job-board"), "job-board.2026-09-09.96")).toBe(true);
     expect(repoBuild("layoff-filings")).toBe("layoff-filings.2026-10-26.1");
     const rows = rowsWith(LIVE);
     expect(rows.find((r) => r.fn === "job-board")?.state).toBe("deploy");
@@ -97,19 +98,28 @@ describe("the ledger's order for one message, with .93 and .95 never served", ()
     expect(names(phases.afterFunctions)).toEqual(["20261014120000", "20261025110000", "20261026110000"]);
     const note = (s: string) => phases.afterFunctions.find((p) => p.file.startsWith(s))?.note;
     // Each waits for its build's first slice (sliceStats.build), which comes after the OPTIONS answer (land/all recheck).
-    // The OPTIONS clause names the build this deploy carries (.96), never .95, which never serves (final recheck).
-    expect(note("20261025110000")).toBe(L.sliceNote("2026-09-09.95", "2026-09-09.96"));
-    expect(note("20261026110000")).toBe(L.sliceNote("2026-09-09.96", "2026-09-09.96"));
+    // The OPTIONS clause names the build this deploy carries (.96, .98 since 2026-10-31), never .95, which never serves (final recheck).
+    const deploying = repoBuild("job-board")!.slice("job-board.".length);
+    expect(note("20261025110000")).toBe(L.sliceNote("2026-09-09.95", deploying));
+    expect(note("20261026110000")).toBe(L.sliceNote("2026-09-09.96", deploying));
     expect(L.buildAtLeast(repoBuild("job-board"), "job-board.2026-09-09.95")).toBe(true);
     expect(L.buildAtLeast(repoBuild("job-board"), "job-board.2026-09-09.96")).toBe(true);
     expect(L.buildAtLeast(repoBuild("process-email-queue"), "process-email-queue.2026-10-14.2")).toBe(true);
   });
 
   it("once .96 serves, the Reyes rule written for .95 is met: an after rule is 'or later', never equality", () => {
-    const after = L.migrationPhases(ORDERED, policy, rowsWith({ ...LIVE, "job-board": "job-board.2026-09-09.96", "process-email-queue": "process-email-queue.2026-10-14.2" }));
+    // .96 serving with the two name files still pending is the 2026-10-31 incident: their `before: fn:job-board`
+    // broke, which stops the message unless the re-arm that repairs it (20261030100000, repairedBy) is pending too.
+    // Main's build serving: .96 when written, .98 since 2026-10-31 (fix/pd-job-board).
+    const live = repoBuild("job-board")!;
+    const served = rowsWith({ ...LIVE, "job-board": live, "process-email-queue": "process-email-queue.2026-10-14.2" });
+    const broken: string[] = L.migrationPhases(ORDERED, policy, served).errors;
+    expect(broken.map((e) => e.slice(0, 14))).toEqual(["20261025100000", "20261026100000"]);
+    expect(broken.every((e) => e.includes(`already answers ${live}, and its repairedBy 20261030100000 is not pending`)), broken.join("\n")).toBe(true);
+    const after = L.migrationPhases([...ORDERED, fileOf("20261030100000")].sort(), policy, served);
     expect(after.errors).toEqual([]);
     expect(after.afterFunctions).toEqual([]);
-    expect(after.pre.find((p) => p.file.startsWith("20261025110000"))?.note).toBe("job-board already answers job-board.2026-09-09.96");
+    expect(after.pre.find((p) => p.file.startsWith("20261025110000"))?.note).toBe(`job-board already answers ${repoBuild("job-board")}`);
   });
 
   it("wave 4's hold stays held in this message, and is releasable once .96 and agent-mcp .38 serve", () => {

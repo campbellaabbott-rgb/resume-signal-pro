@@ -1503,7 +1503,11 @@ const PINNED = {
   // the review of 4efea332 (never deployed): 14 more agency flags, the Pepco
   // name, fetchIcims refuses an org read that is not whole or keeps none
   // (icimsOrgRefusal), and mergeCompanyFacet folds Blueprint's two stems.
-  buildVersion: "2026-09-09.96",
+  // 2026-09-09.98 (fix/pd-job-board; .97 is never used, profiles-p3 moved to .99): a lone NUL q or
+  // location is named in ignoredFilters (textFieldShape), and a visit re-files
+  // the board's stored rows it did not read where n1396's US-town reading
+  // applies (townRefilePatches, n1399). sources.ts unchanged.
+  buildVersion: "2026-09-09.98",
 };
 
 /**

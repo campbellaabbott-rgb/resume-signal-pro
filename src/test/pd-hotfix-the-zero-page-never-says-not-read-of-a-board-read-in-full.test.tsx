@@ -92,6 +92,7 @@ import { MemoryRouter } from "react-router-dom";
 import { beforeAll, describe, expect, it } from "vitest";
 import i18n from "@/i18n";
 import { COMPANY_SHARD_LOCALES, companyShard, loadCompanyShard } from "./helpers/company-shard";
+import { MOUNT_TEST_BUDGET } from "./helpers/mount-budget";
 import { buildLanderModel, watchPromiseOf, zeroReadingOf, type BoardTotalInput, type LanderInput } from "@/lib/company/lander-model";
 import { WORKDAY_MULTI_SITE_TENANTS } from "@/lib/company/workday-multi-site-tenants";
 import { CompanyHeader, zeroAnswer, zeroPageHead } from "@/components/jobs/company/CompanyHeader";
@@ -353,7 +354,8 @@ describe("the head (round 3): a zero page's title and description name no open r
     const named = zeroPageHead(t, zeroPage(curveRow(rowOf("eexs~us2~CX_19005")), { storedName: "Delaney at the Green" }), "eexs~us2~CX_19005");
     expect(named).toEqual({ title: "Delaney at the Green jobs", description: "Delaney at the Green: no roles are listed on this page right now." });
     expect(zeroPageHead(t, zeroPage(curveRow(rowOf("bassabatherapy")), { storedName: null }), "10kbi")).toEqual({ title: "Roles on the “10kbi” board", description: OWN_LINE });
-  });
+    // Every corpus row three times over: 8.6 s with the machine loaded, past vitest's 5 s default.
+  }, MOUNT_TEST_BUDGET.testTimeout);
 
   it("in German and Spanish too", async () => {
     const m = zeroPage(curveRow(rowOf("eexs~us2~CX_19005")), { storedName: "Delaney at the Green" });
