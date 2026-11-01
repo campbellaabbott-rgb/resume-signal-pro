@@ -729,20 +729,36 @@ echo "== 7d. the crawler reads the prices: /pricing sells Pro at \$45 and nothin
 # page and its PASS state would trip 83 C1. Retired claims are judged with
 # 83 C1's own list (scripts/prerender-retired.mjs); a bare 29 dollars is not one,
 # because a one-time product at that price is still on sale.
+# Re-pointed again 2026-10-31 (live verify run 1 after the deploy): the
+# switch-over (hp/switch-over, PR #54) is the newer, owner-approved pricing
+# page, and it writes "$45 a month", never "$45/month", with a description
+# that ends "All sales final." (section 99 C5 wants it to name both prices).
+# The description is judged against the English shard's own sentence at $5
+# and $45 (src/i18n/shards/pricing/en.json pricingPlans.meta.description, or
+# descriptionPro while the Full Analysis is off sale), and both it and the
+# body (not the title) must price Pro at $45 a month and at nothing else.
 PR=$(curl -s -m 30 -A "$UA" "$SITE/pricing")
 AG=$(curl -s -m 30 -A "$UA" "$SITE/agents")
 VD7D_PR="$PR" VD7D_AG="$AG" VD7D_ROOT="$(pwd)" VD7D_SITE="$SITE" node --input-type=module -e '
 const { VD7D_PR: pr, VD7D_AG: ag, VD7D_ROOT: root, VD7D_SITE: site } = process.env;
 const out = (s, m) => console.log(`${s.padEnd(5)} ${m}`);
-import(`${root}/scripts/prerender-retired.mjs`).then((R) => {
+import(`${root}/scripts/prerender-retired.mjs`).then(async (R) => {
+  const { readFileSync } = await import("node:fs");
   const bare = (h, n) => (h.match(new RegExp(`\\$${n}(?![0-9])`, "g")) || []).length;
   const served = (h) => `${R.crawlerText(h)} ${JSON.stringify(R.jsonLdBlocks(h))}`;
   if (!pr || pr.length < 2000) { out("FAIL", `/pricing answered ${pr.length} bytes: nothing to judge`); }
   else {
-    const desc = (pr.match(/<meta name="description" content="([^"]*)"/) || [])[1] || "";
-    const body = R.crawlerText(pr);
-    if (desc.includes("Pro $45/month") && body.includes("$45/month")) out("PASS", `/pricing states Pro at $45/month in its description and its body ($45 x${bare(pr, 45)} in the document; baseline 0)`);
-    else out("FAIL", `/pricing does not state Pro at $45/month in both its description and its body (description ${desc.includes("Pro $45/month") ? "yes" : "no"}, body ${body.includes("$45/month") ? "yes" : "no"}; $45 x${bare(pr, 45)})`);
+    const unent = (t) => t.replace(/&quot;/g, "\"").replace(/&#39;|&apos;/g, "\x27").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+    const desc = unent((pr.match(/<meta name="description" content="([^"]*)"/) || [])[1] || "");
+    // The body, not the head: the title also says "Pro $45 a month".
+    const bodyAt = pr.search(/<body[\s>]/i);
+    const body = R.crawlerText(bodyAt >= 0 ? pr.slice(bodyAt) : pr);
+    const MONTH = "(?:/month|\\s+a month|\\s+per month)";
+    const proAt45 = (t) => new RegExp(`\\bPro\\b[^.$]{0,40}\\$45${MONTH}(?![0-9])`).test(t) || new RegExp(`\\$45${MONTH}\\s+for\\s+Pro\\b`).test(t);
+    const otherPro = (t) => [...new Set([...t.matchAll(new RegExp(`\\bPro\\b,?:?\\s+\\$(\\d[\\d,.]*)${MONTH}`, "g")), ...t.matchAll(new RegExp(`\\$(\\d[\\d,.]*)${MONTH}\\s+for\\s+Pro\\b`, "g"))].map((m) => m[1]))].filter((p) => p !== "45");
+    const dYes = proAt45(desc), bYes = proAt45(body), bOther = otherPro(body);
+    if (dYes && bYes && !bOther.length) out("PASS", `/pricing states Pro at $45 a month in its description and its body ($45 x${bare(pr, 45)} in the document)`);
+    else out("FAIL", `/pricing does not state Pro at $45 a month in both its description and its body (description ${dYes ? "yes" : "no"}, body ${bYes ? "yes" : "no"}${bOther.length ? `; the body also prices Pro at ${bOther.map((p) => "$" + p).join(", ")}` : ""}; $45 x${bare(pr, 45)})`);
     const hits = R.retiredClaimsIn(served(pr), { sales: true });
     // Its JSON-LD offers are walked as /agents\x27 are (round 3 review,
     // 2026-10-25: an @type array and a nested priceSpecification at 29 or 99
@@ -752,9 +768,23 @@ import(`${root}/scripts/prerender-retired.mjs`).then((R) => {
     if (hits.length) out("FAIL", `/pricing sells or names a retired product: ${hits.map(([c, m]) => `${c} ("${m.slice(0, 60)}")`).join("; ")}`);
     else if (prOffers.length) out("FAIL", `/pricing offers a retired price in its JSON-LD: ${prOffers.join(", ")} (the agent plan and the pass are retired; 83 C2 refuses an Offer at either)`);
     else out("PASS", `/pricing carries no retired claim by 83 C1\x27s list and no JSON-LD offer at 99 or 29 (bare $99 x${bare(pr, 99)}; bare $29 x${bare(pr, 29)}, a one-time product still on sale, never a pass)`);
-    const descBad = !/Pro \$45\/month\.$/.test(desc) ? "does not end with \x27Pro $45/month.\x27" : /\bpass\b/i.test(desc) ? "names a pass" : /Apply Agent/.test(desc) ? "names the Apply Agent" : /purchases \($/.test(desc) ? "is cut at \x27purchases (\x27" : "";
+    // The approved wording: the sentence of the English shard at $5 and $45.
+    let meta = {};
+    try { meta = JSON.parse(readFileSync(`${root}/src/i18n/shards/pricing/en.json`, "utf8")).pricingPlans.meta || {}; } catch { meta = {}; }
+    const fill = (t) => (typeof t === "string" && t ? t.replace(/\{\{faPrice\}\}/g, () => "$5").replace(/\{\{proPrice\}\}/g, () => "$45") : null);
+    const approved = [fill(meta.description), fill(meta.descriptionPro)].filter(Boolean);
+    const offSale = [...new Set([...desc.matchAll(/\$\s?(\d+(?:[.,]\d+)?)/g)].map((m) => m[1]))].filter((p) => p !== "5" && p !== "45");
+    const dHits = R.retiredClaimsIn(desc, { sales: true });
+    const descBad = !dYes ? "does not price Pro at $45 a month"
+      : offSale.length ? `names a price not on sale (${offSale.map((p) => "$" + p).join(", ")})`
+      : /\bpass\b/i.test(desc) ? "names a pass"
+      : /Apply Agent/.test(desc) ? "names the Apply Agent"
+      : dHits.length ? `sells or names a retired product: ${dHits.map(([c]) => c).join("; ")}`
+      : !approved.length ? "cannot be judged: this checkout has no src/i18n/shards/pricing/en.json pricingPlans.meta.description"
+      : !approved.includes(desc) ? `is not the approved wording (want "${approved[0]}", src/i18n/shards/pricing/en.json pricingPlans.meta.description at $5 and $45)`
+      : "";
     if (descBad) out("FAIL", `/pricing description ${descBad}: "${desc.slice(0, 200)}"`);
-    else out("PASS", `/pricing description is whole and names only what is on sale: "${desc}"`);
+    else out("PASS", `/pricing description is the approved wording, prices Pro at $45 a month and names nothing else for sale: "${desc}"`);
   }
   if (!ag || ag.length < 2000) { out("FAIL", `/agents answered ${ag.length} bytes: nothing to judge`); return; }
   // The homepage file is what the host serves at a path it has no page for,
