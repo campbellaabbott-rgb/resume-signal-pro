@@ -397,7 +397,7 @@
       "redFlags": "Red Flags",
       "plusMore": "+12 pa"
     },
-    "scanFooter": "Resulta sa loob ng {{seconds}} segundo • 7 libreng scan kada araw",
+    "scanFooter": "Resulta sa loob ng {{seconds}} segundo • {{scans}} libreng scan kada araw",
     "getFreeAnalysis": "Kumuha ng Libreng Resume Analysis",
     "orGetCompleteAnalysis": "O kunin ang kumpletong analysis sa halagang",
     "securePaymentStripe": "Secure na bayad gamit ang Stripe",
@@ -1622,6 +1622,34 @@
     },
     "tailoredSignIn": {
       "cta": "Mag-sign in para i-tailor ang resume mo sa trabahong ito (libre: isa bawat araw)"
+    },
+    "resumeTruncated": {
+      "title": "Hindi nabasa ng scan na ito ang buong resume mo.",
+      "body": "Mas mahaba ito kaysa sa kayang basahin nang buo ng scan, kaya ang score, ang mga kulang na keyword at ang mga sinipi sa ibaba ay mula lang sa bahaging nabasa. Paikliin ito, o i-scan ang pinakamahahalagang pahina, para masuri ang lahat."
+    },
+    "weakestBullets": {
+      "title": "Ang pinakamahihinang bullet mo, may marka",
+      "subtitle": "Sinipi mula sa resume mo at minarkahan ayon sa numero, pandiwa at saklaw. Kapag may ipinakitang rewrite, punan ang mga [bracket] ng totoong numero mo.",
+      "howToFix": "Paano ito ayusin (hindi namin ito ma-rewrite mula sa resume mo lang)"
+    },
+    "readAs": {
+      "label": "Ganito namin ito binasa:",
+      "industry": "Industriya",
+      "level": "Antas",
+      "levels": {
+        "entry": "Panimula",
+        "mid": "Gitna",
+        "senior": "Senior",
+        "executive": "Ehekutibo"
+      },
+      "industryAria": "Kumpirmahin o itama ang natukoy na industriya",
+      "levelAria": "Kumpirmahin o itama ang natukoy na antas ng karanasan",
+      "note": "Ina-update ng pagtatama ang report na ito at itinatala para mapahusay namin ang pagtukoy",
+      "quickCheck": {
+        "title": "Mabilis na check:",
+        "transition": "hindi kami lubos na sigurado sa industriya mo rito — mukhang {{historical}} ang kasaysayan mo, pero {{recent}} ang pinakabago mong posisyon. Kumpirmahin sa ibaba at aangkop ang report.",
+        "unsure": "hindi kami lubos na sigurado sa industriya mo rito. Kumpirmahin o itama ito sa ibaba — agad na mag-a-update ang mga benchmark at keyword."
+      }
     }
   },
   "analysisPreviewSample": {
@@ -3071,7 +3099,14 @@
     "bestUsesPersonal": "{{name}}, narito kung saan pinakamainam ang bersyong ito ng resume:",
     "atsRelevance": "ATS Relevance: {{level}}",
     "learnAbout": "Matuto tungkol sa {{title}}",
-    "close": "Isara"
+    "close": "Isara",
+    "usageTooltip": "Mga Rekomendasyon sa Paggamit",
+    "suitability": {
+      "excellent": "Napakahusay",
+      "good": "Mabuti",
+      "limited": "Limitado",
+      "notRecommended": "Hindi inirerekomenda"
+    }
   },
   "elevatorPitch": {
     "title": "60-Segundong Elevator Pitch",
@@ -3142,7 +3177,13 @@
     "softSkills": "Mga Soft Skill",
     "tools": "Mga Tool at Software",
     "certifications": "Mga Sertipikasyon",
-    "methodologies": "Mga Metodolohiya"
+    "methodologies": "Mga Metodolohiya",
+    "matchingAgainstJob": "Itinutugma sa: {{job}}",
+    "importance": {
+      "critical": "kritikal",
+      "important": "mahalaga",
+      "nice_to_have": "mainam kung meron"
+    }
   },
   "recruiterView": {
     "seeThrough": "Tingnan ang iyong resume sa pamamagitan ng mata ng isang recruiter",
@@ -3374,7 +3415,20 @@
     "lowShort": "○ Mababa",
     "highDesc": "Malakas na mga signal ng industriya ang natuklasan. Ang mga rekomendasyon ay lubos na may kaugnayan.",
     "mediumDesc": "Ilang signal ng industriya ang natuklasan, inirerekomenda ang pag-verify.",
-    "lowDesc": "Limitadong mga signal. Mangyaring i-verify at itama kung kinakailangan para sa mas magandang rekomendasyon."
+    "lowDesc": "Limitadong mga signal. Mangyaring i-verify at itama kung kinakailangan para sa mas magandang rekomendasyon.",
+    "isThisRight": "Tama ba ito?",
+    "yes": "Oo",
+    "no": "Hindi",
+    "thanksConfirmed": "Sige — salamat sa pagkumpirma!",
+    "allSignals": "Lahat ng signal ng pagtukoy:",
+    "alsoConsidered": "Isinaalang-alang din:",
+    "switch": "Palitan →",
+    "seniority": {
+      "entry": "Panimulang antas",
+      "mid": "Gitnang antas",
+      "senior": "Senior",
+      "executive": "Ehekutibo"
+    }
   },
   "resumeBuilder": {
     "experience": {
@@ -3386,7 +3440,15 @@
       "endDate": "Petsa ng Pagtatapos",
       "bulletPoints": "Mga Bullet Point",
       "addBullet": "Magdagdag ng Bullet",
-      "addWorkExperience": "Magdagdag ng Karanasan sa Trabaho"
+      "addWorkExperience": "Magdagdag ng Karanasan sa Trabaho",
+      "placeholder": {
+        "jobTitle": "Senior Software Engineer",
+        "company": "Acme Inc.",
+        "location": "Remote",
+        "startDate": "Ene 2022",
+        "endDate": "Kasalukuyan",
+        "bullet": "Pinamunuan ang 5 engineer para mailabas ang…"
+      }
     },
     "education": {
       "entry": "Edukasyon {{num}}",
@@ -3396,7 +3458,13 @@
       "startDate": "Petsa ng Simula",
       "endDate": "Petsa ng Pagtatapos",
       "additionalDetails": "Karagdagang Detalye (opsyonal)",
-      "addEducation": "Magdagdag ng Edukasyon"
+      "addEducation": "Magdagdag ng Edukasyon",
+      "placeholder": {
+        "school": "University of the Philippines",
+        "degree": "BS",
+        "field": "Computer Science",
+        "details": "Mga kaugnay na kurso, karangalan, GPA…"
+      }
     },
     "tagList": {
       "typeToAdd": "Mag-type at pindutin ang Enter para magdagdag"
@@ -3410,13 +3478,80 @@
       "skills": "Mga Kasanayan",
       "certifications": "Mga Sertipikasyon"
     },
-    "replaceWithFixes": "Palitan ang kasalukuyang draft mo sa builder ng resume mula sa scan mo, kasama ang mga ayos mula sa report?",
+    "replaceWithFixes": "Palitan ang kasalukuyang draft mo sa builder ng resume mula sa scan mo, kasama ang mga ayos mula sa report? Kapag tumanggi ka, mananatili ang draft mo at ilalapat dito ang mga ayos na tumutugma sa mga bullet nito.",
     "replaceWithLatestScan": "May draft ka mula sa naunang resume. Palitan ito ng resume mula sa pinakabago mong scan?",
     "toast": {
       "addNameDescription": "Kailangang may pangalan mo sa itaas ng resume mo bago ito ma-download.",
       "addNameTitle": "Idagdag muna ang pangalan mo",
       "savedAsWordDescription": "Hindi kayang iguhit ng mga font ng PDF ang {{chars}}, kaya nag-save kami ng Word file, na pinapanatili ang bawat character.",
-      "savedAsWordTitle": "Na-save bilang Word file"
+      "savedAsWordTitle": "Na-save bilang Word file",
+      "importedTitle": "Na-import ang resume",
+      "importedDescription": "Pinunan namin ang builder mula sa pinakabago mong resume — i-edit ang kahit ano sa ibaba.",
+      "importedWithFixesTitle_one": "Na-import ang resume — {{count}} ayos mula sa report mo ang nailapat",
+      "importedWithFixesTitle_other": "Na-import ang resume — {{count}} ayos mula sa report mo ang nailapat",
+      "importedWithFixesDescription": "Nakalagay na ang mga ni-rewrite na bullet mula sa report mo. Nakalista sa itaas ng editor ang mga mungkahing keyword mula sa scan.",
+      "mergedTitle_one": "Pinanatili ang draft — {{count}} ayos mula sa report mo ang nailapat dito",
+      "mergedTitle_other": "Pinanatili ang draft — {{count}} ayos mula sa report mo ang nailapat dito",
+      "mergedDescription": "Ang mga bullet lang na nasa draft mo na ang binago. Nasa report mo pa rin ang mga rewrite para sa mga bullet na wala rito.",
+      "mergedNoneTitle": "Pinanatili ang draft — walang rewrite mula sa report ang tumugma rito",
+      "mergedNoneDescription": "Iba ang mga bullet ng draft mo sa na-scan na resume, kaya walang binago rito. Nasa report mo pa rin ang mga rewrite.",
+      "exportFailedTitle": "Hindi na-export",
+      "exportPdfFailed": "Hindi magawa ang PDF. Pakisubukang muli.",
+      "exportDocxFailed": "Hindi magawa ang Word document. Pakisubukang muli.",
+      "freelanceInsertedTitle_one": "Naidagdag ang freelance na bahagi — {{count}} entry ang naidagdag",
+      "freelanceInsertedTitle_other": "Naidagdag ang freelance na bahagi — {{count}} entry ang naidagdag",
+      "freelanceInsertedDescription": "Idagdag ang mga petsa sa bawat entry, saka mag-export ng maayos na PDF o Word document."
+    },
+    "seo": {
+      "title": "Libreng Resume Builder — Resume Booster",
+      "description": "Gumawa ng resume na pasado sa ATS sa loob ng ilang minuto gamit ang aming libreng guided builder. I-export sa PDF, walang kailangang sign-up."
+    },
+    "title": "Resume Builder (Gumawa ng Resume)",
+    "subtitle": "Gumawa ng malinis at maayos na resume — i-edit ang kahit anong bahagi at i-export kapag handa na.",
+    "startOver": "Magsimula muli",
+    "exportDocx": "I-export bilang DOCX",
+    "exportPdf": "I-export bilang PDF",
+    "importing": "Ini-import ang pinakabago mong resume sa builder…",
+    "confirmStartOver": "Mabubura nito ang lahat sa builder. Ituloy?",
+    "rescan": {
+      "title": "Na-export na — tingnan ngayon kung gumana ang mga ayos",
+      "body": "I-rescan nang libre ang mismong bersyong ito at tingnan ang score bago at pagkatapos, sa parehong pamantayan.",
+      "button": "I-rescan ang bersyong ito →"
+    },
+    "keywords": {
+      "title": "Mga keyword na wala ayon sa scan mo — isama kung saan totoo ang mga ito",
+      "dismiss": "itago",
+      "note": "Hindi kami kailanman naglalagay ng keyword para sa iyo — ikaw lang ang tapat na makapagsasabi ng isang skill."
+    },
+    "section": {
+      "contact": "Contact",
+      "summary": "Buod",
+      "experience": "Karanasan",
+      "education": "Edukasyon",
+      "skills": "Mga Skill",
+      "certifications": "Mga Sertipikasyon",
+      "preview": "Preview (Silip)"
+    },
+    "contact": {
+      "fullName": "Buong Pangalan",
+      "title": "Posisyon / Headline",
+      "email": "Email",
+      "phone": "Telepono",
+      "location": "Lokasyon",
+      "linkedIn": "LinkedIn",
+      "website": "Website / Portfolio"
+    },
+    "placeholder": {
+      "fullName": "Juan dela Cruz",
+      "title": "Senior Product Designer",
+      "email": "juan@example.com",
+      "phone": "0917 123 4567",
+      "location": "Quezon City",
+      "linkedIn": "linkedin.com/in/juandelacruz",
+      "website": "juandelacruz.ph",
+      "summary": "Maikling buod sa 2-4 na pangungusap ng karanasan mo at kung ano ang hinahanap mo ngayon.",
+      "skill": "Magdagdag ng skill at pindutin ang Enter",
+      "certification": "Magdagdag ng sertipikasyon at pindutin ang Enter"
     }
   },
   "jobsPage": {
@@ -5676,5 +5811,111 @@
     "metaDescription": "Wala sa sariling address ng site na ito ang data API; nasa /data-api ang paraan at ang libreng mga key.",
     "lead": "Hiningi mo sa site na ito ang {{path}}. Wala rito ang API; narito ito:",
     "keyLine": "May dalang key ang mga request bilang Authorization: Bearer rb_live_…; inilalarawan ang libreng mga key at bawat endpoint sa"
+  },
+  "metricCards": {
+    "section": {
+      "primary": "Pangunahing Score",
+      "structure": "Istruktura at Nilalaman",
+      "advanced": "Mas Detalyadong Sukatan"
+    },
+    "ats": {
+      "strong": "✓ Malakas sa keyword, format at resulta",
+      "gaps": "⚠ May mga kakulangang dapat punan: tingnan ang mga ayos sa ibaba",
+      "manyGaps": "✗ Maraming kakulangang dapat punan: tingnan ang mga ayos sa ibaba"
+    },
+    "grade": {
+      "a": "Napakahusay",
+      "b": "Mahusay",
+      "c": "Katamtaman",
+      "d": "Kailangang Ayusin"
+    },
+    "redFlagsClean": "Malinis ang resume mo — walang malaking problemang nakita."
+  },
+  "scanOutcome": {
+    "title": "Nag-apply ka gamit ang resume na ito? Ikuwento kung paano ito napunta",
+    "body": "Anonymous, nakakabit lang sa report #{{reportId}}. Ganito namin sinusukat, sa halip na hulaan, kung aling mga score ang talagang nagkakaroon ng interview. Puwede mong baguhin ang sagot mo kapag may nagbago.",
+    "interview": "🎉 Nagka-interview",
+    "noResponse": "📭 Wala pang sagot",
+    "rejected": "❌ Tinanggihan",
+    "recorded": "Naitala — salamat. Tinutulungan kami ng mga sagot mo na pag-aralan kung aling mga score ang humahantong sa interview; wala pa kaming inilalabas na pampublikong numero mula rito.",
+    "notSaved": "Hindi na-save — walang naitala. Pakisubukang muli mamaya."
+  },
+  "scanFeedback": {
+    "question": "Nakatulong ba ang pagsusuring ito?",
+    "thanks": "Salamat sa feedback!",
+    "yes": "Oo",
+    "no": "Hindi",
+    "notSaved": "Hindi ito na-save — walang naitala."
+  },
+  "reportInsights": {
+    "vendor": {
+      "title": "Paano binabasa ng malalaking ATS platform ang resume na ito",
+      "subtitle": "Iba-iba ang pagbasa ng bawat sistema. Inilalapat ng mga check na ito ang mga dokumentadong katangian ng bawat vendor sa aktwal mong format.",
+      "uncheckedNote": "Sa PDF upload lang namin sinusuri ang layout. Na-paste na text o Word file ito, kaya hindi nasuri ang mga column at table, at walang platform na umaasa sa mga ito ang minarkahang pasado.",
+      "status": {
+        "pass": "Pasado",
+        "warn": "Kailangang suriin",
+        "fail": "Malamang pumalya",
+        "unknown": "Hindi nasuri"
+      },
+      "note": {
+        "workday": {
+          "fail": "Ginugulo ng multi-column layout ang parser ng Workday — nababasa nang wala sa ayos ang nilalaman.",
+          "warn": "Ang text na naka-align gamit ang tab o mga dekoratibong bullet ay puwedeng magsanib ng mga field sa preview ng Workday.",
+          "pass": "Isang column, karaniwang bullet — malinis ang pagbasa sa Workday.",
+          "unknown": "Hindi nasuri ang layout — hindi namin masabi kung guguluhin ng mga column o table ang parser ng Workday."
+        },
+        "greenhouse": {
+          "warn": "Iniingatan ng Greenhouse ang PDF pero umaasa ang keyword search nito sa na-extract na text — binabawasan ng mga kakaibang layout ang tugma.",
+          "pass": "Iniimbak ng Greenhouse ang orihinal mong file; mukhang maaasahan dito ang pag-extract ng text.",
+          "unknown": "Hindi nasuri ang layout — hinahanap ng Greenhouse ang na-extract na text, at hindi namin nakita kung gaano kalinis ma-extract ang layout ng file na ito."
+        },
+        "lever": {
+          "warn": "Inaasahan ng section detection ng Lever ang karaniwang heading (Experience, Education) — puwedeng magulo ang kasaysayan mo sa malikhaing heading.",
+          "pass": "Karaniwang heading ng section — maayos na pagsusunud-sunurin ng Lever ang kasaysayan mo."
+        },
+        "icims": {
+          "fail": "Ang column na may kasamang tab alignment ang pinakamasamang kaso para sa iCIMS — napupunta sa maling kahon ang mga field.",
+          "warn": "Awtomatikong pinupunan ng iCIMS ang mga field ng aplikasyon mula sa parse — suriin ang napunang form bago mag-submit.",
+          "pass": "Dapat tama ang awtomatikong pagpuno sa mga field ng aplikasyon sa iCIMS.",
+          "unknown": "Hindi nasuri ang layout — pinupunan ng iCIMS ang form nito mula sa parse, kaya suriin ang mga napunang field bago mag-submit."
+        }
+      },
+      "finding": {
+        "fail": "{{vendor}} parsing: malamang pumalya",
+        "warn": "{{vendor}} parsing: kailangang suriin",
+        "pass": "{{vendor}} parsing",
+        "unknown": "{{vendor}} parsing: hindi nasuri ang layout"
+      }
+    },
+    "findings": {
+      "title": "Mga natuklasan sa isang tingin",
+      "critical_one": "{{count}} kritikal",
+      "critical_other": "{{count}} kritikal",
+      "warning_one": "{{count}} babala",
+      "warning_other": "{{count}} babala",
+      "passed_one": "{{count}} pasado",
+      "passed_other": "{{count}} pasado",
+      "unchecked_one": "{{count}} hindi nasuri",
+      "unchecked_other": "{{count}} hindi nasuri",
+      "noCritical": "Walang kritikal na natuklasan — nasa mga bahagi sa ibaba ang detalye ng gumagana.",
+      "footer": "Nasa mga bahagi sa ibaba ang buong detalye ng bawat natuklasan, ayon sa bigat."
+    }
+  },
+  "redFlags": {
+    "title": "Mga Red Flag para sa Recruiter",
+    "severity": {
+      "critical": "Kritikal",
+      "major": "Malaki",
+      "minor": "Maliit"
+    },
+    "count": {
+      "critical_one": "{{count}} kritikal",
+      "critical_other": "{{count}} kritikal",
+      "major_one": "{{count}} malaki",
+      "major_other": "{{count}} malaki",
+      "minor_one": "{{count}} maliit",
+      "minor_other": "{{count}} maliit"
+    }
   }
 }

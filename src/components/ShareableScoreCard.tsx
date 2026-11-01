@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { postTrackEvent } from "@/lib/track-transport";
 import { TRADING_NAME } from "@/config/seller";
+import { scoreBand, scoreTone } from "@/lib/score-bands";
 
 /**
  * Where a shared card sends people: this site's scanner. The card used to say
@@ -75,18 +76,16 @@ export function ShareableScoreCard({
   const cardRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
-  const getScoreColor = (score: number) => {
-    if (score >= 70) return "#22c55e";
-    if (score >= 50) return "#eab308";
-    return "#ef4444";
-  };
+  // The report's one set of bands (src/lib/score-bands.ts, S13-019).
+  const getScoreColor = (value: number) =>
+    ({ success: "#22c55e", warning: "#eab308", destructive: "#ef4444" } as const)[scoreTone(value)];
 
-  const getScoreLabel = (score: number) => {
-    if (score >= 85) return t('shareableCard.excellent');
-    if (score >= 70) return t('shareableCard.good');
-    if (score >= 50) return t('shareableCard.needsImprovement');
-    return t('shareableCard.poor');
-  };
+  const getScoreLabel = (value: number) => ({
+    excellent: t('shareableCard.excellent'),
+    good: t('shareableCard.good'),
+    fair: t('shareableCard.needsImprovement'),
+    weak: t('shareableCard.poor'),
+  })[scoreBand(value)];
 
   const generateImage = async (): Promise<string | null> => {
     if (!cardRef.current) {

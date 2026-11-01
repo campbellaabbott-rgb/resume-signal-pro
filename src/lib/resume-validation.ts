@@ -6,8 +6,13 @@
 
 // Minimum expected resume length (characters) - very short resumes are suspicious
 const MIN_RESUME_LENGTH = 200;
-// Maximum resume length we'll send (to prevent accidental huge payloads)
-const MAX_RESUME_LENGTH = 100000;
+// Maximum resume length we'll send: the scanners' own cap (MAX_RESUME_LENGTH
+// in free-keyword-scan and its stream fallback, and _shared/input-limits.ts).
+// It was 100,000 here against their 50,000, so a CV between the two "uploaded"
+// and was then refused with a 400 (S13-008); it is now refused before it is
+// sent. src/test/a-resume-the-scan-did-not-read-whole-says-so.test.tsx holds
+// it equal to all three.
+export const MAX_RESUME_LENGTH = 50_000;
 
 export interface ResumeValidationResult {
   isValid: boolean;
@@ -106,7 +111,7 @@ export function validateResumeBeforeSend(resumeText: string): ResumeValidationRe
   
   // Check maximum length (truncation protection)
   if (originalLength > MAX_RESUME_LENGTH) {
-    errors.push(`Resume text exceeds maximum length (${originalLength} > ${MAX_RESUME_LENGTH}). Please use a shorter resume.`);
+    errors.push(`Resume text is too long (${originalLength.toLocaleString("en-US")} characters). The scan reads up to ${MAX_RESUME_LENGTH.toLocaleString("en-US")}; please use a shorter resume.`);
     return { isValid: false, warnings, errors, originalLength };
   }
   

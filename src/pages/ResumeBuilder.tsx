@@ -153,8 +153,8 @@ export default function ResumeBuilder() {
         const existing = base.experience.filter(e => e.title || e.company || e.bullets.some(Boolean));
         setResume({ ...base, experience: [...entries, ...existing] });
         toast({
-          title: `Freelance section inserted — ${entries.length} ${entries.length === 1 ? "entry" : "entries"} added`,
-          description: "Add your dates to each entry, then export a typeset PDF or Word document.",
+          title: t("resumeBuilder.toast.freelanceInsertedTitle", { count: entries.length }),
+          description: t("resumeBuilder.toast.freelanceInsertedDescription"),
         });
         return;
       }
@@ -185,6 +185,23 @@ export default function ResumeBuilder() {
       );
       if (!replace) {
         try { sessionStorage.removeItem("rb_scan_fixes"); } catch { /* ignore */ }
+        // A "no" to the report's handoff keeps the draft but not at the cost
+        // of the fixes (S13-126): each rewrite whose bullet is in the draft
+        // replaces it, the keyword strip shows, and the toast says how many
+        // landed, none included.
+        if (decision === "ask-fixes" && fixes) {
+          const kept = loadDraft();
+          if (kept) {
+            const { resume: merged, applied } = applyScanRewrites(kept, Array.isArray(fixes.rewrites) ? fixes.rewrites : []);
+            if (applied > 0) setResume(merged);
+            if (Array.isArray(fixes.keywords) && fixes.keywords.length) setScanKeywords(fixes.keywords);
+            if (Array.isArray(fixes.rewrites) && fixes.rewrites.length) {
+              toast(applied > 0
+                ? { title: t("resumeBuilder.toast.mergedTitle", { count: applied }), description: t("resumeBuilder.toast.mergedDescription") }
+                : { title: t("resumeBuilder.toast.mergedNoneTitle"), description: t("resumeBuilder.toast.mergedNoneDescription") });
+            }
+          }
+        }
         return;
       }
     }
@@ -210,10 +227,8 @@ export default function ResumeBuilder() {
         writeImportedFrom(importedText);
         setResume(next);
         toast({
-          title: appliedCount > 0 ? `Resume imported — ${appliedCount} fix${appliedCount === 1 ? "" : "es"} from your report applied` : "Resume imported",
-          description: appliedCount > 0
-            ? "Rewritten bullets from your diagnostic are in place. Keyword suggestions from the scan are listed above the editor."
-            : "We've prefilled the builder from your most recent resume — edit anything below.",
+          title: appliedCount > 0 ? t("resumeBuilder.toast.importedWithFixesTitle", { count: appliedCount }) : t("resumeBuilder.toast.importedTitle"),
+          description: appliedCount > 0 ? t("resumeBuilder.toast.importedWithFixesDescription") : t("resumeBuilder.toast.importedDescription"),
         });
       })
       .catch((err) => {
@@ -228,7 +243,7 @@ export default function ResumeBuilder() {
   }, [resume]);
 
   const handleStartOver = () => {
-    if (!window.confirm("This will clear everything in the builder. Continue?")) return;
+    if (!window.confirm(t("resumeBuilder.confirmStartOver"))) return;
     setResume(createEmptyResume());
     localStorage.removeItem(DRAFT_STORAGE_KEY);
     // The clear sticks (S11-144): the tab's scan counts as offered, so the
@@ -264,7 +279,7 @@ export default function ResumeBuilder() {
     } catch (err) {
       if (missingName(err)) { askForName(); return; }
       console.error("[ResumeBuilder] PDF export failed:", err);
-      toast({ title: "Export failed", description: "Could not generate the PDF. Please try again.", variant: "destructive" });
+      toast({ title: t("resumeBuilder.toast.exportFailedTitle"), description: t("resumeBuilder.toast.exportPdfFailed"), variant: "destructive" });
     } finally {
       setIsExportingPdf(false);
     }
@@ -279,7 +294,7 @@ export default function ResumeBuilder() {
     } catch (err) {
       if (missingName(err)) { askForName(); return; }
       console.error("[ResumeBuilder] DOCX export failed:", err);
-      toast({ title: "Export failed", description: "Could not generate the Word document. Please try again.", variant: "destructive" });
+      toast({ title: t("resumeBuilder.toast.exportFailedTitle"), description: t("resumeBuilder.toast.exportDocxFailed"), variant: "destructive" });
     } finally {
       setIsExportingDocx(false);
     }
@@ -287,29 +302,27 @@ export default function ResumeBuilder() {
 
   return (
     <div className="min-h-screen bg-background">
-      <SEO title="Free Resume Builder — Resume Booster" description="Build an ATS-friendly resume in minutes with our free guided builder. Export to PDF, no signup required." path="/builder" />
+      <SEO title={t("resumeBuilder.seo.title")} description={t("resumeBuilder.seo.description")} path="/builder" />
       <Header />
       <main className="pt-16 pb-20">
         <div className="container max-w-6xl">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold mb-1">Resume Builder</h1>
-              <p className="text-muted-foreground text-sm">
-                Build a clean, structured resume — edit any section and export when ready.
-              </p>
+              <h1 className="text-2xl md:text-3xl font-bold mb-1">{t("resumeBuilder.title")}</h1>
+              <p className="text-muted-foreground text-sm">{t("resumeBuilder.subtitle")}</p>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               <Button variant="outline" size="sm" className="gap-1.5" onClick={handleStartOver}>
                 <RotateCcw className="w-3.5 h-3.5" />
-                Start Over
+                {t("resumeBuilder.startOver")}
               </Button>
               <Button variant="outline" size="sm" className="gap-1.5" disabled={isExportingDocx} onClick={handleExportDocx}>
                 {isExportingDocx ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
-                Export DOCX
+                {t("resumeBuilder.exportDocx")}
               </Button>
               <Button size="sm" className="gap-1.5" disabled={isExportingPdf} onClick={handleExportPdf}>
                 {isExportingPdf ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-                Export PDF
+                {t("resumeBuilder.exportPdf")}
               </Button>
             </div>
           </div>
@@ -317,15 +330,15 @@ export default function ResumeBuilder() {
           {isPrefilling && (
             <div className="mb-6 flex items-center gap-2 px-4 py-3 rounded-lg bg-primary/5 border border-primary/20 text-sm text-muted-foreground">
               <Sparkles className="w-4 h-4 text-primary animate-pulse shrink-0" />
-              Importing your most recent resume into the builder...
+              {t("resumeBuilder.importing")}
             </div>
           )}
 
           {showRescanCta && (
             <div className="mb-6 px-4 py-3 rounded-lg bg-success/5 border border-success/30 flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
               <div>
-                <p className="text-sm font-semibold text-foreground">Exported — now verify the fixes worked</p>
-                <p className="text-xs text-muted-foreground">Rescan this exact version free and see the before/after score, same rubric both times.</p>
+                <p className="text-sm font-semibold text-foreground">{t("resumeBuilder.rescan.title")}</p>
+                <p className="text-xs text-muted-foreground">{t("resumeBuilder.rescan.body")}</p>
               </div>
               <Button
                 size="sm"
@@ -340,7 +353,7 @@ export default function ResumeBuilder() {
                   window.location.href = "/resume-checker?rescan=1#upload";
                 }}
               >
-                Rescan this version →
+                {t("resumeBuilder.rescan.button")}
               </Button>
             </div>
           )}
@@ -348,15 +361,15 @@ export default function ResumeBuilder() {
           {scanKeywords.length > 0 && (
             <div className="mb-6 px-4 py-3 rounded-lg bg-card border border-border">
               <div className="flex items-center justify-between gap-3 mb-2">
-                <p className="text-xs font-semibold text-foreground">Keywords your scan found missing — work them in where they're true</p>
-                <button onClick={() => setScanKeywords([])} className="text-xs text-muted-foreground hover:text-foreground shrink-0">dismiss</button>
+                <p className="text-xs font-semibold text-foreground">{t("resumeBuilder.keywords.title")}</p>
+                <button onClick={() => setScanKeywords([])} className="text-xs text-muted-foreground hover:text-foreground shrink-0">{t("resumeBuilder.keywords.dismiss")}</button>
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {scanKeywords.map((k) => (
                   <span key={k} className="px-2.5 py-1 rounded-full border border-primary/30 bg-primary/5 text-xs text-foreground">{k}</span>
                 ))}
               </div>
-              <p className="text-[11px] text-muted-foreground mt-2">We never auto-insert keywords — only you can honestly claim a skill.</p>
+              <p className="text-[11px] text-muted-foreground mt-2">{t("resumeBuilder.keywords.note")}</p>
             </div>
           )}
 
@@ -364,79 +377,79 @@ export default function ResumeBuilder() {
             {/* Editor column */}
             <div className="space-y-8">
               <section className="space-y-3">
-                <h2 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">Contact</h2>
+                <h2 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">{t("resumeBuilder.section.contact")}</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <Label className="text-xs">Full Name</Label>
+                    <Label className="text-xs">{t("resumeBuilder.contact.fullName")}</Label>
                     <Input
                       value={resume.contact.fullName}
                       onChange={(e) => setResume({ ...resume, contact: { ...resume.contact, fullName: e.target.value } })}
-                      placeholder="Jane Doe"
+                      placeholder={t("resumeBuilder.placeholder.fullName")}
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs">Title / Headline</Label>
+                    <Label className="text-xs">{t("resumeBuilder.contact.title")}</Label>
                     <Input
                       value={resume.contact.title}
                       onChange={(e) => setResume({ ...resume, contact: { ...resume.contact, title: e.target.value } })}
-                      placeholder="Senior Product Designer"
+                      placeholder={t("resumeBuilder.placeholder.title")}
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs">Email</Label>
+                    <Label className="text-xs">{t("resumeBuilder.contact.email")}</Label>
                     <Input
                       value={resume.contact.email}
                       onChange={(e) => setResume({ ...resume, contact: { ...resume.contact, email: e.target.value } })}
-                      placeholder="jane@example.com"
+                      placeholder={t("resumeBuilder.placeholder.email")}
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs">Phone</Label>
+                    <Label className="text-xs">{t("resumeBuilder.contact.phone")}</Label>
                     <Input
                       value={resume.contact.phone}
                       onChange={(e) => setResume({ ...resume, contact: { ...resume.contact, phone: e.target.value } })}
-                      placeholder="(555) 123-4567"
+                      placeholder={t("resumeBuilder.placeholder.phone")}
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs">Location</Label>
+                    <Label className="text-xs">{t("resumeBuilder.contact.location")}</Label>
                     <Input
                       value={resume.contact.location}
                       onChange={(e) => setResume({ ...resume, contact: { ...resume.contact, location: e.target.value } })}
-                      placeholder="San Francisco, CA"
+                      placeholder={t("resumeBuilder.placeholder.location")}
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs">LinkedIn</Label>
+                    <Label className="text-xs">{t("resumeBuilder.contact.linkedIn")}</Label>
                     <Input
                       value={resume.contact.linkedIn}
                       onChange={(e) => setResume({ ...resume, contact: { ...resume.contact, linkedIn: e.target.value } })}
-                      placeholder="linkedin.com/in/janedoe"
+                      placeholder={t("resumeBuilder.placeholder.linkedIn")}
                     />
                   </div>
                   <div className="space-y-1 sm:col-span-2">
-                    <Label className="text-xs">Website / Portfolio</Label>
+                    <Label className="text-xs">{t("resumeBuilder.contact.website")}</Label>
                     <Input
                       value={resume.contact.website}
                       onChange={(e) => setResume({ ...resume, contact: { ...resume.contact, website: e.target.value } })}
-                      placeholder="janedoe.com"
+                      placeholder={t("resumeBuilder.placeholder.website")}
                     />
                   </div>
                 </div>
               </section>
 
               <section className="space-y-3">
-                <h2 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">Summary</h2>
+                <h2 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">{t("resumeBuilder.section.summary")}</h2>
                 <Textarea
                   value={resume.summary}
                   onChange={(e) => setResume({ ...resume, summary: e.target.value })}
-                  placeholder="A brief 2-4 sentence overview of your experience and what you're looking for next."
+                  placeholder={t("resumeBuilder.placeholder.summary")}
                   className="min-h-[100px]"
                 />
               </section>
 
               <section className="space-y-3">
-                <h2 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">Experience</h2>
+                <h2 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">{t("resumeBuilder.section.experience")}</h2>
                 <ExperienceEditor
                   entries={resume.experience}
                   onChange={(experience) => setResume({ ...resume, experience })}
@@ -444,7 +457,7 @@ export default function ResumeBuilder() {
               </section>
 
               <section className="space-y-3">
-                <h2 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">Education</h2>
+                <h2 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">{t("resumeBuilder.section.education")}</h2>
                 <EducationEditor
                   entries={resume.education}
                   onChange={(education) => setResume({ ...resume, education })}
@@ -452,27 +465,27 @@ export default function ResumeBuilder() {
               </section>
 
               <section className="space-y-3">
-                <h2 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">Skills</h2>
+                <h2 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">{t("resumeBuilder.section.skills")}</h2>
                 <TagListEditor
                   tags={resume.skills}
                   onChange={(skills) => setResume({ ...resume, skills })}
-                  placeholder="Add a skill and press Enter"
+                  placeholder={t("resumeBuilder.placeholder.skill")}
                 />
               </section>
 
               <section className="space-y-3">
-                <h2 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">Certifications</h2>
+                <h2 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">{t("resumeBuilder.section.certifications")}</h2>
                 <TagListEditor
                   tags={resume.certifications}
                   onChange={(certifications) => setResume({ ...resume, certifications })}
-                  placeholder="Add a certification and press Enter"
+                  placeholder={t("resumeBuilder.placeholder.certification")}
                 />
               </section>
             </div>
 
             {/* Live preview column */}
             <div className="lg:sticky lg:top-24 lg:self-start">
-              <h2 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground mb-3">Preview</h2>
+              <h2 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground mb-3">{t("resumeBuilder.section.preview")}</h2>
               <ResumePreview resume={resume} />
             </div>
           </div>

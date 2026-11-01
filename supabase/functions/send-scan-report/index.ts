@@ -72,7 +72,8 @@ import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
 // on main, and no response carries a marketing-state header.
 // 2026-10-31.1 (land/all carries the homepage switch-over): 2026-10-27.1's
 // sending with 2026-10-25.1's /resume-checker links, neither branch's build.
-const FN_BUILD = "send-scan-report.2026-10-31.1";
+// 2026-11-01.1 (S13-099): "Get the full analysis" lands on /pricing#full-analysis, the Full Analysis card.
+const FN_BUILD = "send-scan-report.2026-11-01.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -542,7 +543,7 @@ Deno.serve(async (req) => {
       return reply({ success: false, error: "Email service not configured" }, 503);
     }
 
-    const ctaUrl = `${SITE_URL}/resume-checker?utm_source=email&utm_medium=scan_report&utm_campaign=free_scan#pricing`;
+    const ctaUrl = `${SITE_URL}/pricing?utm_source=email&utm_medium=scan_report&utm_campaign=free_scan#full-analysis`;
     const rescanUrl = `${SITE_URL}/resume-checker?utm_source=email&utm_medium=scan_report&utm_campaign=rescan`;
 
     const score = Math.round(body.score);

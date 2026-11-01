@@ -397,7 +397,7 @@
       "redFlags": "Warnsignale",
       "plusMore": "+12 weitere"
     },
-    "scanFooter": "Ergebnisse innerhalb von {{seconds}} Sekunden • 7 kostenlose Scans pro Tag",
+    "scanFooter": "Ergebnisse innerhalb von {{seconds}} Sekunden • {{scans}} kostenlose Scans pro Tag",
     "getFreeAnalysis": "Kostenlose Lebenslaufanalyse erhalten",
     "orGetCompleteAnalysis": "Oder erhalte die vollständige Analyse für",
     "securePaymentStripe": "Sichere Zahlung über Stripe",
@@ -1622,6 +1622,34 @@
     },
     "tailoredSignIn": {
       "cta": "Melden Sie sich an, um Ihren Lebenslauf an diese Stelle anzupassen (kostenlos: einer pro Tag)"
+    },
+    "resumeTruncated": {
+      "title": "Dieser Scan hat deinen Lebenslauf nicht vollständig gelesen.",
+      "body": "Er ist länger, als der Scan vollständig liest. Der Wert, die Schlüsselwortlücken und die zitierten Zeilen unten stammen daher nur aus dem gelesenen Teil. Kürze ihn oder scanne die wichtigsten Seiten, damit alles geprüft wird."
+    },
+    "weakestBullets": {
+      "title": "Deine schwächsten Aufzählungspunkte, bewertet",
+      "subtitle": "Wörtlich aus deinem Lebenslauf zitiert und nach Kennzahlen, Verben und Umfang bewertet. Wo eine Umformulierung steht, ersetze die [Klammern] durch deine echten Zahlen.",
+      "howToFix": "So verbesserst du ihn (allein aus deinem Lebenslauf konnten wir ihn nicht umformulieren)"
+    },
+    "readAs": {
+      "label": "So haben wir es gelesen:",
+      "industry": "Branche",
+      "level": "Erfahrungsstufe",
+      "levels": {
+        "entry": "Einstieg",
+        "mid": "Mittel",
+        "senior": "Senior",
+        "executive": "Führungsebene"
+      },
+      "industryAria": "Erkannte Branche bestätigen oder korrigieren",
+      "levelAria": "Erkannte Erfahrungsstufe bestätigen oder korrigieren",
+      "note": "Eine Korrektur passt diesen Bericht an und wird protokolliert, damit wir die Erkennung verbessern können",
+      "quickCheck": {
+        "title": "Kurz prüfen:",
+        "transition": "bei deiner Branche waren wir uns hier nicht ganz sicher — dein Werdegang liest sich als {{historical}}, deine letzte Stelle aber als {{recent}}. Bestätige unten, dann passt sich der Bericht an.",
+        "unsure": "bei deiner Branche waren wir uns hier nicht ganz sicher. Bestätige oder korrigiere sie unten — Vergleichswerte und Schlüsselwörter passen sich sofort an."
+      }
     }
   },
   "analysisPreviewSample": {
@@ -3071,7 +3099,14 @@
     "bestUsesPersonal": "{{name}}, hier funktioniert diese Lebenslauf-Version am besten:",
     "atsRelevance": "ATS-Relevanz: {{level}}",
     "learnAbout": "Mehr über {{title}}",
-    "close": "Schließen"
+    "close": "Schließen",
+    "usageTooltip": "Einsatzempfehlungen",
+    "suitability": {
+      "excellent": "Ausgezeichnet",
+      "good": "Gut",
+      "limited": "Eingeschränkt",
+      "notRecommended": "Nicht empfohlen"
+    }
   },
   "elevatorPitch": {
     "title": "60-Sekunden-Elevator-Pitch",
@@ -3142,7 +3177,13 @@
     "softSkills": "Soft Skills",
     "tools": "Tools & Software",
     "certifications": "Zertifizierungen",
-    "methodologies": "Methoden"
+    "methodologies": "Methoden",
+    "matchingAgainstJob": "Abgeglichen mit: {{job}}",
+    "importance": {
+      "critical": "kritisch",
+      "important": "wichtig",
+      "nice_to_have": "schön zu haben"
+    }
   },
   "recruiterView": {
     "seeThrough": "Sieh deinen Lebenslauf durch die Augen eines Recruiters",
@@ -3374,7 +3415,20 @@
     "lowShort": "○ Niedrig",
     "highDesc": "Starke Branchensignale erkannt. Empfehlungen sind sehr relevant.",
     "mediumDesc": "Einige Branchensignale erkannt, Überprüfung empfohlen.",
-    "lowDesc": "Begrenzte Signale. Bitte überprüfen und ggf. korrigieren für bessere Empfehlungen."
+    "lowDesc": "Begrenzte Signale. Bitte überprüfen und ggf. korrigieren für bessere Empfehlungen.",
+    "isThisRight": "Stimmt das?",
+    "yes": "Ja",
+    "no": "Nein",
+    "thanksConfirmed": "Alles klar — danke für die Bestätigung!",
+    "allSignals": "Alle Erkennungsmerkmale:",
+    "alsoConsidered": "Ebenfalls erwogen:",
+    "switch": "Wechseln →",
+    "seniority": {
+      "entry": "Einstiegsniveau",
+      "mid": "Mittleres Niveau",
+      "senior": "Senior",
+      "executive": "Führungsebene"
+    }
   },
   "resumeBuilder": {
     "experience": {
@@ -3386,7 +3440,15 @@
       "endDate": "Enddatum",
       "bulletPoints": "Aufzählungspunkte",
       "addBullet": "Punkt hinzufügen",
-      "addWorkExperience": "Berufserfahrung hinzufügen"
+      "addWorkExperience": "Berufserfahrung hinzufügen",
+      "placeholder": {
+        "jobTitle": "Senior Softwareentwickler",
+        "company": "Muster GmbH",
+        "location": "Remote",
+        "startDate": "Jan. 2022",
+        "endDate": "Heute",
+        "bullet": "Ein Team aus 5 Entwicklern geleitet, um … auszuliefern"
+      }
     },
     "education": {
       "entry": "Ausbildung {{num}}",
@@ -3396,7 +3458,13 @@
       "startDate": "Startdatum",
       "endDate": "Enddatum",
       "additionalDetails": "Weitere Details (optional)",
-      "addEducation": "Ausbildung hinzufügen"
+      "addEducation": "Ausbildung hinzufügen",
+      "placeholder": {
+        "school": "Universität Hamburg",
+        "degree": "B.Sc.",
+        "field": "Informatik",
+        "details": "Relevante Kurse, Auszeichnungen, Note …"
+      }
     },
     "tagList": {
       "typeToAdd": "Eingeben und Enter drücken zum Hinzufügen"
@@ -3410,13 +3478,80 @@
       "skills": "Fähigkeiten",
       "certifications": "Zertifikate"
     },
-    "replaceWithFixes": "Deinen aktuellen Entwurf im Builder durch den Lebenslauf aus deinem Scan ersetzen, mit den Korrekturen aus dem Bericht?",
+    "replaceWithFixes": "Deinen aktuellen Entwurf im Builder durch den Lebenslauf aus deinem Scan ersetzen, mit den Korrekturen aus dem Bericht? Wenn du ablehnst, bleibt dein Entwurf, und die Korrekturen, die zu seinen Aufzählungspunkten passen, werden darin übernommen.",
     "replaceWithLatestScan": "Du hast einen Entwurf aus einem früheren Lebenslauf. Durch den Lebenslauf aus deinem neuesten Scan ersetzen?",
     "toast": {
       "addNameDescription": "Ihr Lebenslauf braucht oben Ihren Namen, bevor er heruntergeladen werden kann.",
       "addNameTitle": "Fügen Sie zuerst Ihren Namen hinzu",
       "savedAsWordDescription": "Die Schriften des PDFs können {{chars}} nicht darstellen, deshalb haben wir eine Word-Datei gespeichert, die jedes Zeichen behält.",
-      "savedAsWordTitle": "Als Word-Datei gespeichert"
+      "savedAsWordTitle": "Als Word-Datei gespeichert",
+      "importedTitle": "Lebenslauf übernommen",
+      "importedDescription": "Wir haben den Builder mit deinem neuesten Lebenslauf befüllt — bearbeite unten alles, was du möchtest.",
+      "importedWithFixesTitle_one": "Lebenslauf übernommen — {{count}} Korrektur aus deinem Bericht übernommen",
+      "importedWithFixesTitle_other": "Lebenslauf übernommen — {{count}} Korrekturen aus deinem Bericht übernommen",
+      "importedWithFixesDescription": "Die umformulierten Aufzählungspunkte aus deinem Bericht sind eingesetzt. Schlüsselwort-Vorschläge aus dem Scan stehen über dem Editor.",
+      "mergedTitle_one": "Entwurf behalten — {{count}} Korrektur aus deinem Bericht darin übernommen",
+      "mergedTitle_other": "Entwurf behalten — {{count}} Korrekturen aus deinem Bericht darin übernommen",
+      "mergedDescription": "Geändert wurden nur Aufzählungspunkte, die schon in deinem Entwurf stehen. Umformulierungen für andere Punkte findest du weiterhin in deinem Bericht.",
+      "mergedNoneTitle": "Entwurf behalten — keine Umformulierung aus dem Bericht passte dazu",
+      "mergedNoneDescription": "Dein Entwurf enthält andere Aufzählungspunkte als der gescannte Lebenslauf, daher wurde nichts geändert. Die Umformulierungen stehen weiterhin in deinem Bericht.",
+      "exportFailedTitle": "Export fehlgeschlagen",
+      "exportPdfFailed": "Das PDF konnte nicht erstellt werden. Bitte versuch es noch einmal.",
+      "exportDocxFailed": "Das Word-Dokument konnte nicht erstellt werden. Bitte versuch es noch einmal.",
+      "freelanceInsertedTitle_one": "Freelance-Abschnitt eingefügt — {{count}} Eintrag hinzugefügt",
+      "freelanceInsertedTitle_other": "Freelance-Abschnitt eingefügt — {{count}} Einträge hinzugefügt",
+      "freelanceInsertedDescription": "Ergänze bei jedem Eintrag die Daten und exportiere dann ein gesetztes PDF oder Word-Dokument."
+    },
+    "seo": {
+      "title": "Kostenloser Lebenslauf-Builder — Resume Booster",
+      "description": "Erstelle in wenigen Minuten einen ATS-freundlichen Lebenslauf mit unserem kostenlosen, geführten Builder. Export als PDF, ohne Registrierung."
+    },
+    "title": "Lebenslauf-Builder",
+    "subtitle": "Erstelle einen klaren, strukturierten Lebenslauf — bearbeite jeden Abschnitt und exportiere, wenn du so weit bist.",
+    "startOver": "Neu beginnen",
+    "exportDocx": "Als DOCX exportieren",
+    "exportPdf": "Als PDF exportieren",
+    "importing": "Dein neuester Lebenslauf wird in den Builder übernommen …",
+    "confirmStartOver": "Damit wird alles im Builder gelöscht. Fortfahren?",
+    "rescan": {
+      "title": "Exportiert — prüfe jetzt, ob die Korrekturen wirken",
+      "body": "Scanne genau diese Version kostenlos erneut und sieh den Wert vorher und nachher, beide Male nach denselben Kriterien.",
+      "button": "Diese Version erneut scannen →"
+    },
+    "keywords": {
+      "title": "Schlüsselwörter, die dein Scan vermisst hat — bau sie ein, wo sie zutreffen",
+      "dismiss": "ausblenden",
+      "note": "Wir fügen nie selbst Schlüsselwörter ein — nur du kannst ehrlich eine Fähigkeit angeben."
+    },
+    "section": {
+      "contact": "Kontakt",
+      "summary": "Profil",
+      "experience": "Berufserfahrung",
+      "education": "Ausbildung",
+      "skills": "Kenntnisse",
+      "certifications": "Zertifikate",
+      "preview": "Vorschau"
+    },
+    "contact": {
+      "fullName": "Vollständiger Name",
+      "title": "Titel / Kurzprofil",
+      "email": "E-Mail",
+      "phone": "Telefon",
+      "location": "Ort",
+      "linkedIn": "LinkedIn",
+      "website": "Website / Portfolio"
+    },
+    "placeholder": {
+      "fullName": "Max Mustermann",
+      "title": "Leitende Produktdesignerin",
+      "email": "max@example.com",
+      "phone": "+49 30 1234567",
+      "location": "Berlin",
+      "linkedIn": "linkedin.com/in/maxmustermann",
+      "website": "maxmustermann.de",
+      "summary": "Ein kurzer Überblick in 2–4 Sätzen über deine Erfahrung und das, was du als Nächstes suchst.",
+      "skill": "Fähigkeit eingeben und Enter drücken",
+      "certification": "Zertifikat eingeben und Enter drücken"
     }
   },
   "jobsPage": {
@@ -5676,5 +5811,111 @@
     "metaDescription": "Die Daten-API liegt nicht unter der Adresse dieser Website; Anleitung und kostenlose Schlüssel stehen auf /data-api.",
     "lead": "Du hast diese Website nach {{path}} gefragt. Die API liegt nicht hier, sondern unter:",
     "keyLine": "Anfragen tragen einen Schlüssel als Authorization: Bearer rb_live_…; kostenlose Schlüssel und alle Endpunkte stehen auf"
+  },
+  "metricCards": {
+    "section": {
+      "primary": "Hauptwerte",
+      "structure": "Aufbau & Inhalt",
+      "advanced": "Weitere Kennzahlen"
+    },
+    "ats": {
+      "strong": "✓ Stark bei Schlüsselwörtern, Format und Ergebnissen",
+      "gaps": "⚠ Lücken zu schließen: siehe die Korrekturen unten",
+      "manyGaps": "✗ Viele Lücken zu schließen: siehe die Korrekturen unten"
+    },
+    "grade": {
+      "a": "Ausgezeichnet",
+      "b": "Gut",
+      "c": "Mittel",
+      "d": "Ausbaufähig"
+    },
+    "redFlagsClean": "Dein Lebenslauf wirkt sauber — keine größeren Probleme gefunden."
+  },
+  "scanOutcome": {
+    "title": "Mit diesem Lebenslauf beworben? Erzähl uns, wie es lief",
+    "body": "Anonym, nur mit Bericht #{{reportId}} verknüpft. So messen wir, statt zu raten, welche Werte tatsächlich zu Vorstellungsgesprächen führen. Du kannst deine Antwort ändern, wenn sich etwas tut.",
+    "interview": "🎉 Vorstellungsgespräch(e) bekommen",
+    "noResponse": "📭 Noch keine Antwort",
+    "rejected": "❌ Abgelehnt",
+    "recorded": "Gespeichert — danke. Deine Antworten helfen uns zu untersuchen, welche Werte zu Vorstellungsgesprächen führen; eine öffentliche Zahl entsteht daraus noch nicht.",
+    "notSaved": "Nicht gespeichert — es wurde nichts erfasst. Bitte versuch es später noch einmal."
+  },
+  "scanFeedback": {
+    "question": "War diese Analyse hilfreich?",
+    "thanks": "Danke für dein Feedback!",
+    "yes": "Ja",
+    "no": "Nein",
+    "notSaved": "Das konnte nicht gespeichert werden — es wurde nichts erfasst."
+  },
+  "reportInsights": {
+    "vendor": {
+      "title": "Wie die großen ATS-Plattformen diesen Lebenslauf lesen",
+      "subtitle": "Jedes System liest anders. Diese Prüfungen wenden die dokumentierten Eigenheiten jedes Anbieters auf deine tatsächliche Formatierung an.",
+      "uncheckedNote": "Das Layout prüfen wir nur bei einem PDF-Upload. Hier war es eingefügter Text oder eine Word-Datei, daher wurden Spalten und Tabellen nicht geprüft, und keine Plattform, die davon abhängt, ist als bestanden markiert.",
+      "status": {
+        "pass": "Bestanden",
+        "warn": "Prüfen",
+        "fail": "Wahrscheinlich fehlerhaft",
+        "unknown": "Nicht geprüft"
+      },
+      "note": {
+        "workday": {
+          "fail": "Mehrspaltige Layouts bringen den Parser von Workday durcheinander — Inhalte werden in falscher Reihenfolge gelesen.",
+          "warn": "Mit Tabulatoren ausgerichteter Text oder dekorative Aufzählungszeichen können in der Vorschau von Workday Felder verschmelzen.",
+          "pass": "Einspaltig, normale Aufzählungszeichen — wird von Workday sauber gelesen.",
+          "unknown": "Layout nicht geprüft — wir können nicht sagen, ob Spalten oder Tabellen den Parser von Workday durcheinanderbringen würden."
+        },
+        "greenhouse": {
+          "warn": "Greenhouse behält das PDF, aber die Stichwortsuche nutzt den extrahierten Text — Layout-Eigenheiten verringern die Treffer.",
+          "pass": "Greenhouse speichert deine Originaldatei; die Textextraktion wirkt hier zuverlässig.",
+          "unknown": "Layout nicht geprüft — Greenhouse durchsucht den extrahierten Text, und wir konnten nicht sehen, wie sauber sich das Layout dieser Datei extrahieren lässt."
+        },
+        "lever": {
+          "warn": "Die Abschnittserkennung von Lever erwartet Standardüberschriften (Berufserfahrung, Ausbildung) — kreative Überschriften können deinen Werdegang durcheinanderbringen.",
+          "pass": "Standardüberschriften — Lever ordnet deinen Werdegang richtig ein."
+        },
+        "icims": {
+          "fail": "Spalten plus Tabulator-Ausrichtung sind der schlimmste Fall für iCIMS — Angaben landen in den falschen Feldern.",
+          "warn": "iCIMS füllt Bewerbungsfelder automatisch aus dem gelesenen Text aus — prüfe das ausgefüllte Formular vor dem Absenden.",
+          "pass": "Sollte die Bewerbungsfelder in iCIMS korrekt automatisch ausfüllen.",
+          "unknown": "Layout nicht geprüft — iCIMS füllt sein Formular aus dem gelesenen Text, prüfe also die ausgefüllten Felder vor dem Absenden."
+        }
+      },
+      "finding": {
+        "fail": "{{vendor}}-Auslesen: wahrscheinlich fehlerhaft",
+        "warn": "{{vendor}}-Auslesen: bitte prüfen",
+        "pass": "{{vendor}}-Auslesen",
+        "unknown": "{{vendor}}-Auslesen: Layout nicht geprüft"
+      }
+    },
+    "findings": {
+      "title": "Ergebnisse auf einen Blick",
+      "critical_one": "{{count}} kritisch",
+      "critical_other": "{{count}} kritisch",
+      "warning_one": "{{count}} Warnung",
+      "warning_other": "{{count}} Warnungen",
+      "passed_one": "{{count}} bestanden",
+      "passed_other": "{{count}} bestanden",
+      "unchecked_one": "{{count}} nicht geprüft",
+      "unchecked_other": "{{count}} nicht geprüft",
+      "noCritical": "Keine kritischen Ergebnisse — was gut funktioniert, steht in den Abschnitten unten.",
+      "footer": "Alle Einzelheiten zu jedem Ergebnis stehen in den Abschnitten unten, nach Schwere geordnet."
+    }
+  },
+  "redFlags": {
+    "title": "Warnsignale für Recruiter",
+    "severity": {
+      "critical": "Kritisch",
+      "major": "Erheblich",
+      "minor": "Gering"
+    },
+    "count": {
+      "critical_one": "{{count}} kritisch",
+      "critical_other": "{{count}} kritisch",
+      "major_one": "{{count}} erheblich",
+      "major_other": "{{count}} erheblich",
+      "minor_one": "{{count}} gering",
+      "minor_other": "{{count}} gering"
+    }
   }
 }

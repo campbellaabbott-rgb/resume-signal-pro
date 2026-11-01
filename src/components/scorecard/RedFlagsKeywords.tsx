@@ -37,7 +37,7 @@ function inferSeverity(flag: RedFlag, index: number): "critical" | "major" | "mi
 
 const severityConfig = {
   critical: {
-    label: "Critical",
+    labelKey: "redFlags.severity.critical",
     icon: ShieldAlert,
     bg: "bg-destructive/10 border-destructive/25",
     badge: "bg-destructive/15 text-destructive",
@@ -45,7 +45,7 @@ const severityConfig = {
     dot: "bg-destructive",
   },
   major: {
-    label: "Major",
+    labelKey: "redFlags.severity.major",
     icon: AlertCircle,
     bg: "bg-warning/10 border-warning/25",
     badge: "bg-warning/15 text-warning",
@@ -53,7 +53,7 @@ const severityConfig = {
     dot: "bg-warning",
   },
   minor: {
-    label: "Minor",
+    labelKey: "redFlags.severity.minor",
     icon: Info,
     bg: "bg-muted/50 border-border",
     badge: "bg-muted text-muted-foreground",
@@ -97,6 +97,7 @@ interface RedFlagsSectionProps {
 }
 
 export function RedFlagsSection({ redFlags }: RedFlagsSectionProps) {
+  const { t } = useTranslation();
   if (redFlags.length === 0) return null;
 
   // Sort by inferred severity
@@ -120,23 +121,23 @@ export function RedFlagsSection({ redFlags }: RedFlagsSectionProps) {
           <div className="p-1.5 rounded-lg bg-destructive/10">
             <AlertTriangle className="w-4 h-4 text-destructive" />
           </div>
-          <h4 className="font-bold text-base">Recruiter Red Flags</h4>
+          <h4 className="font-bold text-base">{t("redFlags.title")}</h4>
         </div>
         {/* Severity summary pills */}
         <div className="flex items-center gap-1.5">
           {criticalCount > 0 && (
             <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-destructive/15 text-destructive">
-              {criticalCount} critical
+              {t("redFlags.count.critical", { count: criticalCount })}
             </span>
           )}
           {majorCount > 0 && (
             <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-warning/15 text-warning">
-              {majorCount} major
+              {t("redFlags.count.major", { count: majorCount })}
             </span>
           )}
           {minorCount > 0 && (
             <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
-              {minorCount} minor
+              {t("redFlags.count.minor", { count: minorCount })}
             </span>
           )}
         </div>
@@ -162,7 +163,7 @@ export function RedFlagsSection({ redFlags }: RedFlagsSectionProps) {
                 <div className="flex items-center gap-2 mb-0.5">
                   <span className="font-medium text-foreground text-sm">{flag.issue}</span>
                   <span className={cn("text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full shrink-0", config.badge)}>
-                    {config.label}
+                    {t(config.labelKey)}
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground leading-relaxed">{flag.impact}</p>

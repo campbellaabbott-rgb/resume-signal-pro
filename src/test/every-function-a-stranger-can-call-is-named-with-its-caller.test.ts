@@ -628,6 +628,25 @@ describe("every anonymous writer on the list is bounded, and the budget is keyed
     "public.store_temp_resume(text,text,text)": "spends a budget of its own, defined after the census (20261005123000): per address, per network, and live-row ceilings that one network cannot fill",
   };
 
+  /**
+   * Budgeted writers re-defined after the census, each with the file that did
+   * it. The re-definition must spend EXACTLY the census's budget (the same
+   * client_write_allowed call, letter for letter), so it can change what the
+   * function answers but never how much a stranger may write.
+   *   record_scan_feedback: answers true/false instead of void, so the page
+   *   can tell a stored vote from one the budget skipped (S13-057).
+   */
+  const REDEFINED_AFTER_CENSUS: Record<string, string> = {
+    "public.record_scan_feedback(text,boolean,text,integer,boolean,integer,text)": "20261101150000_a_feedback_vote_the_budget_skipped_is_never_thanked.sql",
+  };
+  const censusBody = (sig: string): string => {
+    const name = sig.slice("public.".length, sig.indexOf("("));
+    const census = readFileSync(join(MIG_DIR, CENSUS_FILE), "utf8");
+    const at = census.indexOf(`CREATE OR REPLACE FUNCTION public.${name}(`);
+    return at < 0 ? "" : census.slice(at, census.indexOf("$$;", census.indexOf("$$", census.indexOf("AS $$", at) + 5)) + 3);
+  };
+  const budgetCalls = (body: string) => [...body.matchAll(/client_write_allowed\s*\([^)]*\)/g)].map((m) => m[0].replace(/\s+/g, ""));
+
   it("every anon-callable function whose body writes spends client_write_allowed, or is a named capability writer", () => {
     const bad: string[] = [];
     for (const a of CLIENT_CALLABLE) {
@@ -635,6 +654,13 @@ describe("every anonymous writer on the list is bounded, and the budget is keyed
       if (!f || a.roles !== "anon" || !WRITES.test(f.body)) continue;
       if (UNBUDGETED[a.sig] || a.since) continue; // a writer opened after the census: the next test
       if (!/\bclient_write_allowed\s*\(/.test(f.body)) bad.push(`${a.sig} (${f.file}) writes with no budget`);
+      if (f.file === REDEFINED_AFTER_CENSUS[a.sig]) {
+        const was = budgetCalls(censusBody(a.sig));
+        if (was.length === 0 || JSON.stringify(budgetCalls(f.body)) !== JSON.stringify(was)) {
+          bad.push(`${a.sig}: ${f.file} spends ${JSON.stringify(budgetCalls(f.body))}, not the census's ${JSON.stringify(was)}`);
+        }
+        continue;
+      }
       if (f.file !== CENSUS_FILE) bad.push(`${a.sig}: its live definition is ${f.file}, not the census`);
     }
     expect(bad, bad.join("\n")).toEqual([]);
