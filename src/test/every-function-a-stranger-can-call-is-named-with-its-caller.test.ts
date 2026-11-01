@@ -635,7 +635,9 @@ describe("every anonymous writer on the list is bounded, and the budget is keyed
       if (!f || a.roles !== "anon" || !WRITES.test(f.body)) continue;
       if (UNBUDGETED[a.sig]) continue;
       if (!/\bclient_write_allowed\s*\(/.test(f.body)) bad.push(`${a.sig} (${f.file}) writes with no budget`);
-      if (f.file !== CENSUS_FILE) bad.push(`${a.sig}: its live definition is ${f.file}, not the census`);
+      // A writer opened after the census is defined by the re-issue that lists it (its `since`).
+      const home = a.since ? readdirSync(MIG_DIR).find((n) => n.startsWith(`${a.since}_`)) : CENSUS_FILE;
+      if (f.file !== home) bad.push(`${a.sig}: its live definition is ${f.file}, not ${a.since ? "the census re-issue that lists it" : "the census"}`);
     }
     expect(bad, bad.join("\n")).toEqual([]);
     for (const sig of Object.keys(UNBUDGETED)) expect(ALLOW.has(sig), `${sig} is not on the allowlist any more`).toBe(true);

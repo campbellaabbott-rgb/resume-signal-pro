@@ -147,6 +147,11 @@ export const CLIENT_CALLABLE: AllowedFunction[] = [
   A("public.record_scan_feedback(text,boolean,text,integer,boolean,integer,text)", "src/components/ScanFeedback.tsx", "write-only: void", "one scan_feedback row (thumbs up/down, text <=1000 chars), 10 per address and 300 in all an hour"),
   A("public.record_scan_outcome(text,text,text)", "src/components/ScanOutcomeAsk.tsx", "write-only: true/false", "one scan_outcomes upsert per report and browser, 5 per address and 200 in all a day; p_ip (the visitor id) names the answer but no longer picks the budget"),
   A("public.track_affiliate_click(text,text,text,text)", "src/hooks/use-affiliate-auth.ts", "write-only: true/false", "one affiliate_clicks row for an active referral code, 3 per address per code and 500 per code a day; ip_hash derived from the platform address when there is one"),
+  // Opened after the census, by the census re-issue that names it (S13-080):
+  // 20260821030000 closed it as an unbounded write, so the report's level
+  // control recorded nothing for ten weeks; it reopens on the same budget.
+  since("20261101110000", A("public.log_seniority_correction(text,text,text,text,integer,text)", "src/components/FreeKeywordResults.tsx", "write-only: true/false",
+    "one seniority_corrections row from the level a visitor picked: both levels one of four values and different, years <=40 and industry <=60 chars, the visitor id only in visitor-id form, 20 per address and 300 in all an hour")),
 
   // ── signed-in browsers only
   U("public.agent_sender_online(integer)", "src/components/account/AgentStatusBand.tsx", "aggregates: one boolean, is the apply worker alive"),
@@ -305,4 +310,5 @@ export const CLOSED_TABLES: Array<{ table: string; why: string }> = [
   { table: "error_telemetry", why: "anyone could INSERT rows straight into it; the browser writes through log_error_telemetry" },
   { table: "industry_detection_metrics", why: "anyone could INSERT rows straight into it; the server writes through log_industry_detection" },
   { table: "client_write_budget", why: "new: the per-address write budget the browser's writers spend; only client_write_allowed (as owner) touches it" },
+  { table: "seniority_corrections", why: "the report's level corrections (20261101110000): Supabase's default grants gave both client roles ALL on it and RLS alone held it; the browser writes through log_seniority_correction" },
 ];
