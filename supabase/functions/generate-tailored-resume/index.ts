@@ -1,7 +1,7 @@
 // deploy-stamp: 2026-10-04T13:00Z
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-import { CHAIN_DEADLINE_MS, callAIWithModelFallback, chainRanOutOfTime } from "../_shared/ai-fallback.ts";
+import { CHAIN_DEADLINE_MS, callAIWithModelFallback, chainRanOutOfTime, describeReply } from "../_shared/ai-fallback.ts";
 import { clipField, clipList, clipText, isServiceCaller, modelSpendGate } from "../_shared/model-spend-gate.ts";
 import { tailoredLanguageNote } from "../_shared/posting-language.ts";
 import { fencePosting, postingText, POSTING_DATA_RULE } from "../_shared/posting-text.ts";
@@ -20,8 +20,10 @@ import { refundWriting, writingChain, writingGate, type WritingPass } from "../_
 // 125 s (the private chain retried a timed-out model and had no deadline). A
 // chain that ran out of time answers the 504 that says try again. Body (the
 // 8,000 cap as max_tokens or max_completion_tokens, tools, tool_choice),
-// chains and reply are unchanged. Nothing of main's past f8d72a9b, the build
-// the 2026-10-31 deploy put live, rides along.
+// chains and reply are unchanged. A reply in an unexpected format is logged
+// by its shape and lengths (describeReply, S13-064), no longer as the whole
+// reply, which carried the person's résumé. Nothing of main's past f8d72a9b,
+// the build the 2026-10-31 deploy put live, rides along.
 const FN_BUILD = "generate-tailored-resume.2026-10-28.1";
 
 const corsHeaders = {
@@ -299,7 +301,8 @@ Provide enhancement suggestions. Remember: suggest how to IMPROVE wording, not w
     
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
     if (!toolCall || toolCall.function.name !== "submit_tailored_resume") {
-      console.error("[TAILORED-RESUME] Unexpected response format:", JSON.stringify(data));
+      // Its shape, never its words: the reply carries the person's résumé (S13-064).
+      console.error("[TAILORED-RESUME] Unexpected response format:", describeReply(data));
       return done(new Response(
         JSON.stringify({ error: "Invalid AI response format", retryable: true }),
         { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
