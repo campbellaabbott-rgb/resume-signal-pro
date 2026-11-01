@@ -3150,6 +3150,30 @@ function extractSections(resumeText: string): {
 }
 
 /**
+ * A SHORT TERM IS A WORD, NOT A SUBSTRING (register S11-007).
+ *
+ * Healthcare's titles include 'rn', 'do', 'pt', 'ot' and 'rt', and other
+ * industries carry two- and three-letter keywords ('ai', 'hr', 'pr', 'ux').
+ * Matched with includes(), 'internal', 'document', 'support' and 'not' all
+ * read as nursing titles, so healthcare scored highest on 33 of 39 real
+ * software, marketing, accounting and sales postings, and every scan run
+ * against one was benchmarked and framed as a move into healthcare. The
+ * résumé-title matcher already demanded word boundaries for these; every
+ * matcher now does. Longer terms keep includes(), which is how they were
+ * tuned against the golden corpus.
+ */
+const SHORT_TERM_PATTERNS = new Map<string, RegExp>();
+function hasTerm(text: string, term: string): boolean {
+  if (term.length > 3) return text.includes(term);
+  let re = SHORT_TERM_PATTERNS.get(term);
+  if (!re) {
+    re = new RegExp(`(?<![a-z0-9])${term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![a-z0-9])`);
+    SHORT_TERM_PATTERNS.set(term, re);
+  }
+  return re.test(text);
+}
+
+/**
  * Check for co-occurrence patterns
  */
 function checkCoOccurrence(text: string, industry: string): number {
@@ -3204,10 +3228,7 @@ function calculateIndustryScore(sections: ReturnType<typeof extractSections>, in
     for (const industryTitle of keywords.titles) {
       // For very short abbreviations (≤3 chars), require word boundaries to prevent
       // substring matches — e.g. "rn" firing inside "International", "rt" in "partner"
-      const matches = industryTitle.length <= 3
-        ? new RegExp(`(?<![a-z])${industryTitle}(?![a-z])`).test(title)
-        : title.includes(industryTitle);
-      if (matches) {
+      if (hasTerm(title, industryTitle)) {
         score += SECTION_WEIGHTS.jobTitle * 2 * recencyMultiplier; // Double weight for exact title match
         signals.push(`Job title match: "${industryTitle}"${index === 0 ? ' (most recent role)' : ''}`);
       }
@@ -3216,21 +3237,21 @@ function calculateIndustryScore(sections: ReturnType<typeof extractSections>, in
   
   // Check summary
   for (const kw of [...keywords.primary, ...keywords.titles]) {
-    if (sections.summary.includes(kw)) {
+    if (hasTerm(sections.summary, kw)) {
       score += SECTION_WEIGHTS.summary;
       if (signals.length < 10) signals.push(`Summary: "${kw}"`);
     }
   }
-  
+
   // Check bullets with per-bullet recency weight (recent job blocks score higher)
   for (const { text: bullet, weight } of sections.weightedBullets) {
     for (const kw of keywords.primary) {
-      if (bullet.includes(kw)) {
+      if (hasTerm(bullet, kw)) {
         score += weight;
       }
     }
     for (const kw of keywords.secondary) {
-      if (bullet.includes(kw)) {
+      if (hasTerm(bullet, kw)) {
         score += weight * 0.5;
       }
     }
@@ -3265,7 +3286,7 @@ function calculateIndustryScore(sections: ReturnType<typeof extractSections>, in
   let skillsScore = 0;
   for (const kw of [...keywords.primary, ...keywords.secondary]) {
     if (skillsScore >= SKILLS_SCORE_CAP) break;
-    if (sections.skills.includes(kw)) {
+    if (hasTerm(sections.skills, kw)) {
       skillsScore = Math.min(SKILLS_SCORE_CAP, skillsScore + SECTION_WEIGHTS.skills);
     }
   }
@@ -3319,34 +3340,47 @@ function calculateIndustryScore(sections: ReturnType<typeof extractSections>, in
  * unused, since job-matching mode only used this text for skill-gap
  * comparison, never for industry detection itself.
  */
-function calculateJobPostingScore(jobDescriptionText: string, industry: string): {
+export function calculateJobPostingScore(jobDescriptionText: string, industry: string): {
   score: number;
   signals: string[];
+  /** Title matches, and multi-word keyword phrases, the posting really contains. */
+  titleHits: number;
+  phraseHits: number;
 } {
   const keywords = INDUSTRY_KEYWORDS[industry];
-  if (!keywords) return { score: 0, signals: [] };
+  if (!keywords) return { score: 0, signals: [], titleHits: 0, phraseHits: 0 };
 
   const text = jobDescriptionText.toLowerCase();
   let score = 0;
   const signals: string[] = [];
+  let titleHits = 0;
+  let phraseHits = 0;
 
   // Job titles in a posting are usually stated plainly near the top — treat
   // any title match anywhere in the text as a strong signal, same weight
   // class as a resume's own job title.
-  for (const title of keywords.titles) {
-    if (text.includes(title)) {
-      score += SECTION_WEIGHTS.jobPosting;
-      signals.push(`Job posting title match: "${title}"`);
-    }
+  //
+  // A SHORT TITLE IS A WHOLE WORD, AND ONLY CORROBORATES (S11-007). 'rn' is
+  // not in "internal", nor 'pt' in "support"; and even as whole words the
+  // two- and three-letter titles are ordinary posting text: "WHAT YOU'LL DO",
+  // "Baltimore, MD", "FT/PT", "overtime (OT)". So an abbreviation counts only
+  // beside a full title of the same field ("Registered Nurse (RN)").
+  const longTitles = keywords.titles.filter((t) => t.length > 3 && hasTerm(text, t));
+  const shortTitles = longTitles.length > 0 ? keywords.titles.filter((t) => t.length <= 3 && hasTerm(text, t)) : [];
+  for (const title of [...longTitles, ...shortTitles]) {
+    score += SECTION_WEIGHTS.jobPosting;
+    titleHits++;
+    signals.push(`Job posting title match: "${title}"`);
   }
 
   for (const kw of keywords.primary) {
-    if (text.includes(kw)) {
+    if (hasTerm(text, kw)) {
       score += SECTION_WEIGHTS.jobPosting * 0.3;
+      if (kw.includes(" ")) phraseHits++;
     }
   }
 
-  return { score, signals: signals.slice(0, 3) };
+  return { score, signals: signals.slice(0, 3), titleHits, phraseHits };
 }
 
 /**
@@ -4496,12 +4530,15 @@ export function detectIndustry(
   // if it's strong and differs from the resume's top, boost it heavily.
   let jdIndustry: string | undefined;
   if (jobDescriptionText && jobDescriptionText.trim().length > 100) {
-    let jdTop: { industry: string; score: number } | null = null;
+    let jdTop: { industry: string; score: number; named: boolean } | null = null;
     for (const industry of Object.keys(INDUSTRY_KEYWORDS)) {
       const r = calculateJobPostingScore(jobDescriptionText, industry);
-      if (!jdTop || r.score > jdTop.score) jdTop = { industry, score: r.score };
+      if (!jdTop || r.score > jdTop.score) jdTop = { industry, score: r.score, named: r.titleHits > 0 || r.phraseHits > 0 };
     }
-    if (jdTop && jdTop.score >= 5) {
+    // The posting must NAME the field (a title or a multi-word phrase it
+    // really contains) before it anchors the benchmark (S11-007): a pile of
+    // single keywords is not a stated target role.
+    if (jdTop && jdTop.score >= 5 && jdTop.named) {
       jdIndustry = jdTop.industry;
       if (jdTop.industry !== scores[0].industry && !roleLocks) {
         const entry = scores.find(s => s.industry === jdTop!.industry);
