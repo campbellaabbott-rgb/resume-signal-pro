@@ -26,6 +26,15 @@
  *
  * ORIGIN_MAIN is origin/main's section at ef4fb53e, frozen in
  * fixtures/w4b-fix3-search/origin-main-exclusion.ts.
+ *
+ * S12-017 (2026-11-01, n1410). The search project changed the section on
+ * purpose, in two shapes only: a balanced quoted pair after "not" or "-" is
+ * one excluded phrase, matched across a space, hyphen or slash and singular or
+ * plural, and a requirement verb after "not" is not the excluded word. So the
+ * section is no longer main's text; what stays pinned is that nothing outside
+ * it reads an exclusion, the handler calls it as main does, every case below
+ * still answers as main, and a single excluded word strikes exactly what main's
+ * strikes (w4b-fix3-search-negated-phrases-corpus holds the 1,191 answers).
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -42,9 +51,17 @@ describe("the shipped exclusion code is origin/main's", () => {
   const shipped = read("supabase/functions/job-board/search-routing.ts");
   const frozen = read("src/test/fixtures/w4b-fix3-search/origin-main-exclusion.ts");
 
-  it("search-routing.ts's exclusion section, from the 'engineer not manager' note to the end of the file, is origin/main's text", () => {
+  it("search-routing.ts's exclusion section still runs from the 'engineer not manager' note to the end of the file", () => {
     expect(section(frozen).length).toBeGreaterThan(3000);
-    expect(section(shipped) === section(frozen), "the exclusion section differs from origin/main ef4fb53e").toBe(true);
+    expect(section(shipped).length, "the exclusion section has moved").toBeGreaterThan(3000);
+    expect(section(shipped).match(/^export function \w+/gm)).toEqual(section(frozen).match(/^export function \w+/gm));
+  });
+
+  it("a single excluded word strikes exactly the titles main's strikes", () => {
+    const titles = ["Engineering Manager", "Night Shift RN", "Night-Shift Worker", "Part-Time Cashier", "AP Clerk", "C++ Developer", "Sr. Manager", "Manager, Sales"];
+    for (const e of ["manager", "night", "part", "parttime", "ap", "c++", "sr.", "sales"]) {
+      for (const t of titles) expect(SHIPPED.titleExcluded(t, [e]), `${e} | ${t}`).toBe(ORIGIN_MAIN.titleExcluded(t, [e]));
+    }
   });
 
   it("nothing before that section reads an exclusion: no import, no pinned compound or place list, no other exclusion export", () => {

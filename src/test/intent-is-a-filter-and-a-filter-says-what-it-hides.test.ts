@@ -130,7 +130,9 @@ describe("intent becomes a filter, and a filter says what it hides", () => {
     // Leaving it in re-imposes the literal-text match the lift exists to
     // escape: "work from home nurse" must search for "nurse" among remote
     // roles, not for the whole string.
-    expect(/residual = residual\.replace\(re, " "\)/.test(FN)).toBe(true);
+    // S13-077 (n1412): cut by the match's own span, so a word hyphened onto it ("remote-first") leaves too.
+    expect(/const m = re\.exec\(residual\)!;/.test(FN)).toBe(true);
+    expect(/residual = `\$\{residual\.slice\(0, start\)\} \$\{residual\.slice\(end\)\}`;/.test(FN)).toBe(true);
     expect(/q: intentLift\.residualQ/.test(FN)).toBe(true);
   });
 

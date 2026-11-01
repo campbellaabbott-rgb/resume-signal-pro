@@ -19,8 +19,9 @@
  *
  * WHAT HOLDS NOW (the shipped handler, its database faked):
  *   - with the employer read held for 1.5 s, a cold isolate's text search
- *     answers well inside it, on the table's keys; once the read lands (after
- *     the response), the next search routes 'cvs' to CVS Health;
+ *     answers well inside it, on the table's keys, and since S12-014 (n1415)
+ *     those include the brand keys the table's own names give, so 'cvs'
+ *     routes to CVS Health cold and warm alike;
  *   - 'USA' never takes the employer route to 'USA Health', and a two-letter
  *     literal never joins an employer's boards (whole-query 3M and P&G still route);
  *   - a SIMPLE literal on the occupation guard never joins an employer's boards;
@@ -59,11 +60,12 @@ describe("through the shipped handler", () => {
     board.answer((q) => (q.table === "job_board_postings" ? { data: [row("workday:cvshealth~wd1~CVS_Health_Careers:1", "Pharmacist", { company: "CVS Health", company_token: "cvshealth~wd1~CVS_Health_Careers" })], error: null } : undefined));
   });
 
-  it("a cold isolate answers without waiting for the employer read, then routes on the live keys once it lands", async () => {
+  it("a cold isolate answers without waiting for the employer read, and routes 'cvs' as a warm one does (S12-014)", async () => {
     const t0 = Date.now();
     const cold = await board.post({ action: "list", q: "cvs", limit: 20, groupSimilar: false });
     expect(Date.now() - t0, "neither the 1.5 s employer read nor the old 800 ms deadline was waited for").toBeLessThan(700);
-    expect(cold.searchRoute).not.toBe("EMPLOYER");
+    expect(cold.searchRoute, "the answer depended on which isolate took the request").toBe("EMPLOYER");
+    expect(cold.companyMatched).toBe("CVS Health");
     expect(facetReads).toBe(1);
 
     await sleep(1700);

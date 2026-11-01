@@ -206,7 +206,7 @@ describe("a page fills up", () => {
 
 describe("a metro abbreviation searches the metro", () => {
   const ALIASES = (() => {
-    const b = /const METRO_ALIASES: Record<string, \{ names: string\[\]; keepRaw: boolean \}> = \{([\s\S]*?)\n\};/.exec(SHARED)?.[1] ?? "";
+    const b = /const METRO_ALIASES: Record<string, \{ names: string\[\]; keepRaw: boolean(?:; anchor\?: string)? \}> = \{([\s\S]*?)\n\};/.exec(SHARED)?.[1] ?? "";
     const out: Record<string, { names: string[]; keepRaw: boolean }> = {};
     for (const m of b.matchAll(/"?([a-z ]+)"?:\s*\{\s*names:\s*\[([^\]]*)\],\s*keepRaw:\s*(true|false)/g)) {
       out[m[1].trim()] = { names: [...m[2].matchAll(/"([^"]+)"/g)].map((x) => x[1]), keepRaw: m[3] === "true" };

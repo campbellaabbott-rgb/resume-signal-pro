@@ -678,19 +678,25 @@ const EXCLUSION_STOPWORDS: ReadonlySet<string> = new Set([
   "for", "the", "a", "an", "of", "in", "at", "to", "on",
 ]);
 
+const NOT_LEAD_VERB = /^(?:requir(?:e|es|ed|ing)|involv(?:e|es|ed|ing)|includ(?:e|es|ed|ing)|need(?:s|ed|ing)?)$/i;
+
 export function splitExclusions(raw: string): { positive: string; excluded: string[] } {
   const text = String(raw ?? "").trim();
   if (!text) return { positive: text, excluded: [] };
 
-  const words = text.split(/\s+/);
+  // S12-017: a balanced "…" pair is one word, so -"team lead" excludes the phrase (n1410).
+  const words = (text.match(/-?"[^"]*"|\S+/g) ?? []).map((w) => w.replace(/\s+/g, " "));
   const positive: string[] = [];
   const excluded: string[] = [];
   let pendingNot: string | null = null;
-  for (const w of words) {
+  for (let i = 0; i < words.length; i++) {
+    const w = words[i];
     if (pendingNot !== null) {
       // "not" marks exactly this one token — never the whole remainder — and
       // a stopword-grade token vetoes the operator reading entirely.
       if (EXCLUSION_STOPWORDS.has(w.toLowerCase())) positive.push(pendingNot, w);
+      // "not requiring night shifts": the verb is not the thing excluded (n1410).
+      else if (NOT_LEAD_VERB.test(w) && i + 1 < words.length && !EXCLUSION_STOPWORDS.has(words[i + 1].toLowerCase()) && !/^not$/i.test(words[i + 1])) continue;
       else excluded.push(w.toLowerCase());
       pendingNot = null;
       continue;
@@ -699,7 +705,7 @@ export function splitExclusions(raw: string): { positive: string; excluded: stri
     if (w.length > 1 && w.startsWith("-")) { excluded.push(w.slice(1).toLowerCase()); continue; }
     positive.push(w);
   }
-  const cleanExcluded = [...new Set(excluded.map((e) => e.replace(/[^a-z0-9+#.]/gi, "").toLowerCase()).filter((e) => e.length >= 2))];
+  const cleanExcluded = [...new Set(excluded.map((e) => e.replace(/^"|"$/g, "").split(" ").map((x) => x.replace(/[^a-z0-9+#.]/gi, "")).filter(Boolean).join(" ").toLowerCase()).filter((e) => e.length >= 2))];
   // Nothing left to search means the exclusion has eaten the query. Run what
   // they typed instead of returning the entire board.
   if (!positive.length || !cleanExcluded.length) return { positive: text, excluded: [] };
@@ -711,5 +717,7 @@ export function splitExclusions(raw: string): { positive: string; excluded: stri
 export function titleExcluded(title: string, excluded: readonly string[]): boolean {
   if (!excluded.length) return false;
   const t = String(title ?? "").toLowerCase();
-  return excluded.some((e) => new RegExp(`(^|[^a-z0-9])${e.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^a-z0-9]|$)`, "i").test(t));
+  // S12-017: a phrase matches across a space, hyphen or slash, its last word singular or plural (n1410).
+  const re = (e: string) => e.includes(" ") ? `${e.replace(/([^s])s$/, "$1").replace(/ /g, "[\\s/-]+")}s?` : e;
+  return excluded.some((e) => new RegExp(`(^|[^a-z0-9])${re(e.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))}([^a-z0-9]|$)`, "i").test(t));
 }

@@ -17,7 +17,7 @@ import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supa
 import { attachLastVerified, neverReadTokens } from "./last-verified.ts";
 import { SENDABLE_VENDORS } from "../_shared/apply-automation.ts";
 import { locationTerms } from "../_shared/location-terms.ts";
-import { isStateCodeAlias, locationBranch } from "../_shared/location-match.ts";
+import { ANCHOR, isStateCodeAlias, locationBranch } from "../_shared/location-match.ts";
 import { resumeRoleTerms } from "../_shared/fit-score.ts";
 // EVERY /v1 SEARCH LANDS IN THE SITE'S DEMAND LOG. This function proxies
 // job-board's `list`, which logs a search event unconditionally, so paying
@@ -1534,7 +1534,11 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
             ...(postedBefore ? { posted_before: postedBefore } : {}),
             ...(includeUnstated ? { include_unstated_pay: true } : {}),
             // The seven that bound and were not listed (S8-078).
-            ...(locTerms.length ? { location: { terms: locTerms, operator: locTerms.length === 1 && !isStateCodeAlias(locTerms[0]) ? "ilike" : "or" } } : {}),
+            // S13-006: a name bound to a country is shown as the name, and the binding said beside it (n1416).
+            ...(locTerms.length ? { location: {
+              terms: locTerms.map((t) => t.replace(ANCHOR, "")), operator: locTerms.length === 1 && !isStateCodeAlias(locTerms[0]) ? "ilike" : "or",
+              ...(locTerms.some((t) => ANCHOR.test(t)) ? { outsideUsUnlessNaming: Object.fromEntries(locTerms.flatMap((t) => { const m = ANCHOR.exec(t); return m ? [[t.slice(0, m.index), m[1]]] : []; })) } : {}),
+            } } : {}),
             ...(payBasis ? { pay_basis: payBasis } : {}),
             ...(statedPay === true ? { has_stated_pay: true } : {}),
             ...(maxYears !== null ? { max_years: maxYears } : {}),
