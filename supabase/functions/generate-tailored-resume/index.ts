@@ -1,7 +1,7 @@
 // deploy-stamp: 2026-10-04T13:00Z
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-import { CHAIN_DEADLINE_MS, UnusableModelOutput, callAIForUsableReply, chainRanOutOfTime, describeReply, type UsableReply } from "../_shared/ai-fallback.ts";
+import { CHAIN_DEADLINE_MS, UnusableModelOutput, callAIForUsableReply, chainRanOutOfTime, describeError, describeReply, type UsableReply } from "../_shared/ai-fallback.ts";
 import { checkInputLimits } from "../_shared/input-limits.ts";
 import { clipField, clipList, clipText, isServiceCaller, modelSpendGate } from "../_shared/model-spend-gate.ts";
 import { tailoredLanguageNote } from "../_shared/posting-language.ts";
@@ -250,7 +250,8 @@ Provide enhancement suggestions. Remember: suggest how to IMPROVE wording, not w
         const parsed = JSON.parse(String(toolCall.function.arguments));
         if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed as Record<string, unknown>;
       } catch (e) {
-        console.warn("[TAILORED-RESUME] tool-call JSON parse failed:", String(e).slice(0, 120));
+        // Its name and position, never the arguments it quotes (S13-064).
+        console.warn("[TAILORED-RESUME] tool-call JSON parse failed:", describeError(e), `(${String(toolCall.function.arguments ?? "").length} chars)`);
       }
       last.refusal = "malformed";
       return null;

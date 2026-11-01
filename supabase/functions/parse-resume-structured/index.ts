@@ -2,7 +2,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { getServiceClient } from "../_shared/supabase-client.ts";
 import { modelSpendGate } from "../_shared/model-spend-gate.ts";
-import { callAIWithModelFallback, describeReply } from "../_shared/ai-fallback.ts";
+import { callAIWithModelFallback, describeError, describeReply } from "../_shared/ai-fallback.ts";
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
@@ -213,7 +213,8 @@ serve(async (req) => {
     } catch (parseError) {
       // A response cut off at the output cap is malformed JSON: a retry may
       // well succeed, so say so rather than throwing to a bare 500.
-      console.error("[PARSE-RESUME-STRUCTURED] tool-call JSON parse failed:", String(parseError).slice(0, 120));
+      // Its name and position, never the arguments it quotes (S13-064).
+      console.error("[PARSE-RESUME-STRUCTURED] tool-call JSON parse failed:", describeError(parseError), `(${String(toolCall.function.arguments ?? "").length} chars)`);
       return new Response(
         JSON.stringify({ error: "The parser returned a malformed draft. Please try again.", retryable: true }),
         { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

@@ -7,7 +7,7 @@ import { validateTailoredResume, type TailoredResumeShape } from "../_shared/res
 import { roleGuidance } from "../_shared/application-questions.ts";
 import { APPLY_KIT_PRODUCT_TYPES } from "../_shared/apply-kit.ts";
 import { assertPaidSession } from "../_shared/paid-session.ts";
-import { CHAIN_DEADLINE_MS, callAIWithModelFallback, describeReply } from "../_shared/ai-fallback.ts";
+import { CHAIN_DEADLINE_MS, callAIWithModelFallback, describeError, describeReply } from "../_shared/ai-fallback.ts";
 import { clientAddressOr } from "../_shared/client-address.ts";
 import { checkoutSessionSettled } from "../_shared/pass-settlement.ts";
 import { accountProStanding } from "../_shared/pro.ts";
@@ -526,7 +526,8 @@ Prepare the tailored application package.`;
     try {
       result = JSON.parse(toolCall.function.arguments);
     } catch (e) {
-      console.warn("[GENERATE-APPLY-PACKAGE] tool-call JSON parse failed:", String(e).slice(0, 120));
+      // Its name and position, never the arguments it quotes (S13-064).
+      console.warn("[GENERATE-APPLY-PACKAGE] tool-call JSON parse failed:", describeError(e), `(${String(toolCall.function.arguments ?? "").length} chars)`);
       return new Response(
         JSON.stringify({ error: "The generator returned a malformed draft. Try again — regeneration is free.", retryable: true }),
         { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -565,7 +566,7 @@ Prepare the tailored application package.`;
           }
         }
       } catch (e) {
-        console.warn("[GENERATE-APPLY-PACKAGE] regeneration attempt failed:", String(e).slice(0, 120));
+        console.warn("[GENERATE-APPLY-PACKAGE] regeneration attempt failed:", describeError(e));
       }
     }
     if (!grounding.ok) {

@@ -2,7 +2,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@18.5.0";
-import { CHAIN_DEADLINE_MS, callAIWithModelFallback, chainRanOutOfTime } from "../_shared/ai-fallback.ts";
+import { CHAIN_DEADLINE_MS, callAIWithModelFallback, chainRanOutOfTime, describeError } from "../_shared/ai-fallback.ts";
 import { buildLanguageInstruction } from "../_shared/language-instruction.ts";
 import { assertPaidSession } from "../_shared/paid-session.ts";
 import { checkoutSessionSettled } from "../_shared/pass-settlement.ts";
@@ -614,7 +614,8 @@ Analyze this resume for ATS compatibility and provide a complete ATS Defense rep
         analysis = JSON.parse(toolCall.function.arguments);
         console.log("[ATS-DEFENSE] Successfully parsed tool call response");
       } catch (parseError) {
-        console.error("[ATS-DEFENSE] Failed to parse tool call:", parseError);
+        // Its name and position, never the report text it quotes (S13-064).
+        console.error("[ATS-DEFENSE] Failed to parse tool call:", describeError(parseError));
         return new Response(
           JSON.stringify({ error: ERROR_MESSAGES.INTERNAL }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

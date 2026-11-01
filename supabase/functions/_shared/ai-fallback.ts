@@ -325,6 +325,26 @@ export function describeReply(data: unknown): string {
   ].join(" ");
 }
 
+/**
+ * WHAT AN ERROR WAS, FOR A LOG LINE, WITHOUT THE TEXT IT WAS READING (recheck
+ * of S13-064). V8's JSON.parse message quotes up to about ten characters
+ * either side of where it failed (Unexpected token 'J', ...", "name": Jane
+ * Doe, "... is not valid JSON), so the lines kept for a tool call whose
+ * arguments did not parse still put a fragment of the person's résumé into
+ * the function logs. A SyntaxError is named by its position only; any other
+ * error by its name and message (a timeout, a refused request), which quote
+ * no reply; anything else thrown by its type.
+ */
+export function describeError(error: unknown): string {
+  if (error instanceof SyntaxError) {
+    const at = /\bposition (\d+)/.exec(error.message)?.[1];
+    if (at) return `SyntaxError at position ${at}`;
+    return /\bend of (?:JSON )?input\b/i.test(error.message) ? "SyntaxError at the end of the input" : "SyntaxError";
+  }
+  if (error instanceof Error) return `${error.name}: ${error.message.slice(0, 120)}`;
+  return typeof error;
+}
+
 /** What a usable-reply walk hands back: the caller's value, or a gateway refusal (429, 402) for its own handling. */
 export type UsableReply<T> =
   | { ok: true; value: T; modelUsed: string }
