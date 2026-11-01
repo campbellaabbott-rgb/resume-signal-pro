@@ -461,11 +461,26 @@ const COLD_BOARD_RESERVE = 200;
 const YIELD_SPIN_LIMIT = 20;
 // Rationale: docs/job-board-index-notes.md#n011-heap-soft-limit-mb
 const HEAP_SOFT_LIMIT_MB = 150;
+// AND THE ONE THAT ACTUALLY RUNS OUT: WALL TIME.
+//
+// .41 bounded heap because the breadcrumbs showed 200MB at the moment of
+// death. That reading was real but it was not the cause: on .41 slices went on
+// dying at heap 70 and 132, far below both the 150MB bound and the ~256MB
+// ceiling, so the bound never even fired. Recorded here because I shipped that
+// theory to production and it was wrong.
 // Rationale: docs/job-board-index-notes.md#n1471-const-slice_wall_budget_ms-_000
 const SLICE_WALL_BUDGET_MS = 120_000;
 // Rationale: docs/job-board-index-notes.md#n012-min-boards-per-slice
 const MIN_BOARDS_PER_SLICE = 80;
+// MEASURED, AT LAST. The .47 ramp was built to find this number and it found
+// it within four minutes of deploying:
+//     budget  8  slice completes   (works 3121 -> 3123)
+//     budget 16  slice completes   (works 3123 -> 3125)
+//     budget 24  slice DIES        (chainKick http_error, trace frozen at
+//                                   "loop 24", works stops at 3125)
 // Rationale: docs/job-board-index-notes.md#n1472-const-max_boards_per_slice
+// RAISED BACK, BECAUSE THE MEASUREMENT THAT SET IT WAS TAKEN ON BROKEN CODE.
+// Rationale: docs/job-board-index-notes.md#n1473-const-max_boards_per_slice
 const MAX_BOARDS_PER_SLICE = 80;
 const BOARDS_RAMP_STEP = 8;
 const CAPPED_VISIT_VENDORS = new Set(["workday", "oracle", "icims", "smartrecruiters", "rippling", "usajobs", "teamtailor"]);
@@ -1022,15 +1037,16 @@ async function fetchPersonio(s: JobSource): Promise<{ xml: string; host: string 
       const res = await fetchWithTimeout(`https://${s.token}.${host}/xml`);
       if (res.ok) {
         const xml = await res.text();
-        if (!xml.includes("<workzag-jobs") && !xml.includes("<position")) continue;
-        // Rationale: docs/job-board-index-notes.md#n1423-a-personio-posting-in-another-language
-        if (!PERSONIO_NO_DESCRIPTION.test(xml)) return { xml, host };
-        try {
-          const en = await fetchWithTimeout(`https://${s.token}.${host}/xml?language=en`);
-          if (en.ok) return { xml: mergePersonioDescriptions(xml, await en.text()), host };
-          discardBody(en);
-        } catch { /* the default-language read stands */ }
-        return { xml, host };
+        if (xml.includes("<workzag-jobs") || xml.includes("<position")) {
+          // Rationale: docs/job-board-index-notes.md#n1423-a-personio-posting-in-another-language
+          if (!PERSONIO_NO_DESCRIPTION.test(xml)) return { xml, host };
+          try {
+            const en = await fetchWithTimeout(`https://${s.token}.${host}/xml?language=en`);
+            if (en.ok) return { xml: mergePersonioDescriptions(xml, await en.text()), host };
+            discardBody(en);
+          } catch { /* the default-language read stands */ }
+          return { xml, host };
+        }
       } else discardBody(res);
     } catch (e) {
       // Rationale: docs/job-board-index-notes.md#n024-string-e-as-error-message-e-inclu
@@ -1317,7 +1333,7 @@ async function fetchWorkday(s: JobSource, startOffset = 0): Promise<{ jobPosting
       }
     } finally { discardRest(responses, read); }
   }
-  // Rationale: docs/job-board-index-notes.md#n1473-const-empty-emptyfirstpage-startoffset-a
+  // Rationale: docs/job-board-index-notes.md#n1474-const-empty-emptyfirstpage-startoffset-a
   const empty = emptyFirstPage(startOffset, all.length, feedTotal);
   if (empty === "refused") throw new Error(`empty page but total=${feedTotal}`);
   if (empty) exhausted = empty === "ended";
@@ -1779,7 +1795,7 @@ const VENDOR_ZERO_RESET = 0.3; // hysteresis: quarantine lifts below this
 const VENDOR_MIN_ATTEMPTS = 20; // never judge a vendor on a handful of fetches
 const VENDOR_STATS_DECAY = 0.8; // per-slice decay — recent slices dominate
 
-// Rationale: docs/job-board-index-notes.md#n1474-const-experience_version
+// Rationale: docs/job-board-index-notes.md#n1475-const-experience_version
 const EXPERIENCE_VERSION = 3;
 // Rationale: docs/job-board-index-notes.md#n043-salary-parse-version
 const SALARY_PARSE_VERSION = 10; // v10 (2026-10-09, wave 3 board-data-ingest, docs/wave3/board-data-ingest.md): NT$/AR$/CL$/COL$/RD$/$U and a bare $ in TW/AR/CL/CO/DO/UY are not USD; a figure in millions is no wage; "up to X" alone is no floor; "$17/hr - $38/hr" is a range. // v9 (2026-09-27): A COMMA IS A DECIMAL POINT IN MOST OF EUROPE and the money pattern read it as a thousands group, so the figure split in half: P_RANGE is two money patterns with a dash between them, and on "€14,61 — €14,61" (ouihelp's own greenhouse pay footer) the grouped alternative could not match a 2-digit group, the plain one matched the bare "14", no separator followed, and the engine restarted INSIDE the number — taking the decimal tail 61 as the low end and the next figure's 14 as the high end. A €14.61/hour rate was read as a range from 61 down to 14. Where the halves descended, annualisation refused and the columns stored NULL (643 of 684 rows); where they ascended, the WRONG pair annualised cleanly — smartrecruiters/Securitas "€ 18,10 – € 19,51" stored 20,800-39,520 and workday/Assurant "$ 19,08 - $ 30,53" stored a floor of 16,640 against a true 39,686, 58% low, in the column salary_rank_usd is generated from (41 rows). Worst single shape: smartrecruiters/Flink "€15,96 - €17,14 per hour" read min 96 WITH a stated period and annualised to 199,680 — a €33k job published as a €200k one at the top of the pay sort. THE TAIL LENGTH DECIDES, NOT THE SEPARATOR AND NOT THE LOCALE: no thousands group has two digits, while three genuinely is ambiguous, so the v8 rule below and parseMoney's European reading are untouched (1,715 dot-3 rows in the census, zero changed) and the fix is unconditional — 29 of the 74 shape-carrying rows found by the country census have country NULL, so a locale-gated rule would have missed most of the population. Lookaheads refuse a tail followed by another separator (ashby/Oscilar's Indian lakh grouping "₹66,21,800") or by a period and a digit. MEASURED LIVE 2026-09-27 with the anon key: 684 rows carry the shape on NINE boards (greenhouse ouihelp 550 / joya 114, smartrecruiters Securitas 8 / Flink 5, workday Ia 2 / Assurant 2 / Enzazaden 1, oracle CareOne 1 / IHG 1), found by censusing every servable posting placed in any of the 64 comma-decimal countries the board holds (80,006 rows, cluster fold off) and then walking each discovered board to its exact countOnly total; an independent 60,000-row offset sample of the whole board found one further board and nothing else. Re-parsing 178,591 real stored salary strings with the old reader and the new one: 683 rows change, 638 NULL to a value, 45 a wrong value to a right one, ZERO a value to NULL. Boards, not one board, and never a token condition — the same lesson as v8. // v8 (2026-09-26): a 3-decimal HOURLY rate was read as a thousands group — Saskatchewan Health Authority's own field says "RequisitionType": "Hourly" beside "Pay Band 12 $23.170 to $24.840", and the board stored $23.17/hr as a $23,170 ANNUAL salary (under SK minimum wage, ~29% of real pay). Measured live over 176,575 rows: 1,404 rows on FIVE boards / two vendors — oracle HealthCareersInSask.ca 1,294, oracle DPS 96, workday Scarborough Health Network 11, workday Richmond University Medical Center 2, oracle Northwell 1 — of which 1,323 hold a wrong stored annual and 81 stored NULL. Every salary floor, ceiling and the pay sort read salary_rank_usd off salary_min_annual, so all of them filtered and sorted at ~half their true pay. See readsDotThreeAsRate: the European thousands reading ('€45.000' = 45,000) is deliberately kept, so the re-read is conditioned on the posting's locale, not the separator. // v7 (2026-08-25): day rates (x260) + a part-time/casual guard that REFUSES to annualise a load-dependent rate — {"q":"teacher","salaryFloor":90000} was serving 14 hourly part-timers out of 15, incl. $44/hr read as 91,520 and a $160/day substitute read as 332,800
@@ -2333,7 +2349,7 @@ const EXISTS_ID_MAX = 300;
 
 // Rationale: docs/job-board-index-notes.md#n1442-exists-detail-fence
 function pastFence(r: Record<string, unknown>, cutoffMs: number): boolean {
-  const eff = Date.parse(String(r.effective_posted ?? r.posted_at ?? r.first_seen ?? ""));
+  const eff = Date.parse(String(r.effective_posted ?? ""));
   return Number.isFinite(eff) && eff < cutoffMs;
 }
 
@@ -2428,7 +2444,18 @@ function chainNextSlice(hop: number, client?: SupabaseClient, nextBoards?: numbe
 
 // Rationale: docs/job-board-index-notes.md#n544-const-slice_stats_write_ms-_000
 
-// Rationale: docs/job-board-index-notes.md#n1475-const-slice_stats_write_ms-_000
+// Slice-duration recorder — called at runRefresh's TERMINAL returns so the
+// wall time covers everything a slice actually does: the fetch loop AND the
+// tail (dormancy pruning, deep-cursor writes, and on pass-end the facets
+// recompute + headline recount — measured 0.63s+ on its own). The first
+// version stamped before that tail and undercounted ~27% on pass-end slices;
+// a review caught it. EMA alpha 0.2, per phase. Fire-and-forget by design.
+//
+// KNOWN, ACCEPTED RACE (review finding, low): chain hops force past the slice
+// lock, so two near-simultaneous slices can interleave this read-modify-write
+// — the `slices` counter undercounts by one and the OTHER phase's EMA reverts
+// by one sample (self-correcting). Instrumentation-grade data; the wrapMin
+// stamp remains the load-bearing freshness measurement.
 const SLICE_STATS_WRITE_MS = 5_000;
 
 // Rationale: docs/job-board-index-notes.md#n1175-async-function-stampslicework-client-sup
@@ -4028,6 +4055,11 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         // Rationale: docs/job-board-index-notes.md#n120-truncatedfetch
         const truncatedFetch = r.windowed === true;
         // Rationale: docs/job-board-index-notes.md#n1477-const-feed_short_ratio
+        // Marked, never suppressed. The closure log is the asset that cannot be
+        // re-derived; a batch we doubt is still INSERTED, carrying the numbers
+        // that produced the doubt so a reader can recompute the decision or
+        // overturn it. Exclusion happens at READ time, in the estimator.
+        // Rationale: docs/job-board-index-notes.md#n1478-const-feed_short_ratio
         const FEED_SHORT_RATIO = 0.6;
         let removableBefore = 0; // = existing.size minus this pass's freshness-cap age-outs
         for (const id of existing) if (!agedOutIds.has(id)) removableBefore += 1;
@@ -4870,7 +4902,7 @@ async function passEndHygiene(client: SupabaseClient): Promise<{ ok: boolean; de
   return { ok: true, detail: "dates checked" };
 }
 
-// Rationale: docs/job-board-index-notes.md#n1478-async-function-freshnesssweep-client-sup
+// Rationale: docs/job-board-index-notes.md#n1479-async-function-freshnesssweep-client-sup
 async function freshnessSweep(client: SupabaseClient, freshCutoffMs: number, sliceWallStart: number): Promise<{ swept: number; stop: string }> {
   const freshCutoffIso = new Date(freshCutoffMs).toISOString();
   const sweepUntil = sliceWallStart + PASS_END_SWEEP_UNTIL_MS;
@@ -5064,7 +5096,7 @@ async function passEndCapacity(client: SupabaseClient): Promise<{ ok: boolean; d
 
 /** Step "names": the name-sync lane, a board at a time on this step's clock. */
 async function passEndNames(client: SupabaseClient, sliceWallStart: number): Promise<{ ok: boolean; detail: string; stop?: string }> {
-  // Rationale: docs/job-board-index-notes.md#n1479-const-data-nsver-await-client-from
+  // Rationale: docs/job-board-index-notes.md#n1480-const-data-nsver-await-client-from
   const { data: nsVer } = await client.from("job_board_meta").select("v").eq("k", "name_sync_version").maybeSingle();
   if ((nsVer?.v as { version?: number } | null)?.version !== NAME_SYNC_VERSION) {
   try {
@@ -5493,13 +5525,21 @@ async function checkLive(src: JobSource, externalId: string, applyUrl?: string |
       // refused is remembered across ids and requests by the reader instead.
       const r = await readBoardForDetail(src);
       if (!r) return null;
-      // Rationale: docs/job-board-index-notes.md#n1480-const-ids-new-set-string
+      // FIFTEEN vendors reach here, not three. Only greenhouse / lever /
+      // smartrecruiters / oracle / workday return above; everything else in
+      // JobSourceKind falls through to membership — ashby, workable, bamboohr,
+      // recruitee, teamtailor, personio, breezy, pinpoint, paylocity, rippling,
+      // icims, adp, ukg, jazzhr, usajobs. The old comment here still named the
+      // original three, and that staleness is exactly what hid the missing
+      // windowed guard below: the vendors that CAN window (icims, rippling,
+      // adp, ukg, usajobs, jazzhr) all arrived after the comment was written.
       const ids = new Set<string>();
       if (src.source === "ashby") for (const j of ((r.raw as { jobs?: Array<{ id: string }> }).jobs ?? [])) ids.add(String(j.id));
       else for (const j of r.jobs) ids.add(j.id.split(":").slice(2).join(":")); // `source:token:externalId` — strip our prefix
       memo = { ids, windowed: r.windowed === true };
       liveBoardMemo.set(memoKey, memo);
     }
+    // ── WINDOWED-ABSENCE RULE ────────────────────────────────────────────────
     // Rationale: docs/job-board-index-notes.md#n1481-const-truncatedfetch-memo-windowed-true
     const truncatedFetch = memo.windowed === true;
     if (memo.ids.has(externalId)) return true;
@@ -6074,7 +6114,15 @@ function searchDisclosures(
   if (applied.newSince) out.newSince = applied.newSince;
   // Rationale: docs/job-board-index-notes.md#n694-if-applied-excludeagencies-out-agenciese
   if (applied.excludeAgencies) out.agenciesExcluded = true;
-  // Rationale: docs/job-board-index-notes.md#n1482-const-dym-did_you_mean-string-body-q
+  // NO describedOnly DISCLOSURE FLAG. A filtered page must say so — but the
+  // only caller that sets hasDescription is the client's own résumé browse, so
+  // it already knows, and a server flag telling it what it just asked for
+  // would be an emitter with no reader (the defect
+  // a-disclosure-nobody-renders-is-not-a-disclosure.test.ts exists to catch).
+  // If this filter ever gains a caller that is NOT the thing rendering the
+  // copy, it needs a real disclosure here and a reader for it.
+  // A typo that exactly matches other people's typos defeats every rescue
+  // tier — the exact hits are real rows, just not what the searcher meant.
   const dym = DID_YOU_MEAN[String(body.q ?? "").trim().toLowerCase()];
   if (dym) out.didYouMean = dym;
   return out;
@@ -6189,7 +6237,7 @@ async function handleRequest(req: Request): Promise<Response> {
   // Rationale: docs/job-board-index-notes.md#n198-req-method-get
   if (req.method === "GET") {
     const u = new URL(req.url);
-    // Rationale: docs/job-board-index-notes.md#n1483-if-u-searchparams-get-action-sitemap
+    // Rationale: docs/job-board-index-notes.md#n1482-if-u-searchparams-get-action-sitemap
     if (u.searchParams.get("action") === "sitemap") {
       return new Response(
         "Gone. Individual openings have their own pages; the sitemap that lists "
@@ -6272,13 +6320,13 @@ async function handleRequest(req: Request): Promise<Response> {
       // Rationale: docs/job-board-index-notes.md#n200-slice
       const SLICE = 200;
       const state = await client.from("job_board_meta").select("v, updated_at").eq("k", "host_sweep").maybeSingle();
-      // Rationale: docs/job-board-index-notes.md#n1484-const-lockage-state-data-updated_at-date
+      // Rationale: docs/job-board-index-notes.md#n1483-const-lockage-state-data-updated_at-date
       const lockAge = state.data?.updated_at ? Date.now() - new Date(state.data.updated_at).getTime() : Infinity;
       if (lockAge < 5 * 60_000) return json({ skipped: "a sweep ran moments ago" });
       const arrivedMs = Date.parse(String((state.data?.v as { lastArrivedAt?: unknown } | null)?.lastArrivedAt ?? ""));
       const sinceArrival = Number.isFinite(arrivedMs) ? Date.now() - arrivedMs : lockAge;
       if (sinceArrival < HOST_SWEEP_ANON_GAP_MS && !(await isMaintenance(req, body))) return json({ skipped: "a sweep ran moments ago" });
-      // Rationale: docs/job-board-index-notes.md#n1485-const-svarrive-state-data-v-as
+      // Rationale: docs/job-board-index-notes.md#n1484-const-svarrive-state-data-v-as
       const svArrive = { ...(state.data?.v as Record<string, unknown> ?? {}), lastArrivedAt: new Date().toISOString() };
       const arriveAt = new Date().toISOString();
       if (state.data?.updated_at) {
@@ -8730,7 +8778,7 @@ async function handleRequest(req: Request): Promise<Response> {
       for (let i = 0; i < ids.length; i += 200) {
         const { data, error } = await client
           .from("job_board_postings")
-          .select("id, effective_posted, posted_at, first_seen")
+          .select("id, effective_posted")
           .in("id", ids.slice(i, i + 200))
           .is("missing_since", null);
         if (error) throw error;
@@ -8795,7 +8843,7 @@ async function handleRequest(req: Request): Promise<Response> {
       const description = stored ?? fetched?.text ?? null;
       const vendorPay = fetched?.pay ?? null;
       if (!description && !jobRow) {
-        // Rationale: docs/job-board-index-notes.md#n1486-const-data-closure-await-client
+        // Rationale: docs/job-board-index-notes.md#n1485-const-data-closure-await-client
         const { data: closure } = await client
           .from("job_board_closures")
           .select("title, company, closed_at")
@@ -9275,7 +9323,7 @@ async function serveList(
           `— ${JSON.stringify(v.slice(0, 3))}`,
       );
     }
-    // Rationale: docs/job-board-index-notes.md#n1487-if-v-length
+    // Rationale: docs/job-board-index-notes.md#n1486-if-v-length
     if (v.length) {
       waitUntil(writeIncidents(client, incidentRows(v, jobs.length, new Date().toISOString())).catch(() => {}));
     } else if (Math.random() < 0.02) {
@@ -10084,7 +10132,7 @@ async function serveList(
 
       const t_search_jobs_3 = Date.now();
       // On a clock: a missed full call is answered by the title tier (S11-009, n482).
-      const rankedCall = (page: { p_limit: number; p_offset: number }, titleOnly: boolean) => client.rpc("search_jobs", {
+      const rankedCall = async (page: { p_limit: number; p_offset: number }, titleOnly: boolean) => await client.rpc("search_jobs", {
         p_q: expandedQ,
         p_fresh_cutoff: freshCutoffIso,
         p_location: rankedLocationParam(applied.location),
@@ -10919,7 +10967,23 @@ async function serveList(
     const aCount = await buildQuery(dateCol, true, applied.category!).range(0, 0);
     if (aCount.error) return aCount;
     const countA = aCount.count ?? 0;
-    // Rationale: docs/job-board-index-notes.md#n1488-const-s-splitpage-offset-twosubsetlimit
+    // NO GROUPING OVER-FETCH ON THIS PATH, and the cliff is steep.
+    //
+    // `fetchLimit` is 3x `limit` when grouping is on, so it asks the `other`
+    // half for a much wider range. Measured on legal+DE at offset 60:
+    //
+    //     fetchLimit 180   500 after 43s
+    //     fetchLimit  60   200 in   5.1s
+    //
+    // Reading the unsorted bucket is simply expensive — it is 162,800 rows with
+    // no index supporting this shape — and the over-fetch multiplies exactly
+    // the query that cannot afford it. Grouping still runs, with `limit`
+    // candidates instead of 3x; slightly less clustering on a rare opt-in path
+    // is worth incomparably more than a 43-second 500 on page two.
+    //
+    // This BOUNDS the cost, it does not fix it: ~5s against a normal ~0.3s
+    // page. The real fix is an index for (category, country, effective_posted),
+    // which is a migration and a separate decision.
     const s = splitPage(offset, twoSubsetLimit, countA);
 
     const [ra, rb] = await Promise.all([

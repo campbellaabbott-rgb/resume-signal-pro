@@ -2803,13 +2803,13 @@ function fitDescriptions(cards: Array<Record<string, unknown>>, budget: number):
  * that prunes the corpus as a side effect of an agent checking its list, and
  * a tool annotated readOnlyHint would be lying if it did.
  *
- * The cost of that choice is stated in the answer's `basis`, in full, because
- * it is exactly the kind of gap that becomes a false claim. `exists` asks one
- * question — is there a row? — and that is WEAKER than the test the serving
- * path applies: a row inside the removal grace window (stamped missing, not
- * yet pruned) and a row past the 30-day freshness cap both still exist, and
- * get_job would decline to serve either. Reporting those as "open" without
- * saying so would be the board contradicting itself between two tools.
+ * What `exists` checks is stated in the answer's `basis`, in full, because a
+ * gap here is exactly the kind that becomes a false claim. Until job-board
+ * .100 it asked only whether a row existed, and a row stamped missing but not
+ * yet pruned, or one older than the 30-day cap, still does while the serving
+ * path declines both; the basis said so. Since .100 (S13-076, n1442) it reads
+ * detail's row test, and the basis says that instead. This build deploys after
+ * job-board .100 serves: against .96 the basis would overstate the check.
  */
 async function runCheckJobsOpen(args: Record<string, unknown>, ctx: Ctx = KEYED_CTX): Promise<unknown> {
   const cap = ctx.keyless ? ANON_ALLOWANCE.checkJobsOpenIds : CHECK_JOBS_OPEN_MAX;
@@ -2841,10 +2841,10 @@ async function runCheckJobsOpen(args: Record<string, unknown>, ctx: Ctx = KEYED_
     ...(notChecked.length ? { notChecked, note: `Only the first ${cap} ids were checked — send the rest in another call${ctx.keyless ? `, or use a key for ${CHECK_JOBS_OPEN_MAX} at once` : ""}.` } : {}),
     ...(restricted.length ? { restricted, restrictedNote: NO_REDISTRIBUTION_REASON } : {}),
     basis:
-      "Open means the board still holds a row for this posting — its employer's feed listed it at the last refresh and the " +
-      "board has not confirmed it gone. It is not a live probe of the employer's site at this instant, and it is a WEAKER " +
-      "test than the one search and get_job apply: a posting inside the removal grace window, or one past the board's 30-day " +
-      "freshness cap, can still read open here while get_job declines to serve it. get_job on a single id is the closer look.",
+      "Open means the board still holds a row for this posting and it passes the test get_job applies to a row: its employer's " +
+      "feed listed it at the last refresh and it is inside the board's 30-day freshness cap. A posting inside the removal grace " +
+      "window (the feed stopped listing it and the board has not yet removed it) or past the cap reads closed here, as get_job " +
+      "declines it. It is not a live probe of the employer's site at this instant; get_job on a single id is the closer look.",
   };
 }
 

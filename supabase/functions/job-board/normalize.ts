@@ -1641,7 +1641,8 @@ export function normalizePersonio(xml: string, company: string, token: string, h
           : null,
         // <schedule> is full-time | part-time | full-or-part-time; the mapper
         // reads full-or-part-time as full_time (the role CAN be full-time).
-        employmentType: (et !== "permanent" && normalizeEmploymentType(et)) || normalizeEmploymentType(schedule),
+        // A part-time schedule keeps part_time: the stored type is the re-sweep's only part-time signal (n1421).
+        employmentType: (et !== "permanent" && normalizeEmploymentType(schedule) !== "part_time" && normalizeEmploymentType(et)) || normalizeEmploymentType(schedule),
         // Rationale: docs/job-board-index-notes.md#n1008-employmenttypetext-schedule-null
         employmentTypeText: schedule || null,
         level: {

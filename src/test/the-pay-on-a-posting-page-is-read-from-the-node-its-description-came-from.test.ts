@@ -319,7 +319,8 @@ describe("the pay on a posting page is read from the node its description came f
     // here would mean some vendor's payload is being read as a shape it is not.
     const CODE = codeOf(readFileSync(resolve(ROOT, "supabase/functions/job-board/index.ts"), "utf8"));
     expect(CODE.match(/ldBaseSalaryText\(ld\.pay\)/g)?.length).toBe(2);
-    expect(CODE.match(/const ld = jobPostingLd\(await res\.text\(\)\)/g)?.length).toBe(2);
+    // Paylocity keeps its page text for the no-JSON-LD fallback (board-stream fields, S13-046), so it parses a held html.
+    expect(CODE.match(/const ld = jobPostingLd\((?:await res\.text\(\)|html)\)/g)?.length).toBe(2);
   });
 
   it("fills the pay column and never overwrites what the posting's own text gave us", () => {

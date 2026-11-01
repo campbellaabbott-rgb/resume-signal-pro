@@ -1,35 +1,4 @@
-/**
- * WHERE A RANKED PAGE COMES FROM — the arithmetic, on its own, so a test can
- * walk it.
- *
- * This logic used to live inline in serveList, which is exactly why nothing
- * tested it and why every keyword search dead-ended at raw offset 200. The
- * guards that covered it matched source text (`p_offset: (newestFirst ||
- * scoreRanked) ? 0 : offset,`), so they pinned a SPELLING and passed happily
- * while 89% of every advertised result set was unreachable. A regex cannot
- * catch an off-by-one at a seam. A walk can.
- *
- * TWO REGIMES, ONE SEAM AT `rankedWindow`.
- *
- *   below the seam   search_jobs is anchored at p_offset 0, the whole window is
- *                    read, re-ranked in memory by rerankWindow, and the
- *                    caller's offset is applied AFTER the sort — so `offset` is
- *                    a position inside one stable, re-scored ordering.
- *   at/above         search_jobs pages itself with a real p_offset in its own
- *                    ts_rank_cd order and nothing is re-ranked, so `offset` is
- *                    a position in SQL rank.
- *
- * The two orderings are DIFFERENT, so the seam only works if neither regime
- * ever serves a rank the other one owns. Below the seam the slice is clamped to
- * end at `rankedWindow`; at and above it the SQL offset starts there. Rank
- * `rankedWindow - 1` is the last row of the first regime and rank
- * `rankedWindow` is the first row of the second. No overlap, no hole.
- *
- * The clamp is the part that is easy to get wrong and it is not optional: a
- * page STARTING below the seam would otherwise run past it — offset 150 with
- * limit 100 served window positions 150-249 — and the next request, now in the
- * SQL regime, would begin at rank 250 and silently skip 200-249.
- */
+// Rationale: docs/job-board-index-notes.md#n1489-export-const-ranked_window
 
 /**
  * search_jobs caps its own output at 200 rows — measured, p_limit 400 and 600
@@ -38,27 +7,7 @@
  */
 export const RANKED_WINDOW = 200;
 
-/**
- * The seam for a query whose window is MERGED with the head-term ring.
- *
- * The ring adds up to 200 title-prefix rows to the SQL top-200, so the served
- * pool is up to 400 rows — and clamping that pool at 200 breaks the seam
- * contract twice over: ring-only rows (SQL rank >= 200) served below the seam
- * are re-served by deep pages as duplicates, while the SQL top-200 rows they
- * displaced past position 200 are never served at ANY offset though `total`
- * counts them. Measured on q="sales": ~27 exact "Sales Associate" rows
- * duplicated past the seam and as many rows permanently unreachable.
- *
- * So a ring-merged query gets a seam at the pool's MAXIMUM — a constant, which
- * is what lets one request plan a deep page without first fetching the pool to
- * learn its length. Below 400 the regime serves pool positions (the pool ends
- * wherever it ends; a slice past its true length is an empty page whose
- * nextOffset points at the seam). At and above 400 the SQL regime resumes at
- * rank `offset - (RING_WINDOW - RANKED_WINDOW)`, i.e. rank 200 exactly where
- * the pool's SQL content ended — and the deep page re-runs the cheap ring
- * prefix query to DROP any row the ring already served below the seam.
- * No overlap, no hole, and page one is byte-identical to the pre-fix board.
- */
+// Rationale: docs/job-board-index-notes.md#n1490-export-const-ring_window
 export const RING_WINDOW = 400;
 
 export type RankedPagePlan = {
@@ -76,18 +25,7 @@ export type RankedPagePlan = {
   sliceEnd: number | undefined;
 };
 
-/**
- * `deepPageable` is decided by the caller, not here, because it depends on
- * which retriever won the route:
- *   - only the scored path has a seam at all (`scoreRanked`)
- *   - the EMPLOYER and SIMPLE routes retrieve a different set in a different
- *     order through their own 400-row window
- *   - SYMBOL is excluded even though RETRIEVER_FOR maps it to "ranked": a
- *     symbol query has no retriever of its own and is separated ONLY by the
- *     scorer's literal-substring rule, which is off past the seam. Without the
- *     exclusion `c++` and `c#` produce the same tsquery and, from offset 200,
- *     the same rows.
- */
+// Rationale: docs/job-board-index-notes.md#n1491-export-function-planrankedpage-opts
 export function planRankedPage(opts: {
   offset: number;
   fetchLimit: number;

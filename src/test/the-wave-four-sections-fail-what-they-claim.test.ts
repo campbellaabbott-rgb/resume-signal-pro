@@ -253,7 +253,7 @@ const parse = (s: string) => JSON.parse(s) as Record<string, any>;
 describe("the free answers the sections read are the shipped connector's", () => {
   it("the real handler served every fixture the healthy run is built on", () => {
     for (const k of ["options", "init", "tools", "toolsGpt", "prompts", "resources", "resourcesKeyed", "guide", "stats", "search", "badid", "null", "prm"]) expect(real[k], k).toBeTruthy();
-    expect(real.options.headers["x-fn-build"]).toMatch(/^agent-mcp\.2026-10-11\./);
+    expect(real.options.headers["x-fn-build"]).toMatch(/^agent-mcp\.2026-(10-11|1[12]-[0-3]\d)\./);
     expect(parse(real.search.body).result.structuredContent.unkeyed).toMatchObject({ partition: "other", allowance: "connection", ipCap: 100, partitionCap: 4000, globalCap: 20000 });
     expect(real.search.headers["x-unkeyed-remaining"]).toBeTruthy();
     expect(real.prm.status).toBe(404);
@@ -265,7 +265,7 @@ describe("82: the keyless surface", () => {
     const { lines, calls } = run(["82-wave4-keyless-surface.sh"], healthy());
     expect(fails(lines), show(lines)).toEqual([]);
     for (const re of [
-      /agent-mcp preflight x-fn-build = agent-mcp\.2026-10-11\./, /instructions open with search_jobs/, /six apply rules/, /no price and no Agent plan/,
+      /agent-mcp preflight x-fn-build = agent-mcp\.2026-(10-11|1[12]-[0-3]\d)\./, /instructions open with search_jobs/, /six apply rules/, /no price and no Agent plan/,
       /names the ten keyless tools/, /no oauth2 scheme/, /bytes \(want 25,000 or less\)/, /four explicit boolean hints/, /no retired apply-agent tool/,
       /read as ChatGPT names no price/, /Greenhouse and Recruitee only/, /four keyless prompts/, /takes no CV argument/,
       /board_stats answers and is never counted/, /malformed id is refused in band before anything is counted/,
@@ -405,10 +405,11 @@ describe("86: job-board .93", () => {
       /a search with the ChatGPT user agent answers in the ChatGPT edition/, /"nurse jobs in Texas" returns 1584 of the location form's 1592/, /"software engineer jobs in new york" returns 437/,
       /companies:\["Humana"\] resolves by name/,
     ]) expect(has(lines, "PASS", re), `${re}${show(lines)}`).toBe(true);
-    // The real handler serves 2026-10-11.27 or later: a caller that says it
+    // The real handler serves 2026-10-11.27 or later (2026-11-02.1 from the
+    // board-stream merge): a caller that says it
     // is ChatGPT is never logged, from anywhere (S12-085), so the run's own
     // nonce must count 0, and the older rule's 1 is not asked.
-    expect(real.options.headers["x-fn-build"]).toMatch(/^agent-mcp\.2026-10-11\.(2[7-9]|[3-9]\d|\d{3,})$/);
+    expect(real.options.headers["x-fn-build"]).toMatch(/^agent-mcp\.2026-(10-11\.(2[7-9]|[3-9]\d|\d{3,})|1[12]-[0-3]\d\.\d+)$/);
     expect(has(lines, "INFO", /job_board_search_events WHERE q = 'vdnolog\d+' must be 0, and the same count on job_board_search_misses 0/), show(lines)).toBe(true);
     expect(has(lines, "INFO", /'vdnolog\d+' must be 1/), show(lines)).toBe(false);
   });

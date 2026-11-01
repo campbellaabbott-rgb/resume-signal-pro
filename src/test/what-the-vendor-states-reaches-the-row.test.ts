@@ -135,9 +135,17 @@ describe("Personio: the employment type the employer picked (S13-033)", () => {
   it("an internship, trainee, freelance or temporary post is not filed by its schedule", () => {
     expect(one("intern", "full-time")).toBe("internship");
     expect(one("trainee", "full-time")).toBe("internship");
-    expect(one("working_student", "part-time")).toBe("internship");
-    expect(one("freelance", "part-time")).toBe("contract");
+    expect(one("working_student", "full-or-part-time")).toBe("internship");
+    expect(one("freelance", "full-time")).toBe("contract");
     expect(one("temporary", "full-time")).toBe("temporary");
+  });
+  it("a part-time schedule keeps part_time, the one part-time signal the stored row hands the pay re-sweep", () => {
+    // The text re-sweep reads only the stored row: "temporary" for a part-time
+    // minijob at EUR 14.50 an hour would let it publish 30,160 a year, which
+    // the ingest parse (it reads the schedule) refuses.
+    expect(one("working_student", "part-time")).toBe("part_time");
+    expect(one("freelance", "part-time")).toBe("part_time");
+    expect(one("temporary", "part-time")).toBe("part_time");
   });
   it("a permanent post is still filed by its schedule", () => {
     expect(one("permanent", "part-time")).toBe("part_time");

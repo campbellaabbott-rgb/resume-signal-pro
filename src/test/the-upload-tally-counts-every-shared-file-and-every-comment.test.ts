@@ -93,9 +93,9 @@ const PENDING_SHARED: Record<string, number> = {
   "planted-instructions.ts": 3_317,
   "shortlist-attestation.ts": 935,
   "subscription-notice.ts": 17_344,
-  // fix/full-analysis-timeout at 10a85dc9 (2026-11-01)
-  "ai-fallback.ts": 21_631,
-  "posting-text.ts": 18_731,
+  // fix/full-analysis-timeout at e5c3ca9e (2026-11-01)
+  "ai-fallback.ts": 22_660,
+  "posting-text.ts": 31_116,
   // fix/free-scan-wave at 89c2bc0b (2026-11-01)
   "industry-detection.ts": 270_590,
 };

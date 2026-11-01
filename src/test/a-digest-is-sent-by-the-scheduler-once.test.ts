@@ -213,7 +213,7 @@ describe("send-search-digest answers the scheduler and our service role, nobody 
 
   it("the preflight answers its build", async () => {
     const res = await search(new Request("https://harness.supabase.co/functions/v1/send-search-digest", { method: "OPTIONS" }));
-    expect(res.headers.get("x-fn-build")).toMatch(/^send-search-digest\.2026-10-(0[4-9]|[1-3]\d)\.\d+$/);
+    expect(res.headers.get("x-fn-build")).toMatch(/^send-search-digest\.2026-(10-(0[4-9]|[1-3]\d)|1[12]-[0-3]\d)\.\d+$/);
   });
 });
 

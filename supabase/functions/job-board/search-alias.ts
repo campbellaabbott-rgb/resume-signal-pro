@@ -42,35 +42,7 @@ export const ROLE_ALIASES: Record<string, string[]> = {
   backend: ["back end"],
   fullstack: ["full stack"],
 
-  // ---- Abbreviated TITLE WORDS, added 2026-08-20 ------------------------
-  //
-  // The map above is acronyms — whole roles written as initials. This block is
-  // the other half of how people type: ordinary words shortened inside a
-  // phrase. It was missing entirely, and the cost was measured on the live
-  // board, comparing what a person types against the full spelling:
-  //
-  //     "mech eng"       0  vs  2,206  mechanical engineer   -100%
-  //     "svc technician" 7  vs  4,426  service technician    -100%
-  //     "medical asst"  69  vs  3,865  medical assistant      -98%
-  //     "project mgr"  174  vs  9,275  project manager        -98%
-  //     "ops manager"  335  vs  6,974  operations manager     -95%
-  //     "sales rep"    491  vs  5,543  sales representative   -91%
-  //     "sr accountant" 508 vs  3,172  senior accountant      -84%
-  //
-  // Losing 84-100% of the real matches, on phrasings that are completely
-  // ordinary — "mech eng" returned NOTHING on a board holding 2,206 of them.
-  //
-  // ONE MEASUREMENT WORTH KEEPING: "office admin" already returned MORE than
-  // "office administrator" (1,703 vs 659), because `admin` is a prefix of
-  // `administrator` and the ILIKE fallback matches substrings. Prefix
-  // abbreviations partly self-heal on that path; non-prefix ones ("mgr",
-  // "svc", "asst") cannot, which is why they fail hardest. `admin` is still
-  // listed so the ranked tsquery path — which matches WORDS, not substrings —
-  // gets it too.
-  //
-  // Same curation rule as above: unambiguous in a job-title context only.
-  // Deliberately absent — "tech" (technician vs technology vs the industry),
-  // "pt" (part-time vs physical therapist), "cs", "ops" alone as a role.
+  // Rationale: docs/job-board-index-notes.md#n1501-rep-representative
   rep: ["representative"],
   reps: ["representatives"],
   asst: ["assistant"],
@@ -97,48 +69,15 @@ export const ROLE_ALIASES: Record<string, string[]> = {
   devs: ["developers"],
 };
 
-// Expands EVERY aliased token into websearch OR-branches that keep the rest
-// of the query intact: "senior pm" → "senior pm OR senior product manager OR
-// senior project manager"; "sre k8s" → branches covering both expansions AT
-// ONCE ("site reliability engineer kubernetes"), which the original
-// first-token-only version half-missed — "sre k8s" expanded sre and left k8s
-// literal, so titles saying "kubernetes" in full never matched.
-// websearch_to_tsquery has no grouping parens, but OR between full AND-groups
-// gives exactly the right semantics (and the original spelling stays a branch
-// — titles like "SWE II" still match). Branch order is deliberate: original
-// first, then the all-tokens-expanded reading (the one multi-abbreviation
-// queries actually mean), then partial substitutions until the cap.
-// Queries already using advanced syntax (quotes, OR, exclusion) are never
-// touched; a plain hyphenated word ("front-end") no longer disables
-// expansion — only a leading-minus exclusion does. Bounded: ≤4 branches,
-// ≤6 tokens.
-/**
- * THE TABLE WAS ONLY EVER READ ONE WAY.
- *
- * ROLE_ALIASES maps an abbreviation to the phrases it stands for, and
- * expandQuery looks up one TOKEN at a time — so "rn" has always found
- * "registered nurse", while someone typing "registered nurse" never reached a
- * posting whose title says "RN". Employers write both, so half the curated
- * table was doing nothing for the reader who spells it out, which is the more
- * common way to type it.
- *
- * Built once at module load, from the same table, so the two directions cannot
- * disagree: adding an alias tomorrow works both ways with no second edit.
- */
+// Rationale: docs/job-board-index-notes.md#n1502-const-phrase_to_abbrev-map-string-string
+// Rationale: docs/job-board-index-notes.md#n1503-const-phrase_to_abbrev-map-string-string
 const PHRASE_TO_ABBREV: Map<string, string[]> = (() => {
   const m = new Map<string, string[]>();
   for (const [abbrev, phrases] of Object.entries(ROLE_ALIASES)) {
     for (const phrase of phrases) {
       const key = phrase.toLowerCase();
       const cur = m.get(key) ?? [];
-      // ONLY WHERE THE ABBREVIATION MEANS ONE THING. I first wrote the
-      // opposite — that the reverse direction is unambiguous even where the
-      // forward one is not — and an existing guard caught it: "pm" stands for
-      // BOTH product manager and project manager, so contracting "product
-      // manager" into "pm" would quietly drag project-manager postings into a
-      // product-manager search. The forward direction may fan out, because the
-      // reader typed the ambiguous thing and gets to see both readings; the
-      // reverse may not, because the reader typed the precise thing.
+      // Rationale: docs/job-board-index-notes.md#n1504-if-phrases-length-cur-includes-abbrev
       if (phrases.length === 1 && !cur.includes(abbrev)) cur.push(abbrev);
       m.set(key, cur);
     }

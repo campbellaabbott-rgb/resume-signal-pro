@@ -1,18 +1,4 @@
-/**
- * ONE APOSTROPHE (S11-021).
- *
- * Location is matched with a literal ILIKE and the title ring with a prefix
- * ILIKE, and neither folded the curly apostrophe a phone types: iPhone smart
- * punctuation turns "St. John's" into "St. John’s" (U+2019), which matched 0
- * live postings against 101. Stored rows are mostly ASCII (4,671 locations
- * with "'" against 89 with U+2019, read 2026-10-11), so a search folds its
- * typed text to the ASCII apostrophe, and ingest folds what it stores so the
- * two never disagree again.
- *
- * Accents are not folded here: an unaccented search reaching an accented
- * posting needs the database to compare unaccented text (title_tsv and a
- * location index rebuilt), which is a table rewrite the owner schedules.
- */
+// Rationale: docs/job-board-index-notes.md#n1505-const-apostrophe_like
 const APOSTROPHE_LIKE = "‘’‛ʼ＇";
 const ANY_APOSTROPHE = new RegExp(`[${APOSTROPHE_LIKE}]`, "g");
 const HAS_APOSTROPHE = new RegExp(`[${APOSTROPHE_LIKE}]`);

@@ -252,11 +252,17 @@ describe("a shortlist costs one call, not twenty", () => {
     expect(fn, "a published answer names its basis").toMatch(/basis:/);
     expect(fn).toMatch(/the board still holds a row for this posting/);
     expect(fn, "it must not claim to have asked the employer this second").toMatch(/not a live probe of the employer's site/);
-    // `exists` asks a WEAKER question than the serving path: a row inside the
-    // removal grace window, or past the 30-day cap, still exists. Two tools
-    // that disagree about whether a posting is live must say which is stricter.
-    expect(fn, "the gap against get_job's test has to be stated, not glossed")
-      .toMatch(/WEAKER[\s\S]{0,300}freshness cap[\s\S]{0,120}get_job declines to serve it/);
+    // Until job-board .100 `exists` asked a weaker question than the serving
+    // path, and the basis had to say so. Since .100 (S13-076) it reads detail's
+    // row test: no missing stamp, inside the 30-day cap. The basis now says the
+    // two tools agree and names what reads closed, and the agreement is pinned
+    // to the board's own exists handler, so neither side can move alone.
+    expect(fn, "the basis must say a dropped or capped posting reads closed, as get_job declines it")
+      .toMatch(/removal grace[\s\S]{0,200}past the cap reads closed here, as get_job[\s\S]{0,12}declines it/);
+    expect(fn, "exists no longer asks the weaker question, and the basis must not say it does").not.toMatch(/WEAKER/);
+    const existsBody = BOARD_RAW.slice(existsAt, existsAt + 1500);
+    expect(existsBody, "the basis says a posting the feed stopped listing reads closed").toMatch(/\.is\("missing_since", null\)/);
+    expect(existsBody, "and that one past the cap does").toMatch(/pastFence\(r, cutoffMs\)/);
     expect(block("check_jobs_open")).toMatch(/maxItems: CHECK_JOBS_OPEN_MAX/);
   });
 
