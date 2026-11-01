@@ -1631,6 +1631,25 @@
       "title": "Je zwakste opsommingspunten, beoordeeld",
       "subtitle": "Geciteerd uit je cv en beoordeeld op cijfers, werkwoorden en reikwijdte. Waar een herschrijving staat, vul je de [haken] in met je echte cijfers.",
       "howToFix": "Zo verbeter je het (alleen op basis van je cv konden we dit niet herschrijven)"
+    },
+    "readAs": {
+      "label": "Zo hebben we het gelezen:",
+      "industry": "Branche",
+      "level": "Niveau",
+      "levels": {
+        "entry": "Starter",
+        "mid": "Medior",
+        "senior": "Senior",
+        "executive": "Directie"
+      },
+      "industryAria": "Bevestig of corrigeer de herkende branche",
+      "levelAria": "Bevestig of corrigeer het herkende ervaringsniveau",
+      "note": "Een correctie werkt dit rapport bij en wordt vastgelegd zodat we de herkenning kunnen verbeteren",
+      "quickCheck": {
+        "title": "Even checken:",
+        "transition": "we wisten je branche hier niet helemaal zeker — je loopbaan leest als {{historical}}, maar je laatste functie als {{recent}}. Bevestig hieronder en het rapport past zich aan.",
+        "unsure": "we wisten je branche hier niet helemaal zeker. Bevestig of corrigeer hem hieronder — vergelijkingen en trefwoorden passen zich meteen aan."
+      }
     }
   },
   "analysisPreviewSample": {
@@ -3080,7 +3099,14 @@
     "bestUsesPersonal": "{{name}}, hier werkt deze CV-versie het beste:",
     "atsRelevance": "ATS-relevantie: {{level}}",
     "learnAbout": "Meer over {{title}}",
-    "close": "Sluiten"
+    "close": "Sluiten",
+    "usageTooltip": "Gebruiksadvies",
+    "suitability": {
+      "excellent": "Uitstekend",
+      "good": "Goed",
+      "limited": "Beperkt",
+      "notRecommended": "Niet aanbevolen"
+    }
   },
   "elevatorPitch": {
     "title": "60-seconden elevator pitch",
@@ -3151,7 +3177,13 @@
     "softSkills": "Zachte vaardigheden",
     "tools": "Tools en software",
     "certifications": "Certificeringen",
-    "methodologies": "Methodologieën"
+    "methodologies": "Methodologieën",
+    "matchingAgainstJob": "Vergeleken met: {{job}}",
+    "importance": {
+      "critical": "kritiek",
+      "important": "belangrijk",
+      "nice_to_have": "mooi meegenomen"
+    }
   },
   "recruiterView": {
     "seeThrough": "Bekijk je CV door de ogen van een recruiter",
@@ -3383,7 +3415,20 @@
     "lowShort": "○ Laag",
     "highDesc": "Sterke branchesignalen gedetecteerd. Aanbevelingen zijn zeer relevant.",
     "mediumDesc": "Sommige branchesignalen gedetecteerd, verificatie aanbevolen.",
-    "lowDesc": "Beperkte signalen. Verifieer en corrigeer indien nodig voor betere aanbevelingen."
+    "lowDesc": "Beperkte signalen. Verifieer en corrigeer indien nodig voor betere aanbevelingen.",
+    "isThisRight": "Klopt dit?",
+    "yes": "Ja",
+    "no": "Nee",
+    "thanksConfirmed": "Duidelijk — bedankt voor je bevestiging!",
+    "allSignals": "Alle herkenningssignalen:",
+    "alsoConsidered": "Ook overwogen:",
+    "switch": "Wisselen →",
+    "seniority": {
+      "entry": "Startersniveau",
+      "mid": "Mediorniveau",
+      "senior": "Senior",
+      "executive": "Directie"
+    }
   },
   "resumeBuilder": {
     "experience": {
@@ -5855,6 +5900,22 @@
       "unchecked_other": "{{count}} niet gecontroleerd",
       "noCritical": "Geen kritieke bevindingen — wat goed werkt, staat in de secties hieronder.",
       "footer": "De volledige details van elke bevinding staan in de secties hieronder, op volgorde van ernst."
+    }
+  },
+  "redFlags": {
+    "title": "Rode vlaggen voor recruiters",
+    "severity": {
+      "critical": "Kritiek",
+      "major": "Groot",
+      "minor": "Klein"
+    },
+    "count": {
+      "critical_one": "{{count}} kritiek",
+      "critical_other": "{{count}} kritiek",
+      "major_one": "{{count}} groot",
+      "major_other": "{{count}} groot",
+      "minor_one": "{{count}} klein",
+      "minor_other": "{{count}} klein"
     }
   }
 }

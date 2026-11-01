@@ -26,12 +26,12 @@ interface JobKeywordMatcherProps {
   className?: string;
 }
 
-const categoryMeta: Record<MissingSkillDetail["category"], { label: string; icon: typeof Zap }> = {
-  hard_skill: { label: "Technical Skills", icon: Zap },
-  soft_skill: { label: "Soft Skills", icon: Star },
-  tool: { label: "Tools & Software", icon: Briefcase },
-  certification: { label: "Certifications", icon: FileText },
-  methodology: { label: "Methodologies", icon: TrendingUp },
+const categoryMeta: Record<MissingSkillDetail["category"], { labelKey: string; icon: typeof Zap }> = {
+  hard_skill: { labelKey: "jobKeywordMatcher.technical", icon: Zap },
+  soft_skill: { labelKey: "jobKeywordMatcher.softSkills", icon: Star },
+  tool: { labelKey: "jobKeywordMatcher.tools", icon: Briefcase },
+  certification: { labelKey: "jobKeywordMatcher.certifications", icon: FileText },
+  methodology: { labelKey: "jobKeywordMatcher.methodologies", icon: TrendingUp },
 };
 
 function CopyButton({ text }: { text: string }) {
@@ -100,12 +100,13 @@ export function JobKeywordMatcher({
           <div>
             <h3 className="text-lg font-bold flex items-center gap-2">
               <Target className="w-5 h-5 text-primary" />
-              Job Match Analysis
+              {t('jobKeywordMatcher.title')}
             </h3>
             {jobTitle && (
               <p className="text-sm text-muted-foreground mt-1">
-                Matching against: <span className="font-medium text-foreground">{jobTitle}</span>
-                {jobCompany && <span className="text-muted-foreground"> at {jobCompany}</span>}
+                {jobCompany
+                  ? t('jobKeywordMatcher.matchingAgainst', { job: jobTitle, company: jobCompany })
+                  : t('jobKeywordMatcher.matchingAgainstJob', { job: jobTitle })}
               </p>
             )}
           </div>
@@ -150,11 +151,10 @@ export function JobKeywordMatcher({
         <div className="p-5 rounded-xl bg-destructive/5 border border-destructive/20">
           <h4 className="font-bold text-destructive flex items-center gap-2 mb-3">
             <AlertTriangle className="w-4 h-4" />
-            Critical Gaps ({criticalMissing.length})
+            {t('jobKeywordMatcher.criticalGapsTitle', { count: criticalMissing.length })}
           </h4>
           <p className="text-sm text-muted-foreground mb-4">
-            These are essential for this role and genuinely don't appear in your resume — not just phrased
-            differently. Address these first.
+            {t('jobKeywordMatcher.criticalGapsDesc')}
           </p>
           <div className="space-y-3">
             {criticalMissing.slice(0, showAllCritical ? undefined : 5).map((skill, i) => (
@@ -162,12 +162,12 @@ export function JobKeywordMatcher({
                 <div className="flex items-start justify-between mb-2 gap-2">
                   <span className="font-semibold text-foreground">{skill.skill}</span>
                   <span className="text-xs px-2 py-0.5 rounded-full bg-destructive/10 text-destructive font-medium shrink-0">
-                    {categoryMeta[skill.category]?.label || skill.category.replace("_", " ")}
+                    {categoryMeta[skill.category] ? t(categoryMeta[skill.category].labelKey) : skill.category.replace("_", " ")}
                   </span>
                 </div>
                 {skill.isImplicit && (
                   <p className="text-xs text-muted-foreground mb-2 italic">
-                    Implied by related experience, but not stated explicitly — ATS keyword scanners won't credit it.
+                    {t('jobKeywordMatcher.impliedExp')}
                   </p>
                 )}
                 {skill.fixSuggestion && (
@@ -183,9 +183,9 @@ export function JobKeywordMatcher({
           {criticalMissing.length > 5 && (
             <Button variant="ghost" size="sm" onClick={() => setShowAllCritical(!showAllCritical)} className="mt-3 w-full">
               {showAllCritical ? (
-                <>Show Less <ChevronUp className="w-4 h-4 ml-1" /></>
+                <>{t('jobKeywordMatcher.showLess')} <ChevronUp className="w-4 h-4 ml-1" /></>
               ) : (
-                <>Show All {criticalMissing.length} Critical Gaps <ChevronDown className="w-4 h-4 ml-1" /></>
+                <>{t('jobKeywordMatcher.showAll', { count: criticalMissing.length })} <ChevronDown className="w-4 h-4 ml-1" /></>
               )}
             </Button>
           )}
@@ -197,7 +197,7 @@ export function JobKeywordMatcher({
         <div className="p-5 rounded-xl bg-success/5 border border-success/20">
           <h4 className="font-bold text-success flex items-center gap-2 mb-3">
             <CheckCircle2 className="w-4 h-4" />
-            Skills You Already Have ({matchingSkills.length})
+            {t('jobKeywordMatcher.skillsYouHave', { count: matchingSkills.length })}
           </h4>
           <div className="flex flex-wrap gap-2">
             {matchingSkills.map((skill, i) => (
@@ -215,7 +215,7 @@ export function JobKeywordMatcher({
         <div className="space-y-3">
           <h4 className="font-bold text-foreground flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-primary" />
-            Gaps by Category
+            {t('jobKeywordMatcher.gapsByCategory')}
           </h4>
 
           {Object.entries(groupedByCategory).map(([category, skills]) => {
@@ -231,8 +231,8 @@ export function JobKeywordMatcher({
                 >
                   <div className="flex items-center gap-3">
                     <Icon className="w-4 h-4 text-muted-foreground" />
-                    <span className="font-medium">{meta?.label || category}</span>
-                    <span className="text-xs text-muted-foreground">({skills.length} gap{skills.length > 1 ? "s" : ""})</span>
+                    <span className="font-medium">{meta ? t(meta.labelKey) : category}</span>
+                    <span className="text-xs text-muted-foreground">{t('jobKeywordMatcher.gapCount', { count: skills.length })}</span>
                   </div>
                   {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                 </button>
@@ -250,7 +250,7 @@ export function JobKeywordMatcher({
                             skill.importance === "important" ? "bg-warning/10 text-warning" :
                             "bg-muted text-muted-foreground"
                           )}>
-                            {skill.importance.replace("_", " ")}
+                            {t(`jobKeywordMatcher.importance.${skill.importance}`, { defaultValue: skill.importance.replace("_", " ") })}
                           </span>
                           {skill.fixSuggestion && (
                             <p className="text-xs text-muted-foreground mt-0.5">{skill.fixSuggestion}</p>
@@ -271,7 +271,7 @@ export function JobKeywordMatcher({
         <div className="p-5 rounded-xl bg-primary/5 border border-primary/20">
           <h4 className="font-bold text-foreground flex items-center gap-2 mb-3">
             <Lightbulb className="w-4 h-4 text-primary" />
-            Top {Math.min(3, criticalMissing.length)} Actions to Improve Your Match
+            {t('jobKeywordMatcher.topActions', { count: Math.min(3, criticalMissing.length) })}
           </h4>
           <ol className="space-y-2">
             {criticalMissing.slice(0, 3).map((skill, i) => (
@@ -280,7 +280,7 @@ export function JobKeywordMatcher({
                   {i + 1}
                 </span>
                 <div>
-                  <span className="font-medium">Add "{skill.skill}"</span>
+                  <span className="font-medium">{t('jobKeywordMatcher.addSkill', { skill: skill.skill })}</span>
                   {skill.fixSuggestion && <span className="text-muted-foreground"> — {skill.fixSuggestion}</span>}
                 </div>
               </li>

@@ -1641,6 +1641,25 @@
       "title": "Tus viñetas más débiles, calificadas",
       "subtitle": "Citadas de tu currículum y calificadas por cifras, verbos y alcance. Donde aparece una reescritura, completa los [corchetes] con tus cifras reales.",
       "howToFix": "Cómo arreglarla (no pudimos reescribirla solo con tu currículum)"
+    },
+    "readAs": {
+      "label": "Lo interpretamos así:",
+      "industry": "Sector",
+      "level": "Nivel",
+      "levels": {
+        "entry": "Inicial",
+        "mid": "Intermedio",
+        "senior": "Sénior",
+        "executive": "Directivo"
+      },
+      "industryAria": "Confirma o corrige el sector detectado",
+      "levelAria": "Confirma o corrige el nivel de experiencia detectado",
+      "note": "Una corrección actualiza este informe y queda registrada para mejorar la detección",
+      "quickCheck": {
+        "title": "Comprobación rápida:",
+        "transition": "no estábamos del todo seguros de tu sector esta vez: tu trayectoria se lee como {{historical}}, pero tu último puesto como {{recent}}. Confírmalo abajo y el informe se recalibra.",
+        "unsure": "no estábamos del todo seguros de tu sector esta vez. Confírmalo o corrígelo abajo: las referencias y las palabras clave se actualizan al momento."
+      }
     }
   },
   "analysisPreviewSample": {
@@ -3098,7 +3117,14 @@
     "bestUsesPersonal": "{{name}}, aquí es donde esta versión del currículum funciona mejor:",
     "atsRelevance": "Relevancia ATS: {{level}}",
     "learnAbout": "Aprender sobre {{title}}",
-    "close": "Cerrar"
+    "close": "Cerrar",
+    "usageTooltip": "Recomendaciones de uso",
+    "suitability": {
+      "excellent": "Excelente",
+      "good": "Bueno",
+      "limited": "Limitado",
+      "notRecommended": "No recomendado"
+    }
   },
   "elevatorPitch": {
     "title": "Presentación de 60 segundos",
@@ -3172,7 +3198,13 @@
     "tools": "Herramientas y software",
     "certifications": "Certificaciones",
     "methodologies": "Metodologías",
-    "gapCount_many": "({{count}} brechas)"
+    "gapCount_many": "({{count}} brechas)",
+    "matchingAgainstJob": "Comparado con: {{job}}",
+    "importance": {
+      "critical": "crítica",
+      "important": "importante",
+      "nice_to_have": "deseable"
+    }
   },
   "recruiterView": {
     "seeThrough": "Ve tu currículum a través de los ojos de un reclutador",
@@ -3406,7 +3438,20 @@
     "lowShort": "○ Baja",
     "highDesc": "Señales industriales fuertes detectadas. Las recomendaciones son muy relevantes.",
     "mediumDesc": "Se detectaron algunas señales industriales, pero se recomienda verificación.",
-    "lowDesc": "Señales limitadas. Verifica y corrige si es necesario para mejores recomendaciones."
+    "lowDesc": "Señales limitadas. Verifica y corrige si es necesario para mejores recomendaciones.",
+    "isThisRight": "¿Es correcto?",
+    "yes": "Sí",
+    "no": "No",
+    "thanksConfirmed": "Entendido, ¡gracias por confirmar!",
+    "allSignals": "Todas las señales detectadas:",
+    "alsoConsidered": "También considerados:",
+    "switch": "Cambiar →",
+    "seniority": {
+      "entry": "Nivel inicial",
+      "mid": "Nivel intermedio",
+      "senior": "Sénior",
+      "executive": "Directivo"
+    }
   },
   "resumeBuilder": {
     "experience": {
@@ -5901,6 +5946,25 @@
       "unchecked_many": "{{count}} sin revisar",
       "noCritical": "Sin resultados críticos: lo que funciona bien se detalla en las secciones de abajo.",
       "footer": "El detalle completo de cada resultado aparece en las secciones de abajo, por orden de gravedad."
+    }
+  },
+  "redFlags": {
+    "title": "Señales de alerta para reclutadores",
+    "severity": {
+      "critical": "Crítico",
+      "major": "Importante",
+      "minor": "Menor"
+    },
+    "count": {
+      "critical_one": "{{count}} crítica",
+      "critical_other": "{{count}} críticas",
+      "critical_many": "{{count}} críticas",
+      "major_one": "{{count}} importante",
+      "major_other": "{{count}} importantes",
+      "major_many": "{{count}} importantes",
+      "minor_one": "{{count}} menor",
+      "minor_other": "{{count}} menores",
+      "minor_many": "{{count}} menores"
     }
   }
 }

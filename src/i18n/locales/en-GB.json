@@ -1631,6 +1631,25 @@
       "title": "Your weakest bullet points, graded",
       "subtitle": "Quoted from your CV and graded on metrics, verbs and scope. Where a rewrite is shown, fill any [brackets] with your real numbers.",
       "howToFix": "How to fix it (we couldn't rewrite this one from your CV alone)"
+    },
+    "readAs": {
+      "label": "We read this as:",
+      "industry": "Industry",
+      "level": "Level",
+      "levels": {
+        "entry": "Entry",
+        "mid": "Mid",
+        "senior": "Senior",
+        "executive": "Executive"
+      },
+      "industryAria": "Confirm or correct the detected industry",
+      "levelAria": "Confirm or correct the detected experience level",
+      "note": "A correction updates this report and is logged so we can improve detection",
+      "quickCheck": {
+        "title": "Quick check:",
+        "transition": "we weren't fully sure of your industry on this one — your history reads as {{historical}}, but your latest role reads as {{recent}}. Confirm below and the report recalibrates.",
+        "unsure": "we weren't fully sure of your industry on this one. Confirm or correct it below — benchmarks and keywords update at once."
+      }
     }
   },
   "analysisPreviewSample": {
@@ -3080,7 +3099,14 @@
     "bestUsesPersonal": "{{name}}, here's where this CV version works best:",
     "atsRelevance": "ATS Relevance: {{level}}",
     "learnAbout": "Learn about {{title}}",
-    "close": "Close"
+    "close": "Close",
+    "usageTooltip": "Usage Recommendations",
+    "suitability": {
+      "excellent": "Excellent",
+      "good": "Good",
+      "limited": "Limited",
+      "notRecommended": "Not Recommended"
+    }
   },
   "elevatorPitch": {
     "title": "60-Second Elevator Pitch",
@@ -3151,7 +3177,13 @@
     "softSkills": "Soft Skills",
     "tools": "Tools & Software",
     "certifications": "Certifications",
-    "methodologies": "Methodologies"
+    "methodologies": "Methodologies",
+    "matchingAgainstJob": "Matching against: {{job}}",
+    "importance": {
+      "critical": "critical",
+      "important": "important",
+      "nice_to_have": "nice to have"
+    }
   },
   "recruiterView": {
     "seeThrough": "See your CV through a recruiter's eyes",
@@ -3383,7 +3415,20 @@
     "lowShort": "○ Low",
     "highDesc": "Strong industry signals detected. Recommendations are highly relevant.",
     "mediumDesc": "Some industry signals detected, but verification recommended.",
-    "lowDesc": "Limited signals. Please verify and correct if needed for better recommendations."
+    "lowDesc": "Limited signals. Please verify and correct if needed for better recommendations.",
+    "isThisRight": "Is this right?",
+    "yes": "Yes",
+    "no": "No",
+    "thanksConfirmed": "Got it — thanks for confirming!",
+    "allSignals": "All detection signals:",
+    "alsoConsidered": "Also considered:",
+    "switch": "Switch →",
+    "seniority": {
+      "entry": "Entry-level",
+      "mid": "Mid-level",
+      "senior": "Senior",
+      "executive": "Executive"
+    }
   },
   "resumeBuilder": {
     "experience": {
@@ -5855,6 +5900,22 @@
       "unchecked_other": "{{count}} not checked",
       "noCritical": "No critical findings — details on what's working are in the sections below.",
       "footer": "Full detail for every finding appears in the sections below, in order of severity."
+    }
+  },
+  "redFlags": {
+    "title": "Recruiter Red Flags",
+    "severity": {
+      "critical": "Critical",
+      "major": "Major",
+      "minor": "Minor"
+    },
+    "count": {
+      "critical_one": "{{count}} critical",
+      "critical_other": "{{count}} critical",
+      "major_one": "{{count}} major",
+      "major_other": "{{count}} major",
+      "minor_one": "{{count}} minor",
+      "minor_other": "{{count}} minor"
     }
   }
 }

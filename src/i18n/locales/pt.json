@@ -1641,6 +1641,25 @@
       "title": "Seus tópicos mais fracos, avaliados",
       "subtitle": "Citados do seu currículo e avaliados por números, verbos e alcance. Onde houver uma reescrita, preencha os [colchetes] com seus números reais.",
       "howToFix": "Como corrigir (não conseguimos reescrever este só com o seu currículo)"
+    },
+    "readAs": {
+      "label": "Nossa leitura:",
+      "industry": "Setor",
+      "level": "Nível",
+      "levels": {
+        "entry": "Inicial",
+        "mid": "Pleno",
+        "senior": "Sênior",
+        "executive": "Executivo"
+      },
+      "industryAria": "Confirme ou corrija o setor detectado",
+      "levelAria": "Confirme ou corrija o nível de experiência detectado",
+      "note": "Uma correção atualiza este relatório e fica registrada para melhorarmos a detecção",
+      "quickCheck": {
+        "title": "Verificação rápida:",
+        "transition": "não tínhamos certeza do seu setor desta vez — seu histórico parece {{historical}}, mas seu cargo mais recente parece {{recent}}. Confirme abaixo e o relatório se ajusta.",
+        "unsure": "não tínhamos certeza do seu setor desta vez. Confirme ou corrija abaixo — referências e palavras-chave se atualizam na hora."
+      }
     }
   },
   "analysisPreviewSample": {
@@ -3098,7 +3117,14 @@
     "bestUsesPersonal": "{{name}}, veja onde esta versão do currículo funciona melhor:",
     "atsRelevance": "Relevância ATS: {{level}}",
     "learnAbout": "Saiba mais sobre {{title}}",
-    "close": "Fechar"
+    "close": "Fechar",
+    "usageTooltip": "Recomendações de uso",
+    "suitability": {
+      "excellent": "Excelente",
+      "good": "Bom",
+      "limited": "Limitado",
+      "notRecommended": "Não recomendado"
+    }
   },
   "elevatorPitch": {
     "title": "Pitch de 60 Segundos",
@@ -3172,7 +3198,13 @@
     "tools": "Ferramentas e Software",
     "certifications": "Certificações",
     "methodologies": "Metodologias",
-    "gapCount_many": "({{count}} lacunas)"
+    "gapCount_many": "({{count}} lacunas)",
+    "matchingAgainstJob": "Comparando com: {{job}}",
+    "importance": {
+      "critical": "crítica",
+      "important": "importante",
+      "nice_to_have": "desejável"
+    }
   },
   "recruiterView": {
     "seeThrough": "Veja seu currículo pelos olhos de um recrutador",
@@ -3406,7 +3438,20 @@
     "lowShort": "○ Baixa",
     "highDesc": "Sinais industriais fortes detectados. As recomendações são altamente relevantes.",
     "mediumDesc": "Alguns sinais industriais detectados, verificação recomendada.",
-    "lowDesc": "Sinais limitados. Verifique e corrija se necessário para melhores recomendações."
+    "lowDesc": "Sinais limitados. Verifique e corrija se necessário para melhores recomendações.",
+    "isThisRight": "Está certo?",
+    "yes": "Sim",
+    "no": "Não",
+    "thanksConfirmed": "Entendido — obrigado por confirmar!",
+    "allSignals": "Todos os sinais detectados:",
+    "alsoConsidered": "Também considerados:",
+    "switch": "Trocar →",
+    "seniority": {
+      "entry": "Nível inicial",
+      "mid": "Nível pleno",
+      "senior": "Sênior",
+      "executive": "Executivo"
+    }
   },
   "resumeBuilder": {
     "experience": {
@@ -5901,6 +5946,25 @@
       "unchecked_many": "{{count}} não verificados",
       "noCritical": "Nenhum resultado crítico — o que está funcionando aparece nas seções abaixo.",
       "footer": "O detalhe completo de cada resultado aparece nas seções abaixo, por ordem de gravidade."
+    }
+  },
+  "redFlags": {
+    "title": "Sinais de alerta para recrutadores",
+    "severity": {
+      "critical": "Crítico",
+      "major": "Importante",
+      "minor": "Menor"
+    },
+    "count": {
+      "critical_one": "{{count}} crítico",
+      "critical_other": "{{count}} críticos",
+      "critical_many": "{{count}} críticos",
+      "major_one": "{{count}} importante",
+      "major_other": "{{count}} importantes",
+      "major_many": "{{count}} importantes",
+      "minor_one": "{{count}} menor",
+      "minor_other": "{{count}} menores",
+      "minor_many": "{{count}} menores"
     }
   }
 }

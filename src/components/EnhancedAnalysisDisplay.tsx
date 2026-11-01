@@ -191,13 +191,13 @@ export function EnhancedAnalysisDisplay({
   const getSuitabilityLabel = (suitability: UsageRecommendation['suitability']) => {
     switch (suitability) {
       case 'excellent':
-        return 'Excellent';
+        return t('enhancedAnalysis.suitability.excellent');
       case 'good':
-        return 'Good';
+        return t('enhancedAnalysis.suitability.good');
       case 'limited':
-        return 'Limited';
+        return t('enhancedAnalysis.suitability.limited');
       case 'not_recommended':
-        return 'Not Recommended';
+        return t('enhancedAnalysis.suitability.notRecommended');
     }
   };
 
@@ -428,14 +428,16 @@ export function EnhancedAnalysisDisplay({
         <div className="rounded-2xl border border-border bg-card/50 p-4">
           <div className="flex items-center gap-2 mb-3">
             <Globe className="w-5 h-5 text-primary" />
-            <h4 className="font-bold text-foreground">Best Uses for This Resume</h4>
+            <h4 className="font-bold text-foreground">{t('enhancedAnalysis.bestUses')}</h4>
             <InfoTooltip 
-              title="Usage Recommendations" 
+              title={t('enhancedAnalysis.usageTooltip')} 
               description={t('enhancedAnalysis.bestUsesDesc')}
             />
           </div>
           <p className="text-xs text-muted-foreground mb-3">
-            {candidateName ? `${candidateName.split(' ')[0]}, here's` : 'Here\'s'} where this resume version works best:
+            {candidateName
+              ? t('enhancedAnalysis.bestUsesPersonal', { name: candidateName.split(' ')[0] })
+              : t('enhancedAnalysis.bestUsesGeneric')}
           </p>
           <div className="grid grid-cols-2 gap-2">
             {usageRecommendations.map((rec, idx) => (

@@ -1631,6 +1631,25 @@
       "title": "Ang pinakamahihinang bullet mo, may marka",
       "subtitle": "Sinipi mula sa resume mo at minarkahan ayon sa numero, pandiwa at saklaw. Kapag may ipinakitang rewrite, punan ang mga [bracket] ng totoong numero mo.",
       "howToFix": "Paano ito ayusin (hindi namin ito ma-rewrite mula sa resume mo lang)"
+    },
+    "readAs": {
+      "label": "Ganito namin ito binasa:",
+      "industry": "Industriya",
+      "level": "Antas",
+      "levels": {
+        "entry": "Panimula",
+        "mid": "Gitna",
+        "senior": "Senior",
+        "executive": "Ehekutibo"
+      },
+      "industryAria": "Kumpirmahin o itama ang natukoy na industriya",
+      "levelAria": "Kumpirmahin o itama ang natukoy na antas ng karanasan",
+      "note": "Ina-update ng pagtatama ang report na ito at itinatala para mapahusay namin ang pagtukoy",
+      "quickCheck": {
+        "title": "Mabilis na check:",
+        "transition": "hindi kami lubos na sigurado sa industriya mo rito — mukhang {{historical}} ang kasaysayan mo, pero {{recent}} ang pinakabago mong posisyon. Kumpirmahin sa ibaba at aangkop ang report.",
+        "unsure": "hindi kami lubos na sigurado sa industriya mo rito. Kumpirmahin o itama ito sa ibaba — agad na mag-a-update ang mga benchmark at keyword."
+      }
     }
   },
   "analysisPreviewSample": {
@@ -3080,7 +3099,14 @@
     "bestUsesPersonal": "{{name}}, narito kung saan pinakamainam ang bersyong ito ng resume:",
     "atsRelevance": "ATS Relevance: {{level}}",
     "learnAbout": "Matuto tungkol sa {{title}}",
-    "close": "Isara"
+    "close": "Isara",
+    "usageTooltip": "Mga Rekomendasyon sa Paggamit",
+    "suitability": {
+      "excellent": "Napakahusay",
+      "good": "Mabuti",
+      "limited": "Limitado",
+      "notRecommended": "Hindi inirerekomenda"
+    }
   },
   "elevatorPitch": {
     "title": "60-Segundong Elevator Pitch",
@@ -3151,7 +3177,13 @@
     "softSkills": "Mga Soft Skill",
     "tools": "Mga Tool at Software",
     "certifications": "Mga Sertipikasyon",
-    "methodologies": "Mga Metodolohiya"
+    "methodologies": "Mga Metodolohiya",
+    "matchingAgainstJob": "Itinutugma sa: {{job}}",
+    "importance": {
+      "critical": "kritikal",
+      "important": "mahalaga",
+      "nice_to_have": "mainam kung meron"
+    }
   },
   "recruiterView": {
     "seeThrough": "Tingnan ang iyong resume sa pamamagitan ng mata ng isang recruiter",
@@ -3383,7 +3415,20 @@
     "lowShort": "○ Mababa",
     "highDesc": "Malakas na mga signal ng industriya ang natuklasan. Ang mga rekomendasyon ay lubos na may kaugnayan.",
     "mediumDesc": "Ilang signal ng industriya ang natuklasan, inirerekomenda ang pag-verify.",
-    "lowDesc": "Limitadong mga signal. Mangyaring i-verify at itama kung kinakailangan para sa mas magandang rekomendasyon."
+    "lowDesc": "Limitadong mga signal. Mangyaring i-verify at itama kung kinakailangan para sa mas magandang rekomendasyon.",
+    "isThisRight": "Tama ba ito?",
+    "yes": "Oo",
+    "no": "Hindi",
+    "thanksConfirmed": "Sige — salamat sa pagkumpirma!",
+    "allSignals": "Lahat ng signal ng pagtukoy:",
+    "alsoConsidered": "Isinaalang-alang din:",
+    "switch": "Palitan →",
+    "seniority": {
+      "entry": "Panimulang antas",
+      "mid": "Gitnang antas",
+      "senior": "Senior",
+      "executive": "Ehekutibo"
+    }
   },
   "resumeBuilder": {
     "experience": {
@@ -5855,6 +5900,22 @@
       "unchecked_other": "{{count}} hindi nasuri",
       "noCritical": "Walang kritikal na natuklasan — nasa mga bahagi sa ibaba ang detalye ng gumagana.",
       "footer": "Nasa mga bahagi sa ibaba ang buong detalye ng bawat natuklasan, ayon sa bigat."
+    }
+  },
+  "redFlags": {
+    "title": "Mga Red Flag para sa Recruiter",
+    "severity": {
+      "critical": "Kritikal",
+      "major": "Malaki",
+      "minor": "Maliit"
+    },
+    "count": {
+      "critical_one": "{{count}} kritikal",
+      "critical_other": "{{count}} kritikal",
+      "major_one": "{{count}} malaki",
+      "major_other": "{{count}} malaki",
+      "minor_one": "{{count}} maliit",
+      "minor_other": "{{count}} maliit"
     }
   }
 }

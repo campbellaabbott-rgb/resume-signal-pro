@@ -1600,23 +1600,24 @@ export function FreeKeywordResults({
       {/* ── Detection confirmation strip — confirmed labels are 100% accurate ── */}
       {industryNeedsConfirmation && !correctedIndustry && (
         <div className="rounded-xl border border-warning/40 bg-warning/10 px-4 py-2.5 mb-2 text-xs text-foreground">
-          <span className="font-semibold">Quick check:</span> we weren't fully sure of your industry on this one
-          {industryTransition ? (
-            <> — your history reads as <span className="font-semibold capitalize">{(industryTransition.historical ?? '').replace(/_/g, ' ')}</span> but your latest role reads as <span className="font-semibold capitalize">{(industryTransition.recent ?? '').replace(/_/g, ' ')}</span>. Confirm below and the whole report recalibrates.</>
-          ) : (
-            <>. Confirm or correct it below — benchmarks and keywords sharpen instantly.</>
-          )}
+          <span className="font-semibold">{t('freeResults.readAs.quickCheck.title')}</span>{' '}
+          {industryTransition
+            ? t('freeResults.readAs.quickCheck.transition', {
+                historical: scanIndustryLabel(industryTransition.historical ?? ''),
+                recent: scanIndustryLabel(industryTransition.recent ?? ''),
+              })
+            : t('freeResults.readAs.quickCheck.unsure')}
         </div>
       )}
       <div className={`rounded-xl border px-4 py-2.5 mb-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs ${industryNeedsConfirmation && !correctedIndustry ? 'border-warning/50 bg-warning/5 ring-1 ring-warning/30' : 'border-border/60 bg-card/60'}`}>
-        <span className="text-muted-foreground">We read this as:</span>
+        <span className="text-muted-foreground">{t('freeResults.readAs.label')}</span>
         <label className="flex items-center gap-1.5">
-          <span className="text-muted-foreground">Industry</span>
+          <span className="text-muted-foreground">{t('freeResults.readAs.industry')}</span>
           <select
             value={effectiveIndustry}
             onChange={(e) => { handleIndustryChange(e.target.value); onContextConfirm?.({ confirmedIndustry: e.target.value }); }}
             className="bg-transparent border border-border/60 rounded-md px-1.5 py-0.5 text-foreground font-medium capitalize cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary/40"
-            aria-label="Confirm or correct detected industry"
+            aria-label={t('freeResults.readAs.industryAria')}
             data-industry-select
           >
             {/* The scanner's own ids (S13-018), plus this report's if it is not one of them. */}
@@ -1624,21 +1625,21 @@ export function FreeKeywordResults({
           </select>
         </label>
         <label className="flex items-center gap-1.5">
-          <span className="text-muted-foreground">Level</span>
+          <span className="text-muted-foreground">{t('freeResults.readAs.level')}</span>
           <select
             value={experienceLevel.level}
             onChange={(e) => confirmExperience(e.target.value)}
             className="bg-transparent border border-border/60 rounded-md px-1.5 py-0.5 text-foreground font-medium capitalize cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary/40"
-            aria-label="Confirm or correct detected experience level"
+            aria-label={t('freeResults.readAs.levelAria')}
+            data-level-select
           >
-            <option value="entry">Entry</option>
-            <option value="mid">Mid</option>
-            <option value="senior">Senior</option>
-            <option value="executive">Executive</option>
+            {(['entry', 'mid', 'senior', 'executive'] as const).map((lv) => (
+              <option key={lv} value={lv}>{t(`freeResults.readAs.levels.${lv}`)}</option>
+            ))}
           </select>
         </label>
         {experienceLevel.yearsEstimate && <span className="text-muted-foreground">~{experienceLevel.yearsEstimate}</span>}
-        <span className="text-muted-foreground/60 ml-auto hidden sm:inline">Corrections retrain our detection</span>
+        <span className="text-muted-foreground/60 ml-auto hidden sm:inline">{t('freeResults.readAs.note')}</span>
       </div>
 
       {/* ── Intent-adaptive spotlight — the report leads with what THEY came for ── */}
