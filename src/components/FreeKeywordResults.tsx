@@ -43,7 +43,7 @@ import { withMailSentences, type MailSentences } from "@/lib/report-mail-copy";
 import { RoleTargetingCard, CheckAgainstPostingCard } from "./RoleTargeting";
 import { LiveMatches } from "./LiveMatches";
 import { CardErrorBoundary } from "./CardErrorBoundary";
-import { getAvailableIndustries } from "./IndustryConfidenceIndicator";
+import { scanIndustryOptions, scanIndustryLabel } from "@/config/scan-industries";
 import { diffWords } from "@/lib/diff-words";
 import { ScoreHero } from "./scorecard/ScoreHero";
 import { MetricCardsGrid } from "./scorecard/MetricCardsGrid";
@@ -789,7 +789,7 @@ export function FreeKeywordResults({
     }
     toast({
       title: t('freeResults.industryUpdated'),
-      description: t('freeResults.industryUpdatedDescription', { industry: newIndustry.replace(/_/g, ' ') }),
+      description: t('freeResults.industryUpdatedDescription', { industry: scanIndustryLabel(newIndustry) }),
     });
   };
   
@@ -1615,8 +1615,10 @@ export function FreeKeywordResults({
             onChange={(e) => { handleIndustryChange(e.target.value); onContextConfirm?.({ confirmedIndustry: e.target.value }); }}
             className="bg-transparent border border-border/60 rounded-md px-1.5 py-0.5 text-foreground font-medium capitalize cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary/40"
             aria-label="Confirm or correct detected industry"
+            data-industry-select
           >
-            {getAvailableIndustries().map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            {/* The scanner's own ids (S13-018), plus this report's if it is not one of them. */}
+            {scanIndustryOptions(effectiveIndustry).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         </label>
         <label className="flex items-center gap-1.5">
