@@ -15,6 +15,10 @@
  *  S13-024  A résumé in a language the report is not built for carries a
  *           languageNotice; an English one carries null.
  *  S13-005  The detected hiring system reaches the page by its name.
+ *  S13-038  A weakest-bullet card built from the rule-based check carries no
+ *           rewrite: its instruction text is rewriteTemplate, and rewrite is
+ *           null, so "Open in builder with fixes applied" has nothing to write
+ *           over the person's bullet.
  *
  * Run against the shipped handlers, the model faked.
  */
@@ -236,5 +240,94 @@ describe("the prompts keep no fixed cut", () => {
   it("neither fork slices the résumé at 20,000 or 15,000", () => {
     expect(readFileSync(resolve(root, "free-keyword-scan/index.ts"), "utf8")).not.toMatch(/resumeText\.substring\(0, 20000\)/);
     expect(readFileSync(resolve(root, "free-keyword-scan-stream/index.ts"), "utf8")).not.toMatch(/resumeText\.substring\(0, 15000\)/);
+  });
+});
+
+const POLISH = [
+  "Anna Kowalska | anna.kowalska@example.com",
+  "PODSUMOWANIE",
+  "Kierownik projektu z 8-letnim doświadczeniem w zarządzaniu zespołem oraz rozwoju firmy.",
+  "DOŚWIADCZENIE",
+  "Kierownik projektu, Acme, 2018 - obecnie",
+  "- Odpowiedzialna za współpracę z klientami oraz budżet działu, który jest największy w firmie",
+  "WYKSZTAŁCENIE",
+  "Magister zarządzania, Uniwersytet Warszawski",
+  "UMIEJĘTNOŚCI",
+  "Zarządzanie budżetem, analiza danych, Excel",
+].join("\n");
+
+describe("S13-024: the response says when the report is not built for the language", () => {
+  it("a Polish résumé carries a notice naming Polish, and the prompt names it too", async () => {
+    const { json } = await scanPrimary({ resumeText: POLISH });
+    expect(json.detectedLanguage).toBe("pl");
+    expect(json.languageNotice).toMatchObject({ reason: "unsupported", language: "pl", name: "Polish" });
+    expect(prompts.join("\n")).toContain("DETECTED RESUME LANGUAGE: POLISH (MANDATORY)");
+  });
+  it("an English résumé carries none", async () => {
+    const { json } = await scanPrimary({ resumeText: LONG_RESUME });
+    expect(json.languageNotice).toBeNull();
+  });
+  it("the fallback carries the same notice", async () => {
+    const complete = await scanStream({ resumeText: POLISH });
+    expect(complete?.languageNotice).toMatchObject({ reason: "unsupported", language: "pl" });
+  });
+});
+
+describe("S13-005: the hiring system reaches the page by its name", () => {
+  it("a posting that links Workday gives { system, name, parsingStrength }", async () => {
+    const { json } = await scanPrimary({ resumeText: LONG_RESUME, jobDescriptionText: `${JD} Apply at https://acme.wd5.myworkdayjobs.com/en-US/careers/job/123` });
+    expect(json.atsSystem).toEqual({ system: "workday", name: "Workday", parsingStrength: "weak" });
+  });
+  it("a posting with no link names none", async () => {
+    const { json } = await scanPrimary({ resumeText: LONG_RESUME, jobDescriptionText: `${JD} Strong attention to detail; we comply with all laws.` });
+    expect(json.atsSystem).toBeNull();
+  });
+});
+
+const WEAK = [
+  "Lee Park | lee.park@example.com",
+  "EXPERIENCE",
+  "Warehouse Associate, Northwind, Jan 2020 - Present",
+  "- Responsible for inventory counts on the night shift",
+  "- Helped with scheduling for the receiving team",
+  "- Worked on loading trucks and keeping the dock clear",
+  "EDUCATION",
+  "High School Diploma, Central High",
+  "SKILLS",
+  "Forklift, Excel",
+].join("\n");
+
+describe("S13-038: a template is never a rewrite", () => {
+  it("cards rebuilt from the rule-based check carry rewrite null and the guidance as rewriteTemplate", async () => {
+    const saved = ANALYSIS.weakestBullets;
+    // the model's cards quote bullets the résumé does not hold, so grounding drops them
+    ANALYSIS.weakestBullets = [{ original: "Managed a fleet of 40 drones", grade: "C", issues: ["vague"], rewrite: "Ran a 40-drone fleet" }];
+    try {
+      const { json } = await scanPrimary({ resumeText: WEAK });
+      const cards = json.weakestBullets as Array<{ original: string; rewrite: unknown; rewriteTemplate?: unknown }>;
+      expect(cards.length).toBeGreaterThan(0);
+      for (const c of cards) {
+        expect(WEAK).toContain(c.original.replace(/^[-•]\s*/, ""));
+        expect(c.rewrite).toBeNull();
+        expect(typeof c.rewriteTemplate).toBe("string");
+        expect(c.rewriteTemplate as string).toContain("[what you did]");
+        // the parsed role header is often a misread bullet; the template names none
+        expect(c.rewriteTemplate as string).not.toMatch(/for -|Warehouse Associate|Northwind/);
+      }
+    } finally {
+      ANALYSIS.weakestBullets = saved;
+    }
+  });
+  it("a model card that survives grounding keeps its rewrite and has no template", async () => {
+    const saved = ANALYSIS.weakestBullets;
+    ANALYSIS.weakestBullets = [{ original: "Responsible for inventory counts on the night shift", grade: "D", issues: ["duty"], rewrite: "Counted every SKU on the night shift with zero variance" }];
+    try {
+      const { json } = await scanPrimary({ resumeText: WEAK });
+      const [card] = json.weakestBullets as Array<{ rewrite: unknown; rewriteTemplate?: unknown }>;
+      expect(card.rewrite).toBe("Counted every SKU on the night shift with zero variance");
+      expect(card.rewriteTemplate).toBeUndefined();
+    } finally {
+      ANALYSIS.weakestBullets = saved;
+    }
   });
 });

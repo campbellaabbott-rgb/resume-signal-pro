@@ -3618,13 +3618,20 @@ ${resumeForPrompt}
 
     // Deterministic repair: when grounding removed the bullet-level insights,
     // rebuild them from the rule-based bullet analysis (guaranteed verbatim —
-    // those strings were extracted FROM the resume).
+    // those strings were extracted FROM the resume). These carry no rewrite
+    // (S13-038): the instruction text used to ride in `rewrite`, and "Open in
+    // builder with fixes applied" wrote "Led [what you did] for ..." over the
+    // person's real bullets and called the fix applied. The guidance is
+    // `rewriteTemplate`, for the person to read; `rewrite` is null. It names
+    // no role: the parsed role header is often a misread bullet, which gave
+    // "Led [what you did] for - Helped the office manager ...".
     if ((analysis.weakestBullets as unknown[]).length === 0 && bulletAnalysis.weakBullets.length > 0) {
       analysis.weakestBullets = bulletAnalysis.weakBullets.slice(0, 3).map(b => ({
         original: b.text,
         grade: 'D',
         issues: [b.reason],
-        rewrite: `Led [what you did] for ${b.role || 'this role'}, achieving [metric] — rewrite this bullet to open with an action verb and end with a number.`,
+        rewrite: null,
+        rewriteTemplate: 'Rewrite this bullet to open with an action verb and end with a number, in the shape "Led [what you did], achieving [metric]".',
       }));
     }
     if (!analysis.sampleRewrite && bulletAnalysis.unquantifiedBullets.length > 0) {
