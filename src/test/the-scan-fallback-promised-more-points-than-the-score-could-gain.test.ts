@@ -142,16 +142,25 @@ describe("the fallback's improvement promise is bounded by the score it reports"
     expect((r.improvementPotential as { topPriority: string }).topPriority).toBe("Add LinkedIn");
   });
 
-  it("a modest promise on a modest score is left exactly as the model gave it", async () => {
+  // Since S13-058 the promise is not the model's number at all: it is the one
+  // projection (score-projection.ts) that the fix list ticks up to, so a
+  // modest score's +8 from the model reads as what its one fix reaches.
+  it("a modest score's promise is what ticking its fixes reaches, whatever the model wrote (S13-058)", async () => {
     analysis.atsScoreEstimate = 60;
     (analysis.improvementPotential as { estimatedScoreIncrease: number }).estimatedScoreIncrease = 8;
     const r = await scan();
-    expect(promise(r)).toBe(8);
+    const projection = r.scoreProjection as { from: number; to: number; gain: number; fixes: Array<{ impact: number }> };
+    expect(projection.from).toBe(60);
+    expect(promise(r), "one medium quick win is 4 points").toBe(4);
+    expect(promise(r)).toBe(projection.gain);
+    expect(projection.fixes.reduce((t, f) => t + f.impact, 0)).toBe(projection.to - projection.from);
   });
 
-  it("a negative promise is floored at zero", async () => {
+  it("a negative promise from the model is never shown: the projection is never below zero", async () => {
     (analysis.improvementPotential as { estimatedScoreIncrease: number }).estimatedScoreIncrease = -5;
-    expect(promise(await scan())).toBe(0);
+    const r = await scan();
+    expect(promise(r)).toBeGreaterThanOrEqual(0);
+    expect(promise(r)).toBe((r.scoreProjection as { gain: number }).gain);
   });
 
   it("a report served from the response cache is bounded too, though it was cached before the clamp", async () => {
