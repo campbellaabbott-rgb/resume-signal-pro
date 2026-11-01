@@ -1390,7 +1390,10 @@ export function analyzeCompetitiveKeywordGap(
 ): CompetitiveGapResult {
   const lower = resumeText.toLowerCase();
   const level = ['entry', 'mid', 'senior', 'executive'].includes(seniorityLevel) ? seniorityLevel : 'mid';
-  const industryKws = COMPETITIVE_KEYWORDS[industry]?.[level] || COMPETITIVE_KEYWORDS['technology'][level];
+  // Only the field's own list (register S13-010): technology's stood in for
+  // every field without one, so a teacher was told she lacked microservices
+  // and CI/CD. No list, no claim.
+  const industryKws = COMPETITIVE_KEYWORDS[industry]?.[level] ?? [];
 
   const present = industryKws.filter(kw => hasWholeTerm(lower, kw));
   const missing = industryKws.filter(kw => !hasWholeTerm(lower, kw));
