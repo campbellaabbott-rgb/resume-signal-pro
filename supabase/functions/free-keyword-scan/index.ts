@@ -2391,13 +2391,23 @@ This resume needs EXPANSION advice first, optimization second. Prioritize:
 Do NOT lead with keyword optimization — there's insufficient content to optimize yet. Your quickWins and sampleRewrite MUST focus on content expansion, not keyword insertion.`
       : '';
 
+    // THE MODEL READS THE WHOLE RÉSUMÉ (S13-008). Both prompts put only the
+    // first 20,000 characters inside <resume>, about five pages, with no
+    // notice: an academic or medical CV was scored, summarised and given its
+    // page count and missing skills from the first part, while the scaffold
+    // above was built from the whole. The server refuses anything over
+    // MAX_RESUME_LENGTH, so the whole text is sent; should a cap ever cut it,
+    // resumeTruncated says so on the page.
+    const resumeForPrompt = resumeText.slice(0, MAX_RESUME_LENGTH);
+    const resumeTruncated = resumeForPrompt.length < resumeText.length;
+
     const userPrompt = hasJobDescription
       ? `Analyze this resume and how well it matches the target job:
 
 ${sectionStructure}
 
 <resume>
-${resumeText.substring(0, 20000)}
+${resumeForPrompt}
 </resume>
 
 <job_description>
@@ -2408,7 +2418,7 @@ ${truncatedJobDescription}
 ${sectionStructure}
 
 <resume>
-${resumeText.substring(0, 20000)}
+${resumeForPrompt}
 </resume>${corpusHint}${bulletHint}${seniorityHint}${execModeHint}${userContextHint}${confidenceHint}${freelanceHint}${onetHint}${contactHint}${gapHint}${geoHint}${structureHint}${skillsRecencyHint}${careerTrajHint}${atsHint}${compGapHint}${timelineHint}${phraseHint}${sparseNote}${languageHint}`;
 
 
@@ -3665,6 +3675,47 @@ ${resumeText.substring(0, 20000)}
       }
     }
 
+    // 3) Page and word counts come from the full text (S13-008): the model's
+    //    count is kept where the text allows it (400 to 700 words a page) and
+    //    moved to the nearest end of that range where it does not, so an
+    //    11-page CV no longer reads "5 pages".
+    {
+      const fullWords = resumeText.split(/\s+/).filter(Boolean).length;
+      const rl = analysis.resumeLength as { currentPages?: unknown; recommendedPages?: unknown; verdict?: unknown } | null | undefined;
+      if (rl && typeof rl === 'object' && fullWords > 0) {
+        const fewest = Math.max(1, Math.ceil(fullWords / 700));
+        const most = Math.max(1, Math.ceil(fullWords / 400));
+        const said = typeof rl.currentPages === 'number' && Number.isFinite(rl.currentPages) ? Math.round(rl.currentPages) : null;
+        const pages = said === null ? Math.max(1, Math.ceil(fullWords / 550)) : Math.min(most, Math.max(fewest, said));
+        if (pages !== said) console.log(`[FREE-KEYWORD-SCAN] Page count: model said ${said}, ${fullWords} words allow ${fewest}-${most}; using ${pages}`);
+        rl.currentPages = pages;
+        if (typeof rl.recommendedPages === 'number') {
+          rl.verdict = pages > rl.recommendedPages ? 'too_long' : pages < rl.recommendedPages ? 'too_short' : 'just_right';
+        }
+      }
+      const wc = analysis.wordCount as { current?: unknown; idealMin?: unknown; idealMax?: unknown; verdict?: unknown } | null | undefined;
+      if (wc && typeof wc === 'object' && fullWords > 0) {
+        wc.current = fullWords;
+        if (typeof wc.idealMin === 'number' && typeof wc.idealMax === 'number') {
+          wc.verdict = fullWords < wc.idealMin ? 'too_few' : fullWords > wc.idealMax ? 'too_many' : 'ideal';
+        }
+      }
+    }
+
+    // A "missing skill" the full résumé already holds is not missing
+    // (S13-008): the model read the first 20,000 characters, and a skill on
+    // page 7 was listed as missing. Checked with the keyword card's own test.
+    for (const key of ['missingSkills', 'missingSkillsDetailed'] as const) {
+      const list = analysis[key];
+      if (!Array.isArray(list)) continue;
+      const kept = list.filter((s: unknown) => {
+        const skill = typeof s === 'string' ? s : (s as { skill?: unknown })?.skill;
+        return typeof skill !== 'string' || isKeywordActuallyMissing(skill);
+      });
+      if (kept.length < list.length) console.log(`[FREE-KEYWORD-SCAN] Résumé grounding: dropped ${list.length - kept.length} ${key} the résumé already holds`);
+      analysis[key] = kept;
+    }
+
     // === JD KEYWORD GROUNDING ===
     // When a job description is supplied, every "missing skill" suggestion
     // must actually appear in the JD — never tell someone to add a keyword
@@ -4048,6 +4099,8 @@ ${resumeText.substring(0, 20000)}
     // Null when the report is built for the language; otherwise what it is
     // and why the keyword and section checks may miss its words (S13-024).
     responseData.languageNotice = languageNoticeOf(resumeLanguage);
+    // True only when part of the résumé was not sent to the model (S13-008).
+    responseData.resumeTruncated = resumeTruncated;
     responseData.industryTransition = transitionDetected
       ? { historical: industryDetection.industry, recent: splitDetection!.industry }
       : null;

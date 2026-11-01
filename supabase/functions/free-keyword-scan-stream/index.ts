@@ -8037,9 +8037,13 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
       // Deterministic structure scaffold — grounds the model so it can't
       // hallucinate a missing section/contact/role the raw text contains.
       const structureHint = formatStructureForPrompt(parseResumeStructure(resumeText));
+      // The whole résumé, as the primary sends it (S13-008): this fork cut at
+      // 15,000 characters with no notice. The request is refused above
+      // MAX_RESUME_LENGTH, so nothing is cut; resumeTruncated would say so.
+      const resumeForPrompt = resumeText.slice(0, MAX_RESUME_LENGTH);
       const userPrompt = hasJobDescription
-        ? `Analyze this ${resumeType.label} for the target job:\n\n<resume>\n${resumeText.substring(0, 15000)}\n</resume>${structureHint}\n\n<job_description>\n${truncatedJobDescription}\n</job_description>`
-        : `Analyze this ${resumeType.label}:\n\n<resume>\n${resumeText.substring(0, 15000)}\n</resume>${structureHint}`;
+        ? `Analyze this ${resumeType.label} for the target job:\n\n<resume>\n${resumeForPrompt}\n</resume>${structureHint}\n\n<job_description>\n${truncatedJobDescription}\n</job_description>`
+        : `Analyze this ${resumeType.label}:\n\n<resume>\n${resumeForPrompt}\n</resume>${structureHint}`;
 
       // AI request with retry logic. Flash-first to match the primary
       // scanner: the pro-first order made this path's p50 latency 32s vs the
@@ -8671,6 +8675,8 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
         // The primary's language notice (S13-024): null when the report is
         // built for the résumé's language.
         languageNotice: languageNoticeOf(detectResumeLanguage(resumeText)),
+        // True only when part of the résumé was not sent to the model (S13-008).
+        resumeTruncated: resumeText.length > MAX_RESUME_LENGTH,
         // New fields for improved analysis
         resumeType,
         seniorityLevel: seniority,
