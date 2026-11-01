@@ -69,7 +69,9 @@ async function analysisFailure(fnError: unknown, timedOutText: string): Promise<
 }
 
 const Success = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  // Every ask names the page's language: analyze-resume writes the analysis
+  // in it, and falls back to the résumé's only when none is sent (S13-003).
   const { trackAllConversions } = useABConversion();
   const { trackPurchaseCompleted } = useConversionTracking();
   // The funnel's purchase_completed stage was emitted only by the product
@@ -167,7 +169,7 @@ const Success = () => {
    */
   const showDeliveredAnalysis = async (stripeSessionId: string): Promise<boolean> => {
     try {
-      const { data, error: fnError } = await supabase.functions.invoke("analyze-resume", { body: { resumeText: "", sessionId: stripeSessionId } });
+      const { data, error: fnError } = await supabase.functions.invoke("analyze-resume", { body: { resumeText: "", sessionId: stripeSessionId, language: i18n.language } });
       if (fnError || !data || data.error || !data.alreadyDelivered) return false;
       const { shareId: savedShareId, emailSent: _emailSent, alreadyDelivered: _delivered, ...analysisResult } = data;
       setAnalysisData(analysisResult);
@@ -187,7 +189,7 @@ const Success = () => {
         setCurrentStep(3);
 
         const { data, error: fnError } = await supabase.functions.invoke("analyze-resume", {
-          body: { resumeText, linkedInText, jobDescriptionText, sessionId: stripeSessionId },
+          body: { resumeText, linkedInText, jobDescriptionText, sessionId: stripeSessionId, language: i18n.language },
         });
 
         if (fnError) {
@@ -359,7 +361,7 @@ const Success = () => {
     setError(null);
 
     void supabase.functions
-      .invoke("analyze-resume", { body: { resumeText: text, sessionId } })
+      .invoke("analyze-resume", { body: { resumeText: text, sessionId, language: i18n.language } })
       .then(async ({ data, error: fnError }) => {
         if (fnError) throw await analysisFailure(fnError, t('success.error.timedOut'));
         if (data?.error) throw new Error(data.error);
