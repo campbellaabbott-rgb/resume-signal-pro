@@ -524,10 +524,14 @@ export const resilientCallers = {
     shouldRetry: shouldRetryScan,
   }),
 
-  /** Analyze resume - similar to keyword scan */
+  /**
+   * Analyze resume. Its model chain runs up to 125 s, so this waits past the
+   * platform's 150 s and reads the server's own answer (the success page
+   * calls analyze-resume through supabase.functions.invoke, with no timer).
+   */
   analyzeResume: createResilientCaller('analyze-resume', {
     maxRetries: 2,
-    timeout: 90000,
+    timeout: 155000,
     initialDelay: 2000,
   }),
 
