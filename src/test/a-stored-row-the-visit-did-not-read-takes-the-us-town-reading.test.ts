@@ -40,14 +40,14 @@ const CORPUS = JSON.parse(readFileSync(resolve(__dirname, "fixtures/stored-count
   rows: Array<[string, string | null, string]>;
 };
 
-/** The misfiled rows the re-file moves, each with the state its own string names. */
+/** The misfiled rows the re-file moves, each with the state its reader reads in the string, where it reads one. */
 const REFILED: Record<string, { stored: string; why: string }> = {
   "601095 Greece, NY - West Ridge Road": { stored: "GR", why: "Panera Bread, the string names New York" },
   "606371 Lake Wales, FL - US Highway 27": { stored: "GB", why: "Panera Bread, the string names Florida" },
   "FL - Lake Wales": { stored: "GB", why: "CVS Health, the string names Florida" },
   "Lake Wales, FL - 1900 Old Bartow Rd": { stored: "GB", why: "J.B. Hunt, the string names Florida" },
   "NY - Greece": { stored: "GR", why: "CVS Health R1075322 and three more, Workday alpha2Code US" },
-  "Store0006 Greece NY": { stored: "GR", why: "Dick's Sporting Goods 202641368, Workday alpha2Code US" },
+  "Store0006 Greece NY": { stored: "GR", why: "Dick's Sporting Goods 202641368, Workday alpha2Code US; no state the reader reads, so the country only" },
 };
 
 describe("the corpus: the re-file moves only the misfiled US towns, and only to main's own reading", () => {
@@ -126,6 +126,15 @@ describe("townRefilePatches: the board's stored rows the visit did not read", ()
   it("writes no region while the column is unknown, and none that is already stored", () => {
     expect(townRefilePatches(rows.slice(0, 1), new Set(), "workday", false)).toEqual([{ id: rows[0].id, country: "US" }]);
     expect(townRefilePatches([{ ...rows[0], region_code: "US-NY" }], new Set(), "workday", true)).toEqual([{ id: rows[0].id, country: "US" }]);
+  });
+
+  it("writes no region where the reader reads no state in the string: Store0006 Greece NY gets the country only, as main's reader gives it", () => {
+    const store = { id: "workday:dickssportinggoods~wd1~DSG:202641368", location: "Store0006 Greece NY", country: "GR", region_code: null };
+    expect(detectRegion("Store0006 Greece NY", "US"), "main's reader writes no region for it either").toBeNull();
+    expect(townRefilePatches([store], new Set(), "workday", true)).toEqual([{ id: store.id, country: "US" }]);
+    // The other five measured strings each get the state the reader reads.
+    const regions = Object.keys(REFILED).filter((s) => s !== "Store0006 Greece NY").map((s) => detectRegion(s, "US"));
+    expect(regions).toEqual(["US-NY", "US-FL", "US-FL", "US-FL", "US-NY"]);
   });
 
   it("touches only the visited vendor's rows: a shared token's twin is its own board's", () => {

@@ -50,7 +50,8 @@
 #       total the page prints on three SmartRecruiters boards one visit reads
 #       whole (LLNL, Clifford Chance, Sodexo) is within 10% of the total
 #       their own feed states, and if none of the three can be judged while
-#       their feeds answer, the line FAILs. Until 2026-10-25 this judged
+#       their feeds answer, the line FAILs, and so it does when this
+#       checkout's lander model did not run. Until 2026-10-25 this judged
 #       Stripe, which can never state one: job-board records no total for a
 #       whole-feed board (Greenhouse, Lever, Ashby and the rest), and
 #       Greenhouse's meta.total is only the length of the list it ships (719
@@ -402,7 +403,12 @@ const STATED_BOARDS = [["LLNL", "LLNL"], ["Clifford Chance", "CliffordChance"], 
       else out("FAIL", `81c ${label}: the page prints board total ${printed.total} (read ${printed.readAt}), ${Math.round(rel * 100)}% off its own SmartRecruiters feed (${feed.total})`);
     }
   }
-  if (model && answered > 0 && judged === 0) out("FAIL", `81c none of the ${STATED_BOARDS.length} named boards whose own feed states a total could be judged (each INFO above) while ${answered} of their feeds answered: the printed board total goes unjudged; re-pick boards one visit reads whole`);
+  // No model (the tsx step failed and left no file) is an unjudged claim too, named as such when the rows came back.
+  const rowsAnswered = STATED_BOARDS.filter(([, t]) => rowOf(t)).length;
+  if (answered > 0 && judged === 0) {
+    if (!model && rowsAnswered > 0) out("FAIL", `81c the printed board total cannot be judged: this checkout\x27s lander model did not run, while ${answered} of the ${STATED_BOARDS.length} named boards\x27 feeds answered and their curve rows came back (${rowsAnswered}); run the section from a checkout whose tsx imports src/lib/company/lander-model.ts`);
+    else out("FAIL", `81c none of the ${STATED_BOARDS.length} named boards whose own feed states a total could be judged (each INFO above) while ${answered} of their feeds answered: the printed board total goes unjudged; re-pick boards one visit reads whole`);
+  }
 }
 
 // ---- 81d: never half ----

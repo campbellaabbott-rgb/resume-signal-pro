@@ -23,6 +23,7 @@ import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync 
 import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
+import { vendoredAt } from "./helpers/vendored-at-commit";
 
 vi.setConfig({ testTimeout: 300_000 });
 
@@ -134,7 +135,8 @@ describe("section 88's quoted-token line judges the property, not the .88 spelli
   });
 
   it("STALE BEFORE: the .88 line printed FAIL on the .93 shape live on .96", () => {
-    const old = execFileSync("git", ["show", "f8d72a9b:scripts/verify-deploy.d/88-job-board-abuse.sh"], { cwd: ROOT, encoding: "utf8" });
+    // Section 88 at f8d72a9b, vendored (CI's checkout is one commit deep, so no test reads git history).
+    const old = vendoredAt("verify-88-job-board-abuse-f8d72a9b.json");
     expect(old).toContain('q.ignoredFilters.includes("companies"),"a quoted company token is refused and named: ignoredFilters = "');
     const { lines } = run(old, { jobs: dominos(1), total: 10_000, companiesResolved: [RESOLVED] });
     expect(lines.filter((l) => /a quoted company token/.test(l))[0]).toBe("FAIL  a quoted company token is refused and named: ignoredFilters = null (want it to include companies)");

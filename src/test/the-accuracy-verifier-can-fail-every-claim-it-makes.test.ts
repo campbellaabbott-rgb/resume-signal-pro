@@ -423,10 +423,29 @@ describe("81c judges the printed board total where the board's own feed states o
     expect(line(lines, "FAIL", NONE_JUDGED), show(lines)).toBe(true);
   });
 
-  it("a model that did not run says so, and is not read as a total too old to print", () => {
-    const lines = run({ ...files(afterRows, NEW_BUNDLE, AFTER), "vd_81_model.json": "null" });
-    for (const [label] of STATED) expect(totalLine(lines, label), show(lines)).toMatch(new RegExp(`^INFO {2}81c ${label}: this checkout's lander model did not run, so the printed total cannot be judged$`));
-    expect(lines.filter((l) => NONE_JUDGED.test(l)), show(lines)).toEqual([]);
+  // The model step ends in .catch(() => {}) and the section removes /tmp/vd_81_model.json first, so a tsx that cannot
+  // import the lander model leaves no file and `model` reads null: each board says so, and the claim FAILs, since
+  // the printed total went unjudged while the curve rows and their feeds answered (review of fix/post-deploy: it
+  // printed three INFOs and passed).
+  const MODEL_DOWN = /^FAIL {2}81c the printed board total cannot be judged: this checkout's lander model did not run, while 3 of the 3 named boards' feeds answered and their curve rows came back/;
+  it("a model that did not run says so on each board, is not read as a total too old to print, and FAILs the claim", () => {
+    for (const model of ["null", undefined]) {
+      const given = files(afterRows, NEW_BUNDLE, AFTER);
+      const lines = run(model === undefined ? Object.fromEntries(Object.entries(given).filter(([k]) => k !== "vd_81_model.json")) : { ...given, "vd_81_model.json": model });
+      for (const [label] of STATED) expect(totalLine(lines, label), show(lines)).toMatch(new RegExp(`^INFO {2}81c ${label}: this checkout's lander model did not run, so the printed total cannot be judged$`));
+      expect(line(lines, "FAIL", MODEL_DOWN), `${String(model)}${show(lines)}`).toBe(true);
+      expect(lines.filter((l) => NONE_JUDGED.test(l)), show(lines)).toEqual([]);
+    }
+  });
+
+  it("with no model: feeds that did not answer FAIL nothing, and curve rows that did not answer are the unjudged claim, not the model", () => {
+    const down = Object.fromEntries(STATED.map(([, token]) => [token, { status: 0, total: null }]));
+    const feedsDown = run({ ...files(afterRows, NEW_BUNDLE, { ...AFTER, ext: { ...EXT_AFTER, statedFeeds: down } }), "vd_81_model.json": "null" });
+    expect(feedsDown.filter((l) => MODEL_DOWN.test(l) || NONE_JUDGED.test(l)), show(feedsDown)).toEqual([]);
+    const stated = new Set<string>(STATED.map(([, token]) => token));
+    const rowsDown = run({ ...files(afterRows.filter((r) => !stated.has(r.company_token)), NEW_BUNDLE, AFTER), "vd_81_model.json": "null" });
+    expect(rowsDown.filter((l) => MODEL_DOWN.test(l)), show(rowsDown)).toEqual([]);
+    expect(line(rowsDown, "FAIL", NONE_JUDGED), show(rowsDown)).toBe(true);
   });
 
   it("feeds that do not answer are INFO and leave nothing to judge, so they FAIL nothing", () => {

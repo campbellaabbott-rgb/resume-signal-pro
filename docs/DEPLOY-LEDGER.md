@@ -72,9 +72,15 @@ closes the gap. Policy lives in `docs/deploy-ledger.json`:
   names this one, and then the note says the function already answers that
   build, went first, and which file repairs that (2026-10-31: job-board .96
   went out without 20261025100000 and 20261026100000, the next message still
-  said "before job-board", and 20261030100000 is their repair). A function
-  this message deploys, or one whose build could not be read, keeps "before
-  <fn>". The message prints five steps: migrations
+  said "before job-board", and 20261030100000 is their repair). An entry
+  that names `repairedBy` records that its function went first at a deploy
+  the ledger recorded, so it still has while the function's live build
+  reaches the build the newest `verifiedDeploys` entry lists for it, whatever
+  later build main carries: with job-board .98 in the repo over the live .96
+  (fix/post-deploy), the two name migrations read "before job-board" again
+  and their missing repair stopped nothing. A function this message deploys
+  (with no repair recorded, or a live build short of that record), or one
+  whose build could not be read, keeps "before <fn>". The message prints five steps: migrations
   before the functions, the functions, migrations after the function each
   waits for, the frontend, migrations after the frontend. A rule that cannot
   be met (main carries an earlier build, or no such function) stops the

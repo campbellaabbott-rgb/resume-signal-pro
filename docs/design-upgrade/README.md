@@ -271,8 +271,10 @@ board lists only older roles (BASS ABA's). The fixture's Stripe total (727,
 state ok) was a row the writer cannot produce. The line now judges the
 printed total on three SmartRecruiters boards one visit reads whole (LLNL,
 Clifford Chance, Sodexo), each against its own feed's `totalFound`, and FAILs
-if none of the three can be judged while their feeds answer; live that day
-all three PASSed at 0% off.
+if none of the three can be judged while their feeds answer, naming the
+lander model when this checkout's model did not run (the review of
+fix/post-deploy found that case printed three INFOs and passed); live that
+day all three PASSed at 0% off.
 
 **The 16 stale checks.** 7d (`/pricing` Pro at $45/month in description and
 body; retired claims judged by `scripts/prerender-retired.mjs`, so the bare

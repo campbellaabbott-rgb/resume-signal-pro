@@ -29,6 +29,7 @@ import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync 
 import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
+import { vendoredAt } from "./helpers/vendored-at-commit";
 
 // Each run spawns a fake curl per request (about seventy): seconds on an idle machine, minutes beside another suite.
 vi.setConfig({ testTimeout: 900_000 });
@@ -384,7 +385,8 @@ describe("section 99zzz: trust round 3", () => {
   });
 
   it("C1: STALE BEFORE: the .96 line took the board's read stamp for the row's and printed FAIL on the live rows", () => {
-    const old = execFileSync("git", ["show", "f8d72a9b:scripts/verify-deploy.d/99zzz-trust-round-3.sh"], { cwd: ROOT, encoding: "utf8" });
+    // Section 99zzz at f8d72a9b, vendored (CI's checkout is one commit deep, so no test reads git history).
+    const old = vendoredAt("verify-99zzz-trust-round-3-f8d72a9b.json");
     expect(old).toContain("const wrongRead=wrong.filter((r)=>readSince([r]));");
     const read = iso(1 * H);
     const rows = [placed("FL - Lake Wales", "GB", read), placed("Lake Wales, FL", "US", read)];

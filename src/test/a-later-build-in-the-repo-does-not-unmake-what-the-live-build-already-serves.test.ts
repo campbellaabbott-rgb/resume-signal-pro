@@ -18,9 +18,20 @@
  *     live build waited for this message's deploy.
  * Each now asks the live build itself (answersAtLeast). A row with no live
  * build (no header, unreachable) or an older one still waits: the teeth.
+ *
+ * The fourth rule went the other way (review of fix/post-deploy): a `before`
+ * function "went first" only while it served main's own build, so with .98 in
+ * the repo the two name migrations that .95 and .96 deployed ahead of read
+ * "before job-board" again, and with their repair (20261030100000) not
+ * pending nothing stopped the message, which on main at .96 stops it. An
+ * entry with `repairedBy` records that its function deployed first, at a
+ * deploy the ledger recorded (verifiedDeploys: job-board .96 at f8d72a9b); a
+ * later build in the repo does not undo that deploy, so the function went
+ * first while its live build reaches that record's build. Live .92 (the one
+ * deploy's own message) is short of it and still reads "before job-board".
  */
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import * as L from "../../scripts/deploy-ledger.mjs";
 
@@ -129,4 +140,58 @@ describe("migrationPhases: an after rule the live build meets applies before the
       expect(waits.afterFunctions.map((p: { file: string }) => p.file)).toEqual([F]);
     });
   }
+});
+
+describe("migrationPhases: a before rule its function broke stays broken under a later build in the repo", () => {
+  const onDisk = readdirSync(resolve(ROOT, "supabase/migrations"));
+  const file = (stamp: string) => onDisk.find((f) => f.startsWith(`${stamp}_`)) as string;
+  const NAMES = [file("20261025100000"), file("20261026100000")];
+  const REARM = file("20261030100000");
+  const MAIN_AT_96 = [row("job-board", "job-board.2026-09-09.96", "job-board.2026-09-09.96"), AHEAD()[1]];
+
+  it("the files this stands on: both name migrations, and their repair, are on disk", () => {
+    expect([...NAMES, REARM].every(Boolean)).toBe(true);
+  });
+
+  it("live .96 under repo .98, the repair not pending: both stop the message, as on main at .96", () => {
+    const main = L.migrationPhases(NAMES, policy, MAIN_AT_96, onDisk);
+    const ahead = L.migrationPhases(NAMES, policy, AHEAD(), onDisk);
+    expect(main.errors.map((e: string) => e.slice(0, 14))).toEqual(["20261025100000", "20261026100000"]);
+    expect(ahead.errors).toEqual(main.errors);
+    expect(ahead.errors.every((e: string) => e.includes("already answers job-board.2026-09-09.96, and its repairedBy 20261030100000 is not pending")), ahead.errors.join("\n")).toBe(true);
+  });
+
+  it("live .96 under repo .98, the repair pending: no error, and the notes say job-board deployed first, as on main at .96", () => {
+    const main = L.migrationPhases([...NAMES, REARM], policy, MAIN_AT_96, onDisk);
+    const ahead = L.migrationPhases([...NAMES, REARM], policy, AHEAD(), onDisk);
+    expect(ahead.errors).toEqual([]);
+    expect(ahead.pre).toEqual(main.pre);
+    expect(ahead.pre.slice(0, 2).map((p: { note: string }) => p.note)).toEqual([
+      "job-board already answers job-board.2026-09-09.96: it deployed first, and 20261030100000 repairs that",
+      "job-board already answers job-board.2026-09-09.96: it deployed first, and 20261030100000 repairs that",
+    ]);
+  });
+
+  it("the record is the newest verified deploy's build: live .92 under repo .98 is short of .96 and reads 'before job-board' with no error", () => {
+    expect(policy.verifiedDeploys.at(-1).functions["job-board"]).toBe("job-board.2026-09-09.96");
+    const short = L.migrationPhases(NAMES, policy, AHEAD("job-board.2026-09-09.92"), onDisk);
+    expect(short.errors).toEqual([]);
+    expect(short.pre.map((p: { note: string }) => p.note)).toEqual(["before job-board", "before job-board"]);
+    // A repair recorded with no verified deploy of the function keeps main's own rule: "deploy" reads "before".
+    const unrecorded = { ...policy, verifiedDeploys: [] };
+    expect(L.migrationPhases(NAMES, unrecorded, AHEAD(), onDisk).pre.map((p: { note: string }) => p.note)).toEqual(["before job-board", "before job-board"]);
+    expect(L.migrationPhases(NAMES, unrecorded, MAIN_AT_96, onDisk).errors).toHaveLength(2);
+  });
+
+  it("the teeth the other way: a before rule with no repair recorded still reads 'before' a function this message deploys, and one whose live build cannot be read keeps its order", () => {
+    const F = "20991231000000_goes_before_job_board.sql";
+    const fresh = L.migrationPhases([F], { migrationOrder: { "20991231000000": { before: ["fn:job-board"] } } }, AHEAD(), [F]);
+    expect(fresh.errors).toEqual([]);
+    expect(fresh.pre).toEqual([{ file: F, note: "before job-board" }]);
+    for (const jb of [null, undefined]) {
+      const unread = L.migrationPhases([...NAMES, REARM], policy, AHEAD(jb), onDisk);
+      expect(unread.errors, String(jb)).toEqual([]);
+      expect(unread.pre.slice(0, 2).map((p: { note: string }) => p.note), String(jb)).toEqual(["before job-board", "before job-board"]);
+    }
+  });
 });

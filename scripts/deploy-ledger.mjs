@@ -780,8 +780,14 @@ export function sliceNote(build, deploying = build) {
  * answers main's build (or later) deployed first: the order is broken, and
  * the message said "before job-board" in a deploy with no job-board step, so
  * it is an error unless `repairedBy` names a pending repair, and the note
- * says the function went first. A function this message deploys, or one
- * whose build could not be read, keeps "before <fn>". A rule that cannot be
+ * says the function went first. An entry with `repairedBy` records that its
+ * function went first at a deploy the ledger recorded, so it still has while
+ * the function's live build reaches the build the newest verifiedDeploys
+ * entry lists for it, whatever later build main carries (with .98 in the repo
+ * over the live .96, the name migrations read "before job-board" and their
+ * missing repair stopped nothing). A function this message deploys (with no
+ * repair recorded, or a live build short of that record), or one whose build
+ * could not be read, keeps "before <fn>". A rule that cannot be
  * met (main carries an earlier build, or no such function) is an error,
  * never a guess. Pure: `rows` are the report's rows ({ fn, want, have,
  * state }); `onDisk`, optional, is every migration file name on disk (the
@@ -793,6 +799,11 @@ export function sliceNote(build, deploying = build) {
 export function migrationPhases(pending, policy, rows, onDisk = null) {
   const order = policy?.migrationOrder ?? {};
   const byFn = new Map((rows ?? []).map((r) => [r.fn, r]));
+  // Each function's build in the newest verified deploy that recorded it (verifiedDeploys, oldest first).
+  const recordedBuild = new Map();
+  for (const d of Array.isArray(policy?.verifiedDeploys) ? policy.verifiedDeploys : []) {
+    for (const [fn, b] of Object.entries(d?.functions ?? {})) if (typeof b === "string") recordedBuild.set(fn, b);
+  }
   const out = { pre: [], afterFunctions: [], afterFrontend: [], errors: [] };
   const rules = Object.entries(order).filter(([k]) => !k.startsWith("_"));
   for (const [stamp, e] of rules) {
@@ -834,7 +845,18 @@ export function migrationPhases(pending, policy, rows, onDisk = null) {
     const preds = predsOf(e);
     const afterMigNote = preds.length ? `after ${preds.join(" and ")}${!e?.after && !before.length ? "; it waits for nothing else" : ""}` : "";
     // A before function already serving main's build (or later) went first: this message deploys none of it.
-    const wentFirst = before.filter((fn) => { const r = byFn.get(fn); return r && (r.state === "live" || r.state === "live-ahead"); });
+    // An entry with repairedBy records that it went first, at a deploy the ledger recorded: it still has while
+    // its live build reaches the newest verifiedDeploys build of it, whatever later build main carries
+    // (fix/post-deploy: .98 over the live .96 read the two name migrations "before job-board" again, and with
+    // their repair not pending nothing stopped the message, which on main at .96 stops it).
+    const brokeAt = typeof e?.repairedBy === "string";
+    const wentFirst = before.filter((fn) => {
+      const r = byFn.get(fn);
+      if (!r) return false;
+      if (r.state === "live" || r.state === "live-ahead") return true;
+      const at = brokeAt ? recordedBuild.get(fn) : null;
+      return Boolean(at && r.have && buildAtLeast(r.have, at));
+    });
     const stillBefore = before.filter((fn) => !wentFirst.includes(fn));
     const stamp = file.slice(0, 14);
     const repair = typeof e?.repairedBy === "string" && /^\d{14}$/.test(e.repairedBy) ? e.repairedBy : null;

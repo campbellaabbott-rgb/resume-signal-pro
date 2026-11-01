@@ -21992,7 +21992,9 @@ word the map moved (Lake Wales GB, Greece GR, Peru PE, Turkey TR) and
 detectCountry now reads the string as US: the outcome main gives on the row's
 next read, sooner, and nothing else. Read rows keep the visit's own patch;
 another vendor's twin under the same token is its own board's; the region is
-the state the string names when the column exists; the pay columns are
+written when the column exists and detectRegion reads a state in the string,
+as main's reader writes it (five of the six measured strings name one;
+"Store0006 Greece NY" gets the country only, as main's reader gives it); the pay columns are
 re-read as US only where the country changed their reading ("17.500 - 22.750
 per hour" filed GR has no annual figure), because once the row reads US a
 later visit sees no country move. The patches queue after the read rows', so
