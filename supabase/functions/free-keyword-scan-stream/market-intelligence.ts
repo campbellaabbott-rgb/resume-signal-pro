@@ -1023,29 +1023,45 @@ export interface CareerTrajectory {
   progressionSummary: string;
 }
 
+// Each key is matched as a word of its own (register S13-009): `c: 7` and
+// includes() ranked every title holding the letter c ("Sales Associate") as
+// C-suite, "intern" was in "internal", "lead" in "pleaded". A title takes the
+// highest rank among its words; plurals count ("Directors").
 const SENIORITY_RANK: Record<string, number> = {
-  intern: 0, trainee: 0, apprentice: 0,
-  associate: 1, junior: 1, entry: 1, assistant: 1, coordinator: 1,
+  intern: 0, internship: 0, trainee: 0, apprentice: 0, apprenticeship: 0,
+  associate: 1, junior: 1, jr: 1, 'jr.': 1, entry: 1, assistant: 1, coordinator: 1,
   analyst: 2, specialist: 2, developer: 2, engineer: 2, representative: 2,
-  senior: 3, 'sr.': 3, lead: 3, principal: 3, staff: 3,
+  senior: 3, sr: 3, 'sr.': 3, lead: 3, leader: 3, principal: 3, staff: 3,
   manager: 4, director: 4, head: 4, vp: 5, 'vice president': 5,
-  svp: 6, evp: 6, c: 7, ceo: 7, cto: 7, cfo: 7, coo: 7, cro: 7, partner: 7, founder: 7,
+  svp: 6, evp: 6,
+  chief: 7, ceo: 7, cto: 7, cfo: 7, coo: 7, cro: 7, cmo: 7, cio: 7, ciso: 7, cpo: 7, partner: 7, founder: 7, 'co-founder': 7, cofounder: 7,
 };
 
-function extractSeniorityFromTitle(title: string): number {
-  const lower = title.toLowerCase();
+// "Projektmanager", "Productmanager", "Marketingdirektor": German and Dutch
+// write the head noun at the end of one compound word.
+const COMPOUND_HEAD = /\p{L}{3,}(?:manager|direktor|director|directeur)(?:in|s)?(?![\p{L}\p{N}])/iu;
+
+export function extractSeniorityFromTitle(title: string): number {
   let rank = 2; // default = individual contributor
   for (const [kw, r] of Object.entries(SENIORITY_RANK)) {
-    if (lower.includes(kw) && r > rank) rank = r;
+    if (r > rank && resumeHasTerm(title, kw)) rank = r;
   }
+  if (rank < 4 && COMPOUND_HEAD.test(title)) rank = 4;
   return rank;
 }
 
+// Evidence of a move from another field, read as whole words in the role
+// lines only (title and employer), never the whole résumé (S13-009): "nco"
+// was found in "income", "ngo" in "ongoing", "marines" in "submarines", and a
+// volunteer line, a "foundational" skill or a Loan Officer title made an
+// ordinary promotion history a "career transition from military/nonprofit".
+// "volunteer", "foundation", "mission-driven", a bare "officer" and
+// "captain" say nothing about a field and are not evidence.
 const TRANSITION_KEYWORDS: Record<string, string[]> = {
-  military: ['military', 'army', 'navy', 'air force', 'marines', 'coast guard', 'nco', 'officer', 'sergeant', 'lieutenant', 'captain', 'colonel'],
-  nonprofit: ['nonprofit', 'ngo', 'charity', 'foundation', 'volunteer', 'mission-driven'],
+  military: ['military', 'army', 'navy', 'air force', 'marine corps', 'marines', 'coast guard', 'nco', 'sergeant', 'lieutenant', 'colonel'],
+  nonprofit: ['nonprofit', 'non-profit', 'ngo', 'charity'],
   academia: ['professor', 'phd candidate', 'postdoc', 'teaching assistant', 'research assistant', 'lecturer'],
-  government: ['government', 'federal', 'state agency', 'municipality', 'civil service'],
+  government: ['government', 'federal agency', 'state agency', 'municipality', 'civil service'],
 };
 
 export function analyzeCareerTrajectory(
@@ -1090,12 +1106,13 @@ export function analyzeCareerTrajectory(
   else if (promotionCount >= 2) trajectory = 'upward';
   else trajectory = 'lateral';
 
-  // Industry transition detection
-  const lowerText = resumeText.toLowerCase();
+  // Industry transition detection: the role lines only, whole words only.
+  void resumeText;
+  const roleLines = allTitles.join('\n');
   let industryTransitionDetected = false;
   let fromIndustry: string | undefined;
   for (const [srcIndustry, kws] of Object.entries(TRANSITION_KEYWORDS)) {
-    if (srcIndustry !== industry && kws.some(k => lowerText.includes(k))) {
+    if (srcIndustry !== industry && kws.some(k => resumeHasTerm(roleLines, k))) {
       industryTransitionDetected = true;
       fromIndustry = srcIndustry;
       trajectory = 'transition';
