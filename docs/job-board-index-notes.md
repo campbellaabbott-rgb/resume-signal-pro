@@ -22001,3 +22001,95 @@ later visit sees no country move. The patches queue after the read rows', so
 the caps keep theirs first, and they log nothing (country is derived). Corpus:
 1,917 live triples, 1,536 strings, over 45 location searches on 2026-10-31;
 it fires on exactly six strings, each misfiled.
+
+## n1460-a-place-as-the-model-types-it
+
+In `supabase/functions/job-board/query-place.ts`, above: `function cityState(s: string)`.
+
+A PLACE TYPED THE WAY A PERSON'S AI TYPES IT IS STILL "CITY, ST" (S9-002,
+2026-09-09.100). placeTerms read "City, ST" only with a comma and nothing
+after the code, so the board matched everything else as one literal
+substring. Live 2026-11-01 (q "software engineer", .96): "Austin, TX 78701"
+0 where "Austin, TX" finds 96, "Austin TX" 0, "New York NY" 0 where "New
+York, NY" finds 204, "Washington DC" 9 and "Washington, D.C." 15 where
+"Washington, DC" finds 22. cityState now also reads a trailing US ZIP (or
+ZIP+4), a dotted code ("D.C."), and no comma when the last one to three words
+name a state or province: a two-letter code only in capitals ("austin tx"
+stays literal), the city one to four words of letters with no "or"/"and"
+("Colorado or Utah" stays literal), and never a whole state name ("New York",
+"West Virginia" read as the shared aliases always did). The three spellings
+are searched as before, and what was typed stays a fourth term unless one of
+them already holds it, so a string that reads oddly ("ProCare Hospice of
+Nevada") still finds every row it found. knownPlace and the q-side lift are
+unchanged. Corpus (board-stream-2026-11-01/corpora/mcp/terms-measurement.json):
+886 inputs (873 distinct posting locations from 1,755 live rows, plus 13
+recheck spellings) against those rows: 27 readings change, 0 rows lost on any
+input, 652 rows added on 17 inputs, every added row naming the city in the
+state read. The disclosure is the existing locationExpandedFrom /
+locationSearched. /v1's default engine still uses locationTerms (no City, ST
+expansion at all, as before).
+
+## n1461-a-location-read-as-the-filter-it-names
+
+In `supabase/functions/agent-mcp/query-place.ts`, above: `export function readLocation(`.
+
+AGENT-MCP READS A LOCATION THAT IS ONLY A COUNTRY, ONLY REMOTE, OR "CITY,
+COUNTRY" AS THAT FILTER (S9-002, agent-mcp.2026-11-02.1). The prompts asked
+for "City, state, country or 'remote'" in location, and job-board matched it
+as one substring: live 2026-11-01 (q "software engineer"), "United States"
+1,959 of the 6,550 the board files in the US, "remote" 1,123 of the 1,953 it
+marks remote, "London, UK" 26 of 281, "Berlin, Germany" 8 of 54. readLocation
+moves a whole-location country name (job-board's COUNTRY_NAMES, held equal by
+a test) to country, a location that is remote/anywhere (with at most a
+country beside it) to remote: true, and "City, Country" to location City and
+that country; it never reads a state or metro the board knows, a string with
+several places (";", "|", "·"), a head with no letter, or a reading that
+contradicts the caller's own country, remote: false or another workMode (a
+country inside the caller's own list narrows the list to it, the intersection
+of the two). The answer says so in locationReadAs. The trade, measured
+(connector-measurement.json, 891 inputs over the same 1,755 rows): 345
+inputs read (12 country, 19 remote, 314 City, Country), 7,098 rows added on
+110 inputs with 0 outside the place, and 34 rows lost on 15 inputs: 14 are
+main's own false positives (Indiana for India; Ukraine, Milwaukee, Neukirch
+for UK; New Mexico for Mexico), 20 are rows whose stored remote flag or
+country contradicts their own location text ("US, CA, Remote" stored
+remote=false; multi-country postings filed GB). Live, all 15 headline inputs
+answer more (connector-live-counts.json): United States 1,959 -> 6,550 (16
+rows lost: country null on "United States of America" rows), remote 1,123 ->
+1,953 (79 lost: remote false on "Remote Kentucky"-style rows), UK 164 -> 647.
+Those ingest flags are the fields work's, not this reader's. The page's own
+location box stays literal: its intent Undo works only with a query, so the
+move lives in the connector, which discloses it.
+
+## n1462-the-keyless-page-cap-where-every-keyless-answer-passes
+
+In `supabase/functions/agent-mcp/index.ts`, above: `const past = pastKeylessPage(toolName, args);`.
+
+THE KEYLESS PAGE CAP HOLDS WHATEVER CREDENTIAL FAILED (S13-103,
+agent-mcp.2026-11-02.1). A keyless search pages to offset 200, and past it the
+answer says so by name, uncounted. The handler checked that only when the
+request carried no credential; a credential that fails still answers a
+keyless tool keyless (a junk or malformed OAuth bearer, a valid token with no
+key mapped, an unrecognised rb_live_ key), so "Authorization: Bearer x" at
+offset 9000 was counted and asked of the board. The check moved into
+answerUnkeyed, before anything is counted, which every keyless answer passes;
+the unrecognised key's note still rides the answer.
+
+## n1463-a-perk-audit-is-of-one-draw-of-one-extractor-version
+
+In `supabase/migrations/20261102164000_a_perk_is_shown_only_from_the_extractor_output_its_audit_judged.sql`, above: `CREATE OR REPLACE FUNCTION public.employer_perk_audit_record(`.
+
+A PERK IS SHOWN ONLY FROM THE EXTRACTOR OUTPUT ITS AUDIT JUDGED (S13-121,
+employer-profiles.2026-11-02.1). The publish row kept no record of which
+extractor's output the 60 audited rows were, so after an EXTRACTOR_VERSION
+bump the rollup's rebuilt rows went on every page under the old audit; and
+the record took any counts, so a file of any age or build, or none, could
+publish or re-date a key (both reproduced in pglite against 20261012110000
+alone). Claim rows now carry the version all n postings were read by (none
+when mixed), every draw is stored with its version, the record names its draw
+(that key, at most 14 days old, recorded once, of the version the sweep reads
+with, holding the rows judged) and dates the audit from the draw, a re-audit
+of another version unpublishes rather than extends, and the reader shows only
+rows of the audited version. scripts/perk-audit.mjs stores the draw id and
+version in each file and refuses an old, undrawn or other-version file before
+sending anything. Nothing live changed: published_keys was [] on 2026-11-01.

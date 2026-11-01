@@ -128,14 +128,34 @@ export function negatedTrailingPlace(q: string, filler: ReadonlySet<string> = ne
  */
 export function placeTerms(raw: unknown): { terms: string[]; expandedFrom: string | null } {
   const clean = sanitizeTerm(String(raw ?? ""));
-  const cs = CITY_STATE.exec(clean);
-  const st = cs ? stateOf(cs[2]) : undefined;
-  if (!cs || !st) return locationTerms(raw);
-  const city = cs[1].trim();
+  const cs = cityState(clean);
+  if (!cs) return locationTerms(raw);
+  const { city, st } = cs;
   const code = st.names.find((n) => n.startsWith(", "))?.slice(2) ?? "";
   const name = st.names.find((n) => !n.startsWith(", ")) ?? "";
   const terms = [...new Set([`${city}, ${code}`, `${city}, ${name}`, `${city},${code}`].filter((t) => !/, ?$/.test(t)))];
+  // What was typed stays a term unless one above holds it.
+  if (!terms.some((t) => clean.toLowerCase().includes(t.toLowerCase()))) terms.push(clean);
   return { terms, expandedFrom: clean };
+}
+
+// Rationale: docs/job-board-index-notes.md#n1460-a-place-as-the-model-types-it
+function cityState(s: string): { city: string; st: { names: string[] } } | null {
+  const t = s.replace(/,?\s+\d{5}(?:-\d{4})?$/, "");
+  const cs = CITY_STATE.exec(t);
+  if (cs) {
+    const st = stateOf(cs[2].replace(/\./g, ""));
+    return st ? { city: cs[1].trim(), st } : null;
+  }
+  const w = t.split(/\s+/);
+  if (stateOf(t) || w.length > 6) return null;
+  for (let k = Math.min(3, w.length - 1); k > 0; k--) {
+    const tail = w.slice(-k).join(" ").replace(/\./g, "");
+    const st = tail.length > 2 || tail === tail.toUpperCase() ? stateOf(tail) : undefined;
+    const city = w.slice(0, -k).join(" ");
+    if (st && /^\p{L}[\p{L}.'-]*(?: \p{L}[\p{L}.'-]*){0,3}$/u.test(city) && !/\b(?:or|and)\b/i.test(city)) return { city, st };
+  }
+  return null;
 }
 
 /** placeTerms for search_jobs' p_location, pipe-joined as rankedLocationParam does. */

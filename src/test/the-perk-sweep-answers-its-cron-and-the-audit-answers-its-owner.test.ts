@@ -226,9 +226,12 @@ describe("the owner's audit actions", () => {
   it("each answers the owner's key and calls its one function", async () => {
     const cases: Array<[Record<string, unknown>, string, Record<string, unknown>]> = [
       [{ action: "audit_status" }, "employer_perk_audit_status", {}],
-      [{ action: "audit_draw", perk: "health" }, "employer_perk_audit_draw", { p_perk: "health", p_rows: 60 }],
-      [{ action: "audit_record", perk: "health", mode: "launch", judged: 60, correct: 58, note: "judges A+B, owner spot-checked 10" }, "employer_perk_audit_record",
-        { p_perk: "health", p_mode: "launch", p_judged: 60, p_correct: 58, p_note: "judges A+B, owner spot-checked 10" }],
+      // A draw is of the extractor version this build reads with; a judgement names its draw (S13-121).
+      [{ action: "audit_draw", perk: "health" }, "employer_perk_audit_draw", { p_perk: "health", p_version: EXTRACTOR_VERSION, p_rows: 60 }],
+      [{ action: "audit_record", perk: "health", mode: "launch", judged: 60, correct: 58, drawId: 7, note: "judges A+B, owner spot-checked 10" }, "employer_perk_audit_record",
+        { p_perk: "health", p_mode: "launch", p_judged: 60, p_correct: 58, p_draw_id: 7, p_version: EXTRACTOR_VERSION, p_note: "judges A+B, owner spot-checked 10" }],
+      [{ action: "audit_record", perk: "health", mode: "withdraw", note: "withdrawn" }, "employer_perk_audit_record",
+        { p_perk: "health", p_mode: "withdraw", p_judged: 0, p_correct: 0, p_draw_id: null, p_version: EXTRACTOR_VERSION, p_note: "withdrawn" }],
       [{ action: "audit_pause", publish: true }, "employer_profile_set_pause", { p_sweep: null, p_publish: true, p_note: null }],
     ];
     for (const [body, fn, args] of cases) {
@@ -246,7 +249,9 @@ describe("the owner's audit actions", () => {
       { action: "audit_draw", perk: "health", rows: 0 },
       { action: "audit_record", perk: "health", mode: "publish", judged: 60, correct: 60 },
       { action: "audit_record", perk: "health", mode: "launch", judged: 60, correct: 61 },
-      { action: "audit_record", perk: "health", mode: "launch", judged: "60", correct: 57 },
+      { action: "audit_record", perk: "health", mode: "launch", judged: "60", correct: 57, drawId: 7 },
+      { action: "audit_record", perk: "health", mode: "launch", judged: 60, correct: 60 },
+      { action: "audit_record", perk: "health", mode: "reaudit", judged: 5, correct: 5, drawId: "7" },
       { action: "audit_pause", publish: "yes" },
     ]) {
       expect((await post(body, owner())).status, JSON.stringify(body)).toBe(400);
@@ -256,7 +261,7 @@ describe("the owner's audit actions", () => {
 
   it("a refusal from the database (22023) is a 400 with its reason", async () => {
     db.rpcs.employer_perk_audit_record = () => ({ data: null, error: { code: "22023", message: "not a candidate key: flex can never publish" } });
-    const r = await post({ action: "audit_record", perk: "flex", mode: "launch", judged: 60, correct: 60 }, owner());
+    const r = await post({ action: "audit_record", perk: "flex", mode: "launch", judged: 60, correct: 60, drawId: 7 }, owner());
     expect(r.status).toBe(400);
     expect((await r.json()).error).toMatch(/can never publish/);
   });

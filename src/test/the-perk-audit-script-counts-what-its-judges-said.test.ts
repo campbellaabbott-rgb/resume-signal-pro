@@ -14,21 +14,26 @@
  *   - a monthly re-audit under 57 of 60 pooled pauses every perk first, then
  *     records each key's stratum (at least 5 rows), where two wrong unpublish;
  *   - the script's candidate list is the extractor's, and a drawn row reaches
- *     the judge with its employer, quote, link and spot check, undecided.
+ *     the judge with its employer, quote, link and spot check, undecided;
+ *   - every judgement names the draw it judged (S13-121): a file with no draw
+ *     id, older than 14 days, or drawn under another extractor version sends
+ *     nothing, and each call carries its key's draw id.
  */
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
-  CANDIDATE_KEYS, LAUNCH_ROWS, OWNER_CHECKS_PER_KEY, keyState, passesLaunch, planRecord, reauditKeys, reviewRow, rowVerdict, tally,
+  CANDIDATE_KEYS, DRAW_MAX_AGE_DAYS, LAUNCH_ROWS, OWNER_CHECKS_PER_KEY, keyState, passesLaunch, planRecord, reauditKeys, reviewRow, rowVerdict, tally,
 } from "../../scripts/perk-audit.mjs";
 import { CANDIDATE_KEYS as EXTRACTOR_CANDIDATES } from "../../supabase/functions/_shared/perks-extract";
 
 type Row = { perk: string; judges?: Array<{ by?: string; correct: boolean }>; owner?: boolean | null; verdict?: boolean };
 const judged = (perk: string, right: boolean, owner?: boolean): Row =>
   ({ perk, judges: [{ by: "judge-a", correct: right }, { by: "judge-b", correct: right }], owner: owner ?? null });
+/** A draw from yesterday: inside the 14 days a draw may be recorded in. */
+const YESTERDAY = new Date(Date.now() - 86_400_000).toISOString();
 const launchFile = (perk: string, wrong: number, ownerChecked: number, total = 60) => ({
-  mode: "launch", perk, drawnAt: "2026-10-13T10:00:00Z",
+  mode: "launch", perk, drawId: 41, extractorVersion: 2, drawnAt: YESTERDAY,
   rows: Array.from({ length: total }, (_, i) => judged(perk, i >= wrong, i >= total - ownerChecked ? true : undefined)),
 });
 
@@ -48,7 +53,7 @@ describe("a launch file", () => {
     const plan = planRecord(launchFile("health", 3, OWNER_CHECKS_PER_KEY));
     expect(plan.error).toBeUndefined();
     expect(plan.publishes).toBe(true);
-    expect(plan.calls).toEqual([expect.objectContaining({ action: "audit_record", perk: "health", mode: "launch", judged: 60, correct: 57 })]);
+    expect(plan.calls).toEqual([expect.objectContaining({ action: "audit_record", perk: "health", mode: "launch", judged: 60, correct: 57, drawId: 41 })]);
   });
 
   it("56 of 60 is recorded, and unpublishes", () => {
@@ -82,7 +87,8 @@ describe("a launch file", () => {
 
 describe("a monthly re-audit file", () => {
   const reaudit = (wrongByKey: Record<string, number>, perKey = 10) => ({
-    mode: "reaudit", drawnAt: "2026-11-13T10:00:00Z",
+    mode: "reaudit", drawnAt: YESTERDAY, extractorVersion: 2,
+    draws: Object.fromEntries(Object.keys(wrongByKey).map((perk, i) => [perk, 100 + i])) as Record<string, number>,
     rows: Object.entries(wrongByKey).flatMap(([perk, wrong]) => Array.from({ length: perKey }, (_, i) => judged(perk, i >= wrong))),
   });
 
@@ -103,6 +109,41 @@ describe("a monthly re-audit file", () => {
 
   it("a stratum under 5 rows is not sent", () => {
     expect(planRecord(reaudit({ health: 0 }, 4)).error).toMatch(/needs at least 5/);
+  });
+
+  it("each key's call carries that key's draw, and a key without one sends nothing", () => {
+    const plan = planRecord(reaudit({ health: 0, dental: 0 }));
+    expect(plan.calls?.map((c: { perk: string; drawId: number }) => [c.perk, c.drawId])).toEqual([["health", 100], ["dental", 101]]);
+    const f = reaudit({ health: 0, dental: 0 });
+    delete f.draws.dental;
+    expect(planRecord(f).error).toMatch(/dental: no draw id/);
+  });
+});
+
+describe("a judgement is of one draw, recent, and of the version the sweep reads with (S13-121)", () => {
+  it("a file with no draw id is never recorded", () => {
+    const f: Record<string, unknown> = launchFile("health", 0, 10);
+    delete f.drawId;
+    expect(planRecord(f).error).toMatch(/health: no draw id/);
+  });
+
+  it("a file older than 14 days is never recorded, nor one with no draw date", () => {
+    const NOW = Date.parse("2026-12-01T00:00:00Z");
+    const at = (days: number) => ({ ...launchFile("health", 0, 10), drawnAt: new Date(NOW - days * 86_400_000).toISOString() });
+    expect(DRAW_MAX_AGE_DAYS).toBe(14);
+    expect(planRecord(at(13.9), NOW).error).toBeUndefined();
+    expect(planRecord(at(14.1), NOW).error).toMatch(/within 14 days/);
+    expect(planRecord({ ...launchFile("health", 0, 10), drawnAt: undefined }, NOW).error).toMatch(/no recorded time/);
+  });
+
+  it("a file drawn under another extractor version is never recorded", () => {
+    expect(planRecord(launchFile("health", 0, 10), Date.now(), 2).error).toBeUndefined();
+    expect(planRecord(launchFile("health", 0, 10), Date.now(), 3).error).toMatch(/judged extractor v2 output and the sweep now reads with v3/);
+  });
+
+  it("the age the script refuses is the database's", () => {
+    const sql = readFileSync(resolve(__dirname, "../../supabase/migrations/20261102164000_a_perk_is_shown_only_from_the_extractor_output_its_audit_judged.sql"), "utf8");
+    expect(sql).toMatch(new RegExp(`v_draw\\.drawn_at < now\\(\\) - interval '${DRAW_MAX_AGE_DAYS} days'`));
   });
 });
 

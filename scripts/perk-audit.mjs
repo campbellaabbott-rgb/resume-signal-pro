@@ -26,7 +26,10 @@
  *       writes the judgement back: a launch file publishes its key at 57 of 60
  *       (with at least 10 owner-checked rows), anything less unpublishes it; a
  *       re-audit file pauses every perk when the pool is under 57 of 60, and
- *       unpublishes a key with 2 or more wrong in its stratum.
+ *       unpublishes a key with 2 or more wrong in its stratum. Every judgement
+ *       names the draw it judged: a file is recorded once, within 14 days of
+ *       its draw, under the extractor version it was drawn with (S13-121;
+ *       employer_perk_audit_record refuses anything else too).
  *   node scripts/perk-audit.mjs withdraw --perk health [--note ...]
  *   node scripts/perk-audit.mjs pause --publish on|off [--sweep on|off] [--note ...]
  *
@@ -49,6 +52,8 @@ export const LAUNCH_ROWS = 60;
 export const LAUNCH_MAX_WRONG_PER_60 = 3;
 export const OWNER_CHECKS_PER_KEY = 10;
 export const REAUDIT_MIN_PER_KEY = 5;
+/** A draw older than this is never recorded (employer_perk_audit_record holds the same number). */
+export const DRAW_MAX_AGE_DAYS = 14;
 export const RULE =
   "A row is right only if the quoted line says the hiring employer (not an agency, a franchisor or a customer) offers the perk " +
   "in that posting, and the spot check of up to 3 other postings among its k agrees. Not mentioned is never not offered.";
@@ -91,11 +96,24 @@ export const passesLaunch = (judged, correct) => judged >= LAUNCH_ROWS && (judge
 
 /**
  * The calls a judged file turns into, in order, or the reason it cannot be
- * recorded. Nothing is sent for a file with an unjudged row.
+ * recorded. Nothing is sent for a file with an unjudged row, a file older
+ * than DRAW_MAX_AGE_DAYS, a key without the id of the draw it judged, or
+ * (when the caller passes the extractor version the sweep reads with now) a
+ * file drawn under another version.
  */
-export function planRecord(file) {
+export function planRecord(file, now = Date.now(), extractorVersion = undefined) {
   const t = tally(file);
   if (t.unjudged.length) return { error: `rows ${t.unjudged.join(", ")} carry no verdict; judge every row first` };
+  const drawn = Date.parse(file.drawnAt ?? "");
+  if (!(drawn > now - DRAW_MAX_AGE_DAYS * 86_400_000)) {
+    return { error: `this file was drawn ${file.drawnAt ?? "at no recorded time"}; a draw is recorded within ${DRAW_MAX_AGE_DAYS} days or not at all: draw again` };
+  }
+  if (extractorVersion !== undefined && file.extractorVersion !== extractorVersion) {
+    return { error: `this file judged extractor v${file.extractorVersion ?? "?"} output and the sweep now reads with v${extractorVersion}: draw again` };
+  }
+  const drawOf = (perk) => (file.mode === "launch" ? file.drawId : file.draws?.[perk]);
+  const undrawn = Object.keys(t.byKey).filter((perk) => !Number.isInteger(drawOf(perk)));
+  if (undrawn.length) return { error: `${undrawn.join(", ")}: no draw id in this file (drawn before audits named their draw): draw again` };
   const note = (k) => `${file.mode} audit drawn ${file.drawnAt ?? "?"}: ${k.correct} of ${k.judged} right, ${k.ownerChecked} owner-checked`;
   if (file.mode === "launch") {
     const keys = Object.keys(t.byKey);
@@ -106,7 +124,7 @@ export function planRecord(file) {
       return { error: `the owner has checked ${k.ownerChecked} rows; a key publishes only after at least ${OWNER_CHECKS_PER_KEY}` };
     }
     return {
-      calls: [{ action: "audit_record", perk: file.perk, mode: "launch", judged: k.judged, correct: k.correct, note: note(k) }],
+      calls: [{ action: "audit_record", perk: file.perk, mode: "launch", judged: k.judged, correct: k.correct, drawId: file.drawId, note: note(k) }],
       publishes: passesLaunch(k.judged, k.correct),
     };
   }
@@ -116,7 +134,7 @@ export function planRecord(file) {
     if (pooledFails) calls.push({ action: "audit_pause", publish: true, note: `monthly re-audit pooled ${t.correct} of ${t.judged}: every perk paused pending per-key review` });
     for (const [perk, k] of Object.entries(t.byKey)) {
       if (k.judged < REAUDIT_MIN_PER_KEY) return { error: `${perk} has ${k.judged} judged rows; a re-audit stratum needs at least ${REAUDIT_MIN_PER_KEY}` };
-      calls.push({ action: "audit_record", perk, mode: "reaudit", judged: k.judged, correct: k.correct, note: note(k) });
+      calls.push({ action: "audit_record", perk, mode: "reaudit", judged: k.judged, correct: k.correct, drawId: drawOf(perk), note: note(k) });
     }
     return { calls, pooled: { judged: t.judged, correct: t.correct, paused: pooledFails } };
   }
@@ -249,7 +267,8 @@ async function main(argv) {
       if (!CANDIDATE_KEYS.includes(k.perk)) continue;
       const state = keyState(k);
       const label = state === "published" ? "PUBLISHED" : state === "expired" ? "EXPIRED (off every page; needs a launch audit)" : "unpublished";
-      console.log(`${k.perk.padEnd(17)} ${label}  rows ${k.rows}  audited ${k.last_audited_at ?? "never"}  expires ${k.expires_at ?? "-"}  ${k.audit_mode ?? ""} ${k.audit_correct ?? ""}/${k.audit_judged ?? ""}`);
+      const judged = k.audited_version == null ? "" : `  judged v${k.audited_version} (${k.rows_audited_version ?? "?"} rows of it now)`;
+      console.log(`${k.perk.padEnd(17)} ${label}  rows ${k.rows}  audited ${k.last_audited_at ?? "never"}  expires ${k.expires_at ?? "-"}  ${k.audit_mode ?? ""} ${k.audit_correct ?? ""}/${k.audit_judged ?? ""}${judged}`);
     }
     console.log(`config ${JSON.stringify(d.config)}`);
     console.log(`queue ${JSON.stringify(d.queue)}  postings ${JSON.stringify(d.postings)}`);
@@ -262,7 +281,10 @@ async function main(argv) {
     if (!CANDIDATE_KEYS.includes(perk)) throw new Error(`--perk must be one of ${CANDIDATE_KEYS.join(", ")}`);
     const rows = a.rows ? Number(a.rows) : LAUNCH_ROWS;
     const r = await ask({ action: "audit_draw", perk, rows });
-    const doc = { kind: "perk-row-audit", mode: "launch", perk, drawnAt: new Date().toISOString(), build: r.build, rule: RULE, rows: (r.data?.rows ?? []).map((x) => reviewRow(x, perk)) };
+    const doc = {
+      kind: "perk-row-audit", mode: "launch", perk, drawId: r.data?.draw_id ?? null, extractorVersion: r.data?.extractor_version ?? r.extractorVersion,
+      drawnAt: r.data?.drawn_at ?? new Date().toISOString(), build: r.build, rule: RULE, rows: (r.data?.rows ?? []).map((x) => reviewRow(x, perk)),
+    };
     const out = writeReview(`perk-audit-${perk}-${today()}.json`, doc, a.dir);
     console.log(`${doc.rows.length} rows of ${perk} -> ${out}`);
     if (doc.rows.length < LAUNCH_ROWS) console.log(`only ${doc.rows.length} publishable rows exist; a launch audit needs ${LAUNCH_ROWS} (let the sweep and rollup run longer)`);
@@ -277,11 +299,18 @@ async function main(argv) {
     const total = Number(a.total ?? LAUNCH_ROWS);
     const per = Math.max(Number(a["per-key"] ?? REAUDIT_MIN_PER_KEY), Math.ceil(total / live.length));
     const rows = [];
+    const draws = {};
+    let drawnAt = null;
     for (const perk of live) {
       const r = await ask({ action: "audit_draw", perk, rows: per });
+      draws[perk] = r.data?.draw_id ?? null;
+      drawnAt ??= r.data?.drawn_at ?? null;
       rows.push(...(r.data?.rows ?? []).map((x) => reviewRow(x, perk)));
     }
-    const doc = { kind: "perk-row-audit", mode: "reaudit", perk: null, keys: live, drawnAt: new Date().toISOString(), build: status.build, rule: RULE, rows };
+    const doc = {
+      kind: "perk-row-audit", mode: "reaudit", perk: null, keys: live, draws, extractorVersion: status.extractorVersion,
+      drawnAt: drawnAt ?? new Date().toISOString(), build: status.build, rule: RULE, rows,
+    };
     const out = writeReview(`perk-reaudit-${today()}.json`, doc, a.dir);
     console.log(`${rows.length} rows across ${live.join(", ")} -> ${out}`);
     return;
@@ -292,7 +321,7 @@ async function main(argv) {
   }
   if (cmd === "record") {
     const file = JSON.parse(readFileSync(String(a.file), "utf8"));
-    const plan = planRecord(file);
+    const plan = planRecord(file, Date.now(), (await ask({ action: "audit_status" })).extractorVersion);
     if (plan.error) throw new Error(plan.error);
     for (const call of plan.calls) {
       const r = await ask(call);
