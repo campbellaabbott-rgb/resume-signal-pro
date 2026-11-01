@@ -18,7 +18,29 @@ interface SavedSearch {
   last_seen_at: string;
   digest_opt_in?: boolean;
   fit_threshold?: number; // 0 = any new; 10 = possible+; 20 = strong-only
+  /** 'daily' for the alert-flavoured saves (/jobs "Alert me", watch company), 'weekly' otherwise. */
+  digest_cadence?: string | null;
 }
+
+/**
+ * WHAT THE BOARD SHOWS WHEN THE SEARCH IS OPENED (S13-118). Searches saved
+ * while the board offered its "agent-ready" filter carry sendableOnly, which
+ * the board no longer reads from a link (it drops agentOnly), so opening one
+ * shows the whole board. The badge counted the narrowed board all the same,
+ * a number the page it opens never shows. The count and the link now read
+ * the same params: without the narrowing.
+ */
+export function openedParams(p: JobSearchParams): JobSearchParams {
+  const { sendableOnly: _narrowing, ...rest } = p ?? ({} as JobSearchParams);
+  return rest;
+}
+
+/**
+ * THE RHYTHM THE ROW REALLY MAILS ON (S13-083). Every bell said "weekly", but
+ * the "Alert me" and watch-company saves on /jobs are stored daily, and the
+ * digest mails each row on its own cadence (a 20-hour floor for daily).
+ */
+export const isDaily = (s: { digest_cadence?: string | null }) => s.digest_cadence === "daily";
 
 // user_job_searches postdates the generated DB types — untyped access, same
 // pattern as other fresh tables until Lovable regenerates types.ts.
@@ -33,7 +55,7 @@ export function SavedSearchesCard() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await table().select("id,name,params,last_seen_at,digest_opt_in,fit_threshold").order("created_at", { ascending: false }).limit(20);
+      const { data } = await table().select("id,name,params,last_seen_at,digest_opt_in,fit_threshold,digest_cadence").order("created_at", { ascending: false }).limit(20);
       const rows: SavedSearch[] = data ?? [];
       setSearches(rows);
       setLoaded(true);
@@ -46,7 +68,7 @@ export function SavedSearchesCard() {
               // board does not read — so the employer scope vanished and this
               // badge counted the whole corpus. Watching one employer showed
               // thousands of "new since your last visit".
-              body: { action: "list", ...searchToBoardBody(s.params as JobSearchParams), countOnly: true, postedAfter: s.last_seen_at },
+              body: { action: "list", ...searchToBoardBody(openedParams(s.params as JobSearchParams)), countOnly: true, postedAfter: s.last_seen_at },
             });
             // countCapped means "at least this many" — the badge shows 10,000+
             // rather than passing the board's cap off as an exact figure.
@@ -63,7 +85,7 @@ export function SavedSearchesCard() {
 
   const open = async (s: SavedSearch) => {
     table().update({ last_seen_at: new Date().toISOString() }).eq("id", s.id).then(() => {}, () => {});
-    navigate(searchToQuery(s.params));
+    navigate(searchToQuery(openedParams(s.params)));
   };
 
   const remove = async (id: string) => {
@@ -71,7 +93,7 @@ export function SavedSearchesCard() {
     await table().delete().eq("id", id);
   };
 
-  // Feature 4: opt a saved search into the weekly email digest. Off by
+  // Feature 4: opt a saved search into its email digest. Off by
   // default — we never email without an explicit toggle.
   const toggleDigest = async (s: SavedSearch) => {
     const next = !s.digest_opt_in;
@@ -145,8 +167,12 @@ export function SavedSearchesCard() {
             )}
             <button
               onClick={() => toggleDigest(s)}
-              aria-label={s.digest_opt_in ? t("accountPage.ssBellOffAria", "Turn off weekly email for {{name}}", { name: s.name }) : t("accountPage.ssBellOnAria", "Email me weekly about {{name}}", { name: s.name })}
-              title={s.digest_opt_in ? t("accountPage.ssBellOnTitle", "Weekly email on — click to turn off") : t("accountPage.ssBellOffTitle", "Email me weekly when new jobs match")}
+              aria-label={isDaily(s)
+                ? (s.digest_opt_in ? t("accountPage.ssBellOffAriaDaily", "Turn off daily email for {{name}}", { name: s.name }) : t("accountPage.ssBellOnAriaDaily", "Email me daily about {{name}}", { name: s.name }))
+                : (s.digest_opt_in ? t("accountPage.ssBellOffAria", "Turn off weekly email for {{name}}", { name: s.name }) : t("accountPage.ssBellOnAria", "Email me weekly about {{name}}", { name: s.name }))}
+              title={isDaily(s)
+                ? (s.digest_opt_in ? t("accountPage.ssBellOnTitleDaily", "Daily email on — click to turn off") : t("accountPage.ssBellOffTitleDaily", "Email me daily when new jobs match"))
+                : (s.digest_opt_in ? t("accountPage.ssBellOnTitle", "Weekly email on — click to turn off") : t("accountPage.ssBellOffTitle", "Email me weekly when new jobs match"))}
               className={`shrink-0 transition-colors ${s.digest_opt_in ? "text-primary" : "text-muted-foreground/40 hover:text-muted-foreground"}`}
             >
               <BellRing className="w-3.5 h-3.5" />
@@ -161,8 +187,8 @@ export function SavedSearchesCard() {
         ))}
       </div>
       <p className="text-[11px] text-muted-foreground mt-2">
-        {t("accountPage.ssFootnoteA", "“New” counts postings published since you last opened each search. Tap the")}
-        <BellRing className="w-3 h-3 inline mx-0.5 align-text-bottom" /> {t("accountPage.ssFootnoteB", "to get a weekly email when fresh jobs match.")}
+        {t("accountPage.ssFootnoteACadence", "“New” counts postings published since you last opened each search. Tap the")}
+        <BellRing className="w-3 h-3 inline mx-0.5 align-text-bottom" /> {t("accountPage.ssFootnoteBCadence", "to get an email when fresh jobs match: daily for alerts and company watches, weekly for other searches.")}
       </p>
     </div>
   );

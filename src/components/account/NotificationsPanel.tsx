@@ -8,7 +8,7 @@ import { BellRing } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 
-interface SearchRow { id: string; name: string; digest_opt_in: boolean }
+interface SearchRow { id: string; name: string; digest_opt_in: boolean; digest_cadence?: string | null }
 interface MandateRow { user_id: string; active: boolean; email_opt_in: boolean }
 
 const table = () => (supabase as unknown as { from: (t: string) => any }).from("user_job_searches");
@@ -24,7 +24,7 @@ export function NotificationsPanel() {
     let cancelled = false;
     (async () => {
       try {
-        const { data } = await table().select("id,name,digest_opt_in").order("created_at", { ascending: false }).limit(20);
+        const { data } = await table().select("id,name,digest_opt_in,digest_cadence").order("created_at", { ascending: false }).limit(20);
         if (!cancelled && Array.isArray(data)) setRows(data as SearchRow[]);
         // The agent's morning email belongs in the same panel (2026-07-25
         // audit) — RLS scopes this to the signed-in user's own mandate.
@@ -52,11 +52,13 @@ export function NotificationsPanel() {
         <BellRing className="w-4 h-4 text-primary" />
         <h2 className="font-semibold text-foreground text-sm">{t("accountPage.notifTitle", "Emails & alerts")}</h2>
         <span className="ml-auto text-[11px] text-muted-foreground">
-          {t("accountPage.notifSummary", "{{on}} of {{total}} weekly digests on", { on, total: rows.length })}
+          {t("accountPage.notifSummaryEmails", "{{on}} of {{total}} search emails on", { on, total: rows.length })}
         </span>
       </div>
       <p className="text-[11px] text-muted-foreground mb-3">
-        {t("accountPage.notifBlurb", "Everything we can email you, in one place. Weekly digests send only when a search has new matches; every email has a one-click unsubscribe.")}
+        {/* THE RHYTHM EACH ROW MAILS ON (S13-083): "Alert me" and watch-company
+            saves are daily, the rest weekly; the row says which. */}
+        {t("accountPage.notifBlurbCadence", "Everything we can email you, in one place. A search email goes out only when the search has new matches, daily or weekly as shown beside it; every email has a one-click unsubscribe.")}
       </p>
       <div className="space-y-1.5">
         {mandate && (
@@ -84,11 +86,13 @@ export function NotificationsPanel() {
               checked={r.digest_opt_in}
               onChange={(e) => void toggle(r.id, e.target.checked)}
               className="accent-[hsl(var(--primary))]"
-              aria-label={t("accountPage.notifToggle", "Weekly email for {{name}}", { name: r.name })}
+              aria-label={r.digest_cadence === "daily"
+                ? t("accountPage.notifToggleDaily", "Daily email for {{name}}", { name: r.name })
+                : t("accountPage.notifToggle", "Weekly email for {{name}}", { name: r.name })}
             />
             <span className="text-foreground truncate">{r.name}</span>
             <span className="ml-auto text-[11px] text-muted-foreground shrink-0">
-              {t("accountPage.notifWeekly", "weekly digest")}
+              {r.digest_cadence === "daily" ? t("accountPage.notifDaily", "daily digest") : t("accountPage.notifWeekly", "weekly digest")}
             </span>
           </label>
         ))}
