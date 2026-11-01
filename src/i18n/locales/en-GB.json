@@ -397,7 +397,7 @@
       "redFlags": "Red Flags",
       "plusMore": "+12 more"
     },
-    "scanFooter": "Results within {{seconds}} seconds • 7 free scans per day",
+    "scanFooter": "Results within {{seconds}} seconds • {{scans}} free scans per day",
     "getFreeAnalysis": "Get Free CV Analysis",
     "orGetCompleteAnalysis": "Or get the complete analysis for",
     "securePaymentStripe": "Secure payment via Stripe",

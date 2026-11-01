@@ -397,7 +397,7 @@
       "redFlags": "Waarschuwingssignalen",
       "plusMore": "+12 meer"
     },
-    "scanFooter": "Resultaten binnen {{seconds}} seconden • 7 gratis scans per dag",
+    "scanFooter": "Resultaten binnen {{seconds}} seconden • {{scans}} gratis scans per dag",
     "getFreeAnalysis": "Gratis cv-analyse krijgen",
     "orGetCompleteAnalysis": "Of krijg de volledige analyse voor",
     "securePaymentStripe": "Veilige betaling via Stripe",

@@ -397,7 +397,7 @@
       "redFlags": "चेतावनी संकेत",
       "plusMore": "+12 अधिक"
     },
-    "scanFooter": "{{seconds}} सेकंड के भीतर परिणाम • प्रतिदिन 7 मुफ़्त स्कैन",
+    "scanFooter": "{{seconds}} सेकंड के भीतर परिणाम • प्रतिदिन {{scans}} मुफ़्त स्कैन",
     "getFreeAnalysis": "मुफ़्त रिज़्यूमे विश्लेषण प्राप्त करें",
     "orGetCompleteAnalysis": "या संपूर्ण विश्लेषण प्राप्त करें केवल",
     "securePaymentStripe": "Stripe के माध्यम से सुरक्षित भुगतान",

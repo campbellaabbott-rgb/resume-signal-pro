@@ -397,7 +397,7 @@
       "redFlags": "Señales de alerta",
       "plusMore": "+12 más"
     },
-    "scanFooter": "Resultados en {{seconds}} segundos como máximo • 7 escaneos gratis al día",
+    "scanFooter": "Resultados en {{seconds}} segundos como máximo • {{scans}} escaneos gratis al día",
     "getFreeAnalysis": "Obtener análisis gratuito del currículum",
     "orGetCompleteAnalysis": "O consigue el análisis completo por",
     "securePaymentStripe": "Pago seguro a través de Stripe",

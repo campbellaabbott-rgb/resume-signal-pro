@@ -397,7 +397,7 @@
       "redFlags": "Red Flags",
       "plusMore": "+12 pa"
     },
-    "scanFooter": "Resulta sa loob ng {{seconds}} segundo • 7 libreng scan kada araw",
+    "scanFooter": "Resulta sa loob ng {{seconds}} segundo • {{scans}} libreng scan kada araw",
     "getFreeAnalysis": "Kumuha ng Libreng Resume Analysis",
     "orGetCompleteAnalysis": "O kunin ang kumpletong analysis sa halagang",
     "securePaymentStripe": "Secure na bayad gamit ang Stripe",

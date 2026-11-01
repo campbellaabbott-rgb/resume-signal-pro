@@ -397,7 +397,7 @@
       "redFlags": "Signaux d'alarme",
       "plusMore": "+12 autres"
     },
-    "scanFooter": "Résultats en {{seconds}} secondes maximum • 7 scans gratuits par jour",
+    "scanFooter": "Résultats en {{seconds}} secondes maximum • {{scans}} scans gratuits par jour",
     "getFreeAnalysis": "Obtenir une analyse de CV gratuite",
     "orGetCompleteAnalysis": "Ou obtenez l'analyse complète pour",
     "securePaymentStripe": "Paiement sécurisé via Stripe",

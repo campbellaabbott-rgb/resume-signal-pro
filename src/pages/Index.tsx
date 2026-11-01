@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspense } from "react";
+import { scansPerDayFor } from "@/config/scan-allowance";
 import { useTranslation } from "react-i18next";
 import { SEO } from "@/components/seo/SEO";
 import { useSearchParams } from "react-router-dom";
@@ -1131,7 +1132,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
           const failure = scanFailureKind(scanResult);
           if (failure === 'daily_limit') {
             const body = scanResult.errorBody ?? {};
-            trackRateLimitError('free-keyword-scan', Number(body.scansUsed) || 0, Number(body.scansLimit) || 7);
+            trackRateLimitError('free-keyword-scan', Number(body.scansUsed) || 0, Number(body.scansLimit) || scansPerDayFor(!!session?.user));
             toast({
               title: t('homepage.toast.dailyScanLimitReached'),
               description: scanResult.error.description,
@@ -1211,7 +1212,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
           trackRateLimitError('free-keyword-scan', data.scansUsed, data.scansLimit);
           toast({
             title: t('homepage.toast.dailyScanLimitReached'),
-            description: data.error || `You've used all ${data.scansLimit || 7} free scans.`,
+            description: data.error || `You've used all ${data.scansLimit ?? scansPerDayFor(!!session?.user)} free scans.`,
             variant: "destructive",
           });
           openRateLimitUpsell(data.hoursUntilReset);
@@ -1469,7 +1470,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
         trackRateLimitError('free-keyword-scan', data.scansUsed, data.scansLimit);
         toast({
           title: t('homepage.toast.dailyScanLimitReached'),
-          description: data.error || `You've used all ${data.scansLimit || 7} free scans. Resets in ~${data.hoursUntilReset || 24} hours.`,
+          description: data.error || `You've used all ${data.scansLimit ?? scansPerDayFor(!!session?.user)} free scans. Resets in ~${data.hoursUntilReset || 24} hours.`,
           variant: "destructive",
         });
         openRateLimitUpsell(data.hoursUntilReset);

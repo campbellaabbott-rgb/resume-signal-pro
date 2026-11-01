@@ -397,7 +397,7 @@
       "redFlags": "Warnsignale",
       "plusMore": "+12 weitere"
     },
-    "scanFooter": "Ergebnisse innerhalb von {{seconds}} Sekunden • 7 kostenlose Scans pro Tag",
+    "scanFooter": "Ergebnisse innerhalb von {{seconds}} Sekunden • {{scans}} kostenlose Scans pro Tag",
     "getFreeAnalysis": "Kostenlose Lebenslaufanalyse erhalten",
     "orGetCompleteAnalysis": "Oder erhalte die vollständige Analyse für",
     "securePaymentStripe": "Sichere Zahlung über Stripe",
