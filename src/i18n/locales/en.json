@@ -3395,7 +3395,15 @@
       "endDate": "End Date",
       "bulletPoints": "Bullet Points",
       "addBullet": "Add Bullet",
-      "addWorkExperience": "Add Work Experience"
+      "addWorkExperience": "Add Work Experience",
+      "placeholder": {
+        "jobTitle": "Senior Software Engineer",
+        "company": "Acme Corp",
+        "location": "Remote",
+        "startDate": "Jan 2022",
+        "endDate": "Present",
+        "bullet": "Led a team of 5 engineers to ship…"
+      }
     },
     "education": {
       "entry": "Education {{num}}",
@@ -3405,7 +3413,13 @@
       "startDate": "Start Date",
       "endDate": "End Date",
       "additionalDetails": "Additional Details (optional)",
-      "addEducation": "Add Education"
+      "addEducation": "Add Education",
+      "placeholder": {
+        "school": "University of California",
+        "degree": "B.S.",
+        "field": "Computer Science",
+        "details": "Relevant coursework, honors, GPA…"
+      }
     },
     "tagList": {
       "typeToAdd": "Type and press Enter to add"
@@ -3419,13 +3433,80 @@
       "skills": "Skills",
       "certifications": "Certifications"
     },
-    "replaceWithFixes": "Replace your current builder draft with the résumé from your scan, with the report's fixes applied?",
+    "replaceWithFixes": "Replace your current builder draft with the résumé from your scan, with the report's fixes applied? If you decline, your draft stays and the fixes that match its bullets are applied to it.",
     "replaceWithLatestScan": "You have a builder draft from an earlier résumé. Replace it with the résumé from your latest scan?",
     "toast": {
       "addNameDescription": "Your résumé needs your name at the top before it can be downloaded.",
       "addNameTitle": "Add your name first",
       "savedAsWordDescription": "The PDF's fonts can't draw {{chars}}, so we saved a Word file, which keeps every character.",
-      "savedAsWordTitle": "Saved as a Word file"
+      "savedAsWordTitle": "Saved as a Word file",
+      "importedTitle": "Resume imported",
+      "importedDescription": "We've filled in the builder from your most recent resume — edit anything below.",
+      "importedWithFixesTitle_one": "Resume imported — {{count}} fix from your report applied",
+      "importedWithFixesTitle_other": "Resume imported — {{count}} fixes from your report applied",
+      "importedWithFixesDescription": "Rewritten bullets from your report are in place. Keyword suggestions from the scan are listed above the editor.",
+      "mergedTitle_one": "Draft kept — {{count}} fix from your report applied to it",
+      "mergedTitle_other": "Draft kept — {{count}} fixes from your report applied to it",
+      "mergedDescription": "Only bullets already in your draft were changed. Rewrites for bullets it doesn't have are still in your report.",
+      "mergedNoneTitle": "Draft kept — none of the report's rewrites matched it",
+      "mergedNoneDescription": "Your draft holds different bullets from the scanned resume, so nothing in it was changed. The rewrites are still in your report.",
+      "exportFailedTitle": "Export failed",
+      "exportPdfFailed": "Could not create the PDF. Please try again.",
+      "exportDocxFailed": "Could not create the Word document. Please try again.",
+      "freelanceInsertedTitle_one": "Freelance section inserted — {{count}} entry added",
+      "freelanceInsertedTitle_other": "Freelance section inserted — {{count}} entries added",
+      "freelanceInsertedDescription": "Add your dates to each entry, then export a typeset PDF or Word document."
+    },
+    "seo": {
+      "title": "Free Resume Builder — Resume Booster",
+      "description": "Build an ATS-friendly resume in minutes with our free guided builder. Export to PDF, no signup required."
+    },
+    "title": "Resume Builder",
+    "subtitle": "Build a clean, structured resume — edit any section and export when ready.",
+    "startOver": "Start Over",
+    "exportDocx": "Export DOCX",
+    "exportPdf": "Export PDF",
+    "importing": "Importing your most recent resume into the builder…",
+    "confirmStartOver": "This will clear everything in the builder. Continue?",
+    "rescan": {
+      "title": "Exported — now check that the fixes worked",
+      "body": "Rescan this exact version free and see the before/after score, on the same rubric both times.",
+      "button": "Rescan this version →"
+    },
+    "keywords": {
+      "title": "Keywords your scan found missing — work them in where they're true",
+      "dismiss": "dismiss",
+      "note": "We never insert keywords for you — only you can honestly claim a skill."
+    },
+    "section": {
+      "contact": "Contact",
+      "summary": "Summary",
+      "experience": "Experience",
+      "education": "Education",
+      "skills": "Skills",
+      "certifications": "Certifications",
+      "preview": "Preview"
+    },
+    "contact": {
+      "fullName": "Full Name",
+      "title": "Title / Headline",
+      "email": "Email",
+      "phone": "Phone",
+      "location": "Location",
+      "linkedIn": "LinkedIn",
+      "website": "Website / Portfolio"
+    },
+    "placeholder": {
+      "fullName": "Jane Doe",
+      "title": "Senior Product Designer",
+      "email": "jane@example.com",
+      "phone": "(555) 123-4567",
+      "location": "San Francisco, CA",
+      "linkedIn": "linkedin.com/in/janedoe",
+      "website": "janedoe.com",
+      "summary": "A brief 2-4 sentence overview of your experience and what you're looking for next.",
+      "skill": "Add a skill and press Enter",
+      "certification": "Add a certification and press Enter"
     }
   },
   "jobsPage": {

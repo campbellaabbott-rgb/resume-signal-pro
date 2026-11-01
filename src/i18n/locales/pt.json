@@ -3418,7 +3418,15 @@
       "endDate": "Data de término",
       "bulletPoints": "Pontos",
       "addBullet": "Adicionar ponto",
-      "addWorkExperience": "Adicionar experiência profissional"
+      "addWorkExperience": "Adicionar experiência profissional",
+      "placeholder": {
+        "jobTitle": "Engenheiro de software sênior",
+        "company": "Acme Ltda.",
+        "location": "Remoto",
+        "startDate": "jan. 2022",
+        "endDate": "Atual",
+        "bullet": "Liderei uma equipe de 5 engenheiros para lançar…"
+      }
     },
     "education": {
       "entry": "Formação {{num}}",
@@ -3428,7 +3436,13 @@
       "startDate": "Data de início",
       "endDate": "Data de término",
       "additionalDetails": "Detalhes adicionais (opcional)",
-      "addEducation": "Adicionar formação"
+      "addEducation": "Adicionar formação",
+      "placeholder": {
+        "school": "Universidade de São Paulo",
+        "degree": "Bacharelado",
+        "field": "Ciência da Computação",
+        "details": "Disciplinas relevantes, honrarias, média…"
+      }
     },
     "tagList": {
       "typeToAdd": "Digite e pressione Enter para adicionar"
@@ -3442,13 +3456,83 @@
       "skills": "Habilidades",
       "certifications": "Certificações"
     },
-    "replaceWithFixes": "Substituir o rascunho atual do editor pelo currículo da sua verificação, com as correções do relatório aplicadas?",
+    "replaceWithFixes": "Substituir seu rascunho atual pelo currículo do seu escaneamento, com as correções do relatório aplicadas? Se você recusar, seu rascunho fica e as correções que combinam com os tópicos dele são aplicadas.",
     "replaceWithLatestScan": "Você tem um rascunho de um currículo anterior. Substituí-lo pelo currículo da sua verificação mais recente?",
     "toast": {
       "addNameDescription": "O seu currículo precisa do seu nome no topo antes de poder ser transferido.",
       "addNameTitle": "Acrescente primeiro o seu nome",
       "savedAsWordDescription": "Os tipos de letra do PDF não conseguem desenhar {{chars}}, por isso guardámos um ficheiro Word, que mantém todos os carateres.",
-      "savedAsWordTitle": "Guardado como ficheiro Word"
+      "savedAsWordTitle": "Guardado como ficheiro Word",
+      "importedTitle": "Currículo importado",
+      "importedDescription": "Preenchemos o criador com seu currículo mais recente — edite o que quiser abaixo.",
+      "importedWithFixesTitle_one": "Currículo importado — {{count}} correção do seu relatório aplicada",
+      "importedWithFixesTitle_other": "Currículo importado — {{count}} correções do seu relatório aplicadas",
+      "importedWithFixesTitle_many": "Currículo importado — {{count}} correções do seu relatório aplicadas",
+      "importedWithFixesDescription": "Os tópicos reescritos do seu relatório já estão no lugar. As sugestões de palavras-chave do escaneamento aparecem acima do editor.",
+      "mergedTitle_one": "Rascunho mantido — {{count}} correção do seu relatório aplicada a ele",
+      "mergedTitle_other": "Rascunho mantido — {{count}} correções do seu relatório aplicadas a ele",
+      "mergedTitle_many": "Rascunho mantido — {{count}} correções do seu relatório aplicadas a ele",
+      "mergedDescription": "Só foram alterados os tópicos que já estavam no seu rascunho. As reescritas de tópicos que ele não tem continuam no seu relatório.",
+      "mergedNoneTitle": "Rascunho mantido — nenhuma reescrita do relatório combinou com ele",
+      "mergedNoneDescription": "Seu rascunho tem tópicos diferentes do currículo escaneado, então nada foi alterado. As reescritas continuam no seu relatório.",
+      "exportFailedTitle": "Falha ao exportar",
+      "exportPdfFailed": "Não foi possível criar o PDF. Tente novamente.",
+      "exportDocxFailed": "Não foi possível criar o documento do Word. Tente novamente.",
+      "freelanceInsertedTitle_one": "Seção freelance inserida — {{count}} entrada adicionada",
+      "freelanceInsertedTitle_other": "Seção freelance inserida — {{count}} entradas adicionadas",
+      "freelanceInsertedTitle_many": "Seção freelance inserida — {{count}} entradas adicionadas",
+      "freelanceInsertedDescription": "Adicione as datas a cada entrada e depois exporte um PDF ou documento do Word diagramado."
+    },
+    "seo": {
+      "title": "Criador de currículo grátis — Resume Booster",
+      "description": "Crie um currículo compatível com ATS em minutos com nosso criador guiado gratuito. Exporte em PDF, sem cadastro."
+    },
+    "title": "Criador de currículo",
+    "subtitle": "Crie um currículo limpo e estruturado — edite qualquer seção e exporte quando estiver pronto.",
+    "startOver": "Recomeçar",
+    "exportDocx": "Exportar DOCX",
+    "exportPdf": "Exportar PDF",
+    "importing": "Importando seu currículo mais recente para o criador…",
+    "confirmStartOver": "Isso vai apagar tudo no criador. Continuar?",
+    "rescan": {
+      "title": "Exportado — agora confira se as correções funcionaram",
+      "body": "Escaneie de novo esta mesma versão grátis e veja a pontuação antes e depois, com os mesmos critérios.",
+      "button": "Escanear esta versão de novo →"
+    },
+    "keywords": {
+      "title": "Palavras-chave que seu escaneamento não encontrou — inclua onde forem verdadeiras",
+      "dismiss": "ocultar",
+      "note": "Nunca inserimos palavras-chave por você — só você pode afirmar uma habilidade com honestidade."
+    },
+    "section": {
+      "contact": "Contato",
+      "summary": "Resumo",
+      "experience": "Experiência",
+      "education": "Formação",
+      "skills": "Habilidades",
+      "certifications": "Certificações",
+      "preview": "Pré-visualização"
+    },
+    "contact": {
+      "fullName": "Nome completo",
+      "title": "Cargo / Título",
+      "email": "E-mail",
+      "phone": "Telefone",
+      "location": "Localização",
+      "linkedIn": "LinkedIn",
+      "website": "Site / Portfólio"
+    },
+    "placeholder": {
+      "fullName": "Maria Silva",
+      "title": "Designer de produto sênior",
+      "email": "maria@example.com",
+      "phone": "(11) 91234-5678",
+      "location": "São Paulo, SP",
+      "linkedIn": "linkedin.com/in/mariasilva",
+      "website": "mariasilva.com.br",
+      "summary": "Um breve resumo de 2 a 4 frases sobre sua experiência e o que você procura agora.",
+      "skill": "Adicione uma habilidade e pressione Enter",
+      "certification": "Adicione uma certificação e pressione Enter"
     }
   },
   "jobsPage": {

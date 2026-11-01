@@ -55,7 +55,7 @@ export function EducationEditor({ entries, onChange }: EducationEditorProps) {
               <Input
                 value={entry.school}
                 onChange={(e) => updateEntry(entry.id, { school: e.target.value })}
-                placeholder="University of California"
+                placeholder={t("resumeBuilder.education.placeholder.school")}
               />
             </div>
             <div className="space-y-1">
@@ -63,7 +63,7 @@ export function EducationEditor({ entries, onChange }: EducationEditorProps) {
               <Input
                 value={entry.degree}
                 onChange={(e) => updateEntry(entry.id, { degree: e.target.value })}
-                placeholder="B.S."
+                placeholder={t("resumeBuilder.education.placeholder.degree")}
               />
             </div>
             <div className="space-y-1">
@@ -71,7 +71,7 @@ export function EducationEditor({ entries, onChange }: EducationEditorProps) {
               <Input
                 value={entry.field}
                 onChange={(e) => updateEntry(entry.id, { field: e.target.value })}
-                placeholder="Computer Science"
+                placeholder={t("resumeBuilder.education.placeholder.field")}
               />
             </div>
             <div className="grid grid-cols-2 gap-2">
@@ -99,7 +99,7 @@ export function EducationEditor({ entries, onChange }: EducationEditorProps) {
             <Textarea
               value={entry.details}
               onChange={(e) => updateEntry(entry.id, { details: e.target.value })}
-              placeholder="Relevant coursework, honors, GPA..."
+              placeholder={t("resumeBuilder.education.placeholder.details")}
               className="min-h-[44px] text-sm resize-none"
               rows={2}
             />
@@ -109,7 +109,7 @@ export function EducationEditor({ entries, onChange }: EducationEditorProps) {
 
       <Button variant="outline" className="w-full gap-2" onClick={addEntry}>
         <Plus className="w-4 h-4" />
-        Add Education
+        {t("resumeBuilder.education.addEducation")}
       </Button>
     </div>
   );

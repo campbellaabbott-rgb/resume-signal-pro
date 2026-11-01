@@ -76,7 +76,7 @@ export function ExperienceEditor({ entries, onChange }: ExperienceEditorProps) {
               <Input
                 value={entry.title}
                 onChange={(e) => updateEntry(entry.id, { title: e.target.value })}
-                placeholder="Senior Software Engineer"
+                placeholder={t("resumeBuilder.experience.placeholder.jobTitle")}
               />
             </div>
             <div className="space-y-1">
@@ -84,7 +84,7 @@ export function ExperienceEditor({ entries, onChange }: ExperienceEditorProps) {
               <Input
                 value={entry.company}
                 onChange={(e) => updateEntry(entry.id, { company: e.target.value })}
-                placeholder="Acme Corp"
+                placeholder={t("resumeBuilder.experience.placeholder.company")}
               />
             </div>
             <div className="space-y-1">
@@ -92,7 +92,7 @@ export function ExperienceEditor({ entries, onChange }: ExperienceEditorProps) {
               <Input
                 value={entry.location}
                 onChange={(e) => updateEntry(entry.id, { location: e.target.value })}
-                placeholder="Remote"
+                placeholder={t("resumeBuilder.experience.placeholder.location")}
               />
             </div>
             <div className="grid grid-cols-2 gap-2">
@@ -101,7 +101,7 @@ export function ExperienceEditor({ entries, onChange }: ExperienceEditorProps) {
                 <Input
                   value={entry.startDate}
                   onChange={(e) => updateEntry(entry.id, { startDate: e.target.value })}
-                  placeholder="Jan 2022"
+                  placeholder={t("resumeBuilder.experience.placeholder.startDate")}
                 />
               </div>
               <div className="space-y-1">
@@ -109,7 +109,7 @@ export function ExperienceEditor({ entries, onChange }: ExperienceEditorProps) {
                 <Input
                   value={entry.endDate}
                   onChange={(e) => updateEntry(entry.id, { endDate: e.target.value })}
-                  placeholder="Present"
+                  placeholder={t("resumeBuilder.experience.placeholder.endDate")}
                 />
               </div>
             </div>
@@ -122,7 +122,7 @@ export function ExperienceEditor({ entries, onChange }: ExperienceEditorProps) {
                 <Textarea
                   value={bullet}
                   onChange={(e) => updateBullet(entry.id, bIdx, e.target.value)}
-                  placeholder="Led a team of 5 engineers to ship..."
+                  placeholder={t("resumeBuilder.experience.placeholder.bullet")}
                   className="min-h-[44px] text-sm resize-none"
                   rows={2}
                 />
@@ -138,7 +138,7 @@ export function ExperienceEditor({ entries, onChange }: ExperienceEditorProps) {
             ))}
             <Button variant="outline" size="sm" className="gap-1.5" onClick={() => addBullet(entry.id)}>
               <Plus className="w-3.5 h-3.5" />
-              Add Bullet
+              {t("resumeBuilder.experience.addBullet")}
             </Button>
           </div>
         </div>
@@ -146,7 +146,7 @@ export function ExperienceEditor({ entries, onChange }: ExperienceEditorProps) {
 
       <Button variant="outline" className="w-full gap-2" onClick={addEntry}>
         <Plus className="w-4 h-4" />
-        Add Work Experience
+        {t("resumeBuilder.experience.addWorkExperience")}
       </Button>
     </div>
   );

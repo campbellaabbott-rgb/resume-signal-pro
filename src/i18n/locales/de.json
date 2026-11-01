@@ -3395,7 +3395,15 @@
       "endDate": "Enddatum",
       "bulletPoints": "Aufzählungspunkte",
       "addBullet": "Punkt hinzufügen",
-      "addWorkExperience": "Berufserfahrung hinzufügen"
+      "addWorkExperience": "Berufserfahrung hinzufügen",
+      "placeholder": {
+        "jobTitle": "Senior Softwareentwickler",
+        "company": "Muster GmbH",
+        "location": "Remote",
+        "startDate": "Jan. 2022",
+        "endDate": "Heute",
+        "bullet": "Ein Team aus 5 Entwicklern geleitet, um … auszuliefern"
+      }
     },
     "education": {
       "entry": "Ausbildung {{num}}",
@@ -3405,7 +3413,13 @@
       "startDate": "Startdatum",
       "endDate": "Enddatum",
       "additionalDetails": "Weitere Details (optional)",
-      "addEducation": "Ausbildung hinzufügen"
+      "addEducation": "Ausbildung hinzufügen",
+      "placeholder": {
+        "school": "Universität Hamburg",
+        "degree": "B.Sc.",
+        "field": "Informatik",
+        "details": "Relevante Kurse, Auszeichnungen, Note …"
+      }
     },
     "tagList": {
       "typeToAdd": "Eingeben und Enter drücken zum Hinzufügen"
@@ -3419,13 +3433,80 @@
       "skills": "Fähigkeiten",
       "certifications": "Zertifikate"
     },
-    "replaceWithFixes": "Deinen aktuellen Entwurf im Builder durch den Lebenslauf aus deinem Scan ersetzen, mit den Korrekturen aus dem Bericht?",
+    "replaceWithFixes": "Deinen aktuellen Entwurf im Builder durch den Lebenslauf aus deinem Scan ersetzen, mit den Korrekturen aus dem Bericht? Wenn du ablehnst, bleibt dein Entwurf, und die Korrekturen, die zu seinen Aufzählungspunkten passen, werden darin übernommen.",
     "replaceWithLatestScan": "Du hast einen Entwurf aus einem früheren Lebenslauf. Durch den Lebenslauf aus deinem neuesten Scan ersetzen?",
     "toast": {
       "addNameDescription": "Ihr Lebenslauf braucht oben Ihren Namen, bevor er heruntergeladen werden kann.",
       "addNameTitle": "Fügen Sie zuerst Ihren Namen hinzu",
       "savedAsWordDescription": "Die Schriften des PDFs können {{chars}} nicht darstellen, deshalb haben wir eine Word-Datei gespeichert, die jedes Zeichen behält.",
-      "savedAsWordTitle": "Als Word-Datei gespeichert"
+      "savedAsWordTitle": "Als Word-Datei gespeichert",
+      "importedTitle": "Lebenslauf übernommen",
+      "importedDescription": "Wir haben den Builder mit deinem neuesten Lebenslauf befüllt — bearbeite unten alles, was du möchtest.",
+      "importedWithFixesTitle_one": "Lebenslauf übernommen — {{count}} Korrektur aus deinem Bericht übernommen",
+      "importedWithFixesTitle_other": "Lebenslauf übernommen — {{count}} Korrekturen aus deinem Bericht übernommen",
+      "importedWithFixesDescription": "Die umformulierten Aufzählungspunkte aus deinem Bericht sind eingesetzt. Schlüsselwort-Vorschläge aus dem Scan stehen über dem Editor.",
+      "mergedTitle_one": "Entwurf behalten — {{count}} Korrektur aus deinem Bericht darin übernommen",
+      "mergedTitle_other": "Entwurf behalten — {{count}} Korrekturen aus deinem Bericht darin übernommen",
+      "mergedDescription": "Geändert wurden nur Aufzählungspunkte, die schon in deinem Entwurf stehen. Umformulierungen für andere Punkte findest du weiterhin in deinem Bericht.",
+      "mergedNoneTitle": "Entwurf behalten — keine Umformulierung aus dem Bericht passte dazu",
+      "mergedNoneDescription": "Dein Entwurf enthält andere Aufzählungspunkte als der gescannte Lebenslauf, daher wurde nichts geändert. Die Umformulierungen stehen weiterhin in deinem Bericht.",
+      "exportFailedTitle": "Export fehlgeschlagen",
+      "exportPdfFailed": "Das PDF konnte nicht erstellt werden. Bitte versuch es noch einmal.",
+      "exportDocxFailed": "Das Word-Dokument konnte nicht erstellt werden. Bitte versuch es noch einmal.",
+      "freelanceInsertedTitle_one": "Freelance-Abschnitt eingefügt — {{count}} Eintrag hinzugefügt",
+      "freelanceInsertedTitle_other": "Freelance-Abschnitt eingefügt — {{count}} Einträge hinzugefügt",
+      "freelanceInsertedDescription": "Ergänze bei jedem Eintrag die Daten und exportiere dann ein gesetztes PDF oder Word-Dokument."
+    },
+    "seo": {
+      "title": "Kostenloser Lebenslauf-Builder — Resume Booster",
+      "description": "Erstelle in wenigen Minuten einen ATS-freundlichen Lebenslauf mit unserem kostenlosen, geführten Builder. Export als PDF, ohne Registrierung."
+    },
+    "title": "Lebenslauf-Builder",
+    "subtitle": "Erstelle einen klaren, strukturierten Lebenslauf — bearbeite jeden Abschnitt und exportiere, wenn du so weit bist.",
+    "startOver": "Neu beginnen",
+    "exportDocx": "Als DOCX exportieren",
+    "exportPdf": "Als PDF exportieren",
+    "importing": "Dein neuester Lebenslauf wird in den Builder übernommen …",
+    "confirmStartOver": "Damit wird alles im Builder gelöscht. Fortfahren?",
+    "rescan": {
+      "title": "Exportiert — prüfe jetzt, ob die Korrekturen wirken",
+      "body": "Scanne genau diese Version kostenlos erneut und sieh den Wert vorher und nachher, beide Male nach denselben Kriterien.",
+      "button": "Diese Version erneut scannen →"
+    },
+    "keywords": {
+      "title": "Schlüsselwörter, die dein Scan vermisst hat — bau sie ein, wo sie zutreffen",
+      "dismiss": "ausblenden",
+      "note": "Wir fügen nie selbst Schlüsselwörter ein — nur du kannst ehrlich eine Fähigkeit angeben."
+    },
+    "section": {
+      "contact": "Kontakt",
+      "summary": "Profil",
+      "experience": "Berufserfahrung",
+      "education": "Ausbildung",
+      "skills": "Kenntnisse",
+      "certifications": "Zertifikate",
+      "preview": "Vorschau"
+    },
+    "contact": {
+      "fullName": "Vollständiger Name",
+      "title": "Titel / Kurzprofil",
+      "email": "E-Mail",
+      "phone": "Telefon",
+      "location": "Ort",
+      "linkedIn": "LinkedIn",
+      "website": "Website / Portfolio"
+    },
+    "placeholder": {
+      "fullName": "Max Mustermann",
+      "title": "Leitende Produktdesignerin",
+      "email": "max@example.com",
+      "phone": "+49 30 1234567",
+      "location": "Berlin",
+      "linkedIn": "linkedin.com/in/maxmustermann",
+      "website": "maxmustermann.de",
+      "summary": "Ein kurzer Überblick in 2–4 Sätzen über deine Erfahrung und das, was du als Nächstes suchst.",
+      "skill": "Fähigkeit eingeben und Enter drücken",
+      "certification": "Zertifikat eingeben und Enter drücken"
     }
   },
   "jobsPage": {

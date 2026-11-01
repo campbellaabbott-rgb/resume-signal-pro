@@ -3418,7 +3418,15 @@
       "endDate": "Fecha de fin",
       "bulletPoints": "Puntos clave",
       "addBullet": "Agregar punto",
-      "addWorkExperience": "Agregar experiencia laboral"
+      "addWorkExperience": "Agregar experiencia laboral",
+      "placeholder": {
+        "jobTitle": "Ingeniero de software sénior",
+        "company": "Acme S.L.",
+        "location": "En remoto",
+        "startDate": "ene. 2022",
+        "endDate": "Actualidad",
+        "bullet": "Dirigí un equipo de 5 ingenieros para lanzar…"
+      }
     },
     "education": {
       "entry": "Educación {{num}}",
@@ -3428,7 +3436,13 @@
       "startDate": "Fecha de inicio",
       "endDate": "Fecha de fin",
       "additionalDetails": "Detalles adicionales (opcional)",
-      "addEducation": "Agregar educación"
+      "addEducation": "Agregar educación",
+      "placeholder": {
+        "school": "Universidad Complutense de Madrid",
+        "degree": "Grado",
+        "field": "Informática",
+        "details": "Asignaturas relevantes, distinciones, nota media…"
+      }
     },
     "tagList": {
       "typeToAdd": "Escribe y presiona Enter para agregar"
@@ -3442,13 +3456,83 @@
       "skills": "Habilidades",
       "certifications": "Certificaciones"
     },
-    "replaceWithFixes": "¿Reemplazar tu borrador actual del editor por el currículum de tu análisis, con las correcciones del informe aplicadas?",
+    "replaceWithFixes": "¿Reemplazar tu borrador actual por el currículum de tu escaneo, con las correcciones del informe aplicadas? Si no aceptas, tu borrador se queda y se le aplican las correcciones que coincidan con sus viñetas.",
     "replaceWithLatestScan": "Tienes un borrador de un currículum anterior. ¿Reemplazarlo por el currículum de tu análisis más reciente?",
     "toast": {
       "addNameDescription": "Tu currículum necesita tu nombre arriba antes de poder descargarlo.",
       "addNameTitle": "Primero añade tu nombre",
       "savedAsWordDescription": "Las fuentes del PDF no pueden dibujar {{chars}}, así que guardamos un archivo de Word, que conserva todos los caracteres.",
-      "savedAsWordTitle": "Guardado como archivo de Word"
+      "savedAsWordTitle": "Guardado como archivo de Word",
+      "importedTitle": "Currículum importado",
+      "importedDescription": "Hemos rellenado el creador con tu currículum más reciente: edita lo que quieras abajo.",
+      "importedWithFixesTitle_one": "Currículum importado: {{count}} corrección de tu informe aplicada",
+      "importedWithFixesTitle_other": "Currículum importado: {{count}} correcciones de tu informe aplicadas",
+      "importedWithFixesTitle_many": "Currículum importado: {{count}} correcciones de tu informe aplicadas",
+      "importedWithFixesDescription": "Las viñetas reescritas de tu informe ya están en su sitio. Las sugerencias de palabras clave del escaneo aparecen encima del editor.",
+      "mergedTitle_one": "Borrador conservado: se le aplicó {{count}} corrección de tu informe",
+      "mergedTitle_other": "Borrador conservado: se le aplicaron {{count}} correcciones de tu informe",
+      "mergedTitle_many": "Borrador conservado: se le aplicaron {{count}} correcciones de tu informe",
+      "mergedDescription": "Solo se cambiaron viñetas que ya estaban en tu borrador. Las reescrituras de viñetas que no tiene siguen en tu informe.",
+      "mergedNoneTitle": "Borrador conservado: ninguna reescritura del informe coincidía con él",
+      "mergedNoneDescription": "Tu borrador tiene viñetas distintas a las del currículum escaneado, así que no se cambió nada. Las reescrituras siguen en tu informe.",
+      "exportFailedTitle": "Error al exportar",
+      "exportPdfFailed": "No se pudo crear el PDF. Inténtalo de nuevo.",
+      "exportDocxFailed": "No se pudo crear el documento de Word. Inténtalo de nuevo.",
+      "freelanceInsertedTitle_one": "Sección freelance insertada: {{count}} entrada añadida",
+      "freelanceInsertedTitle_other": "Sección freelance insertada: {{count}} entradas añadidas",
+      "freelanceInsertedTitle_many": "Sección freelance insertada: {{count}} entradas añadidas",
+      "freelanceInsertedDescription": "Añade las fechas a cada entrada y luego exporta un PDF o un documento de Word bien maquetado."
+    },
+    "seo": {
+      "title": "Creador de currículum gratis — Resume Booster",
+      "description": "Crea un currículum compatible con ATS en minutos con nuestro creador guiado gratuito. Exporta a PDF sin registrarte."
+    },
+    "title": "Creador de currículum",
+    "subtitle": "Crea un currículum limpio y estructurado: edita cualquier sección y expórtalo cuando esté listo.",
+    "startOver": "Empezar de nuevo",
+    "exportDocx": "Exportar DOCX",
+    "exportPdf": "Exportar PDF",
+    "importing": "Importando tu currículum más reciente al creador…",
+    "confirmStartOver": "Esto borrará todo lo que hay en el creador. ¿Continuar?",
+    "rescan": {
+      "title": "Exportado: ahora comprueba que los cambios funcionaron",
+      "body": "Vuelve a escanear gratis esta misma versión y compara la puntuación antes y después, con los mismos criterios.",
+      "button": "Volver a escanear esta versión →"
+    },
+    "keywords": {
+      "title": "Palabras clave que tu escaneo no encontró: inclúyelas donde sean ciertas",
+      "dismiss": "ocultar",
+      "note": "Nunca insertamos palabras clave por ti: solo tú puedes afirmar con honestidad una habilidad."
+    },
+    "section": {
+      "contact": "Contacto",
+      "summary": "Resumen",
+      "experience": "Experiencia",
+      "education": "Educación",
+      "skills": "Habilidades",
+      "certifications": "Certificaciones",
+      "preview": "Vista previa"
+    },
+    "contact": {
+      "fullName": "Nombre completo",
+      "title": "Cargo / Titular",
+      "email": "Correo electrónico",
+      "phone": "Teléfono",
+      "location": "Ubicación",
+      "linkedIn": "LinkedIn",
+      "website": "Sitio web / Portafolio"
+    },
+    "placeholder": {
+      "fullName": "María García",
+      "title": "Diseñadora de producto sénior",
+      "email": "maria@example.com",
+      "phone": "+34 612 345 678",
+      "location": "Madrid",
+      "linkedIn": "linkedin.com/in/mariagarcia",
+      "website": "mariagarcia.es",
+      "summary": "Un breve resumen de 2 a 4 frases sobre tu experiencia y lo que buscas ahora.",
+      "skill": "Añade una habilidad y pulsa Intro",
+      "certification": "Añade una certificación y pulsa Intro"
     }
   },
   "jobsPage": {

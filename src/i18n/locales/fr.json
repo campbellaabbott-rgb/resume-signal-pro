@@ -3418,7 +3418,15 @@
       "endDate": "Date de fin",
       "bulletPoints": "Points clés",
       "addBullet": "Ajouter un point",
-      "addWorkExperience": "Ajouter une expérience professionnelle"
+      "addWorkExperience": "Ajouter une expérience professionnelle",
+      "placeholder": {
+        "jobTitle": "Ingénieur logiciel senior",
+        "company": "Acme SAS",
+        "location": "Télétravail",
+        "startDate": "janv. 2022",
+        "endDate": "Aujourd'hui",
+        "bullet": "Encadré une équipe de 5 ingénieurs pour livrer…"
+      }
     },
     "education": {
       "entry": "Formation {{num}}",
@@ -3428,7 +3436,13 @@
       "startDate": "Date de début",
       "endDate": "Date de fin",
       "additionalDetails": "Détails supplémentaires (facultatif)",
-      "addEducation": "Ajouter une formation"
+      "addEducation": "Ajouter une formation",
+      "placeholder": {
+        "school": "Université de Lyon",
+        "degree": "Licence",
+        "field": "Informatique",
+        "details": "Cours pertinents, mentions, moyenne…"
+      }
     },
     "tagList": {
       "typeToAdd": "Tapez et appuyez sur Entrée pour ajouter"
@@ -3442,13 +3456,83 @@
       "skills": "Compétences",
       "certifications": "Certifications"
     },
-    "replaceWithFixes": "Remplacer votre brouillon actuel par le CV de votre analyse, avec les corrections du rapport appliquées ?",
+    "replaceWithFixes": "Remplacer votre brouillon actuel par le CV de votre analyse, avec les corrections du rapport appliquées ? Si vous refusez, votre brouillon est conservé et les corrections qui correspondent à ses puces y sont appliquées.",
     "replaceWithLatestScan": "Vous avez un brouillon issu d'un CV précédent. Le remplacer par le CV de votre dernière analyse ?",
     "toast": {
       "addNameDescription": "Votre CV doit porter votre nom en haut avant de pouvoir être téléchargé.",
       "addNameTitle": "Ajoutez d'abord votre nom",
       "savedAsWordDescription": "Les polices du PDF ne peuvent pas afficher {{chars}} : nous avons donc enregistré un fichier Word, qui conserve tous les caractères.",
-      "savedAsWordTitle": "Enregistré en fichier Word"
+      "savedAsWordTitle": "Enregistré en fichier Word",
+      "importedTitle": "CV importé",
+      "importedDescription": "Nous avons rempli l'outil à partir de votre CV le plus récent — modifiez ce que vous voulez ci-dessous.",
+      "importedWithFixesTitle_one": "CV importé — {{count}} correction de votre rapport appliquée",
+      "importedWithFixesTitle_other": "CV importé — {{count}} corrections de votre rapport appliquées",
+      "importedWithFixesTitle_many": "CV importé — {{count}} corrections de votre rapport appliquées",
+      "importedWithFixesDescription": "Les puces reformulées de votre rapport sont en place. Les suggestions de mots-clés de l'analyse figurent au-dessus de l'éditeur.",
+      "mergedTitle_one": "Brouillon conservé — {{count}} correction de votre rapport appliquée",
+      "mergedTitle_other": "Brouillon conservé — {{count}} corrections de votre rapport appliquées",
+      "mergedTitle_many": "Brouillon conservé — {{count}} corrections de votre rapport appliquées",
+      "mergedDescription": "Seules les puces déjà présentes dans votre brouillon ont été modifiées. Les reformulations des autres puces restent dans votre rapport.",
+      "mergedNoneTitle": "Brouillon conservé — aucune reformulation du rapport ne lui correspondait",
+      "mergedNoneDescription": "Votre brouillon contient d'autres puces que le CV analysé, rien n'y a donc été modifié. Les reformulations restent dans votre rapport.",
+      "exportFailedTitle": "Échec de l'export",
+      "exportPdfFailed": "Impossible de créer le PDF. Veuillez réessayer.",
+      "exportDocxFailed": "Impossible de créer le document Word. Veuillez réessayer.",
+      "freelanceInsertedTitle_one": "Section freelance insérée — {{count}} entrée ajoutée",
+      "freelanceInsertedTitle_other": "Section freelance insérée — {{count}} entrées ajoutées",
+      "freelanceInsertedTitle_many": "Section freelance insérée — {{count}} entrées ajoutées",
+      "freelanceInsertedDescription": "Ajoutez vos dates à chaque entrée, puis exportez un PDF ou un document Word mis en page."
+    },
+    "seo": {
+      "title": "Créateur de CV gratuit — Resume Booster",
+      "description": "Créez un CV compatible avec les ATS en quelques minutes grâce à notre outil guidé gratuit. Export en PDF, sans inscription."
+    },
+    "title": "Créateur de CV",
+    "subtitle": "Créez un CV clair et structuré — modifiez chaque section et exportez-le quand il est prêt.",
+    "startOver": "Recommencer",
+    "exportDocx": "Exporter en DOCX",
+    "exportPdf": "Exporter en PDF",
+    "importing": "Import de votre CV le plus récent dans l'outil…",
+    "confirmStartOver": "Tout le contenu de l'outil sera effacé. Continuer ?",
+    "rescan": {
+      "title": "Exporté — vérifiez maintenant que les corrections ont fonctionné",
+      "body": "Rescannez gratuitement cette version exacte et comparez le score avant/après, selon les mêmes critères.",
+      "button": "Rescanner cette version →"
+    },
+    "keywords": {
+      "title": "Mots-clés absents selon votre analyse — intégrez-les là où ils sont vrais",
+      "dismiss": "masquer",
+      "note": "Nous n'insérons jamais de mots-clés à votre place — vous seul pouvez revendiquer honnêtement une compétence."
+    },
+    "section": {
+      "contact": "Coordonnées",
+      "summary": "Profil",
+      "experience": "Expérience",
+      "education": "Formation",
+      "skills": "Compétences",
+      "certifications": "Certifications",
+      "preview": "Aperçu"
+    },
+    "contact": {
+      "fullName": "Nom complet",
+      "title": "Titre / Accroche",
+      "email": "E-mail",
+      "phone": "Téléphone",
+      "location": "Lieu",
+      "linkedIn": "LinkedIn",
+      "website": "Site web / Portfolio"
+    },
+    "placeholder": {
+      "fullName": "Marie Dupont",
+      "title": "Designer produit senior",
+      "email": "marie@example.com",
+      "phone": "06 12 34 56 78",
+      "location": "Lyon",
+      "linkedIn": "linkedin.com/in/mariedupont",
+      "website": "mariedupont.fr",
+      "summary": "Un bref aperçu en 2 à 4 phrases de votre expérience et de ce que vous recherchez.",
+      "skill": "Ajoutez une compétence et appuyez sur Entrée",
+      "certification": "Ajoutez une certification et appuyez sur Entrée"
     }
   },
   "jobsPage": {

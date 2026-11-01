@@ -3395,7 +3395,15 @@
       "endDate": "Einddatum",
       "bulletPoints": "Opsommingstekens",
       "addBullet": "Punt toevoegen",
-      "addWorkExperience": "Werkervaring toevoegen"
+      "addWorkExperience": "Werkervaring toevoegen",
+      "placeholder": {
+        "jobTitle": "Senior software-engineer",
+        "company": "Acme B.V.",
+        "location": "Op afstand",
+        "startDate": "jan. 2022",
+        "endDate": "Heden",
+        "bullet": "Een team van 5 engineers geleid om … op te leveren"
+      }
     },
     "education": {
       "entry": "Opleiding {{num}}",
@@ -3405,7 +3413,13 @@
       "startDate": "Begindatum",
       "endDate": "Einddatum",
       "additionalDetails": "Aanvullende details (optioneel)",
-      "addEducation": "Opleiding toevoegen"
+      "addEducation": "Opleiding toevoegen",
+      "placeholder": {
+        "school": "Universiteit Utrecht",
+        "degree": "Bachelor",
+        "field": "Informatica",
+        "details": "Relevante vakken, onderscheidingen, cijfer…"
+      }
     },
     "tagList": {
       "typeToAdd": "Typ en druk op Enter om toe te voegen"
@@ -3419,13 +3433,80 @@
       "skills": "Vaardigheden",
       "certifications": "Certificeringen"
     },
-    "replaceWithFixes": "Je huidige concept in de builder vervangen door het cv uit je scan, met de verbeteringen uit het rapport toegepast?",
+    "replaceWithFixes": "Je huidige concept in de bouwer vervangen door het cv uit je scan, met de verbeteringen uit het rapport? Als je weigert, blijft je concept staan en worden de verbeteringen die bij de opsommingspunten passen daarin doorgevoerd.",
     "replaceWithLatestScan": "Je hebt een concept van een eerder cv. Vervangen door het cv uit je nieuwste scan?",
     "toast": {
       "addNameDescription": "Je cv moet bovenaan je naam hebben voordat het kan worden gedownload.",
       "addNameTitle": "Voeg eerst je naam toe",
       "savedAsWordDescription": "De lettertypen van de pdf kunnen {{chars}} niet weergeven, dus hebben we een Word-bestand opgeslagen dat elk teken behoudt.",
-      "savedAsWordTitle": "Opgeslagen als Word-bestand"
+      "savedAsWordTitle": "Opgeslagen als Word-bestand",
+      "importedTitle": "Cv geïmporteerd",
+      "importedDescription": "We hebben de bouwer gevuld met je meest recente cv — pas hieronder aan wat je wilt.",
+      "importedWithFixesTitle_one": "Cv geïmporteerd — {{count}} verbetering uit je rapport doorgevoerd",
+      "importedWithFixesTitle_other": "Cv geïmporteerd — {{count}} verbeteringen uit je rapport doorgevoerd",
+      "importedWithFixesDescription": "De herschreven opsommingspunten uit je rapport staan erin. Trefwoordsuggesties uit de scan staan boven de editor.",
+      "mergedTitle_one": "Concept behouden — {{count}} verbetering uit je rapport doorgevoerd",
+      "mergedTitle_other": "Concept behouden — {{count}} verbeteringen uit je rapport doorgevoerd",
+      "mergedDescription": "Alleen opsommingspunten die al in je concept stonden zijn aangepast. Herschrijvingen voor andere punten staan nog in je rapport.",
+      "mergedNoneTitle": "Concept behouden — geen enkele herschrijving uit het rapport paste erbij",
+      "mergedNoneDescription": "Je concept bevat andere opsommingspunten dan het gescande cv, dus er is niets aangepast. De herschrijvingen staan nog in je rapport.",
+      "exportFailedTitle": "Exporteren mislukt",
+      "exportPdfFailed": "De pdf kon niet worden gemaakt. Probeer het opnieuw.",
+      "exportDocxFailed": "Het Word-document kon niet worden gemaakt. Probeer het opnieuw.",
+      "freelanceInsertedTitle_one": "Freelance-sectie ingevoegd — {{count}} item toegevoegd",
+      "freelanceInsertedTitle_other": "Freelance-sectie ingevoegd — {{count}} items toegevoegd",
+      "freelanceInsertedDescription": "Voeg bij elk item je data toe en exporteer daarna een opgemaakte pdf of Word-document."
+    },
+    "seo": {
+      "title": "Gratis cv-bouwer — Resume Booster",
+      "description": "Maak in een paar minuten een ATS-vriendelijk cv met onze gratis begeleide bouwer. Exporteer naar pdf, zonder account."
+    },
+    "title": "Cv-bouwer",
+    "subtitle": "Maak een overzichtelijk, gestructureerd cv — bewerk elke sectie en exporteer als je klaar bent.",
+    "startOver": "Opnieuw beginnen",
+    "exportDocx": "Exporteren als DOCX",
+    "exportPdf": "Exporteren als pdf",
+    "importing": "Je meest recente cv wordt in de bouwer geladen…",
+    "confirmStartOver": "Hiermee wis je alles in de bouwer. Doorgaan?",
+    "rescan": {
+      "title": "Geëxporteerd — controleer nu of de verbeteringen werken",
+      "body": "Scan precies deze versie gratis opnieuw en zie de score voor en na, beide keren met dezelfde criteria.",
+      "button": "Deze versie opnieuw scannen →"
+    },
+    "keywords": {
+      "title": "Trefwoorden die je scan miste — verwerk ze waar ze kloppen",
+      "dismiss": "verbergen",
+      "note": "We voegen nooit zelf trefwoorden in — alleen jij kunt eerlijk een vaardigheid claimen."
+    },
+    "section": {
+      "contact": "Contact",
+      "summary": "Profiel",
+      "experience": "Werkervaring",
+      "education": "Opleiding",
+      "skills": "Vaardigheden",
+      "certifications": "Certificaten",
+      "preview": "Voorbeeld"
+    },
+    "contact": {
+      "fullName": "Volledige naam",
+      "title": "Functie / Kopregel",
+      "email": "E-mail",
+      "phone": "Telefoon",
+      "location": "Locatie",
+      "linkedIn": "LinkedIn",
+      "website": "Website / Portfolio"
+    },
+    "placeholder": {
+      "fullName": "Sanne de Vries",
+      "title": "Senior productontwerper",
+      "email": "sanne@example.com",
+      "phone": "06 12345678",
+      "location": "Utrecht",
+      "linkedIn": "linkedin.com/in/sannedevries",
+      "website": "sannedevries.nl",
+      "summary": "Een kort overzicht in 2-4 zinnen van je ervaring en wat je hierna zoekt.",
+      "skill": "Voeg een vaardigheid toe en druk op Enter",
+      "certification": "Voeg een certificaat toe en druk op Enter"
     }
   },
   "jobsPage": {

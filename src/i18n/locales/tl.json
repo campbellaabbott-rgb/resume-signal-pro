@@ -3395,7 +3395,15 @@
       "endDate": "Petsa ng Pagtatapos",
       "bulletPoints": "Mga Bullet Point",
       "addBullet": "Magdagdag ng Bullet",
-      "addWorkExperience": "Magdagdag ng Karanasan sa Trabaho"
+      "addWorkExperience": "Magdagdag ng Karanasan sa Trabaho",
+      "placeholder": {
+        "jobTitle": "Senior Software Engineer",
+        "company": "Acme Inc.",
+        "location": "Remote",
+        "startDate": "Ene 2022",
+        "endDate": "Kasalukuyan",
+        "bullet": "Pinamunuan ang 5 engineer para mailabas ang…"
+      }
     },
     "education": {
       "entry": "Edukasyon {{num}}",
@@ -3405,7 +3413,13 @@
       "startDate": "Petsa ng Simula",
       "endDate": "Petsa ng Pagtatapos",
       "additionalDetails": "Karagdagang Detalye (opsyonal)",
-      "addEducation": "Magdagdag ng Edukasyon"
+      "addEducation": "Magdagdag ng Edukasyon",
+      "placeholder": {
+        "school": "University of the Philippines",
+        "degree": "BS",
+        "field": "Computer Science",
+        "details": "Mga kaugnay na kurso, karangalan, GPA…"
+      }
     },
     "tagList": {
       "typeToAdd": "Mag-type at pindutin ang Enter para magdagdag"
@@ -3419,13 +3433,80 @@
       "skills": "Mga Kasanayan",
       "certifications": "Mga Sertipikasyon"
     },
-    "replaceWithFixes": "Palitan ang kasalukuyang draft mo sa builder ng resume mula sa scan mo, kasama ang mga ayos mula sa report?",
+    "replaceWithFixes": "Palitan ang kasalukuyang draft mo sa builder ng resume mula sa scan mo, kasama ang mga ayos mula sa report? Kapag tumanggi ka, mananatili ang draft mo at ilalapat dito ang mga ayos na tumutugma sa mga bullet nito.",
     "replaceWithLatestScan": "May draft ka mula sa naunang resume. Palitan ito ng resume mula sa pinakabago mong scan?",
     "toast": {
       "addNameDescription": "Kailangang may pangalan mo sa itaas ng resume mo bago ito ma-download.",
       "addNameTitle": "Idagdag muna ang pangalan mo",
       "savedAsWordDescription": "Hindi kayang iguhit ng mga font ng PDF ang {{chars}}, kaya nag-save kami ng Word file, na pinapanatili ang bawat character.",
-      "savedAsWordTitle": "Na-save bilang Word file"
+      "savedAsWordTitle": "Na-save bilang Word file",
+      "importedTitle": "Na-import ang resume",
+      "importedDescription": "Pinunan namin ang builder mula sa pinakabago mong resume — i-edit ang kahit ano sa ibaba.",
+      "importedWithFixesTitle_one": "Na-import ang resume — {{count}} ayos mula sa report mo ang nailapat",
+      "importedWithFixesTitle_other": "Na-import ang resume — {{count}} ayos mula sa report mo ang nailapat",
+      "importedWithFixesDescription": "Nakalagay na ang mga ni-rewrite na bullet mula sa report mo. Nakalista sa itaas ng editor ang mga mungkahing keyword mula sa scan.",
+      "mergedTitle_one": "Pinanatili ang draft — {{count}} ayos mula sa report mo ang nailapat dito",
+      "mergedTitle_other": "Pinanatili ang draft — {{count}} ayos mula sa report mo ang nailapat dito",
+      "mergedDescription": "Ang mga bullet lang na nasa draft mo na ang binago. Nasa report mo pa rin ang mga rewrite para sa mga bullet na wala rito.",
+      "mergedNoneTitle": "Pinanatili ang draft — walang rewrite mula sa report ang tumugma rito",
+      "mergedNoneDescription": "Iba ang mga bullet ng draft mo sa na-scan na resume, kaya walang binago rito. Nasa report mo pa rin ang mga rewrite.",
+      "exportFailedTitle": "Hindi na-export",
+      "exportPdfFailed": "Hindi magawa ang PDF. Pakisubukang muli.",
+      "exportDocxFailed": "Hindi magawa ang Word document. Pakisubukang muli.",
+      "freelanceInsertedTitle_one": "Naidagdag ang freelance na bahagi — {{count}} entry ang naidagdag",
+      "freelanceInsertedTitle_other": "Naidagdag ang freelance na bahagi — {{count}} entry ang naidagdag",
+      "freelanceInsertedDescription": "Idagdag ang mga petsa sa bawat entry, saka mag-export ng maayos na PDF o Word document."
+    },
+    "seo": {
+      "title": "Libreng Resume Builder — Resume Booster",
+      "description": "Gumawa ng resume na pasado sa ATS sa loob ng ilang minuto gamit ang aming libreng guided builder. I-export sa PDF, walang kailangang sign-up."
+    },
+    "title": "Resume Builder (Gumawa ng Resume)",
+    "subtitle": "Gumawa ng malinis at maayos na resume — i-edit ang kahit anong bahagi at i-export kapag handa na.",
+    "startOver": "Magsimula muli",
+    "exportDocx": "I-export bilang DOCX",
+    "exportPdf": "I-export bilang PDF",
+    "importing": "Ini-import ang pinakabago mong resume sa builder…",
+    "confirmStartOver": "Mabubura nito ang lahat sa builder. Ituloy?",
+    "rescan": {
+      "title": "Na-export na — tingnan ngayon kung gumana ang mga ayos",
+      "body": "I-rescan nang libre ang mismong bersyong ito at tingnan ang score bago at pagkatapos, sa parehong pamantayan.",
+      "button": "I-rescan ang bersyong ito →"
+    },
+    "keywords": {
+      "title": "Mga keyword na wala ayon sa scan mo — isama kung saan totoo ang mga ito",
+      "dismiss": "itago",
+      "note": "Hindi kami kailanman naglalagay ng keyword para sa iyo — ikaw lang ang tapat na makapagsasabi ng isang skill."
+    },
+    "section": {
+      "contact": "Contact",
+      "summary": "Buod",
+      "experience": "Karanasan",
+      "education": "Edukasyon",
+      "skills": "Mga Skill",
+      "certifications": "Mga Sertipikasyon",
+      "preview": "Preview (Silip)"
+    },
+    "contact": {
+      "fullName": "Buong Pangalan",
+      "title": "Posisyon / Headline",
+      "email": "Email",
+      "phone": "Telepono",
+      "location": "Lokasyon",
+      "linkedIn": "LinkedIn",
+      "website": "Website / Portfolio"
+    },
+    "placeholder": {
+      "fullName": "Juan dela Cruz",
+      "title": "Senior Product Designer",
+      "email": "juan@example.com",
+      "phone": "0917 123 4567",
+      "location": "Quezon City",
+      "linkedIn": "linkedin.com/in/juandelacruz",
+      "website": "juandelacruz.ph",
+      "summary": "Maikling buod sa 2-4 na pangungusap ng karanasan mo at kung ano ang hinahanap mo ngayon.",
+      "skill": "Magdagdag ng skill at pindutin ang Enter",
+      "certification": "Magdagdag ng sertipikasyon at pindutin ang Enter"
     }
   },
   "jobsPage": {
