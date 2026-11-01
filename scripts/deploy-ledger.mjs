@@ -498,6 +498,21 @@ export function rowState(want, have) {
   return buildAtLeast(have, want) ? (have === want ? "live" : "live-ahead") : "deploy";
 }
 
+/**
+ * Does the row's function answer `need` or later now, and still after this
+ * message? Its live build must reach `need`, and a deploy in the message
+ * (a rollback included) must not take it below. State "deploy" alone does not
+ * say no: with job-board .96 live and main at .98 (fix/post-deploy,
+ * 2026-11-01), the rules that asked `state === "live" || "live-ahead"` read
+ * .96 as short of .93, re-dated the Privacy page in the draft and printed the
+ * held prune's condition "not live". No live header or no answer is never
+ * enough. Pure.
+ */
+export function answersAtLeast(r, need) {
+  if (!r || !buildAtLeast(r.have, need)) return false;
+  return r.state === "live" || r.state === "live-ahead" || buildAtLeast(r.want, need);
+}
+
 async function pool(items, n, f) {
   const out = new Array(items.length); let i = 0;
   await Promise.all(Array.from({ length: n }, async () => { while (i < items.length) { const k = i++; out[k] = await f(items[k]); } }));
@@ -846,7 +861,7 @@ export function migrationPhases(pending, policy, rows, onDisk = null) {
     if (!r) { out.errors.push(`${file} waits for ${need}, but main has no function ${fn}`); continue; }
     if (!r.want || !buildAtLeast(r.want, need)) { out.errors.push(`${file} waits for ${need}, but main carries ${r.want ?? "no build the ledger can read"}: that step can never come`); continue; }
     if (before.includes(fn)) { out.errors.push(`${file} must apply both before and after ${fn}`); continue; }
-    if ((r.state === "live" || r.state === "live-ahead") && buildAtLeast(r.have, need)) {
+    if (answersAtLeast(r, need)) {
       out.pre.push({ file, note: [beforeNote, `${fn} already answers ${r.have}`].filter(Boolean).join("; ") });
       continue;
     }
@@ -906,7 +921,7 @@ export function holdStates(heldFiles, policy, rows) {
       const r = byFn.get(fn);
       if (!r) { out.errors.push(`hold ${file} waits for ${need}, but main has no function ${fn}`); continue; }
       if (!r.want || !buildAtLeast(r.want, need)) { out.errors.push(`hold ${file} waits for ${need}, but main carries ${r.want ?? "no build the ledger can read"}: it can never be released`); continue; }
-      conditions.push({ fn, need, have: r.have ?? null, met: (r.state === "live" || r.state === "live-ahead") && buildAtLeast(r.have, need) });
+      conditions.push({ fn, need, have: r.have ?? null, met: answersAtLeast(r, need) });
     }
     const releasable = when.length > 0 && conditions.length === when.length && conditions.every((c) => c.met);
     out.holds.push({ file, stamp, until: String(h?.until ?? ""), conditions, releasable });
@@ -1063,7 +1078,7 @@ export function datedAtDeploy(policy, rows, read, today) {
     if (text == null) { out.errors.push(`datedAtDeploy: ${file} cannot be read`); continue; }
     const v = new RegExp(`export const ${constant.replace(/[^A-Za-z0-9_$]/g, "")}(?::\\s*string)?\\s*=\\s*"(\\d{4}-\\d{2}-\\d{2})"`).exec(text);
     if (!v) { out.errors.push(`datedAtDeploy: ${file} has no ${constant} = "YYYY-MM-DD"`); continue; }
-    const live = (r.state === "live" || r.state === "live-ahead") && buildAtLeast(r.have, need);
+    const live = answersAtLeast(r, need);
     out.checks.push({ file, constant, value: v[1], fn, need, due: !live, ok: live || v[1] === today, today, why: d?.why ? String(d.why) : "" });
   }
   return out;
