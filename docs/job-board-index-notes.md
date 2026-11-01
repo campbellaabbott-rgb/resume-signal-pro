@@ -22330,3 +22330,113 @@ annual (a dentist at $900 – $1,200 / day as $234,000 a year), and 3 only
 gain the part-time label. Main stored no Breezy pay, so no stored annual
 moves. BambooHR's label is not passed: its list feed carries no pay, and no
 description reaches the ingest parse for it.
+
+## n1430-oracle-result-cap
+
+In `supabase/functions/job-board/index.ts`, above: `const atCap = !exhausted && advancedOr >= ORACLE_RESULT_CAP;`; in `supabase/functions/job-board/read-window.ts`, above: `export const ORACLE_RESULT_CAP`, `export function capLapCovers` and `export function belowCapFloor`.
+
+ORACLE WILL NOT PAGE PAST TEN THOUSAND, AND A LAP THAT REACHED IT STILL PROVES
+(S10-003, 2026-09-09.100). Oracle's CE REST finder answers no page whose end
+passes offset 10,000: measured 2026-11-01 on Kroger (eluq~us2~CX_1, site CX_1,
+POSTING_DATES_DESC), TotalJobsCount 11,267, offset 9,999 limit 1 answers one
+row (posted 2026-08-13), offset 10,000 limit 1 and offset 9,950 limit 100 both
+answer TotalJobsCount 0 and no rows. Marriott (ejwl~us2~CX, 12,826, row 9,999
+posted 2026-09-25), AutoZone (egud~us2~CX_1, 11,287, 2026-09-25) and Kotak
+(hcbt~em2~CX_1001, 12,053, 2026-09-28) answer the same; Albertsons (8,247),
+Macy's, JPMorgan and Tata Capital are under the cap. The walk read that empty
+page as the feed's end, so each lap stopped with lapSeen 10,000 against a total
+over 11,000 and never proved (all four read bucket lap_pending in the fill
+curve on 2026-11-01), and the lap's own close never ran for them: the board
+held 13,307 open Marriott rows (fill curve, 2026-11-01) against the employer's
+12,826 in all and 8,990 posted in the last 30 days.
+
+Now the walk asks no page whose end passes the cap. A walk that reaches it
+ends there: when the visit's stated total says nothing lies beyond, that is the
+feed's end as before (a feed of exactly 10,000); otherwise the walk wraps
+without claiming the end and reports `capFloor`, the PostedDate of the last row
+it read (row 9,999). The feed is sorted by posting date, newest first (no
+inversion in 7 sampled pages of Kotak's), so every posting dated after the
+floor sits inside the read. A lap whose wrap is capped proves only through
+capLapCovers: it reached the cap, and the floor's day ends before the 30-day
+fence, so every stored dated row (stored rows are at most 30 days old; an older
+one is an aged exit in closeVanishedChunk, never a closure) was inside the
+read. On that visit a stored row that is undated, or posted on or before the
+floor's day (Kotak's 2026-09-28 block straddles offset 10,000), is not an
+absence candidate at all (belowCapFloor, applied where vanishedAll is built,
+which is why the stored-rows read carries posted_at). A row the visit aged out
+still leaves. A tenant with more than 10,000 postings inside 30 days (none
+measured) gets a floor inside the fence and keeps today's behaviour: no proof,
+no stamp, no lap receipt. Plan for that case, if it appears: prove per row
+(belowCapFloor alone) without writing the lap receipt `w`, so the observability
+bucket never claims a lap that could not see every served row.
+
+## n1431-ukg-adp-cursor
+
+In `supabase/functions/job-board/index.ts`, above: `return { items: all, raw: { opportunities: all }, ...resumeAt(startOffset, all.length, feedTotal, exhausted) };`; in `supabase/functions/job-board/read-window.ts`, above: `export function resumeAt`.
+
+A UKG BOARD OVER 600 IS READ TO ITS END ACROSS VISITS (S10-004,
+2026-09-09.100). fetchUkg read Skip 0..599 on every visit (12 pages of 50) and
+fetchAdp $skip 1..300, with no resume cursor, so a board over the page cap
+never opened a lap and nothing on it was ever stamped missing or logged as
+closed. Measured 2026-11-01 on UKG's LoadSearchResults: Ollie's
+(recruiting~OLL1000OLLIE~355913c1-...) states totalCount 1,392 on every page
+(Skip 0, 600, 1,300), in PostedDate order with no inversion across the whole
+feed, 989 posted in the last 30 days, while the board held 1,300 open Ollie's
+rows (fill curve, bucket unprovable); the other UKG boards over 600 among the 30 largest stored were Cherry
+(1,283), Big 5 (1,030), Troon (2,154), SAL1002 (1,121), Edd (924), NAT1059
+(1,105) and Cre (723). ADP states meta.totalNumber on every page with a
+1-based $skip; no ADP board measured that day was over 300 (largest 260).
+
+Both fetchers now take the cursor contract fetchOracle has: start at the
+cursor (Skip = startOffset + page x 50; $skip = 1 + startOffset + page x 20),
+and resumeAt returns where to resume, whether the feed ended and the offset
+reached, with fetchOracle's refusal of an empty first page against a stated
+total. The page caps are unchanged (600 and 300 a visit), so a board under the
+cap is one whole read exactly as before (nextOffset 0, not windowed); a board
+over it gets a deep cursor, its lap opens on the first visit and proves on the
+wrap through the existing lap block, and its stored rows past the 30-day fence
+are aged out as the walk reaches them.
+
+## n1432-icims-later-page-refusal
+
+In `supabase/functions/job-board/index.ts`, above: `const ICIMS_MAX_PAGES = Math.max(1, s.pages ?? 12), ICIMS_CHUNK = ...`.
+
+AN ICIMS PAGE REFUSED MID-WALK ENDS THE WALK, NOT THE VISIT (S13-035,
+2026-09-09.100). fetchPage threw on any refused page and chunkPageRefusal
+rethrows all but an oversize body, so a 403, 429 or 5xx on page 2-5 rejected
+the chunk's Promise.all, dropped the pages that had landed, failed the board
+and counted toward the dormancy prune. A later page's refusal now returns null
+like UKG, ADP, Oracle and Workday: the walk ends with what it read, windowed,
+and the cursor resumes at the refused page; the visit's first page still fails
+the visit. The chunk asks only for pages the visit can keep,
+min(5, ceil(MAX_POSTINGS_PER_VISIT / pageSize)): three at 100 a page, where
+pages 4 and 5 used to be fetched from the employer and thrown away on every
+visit; five at 50 and at 25, as before.
+
+## n1433-workday-facet-page-language
+
+In `supabase/functions/job-board/request-headers.ts`, above: `const facets = typeof body === "string" && ...`.
+
+THE LIST'S FIRST PAGE IS THE ONE THESE TENANTS REFUSE IN `*` (S8-003,
+2026-09-09.100). Measured 2026-11-01 on the 53 Workday boards the 2026-10-25
+corpus logged as HTTP 500: 52 answer the runtime's `Accept-Language: *` with
+500 on the list's offset-0 page (the one carrying `facets`), 200 under en-US,
+and 200 under `*` at offset 20, byte-identical to their en-US answer (52 of
+52); the 53rd (ivyrehab) answers 401 in every language. 7-Eleven
+(7eleven~wd3~7eleven, 21 postings, all in Australia) also refuses `*` at
+offset 40 and 60, past its end, where Workday serves the first page again.
+Details answer `*` (Truist, Geico, WVU Medicine). Desjardins, CBC/Radio-Canada,
+CDPQ and NVIDIA answer the first page under `*`, so the rule never reaches
+them. The n437 rule let a chunk-mate's 200 under `*` veto the first page's
+English retry, so Truist (1,474 advertised), Geico (299), WVU Medicine UHA
+(773) and WVUH (2,000), Wawa (1,572), Nordstrom (1,499), Signet (1,606) and
+the rest failed every visit and every dormant recheck: 21,269 postings over
+the 52 boards by the employers' own totals (2026-11-01).
+
+withWorkdayLanguage now takes the request body; on a list page at offset 0
+the veto does not apply: two refusals under `*`, then English, accepted even
+when another page of the site has answered `*`. The memo moves to English only
+when no page has answered `*` (as before), so a bilingual site that drew a
+passing double refusal on its first page changes that one page, never the rest
+of the site. A passing 500 on the first page of a site seen answering `*` is
+asked once more in `*` before English.

@@ -38,30 +38,35 @@ function remember(site: string, english: boolean): void {
  * asked twice, and English only when a site never seen answering it refuses
  * both. The memo is read after every answer, because a chunk's pages are in
  * flight together: a site seen answering `*` meanwhile keeps a 500 a failed
- * read and never takes an English answer. An English-only site pays two
- * refusals per page in flight before its first English answer, then none.
+ * read and never takes an English answer, except on the list's first page.
+ * An English-only site pays two refusals per page in flight before its first
+ * English answer, then none.
  */
 export async function withWorkdayLanguage(
   url: string,
   headers: HeadersInit | undefined,
   send: (lang: Record<string, string>) => Promise<Response>,
   discard: (res: Response) => void,
+  body?: unknown,
 ): Promise<Response> {
   const site = workdaySite(url, headers);
   if (!site) return send({});
   if (siteNeedsEnglish.get(site)) return send(ENGLISH);
+  // The list's first page carries the facets, the one page these tenants refuse in `*` (n1433).
+  const facets = typeof body === "string" && /"offset":0[,}]/.test(body);
   let res = await send({});
   for (let tries = 1; ; tries++) {
     if (res.ok) { remember(site, false); return res; }
     const known = siteNeedsEnglish.get(site);
-    if (res.status !== 500 || known === false) return res;
+    if (res.status !== 500 || (known === false && !facets)) return res;
     if (known || tries >= 2) break;
     discard(res);
     res = await send({});
   }
   const en = await send(ENGLISH);
-  if (!en.ok || siteNeedsEnglish.get(site) === false) { discard(en); return res; }
+  const seen = siteNeedsEnglish.get(site) === false;
+  if (!en.ok || (seen && !facets)) { discard(en); return res; }
   discard(res);
-  remember(site, true);
+  if (!seen) remember(site, true);
   return en;
 }

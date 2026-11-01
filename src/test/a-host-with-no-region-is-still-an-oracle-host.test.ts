@@ -33,6 +33,7 @@ import { transformSync } from "esbuild";
 import { CATALOG } from "./helpers/catalog";
 import * as normalize from "../../supabase/functions/job-board/normalize";
 import { pickRoute } from "../../supabase/functions/job-board/search-routing";
+import { ORACLE_RESULT_CAP } from "../../supabase/functions/job-board/read-window";
 import { EMPLOYER_ALIASES } from "../../supabase/functions/job-board/employer-aliases";
 import { JOB_SOURCES as LAYOFF_COPY } from "../../supabase/functions/layoff-filings/board-sources";
 
@@ -105,7 +106,7 @@ type Src = { name: string; source: string; token: string; pages?: number };
 const src = (token: string): Src => ({ name: "Employer", source: "oracle", token, pages: 1 });
 
 const fetchOracle = lift<(s: Src, startOffset?: number) => Promise<unknown>>("async function fetchOracle(", ["ORACLE_PAGE_SIZE", "ORACLE_PAGE_CAP"], {
-  oracleHost,
+  oracleHost, ORACLE_RESULT_CAP,
   fetchWithTimeout: async (u: string) => { asked.push(u); throw STOP; },
   chunkPageRefusal: (e: unknown) => { throw e; },
 });
