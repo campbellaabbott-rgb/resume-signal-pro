@@ -108,6 +108,8 @@ interface FreeKeywordResult {
   detectedLanguage?: { code: string; name: string } | null;
   /** The scanner did not read the whole résumé (S13-008); absent on older responses. */
   resumeTruncated?: boolean;
+  /** The résumé's language is one the scan does not grade, or unknown (S13-024); null when it grades it. */
+  languageNotice?: { reason?: string; language?: string | null; name?: string | null } | null;
   candidateName?: string | null;
   currentRole?: string;
   industry: string;
@@ -2294,6 +2296,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
                 resumeText={resumeText}
                 multiColumnDetected={resumeMultiColumnDetected}
                 resumeTruncated={freeKeywordResult.resumeTruncated === true}
+                languageNotice={freeKeywordResult.languageNotice ?? null}
                 jobDescriptionText={jobDescriptionText}
                 jobTitle={uploadedJobs[0]?.title}
                 jobCompany={uploadedJobs[0]?.company}

@@ -1637,6 +1637,11 @@
       "title": "Esta verificação não leu seu currículo inteiro.",
       "body": "Ele é mais longo do que a verificação lê por inteiro, então a pontuação, as palavras-chave em falta e as linhas citadas abaixo vêm só da parte lida. Encurte-o, ou verifique as páginas mais importantes, para que tudo seja analisado."
     },
+    "languageNotice": {
+      "unknownTitle": "Não conseguimos identificar em que idioma este currículo está escrito.",
+      "unsupportedTitle": "Este currículo parece estar em {{language}}, um idioma que esta verificação não avalia.",
+      "body": "As verificações de palavras-chave e de seções foram feitas para inglês, espanhol, francês, alemão, português, holandês, italiano, hindi e tagalo, então elas leem seu currículo com esses termos e podem deixar passar palavras do seu idioma. Considere as palavras-chave em falta abaixo como um guia, não como um veredito."
+    },
     "weakestBullets": {
       "title": "Seus tópicos mais fracos, avaliados",
       "subtitle": "Citados do seu currículo e avaliados por números, verbos e alcance. Onde houver uma reescrita, preencha os [colchetes] com seus números reais.",

@@ -1637,6 +1637,11 @@
       "title": "Cette analyse n'a pas lu votre CV en entier.",
       "body": "Il est plus long que ce que l'analyse lit en entier : le score, les mots-clés manquants et les lignes citées ci-dessous ne viennent que de la partie lue. Raccourcissez-le, ou analysez les pages les plus importantes, pour que tout soit vérifié."
     },
+    "languageNotice": {
+      "unknownTitle": "Nous n'avons pas pu déterminer dans quelle langue ce CV est rédigé.",
+      "unsupportedTitle": "Ce CV semble rédigé en {{language}}, une langue que cette analyse n'évalue pas.",
+      "body": "Les vérifications des mots-clés et des sections sont conçues pour l'anglais, l'espagnol, le français, l'allemand, le portugais, le néerlandais, l'italien, l'hindi et le tagalog : elles lisent donc votre CV avec ces termes et peuvent manquer des mots de votre langue. Considérez les mots-clés manquants ci-dessous comme une indication, pas comme un verdict."
+    },
     "weakestBullets": {
       "title": "Vos puces les plus faibles, notées",
       "subtitle": "Citées de votre CV et notées selon les chiffres, les verbes et la portée. Lorsqu'une reformulation est proposée, remplacez les [crochets] par vos vrais chiffres.",

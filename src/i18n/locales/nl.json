@@ -1627,6 +1627,11 @@
       "title": "Deze scan heeft je cv niet helemaal gelezen.",
       "body": "Het is langer dan de scan volledig leest, dus de score, de ontbrekende trefwoorden en de geciteerde regels hieronder komen alleen uit het gelezen deel. Kort het in, of scan de belangrijkste pagina's, om alles te laten controleren."
     },
+    "languageNotice": {
+      "unknownTitle": "We konden niet vaststellen in welke taal dit cv is geschreven.",
+      "unsupportedTitle": "Dit cv lijkt in het {{language}} geschreven, een taal die deze scan niet beoordeelt.",
+      "body": "De controles op trefwoorden en secties zijn gemaakt voor Engels, Spaans, Frans, Duits, Portugees, Nederlands, Italiaans, Hindi en Tagalog, dus ze lezen je cv met die termen en kunnen woorden in jouw taal missen. Zie de ontbrekende trefwoorden hieronder als richtlijn, niet als oordeel."
+    },
     "weakestBullets": {
       "title": "Je zwakste opsommingspunten, beoordeeld",
       "subtitle": "Geciteerd uit je cv en beoordeeld op cijfers, werkwoorden en reikwijdte. Waar een herschrijving staat, vul je de [haken] in met je echte cijfers.",

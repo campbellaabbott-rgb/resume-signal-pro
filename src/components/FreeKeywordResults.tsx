@@ -452,6 +452,9 @@ export interface FreeKeywordResultsProps {
   multiColumnDetected?: boolean;
   /** The scanner's resumeTruncated: part of the résumé was not read (S13-008). */
   resumeTruncated?: boolean;
+  /** The scanner's languageNotice (S13-024): the résumé is in a language the
+   *  scan does not grade, or one it could not identify. Null when it grades it. */
+  languageNotice?: { reason?: string; language?: string | null; name?: string | null } | null;
   jobDescriptionText?: string;
   jobTitle?: string;
   jobCompany?: string;
@@ -643,6 +646,7 @@ export function FreeKeywordResults({
   resumeText,
   multiColumnDetected,
   resumeTruncated,
+  languageNotice,
   jobDescriptionText,
   jobTitle,
   jobCompany,
@@ -719,7 +723,23 @@ export function FreeKeywordResults({
   const missingSkills = Array.isArray(missingSkillsProp) ? missingSkillsProp : [];
   const missingSkillsDetailed = Array.isArray(missingSkillsDetailedProp) ? missingSkillsDetailedProp : [];
   const skillGapActions = Array.isArray(skillGapActionsProp) ? skillGapActionsProp : [];
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  // The scanner's languageNotice, in the reader's words (S13-024): a résumé in
+  // a language the scan does not grade was reported as if it were English.
+  // The language is named in the reader's language from its code; the
+  // scanner's English name is the fallback, and a notice with neither reads
+  // as an unknown language. Anything else (an older response) shows nothing.
+  const languageNoticeTitle = (() => {
+    if (!languageNotice || typeof languageNotice !== 'object') return null;
+    if (languageNotice.reason === 'unknown') return t('freeResults.languageNotice.unknownTitle');
+    if (languageNotice.reason !== 'unsupported') return null;
+    const code = typeof languageNotice.language === 'string' ? languageNotice.language : '';
+    let name = typeof languageNotice.name === 'string' ? languageNotice.name.trim() : '';
+    if (/^[a-z]{2,3}$/.test(code)) {
+      try { name = new Intl.DisplayNames([i18n.language || 'en', 'en'], { type: 'language' }).of(code) || name; } catch { /* no Intl.DisplayNames: keep the scanner's name */ }
+    }
+    return name ? t('freeResults.languageNotice.unsupportedTitle', { language: name }) : t('freeResults.languageNotice.unknownTitle');
+  })();
   // Interview prep needs an account (the server counts it by account).
   const { user } = useAuth();
   const { formatPrice, isLocalCurrency } = useCurrency();
@@ -1445,6 +1465,15 @@ export function FreeKeywordResults({
           <p className="text-xs text-muted-foreground mt-0.5">{t('freeResults.resumeTruncated.body')}</p>
         </div>
       )}
+      {/* ── The résumé is in a language the scan does not grade, or one it
+          could not identify (S13-024): the report says so before it is read,
+          instead of passing an English reading off as a reading of the CV. ── */}
+      {languageNoticeTitle && (
+        <div data-language-notice role="note" className="rounded-xl border border-warning/50 bg-warning/10 px-4 py-3 mb-4">
+          <p className="text-sm font-semibold text-foreground">{languageNoticeTitle}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{t('freeResults.languageNotice.body')}</p>
+        </div>
+      )}
 
       {/* ── The report's summary. The scan's verdict marks a complete report,
           and its sentence is not printed: it put a pass rate on the résumé,
@@ -1491,6 +1520,7 @@ export function FreeKeywordResults({
                 }
                 y += 8;
                 if (resumeTruncated === true) line(`${t('freeResults.resumeTruncated.title')} ${t('freeResults.resumeTruncated.body')}`, 9.5, true, [160, 110, 20]);
+                if (languageNoticeTitle) line(`${languageNoticeTitle} ${t('freeResults.languageNotice.body')}`, 9.5, true, [160, 110, 20]);
                 line(`ATS Score: ${atsScoreEstimate}/100${scoreBand ? `  (modeling band ${scoreBand.low}–${scoreBand.high})` : ''}${projectedScore ? `  →  about ${projectedScore} after fixes, a rough guide` : ''}`, 12, true);
                 if (scoreBreakdown) line(`Breakdown — Keywords: ${scoreBreakdown.keywords}%  ·  Format: ${scoreBreakdown.format}%  ·  Quantification: ${scoreBreakdown.quantification}%`, 10);
                 y += 6;

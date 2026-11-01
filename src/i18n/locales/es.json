@@ -1637,6 +1637,11 @@
       "title": "Este análisis no leyó tu currículum completo.",
       "body": "Es más largo de lo que el análisis lee completo, así que la puntuación, las palabras clave que faltan y las líneas citadas abajo salen solo de la parte que leyó. Acórtalo, o analiza las páginas más importantes, para que se revise todo."
     },
+    "languageNotice": {
+      "unknownTitle": "No pudimos saber en qué idioma está escrito este currículum.",
+      "unsupportedTitle": "Este currículum parece estar en {{language}}, un idioma que este análisis no evalúa.",
+      "body": "Las comprobaciones de palabras clave y de secciones están pensadas para inglés, español, francés, alemán, portugués, neerlandés, italiano, hindi y tagalo, así que leen tu currículum con esos términos y pueden pasar por alto palabras de tu idioma. Toma las palabras clave que faltan abajo como una guía, no como un veredicto."
+    },
     "weakestBullets": {
       "title": "Tus viñetas más débiles, calificadas",
       "subtitle": "Citadas de tu currículum y calificadas por cifras, verbos y alcance. Donde aparece una reescritura, completa los [corchetes] con tus cifras reales.",

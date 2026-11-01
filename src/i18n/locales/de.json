@@ -1627,6 +1627,11 @@
       "title": "Dieser Scan hat deinen Lebenslauf nicht vollständig gelesen.",
       "body": "Er ist länger, als der Scan vollständig liest. Der Wert, die Schlüsselwortlücken und die zitierten Zeilen unten stammen daher nur aus dem gelesenen Teil. Kürze ihn oder scanne die wichtigsten Seiten, damit alles geprüft wird."
     },
+    "languageNotice": {
+      "unknownTitle": "Wir konnten nicht erkennen, in welcher Sprache dieser Lebenslauf geschrieben ist.",
+      "unsupportedTitle": "Dieser Lebenslauf ist offenbar auf {{language}} verfasst, einer Sprache, die dieser Scan nicht bewertet.",
+      "body": "Die Schlüsselwort- und Abschnittsprüfungen sind für Englisch, Spanisch, Französisch, Deutsch, Portugiesisch, Niederländisch, Italienisch, Hindi und Tagalog gebaut. Sie lesen deinen Lebenslauf daher mit diesen Begriffen und können Wörter in deiner Sprache übersehen. Sieh die Schlüsselwortlücken unten als Hinweis, nicht als Urteil."
+    },
     "weakestBullets": {
       "title": "Deine schwächsten Aufzählungspunkte, bewertet",
       "subtitle": "Wörtlich aus deinem Lebenslauf zitiert und nach Kennzahlen, Verben und Umfang bewertet. Wo eine Umformulierung steht, ersetze die [Klammern] durch deine echten Zahlen.",

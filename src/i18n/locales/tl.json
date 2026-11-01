@@ -1627,6 +1627,11 @@
       "title": "Hindi nabasa ng scan na ito ang buong resume mo.",
       "body": "Mas mahaba ito kaysa sa kayang basahin nang buo ng scan, kaya ang score, ang mga kulang na keyword at ang mga sinipi sa ibaba ay mula lang sa bahaging nabasa. Paikliin ito, o i-scan ang pinakamahahalagang pahina, para masuri ang lahat."
     },
+    "languageNotice": {
+      "unknownTitle": "Hindi namin matukoy kung anong wika ang ginamit sa resume mo.",
+      "unsupportedTitle": "Mukhang nakasulat sa {{language}} ang resume mo, isang wikang hindi sinusuri ng scan na ito.",
+      "body": "Ang mga pagsusuri sa keyword at seksyon ay ginawa para sa English, Spanish, French, German, Portuguese, Dutch, Italian, Hindi at Tagalog, kaya binabasa nito ang resume mo gamit ang mga terminong iyon at maaaring makaligtaan ang mga salita sa wika mo. Ituring ang mga kulang na keyword sa ibaba bilang gabay, hindi hatol."
+    },
     "weakestBullets": {
       "title": "Ang pinakamahihinang bullet mo, may marka",
       "subtitle": "Sinipi mula sa resume mo at minarkahan ayon sa numero, pandiwa at saklaw. Kapag may ipinakitang rewrite, punan ang mga [bracket] ng totoong numero mo.",

@@ -1627,6 +1627,11 @@
       "title": "This scan did not read your whole résumé.",
       "body": "It is longer than the scan reads in full, so the score, the keyword gaps and the quoted lines below come only from the part it read. Shorten it, or scan the pages that matter most, to have all of it checked."
     },
+    "languageNotice": {
+      "unknownTitle": "We could not tell which language this résumé is written in.",
+      "unsupportedTitle": "This résumé reads as {{language}}, a language this scan does not grade.",
+      "body": "Its keyword and section checks are built for English, Spanish, French, German, Portuguese, Dutch, Italian, Hindi and Tagalog, so they read your résumé against those terms and may miss words in your language. Treat the keyword gaps below as a guide, not a verdict."
+    },
     "weakestBullets": {
       "title": "Your weakest bullets, graded",
       "subtitle": "Quoted from your resume and graded on metrics, verbs and scope. Where a rewrite is shown, fill any [brackets] with your real numbers.",
