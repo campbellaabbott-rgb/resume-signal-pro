@@ -77,10 +77,10 @@ describe("the quick test walks the chains production runs", () => {
     expect([...seen].sort()).toEqual([...new Set([...DEFAULT_MODELS, ...SCAN_MODEL_CHAIN])].sort());
     for (const a of asked) {
       if (String(a.model).startsWith("google/")) {
-        expect(a, String(a.model)).toHaveProperty("max_tokens", 50);
+        expect(a, String(a.model)).toHaveProperty("max_tokens", 50 + 8_192); // the answer plus the thinking production allows (S13-065)
         expect(a, String(a.model)).not.toHaveProperty("max_completion_tokens");
       } else {
-        expect(a, String(a.model)).toHaveProperty("max_completion_tokens", 50);
+        expect(a, String(a.model)).toHaveProperty("max_completion_tokens", 50 + 8_192);
       }
     }
   });
