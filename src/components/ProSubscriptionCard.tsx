@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProSubscription } from "@/hooks/use-pro-subscription";
+import { PRO_SUPPORT_EMAIL as SUPPORT_ADDRESS } from "@/config/pro-support";
 import { SUBSCRIPTIONS } from "@/config/products";
 import { PRO_PERK_ITEMS, proPerksOnSale, proSummaryOnSale } from "@/config/pro-perks";
 import { isOwingStatus } from "@/config/subscription-status";
@@ -17,7 +18,7 @@ import { proOnSale } from "@/lib/purchases-open";
 // guards read it without mounting this card.
 
 /** Where a subscriber writes when their plan is not linked to this account. */
-export const PRO_SUPPORT_EMAIL = "resumeboostersupp@gmail.com";
+export const PRO_SUPPORT_EMAIL = SUPPORT_ADDRESS;
 
 /**
  * Resume Booster Pro card — the monthly plan. Shown on /pricing and /account.
@@ -42,6 +43,11 @@ export const PRO_SUPPORT_EMAIL = "resumeboostersupp@gmail.com";
  * - NO INCLUDED FULL ANALYSIS WHILE IT IS OFF SALE (gate G2): the list and
  *   the summary leave it out only while FULL_ANALYSIS_ON_SALE is off, so Pro
  *   never promises a report the pages do not sell (as the pricing card does).
+ * - A PLAN ON THIS ADDRESS THAT IS NOT LINKED TO THIS ACCOUNT (linkPending)
+ *   IS SHOWN, NOT SOLD AGAIN (S13-086). The checkout reads the same address
+ *   and answers alreadySubscribed, so "Go Pro" there could never start a
+ *   plan: pressing it said "You're already a Pro member" while every tool
+ *   stayed locked. The card says the plan exists and how it gets linked.
  * - A SEPARATE, UNTICKED RENEWAL BOX (California's automatic renewal law as
  *   amended by AB 2863): a signed-in buyer's "Go Pro" stays disabled until it
  *   is ticked, and the server refuses a plan without it.
@@ -178,13 +184,17 @@ export function ProSubscriptionCard({ compact = false }: { compact?: boolean }) 
           </p>
           {manageButton(t("proPlan.updatePayment", "Update payment method"), CreditCard, "default")}
         </div>
+      ) : pro.linkPending ? (
+        <div className="space-y-2" data-link-pending>
+          <p className="text-sm font-medium">
+            {t("proPlan.linkPendingUnlinked", "This address has a plan that isn't linked to this account yet. Email {{support}} from that address and we will link it.", { support: PRO_SUPPORT_EMAIL })}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {t("proPlan.linkPendingNoSecondPlan", "You don't need to buy Pro again: a second plan can't be started on an address that already has one.")}
+          </p>
+        </div>
       ) : !open ? null : (
         <div className="space-y-3">
-          {pro.linkPending && (
-            <p className="text-sm text-muted-foreground">
-              {t("proPlan.linkPendingUnlinked", "This address has a plan that isn't linked to this account yet. Email {{support}} from that address and we will link it.", { support: PRO_SUPPORT_EMAIL })}
-            </p>
-          )}
           <PurchaseTerms kind="subscription" plan="pro" className="text-center" onAutoRenewChange={setRenewTicked} />
           <Button
             className="w-full gap-2 bg-primary hover:bg-primary/90 shadow-lg shadow-primary/30"

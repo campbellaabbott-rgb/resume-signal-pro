@@ -7,6 +7,7 @@ import { checkoutContext } from "@/lib/track-transport";
 import { consentWasRequired, purchaseTerms, purchaseTermsUnused } from "@/lib/purchase-terms";
 import { checkoutRefusalOf } from "@/lib/checkout-refusal";
 import { stashedSessionIdFor } from "@/lib/auth-fragment";
+import { PRO_SUPPORT_EMAIL } from "@/config/pro-support";
 
 /** How often, and how many times, a buyer back from Stripe is re-checked until the plan reads live. */
 export const PRO_CONFIRM_INTERVAL_MS = 3000;
@@ -177,8 +178,13 @@ export function useProSubscription() {
         }
         if (error) throw error;
         if (data?.alreadySubscribed) {
-          toast({ title: i18n.t("proPlan.toast.alreadyMemberTitle", "You're already a Pro member"), description: i18n.t("proPlan.toast.alreadyMemberBody", "Your plan is already active on this account.") });
-          await refresh();
+          // The checkout answers by ADDRESS. When this account cannot use the
+          // plan on its address (not linked yet), it is not told the plan is
+          // active on it (S13-086): it is told to have it linked.
+          const live = await refresh();
+          toast(live
+            ? { title: i18n.t("proPlan.toast.alreadyMemberTitle", "You're already a Pro member"), description: i18n.t("proPlan.toast.alreadyMemberBody", "Your plan is already active on this account.") }
+            : { title: i18n.t("proPlan.toast.linkPendingTitle", "This address already has a Pro plan"), description: i18n.t("proPlan.toast.linkPendingBody", "It isn't linked to this account yet. Email {{support}} from that address and we will link it.", { support: PRO_SUPPORT_EMAIL }) });
           return true;
         }
         if (data?.url) {
