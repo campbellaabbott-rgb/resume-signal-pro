@@ -100,22 +100,25 @@ describe("the held prune waits for another message, not for builds this one depl
 describe("a slice note names the build this deploy carries, and when to stop", () => {
   const phases = L.migrationPhases(SCOPE, policy, rows(LIVE));
   const note = (s: string) => phases.afterFunctions.find((p: { file: string }) => p.file.startsWith(s))?.note ?? "";
+  // The build main carries: .96 when this was written, .98 since fix/pd-job-board (2026-10-31).
+  const DEPLOYING = repoBuild("job-board")!.slice("job-board.".length);
 
   it("written for .95, deployed as .96: the OPTIONS clause names .96, and .95 or later stays the rule", () => {
-    expect(note("20261025110000")).toBe(L.sliceNote("2026-09-09.95", "2026-09-09.96"));
-    expect(note("20261025110000")).toContain("sliceStats.build reads 2026-09-09.95 or later (this deploy's 2026-09-09.96 qualifies)");
-    expect(note("20261025110000")).toContain("minutes after an OPTIONS request already answers 2026-09-09.96");
+    expect(note("20261025110000")).toBe(L.sliceNote("2026-09-09.95", DEPLOYING));
+    expect(note("20261025110000")).toContain(`sliceStats.build reads 2026-09-09.95 or later (this deploy's ${DEPLOYING} qualifies)`);
+    expect(note("20261025110000")).toContain(`minutes after an OPTIONS request already answers ${DEPLOYING}`);
     expect(note("20261025110000")).not.toContain("answers 2026-09-09.95");
   });
 
   it("written for .96, deployed as .96: no qualifier", () => {
-    expect(note("20261026110000")).toBe(L.sliceNote("2026-09-09.96", "2026-09-09.96"));
-    expect(note("20261026110000")).not.toContain("qualifies");
+    expect(note("20261026110000")).toBe(L.sliceNote("2026-09-09.96", DEPLOYING));
+    expect(L.sliceNote("2026-09-09.96", "2026-09-09.96")).not.toContain("qualifies");
+    if (DEPLOYING !== "2026-09-09.96") expect(note("20261026110000")).toContain(`(this deploy's ${DEPLOYING} qualifies)`);
   });
 
   it("both say when to stop retrying", () => {
     for (const s of ["20261025110000", "20261026110000"]) {
-      expect(note(s)).toMatch(/if it still refuses an hour after job-board first answers 2026-09-09\.96 to an OPTIONS request, stop and send the error$/);
+      expect(note(s).endsWith(`if it still refuses an hour after job-board first answers ${DEPLOYING} to an OPTIONS request, stop and send the error`), note(s)).toBe(true);
     }
   });
 });

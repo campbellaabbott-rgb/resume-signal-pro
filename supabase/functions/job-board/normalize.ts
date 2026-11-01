@@ -1193,6 +1193,35 @@ export function payToReparse(patch: { salary?: unknown; country?: unknown }, row
   return typeof t === "string" && t.trim() ? t : undefined;
 }
 
+// Rationale: docs/job-board-index-notes.md#n1399-stored-town-refile
+const TOWN_WORD_ABROAD: ReadonlyArray<readonly [RegExp, string]> = [[/\blake wales\b/i, "GB"], [/\bgreece\b/i, "GR"], [/\bperu\b/i, "PE"], [/\bturkey\b/i, "TR"]];
+export function townCountryRefile(location: unknown, stored: unknown): "US" | null {
+  if (typeof location !== "string" || typeof stored !== "string") return null;
+  if (!TOWN_WORD_ABROAD.some(([re, c]) => c === stored && re.test(location))) return null;
+  return detectCountry(location) === "US" ? "US" : null;
+}
+type TownRow = { id: string; location?: string | null; country?: string | null; region_code?: string | null; title?: string | null; salary?: string | null };
+const payCols = (t: string, c: string, title: string | null) => {
+  const p = parseSalaryStructured(t, c, { title, description: null });
+  return { salary_min_annual: p?.annualMin ?? null, salary_max_annual: p?.annualMax ?? null, salary_period: p?.period ?? null, salary_currency: p?.currency ?? null };
+};
+export function townRefilePatches(rows: ReadonlyArray<TownRow>, read: { has(id: string): boolean }, source: string, regionKnown: boolean): Array<Record<string, unknown> & { id: string; country: "US" }> {
+  const out: Array<Record<string, unknown> & { id: string; country: "US" }> = [];
+  for (const r of rows) {
+    if (read.has(r.id) || !r.id.startsWith(`${source}:`) || townCountryRefile(r.location, r.country) === null) continue;
+    const p: Record<string, unknown> & { id: string; country: "US" } = { id: r.id, country: "US" };
+    const region = regionKnown ? detectRegion(r.location, "US") : null;
+    if (region && region !== r.region_code) p.region_code = region;
+    const pay = typeof r.salary === "string" && r.salary.trim() ? r.salary : null;
+    if (pay) {
+      const us = payCols(pay, "US", r.title ?? null);
+      if (JSON.stringify(us) !== JSON.stringify(payCols(pay, r.country as string, r.title ?? null))) Object.assign(p, us);
+    }
+    out.push(p);
+  }
+  return out;
+}
+
 // Rationale: docs/job-board-index-notes.md#n1239-export-const-schedule_words_not_stored-r
 export const SCHEDULE_WORDS_NOT_STORED: ReadonlySet<string> = new Set(["personio"]);
 
