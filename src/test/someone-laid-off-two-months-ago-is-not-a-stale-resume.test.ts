@@ -13,11 +13,27 @@
  * (corpus in ~/.config/resumebooster/free-scan-wave-corpora/S10-007, truth
  * from the generator's timeline, plus two held-out seeds of 420): main wrong
  * on 270 (124 of them a false claim), the branch on none.
+ *
+ * Review fix (2026-11-01). The reviewer's four shipping probes all failed on
+ * the branch: "Mar 2022 to date" (the separator took "to", leaving "date"),
+ * "till date" the same way, "Sep 2023 – PresentSan Francisco" (a PDF glues
+ * the next column on) and "Fall 2022 – Fall 2024" (a season was not a month,
+ * so a degree's two years opened a 32-month gap). Seasons are now read as
+ * their first month as a start and their last as an end, a seam between a
+ * lower-case letter or digit and a capital is opened before ranges are read,
+ * and "date" is a current role after "to", "till" or "until". On the
+ * reviewer's corpus: to-date 2 → 60 of 60, till-date 6 → 60, glued present
+ * 4 → 60 (main 32), glued end 15 → 60 (main 14), season degree 31 → 54 (main
+ * 29); the builder's 420 stay 420 on three seeds. The fallback's timeline
+ * card read "two years more than two apart" as a gap ("B.S. 2008 – 2012" and
+ * "2016 – Present"): it now asks this reader, so the reviewer's 188 false
+ * fallback gaps are 0 and the two scanners disagree on none of 296 résumés.
  */
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { detectEmploymentGaps, extractDateRanges } from "../../supabase/functions/free-keyword-scan/employment-gaps";
+import { detectEmploymentGaps, extractDateRanges, timelineGapOf } from "../../supabase/functions/free-keyword-scan/employment-gaps";
+import { codeOf } from "./helpers/strip-comments";
 import slice from "./fixtures/free-scan-wave/s10-007-employment-gaps.json";
 
 const NOW = new Date(2026, 9, 31); // 31 Oct 2026, local time
@@ -109,6 +125,68 @@ describe("the corpus slice: synthetic timelines in real date formats", () => {
       expect(r.gaps.map((g) => `${g.startDate}→${g.endDate}`)).toEqual(c.gaps);
     });
   }
+});
+
+describe("the reviewer's shipping probes (SYNTHETIC résumés, labelled; review-ship-S10-007/probe.json)", () => {
+  const probes: Array<{ id: string; text: string; stale: boolean; gaps: number }> = [
+    { id: "ship-1", text: "Priya Sharma | priya@example.com\nEXPERIENCE\nOperations Manager, Northwind\nMar 2022 to date\nOperations Analyst, Contoso\nJun 2020 – Jan 2022\nEDUCATION\nB.Com., Delhi University, 2016 – 2020", stale: false, gaps: 0 },
+    { id: "ship-2", text: "Priya Sharma | priya@example.com\nEXPERIENCE\nOperations Manager, Northwind\nNov 2021 till date\nOperations Analyst, Contoso\nSep 2020 – Nov 2021\nEDUCATION\nB.Com., Delhi University, 2016 – 2020", stale: false, gaps: 0 },
+    { id: "ship-3", text: "Priya Sharma | priya@example.com\nEXPERIENCE\nOperations Manager, Northwind\nSep 2023 – PresentSan Francisco, CA\nOperations Analyst, Contoso\nMar 2022 – Jun 2023\nEDUCATION\nB.Com., Delhi University, 2018 – 2022", stale: false, gaps: 0 },
+    { id: "ship-4", text: "Priya Sharma | priya@example.com\nEXPERIENCE\nOperations Manager, Northwind\nJan 2025 – Present\nOperations Analyst, Contoso\nMar 2019 – May 2022\nEDUCATION\nM.B.A., State University, Fall 2022 – Fall 2024", stale: false, gaps: 0 },
+  ];
+  for (const c of probes) {
+    it(`${c.id}: not stale, no gap`, () => {
+      const r = detectEmploymentGaps(c.text, NOW);
+      expect(r.isStale).toBe(c.stale);
+      expect(r.gaps).toHaveLength(c.gaps);
+    });
+  }
+});
+
+describe("dates as PDFs and résumés really write them (review fix)", () => {
+  it('"to Date" and "till Date" are current roles; "Date" after a dash is not a date', () => {
+    expect(extractDateRanges("Manager | June 2018 to Date")[0].end).toBe("present");
+    expect(extractDateRanges("Manager | Nov 2021 till date")[0].end).toBe("present");
+    expect(extractDateRanges("Manager | Nov 2021 until Date")[0].end).toBe("present");
+    expect(extractDateRanges("Update date: Jan 2020")).toEqual([]);
+  });
+  it("a column glued on by a PDF does not hide the end", () => {
+    expect(extractDateRanges("Sep 2023 – PresentSan Francisco, CA")[0].end).toBe("present");
+    const [r] = extractDateRanges("Mar 2020 – Jan 2021Denver, CO");
+    expect(r.end === "present" ? null : [r.end.year, r.end.month]).toEqual([2021, 0]);
+  });
+  it("a season is its first month as a start and its last as an end", () => {
+    const [r] = extractDateRanges("Fall 2016 – Spring 2020");
+    expect([r.start.year, r.start.month]).toEqual([2016, 8]);
+    expect(r.end === "present" ? null : [r.end.year, r.end.month]).toEqual([2020, 4]);
+    const [w] = extractDateRanges("Winter 2019 – Winter 2020");
+    expect([w.start.month, w.end === "present" ? -1 : w.end.month]).toEqual([0, 11]);
+  });
+  it("an end that names no month still names its year", () => {
+    const [r] = extractDateRanges("Jan 2018 – Mid 2020");
+    expect(r.end === "present" ? null : [r.end.year, r.end.month]).toEqual([2020, 11]);
+  });
+  it("a degree written in seasons is time accounted for", () => {
+    expect(detectEmploymentGaps(resume("Analyst, Contoso | Mar 2019 – May 2022", "Manager, Northwind | Jan 2025 – Present", "MBA, State University, Fall 2022 – Fall 2024"), NOW).gaps).toEqual([]);
+  });
+});
+
+describe("the fallback's timeline card asks the same reader (review fix)", () => {
+  it("the years inside one range are not a gap (a four-year degree, a role held since 2016)", () => {
+    expect(timelineGapOf(resume("Analyst, Acme | 2016 – Present"), NOW)).toEqual({ hasGaps: false });
+    expect(timelineGapOf("EXPERIENCE\nAnalyst, Acme | 2012 – Present\nEDUCATION\nB.S. Biology, 2008 – 2012", NOW)).toEqual({ hasGaps: false });
+  });
+  it("a real gap is the one the primary reports", () => {
+    const text = resume("Accountant, Initech | Oct 2023 – Present", "Junior Accountant, Hooli | Jan 2019 – Mar 2022");
+    expect(timelineGapOf(text, NOW)).toEqual({ hasGaps: true, gapNote: "Gap detected between Mar 2022 and Oct 2023" });
+    expect(detectEmploymentGaps(text, NOW).gaps).toHaveLength(1);
+  });
+  it("the stream fork calls it and keeps no year-jump loop of its own", () => {
+    const stream = codeOf(readFileSync(resolve(__dirname, "../../supabase/functions/free-keyword-scan-stream/index.ts"), "utf8"));
+    expect(stream).toContain('import { timelineGapOf } from "./employment-gaps.ts";');
+    expect(stream).toContain("timelineGapOf(resumeText)");
+    expect(stream).not.toMatch(/years\[i\] - years\[i - 1\] > 2/);
+  });
 });
 
 describe("the scanner reads the module", () => {

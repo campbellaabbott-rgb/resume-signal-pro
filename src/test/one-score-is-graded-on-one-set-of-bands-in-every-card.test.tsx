@@ -7,6 +7,12 @@
  * green "Good" in the hero and amber in the card and the banner; a 55 was
  * amber in the hero and red in the card. Every surface now reads
  * src/lib/score-bands.ts, cut at the scanner's own rubric (85/70/50).
+ *
+ * Review fix: the streamed fallback's header (calibrateLanguage) still cut
+ * its words at 85/70/55 and the page coloured it by a tone of its own, so a
+ * 72 was a blue "optimization" header under a green hero and a 52 read "Key
+ * Improvements Needed" while the hero called it fair. The fallback now cuts
+ * at 85/70/50 and the header wears the score's band colour.
  */
 import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
@@ -49,6 +55,8 @@ if (!(globalThis as { IntersectionObserver?: unknown }).IntersectionObserver) {
 import { ScoreHero } from "@/components/scorecard/ScoreHero";
 import { MetricCardsGrid } from "@/components/scorecard/MetricCardsGrid";
 import { FreeKeywordResults } from "@/components/FreeKeywordResults";
+import { EnhancedAnalysisDisplay } from "@/components/EnhancedAnalysisDisplay";
+import { codeOf } from "./helpers/strip-comments";
 
 const ROOT = resolve(__dirname, "../..");
 const SCORES = [12, 49, 50, 55, 60, 69, 70, 72, 75, 80, 84, 85, 97];
@@ -138,8 +146,40 @@ describe("the section banner shows exactly for the scores the hero does not colo
   }
 });
 
+describe("the streamed fallback's header is graded on the same bands (review fix)", () => {
+  const header = (atsScore: number, atsRelevance: "high" | "low" = "high") => render(
+    <TooltipProvider>
+      <EnhancedAnalysisDisplay
+        resumeType={{ type: "chronological", label: "Chronological", description: "Reverse-chronological.", atsRelevance, scoringAdjustment: "" }}
+        calibratedLanguage={{ headline: "Room for Improvement", overallTone: "optimization", scoreContext: `Score of ${atsScore}.` }}
+        atsScore={atsScore}
+      />
+    </TooltipProvider>,
+  );
+  for (const [score, tone] of [[45, "destructive"], [52, "warning"], [69, "warning"], [72, "success"], [90, "success"]] as const) {
+    it(`a score of ${score} wears the ${tone} band`, () => {
+      const r = header(score);
+      expect(r.container.innerHTML).toContain(`border-${tone}/30`);
+      expect(scoreTone(score)).toBe(tone);
+      r.unmount();
+    });
+  }
+  it("an outreach-first résumé keeps the neutral header", () => {
+    const r = header(45, "low");
+    expect(r.container.innerHTML).toContain("border-primary/30");
+    r.unmount();
+  });
+  it("the fallback's words cut at 85/70/50", () => {
+    const src = codeOf(readFileSync(resolve(ROOT, "supabase/functions/free-keyword-scan-stream/index.ts"), "utf8"));
+    const start = src.indexOf("function calibrateLanguage(");
+    const body = src.slice(start, src.indexOf("\n}\n", start));
+    expect([...body.matchAll(/atsScore >= (\d+)/g)].map((m) => Number(m[1]))).toEqual([85, 70, 50]);
+  });
+});
+
 describe("no grading surface keeps a threshold of its own", () => {
   const files = [
+    "src/components/EnhancedAnalysisDisplay.tsx",
     "src/components/scorecard/ScoreHero.tsx",
     "src/components/scorecard/MetricCardsGrid.tsx",
     "src/components/ReportInsightCards.tsx",

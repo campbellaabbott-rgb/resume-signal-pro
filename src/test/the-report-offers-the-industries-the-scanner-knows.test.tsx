@@ -11,9 +11,16 @@
  * src/config/scan-industries.ts and checked here against free-keyword-scan's
  * VALID_INDUSTRIES; an id the scanner did not list (an older or streamed
  * report) is still shown as itself, never replaced by another.
+ *
+ * Review fix: the industry card's own correction grid (IndustryConfidence-
+ * Indicator) still offered the client keyword config's ids and changed only
+ * the page, so a correction made there never reached the next scan. It now
+ * offers the same scanner ids and goes the select's way: the report re-reads
+ * itself and the next scan is told. "General / Other" is sent as no
+ * override, as the scanner drops a confirmed "general".
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render } from "@testing-library/react";
+import { cleanup, fireEvent, render, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -58,9 +65,10 @@ const SERVER = (() => {
 
 afterEach(() => cleanup());
 
-const mount = (industry: string) => render(
+const mount = (industry: string, onContextConfirm?: (ctx: { confirmedIndustry?: string | null }) => void) => render(
   <MemoryRouter>
     <FreeKeywordResults
+      onContextConfirm={onContextConfirm}
       industry={industry} atsScoreEstimate={66} formatGrade="B" formatIssue="ok" resumeLength={"good" as never}
       redFlags={[]} keywords={[]} resumeText={"Jordan Probe\nFacilities Technician\n- Kept 4 buildings clean\n".repeat(3)}
       sectionCheck={{ hasContact: true, hasSummary: true, hasExperience: true, hasEducation: true, hasSkills: true } as never}
@@ -104,4 +112,40 @@ describe("the report's select", () => {
       for (const v of values) expect(SERVER, `${v} is not an id the scanner knows`).toContain(v);
     });
   }
+});
+
+describe("the industry card's correction grid (review fix)", () => {
+  const openGrid = (container: HTMLElement) => {
+    const card = within(container);
+    fireEvent.click(card.getAllByText(/Industry:/i)[0]);
+    fireEvent.click(card.getByText(/Change Industry/i));
+    const grid = container.querySelector<HTMLElement>(".grid.max-h-48");
+    expect(grid, "the correction grid").not.toBeNull();
+    return grid!;
+  };
+  it("offers exactly the scanner's ids, by their labels", () => {
+    const { container } = mount("janitorial");
+    const grid = openGrid(container);
+    const labels = [...grid.querySelectorAll("button")].map((b) => b.textContent);
+    expect(labels).toEqual(scanIndustryOptions("janitorial").map((o) => o.label));
+    expect(labels).not.toContain("Data Science / Analytics");
+  });
+  // The grid logs the correction first, then hands it on.
+  it("a correction there tells the next scan, as the select does", async () => {
+    const confirm = vi.fn();
+    const { container } = mount("janitorial", confirm);
+    fireEvent.click(within(openGrid(container)).getByRole("button", { name: "Veterinary" }));
+    await waitFor(() => expect(confirm).toHaveBeenCalledWith({ confirmedIndustry: "veterinary" }), { timeout: 2000 });
+    expect(industrySelect(container)!.value).toBe("veterinary");
+  });
+  it("General / Other is sent as no override, from the grid and from the select", async () => {
+    const confirm = vi.fn();
+    const { container } = mount("janitorial", confirm);
+    fireEvent.click(within(openGrid(container)).getByRole("button", { name: "General / Other" }));
+    await waitFor(() => expect(confirm).toHaveBeenLastCalledWith({ confirmedIndustry: null }), { timeout: 2000 });
+    fireEvent.change(industrySelect(container)!, { target: { value: "general" } });
+    expect(confirm).toHaveBeenLastCalledWith({ confirmedIndustry: null });
+    fireEvent.change(industrySelect(container)!, { target: { value: "dental" } });
+    expect(confirm).toHaveBeenLastCalledWith({ confirmedIndustry: "dental" });
+  });
 });

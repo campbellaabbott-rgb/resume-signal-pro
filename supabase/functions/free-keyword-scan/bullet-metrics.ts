@@ -9,18 +9,25 @@
  *
  * A bullet counts when a number in it measures something:
  *   - a percentage: "40%", "40 %", "30 percent";
- *   - money: "$2M", "£40,000", "€1.2 million", "USD 500";
+ *   - money: "$2M", "£40,000", "€1.2 million", "USD 500", and the currency
+ *     after the number as French and German write it ("500 000 €", "52-68K€");
  *   - a scale: "3 million", "1bn", and "10k"/"2.5M" beside what they size
- *     ("10k followers", "a 2M budget", "1M+");
+ *     ("10k followers", "a 2M budget", "1M+"), after a verb that moves an
+ *     amount ("saved 50k", "raised 2M") or as a from-to pair ("from 200K to
+ *     1.2M");
  *   - a floor: "50+ clients";
  *   - a multiplier: "3x pipeline" (not "4x4");
  *   - a group size: "team of 12", "staff of 6", "12-person team";
- *   - a count or a span: a number followed, within two words, by what it
- *     counts ("25 hours", "15 employees", "12 direct reports", "200 orders").
+ *   - a number of two or more digits ("Processed 150 invoices", "Trained
+ *     60,000 educators", "Led 12 deployments"): a résumé writes one to
+ *     measure, unless it is one of the names below;
+ *   - a one-digit count or a span: a digit followed, within two words, by
+ *     what it counts ("4 years", "3 direct reports", "4hrs", "7-10years").
  * What is not a measurement stays out: a year ("since 2019"), a product
  * version ("Office 365", "Windows 10"), a schedule ("24/7"), a standard
- * ("ISO 9001"). When unsure, a bullet is not called quantified: that would
- * hide the advice it needs.
+ * ("ISO 9001"), a label ("Tier 2", "Grade 12"), a clock time ("16:30"), a
+ * date ("16 November"), a phone number, a plan name ("401(k)"). When unsure,
+ * a bullet is not called quantified: that would hide the advice it needs.
  */
 
 const NUM = String.raw`\d[\d,]*(?:\.\d+)?`;
@@ -30,13 +37,17 @@ const NUM = String.raw`\d[\d,]*(?:\.\d+)?`;
 const EDGE = String.raw`(?<![\p{L}\p{N}.])(?<!\p{L}-)`;
 
 const PERCENT = new RegExp(String.raw`${EDGE}${NUM}\s?(?:%|percent\b|per cent\b|pct\b)`, 'iu');
-const MONEY = new RegExp(String.raw`(?:[$£€¥₹]\s?${NUM}|\b(?:usd|eur|gbp|cad|aud|inr)\s?${NUM}|${EDGE}${NUM}\s?(?:usd|eur|gbp|dollars|euros|pounds)\b)`, 'iu');
+const MONEY = new RegExp(String.raw`(?:[$£€¥₹]\s?${NUM}|\b(?:usd|eur|gbp|cad|aud|inr)\s?${NUM}|${EDGE}${NUM}\s?(?:usd|eur|gbp|dollars|euros|pounds)\b|${EDGE}${NUM}\s?[km]?\s?[€£$¥₹])`, 'iu');
 const SCALE_WORD = new RegExp(String.raw`${EDGE}${NUM}\s?(?:million|billion|thousand|trillion|mn|bn)\b`, 'iu');
 // "10k", "2.5M": a letter scale counts beside what it measures ("10k
 // followers", "a 2M budget") or with a "+" ("1M+"). Alone it is as often a
 // name ("3M", "401k", "4K") as a size.
 const SCALE_LETTER = new RegExp(String.raw`${EDGE}${NUM}(?:k|m|b)(?:\+|\s+(?:[\p{L}][\p{L}'-]*\s+){0,2}?(?:__UNITS__|revenue|arr|mrr|sales|savings|funding|pipeline|budget|bookings|gmv|aum|assets|spend|costs?|value)(?:e?s)?(?![\p{L}\p{N}]))`, 'iu');
 const FLOOR = new RegExp(String.raw`${EDGE}${NUM}\+`, 'u');
+// A letter scale moved by a verb ("Saved 50k annually", "raised 2M") or one
+// end of a from-to pair ("Grew ARR from 200K to 1.2M"). "to" alone is not
+// enough: "contributions to 401k" names a plan.
+const SCALE_MOVED = new RegExp(String.raw`(?:\b(?:saved|raised|grew|generated|cut|reduced|increased|drove|delivered|secured|closed|won|added|earned|booked|sourced|returned)\s+(?:(?:over|more than|about|nearly|almost|by|another|an extra)\s+|~)?${NUM}[kmb]|\bfrom\s+[$£€]?${NUM}[kmb]?\s+to\s+[$£€]?${NUM}[kmb])(?![\p{L}\p{N}])`, 'iu');
 const MULTIPLIER = new RegExp(String.raw`${EDGE}${NUM}\s?x(?![\p{L}\p{N}])`, 'iu');
 const GROUP = new RegExp(String.raw`\b(?:team|staff|group|crew|department|portfolio|caseload|book|pipeline|network|fleet|base)\s+of\s+(?:over\s+|more than\s+|about\s+|nearly\s+|almost\s+|~)?${NUM}\b|${EDGE}${NUM}[-\s](?:person|member|people|strong|seat|bed|store|site|location)\b`, 'iu');
 
@@ -90,9 +101,9 @@ function countEvidence(text: string): string | null {
     // sentence is capitalised for another reason ("Managed 15 employees").
     if (prevWord && LABEL_WORD.test(prevWord.replace(/\.$/, ''))) continue;
     if (!shouting && prevWord && !sentenceStart && (isCapitalised(prevWord) || isAcronym(prevWord))) continue;
-    // Pressed against the digits only a short unit reads ("4hrs", "6wk",
-    // "25kg"); "5G" or "4K" is not a count.
-    if (m[3] !== undefined && !/^(?:hrs?|wks?|yrs?|mins?|secs?|kg|km|lbs?)$/i.test(m[4])) continue;
+    // Pressed against the digits only a unit of time or weight reads ("4hrs",
+    // "6wk", "25kg", "7-10years" from a PDF); "5G" or "4K" is not a count.
+    if (m[3] !== undefined && !/^(?:hrs?|wks?|yrs?|mins?|secs?|kg|km|lbs?|hour|day|week|month|year|minute)$/i.test(m[4])) continue;
     // A singular possessive names a kind, not a count: "a valid 5 driver's
     // licence" is a licence class.
     if (/^['’]s\b/u.test(text.slice(m.index + m[0].length))) continue;
@@ -106,14 +117,93 @@ function countEvidence(text: string): string | null {
   return null;
 }
 
+// A number of two or more digits standing alone: "150", "60,000", "1,000".
+// Not glued to a letter, a decimal point, a clock or a code on either side
+// ("H100", "v10", "16:30", "08.00", "24/7", "24×7", "#12"), not a leading-zero
+// code ("088", "01"), not one group of a longer run of digits (a phone
+// number, "088-018 3453", "(818) 717-1000"), and not followed by a letter,
+// "%" or "(k)" (those are read above, or are names).
+const BARE = new RegExp(String.raw`(?<![\p{L}\p{N}.,/#:'’+])(?<!\p{L}-)(?<!\p{N}(?:\s|\s?[-–.]\s?))((?:[1-9]\d{0,2}(?:,\d{3})+|[1-9]\d+))(?:\.\d+)?(?![\p{L}\p{N}/:%+]|[.,]\d|\s?\(\p{L}\)|\s?[-–.]\s?\d{3,}|\s?[×x*]\s?\d|\)\s?\d|\s\d)`, 'gu');
+// A day of the month beside its month is a date, not a count ("16 novembre",
+// "March 15", "20 de octubre").
+const MONTH_WORD = /^(?:jan(?:uary|vier|uar|eiro)?|feb(?:ruary|ruar)?|f[ée]v(?:rier|ereiro)?|mar(?:ch|s|zo|ço)?|m[äa]rz|apr(?:il)?|avr(?:il)?|abr(?:il)?|may|mai|mayo|maio|mei|jun(?:e|i|io|ho)?|juin|jul(?:y|i|io|ho)?|juil(?:let)?|aug(?:ust)?|ao[uû]t|ago(?:sto)?|sep(?:t|tember|tembre|tiembre)?|set(?:embro|tembre)?|oct(?:ober|obre|ubre)?|okt(?:ober)?|out(?:ubro)?|nov(?:ember|embre|iembre|embro)?|dec(?:ember)?|d[ée]c(?:embre)?|dez(?:ember|embro)?|dic(?:iembre|embre)?|ene(?:ro)?|enero)\.?$/i;
+// A clock time written with a word ("10 am", "16 uur", "9 o'clock").
+const CLOCK_WORD = /^(?:a\.?m\.?|p\.?m\.?|uur|h|hrs?\.?|o['’]clock|heures?|uhr)$/i;
+
+// Words that open a sentence and leave the number after them a count: a
+// verb in the past tense of the languages the scan reads ("Processed",
+// "Géré", "Gestionó", "Gerenciou", "Gestito"), a common résumé verb, or a
+// little word. Anything else capitalised before a number is read as a name.
+const OPENING_WORD = /^(?:\p{L}+(?:ed|é|ée|és|ées|ó|í|ou|ei|ato|ito|ado|ido)|led|ran|grew|built|won|sold|drove|cut|made|wrote|taught|oversaw|held|kept|brought|took|gave|met|spent|set|rebuilt|began|shipped|manage[sd]?|leads?|runs?|grows?|builds?|supports?|trains?|process(?:es)?|handles?|oversees?|serves?|supervises?|coordinates?|delivers?|answers?|sells?|hires?|recruits?|closes?|mentors?|coach(?:es)?|teach(?:es)?|writes?|reviews?|resolves?|maintains?|owns?|directs?|deploys?|launch(?:es)?|creates?|designs?|develops?|reduces?|increases?|saves?|raises?|generates?|achieves?|exceeds?|completes?|conducts?|prepares?|performs?|provides?|schedules?|organi[sz]es?|plans?|onboards?|migrates?|automates?|analy[sz]es?|audits?|negotiates?|secures?|sources?|tracks?|monitors?|tests?|over|about|nearly|almost|around|approximately|roughly|some|more|up|across|with|by|from|for|to|of|in|at|all|our|we|i)$/iu;
+const opensACount = (w: string) => OPENING_WORD.test(w.replace(/\.$/, ''));
+
+// A lone capital, or one with a stop, beside a number is a name or an
+// address: "7514 S Padre Island Dr.", "210 E.", "NBA 2K 26".
+const LONE_CAPITAL = /^\p{Lu}\.?$/u;
+
+function bareEvidence(text: string): string | null {
+  // In capitals, a name cannot be told from a word: no bare number is read.
+  if (text === text.toUpperCase()) return null;
+  BARE.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = BARE.exec(text)) !== null) {
+    const digits = m[1].replace(/,/g, '');
+    // A year (unless a comma marks it as a quantity: "2,019 tickets").
+    if (!m[1].includes(',') && /^(?:19|20)\d\d$/.test(digits)) continue;
+    const before = text.slice(0, m.index);
+    const after = text.slice(m.index + m[0].length);
+    // The word before, across a comma ("IRA, 529", "LAVAL, 53").
+    const prevWord = before.match(/([\p{L}][\p{L}'.-]*),?\s*$/u)?.[1] ?? '';
+    // The word after, or the word joined on with a hyphen ("a 45-min call").
+    const nextWord = after.match(/^(?:\s+|[-–])([\p{L}][\p{L}'’.-]*)/u)?.[1] ?? '';
+    const nextNext = after.match(/^(?:\s+|[-–])[\p{L}][\p{L}'’.-]*\s+([\p{L}\p{N}][\p{L}\p{N}'’.-]*)/u)?.[1] ?? '';
+    const sentenceStart = !/[\p{L}\p{N}]/u.test(before.replace(/[\p{L}][\p{L}'.-]*,?\s*$/u, '').split(/[.!?;:•\n]\s*/u).pop() ?? '');
+    // A count is followed by what it counts. A number followed by a comma, a
+    // stop or nothing is an item in a list of names ("Series 6, 7, 63, 65",
+    // "GAMP and 483, compliance").
+    if (!nextWord) continue;
+    // A number after another one (or a code: "401k") and "and", "or" or a
+    // comma continues that list ("Series 7 and 63", "OSHA 10 or 30", "401k
+    // and 457 plans").
+    if (/\p{N}\p{L}{0,2}\s*(?:,|and|or|&|&amp;)\s*$/u.test(before)) continue;
+    // A label or a name: "Grade 12", "Fortune 500", "Office 365", "ISO 9001".
+    if (prevWord && LABEL_WORD.test(prevWord.replace(/\.$/, ''))) continue;
+    if (LONE_CAPITAL.test(prevWord) || LONE_CAPITAL.test(nextWord)) continue;
+    if (prevWord && (isCapitalised(prevWord) || isAcronym(prevWord))) {
+      // A sentence starts with a capital for its own reason, but a bullet
+      // starts with its verb ("Processed 150 invoices") and a name starts the
+      // same way ("Rule 144 letters", "Windows 10 rollout"). Only a verb, or a
+      // little word ("Over 60,000 educators"), lets the number through.
+      if (!sentenceStart || !opensACount(prevWord)) continue;
+    }
+    // A date or a clock time.
+    if (Number(digits) <= 31 && (MONTH_WORD.test(prevWord) || MONTH_WORD.test(nextWord) || (/^(?:de|of|du|di|van)$/i.test(nextWord) && MONTH_WORD.test(nextNext)))) continue;
+    if (Number(digits) <= 24 && CLOCK_WORD.test(nextWord)) continue;
+    // A number before a run of capitalised words, or a name and a number, is
+    // a street, a code or a title ("301 West State Street", "21 CFR Part 11",
+    // "69100 Villeurbanne", "the 2022 Annual Report").
+    if ((isCapitalised(nextWord) || isAcronym(nextWord)) && (!nextNext || isCapitalised(nextNext) || isAcronym(nextNext) || /^\p{N}/u.test(nextNext))) continue;
+    // A singular possessive names a kind ("a 15 driver's licence").
+    if (/^['’]s\b/u.test(after)) continue;
+    // A count is followed by what it counts, not by a little word: "106 not
+    // to discriminate" is a statute, "6988 or via email" a code.
+    if (nextWord && GLUE.test(nextWord) && !/^(?:or\s+more|to\s+\d)/i.test(after.trim())) continue;
+    if (nextWord && /^(?:not|be|has|have|had|will|shall|may|can|which|that|who)$/i.test(nextWord)) continue;
+    return m[0];
+  }
+  return null;
+}
+
 /** Which rule found a measurement, and the words it read (for the corpus and tests). */
 export function metricEvidence(text: string): { rule: string; match: string } | null {
-  for (const [rule, re] of [['percent', PERCENT], ['money', MONEY], ['scale', SCALE_WORD], ['scale', SCALE_LETTER_RE], ['floor', FLOOR], ['multiplier', MULTIPLIER], ['group', GROUP]] as const) {
+  for (const [rule, re] of [['percent', PERCENT], ['money', MONEY], ['scale', SCALE_WORD], ['scale', SCALE_LETTER_RE], ['scale', SCALE_MOVED], ['floor', FLOOR], ['multiplier', MULTIPLIER], ['group', GROUP]] as const) {
     const m = text.match(re);
     if (m) return { rule, match: m[0] };
   }
   const count = countEvidence(text);
-  return count ? { rule: 'count', match: count } : null;
+  if (count) return { rule: 'count', match: count };
+  const bare = bareEvidence(text);
+  return bare ? { rule: 'number', match: bare } : null;
 }
 
 /** True when the text carries a number that measures something (see above). */

@@ -71,12 +71,15 @@ const MONTH_WORD = String.raw`[A-Za-zÀ-ÿ]{3,10}\.?`;
 // May 2019 or the 19th of May.
 const TOKEN = String.raw`(?:${MONTH_WORD}\s+(?:de\s+)?(?:19|20)\d\d|\d{1,2}[\/.\-](?:19|20)\d\d|(?:19|20)\d\d[\/\-]\d{1,2}(?![\d\/.]|-(?!(?:19|20)\d\d|\p{L}))|(?:19|20)\d\d)`;
 // Words for "still in this role", in the languages the scan reads.
-const PRESENT = String.raw`(?:present|current(?:ly)?|now|today|to\s+date|till\s+date|until\s+now|ongoing|pr[ée]sent|aujourd['’]hui|heute|aktuell|actualidad|actual|actualmente|presente|attuale|atual|atualmente|heden)`;
+// "Date" alone is "to date" only where the separator before it was "to",
+// "till" or "until" ("June 2018 to Date"): the separator takes that word, so
+// the word is looked for behind "date" rather than inside this group.
+const PRESENT = String.raw`(?:present|current(?:ly)?|now|today|to\s+date|till\s+date|until\s+now|ongoing|pr[ée]sent|aujourd['’]hui|heute|aktuell|actualidad|actualmente|actual|presente|attuale|atualmente|atual|heden|hoy|hoje|oggi|(?<=(?:^|[^\p{L}])(?:to|till|until)\s+)date)`;
 const SEP = String.raw`\s*(?:[–—−-]+|to|until|till|bis|au|à|a|al|hasta|tot)\s*`;
 // A degree still under way: "May 2025 – Expected Jun 2027".
 const EXPECTED = String.raw`(?:(?:expected|anticipated|exp\.|est\.|pr[ée]vu|voraussichtlich|previsto|prevista)\s+)?`;
 const RANGE_RE = new RegExp(String.raw`(?<![\p{L}\p{N}\/.])(${TOKEN})${SEP}${EXPECTED}(${TOKEN}|${PRESENT})(?![\p{L}\p{N}])`, 'giu');
-const PRESENT_ONLY = new RegExp(String.raw`^${PRESENT}$`, 'iu');
+const PRESENT_ONLY = new RegExp(String.raw`^(?:${PRESENT}|date)$`, 'iu');
 
 function monthOf(word: string): number | undefined {
   const w = word.toLowerCase().replace(/\.$/, '');
@@ -84,13 +87,38 @@ function monthOf(word: string): number | undefined {
   return undefined;
 }
 
+// A season names a span of months, not one. As a start it is read as its
+// first month in that year and as an end as its last, so "Fall 2016 – Spring
+// 2020" covers Sep 2016 to May 2020 and "Summer 2019 – Fall 2019" Jun to Dec:
+// when the page does not say which month, no month is taken away from the
+// time it accounts for (a gap or a stale résumé is claimed only from what is
+// written). Winter as a start is January, as an end December.
+const SEASONS: Array<[RegExp, number, number]> = [
+  [/^(?:spring|printemps|primavera|fr[üu]hling|fr[üu]hjahr|lente|voorjaar)$/, 2, 4],
+  [/^(?:summer|[ée]t[ée]|verano|ver[ãa]o|estate|sommer|zomer)$/, 5, 7],
+  [/^(?:fall|autumn|automne|oto[ñn]o|outono|autunno|herbst|herfst|najaar)$/, 8, 11],
+  [/^(?:winter|hiver|invierno|inverno)$/, 0, 11],
+];
+function seasonOf(word: string, edge: 'start' | 'end'): number | undefined {
+  const w = word.toLowerCase().replace(/\.$/, '');
+  for (const [re, first, last] of SEASONS) if (re.test(w)) return edge === 'start' ? first : last;
+  return undefined;
+}
+
+// Text pulled out of a PDF loses the space between columns: "Jan 2020 –
+// PresentSan Francisco", "Mar 2024 – Jan 2021Denver". A lower-case letter or
+// a digit straight before a capital is such a seam; the reader puts the space
+// back before it looks for a range ("JavaScript" becomes "Java Script" only
+// in the copy the dates are read from).
+const SEAM = /(?<=[\p{Ll}\p{N}])(?=\p{Lu})/gu;
+
 /** One date token, read as the start (`edge: 'start'`) or end of a range. */
 export function parseDateToken(raw: string, edge: 'start' | 'end'): DatePoint | null {
   const t = raw.trim();
   let m: RegExpMatchArray | null;
   if ((m = t.match(/^([A-Za-zÀ-ÿ]{3,10})\.?\s+(?:de\s+)?((?:19|20)\d\d)$/))) {
-    const month = monthOf(m[1]);
-    if (month === undefined) return null; // "Summer 2019", "Class 2019": not a month
+    const month = monthOf(m[1]) ?? seasonOf(m[1], edge);
+    if (month === undefined) return null; // "Class 2019", "Mid 2019": not a month
     return { year: Number(m[2]), month };
   }
   if ((m = t.match(/^(\d{1,2})[\/.\-]((?:19|20)\d\d)$/))) {
@@ -125,16 +153,19 @@ export function readDateRanges(resumeText: string): ReadRange[] {
     if (line.length <= 40 && EDUCATION_HEADING.test(line)) { section = 'education'; continue; }
     if (line.length <= 40 && OTHER_HEADING.test(line)) { section = 'other'; continue; }
     const education = section === 'education' || DEGREE.test(line);
+    const scan = line.replace(SEAM, ' ');
     RANGE_RE.lastIndex = 0;
     let m: RegExpExecArray | null;
-    while ((m = RANGE_RE.exec(line)) !== null) {
+    while ((m = RANGE_RE.exec(scan)) !== null) {
       const start = parseDateToken(m[1], 'start');
-      // "Summer 2019 – 2020": no month in "Summer"; read on from the next
+      // "Mid 2019 – 2020": no month in "Mid"; read on from the next
       // character so "2019 – 2020" is still found.
       if (!start) { RANGE_RE.lastIndex = m.index + 1; continue; }
       const base = { start, line: line.slice(0, 60), text: m[0].trim(), education };
       if (PRESENT_ONLY.test(m[2].trim())) { ranges.push({ ...base, end: 'present', reversed: false }); continue; }
-      const end = parseDateToken(m[2], 'end');
+      // An end that names no month ("Jan 2018 – Mid 2020") still names its
+      // year: read it as the end of that year rather than drop the range.
+      const end = parseDateToken(m[2], 'end') ?? parseDateToken(m[2].trim().match(/(?:19|20)\d\d$/)?.[0] ?? '', 'end');
       if (!end) continue;
       ranges.push({ ...base, end, reversed: key(end) < key(start) });
     }
@@ -189,4 +220,14 @@ export function detectEmploymentGaps(resumeText: string, now: Date = new Date())
   }
 
   return { gaps, mostRecentEndYear: latest.end.year, mostRecentEndMonth: latest.end.month, isStale, staleDuration };
+}
+
+/**
+ * The fallback report's timeline card ("Employment gap detected"): the first
+ * gap this reader finds, or none. The primary's prompt is told the same gaps,
+ * so the two scanners give one answer on one résumé.
+ */
+export function timelineGapOf(resumeText: string, now: Date = new Date()): { hasGaps: boolean; gapNote?: string } {
+  const first = detectEmploymentGaps(resumeText, now).gaps[0];
+  return first ? { hasGaps: true, gapNote: `Gap detected between ${first.startDate} and ${first.endDate}` } : { hasGaps: false };
 }

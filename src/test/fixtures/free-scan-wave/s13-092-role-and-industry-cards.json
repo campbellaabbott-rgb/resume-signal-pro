@@ -263,8 +263,9 @@
   },
   {
    "title": "UNIV - Accounting/Fiscal Manager I - Department of Family Medicine",
-   "config": null,
-   "main": "Software Engineer"
+   "config": "Accountant",
+   "main": "Software Engineer",
+   "why": " fix2: an accounting manager holds the Accountant card (the work noun \"Accounting\" in the card phrase)."
   },
   {
    "title": "Senior Scientist, Statistical Programming, Late-Stage Oncology (Hybrid)",
@@ -461,25 +462,28 @@
    "main": true
   },
   {
-   "industry": "data_engineering",
+   "industry": "technology",
    "keyword": "REST",
    "text": "urge you not to exclude yourself prematurely and to submit an application if you're interested in this work. We think AI systems like the ones we're building have enormous social",
    "present": false,
-   "main": true
+   "main": true,
+   "why": "fix2: \"data_engineering\" read as the Technology card only through the substring alias lookup (S13-010); the case now names that card's key."
   },
   {
-   "industry": "cybersecurity",
+   "industry": "technology",
    "keyword": "API",
    "text": "learn and grow your current skill set Are seeking a progressive work environment at a rapidly growing organization Have a desire to help others protect their future Have an",
    "present": false,
-   "main": true
+   "main": true,
+   "why": "fix2: \"cybersecurity\" read as the Technology card only through the substring alias lookup (S13-010); the case now names that card's key."
   },
   {
-   "industry": "mlEngineering",
+   "industry": "technology",
    "keyword": "Git",
    "text": "requirements). The salary offered for this specific position is based on a number of legitimate, non-discriminatory factors set by the Company. The Company is fully committed to",
    "present": false,
-   "main": true
+   "main": true,
+   "why": "fix2: \"mlEngineering\" read as the Technology card only through the substring alias lookup (S13-010); the case now names that card's key."
   },
   {
    "industry": "marketing",
@@ -517,18 +521,20 @@
    "main": true
   },
   {
-   "industry": "manufacturing",
+   "industry": "operations",
    "keyword": "Lean",
    "text": "engineering fundamentals: Python (Java/Scala a plus), data structures and algorithms, clean and testable code, and code reviews. Demonstrated technical leadership at staff scope:",
    "present": false,
-   "main": true
+   "main": true,
+   "why": "fix2: \"manufacturing\" read as the Operations card only through the substring alias lookup (S13-010); the case now names that card's key."
   },
   {
-   "industry": "logistics",
+   "industry": "operations",
    "keyword": "ISO",
    "text": "and construction management firms. Serve as the primary construction-side liaison with the utility/grid operator on interconnection-related construction activities.",
    "present": false,
-   "main": true
+   "main": true,
+   "why": "fix2: \"logistics\" read as the Operations card only through the substring alias lookup (S13-010); the case now names that card's key."
   },
   {
    "industry": "sre",
@@ -545,11 +551,12 @@
    "main": true
   },
   {
-   "industry": "investmentBanking",
+   "industry": "finance",
    "keyword": "CPA",
    "text": "process and use any personal data that you provide to us in accordance with our CCPA Notice and Privacy Policy . For additional information, please contact",
    "present": false,
-   "main": true
+   "main": true,
+   "why": "fix2: \"investmentBanking\" read as the Finance card only through the substring alias lookup (S13-010); the case now names that card's key."
   },
   {
    "industry": "manufacturing",
@@ -573,11 +580,12 @@
    "main": true
   },
   {
-   "industry": "platformEngineering",
+   "industry": "technology",
    "keyword": "SQL",
    "text": "- Own and improve our production infrastructure on AWS, including Kubernetes, PostgreSQL, S3, networking, IAM, and load balancing. - Manage infrastructure as code in",
    "present": false,
-   "main": true
+   "main": true,
+   "why": "fix2: \"platformEngineering\" read as the Technology card only through the substring alias lookup (S13-010); the case now names that card's key."
   },
   {
    "industry": "education",
@@ -622,11 +630,12 @@
    "main": true
   },
   {
-   "industry": "sales_engineering",
+   "industry": "technology",
    "keyword": "API",
    "text": "Growth Equity at Goldman Sachs Alternatives, Index Ventures, Tiger Global, Balderton Capital, and Y Combinator. About the Role As a Senior Business Development Representative",
    "present": false,
-   "main": true
+   "main": true,
+   "why": "fix2: \"sales_engineering\" read as the Technology card only through the substring alias lookup (S13-010); the case now names that card's key."
   },
   {
    "industry": "sre",
@@ -636,32 +645,36 @@
    "main": true
   },
   {
-   "industry": "quantitativeFinance",
+   "industry": "technology",
    "keyword": "AWS",
    "text": "compliance, training oversight, supervision, performance review, and adherence to all laws and regulations. Develop and implement operational procedures to optimize efficiency",
    "present": false,
-   "main": true
+   "main": true,
+   "why": "fix2: \"quantitativeFinance\" read as the Technology card only through the substring alias lookup (S13-010); the case now names that card's key."
   },
   {
-   "industry": "dataEngineering",
+   "industry": "technology",
    "keyword": "API",
    "text": "organizations, to build meaningful future client relationships. Develop proposals by shaping fees, defining scope, selecting teams, establishing schedules, and preparing for",
    "present": false,
-   "main": true
+   "main": true,
+   "why": "fix2: \"dataEngineering\" read as the Technology card only through the substring alias lookup (S13-010); the case now names that card's key."
   },
   {
-   "industry": "cybersecurity",
+   "industry": "technology",
    "keyword": "AWS",
    "text": "verification processes related to the role and in accordance with applicable laws. California Residents: Learn more about our privacy practices for applicants by",
    "present": false,
-   "main": true
+   "main": true,
+   "why": "fix2: \"cybersecurity\" read as the Technology card only through the substring alias lookup (S13-010); the case now names that card's key."
   },
   {
-   "industry": "securityEngineering",
+   "industry": "technology",
    "keyword": "REST",
    "text": "a location’s zone designation, please refer to this resource . If a location of interest is not listed, please speak with a recruiter for additional information. Zone A:",
    "present": false,
-   "main": true
+   "main": true,
+   "why": "fix2: \"securityEngineering\" read as the Technology card only through the substring alias lookup (S13-010); the case now names that card's key."
   },
   {
    "industry": "legal",
@@ -671,11 +684,12 @@
    "main": true
   },
   {
-   "industry": "hospitality",
+   "industry": "technology",
    "keyword": "REST",
    "text": "for all aspects of our hiring process. For more on this, contact us at TA-Ops@purestorage.com if you’re invited to an interview. OUR COMMITMENT TO A STRONG AND INCLUSIVE",
    "present": false,
-   "main": true
+   "main": true,
+   "why": "fix2: \"hospitality\" read as the Technology card only through the substring alias lookup (S13-010); the case now names that card's key."
   },
   {
    "industry": "legal",
@@ -685,25 +699,28 @@
    "main": true
   },
   {
-   "industry": "platformEngineering",
+   "industry": "technology",
    "keyword": "REST",
    "text": "one of America’s best-known, award-winning chefs and pioneer in the American hotel-restaurant model, and Christopher Hunsberger, a 30-year veteran of Four Seasons Hotels and",
    "present": false,
-   "main": true
+   "main": true,
+   "why": "fix2: \"platformEngineering\" read as the Technology card only through the substring alias lookup (S13-010); the case now names that card's key."
   },
   {
-   "industry": "dataEngineering",
+   "industry": "technology",
    "keyword": "API",
    "text": "building a world of health around every individual — shaping a more connected, convenient and compassionate health experience. At CVS Health®,",
    "present": false,
-   "main": true
+   "main": true,
+   "why": "fix2: \"dataEngineering\" read as the Technology card only through the substring alias lookup (S13-010); the case now names that card's key."
   },
   {
-   "industry": "nonprofit",
+   "industry": "technology",
    "keyword": "REST",
    "text": "federal insurance programs can be carried into retirement) Licensure: 1 full and unrestricted license from any US State or territory CME: Possible $1,000 per year",
    "present": false,
-   "main": true
+   "main": true,
+   "why": "fix2: \"nonprofit\" read as the Technology card only through the substring alias lookup (S13-010); the case now names that card's key."
   },
   {
    "industry": "platformEngineering",
@@ -713,39 +730,44 @@
    "main": true
   },
   {
-   "industry": "cloudSecurity",
+   "industry": "technology",
    "keyword": "REST",
    "text": "in applying analytical thinking, process improvement skills, and emerging AI",
    "present": false,
-   "main": false
+   "main": false,
+   "why": "fix2: \"cloudSecurity\" read as the Technology card only through the substring alias lookup (S13-010); the case now names that card's key."
   },
   {
-   "industry": "solutionsArchitecture",
+   "industry": "technology",
    "keyword": "Git",
    "text": "technology experts. Our market reach, diverse solutions and services portfolio, and digital platform Ingram Micro Xvantage™ set us apart. Learn more at www.ingrammicro.com Come",
    "present": false,
-   "main": true
+   "main": true,
+   "why": "fix2: \"solutionsArchitecture\" read as the Technology card only through the substring alias lookup (S13-010); the case now names that card's key."
   },
   {
-   "industry": "cloudSecurity",
+   "industry": "technology",
    "keyword": "REST",
    "text": "you're part of a movement that belongs to something bigger. One that seeks out the restorative power of nature and is driven by our purpose to embolden explorers and preserve",
    "present": false,
-   "main": true
+   "main": true,
+   "why": "fix2: \"cloudSecurity\" read as the Technology card only through the substring alias lookup (S13-010); the case now names that card's key."
   },
   {
-   "industry": "quantitativeFinance",
+   "industry": "technology",
    "keyword": "REST",
    "text": "SAP Concur, and Navan. This position is also eligible to participate in Solidigm's restricted stock unit (RSU), restricted cash unit (RCU), and cash bonus programs. In",
    "present": false,
-   "main": true
+   "main": true,
+   "why": "fix2: \"quantitativeFinance\" read as the Technology card only through the substring alias lookup (S13-010); the case now names that card's key."
   },
   {
-   "industry": "securityEngineering",
+   "industry": "technology",
    "keyword": "Git",
    "text": "need in a crowded marketplace. Ready to join the team that's defining the future of digital advertising? As a Senior Account Executive, you will act as a pure hunter within our",
    "present": false,
-   "main": true
+   "main": true,
+   "why": "fix2: \"securityEngineering\" read as the Technology card only through the substring alias lookup (S13-010); the case now names that card's key."
   },
   {
    "industry": "dataScience",
@@ -755,25 +777,28 @@
    "main": true
   },
   {
-   "industry": "securityEngineering",
+   "industry": "technology",
    "keyword": "API",
    "text": "and rigorously manage KPIs across safety, productivity, inventory accuracy, working capital, and customer satisfaction Champion a culture of safety, accountability, and",
    "present": false,
-   "main": true
+   "main": true,
+   "why": "fix2: \"securityEngineering\" read as the Technology card only through the substring alias lookup (S13-010); the case now names that card's key."
   },
   {
-   "industry": "securityEngineering",
+   "industry": "technology",
    "keyword": "Machine Learning",
    "text": "against real deployments rather than against benchmarks. PhD in computer science, machine learning, or a related field, or equivalent research experience 2 or more years of research",
    "present": true,
-   "main": true
+   "main": true,
+   "why": "fix2: \"securityEngineering\" read as the Technology card only through the substring alias lookup (S13-010); the case now names that card's key."
   },
   {
-   "industry": "nonprofit",
+   "industry": "technology",
    "keyword": "CI/CD",
    "text": "engineering excellence across the organization: architecture standards, DevOps/CI-CD, observability, reliability engineering, cost management, and quality practices Apply",
    "present": true,
-   "main": false
+   "main": false,
+   "why": "fix2: \"nonprofit\" read as the Technology card only through the substring alias lookup (S13-010); the case now names that card's key."
   },
   {
    "industry": "consulting",
@@ -783,11 +808,12 @@
    "main": false
   },
   {
-   "industry": "retail",
+   "industry": "sales",
    "keyword": "Cross-selling",
    "text": "Increases referral volume from assigned accounts by promotion within business lines and cross selling among business lines through regular and ongoing solicitation/facilitation of referral",
    "present": true,
-   "main": false
+   "main": false,
+   "why": "fix2: \"retail\" read as the Sales card only through the substring alias lookup (S13-010); the case now names that card's key."
   }
  ]
 }

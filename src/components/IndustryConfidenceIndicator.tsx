@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { INDUSTRY_KEYWORDS } from "@/config/industry-keywords";
+import { scanIndustryOptions } from "@/config/scan-industries";
 import { supabase } from "@/integrations/supabase/client";
 
 export interface IndustryDetectionData {
@@ -86,7 +87,11 @@ const formatIndustryName = (ind: string): string => {
     .join(' ');
 };
 
-// Get available industries for correction
+// The client keyword config's industries. The correction grid no longer
+// offers these (register S13-018: 38 of them are ids the scanner does not
+// know, and a correction to one was dropped); the owner's corrections digest
+// still lists them as known labels, for corrections logged before the grid
+// offered the scanner's own ids.
 export const getAvailableIndustries = (): { value: string; label: string }[] => {
   const industries = Object.keys(INDUSTRY_KEYWORDS).map(key => ({
     value: key,
@@ -175,7 +180,6 @@ export function IndustryConfidenceIndicator({
   const techStack = industryDetection?.techStack || [];
   const educationSignals = industryDetection?.educationSignals || [];
   const config = getConfidenceConfig(confidence);
-  const availableIndustries = getAvailableIndustries();
 
   const seniorityLabel: Record<string, string> = {
     entry: t("industryConfidence.seniority.entry"),
@@ -232,6 +236,9 @@ export function IndustryConfidenceIndicator({
   // Show different treatment based on confidence
   const showWarning = confidence === 'low' || confidence === 'medium';
   const displayIndustry = selectedIndustry || industry;
+  // The scanner's own ids (S13-018), the same list the report's "We read this
+  // as" select offers, plus this report's id if it is not one of them.
+  const availableIndustries = scanIndustryOptions(displayIndustry);
   
   return (
     <div className={cn("rounded-2xl border transition-all duration-300", className, 

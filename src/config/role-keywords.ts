@@ -248,7 +248,7 @@ export const ROLE_KEYWORDS: RoleKeywordConfig[] = [
   },
   {
     title: 'HR Business Partner',
-    aliases: ['hrbp', 'human resources business partner', 'people partner', 'hr manager'],
+    aliases: ['hrbp', 'human resources business partner', 'people partner', 'hr manager', 'people operations'],
     seniority: 'mid',
     keywords: [
       { keyword: 'Employee Relations', category: 'core', reason: 'Core responsibility' },
@@ -323,20 +323,148 @@ export const ROLE_KEYWORDS: RoleKeywordConfig[] = [
 // Developer" is a Backend Developer, not a developer; a "Product Marketing
 // Manager" is a Marketing Manager. Otherwise nothing: no card beats the wrong
 // one.
+//
+// A title word is also read in the short forms titles write it in ("Sr
+// Software Engineer", "Account Exec", "Sr Mgr"). The name of the job's work
+// counts only in the card's own phrase: "Project Management" and "Project
+// Mgmt" are a Project Manager's, "Software Engineering" a Software
+// Engineer's, "Accounting" an Accountant's, "Recruitment" a Recruiter's; but
+// "Product Information Management" is no Product Manager's. A field word is
+// never read as anything but itself, so one shared word still names nothing.
+const TITLE_WORD_ABBREVIATIONS: Readonly<Record<string, readonly string[]>> = {
+  senior: ['sr', 'snr'],
+  manager: ['mgr'],
+  executive: ['exec'],
+  engineer: ['eng', 'engr'],
+};
+const TITLE_WORK_NOUNS: Readonly<Record<string, readonly string[]>> = {
+  manager: ['management', 'mgmt'],
+  engineer: ['engineering'],
+  developer: ['development'],
+  designer: ['design'],
+  analyst: ['analysis', 'analytics'],
+  accountant: ['accounting'],
+  recruiter: ['recruiting', 'recruitment'],
+};
+// The other ranks that run a field's work hold its manager's card: a Project
+// Director, a Head of Marketing, a "VP, Sales", a Marketing Coordinator (as a
+// Project Coordinator already holds the Project Manager's). The rank heads
+// its part of the title ("Lead Project Engineer" and "Head Chef" are not
+// ranks: "lead" counts only last or before a preposition, "head" only as
+// "head of"); the field word heads its own phrase, in the rank's part or the
+// next one ("Director, Physical Product Security" runs security, and "Business
+// Lead (Finance, Vendor, Product...)" names a product four parts away).
+const MANAGER_RANKS: readonly string[] = ['director', 'vp', 'avp', 'svp', 'evp', 'vice president', 'coordinator', 'leader', 'lead', 'head of'];
+const RANK_LAST_OR_PREPOSITION = new Set(['lead']);
+const FIELD_WORD_ENDS = new Set(['&', 'and', 'or', 'at', 'in', 'for', 'the', 'with']);
+// A field whose job is named by its subject rather than by its card's words:
+// a full-stack or platform engineer (or developer) writes software; financial
+// planning and FP&A are a financial analyst's work; a BI, business
+// intelligence or reporting analyst (or developer) does a data analyst's.
+// The subject stands at most one word before the head ("Full Stack Java
+// Engineer"); "Senior Analyst - Regulatory Reporting" reports to a regulator.
+const FIELD_FAMILIES: ReadonlyArray<{ config: string; subjects: readonly string[][]; heads: readonly string[] }> = [
+  { config: 'Software Engineer', subjects: [['full', 'stack'], ['fullstack'], ['platform']], heads: ['engineer', 'engineers', 'engineering', 'developer', 'developers'] },
+  { config: 'Financial Analyst', subjects: [['fp&a'], ['financial', 'planning']], heads: [] },
+  { config: 'Data Analyst', subjects: [['bi'], ['business', 'intelligence'], ['reporting']], heads: ['analyst', 'analysts', 'developer', 'developers'] },
+];
+// A one-word alias names a config only as the head of its part of the title:
+// "Developer Relations Manager" and "Developer Experience Lead" work with
+// developers, and "PM Legal" is no product manager. A level, a preposition or
+// nothing may follow it ("Developer II", "Developer Intern", "Developer for
+// Health Education").
+const AFTER_HEAD = /^(?:[ivx]+|\d+|intern|interns|internship|trainee|apprentice|graduate|associate|senior|sr|junior|jr|lead|for|in|at|with|of|on|to|and|&|or)$/;
+// "Developer" names other work too: a business, product, content, proposal,
+// editorial, curriculum or property developer writes no software. Nor is a
+// student, member, donor or study-participant recruiter hiring staff.
+const NOT_SOFTWARE_DEVELOPER = /(?:^|[^\p{L}\p{N}])(?:business|product|content|proposal|editorial|curriculum|course|instructional|learning|training|talent|leadership|organi[sz]ational|property|land|estate|project|fund|donor|community|formulation|process|method|assay|recipe|menu|concept|brand)s?[\s/-]+dev(?:eloper)?s?(?![\p{L}\p{N}])/iu;
+const NOT_STAFF_RECRUITING = /(?:^|[^\p{L}\p{N}])(?:student|membership|member|donor|participant|patient|study|trial|subject|admissions?|enrol(?:l)?ment|volunteer)s?[\s/-]+recruit(?:er|ers|ing|ment)(?![\p{L}\p{N}])/iu;
+
+// A teaching post names the subject taught, not the job: a "Lecturer in
+// Software Engineering" or an "Accounting Instructor" gets no card.
+const TEACHING_POST = /(?<![\p{L}\p{N}])(?:teacher|lecturer|instructor|professor|adjunct|tutor|faculty|lehrer(?:in)?|docent|enseignant|profesor|professeur)s?(?![\p{L}\p{N}])/iu;
+
+const PART_BREAK = /\s*[–—|/]\s*|\s+-\s*|-\s+|[,;:()[\]{}·•\u3000]/u;
+const bare = (word: string) => word.toLowerCase().replace(/^[^\p{L}\p{N}&]+|[^\p{L}\p{N}+#&]+$/gu, '');
+function titleParts(title: string): string[][] {
+  return title.split(PART_BREAK).map(part => part.split(/[\s-]+/).map(bare).filter(Boolean)).filter(words => words.length > 0);
+}
+const at = (words: string[], i: number, seq: readonly string[]) => seq.every((w, k) => words[i + k] === w);
+
+function holdsWord(roleTitle: string, word: string): boolean {
+  return resumeHasTerm(roleTitle, word) || (TITLE_WORD_ABBREVIATIONS[word] ?? []).some(form => resumeHasTerm(roleTitle, form));
+}
+
+// The card's title phrase with its last word written as the job's work.
+function holdsWorkPhrase(roleTitle: string, titleWords: string[]): boolean {
+  const head = titleWords[titleWords.length - 1];
+  const lead = titleWords.slice(0, -1);
+  return (TITLE_WORK_NOUNS[head] ?? []).some(noun => resumeHasTerm(roleTitle, [...lead, noun].join(' ')));
+}
+
+// Whether a one-word alias heads a part of the title (see AFTER_HEAD).
+function aliasHeads(parts: string[][], alias: string): boolean {
+  return parts.some(words => words.some((w, i) => w === alias && (words[i + 1] === undefined || AFTER_HEAD.test(words[i + 1]))));
+}
+
+// Whether the field word `field` and a manager's rank head the title together
+// (see MANAGER_RANKS).
+function rankRunsField(parts: string[][], field: string): boolean {
+  const rankAt: Array<[number, number, number]> = [];
+  parts.forEach((words, p) => words.forEach((_, i) => {
+    for (const rank of MANAGER_RANKS) {
+      const seq = rank.split(' ');
+      if (!at(words, i, seq)) continue;
+      const next = words[i + seq.length];
+      if (RANK_LAST_OR_PREPOSITION.has(rank) && next !== undefined && next !== 'of' && next !== 'for' && next !== 'to') continue;
+      rankAt.push([p, i, seq.length]);
+    }
+  }));
+  if (rankAt.length === 0) return false;
+  return parts.some((words, p) => words.some((w, i) => {
+    if (w !== field) return false;
+    const next = words[i + 1];
+    return rankAt.some(([rp, ri]) => Math.abs(rp - p) <= 1
+      && (next === undefined || FIELD_WORD_ENDS.has(next) || (rp === p && ri === i + 1)));
+  }));
+}
+
+// Whether a family's subject stands at most one word before its head.
+function familyNames(parts: string[][], family: (typeof FIELD_FAMILIES)[number], roleTitle: string): boolean {
+  if (family.heads.length === 0) return family.subjects.some(s => resumeHasTerm(roleTitle, s.join(' ')));
+  return parts.some(words => words.some((_, i) => family.subjects.some(s => at(words, i, s)
+    && [0, 1].some(gap => family.heads.includes(words[i + s.length + gap] ?? '')))));
+}
+
 export function findRoleConfig(roleTitle: string): RoleKeywordConfig | null {
   const normalized = roleTitle.toLowerCase().trim();
-  if (!normalized) return null;
+  if (!normalized || TEACHING_POST.test(roleTitle)) return null;
+  const parts = titleParts(roleTitle);
+  const softwareSense = !NOT_SOFTWARE_DEVELOPER.test(roleTitle);
+  const staffSense = !NOT_STAFF_RECRUITING.test(roleTitle);
 
   let best: RoleKeywordConfig | null = null;
   let bestScore = 0;
   for (const config of ROLE_KEYWORDS) {
     if (config.title.toLowerCase() === normalized || config.aliases.includes(normalized)) return config;
+    if (config.title === 'Recruiter' && !staffSense) continue;
+    const titleWords = config.title.toLowerCase().split(' ');
     let score = 0;
-    for (const name of [config.title, ...config.aliases]) {
-      if (resumeHasTerm(roleTitle, name)) score = Math.max(score, name.split(' ').length + 0.5);
+    for (const name of [config.title.toLowerCase(), ...config.aliases]) {
+      if (!resumeHasTerm(roleTitle, name)) continue;
+      const oneWord = !/\s/.test(name);
+      if (oneWord && name !== titleWords.join(' ') && !aliasHeads(parts, name)) continue;
+      if ((name === 'developer' || name === 'dev') && !softwareSense) continue;
+      score = Math.max(score, name.split(' ').length + 0.5);
     }
-    const titleWords = config.title.split(' ');
-    if (score === 0 && titleWords.every(word => resumeHasTerm(roleTitle, word))) score = titleWords.length;
+    if (score === 0 && holdsWorkPhrase(roleTitle, titleWords)) score = titleWords.length + 0.5;
+    if (score === 0 && titleWords.every(word => holdsWord(roleTitle, word))) score = titleWords.length;
+    const fieldWords = titleWords.slice(0, -1);
+    if (score === 0 && titleWords[titleWords.length - 1] === 'manager' && fieldWords.length > 0
+      && fieldWords.every(word => holdsWord(roleTitle, word)) && rankRunsField(parts, fieldWords[fieldWords.length - 1])) {
+      score = titleWords.length - 0.25;
+    }
+    if (score === 0 && FIELD_FAMILIES.some(f => f.config === config.title && familyNames(parts, f, roleTitle))) score = 1.75;
     if (score > bestScore) {
       best = config;
       bestScore = score;

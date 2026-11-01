@@ -9,6 +9,7 @@ import { detectIndustry as detectIndustryShared } from "./industry-detection.ts"
 // byte-identical copies of free-keyword-scan/*.ts — keep them in sync.
 import { detectCountryFromResume, effectiveCountryOf, phraseMatchesResume, resumeHasTerm } from "./market-intelligence.ts";
 import { detectCredibilityIssues } from "./date-credibility.ts";
+import { timelineGapOf } from "./employment-gaps.ts";
 import { resolveLanguageName } from "../_shared/language-instruction.ts";
 import { FIXED_CHOICES_STAY_ENGLISH, normalizeScanReport } from "../_shared/scan-report-shape.ts";
 import { applyScoreProjection, buildScoreProjection } from './score-projection.ts';
@@ -5824,8 +5825,11 @@ function calibrateLanguage(atsScore: number, seniority: SeniorityLevel, resumeTy
     };
   }
   
-  // Mid scores (55-69) - balanced guidance
-  if (atsScore >= 55) {
+  // Mid scores (50-69) - balanced guidance. The cut points are the scanner's
+  // rubric (85/70/50), the same bands the page grades every score on
+  // (src/lib/score-bands.ts, register S13-019): a 52 was "Key Improvements
+  // Needed" here and a fair score on the hero.
+  if (atsScore >= 50) {
     return {
       headline: 'Room for Improvement',
       overallTone: 'optimization',
@@ -5835,7 +5839,7 @@ function calibrateLanguage(atsScore: number, seniority: SeniorityLevel, resumeTy
     };
   }
   
-  // Low scores (<55) - actionable guidance (not alarmist)
+  // Low scores (<50) - actionable guidance (not alarmist)
   return {
     headline: 'Key Improvements Needed',
     overallTone: 'warning',
@@ -5965,16 +5969,11 @@ function computeTimelineAnalysis(resumeText: string): {
     progression = "stagnant";
   }
 
-  // Detect gaps (simplistic: look for year jumps > 1 year between consecutive years)
-  let hasGaps = false;
-  let gapNote: string | undefined;
-  for (let i = 1; i < years.length; i++) {
-    if (years[i] - years[i - 1] > 2) {
-      hasGaps = true;
-      gapNote = `Gap detected between ${years[i - 1]} and ${years[i]}`;
-      break;
-    }
-  }
+  // A gap is read from the date RANGES by employment-gaps.ts, the primary's
+  // own reader (register S10-007, the review of 2026-11-01). Two distinct
+  // years more than two apart are not a gap: "B.S. 2008 – 2012" and
+  // "2016 – Present" beside this year were both reported as one.
+  const { hasGaps, gapNote } = timelineGapOf(resumeText);
 
   return {
     totalYears: `${totalSpan} ${totalSpan === 1 ? "year" : "years"}`,
@@ -6450,7 +6449,11 @@ function clampImprovementToScoreGap(report: Record<string, unknown>): void {
 // industry check has room to answer (400 tokens, an unusable reply falls back
 // to server detection), a parse failure stores lengths and no model text, and
 // a generic "software" answer resolves to technology as the primary's does
-// (S13-050, -058, -064, -065 and the shared-module items).
+// (S13-050, -058, -064, -065 and the shared-module items). The review round
+// of the same day, still unshipped and so the same build: the timeline card
+// reads gaps with employment-gaps.ts (timelineGapOf), the header's tone bands
+// are the rubric's 85/70/50, and the shared modules carry the primary's
+// review changes byte for byte.
 const FN_BUILD = "free-keyword-scan-stream.2026-11-01.1";
 
 /** The primary's report id formula (free-keyword-scan/report-meta.ts reportIdFor): this report's cache key and its score. */

@@ -13,6 +13,12 @@
  * ~/.config/resumebooster/free-scan-wave-corpora/S13-022, truth from the
  * generator's numbers, plus two held-out seeds of 400): main wrong on 179,
  * 148 of them a false flag; the branch on none.
+ *
+ * Review fix (2026-11-01). On the reviewer's 360 synthetic timelines the
+ * branch missed every reversed or future range glued to the next column by a
+ * PDF ("Jun 2027 – Jan 2024Denver, CO": 0 of 24 each, main 24) and every
+ * one written in seasons (0 of 24, main 0). The shared reader now opens the
+ * seam and reads seasons: 24 of 24 in all four, clean timelines still clean.
  */
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
@@ -39,6 +45,18 @@ describe("real date faults are still flagged", () => {
   it("a start decades away", () => expect(types("Analyst, Acme | Jan 2052 – Present")).toEqual(["date_inconsistency"]));
   it("two finished roles overlapping by three years or more", () => {
     expect(types("EXPERIENCE\nManager, Acme | Jan 2012 – Dec 2018\nConsultant, Globex | Jan 2014 – Jun 2020")).toEqual(["timeline_overlap"]);
+  });
+});
+
+describe("glued and season-written faults are flagged (review fix; SYNTHETIC, review-S13-022/corpus.json)", () => {
+  const cv = (top: string, next: string) => `EXPERIENCE\nSenior Analyst, Northwind\n${top}\n- Built reports\nAnalyst, Contoso\n${next}\n- Reconciled ledgers\nEDUCATION\nB.S. Accounting, State University`;
+  it("reversed, glued", () => expect(types(cv("Jun 2027 – Jan 2024Denver, CO", "Apr 2022 – Nov 2023"))).toContain("impossible_timeline"));
+  it("future, glued", () => expect(types(cv("Nov 2055 – Jun 2057Denver, CO", "Apr 2023 – Apr 2025"))).toContain("date_inconsistency"));
+  it("reversed, seasons", () => expect(types(cv("Spring 2025 – Fall 2022", "Fall 2020 – Summer 2022"))).toContain("impossible_timeline"));
+  it("future, seasons", () => expect(types(cv("Fall 2066 – Winter 2068", "Summer 2021 – Fall 2023"))).toContain("date_inconsistency"));
+  it("clean, glued and seasons", () => {
+    expect(types(cv("May 2024 – Jul 2026Denver, CO", "Jan 2023 – Apr 2024"))).toEqual([]);
+    expect(types(cv("Fall 2022 – Winter 2024", "Spring 2021 – Summer 2022"))).toEqual([]);
   });
 });
 

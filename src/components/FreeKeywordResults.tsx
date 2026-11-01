@@ -817,6 +817,15 @@ export function FreeKeywordResults({
     });
   };
   
+  // A correction the reader makes, from the "We read this as" select or the
+  // industry card's grid (S13-018): the report re-reads itself, and the next
+  // scan is told. "General / Other" is no industry to hold the scanner to (it
+  // drops a confirmed "general"), so it is sent as no override.
+  const confirmIndustry = (newIndustry: string) => {
+    handleIndustryChange(newIndustry);
+    onContextConfirm?.({ confirmedIndustry: newIndustry === 'general' ? null : newIndustry });
+  };
+
   // Record this scan in history (only once per render)
   useEffect(() => {
     if (!hasRecordedScan && atsScoreEstimate) {
@@ -1663,7 +1672,7 @@ export function FreeKeywordResults({
           <span className="text-muted-foreground">{t('freeResults.readAs.industry')}</span>
           <select
             value={effectiveIndustry}
-            onChange={(e) => { handleIndustryChange(e.target.value); onContextConfirm?.({ confirmedIndustry: e.target.value }); }}
+            onChange={(e) => confirmIndustry(e.target.value)}
             className="bg-transparent border border-border/60 rounded-md px-1.5 py-0.5 text-foreground font-medium capitalize cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary/40"
             aria-label={t('freeResults.readAs.industryAria')}
             data-industry-select
@@ -1890,13 +1899,14 @@ export function FreeKeywordResults({
         seniorityLevel={seniorityLevel}
         dualScore={dualScore}
         calibratedLanguage={calibratedLanguage}
+        atsScore={atsScoreEstimate}
         usageRecommendations={usageRecommendations}
         credibilityIssues={credibilityIssues}
         contentLocations={contentLocations}
         industryDetection={industryDetection}
         industry={effectiveIndustry}
         candidateName={candidateName}
-        onIndustryChange={handleIndustryChange}
+        onIndustryChange={confirmIndustry}
         resumeTextLength={resumeText?.length}
         visitorId={getVisitorId()}
       />

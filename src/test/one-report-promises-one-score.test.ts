@@ -64,7 +64,7 @@ describe("one fix is counted once", () => {
   });
   it("unquantified bullets make the bullets step when there are no weak ones", () => {
     const p = buildScoreProjection({ score: 50, quickWins: [], unquantifiedBulletCount: 4 });
-    expect(p.fixes).toEqual([{ kind: "bullets", label: "Add a result with a number to 3 bullets that have none", impact: 5, minutes: 15 }]);
+    expect(p.fixes).toEqual([{ kind: "bullets", code: "bulletsUnquantified", params: { count: 3 }, label: "Add a result with a number to 3 bullets that have none", impact: 5, minutes: 15 }]);
   });
 });
 

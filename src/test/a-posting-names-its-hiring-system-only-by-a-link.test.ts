@@ -14,11 +14,24 @@
  * posting that links its vendor. Every posting main got right without a link
  * (a company word that happened to match the vendor) is one the branch now
  * leaves as unknown, which the page does not show.
+ *
+ * Review fix (fix2): the host pattern nested a repeated label inside a
+ * repeated group, so a dotted run with no top-level name at its end
+ * ("ab.ab.ab...!") backtracked: 15,000 characters took 312 ms in node and
+ * the scan read the whole pasted text, not its first 15,000 characters. The
+ * text is now read in one pass (15,000 characters: under 0.1 ms) and the scan
+ * reads the same 15,000 characters as every other job-description check. A
+ * Greenhouse board embedded on the employer's site is named by its gh_jid
+ * link (128 of 1,224 real Greenhouse links carry it, none of 11,191 from six
+ * other vendors). Re-measured: builder 2,067 and reviewer 1,626 postings,
+ * host lists identical to 89c2bc0b on every one; reviewer's pasted-link set
+ * 1,600 -> 1,626 right (main 969).
  */
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { atsProfileOf, detectAtsSystem } from "../../supabase/functions/free-keyword-scan/market-intelligence";
+import { atsProfileOf, detectAtsSystem, hostsIn } from "../../supabase/functions/free-keyword-scan/market-intelligence";
+import { codeOf } from "./helpers/strip-comments";
 import slice from "./fixtures/free-scan-wave/s13-005-ats-from-links.json";
 
 describe("company words name no system", () => {
@@ -44,6 +57,34 @@ describe("a link or a mail address at the vendor names it", () => {
     ["https://jobs.ashbyhq.com/acme/abc", "ashby"],
   ];
   for (const [t, want] of cases) it(`${t} → ${want}`, () => expect(detectAtsSystem(t)).toBe(want));
+});
+
+describe("the host scan reads the text once (review fix)", () => {
+  it("a long dotted run with no host in it costs no time", () => {
+    for (const n of [15_000, 50_000]) {
+      const text = "ab.".repeat(n / 3) + "!";
+      const t = performance.now();
+      expect(detectAtsSystem(text)).toBe("unknown");
+      expect(performance.now() - t).toBeLessThan(50);
+    }
+  });
+  it("hosts end at a URL boundary or a full stop, never inside a word", () => {
+    expect(hostsIn("To apply visit jobs.lever.co.")).toEqual(["jobs.lever.co"]);
+    expect(hostsIn("APPLY AT HTTPS://JOBS.LEVER.CO/ACME")).toEqual(["jobs.lever.co"]);
+    expect(hostsIn("[Apply](https://boards.greenhouse.io/acme/jobs/1)")).toEqual(["boards.greenhouse.io"]);
+    expect(hostsIn("see -jobs.lever.co and jobs.lever.co_x and été.lever.co")).toEqual([]);
+  });
+  it("a Greenhouse board on the employer's own site is named by its job id (real links)", () => {
+    expect(detectAtsSystem("Apply here: https://www.teneo.com/careers/open-positions/7786600003?gh_jid=7786600003")).toBe("greenhouse");
+    expect(detectAtsSystem("[Apply](https://www.emnify-jobs.com/emnify/?gh_jid=5008663101)")).toBe("greenhouse");
+    expect(detectAtsSystem("Our gh_jid field is documented internally.")).toBe("unknown");
+  });
+  it("the scan reads the first 15,000 characters of the posting, like every other check", () => {
+    const primary = codeOf(readFileSync(resolve(__dirname, "../../supabase/functions/free-keyword-scan/index.ts"), "utf8"));
+    expect(primary).toMatch(/detectAtsSystem\(\s*typeof jobDescriptionText === 'string' \? jobDescriptionText\.slice\(0, MAX_JOB_DESCRIPTION_LENGTH\) : null,/);
+    const mi = codeOf(readFileSync(resolve(__dirname, "../../supabase/functions/free-keyword-scan/market-intelligence.ts"), "utf8"));
+    expect(mi).not.toMatch(/\)\+\[a-z\]\{2,24\}\)\(\?=/);
+  });
 });
 
 describe("the page gets the system's name, not its id", () => {
@@ -74,6 +115,10 @@ describe("the corpus slice: real posting text", () => {
 });
 
 describe("one detector in both forks", () => {
+  it("market-intelligence.ts is the same file in both forks", () => {
+    const root = resolve(__dirname, "../../supabase/functions");
+    expect(readFileSync(resolve(root, "free-keyword-scan-stream/market-intelligence.ts"), "utf8")).toBe(readFileSync(resolve(root, "free-keyword-scan/market-intelligence.ts"), "utf8"));
+  });
   it("no company-word table is left", () => {
     const root = resolve(__dirname, "../../supabase/functions");
     for (const f of ["free-keyword-scan/market-intelligence.ts", "free-keyword-scan-stream/market-intelligence.ts"]) {

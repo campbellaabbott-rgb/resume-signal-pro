@@ -28,9 +28,20 @@ export const PROJECTION_CEILING = 95;
 export const BULLETS_FIX_IMPACT = 5;
 export const KEYWORDS_FIX_IMPACT = 6;
 
+/**
+ * The fixes the scanner words itself, by code (register S13-122): the page
+ * says them in the reader's language from the code and its values, and
+ * `label` stays the English for a page that predates the codes. A quick win
+ * is the model's own words, already in the report's language, and has none.
+ */
+export type ProjectionFixCode = 'bulletsWeak' | 'bulletsUnquantified' | 'keywords';
+export interface ProjectionFixParams { count?: number; keywords?: string[] }
+
 export interface ProjectionFix {
   kind: 'quick_win' | 'bullets' | 'keywords';
   label: string;
+  code?: ProjectionFixCode;
+  params?: ProjectionFixParams;
   impact: number;
   minutes: number;
 }
@@ -43,7 +54,7 @@ export interface ScoreProjection {
 }
 
 export interface FixPlan {
-  steps: Array<{ order: number; step: string; minutes: number; scoreImpact: number; projectedScoreAfter: number }>;
+  steps: Array<{ order: number; step: string; code?: ProjectionFixCode; params?: ProjectionFixParams; minutes: number; scoreImpact: number; projectedScoreAfter: number }>;
   totalMinutes: number;
   finalProjectedScore: number;
 }
@@ -96,14 +107,23 @@ export function buildScoreProjection(input: ProjectionInput): ScoreProjection {
     const label = weak > 0
       ? `Rewrite your ${weak} weakest bullet${weak === 1 ? '' : 's'} using the before/after examples above`
       : `Add a result with a number to ${unquantified} bullet${unquantified === 1 ? '' : 's'} that ha${unquantified === 1 ? 's' : 've'} none`;
-    fixes.push({ kind: 'bullets', label, impact: BULLETS_FIX_IMPACT, minutes: 15 });
+    fixes.push({
+      kind: 'bullets', label,
+      code: weak > 0 ? 'bulletsWeak' : 'bulletsUnquantified',
+      params: { count: weak > 0 ? weak : unquantified },
+      impact: BULLETS_FIX_IMPACT, minutes: 15,
+    });
   }
 
   const keywords = (input.keywordNames ?? [])
     .filter((k) => typeof k === 'string' && k.trim() !== '' && !resumeHasTerm(named, k))
     .slice(0, 3);
   if (keywords.length > 0) {
-    fixes.push({ kind: 'keywords', label: `Work "${keywords.join('", "')}" into your summary and experience bullets`, impact: KEYWORDS_FIX_IMPACT, minutes: 10 });
+    fixes.push({
+      kind: 'keywords', label: `Work "${keywords.join('", "')}" into your summary and experience bullets`,
+      code: 'keywords', params: { keywords },
+      impact: KEYWORDS_FIX_IMPACT, minutes: 10,
+    });
   }
 
   const sum = fixes.reduce((s, f) => s + f.impact, 0);
@@ -121,7 +141,11 @@ export function fixPlanOf(p: ScoreProjection): FixPlan {
   let cumulative = p.from;
   const steps = ordered.map((f, i) => {
     cumulative = Math.max(p.from, Math.min(PROJECTION_CEILING, cumulative + f.impact));
-    return { order: i + 1, step: f.label, minutes: f.minutes, scoreImpact: f.impact, projectedScoreAfter: cumulative };
+    return {
+      order: i + 1, step: f.label,
+      ...(f.code ? { code: f.code, params: f.params } : {}),
+      minutes: f.minutes, scoreImpact: f.impact, projectedScoreAfter: cumulative,
+    };
   });
   return { steps, totalMinutes: steps.reduce((s, x) => s + x.minutes, 0), finalProjectedScore: p.to };
 }

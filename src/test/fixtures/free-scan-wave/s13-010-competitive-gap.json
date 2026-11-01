@@ -1,0 +1,1524 @@
+{
+ "about": "S13-010: real posting text (first 1,000 characters) as the résumé stand-in, the scanner's detected field and the title's level; missing = what analyzeCompetitiveKeywordGap claims; main = f8d72a9b on the same text. No synthetic cases.",
+ "cases": [
+  {
+   "id": "workday:abb~wd3~external_career_page:JR00036560-1",
+   "industry": "legal",
+   "level": "senior",
+   "text": "At ABB , we help industries run leaner and cleaner—and every person here makes that happen. You’ll be empowered to lead, supported to grow, and proud of the impact we create together. Join us and help run what runs the world.\nThis position reports to: \nHead L&E and Corporate Governance \n__\nAt ABB, we help industries outrun - leaner and cleaner. Here, progress is an expectation - for you, your team, and the world. As a global market leader, we’ll give you what you need to make it happen. It won’t always be easy, growing takes grit. But at ABB, you’ll never run alone. Run what runs the world. \nAs part of our strategic growth agenda, we are hiring a new Senior Labor & Employment Counsel for our US organization.\nAs Senior Labor & Employment Counsel, you will have the opportunity to shape and influence Labor & Employment strategies across ABB in the United States. Your expertise will help ensure that the business operates within a strong legal, compliance, and regulatory framework on all La",
+   "missing": [],
+   "main": [
+    "architecture",
+    "technical leadership",
+    "cross-functional",
+    "mentorship",
+    "staff",
+    "system design interview"
+   ]
+  },
+  {
+   "id": "workday:chghealthcare~wd1~External:JR104468",
+   "industry": "healthcare",
+   "level": "mid",
+   "text": "CompHealth is the nation’s largest locum tenens staffing agency, offering more than 100 physician specialties, as well as permanent physician placement and both temporary and permanent allied healthcare staffing. At CompHealth, we are known for our employee-centric culture, strong core values and providing outstanding customer service. With CompHealth you can love what you do and impact the lives of millions of patients ever year.\nEnjoy what you do while contributing to a company that makes a difference in people’s lives. CHG Healthcare is one of the largest providers of healthcare staffing in the country. Through our trusted brands – CompHealth, Weatherby Healthcare, and Foundation Medical Staffing and Global Medical Staffing – we provide temporary and permanent placement of healthcare providers all over the country.  We touch the lives of millions of patients every year. When your day-to-day routine contributes to this important work, it’s easy to get excited about what you do!\nRespo",
+   "missing": [
+    "quality improvement",
+    "clinical outcomes",
+    "interdisciplinary",
+    "care management",
+    "compliance"
+   ],
+   "main": [
+    "quality improvement",
+    "clinical outcomes",
+    "interdisciplinary",
+    "care management",
+    "compliance"
+   ]
+  },
+  {
+   "id": "adp:6362b6c7-9592-452e-9fa3-97848679358e:9206018026897_1",
+   "industry": "engineering",
+   "level": "executive",
+   "text": "Department: Administration \nJob Title: General Manager \nReports to: VP/GM PMC Block \nPOSITION SUMMARY :\nThis role is responsible for the overall performance of the site, including operations, engineering, quality, supply chain, maintenance, Human Resources, EH&S, and financial results. The General Manager will drive operational excellence, foster a culture of continuous improvement, and ensure the successful execution of business objectives while aligning with the company's strategic direction. \nAbout Bal Seal: Bal Seal Engineering delivers advanced sealing, connecting, and contact solutions that serve medical, aerospace, energy, and industrial markets. Our proprietary spring-energized seals and electrical contacts help customers achieve precision, efficiency, and reliability. Employees thrive in a culture that values craftsmanship, technical mastery, and close partnership with customers solving complex challenges. \nESSENTIAL/MAJOR ELEMENTS OF POSITION \nProvide overall leadership and a",
+   "missing": [],
+   "main": [
+    "engineering strategy",
+    "org design",
+    "headcount",
+    "technical roadmap",
+    "exec communication",
+    "board"
+   ]
+  },
+  {
+   "id": "ashby:hadrian-automation:2e85a7d1-e312-46bc-a612-6ee6c489e18a",
+   "industry": "healthcare",
+   "level": "executive",
+   "text": "HADRIAN - MANUFACTURING THE FUTURE\n\nHadrian is building autonomous factories to reindustrialize America. By combining AI, advanced software, robotics, and full-stack manufacturing, we help aerospace and defense companies build rockets, satellites, aircraft, ships, and other mission-critical systems up to 10x faster and at significantly lower cost.\n\n\nFollowing our $1.37B Series D at a $7.87B valuation, Hadrian is rapidly expanding our manufacturing footprint, launching new capabilities across welding, casting, forging, electronics, additive manufacturing, and more, while scaling our Factory-as-a-Service platform to transform how critical products are built.\n\n\nBacked by leading investors including JPMorgan Chase, Valor Equity Partners, Andreessen Horowitz, Founders Fund, 137 Ventures, Lux Capital, T. Rowe Price, and Morgan Stanley, we’re building the future of American manufacturing—and looking for exceptional people to help make it happen.\n\n\nIf you’re ready to take on the most challengi",
+   "missing": [
+    "hospital administration",
+    "strategy",
+    "board",
+    "population health",
+    "value-based care"
+   ],
+   "main": [
+    "hospital administration",
+    "strategy",
+    "board",
+    "population health",
+    "value-based care"
+   ]
+  },
+  {
+   "id": "workday:mydpr~wd5~11212017:JR-17786",
+   "industry": "construction_management",
+   "level": "executive",
+   "text": "Job Description \nAt DPR, roles and responsibilities are more than describing a job title—they are a commitment to building great things together. The job description(s) below defines core responsibilities and the scope of the role and is a starting point. Every employee is expected to lead from where they are, take ownership of outcomes, and always act in the best interest of the team, customer, project and organization. \nAs a purpose-driven organization on a journey to be most admired, we rely on trust, shared leadership, open communication, disciplined action and a deep respect for the individual to drive exceptional performance. Success is not just about what we build, but who we build and how we build it: with integrity, enjoyment, uniqueness and an ever-forward mindset. \nJob Summary: \nManages preconstruction individuals to deliver high-quality results and foster professional growth. Collaborates with cross-functional teams and stakeholders to drive accurate estimating, value engin",
+   "missing": [],
+   "main": [
+    "engineering strategy",
+    "org design",
+    "headcount",
+    "technical roadmap",
+    "exec communication",
+    "board"
+   ]
+  },
+  {
+   "id": "breezy:kimmel-associates:fb60a1ed5a42-general-manager",
+   "industry": "technology",
+   "level": "executive",
+   "text": "About the Company \nOur client is an established specialty contractor providing temporary site systems for commercial construction projects throughout New England. Since its founding,the company has built strong relationships with some of the region’s most respected general contractors, delivering reliable solutions across Massachusetts, New Hampshire, and Rhode Island.\nAs the company enters its next phase of growth, ownership is seeking an experienced operational leader to help strengthen its infrastructure, improve execution, and increase profitability. This is an opportunity to join a growing, owner-operated business where your leadership will have a direct and measurable impact.\nAbout the Position \nThe General Manager will oversee daily operations, lead field and shop personnel, and build the processes needed to support continued growth. Reporting directly to the owners, this individual will have significant autonomy to improve performance, develop the team, and help shape the compa",
+   "missing": [
+    "engineering strategy",
+    "org design",
+    "headcount",
+    "technical roadmap",
+    "exec communication",
+    "board"
+   ],
+   "main": [
+    "engineering strategy",
+    "org design",
+    "headcount",
+    "technical roadmap",
+    "exec communication",
+    "board"
+   ]
+  },
+  {
+   "id": "greenhouse:eu~nscaleoperationsukltd:5007304101",
+   "industry": "construction_management",
+   "level": "executive",
+   "text": "ROLE OVERVIEW \nNscale is seeking a hands-on Director, Preconstruction — a pivotal role within our growing North American Preconstruction team reporting directly to the Vice President, Preconstruction. As Director you will lead a team of Preconstruction Managers and Analysts, owning integrated Capex Total Development Cost Proformas, integrated development cash flow/commitment/cancellation Cost Ledgers, and planning level constructability analysis across a portfolio of hyperscale and mission-critical data center projects.\nThis is a player-coach role: you will set the standard for technical excellence, develop your team, and drive process consistency. You will be a critical contributor in shaping the Preconstruction team while providing professional cost, schedule, risk, and constructability analysis for prospective developments shaping capital expenditure decisions across North America.\nLEADERSHIP & DEVELOPMENT \nDirectly manage, mentor, and develop a team of Preconstruction Managers and ",
+   "missing": [],
+   "main": [
+    "engineering strategy",
+    "org design",
+    "headcount",
+    "technical roadmap",
+    "exec communication",
+    "board"
+   ]
+  },
+  {
+   "id": "icims:careers.govcio.com:9109",
+   "industry": "government",
+   "level": "executive",
+   "text": "GovCIO is currently hiring for Senior Program Manager , for a proposal, to lead a large contract to rationalize, navigate, modernize/migrate and sustain its IT portfolio in a multi-cloud hybrid infrastructure. This position will be located in Northern VA / DC Metro area and will be hybrid position with periodic travel to the customer site in Washington, D.C.\nResponsibilities \nDirects all phases of programs from inception through completion. Responsible for the cost, schedule and technical performance of company programs or subsystems of major programs. Participates in the negotiation of contract and contract changes. Coordinates the preparation of proposals, business plans, proposal work statements and specifications, operating budgets and financial terms/conditions of contract. Acts as primary customer contact for program activities, leading program review sessions with customer to discuss cost, schedule, and technical performance. Develops new business or expands the product line wit",
+   "missing": [],
+   "main": [
+    "engineering strategy",
+    "org design",
+    "headcount",
+    "technical roadmap",
+    "exec communication",
+    "board"
+   ]
+  },
+  {
+   "id": "workday:tutorperini~wd12~external:JR103203",
+   "industry": "engineering",
+   "level": "senior",
+   "text": "Compensation Pay Range: $250,000-$300,000 \nRudolph & Sletten, a Tutor Perini Company, is seeking a  Senior Superintendent  to join our office in Los Angeles, CA.  \nAbout Rudolph & Sletten:  \nIn the last six decades, Rudolph and Sletten has built thousands of projects across our five California offices, from research centers designed to cure diseases to institutions that educate future generations to civic facilities and high-tech campuses that move our state forward. Just like the buildings we construct, our reputation is built to stand the test of time. Our success is due to our diverse, talented personnel, technological expertise, honest estimates, innovative schedules, and ethical business practices. \nWe're excited to see where the future takes us. Between new building and construction technology, better earth-friendly materials and techniques, all our phenomenal employees, and the amazing people we work with, we’re looking forward to building more award-winning projects for decades",
+   "missing": [],
+   "main": [
+    "architecture",
+    "technical leadership",
+    "cross-functional",
+    "mentorship",
+    "staff",
+    "system design interview"
+   ]
+  },
+  {
+   "id": "ashby:dandy:02db0ebb-ad86-4f5f-a5f2-bddff11b4623",
+   "industry": "finance",
+   "level": "executive",
+   "text": "Dandy is transforming the massive and antiquated dental industry—an industry worth over $400B. Backed by some of the world’s leading venture capital firms, we’re on an ambitious mission to simplify and modernize every function of the dental practice through technology. As we expand our reach globally, Dandy is building the operating system for dental offices around the world—empowering clinicians and their teams with technology, innovation, and world-class support to achieve more for their practices, their people, and their patients.\n\n\nABOUT DANDY\n\nDandy is seeking an accomplished leader to own the entire global Accounting and Treasury function within our Finance organization. This role will be the primary accounting partner to the C-suite as we continue to scale the company internationally and prepare for IPO.\n\nWe are looking for a senior leader with experience in rapidly building, developing and implementing financial systems, reporting, planning, cash management, and accounting poli",
+   "missing": [
+    "capital markets",
+    "fundraising",
+    "series",
+    "audit committee",
+    "debt financing"
+   ],
+   "main": [
+    "capital markets",
+    "fundraising",
+    "series",
+    "audit committee",
+    "debt financing"
+   ]
+  },
+  {
+   "id": "workday:ryancompanies~wd5~ryancompanies:R-102270",
+   "industry": "legal",
+   "level": "senior",
+   "text": "Job Description: \nRyan Companies US, Inc. has an immediate career opportunity for a Senior Construction Attorney in its Minneapolis office. This position will focus on managing risk, negotiating and drafting complex construction contracts, ensuring compliance with applicable laws and regulations, supporting project teams in delivering projects successfully and managing claims and litigation. The ideal candidate has strong experience in construction law, a collaborative mindset, and the ability to provide practical, business-oriented legal solutions in a fast-paced environment. Candidates with approximately 10 years of relevant legal experience are most likely to be successful.\nSome things you can expect to do: \nContract Drafting & Negotiation: draft, review, and negotiate owner construction contracts, design agreements, subcontracts, development agreements, and related documents.\nPre-Litigation & Litigation Management, Dispute Resolution & Project Support:  heavy integration with activ",
+   "missing": [],
+   "main": [
+    "architecture",
+    "technical leadership",
+    "cross-functional",
+    "mentorship",
+    "staff",
+    "system design interview"
+   ]
+  },
+  {
+   "id": "ashby:criticalloop:b187f93f-db47-4dd6-9dfb-777f18bce513",
+   "industry": "product_management",
+   "level": "executive",
+   "text": "About Critical Loop\n\nCritical Loop is shaping the next generation of energy systems by building the integrated edge grid of the future. Specializing in advanced energy management and battery control systems, Critical Loop empowers businesses and communities to seamlessly unite distributed energy resources for faster, more reliable, and affordable grid access. With deep expertise in grid modernization and a passion for creating resilient, responsive energy solutions, Critical Loop drives innovation at the intersection of technology and energy.\n\n\n\nJob Title: Head of Production\n\nLocation: THQ On site \n\n\n\nAbout the Role\n\nWe are looking for an experienced leader who is passionate about disciplined operations and capable of leading a newly established production team to deliver high quality products to our customers. You will be responsible for growing and upskilling the team that will assemble and integrate Battery Energy Storage Systems (BESS), establishing the standards by which the team ",
+   "missing": [
+    "product org",
+    "cpo",
+    "board",
+    "series",
+    "p&l ownership",
+    "build vs buy"
+   ],
+   "main": [
+    "product org",
+    "cpo",
+    "board",
+    "series",
+    "p&l ownership",
+    "build vs buy"
+   ]
+  },
+  {
+   "id": "greenhouse:tebra:4736646005",
+   "industry": "sales",
+   "level": "executive",
+   "text": "Tebra only initiates contact with candidates via email from an official Tebra email address (@ tebra.com , @ patientpop.com , or @ kareo.com ) or through our applicant tracking system, Greenhouse. We will only ask you to provide sensitive personal information through our official application portal — not via social media or text message. We do not conduct interviews via instant messaging.\nAbout the Role\nAs a Senior Sales Director at Tebra, you will lead a high-performing sales organization focused on driving new business across key segments. This senior leadership role goes beyond quota attainment — you’ll be a key player and important partner in shaping sales strategy, mentoring sales leaders and scaling revenue in a fast-paced SaaS environment.\nYour Area of Focus\nLead, develop, and scale a team of Leaders across multiple segments capable of consistently delivering results\nUnderstand industry, product, competitive landscape and Tebra’s unique value proposition to effectively position ",
+   "missing": [
+    "go-to-market",
+    "revenue strategy",
+    "board",
+    "series",
+    "sales enablement",
+    "chro"
+   ],
+   "main": [
+    "go-to-market",
+    "revenue strategy",
+    "board",
+    "series",
+    "sales enablement",
+    "chro"
+   ]
+  },
+  {
+   "id": "workday:imh~wd108~IntermountainCareers:R187599",
+   "industry": "finance",
+   "level": "executive",
+   "text": "Job Description: \nThe Region VP of Finance is responsible for directing the sound financial management of the Peaks Region through planning, analytical, coordinating, reporting, and monitoring activities. The Leader works closely with the operations and clinical leaders of the region and its related entities to ensure coordination of financial operations. The Leader is also responsible for partnering with enterprise and region leaders to enhance performance, translate system objectives into regional priorities, and facilitate financial and strategic success.\nEssential Functions \nIn coordination with System leadership, establishes standards for performance, deliverables, and resources within the Finance function in the region. \nJointly leads monthly and quarterly operating and business reviews with Operations leadership. \nWorks with the regional leadership team ensuring alignment with the enterprise finance leaders, and System Finance in developing the long-term financial strategy for t",
+   "missing": [
+    "capital markets",
+    "fundraising",
+    "ipo",
+    "series",
+    "audit committee",
+    "debt financing"
+   ],
+   "main": [
+    "capital markets",
+    "fundraising",
+    "ipo",
+    "series",
+    "audit committee",
+    "debt financing"
+   ]
+  },
+  {
+   "id": "adp:0fbecb44-c8ed-479d-aec1-34632fb73ff7:9204348385483_1",
+   "industry": "hr",
+   "level": "executive",
+   "text": "The Director, Total Rewards is a strategic leader responsible for overseeing the design, administration, governance, and continuous improvement of the company's global compensation, equity, benefits, and will assist with People Business Systems programs. Reporting directly to the Chief People Officer, this role serves as a trusted advisor to executive leadership and is a key partner to Finance, Legal, and Information Technology.\nThis Director/Senior Director will lead all aspects of the company's total rewards strategy, ensuring programs are competitive, equitable, compliant, and aligned with business objectives. This role will play a critical leadership role in Compensation Committee activities, including executive compensation, equity programs, market benchmarking, and Board-level reporting. Additionally, the position will assist with strategic oversight of People Business Systems, including Workday, ADP, and Applicant Tracking Systems, ensuring data integrity, operational efficiency",
+   "missing": [],
+   "main": [
+    "engineering strategy",
+    "org design",
+    "headcount",
+    "technical roadmap",
+    "exec communication",
+    "series"
+   ]
+  },
+  {
+   "id": "workday:altera~wd1~Altera:R03350",
+   "industry": "sales",
+   "level": "mid",
+   "text": "Job Details: \nJob Description: \nField Sales Engineer – New England \nLocation: Must reside in Greater Boston \nTerritory: New England (MA, NH, VT, ME, RI, CT) \nAbout Altera\nAltera accelerates innovation with high-performance, programmable FPGA solutions used across AI, robotics, networking, automotive, aerospace and defense, industrial automation, and next-generation data centers. Our technology empowers engineers and organizations to transform bold ideas into reality.\nThe Role\nThe Field Sales Engineer will lead the engagement with select customers across New England, generate new FPGA design opportunities, and guide customer engineering teams from initial architecture discussions through design win and production.\nKey Responsibilities\nTerritory & Account Leadership\nBuild and expand relationships at major accounts to generate new opportunities and secure design wins.\nLead strategic sales motions and initiatives to increase Altera’s market presence.\nDevelop account plans and strategies to",
+   "missing": [
+    "account executive",
+    "enterprise",
+    "closed won",
+    "arr",
+    "forecast",
+    "salesforce"
+   ],
+   "main": [
+    "account executive",
+    "enterprise",
+    "closed won",
+    "arr",
+    "forecast",
+    "salesforce"
+   ]
+  },
+  {
+   "id": "workday:beigene~wd5~BeiGene:R37182-1",
+   "industry": "insurance",
+   "level": "executive",
+   "text": "BeOne continues to grow at a rapid pace with challenging and exciting opportunities for experienced professionals. When considering candidates, we look for scientific and business professionals who are highly motivated, collaborative, and most importantly, share our passionate interest in fighting cancer.\nBeOne Medicines USA, Inc. seeks Director, Master Data Management in Cambridge, MA.\nJob Duties: Own the enterprise MDM program and portfolio of projects related to enterprise MDM working closely with the enterprise data governance initiatives. Drive innovation in MDM, Reference Data Management (RDM) and other data initiatives and shape the long-term view based on industry trends and opportunities. Drive harmonization of relevant Master Data processes to provide a common view of the business while also offering flexibility to meet functional needs. Lead targeted communication, change management, and training associated with Master Data Management to ensure adoption. Drive the centraliza",
+   "missing": [],
+   "main": [
+    "engineering strategy",
+    "org design",
+    "headcount",
+    "technical roadmap",
+    "exec communication",
+    "board"
+   ]
+  },
+  {
+   "id": "workday:ingrammicro~wd5~IngramMicro:R-117812",
+   "industry": "technology",
+   "level": "executive",
+   "text": "Accelerate your career. Join the organization that's driving the world's technology and shape the future.  \nIngram Micro is a leading technology company for the global information technology ecosystem. With the ability to reach nearly 90% of the global population, we play a vital role in the worldwide IT sales channel, bringing products and services from technology manufacturers and cloud providers to business-to-business technology experts. Our market reach, diverse solutions and services portfolio, and digital platform Ingram Micro Xvantage™ set us apart. Learn more at www.ingrammicro.com \nCome join our team where you’ll make technology happen in surprising ways. Let’s shape tomorrow - it’ll be a fun journey!\nYour role: \nThe Vice President, Global Operations Excellence & Transformation is responsible for driving enterprise-wide operational performance across Ingram Micro's global operations network. This executive leader will develop and execute the strategy to improve productivity, ",
+   "missing": [
+    "engineering strategy",
+    "org design",
+    "headcount",
+    "technical roadmap",
+    "exec communication",
+    "board"
+   ],
+   "main": [
+    "engineering strategy",
+    "org design",
+    "headcount",
+    "technical roadmap",
+    "exec communication",
+    "board"
+   ]
+  },
+  {
+   "id": "ashby:deepgram:0b1faa0d-242d-409f-8efb-5f8d9db407da",
+   "industry": "marketing",
+   "level": "executive",
+   "text": "COMPANY OVERVIEW\n\nDeepgram is the leading platform underpinning the emerging trillion-dollar Voice AI economy, providing real-time APIs for speech-to-text (STT), text-to-speech (TTS), and building production-grade voice agents at scale. More than 200,000 developers and 1,300+ organizations build voice offerings that are ‘Powered by Deepgram’, including Twilio, Cloudflare, Sierra, Decagon, Vapi, Daily, Cresta, Granola, and Jack in the Box. Deepgram’s voice-native foundation models are accessed through cloud APIs or as self-hosted and on-premises software, with unmatched accuracy, low latency, and cost efficiency. Backed by a recent Series C led by leading global investors and strategic partners, Deepgram has processed over 50,000 years of audio and transcribed more than 1 trillion words. There is no organization in the world that understands voice better than Deepgram.\n\n\n\n\nCOMPANY OPERATING RHYTHM\n\nAt Deepgram, we expect an AI-first mindset—AI use and comfort aren’t optional, they’re co",
+   "missing": [
+    "gtm strategy",
+    "revenue marketing",
+    "ipo marketing",
+    "investor relations"
+   ],
+   "main": [
+    "gtm strategy",
+    "revenue marketing",
+    "ipo marketing",
+    "investor relations"
+   ]
+  },
+  {
+   "id": "workday:zoom~wd5~Zoom:R19796-1",
+   "industry": "machine_learning",
+   "level": "mid",
+   "text": "What you can expect \nZoom is looking for a Machine Learning Engineer to join our Agentic Retrieval team. You will design and build the core retrieval and reasoning systems that power Zoom’s AI Companion — enabling AI agents to search, reason over, and act on enterprise knowledge to deliver high- quality, trustworthy, and actionable answers at scale. \nAbout the Team \nThe Agentic Retrieval team sits within Zoom’s GenAI Engineering organization and is responsible for building a multi-tenant, permission-aware retrieval platform. We operate at the intersection of distributed systems, machine learning, and large language models — powering search and answer generation across meetings, chat, docs, and third-party enterprise applications through a layered API architecture (keyword search, natural language search, and agentic RAG-based answer generation). \nResponsibilities: \nDesigning and implementing scalable retrieval systems including vector search, hybrid search (keyword + embedding + rerank",
+   "missing": [
+    "system design",
+    "code review",
+    "ci/cd",
+    "microservices",
+    "monitoring",
+    "on-call"
+   ],
+   "main": [
+    "system design",
+    "code review",
+    "ci/cd",
+    "microservices",
+    "monitoring",
+    "on-call"
+   ]
+  },
+  {
+   "id": "workday:pae~wd1~Amentum_Careers:R0173909",
+   "industry": "government",
+   "level": "executive",
+   "text": "Deputy Project Manager \nWho We Are: \nAmentum Nuclear Projects a is a Tier 1 service provider to the U.S. Department of Energy and Atomic Energy of Canada Limited; we deliver safe and innovative solutions at complex nuclear cleanup and production sites. Our services include program management, decommissioning, environmental remediation, waste and nuclear material management, nuclear operations, consulting, and engineering and construction. We are currently executing many contracts, performing work that is essential to our clients' missions across a broad range of functional areas.\nA\nt Amentum, we’re challenging today to reinvent tomorrow by solving the world’s most critical problems for thriving cities, resilient environments, mission-critical outcomes, operational advancement, scientific discovery, and cutting-edge manufacturing, turning abstract ideas into realities that transform the world for good. With $13 billion in revenue and a talent force of more than 55,000, Amentum provides ",
+   "missing": [],
+   "main": [
+    "engineering strategy",
+    "org design",
+    "headcount",
+    "technical roadmap",
+    "exec communication",
+    "board"
+   ]
+  },
+  {
+   "id": "workday:wonder~wd1~WG:JR101421-1",
+   "industry": "data_engineering",
+   "level": "senior",
+   "text": "About Grubhub \nAt Grubhub, we believe food is more than just a meal: It’s a source of discovery, connection, and pure enjoyment. There’s a time and place for every type of dish, from hidden neighborhood gems to tried-and-true favorites, and we exist to connect people with the food they love in all the ways they like to dig in. We’ve been at it since 2004, but now, as part of Wonder, Grubhub is operating with a renewed sense of momentum and the high-velocity energy of a powerhouse startup.\nAs a leading U.S. ordering and delivery marketplace, we feature over 415,000 merchants in more than 4,000 cities, creating the ultimate food experience by elevating online ordering through innovative restaurant technology, easy-to-use platforms, and an improved delivery experience. We are constantly finding new ways to innovate—from integrated grocery delivery with groceries powered by Instacart to exclusive loyalty programs. Join our team, based out of New York City and Chicago, and help us give our ",
+   "missing": [
+    "architecture",
+    "technical leadership",
+    "cross-functional",
+    "mentorship",
+    "staff",
+    "system design interview"
+   ],
+   "main": [
+    "architecture",
+    "technical leadership",
+    "cross-functional",
+    "mentorship",
+    "staff",
+    "system design interview"
+   ]
+  },
+  {
+   "id": "greenhouse:alphafmcroles:8899798002",
+   "industry": "consulting",
+   "level": "executive",
+   "text": "Corporate & Growth Strategy \nGrade: Engagement Lead & Engagement Director \nLocation: New York (US) \nAbout Alpha FMC \nAlpha FMC is a leading global consulting firm focused exclusively on serving clients in the Financial Services sector. Our 1,500+ consultants work across 19 offices globally, combining deep FS sector expertise with high-quality consulting to support more than 970 clients across asset management, wealth management, insurance and broader financial services.\nOur Strategy & Deals division advises the leadership teams of leading financial institutions and high-growth businesses on their most important strategic decisions.\nWe are continuing to grow our Corporate Strategy practice and are recruiting experienced strategy consultants at Engagement Lead and Engagement Director level.\nThe opportunity \nThis is a senior corporate strategy role, combining complex problem-solving, engagement leadership, and practice-building.\nOur work spans corporate and business-unit strategy, growth ",
+   "missing": [
+    "managing director",
+    "partner",
+    "equity",
+    "firm-wide",
+    "sector lead"
+   ],
+   "main": [
+    "managing director",
+    "partner",
+    "equity",
+    "firm-wide",
+    "sector lead"
+   ]
+  },
+  {
+   "id": "ashby:juicebox:386a5d74-ea06-4a8c-aeb5-c883fe55cf44",
+   "industry": "hr",
+   "level": "senior",
+   "text": "About Juicebox\n\nJuicebox is on a mission to help teams win the talent war.\n\nIn the age of AI, human ingenuity is the ultimate scarce resource. Recruiting is a zero-sum game where you either compete or lose.\n\nTeams at Ramp, Notion, and leading AI labs use Juicebox to power their hiring, alongside 5,000+ customers from early-stage startups to Fortune 500 companies.\n\nWe are on the path to $100M in ARR with 20%+ monthly growth, powering thousands of searches every day and making Juicebox one of the fastest-growing AI SaaS companies in the world.\n\nJuicebox has raised over $116M in funding from lead investors including Sequoia Capital, DST Global, and NFDG. Read more about our $80M Series B https://juicebox.ai/blog/series-b here. Additional investors in Juicebox include Y Combinator, Coatue, Bond, Lux, Verified Capital, and Committed Capital.\n\n\n\nWhat we’re looking for (technical)\n\n - You have hands-on experience building features / leading projects from scratch\n\n - You have a deep understand",
+   "missing": [],
+   "main": [
+    "architecture",
+    "technical leadership",
+    "cross-functional",
+    "mentorship",
+    "staff",
+    "system design interview"
+   ]
+  },
+  {
+   "id": "workday:tutorperini~wd12~external:JR103248",
+   "industry": "education",
+   "level": "mid",
+   "text": "Compensation Pay Range\nThe expected salary range for this position is $200,000 - $250,000 depending on experience \n***NO STAFFING AGENCY CANDIDATES WILL BE CONSIDERED FOR THIS POSITION*** \n***Applicants must be eligible to work in the United States without visa sponsorship now or in the future*** \nTutor Perini Corporation is looking for a  Concrete Estimator  to join our team in  New Rochelle, NY. You will play a crucial role in the success of our construction projects. In this role, you will be responsible for preparing detailed cost estimates for all concrete-related work, including foundations, slabs, columns, walls, and structural elements. You will work closely with project managers, subcontractors, and suppliers to ensure competitive and accurate bid proposals. \nAbout Tutor Perini Corporation \nExtraordinary Projects, Exceptional Performance \nThe world relies on infrastructure — to ensure public safety, maintain a quality of life and support a healthy economy. For more than a cent",
+   "missing": [],
+   "main": [
+    "system design",
+    "code review",
+    "ci/cd",
+    "microservices",
+    "distributed systems",
+    "monitoring"
+   ]
+  },
+  {
+   "id": "ashby:monaco:74b30053-8a4b-4aae-abde-2861b0c5c458",
+   "industry": "data_engineering",
+   "level": "mid",
+   "text": "Monaco is building an AI-native revenue platform that replaces the fragmented GTM stack - CRM, sequencing, call recording, enrichment, pipeline management with one unified system, consolidating 6–10 disconnected tools into a single platform built for the AI era.\n\nWe launched publicly in Feb 2026, are already 65 people, and have strong early product-market fit generating millions in ARR within months of launch. You'll have the chance to both scale our core systems and build new features from 0 to 1.\n\nWe've raised $85M in our Series B from Founders Fund, Benchmark, and Human Capital, and our founders previously led Brex, Apollo, and Clari.\n\nCome join us if you want to be part of a high autonomy, high pace team reinventing one of the biggest categories in enterprise software.\n\n\n\n\nTHE ROLE\n\nYou'll own the Spark pipelines on Databricks that power Monaco's analytics products, working directly with product teams to turn what they need into reliable, cost-conscious data. This is a hands-on ind",
+   "missing": [
+    "system design",
+    "code review",
+    "ci/cd",
+    "microservices",
+    "distributed systems",
+    "monitoring"
+   ],
+   "main": [
+    "system design",
+    "code review",
+    "ci/cd",
+    "microservices",
+    "distributed systems",
+    "monitoring"
+   ]
+  },
+  {
+   "id": "workday:bbinsurance~wd1~Careers:0000002143",
+   "industry": "insurance",
+   "level": "senior",
+   "text": "Built on meritocracy, our unique company culture rewards self-starters and those who are committed to doing what is best for our customers.\nBrown & Brown is seeking a Property & Casualty Geographic Sales Leader to join our growing team! \nThis role will be responsible for increasing sales volume and profitability in a dedicated geography and line of business segment through impactful leadership, strategic planning, and ongoing development of new and seasoned producers.\nHow You Will Contribute: \nEstablish a plan for sustainable organic growth, focusing on financial results, new business and customer retention, and talent acquisition and development.\nEstablish, direct, and monitor sales goals and objectives that are aligned with the national practice and regional strategy.\nLead, coach, and motivate the sales teams with an unwavering commitment to revenue growth.\nPartner with national, market and local leadership to regularly evaluate and identify short-term and long-term recruitment needs",
+   "missing": [],
+   "main": [
+    "architecture",
+    "technical leadership",
+    "cross-functional",
+    "mentorship",
+    "staff",
+    "system design interview"
+   ]
+  },
+  {
+   "id": "oracle:eofe~us2~CX_1:76710",
+   "industry": "consulting",
+   "level": "executive",
+   "text": "At BNY, our culture allows us to run our company better and enables employees’ growth and success. As a leading global financial services company at the heart of the global financial system, we influence nearly 20% of the world’s investible assets. Every day, our teams harness cutting-edge AI and breakthrough technologies to collaborate with clients, driving transformative solutions that redefine industries and uplift communities worldwide. \nRecognized as a top destination for innovators, BNY is where bold ideas meet advanced technology and exceptional talent. Together, we power the future of finance – and this is what #LifeAtBNY is all about. Join us and be part of something extraordinary. \nWe’re seeking a future team member for the role of Director, Client Executive to join our Banks, Broker-Dealers, & Insurance team. This role is located in Boston, MA or New York, NY. \nIn this role, you’ll make an impact in the following ways: \nServe as a Client Executive responsible for the commerc",
+   "missing": [
+    "managing director",
+    "partner",
+    "equity",
+    "firm-wide",
+    "sector lead"
+   ],
+   "main": [
+    "managing director",
+    "partner",
+    "equity",
+    "firm-wide",
+    "sector lead"
+   ]
+  },
+  {
+   "id": "oracle:eiqg~us2~CX_1:170939",
+   "industry": "manufacturing",
+   "level": "mid",
+   "text": "The Traffic Director is responsible for assisting customers by directing traffic at a school parking facility. This position provides on the job training.\nPay: $110.00 per hour \nThe pay listed is the hourly range or the hourly rate for this position. A specific offer will vary based on applicant’s experience, skills, abilities, geographic location, and alignment with market data \nBenefit Information: ABM offers a comprehensive benefits package. For information about ABM’s benefits, visit ABM Employee Benefits | Front Line Team Members \nA good job for someone just entering the workforce or returning to the workforce with limited experience and education. ABM is a military and veteran friendly employer, veterans and candidates with military experience encouraged to apply. Military Occupational Specialty Code: 31B, 88N, MA, LS, 5811, 3P0X1 \n• Safely and professionally direct guests and ride app drivers to the correct areas from various positions \n• Manage traffic control, and redirect veh",
+   "missing": [],
+   "main": [
+    "system design",
+    "code review",
+    "ci/cd",
+    "microservices",
+    "distributed systems",
+    "monitoring"
+   ]
+  },
+  {
+   "id": "smartrecruiters:ServiceNow:744000156431640",
+   "industry": "product_management",
+   "level": "executive",
+   "text": "We are looking for a strategic, technically adept and savvy Sr. Director of Product Analytics (Usage &  Adoption) to build and scale our understanding of how users engage with, adopt and derive value \nfrom the ServiceNow AI Platform. This role will set the strategy and structure to execute multiple \nhigh-impact programs using product telemetry across the product and customer lifecycle –\nincluding governance, insights generation & activation and the development of data & AI products.   By enabling smarter product decisions, improving our understanding of end-user experiences, and \nsupporting business growth through data, this role will Elevate Product Usage across the enterprise.\nResponsibilities\n• Lead the measurement strategy for AI products – from usage to adoption to value \nrealization; standardize measurement funnels and enable end to end measurement from \ntoken costs to token consumption \n• Define the needs of telemetry governance and data quality across the ServiceNow product & \n",
+   "missing": [
+    "product org",
+    "cpo",
+    "board",
+    "series",
+    "p&l ownership",
+    "build vs buy"
+   ],
+   "main": [
+    "product org",
+    "cpo",
+    "board",
+    "series",
+    "p&l ownership",
+    "build vs buy"
+   ]
+  },
+  {
+   "id": "greenhouse:gomotive:8900088002",
+   "industry": "marketing",
+   "level": "executive",
+   "text": "Who we are: \nMotive empowers the people who run physical operations with tools to make their work safer, more productive, and more profitable. For the first time ever, safety, operations and finance teams can manage their drivers, vehicles, equipment, and fleet related spend in a single system. Combined with industry leading AI, the Motive platform gives you complete visibility and control, and significantly reduces manual workloads by automating and simplifying tasks.\nMotive serves nearly 100,000 customers – from Fortune 500 enterprises to small businesses – across a wide range of industries, including transportation and logistics, construction, energy, field service, manufacturing, agriculture, food and beverage, retail, and the public sector.\nVisit gomotive.com to learn more.\nAbout The Role \nThe Brand Studio team is responsible for shaping and expressing Motive's brand across every touchpoint, bringing clarity, consistency, and creativity to how we show up in the world. From integra",
+   "missing": [
+    "gtm strategy",
+    "revenue marketing",
+    "series",
+    "ipo marketing",
+    "investor relations"
+   ],
+   "main": [
+    "gtm strategy",
+    "revenue marketing",
+    "series",
+    "ipo marketing",
+    "investor relations"
+   ]
+  },
+  {
+   "id": "workday:lyten~wd503~Lyten_External_Career_Site:JR100951",
+   "industry": "cybersecurity",
+   "level": "executive",
+   "text": "Lyten is leading an industrial revolution through Lyten 3D Graphene™, a breakthrough supermaterial unlocking a new generation of products — from lithium–sulfur batteries and energy storage systems to concrete admixtures, lightweight composites, and next-generation sensors that are revolutionizing industries. Together, these innovations are making a massive global improvement and driving real-world impact across energy, mobility, construction, and defense.\nAt Lyten, we believe the most meaningful careers begin with purpose — and with people who want to make a difference. We’re not just developing advanced supermaterials — we’re about to change the world as we know it, reshaping how energy is stored, how products are built, and how progress is made.\nWe’re entering an exciting growth phase, scaling production across the U.S. and Europe and expanding our team of engineers, scientists, and innovators.\nApply now to join our team and be part of something bigger than yourself — where collabora",
+   "missing": [
+    "engineering strategy",
+    "org design",
+    "headcount",
+    "technical roadmap",
+    "exec communication",
+    "board"
+   ],
+   "main": [
+    "engineering strategy",
+    "org design",
+    "headcount",
+    "technical roadmap",
+    "exec communication",
+    "board"
+   ]
+  },
+  {
+   "id": "greenhouse:databricks:8859538002",
+   "industry": "architecture",
+   "level": "senior",
+   "text": "Location: Seattle, WA or San Francisco Bay Area, CA \nREQ ID - FEQ427R648 \nMission \nWe are looking for experienced pre-sales professionals who have a successful track record helping large enterprises become more data-driven. Working with the Enterprise Account Executive (AE), the Senior SA defines and directs the technical strategy for our largest and important accounts, leading to more widespread use of our products and wider and deeper adoption of ML & AI. You will lean upon your solid background in value selling, technical account management and technical leadership to maximize success in these accounts. While you work with a team that includes hands-on resources who will build proofs of concept and demonstrate Databricks' products, you need to be technical and must understand the relevance and application of ML & AI within a range of use cases important to the target accounts in various verticals.\nOutcomes \nYou work with multiple clients as the main technical voice for Databricks.\nY",
+   "missing": [],
+   "main": [
+    "architecture",
+    "cross-functional",
+    "mentorship",
+    "staff",
+    "system design interview",
+    "platform"
+   ]
+  },
+  {
+   "id": "icims:careers.spglobal.com:331962",
+   "industry": "cybersecurity",
+   "level": "senior",
+   "text": "About the Role: \nGrade Level (for internal use): \n13 The Team: \nThe Security Architecture and Engineering team operates as strategic enablers of digital transformation, partnering across Technology, Business, and Security functions to deliver pragmatic, scalable security solutions. As a globally distributed team working in an Agile environment, we value technical excellence, collaborative problem-solving, and the ability to translate complex security challenges into actionable business outcomes. Our culture emphasizes continuous learning, mentorship, and staying at the forefront of emerging technologies like AI/ML security and Zero Trust architectures.\nResponsibilities and Impact: \nLead enterprise-wide security architecture strategy - Define and govern security architecture across Cloud, AI, Application, Infrastructure, and Data domains, directly shaping the organization's digital transformation and innovation roadmap\nDrive Zero Trust architecture implementation - Establish comprehensi",
+   "missing": [
+    "technical leadership",
+    "cross-functional",
+    "staff",
+    "system design interview",
+    "platform",
+    "scalability"
+   ],
+   "main": [
+    "technical leadership",
+    "cross-functional",
+    "staff",
+    "system design interview",
+    "platform",
+    "scalability"
+   ]
+  },
+  {
+   "id": "oracle:fa-ewjt-saasfaprod1~ocs~CX_1:17131",
+   "industry": "architecture",
+   "level": "mid",
+   "text": "Direct the enterprise GenAI technology portfolio and lead large-scale, onshore client engagements. \nAct as a trusted senior technical architect and advisor to client leadership, bridging the gap between cutting-edge AI capabilities and core business transformation. \nOversee multiple architectural delivery streams, making high-impact decisions on technology stacks, framework selection, and infrastructural trade-offs across the 7-layer AI stack.\nEnterprise AI Strategy & Trade-Off Analysis: Define multi-year GenAI roadmaps by evaluating structural architecture trade-offs across the 7-layer LLM stack. Compare Commercial APIs (e.g., GPT-4o, Claude 3.5 Sonnet) vs. Hosted Open-Source LLMs (e.g., Llama 3) based on cost, latency, and data privacy.\nAdvanced Architecture Oversight: Review and approve macro-level AI architectures. Architect scalable data ingestion pipelines, selecting between standard semantic RAG, Agentic RAG, or GraphRAG depending on enterprise complexity.\nAdvanced Observability",
+   "missing": [],
+   "main": [
+    "system design",
+    "code review",
+    "ci/cd",
+    "microservices",
+    "distributed systems",
+    "monitoring"
+   ]
+  },
+  {
+   "id": "oracle:iaziqy~ocs~CX_1:303598",
+   "industry": "machine_learning",
+   "level": "senior",
+   "text": "About the Team \nThe Deliverability team sits at the core of Uber’s delivery marketplace as part of Merchant Optimization. Serving as the critical gating layer for every Uber Eats transaction, our systems answer the fundamental real-time question: \"Can this merchant deliver to this eater right now?\" \nWe optimize merchant delivery zones to maximize platform selection while balancing marketplace reliability, timeliness, and profitability. The decision made by the deliverability services directly shape selection breadth and business metrics across key downstream platforms, including Search, Feed, and Ads. \nRole & Responsibilities \nAs a Senior Machine Learning Engineer on the Deliverability team, you will drive the technical vision, end-to-end design, and productionization of core ML systems powering global delivery marketplace decisions. Specifically, you will: \nProduct & Domain ML Architecture: Architect and translate complex marketplace challenges into high-throughput, large scale ML sol",
+   "missing": [
+    "technical leadership",
+    "cross-functional",
+    "mentorship",
+    "staff",
+    "system design interview",
+    "scalability"
+   ],
+   "main": [
+    "technical leadership",
+    "cross-functional",
+    "mentorship",
+    "staff",
+    "system design interview",
+    "scalability"
+   ]
+  },
+  {
+   "id": "greenhouse:leadingedgespecializeddentistry:8038072003",
+   "industry": "dental",
+   "level": "mid",
+   "text": "Our Oral Surgeons go beyond clinical expertise ; it's about making a difference in every patient's oral health journey. Your skill, dedication, and personalized care contribute to creating healthy smiles and a welcoming dental experience. \nOur base salary for this role is $600,000/year. We are pleased to offer a $150,000 Welcoming Bonus for the right fit! \nOUR PRACTICE:\nUpcoming Location \nToledo, OH\nHIRING SCHEDULE: \n*Flexible schedule, open to discussing full-time or part-time. \nQUALIFICATIONS:\nDMD or DDS degree from an accredited university, accompanied by an active state license in good standing. \nNew grads welcome to apply! 1-2 years of Clinical Experience post-residency, preferred \nPassionate commitment to patient care and unwavering ethical standards. \nKeen interest in further training, coaching, and fostering a collaborative team environment. \nMotivated by both financial success and the continuous growth of the practice. \nOUR BENEFITS:\nGenerous Compensation : We invest in the be",
+   "missing": [],
+   "main": [
+    "system design",
+    "code review",
+    "ci/cd",
+    "microservices",
+    "distributed systems",
+    "monitoring"
+   ]
+  },
+  {
+   "id": "paylocity:65303cc8-b235-4bf7-95fe-09175f0a68fe:4514284",
+   "industry": "dental",
+   "level": "mid",
+   "text": "Description\nJoin Our Dynamic Team as a Dentist at Signature Dental Group! \nFull Time Opportunities\nAt Great Lakes Dental Partners , we’re all about fostering clinical excellence and professional growth in a fun, supportive environment. We're looking for a passionate General Dentist in the beautiful Northwest Chicago suburb of Algonquin where you’ll enjoy clinical autonomy , competitive compensation, and a chance to collaborate with some of the brightest minds in dentistry!\nWhy GLDP? Here’s What We Offer You: \nCompetitive Compensation : We offer a competitive daily guarantee and percentage of collections —you’ll earn top tier pay based on your experience and contribution. Higher earning potential is available for those looking to expand across sister locations.\nClinical Quality & Continuing Education : At GLDP, we invest in you. We offer extensive continuing education and a collaborative environment, all while equipping you with the latest state of the art technology to deliver exceptio",
+   "missing": [],
+   "main": [
+    "system design",
+    "code review",
+    "ci/cd",
+    "microservices",
+    "distributed systems",
+    "monitoring"
+   ]
+  },
+  {
+   "id": "workday:shi~wd12~shicareers:JR3935",
+   "industry": "hospitality",
+   "level": "mid",
+   "text": "About Us \nSince 1989, SHI International Corp. has helped organizations change the world through technology. We’ve grown every year since, and today we’re proud to be a $16 billion global provider of IT solutions and services. \nOver 17,000 organizations worldwide rely on SHI’s concierge approach to help them solve what’s next. But the heartbeat of SHI is our employees – all 7,000 of them. If you join our team, you’ll enjoy: \nOur commitment to diversity, as the largest minority- and woman-owned enterprise in the U.S. \nContinuous professional growth and leadership opportunities. \nHealth, wellness, and financial benefits to offer peace of mind to you and your family. \nWorld-class facilities and the technology you need to thrive – in our offices or yours.  \nJob Summary \nThe PubSec Cloud Solutions Executive is a senior salesperson tasked with mastering SHI's value proposition to exceed revenue and profit goals by developing strategic sales approaches and cultivating relationships with both e",
+   "missing": [],
+   "main": [
+    "system design",
+    "code review",
+    "ci/cd",
+    "microservices",
+    "distributed systems",
+    "monitoring"
+   ]
+  },
+  {
+   "id": "greenhouse:roblox:8304814",
+   "industry": "gaming",
+   "level": "senior",
+   "text": "Every day, tens of millions of people come to Roblox to explore, create, play, learn, and connect with friends in 3D immersive digital experiences– all created by our global community of developers and creators. \nAt Roblox, we’re building the tools and platform that empower our community to bring any experience that they can imagine to life. Our vision is to reimagine the way people come together, from anywhere in the world, and on any device. We’re on a mission to connect a billion people with optimism and civility, and looking for amazing talent to help us get there. \nA career at Roblox means you’ll be working to shape the future of human interaction, solving unique technical challenges at scale, and helping to create safer, more civil shared experiences for everyone. \nRoblox is building the future of user-generated content - a platform where millions of creators design immersive 3D worlds, characters, and experiences at scale. We're pioneering tools that blend generative AI, real-ti",
+   "missing": [],
+   "main": [
+    "architecture",
+    "technical leadership",
+    "cross-functional",
+    "mentorship",
+    "staff",
+    "system design interview"
+   ]
+  },
+  {
+   "id": "workable:almaadvisorygroup:A050F1514D",
+   "industry": "education",
+   "level": "mid",
+   "text": "About the Opportunity \nEvanston/Skokie School District 65 (D65) is seeking a Superintendent whose work will shape the district and its learners for a generation. The D65 Board, working with community and leadership, is designing and implementing a multi-year financial plan to give the district a stable foundation moving forward. The next Superintendent will build on that foundation and lead the work of closing opportunity gaps for Black, Latino, and multilingual students.\nD65 serves a culturally diverse student body of approximately 6,000 students across 17 Pre-K-8 schools in Evanston and Skokie, just outside Chicago, IL. With Northwestern University, a world-class research institution, and a strong network of community-based organizations nearby, D65 has partners ready to help the next Superintendent advance the district’s goals. D65 is entering an exciting new era that will recenter academics with investments in learning spaces and resources. \nAbout the Superintendent Role \nThe local",
+   "missing": [],
+   "main": [
+    "system design",
+    "code review",
+    "ci/cd",
+    "microservices",
+    "distributed systems",
+    "monitoring"
+   ]
+  },
+  {
+   "id": "workday:tutorperini~wd12~external:JR103132",
+   "industry": "skilled_trades",
+   "level": "mid",
+   "text": "The expected salary range for this position is $300,000 - $350,000 depending on experience \n***Applicants must be eligible to work in the United States without visa sponsorship now or in the future*** \nTutor Perini Civil-East is seeking a Building General Superintendent to join our project site in Midtown Manhattan, NY, NY \nAbout Tutor Perini Corporation \nExtraordinary Projects, Exceptional Performance \nThe world relies on infrastructure — to ensure public safety, maintain a quality of life and support a healthy economy. For more than a century, Tutor Perini Corporation’s family of civil construction companies has supported the development and maintenance of infrastructure across our great nation.\nWe construct and rehabilitate highways, bridges, tunnels, mass-transit systems, and water management and wastewater treatment facilities. In short, we help our clients make “public works” work. Our corporate integrity, financial strength and outstanding record of performance makes us an attra",
+   "missing": [],
+   "main": [
+    "system design",
+    "code review",
+    "ci/cd",
+    "microservices",
+    "distributed systems",
+    "monitoring"
+   ]
+  },
+  {
+   "id": "breezy:kimmel-associates:d34828bdaa15-ei-c-superintendent",
+   "industry": "skilled_trades",
+   "level": "mid",
+   "text": "About the Company \nOur client is a nationally recognized construction contractor with an extensive track record of delivering complex, large-scale projects across multiple industries. The company is committed to safety, quality, innovation, and operational excellence, while fostering a collaborative, employee-focused culture.\nWith a strong pipeline of major projects and a commitment to employee development and ownership, this organization offers experienced construction professionals the opportunity to lead challenging projects and build a long-term career.\nAbout the Position \nOur client is seeking an experienced EI&C General Superintendent to provide field leadership for major advanced facility projects. This individual will oversee project execution, ensuring safety, productivity, cost control, quality, and overall operational performance.\nThe initial assignment will involve overseeing the completion of an advanced facility project in Rio Rancho, New Mexico , followed by a transition",
+   "missing": [],
+   "main": [
+    "system design",
+    "code review",
+    "ci/cd",
+    "microservices",
+    "distributed systems",
+    "monitoring"
+   ]
+  },
+  {
+   "id": "breezy:kimmel-associates:1c6dda9ea347-director-of-fabrication-industrial-piping",
+   "industry": "manufacturing",
+   "level": "executive",
+   "text": "About the Company \nOur client is an established industrial construction organization specializing in piping, structural steel, and hygienic fabrication for demanding industrial and biopharmaceutical applications. With two fabrication shops in Fuquay-Varina, North Carolina, the company emphasizes safety, quality, technical expertise, and reliable project delivery.\nAbout the Position \nOur client is seeking an experienced Director of Fabrication to oversee hygienic and non-hygienic fabrication operations. Reporting to the Operations Manager, this leader will manage shop production, logistics, personnel, equipment, inventory, and quality control while ensuring projects are completed safely, on schedule, and within budget.\nThe Director of Fabrication will lead shop Superintendents or Foremen and collaborate with Operations, Project Management, Virtual Design, suppliers, and field teams to coordinate fabrication from planning through delivery.\nKey Responsibilities \nManage daily operations ac",
+   "missing": [],
+   "main": [
+    "engineering strategy",
+    "org design",
+    "headcount",
+    "technical roadmap",
+    "exec communication",
+    "board"
+   ]
+  },
+  {
+   "id": "paylocity:20edfbd6-2afa-4ae8-b72d-a3c33859b62c:4610845",
+   "industry": "retail",
+   "level": "mid",
+   "text": "Description\nJOB TITLE: Purchaser \nJOB SUMMARY \nThis role is responsible for maintaining daily purchasing activities using the forecast and MRP. Must have a deep knowledge of manufacturing, inventory and supply chain management.\nPOSITION QUALIFICATIONS/REQUIREMENTS \nAt least 1 year of experience as a Purchaser/Buyer\nAt least 1 year of experience working in inventory and supply chain management\nPREFERRED SKILLS \nProficiency in Microsoft Office and MRP software\nPreferred QuickBooks experience\nExcellent foresight and communication skills, both written and verbal\nStrong critical thinking and negotiation skills\nStrong planning and organizational skills\nAbility to work independently\nCORE DUTIES \nMaintain daily purchasing activities using the forecast and MRP\nSeek and partner with reliable vendors and suppliers\nDetermine quantity and timing of deliveries\nMonitor and forecast upcoming levels of demand\nManaging supplier relations and negotiating contracts, prices, timelines, etc.\nWork with suppl",
+   "missing": [],
+   "main": [
+    "system design",
+    "code review",
+    "ci/cd",
+    "microservices",
+    "distributed systems",
+    "monitoring"
+   ]
+  },
+  {
+   "id": "paylocity:57fb7b5f-a7a4-45c1-ac1d-fd64cb32e117:4607303",
+   "industry": "hospitality",
+   "level": "mid",
+   "text": "Description\nIf you are a skilled cook or someone who has passion for food and is willing to learn, then come join our Culinary Team, where there is room to grow in our various kitchens. We combine locally sourced ingredients with a commitment to exceptional service and a focus on creativity and innovation. Ongoing training is provided for future development. This position is responsible for preparing variety of menu items according to our specifications and recipes for our Food & Beverage outlets. They will be expected to work as a team in a clean and organized manner to prepare and serve meals in a timely fashion. It is an exciting position in a fast-paced environment demanding a high level of integrity and work ethic. \nJob Responsibilities include but not limited to: \nPrepare proper plate and platter presentation according to the department standards\nAssist Chefs, as needed.\nMust have full knowledge of menus and recipes. Follow all recipe specifications and presentation guidelines ac",
+   "missing": [],
+   "main": [
+    "system design",
+    "code review",
+    "ci/cd",
+    "microservices",
+    "distributed systems",
+    "monitoring"
+   ]
+  },
+  {
+   "id": "workday:montage~wd1~Montage_International:R44976",
+   "industry": "culinary",
+   "level": "mid",
+   "text": "Live Your Passion.  Add Your Magic.               \nAt Montage International, we are doing something different, something exciting and it takes passionate people to bring our vision to life. We have built a culture that leads with the important notion we live by every day; do what you love. If this resonates with you, we look forward to receiving your application. \nWe welcome applicants with disabilities and provide reasonable accommodations as needed to our applicants. Please discuss with our hiring managers during our selection processes.   \nIf you are an internal applicant, please log into Workday and apply for your application to be considered. \nPlease Click Here to apply internally. \nAt Montage Healdsburg, It’s All Because of YOU!  \nChef de Cuisine  \nImagine turning your passion and talent into a fulfilling career. Imagine a beautiful workplace where you can learn, grow, and have fun. At Montage Healdsburg, we know our success is all because of you. Here, you’re not just an associa",
+   "missing": [],
+   "main": [
+    "system design",
+    "code review",
+    "ci/cd",
+    "microservices",
+    "distributed systems",
+    "monitoring"
+   ]
+  },
+  {
+   "id": "workday:campbellsoup~wd5~ExternalCareers_GlobalSite:Req-68705-1",
+   "industry": "logistics",
+   "level": "executive",
+   "text": "Since 1869, we've connected people through food they love. We’re proud to be stewards of amazing brands that people trust. Our portfolio includes the iconic Campbell’s brand, as well as Cape Cod, Chunky, Goldfish, Kettle Brand, Lance, Late July, Pacific Foods, Pepperidge Farm, Prego, Pace, Rao’s Homemade, Snack Factory, Snyder’s of Hanover. Swanson, and V8.  \nHere, you will make a difference every day. You will be supported to build a rewarding career with opportunities to grow, innovate and inspire. Make history with us. \nWhy Campbell’s… \nBenefits begin on day one and include medical, dental, short and long-term disability, AD&D, and life insurance (for individual, families, and domestic partners).\nEmployees are eligible for our matching 401(k) plan and can enroll on the first day of employment with immediate vesting.\nCampbell’s offers unlimited sick time along with paid time off and holiday pay.\nIf in WHQ – free access to the fitness center. Access to on-site day care (operated by Br",
+   "missing": [],
+   "main": [
+    "engineering strategy",
+    "org design",
+    "headcount",
+    "technical roadmap",
+    "exec communication",
+    "board"
+   ]
+  },
+  {
+   "id": "workday:disney~wd5~disneycareerdc:10157512-2",
+   "industry": "administrative",
+   "level": "mid",
+   "text": "Job Posting Title:\nExecutive Assistant, National Geographic \nReq ID:\n10157512 \nJob Description:\nJob Summary \nExecutive Assistant provides executive support to the SVP, Production Services and Operations and VP of Production Services at National Geographic Content. Production Services & Operations partners with various internal client groups to Ingest, QC, Produce, Edit, Sound Design and Distribute content across all distribution platforms and operates as an “in-house” production service team to create short-form and long-form derivative content from the NG archive which requires manage budgets, schedules, and deliverables with third party vendors. \nResponsibilities \nKey responsibilities include managing the Executive’s schedule, meetings, agendas, deadlines and communications across multiple time zones, handling travel arrangements and expenses, creating and synthesizing data-driven reports and presentations for high level executives at National Geographic and Disney, coordinating with",
+   "missing": [],
+   "main": [
+    "system design",
+    "code review",
+    "ci/cd",
+    "microservices",
+    "distributed systems",
+    "monitoring"
+   ]
+  },
+  {
+   "id": "paylocity:59a760c5-87df-491d-b9ea-bba72d0bf0fd:4608458",
+   "industry": "logistics",
+   "level": "mid",
+   "text": "Description\nTransportation Router \nBiRite Foodservice Distributors is a third generation, family-owned company that offers you a Complete Foodservice Solution. We offer unsurpassed service to all areas of foodservice throughout the greater Bay Area and Sacramento. Since 1966 we have focused on being the best foodservice partner in the Bay Area. We remain committed to serving our community with quality products, timely deliveries, and competitive pricing.\nPosition Summary: \nThe Transportation Router is responsible for planning, organizing, and optimizing outbound delivery routes for a high-volume food distribution operation. \nThis role ensures efficient load planning, compliance with DOT regulations, and timely deliveries to meet customer expectations. \nWorking closely with the warehouse, transportation, and dispatch teams, the Transportation Router supports the safe and cost-effective movement of goods across various delivery channels.\nThis position reports to the Transportation Manage",
+   "missing": [],
+   "main": [
+    "system design",
+    "code review",
+    "ci/cd",
+    "microservices",
+    "distributed systems",
+    "monitoring"
+   ]
+  },
+  {
+   "id": "workday:benchmarkeducation~wd501~EXT:JR100211",
+   "industry": "administrative",
+   "level": "mid",
+   "text": "*This position is onsite at our New Rochelle, NY office.\nPosition Summary: \nThe Executive Assistant provides high-level administrative support to senior executive by managing complex calendars, coordinating meetings and travel, and ensuring the efficient operation of executive schedules. This role serves as a trusted partner, balancing business priorities, personal commitments, and confidential matters while maintaining exceptional professionalism and attention to detail. \nKey Responsibilities: \nExecutive Calendar Management \nManage and maintain complex executive calendars, including business meetings, personal appointments, and special events. \nPrioritize scheduling requests and resolve conflicts to optimize executive time and availability. \nCoordinate internal and external meetings across multiple time zones. \nEnsure executives are fully prepared for upcoming meetings through timely distribution of agendas, materials, and logistics. \nMeeting Coordination \nSchedule and coordinate meet",
+   "missing": [],
+   "main": [
+    "system design",
+    "code review",
+    "ci/cd",
+    "microservices",
+    "distributed systems",
+    "monitoring"
+   ]
+  },
+  {
+   "id": "workday:leidos~wd5~External:R-00194017",
+   "industry": "telecom",
+   "level": "mid",
+   "text": "The Digital Modernization Sector at Leidos has an opening for a Tier II Network Technician  to support computer data communications systems, in providing design specifications, testing and inspections for computer networks; plan and implementing upgrades; as well as, analyzing and organizing corresponding hardware and software combined solutions through network modeling.\nThe job duties of the Tier II Network Technician are as follows:\nThe Tier 2 network field technician will support the installation and maintenance of the client LAN/WAN devices.\nRespond to and resolve incident tickets.\nDraft and implement standard network change requests.\nProvide support to Tier III network engineers for incident management and projects (site surveys, TEMS, coordinate and install new equipment).\nPerform configuration management functions such as update topology drawings, ensure asset management records are accurate, and conduct inventory.\nCoordinate network operations, maintenance, repairs, or upgrades",
+   "missing": [],
+   "main": [
+    "system design",
+    "code review",
+    "ci/cd",
+    "microservices",
+    "distributed systems",
+    "monitoring"
+   ]
+  },
+  {
+   "id": "paylocity:70383c86-a95e-4f25-8079-be3678b171cf:4298373",
+   "industry": "customer_success",
+   "level": "mid",
+   "text": "Description\nAt Vitis Technologies , we believe that success lies in delivering unparalleled customer experience. We achieve this by recruiting and hiring the most talented, customer-focused individuals with technical expertise in the industry. A positive and enthusiastic attitude, coupled with a commitment to providing the best possible user experience, is essential. Vitis Technologies succeeds in this through our customer-first approach.\nNOC Analyst – Tier 2 (Network Operations Center) \nAs a NOC Analyst Tier 2, you will be responsible for server and infrastructure remediation of issues, resolution of escalated tickets from our Tier 1 NOC/Tier 2 helpdesk groups and provide as needed assistance to our professional services (projects) team for internal our customer initiatives. \nRequirements\nEssential Responsibilities: \nThis position will include but is not limited to the following duties: \n· Provide excellent support to our clients by:\nTroubleshooting Monitoring Alerts from our various ",
+   "missing": [],
+   "main": [
+    "system design",
+    "code review",
+    "ci/cd",
+    "microservices",
+    "distributed systems",
+    "on-call"
+   ]
+  },
+  {
+   "id": "adp:5a535e46-3012-42f1-ad1b-3a99b2a252d1:9201287530511_1",
+   "industry": "agriculture",
+   "level": "executive",
+   "text": "The Arrow Financial Corporation Family of Companies is seeking dynamic, authentic individuals to join our amazing team! Currently, we are looking for an experienced professional to join the Ilion team as: \nBranch Manager – Tier 2 or 3, Ilion \nThis opportunity may be perfect for you if you have experience in: \n> Communication and Collaboration \n> Managing, Coaching, Counseling \n> Business Development and Retention \nAbout this position: \nThe Branch Manager Tier 2 or 3 is responsible for overseeing day-to-day operations of one or more branches, providing quality customer service, connecting with business partners to offer a full spectrum of products and services, and leading the branch team to meet/exceed established goals for account opening, loans, and other business development. \nResponsibilities \n> Develop new business and strengthen existing relationships through researched business development calls, networking, and response to referrals; actively seek cross-sell opportunities \n> Le",
+   "missing": [],
+   "main": [
+    "engineering strategy",
+    "org design",
+    "headcount",
+    "technical roadmap",
+    "exec communication",
+    "board"
+   ]
+  },
+  {
+   "id": "paylocity:00e0b164-fd9f-4a58-a01b-68e6d7e33896:4567172",
+   "industry": "customer_success",
+   "level": "mid",
+   "text": "Description\nPosition: Help Desk Tier 2 Support \nLocation: Portsmouth, NH \nDuration: Full-time with benefits \nClient: US Navy, SUBMEPP \nSecurity Clearance: Active Secret \nCertification: Any IAT Level II \nJob description \nProvide Tier 2 level IT support and help desk ticket resolution.\nThis task includes all issues elevated from Tier 1 support to include NMCI/Nautilus operations, applications connectivity, server reach back, B1/B2/B3 boundaries and 403M/host file/Proxy Auto Configuration/Proxy changes.\nDocument incidents, actions taken, and outcomes using the SUBMEPP ticket tracking system.\nTicket notes shall reflect the precise changes that occurred in the business system(s) or network, regardless of outcomes.\nCreate and publish Knowledge Base articles to Local Area Network (LAN), or SUBMEPP Knowledge Base system when applicable.\nPrior to trouble tickets being escalated exhaust all available resources. \nMeet SUBMEPP established service level metrics detailed in the Service Level Agreeme",
+   "missing": [],
+   "main": [
+    "system design",
+    "code review",
+    "ci/cd",
+    "microservices",
+    "distributed systems",
+    "monitoring"
+   ]
+  },
+  {
+   "id": "icims:jobs.sprouts.com:381532",
+   "industry": "retail",
+   "level": "executive",
+   "text": "Overview \nAt Sprouts Farmers Market, the Assistant Store Manager is responsible for directing all business processes at their assigned store and delivering positive results. The Assistant Store Manager must be competent in all departments, both perishable and non-perishable, to ensure the team executes all programs and processes to drive sales and efficiency. They inspire and motivate a team committed to providing superior customer service in a fast-paced and friendly environment in compliance with company safety, labeling, health, and weights and measures standards. They also oversee the entire store in the absence of the Store Manager. This role is responsible for driving store sales, team member engagement, and robust customer advocacy through strong, dynamic leadership to create success in people, processes, partners, and performance. \nOverview of Responsibilities \nPositively shape the culture in the store by modeling the leadership behaviors aligned to Sprouts values. \nDevelop the",
+   "missing": [],
+   "main": [
+    "engineering strategy",
+    "org design",
+    "headcount",
+    "technical roadmap",
+    "exec communication",
+    "board"
+   ]
+  },
+  {
+   "id": "lever:daniels-sharpsmart:8281c5c1-2bf9-4c47-b45d-c93a1a8a8796",
+   "industry": "nonprofit",
+   "level": "executive",
+   "text": "As Daniels Health continues to expand, we’re excited to welcome a Business Development Director to our team to oversee our North Texas and Oklahoma market!\n \nThis role is key to driving new business within the acute care market (hospitals), with a focus on growing our client base and strategically expanding our book of business.\n \nAt Daniels, we’re proud to be a leader in healthcare waste management—offering innovative, sustainable solutions that improve safety, reduce costs, and support compliance. We work with some of the largest hospital networks in the U.S. and are known for our data-driven approach, strong customer partnerships, and purpose-led culture.\n \n\nAs Daniels Health continues to expand, we’re excited to welcome a Business Development Director to our team to oversee our North Texas and Oklahoma market!\n \nThis role is key to driving new business within the acute care market (hospitals), with a focus on growing our client base and strategically expanding our book of business.",
+   "missing": [],
+   "main": [
+    "engineering strategy",
+    "org design",
+    "headcount",
+    "technical roadmap",
+    "exec communication",
+    "board"
+   ]
+  },
+  {
+   "id": "ashby:Bastion:4b88de5f-ba62-46b1-9fa5-2f558bec0946",
+   "industry": "nonprofit",
+   "level": "executive",
+   "text": "ABOUT BASTION\n\nBastion provides the regulated infrastructure businesses need to hold, move, and issue stablecoins. Our platform combines custodial wallets, global payment orchestration, and stablecoin issuance. Customers can use each product independently or connect them into a single end-to-end flow.\n\nWe operate through our own regulated entities, with compliance and risk controls built directly into the platform. We can also support customers operating under their own licenses with the compliance and financial operations required to run their programs.\n\n\nOVERVIEW\n\nWe’re hiring a Business Development Director to open the segments, use cases, and strategic programs that don’t fit a standard sales motion yet. Sales works defined segments. You find the next ones, shape the opportunity, and either close it or hand sales a qualified, well-structured deal.\n\nNew buyers appear every quarter, from global brands exploring branded stablecoins to platforms rethinking cross-border payouts and trea",
+   "missing": [],
+   "main": [
+    "engineering strategy",
+    "org design",
+    "headcount",
+    "technical roadmap",
+    "exec communication",
+    "board"
+   ]
+  },
+  {
+   "id": "workday:cw~wd1~External:R340183",
+   "industry": "creative",
+   "level": "executive",
+   "text": "Job Title \nProject Design Manager  \nJob Description Summary \nThe Project Design Manager role is to lead project design for Tier 2 & 3 locations globally (less than 15K SF) in alignment with CW Workplace Guidelines and Design Standards. Project Design Managers analyze, plan, design, document, and manage interior non-structural/non-seismic construction and alteration projects in compliance with applicable building design and construction, fire, life -safety, and energy codes, standards, regulations, and guidelines for the purpose of obtaining a building permit, as allowed by law. They contribute to the interior environment with knowledge and skills about space planning, interior building materials and finishes; casework, furniture, furnishings, and equipment; lighting; acoustics; wayfinding; ergonomics and anthropometrics; and human environmental behavior. They manage\nannual portfolio audits against the CW Workplace Standards & Guidelines. This role is accountable for the development & q",
+   "missing": [],
+   "main": [
+    "engineering strategy",
+    "org design",
+    "headcount",
+    "technical roadmap",
+    "exec communication",
+    "board"
+   ]
+  },
+  {
+   "id": "workday:spe~wd1~SonyPicturesEntertainment:JR114764",
+   "industry": "entertainment",
+   "level": "executive",
+   "text": "The Post-Production Executive will lead Feature Film Post Production, setting strategy, standards, and workflows across Pre-Production, Production, and Post-Production. Employing the latest technologies to increase efficiency. This role oversee Post Production logistics, budgets, cost projections, resource allocation and finishing across the feature film portfolio and oversee approximately 12-15 movies per year. The role manages a team of post production executives and interfaces with senior executives in production, creative, marketing, and distribution.  \nPre-Production  \nSupervise budgeting of post-production, sound, editorial, and delivery requirements for all pictures. \nCollaborate with the Cinematographer to develop the best digital capture method based on their camera choice and their preferred crew.   \nKnowledgeable of camera capture methods and for image science, establish early at Camera and Hair/Make-up/Wardrobe tests. \nSet strategic direction of new image science workflows ",
+   "missing": [],
+   "main": [
+    "engineering strategy",
+    "org design",
+    "headcount",
+    "technical roadmap",
+    "exec communication",
+    "board"
+   ]
+  },
+  {
+   "id": "breezy:wealthy-recruiting:4daa52ad5b1b-senior-underwriter-commercial-real-estate",
+   "industry": "real_estate",
+   "level": "senior",
+   "text": "We are a rapidly growing commercial real estate capital markets advisory, focused exclusively on securing competitive debt solutions across all major property types. With a track record of underwriting approximately 85 transactions each year, our firm is recognized for delivering tailored financing strategies to investors, developers, and owners. Our approach emphasizes speed, precision, and integrity—whether underwriting stabilized acquisitions, construction and bridge facilities, or complex mezzanine and preferred equity placements. By maintaining strong relationships with a wide spectrum of capital providers—including banks, life companies, debt funds, CMBS platforms, mortgage brokers, and private lenders—we ensure our clients have access to the most competitive terms in the market. The organization is built on a high-performance culture where client service, disciplined execution, and long-term partnership are the foundation of success.\nThis position is a Senior Underwriter role de",
+   "missing": [],
+   "main": [
+    "architecture",
+    "technical leadership",
+    "cross-functional",
+    "mentorship",
+    "staff",
+    "system design interview"
+   ]
+  },
+  {
+   "id": "workday:freseniusglobal~wd3~fk_careers:R-01031323",
+   "industry": "data_science",
+   "level": "mid",
+   "text": "Job Summary \nThe Business Data Analyst plays a critical role in supporting commercial excellence by gathering, analyzing, and interpreting internal and external data to generate actionable insights that inform business decisions. This role partners with sales, marketing, contracting, and cross-functional teams; both local and global; to identify key performance trends, support strategic initiatives, and deliver high-quality analytical deliverables. The incumbent will design and maintain reporting templates, develop dashboards, conduct market and customer analyses, and help drive process improvements. The Business Analyst serves as a trusted analytics resource, communicating findings to stakeholders and contributing to the commercialization and operational excellence of the organization.\nThis is a hybrid position, and the selected candidate will be required to work onsite in the Lake Zurich, Illinois office 3 days a week.\nSalary Range: $65,000 - $85,000 per year\nFinal pay determinations",
+   "missing": [],
+   "main": [
+    "system design",
+    "code review",
+    "ci/cd",
+    "microservices",
+    "distributed systems",
+    "monitoring"
+   ]
+  },
+  {
+   "id": "personio:entrix:2852489",
+   "industry": "creative",
+   "level": "senior",
+   "text": "Location: Munich, Germany\nEmployment Type: Full-Time, indefinite term\nSalary Range: € 100k - 120k per year gross depending on the seniority level\nWorking Mode: Hybrid work setup (office first set-up with possibility to work from home a couple days)\nLanguage Requirement: C1 Level English\nAs Senior/Staff Product UX Designer you own how our clients and operators experience Entrix, from the end-to-end client journey to the detail of individual pages. You sit in Product and work closely with Marketing and Tech to turn our journey ideas into a tangible, shipped experience. \nDrive Entrix's product experience vision together with product leads, turning our product into a coherent long-term experience that sets us apart from competitors. \nMap the end-to-end Entrix client journey, from first touchpoint to onboarding, daily use and expansion, and turn our existing journey ideas into a tangible client experience. \nDrive the journey into execution: break it into concrete initiatives with Product, M",
+   "missing": [],
+   "main": [
+    "architecture",
+    "technical leadership",
+    "cross-functional",
+    "mentorship",
+    "system design interview",
+    "platform"
+   ]
+  },
+  {
+   "id": "teamtailor:techniquesolairesarl:8611098",
+   "industry": "aviation",
+   "level": "mid",
+   "text": "Créé en 2008, Mexens est un groupe français multi‑énergies indépendant qui développe, finance, construit et exploite des infrastructures de production d’énergies renouvelables : solaire photovoltaïque, solutions de stockage, éolien terrestre et biogaz. \nPrésent en France et sur plusieurs marchés internationaux, le Groupe s’appuie sur un parc de 0,9 GW d’actifs en exploitation et sur l’engagement de 330 collaborateurs, au service d’une trajectoire de croissance à horizon 2030 visant plus de 4 GW. \nPlus que de l’énergie, Mexens se positionne comme un acteur engagé de la transformation des territoires, en mobilisant les énergies renouvelables et les énergies humaines pour accompagner durablement les usages et le développement local. \nRejoignez-nous et portez nos 4 valeurs : \nExcellence  : toujours viser un niveau élevé de qualité et d’aboutissement dans nos actions et réalisations \nProximité  : travailler en équipe pour plus d’efficience au quotidien \nDurabilité  : construire des relation",
+   "missing": [],
+   "main": [
+    "system design",
+    "code review",
+    "ci/cd",
+    "microservices",
+    "distributed systems",
+    "monitoring"
+   ]
+  },
+  {
+   "id": "icims:careers.landrysinc.com:49764",
+   "industry": "culinary",
+   "level": "mid",
+   "text": "Overview JOIN A WINNING TEAM! LINE COOK This isn’t just your next job – it’s your opportunity to be part of an amazing team that delivers on our promise to meet and exceed our guest’s experience the moment they walk through our doors! We offer structured programs for growth and career advancement and consider our employees to be our greatest asset. What we offer you: Unparalleled training and development programs Generous employee discounts on dining, retail, amusements and hotels Flexible schedules Multiple benefit plans to suit your needs Paid time off or paid sick leave (based on location) Opportunities for advancement Community volunteer opportunities with Landry’s League Positive and respectful work environment where diversity is valued Qualifications Apply now if you: Aspire to our “Be FAIR” ideals: Be Friendly, Accommodating, Inclusive and Respectful Are a Team Player with a guest first attitude Have 1+ year Line Cook experience Have a passion for great food and great fun Are co",
+   "missing": [],
+   "main": [
+    "system design",
+    "code review",
+    "ci/cd",
+    "microservices",
+    "distributed systems",
+    "monitoring"
+   ]
+  },
+  {
+   "id": "workday:coxhealth~wd5~CoxHealth_External:R19264",
+   "industry": "childcare",
+   "level": "mid",
+   "text": "Facility: \nCox Child Care Center North: 1632 N Robberson, Springfield, Missouri, United States of America, 65802\nDepartment: \n1018 Learning Center North \nScheduled Weekly Hours: \n40 \nHours: \nWork Shift: \nRotating (United States of America) \nCoxHealth is a leading healthcare system serving 25 counties across southwest Missouri and northern Arkansas. The organization includes six hospitals, 5 ERs, and over 80 clinics. CoxHealth has earned the following honors for workplace excellence:\nNamed one of Modern Healthcare’s Best Places to work five times.\nNamed one of America’s Greatest Workplaces, Greatest Workplaces in Healthcare (2025, 2026), Greatest Workplaces for Women (2023, 2024), and Greatest Workplaces for Diversity (2024) by Newsweek and Plant-A Insights Group . \nAcknowledged by Forbes as one of the Best Employers for New Grads.\nHealthcare Innovation's  Top Companies to Work for in Healthcare (2025).\nBenefits \nMedical, Vision, Dental, Retirement with Employer Match and more (20+ hrs/",
+   "missing": [],
+   "main": [
+    "system design",
+    "code review",
+    "ci/cd",
+    "microservices",
+    "distributed systems",
+    "monitoring"
+   ]
+  },
+  {
+   "id": "oracle:eimy~us6~CX_1:52691",
+   "industry": "childcare",
+   "level": "mid",
+   "text": "Work Schedule: \n100%, full-time, Monday-Friday, hours vary (8-hour shift)\nAdditional components of compensation may include: \nEvening, night, and weekend shift differential\nOvertime\nOn-call pay\nAt UW Health in northern Illinois, you will have: \nCompetitive pay and comprehensive benefits package including: PTO, Medical, Dental, Vision, retirement, short and long-term disability, paternity leave, adoption assistance, tuition assistance\nAnnual wellness reimbursement\nOpportunity for on-site day care through UW Health Kids\nTuition reimbursement for career advancement--ask about our fully funded programs!\nAbundant career growth opportunities to nurture professional development\nStrong shared governance structure\nCommitment to employee voice\nQualifications \nAssociate’s Degree or sixty credit hours from an accredited college/university which must include six credit hours in courses related directly to child care/child development, from birth to age six. Required. \nOR in lieu of Associate’s Degr",
+   "missing": [],
+   "main": [
+    "system design",
+    "code review",
+    "ci/cd",
+    "microservices",
+    "distributed systems",
+    "monitoring"
+   ]
+  },
+  {
+   "id": "oracle:eluq~us2~CX_1:244566",
+   "industry": "pharmacy",
+   "level": "mid",
+   "text": "Provide exceptional customer service to help people live healthier lives by treating our customers/employees in a fair and ethical manner, providing a safe, clean, inclusive environment, being a responsible member of the community, providing the right products, services, and care at the right time with fair and accurate pricing. Provide direct patient intervention by providing health and wellness services and experiences relevant to the patient as allowable by and consistent with state and federal laws. Demonstrate the company's core values of respect, honesty, integrity, diversity, inclusion and safety.\nComply with local, state and federal regulations; report all illegal activity, including robbery, theft or fraud\nComply with and reinforce all food safety, sanitation and safety regulations/guidelines/procedures and programs according to company, local, state, and federal health code regulations; identify unsafe conditions and notify store management\nUnderstand and perform ordering fun",
+   "missing": [],
+   "main": [
+    "system design",
+    "code review",
+    "ci/cd",
+    "microservices",
+    "distributed systems",
+    "monitoring"
+   ]
+  },
+  {
+   "id": "smartrecruiters:TurnerTownsend:744000157489650",
+   "industry": "data_science",
+   "level": "mid",
+   "text": "Due to growing demand for our services we are seeking to recruit experienced Data Analysts at Consultant, Senior Consultant & Principal Consultant levels to join our team. The role involves supporting a wide range of project commissions and major programmes and we are seeking individuals with a demonstrable track record of delivery in a consultancy environment.\nThe Opportunity:\nThe responsibilities of the Data Analyst will include, but are not limited to:\nProviding technical expertise and support to non-experts\nDeveloping multi-faceted reports with recommendations to senior management\nDevelopment, analysis and maintenance of corporate datasets\nProvide guidance and advice on data quality issues to a wide variety of data providers\nDevelop / use, the mechanisms employed by clients to recharge manpower against projects\nResponsible for visibility, accuracy and transparency of the project critical path\nPreparing presentation and other materials for client pitches.\nInputting key information i",
+   "missing": [],
+   "main": [
+    "system design",
+    "code review",
+    "ci/cd",
+    "microservices",
+    "distributed systems",
+    "monitoring"
+   ]
+  },
+  {
+   "id": "paylocity:f4335256-1d69-4bc1-9b94-47eb2008ff69:4495496",
+   "industry": "social_work",
+   "level": "mid",
+   "text": "Description\nTides Family Services is a nonprofit organization that is committed to providing comprehensive support and resources to children, adolescents, and families facing various challenges. The overall mission of Tides is to provide services and supports that allow youth to live in a community-based setting. An \"Agency Without Walls\" our services are delivered in homes, communities, schools...wherever our youth are.\nPosition Summary: We are seeking a dedicated Bilingual Outpatient Clinician to join our team, providing comprehensive bio-psychosocial assessments and trauma-informed counseling services to clients and families. This role involves both office-based and in-home/community-based support, working collaboratively with an integrated team to develop and evaluate treatment goals, offer resources, advocacy, and routine assessments.\nEssential Functions: \nConducts comprehensive bio-psychosocial assessment interview with client, family, and/or significant other according to agency",
+   "missing": [],
+   "main": [
+    "system design",
+    "code review",
+    "ci/cd",
+    "microservices",
+    "distributed systems",
+    "monitoring"
+   ]
+  },
+  {
+   "id": "oracle:fa-eyem-saasfaprod1~ocs~CX_1:1000557",
+   "industry": "energy",
+   "level": "mid",
+   "text": "To safely ensure the efficient & continual functioning of all the mechanical equipment at the drilling rig site, supporting all the rigs in the assigned district. Installs, repairs and troubleshoots all aspects of various mechanical systems on the drilling rig, including the mud pumps, top drive and TM-80..\nEnsures the regular preventative maintenance activities for the mechanical components of the rig are accomplished.? Installs, repairs and tests all mechanical equipment at the rig site.? Conducts safety inspections of all major pieces of equipment, making repairs, adjustments/ calibrations as required.? Ensures that an adequate amount of spare parts are on hand at all time. Submits requisitions as needed.? Participates in rig down/ rig up activities to ensure proper disconnect, transportation and connection of mechanical equipment.? Ability to perform essential functions of this position with or without reasonable accommodations?\n4-7 years� experience as a Mechanic Ability to wear r",
+   "missing": [],
+   "main": [
+    "system design",
+    "code review",
+    "ci/cd",
+    "microservices",
+    "distributed systems",
+    "monitoring"
+   ]
+  },
+  {
+   "id": "workday:nyuhs~wd12~nyuhscareers1:R0000016022",
+   "industry": "social_work",
+   "level": "mid",
+   "text": "Position Overview \nUnder the Director of Care Management, with opportunities for clinical supervision from LMSW and or LCSW/LCSW-R staff, this position provides psycho-social evaluation, crisis and trauma counseling, resource referral and case management services. Accountable for intervening with patients and families, by applying critical thinking skills to monitor psychosocial status and issues that impact the clinical progression and transition/discharge plan for patients, including the facilitation of patient and family communication, coping and decision making. Works as a part of a multidisciplinary team \nPrimary Department, Division, or Unit: \nUHS Outpatient Mental Health Clinic \nPrimary Work Shift: \nDay \nRegular Scheduled Weekly Hours: \n40 \nCompensation Range: \n$30.58 - $45.86 per hour, depending on experience \n-----\nEducation/Experience \nMinimum Required:\nMasters in Social Work (MSW)\nPreferred:\n3 years post graduate experience\nLicense/Certification \nMinimum Required:\nNYS Licens",
+   "missing": [],
+   "main": [
+    "system design",
+    "code review",
+    "ci/cd",
+    "microservices",
+    "distributed systems",
+    "monitoring"
+   ]
+  },
+  {
+   "id": "icims:www.related.jobs:22088",
+   "industry": "real_estate",
+   "level": "mid",
+   "text": "Responsibilities \nAre you someone who enjoys supporting a team, staying organized, and helping operations run smoothly? We are seeking an Administrative Assistant at a 144-unit multifamily community in the Chelsea neighborhood in Manhattan to provide day-to-day administrative and operational support at our affordable multifamily community. In this role, you will support leasing, compliance, and resident services while serving as a welcoming point of contact for residents, applicants, vendors, and guests. \nESSENTIAL JOB FUNCTIONS: \nWelcoming tenants and new applicants and guiding them through the application process. \nServe as a primary point of contact for residents, applicants, vendors, and visitors, creating a welcoming and professional office environment. \nSupport leasing and compliance activities by distributing application materials, assisting with interviews, and coordinating background and credit checks. \nAssist with lease related tasks including preparing documents, supporting ",
+   "missing": [],
+   "main": [
+    "system design",
+    "code review",
+    "ci/cd",
+    "microservices",
+    "distributed systems",
+    "monitoring"
+   ]
+  },
+  {
+   "id": "greenhouse:marksman:4464582009",
+   "industry": "law_enforcement",
+   "level": "mid",
+   "text": "Marksman Security is built on serving our clients and building careers – just like yours. We are trusted by some of the most well-known companies and properties in the country while remaining dedicated to building personalized security solutions that solve the needs of every customer we support. Named as a nationally recognized Top Workplace in 2024 and 2025 by USA Today, Marksman's customized approach to security services will provide you with the opportunity to learn, grow and succeed. Our core values of being Unified, Transparent, Innovative, Committed and Accountable help us in providing unparalleled service and support in all that we do. If you are looking for a meaningful career, a culture of excellence, and the ability to make a difference, we want to talk to you!\nResponsibilities of Security Officers include, but are not limited to:\nProvide excellent Customer Service to all parties encountered while on duty, including assisting with directions and general business information\nM",
+   "missing": [],
+   "main": [
+    "system design",
+    "code review",
+    "ci/cd",
+    "microservices",
+    "distributed systems",
+    "monitoring"
+   ]
+  },
+  {
+   "id": "breezy:johnson-security-bureau-inc:db5d22a42a92-security-officer",
+   "industry": "law_enforcement",
+   "level": "mid",
+   "text": "Johnson Security Bureau, Inc. is seeking to add dedicated Security Officers to our team. Johnson Security Bureau, Inc. has been providing professional security, transport, patrol and protective services for over sixty years. \nPosition: Security Officer \nLocation: Queens, NY (Flushing & Long Island City) \nWork Type: Full-Time & Part-Time Employment Opportunity Available \nPay Rate: $18.00/hour \nExperience: At least 2 years security experience required \nShifts Available: \nMorning – Times will vary\nAfternoon – Times will vary\nOvernight – Times will vary\nKey Responsibilities: \nMonitor premises through regular patrols to ensure safety and security\nControl access to the facility by verifying identification and directing visitors if needed\nMaintain a visible presence to deter unauthorized activity and ensure order\nRespond promptly to emergencies, incidents, and alarms, contacting emergency services when necessary\nObserve and report suspicious behavior, safety hazards, or security breaches\nOper",
+   "missing": [],
+   "main": [
+    "system design",
+    "code review",
+    "ci/cd",
+    "microservices",
+    "distributed systems",
+    "monitoring"
+   ]
+  },
+  {
+   "id": "workday:avera~wd5~avera-careers:R-260030594",
+   "industry": "pharmacy",
+   "level": "mid",
+   "text": "Location: \nSioux Falls, SD \nWorker Type: \nRegular \nWork Shift: \nDay/Evening/Weekend/Holiday Shift (United States of America) \nAt Avera Heart Hospital, you’re not just joining a workplace – you’re becoming part of a family. With more than 700 dedicated employee, we deliver care that truly makes a difference. Our commitment to excellence has earned us the distinction of being one of only a handful of hospitals nationwide – out of more than 4,000 – to achieve a double 5-star rating from the Centers for Medicare and Medicaid Services. \nPosition Highlights \nResponsible for assisting with planning, organizing, directing, executing, and evaluating all aspects of the pharmacy services for the hospital. Interprets and processes physicians’ orders, performs drugs information, continuous quality improvement activities, participates in discharge planning and performs non-distributive services, such as drug-level monitoring, that are established by policy. In the absence of the Team Leader, supervi",
+   "missing": [],
+   "main": [
+    "system design",
+    "code review",
+    "ci/cd",
+    "microservices",
+    "distributed systems",
+    "on-call"
+   ]
+  },
+  {
+   "id": "workday:uhaul~wd1~UhaulJobs:R253415",
+   "industry": "clergy",
+   "level": "mid",
+   "text": "United States This position is not eligible for employer sponsorship. Applicants must be legally authorized to work and must not require employer sponsorship.  \nLocation: \n8162 S Priest Dr, Tempe, Arizona 85284 United States of America \nThis position is not eligible for employer sponsorship. \nTo ensure a fair and consistent evaluation process, candidates are expected to complete all interviews and assessments independently and without the use of artificial intelligence tools (including AI-generated responses, prompts, or real-time assistance). Use of AI throughout the application and recruiting process may result in removal from consideration. Our goal is to get to know your authentic experiences, communication style, and problem-solving approach. \nWe need someone who will manage an allotment of business entities (accounts), provide operational support and coaching support to ensure conformity to standards. Much of this position is KPI-oriented, working with respective parties to find ",
+   "missing": [],
+   "main": [
+    "system design",
+    "code review",
+    "ci/cd",
+    "microservices",
+    "distributed systems",
+    "monitoring"
+   ]
+  },
+  {
+   "id": "perks:smartrecruiters:Inter IKEA Group:64",
+   "industry": "clergy",
+   "level": "mid",
+   "text": "Šioje pozicijoje Tu:\nValdysi automatinius ir kompiuterizuotus įrengimus ir užtikrinsi sklandų gamybos procesą\nUžtikrinsi gaminamų detalių kokybę remdamasi (-is) IKEA kokybės standartu\nBūsi atsakinga (-as) už sklandų įrenginių veikimą, atsiradus gedimams bendrausi su techninės tarnybos skyriumi, kad gedimai būtų pašalinti\nMes tikimės, kad Tu:\nTuri patirties panašioje gamyboje arba gebi skaityti brėžinius\nGali dirbti pamaininiu darbo grafiku: 3 pamainos/5 darbo dienos (1 savaitė - iš ryto; 1 savaitė - naktį; 1 savaitė - popiet)\nTau yra svarbios vertybės: tobulėjimas, atsakomybės prisiėmimas, buvimas geru pavyzdžiu, vieningumas, rūpinimasis žmonėmis ir planeta, kūrybiškumas, paprastumas, ekonomiškumas\nMes siūlome:\nNemokamą maitinimą\nNemokamą atvykimą į/iš darbo įmonės transportu (Marijampolės ir Vilkaviškio kryptys) arba kuro kompensaciją vykstant iš kitų miestų\nDraudimą 24/7\nDovanas įvairių švenčių proga (susituokus, gimus vaikui ir kt.)\nMotyvacinę lojalumo programą\nModernų požiūrį į dar",
+   "missing": [],
+   "main": [
+    "system design",
+    "code review",
+    "ci/cd",
+    "microservices",
+    "distributed systems",
+    "monitoring"
+   ]
+  },
+  {
+   "id": "perks:pinpoint:Torbay Council:203",
+   "industry": "maritime",
+   "level": "mid",
+   "text": "Job Description & Person Specification > Brixham Harbour Master\nJob Description & Person Specification > Torquay and Paignton Harbour Master\nLead the future of one of the South West's most diverse and dynamic harbour authorities.\nTorbay Council is seeking to appoint two exceptional Harbour Masters to lead the safe, sustainable and successful operation of the harbours of Tor Bay. These are rare opportunities to take on senior leadership roles within a harbour authority that supports commercial fishing, leisure marine activities, tourism, maritime events and coastal communities at the heart of the Bay.\nAs a Harbour Master, you will be a key decision-maker responsible for the leadership, development and delivery of harbour services, ensuring compliance with statutory responsibilities while driving innovation, commercial opportunities and service excellence.\nYou will manage complex harbour operations, lead experienced teams, oversee significant budgets and work closely with stakeholders ra",
+   "missing": [],
+   "main": [
+    "system design",
+    "code review",
+    "ci/cd",
+    "microservices",
+    "distributed systems",
+    "monitoring"
+   ]
+  },
+  {
+   "id": "greenhouse:grandviewvet:5437107008",
+   "industry": "veterinary",
+   "level": "mid",
+   "text": "<h3 data-section-id=\"1pfttue\" data-start=\"0\" data-end=\"56\">🐾 Registered Veterinary Technician (RVT) Wanted! 🐾</h3>\n<p data-start=\"58\" data-end=\"227\"><strong data-start=\"58\" data-end=\"185\">Love animals? Obsessed with great patient care? Enjoy teaching pet parents how to keep their furry family members thriving?</strong> If that sounds like you, keep reading. 👀</p>\n<p data-start=\"229\" data-end=\"578\">We're looking for a full time <strong data-start=\"249\" data-end=\"291\">Registered Veterinary Technician (RVT)</strong> who brings positive energy, strong clinical skills, and a genuine passion for helping pets live their best lives. If you're the kind of person who can go from monitoring anesthesia to celebrating a puppy's first visit to comforting a nervous client—all before lunch—you'll fit right in.</p>\n<h3 data-section-id=\"1max48c\" data-start=\"580\" data-end=\"606\">✨ What You'll Be Doing</h3>\n<p><em>As a key member of our veterinary team, you'll:</em></p>\n<ul>\n<li>&nbsp;Deliver top-tier n",
+   "missing": [],
+   "main": [
+    "system design",
+    "code review",
+    "ci/cd",
+    "microservices",
+    "distributed systems",
+    "on-call"
+   ]
+  },
+  {
+   "id": "lever:ion:ea950f84-6597-4a36-884a-883aa681f928",
+   "industry": "media",
+   "level": "mid",
+   "text": "The Role:\n \nThis is an exciting opportunity to join the dynamic Infralogic Team. As a senior reporter, you will provide exclusive content on Limited Partners, General Partners, fundraising, allocations and commitments concerning the North American renewables, power and infrastructure sectors. You will take a leading role primarily feeding content into ION Analytics' Infralogic publication, as well as providing support to other products within the group.\n\nKey Responsibilities:\nBuild close relationships with funds, managers, lawyers, advisors\nShape global coverage of Limited Partners and General Partners, including their allocations, commitments, targets and people moves\nGenerate ideas for longer-form coverage, and apart from writing own content - work with Infralogic data and research teams to ensure accurate, exclusive and market-scooping news and analyses\nWrite an average of four exclusive stories per week, and one long form piece every month. The longer forms will include Limited Par",
+   "missing": [],
+   "main": [
+    "system design",
+    "code review",
+    "ci/cd",
+    "microservices",
+    "distributed systems",
+    "monitoring"
+   ]
+  },
+  {
+   "id": "lever:ion:e9f2a41d-feb1-4994-8d7f-2fab6eb6370f",
+   "industry": "media",
+   "level": "mid",
+   "text": "The Role:\n \nThis is an exciting opportunity to join the dynamic Infralogic team. As a digital infrastructure reporter, you will provide exclusive content on M&A, financings, project development, “people moves,” and more within the digital infrastructure sector. Not only will you cover fiber-optics, macro towers, small cells, and similar, but also you will be uniquely positioned on the front lines of the AI revolution through coverage of the data center industry. Additionally, a lot of the content from your reports will be reconfigured as data, fed into ION Analytics' highly regarded Infralogic database.\n\nKey Responsibilities:\nBuild close relationships with funds, bankers, lawyers, advisors and CEOs\nShape global coverage of digital infrastructure investors and lenders, including their allocations, commitments, targets and people moves\nGenerate ideas for longer-form coverage, and apart from writing content - work with Infralogic data and research teams to ensure accurate, exclusive and m",
+   "missing": [],
+   "main": [
+    "system design",
+    "code review",
+    "ci/cd",
+    "microservices",
+    "distributed systems",
+    "monitoring"
+   ]
+  },
+  {
+   "id": "lever:kickmaker:15aaa8ad-e9f8-43c2-8015-114e00acb95d",
+   "industry": "entertainment",
+   "level": "mid",
+   "text": "Qui sommes-nous ? :\nCréée en 2016, KICKMAKER est une communauté de talents aux profils pluridisciplinaires et complémentaires, animés par la même passion pour le développement de produits high-tech et les défis d'industrialisation. \n\nPrésents en France, en Chine et aux Etats-Unis, notre communauté compte plus de 200 kickers passionnés. Nous sommes fiers d’accompagner nos partenaires grands groupes, PME et startups depuis la phase de prototypage jusqu’à la production série. \n\nKICKMAKER évolue dans la robotique, le médical, la mobilité, l’électronique grand public et les objets connectés avec une vraie culture makers. L’Eco-Design, la lutte contre l’obsolescence programmée, la durabilité, l’économie de la fonctionnalité et le made in local font partie de nos expertises afin de rendre l’industrie des produits électroniques plus regardante vis-à-vis des enjeux RSE.\n\nNos valeurs « Passion, Excitation et Bienveillance » sont les piliers de KICKMAKER, cet esprit d’équipe nous a permis de faço",
+   "missing": [],
+   "main": [
+    "system design",
+    "code review",
+    "ci/cd",
+    "microservices",
+    "distributed systems",
+    "monitoring"
+   ]
+  },
+  {
+   "id": "lever:lexeotx:ac1993d3-3b8f-448a-b249-3654acb350a0",
+   "industry": "biotech",
+   "level": "mid",
+   "text": "Primary Responsibilities\nSelect and manage CROs for oligonucleotide synthesis and bioconjugation, including scope, vendor guidance, data review, quality, and delivery timelines \nDesign and oversee oligonucleotide conjugates using peptides, antibodies, or ligands; optimize conjugation chemistry, linkers, purification, and analytical characterization \nBuild or outsource methods to confirm identity and assess purity using HPLC, LC-MS, SDS-PAGE, spectroscopy, and other fit-for-purpose assays \nEngineer AAV capsids, regulatory elements, and transgene cassettes; conduct cloning, plasmid preparation, sequencing, and research-grade vector production \nDesign and screen sequence or vector/capsid with NGS readouts, applying state-of-the-art analytical methods to improve potency, selectivity, and production yield \nPartner with In Vitro Pharmacology, In Vivo Physiology, Analytical DMPK, and CMC to define screening cascades, interpret data, assess developability and manufacturability, select leads, a",
+   "missing": [],
+   "main": [
+    "system design",
+    "code review",
+    "ci/cd",
+    "microservices",
+    "distributed systems",
+    "monitoring"
+   ]
+  },
+  {
+   "id": "lever:luumlash:07e5c0dd-6d36-4101-b5f3-8f123a796d11",
+   "industry": "beauty",
+   "level": "mid",
+   "text": "About LUUM\n \nLUUM is revolutionizing beauty through the power of robotics, artificial intelligence, and skilled artistry. We've developed a first-of-its-kind robotic system for applying eyelash extensions—bringing advanced technology to an industry where precision, artistry, and personalization are key. Our team brings together experienced engineers, skilled lash artists, and serial entrepreneurs, all united by a shared mission: to combine innovative technology with beauty expertise to deliver an exceptional experience for every client.\n\n\nAbout the role:\n\nExpand your lash career. Reduce physical strain. Be part of beauty’s future.\nLUUM is seeking talented lash artists to join our elite team of beauty professionals working alongside cutting-edge robotics. This role is perfect for experienced lash artists who are excited to learn a new system, work in a tech-forward environment, and grow with a supportive, forward-thinking team.\nWe provide in-depth training on our robotic lash platform. ",
+   "missing": [],
+   "main": [
+    "system design",
+    "code review",
+    "ci/cd",
+    "microservices",
+    "distributed systems",
+    "monitoring"
+   ]
+  },
+  {
+   "id": "lever:luumlash:3d798d39-04ca-426c-b715-68deb8a52d65",
+   "industry": "beauty",
+   "level": "mid",
+   "text": "About LUUM\n \nLUUM is revolutionizing beauty through the power of robotics, artificial intelligence, and skilled artistry. We've developed a first-of-its-kind robotic system for applying eyelash extensions—bringing advanced technology to an industry where precision, artistry, and personalization are key. Our team brings together experienced engineers, skilled lash artists, and serial entrepreneurs, all united by a shared mission: to combine innovative technology with beauty expertise to deliver an exceptional experience for every client.\n\n\nAbout the role:\n\nExpand your lash career. Reduce physical strain. Be part of beauty’s future.\nLUUM is seeking talented lash artists to join our elite team of beauty professionals working alongside cutting-edge robotics. This role is perfect for experienced lash artists who are excited to learn a new system, work in a tech-forward environment, and grow with a supportive, forward-thinking team.\nWe provide in-depth training on our robotic lash platform. ",
+   "missing": [],
+   "main": [
+    "system design",
+    "code review",
+    "ci/cd",
+    "microservices",
+    "distributed systems",
+    "monitoring"
+   ]
+  },
+  {
+   "id": "lever:oddin:6d9c56d8-9919-418c-b994-a23bfbccde71",
+   "industry": "general",
+   "level": "mid",
+   "text": "Jsme gamingové streamovací studio a pořádáme turnaje ve hře Counter-Strike na PC. Aktuálně hledáme hráče, kteří se rádi ukážou ve světě Esportu.\nOrganizujeme miniturnaje ve hře Counter-Strike v našem studiu v Ostravě.\nNáplň práce:\nSoutěžit v hraní hry Counter-Strike na počítačích proti ostatním hráčům\nZápis výsledků odehraných zápasů, odpovědnost za dodržování časového plánu zápasů\nKomunikace s ostatními odděleními včetně vedení studia\nJednoduchá manuální obsluha streamovacích programů\nOdpovědnost za dodržování pravidel a udržování pořádku ve studiu\nCo od Vás očekáváme:",
+   "missing": [],
+   "main": [
+    "system design",
+    "code review",
+    "ci/cd",
+    "microservices",
+    "distributed systems",
+    "monitoring"
+   ]
+  },
+  {
+   "id": "lever:uei:cb29b407-3bc3-4174-a463-75f9095b7bd4",
+   "industry": "biotech",
+   "level": "mid",
+   "text": "We are looking for a skilled and hands-on Lab Technician to manage and support day-to-day activities within the Hardware/Electrical Lab. The role will focus on hardware assembly, soldering and desoldering, PCB-related activities, calibration, inventory management, component procurement, and vendor coordination.\nThe ideal candidate should have strong practical knowledge of electrical/electronic hardware and be comfortable collaborating with multiple engineering teams to ensure smooth and efficient laboratory operations.\n\nResponsibilities :\nManage and maintain day-to-day Hardware/Electrical Lab operations .\nPerform soldering and desoldering of electronic components and PCB assemblies.\nSupport PCB board assembly , modification, repair, and basic troubleshooting activities.\nWork with and understand SMT components and specifications .\nMaintain and track lab inventory , including electronic components, hardware, tools, and other lab materials.\nCoordinate and support calibration activities fo",
+   "missing": [],
+   "main": [
+    "system design",
+    "code review",
+    "ci/cd",
+    "microservices",
+    "distributed systems",
+    "monitoring"
+   ]
+  },
+  {
+   "id": "personio:adeor:780310",
+   "industry": "general",
+   "level": "mid",
+   "text": "Bitte teile uns mit welche Aufgaben Dir ​Freude bereiten\nBitte teile uns ​Deine Stärken mit\nEine Arbeitsstelle bei einem wirtschaftlich gesunden, expandierenden Unternehmen in der Medizintechnik-Branche \nSolide und ausgiebige Einarbeitung \nModerne Büroausstattung\nFlexible Arbeitszeiten \nAttraktive Vergütung \nUnbefristetes Arbeitsverhältnis\nAttraktive Fortbildungsangebote \n30 Urlaubstage\n50 EUR Prepaid Visa Karte pro Monat (steuerfrei) \nFrisches Obst und Getränke gratis \nOnline-Kantine mit Essenzuschuss \nTerrasse, Grill, Tischtennis\nKostenfreies Laden von Hybrid- und E-Autos \nRegelmäßige Mitarbeiterevents\nAttraktiver Unternehmensstandort mit hohem Freizeitwert",
+   "missing": [],
+   "main": [
+    "system design",
+    "code review",
+    "ci/cd",
+    "microservices",
+    "distributed systems",
+    "monitoring"
+   ]
+  },
+  {
+   "id": "personio:dr-franz-koehler-chemie-gmbh:2774126",
+   "industry": "janitorial",
+   "level": "mid",
+   "text": "Sie arbeiten gerne sorgfältig, zuverlässig und in einem Umfeld, in dem Sauberkeit und Hygiene besonders wichtig sind? Dann sind Sie bei uns richtig.\nFür unseren Standort in  Alsbach-Hähnlein suchen wir zum nächstmöglichen Zeitpunkt eine\nReinigungskraft (m/w/d) in Teilzeit mit 20 Stunden pro Woche (zwischen 06:00 und 14:00 Uhr) \nfür die Reinigung unserer Räumlichkeiten sowie – vertretungsweise – für die Reinigung im Reinraumbereich. \nSie sorgen gemeinsam mit unserem Team dafür, dass unsere Räumlichkeiten sauber, gepflegt und hygienisch einwandfrei sind. \nZu Ihren Aufgaben gehören insbesondere:\nReinigung und Pflege der Ihnen zugewiesenen Räumlichkeiten unter Einhaltung unserer Hygiene-, Qualitäts- und Arbeitssicherheitsvorgaben\nVertretungsweise Reinigung von Reinraumbereichen der Klassen C, D und E gemäß EU-GMP-Richtlinie \nSicherstellung und Dokumentation der vorgeschriebenen Hygienestandards im Reinraumbereich\nVor- und Nachbereitung von Besprechungsräumen (inkl. Tischeindeckung und Orga",
+   "missing": [],
+   "main": [
+    "system design",
+    "code review",
+    "ci/cd",
+    "microservices",
+    "distributed systems",
+    "monitoring"
+   ]
+  },
+  {
+   "id": "personio:kita-kinderzimmer:2755679",
+   "industry": "janitorial",
+   "level": "mid",
+   "text": "Wir sind das kinderzimmer - und wir sind mehr als eine Kindertagesstätte. Wir schaffen an über 30 Standorten für unsere 2.500 Kinder einen sicheren Hafen für ihre frühkindliche Entwicklung und geben ihnen einen liebevollen Ort zum gemeinsamen Wachsen, spielerischen Lernen und Entdecken. Unsere rund 450 Mitarbeiter:innen übernehmen täglich Verantwortung für die wichtigste Aufgabe der Welt: die bindungs- und bedürfnisorientierte Begleitung dieser prägenden Jahre.\nFür unsere kinderzimmer in Hamburg suchen wir eine*n handwerklich geschickten Hausmeister / Hausmeisterin (m/w/d) , der/die eigenverantwortlich die Instandhaltung unserer Kitas und Außenanlagen übernimmt und als fester Ansprechpartner vor Ort dafür sorgt, dass alles rund läuft. Mit Führerschein Klasse B und einem Auge fürs Detail bist du bei uns genau richtig!\nEigenverantwortliches Bearbeiten von Mängeltickets und Planung entsprechender Routen\nselbstständige Inspektionsrundgänge und Beheben von Mängeln\nEigenständige Durchführung",
+   "missing": [],
+   "main": [
+    "system design",
+    "code review",
+    "ci/cd",
+    "microservices",
+    "distributed systems",
+    "monitoring"
+   ]
+  },
+  {
+   "id": "personio:vitafy:2636582",
+   "industry": "ecommerce",
+   "level": "executive",
+   "text": "Die ADDVANCE Consumer Health Group GmbH (vormals Vitafy) wurde 2014 in München gegründet und hat sich zu einer führenden B2C-Online-Plattform mit eigenen starken Endkundenmarken entwickelt. Der Fokus liegt dabei auf der Entwicklung und Vermarktung funktionaler Produkte im Bereich Health & Wellbeing (gesunde Ernährung & natürliche Nahrungsergänzung sowie Fitness & Abnehmen). Wir unterstützen unsere gesundheitsorientierten Kunden mit unseren Marken Achterhof (achterhof.de), BodyLab (bodylab24.de) und Gymqueen (gymqueen.de) bei der Erreichung ihrer individuellen Ziele. Sowohl unsere eigenen als auch Fremdmarken vertreiben wir unter anderem zentral über unsere Plattform vitafy.de. Das Team besteht aus Kolleginnen und Kollegen, die danach streben, gemeinsam zu wachsen und mit Spaß bei der Arbeit die perfekten Produkte für einen fitten und gesunden Lebensstil zu kreieren – transparent, fair und unkompliziert für unsere Kunden. \nEntwicklung und Umsetzung von Advertising-Strategien für Amazon ",
+   "missing": [],
+   "main": [
+    "engineering strategy",
+    "org design",
+    "headcount",
+    "technical roadmap",
+    "exec communication",
+    "board"
+   ]
+  },
+  {
+   "id": "recruitee:hubvisory:2674282",
+   "industry": "aviation",
+   "level": "executive",
+   "text": "Le marché du conseil Product & IA vit une accélération rare. Chez Hubvisory, on ne la subit pas : on la pilote, et on cherche la personne qui va porter cette dynamique sur nos comptes les plus stratégiques.\nEn tant que Business Manager Senior/Lead, tu portes une double responsabilité : faire grandir un portefeuille de grands comptes déjà en place (Dior, Decathlon, Saint-Gobain, Carrefour, Club Med, Leroy Merlin, PMU…) et ouvrir de nouveaux terrains de jeu chez des prospects grands comptes que tu identifies et développes toi-même. Tu n'es pas là pour gérer un existant : tu es là pour le faire croître, et pour en construire un nouveau à côté.\n🎯 Tes responsabilités clés \nCroissance du portefeuille existant : identifier et activer les opportunités d'upsell et de cross-sell, en t'appuyant sur la diversité de nos practices (Product Excellence, Les Agents IA, Transformation & Organisation) pour élargir le périmètre de tes comptes.\nChasse de nouveaux comptes : prospecter et qualifier de nouve",
+   "missing": [],
+   "main": [
+    "engineering strategy",
+    "org design",
+    "headcount",
+    "technical roadmap",
+    "exec communication",
+    "board"
+   ]
+  }
+ ]
+}

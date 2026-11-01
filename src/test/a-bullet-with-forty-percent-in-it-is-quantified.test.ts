@@ -14,6 +14,18 @@
  * held-out check): main wrong on 632, the branch on 2 (both missed by main
  * too), and the branch never wrong where main was right. A slice of it is
  * the fixture below.
+ *
+ * Review fix (2026-11-01). A bare number of two or more digits ("Processed
+ * 150 invoices", "Trained 60,000 educators") was not read at all, nor a
+ * currency written after the amount ("52-68K€"), a verb-moved scale ("Saved
+ * 50k") or a span glued to its unit ("7-10years"). A bare number now counts
+ * unless it is a year, a date, a clock time, a label, a list of names, a
+ * phone number, an address or a plan name. Re-measured: on the builder's 711
+ * labelled sentences main 79 right, the branch 709, the fix 710; on the
+ * reviewer's 2,853 real sentences main reads 128 as quantified, the branch
+ * 1,554, the fix 1,751. Of the 31 main reads that the fix does not make,
+ * every one is a name main misread ("401K plan", "100M instead of 10G",
+ * "H-1B"); the reviewer's four main-right cases now pass.
  */
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
@@ -56,6 +68,42 @@ describe("a number that names something is not a measurement", () => {
     "Wrote the onboarding guide",
   ];
   for (const t of names) it(`"${t}" is not quantified`, () => expect(hasMetric(t), JSON.stringify(metricEvidence(t))).toBe(false));
+});
+
+describe("a bare number measures; a name with a number does not (review fix)", () => {
+  // The reviewer's four main-right cases (review-S10-006/branch-worse.json), real text.
+  const reviewer = [
+    "Minimum of 7-10years quota carrying in enterprise software / SaaS",
+    "1.48hours per week/ 48 giờ 1 tuần",
+    "💰 Rémunération : 52-68K€ fixe + variable + intéressement",
+    "💰 Rémunération : 46 à 58K€ bruts fixes (Paris) + variable + intéressement",
+  ];
+  for (const t of reviewer) it(`"${t}" is quantified`, () => expect(hasMetric(t)).toBe(true));
+  const quantified: Array<[string, string]> = [
+    ["Processed 150 invoices a week", "number"],
+    ["Trained 60,000 educators across the state", "number"],
+    ["You'd rather convert 40 warm executive relationships than cold-call 400 strangers.", "number"],
+    ["Saved 50k annually by renegotiating contracts", "scale"],
+    ["Grew ARR from 200K to 1.2M", "scale"],
+  ];
+  for (const [t, rule] of quantified) it(`"${t}" is quantified (${rule})`, () => expect(metricEvidence(t)?.rule).toBe(rule));
+  const names = [
+    "Parental leave and 401K plan",
+    "Includes annualized bonus, 401k match, healthcare coverage",
+    "Contributions to 401k",
+    "Call (818) 717-1000 to apply",
+    "Interviews on 16 November",
+    "Shift starts at 16:30",
+    "Located at 301 West State Street",
+    "Holds Series 7 and 63 licences",
+    "Compliant with 21 CFR Part 11",
+    "Rule 144 letters",
+    "Windows 10 rollout",
+    "Grade 12 diploma",
+    "106 not to discriminate",
+    "WORKED AT 7514 S PADRE ISLAND DR",
+  ];
+  for (const t of names) it(`"${t}" is not quantified`, () => expect(metricEvidence(t)).toBeNull());
 });
 
 describe("the corpus slice: real posting sentences, labelled by hand", () => {

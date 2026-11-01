@@ -21,6 +21,26 @@
  *     the branch for 450.
  *   keywords: 3,333 real-posting disagreements across all 56 industry
  *     configs. Main right on 1, the branch on 3,332.
+ *
+ * Review fix (fix2): the whole-word rule refused every near title. A Project
+ * Director, a "Director, Project Management", a Full Stack Engineer, an FP&A
+ * lead and a Reporting Analyst all lost their card. Title words are now read
+ * in their short forms (Sr, Mgr, Exec) and the card's phrase in the name of
+ * its work (Project Management, Software Engineering, Accounting); the ranks
+ * that run a field (director, VP, head of, lead, coordinator) hold its
+ * manager's card when rank and field head the title together; full-stack and
+ * platform engineers, FP&A and BI/reporting analysts have family rules. A
+ * one-word alias counts only as the head of its part ("Developer Relations
+ * Manager", "PM Shift" and "PM Cook" get nothing), a business, product,
+ * content or proposal developer is no software developer, and a teaching
+ * post gets no card. One shared word still names nothing.
+ *   reviewer's 12,586 real titles: the 47 branch-worse cases 3 -> 45 right
+ *     (main 47); 251 titles moved, labelled in fix2-labels.json: 244 right
+ *     (old 18, main 124), 2 worse than main (Dev Ops engineers old caught
+ *     through the "dev" alias and "Developer Experience").
+ *   builder's 2,636: strict 2,568 -> 2,620 under the fix2 labels (main
+ *     1,227); 3 worse than main, each one main got only by giving every
+ *     engineer, product and marketing title a card.
  */
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
@@ -28,6 +48,7 @@ import { resolve } from "node:path";
 import { analyzeRoleKeywords, findRoleConfig } from "@/config/role-keywords";
 import { analyzeKeywordPresence } from "@/config/industry-keywords";
 import slice from "./fixtures/free-scan-wave/s13-092-role-and-industry-cards.json";
+import families from "./fixtures/free-scan-wave/s13-092-fix2-title-families.json";
 
 const card = (title: string) => findRoleConfig(title)?.title ?? null;
 const presentIn = (industry: string, text: string) => analyzeKeywordPresence(industry, text).present.map((k) => k.keyword);
@@ -61,6 +82,60 @@ describe("a title names a config by a phrase or every word of its title, and the
     ["Stationary Engineer", null],
   ];
   for (const [title, want] of cases) it(`${title} → ${want ?? "no card"}`, () => expect(card(title)).toBe(want));
+});
+
+describe("near titles keep their card; one shared word still names nothing (review fix)", () => {
+  const cases: Array<[string, string | null]> = [
+    // real titles from the reviewer's corpus
+    ["Project Director (Mozambique)", "Project Manager"],
+    ["Director, Project Management, Japan", "Project Manager"],
+    ["Project Leader (Semiconductor)", "Project Manager"],
+    ["Sr Mgr, Project Mgmt", "Project Manager"],
+    ["Senior Full-Stack Engineer - Internal Tools", "Software Engineer"],
+    ["Full Stack Java Engineer", "Software Engineer"],
+    ["Director Financial Planning & Analysis", "Financial Analyst"],
+    ["FP&A & Financial Controller", "Financial Analyst"],
+    ["Lead Power BI Analyst", "Data Analyst"],
+    ["Reporting Analyst, Consumer Services", "Data Analyst"],
+    ["Business Intelligence Developer", "Data Analyst"],
+    ["Vice President, Sales", "Sales Manager"],
+    ["Marketing Coordinator", "Marketing Manager"],
+    ["Enterprise Account Exec (Armis/Veza)", "Account Executive"],
+    ["Sr. Software Engineer", "Senior Software Engineer"],
+    ["Recruitment Consultant - Amsterdam", "Recruiter"],
+    ["Accounting Manager", "Accountant"],
+    // the same rules refuse
+    ["Business Developer | Canal Productores & Brokers", null],
+    ["Product Developer - Supre Global Support Centre", null],
+    ["Developer Relations Manager CIS", null],
+    ["PM Cook", null],
+    ["Material Handler - PM Shift", null],
+    ["Associate Counsel, PM Legal and Fund Formation", null],
+    ["Director, Physical Product Security", null],
+    ["Application Specialist - Product Information Management (PIM) / Product Master Data Management (f/m)", null],
+    ["Senior Analyst - Regulatory Reporting", null],
+    ["Student Recruitment Specialist", null],
+    ["Lecturer in Software Engineering and/or Cyber Security", null],
+    ["Accounting Instructor", null],
+    ["Head of People Operations", "HR Business Partner"],
+    // synthetic: the adjective "lead" and "head" are no ranks
+    ["Lead Project Engineer", null],
+    ["Head Chef", null],
+  ];
+  for (const [title, want] of cases) it(`${title} → ${want ?? "no card"}`, () => expect(card(title)).toBe(want));
+  it("a specialist is not given a manager's card (reviewer's two Marketing Specialist cases stay without one)", () => {
+    expect(card("Growth Marketing Specialist")).toBeNull();
+    expect(card("Operations Specialist")).toBeNull();
+  });
+});
+
+describe("the fix2 title slice", () => {
+  const f = families as { titles: Array<{ title: string; config: string | null; main: string | null; old: string | null }> };
+  it("holds at least 100 real titles, most of them ones 89c2bc0b got wrong", () => {
+    expect(f.titles.length).toBeGreaterThanOrEqual(100);
+    expect(f.titles.filter((t) => t.old !== t.config).length).toBeGreaterThanOrEqual(f.titles.length / 2);
+  });
+  for (const t of f.titles) it(`title "${t.title.slice(0, 60)}" → ${t.config ?? "no card"}`, () => expect(card(t.title)).toBe(t.config));
 });
 
 describe("the keyword cards read words", () => {

@@ -1,6 +1,7 @@
 // Industry-specific keywords database
 // Keywords are ranked by importance for ATS matching
 import { resumeHasTerm } from "../../supabase/functions/free-keyword-scan/term-presence";
+import type { ScanIndustryId } from "./scan-industries";
 
 export interface IndustryKeyword {
   keyword: string;
@@ -1507,26 +1508,52 @@ export const INDUSTRY_KEYWORDS: Record<string, IndustryKeywordConfig> = {
   },
 };
 
-// Helper function to find industry config by name (case-insensitive, alias matching)
+// The card each industry the scanner answers with gets (register S13-010):
+// one entry per id in SCAN_INDUSTRY_IDS, so a new id fails the type check
+// until it is given a card or none. The lookup this replaced matched aliases
+// by substring both ways, so "it" in "hospitality", "janitorial", "fitness",
+// "maritime" and "architecture" gave them the technology card, "ib" in
+// "library" investment banking, "ai" in "entertainment" data science,
+// "state" in "real_estate" government, and "engineering" (civil, mechanical)
+// read as software. An id with no card that fits shows none.
+const SCAN_INDUSTRY_CARD: Record<ScanIndustryId, string | null> = {
+  technology: 'technology', healthcare: 'healthcare', finance: 'finance', legal: 'legal',
+  sales: 'sales', marketing: 'marketing', education: 'education', engineering: null,
+  creative: 'design', hr: 'humanResources', consulting: 'consulting', retail: 'retail',
+  hospitality: 'hospitality', manufacturing: 'manufacturing', government: 'government',
+  product_management: 'product_management', data_engineering: 'data_engineering',
+  data_science: 'data_science', machine_learning: 'machine_learning', cybersecurity: 'cybersecurity',
+  logistics: 'logistics', real_estate: 'realEstate', insurance: null, nonprofit: 'nonprofit',
+  biotech: null, aviation: null, energy: null, skilled_trades: null, customer_success: 'customerSuccess',
+  pharmacy: 'healthcare', dental: 'healthcare', veterinary: null, fitness: null, media: null,
+  telecom: null, agriculture: null, sports_management: 'sportsManagement', entertainment: null,
+  academia: null, construction_management: null, architecture: null, social_work: null,
+  childcare: null, beauty: null, culinary: 'hospitality', law_enforcement: null, environmental: null,
+  gaming: null, ecommerce: 'retail', translation: null, event_planning: 'eventManagement',
+  administrative: null, library: null, clergy: null, mining: null, maritime: null,
+  landscaping: null, janitorial: null, general: null,
+};
+
+// Find the industry card for an industry id or name. A scanner id reads the
+// table above. Any other name (the streamed fallback's wider list, an older
+// report) must BE a card's key, name or alias, after "_" and "-" read as
+// spaces: "information technology" is technology, "mechanical engineering"
+// is no card. Then the sub-industry parents below.
 export function findIndustryConfig(industryName: string): IndustryKeywordConfig | null {
-  // Normalize: lowercase, trim, and convert underscores to spaces for matching
   const normalized = industryName.toLowerCase().trim();
-  const normalizedSpaced = normalized.replace(/_/g, ' ');
-  
-  // Direct match (with underscore→space normalization)
+  if (!normalized) return null;
+  if (Object.prototype.hasOwnProperty.call(SCAN_INDUSTRY_CARD, normalized)) {
+    const key = SCAN_INDUSTRY_CARD[normalized as ScanIndustryId];
+    return key ? INDUSTRY_KEYWORDS[key] ?? null : null;
+  }
+  const normalizedSpaced = normalized.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ');
+  const names = [normalized, normalizedSpaced];
+
   for (const [key, config] of Object.entries(INDUSTRY_KEYWORDS)) {
-    const keyLower = key.toLowerCase();
-    if (keyLower === normalized || keyLower === normalizedSpaced || 
-        config.name.toLowerCase() === normalized || config.name.toLowerCase() === normalizedSpaced) {
-      return config;
-    }
-    // Alias match (also check underscore-normalized version)
-    if (config.aliases.some(alias => 
-      normalized.includes(alias) || alias.includes(normalized) ||
-      normalizedSpaced.includes(alias) || alias.includes(normalizedSpaced)
-    )) {
-      return config;
-    }
+    if (names.includes(key.toLowerCase()) || names.includes(config.name.toLowerCase())) return config;
+  }
+  for (const config of Object.values(INDUSTRY_KEYWORDS)) {
+    if (config.aliases.some(alias => names.includes(alias))) return config;
   }
   
   // Sub-industry → parent fallback: e.g. "business_development" → "sales", "digital_marketing" → "marketing"

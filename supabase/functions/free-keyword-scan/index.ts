@@ -524,7 +524,13 @@ const trackPerformance = (startTime: number, operation: string, success: boolean
 // rewrite null and a rewriteTemplate, one score projection feeds the hero, the
 // Fix Plan and Improvement Potential (scoreProjection), and Word's list bullets
 // count as bullets (S13-004, -005, -008, -009, -010, -022, -024, -037, -038,
-// -058, -092, -097; S10-006, -007).
+// -058, -092, -097; S10-006, -007). The review round of the same day, still
+// unshipped and so the same build: the presence test reads by indexOf with no
+// pattern per term and reads an acronym's plural back to its singular; the
+// hiring-system host scan is linear and reads a gh_jid link; the software
+// fields compare against technology's list; seasons, "to date" and PDF-glued
+// columns are read as dates; a bare count measures; an employer on its own
+// line is read; fix steps carry a code and params the page translates.
 const FN_BUILD = "free-keyword-scan.2026-11-01.1";
 
 const corsHeaders = {
@@ -2368,8 +2374,14 @@ This resume must be judged as ${seniorityDetection.level === 'executive' ? 'a C-
     const careerTrajHint = formatCareerTrajectoryForPrompt(careerTraj);
     console.log(`[FREE-KEYWORD-SCAN] Career trajectory: ${careerTraj.trajectory} | Promotions: ${careerTraj.promotionCount}`);
 
-    // 4. ATS system detection from job description URL/text
-    const atsSystem = detectAtsSystem(jobDescriptionText, undefined);
+    // 4. ATS system detection from job description URL/text. Read from the
+    // same 15,000 characters as every other job-description check (S13-005
+    // review): a short pasted link (under the 50 characters that make a job
+    // description) still counts.
+    const atsSystem = detectAtsSystem(
+      typeof jobDescriptionText === 'string' ? jobDescriptionText.slice(0, MAX_JOB_DESCRIPTION_LENGTH) : null,
+      undefined,
+    );
     const atsHint = formatAtsSystemForPrompt(atsSystem, resumeText);
     if (atsSystem !== 'unknown') {
       console.log(`[FREE-KEYWORD-SCAN] ATS system detected: ${atsSystem}`);
@@ -3650,6 +3662,9 @@ ${resumeForPrompt}
         issues: [b.reason],
         rewrite: null,
         rewriteTemplate: 'Rewrite this bullet to open with an action verb and end with a number, in the shape "Led [what you did], achieving [metric]".',
+        // The page says the guidance in the reader's language from this code
+        // (S13-122); rewriteTemplate stays the English for an older page.
+        rewriteTemplateCode: 'verbAndNumber',
       }));
     }
     if (!analysis.sampleRewrite && bulletAnalysis.unquantifiedBullets.length > 0) {
