@@ -182,7 +182,10 @@ describe("the redirect knows every query parameter the scanner reads", () => {
   it("from now on the mail names the scanner's own address for every link that means it", () => {
     const report = read("supabase/functions/send-scan-report/index.ts");
     expect(report).toContain("${SITE_URL}/resume-checker?utm_source=email&utm_medium=scan_report&utm_campaign=rescan");
-    expect(report).toContain("${SITE_URL}/resume-checker?utm_source=email&utm_medium=scan_report&utm_campaign=free_scan#pricing");
+    // "Get the full analysis" is not a scanner link any more: /resume-checker
+    // has no #pricing anchor, so it lands on the Full Analysis card (S13-099).
+    expect(report).toContain("${SITE_URL}/pricing?utm_source=email&utm_medium=scan_report&utm_campaign=free_scan#full-analysis");
+    expect(report).not.toContain("/resume-checker?utm_source=email&utm_medium=scan_report&utm_campaign=free_scan#pricing");
     expect(read("supabase/functions/send-market-pulse/index.ts")).toContain("${SITE_URL}/resume-checker?utm_source=email&utm_medium=market_pulse&utm_campaign=rescan");
     expect(read("supabase/functions/send-search-digest/index.ts")).toMatch(/href="\$\{SITE_URL\}\/resume-checker"[^>]*>scan your resume</);
   });
