@@ -930,11 +930,12 @@ export { count as fmtCount, money as fmtMoney, date as fmtDate } from "../src/li
       // "EARLY-CAREER" IS OUR CLASSIFICATION, NOT THE EMPLOYER'S WORD, and
       // the RPC's own comment requires every surface rendering these numbers
       // to say so: a stated years requirement in the posting text decides it
-      // where there is one, and title keywords alone decide it where there is
-      // not. A posting with neither signal is counted in the denominator and
+      // where there is one (an executive title excepted), title keywords where
+      // there is not, then a Personio posting's level field (n1420, n1421). A
+      // posting with no signal is counted in the denominator and
       // never in the numerator, so the share understates rather than
       // overstates — which is the direction a claim like this has to err in.
-      const basis = `Early-career is OUR classification of the posting's own words, not a label the employer applied: a stated requirement of two years or fewer decides it where the posting states one, and otherwise the title alone does (intern, trainee, apprentice, entry-level, junior, graduate, new grad, early career). A posting carrying neither signal is counted in the total and never as early-career, so these figures understate rather than overstate. Counted over the postings the board serves — still live in the employer's feed, dated inside 30 days. ${at ? `Measured ${at}` : "Measured when this page was last built"}, ${C["refresh-stats-cache"]}.${staleNote}`;
+      const basis = `Early-career is OUR classification, read from the posting itself, not a label the employer applied: a stated requirement of two years or fewer decides it where the posting states one (unless the title names an executive rung: director, head of, vice president, chief), and otherwise the title alone does (intern, trainee, apprentice, entry-level, junior, graduate, new grad, early career). Where the posting's words say neither, the experience level a Personio employer set on the posting decides it the same way. A posting carrying no signal is counted in the total and never as early-career, so these figures understate rather than overstate. Counted over the postings the board serves — still live in the employer's feed, dated inside 30 days. ${at ? `Measured ${at}` : "Measured when this page was last built"}, ${C["refresh-stats-cache"]}.${staleNote}`;
       const head = group("Early-career openings on the board right now", [
         { value: entryN, label: "openings our classification puts at early-career" },
         { value: share !== null ? `${share}%` : null, label: `of the ${e ? fmt(e.total_open) : "open"} postings the board serves` },

@@ -11,6 +11,7 @@
  * 4,018 Expert rows against 1,359 Entry, and "delivery driver" under Entry
  * missed them all. EXPERIENCE_VERSION 2 re-derives every row and writes the
  * ones that changed, a NULL band ("unspecified", min_years NULL) included.
+ * Version 3 (n1420) moves the numbers below to 3.
  *
  * Driven through the shipped handler (edge-harness bundles the real index.ts;
  * only the database is faked), so the test is the code that deploys.
@@ -68,7 +69,7 @@ describe("backfill-experience re-derives every stored row (S12-013)", () => {
       if (q.table === "job_board_postings" && q.calls.some(([m]) => m === "select")) return { data: STORED, error: null };
       return undefined;
     });
-    const r = await h.post({ action: "backfill-experience", chainKey: await chainKey(), rulesVersion: 2 });
+    const r = await h.post({ action: "backfill-experience", chainKey: await chainKey(), rulesVersion: 3 });
     expect(r, JSON.stringify(r)).toMatchObject({ ok: true, done: true, scanned: 4, updated: 3 });
 
     const select = h.db.on("job_board_postings", "select")[0];
@@ -87,17 +88,17 @@ describe("backfill-experience re-derives every stored row (S12-013)", () => {
 
     const upserts = h.db.on("job_board_meta", "upsert").map((q) => q.calls.find(([m]) => m === "upsert")?.[1][0] as { k: string; v: Record<string, unknown> });
     const stamp = upserts.find((u) => u.k === "experience_version");
-    expect(stamp?.v.version, "the version is stamped only by the hop that reached the end").toBe(2);
+    expect(stamp?.v.version, "the version is stamped only by the hop that reached the end").toBe(3);
     const done = upserts.filter((u) => u.k === "experience_backfill").pop();
     expect(typeof done?.v.doneAt).toBe("string");
-    expect(done?.v.startedUnder).toBe(2);
+    expect(done?.v.startedUnder).toBe(3);
   });
 
   it("a hop with more pages hands its frontier to the next hop and stamps nothing", async () => {
     h.reset();
     const page = Array.from({ length: 1000 }, (_, i) => ({ id: `greenhouse:acme:${String(i).padStart(4, "0")}`, title: "Cook", description: null, experience_band: "unspecified", min_years: null }));
     h.answer((q) => (q.table === "job_board_postings" && q.calls.some(([m]) => m === "select") ? { data: page, error: null } : undefined));
-    const r = await h.post({ action: "backfill-experience", chainKey: await chainKey(), rulesVersion: 2 });
+    const r = await h.post({ action: "backfill-experience", chainKey: await chainKey(), rulesVersion: 3 });
     expect(r.nextCursor).toBe("greenhouse:acme:0999");
     const upserts = h.db.on("job_board_meta", "upsert").map((q) => q.calls.find(([m]) => m === "upsert")?.[1][0] as { k: string; v: Record<string, unknown> });
     expect(upserts.some((u) => u.k === "experience_version"), "an unfinished walk claims nothing").toBe(false);
@@ -106,7 +107,7 @@ describe("backfill-experience re-derives every stored row (S12-013)", () => {
 
   it("a hop of older rules stands down, and nobody without the chain key may start one", async () => {
     h.reset();
-    expect(await h.post({ action: "backfill-experience", chainKey: await chainKey(), rulesVersion: 1 })).toMatchObject({ ok: false, superseded: true, current: 2 });
+    expect(await h.post({ action: "backfill-experience", chainKey: await chainKey(), rulesVersion: 2 })).toMatchObject({ ok: false, superseded: true, current: 3 });
     expect(h.db.on("job_board_postings").length).toBe(0);
     expect((await h.post({ action: "backfill-experience", chainKey: "nope" })).error).toMatch(/maintenance action/);
   });
@@ -128,7 +129,7 @@ describe("backfill-experience re-derives every stored row (S12-013)", () => {
             return chain;
           },
         },
-        EXPERIENCE_VERSION: 2, COUNTRY_VERSION: 1, SALARY_PARSE_VERSION: 10, POSTED_BACKFILL_VERSION: 1,
+        EXPERIENCE_VERSION: 3, COUNTRY_VERSION: 1, SALARY_PARSE_VERSION: 10, POSTED_BACKFILL_VERSION: 1,
         MAINTENANCE_STALL_MS: 12 * 60_000,
         Deno: { env: { get: () => "https://h.supabase.co" } },
         waitUntil: (p: Promise<unknown>) => { bg.push(p); },
@@ -142,9 +143,9 @@ describe("backfill-experience re-derives every stored row (S12-013)", () => {
       return kicks.find((b) => b.action === "backfill-experience");
     };
     const stale = new Date(Date.now() - 60 * 60_000).toISOString();
-    expect(await run({ v: { startedUnder: 2, cursor: "lever:acme:77" }, updated_at: stale })).toMatchObject({ cursor: "lever:acme:77", rulesVersion: 2 });
-    expect((await run({ v: { startedUnder: 1, cursor: "lever:acme:77" }, updated_at: stale }))?.cursor, "a frontier cut by older rules is not trusted").toBeUndefined();
-    expect(await run({ v: { startedUnder: 2, cursor: "lever:acme:77" }, updated_at: new Date().toISOString() }), "a live chain is left alone").toBeUndefined();
-    expect(await run(null)).toMatchObject({ action: "backfill-experience", rulesVersion: 2 });
+    expect(await run({ v: { startedUnder: 3, cursor: "lever:acme:77" }, updated_at: stale })).toMatchObject({ cursor: "lever:acme:77", rulesVersion: 3 });
+    expect((await run({ v: { startedUnder: 2, cursor: "lever:acme:77" }, updated_at: stale }))?.cursor, "a frontier cut by older rules is not trusted").toBeUndefined();
+    expect(await run({ v: { startedUnder: 3, cursor: "lever:acme:77" }, updated_at: new Date().toISOString() }), "a live chain is left alone").toBeUndefined();
+    expect(await run(null)).toMatchObject({ action: "backfill-experience", rulesVersion: 3 });
   });
 });

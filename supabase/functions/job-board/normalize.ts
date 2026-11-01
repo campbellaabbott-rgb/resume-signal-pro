@@ -2,6 +2,7 @@
 
 import type { JobSourceKind } from "./sources.ts";
 import { categorize, type JobCategory } from "./categories.ts";
+import type { StatedLevel } from "./experience.ts";
 // Rationale: docs/job-board-index-notes.md#n959-import-load_dependent_periods-parsesalar
 import { LOAD_DEPENDENT_PERIODS, parseSalaryStructured } from "../_shared/salary-extract.ts";
 
@@ -35,6 +36,8 @@ export interface JobPosting {
   employmentType?: EmploymentType | null;
   // Rationale: docs/job-board-index-notes.md#n1215-employmenttypetext-string-null
   employmentTypeText?: string | null;
+  /** The level the employer picked in its ATS (Personio), n1421. */
+  level?: StatedLevel | null;
 }
 
 export type EmploymentType = "full_time" | "part_time" | "contract" | "temporary" | "internship";
@@ -50,6 +53,18 @@ export function normalizeEmploymentType(raw: unknown): EmploymentType | null {
   if (/^(intern|internship|trainee|apprentice|apprenticeship|workingstudent|werkstudent)$/.test(v)) return "internship";
   return null;
 }
+// Rationale: docs/job-board-index-notes.md#n1422-one-class-in-a-longer-label
+export function employmentTypeFromLabel(raw: unknown): EmploymentType | null {
+  const hit = ET_WORDS.filter(([, re]) => re.test(String(raw ?? "").toLowerCase()));
+  return normalizeEmploymentType(raw) ?? (hit.length === 1 ? hit[0][0] : null);
+}
+const ET_WORDS: Array<[EmploymentType, RegExp]> = [
+  ["full_time", /full[\s_-]*time|vollzeit|temps plein/],
+  ["part_time", /part[\s_-]*time|teilzeit|temps partiel|minijob/],
+  ["contract", /contract|freelance|fixed[\s_-]*term/],
+  ["temporary", /(?<![a-z])temp(?:orary)?(?![a-z])|seasonal|interim/],
+  ["internship", /(?<![a-z])intern(?:ship)?(?![a-z])|trainee|apprentic|working[\s_-]*student|werkstudent/],
+];
 
 // Rationale: docs/job-board-index-notes.md#n960-const-safeurl-u-unknown-string
 const safeUrl = (u: unknown): string => {
@@ -1063,8 +1078,7 @@ interface LeverJob {
   workplaceType?: string;
   categories?: { location?: string; team?: string; allLocations?: string[]; commitment?: string };
   salaryRange?: { min?: number; max?: number; currency?: string; interval?: string };
-  descriptionPlain?: string;
-  descriptionBodyPlain?: string;
+  country?: string | null;
 }
 
 const CURRENCY_SYMBOL: Record<string, string> = { USD: "$", EUR: "€", GBP: "£", CAD: "CA$", AUD: "A$" };
@@ -1276,6 +1290,12 @@ export function ldBaseSalaryText(pay: {
   return statedPayText(period, min, max, pay.currency, null);
 }
 
+// Rationale: docs/job-board-index-notes.md#n1424-a-lever-posting-read-once-and-whole
+export function leverText(j: { descriptionPlain?: unknown; lists?: unknown; additionalPlain?: unknown }): string {
+  const lists = Array.isArray(j.lists) ? j.lists.map((l) => `${l?.text ?? ""}\n${htmlToText(String(l?.content ?? ""))}`) : [];
+  return [j.descriptionPlain, ...lists, j.additionalPlain].map((x) => String(x ?? "").trim()).filter(Boolean).join("\n");
+}
+
 export function normalizeLever(raw: LeverJob[], company: string, token: string): JobPosting[] {
   return (Array.isArray(raw) ? raw : []).map((j) => {
     const location = j.categories?.allLocations?.join(" · ") || j.categories?.location || "";
@@ -1287,13 +1307,15 @@ export function normalizeLever(raw: LeverJob[], company: string, token: string):
       company,
       title: j.text ?? "",
       location,
+      // Rationale: docs/job-board-index-notes.md#n1425-the-vendor-states-the-country
+      country: icimsCountry(j.country, location),
       workMode,
       remote: workMode === "remote",
       department: j.categories?.team ?? null,
       postedAt: safeIso(j.createdAt),
       category: categorize(j.text ?? "", j.categories?.team),
       salary: leverSalary(j.salaryRange),
-      employmentType: normalizeEmploymentType(j.categories?.commitment),
+      employmentType: employmentTypeFromLabel(j.categories?.commitment),
       applyUrl: safeUrl(j.hostedUrl ?? j.applyUrl),
     };
   }).filter((j) => j.applyUrl !== "");
@@ -1419,6 +1441,7 @@ interface WorkableJob {
   city?: string;
   state?: string;
   employment_type?: string;
+  locations?: Array<{ countryCode?: string | null }> | null;
 }
 
 export function normalizeWorkable(raw: { jobs?: WorkableJob[] }, company: string, token: string): JobPosting[] {
@@ -1434,6 +1457,8 @@ export function normalizeWorkable(raw: { jobs?: WorkableJob[] }, company: string
         company,
         title: j.title ?? "",
         location,
+        // Rationale: docs/job-board-index-notes.md#n1425-the-vendor-states-the-country
+        country: icimsCountry(j.locations?.[0]?.countryCode, location),
         workMode,
         remote: workMode === "remote",
         department: j.department ?? null,
@@ -1452,6 +1477,7 @@ interface BambooJob {
   jobOpeningName: string;
   departmentLabel?: string | null;
   isRemote?: boolean | null;
+  employmentStatusLabel?: string | null;
   location?: { city?: string | null; state?: string | null };
   atsLocation?: { country?: string | null; state?: string | null; province?: string | null; city?: string | null };
 }
@@ -1478,6 +1504,7 @@ export function normalizeBambooHR(raw: { result?: BambooJob[] }, company: string
         postedAt: null, // the list feed carries no dates
         category: categorize(j.jobOpeningName ?? "", j.departmentLabel),
         salary: null,
+        employmentType: employmentTypeFromLabel(j.employmentStatusLabel),
         applyUrl: safeUrl(`https://${token}.bamboohr.com/careers/${j.id}`),
       };
     })
@@ -1501,6 +1528,17 @@ export function xmlValue(block: string, tag: string): string | null {
   if (!m) return null;
   const v = m[1].replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1").trim();
   return v || null;
+}
+
+// Rationale: docs/job-board-index-notes.md#n1423-a-personio-posting-in-another-language
+export const PERSONIO_NO_DESCRIPTION = /<jobDescriptions>\s*<\/jobDescriptions>|<jobDescriptions\s*\/>/;
+export function mergePersonioDescriptions(xml: string, other: string): string {
+  const EMPTY = PERSONIO_NO_DESCRIPTION;
+  const byId = new Map(xmlBlocks(other, "position").map((b) => [xmlValue(b, "id"), /<jobDescriptions>[\s\S]*?<\/jobDescriptions>/.exec(b)?.[0]]));
+  return xml.replace(/<position(?:\s[^>]*)?>[\s\S]*?<\/position>/gi, (p) => {
+    const d = EMPTY.test(p) ? byId.get(xmlValue(p, "id")) : undefined;
+    return d ? p.replace(EMPTY, () => d) : p;
+  });
 }
 
 interface RecruiteeOffer {
@@ -1556,7 +1594,7 @@ export function normalizeRecruitee(raw: { offers?: RecruiteeOffer[] }, company: 
         category: categorize(o.title ?? "", o.department),
         salary,
         // Rationale: docs/job-board-index-notes.md#n1006-employmenttype-normalizeemploymenttype-o
-        employmentType: normalizeEmploymentType(o.employment_type_code),
+        employmentType: employmentTypeFromLabel(o.employment_type_code),
         applyUrl: safeUrl(o.slug ? `https://${token}.recruitee.com/o/${o.slug}` : (o.careers_url ?? "")),
       };
     })
@@ -1578,6 +1616,8 @@ export function normalizePersonio(xml: string, company: string, token: string, h
       const workMode = detectWorkMode(office, title, schedule);
       // Rationale: docs/job-board-index-notes.md#n1007-const-pay-xmlblocks-block-salaryinformat
       const pay = xmlBlocks(block, "salaryInformation")[0];
+      // Rationale: docs/job-board-index-notes.md#n1421-the-level-the-employer-picked
+      const et = xmlValue(block, "employmentType"), yrs = xmlValue(block, "yearsOfExperience") ?? "", sen = xmlValue(block, "seniority");
       return {
         id: `personio:${token}:${id}`,
         source: "personio" as const,
@@ -1601,9 +1641,13 @@ export function normalizePersonio(xml: string, company: string, token: string, h
           : null,
         // <schedule> is full-time | part-time | full-or-part-time; the mapper
         // reads full-or-part-time as full_time (the role CAN be full-time).
-        employmentType: normalizeEmploymentType(schedule),
+        employmentType: (et !== "permanent" && normalizeEmploymentType(et)) || normalizeEmploymentType(schedule),
         // Rationale: docs/job-board-index-notes.md#n1008-employmenttypetext-schedule-null
         employmentTypeText: schedule || null,
+        level: {
+          band: sen === "executive" ? "expert" as const : sen === "entry-level" || sen === "student" ? "entry" as const : null,
+          minYears: /^(?:\d+-\d+|lt-1|gt-15)$/.test(yrs) ? (yrs === "lt-1" ? 0 : parseInt(yrs.replace("gt-", ""))) : null,
+        },
         applyUrl: id ? safeUrl(`https://${token}.${host}/job/${id}`) : "",
       };
     })
@@ -1616,9 +1660,11 @@ interface BreezyPosition {
   name?: string | null;
   published_date?: string | null;
   creation_date?: string | null;
-  location?: { name?: string | null; is_remote?: boolean | null } | null;
+  location?: { name?: string | null; is_remote?: boolean | null; country?: { id?: string | null } | null } | null;
   department?: string | null;
   url?: string | null;
+  salary?: string | null;
+  type?: { id?: string | null; name?: string | null } | null;
 }
 
 export function normalizeBreezy(raw: BreezyPosition[], company: string, token: string): JobPosting[] {
@@ -1634,12 +1680,17 @@ export function normalizeBreezy(raw: BreezyPosition[], company: string, token: s
         company,
         title: p.name ?? "",
         location,
+        // Rationale: docs/job-board-index-notes.md#n1425-the-vendor-states-the-country
+        country: icimsCountry(p.location?.country?.id, location),
         workMode,
         remote: workMode === "remote",
         department: p.department ?? null,
         postedAt: safeIso(p.published_date ?? p.creation_date),
         category: categorize(p.name ?? "", p.department),
-        salary: null,
+        salary: p.salary || null,
+        employmentType: normalizeEmploymentType(p.type?.id),
+        // Rationale: docs/job-board-index-notes.md#n1428-a-part-time-wage-beside-the-vendors-pay
+        employmentTypeText: p.type?.name || null,
         applyUrl: safeUrl(p.url ?? (externalId ? `https://${token}.breezy.hr/p/${externalId}` : "")),
       };
     })
@@ -1851,6 +1902,16 @@ export function extractPaylocityPageData(html: string): { items: PaylocityJobIte
   } catch {
     return null;
   }
+}
+
+// Rationale: docs/job-board-index-notes.md#n1427-a-paylocity-page-with-no-structured-data
+export function paylocityPageText(html: string): string {
+  const head = '<div class="job-listing-header">Description</div>';
+  const from = html.indexOf(head, html.indexOf('class="job-preview-details"'));
+  if (from < 0 || !html.includes('class="job-preview-details"')) return "";
+  const end = html.lastIndexOf("<", html.indexOf('class="preview-bottom-apply-btn"', from));
+  const body = html.slice(from + head.length, end > from ? end : from + 60_000).slice(0, 60_000);
+  return htmlToText(body.replace(/<div class="job-listing-header">[^<]*<\/div>/g, "\n")).trim();
 }
 
 export function normalizePaylocity(items: PaylocityJobItem[], company: string, token: string): JobPosting[] {

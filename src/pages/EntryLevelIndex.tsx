@@ -262,7 +262,7 @@ export default function EntryLevelIndex() {
             <ShieldCheck className="w-4 h-4 text-success" /> How we count it
           </h2>
           <ul className="text-[13px] text-muted-foreground space-y-1.5">
-            <li>· A role counts as entry-level when its own title or stated requirements say so — internship, junior, graduate, or ≤2 years' experience. We classify from the posting's text; we never guess from the salary or the team.</li>
+            <li>· A role counts as entry-level when its own title or stated requirements say so — internship, junior, graduate, or ≤2 years' experience (a director, head-of, VP or chief title never does). Where the posting says neither, a Personio employer's own experience-level field decides it. We classify from the posting; we never guess from the salary or the team.</li>
             <li>· Every posting comes straight from the company's official applicant-tracking feed, is dropped after 30 days, and is re-checked live when you click Apply.</li>
             <li>· Numbers on this page are counted from the board once an hour — the same postings you can browse and apply to — and the time of the last count is printed at the top.</li>
           </ul>

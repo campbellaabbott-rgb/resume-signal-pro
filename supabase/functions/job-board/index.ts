@@ -27,6 +27,9 @@ import {
   normalizeBreezy,
   normalizeGreenhouse,
   normalizeLever,
+  leverText,
+  mergePersonioDescriptions,
+  PERSONIO_NO_DESCRIPTION,
   normalizePersonio,
   normalizeRecruitee,
   normalizeSmartRecruiters,
@@ -43,6 +46,7 @@ import {
   normalizePinpoint,
   normalizePaylocity,
   extractPaylocityPageData,
+  paylocityPageText,
   normalizeAdp,
   adpBoardParams,
   extractRipplingJobPosts,
@@ -1114,7 +1118,15 @@ async function fetchPersonio(s: JobSource): Promise<{ xml: string; host: string 
       const res = await fetchWithTimeout(`https://${s.token}.${host}/xml`);
       if (res.ok) {
         const xml = await res.text();
-        if (xml.includes("<workzag-jobs") || xml.includes("<position")) return { xml, host };
+        if (!xml.includes("<workzag-jobs") && !xml.includes("<position")) continue;
+        // Rationale: docs/job-board-index-notes.md#n1423-a-personio-posting-in-another-language
+        if (!PERSONIO_NO_DESCRIPTION.test(xml)) return { xml, host };
+        try {
+          const en = await fetchWithTimeout(`https://${s.token}.${host}/xml?language=en`);
+          if (en.ok) return { xml: mergePersonioDescriptions(xml, await en.text()), host };
+          discardBody(en);
+        } catch { /* the default-language read stands */ }
+        return { xml, host };
       } else discardBody(res);
     } catch (e) {
       // Rationale: docs/job-board-index-notes.md#n024-string-e-as-error-message-e-inclu
@@ -1873,7 +1885,8 @@ const VENDOR_STATS_DECAY = 0.8; // per-slice decay — recent slices dominate
 // v2 (S12-013): v1 only filled NULL bands, so the L8-15/L7-09 parser fixes
 // reached new rows and nothing else: 0 of 24 stored minimum-age figures
 // reproduced, and Domino's served 4,018 Expert rows against 1,359 Entry.
-const EXPERIENCE_VERSION = 2;
+// v3: n1420 (ages, stories, the executive rung); Personio rows are skipped (n1421).
+const EXPERIENCE_VERSION = 3;
 // Rationale: docs/job-board-index-notes.md#n043-salary-parse-version
 const SALARY_PARSE_VERSION = 10; // v10 (2026-10-09, wave 3 board-data-ingest, docs/wave3/board-data-ingest.md): NT$/AR$/CL$/COL$/RD$/$U and a bare $ in TW/AR/CL/CO/DO/UY are not USD; a figure in millions is no wage; "up to X" alone is no floor; "$17/hr - $38/hr" is a range. // v9 (2026-09-27): A COMMA IS A DECIMAL POINT IN MOST OF EUROPE and the money pattern read it as a thousands group, so the figure split in half: P_RANGE is two money patterns with a dash between them, and on "€14,61 — €14,61" (ouihelp's own greenhouse pay footer) the grouped alternative could not match a 2-digit group, the plain one matched the bare "14", no separator followed, and the engine restarted INSIDE the number — taking the decimal tail 61 as the low end and the next figure's 14 as the high end. A €14.61/hour rate was read as a range from 61 down to 14. Where the halves descended, annualisation refused and the columns stored NULL (643 of 684 rows); where they ascended, the WRONG pair annualised cleanly — smartrecruiters/Securitas "€ 18,10 – € 19,51" stored 20,800-39,520 and workday/Assurant "$ 19,08 - $ 30,53" stored a floor of 16,640 against a true 39,686, 58% low, in the column salary_rank_usd is generated from (41 rows). Worst single shape: smartrecruiters/Flink "€15,96 - €17,14 per hour" read min 96 WITH a stated period and annualised to 199,680 — a €33k job published as a €200k one at the top of the pay sort. THE TAIL LENGTH DECIDES, NOT THE SEPARATOR AND NOT THE LOCALE: no thousands group has two digits, while three genuinely is ambiguous, so the v8 rule below and parseMoney's European reading are untouched (1,715 dot-3 rows in the census, zero changed) and the fix is unconditional — 29 of the 74 shape-carrying rows found by the country census have country NULL, so a locale-gated rule would have missed most of the population. Lookaheads refuse a tail followed by another separator (ashby/Oscilar's Indian lakh grouping "₹66,21,800") or by a period and a digit. MEASURED LIVE 2026-09-27 with the anon key: 684 rows carry the shape on NINE boards (greenhouse ouihelp 550 / joya 114, smartrecruiters Securitas 8 / Flink 5, workday Ia 2 / Assurant 2 / Enzazaden 1, oracle CareOne 1 / IHG 1), found by censusing every servable posting placed in any of the 64 comma-decimal countries the board holds (80,006 rows, cluster fold off) and then walking each discovered board to its exact countOnly total; an independent 60,000-row offset sample of the whole board found one further board and nothing else. Re-parsing 178,591 real stored salary strings with the old reader and the new one: 683 rows change, 638 NULL to a value, 45 a wrong value to a right one, ZERO a value to NULL. Boards, not one board, and never a token condition — the same lesson as v8. // v8 (2026-09-26): a 3-decimal HOURLY rate was read as a thousands group — Saskatchewan Health Authority's own field says "RequisitionType": "Hourly" beside "Pay Band 12 $23.170 to $24.840", and the board stored $23.17/hr as a $23,170 ANNUAL salary (under SK minimum wage, ~29% of real pay). Measured live over 176,575 rows: 1,404 rows on FIVE boards / two vendors — oracle HealthCareersInSask.ca 1,294, oracle DPS 96, workday Scarborough Health Network 11, workday Richmond University Medical Center 2, oracle Northwell 1 — of which 1,323 hold a wrong stored annual and 81 stored NULL. Every salary floor, ceiling and the pay sort read salary_rank_usd off salary_min_annual, so all of them filtered and sorted at ~half their true pay. See readsDotThreeAsRate: the European thousands reading ('€45.000' = 45,000) is deliberately kept, so the re-read is conditioned on the posting's locale, not the separator. // v7 (2026-08-25): day rates (x260) + a part-time/casual guard that REFUSES to annualise a load-dependent rate — {"q":"teacher","salaryFloor":90000} was serving 14 hourly part-timers out of 15, incl. $44/hr read as 91,520 and a $160/day substitute read as 332,800
 // v6 (2026-08-24): // v6 (2026-08-24): "an hour"/"a year" vocabulary + unambiguous-hourly inference for parity currencies in [7,200) — 17,641 workday vendor-stated ranges sat unannualized; whole-dollar rounding
@@ -3404,8 +3417,8 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         // Rationale: docs/job-board-index-notes.md#n580-let-descsdeferred-false
         let descsDeferred = false;
         if (s.source === "lever") {
-          for (const j of (Array.isArray(r.raw) ? r.raw : []) as Array<{ id: string; descriptionPlain?: string; descriptionBodyPlain?: string }>) {
-            const text = ((j.descriptionPlain ?? "") + (j.descriptionBodyPlain ? `\n${j.descriptionBodyPlain}` : "")).trim();
+          for (const j of (Array.isArray(r.raw) ? r.raw : []) as Array<{ id: string; descriptionPlain?: string; lists?: unknown; additionalPlain?: string }>) {
+            const text = leverText(j);
             if (text) descs.set(`lever:${s.token}:${j.id}`, text.slice(0, STORED_DESC_CAP));
           }
         } else if (s.source === "ashby") {
@@ -3482,7 +3495,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           if (isDatedBefore(posted, freshCutoffMs)) { agedOutIds.add(j.id); continue; }
           // Experience band from the best text we have this pass (title + the
           // fetched description where the vendor provides one). null → "unspecified".
-          const exp = detectExperience(j.title ?? "", lightDescs ? null : (descs.get(j.id) ?? null));
+          const exp = detectExperience(j.title ?? "", lightDescs ? null : (descs.get(j.id) ?? null), j.level);
           const rowCountry = j.country ?? detectCountry(j.location);
           if (j.employmentTypeText) scheduleWordsById.set(j.id, j.employmentTypeText);
           rowsById.set(j.id, {
@@ -3869,7 +3882,9 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         // Rationale: docs/job-board-index-notes.md#n108-vendor-field-first-read
         const VENDOR_FIELD_FIRST_READ = new Set(["personio:salary"]);
         // .92 changed how these federal fields are read (S8-023, S8-083): the patches land, unlogged. Remove after 2026-11-09 (n444).
-        const OUR_READING_CHANGED = new Set(["usajobs:country", "usajobs:work_mode", "usajobs:remote", "usajobs:salary"]);
+        const OUR_READING_CHANGED = new Set(["usajobs:country", "usajobs:work_mode", "usajobs:remote", "usajobs:salary",
+          // Remove after 2026-11-30 (n1426).
+          "lever:employment_type", "bamboohr:employment_type", "recruitee:employment_type", "breezy:employment_type", "personio:employment_type", "breezy:salary", "lever:salary"]);
         // ONE-SHOT, REMOVE AFTER ONE COLD ROTATION (wave 3, L7-04/L7-05): the Lever and
         // Recruitee pay text is re-formatted (exact figures, the stated period), so the
         // first rewrite of a stored figure is our correction, not an employer edit.
@@ -6020,8 +6035,10 @@ async function fetchVendorDetail(
     // Rationale: docs/job-board-index-notes.md#n680-const-res-await-fetchwithtimeout-https-r
     const res = await fetchWithTimeout(`https://recruiting.paylocity.com/recruiting/jobs/Details/${externalId}`);
     if (res.ok) {
-      const ld = jobPostingLd(await res.text());
-      text = ld.description ? htmlToText(ld.description).slice(0, DESC_CAP) || null : null;
+      const html = await res.text();
+      const ld = jobPostingLd(html);
+      // Rationale: docs/job-board-index-notes.md#n1427-a-paylocity-page-with-no-structured-data
+      text = (ld.description ? htmlToText(ld.description) : paylocityPageText(html)).slice(0, DESC_CAP) || null;
       pay = ldBaseSalaryText(ld.pay);
     }
   } else if (src.source === "adp") {
@@ -6066,15 +6083,20 @@ async function fetchVendorDetail(
     const r = await readBoardForDetail(src);
     if (r) {
       if (src.source === "lever") {
-        const raw = (Array.isArray(r.raw) ? r.raw : []) as Array<{ id: string; descriptionPlain?: string; descriptionBodyPlain?: string }>;
+        const raw = (Array.isArray(r.raw) ? r.raw : []) as Array<{ id: string; descriptionPlain?: string; lists?: unknown; additionalPlain?: string }>;
         const job = raw.find((x) => `lever:${src.token}:${x.id}` === id);
-        if (job) text = ((job.descriptionPlain ?? "") + (job.descriptionBodyPlain ? `\n${job.descriptionBodyPlain}` : "")).slice(0, DESC_CAP) || null;
+        if (job) text = leverText(job).slice(0, DESC_CAP) || null;
       } else {
         const raw = (r.raw as { jobs?: Array<{ id: string; descriptionPlain?: string; descriptionHtml?: string }> }).jobs ?? [];
         const job = raw.find((x) => `ashby:${src.token}:${x.id}` === id);
         if (job) text = (job.descriptionPlain ?? (job.descriptionHtml ? htmlToText(job.descriptionHtml) : "")).slice(0, DESC_CAP) || null;
       }
     }
+  } else if (src.source === "personio") {
+    // Rationale: docs/job-board-index-notes.md#n1423-a-personio-posting-in-another-language
+    const xml = await fetchPersonio(src).then((r) => r.xml, () => "");
+    const block = xmlBlocks(xml, "position").find((b) => xmlValue(b, "id") === externalId);
+    if (block) text = htmlToText(xmlBlocks(block, "jobDescription").map((d) => xmlValue(d, "value") ?? "").join("\n").slice(0, RAW_HTML_CAP)).slice(0, DESC_CAP) || null;
   }
   // Everything else — rippling today — has no public description source.
   // Returning null here is a measured fact, not an unfinished branch.
@@ -7568,6 +7590,7 @@ async function handleRequest(req: Request): Promise<Response> {
         for (const r of rows ?? []) {
           scanned++;
           const row = r as { id: string; title?: string | null; description?: string | null; experience_band?: string | null; min_years?: number | string | null };
+          if (row.id.startsWith("personio:")) continue;
           const exp = detectExperience(row.title ?? "", row.description ?? null);
           const band = exp.band ?? "unspecified";
           const min = exp.minYears ?? null;
