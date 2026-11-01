@@ -7784,7 +7784,10 @@ ${classificationExcerpt}
 What is the PRIMARY industry of this candidate's own experience? Reply with only the industry name.`
               }
             ],
-            max_tokens: 50,
+            // Room for a thinking model's reasoning as well as the one word
+            // (S13-065): at 50, flash spent the cap thinking and answered
+            // nothing, so every fallback scan paid for an empty check.
+            max_tokens: 400,
             temperature: 0,
           }),
           // A short classification: it never holds the scan past 15 seconds.
@@ -7793,7 +7796,15 @@ What is the PRIMARY industry of this candidate's own experience? Reply with only
 
         if (verifyResponse.ok) {
           const verifyData = await verifyResponse.json();
-          const aiVerified = verifyData.choices?.[0]?.message?.content?.trim()?.toLowerCase()?.replace(/[^a-z_]/g, '');
+          const verifyChoice = verifyData.choices?.[0];
+          const verifyContent = typeof verifyChoice?.message?.content === 'string' ? verifyChoice.message.content : '';
+          // A reply cut off at the cap, or an empty one, is no answer: the
+          // server's detection stands (S13-065).
+          const verifyUsable = verifyChoice?.finish_reason !== 'length' && verifyContent.trim() !== '';
+          if (!verifyUsable) {
+            console.warn(`[FREE-KEYWORD-SCAN-STREAM] AI verification unusable (finish_reason ${verifyChoice?.finish_reason ?? 'none'}, ${verifyContent.length} chars): server detection stands`);
+          }
+          const aiVerified = verifyUsable ? verifyContent.trim().toLowerCase().replace(/[^a-z_]/g, '') : '';
           if (aiVerified) {
             const normalizedVerified = normalizeIndustry(aiVerified);
             if (VALID_INDUSTRIES.includes(normalizedVerified) || INDUSTRY_ALIASES[normalizedVerified]) {
@@ -8349,13 +8360,14 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
           errorCode: 'PARSE_ERROR',
           errorMessage: 'Failed to parse AI response after repair attempts',
           outputValid: false,
+          // Its shape only, never its text (S13-064): scan_metrics keeps rows
+          // with no retention job, and the model's output quotes the résumé.
           metadata: {
             responseLength: toolCallArgs.length,
             modelUsed,
             hasContent: toolCallArgs.length > 0,
-            // Sample first/last chars to help debug
-            startChars: toolCallArgs.substring(0, 50),
-            endChars: toolCallArgs.substring(Math.max(0, toolCallArgs.length - 50))
+            opensWithBrace: /^\s*\{/.test(toolCallArgs),
+            closesWithBrace: /\}\s*$/.test(toolCallArgs),
           }
         });
         send('error', { error: 'Failed to parse analysis results. Please try again.' });

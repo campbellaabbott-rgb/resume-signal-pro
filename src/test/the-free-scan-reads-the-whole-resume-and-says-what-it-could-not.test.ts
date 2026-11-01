@@ -25,6 +25,10 @@
  *  S13-037  A DOCX made with Word's bullet button reaches the tone audit and
  *           the quantified-bullet count with its bullets, and a Word PDF's
  *           Symbol-font bullet (U+F0B7) is a bullet.
+ *  S13-064  The fallback's parse-failure metric (scan_metrics, kept with no
+ *           retention job) stores the reply's shape, never its text.
+ *  S13-065  The fallback's industry check has room to answer (400 tokens, not
+ *           50), and a reply cut off at the cap or empty is no answer.
  *
  * Run against the shipped handlers, the model faked.
  */
@@ -102,6 +106,11 @@ let stream: EdgeHandler;
 let pending: Promise<unknown>[];
 let prompts: string[];
 let streamDb: FakeDb;
+// Set by a test to answer the fallback's industry check (S13-065) or to send
+// the fallback an analysis it cannot parse (S13-064); null: the default fake.
+let classifierReply: ((body: Record<string, unknown>) => Response) | null = null;
+let streamArgs: string | null = null;
+const classifierBodies: Array<Record<string, unknown>> = [];
 const spies: Array<ReturnType<typeof vi.spyOn>> = [];
 
 function primaryClient() {
@@ -135,7 +144,12 @@ beforeAll(async () => {
     if (u.includes("ai.gateway.lovable.dev")) {
       const body = JSON.parse(init?.body ?? "{}") as { stream?: boolean; messages?: Array<{ content?: unknown }> };
       for (const m of body.messages ?? []) if (typeof m.content === "string") prompts.push(m.content);
-      const args = JSON.stringify(ANALYSIS);
+      const system = typeof body.messages?.[0]?.content === "string" ? body.messages[0].content as string : "";
+      if (system.includes("resume industry classifier")) {
+        classifierBodies.push(body as Record<string, unknown>);
+        if (classifierReply) return classifierReply(body as Record<string, unknown>);
+      }
+      const args = body.stream && streamArgs !== null ? streamArgs : JSON.stringify(ANALYSIS);
       if (body.stream) {
         const chunk = JSON.stringify({ choices: [{ delta: { tool_calls: [{ function: { arguments: args } }] } }] });
         return new Response(`data: ${chunk}\n\ndata: [DONE]\n\n`, { status: 200, headers: { "content-type": "text/event-stream" } });
@@ -156,6 +170,9 @@ beforeAll(async () => {
 beforeEach(() => {
   pending = [];
   prompts = [];
+  classifierReply = null;
+  streamArgs = null;
+  classifierBodies.length = 0;
   (globalThis as Record<string, unknown>).__scanClient = primaryClient();
   streamDb = new FakeDb();
   streamDb.rpcs.check_global_rate_limit = () => ({ data: true, error: null });
@@ -412,5 +429,46 @@ describe("S13-037: Word's bullets reach the tone audit and the bullet count", ()
     const { json } = await scanPrimary({ resumeText: text });
     expect((json.toneAudit as Tone).activeCount).toBe(BULLETS.length);
     expect((json.competitorSilhouette as Silhouette).user.quantifiedBullets).toBe(BULLETS.length);
+  });
+});
+
+describe("S13-064: the fallback's parse-failure metric stores a shape, never the reply's text", () => {
+  it("no characters of the model's output reach scan_metrics", async () => {
+    const metrics: Array<Record<string, unknown>> = [];
+    streamDb.rpcs.log_scan_metric = (a) => { metrics.push(a); return { data: null, error: null }; };
+    // an analysis cut off mid-string, quoting the résumé: not JSON, not repairable
+    streamArgs = '{"candidateName": "Lee Park", "topStrength": "Responsible for inventory counts on the night shift, lee.park@example.com';
+    await scanStream({ resumeText: WEAK });
+    const failed = metrics.find((m) => JSON.stringify(m).includes("PARSE_ERROR"));
+    expect(failed).toBeTruthy();
+    const stored = JSON.stringify(failed);
+    expect(stored).not.toMatch(/startChars|endChars/);
+    expect(stored).not.toContain("Lee Park");
+    expect(stored).not.toContain("lee.park@example.com");
+    expect(stored).not.toContain("inventory");
+  });
+});
+
+describe("S13-065: the fallback's industry check can answer, and an answer cut off is none", () => {
+  const reply = (content: string | null, finish: string) => () =>
+    new Response(JSON.stringify({ choices: [{ message: { content }, finish_reason: finish }] }), { status: 200 });
+  const warned = () => spies.flatMap((sp) => sp.mock.calls.map((c) => c.map(String).join(" "))).filter((l) => l.includes("AI verification unusable"));
+
+  it("asks with room for a thinking model to answer", async () => {
+    classifierReply = reply("logistics", "stop");
+    await scanStream({ resumeText: WEAK });
+    expect(classifierBodies.length).toBe(1);
+    expect(classifierBodies[0].max_tokens as number).toBeGreaterThanOrEqual(400);
+    expect(warned()).toEqual([]);
+  });
+  it("a reply cut off at the cap is not read as an industry", async () => {
+    classifierReply = reply("health", "length");
+    await scanStream({ resumeText: WEAK });
+    expect(warned().length).toBe(1);
+  });
+  it("an empty reply is not read either", async () => {
+    classifierReply = reply(null, "stop");
+    await scanStream({ resumeText: WEAK });
+    expect(warned().length).toBe(1);
   });
 });
