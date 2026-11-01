@@ -522,7 +522,29 @@ export function bakeEmployerKey(token) {
  * page. `displayName` gives the name; `unreadable` flags a board whose name is
  * still a system code, which gets a page but never an indexable one.
  */
-export function selectLanders(companyFacet, { openOf, displayName = (c) => c.name.trim(), unreadable = () => false, max = 500, min = 8, keep = null, keepRatio = 0.5 }) {
+/**
+ * THE D7 COMPANY PAGES (owner decision 2026-10-25, docs/company-profiles/
+ * name-gate-dry-run.md table 1 and the TRUSTED PAGES note in
+ * docs/job-board-deploy-notes.md): they stay indexed and become trusted, by
+ * fixing the name and the country underneath, never by loosening the gate.
+ * The fix underneath moved their counts: once each Reyes board read only its
+ * own brand, Martin Brower fell from the shared feed's ~498 open roles to 107,
+ * under half of the ceiling's cut (299 on 2026-10-31), so the ceiling rotated
+ * it out and its page went noindex on the 2026-10-31 publish; LCS's own board
+ * holds 13 roles since job-board .96 reads the "All" pool site once. These
+ * boards are `pin`ned in selectLanders: the ceiling never rotates them out.
+ * Everything else still applies to them: the minimum open roles, the name
+ * gate, the duplicate rule and the thin rule. Section 99zz (N4) judges the
+ * same four pages live.
+ */
+export const D7_TRUSTED_COMPANY_TOKENS = Object.freeze([
+  "icfcjb~ocs~CX_1", // Honeywell Aerospace
+  "eexs~us2~CX_3001", // LCS
+  "talent.reyesholdings.com", // Reyes Beverage Group
+  "jobportal.martinbrower.com", // Martin Brower
+]);
+
+export function selectLanders(companyFacet, { openOf, displayName = (c) => c.name.trim(), unreadable = () => false, max = 500, min = 8, keep = null, keepRatio = 0.5, pin = null }) {
   const size = (c) => (typeof c.open === "number" ? c.open : (c.count ?? 0));
   const ranked = (Array.isArray(companyFacet) ? companyFacet : [])
     // Tilde is allowed: Oracle/Workday compound tokens (tenant~dc~site) are
@@ -543,12 +565,20 @@ export function selectLanders(companyFacet, { openOf, displayName = (c) => c.nam
   // employer's page: dropping PwC's campus board cut "across 3 hiring-system
   // boards" to one), so the set never passes the ceiling. Refusing a page new
   // to the index is what D7 allows.
-  if (keep && typeof keep.has === "function" && keep.size && ranked.length > max && chosen.length) {
+  // A PINNED board (`pin`, D7_TRUSTED_COMPANY_TOKENS) is held whatever its
+  // share of the cut, whether or not today's sitemap still lists it, and
+  // ahead of the boards held by `keep`; it still needs `min` open roles.
+  const inSet = (set, c) => !!(set && typeof set.has === "function" && set.has(c.token));
+  const isKept = (c) => inSet(keep, c);
+  const isPinned = (c) => inSet(pin, c);
+  if (((keep && keep.size) || (pin && pin.size)) && ranked.length > max && chosen.length) {
     const cut = openOf(chosen[chosen.length - 1]) ?? chosen[chosen.length - 1].count ?? 0;
-    const held = ranked.slice(max).filter((c) => keep.has(c.token) && (openOf(c) ?? c.count ?? 0) >= cut * keepRatio);
+    const held = ranked.slice(max)
+      .filter((c) => isPinned(c) || (isKept(c) && (openOf(c) ?? c.count ?? 0) >= cut * keepRatio))
+      .sort((a, b) => Number(isPinned(b)) - Number(isPinned(a)));
     const groupOf = (c) => `${bakeEmployerKey(c.token)}\u0000${String(displayName(c) ?? "").toLowerCase().replace(/\s+/g, " ").trim()}`;
-    const keptGroups = new Set(ranked.filter((c) => keep.has(c.token)).map(groupOf));
-    const droppable = chosen.filter((c) => !keep.has(c.token) && !keptGroups.has(groupOf(c))).reverse();
+    const keptGroups = new Set(ranked.filter((c) => isKept(c) || isPinned(c)).map(groupOf));
+    const droppable = chosen.filter((c) => !isKept(c) && !isPinned(c) && !keptGroups.has(groupOf(c))).reverse();
     const n = Math.min(held.length, droppable.length);
     if (n) {
       const drop = new Set(droppable.slice(0, n).map((c) => c.token));
@@ -569,8 +599,9 @@ export function selectLanders(companyFacet, { openOf, displayName = (c) => c.nam
   // them, and the URL in the index started pointing its canonical at the
   // other (PwC's crm board, indexable on 2026-10-24, would have canonicalised
   // to its Global board). A board in `keep` wins its group; otherwise the
-  // largest does. The pooled count is the same either way.
-  const kept = (c) => !!(keep && typeof keep.has === "function" && keep.has(c.token));
+  // largest does. The pooled count is the same either way. A pinned board
+  // (D7) wins its group as one indexable today does.
+  const kept = (c) => isKept(c) || isPinned(c);
   const better = (c, prev) => (kept(c) !== kept(prev) ? kept(c) : size(c) > size(prev));
   // One employer under one name: its board indexable today, else its largest.
   const primaryByGroup = new Map();
@@ -623,7 +654,7 @@ export function employerPageOf(landers, token) {
  * and a board whose printed name is still its tenant code gets a page that is
  * never indexable.
  */
-export const bakeLanders = (companyFacet, { D, openOf, max, min, nameOf = null, keep = null }) => selectLanders(companyFacet, {
+export const bakeLanders = (companyFacet, { D, openOf, max, min, nameOf = null, keep = null, pin = null }) => selectLanders(companyFacet, {
   openOf,
   // SEO-006: `nameOf` is the bake's repaired name (scripts/prerender-names.mjs
   // bakeEmployerName: "Chubb External" prints as "Chubb"); the code-shape test
@@ -633,6 +664,7 @@ export const bakeLanders = (companyFacet, { D, openOf, max, min, nameOf = null, 
   ...(max ? { max } : {}),
   ...(min ? { min } : {}),
   ...(keep ? { keep } : {}),
+  ...(pin ? { pin } : {}),
 });
 
 /**

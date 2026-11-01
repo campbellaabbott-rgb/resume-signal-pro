@@ -25,7 +25,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
 import {
   PRERENDER_LEDGER_PATH, POSTING_STUB_KEEP_DAYS, callBudget, companyLanderPage, contentFingerprint, landerFacts, landerHasOwnContent, landerRobots, landerThinBreaker,
-  bakeLanders, employerBoardsOf, employerPageOf, carrySitemaps, pageLastmod, postingCarryBase, postingCheckState, postingFreshBudget, postingRowEligible, postingStubEntry, postingStubPage,
+  bakeLanders, D7_TRUSTED_COMPANY_TOKENS, employerBoardsOf, employerPageOf, carrySitemaps, pageLastmod, postingCarryBase, postingCheckState, postingFreshBudget, postingRowEligible, postingStubEntry, postingStubPage,
   LANDER_OPENINGS_READS, LANDER_OPENINGS_SHOWN, LLMS_TXT_COMPANIES, companiesLlmsLine, readCompanyIntel, llmsTxtCompaniesCount, duplicateSkeletons, landerBreakers, landerOpenings, landerSkeleton, nextOpeningsCache, openingsFromList, openingsToRead,
 } from "./prerender-pages.mjs";
 // The once-published pages, the ceiling, the dates and the duplicate groups
@@ -2255,15 +2255,26 @@ export { count as fmtCount, money as fmtMoney, date as fmtDate } from "../src/li
   // near the cut (selectLanders `keep`).
   const INDEXABLE_TODAY_TOKENS = new Set([...INDEXABLE_TODAY].map((p) => companyTokenOf(p)).filter(Boolean));
   const NAME_PARTS = { boardName: D.boardName, isCodeShapedName: D.isCodeShapedName };
+  // THE D7 COMPANY PAGES (owner, 2026-10-25: they stay indexed, trusted) are
+  // pinned: the ceiling never rotates them out, whatever their share of the
+  // cut and whether or not the live sitemap still lists them (Martin Brower
+  // went noindex on 2026-10-31 at 107 roles against a cut of 299). The name
+  // gate, the duplicate rule and the thin rule still judge them below.
   const LANDERS = bakeLanders(Array.isArray(boardFacets?.companiesFacet) ? boardFacets.companiesFacet : [], {
     D, openOf: openRolesOf, nameOf: (c) => bakeEmployerName(c.token, c.name, NAME_PARTS).name,
-    keep: INDEXABLE_TODAY_TOKENS,
+    keep: INDEXABLE_TODAY_TOKENS, pin: new Set(D7_TRUSTED_COMPANY_TOKENS),
   });
   {
     const plain = new Set(bakeLanders(Array.isArray(boardFacets?.companiesFacet) ? boardFacets.companiesFacet : [], { D, openOf: openRolesOf, nameOf: (c) => bakeEmployerName(c.token, c.name, NAME_PARTS).name }).map((c) => c.token));
-    const held = LANDERS.filter((c) => !plain.has(c.token)).map((c) => c.token);
+    const pinnedHeld = LANDERS.filter((c) => !plain.has(c.token) && D7_TRUSTED_COMPANY_TOKENS.includes(c.token)).map((c) => c.token);
+    const held = LANDERS.filter((c) => !plain.has(c.token) && !D7_TRUSTED_COMPANY_TOKENS.includes(c.token)).map((c) => c.token);
     const displaced = [...plain].filter((t) => !LANDERS.some((c) => c.token === t));
-    console.log(`[prerender-seo] D7 at the ceiling: ${held.length} board(s) indexable today kept near the cut${held.length ? ` (${held.slice(0, 30).join(", ")})` : ""}; ${displaced.length} new board(s) made way${displaced.length ? ` (${displaced.slice(0, 30).join(", ")})` : ""}`);
+    const pinnedMissing = D7_TRUSTED_COMPANY_TOKENS.filter((t) => !LANDERS.some((c) => c.token === t));
+    console.log(`[prerender-seo] D7 at the ceiling: ${held.length} board(s) indexable today kept near the cut${held.length ? ` (${held.slice(0, 30).join(", ")})` : ""}; ${pinnedHeld.length} D7 page(s) pinned past the cut${pinnedHeld.length ? ` (${pinnedHeld.join(", ")})` : ""}; ${displaced.length} new board(s) made way${displaced.length ? ` (${displaced.slice(0, 30).join(", ")})` : ""}`);
+    // A pinned page the bake cannot choose (the board carries fewer than the
+    // minimum open roles, or none) goes the carry path's way, noindex: said
+    // out loud, because section 99zz FAILs it live.
+    if (pinnedMissing.length) console.warn(`[prerender-seo] D7: ${pinnedMissing.length} pinned company page(s) not chosen (under the minimum open roles or not carried): ${pinnedMissing.join(", ")}`);
   }
   const NAME_GATE = new Map(LANDERS.map((c) => [c.token, bakeEmployerName(c.token, c.stored, NAME_PARTS)]));
   // WHAT EACH BOARD IS, as the live page says it (prerender-pages.mjs
