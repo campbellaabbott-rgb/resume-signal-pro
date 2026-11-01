@@ -136,3 +136,138 @@ describe("one pass on what a hostile page can send", () => {
     });
   }
 });
+
+/*
+ * THE RECHECK OF THIS DROP. Two regressions and three bypasses.
+ *   - svg and head were raw-text blocks ending only at their own end tag, so
+ *     a self-closing <svg .../> (an icon), or a page that leaves out the
+ *     optional </head>, dropped every visible word after it: the live reader
+ *     (.27) kept them. A browser closes <svg/> at once (foreign content's
+ *     self-closing flag counts), ends an unclosed <svg> at the first HTML
+ *     start tag that breaks out of foreign content, and ends <head> at the
+ *     first body content.
+ *   - character references in an attribute value hid nothing
+ *     (style="display&#58;none"); a stray end tag popped out of a table cell
+ *     a browser keeps it in; and a hidden <b> that a </p> closes is rebuilt
+ *     by a browser inside the next paragraph, still hiding.
+ */
+const RECHECK_KEPT: Array<[string, string, string[]]> = [
+  [
+    "a self-closing svg icon between sections",
+    '<p>About the role</p><svg class="icon" viewBox="0 0 16 16"/><h3>Responsibilities</h3><ul><li>Build services</li><li>Own on-call</li></ul><h3>Requirements</h3><p>5 years TypeScript</p>',
+    ["About the role", "Responsibilities", "Build services", "Own on-call", "Requirements", "5 years TypeScript"],
+  ],
+  [
+    "a page that leaves out </head>",
+    '<html><head><meta charset="utf-8"><title>Senior Engineer</title><body><h1>Senior Engineer</h1><p>Build things for customers every day.</p></body></html>',
+    ["Senior Engineer", "Build things for customers every day."],
+  ],
+  [
+    "a self-closing svg, then a paragraph, then a closed svg",
+    '<p>About</p><svg class="i"/><p>Responsibilities: design the billing service.</p><svg><path d="M0 0"/></svg><p>Benefits</p>',
+    ["About", "Responsibilities: design the billing service.", "Benefits"],
+  ],
+  [
+    "an svg left open, ended by the next HTML block",
+    '<p>Intro</p><svg viewBox="0 0 8 8"><path d="M0 0"></path><h3>What you will do</h3><p>Ship the payments API.</p>',
+    ["Intro", "What you will do", "Ship the payments API."],
+  ],
+  [
+    "a head left open, ended by its first text",
+    "<head><title>Careers</title>Join the platform team as a staff engineer.<p>Remote in the EU.</p>",
+    ["Join the platform team as a staff engineer.", "Remote in the EU."],
+  ],
+  [
+    "a head that is not the first thing on the page is ignored, as a browser ignores it",
+    "<p>First paragraph.</p><head><p>Second paragraph.</p>",
+    ["First paragraph.", "Second paragraph."],
+  ],
+];
+
+const RECHECK_HIDDEN: Array<[string, string, string[], string[]]> = [
+  ["a style written with a character reference", '<div style="display&#58;none">HIDDEN-1</div><p>ok</p>', ["ok"], ["HIDDEN-1"]],
+  ["aria-hidden written with a character reference", '<div aria-hidden="&#116;rue">HIDDEN-2</div><p>ok</p>', ["ok"], ["HIDDEN-2"]],
+  ["a style with a hex and a named reference", '<div style="display&#x3A;&#x20;none">HIDDEN-3</div><span style="visibility&colon;hidden">HIDDEN-4</span><p>ok</p>', ["ok"], ["HIDDEN-3", "HIDDEN-4"]],
+  ["a class written with a character reference", '<div class="d&#45;none">HIDDEN-5</div><p>ok</p>', ["ok"], ["HIDDEN-5"]],
+  [
+    "a stray end tag inside a hidden table cell",
+    '<div><table><tr><td style="display:none">HIDDEN1</div>HIDDEN2</td><td>Shown</td></tr></table></div><p>After</p>',
+    ["Shown", "After"],
+    ["HIDDEN1", "HIDDEN2"],
+  ],
+  [
+    "a hidden <b> a </p> closes, rebuilt in every paragraph after it",
+    '<p><b style="display:none">INJECT-A</p><p>INJECT-B</p><p>INJECT-C</p>',
+    [],
+    ["INJECT-A", "INJECT-B", "INJECT-C"],
+  ],
+  [
+    "a hidden <b> rebuilt after a </p>, until its own </b>",
+    '<p>Intro line.</p><p><b style="display:none">INJECT-A</p><p>INJECT-B</b>Tail line.</p>',
+    ["Intro line.", "Tail line."],
+    ["INJECT-A", "INJECT-B"],
+  ],
+  [
+    "a span's end tag never pops a block opened inside it",
+    // The </span> inside the div is ignored; the second one, after </div>, closes it.
+    '<span style="display:none">HIDDEN-6<div>HIDDEN-7</span>HIDDEN-8</div></span><p>Shown after</p>',
+    ["Shown after"],
+    ["HIDDEN-6", "HIDDEN-7", "HIDDEN-8"],
+  ],
+];
+
+const RECHECK_VISIBLE_STILL: Array<[string, string, string[], string[]]> = [
+  ["a hidden <b> closed by its own </b> hides only its words", '<p>One <b style="display:none">GONE</b> two</p><p>Three</p>', ["One", "two", "Three"], ["GONE"]],
+  ["a hidden <b> inside a cell is not rebuilt outside the table", '<table><tr><td><b style="display:none">GONE</td></tr></table><p>After the table</p>', ["After the table"], ["GONE"]],
+  ["an aria-hidden icon left open does not hide the paragraphs after it", '<p><i class="fa fa-check" aria-hidden="true">✓</p><p>Visible requirement</p>', ["Visible requirement"], []],
+  ["a </b> with a block opened inside the hidden <b> ends the hiding there", '<b style="display:none"><div>GONE</b>Kept after</div><p>Tail</p>', ["Kept after", "Tail"], ["GONE"]],
+  ["a hidden block opened inside a <b> stays hidden past the </b>", '<b><div style="display:none">GONE</b>ALSO-GONE</div><p>Tail</p>', ["Tail"], ["GONE", "ALSO-GONE"]],
+  ["an end tag with nothing of its name in scope changes nothing", '<p>One</p></div></span></td><p>Two</p>', ["One", "Two"], []],
+  ["</body> and </html> do not close a hidden block early", '<body><div style="display:none">GONE</body>ALSO-GONE</html>', [], ["GONE", "ALSO-GONE"]],
+];
+
+describe("the recheck: visible text after an svg or a head is kept", () => {
+  for (const [what, html, kept] of RECHECK_KEPT) {
+    for (const [name, read] of readers) {
+      it(`${what} (${name})`, () => {
+        const text = read(html);
+        for (const line of kept) expect(text, line).toContain(line);
+        expect(text).not.toMatch(/viewBox|M0 0|charset/);
+      });
+    }
+  }
+});
+
+describe("the recheck: what a browser hides is dropped", () => {
+  for (const [what, html, kept, gone] of [...RECHECK_HIDDEN, ...RECHECK_VISIBLE_STILL]) {
+    for (const [name, read] of readers) {
+      it(`${what} (${name})`, () => {
+        const text = read(html);
+        for (const line of kept) expect(text, line).toContain(line);
+        for (const word of gone) expect(text, word).not.toContain(word);
+      });
+    }
+  }
+});
+
+describe("the recheck's shapes cost one pass too", () => {
+  const pages: Array<[string, string]> = [
+    ["svg openers never closed and never broken out of", "<svg>".repeat(30_000) + "x".repeat(10_000)],
+    ["self-closing svgs", '<svg class="i"/>x'.repeat(30_000)],
+    ["svgs each ended by a paragraph", "<svg><path/>".concat("<p>x</p>").repeat(30_000)],
+    ["titles never closed inside a head", "<head>" + "<title>".repeat(30_000)],
+    ["hidden bolds each closed by a paragraph end", '<p><b style="display:none">x</p>'.repeat(30_000)],
+    ["end tags of a lingering bold that never matches", '<p><b style="display:none">x</p>' + "</i>".repeat(30_000)],
+    ["character references in every attribute", `<div style="${"&#58;".repeat(100_000)}">x</div>`],
+    ["stray end tags inside a deep table", "<table><tr><td>" + "<div>".repeat(10_000) + "<table><tr><td>" + "</div>".repeat(30_000)],
+  ];
+  for (const [what, html] of pages) {
+    it(what, () => {
+      const t0 = Date.now();
+      postingText(html);
+      htmlToText(html);
+      dropHiddenElements(html);
+      expect(Date.now() - t0).toBeLessThan(600);
+    });
+  }
+});
