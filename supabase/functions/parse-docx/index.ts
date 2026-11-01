@@ -9,8 +9,10 @@ import { clientAddressOr } from "../_shared/client-address.ts";
 import { headerFooterLines, withHeaderFooter, type ZipLike } from "./header-footer.ts";
 
 // Provable from outside without an upload: every response, the CORS preflight
-// included, carries this in x-fn-build.
-const FN_BUILD = "parse-docx.2026-10-11.26";
+// included, carries this in x-fn-build. 2026-11-01.1: Word's own bullets
+// (w:numPr resolving to a bullet format) keep a bullet mark in the text
+// (register S13-037).
+const FN_BUILD = "parse-docx.2026-11-01.1";
 
 // Declare EdgeRuntime for background tasks
 declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };

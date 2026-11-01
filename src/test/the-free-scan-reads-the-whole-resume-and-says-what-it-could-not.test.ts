@@ -22,6 +22,9 @@
  *  S13-058  The hero's projected score, the Fix Plan's last step and
  *           Improvement Potential are one number, read from one fix list
  *           (scoreProjection), in both forks.
+ *  S13-037  A DOCX made with Word's bullet button reaches the tone audit and
+ *           the quantified-bullet count with its bullets, and a Word PDF's
+ *           Symbol-font bullet (U+F0B7) is a bullet.
  *
  * Run against the shipped handlers, the model faked.
  */
@@ -29,6 +32,10 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
+import mammoth from "mammoth";
+import JSZip from "jszip";
+import * as docx from "docx";
+import { readDocxBody } from "../../supabase/functions/parse-docx/docx-text";
 
 vi.setConfig({ testTimeout: 60_000, hookTimeout: 240_000 });
 
@@ -373,5 +380,37 @@ describe("S13-058: one report promises one score", () => {
     expect(score + (complete!.improvementPotential as { estimatedScoreIncrease: number }).estimatedScoreIncrease).toBe(proj.to);
     expect(Math.min(95, score + proj.fixes.reduce((s, f) => s + f.impact, 0))).toBe(proj.to);
     for (const w of complete!.quickWins as Array<{ scoreImpact: unknown }>) expect(typeof w.scoreImpact).toBe("number");
+  });
+});
+
+describe("S13-037: Word's bullets reach the tone audit and the bullet count", () => {
+  const BULLETS = [
+    "Built a carrier scorecard that cut late deliveries 18%",
+    "Led a team of 6 planners across 3 sites",
+    "Rolled the scorecard out to 40 carriers in one quarter",
+    "Cut overtime 9% by rebuilding the shift pattern",
+    "Hired and trained 12 planners in two years",
+  ];
+  const head = ["Lee Park | lee.park@example.com", "EXPERIENCE", "Planning Lead, Northwind, Jan 2020 - Present"];
+  const tail = ["Was promoted to team lead after 18 months", "EDUCATION", "BSc Logistics, State University", "SKILLS", "SQL, Excel, Lean"];
+  type Tone = { activeCount: number; passiveCount: number; verdict: string };
+  type Silhouette = { user: { quantifiedBullets: number } };
+
+  it("a DOCX from our own builder's export (bullet: { level: 0 }) is not called passive with no active bullets", async () => {
+    const para = (t: string, bullet = false) => new docx.Paragraph({ children: [new docx.TextRun(t)], ...(bullet ? { bullet: { level: 0 } } : {}) });
+    const file = new docx.Document({ sections: [{ children: [...head.map((t) => para(t)), ...BULLETS.map((t) => para(t, true)), ...tail.map((t) => para(t))] }] });
+    const { body } = await readDocxBody(new Uint8Array(await docx.Packer.toBuffer(file)), { mammoth: mammoth as never, JSZip: JSZip as never });
+    const { json } = await scanPrimary({ resumeText: body });
+    const tone = json.toneAudit as Tone;
+    expect(tone.activeCount).toBe(BULLETS.length);
+    expect(tone.verdict).not.toBe("too_passive");
+    expect((json.competitorSilhouette as Silhouette).user.quantifiedBullets).toBe(BULLETS.length);
+  });
+
+  it("a Word PDF's Symbol-font bullet (U+F0B7) is a bullet", async () => {
+    const text = [...head, ...BULLETS.map((t) => `\uF0B7 ${t}`), ...tail].join("\n");
+    const { json } = await scanPrimary({ resumeText: text });
+    expect((json.toneAudit as Tone).activeCount).toBe(BULLETS.length);
+    expect((json.competitorSilhouette as Silhouette).user.quantifiedBullets).toBe(BULLETS.length);
   });
 });

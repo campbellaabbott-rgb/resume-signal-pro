@@ -1,0 +1,102 @@
+{
+ "note": "SYNTHETIC WordprocessingML list shapes from ~/.config/resumebooster/free-scan-wave-corpora/_harness/s13-037.mts; main gave no bullet to any of them",
+ "numbering": "<w:abstractNum w:abstractNumId=\"0\"><w:lvl w:ilvl=\"0\" w:tplc=\"04090001\"><w:start w:val=\"1\"/><w:numFmt w:val=\"bullet\"/><w:lvlText w:val=\"\"/><w:lvlJc w:val=\"left\"/></w:lvl><w:lvl w:ilvl=\"1\" w:tplc=\"04090001\"><w:start w:val=\"1\"/><w:numFmt w:val=\"bullet\"/><w:lvlText w:val=\"o\"/><w:lvlJc w:val=\"left\"/></w:lvl><w:lvl w:ilvl=\"2\" w:tplc=\"04090001\"><w:start w:val=\"1\"/><w:numFmt w:val=\"bullet\"/><w:lvlText w:val=\"\"/><w:lvlJc w:val=\"left\"/></w:lvl></w:abstractNum><w:abstractNum w:abstractNumId=\"1\"><w:lvl w:ilvl=\"0\" w:tplc=\"04090001\"><w:start w:val=\"1\"/><w:numFmt w:val=\"decimal\"/><w:lvlText w:val=\"%1.\"/><w:lvlJc w:val=\"left\"/></w:lvl><w:lvl w:ilvl=\"1\" w:tplc=\"04090001\"><w:start w:val=\"1\"/><w:numFmt w:val=\"lowerLetter\"/><w:lvlText w:val=\"%2.\"/><w:lvlJc w:val=\"left\"/></w:lvl></w:abstractNum><w:abstractNum w:abstractNumId=\"2\"><w:lvl w:ilvl=\"0\"><w:start w:val=\"1\"/><mc:AlternateContent><mc:Choice Requires=\"w14\"><w:numFmt w:val=\"custom\" w:format=\"001, 002, 003, ...\"/></mc:Choice><mc:Fallback><w:numFmt w:val=\"decimal\"/></mc:Fallback></mc:AlternateContent><w:lvlText w:val=\"%1.\"/></w:lvl></w:abstractNum><w:num w:numId=\"1\"><w:abstractNumId w:val=\"0\"/></w:num><w:num w:numId=\"2\"><w:abstractNumId w:val=\"1\"/></w:num><w:num w:numId=\"3\"><w:abstractNumId w:val=\"1\"/><w:lvlOverride w:ilvl=\"0\"><w:lvl w:ilvl=\"0\" w:tplc=\"04090001\"><w:start w:val=\"1\"/><w:numFmt w:val=\"bullet\"/><w:lvlText w:val=\"•\"/><w:lvlJc w:val=\"left\"/></w:lvl></w:lvlOverride></w:num><w:num w:numId=\"4\"><w:abstractNumId w:val=\"2\"/></w:num><w:num w:numId=\"5\" w15:restartNumberingAfterBreak=\"0\" xmlns:w15=\"http://schemas.microsoft.com/office/word/2012/wordml\"><w:abstractNumId w:val=\"0\"/></w:num>",
+ "styles": "<w:style w:type=\"paragraph\" w:default=\"1\" w:styleId=\"Normal\"><w:name w:val=\"Normal\"/></w:style><w:style w:type=\"paragraph\" w:styleId=\"ListParagraph\"><w:name w:val=\"List Paragraph\"/><w:basedOn w:val=\"Normal\"/><w:pPr><w:ind w:left=\"720\"/></w:pPr></w:style><w:style w:type=\"paragraph\" w:styleId=\"ListBullet\"><w:name w:val=\"List Bullet\"/><w:basedOn w:val=\"Normal\"/><w:pPr><w:numPr><w:numId w:val=\"1\"/></w:numPr></w:pPr></w:style><w:style w:type=\"paragraph\" w:styleId=\"ResumeBullet\"><w:name w:val=\"Resume Bullet\"/><w:basedOn w:val=\"ListBullet\"/><w:pPr><w:spacing w:after=\"40\"/></w:pPr></w:style><w:style w:type=\"paragraph\" w:styleId=\"ListNumber\"><w:name w:val=\"List Number\"/><w:pPr><w:numPr><w:numId w:val=\"2\"/></w:numPr></w:pPr></w:style><w:style w:type=\"paragraph\" w:styleId=\"Heading1\"><w:name w:val=\"heading 1\"/><w:pPr><w:numPr><w:numId w:val=\"2\"/></w:numPr><w:outlineLvl w:val=\"0\"/></w:pPr></w:style>",
+ "shapes": [
+  {
+   "name": "numPr bullet lvl0",
+   "pPr": "<w:pPr><w:pStyle w:val=\"ListParagraph\"/><w:numPr><w:ilvl w:val=\"0\"/><w:numId w:val=\"1\"/></w:numPr></w:pPr>",
+   "bullet": true
+  },
+  {
+   "name": "numPr bullet lvl1 (o)",
+   "pPr": "<w:pPr><w:numPr><w:ilvl w:val=\"1\"/><w:numId w:val=\"1\"/></w:numPr></w:pPr>",
+   "bullet": true
+  },
+  {
+   "name": "numPr bullet lvl2 (wingdings)",
+   "pPr": "<w:pPr><w:numPr><w:ilvl w:val=\"2\"/><w:numId w:val=\"1\"/></w:numPr></w:pPr>",
+   "bullet": true
+  },
+  {
+   "name": "numPr no ilvl",
+   "pPr": "<w:pPr><w:numPr><w:numId w:val=\"1\"/></w:numPr></w:pPr>",
+   "bullet": true
+  },
+  {
+   "name": "w15 num attrs",
+   "pPr": "<w:pPr><w:numPr><w:ilvl w:val=\"0\"/><w:numId w:val=\"5\"/></w:numPr></w:pPr>",
+   "bullet": true
+  },
+  {
+   "name": "lvlOverride to bullet",
+   "pPr": "<w:pPr><w:numPr><w:ilvl w:val=\"0\"/><w:numId w:val=\"3\"/></w:numPr></w:pPr>",
+   "bullet": true
+  },
+  {
+   "name": "style ListBullet",
+   "pPr": "<w:pPr><w:pStyle w:val=\"ListBullet\"/></w:pPr>",
+   "bullet": true
+  },
+  {
+   "name": "style basedOn ListBullet",
+   "pPr": "<w:pPr><w:pStyle w:val=\"ResumeBullet\"/></w:pPr>",
+   "bullet": true
+  },
+  {
+   "name": "decimal list",
+   "pPr": "<w:pPr><w:numPr><w:ilvl w:val=\"0\"/><w:numId w:val=\"2\"/></w:numPr></w:pPr>",
+   "bullet": false
+  },
+  {
+   "name": "lowerLetter list",
+   "pPr": "<w:pPr><w:numPr><w:ilvl w:val=\"1\"/><w:numId w:val=\"2\"/></w:numPr></w:pPr>",
+   "bullet": false
+  },
+  {
+   "name": "w14 custom then decimal",
+   "pPr": "<w:pPr><w:numPr><w:ilvl w:val=\"0\"/><w:numId w:val=\"4\"/></w:numPr></w:pPr>",
+   "bullet": false
+  },
+  {
+   "name": "style ListNumber",
+   "pPr": "<w:pPr><w:pStyle w:val=\"ListNumber\"/></w:pPr>",
+   "bullet": false
+  },
+  {
+   "name": "numbered Heading1 style",
+   "pPr": "<w:pPr><w:pStyle w:val=\"Heading1\"/></w:pPr>",
+   "bullet": false
+  },
+  {
+   "name": "ListBullet with numId 0",
+   "pPr": "<w:pPr><w:pStyle w:val=\"ListBullet\"/><w:numPr><w:ilvl w:val=\"0\"/><w:numId w:val=\"0\"/></w:numPr></w:pPr>",
+   "bullet": false
+  },
+  {
+   "name": "ListParagraph, no numbering",
+   "pPr": "<w:pPr><w:pStyle w:val=\"ListParagraph\"/></w:pPr>",
+   "bullet": false
+  },
+  {
+   "name": "tracked change: was a bullet",
+   "pPr": "<w:pPr><w:pPrChange w:id=\"1\" w:author=\"x\" w:date=\"2024-01-01T00:00:00Z\"><w:pPr><w:numPr><w:ilvl w:val=\"0\"/><w:numId w:val=\"1\"/></w:numPr></w:pPr></w:pPrChange></w:pPr>",
+   "bullet": false
+  },
+  {
+   "name": "unknown numId",
+   "pPr": "<w:pPr><w:numPr><w:ilvl w:val=\"0\"/><w:numId w:val=\"99\"/></w:numPr></w:pPr>",
+   "bullet": false
+  },
+  {
+   "name": "plain",
+   "pPr": "",
+   "bullet": false
+  },
+  {
+   "name": "plain with rsid attrs",
+   "pPr": "<w:pPr><w:spacing w:after=\"0\"/></w:pPr>",
+   "bullet": false
+  }
+ ]
+}

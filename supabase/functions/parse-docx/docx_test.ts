@@ -18,6 +18,8 @@ import {
   strictDocx,
   textBoxNoFallbackDocx,
   transitionalDocx,
+  WORD_BULLETS,
+  wordBulletsDocx,
 } from "./docx-fixtures.ts";
 
 const Zip = JSZip as unknown as ZipClass;
@@ -50,4 +52,20 @@ Deno.test("S11-010: soft line breaks are lines on the deployed mammoth too", asy
 Deno.test("S11-033: an RTF renamed .docx is a damaged file, not a crash", async () => {
   const e = await assertRejects(() => read(RTF_RENAMED), DamagedDocxError);
   assertEquals((e as DamagedDocxError).reason, "not_a_zip");
+});
+
+Deno.test("S13-037: Word's own bullets keep a bullet mark on the deployed mammoth, and nothing else gets one", async () => {
+  const { body, listBullets } = await read(await wordBulletsDocx(Zip));
+  const B = WORD_BULLETS;
+  assertEquals(lines(body), [
+    RESUME_LINES.name,
+    B.heading,
+    RESUME_LINES.role,
+    ...B.bullets.map((t) => `\u2022 ${t}`),
+    `\u2022 ${B.styled}`,
+    B.removed,
+    B.wasBullet,
+    ...B.numbered,
+  ]);
+  assertEquals(listBullets, 4);
 });

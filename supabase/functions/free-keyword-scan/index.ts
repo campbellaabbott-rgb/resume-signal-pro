@@ -548,6 +548,16 @@ const ERROR_MESSAGES = {
 const getClientIp = (req: Request): string => clientAddressOr(req.headers, 'unknown');
 
 /**
+ * A line that opens with a bullet mark (S13-037): the dash, star and Unicode
+ * bullets, and the Symbol and Wingdings private-use glyphs (U+F0B7, U+F0A7,
+ * U+F076, U+F0D8, U+F0FC) that Word-made PDFs carry as their bullet. The
+ * tone audit, the quantified-bullet count and the bullet reader all use it;
+ * the old class knew five Unicode bullets and none of Word's.
+ */
+const BULLET_MARK = /^[•\-*‣◦⁃∙▪●■►➢➤✓✔\uF0A7\uF0B7\uF076\uF0D8\uF0FC]/;
+const BULLET_MARK_AND_SPACE = /^[•\-*‣◦⁃∙▪●■►➢➤✓✔\uF0A7\uF0B7\uF076\uF0D8\uF0FC]\s*/;
+
+/**
  * Parse resume text into labeled sections so the AI gets structured context
  * instead of a raw text dump. Improves section-specific advice quality significantly.
  */
@@ -565,7 +575,7 @@ function parseResumeSections(text: string): {
   const wordCount = text.split(/\s+/).filter(Boolean).length;
 
   const SECTION_HEADERS = /^(summary|profile|objective|about|experience|work|employment|career|education|academic|skills|technical|competencies|certifications?|licenses?|projects?|achievements?|accomplishments?|publications?|awards?|volunteer)/i;
-  const isBullet = (l: string) => l.startsWith('•') || l.startsWith('-') || l.startsWith('*') || /^[•‣◦⁃∙]/.test(l) || (l.length > 25 && l.length < 280);
+  const isBullet = (l: string) => BULLET_MARK.test(l) || (l.length > 25 && l.length < 280);
   const isTitleLine = (l: string) => l.length < 100 && /\b(manager|director|engineer|developer|analyst|specialist|consultant|executive|lead|vp|president|associate|senior|principal|architect|designer|coordinator|administrator|officer|nurse|teacher|attorney|accountant|researcher|scientist|founder|ceo|cfo|cto)\b/i.test(l);
 
   let currentSection = 'other';
@@ -705,12 +715,12 @@ function analyzeBullets(parsed: ReturnType<typeof parseResumeSections>): BulletA
   let quantifiedCount = 0;
 
   for (const { text, role } of allBullets) {
-    const clean = text.replace(/^[•\-*‣◦⁃∙]\s*/, '').trim().toLowerCase();
+    const clean = text.replace(BULLET_MARK_AND_SPACE, '').trim().toLowerCase();
 
     // Check for weak opener
     const matchedOpener = WEAK_OPENERS.find(opener => clean.startsWith(opener));
     if (matchedOpener && weakBullets.length < 5) {
-      weakBullets.push({ text: text.replace(/^[•\-*‣◦⁃∙]\s*/, '').trim(), role, reason: `starts with "${matchedOpener}"` });
+      weakBullets.push({ text: text.replace(BULLET_MARK_AND_SPACE, '').trim(), role, reason: `starts with "${matchedOpener}"` });
     }
 
     // Check for quantification: "40%", "25 hours", "team of 12" and "50+
@@ -719,7 +729,7 @@ function analyzeBullets(parsed: ReturnType<typeof parseResumeSections>): BulletA
       quantifiedCount++;
     } else if (unquantifiedBullets.length < 6) {
       // Collect unquantified bullets from most recent role first (roles[0])
-      unquantifiedBullets.push({ text: text.replace(/^[•\-*‣◦⁃∙]\s*/, '').trim(), role });
+      unquantifiedBullets.push({ text: text.replace(BULLET_MARK_AND_SPACE, '').trim(), role });
     }
   }
 
@@ -3772,7 +3782,7 @@ ${resumeForPrompt}
       const primaryHits = kwList ? kwList.primary.filter((kw: string) => resumeHasTerm(resumeText, kw)).length : 0;
       const primaryTotal = kwList ? Math.max(kwList.primary.length, 1) : 1;
       const keywordsScore = Math.round((primaryHits / primaryTotal) * 100);
-      const bullets = resumeText.split('\n').filter(l => /^[•\-*‣◦⁃∙]/.test(l.trim()) || (l.trim().length > 30 && l.trim().length < 300));
+      const bullets = resumeText.split('\n').filter(l => BULLET_MARK.test(l.trim()) || (l.trim().length > 30 && l.trim().length < 300));
       const quantScore = bullets.length > 0
         ? Math.round((bullets.filter(b => /\d/.test(b)).length / bullets.length) * 100)
         : 40;
@@ -4026,12 +4036,12 @@ ${resumeForPrompt}
         passiveCount += (line.match(PASSIVE_PATTERN) || []).length;
         firstPersonCount += (line.match(FIRST_PERSON_PATTERN) || []).length;
       }
-      const bulletLines = lines.filter(l => /^[•\-*‣◦⁃∙]/.test(l.trim()));
+      const bulletLines = lines.filter(l => BULLET_MARK.test(l.trim()));
       // Non-global copy: a /g regex carries lastIndex state across .test() calls,
       // which makes results alternate incorrectly inside a filter loop
       const PASSIVE_WORD = /\b(was|were|been|is|are|being)\b/i;
       const activeCount = bulletLines.filter(l => {
-        const firstWord = l.trim().replace(/^[•\-*‣◦⁃∙]\s*/, '').split(/\s+/)[0] || '';
+        const firstWord = l.trim().replace(BULLET_MARK_AND_SPACE, '').split(/\s+/)[0] || '';
         return firstWord.length > 2 && /^[A-Z]/.test(firstWord) && !PASSIVE_WORD.test(firstWord);
       }).length;
       const passiveRatio = (passiveCount + activeCount) > 0
@@ -4161,7 +4171,7 @@ ${resumeForPrompt}
 
     // Competitor silhouette — top-quartile archetype vs this resume
     const competitorSilhouette = (() => {
-      const bullets = resumeText.split('\n').filter(l => /^[•\-*‣◦⁃∙]/.test(l.trim()));
+      const bullets = resumeText.split('\n').filter(l => BULLET_MARK.test(l.trim()));
       const quantifiedBullets = bullets.filter(b => /\d/.test(b)).length;
       const LEADERSHIP_VERBS = /\b(led|managed|directed|mentored|coached|owned|drove|spearheaded|oversaw|headed|built the team|hired)\b/gi;
       const leadershipSignals = (resumeText.match(LEADERSHIP_VERBS) || []).length;
