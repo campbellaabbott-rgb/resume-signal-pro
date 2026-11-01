@@ -122,16 +122,26 @@ function jsonObjectOf(content: string): Record<string, unknown> | null {
 }
 
 /**
- * The letter a reply carries: its JSON, or prose, which is a letter. Null
- * (the next model is asked) when it wrote nothing, or broken or truncated
- * JSON: shipping that as the paid letter was a delivery in name only
- * (register L5-12).
+ * A reply's JSON when it carries a letter: a non-empty coverLetter string.
+ * JSON without one ({"error": "..."}, an empty letter) passed the fact
+ * check on an empty string and shipped as the paid letter (recheck of
+ * S13-001), so it is no letter: the next model is asked.
+ */
+function letterJsonOf(content: string): Record<string, unknown> | null {
+  const parsed = jsonObjectOf(content);
+  return parsed && typeof parsed.coverLetter === "string" && parsed.coverLetter.trim() ? parsed : null;
+}
+
+/**
+ * The letter a reply carries: its JSON with a letter in it, or prose, which
+ * is a letter. Null (the next model is asked) when it wrote nothing, broken
+ * or truncated JSON, or JSON with no letter: shipping that as the paid
+ * letter was a delivery in name only (register L5-12).
  */
 function readLetter(data: unknown, subjectLine: string): Record<string, unknown> | null {
   const content = contentOf(data);
   if (!content) return null;
-  const parsed = jsonObjectOf(content);
-  if (parsed) return parsed;
+  if (jsonObjectOf(content)) return letterJsonOf(content);
   if (looksLikeBrokenJson(content)) return null;
   logStep("No JSON in the reply; the prose is the letter");
   return {
@@ -480,11 +490,12 @@ Write something that sounds like this specific person wrote it - confident, spec
         "Cover letter grounding retry",
         models,
         deadlineAt,
-        // The rewrite in the JSON asked for; a cut-off, empty or unreadable
-        // one asks the next model, and none leaves the first draft's issues.
+        // The rewrite in the JSON asked for, with a letter in it; a cut-off,
+        // empty, unreadable or letterless one asks the next model, and none
+        // leaves the first draft's issues (refused, never shipped empty).
         (data) => {
           const content = contentOf(data);
-          return content ? jsonObjectOf(content) : null;
+          return content ? letterJsonOf(content) : null;
         },
       );
       if (retry.ok) {

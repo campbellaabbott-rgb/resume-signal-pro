@@ -142,6 +142,9 @@ describe("generate-cover-letter: a 200 is not a letter", () => {
     ["cut off at its cap (the thinking spent it)", () => chat(CUT_LETTER, "length")],
     ["empty", () => chat("")],
     ["broken JSON", () => chat(CUT_LETTER)],
+    // Recheck: JSON with no letter in it passed every check on an empty string.
+    ["of JSON with no letter in it", () => chat({ error: "cannot comply" })],
+    ["of JSON whose letter is empty", () => chat({ ...LETTER, coverLetter: "  " })],
   ];
   for (const [what, reply] of unusable) {
     it(`a reply ${what} asks the next model, which writes the letter`, async () => {
@@ -162,6 +165,17 @@ describe("generate-cover-letter: a 200 is not a letter", () => {
     const { result: r } = await drive(gateway, () => ask());
     expect(r.status).toBe(200);
     expect(gateway.seen).toHaveLength(1);
+  });
+
+  it("a grounding rewrite with no letter in it is no letter: the first draft's issues stand and it is refused, not shipped empty", async () => {
+    const invented = { ...LETTER, coverLetter: "Dear Hiring Manager,\n\nAt Acme Corp I cut payment failures by 73% across 9 markets.\n\nBest,\nJane Doe" };
+    gateway.plan = (s) => (turns(s) === 2 ? chat(invented) : chat({ note: "rewritten" }));
+    const { result: r, at } = await drive(gateway, () => ask());
+    expect(r.status, JSON.stringify(r.body).slice(0, 200)).toBe(422);
+    expect(r.body).toMatchObject({ code: "grounding_refused", retryable: true });
+    // Every model of the rewrite was asked for a letter before the refusal.
+    expect(gateway.seen.filter((s) => turns(s) === 4).map((s) => s.model)).toEqual(["google/gemini-2.5-pro", "openai/gpt-5", "openai/gpt-5-mini"]);
+    heldToTheDeadline(gateway, at);
   });
 
   it("no model writes one: the retryable 502 it always gave, and the account's use given back", async () => {
@@ -280,6 +294,27 @@ describe("generate-premium-package: a 200 is not a delivery", () => {
     expect(data.modelsUsed).toEqual({ resume: "google/gemini-2.5-pro", coverLetter: "google/gemini-2.5-pro" });
     expect(data.resume.rewrittenResume).toBe(HONEST);
     heldToTheDeadline(gateway, at);
+  });
+
+  it("gpt-5's résumé JSON names no résumé and its letter JSON an empty one: gemini-2.5-pro writes both parts", async () => {
+    gateway.plan = (s) => {
+      if (s.model === "openai/gpt-5") return isLetterCall(s) ? chat({ ...pLetter, coverLetter: "" }) : chat({ error: "cannot comply" });
+      return chat(isLetterCall(s) ? pLetter : pResume);
+    };
+    const { result: r, at } = await drive(gateway, ask);
+    expect(r.status, JSON.stringify(r.body).slice(0, 200)).toBe(200);
+    const data = r.body.data as { modelsUsed: Record<string, string>; resume: { rewrittenResume: string }; coverLetter: { coverLetter: string } };
+    expect(data.modelsUsed).toEqual({ resume: "google/gemini-2.5-pro", coverLetter: "google/gemini-2.5-pro" });
+    expect(data.resume.rewrittenResume).toBe(HONEST);
+    expect(data.coverLetter.coverLetter).toBe(pLetter.coverLetter);
+    heldToTheDeadline(gateway, at);
+  });
+
+  it("no model writes a résumé field: the retryable 502, never a delivery with no résumé in it", async () => {
+    gateway.plan = (s) => (isLetterCall(s) ? chat(pLetter) : chat({ ...pResume, rewrittenResume: undefined }));
+    const { result: r } = await drive(gateway, ask);
+    expect(r.status).toBe(502);
+    expect(r.body).toMatchObject({ retryable: true });
   });
 
   it("no model writes a readable résumé: the retryable 502 that keeps the delivery open", async () => {

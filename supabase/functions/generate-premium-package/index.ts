@@ -106,6 +106,19 @@ function jsonObjectOf(content: string | null): Record<string, any> | null {
   }
 }
 
+/**
+ * A reply's JSON when it carries the part delivered: a non-empty string in
+ * `field` (rewrittenResume, coverLetter). JSON without it passed the figure
+ * check on an empty string and the webhook marked the purchase delivered
+ * with no résumé or letter in it (recheck of S13-001); now the next model is
+ * asked, and when none writes one the retryable 502 keeps the delivery open.
+ */
+// deno-lint-ignore no-explicit-any
+function partOf(content: string | null, field: "rewrittenResume" | "coverLetter"): Record<string, any> | null {
+  const parsed = jsonObjectOf(content);
+  return parsed && typeof parsed[field] === "string" && parsed[field].trim() ? parsed : null;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -379,8 +392,7 @@ Write a cover letter that sounds like it was written by this specific person - c
     const readLetter = (data: unknown): Record<string, any> | null => {
       const content = contentOf(data);
       if (!content) return null;
-      const parsed = jsonObjectOf(content);
-      if (parsed) return parsed;
+      if (jsonObjectOf(content)) return partOf(content, "coverLetter");
       if (looksLikeBrokenJson(content)) return null;
       logStep("Cover letter came back as prose; the prose is the letter");
       return {
@@ -403,7 +415,7 @@ Write a cover letter that sounds like it was written by this specific person - c
         },
         'Resume generation',
         deadlineAt,
-        (data) => jsonObjectOf(contentOf(data)),
+        (data) => partOf(contentOf(data), "rewrittenResume"),
       ),
       askAI(
         apiKey,
@@ -536,8 +548,7 @@ Write a cover letter that sounds like it was written by this specific person - c
         }, `${label} figure repair`, deadlineAt, (data) => {
           // The repaired part in the JSON asked for, with its text; a cut-off,
           // empty or unreadable one asks the next model.
-          const parsed = jsonObjectOf(contentOf(data));
-          return parsed && typeof parsed[field] === "string" && parsed[field].trim() ? parsed as Record<string, unknown> : null;
+          return partOf(contentOf(data), field) as Record<string, unknown> | null;
         });
         if (!reply.ok) {
           await reply.response.body?.cancel().catch(() => {});
