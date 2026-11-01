@@ -24,7 +24,10 @@
  *     authenticated, the old signatures are gone, and the self-check RAISEs
  *     when one is opened;
  *   - the rollup, the status and the reader are restated from 20261012110000
- *     with only the version edits, so the copy carries every other rule.
+ *     with only the version edits, so the copy carries every other rule;
+ *   - a key the old rule shows when it applies is carried on the one version
+ *     the stored postings hold, read before the key's audit, or it RAISEs and
+ *     the key serves as before: never switched off.
  */
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
@@ -95,6 +98,72 @@ const perksOf = (db: PGlite, token: string) => one<{ published_keys: string[]; p
 const versions = async (db: PGlite) =>
   (await db.query<{ company_token: string; extractor_version: number | null }>(
     "SELECT company_token, extractor_version FROM public.employer_perk_rollups WHERE perk = 'health' ORDER BY company_token")).rows;
+
+/**
+ * A key live under 20261012110000 the moment this migration applies (none was
+ * on 2026-11-01: the reader answered published_keys []) must not be switched
+ * off by it: the owner rule is no pause without a current yes. It is carried
+ * on the one version the postings hold, when that version was already in use
+ * before the key's audit; otherwise the migration refuses and the key goes on
+ * serving under the old rule until the owner records which output it judged.
+ */
+async function bootLive(o: { extractedDaysAgo?: number; mixed?: boolean } = {}): Promise<PGlite> {
+  const db = new PGlite();
+  OPEN.push(db);
+  await db.exec(SUPABASE_DEFAULTS + BOARD);
+  await db.exec(ENGINE);
+  await db.exec(SEED);
+  await db.exec(`UPDATE public.employer_perk_postings SET extracted_at = now() - interval '${o.extractedDaysAgo ?? 20} days'`);
+  if (o.mixed) await db.exec("UPDATE public.employer_perk_postings SET extractor_version = 3 WHERE posting_id = 'greenhouse:b061:1'");
+  await db.exec("UPDATE public.employer_perk_rollup_state SET lap_cursor = NULL, lap_finished_at = NULL");
+  await db.query("SELECT public.employer_perk_rollup_tick(90000)");
+  await db.exec(`UPDATE public.employer_profile_config SET publish_paused = false;
+    UPDATE public.employer_profile_perk_publish SET published = true, last_audited_at = now() - interval '10 days',
+           audit_mode = 'launch', audit_judged = 60, audit_correct = 60 WHERE perk = 'health'`);
+  return db;
+}
+
+describe("a key live under the old rule when this applies is carried or refused, never switched off", () => {
+  it("one version, in use before the audit: the key is carried on it and every page that showed it still does, on a re-run too", async () => {
+    const db = await bootLive();
+    expect((await perksOf(db, "b001")).published_keys, "the old reader shows the key before the migration").toEqual(["health"]);
+    await db.exec(MINE);
+    const row = (await db.query<Json>("SELECT audited_version, audit_draw_id, audit_drawn_at = last_audited_at AS dated FROM public.employer_profile_perk_publish WHERE perk = 'health'")).rows[0];
+    expect(row).toEqual({ audited_version: 2, audit_draw_id: null, dated: true });
+    for (const t of ["b001", "b061"]) {
+      const r = await perksOf(db, t);
+      expect(r.published_keys, t).toEqual(["health"]);
+      expect(r.perks.length, `${t}: the carried key's rows went off the page`).toBeGreaterThan(0);
+    }
+    await db.exec(MINE);
+    expect((await perksOf(db, "b001")).perks.length).toBeGreaterThan(0);
+    await tick(db);
+    expect((await perksOf(db, "b001")).perks.length, "the next lap restates the rows and the key still shows").toBeGreaterThan(0);
+  });
+
+  it("postings read by two versions: no version to carry on, so the migration refuses and the key serves as before", async () => {
+    const db = await bootLive({ mixed: true });
+    await expect(db.exec(MINE)).rejects.toThrow(/live under 20261012110000[\s\S]*no single extractor version/);
+    expect((await perksOf(db, "b001")).published_keys).toEqual(["health"]);
+  });
+
+  it("a version first read after the audit is not the one the audit judged: refused, never carried", async () => {
+    const db = await bootLive({ extractedDaysAgo: 1 });
+    await expect(db.exec(MINE)).rejects.toThrow(/live under 20261012110000[\s\S]*first read after/);
+    expect((await perksOf(db, "b001")).published_keys).toEqual(["health"]);
+  });
+
+  it("a key the old rule did not show (paused, expired or unpublished) is left for a launch audit", async () => {
+    for (const set of ["UPDATE public.employer_profile_config SET publish_paused = true",
+                       "UPDATE public.employer_profile_perk_publish SET last_audited_at = now() - interval '50 days' WHERE perk = 'health'",
+                       "UPDATE public.employer_profile_perk_publish SET published = false WHERE perk = 'health'"]) {
+      const db = await bootLive({ mixed: true });
+      await db.exec(set);
+      await db.exec(MINE);
+      expect((await db.query<Json>("SELECT audited_version FROM public.employer_profile_perk_publish WHERE perk = 'health'")).rows[0], set).toEqual({ audited_version: null });
+    }
+  });
+});
 
 describe("a claim row says which extractor read it", () => {
   let db: PGlite;

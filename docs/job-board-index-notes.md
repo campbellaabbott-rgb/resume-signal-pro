@@ -22039,7 +22039,14 @@ remote leaves the query and the answer carries notRemote; the handler adds
 it in the existing banner and strikes titles that say remote. A caller's own
 work-mode filter wins, as it does over a remote lift (INTENT_CONFLICTS). Not
 done: a remote row whose title does not say remote still shows; the board has
-no negative work-mode filter to send.
+no negative work-mode filter to send. A title that says it is not remote
+("Staff Accountant I (Not Remote)", "NON-REMOTE", "NO REMOTE WORK") is what
+such an exclusion asks for, so the strike reads each title with its own
+negated remote taken out (search-routing.ts titleExcluded, by a copy of
+normalize.ts's negation pattern that a test pins byte for byte: the file
+imports nothing; merge review, 2026-11-01). 2,382 live titles, 305 saying remote: the 22 that say it negated
+are kept, the other 283 struck as before, none struck that main kept
+(corpora/review-fix/search/remote-strike-main-vs-fix.json).
 
 ## n1412-a-hyphened-word-leaves-with-the-work-mode
 
@@ -22047,15 +22054,19 @@ In `supabase/functions/job-board/index.ts`, above: `const m = re.exec(residual)!
 
 "REMOTE-FIRST ENGINEER" SEARCHED "-FIRST ENGINEER" (S13-077). The bare remote
 rule matched 'remote' inside 'remote-first' and residual.replace left
-'-first', which websearch reads as NOT first. Now the lift cuts by the match's
-own span plus one word hyphened onto either side ('remote-first',
-'fully-remote', '100%-remote'), unless that word starts another rule
-('remote-full-time', 'hybrid-remote' keep main's reading). The trade-term
-lookaheads take a hyphen too, so 'remote-sensing analyst' is searched, not
-lifted. Corpus: 1,130 queries (20 live seeds x compound, negated, plain and
-trade shapes, plus all 587 live titles as queries): main wrong 317, this rule
-1 ('work near me', main's answer too), never worse
-(corpora/search/s13-013-077-015-intent-main-vs-mine.json).
+-first', which websearch reads as NOT first. Now the lift cuts by the match's
+own span plus one word hyphened onto its tail ('remote-first'), unless that
+word starts another rule ('remote-full-time', 'hybrid-remote' keep main's
+reading). On the head side only the hyphen goes: 'medical coder-remote'
+searches medical coder and 'fully-remote engineer' fully engineer (the merge
+review found the branch cutting the head word too, a role word lost). The
+trade-term lookaheads take a hyphen too, so 'remote-sensing analyst' is
+searched, not lifted. Corpus at fix/bs-search, before the head-side change:
+1,130 queries, main wrong 317, the branch 1 ('work near me', main's answer
+too) (corpora/search/s13-013-077-015-intent-main-vs-mine.json). Recheck of
+this rule on 1,041 live work-mode titles as queries: 12 differ from main,
+main worse on 7, this rule on none
+(corpora/review-fix/search/q-workmode.main-vs-fix.classified.json).
 
 ## n1413-words-no-title-holds-search-nothing
 
@@ -22071,21 +22082,27 @@ dropped as before. The 587 live titles as queries: none blanked.
 
 ## n1414-a-zip-is-dropped-and-named
 
-In `supabase/functions/job-board/index.ts`, above: `const zip = all.map(`.
+In `supabase/functions/job-board/index.ts`, above: `async function withoutZips(client: SupabaseClient, body: Record<string, unknown>): Promise<Record<string, unknown>> {`.
 
 "NURSE 94105" SERVED NURSES FROM ANYWHERE, THE ZIP UNNAMED (S13-014). The ZIP
 was a search word; ranked search found no title holding it and the fuzzy and
 semantic tiers dropped it silently, so the page served nurses from Okmulgee
 and Dubai as matches. The board has no ZIP-to-place data, so the honest fix
-is the filler path: a standalone five-digit or ZIP+4 token is dropped from the
-search and named in droppedTerms ("ignored 94105, which don't appear in job
-titles"), unless it is all the query holds (searched as typed, as before) or
-a unit follows it ('26000 lbs', '50000 sq ft'). A bare five-digit number was
-already not a pay floor (n430). Corpus: 657 queries (17 ZIPs from live
-location strings in two orders, 10 'near' forms, 587 live titles, 26 number
-shapes): main wrong 44, this rule none; titles and number shapes identical
-except 'welder or 94105' (the OR has one side left)
-(corpora/search/s13-014-zip-main-vs-mine.json).
+is the filler path: a standalone five-digit or ZIP+4 token beside a real
+search word is dropped from the search and named in droppedTerms ("ignored
+94105, which don't appear in job titles") when no stored title holds it. It
+is kept when it is all the query holds, when a unit follows it ('26000 lbs',
+'50000 sq ft'), when it is the query's pay figure, and when a title holds
+it: the shape alone dropped standard numbers titles carry (ISO 13485,
+ISO 27001, IATF 16949, a store's "(02330)"; merge review, 2026-11-01). Live
+on .96, 35 of 60 five-digit numbers from the corpora are in a title. The
+check is one indexed title_tsv lookup per number (at most three, 1.5 s
+each); an error or a timeout keeps the number. A bare five-digit number was
+already not a pay floor (n430). Corpus: 44 ZIP queries, 37 dropped and the 7
+whose ZIP a title holds kept; 587 live titles and 1,685 numeric titles as
+queries, none changed from main
+(corpora/review-fix/search/zip-main-vs-branch-vs-fix.json,
+held-numbers-live-2026-11-01.json).
 
 ## n1415-the-router-routes-alike-in-every-isolate
 
@@ -22164,9 +22181,9 @@ North Wales, both US towns main misreads too), never worse case by case
 
 ## n1420-an-age-a-story-and-a-rung
 
-In `supabase/functions/job-board/experience.ts`, above: `if (/^\s*ago\b/.test(gap) || (re === backward && ...` and `if (minYears != null) return { band: rung === "expert" && minYears <= 2 ? rung : bandFromYears(minYears), minYears };`.
+In `supabase/functions/job-board/experience.ts`, above: `if (/^\s*ago\b/.test(gap) || (re === backward && ...` and `if (minYears != null) return { band: bandFromYears(minYears), minYears };`.
 
-AN AGE, A STORY AND AN EXECUTIVE RUNG (S12-013, S13-016; bug audit
+AN AGE, A STORY, AND A RUNG THAT IS NOT EVIDENCE (S12-013, S13-016; bug audit
 2026-10-31). Domino's drivers were Expert 18+ and 15+ from the employer's own
 lines: "at least 18 years" with "old" cut off, "at least 18 years-old", "18
 years young", and a franchisee's story, "he started with Domino's 15 years
@@ -22176,17 +22193,20 @@ and a backward match ("at least", "minimum", "requires" then 16 to 21 years)
 is an age unless its own clause names work (experience, work, industry,
 professional, relevant, related, progressive, "in <word>" other than "in
 age", "as a"). A backward match keyed on "experience" ("Experience: 18
-years") always reads. S13-016: a title naming an executive rung (chief, VP,
-head of, director, partner) keeps Expert over a figure of two years or fewer.
-Senior rungs are not lifted: live senior+entry rows are Senior Cooks, Tellers,
-Servers and Clerks (corpora/fields/title-vs-years.json); live
-q=director&experience=entry was 685 rows, nearly all real directorships.
-Corpus: corpora/fields/exp-diff.json, 6,243 real descriptions (list feeds,
-live detail reads, SmartRecruiters detail): 15 changes, each checked: 14 age
-or story lines cleared (Domino's x6, Hertz "at least 20 years", Benchmark x2,
-Potters, Alliance Laundry, a UKG elder-program driver), an HVAC posting
-from 18 to its real 2, and "Head of Fulfillment" from Entry to Expert. The
-fixture corpus of a-senior-living-cook is unchanged. Stored rows:
+years") always reads. S13-016, measured and declined: a title naming a rung
+(chief, VP, head of, director, partner) does not overrule the posting's own
+figure. Of 919 live Entry rows with such a title (read 2026-11-01), the lift
+moved 442 to Expert, and 209 of those are not executives: assistant, associate
+and deputy directors (64), site, program and frontline directors (95), trade
+chiefs (crew chief, chief butcher, 43), craft directors (5) and offices named
+after a rung (2) (corpora/review-fix/fields/exec-rung-main-vs-branch-vs-fix.json).
+The band keeps main's reading of the figure. Corpus for the age and story
+rules: corpora/fields/exp-diff.json, 6,243 real descriptions (list feeds, live
+detail reads, SmartRecruiters detail): 14 changes, each an age or story line
+and each checked (Domino's x8, Hertz "at least 20 years", Benchmark x2, one
+an HVAC posting from 18 to its real 2, Potters, Alliance Laundry, a UKG
+elder-program driver). The fixture corpus of a-senior-living-cook is
+unchanged. Stored rows:
 EXPERIENCE_VERSION 3 re-derives every stored row from its stored title and
 description (the existing chained sweep, 6,000 rows a hop); Personio rows are
 skipped (n1421). Left open: a company's age after "with over N years of
@@ -22230,7 +22250,11 @@ fulltime_permanent, BambooHR's employmentStatusLabel (never read before) and
 Lever's "Full-time Employee" stored NULL: the mapper matched whole labels
 only. employmentTypeFromLabel keeps the exact ladder and otherwise takes the
 one class word a label names; two classes, or none, stay NULL. A fixed term
-counts as a class, so "fulltime_fixed_term" (two facts) is declined. Only
+counts as a class, so "fulltime_fixed_term" (two facts) is declined, and a
+label that says permanent is never a contract: Lever's "Permanent Contract"
+(58 rows, the European phrase for an open-ended job) stays NULL, as on main
+(merge review, 2026-11-01; corpora/review-fix/fields/et-labels.main-vs-branch-vs-fix.json,
+131 labels over 4,730 rows: no class main stated is changed). Only
 Lever, BambooHR and Recruitee read through it (their labels are measured);
 every other vendor keeps the exact ladder. Breezy's type.id (fullTime,
 partTime, contract, temporary, other) reads through the ladder. Corpus:
@@ -22286,7 +22310,12 @@ THE VENDOR STATES THE COUNTRY (S13-032). Lever (country), Breezy
 the board guessed from the place text and stored none for "Kuopio, FI",
 "Kyiv, UA" or "Riga, Riga, Latvia". The code is read through icimsCountry: a
 US state or Canadian province in the place text overrules a code that
-disagrees. Corpus: corpora/fields/lever-country.json and
+disagrees, unless the place names the code's own country: "Mexicali, Baja
+California, Mexico" keeps MX (the branch read California and stored US for 7
+Lever rows), and iCIMS's "49-MAINE-ET-LOIRE, France" now keeps FR where main
+stored US (merge review, 2026-11-01; 177 feeds, 10,146 rows: those 8 rows
+change from the branch, and iCIMS changes from main on that 1;
+corpora/review-fix/fields/country-main-vs-branch-vs-fix.json). Corpus: corpora/fields/lever-country.json and
 breezy-workable-country.json. Lever 2,453: 965 filled, 16 changed (multi-
 location rows now take the vendor's primary country), 6 overrides equal to
 main's reading (3 "Hamilton, ON" read CA, right; 3 "New Brunswick, NJ" read
@@ -22465,12 +22494,11 @@ and the 24h superseded dedupe (n621) missed for the same reason. Live on .96,
 theirs superseded (a floor: n621 logs one per title per day). The live
 set on a lap is now this visit's rows plus every stored row this lap served
 (lap_epoch = lapMark, no missing stamp, not aged out by this visit): the lap's
-own evidence, at the lap's scale, as n121 already reads its counts. A whole read
-is unchanged. Rows already in the ledger keep their bit: no read-only measure
-of them exists (the ledger is closed to anon), so any backfill is a later,
-measured migration. Corpus: 900 simulated closures over 1,080 live rows of
-three lapped boards (board-stream-2026-11-01/corpora/lifecycle); never false
-where main says true.
+own evidence, at the lap's scale, as n121 already reads its counts. On a lap
+the set is keyed by title AND place, and a lap writes every closure (n1443). A
+whole read is unchanged. Rows already in the ledger keep their bit: no
+read-only measure of them exists (the ledger is closed to anon), so any
+backfill is a later, measured migration.
 
 ## n1441-desc-sweep-floor
 
@@ -22504,7 +22532,34 @@ by effective_posted, the date detail reads first. It is a generated column
 fallbacks are reached only by a row holding neither; such a row is never fenced
 here. The integration (2026-11-01) dropped the branch's posted_at-then-first_seen
 fallback: our discovery date standing in for the employer's is the coalesce the
-duration guard refuses everywhere in supabase/functions.
+duration guard refuses everywhere in supabase/functions. The answer names the
+test it ran (n1464).
+
+## n1443-a-lap-relist-is-title-and-place
+
+In `supabase/functions/job-board/normalize.ts`, above: `return t && place !== undefined ? `.
+
+ON A LAP A RELIST IS THE SAME TITLE AT THE SAME PLACE, AND EVERY CLOSURE IS
+WRITTEN (review of S10-002, 2026-09-09.100). A lapped board is a chain's store
+list: one title is open at hundreds of stores at once, so title alone across a
+whole lap writes a store's fill as a relist. 2,640 live rows of seven lapped
+boards (O'Reilly, CVS, Edward Jones, Advance Auto, Circle K, Fresenius,
+Bridgestone; read 2026-11-01), each closed in turn against the rest of its
+lap: title alone says superseded for 2,031 (77%), title and place for 322
+(12%). Live .96 says superseded for none of them (n1440), so the change from
+live main adds the bit only where the same title is open at the same place.
+On a lap the live set and the closing row are keyed by title plus the folded
+location (case and punctuation dropped: "Store 05627, Grove City, OH" is
+"Store 05627 Grove City OH"); a row with no location keys on its title, as
+before. Not separable: several openings of one title at one store (five
+Customer Service Representatives at one Circle K) still read as superseded.
+
+The 24h dedupe (n621) left a superseded repeat out of the ledger and still
+deleted the posting: no closure, no exit row. At lap scale a busy title
+repeats every lap, so a lap writes every closure and skips the dedupe query.
+A whole read keeps n621 as it is on main, the same row-less delete included:
+changing it is its own measured round. Corpus and tool:
+board-stream-2026-11-01/corpora/review-fix/lifecycle.
 
 ## n1460-a-place-as-the-model-types-it
 
@@ -22596,7 +22651,28 @@ with, holding the rows judged) and dates the audit from the draw, a re-audit
 of another version unpublishes rather than extends, and the reader shows only
 rows of the audited version. scripts/perk-audit.mjs stores the draw id and
 version in each file and refuses an old, undrawn or other-version file before
-sending anything. Nothing live changed: published_keys was [] on 2026-11-01.
+sending anything. Nothing live changed: published_keys was [] on 2026-11-01
+(and at 12:56Z). A key live under 20261012110000's rule when the migration
+applies is carried on the one extractor version every stored posting holds,
+when a posting it read predates the key's audit; otherwise the migration
+RAISEs and the key serves as before (merge review: no pause without the
+owner's yes).
+
+## n1464-exists-names-its-row-test
+
+In `supabase/functions/job-board/index.ts`, above: `return json({ open: openMap, rowTest: "served" });`; in `supabase/functions/agent-mcp/index.ts`, runCheckJobsOpen.
+
+AN ANSWER THAT NAMES THE TEST IT RAN (merge review of S13-076, 2026-11-01).
+agent-mcp and job-board deploy apart, and check_jobs_open's basis said open
+is get_job's row test on agent-mcp's own build: true only once job-board .100
+serves, so for any stretch in which agent-mcp went first, the basis claimed a
+check the board did not make. `exists` now answers `rowTest: "served"` beside
+`open` on the path that reads the missing stamp and the fence, and
+check_jobs_open gives the stronger sentence only on that answer; any other
+answer, .96's included, gets the weaker one, which is true of either build
+(a posting CAN read open while get_job declines it). Verify L3 FAILs an
+exists answer without the marker, which is how it tells .100 from .96 on a
+board whose served rows read open under both.
 
 ## n1470-import-createclient-type-supabaseclient
 

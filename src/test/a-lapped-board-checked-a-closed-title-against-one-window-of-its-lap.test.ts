@@ -42,27 +42,27 @@ const liveTitlesOf = new Function(
   `${liveTitlesSpan}\nreturn liveTitles;`,
 ) as (rowsById: Map<string, Record<string, unknown>>, existingById: Map<string, Ex>, lapMode: boolean, lapMark: number, agedOutIds: Set<string>, n: typeof normalizeCloseTitle) => Set<string>;
 
-type Ex = { id: string; title: string; lap_epoch: number | null; missing_since: string | null };
+type Ex = { id: string; title: string; lap_epoch: number | null; missing_since: string | null; location?: string };
 type Q = { table: string; op: string; rows?: unknown; filters: Array<[string, string, unknown]> };
 
 const NOW = Date.parse("2026-11-01T06:00:00Z");
 const fresh = new Date(NOW - 5 * 86_400_000).toISOString();
 const T = "oreillyauto~wd1~oreilly";
 const id = (n: string) => `workday:${T}:${n}`;
-const posting = (n: string, title: string) => ({ id: id(n), source: "workday", company_token: T, title, category: "other", posted_at: fresh, first_seen: fresh });
+const posting = (n: string, title: string, location = "") => ({ id: id(n), source: "workday", company_token: T, title, location, category: "other", posted_at: fresh, first_seen: fresh });
 
 /** One lap-proving visit: what it served, what the board stores, what vanished. */
 async function closeOnLapEnd(o: {
-  served: Array<{ n: string; title: string }>;
+  served: Array<{ n: string; title: string; location?: string }>;
   stored: Ex[];
-  vanished: Array<{ n: string; title: string }>;
+  vanished: Array<{ n: string; title: string; location?: string }>;
   lapMode?: boolean;
   recentSuperseded?: string[];
   agedOut?: string[];
 }) {
   const lapMark = 7;
   const lapMode = o.lapMode ?? true;
-  const rowsById = new Map(o.served.map((r) => [id(r.n), { id: id(r.n), title: r.title }]));
+  const rowsById = new Map(o.served.map((r) => [id(r.n), { id: id(r.n), title: r.title, location: r.location ?? "" }]));
   const existingById = new Map(o.stored.map((r) => [r.id, r]));
   const agedOutIds = new Set(o.agedOut ?? []);
   const liveTitles = liveTitlesOf(rowsById, existingById, lapMode, lapMark, agedOutIds, normalizeCloseTitle);
@@ -77,7 +77,7 @@ async function closeOnLapEnd(o: {
       eq() { return b; }, is() { return b; }, gt() { return b; }, order() { return b; }, limit() { return b; },
       then(res: (v: unknown) => unknown, rej: (e: unknown) => unknown) {
         calls.push(q);
-        const data = table === "job_board_postings" && q.op === "select" ? o.vanished.map((v) => posting(v.n, v.title)) : null;
+        const data = table === "job_board_postings" && q.op === "select" ? o.vanished.map((v) => posting(v.n, v.title, v.location)) : null;
         return Promise.resolve({ data, error: null }).then(res, rej);
       },
     };
@@ -94,12 +94,13 @@ async function closeOnLapEnd(o: {
   )(...Object.values(keys)) as (c: unknown, s: unknown, chunk: string[], ctx: unknown) => Promise<string[]>;
   const gone = await close({ from }, { source: "workday", token: T }, o.vanished.map((v) => id(v.n)), {
     closedAt: new Date(NOW).toISOString(), agedOutIds, freshCutoffMs: NOW - 30 * 86_400_000,
-    liveTitles, recentSuperseded: new Set((o.recentSuperseded ?? []).map(normalizeCloseTitle)), batchSuspect: false,
+    liveTitles, recentSuperseded: new Set((o.recentSuperseded ?? []).map((t) => normalizeCloseTitle(t))), batchSuspect: false,
     absentInPass: o.vanished.length, removableBefore: 3_400, lapMode, lapBackfillUntil: "", missingSinceById: new Map(), startIso: new Date(NOW).toISOString(),
   });
   await Promise.allSettled(background);
   const closures = (calls.find((c) => c.table === "job_board_closures" && c.op === "insert")?.rows ?? []) as Array<{ posting_id: string; superseded: boolean; absence_basis: string }>;
-  return { gone, closures, bit: (n: string) => closures.find((c) => c.posting_id === id(n))?.superseded };
+  const exits = calls.filter((c) => c.table === "job_board_exits" && c.op === "insert").flatMap((c) => c.rows as Array<{ posting_id: string }>);
+  return { gone, closures, exits, bit: (n: string) => closures.find((c) => c.posting_id === id(n))?.superseded };
 }
 
 /** The final window of the lap: what the lap-proving visit itself served. */
@@ -147,15 +148,40 @@ describe("a lap-proving visit reads superseded from the whole lap, not its own w
     expect(r.bit("R118006")).toBe(false);
   });
 
-  it("the 24h superseded dedupe sees the earlier window too: a repeat is skipped, and the row still goes", async () => {
+  it("a fill at one store is no relist because another store lists the same title: the lap matches title AND place", async () => {
+    const r = await closeOnLapEnd({
+      served: TAIL,
+      stored: [{ id: id("R201237"), title: "Retail Service Specialist", lap_epoch: 7, missing_since: null, location: "Store 05627 Grove City OH" }],
+      vanished: [
+        { n: "R118010", title: "Retail Service Specialist", location: "Store 05812 Abilene TX" },
+        { n: "R118011", title: "Retail Service Specialist (R118011)", location: "Store 05627, Grove City, OH" },
+      ],
+    });
+    expect(r.bit("R118010"), "a closure at Abilene was written as a relist of Grove City's posting").toBe(false);
+    expect(r.bit("R118011"), "the same title at the same store is the relist").toBe(true);
+  });
+
+  it("on a lap every closure is written, a repeat inside 24h included: no posting leaves with neither a closure nor an exit", async () => {
     const r = await closeOnLapEnd({
       served: TAIL,
       stored: [{ id: id("R201237"), title: "Retail Service Specialist", lap_epoch: 7, missing_since: null }],
       vanished: [{ n: "R118007", title: "Retail Service Specialist" }],
       recentSuperseded: ["Retail Service Specialist"],
     });
-    expect(r.closures, "a superseded repeat inside 24h was logged again").toEqual([]);
+    expect(r.closures.map((c) => [c.posting_id, c.superseded])).toEqual([[id("R118007"), true]]);
+    expect(r.exits.map((e) => e.posting_id)).toEqual([id("R118007")]);
     expect(r.gone).toEqual([id("R118007")]);
+  });
+
+  it("a whole read keeps main's 24h dedupe of a relisting board's repeats (n621)", async () => {
+    const r = await closeOnLapEnd({
+      served: [...TAIL, { n: "R201237", title: "Retail Service Specialist" }],
+      stored: [],
+      vanished: [{ n: "R118012", title: "Retail Service Specialist" }],
+      recentSuperseded: ["Retail Service Specialist"],
+      lapMode: false,
+    });
+    expect(r.closures).toEqual([]);
   });
 
   it("a whole read is unchanged: its own rows are the live set, stored lap stamps are not read", async () => {

@@ -18,6 +18,8 @@
  */
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { bootBoardList, calls, row, type BoardList } from "./helpers/board-list";
+import { NEGATED_REMOTE_IN_TITLE, titleExcluded } from "../../supabase/functions/job-board/search-routing";
+import { NEGATED_REMOTE_SOURCE } from "../../supabase/functions/job-board/normalize";
 
 vi.setConfig({ testTimeout: 60_000, hookTimeout: 180_000 });
 
@@ -25,10 +27,10 @@ let board: BoardList;
 beforeAll(async () => { board = await bootBoardList(); });
 beforeEach(() => board.reset());
 
-/** Every text the search sent: search_jobs' p_q and every textSearch argument. */
+/** Every text the search sent: search_jobs' p_q and every textSearch argument (not the ZIP held check's one-id read). */
 const searched = () => [
   ...board.db.rpcArgs("search_jobs").map((a) => String(a.p_q ?? "")),
-  ...board.db.queries.flatMap((q) => q.calls.filter(([m]) => m === "textSearch").map(([, a]) => String(a[1] ?? ""))),
+  ...board.db.queries.filter((q) => !(calls(q, "select", "id") && calls(q, "limit", 1) && q.calls.some(([m, a]) => m === "textSearch" && /^\d{5}$/.test(String(a[1]))))).flatMap((q) => q.calls.filter(([m]) => m === "textSearch").map(([, a]) => String(a[1] ?? ""))),
 ];
 const nurses = () => board.answer((q) => (q.rpc === "search_jobs" || (q.table === "job_board_postings" && calls(q, "textSearch"))
   ? { data: [row("greenhouse:h:1", "Triage Nurse | Remote"), row("greenhouse:h:2", "Registered Nurse"), row("greenhouse:h:3", "Nurse Practitioner (Remote)")], error: null }
@@ -43,6 +45,19 @@ describe("S13-013: a negated remote strikes the remote reading", () => {
     expect((r.jobs as Array<{ title: string }>).map((j) => j.title)).toEqual(["Registered Nurse"]);
   });
 
+  it.each([
+    ["Staff Accountant I (Not Remote)", "Staff Accountant I (Not Remote)"],
+    ["analyst non-remote", "Data Analyst - Non-Remote"],
+    ["billing specialist not a remote position", "Billing Specialist (No Remote)"],
+  ])("%s: a title that itself says it is not remote is the posting asked for, and is kept (n1411)", async (q, kept) => {
+    board.answer((x) => (x.rpc === "search_jobs" || (x.table === "job_board_postings" && calls(x, "textSearch"))
+      ? { data: [row("ukg:w:1", kept), row("ukg:w:2", "Remote Billing Analyst")], error: null }
+      : undefined));
+    const r = await board.post({ action: "list", q, limit: 20, groupSimilar: false });
+    expect(r.excludedTerms).toEqual(["remote"]);
+    expect((r.jobs as Array<{ title: string }>).map((j) => j.title)).toEqual([kept]);
+  });
+
   it("a caller's own remote filter keeps main's reading: nothing is struck", async () => {
     nurses();
     const r = await board.post({ action: "list", q: "no remote nurse", remote: true, limit: 20, groupSimilar: false });
@@ -50,14 +65,44 @@ describe("S13-013: a negated remote strikes the remote reading", () => {
   });
 });
 
+describe("the remote exclusion reads past a title's own negation (n1411)", () => {
+  it("strikes a title that offers remote, and keeps one that refuses it, whoever typed the exclusion", () => {
+    expect(titleExcluded("Remote Nurse", ["remote"])).toBe(true);
+    expect(titleExcluded("Nurse - Remote (Not Remote in CA)", ["remote"])).toBe(true);
+    for (const t of ["Staff Accountant I (Not Remote)", "Analyst, Non-Remote", "Clerk - No Remote", "Nurse (not fully remote)"]) expect(titleExcluded(t, ["remote"]), t).toBe(false);
+    expect(titleExcluded("Staff Accountant I (Not Remote)", ["accountant"])).toBe(true);
+  });
+
+  it("reads the negation by the pattern the work-mode reader uses, copied byte for byte into a file that imports nothing", () => {
+    expect(NEGATED_REMOTE_IN_TITLE.source).toBe(NEGATED_REMOTE_SOURCE);
+    expect(NEGATED_REMOTE_IN_TITLE.flags).toBe("gi");
+  });
+});
+
 describe("S13-077: a word hyphened onto a work mode leaves with it", () => {
-  it.each(["remote-first engineer", "remote-only engineer", "engineer remote-friendly", "fully-remote engineer"])("%s: lifted to the remote filter, 'engineer' searched, no NOT", async (q) => {
+  it.each(["remote-first engineer", "remote-only engineer", "engineer remote-friendly"])("%s: lifted to the remote filter, 'engineer' searched, no NOT", async (q) => {
     nurses();
     const r = await board.post({ action: "list", q, limit: 20, groupSimilar: false });
     expect(r.intentFilters).toEqual(["remote"]);
     const s = searched();
     expect(s.length).toBeGreaterThan(0);
     for (const t of s) expect(t, t).not.toMatch(/(^|\s)-|-(\s|$)|first|only|friendly|fully/);
+  });
+
+  it.each([
+    ["medical coder-remote", ["medical", "coder"], "remote"],
+    ["nurse practitioner-hybrid", ["nurse", "practitioner"], "hybrid"],
+    ["registered nurse-onsite", ["registered", "nurse"], "onsite"],
+    ["rn-remote", ["rn"], "remote"],
+    ["fully-remote engineer", ["fully", "engineer"], "remote"],
+  ])("%s: the word the mode is hyphened onto stays searched, only the hyphen goes (n1412)", async (q, words, mode) => {
+    nurses();
+    const r = await board.post({ action: "list", q, limit: 20, groupSimilar: false });
+    expect(r.intentFilters).toEqual([mode]);
+    const s = searched();
+    expect(s.length).toBeGreaterThan(0);
+    for (const t of s) expect(t, t).not.toMatch(/(^|\s)-|-(\s|$)/);
+    for (const w of words) expect(s.join(" | ").toLowerCase(), `${q} lost "${w}"`).toMatch(new RegExp(`\\b${w}`));
   });
 
   it("a trade term with a hyphen is searched, not lifted: remote-sensing analyst", async () => {
@@ -83,8 +128,16 @@ describe("S13-015: words no title holds search nothing, and the page says so", (
   });
 });
 
-describe("S13-014: a ZIP is no title word; it is dropped and named", () => {
+describe("S13-014: a number no stored title holds is a ZIP; it is dropped and named, and one a title holds is searched (n1414)", () => {
+  /** The held check: one id from title_tsv for the number. `held` lists the numbers some stored title carries. */
+  const titlesHold = (held: string[], fail = false) => board.answer((x) => {
+    const n = x.table === "job_board_postings" && calls(x, "select", "id") && x.calls.find(([m, a]) => m === "textSearch" && /^\d{5}$/.test(String(a[1])));
+    if (!n) return undefined;
+    if (fail) return { data: null, error: { message: "canceling statement due to statement timeout" } };
+    return { data: held.includes(String(n[1][1])) ? [{ id: "x:1" }] : [], error: null };
+  });
   it.each(["nurse 94105", "94105 nurse", "nurse jobs near 10001-0001"])("%s: searches the role, names the ZIP as ignored", async (q) => {
+    titlesHold([]);
     nurses();
     const r = await board.post({ action: "list", q, limit: 20, groupSimilar: false });
     const zip = /\d{5}(?:-\d{4})?/.exec(q)![0];
@@ -92,10 +145,34 @@ describe("S13-014: a ZIP is no title word; it is dropped and named", () => {
     for (const t of searched()) expect(t).not.toContain(zip.slice(0, 5));
   });
 
-  it("a number with a unit after it is a measurement, searched as typed: cdl 26000 lbs", async () => {
+  it.each(["ISO 13485 auditor", "auditor iso 27001", "Store Manager - (09760)", "IATF 16949 quality engineer"])("%s: a title holds the number, so it is searched as typed, as on main", async (q) => {
+    titlesHold(["13485", "27001", "09760", "16949"]);
+    nurses();
+    const r = await board.post({ action: "list", q, limit: 20, groupSimilar: false });
+    const n = /\d{5}/.exec(q)![0];
+    expect(r.droppedTerms ?? []).not.toContain(n);
+    expect(searched().join(" | ")).toContain(n);
+  });
+
+  it("a held check that fails keeps the number, as main reads it", async () => {
+    titlesHold([], true);
+    nurses();
+    const r = await board.post({ action: "list", q: "nurse 94105", limit: 20, groupSimilar: false });
+    expect(r.droppedTerms ?? []).not.toContain("94105");
+  });
+
+  it("a number with a unit after it is a measurement, searched as typed and never checked: cdl 26000 lbs", async () => {
+    titlesHold([]);
     nurses();
     const r = await board.post({ action: "list", q: "cdl 26000 lbs", limit: 20, groupSimilar: false });
     expect(r.droppedTerms ?? []).not.toContain("26000");
+  });
+
+  it("a number that is all there is stays the search, as on main: 94105", async () => {
+    titlesHold([]);
+    nurses();
+    const r = await board.post({ action: "list", q: "94105", limit: 20, groupSimilar: false });
+    expect(r.droppedTerms ?? []).not.toContain("94105");
   });
 });
 

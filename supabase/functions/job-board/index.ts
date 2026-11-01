@@ -1956,7 +1956,7 @@ const DERIVED_FEED_TOTAL_SOURCES = new Set(["rippling", "jazzhr", "teamtailor"])
 
 /** The widened posting select both delete paths now read before pruning. */
 const LIFECYCLE_SELECT =
-  "id, source, company_token, company, title, category, first_seen, posted_at, " +
+  "id, source, company_token, company, title, location, category, first_seen, posted_at, " +
   "department, country, region_code, work_mode, employment_type, experience_band, min_years, " +
   "salary_min_annual, salary_max_annual, salary_period, salary_currency";
 
@@ -2162,7 +2162,7 @@ async function closeVanishedChunk(
     const rows = ((toLog ?? []) as Array<Record<string, unknown>>).filter((r) => {
       if (isAgedOut(r)) return false; // (b) aged out, not closed
       const norm = normalizeCloseTitle(String(r.title ?? ""));
-      return !(liveTitles.has(norm) && recentSuperseded.has(norm)); // superseded repeat within 24h — skip
+      return lapMode || !(liveTitles.has(norm) && recentSuperseded.has(norm)); // superseded repeat within 24h — skip, never on a lap (n1443)
     });
     if (rows.length) {
       // Rationale: docs/job-board-index-notes.md#n125-closurerows
@@ -2177,7 +2177,7 @@ async function closeVanishedChunk(
         first_seen: r.first_seen ?? null,
         posted_at: r.posted_at ?? null,
         closed_at: closedAt,
-        superseded: liveTitles.has(normalizeCloseTitle(String(r.title ?? ""))), // (c)
+        superseded: liveTitles.has(normalizeCloseTitle(String(r.title ?? ""), lapMode ? String(r.location ?? "") : undefined)), // (c)
         suspect: batchSuspect,
         batch_removed: absentInPass,
         batch_live_before: removableBefore,
@@ -4085,11 +4085,11 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           // Rationale: docs/job-board-index-notes.md#n1440-lap-live-titles
           const liveTitles = new Set(
             [...rowsById.values(), ...(lapMode ? [...existingById.values()].filter((ex) => ex.lap_epoch === lapMark && !ex.missing_since && !agedOutIds.has(ex.id)) : [])]
-              .map((r) => normalizeCloseTitle(String(r.title ?? ""))).filter(Boolean),
+              .map((r) => normalizeCloseTitle(String(r.title ?? ""), lapMode ? String(r.location ?? "") : undefined)).filter(Boolean),
           );
           // Rationale: docs/job-board-index-notes.md#n621-let-recentsuperseded-new-set-string
           let recentSuperseded = new Set<string>();
-          try {
+          if (!lapMode) try {
             const { data: recent } = await client
               .from("job_board_closures")
               .select("title")
@@ -5943,8 +5943,7 @@ function liftIntentFilters(
     let end = m.index + m[0].length, start = m.index;
     const tail = /^-[a-z0-9]+/i.exec(residual.slice(end));
     if (tail && !at(end + 1)) end += tail[0].length;
-    const head = /(?:^|\s)([^\s-]+)-$/.exec(residual.slice(0, start));
-    if (head && !at(start - head[1].length - 1)) start -= head[1].length + 1;
+    if (/[^\s-]-$/.test(residual.slice(0, start))) start -= 1; // "coder-remote": the word stays, the hyphen goes
     residual = `${residual.slice(0, start)} ${residual.slice(end)}`;
     if (negation) notRemote = true;
     // Rationale: docs/job-board-index-notes.md#n685-const-restates-object-keys-p-every
@@ -6014,21 +6013,30 @@ function queryTerms(raw: unknown): { terms: string[]; dropped: string[]; liftedS
     .filter((x) => /[a-z0-9]/i.test(x));
   // Rationale: docs/job-board-index-notes.md#n687-const-money-salarytokeninquery-raw-token
   const money = salaryTokenInQuery(raw)?.token ?? null;
-  // S13-014: a US ZIP is no title word; it is dropped and named, as filler is, unless it is all there is
-  // or a unit follows ("26000 lbs") (n1414).
-  const zip = all.map((t, i) => /^\d{5}(?:-\d{4})?$/.test(t) && !/^(?:lbs?|pounds|gvwr?|sq|ft|feet|miles?|psi|rpm|btu|kw|volts?|hrs?|hours)$/.test(all[i + 1] ?? ""));
-  if (!all.some((t, i) => !QUERY_FILLER.has(t) && t !== money && !zip[i])) zip.fill(false);
-  const filler = (i: number) => QUERY_FILLER.has(all[i]) || zip[i];
   // "or" between two real words is the searcher's OR, not filler: "welder or fabricator" (L8-07).
-  const real = (i: number) => i >= 0 && i < all.length && !filler(i) && all[i] !== money;
-  const isOr = (t: string, i: number) => t === "or" && real(i - 1) && real(i + 1);
-  const kept = all.filter((t, i) => (!filler(i) && t !== money) || isOr(t, i));
+  const real = (t: string | undefined) => t !== undefined && !QUERY_FILLER.has(t) && t !== money;
+  const isOr = (t: string, i: number) => t === "or" && real(all[i - 1]) && real(all[i + 1]);
+  const kept = all.filter((t, i) => (!QUERY_FILLER.has(t) && t !== money) || isOr(t, i));
   if (kept.length === 0) {
     // Rationale: docs/job-board-index-notes.md#n190-money-null-return-terms-drop
-    if (money !== null) return { terms: [], dropped: all.filter((_, i) => filler(i)), liftedSalary: true };
+    if (money !== null) return { terms: [], dropped: all.filter((t) => QUERY_FILLER.has(t)), liftedSalary: true };
     return { terms: all, dropped: [], liftedSalary: false };
   }
-  return { terms: kept, dropped: all.filter((t, i) => filler(i) && !isOr(t, i)), liftedSalary: money !== null };
+  return { terms: kept, dropped: all.filter((t, i) => QUERY_FILLER.has(t) && !isOr(t, i)), liftedSalary: money !== null };
+}
+
+// Rationale: docs/job-board-index-notes.md#n1414-a-zip-is-dropped-and-named
+async function withoutZips(client: SupabaseClient, body: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const q = String(body.q ?? "");
+  const w = q.replace(/"[^"]*"/g, " \u0001 ").toLowerCase().split(/\s+/).filter(Boolean);
+  const money = salaryTokenInQuery(q)?.token ?? null;
+  const zips = w.filter((t, i) => /^\d{5}(?:-\d{4})?$/.test(t) && t !== money && !/^(?:lbs?|pounds|gvwr?|sq|ft|feet|miles?|psi|rpm|btu|kw|volts?|hrs?|hours)$/.test(w[i + 1] ?? ""));
+  if (!zips.length || !w.some((t) => !zips.includes(t) && t !== money && !QUERY_FILLER.has(t))) return body;
+  const held = await Promise.all(zips.slice(0, 3).map((z) => Promise.resolve(client.from("job_board_postings").select("id")
+    .textSearch("title_tsv", z.slice(0, 5), { config: "english" }).limit(1).abortSignal(AbortSignal.timeout(1_500)))
+    .then(({ data, error }) => error || !Array.isArray(data) || data.length > 0, () => true)));
+  const gone = zips.slice(0, 3).filter((_, i) => !held[i]);
+  return gone.length ? { ...body, q: q.split(/\s+/).filter((t) => !gone.includes(t)).join(" "), zipDropped: gone } : body;
 }
 
 // Rationale: docs/job-board-index-notes.md#n1199-const-place_qualifiers-readonlyset-strin
@@ -6082,7 +6090,7 @@ const DID_YOU_MEAN: Record<string, string> = {
 
 /** The words a search ignored: filler, plus the stopwords an english tsquery served it discarded (S11-004, n481). */
 function droppedTermsOf(body: Record<string, unknown>, englishDropped: readonly string[] = []): string[] {
-  return [...new Set([...queryTerms(body.q).dropped, ...englishDropped])];
+  return [...new Set([...queryTerms(body.q).dropped, ...((body.zipDropped as string[] | undefined) ?? []), ...englishDropped])];
 }
 
 // Rationale: docs/job-board-index-notes.md#n1202-function-englishdropdisclosure-body-reco
@@ -8768,7 +8776,7 @@ async function handleRequest(req: Request): Promise<Response> {
     if (action === "exists") {
       // Rationale: docs/job-board-index-notes.md#n826-const-asked-array-isarray-body-ids
       const asked = Array.isArray(body.ids) ? body.ids.filter((x): x is string => typeof x === "string").slice(0, 200) : [];
-      if (asked.length === 0) return json({ open: {} });
+      if (asked.length === 0) return json({ open: {}, rowTest: "served" });
       const openMap: Record<string, boolean> = {};
       for (const id of asked) openMap[id] = false;
       // S12-123: no posting id is longer than EXISTS_ID_MAX; a longer one is
@@ -8784,7 +8792,8 @@ async function handleRequest(req: Request): Promise<Response> {
         if (error) throw error;
         for (const r of data ?? []) if (!pastFence(r, cutoffMs)) openMap[r.id as string] = true;
       }
-      return json({ open: openMap });
+      // The answer names its test; check_jobs_open's basis follows it (n1464).
+      return json({ open: openMap, rowTest: "served" });
     }
 
     if (action === "semantic-search") {
@@ -9219,6 +9228,7 @@ async function serveList(
     ? normalizeFilters(body, JOB_SOURCES.length)
     : preFilters;
   for (const f of textShape.ignored) if (!ignoredFilters.includes(f)) ignoredFilters.push(f);
+  body = await withoutZips(client, body);
   // S13-015: words no title holds ("jobs near me") search nothing; an unlifted query says so (n1413).
   const qWords = queryTerms(body.q).terms;
   if (qWords.length && qWords.every((t) => QUERY_FILLER.has(t))) {

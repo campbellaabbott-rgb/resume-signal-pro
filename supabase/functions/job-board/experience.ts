@@ -190,7 +190,7 @@ export function detectExperience(
   const rung = bandFromTitle(title);
   const minYears = parseMinYears(`${title}\n${description ?? ""}`);
   // Rationale: docs/job-board-index-notes.md#n1420-an-age-a-story-and-a-rung
-  if (minYears != null) return { band: rung === "expert" && minYears <= 2 ? rung : bandFromYears(minYears), minYears };
+  if (minYears != null) return { band: bandFromYears(minYears), minYears };
   const s = stated?.minYears ?? null;
   return { band: rung ?? (s != null ? bandFromYears(s) : stated?.band ?? null), minYears: s };
 }

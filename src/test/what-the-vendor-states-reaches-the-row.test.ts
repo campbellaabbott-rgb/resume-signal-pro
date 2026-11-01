@@ -29,7 +29,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { transformSync } from "esbuild";
 import {
-  employmentTypeFromLabel, htmlToText, leverText, mergePersonioDescriptions, normalizeBambooHR, normalizeBreezy,
+  employmentTypeFromLabel, htmlToText, icimsCountry, leverText, mergePersonioDescriptions, normalizeBambooHR, normalizeBreezy,
   normalizeEmploymentType, normalizeLever, normalizePersonio, normalizeRecruitee, normalizeWorkable,
   paylocityPageText, PERSONIO_NO_DESCRIPTION, ldBaseSalaryText, xmlBlocks, xmlValue,
 } from "../../supabase/functions/job-board/normalize";
@@ -98,6 +98,15 @@ describe("one class in a longer label, and only one (S13-031, S13-034)", () => {
       "Consultant", "Stage", "Homeoffice", "Internal Transfer", "", null,
     ]) expect(employmentTypeFromLabel(label), String(label)).toBeNull();
   });
+  it("a permanent engagement is not a contract: gojob's \"Permanent Contract\" (a CDI) stays NULL, as on main (n1422)", () => {
+    // corpora/review-fix/fields/et-labels.*.json: 131 labels over 4,730 rows; this is the one label the contract word misread.
+    expect(employmentTypeFromLabel("Permanent Contract")).toBeNull();
+    const [l] = normalizeLever([{ id: "g", text: "Agent", hostedUrl: "https://jobs.lever.co/gojob/g", categories: { commitment: "Permanent Contract", location: "Paris" } }], "Gojob", "gojob");
+    expect(l.employmentType).toBeNull();
+    for (const [label, want] of [["Freelance Contract", "contract"], ["Fixed-Term Contract", "contract"], ["Contract - Remote", "contract"], ["Perm - Full-time", "full_time"], ["Permanent / Part Time", "part_time"]] as const) {
+      expect(employmentTypeFromLabel(label), label).toBe(want);
+    }
+  });
   it("the exact ladder every other vendor uses is unchanged", () => {
     expect(normalizeEmploymentType("Full-time Employee")).toBeNull();
     expect(normalizeEmploymentType("fulltime_permanent")).toBeNull();
@@ -120,6 +129,15 @@ describe("the vendor's country (S13-032)", () => {
     expect(lever("CA", "Toronto")).toBe("CA");
     expect(lever("US", "Remote")).toBe("US");
     expect(lever("US", "Hamilton, ON")).toBe("CA");
+  });
+  it("a place that names the code's own country keeps the code: Mexicali, Baja California, Mexico stays MX (n1425)", () => {
+    const lever = (country: string, location: string) =>
+      normalizeLever([{ id: "a", text: "Engineer", hostedUrl: "https://jobs.lever.co/t/a", country, categories: { location } }], "Co", "t")[0].country;
+    expect(lever("MX", "Mexicali, Baja California, Mexico")).toBe("MX");
+    expect(icimsCountry("MX", "Mexicali, Baja California, Mexico")).toBe("MX");
+    // The overrule still stands where the place names no country of the code's: Smoothie King's FR at "KCMO, MO".
+    expect(icimsCountry("FR", "KCMO, MO")).toBe("US");
+    expect(lever("CA", "3388 Sweden Way, Richmond, BC")).toBe("CA");
   });
   it("Workable, per location entry", () => {
     const [w] = normalizeWorkable({ jobs: [{ title: "Analyst", shortcode: "AB12", city: "Riga", state: "Riga", country: "Latvia", locations: [{ countryCode: "LV" }] }] }, "Co", "t");

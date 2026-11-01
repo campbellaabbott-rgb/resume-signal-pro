@@ -10,16 +10,19 @@
  * filed a Hertz driver "at least 20 years", a laundry line worker "at least 18
  * years in age" and a bar job "aged at least 18 years or over" as Expert.
  *
- * S13-016: "Head of Fulfillment" with "2+ years leading people" was filed
- * Entry. A title that names an executive rung keeps it over a figure of two
- * years or fewer. Senior titles are NOT lifted: live senior+entry rows are
- * Senior Cooks, Tellers and Servers (n1420).
+ * S13-016 asked that a title naming an executive rung keep Expert over a figure
+ * of two years or fewer. The review measured that lift on 919 live rows the
+ * board bands Entry for director, head of, vice president and chief: it moved
+ * 442, and 209 of them are no executive (an Assistant Store Director, a
+ * childcare Site Director, a Survey Crew Chief, an Art Director, an analyst in
+ * a CEO Office). The stated figure decides, as on main (n1420).
  *
  * S13-033: Personio states the level the employer picked (seniority,
  * yearsOfExperience). It fills only what the title and text leave unsaid.
  *
  * The age and story lines are real postings' (corpus: board-stream-2026-11-01/
- * corpora/fields/exp-diff.json, 6,243 descriptions, 15 changes).
+ * corpora/fields/exp-diff.json, 6,243 descriptions: 14 age or story lines,
+ * and one rung change that went with S13-016).
  */
 import { beforeAll, describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
@@ -68,11 +71,19 @@ describe("an age or a story is not a requirement (S12-013)", () => {
   });
 });
 
-describe("an executive rung keeps its band over a small figure (S13-016)", () => {
-  it("Head of, Director and VP with two years or fewer are Expert", () => {
-    expect(detectExperience("Head of Fulfillment and Merchandising", "Experience in operations, including 2+ years leading people or leading work across teams.")).toEqual({ band: "expert", minYears: 2 });
-    expect(detectExperience("Director of Sales", "2+ years of experience in B2B sales")).toEqual({ band: "expert", minYears: 2 });
-    expect(detectExperience("VP, Partnerships", "1 year of experience in partnerships")).toEqual({ band: "expert", minYears: 1 });
+describe("a title's rung does not overrule the posting's own figure (S13-016, measured and declined)", () => {
+  // Live rows the lift moved to Expert (corpora/review-fix/fields/exec-rung-main-vs-branch-vs-fix.json).
+  it.each([
+    ["Assistant Store Director", 1],
+    ["Executive Assistant to Associate Vice President", 0],
+    ["Early Learning Director and Lead Teacher", 2],
+    ["School-Age Childcare Site Director – After School", 2],
+    ["Survey Crew Chief (Heavy Civil Construction)", 2],
+    ["Art Director", 1],
+    ["Analyst, CEO Office", 1],
+    ["Head of Fulfillment and Merchandising", 2],
+  ])("%s with %i years is banded by the figure, as on main", (title, n) => {
+    expect(detectExperience(title, `${n === 1 ? "1 year" : `${n}+ years`} of experience required`)).toEqual({ band: "entry", minYears: n });
   });
   it("a larger figure still decides, and a senior title is not lifted", () => {
     expect(detectExperience("Director, Sales Engineering", "8+ years of professional experience in technical software")).toEqual({ band: "senior", minYears: 8 });
@@ -119,7 +130,7 @@ describe("the v3 sweep re-derives stored rows and leaves Personio's to the feed"
     const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${SVC}:board-chain`));
     return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 32);
   }
-  it("clears the Domino's age line, lifts the Head of, and never touches a Personio row", async () => {
+  it("clears the Domino's age line, leaves a Head of with its own figure, and never touches a Personio row", async () => {
     const STORED = [
       { id: "smartrecruiters:dominos:744000158412268", title: "Delivery Expert", description: "Must be at least 18 years-old with a valid U.S. driver's license", experience_band: "expert", min_years: 18 },
       { id: "ashby:arb-interactive:99468c27", title: "Head of Fulfillment and Merchandising", description: "Experience in operations, including 2+ years leading people or leading work across teams.", experience_band: "entry", min_years: 2 },
@@ -129,14 +140,14 @@ describe("the v3 sweep re-derives stored rows and leaves Personio's to the feed"
     h.reset();
     h.answer((q) => (q.table === "job_board_postings" && q.calls.some(([m]) => m === "select") ? { data: STORED, error: null } : undefined));
     const r = await h.post({ action: "backfill-experience", chainKey: await chainKey(), rulesVersion: 3 });
-    expect(r, JSON.stringify(r)).toMatchObject({ ok: true, done: true, scanned: 3, updated: 2 });
+    expect(r, JSON.stringify(r)).toMatchObject({ ok: true, done: true, scanned: 3, updated: 1 });
     const writes = h.db.on("job_board_postings", "update").flatMap((q) => {
       const patch = q.calls.find(([m]) => m === "update")?.[1][0];
       return ((q.calls.find(([m]) => m === "in")?.[1][1] as string[]) ?? []).map((id) => [id, patch] as const);
     });
     const byId = new Map(writes);
     expect(byId.get("smartrecruiters:dominos:744000158412268")).toEqual({ experience_band: "unspecified", min_years: null });
-    expect(byId.get("ashby:arb-interactive:99468c27")).toEqual({ experience_band: "expert", min_years: 2 });
+    expect(byId.has("ashby:arb-interactive:99468c27")).toBe(false);
     expect(byId.has("personio:acme:1873173")).toBe(false);
   });
 });

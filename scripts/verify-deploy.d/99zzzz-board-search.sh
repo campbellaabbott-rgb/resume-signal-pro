@@ -29,9 +29,11 @@
 #     whatever isolates answer (S12-014: a cold isolate routed nothing);
 #   - location "Wien" browses no row placed in the US unless the row names
 #     Austria (S13-006, the job-board branch builder);
-#   - q "engineer" in "Wien" ranks no US row unless it names Austria, and
-#     serves a row named Vienna without Wien, which only the anchored arm of
-#     migration 20261102100000 can match (S13-006, search_jobs);
+#   - q "engineer" in "Wien" is ranked (ranked true, search_jobs among the
+#     phases timed), ranks no US row unless it names Austria, and serves a row
+#     named Vienna without Wien whose title does not start with "engineer"
+#     (the head-term ring finds those by title), which only the anchored arm
+#     of migration 20261102100000 can match (S13-006, search_jobs);
 #   - q "nurse", limit 50, walked from offset 0 to the seam (nextOffset 200 or
 #     more): every page that has more is full, and no card is served twice
 #     (S13-012: the seam page served 7 cards).
@@ -143,9 +145,13 @@ const usUnnamed=(j)=>j.jobs.filter((x)=>x.country==="US"&&!/austria/i.test(Strin
   else say("PASS","location Wien browses "+j.jobs.length+" rows, none placed in the US without naming Austria");}}
 {const j=read("wien_ranked");if(!ok(j))unreadable("wien_ranked","engineer in Wien (ranked)");else{
   const us=usUnnamed(j);const viennaOnly=j.jobs.filter((x)=>/vienna/i.test(String(x.location||""))&&!/wien/i.test(String(x.location||"")));
-  if(us.length)say("FAIL","engineer in Wien ranks "+us.length+" of "+j.jobs.length+" rows placed in the US: "+JSON.stringify(us.slice(0,3).map((x)=>x.location)));
+  const anchored=viennaOnly.filter((x)=>!/^engineer\b/i.test(String(x.title||"")));
+  if(j.ranked!==true)say("FAIL","engineer in Wien was not ranked (ranked "+JSON.stringify(j.ranked)+(j.rankedFellBack?", fell back: "+String(j.rankedFellBack).slice(0,120):"")+"): the anchored arm cannot be judged on this answer");
+  else if(!(j.phaseMs&&typeof j.phaseMs.search_jobs==="number"))say("FAIL","engineer in Wien was ranked but search_jobs did not run (phases "+JSON.stringify(Object.keys(j.phaseMs||{}))+"): its rows are not the answer of search_jobs");
+  else if(us.length)say("FAIL","engineer in Wien ranks "+us.length+" of "+j.jobs.length+" rows placed in the US: "+JSON.stringify(us.slice(0,3).map((x)=>x.location)));
   else if(!viennaOnly.length)say("FAIL","engineer in Wien serves "+j.jobs.length+" rows and none named Vienna without Wien: search_jobs has no anchored arm (migration 20261102100000 not applied?)");
-  else say("PASS","engineer in Wien ranks "+j.jobs.length+" rows, none placed in the US without naming Austria, "+viennaOnly.length+" of them named Vienna (the anchored arm of 20261102100000)");}}
+  else if(!anchored.length)say("FAIL","engineer in Wien serves "+viennaOnly.length+" rows named Vienna without Wien, and none named Vienna without Wien outside the titles the head-term ring finds (every one starts with engineer): no evidence of the anchored arm of search_jobs");
+  else say("PASS","engineer in Wien ranks "+j.jobs.length+" rows, none placed in the US without naming Austria, "+anchored.length+" of them named Vienna with a title the head-term ring does not find (the anchored arm of 20261102100000)");}}
 // S13-012.
 {const pages=[];for(let n=0;n<6;n++){const raw=(()=>{try{return fs.readFileSync("/tmp/vd_bsearch_walk_"+n+".json","utf8")}catch{return null}})();if(raw===null)break;let j=null;try{j=JSON.parse(raw)}catch{}pages.push(j)}
   const bad=pages.findIndex((j)=>!ok(j));

@@ -33,9 +33,16 @@
 --     only claim rows of that version. The status says both, per key.
 --
 -- NOTHING LIVE IS SWITCHED OFF. On 2026-11-01 the reader answered
--- published_keys [] (no key had passed a launch audit), and every existing
--- publish row gets audited_version NULL: a key needs a launch audit under
--- these rules to show anything, which it needed already.
+-- published_keys [] (no key had passed a launch audit). A key not live under
+-- 20261012110000's rule gets audited_version NULL and needs a launch audit
+-- under these rules to show anything, which it needed already. A key that IS
+-- live under it when this applies (published, audited in the last 45 days,
+-- publishing not paused) is carried: audited_version is the one extractor
+-- version every stored posting holds, its audit dated as before, its claim
+-- rows stamped with that version until the next lap restates them. That needs
+-- one version, already read before the key's audit; otherwise this RAISEs,
+-- nothing changes, and the key goes on serving under the old rule (owner
+-- rule: no pause without a current yes).
 --
 -- Old signatures go by the catalogue, every overload of the two names but the
 -- versioned one, never by a hand-listed signature (the live database may hold
@@ -79,6 +86,50 @@ COMMENT ON COLUMN public.employer_perk_rollups.extractor_version IS
   'The extractor version every one of the row''s n postings was read by; NULL when they were read by more than one.';
 COMMENT ON COLUMN public.employer_profile_perk_publish.audited_version IS
   'The extractor version of the rows the key''s last launch or re-audit judged; the reader shows only rows of this version.';
+
+-- ── 1b. a key live under the old rule is carried, or nothing applies ──────
+
+DO $carry$
+DECLARE
+  v_keys     text[];
+  v_versions smallint[];
+  v_late     text[];
+BEGIN
+  SELECT array_agg(pp.perk ORDER BY pp.perk) INTO v_keys
+    FROM public.employer_profile_perk_publish pp
+   WHERE pp.audited_version IS NULL
+     AND pp.published
+     AND pp.perk IN ('health', 'dental', 'vision', 'life_dis', 'retire', 'pto', 'parental', 'equity', 'visa_not_offered')
+     AND pp.last_audited_at IS NOT NULL
+     AND pp.last_audited_at >= now() - interval '45 days'
+     AND NOT COALESCE((SELECT c.publish_paused FROM public.employer_profile_config c WHERE c.id), true);
+  IF v_keys IS NULL THEN
+    RETURN;
+  END IF;
+  SELECT array_agg(DISTINCT e.extractor_version ORDER BY e.extractor_version) INTO v_versions
+    FROM public.employer_perk_postings e;
+  IF COALESCE(cardinality(v_versions), 0) <> 1 THEN
+    RAISE EXCEPTION 'perk keys % are live under 20261012110000 and the stored postings hold extractor versions %: no single extractor version to carry them on. Nothing changed and they keep serving; apply once the sweep has read every posting with one version, or after the owner withdraws them',
+      v_keys, COALESCE(v_versions::text, '(none)');
+  END IF;
+  SELECT array_agg(pp.perk ORDER BY pp.perk) INTO v_late
+    FROM public.employer_profile_perk_publish pp
+   WHERE pp.perk = ANY (v_keys)
+     AND NOT EXISTS (SELECT 1 FROM public.employer_perk_postings e WHERE e.extracted_at <= pp.last_audited_at);
+  IF v_late IS NOT NULL THEN
+    RAISE EXCEPTION 'perk keys % are live under 20261012110000 and extractor v% was first read after their audit (no stored posting it read is older than the audit), so it is not the output they were judged on. Nothing changed and they keep serving; a launch audit of v% under these rules, or a withdraw, settles it',
+      v_late, v_versions[1], v_versions[1];
+  END IF;
+  UPDATE public.employer_profile_perk_publish pp
+     SET audited_version = v_versions[1], audit_drawn_at = pp.last_audited_at
+   WHERE pp.perk = ANY (v_keys);
+  UPDATE public.employer_perk_rollups r
+     SET extractor_version = v_versions[1]
+   WHERE r.perk = ANY (v_keys) AND r.extractor_version IS NULL;
+  RAISE NOTICE 'perk keys % were live under 20261012110000: carried on extractor v%, the one version every stored posting holds and in use before their audit; their 45 days run from that audit as before',
+    v_keys, v_versions[1];
+END
+$carry$;
 
 -- ── 2. the rollup, restated from 20261012110000 with the version column ────
 
@@ -719,6 +770,15 @@ BEGIN
   IF NOT has_function_privilege('anon', 'public.get_employer_perks(text)', 'EXECUTE')
      OR NOT has_function_privilege('authenticated', 'public.get_employer_perks(text)', 'EXECUTE') THEN
     v_bad := v_bad || 'get_employer_perks is not callable by anon and authenticated'::text;
+  END IF;
+
+  -- No key the old rule showed is left without a version (1b carried it or RAISEd).
+  IF EXISTS (SELECT 1 FROM public.employer_profile_perk_publish pp
+              WHERE pp.audited_version IS NULL AND pp.published
+                AND pp.perk IN ('health', 'dental', 'vision', 'life_dis', 'retire', 'pto', 'parental', 'equity', 'visa_not_offered')
+                AND pp.last_audited_at >= now() - interval '45 days'
+                AND NOT COALESCE((SELECT c.publish_paused FROM public.employer_profile_config c WHERE c.id), true)) THEN
+    v_bad := v_bad || 'a key live under 20261012110000 has no audited version'::text;
   END IF;
 
   -- The reader runs, and names no key live that carries no audited version.

@@ -65,11 +65,10 @@ const HEADROOM_BYTES = 50_000;
  * w4b/payments-delivery and w4b/account-compliance (2026-10-17), which have
  * all merged at integration, so their entries now add nothing. A file counts
  * the bytes its branch has beyond what the disk holds. The board-stream merge
- * (2026-11-01) adds the three rounds in flight beside it, at their sizes on
- * their branch tips that day (git ls-tree -l against each merge-base):
- * fix/full-analysis-timeout grows ai-fallback.ts and posting-text.ts and
- * fix/free-scan-wave grows industry-detection.ts; fix/free-scan-ui changes no
- * _shared file.
+ * (2026-11-01, on main 21518390, where fix/full-analysis-timeout has landed)
+ * adds the round still in flight beside it, at its size on its branch tip that
+ * day (git ls-tree -l): fix/free-scan-wave grows industry-detection.ts;
+ * fix/free-scan-ui changes no _shared file.
  */
 const PENDING_SHARED: Record<string, number> = {
   // profiles, as design/integration holds them
@@ -91,7 +90,7 @@ const PENDING_SHARED: Record<string, number> = {
   // w4b/generators
   "model-spend-gate.ts": 27_126,
   "posting-language.ts": 7_332,
-  // posting-text.ts (4,837 here) is listed below at fix/full-analysis-timeout's size
+  "posting-text.ts": 4_837,
   "resume-grounding.ts": 31_296,
   "writing-allowance.ts": 9_244,
   // w4b/payments-delivery
@@ -102,14 +101,24 @@ const PENDING_SHARED: Record<string, number> = {
   "planted-instructions.ts": 3_317,
   "shortlist-attestation.ts": 935,
   "subscription-notice.ts": 17_344,
-  // fix/full-analysis-timeout at e5c3ca9e (2026-11-01)
-  "ai-fallback.ts": 22_660,
-  "posting-text.ts": 31_116,
-  // fix/free-scan-wave at 89c2bc0b (2026-11-01)
+  // fix/free-scan-wave at d511acfa (2026-11-01; the file unchanged since a2a94d0f)
   "industry-detection.ts": 270_590,
 };
 /** The entries above whose round had not merged when the board-stream merge measured them. */
-const IN_FLIGHT = ["ai-fallback.ts", "posting-text.ts", "industry-detection.ts"];
+const IN_FLIGHT = ["industry-detection.ts"];
+/**
+ * Each in-flight file's size HERE when its branch tip was measured. While the
+ * round is out the disk holds exactly that; once it merges (or the file is
+ * edited here) the disk differs and the entry is stale, whether the branch
+ * grew, shrank or moved its comments out after it was measured.
+ */
+const IN_FLIGHT_BASE: Record<string, number> = { "industry-detection.ts": 268_512 };
+
+/** Every in-flight entry whose file no longer holds the size it had when its round was measured. */
+function staleInFlight(base: Record<string, number>, onDisk: (name: string) => number): string[] {
+  return Object.entries(base).filter(([name, bytes]) => onDisk(name) !== bytes)
+    .map(([name, bytes]) => `${name} is ${onDisk(name).toLocaleString("en-US")} bytes here, not the ${bytes.toLocaleString("en-US")} it held when its round was measured: the round merged or the file changed, so re-measure the entry at the branch tip or drop it`);
+}
 
 /** What the pending files add: the bytes each has on its branch beyond what the disk holds. */
 function pendingBytes(pending: Record<string, number>, onDisk: (name: string) => number): number {
@@ -255,6 +264,18 @@ describe("the job-board upload, tallied the deploy's way", () => {
     const sizeOnDisk = (name: string) => files.get(join(SHARED, name)) ?? 0;
     expect(pending).toBe(pendingBytes(inFlight, sizeOnDisk));
     expect(pending, "the in-flight rounds are listed but add nothing: their entries are stale").toBeGreaterThan(0);
+    expect(Object.keys(IN_FLIGHT_BASE).sort(), "every in-flight entry names the size it was measured against").toEqual([...IN_FLIGHT].sort());
+    expect(staleInFlight(IN_FLIGHT_BASE, sizeOnDisk), "an in-flight entry outlived its measurement").toEqual([]);
+  });
+
+  it("TEETH: an in-flight entry is stale once its file moves off the size it was measured against, whichever way it moved", () => {
+    const base = { "grew.ts": 1_000, "shrank.ts": 10_715, "out.ts": 500 };
+    // fix/full-analysis-timeout's case: measured at 22,660 over a base of 10,715, merged at 15,584.
+    const disk: Record<string, number> = { "grew.ts": 1_000, "shrank.ts": 15_584, "out.ts": 500 };
+    expect(staleInFlight(base, (n) => disk[n] ?? 0)).toEqual([expect.stringContaining("shrank.ts is 15,584 bytes here, not the 10,715")]);
+    expect(pendingBytes({ "shrank.ts": 22_660 }, (n) => disk[n] ?? 0), "the old check: the stale entry still adds, so pending > 0 never fired").toBe(7_076);
+    expect(staleInFlight(base, (n) => ({ ...disk, "shrank.ts": 10_715 })[n] ?? 0)).toEqual([]);
+    expect(staleInFlight({ "gone.ts": 400 }, () => 0)).toHaveLength(1);
   });
 
   it("TEETH: the gate refuses a tally one byte over it", () => {

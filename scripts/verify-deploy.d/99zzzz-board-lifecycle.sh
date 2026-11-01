@@ -15,9 +15,11 @@
 #       cursor written 10 minutes or more after .100's first slice is
 #       first_seen|id (a bare timestamp is main's cursor); INFO while the
 #       cursor is null (a walk's start, the boards phase, a settled rotation);
-#   L3  (S13-076) exists answers open for every row the list serves on one
-#       small whole-read board, and not for an id no board holds (anon reads no
-#       stamped row; the stamped half is the unit test's).
+#   L3  (S13-076) exists names the served row test in its answer (rowTest
+#       "served": .96 answers none, so this half alone tells the builds apart),
+#       answers open for every row the list serves on one small whole-read
+#       board, and not for an id no board holds. That a stamped or fenced row
+#       reads closed is proven by the unit test only: anon reads no such row.
 #
 # READ-ONLY. One OPTIONS preflight; job-board status, list and exists reads
 # with x-rb-budget: probe; one GET of get_company_hiring_health. Nothing is
@@ -62,9 +64,10 @@ else{const written=Date.now()-Number(ds.ageMin)*60000;const judged=Number.isFini
 // L3
 const served=((ls&&ls.jobs)||[]).map((x)=>x.id).filter((x)=>typeof x==="string");const open=(ex&&ex.open)||null;
 if(!open)console.log("FAIL  L3 exists did not answer an open map: "+JSON.stringify(ex).slice(0,200));
+else if(ex.rowTest!=="served")console.log("FAIL  L3 exists answers rowTest "+JSON.stringify(ex.rowTest)+", not \"served\": this is the row-only exists of .96 (an open map from it reads the same on a whole-read board)");
 else if(!served.length)console.log("INFO  L3 the list served no gusto rows today, so exists has nothing served to agree with");
 else{const shut=served.filter((id)=>open[id]!==true);const fake=open["greenhouse:gusto:0000000000"];
   if(shut.length||fake!==false)console.log("FAIL  L3 exists disagrees with the list: "+shut.length+" of "+served.length+" served rows not open"+(shut.length?" (e.g. "+shut.slice(0,3).join(", ")+")":"")+", an id no board holds read "+JSON.stringify(fake));
-  else console.log("PASS  L3 exists answers open for all "+served.length+" rows the list serves on gusto and false for an id no board holds")}
+  else console.log("PASS  L3 exists names the served row test and answers open for all "+served.length+" rows the list serves on gusto and false for an id no board holds")}
 ' 2>&1
 fi

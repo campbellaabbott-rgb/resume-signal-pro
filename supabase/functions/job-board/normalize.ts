@@ -61,7 +61,7 @@ export function employmentTypeFromLabel(raw: unknown): EmploymentType | null {
 const ET_WORDS: Array<[EmploymentType, RegExp]> = [
   ["full_time", /full[\s_-]*time|vollzeit|temps plein/],
   ["part_time", /part[\s_-]*time|teilzeit|temps partiel|minijob/],
-  ["contract", /contract|freelance|fixed[\s_-]*term/],
+  ["contract", /^(?!.*\bperm(?:anent)?\b).*(?:contract|freelance|fixed[\s_-]*term)/],
   ["temporary", /(?<![a-z])temp(?:orary)?(?![a-z])|seasonal|interim/],
   ["internship", /(?<![a-z])intern(?:ship)?(?![a-z])|trainee|apprentic|working[\s_-]*student|werkstudent/],
 ];
@@ -90,13 +90,15 @@ export function sanePostedAt(iso: string | null | undefined, now: number = Date.
 }
 
 // Rationale: docs/job-board-index-notes.md#n964-export-function-normalizeclosetitle-titl
-export function normalizeCloseTitle(title: string): string {
-  return title
+export function normalizeCloseTitle(title: string, place?: string): string {
+  const t = title
     .toLowerCase()
     .replace(/[([{][^)\]}]*\d[^)\]}]*[)\]}]/g, " ")          // (R-48213), [Req 10422]
     .replace(/\s*[-–—#·|]\s*(?:req|job|id|jr)?[\s#:-]*\d{3,}\s*$/i, " ") // trailing "- 10422" / "#10422"
     .replace(/\s+/g, " ")
     .trim();
+  // A lap's relist is the same title at the same place (n1443).
+  return t && place !== undefined ? `${t}@${place.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim()}` : t;
 }
 
 // Rationale: docs/job-board-index-notes.md#n965-export-function-safeiso-value-unknown-st
@@ -1744,6 +1746,7 @@ export function icimsCountry(feedCode: unknown, location: string | null | undefi
   const code = /^[A-Za-z]{2}$/.test(String(feedCode ?? "")) ? String(feedCode).toUpperCase() : null;
   if (code === null) return detectCountry(location);
   const first = String(location ?? "").split(";")[0].slice(0, 300);
+  if (statedCountry(first) === code) return code; // the place names the code's own country (n1425)
   const notOwn = (m: RegExpExecArray | null) => !!m?.[1] && m[1] !== code;
   const us = notOwn(P_US_STATE_CODE.exec(first)) || P_US_STATE_NAME.test(first) || notOwn(P_US_STATE_CODE_LEADING.exec(first));
   const ca = notOwn(P_CA_PROV_CODE.exec(first)) || P_CA_PROV_NAME.test(first);

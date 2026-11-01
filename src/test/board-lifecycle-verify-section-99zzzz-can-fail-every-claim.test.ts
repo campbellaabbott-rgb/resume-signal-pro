@@ -80,7 +80,7 @@ const TOKENS = ["oreillyauto~wd1~oreilly", "cvshealth~wd1~CVS_Health_Careers", "
 const SERVED = ["greenhouse:gusto:1", "greenhouse:gusto:2", "greenhouse:gusto:3"];
 type Over = {
   build?: string | null; sliceBuild?: string; sinceH?: number; superseded?: number[];
-  ds?: Record<string, unknown> | null; served?: string[]; open?: Record<string, boolean> | null;
+  ds?: Record<string, unknown> | null; served?: string[]; open?: Record<string, boolean> | null; rowTest?: unknown;
 };
 function routes(o: Over = {}): Route[] {
   const build = o.build === undefined ? "job-board.2026-09-09.100" : o.build;
@@ -93,7 +93,7 @@ function routes(o: Over = {}): Route[] {
     { match: `^POST ${FB}\t.*"action":"status"`, body: JSON.stringify({ sliceStats: { build: o.sliceBuild ?? "2026-09-09.100", buildSince: iso((o.sinceH ?? 80) * H) }, ...(ds === null ? {} : { descSweep: ds }) }) },
     { match: "^GET https://p\\.supabase\\.co/rest/v1/rpc/get_company_hiring_health\\?", body: JSON.stringify(TOKENS.map((t, i) => ({ company_token: t, closed_90d: 1_000 + i, superseded_90d: sup[i] }))) },
     { match: `^POST ${FB}\t.*"action":"list"`, body: JSON.stringify({ jobs: served.map((id) => ({ id })) }) },
-    { match: `^POST ${FB}\t.*"action":"exists"`, body: JSON.stringify(open === null ? { error: "boom" } : { open }) },
+    { match: `^POST ${FB}\t.*"action":"exists"`, body: JSON.stringify(open === null ? { error: "boom" } : { open, ...("rowTest" in o ? (o.rowTest === undefined ? {} : { rowTest: o.rowTest }) : { rowTest: "served" }) }) },
   ];
 }
 const verdict = (lines: string[], tag: string) => {
@@ -139,6 +139,14 @@ describe("section 99zzzz passes a good deploy and fails each claim when it is fa
     expect(verdict(run(routes({ open: { ...Object.fromEntries(SERVED.map((id) => [id, true])), "greenhouse:gusto:0000000000": true } })).lines, "L3")).toBe("FAIL");
     expect(verdict(run(routes({ open: null })).lines, "L3")).toBe("FAIL");
     expect(verdict(run(routes({ served: [] })).lines, "L3")).toBe("INFO");
+  });
+
+  it("L3: an exists answer that does not name the served row test is .96's, whatever its open map says: a FAIL", () => {
+    // On a small whole-read board every served row is open under .96 too, so the map alone cannot tell the builds apart.
+    expect(verdict(run(routes({ rowTest: undefined })).lines, "L3")).toBe("FAIL");
+    expect(run(routes({ rowTest: undefined })).lines.find((l) => /^FAIL  L3 /.test(l))).toMatch(/rowTest/);
+    expect(verdict(run(routes({ rowTest: "row" })).lines, "L3")).toBe("FAIL");
+    expect(verdict(run(routes({ rowTest: undefined, served: [] })).lines, "L3")).toBe("FAIL");
   });
 
   it("never prints the key; every board call is a probe-budget status, list or exists read; the RPC is a GET", () => {

@@ -712,12 +712,17 @@ export function splitExclusions(raw: string): { positive: string; excluded: stri
   return { positive: positive.join(" "), excluded: cleanExcluded };
 }
 
+/** normalize.ts's negated-remote pattern, copied because this file imports nothing; a test pins the copy (n1411). */
+export const NEGATED_REMOTE_IN_TITLE = new RegExp("\\b(?:non|not|no)[-\\s]?remote\\b|\\bnot\\s+(?:a\\s+|an\\s+|fully\\s+)?remote\\b|\\bnot\\s+(?:eligible|available|open|considered)\\s+(?:for|to)\\s+remote\\b|\\bremote\\s*[:=(–—-]\\s*(?:no|none)\\s*(?=$|[).|,;·/])|\\b(?:remote|wfh|work\\s+from\\s+home|home\\s?office)\\s*[:=–—-]?\\s*(?:not\\s+(?:available|offered|permitted|an\\s+option)|unavailable)\\b|\\b(?:non|not|no)[-\\s]?(?:wfh|work\\s+from\\s+home|home\\s?office)\\b|\\bno\\s+remote\\s+(?:work|option|options|opportunit(?:y|ies))\\b|\\b(?:keine|kein|nicht)\\s+(?:im\\s+)?home\\s?office\\b|\\b(?:non|sans|aucun)[-\\s]?t[ée]l[ée]travail\\b|\\bpas\\s+de\\s+t[ée]l[ée]travail\\b|\\bt[ée]l[ée]travail\\s*[:=(–—-]\\s*non\\s*(?=$|[).|,;·/])|\\b(?:no|n[ãa]o)[-\\s]?remoto\\b|\\b(?:sin|no)\\s+teletrabajo\\b|\\b(?:geen|niet)\\s+thuiswerken\\b", "gi");
+
 /** Does a title contain any excluded term? Word-ish match, so "manager" does
  *  not strike out "management-adjacent" by coincidence of substring. */
 export function titleExcluded(title: string, excluded: readonly string[]): boolean {
   if (!excluded.length) return false;
-  const t = String(title ?? "").toLowerCase();
+  const raw = String(title ?? "").toLowerCase();
+  // A title that says "Not Remote" is the posting a remote exclusion asks for (n1411).
+  const unsaid = raw.replace(NEGATED_REMOTE_IN_TITLE, " ");
   // S12-017: a phrase matches across a space, hyphen or slash, its last word singular or plural (n1410).
   const re = (e: string) => e.includes(" ") ? `${e.replace(/([^s])s$/, "$1").replace(/ /g, "[\\s/-]+")}s?` : e;
-  return excluded.some((e) => new RegExp(`(^|[^a-z0-9])${re(e.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))}([^a-z0-9]|$)`, "i").test(t));
+  return excluded.some((e) => new RegExp(`(^|[^a-z0-9])${re(e.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))}([^a-z0-9]|$)`, "i").test(e === "remote" ? unsaid : raw));
 }

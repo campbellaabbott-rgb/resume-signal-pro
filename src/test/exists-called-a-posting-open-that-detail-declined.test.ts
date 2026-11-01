@@ -24,7 +24,7 @@ const block = (start: string, end: string) => {
   expect(z).toBeGreaterThan(a);
   return FN.slice(a, z + end.length);
 };
-const EXISTS = block('    if (action === "exists") {', "return json({ open: openMap });\n    }\n");
+const EXISTS = block('    if (action === "exists") {', "return json({ open: openMap, rowTest: \"served\" });\n    }\n");
 const DETAIL = block('    if (action === "detail") {', "const stored = (jobRow?.description");
 /** Any top-level helper the block calls, lifted beside it (none on main). */
 const helpers = [...FN.matchAll(/\nfunction (\w+)\(/g)].map((m) => m[1]).filter((n) => new RegExp(`\\b${n}\\(`).test(EXISTS))
@@ -55,7 +55,7 @@ function run(rows: Row[], ids: string[]) {
   };
   const js = ts.transpileModule(`${helpers.join("\n")}\nreturn (async () => {\n${EXISTS}\n})();`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
   const go = new Function("action", "body", "client", "json", "EXISTS_ID_MAX", "FRESH_WINDOW_DAYS", js);
-  return (go("exists", { ids }, client, (x: unknown) => x, 300, 30) as Promise<{ open: Record<string, boolean> }>).then((r) => ({ open: r.open, reads }));
+  return (go("exists", { ids }, client, (x: unknown) => x, 300, 30) as Promise<{ open: Record<string, boolean>; rowTest?: string }>).then((r) => ({ open: r.open, rowTest: r.rowTest, reads }));
 }
 
 const NOW = Date.now();
@@ -81,6 +81,11 @@ describe("exists answers open on the predicate detail serves by (S13-076)", () =
   it("a live row, and one dated only by first_seen inside the fence, stay open; an unknown id is not", async () => {
     const { open } = await run(ROWS, ["greenhouse:acme:live", "greenhouse:acme:undated", "greenhouse:acme:nope"]);
     expect(open).toEqual({ "greenhouse:acme:live": true, "greenhouse:acme:undated": true, "greenhouse:acme:nope": false });
+  });
+
+  it("the answer names the row test it ran, so a caller can tell this build from one that asked only for a row (n1464)", async () => {
+    expect((await run(ROWS, ["greenhouse:acme:live"])).rowTest).toBe("served");
+    expect((await run(ROWS, [])).rowTest).toBe("served");
   });
 
   it("the stamp is fenced in the read itself, and on every row exists and detail agree", async () => {

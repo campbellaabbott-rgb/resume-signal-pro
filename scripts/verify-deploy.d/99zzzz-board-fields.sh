@@ -1,6 +1,6 @@
 # shellcheck shell=bash
-# ── 99zzzz. BOARD FIELDS: what the vendor states reaches the row, and an age,
-# a story or an executive rung is not a years floor (branch fix/bs-fields,
+# ── 99zzzz. BOARD FIELDS: what the vendor states reaches the row, and an age
+# or a story is not a years floor (branch fix/bs-fields,
 # job-board 2026-09-09.100; docs/job-board-deploy-notes.md, .100; notes
 # n1420-n1427 in docs/job-board-index-notes.md).
 #
@@ -11,17 +11,14 @@
 # only when sliceStats.build is the build the preflight answers. A board line
 # is judged once this build has read the board: its rows' newest recheckedAt
 # (the board read stamp) is after the first slice. Before that it is INFO for
-# 24 h, then FAIL. The two sweep lines (Domino's, executive titles) wait 24 h
-# for the EXPERIENCE_VERSION 3 sweep, which status does not report.
+# 24 h, then FAIL. The Domino's sweep line waits 24 h for the
+# EXPERIENCE_VERSION 3 sweep, which status does not report.
 #
 # THE CLAIMS, one line each below:
 #   - job-board's preflight answers job-board.2026-09-09.100 or later; older is
 #     INFO and every other line waits for it;
 #   - no Domino's delivery row is filed Expert on a figure of 15 to 21 years
 #     (an age or a story), against a control that the board serves delivery rows;
-#   - no row whose title names an executive rung (chief, VP, head of,
-#     director) is filed Entry, Personio rows excepted (their band is the
-#     feed's, re-read as their postings turn over);
 #   - Breezy pay: national-assemblers-inc serves a row with stated pay and an
 #     annual figure;
 #   - Breezy type and country: staffmill-oy serves at least 80% of its rows
@@ -46,7 +43,7 @@
 # sent with x-rb-budget: probe; GETs to the vendors' own public feeds and
 # pages (one Lever posting, two Personio feeds, up to three Paylocity pages),
 # paced 1.2 s apart.
-echo "== 99zzzz. Board fields: vendor-stated pay, type and country reach the row; an age, a story or an executive rung is not a years floor =="
+echo "== 99zzzz. Board fields: vendor-stated pay, type and country reach the row; an age or a story is not a years floor =="
 
 VDBF_H=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/job-board" -H "x-rb-budget: probe" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | sed -E 's/^[^:]+: *//')
 VDBF_LIVE=0
@@ -62,8 +59,6 @@ if [ "$VDBF_LIVE" = 1 ]; then
   J '{"action":"status"}' > /tmp/vd_bf_status.json
   J '{"action":"list","companies":["dominos"],"q":"delivery","experience":"expert","groupSimilar":false,"includeFacets":false,"limit":60}' > /tmp/vd_bf_dominos.json
   J '{"action":"list","companies":["dominos"],"q":"delivery","groupSimilar":false,"includeFacets":false,"limit":5}' > /tmp/vd_bf_dominos_ctl.json
-  J '{"action":"list","q":"director","experience":"entry","groupSimilar":false,"includeFacets":false,"limit":60}' > /tmp/vd_bf_exec.json
-  J '{"action":"list","q":"director","groupSimilar":false,"includeFacets":false,"limit":5}' > /tmp/vd_bf_exec_ctl.json
   VDBF_I=0
   for VDBF_ROW in $(printf '%s' "$VDBF_BOARDS" | node -e 'let s="";process.stdin.on("data",(d)=>s+=d).on("end",()=>{for(const [v,t] of JSON.parse(s))console.log(v+"|"+t)})'); do
     J "{\"action\":\"list\",\"companies\":[\"${VDBF_ROW#*|}\"],\"vendor\":[\"${VDBF_ROW%%|*}\"],\"groupSimilar\":false,\"includeFacets\":false,\"limit\":60}" > "/tmp/vd_bf_board_$VDBF_I.json"
@@ -90,14 +85,6 @@ const pick=[];
  else{const bad=D.filter((r)=>r&&/deliver|driver/i.test(String(r.title||""))&&r.experienceBand==="expert"&&typeof r.minYears==="number"&&r.minYears>=15&&r.minYears<=21);
   const say=bad.length+" Domino\u2019s delivery row(s) filed Expert on 15 to 21 years (of "+C.total+" delivery rows served)"+(bad.length?": "+JSON.stringify(bad.slice(0,3).map((r)=>[r.id,r.title,r.minYears])):"");
   if(!bad.length)console.log("PASS  "+say);else if(late)console.log("FAIL  "+say+", 24 h after the first slice: the v3 sweep did not clear the age lines");else console.log("INFO  "+say+"; the EXPERIENCE_VERSION 3 sweep re-derives stored rows after the deploy ("+clock+"; FAIL from 24 h)")}}
-// Executive titles filed Entry.
-{const X=rows(read("/tmp/vd_bf_exec.json")),C=read("/tmp/vd_bf_exec_ctl.json");
- const RUNG=/\b(chief|ceo|cfo|coo|cto|vp|svp|evp|vice president|head of|director|managing director)\b/i;
- if(!X||!C||typeof C.total!=="number")console.log("FAIL  the director lists are unreadable: "+peek("/tmp/vd_bf_exec.json")+" / "+peek("/tmp/vd_bf_exec_ctl.json"));
- else if(C.total===0)console.log("INFO  the board serves no director row, so the rung line has nothing to judge");
- else{const bad=X.filter((r)=>r&&RUNG.test(String(r.title||""))&&r.experienceBand==="entry"&&!/^personio:/.test(String(r.id||"")));
-  const say=bad.length+" row(s) titled with an executive rung filed Entry (of "+X.length+" served for director with experience=entry; "+C.total+" director rows on the board)"+(bad.length?": "+JSON.stringify(bad.slice(0,3).map((r)=>[r.id,r.title,r.minYears])):"");
-  if(!bad.length)console.log("PASS  "+say);else if(late)console.log("FAIL  "+say+", 24 h after the first slice");else console.log("INFO  "+say+"; the v3 sweep has not reached them yet ("+clock+"; FAIL from 24 h)")}}
 // Boards this build must have read.
 const BOARDS=JSON.parse(E.VDBF_BOARDS);
 BOARDS.forEach(([v,t,kind],i)=>{

@@ -100,6 +100,8 @@ function run(routes: Route[]): { lines: string[]; calls: string[]; out: string }
 }
 
 type Job = Record<string, unknown>;
+/** What a ranked answer carries: the flag, and search_jobs among the phases timed. */
+const RANKED = { ranked: true, phaseMs: { meta_read: 20, search_jobs: 120, head_ring: 30 } };
 let n = 0;
 const job = (title: string, over: Job = {}): Job => ({ id: `greenhouse:t:${++n}`, title, company: "Acme", location: "Austin, TX", country: "US", ...over });
 const list = (jobs: Job[], over: Record<string, unknown> = {}) => JSON.stringify({ jobs, total: jobs.length, hasMore: false, nextOffset: jobs.length, ...over });
@@ -134,7 +136,7 @@ function routes(o: Over = {}): Route[] {
     { match: ask("cvs"), bodies: o.cvs ?? [routed("EMPLOYER", "CVS Health")] },
     { match: ask("3m"), bodies: o.m3 ?? [routed("EMPLOYER", "3M")] },
     { match: `^POST ${FB}\\t\\{"action":"list","q":"","location":"Wien"`, body: o.browse ?? list([job("Data Analyst", { location: "Vienna", country: "AT" }), job("SEO Manager", { location: "Wien, Austria", country: "AT" })]) },
-    { match: `^POST ${FB}\\t\\{"action":"list","q":"engineer","location":"Wien"`, body: o.ranked ?? list([job("Software Engineer", { location: "Vienna, Austria", country: "AT" }), job("Engineer", { location: "Wien", country: "AT" }), job("Engineer", { location: "Vienna HQ", country: null })]) },
+    { match: `^POST ${FB}\\t\\{"action":"list","q":"engineer","location":"Wien"`, body: o.ranked ?? list([job("Software Engineer", { location: "Vienna, Austria", country: "AT" }), job("Engineer", { location: "Wien", country: "AT" }), job("Engineer", { location: "Vienna HQ", country: null })], RANKED) },
     ...Object.entries(walk).map(([off, body]) => ({ match: `^POST ${FB}\\t\\{"action":"list","q":"nurse","limit":50,"offset":${off},`, body })),
   ];
 }
@@ -155,7 +157,7 @@ describe("section 99zzzz: the search reads what was typed", () => {
     for (const re of [/x-fn-build = job-board\.2026-09-09\.100/, /x-fn-build = agent-mcp\.2026-11-02\.1/, /x-fn-build = public-api\.2026-11-02\.1/,
       /supervisor -"team lead" excludes \["team lead"\] and none of its 2 titles/, /nurse not requiring travel excludes \["travel"\]/, /no remote nurse excludes remote/,
       /remote-first engineer lifts the remote filter and counts 8628, exactly what remote engineer counts/, /jobs near me searches no words/, /nurse 94105 drops the ZIP/,
-      /cvs and 3m route to CVS Health and 3M on all 6 asks/, /location Wien browses 2 rows/, /engineer in Wien ranks 3 rows, .* 2 of them named Vienna/,
+      /cvs and 3m route to CVS Health and 3M on all 6 asks/, /location Wien browses 2 rows/, /engineer in Wien ranks 3 rows, .* 1 of them named Vienna/,
       /seam walk for nurse \(limit 50\) served 4 full pages to nextOffset 243/]) {
       expect(pass.some((l) => re.test(l)), `${re}\n${show(lines)}`).toBe(true);
     }
@@ -230,8 +232,20 @@ describe("section 99zzzz: the search reads what was typed", () => {
   it("FAILs Vienna VA under Wien on the browse path and the ranked path, and a ranked Wien with no anchored arm; a US row naming Austria passes", () => {
     failsWith({ browse: list([job("Sales Associate", { location: "Vienna, WV", country: "US" }), job("SEO", { location: "Vienna", country: "AT" })]) }, /location Wien browses 1 of 2 rows placed in the US: \["Vienna, WV"\]/);
     failsWith({ browse: list([]) }, /location Wien browses no row at all/);
-    failsWith({ ranked: list([job("Engineer", { location: "Vienna, OH - USA", country: "US" }), job("Engineer", { location: "Vienna", country: "AT" })]) }, /engineer in Wien ranks 1 of 2 rows placed in the US: \["Vienna, OH - USA"\]/);
-    failsWith({ ranked: list([job("Engineer", { location: "Wien, Austria", country: "AT" })]) }, /none named Vienna without Wien: search_jobs has no anchored arm/);
+    failsWith({ ranked: list([job("Engineer", { location: "Vienna, OH - USA", country: "US" }), job("Engineer", { location: "Vienna", country: "AT" })], RANKED) }, /engineer in Wien ranks 1 of 2 rows placed in the US: \["Vienna, OH - USA"\]/);
+    failsWith({ ranked: list([job("Data Engineer", { location: "Wien, Austria", country: "AT" })], RANKED) }, /none named Vienna without Wien: search_jobs has no anchored arm/);
+  });
+
+  it("FAILs a ranked Wien whose only Vienna rows the head-term ring could have supplied, and one search_jobs did not answer", () => {
+    // A title that starts with the query word is the head-term ring's to find; only another title is the anchored arm's evidence.
+    failsWith({ ranked: list([job("Engineer", { location: "Vienna", country: "AT" }), job("Engineering Manager", { location: "Wien", country: "AT" })], RANKED) },
+      /none named Vienna without Wien outside the titles the head-term ring finds/);
+    failsWith({ ranked: list([job("Software Engineer", { location: "Vienna, Austria", country: "AT" })], { phaseMs: { search_jobs: 120 } }) },
+      /engineer in Wien was not ranked/);
+    failsWith({ ranked: list([job("Software Engineer", { location: "Vienna, Austria", country: "AT" })], { ranked: true, phaseMs: { head_ring: 30 } }) },
+      /search_jobs did not run/);
+    failsWith({ ranked: list([job("Software Engineer", { location: "Vienna, Austria", country: "AT" })], { ranked: true }) },
+      /search_jobs did not run/);
     const named = run(routes({ browse: list([job("Analyst", { location: "Vienna, Austria; New York, NY", country: "US" })]) }));
     expect(hasLine(named.lines, "PASS", /location Wien browses 1 rows, none placed in the US without naming Austria/), show(named.lines)).toBe(true);
   });

@@ -7,8 +7,8 @@
  * "fields", job-board .100).
  *
  * scripts/verify-deploy.d/99zzzz-board-fields.sh is the post-deploy proof
- * that vendor-stated pay, types and countries reach the rows, that an age, a
- * story or an executive rung no longer decides a band, and that Lever,
+ * that vendor-stated pay, types and countries reach the rows, that an age or a
+ * story no longer decides a band, and that Lever,
  * Personio and Paylocity descriptions read whole. A PASS is worth something
  * only if a regression could have turned it into a FAIL
  * (verify-deploy.d/README.md), so the section runs here against a fake curl
@@ -146,7 +146,7 @@ describe("99zzzz on a good deploy", () => {
     const { lines, out } = run(routes());
     const v = verdicts(lines);
     expect(v.filter((l) => !l.startsWith("PASS")), out).toEqual([]);
-    expect(v.length, out).toBe(3 + BOARDS.length + 3);
+    expect(v.length, out).toBe(2 + BOARDS.length + 3);
     expect(out).not.toContain(KEY);
   });
   it("every board call is a probe-budget status, list or detail read", () => {
@@ -176,10 +176,10 @@ describe("99zzzz fails each claim when it is false", () => {
     expect(line(run(routes({ dominos: bad, buildSince: iso(5 * H) })).lines, /Domino/)).toMatch(/^INFO/);
     expect(line(run(routes({ dominos: [{ ...bad[0], title: "Director, Data Platform", minYears: 18 }] })).lines, /Domino/), "only delivery rows are judged").toMatch(/^PASS/);
   });
-  it("an executive title filed Entry: FAIL, a Personio one excepted", () => {
-    const bad = { id: "greenhouse:x:1", title: "Director of Sales", experienceBand: "entry", minYears: 2 };
-    expect(line(run(routes({ exec: [bad] })).lines, /executive rung/)).toMatch(/^FAIL/);
-    expect(line(run(routes({ exec: [{ ...bad, id: "personio:x:1" }] })).lines, /executive rung/)).toMatch(/^PASS/);
+  it("makes no executive-rung claim: the stated figure decides a director's band, as on main (S13-016 declined, n1420)", () => {
+    const { lines, calls } = run(routes({ exec: [{ id: "greenhouse:x:1", title: "Assistant Store Director", experienceBand: "entry", minYears: 1 }] }));
+    expect(verdicts(lines).filter((l) => /rung|director/i.test(l))).toEqual([]);
+    expect(calls.filter((c) => /"q":"director"/.test(c))).toEqual([]);
   });
   it.each(BOARDS.map(([v, t, kind]) => [v, t, kind] as const))("%s board %s (%s): FAIL when its rows lack the field, after this build read it", (_v, t, kind) => {
     const read = iso(2 * H);
