@@ -481,6 +481,9 @@ export interface FreeKeywordResultsProps {
   unquantifiedBulletsDetected?: { text: string; role: string }[];
   bulletQuantRate?: number;
   projectedScore?: number | null;
+  /** The scanner's one fix list (S13-058): projectedScore is its `to`, and the
+   *  simulator ticks through its fixes to reach the same total. */
+  scoreProjection?: { to?: number; fixes?: Array<{ label?: unknown; impact?: unknown }> } | null;
   // Market intelligence
   marketIntelligence?: {
     country: string; countryName: string; countrySource: string;
@@ -667,6 +670,7 @@ export function FreeKeywordResults({
   unquantifiedBulletsDetected = [],
   bulletQuantRate,
   projectedScore,
+  scoreProjection,
   marketIntelligence,
   skillsRecency,
   careerTrajectory,
@@ -1114,6 +1118,20 @@ export function FreeKeywordResults({
   const weakPhrases = weakPhrasesProp || [];
   const timelineAnalysis = timelineAnalysisProp ?? null;
   const quickWins = quickWinsProp || [];
+  // The simulator's fixes are the scanner's one fix list (S13-058), so every
+  // box ticked lands on the hero's projected score, the Fix Plan's last step
+  // and Improvement Potential: the quick wins served plus the bullets and
+  // keywords steps. An older response without the list keeps the quick wins.
+  const simulatorFixes: Array<{ label: string; impact: number }> = (() => {
+    const listed = Array.isArray(scoreProjection?.fixes)
+      ? scoreProjection!.fixes!.flatMap((f) =>
+          f && typeof f.label === 'string' && f.label.trim() && typeof f.impact === 'number' && Number.isFinite(f.impact)
+            ? [{ label: f.label, impact: Math.max(0, Math.round(f.impact)) }]
+            : [])
+      : [];
+    if (listed.length > 0) return listed;
+    return quickWins.slice(0, 5).map(w => ({ label: w.fix, impact: w.scoreImpact ?? (w.impact === 'high' ? 6 : w.impact === 'medium' ? 4 : 2) }));
+  })();
   const sampleRewrite = sampleRewriteProp;
   // No fallback, deliberately: the old hardcoded default showed every user
   // the same invented per-vendor scores. Absent data now hides the section.
@@ -3334,12 +3352,12 @@ export function FreeKeywordResults({
       )}
 
       {/* Interactive score simulator — check fixes, watch the projection */}
-      {quickWins.length > 0 && (
+      {simulatorFixes.length > 0 && (
         <div className="mb-5">
           <ScoreSimulatorCard
-            key={`sim-${atsScoreEstimate}-${quickWins.length}`}
+            key={`sim-${atsScoreEstimate}-${simulatorFixes.length}`}
             atsScore={atsScoreEstimate}
-            fixes={quickWins.slice(0, 5).map(w => ({ label: w.fix, impact: w.scoreImpact ?? (w.impact === 'high' ? 6 : w.impact === 'medium' ? 4 : 2) }))}
+            fixes={simulatorFixes}
           />
         </div>
       )}

@@ -270,6 +270,8 @@ interface FreeKeywordResult {
   unquantifiedBulletsDetected?: { text: string; role: string }[];
   bulletQuantRate?: number;
   projectedScore?: number | null;
+  /** The one fix list the projection is read from (S13-058); absent on older responses. */
+  scoreProjection?: { from?: number; to?: number; gain?: number; fixes?: Array<{ kind?: string; label?: unknown; impact?: unknown; minutes?: number }> } | null;
   // Market intelligence
   marketIntelligence?: {
     country: string;
@@ -2313,6 +2315,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
                 unquantifiedBulletsDetected={freeKeywordResult.unquantifiedBulletsDetected}
                 bulletQuantRate={freeKeywordResult.bulletQuantRate}
                 projectedScore={freeKeywordResult.projectedScore ?? undefined}
+                scoreProjection={freeKeywordResult.scoreProjection ?? null}
                 marketIntelligence={freeKeywordResult.marketIntelligence}
                 skillsRecency={freeKeywordResult.skillsRecency}
                 careerTrajectory={freeKeywordResult.careerTrajectory}
