@@ -1622,6 +1622,10 @@
     },
     "tailoredSignIn": {
       "cta": "Mag-sign in para i-tailor ang resume mo sa trabahong ito (libre: isa bawat araw)"
+    },
+    "resumeTruncated": {
+      "title": "Hindi nabasa ng scan na ito ang buong resume mo.",
+      "body": "Mas mahaba ito kaysa sa kayang basahin nang buo ng scan, kaya ang score, ang mga kulang na keyword at ang mga sinipi sa ibaba ay mula lang sa bahaging nabasa. Paikliin ito, o i-scan ang pinakamahahalagang pahina, para masuri ang lahat."
     }
   },
   "analysisPreviewSample": {

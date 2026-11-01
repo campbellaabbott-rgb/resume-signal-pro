@@ -106,6 +106,8 @@ const DETECTED_INDUSTRY_COUNT = 58;
 
 interface FreeKeywordResult {
   detectedLanguage?: { code: string; name: string } | null;
+  /** The scanner did not read the whole résumé (S13-008); absent on older responses. */
+  resumeTruncated?: boolean;
   candidateName?: string | null;
   currentRole?: string;
   industry: string;
@@ -2291,6 +2293,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
                 }}
                 resumeText={resumeText}
                 multiColumnDetected={resumeMultiColumnDetected}
+                resumeTruncated={freeKeywordResult.resumeTruncated === true}
                 jobDescriptionText={jobDescriptionText}
                 jobTitle={uploadedJobs[0]?.title}
                 jobCompany={uploadedJobs[0]?.company}

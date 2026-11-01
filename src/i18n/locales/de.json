@@ -1622,6 +1622,10 @@
     },
     "tailoredSignIn": {
       "cta": "Melden Sie sich an, um Ihren Lebenslauf an diese Stelle anzupassen (kostenlos: einer pro Tag)"
+    },
+    "resumeTruncated": {
+      "title": "Dieser Scan hat deinen Lebenslauf nicht vollständig gelesen.",
+      "body": "Er ist länger, als der Scan vollständig liest. Der Wert, die Schlüsselwortlücken und die zitierten Zeilen unten stammen daher nur aus dem gelesenen Teil. Kürze ihn oder scanne die wichtigsten Seiten, damit alles geprüft wird."
     }
   },
   "analysisPreviewSample": {

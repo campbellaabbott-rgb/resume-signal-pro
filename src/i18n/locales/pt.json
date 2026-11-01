@@ -1632,6 +1632,10 @@
     },
     "tailoredSignIn": {
       "cta": "Inicie sessão para adaptar o seu currículo a este emprego (grátis: um por dia)"
+    },
+    "resumeTruncated": {
+      "title": "Esta verificação não leu seu currículo inteiro.",
+      "body": "Ele é mais longo do que a verificação lê por inteiro, então a pontuação, as palavras-chave em falta e as linhas citadas abaixo vêm só da parte lida. Encurte-o, ou verifique as páginas mais importantes, para que tudo seja analisado."
     }
   },
   "analysisPreviewSample": {

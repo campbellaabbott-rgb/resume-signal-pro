@@ -1622,6 +1622,10 @@
     },
     "tailoredSignIn": {
       "cta": "Log in om je cv af te stemmen op deze vacature (gratis: één per dag)"
+    },
+    "resumeTruncated": {
+      "title": "Deze scan heeft je cv niet helemaal gelezen.",
+      "body": "Het is langer dan de scan volledig leest, dus de score, de ontbrekende trefwoorden en de geciteerde regels hieronder komen alleen uit het gelezen deel. Kort het in, of scan de belangrijkste pagina's, om alles te laten controleren."
     }
   },
   "analysisPreviewSample": {

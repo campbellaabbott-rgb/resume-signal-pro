@@ -449,6 +449,8 @@ export interface FreeKeywordResultsProps {
   // Set only for PDF uploads (needs position data from text extraction) — see
   // ATSParseSimulator, which skips the layout check entirely when undefined.
   multiColumnDetected?: boolean;
+  /** The scanner's resumeTruncated: part of the résumé was not read (S13-008). */
+  resumeTruncated?: boolean;
   jobDescriptionText?: string;
   jobTitle?: string;
   jobCompany?: string;
@@ -637,6 +639,7 @@ export function FreeKeywordResults({
   isGeneratingTailored,
   resumeText,
   multiColumnDetected,
+  resumeTruncated,
   jobDescriptionText,
   jobTitle,
   jobCompany,
@@ -1422,6 +1425,18 @@ export function FreeKeywordResults({
   return (
     <TooltipProvider delayDuration={200}>
     <div className="w-full max-w-3xl mx-auto animate-fade-in">
+      {/* ── The scan did not read the whole résumé (S13-008). It leads the
+          report: every score and quote below comes from the part it read,
+          and the report must not pass that off as a reading of the whole
+          document. Only the scanner's own boolean shows it; an older
+          response without the field shows nothing. ── */}
+      {resumeTruncated === true && (
+        <div data-resume-truncated role="note" className="rounded-xl border border-warning/50 bg-warning/10 px-4 py-3 mb-4">
+          <p className="text-sm font-semibold text-foreground">{t('freeResults.resumeTruncated.title')}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{t('freeResults.resumeTruncated.body')}</p>
+        </div>
+      )}
+
       {/* ── The report's summary. The scan's verdict marks a complete report,
           and its sentence is not printed: it put a pass rate on the résumé,
           and the line under it placed the score among other people's scans.
@@ -1466,6 +1481,7 @@ export function FreeKeywordResults({
                   line(new Date().toLocaleDateString(), 9, false, [120, 120, 120]);
                 }
                 y += 8;
+                if (resumeTruncated === true) line(`${t('freeResults.resumeTruncated.title')} ${t('freeResults.resumeTruncated.body')}`, 9.5, true, [160, 110, 20]);
                 line(`ATS Score: ${atsScoreEstimate}/100${scoreBand ? `  (modeling band ${scoreBand.low}–${scoreBand.high})` : ''}${projectedScore ? `  →  about ${projectedScore} after fixes, a rough guide` : ''}`, 12, true);
                 if (scoreBreakdown) line(`Breakdown — Keywords: ${scoreBreakdown.keywords}%  ·  Format: ${scoreBreakdown.format}%  ·  Quantification: ${scoreBreakdown.quantification}%`, 10);
                 y += 6;

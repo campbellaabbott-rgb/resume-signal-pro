@@ -1632,6 +1632,10 @@
     },
     "tailoredSignIn": {
       "cta": "Inicia sesión para adaptar tu currículum a este empleo (gratis: uno al día)"
+    },
+    "resumeTruncated": {
+      "title": "Este análisis no leyó tu currículum completo.",
+      "body": "Es más largo de lo que el análisis lee completo, así que la puntuación, las palabras clave que faltan y las líneas citadas abajo salen solo de la parte que leyó. Acórtalo, o analiza las páginas más importantes, para que se revise todo."
     }
   },
   "analysisPreviewSample": {

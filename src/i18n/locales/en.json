@@ -1622,6 +1622,10 @@
     },
     "tailoredSignIn": {
       "cta": "Sign in to tailor your résumé to this job (free: one a day)"
+    },
+    "resumeTruncated": {
+      "title": "This scan did not read your whole résumé.",
+      "body": "It is longer than the scan reads in full, so the score, the keyword gaps and the quoted lines below come only from the part it read. Shorten it, or scan the pages that matter most, to have all of it checked."
     }
   },
   "analysisPreviewSample": {
