@@ -5,7 +5,7 @@ import { detectIndustry, formatDetectionForPrompt, buildDynamicCorrectionBoosts,
 import { getOnetExpectation } from "./onet-expectations.ts";
 import { evaluateCountryStandards } from "./country-standards.ts";
 import { computeParseQuality, parseResumeStructure, formatStructureForPrompt } from "./resume-structure.ts";
-import { detectResumeLanguage } from "./resume-language.ts";
+import { detectResumeLanguage, formatLanguageForPrompt, languageNoticeOf } from "./resume-language.ts";
 import { groundedIn, normalizeForGrounding } from "./grounding.ts";
 import { hasMetric } from "./bullet-metrics.ts";
 import { detectEmploymentGaps, type GapAnalysis } from "./employment-gaps.ts";
@@ -2325,9 +2325,9 @@ This resume must be judged as ${seniorityDetection.level === 'executive' ? 'a C-
     // server-side and state it as a hard fact, appended LAST in the user prompt
     // so it's the freshest instruction the model reads.
     const resumeLanguage = detectResumeLanguage(resumeText);
-    const languageHint = resumeLanguage.language !== 'en'
-      ? `\n\n**DETECTED RESUME LANGUAGE: ${resumeLanguage.languageName.toUpperCase()} (MANDATORY).** This resume is written in ${resumeLanguage.languageName}. Your ENTIRE response must be written in ${resumeLanguage.languageName} — every free-text string value (tips, red flags, rewrites, explanations, verdicts). Keep the JSON keys in English exactly as specified. ${FIXED_CHOICES_STAY_ENGLISH} Keyword suggestions must be ${resumeLanguage.languageName} terms actually used in that job market. Do NOT respond in English.`
-      : '';
+    // A language the report is not built for, or one the detector cannot
+    // name, is said so to the model and on the page (S13-024).
+    const languageHint = formatLanguageForPrompt(resumeLanguage, FIXED_CHOICES_STAY_ENGLISH);
     if (resumeLanguage.language !== 'en') {
       console.log(`[FREE-KEYWORD-SCAN] Resume language: ${resumeLanguage.language} (${resumeLanguage.confidence}) — ${resumeLanguage.evidence[0] ?? ''}`);
     }
@@ -4045,6 +4045,9 @@ ${resumeText.substring(0, 20000)}
     // Deterministically-detected resume language (drives the report language).
     // Exposed so the frontend and post-publish probes can verify compliance.
     responseData.detectedLanguage = resumeLanguage.language;
+    // Null when the report is built for the language; otherwise what it is
+    // and why the keyword and section checks may miss its words (S13-024).
+    responseData.languageNotice = languageNoticeOf(resumeLanguage);
     responseData.industryTransition = transitionDetected
       ? { historical: industryDetection.industry, recent: splitDetection!.industry }
       : null;

@@ -1,0 +1,572 @@
+{
+ "about": "S13-024 slice: real text (macOS localized strings, repo locale files, real postings) and labelled synthetic CVs, with the language each is in ('unknown' = a language the detector has no list for). main = f8d72a9b's answer. Full corpus: ~/.config/resumebooster/free-scan-wave-corpora/S13-024.",
+ "cases": [
+  {
+   "id": "macos:zh_HK:9",
+   "label": "zh",
+   "synthetic": false,
+   "text": "FairPlay除錯選單 使用製作此篇章的日期或影片的日期。 無法編輯此群組，因為群組包含不受支援的物件。如要繼續編輯，你將需要在「設定」中更新visionOS。 我已將你的備註加至你的泊車位置 使用「地圖」時開啟「定位服務」以獲得最佳效果。 因為無法連接網絡，或正在建立網絡連線，所以無法連接帳户「」。 來自的來電。按下TV鍵以保留通話。 你寫了「」，但看來你在向他們傳送密件副本而非副本。你仍然要傳送嗎？ 此Mac的Siri已關閉 「」事件中的個行程有一個與日曆的其他行程撞期。如接受所有行程，該行程會與其他編排的行程重疊。如只接受無撞期的行程，會收到撞期行程的個別邀請，你可選擇手動接受或拒絕。",
+   "main": "en"
+  },
+  {
+   "id": "macos:fi:8",
+   "label": "unknown",
+   "synthetic": false,
+   "text": "Laita Pitkä valotus -tehoste pois päältä poistetaan puhelimesta ja kellosta . Kirjaa ei voida avata, koska se ei ole kirjastossasi. Kalenteria ei voitu päivittää odottamattoman virheen vuoksi. iCloud-tilisi tarvitsee suojauksen päivityksen, jotta voit tehdä reaaliaikaista yhteistyötä. Lukitse päiväkirja laitteen pääsykoodilla, Face ID:llä tai Touch ID:llä. Nimeä ”” ei voitu käyttää, koska se ei sisällä yhtään kirjainta, numeroa tai muuta merkkiä. tussilla piirretty rento pystysuuntainen siksakviiva Active Directory ei ole käytettävissä. Yritä myöhemmin uudelleen. lähetti viestin, jolla ei ole aihetta Et saa puheluja, viestejä tai FaceTime-puheluja henkilöiltä, jotka ovat estettyjen luettelossa. Voit myös ilmoittaa tämän puhelun roskapostiksi lähettämällä sen Applelle.",
+   "main": "en"
+  },
+  {
+   "id": "macos:ar:6",
+   "label": "ar",
+   "synthetic": false,
+   "text": "إظهار الخطوط التي تم نقلها لا يمكن لسماعات HomePod الاتصال بالشبكة هل ترغب في تحويل الرسالة إلى نص منسق؟ إدارة الإشعارات من الأجهزة التي يمكنها اكتشاف الأحداث المهمة. توصيل حساب الكهرباء يتيح لك عرض بيانات الاستخدام ويعطيك فكرة عن التعريفات الحالية. رابط iCloud لهذه اللوحة غير صالح أو لم يعد متاحًا. تنزيل الفيديو ما زال جاريًا. حاول مرة أخرى عند اكتمال التنزيل. لقد دوَّنت يومياتك على مدار يومين على التوالي! استمر في تدوينك المتواصل عن طريق تدوين يومياتك اليوم. هل أنت متأكد من رغبتك في استبعاد التعليقات التوضيحية؟",
+   "main": "en"
+  },
+  {
+   "id": "macos:hr:4",
+   "label": "unknown",
+   "synthetic": false,
+   "text": "Podesite najtamnije tonsko područje slike Dodajte Siri za svoje pribore Otvori postavku trajne uporabe datuma trenutka Priprema uređivanja s aplikacijom … Bilješka se ne može promijeniti jer je zaključana. Katakana Iroha znak s desnom zagradom Kolekcija će se trajno ukloniti, ali to neće utjecati na fontove koje sadrži. Ovaj postupak ne može se poništiti. Prepoznavanje glasa možete kasnije uključiti u postavkama Doma. Ažuriraj moju lokaciju parkiranja na ${place} Prosječne ukupne padaline za svibanj iznose . Prikazivanje mjesta unutar 800 metara.",
+   "main": "en"
+  },
+  {
+   "id": "macos:sl:9",
+   "label": "unknown",
+   "synthetic": false,
+   "text": "Mapa, v katero bo premaknjen zapisek (izbirno) Vse fotografije v albumu, ki ga vlečete, bodo premaknjene v album »«. Zapisek, v katerega bo dodan element kontrolnega seznama Ste prepričani, da želite izbrisati to mapo? Današnja hitrost vetra je manjša od včerajšnje. Črta iz srednje dolgih črtic Izbrisani elementi se premaknejo v album Nedavno izbrisano V shrambi naprave Apple Vision Pro primanjkuje prostora. Sprostite nekaj prostora v shrambi, da se bodo epizode lahko znova začele prenašati. točk do zgornjega desnega kota izbire",
+   "main": "en"
+  },
+  {
+   "id": "macos:th:2",
+   "label": "th",
+   "synthetic": false,
+   "text": "แอปรูปภาพไม่สามารถเล่นวิดีโอนี้ได้เนื่องจากไม่มีแหล่งข้อมูลให้ใช้งานได้ ไฟล์เก็บถาวรของรายชื่อ ต่ำกว่าอุณหภูมิสูงสุดเฉลี่ยรายวัน ในการเล่นหนังสือเสียงนี้ คุณจะต้องอนุญาตคอมพิวเตอร์เครื่องนี้ให้ใช้บัญชี Audible ของคุณ คุณต้องการไปที่เว็บไซต์ของ Audible เพื่อทำตอนนี้เลยไหม",
+   "main": "en"
+  },
+  {
+   "id": "macos:tr:9",
+   "label": "tr",
+   "synthetic": false,
+   "text": "Bu öğeyi paylaşmak için Apple Hesabı’nıza giriş yapıp Freeform için iCloud’u açmanız gerekir. Anahtar sözcük kestirmesinin adını değiştirme geri alınıyor… Bir dakikadan kısa süre önce Bölüme erişmek için Hücresel Veri’yi açın veya Wi⁠-⁠Fi’yi kullanın. Disk bölümünün biçimini denetlemek için Finder’da fotoğraf arşivinizin bulunduğu disk bölümünü seçip Dosya menüsünden Bilgi Ver’i seçin. Disk bölümü türü Biçim alanında görünür. Yüksek kaliteli içerikler hükümlerine tabidir. Desteklenmeyen bir biçim kullanıldığı için Fotoğraflar bu videoyu düzenleyemiyor. Gidilecek sekme çubuğu veya koleksiyon öğesi Yaşamınızın farklı bölümleri hakkında yazın ve girişleri ayrı günlüklerde düzenlenmiş olarak tutun.",
+   "main": "en"
+  },
+  {
+   "id": "macos:ru:2",
+   "label": "ru",
+   "synthetic": false,
+   "text": "Не удалось защитить заметку паролем. Функции «Скрыть e‑mail» не удалось создать адрес электронной почты взамен . Все равно отправить? Максимальная скорость ветра сегодня такая же, как вчера. Чтобы забронировать столик, откройте приложение «». Истек срок действия профилей, установленных на HomePod «» и «» и обеспечивающих доступ к сети «». Получайте уведомления о важных явлениях погоды, таких как наводнения и торнадо. Функция доступна не во всех странах и регионах. Невозможно написать отзыв об аудиокниге или поставить ей оценку, так как аудиокниги больше нет в Книгах.",
+   "main": "en"
+  },
+  {
+   "id": "macos:ko:9",
+   "label": "ko",
+   "synthetic": false,
+   "text": "대상체를 세로 방향으로 균등하게 배치합니다. 음악, 팟캐스트 및 오디오북에 사용할 서비스를 선택하십시오. Siri에게 특정 서비스를 사용하도록 요청하여 미디어를 재생하는 데 사용할 수 있습니다. 사용자 언어로 된 종목 관련 기사가 없는 경우 영어 기사를 표시합니다. 지도를 로드하는 데 실패했습니다. 연결 상태를 확인하십시오. 다른 참여자가 게시한 항목은 삭제할 수 없습니다. 사용자가 게시한 항목을 영구적으로 삭제하겠습니까? 이 오디오북을 재생하려면 설정에서 셀룰러 데이터 또는 Wi‑Fi를 켜십시오.",
+   "main": "en"
+  },
+  {
+   "id": "macos:cs:3",
+   "label": "unknown",
+   "synthetic": false,
+   "text": "Přehrává se. Zbývající čas: hodina Názvy složek nemohou být delší než znaků. Pokud publikování kalendáře zastavíte, bude odstraněn z internetu a ostatní jej nebudou moci odebírat. Klepnutím spustíte skenování budov pomocí fotoaparátu. Co se tento týden stalo nejdůležitějšího? Pro aktivování těchto funkcí bude nutné vaše poznámky upgradovat. Siri přidruží k této domácnosti váš hlasový profil z tohoto Macu, aby mohla rozpoznávat váš hlas, přehrávat vaši oblíbenou hudbu a poskytovat vám další služby. Když máte zapnutou funkci Nerušit nebo jiný režim soustředění, aplikace Zprávy vašim kontaktům sdělí, že nepřijímáte oznámení.",
+   "main": "en"
+  },
+  {
+   "id": "macos:hu:0",
+   "label": "unknown",
+   "synthetic": false,
+   "text": "A(z) nem kapcsolódik az internethez. A légnyomás hirtelen jelentős változásai segítségével előre jelezhetők az időjárás-változások. Például a légnyomás esése azt jelentheti, hogy eső vagy havazás közeleg, a növekvő légnyomás pedig az időjárás javulását jósolja. A légnyomást légköri nyomásnak vagy atmoszférikus nyomásnak is nevezzük. Eltávolítás ebből a gyűjteményből vagy a(z) letöltés eltávolítása. A hangoskönyveket letöltheti újra a fiókjából. A(z) ${target} méretének beállítása erre: ${attachmentSize} Ezt később az Otthon beállításaiban módosíthatja. Üzenetek szűrésének megszüntetése ebben a postafiókban A jegyzet, amely olyan elemeket tartalmaz, amelyek teljesítettként lesznek megjelölve, vagy amelyek megjelölése törölve lesz",
+   "main": "en"
+  },
+  {
+   "id": "macos:da:3",
+   "label": "unknown",
+   "synthetic": false,
+   "text": "Reducer din klimabelastning ved at vælge andre former for transport end bilen. Du har ikke hentet nogen episoder endnu. Fremhæv indhold linje 2 linje 3 linje 4 Ok, jeg husker, at du parkerede her, og jeg har gemt dit foto Panorer og zoom på kort for at justere lokaliteten for indgangen Vælg et billede, der skal bruges som bogomslag Juster, hvor meget af kanten der skal gøres skarp “” skal flyttes til en mappe på din Mac for at kunne åbnes.",
+   "main": "en"
+  },
+  {
+   "id": "macos:uk:6",
+   "label": "uk",
+   "synthetic": false,
+   "text": "Викачування елементів для створення книги Не вдається переглянути цей обʼєкт, оскільки його було додано в новішій версії Freeform. Щоб переглянути його, оновіть visionOS у Параметрах. Швидкі команди, які потрібно перемістити Задати час для нагадування про те, що потрібно відповісти на цей лист. Додати згоду рідних чи друзів… Лист адресований не на моє повне імʼя Закінчився час очікування на підʼєднання до облікового запису «». Використовуйте інтерком і HomePod, щоб спілкуватися з людьми у своєму домі. Не вдається видалити елемент через несумісний формат.",
+   "main": "en"
+  },
+  {
+   "id": "macos:he:3",
+   "label": "he",
+   "synthetic": false,
+   "text": "גירסה גדולה יותר של תמונה זו באפשרותך להוסיף אורחים רק מתוך הבית וכאשר אביזר נעילה נתמך נמצא לידך. ניתן לדווח על בעיה ברחוב, במקום או במסלול באמצעות לחיצה על ״״. בעיות שדיווחת עליהן יופיעו כאן. כל קובץ גופן שיוחלף יועבר אל התיקיה ״~/Library/Font (Removed)״. גופנים שנמצאים בספריות לא יועברו. מה יכול להפוך את היום הזה לנהדר? כדי לקרוא אותו יש לרכוש אותו מחנות הספרים. ניתן לארגן תוכן, לסדר מקטעים בלוח ועוד. לא ניתן לערוך את הקבוצה נדרשת רכזת ביתית להשלמת ההגדרה של אביזר זה.",
+   "main": "en"
+  },
+  {
+   "id": "macos:zh_CN:5",
+   "label": "zh",
+   "synthetic": false,
+   "text": "与服务器的连接不安全。你要继续同步此日历吗？ 个账户连接失败，lu_offline@离线。点按每个账户旁的指示符了解详细信息。 删除此地点会将其从指南移除并删除附加的备注。 Copyright © 2005–2026 Apple Inc. 保留一切权利。 确定要删除智能邮箱“”吗？ 解锁设备以查看“家庭”配件和场景 交通;;船;;舰;;轮船;;海上;;海军 使用Apple创作坊解锁全新智能功能和高级内容等。无需订阅即可查看、编辑和协作。 允许直接从联系人处接收快捷指令。Apple无法验证私人共享快捷指令的真实性。",
+   "main": "en"
+  },
+  {
+   "id": "macos:id:9",
+   "label": "id",
+   "synthetic": false,
+   "text": "Saat Anda tidak sedang berkendara, buka Apple Podcasts di iPhone Anda dan tinjau informasi privasi. Pastikan Anda berada di luar saat memindai bangunan Hapus penanda dari halaman saat ini Episode yang akan dibuka di app Beberapa font harus diunduh sebelum dapat diaktifkan. Label yang akan ditambahkan ke catatan Ubah ukuran ${documents} ke ${width} x ${height} Ketuk dua kali untuk memutar. Dokumen ini telah dimodifikasi menggunakan versi OS yang lebih baru. Tingkatkan ke OS terbaru untuk memodifikasinya di perangkat ini. Gambar khusus opsional untuk pintasan Layar Utama",
+   "main": "en"
+  },
+  {
+   "id": "macos:sk:7",
+   "label": "unknown",
+   "synthetic": false,
+   "text": "Náhľad odkazu nie je k dispozícii Ostatní členovia domácnosti si môžu pozrieť živý stream z tejto kamery. Aktivity detegované kamerou budú nahrané a bezpečne uchované v iCloude. Nahrané klipy sú bezpečne uchované v iCloude a môže k nim pristupovať každý člen domácnosti. Môžete to kedykoľvek zmeniť v nastaveniach tejto kamery. Otvorí existujúci účet v apke Poznámky. Chcete vymazať položky z iCloudu a zo všetkých vašich zariadení, ktoré používajú iCloud? Nenašli sa žiadne platné udalosti na pridanie do kalendára. Nie je možné prihlásiť sa na odber",
+   "main": "en"
+  },
+  {
+   "id": "macos:no:3",
+   "label": "unknown",
+   "synthetic": false,
+   "text": "Åpne menyen for tilpassing av tema Flotte nye verktøy for notater som synkroniseres til Apple-kontoen din. Laveste daglige snittemperatur for desember er , og høyeste daglige snittemperatur er . Månedlige gjennomsnitt bruker den gregorianske kalenderen. Den angitte boken i biblioteket som skal åpnes Feil ved godtakelse av invitasjon til delt album Vil du slette tavle for godt? Konverterer filmer til H.264 (1080p) Søkeresultater kan ikke vises fordi iPhonen er i Flymodus. Du må tillate varslinger for Hjem for å utføre «».",
+   "main": "en"
+  },
+  {
+   "id": "macos:sv:8",
+   "label": "sv",
+   "synthetic": false,
+   "text": "Det går inte att visa en rutt eftersom iPad är i flygplansläge. Det gick inte att använda namnet eftersom det inte innehåller några bokstäver, siffror eller andra tecken. Välj ett annat namn. Om du avbryter kommer dina ändringar att gå förlorade. Vill du spara ändringarna först? Om du vill tysta eller slå på ljudet för trådnotiser Vid sökning i alla brevlådor, inkludera träffar från: All information om hur du använder Podcaster, till exempel vilka länkar du klickar på, kommer att nollställas. Detta nollställer även ID:t för eventuella parkopplade watchOS-enheter. Din unika identifierare kopplas inte till ditt Apple‑konto.",
+   "main": "en"
+  },
+  {
+   "id": "macos:zh_TW:9",
+   "label": "zh",
+   "synthetic": false,
+   "text": "活動;;交通;;冒險;;船;;划船;;假日;;度假;;海;;海洋;;航海 正在還原將照片加入幻燈片秀⋯ 應該被模糊的面孔、車牌或其他可識別個人身分的資訊等選擇性資訊 你的影片會從你所有裝置的「iCloud照片」中刪除。這些影片會在「最近刪除」中保留天。 取用聯絡人可讓你邀請聯絡人加入你的家庭，並查看你家庭成員的姓名和聯絡人照片。App會在取用聯絡人前要求許可。 當你將Apple TV或HomePod設定為家庭中樞時，你的攝影機可以擷取並安全地在iCloud儲存錄影。 %1$[設計者]@ %2$[結尾為]@",
+   "main": "en"
+  },
+  {
+   "id": "macos:ro:3",
+   "label": "unknown",
+   "synthetic": false,
+   "text": "Seria de scris în jurnal a început joi. Apple nu poate să garanteze și nu garantează validitatea, precizia, calitatea, caracterul complet sau adecvarea informațiilor, imaginilor și altor tipuri de conținut furnizate prin intermediul sau de către Wikipedia. Un articol nu poate fi mutat în el însuși. Afișați lista locurilor din aplicația Vremea Fila Mesagerie din aplicația Telefon Apăsați dublu pentru mai puține detalii Accesul la înregistrarea ecranului vă permite să vă partajați ecranul în apelurile FaceTime. Alegeți un nou cod de acces din - cifre, cu care să descuiați ușile din această locuință.",
+   "main": "en"
+  },
+  {
+   "id": "macos:el:6",
+   "label": "el",
+   "synthetic": false,
+   "text": "Αφαιρέστε παλαιότερες αυτόματες λήψεις περιορίζοντας τον αριθμό λήψεων που διατηρούνται σε αυτό το iPhone. Μπορείτε να αλλάξετε αυτήν τη ρύθμιση για όλες τις εκπομπές στο τμήμα «». Τα επεισόδια που έχετε αποθηκεύσει ή λάβει χειροκίνητα δεν θα αφαιρεθούν. Δεν έχετε τη δυνατότητα επεξεργασίας, αλλά μπορείτε να βλέπετε τις αλλαγές. Δεν είναι δυνατό το άνοιγμα αυτού του καμβά, διότι τροποποιήθηκε σε νεότερη έκδοση του Freeform και διαθέτει μη υποστηριζόμενες δυνατότητες. Για να τον ανοίξετε, θα πρέπει να ενημερώσετε το iPadOS στις Ρυθμίσεις.",
+   "main": "en"
+  },
+  {
+   "id": "macos:ms:5",
+   "label": "ms",
+   "synthetic": false,
+   "text": "Perubahan yang akan digunakan pada item senarai semak (tanda, nyahtanda atau togol) Sokongan untuk versi semasa Apple Home anda akan tamat tidak lama lagi. Kemas kini sekarang untuk mengelakkan gangguan pada aksesori dan automasi anda. Ahli rumah anda juga akan perlu mengemas kini pada peranti mereka. Versi lebih baharu anak tetingkap seting ini telah dipasang. Adakah anda mahu menggantikannya dengan versi lebih lama? Dapatkan Kemas Kini tentang Laporan Anda Item yang akan ditandakan atau dinyahtanda dalam senarai semak Buka butiran kualiti udara untuk ${location}",
+   "main": "en"
+  },
+  {
+   "id": "macos:vi:6",
+   "label": "unknown",
+   "synthetic": false,
+   "text": "Biểu tượng;;thùng rác;;rác;;rác thải;;chất thải Đang khôi phục tốc độ bản trình chiếu Trong tháng 12, tổng lượng mưa trung bình là . Được tìm thấy trong numberOfSections@ của numberOfDocuments@ Bạn đang sử dụng “” để chia sẻ vị trí của mình trong ứng dụng Tìm, Tin nhắn, tính năng Nội dung cá nhân trên HomePod và quá trình tự động hóa của ứng dụng Nhà. Được nén (Kích cỡ tệp nhỏ hơn) Khóa nhật ký của bạn bằng mật khẩu đăng nhập hoặc Touch ID.",
+   "main": "en"
+  },
+  {
+   "id": "macos:pl:11",
+   "label": "pl",
+   "synthetic": false,
+   "text": "i znajdują się w sieci WLAN „”, która może wymagać dalszego uwierzytelniania. Cześć uczestników ma starsze systemy operacyjne i nie może nawiązywać połączeń FaceTime z tym kontaktem. Przejdź do elementu , używając linii () Wiadomości email, których nadawcy zostaną zablokowani Usuwaj znaki wodne w Apple Creator Studio Pytaj, jeśli ponad 200 MB Wiadomość zawiera frazę „”, ale tej osoby nie ma wśród odbiorców. To nie jest prawidłowe hasło dostępu do tej notatki. Spróbuj użyć innego hasła. Aktywność będzie wykrywana w wyznaczonych strefach.",
+   "main": "en"
+  },
+  {
+   "id": "macos:ja:1",
+   "label": "ja",
+   "synthetic": false,
+   "text": "このバージョンのフリーボードでは一部のインテリジェンス機能が使用できなくなりました。お使いのはモデルが古いためアップデートできません。 より新しいモデルのであれば、フリーボードの最新バージョンを使用できます。 AirPlayでオーディオを再生するには、“”が近くにある必要があります。 インターネットに接続できません。 場所の情報は新規エントリーに自動的に追加され、“場所”で閲覧できます。 Siriで使用するアクセサリを選択してください。 特定のタグを含むメモのリストを開きます。 このブックは読み終わりました",
+   "main": "en"
+  },
+  {
+   "id": "macos:ca:1",
+   "label": "unknown",
+   "synthetic": false,
+   "text": "Prova automàticament d’enviar-ho més tard si el servidor sortint no està disponible Oculta el mapa en 3D Permet que Siri et faci suggeriments a l’app Recordatoris i aprengui com l’utilitzes per poder-te fer suggeriments en diferents apps. Fes dos tocs per obrir la declaració de privacitat. No s’ha pogut crear l’arxiu temporal () El participant ha eliminat la selecció Mitjanes de sortida i posta de sol Toca el mapa per editar la ubicació Convertint vídeo a HEVC (4K) Afegeix els crèdits de les fotos",
+   "main": "en"
+  },
+  {
+   "id": "posting:perks:ashby:Deliveroo:178",
+   "label": "fr",
+   "synthetic": false,
+   "text": "AGENT D’EXPLOITATION POLYVALENT (EDITIONS)\nRejoignez-nous dans notre mission visant à transformer la façon dont les gens achètent et mangent, où l'impact, l'innovation et la croissance motivent tout ce que nous faisons. Notre équipe Commerciale est au cœur de la marketplace de Deliveroo : elle façonne la manière dont nous servons les restaurants, les commerçants et les nouveaux secteurs à travers le monde. De la négociation de partenariats clés au déblocage de nouvelles sources de revenus, en passant par l'élaboration de stratégies de croissance basées sur les données, nous relevons des défis majeurs qui font progresser l'entreprise. Si vous aimez les environnements commerciaux dynamiques et que vous souhaitez influencer l'avenir d'une marque mondiale, cette équipe est faite pour vous.\nNous recherchons un(e) Employé(e) Polyvalent(e) CDI - 35H pour rejoindre notre équipe à ST Ouen. Dans",
+   "main": "fr"
+  },
+  {
+   "id": "posting:teamtailor:techniquesolairesarl:8611098",
+   "label": "fr",
+   "synthetic": false,
+   "text": "Créé en 2008, Mexens est un groupe français multi‑énergies indépendant qui développe, finance, construit et exploite des infrastructures de production d’énergies renouvelables : solaire photovoltaïque, solutions de stockage, éolien terrestre et biogaz. \nPrésent en France et sur plusieurs marchés internationaux, le Groupe s’appuie sur un parc de 0,9 GW d’actifs en exploitation et sur l’engagement de 330 collaborateurs, au service d’une trajectoire de croissance à horizon 2030 visant plus de 4 GW. \nPlus que de l’énergie, Mexens se positionne comme un acteur engagé de la transformation des territoires, en mobilisant les énergies renouvelables et les énergies humaines pour accompagner durablement les usages et le développement local. \nRejoignez-nous et portez nos 4 valeurs : \nExcellence  : toujours viser un niveau élevé de qualité et d’aboutissement dans nos actions et réalisations ",
+   "main": "fr"
+  },
+  {
+   "id": "posting:workday:accenture~wd103~AccentureCareers:R00229980-1",
+   "label": "ja",
+   "synthetic": false,
+   "text": "DSP（Deal Structuring & Pricing）は、提案フェーズにおいて案件設計と価格戦略を担う専門組織です。\nセールスやソリューションチームと連携しながら、クライアント課題や業界動向を踏まえたビジネスケース、価格モデル、契約スキームを設計します。\n人月型のみならず成果連動型やサブスクリプション型など多様な商流モデルを活用し、大規模・複雑案件の成立と収益性向上を支援します。\n◆具体的な業務内容\n・クライアント課題や業界動向、市場・競合情報の分析\n・クライアント課題に対し、アクセンチュアのサービスやソリューションを活用した提案内容・ビジネスケースの策定\n・価格モデルおよび契約スキームの設計\n・成果連動型、サブスクリプション型など多様なコマーシャルモデルの評価・構築\n・競争力と収益性を両立する価格戦略の立案\n・価格交渉方針の策定および社内承認プロセス支援\n複数案件を並行して担当します。契約締結後は別チームへ引き継ぐため、デリバリーフェーズの長期常駐やプロジェクト運営は担当範囲外です。\n案件責任者（マネジング・ディレクター）、アカウント責任者、セールス担当、ソリューションアーキテクト担当、リーガル担当、ファイナンス担当など幅広い部門と連携します。\n◆本ポジションの魅力\n・営業・提案段階から参画し、大規模案件の実現を支援\n・変革案件、アウトソーシング案件、ジョイント・ベンチャー、パートナーシップ案件などに携わる機会\n・クライアント課題の理解から案件組成、価格設計、契約スキーム設計まで一貫して担当\n・案件獲得と収益性向上の両方に関与し、提案・契約・コマーシャル・ファイナンスを横断した専門性を習得可能\n・グローバルチームとの協業を通じて専門性を高められる環境\n特定の専門性に偏らず、多様な経歴を持つプロフェッショナルが活躍している馴染みやすい環境です。\n◆応募要件（MUST） \n・学歴 \n・大卒以上 \n・経験　 \n・コンサルティングファームでの業務経験（5年以上） \n・クライアント課題を踏まえた提案活動や案件推進経験 \n・スキル \n・英語（日常会話レベル） ",
+   "main": "en"
+  },
+  {
+   "id": "posting:smartrecruiters:Primark:744000157528279",
+   "label": "es",
+   "synthetic": false,
+   "text": "Porque tú importas \nLas personas están en el centro de todo lo que hacemos, por lo que es esencial que te proporcionemos el entorno adecuado para que des lo mejor de ti. Por eso te ofrecemos toda una serie de beneficios que te ponen en primer lugar:\nOportunidades de desarrollo profesional a nivel nacional e internacional en una empresa en continua expansión.\nNuestras jornadas son de 5 días de promedio semanal con turnos continuos.\nFormación continuada en diversas áreas.\nPosibilidad de apoyo a nuevas aperturas en diferentes localizaciones.\nDescuento de empleado/a para adquirir productos de nuestras fabulosas colecciones.\n¿Cuáles serán tus responsabilidades? \nComo Store Manager mejorarás el desempeño comercial y maximizarás las ventas mediante una excelente experiencia de compra y un entorno atractivo en la tienda. Analizarás el mercado local para planificar estratégicamente y gestionarás",
+   "main": "es"
+  },
+  {
+   "id": "posting:perks:smartrecruiters:Inter IKEA Group:62",
+   "label": "pl",
+   "synthetic": false,
+   "text": "Obecnie nasza fabryka rozwija nowy obszar produkcyjny przeznaczony do wytwarzania tylnych paneli meblowych (back panel). Dołącz do nas!\nZadania:\nPrzygotowywanie, uruchamianie oraz obsługa linii laminowania tylnych ścian meblowych zgodnie z obowiązującymi standardami.\nMonitorowanie parametrów produkcyjnych, jakości produktów oraz regulowanie ustawień maszyn w trakcie procesu\nWykonywanie rutynowych czynności konserwacyjnych, porządkowych i wspieranie działań związanych z usuwaniem awarii\nZgłaszanie i wdrażanie usprawnień zwiększających bezpieczeństwo, jakość i efektywność\nAktywna współpraca z zespołem i innymi działami\nWykształcenie min. zawodowe (wykształcenie techniczne będzie dodatkowym atutem)\nPreferowane doświadczenie w środowisku produkcyjnym\nZnajomość języka angielskiego na poziomie min. A2 będzie dodatkowym atutem\nOferujemy:\n3,5% składki pracodawcy na Twoje konto emerytalne –",
+   "main": "en"
+  },
+  {
+   "id": "posting:perks:smartrecruiters:Inter IKEA Group:64",
+   "label": "unknown",
+   "synthetic": false,
+   "text": "Šioje pozicijoje Tu:\nValdysi automatinius ir kompiuterizuotus įrengimus ir užtikrinsi sklandų gamybos procesą\nUžtikrinsi gaminamų detalių kokybę remdamasi (-is) IKEA kokybės standartu\nBūsi atsakinga (-as) už sklandų įrenginių veikimą, atsiradus gedimams bendrausi su techninės tarnybos skyriumi, kad gedimai būtų pašalinti\nMes tikimės, kad Tu:\nTuri patirties panašioje gamyboje arba gebi skaityti brėžinius\nGali dirbti pamaininiu darbo grafiku: 3 pamainos/5 darbo dienos (1 savaitė - iš ryto; 1 savaitė - naktį; 1 savaitė - popiet)\nTau yra svarbios vertybės: tobulėjimas, atsakomybės prisiėmimas, buvimas geru pavyzdžiu, vieningumas, rūpinimasis žmonėmis ir planeta, kūrybiškumas, paprastumas, ekonomiškumas\nMes siūlome:\nNemokamą maitinimą\nNemokamą atvykimą į/iš darbo įmonės transportu (Marijampolės ir Vilkaviškio kryptys) arba kuro kompensaciją vykstant iš kitų miestų\nDraudimą 24/7\nDovanas",
+   "main": "en"
+  },
+  {
+   "id": "posting:workday:keybank~wd5~External_Career_Site:R-42758",
+   "label": "en",
+   "synthetic": false,
+   "text": "Location: \n555 Patroon Creek Boulevard, Albany New York \nJob Summary \nThe Project Manager leads small/mid-size projects or phases of a larger project, which usually impact a Line of Business (LOB) and/or functional areas. They take projects from planning through final implementation using standard project management and change management and risk management methodologies and concepts. The role is responsible for setting expectations for project stakeholders through planning activities and maintains transparency via communication & reporting channels. The Project Manager establishes and maintains a collaborative trusted advisor relationship.\nEssential Functions \nWorks with business leader to define scope; manages project scope, scope changes, objectives, requirements, deliverables, and value proposition that support the diverse business goals and interests of multiple stakeholders.",
+   "main": "en"
+  },
+  {
+   "id": "posting:icims:talent.peraton.com:172503",
+   "label": "en",
+   "synthetic": false,
+   "text": "Responsibilities\nThis sub family is responsible for conducting analysis of transition planning, intelligence information requirements, and developing architecture baselines. Duties may include providing research and assistance with implementation of community policies and guidance. Employees may also support business process improvements or systems analysis for missions, systems, and fiscal requirements. \nBasic Requirements: \n• Portfolio Management Experience - Monitor and analyze IT portfolio of programs and their associated capabilities and Services \n• Strategic Planning Experience – support the evolution of the Sponsor’s strategic direction and priorities \n• Make recommendations to aid sponsor decision-making, to include proposed strategies and/or roadmaps; identified risks, capability and performance gaps, and dependencies; alignment with the strategic framework and priorities; and",
+   "main": "en"
+  },
+  {
+   "id": "posting:greenhouse:toast:8316729",
+   "label": "en",
+   "synthetic": false,
+   "text": "Toast creates technology to help restaurants and local businesses succeed in a digital world, helping business owners operate, increase sales, engage customers, and keep employees happy.\nAs a Territory Sales Account Executive, you will be part of a team that is transforming the way restaurants operate. Using a consultative approach, you will prospect, build relationships, and sign up new restaurateurs in your local area. By understanding their unique needs, you will develop a customized solution that helps their business thrive. We need your passion and expertise to help us build the Toast brand in your geographic territory. \nThis is a field sales opportunity based out of a personal home office. You must live local to Tacoma, WA your territory, or be willing to relocate to the area. \nA day in the life (Responsibilities) \nGenerate list of prospective restaurants and manage the entire",
+   "main": "en"
+  },
+  {
+   "id": "posting:workday:humana~wd5~CenterWell_External_Career_Site:R-429106-1",
+   "label": "en",
+   "synthetic": false,
+   "text": "Become a part of our caring community \nThe Medical Assistant is the first contact for patient care. Responsible for administrative responsibilities in addition to patient care. The Medical Assistant performs varied activities and moderately complex administrative, operational, and customer support assignments. Typically work on semi-routine assignments. \nThe Medical Assistant performs clinical responsibilities such as discussing symptoms and obtaining vital signs. They also administer medications and vaccines, perform phlebotomy, and collect specimens. Additionally, they perform diagnostic screening tests, sterilize and clean equipment, and maintain examination rooms. Furthermore, they document information into the electronic medical records system. Collaborate with Physicians and Advanced Practice Providers. Deliver direct patient care dependent on what active certification allows.",
+   "main": "en"
+  },
+  {
+   "id": "posting:oracle:rbkc-iagrme~ocs~CX_1:570",
+   "label": "en",
+   "synthetic": false,
+   "text": "Support residents to live more independently, with compassion at the heart of your work \nAs a Social Worker in Adult South Complex Team, you’ll work directly with people in Kensington and Chelsea who need support to live well and safely. From your first conversation to the long-term plans you help shape, you’ll be building relationships that empower individuals, reduce risks, and make a lasting difference. \nWhat you’ll be doing: \nEach day will bring variety and purpose. You’ll begin by reviewing referrals, prioritising cases, and planning your visits, from meeting residents in their homes to working alongside health and care professionals across the borough. \nYour focus will be on assessing needs, creating person-centred care plans, and arranging the right services that enable choice, dignity, and independence. You’ll ensure that every resident you support has a voice in decisions about",
+   "main": "en"
+  },
+  {
+   "id": "posting:workday:srsdistribution~wd1~GMS:REQ56200",
+   "label": "en",
+   "synthetic": false,
+   "text": "Position Purpose: \nThe primary function of the Staff Accountant is responsible for various reconciliations, preparation and review of journal entries, assist with monthly reporting, annual reporting, and audit functions for the department.\nKey Responsibilities: \nPreparing financial documents and implementing procedures.\nAssist with monthly and quarterly, financial and operational reviews of subsidiaries in accordance with GAAP and company guidelines. \nAssists with the year-end close according to best practices and requirements as prescribed by the State Accounting Office. \nProvides professional guidance and assistance in the solution of accounting and financial problems. \nAssist with preparation of year end audit work papers for external auditors.\nPreparing Fleet related reports and filings.\nDirect Manager/Direct Reports: \nThe Staff Accountant reports directly to the Controller.\nThis",
+   "main": "en"
+  },
+  {
+   "id": "posting:ashby:harvey:16b67976-02a3-4179-9eca-afc86c551b8a",
+   "label": "en",
+   "synthetic": false,
+   "text": "WHY HARVEY\n\nAt Harvey, we’re transforming how legal and professional services operate. By combining frontier agentic AI, an enterprise-grade platform, and deep domain expertise, we’re reshaping how critical knowledge work gets done for decades to come.\n\nThis is a rare chance to help build a generational company at a true inflection point. We have strong product-market fit and world-class investor support. We’re scaling fast and defining a new category in real time. The work is ambitious, the bar is high, and the opportunity for growth — personal, professional, and financial — is unmatched.\n\nOur team moves fast, takes ownership, and is deeply committed to the mission — operating with intensity, staying close to our customers, and pushing each other for excellence. We live by three values: Decisiveness, Simplicity, and Job's Not Finished. We act quickly on clear judgment over perfect",
+   "main": "en"
+  },
+  {
+   "id": "posting:greenhouse:boxinc:8239373",
+   "label": "en",
+   "synthetic": false,
+   "text": "WHAT IS BOX? \nBox (NYSE:BOX) is the leader in Intelligent Content Management. Our platform enables organizations to fuel collaboration, manage the entire content lifecycle, secure critical content, and transform business workflows with enterprise AI. We help companies thrive in the new AI-first era of business. Founded in 2005, Box simplifies work for leading global organizations, including JLL, Morgan Stanley, and Nationwide. Box is headquartered in Redwood City, CA, with offices across the United States, Europe, and Asia.\nBy joining Box, you will have the unique opportunity to continue driving our platform forward. Content powers how we work. It’s the billions of files and information flowing across teams, departments, and key business processes every single day: contracts, invoices, employee records, financials, product specs, marketing assets, and more. Our mission is to bring",
+   "main": "en"
+  },
+  {
+   "id": "posting:smartrecruiters:HaltonHealthcare1:3743990016266512",
+   "label": "en",
+   "synthetic": false,
+   "text": "Dispensary duties in the Main Pharmacy including medication order and profile review and entry into Meditech Expanse Pharmacy module, checking responsibilities, trouble-shooting clinical & drug distribution issues, & acting as a resource for Pharmacy Technicians & Students. As staffing situations require, provide back-up coverage for staff on a variety of patient care units and departments including decentralized medication order and profile review and problem investigation, medication reconciliation and resolution and liaison responsibilities. Based at Oakville but will include remote coverage of other sites on nights, evenings & weekend shifts. Other duties as assigned.\nHalton Healthcare endeavors to hire individuals who are competent in their chosen profession and who exemplify our mission, vision and values of accountability, respect and compassion which guide our individual",
+   "main": "en"
+  },
+  {
+   "id": "posting:ashby:fieldguide:cc21b7a2-530c-4a45-9458-aa37bfebea4e",
+   "label": "en",
+   "synthetic": false,
+   "text": "ABOUT US\n\nFieldguide is establishing a new state of trust for global commerce and capital markets through automating and streamlining the work of assurance and audit practitioners specifically within cybersecurity, privacy, and financial audit. Put simply, we build software for the people who enable trust between businesses.\n\nWe're based in San Francisco, CA, but built as a remote-first company that enables you to do your best work from anywhere. We're backed by top investors including Growth Equity at Goldman Sachs Alternatives, Bessemer Venture Partners, 8VC, Floodgate, Y Combinator, DNX Ventures, Global Founders Capital, Justin Kan, Elad Gil, and more.\n\nWe value diversity — in backgrounds and in experiences. We need people from all backgrounds and walks of life to help build the future of audit and advisory. Fieldguide's team is inclusive, driven, humble and supportive. We are",
+   "main": "en"
+  },
+  {
+   "id": "posting:workday:gtlaw~wd1~GTLAW:JR202601838-1",
+   "label": "en",
+   "synthetic": false,
+   "text": "Greenberg Traurig (GT), a global law firm, has an exciting full-time employment opportunity for an Associate in the Labor & Employment Practice of our Denver Office.   We offer competitive compensation and an excellent benefits package.   GT is consistently among the top firms on the Am Law Global 100; the Associate will have the opportunity to work with clients, large and small, from variety of industries across the country.\nJob Requirements \nThe ideal candidate will have 2-4 years of law firm litigation experience, with a preference for candidates who have employment litigation experience and a strong interest in representing employers in complex workplace disputes. Experience handling administrative charges, drafting agency position statements, and advising on employment law compliance matters is a plus; however, the primary focus of this role will be litigation.\nThis associate will",
+   "main": "en"
+  },
+  {
+   "id": "posting:ashby:typesafe-ai:a3b111f5-fd58-4537-8dd4-334d6da4438c",
+   "label": "en",
+   "synthetic": false,
+   "text": "ABOUT TYPESAFE\n\nTypeSafe AI is an AI lab building machine-native intelligence infrastructure for automation, designed to make decisions within software by combining the intelligence of LLMs with the efficiency and reliability of code into a new shape of AI: System One Models.\n\nTypeSafe AI recently launched its first public model, Jev. Adoption has been incredibly rapid, and we now count around one-third of the Fortune 500 as users.\n\nWe’re a small, fast-moving team from OpenAI, Google Brain, and Meta/FAIR, backed by top-tier investors like Andreessen Horowitz and Sequoia.\n\n\nABOUT THE ROLE\n\nYou’ll be TypeSafe’s first legal hire, building and leading our legal function as the company grows. You’ll work directly with our founders and across engineering, product, and go-to-market to help us launch products, work with customers, partners, and vendors, and make thoughtful decisions about risk.",
+   "main": "en"
+  },
+  {
+   "id": "macos:en:7",
+   "label": "en",
+   "synthetic": false,
+   "text": "Take me to My Book Are you sure you want to remove the “” account and all of its messages? A button that collapses the list of stops a bus segment passes by, in the transit list view. Use Face ID to View Journal This attachment is too large to send. Accessories turned on by this automation will not be turned off. Settings → Apps → Podcasts → Podcasts & Privacy Add or remove a color tint Turning on Live Photo will remove edits and revert to the original photo.",
+   "main": "en"
+  },
+  {
+   "id": "macos:en:10",
+   "label": "en",
+   "synthetic": false,
+   "text": "A HomePod is on a WLAN which may require further authentication. Email message draft to send The audio item to open Ratings and photos can’t be shown because your Mac is not connected to the internet. Remove older automatic downloads by limiting how many are kept on this iPhone. You can change this for all shows in the . Episodes you saved or manually downloaded will not be removed. You cannot delete photos posted by other participants. Would you like to delete the photos you posted permanently?",
+   "main": "en"
+  },
+  {
+   "id": "macos:en_GB:7",
+   "label": "en",
+   "synthetic": false,
+   "text": "Increases or decreases the font size of the text selected on the board. The file “” could not be opened. Connect to the internet to see more. Listen for “Siri” or “Hey Siri” A HomePod cannot connect to the network because the network is not configured to be shared with other devices. Download Originals to this Mac Your journaling streak started on Tuesday. Are you sure you want to delete this declined event? Siri is turned off on this iPhone",
+   "main": "en"
+  },
+  {
+   "id": "macos:en_GB:5",
+   "label": "en",
+   "synthetic": false,
+   "text": "Select which edits to copy. The places to navigate to. Undoing apply filter to photos… This map may have been downloaded outside the region it depicts and isn’t intended for use in all regions. When you enter or leave the region, connect to the internet to ensure you’re using the map intended for the region you’re in. Another Home member is connected to . You cannot check in while an active Check In session is in progress. You can use the Contacts app to update your home and work addresses, and you can control Weather’s access to these addresses in .",
+   "main": "en"
+  },
+  {
+   "id": "macos:hi:8",
+   "label": "hi",
+   "synthetic": false,
+   "text": "लॉक किया गया नोट डिलीट नहीं किया जा सकता है। अगला अनुमान, को बारिश के साथ बर्फ़बारी । अपने दिन के बारे में लिखें और तस्वीरें, जगहें, मनःस्थिति आदि जोड़ें। माइक्रोफ़ोन ऐक्सेस आपको HomeKit कैमरा को इंटरकॉम संदेश और अन्य संचार भेजने की अनुमति देता है। कौन सा लिंक किया गया नोट? चयनित स्टार का वर्णन करें। आपकी लाइट अब अडैप्टिव लाइटिंग का समर्थन करती हैं। Apple Books को बुक स्टोर से कनेक्ट नहीं किया जा सका। अपने इंटरनेट कनेक्शन की जाँच करें और फिर कोशिश करें।",
+   "main": "hi"
+  },
+  {
+   "id": "macos:en_GB:6",
+   "label": "en",
+   "synthetic": false,
+   "text": "Turn off Airplane Mode or use WLAN to connect. Photo Exported with Lower Image Quality Help Improve AR Location Accuracy Playing audio with AirPlay and Personal Content are available when “” is nearby. This message has no subject. Are you sure you want to send it? bold exclamation point tilting and drawn with marker pen existing inbound connections between these objects Do you want to change only this occurrence of the event, or this and all future occurrences? Tap to scan buildings with your camera when you’re outside. Camera sensor data is not stored on device or shared with Apple.",
+   "main": "en"
+  },
+  {
+   "id": "macos:en:0",
+   "label": "en",
+   "synthetic": false,
+   "text": "You can change Home Address in your Contact Card. Set Up Later in Maps Settings People with a face mask don’t show up in this list. Point sizes for sample text This note uses unsupported features. To view or edit it, upgrade to the latest version of macOS. An error occurred with the requested waypoints. Tap on a path or road to add your starting point If you play this, Apple TV will stop playing when your iPhone is no longer nearby.",
+   "main": "en"
+  },
+  {
+   "id": "macos:hi:10",
+   "label": "hi",
+   "synthetic": false,
+   "text": "आप अपने खाते के लिए स्वयं को डेलीगेट अधिकार नहीं दे । भेजने के लिए कुछ भी नहीं है। टेक्स्ट फ़ॉर्मैट करें, अलाइनमेंट बदलें या सूची शैली चुनें समूह में रखे गए ऐक्सेसरी / count@ को इंपोर्ट किया जा रहा है कम विवरण के लिए डबल टैप करें एक्सपोर्ट करने के लिए messageFormat@ का versionFormat@ डाउनलोड करने के लिए इंटरनेट कनेक्शन आवश्यक है। क्यूरेट किए गए कॉन्टेंट की लाइब्रेरी ब्राउज़ करें फ़िल्म को H.264 (ड्राफ़्ट गुणवत्ता / छोटी फ़ाइल) में बदला जा रहा है",
+   "main": "hi"
+  },
+  {
+   "id": "repo-i18n:hi:9",
+   "label": "hi",
+   "synthetic": false,
+   "text": "यह मिलान उससे कमज़ोर है जो एजेंट अपने आप भेजता है। भेजने के लिए इसे मंज़ूर करें। हमारी ट्रैकिंग के दौरान एक ही रोल टाइटल बार दोबारा लिस्ट हुआ — रूटीन रीपोस्टिंग या बार-बार खुलने वाले रोल। यह इस नियोक्ता की अपनी रफ़्तार से आगे निकल चुकी है: जिन भूमिकाओं को भरते हुए हमने देखा, वे लगभग दिनों में हट गईं — यह मीडियन उन्हीं भर्तियों पर है जिनमें कंपनी ने पोस्टिंग तारीख बताई थी। आपकी व्यक्तिगत पिच तैयार की जा रही है...",
+   "main": "hi"
+  },
+  {
+   "id": "repo-i18n:en:2",
+   "label": "en",
+   "synthetic": false,
+   "text": "The diagnosis above is complete and free. These are the two paid options that do the work for you. jobs: roles listed by a staffing agency jobs: roles listed by a staffing agency Postings whose employer states no date sort after every dated one. Your resume analysis is generated instantly after payment. You will see your results on the success page within seconds. % of what it was counted on is one company's board. Upload or paste a new resume to continue.",
+   "main": "en"
+  },
+  {
+   "id": "repo-i18n:fr:3",
+   "label": "fr",
+   "synthetic": false,
+   "text": "Le texte d'un CV que vous téléversez ou collez, avec le texte LinkedIn ou l'offre d'emploi que vous ajoutez Veuillez réessayer de télécharger votre CV. L'Agent passe en revue des milliers d'offres fraîches chaque nuit et présélectionne celles qui valent votre matinée — entreprises qui republient écartées, vrais recruteurs d'abord, chacune avec ses raisons. En mode révision, le mode par défaut, rien n'est envoyé avant votre accord. Confirmez votre pouls mensuel du marché notre plafond de fraîcheur — un poste dont la date déclarée par l'entreprise dépasse 30 jours quitte le tableau. La part encore affichée en atteignant le plafond est la ligne du jour 30 dans le tableau des domaines ci-dessous.",
+   "main": "fr"
+  },
+  {
+   "id": "repo-i18n:en:9",
+   "label": "en",
+   "synthetic": false,
+   "text": "Learn how recruiters see your career You've reached the drafting limit for now. Please try again in about minutes. A free account includes one interview-prep set, one tailored résumé and one cover letter a day. Add featured section showcasing key projects Drop a resume to rank them by fit Use this résumé for job matching and alerts Ours, not the board's: the first few names from the list we wrote for that field, so you can tell one row from another at a glance. They are not a measurement and they carry no numbers. They stay in English in every language, because each one is the exact search term we send the board and postings are titled in the language the employer wrote them in. Open the field and every one of them is counted for real — a live count of exactly the search that row opens, taken when you open the field and taken again rather than remembered once a reading is more than a",
+   "main": "en"
+  },
+  {
+   "id": "repo-i18n:pt:5",
+   "label": "pt",
+   "synthetic": false,
+   "text": "Toda empresa é medida pelas mesmas regras, pagando ou não. Empregadores verificados recebem uma checagem de identidade — nunca um número melhor. São pedidos que o Departamento certificou entre e . Inclua estes números nos seus tópicos: Benefícios citados nos anúncios de vaga da empresa Carregue ou cole o seu currículo primeiro e tente novamente. O total anunciado pelo próprio empregador, e a lacuna que abre Recebe uma análise abrangente incluindo reescrita de tópicos otimizados para ATS, sugestões de verbos de ação mais fortes, recomendações de palavras-chave para a sua indústria e sinais de alerta que os recrutadores podem notar. Tudo é escrito em linguagem direta e prática.",
+   "main": "pt"
+  },
+  {
+   "id": "repo-i18n:pt:9",
+   "label": "pt",
+   "synthetic": false,
+   "text": "Cargo ou palavra-chave — ex.: product designer vagas ao vivo em murais de vagas de empresas Oculta as vagas para as quais o seu rastreador já regista uma candidatura — as mesmas linhas com a marca «Candidatado». PDF, DOCX ou TXT (máx. 10MB) Lemos as vagas diretamente de sistemas de gestão de candidaturas — não de um motor de busca. Use as secções otimizadas do currículo Calculado a partir do ciclo de vida completo dos anúncios oficiais desta empresa — quando abrem e quando fecham — e não de um retrato pontual.",
+   "main": "pt"
+  },
+  {
+   "id": "repo-i18n:en:0",
+   "label": "en",
+   "synthetic": false,
+   "text": "Forms with a cover-letter box are left empty. Nothing is invented to fill them. Start the Apply Agent — days free for first-time subscribers Send with your resume to apply of these employers state where the work happens. Another openings match everything else but carry no stated mode — their employer said nothing, or said two different things and we refused to choose — so this filter hides them. Revoked. That AI can no longer reach your account. Could not start checkout — please try again",
+   "main": "en"
+  },
+  {
+   "id": "repo-i18n:en:6",
+   "label": "en",
+   "synthetic": false,
+   "text": "Re-scan to see your new ATS score possible fit — check the gaps below Review your 3 career trajectory options This kit couldn't be read — regenerate it from the tracker row below. It ends on and will not renew. Pro's tools stay on until then. “” is no longer live — it was filled or taken down. live jobs straight from employers' own hiring systems Permanently deletes your account, scan history, checklist, goal, applications and any CV you uploaded for the agent, and cancels any subscription this account pays for, so nothing more is charged. Purchase records are retained for accounting. This cannot be undone.",
+   "main": "en"
+  },
+  {
+   "id": "syn-hi-4",
+   "label": "hi",
+   "synthetic": true,
+   "text": "मैंने Bajaj में इंजीनियर के रूप में काम किया।\nटीम का प्रबंधन किया और बिक्री बढ़ाई।\nग्राहकों से बातचीत करना और रिपोर्ट तैयार करना मेरी जिम्मेदारी थी।\nकौशल: एक्सेल, संचार, नेतृत्व\nशिक्षा: दिल्ली विश्वविद्यालय से वाणिज्य में स्नातक\nभाषाएँ: हिंदी, अंग्रेजी",
+   "main": "hi"
+  },
+  {
+   "id": "syn-ne-3",
+   "label": "ne",
+   "synthetic": true,
+   "text": "मैले HDFC मा शिक्षक को रूपमा काम गरें।\nटोलीको व्यवस्थापन गरेको र बिक्री बढाएको अनुभव छ।\nग्राहकसँग कुराकानी गर्ने र प्रतिवेदन तयार गर्ने मेरो जिम्मेवारी थियो।\nशिक्षा: त्रिभुवन विश्वविद्यालयबाट वाणिज्यमा स्नातक\nपरियोजनाको योजना र कार्यान्वयन गरें।\nभाषा: नेपाली, हिन्दी, अंग्रेजी",
+   "main": "hi"
+  },
+  {
+   "id": "syn-hi-0",
+   "label": "hi",
+   "synthetic": true,
+   "text": "मुझे 14 वर्षों का अनुभव है।\nग्राहकों से बातचीत करना और रिपोर्ट तैयार करना मेरी जिम्मेदारी थी।\nकौशल: एक्सेल, संचार, नेतृत्व\nनए कर्मचारियों को प्रशिक्षण दिया।\nमेरे काम से खर्च 20% कम हुआ।\nभाषाएँ: हिंदी, अंग्रेजी",
+   "main": "hi"
+  },
+  {
+   "id": "syn-mr-2",
+   "label": "mr",
+   "synthetic": true,
+   "text": "मला 14 वर्षांचा अनुभव आहे.\nमी HDFC मध्ये विक्री व्यवस्थापक म्हणून काम केले.\nप्रकल्पांचे नियोजन आणि अंमलबजावणी केली.\nनवीन कर्मचाऱ्यांना प्रशिक्षण दिले.\nमाझ्या कामामुळे खर्च २०% कमी झाला.\nभाषा: मराठी, हिंदी, इंग्रजी",
+   "main": "hi"
+  },
+  {
+   "id": "syn-hi-9",
+   "label": "hi",
+   "synthetic": true,
+   "text": "मैंने Tata Motors में इंजीनियर के रूप में काम किया।\nकौशल: एक्सेल, संचार, नेतृत्व\nशिक्षा: दिल्ली विश्वविद्यालय से वाणिज्य में स्नातक\nनए कर्मचारियों को प्रशिक्षण दिया।\nमेरे काम से खर्च 20% कम हुआ।\nभाषाएँ: हिंदी, अंग्रेजी",
+   "main": "hi"
+  },
+  {
+   "id": "syn-ne-6",
+   "label": "ne",
+   "synthetic": true,
+   "text": "मैले Infosys मा इन्जिनियर को रूपमा काम गरें।\nग्राहकसँग कुराकानी गर्ने र प्रतिवेदन तयार गर्ने मेरो जिम्मेवारी थियो।\nशिक्षा: त्रिभुवन विश्वविद्यालयबाट वाणिज्यमा स्नातक\nपरियोजनाको योजना र कार्यान्वयन गरें।\nमेरो कामले खर्च २०% ले घटेको थियो।\nभाषा: नेपाली, हिन्दी, अंग्रेजी",
+   "main": "hi"
+  },
+  {
+   "id": "syn-uk-1",
+   "label": "uk",
+   "synthetic": true,
+   "text": "Досвід роботи понад 12 років у сфері продажів та управління.\nПрацював менеджером проєктів у компанії Яндекс.\nВідповідав за розвиток клієнтської бази та підготовку звітів.\nЗбільшив виручку на 25% за два роки.\nМови: українська, англійська.",
+   "main": "en"
+  },
+  {
+   "id": "syn-ne-8",
+   "label": "ne",
+   "synthetic": true,
+   "text": "मसँग 4 वर्षको अनुभव छ।\nमैले Tata Motors मा लेखापाल को रूपमा काम गरें।\nटोलीको व्यवस्थापन गरेको र बिक्री बढाएको अनुभव छ।\nसीपहरू: एक्सेल, सञ्चार, नेतृत्व\nशिक्षा: त्रिभुवन विश्वविद्यालयबाट वाणिज्यमा स्नातक\nनयाँ कर्मचारीलाई तालिम दिएँ।",
+   "main": "hi"
+  },
+  {
+   "id": "syn-mr-3",
+   "label": "mr",
+   "synthetic": true,
+   "text": "मी Wipro मध्ये परिचारिका म्हणून काम केले.\nग्राहकांशी संवाद साधणे आणि अहवाल तयार करणे ही माझी जबाबदारी होती.\nकौशल्ये: एक्सेल, संवाद, नेतृत्व\nशिक्षण: पुणे विद्यापीठातून वाणिज्य पदवी\nनवीन कर्मचाऱ्यांना प्रशिक्षण दिले.\nमाझ्या कामामुळे खर्च २०% कमी झाला.",
+   "main": "hi"
+  },
+  {
+   "id": "syn-uk-4",
+   "label": "uk",
+   "synthetic": true,
+   "text": "Досвід роботи понад 9 років у сфері продажів та управління.\nПрацював менеджером проєктів у компанії Kyivstar.\nВідповідав за розвиток клієнтської бази та підготовку звітів.\nНавички: Excel, переговори, управління командою.\nЗбільшив виручку на 25% за два роки.",
+   "main": "en"
+  },
+  {
+   "id": "syn-hi-3",
+   "label": "hi",
+   "synthetic": true,
+   "text": "मैंने Wipro में नर्स के रूप में काम किया।\nटीम का प्रबंधन किया और बिक्री बढ़ाई।\nग्राहकों से बातचीत करना और रिपोर्ट तैयार करना मेरी जिम्मेदारी थी।\nशिक्षा: दिल्ली विश्वविद्यालय से वाणिज्य में स्नातक\nपरियोजनाओं की योजना और कार्यान्वयन किया।\nनए कर्मचारियों को प्रशिक्षण दिया।",
+   "main": "hi"
+  },
+  {
+   "id": "syn-mr-7",
+   "label": "mr",
+   "synthetic": true,
+   "text": "मला 6 वर्षांचा अनुभव आहे.\nमी Infosys मध्ये शिक्षक म्हणून काम केले.\nसंघाचे व्यवस्थापन केले आणि विक्री वाढवली.\nग्राहकांशी संवाद साधणे आणि अहवाल तयार करणे ही माझी जबाबदारी होती.\nप्रकल्पांचे नियोजन आणि अंमलबजावणी केली.\nभाषा: मराठी, हिंदी, इंग्रजी",
+   "main": "hi"
+  },
+  {
+   "id": "syn-hi-6",
+   "label": "hi",
+   "synthetic": true,
+   "text": "मैंने Bajaj में नर्स के रूप में काम किया।\nटीम का प्रबंधन किया और बिक्री बढ़ाई।\nकौशल: एक्सेल, संचार, नेतृत्व\nशिक्षा: दिल्ली विश्वविद्यालय से वाणिज्य में स्नातक\nमेरे काम से खर्च 20% कम हुआ।\nभाषाएँ: हिंदी, अंग्रेजी",
+   "main": "hi"
+  },
+  {
+   "id": "syn-mr-8",
+   "label": "mr",
+   "synthetic": true,
+   "text": "मला 13 वर्षांचा अनुभव आहे.\nग्राहकांशी संवाद साधणे आणि अहवाल तयार करणे ही माझी जबाबदारी होती.\nकौशल्ये: एक्सेल, संवाद, नेतृत्व\nशिक्षण: पुणे विद्यापीठातून वाणिज्य पदवी\nप्रकल्पांचे नियोजन आणि अंमलबजावणी केली.\nनवीन कर्मचाऱ्यांना प्रशिक्षण दिले.",
+   "main": "hi"
+  },
+  {
+   "id": "syn-en-terse-3",
+   "label": "en",
+   "synthetic": true,
+   "text": "PRIYA PATEL\nData Analyst\nTECHNICAL\nSQL, Python (pandas), Tableau, Power BI, Excel, dbt, Snowflake\nROLES\nFinCo, Data Analyst, 2021-2024: dashboards for 300 users; churn model cut losses 12%\nRetailCo, Analyst Intern, 2020: weekly sales reports\nCERTIFICATIONS\nGoogle Data Analytics\nACADEMICS\nMS Statistics, NYU 2021",
+   "main": "en"
+  },
+  {
+   "id": "syn-hi-7",
+   "label": "hi",
+   "synthetic": true,
+   "text": "मुझे 4 वर्षों का अनुभव है।\nटीम का प्रबंधन किया और बिक्री बढ़ाई।\nग्राहकों से बातचीत करना और रिपोर्ट तैयार करना मेरी जिम्मेदारी थी।\nपरियोजनाओं की योजना और कार्यान्वयन किया।\nनए कर्मचारियों को प्रशिक्षण दिया।\nमेरे काम से खर्च 20% कम हुआ।",
+   "main": "hi"
+  },
+  {
+   "id": "syn-ru-3",
+   "label": "ru",
+   "synthetic": true,
+   "text": "Отвечал за развитие клиентской базы и подготовку отчётов.\nНавыки: Excel, переговоры, управление командой.\nОбразование: экономический факультет, Московский государственный университет.\nУвеличил выручку на 25% за два года.\nЯзыки: русский, английский.",
+   "main": "en"
+  },
+  {
+   "id": "syn-hi-2",
+   "label": "hi",
+   "synthetic": true,
+   "text": "मैंने Tata Motors में इंजीनियर के रूप में काम किया।\nटीम का प्रबंधन किया और बिक्री बढ़ाई।\nकौशल: एक्सेल, संचार, नेतृत्व\nशिक्षा: दिल्ली विश्वविद्यालय से वाणिज्य में स्नातक\nपरियोजनाओं की योजना और कार्यान्वयन किया।\nनए कर्मचारियों को प्रशिक्षण दिया।",
+   "main": "hi"
+  },
+  {
+   "id": "syn-hi-1",
+   "label": "hi",
+   "synthetic": true,
+   "text": "मुझे 12 वर्षों का अनुभव है।\nटीम का प्रबंधन किया और बिक्री बढ़ाई।\nकौशल: एक्सेल, संचार, नेतृत्व\nशिक्षा: दिल्ली विश्वविद्यालय से वाणिज्य में स्नातक\nनए कर्मचारियों को प्रशिक्षण दिया।\nभाषाएँ: हिंदी, अंग्रेजी",
+   "main": "hi"
+  },
+  {
+   "id": "syn-ne-5",
+   "label": "ne",
+   "synthetic": true,
+   "text": "मसँग 5 वर्षको अनुभव छ।\nमैले Tata Motors मा इन्जिनियर को रूपमा काम गरें।\nसीपहरू: एक्सेल, सञ्चार, नेतृत्व\nशिक्षा: त्रिभुवन विश्वविद्यालयबाट वाणिज्यमा स्नातक\nपरियोजनाको योजना र कार्यान्वयन गरें।\nभाषा: नेपाली, हिन्दी, अंग्रेजी",
+   "main": "hi"
+  }
+ ]
+}

@@ -18,7 +18,7 @@ import { attachMailCopy } from "./seal-safe.ts";
 import { evaluateCountryStandards } from "./country-standards.ts";
 import { websiteSessionOf } from "../_shared/website-session.ts";
 import { computeParseQuality, parseResumeStructure, formatStructureForPrompt } from "./resume-structure.ts";
-import { detectResumeLanguage } from "./resume-language.ts";
+import { detectResumeLanguage, languageNoticeOf } from "./resume-language.ts";
 const serve = Deno.serve;
 
 // Declare EdgeRuntime for background tasks
@@ -7891,11 +7891,19 @@ What is the PRIMARY industry of this candidate's own experience? Reply with only
       // an English UI got an English report from this fallback while the
       // primary scan answered in French. Resume language wins when confidently
       // non-English (mirrors the primary); the UI locale covers the rest.
-      const reportLanguage = detectedResumeLanguage.language !== 'en'
+      // A language the detector cannot name is answered in the résumé's own
+      // language; one the report is not built for is named and the model is
+      // warned that the English keyword checks may miss its words (S13-024).
+      const reportLanguage = detectedResumeLanguage.language === 'unknown'
+        ? 'the language the resume itself is written in'
+        : detectedResumeLanguage.language !== 'en'
         ? detectedResumeLanguage.languageName
         : (resolveLanguageName(language) ?? "English");
+      const unsupportedLanguageNote = detectedResumeLanguage.supported ? '' : `
+LANGUAGE NOTE: the resume is in ${detectedResumeLanguage.language === 'unknown' ? 'a language the scanner could not identify' : detectedResumeLanguage.languageName}, outside the languages its keyword and section checks are built for. A skill whose English name is absent may still be on the resume in its own words: do not call it missing on that ground alone.
+`;
       const systemPrompt = `Expert ATS resume analyst. Respond in ${reportLanguage}. Every free-text string value in your JSON must be written in ${reportLanguage} (keys stay in English). ${FIXED_CHOICES_STAY_ENGLISH}
-
+${unsupportedLanguageNote}
 RESUME TYPE DETECTED: ${resumeType.type} (${resumeType.label})
 SENIORITY LEVEL: ${seniority}
 ATS RELEVANCE: ${resumeType.atsRelevance}
@@ -8660,6 +8668,9 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
         // Extraction-quality gate — parity with the primary path so fallback
         // scans also warn when a mangled PDF makes the report unreliable.
         parseQuality: computeParseQuality(resumeText),
+        // The primary's language notice (S13-024): null when the report is
+        // built for the résumé's language.
+        languageNotice: languageNoticeOf(detectResumeLanguage(resumeText)),
         // New fields for improved analysis
         resumeType,
         seniorityLevel: seniority,
