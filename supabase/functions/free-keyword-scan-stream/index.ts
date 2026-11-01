@@ -6445,7 +6445,13 @@ function clampImprovementToScoreGap(report: Record<string, unknown>): void {
 // lists, no typed salary range in the prompt text it builds). This fork reads
 // only its country detection, which did not change, so what it answers is the
 // same; the bundle differs from 2026-10-27.1, so it takes a new build.
-const FN_BUILD = "free-keyword-scan-stream.2026-10-31.1";
+// 2026-11-01.1 (the free-scan wave, engine half): the shared modules carry the
+// primary's wave changes byte for byte, the same score projection applies, its
+// industry check has room to answer (400 tokens, an unusable reply falls back
+// to server detection), a parse failure stores lengths and no model text, and
+// a generic "software" answer resolves to technology as the primary's does
+// (S13-050, -058, -064, -065 and the shared-module items).
+const FN_BUILD = "free-keyword-scan-stream.2026-11-01.1";
 
 /** The primary's report id formula (free-keyword-scan/report-meta.ts reportIdFor): this report's cache key and its score. */
 async function streamReportId(cacheKey: string, score: unknown): Promise<string> {

@@ -518,7 +518,14 @@ const trackPerformance = (startTime: number, operation: string, success: boolean
 // the AI for no salary range, no pass verdict and no timed recruiter scan, and
 // the fallback first-pass summary predicts no screen. The 2026-10-27.1 bundle
 // had none of this, so it takes a new build.
-const FN_BUILD = "free-keyword-scan.2026-10-31.1";
+// 2026-11-01.1 (the free-scan wave, engine half): the whole résumé is read and
+// a cut one says so (resumeTruncated), a résumé in a language the scan does not
+// grade says so (languageNotice), a weak bullet the model did not rewrite gets
+// rewrite null and a rewriteTemplate, one score projection feeds the hero, the
+// Fix Plan and Improvement Potential (scoreProjection), and Word's list bullets
+// count as bullets (S13-004, -005, -008, -009, -010, -022, -024, -037, -038,
+// -058, -092, -097; S10-006, -007).
+const FN_BUILD = "free-keyword-scan.2026-11-01.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

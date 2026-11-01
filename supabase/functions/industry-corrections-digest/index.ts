@@ -21,7 +21,11 @@ import { INDUSTRY_KEYWORDS } from "../_shared/industry-detection.ts";
 import { CORRECTION_MENU_INDUSTRIES } from "../_shared/correction-menu-industries.ts";
 import { isScheduledCaller } from "../_shared/email-cron.ts";
 
-const FN_BUILD = "industry-corrections-digest.2026-10-08.1";
+// 2026-11-01.1: _shared/industry-detection.ts is now the scanner's detector byte for
+// byte (register S13-097). This function reads only INDUSTRY_KEYWORDS, which did
+// not change, so what it answers is the same; its bundle differs, so it takes a
+// new build.
+const FN_BUILD = "industry-corrections-digest.2026-11-01.1";
 const OWNER_EMAIL = Deno.env.get("OWNER_NOTIFY_EMAIL") ?? "resumeboostersupp@gmail.com";
 
 const corsHeaders = {
