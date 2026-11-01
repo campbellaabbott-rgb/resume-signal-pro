@@ -7,7 +7,19 @@ import { runtimeResolver } from "./net-guard.ts";
 
 // The build every response names (x-fn-build); see _shared/fn-build.ts.
 // .27 (the merge recheck, 2026-10-25): an Oracle requisition id with letters (REQ_820519) is read through the ById finder.
-const FN_BUILD = "fetch-job-posting.2026-10-11.27";
+// 2026-10-28.1 (S12-147 finished, fix/full-analysis-timeout): htmlToText drops hidden elements (display:none, visibility:hidden,
+// hidden, aria-hidden, font-size:0) with everything inside them before it strips the tags, through _shared/posting-text.ts
+// dropHiddenElements, one linear pass; nothing of main's past f8d72a9b rides along. Tags are read as a browser tokenizes
+// them (a quoted '>' is not the end, '/>' closes only a void element, attributes read by name, so "hidden" in a title or
+// class list hides nothing); !important and visibility:collapse hide; framework hiding classes (d-none, sr-only, a
+// Tailwind hidden with no responsive class beside it) and classes the page's own <style> hides unconditionally hide; a
+// <p>, <li>, <dt>/<dd>, <td>/<th>, <tr> or <option> whose end tag is left out ends where a browser ends it.
+// Recheck of that pass: a self-closing svg icon, or a page that leaves out its closing head tag, no longer drops the
+// visible posting after it (the live .27 kept it; a browser closes the icon at once and ends a head at its first body
+// content); character references in an attribute value are decoded before it is read; an end tag closes only an element
+// in scope, as a browser's does; and a hidden formatting element a paragraph's end closes keeps hiding the text after it
+// until its own end tag or the end of its table cell, as a browser rebuilds it.
+const FN_BUILD = "fetch-job-posting.2026-10-28.1";
 
 const fetchImpl = (url: string, init: RequestInit) => fetch(url, init);
 const resolve = runtimeResolver(fetchImpl);

@@ -211,7 +211,7 @@ const STUBS: Record<string, string> = {
   // has made its world.
   "_shared/supabase-client.ts": "export const getServiceClient = () => new Proxy({}, { get: (_t, p) => globalThis.__proClient[p] });",
   "_shared/ai-fallback.ts":
-    "export const chainFrom = (m) => [m]; export const callAIWithModelFallback = async () => { globalThis.__proAiCalls++; return { response: new Response('{}', { status: 500 }), modelUsed: 'fake' }; };",
+    "export const CHAIN_DEADLINE_MS = 125000; export const chainFrom = (m) => [m]; export const callAIWithModelFallback = async () => { globalThis.__proAiCalls++; return { response: new Response('{}', { status: 500 }), modelUsed: 'fake' }; }; export const describeReply = () => 'reply'; export const describeError = () => 'error';",
 };
 
 type StripeWorld = { customers: Record<string, Array<{ id: string }>>; subs: Record<string, unknown[]>; sessions: Record<string, unknown>; created: Array<Record<string, unknown>> };

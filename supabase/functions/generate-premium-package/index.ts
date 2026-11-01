@@ -4,7 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { assertPaidSession } from "../_shared/paid-session.ts";
 import { clipField, clipText, modelSpendGate } from "../_shared/model-spend-gate.ts";
 import { checkInputLimits, MAX_JOB_DESCRIPTION_LENGTH } from "../_shared/input-limits.ts";
-import { looksLikeBrokenJson, UnusableModelOutput } from "../_shared/ai-fallback.ts";
+import { CHAIN_DEADLINE_MS, callAIForUsableReply, chainRanOutOfTime, looksLikeBrokenJson, UnusableModelOutput, type UsableReply } from "../_shared/ai-fallback.ts";
 import { autoFixContent, validateContent } from "./auto-fix.ts";
 import { stripInventedContact } from "../_shared/contact-guard.ts";
 import { restoreUnsupportedLines, rewrittenResumeFigureIssues, validateProseClaims } from "../_shared/resume-grounding.ts";
@@ -12,7 +12,30 @@ import { restoreUnsupportedLines, rewrittenResumeFigureIssues, validateProseClai
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
 // 2026-10-09.62 (wave-3 fix round integration): carries both 2026-10-09.4 and the payments-account group's 2026-10-09.61.
-const FN_BUILD = "generate-premium-package.2026-10-11.24";
+// 2026-10-28.1 (S13-001, fix/full-analysis-timeout): the résumé, the letter
+// and their figure repairs walk the shared chain (_shared/ai-fallback.ts), not
+// this function's own: a model that timed out is not asked again, and every
+// call ends inside the request's one 125 s budget (the private chain retried
+// a timed-out model and gave each repair a fresh clock); a repair with no time
+// left fails like any failed repair. A chain that ran out of time answers the
+// 504 that says try again. Body (model, messages, max_completion_tokens),
+// model order (gpt-5, gemini-2.5-pro, gpt-5-mini) and reply are unchanged; the
+// never-called fetchWithRetry is gone. Two things the shared chain does
+// differently: a 429 on one model now asks the next model (the private chain
+// answered the first 429 at once; a 429 on gpt-5 now asks gemini-2.5-pro,
+// then gpt-5-mini), and the 429 answer comes only when every model is
+// rate-limited; and a 200 cut off at its cap, empty, or with JSON that does
+// not parse (prose is still a letter) asks the next model with what is left
+// of the budget (callAIForUsableReply), each part and each figure repair
+// alike; only when no model writes one is the same retryable 502 answered.
+// A part is delivered only when it carries what is delivered (recheck of
+// S13-001): a résumé reply with no rewrittenResume, or a letter whose
+// coverLetter is missing or empty, passed the figure check on an empty
+// string and the purchase was marked delivered with nothing in it; now the
+// next model is asked, and when none writes it the retryable 502 keeps the
+// delivery open for the retry sweep. Nothing of main's past f8d72a9b, the
+// build the 2026-10-31 deploy put live, rides along.
+const FN_BUILD = "generate-premium-package.2026-10-28.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -24,19 +47,12 @@ const logStep = (step: string, details?: Record<string, unknown>) => {
   console.log(`[GENERATE-PREMIUM-PACKAGE] ${step}`, details ? JSON.stringify(details) : '');
 };
 
-// Retry and fallback configuration
-const MAX_RETRIES = 1; // Reduced since we have model fallback
-const REQUEST_TIMEOUT_MS = 55000; // 55 seconds per model attempt
-const RETRY_DELAY_MS = 1000;
-
 // Model fallback order: primary -> same-quality different provider -> faster model
 const MODEL_FALLBACK_ORDER = [
   'openai/gpt-5',           // Primary: best quality
   'google/gemini-2.5-pro',  // Fallback 1: same quality, different provider
   'openai/gpt-5-mini',      // Fallback 2: faster, slightly lower quality
 ];
-
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 interface AIRequestOptions {
   messages: Array<{ role: string; content: string }>;
@@ -45,156 +61,76 @@ interface AIRequestOptions {
   tool_choice?: unknown;
 }
 
-async function callAIWithFallback(
+// ONE CHAIN, ONE DEADLINE (S13-001's sibling). This function had its own
+// chain, which asked a model that timed out again (55 s, then 55 s more) and
+// had no deadline, and each figure repair started a fresh clock: a slow
+// gateway ran a delivery past the platform's 150 s, whose 504 the webhook and
+// the retry sweep cannot tell from a crash. Every call now walks the shared
+// chain (_shared/ai-fallback.ts: a timed-out model is not asked again, the
+// next keeps its window) inside what is left of the request's one 125 s
+// budget; a repair that finds no time left fails like any failed repair.
+// A 200 IS NOT A DELIVERY (review of S13-001): a reply cut off at its cap,
+// empty, or with JSON that does not parse asks the next model
+// (callAIForUsableReply). The body is the one this function always sent, to
+// every model: model, messages, max_completion_tokens, tools and tool_choice
+// when given. (A legacy fetchWithRetry, never called, is gone.)
+async function askAI<T>(
   apiKey: string,
   options: AIRequestOptions,
-  context: string = 'AI call'
-): Promise<{ response: Response; modelUsed: string }> {
-  let lastError: Error | null = null;
-  
-  for (const model of MODEL_FALLBACK_ORDER) {
-    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-        
-        const startTime = Date.now();
-        logStep(`${context} - trying ${model}`, { attempt: attempt + 1, model });
-        
-        const requestBody: Record<string, unknown> = {
-          model,
-          messages: options.messages,
-        };
-        
-        if (options.max_completion_tokens) {
-          requestBody.max_completion_tokens = options.max_completion_tokens;
-        }
-        if (options.tools) {
-          requestBody.tools = options.tools;
-        }
-        if (options.tool_choice) {
-          requestBody.tool_choice = options.tool_choice;
-        }
-        
-        const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(requestBody),
-          signal: controller.signal,
-        });
-        
-        clearTimeout(timeoutId);
-        const duration = Date.now() - startTime;
-        
-        // Success
-        if (response.ok) {
-          logStep(`${context} - succeeded with ${model}`, { duration, model });
-          return { response, modelUsed: model };
-        }
-        
-        // Rate limit or payment required - don't retry, don't fallback
-        if (response.status === 429 || response.status === 402) {
-          logStep(`${context} - rate limit/payment issue`, { status: response.status, model });
-          return { response, modelUsed: model };
-        }
-        
-        // Client error (4xx) - don't retry same model, try fallback
-        if (response.status >= 400 && response.status < 500) {
-          const errorText = await response.text();
-          logStep(`${context} - client error, trying next model`, { status: response.status, error: errorText.substring(0, 100), model });
-          lastError = new Error(`Client error ${response.status}: ${errorText.substring(0, 100)}`);
-          break; // Try next model
-        }
-        
-        // Server error (5xx) - retry same model once, then fallback
-        if (response.status >= 500) {
-          const errorText = await response.text();
-          logStep(`${context} - server error`, { status: response.status, attempt: attempt + 1, model });
-          lastError = new Error(`Server error: ${response.status}`);
-          
-          if (attempt < MAX_RETRIES) {
-            await sleep(RETRY_DELAY_MS);
-            continue;
-          }
-          break; // Try next model
-        }
-        
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        
-        if (errorMessage.includes('aborted')) {
-          logStep(`${context} - timeout with ${model}`, { model });
-          lastError = new Error(`Timeout with ${model}`);
-        } else {
-          logStep(`${context} - network error with ${model}`, { error: errorMessage, model });
-          lastError = error instanceof Error ? error : new Error(errorMessage);
-        }
-        
-        if (attempt < MAX_RETRIES) {
-          await sleep(RETRY_DELAY_MS);
-          continue;
-        }
-        break; // Try next model
-      }
-    }
-    
-    logStep(`${context} - ${model} failed, trying next model`);
-  }
-  
-  // All models failed
-  throw lastError || new Error('All AI models failed');
+  context: string,
+  deadlineAt: number,
+  read: (data: unknown) => T | null,
+): Promise<UsableReply<T>> {
+  return await callAIForUsableReply(apiKey, {
+    messages: options.messages,
+    ...(options.max_completion_tokens ? { maxCompletionTokens: options.max_completion_tokens } : {}),
+    ...(options.tools ? { tools: options.tools } : {}),
+    ...(options.tool_choice ? { toolChoice: options.tool_choice } : {}),
+    models: MODEL_FALLBACK_ORDER,
+    context: `GENERATE-PREMIUM-PACKAGE ${context}`,
+    deadlineMs: deadlineAt - Date.now(),
+    read,
+  });
 }
 
-// Legacy function for backward compatibility
-async function fetchWithRetry(
-  url: string, 
-  options: RequestInit, 
-  maxRetries = MAX_RETRIES
-): Promise<Response> {
-  let lastError: Error | null = null;
-  
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-      
-      const response = await fetch(url, {
-        ...options,
-        signal: controller.signal,
-      });
-      
-      clearTimeout(timeoutId);
-      
-      if (response.ok || (response.status >= 400 && response.status < 500)) {
-        return response;
-      }
-      
-      if (response.status >= 500 && attempt < maxRetries) {
-        await sleep(RETRY_DELAY_MS * (attempt + 1));
-        continue;
-      }
-      
-      return response;
-      
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error));
-      if (attempt < maxRetries) {
-        await sleep(RETRY_DELAY_MS * (attempt + 1));
-        continue;
-      }
-    }
+/** The text a reply wrote, or null when it wrote none. */
+function contentOf(data: unknown): string | null {
+  const content = (data as { choices?: Array<{ message?: { content?: unknown } }> } | null)?.choices?.[0]?.message?.content;
+  return typeof content === "string" && content.trim() ? content : null;
+}
+
+/** The JSON object a reply carries, or null. */
+// deno-lint-ignore no-explicit-any
+function jsonObjectOf(content: string | null): Record<string, any> | null {
+  const match = content?.match(/\{[\s\S]*\}/);
+  if (!match) return null;
+  try {
+    const parsed = JSON.parse(match[0]);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
   }
-  
-  throw lastError || new Error('Max retries exceeded');
+}
+
+/**
+ * A reply's JSON when it carries the part delivered: a non-empty string in
+ * `field` (rewrittenResume, coverLetter). JSON without it passed the figure
+ * check on an empty string and the webhook marked the purchase delivered
+ * with no résumé or letter in it (recheck of S13-001); now the next model is
+ * asked, and when none writes one the retryable 502 keeps the delivery open.
+ */
+// deno-lint-ignore no-explicit-any
+function partOf(content: string | null, field: "rewrittenResume" | "coverLetter"): Record<string, any> | null {
+  const parsed = jsonObjectOf(content);
+  return parsed && typeof parsed[field] === "string" && parsed[field].trim() ? parsed : null;
 }
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+  // The request's one budget: every model call in it ends inside this.
+  const deadlineAt = Date.now() + CHAIN_DEADLINE_MS;
 
   const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
   try {
@@ -451,11 +387,30 @@ ${jobDescription}` : ''}
 
 Write a cover letter that sounds like it was written by this specific person - confident, articulate, and genuine. Reference specific experiences from their resume with concrete details.`;
 
-    const [
-      { response: resumeResponse, modelUsed: resumeModel },
-      { response: coverLetterResponse, modelUsed: coverLetterModel }
-    ] = await Promise.all([
-      callAIWithFallback(
+    // NO SYNTHESISED DELIVERY (register L5-12). A résumé reply with no JSON,
+    // or a letter that is broken JSON, used to ship as the delivery with an
+    // invented "ATS 50 -> 85"; then it was a retryable failure from the first
+    // model. Now the next model is asked, and only when none writes one does
+    // UnusableModelOutput keep the delivery open (the webhook marks it
+    // failed and the retry sweep tries again). Prose is still a letter.
+    const letterSubject = `Application for ${jobTitle || 'Position'}${jobCompany ? ` at ${jobCompany}` : ''}`;
+    // deno-lint-ignore no-explicit-any
+    const readLetter = (data: unknown): Record<string, any> | null => {
+      const content = contentOf(data);
+      if (!content) return null;
+      if (jsonObjectOf(content)) return partOf(content, "coverLetter");
+      if (looksLikeBrokenJson(content)) return null;
+      logStep("Cover letter came back as prose; the prose is the letter");
+      return {
+        coverLetter: content,
+        openingLine: "",
+        keySkillsHighlighted: [],
+        personalizedElements: [],
+        suggestedSubjectLine: letterSubject,
+      };
+    };
+    const [resumeReply, coverLetterReply] = await Promise.all([
+      askAI(
         apiKey,
         {
           messages: [
@@ -464,9 +419,11 @@ Write a cover letter that sounds like it was written by this specific person - c
           ],
           max_completion_tokens: 12000,
         },
-        'Resume generation'
+        'Resume generation',
+        deadlineAt,
+        (data) => partOf(contentOf(data), "rewrittenResume"),
       ),
-      callAIWithFallback(
+      askAI(
         apiKey,
         {
           messages: [
@@ -475,11 +432,16 @@ Write a cover letter that sounds like it was written by this specific person - c
           ],
           max_completion_tokens: 4000,
         },
-        'Cover letter generation'
+        'Cover letter generation',
+        deadlineAt,
+        readLetter,
       )
     ]);
+    const resumeModel = resumeReply.modelUsed;
+    const coverLetterModel = coverLetterReply.modelUsed;
 
-    if (!resumeResponse.ok) {
+    if (!resumeReply.ok) {
+      const resumeResponse = resumeReply.response;
       const errorText = await resumeResponse.text();
       logStep("Resume AI API error", { status: resumeResponse.status, error: errorText, model: resumeModel });
       if (resumeResponse.status === 429) {
@@ -497,7 +459,8 @@ Write a cover letter that sounds like it was written by this specific person - c
       throw new Error(`Resume AI API error: ${resumeResponse.status}`);
     }
 
-    if (!coverLetterResponse.ok) {
+    if (!coverLetterReply.ok) {
+      const coverLetterResponse = coverLetterReply.response;
       const errorText = await coverLetterResponse.text();
       logStep("Cover letter AI API error", { status: coverLetterResponse.status, error: errorText, model: coverLetterModel });
       if (coverLetterResponse.status === 429) {
@@ -511,58 +474,13 @@ Write a cover letter that sounds like it was written by this specific person - c
 
     logStep("Both AI calls complete", { resumeModel, coverLetterModel });
 
-    const resumeAiResponse = await resumeResponse.json();
-    const resumeContent = resumeAiResponse.choices?.[0]?.message?.content;
-    if (!resumeContent) throw new Error("No content in resume AI response");
-
     // The model's JSON, as parsed: typed loosely because the repair below
     // reassigns it from a closure, and an untyped `let` is then an implicit
     // any that the deno gate refuses.
     // deno-lint-ignore no-explicit-any
-    let resumeResult: Record<string, any>;
-    try {
-      const jsonMatch = resumeContent.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        resumeResult = JSON.parse(jsonMatch[0]);
-      } else {
-        throw new Error("No JSON found in resume response");
-      }
-    } catch (parseError) {
-      // NO SYNTHESISED DELIVERY (register L5-12). This used to ship the raw
-      // model text as the résumé with an invented "ATS 50 -> 85", recorded as
-      // a successful paid delivery. A retryable failure keeps the delivery
-      // open: the webhook marks it failed and the retry sweep tries again.
-      logStep("Resume JSON parse error", { error: String(parseError) });
-      throw new UnusableModelOutput("The résumé rewrite came back unreadable");
-    }
-
-    const coverLetterAiResponse = await coverLetterResponse.json();
-    const coverLetterContent = coverLetterAiResponse.choices?.[0]?.message?.content;
-    if (!coverLetterContent) throw new Error("No content in cover letter AI response");
-
+    let resumeResult: Record<string, any> = resumeReply.value;
     // deno-lint-ignore no-explicit-any
-    let coverLetterResult: Record<string, any>;
-    try {
-      const jsonMatch = coverLetterContent.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        coverLetterResult = JSON.parse(jsonMatch[0]);
-      } else {
-        throw new Error("No JSON found in cover letter response");
-      }
-    } catch (parseError) {
-      logStep("Cover letter JSON parse error", { error: String(parseError) });
-      // Prose is a letter; a broken JSON object is not one.
-      if (looksLikeBrokenJson(coverLetterContent)) {
-        throw new UnusableModelOutput("The cover letter came back unreadable");
-      }
-      coverLetterResult = {
-        coverLetter: coverLetterContent,
-        openingLine: "",
-        keySkillsHighlighted: [],
-        personalizedElements: [],
-        suggestedSubjectLine: `Application for ${jobTitle || 'Position'}${jobCompany ? ` at ${jobCompany}` : ''}`
-      };
-    }
+    let coverLetterResult: Record<string, any> = coverLetterReply.value;
 
     logStep("Both results parsed");
 
@@ -622,7 +540,7 @@ Write a cover letter that sounds like it was written by this specific person - c
       field: 'rewrittenResume' | 'coverLetter',
     ): Promise<Record<string, unknown> | null> => {
       try {
-        const { response } = await callAIWithFallback(apiKey, {
+        const reply = await askAI(apiKey, {
           messages: [
             { role: "system", content: system },
             { role: "user", content: user },
@@ -633,14 +551,16 @@ Write a cover letter that sounds like it was written by this specific person - c
             },
           ],
           max_completion_tokens: field === 'rewrittenResume' ? 12000 : 4000,
-        }, `${label} figure repair`);
-        if (!response.ok) return null;
-        const json = await response.json();
-        const content = json.choices?.[0]?.message?.content;
-        const match = typeof content === "string" ? content.match(/\{[\s\S]*\}/) : null;
-        if (!match) return null;
-        const repaired = JSON.parse(match[0]) as Record<string, unknown>;
-        if (typeof repaired[field] !== "string" || !(repaired[field] as string).trim()) return null;
+        }, `${label} figure repair`, deadlineAt, (data) => {
+          // The repaired part in the JSON asked for, with its text; a cut-off,
+          // empty or unreadable one asks the next model.
+          return partOf(contentOf(data), field) as Record<string, unknown> | null;
+        });
+        if (!reply.ok) {
+          await reply.response.body?.cancel().catch(() => {});
+          return null;
+        }
+        const repaired = reply.value;
         // The repaired text passes the same guards the first draft did.
         const guarded = stripInventedContact(autoFixContent(repaired[field] as string, resumeText).fixed, resumeText);
         repaired[field] = guarded.text;
@@ -760,7 +680,7 @@ Write a cover letter that sounds like it was written by this specific person - c
     }
 
     // Check for timeout errors and return a more helpful message
-    if (errorMessage.includes('timed out') || errorMessage.includes('timeout')) {
+    if (chainRanOutOfTime(error) || errorMessage.includes('timed out') || errorMessage.includes('timeout')) {
       return new Response(
         JSON.stringify({ 
           error: "The AI took too long to respond. Please try again.", 

@@ -25,7 +25,7 @@ const RESUME = "Jane Doe -- Senior software engineer with ten years of TypeScrip
 const POSTING = "We are hiring a senior engineer to own our checkout and fulfilment services end to end, with on-call and mentoring for the team.";
 
 const LETTER = JSON.stringify({ coverLetter: "Dear Hiring Manager,\n\nAt Acme Corp I led a team of five on payments work in TypeScript and Postgres. I would bring the same care to your checkout services.\n\nBest,\nJane Doe", openingLine: "x", keySkillsHighlighted: [], personalizedElements: [], suggestedSubjectLine: "x", alternateOpenings: [] });
-const PREP = JSON.stringify({ interviewProfile: { targetRole: "Engineer", difficulty: "Senior", interviewType: "mix" }, questions: [], interviewTips: { beforeInterview: [], duringInterview: [], closingQuestions: [] } });
+const PREP = JSON.stringify({ interviewProfile: { targetRole: "Engineer", difficulty: "Senior", interviewType: "mix" }, questions: [{ id: 1, category: "Behavioral", question: "Tell me about a hard migration." }], interviewTips: { beforeInterview: [], duringInterview: [], closingQuestions: [] } });
 const TAILORED = { professionalSummary: "Engineer", keySkills: [], experienceHighlights: [], keywordsRequired: [], keywordGaps: [], matchScoreDelta: 5, suggestedJobTitle: "Engineer", coverLetterOpening: "x", applicationTips: [] };
 
 type Tool = { fn: string; tool: "letter" | "resume" | "prep"; body: Record<string, unknown>; ok: () => Response };

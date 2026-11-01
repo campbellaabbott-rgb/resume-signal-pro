@@ -17,7 +17,7 @@
 //       every non-Greenhouse posting where the real form isn't exposed.
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { callAIWithModelFallback, chainFrom } from "../_shared/ai-fallback.ts";
+import { CHAIN_DEADLINE_MS, callAIWithModelFallback, chainFrom } from "../_shared/ai-fallback.ts";
 import { buildLanguageInstruction } from "../_shared/language-instruction.ts";
 import { checkInputLimits } from "../_shared/input-limits.ts";
 import { clipField, clipText, modelSpendGate } from "../_shared/model-spend-gate.ts";
@@ -65,7 +65,40 @@ import { signInRequired } from "../_shared/writing-allowance.ts";
 // 2026-10-11.31 (wave 4 round 2 recheck): carries the classifier that reads every later clause and sentence of a work-done or motivation question against the shared factual topics (notice, earliest, earned, who to contact).
 // 2026-10-11.32 (wave 4 fix round 3, corpus-first): carries the classifier that refuses a personal fact or ask unless the label is about work done.
 // 2026-10-11.33 (wave 4 fix round 4): carries the classifier that no longer refuses a job word ("full-time", "eligibility") and refuses a status after "without", "on a" or "as a".
-const FN_BUILD = "generate-application-answers.2026-10-11.33";
+// 2026-10-28.1 (S13-001, fix/full-analysis-timeout): _shared/ai-fallback.ts no
+// longer asks a model that timed out again: this function's chain moves to the
+// next model, which keeps at least 40 s of the 125 s budget when the first
+// model times out (what else the module gained, the optional caller signal,
+// the walk that refuses a cut-off or empty reply, the completion-token
+// option, the reply describer and the error describer, rides in the bundle
+// unused here). Every
+// model call in a request now ends inside one 125 s budget taken when the
+// request arrives: the cover note's draft and its repair each had a fresh
+// 125 s (about 250 s together, past the platform's 150 s); a repair that
+// finds no time left returns no note, as a repair that fails the check
+// does, and the caller sends the candidate's own words.
+// _shared/posting-text.ts reads an HTML posting in one linear pass now
+// (S12-147, finished), as a browser reads it: an unclosed script, style or
+// comment block runs to the end of the page; a quoted '>' does not end a tag
+// and '/>' closes only a void element; attributes are read by name, so
+// "hidden" in a title or class list hides nothing; !important and
+// visibility:collapse hide, as do framework hiding classes (d-none, sr-only,
+// a Tailwind hidden with no responsive class) and classes the page's own
+// <style> hides; a <p>, <li>, <td> or <tr> whose end tag is left out ends
+// where a browser ends it, so a hidden one takes only its own words.
+// Recheck of that reader: a self-closing svg icon, or a page that leaves out
+// its closing head tag, no longer drops the visible posting after it (both
+// were skipped to their own end tag; a browser closes the icon at once and
+// ends a head at its first body content); character references in an
+// attribute value are decoded before it is read (display&#58;none hides);
+// an end tag closes only an element in scope, as a browser's does (one never
+// leaves the hidden table cell it sits in, and the body's end closes
+// nothing); and a hidden bold, italic, link or other formatting element that
+// a paragraph's end closes keeps hiding the text after it until its own end
+// tag or the end of its table cell, as a browser rebuilds it.
+// Nothing else in this bundle changed since main's f8d72a9b, the build the
+// 2026-10-31 deploy put live (docs/deploy-ledger.json, verifiedDeploys).
+const FN_BUILD = "generate-application-answers.2026-10-28.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -83,6 +116,8 @@ const ANSWERS_LIMITS = { perAddress: 30, globalPerHour: 300 };
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  // The request's one budget: every model call in it ends inside this.
+  const deadlineAt = Date.now() + CHAIN_DEADLINE_MS;
 
   const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
   const spendGate = () => modelSpendGate(supabase, req, "generate-application-answers", ANSWERS_LIMITS, corsHeaders);
@@ -167,11 +202,22 @@ serve(async (req) => {
       // already has a wall-clock budget.
       let lastIssues: string[] = [];
       for (let attempt = 0; attempt < 2; attempt++) {
-        const { response } = await callAIWithModelFallback(apiKeyCN, {
-          messages, temperature: 0.4, maxTokens: 900,
-          models: chainFrom("google/gemini-2.5-flash"),
-          context: "COVER-NOTE",
-        });
+        let response: Response;
+        try {
+          ({ response } = await callAIWithModelFallback(apiKeyCN, {
+            messages, temperature: 0.4, maxTokens: 900,
+            models: chainFrom("google/gemini-2.5-flash"),
+            context: "COVER-NOTE",
+            deadlineMs: deadlineAt - Date.now(),
+          }));
+        } catch (e) {
+          // The repair ran out of time or every model failed it: no note, as
+          // for a repair that fails the check. The first draft's failure is
+          // still this function's error, as before.
+          if (attempt === 0) throw e;
+          console.log(`[COVER-NOTE] repair not made: ${e instanceof Error ? e.message : String(e)}`);
+          break;
+        }
         if (!response.ok) {
           if (response.status === 429) {
             return new Response(JSON.stringify({ error: "The AI service is busy. Please try again in a minute.", code: "model_busy", retryable: true }), {
@@ -297,6 +343,7 @@ ${inferred ? "" : `\nQUESTIONS TO ANSWER (draft each, grounded strictly in the r
           jsonResponse: true,
           models: chainFrom("google/gemini-2.5-flash"),
           context: "APPLICATION-ANSWERS",
+          deadlineMs: deadlineAt - Date.now(),
         }));
       } catch (e) {
         console.error("[APPLICATION-ANSWERS] every model failed for one chunk:", e instanceof Error ? e.message : String(e));

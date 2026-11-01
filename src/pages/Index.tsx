@@ -1607,7 +1607,11 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
         missingSkills: freeKeywordResult?.missingSkills,
       }, {
         maxRetries: 2,
-        timeout: 120000, // 2 minutes for AI generation
+        // Past the platform's 150 s, so the server's own answer is always
+        // read: its model chain may write the résumé up to 125 s after the
+        // request arrives, and a reply that lands after the browser gave up
+        // still spends the day's use (src/test/a-writers-caller-waits-past-the-servers-budget.test.ts).
+        timeout: 155000,
         initialDelay: 2000,
       });
 

@@ -7,7 +7,7 @@ import { validateTailoredResume, type TailoredResumeShape } from "../_shared/res
 import { roleGuidance } from "../_shared/application-questions.ts";
 import { APPLY_KIT_PRODUCT_TYPES } from "../_shared/apply-kit.ts";
 import { assertPaidSession } from "../_shared/paid-session.ts";
-import { callAIWithModelFallback } from "../_shared/ai-fallback.ts";
+import { CHAIN_DEADLINE_MS, callAIWithModelFallback, describeError, describeReply } from "../_shared/ai-fallback.ts";
 import { clientAddressOr } from "../_shared/client-address.ts";
 import { checkoutSessionSettled } from "../_shared/pass-settlement.ts";
 import { accountProStanding } from "../_shared/pro.ts";
@@ -39,7 +39,43 @@ import { fencePosting, postingText, POSTING_DATA_RULE } from "../_shared/posting
 // 2026-10-11.31 (wave 4 round 2 recheck): carries the classifier that reads every later clause and sentence of a work-done or motivation question against the shared factual topics (notice, earliest, earned, who to contact).
 // 2026-10-11.32 (wave 4 fix round 3, corpus-first): carries the classifier that refuses a personal fact or ask unless the label is about work done.
 // 2026-10-11.33 (wave 4 fix round 4): carries the classifier that no longer refuses a job word ("full-time", "eligibility") and refuses a status after "without", "on a" or "as a".
-const FN_BUILD = "generate-apply-package.2026-10-11.33";
+// 2026-10-28.1 (S13-001, S13-064, fix/full-analysis-timeout):
+// _shared/ai-fallback.ts no longer asks a model that timed out again: this
+// function's chain moves to the next model, which keeps at least 40 s of the
+// 125 s budget when the first model times out. A reply in an unexpected
+// format is logged by its shape and lengths (describeReply), no longer as the
+// whole reply, which carried the person's résumé. The draft and its grounding
+// regeneration share the request's one 125 s budget, taken when the request
+// arrives (each had a fresh 125 s, so a slow draft and a regeneration could
+// run about 250 s, past the platform's 150 s); a regeneration that finds no
+// time left fails like any failed regeneration, and the kit is refused as
+// before, retryably.
+// _shared/posting-text.ts reads an HTML posting in one linear pass now
+// (S12-147, finished), as a browser reads it: an unclosed script, style or
+// comment block runs to the end of the page; a quoted '>' does not end a tag
+// and '/>' closes only a void element; attributes are read by name, so
+// "hidden" in a title or class list hides nothing; !important and
+// visibility:collapse hide, as do framework hiding classes (d-none, sr-only,
+// a Tailwind hidden with no responsive class) and classes the page's own
+// <style> hides; a <p>, <li>, <td> or <tr> whose end tag is left out ends
+// where a browser ends it, so a hidden one takes only its own words.
+// Recheck of that reader: a self-closing svg icon, or a page that leaves out
+// its closing head tag, no longer drops the visible posting after it (both
+// were skipped to their own end tag; a browser closes the icon at once and
+// ends a head at its first body content); character references in an
+// attribute value are decoded before it is read (display&#58;none hides);
+// an end tag closes only an element in scope, as a browser's does (one never
+// leaves the hidden table cell it sits in, and the body's end closes
+// nothing); and a hidden bold, italic, link or other formatting element that
+// a paragraph's end closes keeps hiding the text after it until its own end
+// tag or the end of its table cell, as a browser rebuilds it.
+// A tool call whose arguments do not parse, in the draft or its
+// regeneration, is logged by the parse error's position only (describeError,
+// recheck of S13-064): the engine's message quoted the text around it, which
+// could be the person's name or email.
+// Nothing else in this function changed, and nothing of main's past
+// f8d72a9b, the build the 2026-10-31 deploy put live, rides along.
+const FN_BUILD = "generate-apply-package.2026-10-28.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -99,10 +135,12 @@ interface AIRequestOptions {
   tool_choice?: unknown;
 }
 
+/** One chain call, inside what is left of the request's one budget (deadlineAt). */
 function callAIWithFallback(
   apiKey: string,
   options: AIRequestOptions,
-  context: string = 'AI call'
+  context: string,
+  deadlineAt: number,
 ): Promise<{ response: Response; modelUsed: string }> {
   return callAIWithModelFallback(apiKey, {
     messages: options.messages,
@@ -110,6 +148,7 @@ function callAIWithFallback(
     toolChoice: options.tool_choice,
     models: MODEL_FALLBACK_ORDER,
     context: `GENERATE-APPLY-PACKAGE ${context}`,
+    deadlineMs: deadlineAt - Date.now(),
   });
 }
 
@@ -121,14 +160,16 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+  // The request's one budget: the draft and its regeneration end inside it.
+  const deadlineAt = Date.now() + CHAIN_DEADLINE_MS;
   // A Pro account's use is given back whenever no kit is delivered.
   const holder: { pass: WritingPass | null } = { pass: null };
-  const res = await handleKit(req, holder);
+  const res = await handleKit(req, holder, deadlineAt);
   if (res.status >= 400) await refundWriting(getServiceClient(), holder.pass);
   return res;
 });
 
-async function handleKit(req: Request, holder: { pass: WritingPass | null }): Promise<Response> {
+async function handleKit(req: Request, holder: { pass: WritingPass | null }, deadlineAt: number): Promise<Response> {
   const clientIp = getClientIp(req);
 
   try {
@@ -454,7 +495,8 @@ Prepare the tailored application package.`;
         tool_choice: applyToolChoice
 
       },
-      'Apply package generation'
+      'Apply package generation',
+      deadlineAt,
     );
 
     if (!response.ok) {
@@ -481,7 +523,8 @@ Prepare the tailored application package.`;
     const data = await response.json();
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
     if (!toolCall || toolCall.function.name !== "submit_apply_package") {
-      console.error("[GENERATE-APPLY-PACKAGE] Unexpected response format:", JSON.stringify(data));
+      // Its shape, never its words: the reply carries the person's résumé (S13-064).
+      console.error("[GENERATE-APPLY-PACKAGE] Unexpected response format:", describeReply(data));
       return new Response(
         JSON.stringify({ error: "Invalid AI response format" }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -497,7 +540,8 @@ Prepare the tailored application package.`;
     try {
       result = JSON.parse(toolCall.function.arguments);
     } catch (e) {
-      console.warn("[GENERATE-APPLY-PACKAGE] tool-call JSON parse failed:", String(e).slice(0, 120));
+      // Its name and position, never the arguments it quotes (S13-064).
+      console.warn("[GENERATE-APPLY-PACKAGE] tool-call JSON parse failed:", describeError(e), `(${String(toolCall.function.arguments ?? "").length} chars)`);
       return new Response(
         JSON.stringify({ error: "The generator returned a malformed draft. Try again — regeneration is free.", retryable: true }),
         { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -520,7 +564,8 @@ Prepare the tailored application package.`;
             tools: applyPackageTool,
             tool_choice: applyToolChoice,
           },
-          'Apply package regeneration'
+          'Apply package regeneration',
+          deadlineAt,
         );
         if (r2.ok) {
           const d2 = await r2.json();
@@ -535,7 +580,7 @@ Prepare the tailored application package.`;
           }
         }
       } catch (e) {
-        console.warn("[GENERATE-APPLY-PACKAGE] regeneration attempt failed:", String(e).slice(0, 120));
+        console.warn("[GENERATE-APPLY-PACKAGE] regeneration attempt failed:", describeError(e));
       }
     }
     if (!grounding.ok) {

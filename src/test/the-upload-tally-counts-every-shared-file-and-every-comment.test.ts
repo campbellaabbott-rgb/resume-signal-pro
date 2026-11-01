@@ -32,6 +32,14 @@
  * moved into docs/job-board-index-notes.md are shown to be what keeps the
  * deploy under the line: put back beside their code, the tally is over it.
  * Every pointer left in the code is shown to name a section the doc has.
+ *
+ * THE _SHARED NOTES. The runs moved out of _shared/ai-fallback.ts and
+ * _shared/posting-text.ts (2026-11-01, room for the next rounds' _shared
+ * growth) live in docs/shared-notes.md, one `## sN` section per run, and the code
+ * keeps a `docs/shared-notes.md#sN` pointer where each stood. Every such
+ * pointer anywhere in _shared is shown to name a section the doc has, each
+ * section to name the file its pointer is in, and each section to have a
+ * pointer; the check is shown catching each of the three on fixtures.
  */
 import { describe, expect, it } from "vitest";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
@@ -42,6 +50,7 @@ const ROOT = resolve(__dirname, "../..");
 const JOB_BOARD = resolve(ROOT, "supabase/functions/job-board");
 const SHARED = resolve(ROOT, "supabase/functions/_shared");
 const NOTES = resolve(ROOT, "docs/job-board-index-notes.md");
+const SHARED_NOTES = resolve(ROOT, "docs/shared-notes.md");
 
 /** The size past which the deploy keeps serving the previous bundle. */
 const DEPLOY_LINE_BYTES = 4_500_000;
@@ -163,6 +172,38 @@ function noteSections(): Map<string, string> {
   return out;
 }
 
+/** A pointer from a _shared file into docs/shared-notes.md; the section's `## sN` heading is its anchor. */
+const SHARED_POINTER = /docs\/shared-notes\.md#([A-Za-z0-9_-]+)/g;
+
+/** Every way the _shared pointers and the notes doc's sections fail to meet, and how many pointers were read. */
+function sharedNoteProblems(sources: Array<{ file: string; text: string }>, doc: string): { pointers: number; problems: string[] } {
+  const problems: string[] = [];
+  // Each section: its heading (the anchor) and its first line, which names the file the run came from.
+  const sections = new Map<string, string>();
+  for (const part of doc.split(/^## /m).slice(1)) {
+    const nl = part.indexOf("\n");
+    const slug = (nl < 0 ? part : part.slice(0, nl)).trim();
+    if (!/^s\d+$/.test(slug)) problems.push(`docs/shared-notes.md heading "## ${slug}" is not an sN anchor`);
+    if (sections.has(slug)) problems.push(`docs/shared-notes.md has two sections ${slug}`);
+    sections.set(slug, nl < 0 ? "" : part.slice(nl + 1).replace(/^\n+/, "").split("\n")[0]);
+  }
+  const pointed = new Set<string>();
+  let pointers = 0;
+  for (const { file, text } of sources) {
+    for (const m of text.matchAll(SHARED_POINTER)) {
+      pointers++;
+      pointed.add(m[1]);
+      const lead = sections.get(m[1]);
+      if (lead === undefined) problems.push(`${file} points to #${m[1]}, a section docs/shared-notes.md does not have`);
+      else if (!lead.includes(`\`${file}\``)) problems.push(`${file} points to #${m[1]}, whose section names another file: ${lead.slice(0, 80)}`);
+    }
+  }
+  for (const slug of sections.keys()) {
+    if (!pointed.has(slug)) problems.push(`docs/shared-notes.md section ${slug} has no pointer left in _shared`);
+  }
+  return { pointers, problems };
+}
+
 describe("the job-board upload, tallied the deploy's way", () => {
   const { files, pending, total } = uploadTally();
   const ceiling = DEPLOY_LINE_BYTES - HEADROOM_BYTES;
@@ -174,7 +215,7 @@ describe("the job-board upload, tallied the deploy's way", () => {
       total,
       `job-board's upload is ${total.toLocaleString("en-US")} bytes (${files.size} files on disk, ${pending.toLocaleString("en-US")} pending from other rounds; biggest: ${biggest}). ` +
         `Over ${ceiling.toLocaleString("en-US")} the next deploy has less than the agreed room; over ${DEPLOY_LINE_BYTES.toLocaleString("en-US")} it reports success and serves the PREVIOUS bundle. ` +
-        "Move comment runs out with scripts/trim-job-board-comments.mjs before adding code.",
+        "Move comment runs out with scripts/trim-job-board-comments.mjs (job-board) or into docs/shared-notes.md (_shared) before adding code.",
     ).toBeLessThanOrEqual(ceiling);
   });
 
@@ -243,5 +284,34 @@ describe("the job-board upload, tallied the deploy's way", () => {
       total + restored,
       `with the ${pointers} moved runs back beside their code the upload would be ${(total + restored).toLocaleString("en-US")} bytes, under the line: the notes doc is not what keeps the deploy serving, and this test no longer proves anything about it`,
     ).toBeGreaterThan(DEPLOY_LINE_BYTES);
+  });
+
+  it("every docs/shared-notes.md pointer in _shared names a section that names its file, and every section has a pointer", () => {
+    const sources = filesUnder(SHARED).map((f) => ({ file: relative(ROOT, f), text: readFileSync(f, "utf8") }));
+    const { pointers, problems } = sharedNoteProblems(sources, readFileSync(SHARED_NOTES, "utf8"));
+    expect(problems, "the _shared pointers and docs/shared-notes.md disagree").toEqual([]);
+    expect(pointers, "no pointers found: the pattern is not reading _shared").toBeGreaterThanOrEqual(32);
+    for (const f of ["ai-fallback.ts", "posting-text.ts"]) {
+      const own = sources.find((s) => s.file === relative(ROOT, join(SHARED, f)));
+      expect([...(own?.text ?? "").matchAll(SHARED_POINTER)].length, `${f} keeps no pointer into the notes doc`).toBeGreaterThan(10);
+    }
+  });
+
+  it("TEETH: the shared-notes check catches a dangling pointer, a section naming another file, and a section with no pointer", () => {
+    const A = "supabase/functions/_shared/a.ts";
+    const B = "supabase/functions/_shared/b.ts";
+    const doc = `# notes\n\n## s1\n\n\`${A}\`, f. Above: \`f()\`\n\nwhy f\n\n## s2\n\n\`${B}\`, g. Above: \`g()\`\n\nwhy g\n`;
+    const a = { file: A, text: "// f: docs/shared-notes.md#s1\nf();\n" };
+    const b = { file: B, text: "/** g. docs/shared-notes.md#s2 */\ng();\n" };
+    expect(sharedNoteProblems([a, b], doc)).toEqual({ pointers: 2, problems: [] });
+    const dangling = sharedNoteProblems([a, b, { file: B, text: "// h: docs/shared-notes.md#s9\n" }], doc);
+    expect(dangling.problems).toEqual([`${B} points to #s9, a section docs/shared-notes.md does not have`]);
+    const crossed = sharedNoteProblems([{ file: A, text: "// docs/shared-notes.md#s1 docs/shared-notes.md#s2" }], doc);
+    expect(crossed.problems).toEqual([expect.stringContaining(`${A} points to #s2, whose section names another file`)]);
+    expect(sharedNoteProblems([a], doc).problems).toEqual(["docs/shared-notes.md section s2 has no pointer left in _shared"]);
+    expect(sharedNoteProblems([a, b], `${doc}\n## notes\n\nx\n`).problems).toEqual([
+      'docs/shared-notes.md heading "## notes" is not an sN anchor',
+      "docs/shared-notes.md section notes has no pointer left in _shared",
+    ]);
   });
 });

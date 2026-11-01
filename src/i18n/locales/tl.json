@@ -637,7 +637,8 @@
       "backHome": "Bumalik sa Home",
       "analysisNotFound": "Hindi nakita ang analysis. Maaaring invalid o expired na ang link.",
       "analyzeFailed": "Hindi ma-analyze ang resume",
-      "loadFailed": "Hindi ma-load ang analysis."
+      "loadFailed": "Hindi ma-load ang analysis.",
+      "timedOut": "Masyadong natagalan ang analysis at huminto ito bago may ma-save. Valid pa rin ang binili mo at walang dobleng singil, kaya ligtas at libre ang subukan ulit."
     },
     "toast": {
       "paymentSuccess": "Matagumpay ang pagbabayad!",
@@ -2334,7 +2335,78 @@
     "analysisProcessingDescription": "Hindi namin nakuha ang detalyadong rekomendasyon mula sa iyong resume. Maaari itong mangyari kung hindi pangkaraniwan ang format ng resume o nagkaroon ng isyu sa pagproseso.",
     "bottomCta": "I-apply ang mga pagbabagong ito sa iyong resume at panoorin ang pagpapahusay ng iyong interview rate!",
     "bottomCtaWithLinkedIn": "I-apply ang mga pagbabagong ito sa iyong resume at LinkedIn profile at panoorin ang pagpapahusay ng iyong interview rate!",
-    "analysisSaved": "Itinatago ang pagsusuring ito nang {{analysisDays}} araw sa likod ng share link sa itaas, saka binubura. I-download ito bilang PDF para magtabi ng sarili mong kopya."
+    "analysisSaved": "Itinatago ang pagsusuring ito nang {{analysisDays}} araw sa likod ng share link sa itaas, saka binubura. I-download ito bilang PDF para magtabi ng sarili mong kopya.",
+    "enum": {
+      "industry": {
+        "technology": "Teknolohiya",
+        "data_engineering": "Data Engineering",
+        "data_science": "Data Science",
+        "machine_learning": "Machine Learning",
+        "healthcare": "Pangangalagang Pangkalusugan",
+        "finance": "Pananalapi",
+        "marketing": "Marketing",
+        "sales": "Pagbebenta",
+        "engineering": "Inhinyeriya",
+        "education": "Edukasyon",
+        "hr": "HR",
+        "consulting": "Pagkonsulta",
+        "legal": "Legal",
+        "retail": "Retail",
+        "hospitality": "Hospitality",
+        "manufacturing": "Pagmamanupaktura",
+        "government": "Gobyerno",
+        "product_management": "Product Management",
+        "creative": "Malikhaing Larangan",
+        "general": "Pangkalahatan"
+      },
+      "experienceLevel": {
+        "entry": "Baguhan",
+        "mid": "Gitna",
+        "senior": "Senior",
+        "executive": "Ehekutibo"
+      },
+      "jargonLevel": {
+        "low": "Mababa",
+        "moderate": "Katamtaman",
+        "high": "Mataas"
+      },
+      "severity": {
+        "low": "Mababa",
+        "medium": "Katamtaman",
+        "high": "Mataas"
+      },
+      "postFormat": {
+        "text": "Teksto",
+        "carousel": "Carousel",
+        "poll": "Poll",
+        "video": "Video",
+        "article": "Artikulo"
+      },
+      "tone": {
+        "formal": "Pormal",
+        "casual": "Kaswal",
+        "technical": "Teknikal",
+        "creative": "Malikhain",
+        "corporate": "Korporatibo",
+        "startup": "Startup"
+      },
+      "companyType": {
+        "startup": "Startup",
+        "scaleup": "Scale-up",
+        "enterprise": "Malaking kumpanya",
+        "agency": "Ahensya",
+        "nonprofit": "Non-profit",
+        "government": "Gobyerno",
+        "unknown": "Hindi alam"
+      },
+      "linkedInSection": {
+        "headline": "Headline",
+        "about": "Tungkol sa",
+        "experience": "Karanasan",
+        "skills": "Kasanayan",
+        "engagement": "Engagement"
+      }
+    }
   },
   "personalization": {
     "experience": {

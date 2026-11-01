@@ -9,7 +9,13 @@ import { createGatewayDeltaReader } from "../_shared/ai-fallback.ts";
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "generate-premium-package-stream.2026-10-11.24";
+// 2026-10-28.1 (S13-001, fix/full-analysis-timeout): this bundle imports only
+// createGatewayDeltaReader from _shared/ai-fallback.ts, so the chain change (a
+// timed-out model is not asked again) does not reach it: its behaviour is
+// unchanged. Rebuilt so the deployed bundle matches the repo's ai-fallback.ts.
+// Nothing else in this bundle changed since main's f8d72a9b, the build the
+// 2026-10-31 deploy put live (docs/deploy-ledger.json, verifiedDeploys).
+const FN_BUILD = "generate-premium-package-stream.2026-10-28.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

@@ -637,7 +637,8 @@
       "backHome": "Zurück zur Startseite",
       "analysisNotFound": "Analyse nicht gefunden. Der Link ist möglicherweise ungültig oder abgelaufen.",
       "analyzeFailed": "Der Lebenslauf konnte nicht analysiert werden",
-      "loadFailed": "Die Analyse konnte nicht geladen werden."
+      "loadFailed": "Die Analyse konnte nicht geladen werden.",
+      "timedOut": "Die Analyse hat zu lange gedauert und wurde beendet, bevor etwas gespeichert wurde. Ihr Kauf bleibt gültig und nichts wurde doppelt berechnet. Ein neuer Versuch ist sicher und kostenlos."
     },
     "toast": {
       "paymentSuccess": "Zahlung erfolgreich!",
@@ -2184,7 +2185,7 @@
     "fullProfileBreakdown": "Deine vollständige Profilanalyse",
     "resumeBreakdown": "Deine Lebenslauf-Analyse",
     "heroSubtitle": "Hier ist, was wir gefunden haben und wie du es behebst. Wende diese Änderungen an, um deine Interviewchancen zu erhöhen.",
-    "experienceLevel": "{{level}}-Niveau",
+    "experienceLevel": "Niveau: {{level}}",
     "linkedInIncluded": "LinkedIn enthalten",
     "jdMatchPercent": "{{score}}% JD-Abgleich",
     "resumeStrength": "Lebenslauf-Stärke",
@@ -2334,7 +2335,78 @@
     "analysisProcessingDescription": "Wir konnten keine detaillierten Empfehlungen aus deinem Lebenslauf extrahieren. Dies kann passieren, wenn das Lebenslaufformat ungewöhnlich ist oder es bei der Verarbeitung ein Problem gab.",
     "bottomCta": "Wende diese Änderungen auf deinen Lebenslauf an und beobachte, wie sich deine Interviewquote verbessert!",
     "bottomCtaWithLinkedIn": "Wende diese Änderungen auf deinen Lebenslauf und dein LinkedIn-Profil an und beobachte, wie sich deine Interviewquote verbessert!",
-    "analysisSaved": "Diese Analyse bleibt {{analysisDays}} Tage hinter dem Freigabelink oben abrufbar und wird dann gelöscht. Lade sie als PDF herunter, um eine eigene Kopie zu behalten."
+    "analysisSaved": "Diese Analyse bleibt {{analysisDays}} Tage hinter dem Freigabelink oben abrufbar und wird dann gelöscht. Lade sie als PDF herunter, um eine eigene Kopie zu behalten.",
+    "enum": {
+      "industry": {
+        "technology": "Technologie",
+        "data_engineering": "Data Engineering",
+        "data_science": "Data Science",
+        "machine_learning": "Maschinelles Lernen",
+        "healthcare": "Gesundheitswesen",
+        "finance": "Finanzen",
+        "marketing": "Marketing",
+        "sales": "Vertrieb",
+        "engineering": "Ingenieurwesen",
+        "education": "Bildung",
+        "hr": "Personalwesen",
+        "consulting": "Beratung",
+        "legal": "Recht",
+        "retail": "Einzelhandel",
+        "hospitality": "Gastgewerbe",
+        "manufacturing": "Fertigung",
+        "government": "Öffentlicher Dienst",
+        "product_management": "Produktmanagement",
+        "creative": "Kreativbranche",
+        "general": "Allgemein"
+      },
+      "experienceLevel": {
+        "entry": "Einstieg",
+        "mid": "Mittlere Ebene",
+        "senior": "Senior",
+        "executive": "Führungsebene"
+      },
+      "jargonLevel": {
+        "low": "Niedrig",
+        "moderate": "Mäßig",
+        "high": "Hoch"
+      },
+      "severity": {
+        "low": "Niedrig",
+        "medium": "Mittel",
+        "high": "Hoch"
+      },
+      "postFormat": {
+        "text": "Text",
+        "carousel": "Karussell",
+        "poll": "Umfrage",
+        "video": "Video",
+        "article": "Artikel"
+      },
+      "tone": {
+        "formal": "Formell",
+        "casual": "Locker",
+        "technical": "Fachlich",
+        "creative": "Kreativ",
+        "corporate": "Konzernsprache",
+        "startup": "Start-up"
+      },
+      "companyType": {
+        "startup": "Start-up",
+        "scaleup": "Scale-up",
+        "enterprise": "Großunternehmen",
+        "agency": "Agentur",
+        "nonprofit": "Gemeinnützig",
+        "government": "Öffentlicher Dienst",
+        "unknown": "Unbekannt"
+      },
+      "linkedInSection": {
+        "headline": "Slogan",
+        "about": "Info",
+        "experience": "Berufserfahrung",
+        "skills": "Kenntnisse",
+        "engagement": "Interaktion"
+      }
+    }
   },
   "personalization": {
     "experience": {

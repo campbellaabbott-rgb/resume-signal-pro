@@ -27,7 +27,16 @@ import { sessionWasRefunded } from "../_shared/payment-revocation.ts";
 // remembered until their 90 days end (career_path_past_buyers,
 // 20261011213000) and read before either bucket, so strangers who fill the
 // function-wide bucket cannot lock a genuine buyer out.
-const FN_BUILD = "generate-career-path.2026-10-11.31";
+// 2026-10-28.1 (S13-001, fix/full-analysis-timeout): _shared/ai-fallback.ts no
+// longer asks a model that timed out again: this function's chain moves to the
+// next model, which keeps at least 40 s of the 125 s budget when the first
+// model times out (what else the module gained, the optional caller signal,
+// the walk that refuses a cut-off or empty reply, the completion-token
+// option, the reply describer and the error describer, rides in the bundle
+// unused here).
+// Nothing else in this bundle changed since main's f8d72a9b, the build the
+// 2026-10-31 deploy put live (docs/deploy-ledger.json, verifiedDeploys).
+const FN_BUILD = "generate-career-path.2026-10-28.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

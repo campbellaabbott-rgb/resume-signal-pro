@@ -1,6 +1,8 @@
 // deploy-stamp: 2026-10-04T13:00Z
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { CHAIN_DEADLINE_MS, UnusableModelOutput, callAIForUsableReply, chainRanOutOfTime, describeError, describeReply, type UsableReply } from "../_shared/ai-fallback.ts";
+import { checkInputLimits } from "../_shared/input-limits.ts";
 import { clipField, clipList, clipText, isServiceCaller, modelSpendGate } from "../_shared/model-spend-gate.ts";
 import { tailoredLanguageNote } from "../_shared/posting-language.ts";
 import { fencePosting, postingText, POSTING_DATA_RULE } from "../_shared/posting-text.ts";
@@ -13,7 +15,50 @@ import { refundWriting, writingChain, writingGate, type WritingPass } from "../_
 // chain); the résumé text is written in the posting's language and the tips
 // in the reader's (S12-026); the posting is fenced as data with hidden text
 // dropped (S12-147).
-const FN_BUILD = "generate-tailored-resume.2026-10-11.24";
+// 2026-10-28.1 (S13-001's sibling, fix/full-analysis-timeout): the call walks
+// the shared chain (_shared/ai-fallback.ts), not this function's own: a model
+// that timed out is not asked again, and the walk ends inside the request's
+// 125 s (the private chain retried a timed-out model and had no deadline). A
+// chain that ran out of time answers the 504 that says try again. Body (the
+// 8,000 cap as max_tokens or max_completion_tokens, tools, tool_choice),
+// chains and reply are unchanged. Two things the shared chain does
+// differently: a 429 on one model now asks the next model (the private chain
+// answered the first 429 at once), and the 429 answer comes only when every
+// model is rate-limited; and a 200 cut off at its cap, with no
+// submit_tailored_resume call, or with arguments that do not parse asks the
+// next model with what is left of the budget (callAIForUsableReply); only
+// when none gives one is the same retryable 502 or 422 answered, with the
+// use given back. A reply in an unexpected format is logged
+// by its shape and lengths (describeReply, S13-064), no longer as the whole
+// reply, which carried the person's résumé. The résumé reaches the model
+// whole (it was cut at 15,000 characters without a word, S13-008); one over
+// the shared 50,000-character cap is refused in the shared words before the
+// account's use is taken.
+// _shared/posting-text.ts reads an HTML posting in one linear pass now
+// (S12-147, finished), as a browser reads it: an unclosed script, style or
+// comment block runs to the end of the page; a quoted '>' does not end a tag
+// and '/>' closes only a void element; attributes are read by name, so
+// "hidden" in a title or class list hides nothing; !important and
+// visibility:collapse hide, as do framework hiding classes (d-none, sr-only,
+// a Tailwind hidden with no responsive class) and classes the page's own
+// <style> hides; a <p>, <li>, <td> or <tr> whose end tag is left out ends
+// where a browser ends it, so a hidden one takes only its own words.
+// Recheck of that reader: a self-closing svg icon, or a page that leaves out
+// its closing head tag, no longer drops the visible posting after it (both
+// were skipped to their own end tag; a browser closes the icon at once and
+// ends a head at its first body content); character references in an
+// attribute value are decoded before it is read (display&#58;none hides);
+// an end tag closes only an element in scope, as a browser's does (one never
+// leaves the hidden table cell it sits in, and the body's end closes
+// nothing); and a hidden bold, italic, link or other formatting element that
+// a paragraph's end closes keeps hiding the text after it until its own end
+// tag or the end of its table cell, as a browser rebuilds it.
+// A tool call whose arguments do not parse is logged by the parse error's
+// position only (describeError, recheck of S13-064): the engine's message
+// quoted the text around it, which could be the person's name or email.
+// Nothing of main's past f8d72a9b, the build the 2026-10-31 deploy put
+// live, rides along.
+const FN_BUILD = "generate-tailored-resume.2026-10-28.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -34,104 +79,51 @@ const TAILORED_LIMITS = { perAddress: 20, globalPerHour: 200 };
 // ceiling (65k on pro) on the project's key.
 const MAX_OUTPUT_TOKENS = 8000;
 
-// Retry and fallback configuration
-const MAX_RETRIES = 1;
-const REQUEST_TIMEOUT_MS = 55000;
-const RETRY_DELAY_MS = 1000;
-
-// The model chain is chosen per call (writingChain): the quality chain for
-// Pro, Flash for a free account's daily résumé.
-
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
 interface AIRequestOptions {
   messages: Array<{ role: string; content: string }>;
   tools?: unknown[];
   tool_choice?: unknown;
 }
 
-async function callAIWithFallback(
+// ONE CHAIN, ONE DEADLINE (S13-001's sibling). This function had its own
+// chain, which asked a model that timed out again (55 s, then 55 s more) and
+// had no deadline, so a slow gateway ran a request past the platform's
+// 150 s, whose 504 the page cannot tell from a crash. It now walks the shared
+// chain (_shared/ai-fallback.ts: a timed-out model is not asked again, the
+// next keeps its window) inside the request's 125 s. A 200 IS NOT A RÉSUMÉ
+// (review of S13-001): a reply cut off at its cap, with no tool call, or with
+// arguments that do not parse asks the next model (callAIForUsableReply).
+// The body is the one this function always sent: model, messages, the cap
+// (max_completion_tokens to OpenAI's gpt-5 family, max_tokens to Google's),
+// tools and tool_choice. The model chain is chosen per call (writingChain):
+// the quality chain for Pro, Flash for a free account's daily résumé.
+async function askAI<T>(
   apiKey: string,
   options: AIRequestOptions,
   context: string,
   models: readonly string[],
-): Promise<{ response: Response; modelUsed: string }> {
-  let lastError: Error | null = null;
-
-  for (const model of models) {
-    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-        
-        console.log(`[TAILORED-RESUME] ${context} - trying ${model}, attempt ${attempt + 1}`);
-        
-        const requestBody: Record<string, unknown> = {
-          model,
-          messages: options.messages,
-          // OpenAI's gpt-5 family names the cap max_completion_tokens.
-          ...(model.startsWith('openai/') ? { max_completion_tokens: MAX_OUTPUT_TOKENS } : { max_tokens: MAX_OUTPUT_TOKENS }),
-        };
-        if (options.tools) requestBody.tools = options.tools;
-        if (options.tool_choice) requestBody.tool_choice = options.tool_choice;
-        
-        const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(requestBody),
-          signal: controller.signal,
-        });
-        
-        clearTimeout(timeoutId);
-        
-        if (response.ok) {
-          console.log(`[TAILORED-RESUME] ${context} - succeeded with ${model}`);
-          return { response, modelUsed: model };
-        }
-        
-        if (response.status === 429 || response.status === 402) {
-          return { response, modelUsed: model };
-        }
-        
-        if (response.status >= 400 && response.status < 500) {
-          console.log(`[TAILORED-RESUME] ${context} - client error ${response.status}, trying next model`);
-          break;
-        }
-        
-        if (response.status >= 500) {
-          console.log(`[TAILORED-RESUME] ${context} - server error ${response.status}`);
-          if (attempt < MAX_RETRIES) {
-            await sleep(RETRY_DELAY_MS);
-            continue;
-          }
-          break;
-        }
-        
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        console.log(`[TAILORED-RESUME] ${context} - error with ${model}: ${errorMessage}`);
-        lastError = error instanceof Error ? error : new Error(errorMessage);
-        
-        if (attempt < MAX_RETRIES) {
-          await sleep(RETRY_DELAY_MS);
-          continue;
-        }
-        break;
-      }
-    }
-    console.log(`[TAILORED-RESUME] ${context} - ${model} failed, trying next model`);
-  }
-  
-  throw lastError || new Error('All AI models failed');
+  deadlineAt: number,
+  read: (data: unknown) => T | null,
+): Promise<UsableReply<T>> {
+  console.log(`[TAILORED-RESUME] ${context} - chain ${models.join(" > ")}`);
+  return await callAIForUsableReply(apiKey, {
+    messages: options.messages,
+    maxTokens: MAX_OUTPUT_TOKENS,
+    ...(options.tools ? { tools: options.tools } : {}),
+    ...(options.tool_choice ? { toolChoice: options.tool_choice } : {}),
+    models: [...models],
+    context: `TAILORED-RESUME ${context}`,
+    deadlineMs: deadlineAt - Date.now(),
+    read,
+  });
 }
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+  // The request's one budget: the model call ends inside this.
+  const deadlineAt = Date.now() + CHAIN_DEADLINE_MS;
 
   const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
   // The use taken from the account's allowance, given back if nothing is delivered.
@@ -143,9 +135,12 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    // The résumé and posting are sliced where the prompt reads them (15,000 and
-    // 5,000); every other field is bounded here (defect sweep 1.64). A posting
-    // that arrives as HTML is read as the text a reader sees (S12-147).
+    // The résumé is read whole up to the shared cap and refused past it, before
+    // the account's use is taken (S13-008: it was cut at 15,000 characters
+    // without a word, losing a long résumé's later roles and certifications).
+    // The posting is sliced where the prompt reads it (5,000); every other
+    // field is bounded here (defect sweep 1.64). A posting that arrives as
+    // HTML is read as the text a reader sees (S12-147).
     const resumeText = typeof body?.resumeText === "string" ? body.resumeText : undefined;
     const jobDescription = typeof body?.jobDescription === "string" ? postingText(body.jobDescription) : undefined;
     const jobTitle = clipField(body?.jobTitle, 200);
@@ -157,6 +152,13 @@ serve(async (req) => {
     if (!resumeText || !jobTitle) {
       return new Response(
         JSON.stringify({ error: 'Resume text and job title are required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    const limitError = checkInputLimits({ resumeText });
+    if (limitError) {
+      return new Response(
+        JSON.stringify({ error: limitError }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -238,88 +240,131 @@ ${matchingSkills?.length ? `\nMATCHING SKILLS TO EMPHASIZE: ${matchingSkills.joi
 ${missingSkills?.length ? `\nGAP SKILLS TO ADDRESS WITH TRANSFERABLE EXPERIENCE: ${missingSkills.join(', ')}` : ''}
 
 CANDIDATE'S RESUME:
-${resumeText.slice(0, 15000)}
+${resumeText}
 
 Provide enhancement suggestions. Remember: suggest how to IMPROVE wording, not what to remove.`;
 
     console.log("[TAILORED-RESUME] Generating tailored resume for:", jobTitle, "at", jobCompany);
 
-    const { response, modelUsed } = await callAIWithFallback(
-      LOVABLE_API_KEY,
-      {
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt }
-        ],
-        tools: [{
-          type: "function",
-          function: {
-            name: "submit_tailored_resume",
-            description: "Submit the tailored resume content",
-            parameters: {
-              type: "object",
-              properties: {
-                professionalSummary: {
-                  type: "string",
-                  description: "A tailored 3-4 sentence professional summary for this specific role"
-                },
-                keySkills: {
-                  type: "array",
-                  items: { type: "string" },
-                  description: "8-12 most relevant skills to highlight"
-                },
-                experienceHighlights: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      original: { type: "string", description: "The original bullet point verbatim from the resume" },
-                      tailored: { type: "string", description: "Rewritten version with JD keywords injected naturally — copy-paste ready" },
-                      keywordsInjected: { type: "array", items: { type: "string" }, description: "Exact keywords from the JD that were added to this bullet" }
-                    },
-                    required: ["original", "tailored", "keywordsInjected"]
-                  },
-                  description: "5-7 rewritten bullet points — always include the original verbatim"
-                },
-                keywordsRequired: {
-                  type: "array",
-                  items: { type: "string" },
-                  description: "Top 8-12 keywords extracted from the job description"
-                },
-                keywordGaps: {
-                  type: "array",
-                  items: { type: "string" },
-                  description: "Required JD keywords still not covered after tailoring (max 5)"
-                },
-                matchScoreDelta: {
-                  type: "number",
-                  description: "Estimated ATS keyword match improvement in percentage points (0-40)"
-                },
-                suggestedJobTitle: {
-                  type: "string",
-                  description: "The ideal title to put at the top of the resume"
-                },
-                coverLetterOpening: {
-                  type: "string",
-                  description: "A compelling opening paragraph for a cover letter"
-                },
-                applicationTips: {
-                  type: "array",
-                  items: { type: "string" },
-                  description: "2-3 specific tips for applying to this role"
-                }
-              },
-              required: ["professionalSummary", "keySkills", "experienceHighlights", "keywordsRequired", "keywordGaps", "matchScoreDelta", "suggestedJobTitle", "coverLetterOpening", "applicationTips"]
-            }
-          }
-        }],
-        tool_choice: { type: "function", function: { name: "submit_tailored_resume" } }
-      },
-      'Tailored resume generation',
-      models,
-    );
+    // Why the last reply was refused, for the answer when no model gives one.
+    const last = { refusal: "malformed" as "format" | "malformed" };
+    const readTailored = (data: unknown): Record<string, unknown> | null => {
+      const toolCall = (data as { choices?: Array<{ message?: { tool_calls?: Array<{ function?: { name?: unknown; arguments?: unknown } }> } }> } | null)
+        ?.choices?.[0]?.message?.tool_calls?.[0];
+      if (!toolCall || toolCall.function?.name !== "submit_tailored_resume") {
+        // Its shape, never its words: the reply carries the person's résumé (S13-064).
+        console.error("[TAILORED-RESUME] Unexpected response format:", describeReply(data));
+        last.refusal = "format";
+        return null;
+      }
+      // A response truncated at max_tokens yields malformed JSON: the next
+      // model is asked, never the raw parser error passed on.
+      try {
+        const parsed = JSON.parse(String(toolCall.function.arguments));
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed as Record<string, unknown>;
+      } catch (e) {
+        // Its name and position, never the arguments it quotes (S13-064).
+        console.warn("[TAILORED-RESUME] tool-call JSON parse failed:", describeError(e), `(${String(toolCall.function.arguments ?? "").length} chars)`);
+      }
+      last.refusal = "malformed";
+      return null;
+    };
 
-    if (!response.ok) {
+    let reply: UsableReply<Record<string, unknown>>;
+    try {
+      reply = await askAI(
+        LOVABLE_API_KEY,
+        {
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt }
+          ],
+          tools: [{
+            type: "function",
+            function: {
+              name: "submit_tailored_resume",
+              description: "Submit the tailored resume content",
+              parameters: {
+                type: "object",
+                properties: {
+                  professionalSummary: {
+                    type: "string",
+                    description: "A tailored 3-4 sentence professional summary for this specific role"
+                  },
+                  keySkills: {
+                    type: "array",
+                    items: { type: "string" },
+                    description: "8-12 most relevant skills to highlight"
+                  },
+                  experienceHighlights: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        original: { type: "string", description: "The original bullet point verbatim from the resume" },
+                        tailored: { type: "string", description: "Rewritten version with JD keywords injected naturally — copy-paste ready" },
+                        keywordsInjected: { type: "array", items: { type: "string" }, description: "Exact keywords from the JD that were added to this bullet" }
+                      },
+                      required: ["original", "tailored", "keywordsInjected"]
+                    },
+                    description: "5-7 rewritten bullet points — always include the original verbatim"
+                  },
+                  keywordsRequired: {
+                    type: "array",
+                    items: { type: "string" },
+                    description: "Top 8-12 keywords extracted from the job description"
+                  },
+                  keywordGaps: {
+                    type: "array",
+                    items: { type: "string" },
+                    description: "Required JD keywords still not covered after tailoring (max 5)"
+                  },
+                  matchScoreDelta: {
+                    type: "number",
+                    description: "Estimated ATS keyword match improvement in percentage points (0-40)"
+                  },
+                  suggestedJobTitle: {
+                    type: "string",
+                    description: "The ideal title to put at the top of the resume"
+                  },
+                  coverLetterOpening: {
+                    type: "string",
+                    description: "A compelling opening paragraph for a cover letter"
+                  },
+                  applicationTips: {
+                    type: "array",
+                    items: { type: "string" },
+                    description: "2-3 specific tips for applying to this role"
+                  }
+                },
+                required: ["professionalSummary", "keySkills", "experienceHighlights", "keywordsRequired", "keywordGaps", "matchScoreDelta", "suggestedJobTitle", "coverLetterOpening", "applicationTips"]
+              }
+            }
+          }],
+          tool_choice: { type: "function", function: { name: "submit_tailored_resume" } }
+        },
+        'Tailored resume generation',
+        models,
+        deadlineAt,
+        readTailored,
+      );
+    } catch (error) {
+      if (!(error instanceof UnusableModelOutput)) throw error;
+      // No model gave a usable résumé: the retryable answers this function
+      // always gave for a reply it could not read, the use given back.
+      return done(last.refusal === "format"
+        ? new Response(
+          JSON.stringify({ error: "Invalid AI response format", retryable: true }),
+          { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+        : new Response(
+          JSON.stringify({ error: "The AI returned a malformed draft. Please try again.", retryable: true }),
+          { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        ));
+    }
+
+    if (!reply.ok) {
+      const { response, modelUsed } = reply;
       if (response.status === 429) {
         return done(new Response(
           JSON.stringify({ error: "AI service is temporarily busy. Please try again in a few moments.", code: "model_busy", retryable: true }),
@@ -340,32 +385,8 @@ Provide enhancement suggestions. Remember: suggest how to IMPROVE wording, not w
       ));
     }
 
+    const { modelUsed, value: tailoredContent } = reply;
     console.log("[TAILORED-RESUME] AI call succeeded with model:", modelUsed);
-
-    const data = await response.json();
-    
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall || toolCall.function.name !== "submit_tailored_resume") {
-      console.error("[TAILORED-RESUME] Unexpected response format:", JSON.stringify(data));
-      return done(new Response(
-        JSON.stringify({ error: "Invalid AI response format", retryable: true }),
-        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      ));
-    }
-
-    // Guard the parse: a response truncated at max_tokens yields malformed JSON,
-    // which otherwise fell through to the outer catch and leaked the raw parser
-    // error to the client as a 500. Return a clean, retryable message instead.
-    let tailoredContent;
-    try {
-      tailoredContent = JSON.parse(toolCall.function.arguments);
-    } catch (e) {
-      console.warn("[TAILORED-RESUME] tool-call JSON parse failed:", String(e).slice(0, 120));
-      return done(new Response(
-        JSON.stringify({ error: "The AI returned a malformed draft. Please try again.", retryable: true }),
-        { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      ));
-    }
 
     console.log("[TAILORED-RESUME] Successfully generated tailored resume");
 
@@ -385,7 +406,7 @@ Provide enhancement suggestions. Remember: suggest how to IMPROVE wording, not w
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error("[TAILORED-RESUME] Error:", errorMessage);
 
-    if (errorMessage.includes('timed out') || errorMessage.includes('timeout')) {
+    if (chainRanOutOfTime(error) || errorMessage.includes('timed out') || errorMessage.includes('timeout')) {
       return new Response(
         JSON.stringify({ error: "The AI took too long to respond. Please try again.", retryable: true }),
         { status: 504, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
