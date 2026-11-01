@@ -304,11 +304,14 @@ const INDUSTRY_PARENTS: Record<string, string> = {
   'hr_analytics': 'human_resources',
 };
 
-// Industry aliases for normalization
+// Industry aliases for normalization. A model's generic "software" answer is
+// 'technology', as the primary scanner reads it (S13-050): this fork mapped
+// it to 'software_engineering', so one field reached the published score
+// benchmark under two names, 36 points apart.
 const INDUSTRY_ALIASES: Record<string, string> = {
-  'tech': 'technology', 'software': 'software_engineering', 'it': 'technology',
-  'software development': 'software_engineering', 'information technology': 'technology',
-  'web development': 'software_engineering', 'app development': 'software_engineering',
+  'tech': 'technology', 'software': 'technology', 'it': 'technology',
+  'software development': 'technology', 'information technology': 'technology',
+  'web development': 'technology', 'app development': 'technology',
   'medical': 'healthcare', 'health': 'healthcare', 'medicine': 'physician',
   'nursing': 'nursing', 'pharmaceutical': 'pharmacy', 'pharma': 'pharmacy',
   'law': 'legal', 'attorney': 'corporate_law', 'lawyer': 'litigation',
