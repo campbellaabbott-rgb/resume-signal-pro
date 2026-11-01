@@ -1,0 +1,66 @@
+{
+  "en": [
+    "Senior software engineer with eight years of experience building payment systems that process over two million transactions a day. Led a team of five engineers through a migration to event-driven services, cutting checkout latency by 40%. Looking to bring that reliability focus to a platform team at a growth-stage company.",
+    "Reduced API response time by 65% (800 ms to 280 ms) by introducing a caching layer, improving the experience of 50,000 daily active users.",
+    "The original bullet describes a duty, not a result. Recruiters scan for numbers, so lead with the outcome and the scale.",
+    "A fourteen-month gap between 2021 and 2022 is not explained. Add a one-line note, such as a career break or freelance work, so a screener does not assume the worst.",
+    "Rewrite the top three bullets of your current role to start with a strong verb and end with a measurable result.",
+    "Hiring managers in fintech look for evidence of compliance awareness, such as PCI DSS or SOC 2 work, alongside technical depth."
+  ],
+  "es": [
+    "Ingeniero de software sénior con ocho años de experiencia en la creación de sistemas de pago que procesan más de dos millones de transacciones al día. Dirigió a un equipo de cinco ingenieros en la migración a servicios basados en eventos, lo que redujo la latencia del proceso de pago en un 40 %. Busca aportar ese enfoque en la fiabilidad a un equipo de plataforma en una empresa en fase de crecimiento.",
+    "Reduje el tiempo de respuesta de la API en un 65 % (de 800 ms a 280 ms) mediante la introducción de una capa de caché, lo que mejoró la experiencia de 50 000 usuarios activos diarios.",
+    "La viñeta original describe una tarea, no un resultado. Los reclutadores buscan cifras, así que empieza por el resultado y la escala.",
+    "No se explica un vacío de catorce meses entre 2021 y 2022. Añade una nota de una línea, como una pausa profesional o trabajo como autónomo, para que quien revise tu currículum no piense lo peor.",
+    "Reescribe las tres primeras viñetas de tu puesto actual para que empiecen con un verbo contundente y terminen con un resultado medible.",
+    "Los responsables de contratación del sector fintech buscan pruebas de conocimiento normativo, como trabajo con PCI DSS o SOC 2, además de solidez técnica."
+  ],
+  "de": [
+    "Senior-Softwareentwickler mit acht Jahren Erfahrung im Aufbau von Zahlungssystemen, die täglich mehr als zwei Millionen Transaktionen verarbeiten. Leitete ein Team von fünf Entwicklern bei der Migration zu ereignisgesteuerten Diensten und senkte dabei die Latenz im Bezahlvorgang um 40 %. Möchte diesen Fokus auf Zuverlässigkeit in ein Plattformteam eines wachstumsstarken Unternehmens einbringen.",
+    "Antwortzeit der API durch Einführung einer Caching-Schicht um 65 % gesenkt (von 800 ms auf 280 ms) und so das Nutzungserlebnis von 50.000 täglich aktiven Nutzern verbessert.",
+    "Der ursprüngliche Stichpunkt beschreibt eine Aufgabe, kein Ergebnis. Recruiter suchen nach Zahlen, also beginnen Sie mit dem Ergebnis und dem Umfang.",
+    "Eine Lücke von vierzehn Monaten zwischen 2021 und 2022 ist nicht erklärt. Ergänzen Sie einen einzeiligen Hinweis, etwa eine berufliche Auszeit oder freiberufliche Tätigkeit, damit niemand beim Screening das Schlimmste annimmt.",
+    "Formulieren Sie die ersten drei Stichpunkte Ihrer aktuellen Position so um, dass sie mit einem starken Verb beginnen und mit einem messbaren Ergebnis enden.",
+    "Personalverantwortliche in der Fintech-Branche achten neben technischer Tiefe auf Nachweise von Compliance-Bewusstsein, etwa Erfahrung mit PCI DSS oder SOC 2."
+  ],
+  "fr": [
+    "Ingénieur logiciel senior fort de huit ans d'expérience dans la conception de systèmes de paiement traitant plus de deux millions de transactions par jour. A dirigé une équipe de cinq ingénieurs lors de la migration vers des services événementiels, réduisant de 40 % la latence du paiement. Souhaite apporter cette exigence de fiabilité à une équipe plateforme au sein d'une entreprise en pleine croissance.",
+    "Réduction de 65 % du temps de réponse de l'API (de 800 ms à 280 ms) grâce à la mise en place d'une couche de cache, améliorant l'expérience de 50 000 utilisateurs actifs quotidiens.",
+    "La puce d'origine décrit une tâche, pas un résultat. Les recruteurs cherchent des chiffres : commencez par le résultat et l'ampleur.",
+    "Une interruption de quatorze mois entre 2021 et 2022 n'est pas expliquée. Ajoutez une mention d'une ligne, comme une pause de carrière ou une activité en freelance, pour qu'un recruteur n'imagine pas le pire.",
+    "Réécrivez les trois premières puces de votre poste actuel pour qu'elles commencent par un verbe fort et se terminent par un résultat mesurable.",
+    "Dans la fintech, les responsables du recrutement recherchent des preuves de sensibilité à la conformité, comme une expérience PCI DSS ou SOC 2, en plus d'une solide expertise technique."
+  ],
+  "pt": [
+    "Engenheiro de software sênior com oito anos de experiência na criação de sistemas de pagamento que processam mais de dois milhões de transações por dia. Liderou uma equipe de cinco engenheiros na migração para serviços orientados a eventos, reduzindo a latência do checkout em 40%. Busca levar esse foco em confiabilidade para uma equipe de plataforma em uma empresa em fase de crescimento.",
+    "Reduzi o tempo de resposta da API em 65% (de 800 ms para 280 ms) com a introdução de uma camada de cache, melhorando a experiência de 50 mil usuários ativos diários.",
+    "O tópico original descreve uma tarefa, não um resultado. Recrutadores procuram números, então comece pelo resultado e pela escala.",
+    "Uma lacuna de catorze meses entre 2021 e 2022 não está explicada. Acrescente uma nota de uma linha, como uma pausa na carreira ou trabalho freelance, para que quem fizer a triagem não imagine o pior.",
+    "Reescreva os três primeiros tópicos do seu cargo atual para que comecem com um verbo forte e terminem com um resultado mensurável.",
+    "Gestores de contratação do setor de fintech procuram evidências de conhecimento de conformidade, como trabalho com PCI DSS ou SOC 2, além de profundidade técnica."
+  ],
+  "nl": [
+    "Senior software engineer met acht jaar ervaring in het bouwen van betaalsystemen die dagelijks meer dan twee miljoen transacties verwerken. Leidde een team van vijf engineers bij de migratie naar eventgedreven services, waardoor de latentie bij het afrekenen met 40% daalde. Wil die focus op betrouwbaarheid inbrengen in een platformteam bij een snelgroeiend bedrijf.",
+    "Verkortte de responstijd van de API met 65% (van 800 ms naar 280 ms) door een cachinglaag te introduceren, wat de ervaring van 50.000 dagelijks actieve gebruikers verbeterde.",
+    "Het oorspronkelijke opsommingspunt beschrijft een taak, geen resultaat. Recruiters zoeken naar cijfers, dus begin met de uitkomst en de schaal.",
+    "Een gat van veertien maanden tussen 2021 en 2022 wordt niet verklaard. Voeg een korte notitie van één regel toe, zoals een loopbaanonderbreking of freelancewerk, zodat een beoordelaar niet het ergste aanneemt.",
+    "Herschrijf de eerste drie opsommingspunten van je huidige functie zodat ze beginnen met een krachtig werkwoord en eindigen met een meetbaar resultaat.",
+    "Recruiters in de fintech zoeken naast technische diepgang naar bewijs van compliancebewustzijn, zoals werk met PCI DSS of SOC 2."
+  ],
+  "hi": [
+    "आठ वर्षों के अनुभव वाले वरिष्ठ सॉफ़्टवेयर इंजीनियर, जिन्होंने ऐसे भुगतान सिस्टम बनाए हैं जो प्रतिदिन बीस लाख से अधिक लेनदेन संसाधित करते हैं। पाँच इंजीनियरों की टीम का नेतृत्व करते हुए इवेंट-आधारित सेवाओं में माइग्रेशन किया, जिससे चेकआउट की लेटेंसी 40% कम हुई। तेज़ी से बढ़ती कंपनी की प्लेटफ़ॉर्म टीम में विश्वसनीयता पर यही ध्यान लाना चाहते हैं।",
+    "कैशिंग लेयर लागू करके API का रिस्पॉन्स टाइम 65% घटाया (800 ms से 280 ms), जिससे 50,000 दैनिक सक्रिय उपयोगकर्ताओं का अनुभव बेहतर हुआ।",
+    "मूल बुलेट एक ज़िम्मेदारी बताता है, परिणाम नहीं। रिक्रूटर संख्याएँ खोजते हैं, इसलिए परिणाम और पैमाने से शुरुआत करें।",
+    "2021 और 2022 के बीच चौदह महीने के अंतराल का कोई स्पष्टीकरण नहीं है। एक पंक्ति का नोट जोड़ें, जैसे करियर ब्रेक या फ्रीलांस काम, ताकि स्क्रीनिंग करने वाला सबसे बुरा न मान ले।",
+    "अपनी वर्तमान भूमिका के शीर्ष तीन बुलेट दोबारा लिखें ताकि वे एक सशक्त क्रिया से शुरू हों और एक मापने योग्य परिणाम पर खत्म हों।",
+    "फिनटेक में हायरिंग मैनेजर तकनीकी गहराई के साथ-साथ अनुपालन की समझ के प्रमाण भी देखते हैं, जैसे PCI DSS या SOC 2 पर काम।"
+  ],
+  "tl": [
+    "Senior software engineer na may walong taon ng karanasan sa pagbuo ng mga sistema ng pagbabayad na nagpoproseso ng mahigit dalawang milyong transaksyon bawat araw. Pinamunuan ang isang pangkat ng limang engineer sa paglipat sa mga event-driven na serbisyo, na nagpababa ng latency ng checkout nang 40%. Nais dalhin ang pagtutok na ito sa pagiging maaasahan sa isang platform team ng isang kumpanyang mabilis na lumalago.",
+    "Pinababa ang response time ng API nang 65% (mula 800 ms hanggang 280 ms) sa pamamagitan ng pagdaragdag ng caching layer, na nagpabuti sa karanasan ng 50,000 araw-araw na aktibong user.",
+    "Ang orihinal na bullet ay naglalarawan ng tungkulin, hindi ng resulta. Naghahanap ng mga numero ang mga recruiter, kaya unahin ang kinalabasan at ang laki nito.",
+    "Hindi naipaliliwanag ang labing-apat na buwang puwang sa pagitan ng 2021 at 2022. Magdagdag ng isang linyang paliwanag, gaya ng career break o freelance na trabaho, para hindi agad mag-isip ng masama ang nagsusuri.",
+    "Isulat muli ang unang tatlong bullet ng kasalukuyan mong posisyon upang magsimula ang mga ito sa malakas na pandiwa at magtapos sa nasusukat na resulta.",
+    "Naghahanap ang mga hiring manager sa fintech ng patunay ng kaalaman sa compliance, gaya ng trabaho sa PCI DSS o SOC 2, bukod sa teknikal na lalim."
+  ]
+}

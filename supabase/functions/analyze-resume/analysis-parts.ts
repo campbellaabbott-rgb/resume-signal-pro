@@ -470,13 +470,17 @@ const CORE_NAME = "resume scores, rewrites, metrics and action plan";
  * biggest part of every analysis that had both, and the answer waits for the
  * slowest part. Apart, each is a little over half the core.
  */
-export function analysisParts(hasLinkedIn: boolean, hasJobDescription: boolean): AnalysisPart[] {
+export function analysisParts(hasLinkedIn: boolean, hasJobDescription: boolean, replyFactor = 1): AnalysisPart[] {
+  // A reply in another language runs longer than the English it was measured
+  // in (report-language.ts, S13-003): the reply's share of the cap grows by
+  // that factor, the thinking's does not. 1, the default, is the English cap.
+  const cap = (outputTokens: number) => Math.ceil(outputTokens * replyFactor) + THINKING_TOKENS;
   const tools = getAnalysisTools(hasLinkedIn, hasJobDescription);
   const params = tools[0].function.parameters as Schema;
   const sections = SECTIONS.filter((s) => s.key in params.properties);
   const sectionKeys: string[] = sections.map((s) => s.key);
   const coreKeys = Object.keys(params.properties).filter((k) => !sectionKeys.includes(k));
-  const core: AnalysisPart = { label: "core", keys: coreKeys, tools, scopeNote: "", maxTokens: CORE_OUTPUT_TOKENS + THINKING_TOKENS };
+  const core: AnalysisPart = { label: "core", keys: coreKeys, tools, scopeNote: "", maxTokens: cap(CORE_OUTPUT_TOKENS) };
   if (sections.length === 0) return [core];
 
   const subset = (keys: string[], description: string, required: string[]) => [{
@@ -510,7 +514,7 @@ export function analysisParts(hasLinkedIn: boolean, hasJobDescription: boolean):
         (section.key === "linkedInAnalysis"
           ? " The report also shows linkedInAnalysis.headlineOptimization.improved as the resume summary's LinkedIn headline, its only one, so keep it under 120 characters."
           : ""),
-      maxTokens: section.outputTokens + THINKING_TOKENS,
+      maxTokens: cap(section.outputTokens),
     })),
   ];
 }

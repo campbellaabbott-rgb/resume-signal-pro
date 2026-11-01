@@ -11,6 +11,7 @@ import {
   usablePart,
   type AnalysisPart,
 } from "./analysis-parts.ts";
+import { replySizeFactor, reportLanguage, reportLanguageInstruction } from "./report-language.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { getServiceClient } from "../_shared/supabase-client.ts";
 import { scannableJobDescription } from "../_shared/job-description-input.ts";
@@ -35,7 +36,13 @@ import { REFUNDED_PURCHASE_MESSAGE, sessionWasRefunded } from "../_shared/paymen
 // allowed (hasLinkedIn false when the LinkedIn section is missing); the
 // summary's LinkedIn headline is the LinkedIn section's. _shared/ai-fallback.ts
 // changed too: a timed-out model is not asked again, and a caller's signal
-// stops the chain.
+// stops the chain. S13-003 rides in the same build: the analysis is written in
+// the page's language (the body's bounded `language`), or the résumé's when the
+// page sends none (report-language.ts, the free scanner's detector copied as
+// resume-language.ts), and no longer always in English; every part reads the
+// same language line, the fixed choices stay English, and each part's reply
+// cap grows by the language's measured size against English (Hindi 2.6x, the
+// Latin-script languages 1.2-1.31x; English keeps its caps).
 const FN_BUILD = "analyze-resume.2026-10-28.1";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -372,8 +379,9 @@ async function analyzeInParts(
   userMessage: string,
   hasLinkedIn: boolean,
   hasJobDescription: boolean,
+  replyFactor: number,
 ): Promise<Record<string, unknown>> {
-  const parts = analysisParts(hasLinkedIn, hasJobDescription);
+  const parts = analysisParts(hasLinkedIn, hasJobDescription, replyFactor);
   const [core, ...sections] = parts;
   const startedAt = Date.now();
   const stopSections = new AbortController();
@@ -408,7 +416,7 @@ serve(async (req) => {
   const clientIp = getClientIp(req);
 
   try {
-    const { resumeText, linkedInText, jobDescriptionText: askedJobDescription, sessionId } = await req.json();
+    const { resumeText, linkedInText, jobDescriptionText: askedJobDescription, sessionId, language: askedLanguage } = await req.json();
     // A paid analysis is never framed around a link (_shared/job-description-input.ts, S11-032).
     const jobDescriptionText = scannableJobDescription(askedJobDescription);
 
@@ -681,7 +689,7 @@ MULTILINGUAL CAPABILITIES:
 - You can analyze resumes in ANY language including English, Spanish, Portuguese, German, French, Dutch, Hindi, Tagalog, Vietnamese, Croatian, and many more
 - Detect the language of the resume automatically
 - Analyze content in its original language - do NOT require English
-- Provide your analysis output in English (for consistency)
+- Write the analysis in the report language named at the end of the request
 - Recognize industry-specific keywords in ALL languages
 - Understand international resume formats and conventions (e.g., European CV formats, Latin American formats, Asian formats)
 
@@ -1067,6 +1075,13 @@ Use their actual resume content in examples. Prioritize highest-impact fixes fir
     if (hasJobDescription) {
       userMessage += `\n\n<job_description>\n${escapeXml(jobDescriptionText)}\n</job_description>`;
     }
+    // THE BUYER'S LANGUAGE (S13-003; report-language.ts): the page's, else the
+    // résumé's. Last in the request, as the free scanner puts its hint, so the
+    // long English prompt does not pull the report back into English; every
+    // part reads it.
+    const language = reportLanguage(askedLanguage, resumeText);
+    userMessage += reportLanguageInstruction(language);
+    console.log(`[ANALYZE-RESUME] Report language: ${language.code} (${language.source})`);
 
     // THE ANALYSIS IN PARALLEL PARTS (S13-001; analysis-parts.ts): the
     // résumé analysis in one call and, only when the buyer gave them, the
@@ -1076,7 +1091,7 @@ Use their actual resume content in examples. Prioritize highest-impact fixes fir
     // here leaves the purchase redeemable.
     let analysis: Record<string, any>;
     try {
-      analysis = await analyzeInParts(LOVABLE_API_KEY, systemPrompt, userMessage, !!hasLinkedIn, hasJobDescription);
+      analysis = await analyzeInParts(LOVABLE_API_KEY, systemPrompt, userMessage, !!hasLinkedIn, hasJobDescription, replySizeFactor(language.code));
     } catch (failure) {
       if (failure instanceof PartAnswer) return failure.response;
       // OUT OF TIME IS NOT "AN ERROR OCCURRED" (S13-001, S10-014). This used
