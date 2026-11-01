@@ -11,7 +11,7 @@ import {
   usablePart,
   type AnalysisPart,
 } from "./analysis-parts.ts";
-import { replySizeFactor, reportLanguage, reportLanguageInstruction } from "./report-language.ts";
+import { analysisReplyFactor, reportLanguage, reportLanguageInstruction } from "./report-language.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { getServiceClient } from "../_shared/supabase-client.ts";
 import { scannableJobDescription } from "../_shared/job-description-input.ts";
@@ -43,6 +43,17 @@ import { REFUNDED_PURCHASE_MESSAGE, sessionWasRefunded } from "../_shared/paymen
 // same language line, the fixed choices stay English, and each part's reply
 // cap grows by the language's measured size against English (Hindi 2.6x, the
 // Latin-script languages 1.2-1.31x; English keeps its caps).
+// The language line also says (review of S13-003): a field that quotes the
+// résumé or the LinkedIn profile is copied exactly, in its own language;
+// when the résumé is in another language than the report (or one the
+// detector cannot name), the text written to be pasted back into it (the
+// summary, improved bullets, stronger verbs, keywords, suggested text) is in
+// the résumé's language, and the reply cap grows by the longer of the two;
+// companyName is "Unknown", exactly, when the posting names no company. A
+// detector answer that names no language it is sure of falls back to an
+// English report, never a non-language in the prompt. The emailed copy
+// (send-analysis-email) is unchanged and still English around the
+// analysis's own text.
 const FN_BUILD = "analyze-resume.2026-10-28.1";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -1081,7 +1092,7 @@ Use their actual resume content in examples. Prioritize highest-impact fixes fir
     // part reads it.
     const language = reportLanguage(askedLanguage, resumeText);
     userMessage += reportLanguageInstruction(language);
-    console.log(`[ANALYZE-RESUME] Report language: ${language.code} (${language.source})`);
+    console.log(`[ANALYZE-RESUME] Report language: ${language.code} (${language.source}); résumé: ${language.resume?.code ?? "not named"}`);
 
     // THE ANALYSIS IN PARALLEL PARTS (S13-001; analysis-parts.ts): the
     // résumé analysis in one call and, only when the buyer gave them, the
@@ -1091,7 +1102,7 @@ Use their actual resume content in examples. Prioritize highest-impact fixes fir
     // here leaves the purchase redeemable.
     let analysis: Record<string, any>;
     try {
-      analysis = await analyzeInParts(LOVABLE_API_KEY, systemPrompt, userMessage, !!hasLinkedIn, hasJobDescription, replySizeFactor(language.code));
+      analysis = await analyzeInParts(LOVABLE_API_KEY, systemPrompt, userMessage, !!hasLinkedIn, hasJobDescription, analysisReplyFactor(language));
     } catch (failure) {
       if (failure instanceof PartAnswer) return failure.response;
       // OUT OF TIME IS NOT "AN ERROR OCCURRED" (S13-001, S10-014). This used

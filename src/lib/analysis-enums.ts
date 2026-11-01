@@ -36,3 +36,16 @@ export function analysisEnumLabel(t: (key: string) => string, group: AnalysisEnu
   const key = value.trim().toLowerCase();
   return (ANALYSIS_ENUMS[group] as readonly string[]).includes(key) ? t(`analysisResults.enum.${group}.${key}`) : value.replace(/_/g, " ");
 }
+
+/**
+ * The company a posting names, or null when it names none. analyze-resume
+ * asks for exactly "Unknown" then (report-language.ts), the one value of
+ * companyName the page compares; a blank, or "unknown" in another case, is
+ * read the same way, so the generic culture-fit heading is shown, never a
+ * heading for a company called "Unknown".
+ */
+export function namedCompany(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const name = value.trim();
+  return name && name.toLowerCase() !== "unknown" ? name : null;
+}

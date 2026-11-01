@@ -7,7 +7,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { SHARED_ANALYSIS_DAYS } from "@/lib/resume-retention";
-import { analysisEnumLabel, type AnalysisEnumGroup } from "@/lib/analysis-enums";
+import { analysisEnumLabel, namedCompany, type AnalysisEnumGroup } from "@/lib/analysis-enums";
 import { Progress } from "@/components/ui/progress";
 import { useState, useEffect } from "react";
 
@@ -766,8 +766,8 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                       <div className="flex items-center gap-2 mb-3">
                         <Briefcase className="w-4 h-4 text-accent-foreground" />
                         <span className="text-sm font-semibold text-foreground">
-                          {data.jobDescriptionAlignment.companyInsights.companyName !== 'Unknown'
-                            ? t('analysisResults.companyCultureFit', { company: data.jobDescriptionAlignment.companyInsights.companyName })
+                          {namedCompany(data.jobDescriptionAlignment.companyInsights.companyName)
+                            ? t('analysisResults.companyCultureFit', { company: namedCompany(data.jobDescriptionAlignment.companyInsights.companyName) })
                             : t('analysisResults.genericCultureFit')}
                         </span>
                         <span className="ml-auto px-2 py-0.5 rounded-full text-xs font-medium bg-muted capitalize">
