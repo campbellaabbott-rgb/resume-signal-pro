@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
+import { improvementLevelOf } from "../../../supabase/functions/free-keyword-scan/score-projection";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Tooltip,
@@ -426,14 +427,21 @@ export function MetricCardsGrid({
       status: densityStatus,
       progress: densityScore,
     }] : []),
-    ...(improvementPotential ? [{
-      icon: Zap,
-      label: t('freeScan.improvementPotential'),
-      tooltipKey: "improvementPotential",
-      value: `+${improvementPotential.estimatedScoreIncrease} pts`,
-      subtext: improvementPotential.level === "high" ? "🚀 Big gains possible!" : improvementPotential.level === "medium" ? "📈 Room to improve" : "✓ Already optimized",
-      status: (improvementPotential.level === "low" ? "success" : improvementPotential.level === "medium" ? "warning" : "muted") as Status,
-    }] : []),
+    // The number and its verdict come from the one projected gain (S13-058
+    // recheck): the model's own level beside the projection's number read
+    // "+10 pts, Already optimized". A gain of 0 says nothing worth a card.
+    ...(improvementPotential && improvementPotential.estimatedScoreIncrease > 0 ? (() => {
+      const gain = improvementPotential.estimatedScoreIncrease;
+      const level = improvementLevelOf(gain);
+      return [{
+        icon: Zap,
+        label: t('freeScan.improvementPotential'),
+        tooltipKey: "improvementPotential",
+        value: t('metricCards.improvement.value', { count: gain }),
+        subtext: t(`metricCards.improvement.${level}`),
+        status: (level === "low" ? "success" : level === "medium" ? "warning" : "muted") as Status,
+      }];
+    })() : []),
   ];
 
   return (

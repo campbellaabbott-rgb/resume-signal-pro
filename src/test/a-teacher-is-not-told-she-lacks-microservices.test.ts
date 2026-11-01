@@ -26,13 +26,20 @@
  * ("cross-functional", "architecture", "monitoring") that happen to occur in
  * other fields' postings: main made them for every field, at 22% support in
  * engineering and 18% in legal.
+ *
+ * Recheck fix (2026-11-01): split by posting title over 5,499 real postings,
+ * only data engineering reads technology's terms as software does at every
+ * level (15/8/18% against 15/10/16%); data science, machine learning and
+ * cybersecurity drop to the healthcare rate at one level or another (DS mid
+ * 2.4%, ML mid 5.7%, cyber entry 4.3%; healthcare 0.4/3.0/6.9%), so they
+ * borrow nothing: the review's "own industry only".
  */
 import { describe, expect, it } from "vitest";
 import { analyzeCompetitiveKeywordGap, formatCompetitiveGapForPrompt } from "../../supabase/functions/free-keyword-scan/market-intelligence";
 import { INDUSTRY_KEYWORDS } from "../../supabase/functions/free-keyword-scan/industry-detection";
 import slice from "./fixtures/free-scan-wave/s13-010-competitive-gap.json";
 
-const SOFTWARE_FIELDS = ["data_engineering", "machine_learning", "cybersecurity"];
+const SOFTWARE_FIELDS = ["data_engineering"];
 
 const TEACHER = "Planned lessons for 28 students, led parent conferences and ran the after-school robotics club.";
 
@@ -56,9 +63,13 @@ describe("the software fields read technology's list (review fix)", () => {
       }
     });
   }
-  it("data science does not", () => {
-    expect(analyzeCompetitiveKeywordGap(TEACHER, "data_science", "mid").missingHighFrequency).toEqual([]);
-  });
+  for (const industry of ["data_science", "machine_learning", "cybersecurity"]) {
+    it(`${industry} does not (recheck: below the software rate at some level)`, () => {
+      for (const level of ["entry", "mid", "senior", "executive"]) {
+        expect(analyzeCompetitiveKeywordGap(TEACHER, industry, level).missingHighFrequency).toEqual([]);
+      }
+    });
+  }
 });
 
 describe("the corpus slice: real posting text", () => {

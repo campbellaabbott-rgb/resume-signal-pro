@@ -11,7 +11,8 @@
  * "Primary Scores", and the vendor card and findings index (their own file,
  * a-layout-the-scan-never-saw-is-not-certified-to-any-ats). Each is rendered
  * here in German, and each component's source is held to carry none of them
- * as text.
+ * as text. The recheck added the findings index's items, which sat in
+ * English under the translated heading.
  */
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { cleanup, render } from "@testing-library/react";
@@ -68,6 +69,11 @@ afterEach(() => cleanup());
 afterAll(async () => { await i18n.changeLanguage("en"); });
 
 const english = (text: string, list: string[]) => list.filter((s) => text.includes(s));
+const FINDINGS_ENGLISH = [
+  "Resume text may not have extracted correctly", "Extraction quality is imperfect", "No email address detected",
+  "No phone number detected", "missing — see field-specific checks", "graded D or below", "rewrites provided",
+  "Under 40% of bullets", "Quantified impact", "Core sections present",
+];
 
 describe("rendered in German", () => {
   it("the confirmation strip", () => {
@@ -91,6 +97,33 @@ describe("rendered in German", () => {
       ["entry", "mid", "senior", "executive"].map((k) => de.freeResults.readAs.levels[k]),
     );
     expect(container.querySelector("select[data-industry-select]")?.getAttribute("aria-label")).toBe(de.freeResults.readAs.industryAria);
+  });
+
+  // S13-122 recheck: the findings index sat under a translated heading and
+  // listed English items ("No email address detected", "graded D or below").
+  it("the findings index items", () => {
+    const { container } = render(
+      <MemoryRouter>
+        <FreeKeywordResults
+          industry="healthcare" atsScoreEstimate={48} formatGrade="C" formatIssue="ok" resumeLength={"good" as never}
+          redFlags={[]} keywords={[]}
+          sectionCheck={{ hasContact: true, hasSummary: true, hasExperience: true, hasEducation: true, hasSkills: true } as never}
+          contactInfo={{ hasEmail: false, hasPhone: false, hasLinkedIn: false } as never}
+          parseQuality={{ verdict: "poor", wordCount: 90, issues: [] }}
+          quantificationScore={20 as never}
+          weakestBullets={[
+            { original: "Responsible for patients", grade: "D", issues: [], rewrite: null },
+            { original: "Helped with charts", grade: "F", issues: [], rewrite: null },
+          ]}
+          onGetFullAnalysis={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+    const text = container.textContent ?? "";
+    expect(english(text, FINDINGS_ENGLISH)).toEqual([]);
+    const items = de.reportInsights.findings.items;
+    for (const k of ["parsePoor", "noEmail", "noPhone", "lowQuantification"]) expect(text, k).toContain(items[k]);
+    expect(text).toContain(items.weakBulletsNone_other.replace("{{count}}", "2"));
   });
 
   it("the industry indicator", () => {
@@ -136,7 +169,7 @@ describe("rendered in German", () => {
 
 describe("in the source", () => {
   const SITES: Array<[string, string[]]> = [
-    ["src/components/FreeKeywordResults.tsx", ["We read this as:", "Corrections retrain our detection"]],
+    ["src/components/FreeKeywordResults.tsx", ["We read this as:", "Corrections retrain our detection", ...FINDINGS_ENGLISH]],
     ["src/components/IndustryConfidenceIndicator.tsx", ["Is this right?"]],
     ["src/components/ReportInsightCards.tsx", ["How the big ATS platforms read this resume", "Findings at a glance"]],
     ["src/components/scorecard/MetricCardsGrid.tsx", ["Primary Scores"]],

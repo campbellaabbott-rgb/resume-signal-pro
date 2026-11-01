@@ -151,9 +151,21 @@ export function fixPlanOf(p: ScoreProjection): FixPlan {
 }
 
 /**
+ * How much a gain is worth saying: 10 points or more is "high", 5 to 9
+ * "medium", less "low". The Improvement Potential card prints the level's
+ * verdict beside the number, so both come from the one gain (S13-058
+ * recheck: the model's own level beside the projection's number read "+10
+ * pts, Already optimized" and "+0 pts, Big gains possible!").
+ */
+export function improvementLevelOf(gain: number): 'high' | 'medium' | 'low' {
+  return gain >= 10 ? 'high' : gain >= 5 ? 'medium' : 'low';
+}
+
+/**
  * Writes the projection onto a report: each served quick win's scoreImpact,
- * improvementPotential.estimatedScoreIncrease, and scoreProjection. The
- * model's level and topPriority stay; only the number is the projection's.
+ * improvementPotential.estimatedScoreIncrease and its level, and
+ * scoreProjection. The model's topPriority stays; the number and the level
+ * are the projection's.
  */
 export function applyScoreProjection(report: Record<string, unknown>, p: ScoreProjection): void {
   if (Array.isArray(report.quickWins)) {
@@ -162,6 +174,9 @@ export function applyScoreProjection(report: Record<string, unknown>, p: ScorePr
   }
   const ip = report.improvementPotential;
   if (typeof ip === 'number') report.improvementPotential = p.gain;
-  else if (ip && typeof ip === 'object') (ip as { estimatedScoreIncrease?: number }).estimatedScoreIncrease = p.gain;
+  else if (ip && typeof ip === 'object') {
+    (ip as { estimatedScoreIncrease?: number }).estimatedScoreIncrease = p.gain;
+    (ip as { level?: string }).level = improvementLevelOf(p.gain);
+  }
   report.scoreProjection = p;
 }

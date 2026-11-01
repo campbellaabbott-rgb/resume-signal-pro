@@ -32,7 +32,7 @@ export interface CredibilityIssue {
 export function detectCredibilityIssues(resumeText: string, now: Date = new Date()): CredibilityIssue[] {
   const issues: CredibilityIssue[] = [];
   const today = monthIndex({ year: now.getFullYear(), month: now.getMonth() });
-  const ranges = readDateRanges(resumeText);
+  const ranges = readDateRanges(resumeText, { now });
 
   for (const r of ranges) {
     if (r.reversed) {

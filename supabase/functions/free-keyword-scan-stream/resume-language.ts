@@ -30,6 +30,18 @@
  *   - `supported` says whether the report's keyword lists, section words and
  *     prompt are built for the language, so the scan can say when they are not.
  * A short text with little to go on stays English, as before.
+ *
+ * Recheck fix (2026-11-01, 2,450 texts: Wikipedia intros in 27 languages,
+ * 1,616 real postings with a declared language, 917 terse English lists):
+ *   - Russian is named only on words Bulgarian and Serbian do not write
+ *     ("или", "при", "как", "все" are theirs too), and Bulgarian, Serbian and
+ *     Macedonian have words and letters of their own (ъ; ј љ њ ћ ђ џ; ќ ѓ ѕ);
+ *   - Indonesian and Malay are told apart only by the spellings one of them
+ *     writes ("bahwa"/"bahawa", "yaitu"/"iaitu"); with none, the language is
+ *     'unknown' rather than a guess;
+ *   - before a Latin-script text is called 'unknown', the supported lists are
+ *     read again at a lower bar, so Spanish or Portuguese prose with little
+ *     résumé vocabulary is named, not told the report does not cover it.
  */
 
 export interface ResumeLanguageResult {
@@ -56,6 +68,9 @@ const LANGUAGE_WORDS: Record<string, { name: string; words: string[] }> = {
       'responsable de', 'trabajo', 'habilidades', 'educación', 'ventas',
       'logros', 'conocimientos', 'puesto', 'mejora', 'aumenté', 'lideré',
       'también', 'según', 'a través de', 'más de', 'y de',
+      // Function words no other listed language writes (not "para", "por",
+      // "como", "desde": Portuguese; not "con", "una", "del": Italian).
+      'los', 'las', 'fue', 'sus', 'muy', 'hasta', 'pero', 'cuando', 'año', 'ciudad', 'tiene', 'puede',
     ],
   },
   fr: {
@@ -81,6 +96,9 @@ const LANGUAGE_WORDS: Record<string, { name: string; words: string[] }> = {
       'não', 'são', 'experiência', 'gestão', 'desenvolvimento', 'empresa',
       'equipe', 'anos de', 'responsável', 'habilidades', 'educação',
       'projetos', 'vendas', 'conhecimentos', 'atuação', 'liderança de',
+      // Not "mais" (French), "das"/"dos" (German, Spanish), "com" (a URL),
+      // "quando" (Italian).
+      'uma', 'foi', 'seu', 'sua', 'seus', 'suas', 'muito', 'ainda', 'pelo', 'pela', 'pelos', 'também', 'até', 'cidade', 'então',
     ],
   },
   nl: {
@@ -132,7 +150,7 @@ const LANGUAGE_WORDS: Record<string, { name: string; words: string[] }> = {
   // "untuk"), so both lists carry them and each adds the spellings only it
   // writes (Indonesian perusahaan, karena, bisa, universitas, proyek; Malay
   // syarikat, kerana, boleh, universiti, projek). A text with only the shared
-  // words is read as Indonesian, listed first.
+  // words, or as many of one's spellings as the other's, is 'unknown'.
   id: {
     name: 'Indonesian',
     words: [
@@ -140,6 +158,7 @@ const LANGUAGE_WORDS: Record<string, { name: string; words: string[] }> = {
       'perusahaan', 'karena', 'bisa', 'saat', 'universitas', 'proyek',
       'manajemen', 'kualitas', 'nomor', 'telepon', 'pesan', 'coba',
       'silakan', 'kirim', 'kata sandi', 'kerja sama',
+      'bahwa', 'yaitu', 'maupun', 'saja', 'setelah', 'internasional', 'uang', 'klub', 'musik', 'serikat',
     ],
   },
   ms: {
@@ -149,6 +168,7 @@ const LANGUAGE_WORDS: Record<string, { name: string; words: string[] }> = {
       'syarikat', 'kerana', 'boleh', 'semasa', 'universiti', 'projek',
       'pengurusan', 'kualiti', 'nombor', 'telefon', 'mesej', 'cuba', 'sila',
       'kata laluan', 'kerjasama',
+      'bahawa', 'iaitu', 'mahupun', 'sahaja', 'selepas', 'antarabangsa', 'wang', 'kelab', 'muzik', 'filem', 'bandar',
     ],
   },
   tl: {
@@ -230,9 +250,13 @@ const SHARED_SCRIPT_WORDS: Record<string, Record<string, { name: string; words: 
     ne: { name: 'Nepali', words: ['छ', 'छन्', 'र', 'मा', 'गरेको', 'थियो', 'हो', 'भएको', 'गर्ने', 'लागि', 'पनि', 'यो', 'गरें', 'सम्म'] },
   },
   Cyrillic: {
-    // Not "и", "за", "на", "образование", "управление", "компании": Bulgarian writes them too.
-    ru: { name: 'Russian', words: ['что', 'это', 'как', 'или', 'при', 'также', 'опыт', 'опытом', 'был', 'была', 'работы', 'работал', 'работала', 'отвечал', 'отвечала', 'навыки', 'более', 'лет', 'если', 'его', 'все'] },
+    // Not "и", "за", "на", "образование", "управление", "компании": Bulgarian
+    // writes them too; nor "или", "при", "как", "все": Bulgarian and Serbian do.
+    ru: { name: 'Russian', words: ['что', 'это', 'также', 'опыт', 'опытом', 'был', 'была', 'работы', 'работал', 'работала', 'отвечал', 'отвечала', 'навыки', 'более', 'лет', 'если', 'его', 'чтобы', 'всех', 'нет', 'больше', 'который', 'которые', 'было', 'будет', 'можно', 'только', 'есть'] },
     uk: { name: 'Ukrainian', words: ['та', 'що', 'це', 'як', 'або', 'також', 'досвід', 'досвідом', 'був', 'була', 'роботи', 'працював', 'працювала', 'відповідав', 'освіта', 'навички', 'більше', 'років', 'якщо', 'його', 'усі', 'і'] },
+    bg: { name: 'Bulgarian', words: ['това', 'които', 'който', 'която', 'което', 'със', 'във', 'също', 'опит', 'като', 'след', 'трябва', 'година', 'години', 'са', 'съм'] },
+    sr: { name: 'Serbian', words: ['је', 'који', 'која', 'које', 'што', 'као', 'али', 'током', 'године', 'између', 'због', 'од'] },
+    mk: { name: 'Macedonian', words: ['кој', 'кое', 'кои', 'исто така', 'помеѓу', 'беше', 'од', 'во'] },
   },
   Arabic: {
     ar: { name: 'Arabic', words: ['في', 'على', 'إلى', 'التي', 'الذي', 'هذه', 'هذا', 'عن', 'مع', 'كان', 'ذلك', 'أو', 'يمكن', 'لا'] },
@@ -285,6 +309,11 @@ export function detectResumeLanguage(resumeText: string): ResumeLanguageResult {
       if (top.script === 'Cyrillic') {
         if (/[ыэё]/.test(text) && !/[іїєґў]/.test(text)) { s.ru.distinct++; s.ru.hits.push('ы/э'); }
         if (/[іїєґ]/.test(text) && !/[ыэў]/.test(text)) { s.uk.distinct++; s.uk.hits.push('і/ї/є'); }
+        // ъ inside words is Bulgarian (Russian writes it rarely, and with ы/э);
+        // ј љ њ џ are Serbian and Macedonian, ћ ђ Serbian, ќ ѓ ѕ Macedonian.
+        if ((text.match(/ъ/g) || []).length >= 3 && !/[ыэ]/.test(text)) { s.bg.distinct++; s.bg.hits.push('ъ'); }
+        if (/[ћђ]/.test(text) || (/[јљњџ]/.test(text) && !/[ќѓѕ]/.test(text))) { s.sr.distinct++; s.sr.hits.push('ј/ћ/ђ'); }
+        if (/[ќѓѕ]/.test(text)) { s.mk.distinct++; s.mk.hits.push('ќ/ѓ/ѕ'); }
       }
       const ranked = Object.entries(s).sort((a, b) => b[1].distinct - a[1].distinct || b[1].score - a[1].score);
       const [code, best] = ranked[0];
@@ -318,6 +347,19 @@ export function detectResumeLanguage(resumeText: string): ResumeLanguageResult {
   // words with a 1.2x lead is already far beyond anything an English resume
   // produces against these lists.
   if (topLang.distinct >= 3 && topLang.score >= 4 && topLang.score > en.score * 1.2) {
+    // Indonesian and Malay share their commonest words: only the spellings
+    // one of them writes decide, and none decides nothing.
+    if (topCode === 'id' || topCode === 'ms') {
+      const own = (a: string, b: string) => LANGUAGE_WORDS[a].words.filter(w => !LANGUAGE_WORDS[b].words.includes(w));
+      const tell = scoreLists(text, { id: { name: 'Indonesian', words: own('id', 'ms') }, ms: { name: 'Malay', words: own('ms', 'id') } });
+      if (tell.id.distinct === tell.ms.distinct) {
+        return result('unknown', 'an unidentified language', 'low',
+          [`matched words Indonesian and Malay share (${topLang.hits.join(', ')}); ${tell.id.distinct} spellings of either`], 'Latin');
+      }
+      const code = tell.id.distinct > tell.ms.distinct ? 'id' : 'ms';
+      return result(code, LANGUAGE_WORDS[code].name, 'medium',
+        [`matched: ${scores[code].hits.join(', ')}; own spellings: ${tell[code].hits.join(', ')}`], 'Latin');
+    }
     const runnerUp = ranked[1]?.[1].score ?? 0;
     const confidence: 'high' | 'medium' =
       topLang.score >= runnerUp * 2 && topLang.score >= en.score * 2 ? 'high' : 'medium';
@@ -336,6 +378,19 @@ export function detectResumeLanguage(resumeText: string): ResumeLanguageResult {
   const englishFn = scoreLists(text, { en: { name: 'English', words: ENGLISH_FUNCTION_WORDS } }).en;
   const accented = (text.match(/[^\x00-\x7f\p{M}](?<=\p{Script=Latin})/gu) || []).length;
   if (words >= 40 && englishFn.distinct <= 1 && en.distinct <= 2 && accented >= latin * 0.015) {
+    // Not English. Before saying "unknown", read the supported languages'
+    // lists again at a lower bar: two of a language's own words, more than
+    // any other supported language. Prose with little résumé vocabulary (a
+    // Portuguese job ad, a Spanish paragraph) is named, and never told the
+    // report does not cover the language it covers.
+    const supportedRanked = ranked.filter(([code]) => SUPPORTED_LANGUAGES.includes(code)).sort((a, b) => b[1].distinct - a[1].distinct || b[1].score - a[1].score);
+    const [lowCode, low] = supportedRanked[0] ?? [];
+    const lowSecond = supportedRanked[1]?.[1];
+    const unsupportedBest = ranked.filter(([code]) => !SUPPORTED_LANGUAGES.includes(code)).reduce((m, [, v]) => Math.max(m, v.distinct), 0);
+    if (low && low.distinct >= 2 && low.distinct > (lowSecond?.distinct ?? 0) && low.distinct > unsupportedBest) {
+      return result(lowCode, LANGUAGE_WORDS[lowCode].name, 'low',
+        [`matched: ${low.hits.join(', ')} (${low.distinct} distinct terms, below the main bar; ${englishFn.distinct} English function words)`], 'Latin');
+    }
     return result('unknown', 'an unidentified language', 'low',
       [`${words} words, ${englishFn.distinct} English function words, ${accented} accented letters, no word list cleared the bar`], 'Latin');
   }

@@ -166,13 +166,29 @@ for (const [abbr, full] of ABBREVIATIONS) {
 }
 for (const [a, b] of SAME_PRODUCT) { addSame(a, b); addSame(b, a); }
 
+// Closed compounds that pages also write open: "frontend" is "front end" and
+// "front-end", "backend" "back end" (S13-092 recheck: "Front End Engineer"
+// and "Back-end Engineer" found no card).
+const CLOSED_COMPOUNDS: ReadonlyArray<[RegExp, string]> = [
+  [/(?<![\p{L}\p{N}])frontend(?![\p{L}\p{N}])/gu, 'front end'],
+  [/(?<![\p{L}\p{N}])backend(?![\p{L}\p{N}])/gu, 'back end'],
+];
+
 /** Spacing and hyphen forms ("full stack", "full-stack", "fullstack") and "&" as "and". */
 function spacingForms(n: string): string[] {
   const out = new Set<string>([n]);
-  if (/[\s\-/]/.test(n)) {
-    out.add(n.replace(/[\s\-/]+/g, ''));
-    out.add(n.replace(/[\s/]+/g, '-'));
-    out.add(n.replace(/[-/]+/g, ' ').replace(/\s+/g, ' '));
+  let open = n;
+  let hyphened = n;
+  for (const [re, split] of CLOSED_COMPOUNDS) {
+    open = open.replace(re, split);
+    hyphened = hyphened.replace(re, split.replace(' ', '-'));
+  }
+  // "back-end engineer": the compound hyphened, the rest as written.
+  if (open !== n) { out.add(open); out.add(hyphened); }
+  if (/[\s\-/]/.test(open)) {
+    out.add(open.replace(/[\s\-/]+/g, ''));
+    out.add(open.replace(/[\s/]+/g, '-'));
+    out.add(open.replace(/[-/]+/g, ' ').replace(/\s+/g, ' '));
   }
   if (n.includes('&')) out.add(n.replace(/\s*&\s*/g, ' and '));
   return [...out];
@@ -192,16 +208,47 @@ export function termSpellings(term: string): string[] {
 }
 
 /**
+ * Plurals that are other words (S13-004 recheck). Reading "futures" back to
+ * "future" found a finance term in "the future of", "securities" in "web
+ * application security", "canvas" in "Canva", "dailies" in "daily", "covers"
+ * in "cover letter": 783 false finds over 908 real postings that the old
+ * rule-score and card checks (which never singularised) did not make. These
+ * are matched as written, plural and singular never swapped. The list is
+ * the review of every table term whose plural the reader would strip (652 of
+ * them, from both scanners' tables and the page's cards), keeping each whose
+ * singular is mostly a different word or sense on a résumé: an adjective
+ * ("premium", "static", "special"), a common verb or noun ("cover", "draw",
+ * "highlight", "filling", "source", "location"), a brand or product ("Canva",
+ * "Epic", "Crown", "Teamwork"), or a street ("Lane").
+ */
+const NO_INFLECT: ReadonlySet<string> = new Set([
+  'futures', 'securities', 'derivatives', 'greeks', 'premiums', 'closings', 'comps', 'listings',
+  'dynamics', 'microsoft dynamics', 'statics', 'logistics', 'cinematics',
+  'dailies', 'locations', 'transformers', 'teamworks', 'canvas', 'epics', 'customs', 'lanes', 'rails',
+  'covers', 'specials', 'combines', 'draws', 'liens', 'damages', 'sources', 'sales', 'ethics',
+  'highlights', 'facials', 'acrylics', 'macros', 'fixtures',
+  'crowns', 'fillings', 'cleanings', 'extractions', 'impressions',
+  // The service, not the adjective: "Marine Engineer" is not the Marines.
+  'marines',
+]);
+
+/**
  * The plural or singular of one spelling ("launch"/"launches",
  * "strategy"/"strategies", "process"/"processes", "kpi"/"kpis"). An ending is
  * stripped only when four or more characters stay ("aws" and "apis" keep
  * theirs: an acronym's plural is read by acronymSingular below). No other
  * form of the word counts: reading "test" as "testing" would read "drug test"
- * as QA work and "dress code" as coding.
+ * as QA work and "dress code" as coding. A last word of one or two letters
+ * after a hyphen or "&" takes a plural "s" and nothing else ("check-ins",
+ * "P&IDs"), and a word that ends in an accented letter is a word
+ * ("auditorías").
  */
 function inflections(s: string): Array<{ form: string; added: string }> {
-  const last = s.match(/[a-z]+$/)?.[0] ?? '';
-  if (last.length < 3) return [];
+  if (NO_INFLECT.has(s)) return [];
+  const last = s.match(/\p{L}+$/u)?.[0] ?? '';
+  if (last.length < 3) {
+    return last.length >= 1 && s.length >= 4 && /[-&]\p{L}{1,2}$/u.test(s) ? [{ form: `${s}s`, added: 's' }] : [];
+  }
   const out: Array<{ form: string; added: string }> = [];
   if (/[^aeiou]ies$/.test(s) && s.length - 2 >= 4) out.push({ form: `${s.slice(0, -3)}y`, added: '' });
   if (/(?:s|x|z|ch|sh)es$/.test(s) && s.length - 2 >= 4) out.push({ form: s.slice(0, -2), added: '' });
@@ -220,7 +267,7 @@ function inflections(s: string): Array<{ form: string; added: string }> {
  * the spelling starts or ends with.
  */
 function hasInflection(p: Prepared, s: string): boolean {
-  const lastLen = (s.match(/[a-z]+$/)?.[0] ?? '').length;
+  const lastLen = (s.match(/\p{L}+$/u)?.[0] ?? '').length;
   return inflections(s).some(({ form, added }) => {
     if (!added || lastLen > 4) return hasToken(p, form);
     const stemLen = form.length - added.length;

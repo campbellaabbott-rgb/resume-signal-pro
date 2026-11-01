@@ -1681,13 +1681,13 @@
     },
     "builderHandoff": {
       "title": "Convierte este diagnóstico en un currículum terminado",
-      "bodyRewrites_one": "Abre el creador gratuito con tu currículum cargado y {{count}} reescritura de viñeta de este informe ya aplicada, y exporta un PDF o DOCX bien maquetado.",
-      "bodyRewrites_many": "Abre el creador gratuito con tu currículum cargado y {{count}} reescrituras de viñetas de este informe ya aplicadas, y exporta un PDF o DOCX bien maquetado.",
-      "bodyRewrites_other": "Abre el creador gratuito con tu currículum cargado y {{count}} reescrituras de viñetas de este informe ya aplicadas, y exporta un PDF o DOCX bien maquetado.",
+      "bodyRewrites_one": "Abre el creador gratuito con tu currículum cargado y {{count}} reescritura de viñeta de este informe aplicada donde coincida con una de tus viñetas, y exporta un PDF o DOCX bien maquetado.",
+      "bodyRewrites_many": "Abre el creador gratuito con tu currículum cargado y las {{count}} reescrituras de viñetas de este informe aplicadas donde coincidan con tus viñetas, y exporta un PDF o DOCX bien maquetado.",
+      "bodyRewrites_other": "Abre el creador gratuito con tu currículum cargado y las {{count}} reescrituras de viñetas de este informe aplicadas donde coincidan con tus viñetas, y exporta un PDF o DOCX bien maquetado.",
       "bodyNoRewrites": "Este informe no tiene ninguna reescritura que el creador pueda aplicar. Abre el creador gratuito con tu currículum cargado y las palabras clave que faltan junto a él, y exporta un PDF o DOCX bien maquetado.",
-      "ctaRewrites_one": "Abrir en el creador con {{count}} reescritura aplicada →",
-      "ctaRewrites_many": "Abrir en el creador con {{count}} reescrituras aplicadas →",
-      "ctaRewrites_other": "Abrir en el creador con {{count}} reescrituras aplicadas →",
+      "ctaRewrites_one": "Abrir en el creador: {{count}} reescritura por aplicar →",
+      "ctaRewrites_many": "Abrir en el creador: {{count}} reescrituras por aplicar →",
+      "ctaRewrites_other": "Abrir en el creador: {{count}} reescrituras por aplicar →",
       "ctaNoRewrites": "Abrir en el creador con tu currículum y las palabras clave que faltan →"
     },
     "scoreSimulator": {
@@ -1711,6 +1711,15 @@
       "bulletsUnquantified_many": "Añade un resultado con un número a {{count}} viñetas que no tienen ninguno",
       "bulletsUnquantified_other": "Añade un resultado con un número a {{count}} viñetas que no tienen ninguno",
       "keywords": "Incluye {{keywords}} en tu resumen y en las viñetas de experiencia"
+    },
+    "scorePotential": {
+      "title": "Tu potencial de puntuación",
+      "current": "Actual",
+      "afterFixes": "Tras las correcciones",
+      "gain_one": "+{{count}} pt",
+      "gain_many": "+{{count}} pts",
+      "gain_other": "+{{count}} pts",
+      "basis": "Tu puntuación más las correcciones del simulador y del plan de mejoras de abajo: las mejoras rápidas principales y los pasos de viñetas y palabras clave."
     }
   },
   "analysisPreviewSample": {
@@ -2876,7 +2885,6 @@
   },
   "rateLimitUpsell": {
     "title": "Límite diario de escaneos alcanzado",
-    "subtitle": "Has usado tus 7 escaneos gratuitos de hoy. No te preocupes – ¡puedes seguir escaneando ahora mismo!",
     "resetIn": "Los escaneos gratuitos se reinician en aproximadamente",
     "hour_one": "{{count}} hora",
     "hour_other": "{{count}} horas",
@@ -3459,7 +3467,6 @@
     "neverExpire": "Los créditos nunca caducan",
     "perCredit": "{{price}} por crédito",
     "topUpCredits": "Recargar créditos",
-    "freeTier": "Nivel gratuito: hasta 7 escaneos por día, gratis para siempre.",
     "buyCredits": "Comprar créditos — {{price}} cada uno",
     "myCredits": "Mis créditos",
     "provenHint": "Los créditos comprados en este navegador aparecen aquí automáticamente.",
@@ -3553,6 +3560,7 @@
       "certifications": "Certificaciones"
     },
     "replaceWithFixes": "¿Reemplazar tu borrador actual por el currículum de tu escaneo, con las correcciones del informe aplicadas? Si no aceptas, tu borrador se queda y se le aplican las correcciones que coincidan con sus viñetas.",
+    "replaceWithKeywords": "¿Reemplazar tu borrador actual por el currículum de tu escaneo, con las palabras clave que faltan de este informe al lado? Si no aceptas, tu borrador se queda y las palabras clave se muestran a su lado.",
     "replaceWithLatestScan": "Tienes un borrador de un currículum anterior. ¿Reemplazarlo por el currículum de tu análisis más reciente?",
     "toast": {
       "addNameDescription": "Tu currículum necesita tu nombre arriba antes de poder descargarlo.",
@@ -5762,7 +5770,7 @@
     "title": "Algo salió mal"
   },
   "freeReportSignup": {
-    "body": "Crea una cuenta gratuita para seguir tu progreso entre análisis, conservar tu lista de mejoras y tener 15 análisis gratuitos al día en lugar de 7.",
+    "body": "Crea una cuenta gratuita para seguir tu progreso entre análisis, conservar tu lista de mejoras y tener {{signedIn}} análisis gratuitos al día en lugar de {{signedOut}}.",
     "cta": "Crear cuenta gratuita",
     "title": "No pierdas esta puntuación."
   },
@@ -5922,7 +5930,15 @@
       "c": "Regular",
       "d": "Necesita trabajo"
     },
-    "redFlagsClean": "Tu currículum se ve limpio: no detectamos problemas importantes."
+    "redFlagsClean": "Tu currículum se ve limpio: no detectamos problemas importantes.",
+    "improvement": {
+      "value_one": "+{{count}} pt",
+      "value_many": "+{{count}} pts",
+      "value_other": "+{{count}} pts",
+      "high": "🚀 ¡Grandes mejoras posibles!",
+      "medium": "📈 Margen de mejora",
+      "low": "✓ Queda poco por ganar"
+    }
   },
   "scanOutcome": {
     "title": "¿Te postulaste con este currículum? Cuéntanos cómo te fue",
@@ -5996,7 +6012,26 @@
       "unchecked_other": "{{count}} sin revisar",
       "unchecked_many": "{{count}} sin revisar",
       "noCritical": "Sin resultados críticos: lo que funciona bien se detalla en las secciones de abajo.",
-      "footer": "El detalle completo de cada resultado aparece en las secciones de abajo, por orden de gravedad."
+      "footer": "El detalle completo de cada resultado aparece en las secciones de abajo, por orden de gravedad.",
+      "items": {
+        "parsePoor": "Puede que el texto del currículum no se haya extraído bien — las puntuaciones de abajo podrían no ser fiables",
+        "parseFair": "La calidad de la extracción no es perfecta — revisa la vista previa de abajo",
+        "noEmail": "No se detectó ningún correo electrónico — los reclutadores no pueden contactarte",
+        "noPhone": "No se detectó ningún número de teléfono",
+        "fieldMissing": "{{label}}: falta — consulta las comprobaciones del sector",
+        "weakBulletsAll_one": "{{count}} viñeta calificada con D o menos — reescritura incluida",
+        "weakBulletsAll_many": "{{count}} viñetas calificadas con D o menos — reescrituras incluidas",
+        "weakBulletsAll_other": "{{count}} viñetas calificadas con D o menos — reescrituras incluidas",
+        "weakBulletsSome_one": "{{count}} viñeta calificada con D o menos — {{rewritten}} reescrita",
+        "weakBulletsSome_many": "{{count}} viñetas calificadas con D o menos — {{rewritten}} reescritas",
+        "weakBulletsSome_other": "{{count}} viñetas calificadas con D o menos — {{rewritten}} reescritas",
+        "weakBulletsNone_one": "{{count}} viñeta calificada con D o menos — mira cómo corregirla",
+        "weakBulletsNone_many": "{{count}} viñetas calificadas con D o menos — mira cómo corregirlas",
+        "weakBulletsNone_other": "{{count}} viñetas calificadas con D o menos — mira cómo corregirlas",
+        "lowQuantification": "Menos del 40 % de las viñetas incluye una cifra — los reclutadores se fijan en las métricas",
+        "quantified": "Impacto cuantificado",
+        "coreSections": "Secciones principales presentes"
+      }
     }
   },
   "redFlags": {

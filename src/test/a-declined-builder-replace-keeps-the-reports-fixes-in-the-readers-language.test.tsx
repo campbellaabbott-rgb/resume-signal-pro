@@ -102,6 +102,20 @@ describe("S13-126: No keeps the draft and the report's fixes", () => {
     expect(savedBullets()).toEqual(["Ran the weekly report"]);
   });
 
+  // S13-126 recheck: a hand-off with no rewrite asked to replace the draft
+  // "with the report's fixes applied" and, on No, promised fixes would land.
+  it("a hand-off with keywords and no rewrite asks about the keywords, not fixes", async () => {
+    localStorage.setItem("resumeBuilderDraft", JSON.stringify(draft(["Ran the weekly report"])));
+    sessionStorage.setItem("rb_resume_text", SCAN);
+    handoff([], ["SQL"]);
+    mount();
+    expect(confirm).toHaveBeenCalledWith(en.resumeBuilder.replaceWithKeywords);
+    expect(confirm).not.toHaveBeenCalledWith(en.resumeBuilder.replaceWithFixes);
+    expect(en.resumeBuilder.replaceWithKeywords).not.toMatch(/fix/i);
+    expect(screen.getByText("SQL")).toBeTruthy();
+    await waitFor(() => expect(savedBullets()).toEqual(["Ran the weekly report"]));
+  });
+
   it("does not ask again on the next visit", async () => {
     localStorage.setItem("resumeBuilderDraft", JSON.stringify(draft([LONG])));
     sessionStorage.setItem("rb_resume_text", SCAN);

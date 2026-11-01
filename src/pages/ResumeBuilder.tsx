@@ -180,8 +180,14 @@ export default function ResumeBuilder() {
       // Asked once per scan: a "no" is remembered, so the next visit opens
       // the draft without asking again about the same scan.
       writeImportedFrom(sessionData.resumeText!);
+      // A hand-off with no rewrite (a report with none the builder can use,
+      // or the gap report's keywords) asks about the keywords, not fixes it
+      // does not carry (S13-038 recheck).
+      const carriesRewrites = Array.isArray(fixes?.rewrites) && fixes!.rewrites.length > 0;
       const replace = window.confirm(
-        decision === "ask-fixes" ? t("resumeBuilder.replaceWithFixes") : t("resumeBuilder.replaceWithLatestScan"),
+        decision === "ask-fixes"
+          ? t(carriesRewrites ? "resumeBuilder.replaceWithFixes" : "resumeBuilder.replaceWithKeywords")
+          : t("resumeBuilder.replaceWithLatestScan"),
       );
       if (!replace) {
         try { sessionStorage.removeItem("rb_scan_fixes"); } catch { /* ignore */ }

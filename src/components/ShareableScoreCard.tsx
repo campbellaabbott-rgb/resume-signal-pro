@@ -308,7 +308,7 @@ export function ShareableScoreCard({
           <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "12px", marginBottom: "4px" }}>Format Grade</p>
           <p style={{ color: "#fff", fontWeight: "600", fontSize: "18px", margin: 0 }}>{formatGrade}</p>
         </div>
-        {typeof improvementPotential === "number" && (
+        {typeof improvementPotential === "number" && improvementPotential > 0 && (
           <div style={{ padding: "16px", borderRadius: "12px", background: "rgba(255,255,255,0.05)" }}>
             <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "12px", marginBottom: "4px" }}>Improvement</p>
             <p style={{ color: "#fff", fontWeight: "600", margin: 0 }}>+{improvementPotential} pts</p>

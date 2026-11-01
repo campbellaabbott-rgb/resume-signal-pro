@@ -1670,11 +1670,11 @@
     },
     "builderHandoff": {
       "title": "Maak van deze diagnose een afgerond cv",
-      "bodyRewrites_one": "Open de gratis builder met je cv geladen en de {{count}} herschreven bullet uit dit rapport al toegepast, en exporteer daarna een netjes opgemaakte PDF of DOCX.",
-      "bodyRewrites_other": "Open de gratis builder met je cv geladen en de {{count}} herschreven bullets uit dit rapport al toegepast, en exporteer daarna een netjes opgemaakte PDF of DOCX.",
+      "bodyRewrites_one": "Open de gratis builder met je cv geladen en de {{count}} herschreven bullet uit dit rapport toegepast waar die bij een van je bullets past, en exporteer daarna een netjes opgemaakte PDF of DOCX.",
+      "bodyRewrites_other": "Open de gratis builder met je cv geladen en de {{count}} herschreven bullets uit dit rapport toegepast waar ze bij je bullets passen, en exporteer daarna een netjes opgemaakte PDF of DOCX.",
       "bodyNoRewrites": "Dit rapport heeft geen herschrijving die de builder kan toepassen. Open de gratis builder met je cv geladen en de ontbrekende trefwoorden uit dit rapport ernaast, en exporteer daarna een netjes opgemaakte PDF of DOCX.",
-      "ctaRewrites_one": "Openen in de builder met {{count}} herschrijving toegepast →",
-      "ctaRewrites_other": "Openen in de builder met {{count}} herschrijvingen toegepast →",
+      "ctaRewrites_one": "Openen in de builder: {{count}} herschrijving om toe te passen →",
+      "ctaRewrites_other": "Openen in de builder: {{count}} herschrijvingen om toe te passen →",
       "ctaNoRewrites": "Openen in de builder met je cv en de ontbrekende trefwoorden →"
     },
     "scoreSimulator": {
@@ -1695,6 +1695,14 @@
       "bulletsUnquantified_one": "Voeg een resultaat met een getal toe aan {{count}} bullet zonder getal",
       "bulletsUnquantified_other": "Voeg een resultaat met een getal toe aan {{count}} bullets zonder getal",
       "keywords": "Verwerk {{keywords}} in je samenvatting en je ervaringsbullets"
+    },
+    "scorePotential": {
+      "title": "Je scorepotentieel",
+      "current": "Nu",
+      "afterFixes": "Na de verbeteringen",
+      "gain_one": "+{{count}} pt",
+      "gain_other": "+{{count}} ptn",
+      "basis": "Je score plus de verbeteringen in de simulator en het verbeterplan hieronder: de belangrijkste snelle winsten, en de stappen voor opsommingspunten en trefwoorden."
     }
   },
   "analysisPreviewSample": {
@@ -2855,7 +2863,6 @@
   },
   "rateLimitUpsell": {
     "title": "Dagelijkse scanlimiet bereikt",
-    "subtitle": "Je hebt al je 7 gratis scans voor vandaag gebruikt. Geen zorgen – je kunt nu direct verder scannen!",
     "resetIn": "Gratis scans worden gereset binnen ongeveer",
     "hour_one": "{{count}} uur",
     "hour_other": "{{count}} uur",
@@ -3430,7 +3437,6 @@
     "neverExpire": "Credits verlopen nooit",
     "perCredit": "{{price}} per credit",
     "topUpCredits": "Credits bijvullen",
-    "freeTier": "Gratis laag: tot 7 scans per dag, voor altijd gratis.",
     "buyCredits": "Credits kopen — {{price}} per stuk",
     "myCredits": "Mijn credits",
     "provenHint": "Credits die je in deze browser hebt gekocht, verschijnen hier automatisch.",
@@ -3524,6 +3530,7 @@
       "certifications": "Certificeringen"
     },
     "replaceWithFixes": "Je huidige concept in de bouwer vervangen door het cv uit je scan, met de verbeteringen uit het rapport? Als je weigert, blijft je concept staan en worden de verbeteringen die bij de opsommingspunten passen daarin doorgevoerd.",
+    "replaceWithKeywords": "Je huidige concept in de bouwer vervangen door het cv uit je scan, met de ontbrekende trefwoorden uit dit rapport ernaast? Als je weigert, blijft je concept staan en worden de trefwoorden ernaast getoond.",
     "replaceWithLatestScan": "Je hebt een concept van een eerder cv. Vervangen door het cv uit je nieuwste scan?",
     "toast": {
       "addNameDescription": "Je cv moet bovenaan je naam hebben voordat het kan worden gedownload.",
@@ -5717,7 +5724,7 @@
     "title": "Er is iets misgegaan"
   },
   "freeReportSignup": {
-    "body": "Maak een gratis account aan om je voortgang over meerdere scans te volgen, je verbeterchecklist te bewaren en 15 gratis scans per dag te krijgen in plaats van 7.",
+    "body": "Maak een gratis account aan om je voortgang over meerdere scans te volgen, je verbeterchecklist te bewaren en {{signedIn}} gratis scans per dag te krijgen in plaats van {{signedOut}}.",
     "cta": "Gratis account aanmaken",
     "title": "Verlies deze score niet."
   },
@@ -5874,7 +5881,14 @@
       "c": "Redelijk",
       "d": "Moet beter"
     },
-    "redFlagsClean": "Je cv ziet er netjes uit — geen grote problemen gevonden."
+    "redFlagsClean": "Je cv ziet er netjes uit — geen grote problemen gevonden.",
+    "improvement": {
+      "value_one": "+{{count}} pt",
+      "value_other": "+{{count}} ptn",
+      "high": "🚀 Grote winst mogelijk!",
+      "medium": "📈 Ruimte voor verbetering",
+      "low": "✓ Weinig meer te winnen"
+    }
   },
   "scanOutcome": {
     "title": "Gesolliciteerd met dit cv? Vertel ons hoe het ging",
@@ -5944,7 +5958,23 @@
       "unchecked_one": "{{count}} niet gecontroleerd",
       "unchecked_other": "{{count}} niet gecontroleerd",
       "noCritical": "Geen kritieke bevindingen — wat goed werkt, staat in de secties hieronder.",
-      "footer": "De volledige details van elke bevinding staan in de secties hieronder, op volgorde van ernst."
+      "footer": "De volledige details van elke bevinding staan in de secties hieronder, op volgorde van ernst.",
+      "items": {
+        "parsePoor": "De tekst van het cv is mogelijk niet goed uitgelezen — de scores hieronder kunnen onbetrouwbaar zijn",
+        "parseFair": "De uitleeskwaliteit is niet perfect — controleer de voorvertoning hieronder",
+        "noEmail": "Geen e-mailadres gevonden — recruiters kunnen je niet bereiken",
+        "noPhone": "Geen telefoonnummer gevonden",
+        "fieldMissing": "{{label}}: ontbreekt — zie de vakspecifieke controles",
+        "weakBulletsAll_one": "{{count}} bullet beoordeeld met D of lager — herschrijving gegeven",
+        "weakBulletsAll_other": "{{count}} bullets beoordeeld met D of lager — herschrijvingen gegeven",
+        "weakBulletsSome_one": "{{count}} bullet beoordeeld met D of lager — {{rewritten}} herschreven",
+        "weakBulletsSome_other": "{{count}} bullets beoordeeld met D of lager — {{rewritten}} herschreven",
+        "weakBulletsNone_one": "{{count}} bullet beoordeeld met D of lager — zie hoe je die verbetert",
+        "weakBulletsNone_other": "{{count}} bullets beoordeeld met D of lager — zie hoe je ze verbetert",
+        "lowQuantification": "Minder dan 40% van de bullets bevat een getal — recruiters letten op cijfers",
+        "quantified": "Meetbare impact",
+        "coreSections": "Kernsecties aanwezig"
+      }
     }
   },
   "redFlags": {

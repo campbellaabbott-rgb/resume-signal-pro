@@ -1681,13 +1681,13 @@
     },
     "builderHandoff": {
       "title": "Transformez ce diagnostic en CV abouti",
-      "bodyRewrites_one": "Ouvrez l'éditeur gratuit avec votre CV chargé et {{count}} reformulation de puce de ce rapport déjà appliquée, puis exportez un PDF ou DOCX proprement mis en page.",
-      "bodyRewrites_many": "Ouvrez l'éditeur gratuit avec votre CV chargé et {{count}} reformulations de puces de ce rapport déjà appliquées, puis exportez un PDF ou DOCX proprement mis en page.",
-      "bodyRewrites_other": "Ouvrez l'éditeur gratuit avec votre CV chargé et {{count}} reformulations de puces de ce rapport déjà appliquées, puis exportez un PDF ou DOCX proprement mis en page.",
+      "bodyRewrites_one": "Ouvrez l'éditeur gratuit avec votre CV chargé et {{count}} reformulation de puce de ce rapport appliquée là où elle correspond à l'une de vos puces, puis exportez un PDF ou DOCX proprement mis en page.",
+      "bodyRewrites_many": "Ouvrez l'éditeur gratuit avec votre CV chargé et les {{count}} reformulations de puces de ce rapport appliquées partout où elles correspondent à vos puces, puis exportez un PDF ou DOCX proprement mis en page.",
+      "bodyRewrites_other": "Ouvrez l'éditeur gratuit avec votre CV chargé et les {{count}} reformulations de puces de ce rapport appliquées partout où elles correspondent à vos puces, puis exportez un PDF ou DOCX proprement mis en page.",
       "bodyNoRewrites": "Ce rapport n'a aucune reformulation que l'éditeur peut appliquer. Ouvrez l'éditeur gratuit avec votre CV chargé et les mots-clés manquants de ce rapport à côté, puis exportez un PDF ou DOCX proprement mis en page.",
-      "ctaRewrites_one": "Ouvrir dans l'éditeur avec {{count}} reformulation appliquée →",
-      "ctaRewrites_many": "Ouvrir dans l'éditeur avec {{count}} reformulations appliquées →",
-      "ctaRewrites_other": "Ouvrir dans l'éditeur avec {{count}} reformulations appliquées →",
+      "ctaRewrites_one": "Ouvrir dans l'éditeur : {{count}} reformulation à appliquer →",
+      "ctaRewrites_many": "Ouvrir dans l'éditeur : {{count}} reformulations à appliquer →",
+      "ctaRewrites_other": "Ouvrir dans l'éditeur : {{count}} reformulations à appliquer →",
       "ctaNoRewrites": "Ouvrir dans l'éditeur avec votre CV et les mots-clés manquants →"
     },
     "scoreSimulator": {
@@ -1711,6 +1711,15 @@
       "bulletsUnquantified_many": "Ajoutez un résultat chiffré à {{count}} puces qui n'en ont pas",
       "bulletsUnquantified_other": "Ajoutez un résultat chiffré à {{count}} puces qui n'en ont pas",
       "keywords": "Intégrez {{keywords}} à votre résumé et à vos puces d'expérience"
+    },
+    "scorePotential": {
+      "title": "Votre potentiel de score",
+      "current": "Actuel",
+      "afterFixes": "Après corrections",
+      "gain_one": "+{{count}} pt",
+      "gain_many": "+{{count}} pts",
+      "gain_other": "+{{count}} pts",
+      "basis": "Votre score plus les corrections du simulateur et du plan de corrections ci-dessous : les principales actions rapides, et les étapes sur les puces et les mots-clés."
     }
   },
   "analysisPreviewSample": {
@@ -2876,7 +2885,6 @@
   },
   "rateLimitUpsell": {
     "title": "Limite quotidienne de scans atteinte",
-    "subtitle": "Vous avez utilisé vos 7 scans gratuits du jour. Pas de panique – vous pouvez continuer à scanner dès maintenant !",
     "resetIn": "Les scans gratuits se réinitialisent dans environ",
     "hour_one": "{{count}} heure",
     "hour_other": "{{count}} heures",
@@ -3459,7 +3467,6 @@
     "neverExpire": "Les crédits n'expirent jamais",
     "perCredit": "{{price}} par crédit",
     "topUpCredits": "Recharger des crédits",
-    "freeTier": "Niveau gratuit : jusqu'à 7 scans par jour, gratuit pour toujours.",
     "buyCredits": "Acheter des crédits — {{price}} chacun",
     "myCredits": "Mes crédits",
     "provenHint": "Les crédits achetés dans ce navigateur s'affichent ici automatiquement.",
@@ -3553,6 +3560,7 @@
       "certifications": "Certifications"
     },
     "replaceWithFixes": "Remplacer votre brouillon actuel par le CV de votre analyse, avec les corrections du rapport appliquées ? Si vous refusez, votre brouillon est conservé et les corrections qui correspondent à ses puces y sont appliquées.",
+    "replaceWithKeywords": "Remplacer votre brouillon actuel par le CV de votre analyse, avec les mots-clés manquants de ce rapport à côté ? Si vous refusez, votre brouillon est conservé et les mots-clés s'affichent à côté.",
     "replaceWithLatestScan": "Vous avez un brouillon issu d'un CV précédent. Le remplacer par le CV de votre dernière analyse ?",
     "toast": {
       "addNameDescription": "Votre CV doit porter votre nom en haut avant de pouvoir être téléchargé.",
@@ -5762,7 +5770,7 @@
     "title": "Une erreur s'est produite"
   },
   "freeReportSignup": {
-    "body": "Créez un compte gratuit pour suivre vos progrès d'une analyse à l'autre, garder votre liste de corrections et obtenir 15 analyses gratuites par jour au lieu de 7.",
+    "body": "Créez un compte gratuit pour suivre vos progrès d'une analyse à l'autre, garder votre liste de corrections et obtenir {{signedIn}} analyses gratuites par jour au lieu de {{signedOut}}.",
     "cta": "Créer un compte gratuit",
     "title": "Ne perdez pas ce score."
   },
@@ -5922,7 +5930,15 @@
       "c": "Moyen",
       "d": "À retravailler"
     },
-    "redFlagsClean": "Votre CV semble propre : aucun problème majeur détecté."
+    "redFlagsClean": "Votre CV semble propre : aucun problème majeur détecté.",
+    "improvement": {
+      "value_one": "+{{count}} pt",
+      "value_many": "+{{count}} pts",
+      "value_other": "+{{count}} pts",
+      "high": "🚀 De gros gains possibles !",
+      "medium": "📈 Marge de progression",
+      "low": "✓ Peu de points à gagner"
+    }
   },
   "scanOutcome": {
     "title": "Vous avez postulé avec ce CV ? Dites-nous comment ça s'est passé",
@@ -5996,7 +6012,26 @@
       "unchecked_other": "{{count}} non vérifiés",
       "unchecked_many": "{{count}} non vérifiés",
       "noCritical": "Aucun constat critique — ce qui fonctionne est détaillé dans les sections ci-dessous.",
-      "footer": "Le détail de chaque constat figure dans les sections ci-dessous, par ordre de gravité."
+      "footer": "Le détail de chaque constat figure dans les sections ci-dessous, par ordre de gravité.",
+      "items": {
+        "parsePoor": "Le texte du CV n'a peut-être pas été extrait correctement — les scores ci-dessous pourraient être peu fiables",
+        "parseFair": "La qualité de l'extraction est imparfaite — vérifiez l'aperçu ci-dessous",
+        "noEmail": "Aucune adresse e-mail détectée — les recruteurs ne peuvent pas vous contacter",
+        "noPhone": "Aucun numéro de téléphone détecté",
+        "fieldMissing": "{{label}} : manquant — voir les vérifications propres au secteur",
+        "weakBulletsAll_one": "{{count}} puce notée D ou moins — reformulation fournie",
+        "weakBulletsAll_many": "{{count}} puces notées D ou moins — reformulations fournies",
+        "weakBulletsAll_other": "{{count}} puces notées D ou moins — reformulations fournies",
+        "weakBulletsSome_one": "{{count}} puce notée D ou moins — {{rewritten}} reformulée",
+        "weakBulletsSome_many": "{{count}} puces notées D ou moins — {{rewritten}} reformulées",
+        "weakBulletsSome_other": "{{count}} puces notées D ou moins — {{rewritten}} reformulées",
+        "weakBulletsNone_one": "{{count}} puce notée D ou moins — voyez comment la corriger",
+        "weakBulletsNone_many": "{{count}} puces notées D ou moins — voyez comment les corriger",
+        "weakBulletsNone_other": "{{count}} puces notées D ou moins — voyez comment les corriger",
+        "lowQuantification": "Moins de 40 % des puces contiennent un chiffre — les recruteurs s'appuient sur les indicateurs",
+        "quantified": "Impact chiffré",
+        "coreSections": "Sections essentielles présentes"
+      }
     }
   },
   "redFlags": {

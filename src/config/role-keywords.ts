@@ -337,10 +337,13 @@ const TITLE_WORD_ABBREVIATIONS: Readonly<Record<string, readonly string[]>> = {
   executive: ['exec'],
   engineer: ['eng', 'engr'],
 };
+// An architect of software designs what its engineers and developers build:
+// a "Software Architect" or "Front End Architect" holds their card (S13-092
+// recheck).
 const TITLE_WORK_NOUNS: Readonly<Record<string, readonly string[]>> = {
   manager: ['management', 'mgmt'],
-  engineer: ['engineering'],
-  developer: ['development'],
+  engineer: ['engineering', 'architect'],
+  developer: ['development', 'architect'],
   designer: ['design'],
   analyst: ['analysis', 'analytics'],
   accountant: ['accounting'],
@@ -354,7 +357,9 @@ const TITLE_WORK_NOUNS: Readonly<Record<string, readonly string[]>> = {
 // "head of"); the field word heads its own phrase, in the rank's part or the
 // next one ("Director, Physical Product Security" runs security, and "Business
 // Lead (Finance, Vendor, Product...)" names a product four parts away).
-const MANAGER_RANKS: readonly string[] = ['director', 'vp', 'avp', 'svp', 'evp', 'vice president', 'coordinator', 'leader', 'lead', 'head of'];
+// A supervisor, a team leader and a "Dir." run their field too (S13-092
+// recheck: "Sales Supervisor", "Sales Team Leader", "Dir Sales Strategy").
+const MANAGER_RANKS: readonly string[] = ['director', 'dir', 'vp', 'avp', 'svp', 'evp', 'vice president', 'coordinator', 'supervisor', 'team leader', 'team lead', 'leader', 'lead', 'head of'];
 const RANK_LAST_OR_PREPOSITION = new Set(['lead']);
 const FIELD_WORD_ENDS = new Set(['&', 'and', 'or', 'at', 'in', 'for', 'the', 'with']);
 // A field whose job is named by its subject rather than by its card's words:
@@ -363,8 +368,13 @@ const FIELD_WORD_ENDS = new Set(['&', 'and', 'or', 'at', 'in', 'for', 'the', 'wi
 // intelligence or reporting analyst (or developer) does a data analyst's.
 // The subject stands at most one word before the head ("Full Stack Java
 // Engineer"); "Senior Analyst - Regulatory Reporting" reports to a regulator.
+// A back-end or front-end engineer with a stack named between ("Backend
+// Node.js Engineer") holds that card.
 const FIELD_FAMILIES: ReadonlyArray<{ config: string; subjects: readonly string[][]; heads: readonly string[] }> = [
   { config: 'Software Engineer', subjects: [['full', 'stack'], ['fullstack'], ['platform']], heads: ['engineer', 'engineers', 'engineering', 'developer', 'developers'] },
+  // "Sr. Backend Node.js Engineer", "Front End React Developer" (S13-092 recheck).
+  { config: 'Backend Developer', subjects: [['backend'], ['back', 'end']], heads: ['engineer', 'engineers', 'developer', 'developers'] },
+  { config: 'Frontend Developer', subjects: [['frontend'], ['front', 'end']], heads: ['engineer', 'engineers', 'developer', 'developers'] },
   { config: 'Financial Analyst', subjects: [['fp&a'], ['financial', 'planning']], heads: [] },
   { config: 'Data Analyst', subjects: [['bi'], ['business', 'intelligence'], ['reporting']], heads: ['analyst', 'analysts', 'developer', 'developers'] },
 ];
@@ -436,10 +446,26 @@ function familyNames(parts: string[][], family: (typeof FIELD_FAMILIES)[number],
     && [0, 1].some(gap => family.heads.includes(words[i + s.length + gap] ?? '')))));
 }
 
-export function findRoleConfig(roleTitle: string): RoleKeywordConfig | null {
+// A requisition code a board appends to the title ("Marketing Lead RC377",
+// "Analyst R-10234") is not a word of it: it is taken off before the title is
+// read, so the rank before it still stands last.
+const REQUISITION_CODE = /\s+(?:req(?:uisition)?\.?\s*#?\s*)?(?=[A-Za-z]{0,5}[-_]?\d)[A-Za-z]{0,5}[-_]?\d{3,}[A-Za-z]?\s*$/i;
+// "Data & Analytics Lead" names data analytics: a phrase is also read with
+// its "&" or "and" taken out.
+const JOINER = /\s+(?:&|and)\s+/gi;
+// The "&" joins two fields into one ("Data & Analytics"); it never supplies a
+// rank: "Field Sales & Lead Generation" is no "sales lead".
+const joinsFields = (name: string) => {
+  const last = name.split(' ').pop() ?? '';
+  return last !== 'manager' && !MANAGER_RANKS.includes(last);
+};
+
+export function findRoleConfig(rawTitle: string): RoleKeywordConfig | null {
+  const roleTitle = rawTitle.replace(REQUISITION_CODE, '');
   const normalized = roleTitle.toLowerCase().trim();
   if (!normalized || TEACHING_POST.test(roleTitle)) return null;
   const parts = titleParts(roleTitle);
+  const joined = roleTitle.replace(JOINER, ' ');
   const softwareSense = !NOT_SOFTWARE_DEVELOPER.test(roleTitle);
   const staffSense = !NOT_STAFF_RECRUITING.test(roleTitle);
 
@@ -451,7 +477,7 @@ export function findRoleConfig(roleTitle: string): RoleKeywordConfig | null {
     const titleWords = config.title.toLowerCase().split(' ');
     let score = 0;
     for (const name of [config.title.toLowerCase(), ...config.aliases]) {
-      if (!resumeHasTerm(roleTitle, name)) continue;
+      if (!resumeHasTerm(roleTitle, name) && !(/\s/.test(name) && joined !== roleTitle && joinsFields(name) && resumeHasTerm(joined, name))) continue;
       const oneWord = !/\s/.test(name);
       if (oneWord && name !== titleWords.join(' ') && !aliasHeads(parts, name)) continue;
       if ((name === 'developer' || name === 'dev') && !softwareSense) continue;

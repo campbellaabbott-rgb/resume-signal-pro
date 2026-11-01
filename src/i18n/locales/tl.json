@@ -1670,11 +1670,11 @@
     },
     "builderHandoff": {
       "title": "Gawing tapos na resume ang diagnosis na ito",
-      "bodyRewrites_one": "Buksan ang libreng builder na naka-load na ang resume mo at nakalapat na ang {{count}} rewrite ng bullet mula sa ulat na ito, saka mag-export ng maayos na PDF o DOCX.",
-      "bodyRewrites_other": "Buksan ang libreng builder na naka-load na ang resume mo at nakalapat na ang {{count}} rewrite ng mga bullet mula sa ulat na ito, saka mag-export ng maayos na PDF o DOCX.",
+      "bodyRewrites_one": "Buksan ang libreng builder na naka-load na ang resume mo at ilalapat ang {{count}} rewrite ng bullet mula sa ulat na ito kung saan ito tumutugma sa isa sa mga bullet mo, saka mag-export ng maayos na PDF o DOCX.",
+      "bodyRewrites_other": "Buksan ang libreng builder na naka-load na ang resume mo at ilalapat ang {{count}} rewrite ng mga bullet mula sa ulat na ito saanman sila tumutugma sa mga bullet mo, saka mag-export ng maayos na PDF o DOCX.",
       "bodyNoRewrites": "Walang rewrite sa ulat na ito na mailalapat ng builder. Buksan ang libreng builder na naka-load na ang resume mo at nasa tabi nito ang mga kulang na keyword ng ulat na ito, saka mag-export ng maayos na PDF o DOCX.",
-      "ctaRewrites_one": "Buksan sa builder na may {{count}} rewrite na nakalapat →",
-      "ctaRewrites_other": "Buksan sa builder na may {{count}} rewrite na nakalapat →",
+      "ctaRewrites_one": "Buksan sa builder: {{count}} rewrite na ilalapat →",
+      "ctaRewrites_other": "Buksan sa builder: {{count}} rewrite na ilalapat →",
       "ctaNoRewrites": "Buksan sa builder kasama ang resume mo at ang mga kulang na keyword →"
     },
     "scoreSimulator": {
@@ -1695,6 +1695,14 @@
       "bulletsUnquantified_one": "Magdagdag ng resultang may numero sa {{count}} bullet na wala nito",
       "bulletsUnquantified_other": "Magdagdag ng resultang may numero sa {{count}} bullet na wala nito",
       "keywords": "Isama ang {{keywords}} sa summary at mga bullet ng karanasan mo"
+    },
+    "scorePotential": {
+      "title": "Ang kayang abutin ng score mo",
+      "current": "Ngayon",
+      "afterFixes": "Pagkatapos ng mga ayos",
+      "gain_one": "+{{count}} pt",
+      "gain_other": "+{{count}} pts",
+      "basis": "Ang score mo kasama ang mga ayos sa simulator at sa Fix Plan sa ibaba: ang mga pangunahing mabilisang ayos, at ang mga hakbang para sa bullet at keyword."
     }
   },
   "analysisPreviewSample": {
@@ -2855,7 +2863,6 @@
   },
   "rateLimitUpsell": {
     "title": "Naabot ang Limitasyon ng Pang-araw-araw na Scan",
-    "subtitle": "Nagamit mo na ang lahat ng 7 libreng scan mo ngayong araw. Walang problema – maaari kang magpatuloy sa pag-scan ngayon din!",
     "resetIn": "Mag-reset ang libreng scan sa humigit-kumulang",
     "hour_one": "{{count}} oras",
     "hour_other": "{{count}} oras",
@@ -3430,7 +3437,6 @@
     "neverExpire": "Ang mga kredito ay hindi mag-e-expire",
     "perCredit": "{{price}} bawat kredito",
     "topUpCredits": "Mag-top Up ng Credits",
-    "freeTier": "Libreng antas: Hanggang 7 scan bawat araw, libre magpakailanman.",
     "buyCredits": "Bumili ng Credits — {{price}} bawat isa",
     "myCredits": "Aking mga Kredito",
     "provenHint": "Awtomatikong lumalabas dito ang mga credit na binili sa browser na ito.",
@@ -3524,6 +3530,7 @@
       "certifications": "Mga Sertipikasyon"
     },
     "replaceWithFixes": "Palitan ang kasalukuyang draft mo sa builder ng resume mula sa scan mo, kasama ang mga ayos mula sa report? Kapag tumanggi ka, mananatili ang draft mo at ilalapat dito ang mga ayos na tumutugma sa mga bullet nito.",
+    "replaceWithKeywords": "Palitan ang kasalukuyang draft mo sa builder ng resume mula sa scan mo, na nasa tabi ang mga kulang na keyword ng ulat na ito? Kapag tumanggi ka, mananatili ang draft mo at ipapakita sa tabi nito ang mga keyword.",
     "replaceWithLatestScan": "May draft ka mula sa naunang resume. Palitan ito ng resume mula sa pinakabago mong scan?",
     "toast": {
       "addNameDescription": "Kailangang may pangalan mo sa itaas ng resume mo bago ito ma-download.",
@@ -5717,7 +5724,7 @@
     "title": "May nangyaring mali"
   },
   "freeReportSignup": {
-    "body": "Gumawa ng libreng account para ma-track ang progreso mo sa bawat scan, maitabi ang fix checklist mo, at makakuha ng 15 libreng scan bawat araw sa halip na 7.",
+    "body": "Gumawa ng libreng account para ma-track ang progreso mo sa bawat scan, maitabi ang fix checklist mo, at makakuha ng {{signedIn}} libreng scan bawat araw sa halip na {{signedOut}}.",
     "cta": "Gumawa ng libreng account",
     "title": "Huwag mawala ang score na ito."
   },
@@ -5874,7 +5881,14 @@
       "c": "Katamtaman",
       "d": "Kailangang Ayusin"
     },
-    "redFlagsClean": "Malinis ang resume mo — walang malaking problemang nakita."
+    "redFlagsClean": "Malinis ang resume mo — walang malaking problemang nakita.",
+    "improvement": {
+      "value_one": "+{{count}} pt",
+      "value_other": "+{{count}} pts",
+      "high": "🚀 Malaki ang puwedeng itaas!",
+      "medium": "📈 May puwang pang umangat",
+      "low": "✓ Kaunti na lang ang maidadagdag"
+    }
   },
   "scanOutcome": {
     "title": "Nag-apply ka gamit ang resume na ito? Ikuwento kung paano ito napunta",
@@ -5944,7 +5958,23 @@
       "unchecked_one": "{{count}} hindi nasuri",
       "unchecked_other": "{{count}} hindi nasuri",
       "noCritical": "Walang kritikal na natuklasan — nasa mga bahagi sa ibaba ang detalye ng gumagana.",
-      "footer": "Nasa mga bahagi sa ibaba ang buong detalye ng bawat natuklasan, ayon sa bigat."
+      "footer": "Nasa mga bahagi sa ibaba ang buong detalye ng bawat natuklasan, ayon sa bigat.",
+      "items": {
+        "parsePoor": "Maaaring hindi nakuha nang tama ang text ng resume — maaaring hindi maaasahan ang mga score sa ibaba",
+        "parseFair": "Hindi perpekto ang pagkuha ng text — suriin ang preview sa ibaba",
+        "noEmail": "Walang nakitang email address — hindi ka makokontak ng mga screener",
+        "noPhone": "Walang nakitang numero ng telepono",
+        "fieldMissing": "{{label}}: wala — tingnan ang mga pagsusuri para sa larangan",
+        "weakBulletsAll_one": "{{count}} bullet na may gradong D pababa — may rewrite na",
+        "weakBulletsAll_other": "{{count}} bullet na may gradong D pababa — may mga rewrite na",
+        "weakBulletsSome_one": "{{count}} bullet na may gradong D pababa — {{rewritten}} ang na-rewrite",
+        "weakBulletsSome_other": "{{count}} bullet na may gradong D pababa — {{rewritten}} ang na-rewrite",
+        "weakBulletsNone_one": "{{count}} bullet na may gradong D pababa — tingnan kung paano ito aayusin",
+        "weakBulletsNone_other": "{{count}} bullet na may gradong D pababa — tingnan kung paano sila aayusin",
+        "lowQuantification": "Wala pang 40% ng mga bullet ang may numero — sa mga sukatan tumitingin ang mga recruiter",
+        "quantified": "May sukat ang epekto",
+        "coreSections": "Kumpleto ang mga pangunahing bahagi"
+      }
     }
   },
   "redFlags": {

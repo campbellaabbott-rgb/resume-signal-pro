@@ -164,7 +164,7 @@ describe("S13-038: the report hands the builder only real rewrites", () => {
         />
       </MemoryRouter>,
     );
-    fireEvent.click(screen.getByText("Open in builder with 1 rewrite applied →"));
+    fireEvent.click(screen.getByText("Open in builder: 1 rewrite to apply →"));
     const fixes = JSON.parse(sessionStorage.getItem("rb_scan_fixes") ?? "null");
     expect(fixes?.rewrites).toEqual([{ before: "Assisted patients at the front desk", after: "Checked in 60 patients a day at the front desk" }]);
   });
@@ -196,8 +196,11 @@ describe("S13-038: the report hands the builder only real rewrites", () => {
       { before: "Responsible for scheduling appointments", after: "Booked 120 appointments a week for 4 dentists", improvement: "x" },
     ]);
     const box = container.querySelector("[data-builder-handoff]")!;
-    expect(box.textContent).toContain("this report's 2 bullet rewrites already applied");
-    fireEvent.click(screen.getByText("Open in builder with 2 rewrites applied →"));
+    // A ceiling, not a count of what lands: the builder applies a rewrite
+    // only where its bullet is in the draft (S13-038 recheck).
+    expect(box.textContent).toContain("this report's 2 bullet rewrites applied wherever they match your bullets");
+    expect(box.textContent).not.toMatch(/already applied/);
+    fireEvent.click(screen.getByText("Open in builder: 2 rewrites to apply →"));
     const fixes = JSON.parse(sessionStorage.getItem("rb_scan_fixes") ?? "null");
     expect(fixes?.rewrites).toHaveLength(2);
     expect(box.textContent).not.toMatch(/fixes applied/);

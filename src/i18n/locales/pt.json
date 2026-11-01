@@ -1681,13 +1681,13 @@
     },
     "builderHandoff": {
       "title": "Transforme este diagnóstico em um currículo pronto",
-      "bodyRewrites_one": "Abra o criador gratuito com seu currículo carregado e {{count}} reescrita de tópico deste relatório já aplicada, depois exporte um PDF ou DOCX bem diagramado.",
-      "bodyRewrites_many": "Abra o criador gratuito com seu currículo carregado e {{count}} reescritas de tópicos deste relatório já aplicadas, depois exporte um PDF ou DOCX bem diagramado.",
-      "bodyRewrites_other": "Abra o criador gratuito com seu currículo carregado e {{count}} reescritas de tópicos deste relatório já aplicadas, depois exporte um PDF ou DOCX bem diagramado.",
+      "bodyRewrites_one": "Abra o criador gratuito com seu currículo carregado e {{count}} reescrita de tópico deste relatório aplicada onde combinar com um dos seus tópicos, depois exporte um PDF ou DOCX bem diagramado.",
+      "bodyRewrites_many": "Abra o criador gratuito com seu currículo carregado e as {{count}} reescritas de tópicos deste relatório aplicadas onde combinarem com seus tópicos, depois exporte um PDF ou DOCX bem diagramado.",
+      "bodyRewrites_other": "Abra o criador gratuito com seu currículo carregado e as {{count}} reescritas de tópicos deste relatório aplicadas onde combinarem com seus tópicos, depois exporte um PDF ou DOCX bem diagramado.",
       "bodyNoRewrites": "Este relatório não tem nenhuma reescrita que o criador possa aplicar. Abra o criador gratuito com seu currículo carregado e as palavras-chave em falta deste relatório ao lado, depois exporte um PDF ou DOCX bem diagramado.",
-      "ctaRewrites_one": "Abrir no criador com {{count}} reescrita aplicada →",
-      "ctaRewrites_many": "Abrir no criador com {{count}} reescritas aplicadas →",
-      "ctaRewrites_other": "Abrir no criador com {{count}} reescritas aplicadas →",
+      "ctaRewrites_one": "Abrir no criador: {{count}} reescrita para aplicar →",
+      "ctaRewrites_many": "Abrir no criador: {{count}} reescritas para aplicar →",
+      "ctaRewrites_other": "Abrir no criador: {{count}} reescritas para aplicar →",
       "ctaNoRewrites": "Abrir no criador com seu currículo e as palavras-chave em falta →"
     },
     "scoreSimulator": {
@@ -1711,6 +1711,15 @@
       "bulletsUnquantified_many": "Adicione um resultado com número a {{count}} tópicos que não têm nenhum",
       "bulletsUnquantified_other": "Adicione um resultado com número a {{count}} tópicos que não têm nenhum",
       "keywords": "Inclua {{keywords}} no seu resumo e nos tópicos de experiência"
+    },
+    "scorePotential": {
+      "title": "Seu potencial de pontuação",
+      "current": "Atual",
+      "afterFixes": "Depois das correções",
+      "gain_one": "+{{count}} pt",
+      "gain_many": "+{{count}} pts",
+      "gain_other": "+{{count}} pts",
+      "basis": "Sua pontuação mais as correções do simulador e do plano de correções abaixo: as principais vitórias rápidas e as etapas de tópicos e palavras-chave."
     }
   },
   "analysisPreviewSample": {
@@ -2876,7 +2885,6 @@
   },
   "rateLimitUpsell": {
     "title": "Limite diário de verificações atingido",
-    "subtitle": "Já usou os seus 7 verificações gratuitas de hoje. Não se preocupe – pode continuar a verificar agora mesmo!",
     "resetIn": "As verificações gratuitas são reiniciadas em aproximadamente",
     "hour_one": "{{count}} hora",
     "hour_other": "{{count}} horas",
@@ -3459,7 +3467,6 @@
     "neverExpire": "Créditos nunca expiram",
     "perCredit": "{{price}} por crédito",
     "topUpCredits": "Recarregar créditos",
-    "freeTier": "Nível gratuito: até 7 escaneamentos por dia, gratuito para sempre.",
     "buyCredits": "Comprar créditos — {{price}} cada",
     "myCredits": "Meus créditos",
     "provenHint": "Os créditos comprados neste navegador aparecem aqui automaticamente.",
@@ -3553,6 +3560,7 @@
       "certifications": "Certificações"
     },
     "replaceWithFixes": "Substituir seu rascunho atual pelo currículo do seu escaneamento, com as correções do relatório aplicadas? Se você recusar, seu rascunho fica e as correções que combinam com os tópicos dele são aplicadas.",
+    "replaceWithKeywords": "Substituir seu rascunho atual pelo currículo do seu escaneamento, com as palavras-chave em falta deste relatório ao lado? Se você recusar, seu rascunho fica e as palavras-chave aparecem ao lado.",
     "replaceWithLatestScan": "Você tem um rascunho de um currículo anterior. Substituí-lo pelo currículo da sua verificação mais recente?",
     "toast": {
       "addNameDescription": "O seu currículo precisa do seu nome no topo antes de poder ser transferido.",
@@ -5762,7 +5770,7 @@
     "title": "Algo correu mal"
   },
   "freeReportSignup": {
-    "body": "Crie uma conta gratuita para acompanhar o seu progresso entre análises, manter a sua lista de correções e ter 15 análises gratuitas por dia em vez de 7.",
+    "body": "Crie uma conta gratuita para acompanhar o seu progresso entre análises, manter a sua lista de correções e ter {{signedIn}} análises gratuitas por dia em vez de {{signedOut}}.",
     "cta": "Criar conta gratuita",
     "title": "Não perca esta pontuação."
   },
@@ -5922,7 +5930,15 @@
       "c": "Razoável",
       "d": "Precisa melhorar"
     },
-    "redFlagsClean": "Seu currículo parece limpo — nenhum problema grave detectado."
+    "redFlagsClean": "Seu currículo parece limpo — nenhum problema grave detectado.",
+    "improvement": {
+      "value_one": "+{{count}} pt",
+      "value_many": "+{{count}} pts",
+      "value_other": "+{{count}} pts",
+      "high": "🚀 Grandes ganhos possíveis!",
+      "medium": "📈 Espaço para melhorar",
+      "low": "✓ Pouco a ganhar"
+    }
   },
   "scanOutcome": {
     "title": "Candidatou-se com este currículo? Conte como foi",
@@ -5996,7 +6012,26 @@
       "unchecked_other": "{{count}} não verificados",
       "unchecked_many": "{{count}} não verificados",
       "noCritical": "Nenhum resultado crítico — o que está funcionando aparece nas seções abaixo.",
-      "footer": "O detalhe completo de cada resultado aparece nas seções abaixo, por ordem de gravidade."
+      "footer": "O detalhe completo de cada resultado aparece nas seções abaixo, por ordem de gravidade.",
+      "items": {
+        "parsePoor": "O texto do currículo pode não ter sido extraído corretamente — as pontuações abaixo podem não ser confiáveis",
+        "parseFair": "A qualidade da extração não é perfeita — confira a pré-visualização abaixo",
+        "noEmail": "Nenhum e-mail detectado — os recrutadores não conseguem entrar em contato",
+        "noPhone": "Nenhum número de telefone detectado",
+        "fieldMissing": "{{label}}: em falta — veja as verificações da área",
+        "weakBulletsAll_one": "{{count}} tópico com nota D ou inferior — reescrita incluída",
+        "weakBulletsAll_many": "{{count}} tópicos com nota D ou inferior — reescritas incluídas",
+        "weakBulletsAll_other": "{{count}} tópicos com nota D ou inferior — reescritas incluídas",
+        "weakBulletsSome_one": "{{count}} tópico com nota D ou inferior — {{rewritten}} reescrito",
+        "weakBulletsSome_many": "{{count}} tópicos com nota D ou inferior — {{rewritten}} reescritos",
+        "weakBulletsSome_other": "{{count}} tópicos com nota D ou inferior — {{rewritten}} reescritos",
+        "weakBulletsNone_one": "{{count}} tópico com nota D ou inferior — veja como corrigi-lo",
+        "weakBulletsNone_many": "{{count}} tópicos com nota D ou inferior — veja como corrigi-los",
+        "weakBulletsNone_other": "{{count}} tópicos com nota D ou inferior — veja como corrigi-los",
+        "lowQuantification": "Menos de 40% dos tópicos trazem um número — recrutadores se apoiam em métricas",
+        "quantified": "Impacto quantificado",
+        "coreSections": "Seções principais presentes"
+      }
     }
   },
   "redFlags": {

@@ -351,14 +351,7 @@
    "industry": "machine_learning",
    "level": "mid",
    "text": "What you can expect \nZoom is looking for a Machine Learning Engineer to join our Agentic Retrieval team. You will design and build the core retrieval and reasoning systems that power Zoom’s AI Companion — enabling AI agents to search, reason over, and act on enterprise knowledge to deliver high- quality, trustworthy, and actionable answers at scale. \nAbout the Team \nThe Agentic Retrieval team sits within Zoom’s GenAI Engineering organization and is responsible for building a multi-tenant, permission-aware retrieval platform. We operate at the intersection of distributed systems, machine learning, and large language models — powering search and answer generation across meetings, chat, docs, and third-party enterprise applications through a layered API architecture (keyword search, natural language search, and agentic RAG-based answer generation). \nResponsibilities: \nDesigning and implementing scalable retrieval systems including vector search, hybrid search (keyword + embedding + rerank",
-   "missing": [
-    "system design",
-    "code review",
-    "ci/cd",
-    "microservices",
-    "monitoring",
-    "on-call"
-   ],
+   "missing": [],
    "main": [
     "system design",
     "code review",
@@ -574,14 +567,7 @@
    "industry": "cybersecurity",
    "level": "executive",
    "text": "Lyten is leading an industrial revolution through Lyten 3D Graphene™, a breakthrough supermaterial unlocking a new generation of products — from lithium–sulfur batteries and energy storage systems to concrete admixtures, lightweight composites, and next-generation sensors that are revolutionizing industries. Together, these innovations are making a massive global improvement and driving real-world impact across energy, mobility, construction, and defense.\nAt Lyten, we believe the most meaningful careers begin with purpose — and with people who want to make a difference. We’re not just developing advanced supermaterials — we’re about to change the world as we know it, reshaping how energy is stored, how products are built, and how progress is made.\nWe’re entering an exciting growth phase, scaling production across the U.S. and Europe and expanding our team of engineers, scientists, and innovators.\nApply now to join our team and be part of something bigger than yourself — where collabora",
-   "missing": [
-    "engineering strategy",
-    "org design",
-    "headcount",
-    "technical roadmap",
-    "exec communication",
-    "board"
-   ],
+   "missing": [],
    "main": [
     "engineering strategy",
     "org design",
@@ -611,14 +597,7 @@
    "industry": "cybersecurity",
    "level": "senior",
    "text": "About the Role: \nGrade Level (for internal use): \n13 The Team: \nThe Security Architecture and Engineering team operates as strategic enablers of digital transformation, partnering across Technology, Business, and Security functions to deliver pragmatic, scalable security solutions. As a globally distributed team working in an Agile environment, we value technical excellence, collaborative problem-solving, and the ability to translate complex security challenges into actionable business outcomes. Our culture emphasizes continuous learning, mentorship, and staying at the forefront of emerging technologies like AI/ML security and Zero Trust architectures.\nResponsibilities and Impact: \nLead enterprise-wide security architecture strategy - Define and govern security architecture across Cloud, AI, Application, Infrastructure, and Data domains, directly shaping the organization's digital transformation and innovation roadmap\nDrive Zero Trust architecture implementation - Establish comprehensi",
-   "missing": [
-    "technical leadership",
-    "cross-functional",
-    "staff",
-    "system design interview",
-    "platform",
-    "scalability"
-   ],
+   "missing": [],
    "main": [
     "technical leadership",
     "cross-functional",
@@ -648,14 +627,7 @@
    "industry": "machine_learning",
    "level": "senior",
    "text": "About the Team \nThe Deliverability team sits at the core of Uber’s delivery marketplace as part of Merchant Optimization. Serving as the critical gating layer for every Uber Eats transaction, our systems answer the fundamental real-time question: \"Can this merchant deliver to this eater right now?\" \nWe optimize merchant delivery zones to maximize platform selection while balancing marketplace reliability, timeliness, and profitability. The decision made by the deliverability services directly shape selection breadth and business metrics across key downstream platforms, including Search, Feed, and Ads. \nRole & Responsibilities \nAs a Senior Machine Learning Engineer on the Deliverability team, you will drive the technical vision, end-to-end design, and productionization of core ML systems powering global delivery marketplace decisions. Specifically, you will: \nProduct & Domain ML Architecture: Architect and translate complex marketplace challenges into high-throughput, large scale ML sol",
-   "missing": [
-    "technical leadership",
-    "cross-functional",
-    "mentorship",
-    "staff",
-    "system design interview",
-    "scalability"
-   ],
+   "missing": [],
    "main": [
     "technical leadership",
     "cross-functional",

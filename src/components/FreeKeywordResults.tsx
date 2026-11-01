@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { FIX_PLAN_BASIS, FIX_POINTS_BASIS, marketBasis, skillsBasis } from "@/lib/report-basis";
+import { FIX_PLAN_BASIS, marketBasis, skillsBasis } from "@/lib/report-basis";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useConversionTracking } from "@/hooks/use-conversion-tracking";
@@ -1429,17 +1429,20 @@ export function FreeKeywordResults({
   // the report runs. Derived entirely from data already on screen.
   const findings: Finding[] = (() => {
     const out: Finding[] = [];
-    if (parseQuality?.verdict === 'poor') out.push({ severity: 'critical', label: 'Resume text may not have extracted correctly — scores below could be unreliable' });
-    else if (parseQuality?.verdict === 'fair') out.push({ severity: 'warning', label: 'Extraction quality is imperfect — verify the parse preview below' });
+    // Every label the page writes is the reader's language (S13-122 recheck);
+    // red-flag titles and field-check labels come from the scan as written.
+    const item = (key: string, opts?: Record<string, unknown>) => t(`reportInsights.findings.items.${key}`, opts);
+    if (parseQuality?.verdict === 'poor') out.push({ severity: 'critical', label: item('parsePoor') });
+    else if (parseQuality?.verdict === 'fair') out.push({ severity: 'warning', label: item('parseFair') });
     for (const flag of (redFlags || []).slice(0, 3)) {
       const sev = (flag as { severity?: string }).severity === 'critical' ? 'critical' : 'warning';
       const title = (flag as { title?: string; flag?: string }).title || (flag as { flag?: string }).flag;
       if (title) out.push({ severity: sev, label: title });
     }
-    if (!contactInfo.hasEmail) out.push({ severity: 'critical', label: 'No email address detected — screeners cannot contact you' });
-    if (!contactInfo.hasPhone) out.push({ severity: 'warning', label: 'No phone number detected' });
-    for (const item of industrySpecificChecks?.items || []) {
-      out.push(item.present ? { severity: 'pass', label: item.label } : { severity: 'warning', label: `${item.label}: missing — see field-specific checks` });
+    if (!contactInfo.hasEmail) out.push({ severity: 'critical', label: item('noEmail') });
+    if (!contactInfo.hasPhone) out.push({ severity: 'warning', label: item('noPhone') });
+    for (const check of industrySpecificChecks?.items || []) {
+      out.push(check.present ? { severity: 'pass', label: check.label } : { severity: 'warning', label: item('fieldMissing', { label: check.label }) });
     }
     if (resumeText) {
       for (const v of computeVendorChecks({ resumeText, multiColumnDetected })) {
@@ -1451,11 +1454,11 @@ export function FreeKeywordResults({
     if ((weakestBullets?.length ?? 0) > 0) {
       const n = weakestBullets!.length;
       const rewritten = weakestBullets!.filter((b) => isUsableRewrite(b.rewrite)).length;
-      out.push({ severity: 'warning', label: `${n} bullet${n === 1 ? '' : 's'} graded D or below${rewritten === n ? ' — rewrites provided' : rewritten > 0 ? ` — ${rewritten} rewritten` : ' — see how to fix them'}` });
+      out.push({ severity: 'warning', label: item(rewritten === n ? 'weakBulletsAll' : rewritten > 0 ? 'weakBulletsSome' : 'weakBulletsNone', { count: n, rewritten }) });
     }
-    if (typeof quantificationScore === 'number' && quantificationScore < 40) out.push({ severity: 'warning', label: 'Under 40% of bullets carry a number — recruiters anchor on metrics' });
-    else if (typeof quantificationScore === 'number' && quantificationScore >= 60) out.push({ severity: 'pass', label: 'Quantified impact' });
-    if (sectionCheck.hasExperience && sectionCheck.hasEducation && sectionCheck.hasSkills) out.push({ severity: 'pass', label: 'Core sections present' });
+    if (typeof quantificationScore === 'number' && quantificationScore < 40) out.push({ severity: 'warning', label: item('lowQuantification') });
+    else if (typeof quantificationScore === 'number' && quantificationScore >= 60) out.push({ severity: 'pass', label: item('quantified') });
+    if (sectionCheck.hasExperience && sectionCheck.hasEducation && sectionCheck.hasSkills) out.push({ severity: 'pass', label: item('coreSections') });
     return out;
   })();
 
@@ -3440,24 +3443,27 @@ export function FreeKeywordResults({
         <div className="rounded-2xl border border-success/30 bg-success/5 p-5 mb-5">
           <div className="flex items-center gap-2 mb-2">
             <TrendingUp className="w-4 h-4 text-success" />
-            <h4 className="font-semibold text-foreground text-sm">Your Score Potential</h4>
+            <h4 className="font-semibold text-foreground text-sm">{t('freeResults.scorePotential.title')}</h4>
           </div>
           <div className="flex items-center gap-3">
             <div className="text-center">
               <p className="text-2xl font-bold text-foreground">{atsScoreEstimate}</p>
-              <p className="text-xs text-muted-foreground">Current</p>
+              <p className="text-xs text-muted-foreground">{t('freeResults.scorePotential.current')}</p>
             </div>
             <div className="flex-1 flex items-center gap-1">
               <div className="flex-1 h-1 rounded-full bg-muted" />
-              <span className="text-xs font-semibold text-success px-1">+{projectedScore - atsScoreEstimate} pts</span>
+              <span className="text-xs font-semibold text-success px-1">{t('freeResults.scorePotential.gain', { count: projectedScore - atsScoreEstimate })}</span>
               <div className="flex-1 h-1 rounded-full bg-success/40" />
             </div>
             <div className="text-center">
               <p className="text-2xl font-bold text-success">{projectedScore}</p>
-              <p className="text-xs text-muted-foreground">After fixes</p>
+              <p className="text-xs text-muted-foreground">{t('freeResults.scorePotential.afterFixes')}</p>
             </div>
           </div>
-          <p className="text-xs text-muted-foreground mt-2">The points of the top quick wins above added to your score. {FIX_POINTS_BASIS}</p>
+          {/* projectedScore is the one projection (S13-058): the top quick
+              wins plus the bullets and keywords steps, as the simulator and
+              the Fix Plan below list them. */}
+          <p className="text-xs text-muted-foreground mt-2" data-score-potential-basis>{t('freeResults.scorePotential.basis')} {t('freeResults.scoreSimulator.basis')}</p>
         </div>
       )}
 

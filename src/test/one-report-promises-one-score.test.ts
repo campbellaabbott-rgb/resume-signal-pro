@@ -19,7 +19,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
-  applyScoreProjection, buildScoreProjection, fixPlanOf, quickWinImpact, PROJECTION_CEILING,
+  applyScoreProjection, buildScoreProjection, fixPlanOf, improvementLevelOf, quickWinImpact, PROJECTION_CEILING,
 } from "../../supabase/functions/free-keyword-scan/score-projection";
 import slice from "./fixtures/free-scan-wave/s13-058-score-projection.json";
 
@@ -42,8 +42,20 @@ describe("the register's report", () => {
     expect(58 + p.fixes.reduce((s, f) => s + f.impact, 0)).toBe(p.to);
     expect(report.scoreProjection).toEqual(p);
   });
-  it("the model's level and priority stay; only the number is the projection's", () => {
-    expect(report.improvementPotential).toMatchObject({ level: "high", topPriority: "Metrics" });
+  it("the model's priority stays; the number and its level are the projection's", () => {
+    expect(report.improvementPotential).toMatchObject({ level: improvementLevelOf(p.gain), topPriority: "Metrics" });
+  });
+  // Recheck (2026-11-01): the model's level stayed beside the projection's
+  // number, so a report could read "+10 pts" over "Already optimized".
+  it("a level the model gave that the gain contradicts is replaced", () => {
+    for (const [score, modelLevel, want] of [[60, "low", "high"], [94, "high", "low"], [97, "high", "low"]] as const) {
+      const r: Record<string, unknown> = { atsScoreEstimate: score, quickWins, improvementPotential: { level: modelLevel, estimatedScoreIncrease: 15 } };
+      const q = buildScoreProjection({ score, quickWins, weakBulletCount: 2, keywordNames: ["SQL"] });
+      applyScoreProjection(r, q);
+      expect((r.improvementPotential as { level: string }).level, `${score}`).toBe(want);
+      expect((r.improvementPotential as { estimatedScoreIncrease: number }).estimatedScoreIncrease).toBe(q.gain);
+    }
+    expect([0, 4, 5, 9, 10, 25].map(improvementLevelOf)).toEqual(["low", "low", "medium", "medium", "high", "high"]);
   });
 });
 

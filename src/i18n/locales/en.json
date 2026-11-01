@@ -1670,11 +1670,11 @@
     },
     "builderHandoff": {
       "title": "Turn this diagnosis into a finished resume",
-      "bodyRewrites_one": "Open the free builder with your resume loaded and this report's {{count}} bullet rewrite already applied, then export a cleanly typeset PDF or DOCX.",
-      "bodyRewrites_other": "Open the free builder with your resume loaded and this report's {{count}} bullet rewrites already applied, then export a cleanly typeset PDF or DOCX.",
+      "bodyRewrites_one": "Open the free builder with your resume loaded and this report's {{count}} bullet rewrite applied where it matches one of your bullets, then export a cleanly typeset PDF or DOCX.",
+      "bodyRewrites_other": "Open the free builder with your resume loaded and this report's {{count}} bullet rewrites applied wherever they match your bullets, then export a cleanly typeset PDF or DOCX.",
       "bodyNoRewrites": "This report has no rewrite the builder can apply. Open the free builder with your resume loaded and this report's missing keywords beside it, then export a cleanly typeset PDF or DOCX.",
-      "ctaRewrites_one": "Open in builder with {{count}} rewrite applied →",
-      "ctaRewrites_other": "Open in builder with {{count}} rewrites applied →",
+      "ctaRewrites_one": "Open in builder: {{count}} rewrite to apply →",
+      "ctaRewrites_other": "Open in builder: {{count}} rewrites to apply →",
       "ctaNoRewrites": "Open in builder with your resume and missing keywords →"
     },
     "scoreSimulator": {
@@ -1695,6 +1695,14 @@
       "bulletsUnquantified_one": "Add a result with a number to {{count}} bullet that has none",
       "bulletsUnquantified_other": "Add a result with a number to {{count}} bullets that have none",
       "keywords": "Work {{keywords}} into your summary and experience bullets"
+    },
+    "scorePotential": {
+      "title": "Your Score Potential",
+      "current": "Current",
+      "afterFixes": "After fixes",
+      "gain_one": "+{{count}} pt",
+      "gain_other": "+{{count}} pts",
+      "basis": "Your score plus the fixes in the simulator and Fix Plan below: the top quick wins, and the bullet and keyword steps."
     }
   },
   "analysisPreviewSample": {
@@ -2855,7 +2863,6 @@
   },
   "rateLimitUpsell": {
     "title": "Daily Scan Limit Reached",
-    "subtitle": "You've used all 7 free scans for today. Don't worry – you can continue scanning right now!",
     "resetIn": "Free scans reset in approximately",
     "hour_one": "{{count}} hour",
     "hour_other": "{{count}} hours",
@@ -3430,7 +3437,6 @@
     "neverExpire": "Credits never expire",
     "perCredit": "{{price}} per credit",
     "topUpCredits": "Top Up Credits",
-    "freeTier": "Free tier: Up to 7 scans per day, free forever.",
     "buyCredits": "Buy Credits — {{price}} each",
     "myCredits": "My Credits",
     "provenHint": "Credits bought in this browser show here automatically.",
@@ -3524,6 +3530,7 @@
       "certifications": "Certifications"
     },
     "replaceWithFixes": "Replace your current builder draft with the résumé from your scan, with the report's fixes applied? If you decline, your draft stays and the fixes that match its bullets are applied to it.",
+    "replaceWithKeywords": "Replace your current builder draft with the résumé from your scan, with this report's missing keywords beside it? If you decline, your draft stays and the keywords are shown beside it.",
     "replaceWithLatestScan": "You have a builder draft from an earlier résumé. Replace it with the résumé from your latest scan?",
     "toast": {
       "addNameDescription": "Your résumé needs your name at the top before it can be downloaded.",
@@ -5717,7 +5724,7 @@
     "title": "Something went wrong"
   },
   "freeReportSignup": {
-    "body": "Create a free account to track your progress across scans, keep your fix checklist, and get 15 free scans a day instead of 7.",
+    "body": "Create a free account to track your progress across scans, keep your fix checklist, and get {{signedIn}} free scans a day instead of {{signedOut}}.",
     "cta": "Create free account",
     "title": "Don't lose this score."
   },
@@ -5874,7 +5881,14 @@
       "c": "Fair",
       "d": "Needs Work"
     },
-    "redFlagsClean": "Your resume looks clean — no major issues detected."
+    "redFlagsClean": "Your resume looks clean — no major issues detected.",
+    "improvement": {
+      "value_one": "+{{count}} pt",
+      "value_other": "+{{count}} pts",
+      "high": "🚀 Big gains possible!",
+      "medium": "📈 Room to improve",
+      "low": "✓ Little left to gain"
+    }
   },
   "scanOutcome": {
     "title": "Applied with this resume? Tell us how it went",
@@ -5944,7 +5958,23 @@
       "unchecked_one": "{{count}} not checked",
       "unchecked_other": "{{count}} not checked",
       "noCritical": "No critical findings — details on what's working are in the sections below.",
-      "footer": "Full detail for every finding appears in the sections below, in order of severity."
+      "footer": "Full detail for every finding appears in the sections below, in order of severity.",
+      "items": {
+        "parsePoor": "Resume text may not have extracted correctly — scores below could be unreliable",
+        "parseFair": "Extraction quality is imperfect — verify the parse preview below",
+        "noEmail": "No email address detected — screeners cannot contact you",
+        "noPhone": "No phone number detected",
+        "fieldMissing": "{{label}}: missing — see field-specific checks",
+        "weakBulletsAll_one": "{{count}} bullet graded D or below — rewrite provided",
+        "weakBulletsAll_other": "{{count}} bullets graded D or below — rewrites provided",
+        "weakBulletsSome_one": "{{count}} bullet graded D or below — {{rewritten}} rewritten",
+        "weakBulletsSome_other": "{{count}} bullets graded D or below — {{rewritten}} rewritten",
+        "weakBulletsNone_one": "{{count}} bullet graded D or below — see how to fix it",
+        "weakBulletsNone_other": "{{count}} bullets graded D or below — see how to fix them",
+        "lowQuantification": "Under 40% of bullets carry a number — recruiters anchor on metrics",
+        "quantified": "Quantified impact",
+        "coreSections": "Core sections present"
+      }
     }
   },
   "redFlags": {

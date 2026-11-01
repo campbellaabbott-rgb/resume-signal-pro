@@ -1670,11 +1670,11 @@
     },
     "builderHandoff": {
       "title": "Mach aus dieser Diagnose einen fertigen Lebenslauf",
-      "bodyRewrites_one": "Öffne den kostenlosen Builder mit deinem Lebenslauf und der {{count}} Umformulierung aus diesem Bericht bereits eingesetzt, und exportiere dann ein sauber gesetztes PDF oder DOCX.",
-      "bodyRewrites_other": "Öffne den kostenlosen Builder mit deinem Lebenslauf und den {{count}} Umformulierungen aus diesem Bericht bereits eingesetzt, und exportiere dann ein sauber gesetztes PDF oder DOCX.",
+      "bodyRewrites_one": "Öffne den kostenlosen Builder mit deinem Lebenslauf und der {{count}} Umformulierung aus diesem Bericht, eingesetzt dort, wo sie zu einem deiner Aufzählungspunkte passt, und exportiere dann ein sauber gesetztes PDF oder DOCX.",
+      "bodyRewrites_other": "Öffne den kostenlosen Builder mit deinem Lebenslauf und den {{count}} Umformulierungen aus diesem Bericht, eingesetzt überall dort, wo sie zu deinen Aufzählungspunkten passen, und exportiere dann ein sauber gesetztes PDF oder DOCX.",
       "bodyNoRewrites": "Dieser Bericht hat keine Umformulierung, die der Builder einsetzen kann. Öffne den kostenlosen Builder mit deinem Lebenslauf und den fehlenden Schlüsselwörtern dieses Berichts daneben, und exportiere dann ein sauber gesetztes PDF oder DOCX.",
-      "ctaRewrites_one": "Im Builder öffnen, {{count}} Umformulierung eingesetzt →",
-      "ctaRewrites_other": "Im Builder öffnen, {{count}} Umformulierungen eingesetzt →",
+      "ctaRewrites_one": "Im Builder öffnen: {{count}} Umformulierung zum Einsetzen →",
+      "ctaRewrites_other": "Im Builder öffnen: {{count}} Umformulierungen zum Einsetzen →",
       "ctaNoRewrites": "Im Builder öffnen, mit Lebenslauf und fehlenden Schlüsselwörtern →"
     },
     "scoreSimulator": {
@@ -1695,6 +1695,14 @@
       "bulletsUnquantified_one": "Ergänze {{count}} Stichpunkt ohne Zahl um ein Ergebnis mit Zahl",
       "bulletsUnquantified_other": "Ergänze {{count}} Stichpunkte ohne Zahl um ein Ergebnis mit Zahl",
       "keywords": "Baue {{keywords}} in deine Zusammenfassung und deine Erfahrungs-Stichpunkte ein"
+    },
+    "scorePotential": {
+      "title": "Dein Score-Potenzial",
+      "current": "Aktuell",
+      "afterFixes": "Nach den Korrekturen",
+      "gain_one": "+{{count}} Pkt.",
+      "gain_other": "+{{count}} Pkt.",
+      "basis": "Dein Score plus die Korrekturen im Simulator und im Korrekturplan unten: die wichtigsten schnellen Erfolge sowie die Schritte zu Aufzählungspunkten und Schlüsselwörtern."
     }
   },
   "analysisPreviewSample": {
@@ -2855,7 +2863,6 @@
   },
   "rateLimitUpsell": {
     "title": "Tägliches Scan-Limit erreicht",
-    "subtitle": "Du hast alle 7 kostenlosen Scans für heute verwendet. Keine Sorge – du kannst jetzt sofort weiterscannen!",
     "resetIn": "Kostenlose Scans werden zurückgesetzt in etwa",
     "hour_one": "{{count}} Stunde",
     "hour_other": "{{count}} Stunden",
@@ -3430,7 +3437,6 @@
     "neverExpire": "Credits verfallen nie",
     "perCredit": "{{price}} pro Credit",
     "topUpCredits": "Credits aufladen",
-    "freeTier": "Kostenlose Stufe: Bis zu 7 Scans pro Tag, kostenlos für immer.",
     "buyCredits": "Credits kaufen — {{price}} pro Stück",
     "myCredits": "Meine Credits",
     "provenHint": "In diesem Browser gekaufte Credits erscheinen hier automatisch.",
@@ -3524,6 +3530,7 @@
       "certifications": "Zertifikate"
     },
     "replaceWithFixes": "Deinen aktuellen Entwurf im Builder durch den Lebenslauf aus deinem Scan ersetzen, mit den Korrekturen aus dem Bericht? Wenn du ablehnst, bleibt dein Entwurf, und die Korrekturen, die zu seinen Aufzählungspunkten passen, werden darin übernommen.",
+    "replaceWithKeywords": "Deinen aktuellen Entwurf im Builder durch den Lebenslauf aus deinem Scan ersetzen, mit den fehlenden Schlüsselwörtern dieses Berichts daneben? Wenn du ablehnst, bleibt dein Entwurf, und die Schlüsselwörter werden daneben angezeigt.",
     "replaceWithLatestScan": "Du hast einen Entwurf aus einem früheren Lebenslauf. Durch den Lebenslauf aus deinem neuesten Scan ersetzen?",
     "toast": {
       "addNameDescription": "Ihr Lebenslauf braucht oben Ihren Namen, bevor er heruntergeladen werden kann.",
@@ -5717,7 +5724,7 @@
     "title": "Etwas ist schiefgelaufen"
   },
   "freeReportSignup": {
-    "body": "Erstellen Sie ein kostenloses Konto, um Ihren Fortschritt über mehrere Scans zu verfolgen, Ihre Korrektur-Checkliste zu behalten und 15 statt 7 kostenlose Scans pro Tag zu erhalten.",
+    "body": "Erstellen Sie ein kostenloses Konto, um Ihren Fortschritt über mehrere Scans zu verfolgen, Ihre Korrektur-Checkliste zu behalten und {{signedIn}} statt {{signedOut}} kostenlose Scans pro Tag zu erhalten.",
     "cta": "Kostenloses Konto erstellen",
     "title": "Verlieren Sie diesen Wert nicht."
   },
@@ -5874,7 +5881,14 @@
       "c": "Mittel",
       "d": "Ausbaufähig"
     },
-    "redFlagsClean": "Dein Lebenslauf wirkt sauber — keine größeren Probleme gefunden."
+    "redFlagsClean": "Dein Lebenslauf wirkt sauber — keine größeren Probleme gefunden.",
+    "improvement": {
+      "value_one": "+{{count}} Pkt.",
+      "value_other": "+{{count}} Pkt.",
+      "high": "🚀 Große Verbesserungen möglich!",
+      "medium": "📈 Luft nach oben",
+      "low": "✓ Nur noch wenig zu holen"
+    }
   },
   "scanOutcome": {
     "title": "Mit diesem Lebenslauf beworben? Erzähl uns, wie es lief",
@@ -5944,7 +5958,23 @@
       "unchecked_one": "{{count}} nicht geprüft",
       "unchecked_other": "{{count}} nicht geprüft",
       "noCritical": "Keine kritischen Ergebnisse — was gut funktioniert, steht in den Abschnitten unten.",
-      "footer": "Alle Einzelheiten zu jedem Ergebnis stehen in den Abschnitten unten, nach Schwere geordnet."
+      "footer": "Alle Einzelheiten zu jedem Ergebnis stehen in den Abschnitten unten, nach Schwere geordnet.",
+      "items": {
+        "parsePoor": "Der Text des Lebenslaufs wurde möglicherweise nicht richtig ausgelesen — die Werte unten könnten unzuverlässig sein",
+        "parseFair": "Die Auslesequalität ist nicht perfekt — prüfe die Vorschau unten",
+        "noEmail": "Keine E-Mail-Adresse erkannt — Recruiter können dich nicht erreichen",
+        "noPhone": "Keine Telefonnummer erkannt",
+        "fieldMissing": "{{label}}: fehlt — siehe branchenspezifische Prüfungen",
+        "weakBulletsAll_one": "{{count}} Aufzählungspunkt mit D oder schlechter bewertet — Umformulierung vorhanden",
+        "weakBulletsAll_other": "{{count}} Aufzählungspunkte mit D oder schlechter bewertet — Umformulierungen vorhanden",
+        "weakBulletsSome_one": "{{count}} Aufzählungspunkt mit D oder schlechter bewertet — {{rewritten}} umformuliert",
+        "weakBulletsSome_other": "{{count}} Aufzählungspunkte mit D oder schlechter bewertet — {{rewritten}} umformuliert",
+        "weakBulletsNone_one": "{{count}} Aufzählungspunkt mit D oder schlechter bewertet — so behebst du es",
+        "weakBulletsNone_other": "{{count}} Aufzählungspunkte mit D oder schlechter bewertet — so behebst du sie",
+        "lowQuantification": "Weniger als 40 % der Aufzählungspunkte enthalten eine Zahl — Recruiter orientieren sich an Kennzahlen",
+        "quantified": "Messbare Wirkung",
+        "coreSections": "Kernabschnitte vorhanden"
+      }
     }
   },
   "redFlags": {

@@ -6453,7 +6453,9 @@ function clampImprovementToScoreGap(report: Record<string, unknown>): void {
 // of the same day, still unshipped and so the same build: the timeline card
 // reads gaps with employment-gaps.ts (timelineGapOf), the header's tone bands
 // are the rubric's 85/70/50, and the shared modules carry the primary's
-// review changes byte for byte.
+// review changes byte for byte. The recheck on a third corpus, also
+// unshipped: the shared modules carry the primary's recheck changes byte for
+// byte, and the date flags read apostrophe years ("Mar '21").
 const FN_BUILD = "free-keyword-scan-stream.2026-11-01.1";
 
 /** The primary's report id formula (free-keyword-scan/report-meta.ts reportIdFor): this report's cache key and its score. */

@@ -530,7 +530,11 @@ const trackPerformance = (startTime: number, operation: string, success: boolean
 // hiring-system host scan is linear and reads a gh_jid link; the software
 // fields compare against technology's list; seasons, "to date" and PDF-glued
 // columns are read as dates; a bare count measures; an employer on its own
-// line is read; fix steps carry a code and params the page translates.
+// line is read; fix steps carry a code and params the page translates. The
+// recheck on a third corpus, also unshipped: a plural that is another word is
+// read as written, version floors and street numbers are not metrics, apostrophe
+// years and a Portuguese "o momento" are dates, and federal agencies,
+// foundations and postdocs are transitions while a marine engineer is not.
 const FN_BUILD = "free-keyword-scan.2026-11-01.1";
 
 const corsHeaders = {

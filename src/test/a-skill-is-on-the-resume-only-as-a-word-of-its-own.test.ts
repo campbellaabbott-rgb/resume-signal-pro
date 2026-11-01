@@ -118,6 +118,8 @@ describe("every lower-case acronym plural in the scanners' tables is read one wa
     "acas", "acls", "ains", "airs", "bcps", "cims", "cips", "cmms", "cscs", "ctms", "cuts", "dans", "enps", "fcas",
     "hris", "hrms", "ifrs", "kurs", "laws", "lims", "mlis", "news", "nmls", "pacs", "pals", "pbis", "roas", "ross",
     "saas", "spss", "this", "usds",
+    // Portuguese words in the language detector's list (S13-024 recheck).
+    "seus", "suas",
   ]);
   const root = resolve(__dirname, "../../supabase/functions");
   const found = new Set<string>();

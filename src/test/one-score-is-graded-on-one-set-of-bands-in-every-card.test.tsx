@@ -114,6 +114,46 @@ describe("every card grades a score in the same band", () => {
   }
 });
 
+// S13-058 recheck: the card printed the projection's number beside the
+// model's own level ("+10 pts, Already optimized"), and "+0 pts" when no fix
+// was left. The verdict is now the projected gain's, and a gain of 0 shows no
+// card.
+describe("Improvement Potential speaks from the projected gain", () => {
+  const card = (estimatedScoreIncrease: number, level: string) => {
+    const r = render(
+      <TooltipProvider>
+        <MetricCardsGrid
+          atsScoreEstimate={80} formatGrade="B"
+          quantificationScore={{ score: 50, verdict: "average" }}
+          bulletImpactScore={{ score: 50, verdict: "balanced" }}
+          sectionCheck={{ hasContact: true, hasSummary: true, hasExperience: true, hasEducation: true, hasSkills: true, missingSections: [] }}
+          contactInfo={{ hasEmail: true, hasPhone: true, hasLinkedIn: true, missingItems: [] }}
+          topStrength={null} redFlags={[]}
+          improvementPotential={{ level, estimatedScoreIncrease, topPriority: "Metrics" } as never}
+        />
+      </TooltipProvider>,
+    );
+    const el = r.container.querySelector("[data-metric='improvementPotential']");
+    const out = el ? { text: el.textContent ?? "", status: el.getAttribute("data-status") } : null;
+    r.unmount();
+    return out;
+  };
+  it("a large gain the model called low reads as a big gain", () => {
+    const c = card(14, "low");
+    expect(c?.text).toContain(en.metricCards.improvement.value_other.replace("{{count}}", "14"));
+    expect(c?.text).toContain(en.metricCards.improvement.high);
+    expect(c?.text).not.toContain("Already optimized");
+  });
+  it("a small gain the model called high reads as little left", () => {
+    const c = card(3, "high");
+    expect(c?.text).toContain(en.metricCards.improvement.low);
+    expect(c?.status).toBe("success");
+  });
+  it("a gain of 0 shows no card", () => {
+    expect(card(0, "high")).toBeNull();
+  });
+});
+
 describe("the section banner shows exactly for the scores the hero does not colour green", () => {
   const report = (score: number) => render(
     <MemoryRouter>

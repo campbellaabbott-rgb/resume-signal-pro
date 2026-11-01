@@ -54,9 +54,19 @@ describe("what the detector has no list for, it says", () => {
     const r = detectResumeLanguage(CZECH);
     expect(r).toMatchObject({ language: "unknown", script: "Latin", supported: false });
   });
-  it("Bulgarian, whose words Russian and Ukrainian share, names only the script", () => {
+  // Recheck (2026-11-01): Bulgarian and Serbian were named Russian on words
+  // the three share ("или", "при"). Each now has words of its own; none is
+  // graded.
+  it("Bulgarian is named on its own words, never as Russian, and is not graded", () => {
     const r = detectResumeLanguage("Мениджър проекти с осем години опит в управлението на екипи и развитието на бизнеса в международни компании. Отговарях за бюджета и за връзките с клиентите в региона.");
-    expect(r).toMatchObject({ language: "unknown", script: "Cyrillic" });
+    expect(r).toMatchObject({ language: "bg", script: "Cyrillic", supported: false });
+  });
+  it("Bulgarian and Serbian prose that writes 'или' and 'при' is not Russian", () => {
+    const bg = detectResumeLanguage("Той е роден в София и е работил като инженер в няколко компании, които са известни в региона. При това той е автор на книги или статии за историята на града, след като е завършил университета.");
+    expect(bg.language).not.toBe("ru");
+    const sr = detectResumeLanguage("Он је рођен у Београду и радио је као инжењер у неколико компанија које су познате у региону. При томе је аутор књига или чланака о историји града, након што је завршио факултет током рата.");
+    expect(sr.language).not.toBe("ru");
+    expect(sr.language).toBe("sr");
   });
   it("Chinese, Japanese and Arabic are named by their scripts and words", () => {
     expect(detectResumeLanguage("项目经理，拥有八年团队管理和业务发展经验。负责预算管理与客户合作。技能：数据分析、谈判。教育背景：北京大学经济学硕士。").language).toBe("zh");

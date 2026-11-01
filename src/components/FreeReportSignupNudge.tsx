@@ -8,9 +8,14 @@
  * imports the scans this browser ran before the account existed, each with
  * its fix checklist, once per account (src/lib/account-history-import.ts,
  * account-compliance's half of S12-025).
+ *
+ * The allowance it promises is read from src/config/scan-allowance.ts, as
+ * the uploader's footer is (S13-094 recheck): the sentence typed "15 ...
+ * instead of 7" in every locale.
  */
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { scansPerDayFor } from "@/config/scan-allowance";
 
 /** Where the account page is, as the sign-in page's `next` (src/lib/auth-fragment.ts safeNextPath accepts it). */
 export const FREE_REPORT_SIGNUP_NEXT = "/account";
@@ -21,7 +26,7 @@ export function FreeReportSignupNudge() {
     <div className="rounded-xl border border-primary/25 bg-primary/5 p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3" data-free-report-signup>
       <p className="text-xs text-muted-foreground flex-1">
         <span className="font-semibold text-foreground">{t("freeReportSignup.title", "Don't lose this score.")}</span>{" "}
-        {t("freeReportSignup.body", "Create a free account to track your progress across scans, keep your fix checklist, and get 15 free scans a day instead of 7.")}
+        {t("freeReportSignup.body", { signedIn: scansPerDayFor(true), signedOut: scansPerDayFor(false) })}
       </p>
       <Link
         to={`/auth?next=${encodeURIComponent(FREE_REPORT_SIGNUP_NEXT)}`}

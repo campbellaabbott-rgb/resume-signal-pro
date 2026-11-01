@@ -61,6 +61,7 @@ import { ScoreSimulatorCard } from "@/components/ReportInsightCards";
 import { PROJECTION_CEILING, applyScoreProjection, buildScoreProjection } from "../../supabase/functions/free-keyword-scan/score-projection";
 import { fixLabel } from "@/lib/fix-labels";
 import { codeOf } from "./helpers/strip-comments";
+import { MOUNT_TEST_BUDGET } from "./helpers/mount-budget";
 import i18next from "i18next";
 import en from "@/i18n/locales/en.json";
 import de from "@/i18n/locales/de.json";
@@ -141,6 +142,23 @@ describe("the simulator ticks through the scanner's one fix list", () => {
     expect((report.improvementPotential as { estimatedScoreIncrease: number }).estimatedScoreIncrease).toBe(projection.gain);
   });
 
+  // Recheck (2026-11-01): the Score Potential card printed the projection
+  // and said it was "the points of the top quick wins above added to your
+  // score", which this case shows is short of it.
+  it("the Score Potential card names the basis its number has", () => {
+    const { report, projection } = scannedReport(58);
+    const { container } = renderReport({
+      quickWins: report.quickWins, improvementPotential: report.improvementPotential,
+      projectedScore: report.projectedScore, scoreProjection: report.scoreProjection,
+    });
+    const basis = container.querySelector("[data-score-potential-basis]")?.textContent ?? "";
+    expect(basis).toContain(en.freeResults.scorePotential.basis);
+    expect(basis).not.toMatch(/top quick wins above added/);
+    expect(basis).toMatch(/bullet and keyword steps/);
+    const card = basis && container.querySelector("[data-score-potential-basis]")!.parentElement!;
+    expect(card.textContent).toContain(en.freeResults.scorePotential.gain_other.replace("{{count}}", String(projection.gain)));
+  });
+
   it("an older response with no fix list keeps the quick wins, and a malformed list is ignored", () => {
     for (const scoreProjection of [undefined, null, { fixes: "x" }, { fixes: [{ label: "", impact: 4 }, { label: "No number", impact: "6" }] }]) {
       const { container, unmount } = renderReport({ quickWins: QUICK_WINS, scoreProjection });
@@ -211,7 +229,10 @@ describe("the cap: a ticked box never adds a point past the ceiling", () => {
     expect(cases).toBeGreaterThan(300);
     expect(capBinds).toBeGreaterThan(100);
     expect(aboveCeiling).toBeGreaterThan(50);
-  });
+    // Several hundred mounts in one synchronous loop, with no waits, so a
+    // wider budget forgives a loaded machine and can forgive no wrong line:
+    // each one fails at once, by score and sum. Took 10.7 s at the gate.
+  }, MOUNT_TEST_BUDGET.testTimeout);
 
   it("the reviewer's case: a 92 with +13 ticked reads 95 (+3), not (+13); a 98 reads no gain, not 95", () => {
     const { container } = render(<ScoreSimulatorCard atsScore={92} fixes={[{ label: "A", impact: 6 }, { label: "B", impact: 4 }, { label: "C", impact: 3 }]} />);

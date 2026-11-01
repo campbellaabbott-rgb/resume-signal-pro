@@ -301,7 +301,7 @@ const EDUCATION_SIGNALS: Array<{ re: RegExp; country: string; label: string }> =
 ];
 
 import { detectResumeLanguage, LANGUAGE_GEO } from './resume-language.ts';
-import { readDateRanges } from './employment-gaps.ts';
+import { EDUCATION_HEADING, OTHER_HEADING, readDateRanges } from './employment-gaps.ts';
 
 // Spelling conventions only CORROBORATE a country that already has another
 // signal — they never introduce a country alone (British spelling can't tell GB
@@ -885,6 +885,12 @@ const SENIORITY_RANK: Record<string, number> = {
   associate: 1, junior: 1, jr: 1, 'jr.': 1, entry: 1, assistant: 1, coordinator: 1,
   analyst: 2, specialist: 2, developer: 2, engineer: 2, representative: 2,
   senior: 3, sr: 3, 'sr.': 3, lead: 3, leader: 3, principal: 3, staff: 3,
+  // Dutch, German and Scandinavian titles close the compound ("Teamleader
+  // Logistiek", "Techlead"): S13-009 recheck.
+  teamleader: 3, teamlead: 3, techlead: 3, projectleader: 3,
+  // A bank's Assistant Vice President is a senior individual title, not a
+  // vice president (main read the "vp" inside "AVP").
+  avp: 3,
   manager: 4, director: 4, head: 4, vp: 5, 'vice president': 5,
   svp: 6, evp: 6,
   chief: 7, ceo: 7, cto: 7, cfo: 7, coo: 7, cro: 7, cmo: 7, cio: 7, ciso: 7, cpo: 7, partner: 7, founder: 7, 'co-founder': 7, cofounder: 7,
@@ -904,8 +910,12 @@ const LEADING_SENIOR_COMPOUND = /^\s*senior(?!en)\p{L}{4,}/iu;
 
 export function extractSeniorityFromTitle(title: string): number {
   let rank = 2; // default = individual contributor
+  // "Staff+ Software Engineer", "Senior+": in a title a "+" after a word is a
+  // level band, not part of a name like "C++" (S13-009 recheck), so the word
+  // before it stands as its own token.
+  const read = title.replace(/(?<=\p{L}{2})\+(?=\s|$)/gu, ' ');
   for (const [kw, r] of Object.entries(SENIORITY_RANK)) {
-    if (r > rank && resumeHasTerm(title, kw)) rank = r;
+    if (r > rank && resumeHasTerm(read, kw)) rank = r;
   }
   if (rank < 4 && COMPOUND_HEAD.test(title)) rank = 4;
   if (rank < 3 && LEADING_SENIOR_COMPOUND.test(title)) rank = 3;
@@ -919,11 +929,20 @@ export function extractSeniorityFromTitle(title: string): number {
 // history a "career transition from military/nonprofit". "volunteer",
 // "mission-driven", a bare "officer" and "captain" say nothing about a field
 // and are not evidence; the service's name, written out or abbreviated, is.
+//
+// Recheck fix (2026-11-01), measured on 550 résumés built from real employer
+// names: "marines" is read only as written (its singular is the adjective in
+// "Marine Engineer", see NO_INFLECT in term-presence.ts); a national
+// "Defense/Defence Force(s)" is a service ("Israel Defense Forces"); the
+// federal bodies that name no "Agency" are read by their own words
+// ("Federal Bureau of Investigation", "FEMA", "FDIC"); "postdoctoral" is
+// academia, and a "PhD Candidate" title line is kept as a role line (see
+// roleHeaderLines); managing volunteers is a nonprofit role.
 const TRANSITION_KEYWORDS: Record<string, string[]> = {
-  military: ['military', 'army', 'navy', 'air force', 'marine corps', 'marines', 'coast guard', 'national guard', 'armed forces', 'usmc', 'usaf', 'usn', 'uscg', 'nco', 'sergeant', 'lieutenant', 'colonel'],
-  nonprofit: ['nonprofit', 'non-profit', 'ngo', 'charity'],
-  academia: ['professor', 'phd candidate', 'postdoc', 'teaching assistant', 'research assistant', 'lecturer'],
-  government: ['government', 'federal agency', 'state agency', 'municipality', 'civil service'],
+  military: ['military', 'army', 'navy', 'air force', 'marine corps', 'marines', 'coast guard', 'national guard', 'armed forces', 'defense forces', 'defence forces', 'defense force', 'defence force', 'usmc', 'usaf', 'usn', 'uscg', 'nco', 'sergeant', 'lieutenant', 'colonel'],
+  nonprofit: ['nonprofit', 'non-profit', 'ngo', 'charity', 'volunteer coordinator', 'volunteer manager'],
+  academia: ['professor', 'phd candidate', 'doctoral candidate', 'postdoc', 'postdoctoral', 'teaching assistant', 'research assistant', 'lecturer'],
+  government: ['government', 'federal agency', 'federal bureau', 'federal emergency management', 'fema', 'federal deposit insurance', 'fdic', 'federal reserve', 'state agency', 'municipality', 'civil service'],
 };
 // An employer's own name, read as one segment of a role line (split at
 // ",", "|", "–", "(" ...): a name ending in "Foundation" ("Gates
@@ -933,11 +952,22 @@ const TRANSITION_KEYWORDS: Record<string, string[]> = {
 // in data" and "the state of the art" are not employers. "Department of" is
 // not read: a university's "Department of Economics" says so as often as a
 // government's.
+//
+// A name may join its capitalised words with "and", "&", "for" or "of" ("The
+// Bill and Melinda Gates Foundation", "Bill & Melinda Gates Foundation"). A
+// "City/State/County of" name is a place of one to three capitalised words
+// and nothing after it: "City of Hope" (a cancer centre), "City of Hope
+// National Medical Center" and "State Street" are not governments, and an
+// institution noun after the place ("City of Glasgow College") is not one
+// either (S13-009 recheck).
+const NAME_WORD = String.raw`[\p{Lu}][\p{L}'’.&-]*`;
+const NAME = String.raw`${NAME_WORD}(?:\s+(?:(?:and|&|for|of)\s+)?${NAME_WORD})*`;
+const NOT_A_PLACE = String.raw`(?:Hope|Dreams|Refuge|Angels|Faith|Grace|Joy|Light|Life|God|Praise)`;
 const EMPLOYER_SEGMENT: Record<string, RegExp[]> = {
-  nonprofit: [/^(?:The\s+)?(?:[\p{Lu}][\p{L}'’.&-]*\s+)+Foundation$/u],
+  nonprofit: [new RegExp(String.raw`^(?:The\s+)?${NAME}\s+Foundation$`, 'u')],
   government: [
-    /^(?:The\s+)?(?:City|State|County|Commonwealth|Province|Government|Ministry|Bureau)\s+of\s+(?:the\s+)?\p{Lu}/u,
-    /^(?:The\s+)?(?:[\p{Lu}][\p{L}'’.&-]*\s+)+(?:Administration|Commission)$/u,
+    new RegExp(String.raw`^(?:The\s+)?(?:City|State|County|Commonwealth|Province|Government|Ministry|Bureau)\s+of\s+(?:the\s+)?(?!${NOT_A_PLACE}(?![\p{L}]))${NAME_WORD}(?:\s+${NAME_WORD}){0,2}$`, 'u'),
+    new RegExp(String.raw`^(?:The\s+)?${NAME}\s+(?:Administration|Commission)$`, 'u'),
   ],
 };
 // A degree names a subject, not an employer ("B.S. Business Administration").
@@ -964,24 +994,40 @@ export function roleHeaderLines(allTitles: string[], resumeText: string): string
   const lines = resumeText.split(/\r?\n/).map(l => l.replace(/\s+/g, ' ').trim());
   const titles = allTitles.map(t => t.trim()).filter(Boolean);
   const out = new Set<string>(titles);
+  // A line under an education heading names a degree, a subject or a school,
+  // never an employer: "Bachelor of Science" / "Business Administration" /
+  // "University of Florida | 2008 – 2012" made the subject a government
+  // (S13-009 recheck). Such lines are neither anchors nor neighbours.
+  let section: 'education' | 'other' = 'other';
+  const inEducation = lines.map(line => {
+    if (line.length <= 40 && EDUCATION_HEADING.test(line)) section = 'education';
+    else if (line.length <= 40 && OTHER_HEADING.test(line)) section = 'other';
+    return section === 'education';
+  });
   lines.forEach((line, i) => {
+    if (inEducation[i]) return;
     const anchor = (line && titles.some(t => line.includes(t))) || (line.length <= 90 && readDateRanges(line).length > 0);
     if (!anchor) return;
     // "Title | Employer | Jun 2011 – Feb 2019" is a whole header on one line.
     if (isHeaderShaped(line)) out.add(line);
     for (const step of [-1, 1]) {
       for (let j = i + step, k = 0; k < 2 && j >= 0 && j < lines.length; j += step, k++) {
-        if (!isHeaderShaped(lines[j]) || /^(?:experience|education|skills|summary|profile|employment|work history|professional experience|certifications?|projects?)$/i.test(lines[j])) break;
+        if (inEducation[j] || !isHeaderShaped(lines[j]) || /^(?:experience|education|skills|summary|profile|employment|work history|professional experience|certifications?|projects?)$/i.test(lines[j])) break;
         out.add(lines[j]);
       }
     }
   });
-  return [...out].filter(l => !DEGREE_LINE.test(l));
+  // A degree line names a subject; a doctoral candidate's title line names a
+  // role ("PhD Candidate, University of Toronto").
+  return [...out].filter(l => !DEGREE_LINE.test(l) || DOCTORAL_ROLE.test(l));
 }
+const DOCTORAL_ROLE = /(?<![\p{L}])(?:ph\.?\s?d\.?|doctoral)\s+(?:candidate|student|researcher|fellow)(?![\p{L}])/iu;
 
 function transitionFieldOf(roleLines: string[], industry: string): string | undefined {
   const text = roleLines.join('\n');
-  const segments = roleLines.flatMap(l => l.split(/\s*(?:[,|•·–—(){}]|\s-\s)\s*/)).map(s => s.trim()).filter(Boolean);
+  // "Development Associate at Ford Foundation": "at" before a capitalised
+  // name also ends a segment.
+  const segments = roleLines.flatMap(l => l.split(/\s*(?:[,|•·–—(){}]|\s-\s|\s+at\s+(?=\p{Lu}))\s*/u)).map(s => s.trim()).filter(Boolean);
   for (const [field, kws] of Object.entries(TRANSITION_KEYWORDS)) {
     if (field === industry) continue;
     if (kws.some(k => resumeHasTerm(text, k))) return field;
@@ -1189,7 +1235,7 @@ const ATS_HOSTS: Array<{ system: AtsSystem; domains: string[] }> = [
 // sentence's full stop ("To apply visit jobs.lever.co.").
 const LABEL = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/i;
 const TOP_LEVEL = /^[a-z]{2,24}$/i;
-const HOST_END = /[\/:?#\s"'<>),;]/;
+const HOST_END = /[\/:?#&\s"'<>),;]/;
 const isHostChar = (c: number) =>
   (c >= 97 && c <= 122) || (c >= 65 && c <= 90) || (c >= 48 && c <= 57) || c === 46 || c === 45;
 
@@ -1220,9 +1266,23 @@ export function hostsIn(text: string): string[] {
   return hosts;
 }
 
+// A link pasted through a redirect or a safe-links wrapper arrives
+// percent-encoded ("linkedin.com/redir/redirect?url=https%3A%2F%2Fjobs.
+// smartrecruiters.com%2FAcme"): LinkedIn, Google and Outlook all rewrite links
+// this way (S13-005 recheck: 189 of 303 such postings lost their system). The
+// URL punctuation is decoded in a copy, twice for a link wrapped twice, and
+// both copies are read. The host check itself is unchanged.
+const URL_ESCAPES: Record<string, string> = { '2f': '/', '3a': ':', '2e': '.', '3f': '?', '23': '#', '26': '&', '3d': '=', '25': '%' };
+function decodeUrlPunctuation(text: string): string {
+  const once = (t: string) => t.replace(/%(2f|3a|2e|3f|23|26|3d|25)/gi, (_, h: string) => URL_ESCAPES[h.toLowerCase()]);
+  return once(once(text));
+}
+
 export function detectAtsSystem(jobDescriptionText: string | null | undefined, companyName?: string): AtsSystem {
   if (!jobDescriptionText && !companyName) return 'unknown';
-  const hosts = hostsIn(`${jobDescriptionText || ''} ${companyName || ''}`);
+  const text = `${jobDescriptionText || ''} ${companyName || ''}`;
+  const hosts = hostsIn(text);
+  if (text.includes('%')) hosts.push(...hostsIn(decodeUrlPunctuation(text)));
   for (const { system, domains } of ATS_HOSTS) {
     if (hosts.some(h => domains.some(d => h === d || h.endsWith(`.${d}`)))) return system;
   }
@@ -1230,7 +1290,7 @@ export function detectAtsSystem(jobDescriptionText: string | null | undefined, c
   // job id in the link ("teneo.com/careers/...?gh_jid=7786600003"): 128 of
   // 1,224 real Greenhouse apply links carry it, and none of 11,191 links from
   // six other vendors.
-  if (GREENHOUSE_JOB_ID.test(`${jobDescriptionText || ''}`)) return 'greenhouse';
+  if (GREENHOUSE_JOB_ID.test(`${jobDescriptionText || ''}`) || (text.includes('%') && GREENHOUSE_JOB_ID.test(decodeUrlPunctuation(jobDescriptionText || '')))) return 'greenhouse';
   return 'unknown';
 }
 const GREENHOUSE_JOB_ID = /[?&]gh_jid=\d/i;
@@ -1328,14 +1388,22 @@ export interface CompetitiveGapResult {
   gapScore: number;                 // 0-100, lower = more gaps
 }
 
-// The scanner's fields whose work is building and running software. On 3,693
-// real postings, technology's list terms appear in data-engineering,
-// machine-learning and cybersecurity postings about as often as in
-// technology's own (entry/mid/senior: 16%, 9% and 8% against 11%), and two
-// to four times as often as in engineering (3%) or healthcare (4%) postings.
-// Data science reads them at 7% (its mid list, at 2%, is software
-// operations it does not run), so it keeps no list.
-const SOFTWARE_FIELDS: ReadonlySet<string> = new Set(['data_engineering', 'machine_learning', 'cybersecurity']);
+// The scanner's fields whose work is building and running software, which
+// read technology's list. Measured by posting title on 5,499 real postings
+// (the three wave corpora, deduplicated; recheck 2026-11-01), the share of
+// technology's entry/mid/senior terms a posting holds:
+//   software (n 265)            15.1 / 10.3 / 16.2
+//   data engineering (n 29)     15.1 /  8.2 / 17.6
+//   data science (n 42)         12.2 /  2.4 / 10.7
+//   machine learning (n 33)      7.2 /  5.7 / 12.7
+//   cybersecurity (n 32)         4.3 / 10.2 / 11.6
+//   healthcare (n 242)           0.4 /  3.0 /  6.9
+//   non-software eng. (n 59)     1.1 /  1.5 /  7.5
+// Only data engineering reads them as software does at every level; data
+// science, machine learning and cybersecurity fall to the healthcare rate at
+// one level or another, so none of the three borrows the list (no list, no
+// claim) until a larger corpus shows otherwise.
+const SOFTWARE_FIELDS: ReadonlySet<string> = new Set(['data_engineering']);
 
 export function analyzeCompetitiveKeywordGap(
   resumeText: string,
