@@ -213,7 +213,9 @@ export function EmailReportCapture({ payload, variant = "full", hideIfKnown = fa
           className="mt-0.5 accent-primary"
         />
         <span className="text-xs text-muted-foreground">
-          {t('freeResults.enterprise.pulseOptIn', 'Also send me a monthly market pulse: the keywords rising in my industry, with a free rescan link. Unsubscribe anytime.')}
+          {/* S13-100: the pulse sends our curated core keywords for the field,
+              not anything measured as rising in this month's postings. */}
+          {t('freeResults.enterprise.pulseOptInCurated', 'Also send me a monthly market pulse: the core keywords for my field from our curated keyword guide, with a free rescan link. Unsubscribe anytime.')}
         </span>
       </label>
       <label className="flex items-start gap-2 mt-2 cursor-pointer">

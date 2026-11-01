@@ -63,7 +63,10 @@ export default function MarketPulseConfirm() {
         {(state === "ready" || state === "confirming") && (
           <>
             <p className="text-sm text-muted-foreground mb-5">
-              {t("pulseConfirm.body", "One email a month with the keywords job postings in your field are screening for, and a free rescan link. Every email has a one-click unsubscribe.")}
+              {/* WHAT THE PULSE SENDS (S13-100): the core keywords from our curated
+                  list for the field, the list the batch reads, not a count of
+                  this month's postings. */}
+              {t("pulseConfirm.bodyCurated", "One email a month with the core keywords for your field from our curated keyword guide (not a count of this month's postings), and a free rescan link. Every email has a one-click unsubscribe.")}
             </p>
             <button
               type="button"
