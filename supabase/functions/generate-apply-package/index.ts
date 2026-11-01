@@ -39,10 +39,13 @@ import { fencePosting, postingText, POSTING_DATA_RULE } from "../_shared/posting
 // 2026-10-11.31 (wave 4 round 2 recheck): carries the classifier that reads every later clause and sentence of a work-done or motivation question against the shared factual topics (notice, earliest, earned, who to contact).
 // 2026-10-11.32 (wave 4 fix round 3, corpus-first): carries the classifier that refuses a personal fact or ask unless the label is about work done.
 // 2026-10-11.33 (wave 4 fix round 4): carries the classifier that no longer refuses a job word ("full-time", "eligibility") and refuses a status after "without", "on a" or "as a".
-// 2026-10-28.1 (S13-001, fix/full-analysis-timeout): _shared/ai-fallback.ts
-// no longer retries a model that timed out; the chain moves to the next
-// model, which keeps at least 40 s of the budget. Nothing else in this bundle
-// changed.
+// 2026-10-28.1 (S13-001, fix/full-analysis-timeout): _shared/ai-fallback.ts no
+// longer asks a model that timed out again: this function's chain moves to the
+// next model, which keeps at least 40 s of the 125 s budget when the first
+// model times out (the optional caller signal the module also gained is not
+// used here). Nothing else in this bundle changed since main's f8d72a9b, the
+// build the 2026-10-31 deploy put live (docs/deploy-ledger.json,
+// verifiedDeploys).
 const FN_BUILD = "generate-apply-package.2026-10-28.1";
 
 const corsHeaders = {

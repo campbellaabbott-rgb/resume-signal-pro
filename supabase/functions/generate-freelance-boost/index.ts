@@ -31,10 +31,15 @@ import { BOOST_MAX_TOKENS, decideStructure, readBoostReply, type BoostReply } fr
 // without its cover letter and LinkedIn About is not a delivery and is never
 // marked delivered (S12-105); one to three projects alongside a job get the
 // Projects section (S12-107).
-// 2026-10-28.1 (S13-001, fix/full-analysis-timeout): _shared/ai-fallback.ts
-// no longer retries a model that timed out; the chain moves to the next
-// model, which keeps at least 40 s of the budget. Nothing else in this bundle
-// changed.
+// 2026-10-28.1 (S13-001, fix/full-analysis-timeout): _shared/ai-fallback.ts no
+// longer asks a model that timed out again. This function walks its own chain
+// one model per call (models: [model]), so a slow model now costs one
+// 55-second attempt instead of two and the worst case drops from about five
+// minutes to about 165 seconds; each call still has its own budget and no
+// window is kept for the next model, so that worst case is still past the
+// platform's 150 seconds (follow-up). Nothing else in this bundle changed
+// since main's f8d72a9b, the build the 2026-10-31 deploy put live
+// (docs/deploy-ledger.json, verifiedDeploys).
 const FN_BUILD = "generate-freelance-boost.2026-10-28.1";
 
 const corsHeaders = {

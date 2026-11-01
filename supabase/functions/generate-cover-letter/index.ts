@@ -18,10 +18,14 @@ import { refundWriting, writingChain, writingGate, type WritingPass } from "../_
 // chain); written in the posting's own language (S12-003); claims about the
 // candidate checked for credentials, employers and titles as well as figures
 // (S12-071); the posting fenced as data with its hidden text dropped (S12-147).
-// 2026-10-28.1 (S13-001, fix/full-analysis-timeout): _shared/ai-fallback.ts
-// no longer retries a model that timed out; the chain moves to the next
-// model, which keeps at least 40 s of the budget. Nothing else in this bundle
-// changed.
+// 2026-10-28.1 (S13-001, fix/full-analysis-timeout): this bundle imports only
+// looksLikeBrokenJson from _shared/ai-fallback.ts, so the chain change (a
+// timed-out model is not asked again) does not reach it: its own
+// callAIWithFallback still retries a timed-out model once and has no chain
+// deadline (follow-up, sibling of S13-001). Rebuilt so the deployed bundle
+// matches the repo's ai-fallback.ts. Nothing else in this bundle changed since
+// main's f8d72a9b, the build the 2026-10-31 deploy put live
+// (docs/deploy-ledger.json, verifiedDeploys).
 const FN_BUILD = "generate-cover-letter.2026-10-28.1";
 
 const corsHeaders = {
