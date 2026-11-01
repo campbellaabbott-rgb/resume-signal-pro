@@ -22001,3 +22001,56 @@ later visit sees no country move. The patches queue after the read rows', so
 the caps keep theirs first, and they log nothing (country is derived). Corpus:
 1,917 live triples, 1,536 strings, over 45 location searches on 2026-10-31;
 it fires on exactly six strings, each misfiled.
+
+## n1440-lap-live-titles
+
+In `supabase/functions/job-board/index.ts`, above: `const liveTitles = new Set(`.
+
+A LAP READS SUPERSEDED FROM THE WHOLE LAP, NOT ITS LAST WINDOW (S10-002,
+2026-09-09.100). On a lap-proven windowed board only the visit that proves the
+lap may close a posting, and that visit served one window (or the empty read
+past the feed's end). `superseded` (is the same title still live on this board?)
+was read from that visit's rows alone, so a requisition re-listed under a new id
+that an earlier window of the lap served was written to the ledger as a fill,
+and the 24h superseded dedupe (n621) missed for the same reason. Live on .96,
+2026-11-01, get_company_hiring_health gave superseded_90d = 0 against 1,291
+(O'Reilly), 3,917 (Dollar Tree), 3,961 (Marriott), 5,430 (CVS) and 46,214
+(Domino's) closures, where whole-read Greenhouse boards give 2-34%. The live
+set on a lap is now this visit's rows plus every stored row this lap served
+(lap_epoch = lapMark, no missing stamp, not aged out by this visit): the lap's
+own evidence, at the lap's scale, as n121 already reads its counts. A whole read
+is unchanged. Rows already in the ledger keep their bit: no read-only measure
+of them exists (the ledger is closed to anon), so any backfill is a later,
+measured migration. Corpus: 900 simulated closures over 1,080 live rows of
+three lapped boards (board-stream-2026-11-01/corpora/lifecycle); never false
+where main says true.
+
+## n1441-desc-sweep-floor
+
+In `supabase/functions/job-board/index.ts`, above: `const descFloor = typeof body.floor === "string" ? body.floor : "";`.
+
+ONE ASK PER ROW PER ROTATION, AND A KEYSET THAT SKIPS NO TIE (S13-113,
+2026-09-09.100). The per-posting phase walks every vendor's null rows at once
+(n246), but the vendor slot still advanced once per finished walk, so a rotation
+walked the whole backlog ten times and asked for every failing row ten times
+(~8,400 null rows live on .96, most of them Oracle and Paylocity rows that never
+fill). Each walk after the first now starts at the floor: the newest first_seen
+the walk before it saw on its first page, so it reads only rows added since, and
+a row the feed adds mid-rotation is still reached in that rotation, as before.
+The cursor is first_seen|id over (first_seen DESC, id DESC): one insert stamps
+every row it writes with one first_seen, and `< first_seen` skipped the rest of
+a batch that straddled a page. lte(first_seen) stays the index bound; the OR is
+a filter. A cursor without `|` (one hop in flight across the deploy) reads as
+lte alone and revisits at most a page. status.descSweep names cursor and floor.
+
+## n1442-exists-detail-fence
+
+In `supabase/functions/job-board/index.ts`, above: `function pastFence(r: Record<string, unknown>, cutoffMs: number): boolean {`.
+
+EXISTS ANSWERS ON DETAIL'S PREDICATE (S13-076, 2026-09-09.100). `exists`
+(behind the MCP check_jobs_open) read any stored row as open, so a posting the
+feed had dropped (missing_since stamped, up to 6 h under the shrink ratchet) or
+one past the 30-day fence read open while `detail` (behind get_job) declined it.
+It now reads `missing_since IS NULL` in the query and drops a row past the fence
+by the same date detail uses (effective_posted, then posted_at, then
+first_seen; an undated row is never fenced).

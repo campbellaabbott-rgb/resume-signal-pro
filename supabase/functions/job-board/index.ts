@@ -2420,6 +2420,12 @@ function cursorPaged(b: Record<string, unknown>): boolean {
 /** The longest id `exists` reads (S12-123): every posting id is source:token:externalId, well under this. */
 const EXISTS_ID_MAX = 300;
 
+// Rationale: docs/job-board-index-notes.md#n1442-exists-detail-fence
+function pastFence(r: Record<string, unknown>, cutoffMs: number): boolean {
+  const eff = Date.parse(String(r.effective_posted ?? r.posted_at ?? r.first_seen ?? ""));
+  return Number.isFinite(eff) && eff < cutoffMs;
+}
+
 /** A maintenance credential (.88): the chain secret in the body, or the service key itself. */
 async function isMaintenance(req: Request, body: Record<string, unknown>): Promise<boolean> {
   if (typeof body.chainKey === "string" && body.chainKey === await chainKey()) return true;
@@ -4282,8 +4288,10 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         // Rationale: docs/job-board-index-notes.md#n620-if-vanished-length-truncatedfetch-lapmod
         if (vanished.length && (!truncatedFetch || lapMode)) {
           const closedAt = new Date().toISOString();
+          // Rationale: docs/job-board-index-notes.md#n1440-lap-live-titles
           const liveTitles = new Set(
-            [...rowsById.values()].map((r) => normalizeCloseTitle(String(r.title ?? ""))).filter(Boolean),
+            [...rowsById.values(), ...(lapMode ? [...existingById.values()].filter((ex) => ex.lap_epoch === lapMark && !ex.missing_since && !agedOutIds.has(ex.id)) : [])]
+              .map((r) => normalizeCloseTitle(String(r.title ?? ""))).filter(Boolean),
           );
           // Rationale: docs/job-board-index-notes.md#n621-let-recentsuperseded-new-set-string
           let recentSuperseded = new Set<string>();
@@ -6904,6 +6912,8 @@ async function handleRequest(req: Request): Promise<Response> {
         descSweep: {
           vendor: ((dsMeta.data?.v ?? {}) as { vendor?: string }).vendor ?? null,
           doneAt: ((dsMeta.data?.v ?? {}) as { doneAt?: string }).doneAt ?? null,
+          cursor: ((dsMeta.data?.v ?? {}) as { cursor?: string }).cursor ?? null,
+          floor: ((dsMeta.data?.v ?? {}) as { floor?: string }).floor ?? null,
           ageMin: dsMeta.data?.updated_at ? Math.round((Date.now() - new Date(dsMeta.data.updated_at).getTime()) / 60000) : null,
         },
         // Rationale: docs/job-board-index-notes.md#n217-slicestats-slicestatsrow-data-v-null
@@ -8356,6 +8366,9 @@ async function handleRequest(req: Request): Promise<Response> {
       const vstart = Math.max(0, Number(body.vstart) || 0) % DETAIL_DESC_SOURCES.length;
       // Rationale: docs/job-board-index-notes.md#n792-const-desccursor-typeof-body-cursor-stri
       const descCursor = typeof body.cursor === "string" && body.cursor ? body.cursor : null;
+      // Rationale: docs/job-board-index-notes.md#n1441-desc-sweep-floor
+      const descFloor = typeof body.floor === "string" ? body.floor : "";
+      let descTop = typeof body.top === "string" ? body.top : "";
       if (vi >= DETAIL_DESC_SOURCES.length) {
         // Rationale: docs/job-board-index-notes.md#n793-const-boards-job_sources-filter-s-board_
         const BOARDS = JOB_SOURCES.filter((s) => (BOARD_DESC_SOURCES as readonly string[]).includes(s.source));
@@ -8422,7 +8435,7 @@ async function handleRequest(req: Request): Promise<Response> {
       }
       const vendor = DETAIL_DESC_SOURCES[vi];
       await client.from("job_board_meta").upsert(
-        { k: "desc_sweep", v: { runningVi: vi, vendor, cursor: descCursor }, updated_at: new Date().toISOString() },
+        { k: "desc_sweep", v: { runningVi: vi, vendor, cursor: descCursor, floor: descFloor || null }, updated_at: new Date().toISOString() },
         { onConflict: "k" },
       );
       // Rationale: docs/job-board-index-notes.md#n246-sel
@@ -8433,9 +8446,14 @@ async function handleRequest(req: Request): Promise<Response> {
         .in("source", [...DETAIL_DESC_SOURCES])
         .is("description", null)
         .is("missing_since", null);
-      if (descCursor) sel = sel.lt("first_seen", descCursor);
+      if (descFloor) sel = sel.gt("first_seen", descFloor);
+      const bar = descCursor ? descCursor.indexOf("|") : -1;
+      const curFs = descCursor && bar >= 0 ? descCursor.slice(0, bar) : descCursor;
+      if (curFs) sel = sel.lte("first_seen", curFs);
+      if (curFs && bar >= 0) sel = sel.or(`first_seen.lt."${curFs}",id.lt."${descCursor!.slice(bar + 1).replace(/["\\]/g, "\\$&")}"`);
       const { data: rows, error: readErr } = await sel
         .order("first_seen", { ascending: false, nullsFirst: false })
+        .order("id", { ascending: false })
         .limit(DESC_SWEEP_PER_HOP);
       if (readErr) throw readErr;
       const queue = [...(rows ?? [])] as Array<{
@@ -8520,17 +8538,22 @@ async function handleRequest(req: Request): Promise<Response> {
       }));
       // Rationale: docs/job-board-index-notes.md#n801-const-exhausted-queue-length-desc_sweep_
       const exhausted = queue.length < DESC_SWEEP_PER_HOP;
-      const nextCursor = exhausted ? null : (queue[queue.length - 1]?.first_seen ?? null);
+      const tail = queue[queue.length - 1];
+      const nextCursor = exhausted || !tail?.first_seen ? null : `${tail.first_seen}|${tail.id}`;
+      if (!descCursor && queue[0]?.first_seen) descTop = queue[0].first_seen;
+      let floor = descFloor;
       if (exhausted) {
         // Rationale: docs/job-board-index-notes.md#n802-const-next-vi-detail_desc_sources-length
         const next = (vi + 1) % DETAIL_DESC_SOURCES.length;
         vi = next === vstart ? DETAIL_DESC_SOURCES.length : next;
+        floor = descTop || descFloor;
+        descTop = "";
       }
       const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
       waitUntil(chainKey().then((key) => fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "desc-sweep", chainKey: key, vi, vstart, ...(nextCursor ? { cursor: nextCursor } : {}) }),
+        body: JSON.stringify({ action: "desc-sweep", chainKey: key, vi, vstart, ...(nextCursor ? { cursor: nextCursor } : {}), ...(floor ? { floor } : {}), ...(descTop ? { top: descTop } : {}) }),
       })).then((rr) => discardBody(rr)).catch(() => {}));
       return json({ ok: true, vendor, scanned: queue.length, updated, nextVi: vi, cursor: nextCursor });
     }
@@ -9035,13 +9058,15 @@ async function handleRequest(req: Request): Promise<Response> {
       // S12-123: no posting id is longer than EXISTS_ID_MAX; a longer one is
       // not open and is never put in the read (a 100 KB id answered 500).
       const ids = asked.filter((id) => id.length <= EXISTS_ID_MAX);
+      const cutoffMs = Date.now() - FRESH_WINDOW_DAYS * 86_400_000;
       for (let i = 0; i < ids.length; i += 200) {
         const { data, error } = await client
           .from("job_board_postings")
-          .select("id")
-          .in("id", ids.slice(i, i + 200));
+          .select("id, effective_posted, posted_at, first_seen")
+          .in("id", ids.slice(i, i + 200))
+          .is("missing_since", null);
         if (error) throw error;
-        for (const r of data ?? []) openMap[r.id as string] = true;
+        for (const r of data ?? []) if (!pastFence(r, cutoffMs)) openMap[r.id as string] = true;
       }
       return json({ open: openMap });
     }
