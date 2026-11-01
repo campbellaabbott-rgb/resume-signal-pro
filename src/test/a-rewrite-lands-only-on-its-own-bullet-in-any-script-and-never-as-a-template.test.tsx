@@ -17,12 +17,21 @@
  * rewrite, never one with an unfilled [placeholder] (older stored reports
  * carry them), and the builder refuses them too. The card shows a template as
  * guidance, never as the rewrite.
+ *
+ * Review fix (2026-11-01). The box still promised "fixes applied" over a
+ * report whose every rewrite was refused, and the builder then applied
+ * nothing. It now counts the rewrites it hands over and, with none, offers
+ * the résumé and the missing keywords instead; the guidance template is said
+ * in the reader's language from the scanner's code (S13-122).
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { createEmptyResume, type BuilderResume } from "@/types/resume-builder";
 import { applyScanRewrites, isUsableRewrite } from "@/lib/builder-import";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import en from "@/i18n/locales/en.json";
 
 vi.mock("@/integrations/supabase/client", () => {
   const chain: Record<string, unknown> = {};
@@ -155,7 +164,7 @@ describe("S13-038: the report hands the builder only real rewrites", () => {
         />
       </MemoryRouter>,
     );
-    fireEvent.click(screen.getByText(/Open in builder with fixes applied/));
+    fireEvent.click(screen.getByText("Open in builder with 1 rewrite applied →"));
     const fixes = JSON.parse(sessionStorage.getItem("rb_scan_fixes") ?? "null");
     expect(fixes?.rewrites).toEqual([{ before: "Assisted patients at the front desk", after: "Checked in 60 patients a day at the front desk" }]);
   });
@@ -167,5 +176,65 @@ describe("S13-038: the report hands the builder only real rewrites", () => {
     expect(rewrites.some((r) => r?.includes("[what you did]")), "a template was shown as a rewrite").toBe(false);
     expect(guides.some((g) => g?.includes("[what you did]"))).toBe(true);
     expect(rewrites).toContain("Checked in 60 patients a day at the front desk");
+  });
+
+  const mountReport = (weakest: unknown[], extra: unknown[] = []) => render(
+    <MemoryRouter>
+      <FreeKeywordResults
+        industry="healthcare" atsScoreEstimate={58} formatGrade="B" formatIssue="ok" resumeLength={"good" as never}
+        redFlags={[]} keywords={[{ keyword: "medical billing", reason: "Named in the posting", impact: "high", category: "skill" }] as never} resumeText={RESUME}
+        sectionCheck={{ hasContact: true, hasSummary: true, hasExperience: true, hasEducation: true, hasSkills: true } as never}
+        weakestBullets={weakest as never}
+        additionalRewrites={extra as never}
+        onGetFullAnalysis={vi.fn()}
+      />
+    </MemoryRouter>,
+  );
+
+  it("the box says how many rewrites it hands over, and hands over exactly those", () => {
+    const { container } = mountReport(bullets, [
+      { before: "Responsible for scheduling appointments", after: "Booked 120 appointments a week for 4 dentists", improvement: "x" },
+    ]);
+    const box = container.querySelector("[data-builder-handoff]")!;
+    expect(box.textContent).toContain("this report's 2 bullet rewrites already applied");
+    fireEvent.click(screen.getByText("Open in builder with 2 rewrites applied →"));
+    const fixes = JSON.parse(sessionStorage.getItem("rb_scan_fixes") ?? "null");
+    expect(fixes?.rewrites).toHaveLength(2);
+    expect(box.textContent).not.toMatch(/fixes applied/);
+  });
+
+  it("with no rewrite to apply, it offers the résumé and the missing keywords, and promises no fix", () => {
+    const templatesOnly = bullets.filter((b) => b.rewrite === null || /\[/.test(b.rewrite ?? ""));
+    const { container } = mountReport(templatesOnly);
+    const box = container.querySelector("[data-builder-handoff]")!;
+    expect(box.textContent).toContain(en.freeResults.builderHandoff.bodyNoRewrites);
+    expect(box.textContent).not.toMatch(/applied →|fixes applied/);
+    fireEvent.click(screen.getByText(en.freeResults.builderHandoff.ctaNoRewrites));
+    const fixes = JSON.parse(sessionStorage.getItem("rb_scan_fixes") ?? "null");
+    expect(fixes?.rewrites).toEqual([]);
+    expect(fixes?.keywords).toEqual(["medical billing"]);
+    expect(sessionStorage.getItem("rb_resume_text")).toBe(RESUME);
+  });
+
+  it("every locale words the box, the translations their own", () => {
+    const dir = resolve(__dirname, "../i18n/locales");
+    const enBox = en.freeResults.builderHandoff as Record<string, string>;
+    for (const loc of ["de", "en-GB", "es", "fr", "hi", "nl", "pt", "tl"]) {
+      const box = JSON.parse(readFileSync(resolve(dir, `${loc}.json`), "utf8")).freeResults.builderHandoff as Record<string, string>;
+      for (const k of ["title", "bodyRewrites_one", "bodyRewrites_other", "bodyNoRewrites", "ctaRewrites_one", "ctaRewrites_other", "ctaNoRewrites"]) {
+        expect(box[k], `${loc} ${k}`).toBeTruthy();
+        if (k.startsWith("bodyRewrites") || k.startsWith("ctaRewrites")) expect(box[k], `${loc} ${k}`).toContain("{{count}}");
+        if (loc !== "en-GB") expect(box[k], `${loc} ${k} is the English`).not.toBe(enBox[k]);
+      }
+    }
+  });
+
+  it("a scanner template code is said in the reader's language, not the English text it carries", () => {
+    const { container } = render(<WeakestBulletsCard bullets={[
+      { original: "Helped with billing", grade: "D", issues: ["weak verb"], rewrite: null, rewriteTemplate: "ENGLISH FALLBACK [x]", rewriteTemplateCode: "verbAndNumber" },
+    ] as never} />);
+    const guide = container.querySelector("[data-bullet-rewrite-template]")?.textContent ?? "";
+    expect(guide).toContain(en.freeResults.weakestBullets.template.verbAndNumber);
+    expect(guide).not.toContain("ENGLISH FALLBACK");
   });
 });

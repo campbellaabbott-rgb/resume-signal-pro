@@ -276,7 +276,8 @@
       "fileTypes": "PDF, DOCX, or TXT (max 10MB)",
       "browse": "Browse files",
       "pasteHere": "Paste your CV content here...",
-      "chars": "chars"
+      "chars": "chars",
+      "tooLong": "{{length}} characters: the free scan reads up to {{max}}. Shorten it before you scan."
     },
     "linkedin": {
       "title": "Your LinkedIn Profile",
@@ -402,7 +403,8 @@
     "orGetCompleteAnalysis": "Or get the complete analysis for",
     "securePaymentStripe": "Secure payment via Stripe",
     "gsheetsImportFailed": "Failed to import from Google Sheets. Please try again.",
-    "gsheetsImportFailedShared": "Failed to import from Google Sheets. Make sure the sheet is shared with 'Anyone with the link'."
+    "gsheetsImportFailedShared": "Failed to import from Google Sheets. Make sure the sheet is shared with 'Anyone with the link'.",
+    "scanFooterPro": "Results within {{seconds}} seconds • Pro: no daily cap on scans"
   },
   "faq": {
     "title": "Frequently Asked Questions",
@@ -862,6 +864,11 @@
       "good": "Good",
       "needsImprovement": "Needs Improvement",
       "poor": "Poor"
+    },
+    "projection": {
+      "lead": "Fix the issues below → about",
+      "gain_one": "(+{{count}} pt, a rough guide)",
+      "gain_other": "(+{{count}} pts, a rough guide)"
     }
   },
   "careerSnapshot": {
@@ -1106,7 +1113,9 @@
       "fontUnreadableDescription": "Its font doesn't map to real characters. Upload a .docx or paste your CV text instead.",
       "unreadCharacters": "Some characters couldn't be read",
       "unreadCharactersDescription": "We skipped {{count}} characters this PDF doesn't name. For the most accurate scan, upload a .docx or paste your CV text.",
-      "checkoutRefusedTitle": "Couldn't start checkout"
+      "checkoutRefusedTitle": "Couldn't start checkout",
+      "resumeTooLong": "CV too long to scan",
+      "resumeTooLongDescription": "This CV is {{length}} characters; the free scan reads up to {{max}}. Shorten it (older roles and long lists go first) and scan again."
     },
     "reportCrash": {
       "title": "Something went wrong displaying your report",
@@ -1630,12 +1639,15 @@
     "languageNotice": {
       "unknownTitle": "We could not tell which language this CV is written in.",
       "unsupportedTitle": "This CV reads as {{language}}, a language this scan does not grade.",
-      "body": "Its keyword and section checks are built for English, Spanish, French, German, Portuguese, Dutch, Italian, Hindi and Tagalog, so they read your CV against those terms and may miss words in your language. Treat the keyword gaps below as a guide, not a verdict."
+      "body": "The report is written in your CV's language, but its keyword and section checks look for English terms, so they may miss words in your language. Treat the keyword gaps below as a guide, not a verdict."
     },
     "weakestBullets": {
       "title": "Your weakest bullet points, graded",
       "subtitle": "Quoted from your CV and graded on metrics, verbs and scope. Where a rewrite is shown, fill any [brackets] with your real numbers.",
-      "howToFix": "How to fix it (we couldn't rewrite this one from your CV alone)"
+      "howToFix": "How to fix it (we couldn't rewrite this one from your CV alone)",
+      "template": {
+        "verbAndNumber": "Rewrite this bullet to open with an action verb and end with a number, in the shape \"Led [what you did], achieving [metric]\"."
+      }
     },
     "readAs": {
       "label": "We read this as:",
@@ -1655,6 +1667,34 @@
         "transition": "we weren't fully sure of your industry on this one — your history reads as {{historical}}, but your latest role reads as {{recent}}. Confirm below and the report recalibrates.",
         "unsure": "we weren't fully sure of your industry on this one. Confirm or correct it below — benchmarks and keywords update at once."
       }
+    },
+    "builderHandoff": {
+      "title": "Turn this diagnosis into a finished CV",
+      "bodyRewrites_one": "Open the free builder with your CV loaded and this report's {{count}} bullet rewrite already applied, then export a cleanly typeset PDF or DOCX.",
+      "bodyRewrites_other": "Open the free builder with your CV loaded and this report's {{count}} bullet rewrites already applied, then export a cleanly typeset PDF or DOCX.",
+      "bodyNoRewrites": "This report has no rewrite the builder can apply. Open the free builder with your CV loaded and this report's missing keywords beside it, then export a cleanly typeset PDF or DOCX.",
+      "ctaRewrites_one": "Open in builder with {{count}} rewrite applied →",
+      "ctaRewrites_other": "Open in builder with {{count}} rewrites applied →",
+      "ctaNoRewrites": "Open in builder with your CV and missing keywords →"
+    },
+    "scoreSimulator": {
+      "title": "What happens if you fix it?",
+      "intro": "Tick the fixes you're willing to make.",
+      "basis": "Points are a rough guide (the AI's estimate per fix, or fixed points per kind of fix), not a forecast of your next scan.",
+      "aria": "Score {{score}}, projected {{projected}}",
+      "projectedLabel": "Projected:",
+      "gain_one": "(+{{count}} point)",
+      "gain_other": "(+{{count}} points)",
+      "current": "Your current score. Start ticking fixes below.",
+      "noGainCeiling": "No gain by this guide: it projects no score above {{ceiling}}, and yours is already there.",
+      "noGain": "These fixes add no points by this guide."
+    },
+    "fixLabels": {
+      "bulletsWeak_one": "Rewrite your {{count}} weakest bullet using the before/after examples above",
+      "bulletsWeak_other": "Rewrite your {{count}} weakest bullets using the before/after examples above",
+      "bulletsUnquantified_one": "Add a result with a number to {{count}} bullet that has none",
+      "bulletsUnquantified_other": "Add a result with a number to {{count}} bullets that have none",
+      "keywords": "Work {{keywords}} into your summary and experience bullets"
     }
   },
   "analysisPreviewSample": {

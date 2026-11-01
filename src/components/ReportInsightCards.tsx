@@ -2,7 +2,8 @@ import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ChevronDown, Download, Share2, Wrench, ArrowRight, Scale, Globe } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { FIX_POINTS_BASIS } from "@/lib/report-basis";
+import { fixLabel } from "@/lib/fix-labels";
+import { PROJECTION_CEILING } from "../../supabase/functions/free-keyword-scan/score-projection";
 import { SHARE_SITE } from "./ShareableScoreCard";
 import { scoreTone, TONE_HEX } from "@/lib/score-bands";
 
@@ -18,44 +19,61 @@ import { scoreTone, TONE_HEX } from "@/lib/score-bands";
 
 // ---------- Score simulator ----------
 
+/**
+ * The simulator reads the scanner's projection rule (score-projection.ts,
+ * S13-058): the score the boxes project is never below the score it started
+ * from and never above PROJECTION_CEILING, and the gain it prints is the
+ * gain the bar shows. It used to cap the projection at the ceiling but print
+ * the boxes' whole sum, so a 90 with three fixes read "Projected: 95 (+16
+ * points)", and a score already above the ceiling projected DOWN to it. Its
+ * words come from the reader's locale, the fix steps from their code
+ * (S13-122).
+ */
 export function ScoreSimulatorCard({
   atsScore,
   fixes,
 }: {
   atsScore: number;
-  fixes: Array<{ label: string; impact: number }>;
+  fixes: Array<{ label: string; impact: number; code?: unknown; params?: unknown }>;
 }) {
+  const { t } = useTranslation();
   const [checked, setChecked] = useState<boolean[]>(() => fixes.map(() => false));
   if (!fixes.length) return null;
 
-  const gained = fixes.reduce((sum, f, i) => sum + (checked[i] ? f.impact : 0), 0);
-  const projected = Math.min(95, atsScore + gained);
+  const checkedSum = fixes.reduce((sum, f, i) => sum + (checked[i] ? f.impact : 0), 0);
+  const anyChecked = checked.some(Boolean);
+  const projected = Math.max(atsScore, Math.min(PROJECTION_CEILING, atsScore + checkedSum));
+  const gain = projected - atsScore;
   const pct = (n: number) => `${Math.min(100, Math.max(0, n))}%`;
 
   return (
     <div className="rounded-2xl border border-border bg-card p-5 sm:p-6">
       <div className="flex items-center gap-2 mb-1">
         <Wrench className="w-4 h-4 text-primary" />
-        <h3 className="font-semibold text-foreground">What happens if you fix it?</h3>
+        <h3 className="font-semibold text-foreground">{t("freeResults.scoreSimulator.title")}</h3>
       </div>
       <p className="text-xs text-muted-foreground mb-4">
-        Check the fixes you're willing to make. {FIX_POINTS_BASIS}
+        {t("freeResults.scoreSimulator.intro")} {t("freeResults.scoreSimulator.basis")}
       </p>
 
-      <div className="relative h-8 rounded-full bg-muted overflow-hidden mb-1" role="img" aria-label={`Score ${atsScore}, projected ${projected}`}>
+      <div className="relative h-8 rounded-full bg-muted overflow-hidden mb-1" role="img" aria-label={t("freeResults.scoreSimulator.aria", { score: atsScore, projected })}>
         <div className="absolute inset-y-0 left-0 bg-primary/25 transition-all duration-500" style={{ width: pct(projected) }} />
         <div className="absolute inset-y-0 left-0 bg-primary transition-all duration-300" style={{ width: pct(atsScore) }} />
         <span className="absolute inset-y-0 flex items-center text-[11px] font-bold text-primary-foreground" style={{ left: `calc(${pct(atsScore)} - 28px)` }}>{atsScore}</span>
-        {gained > 0 && (
+        {gain > 0 && (
           <span className="absolute inset-y-0 flex items-center text-[11px] font-bold text-primary" style={{ left: `calc(${pct(projected)} + 6px)` }}>
             → {projected}
           </span>
         )}
       </div>
-      <p className="text-xs text-muted-foreground mb-4">
-        {gained > 0
-          ? <>Projected: <span className="font-semibold text-foreground">{projected}</span> (+{gained} points)</>
-          : "Your current score. Start checking fixes below."}
+      <p data-simulator-projection className="text-xs text-muted-foreground mb-4">
+        {gain > 0
+          ? <>{t("freeResults.scoreSimulator.projectedLabel")} <span className="font-semibold text-foreground">{projected}</span> {t("freeResults.scoreSimulator.gain", { count: gain })}</>
+          : anyChecked
+            ? (atsScore >= PROJECTION_CEILING
+              ? t("freeResults.scoreSimulator.noGainCeiling", { ceiling: PROJECTION_CEILING })
+              : t("freeResults.scoreSimulator.noGain"))
+            : t("freeResults.scoreSimulator.current")}
       </p>
 
       <div className="space-y-2">
@@ -67,7 +85,7 @@ export function ScoreSimulatorCard({
               onChange={() => setChecked(prev => prev.map((c, j) => j === i ? !c : c))}
               className="mt-0.5 accent-[hsl(var(--primary))]"
             />
-            <span className="text-xs text-foreground flex-1">{f.label}</span>
+            <span className="text-xs text-foreground flex-1">{fixLabel(t, f)}</span>
             <span className="text-xs font-semibold text-primary shrink-0">+{f.impact}</span>
           </label>
         ))}
@@ -164,7 +182,7 @@ export function WeakestBulletsCard({
 }: {
   /** rewrite is null when the scan could not ground one; rewriteTemplate is
    *  then shown as guidance, never as the rewrite (S13-038). */
-  bullets: Array<{ original: string; grade: string; issues: string[]; rewrite: string | null; rewriteTemplate?: string | null }>;
+  bullets: Array<{ original: string; grade: string; issues: string[]; rewrite: string | null; rewriteTemplate?: string | null; rewriteTemplateCode?: string | null }>;
 }) {
   const { t } = useTranslation();
   if (!bullets?.length) return null;
@@ -179,7 +197,11 @@ export function WeakestBulletsCard({
       <div className="space-y-3">
         {bullets.map((b, i) => {
           const rewrite = text(b.rewrite);
-          const template = rewrite ? null : text(b.rewriteTemplate);
+          // The scanner's own guidance says itself in the reader's language
+          // from its code (S13-122); an older response keeps its English.
+          const template = rewrite ? null
+            : b.rewriteTemplateCode === "verbAndNumber" ? t("freeResults.weakestBullets.template.verbAndNumber")
+            : text(b.rewriteTemplate);
           return (
             <div key={i} className="rounded-xl border border-border p-3.5">
               <div className="flex items-start gap-3 mb-2">

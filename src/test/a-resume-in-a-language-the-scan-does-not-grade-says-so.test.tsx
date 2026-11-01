@@ -9,6 +9,12 @@
  * got a report that read as an English reading of the whole document: the
  * item's "the report must SAY so" held only in the JSON. This holds the
  * field from the scanner's response to the banner, in the reader's language.
+ *
+ * Review fix (2026-11-01). The banner's body said the checks were "built for
+ * English, Spanish, French, German, Portuguese, Dutch, Italian, Hindi and
+ * Tagalog", but the keyword and section checks look for English terms only;
+ * the model writes the report's text in the résumé's language (the prompt's
+ * RESPOND rule). It now says that, and lists no languages.
  */
 import { describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react";
@@ -130,6 +136,23 @@ describe("the field travels from both scanners to the report under one name", ()
         expect(typeof n[k] === "string" && n[k].length > 20, `${file} ${k}`).toBe(true);
         if (!file.startsWith("en")) expect(n[k], `${file} ${k} is the English sentence`).not.toBe(en.freeResults.languageNotice[k]);
       }
+    }
+  });
+
+  it("the body says the checks look for English terms and the report is in the résumé's language, naming no list of languages", () => {
+    const body = en.freeResults.languageNotice.body;
+    expect(body).toMatch(/written in your resume's language/);
+    expect(body).toMatch(/look for English terms/);
+    for (const lang of ["Spanish", "French", "German", "Portuguese", "Dutch", "Italian", "Hindi", "Tagalog"]) expect(body).not.toContain(lang);
+    expect(read("supabase/functions/free-keyword-scan/index.ts")).toMatch(/RESPOND in the SAME LANGUAGE as the resume/);
+    // No locale keeps the old claim that the checks were built for nine languages.
+    const dir = resolve(ROOT, "src/i18n/locales");
+    for (const file of readdirSync(dir).filter((f) => f.endsWith(".json"))) {
+      const b = String(JSON.parse(readFileSync(resolve(dir, file), "utf8")).freeResults.languageNotice.body);
+      expect(b, file).not.toMatch(/Tagalog|Tagalo|Tagalogue/i);
+      const english: Record<string, string> = { "en.json": "English", "en-GB.json": "English", "de.json": "englisch", "fr.json": "anglais", "es.json": "inglés", "pt.json": "inglês", "nl.json": "Engelse", "hi.json": "अंग्रेज़ी", "tl.json": "English" };
+      expect(english[file], `${file} has no expected word for English here`).toBeTruthy();
+      expect(b.toLowerCase(), `${file} does not say the checks look for English terms`).toContain(english[file].toLowerCase());
     }
   });
 });

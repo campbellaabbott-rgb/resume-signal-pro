@@ -276,7 +276,8 @@
       "fileTypes": "PDF, DOCX of TXT (max 10 MB)",
       "browse": "Bladeren",
       "pasteHere": "Plak je CV-inhoud hier...",
-      "chars": "tekens"
+      "chars": "tekens",
+      "tooLong": "{{length}} tekens: de gratis scan leest er maximaal {{max}}. Maak de tekst korter voordat je scant."
     },
     "linkedin": {
       "title": "Je LinkedIn-profiel",
@@ -402,7 +403,8 @@
     "orGetCompleteAnalysis": "Of krijg de volledige analyse voor",
     "securePaymentStripe": "Veilige betaling via Stripe",
     "gsheetsImportFailed": "Importeren vanuit Google Sheets mislukt. Probeer het opnieuw.",
-    "gsheetsImportFailedShared": "Importeren vanuit Google Sheets mislukt. Zorg dat het sheet is gedeeld met 'Iedereen met de link'."
+    "gsheetsImportFailedShared": "Importeren vanuit Google Sheets mislukt. Zorg dat het sheet is gedeeld met 'Iedereen met de link'.",
+    "scanFooterPro": "Resultaten binnen {{seconds}} seconden • Pro: geen daglimiet op scans"
   },
   "faq": {
     "title": "Veelgestelde vragen",
@@ -862,6 +864,11 @@
       "good": "Goed",
       "needsImprovement": "Voor verbetering vatbaar",
       "poor": "Zwak"
+    },
+    "projection": {
+      "lead": "Los de punten hieronder op → ongeveer",
+      "gain_one": "(+{{count}} pt, een ruwe richtlijn)",
+      "gain_other": "(+{{count}} ptn, een ruwe richtlijn)"
     }
   },
   "careerSnapshot": {
@@ -1106,7 +1113,9 @@
       "fontUnreadableDescription": "Het lettertype verwijst niet naar echte tekens. Upload in plaats daarvan een .docx of plak de tekst van je cv.",
       "unreadCharacters": "Sommige tekens konden niet worden gelezen",
       "unreadCharactersDescription": "We hebben {{count}} tekens overgeslagen die deze PDF niet benoemt. Upload voor de nauwkeurigste scan een .docx of plak de tekst van je cv.",
-      "checkoutRefusedTitle": "Afrekenen kon niet worden gestart"
+      "checkoutRefusedTitle": "Afrekenen kon niet worden gestart",
+      "resumeTooLong": "Cv te lang om te scannen",
+      "resumeTooLongDescription": "Dit cv telt {{length}} tekens; de gratis scan leest er maximaal {{max}}. Maak het korter (eerst oudere functies en lange lijsten) en scan opnieuw."
     },
     "reportCrash": {
       "title": "Er ging iets mis bij het tonen van je rapport",
@@ -1630,12 +1639,15 @@
     "languageNotice": {
       "unknownTitle": "We konden niet vaststellen in welke taal dit cv is geschreven.",
       "unsupportedTitle": "Dit cv lijkt in het {{language}} geschreven, een taal die deze scan niet beoordeelt.",
-      "body": "De controles op trefwoorden en secties zijn gemaakt voor Engels, Spaans, Frans, Duits, Portugees, Nederlands, Italiaans, Hindi en Tagalog, dus ze lezen je cv met die termen en kunnen woorden in jouw taal missen. Zie de ontbrekende trefwoorden hieronder als richtlijn, niet als oordeel."
+      "body": "Het rapport is geschreven in de taal van je cv, maar de controles op trefwoorden en secties zoeken naar Engelse termen en kunnen dus woorden in jouw taal missen. Zie de ontbrekende trefwoorden hieronder als richtlijn, niet als oordeel."
     },
     "weakestBullets": {
       "title": "Je zwakste opsommingspunten, beoordeeld",
       "subtitle": "Geciteerd uit je cv en beoordeeld op cijfers, werkwoorden en reikwijdte. Waar een herschrijving staat, vul je de [haken] in met je echte cijfers.",
-      "howToFix": "Zo verbeter je het (alleen op basis van je cv konden we dit niet herschrijven)"
+      "howToFix": "Zo verbeter je het (alleen op basis van je cv konden we dit niet herschrijven)",
+      "template": {
+        "verbAndNumber": "Herschrijf deze bullet zodat hij begint met een actiewerkwoord en eindigt met een getal, in de vorm \"[wat je deed] geleid en daarmee [resultaat] bereikt\"."
+      }
     },
     "readAs": {
       "label": "Zo hebben we het gelezen:",
@@ -1655,6 +1667,34 @@
         "transition": "we wisten je branche hier niet helemaal zeker — je loopbaan leest als {{historical}}, maar je laatste functie als {{recent}}. Bevestig hieronder en het rapport past zich aan.",
         "unsure": "we wisten je branche hier niet helemaal zeker. Bevestig of corrigeer hem hieronder — vergelijkingen en trefwoorden passen zich meteen aan."
       }
+    },
+    "builderHandoff": {
+      "title": "Maak van deze diagnose een afgerond cv",
+      "bodyRewrites_one": "Open de gratis builder met je cv geladen en de {{count}} herschreven bullet uit dit rapport al toegepast, en exporteer daarna een netjes opgemaakte PDF of DOCX.",
+      "bodyRewrites_other": "Open de gratis builder met je cv geladen en de {{count}} herschreven bullets uit dit rapport al toegepast, en exporteer daarna een netjes opgemaakte PDF of DOCX.",
+      "bodyNoRewrites": "Dit rapport heeft geen herschrijving die de builder kan toepassen. Open de gratis builder met je cv geladen en de ontbrekende trefwoorden uit dit rapport ernaast, en exporteer daarna een netjes opgemaakte PDF of DOCX.",
+      "ctaRewrites_one": "Openen in de builder met {{count}} herschrijving toegepast →",
+      "ctaRewrites_other": "Openen in de builder met {{count}} herschrijvingen toegepast →",
+      "ctaNoRewrites": "Openen in de builder met je cv en de ontbrekende trefwoorden →"
+    },
+    "scoreSimulator": {
+      "title": "Wat gebeurt er als je het oplost?",
+      "intro": "Vink de verbeteringen aan die je wilt doorvoeren.",
+      "basis": "De punten zijn een ruwe richtlijn (de schatting van de AI per verbetering, of vaste punten per soort verbetering), geen voorspelling van je volgende scan.",
+      "aria": "Score {{score}}, verwacht {{projected}}",
+      "projectedLabel": "Verwacht:",
+      "gain_one": "(+{{count}} punt)",
+      "gain_other": "(+{{count}} punten)",
+      "current": "Je huidige score. Vink hieronder verbeteringen aan.",
+      "noGainCeiling": "Geen winst volgens deze richtlijn: ze voorspelt geen score boven {{ceiling}}, en de jouwe zit daar al.",
+      "noGain": "Volgens deze richtlijn leveren deze verbeteringen geen punten op."
+    },
+    "fixLabels": {
+      "bulletsWeak_one": "Herschrijf je {{count}} zwakste bullet met de voor-en-na-voorbeelden hierboven",
+      "bulletsWeak_other": "Herschrijf je {{count}} zwakste bullets met de voor-en-na-voorbeelden hierboven",
+      "bulletsUnquantified_one": "Voeg een resultaat met een getal toe aan {{count}} bullet zonder getal",
+      "bulletsUnquantified_other": "Voeg een resultaat met een getal toe aan {{count}} bullets zonder getal",
+      "keywords": "Verwerk {{keywords}} in je samenvatting en je ervaringsbullets"
     }
   },
   "analysisPreviewSample": {

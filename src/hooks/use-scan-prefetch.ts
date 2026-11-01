@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import { validateResumeBeforeSend } from '@/lib/resume-validation';
+import { MAX_RESUME_LENGTH, validateResumeBeforeSend } from '@/lib/resume-validation';
 import { clearAllClientScanCaches } from './use-streaming-scan';
 import { scannableJobDescription } from '@/lib/job-description-input';
 
@@ -122,7 +122,8 @@ export function useScanPrefetch({ resumeText, jobDescriptionText, honeypot, onVa
 
   // Run actual scan in background
   const runBackgroundScan = useCallback(async (text: string, jobDesc?: string, hp?: string) => {
-    if (!text || text.length < 100) return;
+    // Over the scanners' cap the scan answers 400: nothing is sent (S13-008).
+    if (!text || text.length < 100 || text.trim().length > MAX_RESUME_LENGTH) return;
     
     const currentHash = getSimpleHash(text);
     

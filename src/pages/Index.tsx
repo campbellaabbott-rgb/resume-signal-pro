@@ -69,6 +69,8 @@ import { consentWasRequired, purchaseTerms } from "@/lib/purchase-terms";
 import { useBackForwardRestore } from "@/hooks/use-back-forward-restore";
 import { resilientCallers, callEdgeFunctionWithRetry, scanFailureKind } from "@/lib/resilient-edge-function";
 import { parseFailureCopy, parseNoticeCopy } from "@/lib/parse-failure-copy";
+import { MAX_RESUME_LENGTH } from "@/lib/resume-validation";
+import { outcomeWasStored, type ScanOutcomeRpcAnswer } from "@/lib/scan-outcome-answer";
 import { prepareJobAnalysisScan } from "@/lib/job-analysis-scan";
 import { parseEdgeFunctionError } from "@/lib/edge-function-errors";
 import { 
@@ -576,8 +578,10 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
   }, []);
 
   // Outcome links from the scan-report email land here (?outcome=&rid=).
-  // Record via the same anonymous RPC the in-report buttons use, thank the
-  // visitor, and clean the URL so refreshes don't re-record.
+  // Record via the same anonymous RPC the in-report buttons use, say whether
+  // it was kept, and clean the URL so refreshes don't re-record. The thanks
+  // is for a stored answer only (S13-057): a refusal or an error says
+  // nothing was recorded, in the visitor's language.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const outcome = params.get("outcome");
@@ -591,8 +595,10 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
       "record_scan_outcome",
       { p_report_id: rid, p_outcome: outcome, p_ip: visitor },
     ).then(
-      () => toast({ title: "Recorded — thank you", description: "Anonymous outcome saved. Every answer sharpens the benchmarks we publish." }),
-      () => { /* best-effort */ },
+      (res) => toast(outcomeWasStored(res as ScanOutcomeRpcAnswer)
+        ? { title: t("scanOutcome.recorded") }
+        : { title: t("scanOutcome.notSaved"), variant: "destructive" }),
+      () => toast({ title: t("scanOutcome.notSaved"), variant: "destructive" }),
     );
     params.delete("outcome");
     params.delete("rid");
@@ -852,6 +858,25 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
     }
   }, [searchParams, toast, verifyPurchase]);
 
+  // A RÉSUMÉ LONGER THAN THE SCANNERS READ IS REFUSED HERE (register S13-008).
+  // The scanner answers one over its cap with a 400, so the page used to show
+  // a parsed file and then fail the scan. The person is told as soon as the
+  // text is read, and the free scan is not sent; the résumé stays on the page
+  // (a purchase is made from it as before).
+  const tooLongToScan = (text: string): boolean => {
+    const length = text.trim().length;
+    if (length <= MAX_RESUME_LENGTH) return false;
+    toast({
+      title: t('homepage.toast.resumeTooLong'),
+      description: t('homepage.toast.resumeTooLongDescription', {
+        length: length.toLocaleString(i18n.language),
+        max: MAX_RESUME_LENGTH.toLocaleString(i18n.language),
+      }),
+      variant: "destructive",
+    });
+    return true;
+  };
+
   const handleFileSelect = async (file: File) => {
     // This read's number: a later pick or a Clear makes its answer stale.
     const seq = ++parseSeqRef.current;
@@ -900,6 +925,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
       preStoreResume(text); // Pre-store server-side for faster checkout
       triggerBackgroundScan(text, jobDescriptionText, honeypot); // Start background scan
       trackUploadCompleted(file.size);
+      tooLongToScan(text);
       return;
     }
 
@@ -936,7 +962,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
           // Characters the PDF does not name were left out: say so, and how to
           // get them read (S11-035).
           const notice = parseNoticeCopy(t, data);
-          toast(notice ?? {
+          if (!tooLongToScan(data.text)) toast(notice ?? {
             title: t('homepage.toast.pdfParsedSuccess'),
             description: t('homepage.toast.pdfParsedSuccessDescription', { pages: data.pages }),
           });
@@ -991,7 +1017,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
           preStoreResume(data.text); // Pre-store server-side for faster checkout
           triggerBackgroundScan(data.text, jobDescriptionText, honeypot); // Start background scan
           trackUploadCompleted(file.size, Date.now());
-          toast({
+          if (!tooLongToScan(data.text)) toast({
             title: t('homepage.toast.docParsedSuccess'),
             description: t('homepage.toast.docParsedSuccessDescription'),
           });
@@ -1057,6 +1083,9 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
     // anything: the success page then generated paid products from an
     // earlier upload, or found no résumé at all. Now every scan writes the
     // session whole and re-stores the server copy when the inputs changed.
+    // Over the scanners' cap: said, and nothing is stored or sent (S13-008).
+    if (tooLongToScan(contentToAnalyze)) return;
+
     if (contentToAnalyze) {
       persistScanInputs(contentToAnalyze, linkedInText || undefined, jdForScan);
     }

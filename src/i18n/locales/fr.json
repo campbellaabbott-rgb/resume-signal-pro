@@ -276,7 +276,8 @@
       "fileTypes": "PDF, DOCX ou TXT (max 10 Mo)",
       "browse": "Parcourir",
       "pasteHere": "Collez le contenu de votre CV ici...",
-      "chars": "caractères"
+      "chars": "caractères",
+      "tooLong": "{{length}} caractères : l'analyse gratuite en lit jusqu'à {{max}}. Raccourcissez le texte avant l'analyse."
     },
     "linkedin": {
       "title": "Votre profil LinkedIn",
@@ -403,7 +404,8 @@
     "securePaymentStripe": "Paiement sécurisé via Stripe",
     "gsheetsImportFailed": "Échec de l'importation depuis Google Sheets. Veuillez réessayer.",
     "gsheetsImportFailedShared": "Échec de l'importation depuis Google Sheets. Assurez-vous que la feuille est partagée avec « Tous les utilisateurs disposant du lien ».",
-    "otherJobsAvailable_many": "{{count}} autres postes disponibles"
+    "otherJobsAvailable_many": "{{count}} autres postes disponibles",
+    "scanFooterPro": "Résultats en {{seconds}} secondes maximum • Pro : aucune limite quotidienne de scans"
   },
   "faq": {
     "title": "Questions fréquentes",
@@ -866,7 +868,13 @@
     },
     "eliteSignal_many": "{{count}} signaux d'élite",
     "issue_many": "{{count}} problèmes",
-    "quickFix_many": "{{count}} corrections rapides"
+    "quickFix_many": "{{count}} corrections rapides",
+    "projection": {
+      "lead": "Corrigez les points ci-dessous → environ",
+      "gain_one": "(+{{count}} pt, une estimation approximative)",
+      "gain_many": "(+{{count}} pts, une estimation approximative)",
+      "gain_other": "(+{{count}} pts, une estimation approximative)"
+    }
   },
   "careerSnapshot": {
     "downloadPdf": "Télécharger le rapport PDF",
@@ -1112,7 +1120,9 @@
       "fontUnreadableDescription": "Sa police ne correspond pas à de vrais caractères. Téléversez plutôt un .docx ou collez le texte de votre CV.",
       "unreadCharacters": "Certains caractères n'ont pas pu être lus",
       "unreadCharactersDescription": "Nous avons ignoré {{count}} caractères que ce PDF ne nomme pas. Pour l'analyse la plus précise, téléversez un .docx ou collez le texte de votre CV.",
-      "checkoutRefusedTitle": "Impossible de lancer le paiement"
+      "checkoutRefusedTitle": "Impossible de lancer le paiement",
+      "resumeTooLong": "CV trop long pour l'analyse",
+      "resumeTooLongDescription": "Ce CV compte {{length}} caractères ; l'analyse gratuite en lit jusqu'à {{max}}. Raccourcissez-le (d'abord les postes anciens et les longues listes) et relancez l'analyse."
     },
     "reportCrash": {
       "title": "Un problème est survenu lors de l'affichage de votre rapport",
@@ -1640,12 +1650,15 @@
     "languageNotice": {
       "unknownTitle": "Nous n'avons pas pu déterminer dans quelle langue ce CV est rédigé.",
       "unsupportedTitle": "Ce CV semble rédigé en {{language}}, une langue que cette analyse n'évalue pas.",
-      "body": "Les vérifications des mots-clés et des sections sont conçues pour l'anglais, l'espagnol, le français, l'allemand, le portugais, le néerlandais, l'italien, l'hindi et le tagalog : elles lisent donc votre CV avec ces termes et peuvent manquer des mots de votre langue. Considérez les mots-clés manquants ci-dessous comme une indication, pas comme un verdict."
+      "body": "Le rapport est rédigé dans la langue de votre CV, mais les vérifications des mots-clés et des sections cherchent des termes anglais : elles peuvent donc manquer des mots de votre langue. Considérez les mots-clés manquants ci-dessous comme une indication, pas comme un verdict."
     },
     "weakestBullets": {
       "title": "Vos puces les plus faibles, notées",
       "subtitle": "Citées de votre CV et notées selon les chiffres, les verbes et la portée. Lorsqu'une reformulation est proposée, remplacez les [crochets] par vos vrais chiffres.",
-      "howToFix": "Comment l'améliorer (nous n'avons pas pu la reformuler à partir de votre seul CV)"
+      "howToFix": "Comment l'améliorer (nous n'avons pas pu la reformuler à partir de votre seul CV)",
+      "template": {
+        "verbAndNumber": "Reformulez cette puce pour qu'elle commence par un verbe d'action et se termine par un chiffre, sur le modèle « J'ai dirigé [ce que vous avez fait] et obtenu [indicateur] »."
+      }
     },
     "readAs": {
       "label": "Notre lecture :",
@@ -1665,6 +1678,39 @@
         "transition": "nous n'étions pas tout à fait sûrs de votre secteur ici — votre parcours se lit comme {{historical}}, mais votre dernier poste comme {{recent}}. Confirmez ci-dessous et le rapport se recalibre.",
         "unsure": "nous n'étions pas tout à fait sûrs de votre secteur ici. Confirmez-le ou corrigez-le ci-dessous — repères et mots-clés se mettent à jour aussitôt."
       }
+    },
+    "builderHandoff": {
+      "title": "Transformez ce diagnostic en CV abouti",
+      "bodyRewrites_one": "Ouvrez l'éditeur gratuit avec votre CV chargé et {{count}} reformulation de puce de ce rapport déjà appliquée, puis exportez un PDF ou DOCX proprement mis en page.",
+      "bodyRewrites_many": "Ouvrez l'éditeur gratuit avec votre CV chargé et {{count}} reformulations de puces de ce rapport déjà appliquées, puis exportez un PDF ou DOCX proprement mis en page.",
+      "bodyRewrites_other": "Ouvrez l'éditeur gratuit avec votre CV chargé et {{count}} reformulations de puces de ce rapport déjà appliquées, puis exportez un PDF ou DOCX proprement mis en page.",
+      "bodyNoRewrites": "Ce rapport n'a aucune reformulation que l'éditeur peut appliquer. Ouvrez l'éditeur gratuit avec votre CV chargé et les mots-clés manquants de ce rapport à côté, puis exportez un PDF ou DOCX proprement mis en page.",
+      "ctaRewrites_one": "Ouvrir dans l'éditeur avec {{count}} reformulation appliquée →",
+      "ctaRewrites_many": "Ouvrir dans l'éditeur avec {{count}} reformulations appliquées →",
+      "ctaRewrites_other": "Ouvrir dans l'éditeur avec {{count}} reformulations appliquées →",
+      "ctaNoRewrites": "Ouvrir dans l'éditeur avec votre CV et les mots-clés manquants →"
+    },
+    "scoreSimulator": {
+      "title": "Que se passe-t-il si vous corrigez ?",
+      "intro": "Cochez les corrections que vous êtes prêt à faire.",
+      "basis": "Les points sont une estimation approximative (l'estimation de l'IA par correction, ou des points fixes par type de correction), pas une prévision de votre prochaine analyse.",
+      "aria": "Score {{score}}, projeté {{projected}}",
+      "projectedLabel": "Projection :",
+      "gain_one": "(+{{count}} point)",
+      "gain_many": "(+{{count}} points)",
+      "gain_other": "(+{{count}} points)",
+      "current": "Votre score actuel. Cochez des corrections ci-dessous.",
+      "noGainCeiling": "Aucun gain selon cette estimation : elle ne projette aucun score au-delà de {{ceiling}}, et le vôtre y est déjà.",
+      "noGain": "Selon cette estimation, ces corrections n'ajoutent aucun point."
+    },
+    "fixLabels": {
+      "bulletsWeak_one": "Reformulez votre puce la plus faible à l'aide des exemples avant/après ci-dessus",
+      "bulletsWeak_many": "Reformulez vos {{count}} puces les plus faibles à l'aide des exemples avant/après ci-dessus",
+      "bulletsWeak_other": "Reformulez vos {{count}} puces les plus faibles à l'aide des exemples avant/après ci-dessus",
+      "bulletsUnquantified_one": "Ajoutez un résultat chiffré à {{count}} puce qui n'en a pas",
+      "bulletsUnquantified_many": "Ajoutez un résultat chiffré à {{count}} puces qui n'en ont pas",
+      "bulletsUnquantified_other": "Ajoutez un résultat chiffré à {{count}} puces qui n'en ont pas",
+      "keywords": "Intégrez {{keywords}} à votre résumé et à vos puces d'expérience"
     }
   },
   "analysisPreviewSample": {

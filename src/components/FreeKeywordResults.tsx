@@ -51,6 +51,7 @@ import { RedFlagsSection, KeywordsSection } from "./scorecard/RedFlagsKeywords";
 import { SectionNav } from "./scorecard/SectionNav";
 import { scoreTone } from "@/lib/score-bands";
 import { isUsableRewrite } from "@/lib/builder-import";
+import { fixLabel, isFixCode } from "@/lib/fix-labels";
 import { CollapsibleSection } from "./scorecard/CollapsibleSection";
 import { 
   EnhancedAnalysisDisplay, 
@@ -483,7 +484,7 @@ export interface FreeKeywordResultsProps {
   projectedScore?: number | null;
   /** The scanner's one fix list (S13-058): projectedScore is its `to`, and the
    *  simulator ticks through its fixes to reach the same total. */
-  scoreProjection?: { to?: number; fixes?: Array<{ label?: unknown; impact?: unknown }> } | null;
+  scoreProjection?: { to?: number; fixes?: Array<{ label?: unknown; impact?: unknown; code?: unknown; params?: unknown }> } | null;
   // Market intelligence
   marketIntelligence?: {
     country: string; countryName: string; countrySource: string;
@@ -531,7 +532,7 @@ export interface FreeKeywordResultsProps {
     user: { quantifiedBullets: number; leadershipSignals: number; keywordCoveragePct: number };
   };
   fixRoadmap?: {
-    steps: Array<{ order: number; step: string; minutes: number; scoreImpact: number; projectedScoreAfter: number }>;
+    steps: Array<{ order: number; step: string; code?: unknown; params?: unknown; minutes: number; scoreImpact: number; projectedScoreAfter: number }>;
     totalMinutes: number;
     finalProjectedScore: number;
   };
@@ -560,7 +561,7 @@ export interface FreeKeywordResultsProps {
   };
   /** rewrite is null when the scan could not ground one (newer responses);
    *  rewriteTemplate is then guidance for the person, never a bullet. */
-  weakestBullets?: Array<{ original: string; grade: string; issues: string[]; rewrite: string | null; rewriteTemplate?: string | null }>;
+  weakestBullets?: Array<{ original: string; grade: string; issues: string[]; rewrite: string | null; rewriteTemplate?: string | null; rewriteTemplateCode?: string | null }>;
   careerChangeBridge?: {
     fromField: string; toField: string; carryOver: string[];
     needsReframing: Array<{ current: string; reframed: string }>;
@@ -1131,15 +1132,32 @@ export function FreeKeywordResults({
   // box ticked lands on the hero's projected score, the Fix Plan's last step
   // and Improvement Potential: the quick wins served plus the bullets and
   // keywords steps. An older response without the list keeps the quick wins.
-  const simulatorFixes: Array<{ label: string; impact: number }> = (() => {
+  // A step's code and params ride along so the card says it in the reader's
+  // language (S13-122); the English label stays for a step with no code.
+  const simulatorFixes: Array<{ label: string; impact: number; code?: unknown; params?: unknown }> = (() => {
     const listed = Array.isArray(scoreProjection?.fixes)
       ? scoreProjection!.fixes!.flatMap((f) =>
           f && typeof f.label === 'string' && f.label.trim() && typeof f.impact === 'number' && Number.isFinite(f.impact)
-            ? [{ label: f.label, impact: Math.max(0, Math.round(f.impact)) }]
+            ? [{ label: f.label, impact: Math.max(0, Math.round(f.impact)), ...(isFixCode(f.code) ? { code: f.code, params: f.params } : {}) }]
             : [])
       : [];
     if (listed.length > 0) return listed;
     return quickWins.slice(0, 5).map(w => ({ label: w.fix, impact: w.scoreImpact ?? (w.impact === 'high' ? 6 : w.impact === 'medium' ? 4 : 2) }));
+  })();
+  // The rewrites the builder will apply (S13-038): only a real rewrite,
+  // never a null one, an instruction template, or one with an unfilled
+  // [number]; each bullet once, the first rewrite winning. The hand-off box
+  // counts these and hands exactly these over.
+  const handoffRewrites: Array<{ before: string; after: string }> = (() => {
+    const seen = new Set<string>();
+    return [
+      ...(weakestBullets ?? []).map((b) => ({ before: b.original, after: b.rewrite })),
+      ...(additionalRewrites ?? []).map((r) => ({ before: r.before, after: r.after })),
+    ].flatMap((r) => {
+      if (!r.before || !isUsableRewrite(r.after) || seen.has(r.before)) return [];
+      seen.add(r.before);
+      return [{ before: r.before, after: r.after }];
+    });
   })();
   const sampleRewrite = sampleRewriteProp;
   // No fallback, deliberately: the old hardcoded default showed every user
@@ -3804,7 +3822,7 @@ export function FreeKeywordResults({
                   {s.order}
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm text-foreground">{s.step}</p>
+                  <p className="text-sm text-foreground">{fixLabel(t, { label: s.step, code: s.code, params: s.params })}</p>
                   <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                     <span>⏱️ ~{s.minutes} min</span>
                     <span className="px-1.5 py-0.5 rounded-full bg-success/10 text-success font-semibold">+{s.scoreImpact} pts</span>
@@ -3967,33 +3985,25 @@ export function FreeKeywordResults({
 
       {/* Diagnosis → treatment: hand the builder this resume plus every
           rewrite from the report. sessionStorage carries the payload; the
-          builder applies matching bullet rewrites and shows missing keywords. */}
+          builder applies matching bullet rewrites and shows missing keywords.
+          The box says how many rewrites it will apply, and offers the résumé
+          and the missing keywords when there are none (S13-038): it used to
+          promise "fixes applied" over a report with nothing to apply. */}
       {resumeText && resumeText.trim().length > 100 && (
-        <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4 mb-6">
-          <p className="text-sm font-semibold text-foreground mb-0.5">Turn this diagnosis into a finished resume</p>
+        <div data-builder-handoff className="rounded-2xl border border-primary/30 bg-primary/5 p-4 mb-6">
+          <p className="text-sm font-semibold text-foreground mb-0.5">{t('freeResults.builderHandoff.title')}</p>
           <p className="text-xs text-muted-foreground mb-3">
-            Open the free builder with your resume loaded and this report's bullet rewrites already applied —
-            then export a cleanly typeset PDF or DOCX.
+            {handoffRewrites.length > 0
+              ? t('freeResults.builderHandoff.bodyRewrites', { count: handoffRewrites.length })
+              : t('freeResults.builderHandoff.bodyNoRewrites')}
           </p>
           <Link
             to="/builder"
             onClick={() => {
               try {
                 sessionStorage.setItem('rb_resume_text', resumeText);
-                // Only a real rewrite goes in: never a null one, an
-                // instruction template, or one with an unfilled [number]
-                // (S13-038). Each bullet once, the first rewrite winning.
-                const seen = new Set<string>();
-                const rewrites = [
-                  ...(weakestBullets ?? []).map((b) => ({ before: b.original, after: b.rewrite })),
-                  ...(additionalRewrites ?? []).map((r) => ({ before: r.before, after: r.after })),
-                ].flatMap((r) => {
-                  if (!r.before || !isUsableRewrite(r.after) || seen.has(r.before)) return [];
-                  seen.add(r.before);
-                  return [{ before: r.before, after: r.after }];
-                });
                 sessionStorage.setItem('rb_scan_fixes', JSON.stringify({
-                  rewrites,
+                  rewrites: handoffRewrites,
                   keywords: (keywords ?? []).slice(0, 12).map((k) => k.keyword),
                   reportId: reportMeta?.reportId ?? null,
                 }));
@@ -4001,7 +4011,9 @@ export function FreeKeywordResults({
             }}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
           >
-            Open in builder with fixes applied →
+            {handoffRewrites.length > 0
+              ? t('freeResults.builderHandoff.ctaRewrites', { count: handoffRewrites.length })
+              : t('freeResults.builderHandoff.ctaNoRewrites')}
           </Link>
         </div>
       )}

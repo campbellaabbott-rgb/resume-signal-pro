@@ -276,7 +276,8 @@
       "fileTypes": "PDF, DOCX, o TXT (max 10MB)",
       "browse": "Mag-browse ng files",
       "pasteHere": "I-paste ang content ng iyong resume dito...",
-      "chars": "karakter"
+      "chars": "karakter",
+      "tooLong": "{{length}} na character: hanggang {{max}} lang ang binabasa ng libreng scan. Paikliin ito bago mag-scan."
     },
     "linkedin": {
       "title": "Ang Iyong LinkedIn Profile",
@@ -402,7 +403,8 @@
     "orGetCompleteAnalysis": "O kunin ang kumpletong analysis sa halagang",
     "securePaymentStripe": "Secure na bayad gamit ang Stripe",
     "gsheetsImportFailed": "Hindi na-import mula sa Google Sheets. Pakisubukan ulit.",
-    "gsheetsImportFailedShared": "Hindi na-import mula sa Google Sheets. Siguraduhing naka-share ang sheet sa 'Anyone with the link'."
+    "gsheetsImportFailedShared": "Hindi na-import mula sa Google Sheets. Siguraduhing naka-share ang sheet sa 'Anyone with the link'.",
+    "scanFooterPro": "Resulta sa loob ng {{seconds}} segundo • Pro: walang pang-araw-araw na limitasyon sa scan"
   },
   "faq": {
     "title": "Mga Madalas Itanong",
@@ -862,6 +864,11 @@
       "good": "Maganda",
       "needsImprovement": "Kailangan ng Pagpapabuti",
       "poor": "Mahina"
+    },
+    "projection": {
+      "lead": "Ayusin ang mga isyu sa ibaba → mga",
+      "gain_one": "(+{{count}} puntos, magaspang na gabay)",
+      "gain_other": "(+{{count}} puntos, magaspang na gabay)"
     }
   },
   "careerSnapshot": {
@@ -1106,7 +1113,9 @@
       "fontUnreadableDescription": "Hindi tumutugma sa tunay na mga karakter ang font nito. Mag-upload na lang ng .docx o i-paste ang teksto ng iyong resume.",
       "unreadCharacters": "May ilang karakter na hindi nabasa",
       "unreadCharactersDescription": "Nilaktawan namin ang {{count}} karakter na hindi pinangalanan ng PDF na ito. Para sa pinakatumpak na scan, mag-upload ng .docx o i-paste ang teksto ng iyong resume.",
-      "checkoutRefusedTitle": "Hindi masimulan ang checkout"
+      "checkoutRefusedTitle": "Hindi masimulan ang checkout",
+      "resumeTooLong": "Masyadong mahaba ang resume para i-scan",
+      "resumeTooLongDescription": "May {{length}} na character ang resume na ito; hanggang {{max}} lang ang binabasa ng libreng scan. Paikliin ito (unahin ang mga lumang trabaho at mahahabang listahan) at i-scan muli."
     },
     "reportCrash": {
       "title": "May nagkamali sa pagpapakita ng iyong ulat",
@@ -1630,12 +1639,15 @@
     "languageNotice": {
       "unknownTitle": "Hindi namin matukoy kung anong wika ang ginamit sa resume mo.",
       "unsupportedTitle": "Mukhang nakasulat sa {{language}} ang resume mo, isang wikang hindi sinusuri ng scan na ito.",
-      "body": "Ang mga pagsusuri sa keyword at seksyon ay ginawa para sa English, Spanish, French, German, Portuguese, Dutch, Italian, Hindi at Tagalog, kaya binabasa nito ang resume mo gamit ang mga terminong iyon at maaaring makaligtaan ang mga salita sa wika mo. Ituring ang mga kulang na keyword sa ibaba bilang gabay, hindi hatol."
+      "body": "Nakasulat ang ulat sa wika ng resume mo, pero ang mga pagsusuri sa keyword at seksyon ay naghahanap ng mga terminong English, kaya maaaring makaligtaan nito ang mga salita sa wika mo. Ituring ang mga kulang na keyword sa ibaba bilang gabay, hindi hatol."
     },
     "weakestBullets": {
       "title": "Ang pinakamahihinang bullet mo, may marka",
       "subtitle": "Sinipi mula sa resume mo at minarkahan ayon sa numero, pandiwa at saklaw. Kapag may ipinakitang rewrite, punan ang mga [bracket] ng totoong numero mo.",
-      "howToFix": "Paano ito ayusin (hindi namin ito ma-rewrite mula sa resume mo lang)"
+      "howToFix": "Paano ito ayusin (hindi namin ito ma-rewrite mula sa resume mo lang)",
+      "template": {
+        "verbAndNumber": "Isulat muli ang bullet na ito para magsimula sa isang action verb at magtapos sa isang numero, sa anyong \"Pinamunuan ang [ginawa mo], at nakamit ang [sukatan]\"."
+      }
     },
     "readAs": {
       "label": "Ganito namin ito binasa:",
@@ -1655,6 +1667,34 @@
         "transition": "hindi kami lubos na sigurado sa industriya mo rito — mukhang {{historical}} ang kasaysayan mo, pero {{recent}} ang pinakabago mong posisyon. Kumpirmahin sa ibaba at aangkop ang report.",
         "unsure": "hindi kami lubos na sigurado sa industriya mo rito. Kumpirmahin o itama ito sa ibaba — agad na mag-a-update ang mga benchmark at keyword."
       }
+    },
+    "builderHandoff": {
+      "title": "Gawing tapos na resume ang diagnosis na ito",
+      "bodyRewrites_one": "Buksan ang libreng builder na naka-load na ang resume mo at nakalapat na ang {{count}} rewrite ng bullet mula sa ulat na ito, saka mag-export ng maayos na PDF o DOCX.",
+      "bodyRewrites_other": "Buksan ang libreng builder na naka-load na ang resume mo at nakalapat na ang {{count}} rewrite ng mga bullet mula sa ulat na ito, saka mag-export ng maayos na PDF o DOCX.",
+      "bodyNoRewrites": "Walang rewrite sa ulat na ito na mailalapat ng builder. Buksan ang libreng builder na naka-load na ang resume mo at nasa tabi nito ang mga kulang na keyword ng ulat na ito, saka mag-export ng maayos na PDF o DOCX.",
+      "ctaRewrites_one": "Buksan sa builder na may {{count}} rewrite na nakalapat →",
+      "ctaRewrites_other": "Buksan sa builder na may {{count}} rewrite na nakalapat →",
+      "ctaNoRewrites": "Buksan sa builder kasama ang resume mo at ang mga kulang na keyword →"
+    },
+    "scoreSimulator": {
+      "title": "Ano ang mangyayari kung aayusin mo?",
+      "intro": "Lagyan ng tsek ang mga ayos na handa mong gawin.",
+      "basis": "Magaspang na gabay lang ang mga puntos (tantiya ng AI bawat ayos, o nakatakdang puntos bawat uri ng ayos), hindi hula sa susunod mong scan.",
+      "aria": "Score {{score}}, tinatayang {{projected}}",
+      "projectedLabel": "Tinatayang score:",
+      "gain_one": "(+{{count}} puntos)",
+      "gain_other": "(+{{count}} puntos)",
+      "current": "Ang kasalukuyan mong score. Simulang lagyan ng tsek ang mga ayos sa ibaba.",
+      "noGainCeiling": "Walang dagdag ayon sa gabay na ito: walang tinatayang score na lampas sa {{ceiling}}, at nandoon na ang sa iyo.",
+      "noGain": "Ayon sa gabay na ito, walang dagdag na puntos ang mga ayos na ito."
+    },
+    "fixLabels": {
+      "bulletsWeak_one": "Isulat muli ang {{count}} pinakamahinang bullet mo gamit ang mga halimbawang bago/pagkatapos sa itaas",
+      "bulletsWeak_other": "Isulat muli ang {{count}} pinakamahinang bullet mo gamit ang mga halimbawang bago/pagkatapos sa itaas",
+      "bulletsUnquantified_one": "Magdagdag ng resultang may numero sa {{count}} bullet na wala nito",
+      "bulletsUnquantified_other": "Magdagdag ng resultang may numero sa {{count}} bullet na wala nito",
+      "keywords": "Isama ang {{keywords}} sa summary at mga bullet ng karanasan mo"
     }
   },
   "analysisPreviewSample": {

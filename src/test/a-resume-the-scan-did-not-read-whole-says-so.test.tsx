@@ -9,9 +9,14 @@
  * anything was still cut; the report must say so. And the client let through
  * up to 100,000 characters against the scanner's 50,000, so a long CV
  * "uploaded" and was then refused with a 400.
+ *
+ * Review fix (2026-11-01). The client's cap was right but nothing on the free
+ * scan's path read it. The uploader now says so under the box as soon as the
+ * text is pasted or read (the homepage's refusal is held in
+ * a-resume-longer-than-the-scan-reads-is-refused-before-it-is-sent).
  */
 import { describe, expect, it, vi } from "vitest";
-import { render } from "@testing-library/react";
+import { fireEvent, render } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
@@ -39,6 +44,10 @@ vi.mock("@/integrations/supabase/client", () => {
     },
   };
 });
+vi.mock("@/contexts/AuthContext", async (orig) => ({
+  ...(await orig<Record<string, unknown>>()),
+  useAuth: () => ({ session: null, user: null, loading: false }),
+}));
 Element.prototype.scrollIntoView = vi.fn();
 if (!(globalThis as { IntersectionObserver?: unknown }).IntersectionObserver) {
   (globalThis as { IntersectionObserver?: unknown }).IntersectionObserver = class {
@@ -48,6 +57,7 @@ if (!(globalThis as { IntersectionObserver?: unknown }).IntersectionObserver) {
 
 import { FreeKeywordResults } from "@/components/FreeKeywordResults";
 import { MAX_RESUME_LENGTH, validateResumeBeforeSend } from "@/lib/resume-validation";
+import { ResumeUploader } from "@/components/ResumeUploader";
 
 const ROOT = resolve(__dirname, "../..");
 const read = (rel: string) => readFileSync(resolve(ROOT, rel), "utf8");
@@ -119,5 +129,46 @@ describe("the client refuses what the scanner refuses, before sending it", () =>
     const over = validateResumeBeforeSend(at(50_001));
     expect(over.isValid).toBe(false);
     expect(over.errors.join(" ")).toMatch(/50,?000/);
+  });
+});
+
+describe("the uploader says so under the box", () => {
+  const LINE = "Registered Nurse, City Hospital, 2015 - 2024. Led a ward of 30 beds. ";
+  const ofLength = (n: number) => LINE.repeat(Math.ceil(n / LINE.length)).slice(0, n);
+  const paste = (text: string) => {
+    const view = render(
+      <MemoryRouter>
+        <ResumeUploader onFileSelect={vi.fn()} onTextSubmit={vi.fn()} onCheckout={vi.fn()} onFreeScan={vi.fn()} isLoading={false} />
+      </MemoryRouter>,
+    );
+    fireEvent.click(view.container.querySelector("#resume-paste-tab")!);
+    fireEvent.change(view.container.querySelector("#resume-paste-panel textarea")!, { target: { value: text } });
+    return view;
+  };
+  it("a 60,000-character paste is told its length and the cap", () => {
+    const { container, unmount } = paste(ofLength(60_000));
+    const note = container.querySelector("[data-resume-too-long]");
+    expect(note, "a paste the scanner will refuse said nothing").not.toBeNull();
+    expect(note?.getAttribute("role")).toBe("alert");
+    expect(note?.textContent).toBe(en.uploader.resume.tooLong.replace("{{length}}", "60,000").replace("{{max}}", "50,000"));
+    unmount();
+  });
+  it("one at the cap is not (the positive control)", () => {
+    const { container, unmount } = paste(ofLength(MAX_RESUME_LENGTH));
+    expect(container.querySelector("[data-resume-too-long]")).toBeNull();
+    unmount();
+  });
+  it("every locale says the three refusals with the numbers interpolated", () => {
+    const dir = resolve(ROOT, "src/i18n/locales");
+    for (const file of readdirSync(dir).filter((f) => f.endsWith(".json"))) {
+      const d = JSON.parse(readFileSync(resolve(dir, file), "utf8"));
+      expect(d.homepage.toast.resumeTooLong, file).toBeTruthy();
+      for (const v of [d.homepage.toast.resumeTooLongDescription, d.uploader.resume.tooLong]) {
+        expect(v, file).toContain("{{length}}");
+        expect(v, file).toContain("{{max}}");
+        expect(String(v).replace(/\{\{\w+\}\}/g, ""), `${file}: a typed cap`).not.toMatch(/\d/);
+      }
+      if (!file.startsWith("en")) expect(d.uploader.resume.tooLong, file).not.toBe(en.uploader.resume.tooLong);
+    }
   });
 });

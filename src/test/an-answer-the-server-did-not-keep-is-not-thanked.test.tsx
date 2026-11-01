@@ -13,10 +13,20 @@
  * (data true), "not saved" for false or an error, and the buttons stay usable.
  * ScanFeedback's legacy case (the void function before 20261101150000
  * applies answers no data) keeps its old reading, stored.
+ *
+ * Review fix (2026-11-01): the outcome links in the report mail land on the
+ * home page, which recorded the answer and thanked the visitor in English
+ * whatever came back ("Every answer sharpens the benchmarks we publish", and
+ * no benchmark is published from them). It now reads the answer the same way
+ * and says "recorded" or "not saved" from the scanOutcome keys.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import en from "@/i18n/locales/en.json";
+import { readFileSync, readdirSync } from "node:fs";
+import { resolve } from "node:path";
+import { outcomeWasStored } from "@/lib/scan-outcome-answer";
+import { codeOf } from "./helpers/strip-comments";
 
 const rpc = vi.fn();
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { rpc: (...a: unknown[]) => rpc(...a) } }));
@@ -101,5 +111,27 @@ describe("the helpful-or-not vote", () => {
     mount();
     fireEvent.click(screen.getByRole("button", { name: new RegExp(en.scanFeedback.yes) }));
     expect(await screen.findByText(en.scanFeedback.thanks)).toBeTruthy();
+  });
+});
+
+describe("the outcome link in the report mail (review fix)", () => {
+  it("only a true answer is stored", () => {
+    expect(outcomeWasStored({ data: true, error: null })).toBe(true);
+    for (const res of [{ data: false, error: null }, { data: null, error: null }, { data: true, error: { message: "x" } }, null, undefined, {}]) {
+      expect(outcomeWasStored(res), JSON.stringify(res)).toBe(false);
+    }
+  });
+  it("the home page thanks only a stored answer, in the visitor's language", () => {
+    const index = codeOf(readFileSync(resolve(__dirname, "../pages/Index.tsx"), "utf8"));
+    const at = index.indexOf('"record_scan_outcome"');
+    expect(at).toBeGreaterThan(0);
+    const after = index.slice(at, at + 600);
+    expect(after).toMatch(/outcomeWasStored\(res as ScanOutcomeRpcAnswer\)\s*\?\s*\{ title: t\("scanOutcome\.recorded"\) \}\s*:\s*\{ title: t\("scanOutcome\.notSaved"\)/);
+    expect(after).not.toMatch(/toast\(\{ title: "/);
+  });
+  it("no copy claims the answers build a published benchmark", () => {
+    const dir = resolve(__dirname, "../i18n/locales");
+    const texts = [readFileSync(resolve(__dirname, "../pages/Index.tsx"), "utf8"), ...readdirSync(dir).filter((f) => f.endsWith(".json")).map((f) => readFileSync(resolve(dir, f), "utf8"))];
+    for (const text of texts) expect(text).not.toMatch(/benchmarks we publish/i);
   });
 });

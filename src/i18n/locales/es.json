@@ -276,7 +276,8 @@
       "fileTypes": "PDF, DOCX o TXT (máx 10MB)",
       "browse": "Buscar archivos",
       "pasteHere": "Pega el contenido de tu currículum aquí...",
-      "chars": "caracteres"
+      "chars": "caracteres",
+      "tooLong": "{{length}} caracteres: el análisis gratuito lee hasta {{max}}. Acórtalo antes de analizar."
     },
     "linkedin": {
       "title": "Tu Perfil de LinkedIn",
@@ -403,7 +404,8 @@
     "securePaymentStripe": "Pago seguro a través de Stripe",
     "gsheetsImportFailed": "No se pudo importar desde Google Sheets. Inténtalo de nuevo.",
     "gsheetsImportFailedShared": "No se pudo importar desde Google Sheets. Asegúrate de que la hoja esté compartida con 'Cualquiera con el enlace'.",
-    "otherJobsAvailable_many": "{{count}} otros puestos disponibles"
+    "otherJobsAvailable_many": "{{count}} otros puestos disponibles",
+    "scanFooterPro": "Resultados en {{seconds}} segundos como máximo • Pro: sin límite diario de escaneos"
   },
   "faq": {
     "title": "Preguntas Frecuentes",
@@ -866,7 +868,13 @@
     },
     "eliteSignal_many": "{{count}} señales de élite",
     "issue_many": "{{count}} problemas",
-    "quickFix_many": "{{count}} soluciones rápidas"
+    "quickFix_many": "{{count}} soluciones rápidas",
+    "projection": {
+      "lead": "Corrige los problemas de abajo → unos",
+      "gain_one": "(+{{count}} pto., una guía aproximada)",
+      "gain_many": "(+{{count}} ptos., una guía aproximada)",
+      "gain_other": "(+{{count}} ptos., una guía aproximada)"
+    }
   },
   "careerSnapshot": {
     "downloadPdf": "Descargar informe en PDF",
@@ -1112,7 +1120,9 @@
       "fontUnreadableDescription": "Su fuente no corresponde a caracteres reales. Sube un .docx o pega el texto de tu currículum.",
       "unreadCharacters": "Algunos caracteres no se pudieron leer",
       "unreadCharactersDescription": "Omitimos {{count}} caracteres que este PDF no identifica. Para el análisis más preciso, sube un .docx o pega el texto de tu currículum.",
-      "checkoutRefusedTitle": "No se pudo iniciar el pago"
+      "checkoutRefusedTitle": "No se pudo iniciar el pago",
+      "resumeTooLong": "Currículum demasiado largo para analizar",
+      "resumeTooLongDescription": "Este currículum tiene {{length}} caracteres; el análisis gratuito lee hasta {{max}}. Acórtalo (primero los puestos antiguos y las listas largas) y vuelve a analizarlo."
     },
     "reportCrash": {
       "title": "Algo salió mal al mostrar tu informe",
@@ -1640,12 +1650,15 @@
     "languageNotice": {
       "unknownTitle": "No pudimos saber en qué idioma está escrito este currículum.",
       "unsupportedTitle": "Este currículum parece estar en {{language}}, un idioma que este análisis no evalúa.",
-      "body": "Las comprobaciones de palabras clave y de secciones están pensadas para inglés, español, francés, alemán, portugués, neerlandés, italiano, hindi y tagalo, así que leen tu currículum con esos términos y pueden pasar por alto palabras de tu idioma. Toma las palabras clave que faltan abajo como una guía, no como un veredicto."
+      "body": "El informe está escrito en el idioma de tu currículum, pero las comprobaciones de palabras clave y de secciones buscan términos en inglés, así que pueden pasar por alto palabras de tu idioma. Toma las palabras clave que faltan abajo como una guía, no como un veredicto."
     },
     "weakestBullets": {
       "title": "Tus viñetas más débiles, calificadas",
       "subtitle": "Citadas de tu currículum y calificadas por cifras, verbos y alcance. Donde aparece una reescritura, completa los [corchetes] con tus cifras reales.",
-      "howToFix": "Cómo arreglarla (no pudimos reescribirla solo con tu currículum)"
+      "howToFix": "Cómo arreglarla (no pudimos reescribirla solo con tu currículum)",
+      "template": {
+        "verbAndNumber": "Reescribe esta viñeta para que empiece con un verbo de acción y termine con un número, con la forma «Dirigí [lo que hiciste] y logré [métrica]»."
+      }
     },
     "readAs": {
       "label": "Lo interpretamos así:",
@@ -1665,6 +1678,39 @@
         "transition": "no estábamos del todo seguros de tu sector esta vez: tu trayectoria se lee como {{historical}}, pero tu último puesto como {{recent}}. Confírmalo abajo y el informe se recalibra.",
         "unsure": "no estábamos del todo seguros de tu sector esta vez. Confírmalo o corrígelo abajo: las referencias y las palabras clave se actualizan al momento."
       }
+    },
+    "builderHandoff": {
+      "title": "Convierte este diagnóstico en un currículum terminado",
+      "bodyRewrites_one": "Abre el creador gratuito con tu currículum cargado y {{count}} reescritura de viñeta de este informe ya aplicada, y exporta un PDF o DOCX bien maquetado.",
+      "bodyRewrites_many": "Abre el creador gratuito con tu currículum cargado y {{count}} reescrituras de viñetas de este informe ya aplicadas, y exporta un PDF o DOCX bien maquetado.",
+      "bodyRewrites_other": "Abre el creador gratuito con tu currículum cargado y {{count}} reescrituras de viñetas de este informe ya aplicadas, y exporta un PDF o DOCX bien maquetado.",
+      "bodyNoRewrites": "Este informe no tiene ninguna reescritura que el creador pueda aplicar. Abre el creador gratuito con tu currículum cargado y las palabras clave que faltan junto a él, y exporta un PDF o DOCX bien maquetado.",
+      "ctaRewrites_one": "Abrir en el creador con {{count}} reescritura aplicada →",
+      "ctaRewrites_many": "Abrir en el creador con {{count}} reescrituras aplicadas →",
+      "ctaRewrites_other": "Abrir en el creador con {{count}} reescrituras aplicadas →",
+      "ctaNoRewrites": "Abrir en el creador con tu currículum y las palabras clave que faltan →"
+    },
+    "scoreSimulator": {
+      "title": "¿Qué pasa si lo corriges?",
+      "intro": "Marca las correcciones que estás dispuesto a hacer.",
+      "basis": "Los puntos son una guía aproximada (la estimación de la IA por corrección, o puntos fijos por tipo de corrección), no una predicción de tu próximo análisis.",
+      "aria": "Puntuación {{score}}, proyectada {{projected}}",
+      "projectedLabel": "Proyección:",
+      "gain_one": "(+{{count}} punto)",
+      "gain_many": "(+{{count}} puntos)",
+      "gain_other": "(+{{count}} puntos)",
+      "current": "Tu puntuación actual. Empieza a marcar correcciones abajo.",
+      "noGainCeiling": "Sin aumento según esta guía: no proyecta ninguna puntuación por encima de {{ceiling}}, y la tuya ya está ahí.",
+      "noGain": "Según esta guía, estas correcciones no suman puntos."
+    },
+    "fixLabels": {
+      "bulletsWeak_one": "Reescribe tu {{count}} viñeta más débil con los ejemplos de antes y después de arriba",
+      "bulletsWeak_many": "Reescribe tus {{count}} viñetas más débiles con los ejemplos de antes y después de arriba",
+      "bulletsWeak_other": "Reescribe tus {{count}} viñetas más débiles con los ejemplos de antes y después de arriba",
+      "bulletsUnquantified_one": "Añade un resultado con un número a {{count}} viñeta que no tiene ninguno",
+      "bulletsUnquantified_many": "Añade un resultado con un número a {{count}} viñetas que no tienen ninguno",
+      "bulletsUnquantified_other": "Añade un resultado con un número a {{count}} viñetas que no tienen ninguno",
+      "keywords": "Incluye {{keywords}} en tu resumen y en las viñetas de experiencia"
     }
   },
   "analysisPreviewSample": {

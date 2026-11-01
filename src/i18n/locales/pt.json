@@ -276,7 +276,8 @@
       "fileTypes": "PDF, DOCX ou TXT (máx. 10MB)",
       "browse": "Procurar ficheiros",
       "pasteHere": "Cole o conteúdo do seu currículo aqui...",
-      "chars": "caracteres"
+      "chars": "caracteres",
+      "tooLong": "{{length}} caracteres: a verificação gratuita lê até {{max}}. Encurte o texto antes de verificar."
     },
     "linkedin": {
       "title": "O Seu Perfil LinkedIn",
@@ -403,7 +404,8 @@
     "securePaymentStripe": "Pagamento seguro via Stripe",
     "gsheetsImportFailed": "Falha ao importar do Google Sheets. Tente novamente.",
     "gsheetsImportFailedShared": "Falha ao importar do Google Sheets. Certifique-se de que a folha está partilhada com 'Qualquer pessoa com o link'.",
-    "otherJobsAvailable_many": "{{count}} outras vagas disponíveis"
+    "otherJobsAvailable_many": "{{count}} outras vagas disponíveis",
+    "scanFooterPro": "Resultados em até {{seconds}} segundos • Pro: sem limite diário de verificações"
   },
   "faq": {
     "title": "Perguntas Frequentes",
@@ -866,7 +868,13 @@
     },
     "eliteSignal_many": "{{count}} sinais de destaque",
     "issue_many": "{{count}} problemas",
-    "quickFix_many": "{{count}} correções rápidas"
+    "quickFix_many": "{{count}} correções rápidas",
+    "projection": {
+      "lead": "Corrija os problemas abaixo → cerca de",
+      "gain_one": "(+{{count}} pt, uma estimativa aproximada)",
+      "gain_many": "(+{{count}} pts, uma estimativa aproximada)",
+      "gain_other": "(+{{count}} pts, uma estimativa aproximada)"
+    }
   },
   "careerSnapshot": {
     "downloadPdf": "Baixar relatório em PDF",
@@ -1112,7 +1120,9 @@
       "fontUnreadableDescription": "O tipo de letra não corresponde a caracteres reais. Carregue antes um .docx ou cole o texto do seu currículo.",
       "unreadCharacters": "Não foi possível ler alguns caracteres",
       "unreadCharactersDescription": "Ignorámos {{count}} caracteres que este PDF não identifica. Para a análise mais precisa, carregue um .docx ou cole o texto do seu currículo.",
-      "checkoutRefusedTitle": "Não foi possível iniciar o pagamento"
+      "checkoutRefusedTitle": "Não foi possível iniciar o pagamento",
+      "resumeTooLong": "Currículo longo demais para a verificação",
+      "resumeTooLongDescription": "Este currículo tem {{length}} caracteres; a verificação gratuita lê até {{max}}. Encurte-o (primeiro os cargos antigos e as listas longas) e verifique de novo."
     },
     "reportCrash": {
       "title": "Algo deu errado ao exibir seu relatório",
@@ -1640,12 +1650,15 @@
     "languageNotice": {
       "unknownTitle": "Não conseguimos identificar em que idioma este currículo está escrito.",
       "unsupportedTitle": "Este currículo parece estar em {{language}}, um idioma que esta verificação não avalia.",
-      "body": "As verificações de palavras-chave e de seções foram feitas para inglês, espanhol, francês, alemão, português, holandês, italiano, hindi e tagalo, então elas leem seu currículo com esses termos e podem deixar passar palavras do seu idioma. Considere as palavras-chave em falta abaixo como um guia, não como um veredito."
+      "body": "O relatório está escrito no idioma do seu currículo, mas as verificações de palavras-chave e de seções procuram termos em inglês, então podem deixar passar palavras do seu idioma. Considere as palavras-chave em falta abaixo como um guia, não como um veredito."
     },
     "weakestBullets": {
       "title": "Seus tópicos mais fracos, avaliados",
       "subtitle": "Citados do seu currículo e avaliados por números, verbos e alcance. Onde houver uma reescrita, preencha os [colchetes] com seus números reais.",
-      "howToFix": "Como corrigir (não conseguimos reescrever este só com o seu currículo)"
+      "howToFix": "Como corrigir (não conseguimos reescrever este só com o seu currículo)",
+      "template": {
+        "verbAndNumber": "Reescreva este tópico para começar com um verbo de ação e terminar com um número, no formato \"Liderei [o que você fez], alcançando [métrica]\"."
+      }
     },
     "readAs": {
       "label": "Nossa leitura:",
@@ -1665,6 +1678,39 @@
         "transition": "não tínhamos certeza do seu setor desta vez — seu histórico parece {{historical}}, mas seu cargo mais recente parece {{recent}}. Confirme abaixo e o relatório se ajusta.",
         "unsure": "não tínhamos certeza do seu setor desta vez. Confirme ou corrija abaixo — referências e palavras-chave se atualizam na hora."
       }
+    },
+    "builderHandoff": {
+      "title": "Transforme este diagnóstico em um currículo pronto",
+      "bodyRewrites_one": "Abra o criador gratuito com seu currículo carregado e {{count}} reescrita de tópico deste relatório já aplicada, depois exporte um PDF ou DOCX bem diagramado.",
+      "bodyRewrites_many": "Abra o criador gratuito com seu currículo carregado e {{count}} reescritas de tópicos deste relatório já aplicadas, depois exporte um PDF ou DOCX bem diagramado.",
+      "bodyRewrites_other": "Abra o criador gratuito com seu currículo carregado e {{count}} reescritas de tópicos deste relatório já aplicadas, depois exporte um PDF ou DOCX bem diagramado.",
+      "bodyNoRewrites": "Este relatório não tem nenhuma reescrita que o criador possa aplicar. Abra o criador gratuito com seu currículo carregado e as palavras-chave em falta deste relatório ao lado, depois exporte um PDF ou DOCX bem diagramado.",
+      "ctaRewrites_one": "Abrir no criador com {{count}} reescrita aplicada →",
+      "ctaRewrites_many": "Abrir no criador com {{count}} reescritas aplicadas →",
+      "ctaRewrites_other": "Abrir no criador com {{count}} reescritas aplicadas →",
+      "ctaNoRewrites": "Abrir no criador com seu currículo e as palavras-chave em falta →"
+    },
+    "scoreSimulator": {
+      "title": "O que acontece se você corrigir?",
+      "intro": "Marque as correções que você está disposto a fazer.",
+      "basis": "Os pontos são uma estimativa aproximada (a estimativa da IA por correção, ou pontos fixos por tipo de correção), não uma previsão da sua próxima verificação.",
+      "aria": "Pontuação {{score}}, projetada {{projected}}",
+      "projectedLabel": "Projeção:",
+      "gain_one": "(+{{count}} ponto)",
+      "gain_many": "(+{{count}} pontos)",
+      "gain_other": "(+{{count}} pontos)",
+      "current": "Sua pontuação atual. Comece a marcar correções abaixo.",
+      "noGainCeiling": "Sem ganho por esta estimativa: ela não projeta pontuação acima de {{ceiling}}, e a sua já está lá.",
+      "noGain": "Por esta estimativa, estas correções não somam pontos."
+    },
+    "fixLabels": {
+      "bulletsWeak_one": "Reescreva seu {{count}} tópico mais fraco com os exemplos de antes e depois acima",
+      "bulletsWeak_many": "Reescreva seus {{count}} tópicos mais fracos com os exemplos de antes e depois acima",
+      "bulletsWeak_other": "Reescreva seus {{count}} tópicos mais fracos com os exemplos de antes e depois acima",
+      "bulletsUnquantified_one": "Adicione um resultado com número a {{count}} tópico que não tem nenhum",
+      "bulletsUnquantified_many": "Adicione um resultado com número a {{count}} tópicos que não têm nenhum",
+      "bulletsUnquantified_other": "Adicione um resultado com número a {{count}} tópicos que não têm nenhum",
+      "keywords": "Inclua {{keywords}} no seu resumo e nos tópicos de experiência"
     }
   },
   "analysisPreviewSample": {

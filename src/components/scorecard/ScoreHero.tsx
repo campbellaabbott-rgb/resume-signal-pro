@@ -11,7 +11,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { FIX_POINTS_BASIS } from "@/lib/report-basis";
 import { bandTone, scoreBand, scoreTone } from "@/lib/score-bands";
 
 interface ScoreHeroProps {
@@ -308,9 +307,10 @@ export function ScoreHero({
             {projectedScore && projectedScore > atsScoreEstimate && (
               <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-success/10 border border-success/20 text-xs font-medium text-success">
                 <TrendingUp className="w-3.5 h-3.5" />
-                <span title={FIX_POINTS_BASIS}>
-                  Fix the issues below → about <span className="font-bold text-sm">{projectedScore}</span>
-                  <span className="text-success/70 ml-0.5">(+{projectedScore - atsScoreEstimate} pts, a rough guide)</span>
+                {/* In the reader's language (S13-122), with the simulator's basis. */}
+                <span data-hero-projection title={t("freeResults.scoreSimulator.basis")}>
+                  {t("scoreHero.projection.lead")} <span className="font-bold text-sm">{projectedScore}</span>
+                  <span className="text-success/70 ml-0.5">{t("scoreHero.projection.gain", { count: projectedScore - atsScoreEstimate })}</span>
                 </span>
               </div>
             )}

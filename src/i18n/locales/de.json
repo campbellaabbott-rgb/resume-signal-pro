@@ -276,7 +276,8 @@
       "fileTypes": "PDF, DOCX oder TXT (max. 10 MB)",
       "browse": "Dateien durchsuchen",
       "pasteHere": "Lebenslauf hier einfügen...",
-      "chars": "Zeichen"
+      "chars": "Zeichen",
+      "tooLong": "{{length}} Zeichen: Der kostenlose Scan liest bis zu {{max}}. Kürze den Text vor dem Scan."
     },
     "linkedin": {
       "title": "Ihr LinkedIn-Profil",
@@ -402,7 +403,8 @@
     "orGetCompleteAnalysis": "Oder erhalte die vollständige Analyse für",
     "securePaymentStripe": "Sichere Zahlung über Stripe",
     "gsheetsImportFailed": "Import von Google Sheets fehlgeschlagen. Bitte versuche es erneut.",
-    "gsheetsImportFailedShared": "Import von Google Sheets fehlgeschlagen. Stelle sicher, dass das Sheet für „Jeder mit dem Link” freigegeben ist."
+    "gsheetsImportFailedShared": "Import von Google Sheets fehlgeschlagen. Stelle sicher, dass das Sheet für „Jeder mit dem Link” freigegeben ist.",
+    "scanFooterPro": "Ergebnisse innerhalb von {{seconds}} Sekunden • Pro: kein Tageslimit für Scans"
   },
   "faq": {
     "title": "Häufig gestellte Fragen",
@@ -862,6 +864,11 @@
       "good": "Gut",
       "needsImprovement": "Verbesserungswürdig",
       "poor": "Schwach"
+    },
+    "projection": {
+      "lead": "Behebe die Punkte unten → etwa",
+      "gain_one": "(+{{count}} Pkt., ein grober Richtwert)",
+      "gain_other": "(+{{count}} Pkt., ein grober Richtwert)"
     }
   },
   "careerSnapshot": {
@@ -1106,7 +1113,9 @@
       "fontUnreadableDescription": "Die Schrift ist keinen echten Zeichen zugeordnet. Lade stattdessen eine .docx-Datei hoch oder füge den Text deines Lebenslaufs ein.",
       "unreadCharacters": "Einige Zeichen ließen sich nicht lesen",
       "unreadCharactersDescription": "Wir haben {{count}} Zeichen ausgelassen, die dieses PDF nicht benennt. Für den genauesten Scan lade eine .docx-Datei hoch oder füge den Text deines Lebenslaufs ein.",
-      "checkoutRefusedTitle": "Der Bezahlvorgang konnte nicht gestartet werden"
+      "checkoutRefusedTitle": "Der Bezahlvorgang konnte nicht gestartet werden",
+      "resumeTooLong": "Lebenslauf zu lang für den Scan",
+      "resumeTooLongDescription": "Dieser Lebenslauf hat {{length}} Zeichen; der kostenlose Scan liest bis zu {{max}}. Kürze ihn (zuerst ältere Stationen und lange Listen) und scanne erneut."
     },
     "reportCrash": {
       "title": "Beim Anzeigen Ihres Berichts ist ein Fehler aufgetreten",
@@ -1630,12 +1639,15 @@
     "languageNotice": {
       "unknownTitle": "Wir konnten nicht erkennen, in welcher Sprache dieser Lebenslauf geschrieben ist.",
       "unsupportedTitle": "Dieser Lebenslauf ist offenbar auf {{language}} verfasst, einer Sprache, die dieser Scan nicht bewertet.",
-      "body": "Die Schlüsselwort- und Abschnittsprüfungen sind für Englisch, Spanisch, Französisch, Deutsch, Portugiesisch, Niederländisch, Italienisch, Hindi und Tagalog gebaut. Sie lesen deinen Lebenslauf daher mit diesen Begriffen und können Wörter in deiner Sprache übersehen. Sieh die Schlüsselwortlücken unten als Hinweis, nicht als Urteil."
+      "body": "Der Bericht ist in der Sprache deines Lebenslaufs geschrieben, aber die Schlüsselwort- und Abschnittsprüfungen suchen nach englischen Begriffen und können Wörter in deiner Sprache übersehen. Sieh die Schlüsselwortlücken unten als Hinweis, nicht als Urteil."
     },
     "weakestBullets": {
       "title": "Deine schwächsten Aufzählungspunkte, bewertet",
       "subtitle": "Wörtlich aus deinem Lebenslauf zitiert und nach Kennzahlen, Verben und Umfang bewertet. Wo eine Umformulierung steht, ersetze die [Klammern] durch deine echten Zahlen.",
-      "howToFix": "So verbesserst du ihn (allein aus deinem Lebenslauf konnten wir ihn nicht umformulieren)"
+      "howToFix": "So verbesserst du ihn (allein aus deinem Lebenslauf konnten wir ihn nicht umformulieren)",
+      "template": {
+        "verbAndNumber": "Formuliere diesen Stichpunkt so um, dass er mit einem Tätigkeitsverb beginnt und mit einer Zahl endet, nach dem Muster „[was du getan hast] geleitet und dabei [Kennzahl] erreicht“."
+      }
     },
     "readAs": {
       "label": "So haben wir es gelesen:",
@@ -1655,6 +1667,34 @@
         "transition": "bei deiner Branche waren wir uns hier nicht ganz sicher — dein Werdegang liest sich als {{historical}}, deine letzte Stelle aber als {{recent}}. Bestätige unten, dann passt sich der Bericht an.",
         "unsure": "bei deiner Branche waren wir uns hier nicht ganz sicher. Bestätige oder korrigiere sie unten — Vergleichswerte und Schlüsselwörter passen sich sofort an."
       }
+    },
+    "builderHandoff": {
+      "title": "Mach aus dieser Diagnose einen fertigen Lebenslauf",
+      "bodyRewrites_one": "Öffne den kostenlosen Builder mit deinem Lebenslauf und der {{count}} Umformulierung aus diesem Bericht bereits eingesetzt, und exportiere dann ein sauber gesetztes PDF oder DOCX.",
+      "bodyRewrites_other": "Öffne den kostenlosen Builder mit deinem Lebenslauf und den {{count}} Umformulierungen aus diesem Bericht bereits eingesetzt, und exportiere dann ein sauber gesetztes PDF oder DOCX.",
+      "bodyNoRewrites": "Dieser Bericht hat keine Umformulierung, die der Builder einsetzen kann. Öffne den kostenlosen Builder mit deinem Lebenslauf und den fehlenden Schlüsselwörtern dieses Berichts daneben, und exportiere dann ein sauber gesetztes PDF oder DOCX.",
+      "ctaRewrites_one": "Im Builder öffnen, {{count}} Umformulierung eingesetzt →",
+      "ctaRewrites_other": "Im Builder öffnen, {{count}} Umformulierungen eingesetzt →",
+      "ctaNoRewrites": "Im Builder öffnen, mit Lebenslauf und fehlenden Schlüsselwörtern →"
+    },
+    "scoreSimulator": {
+      "title": "Was passiert, wenn du es behebst?",
+      "intro": "Hake die Korrekturen an, die du vornehmen willst.",
+      "basis": "Die Punkte sind ein grober Richtwert (die Schätzung der KI pro Korrektur oder feste Punkte je Art der Korrektur), keine Prognose deines nächsten Scans.",
+      "aria": "Score {{score}}, Prognose {{projected}}",
+      "projectedLabel": "Prognose:",
+      "gain_one": "(+{{count}} Punkt)",
+      "gain_other": "(+{{count}} Punkte)",
+      "current": "Dein aktueller Score. Hake unten Korrekturen an.",
+      "noGainCeiling": "Nach diesem Richtwert kein Zuwachs: Er sagt keinen Score über {{ceiling}} voraus, und deiner liegt schon dort.",
+      "noGain": "Nach diesem Richtwert bringen diese Korrekturen keine Punkte."
+    },
+    "fixLabels": {
+      "bulletsWeak_one": "Formuliere deinen {{count}} schwächsten Stichpunkt mit den Vorher-nachher-Beispielen oben um",
+      "bulletsWeak_other": "Formuliere deine {{count}} schwächsten Stichpunkte mit den Vorher-nachher-Beispielen oben um",
+      "bulletsUnquantified_one": "Ergänze {{count}} Stichpunkt ohne Zahl um ein Ergebnis mit Zahl",
+      "bulletsUnquantified_other": "Ergänze {{count}} Stichpunkte ohne Zahl um ein Ergebnis mit Zahl",
+      "keywords": "Baue {{keywords}} in deine Zusammenfassung und deine Erfahrungs-Stichpunkte ein"
     }
   },
   "analysisPreviewSample": {

@@ -10,6 +10,13 @@
  * box ticked it stopped short of the hero by the bullets and keywords steps:
  * a fourth projection on the same report. This holds the simulator to the
  * engine's list.
+ *
+ * Review fix (2026-11-01). The simulator added every ticked box with no cap,
+ * so a 92 with three boxes ticked read "Projected: 105 (+13 points)" while the
+ * engine capped the same list at 95. It now reads max(score, min(95, score +
+ * ticked)) with the engine's own constant, prints that gain, and says there
+ * is no gain left when the cap leaves none. The scanner's own fix steps and
+ * the hero's projection line are said in the reader's language (S13-122).
  */
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, within } from "@testing-library/react";
@@ -47,7 +54,13 @@ if (!(globalThis as { IntersectionObserver?: unknown }).IntersectionObserver) {
 }
 
 import { FreeKeywordResults } from "@/components/FreeKeywordResults";
-import { applyScoreProjection, buildScoreProjection } from "../../supabase/functions/free-keyword-scan/score-projection";
+import { ScoreSimulatorCard } from "@/components/ReportInsightCards";
+import { PROJECTION_CEILING, applyScoreProjection, buildScoreProjection } from "../../supabase/functions/free-keyword-scan/score-projection";
+import { fixLabel } from "@/lib/fix-labels";
+import { codeOf } from "./helpers/strip-comments";
+import i18next from "i18next";
+import en from "@/i18n/locales/en.json";
+import de from "@/i18n/locales/de.json";
 
 const ROOT = resolve(__dirname, "../..");
 const read = (rel: string) => readFileSync(resolve(ROOT, rel), "utf8");
@@ -139,5 +152,138 @@ describe("the simulator ticks through the scanner's one fix list", () => {
     expect(read("src/pages/Index.tsx")).toMatch(/scoreProjection=\{freeKeywordResult\.scoreProjection \?\? null\}/);
     expect(read("supabase/functions/free-keyword-scan/index.ts")).toMatch(/applyScoreProjection\(responseData, scoreProjection\)/);
     expect(read("supabase/functions/free-keyword-scan-stream/index.ts")).toMatch(/applyScoreProjection\(responseData, buildScoreProjection\(/);
+  });
+});
+
+/**
+ * Synthetic corpus (labelled: built here, not read from logs): every score
+ * from 60 to 99 against fix lists the engine builds from quick-win sets of
+ * one to five, with and without the bullets and keywords steps. Many of them
+ * sum past the ceiling, which is the case the review found unguarded.
+ */
+const QW_SETS = [
+  [{ fix: "Add your LinkedIn URL", impact: "medium" }],
+  [{ fix: "Add your LinkedIn URL", impact: "high" }, { fix: "Move Skills up", impact: "low" }],
+  [{ fix: "Name the ward size", scoreImpact: 9 }, { fix: "Add a summary", impact: "high" }, { fix: "Spell out ICU", impact: "medium" }],
+  [{ fix: "A", impact: "high" }, { fix: "B", impact: "high" }, { fix: "C", impact: "high" }, { fix: "D", impact: "medium" }, { fix: "E", scoreImpact: 12 }],
+];
+const fixListsFor = (score: number) => QW_SETS.flatMap((quickWins) => [0, 2].flatMap((weak) => [[], ["Epic EHR", "Triage"]].map((keywordNames) =>
+  buildScoreProjection({ score, quickWins, weakBulletCount: weak, keywordNames }))));
+const lineOf = (container: HTMLElement) => container.querySelector("[data-simulator-projection]")?.textContent?.replace(/\s+/g, " ").trim() ?? "";
+
+describe("the cap: a ticked box never adds a point past the ceiling", () => {
+  it("the card reads the engine's ceiling, 95, and types no number of its own", () => {
+    expect(PROJECTION_CEILING).toBe(95);
+    const card = codeOf(read("src/components/ReportInsightCards.tsx"));
+    expect(card).toMatch(/Math\.max\(atsScore, Math\.min\(PROJECTION_CEILING, atsScore \+ checkedSum\)\)/);
+    expect(card).not.toMatch(/Math\.min\(95\b/);
+  });
+
+  it("with every box ticked, every score and list lands on the engine's projection, the cap binding or not", () => {
+    let cases = 0, capBinds = 0, aboveCeiling = 0;
+    for (let score = 60; score <= 99; score++) {
+      for (const projection of fixListsFor(score)) {
+        if (projection.fixes.length === 0) continue;
+        cases++;
+        const sum = projection.fixes.reduce((t, f) => t + f.impact, 0);
+        if (score + sum > PROJECTION_CEILING) capBinds++;
+        if (score >= PROJECTION_CEILING) aboveCeiling++;
+        const { container, unmount } = render(<ScoreSimulatorCard atsScore={score} fixes={projection.fixes} />);
+        for (const box of within(container).getAllByRole("checkbox")) fireEvent.click(box);
+        const line = lineOf(container);
+        const label = `score ${score}, sum ${sum}`;
+        if (projection.gain > 0) {
+          expect(line, label).toBe(`Projected: ${projection.to} (+${projection.gain} point${projection.gain === 1 ? "" : "s"})`);
+          expect(projection.gain, label).toBeLessThanOrEqual(PROJECTION_CEILING - score);
+        } else {
+          expect(line, label).not.toMatch(/Projected:/);
+          expect(line, label).toBe(score >= PROJECTION_CEILING
+            ? en.freeResults.scoreSimulator.noGainCeiling.replace("{{ceiling}}", String(PROJECTION_CEILING))
+            : en.freeResults.scoreSimulator.noGain);
+        }
+        unmount();
+      }
+    }
+    // The corpus exercises the cap, and scores already at or past it.
+    expect(cases).toBeGreaterThan(300);
+    expect(capBinds).toBeGreaterThan(100);
+    expect(aboveCeiling).toBeGreaterThan(50);
+  });
+
+  it("the reviewer's case: a 92 with +13 ticked reads 95 (+3), not 105", () => {
+    const { container } = render(<ScoreSimulatorCard atsScore={92} fixes={[{ label: "A", impact: 6 }, { label: "B", impact: 4 }, { label: "C", impact: 3 }]} />);
+    for (const box of within(container).getAllByRole("checkbox")) fireEvent.click(box);
+    expect(lineOf(container)).toBe("Projected: 95 (+3 points)");
+    expect(container.textContent).not.toMatch(/105|\+13 points/);
+  });
+
+  it("nothing ticked reads the current score line, never a projection", () => {
+    const { container } = render(<ScoreSimulatorCard atsScore={70} fixes={[{ label: "A", impact: 6 }]} />);
+    expect(lineOf(container)).toBe(en.freeResults.scoreSimulator.current);
+  });
+});
+
+describe("the scanner's own fix steps are said in the reader's language (S13-122)", () => {
+  const tOf = async (lng: string, bundle: object) => {
+    const inst = i18next.createInstance();
+    await inst.init({ lng, resources: { [lng]: { translation: bundle } }, interpolation: { escapeValue: false } });
+    return inst.t;
+  };
+  const projection = buildScoreProjection({ score: 60, quickWins: [{ fix: "Kontaktzeile ergänzen", impact: "medium" }], weakBulletCount: 2, keywordNames: ["SQL", "Tableau"] });
+  const unquantified = buildScoreProjection({ score: 60, quickWins: [], unquantifiedBulletCount: 1 });
+
+  it("in English the codes say what the engine's labels say", async () => {
+    const t = await tOf("en", en);
+    for (const f of [...projection.fixes, ...unquantified.fixes]) expect(fixLabel(t, f), f.kind).toBe(f.label);
+  });
+
+  it("in German the coded steps are German, and the model's own quick win stays as sent", async () => {
+    const t = await tOf("de", de);
+    const [qw, bullets, keywords] = projection.fixes;
+    expect(fixLabel(t, qw)).toBe("Kontaktzeile ergänzen");
+    expect(fixLabel(t, bullets)).not.toBe(bullets.label);
+    expect(fixLabel(t, bullets)).toContain("2");
+    expect(fixLabel(t, keywords)).toContain('"SQL", "Tableau"');
+    expect(fixLabel(t, keywords)).not.toBe(keywords.label);
+    expect(fixLabel(t, unquantified.fixes[0])).not.toBe(unquantified.fixes[0].label);
+  });
+
+  it("a step whose params do not fit its code keeps the English label", async () => {
+    const t = await tOf("de", de);
+    for (const params of [undefined, {}, { count: 0 }, { count: 1.5 }, { keywords: [] }, { keywords: [3] }]) {
+      expect(fixLabel(t, { label: "Sent label", code: "bulletsWeak", params })).toBe("Sent label");
+      expect(fixLabel(t, { label: "Sent label", code: "keywords", params })).toBe("Sent label");
+    }
+    expect(fixLabel(t, { label: "Sent label", code: "notACode", params: { count: 2 } })).toBe("Sent label");
+  });
+
+  it("the simulator, the hero and the Fix Plan type no English of their own", () => {
+    const card = codeOf(read("src/components/ReportInsightCards.tsx"));
+    expect(card).toContain('t("freeResults.scoreSimulator.title")');
+    expect(card).toContain("fixLabel(t, f)");
+    expect(card).not.toMatch(/>\s*What happens if you fix it\?/);
+    const hero = codeOf(read("src/components/scorecard/ScoreHero.tsx"));
+    expect(hero).toContain('t("scoreHero.projection.lead")');
+    expect(hero).toContain('t("scoreHero.projection.gain", { count: projectedScore - atsScoreEstimate })');
+    expect(hero).not.toMatch(/Fix the issues below/);
+    const page = codeOf(read("src/components/FreeKeywordResults.tsx"));
+    expect(page).toMatch(/fixLabel\(t, \{ label: s\.step, code: s\.code, params: s\.params \}\)/);
+  });
+
+  it("every locale has the simulator, the fix labels and the hero line, with their placeholders", () => {
+    const dir = resolve(ROOT, "src/i18n/locales");
+    for (const loc of ["en", "en-GB", "de", "es", "fr", "hi", "nl", "pt", "tl"]) {
+      const j = JSON.parse(readFileSync(resolve(dir, `${loc}.json`), "utf8"));
+      const sim = j.freeResults.scoreSimulator, fl = j.freeResults.fixLabels, hero = j.scoreHero.projection;
+      for (const k of ["title", "intro", "basis", "aria", "projectedLabel", "gain_one", "gain_other", "current", "noGainCeiling", "noGain"]) expect(sim[k], `${loc} scoreSimulator.${k}`).toBeTruthy();
+      expect(sim.noGainCeiling, loc).toContain("{{ceiling}}");
+      expect(sim.gain_other, loc).toContain("{{count}}");
+      // A singular may say "your weakest bullet" with no figure; the plural must interpolate it.
+      for (const k of ["bulletsWeak_one", "bulletsUnquantified_one"]) expect(fl[k], `${loc} fixLabels.${k}`).toBeTruthy();
+      for (const k of ["bulletsWeak_other", "bulletsUnquantified_other"]) expect(fl[k], `${loc} fixLabels.${k}`).toContain("{{count}}");
+      expect(fl.keywords, loc).toContain("{{keywords}}");
+      expect(hero.lead, loc).toBeTruthy();
+      expect(hero.gain_other, loc).toContain("{{count}}");
+    }
   });
 });

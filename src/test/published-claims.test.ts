@@ -1658,19 +1658,26 @@ describe("published nouns match what was counted", () => {
 });
 
 describe("the scan-feedback control never thanks you for nothing", () => {
-  const c = readFileSync(resolve(root, "src/components/ScanFeedback.tsx"), "utf8");
+  // Read without comments: a guard's spelling in a comment must not pass it.
+  const c = codeOf(readFileSync(resolve(root, "src/components/ScanFeedback.tsx"), "utf8"));
 
-  it("checks the returned error instead of relying on a throw", () => {
-    // supabase-js .rpc() RESOLVES with {data,error} on a PostgREST 404, so the
-    // old catch was dead code and "Thanks for the feedback!" ran unconditionally
-    // against a function that does not exist in production.
-    expect(c).toMatch(/if \(res\?\.error\)/);
+  it("reads the returned error, and a vote the budget skipped, before it thanks", () => {
+    // supabase-js .rpc() RESOLVES with {data,error} on a PostgREST 404, so a
+    // catch alone is dead code; and record_scan_feedback answers false when
+    // its write budget skipped the vote (S13-057). Either is not recorded.
     const idx = c.indexOf('setSubmitted(rating ? "up" : "down")');
-    expect(c.slice(0, idx)).toMatch(/return;/);
+    expect(idx).toBeGreaterThan(0);
+    expect(c.slice(0, idx)).toMatch(/if \(res\?\.error \|\| res\?\.data === false\) \{[^}]*\breturn;\s*\}/);
   });
 
-  it("tells the user when nothing was recorded", () => {
-    expect(c).toMatch(/nothing was recorded/);
+  it("tells the user when nothing was recorded, in every locale", () => {
+    expect(c).toContain('t("scanFeedback.notSaved")');
+    const en = readLocale("en.json") as { scanFeedback?: { notSaved?: string } };
+    expect(en.scanFeedback?.notSaved).toContain("nothing was recorded");
+    for (const file of LOCALE_FILES) {
+      const value = (readLocale(file) as { scanFeedback?: { notSaved?: unknown } }).scanFeedback?.notSaved;
+      expect(typeof value === "string" && value.trim().length > 0, file).toBe(true);
+    }
   });
 });
 

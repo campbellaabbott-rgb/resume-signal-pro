@@ -20,6 +20,8 @@ import { ScanProgressStages } from "@/components/ScanProgressStages";
 import { PurchaseTerms } from "@/components/PurchaseTerms";
 import { fullAnalysisOnSale } from "@/lib/purchases-open";
 import { looksLikeLink, scannableJobDescription } from "@/lib/job-description-input";
+import { MAX_RESUME_LENGTH } from "@/lib/resume-validation";
+import { useProSubscription } from "@/hooks/use-pro-subscription";
 // THE FULL ANALYSIS IS ON SALE HERE WHILE ITS SWITCH IS ON (homepage and
 // pricing spec of 2026-10-17, G2; on, as on main): fullAnalysisOnSale() is the
 // owner's switch, read at render, so a switch the owner flips takes effect on
@@ -189,6 +191,21 @@ interface ResumeUploaderProps {
   } | null;
 }
 
+/**
+ * A signed-in visitor's allowance line (S13-094). The scanner lets a Pro
+ * account past the daily limit (accountProStanding, a trial included), so a
+ * Pro account is told it has no daily cap; any other account gets the
+ * signed-in allowance. Mounted only for a signed-in visitor, so nobody else
+ * pays for the plan check.
+ */
+function SignedInScanAllowance({ seconds }: { seconds: number }) {
+  const { t } = useTranslation();
+  const { pro } = useProSubscription();
+  return <>{pro.active && !pro.linkPending
+    ? t('uploader.scanFooterPro', { seconds })
+    : t('uploader.scanFooter', { seconds, scans: scansPerDayFor(true) })}</>;
+}
+
 export function ResumeUploader({ 
   onFileSelect, 
   onTextSubmit,
@@ -208,7 +225,7 @@ export function ResumeUploader({
   pasteResetSignal = 0,
   streamingProgress
 }: ResumeUploaderProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { session } = useAuth();
   const { toast } = useToast();
   const { formatPrice, isLocalCurrency } = useCurrency();
@@ -622,6 +639,11 @@ export function ResumeUploader({
   const uploadReady = !!selectedFile && pageHasResume && !isLoading;
   const uploadReading = !!selectedFile && !!isLoading;
   const hasLinkedInContent = linkedInMode === "upload" ? !!linkedInText : !!localLinkedInText.trim();
+  // Longer than the scanners read (register S13-008): said under the box as
+  // soon as it is pasted or read; the page refuses the free scan with the same
+  // numbers.
+  const scanTextLength = (resumeMode === "paste" ? textInput : resumeText).trim().length;
+  const tooLongToScan = scanTextLength > MAX_RESUME_LENGTH;
   const hasJobDescriptionContent = !!localJobDescriptionText.trim() || !!jobDescriptionText || !!jobDescriptionUrl.trim() || !!jobDescriptionFile;
 
   return (
@@ -803,7 +825,7 @@ export function ResumeUploader({
                 </div>
                 
                 {/* Arrow guide when text is pasted - same as upload flow */}
-                {textInput.length > 100 && (
+                {textInput.length > 100 && !tooLongToScan && (
                   <div className="p-4 rounded-xl bg-success/10 border border-success/30 animate-fade-in">
                     <p className="text-sm font-semibold text-success flex items-center justify-center gap-2 mb-3">
                       <Zap className="w-4 h-4" />
@@ -820,6 +842,12 @@ export function ResumeUploader({
             )}
           </div>
           
+          {tooLongToScan && (
+            <p role="alert" data-resume-too-long className="mt-3 text-sm text-destructive">
+              {t('uploader.resume.tooLong', { length: scanTextLength.toLocaleString(i18n.language), max: MAX_RESUME_LENGTH.toLocaleString(i18n.language) })}
+            </p>
+          )}
+
           {/* Resume Preview Panel - Shows what will be scanned */}
           {resumeText && resumeText.length > 50 && (
             <div className="mt-4 space-y-3" data-resume-loaded="true">
@@ -1440,7 +1468,9 @@ export function ResumeUploader({
 
                     <p className="text-xs text-muted-foreground/70">
                       {/* This visitor's allowance, as the scanner enforces it (S13-094). */}
-                      {t('uploader.scanFooter', { seconds: SCAN_RESULTS_WITHIN_SECONDS, scans: scansPerDayFor(!!session?.user) })}
+                      {session?.user
+                        ? <SignedInScanAllowance seconds={SCAN_RESULTS_WITHIN_SECONDS} />
+                        : t('uploader.scanFooter', { seconds: SCAN_RESULTS_WITHIN_SECONDS, scans: scansPerDayFor(false) })}
                     </p>
                   </div>
                 )}
