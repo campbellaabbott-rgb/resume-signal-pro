@@ -23,8 +23,16 @@ const RETRY_DELAY_MS = 1000;
 // 55 s could run five minutes, far past the platform's 150-second limit, so a
 // stalled gateway ended in the platform's 504 instead of this function's own
 // retryable error. Each attempt now gets at most what is left of this budget.
-const CHAIN_DEADLINE_MS = 125_000;
+// Exported so a caller that makes more than one chain call in a request (a
+// draft, then its repair) can hold the whole request to the same 125 s.
+export const CHAIN_DEADLINE_MS = 125_000;
 const MIN_ATTEMPT_MS = 5_000;
+// Gemini 2.5's thinking counts against max_tokens, and gpt-5's reasoning
+// against max_completion_tokens (S12-055: a 3,000-token cap, thinking
+// included, cut a paid reply in half; S10-009: 14 STAR answers in 9,000).
+// 8,192 is Gemini's "medium" thinking budget. A caller sizes its cap as its
+// largest legitimate reply, measured from what it asks for, plus this.
+export const THINKING_TOKENS = 8_192;
 // A MODEL THAT RAN OUT OF TIME IS NOT ASKED AGAIN (S13-001, S10-009). A
 // timed-out attempt used to be caught like a dropped connection and retried
 // on the same model: a slow gemini-2.5-pro was aborted at 55 s, asked again
@@ -70,6 +78,13 @@ export interface FallbackAIOptions {
   messages: Array<{ role: string; content: string }>;
   temperature?: number;
   maxTokens?: number;
+  /**
+   * Sent as max_completion_tokens to EVERY model, Google's included, instead
+   * of maxTokens: the body generate-cover-letter and generate-premium-package
+   * always sent from their own chains, kept byte for byte now that they walk
+   * this one.
+   */
+  maxCompletionTokens?: number;
   jsonResponse?: boolean;
   /** Function-calling tools (passed through to every model in the chain). */
   tools?: unknown[];
@@ -176,7 +191,7 @@ export async function callAIWithModelFallback(
               ? {
                   model,
                   messages: options.messages,
-                  ...(options.maxTokens !== undefined ? { max_completion_tokens: options.maxTokens } : {}),
+                  ...((options.maxCompletionTokens ?? options.maxTokens) !== undefined ? { max_completion_tokens: options.maxCompletionTokens ?? options.maxTokens } : {}),
                   ...(options.tools ? { tools: options.tools } : {}),
                   ...(options.toolChoice ? { tool_choice: options.toolChoice } : {}),
                 }
@@ -185,6 +200,7 @@ export async function callAIWithModelFallback(
                   messages: options.messages,
                   ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),
                   ...(options.maxTokens !== undefined ? { max_tokens: options.maxTokens } : {}),
+                  ...(options.maxCompletionTokens !== undefined ? { max_completion_tokens: options.maxCompletionTokens } : {}),
                   ...(options.jsonResponse ? { response_format: { type: 'json_object' } } : {}),
                   ...(options.tools ? { tools: options.tools } : {}),
                   ...(options.toolChoice ? { tool_choice: options.toolChoice } : {}),
@@ -256,6 +272,134 @@ export async function callAIWithModelFallback(
   // existing retryable-error handling.
   if (lastRateLimited) return lastRateLimited;
   throw lastError ?? new Error(`${context}: all models failed`);
+}
+
+/**
+ * True when a chain call failed for want of time: an attempt aborted on its
+ * clock, or the budget spent before any model answered. Never true for a
+ * caller's stop (ChainStopped), which is not a timeout.
+ */
+export function chainRanOutOfTime(error: unknown): boolean {
+  if (!(error instanceof Error) || error.name === "ChainStopped") return false;
+  return error.name === "AbortError" || error.name === "TimeoutError" || /\babort|timed? ?out/i.test(error.message);
+}
+
+type GatewayReply = {
+  choices?: Array<{
+    finish_reason?: unknown;
+    message?: { content?: unknown; tool_calls?: Array<{ function?: { name?: unknown; arguments?: unknown } }> };
+  }>;
+};
+
+/** True when a 200 reply was cut off at its token cap (finish_reason "length"). */
+export function replyWasCutOff(data: unknown): boolean {
+  return (data as GatewayReply | null)?.choices?.[0]?.finish_reason === "length";
+}
+
+/**
+ * WHAT A REPLY WAS, FOR A LOG LINE: its shape and lengths, never its words
+ * (S13-064). "Unexpected response format" lines used to print the whole
+ * reply, which for a résumé parser or a tailored résumé is the person's name,
+ * email, phone and employers, into the function logs.
+ */
+export function describeReply(data: unknown): string {
+  if (!data || typeof data !== "object") return `reply: ${data === null ? "null" : typeof data}`;
+  const keys = Object.keys(data as Record<string, unknown>).filter((k) => /^[A-Za-z_][\w-]{0,40}$/.test(k)).slice(0, 8);
+  const choices = (data as GatewayReply).choices;
+  const choice = Array.isArray(choices) ? choices[0] : undefined;
+  const message = choice?.message;
+  const content = message?.content;
+  const calls = Array.isArray(message?.tool_calls) ? message!.tool_calls! : [];
+  const finish = typeof choice?.finish_reason === "string" && /^[a-z_]{1,30}$/.test(choice.finish_reason) ? choice.finish_reason : choice?.finish_reason === undefined ? "none" : "?";
+  const called = calls.map((c) => {
+    const name = typeof c?.function?.name === "string" && /^[A-Za-z0-9_-]{1,64}$/.test(c.function.name) ? c.function.name : "?";
+    const args = c?.function?.arguments;
+    return `${name}: ${typeof args === "string" ? `${args.length} chars` : "no arguments"}`;
+  });
+  return [
+    `keys=[${keys.join(",")}]`,
+    `choices=${Array.isArray(choices) ? choices.length : "none"}`,
+    `finish_reason=${finish}`,
+    `content=${typeof content === "string" ? `${content.length} chars` : content === undefined || content === null ? "none" : typeof content}`,
+    `tool_calls=${calls.length}${called.length ? ` (${called.join(", ")})` : ""}`,
+  ].join(" ");
+}
+
+/** What a usable-reply walk hands back: the caller's value, or a gateway refusal (429, 402) for its own handling. */
+export type UsableReply<T> =
+  | { ok: true; value: T; modelUsed: string }
+  | { ok: false; response: Response; modelUsed: string };
+
+export interface UsableReplyOptions<T> extends FallbackAIOptions {
+  /**
+   * Turns a 200 reply into what the caller delivers, or null when it cannot
+   * be delivered (empty, unparseable, missing what was asked). A reply cut
+   * off at its token cap is refused before this is asked.
+   */
+  read: (data: unknown, modelUsed: string) => T | null | undefined;
+}
+
+/**
+ * A 200 IS NOT A DELIVERY (S10-009, S13-065). callAIWithModelFallback hands
+ * back the first 200, whatever it holds: a reply cut off at its token cap
+ * (the thinking spent it), an empty message or JSON that does not parse
+ * counted as success, and the caller failed with no fallback. This walks the
+ * same chain and asks the NEXT model, with what is left of the budget,
+ * whenever the reply is cut off (finish_reason "length") or `read` refuses
+ * it. The first model keeps the caller's attemptTimeoutMs; every later one
+ * gets the chain's own. A gateway refusal (429 on every model, 402) comes
+ * back as { ok: false } exactly as callAIWithModelFallback returns it; a
+ * timeout or a caller's stop is thrown as it throws them. When every model
+ * that answered was refused, or the budget is spent after a refused reply,
+ * it throws UnusableModelOutput.
+ */
+export async function callAIForUsableReply<T>(
+  apiKey: string,
+  options: UsableReplyOptions<T>,
+): Promise<UsableReply<T>> {
+  const { read, attemptTimeoutMs, ...chain } = options;
+  const models = chain.models ?? DEFAULT_MODELS;
+  const context = chain.context ?? 'AI call';
+  const budgetMs = chain.deadlineMs ?? CHAIN_DEADLINE_MS;
+  const startedAt = Date.now();
+  const refused: string[] = [];
+  for (let i = 0; i < models.length;) {
+    const left = budgetMs - (Date.now() - startedAt);
+    if (left < MIN_ATTEMPT_MS) {
+      if (refused.length === 0) {
+        throw Object.assign(new Error(`${context}: timed out before any model answered`), { name: "TimeoutError" });
+      }
+      break;
+    }
+    const { response, modelUsed } = await callAIWithModelFallback(apiKey, {
+      ...chain,
+      models: models.slice(i),
+      deadlineMs: left,
+      ...(i === 0 && attemptTimeoutMs !== undefined ? { attemptTimeoutMs } : {}),
+    });
+    if (!response.ok) return { ok: false, response, modelUsed };
+    const data = await response.json().catch(() => null);
+    const cutOff = replyWasCutOff(data);
+    let value: T | null | undefined = null;
+    if (!cutOff) {
+      try {
+        value = read(data, modelUsed);
+      } catch {
+        value = null;
+      }
+    }
+    if (value !== null && value !== undefined) {
+      if (refused.length) console.log(`[${context}] usable reply from ${modelUsed} after ${refused.length} refused`);
+      return { ok: true, value, modelUsed };
+    }
+    const why = `${modelUsed} ${cutOff ? "was cut off at its token cap" : "gave no usable reply"} (${describeReply(data)})`;
+    refused.push(why);
+    console.warn(`[${context}] ${why}; asking the next model`);
+    const at = models.indexOf(modelUsed);
+    if (at < 0) break;
+    i = at + 1;
+  }
+  throw new UnusableModelOutput(`${context}: no usable reply (${refused.join("; ")})`);
 }
 
 /**
