@@ -197,6 +197,7 @@
     "undatedMore": "({{u}} de plus sans date)",
     "boardTotal_one": "Son site affichait {{total}} poste en tout quand nous l'avons lu {{ago}}.",
     "boardTotal_other": "Son site affichait {{total}} postes en tout quand nous l'avons lu {{ago}}.",
-    "boardTotal_many": "Son site affichait {{total}} postes en tout quand nous l'avons lu {{ago}}."
+    "boardTotal_many": "Son site affichait {{total}} postes en tout quand nous l'avons lu {{ago}}.",
+    "pooledBoards": "Comptés sur {{n}} sites carrières du système de recrutement de cet employeur"
   }
 }

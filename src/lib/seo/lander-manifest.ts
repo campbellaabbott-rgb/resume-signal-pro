@@ -27,6 +27,8 @@ export const LANDERS_MANIFEST_PATH = "/landers.json";
 type Target = string | null;
 let manifest: ReadonlyMap<string, Target> | null = null;
 let pending: Promise<void> | null = null;
+/** The read has finished, with a manifest or without one. */
+let settled = false;
 let version = 0;
 const listeners = new Set<() => void>();
 const notify = () => {
@@ -70,9 +72,46 @@ export function loadLanderManifest(fetcher: typeof fetch = fetch): Promise<void>
       }
     } catch {
       /* no manifest: links stay on the live board */
+    } finally {
+      settled = true;
     }
   })();
   return pending;
+}
+
+/** True once the manifest read has finished (with or without a manifest). */
+export function landerManifestSettled(): boolean {
+  return settled;
+}
+
+/**
+ * THE BOARDS AN EMPLOYER PAGE POOLS (S12-021): every board the manifest sends
+ * to `token`'s own page, `token` first. The bake states that page's count as
+ * the sum over exactly these boards (pooledOpen in scripts/prerender-seo.mjs),
+ * so the live page lists and counts the same set. Null while the manifest has
+ * not loaded, for a board that is not its employer's page (a secondary board's
+ * page states its own count, as the bake does) and for a board alone.
+ */
+const pooled = new Map<string, { v: number; boards: string[] | null }>();
+export function pooledBoardsOf(token: string | null | undefined): string[] | null {
+  if (!token || !manifest || typeof (manifest as Map<string, Target>).entries !== "function") return null;
+  // One array per token per manifest, so a component can depend on it.
+  const hit = pooled.get(token);
+  if (hit && hit.v === version) return hit.boards;
+  const page = manifest.get(token);
+  const others = page && page === companyLanderPath(token)
+    ? [...manifest.entries()].filter(([t, v]) => v === page && t !== token).map(([t]) => t)
+    : [];
+  const boards = others.length ? [token, ...others] : null;
+  pooled.set(token, { v: version, boards });
+  return boards;
+}
+
+/** pooledBoardsOf for a component: it loads the manifest and re-renders when it arrives. */
+export function usePooledBoards(token: string | null | undefined): string[] | null {
+  useSyncExternalStore(subscribe, snapshot, snapshot);
+  useEffect(() => { void loadLanderManifest(); }, []);
+  return pooledBoardsOf(token);
 }
 
 /**
@@ -142,5 +181,6 @@ export function setLanderManifestForTests(entries: Record<string, Target> | "*" 
     ? ({ get: (token: string) => companyLanderPath(token) } as unknown as ReadonlyMap<string, Target>)
     : entries ? parseLanderManifest(entries) : null;
   pending = entries ? Promise.resolve() : null;
+  settled = !!entries;
   notify();
 }

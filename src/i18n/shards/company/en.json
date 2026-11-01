@@ -181,6 +181,7 @@
     "countedAgo": "counted {{ago}}",
     "undatedMore": "({{u}} more carry no date)",
     "boardTotal_one": "Their board listed {{total}} role in all when we read it {{ago}}.",
-    "boardTotal_other": "Their board listed {{total}} roles in all when we read it {{ago}}."
+    "boardTotal_other": "Their board listed {{total}} roles in all when we read it {{ago}}.",
+    "pooledBoards": "Counted across {{n}} of this employer's hiring-system boards"
   }
 }

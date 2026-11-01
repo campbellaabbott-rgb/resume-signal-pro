@@ -500,9 +500,15 @@ describe("the board's detail pane writes no job markup the bake would not", () =
     });
     document.head.innerHTML = `<link rel="canonical" href="${SITE}/jobs">`;
     window.history.replaceState({}, "", "/jobs");
+    const callsBefore = invoke.mock.calls.length;
     render(<HelmetProvider><MemoryRouter initialEntries={["/jobs"]}><Routes><Route path="/jobs" element={<Jobs />} /></Routes></MemoryRouter></HelmetProvider>);
-    // The reader opens the second card (an auto-selected one never takes over the head).
-    await waitFor(() => expect(new URLSearchParams(window.location.search).get("job")).toBe(first.id), SLOW);
+    // The reader opens the second card (an auto-selected one never takes over
+    // the head, and since S12-012 writes no address: its detail read is the sign).
+    await waitFor(() => expect(invoke.mock.calls.slice(callsBefore).some(([, o]) => {
+      const b = (o as { body?: { action?: string; id?: string } })?.body;
+      return b?.action === "detail" && b.id === first.id;
+    })).toBe(true), SLOW);
+    expect(new URLSearchParams(window.location.search).has("job")).toBe(false);
     fireEvent.click((await screen.findAllByText(String(opened.title), undefined, SLOW))[0]);
     await waitFor(() => expect(document.head.querySelector('link[rel="canonical"]')?.getAttribute("href")).toBe(`${SITE}/jobs?job=${encodeURIComponent(String(opened.id))}`), SLOW);
     await new Promise((r) => setTimeout(r, 300));

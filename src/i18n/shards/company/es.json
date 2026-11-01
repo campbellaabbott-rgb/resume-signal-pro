@@ -197,6 +197,7 @@
     "undatedMore": "({{u}} más sin fecha)",
     "boardTotal_one": "Su portal listaba {{total}} vacante en total cuando lo leímos {{ago}}.",
     "boardTotal_other": "Su portal listaba {{total}} vacantes en total cuando lo leímos {{ago}}.",
-    "boardTotal_many": "Su portal listaba {{total}} vacantes en total cuando lo leímos {{ago}}."
+    "boardTotal_many": "Su portal listaba {{total}} vacantes en total cuando lo leímos {{ago}}.",
+    "pooledBoards": "Contadas en {{n}} portales del sistema de contratación de esta empresa"
   }
 }

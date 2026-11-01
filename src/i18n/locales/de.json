@@ -4316,7 +4316,12 @@
     "seoPhraseCount": "{{n}} aktuelle Stellen",
     "seoPhraseCountBoards": "{{n}} aktuelle Stellen auf {{boards}} Jobbörsen von Unternehmen",
     "usajobsSeoDescriptionCount": "{{n}} Bundesstellen auf USAJOBS, jede mit ihrer Behörde. {{cap}} Prüfe kostenlos, wie dein Lebenslauf passt.",
-    "usajobsSeoDescription": "Bundesstellen auf USAJOBS, jede mit ihrer Behörde. {{cap}} Prüfe kostenlos, wie dein Lebenslauf passt."
+    "usajobsSeoDescription": "Bundesstellen auf USAJOBS, jede mit ihrer Behörde. {{cap}} Prüfe kostenlos, wie dein Lebenslauf passt.",
+    "resultsSummaryTitleOnly": "{{shown}} von {{total}} Stellen mit deiner Suche im Titel angezeigt",
+    "relatedUnavailable": "Stellen, die deine Suche nur in der Beschreibung erwähnen, konnten gerade nicht durchsucht werden; sie sind hier weder gezählt noch aufgeführt. Versuch es gleich noch einmal.",
+    "watchNameBoards": "Neue Stellen auf Jobboards namens „{{token}}“",
+    "watchSavedBoards": "Jobboards namens „{{token}}“ werden beobachtet",
+    "watchExistsBoards": "Du beobachtest Jobboards namens „{{token}}“ bereits."
   },
   "accountPage": {
     "statusSaveFailed": "Status konnte nicht gespeichert werden — bitte erneut versuchen.",

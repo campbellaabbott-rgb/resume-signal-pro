@@ -4344,7 +4344,12 @@
     "seoPhraseCount": "{{n}} offres en direct",
     "seoPhraseCountBoards": "{{n}} offres en direct sur {{boards}} sites d'emploi d'entreprises",
     "usajobsSeoDescriptionCount": "{{n}} offres fédérales publiées sur USAJOBS, chacune indiquant son agence. {{cap}} Vérifiez gratuitement l'adéquation de votre CV.",
-    "usajobsSeoDescription": "Offres fédérales publiées sur USAJOBS, chacune indiquant son agence. {{cap}} Vérifiez gratuitement l'adéquation de votre CV."
+    "usajobsSeoDescription": "Offres fédérales publiées sur USAJOBS, chacune indiquant son agence. {{cap}} Vérifiez gratuitement l'adéquation de votre CV.",
+    "resultsSummaryTitleOnly": "Affichage de {{shown}} sur {{total}} offres dont l’intitulé contient votre recherche",
+    "relatedUnavailable": "Les offres qui ne mentionnent votre recherche que dans leur description n’ont pas pu être consultées pour le moment : elles ne sont ni comptées ni affichées ici. Réessayez dans un instant.",
+    "watchNameBoards": "Nouveaux postes sur les sites carrières nommés « {{token}} »",
+    "watchSavedBoards": "Vous suivez les sites carrières nommés « {{token}} »",
+    "watchExistsBoards": "Vous suivez déjà les sites carrières nommés « {{token}} »."
   },
   "accountPage": {
     "statusSaveFailed": "Impossible d'enregistrer ce statut — réessayez.",

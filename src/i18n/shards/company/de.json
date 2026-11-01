@@ -181,6 +181,7 @@
     "countedAgo": "gezählt {{ago}}",
     "undatedMore": "({{u}} weitere ohne Datum)",
     "boardTotal_one": "Das Jobboard führte insgesamt {{total}} Stelle, als wir es {{ago}} gelesen haben.",
-    "boardTotal_other": "Das Jobboard führte insgesamt {{total}} Stellen, als wir es {{ago}} gelesen haben."
+    "boardTotal_other": "Das Jobboard führte insgesamt {{total}} Stellen, als wir es {{ago}} gelesen haben.",
+    "pooledBoards": "Gezählt über {{n}} Jobboards im Bewerbungssystem dieses Arbeitgebers"
   }
 }
