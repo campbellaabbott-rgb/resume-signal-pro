@@ -14,10 +14,11 @@ import { buildLanguageInstruction } from "../_shared/language-instruction.ts";
 // 2026-10-28.1 (S13-001, fix/full-analysis-timeout): _shared/ai-fallback.ts no
 // longer asks a model that timed out again: this function's chain moves to the
 // next model, which keeps at least 40 s of the 125 s budget when the first
-// model times out (the optional caller signal the module also gained is not
-// used here). Nothing else in this bundle changed since main's f8d72a9b, the
-// build the 2026-10-31 deploy put live (docs/deploy-ledger.json,
-// verifiedDeploys).
+// model times out (what else the module gained, the optional caller signal,
+// the walk that refuses a cut-off or empty reply, the completion-token
+// option and the reply describer, rides in the bundle unused here).
+// Nothing else in this bundle changed since main's f8d72a9b, the build the
+// 2026-10-31 deploy put live (docs/deploy-ledger.json, verifiedDeploys).
 const FN_BUILD = "generate-graduate-gameplan.2026-10-28.1";
 
 const corsHeaders = {

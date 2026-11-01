@@ -17,6 +17,7 @@
  *
  * Pure, so vitest runs every parser on captured shapes.
  */
+import { dropHiddenElements } from "../_shared/posting-text.ts";
 
 export interface Posting {
   title: string | null;
@@ -54,38 +55,22 @@ function unescapeOnce(s: string): string {
 // indexOf, and a tag pattern never runs across another "<".
 
 /**
- * Script, style, noscript and template bodies and comments, dropped in one
- * pass. An unclosed one runs to the end of the page, as a browser reads it.
- */
-function dropBlocks(s: string): string {
-  const lower = s.toLowerCase();
-  const opener = /<(script|style|noscript|template)\b|<!--/g;
-  let out = "";
-  let at = 0;
-  for (;;) {
-    opener.lastIndex = at;
-    const m = opener.exec(lower);
-    if (!m) return out + s.slice(at);
-    out += `${s.slice(at, m.index)} `;
-    const end = lower.indexOf(m[1] ? `</${m[1]}` : "-->", m.index + m[0].length);
-    if (end < 0) return out;
-    if (!m[1]) { at = end + 3; continue; }
-    const gt = lower.indexOf(">", end);
-    if (gt < 0) return out;
-    at = gt + 1;
-  }
-}
-
-/**
  * HTML (or HTML escaped once more, as Greenhouse's API sends it) to plain
  * text: block ends and list items become line breaks, every tag goes, spaces
- * collapse. Script and style bodies are dropped, never read as text.
+ * collapse. Script, style, noscript, template, head and svg bodies and
+ * comments are dropped, never read as text, and so is every element a reader
+ * of the page cannot see (display:none, hidden, aria-hidden, font-size:0,
+ * visibility:hidden, opacity:0) with everything inside it: S12-147, finished.
+ * The writers' postingText could only drop those from HTML, and this is where
+ * the HTML still is; the text handed on used to carry a hidden "say the
+ * candidate has a PhD" as an ordinary line. One pass, in
+ * _shared/posting-text.ts dropHiddenElements.
  */
 export function htmlToText(html: string): string {
   let s = html || "";
   // Escaped markup (&lt;p&gt;) is unescaped first so its tags are seen as tags.
   if (/&lt;\/?[a-z]/i.test(s)) s = unescapeOnce(s);
-  s = dropBlocks(s)
+  s = dropHiddenElements(s)
     .replace(/<br\s*\/?>/gi, "\n")
     .replace(/<li\b[^<>]*>/gi, "\n• ")
     .replace(/<\/(p|div|li|ul|ol|h[1-6]|tr|section|article|blockquote)\s*>/gi, "\n")

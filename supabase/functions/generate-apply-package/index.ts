@@ -44,9 +44,14 @@ import { fencePosting, postingText, POSTING_DATA_RULE } from "../_shared/posting
 // function's chain moves to the next model, which keeps at least 40 s of the
 // 125 s budget when the first model times out. A reply in an unexpected
 // format is logged by its shape and lengths (describeReply), no longer as the
-// whole reply, which carried the person's résumé. Nothing else in this
-// function changed, and nothing of main's past f8d72a9b, the build the
-// 2026-10-31 deploy put live, rides along.
+// whole reply, which carried the person's résumé.
+// _shared/posting-text.ts reads an HTML posting in one linear pass now
+// (S12-147, finished): the same text as before for every page whose
+// script, style and comment blocks are closed and whose tags carry no bare
+// "<"; an unclosed block now runs to the end of the page, as a browser
+// reads it.
+// Nothing else in this function changed, and nothing of main's past
+// f8d72a9b, the build the 2026-10-31 deploy put live, rides along.
 const FN_BUILD = "generate-apply-package.2026-10-28.1";
 
 const corsHeaders = {

@@ -26,8 +26,14 @@ import { refundWriting, writingChain, writingGate, type WritingPass } from "../_
 // reply, which carried the person's résumé. The résumé reaches the model
 // whole (it was cut at 15,000 characters without a word, S13-008); one over
 // the shared 50,000-character cap is refused in the shared words before the
-// account's use is taken. Nothing of main's past f8d72a9b, the build the
-// 2026-10-31 deploy put live, rides along.
+// account's use is taken.
+// _shared/posting-text.ts reads an HTML posting in one linear pass now
+// (S12-147, finished): the same text as before for every page whose
+// script, style and comment blocks are closed and whose tags carry no bare
+// "<"; an unclosed block now runs to the end of the page, as a browser
+// reads it.
+// Nothing of main's past f8d72a9b, the build the 2026-10-31 deploy put
+// live, rides along.
 const FN_BUILD = "generate-tailored-resume.2026-10-28.1";
 
 const corsHeaders = {

@@ -7,7 +7,10 @@ import { runtimeResolver } from "./net-guard.ts";
 
 // The build every response names (x-fn-build); see _shared/fn-build.ts.
 // .27 (the merge recheck, 2026-10-25): an Oracle requisition id with letters (REQ_820519) is read through the ById finder.
-const FN_BUILD = "fetch-job-posting.2026-10-11.27";
+// 2026-10-28.1 (S12-147 finished, fix/full-analysis-timeout): htmlToText drops hidden elements (display:none, visibility:hidden,
+// hidden, aria-hidden, font-size:0) with everything inside them before it strips the tags, through _shared/posting-text.ts
+// dropHiddenElements, one linear pass; nothing of main's past f8d72a9b rides along.
+const FN_BUILD = "fetch-job-posting.2026-10-28.1";
 
 const fetchImpl = (url: string, init: RequestInit) => fetch(url, init);
 const resolve = runtimeResolver(fetchImpl);
