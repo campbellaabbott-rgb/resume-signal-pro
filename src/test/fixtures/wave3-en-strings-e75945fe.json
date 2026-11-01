@@ -1,0 +1,16 @@
+{
+ "about": "The wave-3 English strings the old-sections test serves as the bundle main shipped before wave 4: src/i18n/locales/en.json at e75945fe (2026-10-11, PR #32), copied value for value. Only what the test reads: the subscription FAQ, which section 74 judges and the test also prints on /pricing, and jobsPage.sourceNote, the key section 74 picks the English strings chunk by. Vendored because CI checks out one commit (actions/checkout, fetch-depth 1), so git history is not there to read.",
+ "strings": {
+  "jobsPage": {
+   "sourceNote": "Sources: the official public job-board APIs companies publish on {{vendors}}. The largest boards are re-checked most often and the rotation runs continuously — how far behind it is right now is a measurement rather than a promise: the live median and 95th-percentile re-check ages are published on the Ghost Job Index — and postings a company takes down disappear on the next pass. A feed that stops responding drops off the board rather than breaking it."
+  },
+  "faq": {
+   "questions": {
+    "subscription": {
+     "question": "Is this a subscription?",
+     "answer": "Both options exist, and you choose. Every report and tool is a one-time payment that never renews. Separately, two optional monthly plans are available: Pro at ${{proPrice}}/month for unlimited scans and every tool, and the Morning Queue at ${{agentPrice}}/month, where the apply agent prepares a shortlist for you overnight. The resume scan and the job board stay free either way. Both plans renew every month until you cancel, and the Morning Queue's free trial for first-time subscribers turns into the paid plan when it ends unless you cancel before then. Nothing else upgrades you automatically."
+    }
+   }
+  }
+ }
+}

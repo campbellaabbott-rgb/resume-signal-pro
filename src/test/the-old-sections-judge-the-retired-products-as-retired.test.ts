@@ -134,8 +134,11 @@ const show = (lines: string[]) => `\n${lines.join("\n")}`;
 
 // ── fixtures ────────────────────────────────────────────────────────────────
 const EN_W4 = readFileSync(resolve(ROOT, "src/i18n/locales/en.json"), "utf8");
-/** The wave-3 copy, as main served it before wave 4 (the FAQ and the pass page as they were). */
-const EN_W3 = execFileSync("git", ["show", "e75945fe:src/i18n/locales/en.json"], { cwd: ROOT, encoding: "utf8" });
+/** The wave-3 copy, as main served it before wave 4: the subscription FAQ as it was, and the key section 74
+ *  finds the English strings chunk by. VENDORED, NOT READ FROM GIT: this line read en.json out of e75945fe,
+ *  and CI's checkout is one commit deep, so the whole file failed to load there ("invalid object name") on
+ *  every run from 6b3e6d43 on. The fixture is that commit's values, copied; its "about" says from where. */
+const EN_W3 = JSON.stringify((JSON.parse(readFileSync(resolve(ROOT, "src/test/fixtures/wave3-en-strings-e75945fe.json"), "utf8")) as { strings: unknown }).strings);
 const mcpBuild = (build: string): Route => ({ match: "^OPTIONS https://p\\.supabase\\.co/functions/v1/agent-mcp$", headers: { "x-fn-build": build } });
 const W4 = mcpBuild("agent-mcp.2026-10-11.2");
 const W3 = mcpBuild("agent-mcp.2026-10-09.71");

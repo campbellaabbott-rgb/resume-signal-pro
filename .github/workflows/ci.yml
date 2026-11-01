@@ -22,6 +22,10 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
+      # ONE COMMIT DEEP (checkout's default fetch-depth of 1), so no test may
+      # read git history: a test that ran `git show <sha>:<path>` passed on
+      # every laptop and failed to load here on every main run from 6b3e6d43
+      # to f8d72a9b. Strings from an old commit go in src/test/fixtures/.
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
