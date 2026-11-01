@@ -16,7 +16,10 @@
  * cap its first model's attempt (attemptTimeoutMs) to leave the next model a
  * real window, and the first model's retry never runs into the last 40 s of a
  * default chain, so the fallback always has a real window when the first
- * model times out.
+ * model times out. A caller that asks several calls at once may pass a signal
+ * that stops a chain whose reply it no longer needs (analyze-resume's section
+ * calls once its core has failed); a stop is never retried and never reads as
+ * a timeout.
  *
  * HOW IT IS PROVEN. The shipped module runs against a fake gateway on fake
  * timers: every fetch is recorded with the model it asked, when it started
@@ -251,5 +254,46 @@ describe("transient failures are handled exactly as before", () => {
     // attemptTimeoutMs is the chain's own clock, never sent to the gateway.
     const capped = await run(shipped.callAIWithModelFallback, plan, { ...opts, attemptTimeoutMs: 70_000 });
     expect(capped.calls.map((c) => c.body)).toEqual(was.calls.map((c) => c.body));
+  });
+});
+
+describe("a caller that no longer needs the reply stops the chain (analyze-resume's section calls once the core has failed)", () => {
+  type WithSignal = Partial<Parameters<Chain>[1]> & { signal?: AbortSignal };
+
+  it("the caller's abort ends the attempt in flight: no retry, no next model, and it does not read as a timeout", async () => {
+    const stop = new AbortController();
+    setTimeout(() => stop.abort(), 10_000);
+    const r = await run(shipped.callAIWithModelFallback, hangAll, { signal: stop.signal } as WithSignal);
+    expect(timeline(r.calls), "a stopped chain kept asking models").toEqual([`${PRO}@0->10:aborted`]);
+    expect(r.at).toBe(10_000);
+    expect(r.error, "a stopped chain returned as if it had an answer").not.toBeNull();
+    // analyze-resume answers 504 retryable to anything that reads as a timeout; a stop is not one.
+    expect(r.error?.name).toBe("ChainStopped");
+    expect(r.error?.message).not.toMatch(/abort|timed? ?out/i);
+  });
+
+  it("a stop during the pause before a 5xx retry makes no retry", async () => {
+    const stop = new AbortController();
+    setTimeout(() => stop.abort(), 1_500);
+    const r = await run(shipped.callAIWithModelFallback, () => ({ kind: "status", status: 503, afterMs: 1_000 }), { signal: stop.signal } as WithSignal);
+    expect(timeline(r.calls)).toEqual([`${PRO}@0->1:503`]);
+    expect(r.error?.name).toBe("ChainStopped");
+  });
+
+  it("a signal already stopped asks no model", async () => {
+    const stop = new AbortController();
+    stop.abort();
+    const r = await run(shipped.callAIWithModelFallback, hangAll, { signal: stop.signal } as WithSignal);
+    expect(r.calls).toHaveLength(0);
+    expect(r.error?.name).toBe("ChainStopped");
+  });
+
+  it("a signal that never fires changes nothing: the request body and the timeline are the unsignalled chain's", async () => {
+    const plan = (m: string): Step => (m === PRO ? { kind: "status", status: 502, afterMs: 1_000 } : { kind: "status", status: 200, afterMs: 2_000 });
+    const plain = await run(shipped.callAIWithModelFallback, plan, { maxTokens: 99 });
+    const signalled = await run(shipped.callAIWithModelFallback, plan, { maxTokens: 99, signal: new AbortController().signal } as WithSignal);
+    expect(timeline(signalled.calls)).toEqual(timeline(plain.calls));
+    expect(signalled.calls.map((c) => c.body)).toEqual(plain.calls.map((c) => c.body));
+    expect(signalled.modelUsed).toBe(FLASH);
   });
 });

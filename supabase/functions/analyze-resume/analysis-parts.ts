@@ -10,17 +10,21 @@
  *
  * NOW, the free scanner's idiom (free-keyword-scan: CORE_KEYS and
  * ENRICHMENT_KEYS of one schema, asked concurrently, merged): the schema below
- * is the old one, unchanged, and its top-level keys are split in two.
+ * is the old one, unchanged, and its top-level keys are split into parts.
  *   - core: the résumé analysis, every key the old call required;
- *   - profile-posting: linkedInAnalysis and jobDescriptionAlignment, asked in
- *     their own call, and only when the buyer gave that input.
+ *   - linkedin: linkedInAnalysis, in its own call, only with a LinkedIn profile;
+ *   - posting: jobDescriptionAlignment, in its own call, only with a posting.
  * A résumé-only analysis is one call, the old request exactly but for its cap
- * and its clock. The parts run at once, so the wall clock is the slower part,
+ * and its clock. The parts run at once, so the wall clock is the slowest part,
  * not the sum, and mergeParts puts them back into the object the old call
- * produced: the core reply as it came, and from the other part only its own
- * sections. Everything downstream (the Success page, the stored copy, the
- * email, verify-product-purchase, retry-failed-deliveries) reads that object
- * unchanged; src/test/the-full-analysis-is-asked-in-parts-and-a-timeout-says-try-again.test.ts
+ * produced: the core reply as it came, and from each other part only its own
+ * section. The two sections were optional keys of the old object (never in
+ * its required list, and the old call delivered without them), so a section
+ * whose call fails is left out and the analysis is still delivered; only the
+ * core decides whether there is anything to deliver. Everything downstream
+ * (the Success page, the stored copy, the email, verify-product-purchase,
+ * retry-failed-deliveries) reads that object unchanged;
+ * src/test/the-full-analysis-is-asked-in-parts-and-a-timeout-says-try-again.test.ts
  * compares it with the old schema, frozen in a fixture.
  *
  * Pure: no imports, so the tests read exactly what the function sends.
@@ -406,9 +410,6 @@ export const getAnalysisTools = (hasLinkedIn: boolean, hasJobDescription: boolea
 
 export const ANALYSIS_TOOL_NAME = "submit_resume_analysis";
 
-/** The sections that exist only when the buyer gave that input; they are asked in their own call. */
-export const PROFILE_AND_POSTING_KEYS: readonly string[] = ["linkedInAnalysis", "jobDescriptionAlignment"];
-
 // THE OUTPUT CAPS, MEASURED FROM THE SCHEMA ABOVE, NOT GUESSED (S13-001).
 // The largest legitimate reply for each part: every array at the largest
 // count its description allows ("3-5" is five, "3 easy" is three; with no
@@ -436,13 +437,13 @@ export const THINKING_TOKENS = 8_192;
 // THE CLOCK. Each part's chain has the platform-safe 125 s; gemini-2.5-pro
 // stays first for a paid analysis and is cut at 80 s, so flash, several times
 // faster on the same output (_shared/scan-models.ts), keeps 45 s. The free
-// scanner's split calls, larger than either part here by the same measure,
+// scanner's split calls, larger than any part here by the same measure,
 // showed pro's tail at 45-95 s.
 export const ANALYSIS_BUDGET_MS = 125_000;
 export const PRO_ATTEMPT_MS = 80_000;
 
 export interface AnalysisPart {
-  label: "core" | "profile-posting";
+  label: "core" | "linkedin" | "posting";
   /** The top-level keys of the old schema this part answers. */
   keys: string[];
   tools: ReturnType<typeof getAnalysisTools>;
@@ -453,19 +454,30 @@ export interface AnalysisPart {
 
 type Schema = { type: string; properties: Record<string, unknown>; required: string[] };
 
-const sectionNames = (hasLinkedIn: boolean, hasJobDescription: boolean): string =>
-  hasLinkedIn && hasJobDescription
-    ? "LinkedIn profile analysis and the job description alignment"
-    : hasLinkedIn ? "LinkedIn profile analysis" : "job description alignment";
+/** Each optional section: the part that asks for it, what it is called in a prompt, and its measured cap. */
+const SECTIONS = [
+  { key: "linkedInAnalysis", label: "linkedin", name: "LinkedIn profile analysis", outputTokens: LINKEDIN_OUTPUT_TOKENS },
+  { key: "jobDescriptionAlignment", label: "posting", name: "job description alignment", outputTokens: POSTING_OUTPUT_TOKENS },
+] as const;
 
-/** The calls one analysis makes: the core always, the profile-and-posting part only when that input exists. */
+const CORE_NAME = "resume scores, rewrites, metrics and action plan";
+
+/**
+ * The calls one analysis makes: the core always, and one call for each
+ * section the buyer gave input for. Each section has its own call because
+ * the two together measure larger than the core (34,050 characters of
+ * largest legitimate reply against 30,966): asked as one call they were the
+ * biggest part of every analysis that had both, and the answer waits for the
+ * slowest part. Apart, each is a little over half the core.
+ */
 export function analysisParts(hasLinkedIn: boolean, hasJobDescription: boolean): AnalysisPart[] {
   const tools = getAnalysisTools(hasLinkedIn, hasJobDescription);
   const params = tools[0].function.parameters as Schema;
-  const extraKeys = PROFILE_AND_POSTING_KEYS.filter((k) => k in params.properties);
-  const coreKeys = Object.keys(params.properties).filter((k) => !extraKeys.includes(k));
+  const sections = SECTIONS.filter((s) => s.key in params.properties);
+  const sectionKeys: string[] = sections.map((s) => s.key);
+  const coreKeys = Object.keys(params.properties).filter((k) => !sectionKeys.includes(k));
   const core: AnalysisPart = { label: "core", keys: coreKeys, tools, scopeNote: "", maxTokens: CORE_OUTPUT_TOKENS + THINKING_TOKENS };
-  if (extraKeys.length === 0) return [core];
+  if (sections.length === 0) return [core];
 
   const subset = (keys: string[], description: string, required: string[]) => [{
     type: "function",
@@ -479,21 +491,27 @@ export function analysisParts(hasLinkedIn: boolean, hasJobDescription: boolean):
       },
     },
   }] as unknown as ReturnType<typeof getAnalysisTools>;
-  const sections = sectionNames(hasLinkedIn, hasJobDescription);
+  const others = (written: string[]) =>
+    written.length > 1 ? `Parallel calls write the ${written.join(" and the ")}` : `A parallel call writes the ${written[0]}`;
   return [
     {
       ...core,
       tools: subset(coreKeys, "Submit the core resume analysis: exactly the fields in this schema", params.required.filter((k) => coreKeys.includes(k))),
-      scopeNote: `\n\nCALL SCOPE: This call produces the core resume analysis only: exactly the fields in the provided schema. A parallel call writes the ${sections}; do not include them.`,
+      scopeNote: `\n\nCALL SCOPE: This call produces the core resume analysis only: exactly the fields in the provided schema. ${others(sections.map((s) => s.name))}; do not include them.`,
     },
-    {
-      label: "profile-posting",
-      keys: extraKeys,
-      // Required here: these sections are the whole of this call.
-      tools: subset(extraKeys, `Submit the ${sections}: exactly the fields in this schema`, [...extraKeys]),
-      scopeNote: `\n\nCALL SCOPE: This call writes only the ${sections}: exactly the fields in the provided schema. A parallel call produces the resume scores, rewrites, metrics and action plan; do not repeat them.`,
-      maxTokens: THINKING_TOKENS + (hasLinkedIn ? LINKEDIN_OUTPUT_TOKENS : 0) + (hasJobDescription ? POSTING_OUTPUT_TOKENS : 0),
-    },
+    ...sections.map((section): AnalysisPart => ({
+      label: section.label,
+      keys: [section.key],
+      // Required here: the section is the whole of this call.
+      tools: subset([section.key], `Submit the ${section.name}: exactly the fields in this schema`, [section.key]),
+      scopeNote: `\n\nCALL SCOPE: This call writes only the ${section.name}: exactly the fields in the provided schema. ${others([CORE_NAME, ...sections.filter((s) => s !== section).map((s) => s.name)])}; do not repeat them.` +
+        // One headline per report (mergeParts): this one replaces the core's
+        // summaryRewrite.linkedInHeadline, whose field asks for under 120 chars.
+        (section.key === "linkedInAnalysis"
+          ? " The report also shows linkedInAnalysis.headlineOptimization.improved as the resume summary's LinkedIn headline, its only one, so keep it under 120 characters."
+          : ""),
+      maxTokens: section.outputTokens + THINKING_TOKENS,
+    })),
   ];
 }
 
@@ -527,21 +545,39 @@ export function readToolReply(data: unknown): Record<string, unknown> | null {
 
 /**
  * Whether a part's reply can be delivered. The core needs the four fields the
- * old call was refused without; the profile-and-posting part needs every
- * section it was asked for, since they are all it writes. Refused, the next
- * model in the chain is asked with the time that is left.
+ * old call was refused without; a section's part needs its section, since
+ * that is all it writes. Refused, the next model in the chain is asked with
+ * the time that is left.
  */
 export function usablePart(part: AnalysisPart, reply: Record<string, unknown>): boolean {
   if (part.label === "core") return !!(reply.optimizedBullets && reply.actionVerbs && reply.keywords && reply.redFlags);
   return part.keys.every((k) => isObject(reply[k]));
 }
 
-/** The object the old single call produced: the core reply as it came, then each other part's own sections. */
-export function mergeParts(parts: AnalysisPart[], replies: Array<Record<string, unknown>>): Record<string, unknown> {
-  const merged: Record<string, unknown> = { ...replies[0] };
+/**
+ * The object the old single call produced: the core reply as it came, then
+ * each section from its own part. A section whose part failed (null) is left
+ * out, as the old object left out a section the model did not write (neither
+ * was ever required); a stray copy of a section in another part's reply never
+ * stands in for it. And the report has ONE LinkedIn headline: the old call
+ * wrote summaryRewrite.linkedInHeadline and linkedInAnalysis.headlineOptimization
+ * in one reply, the parts write them apart, so the LinkedIn section's improved
+ * headline, written from the profile itself, is the summary's too.
+ */
+export function mergeParts(parts: AnalysisPart[], replies: Array<Record<string, unknown> | null>): Record<string, unknown> {
+  const merged: Record<string, unknown> = { ...(replies[0] ?? {}) };
   parts.forEach((part, i) => {
     if (i === 0) return;
-    for (const k of part.keys) if (k in replies[i]) merged[k] = replies[i][k];
+    for (const k of part.keys) {
+      delete merged[k];
+      const section = replies[i]?.[k];
+      if (isObject(section)) merged[k] = section;
+    }
   });
+  const linkedIn = merged.linkedInAnalysis;
+  const improved = isObject(linkedIn) && isObject(linkedIn.headlineOptimization) ? linkedIn.headlineOptimization.improved : undefined;
+  if (typeof improved === "string" && improved.trim() && isObject(merged.summaryRewrite)) {
+    merged.summaryRewrite = { ...merged.summaryRewrite, linkedInHeadline: improved };
+  }
   return merged;
 }

@@ -27,10 +27,15 @@ import { REFUNDED_PURCHASE_MESSAGE, sessionWasRefunded } from "../_shared/paymen
 // preflight included, carries this in x-fn-build.
 // 2026-10-09.62 (wave-3 fix round integration): carries both 2026-10-09.3 and the payments-account group's 2026-10-09.61.
 // 2026-10-28.1 (S13-001, fix/full-analysis-timeout): the Full Analysis is
-// asked in parallel parts (analysis-parts.ts: the core, and the LinkedIn and
-// posting sections when given) with measured max_tokens, pro first with an
-// 80 s attempt so the next model keeps 45 s, and a chain that runs out of time
-// answers 504 retryable instead of 500. _shared/ai-fallback.ts changed too.
+// asked in parallel parts (analysis-parts.ts: the core, and a call each for
+// the LinkedIn and posting sections when given) with measured max_tokens, pro
+// first with an 80 s attempt so the next model keeps 45 s. A core that runs
+// out of time answers 504 retryable instead of 500; a section call that fails
+// is left out and the analysis is delivered without it, as the old object
+// allowed (hasLinkedIn false when the LinkedIn section is missing); the
+// summary's LinkedIn headline is the LinkedIn section's. _shared/ai-fallback.ts
+// changed too: a timed-out model is not asked again, and a caller's signal
+// stops the chain.
 const FN_BUILD = "analyze-resume.2026-10-28.1";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -306,9 +311,10 @@ const answer = (status: number, error: string) =>
  * what it was asked for) asks the next model with the time that is left, as
  * generate-career-snapshot does, and with under 5 s left the part is out of
  * time. A gateway refusal is answered as the single call answered it; a
- * timeout is thrown for the caller's retryable 504.
+ * timeout is thrown for the caller's retryable 504. `stop` ends a section's
+ * chain once the core has failed and nothing will be delivered.
  */
-async function askPart(apiKey: string, part: AnalysisPart, systemPrompt: string, userMessage: string): Promise<Record<string, unknown>> {
+async function askPart(apiKey: string, part: AnalysisPart, systemPrompt: string, userMessage: string, stop?: AbortSignal): Promise<Record<string, unknown>> {
   const models = chainFrom("google/gemini-2.5-pro");
   const startedAt = Date.now();
   for (let i = 0; i < models.length;) {
@@ -325,6 +331,7 @@ async function askPart(apiKey: string, part: AnalysisPart, systemPrompt: string,
       models: models.slice(i),
       deadlineMs: left,
       ...(i === 0 ? { attemptTimeoutMs: PRO_ATTEMPT_MS } : {}),
+      ...(stop ? { signal: stop } : {}),
       context: `ANALYZE-RESUME ${part.label}`,
     });
 
@@ -348,7 +355,17 @@ async function askPart(apiKey: string, part: AnalysisPart, systemPrompt: string,
   throw new PartAnswer(answer(500, ERROR_MESSAGES.INTERNAL));
 }
 
-/** Every part at once, merged into the object the old single call produced. */
+const failureNote = (failure: unknown): string =>
+  failure instanceof PartAnswer ? `answered ${failure.response.status}` : failure instanceof Error ? `${failure.name}: ${failure.message}` : String(failure);
+
+/**
+ * Every part at once, merged into the object the old single call produced.
+ * The core decides the answer: its failure is the request's answer at once,
+ * and the section calls still running are stopped, since nothing will be
+ * delivered. A section is optional, as it was in the old object: a section
+ * call that fails (out of time, unusable on every model, refused) is left out
+ * and the analysis is delivered without it, never thrown away with it.
+ */
 async function analyzeInParts(
   apiKey: string,
   systemPrompt: string,
@@ -357,9 +374,27 @@ async function analyzeInParts(
   hasJobDescription: boolean,
 ): Promise<Record<string, unknown>> {
   const parts = analysisParts(hasLinkedIn, hasJobDescription);
+  const [core, ...sections] = parts;
   const startedAt = Date.now();
-  const replies = await Promise.all(parts.map((part) => askPart(apiKey, part, systemPrompt, userMessage)));
-  console.log(`[ANALYZE-RESUME] ${parts.map((p) => p.label).join(" + ")} answered in ${Date.now() - startedAt}ms`);
+  const stopSections = new AbortController();
+  const sectionReplies = sections.map((part) =>
+    askPart(apiKey, part, systemPrompt, userMessage, stopSections.signal).catch((failure) => {
+      if (!stopSections.signal.aborted) {
+        console.warn(`[ANALYZE-RESUME] (${part.label}) not delivered (${failureNote(failure)}); the analysis goes out without it`);
+      }
+      return null;
+    })
+  );
+  let coreReply: Record<string, unknown>;
+  try {
+    coreReply = await askPart(apiKey, core, systemPrompt, userMessage);
+  } catch (failure) {
+    stopSections.abort();
+    throw failure;
+  }
+  const replies = [coreReply, ...(await Promise.all(sectionReplies))];
+  const missing = sections.filter((_, i) => replies[i + 1] === null).map((p) => p.label);
+  console.log(`[ANALYZE-RESUME] ${parts.map((p) => p.label).join(" + ")} answered in ${Date.now() - startedAt}ms${missing.length ? `; delivered without ${missing.join(" and ")}` : ""}`);
   return mergeParts(parts, replies);
 }
 
@@ -1035,10 +1070,10 @@ Use their actual resume content in examples. Prioritize highest-impact fixes fir
 
     // THE ANALYSIS IN PARALLEL PARTS (S13-001; analysis-parts.ts): the
     // résumé analysis in one call and, only when the buyer gave them, the
-    // LinkedIn and posting sections in another, each capped at its measured
-    // largest reply, on gemini-2.5-pro first with a real window left for
-    // flash. Nothing is redeemed until deliver(), so every failure here
-    // leaves the purchase redeemable.
+    // LinkedIn section and the posting section in a call each, each capped at
+    // its measured largest reply, on gemini-2.5-pro first with a real window
+    // left for flash. Nothing is redeemed until deliver(), so every failure
+    // here leaves the purchase redeemable.
     let analysis: Record<string, any>;
     try {
       analysis = await analyzeInParts(LOVABLE_API_KEY, systemPrompt, userMessage, !!hasLinkedIn, hasJobDescription);
@@ -1074,6 +1109,10 @@ Use their actual resume content in examples. Prioritize highest-impact fixes fir
     // Set feature flags for frontend
     analysis.hasLinkedIn = hasLinkedIn;
     analysis.hasJobDescription = hasJobDescription;
+    // The page prints "LinkedIn included" and "full profile breakdown" from
+    // this flag: a report whose LinkedIn section call failed and went out
+    // without it does not claim it.
+    if (hasLinkedIn && !(analysis.linkedInAnalysis && typeof analysis.linkedInAnalysis === 'object')) analysis.hasLinkedIn = false;
 
     console.log("[ANALYZE-RESUME] Analysis complete; redeeming the session...");
     return await deliver(analysis);

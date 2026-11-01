@@ -7,6 +7,8 @@
 //     returned so callers keep their existing "try again shortly" handling)
 //   - 402 (credits exhausted) → return immediately; it hits every model alike
 //   - other 4xx → next model (bad interaction with that model's API shape)
+//   - the caller's signal aborted (a caller that passes options.signal) →
+//     the chain stops at once and throws ChainStopped: no retry, no next model
 // Derived from generate-cover-letter's proven in-house pattern, extracted so
 // generate-freelance-boost and generate-interview-coach share one copy, with
 // one deliberate change: 429 falls through to the next model instead of
@@ -34,6 +36,14 @@ const MIN_ATTEMPT_MS = 5_000;
 // model times out, even on the retry after a slow 5xx. A caller that raises
 // attemptTimeoutMs past budget - 40 s gives the next model what is left.
 const FALLBACK_WINDOW_MS = 40_000;
+
+/**
+ * The caller stopped the chain (options.signal): its reply is no longer
+ * wanted. Named apart from an AbortError on purpose: callers answer a
+ * timeout as retryable, and a stop is not a timeout.
+ */
+const chainStopped = (context: string) =>
+  Object.assign(new Error(`${context}: stopped by the caller`), { name: "ChainStopped" });
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -78,6 +88,14 @@ export interface FallbackAIOptions {
    * 125 s budget, 80 s leaves the fallback 45 s. Never sent to the gateway.
    */
   attemptTimeoutMs?: number;
+  /**
+   * Stops the chain when it fires: the attempt in flight is aborted, nothing
+   * is retried, no further model is asked, and the call throws ChainStopped.
+   * For a caller that asks several calls at once and no longer needs this
+   * one (analyze-resume's section calls once the core has failed). Never
+   * sent to the gateway.
+   */
+  signal?: AbortSignal;
 }
 
 // Default order: the paid-quality primary, then the same-family model the
@@ -119,6 +137,7 @@ export async function callAIWithModelFallback(
     const model = models[index];
     const isFirst = index === 0;
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      if (options.signal?.aborted) throw chainStopped(context);
       const left = deadlineAt - Date.now();
       if (left < MIN_ATTEMPT_MS) {
         console.warn(`[${context}] chain deadline reached before ${model} attempt ${attempt + 1}`);
@@ -137,6 +156,8 @@ export async function callAIWithModelFallback(
         timedOut = true;
         controller.abort();
       }, attemptMs);
+      const stop = () => controller.abort();
+      options.signal?.addEventListener("abort", stop);
       try {
         const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
           method: 'POST',
@@ -208,6 +229,7 @@ export async function callAIWithModelFallback(
         break;
       } catch (error) {
         clearTimeout(timeoutId);
+        if (options.signal?.aborted && !timedOut) throw chainStopped(context);
         const msg = error instanceof Error ? error.message : String(error);
         lastError = error instanceof Error ? error : new Error(msg);
         if (timedOut) {
@@ -222,9 +244,13 @@ export async function callAIWithModelFallback(
           await sleep(RETRY_DELAY_MS);
           continue;
         }
+      } finally {
+        options.signal?.removeEventListener("abort", stop);
       }
     }
   }
+
+  if (options.signal?.aborted) throw chainStopped(context);
 
   // Every model rate-limited → hand back the last 429 so callers keep their
   // existing retryable-error handling.

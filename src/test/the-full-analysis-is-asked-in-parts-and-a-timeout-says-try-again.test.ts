@@ -9,12 +9,14 @@
  * with no retryable flag, for a purchase that was never redeemed.
  *
  * NOW. The résumé analysis is one call and, only when the buyer gave them, the
- * LinkedIn and posting sections are another, asked at the same time; each has
- * its own part of the OLD schema, a measured output cap, pro first with a real
- * window left for flash, and a reply it cannot deliver goes to the next model.
- * The parts merge into exactly the object the old call produced, and that
- * object is what the buyer sees, what is stored behind the share link and
- * what the email carries. A chain that runs out of time answers 504 with
+ * LinkedIn section and the posting section are a call each, asked at the same
+ * time; each has its own part of the OLD schema, a measured output cap, pro
+ * first with a real window left for flash, and a reply it cannot deliver goes
+ * to the next model. The parts merge into exactly the object the old call
+ * produced, and that object is what the buyer sees, what is stored behind the
+ * share link and what the email carries. The sections were optional in the old
+ * object, so a section call that fails is left out and the analysis is still
+ * delivered; the core decides. A core that runs out of time answers 504 with
  * retryable: true and nothing redeemed, and the same purchase then delivers.
  *
  * The shipped handler runs (helpers/analyze-resume-harness.ts) with the model
@@ -81,6 +83,8 @@ const propsOf = (c: Call) => c.opts.tools[0].function.parameters.properties ?? {
 const isCore = (c: Call) => "optimizedBullets" in propsOf(c);
 const without = (o: Record<string, unknown>, ...keys: string[]) => Object.fromEntries(Object.entries(o).filter(([k]) => !keys.includes(k)));
 const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
+/** What the shared chain throws when its last model ran out of time. */
+const abortError = () => new DOMException("The signal has been aborted", "AbortError");
 
 let h: Harness;
 let calls: Call[];
@@ -119,34 +123,42 @@ beforeEach(() => {
 
 const buy = (id: string) => h.sessions.set(id, fullAnalysisSession(id));
 
-describe("a LinkedIn profile and a posting: two calls at once, each with its part of the old schema", () => {
-  it("asks the résumé analysis and the two sections in parallel, every field exactly as the old schema had it", async () => {
+describe("a LinkedIn profile and a posting: three calls at once, each with its part of the old schema", () => {
+  it("asks the résumé analysis, the LinkedIn section and the posting section in parallel, every field exactly as the old schema had it", async () => {
     buy("cs_parts");
     const r = await h.call({ resumeText: RESUME, linkedInText: LINKEDIN, jobDescriptionText: POSTING, sessionId: "cs_parts" });
     expect(r.status).toBe(200);
-    expect(calls, "the whole analysis was still one call").toHaveLength(2);
-    const [a, b] = calls;
-    expect(a.start < (b.end ?? Infinity) && b.start < (a.end ?? Infinity), "the second part waited for the first").toBe(true);
+    // One call per section: the two sections together measure larger than
+    // the core (34,050 characters against 30,966), so asked as one call they
+    // were the slowest part; apart, each is about half the core.
+    expect(calls, "the LinkedIn and posting sections were asked in one call").toHaveLength(3);
+    for (const a of calls) for (const b of calls) {
+      if (a !== b) expect(a.start < (b.end ?? Infinity), "a part waited for another").toBe(true);
+    }
 
     const core = calls.find(isCore)!;
-    const extras = calls.find((c) => !isCore(c))!;
+    const linkedin = calls.find((c) => "linkedInAnalysis" in propsOf(c))!;
+    const posting = calls.find((c) => "jobDescriptionAlignment" in propsOf(c))!;
     const old = oldParams("both");
     const oldCoreKeys = Object.keys(old.properties ?? {}).filter((k) => !EXTRA_KEYS.includes(k));
     expect(Object.keys(propsOf(core)).sort()).toEqual([...oldCoreKeys].sort());
     expect(core.opts.tools[0].function.parameters.required).toEqual(old.required);
-    expect(Object.keys(propsOf(extras)).sort()).toEqual([...EXTRA_KEYS].sort());
-    for (const [k, v] of Object.entries({ ...propsOf(core), ...propsOf(extras) })) {
+    expect(Object.keys(propsOf(linkedin))).toEqual(["linkedInAnalysis"]);
+    expect(Object.keys(propsOf(posting))).toEqual(["jobDescriptionAlignment"]);
+    for (const [k, v] of Object.entries({ ...propsOf(core), ...propsOf(linkedin), ...propsOf(posting) })) {
       expect(v, `${k} is not the field the old schema asked for`).toEqual(old.properties?.[k]);
     }
     for (const c of calls) expect(c.opts.tools[0].function.name).toBe("submit_resume_analysis");
 
-    // Both parts read everything the buyer gave, under the same prompt, each told its scope.
-    expect(core.opts.messages[1]).toEqual(extras.opts.messages[1]);
+    // Every part reads everything the buyer gave, under the same prompt, each told its scope.
+    for (const c of [linkedin, posting]) expect(c.opts.messages[1]).toEqual(core.opts.messages[1]);
     for (const text of [LINKEDIN, "variance analysis, forecasting and SQL"]) expect(core.opts.messages[1].content).toContain(text);
     const prompt = (c: Call) => c.opts.messages[0].content.split("\n\nCALL SCOPE:")[0];
-    expect(prompt(core)).toBe(prompt(extras));
+    for (const c of [linkedin, posting]) expect(prompt(c)).toBe(prompt(core));
     expect(core.opts.messages[0].content).toMatch(/CALL SCOPE: This call produces the core resume analysis only/);
-    expect(extras.opts.messages[0].content).toMatch(/CALL SCOPE: This call writes only the LinkedIn profile analysis and the job description alignment/);
+    expect(core.opts.messages[0].content).toMatch(/LinkedIn profile analysis and the job description alignment; do not include them/);
+    expect(linkedin.opts.messages[0].content).toMatch(/CALL SCOPE: This call writes only the LinkedIn profile analysis:/);
+    expect(posting.opts.messages[0].content).toMatch(/CALL SCOPE: This call writes only the job description alignment:/);
   });
 
   it("merges into exactly what the old single call delivered for the same answer: the page, the stored copy and the email", async () => {
@@ -160,8 +172,16 @@ describe("a LinkedIn profile and a posting: two calls at once, each with its par
     const r = await h.call({ resumeText: RESUME, linkedInText: LINKEDIN, jobDescriptionText: POSTING, sessionId: "cs_merge" });
     expect(r.status).toBe(200);
 
-    // What the old call delivered when the model answered the old schema in full.
-    const expected = { ...(instance(oldParams("both")) as Record<string, unknown>), hasLinkedIn: true, hasJobDescription: true };
+    // What the old call delivered when the model answered the old schema in
+    // full, with one difference by design: the report has one LinkedIn
+    // headline, the LinkedIn section's improved one (mergeParts).
+    const full = instance(oldParams("both")) as Record<string, any>;
+    const expected = {
+      ...full,
+      summaryRewrite: { ...full.summaryRewrite, linkedInHeadline: full.linkedInAnalysis.headlineOptimization.improved },
+      hasLinkedIn: true,
+      hasJobDescription: true,
+    };
     const delivered = without(r.json, "shareId", "emailSent");
     expect(delivered).toEqual(expected);
     expect(keyTree(without(delivered, "hasLinkedIn", "hasJobDescription")), "the merged keys are not the old tool schema's").toEqual(schemaKeyTree(oldParams("both")));
@@ -298,10 +318,10 @@ describe("a chain that ran out of time answers 504, retryable, and the same purc
     expect(r.json.retryable).toBe(true);
   });
 
-  it("one part out of time while the other answered: 504, and nothing half-delivered is stored", async () => {
+  it("the core out of time is a 504 even when the sections answered, and nothing half-delivered is stored", async () => {
     buy("cs_half");
     reply = async (opts) => {
-      if ("optimizedBullets" in (opts.tools[0].function.parameters.properties ?? {})) return toolReply(instance(opts.tools[0].function.parameters), PRO);
+      if (!("optimizedBullets" in (opts.tools[0].function.parameters.properties ?? {}))) return toolReply(instance(opts.tools[0].function.parameters), PRO);
       await pause(20);
       throw timedOut();
     };
@@ -324,3 +344,131 @@ describe("a chain that ran out of time answers 504, retryable, and the same purc
     }
   });
 });
+
+describe("a LinkedIn or posting section is optional in the old object: its failure never costs the buyer the analysis", () => {
+  const timedOut = abortError;
+  const askedFor = (opts: Opts, key: string) => key in (opts.tools[0].function.parameters.properties ?? {});
+
+  // The old call required only the core keys and delivered whenever the four
+  // core fields were there; linkedInAnalysis and jobDescriptionAlignment were
+  // optional top-level keys. A section's call that fails is left out the same way.
+  for (const [why, fail] of [
+    ["out of time", async () => { await pause(10); throw timedOut(); }],
+    ["unusable on every model", async (opts: Opts) => toolReply({ marker: "no section" }, opts.models?.[0] ?? "?")],
+    ["refused by the gateway (429)", async () => ({ response: new Response(JSON.stringify({ error: "busy" }), { status: 429 }), modelUsed: PRO })],
+    ["refused by the gateway (500)", async () => ({ response: new Response(JSON.stringify({ error: "upstream" }), { status: 500 }), modelUsed: PRO })],
+  ] as const) {
+    it(`the posting section ${why}: the core and the LinkedIn section are delivered, once, without it`, async () => {
+      buy("cs_partial");
+      reply = async (opts) => {
+        if (askedFor(opts, "jobDescriptionAlignment")) return fail(opts);
+        await pause(30);
+        return toolReply(instance(opts.tools[0].function.parameters), opts.models?.[0] ?? PRO);
+      };
+      const r = await h.call({ resumeText: RESUME, linkedInText: LINKEDIN, jobDescriptionText: POSTING, sessionId: "cs_partial" });
+      expect(r.status, `a failed posting section threw away a complete analysis (${why})`).toBe(200);
+      expect(r.json.jobDescriptionAlignment).toBeUndefined();
+      expect(r.json.linkedInAnalysis).toEqual(instance(oldParams("both").properties!.linkedInAnalysis));
+      expect(r.json.optimizedBullets).toBeDefined();
+      // What is left is still the old object for the input that was answered.
+      expect(keyTree(without(r.json, "shareId", "emailSent", "hasLinkedIn", "hasJobDescription"))).toEqual(schemaKeyTree(oldParams("linkedin")));
+      expect(h.db.rows("purchased_content")).toHaveLength(1);
+      expect(h.db.rows("resume_analyses")[0].analysis_result).toEqual(without(r.json, "shareId", "emailSent"));
+    });
+  }
+
+  it("the LinkedIn section lost: the report does not claim to include it", async () => {
+    buy("cs_no_linkedin");
+    reply = async (opts) => {
+      if (askedFor(opts, "linkedInAnalysis")) throw timedOut();
+      return toolReply(instance(opts.tools[0].function.parameters), PRO);
+    };
+    const r = await h.call({ resumeText: RESUME, linkedInText: LINKEDIN, sessionId: "cs_no_linkedin" });
+    expect(r.status).toBe(200);
+    expect(r.json.linkedInAnalysis).toBeUndefined();
+    // AnalysisResults prints "LinkedIn included" and "Full profile breakdown" from this flag.
+    expect(r.json.hasLinkedIn, "the page would say LinkedIn is included with no LinkedIn section").toBe(false);
+    expect(keyTree(without(r.json, "shareId", "emailSent", "hasLinkedIn", "hasJobDescription"))).toEqual(schemaKeyTree(oldParams("none")));
+  });
+
+  it("a stray section the core call wrote never stands in for the section's own call", async () => {
+    buy("cs_stray");
+    reply = async (opts) => {
+      if (askedFor(opts, "jobDescriptionAlignment")) throw timedOut();
+      const own = instance(opts.tools[0].function.parameters) as Record<string, unknown>;
+      return toolReply(askedFor(opts, "optimizedBullets") ? { ...own, jobDescriptionAlignment: "from the core call" } : own, PRO);
+    };
+    const r = await h.call({ resumeText: RESUME, jobDescriptionText: POSTING, sessionId: "cs_stray" });
+    expect(r.status).toBe(200);
+    expect(r.json.jobDescriptionAlignment).toBeUndefined();
+  });
+
+  it("every section lost: the core alone is delivered, the old object for a résumé alone", async () => {
+    buy("cs_core_only");
+    reply = async (opts) => {
+      if (!askedFor(opts, "optimizedBullets")) throw timedOut();
+      return toolReply(instance(opts.tools[0].function.parameters), PRO);
+    };
+    const r = await h.call({ resumeText: RESUME, linkedInText: LINKEDIN, jobDescriptionText: POSTING, sessionId: "cs_core_only" });
+    expect(r.status).toBe(200);
+    expect(keyTree(without(r.json, "shareId", "emailSent", "hasLinkedIn", "hasJobDescription"))).toEqual(schemaKeyTree(oldParams("none")));
+    expect(h.db.rows("purchased_content")).toHaveLength(1);
+  });
+
+  it("the core failing answers at once, without waiting for the sections, and tells their chains to stop", async () => {
+    buy("cs_core_fails");
+    const signals: AbortSignal[] = [];
+    reply = async (opts) => {
+      if (askedFor(opts, "optimizedBullets")) return { response: new Response(JSON.stringify({ error: "busy" }), { status: 429 }), modelUsed: PRO };
+      const signal = (opts as Opts & { signal?: AbortSignal }).signal;
+      expect(signal, "a section's chain was given no way to be stopped").toBeDefined();
+      signals.push(signal!);
+      // A slow section: it would hold the answer for 5 s if it were awaited.
+      await new Promise((resolve) => { const t = setTimeout(resolve, 5_000); signal?.addEventListener("abort", () => { clearTimeout(t); resolve(null); }); });
+      return toolReply(instance(opts.tools[0].function.parameters), PRO);
+    };
+    const started = performance.now();
+    const r = await h.call({ resumeText: RESUME, linkedInText: LINKEDIN, jobDescriptionText: POSTING, sessionId: "cs_core_fails" });
+    expect(r.status).toBe(429);
+    expect(performance.now() - started, "the core's refusal waited for the sections").toBeLessThan(2_500);
+    expect(signals).toHaveLength(2);
+    for (const s of signals) expect(s.aborted, "a section's chain kept running after the core failed").toBe(true);
+    expect(h.db.rows("purchased_content")).toHaveLength(0);
+  });
+});
+
+describe("one LinkedIn headline in one report", () => {
+  it("the résumé summary's LinkedIn headline is the LinkedIn section's improved headline, so the buyer is never handed two", async () => {
+    buy("cs_headline");
+    reply = async (opts) => {
+      const own = instance(opts.tools[0].function.parameters) as Record<string, any>;
+      if ("summaryRewrite" in own) own.summaryRewrite = { professionalSummary: "Summary.", linkedInHeadline: "Core call's headline" };
+      if ("linkedInAnalysis" in own) own.linkedInAnalysis.headlineOptimization = { current: "Engineer", improved: "Senior Payments Engineer | Scaling checkout to 10M users", whyBetter: "Names the niche." };
+      return toolReply(own, PRO);
+    };
+    const r = await h.call({ resumeText: RESUME, linkedInText: LINKEDIN, sessionId: "cs_headline" });
+    expect(r.status).toBe(200);
+    expect(r.json.summaryRewrite).toEqual({ professionalSummary: "Summary.", linkedInHeadline: "Senior Payments Engineer | Scaling checkout to 10M users" });
+    expect((r.json.linkedInAnalysis as { headlineOptimization: { improved: string } }).headlineOptimization.improved).toBe("Senior Payments Engineer | Scaling checkout to 10M users");
+    const linkedinCall = calls.find((c) => "linkedInAnalysis" in propsOf(c))!;
+    expect(linkedinCall.opts.messages[0].content, "the LinkedIn call was not told its headline is the report's only one").toMatch(/headlineOptimization\.improved[^]*under 120 characters/);
+  });
+
+  it("without a LinkedIn section the core's headline stands", async () => {
+    buy("cs_headline_core");
+    reply = async (opts) => {
+      const own = instance(opts.tools[0].function.parameters) as Record<string, any>;
+      if ("summaryRewrite" in own) own.summaryRewrite = { professionalSummary: "Summary.", linkedInHeadline: "Core call's headline" };
+      if ("linkedInAnalysis" in own) throw abortError();
+      return toolReply(own, PRO);
+    };
+    for (const input of [{}, { linkedInText: LINKEDIN }]) {
+      h.reset();
+      buy("cs_headline_core");
+      const r = await h.call({ resumeText: RESUME, ...input, sessionId: "cs_headline_core" });
+      expect(r.status).toBe(200);
+      expect((r.json.summaryRewrite as { linkedInHeadline: string }).linkedInHeadline).toBe("Core call's headline");
+    }
+  });
+});
+

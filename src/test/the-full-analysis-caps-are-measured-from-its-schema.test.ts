@@ -104,9 +104,18 @@ describe("each cap is the largest legitimate reply its part of the schema asks f
     expect(THINKING_TOKENS).toBe(8_192);
     const caps = (l: boolean, j: boolean) => analysisParts(l, j).map((p) => [p.label, p.maxTokens]);
     expect(caps(false, false)).toEqual([["core", CORE_OUTPUT_TOKENS + THINKING_TOKENS]]);
-    expect(caps(true, false)).toEqual([["core", CORE_OUTPUT_TOKENS + THINKING_TOKENS], ["profile-posting", LINKEDIN_OUTPUT_TOKENS + THINKING_TOKENS]]);
-    expect(caps(false, true)).toEqual([["core", CORE_OUTPUT_TOKENS + THINKING_TOKENS], ["profile-posting", POSTING_OUTPUT_TOKENS + THINKING_TOKENS]]);
-    expect(caps(true, true)).toEqual([["core", CORE_OUTPUT_TOKENS + THINKING_TOKENS], ["profile-posting", LINKEDIN_OUTPUT_TOKENS + POSTING_OUTPUT_TOKENS + THINKING_TOKENS]]);
+    expect(caps(true, false)).toEqual([["core", CORE_OUTPUT_TOKENS + THINKING_TOKENS], ["linkedin", LINKEDIN_OUTPUT_TOKENS + THINKING_TOKENS]]);
+    expect(caps(false, true)).toEqual([["core", CORE_OUTPUT_TOKENS + THINKING_TOKENS], ["posting", POSTING_OUTPUT_TOKENS + THINKING_TOKENS]]);
+    expect(caps(true, true)).toEqual([
+      ["core", CORE_OUTPUT_TOKENS + THINKING_TOKENS],
+      ["linkedin", LINKEDIN_OUTPUT_TOKENS + THINKING_TOKENS],
+      ["posting", POSTING_OUTPUT_TOKENS + THINKING_TOKENS],
+    ]);
+  });
+
+  it("no section's call is larger than the core's: the two sections together would be (34,050 characters against 30,966)", () => {
+    expect(measured.linkedin + measured.posting).toBeGreaterThan(measured.core);
+    for (const p of analysisParts(true, true).slice(1)) expect(p.maxTokens).toBeLessThan(analysisParts(true, true)[0].maxTokens);
   });
 
   it("pro's attempt leaves the next model at least 40 s of the part's budget", () => {
@@ -135,7 +144,7 @@ describe("the split is the old schema, cut once", () => {
         expect(Object.keys(props).sort()).toEqual([...p.keys].sort());
         for (const k of p.keys) expect(props[k]).toEqual((params.properties ?? {})[k]);
       }
-      expect(parts.length).toBe(l || j ? 2 : 1);
+      expect(parts.length, "one call for the core and one for each section the buyer gave").toBe(1 + Number(l) + Number(j));
     }
   });
 
@@ -145,21 +154,46 @@ describe("the split is the old schema, cut once", () => {
     expect(only.scopeNote).toBe("");
   });
 
-  it("the merge takes the core reply as it came and only its own sections from the other part", () => {
+  it("the merge takes the core reply as it came and only its own section from each other part", () => {
     const parts = analysisParts(true, true);
     const merged = mergeParts(parts, [
       { atsScore: { score: 70 }, keywords: ["a"], linkedInAnalysis: "stray from the core call", marker: "core" },
-      { linkedInAnalysis: { profileScore: 1 }, jobDescriptionAlignment: { matchScore: 2 }, atsScore: "stray from the other call" },
+      { linkedInAnalysis: { profileScore: 1 }, atsScore: "stray from the LinkedIn call" },
+      { jobDescriptionAlignment: { matchScore: 2 }, linkedInAnalysis: "stray from the posting call" },
     ]);
     expect(merged).toEqual({ atsScore: { score: 70 }, keywords: ["a"], marker: "core", linkedInAnalysis: { profileScore: 1 }, jobDescriptionAlignment: { matchScore: 2 } });
   });
 
+  it("a section whose call failed is left out, as the old object left out a section the model did not write", () => {
+    const parts = analysisParts(true, true);
+    const merged = mergeParts(parts, [
+      { keywords: ["a"], jobDescriptionAlignment: "stray from the core call" },
+      { linkedInAnalysis: { profileScore: 1 } },
+      null,
+    ]);
+    expect(merged).toEqual({ keywords: ["a"], linkedInAnalysis: { profileScore: 1 } });
+  });
+
+  it("the report has one LinkedIn headline: the LinkedIn section's improved one, when it wrote one", () => {
+    const parts = analysisParts(true, false);
+    const core = { summaryRewrite: { professionalSummary: "S.", linkedInHeadline: "core" } };
+    expect(mergeParts(parts, [core, { linkedInAnalysis: { headlineOptimization: { current: "a", improved: "B | C", whyBetter: "d" } } }]).summaryRewrite)
+      .toEqual({ professionalSummary: "S.", linkedInHeadline: "B | C" });
+    for (const section of [null, { linkedInAnalysis: { headlineOptimization: { improved: "  " } } }, { linkedInAnalysis: {} }]) {
+      expect(mergeParts(parts, [core, section]).summaryRewrite).toEqual(core.summaryRewrite);
+    }
+    // The core's object is not changed in place: the reply stays as it came.
+    expect(core.summaryRewrite.linkedInHeadline).toBe("core");
+  });
+
   it("a part's reply is deliverable only with what that part was asked for", () => {
-    const [core, extras] = analysisParts(true, true);
+    const [core, linkedin, posting] = analysisParts(true, true);
     expect(usablePart(core, { optimizedBullets: [1], actionVerbs: [1], keywords: [1], redFlags: [] })).toBe(true);
     expect(usablePart(core, { optimizedBullets: [1], actionVerbs: [1], keywords: [1] })).toBe(false);
-    expect(usablePart(extras, { linkedInAnalysis: {}, jobDescriptionAlignment: {} })).toBe(true);
-    expect(usablePart(extras, { linkedInAnalysis: {} })).toBe(false);
+    expect(usablePart(linkedin, { linkedInAnalysis: {} })).toBe(true);
+    expect(usablePart(linkedin, { jobDescriptionAlignment: {} })).toBe(false);
+    expect(usablePart(posting, { jobDescriptionAlignment: {} })).toBe(true);
+    expect(usablePart(posting, { jobDescriptionAlignment: "text" })).toBe(false);
   });
 
   it("a reply is read from the tool call, or from JSON in the message, and a truncated one is no reply", () => {
