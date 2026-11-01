@@ -13,8 +13,6 @@ import { websiteSessionOf } from "../_shared/website-session.ts";
 import {
   EVALUATION_FORMAT,
   EVALUATION_OUTPUT_TOKENS,
-  PRO_FIRST_ATTEMPT_MS,
-  PRO_MODEL,
   countsLine,
   mergePrepSet,
   outputFormat,
@@ -41,10 +39,12 @@ import {
 // 1,700 + 8,192, was 1,500); the paid 14 are two parallel calls of 7 (14,600
 // and 13,000, + 8,192 each; was one call of 9,000) merged into the same
 // object; a reply cut off at its cap, empty, not JSON or with no questions
-// goes to the next model with what is left of the 125 s budget; a chain that
-// starts on gemini-2.5-pro cuts it at 80 s. Request body, reply shape, the
-// 429 answer and the use given back on failure are unchanged. Nothing of
-// main's past f8d72a9b rides along.
+// goes to the next model with what is left of the 125 s budget, each model
+// on its default 55 s attempt, so the quality chain's gpt-5-mini is still
+// asked when gemini-2.5-pro and gpt-5 are both slow (the first cut of this
+// build gave pro 80 s, which left gpt-5 45 s and gpt-5-mini none). Request
+// body, reply shape, the 429 answer and the use given back on failure are
+// unchanged. Nothing of main's past f8d72a9b rides along.
 const FN_BUILD = "generate-interview-coach.2026-10-28.1";
 
 const corsHeaders = {
@@ -202,7 +202,8 @@ Create questions that reference their ACTUAL experience from the resume.`;
         models,
         context: calls.length > 1 ? `INTERVIEW-COACH ${call.label}` : "INTERVIEW-COACH",
         read: readPrepReply,
-        ...(models[0] === PRO_MODEL ? { attemptTimeoutMs: PRO_FIRST_ATTEMPT_MS } : {}),
+        // The chain's default attempt for every model (prep-set.ts, THE
+        // CLOCK): the quality chain's second model is gpt-5, not flash.
         ...(calls.length > 1 ? { signal: stop.signal } : {}),
       }).then(
         (reply) => {

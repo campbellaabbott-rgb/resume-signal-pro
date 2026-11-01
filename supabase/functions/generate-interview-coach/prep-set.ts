@@ -81,16 +81,18 @@ export const PAID_FIRST_HALF_OUTPUT_TOKENS = 14_600;
 export const PAID_SECOND_HALF_OUTPUT_TOKENS = 13_000;
 export const EVALUATION_OUTPUT_TOKENS = 1_700;
 
-/**
- * A chain that starts on gemini-2.5-pro (the quality chain: paid deliveries,
- * past buyers, Pro) cuts it at 80 s, as the Full Analysis's parts do, so the
- * next model keeps 45 s of the 125 s budget: the free scanner's split calls
- * showed pro's tail at 45-95 s on heavy structured output, and the default
- * 55 s would cut a long half short. A free account's chain starts on flash
- * and keeps the default.
+/*
+ * THE CLOCK: EVERY MODEL ON THE CHAIN GETS ITS TURN (review of S10-009). The
+ * first build cut gemini-2.5-pro at 80 s, copying the Full Analysis's parts.
+ * But their chain is pro then flash, several times faster, which is why 45 s
+ * is enough for the next model there; a prep set walks the writing tools'
+ * quality chain (_shared/writing-allowance.ts: pro, gpt-5, gpt-5-mini), whose
+ * second model is a reasoning model as slow as pro. Pro at 80 s left gpt-5
+ * 45 s and gpt-5-mini nothing, so a slow day failed a paid set at 125 s that
+ * the default would have delivered. Every call now keeps the shared chain's
+ * default attempt, 55 s a model: pro 55 s, gpt-5 55 s, gpt-5-mini the 15 s
+ * left. A free account's chain (flash, gpt-5-mini) is unchanged.
  */
-export const PRO_FIRST_ATTEMPT_MS = 80_000;
-export const PRO_MODEL = "google/gemini-2.5-pro";
 
 export interface PrepCall {
   label: "set" | "first half" | "second half";

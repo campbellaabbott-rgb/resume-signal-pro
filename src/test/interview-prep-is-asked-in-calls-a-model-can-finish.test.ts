@@ -20,8 +20,11 @@
  *   - a reply cut off at its cap, empty, not JSON or with no questions goes
  *     to the next model; when no model gives one, the use is given back and
  *     the person gets the retryable error;
- *   - a chain that starts on gemini-2.5-pro cuts it at 80 s, and the next
- *     model answers inside the 125 s budget.
+ *   - every model on the quality chain gets its turn inside the 125 s
+ *     budget: each keeps the shared chain's 55 s attempt, so gpt-5-mini is
+ *     still asked when pro and gpt-5 are both slow (the first cut of this
+ *     build gave pro 80 s, copied from the Full Analysis, whose second model
+ *     is the fast flash: here it left gpt-5 45 s and gpt-5-mini nothing).
  * Run against the shipped handler with only its network faked
  * (helpers/writing-harness.ts).
  */
@@ -37,7 +40,6 @@ import {
   PAID_FIRST_HALF_OUTPUT_TOKENS,
   PAID_SECOND_HALF_OUTPUT_TOKENS,
   PROFILE_FIELDS,
-  PRO_FIRST_ATTEMPT_MS,
   QUESTION_FIELDS,
   SET_OUTPUT_TOKENS,
   TIPS_FIELDS,
@@ -279,44 +281,71 @@ describe("a reply the model could not finish goes to the next model", () => {
   });
 });
 
-describe("the clock: gemini-2.5-pro is cut at 80 s and the next model answers inside the budget", () => {
-  it("both paid halves leave pro at 80 s and gpt-5 answers them", async () => {
-    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
-    const t0 = Date.now();
-    const asked: Array<{ model: string; at: number; half: string }> = [];
-    const aborted: Array<{ model: string; at: number }> = [];
-    const g = globalThis as Record<string, unknown>;
-    g.fetch = (_url: string, init?: { body?: string; signal?: AbortSignal }) => {
-      const call: AiCall = { model: "", body: JSON.parse(String(init?.body ?? "{}")) };
-      call.model = String(call.body.model);
-      world.ai.push(call);
-      asked.push({ model: call.model, at: Date.now() - t0, half: isPaidHalf(call, "first") ? "first" : "second" });
-      if (call.model !== QUALITY) return Promise.resolve(chatReply(replyFor(call)));
-      return new Promise<Response>((_resolve, reject) => {
-        init?.signal?.addEventListener("abort", () => {
-          aborted.push({ model: call.model, at: Date.now() - t0 });
-          reject(Object.assign(new Error("The operation was aborted"), { name: "AbortError" }));
-        });
+// The shared chain's default attempt, every model's on the prep chain.
+const ATTEMPT_MS = 55_000;
+
+/**
+ * A gateway on the fake clock: `plan` says, per model, how long it takes to
+ * answer (or never). Records when each model was asked and aborted.
+ */
+async function driveClock(plan: Record<string, number | "never">) {
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
+  const t0 = Date.now();
+  const asked: Array<{ model: string; at: number; half: string }> = [];
+  const aborted: Array<{ model: string; at: number }> = [];
+  const g = globalThis as Record<string, unknown>;
+  g.fetch = (_url: string, init?: { body?: string; signal?: AbortSignal }) => {
+    const call: AiCall = { model: "", body: JSON.parse(String(init?.body ?? "{}")) };
+    call.model = String(call.body.model);
+    world.ai.push(call);
+    asked.push({ model: call.model, at: Date.now() - t0, half: isPaidHalf(call, "first") ? "first" : "second" });
+    const after = plan[call.model] ?? 0;
+    return new Promise<Response>((resolve, reject) => {
+      const timer = after === "never" ? undefined : setTimeout(() => resolve(chatReply(replyFor(call))), after);
+      init?.signal?.addEventListener("abort", () => {
+        if (timer) clearTimeout(timer);
+        aborted.push({ model: call.model, at: Date.now() - t0 });
+        reject(Object.assign(new Error("The operation was aborted"), { name: "AbortError" }));
       });
-    };
-    let settled = false;
-    const pending = post(handler, FN, { resumeText: RESUME, isPremium: true, sessionId: "cs_coach" }, "service").finally(() => { settled = true; });
-    // The gates before the model resolve on real I/O, not on the faked clock:
-    // let both halves reach pro before the clock moves.
-    const tick = () => new Promise<void>((resolve) => setImmediate(resolve));
-    for (let i = 0; i < 2_000 && asked.length < 2; i++) await tick();
-    expect(asked.map((a) => [a.model, a.at])).toEqual([[QUALITY, 0], [QUALITY, 0]]);
-    await vi.advanceTimersByTimeAsync(PRO_FIRST_ATTEMPT_MS);
-    for (let i = 0; i < 200 && !settled; i++) {
-      await tick();
-      await vi.advanceTimersByTimeAsync(100);
-    }
-    const r = await pending;
+    });
+  };
+  let settled = false;
+  let answeredAt = -1;
+  const pending = post(handler, FN, { resumeText: RESUME, isPremium: true, sessionId: "cs_coach" }, "service").finally(() => {
+    settled = true;
+    answeredAt = Date.now() - t0;
+  });
+  // The gates before the model resolve on real I/O, not on the faked clock:
+  // let both halves reach pro before the clock moves.
+  const tick = () => new Promise<void>((resolve) => setImmediate(resolve));
+  for (let i = 0; i < 2_000 && asked.length < 2; i++) await tick();
+  for (let t = 0; t < 200_000 && !settled; t += 500) {
+    await vi.advanceTimersByTimeAsync(500);
+    for (let i = 0; i < 10 && !settled; i++) await tick();
+  }
+  const r = await pending;
+  return { r, asked, aborted, answeredAt };
+}
+
+describe("the clock: every model on the quality chain gets its turn inside the budget", () => {
+  it("pro and gpt-5 both too slow: each is cut at its 55 s, and gpt-5-mini answers both halves before 125 s", async () => {
+    const { r, asked, aborted, answeredAt } = await driveClock({ [QUALITY]: "never", "openai/gpt-5": "never", "openai/gpt-5-mini": 2_000 });
     expect(r.status, JSON.stringify(r.body).slice(0, 300)).toBe(200);
-    expect(aborted.map((a) => a.at)).toEqual([PRO_FIRST_ATTEMPT_MS, PRO_FIRST_ATTEMPT_MS]);
-    expect(asked.filter((a) => a.model === "openai/gpt-5").map((a) => a.half).sort()).toEqual(["first", "second"]);
+    expect(aborted.filter((a) => a.model === QUALITY).map((a) => a.at)).toEqual([ATTEMPT_MS, ATTEMPT_MS]);
+    expect(aborted.filter((a) => a.model === "openai/gpt-5").map((a) => a.at)).toEqual([2 * ATTEMPT_MS, 2 * ATTEMPT_MS]);
+    const mini = asked.filter((a) => a.model === "openai/gpt-5-mini");
+    expect(mini.map((a) => a.half).sort(), "gpt-5-mini was never asked").toEqual(["first", "second"]);
+    for (const a of mini) expect(a.at).toBe(2 * ATTEMPT_MS);
+    expect(answeredAt).toBeLessThanOrEqual(125_000);
     expect(asked.filter((a) => a.model === QUALITY).length, "pro was asked again after it timed out").toBe(2);
     expect((r.body as { data: { questions: unknown[] } }).data.questions).toHaveLength(14);
+  });
+
+  it("the review's day (pro 90 s, gpt-5 50 s): pro is cut at 55 s and gpt-5 answers inside its own window", async () => {
+    const { r, aborted, answeredAt } = await driveClock({ [QUALITY]: 90_000, "openai/gpt-5": 50_000, "openai/gpt-5-mini": 2_000 });
+    expect(r.status, JSON.stringify(r.body).slice(0, 300)).toBe(200);
+    expect(aborted.map((a) => [a.model, a.at])).toEqual([[QUALITY, ATTEMPT_MS], [QUALITY, ATTEMPT_MS]]);
+    expect(answeredAt).toBe(ATTEMPT_MS + 50_000);
   });
 });
 
