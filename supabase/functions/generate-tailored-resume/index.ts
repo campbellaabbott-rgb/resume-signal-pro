@@ -43,6 +43,19 @@ import { refundWriting, writingChain, writingGate, type WritingPass } from "../_
 // a Tailwind hidden with no responsive class) and classes the page's own
 // <style> hides; a <p>, <li>, <td> or <tr> whose end tag is left out ends
 // where a browser ends it, so a hidden one takes only its own words.
+// Recheck of that reader: a self-closing svg icon, or a page that leaves out
+// its closing head tag, no longer drops the visible posting after it (both
+// were skipped to their own end tag; a browser closes the icon at once and
+// ends a head at its first body content); character references in an
+// attribute value are decoded before it is read (display&#58;none hides);
+// an end tag closes only an element in scope, as a browser's does (one never
+// leaves the hidden table cell it sits in, and the body's end closes
+// nothing); and a hidden bold, italic, link or other formatting element that
+// a paragraph's end closes keeps hiding the text after it until its own end
+// tag or the end of its table cell, as a browser rebuilds it.
+// A tool call whose arguments do not parse is logged by the parse error's
+// position only (describeError, recheck of S13-064): the engine's message
+// quoted the text around it, which could be the person's name or email.
 // Nothing of main's past f8d72a9b, the build the 2026-10-31 deploy put
 // live, rides along.
 const FN_BUILD = "generate-tailored-resume.2026-10-28.1";

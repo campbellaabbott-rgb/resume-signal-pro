@@ -11,8 +11,11 @@ import { callAIWithModelFallback, describeError, describeReply } from "../_share
 // function's chain moves to the next model, which keeps at least 40 s of the
 // 125 s budget when the first model times out. A reply in an unexpected
 // format is logged by its shape and lengths (describeReply), no longer as the
-// whole reply, which carried the person's résumé. Nothing else in this
-// function changed, and nothing of main's past f8d72a9b, the build the
+// whole reply, which carried the person's résumé; and a tool call whose
+// arguments do not parse is logged by the parse error's position only
+// (describeError, recheck of S13-064), since the engine's message quoted the
+// text around it, which could be the person's name or email. Nothing else in
+// this function changed, and nothing of main's past f8d72a9b, the build the
 // 2026-10-31 deploy put live, rides along.
 const FN_BUILD = "parse-resume-structured.2026-10-28.1";
 

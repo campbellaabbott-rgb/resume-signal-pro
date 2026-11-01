@@ -18,7 +18,10 @@ import { isServiceRoleCaller } from "../_shared/service-caller.ts";
 // attempt: an attempt that ran out of time is not made again (it was made up
 // to three times, past the platform's 150 s), a server error is asked again
 // once, and the call ends inside 125 s of the request. Body (model, messages,
-// tools, tool_choice), model and the 504/503/500 answers are unchanged.
+// tools, tool_choice), model and the 504/503/500 answers are unchanged. A
+// tool call whose arguments do not parse is logged by the parse error's
+// position only (describeError, recheck of S13-064), never the error
+// itself, whose message quoted the report text around it.
 // Nothing of main's past f8d72a9b, the build the 2026-10-31 deploy put live,
 // rides along.
 const FN_BUILD = "generate-ats-defense.2026-10-28.1";

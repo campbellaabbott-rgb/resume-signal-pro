@@ -14,6 +14,11 @@ import { runtimeResolver } from "./net-guard.ts";
 // class list hides nothing); !important and visibility:collapse hide; framework hiding classes (d-none, sr-only, a
 // Tailwind hidden with no responsive class beside it) and classes the page's own <style> hides unconditionally hide; a
 // <p>, <li>, <dt>/<dd>, <td>/<th>, <tr> or <option> whose end tag is left out ends where a browser ends it.
+// Recheck of that pass: a self-closing svg icon, or a page that leaves out its closing head tag, no longer drops the
+// visible posting after it (the live .27 kept it; a browser closes the icon at once and ends a head at its first body
+// content); character references in an attribute value are decoded before it is read; an end tag closes only an element
+// in scope, as a browser's does; and a hidden formatting element a paragraph's end closes keeps hiding the text after it
+// until its own end tag or the end of its table cell, as a browser rebuilds it.
 const FN_BUILD = "fetch-job-posting.2026-10-28.1";
 
 const fetchImpl = (url: string, init: RequestInit) => fetch(url, init);

@@ -9,15 +9,20 @@
 #     buyer's language and caps grown for it (analyze-resume); a model that
 #     timed out is not asked again, and a cut-off, empty or unreadable reply
 #     goes to the next model (_shared/ai-fallback.ts, in every writer's
-#     bundle); interview prep in two calls of seven (generate-interview-coach);
+#     bundle); interview prep in two calls of seven, on pro (80 s) then flash
+#     when its chain starts on pro (generate-interview-coach);
 #     the paid writers inside one 125 s deadline (cover letter, premium
 #     package, tailored résumé, ATS defense, freelance boost); a reply logged
 #     by its shape, never its words (parse-resume-structured,
 #     generate-apply-package, generate-tailored-resume); the preview's measured
 #     cap and a diagnostic that passes only on written text
 #     (generate-product-preview, test-ai-fallback); the whole résumé in a
-#     tailored résumé; hidden posting text dropped where the HTML still is
-#     (fetch-job-posting, and every writer that imports _shared/posting-text.ts);
+#     tailored résumé; hidden posting text dropped where the HTML still is,
+#     read as a browser reads it (an svg icon or an open head no longer drops
+#     the text after it) (fetch-job-posting, and every writer that imports
+#     _shared/posting-text.ts); a reply with no letter or résumé in it is no
+#     delivery (generate-cover-letter, generate-premium-package); a parse
+#     failure logged by its position, never the words it quotes;
 #   - the published success page sends the page's language with each of its
 #     three analyze-resume asks, and the report labels its fixed choices
 #     through analysisResults.enum (S13-003, S13-052);
@@ -25,7 +30,8 @@
 # Not provable from outside, so proved in the suite (no model is ever called
 # here): the language line every part reads, the caps and their factors,
 # the next-model walks and deadlines, the log lines' shapes, the hidden-text
-# drop on real-shaped pages, and the other eight locales' labels.
+# drop on real-shaped pages, the readers' required fields, the scan page's
+# 155 s wait for a tailored résumé, and the other eight locales' labels.
 #
 # READ-ONLY: OPTIONS preflights (no function logic runs) and GETs of the
 # site's entry script and two of its chunks. Nothing is sent, bought or written.

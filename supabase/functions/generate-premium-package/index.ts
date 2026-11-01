@@ -27,7 +27,13 @@ import { restoreUnsupportedLines, rewrittenResumeFigureIssues, validateProseClai
 // rate-limited; and a 200 cut off at its cap, empty, or with JSON that does
 // not parse (prose is still a letter) asks the next model with what is left
 // of the budget (callAIForUsableReply), each part and each figure repair
-// alike; only when no model writes one is the same retryable 502 answered. Nothing of main's past f8d72a9b, the
+// alike; only when no model writes one is the same retryable 502 answered.
+// A part is delivered only when it carries what is delivered (recheck of
+// S13-001): a résumé reply with no rewrittenResume, or a letter whose
+// coverLetter is missing or empty, passed the figure check on an empty
+// string and the purchase was marked delivered with nothing in it; now the
+// next model is asked, and when none writes it the retryable 502 keeps the
+// delivery open for the retry sweep. Nothing of main's past f8d72a9b, the
 // build the 2026-10-31 deploy put live, rides along.
 const FN_BUILD = "generate-premium-package.2026-10-28.1";
 

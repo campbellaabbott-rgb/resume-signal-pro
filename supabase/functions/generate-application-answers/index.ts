@@ -70,7 +70,8 @@ import { signInRequired } from "../_shared/writing-allowance.ts";
 // next model, which keeps at least 40 s of the 125 s budget when the first
 // model times out (what else the module gained, the optional caller signal,
 // the walk that refuses a cut-off or empty reply, the completion-token
-// option and the reply describer, rides in the bundle unused here). Every
+// option, the reply describer and the error describer, rides in the bundle
+// unused here). Every
 // model call in a request now ends inside one 125 s budget taken when the
 // request arrives: the cover note's draft and its repair each had a fresh
 // 125 s (about 250 s together, past the platform's 150 s); a repair that
@@ -85,6 +86,16 @@ import { signInRequired } from "../_shared/writing-allowance.ts";
 // a Tailwind hidden with no responsive class) and classes the page's own
 // <style> hides; a <p>, <li>, <td> or <tr> whose end tag is left out ends
 // where a browser ends it, so a hidden one takes only its own words.
+// Recheck of that reader: a self-closing svg icon, or a page that leaves out
+// its closing head tag, no longer drops the visible posting after it (both
+// were skipped to their own end tag; a browser closes the icon at once and
+// ends a head at its first body content); character references in an
+// attribute value are decoded before it is read (display&#58;none hides);
+// an end tag closes only an element in scope, as a browser's does (one never
+// leaves the hidden table cell it sits in, and the body's end closes
+// nothing); and a hidden bold, italic, link or other formatting element that
+// a paragraph's end closes keeps hiding the text after it until its own end
+// tag or the end of its table cell, as a browser rebuilds it.
 // Nothing else in this bundle changed since main's f8d72a9b, the build the
 // 2026-10-31 deploy put live (docs/deploy-ledger.json, verifiedDeploys).
 const FN_BUILD = "generate-application-answers.2026-10-28.1";

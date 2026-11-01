@@ -13,7 +13,8 @@ import { clipField, modelSpendGate } from "../_shared/model-spend-gate.ts";
 // next model, which keeps at least 40 s of the 125 s budget when the first
 // model times out (what else the module gained, the optional caller signal,
 // the walk that refuses a cut-off or empty reply, the completion-token
-// option and the reply describer, rides in the bundle unused here).
+// option, the reply describer and the error describer, rides in the bundle
+// unused here).
 // Nothing else in this bundle changed since main's f8d72a9b, the build the
 // 2026-10-31 deploy put live (docs/deploy-ledger.json, verifiedDeploys).
 const FN_BUILD = "generate-resume-roast.2026-10-28.1";
