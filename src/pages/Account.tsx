@@ -58,6 +58,7 @@ import { WithdrawalPanel } from "@/components/account/WithdrawalPanel";
 import { collectAccountExport, type ExportClient } from "@/lib/account-export";
 import { deleteRefusalKeys, type DeleteRefusal } from "@/lib/account-delete";
 import { trackedEmployerChip } from "@/lib/tracked-employer-chip";
+import { hiringRecordGate, type HiringRecordRow } from "@/lib/hiring-record-gate";
 
 interface FixItem { step: string; done: boolean }
 
@@ -132,7 +133,7 @@ const SAVED_STALE_DAYS = 5;
 /** The subset of get_company_fill_curve this page reads. Every field is
  *  optional: a row from an older deploy, or a token the curve has no history
  *  for, must degrade to showing nothing rather than to a zero. */
-interface CompanyFillCurve {
+interface CompanyFillCurve extends HiringRecordRow {
   /** ROLES taken down in the last 90 days and not brought back (20261008110000):
    *  closed once, not superseded, not serving again. A CEILING. NOT fills_90d,
    *  which counts closure events -- a role that closed twice is two of those. */
@@ -487,16 +488,12 @@ export default function Account() {
             // The gate fields ride along with the rate at zero extra backend —
             // and they are the whole point. A rate without `sufficient` and
             // `dated_coverage` beside it is the old chip with a new number.
-            map[r.company_token] = {
-              filled_roles_90d: r.filled_roles_90d,
-              relisted_roles_90d: r.relisted_roles_90d,
-              fill_rate_14: r.fill_rate_14,
-              churn: r.churn,
-              median_censored: r.median_censored,
-              dated_coverage: r.dated_coverage,
-              sufficient: r.sufficient,
-              tracking_days: r.tracking_days,
-            };
+            // And the employer page's gate fields (S12-185): how the board is
+            // read, its watch floor, the multi-site share and the interval,
+            // so every chip below asks hiringRecordGate the question the
+            // employer page asks before it prints a count or a share.
+            const { company_token: _token, ...row } = r;
+            map[r.company_token] = row;
           }
           setAppHealth(map);
         })
@@ -1603,6 +1600,11 @@ export default function Account() {
                       const hhToken = (a.job_id ?? "").split(":")[1];
                       const hh = hhToken ? appHealth[hhToken] : undefined;
                       if (!hh?.sufficient) return null;
+                      // THE EMPLOYER PAGE'S GATE FIRST (S12-185): a share that
+                      // page refuses (a board read in laps, a read we have not
+                      // proven, a share outside its own interval) is not
+                      // quoted on the tracker either.
+                      if (!hiringRecordGate(hh).share14.ok) return null;
                       // AND THE OBSERVATION WINDOW, WHICH `sufficient` DOES NOT
                       // IMPLY. It counts roles at risk, observed fills and
                       // interval width — the sample, never the depth of the

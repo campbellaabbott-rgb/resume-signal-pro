@@ -8,7 +8,19 @@
  * (register L11-02). Both sides now count ROLES (20261008110000), and the
  * positive sentence is the board's own -- a closure is never a hire.
  */
-export interface TrackedEmployerRecord {
+import { hiringRecordGate, type HiringRecordRow } from "@/lib/hiring-record-gate";
+
+/**
+ * THROUGH THE EMPLOYER PAGE'S GATE (S12-185). The chip quoted the role counts
+ * wherever they cleared its two thresholds, so a tracked application at an
+ * employer whose page withholds the hiring record (a board read in laps such
+ * as Domino's, a board we have not proven we read to its end, one whose
+ * re-post test reads another location's posting as a re-post) still showed
+ * the count that page refuses to print. Both chips now ask hiringRecordGate
+ * first, the same question relistCaution asks for the board's own cards, and
+ * say nothing where the ninety-day counts are refused.
+ */
+export interface TrackedEmployerRecord extends HiringRecordRow {
   /** Roles closed once, not superseded, not serving again (a CEILING). */
   filled_roles_90d?: number | null;
   /** Roles that came back: closed again, superseded, or serving again (a FLOOR). */
@@ -31,6 +43,7 @@ export function trackedEmployerChip(hh: TrackedEmployerRecord | null | undefined
   const relists = hh.relisted_roles_90d;
   // A row from a deploy without the role columns says nothing, never zero.
   if (typeof fills !== "number" || typeof relists !== "number" || !Number.isFinite(fills) || !Number.isFinite(relists)) return null;
+  if (!hiringRecordGate(hh).counts90.ok) return null;
   if (relists > fills && relists >= TRACKED_CHURN_MIN) return { kind: "churn", n: relists };
   if (fills >= TRACKED_MIN_STAYED_DOWN && relists <= fills) return { kind: "stayed-down", n: fills };
   return null;
