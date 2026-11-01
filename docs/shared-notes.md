@@ -12,8 +12,14 @@ Each section is one run. The pointer left in the code reads
 `docs/shared-notes.md#sN` and names the section headed `## sN` here (the heading
 is the anchor); the section names the file, what the run explains, and the code
 line it stood above, then the run itself, verbatim, with its comment markers
-taken off. One-line comments stayed in the code. Nothing here is executable; the
-code was proven unchanged with every comment stripped from both versions. The
+taken off. One-line comments stayed in the code. Nothing here is executable.
+How the move was checked, old file against new, with
+src/test/helpers/strip-comments codeOf: posting-text.ts's comment-stripped code
+is byte-identical (only block comments moved, and each collapses to one space).
+ai-fallback.ts's differs only by 46 whitespace-only lines, because codeOf keeps
+the indent and newline of every `//` line it empties, and a `//` run shortened to
+a one-line pointer leaves fewer of them; every non-blank line is identical and in
+order. Both files parse to identical TypeScript token streams. The
 tally test fails on a pointer whose section is missing, on a section that names
 another file, and on a section nothing points to.
 
