@@ -17,8 +17,9 @@
  *     it detected;
  *   - each claim prints FAIL when its rows or page are wrong once what it
  *     waits for has happened (the board's read by .96, or the deadline after
- *     the first slice; the publish carrying the mirror for the pages), and
- *     INFO before;
+ *     the first slice; the publish carrying the mirror for the pages; for the
+ *     countries, a row .96 itself wrote, and from .98, which re-files every
+ *     stored row a visit holds, the board's read or 24 h), and INFO before;
  *   - before .96 serves, no board call is made;
  *   - the key is never printed, every board call carries x-rb-budget: probe
  *     and is a status, list or detail read, and every page is read as Googlebot.
@@ -72,7 +73,8 @@ process.stdout.write(out);
 const dirs: string[] = [];
 afterAll(() => { for (const d of dirs) { try { rmSync(d, { recursive: true, force: true }); } catch { /* best effort */ } } });
 
-function run(routes: Route[]): { lines: string[]; calls: string[]; out: string } {
+function run(routes: Route[]): { lines: string[]; calls: string[]; out: string } { return runSection(SECTION, routes); }
+function runSection(section: string, routes: Route[]): { lines: string[]; calls: string[]; out: string } {
   const dir = mkdtempSync(join(tmpdir(), "vd99zzz-"));
   dirs.push(dir);
   mkdirSync(join(dir, "bin"));
@@ -82,7 +84,7 @@ function run(routes: Route[]): { lines: string[]; calls: string[]; out: string }
   writeFileSync(join(dir, "calls.log"), "");
   writeFileSync(join(dir, "nofetch.cjs"), 'globalThis.fetch = async () => { throw new Error("no network in this test"); };\n');
   const prelude = `set -u\nK=${KEY}; B=https://p.supabase.co; SITE=https://site.test; UA=${UA}\n${BUILD_GE}\n${J_HELPER}\n`;
-  writeFileSync(join(dir, "run.sh"), prelude + SECTION.split("/tmp/").join(`${dir}/`));
+  writeFileSync(join(dir, "run.sh"), prelude + section.split("/tmp/").join(`${dir}/`));
   const env: NodeJS.ProcessEnv = {
     ...process.env,
     PATH: `${join(dir, "bin")}:${dirname(process.execPath)}:${process.env.PATH ?? ""}`,
@@ -131,13 +133,16 @@ const OWN_PORTAL: Record<string, string> = {
   "careers.ynvgroup.com": "careers-ynvgroup.icims.com", "careers.monifai.com": "careers-teknowledge.icims.com",
 };
 const icims = (token: string, req: number, host: string, read: string) => ({ id: `icims:${token}:${req}`, token, applyUrl: `https://${host}/jobs/${req}/job`, recheckedAt: read });
-const placed = (location: string, country: string | null, read: string) => ({ id: `workday:x:${location}`, token: "x", location, country, recheckedAt: read });
+/** A row as the list serves it; lastSeen is its insert time (default: long before any slice). */
+const placed = (location: string, country: string | null, read: string, lastSeen = iso(30 * 24 * H)) => ({ id: `workday:x:${location}`, token: "x", location, country, recheckedAt: read, lastSeen });
 
 function routes(o: Over = {}): Route[] {
   const build = o.build === undefined ? "job-board.2026-09-09.96" : o.build;
   const since = o.buildSince ?? iso(6 * H);
   const read = o.read ?? iso(1 * H);
-  const status = JSON.stringify({ version: "2026-09-09.96", sliceStats: { build: "2026-09-09.96", buildSince: since }, passEnd: { steps: { names: { detail: o.namesDetail ?? "name sync v6 done" } } } });
+  // The status names the serving build and its first slice (sliceStats.build follows the preflight's build).
+  const serving = (build ?? "job-board.2026-09-09.96").replace(/^job-board\./, "");
+  const status = JSON.stringify({ version: serving, sliceStats: { build: serving, buildSince: since }, passEnd: { steps: { names: { detail: o.namesDetail ?? "name sync v6 done" } } } });
   const list = (jobs: unknown[], extra: Record<string, unknown> = {}) => JSON.stringify({ jobs, total: jobs.length, hasMore: false, ...extra });
   const nameRoutes: Route[] = NAMES.map(([v, t, , nw]) => ({
     match: `^POST ${FB}\\t\\{"action":"list","companies":\\["${esc(t)}"\\],"vendor":\\["${v}"\\]`,
@@ -336,20 +341,58 @@ describe("section 99zzz: trust round 3", () => {
     expect(has(run(routes({ oracle: { "erhk~us2~CX_1001": 150, "erhk~us2~CX_1": 0 } })).lines, "INFO", /O1 .* R\+L "Default" 150 .*FAIL after 72 h/)).toBe(true);
   });
 
+  // .98 re-files every stored row of a board its visit holds (n1399), so from .98 the board's read is the row's.
+  const R98 = "job-board.2026-09-09.98";
+
   it("C1: a US town still filed abroad is found on any spelling or page of its place", () => {
     const read = iso(1 * H);
     // Every spelling is read, and every page of one: a misfiled row on a second spelling or a second page is found.
-    expect(has(run(routes({ pages: { "NY - Greece": [[placed("NY - Greece", "GR", read)]] } })).lines, "FAIL", /C1 1 of 2 Greece, NY row\(s\) still filed GR \("NY - Greece"\) after this build read the board/)).toBe(true);
+    expect(has(run(routes({ build: R98, pages: { "NY - Greece": [[placed("NY - Greece", "GR", read)]] } })).lines, "FAIL", /C1 1 of 2 Greece, NY row\(s\) still filed GR \("NY - Greece"\) after this build visited the board/)).toBe(true);
     const sixty = Array.from({ length: 60 }, (_, i) => ({ ...placed("Greece, NY", "US", read), id: `workday:x:g${i}` }));
-    const paged = run(routes({ pages: { "Greece, NY": [sixty, [placed("Greece, NY #0185", "GR", read)]] } }));
+    const paged = run(routes({ build: R98, pages: { "Greece, NY": [sixty, [placed("Greece, NY #0185", "GR", read)]] } }));
     expect(has(paged.lines, "FAIL", /C1 1 of 61 Greece, NY row\(s\) still filed GR/), show(paged.lines)).toBe(true);
     expect(paged.calls.filter((c) => /"location":"Greece, NY"/.test(c)).map((c) => /"offset":(\d+)/.exec(c)?.[1])).toEqual(["0", "60"]);
   });
 
-  it("C1: a single misfiled row is a FAIL once read and INFO before; the Wales control filed elsewhere is a FAIL", () => {
+  it("C1 from .98: a misfiled row is a FAIL once its board is visited or 24 h after the first slice, INFO before", () => {
     const read = iso(1 * H);
-    expect(has(run(routes({ places: { lakewales: [placed("Lake Wales, FL", "GB", read)] } })).lines, "FAIL", /C1 1 of 1 Lake Wales, FL row\(s\) still filed GB .*after this build read the board/)).toBe(true);
-    expect(has(run(routes({ places: { greece: [placed("NY - Greece", "GR", iso(10 * H))] } })).lines, "INFO", /C1 1 of 1 Greece, NY row\(s\) still filed otherwise/)).toBe(true);
+    expect(has(run(routes({ build: R98, places: { lakewales: [placed("Lake Wales, FL", "GB", read)] } })).lines, "FAIL", /C1 1 of 1 Lake Wales, FL row\(s\) still filed GB .*after this build visited the board/)).toBe(true);
+    const early = run(routes({ build: R98, places: { greece: [placed("NY - Greece", "GR", iso(10 * H))] } }));
+    expect(has(early.lines, "INFO", /C1 1 of 1 Greece, NY row\(s\) still filed otherwise, none written by this build; the board has not been read by this build yet .*FAIL after 24 h/), show(early.lines)).toBe(true);
+    const late = run(routes({ build: R98, places: { greece: [placed("NY - Greece", "GR", iso(40 * H))] }, buildSince: iso(30 * H) }));
+    expect(has(late.lines, "FAIL", /C1 1 of 1 Greece, NY row\(s\) still filed GR \("NY - Greece"\) 24 h after the first slice/), show(late.lines)).toBe(true);
+    expect(has(run(routes({ build: R98 })).lines, "PASS", /C1 2 Lake Wales, FL row\(s\), all filed US/)).toBe(true);
+  });
+
+  it("C1 on .96: the board's read is not the row's, so only a row this build wrote is a FAIL; the rest wait for .98", () => {
+    const read = iso(1 * H);
+    // Live 2026-10-31 on .96, five hours after its first slice: the boards were read, the rows were not re-derived.
+    const live = [
+      ...Array.from({ length: 9 }, (_, i) => ({ ...placed("FL - Lake Wales", "GB", read), id: `workday:cvs:${i}` })),
+      ...Array.from({ length: 16 }, (_, i) => ({ ...placed("Lake Wales, FL", "US", read), id: `workday:lw:${i}` })),
+    ];
+    const r96 = run(routes({ places: { lakewales: live }, buildSince: iso(5 * H) }));
+    expect(has(r96.lines, "INFO", /C1 9 of 25 Lake Wales, FL row\(s\) still filed otherwise, none written by this build; this build re-derives a stored row only when its board's window reaches it \(job-board \.98/), show(r96.lines)).toBe(true);
+    expect(verdicts(r96.lines, "FAIL").filter((l) => /C1/.test(l)), show(r96.lines)).toEqual([]);
+    // No deadline on .96: a lap of a 19,143-posting feed takes weeks, so 24 h proves nothing about the code.
+    expect(has(run(routes({ places: { lakewales: live }, buildSince: iso(30 * H) })).lines, "INFO", /C1 9 of 25 Lake Wales, FL/)).toBe(true);
+    // A row this build wrote (lastSeen after its first slice) and still misfiled is the reader's own defect.
+    const fresh = run(routes({ places: { greece: [placed("NY - Greece", "GR", read, iso(2 * H))] } }));
+    expect(has(fresh.lines, "FAIL", /C1 1 of 1 Greece, NY row\(s\) still filed GR \("NY - Greece"\): 1 written by this build \(lastSeen after its first slice\)/), show(fresh.lines)).toBe(true);
+    // TEETH: the same rows FAIL once .98 serves and has visited the boards.
+    expect(has(run(routes({ build: R98, places: { lakewales: live }, buildSince: iso(5 * H) })).lines, "FAIL", /C1 9 of 25 Lake Wales, FL row\(s\) still filed GB .*after this build visited the board/)).toBe(true);
+  });
+
+  it("C1: STALE BEFORE: the .96 line took the board's read stamp for the row's and printed FAIL on the live rows", () => {
+    const old = execFileSync("git", ["show", "f8d72a9b:scripts/verify-deploy.d/99zzz-trust-round-3.sh"], { cwd: ROOT, encoding: "utf8" });
+    expect(old).toContain("const wrongRead=wrong.filter((r)=>readSince([r]));");
+    const read = iso(1 * H);
+    const rows = [placed("FL - Lake Wales", "GB", read), placed("Lake Wales, FL", "US", read)];
+    expect(has(runSection(old, routes({ places: { lakewales: rows }, buildSince: iso(5 * H) })).lines, "FAIL", /C1 1 of 2 Lake Wales, FL row\(s\) still filed GB .*after this build read the board/)).toBe(true);
+  });
+
+  it("C1: the Wales control filed elsewhere is a FAIL; no Cardiff row is INFO", () => {
+    const read = iso(1 * H);
     expect(has(run(routes({ places: { cardiff: [placed("Cardiff, Wales", null, read)] } })).lines, "FAIL", /C1 control: 0 of 1 "Cardiff, Wales" row\(s\) filed GB/)).toBe(true);
     expect(has(run(routes({ places: { cardiff: [] } })).lines, "INFO", /C1 control: no "Cardiff, Wales" row is served/)).toBe(true);
   });
@@ -358,17 +401,30 @@ describe("section 99zzz: trust round 3", () => {
     const kohlsGb = { kohls: { job: { id: "workday:kohls~wd504~kohlscareers:R504030", location: "Lake Wales (1250)", country: "GB" } } };
     expect(has(run(routes({ details: kohlsGb })).lines, "INFO", /C2 Kohl's R504030 .* is filed GB; .*FAIL after 48 h/)).toBe(true);
     expect(has(run(routes({ details: kohlsGb, buildSince: iso(50 * H) })).lines, "FAIL", /C2 Kohl's R504030 .* is filed GB 48 h after the first slice: apply migration 20261026110000/)).toBe(true);
+    expect(has(run(routes({ build: R98, details: kohlsGb, buildSince: iso(50 * H) })).lines, "FAIL", /C2 Kohl's R504030 .* is filed GB 48 h after the first slice: apply migration 20261026110000/)).toBe(true);
     expect(has(run(routes({ details: { kohls2: { gone: true } } })).lines, "INFO", /C2 Kohl's R503656 .* is no longer served/)).toBe(true);
     expect(has(run(routes({ details: { kohls2: { job: { id: "x", country: "GB" } } }, buildSince: iso(50 * H) })).lines, "FAIL", /C2 Kohl's R503656 .* is filed GB 48 h after the first slice: apply migration 20261026110000/)).toBe(true);
   });
 
-  it("C2: CVS's or BJ's posting still filed abroad is a FAIL once read or past its deadline, and the line says which", () => {
+  it("C2: CVS's or BJ's posting still filed abroad is a FAIL from .98 once its board is visited or past its deadline, and on .96 only if this build wrote it", () => {
     const read = iso(1 * H);
-    expect(has(run(routes({ details: { cvs: { job: { id: "x", country: "GR", recheckedAt: read } } } })).lines, "FAIL", /C2 CVS Health R1075322 .* is filed GR after this build read it/)).toBe(true);
-    // Unread past the deadline says so, never "after this build read it".
-    const late = run(routes({ details: { cvs: { job: { id: "x", country: "GR", recheckedAt: iso(40 * H) } } }, buildSince: iso(30 * H) }));
+    const cvsGr = (recheckedAt: string, lastSeen = "2026-10-16T19:50:15.322Z") => ({ cvs: { job: { id: "workday:cvshealth~wd1~CVS_Health_Careers:R1075322", location: "NY - Greece", country: "GR", recheckedAt, lastSeen } } });
+    expect(has(run(routes({ build: R98, details: cvsGr(read) })).lines, "FAIL", /C2 CVS Health R1075322 .* is filed GR after this build visited its board$/)).toBe(true);
+    // Unread past the deadline says so, never "after this build visited its board".
+    const late = run(routes({ build: R98, details: cvsGr(iso(40 * H)), buildSince: iso(30 * H) }));
     expect(has(late.lines, "FAIL", /C2 CVS Health R1075322 .* is filed GR 24 h after the first slice$/), show(late.lines)).toBe(true);
+    // Live on .96 (2026-10-31): the board read at 22:50Z, the row inserted on 10-16, never re-derived.
+    const live96 = run(routes({ details: cvsGr(read), buildSince: iso(5 * H) }));
+    expect(has(live96.lines, "INFO", /C2 CVS Health R1075322 .* is filed GR; this build re-derives a stored row only when its board's window reaches it/), show(live96.lines)).toBe(true);
+    expect(has(run(routes({ details: cvsGr(read), buildSince: iso(30 * H) })).lines, "INFO", /C2 CVS Health R1075322 .* is filed GR; this build/)).toBe(true);
+    expect(has(run(routes({ details: cvsGr(read, iso(2 * H)) })).lines, "FAIL", /C2 CVS Health R1075322 .* is filed GR and this build wrote it \(lastSeen after its first slice\)/)).toBe(true);
     expect(has(run(routes({ details: { bjs: { gone: true } } })).lines, "INFO", /C2 BJ's R255468 .* is no longer served/)).toBe(true);
+  });
+
+  it("a good .98 deploy prints no C1 or C2 FAIL", () => {
+    const { lines } = run(routes({ build: R98 }));
+    expect(has(lines, "PASS", /x-fn-build = job-board\.2026-09-09\.98/), show(lines)).toBe(true);
+    expect(verdicts(lines, "FAIL"), show(lines)).toEqual([]);
   });
 
   it("no slice of the serving build yet: every API line waits", () => {

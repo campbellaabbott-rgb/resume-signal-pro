@@ -68,6 +68,18 @@ describe("the text filters are text (S12-124)", () => {
     expect(textFieldShape({ q: "nur\u0000se", department: "le\u0000gal" }, locationTerms).body).toEqual({ q: "nurse", department: "legal" });
     expect(textFieldShape({ q: "c++", location: "Austin, TX" }, locationTerms), "positive control").toEqual({ body: { q: "c++", location: "Austin, TX" }, ignored: [] });
   });
+
+  // Live on .96 (2026-10-31, verify section 92): q "\u0000" served the whole
+  // board unfiltered with no ignoredFilters, while q 123 and q "%%" were named.
+  // Stripping the NUL left "", and a blank field was read as one never sent.
+  it("a q or location that is only NULs has nothing left after sanitising, so it is named", () => {
+    expect(textFieldShape({ q: "\u0000" }, locationTerms)).toEqual({ body: {}, ignored: ["q"] });
+    expect(textFieldShape({ location: "\u0000\u0000" }, locationTerms)).toEqual({ body: {}, ignored: ["location"] });
+    expect(textFieldShape({ q: " \u0000 ", location: "\u0000 " }, locationTerms)).toEqual({ body: {}, ignored: ["q", "location"] });
+    // A field that was blank before any NUL was stripped is still a field never sent.
+    expect(textFieldShape({ q: "", location: "   " }, locationTerms), "blank stays unnamed").toEqual({ body: { q: "", location: "   " }, ignored: [] });
+    expect(textFieldShape({ q: "nurse\u0000" }, locationTerms), "a NUL beside words is stripped, not named").toEqual({ body: { q: "nurse" }, ignored: [] });
+  });
 });
 
 describe("through the shipped handler", () => {
@@ -139,6 +151,18 @@ describe("through the shipped handler", () => {
     h.reset();
     h.answer((q) => (q.rpc === "search_jobs" ? { data: [{ ...row("greenhouse:acme:1", "Nurse"), total_rows: 1 }], error: null } : undefined));
     await h.post({ action: "list", q: "nurse\u0000", limit: 60 });
+    expect(JSON.stringify(h.db.queries.map((q) => q.calls)).includes("\\u0000")).toBe(false);
+  });
+
+  it("a lone NUL as q or location is named in ignoredFilters and the list is still served", async () => {
+    h.answer((q) => (q.table === "job_board_postings" ? { data: [row("greenhouse:acme:1", "Nurse")], error: null } : undefined));
+    const r = await h.post({ action: "list", q: "\u0000", limit: 1 });
+    expect(r.ignoredFilters, JSON.stringify(r).slice(0, 300)).toContain("q");
+    expect(Array.isArray(r.jobs), "the list is served").toBe(true);
+    h.reset();
+    h.answer((q) => (q.table === "job_board_postings" ? { data: [row("greenhouse:acme:1", "Nurse")], error: null } : undefined));
+    const l = await h.post({ action: "list", location: "\u0000", limit: 1 });
+    expect(l.ignoredFilters, JSON.stringify(l).slice(0, 300)).toContain("location");
     expect(JSON.stringify(h.db.queries.map((q) => q.calls)).includes("\\u0000")).toBe(false);
   });
 });

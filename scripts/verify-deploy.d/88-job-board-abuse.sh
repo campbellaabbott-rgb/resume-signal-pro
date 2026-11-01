@@ -60,7 +60,17 @@ if(v88){
   if(pr.error==="board_budget")info("tooling read refused 429 code "+pr.code+": the ceiling could not be read from here");
   else ok(prows>0&&prows<=60,"the public tooling header asking for 200 rows gets "+prows+" (want 1..60: x-rb-budget is in this public repo and lifts nothing; 61..200 = the header still buys a bigger page)");
   const q=js("/tmp/vd_88_quoted.json")||{};
-  ok(Array.isArray(q.ignoredFilters)&&q.ignoredFilters.includes("companies"),"a quoted company token is refused and named: ignoredFilters = "+JSON.stringify(q.ignoredFilters||null)+" (want it to include companies)");
+  // .88 refused the quoted token and named it; since .93 a value that is not a
+  // token is resolved by name and named in companiesResolved. Either way the
+  // raw quoted value is never the filter: unnamed, or a resolved token that is
+  // not token-shaped, or a row of any other token served, is the 2.24 shape.
+  const qNamed=Array.isArray(q.ignoredFilters)&&q.ignoredFilters.includes("companies");
+  const qRes=(Array.isArray(q.companiesResolved)?q.companiesResolved:[]).find((r)=>r&&r.asked==="\"dominos\"");
+  const qTok=qRes&&Array.isArray(qRes.tokens)?qRes.tokens:[];const qJobs=Array.isArray(q.jobs)?q.jobs:[];
+  const qClean=qTok.length>0&&qTok.every((t)=>typeof t==="string"&&/^[A-Za-z0-9~_.:-]{1,128}$/.test(t));
+  const qStray=qJobs.filter((j)=>!qTok.includes(j&&j.token)).map((j)=>j&&j.token);
+  if(q.error==="board_budget")info("quoted-token read refused 429 code "+q.code+": the refusal could not be read from here");
+  else ok(qNamed||(qClean&&qStray.length===0),"a quoted company token is refused and named, or resolved by name: ignoredFilters = "+JSON.stringify(q.ignoredFilters||null)+", companiesResolved = "+JSON.stringify(qRes||null).slice(0,160)+", tokens served = "+JSON.stringify([...new Set(qJobs.map((j)=>j&&j.token))]).slice(0,120)+" (want companies named (.88), or the quote resolved to clean tokens that are the only ones served (.93+); neither = the raw quoted value was the filter)");
   ok(!q.filterIntegrity,"and it trips no filter-integrity incident (filterIntegrity = "+JSON.stringify(q.filterIntegrity||null)+")");
   const p=js("/tmp/vd_88_posix.json")||{};
   ok(Array.isArray(p.ignoredFilters)&&p.ignoredFilters.includes("postedAfter"),"postedAfter in a POSIX-offset spelling (GMT-12, which V8 and Postgres read a day apart) is refused and named: ignoredFilters = "+JSON.stringify(p.ignoredFilters||null));

@@ -21972,3 +21972,30 @@ text moved (as before), the stored text (the row's, or the one the detail
 sweep wrote, since the Workday list carries none) when only the country
 moved, and nothing otherwise. The lighter alternative to a
 SALARY_PARSE_VERSION bump, which would re-read every salaried row.
+
+## n1399-stored-town-refile
+
+In `supabase/functions/job-board/normalize.ts`, above: `const TOWN_WORD_ABROAD`; in `supabase/functions/job-board/index.ts`, above: `for (const p of townRefilePatches(existingRows, rowsById, s.source, !regionColUnknown))`.
+
+A STORED ROW THE VISIT DID NOT READ STILL TAKES THE US-TOWN READING
+(2026-09-09.98). n1396 moved "NY - Greece", "FL - Lake Wales" and
+"Store0006 Greece NY" to the US, but a stored row is re-derived only when a
+list visit reads it, and a Workday visit reads 250 postings of its feed from a
+cursor. Live on .96 five hours after its first slice, J.B. Hunt's two Lake
+Wales rows at feed positions 119 and 234 were still GB while its row at 281
+(the window read since) was US; CVS Health's four "NY - Greece" rows were GR
+on a 19,143-posting feed, a lap of 77 visits, and rows past Workday's
+2,000-posting reach are never read at all. The backfill the map version kicks
+fills rows with no country only. So every visit re-files the board's stored
+rows it did not read, where the stored country is the foreign reading of a
+word the map moved (Lake Wales GB, Greece GR, Peru PE, Turkey TR) and
+detectCountry now reads the string as US: the outcome main gives on the row's
+next read, sooner, and nothing else. Read rows keep the visit's own patch;
+another vendor's twin under the same token is its own board's; the region is
+the state the string names when the column exists; the pay columns are
+re-read as US only where the country changed their reading ("17.500 - 22.750
+per hour" filed GR has no annual figure), because once the row reads US a
+later visit sees no country move. The patches queue after the read rows', so
+the caps keep theirs first, and they log nothing (country is derived). Corpus:
+1,917 live triples, 1,536 strings, over 45 location searches on 2026-10-31;
+it fires on exactly six strings, each misfiled.

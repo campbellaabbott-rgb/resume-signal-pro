@@ -457,7 +457,7 @@ export function textFieldShape(body: Record<string, unknown>, locationTermsOf: (
     const v = out[k];
     if (v === undefined || v === null) continue;
     if (typeof v !== "string") { ignored.push(k); delete out[k]; continue; }
-    if (!v.trim()) continue;
+    if (!v.trim() && !(body[k] as string).trim()) continue;
     const empty = k === "q" ? !/[\p{L}\p{N}]/u.test(v) : locationTermsOf(v).terms.length === 0;
     if (empty) { ignored.push(k); delete out[k]; }
   }

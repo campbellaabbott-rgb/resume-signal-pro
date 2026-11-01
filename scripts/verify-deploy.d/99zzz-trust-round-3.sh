@@ -16,7 +16,15 @@
 # after the first slice: 24 h for a board read every cold lap, 48 h where a
 # migration must also have run, 72 h for the Oracle dedupe (every community
 # site visited once). The stored names (N1) wait for the name-sync lane's
-# version 6 to report done, or 48 h: a read alone renames no stored row. The page lines wait for the
+# version 6 to report done, or 48 h: a read alone renames no stored row.
+# The countries (C1, C2 for CVS and BJ's) are the exception: the read stamp
+# is the BOARD's (job_board_verifications), and .96 re-derived a stored row
+# only when its board's window of 250 reached it (CVS: 19,143 postings, a lap
+# of 77 visits; past Workday's 2,000 never). So on .96 a misfiled row is a
+# FAIL only when this build wrote it (lastSeen, set at insert, after
+# buildSince) and INFO otherwise; from job-board .98 every visit re-files the
+# board's stored rows it did not read (n1399), and the board's read or 24 h
+# after .98's first slice is the deadline again. The page lines wait for the
 # frontend publish whose app scripts carry this round's override mirror (the
 # Hong Kong Baptist University row), and a bare token's page also for the
 # name-sync lane's version 6.
@@ -55,7 +63,10 @@
 #   O1  LCS's "All" (eexs~us2~CX_3001, served 590 on 2026-10-26) serves at most
 #       30 and a community site (Sedgebrook, CX_10013) serves rows; R+L's
 #       "Default" (erhk~us2~CX_1001) serves none and R+L Carriers' CX_1 does;
-#   C1  the "Lake Wales, FL", "Greece, NY" and "Peru, IN/IL" rows are filed US,
+#   C1  the "Lake Wales, FL", "Greece, NY" and "Peru, IN/IL" rows are filed US
+#       (live on .96, 2026-10-31: 9 of 25 Lake Wales rows GB, 11 of 20 Greece
+#       rows GR, none written by .96, all on boards whose window had not
+#       reached them; the re-file in .98 is what moves them),
 #       each place read under every spelling it is stored with (Greece 1,964
 #       rows, mostly the country, kept one Greece, NY row in its first 60 on
 #       2026-10-26), up to three pages a spelling; a "Cardiff, Wales" row is
@@ -71,6 +82,7 @@ echo "== 99zzz. Trust round 3: true names, agency labels, one feed read once, co
 
 VDZ3_H=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/job-board" -H "x-rb-budget: probe" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | sed -E 's/^[^:]+: *//')
 VDZ3_LIVE=0
+VDZ3_REFILE=0; build_ge job-board "$VDZ3_H" "2026-09-09" "98" && VDZ3_REFILE=1
 if [ -z "$VDZ3_H" ]; then echo "FAIL  job-board preflight carries no x-fn-build (the function is not deployed, or its preflight does not answer)"
 elif build_ge job-board "$VDZ3_H" "2026-09-09" "96"; then echo "PASS  job-board preflight x-fn-build = $VDZ3_H (2026-09-09.96 or later: trust round 3's names, agency labels, iCIMS scope, Oracle pool sites and country rule)"; VDZ3_LIVE=1
 else echo "INFO  job-board preflight x-fn-build = $VDZ3_H: 2026-09-09.96 is not serving yet, so every API line below waits for it"; fi
@@ -241,7 +253,7 @@ if [ "$VDZ3_LIVE" = 1 ]; then
   J '{"action":"detail","id":"workday:kohls~wd504~kohlscareers:R503656"}' > /tmp/vd_99zzz_d_kohls2.json
 fi
 
-VDZ3_LIVE="$VDZ3_LIVE" VDZ3_H="$VDZ3_H" VDZ3_NAMES="$VDZ3_NAMES" VDZ3_CLEARED="$VDZ3_CLEARED" VDZ3_FLAGGED="$VDZ3_FLAGGED" VDZ3_LOCS="$VDZ3_LOCS" VDZ3_DUPS="$VDZ3_DUPS" node -e '
+VDZ3_LIVE="$VDZ3_LIVE" VDZ3_REFILE="$VDZ3_REFILE" VDZ3_H="$VDZ3_H" VDZ3_NAMES="$VDZ3_NAMES" VDZ3_CLEARED="$VDZ3_CLEARED" VDZ3_FLAGGED="$VDZ3_FLAGGED" VDZ3_LOCS="$VDZ3_LOCS" VDZ3_DUPS="$VDZ3_DUPS" node -e '
 const fs=require("fs");const E=process.env;const LIVE=E.VDZ3_LIVE==="1";
 const txt=(f)=>{try{return fs.readFileSync(f,"utf8")}catch{return ""}};
 const json=(f)=>{try{return JSON.parse(fs.readFileSync(f,"utf8"))}catch{return null}};
@@ -367,17 +379,23 @@ else{const tot=(t)=>{const j=json("/tmp/vd_99zzz_oracle_"+t+".json");return j&&t
     if(ok)out("PASS","O1 "+msg);else if(ageH!==null&&ageH>72)out("FAIL","O1 "+msg+", 72 h after the first slice: every community site has been visited since");else out("INFO","O1 "+msg+": each site moves its requisitions on its next visit ("+(ours?"first slice "+ageH.toFixed(1)+" h ago; FAIL after 72 h":"no slice of this build yet")+")");}}
 // C1
 if(!LIVE)out("INFO","C1/C2 countries: wait for job-board .96");
-else{const LOCS=JSON.parse(E.VDZ3_LOCS);
+else{const LOCS=JSON.parse(E.VDZ3_LOCS);const REFILE=E.VDZ3_REFILE==="1";
+  // lastSeen is set at insert only: a misfiled row written since the first slice is the reading of this build.
+  const wroteSince=(r)=>{const t=Date.parse((r&&r.lastSeen)||"");return Number.isFinite(t)&&Number.isFinite(since)&&t>=since};
+  const notYet="this build re-derives a stored row only when its board\x27s window reaches it (job-board .98 re-files every stored row a visit holds, and FAILs from its first slice)";
   // Every row read for one place, over its spellings and pages, once each; null if a first page did not answer.
   const rowsAt=(key)=>{const seen=new Map();let bad=null;LOCS.forEach(([k],j)=>{if(k!==key||bad)return;for(const o of [0,60,120]){const f="/tmp/vd_99zzz_loc_"+(j+1)+"_"+o+".json";if(o>0&&!txt(f))break;const r=rowsOf(f);if(r===null){bad=f;break}for(const x of r)seen.set(x.id||JSON.stringify(x),x)}});return bad?{bad}:{rows:[...seen.values()]}};
   const FIX=[["lakewales",/Lake Wales,?\s*FL\b|\bFL\s*-\s*Lake Wales|Lake Wales FL\b/i,"Lake Wales, FL"],["greece",/Greece,?\s*NY\b|\bNY\s*-\s*Greece\b|Greece NY\b/i,"Greece, NY"],["peru",/^(?:IN|IL)\s*-\s*Peru$|Peru,\s*(?:IN|IL)\b/,"Peru, IN/IL"]];
   for(const [k,re,label] of FIX){const R=rowsAt(k);
     if(R.bad){out("FAIL","C1 the "+label+" list is unreadable: "+peek(R.bad));continue}
-    const hit=R.rows.filter((r)=>re.test(String(r.location||"")));const wrong=hit.filter((r)=>r.country!=="US");const wrongRead=wrong.filter((r)=>readSince([r]));
+    const hit=R.rows.filter((r)=>re.test(String(r.location||"")));const wrong=hit.filter((r)=>r.country!=="US");
+    const wrongNew=wrong.filter(wroteSince);const wrongRead=REFILE?wrong.filter((r)=>readSince([r])):[];
+    const what=()=>"C1 "+wrong.length+" of "+hit.length+" "+label+" row(s) still filed "+[...new Set(wrong.map((r)=>r.country||"(none)"))].join("/")+" ("+wrong.slice(0,2).map((r)=>JSON.stringify(r.location)).join(", ")+")";
     if(!hit.length)out("INFO","C1 no "+label+" row is served, so nothing to judge");
     else if(!wrong.length)out("PASS","C1 "+hit.length+" "+label+" row(s), all filed US");
-    else if(wrongRead.length||(ageH!==null&&ageH>24))out("FAIL","C1 "+wrong.length+" of "+hit.length+" "+label+" row(s) still filed "+[...new Set(wrong.map((r)=>r.country||"(none)"))].join("/")+" ("+wrong.slice(0,2).map((r)=>JSON.stringify(r.location)).join(", ")+")"+(wrongRead.length?" after this build read the board":" 24 h after the first slice"));
-    else out("INFO","C1 "+wrong.length+" of "+hit.length+" "+label+" row(s) still filed otherwise; "+waitWhy(24));}
+    else if(wrongNew.length)out("FAIL",what()+": "+wrongNew.length+" written by this build (lastSeen after its first slice)");
+    else if(wrongRead.length||(REFILE&&ageH!==null&&ageH>24))out("FAIL",what()+(wrongRead.length?" after this build visited the board":" 24 h after the first slice"));
+    else out("INFO","C1 "+wrong.length+" of "+hit.length+" "+label+" row(s) still filed otherwise, none written by this build; "+(REFILE?waitWhy(24):notYet));}
   const CR=rowsAt("cardiff");const cw=(CR.rows||[]).filter((r)=>/Cardiff,?\s*Wales/i.test(String(r.location||"")));
   if(CR.bad)out("FAIL","C1 the Cardiff list is unreadable: "+peek(CR.bad));
   else if(!cw.length)out("INFO","C1 control: no \"Cardiff, Wales\" row is served, so the control is not judged");
@@ -385,11 +403,11 @@ else{const LOCS=JSON.parse(E.VDZ3_LOCS);
   // C2
   for(const [k,label,h] of [["cvs","CVS Health R1075322 (\"NY - Greece\")",24],["bjs","BJ\x27s R255468 (\"Greece, NY #0185\")",24],["kohls","Kohl\x27s R504030 (\"Lake Wales (1250)\", placed by migration 20261026110000)",48],["kohls2","Kohl\x27s R503656 (\"Lake Wales (1250)\", placed by migration 20261026110000)",48]]){
     const d=json("/tmp/vd_99zzz_d_"+k+".json");const j=d&&d.job;const mig=k.startsWith("kohls");
-    const readNow=!mig&&!!(j&&j.recheckedAt)&&readSince([j]);
+    const readNow=!mig&&REFILE&&!!(j&&j.recheckedAt)&&readSince([j]);const newNow=!mig&&!!j&&wroteSince(j);
     if(!d)out("FAIL","C2 "+label+": the detail is unreadable: "+peek("/tmp/vd_99zzz_d_"+k+".json"));
     else if(!j||d.gone)out("INFO","C2 "+label+" is no longer served (closed), so it is not judged");
     else if(j.country==="US")out("PASS","C2 "+label+" is filed US");
-    else if(readNow||(ageH!==null&&ageH>h))out("FAIL","C2 "+label+" is filed "+(j.country||"(none)")+(mig?" "+h+" h after the first slice: apply migration 20261026110000":readNow?" after this build read it":" "+h+" h after the first slice"));
-    else out("INFO","C2 "+label+" is filed "+(j.country||"(none)")+"; "+waitWhy(h));}
+    else if(newNow||readNow||((mig||REFILE)&&ageH!==null&&ageH>h))out("FAIL","C2 "+label+" is filed "+(j.country||"(none)")+(mig?" "+h+" h after the first slice: apply migration 20261026110000":newNow?" and this build wrote it (lastSeen after its first slice)":readNow?" after this build visited its board":" "+h+" h after the first slice"));
+    else out("INFO","C2 "+label+" is filed "+(j.country||"(none)")+"; "+(mig||REFILE?waitWhy(h):notYet));}
 }
 ' 2>&1 || echo "FAIL  99zzz judge threw (see the lines above)"

@@ -57,6 +57,7 @@ import {
   rankOracleSites,
   detectCountry,
   detectRegion,
+  townRefilePatches,
   greenhouseApi,
   leverApi,
   ldBaseSalaryText,
@@ -146,7 +147,7 @@ const json = (body: unknown, status = 200) =>
 // a-stripper-that-loses-real-code-passes-every-guard-that-reads-it.test.ts.
 const SITEMAP_DAYS = 30;
 // Rationale: docs/job-board-index-notes.md#n002-build-version
-const BUILD_VERSION = "2026-09-09.96"; // per-version deploy notes: docs/job-board-deploy-notes.md (kept out of the bundle; see the 4.5MB cap note there)
+const BUILD_VERSION = "2026-09-09.98"; // per-version deploy notes: docs/job-board-deploy-notes.md (kept out of the bundle; see the 4.5MB cap note there)
 // Rationale: docs/job-board-index-notes.md#n003-stored-names-do-not-heal-themselves-the-refr
 
 // Rationale: docs/job-board-index-notes.md#n483-const-name_sync_version
@@ -4013,6 +4014,11 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           // The change log's high-water mark at the moment the cap is reached.
           // Everything after this index belongs to a patch the cap will drop.
           if (changeCutAt < 0 && corrections.length === CORRECTIONS_PER_VISIT) changeCutAt = changeLog.length;
+        }
+        // Rationale: docs/job-board-index-notes.md#n1399-stored-town-refile
+        for (const p of townRefilePatches(existingRows, rowsById, s.source, !regionColUnknown)) {
+          corrections.push(p);
+          changeMarks.push(changeLog.length);
         }
         // Rationale: docs/job-board-index-notes.md#n116-changecapat-0
         if (changeCapAt >= 0) {
