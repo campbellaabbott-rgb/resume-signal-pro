@@ -17,6 +17,7 @@ import {
   mergePrepSet,
   outputFormat,
   prepCalls,
+  prepChain,
   readEvaluation,
   readPrepReply,
   type PrepCall,
@@ -165,7 +166,9 @@ serve(async (req) => {
         resumeText, question: question!, answer: answer!, category: clipField(body.category, 40) ?? "General", language,
       });
     }
-    const models = writingChain(pass ?? { kind: "service" });
+    // Pro first, cut at 80 s, then flash, when the writing chain starts on
+    // pro; a free account's chain as it is (prep-set.ts, THE CLOCK).
+    const chain = prepChain(writingChain(pass ?? { kind: "service" }));
 
     const role = targetRole || currentRole || "the role matching their background";
 
@@ -180,8 +183,8 @@ Target Role: ${role}
 
 Create questions that reference their ACTUAL experience from the resume.`;
 
-    // ASKED IN CALLS A MODEL CAN FINISH (S10-009, prep-set.ts). The quality
-    // chain for paid deliveries, past buyers and Pro; Flash for a free
+    // ASKED IN CALLS A MODEL CAN FINISH (S10-009, prep-set.ts). Pro, then
+    // flash, for paid deliveries, past buyers and Pro; Flash for a free
     // account's daily set. Each call's cap is its largest legitimate reply
     // plus the model's thinking, and a reply cut off at that cap, empty, not
     // JSON or with no questions goes to the next model with what is left of
@@ -199,11 +202,10 @@ Create questions that reference their ACTUAL experience from the resume.`;
         temperature: 0.7,
         maxTokens: call.outputTokens + THINKING_TOKENS,
         jsonResponse: true,
-        models,
+        models: chain.models,
         context: calls.length > 1 ? `INTERVIEW-COACH ${call.label}` : "INTERVIEW-COACH",
         read: readPrepReply,
-        // The chain's default attempt for every model (prep-set.ts, THE
-        // CLOCK): the quality chain's second model is gpt-5, not flash.
+        ...(chain.attemptTimeoutMs ? { attemptTimeoutMs: chain.attemptTimeoutMs } : {}),
         ...(calls.length > 1 ? { signal: stop.signal } : {}),
       }).then(
         (reply) => {

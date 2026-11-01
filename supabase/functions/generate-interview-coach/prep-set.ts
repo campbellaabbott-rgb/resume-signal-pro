@@ -19,11 +19,13 @@
  *     with at most 10% headroom), plus THINKING_TOKENS. The 14-question set
  *     as one reply measures 27,466 tokens before thinking, so it is asked as
  *     two parallel calls of 7 (12,967 and 14,504 tokens), not started on
- *     flash: the paid product keeps the quality chain it was sold on, and
- *     halving the reply is what lets one model finish it inside its attempt.
+ *     flash: the paid product keeps gemini-2.5-pro writing it, and halving
+ *     the reply keeps each call inside what pro's 80 s attempt and flash's
+ *     45 s can write.
  *   - Each call walks the chain past a reply that is cut off, empty or not
  *     JSON (_shared/ai-fallback.ts callAIForUsableReply), with what is left
- *     of the 125 s budget.
+ *     of the 125 s budget: pro (80 s), then flash, then gpt-5-mini when the
+ *     caller's chain starts on pro (THE CLOCK, below).
  *   - The two halves are merged into the object one call produced: the first
  *     half's profile and tips, all 14 questions in category order, ids 1-14.
  *
@@ -82,17 +84,30 @@ export const PAID_SECOND_HALF_OUTPUT_TOKENS = 13_000;
 export const EVALUATION_OUTPUT_TOKENS = 1_700;
 
 /*
- * THE CLOCK: EVERY MODEL ON THE CHAIN GETS ITS TURN (review of S10-009). The
- * first build cut gemini-2.5-pro at 80 s, copying the Full Analysis's parts.
- * But their chain is pro then flash, several times faster, which is why 45 s
- * is enough for the next model there; a prep set walks the writing tools'
- * quality chain (_shared/writing-allowance.ts: pro, gpt-5, gpt-5-mini), whose
- * second model is a reasoning model as slow as pro. Pro at 80 s left gpt-5
- * 45 s and gpt-5-mini nothing, so a slow day failed a paid set at 125 s that
- * the default would have delivered. Every call now keeps the shared chain's
- * default attempt, 55 s a model: pro 55 s, gpt-5 55 s, gpt-5-mini the 15 s
- * left. A free account's chain (flash, gpt-5-mini) is unchanged.
+ * THE CLOCK (recheck of S10-009). The first build cut gemini-2.5-pro at 80 s
+ * on the writing tools' quality chain (_shared/writing-allowance.ts: pro,
+ * gpt-5, gpt-5-mini), which left gpt-5 45 s and gpt-5-mini nothing; the
+ * second gave every model the chain's default 55 s, which cut pro inside its
+ * measured tail and left gpt-5-mini 15 s. Neither gave any model a realistic
+ * window for this reply: each paid half (14,504 and 12,967 tokens) is larger
+ * than the Full Analysis core (10,400), whose pro tail measures 45-95 s, and
+ * gpt-5 is a reasoning model as slow as pro. So a prep set whose chain
+ * starts on pro (Pro members, past buyers, paid deliveries) walks the chain
+ * the Full Analysis's split was built for: pro first and cut at 80 s, then
+ * gemini-2.5-flash, several times faster on the same output, with the 45 s
+ * left, then gpt-5-mini (prepChain). Pro stays the model that writes the
+ * set; only the fallback changes. A free account's chain (flash, then
+ * gpt-5-mini, 55 s each) is unchanged.
  */
+export const PREP_PRO_MODEL = "google/gemini-2.5-pro";
+export const PREP_PRO_ATTEMPT_MS = 80_000;
+const PREP_FALLBACK_AFTER_PRO = ["google/gemini-2.5-flash", "openai/gpt-5-mini"] as const;
+
+/** The models a prep call walks, and the first one's attempt, from the writing chain its caller is on. */
+export function prepChain(writing: readonly string[]): { models: string[]; attemptTimeoutMs?: number } {
+  if (writing[0] !== PREP_PRO_MODEL) return { models: [...writing] };
+  return { models: [PREP_PRO_MODEL, ...PREP_FALLBACK_AFTER_PRO], attemptTimeoutMs: PREP_PRO_ATTEMPT_MS };
+}
 
 export interface PrepCall {
   label: "set" | "first half" | "second half";

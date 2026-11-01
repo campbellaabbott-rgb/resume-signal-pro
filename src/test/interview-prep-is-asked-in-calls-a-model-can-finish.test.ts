@@ -20,11 +20,13 @@
  *   - a reply cut off at its cap, empty, not JSON or with no questions goes
  *     to the next model; when no model gives one, the use is given back and
  *     the person gets the retryable error;
- *   - every model on the quality chain gets its turn inside the 125 s
- *     budget: each keeps the shared chain's 55 s attempt, so gpt-5-mini is
- *     still asked when pro and gpt-5 are both slow (the first cut of this
- *     build gave pro 80 s, copied from the Full Analysis, whose second model
- *     is the fast flash: here it left gpt-5 45 s and gpt-5-mini nothing).
+ *   - a set whose chain starts on pro walks pro (80 s), then flash, then
+ *     gpt-5-mini, the chain the Full Analysis's 80 s / 45 s split was built
+ *     for: on the quality chain neither 80 s for pro (gpt-5 45 s, gpt-5-mini
+ *     nothing) nor 55 s a model (pro cut inside its 45-95 s tail, gpt-5-mini
+ *     15 s) left any model a realistic window for a 7-answer half, so the
+ *     recheck's day (pro 70 s, gpt-5 70 s) failed a paid set at 125 s; a free
+ *     account's chain and clock are unchanged.
  * Run against the shipped handler with only its network faked
  * (helpers/writing-harness.ts).
  */
@@ -215,8 +217,8 @@ describe("the paid set is two parallel calls of 7, merged into one set", () => {
     expect(r.status).toBe(500);
     expect(r.body).toMatchObject({ retryable: true });
     expect(JSON.stringify(r.body)).not.toMatch(/gemini|gpt|length/);
-    // The first half walked the whole quality chain before it gave up.
-    expect(world.ai.filter((c) => isPaidHalf(c, "first")).map((c) => c.model)).toEqual([QUALITY, "openai/gpt-5", "openai/gpt-5-mini"]);
+    // The first half walked the whole chain before it gave up.
+    expect(world.ai.filter((c) => isPaidHalf(c, "first")).map((c) => c.model)).toEqual([QUALITY, "google/gemini-2.5-flash", "openai/gpt-5-mini"]);
   });
 });
 
@@ -281,14 +283,14 @@ describe("a reply the model could not finish goes to the next model", () => {
   });
 });
 
-// The shared chain's default attempt, every model's on the prep chain.
-const ATTEMPT_MS = 55_000;
-
 /**
  * A gateway on the fake clock: `plan` says, per model, how long it takes to
  * answer (or never). Records when each model was asked and aborted.
  */
-async function driveClock(plan: Record<string, number | "never">) {
+async function driveClock(
+  plan: Record<string, number | "never">,
+  ask: { body: Record<string, unknown>; who: string; calls: number } = { body: { resumeText: RESUME, isPremium: true, sessionId: "cs_coach" }, who: "service", calls: 2 },
+) {
   vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
   const t0 = Date.now();
   const asked: Array<{ model: string; at: number; half: string }> = [];
@@ -311,14 +313,14 @@ async function driveClock(plan: Record<string, number | "never">) {
   };
   let settled = false;
   let answeredAt = -1;
-  const pending = post(handler, FN, { resumeText: RESUME, isPremium: true, sessionId: "cs_coach" }, "service").finally(() => {
+  const pending = post(handler, FN, ask.body, ask.who).finally(() => {
     settled = true;
     answeredAt = Date.now() - t0;
   });
   // The gates before the model resolve on real I/O, not on the faked clock:
   // let both halves reach pro before the clock moves.
   const tick = () => new Promise<void>((resolve) => setImmediate(resolve));
-  for (let i = 0; i < 2_000 && asked.length < 2; i++) await tick();
+  for (let i = 0; i < 2_000 && asked.length < ask.calls; i++) await tick();
   for (let t = 0; t < 200_000 && !settled; t += 500) {
     await vi.advanceTimersByTimeAsync(500);
     for (let i = 0; i < 10 && !settled; i++) await tick();
@@ -327,25 +329,56 @@ async function driveClock(plan: Record<string, number | "never">) {
   return { r, asked, aborted, answeredAt };
 }
 
-describe("the clock: every model on the quality chain gets its turn inside the budget", () => {
-  it("pro and gpt-5 both too slow: each is cut at its 55 s, and gpt-5-mini answers both halves before 125 s", async () => {
-    const { r, asked, aborted, answeredAt } = await driveClock({ [QUALITY]: "never", "openai/gpt-5": "never", "openai/gpt-5-mini": 2_000 });
+// THE CLOCK (recheck of S10-009). Each paid half is a reply larger than any
+// Full Analysis part (14,504 and 12,967 tokens against the core's 10,400),
+// whose measured pro tail is 45-95 s. On the quality chain at 55 s a model,
+// pro was cut inside that tail, gpt-5 (a reasoning model as slow as pro) got
+// the next 55 s, and gpt-5-mini the 15 s left, too few to write 7 STAR
+// answers. A prep set whose chain starts on pro now walks the chain the Full
+// Analysis's 80 s / 45 s split was built for: pro (80 s), then flash, several
+// times faster, then gpt-5-mini.
+const PRO_ATTEMPT_MS = 80_000;
+const FLASH = "google/gemini-2.5-flash";
+const MINI = "openai/gpt-5-mini";
+
+describe("the clock: a paid half gets a model that can write it inside the budget", () => {
+  it("the recheck's day (pro 70 s, gpt-5 70 s, gpt-5-mini 30 s): pro answers inside its 80 s and the set is delivered", async () => {
+    const { r, aborted, answeredAt } = await driveClock({ [QUALITY]: 70_000, "openai/gpt-5": 70_000, [FLASH]: 30_000, [MINI]: 30_000 });
     expect(r.status, JSON.stringify(r.body).slice(0, 300)).toBe(200);
-    expect(aborted.filter((a) => a.model === QUALITY).map((a) => a.at)).toEqual([ATTEMPT_MS, ATTEMPT_MS]);
-    expect(aborted.filter((a) => a.model === "openai/gpt-5").map((a) => a.at)).toEqual([2 * ATTEMPT_MS, 2 * ATTEMPT_MS]);
-    const mini = asked.filter((a) => a.model === "openai/gpt-5-mini");
-    expect(mini.map((a) => a.half).sort(), "gpt-5-mini was never asked").toEqual(["first", "second"]);
-    for (const a of mini) expect(a.at).toBe(2 * ATTEMPT_MS);
-    expect(answeredAt).toBeLessThanOrEqual(125_000);
-    expect(asked.filter((a) => a.model === QUALITY).length, "pro was asked again after it timed out").toBe(2);
+    expect(aborted).toEqual([]);
+    expect(answeredAt).toBe(70_000);
     expect((r.body as { data: { questions: unknown[] } }).data.questions).toHaveLength(14);
   });
 
-  it("the review's day (pro 90 s, gpt-5 50 s): pro is cut at 55 s and gpt-5 answers inside its own window", async () => {
-    const { r, aborted, answeredAt } = await driveClock({ [QUALITY]: 90_000, "openai/gpt-5": 50_000, "openai/gpt-5-mini": 2_000 });
+  it("pro too slow for its 80 s: flash answers both halves inside the 45 s left, before 125 s", async () => {
+    const { r, asked, aborted, answeredAt } = await driveClock({ [QUALITY]: "never", "openai/gpt-5": "never", [FLASH]: 30_000, [MINI]: 30_000 });
     expect(r.status, JSON.stringify(r.body).slice(0, 300)).toBe(200);
-    expect(aborted.map((a) => [a.model, a.at])).toEqual([[QUALITY, ATTEMPT_MS], [QUALITY, ATTEMPT_MS]]);
-    expect(answeredAt).toBe(ATTEMPT_MS + 50_000);
+    expect(aborted.map((a) => [a.model, a.at])).toEqual([[QUALITY, PRO_ATTEMPT_MS], [QUALITY, PRO_ATTEMPT_MS]]);
+    expect(asked.filter((a) => a.model === FLASH).map((a) => [a.half, a.at]).sort()).toEqual([["first", PRO_ATTEMPT_MS], ["second", PRO_ATTEMPT_MS]]);
+    expect(asked.some((a) => a.model === "openai/gpt-5"), "gpt-5 was asked to write a half in what flash is faster at").toBe(false);
+    expect(asked.filter((a) => a.model === QUALITY).length, "pro was asked again after it timed out").toBe(2);
+    expect(answeredAt).toBe(PRO_ATTEMPT_MS + 30_000);
+    expect(answeredAt).toBeLessThanOrEqual(125_000);
+    expect((r.body as { data: { questions: unknown[] } }).data.questions).toHaveLength(14);
+  });
+
+  it("a Pro member's set walks the same chain: pro (80 s), then flash", async () => {
+    const { r, asked, answeredAt } = await driveClock(
+      { [QUALITY]: "never", "openai/gpt-5": "never", [FLASH]: 20_000, [MINI]: 20_000 },
+      { body: { resumeText: RESUME, targetRole: "Engineer", mode: "generate" }, who: tokenFor(PRO_USER), calls: 1 },
+    );
+    expect(r.status, JSON.stringify(r.body).slice(0, 300)).toBe(200);
+    expect(asked.map((a) => [a.model, a.at])).toEqual([[QUALITY, 0], [FLASH, PRO_ATTEMPT_MS]]);
+    expect(answeredAt).toBe(PRO_ATTEMPT_MS + 20_000);
+  });
+
+  it("a free account's set keeps its own chain and clock: flash (55 s), then gpt-5-mini", async () => {
+    const { r, asked } = await driveClock(
+      { [FLASH]: "never", [MINI]: 20_000 },
+      { body: { resumeText: RESUME, targetRole: "Engineer", mode: "generate" }, who: tokenFor(FREE_USER), calls: 1 },
+    );
+    expect(r.status, JSON.stringify(r.body).slice(0, 300)).toBe(200);
+    expect(asked.map((a) => [a.model, a.at])).toEqual([[FLASH, 0], [MINI, 55_000]]);
   });
 });
 
