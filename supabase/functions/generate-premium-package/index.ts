@@ -4,7 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { assertPaidSession } from "../_shared/paid-session.ts";
 import { clipField, clipText, modelSpendGate } from "../_shared/model-spend-gate.ts";
 import { checkInputLimits, MAX_JOB_DESCRIPTION_LENGTH } from "../_shared/input-limits.ts";
-import { CHAIN_DEADLINE_MS, callAIWithModelFallback, chainRanOutOfTime, looksLikeBrokenJson, UnusableModelOutput } from "../_shared/ai-fallback.ts";
+import { CHAIN_DEADLINE_MS, callAIForUsableReply, chainRanOutOfTime, looksLikeBrokenJson, UnusableModelOutput, type UsableReply } from "../_shared/ai-fallback.ts";
 import { autoFixContent, validateContent } from "./auto-fix.ts";
 import { stripInventedContact } from "../_shared/contact-guard.ts";
 import { restoreUnsupportedLines, rewrittenResumeFigureIssues, validateProseClaims } from "../_shared/resume-grounding.ts";
@@ -20,7 +20,14 @@ import { restoreUnsupportedLines, rewrittenResumeFigureIssues, validateProseClai
 // left fails like any failed repair. A chain that ran out of time answers the
 // 504 that says try again. Body (model, messages, max_completion_tokens),
 // model order (gpt-5, gemini-2.5-pro, gpt-5-mini) and reply are unchanged; the
-// never-called fetchWithRetry is gone. Nothing of main's past f8d72a9b, the
+// never-called fetchWithRetry is gone. Two things the shared chain does
+// differently: a 429 on one model now asks the next model (the private chain
+// answered the first 429 at once; a 429 on gpt-5 now asks gemini-2.5-pro,
+// then gpt-5-mini), and the 429 answer comes only when every model is
+// rate-limited; and a 200 cut off at its cap, empty, or with JSON that does
+// not parse (prose is still a letter) asks the next model with what is left
+// of the budget (callAIForUsableReply), each part and each figure repair
+// alike; only when no model writes one is the same retryable 502 answered. Nothing of main's past f8d72a9b, the
 // build the 2026-10-31 deploy put live, rides along.
 const FN_BUILD = "generate-premium-package.2026-10-28.1";
 
@@ -55,17 +62,20 @@ interface AIRequestOptions {
 // the retry sweep cannot tell from a crash. Every call now walks the shared
 // chain (_shared/ai-fallback.ts: a timed-out model is not asked again, the
 // next keeps its window) inside what is left of the request's one 125 s
-// budget; a repair that finds no time left fails like any failed repair. The
-// body is the one this function always sent, to every model: model,
-// messages, max_completion_tokens, tools and tool_choice when given. (A
-// legacy fetchWithRetry, never called, is gone.)
-async function callAIWithFallback(
+// budget; a repair that finds no time left fails like any failed repair.
+// A 200 IS NOT A DELIVERY (review of S13-001): a reply cut off at its cap,
+// empty, or with JSON that does not parse asks the next model
+// (callAIForUsableReply). The body is the one this function always sent, to
+// every model: model, messages, max_completion_tokens, tools and tool_choice
+// when given. (A legacy fetchWithRetry, never called, is gone.)
+async function askAI<T>(
   apiKey: string,
   options: AIRequestOptions,
   context: string,
   deadlineAt: number,
-): Promise<{ response: Response; modelUsed: string }> {
-  return await callAIWithModelFallback(apiKey, {
+  read: (data: unknown) => T | null,
+): Promise<UsableReply<T>> {
+  return await callAIForUsableReply(apiKey, {
     messages: options.messages,
     ...(options.max_completion_tokens ? { maxCompletionTokens: options.max_completion_tokens } : {}),
     ...(options.tools ? { tools: options.tools } : {}),
@@ -73,7 +83,27 @@ async function callAIWithFallback(
     models: MODEL_FALLBACK_ORDER,
     context: `GENERATE-PREMIUM-PACKAGE ${context}`,
     deadlineMs: deadlineAt - Date.now(),
+    read,
   });
+}
+
+/** The text a reply wrote, or null when it wrote none. */
+function contentOf(data: unknown): string | null {
+  const content = (data as { choices?: Array<{ message?: { content?: unknown } }> } | null)?.choices?.[0]?.message?.content;
+  return typeof content === "string" && content.trim() ? content : null;
+}
+
+/** The JSON object a reply carries, or null. */
+// deno-lint-ignore no-explicit-any
+function jsonObjectOf(content: string | null): Record<string, any> | null {
+  const match = content?.match(/\{[\s\S]*\}/);
+  if (!match) return null;
+  try {
+    const parsed = JSON.parse(match[0]);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
 }
 
 serve(async (req) => {
@@ -338,11 +368,31 @@ ${jobDescription}` : ''}
 
 Write a cover letter that sounds like it was written by this specific person - confident, articulate, and genuine. Reference specific experiences from their resume with concrete details.`;
 
-    const [
-      { response: resumeResponse, modelUsed: resumeModel },
-      { response: coverLetterResponse, modelUsed: coverLetterModel }
-    ] = await Promise.all([
-      callAIWithFallback(
+    // NO SYNTHESISED DELIVERY (register L5-12). A résumé reply with no JSON,
+    // or a letter that is broken JSON, used to ship as the delivery with an
+    // invented "ATS 50 -> 85"; then it was a retryable failure from the first
+    // model. Now the next model is asked, and only when none writes one does
+    // UnusableModelOutput keep the delivery open (the webhook marks it
+    // failed and the retry sweep tries again). Prose is still a letter.
+    const letterSubject = `Application for ${jobTitle || 'Position'}${jobCompany ? ` at ${jobCompany}` : ''}`;
+    // deno-lint-ignore no-explicit-any
+    const readLetter = (data: unknown): Record<string, any> | null => {
+      const content = contentOf(data);
+      if (!content) return null;
+      const parsed = jsonObjectOf(content);
+      if (parsed) return parsed;
+      if (looksLikeBrokenJson(content)) return null;
+      logStep("Cover letter came back as prose; the prose is the letter");
+      return {
+        coverLetter: content,
+        openingLine: "",
+        keySkillsHighlighted: [],
+        personalizedElements: [],
+        suggestedSubjectLine: letterSubject,
+      };
+    };
+    const [resumeReply, coverLetterReply] = await Promise.all([
+      askAI(
         apiKey,
         {
           messages: [
@@ -353,8 +403,9 @@ Write a cover letter that sounds like it was written by this specific person - c
         },
         'Resume generation',
         deadlineAt,
+        (data) => jsonObjectOf(contentOf(data)),
       ),
-      callAIWithFallback(
+      askAI(
         apiKey,
         {
           messages: [
@@ -365,10 +416,14 @@ Write a cover letter that sounds like it was written by this specific person - c
         },
         'Cover letter generation',
         deadlineAt,
+        readLetter,
       )
     ]);
+    const resumeModel = resumeReply.modelUsed;
+    const coverLetterModel = coverLetterReply.modelUsed;
 
-    if (!resumeResponse.ok) {
+    if (!resumeReply.ok) {
+      const resumeResponse = resumeReply.response;
       const errorText = await resumeResponse.text();
       logStep("Resume AI API error", { status: resumeResponse.status, error: errorText, model: resumeModel });
       if (resumeResponse.status === 429) {
@@ -386,7 +441,8 @@ Write a cover letter that sounds like it was written by this specific person - c
       throw new Error(`Resume AI API error: ${resumeResponse.status}`);
     }
 
-    if (!coverLetterResponse.ok) {
+    if (!coverLetterReply.ok) {
+      const coverLetterResponse = coverLetterReply.response;
       const errorText = await coverLetterResponse.text();
       logStep("Cover letter AI API error", { status: coverLetterResponse.status, error: errorText, model: coverLetterModel });
       if (coverLetterResponse.status === 429) {
@@ -400,58 +456,13 @@ Write a cover letter that sounds like it was written by this specific person - c
 
     logStep("Both AI calls complete", { resumeModel, coverLetterModel });
 
-    const resumeAiResponse = await resumeResponse.json();
-    const resumeContent = resumeAiResponse.choices?.[0]?.message?.content;
-    if (!resumeContent) throw new Error("No content in resume AI response");
-
     // The model's JSON, as parsed: typed loosely because the repair below
     // reassigns it from a closure, and an untyped `let` is then an implicit
     // any that the deno gate refuses.
     // deno-lint-ignore no-explicit-any
-    let resumeResult: Record<string, any>;
-    try {
-      const jsonMatch = resumeContent.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        resumeResult = JSON.parse(jsonMatch[0]);
-      } else {
-        throw new Error("No JSON found in resume response");
-      }
-    } catch (parseError) {
-      // NO SYNTHESISED DELIVERY (register L5-12). This used to ship the raw
-      // model text as the résumé with an invented "ATS 50 -> 85", recorded as
-      // a successful paid delivery. A retryable failure keeps the delivery
-      // open: the webhook marks it failed and the retry sweep tries again.
-      logStep("Resume JSON parse error", { error: String(parseError) });
-      throw new UnusableModelOutput("The résumé rewrite came back unreadable");
-    }
-
-    const coverLetterAiResponse = await coverLetterResponse.json();
-    const coverLetterContent = coverLetterAiResponse.choices?.[0]?.message?.content;
-    if (!coverLetterContent) throw new Error("No content in cover letter AI response");
-
+    let resumeResult: Record<string, any> = resumeReply.value;
     // deno-lint-ignore no-explicit-any
-    let coverLetterResult: Record<string, any>;
-    try {
-      const jsonMatch = coverLetterContent.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        coverLetterResult = JSON.parse(jsonMatch[0]);
-      } else {
-        throw new Error("No JSON found in cover letter response");
-      }
-    } catch (parseError) {
-      logStep("Cover letter JSON parse error", { error: String(parseError) });
-      // Prose is a letter; a broken JSON object is not one.
-      if (looksLikeBrokenJson(coverLetterContent)) {
-        throw new UnusableModelOutput("The cover letter came back unreadable");
-      }
-      coverLetterResult = {
-        coverLetter: coverLetterContent,
-        openingLine: "",
-        keySkillsHighlighted: [],
-        personalizedElements: [],
-        suggestedSubjectLine: `Application for ${jobTitle || 'Position'}${jobCompany ? ` at ${jobCompany}` : ''}`
-      };
-    }
+    let coverLetterResult: Record<string, any> = coverLetterReply.value;
 
     logStep("Both results parsed");
 
@@ -511,7 +522,7 @@ Write a cover letter that sounds like it was written by this specific person - c
       field: 'rewrittenResume' | 'coverLetter',
     ): Promise<Record<string, unknown> | null> => {
       try {
-        const { response } = await callAIWithFallback(apiKey, {
+        const reply = await askAI(apiKey, {
           messages: [
             { role: "system", content: system },
             { role: "user", content: user },
@@ -522,14 +533,17 @@ Write a cover letter that sounds like it was written by this specific person - c
             },
           ],
           max_completion_tokens: field === 'rewrittenResume' ? 12000 : 4000,
-        }, `${label} figure repair`, deadlineAt);
-        if (!response.ok) return null;
-        const json = await response.json();
-        const content = json.choices?.[0]?.message?.content;
-        const match = typeof content === "string" ? content.match(/\{[\s\S]*\}/) : null;
-        if (!match) return null;
-        const repaired = JSON.parse(match[0]) as Record<string, unknown>;
-        if (typeof repaired[field] !== "string" || !(repaired[field] as string).trim()) return null;
+        }, `${label} figure repair`, deadlineAt, (data) => {
+          // The repaired part in the JSON asked for, with its text; a cut-off,
+          // empty or unreadable one asks the next model.
+          const parsed = jsonObjectOf(contentOf(data));
+          return parsed && typeof parsed[field] === "string" && parsed[field].trim() ? parsed as Record<string, unknown> : null;
+        });
+        if (!reply.ok) {
+          await reply.response.body?.cancel().catch(() => {});
+          return null;
+        }
+        const repaired = reply.value;
         // The repaired text passes the same guards the first draft did.
         const guarded = stripInventedContact(autoFixContent(repaired[field] as string, resumeText).fixed, resumeText);
         repaired[field] = guarded.text;

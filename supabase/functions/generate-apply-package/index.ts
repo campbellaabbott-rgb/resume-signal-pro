@@ -7,7 +7,7 @@ import { validateTailoredResume, type TailoredResumeShape } from "../_shared/res
 import { roleGuidance } from "../_shared/application-questions.ts";
 import { APPLY_KIT_PRODUCT_TYPES } from "../_shared/apply-kit.ts";
 import { assertPaidSession } from "../_shared/paid-session.ts";
-import { callAIWithModelFallback, describeReply } from "../_shared/ai-fallback.ts";
+import { CHAIN_DEADLINE_MS, callAIWithModelFallback, describeReply } from "../_shared/ai-fallback.ts";
 import { clientAddressOr } from "../_shared/client-address.ts";
 import { checkoutSessionSettled } from "../_shared/pass-settlement.ts";
 import { accountProStanding } from "../_shared/pro.ts";
@@ -44,12 +44,21 @@ import { fencePosting, postingText, POSTING_DATA_RULE } from "../_shared/posting
 // function's chain moves to the next model, which keeps at least 40 s of the
 // 125 s budget when the first model times out. A reply in an unexpected
 // format is logged by its shape and lengths (describeReply), no longer as the
-// whole reply, which carried the person's résumé.
+// whole reply, which carried the person's résumé. The draft and its grounding
+// regeneration share the request's one 125 s budget, taken when the request
+// arrives (each had a fresh 125 s, so a slow draft and a regeneration could
+// run about 250 s, past the platform's 150 s); a regeneration that finds no
+// time left fails like any failed regeneration, and the kit is refused as
+// before, retryably.
 // _shared/posting-text.ts reads an HTML posting in one linear pass now
-// (S12-147, finished): the same text as before for every page whose
-// script, style and comment blocks are closed and whose tags carry no bare
-// "<"; an unclosed block now runs to the end of the page, as a browser
-// reads it.
+// (S12-147, finished), as a browser reads it: an unclosed script, style or
+// comment block runs to the end of the page; a quoted '>' does not end a tag
+// and '/>' closes only a void element; attributes are read by name, so
+// "hidden" in a title or class list hides nothing; !important and
+// visibility:collapse hide, as do framework hiding classes (d-none, sr-only,
+// a Tailwind hidden with no responsive class) and classes the page's own
+// <style> hides; a <p>, <li>, <td> or <tr> whose end tag is left out ends
+// where a browser ends it, so a hidden one takes only its own words.
 // Nothing else in this function changed, and nothing of main's past
 // f8d72a9b, the build the 2026-10-31 deploy put live, rides along.
 const FN_BUILD = "generate-apply-package.2026-10-28.1";
@@ -112,10 +121,12 @@ interface AIRequestOptions {
   tool_choice?: unknown;
 }
 
+/** One chain call, inside what is left of the request's one budget (deadlineAt). */
 function callAIWithFallback(
   apiKey: string,
   options: AIRequestOptions,
-  context: string = 'AI call'
+  context: string,
+  deadlineAt: number,
 ): Promise<{ response: Response; modelUsed: string }> {
   return callAIWithModelFallback(apiKey, {
     messages: options.messages,
@@ -123,6 +134,7 @@ function callAIWithFallback(
     toolChoice: options.tool_choice,
     models: MODEL_FALLBACK_ORDER,
     context: `GENERATE-APPLY-PACKAGE ${context}`,
+    deadlineMs: deadlineAt - Date.now(),
   });
 }
 
@@ -134,14 +146,16 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+  // The request's one budget: the draft and its regeneration end inside it.
+  const deadlineAt = Date.now() + CHAIN_DEADLINE_MS;
   // A Pro account's use is given back whenever no kit is delivered.
   const holder: { pass: WritingPass | null } = { pass: null };
-  const res = await handleKit(req, holder);
+  const res = await handleKit(req, holder, deadlineAt);
   if (res.status >= 400) await refundWriting(getServiceClient(), holder.pass);
   return res;
 });
 
-async function handleKit(req: Request, holder: { pass: WritingPass | null }): Promise<Response> {
+async function handleKit(req: Request, holder: { pass: WritingPass | null }, deadlineAt: number): Promise<Response> {
   const clientIp = getClientIp(req);
 
   try {
@@ -467,7 +481,8 @@ Prepare the tailored application package.`;
         tool_choice: applyToolChoice
 
       },
-      'Apply package generation'
+      'Apply package generation',
+      deadlineAt,
     );
 
     if (!response.ok) {
@@ -534,7 +549,8 @@ Prepare the tailored application package.`;
             tools: applyPackageTool,
             tool_choice: applyToolChoice,
           },
-          'Apply package regeneration'
+          'Apply package regeneration',
+          deadlineAt,
         );
         if (r2.ok) {
           const d2 = await r2.json();

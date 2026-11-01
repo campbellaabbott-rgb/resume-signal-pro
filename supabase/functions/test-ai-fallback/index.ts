@@ -24,8 +24,12 @@ import { SCAN_MODEL_CHAIN } from "../_shared/scan-models.ts";
 // thinking, or with no text, passed before): such a reply asks the next
 // model, each result names the model that wrote and carries the text as
 // proof (reply), and the cap is the 50-token answer plus the thinking
-// production allows (THINKING_TOKENS). Nothing of main's past f8d72a9b, the
-// build the 2026-10-31 deploy put live, rides along.
+// production allows (THINKING_TOKENS). Mode "all" asks its models at once,
+// each with the 40 s budget, so it answers in about 40 s: one after another
+// it took 40 s a model, 160 s for the four when the gateway hangs, past the
+// platform's 150 s, and ended in the platform's 504 instead of this report
+// at the moment the report matters most. Nothing of main's past f8d72a9b,
+// the build the 2026-10-31 deploy put live, rides along.
 const FN_BUILD = "test-ai-fallback.2026-10-28.1";
 
 const corsHeaders = {
@@ -122,13 +126,15 @@ serve(async (req) => {
     if (mode === "all") {
       // Every model either chain can reach, each alone, called the way the
       // shared helper calls it (max_tokens for Google, max_completion_tokens
-      // for OpenAI).
+      // for OpenAI). All at once, each inside its own 40 s: the whole report
+      // inside about 40 s, well inside the platform's 150 s, whatever hangs.
       const models = [...new Set(PRODUCTION_CHAINS.flatMap((c) => [...c.models]))];
-      const results: Array<{ model: string; success: boolean; responseTime: number; statusCode?: number; error?: string }> = [];
-      for (const model of models) {
-        const r = await testChain(apiKey, model, [model]);
-        results.push({ model, success: r.success, responseTime: r.totalTime, statusCode: r.status, ...(r.error ? { error: r.error } : {}) });
-      }
+      const results: Array<{ model: string; success: boolean; responseTime: number; statusCode?: number; error?: string }> = await Promise.all(
+        models.map(async (model) => {
+          const r = await testChain(apiKey, model, [model]);
+          return { model, success: r.success, responseTime: r.totalTime, statusCode: r.status, ...(r.error ? { error: r.error } : {}) };
+        }),
+      );
       const ok = results.filter((r) => r.success);
       return json({
         success: PRODUCTION_CHAINS.every((c) => c.models.some((m) => ok.some((r) => r.model === m))),

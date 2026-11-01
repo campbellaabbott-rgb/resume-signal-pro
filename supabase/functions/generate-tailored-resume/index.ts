@@ -1,7 +1,7 @@
 // deploy-stamp: 2026-10-04T13:00Z
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-import { CHAIN_DEADLINE_MS, callAIWithModelFallback, chainRanOutOfTime, describeReply } from "../_shared/ai-fallback.ts";
+import { CHAIN_DEADLINE_MS, UnusableModelOutput, callAIForUsableReply, chainRanOutOfTime, describeReply, type UsableReply } from "../_shared/ai-fallback.ts";
 import { checkInputLimits } from "../_shared/input-limits.ts";
 import { clipField, clipList, clipText, isServiceCaller, modelSpendGate } from "../_shared/model-spend-gate.ts";
 import { tailoredLanguageNote } from "../_shared/posting-language.ts";
@@ -21,17 +21,28 @@ import { refundWriting, writingChain, writingGate, type WritingPass } from "../_
 // 125 s (the private chain retried a timed-out model and had no deadline). A
 // chain that ran out of time answers the 504 that says try again. Body (the
 // 8,000 cap as max_tokens or max_completion_tokens, tools, tool_choice),
-// chains and reply are unchanged. A reply in an unexpected format is logged
+// chains and reply are unchanged. Two things the shared chain does
+// differently: a 429 on one model now asks the next model (the private chain
+// answered the first 429 at once), and the 429 answer comes only when every
+// model is rate-limited; and a 200 cut off at its cap, with no
+// submit_tailored_resume call, or with arguments that do not parse asks the
+// next model with what is left of the budget (callAIForUsableReply); only
+// when none gives one is the same retryable 502 or 422 answered, with the
+// use given back. A reply in an unexpected format is logged
 // by its shape and lengths (describeReply, S13-064), no longer as the whole
 // reply, which carried the person's résumé. The résumé reaches the model
 // whole (it was cut at 15,000 characters without a word, S13-008); one over
 // the shared 50,000-character cap is refused in the shared words before the
 // account's use is taken.
 // _shared/posting-text.ts reads an HTML posting in one linear pass now
-// (S12-147, finished): the same text as before for every page whose
-// script, style and comment blocks are closed and whose tags carry no bare
-// "<"; an unclosed block now runs to the end of the page, as a browser
-// reads it.
+// (S12-147, finished), as a browser reads it: an unclosed script, style or
+// comment block runs to the end of the page; a quoted '>' does not end a tag
+// and '/>' closes only a void element; attributes are read by name, so
+// "hidden" in a title or class list hides nothing; !important and
+// visibility:collapse hide, as do framework hiding classes (d-none, sr-only,
+// a Tailwind hidden with no responsive class) and classes the page's own
+// <style> hides; a <p>, <li>, <td> or <tr> whose end tag is left out ends
+// where a browser ends it, so a hidden one takes only its own words.
 // Nothing of main's past f8d72a9b, the build the 2026-10-31 deploy put
 // live, rides along.
 const FN_BUILD = "generate-tailored-resume.2026-10-28.1";
@@ -66,20 +77,23 @@ interface AIRequestOptions {
 // had no deadline, so a slow gateway ran a request past the platform's
 // 150 s, whose 504 the page cannot tell from a crash. It now walks the shared
 // chain (_shared/ai-fallback.ts: a timed-out model is not asked again, the
-// next keeps its window) inside the request's 125 s. The body is the one this
-// function always sent: model, messages, the cap (max_completion_tokens to
-// OpenAI's gpt-5 family, max_tokens to Google's), tools and tool_choice. The
-// model chain is chosen per call (writingChain): the quality chain for Pro,
-// Flash for a free account's daily résumé.
-async function callAIWithFallback(
+// next keeps its window) inside the request's 125 s. A 200 IS NOT A RÉSUMÉ
+// (review of S13-001): a reply cut off at its cap, with no tool call, or with
+// arguments that do not parse asks the next model (callAIForUsableReply).
+// The body is the one this function always sent: model, messages, the cap
+// (max_completion_tokens to OpenAI's gpt-5 family, max_tokens to Google's),
+// tools and tool_choice. The model chain is chosen per call (writingChain):
+// the quality chain for Pro, Flash for a free account's daily résumé.
+async function askAI<T>(
   apiKey: string,
   options: AIRequestOptions,
   context: string,
   models: readonly string[],
   deadlineAt: number,
-): Promise<{ response: Response; modelUsed: string }> {
+  read: (data: unknown) => T | null,
+): Promise<UsableReply<T>> {
   console.log(`[TAILORED-RESUME] ${context} - chain ${models.join(" > ")}`);
-  return await callAIWithModelFallback(apiKey, {
+  return await callAIForUsableReply(apiKey, {
     messages: options.messages,
     maxTokens: MAX_OUTPUT_TOKENS,
     ...(options.tools ? { tools: options.tools } : {}),
@@ -87,6 +101,7 @@ async function callAIWithFallback(
     models: [...models],
     context: `TAILORED-RESUME ${context}`,
     deadlineMs: deadlineAt - Date.now(),
+    read,
   });
 }
 
@@ -218,83 +233,124 @@ Provide enhancement suggestions. Remember: suggest how to IMPROVE wording, not w
 
     console.log("[TAILORED-RESUME] Generating tailored resume for:", jobTitle, "at", jobCompany);
 
-    const { response, modelUsed } = await callAIWithFallback(
-      LOVABLE_API_KEY,
-      {
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt }
-        ],
-        tools: [{
-          type: "function",
-          function: {
-            name: "submit_tailored_resume",
-            description: "Submit the tailored resume content",
-            parameters: {
-              type: "object",
-              properties: {
-                professionalSummary: {
-                  type: "string",
-                  description: "A tailored 3-4 sentence professional summary for this specific role"
-                },
-                keySkills: {
-                  type: "array",
-                  items: { type: "string" },
-                  description: "8-12 most relevant skills to highlight"
-                },
-                experienceHighlights: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      original: { type: "string", description: "The original bullet point verbatim from the resume" },
-                      tailored: { type: "string", description: "Rewritten version with JD keywords injected naturally — copy-paste ready" },
-                      keywordsInjected: { type: "array", items: { type: "string" }, description: "Exact keywords from the JD that were added to this bullet" }
-                    },
-                    required: ["original", "tailored", "keywordsInjected"]
-                  },
-                  description: "5-7 rewritten bullet points — always include the original verbatim"
-                },
-                keywordsRequired: {
-                  type: "array",
-                  items: { type: "string" },
-                  description: "Top 8-12 keywords extracted from the job description"
-                },
-                keywordGaps: {
-                  type: "array",
-                  items: { type: "string" },
-                  description: "Required JD keywords still not covered after tailoring (max 5)"
-                },
-                matchScoreDelta: {
-                  type: "number",
-                  description: "Estimated ATS keyword match improvement in percentage points (0-40)"
-                },
-                suggestedJobTitle: {
-                  type: "string",
-                  description: "The ideal title to put at the top of the resume"
-                },
-                coverLetterOpening: {
-                  type: "string",
-                  description: "A compelling opening paragraph for a cover letter"
-                },
-                applicationTips: {
-                  type: "array",
-                  items: { type: "string" },
-                  description: "2-3 specific tips for applying to this role"
-                }
-              },
-              required: ["professionalSummary", "keySkills", "experienceHighlights", "keywordsRequired", "keywordGaps", "matchScoreDelta", "suggestedJobTitle", "coverLetterOpening", "applicationTips"]
-            }
-          }
-        }],
-        tool_choice: { type: "function", function: { name: "submit_tailored_resume" } }
-      },
-      'Tailored resume generation',
-      models,
-      deadlineAt,
-    );
+    // Why the last reply was refused, for the answer when no model gives one.
+    const last = { refusal: "malformed" as "format" | "malformed" };
+    const readTailored = (data: unknown): Record<string, unknown> | null => {
+      const toolCall = (data as { choices?: Array<{ message?: { tool_calls?: Array<{ function?: { name?: unknown; arguments?: unknown } }> } }> } | null)
+        ?.choices?.[0]?.message?.tool_calls?.[0];
+      if (!toolCall || toolCall.function?.name !== "submit_tailored_resume") {
+        // Its shape, never its words: the reply carries the person's résumé (S13-064).
+        console.error("[TAILORED-RESUME] Unexpected response format:", describeReply(data));
+        last.refusal = "format";
+        return null;
+      }
+      // A response truncated at max_tokens yields malformed JSON: the next
+      // model is asked, never the raw parser error passed on.
+      try {
+        const parsed = JSON.parse(String(toolCall.function.arguments));
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed as Record<string, unknown>;
+      } catch (e) {
+        console.warn("[TAILORED-RESUME] tool-call JSON parse failed:", String(e).slice(0, 120));
+      }
+      last.refusal = "malformed";
+      return null;
+    };
 
-    if (!response.ok) {
+    let reply: UsableReply<Record<string, unknown>>;
+    try {
+      reply = await askAI(
+        LOVABLE_API_KEY,
+        {
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt }
+          ],
+          tools: [{
+            type: "function",
+            function: {
+              name: "submit_tailored_resume",
+              description: "Submit the tailored resume content",
+              parameters: {
+                type: "object",
+                properties: {
+                  professionalSummary: {
+                    type: "string",
+                    description: "A tailored 3-4 sentence professional summary for this specific role"
+                  },
+                  keySkills: {
+                    type: "array",
+                    items: { type: "string" },
+                    description: "8-12 most relevant skills to highlight"
+                  },
+                  experienceHighlights: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        original: { type: "string", description: "The original bullet point verbatim from the resume" },
+                        tailored: { type: "string", description: "Rewritten version with JD keywords injected naturally — copy-paste ready" },
+                        keywordsInjected: { type: "array", items: { type: "string" }, description: "Exact keywords from the JD that were added to this bullet" }
+                      },
+                      required: ["original", "tailored", "keywordsInjected"]
+                    },
+                    description: "5-7 rewritten bullet points — always include the original verbatim"
+                  },
+                  keywordsRequired: {
+                    type: "array",
+                    items: { type: "string" },
+                    description: "Top 8-12 keywords extracted from the job description"
+                  },
+                  keywordGaps: {
+                    type: "array",
+                    items: { type: "string" },
+                    description: "Required JD keywords still not covered after tailoring (max 5)"
+                  },
+                  matchScoreDelta: {
+                    type: "number",
+                    description: "Estimated ATS keyword match improvement in percentage points (0-40)"
+                  },
+                  suggestedJobTitle: {
+                    type: "string",
+                    description: "The ideal title to put at the top of the resume"
+                  },
+                  coverLetterOpening: {
+                    type: "string",
+                    description: "A compelling opening paragraph for a cover letter"
+                  },
+                  applicationTips: {
+                    type: "array",
+                    items: { type: "string" },
+                    description: "2-3 specific tips for applying to this role"
+                  }
+                },
+                required: ["professionalSummary", "keySkills", "experienceHighlights", "keywordsRequired", "keywordGaps", "matchScoreDelta", "suggestedJobTitle", "coverLetterOpening", "applicationTips"]
+              }
+            }
+          }],
+          tool_choice: { type: "function", function: { name: "submit_tailored_resume" } }
+        },
+        'Tailored resume generation',
+        models,
+        deadlineAt,
+        readTailored,
+      );
+    } catch (error) {
+      if (!(error instanceof UnusableModelOutput)) throw error;
+      // No model gave a usable résumé: the retryable answers this function
+      // always gave for a reply it could not read, the use given back.
+      return done(last.refusal === "format"
+        ? new Response(
+          JSON.stringify({ error: "Invalid AI response format", retryable: true }),
+          { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+        : new Response(
+          JSON.stringify({ error: "The AI returned a malformed draft. Please try again.", retryable: true }),
+          { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        ));
+    }
+
+    if (!reply.ok) {
+      const { response, modelUsed } = reply;
       if (response.status === 429) {
         return done(new Response(
           JSON.stringify({ error: "AI service is temporarily busy. Please try again in a few moments.", code: "model_busy", retryable: true }),
@@ -315,33 +371,8 @@ Provide enhancement suggestions. Remember: suggest how to IMPROVE wording, not w
       ));
     }
 
+    const { modelUsed, value: tailoredContent } = reply;
     console.log("[TAILORED-RESUME] AI call succeeded with model:", modelUsed);
-
-    const data = await response.json();
-    
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall || toolCall.function.name !== "submit_tailored_resume") {
-      // Its shape, never its words: the reply carries the person's résumé (S13-064).
-      console.error("[TAILORED-RESUME] Unexpected response format:", describeReply(data));
-      return done(new Response(
-        JSON.stringify({ error: "Invalid AI response format", retryable: true }),
-        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      ));
-    }
-
-    // Guard the parse: a response truncated at max_tokens yields malformed JSON,
-    // which otherwise fell through to the outer catch and leaked the raw parser
-    // error to the client as a 500. Return a clean, retryable message instead.
-    let tailoredContent;
-    try {
-      tailoredContent = JSON.parse(toolCall.function.arguments);
-    } catch (e) {
-      console.warn("[TAILORED-RESUME] tool-call JSON parse failed:", String(e).slice(0, 120));
-      return done(new Response(
-        JSON.stringify({ error: "The AI returned a malformed draft. Please try again.", retryable: true }),
-        { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      ));
-    }
 
     console.log("[TAILORED-RESUME] Successfully generated tailored resume");
 
