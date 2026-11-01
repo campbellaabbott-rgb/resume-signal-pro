@@ -4,7 +4,7 @@
 // Pure: no I/O of its own, no database. Every failure THROWS, because a partial
 // board read as complete feeds the id-diff prune and the closure log. The
 // caller (readOversizeBoard in index.ts) turns any throw into "stays deferred".
-import { htmlToText, isDatedBefore, safeIso, sanePostedAt } from "./normalize.ts";
+import { htmlToText, isDatedBefore, leverText, safeIso, sanePostedAt } from "./normalize.ts";
 
 const OVERSIZE_MARKER = "OVERSIZE_BODY";
 type J = Record<string, unknown>;
@@ -31,9 +31,9 @@ const pick = (j: J, keys: readonly string[]): J => {
 export const SLIM_SPECS: Record<string, SlimSpec> = {
   lever: {
     arrayKey: null,
-    keep: ["id", "text", "hostedUrl", "applyUrl", "createdAt", "workplaceType", "categories", "salaryRange"],
+    keep: ["id", "text", "hostedUrl", "applyUrl", "createdAt", "workplaceType", "categories", "salaryRange", "country"],
     postedAt: (j) => safeIso(j.createdAt),
-    text: (j) => (String(j.descriptionPlain ?? "") + (j.descriptionBodyPlain ? `\n${j.descriptionBodyPlain}` : "")).trim(),
+    text: (j) => leverText(j),
   },
   ashby: {
     arrayKey: "jobs",

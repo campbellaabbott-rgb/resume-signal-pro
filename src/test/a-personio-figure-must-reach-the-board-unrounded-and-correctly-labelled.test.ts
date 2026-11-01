@@ -247,12 +247,17 @@ describe("a Personio figure reaches the board unrounded and correctly labelled",
     expect(CODE).toContain("if (j.employmentTypeText) scheduleWordsById.set(j.id, j.employmentTypeText);");
   });
 
-  it("sets those words on one vendor only, so no other vendor's annuals move", () => {
-    // Personio is the only feed that states a schedule beside a pay figure.
-    // Two occurrences in code: the interface member and the Personio arm.
+  it("sets those words only on a vendor that states a schedule beside a pay figure", () => {
+    // Personio, and Breezy since its pay field is read (S13-030, n1428): a
+    // Breezy dentist stated "Part-Time" at "$900 – $1,200 / day" would
+    // otherwise publish as $234,000 a year. No vendor without a pay figure of
+    // its own sets them, so no other vendor's annuals move. Three occurrences
+    // in code: the interface member, the Personio arm and the Breezy arm.
     const NORM = codeOf(readFileSync(resolve(ROOT, "supabase/functions/job-board/normalize.ts"), "utf8"));
-    expect(NORM.match(/employmentTypeText/g)?.length).toBe(2);
+    expect(NORM.match(/employmentTypeText/g)?.length).toBe(3);
     expect(NORM).toContain("employmentTypeText: schedule || null");
+    expect(NORM).toContain("salary: p.salary || null,");
+    expect(NORM).toContain("employmentTypeText: p.type?.name || null,");
   });
 
   it("does not record our own reformatting as an employer changing the pay", () => {

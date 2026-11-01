@@ -22001,3 +22001,172 @@ later visit sees no country move. The patches queue after the read rows', so
 the caps keep theirs first, and they log nothing (country is derived). Corpus:
 1,917 live triples, 1,536 strings, over 45 location searches on 2026-10-31;
 it fires on exactly six strings, each misfiled.
+
+## n1420-an-age-a-story-and-a-rung
+
+In `supabase/functions/job-board/experience.ts`, above: `if (/^\s*ago\b/.test(gap) || (re === backward && ...` and `if (minYears != null) return { band: rung === "expert" && minYears <= 2 ? rung : bandFromYears(minYears), minYears };`.
+
+AN AGE, A STORY AND AN EXECUTIVE RUNG (S12-013, S13-016; bug audit
+2026-10-31). Domino's drivers were Expert 18+ and 15+ from the employer's own
+lines: "at least 18 years" with "old" cut off, "at least 18 years-old", "18
+years young", and a franchisee's story, "he started with Domino's 15 years
+ago as a driver". Three readings now skip a figure: a hyphen after "years"
+before "old" is still an age; "<n> years ago" in the forward gap is a story;
+and a backward match ("at least", "minimum", "requires" then 16 to 21 years)
+is an age unless its own clause names work (experience, work, industry,
+professional, relevant, related, progressive, "in <word>" other than "in
+age", "as a"). A backward match keyed on "experience" ("Experience: 18
+years") always reads. S13-016: a title naming an executive rung (chief, VP,
+head of, director, partner) keeps Expert over a figure of two years or fewer.
+Senior rungs are not lifted: live senior+entry rows are Senior Cooks, Tellers,
+Servers and Clerks (corpora/fields/title-vs-years.json); live
+q=director&experience=entry was 685 rows, nearly all real directorships.
+Corpus: corpora/fields/exp-diff.json, 6,243 real descriptions (list feeds,
+live detail reads, SmartRecruiters detail): 15 changes, each checked: 14 age
+or story lines cleared (Domino's x6, Hertz "at least 20 years", Benchmark x2,
+Potters, Alliance Laundry, a UKG elder-program driver), an HVAC posting
+from 18 to its real 2, and "Head of Fulfillment" from Entry to Expert. The
+fixture corpus of a-senior-living-cook is unchanged. Stored rows:
+EXPERIENCE_VERSION 3 re-derives every stored row from its stored title and
+description (the existing chained sweep, 6,000 rows a hop); Personio rows are
+skipped (n1421). Left open: a company's age after "with over N years of
+experience providing" still reads as a requirement (13 live rows).
+
+## n1421-the-level-the-employer-picked
+
+In `supabase/functions/job-board/normalize.ts`, above: `const et = xmlValue(block, "employmentType"), yrs = ...`; in `supabase/functions/job-board/experience.ts`, the `StatedLevel` type.
+
+PERSONIO STATES THE LEVEL (S13-033). Its feed carries seniority
+(entry-level, student, experienced, executive) and yearsOfExperience (lt-1,
+1-2, 2-5, 5-7, 7-10, 10-15, gt-15). The stated level is band entry for
+entry-level or student, expert for executive, otherwise none, and minYears
+the range's lower bound (lt-1 is 0, gt-15 is 15). detectExperience reads, in
+order: a figure in the posting's text, the title's rung, the stated years,
+the stated band. Corpus: corpora/fields/personio-cases.json, 628 positions on
+79 boards: the two fields agree with each other (entry-level with lt-1 or
+1-2, executive with gt-15), and German text figures almost never parse, so
+the level fills where the words are silent. The posting page prints the
+range, so "N+ yrs, as the posting asks" holds. employmentType now wins over
+the schedule unless it is permanent: intern, trainee and working_student are
+internship, freelance contract, temporary temporary (97 of 628 rows change,
+each from the schedule's reading to the employer's type). Stored rows: the
+level is not stored, so backfill-experience skips personio rows (it would
+erase the band it cannot see); Personio postings are dated and turn over
+inside the 30-day fence. employment_type is corrected on the next visit.
+
+## n1422-one-class-in-a-longer-label
+
+In `supabase/functions/job-board/normalize.ts`, above: `export function employmentTypeFromLabel(raw: unknown): EmploymentType | null {`.
+
+ONE CLASS IN A LONGER LABEL (S13-031, S13-034). Recruitee's
+fulltime_permanent, BambooHR's employmentStatusLabel (never read before) and
+Lever's "Full-time Employee" stored NULL: the mapper matched whole labels
+only. employmentTypeFromLabel keeps the exact ladder and otherwise takes the
+one class word a label names; two classes, or none, stay NULL. A fixed term
+counts as a class, so "fulltime_fixed_term" (two facts) is declined. Only
+Lever, BambooHR and Recruitee read through it (their labels are measured);
+every other vendor keeps the exact ladder. Breezy's type.id (fullTime,
+partTime, contract, temporary, other) reads through the ladder. Corpus:
+corpora/fields/norm-diff.json, 8,403 postings over nine vendors: changed
+rows BambooHR 273, Breezy 505, Lever 236, Recruitee 346, Personio 97; none
+cleared; every change is NULL to a class or Personio's own type. Declined:
+fulltime_fixed_term 41, parttime_fixed_term 22, Seasonal (Fixed-Term) 3,
+Volunteer, PRN, Open-Ended, FTE fractions, Consultant, Stage, Homeoffice.
+Stored rows take it on their next visit (put, never to NULL).
+
+## n1423-a-personio-posting-in-another-language
+
+In `supabase/functions/job-board/normalize.ts`, above: `export const PERSONIO_NO_DESCRIPTION`; in `supabase/functions/job-board/index.ts`, above: `if (!PERSONIO_NO_DESCRIPTION.test(xml)) return { xml, host };` and in the personio branch of fetchVendorDetail.
+
+A PERSONIO POSTING IN ANOTHER LANGUAGE (S13-045). The default feed leaves
+jobDescriptions empty for a posting written only in another language. 63 of
+628 corpus positions were empty; ?language=en filled 44; de, fr and es added
+none; the other 19 are empty in every language (corpora/fields/
+personio-lang-measure.json). fetchPersonio reads the English feed once, only
+when the default feed has an empty description, and fills only empty blocks,
+matched by position id; a failed or oversize English read leaves the default
+feed standing. Not added to BOARD_DESC_SOURCES: that lane walks every board
+of a vendor each sweep (2,988 more hops). Stored rows: the board lane never
+rewrites a stored description; new rows carry it, a seeker's click on a
+stored row reads it from the same merged feed (fetchVendorDetail's personio
+branch, before which Personio had none) and stores it, and Personio rows turn
+over inside the 30-day fence.
+
+## n1424-a-lever-posting-read-once-and-whole
+
+In `supabase/functions/job-board/normalize.ts`, above: `export function leverText(j: ...`.
+
+A LEVER POSTING READ ONCE AND WHOLE (S13-044). descriptionPlain already
+holds descriptionBodyPlain (all 1,740 of 2,453 corpus postings with a body),
+so the body was stored twice, and lists (the requirements, 1,745 postings)
+and additionalPlain (the closing section, often the pay sentence, 2,010)
+were dropped. leverText is descriptionPlain, each list's heading and items,
+then additionalPlain. The ingest, the detail read and the streamed read
+(SLIM_SPECS.lever.text; a streamed row keeps only that pre-built text, so
+leverText of it is the same text) share it. Measured (corpora/fields/
+lever-text-pay.json, 12,000-character cap): description-mined pay on 66 more
+postings, 0 changed, 0 lost; 594 postings gain a stated years figure from
+their requirement lists, each from none to one. Stored rows: new rows carry
+the text; a newly found pay lands on the next visit (n1426); stored Lever
+rows turn over inside the 30-day fence.
+
+## n1425-the-vendor-states-the-country
+
+In `supabase/functions/job-board/normalize.ts`, above: `country: icimsCountry(j.country, location),` (Lever), and the Breezy and Workable equivalents.
+
+THE VENDOR STATES THE COUNTRY (S13-032). Lever (country), Breezy
+(location.country.id) and Workable (locations[0].countryCode) state a code;
+the board guessed from the place text and stored none for "Kuopio, FI",
+"Kyiv, UA" or "Riga, Riga, Latvia". The code is read through icimsCountry: a
+US state or Canadian province in the place text overrules a code that
+disagrees. Corpus: corpora/fields/lever-country.json and
+breezy-workable-country.json. Lever 2,453: 965 filled, 16 changed (multi-
+location rows now take the vendor's primary country), 6 overrides equal to
+main's reading (3 "Hamilton, ON" read CA, right; 3 "New Brunswick, NJ" read
+CA, wrong as on main). Breezy 750: 151 filled, 0 changed. Workable 1,179: 50
+filled, 0 changed (a multi-location posting repeats its shortcode once per
+location, each entry with its own code). Stored rows take it on their next
+visit; country is derived and never logged.
+
+## n1426-our-reading-changed-window
+
+In `supabase/functions/job-board/index.ts`, beside `const OUR_READING_CHANGED`.
+
+THE FIRST FILL IS OUR READING (window to 2026-11-30). These readers now fill
+fields stored rows lacked: employment_type for Lever, BambooHR, Recruitee,
+Breezy and Personio, salary for Breezy (the vendor's pay) and Lever (pay in
+the lists and closing section). The first fill is our reading changing, not
+an employer's edit, so it lands unlogged in job_board_field_changes. During
+the window a real employer edit of those fields on those vendors is not
+logged either; the dated test in what-the-vendor-states-reaches-the-row
+fails from 2026-12-01 while any entry remains.
+
+## n1427-a-paylocity-page-with-no-structured-data
+
+In `supabase/functions/job-board/normalize.ts`, above: `export function paylocityPageText(html: string): string {`; in `supabase/functions/job-board/index.ts`, in the paylocity branch of fetchVendorDetail.
+
+A PAYLOCITY PAGE WITH NO STRUCTURED DATA (S13-046). 25 of 327 corpus detail
+pages carry no JobPosting description, so they got none, and the desc-sweep
+fetched them again on every walk. paylocityPageText reads the posting's
+section from its Description header to the bottom apply button, without the
+Job Type section, the headers or the buttons; Requirements and Salary
+Description stay. It runs only when the structured description is absent.
+Corpus: corpora/fields/paylocity-fallback.json: 25 of 25 filled; on the 302
+pages with structured data the page text covers at least 95% of the
+structured description's words on all 302. Stored rows: the desc-sweep fills
+these null descriptions on its next walk, which ends the re-downloads.
+
+## n1428-a-part-time-wage-beside-the-vendors-pay
+
+In `supabase/functions/job-board/normalize.ts`, above: `employmentTypeText: p.type?.name || null,` (Breezy).
+
+A PART-TIME WAGE BESIDE THE VENDOR'S PAY (S13-030). Breezy states a type
+beside the pay it now hands us, so its words ride to both ingest parses the
+way Personio's do (n092-p): a part-time hourly or daily figure is not
+annualised at a full-time load. Corpus: corpora/fields/sched-words.json:
+374 Breezy postings with pay; 35 parse differently with the words, 32 of
+them a part-time hourly or daily figure that would otherwise publish an
+annual (a dentist at $900 – $1,200 / day as $234,000 a year), and 3 only
+gain the part-time label. Main stored no Breezy pay, so no stored annual
+moves. BambooHR's label is not passed: its list feed carries no pay, and no
+description reaches the ingest parse for it.
