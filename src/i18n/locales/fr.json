@@ -1636,6 +1636,11 @@
     "resumeTruncated": {
       "title": "Cette analyse n'a pas lu votre CV en entier.",
       "body": "Il est plus long que ce que l'analyse lit en entier : le score, les mots-clés manquants et les lignes citées ci-dessous ne viennent que de la partie lue. Raccourcissez-le, ou analysez les pages les plus importantes, pour que tout soit vérifié."
+    },
+    "weakestBullets": {
+      "title": "Vos puces les plus faibles, notées",
+      "subtitle": "Citées de votre CV et notées selon les chiffres, les verbes et la portée. Lorsqu'une reformulation est proposée, remplacez les [crochets] par vos vrais chiffres.",
+      "howToFix": "Comment l'améliorer (nous n'avons pas pu la reformuler à partir de votre seul CV)"
     }
   },
   "analysisPreviewSample": {

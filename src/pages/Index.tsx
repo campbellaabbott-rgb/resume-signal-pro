@@ -369,7 +369,7 @@ interface FreeKeywordResult {
     hiringManager: { verdict: string; biggestDoubt?: string };
     hrScreener: { verdict: string; levelRead?: string };
   } | null;
-  weakestBullets?: Array<{ original: string; grade: string; issues: string[]; rewrite: string }>;
+  weakestBullets?: Array<{ original: string; grade: string; issues: string[]; rewrite: string | null; rewriteTemplate?: string | null }>;
   careerChangeBridge?: {
     fromField: string; toField: string; carryOver: string[];
     needsReframing: Array<{ current: string; reframed: string }>;

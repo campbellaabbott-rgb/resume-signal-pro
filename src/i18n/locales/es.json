@@ -1636,6 +1636,11 @@
     "resumeTruncated": {
       "title": "Este análisis no leyó tu currículum completo.",
       "body": "Es más largo de lo que el análisis lee completo, así que la puntuación, las palabras clave que faltan y las líneas citadas abajo salen solo de la parte que leyó. Acórtalo, o analiza las páginas más importantes, para que se revise todo."
+    },
+    "weakestBullets": {
+      "title": "Tus viñetas más débiles, calificadas",
+      "subtitle": "Citadas de tu currículum y calificadas por cifras, verbos y alcance. Donde aparece una reescritura, completa los [corchetes] con tus cifras reales.",
+      "howToFix": "Cómo arreglarla (no pudimos reescribirla solo con tu currículum)"
     }
   },
   "analysisPreviewSample": {

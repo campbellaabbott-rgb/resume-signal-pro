@@ -50,6 +50,7 @@ import { MetricCardsGrid } from "./scorecard/MetricCardsGrid";
 import { RedFlagsSection, KeywordsSection } from "./scorecard/RedFlagsKeywords";
 import { SectionNav } from "./scorecard/SectionNav";
 import { scoreTone } from "@/lib/score-bands";
+import { isUsableRewrite } from "@/lib/builder-import";
 import { CollapsibleSection } from "./scorecard/CollapsibleSection";
 import { 
   EnhancedAnalysisDisplay, 
@@ -551,7 +552,9 @@ export interface FreeKeywordResultsProps {
     hiringManager: { verdict: string; biggestDoubt?: string };
     hrScreener: { verdict: string; levelRead?: string };
   };
-  weakestBullets?: Array<{ original: string; grade: string; issues: string[]; rewrite: string }>;
+  /** rewrite is null when the scan could not ground one (newer responses);
+   *  rewriteTemplate is then guidance for the person, never a bullet. */
+  weakestBullets?: Array<{ original: string; grade: string; issues: string[]; rewrite: string | null; rewriteTemplate?: string | null }>;
   careerChangeBridge?: {
     fromField: string; toField: string; carryOver: string[];
     needsReframing: Array<{ current: string; reframed: string }>;
@@ -1378,7 +1381,11 @@ export function FreeKeywordResults({
         out.push(v.status === 'fail' ? { severity: 'critical', label: `${v.vendor} parsing: likely failure` } : v.status === 'warn' ? { severity: 'warning', label: `${v.vendor} parsing: needs review` } : { severity: 'pass', label: `${v.vendor} parsing` });
       }
     }
-    if ((weakestBullets?.length ?? 0) > 0) out.push({ severity: 'warning', label: `${weakestBullets!.length} bullet${weakestBullets!.length === 1 ? '' : 's'} graded D or below — rewrites provided` });
+    if ((weakestBullets?.length ?? 0) > 0) {
+      const n = weakestBullets!.length;
+      const rewritten = weakestBullets!.filter((b) => isUsableRewrite(b.rewrite)).length;
+      out.push({ severity: 'warning', label: `${n} bullet${n === 1 ? '' : 's'} graded D or below${rewritten === n ? ' — rewrites provided' : rewritten > 0 ? ` — ${rewritten} rewritten` : ' — see how to fix them'}` });
+    }
     if (typeof quantificationScore === 'number' && quantificationScore < 40) out.push({ severity: 'warning', label: 'Under 40% of bullets carry a number — recruiters anchor on metrics' });
     else if (typeof quantificationScore === 'number' && quantificationScore >= 60) out.push({ severity: 'pass', label: 'Quantified impact' });
     if (sectionCheck.hasExperience && sectionCheck.hasEducation && sectionCheck.hasSkills) out.push({ severity: 'pass', label: 'Core sections present' });
@@ -3910,10 +3917,18 @@ export function FreeKeywordResults({
             onClick={() => {
               try {
                 sessionStorage.setItem('rb_resume_text', resumeText);
+                // Only a real rewrite goes in: never a null one, an
+                // instruction template, or one with an unfilled [number]
+                // (S13-038). Each bullet once, the first rewrite winning.
+                const seen = new Set<string>();
                 const rewrites = [
                   ...(weakestBullets ?? []).map((b) => ({ before: b.original, after: b.rewrite })),
                   ...(additionalRewrites ?? []).map((r) => ({ before: r.before, after: r.after })),
-                ].filter((r) => r.before && r.after);
+                ].flatMap((r) => {
+                  if (!r.before || !isUsableRewrite(r.after) || seen.has(r.before)) return [];
+                  seen.add(r.before);
+                  return [{ before: r.before, after: r.after }];
+                });
                 sessionStorage.setItem('rb_scan_fixes', JSON.stringify({
                   rewrites,
                   keywords: (keywords ?? []).slice(0, 12).map((k) => k.keyword),

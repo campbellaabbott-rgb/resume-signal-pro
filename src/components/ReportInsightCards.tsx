@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ChevronDown, Download, Share2, Wrench, ArrowRight, Scale, Globe } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { FIX_POINTS_BASIS } from "@/lib/report-basis";
@@ -9,7 +10,7 @@ import { scoreTone, TONE_HEX } from "@/lib/score-bands";
  * New free-report insight cards:
  *  - ScoreSimulatorCard: interactive before/after — check fixes, watch the score move
  *  - AtsVendorChecksCard: how Workday/Greenhouse/Lever/iCIMS handle THIS resume
- *  - WeakestBulletsCard: 3 worst bullets, graded + rewritten
+ *  - WeakestBulletsCard: 3 worst bullets, graded, rewritten where the scan could ground a rewrite
  *  - CareerBridgeCard: transferable-skills map for career changers
  *  - ScoreAuditCard: "why this score" — every point accounted for
  *  - ShareScoreCard: downloadable branded score-card image
@@ -168,38 +169,51 @@ export function AtsVendorChecksCard(props: { resumeText: string; multiColumnDete
 export function WeakestBulletsCard({
   bullets,
 }: {
-  bullets: Array<{ original: string; grade: string; issues: string[]; rewrite: string }>;
+  /** rewrite is null when the scan could not ground one; rewriteTemplate is
+   *  then shown as guidance, never as the rewrite (S13-038). */
+  bullets: Array<{ original: string; grade: string; issues: string[]; rewrite: string | null; rewriteTemplate?: string | null }>;
 }) {
+  const { t } = useTranslation();
   if (!bullets?.length) return null;
   const gradeColor = (g: string) =>
     /a/i.test(g) ? "text-success" : /b/i.test(g) ? "text-primary" : /c/i.test(g) ? "text-warning" : "text-destructive";
+  const text = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : null);
 
   return (
     <div className="rounded-2xl border border-border bg-card p-5 sm:p-6">
-      <h3 className="font-semibold text-foreground mb-1">Your {bullets.length} weakest bullets, graded</h3>
-      <p className="text-xs text-muted-foreground mb-4">
-        Quoted from your resume, graded on metrics + verbs + scope, and rewritten. Fill any [brackets] with your real numbers.
-      </p>
+      <h3 className="font-semibold text-foreground mb-1">{t("freeResults.weakestBullets.title")}</h3>
+      <p className="text-xs text-muted-foreground mb-4">{t("freeResults.weakestBullets.subtitle")}</p>
       <div className="space-y-3">
-        {bullets.map((b, i) => (
-          <div key={i} className="rounded-xl border border-border p-3.5">
-            <div className="flex items-start gap-3 mb-2">
-              <span className={`text-2xl font-black shrink-0 ${gradeColor(b.grade)}`}>{b.grade.toUpperCase().slice(0, 2)}</span>
-              <p className="text-xs text-muted-foreground italic line-through decoration-destructive/40 flex-1">"{b.original}"</p>
-            </div>
-            {b.issues?.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mb-2">
-                {b.issues.slice(0, 3).map((iss, j) => (
-                  <span key={j} className="px-2 py-0.5 rounded-full bg-destructive/10 text-destructive text-[10px] font-medium">{iss}</span>
-                ))}
+        {bullets.map((b, i) => {
+          const rewrite = text(b.rewrite);
+          const template = rewrite ? null : text(b.rewriteTemplate);
+          return (
+            <div key={i} className="rounded-xl border border-border p-3.5">
+              <div className="flex items-start gap-3 mb-2">
+                <span className={`text-2xl font-black shrink-0 ${gradeColor(b.grade)}`}>{String(b.grade ?? "").toUpperCase().slice(0, 2)}</span>
+                <p className="text-xs text-muted-foreground italic line-through decoration-destructive/40 flex-1 min-w-0 break-words">"{b.original}"</p>
               </div>
-            )}
-            <div className="flex items-start gap-2 rounded-lg bg-success/5 border border-success/20 p-2.5">
-              <ArrowRight className="w-3.5 h-3.5 text-success shrink-0 mt-0.5" />
-              <p className="text-xs text-foreground">{b.rewrite}</p>
+              {b.issues?.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {b.issues.slice(0, 3).map((iss, j) => (
+                    <span key={j} className="px-2 py-0.5 rounded-full bg-destructive/10 text-destructive text-[10px] font-medium">{iss}</span>
+                  ))}
+                </div>
+              )}
+              {rewrite ? (
+                <div className="flex items-start gap-2 rounded-lg bg-success/5 border border-success/20 p-2.5">
+                  <ArrowRight className="w-3.5 h-3.5 text-success shrink-0 mt-0.5" />
+                  <p data-bullet-rewrite className="text-xs text-foreground min-w-0 break-words">{rewrite}</p>
+                </div>
+              ) : template ? (
+                <div className="rounded-lg bg-muted/40 border border-border p-2.5">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">{t("freeResults.weakestBullets.howToFix")}</p>
+                  <p data-bullet-rewrite-template className="text-xs text-muted-foreground min-w-0 break-words">{template}</p>
+                </div>
+              ) : null}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

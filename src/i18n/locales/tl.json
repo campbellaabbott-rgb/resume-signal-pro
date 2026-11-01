@@ -1626,6 +1626,11 @@
     "resumeTruncated": {
       "title": "Hindi nabasa ng scan na ito ang buong resume mo.",
       "body": "Mas mahaba ito kaysa sa kayang basahin nang buo ng scan, kaya ang score, ang mga kulang na keyword at ang mga sinipi sa ibaba ay mula lang sa bahaging nabasa. Paikliin ito, o i-scan ang pinakamahahalagang pahina, para masuri ang lahat."
+    },
+    "weakestBullets": {
+      "title": "Ang pinakamahihinang bullet mo, may marka",
+      "subtitle": "Sinipi mula sa resume mo at minarkahan ayon sa numero, pandiwa at saklaw. Kapag may ipinakitang rewrite, punan ang mga [bracket] ng totoong numero mo.",
+      "howToFix": "Paano ito ayusin (hindi namin ito ma-rewrite mula sa resume mo lang)"
     }
   },
   "analysisPreviewSample": {

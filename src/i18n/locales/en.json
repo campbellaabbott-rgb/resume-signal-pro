@@ -1626,6 +1626,11 @@
     "resumeTruncated": {
       "title": "This scan did not read your whole résumé.",
       "body": "It is longer than the scan reads in full, so the score, the keyword gaps and the quoted lines below come only from the part it read. Shorten it, or scan the pages that matter most, to have all of it checked."
+    },
+    "weakestBullets": {
+      "title": "Your weakest bullets, graded",
+      "subtitle": "Quoted from your resume and graded on metrics, verbs and scope. Where a rewrite is shown, fill any [brackets] with your real numbers.",
+      "howToFix": "How to fix it (we couldn't rewrite this one from your resume alone)"
     }
   },
   "analysisPreviewSample": {

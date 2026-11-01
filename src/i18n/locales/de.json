@@ -1626,6 +1626,11 @@
     "resumeTruncated": {
       "title": "Dieser Scan hat deinen Lebenslauf nicht vollständig gelesen.",
       "body": "Er ist länger, als der Scan vollständig liest. Der Wert, die Schlüsselwortlücken und die zitierten Zeilen unten stammen daher nur aus dem gelesenen Teil. Kürze ihn oder scanne die wichtigsten Seiten, damit alles geprüft wird."
+    },
+    "weakestBullets": {
+      "title": "Deine schwächsten Aufzählungspunkte, bewertet",
+      "subtitle": "Wörtlich aus deinem Lebenslauf zitiert und nach Kennzahlen, Verben und Umfang bewertet. Wo eine Umformulierung steht, ersetze die [Klammern] durch deine echten Zahlen.",
+      "howToFix": "So verbesserst du ihn (allein aus deinem Lebenslauf konnten wir ihn nicht umformulieren)"
     }
   },
   "analysisPreviewSample": {
