@@ -1,0 +1,679 @@
+{
+ "about": "S13-005 slice of ~/.config/resumebooster/free-scan-wave-corpora/S13-005/corpus.json: windows of REAL posting text around a vendor link (expected = that vendor, the posting's real one) or around the company word main matched (expected = unknown). vendor = the system the posting was read from.",
+ "summary": {
+  "cases": 2067,
+  "vendors": {
+   "workday": 719,
+   "other": 573,
+   "ashby": 208,
+   "greenhouse": 311,
+   "icims": 140,
+   "lever": 34,
+   "smartrecruiters": 82
+  },
+  "textLinksVendor": 27,
+  "mainRight": 571,
+  "mainWrongClaims": 1496,
+  "mainMisses": 0,
+  "branchRight": 2067,
+  "branchWrongClaims": 0,
+  "branchMisses": 0,
+  "mainClaims": 1670,
+  "branchClaims": 27,
+  "branchWorse": 0,
+  "branchWorseAllAccidents": true
+ },
+ "cases": [
+  {
+   "id": "workday:abb~wd3~external_career_page:JR00036560-1",
+   "vendor": "workday",
+   "text": "se will help ensure that the business operates within a strong legal, compliance, and regulatory framework on all Labor & Employment (L&E) matters. In this highly critical and visible role, you will lead a broad range of L&E activities, either directly or in partnership with loca",
+   "expected": "unknown",
+   "main": "brassring"
+  },
+  {
+   "id": "greenhouse:divergent:5449154008",
+   "vendor": "greenhouse",
+   "text": "orms complex designs into production-ready solutions, helping customers move faster, build smarter, and deliver critical systems when they matter most. Divergent is a qualified Tier 1 supplier to global automotive OEMs and supports leading U.S. aerospace and defense companies. J",
+   "expected": "unknown",
+   "main": "brassring"
+  },
+  {
+   "id": "workday:snc~wd1~SNC_External_Career_Site:R0031081-1",
+   "vendor": "workday",
+   "text": "on technical solution synthesis. Shows strong decision-making skills by clearly stating the BLUF (bottom line up front), highlighting what matters most, simplifying complex information, & making timely, well-reasoned decisions that drive the biggest impact (80/20). Qualifications",
+   "expected": "unknown",
+   "main": "brassring"
+  },
+  {
+   "id": "ashby:hadrian-automation:aacde764-c5fc-4f23-a0e1-9712183d1d5f",
+   "vendor": "ashby",
+   "text": "more, while scaling our Factory-as-a-Service platform to transform how critical products are built. Backed by leading investors including JPMorgan Chase, Valor Equity Partners, Andreessen Horowitz, Founders Fund, 137 Ventures, Lux Capital, T. Rowe Price, and Morgan Stanley, we’",
+   "expected": "unknown",
+   "main": "workday"
+  },
+  {
+   "id": "workday:goodrx~wd1~careers:JR100669",
+   "vendor": "workday",
+   "text": "@goodrx.com . We prioritize candidate safety. Please be aware that all official communication will only be sent from @ goodrx.com or goodrx@myworkday.com addresses. GoodRx is America's healthcare marketplace. The company offers the most comprehensive and accurate resource for a",
+   "expected": "workday",
+   "main": "workday"
+  },
+  {
+   "id": "ashby:fluidstack:03f7d45b-2c19-4702-803f-8a5c659581ed",
+   "vendor": "ashby",
+   "text": "a starting point. We always make space for exceptional people, so if you don’t fit this role exactly, tell us where you would https://jobs.ashbyhq.com/fluidstack/05c2e69c-42f9-4fcb-9cf0-a467aaf98f1c. - You’ve personally negotiated behind-the-meter PPAs, tolls, or heat rate opt",
+   "expected": "ashby",
+   "main": "ashby"
+  },
+  {
+   "id": "workday:chenmed~wd1~ChenMed:R0049875",
+   "vendor": "workday",
+   "text": "vision to be America’s leading primary care provider, transforming care of the neediest population. Our mission is to honor seniors with affordable VIP care that delivers better health. In order to achieve our vision and deliver our mission, we need the best primary care provide",
+   "expected": "unknown",
+   "main": "workday"
+  },
+  {
+   "id": "workday:ffive~wd5~f5jobs:RP1039175",
+   "vendor": "workday",
+   "text": "F5 only contacts candidates through F5 email address (ending with @f5.com) or auto email notification from Workday (ending with f5.com or @myworkday.com ) . Equal Employment Opportunity It is the policy of F5 to provide equal employment opportunities to all employees and emplo",
+   "expected": "workday",
+   "main": "workday"
+  },
+  {
+   "id": "workday:ffive~wd5~f5jobs:RP1039172",
+   "vendor": "workday",
+   "text": "F5 only contacts candidates through F5 email address (ending with @f5.com) or auto email notification from Workday (ending with f5.com or @myworkday.com ) . Equal Employment Opportunity It is the policy of F5 to provide equal employment opportunities to all employees and emplo",
+   "expected": "workday",
+   "main": "workday"
+  },
+  {
+   "id": "greenhouse:databricks:8723918002",
+   "vendor": "greenhouse",
+   "text": "ancial Modeling: experience building and maintaining complex driver-based financial and operational models independently; advanced Excel or Google Sheets skills required GTM Acumen: strong understanding of sales capacity, productivity, pipeline, coverage, resource allocation, inv",
+   "expected": "unknown",
+   "main": "greenhouse"
+  },
+  {
+   "id": "ashby:fluidstack:4ec0cf5f-7643-4a05-802d-1edd20a3a826",
+   "vendor": "ashby",
+   "text": "a starting point. We always make space for exceptional people, so if you don't fit this role exactly, tell us where you would https://jobs.ashbyhq.com/fluidstack/05c2e69c-42f9-4fcb-9cf0-a467aaf98f1c. - You've run a hardware lab, NPI program, or qualification facility and owned",
+   "expected": "ashby",
+   "main": "ashby"
+  },
+  {
+   "id": "ashby:fluidstack:14099585-350c-4ed1-ab3d-35cfb3ea369d",
+   "vendor": "ashby",
+   "text": "a starting point. We always make space for exceptional people, so if you don't fit this role exactly, tell us where you would https://jobs.ashbyhq.com/fluidstack/05c2e69c-42f9-4fcb-9cf0-a467aaf98f1c. - You've secured substations, SCADA, or controls systems in production: Ignit",
+   "expected": "ashby",
+   "main": "ashby"
+  },
+  {
+   "id": "greenhouse:anthropic:5458322008",
+   "vendor": "greenhouse",
+   "text": "including local market benchmarking, budget modeling, currency considerations, manager enablement, edge-case resolution, and exec-ready rollups, in partnership with the broader Total Rewards team Navigate complex international regulatory environments, ensuring compliance with loc",
+   "expected": "unknown",
+   "main": "brassring"
+  },
+  {
+   "id": "ashby:NormalComputing:5e5759df-44c0-4675-930c-27ad2fd9eb4d",
+   "vendor": "ashby",
+   "text": "n track record managing internationally distributed engineering teams. - Proficiency with program management tools such as Jira, Asana or Linear. - Experience with every element of the silicon life-cycle from architecture and RTL generation to verification, tapeout, bring-up",
+   "expected": "unknown",
+   "main": "lever"
+  },
+  {
+   "id": "icims:jobs.selective.com:5961",
+   "vendor": "icims",
+   "text": "including documentation, timeliness, milestones, confidentiality and privacy, record integrity, closure, and workload balancing, to ensure matters are handled consistently and are appropriately documented and auditable. Establishes standards and governs performance-improvement pl",
+   "expected": "unknown",
+   "main": "brassring"
+  },
+  {
+   "id": "greenhouse:databricks:8869256002",
+   "vendor": "greenhouse",
+   "text": "ctivity, pipeline, and revenue targets. Track all customer details including use case, purchase time frames, next steps, and forecasting in Salesforce. Use a solution-based approach to selling and creating value for customers. Promote Databricks' Data Intelligence Platform powere",
+   "expected": "unknown",
+   "main": "workday"
+  },
+  {
+   "id": "icims:careers.mastec.com:70502",
+   "vendor": "icims",
+   "text": "d it does not require applicants to purchase equipment or software. Ensure that all recruiter email addresses end in @mastec.com or @talent.icims.com. If you suspect you are the target of a scam, we advise you to contact your local law enforcement agency and report fraud at https",
+   "expected": "icims",
+   "main": "icims"
+  },
+  {
+   "id": "ashby:fluidstack:18af0603-cead-4bca-8dd0-0b95ea6a2cf8",
+   "vendor": "ashby",
+   "text": "a starting point. We always make space for exceptional people, so if you don't fit this role exactly, tell us where you would https://jobs.ashbyhq.com/fluidstack/05c2e69c-42f9-4fcb-9cf0-a467aaf98f1c. - You've led project management on hyperscale data center, large industrial,",
+   "expected": "ashby",
+   "main": "ashby"
+  },
+  {
+   "id": "workday:mmc~wd1~careers:360755",
+   "vendor": "workday",
+   "text": "eagues, Marsh helps build the confidence to thrive through the power of perspective. For more information, visit marsh.com, or follow us on LinkedIn and X. Marsh is committed to embracing a diverse, inclusive and flexible work environment. We aim to attract and retain the best p",
+   "expected": "unknown",
+   "main": "brassring"
+  },
+  {
+   "id": "ashby:kunin:94e62740-3f71-4238-abb5-a5e45a24b194",
+   "vendor": "ashby",
+   "text": "lutionizing the critical mineral supply chain by implementing advanced separation technologies to capture value from overlooked resources. Metals are everywhere, in solar panels, smartphones, electric vehicles, but as ore grades plummet globally, traditional extraction methods a",
+   "expected": "unknown",
+   "main": "greenhouse"
+  },
+  {
+   "id": "ashby:eagle:7165df3e-f719-410b-a115-fda2d99e6514",
+   "vendor": "ashby",
+   "text": "ca, Bloomberg, and Long Ridge, among others. We ask a lot of questions and get on a lot of planes. - How do I apply? Apply at jobs.ashbyhq.com/eagle http://jobs.ashbyhq.com/eagle. 🤝 EQUAL OPPORTUNITY AND ACCOMMODATIONS We hire talented people from a wide range of b",
+   "expected": "ashby",
+   "main": "ashby"
+  },
+  {
+   "id": "workday:wonder~wd1~WG:JR101444",
+   "vendor": "workday",
+   "text": "nance standards) and experience guiding finance teams through periods of significant growth, scale, or organizational transformation. As a matter of company policy, Wonder does not sponsor applicants for employment visa status for this role. Our hybrid model requires 3 days a we",
+   "expected": "unknown",
+   "main": "brassring"
+  },
+  {
+   "id": "usajobs:usajobs:889595400",
+   "vendor": "other",
+   "text": "of Response and Recovery, Associate Administrator Directorate. The ideal candidate for this position will have strong communication skills, attention to detail and experience drafting formal correspondence. What will I do in this position if hired? In this position, you will pro",
+   "expected": "unknown",
+   "main": "brassring"
+  },
+  {
+   "id": "icims:careers.mastec.com:71043",
+   "vendor": "icims",
+   "text": "d it does not require applicants to purchase equipment or software. Ensure that all recruiter email addresses end in @mastec.com or @talent.icims.com. If you suspect you are the target of a scam, we advise you to contact your local law enforcement agency and report fraud at https",
+   "expected": "icims",
+   "main": "icims"
+  },
+  {
+   "id": "icims:careers.mastec.com:70959",
+   "vendor": "icims",
+   "text": "d it does not require applicants to purchase equipment or software. Ensure that all recruiter email addresses end in @mastec.com or @talent.icims.com. If you suspect you are the target of a scam, we advise you to contact your local law enforcement agency and report fraud at https",
+   "expected": "icims",
+   "main": "icims"
+  },
+  {
+   "id": "smartrecruiters:TurnerTownsend:744000156396149",
+   "vendor": "smartrecruiters",
+   "text": "rship or license fee per year, if directly related to your role We believe in work-life balance, so you can recharge and take care of what matters most with vacation, flex and sick days A flexible, hybrid work approach that allows colleagues to find balance between their profe",
+   "expected": "unknown",
+   "main": "brassring"
+  },
+  {
+   "id": "ashby:bantamcommunications:882a0c27-17a5-4e64-8f90-1555c20a93f1",
+   "vendor": "ashby",
+   "text": "eral policymakers who shape the conditions for building. In this role, you will build digital plans, run and optimize paid campaigns across Meta, Google, and StackAdapt, manage email campaigns and landing pages, create and oversee organic content and community management, and pre",
+   "expected": "unknown",
+   "main": "greenhouse"
+  },
+  {
+   "id": "paylocity:8ee77b96-40e0-42b6-ad87-bd462adfa420:4613342",
+   "vendor": "other",
+   "text": "ime stated of all training required by Job Description in “HR LG 01 Training Matrix” Perform other duties as assigned. Regular and punctual attendance. Follow all Company policies and procedures. Note: This is not an inclusive list of duties and responsibilities Requirements SKIL",
+   "expected": "unknown",
+   "main": "brassring"
+  },
+  {
+   "id": "smartrecruiters:Solidigm:744000155828399",
+   "vendor": "smartrecruiters",
+   "text": "d improve processes. Strong organizational and time-management skills with the ability to manage multiple competing priorities. Exceptional attention to detail and follow-through. Demonstrated ability to work effectively with leaders and employees at all levels across global team",
+   "expected": "unknown",
+   "main": "brassring"
+  },
+  {
+   "id": "greenhouse:pinterest:8121609",
+   "vendor": "greenhouse",
+   "text": "your experience and abilities, we’ll explore your foundational skills and how you collaborate with AI. Through our interview process, what matters most is that you can always explain your approach, showing us not just what you know, but how you think. You can read more about our",
+   "expected": "unknown",
+   "main": "brassring"
+  },
+  {
+   "id": "workday:landolakes~wd1~LandOLakes:R-40970",
+   "vendor": "workday",
+   "text": "ortune 250, farmer- and member-owned cooperative that is reimagining the business of food. We have been named a Top Workplace by Indeed and LinkedIn, and to the TIME 100 Most Influential Companies list. We provide a broad portfolio of benefits to keep you and your family at your",
+   "expected": "unknown",
+   "main": "icims"
+  },
+  {
+   "id": "icims:talent.peraton.com:172161",
+   "vendor": "icims",
+   "text": "improved documentation, or permanent engineering fixes. Monitor ticket trends, response and resolution performance, and recurring failure patterns. Collaborate with engineering and operations teams to improve platform reliability, usability, and supportability. Participate in",
+   "expected": "unknown",
+   "main": "brassring"
+  },
+  {
+   "id": "icims:careers.smilebrands.com:39754",
+   "vendor": "icims",
+   "text": "genetic information, sexual orientation, military and veteran status, or any other consideration made unlawful by federal, state, or local laws. If you would like to request an accommodation due to a disability, please contact us at careers@smilebrands.com Ensuring flawless exe",
+   "expected": "unknown",
+   "main": "icims"
+  },
+  {
+   "id": "workday:homedepot~wd5~careerdepot:Req186638",
+   "vendor": "workday",
+   "text": "istent communication, and compliant return-to-work and accommodation plans that support associate wellbeing and business continuity. Manage Salesforce case investigations effectively, ensuring timely investigative documentation creation and retention, root-cause analysis, and fai",
+   "expected": "unknown",
+   "main": "workday"
+  },
+  {
+   "id": "icims:careers.mastec.com:71037",
+   "vendor": "icims",
+   "text": "d it does not require applicants to purchase equipment or software. Ensure that all recruiter email addresses end in @mastec.com or @talent.icims.com. If you suspect you are the target of a scam, we advise you to contact your local law enforcement agency and report fraud at https",
+   "expected": "icims",
+   "main": "icims"
+  },
+  {
+   "id": "oracle:ibtcjb~ocs~CX_2:44099",
+   "vendor": "other",
+   "text": "cial security • Paid time off as part of our comprehensive benefits package, so you have the flexibility to rest, recharge, and enjoy what matters most • Medical, dental, and vision insurance, plus prescription drug coverage • Basic life and AD&D insurance, with supplemental life",
+   "expected": "unknown",
+   "main": "brassring"
+  },
+  {
+   "id": "workday:umb~wd1~UMBExternal:R-9487",
+   "vendor": "workday",
+   "text": "e valued for exactly who you are and encouraged to support causes you care about. Expect more trust. We want you to do the right thing, no matter what. And, expect more opportunities. UMBers are known for having multiple careers here and having their voices heard. UMB and its aff",
+   "expected": "unknown",
+   "main": "brassring"
+  },
+  {
+   "id": "workday:ms~wd5~external:PT-JR045419",
+   "vendor": "workday",
+   "text": "nd solution adoption. Leads rollout of firm initiatives through presentations, workshops, and one-on-one coaching. Serves as a subject matter expert on key platforms, tools, and strategic initiatives. Facilitates training events and educational programs that support practic",
+   "expected": "unknown",
+   "main": "brassring"
+  },
+  {
+   "id": "greenhouse:thesciongroupllc:8908916002",
+   "vendor": "greenhouse",
+   "text": "n's Chicago corporate headquarters. Working hours consist of standard daytime business hours. Corporate Office experience is preferred. Key attributes in our next team member Excellent communicator Planning mastermind Problem-solver Persistent Your Benefits Discretionary annual",
+   "expected": "unknown",
+   "main": "brassring"
+  },
+  {
+   "id": "workday:aep~wd1~AEPCareerSite:R20358-1",
+   "vendor": "workday",
+   "text": "tions & Tasks Project Portfolio Leadership Provide strategic leadership and oversight for a portfolio of renewable generation projects, battery energy storage systems, generation asset acquisitions, environmental compliance projects, and major capital improvements at existing",
+   "expected": "unknown",
+   "main": "brassring"
+  },
+  {
+   "id": "ashby:ramp:3f4509ad-1858-478b-a7fb-bcd792d9575a",
+   "vendor": "ashby",
+   "text": "grations, multi-entity businesses, or enterprise approval and permission models. - Experience building products where accuracy and trust matter, with meaningful auditability, user controls, and recovery paths. - Experience at a high-growth startup, taking new products from in",
+   "expected": "unknown",
+   "main": "brassring"
+  },
+  {
+   "id": "icims:careers.seyfarth.com:3870",
+   "vendor": "icims",
+   "text": "is one of the largest and most comprehensive in the United States, allowing us access to cutting-edge products and name-brand clients. Our attorneys represent some of the largest and most well-known businesses in key industries such as manufacturing, retail, healthcare, insuranc",
+   "expected": "unknown",
+   "main": "brassring"
+  },
+  {
+   "id": "greenhouse:densityai:4464699009",
+   "vendor": "greenhouse",
+   "text": "chnology-transaction structuring (IP licensing, ownership, joint development) Guide export-control compliance (EAR/ITAR), other regulatory matters, and data privacy Be a practical, trusted partner to business, supply chain, engineering, and GTM — unblocking deals while managing r",
+   "expected": "unknown",
+   "main": "brassring"
+  },
+  {
+   "id": "workday:spe~wd1~SonyPicturesEntertainment:JR114764",
+   "vendor": "workday",
+   "text": "individuals at all levels. Strong problem-solving skills, with a keen ability to address challenges creatively and effectively. Strong attention to detail, organizational skills, and the ability to prioritize and schedule work effectively. Capacity to work under tight dead",
+   "expected": "unknown",
+   "main": "brassring"
+  },
+  {
+   "id": "ashby:montecarlodata:b04d5306-20e2-4b71-af54-cafd2d83aafb",
+   "vendor": "ashby",
+   "text": "ent for equipment, training, or application processing. - Our open positions are always listed on our official careers page: https://jobs.ashbyhq.com/montecarlodata. If you are contacted by someone claiming to represent Monte Carlo but you’re unsure of their legitimacy, please",
+   "expected": "ashby",
+   "main": "ashby"
+  },
+  {
+   "id": "workday:gatesfoundation~wd1~Gates:B021819-1",
+   "vendor": "workday",
+   "text": "sitioning IDM as a trusted and influential contributor to infectious disease modeling and quantitative science. Strengthen IDM's ability to attract, develop, and retain exceptional scientific and technical talent by maintaining a compelling scientific agenda, strong external repu",
+   "expected": "unknown",
+   "main": "brassring"
+  },
+  {
+   "id": "workday:gilead~wd1~gileadcareers:R0055823",
+   "vendor": "workday",
+   "text": "cies and processes, advising on ethics and compliance insights and recommendations, including outreach to relevant stakeholders or subject matter experts when appropriate Advise on and support the business and other key stakeholders in operationalizing compliance processes and e",
+   "expected": "unknown",
+   "main": "brassring"
+  },
+  {
+   "id": "workday:bbinsurance~wd1~Careers:0000003072",
+   "vendor": "workday",
+   "text": "h & welfare related plans, including federal and state regulations that impact these plans. How You Will Contribute: Subject matter expert on Health & Welfare Benefits, vendor/carrier products and services including, but not limited to, medical, dental, vision, life",
+   "expected": "unknown",
+   "main": "brassring"
+  },
+  {
+   "id": "adp:cbabd1ae-568b-4f70-933b-3f462f76c1b5:9201509316479_7",
+   "vendor": "other",
+   "text": "ion with defined objectives and follow-up plans that advance funded opportunities. Meet assigned bookings targets and maintain an accurate Salesforce pipeline, including opportunity qualification, award forecasts, risks, and next steps. Build Partnerships and Expand Army Accoun",
+   "expected": "unknown",
+   "main": "workday"
+  },
+  {
+   "id": "workday:uasys~wd5~UAF_External_Career_Site:R0091210",
+   "vendor": "workday",
+   "text": "rofessor, eidelman@uark.edu All application materials must be uploaded to the University of Arkansas System Career Site https://uasys.wd5.myworkdayjobs.com/UASYS Please do not send to listed recruitment contact. Special Instructions to Applicants: Completed applications re",
+   "expected": "workday",
+   "main": "workday"
+  },
+  {
+   "id": "lever:thunkable:c08bc1a9-8150-471f-9e46-76725315b464",
+   "vendor": "lever",
+   "text": "reate sales-ready meetings and opportunities. This includes target market penetration, calling on CXOs, senior-level executives, trade show attendance, following up on marketing-generated leads, webinar and event follow-up, creative campaign and door opener outreach, and more Int",
+   "expected": "unknown",
+   "main": "brassring"
+  },
+  {
+   "id": "workday:bmo~wd3~External:R260024814",
+   "vendor": "workday",
+   "text": "he assigned portfolio / jurisdiction. Enhances presence in the marketplace by collaborating with other experts (e.g. internal team, outside attorneys, accountants) to create integrated business development plan. Acts as the primary Relationship Manager for assigned client relatio",
+   "expected": "unknown",
+   "main": "brassring"
+  },
+  {
+   "id": "workday:us~wd103~tobii_dynavox:JR101193",
+   "vendor": "workday",
+   "text": "you can grow your career within a dynamic, global company that has a clear, impactful purpose - with the flexibility to also do what truly matters to you outside of work. What’s more, you’ll be part of a work culture where collaboration is the norm and individuality is welcomed.",
+   "expected": "unknown",
+   "main": "brassring"
+  },
+  {
+   "id": "greenhouse:boxinc:8226117",
+   "vendor": "greenhouse",
+   "text": "Proactive, curious mindset with the ability to think outside the box, generate fresh ideas, and adapt to fast-paced marketing environments. Attention to Detail & Prioritization: Strong organizational skills with the ability to prioritize tasks effectively, meet project deadlines,",
+   "expected": "unknown",
+   "main": "brassring"
+  },
+  {
+   "id": "workday:cibc~wd3~search:2621939-1",
+   "vendor": "workday",
+   "text": "ble to work at the location(s) specified above and, where applicable, must have a valid work or study permit. We may ask you to complete an attribute-based assessment and other skills test (such as simulation, coding, French proficiency). We use artificial intelligence tools dur",
+   "expected": "unknown",
+   "main": "brassring"
+  },
+  {
+   "id": "smartrecruiters:Nexthink:744000152940239",
+   "vendor": "smartrecruiters",
+   "text": "a key player in our dynamic SRE organisation. As a Senior Site Reliability Engineer, you will: Implement and manage cloud-native systems (AWS) using best-in-class tools and automation. Operate and enhance Kubernetes clusters, deployment pipelines, and service meshes to support",
+   "expected": "unknown",
+   "main": "icims"
+  },
+  {
+   "id": "ashby:sierra:ea3d33e7-d5cb-480a-b542-535d70fe2736",
+   "vendor": "ashby",
+   "text": "es are the foundation of our work, and we are committed to upholding them in everything we do. Our co-founders are Bret Taylor https://www.linkedin.com/in/brettaylor/ and Clay Bavor https://www.linkedin.com/in/claybavor/. Bret currently serves as Board Chair of OpenAI. Previousl",
+   "expected": "unknown",
+   "main": "icims"
+  },
+  {
+   "id": "workday:lazboy~wd1~LZBCareers:JR134824",
+   "vendor": "workday",
+   "text": "enings, weekends and holidays as required Initiative to meet assigned goals, missions and objectives and motivated to achieve more Strong attention to detail Proficient in the use of Microsoft Office, including Word, Excel, Outlook and PowerPoint PREFERRED REQUIREMENTS: Bac",
+   "expected": "unknown",
+   "main": "brassring"
+  },
+  {
+   "id": "workday:movadogroup~wd1~Careers:JR00003168",
+   "vendor": "workday",
+   "text": "on of an application through our career website, and may involve an interview, job related testing, or other steps. https://movadogroup.wd1.myworkdayjobs.com/en-US/Careers Family of Brands: Movado Group, Inc. designs, sources, and distributes MOVADO®, MVMT®, OLIVIA BURTON®, EBE",
+   "expected": "workday",
+   "main": "workday"
+  },
+  {
+   "id": "rippling:cpp-careers:7020bb5d-8b9e-4dcd-b748-a1a824e748c4",
+   "vendor": "other",
+   "text": "e sales effectively. Proficient in using EHR software for healthcare systems, such as Nextech. Be proficient in computer skills including Microsoft 365, Outlook, and multi-line phone systems. Ability to learn and become highly proficient with additional practice software syste",
+   "expected": "unknown",
+   "main": "icims"
+  },
+  {
+   "id": "rippling:ivywoodclassicalacademy:357adf61-dc53-41e7-98e8-625c432c1c79",
+   "vendor": "other",
+   "text": "ocus on virtue. A love for children and a strong desire to cultivate the wonder and joy of learning everyday. An ability to be a subject-matter expert, and share your love of the liberal arts tradition. An ability to build relationships with students, parents, and colleagues.",
+   "expected": "unknown",
+   "main": "brassring"
+  },
+  {
+   "id": "icims:careers.primehealthcare.com:286753",
+   "vendor": "icims",
+   "text": "nspections, participates in performance improvement and data collections activities. Provides pharmaceutical care for the following age groups: neonates, pediatrics, adolescents, adults, and geriatrics. Performs other tasks as assigned by the pharmacists. Qualifications EDUCATI",
+   "expected": "unknown",
+   "main": "brassring"
+  },
+  {
+   "id": "icims:talent.miniso-us.com:4140",
+   "vendor": "icims",
+   "text": "nal procedures, and driving sales performance. Promote and drive engagement with the store’s membership program, encouraging customer sign-ups and fostering loyalty to enhance customer retention and boost sales. Oversee all aspects of store operations and overall performance to",
+   "expected": "unknown",
+   "main": "brassring"
+  },
+  {
+   "id": "smartrecruiters:TurnerTownsend:744000157489650",
+   "vendor": "smartrecruiters",
+   "text": "le. Join our social media conversations for more information about Turner & Townsend and our exciting future projects: Twitter Instagram LinkedIn It is strictly against Turner & Townsend policy for candidates to pay any fee in relation to our recruitment process. No recruitme",
+   "expected": "unknown",
+   "main": "icims"
+  },
+  {
+   "id": "icims:careers.mastec.com:71033",
+   "vendor": "icims",
+   "text": "d it does not require applicants to purchase equipment or software. Ensure that all recruiter email addresses end in @mastec.com or @talent.icims.com. If you suspect you are the target of a scam, we advise you to contact your local law enforcement agency and report fraud at https",
+   "expected": "icims",
+   "main": "icims"
+  },
+  {
+   "id": "breezy:surge:4a7b57b3bbdc-bilingual-talent-advisor",
+   "vendor": "other",
+   "text": "Leadership or supervisory experience is a plus Strong verbal and written communication skills in both English and Spanish Proficiency with Microsoft Office (Word, Excel, Outlook, and PowerPoint) Ability to multitask and prioritize in a fast-paced environment Strong organizationa",
+   "expected": "unknown",
+   "main": "icims"
+  },
+  {
+   "id": "workday:humana~wd5~CenterWell_External_Career_Site:R-429106-1",
+   "vendor": "workday",
+   "text": "we may ask applicants to provide their Social Security Number, if we do not already have it on file. Humana will send an email from Humana@myworkday.com with instructions on how to add the information into your official application on Humana's secure website. Scheduled Weekly Ho",
+   "expected": "workday",
+   "main": "workday"
+  },
+  {
+   "id": "workday:2020companies~wd1~External_Careers:115544",
+   "vendor": "workday",
+   "text": "Job Type: Regular Work Location: Walmart 2281 - West Mifflin, PA 15122 Overview: Full-Time Retail Sales - Immediate Hire - First Sale Bonus - Paid Training On behalf of o",
+   "expected": "unknown",
+   "main": "workday"
+  },
+  {
+   "id": "bamboohr:beryl:166",
+   "vendor": "other",
+   "text": "re. Our Bike/Scooter Mechanics are responsible for keeping the wheels moving. You will need to be conscientious, flexible and have a can-do attitude. Most importantly, you will be making yourself invaluable to the scheme and the wider community. You will have a wonderful opportun",
+   "expected": "unknown",
+   "main": "brassring"
+  },
+  {
+   "id": "oracle:ibnjjb~ocs~CX_1:359245",
+   "vendor": "other",
+   "text": "rker Assesses, and plans interventions to help patients cope with social, emotional, economic, and environmental problems. Your experience matters Canyon Vista Medical Center is part of Lifepoint Health , a diversified healthcare delivery network with facilities coast to coast.",
+   "expected": "unknown",
+   "main": "brassring"
+  },
+  {
+   "id": "workday:cw~wd1~External:R334854",
+   "vendor": "workday",
+   "text": "egulate, repair and shut down equipment. Ensure that equipment operates safely and economically and within established limits by monitoring attached meters, gauges, and computerized controls. Manually control equipment and make the necessary adjustments. · Use hand and power t",
+   "expected": "unknown",
+   "main": "brassring"
+  },
+  {
+   "id": "workday:aah~wd5~External:R282262",
+   "vendor": "workday",
+   "text": "ens, and initiates calls. Greets visitors, providing procedural information and answering inquiries related to operational and substantive matters. Resolves problems and prioritizes needs using in-depth knowledge or policies and procedures. Performs complex word processing an",
+   "expected": "unknown",
+   "main": "brassring"
+  },
+  {
+   "id": "workday:mohegan~wd1~Niagara:R-14222",
+   "vendor": "workday",
+   "text": ". we should know we hire them! IF YOU ARE AN EXISTING EMPLOYEE, PLEASE NAVIGATE TO THE INTERNAL JOB POSTING USING THIS LINK: https://www.myworkday.com/mohegan/d/inst/1$9925/9925$13910.htmld SECURITY OFFICER Contract $24.23 Application Deadline: November 3, 2026 Are you pa",
+   "expected": "workday",
+   "main": "workday"
+  },
+  {
+   "id": "workday:gtweed~wd1~Careers:R4985-1",
+   "vendor": "workday",
+   "text": "d in lieu of Bachelor’s degree and/or other relevant professional qualifications Skills and Experience: • 1-3 years accounting experience • SAP experience preferred • Highly proficient computer skills in MS Office, accounting software and databases Job Environment: Physical Requi",
+   "expected": "unknown",
+   "main": "workday"
+  },
+  {
+   "id": "workday:scottsmiraclegro~wd5~SMGExternal:R26712",
+   "vendor": "workday",
+   "text": "record of building strong relationships and collaborating with frontline associates through senior company leaders Keen business acumen and attention to detail with a solid record of leading change and delivering superior safety and business results Working knowledge of all facet",
+   "expected": "unknown",
+   "main": "brassring"
+  },
+  {
+   "id": "adp:6cb79687-c24e-4d86-8ac9-a8b62b6ab00c:9203170688107_1",
+   "vendor": "other",
+   "text": "erience required 3+ years of Customer Service experience (Call center experience preferred) Sales experience strongly preferred; ability to upsell products in highly competitive environment a must Previous experience with CARGAS and MPX systems preferred, but not required Excelle",
+   "expected": "unknown",
+   "main": "brassring"
+  },
+  {
+   "id": "workday:guidehouse~wd1~External:45570",
+   "vendor": "workday",
+   "text": "mportant Fraud Notice All official recruitment communications from Guidehouse will come from email addresses ending in @guidehouse.com or @myworkday.com. Guidehouse never charges fees, requests money transfers, or collects payments from educational institutions for recruitment e",
+   "expected": "workday",
+   "main": "workday"
+  },
+  {
+   "id": "workday:hhs~wd12~HHS1Jobs:005395",
+   "vendor": "workday",
+   "text": "ces department while partnering with employees and managers across the organization. This role serves as a trusted resource for HR-related matters and supports all aspects of the employee lifecycle, including recruitment, onboarding, employee relations, benefits administration, p",
+   "expected": "unknown",
+   "main": "brassring"
+  },
+  {
+   "id": "workday:spartannash~wd1~SpartanNash_Careers:R90729",
+   "vendor": "workday",
+   "text": "armacies and fuel centers. Ready to contribute to the success of our food solutions company? Apply now! Location: 201 Marcell Dr NE - Rockford, Michigan 49341 Position Summary: This role is r esponsible for the efficient, ethical and lawful compounding and dispensing of pres",
+   "expected": "unknown",
+   "main": "workday"
+  },
+  {
+   "id": "workday:hyvee~wd1~HyVeeCareers:R258437-1",
+   "vendor": "workday",
+   "text": "s of this position are performed in warehouse, retail and outdoor settings. There is exposure to noise, dust, dirt and equipment including batteries. There is exposure to temperature extremes including all weather conditions. Equipment Used to Perform Job: Tractor, trailer, stra",
+   "expected": "unknown",
+   "main": "brassring"
+  },
+  {
+   "id": "icims:careers.mastec.com:70756",
+   "vendor": "icims",
+   "text": "d it does not require applicants to purchase equipment or software. Ensure that all recruiter email addresses end in @mastec.com or @talent.icims.com. If you suspect you are the target of a scam, we advise you to contact your local law enforcement agency and report fraud at https",
+   "expected": "icims",
+   "main": "icims"
+  },
+  {
+   "id": "ashby:sanctuary:21760125-047e-448a-ab51-d99f4ce21190",
+   "vendor": "ashby",
+   "text": "[https://app.ashbyhq.com/api/images/user-content/900e91d4-2dcb-4af2-92f3-7bf71edc04a7/8910937d-23b6-40bf-be09-38e1a983d2b5/LinkedIn%20Banner%201.png]",
+   "expected": "ashby",
+   "main": "ashby"
+  },
+  {
+   "id": "icims:careers.mastec.com:70981",
+   "vendor": "icims",
+   "text": "d it does not require applicants to purchase equipment or software. Ensure that all recruiter email addresses end in @mastec.com or @talent.icims.com. If you suspect you are the target of a scam, we advise you to contact your local law enforcement agency and report fraud at https",
+   "expected": "icims",
+   "main": "icims"
+  },
+  {
+   "id": "oracle:ejwl~us2~CX:26138912",
+   "vendor": "other",
+   "text": "tations. • Sets a positive example for guest relations. • Interacts with guests to obtain feedback on product quality and service levels. • Attends pre- and post-convention meetings to understand group needs, obtain feedback on quality of product (e.g., rooms, meeting facilities",
+   "expected": "unknown",
+   "main": "brassring"
+  },
+  {
+   "id": "workday:knitwellgroup~wd1~US_Retail_Jobs:R-2040869-1",
+   "vendor": "workday",
+   "text": "ure financial goals are achieved. Ensure compliance of all company policies and procedures as well as local, state, and federal employment laws. Develop and maintain positive working relationships that support a productive work environment. Note: This position description is inte",
+   "expected": "unknown",
+   "main": "icims"
+  },
+  {
+   "id": "workday:bpinternational~wd3~bpcareers:RQ117236-1",
+   "vendor": "workday",
+   "text": "rkstream, maintaining requirements, process models, traceability and supporting artefacts. Partner reach Engages business users, subject-matter experts, delivery teams, suppliers and governance partners across global and regional teams. Delivery environment Works across Agile",
+   "expected": "unknown",
+   "main": "brassring"
+  },
+  {
+   "id": "perks:oracle:East Sussex County Council:47",
+   "vendor": "other",
+   "text": "Salary: £24,795 pro rata, (Actual Salary £4,739) Contract type: Permanent Working pattern: Part-time, term-time only Closing date: 23:55pm, Sunday 18 October 2026 Interview date: Tuesday 20 October 2026 How to apply: Please",
+   "expected": "unknown",
+   "main": "brassring"
+  },
+  {
+   "id": "perks:greenhouse:Tailscale:145",
+   "vendor": "greenhouse",
+   "text": "decisions are made by people. Please be aware that legitimate emails from Tailscale's talent team will only originate from @tailscale.com, @greenhouse.io, and @interviews.modernloop.io email addresses. For more information about protecting yourself from impersonators and scams, p",
+   "expected": "greenhouse",
+   "main": "greenhouse"
+  },
+  {
+   "id": "perks:greenhouse:Tailscale:146",
+   "vendor": "greenhouse",
+   "text": "decisions are made by people. Please be aware that legitimate emails from Tailscale's talent team will only originate from @tailscale.com, @greenhouse.io, and @interviews.modernloop.io email addresses. For more information about protecting yourself from impersonators and scams, p",
+   "expected": "greenhouse",
+   "main": "greenhouse"
+  },
+  {
+   "id": "perks:greenhouse:Tailscale:147",
+   "vendor": "greenhouse",
+   "text": "decisions are made by people. Please be aware that legitimate emails from Tailscale's talent team will only originate from @tailscale.com, @greenhouse.io, and @interviews.modernloop.io email addresses. For more information about protecting yourself from impersonators and scams, p",
+   "expected": "greenhouse",
+   "main": "greenhouse"
+  },
+  {
+   "id": "perks:greenhouse:Tailscale:148",
+   "vendor": "greenhouse",
+   "text": "decisions are made by people. Please be aware that legitimate emails from Tailscale's talent team will only originate from @tailscale.com, @greenhouse.io, and @interviews.modernloop.io email addresses. For more information about protecting yourself from impersonators and scams, p",
+   "expected": "greenhouse",
+   "main": "greenhouse"
+  },
+  {
+   "id": "perks:greenhouse:Carvana:152",
+   "vendor": "greenhouse",
+   "text": "rvana, you will ensure that our promise of a revolutionary used car purchase process is realized. You will do this by becoming the subject matter expert in all facets of the logistics operations. You’ll be organizing, and optimizing the Vehicle Transport operations, ensuring the",
+   "expected": "unknown",
+   "main": "brassring"
+  },
+  {
+   "id": "perks:ashby:Notion:174",
+   "vendor": "ashby",
+   "text": "GTM) organization. In this role, you'll partner with regional leadership to fill critical GTM roles like Solutions Consultants https://jobs.ashbyhq.com/notion/15dde0f5-b3fd-4d46-8ec2-0858ebdd888d and Outcomes Architects https://jobs.ashbyhq.com/notion/7030916f-4277-45db-9fed-644b",
+   "expected": "ashby",
+   "main": "ashby"
+  }
+ ]
+}

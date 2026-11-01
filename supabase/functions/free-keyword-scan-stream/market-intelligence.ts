@@ -1223,47 +1223,60 @@ const ATS_PROFILES: Record<AtsSystem, AtsSystemProfile> = {
   },
 };
 
-// Signals in job descriptions that indicate which ATS is being used
-const ATS_DETECTION_SIGNALS: Array<{ system: AtsSystem; patterns: RegExp[] }> = [
-  { system: 'greenhouse', patterns: [/greenhouse\.io/i, /boards\.greenhouse\.io/i, /gh\.io/i] },
-  { system: 'lever', patterns: [/lever\.co/i, /jobs\.lever\.co/i] },
-  { system: 'workday', patterns: [/workday\.com/i, /myworkdayjobs\.com/i, /wd\d+\.myworkday/i, /workdayjobs/i] },
-  { system: 'taleo', patterns: [/taleo\.net/i, /oracle\.taleo/i, /tbe\.taleo/i] },
-  { system: 'icims', patterns: [/icims\.com/i, /careers\.icims\.com/i, /recruiting\.icims/i] },
-  { system: 'smartrecruiters', patterns: [/smartrecruiters\.com/i, /jobs\.smartrecruiters/i] },
-  { system: 'ashby', patterns: [/ashbyhq\.com/i, /jobs\.ashbyhq\.com/i] },
-  { system: 'jobvite', patterns: [/jobvite\.com/i, /hire\.jobvite\.com/i] },
-  { system: 'brassring', patterns: [/brassring\.com/i, /kenexa\.com/i, /talent\.ibm\.com/i] },
-  { system: 'successfactors', patterns: [/successfactors\.com/i, /jobs\.sap\.com/i, /career\.sap\./i, /sap\.taleo/i] },
+// The hiring system is named only by a link to it (register S13-005). It
+// used to be guessed from company words matched anywhere in the posting:
+// "att" in "attention" made a nurse's posting BrassRing, "aws" in "laws" or
+// "sap" made it Workday, "meta" in "metadata" Greenhouse, and 11 of 12 live
+// postings came back with a system they do not use. A host counts when it
+// is the vendor's domain or ends with "." and the vendor's domain, so
+// "unilever.com" is not Lever and "laugh.io" is not Greenhouse. No link, no
+// claim.
+const ATS_HOSTS: Array<{ system: AtsSystem; domains: string[] }> = [
+  { system: 'greenhouse', domains: ['greenhouse.io'] },
+  { system: 'lever', domains: ['lever.co'] },
+  { system: 'workday', domains: ['myworkdayjobs.com', 'myworkday.com', 'myworkdaysite.com'] },
+  { system: 'taleo', domains: ['taleo.net'] },
+  { system: 'icims', domains: ['icims.com'] },
+  { system: 'smartrecruiters', domains: ['smartrecruiters.com'] },
+  { system: 'ashby', domains: ['ashbyhq.com'] },
+  { system: 'jobvite', domains: ['jobvite.com'] },
+  { system: 'brassring', domains: ['brassring.com'] },
+  { system: 'successfactors', domains: ['successfactors.com', 'successfactors.eu', 'sapsf.com', 'sapsf.eu'] },
 ];
 
-// Company patterns that strongly indicate a specific ATS
-const COMPANY_ATS_MAP: Array<{ pattern: RegExp; system: AtsSystem }> = [
-  { pattern: /google|alphabet|youtube|deepmind|waymo/i, system: 'greenhouse' },
-  { pattern: /stripe|linear|vercel|notion|figma|loom|mercury/i, system: 'lever' },
-  { pattern: /salesforce|oracle|sap|general motors|ford|boeing|lockheed|deloitte|jpmorgan|bank of america|wells fargo|walmart/i, system: 'workday' },
-  { pattern: /mckinsey|bain|bcg|accenture|ibm|att|verizon|fedex|ups/i, system: 'brassring' },
-  { pattern: /amazon|aws/i, system: 'icims' },
-  { pattern: /meta|facebook/i, system: 'greenhouse' },
-  { pattern: /microsoft|linkedin/i, system: 'icims' },
-];
+// Hosts written in the text: "https://jobs.lever.co/acme", "jobs.lever.co/acme",
+// "apply at acme.wd5.myworkdayjobs.com", "mail from Humana@myworkday.com". A
+// host is two or more labels.
+const HOST_RE = /(?:https?:\/\/)?((?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,24})(?=[\/:?#\s"'<>),;]|\.(?:\s|$)|$)/gi;
+
+/** The hosts named in a text, lower-cased. */
+export function hostsIn(text: string): string[] {
+  const hosts: string[] = [];
+  HOST_RE.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = HOST_RE.exec(text)) !== null) {
+    const before = text[m.index - 1];
+    // Inside a longer word, no. After "@" yes: a posting that says its mail
+    // comes from "@myworkday.com" or "@talent.icims.com" names its system.
+    if (before && /[\p{L}\p{N}._-]/u.test(before)) continue;
+    hosts.push(m[1].toLowerCase());
+  }
+  return hosts;
+}
 
 export function detectAtsSystem(jobDescriptionText: string | null | undefined, companyName?: string): AtsSystem {
   if (!jobDescriptionText && !companyName) return 'unknown';
-
-  const combined = `${jobDescriptionText || ''} ${companyName || ''}`;
-
-  // URL-based detection (highest confidence)
-  for (const { system, patterns } of ATS_DETECTION_SIGNALS) {
-    if (patterns.some(p => p.test(combined))) return system;
+  const hosts = hostsIn(`${jobDescriptionText || ''} ${companyName || ''}`);
+  for (const { system, domains } of ATS_HOSTS) {
+    if (hosts.some(h => domains.some(d => h === d || h.endsWith(`.${d}`)))) return system;
   }
-
-  // Company name inference (medium confidence)
-  for (const { pattern, system } of COMPANY_ATS_MAP) {
-    if (pattern.test(combined)) return system;
-  }
-
   return 'unknown';
+}
+
+/** What the page shows for a detected system: its name and how well it parses, never the raw id. */
+export function atsProfileOf(atsSystem: AtsSystem): { name: string; parsingStrength: 'strong' | 'moderate' | 'weak' } {
+  const profile = ATS_PROFILES[atsSystem] ?? ATS_PROFILES.unknown;
+  return { name: profile.name, parsingStrength: profile.parsingStrength };
 }
 
 export function formatAtsSystemForPrompt(atsSystem: AtsSystem, resumeText: string): string {

@@ -41,6 +41,7 @@ import {
   analyzeCareerTrajectory,
   formatCareerTrajectoryForPrompt,
   detectAtsSystem,
+  atsProfileOf,
   formatAtsSystemForPrompt,
   analyzeCompetitiveKeywordGap,
   formatCompetitiveGapForPrompt,
@@ -3811,10 +3812,11 @@ ${resumeText.substring(0, 20000)}
       progressionSummary: careerTraj.progressionSummary,
     };
 
+    // The page prints the name and the parser strength (S13-005): they were
+    // both set to the raw id, so the card read "Target ATS: brassring".
     responseData.atsSystem = atsSystem !== 'unknown' ? {
       system: atsSystem,
-      name: atsSystem,
-      parsingStrength: atsSystem,
+      ...atsProfileOf(atsSystem),
     } : null;
 
     responseData.competitiveGap = {
