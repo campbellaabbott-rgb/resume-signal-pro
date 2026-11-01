@@ -7,7 +7,7 @@
   "appliedOutsideDrizzle": ["20261014100000"],
   "_appliedOutsideDrizzleNote": "Applied, but no staged-runner stub names them, and production cannot show it to the ledger. Prefer appliedByBehaviour, which the ledger checks on every run. 20261008125000 and 20261008128000 sat here from 2026-10-11 (released after wave 2 step 1 verified; Lovable applied them without writing a stub) until 2026-10-12 (S12-162), when they moved to appliedByBehaviour. 20261014100000 (R1) is here from PR #37 (ledger/r1-verified): verified 2026-10-17 with no stub.",
   "appliedByBehaviour": {
-    "_note": "Per migration stamp, what production must show for a migration with no staged-runner stub to count as applied (S12-162): cronJobs, the pg_cron jobs it schedules, each listed active by get_cron_health (anon-readable aggregates; the ledger reads it with a GET). Unreadable or missing, the migration stays pending with the reason, and section 49 FAILs it.",
+    "_note": "Per migration stamp, what production must show for a migration with no staged-runner stub to count as applied (S12-162): cronJobs, the pg_cron jobs it schedules, each listed active by get_cron_health (anon-readable aggregates; the ledger reads it with a GET), and cronTimeouts, { job: timeout }, for a job another applied file also schedules: the statement_timeout only this file's command begins with, which get_cron_health reports as ch_timeout (2026-10-31). Unreadable, missing or another timeout, the migration stays pending with the reason, and section 49 FAILs it.",
     "20261008125000": {
       "cronJobs": ["send-search-digest", "industry-corrections-digest"],
       "why": "it schedules the two digests; Lovable applied it 2026-10-11 without a stub"
@@ -15,6 +15,19 @@
     "20261008128000": {
       "cronJobs": ["check-error-spikes"],
       "why": "it schedules the error-spike check; Lovable applied it 2026-10-11 without a stub"
+    },
+    "20261011142000": {
+      "cronJobs": ["mail-watch"],
+      "why": "it schedules mail-watch every 15 minutes, which no other file schedules; Lovable applied it with the one deploy (main f8d72a9b, 2026-10-31) without a stub, and get_cron_health listed mail-watch active, */15 * * * *, that day"
+    },
+    "20261012111000": {
+      "cronJobs": ["employer-perks-sweep", "employer-perks-rollup"],
+      "why": "it schedules the perk sweep every minute and the rollup nightly, which no other file schedules; Lovable applied it with the one deploy (main f8d72a9b, 2026-10-31) without a stub, and get_cron_health listed both active that day (timeouts 15s and 110s)"
+    },
+    "20261014120000": {
+      "cronJobs": ["rb-auth-mail-drain"],
+      "cronTimeouts": { "rb-auth-mail-drain": "10s" },
+      "why": "it re-schedules rb-auth-mail-drain, which 20261014100000 (appliedOutsideDrizzle) scheduled first, so the job being active proves nothing about this file; its command alone begins with SET statement_timeout = '10s', the trace verify section 94 reads. Lovable applied it with the one deploy (main f8d72a9b, 2026-10-31) without a stub, and get_cron_health reported ch_timeout 10s that day"
     }
   },
   "rollbacks": {
@@ -34,7 +47,7 @@
     { "file": "src/config/seller.ts", "constant": "PRIVACY_LAST_UPDATED", "whenDeploying": "fn:job-board@2026-09-09.93", "why": "the Privacy page's Last updated dates its new AI table" }
   ],
   "migrationOrder": {
-    "_note": "Per migration stamp: `after` is \"fn:<name>@<YYYY-MM-DD.N>\" (apply once that function answers that build or later) or \"frontend\" (apply once the frontend is published); `before` lists \"fn:<name>\" a migration must precede. No entry: before the functions. The ledger prints five steps: migrations before the functions, the functions, migrations after the functions they wait for, the frontend, migrations after the frontend (docs/DEPLOY-LEDGER.md §1).",
+    "_note": "Per migration stamp: `after` is \"fn:<name>@<YYYY-MM-DD.N>\" (apply once that function answers that build or later) or \"frontend\" (apply once the frontend is published); `before` lists \"fn:<name>\" a migration must precede; `afterMigrations` lists the stamps it must follow (each sorts earlier, so filename order puts them first inside a step; one pending in a later step, held or never to apply stops the message), and its note names those still pending (a stamp no migration file carries stops it too); `repairedBy` names the pending migration that repairs a `before` whose function already answers main's build (it deployed first; without one, that stops the message), and that migration's afterMigrations must name this one. No entry: before the functions. The ledger prints five steps: migrations before the functions, the functions, migrations after the functions they wait for, the frontend, migrations after the frontend (docs/DEPLOY-LEDGER.md §1).",
     "20261009101000": {
       "before": ["fn:job-board"],
       "why": "S11-009: the new job-board retries a missed ranked search with p_title_only, which only this migration's search_jobs takes (against the old SQL that retry fails into today's unranked fallback); the old job-board never sends it"
@@ -168,11 +181,13 @@
     },
     "20261025100000": {
       "before": ["fn:job-board"],
-      "why": "trusted pages (trust/pages, riding oracle-regionless's job-board .95): .95 moves NAME_SYNC_VERSION from 4 to 5, and its name-sync lane renames the stored rows of every board company_name_overrides names, once. Applied after the function, the lane finishes version 5 before this file's 88 names exist, and the stored rows keep the logo and label names until a later version"
+      "repairedBy": "20261030100000",
+      "why": "trusted pages (trust/pages, riding oracle-regionless's job-board .95): .95 moves NAME_SYNC_VERSION from 4 to 5, and its name-sync lane renames the stored rows of every board company_name_overrides names, once. Applied after the function, the lane finishes version 5 before this file's 88 names exist, and the stored rows keep the logo and label names until a later version (2026-10-31: Lovable deployed main f8d72a9b, job-board .96, without this file, and the lane ran version 6 without its names; repairedBy 20261030100000, applied right after it, re-arms the lane, so the message says job-board deployed first and does not stop)"
     },
     "20261026100000": {
       "before": ["fn:job-board"],
-      "why": "trust round 3 (trust/round3, job-board .96): .96 moves NAME_SYNC_VERSION from 5 to 6, and its name-sync lane renames the stored rows of every board company_name_overrides names and every token in RENAMED_TOKENS, once. Applied after the function, the lane can finish version 6 before this file's 16 overrides exist, and those boards' stored rows keep their label names until a later version"
+      "repairedBy": "20261030100000",
+      "why": "trust round 3 (trust/round3, job-board .96): .96 moves NAME_SYNC_VERSION from 5 to 6, and its name-sync lane renames the stored rows of every board company_name_overrides names and every token in RENAMED_TOKENS, once. Applied after the function, the lane can finish version 6 before this file's 16 overrides exist, and those boards' stored rows keep their label names until a later version (2026-10-31: Lovable deployed main f8d72a9b, job-board .96, without this file, and the lane ran version 6 without its names; repairedBy 20261030100000, applied right after it, re-arms the lane, so the message says job-board deployed first and does not stop)"
     },
     "20261026110000": {
       "after": "slice:job-board@2026-09-09.96",
@@ -181,6 +196,10 @@
     "20261025110000": {
       "after": "slice:job-board@2026-09-09.95",
       "why": "trusted pages, the Reyes boards: it moves the other brands' rows off talent.reyesholdings.com and jobportal.martinbrower.com as untracked exits. Run while an older build serves, the unscoped read inserts them again on its next visit; the file itself refuses unless job_board_meta.slice_stats names .95 or later, which the first slice of that build writes minutes after an OPTIONS request already answers it. So the rule is a slice rule (land/all recheck, 2026-10-27): the message tells Lovable to read the job-board status action's sliceStats.build and, if the file refuses, to wait for the next slice and apply the same file again, never an edited one"
+    },
+    "20261030100000": {
+      "afterMigrations": ["20261025100000", "20261026100000"],
+      "why": "the name-sync re-arm after the one deploy (2026-10-31): Lovable deployed main f8d72a9b, job-board .96 and its NAME_SYNC_VERSION 6, without applying 20261025100000 and 20261026100000, so the lane ran version 6 before their 104 overrides existed and stamped job_board_meta name_sync_version 6, which keeps it idle. This file refuses unless both are applied (their own overrides and evidence, and the trigger), then deletes name_sync_version and name_sync_progress, so the live .96 walks every board again from the first at its next pass-end and renames the stored rows. So it applies right after 20261025100000 and then 20261026100000, unedited, and waits for nothing else: no function deploys with it and job-board .96 already serves. Applied before them, it refuses and changes nothing; apply them, then the same file again"
     }
   },
   "_reservationsNote": "Listed in deploy order from 2026-10-11 (deployOrder; docs/DEPLOY-LEDGER.md §3): the wave 3 closeout, R1 (critical-path), company profiles phases 0-2, wave 4, oracle-regionless, company profiles phase 3. A migration stamp need not sort in deploy order (wave 4's 20261011* deploys after profiles' 20261012*, and R1's 20261014* deploys before both): the ledger lists what the staged runner has not recorded, whatever sorts first. A function stamped on a later day by an earlier deploy takes that day with a higher sequence (§3). 2026-10-12: the owner moved R1 (sign-in, password recovery, auth mail and the masked purchase address) out of wave 4 into its own reservation, critical-path, deploying after the wave 3 closeout and before company profiles (deployOrder 1.5; decision D13 of the critical-path plan). Its functions are stamped 2026-10-14.1: auth-email-hook, process-email-queue, resend-webhook, auth-signed-in and verify-product-purchase, plus create-portal-session, delete-account, free-keyword-scan, get-account-data and scan-credits, whose code is unchanged but whose _shared/mailbox-proof.ts gained exports. A later deploy that changes any of the ten stamps 2026-10-14 with a higher sequence or a later day. Verify-deploy sections 94, 95 and 96 are R1's (94-r1-mail.sh, 95-r1-signin.sh, 96-r1-signin-server.sh); wave 4's critical-path plan had planned 94-96 for CP-A, CP-B and CP-C, and those groups now pick other numbers. 2026-10-25: oracle-regionless (branches oh/, built on wave4/integration) takes job-board 2026-09-09.95, the next free version after phase 3's .94 at the time, and 2026-10-15 for other functions (layoff-filings 2026-10-15.1, 2026-10-15.2 since it merged wave 4 at f4ccfeae); it has no migration. It deploys after wave 4 (deployOrder 3.5) and before phase 3, which has no branch yet; by the §3 rule phase 3, merging later, takes a build after .95 rather than this branch waiting for it, so phase 3's reservation moved from .94 to .96 the same day and next to .97+ (.94 is never used: it would sort before the .95 main will carry). Its verify section is 99z-oracle-regionless.sh, named to sort after every 99-* section (a three-digit name such as 100- sorts right after 10-, before 11-, so it would not run last). 2026-10-25, later: trust/pages, the fix that makes the six D7 pages trusted (employer names, the country reader, the Reyes brand boards), rides the same deploy and joins oracle-regionless's branches (trust/), as the S11 round's w31/ joined wave 3, so it shares job-board .95 with oh/integration; it takes 20261025* for its two migrations and layoff-filings 2026-10-15.3 (it named its own copy 2026-10-15.2 before it merged oh/integration at 9005a76f, whose copy took the same number; the merged copy is neither, so it takes the next), and its verify section is 99zz-trusted-pages.sh (99zz sorts after 99z- in byte order and under a collating locale that ignores the dash). 2026-10-26: trust round 3 (trust-round-3, branch trust/round3, built on trust/pages) takes job-board 2026-09-09.96, 20261026* for its two migrations, 2026-10-26 for other functions (layoff-filings 2026-10-26.1) and verify section 99zzz-trust-round-3.sh (99zzz sorts after 99zz- in byte order, '-' before 'z', and under a locale that ignores the dash, 't' before 'z'). It ships after oracle-regionless and the homepage switch-over and before company profiles phase 3, which still has no branch, so the two swapped: this round has .96 and phase 3 .97, and next is .98+. oracle-regionless now names its trust/ branches (trust/pages, trust/spa-gate, trust/census-tools) instead of the trust/ prefix, which would have read trust/round3 as its own: workstreamOf takes the first reservation that names a branch.",
@@ -268,7 +287,7 @@
       "deployOrder": 5
     },
     "next": {
-      "migrations": "20261015* and later, one day per workstream; taken: 2026-10-15 (oracle-regionless's function day), 20261016* (resume-match's, on rm/integration), 20261017* (the disk-plan migration on main), 20261025* (oracle-regionless's, for trust/pages), 20261026* and 2026-10-26 (trust-round-3's), 2026-10-27 (land/all's function day: sales stay on, the owner's 2026-10-27 override of wave 4's seller gate and marketing pause; no migration), 2026-10-31 (land/all's second function day: the territory refusal removed by the owner's 2026-10-27 'keep selling as today', create-checkout, create-subscription-checkout and create-product-checkout at 2026-10-31.1; home-pricing stamps free-keyword-scan and free-keyword-scan-stream 2026-10-31.1 too, different functions, so hp/switch-over's merge must stamp the three checkouts above 2026-10-31.1; no migration)",
+      "migrations": "20261015* and later, one day per workstream; taken: 2026-10-15 (oracle-regionless's function day), 20261016* (resume-match's, on rm/integration), 20261017* (the disk-plan migration on main), 20261025* (oracle-regionless's, for trust/pages), 20261026* and 2026-10-26 (trust-round-3's), 2026-10-27 (land/all's function day: sales stay on, the owner's 2026-10-27 override of wave 4's seller gate and marketing pause; no migration), 2026-10-31 (land/all's second function day: the territory refusal removed by the owner's 2026-10-27 'keep selling as today', create-checkout, create-subscription-checkout and create-product-checkout at 2026-10-31.1; home-pricing stamps free-keyword-scan and free-keyword-scan-stream 2026-10-31.1 too, different functions, so hp/switch-over's merge must stamp the three checkouts above 2026-10-31.1; no migration), 20261030* (fix/name-sync-rerun's: the name-sync re-arm after the one deploy, 2026-10-31; no function)",
       "jobBoard": "2026-09-09.98+"
     }
   },
@@ -649,6 +668,112 @@
       "note": "company profiles phases 0-2 + design (PR #36, merge 57815de9) and the PD hotfix (PR #41, merge 5a90daa4), deployed from main: Lovable applied 20261012137000 byte-identical as drizzle 0176 (349e1992/bcb0ae47, 2026-10-25 14:17Z) and skipped 20261012111000 (held) and 20260928003117 (never). verify-deploy 2026-10-25 ~15:20Z on bcb0ae47: 1039 PASS, 8 FAIL, each explained. 81i x3: the verifier kept 400 characters of a several-thousand-character reply and could not parse it; fixed with this entry and re-run live, 4 of 4 PASS (Caterpillar, NVIDIA, Dollar Tree with facts in 0.56-0.79 s, the made-up token in 0.55 s); 81j 24 of 24 Workday pages state a fact line. 49 employer-profiles: its .2 stamp was written at 345802a3 and 8422645e changed sweep.ts and _shared/perks-extract.ts before 57815de9 merged; Lovable deploys the function as main holds it, and this entry records that .2 serves 57815de9's code. 81c Stripe: get_company_fill_curve has no feed-total row for stripe (feed_read_at null); 137000 touches only get_company_intel, so it is open, not this deploy's. 5i: the hourly leaderboard holds 19 qualifying rows where the check wants exactly 20; nothing in this deploy touches it. CI on main: the GitHub runner's 5 s test timeouts (the local pre-push suite is the gate). SPF on send: the owner's DNS step.",
       "functions": {
         "employer-profiles": "employer-profiles.2026-10-12.2"
+      }
+    },
+    {
+      "commit": "f8d72a9b",
+      "date": "2026-10-31",
+      "note": "the one deploy from land/all (6b3e6d43, pushed to main 2026-10-31 18:16Z; Lovable stub commits to f8d72a9b, 18:27-18:57Z): 99 functions answer main's build. Lovable staged 23 migrations byte-identical but for whitespace (drizzle 0177-0199); 20261011142000, 20261012111000 and 20261014120000 ran without a stub (get_cron_health lists mail-watch, employer-perks-sweep/rollup and rb-auth-mail-drain with its 10s timeout); 20261025100000 and 20261026100000 did NOT run (the name-sync lane finished v6 at 19:19Z without them; 20261030100000 re-arms it); 20261011103000 held; 20260928003117 never. verify-deploy 2026-10-31 ~19:25-20:00Z on f8d72a9b: 1424 PASS, 52 FAIL, 341 INFO, positive control pass. The FAILs: the owner's revoked data-API key (every keyed /v1 and MCP check), these seven MUST BUMP lines and the three stubless migrations (this record and appliedByBehaviour clear them), the two skipped name migrations, the held prune, SPF on send (owner DNS), transient re-reads (89), and real defects routed to fix/post-deploy (CI on main, 88, 92, 99zz D7 noindex, 99zzz countries, 7d, 81c, 5i, 5n). Triage: ~/.config/resumebooster/land-all/verify-live/triage-run1.md.",
+      "functions": {
+        "account-order": "account-order.2026-10-14.31",
+        "account-settings": "account-settings.2026-10-14.25",
+        "admin-ops": "admin-ops.2026-10-08.2",
+        "admin-regenerate-delivery": "admin-regenerate-delivery.2026-10-09.2",
+        "affiliate-payout-request": "affiliate-payout-request.2026-10-08.1",
+        "agent-access": "agent-access.2026-10-11.14",
+        "agent-connect": "agent-connect.2026-10-05.1",
+        "agent-mcp": "agent-mcp.2026-10-11.38",
+        "agent-pass-status": "agent-pass-status.2026-10-11.15",
+        "agent-runner": "agent-runner.2026-10-11.14",
+        "analyze-linkedin-profile": "analyze-linkedin-profile.2026-10-11.24",
+        "analyze-resume": "analyze-resume.2026-10-09.62",
+        "api-key-request": "api-key-request.2026-10-11.1",
+        "application-fit": "application-fit.2026-10-11.24",
+        "apply-agent": "apply-agent.2026-10-11.33",
+        "apply-broker": "apply-broker.2026-10-11.14",
+        "auth-email-hook": "auth-email-hook.2026-10-14.1",
+        "auth-signed-in": "auth-signed-in.2026-10-14.1",
+        "check-alerts": "check-alerts.2026-10-11.28",
+        "check-error-spikes": "check-error-spikes.2026-10-08.1",
+        "check-subscription": "check-subscription.2026-10-11.30",
+        "company-claim": "company-claim.2026-10-09.2",
+        "create-agent-checkout": "create-agent-checkout.2026-10-11.17",
+        "create-checkout": "create-checkout.2026-10-31.1",
+        "create-pass-checkout": "create-pass-checkout.2026-10-11.17",
+        "create-portal-session": "create-portal-session.2026-10-14.23",
+        "create-product-checkout": "create-product-checkout.2026-10-31.2",
+        "create-scan-pack-checkout": "create-scan-pack-checkout.2026-10-27.1",
+        "create-subscription-checkout": "create-subscription-checkout.2026-10-31.2",
+        "create-test-checkout": "create-test-checkout.2026-10-11.23",
+        "create-test-coupon": "create-test-coupon.2026-10-09.2",
+        "delete-account": "delete-account.2026-10-14.25",
+        "employer-profiles": "employer-profiles.2026-10-12.2",
+        "fetch-job-posting": "fetch-job-posting.2026-10-11.27",
+        "free-keyword-scan": "free-keyword-scan.2026-10-31.1",
+        "free-keyword-scan-stream": "free-keyword-scan-stream.2026-10-31.1",
+        "generate-application-answers": "generate-application-answers.2026-10-11.33",
+        "generate-apply-package": "generate-apply-package.2026-10-11.33",
+        "generate-ats-defense": "generate-ats-defense.2026-10-11.24",
+        "generate-career-path": "generate-career-path.2026-10-11.31",
+        "generate-career-snapshot": "generate-career-snapshot.2026-10-11.24",
+        "generate-cohort-report": "generate-cohort-report.2026-10-09.2",
+        "generate-cover-letter": "generate-cover-letter.2026-10-11.24",
+        "generate-cover-letter-stream": "generate-cover-letter-stream.2026-10-11.24",
+        "generate-elevator-pitch": "generate-elevator-pitch.2026-10-11.24",
+        "generate-freelance-boost": "generate-freelance-boost.2026-10-11.24",
+        "generate-graduate-gameplan": "generate-graduate-gameplan.2026-10-11.24",
+        "generate-interview-coach": "generate-interview-coach.2026-10-11.24",
+        "generate-keyword-fix": "generate-keyword-fix.2026-10-11.24",
+        "generate-premium-package": "generate-premium-package.2026-10-11.24",
+        "generate-premium-package-stream": "generate-premium-package-stream.2026-10-11.24",
+        "generate-product-preview": "generate-product-preview.2026-10-11.24",
+        "generate-recruiter-view": "generate-recruiter-view.2026-10-11.24",
+        "generate-resume-roast": "generate-resume-roast.2026-10-11.24",
+        "generate-summary": "generate-summary.2026-10-11.24",
+        "generate-tailored-resume": "generate-tailored-resume.2026-10-11.24",
+        "generate-tailored-resume-stream": "generate-tailored-resume-stream.2026-10-10.1",
+        "get-account-data": "get-account-data.2026-10-14.30",
+        "get-analytics": "get-analytics.2026-10-09.2",
+        "get-error-telemetry": "get-error-telemetry.2026-10-08.1",
+        "health-check": "health-check.2026-10-09.2",
+        "import-freelance-profile": "import-freelance-profile.2026-10-11.24",
+        "industry-corrections-digest": "industry-corrections-digest.2026-10-08.1",
+        "job-board": "job-board.2026-09-09.96",
+        "job-fit": "job-fit.2026-10-11.24",
+        "layoff-filings": "layoff-filings.2026-10-26.1",
+        "mail-watch": "mail-watch.2026-10-11.30",
+        "nl-search": "nl-search.2026-10-11.24",
+        "notify-owner": "notify-owner.2026-10-08.1",
+        "parse-docx": "parse-docx.2026-10-11.26",
+        "parse-pdf": "parse-pdf.2026-10-11.26",
+        "parse-resume-structured": "parse-resume-structured.2026-10-11.24",
+        "parse-spreadsheet": "parse-spreadsheet.2026-10-05.1",
+        "process-email-queue": "process-email-queue.2026-10-14.2",
+        "public-api": "public-api.2026-10-11.37",
+        "reconcile-stripe": "reconcile-stripe.2026-10-11.22",
+        "recover-purchase": "recover-purchase.2026-10-09.2",
+        "resend-webhook": "resend-webhook.2026-10-14.1",
+        "retry-failed-deliveries": "retry-failed-deliveries.2026-10-11.22",
+        "save-lead": "save-lead.2026-10-09.2",
+        "scan-credits": "scan-credits.2026-10-14.22",
+        "scan-heartbeat": "scan-heartbeat.2026-10-11.30",
+        "scheduled-health-probe": "scheduled-health-probe.2026-10-09.2",
+        "scrape-linkedin": "scrape-linkedin.2026-10-11.24",
+        "send-affiliate-commission-email": "send-affiliate-commission-email.2026-10-09.2",
+        "send-agent-digest": "send-agent-digest.2026-10-27.1",
+        "send-analysis-email": "send-analysis-email.2026-10-09.2",
+        "send-market-pulse": "send-market-pulse.2026-10-31.1",
+        "send-product-email": "send-product-email.2026-10-31.1",
+        "send-scan-report": "send-scan-report.2026-10-31.1",
+        "send-search-digest": "send-search-digest.2026-10-25.1",
+        "shortlist-evaluate": "shortlist-evaluate.2026-10-11.29",
+        "stripe-webhook": "stripe-webhook.2026-10-11.32",
+        "test-ai-fallback": "test-ai-fallback.2026-10-11.24",
+        "track-ab-event": "track-ab-event.2026-10-09.2",
+        "verify-product-purchase": "verify-product-purchase.2026-10-14.29",
+        "verify-scan-pack-purchase": "verify-scan-pack-purchase.2026-10-09.2",
+        "warm-up": "warm-up.2026-10-09.2",
+        "withdraw-subscription": "withdraw-subscription.2026-10-11.25"
       }
     }
   ],

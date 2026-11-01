@@ -23,6 +23,23 @@ export interface ChangelogEntry {
 }
 
 export const changelog: ChangelogEntry[] = [
+  { id: "theHomePageIsTheJobSearch", date: "2026-10-31", tags: ["new"] },
+  { id: "aPricingPageThatStartsWithWhatIsFree", date: "2026-10-31", tags: ["improved"] },
+  { id: "whatWeStoppedSelling", date: "2026-10-31", tags: ["improved"] },
+  { id: "writingToolsCountPerAccountAndPro", date: "2026-10-31", tags: ["improved"] },
+  { id: "applyYourselfWithYourOwnAi", date: "2026-10-31", tags: ["new"] },
+  { id: "fitScoringIsFreeWithAKey", date: "2026-10-31", tags: ["new"] },
+  { id: "theFreeReportStoppedPredictingOutcomes", date: "2026-10-31", tags: ["fixed"] },
+  { id: "jpMorganChaseJoinsTheBoard", date: "2026-10-31", tags: ["new"] },
+  { id: "employersNamedByALogoFile", date: "2026-10-31", tags: ["fixed"] },
+  { id: "agencyLabelsAndFeedsListedTwice", date: "2026-10-31", tags: ["fixed"] },
+  { id: "jobsFiledInTheWrongCountry", date: "2026-10-31", tags: ["fixed"] },
+  { id: "searchesForCvsAccountantsAndToday", date: "2026-10-31", tags: ["fixed"] },
+  { id: "theScannerReadsMore", date: "2026-10-31", tags: ["fixed"] },
+  { id: "lettersInTheWrongLanguageAndGarbledNames", date: "2026-10-31", tags: ["fixed"] },
+  { id: "yourAccountPage", date: "2026-10-31", tags: ["improved", "fixed"] },
+  { id: "aSecondAnalysisAThrottledEmailAndAnExpiredLink", date: "2026-10-31", tags: ["fixed"] },
+  { id: "pagesThatHoldStillAndWhatSearchEnginesRead", date: "2026-10-31", tags: ["improved", "fixed"] },
   { id: "workdayCompanyPagesLostTheirFacts", date: "2026-10-25", tags: ["fixed"] },
   { id: "aCompanyPageThatListsNoRoles", date: "2026-10-25", tags: ["fixed"] },
   { id: "companyPagesLeadWithTheJobs", date: "2026-10-18", tags: ["improved"] },

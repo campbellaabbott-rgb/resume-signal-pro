@@ -26,6 +26,7 @@ import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdir
 import { tmpdir } from "node:os";
 import { join, relative, resolve } from "node:path";
 import { offersAPrice } from "@/lib/pricing-offer";
+import { MOUNT_TEST_BUDGET } from "./helpers/mount-budget";
 import {
   APPLY_YOURSELF_LINE, RETIRED_CLAIMS, crawlerText, jsonLdBlocks, offersIn, retiredClaimsIn,
 } from "../../scripts/prerender-retired.mjs";
@@ -109,7 +110,8 @@ describe("no page, block or llms file sells or describes a retired product", () 
     }
     expect(read, "read the written pages, not an empty directory").toBeGreaterThan(500);
     expect(offenders).toEqual([]);
-  });
+    // Every written page, read whole: 5.7 s with the machine loaded, past vitest's 5 s default.
+  }, MOUNT_TEST_BUDGET.testTimeout);
 
   it("llms.txt and llms-full.txt are clean", () => {
     for (const f of ["llms.txt", "llms-full.txt"]) {
