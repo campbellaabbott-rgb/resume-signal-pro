@@ -8,6 +8,7 @@ import { computeParseQuality, parseResumeStructure, formatStructureForPrompt } f
 import { detectResumeLanguage } from "./resume-language.ts";
 import { groundedIn, normalizeForGrounding } from "./grounding.ts";
 import { hasMetric } from "./bullet-metrics.ts";
+import { detectEmploymentGaps, type GapAnalysis } from "./employment-gaps.ts";
 import { getServiceClient } from "../_shared/supabase-client.ts";
 import { attachScanMailSeal } from "../_shared/scan-mail-seal.ts";
 import { clientAddressOr } from "../_shared/client-address.ts";
@@ -805,147 +806,8 @@ function formatContactHintForPrompt(contact: ContactValidation): string {
 
 // ─── Employment gap + resume recency detection ────────────────────────────────
 
-interface EmploymentGap {
-  startDate: string;   // e.g. "Jan 2022"
-  endDate: string;     // e.g. "Mar 2023"
-  gapMonths: number;
-  between: [string, string]; // employer/role names on each side if detectable
-}
-
-interface GapAnalysis {
-  gaps: EmploymentGap[];
-  mostRecentEndYear: number | null;
-  mostRecentEndMonth: number | null;
-  isStale: boolean;       // most recent role ended > 18 months ago
-  staleDuration: string;  // e.g. "~26 months"
-}
-
-// Month name → 0-based index
-const MONTH_MAP: Record<string, number> = {
-  jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
-  jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
-  january: 0, february: 1, march: 2, april: 3, june: 5,
-  july: 6, august: 7, september: 8, october: 9, november: 10, december: 11,
-};
-
-// Matches: "Jan 2020", "January 2020", "01/2020", "2020/01", "2020"
-const DATE_TOKEN_RE = /\b(?:(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+(\d{4})|(\d{1,2})[\/\-](\d{4})|(\d{4})[\/\-](\d{1,2})|(\d{4}))\b/gi;
-const PRESENT_RE = /\b(present|current|now|today)\b/i;
-
-interface DatePoint { year: number; month: number; raw: string }
-
-function parseDateTokens(text: string): DatePoint[] {
-  const results: DatePoint[] = [];
-  let m: RegExpExecArray | null;
-  const re = new RegExp(DATE_TOKEN_RE.source, 'gi');
-  while ((m = re.exec(text)) !== null) {
-    const [full, monthName, y1, m2, y2, y3, m3, y4] = m;
-    if (monthName && y1) {
-      const mo = MONTH_MAP[monthName.toLowerCase().substring(0, 3)];
-      if (mo !== undefined) results.push({ year: parseInt(y1), month: mo, raw: full });
-    } else if (m2 && y2) {
-      const mo = parseInt(m2) - 1;
-      if (mo >= 0 && mo < 12) results.push({ year: parseInt(y2), month: mo, raw: full });
-    } else if (y3 && m3) {
-      const mo = parseInt(m3) - 1;
-      if (mo >= 0 && mo < 12) results.push({ year: parseInt(y3), month: mo, raw: full });
-    } else if (y4) {
-      const yr = parseInt(y4);
-      if (yr >= 1980 && yr <= 2030) results.push({ year: yr, month: 0, raw: full });
-    }
-  }
-  return results.filter(d => d.year >= 1980 && d.year <= 2030);
-}
-
-// Scan each line for a date range: "Jan 2020 – Mar 2022" or "2019 - Present"
-function extractDateRanges(resumeText: string): Array<{ start: DatePoint; end: DatePoint | 'present'; line: string }> {
-  const RANGE_RE = /([A-Za-z]*\s*\d{4})\s*[–\-—to]+\s*(present|current|now|[A-Za-z]*\s*\d{4})/gi;
-  const ranges: Array<{ start: DatePoint; end: DatePoint | 'present'; line: string }> = [];
-  let m: RegExpExecArray | null;
-  while ((m = RANGE_RE.exec(resumeText)) !== null) {
-    const startTokens = parseDateTokens(m[1]);
-    if (!startTokens.length) continue;
-    const start = startTokens[0];
-    if (PRESENT_RE.test(m[2])) {
-      ranges.push({ start, end: 'present', line: m[0] });
-    } else {
-      const endTokens = parseDateTokens(m[2]);
-      if (endTokens.length) ranges.push({ start, end: endTokens[0], line: m[0] });
-    }
-  }
-  return ranges;
-}
-
-function monthsBetween(a: DatePoint, b: DatePoint): number {
-  return (b.year - a.year) * 12 + (b.month - a.month);
-}
-
-function formatDatePoint(d: DatePoint): string {
-  const names = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  return `${names[d.month]} ${d.year}`;
-}
-
-function detectEmploymentGaps(resumeText: string): GapAnalysis {
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  const currentMonth = now.getMonth();
-
-  const ranges = extractDateRanges(resumeText);
-  if (ranges.length < 2) {
-    return { gaps: [], mostRecentEndYear: null, mostRecentEndMonth: null, isStale: false, staleDuration: '' };
-  }
-
-  // Normalise end dates (present → now)
-  const normalised = ranges.map(r => ({
-    start: r.start,
-    end: r.end === 'present' ? { year: currentYear, month: currentMonth, raw: 'present' } : r.end,
-    isPresent: r.end === 'present',
-  }));
-
-  // Sort by start date ascending
-  normalised.sort((a, b) => monthsBetween(a.start, b.start));
-
-  // Find the most recent end date
-  const endDates = normalised.map(r => r.end as DatePoint);
-  endDates.sort((a, b) => monthsBetween(a, b));
-  const latestEnd = endDates[endDates.length - 1];
-  const hasPresent = normalised.some(r => r.isPresent);
-
-  // Stale check: most recent role ended > 18 months ago and no "present" role
-  let isStale = false;
-  let staleDuration = '';
-  if (!hasPresent && latestEnd) {
-    const staleMonths = monthsBetween(latestEnd, { year: currentYear, month: currentMonth, raw: '' });
-    if (staleMonths > 18) {
-      isStale = true;
-      staleDuration = `~${staleMonths} months`;
-    }
-  }
-
-  // Find gaps > 6 months between consecutive roles
-  const gaps: EmploymentGap[] = [];
-  for (let i = 0; i < normalised.length - 1; i++) {
-    const curr = normalised[i];
-    const next = normalised[i + 1];
-    const gapMonths = monthsBetween(curr.end as DatePoint, next.start);
-    if (gapMonths > 6) {
-      gaps.push({
-        startDate: formatDatePoint(curr.end as DatePoint),
-        endDate: formatDatePoint(next.start),
-        gapMonths,
-        between: [ranges[i].line.substring(0, 60), ranges[i + 1].line.substring(0, 60)],
-      });
-    }
-  }
-
-  return {
-    gaps,
-    mostRecentEndYear: latestEnd?.year ?? null,
-    mostRecentEndMonth: latestEnd?.month ?? null,
-    isStale,
-    staleDuration,
-  };
-}
+// detectEmploymentGaps lives in employment-gaps.ts (S10-007): oldest-first
+// with a running latest end, every dated range counted as time accounted for.
 
 function formatGapHintForPrompt(gapAnalysis: GapAnalysis): string {
   const lines: string[] = [];
