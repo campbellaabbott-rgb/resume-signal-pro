@@ -117,7 +117,12 @@ describe("after it", () => {
     await db.exec("DELETE FROM public.seniority_corrections;");
     expect(await correct("203.0.113.7", ["entry", "mid", "y".repeat(500), `  ${"Healthcare".repeat(20)}  `, -5, "<script>alert(1)</script>"])).toBe(true);
     expect(await correct("203.0.113.7", ["senior", "executive", null, null, 2_000_000, "x".repeat(65)])).toBe(true);
-    const [a, b] = await rows();
+    // By level, not by position: pglite can stamp two quick inserts with the
+    // same created_at, and the id that breaks the tie is a random uuid.
+    const stored = await rows();
+    expect(stored).toHaveLength(2);
+    const a = stored.find((r) => r.detected_level === "entry")!;
+    const b = stored.find((r) => r.detected_level === "senior")!;
     expect(String(a.detected_years)).toHaveLength(40);
     expect(a.industry).toBe("healthcare".repeat(6));
     expect(a.resume_text_length).toBeNull();
