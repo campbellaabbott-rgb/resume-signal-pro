@@ -78,7 +78,15 @@ export function ScoreSimulatorCard({
 
 // ---------- ATS vendor-specific parse checks ----------
 
-interface VendorFinding { vendor: string; status: "pass" | "warn" | "fail"; note: string }
+/**
+ * "unknown" is a vendor whose verdict depends on the layout when nobody
+ * checked the layout (S13-036): only a PDF upload reports multiColumnDetected;
+ * pasted text and Word files leave it undefined, and "not checked" must never
+ * read as "single column". hasTables, when a parser reports it, is a layout
+ * risk like columns.
+ */
+export type VendorStatus = "pass" | "warn" | "fail" | "unknown";
+export interface VendorFinding { vendor: string; status: VendorStatus; noteKey: string }
 
 /** Static, well-documented vendor parsing behaviors applied to THIS resume's features. */
 export function computeVendorChecks(input: {
@@ -86,77 +94,62 @@ export function computeVendorChecks(input: {
   multiColumnDetected?: boolean;
   hasTables?: boolean;
 }): VendorFinding[] {
-  const { resumeText, multiColumnDetected } = input;
+  const { resumeText, multiColumnDetected, hasTables } = input;
   const text = resumeText || "";
+  const layoutKnown = typeof multiColumnDetected === "boolean" || typeof hasTables === "boolean";
+  const layoutRisk = multiColumnDetected === true || hasTables === true;
   // Feature detection on the raw text
   const hasTabRuns = /\t{2,}|(?: {6,}\S+){2,}/m.test(text);
   const hasSpecialBullets = /[✦✧➤➣◆◇►▶✓☑]/.test(text);
   const nonStandardHeaders = !/(experience|employment|work history)/i.test(text) || !/(education|academic)/i.test(text);
   const longLines = text.split("\n").filter(l => l.length > 220).length > 3;
 
-  const risk = (fail: boolean, warn: boolean, failNote: string, warnNote: string, passNote: string): { status: VendorFinding["status"]; note: string } =>
-    fail ? { status: "fail", note: failNote } : warn ? { status: "warn", note: warnNote } : { status: "pass", note: passNote };
+  const NOTE = "reportInsights.vendor.note.";
+  const verdict = (vendor: string, key: string, fail: boolean, warn: boolean, dependsOnLayout: boolean): VendorFinding => {
+    const status: VendorStatus = fail ? "fail" : warn ? "warn" : dependsOnLayout && !layoutKnown ? "unknown" : "pass";
+    return { vendor, status, noteKey: `${NOTE}${key}.${status}` };
+  };
 
   return [
-    {
-      vendor: "Workday",
-      ...risk(
-        !!multiColumnDetected,
-        hasTabRuns || hasSpecialBullets,
-        "Multi-column layouts scramble Workday's parser — content reads out of order.",
-        "Tab-aligned text or decorative bullets can merge fields in Workday's preview.",
-        "Single-column, standard bullets — parses cleanly in Workday.",
-      ),
-    },
-    {
-      vendor: "Greenhouse",
-      ...risk(
-        false,
-        !!multiColumnDetected || longLines,
-        "",
-        "Greenhouse keeps the PDF but its keyword search relies on extracted text — layout quirks reduce match hits.",
-        "Greenhouse stores your original file; text extraction looks reliable here.",
-      ),
-    },
-    {
-      vendor: "Lever",
-      ...risk(
-        false,
-        hasSpecialBullets || nonStandardHeaders,
-        "",
-        "Lever's section detection expects standard headers (Experience, Education) — creative headers may unsort your history.",
-        "Standard section headers — Lever will thread your history correctly.",
-      ),
-    },
-    {
-      vendor: "iCIMS",
-      ...risk(
-        !!multiColumnDetected && hasTabRuns,
-        !!multiColumnDetected || hasTabRuns,
-        "Columns plus tab alignment is the worst case for iCIMS — fields land in the wrong boxes.",
-        "iCIMS auto-fills application fields from the parse — verify the auto-filled form before submitting.",
-        "Should auto-fill iCIMS application fields correctly.",
-      ),
-    },
+    verdict("Workday", "workday", layoutRisk, hasTabRuns || hasSpecialBullets, true),
+    verdict("Greenhouse", "greenhouse", false, layoutRisk || longLines, true),
+    verdict("Lever", "lever", false, hasSpecialBullets || nonStandardHeaders, false),
+    verdict("iCIMS", "icims", layoutRisk && hasTabRuns, layoutRisk || hasTabRuns, true),
   ];
 }
 
-export function AtsVendorChecksCard(props: { resumeText: string; multiColumnDetected?: boolean }) {
-  const findings = useMemo(() => computeVendorChecks(props), [props.resumeText, props.multiColumnDetected]);
+export function AtsVendorChecksCard(props: { resumeText: string; multiColumnDetected?: boolean; hasTables?: boolean }) {
+  const { t } = useTranslation();
+  const findings = useMemo(() => computeVendorChecks(props), [props.resumeText, props.multiColumnDetected, props.hasTables]);
   if (!props.resumeText) return null;
-  const icon = { pass: "✅", warn: "⚠️", fail: "🚫" } as const;
+  const icon = { pass: "✅", warn: "⚠️", fail: "🚫", unknown: "❔" } as const;
+  const box = {
+    fail: "border-destructive/30 bg-destructive/5",
+    warn: "border-warning/30 bg-warning/5",
+    pass: "border-border bg-background/40",
+    unknown: "border-dashed border-border bg-muted/20",
+  } as const;
+  const anyUnknown = findings.some(f => f.status === "unknown");
 
   return (
     <div className="rounded-2xl border border-border bg-card p-5 sm:p-6">
-      <h3 className="font-semibold text-foreground mb-1">How the big ATS platforms read this resume</h3>
+      <h3 className="font-semibold text-foreground mb-1">{t("reportInsights.vendor.title")}</h3>
       <p className="text-xs text-muted-foreground mb-4">
-        Each system parses differently. These checks apply each vendor's documented quirks to your actual formatting.
+        {t("reportInsights.vendor.subtitle")}
       </p>
+      {anyUnknown && (
+        <p data-vendor-unchecked-note className="text-xs text-muted-foreground mb-3 rounded-lg border border-dashed border-border px-3 py-2">
+          {t("reportInsights.vendor.uncheckedNote")}
+        </p>
+      )}
       <div className="grid sm:grid-cols-2 gap-2.5">
         {findings.map(f => (
-          <div key={f.vendor} className={`rounded-xl border p-3 ${f.status === "fail" ? "border-destructive/30 bg-destructive/5" : f.status === "warn" ? "border-warning/30 bg-warning/5" : "border-border bg-background/40"}`}>
-            <p className="text-xs font-semibold text-foreground mb-1">{icon[f.status]} {f.vendor}</p>
-            <p className="text-[11px] text-muted-foreground leading-relaxed">{f.note}</p>
+          <div key={f.vendor} data-vendor-status={f.status} className={`rounded-xl border p-3 ${box[f.status]}`}>
+            <p className="text-xs font-semibold text-foreground mb-1">
+              <span aria-hidden="true">{icon[f.status]}</span> {f.vendor}
+              <span className="sr-only"> — {t(`reportInsights.vendor.status.${f.status}`)}</span>
+            </p>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">{t(f.noteKey)}</p>
           </div>
         ))}
       </div>
@@ -307,37 +300,44 @@ export function DiagnosticHeader({
 // ---------- Findings index ----------
 
 export interface Finding {
-  severity: "critical" | "warning" | "pass";
+  /** "unchecked": a check that could not be run here; never counted as a pass. */
+  severity: "critical" | "warning" | "pass" | "unchecked";
   label: string;
 }
 
 export function FindingsIndex({ findings }: { findings: Finding[] }) {
+  const { t } = useTranslation();
   if (!findings.length) return null;
   const critical = findings.filter(f => f.severity === "critical");
   const warning = findings.filter(f => f.severity === "warning");
   const passed = findings.filter(f => f.severity === "pass");
+  const unchecked = findings.filter(f => f.severity === "unchecked");
+  const dot = { critical: "bg-destructive", warning: "bg-warning", unchecked: "bg-muted-foreground/50", pass: "bg-success" } as const;
   return (
     <div className="rounded-2xl border border-border bg-card p-5 mb-4">
-      <div className="flex items-center justify-between gap-2 mb-3">
-        <h3 className="font-semibold text-foreground text-sm">Findings at a glance</h3>
-        <div className="flex items-center gap-3 text-xs">
-          <span className="text-destructive font-semibold">{critical.length} critical</span>
-          <span className="text-warning font-semibold">{warning.length} warning{warning.length === 1 ? "" : "s"}</span>
-          <span className="text-success font-semibold">{passed.length} passed</span>
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+        <h3 className="font-semibold text-foreground text-sm">{t("reportInsights.findings.title")}</h3>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+          <span data-findings-critical className="text-destructive font-semibold">{t("reportInsights.findings.critical", { count: critical.length })}</span>
+          <span data-findings-warning className="text-warning font-semibold">{t("reportInsights.findings.warning", { count: warning.length })}</span>
+          <span data-findings-passed className="text-success font-semibold">{t("reportInsights.findings.passed", { count: passed.length })}</span>
+          {unchecked.length > 0 && (
+            <span data-findings-unchecked className="text-muted-foreground font-semibold">{t("reportInsights.findings.unchecked", { count: unchecked.length })}</span>
+          )}
         </div>
       </div>
       <div className="space-y-1.5">
-        {[...critical, ...warning].slice(0, 7).map((f, i) => (
+        {[...critical, ...warning, ...unchecked].slice(0, 7).map((f, i) => (
           <div key={i} className="flex items-start gap-2 text-xs">
-            <span className={`mt-1 w-1.5 h-1.5 rounded-full shrink-0 ${f.severity === "critical" ? "bg-destructive" : "bg-warning"}`} />
-            <span className="text-foreground">{f.label}</span>
+            <span className={`mt-1 w-1.5 h-1.5 rounded-full shrink-0 ${dot[f.severity]}`} />
+            <span className={f.severity === "unchecked" ? "text-muted-foreground" : "text-foreground"}>{f.label}</span>
           </div>
         ))}
-        {critical.length + warning.length === 0 && (
-          <p className="text-xs text-muted-foreground">No critical findings — details on what's working are in the sections below.</p>
+        {critical.length + warning.length + unchecked.length === 0 && (
+          <p className="text-xs text-muted-foreground">{t("reportInsights.findings.noCritical")}</p>
         )}
       </div>
-      <p className="text-[10px] text-muted-foreground mt-3">Full detail for every finding appears in the sections below, in order of severity.</p>
+      <p className="text-[10px] text-muted-foreground mt-3">{t("reportInsights.findings.footer")}</p>
     </div>
   );
 }

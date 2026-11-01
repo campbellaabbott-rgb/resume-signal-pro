@@ -5801,5 +5801,60 @@
     "yes": "Yes",
     "no": "No",
     "notSaved": "Couldn't save that — nothing was recorded."
+  },
+  "reportInsights": {
+    "vendor": {
+      "title": "How the big ATS platforms read this resume",
+      "subtitle": "Each system parses differently. These checks apply each vendor's documented quirks to your actual formatting.",
+      "uncheckedNote": "We check the layout only on a PDF upload. This one was pasted text or a Word file, so columns and tables were not checked, and no platform that depends on them is marked as passing.",
+      "status": {
+        "pass": "Passes",
+        "warn": "Needs review",
+        "fail": "Likely failure",
+        "unknown": "Not checked"
+      },
+      "note": {
+        "workday": {
+          "fail": "Multi-column layouts scramble Workday's parser — content reads out of order.",
+          "warn": "Tab-aligned text or decorative bullets can merge fields in Workday's preview.",
+          "pass": "Single-column, standard bullets — parses cleanly in Workday.",
+          "unknown": "Layout not checked — we can't say whether columns or tables would scramble Workday's parser."
+        },
+        "greenhouse": {
+          "warn": "Greenhouse keeps the PDF but its keyword search relies on extracted text — layout quirks reduce match hits.",
+          "pass": "Greenhouse stores your original file; text extraction looks reliable here.",
+          "unknown": "Layout not checked — Greenhouse searches the extracted text, and we couldn't see how cleanly this file's layout extracts."
+        },
+        "lever": {
+          "warn": "Lever's section detection expects standard headers (Experience, Education) — creative headers may unsort your history.",
+          "pass": "Standard section headers — Lever will thread your history correctly."
+        },
+        "icims": {
+          "fail": "Columns plus tab alignment is the worst case for iCIMS — fields land in the wrong boxes.",
+          "warn": "iCIMS auto-fills application fields from the parse — check the auto-filled form before submitting.",
+          "pass": "Should auto-fill iCIMS application fields correctly.",
+          "unknown": "Layout not checked — iCIMS fills its form from the parse, so check the auto-filled fields before submitting."
+        }
+      },
+      "finding": {
+        "fail": "{{vendor}} parsing: likely failure",
+        "warn": "{{vendor}} parsing: needs review",
+        "pass": "{{vendor}} parsing",
+        "unknown": "{{vendor}} parsing: layout not checked"
+      }
+    },
+    "findings": {
+      "title": "Findings at a glance",
+      "critical_one": "{{count}} critical",
+      "critical_other": "{{count}} critical",
+      "warning_one": "{{count}} warning",
+      "warning_other": "{{count}} warnings",
+      "passed_one": "{{count}} passed",
+      "passed_other": "{{count}} passed",
+      "unchecked_one": "{{count}} not checked",
+      "unchecked_other": "{{count}} not checked",
+      "noCritical": "No critical findings — details on what's working are in the sections below.",
+      "footer": "Full detail for every finding appears in the sections below, in order of severity."
+    }
   }
 }

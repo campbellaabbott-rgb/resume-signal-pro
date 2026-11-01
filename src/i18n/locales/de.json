@@ -5801,5 +5801,60 @@
     "yes": "Ja",
     "no": "Nein",
     "notSaved": "Das konnte nicht gespeichert werden — es wurde nichts erfasst."
+  },
+  "reportInsights": {
+    "vendor": {
+      "title": "Wie die großen ATS-Plattformen diesen Lebenslauf lesen",
+      "subtitle": "Jedes System liest anders. Diese Prüfungen wenden die dokumentierten Eigenheiten jedes Anbieters auf deine tatsächliche Formatierung an.",
+      "uncheckedNote": "Das Layout prüfen wir nur bei einem PDF-Upload. Hier war es eingefügter Text oder eine Word-Datei, daher wurden Spalten und Tabellen nicht geprüft, und keine Plattform, die davon abhängt, ist als bestanden markiert.",
+      "status": {
+        "pass": "Bestanden",
+        "warn": "Prüfen",
+        "fail": "Wahrscheinlich fehlerhaft",
+        "unknown": "Nicht geprüft"
+      },
+      "note": {
+        "workday": {
+          "fail": "Mehrspaltige Layouts bringen den Parser von Workday durcheinander — Inhalte werden in falscher Reihenfolge gelesen.",
+          "warn": "Mit Tabulatoren ausgerichteter Text oder dekorative Aufzählungszeichen können in der Vorschau von Workday Felder verschmelzen.",
+          "pass": "Einspaltig, normale Aufzählungszeichen — wird von Workday sauber gelesen.",
+          "unknown": "Layout nicht geprüft — wir können nicht sagen, ob Spalten oder Tabellen den Parser von Workday durcheinanderbringen würden."
+        },
+        "greenhouse": {
+          "warn": "Greenhouse behält das PDF, aber die Stichwortsuche nutzt den extrahierten Text — Layout-Eigenheiten verringern die Treffer.",
+          "pass": "Greenhouse speichert deine Originaldatei; die Textextraktion wirkt hier zuverlässig.",
+          "unknown": "Layout nicht geprüft — Greenhouse durchsucht den extrahierten Text, und wir konnten nicht sehen, wie sauber sich das Layout dieser Datei extrahieren lässt."
+        },
+        "lever": {
+          "warn": "Die Abschnittserkennung von Lever erwartet Standardüberschriften (Berufserfahrung, Ausbildung) — kreative Überschriften können deinen Werdegang durcheinanderbringen.",
+          "pass": "Standardüberschriften — Lever ordnet deinen Werdegang richtig ein."
+        },
+        "icims": {
+          "fail": "Spalten plus Tabulator-Ausrichtung sind der schlimmste Fall für iCIMS — Angaben landen in den falschen Feldern.",
+          "warn": "iCIMS füllt Bewerbungsfelder automatisch aus dem gelesenen Text aus — prüfe das ausgefüllte Formular vor dem Absenden.",
+          "pass": "Sollte die Bewerbungsfelder in iCIMS korrekt automatisch ausfüllen.",
+          "unknown": "Layout nicht geprüft — iCIMS füllt sein Formular aus dem gelesenen Text, prüfe also die ausgefüllten Felder vor dem Absenden."
+        }
+      },
+      "finding": {
+        "fail": "{{vendor}}-Auslesen: wahrscheinlich fehlerhaft",
+        "warn": "{{vendor}}-Auslesen: bitte prüfen",
+        "pass": "{{vendor}}-Auslesen",
+        "unknown": "{{vendor}}-Auslesen: Layout nicht geprüft"
+      }
+    },
+    "findings": {
+      "title": "Ergebnisse auf einen Blick",
+      "critical_one": "{{count}} kritisch",
+      "critical_other": "{{count}} kritisch",
+      "warning_one": "{{count}} Warnung",
+      "warning_other": "{{count}} Warnungen",
+      "passed_one": "{{count}} bestanden",
+      "passed_other": "{{count}} bestanden",
+      "unchecked_one": "{{count}} nicht geprüft",
+      "unchecked_other": "{{count}} nicht geprüft",
+      "noCritical": "Keine kritischen Ergebnisse — was gut funktioniert, steht in den Abschnitten unten.",
+      "footer": "Alle Einzelheiten zu jedem Ergebnis stehen in den Abschnitten unten, nach Schwere geordnet."
+    }
   }
 }

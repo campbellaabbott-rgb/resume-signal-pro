@@ -5801,5 +5801,60 @@
     "yes": "Ja",
     "no": "Nee",
     "notSaved": "Dat kon niet worden opgeslagen — er is niets vastgelegd."
+  },
+  "reportInsights": {
+    "vendor": {
+      "title": "Hoe de grote ATS-platforms dit cv lezen",
+      "subtitle": "Elk systeem leest anders. Deze controles passen de gedocumenteerde eigenaardigheden van elke leverancier toe op je echte opmaak.",
+      "uncheckedNote": "We controleren de opmaak alleen bij een geüploade pdf. Dit was geplakte tekst of een Word-bestand, dus kolommen en tabellen zijn niet gecontroleerd, en geen platform dat daarvan afhangt staat als geslaagd.",
+      "status": {
+        "pass": "Geslaagd",
+        "warn": "Controleren",
+        "fail": "Waarschijnlijk mislukt",
+        "unknown": "Niet gecontroleerd"
+      },
+      "note": {
+        "workday": {
+          "fail": "Opmaak met meerdere kolommen brengt de parser van Workday in de war — de inhoud wordt in de verkeerde volgorde gelezen.",
+          "warn": "Met tabs uitgelijnde tekst of decoratieve opsommingstekens kunnen velden samenvoegen in het voorbeeld van Workday.",
+          "pass": "Eén kolom, standaard opsommingstekens — wordt netjes gelezen door Workday.",
+          "unknown": "Opmaak niet gecontroleerd — we kunnen niet zeggen of kolommen of tabellen de parser van Workday in de war brengen."
+        },
+        "greenhouse": {
+          "warn": "Greenhouse bewaart de pdf, maar zoekt op trefwoorden in de geëxtraheerde tekst — eigenaardigheden in de opmaak leveren minder treffers op.",
+          "pass": "Greenhouse bewaart je originele bestand; de tekstextractie lijkt hier betrouwbaar.",
+          "unknown": "Opmaak niet gecontroleerd — Greenhouse zoekt in de geëxtraheerde tekst, en we konden niet zien hoe netjes de opmaak van dit bestand wordt geëxtraheerd."
+        },
+        "lever": {
+          "warn": "De sectieherkenning van Lever verwacht standaardkoppen (Werkervaring, Opleiding) — creatieve koppen kunnen je loopbaan door elkaar halen.",
+          "pass": "Standaard sectiekoppen — Lever zet je loopbaan goed op volgorde."
+        },
+        "icims": {
+          "fail": "Kolommen plus uitlijning met tabs is het slechtste geval voor iCIMS — gegevens komen in de verkeerde velden terecht.",
+          "warn": "iCIMS vult sollicitatievelden automatisch in op basis van de gelezen tekst — controleer het ingevulde formulier voor je verstuurt.",
+          "pass": "Zou de sollicitatievelden in iCIMS goed automatisch moeten invullen.",
+          "unknown": "Opmaak niet gecontroleerd — iCIMS vult zijn formulier op basis van de gelezen tekst, dus controleer de ingevulde velden voor je verstuurt."
+        }
+      },
+      "finding": {
+        "fail": "{{vendor}}-parsing: waarschijnlijk mislukt",
+        "warn": "{{vendor}}-parsing: controleren",
+        "pass": "{{vendor}}-parsing",
+        "unknown": "{{vendor}}-parsing: opmaak niet gecontroleerd"
+      }
+    },
+    "findings": {
+      "title": "Bevindingen in één oogopslag",
+      "critical_one": "{{count}} kritiek",
+      "critical_other": "{{count}} kritiek",
+      "warning_one": "{{count}} waarschuwing",
+      "warning_other": "{{count}} waarschuwingen",
+      "passed_one": "{{count}} geslaagd",
+      "passed_other": "{{count}} geslaagd",
+      "unchecked_one": "{{count}} niet gecontroleerd",
+      "unchecked_other": "{{count}} niet gecontroleerd",
+      "noCritical": "Geen kritieke bevindingen — wat goed werkt, staat in de secties hieronder.",
+      "footer": "De volledige details van elke bevinding staan in de secties hieronder, op volgorde van ernst."
+    }
   }
 }

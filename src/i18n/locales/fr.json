@@ -5843,5 +5843,64 @@
     "yes": "Oui",
     "no": "Non",
     "notSaved": "Impossible d'enregistrer — rien n'a été conservé."
+  },
+  "reportInsights": {
+    "vendor": {
+      "title": "Comment les grandes plateformes ATS lisent ce CV",
+      "subtitle": "Chaque système analyse différemment. Ces vérifications appliquent les particularités documentées de chaque éditeur à votre mise en forme réelle.",
+      "uncheckedNote": "Nous ne vérifions la mise en page que pour un PDF importé. Ici, il s'agissait de texte collé ou d'un fichier Word : colonnes et tableaux n'ont pas été vérifiés, et aucune plateforme qui en dépend n'est marquée comme réussie.",
+      "status": {
+        "pass": "Réussi",
+        "warn": "À vérifier",
+        "fail": "Échec probable",
+        "unknown": "Non vérifié"
+      },
+      "note": {
+        "workday": {
+          "fail": "Les mises en page en plusieurs colonnes brouillent l'analyseur de Workday — le contenu est lu dans le désordre.",
+          "warn": "Le texte aligné par tabulations ou les puces décoratives peuvent fusionner des champs dans l'aperçu de Workday.",
+          "pass": "Une seule colonne, puces standard — analysé proprement par Workday.",
+          "unknown": "Mise en page non vérifiée — impossible de dire si des colonnes ou des tableaux brouilleraient l'analyseur de Workday."
+        },
+        "greenhouse": {
+          "warn": "Greenhouse conserve le PDF, mais sa recherche par mots-clés s'appuie sur le texte extrait — les particularités de mise en page réduisent les correspondances.",
+          "pass": "Greenhouse conserve votre fichier d'origine ; l'extraction du texte semble fiable ici.",
+          "unknown": "Mise en page non vérifiée — Greenhouse cherche dans le texte extrait, et nous n'avons pas pu voir si la mise en page de ce fichier s'extrait proprement."
+        },
+        "lever": {
+          "warn": "La détection de sections de Lever attend des titres standard (Expérience, Formation) — des titres créatifs peuvent désordonner votre parcours.",
+          "pass": "Titres de section standard — Lever reconstituera correctement votre parcours."
+        },
+        "icims": {
+          "fail": "Colonnes et alignement par tabulations sont le pire cas pour iCIMS — les informations atterrissent dans les mauvais champs.",
+          "warn": "iCIMS remplit automatiquement les champs de candidature à partir de l'analyse — vérifiez le formulaire prérempli avant de l'envoyer.",
+          "pass": "Devrait préremplir correctement les champs de candidature iCIMS.",
+          "unknown": "Mise en page non vérifiée — iCIMS remplit son formulaire à partir de l'analyse, vérifiez donc les champs préremplis avant l'envoi."
+        }
+      },
+      "finding": {
+        "fail": "Analyse {{vendor}} : échec probable",
+        "warn": "Analyse {{vendor}} : à vérifier",
+        "pass": "Analyse {{vendor}}",
+        "unknown": "Analyse {{vendor}} : mise en page non vérifiée"
+      }
+    },
+    "findings": {
+      "title": "Constats en un coup d'œil",
+      "critical_one": "{{count}} critique",
+      "critical_other": "{{count}} critiques",
+      "critical_many": "{{count}} critiques",
+      "warning_one": "{{count}} avertissement",
+      "warning_other": "{{count}} avertissements",
+      "warning_many": "{{count}} avertissements",
+      "passed_one": "{{count}} réussi",
+      "passed_other": "{{count}} réussis",
+      "passed_many": "{{count}} réussis",
+      "unchecked_one": "{{count}} non vérifié",
+      "unchecked_other": "{{count}} non vérifiés",
+      "unchecked_many": "{{count}} non vérifiés",
+      "noCritical": "Aucun constat critique — ce qui fonctionne est détaillé dans les sections ci-dessous.",
+      "footer": "Le détail de chaque constat figure dans les sections ci-dessous, par ordre de gravité."
+    }
   }
 }

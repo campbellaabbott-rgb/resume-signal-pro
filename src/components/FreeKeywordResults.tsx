@@ -1378,7 +1378,9 @@ export function FreeKeywordResults({
     }
     if (resumeText) {
       for (const v of computeVendorChecks({ resumeText, multiColumnDetected })) {
-        out.push(v.status === 'fail' ? { severity: 'critical', label: `${v.vendor} parsing: likely failure` } : v.status === 'warn' ? { severity: 'warning', label: `${v.vendor} parsing: needs review` } : { severity: 'pass', label: `${v.vendor} parsing` });
+        // A layout nobody checked is "unchecked", never a pass (S13-036).
+        const severity = v.status === 'fail' ? 'critical' : v.status === 'warn' ? 'warning' : v.status === 'unknown' ? 'unchecked' : 'pass';
+        out.push({ severity, label: t(`reportInsights.vendor.finding.${v.status}`, { vendor: v.vendor }) });
       }
     }
     if ((weakestBullets?.length ?? 0) > 0) {

@@ -5843,5 +5843,64 @@
     "yes": "Sí",
     "no": "No",
     "notSaved": "No se pudo guardar: no quedó nada registrado."
+  },
+  "reportInsights": {
+    "vendor": {
+      "title": "Cómo leen este currículum las grandes plataformas ATS",
+      "subtitle": "Cada sistema analiza de forma distinta. Estas comprobaciones aplican las particularidades documentadas de cada proveedor a tu formato real.",
+      "uncheckedNote": "Solo revisamos el diseño cuando subes un PDF. Esta vez fue texto pegado o un archivo de Word, así que no se revisaron columnas ni tablas, y ninguna plataforma que dependa de ellas aparece como aprobada.",
+      "status": {
+        "pass": "Aprobado",
+        "warn": "Revisar",
+        "fail": "Fallo probable",
+        "unknown": "Sin revisar"
+      },
+      "note": {
+        "workday": {
+          "fail": "Los diseños de varias columnas desordenan el analizador de Workday: el contenido se lee fuera de orden.",
+          "warn": "El texto alineado con tabulaciones o las viñetas decorativas pueden fusionar campos en la vista previa de Workday.",
+          "pass": "Una sola columna y viñetas estándar: Workday lo analiza sin problemas.",
+          "unknown": "Diseño sin revisar: no podemos decir si columnas o tablas desordenarían el analizador de Workday."
+        },
+        "greenhouse": {
+          "warn": "Greenhouse conserva el PDF, pero su búsqueda de palabras clave usa el texto extraído: las rarezas del diseño reducen las coincidencias.",
+          "pass": "Greenhouse guarda tu archivo original; la extracción de texto parece fiable aquí.",
+          "unknown": "Diseño sin revisar: Greenhouse busca en el texto extraído y no pudimos ver qué tan limpio se extrae el diseño de este archivo."
+        },
+        "lever": {
+          "warn": "La detección de secciones de Lever espera encabezados estándar (Experiencia, Educación): los encabezados creativos pueden desordenar tu historial.",
+          "pass": "Encabezados de sección estándar: Lever ordenará bien tu historial."
+        },
+        "icims": {
+          "fail": "Columnas más alineación con tabulaciones es el peor caso para iCIMS: los datos acaban en los campos equivocados.",
+          "warn": "iCIMS rellena automáticamente los campos de la solicitud a partir del análisis: revisa el formulario antes de enviarlo.",
+          "pass": "Debería rellenar bien los campos de solicitud de iCIMS.",
+          "unknown": "Diseño sin revisar: iCIMS rellena su formulario a partir del análisis, así que revisa los campos antes de enviarlo."
+        }
+      },
+      "finding": {
+        "fail": "Análisis de {{vendor}}: fallo probable",
+        "warn": "Análisis de {{vendor}}: revisar",
+        "pass": "Análisis de {{vendor}}",
+        "unknown": "Análisis de {{vendor}}: diseño sin revisar"
+      }
+    },
+    "findings": {
+      "title": "Resultados de un vistazo",
+      "critical_one": "{{count}} crítico",
+      "critical_other": "{{count}} críticos",
+      "critical_many": "{{count}} críticos",
+      "warning_one": "{{count}} advertencia",
+      "warning_other": "{{count}} advertencias",
+      "warning_many": "{{count}} advertencias",
+      "passed_one": "{{count}} aprobado",
+      "passed_other": "{{count}} aprobados",
+      "passed_many": "{{count}} aprobados",
+      "unchecked_one": "{{count}} sin revisar",
+      "unchecked_other": "{{count}} sin revisar",
+      "unchecked_many": "{{count}} sin revisar",
+      "noCritical": "Sin resultados críticos: lo que funciona bien se detalla en las secciones de abajo.",
+      "footer": "El detalle completo de cada resultado aparece en las secciones de abajo, por orden de gravedad."
+    }
   }
 }

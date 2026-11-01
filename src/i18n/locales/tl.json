@@ -5801,5 +5801,60 @@
     "yes": "Oo",
     "no": "Hindi",
     "notSaved": "Hindi ito na-save — walang naitala."
+  },
+  "reportInsights": {
+    "vendor": {
+      "title": "Paano binabasa ng malalaking ATS platform ang resume na ito",
+      "subtitle": "Iba-iba ang pagbasa ng bawat sistema. Inilalapat ng mga check na ito ang mga dokumentadong katangian ng bawat vendor sa aktwal mong format.",
+      "uncheckedNote": "Sa PDF upload lang namin sinusuri ang layout. Na-paste na text o Word file ito, kaya hindi nasuri ang mga column at table, at walang platform na umaasa sa mga ito ang minarkahang pasado.",
+      "status": {
+        "pass": "Pasado",
+        "warn": "Kailangang suriin",
+        "fail": "Malamang pumalya",
+        "unknown": "Hindi nasuri"
+      },
+      "note": {
+        "workday": {
+          "fail": "Ginugulo ng multi-column layout ang parser ng Workday — nababasa nang wala sa ayos ang nilalaman.",
+          "warn": "Ang text na naka-align gamit ang tab o mga dekoratibong bullet ay puwedeng magsanib ng mga field sa preview ng Workday.",
+          "pass": "Isang column, karaniwang bullet — malinis ang pagbasa sa Workday.",
+          "unknown": "Hindi nasuri ang layout — hindi namin masabi kung guguluhin ng mga column o table ang parser ng Workday."
+        },
+        "greenhouse": {
+          "warn": "Iniingatan ng Greenhouse ang PDF pero umaasa ang keyword search nito sa na-extract na text — binabawasan ng mga kakaibang layout ang tugma.",
+          "pass": "Iniimbak ng Greenhouse ang orihinal mong file; mukhang maaasahan dito ang pag-extract ng text.",
+          "unknown": "Hindi nasuri ang layout — hinahanap ng Greenhouse ang na-extract na text, at hindi namin nakita kung gaano kalinis ma-extract ang layout ng file na ito."
+        },
+        "lever": {
+          "warn": "Inaasahan ng section detection ng Lever ang karaniwang heading (Experience, Education) — puwedeng magulo ang kasaysayan mo sa malikhaing heading.",
+          "pass": "Karaniwang heading ng section — maayos na pagsusunud-sunurin ng Lever ang kasaysayan mo."
+        },
+        "icims": {
+          "fail": "Ang column na may kasamang tab alignment ang pinakamasamang kaso para sa iCIMS — napupunta sa maling kahon ang mga field.",
+          "warn": "Awtomatikong pinupunan ng iCIMS ang mga field ng aplikasyon mula sa parse — suriin ang napunang form bago mag-submit.",
+          "pass": "Dapat tama ang awtomatikong pagpuno sa mga field ng aplikasyon sa iCIMS.",
+          "unknown": "Hindi nasuri ang layout — pinupunan ng iCIMS ang form nito mula sa parse, kaya suriin ang mga napunang field bago mag-submit."
+        }
+      },
+      "finding": {
+        "fail": "{{vendor}} parsing: malamang pumalya",
+        "warn": "{{vendor}} parsing: kailangang suriin",
+        "pass": "{{vendor}} parsing",
+        "unknown": "{{vendor}} parsing: hindi nasuri ang layout"
+      }
+    },
+    "findings": {
+      "title": "Mga natuklasan sa isang tingin",
+      "critical_one": "{{count}} kritikal",
+      "critical_other": "{{count}} kritikal",
+      "warning_one": "{{count}} babala",
+      "warning_other": "{{count}} babala",
+      "passed_one": "{{count}} pasado",
+      "passed_other": "{{count}} pasado",
+      "unchecked_one": "{{count}} hindi nasuri",
+      "unchecked_other": "{{count}} hindi nasuri",
+      "noCritical": "Walang kritikal na natuklasan — nasa mga bahagi sa ibaba ang detalye ng gumagana.",
+      "footer": "Nasa mga bahagi sa ibaba ang buong detalye ng bawat natuklasan, ayon sa bigat."
+    }
   }
 }

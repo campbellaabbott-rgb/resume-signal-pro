@@ -5843,5 +5843,64 @@
     "yes": "Sim",
     "no": "Não",
     "notSaved": "Não foi possível salvar — nada foi registrado."
+  },
+  "reportInsights": {
+    "vendor": {
+      "title": "Como as grandes plataformas ATS leem este currículo",
+      "subtitle": "Cada sistema lê de um jeito. Estas verificações aplicam as particularidades documentadas de cada fornecedor à sua formatação real.",
+      "uncheckedNote": "Só verificamos o layout quando você envia um PDF. Este foi texto colado ou um arquivo do Word, então colunas e tabelas não foram verificadas, e nenhuma plataforma que depende delas aparece como aprovada.",
+      "status": {
+        "pass": "Aprovado",
+        "warn": "Revisar",
+        "fail": "Provável falha",
+        "unknown": "Não verificado"
+      },
+      "note": {
+        "workday": {
+          "fail": "Layouts com várias colunas embaralham o leitor do Workday — o conteúdo é lido fora de ordem.",
+          "warn": "Texto alinhado com tabulações ou marcadores decorativos podem juntar campos na pré-visualização do Workday.",
+          "pass": "Uma coluna, marcadores padrão — o Workday lê sem problemas.",
+          "unknown": "Layout não verificado — não dá para dizer se colunas ou tabelas embaralhariam o leitor do Workday."
+        },
+        "greenhouse": {
+          "warn": "O Greenhouse guarda o PDF, mas a busca por palavras-chave usa o texto extraído — peculiaridades do layout reduzem as correspondências.",
+          "pass": "O Greenhouse guarda seu arquivo original; a extração de texto parece confiável aqui.",
+          "unknown": "Layout não verificado — o Greenhouse busca no texto extraído, e não conseguimos ver se o layout deste arquivo é extraído corretamente."
+        },
+        "lever": {
+          "warn": "A detecção de seções do Lever espera títulos padrão (Experiência, Formação) — títulos criativos podem bagunçar seu histórico.",
+          "pass": "Títulos de seção padrão — o Lever vai organizar seu histórico corretamente."
+        },
+        "icims": {
+          "fail": "Colunas mais alinhamento com tabulações é o pior caso para o iCIMS — os dados caem nos campos errados.",
+          "warn": "O iCIMS preenche os campos da candidatura a partir da leitura — confira o formulário preenchido antes de enviar.",
+          "pass": "Deve preencher corretamente os campos de candidatura do iCIMS.",
+          "unknown": "Layout não verificado — o iCIMS preenche o formulário a partir da leitura, então confira os campos antes de enviar."
+        }
+      },
+      "finding": {
+        "fail": "Leitura do {{vendor}}: provável falha",
+        "warn": "Leitura do {{vendor}}: revisar",
+        "pass": "Leitura do {{vendor}}",
+        "unknown": "Leitura do {{vendor}}: layout não verificado"
+      }
+    },
+    "findings": {
+      "title": "Resultados num relance",
+      "critical_one": "{{count}} crítico",
+      "critical_other": "{{count}} críticos",
+      "critical_many": "{{count}} críticos",
+      "warning_one": "{{count}} alerta",
+      "warning_other": "{{count}} alertas",
+      "warning_many": "{{count}} alertas",
+      "passed_one": "{{count}} aprovado",
+      "passed_other": "{{count}} aprovados",
+      "passed_many": "{{count}} aprovados",
+      "unchecked_one": "{{count}} não verificado",
+      "unchecked_other": "{{count}} não verificados",
+      "unchecked_many": "{{count}} não verificados",
+      "noCritical": "Nenhum resultado crítico — o que está funcionando aparece nas seções abaixo.",
+      "footer": "O detalhe completo de cada resultado aparece nas seções abaixo, por ordem de gravidade."
+    }
   }
 }
