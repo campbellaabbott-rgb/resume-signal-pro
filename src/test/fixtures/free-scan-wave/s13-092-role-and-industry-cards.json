@@ -1,0 +1,793 @@
+{
+ "about": "S13-092 slice: real job titles with the role card each should get (config: null = no card), and windows of real posting text with whether an industry keyword is on them. main = f8d72a9b's answer. Full corpus: ~/.config/resumebooster/free-scan-wave-corpora/S13-092.",
+ "titles": [
+  {
+   "title": "Analyst, Corporate Banking – Financial Institutions Portfolio Management",
+   "config": "Financial Analyst",
+   "main": "Data Analyst"
+  },
+  {
+   "title": "Growth Marketing Manager",
+   "config": "Marketing Manager",
+   "main": "Product Manager"
+  },
+  {
+   "title": "Shopper Marketing Manager",
+   "config": "Marketing Manager",
+   "main": "Product Manager"
+  },
+  {
+   "title": "Metal Accountant",
+   "config": "Accountant",
+   "main": "Account Executive"
+  },
+  {
+   "title": "Financial Accountant, UK&I (12-Month Fixed Term Contract)",
+   "config": "Accountant",
+   "main": "Account Executive"
+  },
+  {
+   "title": "Senior Product Manager, CP",
+   "config": "Product Manager",
+   "main": "Senior Software Engineer"
+  },
+  {
+   "title": "Senior UX Designer / Scrum Master - CHEC",
+   "config": "UX Designer",
+   "main": "Senior Software Engineer"
+  },
+  {
+   "title": "Customer Success Manager (based in: Germany, the Netherlands, the UK or Spain)",
+   "config": "Customer Success Manager",
+   "main": "Senior Software Engineer"
+  },
+  {
+   "title": "Operations Manager Female - FNFAO - Competition 2026-87",
+   "config": "Operations Manager",
+   "main": "Product Manager"
+  },
+  {
+   "title": "Sports Construction Project Manager",
+   "config": "Project Manager",
+   "main": "Product Manager"
+  },
+  {
+   "title": "Senior Associate, Product Manager - Conversions",
+   "config": "Product Manager",
+   "main": "Senior Software Engineer"
+  },
+  {
+   "title": "Senior Development Accountant",
+   "config": "Accountant",
+   "main": "Software Engineer"
+  },
+  {
+   "title": "Assistant Manager-Billing Operations",
+   "config": "Operations Manager",
+   "main": "Product Manager"
+  },
+  {
+   "title": "[Job - 31415] Data Developer / Data Analyst, Brazil",
+   "config": "Data Analyst",
+   "main": "Software Engineer"
+  },
+  {
+   "title": "Senior Operations Manager",
+   "config": "Operations Manager",
+   "main": "Senior Software Engineer"
+  },
+  {
+   "title": "Sales Administration Manager",
+   "config": "Sales Manager",
+   "main": "Product Manager"
+  },
+  {
+   "title": "Manager, Marketing (Soma)",
+   "config": "Marketing Manager",
+   "main": "Product Manager"
+  },
+  {
+   "title": "Senior HR Business Partner",
+   "config": "HR Business Partner",
+   "main": "Senior Software Engineer"
+  },
+  {
+   "title": "Construction Project Manager, Bureau of Facilities Planning and Administrative Services",
+   "config": "Project Manager",
+   "main": "Software Engineer"
+  },
+  {
+   "title": "Marketing - Senior Manager/Manager, Marketing Projects, Marketing Integration",
+   "config": "Marketing Manager",
+   "main": "Senior Software Engineer"
+  },
+  {
+   "title": "Senior Manager, Lifecycle Marketing",
+   "config": "Marketing Manager",
+   "main": "Senior Software Engineer"
+  },
+  {
+   "title": "People Operations Manager (German speaking)",
+   "config": "Operations Manager",
+   "main": "Product Manager"
+  },
+  {
+   "title": "HR Business Partner -  APAC",
+   "config": "HR Business Partner",
+   "main": "Software Engineer"
+  },
+  {
+   "title": "Senior Product Manager",
+   "config": "Product Manager",
+   "main": "Senior Software Engineer"
+  },
+  {
+   "title": "Senior Marketing Manager",
+   "config": "Marketing Manager",
+   "main": "Senior Software Engineer"
+  },
+  {
+   "title": "Senior AI Product Manager, EMEA",
+   "config": "Product Manager",
+   "main": "Senior Software Engineer"
+  },
+  {
+   "title": "Customer Success Manager – Missouri",
+   "config": "Customer Success Manager",
+   "main": "Product Manager"
+  },
+  {
+   "title": "Senior Lead Software Engineer, Full Stack (Java, Spring Boot, AWS, CI/CD) (Enterprise Platforms Technology)",
+   "config": "Senior Software Engineer",
+   "main": "Software Engineer"
+  },
+  {
+   "title": "Senior Product Manager - 12 Month FTC",
+   "config": "Product Manager",
+   "main": "Senior Software Engineer"
+  },
+  {
+   "title": "Operations Manager-Construction & Building Materials Industry",
+   "config": "Operations Manager",
+   "main": "Product Manager"
+  },
+  {
+   "title": "Senior Level Designer",
+   "config": null,
+   "main": "Senior Software Engineer"
+  },
+  {
+   "title": "Customer Care Supervisor",
+   "config": null,
+   "main": "Customer Success Manager"
+  },
+  {
+   "title": "Relationship Manager - Business Banking",
+   "config": null,
+   "main": "Product Manager"
+  },
+  {
+   "title": "Business Development Sales Professional",
+   "config": null,
+   "main": "Software Engineer"
+  },
+  {
+   "title": "Home Design Stylist",
+   "config": null,
+   "main": "UX Designer"
+  },
+  {
+   "title": "Sales Associate - Guest Experience Specialist",
+   "config": null,
+   "main": "Digital Marketing Specialist"
+  },
+  {
+   "title": "Data Engineer, Operations Technology (all genders)",
+   "config": null,
+   "main": "Software Engineer"
+  },
+  {
+   "title": "Teaching Assistant & Midday Meal Supervisor - St William Of York Catholic Primary School",
+   "config": null,
+   "main": "Software Engineer"
+  },
+  {
+   "title": "Partner Account Manager",
+   "config": null,
+   "main": "Product Manager"
+  },
+  {
+   "title": "Billing Systems Analyst",
+   "config": null,
+   "main": "Data Analyst"
+  },
+  {
+   "title": "AVEVA E3D Piping and Layout Designer",
+   "config": null,
+   "main": "UX Designer"
+  },
+  {
+   "title": "Sr HR Specialist",
+   "config": null,
+   "main": "Digital Marketing Specialist"
+  },
+  {
+   "title": "Laboratory Operations Scientist II",
+   "config": null,
+   "main": "Operations Manager"
+  },
+  {
+   "title": "Gerente de Marketing",
+   "config": null,
+   "main": "Frontend Developer"
+  },
+  {
+   "title": "Internal Communications -Specialist",
+   "config": null,
+   "main": "Digital Marketing Specialist"
+  },
+  {
+   "title": "Compliance Manager",
+   "config": null,
+   "main": "Product Manager"
+  },
+  {
+   "title": "Information Security Analyst Lead",
+   "config": null,
+   "main": "Data Analyst"
+  },
+  {
+   "title": "Retail Sales Specialist",
+   "config": null,
+   "main": "Digital Marketing Specialist"
+  },
+  {
+   "title": "Senior System Configuration Administrator",
+   "config": null,
+   "main": "Senior Software Engineer"
+  },
+  {
+   "title": "Branch Manager-BRANCH BANKING-Branch Head",
+   "config": null,
+   "main": "Product Manager"
+  },
+  {
+   "title": "DATA SCIENTIST",
+   "config": null,
+   "main": "Data Analyst"
+  },
+  {
+   "title": "Administrative Business Partner",
+   "config": null,
+   "main": "HR Business Partner"
+  },
+  {
+   "title": "UNIV - Accounting/Fiscal Manager I - Department of Family Medicine",
+   "config": null,
+   "main": "Software Engineer"
+  },
+  {
+   "title": "Senior Scientist, Statistical Programming, Late-Stage Oncology (Hybrid)",
+   "config": null,
+   "main": "Senior Software Engineer"
+  },
+  {
+   "title": "Pizza Delivery Driver - up to $20 / hour (05477) Part-time",
+   "config": null,
+   "main": "Customer Success Manager"
+  },
+  {
+   "title": "Head of Regulatory Affairs",
+   "config": null,
+   "main": "Software Engineer"
+  },
+  {
+   "title": "Sales Advisor 4 timer",
+   "config": null,
+   "main": "Sales Manager"
+  },
+  {
+   "title": "SEN Learning Support Assistant",
+   "config": null,
+   "main": "Senior Software Engineer"
+  },
+  {
+   "title": "Senior Counsel - Legal Leasing",
+   "config": null,
+   "main": "Senior Software Engineer"
+  },
+  {
+   "title": "Senior Data Scientist & Machine Learning Researcher",
+   "config": null,
+   "main": "Senior Software Engineer"
+  },
+  {
+   "title": "Social Media & Content Specialist",
+   "config": null,
+   "main": "Digital Marketing Specialist"
+  },
+  {
+   "title": "Copy of Junior AI Engineer",
+   "config": null,
+   "main": "Software Engineer"
+  },
+  {
+   "title": "Regional Communications Manager",
+   "config": null,
+   "main": "Product Manager"
+  },
+  {
+   "title": "Senior Contract Manager",
+   "config": null,
+   "main": "Senior Software Engineer"
+  },
+  {
+   "title": "Director, AI Engineering",
+   "config": null,
+   "main": "Software Engineer"
+  },
+  {
+   "title": "Shipping Officer  (SCE-SSC-SC-2026-217-GRAE)",
+   "config": null,
+   "main": "Account Executive"
+  },
+  {
+   "title": "Dual Técnico de laboratorio Bioquímica análisis y control de calidad",
+   "config": null,
+   "main": "Frontend Developer"
+  },
+  {
+   "title": "Salem Five Career Fair Registration - Monday, September 14, 2026, 4:00pm - 6:00pm. Beverly Depot branch 140 Rantoul Street, Beverly, MA 01915",
+   "config": null,
+   "main": "Product Manager"
+  },
+  {
+   "title": "Department Manager",
+   "config": null,
+   "main": "Product Manager"
+  },
+  {
+   "title": "Projectleider - België - Civiele werken en Gebouwen",
+   "config": null,
+   "main": "Software Engineer"
+  },
+  {
+   "title": "Cashier (06851) - 2111 Gregg St",
+   "config": null,
+   "main": "Data Analyst"
+  },
+  {
+   "title": "Enterprise Systems Engineer, Senior",
+   "config": null,
+   "main": "Software Engineer"
+  },
+  {
+   "title": "Personnel Security Specialist IV",
+   "config": null,
+   "main": "Digital Marketing Specialist"
+  },
+  {
+   "title": "UX Engineer (AI and Applications)",
+   "config": null,
+   "main": "Software Engineer"
+  },
+  {
+   "title": "Junior v oblasti Compliance oddělení - STUDENT",
+   "config": null,
+   "main": "Frontend Developer"
+  },
+  {
+   "title": "Senior Solutions Manager-Affluent-BRANCH BANKING-Enterprise Business Solutions - EBS",
+   "config": null,
+   "main": "Senior Software Engineer"
+  },
+  {
+   "title": "Marketing Reporting Specialist- Hilton Head, SC",
+   "config": null,
+   "main": "Marketing Manager"
+  },
+  {
+   "title": "Creative Director, Attraction Design & Development",
+   "config": null,
+   "main": "Software Engineer"
+  },
+  {
+   "title": "Industrial Engineering Tech I : CVG200 : 402",
+   "config": null,
+   "main": "Software Engineer"
+  },
+  {
+   "title": "Consultant Data Engineer",
+   "config": null,
+   "main": "Software Engineer"
+  },
+  {
+   "title": "Product Owner II - Open Banking",
+   "config": "Product Manager",
+   "main": "Product Manager"
+  },
+  {
+   "title": "Sustainable Operations Program Manager",
+   "config": "Project Manager",
+   "main": "Project Manager"
+  },
+  {
+   "title": "Senior Technical Program Manager",
+   "config": "Project Manager",
+   "main": "Project Manager"
+  },
+  {
+   "title": "VIE - ESG & Sustainable Finance Analyst",
+   "config": "Financial Analyst",
+   "main": "Financial Analyst"
+  },
+  {
+   "title": "Telecom Sector | UX/UI Designer",
+   "config": "UX Designer",
+   "main": "UX Designer"
+  },
+  {
+   "title": "Business Analyst – Data, Insights & Workforce Management (Global Trade Services)",
+   "config": "Data Analyst",
+   "main": "Data Analyst"
+  },
+  {
+   "title": "Program Manager, Variable Cost Productivity",
+   "config": "Project Manager",
+   "main": "Project Manager"
+  },
+  {
+   "title": "International HRBP - Operations division",
+   "config": "HR Business Partner",
+   "main": "HR Business Partner"
+  },
+  {
+   "title": "Program Manager - Executive Operations",
+   "config": "Project Manager",
+   "main": "Project Manager"
+  },
+  {
+   "title": "Lead Product Designer",
+   "config": "UX Designer",
+   "main": "UX Designer"
+  }
+ ],
+ "keywords": [
+  {
+   "industry": "legal",
+   "keyword": "IP",
+   "text": "interested in and have a good working knowledge of general contract and tortious principles. Motor Insurance Law: Be interested in and willing to learn insurance-based motor",
+   "present": false,
+   "main": true
+  },
+  {
+   "industry": "data_engineering",
+   "keyword": "REST",
+   "text": "urge you not to exclude yourself prematurely and to submit an application if you're interested in this work. We think AI systems like the ones we're building have enormous social",
+   "present": false,
+   "main": true
+  },
+  {
+   "industry": "cybersecurity",
+   "keyword": "API",
+   "text": "learn and grow your current skill set Are seeking a progressive work environment at a rapidly growing organization Have a desire to help others protect their future Have an",
+   "present": false,
+   "main": true
+  },
+  {
+   "industry": "mlEngineering",
+   "keyword": "Git",
+   "text": "requirements). The salary offered for this specific position is based on a number of legitimate, non-discriminatory factors set by the Company. The Company is fully committed to",
+   "present": false,
+   "main": true
+  },
+  {
+   "industry": "marketing",
+   "keyword": "ROI",
+   "text": "at Confido to ship confidently, debug quickly, and operate production without heroics. This is a hands-on role. You’ll split your time between planned platform projects",
+   "present": false,
+   "main": true
+  },
+  {
+   "industry": "data_science",
+   "keyword": "R",
+   "text": "Advisor (Washington, DC & Northern Virginia Market) Washington, DC, Northern VA & surrounding",
+   "present": false,
+   "main": true
+  },
+  {
+   "industry": "sre",
+   "keyword": "AWS",
+   "text": "ensure that the highest quality rehab services are provided and in accordance with all laws, regulations, and company standards. Support responsibilities: Directors of",
+   "present": false,
+   "main": true
+  },
+  {
+   "industry": "consulting",
+   "keyword": "Excel",
+   "text": "as a Top Workplace by numerous industry and regional outlets. CORE VALUES: Passion for Excellence :: Success is Never Final :: Do the Right Thing :: One Alerus ABOUT THE ROLE:",
+   "present": false,
+   "main": true
+  },
+  {
+   "industry": "sales_operations",
+   "keyword": "Clari",
+   "text": "for tracking cost at various stages of the projects lifecycle. Prepares project clarifications and bid assumptions for submission to Owner. Investigates local market",
+   "present": false,
+   "main": true
+  },
+  {
+   "industry": "manufacturing",
+   "keyword": "Lean",
+   "text": "engineering fundamentals: Python (Java/Scala a plus), data structures and algorithms, clean and testable code, and code reviews. Demonstrated technical leadership at staff scope:",
+   "present": false,
+   "main": true
+  },
+  {
+   "industry": "logistics",
+   "keyword": "ISO",
+   "text": "and construction management firms. Serve as the primary construction-side liaison with the utility/grid operator on interconnection-related construction activities.",
+   "present": false,
+   "main": true
+  },
+  {
+   "industry": "sre",
+   "keyword": "Go",
+   "text": "agendas, business reviews for member and supplier meetings, value proposals, and category insights. Capture and record information shared during voice of customer engagements",
+   "present": false,
+   "main": true
+  },
+  {
+   "industry": "channel_sales",
+   "keyword": "VAR",
+   "text": "with both Cisco and Juniper network devices Strong working knowledge of the various routing protocols (BGP, OSPF, VRF, MPLS, 802.1x). In-depth knowledge of KG-175",
+   "present": false,
+   "main": true
+  },
+  {
+   "industry": "investmentBanking",
+   "keyword": "CPA",
+   "text": "process and use any personal data that you provide to us in accordance with our CCPA Notice and Privacy Policy . For additional information, please contact",
+   "present": false,
+   "main": true
+  },
+  {
+   "industry": "manufacturing",
+   "keyword": "ERP",
+   "text": "Ventures. The raise follows a breakout year, with our business growing 8x as enterprise customers across industries adopt our category, AI‑moderated research, as the new",
+   "present": false,
+   "main": true
+  },
+  {
+   "industry": "sales",
+   "keyword": "ARR",
+   "text": "brings deep manufacturing accounting expertise, hands-on experience with consignment arrangements, and the business acumen to work fluidly across Finance, Supply Chain, and",
+   "present": false,
+   "main": true
+  },
+  {
+   "industry": "customerService",
+   "keyword": "SLA",
+   "text": "Deliverables: Conduct deep discovery with executive stakeholders and data owners to translate high-level business goals into precise source-system queries, data tables, and feeds.",
+   "present": false,
+   "main": true
+  },
+  {
+   "industry": "platformEngineering",
+   "keyword": "SQL",
+   "text": "- Own and improve our production infrastructure on AWS, including Kubernetes, PostgreSQL, S3, networking, IAM, and load balancing. - Manage infrastructure as code in",
+   "present": false,
+   "main": true
+  },
+  {
+   "industry": "education",
+   "keyword": "EdTech",
+   "text": "invasive, and solutions are personal. Through our expertise in Innovative Medicine and MedTech, we are uniquely positioned to innovate across the full spectrum of healthcare",
+   "present": false,
+   "main": true
+  },
+  {
+   "industry": "investmentBanking",
+   "keyword": "CFA",
+   "text": "technical certifications such as: SecurityX/CASP+, PRMP, GREM, GEIR, GNFA, or GCFA Peraton Overview Peraton is a next-generation national security company that drives",
+   "present": false,
+   "main": true
+  },
+  {
+   "industry": "growthMarketing",
+   "keyword": "SEM",
+   "text": "CAD software (Solidworks/Onshape) to design components, produce drawings, and build assemblies You deeply understand the full product development cycle If you have Python",
+   "present": false,
+   "main": true
+  },
+  {
+   "industry": "marketing",
+   "keyword": "SEO",
+   "text": "field execution and turnover. Track issues, constraints, changes, inspections, and closeout items through resolution. Support a high-urgency hyperscale data center build without",
+   "present": false,
+   "main": true
+  },
+  {
+   "industry": "manufacturing",
+   "keyword": "SAP",
+   "text": "newborns, children, adolescents, and young adults at clinics in the Virginia Beach, Chesapeake, and Suffolk area. Your work will span routine examinations, immunizations, and the",
+   "present": false,
+   "main": true
+  },
+  {
+   "industry": "supplyChainAnalytics",
+   "keyword": "ETL",
+   "text": "Choose from top-tier Medical, Dental, and Vision plans (Blue Cross Blue Shield MA, MetLife, VSP) Build your savings with our 401(k) plan, including a 100% company match on",
+   "present": false,
+   "main": true
+  },
+  {
+   "industry": "sales_engineering",
+   "keyword": "API",
+   "text": "Growth Equity at Goldman Sachs Alternatives, Index Ventures, Tiger Global, Balderton Capital, and Y Combinator. About the Role As a Senior Business Development Representative",
+   "present": false,
+   "main": true
+  },
+  {
+   "industry": "sre",
+   "keyword": "AWS",
+   "text": "offer is extended in a manner consistent with applicable federal, state, and local laws. This is applicable to the California Fair Chance Act, Los Angeles and San Francisco",
+   "present": false,
+   "main": true
+  },
+  {
+   "industry": "quantitativeFinance",
+   "keyword": "AWS",
+   "text": "compliance, training oversight, supervision, performance review, and adherence to all laws and regulations. Develop and implement operational procedures to optimize efficiency",
+   "present": false,
+   "main": true
+  },
+  {
+   "industry": "dataEngineering",
+   "keyword": "API",
+   "text": "organizations, to build meaningful future client relationships. Develop proposals by shaping fees, defining scope, selecting teams, establishing schedules, and preparing for",
+   "present": false,
+   "main": true
+  },
+  {
+   "industry": "cybersecurity",
+   "keyword": "AWS",
+   "text": "verification processes related to the role and in accordance with applicable laws. California Residents: Learn more about our privacy practices for applicants by",
+   "present": false,
+   "main": true
+  },
+  {
+   "industry": "securityEngineering",
+   "keyword": "REST",
+   "text": "a location’s zone designation, please refer to this resource . If a location of interest is not listed, please speak with a recruiter for additional information. Zone A:",
+   "present": false,
+   "main": true
+  },
+  {
+   "industry": "legal",
+   "keyword": "IP",
+   "text": "an organization dedicated to changing lives and dentistry. With partners across multiple states, Bluetree focuses on pediatric dentistry, orthodontics, and general",
+   "present": false,
+   "main": true
+  },
+  {
+   "industry": "hospitality",
+   "keyword": "REST",
+   "text": "for all aspects of our hiring process. For more on this, contact us at TA-Ops@purestorage.com if you’re invited to an interview. OUR COMMITMENT TO A STRONG AND INCLUSIVE",
+   "present": false,
+   "main": true
+  },
+  {
+   "industry": "legal",
+   "keyword": "IP",
+   "text": "of inception. One signal does two jobs: it flags fire risk before a fire starts, and equipment wear before it becomes an unplanned shutdown. Our system has already prevented",
+   "present": false,
+   "main": true
+  },
+  {
+   "industry": "platformEngineering",
+   "keyword": "REST",
+   "text": "one of America’s best-known, award-winning chefs and pioneer in the American hotel-restaurant model, and Christopher Hunsberger, a 30-year veteran of Four Seasons Hotels and",
+   "present": false,
+   "main": true
+  },
+  {
+   "industry": "dataEngineering",
+   "keyword": "API",
+   "text": "building a world of health around every individual — shaping a more connected, convenient and compassionate health experience. At CVS Health®,",
+   "present": false,
+   "main": true
+  },
+  {
+   "industry": "nonprofit",
+   "keyword": "REST",
+   "text": "federal insurance programs can be carried into retirement) Licensure: 1 full and unrestricted license from any US State or territory CME: Possible $1,000 per year",
+   "present": false,
+   "main": true
+  },
+  {
+   "industry": "platformEngineering",
+   "keyword": "AWS",
+   "text": "with criminal histories in a manner consistent with the requirements of all applicable laws. We do not ask about criminal history on our application, and we do not consider",
+   "present": false,
+   "main": true
+  },
+  {
+   "industry": "cloudSecurity",
+   "keyword": "REST",
+   "text": "in applying analytical thinking, process improvement skills, and emerging AI",
+   "present": false,
+   "main": false
+  },
+  {
+   "industry": "solutionsArchitecture",
+   "keyword": "Git",
+   "text": "technology experts. Our market reach, diverse solutions and services portfolio, and digital platform Ingram Micro Xvantage™ set us apart. Learn more at www.ingrammicro.com Come",
+   "present": false,
+   "main": true
+  },
+  {
+   "industry": "cloudSecurity",
+   "keyword": "REST",
+   "text": "you're part of a movement that belongs to something bigger. One that seeks out the restorative power of nature and is driven by our purpose to embolden explorers and preserve",
+   "present": false,
+   "main": true
+  },
+  {
+   "industry": "quantitativeFinance",
+   "keyword": "REST",
+   "text": "SAP Concur, and Navan. This position is also eligible to participate in Solidigm's restricted stock unit (RSU), restricted cash unit (RCU), and cash bonus programs. In",
+   "present": false,
+   "main": true
+  },
+  {
+   "industry": "securityEngineering",
+   "keyword": "Git",
+   "text": "need in a crowded marketplace. Ready to join the team that's defining the future of digital advertising? As a Senior Account Executive, you will act as a pure hunter within our",
+   "present": false,
+   "main": true
+  },
+  {
+   "industry": "dataScience",
+   "keyword": "R",
+   "text": "We Are: MassDevelopment, the state’s development finance agency and land bank, delivers",
+   "present": false,
+   "main": true
+  },
+  {
+   "industry": "securityEngineering",
+   "keyword": "API",
+   "text": "and rigorously manage KPIs across safety, productivity, inventory accuracy, working capital, and customer satisfaction Champion a culture of safety, accountability, and",
+   "present": false,
+   "main": true
+  },
+  {
+   "industry": "securityEngineering",
+   "keyword": "Machine Learning",
+   "text": "against real deployments rather than against benchmarks. PhD in computer science, machine learning, or a related field, or equivalent research experience 2 or more years of research",
+   "present": true,
+   "main": true
+  },
+  {
+   "industry": "nonprofit",
+   "keyword": "CI/CD",
+   "text": "engineering excellence across the organization: architecture standards, DevOps/CI-CD, observability, reliability engineering, cost management, and quality practices Apply",
+   "present": true,
+   "main": false
+  },
+  {
+   "industry": "consulting",
+   "keyword": "Problem Solving",
+   "text": "for one or more functional areas of laboratory sciences. Strong critical thinking and problem-solving skills. Experience using AI-based writing and graphics tools, with sound judgment in",
+   "present": true,
+   "main": false
+  },
+  {
+   "industry": "retail",
+   "keyword": "Cross-selling",
+   "text": "Increases referral volume from assigned accounts by promotion within business lines and cross selling among business lines through regular and ongoing solicitation/facilitation of referral",
+   "present": true,
+   "main": false
+  }
+ ]
+}

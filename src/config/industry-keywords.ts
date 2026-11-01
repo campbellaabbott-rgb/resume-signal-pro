@@ -1,5 +1,6 @@
 // Industry-specific keywords database
 // Keywords are ranked by importance for ATS matching
+import { resumeHasTerm } from "../../supabase/functions/free-keyword-scan/term-presence";
 
 export interface IndustryKeyword {
   keyword: string;
@@ -1626,16 +1627,15 @@ export function analyzeKeywordPresence(
   const config = findIndustryConfig(industryName);
   if (!config) return { present: [], missing: [] };
   
-  const normalizedResume = resumeText.toLowerCase();
   const present: IndustryKeyword[] = [];
   const missing: IndustryKeyword[] = [];
   
   for (const keyword of config.keywords) {
-    const normalizedKeyword = keyword.keyword.toLowerCase();
-    // Check for keyword presence (with word boundary awareness)
-    const isPresent = normalizedResume.includes(normalizedKeyword) ||
-      normalizedResume.includes(normalizedKeyword.replace(/\s+/g, '')) || // Handle no-space versions
-      normalizedResume.includes(normalizedKeyword.replace(/&/g, 'and')); // Handle & vs "and"
+    // A word of its own, in any of its spellings (no-space, hyphen, "&" as
+    // "and"), the scanner's own test (register S13-092): includes() ticked
+    // Git from "digital", REST from "interested", ERP from "interpersonal"
+    // and R from any "r".
+    const isPresent = resumeHasTerm(resumeText, keyword.keyword);
     
     if (isPresent) {
       present.push(keyword);

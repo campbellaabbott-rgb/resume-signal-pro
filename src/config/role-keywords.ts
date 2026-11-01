@@ -1,5 +1,6 @@
 // Role-specific keywords database
 // Keywords tailored to specific job titles beyond industry-level keywords
+import { resumeHasTerm } from "../../supabase/functions/free-keyword-scan/term-presence";
 
 export interface RoleKeyword {
   keyword: string;
@@ -18,7 +19,7 @@ export const ROLE_KEYWORDS: RoleKeywordConfig[] = [
   // Engineering & Tech Roles
   {
     title: 'Software Engineer',
-    aliases: ['software developer', 'programmer', 'swe', 'dev', 'coder'],
+    aliases: ['software developer', 'developer', 'programmer', 'swe', 'dev', 'coder'],
     seniority: 'all',
     keywords: [
       { keyword: 'Code Review', category: 'core', reason: 'Shows collaboration & quality focus' },
@@ -108,7 +109,7 @@ export const ROLE_KEYWORDS: RoleKeywordConfig[] = [
   },
   {
     title: 'UX Designer',
-    aliases: ['ux/ui designer', 'product designer', 'user experience designer', 'interaction designer'],
+    aliases: ['ux/ui designer', 'ux design', 'product designer', 'user experience designer', 'interaction designer'],
     seniority: 'all',
     keywords: [
       { keyword: 'User Testing', category: 'core', reason: 'Validation methodology' },
@@ -247,7 +248,7 @@ export const ROLE_KEYWORDS: RoleKeywordConfig[] = [
   },
   {
     title: 'HR Business Partner',
-    aliases: ['hrbp', 'people partner', 'hr manager'],
+    aliases: ['hrbp', 'human resources business partner', 'people partner', 'hr manager'],
     seniority: 'mid',
     keywords: [
       { keyword: 'Employee Relations', category: 'core', reason: 'Core responsibility' },
@@ -294,7 +295,7 @@ export const ROLE_KEYWORDS: RoleKeywordConfig[] = [
   // Customer Success
   {
     title: 'Customer Success Manager',
-    aliases: ['csm', 'client success', 'customer success specialist'],
+    aliases: ['csm', 'customer success', 'client success', 'customer success specialist'],
     seniority: 'mid',
     keywords: [
       { keyword: 'Customer Retention', category: 'core', reason: 'Core metric' },
@@ -309,37 +310,39 @@ export const ROLE_KEYWORDS: RoleKeywordConfig[] = [
   },
 ];
 
-// Find matching role config
+// Find matching role config. Aliases and title words are read as words of
+// their own (register S13-092): "software".includes("of") made every
+// "Director of Nursing" and "VP of Sales" a Software Engineer, and the alias
+// "dev" caught every "Business Development Manager" (it stood for
+// "developer", which is now an alias of its own). A title names a config when
+// it holds the config's title or one of its aliases as a phrase, or every word
+// of the config's title ("Senior Data Analyst" is a Data Analyst; "Store
+// Manager" is not a Product Manager, and an Interior Designer is not a UX
+// Designer). When several configs are named, the longest name wins, and a
+// phrase beats the same number of scattered words: a "Senior Backend
+// Developer" is a Backend Developer, not a developer; a "Product Marketing
+// Manager" is a Marketing Manager. Otherwise nothing: no card beats the wrong
+// one.
 export function findRoleConfig(roleTitle: string): RoleKeywordConfig | null {
   const normalized = roleTitle.toLowerCase().trim();
-  
+  if (!normalized) return null;
+
+  let best: RoleKeywordConfig | null = null;
+  let bestScore = 0;
   for (const config of ROLE_KEYWORDS) {
-    if (config.title.toLowerCase() === normalized) {
-      return config;
+    if (config.title.toLowerCase() === normalized || config.aliases.includes(normalized)) return config;
+    let score = 0;
+    for (const name of [config.title, ...config.aliases]) {
+      if (resumeHasTerm(roleTitle, name)) score = Math.max(score, name.split(' ').length + 0.5);
     }
-    if (config.aliases.some(alias => 
-      normalized.includes(alias) || alias.includes(normalized)
-    )) {
-      return config;
+    const titleWords = config.title.split(' ');
+    if (score === 0 && titleWords.every(word => resumeHasTerm(roleTitle, word))) score = titleWords.length;
+    if (score > bestScore) {
+      best = config;
+      bestScore = score;
     }
   }
-  
-  // Partial matching for common patterns
-  for (const config of ROLE_KEYWORDS) {
-    const titleWords = config.title.toLowerCase().split(' ');
-    const normalizedWords = normalized.split(' ');
-    
-    // Check if any significant words match
-    const matchingWords = titleWords.filter(word => 
-      word.length > 3 && normalizedWords.some(nw => nw.includes(word) || word.includes(nw))
-    );
-    
-    if (matchingWords.length >= 1) {
-      return config;
-    }
-  }
-  
-  return null;
+  return best;
 }
 
 // Analyze which role keywords are present in resume
@@ -350,15 +353,13 @@ export function analyzeRoleKeywords(
   const config = findRoleConfig(roleTitle);
   if (!config) return { present: [], missing: [], config: null };
   
-  const normalizedResume = resumeText.toLowerCase();
   const present: RoleKeyword[] = [];
   const missing: RoleKeyword[] = [];
   
   for (const keyword of config.keywords) {
-    const normalizedKeyword = keyword.keyword.toLowerCase();
-    const isPresent = normalizedResume.includes(normalizedKeyword) ||
-      normalizedResume.includes(normalizedKeyword.replace(/\s+/g, '')) ||
-      normalizedResume.includes(normalizedKeyword.replace(/-/g, ' '));
+    // A word of its own, in any of its spellings ("CI/CD", "CI-CD", "cicd"):
+    // the scanner's own test (S13-092).
+    const isPresent = resumeHasTerm(resumeText, keyword.keyword);
     
     if (isPresent) {
       present.push(keyword);
