@@ -633,14 +633,25 @@ describe("every anonymous writer on the list is bounded, and the budget is keyed
     for (const a of CLIENT_CALLABLE) {
       const f = fns.get(a.sig);
       if (!f || a.roles !== "anon" || !WRITES.test(f.body)) continue;
-      if (UNBUDGETED[a.sig]) continue;
+      if (UNBUDGETED[a.sig] || a.since) continue; // a writer opened after the census: the next test
       if (!/\bclient_write_allowed\s*\(/.test(f.body)) bad.push(`${a.sig} (${f.file}) writes with no budget`);
-      // A writer opened after the census is defined by the re-issue that lists it (its `since`).
-      const home = a.since ? readdirSync(MIG_DIR).find((n) => n.startsWith(`${a.since}_`)) : CENSUS_FILE;
-      if (f.file !== home) bad.push(`${a.sig}: its live definition is ${f.file}, not ${a.since ? "the census re-issue that lists it" : "the census"}`);
+      if (f.file !== CENSUS_FILE) bad.push(`${a.sig}: its live definition is ${f.file}, not the census`);
     }
     expect(bad, bad.join("\n")).toEqual([]);
     for (const sig of Object.keys(UNBUDGETED)) expect(ALLOW.has(sig), `${sig} is not on the allowlist any more`).toBe(true);
+  });
+
+  it("a writer opened after the census spends the budget too, and is defined by the census re-issue that lists it", () => {
+    const later = CLIENT_CALLABLE.filter((a) => a.since && a.roles === "anon" && WRITES.test(fns.get(a.sig)?.body ?? ""));
+    expect(later.map((a) => a.sig), "no writer opened after the census: this check reads nothing").toContain("public.log_seniority_correction(text,text,text,text,integer,text)");
+    const bad: string[] = [];
+    for (const a of later) {
+      const f = fns.get(a.sig)!;
+      if (!/\bclient_write_allowed\s*\(/.test(f.body)) bad.push(`${a.sig} (${f.file}) writes with no budget`);
+      const home = readdirSync(MIG_DIR).find((n) => n.startsWith(`${a.since}_`));
+      if (f.file !== home) bad.push(`${a.sig}: its live definition is ${f.file}, not ${home}, the census re-issue that lists it`);
+    }
+    expect(bad, bad.join("\n")).toEqual([]);
   });
 
   it("no client-callable function keys a rate limit on a value the caller passes", () => {
