@@ -11,6 +11,7 @@ import { detectCountryFromResume, effectiveCountryOf, phraseMatchesResume, resum
 import { detectCredibilityIssues } from "./date-credibility.ts";
 import { resolveLanguageName } from "../_shared/language-instruction.ts";
 import { FIXED_CHOICES_STAY_ENGLISH, normalizeScanReport } from "../_shared/scan-report-shape.ts";
+import { applyScoreProjection, buildScoreProjection } from './score-projection.ts';
 import { functionCeiling } from "../_shared/model-spend-gate.ts";
 import { attachScanMailSeal } from "../_shared/scan-mail-seal.ts";
 import { accountProStanding } from "../_shared/pro-standing.ts";
@@ -8913,6 +8914,17 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
         console.warn(`[FREE-KEYWORD-SCAN-STREAM] Thin model analysis served as partial (${owed.filter(Boolean).length}/${owed.length} owed sections)`);
         Object.assign(responseData, { partialResults: true, partialReason: 'thin_unfilled' });
       }
+
+      // ONE projection (S13-058), the primary's rule: Improvement Potential
+      // and the simulator's fix list read the same quick wins and keywords
+      // step, so "+N pts" is what ticking every fix reaches. This fork has
+      // no rule-based bullet check, so it adds no bullets step.
+      applyScoreProjection(responseData, buildScoreProjection({
+        score: Number(responseData.atsScoreEstimate) || 0,
+        quickWins: Array.isArray(responseData.quickWins) ? responseData.quickWins : [],
+        keywordNames: (Array.isArray(responseData.keywords) ? responseData.keywords : [])
+          .map((k: { keyword?: unknown }) => (typeof k?.keyword === 'string' ? k.keyword : '')),
+      }));
 
       // Every fixed choice and list the page draws holds a value it can draw,
       // before the report is cached or sent (S11-029).

@@ -6,6 +6,7 @@ import { getOnetExpectation } from "./onet-expectations.ts";
 import { evaluateCountryStandards } from "./country-standards.ts";
 import { computeParseQuality, parseResumeStructure, formatStructureForPrompt } from "./resume-structure.ts";
 import { detectResumeLanguage, formatLanguageForPrompt, languageNoticeOf } from "./resume-language.ts";
+import { applyScoreProjection, buildScoreProjection, fixPlanOf } from './score-projection.ts';
 import { groundedIn, normalizeForGrounding } from "./grounding.ts";
 import { hasMetric } from "./bullet-metrics.ts";
 import { detectEmploymentGaps, type GapAnalysis } from "./employment-gaps.ts";
@@ -3753,11 +3754,17 @@ ${resumeForPrompt}
         (severityOrder[a.severity ?? 'minor'] ?? 2) - (severityOrder[b.severity ?? 'minor'] ?? 2))
       .slice(0, 3);
 
-    // Compute projected score using quick win scoreImpact values when available
-    const qwScoreImpact = sortedQuickWins.slice(0, 3)
-      .reduce((sum: number, w: { scoreImpact?: number }) => sum + (w.scoreImpact ?? 4), 0);
-    const weakBulletImpact = Math.min(bulletAnalysis.weakBullets.length + (bulletAnalysis.quantRate < 40 ? bulletAnalysis.unquantifiedBullets.length : 0), 3) * 3;
-    const projectedScore = Math.min(95, Math.round(analysis.atsScoreEstimate + qwScoreImpact + weakBulletImpact));
+    // ONE projection (S13-058): the hero's projectedScore, the Fix Plan,
+    // Improvement Potential and the simulator's fix list all read this, from
+    // the quick wins served plus a bullets and a keywords step.
+    const scoreProjection = buildScoreProjection({
+      score: analysis.atsScoreEstimate,
+      quickWins: sortedQuickWins.slice(0, 3),
+      weakBulletCount: bulletAnalysis.weakBullets.length,
+      unquantifiedBulletCount: bulletAnalysis.quantRate < 40 ? bulletAnalysis.unquantifiedBullets.length : 0,
+      keywordNames: (keywords as Array<{ keyword: string }>).map((k) => k.keyword),
+    });
+    const projectedScore = scoreProjection.to;
 
     // Compute server-side scoreBreakdown as a fallback if AI didn't return one
     const ruleBreakdown = (() => {
@@ -3800,9 +3807,10 @@ ${resumeForPrompt}
         ? bulletAnalysis.unquantifiedBullets.slice(0, 3).map(b => ({ text: b.text, role: b.role }))
         : [],
       bulletQuantRate: bulletAnalysis.quantRate,
-      // Projected score after fixing quick wins + weak bullets
+      // Projected score after every fix in the one fix list (S13-058)
       projectedScore: projectedScore > analysis.atsScoreEstimate ? projectedScore : null,
     };
+    applyScoreProjection(responseData, scoreProjection);
     
     // Add multi-industry data if detected
     if (industryDetection.secondaryIndustry) {
@@ -4176,38 +4184,9 @@ ${resumeForPrompt}
     })();
     responseData.competitorSilhouette = competitorSilhouette;
 
-    // Fix roadmap — one ordered work plan combining quick wins + weak bullets + keywords
-    const fixRoadmap = (() => {
-      const steps: Array<{ step: string; minutes: number; scoreImpact: number }> = [];
-      for (const w of sortedQuickWins.slice(0, 3) as Array<{ fix: string; timeEstimate?: string; scoreImpact?: number }>) {
-        const mins = parseInt((w.timeEstimate || '10').match(/\d+/)?.[0] || '10', 10);
-        steps.push({ step: w.fix, minutes: Math.min(Math.max(mins, 1), 30), scoreImpact: w.scoreImpact ?? 4 });
-      }
-      if (bulletAnalysis.weakBullets.length > 0) {
-        steps.push({
-          step: `Rewrite your ${Math.min(bulletAnalysis.weakBullets.length, 3)} weakest bullets using the before/after examples above`,
-          minutes: 15,
-          scoreImpact: 5,
-        });
-      }
-      const kwNames = (keywords as Array<{ keyword: string }>).slice(0, 3).map(k => k.keyword);
-      if (kwNames.length > 0) {
-        steps.push({
-          step: `Work "${kwNames.join('", "')}" into your summary and experience bullets`,
-          minutes: 10,
-          scoreImpact: 6,
-        });
-      }
-      // Order by impact-per-minute, cap at 5 steps, add cumulative projection
-      steps.sort((a, b) => (b.scoreImpact / b.minutes) - (a.scoreImpact / a.minutes));
-      let cumulative = analysis.atsScoreEstimate;
-      const plan = steps.slice(0, 5).map((s, i) => {
-        cumulative = Math.min(95, cumulative + s.scoreImpact);
-        return { order: i + 1, ...s, projectedScoreAfter: cumulative };
-      });
-      const totalMinutes = plan.reduce((sum, s) => sum + s.minutes, 0);
-      return { steps: plan, totalMinutes, finalProjectedScore: cumulative };
-    })();
+    // Fix roadmap: the one fix list (S13-058), ordered by points per minute,
+    // ending on the same projection the hero and Improvement Potential show.
+    const fixRoadmap = fixPlanOf(scoreProjection);
     responseData.fixRoadmap = fixRoadmap;
 
     // ── Enterprise reporting batch ──────────────────────────────────────────

@@ -19,6 +19,9 @@
  *           rewrite: its instruction text is rewriteTemplate, and rewrite is
  *           null, so "Open in builder with fixes applied" has nothing to write
  *           over the person's bullet.
+ *  S13-058  The hero's projected score, the Fix Plan's last step and
+ *           Improvement Potential are one number, read from one fix list
+ *           (scoreProjection), in both forks.
  *
  * Run against the shipped handlers, the model faked.
  */
@@ -329,5 +332,46 @@ describe("S13-038: a template is never a rewrite", () => {
     } finally {
       ANALYSIS.weakestBullets = saved;
     }
+  });
+});
+
+describe("S13-058: one report promises one score", () => {
+  const QUICK_WINS = [
+    { fix: "Add the count of SKUs from your Northwind role", timeEstimate: "10 min", impact: "high", scoreImpact: 5, category: "quantification" },
+    { fix: "Move Skills above Education", timeEstimate: "5 min", impact: "medium", scoreImpact: 4, category: "format" },
+    { fix: "Add a LinkedIn URL", timeEstimate: "2 min", impact: "low", scoreImpact: 3, category: "contact" },
+  ];
+  const withModel = async <T,>(run: () => Promise<T>) => {
+    const saved = { s: ANALYSIS.atsScoreEstimate, q: ANALYSIS.quickWins, i: ANALYSIS.improvementPotential };
+    Object.assign(ANALYSIS, { atsScoreEstimate: 58, quickWins: QUICK_WINS, improvementPotential: { level: "high", estimatedScoreIncrease: 15, topPriority: "Metrics" } });
+    try { return await run(); } finally { Object.assign(ANALYSIS, { atsScoreEstimate: saved.s, quickWins: saved.q, improvementPotential: saved.i }); }
+  };
+  type Proj = { from: number; to: number; gain: number; fixes: Array<{ impact: number; label: string }> };
+
+  it("the primary: hero, Fix Plan, Improvement Potential and the fix list agree", async () => {
+    const { json } = await withModel(() => scanPrimary({ resumeText: WEAK }));
+    const score = json.atsScoreEstimate as number;
+    const proj = json.scoreProjection as Proj;
+    const plan = json.fixRoadmap as { finalProjectedScore: number; steps: Array<{ projectedScoreAfter: number }> };
+    expect(proj.from).toBe(score);
+    expect(proj.to).toBeGreaterThan(score);
+    expect(json.projectedScore).toBe(proj.to);
+    expect(plan.finalProjectedScore).toBe(proj.to);
+    expect(plan.steps[plan.steps.length - 1].projectedScoreAfter).toBe(proj.to);
+    expect(score + (json.improvementPotential as { estimatedScoreIncrease: number }).estimatedScoreIncrease).toBe(proj.to);
+    expect(Math.min(95, score + proj.fixes.reduce((s, f) => s + f.impact, 0))).toBe(proj.to);
+    for (const w of json.quickWins as Array<{ fix: string; scoreImpact: number }>) {
+      expect(proj.fixes.find((f) => f.label === w.fix)?.impact).toBe(w.scoreImpact);
+    }
+  });
+
+  it("the fallback: Improvement Potential is what ticking every fix reaches", async () => {
+    const complete = await withModel(() => scanStream({ resumeText: WEAK }));
+    const score = complete!.atsScoreEstimate as number;
+    const proj = complete!.scoreProjection as Proj;
+    expect(proj.from).toBe(score);
+    expect(score + (complete!.improvementPotential as { estimatedScoreIncrease: number }).estimatedScoreIncrease).toBe(proj.to);
+    expect(Math.min(95, score + proj.fixes.reduce((s, f) => s + f.impact, 0))).toBe(proj.to);
+    for (const w of complete!.quickWins as Array<{ scoreImpact: unknown }>) expect(typeof w.scoreImpact).toBe("number");
   });
 });
