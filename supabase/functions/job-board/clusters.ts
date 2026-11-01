@@ -112,6 +112,26 @@ export function collapseClusters(
   return { jobs: out, rawConsumed };
 }
 
+/**
+ * S13-012: the page a window's last clusters left short, continued with the
+ * rows SQL ranks next (`deep`), minus any id already served (`seen`: the merged
+ * pool, ring rows included). `raw` is the deep rows consumed in SQL rank, the
+ * dropped ones counted, so the walk resumes exactly there. Null: nothing added.
+ */
+export function continuePastSeam(
+  window: Array<Record<string, unknown>>,
+  deep: Array<Record<string, unknown>>,
+  seen: ReadonlySet<string>,
+  limit: number,
+): { grouped: { jobs: Array<Record<string, unknown>>; rawConsumed: number }; raw: number } | null {
+  const at: number[] = [];
+  const past = deep.filter((r, i) => !seen.has(String(r.id ?? "")) && at.push(i) > 0);
+  const grouped = collapseClusters([...window, ...past], limit);
+  const used = grouped.rawConsumed - window.length;
+  if (used <= 0) return null;
+  return { grouped, raw: used >= at.length ? deep.length : at[used - 1] + 1 };
+}
+
 // Rationale: docs/job-board-index-notes.md#n1398-one-employer-two-stems
 const SAME_EMPLOYER_STEM = new Map([["notexternal", "bpcs"]]);
 

@@ -32,7 +32,7 @@
 // Pure: no I/O, so the Node suite walks every positive and negative.
 
 import { METRO_ALIASES, STATE_ALIASES } from "../_shared/location-terms.ts";
-import { toCode } from "../_shared/work-countries.ts";
+import { countryMentions } from "../_shared/work-countries.ts";
 
 /** What was read out of the query, said back to the caller. */
 export type QueryReading = {
@@ -85,11 +85,24 @@ function cityState(place: string): string | null {
   return Object.prototype.hasOwnProperty.call(STATE_ALIASES, code.toLowerCase()) ? `${m[1].trim()}, ${code}` : null;
 }
 
-/** A country by name (never a code), or null. */
+/**
+ * A country by name (never a code), or null. S13-041: a country word counts as
+ * a whole word, never as a language ("in Spanish", "French Camp"), never in a
+ * "New ..." place named after it ("New South Wales", "New Mexico"), and a
+ * compass America is a continent; northern Ireland is the UK's. Two countries
+ * read as none (n1418).
+ */
+const LANGUAGE = new Set(["german", "french", "spanish", "portuguese", "italian", "dutch", "swiss"]);
 function countryOf(place: string): string | null {
   const p = place.trim();
   if (p.length < 3 || /,/.test(p) || p.split(/\s+/).length > 3) return null;
-  return toCode(p);
+  const codes = new Set<string>();
+  for (const { code, alias, before } of countryMentions(p)) {
+    if (LANGUAGE.has(alias) || (/(?:^|\s)new(?:\s+(?:north|south|east|west))?$/.test(before) && !alias.startsWith("new"))) continue;
+    if (alias === "america" && /(?:^|\s)(?:latin|(?:north|south)(?:ern)?|central)$/.test(before)) continue;
+    codes.add(alias === "ireland" && /(?:^|\s)north(?:ern)?$/.test(before) ? "GB" : code);
+  }
+  return codes.size === 1 ? [...codes][0] : null;
 }
 
 /**

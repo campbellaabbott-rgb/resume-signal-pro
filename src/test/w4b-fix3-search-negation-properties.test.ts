@@ -27,6 +27,12 @@
  * fixtures/w4b-fix3-search/origin-main-exclusion.ts. ROUND4_COMPOUNDS and
  * ROUND4_PLACES are the lists round 4 pinned, kept here as data so the walk
  * still reaches the shapes they named; nothing in the shipped code reads them.
+ *
+ * S12-017 (2026-11-01, n1410) changed two shapes on purpose: a quoted pair
+ * after "not" or "-" is one excluded phrase, and a requirement verb after
+ * "not" is not the excluded word. Where either changed the answer, the walk
+ * holds it to a property instead of to main (s12017 below); every other
+ * generated query still answers exactly as origin/main does.
  */
 import { describe, expect, it } from "vitest";
 import * as SHIPPED from "../../supabase/functions/job-board/search-routing";
@@ -106,9 +112,34 @@ const OTHER_TITLES = ["Certified Med Tech", "Nuclear Med Tech - Per Diem", "Med 
   "Ecommerce Developer", "K12 Teacher", "Cashier (Full-Time & Part-Time)", "Cashier - PT", "Travel ER Nurse", "ER Nurse"];
 
 const bad: string[] = [];
+/** The two shapes S12-017 changed (n1410): a quoted pair after "not" or "-", or a requirement verb after "not". */
+const S12_017_SHAPE = /(?:^|\s)(?:not\s+|-)"|(?:^|\s)not\s+(?:requir|involv|includ|need)/i;
+const VERB_AFTER_NOT = /(\bnot\s+)(?:requir(?:e|es|ed|ing)|involv(?:e|es|ed|ing)|includ(?:e|es|ed|ing)|need(?:s|ed|ing)?)\s+(?!(?:for|the|a|an|of|in|at|to|on|not)(?:\s|$))(?=\S)/gi;
+/**
+ * Where an S12-017 shape changed the answer, it is held to what main gets wrong, not to main:
+ * a verb after "not" answers as main answers the query without the verb, and a
+ * quoted phrase leaves no quote in the search words and strikes every title
+ * main strikes that spells the phrase.
+ */
+function s12017(q: string, titles: readonly string[]): void {
+  const got = SHIPPED.splitExclusions(q);
+  if (!q.includes('"')) {
+    const want = ORIGIN_MAIN.splitExclusions(q.replace(VERB_AFTER_NOT, "$1"));
+    // Nothing excludable after the verb ("not requiring 8 hour shifts"): both run the query as typed.
+    if (!want.excluded.length && !got.excluded.length && got.positive === q) return;
+    if (JSON.stringify(got) !== JSON.stringify(want)) bad.push(`${q}: shipped ${JSON.stringify(got)}, origin/main without the verb ${JSON.stringify(want)}`);
+    return;
+  }
+  if (got.excluded.length && got.positive.includes('"')) bad.push(`${q}: a quote is searched: ${JSON.stringify(got)}`);
+  const want = ORIGIN_MAIN.splitExclusions(q);
+  for (const t of titles) {
+    if (ORIGIN_MAIN.titleExcluded(t, want.excluded) && !SHIPPED.titleExcluded(t, got.excluded)) bad.push(`${q} | ${t}: origin/main strikes it, shipped keeps it`);
+  }
+}
 /** The shipped answer to q, and its strikes over the given titles, against origin/main's. Records any difference. */
 function same(q: string, titles: readonly string[] = []): void {
   const got = SHIPPED.splitExclusions(q), want = ORIGIN_MAIN.splitExclusions(q);
+  if (S12_017_SHAPE.test(q) && JSON.stringify(got) !== JSON.stringify(want)) { s12017(q, titles); return; }
   if (JSON.stringify(got) !== JSON.stringify(want)) { bad.push(`${q}: shipped ${JSON.stringify(got)}, origin/main ${JSON.stringify(want)}`); return; }
   for (const t of [...titles, ...OTHER_TITLES]) {
     const a = SHIPPED.titleExcluded(t, got.excluded), b = ORIGIN_MAIN.titleExcluded(t, want.excluded);

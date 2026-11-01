@@ -93,10 +93,11 @@ import { advanceProgress, baseConsumedPrefix, isPassDone, type RefreshProgress }
 import { CANARIES, rawItemCount, aggregateVendorHealth, type CanaryResult } from "./vendor-canary.ts";
 import { detectExperience, isExperienceBand } from "./experience.ts";
 import { ageCutoffMs, textFieldShape, categoryParam, COMPANY_TOKEN_SHAPE, extraFilterParams, filterViolations, isUnfiltered, normalizeFilters, payParams, rpcBlindFilters, rescueVendorsParam, SALARIED_PERIODS, sendableSourcesParam, splitPage, salaryFromQueryText, salaryTokenInQuery, WIDENING_FILTERS } from "./filters.ts";
-import { foldName, foldTypeahead, pickRoute, rerankWindow, RETRIEVER_FOR, ringWordPattern, simpleRouteFilters, singularReading, splitExclusions, startsWithWord, stopwordTokens, titleExcluded, withLiveBrands, type TitleFilter } from "./search-routing.ts";
+import { BRAND_MIN_OPEN, foldName, foldTypeahead, pickRoute, rerankWindow, RETRIEVER_FOR, ringWordPattern, simpleRouteFilters, singularReading, splitExclusions, startsWithWord, stopwordTokens, titleExcluded, withLiveBrands, type TitleFilter } from "./search-routing.ts";
 import { planRankedPage, RANKED_WINDOW, RING_WINDOW, rowsReached, symbolLiteralRows } from "./paging.ts";
-import { collapseClusters, GROUP_OVERFETCH, interleaveByCompany, rowClusterKey, visibleCategories, mergeCompanyFacet } from "./clusters.ts";
+import { collapseClusters, continuePastSeam, GROUP_OVERFETCH, interleaveByCompany, rowClusterKey, visibleCategories, mergeCompanyFacet } from "./clusters.ts";
 import { EMPLOYER_ALIASES } from "./employer-aliases.ts";
+import { ROUTE_BRANDS } from "./route-brands.ts";
 import { expandQuery, ROLE_ALIASES } from "./search-alias.ts";
 import { rankedWithDeadline } from "./ranked-deadline.ts";
 import { classifyQuestion } from "../_shared/application-questions.ts";
@@ -112,7 +113,7 @@ import {
 } from "./abuse-guards.ts";
 import { splitTombstoned, type Tombstone } from "./tombstone.ts";
 import { laneRows, stampKeyOfJob, stampPlan, stampRows } from "./verification-stamp.ts";
-import { isStateCodeAlias, locationBranch, partMatchesTerm } from "./location-match.ts";
+import { ANCHOR, isStateCodeAlias, locationBranch, partMatchesTerm } from "./location-match.ts";
 import { cursorAfterFailure, emptyFirstPage, emptyInsideLapTotal, lapTotal, stampFeedTotal, workdayWindowed } from "./read-window.ts";
 import { clearOversize, heldOversize, loadOversizeEntries, noteOversize, oversizeStatusRows } from "./oversize-registry.ts";
 import { startGate } from "./start-gate.ts";
@@ -2388,7 +2389,10 @@ const LIVE_KEY_REFUSE: ReadonlySet<string> = new Set([
   "cna", "lpn", "lvn", "rn", "np", "pa", "cpa", "cdl", "hvac", "emt", "pta", "ota", "slp", "bcba", "rbt", "csr", "sdr",
   "bdr", "qc", "dba", "cfo", "ceo", "cto", "coo", "cmo", "vp", "gm", "crna", "cst", "phd", "mba", "aws", "sap", "erp",
   "crm", "seo", "ehs", "hse", "osha", "dot", "cad", "plc", "rf", "mep", "bim", "cnc", "pmp", "lmsw", "lcsw", "msw",
+  "all", "coop",
 ]);
+/** S12-014: the table, the short brands and the brand keys the table's names give ("CVS Health" gives cvs), alike in every isolate (n1415). */
+const ROUTE_TABLE = withLiveBrands({ ...EMPLOYER_ALIASES, ...ROUTE_BRANDS }, Object.values(EMPLOYER_ALIASES).map((e) => ({ ...e, open: BRAND_MIN_OPEN })), LIVE_KEY_REFUSE);
 let liveRouteAliases: { at: number; aliases: typeof EMPLOYER_ALIASES } | null = null;
 let liveRouteBuilding = false;
 /**
@@ -2402,10 +2406,10 @@ export function routeAliasesFor(client: SupabaseClient): typeof EMPLOYER_ALIASES
   if ((!built || now - built.at >= SUGGEST_MEMO_MS) && !liveRouteBuilding) {
     liveRouteBuilding = true;
     waitUntil(suggestEmployers(client).then((merged) => {
-      if (merged.length) liveRouteAliases = { at: Date.now(), aliases: withLiveBrands(EMPLOYER_ALIASES, merged, LIVE_KEY_REFUSE) };
+      if (merged.length) liveRouteAliases = { at: Date.now(), aliases: withLiveBrands(ROUTE_TABLE, merged, LIVE_KEY_REFUSE) };
     }).finally(() => { liveRouteBuilding = false; }));
   }
-  return built ? built.aliases : EMPLOYER_ALIASES;
+  return built ? built.aliases : ROUTE_TABLE;
 }
 
 /** A browse the list pages by its keyset cursor (pageWithInner's seek), so the offset it carries is never read. */
@@ -6140,8 +6144,8 @@ const INTENT_FILTERS: Array<{ re: RegExp; label: string; patch: Record<string, u
   { re: /\bremote(?:ly)? only\b/i, label: "remote only", patch: { workMode: "remote" } },
   // The bare work-mode words, per the measurement above.
   // Not the first word of a trade term: "Remote Sensing Analyst", "Hybrid Vehicle Technician" (L8-06).
-  { re: /\bremote(?:ly)?\b(?!\s+(?:sensing|pilots?|patient|monitoring|operated)\b)/i, label: "remote", patch: { workMode: "remote" } },
-  { re: /\bhybrid\b(?!\s+(?:vehicles?|electric|cars?|cloud|powertrains?|engines?)\b)/i, label: "hybrid", patch: { workMode: "hybrid" } },
+  { re: /\bremote(?:ly)?\b(?![\s-]+(?:sensing|pilots?|patient|monitoring|operated)\b)/i, label: "remote", patch: { workMode: "remote" } },
+  { re: /\bhybrid\b(?![\s-]+(?:vehicles?|electric|cars?|cloud|powertrains?|engines?)\b)/i, label: "hybrid", patch: { workMode: "hybrid" } },
   { re: /\bon[- ]?site\b/i, label: "onsite", patch: { workMode: "onsite" } },
   // Seniority phrases map onto the experience band the board already stores.
   { re: /\bno experience(?: (?:required|needed|necessary))?\b/i, label: "no experience", patch: { experience: ["entry"] } },
@@ -6173,7 +6177,7 @@ const INTENT_CONFLICTS: Record<string, string[]> = {
 function liftIntentFilters(
   rawQ: unknown,
   body: Record<string, unknown>,
-): { patch: Record<string, unknown>; labels: string[]; residualQ: string; placeExclusion?: true } | null {
+): { patch: Record<string, unknown>; labels: string[]; residualQ: string; placeExclusion?: true; notRemote?: true } | null {
   const q = String(rawQ ?? "");
   // noIntent: the caller (the page's undo) asked for every word as search text (L8-06).
   if (!q.trim() || body.noIntent === true) return null;
@@ -6182,14 +6186,26 @@ function liftIntentFilters(
   let residual = q.replace(/"[^"]*"/g, (m) => `\u0001${quoted.push(m) - 1}\u0001`);
   const patch: Record<string, unknown> = {};
   const labels: string[] = [];
+  let notRemote = false;
   for (const { re, label, patch: p } of INTENT_FILTERS) {
     if (!re.test(residual)) continue;
+    // S13-013: the one empty patch is the negated remote; it yields to a caller's work mode as a remote lift does (n1411).
+    const negation = Object.keys(p).length === 0;
     // Rationale: docs/job-board-index-notes.md#n684-if-object-keys-p-some-k
-    if (Object.keys(p).some((k) => (INTENT_CONFLICTS[k] ?? [k]).some((f) => body[f] !== undefined && body[f] !== null))) continue;
+    if ((negation ? ["workMode"] : Object.keys(p)).some((k) => (INTENT_CONFLICTS[k] ?? [k]).some((f) => body[f] !== undefined && body[f] !== null))) continue;
     // Rationale: docs/job-board-index-notes.md#n188-clash
     const clash = Object.keys(p).find((k) => k in patch && patch[k] !== p[k]);
     if (clash) continue;
-    residual = residual.replace(re, " ");
+    // S13-077: "remote-first" is lifted whole, never left as a "-first" NOT, unless another rule starts there (n1412).
+    const m = re.exec(residual)!;
+    const at = (i: number) => INTENT_FILTERS.some((r) => r.re.exec(residual.slice(i))?.index === 0);
+    let end = m.index + m[0].length, start = m.index;
+    const tail = /^-[a-z0-9]+/i.exec(residual.slice(end));
+    if (tail && !at(end + 1)) end += tail[0].length;
+    const head = /(?:^|\s)([^\s-]+)-$/.exec(residual.slice(0, start));
+    if (head && !at(start - head[1].length - 1)) start -= head[1].length + 1;
+    residual = `${residual.slice(0, start)} ${residual.slice(end)}`;
+    if (negation) notRemote = true;
     // Rationale: docs/job-board-index-notes.md#n685-const-restates-object-keys-p-every
     const restates = Object.keys(p).every((k) => k in patch && patch[k] === p[k]);
     Object.assign(patch, p);
@@ -6206,9 +6222,9 @@ function liftIntentFilters(
   // S12-172: a negated place is dropped from the words and named in ignoredFilters ("placeExclusion").
   const notPlace = place ? null : negatedTrailingPlace(residual, QUERY_FILLER);
   if (notPlace) residual = notPlace.head;
-  if (labels.length === 0 && !notPlace) return null;
+  if (labels.length === 0 && !notPlace && !notRemote) return null;
   residual = residual.replace(/\u0001(\d+)\u0001/g, (_m, i) => quoted[Number(i)] ?? "").replace(/\s+/g, " ").trim();
-  return { patch, labels, residualQ: residual, ...(notPlace ? { placeExclusion: true as const } : {}) };
+  return { patch, labels, residualQ: residual, ...(notPlace ? { placeExclusion: true as const } : {}), ...(notRemote ? { notRemote: true as const } : {}) };
 }
 
 // Rationale: docs/job-board-index-notes.md#n1195-function-ftssafe-t-string-string
@@ -6257,16 +6273,21 @@ function queryTerms(raw: unknown): { terms: string[]; dropped: string[]; liftedS
     .filter((x) => /[a-z0-9]/i.test(x));
   // Rationale: docs/job-board-index-notes.md#n687-const-money-salarytokeninquery-raw-token
   const money = salaryTokenInQuery(raw)?.token ?? null;
+  // S13-014: a US ZIP is no title word; it is dropped and named, as filler is, unless it is all there is
+  // or a unit follows ("26000 lbs") (n1414).
+  const zip = all.map((t, i) => /^\d{5}(?:-\d{4})?$/.test(t) && !/^(?:lbs?|pounds|gvwr?|sq|ft|feet|miles?|psi|rpm|btu|kw|volts?|hrs?|hours)$/.test(all[i + 1] ?? ""));
+  if (!all.some((t, i) => !QUERY_FILLER.has(t) && t !== money && !zip[i])) zip.fill(false);
+  const filler = (i: number) => QUERY_FILLER.has(all[i]) || zip[i];
   // "or" between two real words is the searcher's OR, not filler: "welder or fabricator" (L8-07).
-  const real = (t: string | undefined) => t !== undefined && !QUERY_FILLER.has(t) && t !== money;
-  const isOr = (t: string, i: number) => t === "or" && real(all[i - 1]) && real(all[i + 1]);
-  const kept = all.filter((t, i) => (!QUERY_FILLER.has(t) && t !== money) || isOr(t, i));
+  const real = (i: number) => i >= 0 && i < all.length && !filler(i) && all[i] !== money;
+  const isOr = (t: string, i: number) => t === "or" && real(i - 1) && real(i + 1);
+  const kept = all.filter((t, i) => (!filler(i) && t !== money) || isOr(t, i));
   if (kept.length === 0) {
     // Rationale: docs/job-board-index-notes.md#n190-money-null-return-terms-drop
-    if (money !== null) return { terms: [], dropped: all.filter((t) => QUERY_FILLER.has(t)), liftedSalary: true };
+    if (money !== null) return { terms: [], dropped: all.filter((_, i) => filler(i)), liftedSalary: true };
     return { terms: all, dropped: [], liftedSalary: false };
   }
-  return { terms: kept, dropped: all.filter((t, i) => QUERY_FILLER.has(t) && !isOr(t, i)), liftedSalary: money !== null };
+  return { terms: kept, dropped: all.filter((t, i) => filler(i) && !isOr(t, i)), liftedSalary: money !== null };
 }
 
 // Rationale: docs/job-board-index-notes.md#n1199-const-place_qualifiers-readonlyset-strin
@@ -6343,7 +6364,7 @@ function searchDisclosures(
   if (fromQuery !== null && applied.salaryFloor === fromQuery) out.salaryFromQuery = fromQuery;
   // Rationale: docs/job-board-index-notes.md#n691-const-l-locationterms-body-location
   const l = locationTerms(body.location);
-  if (l.expandedFrom) { out.locationExpandedFrom = l.expandedFrom; out.locationSearched = l.terms; }
+  if (l.expandedFrom) { out.locationExpandedFrom = l.expandedFrom; out.locationSearched = l.terms.map((t) => t.replace(ANCHOR, "")); }
   // Rationale: docs/job-board-index-notes.md#n692-if-maxageclamped-out-maxageclampedto
   if (maxAgeClamped) out.maxAgeClampedTo = 30;
   // Rationale: docs/job-board-index-notes.md#n693-if-applied-postedafter-out-postedafterus
@@ -9480,10 +9501,18 @@ async function serveList(
   if (intentLift) {
     body = { ...body, ...intentLift.patch, q: intentLift.residualQ };
   }
+  // S13-013: a negated remote strikes a title saying remote, as "-remote" does (n1411).
+  if (intentLift?.notRemote && !excludedTerms.includes("remote")) excludedTerms.push("remote");
   const { applied, ignored: ignoredFilters, maxAgeClamped } = (intentLift || excludedTerms.length)
     ? normalizeFilters(body, JOB_SOURCES.length)
     : preFilters;
   for (const f of textShape.ignored) if (!ignoredFilters.includes(f)) ignoredFilters.push(f);
+  // S13-015: words no title holds ("jobs near me") search nothing; an unlifted query says so (n1413).
+  const qWords = queryTerms(body.q).terms;
+  if (qWords.length && qWords.every((t) => QUERY_FILLER.has(t))) {
+    body = { ...body, q: "" };
+    if (!intentLift?.labels.length && !ignoredFilters.includes("q")) ignoredFilters.push("q");
+  }
   if (intentLift?.placeExclusion && !ignoredFilters.includes("placeExclusion")) ignoredFilters.push("placeExclusion");
   // Rationale: docs/job-board-index-notes.md#n841-const-agecutoff-applied-maxagedays-null
   const ageCutoff = applied.maxAgeDays === null ? null : ageCutoffMs(applied.maxAgeDays, Date.now(), body.tzOffset);
@@ -9805,7 +9834,7 @@ async function serveList(
   // reach the tsquery parser back inside its quotes, or the tip is a lie.
   const qText = phraseText(qt.terms).slice(0, 200) || (qt.liftedSalary ? "" : String(body.q ?? "").trim().slice(0, 200));
   // The router's employer keys: the table, plus the live employer list's (S12-014).
-  const routeAliases = qText ? routeAliasesFor(client) : EMPLOYER_ALIASES;
+  const routeAliases = qText ? routeAliasesFor(client) : ROUTE_TABLE;
   /** The SIMPLE route's split title match, with an employer's boards beside its key (S12-014). */
   const simpleSplit = (q: string) => simpleRouteFilters(ftsSafe(q), ROLE_ALIASES, routeAliases);
 
@@ -10399,7 +10428,7 @@ async function serveList(
 
       const t_search_jobs_3 = Date.now();
       // On a clock: a missed full call is answered by the title tier (S11-009, n482).
-      const rankedAnswer = await rankedWithDeadline(async (titleOnly) => await client.rpc("search_jobs", {
+      const rankedCall = (page: { p_limit: number; p_offset: number }, titleOnly: boolean) => client.rpc("search_jobs", {
         p_q: expandedQ,
         p_fresh_cutoff: freshCutoffIso,
         p_location: rankedLocationParam(applied.location),
@@ -10420,11 +10449,14 @@ async function serveList(
         ...(applied.workMode ? { p_work_mode: applied.workMode } : {}),
         ...(applied.employmentType ? { p_employment_type: applied.employmentType } : {}),
         ...(applied.excludeAgencies ? { p_exclude_agencies: true } : {}),
+        ...page,
+        ...(titleOnly ? { p_title_only: true } : {}),
+      });
+      const rankedAnswer = await rankedWithDeadline(async (titleOnly) => await rankedCall({
         // Rationale: docs/job-board-index-notes.md#n350-p-limit-pageplan-plimit
         p_limit: pagePlan.pLimit,
         p_offset: pagePlan.pOffset,
-        ...(titleOnly ? { p_title_only: true } : {}),
-      }), budgetLeft);
+      }, titleOnly), budgetLeft);
       const { data: ranked, error: rankErr } = rankedAnswer;
       markFrom("search_jobs", t_search_jobs_3);
       if (rankedAnswer.timedOut) {
@@ -10975,6 +11007,18 @@ async function serveList(
             ? offset + rankedGrouped.rawConsumed >= rankedScored.length
             : offset + rankedGrouped.rawConsumed >= RANKED_WINDOW
         );
+        // S13-012: a page the window's last clusters left short continues past the seam, in SQL rank (n1417).
+        let seamRaw = 0;
+        const seamReached = !deepPage && deepPageable && rankedRows.length >= RANKED_WINDOW && (ringMerged ? poolExhausted && ringResolved : offset + rankedGrouped.rawConsumed >= RANKED_WINDOW);
+        if (seamReached && groupSimilar && rankedGrouped.jobs.length < limit && budgetLeft() > 2_000) {
+          try {
+            const t_seam = Date.now();
+            const { data: deep } = await withDeadline(rankedCall({ p_limit: fetchLimit, p_offset: RANKED_WINDOW }, rankedAnswer.cut), Math.min(1_500, budgetLeft())) as { data: unknown[] | null };
+            markFrom("seam_topup", t_seam);
+            const past = continuePastSeam(rankedWindow, ((deep ?? []) as unknown[]).map(rowToJob) as Array<Record<string, unknown>>, mergedSeen, limit);
+            if (past) ({ grouped: rankedGrouped, raw: seamRaw } = past);
+          } catch { /* the short page is still correct */ }
+        }
         // Rationale: docs/job-board-index-notes.md#n380-deeppage-scoreranked-rankedgrouped
         if (deepPage && scoreRanked && rankedGrouped.jobs.length > 1) {
           rankedGrouped = { ...rankedGrouped, jobs: rerankWindow(rankedGrouped.jobs, [qText, ...expansions]) };
@@ -11119,7 +11163,7 @@ async function serveList(
             ? { sortScope: "relevanceWindow", sortScopeRows: ringMerged ? RING_WINDOW : RANKED_WINDOW }
             : {}),
           // Rationale: docs/job-board-index-notes.md#n934-nextoffset-poolexhausted-ring_window-off
-          nextOffset: poolExhausted ? RING_WINDOW : offset + rankedGrouped.rawConsumed,
+          nextOffset: poolExhausted ? RING_WINDOW + seamRaw : seamRaw ? RANKED_WINDOW + seamRaw : offset + rankedGrouped.rawConsumed,
           // Rationale: docs/job-board-index-notes.md#n389-hasmore-deeppage
           hasMore: deepPage
             ? (rankedSequence.length > rankedGrouped.rawConsumed || rankedRows.length >= fetchLimit)

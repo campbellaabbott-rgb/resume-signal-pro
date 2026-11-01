@@ -22001,3 +22001,163 @@ later visit sees no country move. The patches queue after the read rows', so
 the caps keep theirs first, and they log nothing (country is derived). Corpus:
 1,917 live triples, 1,536 strings, over 45 location searches on 2026-10-31;
 it fires on exactly six strings, each misfiled.
+
+## n1410-a-quoted-phrase-is-one-exclusion
+
+In `supabase/functions/job-board/search-routing.ts`, above: `const NOT_LEAD_VERB` and in `titleExcluded`.
+
+A QUOTED PHRASE AFTER "NOT" OR "-" IS EXCLUDED WHOLE, AND A REQUIREMENT VERB IS
+NOT THE THING EXCLUDED (S12-017, 2026-11-01). splitExclusions split on
+whitespace, so -"team lead" excluded 'team' and searched 'lead"' (a stray
+quote the tsquery read as text), and "nurse not requiring night shifts"
+excluded 'requiring' and searched 'night shifts', the very titles the person
+asked to hide. Now a balanced "…" pair is one word: after "not" or "-" it is
+one excluded phrase, matched across a space, hyphen or slash, its last word
+singular or plural ("Team-Lead", "Night Shifts"). A requirement verb after
+"not" (require/involve/include/need and their forms) passes the "not" to the
+next word, unless that word is a stopword or another "not", so the rest reads
+as main reads "not night shifts". Everything else is main's rule, byte for
+byte in behaviour: the bare "nurse not night shift" still excludes 'night'
+only, because a word after the excluded one is as often a wanted word
+("engineer not manager python"). Measured on the 1,191-query labelled corpus
+(fixtures/w4b-fix3-search): main 765 right, this rule 785, none of main's
+lost; 75 self-break queries unchanged; and a 626-query corpus over 587 live
+titles (2026-11-01, 20 seed probes): 266 queries changed, all quoted or verb
+shapes, main wrong on all 266, this rule on none, the other 360 identical
+(corpora/search/s12-017-exclusions-main-vs-mine.json).
+
+## n1411-a-negated-remote-strikes-the-remote-reading
+
+In `supabase/functions/job-board/index.ts`, above: `const negation = Object.keys(p).length === 0;` and `if (intentLift?.notRemote`.
+
+"NO REMOTE NURSE" SERVED A PAGE OF REMOTE NURSES (S13-013). The negated-remote
+rule has an empty patch on purpose (there is no "not remote" work-mode filter,
+n186), so it pushed no label, and a lift with no label returned null: the
+query ran as typed and the page was 20 of 20 remote rows. Now the negated
+remote leaves the query and the answer carries notRemote; the handler adds
+'remote' to the title exclusion, as typing "-remote" does, so the page names
+it in the existing banner and strikes titles that say remote. A caller's own
+work-mode filter wins, as it does over a remote lift (INTENT_CONFLICTS). Not
+done: a remote row whose title does not say remote still shows; the board has
+no negative work-mode filter to send.
+
+## n1412-a-hyphened-word-leaves-with-the-work-mode
+
+In `supabase/functions/job-board/index.ts`, above: `const m = re.exec(residual)!;`.
+
+"REMOTE-FIRST ENGINEER" SEARCHED "-FIRST ENGINEER" (S13-077). The bare remote
+rule matched 'remote' inside 'remote-first' and residual.replace left
+'-first', which websearch reads as NOT first. Now the lift cuts by the match's
+own span plus one word hyphened onto either side ('remote-first',
+'fully-remote', '100%-remote'), unless that word starts another rule
+('remote-full-time', 'hybrid-remote' keep main's reading). The trade-term
+lookaheads take a hyphen too, so 'remote-sensing analyst' is searched, not
+lifted. Corpus: 1,130 queries (20 live seeds x compound, negated, plain and
+trade shapes, plus all 587 live titles as queries): main wrong 317, this rule
+1 ('work near me', main's answer too), never worse
+(corpora/search/s13-013-077-015-intent-main-vs-mine.json).
+
+## n1413-words-no-title-holds-search-nothing
+
+In `supabase/functions/job-board/index.ts`, above: `const qWords = queryTerms(body.q).terms;`.
+
+"JOBS NEAR ME" SERVED UNRELATED DESCRIPTION MATCHES UNDER TOTAL 2 (S13-015).
+queryTerms keeps every word when all of them are filler, so 'jobs near me'
+searched those words in descriptions. Now a query of nothing but filler is
+blanked, the list browses, and when no intent lift explains the change the
+page names 'search words' as a filter it could not apply (ignoredFilters 'q',
+the existing jobsPage.filterName.q copy). A filler word beside a real one is
+dropped as before. The 587 live titles as queries: none blanked.
+
+## n1414-a-zip-is-dropped-and-named
+
+In `supabase/functions/job-board/index.ts`, above: `const zip = all.map(`.
+
+"NURSE 94105" SERVED NURSES FROM ANYWHERE, THE ZIP UNNAMED (S13-014). The ZIP
+was a search word; ranked search found no title holding it and the fuzzy and
+semantic tiers dropped it silently, so the page served nurses from Okmulgee
+and Dubai as matches. The board has no ZIP-to-place data, so the honest fix
+is the filler path: a standalone five-digit or ZIP+4 token is dropped from the
+search and named in droppedTerms ("ignored 94105, which don't appear in job
+titles"), unless it is all the query holds (searched as typed, as before) or
+a unit follows it ('26000 lbs', '50000 sq ft'). A bare five-digit number was
+already not a pay floor (n430). Corpus: 657 queries (17 ZIPs from live
+location strings in two orders, 10 'near' forms, 587 live titles, 26 number
+shapes): main wrong 44, this rule none; titles and number shapes identical
+except 'welder or 94105' (the OR has one side left)
+(corpora/search/s13-014-zip-main-vs-mine.json).
+
+## n1415-the-router-routes-alike-in-every-isolate
+
+In `supabase/functions/job-board/index.ts`, above: `const ROUTE_TABLE`; and `supabase/functions/job-board/route-brands.ts`.
+
+A SHORT EMPLOYER NAME ROUTED BY WHICHEVER ISOLATE ANSWERED (S12-014). The
+router's live brand keys ('cvs' from "CVS Health") are built per isolate in
+the background (n1172: awaiting the build was refuted on latency), so a cold
+isolate routed on the alias table alone and 'cvs pharmacist' answered 1 job
+where a warm one routed to CVS Health. Now the table every isolate loads is
+ROUTE_TABLE: the alias table, the short brands in route-brands.ts (UPS, 3M,
+P&G, HP and 17 more that brandKeysOf reads off the 2026-10-18 facet at open
+>= 250, every token checked live 2026-11-01), and the brand keys the table's
+own names give, through the same withLiveBrands refusals ('all' and 'coop'
+added: two employer names that are words). route-brands.ts is a file of its
+own because layoff-filings copies employer-aliases.ts byte for byte and its
+matcher takes the names as second names. Residual: an employer whose short
+name is in neither (100 to 249 open) still routes only once its isolate has
+read the employer list.
+
+## n1416-a-local-city-name-is-bound-to-its-country
+
+In `supabase/functions/_shared/location-terms.ts`, above: `const names = hit.anchor`; both `location-match.ts` copies; migration 20261102100000.
+
+"WIEN" SERVED VIENNA, VIRGINIA (S13-006). A city typed in its own language
+expands to its English name too, and the English name matched US towns: live,
+'Wien' with 'nurse' served 7 US rows of 9, 'Firenze' 41 of 50 (Florence SC,
+KY, AL), 'Genève' 20 of 50 (Geneva IL, NY). Now each name added for a local
+form carries the city's country, "Vienna@Austria", and the browse or() and
+the three search functions (migration 20261102100000, patched from the
+catalog) refuse it on a row placed in the US unless the row names the
+country. Not "placed in Austria": one country column cannot hold a
+multi-city posting ("Zurich, Switzerland; Amsterdam; London" is placed GB),
+and binding to the column dropped 6 right rows of 859. The typed form stays a
+plain substring and an English spelling is unchanged, so a US seeker typing
+Vienna still finds Vienna, VA. Corpus: 859 live rows over 18 probes of the
+local forms: main served 91 US homonym rows, this rule none, and lost no row
+in the city's country (corpora/search/s13-006-places-main-vs-mine.json).
+/v1 builds its filter from the same terms and branch builder, so it binds
+alike; its explain=1 trace shows the plain name and states the binding as
+outsideUsUnlessNaming ({"Vienna": "Austria"}), never "Vienna@Austria", and
+job-board strips the binding from locationSearched the same way.
+
+## n1417-a-short-page-at-the-seam-continues-past-it
+
+In `supabase/functions/job-board/index.ts`, above: `let seamRaw = 0;`; and `continuePastSeam` in `clusters.ts`.
+
+THE PAGE BEFORE THE SEAM FOLDED TO 7 CARDS (S13-012). rerankWindow sends a
+third-and-later posting from one employer to the window's tail, so the last
+pool positions are a few employers' repeats, and collapseClusters folded the
+page that reached them into a handful of cards (live q=nurse limit=50: offset
+174 served 7 cards from clusters of 113 and 80, then jumped to 400). Now a
+grouped page that reaches the seam short, with the SQL window full, reads
+search_jobs from rank 200 (same filters, same tier, 1.5 s), drops every id the
+pool already holds, and continues the page; nextOffset is the seam plus the
+deep rows consumed in SQL rank (dropped ones counted), so the deep regime
+resumes exactly there: no rank served twice, none skipped (walked in the
+test for both seams). A failure or a timeout serves the short page as before.
+Not done: a deep page whose own rows fold into a few clusters is still short.
+
+## n1418-a-country-word-inside-another-place
+
+In `supabase/functions/agent-mcp/query-place.ts`, above: `function countryOf`; `countryMentions` in `_shared/work-countries.ts` (and its worker twin).
+
+THE CONNECTOR READ "IN SPANISH" AS SPAIN (S13-041). readQuery took the place
+after "in" through toCode, which matches any country word the place contains:
+Spanish (ES), Latin America (US), New South Wales (GB), Northern Ireland (IE),
+New Mexico (MX). Now a country word counts only as a whole word naming the
+country: never a language, never inside a "New ..." place named after it,
+never in a compass America; northern Ireland reads GB; two countries read as
+none. Corpus: 1,115 places (every alias, 120 compass forms, 90 named places,
+806 parts of live location strings labelled with the country the board placed
+the row in): main read a wrong country 32 times, this rule 2 (Malta Branch and
+North Wales, both US towns main misreads too), never worse case by case
+(corpora/search/s13-041-country-main-vs-mine.json).

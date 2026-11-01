@@ -1,7 +1,8 @@
 // @vitest-environment node
 /**
  * NEGATED SEARCH PHRASES: THE CORPUS IS A RECORD, AND THE SHIPPED ANSWER IS
- * ORIGIN/MAIN'S ON EVERY CASE (wave 4 descope, 2026-10-25; S12-017 left wave 4).
+ * ORIGIN/MAIN'S ON EVERY CASE BUT TWO SHAPES (wave 4 descope, 2026-10-25;
+ * S12-017 fixed 2026-11-01 in the search project, n1410).
  *
  * WHAT HAPPENED. Four fix rounds changed how far "not" reaches (S12-017) and
  * how an excluded word strikes a title, and each recheck found inputs where
@@ -25,6 +26,14 @@
  * stay as the record of what main's rule gets wrong, for the separate search
  * project: main answers 765 of the 1,191 right by its label (the split and the
  * titles both), and 22 of the 75 self-break queries.
+ *
+ * S12-017 (2026-11-01). The search project changed two shapes and nothing
+ * else: a balanced quoted pair after "not" or "-" is one excluded phrase
+ * (-"team lead"), and a requirement verb after "not" ("not requiring travel")
+ * is not itself the excluded word. On every other query the answer is still
+ * origin/main's, split and titles. On those two shapes the shipped answer is
+ * right wherever main's is: 785 of the 1,191 right by label (20 more than
+ * main, none fewer), and the self-break set is unchanged.
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -71,12 +80,22 @@ function differsFromMain(c: Case): string {
   const off = [...strike, ...keep].filter((t) => titleExcluded(t, got.excluded) !== ORIGIN_MAIN.titleExcluded(t, want.excluded));
   return off.length ? `titles struck differently: ${JSON.stringify(off)}` : "";
 }
+/** The two shapes S12-017 changed: a quoted pair after "not" or "-", or a requirement verb after "not". */
+const S12_017_SHAPE = /(?:^|\s)(?:not\s+|-)"|(?:^|\s)not\s+(?:requir|involv|includ|need)/i;
 /** Whether an answer is right by the case's label: the split, and every title it names struck or kept as labelled. */
-function rightByLabel(c: Case): boolean {
-  const got = splitExclusions(c.q);
+function rightByLabel(c: Case, m: { splitExclusions: typeof splitExclusions; titleExcluded: typeof titleExcluded } = { splitExclusions, titleExcluded }): boolean {
+  const got = m.splitExclusions(c.q);
   if (![c.expect, ...(c.alsoAccept ?? [])].some((a) => normPos(a.positive) === normPos(got.positive) && sameExc(a.excluded, got.excluded))) return false;
   const { strike, keep } = probes(c);
-  return strike.every((t) => titleExcluded(t, got.excluded)) && !keep.some((t) => titleExcluded(t, got.excluded));
+  return strike.every((t) => m.titleExcluded(t, got.excluded)) && !keep.some((t) => m.titleExcluded(t, got.excluded));
+}
+const mainRight = (c: Case) => rightByLabel(c, ORIGIN_MAIN);
+/** "" when the shipped answer is origin/main's, or differs only on an S12-017 shape and is right wherever main is. */
+function unchangedOrBetter(c: Case): string {
+  const d = differsFromMain(c);
+  if (!d) return "";
+  if (!S12_017_SHAPE.test(c.q)) return `differs on a shape S12-017 did not change: ${d}`;
+  return mainRight(c) && !rightByLabel(c) ? `main is right by label and the shipped answer is not: ${d}` : "";
 }
 
 describe("the corpus is what it claims", () => {
@@ -104,9 +123,9 @@ describe("the corpus is what it claims", () => {
   });
 });
 
-describe("the shipped exclusion answers every corpus query exactly as origin/main does", () => {
+describe("the shipped exclusion answers every corpus query as origin/main does, but where S12-017 made it right", () => {
   it.each(CASES.map((c) => [c.id, c.q, c] as const))("%s %s", (_id, _q, c) => {
-    expect(differsFromMain(c), c.reason).toBe("");
+    expect(unchangedOrBetter(c), c.reason).toBe("");
   });
 });
 
@@ -117,21 +136,23 @@ describe("the shipped exclusion answers every self-break query exactly as origin
 });
 
 describe("the record of what main's rule gets wrong, for the separate search project", () => {
-  it("main, and so the shipped rule, answers 765 of the 1,191 right by label; the stored verdicts agree case by case", () => {
-    expect(CASES.filter(rightByLabel).length).toBe(765);
+  it("main answers 765 of the 1,191 right by label, as stored case by case; the shipped rule 785, none of main's lost", () => {
+    expect(CASES.filter(mainRight).length).toBe(765);
     expect(FILE.meta.measured["origin/main"]).toBe(765);
-    expect(CASES.filter((c) => rightByLabel(c) !== c.correct.main).map((c) => c.id)).toEqual([]);
+    expect(CASES.filter((c) => mainRight(c) !== c.correct.main).map((c) => c.id)).toEqual([]);
+    expect(CASES.filter((c) => rightByLabel(c)).length).toBe(785);
+    expect(CASES.filter((c) => mainRight(c) && !rightByLabel(c)).map((c) => c.id)).toEqual([]);
   });
 
   it("22 of the 75 self-break queries are right by label, as stored", () => {
     expect(SELF_BREAK.length).toBe(75);
-    expect(SELF_BREAK.filter(rightByLabel).length).toBe(22);
+    expect(SELF_BREAK.filter((c) => rightByLabel(c)).length).toBe(22);
     expect(SELF_BREAK.filter((c) => rightByLabel(c) !== c.correct.main).map((c) => c.id)).toEqual([]);
   });
 
   it("the descope recheck's 22 cases are recorded with main's own answers (main is right on one, tcp/ip)", () => {
     const dsc = CASES.filter((c) => c.id.startsWith("dsc-"));
     expect(dsc.length).toBe(22);
-    expect(dsc.filter(rightByLabel).map((c) => c.q)).toEqual(["engineer not tcp/ip"]);
+    expect(dsc.filter((c) => rightByLabel(c)).map((c) => c.q)).toEqual(["engineer not tcp/ip"]);
   });
 });

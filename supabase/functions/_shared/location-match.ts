@@ -2,6 +2,9 @@
 // (migrations 20261008100200, 20261009101000). Rationale: docs/job-board-index-notes.md#n429-a-state-code-is-not-a-substring
 // and #n480-a-state-code-that-leads-the-place
 
+/** "Name@Country": a name bound to one country (location-terms.ts locationTerms). */
+export const ANCHOR = /@([A-Za-z]+)$/;
+
 /** ", XX": a state or province code alias (location-terms.ts STATE_ALIASES). */
 export function isStateCodeAlias(t: string): boolean {
   return /^, [A-Z]{2}$/.test(t);
@@ -34,6 +37,7 @@ export function codePatterns(term: string): { trailing: string; noSpace: string;
  * test is the query's alone.
  */
 export function partMatchesTerm(part: string, term: string): boolean {
+  term = term.replace(ANCHOR, "");
   if (isStateCodeAlias(term)) {
     const p = codePatterns(term);
     return [p.trailing, p.noSpace, p.leading].some((re) => new RegExp(re).test(part));
@@ -49,6 +53,9 @@ export function partMatchesTerm(part: string, term: string): boolean {
  * the regex alike. Quoted: the values carry commas and parentheses.
  */
 export function locationBranch(term: string): string {
+  // S13-006: "Vienna@Austria" is the name on a row not placed in the US, or one naming Austria (n1416).
+  const a = ANCHOR.exec(term);
+  if (a) return `and(location.ilike."%${term.slice(0, a.index)}%",or(country.is.null,country.neq.US,location.ilike."%${a[1]}%"))`;
   if (!isStateCodeAlias(term)) return `location.ilike."%${term}%"`;
   const p = codePatterns(term);
   const c = term.slice(2);

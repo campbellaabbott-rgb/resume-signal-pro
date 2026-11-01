@@ -208,6 +208,19 @@ function joinedOnlyByOr(label: string): boolean {
   return / or /.test(between) && between.replace(/§|\b(?:or|either|the)\b/g, "").trim() === "";
 }
 
+/** Every country name a label holds as whole words, with the words before it ("new south" before "wales"). */
+export function countryMentions(name: string): Array<{ code: string; alias: string; before: string }> {
+  const t = ` ${norm(name)} `;
+  const out: Array<{ code: string; alias: string; before: string }> = [];
+  for (const [code, aliases] of Object.entries(COUNTRIES)) {
+    for (const a of aliases) {
+      const i = t.indexOf(` ${a} `);
+      if (i >= 0) out.push({ code, alias: a, before: t.slice(0, i).trim() });
+    }
+  }
+  return out;
+}
+
 /** Turn a candidate's free-text country into a code, or null if unrecognised. */
 export function toCode(country: string): string | null {
   const t = ` ${norm(country)} `;
