@@ -5734,5 +5734,21 @@
       "d": "À retravailler"
     },
     "redFlagsClean": "Votre CV semble propre : aucun problème majeur détecté."
+  },
+  "scanOutcome": {
+    "title": "Vous avez postulé avec ce CV ? Dites-nous comment ça s'est passé",
+    "body": "Anonyme, lié uniquement au rapport #{{reportId}}. C'est ainsi que nous mesurons, au lieu de deviner, quels scores décrochent vraiment des entretiens. Vous pouvez modifier votre réponse si les choses évoluent.",
+    "interview": "🎉 Entretien(s) obtenu(s)",
+    "noResponse": "📭 Pas encore de réponse",
+    "rejected": "❌ Refusé",
+    "recorded": "Enregistré — merci. Vos réponses nous aident à étudier quels scores mènent à des entretiens ; aucun chiffre public n'en est encore tiré.",
+    "notSaved": "Non enregistré — rien n'a été conservé. Réessayez plus tard."
+  },
+  "scanFeedback": {
+    "question": "Cette analyse vous a-t-elle été utile ?",
+    "thanks": "Merci pour votre retour !",
+    "yes": "Oui",
+    "no": "Non",
+    "notSaved": "Impossible d'enregistrer — rien n'a été conservé."
   }
 }

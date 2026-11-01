@@ -5695,5 +5695,21 @@
       "d": "Moet beter"
     },
     "redFlagsClean": "Je cv ziet er netjes uit — geen grote problemen gevonden."
+  },
+  "scanOutcome": {
+    "title": "Gesolliciteerd met dit cv? Vertel ons hoe het ging",
+    "body": "Anoniem, alleen gekoppeld aan rapport #{{reportId}}. Zo meten we, in plaats van te gokken, welke scores echt gesprekken opleveren. Je kunt je antwoord aanpassen als er iets verandert.",
+    "interview": "🎉 Gesprek(ken) gekregen",
+    "noResponse": "📭 Nog geen reactie",
+    "rejected": "❌ Afgewezen",
+    "recorded": "Opgeslagen — bedankt. Je antwoorden helpen ons te onderzoeken welke scores tot gesprekken leiden; er wordt nog geen openbaar cijfer van gemaakt.",
+    "notSaved": "Niet opgeslagen — er is niets vastgelegd. Probeer het later opnieuw."
+  },
+  "scanFeedback": {
+    "question": "Was deze analyse nuttig?",
+    "thanks": "Bedankt voor je feedback!",
+    "yes": "Ja",
+    "no": "Nee",
+    "notSaved": "Dat kon niet worden opgeslagen — er is niets vastgelegd."
   }
 }

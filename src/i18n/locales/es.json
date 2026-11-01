@@ -5734,5 +5734,21 @@
       "d": "Necesita trabajo"
     },
     "redFlagsClean": "Tu currículum se ve limpio: no detectamos problemas importantes."
+  },
+  "scanOutcome": {
+    "title": "¿Te postulaste con este currículum? Cuéntanos cómo te fue",
+    "body": "Anónimo, vinculado solo al informe #{{reportId}}. Así medimos, en lugar de suponer, qué puntuaciones consiguen entrevistas de verdad. Puedes cambiar tu respuesta si algo cambia.",
+    "interview": "🎉 Conseguí entrevista(s)",
+    "noResponse": "📭 Aún sin respuesta",
+    "rejected": "❌ Rechazado",
+    "recorded": "Guardado, gracias. Tus respuestas nos ayudan a estudiar qué puntuaciones llevan a entrevistas; todavía no publicamos ninguna cifra basada en ellas.",
+    "notSaved": "No se guardó: no quedó nada registrado. Inténtalo de nuevo más tarde."
+  },
+  "scanFeedback": {
+    "question": "¿Te resultó útil este análisis?",
+    "thanks": "¡Gracias por tu opinión!",
+    "yes": "Sí",
+    "no": "No",
+    "notSaved": "No se pudo guardar: no quedó nada registrado."
   }
 }

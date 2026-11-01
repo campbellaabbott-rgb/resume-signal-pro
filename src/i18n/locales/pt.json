@@ -5734,5 +5734,21 @@
       "d": "Precisa melhorar"
     },
     "redFlagsClean": "Seu currículo parece limpo — nenhum problema grave detectado."
+  },
+  "scanOutcome": {
+    "title": "Candidatou-se com este currículo? Conte como foi",
+    "body": "Anônimo, ligado apenas ao relatório #{{reportId}}. É assim que medimos, em vez de adivinhar, quais pontuações realmente geram entrevistas. Você pode atualizar sua resposta se algo mudar.",
+    "interview": "🎉 Consegui entrevista(s)",
+    "noResponse": "📭 Ainda sem resposta",
+    "rejected": "❌ Rejeitado",
+    "recorded": "Registrado — obrigado. Suas respostas nos ajudam a estudar quais pontuações levam a entrevistas; ainda não publicamos nenhum número com base nelas.",
+    "notSaved": "Não salvo — nada foi registrado. Tente novamente mais tarde."
+  },
+  "scanFeedback": {
+    "question": "Esta análise foi útil?",
+    "thanks": "Obrigado pelo feedback!",
+    "yes": "Sim",
+    "no": "Não",
+    "notSaved": "Não foi possível salvar — nada foi registrado."
   }
 }

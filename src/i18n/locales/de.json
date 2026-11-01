@@ -5695,5 +5695,21 @@
       "d": "Ausbaufähig"
     },
     "redFlagsClean": "Dein Lebenslauf wirkt sauber — keine größeren Probleme gefunden."
+  },
+  "scanOutcome": {
+    "title": "Mit diesem Lebenslauf beworben? Erzähl uns, wie es lief",
+    "body": "Anonym, nur mit Bericht #{{reportId}} verknüpft. So messen wir, statt zu raten, welche Werte tatsächlich zu Vorstellungsgesprächen führen. Du kannst deine Antwort ändern, wenn sich etwas tut.",
+    "interview": "🎉 Vorstellungsgespräch(e) bekommen",
+    "noResponse": "📭 Noch keine Antwort",
+    "rejected": "❌ Abgelehnt",
+    "recorded": "Gespeichert — danke. Deine Antworten helfen uns zu untersuchen, welche Werte zu Vorstellungsgesprächen führen; eine öffentliche Zahl entsteht daraus noch nicht.",
+    "notSaved": "Nicht gespeichert — es wurde nichts erfasst. Bitte versuch es später noch einmal."
+  },
+  "scanFeedback": {
+    "question": "War diese Analyse hilfreich?",
+    "thanks": "Danke für dein Feedback!",
+    "yes": "Ja",
+    "no": "Nein",
+    "notSaved": "Das konnte nicht gespeichert werden — es wurde nichts erfasst."
   }
 }

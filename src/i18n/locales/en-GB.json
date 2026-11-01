@@ -5695,5 +5695,21 @@
       "d": "Needs Work"
     },
     "redFlagsClean": "Your CV looks clean — no major issues detected."
+  },
+  "scanOutcome": {
+    "title": "Applied with this CV? Tell us how it went",
+    "body": "Anonymous, tied only to report #{{reportId}}. This is how we measure, rather than guess, which scores actually land interviews. You can update your answer if things change.",
+    "interview": "🎉 Got interview(s)",
+    "noResponse": "📭 No response yet",
+    "rejected": "❌ Rejected",
+    "recorded": "Recorded — thank you. Your answers help us study which scores lead to interviews; no public figure is built from them yet.",
+    "notSaved": "Not saved — nothing was recorded. Please try again later."
+  },
+  "scanFeedback": {
+    "question": "Was this analysis helpful?",
+    "thanks": "Thanks for the feedback!",
+    "yes": "Yes",
+    "no": "No",
+    "notSaved": "Couldn't save that — nothing was recorded."
   }
 }

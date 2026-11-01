@@ -5695,5 +5695,21 @@
       "d": "Kailangang Ayusin"
     },
     "redFlagsClean": "Malinis ang resume mo — walang malaking problemang nakita."
+  },
+  "scanOutcome": {
+    "title": "Nag-apply ka gamit ang resume na ito? Ikuwento kung paano ito napunta",
+    "body": "Anonymous, nakakabit lang sa report #{{reportId}}. Ganito namin sinusukat, sa halip na hulaan, kung aling mga score ang talagang nagkakaroon ng interview. Puwede mong baguhin ang sagot mo kapag may nagbago.",
+    "interview": "🎉 Nagka-interview",
+    "noResponse": "📭 Wala pang sagot",
+    "rejected": "❌ Tinanggihan",
+    "recorded": "Naitala — salamat. Tinutulungan kami ng mga sagot mo na pag-aralan kung aling mga score ang humahantong sa interview; wala pa kaming inilalabas na pampublikong numero mula rito.",
+    "notSaved": "Hindi na-save — walang naitala. Pakisubukang muli mamaya."
+  },
+  "scanFeedback": {
+    "question": "Nakatulong ba ang pagsusuring ito?",
+    "thanks": "Salamat sa feedback!",
+    "yes": "Oo",
+    "no": "Hindi",
+    "notSaved": "Hindi ito na-save — walang naitala."
   }
 }
