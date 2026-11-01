@@ -2335,7 +2335,78 @@
     "analysisProcessingDescription": "We konden geen gedetailleerde aanbevelingen uit je cv halen. Dit kan gebeuren als het cv-formaat ongewoon is of als er een probleem was tijdens de verwerking.",
     "bottomCta": "Pas deze wijzigingen toe op je cv en zie je interviewpercentage verbeteren!",
     "bottomCtaWithLinkedIn": "Pas deze wijzigingen toe op je cv en LinkedIn-profiel en zie je interviewpercentage verbeteren!",
-    "analysisSaved": "Deze analyse blijft {{analysisDays}} dagen achter de deellink hierboven bewaard en wordt daarna verwijderd. Download hem als pdf om je eigen kopie te houden."
+    "analysisSaved": "Deze analyse blijft {{analysisDays}} dagen achter de deellink hierboven bewaard en wordt daarna verwijderd. Download hem als pdf om je eigen kopie te houden.",
+    "enum": {
+      "industry": {
+        "technology": "Technologie",
+        "data_engineering": "Data-engineering",
+        "data_science": "Datawetenschap",
+        "machine_learning": "Machine learning",
+        "healthcare": "Gezondheidszorg",
+        "finance": "Financiën",
+        "marketing": "Marketing",
+        "sales": "Verkoop",
+        "engineering": "Techniek",
+        "education": "Onderwijs",
+        "hr": "HR",
+        "consulting": "Consultancy",
+        "legal": "Juridisch",
+        "retail": "Detailhandel",
+        "hospitality": "Horeca",
+        "manufacturing": "Productie",
+        "government": "Overheid",
+        "product_management": "Productmanagement",
+        "creative": "Creatieve sector",
+        "general": "Algemeen"
+      },
+      "experienceLevel": {
+        "entry": "Starter",
+        "mid": "Medior",
+        "senior": "Senior",
+        "executive": "Directie"
+      },
+      "jargonLevel": {
+        "low": "Laag",
+        "moderate": "Gemiddeld",
+        "high": "Hoog"
+      },
+      "severity": {
+        "low": "Laag",
+        "medium": "Gemiddeld",
+        "high": "Hoog"
+      },
+      "postFormat": {
+        "text": "Tekst",
+        "carousel": "Carrousel",
+        "poll": "Peiling",
+        "video": "Video",
+        "article": "Artikel"
+      },
+      "tone": {
+        "formal": "Formeel",
+        "casual": "Informeel",
+        "technical": "Technisch",
+        "creative": "Creatief",
+        "corporate": "Zakelijk",
+        "startup": "Start-up"
+      },
+      "companyType": {
+        "startup": "Start-up",
+        "scaleup": "Scale-up",
+        "enterprise": "Grote onderneming",
+        "agency": "Bureau",
+        "nonprofit": "Non-profit",
+        "government": "Overheid",
+        "unknown": "Onbekend"
+      },
+      "linkedInSection": {
+        "headline": "Kopregel",
+        "about": "Info",
+        "experience": "Ervaring",
+        "skills": "Vaardigheden",
+        "engagement": "Betrokkenheid"
+      }
+    }
   },
   "personalization": {
     "experience": {

@@ -2347,7 +2347,78 @@
     "bottomCta": "Appliquez ces changements à votre CV et observez votre taux d'entretien s'améliorer !",
     "bottomCtaWithLinkedIn": "Appliquez ces changements à votre CV et votre profil LinkedIn et observez votre taux d'entretien s'améliorer !",
     "analysisSaved": "Cette analyse est conservée {{analysisDays}} jours derrière le lien de partage ci-dessus, puis supprimée. Téléchargez-la en PDF pour garder votre propre copie.",
-    "pageCount_many": "{{count}} pages"
+    "pageCount_many": "{{count}} pages",
+    "enum": {
+      "industry": {
+        "technology": "Technologie",
+        "data_engineering": "Ingénierie des données",
+        "data_science": "Science des données",
+        "machine_learning": "Apprentissage automatique",
+        "healthcare": "Santé",
+        "finance": "Finance",
+        "marketing": "Marketing",
+        "sales": "Ventes",
+        "engineering": "Ingénierie",
+        "education": "Éducation",
+        "hr": "Ressources humaines",
+        "consulting": "Conseil",
+        "legal": "Juridique",
+        "retail": "Commerce de détail",
+        "hospitality": "Hôtellerie-restauration",
+        "manufacturing": "Industrie manufacturière",
+        "government": "Secteur public",
+        "product_management": "Gestion de produit",
+        "creative": "Métiers créatifs",
+        "general": "Général"
+      },
+      "experienceLevel": {
+        "entry": "débutant",
+        "mid": "intermédiaire",
+        "senior": "senior",
+        "executive": "dirigeant"
+      },
+      "jargonLevel": {
+        "low": "Faible",
+        "moderate": "Modéré",
+        "high": "Élevé"
+      },
+      "severity": {
+        "low": "faible",
+        "medium": "moyenne",
+        "high": "élevée"
+      },
+      "postFormat": {
+        "text": "Texte",
+        "carousel": "Carrousel",
+        "poll": "Sondage",
+        "video": "Vidéo",
+        "article": "Article"
+      },
+      "tone": {
+        "formal": "Formel",
+        "casual": "Décontracté",
+        "technical": "Technique",
+        "creative": "Créatif",
+        "corporate": "Corporate",
+        "startup": "Start-up"
+      },
+      "companyType": {
+        "startup": "Start-up",
+        "scaleup": "Scale-up",
+        "enterprise": "Grande entreprise",
+        "agency": "Agence",
+        "nonprofit": "Association",
+        "government": "Secteur public",
+        "unknown": "Inconnu"
+      },
+      "linkedInSection": {
+        "headline": "Titre",
+        "about": "Infos",
+        "experience": "Expérience",
+        "skills": "Compétences",
+        "engagement": "Engagement"
+      }
+    }
   },
   "personalization": {
     "experience": {
