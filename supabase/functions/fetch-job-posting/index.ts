@@ -9,7 +9,11 @@ import { runtimeResolver } from "./net-guard.ts";
 // .27 (the merge recheck, 2026-10-25): an Oracle requisition id with letters (REQ_820519) is read through the ById finder.
 // 2026-10-28.1 (S12-147 finished, fix/full-analysis-timeout): htmlToText drops hidden elements (display:none, visibility:hidden,
 // hidden, aria-hidden, font-size:0) with everything inside them before it strips the tags, through _shared/posting-text.ts
-// dropHiddenElements, one linear pass; nothing of main's past f8d72a9b rides along.
+// dropHiddenElements, one linear pass; nothing of main's past f8d72a9b rides along. Tags are read as a browser tokenizes
+// them (a quoted '>' is not the end, '/>' closes only a void element, attributes read by name, so "hidden" in a title or
+// class list hides nothing); !important and visibility:collapse hide; framework hiding classes (d-none, sr-only, a
+// Tailwind hidden with no responsive class beside it) and classes the page's own <style> hides unconditionally hide; a
+// <p>, <li>, <dt>/<dd>, <td>/<th>, <tr> or <option> whose end tag is left out ends where a browser ends it.
 const FN_BUILD = "fetch-job-posting.2026-10-28.1";
 
 const fetchImpl = (url: string, init: RequestInit) => fetch(url, init);
