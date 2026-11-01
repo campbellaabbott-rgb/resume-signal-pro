@@ -41,7 +41,10 @@ import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
 // gives the claim back instead of advancing the window.
 // 2026-10-25.1 (homepage switch-over, step 11; reservation home-pricing): the
 // "scan your resume" tip links /resume-checker, since "/" becomes the job board.
-const FN_BUILD = "send-search-digest.2026-10-25.1";
+// 2026-11-02.1 (board-stream ui round, S12-021): a watch saved on an employer
+// page that pools several boards carries `companies`, and the digest asks for
+// and links every one of them.
+const FN_BUILD = "send-search-digest.2026-11-02.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

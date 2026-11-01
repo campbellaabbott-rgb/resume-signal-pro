@@ -339,7 +339,8 @@ const SUPPORTED_METHODS = ["initialize", "tools/list", "tools/call", "prompts/li
 // 2026-10-11.36 (the second recheck of the descope, 2026-10-25): a trailing "remote" or "anywhere" the person excluded (a minus on it, or not, no, non, except and the place words before it) is never lifted into remote:true; the query goes to the board as typed, as origin/main sends it. apply_myself marks a cover-letter text box answeredBy "you" with cvMayHelp, as the answers panel does. The job card's salary field no longer calls a string the board wrote from a vendor's figures verbatim.
 // 2026-10-11.37 (the merge recheck, 2026-10-25): companiesUnresolved also names a name held because its one exact match is a staffing agency's board or has under 10 open roles, and the guide says to ask before using a held candidate.
 // 2026-10-11.38 (recheck 3, 2026-10-26): a name is held only when its one exact match has under 10 open roles, never because the catalogue labels the board an agency's, and a held name is one the board carries; recheckedAt and get_job say the stamp is when the board last read the employer's feed, which may not have included the posting.
-const FN_BUILD = "agent-mcp.2026-10-11.38";
+// 2026-11-02.1 (board-stream round, 2026-11-01): a country word inside another place is not that country (S13-041, query-place.ts countryOf over _shared/work-countries.ts countryMentions); a location naming a country, remote or "City, Country" is read as that filter and disclosed as locationReadAs (S9-002, readLocation); the keyless page cap holds whatever credential failed (S13-103, answerUnkeyed).
+const FN_BUILD = "agent-mcp.2026-11-02.1";
 /** Where a free key is minted — the page every refusal in this file points at. */
 const MINT_URL = "https://resumebooster.work/data-api";
 /** Where a pass is bought, signed in — the fix every pass refusal names. */

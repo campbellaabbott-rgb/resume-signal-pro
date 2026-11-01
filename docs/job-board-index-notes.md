@@ -22586,3 +22586,528 @@ of another version unpublishes rather than extends, and the reader shows only
 rows of the audited version. scripts/perk-audit.mjs stores the draw id and
 version in each file and refuses an old, undrawn or other-version file before
 sending anything. Nothing live changed: published_keys was [] on 2026-11-01.
+
+## n1470-import-createclient-type-supabaseclient
+
+In `supabase/functions/job-board/index.ts`, above: `import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";`
+
+Job board aggregator, DB-backed. Postings come from each company's
+OFFICIAL public job-board API (Greenhouse / Lever / Ashby); a refresh
+pass normalizes them into public.job_board_postings, where list queries
+run in SQL. "Apply" always points at the company's own posting page.
+
+  POST { action: "list", q?, location?, remote?, category?, companies?, limit?, offset? }
+  POST { action: "detail", id }      // full description text for the fit scan
+  POST { action: "refresh" }         // fan-out -> upsert -> prune; cron + SWR call this
+
+Freshness model: pg_cron hits refresh every 10 minutes; list also fires a
+background refresh (EdgeRuntime.waitUntil) when data is older than the
+TTL, so the board self-heals even if cron dies. Postings that vanish from
+a company's feed are pruned on the next successful pass — dead listings
+never linger. A refresh lock in job_board_meta stops stampedes.
+
+## n1471-const-slice_wall_budget_ms-_000
+
+In `supabase/functions/job-board/index.ts`, above: `const SLICE_WALL_BUDGET_MS = 120_000;`
+
+AND THE ONE THAT ACTUALLY RUNS OUT: WALL TIME.
+
+.41 bounded heap because the breadcrumbs showed 200MB at the moment of
+death. That reading was real but it was not the cause: on .41 slices went on
+dying at heap 70 and 132, far below both the 150MB bound and the ~256MB
+ceiling, so the bound never even fired. Recorded here because I shipped that
+theory to production and it was wrong.
+
+What separates the slices cleanly is DURATION. Every slice that ever wrote
+its terminal stamp finished inside 128s — 85.9, 93.3, 97.0, 102.8, 108.5,
+109.5, 115.0, 127.8 — and the one recorded death ran 158.3s. The isolate has
+a wall-clock ceiling and the slice had no clock: the only time bound in the
+whole loop was FETCH_TIMEOUT_MS on a single fetch.
+
+THE PROSE SAID 90s AND THE CONSTANT SAID 120s, FOR WEEKS. Corrected here
+rather than quietly, because the derivation the old sentence gave is the
+derivation that makes 120s frightening, and it was landing on a different
+number than the code.
+
+120s to STOP TAKING new boards. A board already in flight can add, per
+request, FETCH_TIMEOUT_MS (20s) for headers and as much for the body
+(bodyDeadline since .92; before it the body had no clock, S8-030) plus its
+upsert, and then the post-loop tail —
+stampSliceWork, the cursor advance, updateBoardFailures with its per-token
+exits and deletes, the deep-cursor and oversize meta writes,
+maybeKickMaintenance, chainNextSlice, recordSliceStats — runs on top. A
+slice that actually reaches this bound therefore lands somewhere around
+145-155s: OUTSIDE the 128s in which every slice that ever wrote a terminal
+stamp finished, and next to the 158.3s of the one recorded death.
+
+SO A WALL-STOPPED SLICE IS AN ALARM, NOT A MODE OF OPERATION. `wallStopped`
+riding true on slice_stats means the slice is expected to die: it loses its
+bookkeeping AND stops the chain, which turns one cron tick into a single
+slice instead of a ~17-hop chain — the ~960 boards/hour, 46-hour-lap
+regression of 2026-09-06. The bound that is supposed to stop the loop is
+SLICE_POSTING_BUDGET, and it is sized so that it fires with ~57s of this
+wall unspent even if a fifth worker buys nothing (see the arithmetic there;
+a guard pins it). This constant exists for the case where that sizing is
+wrong about a particular draw — it is a backstop, and a backstop being
+reached is news.
+
+WHY IT IS NOT SIMPLY LOWERED TO THE 90s THE OLD COMMENT CLAIMED, which would
+land a wall-stopped slice at ~115s and inside the envelope: the HOT phase
+shares this bound, and hotEmaMs is 100,554 today. A 90s wall would start
+truncating hot slices that currently complete — deferring giants and
+changing hot-cursor behaviour — to fix a case that the posting budget is
+already sized to prevent. That trade needs the hot-slice measurement this
+file does not yet take (see the shed thresholds), so the wall stays where it
+is and the sentence describing it is made true instead.
+
+## n1472-const-max_boards_per_slice
+
+In `supabase/functions/job-board/index.ts`, above: `const MAX_BOARDS_PER_SLICE = 80;`
+
+MEASURED, AT LAST. The .47 ramp was built to find this number and it found
+it within four minutes of deploying:
+    budget  8  slice completes   (works 3121 -> 3123)
+    budget 16  slice completes   (works 3123 -> 3125)
+    budget 24  slice DIES        (chainKick http_error, trace frozen at
+                                  "loop 24", works stops at 3125)
+So the threshold this file has chased through five versions — the posting
+budget, heap, wall time, and two cap guesses — sits between 16 and 24
+boards. The cause is still unknown; the boundary is not.
+
+The ceiling is the last value observed to SURVIVE, not the first to die. A
+ceiling of 80 left the ramp oscillating 8 -> 16 -> 24 -> death -> 8, and a
+death costs the whole chain plus a wait for the next cron tick, which is
+strictly worse than simply running at 16. So the ramp now climbs 8 -> 16 and
+holds there, and the machinery stays: raise this to 20 and the ramp will
+tell us within minutes whether 20 lives, without another guess.
+RAISED BACK, BECAUSE THE MEASUREMENT THAT SET IT WAS TAKEN ON BROKEN CODE.
+
+16 was the last budget observed to survive — measured on .47, while BOTH the
+105KB-a-posting memory blowout (.51/.52 capped it) and the yield that could
+never end (.53 fixed it) were still live. Every death that produced that
+number had one of those two causes, so the number describes the bugs, not
+the platform.
+
+And the cost of keeping it is now the larger problem: a budget of 16 splits
+to ~9 cold boards a slice, which is 4,889 slices for one pass over 44,000
+boards. Freshness has gone 403 -> 2,291 minutes across today while the
+rotation became steadily more correct — the slices complete, they are simply
+far too small. Correct and too slow is still broken.
+
+The ramp is the right instrument and it is already built: it climbs while
+hops complete and resets to the floor when one dies, so restoring the
+ceiling lets it re-find the real limit under the fixed code instead of me
+guessing a second number. The posting budget — 1,400, set from the measured
+per-posting cost — is what actually bounds a slice now; the board count only
+stops a slice made entirely of tiny boards from running long.
+
+## n1473-const-empty-emptyfirstpage-startoffset-a
+
+In `supabase/functions/job-board/index.ts`, above: `const empty = emptyFirstPage(startOffset, all.length, feedTotal);`
+
+Empty page with a non-zero advertised total = the tenant refused/failed us
+(rate-limit, transient) — NOT an empty board. Throwing marks the board
+failed so nothing is pruned. Without this, persistent empty responses
+eventually pass the two-pass + shrink-ratchet guards and delete the whole
+board (live case: Four Seasons pruned to 0 while advertising 1,963 jobs).
+Past the top an empty page wraps instead: the feed ended before the
+cursor, or will not serve that deep (n420).
+
+## n1474-const-experience_version
+
+In `supabase/functions/job-board/index.ts`, above: `const EXPERIENCE_VERSION = 3;`
+
+Experience-band rules version. A bump re-derives EVERY stored row from its
+title and stored description (backfill-experience, progress in
+job_board_meta experience_backfill) and writes the rows whose band or
+minimum changed, "unspecified"/NULL included.
+v2 (S12-013): v1 only filled NULL bands, so the L8-15/L7-09 parser fixes
+reached new rows and nothing else: 0 of 24 stored minimum-age figures
+reproduced, and Domino's served 4,018 Expert rows against 1,359 Entry.
+v3: n1420 (ages, stories, the executive rung); Personio rows are skipped (n1421).
+
+## n1475-const-slice_stats_write_ms-_000
+
+In `supabase/functions/job-board/index.ts`, above: `const SLICE_STATS_WRITE_MS = 5_000;`
+
+Slice-duration recorder — called at runRefresh's TERMINAL returns so the
+wall time covers everything a slice actually does: the fetch loop AND the
+tail (dormancy pruning, deep-cursor writes, and on pass-end the facets
+recompute + headline recount — measured 0.63s+ on its own). The first
+version stamped before that tail and undercounted ~27% on pass-end slices;
+a review caught it. EMA alpha 0.2, per phase. Fire-and-forget by design.
+
+KNOWN, ACCEPTED RACE (review finding, low): chain hops force past the slice
+lock, so two near-simultaneous slices can interleave this read-modify-write
+— the `slices` counter undercounts by one and the OTHER phase's EMA reverts
+by one sample (self-correcting). Instrumentation-grade data; the wrapMin
+stamp remains the load-bearing freshness measurement.
+
+## n1476-const-nextmode-row-as-record-string
+
+In `supabase/functions/job-board/index.ts`, above: `const nextMode = ((row as Record<string, unknown>).work_mode ?? null) as string | null;`
+
+A REFUSAL THAT CANNOT BE WRITTEN IS NOT A REFUSAL. This used to
+sit INSIDE the `row.remote !== prev.remote` test above, so the
+trinary could only move when the boolean moved with it — and
+remote is false for hybrid, for onsite AND for null, so every
+transition inside that set was unwritable. put() above cannot
+carry them either: it is stated-only and returns on a null.
+
+Net effect, measured live 2026-10-01 on
+ukg:…:692bd5bf-2be4-4ddd-9e24-e32c507bb43f: a UKG dropdown
+reading On-site under the title "Pre-Visit Specialist I - Call
+Center *Hybrid*". normalizeUkg refuses that contradiction and
+answers null, as .78 intended — and the row still served
+"hybrid", because hybrid→null leaves remote false→false and
+nothing wrote it. The fabrication .78 was shipped to remove
+outlived the bundle that removed it, on every row where the
+correction did not happen to flip the boolean.
+
+The pair is ONE fact (every normalizer derives
+`remote: workMode === "remote"` from the one trinary), so the
+gate is "did the normalizer compute the pair at all", not "did
+the boolean change". A null under that gate is this visit's
+computed answer, not vendor silence — which is the distinction
+the stated-only put() cannot make.
+
+## n1477-const-feed_short_ratio
+
+In `supabase/functions/job-board/index.ts`, above: `const FEED_SHORT_RATIO = 0.6;`
+
+── FEED-DARK GUARD ──────────────────────────────────────────────────
+THE HOLE truncatedFetch LEAVES IS THE WHOLE POINT. `windowed` is the
+vendor's own advertised total against what we fetched, so it catches
+a PARTIAL read. It cannot catch the other failure: a feed that
+answers 200 with a valid, nearly empty list. feedTotal then equals
+what we got, windowed is false, and every stored posting for that
+board falls through this branch and is logged as an employer
+takedown in a single second — a collection failure written into the
+one table that means "the company took the role down", where nothing
+downstream can tell it from 400 real fills.
+
+Marked, never suppressed. The closure log is the asset that cannot be
+re-derived; a batch we doubt is still INSERTED, carrying the numbers
+that produced the doubt so a reader can recompute the decision or
+overturn it. Exclusion happens at READ time, in the estimator.
+
+A FALSE POSITIVE HERE COSTS MORE THAN A FALSE NEGATIVE, and the two
+are not symmetric. A missed dark feed writes closures we later doubt.
+A wrongly-marked batch is DELETED FROM THE ESTIMATOR — the closure
+row is excluded by every reader and the posting itself is already
+hard-deleted, so the cohort does not fall back to being censored: it
+leaves the risk set entirely. That is truncation, the exact defect
+this whole change exists to remove, and there is no promotion path
+(nothing ever clears `suspect`). So the guard fires only when TWO
+independent things are true at once.
+
+(1) THE SHARE THAT WENT ABSENT IS IMPLAUSIBLE. Measured on the pass's
+RAW absence, not on the grace-confirmed subset. `vanished` only holds
+ids stamped on an EARLIER pass and still missing now, so an outage
+that widens across passes never trips a threshold read off it: 400
+stored, 100 absent on pass 1 (all newly stamped, `vanished` empty,
+ratio 0), 200 absent on pass 2 of which only the first 100 are
+confirmed — 100 against a 120 threshold, no fire, and 100 false
+closures land clean. `vanishedAll` is what actually measures this
+pass's darkness, and it is the same variable the 6h shrink ratchet
+one screen up already reads.
+
+Both terms of the ratio exclude agedOutIds, because they must count
+the SAME population. A freshness-cap wave inflates absence while
+producing ZERO closures (those route to the exit ledger). Excluding
+them from the numerator alone is not "merely cautious" — it is
+one-sided the wrong way: a 1,000-posting board that ages out 600 and
+simultaneously loses 250 others to a dark feed scores 250/1000 = 25%
+and stays clean, where against the 400 that could actually be removed
+it is 62%. Both counts now run over the removable population.
+(The per-row isAgedOut fallback below still catches rows whose STORED
+posted_at is stale, which this pre-loop count cannot see without
+reading them; that residual makes the guard more cautious, and it
+applies to numerator and denominator alike.)
+
+(2) THE FEED ITSELF CAME BACK SHORT. This is the term that separates
+a collection failure from an employer, and it is the one the first
+cut of this guard was missing. A dark feed serves nothing; a board
+doing something dramatic serves a full list. Without it, three
+ordinary events are silently deleted from the estimator:
+  - an ATS recycling requisition ids: 100 served against 100 stored,
+    35 ids rotated. 35 > 0.30 x 100 — and the rows deleted are the
+    RELIST arm the competing-risk estimator depends on, so the board
+    that churns hardest reports churn = NULL;
+  - an employer filling a hiring class: 60 stored, 19 filled, the
+    feed still serving the other 41. 19 > max(5, 18) — and those are
+    precisely the fastest fills, the same cohort the deleted 7-day
+    floor removed, pushing R(14) the same way;
+  - a small board on the cold lane, where one "pass" is a rotation
+    visit hours to days apart: 16 stored, 6 genuinely closed.
+    6 > max(5, 4.8) fires on the absolute floor alone.
+Served count is `r.jobs.length` — the vendor's normalised postings
+BEFORE our freshness cap, so a dating sweep cannot fake it (rowsById
+would, since the cap removes rows from it). At 0.6 the three cases
+above all serve too much to qualify (100/100, 41/60, 10/16) while the
+incident this exists for (400 stored, a near-empty list) and the
+widening half-board outage (200 served of 400) both do.
+
+No small-board exemption, deliberately, though the shrink ratchet has
+one. The ratchet exempts boards under 20 because a share alone is
+noisy at small n and it has no second signal; term (2) IS that second
+signal, and a 16-posting board whose feed truly returns nothing is a
+dark feed that should be marked.
+
+Marked, never suppressed. The closure log is the asset that cannot be
+re-derived; a batch we doubt is still INSERTED, carrying the numbers
+that produced the doubt so a reader can recompute the decision or
+overturn it. Exclusion happens at READ time, in the estimator.
+Term (1)'s two numbers are stamped on every row; term (2)'s served
+count has no column yet (20260906090000 added three), so a reader can
+recompute the share but must take the feed-health half on the log
+line below. Adding batch_served is the follow-up.
+
+Denominators are prefix-filtered to this source, exactly like
+`vanished`, so a multi-source token compares like with like;
+existingRows.length would silently deflate the ratio.
+
+Computed ONCE per board pass, before the 200-id chunk loop: chunks
+are smaller than the threshold on any board over ~667 stored rows, so
+a per-chunk guard would never fire on exactly the large boards a dark
+feed hurts most, and would split one 400-removal event into two 200s.
+
+Composition with what is already here: this branch is only reached
+when !truncatedFetch, so a windowed board never gets stamped at all;
+the two-pass grace and the 6h shrink ratchet DELAY rather than
+suppress, so during a hold nothing is written while the absence count
+keeps its full value; and the 24h superseded dedupe decides whether a
+row EXISTS, where this decides whether an existing row is ADMISSIBLE.
+Three orthogonal protections, none substituting for another. The 0.30
+share intentionally fires inside the 30-60% band the ratchet's 0.6
+lets through.
+
+BOTH TERMS MUST BE READ AT THE SCALE OF THE EVIDENCE. On a lap-proven
+windowed board the unit of evidence is the LAP, not the visit, and
+feeding visit-scale numbers to these two tests inverts both of them:
+the numerator would be "everything outside a 250-row window" (always
+implausible) and `servedInPass` would be the last window's remainder,
+perhaps 27 rows against 16,000 stored (always short). Every
+lap-proven closure batch would be stamped suspect — and a suspect
+batch is EXCLUDED by every reader, so the cohort leaves the risk set
+entirely. That is truncation wearing the mark's clothes, and it would
+have made this whole fix write closures nothing is allowed to count.
+So on a lap the numerator is the lap's absence and the served count
+is the lap's own total, measured against the same stored population.
+
+## n1478-async-function-freshnesssweep-client-sup
+
+In `supabase/functions/job-board/index.ts`, above: `async function freshnessSweep(client: SupabaseClient, freshCutoffMs: number, sliceWallStart: number): Promise<{ swept: number; stop: string `
+
+Freshness cap sweep: drop the aged tail (effective_posted past the window)
+so the corpus reclaims itself immediately rather than waiting a full cold
+rotation for the per-board prune. Bounded per pass (a single delete of the
+~65k initial backlog risks a statement timeout on the free tier); the
+ingestion filter keeps dated-old postings from re-entering, so this
+converges within a few passes and then only trims the daily trickle.
+
+ONE CHUNK AT A TIME, ON A CLOCK (S11-001). It used to read all 15,000
+ids, then every chunk's rows, and delete only at the very end, so a tail
+that died anywhere in the reads deleted nothing at all: the aged
+backlog grew from 20.5k to 36.6k while the sweep ran every pass. Each
+chunk is now read, tombstoned, logged and deleted before the next is
+taken, so whatever a pass gets through stays done. Since every chunk
+is gone before the next read, the next chunk is always the oldest 200
+again: no offset to drift. No new chunk starts once the pass-end hop is
+PASS_END_SWEEP_UNTIL_MS old, and the cap still bounds a pass.
+
+## n1479-const-data-nsver-await-client-from
+
+In `supabase/functions/job-board/index.ts`, above: `const { data: nsVer } = await client.from("job_board_meta").select("v").eq("k", "name_sync_version").maybeSingle();`
+
+One-time name sync: ~48 rung-3 census names shipped HTML-escaped
+("Bob's Main Street Auto &amp; Towing") and were decoded in the catalog —
+but the refresh is INSERT-ONLY by design (existing rows are never
+rewritten), so stored rows can never heal on their own. Find rows still
+carrying escaped names and sync them (postings + closures, which feed
+the actively-hiring leaderboard) to the decoded catalog name. Stamped.
+
+AND EVERY BOARD AN EMPLOYER-NAME OVERRIDE NAMES (S11-133, v4). Wave 3's
+179 names rename about 80,800 stored postings and their closures on 216
+boards; the migration that adds them used to do that in one
+transaction. The lane does it here instead, a board at a time, by the
+trigger's own precedence over company_name_overrides (name-sync.ts),
+into the closure rollup as well (S11-135). It runs LAST in the tail and
+stops taking boards at NAME_SYNC_UNTIL_MS from the hop's start.
+
+S12-015, S12-084: A CURSOR, AND NO GREEN RECEIPT WHILE BOARDS WAIT. The
+lane walked every token from the first each pass, so it re-read 444 boards
+it had already renamed and never reached the m's (Loblaw's tenant still
+read "Myview" on 7,312 rows), and it answered ok:true with 90 s a pass.
+name_sync_progress keeps the last token it finished and the tokens that
+failed; a hop resumes after the one and retries the others first. While a
+board waits the step answers ok:false with stop "clock" and runs again
+(pass-end.ts PASS_END_NAME_HOPS), and the receipt says how far it got.
+
+## n1480-const-ids-new-set-string
+
+In `supabase/functions/job-board/index.ts`, above: `const ids = new Set<string>();`
+
+FIFTEEN vendors reach here, not three. Only greenhouse / lever /
+smartrecruiters / oracle / workday return above; everything else in
+JobSourceKind falls through to membership — ashby, workable, bamboohr,
+recruitee, teamtailor, personio, breezy, pinpoint, paylocity, rippling,
+icims, adp, ukg, jazzhr, usajobs. The old comment here still named the
+original three, and that staleness is exactly what hid the missing
+windowed guard below: the vendors that CAN window (icims, rippling,
+adp, ukg, usajobs, jazzhr) all arrived after the comment was written.
+
+## n1481-const-truncatedfetch-memo-windowed-true
+
+In `supabase/functions/job-board/index.ts`, above: `const truncatedFetch = memo.windowed === true;`
+
+── WINDOWED-ABSENCE RULE ────────────────────────────────────────────────
+The SAME rule the refresh prune applies at `truncatedFetch`
+(`r.windowed === true`), stated here because this is the second place a
+posting's absence gets turned into a closure — and until now the only one
+that did it WITHOUT the rule.
+
+`windowed` means the vendor's OWN advertised total exceeded what we could
+fetch. A posting displaced past the page cap is absent from `ids` while
+being perfectly live on the employer's site: measured 2026-07-21, 7 of 8
+sampled "closures" on a windowed board were still open. ~4,348 of 44,542
+boards sit on capped fetchers, so this is not a corner.
+
+Reading absence as `false` here told a user "{{company}} took this one
+down" about a live role at a NAMED employer, stamped the posting
+missing_since so it vanished for everyone, and then DELETEd it with no
+closure row — a hole in the lifecycle log, the one asset that cannot be
+re-derived.
+
+Three states, and `null` is not a hedge: the verify action already treats
+null as "keep showing" (it is what the catch below returns for a network
+hiccup), and the audit counts it as `unknown` rather than scoring it
+against vendor accuracy. Absent + windowed is genuinely UNKNOWN.
+Spelled `X.windowed === true`, the SAME four tokens as the prune's
+`truncatedFetch` and the closure log's `partialRead`. Not a style
+preference: the guard asserts all three derivations are spelled
+identically, because three sites that mean the same thing and say it
+three ways are three sites that drift apart one edit at a time. The
+branch that turns this flag into a user-visible verdict is the LAST one
+that should be exempt from that rule.
+
+## n1482-const-dym-did_you_mean-string-body-q
+
+In `supabase/functions/job-board/index.ts`, above: `const dym = DID_YOU_MEAN[String(body.q ?? "").trim().toLowerCase()];`
+
+NO describedOnly DISCLOSURE FLAG. A filtered page must say so — but the
+only caller that sets hasDescription is the client's own résumé browse, so
+it already knows, and a server flag telling it what it just asked for
+would be an emitter with no reader (the defect
+a-disclosure-nobody-renders-is-not-a-disclosure.test.ts exists to catch).
+If this filter ever gains a caller that is NOT the thing rendering the
+copy, it needs a real disclosure here and a reader for it.
+A typo that exactly matches other people's typos defeats every rescue
+tier — the exact hits are real rows, just not what the searcher meant.
+
+## n1483-if-u-searchparams-get-action-sitemap
+
+In `supabase/functions/job-board/index.ts`, above: `if (u.searchParams.get("action") === "sitemap") {`
+
+THE SITEMAP THIS SERVED IS GONE, AND 410 IS HOW A CRAWLER LEARNS THAT.
+
+On 2026-09-23 the second sitemap line was taken out of robots.txt because
+the index behind it asked crawlers to index 767,391 board URLs that every
+one of them served the same bytes for. Only the ADVERTISEMENT was removed.
+This endpoint kept serving, and a crawler does not need robots.txt to
+reach a URL it already has.
+
+Measured 2026-10-01, a week after that change: the index still answered
+with its 30 pages, page 0 still listed 24,449 URLs in 3.3 MB, uncached at
+the edge, 7.4 s a page, and 200 to Bytespider, Baiduspider, PetalBot and
+curl alike. A full walk is ~733,000 URLs at ~81 KB each: about 59 GB of
+uncached egress, per crawler, as often as each one cares to repeat it.
+That is what the owner saw as a flood of foreign traffic, and none of it
+was anybody attacking us — we were handing it out.
+
+The guard written at the time pins robots.txt, reasoning that the lever
+behind the 767,391 was one line in a text file and not code. The lever
+was the road, not the sign. the-sitemap-never-advertises-a-posting-url-
+with-no-page.test.ts now holds both.
+
+410 and not 404, deliberately: a 404 says "not here, maybe later" and
+crawlers retry it for months, while 410 is the terminal one that drops
+the URL from the queue. Nothing in this repo calls this action — no code,
+no robots line, no test asserting it exists — so there is no caller to
+break. Cached for a week so the refusal does not become its own traffic.
+
+## n1484-const-lockage-state-data-updated_at-date
+
+In `supabase/functions/job-board/index.ts`, above: `const lockAge = state.data?.updated_at ? Date.now() - new Date(state.data.updated_at).getTime() : Infinity;`
+
+The stampede lock: no sweep inside 5 minutes of the row's last write,
+for anyone. The cron fires hourly (:07) and posts no credential, so
+anyone can send this action, and that guard alone let a loop run a
+sweep of 200 outbound probes every 5 minutes, twelve times the cron.
+.88 also holds a caller without a maintenance credential to one sweep
+per HOST_SWEEP_ANON_GAP_MS counted from the last ARRIVAL, never from
+completion: arrival to arrival is the cron's own hour, while a slow
+sweep's completion stamp lands minutes later and would make the next
+tick look early.
+
+## n1485-const-svarrive-state-data-v-as
+
+In `supabase/functions/job-board/index.ts`, above: `const svArrive = { ...(state.data?.v as Record<string, unknown> ?? {}), lastArrivedAt: new Date().toISOString() };`
+
+Stamp ARRIVAL before probing, not only completion. Overnight
+2026-08-23→24 the cursor advanced once in ten-plus cron ticks and
+there was no way to tell arrivals-that-died from ticks-that-never-
+fired. The arrival stamp also moves the stampede lock to entry time,
+where a lock belongs. CONDITIONAL since .88, on the stamp just read
+(or on the row not existing yet): callers arriving together all read
+an expired lock, and exactly one of them may sweep.
+
+## n1486-const-data-closure-await-client
+
+In `supabase/functions/job-board/index.ts`, above: `const { data: closure } = await client`
+
+Dead deep link. Before answering with a bare 404 (which the client
+can only render as a shrug), check the closure log: if we WATCHED
+this posting close, we know its title and company and when — enough
+for the client to say what happened and offer a search for similar
+live roles instead of a silent dead end.
+BY THE BOARD FIRST (S11-024): the ledger has no posting_id index, so
+the posting id alone read ~5M rows (7 s cold, 1.5 s warm on an
+unknown id). The token, already checked against the catalogue above,
+reaches job_board_closures_curve_idx (company_token, closed_at DESC).
+
+## n1487-if-v-length
+
+In `supabase/functions/job-board/index.ts`, above: `if (v.length) {`
+
+Both outcomes recorded, and the asymmetry is the point: if only failures
+were written, "no incidents" and "the check stopped running" would look
+identical. Clean pages sampled ~2% so a healthy board pays almost nothing;
+violations unsampled, because they should be zero.
+.88: an incident is one row PER FIELD (filter_integrity_incident.<field>),
+so a page tripping one field cannot erase another field's record, and
+nothing the caller wrote -- its filters, the `want` text -- is stored.
+Each field's row is rewritten at most once per INCIDENT_REWRITE_MS, so
+a request that trips the sensor is not a write per request.
+
+## n1488-const-s-splitpage-offset-twosubsetlimit
+
+In `supabase/functions/job-board/index.ts`, above: `const s = splitPage(offset, twoSubsetLimit, countA);`
+
+NO GROUPING OVER-FETCH ON THIS PATH, and the cliff is steep.
+
+`fetchLimit` is 3x `limit` when grouping is on, so it asks the `other`
+half for a much wider range. Measured on legal+DE at offset 60:
+
+    fetchLimit 180   500 after 43s
+    fetchLimit  60   200 in   5.1s
+
+Reading the unsorted bucket is simply expensive — it is 162,800 rows with
+no index supporting this shape — and the over-fetch multiplies exactly
+the query that cannot afford it. Grouping still runs, with `limit`
+candidates instead of 3x; slightly less clustering on a rare opt-in path
+is worth incomparably more than a 43-second 500 on page two.
+
+This BOUNDS the cost, it does not fix it: ~5s against a normal ~0.3s
+page. The real fix is an index for (category, country, effective_posted),
+which is a migration and a separate decision.

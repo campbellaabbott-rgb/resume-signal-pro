@@ -38,7 +38,10 @@ import { runSweep } from "./sweep.ts";
 
 // Provable from outside without a key: every response, the preflight
 // included, carries this in x-fn-build (stamped()).
-export const FN_BUILD = "employer-profiles.2026-10-12.2";
+// 2026-11-02.1 (board-stream round, S13-121): the audit draw passes
+// EXTRACTOR_VERSION and a launch or reaudit record names its drawId
+// (migration 20261102164000).
+export const FN_BUILD = "employer-profiles.2026-11-02.1";
 
 const CRON_HEADER = "x-employer-profiles-cron";
 
