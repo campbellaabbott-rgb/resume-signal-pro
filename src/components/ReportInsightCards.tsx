@@ -3,6 +3,7 @@ import { ChevronDown, Download, Share2, Wrench, ArrowRight, Scale, Globe } from 
 import { useToast } from "@/hooks/use-toast";
 import { FIX_POINTS_BASIS } from "@/lib/report-basis";
 import { SHARE_SITE } from "./ShareableScoreCard";
+import { scoreTone, TONE_HEX } from "@/lib/score-bands";
 
 /* ============================================================
  * New free-report insight cards:
@@ -569,7 +570,8 @@ export function ShareScoreCard({
     ctx.lineWidth = 26;
     ctx.strokeStyle = "#1f2c47";
     ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
-    const scoreColor = atsScore >= 75 ? "#34d399" : atsScore >= 55 ? "#fbbf24" : "#f87171";
+    // The report's one set of bands (src/lib/score-bands.ts, S13-019).
+    const scoreColor = TONE_HEX[scoreTone(atsScore)];
     ctx.strokeStyle = scoreColor;
     ctx.beginPath(); ctx.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + (Math.PI * 2 * atsScore) / 100); ctx.stroke();
     ctx.fillStyle = "#ffffff";

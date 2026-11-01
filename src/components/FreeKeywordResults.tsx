@@ -49,6 +49,7 @@ import { ScoreHero } from "./scorecard/ScoreHero";
 import { MetricCardsGrid } from "./scorecard/MetricCardsGrid";
 import { RedFlagsSection, KeywordsSection } from "./scorecard/RedFlagsKeywords";
 import { SectionNav } from "./scorecard/SectionNav";
+import { scoreTone } from "@/lib/score-bands";
 import { CollapsibleSection } from "./scorecard/CollapsibleSection";
 import { 
   EnhancedAnalysisDisplay, 
@@ -741,6 +742,8 @@ export function FreeKeywordResults({
 
   // Use corrected industry if set, otherwise use detected
   const effectiveIndustry = correctedIndustry || industry;
+  // The ATS score's one set of bands (src/lib/score-bands.ts, S13-019).
+  const atsTone = scoreTone(atsScoreEstimate);
 
   // Real counts for the "Complete Keyword Gap Analysis" upsell card below —
   // these used to be the same hardcoded marketing copy for every user
@@ -1927,7 +1930,7 @@ export function FreeKeywordResults({
             <p className="text-sm font-semibold text-foreground">
               {redFlags.length > 0
                 ? t('freeResults.actionBanner.issuesFound', { count: redFlags.length })
-                : t(atsScoreEstimate < 70 ? 'freeResults.actionBanner.criticalImprovements' : 'freeResults.actionBanner.keyImprovements')
+                : t(atsTone !== 'success' ? 'freeResults.actionBanner.criticalImprovements' : 'freeResults.actionBanner.keyImprovements')
               }
             </p>
             <p className="text-xs text-muted-foreground">
@@ -2163,17 +2166,19 @@ export function FreeKeywordResults({
           median and a top quarter over 180 days, never named in the line)
           under a heading about competing; the free report ranks the reader
           against no one (H0, the review of 2026-10-27). */}
-      {atsScoreEstimate < 75 && (
-        <div className={cn(
+      {/* Shown for exactly the scores the hero does not colour green, in the
+          hero's colour: one set of bands for the whole report (S13-019). */}
+      {atsTone !== "success" && (
+        <div data-ats-banner data-score-tone={atsTone} className={cn(
           "rounded-xl border p-3 mb-4",
-          atsScoreEstimate < 60 
+          atsTone === "destructive"
             ? "bg-destructive/5 border-destructive/20" 
             : "bg-warning/5 border-warning/20"
         )}>
           <div className="flex items-center gap-2">
-            <AlertTriangle className={cn("w-4 h-4 shrink-0", atsScoreEstimate < 60 ? "text-destructive" : "text-warning")} />
+            <AlertTriangle className={cn("w-4 h-4 shrink-0", atsTone === "destructive" ? "text-destructive" : "text-warning")} />
             <div>
-              <p className={cn("text-sm font-semibold", atsScoreEstimate < 60 ? "text-destructive" : "text-warning")}>
+              <p className={cn("text-sm font-semibold", atsTone === "destructive" ? "text-destructive" : "text-warning")}>
                 {t('freeResults.atsBanner.heading')}
               </p>
               <p className="text-xs text-muted-foreground">{t('freeResults.atsBanner.noPassMark')}</p>

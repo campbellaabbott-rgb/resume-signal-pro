@@ -5676,5 +5676,24 @@
     "metaDescription": "Wala sa sariling address ng site na ito ang data API; nasa /data-api ang paraan at ang libreng mga key.",
     "lead": "Hiningi mo sa site na ito ang {{path}}. Wala rito ang API; narito ito:",
     "keyLine": "May dalang key ang mga request bilang Authorization: Bearer rb_live_…; inilalarawan ang libreng mga key at bawat endpoint sa"
+  },
+  "metricCards": {
+    "section": {
+      "primary": "Pangunahing Score",
+      "structure": "Istruktura at Nilalaman",
+      "advanced": "Mas Detalyadong Sukatan"
+    },
+    "ats": {
+      "strong": "✓ Malakas sa keyword, format at resulta",
+      "gaps": "⚠ May mga kakulangang dapat punan: tingnan ang mga ayos sa ibaba",
+      "manyGaps": "✗ Maraming kakulangang dapat punan: tingnan ang mga ayos sa ibaba"
+    },
+    "grade": {
+      "a": "Napakahusay",
+      "b": "Mahusay",
+      "c": "Katamtaman",
+      "d": "Kailangang Ayusin"
+    },
+    "redFlagsClean": "Malinis ang resume mo — walang malaking problemang nakita."
   }
 }

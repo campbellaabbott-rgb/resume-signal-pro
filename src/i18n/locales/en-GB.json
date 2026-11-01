@@ -5676,5 +5676,24 @@
     "metaDescription": "The data API does not live on this site's own address; the how-to and the free keys are on /data-api.",
     "lead": "You asked this site for {{path}}. The API does not live here; it lives at:",
     "keyLine": "Requests carry a key as Authorization: Bearer rb_live_…; free keys and every endpoint are described on"
+  },
+  "metricCards": {
+    "section": {
+      "primary": "Primary Scores",
+      "structure": "Structure & Content",
+      "advanced": "Advanced Metrics"
+    },
+    "ats": {
+      "strong": "✓ Strong on keywords, format and results",
+      "gaps": "⚠ Gaps to close: see the fixes below",
+      "manyGaps": "✗ Many gaps to close: see the fixes below"
+    },
+    "grade": {
+      "a": "Excellent",
+      "b": "Good",
+      "c": "Fair",
+      "d": "Needs Work"
+    },
+    "redFlagsClean": "Your CV looks clean — no major issues detected."
   }
 }

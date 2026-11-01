@@ -5715,5 +5715,24 @@
     "metaDescription": "La API de datos no está en la dirección de este sitio; la guía y las claves gratuitas están en /data-api.",
     "lead": "Pediste a este sitio {{path}}. La API no está aquí; está en:",
     "keyLine": "Las solicitudes llevan una clave como Authorization: Bearer rb_live_…; las claves gratuitas y todos los endpoints se describen en"
+  },
+  "metricCards": {
+    "section": {
+      "primary": "Puntuaciones principales",
+      "structure": "Estructura y contenido",
+      "advanced": "Métricas avanzadas"
+    },
+    "ats": {
+      "strong": "✓ Sólido en palabras clave, formato y resultados",
+      "gaps": "⚠ Hay huecos que cerrar: mira las correcciones de abajo",
+      "manyGaps": "✗ Muchos huecos que cerrar: mira las correcciones de abajo"
+    },
+    "grade": {
+      "a": "Excelente",
+      "b": "Bueno",
+      "c": "Regular",
+      "d": "Necesita trabajo"
+    },
+    "redFlagsClean": "Tu currículum se ve limpio: no detectamos problemas importantes."
   }
 }

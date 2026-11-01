@@ -5676,5 +5676,24 @@
     "metaDescription": "De data-API staat niet op het adres van deze site; de uitleg en de gratis sleutels staan op /data-api.",
     "lead": "Je vroeg deze site om {{path}}. De API staat hier niet, maar op:",
     "keyLine": "Verzoeken dragen een sleutel als Authorization: Bearer rb_live_…; gratis sleutels en elk endpoint staan op"
+  },
+  "metricCards": {
+    "section": {
+      "primary": "Hoofdscores",
+      "structure": "Structuur & inhoud",
+      "advanced": "Geavanceerde statistieken"
+    },
+    "ats": {
+      "strong": "✓ Sterk op trefwoorden, opmaak en resultaten",
+      "gaps": "⚠ Er zijn hiaten te dichten: zie de verbeteringen hieronder",
+      "manyGaps": "✗ Veel hiaten te dichten: zie de verbeteringen hieronder"
+    },
+    "grade": {
+      "a": "Uitstekend",
+      "b": "Goed",
+      "c": "Redelijk",
+      "d": "Moet beter"
+    },
+    "redFlagsClean": "Je cv ziet er netjes uit — geen grote problemen gevonden."
   }
 }

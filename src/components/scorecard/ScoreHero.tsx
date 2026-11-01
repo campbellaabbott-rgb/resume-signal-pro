@@ -12,6 +12,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { FIX_POINTS_BASIS } from "@/lib/report-basis";
+import { bandTone, scoreBand, scoreTone } from "@/lib/score-bands";
 
 interface ScoreHeroProps {
   candidateName?: string | null;
@@ -65,25 +66,28 @@ function RadialGauge({ score, size = 140, strokeWidth = 10 }: { score: number; s
     return () => cancelAnimationFrame(raf);
   }, [score]);
 
-  // Bands match the scoring rubric in free-keyword-scan/index.ts (85/70/50) so the
-  // visual treatment doesn't soften a score the model has already judged as weak.
-  // Color follows the ANIMATED value so it visibly shifts bands during the climb.
-  const getColor = () => {
-    if (animatedScore >= 70) return "hsl(var(--success))";
-    if (animatedScore >= 50) return "hsl(var(--warning))";
-    return "hsl(var(--destructive))";
-  };
+  // One set of bands for the whole report (src/lib/score-bands.ts, S13-019):
+  // the scanner's own rubric, 85/70/50. Colour follows the ANIMATED value so
+  // it visibly shifts bands during the climb; the label and the data
+  // attributes name where the final score lands.
+  const getColor = () => `hsl(var(--${scoreTone(animatedScore)}))`;
 
   const { t } = useTranslation();
-  const getLabel = () => {
-    if (score >= 85) return t("scoreHero.gauge.excellent");
-    if (score >= 70) return t("scoreHero.gauge.good");
-    if (score >= 50) return t("scoreHero.gauge.needsImprovement");
-    return t("scoreHero.gauge.poor");
-  };
+  const band = scoreBand(score);
+  const label = {
+    excellent: t("scoreHero.gauge.excellent"),
+    good: t("scoreHero.gauge.good"),
+    fair: t("scoreHero.gauge.needsImprovement"),
+    weak: t("scoreHero.gauge.poor"),
+  }[band];
 
   return (
-    <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
+    <div
+      className="relative flex items-center justify-center"
+      style={{ width: size, height: size }}
+      data-score-band={band}
+      data-score-tone={bandTone(band)}
+    >
       <svg
         width={size}
         height={size}
@@ -125,7 +129,7 @@ function RadialGauge({ score, size = 140, strokeWidth = 10 }: { score: number; s
           {animatedScore}
         </span>
         <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mt-0.5">
-          {getLabel()}
+          {label}
         </span>
       </div>
     </div>

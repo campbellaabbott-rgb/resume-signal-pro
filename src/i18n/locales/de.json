@@ -5676,5 +5676,24 @@
     "metaDescription": "Die Daten-API liegt nicht unter der Adresse dieser Website; Anleitung und kostenlose Schlüssel stehen auf /data-api.",
     "lead": "Du hast diese Website nach {{path}} gefragt. Die API liegt nicht hier, sondern unter:",
     "keyLine": "Anfragen tragen einen Schlüssel als Authorization: Bearer rb_live_…; kostenlose Schlüssel und alle Endpunkte stehen auf"
+  },
+  "metricCards": {
+    "section": {
+      "primary": "Hauptwerte",
+      "structure": "Aufbau & Inhalt",
+      "advanced": "Weitere Kennzahlen"
+    },
+    "ats": {
+      "strong": "✓ Stark bei Schlüsselwörtern, Format und Ergebnissen",
+      "gaps": "⚠ Lücken zu schließen: siehe die Korrekturen unten",
+      "manyGaps": "✗ Viele Lücken zu schließen: siehe die Korrekturen unten"
+    },
+    "grade": {
+      "a": "Ausgezeichnet",
+      "b": "Gut",
+      "c": "Mittel",
+      "d": "Ausbaufähig"
+    },
+    "redFlagsClean": "Dein Lebenslauf wirkt sauber — keine größeren Probleme gefunden."
   }
 }

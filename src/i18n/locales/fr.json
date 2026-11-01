@@ -5715,5 +5715,24 @@
     "metaDescription": "L'API de données n'est pas à l'adresse de ce site ; le mode d'emploi et les clés gratuites sont sur /data-api.",
     "lead": "Vous avez demandé {{path}} à ce site. L'API n'est pas ici ; elle se trouve à :",
     "keyLine": "Les requêtes portent une clé sous la forme Authorization: Bearer rb_live_… ; les clés gratuites et tous les points d'accès sont décrits sur"
+  },
+  "metricCards": {
+    "section": {
+      "primary": "Scores principaux",
+      "structure": "Structure et contenu",
+      "advanced": "Indicateurs avancés"
+    },
+    "ats": {
+      "strong": "✓ Solide sur les mots-clés, le format et les résultats",
+      "gaps": "⚠ Des lacunes à combler : voir les corrections ci-dessous",
+      "manyGaps": "✗ Beaucoup de lacunes à combler : voir les corrections ci-dessous"
+    },
+    "grade": {
+      "a": "Excellent",
+      "b": "Bon",
+      "c": "Moyen",
+      "d": "À retravailler"
+    },
+    "redFlagsClean": "Votre CV semble propre : aucun problème majeur détecté."
   }
 }
