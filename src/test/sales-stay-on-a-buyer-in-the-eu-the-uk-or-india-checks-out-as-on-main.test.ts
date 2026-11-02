@@ -19,8 +19,10 @@
  *   - no checkout asks ipinfo anything, the session carries no billing-address
  *     demand main does not make with the switch off, and the GET answers the
  *     switch alone, as main's does;
- *   - main's own refusals stay: Russia, Nigeria and Pakistan are refused as
- *     on main, and the switch, once on, still asks for the waiver.
+ *   - no country header refuses anyone (S13-061, 2026-11-03.1): the RU/NG/PK
+ *     block read only headers the platform never sends, so it refused only a
+ *     caller who wrote one; it is gone, and the switch, once on, still asks
+ *     for the waiver.
  */
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
@@ -95,10 +97,10 @@ describe("the $5 Full Analysis, with the EU/UK switch unset as it ships", () => 
     expect(body).not.toHaveProperty("territoryRefused");
   });
 
-  it("main's own refusals stay: Russia, Nigeria and Pakistan are refused, and the switch once on still asks for the waiver", async () => {
+  it("a country header refuses nobody, Russia, Nigeria and Pakistan included, and the switch once on still asks for the waiver", async () => {
     for (const country of ["RU", "NG", "PK"]) {
-      const res = await analysis({ currency: "usd" }, { headers: { "cf-ipcountry": country } });
-      expect(res.status, country).toBe(403);
+      await expectSold(await analysis({ currency: "usd" }, { headers: { "cf-ipcountry": country } }), `cf-ipcountry ${country}`);
+      await expectSold(await analysis({ currency: "usd" }, { headers: { "x-vercel-ip-country": country } }), `x-vercel-ip-country ${country}`);
     }
     env.EU_UK_SALES = "on";
     const noWaiver = await analysis({ currency: "eur" });
@@ -133,6 +135,8 @@ describe("the refusal is gone, not switched off", () => {
     }
     for (const fn of FNS) {
       expect(codeOf(readFileSync(resolve(ROOT, `supabase/functions/${fn}/index.ts`), "utf8")), fn).not.toMatch(/ipinfoLookup|\b451\b/);
+      // No header a caller can write decides a sale (S13-061).
+      expect(codeOf(readFileSync(resolve(ROOT, `supabase/functions/${fn}/index.ts`), "utf8")), fn).not.toMatch(/ipcountry|ip-country|BLOCKED_COUNTRIES/i);
     }
   });
 });

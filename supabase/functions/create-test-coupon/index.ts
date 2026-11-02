@@ -4,12 +4,27 @@ import Stripe from "https://esm.sh/stripe@18.5.0";
 import { stamped } from "../_shared/fn-build.ts";
 
 // The build every response names (x-fn-build); see _shared/fn-build.ts.
-const FN_BUILD = "create-test-coupon.2026-10-09.2";
+// 2026-11-03.1 (S13-062): a run without body.code mints a code nobody can
+// guess (TEST plus 16 random characters) instead of one fixed name printed in
+// a public repository, which a stranger could redeem first on any checkout.
+const FN_BUILD = "create-test-coupon.2026-11-03.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+/**
+ * A CODE NOBODY CAN GUESS (S13-062). Without body.code this minted one fixed
+ * name, in a public repository, as a live 100%-off promotion code valid on
+ * every checkout. Now: TEST and 16 characters from a 32-letter alphabet drawn
+ * by crypto.getRandomValues (80 bits), returned in the answer.
+ */
+export function unguessableCode(): string {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  return "TEST" + Array.from(bytes, (b) => alphabet[b % 32]).join("");
+}
 
 // Admin-only, one-off utility for minting test coupons. Gated the same way as
 // get-analytics/get-error-telemetry — without this gate, anyone who discovered
@@ -44,7 +59,10 @@ serve(stamped(FN_BUILD, async (req) => {
     const isLiveMode = stripeKey.startsWith("sk_live_");
 
     const body = await req.json().catch(() => ({}));
-    const code = (body.code || "TESTFREE48").toUpperCase().replace(/[^A-Z0-9]/g, "");
+    // A code the owner passes, as given; none, or one with no letter or digit
+    // left once cleaned, is one nobody can guess (S13-062).
+    const asked = typeof body.code === "string" ? body.code.toUpperCase().replace(/[^A-Z0-9]/g, "") : "";
+    const code = asked || unguessableCode();
     const expiresInHours = typeof body.expiresInHours === "number" ? body.expiresInHours : 48;
 
     const coupon = await stripe.coupons.create({

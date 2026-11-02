@@ -73,6 +73,29 @@ export function e2eAbortedText(elapsedMs: number): string {
   return `free-keyword-scan gave no answer within ${Math.round(E2E_ABORT_MS / 1000)} s (its own model clock is ${Math.round(SCANNER_AI_DEADLINE_MS / 1000)} s, then the rule-based report): slow, not proven down (${Math.round(elapsedMs / 1000)} s)`;
 }
 
+/**
+ * THE RUN'S OWN CLOCK (S13-069). The isolate is cut at about 150 s, and the
+ * run wrote its row and decided its alert only after every check, so a slow
+ * gateway or database (the AI probe had no clock at all) could take the run
+ * past the cut: no row, no alert, during exactly the incident they exist for.
+ * Now the AI probe gives up at AI_PROBE_MS ('degraded': slow, not proven
+ * down, as for the end-to-end scan), the end-to-end scan starts with the
+ * checks instead of after them, and the checks get RUN_BUDGET_MS in all:
+ * whatever has not finished then is not evaluated, a failed 'run_budget'
+ * check says so, the run is degraded, and the row, the alert and the
+ * dead-man ping still go out with time to spare.
+ */
+export const AI_PROBE_MS = 30_000;
+export const RUN_BUDGET_MS = 115_000;
+
+export function aiProbeAbortedText(elapsedMs: number): string {
+  return `the AI gateway gave no answer to a 100-token probe within ${Math.round(AI_PROBE_MS / 1000)} s: slow, not proven down (${Math.round(elapsedMs / 1000)} s)`;
+}
+
+export function runBudgetText(finished: number): string {
+  return `the checks had not finished within the run's ${Math.round(RUN_BUDGET_MS / 1000)} s budget (${finished} finished); the rest were not evaluated, so the row and the alert could still go out before the isolate is cut`;
+}
+
 /** True for the error an AbortController's abort() raises in fetch. */
 export function isAbort(e: unknown): boolean {
   return e instanceof Error && (e.name === "AbortError" || /aborted/i.test(e.message));

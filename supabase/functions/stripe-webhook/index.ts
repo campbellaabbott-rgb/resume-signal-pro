@@ -70,7 +70,15 @@ import { commissionCentsFor } from "../_shared/affiliate-commission.ts";
 // _shared/send-mail.ts it bundles keeps its deadline armed until the Resend
 // body is read (R1 hotfix, process-email-queue 2026-10-14.2).
 // 2026-10-11.32 (recheck 3, 2026-10-26): a test-mode event is acted on only for a Full Analysis checkout; a test scan pack, cut product or any other one-off is acknowledged and ignored, so a rehearsal adds no scan credits and runs no generator.
-const FN_BUILD = "stripe-webhook.2026-10-11.32";
+// 2026-11-03.1 (audit-rest money: S13-059, S13-060): a payment failure mails
+// the owner once per payment, and at most ten an hour in all. An abandoned
+// checkout (checkout.session.expired) is recorded and mails nobody; a card
+// declined in Checkout is recorded and mailed once, from
+// payment_intent.payment_failed (charge.failed answers only for a charge with
+// no payment intent). And the affiliate whose referral this webhook records
+// is mailed the commission actually recorded, when it is above zero and the
+// affiliate is active, as /affiliates promises.
+const FN_BUILD = "stripe-webhook.2026-11-03.1";
 const BUILD_HEADER = { "x-fn-build": FN_BUILD };
 
 // HOW LONG A MAKER HOLDS AN ORDER (20261011144000, CP-019). The lease
@@ -184,6 +192,17 @@ function getSupabase(): SupabaseClient<any, any, any> {
   return supabaseInstance;
 }
 
+/**
+ * HOW MANY PAYMENT-FAILURE MAILS AN HOUR, IN ALL (S13-059). Every decline
+ * mailed, twice (payment_intent.payment_failed and charge.failed), and every
+ * abandoned checkout mailed too, with no door: a card-testing run or a loop
+ * of anonymous checkouts filled the owner's inbox and spent the Resend quota
+ * buyer mail shares. Now each payment mails once (a door per payment, 30
+ * days) and no more than this many go out an hour; the rest are recorded in
+ * payment_failures only.
+ */
+export const FAILURE_ALERTS_PER_HOUR = 10;
+
 // Send email alert for payment failures (non-blocking)
 function sendFailureAlertBackground(details: {
   type: string;
@@ -195,13 +214,42 @@ function sendFailureAlertBackground(details: {
   paymentIntentId: string;
   /** Subject line lead; a refund is not a failed payment. */
   subjectLead?: string;
+  /**
+   * A decline (S13-059): mailed once per payment and within the hour's
+   * ceiling. A refund or a dispute is a money event the owner must hear of
+   * every time (a failed revocation included), so it passes no door.
+   */
+  oncePerPayment?: boolean;
 }) {
   EdgeRuntime.waitUntil((async () => {
+    // ONCE PER PAYMENT, AND A CEILING AN HOUR (S13-059). The per-payment door
+    // first, so a redelivered event spends nothing of the hour; that door is
+    // given back when no sender accepted the mail. A door that cannot be
+    // asked sends nothing: the row in payment_failures is the record.
+    const supabase = getSupabase();
+    const door = "owner-alert:payment-failed";
+    const slot = String(details.paymentIntentId || "unknown").slice(0, 64);
+    if (details.oncePerPayment) {
+      try {
+        const { data: first, error } = await supabase.rpc("mail_door_take", { p_door: door, p_bucket: slot, p_max: 1, p_window_minutes: 43200 });
+        if (error || first !== true) return;
+        const { data: inHour, error: hourError } = await supabase.rpc("mail_door_take", {
+          p_door: `${door}:hour`, p_bucket: "all", p_max: FAILURE_ALERTS_PER_HOUR, p_window_minutes: 60,
+        });
+        if (hourError || inHour !== true) {
+          logStep("Payment-failure mail not sent: the hour's ceiling is reached (the row is recorded)", { type: details.type });
+          return;
+        }
+      } catch (e) {
+        logStep("Payment-failure mail not sent: its door could not be asked", { error: String(e).slice(0, 200) });
+        return;
+      }
+    }
     const formattedAmount = (details.amount / 100).toFixed(2);
     // Every value below is Stripe's copy of something a buyer typed (a billing
     // address, a decline message), so it is printed as text, never markup.
     const esc = (v: string | null | undefined) => escapeText(v);
-    await sendOwnerMail(
+    const sent = await sendOwnerMail(
       `⚠️ ${details.subjectLead ?? "Payment Failed"} - $${formattedAmount} ${details.currency.toUpperCase()}`,
       `
           <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -215,6 +263,9 @@ function sendFailureAlertBackground(details: {
           </div>
         `,
     );
+    if (!sent.ok && details.oncePerPayment) {
+      await supabase.from("mail_door_counts").delete().eq("door", door).eq("bucket", slot);
+    }
   })());
 }
 
@@ -849,6 +900,41 @@ function mailThePurchaseLink(
         .eq('id', deliveryId);
     }
   })().catch((e) => logStep("Purchase-link mail bookkeeping threw", { productType, error: String(e).slice(0, 200) })));
+}
+
+/**
+ * THE AFFILIATE IS TOLD WHAT THEY EARNED (S13-060). /affiliates promises "an
+ * email notification for each commission earned", and only the success-page
+ * verifier ever sent one, for a sale it recorded first, which the webhook
+ * nearly always beats; Pro's first month, the one commissioned sale, has no
+ * verifier at all. Whichever payer recorded the conversion mails it: the
+ * commission the row actually holds (record_affiliate_conversion records 0
+ * for a returning customer or the affiliate's own purchase), only when it is
+ * above zero and the affiliate is active. Never throws.
+ */
+async function mailAffiliateCommission(
+  // deno-lint-ignore no-explicit-any
+  supabase: SupabaseClient<any, any, any>,
+  supabaseUrl: string, sessionId: string, productName: string, saleAmount: number, referralCode: string,
+): Promise<void> {
+  try {
+    const { data: conversion } = await supabase.from('affiliate_conversions')
+      .select('affiliate_id, commission_amount').eq('stripe_session_id', sessionId).maybeSingle();
+    const commission = Number((conversion as { commission_amount?: unknown } | null)?.commission_amount ?? 0);
+    if (!conversion || !(commission > 0)) return;
+    const { data: affiliate } = await supabase.from('affiliates')
+      .select('email').eq('id', (conversion as { affiliate_id: string }).affiliate_id).eq('status', 'active').maybeSingle();
+    const affiliateEmail = (affiliate as { email?: string } | null)?.email;
+    if (!affiliateEmail) return;
+    const r = await fetch(`${supabaseUrl}/functions/v1/send-affiliate-commission-email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
+      body: JSON.stringify({ affiliateEmail, productName, saleAmount, commissionAmount: commission, referralCode }),
+    });
+    logStep(r.ok ? "Affiliate commission email sent" : "Affiliate commission email refused", { status: r.status });
+  } catch (e) {
+    logStep("Affiliate commission email failed", { error: String(e).slice(0, 200) });
+  }
 }
 
 async function triggerProductDelivery(
@@ -1672,9 +1758,14 @@ serve(async (req) => {
                   p_product_name: session.metadata?.product_name || productType || 'Product',
                   p_sale_amount: session.amount_total,
                   p_commission_override: commissionCents
-                })).then(({ error }: { error: { message: string } | null }) => {
+                })).then(async ({ data, error }: { data: unknown; error: { message: string } | null }) => {
                   if (error) {
                     logStep("Affiliate conversion recording failed (likely already recorded by verify-product-purchase)", { error: error.message });
+                    return;
+                  }
+                  // The recorder mails (S13-060): true means this call wrote the row.
+                  if (data === true) {
+                    await mailAffiliateCommission(supabase, supabaseUrl, session.id, session.metadata?.product_name || productType || 'Product', session.amount_total ?? 0, referralCode);
                   }
                 })
               );
@@ -1722,7 +1813,8 @@ serve(async (req) => {
             failureCode: pi.last_payment_error?.code,
             failureMessage: pi.last_payment_error?.message,
             customerEmail,
-            paymentIntentId: pi.id
+            paymentIntentId: pi.id,
+            oncePerPayment: true,
           });
         })());
         break;
@@ -1730,6 +1822,15 @@ serve(async (req) => {
 
       case "charge.failed": {
         const charge = event.data.object as Stripe.Charge;
+        // ONE DECLINE, ONE ROW AND ONE MAIL (S13-059). A card declined in
+        // Checkout sends payment_intent.payment_failed AND this event for the
+        // same payment; both wrote a row and both mailed. The payment intent's
+        // event is the record; this one answers only for a charge with no
+        // payment intent behind it.
+        if (refId(charge.payment_intent)) {
+          logStep("Charge failed: recorded from its payment intent's own event, not twice", { charge: charge.id });
+          break;
+        }
         
         EdgeRuntime.waitUntil((async () => {
           await supabase.from('payment_failures').insert({
@@ -1749,12 +1850,18 @@ serve(async (req) => {
             failureCode: charge.failure_code,
             failureMessage: charge.failure_message,
             customerEmail: charge.billing_details?.email,
-            paymentIntentId: charge.payment_intent as string || charge.id
+            paymentIntentId: charge.payment_intent as string || charge.id,
+            oncePerPayment: true,
           });
         })());
         break;
       }
 
+      // AN ABANDONED CHECKOUT IS COUNTED, NEVER MAILED (S13-059). Every
+      // session nobody paid, an anonymous script's included, mailed the owner
+      // "Payment Failed" thirty minutes later, with no door: nothing failed.
+      // The row stays (payment_failures counts abandons); the owner hears of
+      // declines, refunds and disputes, which are money.
       case "checkout.session.expired": {
         const session = event.data.object as Stripe.Checkout.Session;
         
@@ -1767,16 +1874,6 @@ serve(async (req) => {
             failure_message: 'Checkout abandoned',
             customer_email: session.customer_email,
             metadata: { session_id: session.id, product_type: session.metadata?.product_type }
-          });
-
-          sendFailureAlertBackground({
-            type: "Checkout Abandoned",
-            amount: session.amount_total || 0,
-            currency: session.currency || 'usd',
-            failureCode: 'checkout_expired',
-            failureMessage: 'Checkout abandoned',
-            customerEmail: session.customer_email,
-            paymentIntentId: session.payment_intent as string || session.id
           });
         })());
         break;

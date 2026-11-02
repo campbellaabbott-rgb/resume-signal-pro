@@ -11,7 +11,7 @@ import { APPLY_AGENT_ON } from "../_shared/apply-agent-switch.ts";
 // every heartbeat run since the check shipped. See _shared/search-caller.ts.
 import { searchCallerHeader } from "../_shared/search-caller.ts";
 import { boardTailChecks, dbFailureCheck } from "./board-tail.ts";
-import { ceilingRefusalCheck, cronAnswersCheck, CRON_ERROR_WINDOW_MIN, CRON_REFUSAL_WINDOW_MIN, E2E_ABORT_MS, e2eAbortedText, HEARTBEAT_PING_ENV, isAbort, mailWatchCheck, pingDeadMan } from "./watch.ts";
+import { AI_PROBE_MS, aiProbeAbortedText, ceilingRefusalCheck, cronAnswersCheck, CRON_ERROR_WINDOW_MIN, CRON_REFUSAL_WINDOW_MIN, E2E_ABORT_MS, e2eAbortedText, HEARTBEAT_PING_ENV, isAbort, mailWatchCheck, pingDeadMan, RUN_BUDGET_MS, runBudgetText } from "./watch.ts";
 
 // Declare EdgeRuntime for background tasks
 declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
@@ -21,7 +21,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-admin-key, x-email-cron',
   'Access-Control-Expose-Headers': 'x-fn-build',
   // BUILD_VERSION below, as the other functions carry it.
-  'x-fn-build': 'scan-heartbeat.2026-10-11.30',
+  'x-fn-build': 'scan-heartbeat.2026-11-03.1',
 };
 
 // Test resume for heartbeat checks
@@ -128,7 +128,7 @@ function unanswered(r: { timedOut?: boolean; failed?: boolean }, fn: string, ms:
  *
  * BUMP ON EVERY DEPLOY of this function.
  */
-const BUILD_VERSION = "2026-10-11.30"; // 10-11.30: free scans the hourly ceiling refused in the last hour are counted, and more than ten fail scan_ceiling_refused (S12-142's alarm).  10-11.29: the apply worker's offline alarm is read only while the apply agent is switched on (S12-171): with the agent retired, an active mandate left behind rang "worker offline" every six hours.  10-11.28: the cron check reads cron_http_answers and fails on repeated 5xx (S12-157); the end-to-end scan waits past the scanner's own clock and an abort on ours is degraded (S12-159); each run pings its own healthchecks.io check (HC_HEARTBEAT_PING_URL), and a mail-watch whose run stamp is 45 minutes old fails mail_watch_alive (S12-065).  10-09.7: carries both .6 and .3 (wave-3 fix round integration).  10-09.6: fails job_board_refresh_head (3h), job_board_filter_audit (12h) and job_board_pass_end (a pass-end tail that started and never finished, S11-001) and job_board_db_failures (S11-023).  10-09.3: a partial e2e report, a refused (429) e2e scan and a visitor fallback rate of half or more fail their checks (S11-028).  10-09.1: a paid order that never arrived mails the owner, naming it, newest first (decided after the delivery read, not before); a cron call refused (401/403) in the last hour fails cron_http_refusals.  10-08.1: answers only its cron, the service role and the owner's key; the e2e scan is uncached; alerts stamp only after a send that worked; vendor drift skips when unevaluated; delivery reads email_logs too
+const BUILD_VERSION = "2026-11-03.1"; // 11-03.1 (audit-rest money, S13-069): the run keeps its own clock: the AI probe gives up at 30 s, the end-to-end scan starts with the checks, the checks get 115 s in all (what is left is a failed run_budget check), and the alert is decided before the row is written, so a slow gateway or database can no longer take the run past the isolate's cut with no row and no alert.  10-11.30: free scans the hourly ceiling refused in the last hour are counted, and more than ten fail scan_ceiling_refused (S12-142's alarm).  10-11.29: the apply worker's offline alarm is read only while the apply agent is switched on (S12-171): with the agent retired, an active mandate left behind rang "worker offline" every six hours.  10-11.28: the cron check reads cron_http_answers and fails on repeated 5xx (S12-157); the end-to-end scan waits past the scanner's own clock and an abort on ours is degraded (S12-159); each run pings its own healthchecks.io check (HC_HEARTBEAT_PING_URL), and a mail-watch whose run stamp is 45 minutes old fails mail_watch_alive (S12-065).  10-09.7: carries both .6 and .3 (wave-3 fix round integration).  10-09.6: fails job_board_refresh_head (3h), job_board_filter_audit (12h) and job_board_pass_end (a pass-end tail that started and never finished, S11-001) and job_board_db_failures (S11-023).  10-09.3: a partial e2e report, a refused (429) e2e scan and a visitor fallback rate of half or more fail their checks (S11-028).  10-09.1: a paid order that never arrived mails the owner, naming it, newest first (decided after the delivery read, not before); a cron call refused (401/403) in the last hour fails cron_http_refusals.  10-08.1: answers only its cron, the service role and the owner's key; the e2e scan is uncached; alerts stamp only after a send that worked; vendor drift skips when unevaluated; delivery reads email_logs too
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -311,7 +311,61 @@ serve(async (req) => {
     );
   }
 
+  // THE CHECKS RUN ON A BUDGET (S13-069; watch.ts RUN_BUDGET_MS). The check
+  // phase below keeps its verdict in names of its own that shadow the run's
+  // (its body is not re-indented, so the checks read exactly as they did);
+  // the run copies that verdict out when the phase finishes or the budget is
+  // spent. A phase still running after the cut cannot change a row already
+  // written or an alert already decided.
+  type PhaseVerdict = { overallStatus: string; errorMessage: string | null; checks: HealthCheckResult[]; skipped: Array<{ name: string; reason: string }> };
+  let readPhase: () => PhaseVerdict = () => ({ overallStatus: 'healthy', errorMessage: null, checks: [], skipped: [] });
+  let phaseCopied = false;
+
   try {
+    const checkPhase = (async () => {
+    let overallStatus = 'healthy';
+    let errorMessage: string | null = null;
+    const checks: HealthCheckResult[] = [];
+    const skipped: Array<{ name: string; reason: string }> = [];
+    const skip = (name: string, reason: string) => { skipped.push({ name, reason }); };
+    readPhase = () => ({ overallStatus, errorMessage, checks: [...checks], skipped: [...skipped] });
+
+    // THE END-TO-END SCAN STARTS FIRST (S13-069). It is the longest wait of
+    // the run (up to E2E_ABORT_MS), and run after every other check it took
+    // a slow day past the isolate's cut. It runs beside the checks now and is
+    // read in its own place, Check 6, so the checks keep their order.
+    const e2eStart = Date.now();
+    const e2eScan: Promise<Response> = (() => {
+      const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
+      const heartbeatSecret = Deno.env.get('HEARTBEAT_SECRET');
+      const controller = new AbortController();
+      // Past the scanner's own 85 s model clock and its report (S12-159).
+      const timeoutId = setTimeout(() => controller.abort(), E2E_ABORT_MS);
+      const call = fetch(`${supabaseUrl}/functions/v1/free-keyword-scan`, {
+        method: 'POST',
+        headers: {
+          'apikey': anonKey,
+          'Authorization': `Bearer ${anonKey}`,
+          'Content-Type': 'application/json',
+          ...(heartbeatSecret ? { 'x-heartbeat-secret': heartbeatSecret } : {}),
+        },
+        // A LINE NO EARLIER RUN HAD (register L10-21). The constant résumé hit
+        // free-keyword-scan's 7-day report cache, which answers before any
+        // AI work or scan_metrics write, so ~177 heartbeats in a row recorded
+        // no completion while e2e_scan read green. The run's own reference
+        // makes every scan a cache miss. free-keyword-scan types the run
+        // 'heartbeat' (the secret wins over synthetic; synthetic covers an
+        // unset secret) and counts neither in "scanned today", the owner's
+        // note, the detection logs nor the cache.
+        body: JSON.stringify({ resumeText: heartbeatResume(), synthetic: true }),
+        signal: controller.signal,
+      });
+      call.then(() => clearTimeout(timeoutId), () => clearTimeout(timeoutId));
+      return call;
+    })();
+    // Read at Check 6; a failure is never left unhandled meanwhile.
+    e2eScan.catch(() => {});
+
     // Check 1: Database connectivity
     const dbStart = Date.now();
     try {
@@ -345,8 +399,13 @@ serve(async (req) => {
         throw new Error('LOVABLE_API_KEY not configured');
       }
 
-      // Make a lightweight AI call to verify gateway is responsive
+      // Make a lightweight AI call to verify gateway is responsive. On a
+      // clock of its own (S13-069): it had none, so a gateway that held the
+      // connection held the whole run past the isolate's cut.
+      const aiController = new AbortController();
+      const aiTimeoutId = setTimeout(() => aiController.abort(), AI_PROBE_MS);
       const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        signal: aiController.signal,
         method: "POST",
         headers: {
           "Authorization": `Bearer ${LOVABLE_API_KEY}`,
@@ -367,7 +426,7 @@ serve(async (req) => {
           max_tokens: 100,
           temperature: 0
         }),
-      });
+      }).finally(() => clearTimeout(aiTimeoutId));
 
       const aiTime = Date.now() - aiStart;
       
@@ -392,14 +451,22 @@ serve(async (req) => {
       }
     } catch (e) {
       const aiTime = Date.now() - aiStart;
+      // OUR clock ran out, not the gateway: slow, not proven down (S13-069,
+      // as S12-159 reads the end-to-end scan's abort).
+      const aborted = isAbort(e);
       checks.push({
         name: 'ai_gateway',
         passed: false,
         responseTimeMs: aiTime,
-        error: e instanceof Error ? e.message : 'Unknown error'
+        error: aborted ? aiProbeAbortedText(aiTime) : e instanceof Error ? e.message : 'Unknown error'
       });
-      overallStatus = 'down';
-      errorMessage = errorMessage || `AI Gateway: ${e instanceof Error ? e.message : 'Unknown'}`;
+      if (aborted) {
+        if (overallStatus !== 'down') overallStatus = 'degraded';
+        errorMessage = errorMessage || `AI Gateway: no answer within ${Math.round(AI_PROBE_MS / 1000)} s`;
+      } else {
+        overallStatus = 'down';
+        errorMessage = errorMessage || `AI Gateway: ${e instanceof Error ? e.message : 'Unknown'}`;
+      }
     }
 
     // Check 2b: the Stripe key still opens Stripe (register L13-67). A rolled
@@ -1803,33 +1870,9 @@ serve(async (req) => {
     // check that would have caught it. Sends x-heartbeat-secret so the scan
     // function skips per-IP daily limits (see HEARTBEAT_SECRET there); if the
     // secret isn't configured, a 429 counts as alive-but-unverified, not down.
-    const e2eStart = Date.now();
+    // The scan started with the checks (S13-069); its answer is read here.
     try {
-      const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
-      const heartbeatSecret = Deno.env.get('HEARTBEAT_SECRET');
-      const controller = new AbortController();
-      // Past the scanner's own 85 s model clock and its report (S12-159).
-      const timeoutId = setTimeout(() => controller.abort(), E2E_ABORT_MS);
-      const scanResp = await fetch(`${supabaseUrl}/functions/v1/free-keyword-scan`, {
-        method: 'POST',
-        headers: {
-          'apikey': anonKey,
-          'Authorization': `Bearer ${anonKey}`,
-          'Content-Type': 'application/json',
-          ...(heartbeatSecret ? { 'x-heartbeat-secret': heartbeatSecret } : {}),
-        },
-        // A LINE NO EARLIER RUN HAD (register L10-21). The constant résumé hit
-        // free-keyword-scan's 7-day report cache, which answers before any
-        // AI work or scan_metrics write, so ~177 heartbeats in a row recorded
-        // no completion while e2e_scan read green. The run's own reference
-        // makes every scan a cache miss. free-keyword-scan types the run
-        // 'heartbeat' (the secret wins over synthetic; synthetic covers an
-        // unset secret) and counts neither in "scanned today", the owner's
-        // note, the detection logs nor the cache.
-        body: JSON.stringify({ resumeText: heartbeatResume(), synthetic: true }),
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
+      const scanResp = await e2eScan;
       const e2eTime = Date.now() - e2eStart;
 
       if (scanResp.status === 429) {
@@ -1929,6 +1972,32 @@ serve(async (req) => {
       skip('scan_fallback_rate', `detection_telemetry read failed: ${e instanceof Error ? e.message : 'unknown'}`);
     }
 
+    })();
+
+    // THE BUDGET (S13-069). The phase's own failure is the run's fatal error
+    // (the catch below) only while the run is waiting on it; after a cut it
+    // is caught here and goes nowhere.
+    const phaseDone = checkPhase.then(() => false);
+    phaseDone.catch(() => {});
+    let budgetTimer: ReturnType<typeof setTimeout> | undefined;
+    const budgetSpent = await Promise.race([
+      phaseDone,
+      new Promise<boolean>((res) => { budgetTimer = setTimeout(() => res(true), Math.max(0, RUN_BUDGET_MS - (Date.now() - startTime))); }),
+    ]).finally(() => clearTimeout(budgetTimer));
+    const phase = readPhase();
+    phaseCopied = true;
+    overallStatus = phase.overallStatus;
+    errorMessage = phase.errorMessage;
+    checks.push(...phase.checks);
+    skipped.push(...phase.skipped);
+    if (budgetSpent) {
+      // A failed check, not a skip: the owner hears of a run that could not
+      // finish its checks (an alert reads only failed checks).
+      checks.push({ name: 'run_budget', passed: false, responseTimeMs: Date.now() - startTime, error: runBudgetText(checks.length) });
+      if (overallStatus === 'healthy') overallStatus = 'degraded';
+      errorMessage = errorMessage || `Heartbeat: the checks ran past the ${Math.round(RUN_BUDGET_MS / 1000)} s budget`;
+    }
+
     // Calculate total response time and adjust status based on latency
     const totalTime = Date.now() - startTime;
     if (overallStatus === 'healthy' && totalTime > DEGRADED_RESPONSE_TIME_MS) {
@@ -1945,6 +2014,17 @@ serve(async (req) => {
       acc[c.name] = { passed: c.passed, time_ms: c.responseTimeMs, error: c.error };
       return acc;
     }, {} as Record<string, any>);
+
+    // THE ALERT IS DECIDED FIRST (S13-069): it reads nothing below, and a
+    // database slow enough to hold the row or the delivery reads must not
+    // hold the owner's mail too. A single recovery note when a previously
+    // alerted state clears, so the inbox learns the incident ended without
+    // anyone re-curling the endpoint.
+    if (overallStatus !== 'healthy') {
+      EdgeRuntime.waitUntil(sendHeartbeatAlert(overallStatus, errorMessage, checks, totalTime));
+    } else {
+      EdgeRuntime.waitUntil(sendRecoveryIfAlerted());
+    }
 
     await supabase.rpc('log_heartbeat_result', {
       p_function_name: 'free-keyword-scan',
@@ -1970,8 +2050,8 @@ serve(async (req) => {
     // system believes it delivered, and the retry has already given up.
     const productDelivery = await evaluateProductDelivery(supabase);
 
-    // READ BEFORE ANY ALERT IS DECIDED (commercial-readiness 2026-10-08, item
-    // 2). Both reads above used to run after the alert below had been
+    // READ BEFORE ITS ALERT IS DECIDED (commercial-readiness 2026-10-08, item
+    // 2). Both reads above used to run after the platform alert had been
     // decided, so an 'undelivered' verdict reached the JSON and no inbox. A
     // paid order that never arrived is its own alert, naming the order, once
     // per order per day; it does not change the platform status.
@@ -1981,15 +2061,6 @@ serve(async (req) => {
     const undeliveredOrders = undeliveredRead ? undeliveredRead.orders : null;
     if (undeliveredRead && undeliveredRead.orders.length > 0) {
       EdgeRuntime.waitUntil(sendUndeliveredOrderAlert(undeliveredRead.orders, undeliveredRead.total));
-    }
-
-    // Send alert if status is not healthy — and a single recovery note when a
-    // previously-alerted state clears, so the inbox learns the incident ended
-    // without anyone re-curling the endpoint.
-    if (overallStatus !== 'healthy') {
-      EdgeRuntime.waitUntil(sendHeartbeatAlert(overallStatus, errorMessage, checks, totalTime));
-    } else {
-      EdgeRuntime.waitUntil(sendRecoveryIfAlerted());
     }
 
     // The apply worker runs on hardware we do not control — currently a laptop,
@@ -2072,6 +2143,12 @@ serve(async (req) => {
   } catch (error) {
     const totalTime = Date.now() - startTime;
     console.error("[SCAN-HEARTBEAT] Fatal error:", error);
+    // A check that threw before the phase was copied: what it had found so far.
+    if (!phaseCopied) {
+      const phase = readPhase();
+      checks.push(...phase.checks);
+      skipped.push(...phase.skipped);
+    }
 
     // Log failure
     await supabase.rpc('log_heartbeat_result', {

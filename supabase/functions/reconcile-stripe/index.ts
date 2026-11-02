@@ -8,9 +8,24 @@
 // missed it — a customer who paid and got nothing.
 //
 // This lists recent paid sessions from Stripe (the source of truth for money),
-// cross-checks the markers, and EMAILS THE OWNER any orphans to recover through
-// the existing recover-purchase flow. Alert-first by design: it never mutates
-// money or entitlement state, and the HTTP response carries counts only (no PII).
+// cross-checks the markers, RE-DELIVERS each orphan through stripe-webhook, and
+// EMAILS THE OWNER what it found and what each re-delivery did. It never moves
+// money, and the HTTP response carries counts only (no PII).
+//
+// RE-DELIVERY (2026-11-03.1, audit S13-028). The alarm used to say "recover
+// each via the recover-purchase function", and that function reads only
+// purchased_content, which an order the webhook never saw does not have: it
+// answered {found:false}, and the buyer was never mailed. Now each orphan's
+// completed-checkout event is rebuilt from the session Stripe listed, signed
+// with STRIPE_WEBHOOK_SECRET in Stripe's own scheme (reconcile.ts,
+// redeliveryOf) and posted to stripe-webhook, which runs the delivery it
+// missed exactly as for Stripe: the claim, the order row and the buyer's
+// mail. A session counts as re-delivered only when its marker is there
+// afterwards. Each session is re-sent at most once a fortnight (a door per
+// session, given back when the webhook did not answer 2xx, so the next run
+// tries again), at most MAX_REDELIVERIES a run. The owner's mail names, per
+// session, what happened and, for one that did not take, the manual remedy:
+// resend the event from the Stripe Dashboard.
 //
 // WHO MAY RUN IT (2026-10-04 completeness review). It used to answer anyone:
 // "counts only, so no secret gate is needed". But every POST paged through up
@@ -28,7 +43,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
-import { findOrphanSessions, type ReconcileSession } from "./reconcile.ts";
+import { findOrphanSessions, redeliveryOf, type ReconcileSession } from "./reconcile.ts";
 import { isServiceRoleCaller } from "../_shared/service-caller.ts";
 import { keyMatches } from "../_shared/admin-key.ts";
 import { checkoutSessionSettled } from "../_shared/pass-settlement.ts";
@@ -37,12 +52,21 @@ import { buyerEmailOf } from "../_shared/buyer-email.ts";
 // The only external tell of which bundle is live. Bump on every deploy — twice
 // this month a fix was "deployed" and the old code was still answering, and the
 // version marker is the single thing that separates that from a job not running.
-const BUILD_VERSION = "2026-10-11.22";
+// 2026-11-03.1 (audit-rest money, S13-028): each orphan is re-delivered
+// through stripe-webhook, and the owner's mail says what each re-delivery did
+// instead of naming a recovery function that could not find the order.
+const BUILD_VERSION = "2026-11-03.1";
 const FN_BUILD = `reconcile-stripe.${BUILD_VERSION}`;
 
 const MAX_PAGES = 20;
 const DEFAULT_LOOKBACK_HOURS = 48;
 const MAX_LOOKBACK_HOURS = 24 * 14;
+/** Sessions re-sent to stripe-webhook in one run; the rest wait for the next. */
+const MAX_REDELIVERIES = 10;
+/** One re-delivery's wait for the webhook's answer. */
+const REDELIVERY_MS = 25_000;
+/** A session is re-sent at most once in this window (a door per session). */
+const REDELIVERY_DOOR_MINUTES = 14 * 24 * 60;
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -89,6 +113,9 @@ serve(async (req) => {
   try {
     // Page through recent checkout sessions (Stripe = source of truth for money).
     const paid: ReconcileSession[] = [];
+    // The listed session objects, kept for a re-delivery: the webhook reads
+    // the session it is handed, so it gets Stripe's own copy.
+    const listed = new Map<string, Stripe.Checkout.Session>();
     let startingAfter: string | undefined;
     for (let page = 0; page < MAX_PAGES; page++) {
       const res = await stripe.checkout.sessions.list({
@@ -109,6 +136,7 @@ serve(async (req) => {
             product: s.metadata?.product_name ?? s.metadata?.product_type ?? null,
             createdIso: new Date((s.created ?? 0) * 1000).toISOString(),
           });
+          listed.set(s.id, s);
         }
       }
       if (!res.has_more || res.data.length === 0) break;
@@ -128,6 +156,54 @@ serve(async (req) => {
 
     const orphans = findOrphanSessions(paid, markers);
 
+    // RE-DELIVER EACH ORPHAN (S13-028). What happened to each, for the mail.
+    const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET") ?? "";
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const outcome = new Map<string, string>();
+    let redelivered = 0;
+    let sent = 0;
+    for (const o of orphans) {
+      const session = listed.get(o.id);
+      if (!webhookSecret || !supabaseUrl || !session) { outcome.set(o.id, "not re-sent: STRIPE_WEBHOOK_SECRET is not set"); continue; }
+      if (sent >= MAX_REDELIVERIES) { outcome.set(o.id, `not re-sent: ${MAX_REDELIVERIES} a run, the next run sends it`); continue; }
+      const door = { p_door: "reconcile-redeliver", p_bucket: o.id.slice(0, 64), p_max: 1, p_window_minutes: REDELIVERY_DOOR_MINUTES };
+      const { data: first, error: doorError } = await supabase.rpc("mail_door_take", door);
+      if (doorError || first !== true) {
+        outcome.set(o.id, doorError ? "not re-sent: its door could not be asked" : "re-sent before and still not delivered");
+        continue;
+      }
+      sent++;
+      let accepted = false;
+      let status = "no answer";
+      try {
+        const { body, signature } = await redeliveryOf(session, webhookSecret);
+        const res = await fetch(`${supabaseUrl}/functions/v1/stripe-webhook`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "stripe-signature": signature, Authorization: `Bearer ${serviceKey}` },
+          body,
+          signal: AbortSignal.timeout(REDELIVERY_MS),
+        });
+        accepted = res.ok;
+        status = String(res.status);
+        await res.body?.cancel();
+      } catch (e) {
+        status = String(e).slice(0, 80);
+      }
+      if (!accepted) {
+        // Given back, so the next run tries again.
+        await supabase.from("mail_door_counts").delete().eq("door", door.p_door).eq("bucket", door.p_bucket);
+        outcome.set(o.id, `re-delivery failed (${status})`);
+        continue;
+      }
+      const { data: marked } = await supabase.from("used_stripe_sessions").select("session_id").eq("session_id", o.id).maybeSingle();
+      if (marked) {
+        redelivered++;
+        outcome.set(o.id, "re-delivered: the webhook has now claimed and delivered it");
+      } else {
+        outcome.set(o.id, "re-sent and acknowledged, but still no delivery marker");
+      }
+    }
+
     // Did the alert actually leave the building? `null` means there was nothing
     // to send, which is NOT the same as a send that failed — and neither is the
     // same as a missing key. Orphans found with no RESEND_API_KEY currently
@@ -141,12 +217,13 @@ serve(async (req) => {
       if (resendKey) {
         const esc = (x: string | null) => (x ?? "—").replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[c]!));
         const rows = orphans.map((o) =>
-          `<tr><td>${o.createdIso}</td><td><code>${esc(o.id)}</code></td><td>${esc(o.email)}</td><td>${o.amountCents != null ? (o.amountCents / 100).toFixed(2) + " " + o.currency.toUpperCase() : "—"}</td><td>${esc(o.product)}</td></tr>`,
+          `<tr><td>${o.createdIso}</td><td><code>${esc(o.id)}</code></td><td>${esc(o.email)}</td><td>${o.amountCents != null ? (o.amountCents / 100).toFixed(2) + " " + o.currency.toUpperCase() : "—"}</td><td>${esc(o.product)}</td><td>${esc(outcome.get(o.id) ?? null)}</td></tr>`,
         ).join("");
-        const subject = `⚠️ ${orphans.length} paid Stripe session(s) with no delivery`;
-        const html = `<h2>Stripe reconciliation: ${orphans.length} unfulfilled paid session(s)</h2>`
-          + `<p>These were PAID in Stripe in the last ${lookbackHours}h but have no <code>used_stripe_sessions</code> marker — the webhook (and the success-page fallback) both missed them. Recover each via the <code>recover-purchase</code> function.</p>`
-          + `<table border="1" cellpadding="6" style="border-collapse:collapse"><tr><th>Created</th><th>Session</th><th>Email</th><th>Amount</th><th>Product</th></tr>${rows}</table>`;
+        const subject = `⚠️ ${orphans.length} paid Stripe session(s) the webhook missed: ${redelivered} re-delivered`;
+        const html = `<h2>Stripe reconciliation: ${orphans.length} paid session(s) the webhook missed</h2>`
+          + `<p>These were PAID in Stripe in the last ${lookbackHours}h but had no <code>used_stripe_sessions</code> marker: the webhook (and the success-page fallback) both missed them. This sweep re-sent each one's completed-checkout event to stripe-webhook, which delivers it and mails the buyer as it would have; ${redelivered} of ${orphans.length} are now delivered.</p>`
+          + `<p>For any row not re-delivered: in the Stripe Dashboard, open Developers, then Events, find the session's <code>checkout.session.completed</code> event and press Resend. That runs the same delivery.</p>`
+          + `<table border="1" cellpadding="6" style="border-collapse:collapse"><tr><th>Created</th><th>Session</th><th>Email</th><th>Amount</th><th>Product</th><th>This sweep</th></tr>${rows}</table>`;
         // ALERTED MEANS ACCEPTED (CP-027). The SDK answers a refusal as
         // {error} without throwing, so "alerted: true" was recorded for a mail
         // Resend refused. Our own domain first, then Resend's onboarding
@@ -168,7 +245,7 @@ serve(async (req) => {
       }
     }
 
-    console.log(`[RECONCILE-STRIPE] ${paid.length} paid sessions over ${lookbackHours}h, ${orphans.length} orphan(s)`);
+    console.log(`[RECONCILE-STRIPE] ${paid.length} paid sessions over ${lookbackHours}h, ${orphans.length} orphan(s), ${redelivered} re-delivered`);
 
     // WHAT THE LAST SWEEP SAW, so a healthy result stops being indistinguishable
     // from no result. Counts only — session ids, addresses and amounts stay in
@@ -183,7 +260,7 @@ serve(async (req) => {
       await supabase.from("job_board_meta").upsert({
         k: "reconcile_stripe_run",
         v: { at: stampedAt, buildVersion: BUILD_VERSION, checkedPaid: paid.length,
-             orphans: orphans.length, alerted, lookbackHours },
+             orphans: orphans.length, redelivered, alerted, lookbackHours },
         updated_at: stampedAt,
       }, { onConflict: "k" });
     } catch (e) {
@@ -193,7 +270,7 @@ serve(async (req) => {
     }
 
     // Counts only — never PII.
-    return json({ checkedPaid: paid.length, orphans: orphans.length, alerted, lookbackHours,
+    return json({ checkedPaid: paid.length, orphans: orphans.length, redelivered, alerted, lookbackHours,
                   buildVersion: BUILD_VERSION, at: stampedAt });
   } catch (e) {
     console.error("[RECONCILE-STRIPE] error:", e);
