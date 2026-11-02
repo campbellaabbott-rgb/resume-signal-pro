@@ -137,7 +137,13 @@ beforeEach(() => {
       return { data: text ? [{ resume_text: text, linkedin_text: null, job_description_text: null }] : [], error: null };
     }
     if (name === "get_analysis_by_share_id") { const s = saved.get(a.share_id_param); return { data: s ? [s] : [], error: null }; }
-    if (name === "delete_analysis_by_share_id") { saved.delete(a.p_share_id); return { data: true, error: null }; }
+    // '<share>:<purchase>', and only the purchase that redeemed that share (20261103130000, S13-079).
+    if (name === "delete_analysis_by_share_id") {
+      const [share, purchase] = [a.p_share_id.slice(0, a.p_share_id.indexOf(":")), a.p_share_id.slice(a.p_share_id.indexOf(":") + 1)];
+      if (!share || delivered.get(purchase) !== share) return { data: false, error: null };
+      saved.delete(share);
+      return { data: true, error: null };
+    }
     return { data: null, error: null };
   });
   vi.stubGlobal("fetch", vi.fn(async () => new Response("{}", { status: 200 })));
@@ -202,7 +208,8 @@ describe("a second full analysis bought in the same tab", () => {
       if (back === "a new document") arrive("/success");
       else window.history.replaceState(null, "", "/success");
       page();
-      expect(await screen.findByText("No session found", {}, SLOW), `Back ${back}`).toBeInTheDocument();
+      // The bare /success's own words since S13-123.
+      expect(await screen.findByText("No analysis is open here", {}, SLOW), `Back ${back}`).toBeInTheDocument();
       expect(screen.queryByText(en.resumeRecovery.title), `Back ${back} asked a buyer who had just deleted their data for the résumé again`).toBeNull();
       expect(analyzeCalls(), `Back ${back} asked analyze-resume for the deleted purchase (a 409, then the résumé form)`).toEqual([]);
       cleanup();
