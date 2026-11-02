@@ -13,18 +13,22 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { trackedEmployerChip } from "@/lib/tracked-employer-chip";
 
+// A board read to its end, watched long enough, whose re-post test is sound:
+// the one kind of board whose counts the employer page prints (S12-185).
+const READ = { observability_bucket: "full_read", watched_from: "2026-08-01", multi_site_title_share: 0, tracking_days: 60 };
+
 describe("the tracker's employer chip reads roles, not closure events", () => {
   it("quotes the roles that stayed down, never the event count", () => {
-    const jnj = { fills_90d: 2499, relists_90d: 5, filled_roles_90d: 1799, relisted_roles_90d: 403 };
+    const jnj = { ...READ, fills_90d: 2499, relists_90d: 5, filled_roles_90d: 1799, relisted_roles_90d: 403 };
     expect(trackedEmployerChip(jnj)).toEqual({ kind: "stayed-down", n: 1799 });
   });
 
   it("an employer whose fill events are all roles that came back gets the caution, not praise", () => {
-    expect(trackedEmployerChip({ filled_roles_90d: 2, relisted_roles_90d: 40 })).toEqual({ kind: "churn", n: 40 });
+    expect(trackedEmployerChip({ ...READ, filled_roles_90d: 2, relisted_roles_90d: 40 })).toEqual({ kind: "churn", n: 40 });
   });
 
   it("more roles back than down, under the caution's floor, says nothing", () => {
-    expect(trackedEmployerChip({ filled_roles_90d: 3, relisted_roles_90d: 4 })).toBeNull();
+    expect(trackedEmployerChip({ ...READ, filled_roles_90d: 3, relisted_roles_90d: 4 })).toBeNull();
   });
 
   it("a row from a deploy without the role columns says nothing rather than zero", () => {

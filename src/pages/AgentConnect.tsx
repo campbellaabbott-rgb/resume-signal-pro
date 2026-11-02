@@ -68,7 +68,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBoardTotals, roundedFloor } from "@/hooks/use-board-totals";
 import {
-  MCP_TOOLS, MCP_PAGE_HOSTS, MCP_PAGE_HOST_IDS, MCP_OTHER_AGENTS_LINE, MCP_COPY_THE_PROMPT, MCP_READ_TOOLS, MCP_PAID_TOOLS, MCP_TIER_BADGE, MCP_FIT_ALLOWANCE,
+  MCP_TOOLS, MCP_PAGE_HOSTS, MCP_PAGE_HOST_IDS, MCP_OTHER_AGENTS_LINE, MCP_COPY_THE_PROMPT, MCP_READ_TOOLS, MCP_PAID_TOOLS, MCP_TIER_BADGE, MCP_KEYED_READ_BADGE, MCP_FIT_ALLOWANCE,
   MCP_APPLY_TOOLS, MCP_ANON_TOOLS, MCP_ANON_TOOL_NAMES, MCP_ANON_CAPS, MCP_FREE_KEY_DAILY_QUOTA, MCP_PROMPTS, MCP_RESOURCES,
   MCP_SERVER_ADDRESS_NOTE, MCP_ADDRESS_GLOSS, MCP_NEEDS_ACCOUNT_LINE, MCP_WITHHELD_NOTE, MCP_INSTALL_REPO_URL, MCP_TEST_QUERY, MCP_TROUBLESHOOTING,
   MCP_SIGN_IN_META_KEY, MCP_ADD_TO_CLAUDE_LIVE, troubleRowsFor, stepSegments, hostTakesKey, curlInitialize, SIGN_IN_UNKNOWN, andList,
@@ -171,6 +171,9 @@ export function useSignInFact() {
 
 /** "a, b and c" from a list of tool names, for prose. */
 const names = (list: ReadonlyArray<{ name: string }>) => andList(list.map((t) => t.name));
+/** The read tools the server answers with no credential, and the ones it answers only with one (S13-105). */
+const UNKEYED_READ_TOOLS = MCP_READ_TOOLS.filter((t) => MCP_ANON_TOOL_NAMES.includes(t.name));
+const KEYED_READ_TOOLS = MCP_READ_TOOLS.filter((t) => !MCP_ANON_TOOL_NAMES.includes(t.name));
 
 /** The host part of a vendor document's URL, as a link label. */
 const docHost = (url: string) => { try { return new URL(url).host; } catch { return url; } };
@@ -625,12 +628,16 @@ export default function AgentConnect() {
                     </p>
                     <div className="grid lg:grid-cols-2 gap-6">
                       <div className="p-5 rounded-2xl bg-background border border-border">
-                        <h3 className="font-semibold mb-2 flex items-center gap-2"><Search className="w-4 h-4 text-primary" /> Read tools — any free key</h3>
+                        {/* NO KEY NEEDED (S13-105): the unkeyed read tools answer with no
+                            credential; a free key raises the allowance, and the two
+                            keyed read tools need one. */}
+                        <h3 className="font-semibold mb-2 flex items-center gap-2"><Search className="w-4 h-4 text-primary" /> Read tools — no key needed</h3>
                         <p className="text-sm text-muted-foreground mb-4">
-                          {MCP_READ_TOOLS.map((tool, i) => (
-                            <span key={tool.name}>{i > 0 && (i === MCP_READ_TOOLS.length - 1 ? " and " : ", ")}<code className="text-xs">{tool.name}</code></span>
+                          {UNKEYED_READ_TOOLS.map((tool, i) => (
+                            <span key={tool.name}>{i > 0 && (i === UNKEYED_READ_TOOLS.length - 1 ? " and " : ", ")}<code className="text-xs">{tool.name}</code></span>
                           ))}{" "}
-                          work with any free API key — the same ones the data API issues. No account, no card.
+                          answer with no key at all, within a free daily allowance. A free API key — the same ones the data API issues — raises that allowance
+                          {KEYED_READ_TOOLS.length > 0 && <>, and {names(KEYED_READ_TOOLS)} {KEYED_READ_TOOLS.length === 1 ? "needs" : "need"} one</>}. No account, no card.
                           {MCP_PAID_TOOLS.length > 0 && (
                             <> {names(MCP_PAID_TOOLS)} {MCP_PAID_TOOLS.length === 1 ? "gives" : "give"} {MCP_FIT_ALLOWANCE}, counted together with <code className="text-xs">POST /v1/fit</code> on the data API.</>
                           )}
@@ -698,7 +705,7 @@ export default function AgentConnect() {
                           <div className="flex items-center gap-3 flex-wrap">
                             <code className="text-sm font-semibold text-primary">{tool.name}</code>
                             <span className={`text-xs px-2 py-0.5 rounded-full border ${tool.tier === "paid" ? "border-primary/30 bg-primary/10 text-primary" : "border-border bg-muted text-muted-foreground"}`}>
-                              {MCP_TIER_BADGE[tool.tier]}
+                              {tool.tier === "read" && !MCP_ANON_TOOL_NAMES.includes(tool.name) ? MCP_KEYED_READ_BADGE : MCP_TIER_BADGE[tool.tier]}
                             </span>
                             {MCP_ANON_TOOL_NAMES.includes(tool.name) && (
                               <span className="text-xs px-2 py-0.5 rounded-full border border-success/40 bg-success/10 text-success">

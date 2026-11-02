@@ -193,8 +193,17 @@ export const MCP_TOOL_NAMES = MCP_TOOLS.map((t) => t.name);
 export const MCP_READ_TOOLS = MCP_TOOLS.filter((t) => t.tier === "read");
 export const MCP_PAID_TOOLS = MCP_TOOLS.filter((t) => t.tier === "paid");
 export const MCP_APPLY_TOOLS = MCP_TOOLS.filter((t) => t.tier === "apply");
-/** The badge each tier wears in a tool list (the /agents page and its bake): the fit tier is a confirmed free key's daily allowance; the apply tier is dormant. */
-export const MCP_TIER_BADGE: Record<McpToolTier, string> = { read: "any free key", paid: `free key, ${MCP_FIT_FREE_PER_DAY} scorings a day`, apply: "dormant" };
+/**
+ * The badge each tier wears in a tool list (the /agents page and its bake): the fit tier is a confirmed free key's daily allowance; the apply tier is dormant.
+ * THE READ TIER MAKES NO KEY CLAIM (S13-105). It said "any free key" while
+ * ten of its twelve tools answer with no credential at all (MCP_ANON_TOOL_NAMES
+ * below, the server's ANON_TOOLS); the bake and the page add "answers with no
+ * key" to those, and the page labels the two that need one with
+ * MCP_KEYED_READ_BADGE.
+ */
+export const MCP_TIER_BADGE: Record<McpToolTier, string> = { read: "read-only", paid: `free key, ${MCP_FIT_FREE_PER_DAY} scorings a day`, apply: "dormant" };
+/** A read tool the server answers only with a credential (key_status, debug_search). */
+export const MCP_KEYED_READ_BADGE = "read-only, any free key";
 
 /**
  * THE UNKEYED TIER, mirrored from the server's ANON_TOOLS. These tools answer

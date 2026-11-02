@@ -37,6 +37,7 @@ import { alertOwnerOnce } from "../_shared/owner-alert.ts";
 import { oneClickHeaders, oneClickUrl, redirectToConfirm, unsubscribeParams, unsubscribePageUrl } from "../_shared/unsubscribe-link.ts";
 import { sellerFooterHtml } from "../_shared/seller.ts";
 import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
+import { PULSE_COPY, industryLabel, mailLanguageOf, storedLanguage, type MailLanguage } from "./copy.ts";
 
 // Provable from outside without sending anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
@@ -53,7 +54,11 @@ import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
 // The seller line prints in the footer once both are filled in.
 // 2026-10-31.1 (land/all carries the homepage switch-over): 2026-10-27.1's
 // sending with 2026-10-25.2's /resume-checker link, neither branch's build.
-const FN_BUILD = "send-market-pulse.2026-10-31.1";
+// 2026-11-03.1 (audit-rest, account; S13-102): the confirmation mail is
+// written in the asking page's language and the monthly pulse in the one
+// stored when the address confirmed (market_pulse_subscribers.locale,
+// 20261103191000); English when neither is known (./copy.ts).
+const FN_BUILD = "send-market-pulse.2026-11-03.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -111,21 +116,22 @@ function knownIndustry(v: unknown): string {
   return typeof v === "string" && Object.prototype.hasOwnProperty.call(KEYWORD_FREQUENCY, v) ? v : "general";
 }
 
-function confirmEmailHtml(industryLabel: string, link: string): string {
+function confirmEmailHtml(lang: MailLanguage, industry: string, link: string): string {
+  const c = PULSE_COPY[lang];
   return `
-<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f1f5f9;font-family:Helvetica,Arial,sans-serif">
+<!DOCTYPE html><html lang="${lang}"><body style="margin:0;padding:0;background:#f1f5f9;font-family:Helvetica,Arial,sans-serif">
   <div style="max-width:560px;margin:0 auto;padding:24px 16px">
     <div style="text-align:center;padding:0 0 14px">
       <span style="font-size:17px;font-weight:800;color:#0f172a">Resume <span style="color:#2563eb">Booster</span></span>
     </div>
     <div style="background:#fff;border-radius:14px;padding:26px 24px;border:1px solid #e2e8f0">
-      <p style="font-size:15px;color:#111;font-weight:600;margin:0 0 12px">Confirm your monthly market pulse</p>
-      <p style="font-size:14px;color:#444;margin:0 0 12px">Someone, hopefully you, asked us to email this address once a month with the core keywords our scanner checks ${escapeHtml(industryLabel)} resumes for.</p>
-      <p style="font-size:14px;color:#444;margin:0 0 18px">Nothing is sent unless you confirm.</p>
+      <p style="font-size:15px;color:#111;font-weight:600;margin:0 0 12px">${c.confirmHeading}</p>
+      <p style="font-size:14px;color:#444;margin:0 0 12px">${c.confirmAsk(escapeHtml(industryLabel(industry, lang)))}</p>
+      <p style="font-size:14px;color:#444;margin:0 0 18px">${c.confirmNothing}</p>
       <div style="text-align:center">
-        <a href="${link}" style="display:inline-block;background:#2563eb;color:#fff;font-size:14px;font-weight:700;padding:12px 26px;border-radius:10px;text-decoration:none">Confirm the monthly pulse</a>
+        <a href="${link}" style="display:inline-block;background:#2563eb;color:#fff;font-size:14px;font-weight:700;padding:12px 26px;border-radius:10px;text-decoration:none">${c.confirmButton}</a>
       </div>
-      <p style="font-size:12px;color:#64748b;margin:18px 0 0">The link works once and expires in 7 days. If this wasn't you, ignore this email: without a click, this address gets no market pulse.</p>
+      <p style="font-size:12px;color:#64748b;margin:18px 0 0">${c.confirmExpiry}</p>
     </div>
   </div>
 </body></html>`;
@@ -213,12 +219,13 @@ Deno.serve(async (req) => {
       if (d?.pc_send) {
         if (!RESEND_API_KEY) return json({ success: false, error: "Email service not configured" }, 503);
         const link = `${SITE_URL}${CONFIRM_PATH}#t=${token}`;
+        const lang = mailLanguageOf(body, req.headers.get("accept-language"));
         const { error: sendErr } = await new Resend(RESEND_API_KEY).emails.send({
           from: "Resume Booster <reports@resumebooster.work>",
           to: [email],
           reply_to: CUSTOMER_REPLY_TO,
-          subject: "Confirm your monthly market pulse",
-          html: confirmEmailHtml(industry.replace(/_/g, " "), link),
+          subject: PULSE_COPY[lang].confirmSubject,
+          html: confirmEmailHtml(lang, industry, link),
         });
         if (sendErr) {
           // The request was recorded before the send (S8-099): take it back,
@@ -245,7 +252,18 @@ Deno.serve(async (req) => {
       });
       if (rlError) return json({ success: false, error: "Could not confirm right now. Try the link again shortly." }, 503);
       if (allowed !== true) return json({ success: false, error: "Too many requests. Please try again later." }, 429);
-      const { data, error } = await supabase.rpc("market_pulse_confirm", { p_token_hash: await sha256Hex(token) }).maybeSingle();
+      const tokenHash = await sha256Hex(token);
+      // THE PULSE'S LANGUAGE (S13-102): the confirming page's, stored on the
+      // row this token names while it is still live, before the confirm
+      // spends the token. Best effort: a refusal (no locale column yet) only
+      // leaves the pulse in English.
+      try {
+        await supabase.from("market_pulse_subscribers")
+          .update({ locale: mailLanguageOf(body, req.headers.get("accept-language")) })
+          .eq("confirm_token_hash", tokenHash)
+          .gt("confirm_sent_at", new Date(Date.now() - 7 * 86_400_000).toISOString());
+      } catch { /* the pulse stays English */ }
+      const { data, error } = await supabase.rpc("market_pulse_confirm", { p_token_hash: tokenHash }).maybeSingle();
       if (error) return json({ success: false, error: "Could not confirm right now. Try the link again shortly." }, 503);
       const d = data as { cf_confirmed?: boolean } | null;
       if (!d?.cf_confirmed) return json({ success: false, error: "This link has expired or was already used." }, 410);
@@ -271,6 +289,16 @@ Deno.serve(async (req) => {
       let sent = 0, skipped = 0, handedBack = 0;
 
       const due = (claimed ?? []) as Array<{ cl_email: string; cl_industry: string; cl_last_score: number | null; cl_confirmed_at: string; cl_prev_sent_at: string | null }>;
+      // Each subscriber's language, stored at confirmation (S13-102). A read
+      // that fails, or a row without one, is English.
+      const localeOf = new Map<string, unknown>();
+      if (due.length) {
+        try {
+          const { data: locRows, error: locErr } = await supabase.from("market_pulse_subscribers")
+            .select("email, locale").in("email", due.map((d) => d.cl_email));
+          if (!locErr) for (const r of (locRows ?? []) as Array<{ email: string; locale?: unknown }>) localeOf.set(r.email, r.locale);
+        } catch { /* English for all */ }
+      }
       for (let i = 0; i < due.length; i++) {
         const sub = due[i];
         if (Date.now() - startedAt >= RUN_BUDGET_MS) {
@@ -291,7 +319,9 @@ Deno.serve(async (req) => {
         const unsubUrl = unsubscribePageUrl("market-pulse", unsubParams);
         const unsubHeaders = oneClickHeaders(oneClickUrl(Deno.env.get("SUPABASE_URL") ?? "", "send-market-pulse", unsubParams));
         const rescanUrl = `${SITE_URL}/resume-checker?utm_source=email&utm_medium=market_pulse&utm_campaign=rescan`;
-        const industryLabel = industry.replace(/_/g, " ");
+        const lang = storedLanguage(localeOf.get(sub.cl_email));
+        const c = PULSE_COPY[lang];
+        const label = industryLabel(industry, lang);
         const confirmedOn = String(sub.cl_confirmed_at ?? "").slice(0, 10);
 
         // Personal progress -- accounts with scan history get THEIR trend, not
@@ -306,11 +336,11 @@ Deno.serve(async (req) => {
             const diffColor = diff >= 0 ? "#16a34a" : "#dc2626";
             progressHtml = `
       <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin:0 0 16px">
-        <h3 style="font-size:12px;color:#111;margin:0 0 6px;text-transform:uppercase;letter-spacing:0.5px">Your progress</h3>
+        <h3 style="font-size:12px;color:#111;margin:0 0 6px;text-transform:uppercase;letter-spacing:0.5px">${c.progressTitle}</h3>
         <p style="font-size:13px;color:#444;margin:0">
-          Across your last ${trend.length} scans: <b>${escapeHtml(oldest)}</b> → <b>${escapeHtml(newest)}</b>
+          ${c.progressAcross(trend.length)} <b>${escapeHtml(oldest)}</b> → <b>${escapeHtml(newest)}</b>
           <span style="color:${diffColor};font-weight:700">(${diff >= 0 ? "+" : ""}${escapeHtml(diff)})</span>
-          ${diff > 0 ? " — keep going." : diff === 0 ? " — a fresh scan could move it." : " — worth a fresh look at the fix plan."}
+          ${diff > 0 ? c.trendUp : diff === 0 ? c.trendFlat : c.trendDown}
         </p>
       </div>`;
           }
@@ -320,26 +350,26 @@ Deno.serve(async (req) => {
           words.map(w => `<span style="display:inline-block;background:${bg};color:${color};font-size:12px;font-weight:600;padding:4px 10px;border-radius:99px;margin:0 4px 6px 0">${escapeHtml(w)}</span>`).join("");
 
         const html = `
-<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f1f5f9;font-family:Helvetica,Arial,sans-serif">
+<!DOCTYPE html><html lang="${lang}"><body style="margin:0;padding:0;background:#f1f5f9;font-family:Helvetica,Arial,sans-serif">
   <div style="max-width:560px;margin:0 auto;padding:24px 16px">
     <div style="text-align:center;padding:0 0 14px">
       <span style="font-size:17px;font-weight:800;color:#0f172a">Resume <span style="color:#2563eb">Booster</span></span>
-      <div style="font-size:11px;color:#94a3b8;margin-top:2px">Market pulse · ${escapeHtml(industryLabel)}</div>
+      <div style="font-size:11px;color:#94a3b8;margin-top:2px">${c.tagline} · ${escapeHtml(label)}</div>
     </div>
     <div style="background:#fff;border-radius:14px;padding:26px 24px;border:1px solid #e2e8f0">
-      <p style="font-size:15px;color:#111;font-weight:600;margin:0 0 12px">The core keywords our scanner checks ${escapeHtml(industryLabel)} resumes for.</p>
-      <p style="font-size:12px;color:#64748b;margin:0 0 12px">From our curated ${escapeHtml(industryLabel)} keyword list, not a count of this month's postings.</p>
+      <p style="font-size:15px;color:#111;font-weight:600;margin:0 0 12px">${c.headline(escapeHtml(label))}</p>
+      <p style="font-size:12px;color:#64748b;margin:0 0 12px">${c.curated(escapeHtml(label))}</p>
       ${progressHtml}
-      ${digest.mustHave.length ? `<h3 style="font-size:12px;color:#111;margin:14px 0 8px;text-transform:uppercase;letter-spacing:0.5px">Core keywords</h3><div>${kwPills(digest.mustHave, "#fef2f2", "#dc2626")}</div>` : ""}
-      ${digest.common.length ? `<h3 style="font-size:12px;color:#111;margin:14px 0 8px;text-transform:uppercase;letter-spacing:0.5px">Often expected</h3><div>${kwPills(digest.common, "#fffbeb", "#d97706")}</div>` : ""}
-      <p style="font-size:13px;color:#444;margin:16px 0 0">${sub.cl_last_score ? `Your last scan scored <b>${escapeHtml(sub.cl_last_score)}/100</b>. ` : ""}A fresh scan against a posting you want takes about 60 seconds and is free.</p>
+      ${digest.mustHave.length ? `<h3 style="font-size:12px;color:#111;margin:14px 0 8px;text-transform:uppercase;letter-spacing:0.5px">${c.coreKeywords}</h3><div>${kwPills(digest.mustHave, "#fef2f2", "#dc2626")}</div>` : ""}
+      ${digest.common.length ? `<h3 style="font-size:12px;color:#111;margin:14px 0 8px;text-transform:uppercase;letter-spacing:0.5px">${c.oftenExpected}</h3><div>${kwPills(digest.common, "#fffbeb", "#d97706")}</div>` : ""}
+      <p style="font-size:13px;color:#444;margin:16px 0 0">${sub.cl_last_score ? c.lastScan(escapeHtml(sub.cl_last_score)) : ""}${c.freshScan}</p>
       <div style="text-align:center;margin-top:20px">
-        <a href="${rescanUrl}" style="display:inline-block;background:#2563eb;color:#fff;font-size:14px;font-weight:700;padding:12px 26px;border-radius:10px;text-decoration:none">Rescan my resume free</a>
+        <a href="${rescanUrl}" style="display:inline-block;background:#2563eb;color:#fff;font-size:14px;font-weight:700;padding:12px 26px;border-radius:10px;text-decoration:none">${c.rescanButton}</a>
       </div>
     </div>
     <p style="font-size:11px;color:#94a3b8;text-align:center;margin-top:16px;line-height:1.5">
-      You confirmed this monthly pulse${confirmedOn ? ` on ${escapeHtml(confirmedOn)}` : ""} by clicking the link we emailed you.<br>
-      <a href="${escapeHtml(unsubUrl)}" style="color:#94a3b8">Unsubscribe</a> — no login needed.
+      ${c.confirmedOn(confirmedOn ? escapeHtml(confirmedOn) : null)}<br>
+      <a href="${escapeHtml(unsubUrl)}" style="color:#94a3b8">${c.unsubscribe}</a> ${c.noLogin}
     </p>${sellerFooterHtml()}
   </div>
 </body></html>`;
@@ -348,7 +378,7 @@ Deno.serve(async (req) => {
           from: "Resume Booster <reports@resumebooster.work>",
           to: [sub.cl_email],
           reply_to: CUSTOMER_REPLY_TO,
-          subject: `Your ${industryLabel} market pulse: the keywords to check your resume for`,
+          subject: c.subject(label),
           html,
           headers: unsubHeaders,
         });

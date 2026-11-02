@@ -38,7 +38,7 @@ interface EmailReportCaptureProps {
 }
 
 export function EmailReportCapture({ payload, variant = "full", hideIfKnown = false, suggestedEmail = null }: EmailReportCaptureProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [email, setEmail] = useState(suggestedEmail ?? "");
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -89,7 +89,8 @@ export function EmailReportCapture({ payload, variant = "full", hideIfKnown = fa
         // (or one was already due); the address is still not subscribed.
         try {
           const { data: p, error: pErr } = await supabase.functions.invoke("send-market-pulse", {
-            body: { action: "subscribe", email: trimmed, industry: payload.industry, score: payload.score },
+            // The page's language: the confirmation mail is written in it (S13-102).
+            body: { action: "subscribe", email: trimmed, industry: payload.industry, score: payload.score, language: i18n.language },
           });
           if (!pErr && (p as { success?: boolean } | null)?.success) setPulseOutcome("pending");
           else if ((pErr as { context?: { status?: number } } | null)?.context?.status === 422) setPulseOutcome("not_covered");
@@ -213,7 +214,10 @@ export function EmailReportCapture({ payload, variant = "full", hideIfKnown = fa
           className="mt-0.5 accent-primary"
         />
         <span className="text-xs text-muted-foreground">
-          {t('freeResults.enterprise.pulseOptIn', 'Also send me a monthly market pulse: the keywords rising in my industry, with a free rescan link. Unsubscribe anytime.')}
+          {/* S13-100: the pulse sends the core keywords from our keyword guide
+              for the field, which every locale already says; the fallback
+              promised a reading of postings nothing makes. */}
+          {t('freeResults.enterprise.pulseOptIn', 'Also send me a monthly market pulse: the core keywords for my industry from our keyword guide, with a free rescan link. Unsubscribe anytime.')}
         </span>
       </label>
       <label className="flex items-start gap-2 mt-2 cursor-pointer">

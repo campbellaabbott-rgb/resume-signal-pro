@@ -322,7 +322,7 @@ function ContinueView({ next, mode }: { next: string; mode: AuthMode }) {
   const google = async () => {
     clear();
     setBusy(true);
-    const { error: err } = await signInWithGoogle(next);
+    const { error: err } = await signInWithGoogle(next, { termsShown: true });
     setBusy(false);
     if (err) setError((t) => t("auth.provider.failed", "That sign-in didn't finish. Try again, or use your password."));
   };
@@ -357,6 +357,9 @@ function ContinueView({ next, mode }: { next: string; mode: AuthMode }) {
         {t("auth.subtitle", "Track your resume scores over time, keep your scan history, and see your credits and purchases in one place. Free forever.")}
       </p>
 
+      {/* THE TERMS COME BEFORE EITHER WAY IN (S12-078): the line sat under the
+          form, below the Google button, so a Google sign-up never passed it. */}
+      <PurchaseTerms kind="signup" className="mb-3" />
       <ProviderButtons onGoogle={() => void google()} busy={busy} />
 
       <form onSubmit={submit} noValidate>
@@ -442,7 +445,6 @@ function ContinueView({ next, mode }: { next: string; mode: AuthMode }) {
         {notice && <p role="status" className="text-xs text-success mb-3">{notice(t)}</p>}
         {error && <SupportLine />}
 
-        <PurchaseTerms kind="signup" className="mb-3" />
         <button type="submit" disabled={busy} className={primaryBtn}>
           {busy && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
           {passwordOpen ? t("auth.continue", "Continue") : <CodeSendLabel />}

@@ -55,6 +55,24 @@ async function limitTextOf(error: unknown, t: TFn): Promise<string> {
   return copilotLimitText(body, retryAfter, t);
 }
 
+/**
+ * WHETHER A 402 IS A PURCHASE QUESTION (S13-084). generate-apply-package
+ * answers 402 two ways: { requiresPurchase: true } when the caller has no
+ * plan or kit purchase, and { retryable: false } when the AI gateway has run
+ * out of credits. The panel told a paying member "Batch prep needs Pro" for
+ * the second; only the first is that.
+ */
+export async function purchaseRequiredOf(error: unknown): Promise<boolean> {
+  const ctx = (error as { context?: Response } | null)?.context;
+  try {
+    const copy = ctx && typeof ctx.clone === "function" ? ctx.clone() : ctx;
+    const parsed = copy && typeof copy.json === "function" ? await copy.json() : null;
+    return !!parsed && typeof parsed === "object" && (parsed as { requiresPurchase?: unknown }).requiresPurchase === true;
+  } catch {
+    return false;
+  }
+}
+
 export interface CopilotApp {
   id: string;
   company: string;
@@ -142,7 +160,12 @@ export function ApplyCopilotPanel({
   const prepAll = async () => {
     if (!proActive || busy) return;
     setBusy(true);
-    let succeeded = 0; // only real kits — not skips, refusals, or failures
+    let succeeded = 0; // kits that now carry their letter — not skips, refusals, or failures
+    // A kit made and saved this run whose letter could not be written
+    // (S13-084): progress, said as such, never "nothing new to prep".
+    let savedWithoutLetter = 0;
+    // A refusal already told the member why the batch stopped.
+    let told = false;
     let i = 0;
     for (const a of pending) {
       setProgress({ done: i, total: pending.length, company: a.company });
@@ -153,6 +176,7 @@ export function ApplyCopilotPanel({
       try {
         // The tailored résumé, unless this job already has its kit.
         let kit = a.kit && typeof a.kit === "object" ? (a.kit as Record<string, unknown>) : null;
+        const madeNow = !kit;
         if (!kit) {
           const { data, error } = await supabase.functions.invoke("generate-apply-package", {
             body: { resumeText, jobPostingText: a.job_posting, jobTitle: a.role, jobCompany: a.company },
@@ -161,12 +185,18 @@ export function ApplyCopilotPanel({
             // On a non-2xx the SDK nulls `data` and puts the Response on
             // error.context — that's the only place the real status lives.
             const status = (error as { context?: { status?: number } })?.context?.status;
-            if (status === 402) { toast.error(t("accountPage.acNeedsPro", "Batch prep needs Pro. Upgrade to prep applications in bulk.")); break; }
+            if (status === 402) {
+              told = true;
+              toast.error(await purchaseRequiredOf(error)
+                ? t("accountPage.acNeedsPro", "Batch prep needs Pro. Upgrade to prep applications in bulk.")
+                : t("accountPage.acAiUnavailable", "The AI service can't take requests right now. What was prepped so far is saved; try the rest later."));
+              break;
+            }
             // The account's writing allowance (a day's or a month's), or an
             // ended session: said with when it comes back, and the batch stops.
             const refusal = await writingRefusalOf(error);
-            if (refusal) { toast.error(writingRefusalText(refusal, (k, d, v) => t(k, d, v), i18n.language)); break; }
-            if (status === 429) { toast.error(await limitTextOf(error, (k, d, v) => t(k, d, v))); break; }
+            if (refusal) { told = true; toast.error(writingRefusalText(refusal, (k, d, v) => t(k, d, v), i18n.language)); break; }
+            if (status === 429) { told = true; toast.error(await limitTextOf(error, (k, d, v) => t(k, d, v))); break; }
             continue; // 422 grounding refusal or transient — skip this one, keep going
           }
           if (!(data as { success?: boolean } | null)?.success) continue;
@@ -184,9 +214,11 @@ export function ApplyCopilotPanel({
         if (letterRefusal) {
           toast.error(writingRefusalText(letterRefusal, (k, d, v) => t(k, d, v), i18n.language));
           stop = true;
+          told = true;
         } else if (letterError && (letterError as { context?: { status?: number } })?.context?.status === 429) {
           toast.error(await limitTextOf(letterError, (k, d, v) => t(k, d, v)));
           stop = true;
+          told = true;
         }
         const full = typeof letter === "string" && letter.trim() ? { ...kit, coverLetter: letter } : kit;
         // Persist the kit so it survives reloads and never re-charges; one
@@ -194,6 +226,7 @@ export function ApplyCopilotPanel({
         await appsTable().update({ kit: full, kit_generated_at: new Date().toISOString() }).eq("id", a.id);
         onKit(a.id, full);
         if (full !== kit) succeeded++;
+        else if (madeNow) savedWithoutLetter++;
       } catch {
         // network hiccup — leave it pending, next run picks it up
       }
@@ -204,7 +237,11 @@ export function ApplyCopilotPanel({
     setBusy(false);
     if (succeeded > 0) {
       toast.success(t("accountPage.acPreppedToast", "Prepped {{count}} applications — review and apply below.", { count: succeeded }));
-    } else {
+    }
+    if (savedWithoutLetter > 0) {
+      toast(t("accountPage.acSavedNoLetter", "Tailored résumés saved: {{count}}. Their cover letters couldn't be written this time; run prep again to add them.", { count: savedWithoutLetter }));
+    }
+    if (succeeded === 0 && savedWithoutLetter === 0 && !told) {
       toast(t("accountPage.acNothingNew", "Nothing new to prep — the saved postings couldn't be tailored (missing description or grounding check). Add a job posting and try again."));
     }
   };

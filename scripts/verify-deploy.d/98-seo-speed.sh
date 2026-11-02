@@ -6,7 +6,8 @@
 # the new claims FAIL by design; nothing here may crash.
 #   SEO-020  the app stylesheet imports nothing; no font stylesheet is
 #            requested: the head declares the faces inline (font-display
-#            optional, woff2 on the font host) and preloads the Inter latin
+#            optional, woff2 on the font host or, since S12-011, served
+#            from this site's /fonts/) and preloads the Inter latin
 #            file, so the face is known at the first layout and is used (the
 #            media-swap head of the round's first try rendered Inter on no
 #            load at all); no Stripe preconnect
@@ -62,8 +63,8 @@ const gz = (b) => zlib.gzipSync(b, { level: 9 }).length;
   const interFaces = faces.filter((f) => /font-family:\s*[\x27"]?Inter[\x27"]?\s*;/.test(f));
   const latinSrc = ((interFaces.find((f) => /unicode-range:\s*U\+0000-00FF/.test(f)) || "").match(/url\(([^)]+)\)/) || [])[1];
   const preloaded = latinSrc && links.some((l) => attr(l, "rel") === "preload" && attr(l, "as") === "font" && /\scrossorigin/.test(l) && attr(l, "href") === latinSrc.replace(/[\x27"]/g, ""));
-  const allOptional = faces.length > 0 && faces.every((f) => /font-display:\s*optional/.test(f) && /url\(https:\/\/fonts\.gstatic\.com\/[^)]+\.woff2\)/.test(f));
-  if (!fontSheets.length && interFaces.length && allOptional && preloaded) out("PASS", `the head declares ${faces.length} faces inline (font-display optional, woff2 on the font host) and preloads the Inter latin file: no font stylesheet request, the face is known at the first layout and never re-wraps the page (SEO-020, SEO-022)`);
+  const allOptional = faces.length > 0 && faces.every((f) => /font-display:\s*optional/.test(f) && /url\((?:https:\/\/fonts\.gstatic\.com\/|\/fonts\/)[^)]+\.woff2\)/.test(f));
+  if (!fontSheets.length && interFaces.length && allOptional && preloaded) out("PASS", `the head declares ${faces.length} faces inline (font-display optional, woff2 ${faces.every((f) => /url\(\/fonts\//.test(f)) ? "served from /fonts/ on this site" : "on the font host"}) and preloads the Inter latin file: no font stylesheet request, the face is known at the first layout and never re-wraps the page (SEO-020, SEO-022)`);
   else out("FAIL", `the font head: ${fontSheets.length} font stylesheet request(s), ${interFaces.length} inline Inter face(s), ${allOptional ? "all" : "not all"} optional on the font host, the latin file ${preloaded ? "preloaded" : "NOT preloaded"} (want inline optional faces and a preloaded latin file, no stylesheet request: an optional face declared after the first layout is never used) (SEO-020, SEO-022)`);
   const stripe = links.filter((l) => /^(preconnect|dns-prefetch)$/.test(attr(l, "rel") || "") && /stripe\.com/.test(attr(l, "href") || ""));
   if (stripe.length) out("FAIL", `the head still opens a connection to ${attr(stripe[0], "href")}, which no page loads (SEO-020)`);

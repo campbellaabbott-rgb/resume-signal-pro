@@ -22,7 +22,7 @@ import { stashedFragment, takeStashed } from "@/lib/auth-fragment";
 type State = "ready" | "confirming" | "done" | "invalid" | "error" | "missing";
 
 export default function MarketPulseConfirm() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [token] = useState<string | null>(() =>
     typeof window === "undefined" ? null : pulseTokenFromHash(stashedFragment(window.location.hash)));
   const [state, setState] = useState<State>(token ? "ready" : "missing");
@@ -35,7 +35,10 @@ export default function MarketPulseConfirm() {
     if (!token) return;
     setState("confirming");
     try {
-      const { data, error } = await supabase.functions.invoke("send-market-pulse", { body: { action: "confirm", token } });
+      const { data, error } = await supabase.functions.invoke("send-market-pulse", {
+        // The monthly pulse is written in the language confirmed here (S13-102).
+        body: { action: "confirm", token, language: i18n.language },
+      });
       if (!error && (data as { confirmed?: boolean } | null)?.confirmed) { setState("done"); return; }
       const status = (error as { context?: { status?: number } } | null)?.context?.status;
       setState(status === 410 || status === 400 ? "invalid" : "error");
@@ -63,7 +66,10 @@ export default function MarketPulseConfirm() {
         {(state === "ready" || state === "confirming") && (
           <>
             <p className="text-sm text-muted-foreground mb-5">
-              {t("pulseConfirm.body", "One email a month with the keywords job postings in your field are screening for, and a free rescan link. Every email has a one-click unsubscribe.")}
+              {/* WHAT THE PULSE SENDS (S13-100): the core keywords from our curated
+                  list for the field, the list the batch reads, not a count of
+                  this month's postings. */}
+              {t("pulseConfirm.bodyCurated", "One email a month with the core keywords for your field from our curated keyword guide (not a count of this month's postings), and a free rescan link. Every email has a one-click unsubscribe.")}
             </p>
             <button
               type="button"

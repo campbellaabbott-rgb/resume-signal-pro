@@ -35,6 +35,8 @@ interface AudienceData {
   daily: Array<{ day: string; visitors: number; events: number; newVisitors: number }>;
   bySurface: Array<{ surface: string; visitors: number }>;
   truncated: boolean;
+  /** When truncated: the oldest moment fully read. Earlier days are partial. */
+  coveredFrom?: string | null;
 }
 
 interface EngagementData {
@@ -336,7 +338,7 @@ function AnalyticsDashboardContent() {
 
             {data.audience.truncated && (
               <p className="mt-4 text-[11px] text-warning">
-                Hit the 50,000-event read cap — these counts are a FLOOR, not a total. Narrow the date range for exact figures.
+                The read ran out of time before the oldest events{data.audience.coveredFrom ? ` (everything from ${data.audience.coveredFrom.slice(0, 16).replace("T", " ")} UTC on was read)` : ""}, so the earlier days are a FLOOR, not a total. Narrow the date range for exact figures.
               </p>
             )}
           </div>

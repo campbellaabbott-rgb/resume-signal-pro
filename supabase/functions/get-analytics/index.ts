@@ -2,13 +2,20 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { keyMatches } from "../_shared/admin-key.ts";
+import { createRollup, type AnalyticsEvent } from "./rollup.ts";
 
 // THE DASHBOARD COULD NEVER REACH THIS (register L1-03). Its page sends the
 // owner's key as x-admin-key, and this preflight did not allow that header,
 // so the browser refused the request before it left: the dashboard was dead
 // whatever key was entered. The header is allowed now, and the key is
 // compared in constant time.
-const FN_BUILD = "get-analytics.2026-10-09.2";
+// 2026-11-03.1 (audit-rest, account; S13-070): every row of the range is read,
+// newest first, and folded into the counts as it arrives (./rollup.ts); a run
+// that spends its time budget leaves the oldest days partial and says from
+// where (audience.coveredFrom), never the newest.
+const FN_BUILD = "get-analytics.2026-11-03.1";
+/** Nothing new is asked for after this long (the isolate dies near 150 s). */
+const READ_BUDGET_MS = 110_000;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -53,32 +60,38 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    // Query ab_test_events with service role (bypasses RLS)
-    // Note: PostgREST has a default max of 1000 rows per request, so we paginate.
-    // We use keyset pagination (created_at + id) to avoid relying on large offsets.
+    // Query ab_test_events with service role (bypasses RLS).
+    // NEWEST FIRST, EVERY ROW (S13-070, ./rollup.ts). PostgREST answers at
+    // most 1,000 rows a request, so the read pages by keyset (created_at,
+    // id), newest first, and folds each page into the counts before asking
+    // for the next. It used to read oldest first and stop at 50,000 rows,
+    // which dropped the newest days of a busy range. Only a run out of time
+    // stops early now, and then the oldest days are the partial ones.
     const batchSize = 1000;
-    const maxRows = 50000; // safety cap
-
-    const events: any[] = [];
+    const startedAt = Date.now();
+    const rollup = createRollup(pageFilter);
     let lastCreatedAt: string | null = null;
     let lastId: string | null = null;
+    let truncated = false;
 
-    while (events.length < maxRows) {
+    for (;;) {
+      if (Date.now() - startedAt > READ_BUDGET_MS) { truncated = true; break; }
       let query = supabase
         .from('ab_test_events')
         // visitor_id is REQUIRED to count people rather than events. Without it
         // one visitor reloading forty times reads as forty. It is a pseudonymous
         // UUID and is aggregated below — raw ids never leave this function.
-        .select('id, test_name, variant, event_type, metadata, created_at, visitor_id')
+        // Of metadata only the page is read.
+        .select('id, test_name, variant, event_type, page:metadata->>page, created_at, visitor_id')
         .gte('created_at', startDate)
         .lte('created_at', endDate)
-        .order('created_at', { ascending: true })
-        .order('id', { ascending: true })
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: false })
         .limit(batchSize);
 
       if (lastCreatedAt && lastId) {
         query = query.or(
-          `created_at.gt.${lastCreatedAt},and(created_at.eq.${lastCreatedAt},id.gt.${lastId})`
+          `created_at.lt."${lastCreatedAt}",and(created_at.eq."${lastCreatedAt}",id.lt.${lastId})`
         );
       }
 
@@ -90,8 +103,8 @@ serve(async (req) => {
       }
 
       if (batch?.length) {
-        events.push(...batch);
-        const last = batch[batch.length - 1] as any;
+        for (const e of batch as AnalyticsEvent[]) rollup.add(e);
+        const last = batch[batch.length - 1] as { created_at: string; id: string };
         lastCreatedAt = last.created_at;
         lastId = last.id;
       }
@@ -99,115 +112,17 @@ serve(async (req) => {
       if (!batch || batch.length < batchSize) break;
     }
 
-    if (events.length >= maxRows) {
-      console.warn(`[Analytics] Reached maxRows cap (${maxRows}). Some events may be omitted.`);
+    if (truncated) {
+      console.warn(`[Analytics] Read budget spent after ${rollup.totalEvents} events; days before ${lastCreatedAt} are partial.`);
     }
 
-    console.log(`[Analytics] Found ${events.length} events`);
+    console.log(`[Analytics] Found ${rollup.totalEvents} events`);
 
     // AUDIENCE — the numbers that answer "does anyone use this?". Everything
     // else on this dashboard measures events; these measure PEOPLE.
-    const allVisitors = new Set<string>();
-    const visitorsByDay = new Map<string, Set<string>>();
-    const eventsByDay = new Map<string, number>();
-    const visitorFirstSeen = new Map<string, string>(); // id -> earliest day seen
-    const surfaceVisitors = new Map<string, Set<string>>(); // test_name -> visitors
-
-    for (const e of events) {
-      const vid = (e as { visitor_id?: string }).visitor_id;
-      const day = String(e.created_at).slice(0, 10);
-      eventsByDay.set(day, (eventsByDay.get(day) ?? 0) + 1);
-      if (!vid) continue;
-      allVisitors.add(vid);
-      if (!visitorsByDay.has(day)) visitorsByDay.set(day, new Set());
-      visitorsByDay.get(day)!.add(vid);
-      if (!surfaceVisitors.has(e.test_name)) surfaceVisitors.set(e.test_name, new Set());
-      surfaceVisitors.get(e.test_name)!.add(vid);
-      const prev = visitorFirstSeen.get(vid);
-      if (!prev || day < prev) visitorFirstSeen.set(vid, day);
-    }
-
-    // A returning visitor is one seen on more than one distinct day — the
-    // cheapest honest signal that the product is worth coming back to.
-    const daysPerVisitor = new Map<string, Set<string>>();
-    for (const [day, ids] of visitorsByDay) {
-      for (const id of ids) {
-        if (!daysPerVisitor.has(id)) daysPerVisitor.set(id, new Set());
-        daysPerVisitor.get(id)!.add(day);
-      }
-    }
-    let returningVisitors = 0;
-    for (const days of daysPerVisitor.values()) if (days.size > 1) returningVisitors++;
-
-    const audience = {
-      uniqueVisitors: allVisitors.size,
-      totalEvents: events.length,
-      returningVisitors,
-      eventsPerVisitor: allVisitors.size ? Math.round((events.length / allVisitors.size) * 10) / 10 : 0,
-      // Ascending by day so the dashboard can render a trend directly.
-      daily: [...visitorsByDay.keys()].sort().map((day) => ({
-        day,
-        visitors: visitorsByDay.get(day)!.size,
-        events: eventsByDay.get(day) ?? 0,
-        newVisitors: [...visitorsByDay.get(day)!].filter((id) => visitorFirstSeen.get(id) === day).length,
-      })),
-      bySurface: [...surfaceVisitors.entries()]
-        .map(([surface, ids]) => ({ surface, visitors: ids.size }))
-        .sort((a, b) => b.visitors - a.visitors)
-        .slice(0, 25),
-      // Honest caveat the UI must surface: above the cap these are undercounts.
-      truncated: events.length >= maxRows,
-    };
-
-    // Process events into metrics
-    const metrics: Record<string, Record<string, { views: number; conversions: number }>> = {};
-    const pageSpecificMetrics: Record<string, Record<string, Record<string, { views: number; conversions: number }>>> = {
-      home: {},
-      pricing: {},
-    };
-
-    events?.forEach(event => {
-      // Scroll and time milestones carry their page in the variant since
-      // 2026-10-09 ('pricing:25%', S8-123); the milestone is what is counted.
-      const isMilestone = event.test_name === 'scroll_depth' || event.test_name === 'time_on_page';
-      const prefixed = isMilestone ? /^([a-z_]{1,20}):(.+)$/.exec(String(event.variant)) : null;
-      event = prefixed ? { ...event, variant: prefixed[2] } : event;
-      const eventPage = (event.metadata as { page?: string })?.page ?? prefixed?.[1];
-
-      // Track per-page metrics for scroll_depth and time_on_page
-      if ((event.test_name === 'scroll_depth' || event.test_name === 'time_on_page') && eventPage) {
-        if (pageSpecificMetrics[eventPage]) {
-          if (!pageSpecificMetrics[eventPage][event.test_name]) {
-            pageSpecificMetrics[eventPage][event.test_name] = {};
-          }
-          if (!pageSpecificMetrics[eventPage][event.test_name][event.variant]) {
-            pageSpecificMetrics[eventPage][event.test_name][event.variant] = { views: 0, conversions: 0 };
-          }
-          if (event.event_type === 'view') {
-            pageSpecificMetrics[eventPage][event.test_name][event.variant].views++;
-          } else if (event.event_type === 'conversion') {
-            pageSpecificMetrics[eventPage][event.test_name][event.variant].conversions++;
-          }
-        }
-      }
-
-      // For scroll_depth and time_on_page, filter by page if not "all"
-      if (pageFilter && pageFilter !== "all" && (event.test_name === 'scroll_depth' || event.test_name === 'time_on_page')) {
-        if (eventPage !== pageFilter) return;
-      }
-
-      if (!metrics[event.test_name]) {
-        metrics[event.test_name] = {};
-      }
-      if (!metrics[event.test_name][event.variant]) {
-        metrics[event.test_name][event.variant] = { views: 0, conversions: 0 };
-      }
-      if (event.event_type === 'view') {
-        metrics[event.test_name][event.variant].views++;
-      } else if (event.event_type === 'conversion') {
-        metrics[event.test_name][event.variant].conversions++;
-      }
-    });
+    const audience = rollup.audience(truncated, lastCreatedAt);
+    const metrics = rollup.metrics;
+    const pageSpecificMetrics = rollup.pageSpecificMetrics;
 
     // Transform to MetricData arrays
     const transformMetrics = (testName: string, source?: Record<string, { views: number; conversions: number }>) => {

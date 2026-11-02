@@ -8,6 +8,7 @@ import i18next from "i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { TERMS_VERSION } from "@/config/terms";
+import { GOOGLE_TERMS_KEY, clearTermsShown, noteTermsShown, termsToRecord } from "@/lib/google-terms";
 import { toast } from "@/hooks/use-toast";
 import { clearLocalResumeCopies } from "@/lib/local-resume-copies";
 import { CREDIT_SESSIONS_KEY, FREELANCE_PURCHASE_KEY } from "@/lib/purchase-proofs";
@@ -109,6 +110,7 @@ export const PERSONAL_LOCAL_KEYS: readonly string[] = [
   MEMBER_MARK_KEY,      // this module: a member signed in on this browser (use-product-checkout asks once on it)
   CREDIT_SESSIONS_KEY,  // use-scan-credits: the Stripe session ids of credit purchases made here
   FREELANCE_PURCHASE_KEY, // FreelanceBoost: that this browser bought one
+  GOOGLE_TERMS_KEY,     // google-terms: a Google press on a page that showed the Terms (S12-078)
 ];
 export const PERSONAL_SESSION_KEYS = [
   "rb_resume_text", "rb_linkedin_text", "rb_job_description_text", "rb_multi_column_detected", // use-session-resume
@@ -118,6 +120,7 @@ export const PERSONAL_SESSION_KEYS = [
   "rb_boost_insert",                        // ResumeBuilder's hand-off
   "rb_prestored_resume_session", "rb_checkout_retry", // use-product-checkout
   "rb_jd_handoff",                          // jd-handoff
+  "rb_gap_fits",                            // gap-report: Account's re-measured fits (S13-093)
 ] as const;
 
 /** The "signed in from a link" banner, per tab (LinkSignInBanner). */
@@ -293,7 +296,11 @@ interface AuthContextValue {
   /** `next` is where a confirmation link should land — see safeNextPath. */
   signUp: (email: string, password: string, next?: string) => Promise<{ error: string | null; hasSession?: boolean; existing?: boolean }>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
-  signInWithGoogle: (next?: string) => Promise<{ error: string | null }>;
+  /**
+   * termsShown: the page showed the Terms line above the button, so the
+   * account the return brings records that acceptance (S12-078).
+   */
+  signInWithGoogle: (next?: string, opts?: { termsShown?: boolean }) => Promise<{ error: string | null }>;
   /**
    * This device only unless a scope is named. A deliberate sign-out clears
    * what the person left in this browser; keepLocalWork (a session a link put
@@ -444,7 +451,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // that fires between the two calls.
     let hadSession = false;
     let heard = false;
+    let termsWriting = false;
     const timers = new Set<ReturnType<typeof setTimeout>>();
+    // A GOOGLE ACCOUNT RECORDS THE TERMS IT WAS SHOWN (S12-078): a session
+    // with no terms_version, after a press that showed the Terms here, gets
+    // the acceptance written to its metadata, dated by the press. Best
+    // effort: a failure leaves the mark for the next event inside its window.
+    const recordTerms = async (terms: { terms_version: string; terms_accepted_at: string }) => {
+      if (termsWriting) return;
+      termsWriting = true;
+      try {
+        const res = await supabase.auth.updateUser?.({ data: terms });
+        if (res && !res.error) clearTermsShown();
+      } catch { /* the mark stays for a retry */ } finally {
+        termsWriting = false;
+      }
+    };
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
       heard = true;
       // A session vanishing without THE USER signing out = expiry/revocation.
@@ -474,6 +496,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // a function call reads the session through that same lock.
         const timer = setTimeout(() => { timers.delete(timer); void ensureGuard(s); }, 0);
         timers.add(timer);
+        if (typeof s.user?.user_metadata?.terms_version === "string" && s.user.user_metadata.terms_version) clearTermsShown();
+        const terms = termsToRecord(s.user);
+        if (terms) {
+          const termsTimer = setTimeout(() => { timers.delete(termsTimer); void recordTerms(terms); }, 0);
+          timers.add(termsTimer);
+        }
       }
       setSession(s);
       setLoading(false);
@@ -630,7 +658,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error?.message ?? null };
   };
 
-  const signInWithGoogle = async (next?: string) => {
+  const signInWithGoogle = async (next?: string, opts?: { termsShown?: boolean }) => {
+    if (opts?.termsShown) noteTermsShown();
     // The return is accepted without a question only because this browser
     // started it: the marker first, then the broker. A provider marker lives
     // ten minutes, is spent by any return, and what it adopts carries the
