@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 import { codeOf } from "./helpers/strip-comments";
 import { skipWithoutDist } from "./helpers/built-output";
@@ -25,7 +25,8 @@ import { skipWithoutDist } from "./helpers/built-output";
  *   the first paint waits for;
  * - the faces are declared in the head itself (an inline style, no font
  *   stylesheet request at all), font-display optional, pointing at the
- *   woff2 files on the font host; the Inter latin file, one variable file for
+ *   woff2 files this site serves from public/fonts (S12-011: a visit asked
+ *   Google's font host for them before any consent); the Inter latin file, one variable file for
  *   400-700, is preloaded. So the face is known at the first layout: on a
  *   first visit it is used if it arrives inside the browser's short block
  *   period, otherwise the page keeps the metric-matched Inter Fallback for
@@ -34,7 +35,8 @@ import { skipWithoutDist } from "./helpers/built-output";
  *   renders;
  * - it carries every face the tailwind stacks name: Inter 400-700 and
  *   JetBrains Mono 400 (the mono stack, used for ids and code);
- * - there is no preconnect to a host the page never uses;
+ * - there is no preconnect to a host the page never uses, the old font host
+ *   included, and every file a face names is in public/fonts;
  * - R1's stash script is still the first thing in the head.
  * The built pages (the bake copies this head into every page it writes) are
  * read too, when a build exists.
@@ -53,7 +55,9 @@ function attrs(tag: string): Record<string, string> {
   return out;
 }
 const linksOf = (head: string) => [...head.replace(/<noscript>[\s\S]*?<\/noscript>/gi, "").matchAll(/<link\b[^>]*>/gi)].map((m) => attrs(m[0].slice(5)));
-const FILE_HOST = "https://fonts.gstatic.com/";
+/** Where the faces' files live: this site, from public/fonts (S12-011). */
+const FONT_DIR = "/fonts/";
+const THIRD_PARTY_FONT_HOST = /fonts\.(gstatic|googleapis)\.com/;
 
 /** The @font-face rules a head declares inline, as { family, weight, display, src, range }. */
 function inlineFaces(head: string) {
@@ -78,14 +82,14 @@ function fontProblems(html: string): string[] {
   if (!mono.length) problems.push("the head declares no JetBrains Mono face");
   for (const f of faces) {
     if (f.display !== "optional") problems.push(`${f.family} asks for font-display ${f.display || "nothing"}, not optional (a late swap re-wraps the prerendered page)`);
-    if (!f.src.startsWith(FILE_HOST) || !f.src.endsWith(".woff2")) problems.push(`${f.family} is not a woff2 on the font file host: ${f.src}`);
+    if (!f.src.startsWith(FONT_DIR) || !f.src.endsWith(".woff2")) problems.push(`${f.family} is not a woff2 this site serves from ${FONT_DIR}: ${f.src}`);
   }
   if (inter.length && !inter.every((f) => /^400\s+700$/.test(f.weight))) problems.push(`Inter does not cover 400-700: ${inter.map((f) => f.weight).join(", ")}`);
   if (mono.length && !mono.every((f) => f.weight === "400")) problems.push(`JetBrains Mono is not 400: ${mono.map((f) => f.weight).join(", ")}`);
   const latin = inter.find((f) => /^U\+0000-00FF\b/.test(f.range));
   if (!latin) problems.push("no Inter face covers latin (U+0000-00FF)");
   else if (!links.some((l) => l.rel === "preload" && l.as === "font" && l.type === "font/woff2" && "crossorigin" in l && l.href === latin.src)) problems.push(`the Inter latin file ${latin.src} is not preloaded as a crossorigin woff2 font`);
-  if (!links.some((l) => l.rel === "preconnect" && l.href === "https://fonts.gstatic.com" && "crossorigin" in l)) problems.push("no crossorigin preconnect to the font file host");
+  if (THIRD_PARTY_FONT_HOST.test(head)) problems.push("the head still names Google's font host: every visit asks it for something before any consent (S12-011)");
   for (const l of links.filter((x) => x.rel === "preconnect" || x.rel === "dns-prefetch")) {
     if (/stripe\.com/.test(l.href ?? "")) problems.push(`a ${l.rel} to ${l.href}, which no page loads`);
   }
@@ -109,6 +113,20 @@ describe("the static head", () => {
     expect(fontProblems(HTML)).toEqual([]);
   });
 
+  it("serves every face's file itself, a woff2 in public/fonts with its licence beside it", () => {
+    const faces = inlineFaces(headOf(HTML));
+    expect(faces.length).toBeGreaterThanOrEqual(2);
+    for (const f of faces) {
+      const file = resolve(ROOT, "public", f.src.replace(/^\//, ""));
+      expect(existsSync(file), f.src).toBe(true);
+      expect(statSync(file).size, f.src).toBeGreaterThan(500);
+      expect(readFileSync(file).subarray(0, 4).toString("latin1"), f.src).toBe("wOF2");
+    }
+    for (const lic of ["OFL-Inter.txt", "OFL-JetBrainsMono.txt"]) {
+      expect(readFileSync(resolve(ROOT, "public/fonts", lic), "utf8")).toMatch(/SIL Open Font License, Version 1\.1/);
+    }
+  });
+
   it("still opens with R1's stash script", () => {
     const head = /<head[^>]*>([\s\S]*?)<\/head>/i.exec(HTML)?.[1] ?? "";
     expect(head).toMatch(/^\s*<script>\s*\/\*/);
@@ -119,6 +137,10 @@ describe("the static head", () => {
     const before = HTML.replace(/<head>/, `<head><link rel="preconnect" href="https://js.stripe.com" />`);
     expect(fontProblems(before).some((p) => /stripe/.test(p))).toBe(true);
     expect(fontProblems("<html><head></head></html>").length).toBeGreaterThan(0);
+    // The head before S12-011: the same faces on Google's font host.
+    const hosted = HTML.replace(/\/fonts\/inter-latin\.woff2/g, "https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7W0Q5nw.woff2");
+    expect(fontProblems(hosted).some((p) => /Google's font host/.test(p))).toBe(true);
+    expect(fontProblems(hosted).some((p) => /not a woff2 this site serves/.test(p))).toBe(true);
     // The round's media-swap head: Inter rendered on no load at all.
     const swapped = `<html><head><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin /><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400&display=optional" media="print" onload="this.media='all'" /></head></html>`;
     expect(fontProblems(swapped).some((p) => /font stylesheet request/.test(p))).toBe(true);
