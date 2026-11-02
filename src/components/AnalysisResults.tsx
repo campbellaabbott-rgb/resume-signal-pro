@@ -193,6 +193,15 @@ interface AnalysisResultsProps {
 // Safe array access helper
 const safeArray = <T,>(arr: T[] | undefined | null): T[] => arr ?? [];
 
+/**
+ * The posting's requirements less those the analysis lists as missing from
+ * the résumé, compared as written (trimmed, any case). Exported for the test.
+ */
+export function keywordsNotMissing(alignment: { extractedKeywords?: string[]; missingKeywords?: string[] } | undefined): string[] {
+  const missing = new Set(safeArray(alignment?.missingKeywords).map((k) => String(k).trim().toLowerCase()));
+  return safeArray(alignment?.extractedKeywords).filter((k) => !missing.has(String(k).trim().toLowerCase()));
+}
+
 // Resume strength score — uses the AI's own computed atsScore (job title match,
 // skills match, action verbs, keyword coverage, formatting) when available, since
 // that reflects actual resume quality rather than how many items the AI happened
@@ -296,22 +305,28 @@ function SectionNav({ sections, activeSection }: { sections: { id: string; label
     }
   };
   
+  // OPEN BY ITSELF ONLY WHERE THE MARGIN HOLDS IT (S13-021). The report is
+  // max-w-4xl (896 px) and centred, so the 180 px panel 24 px from the edge
+  // clears it only from about 1,300 px; it was open from 768 px and covered
+  // the right of the report up to there. Below 2xl (1,536 px) it is the
+  // toggle's, and it never runs taller than the window.
   return (
     <div className="fixed bottom-6 right-6 z-50 no-print">
-      {/* Mobile toggle button */}
+      {/* Toggle button, below 2xl */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="md:hidden p-3 rounded-full bg-card border border-border shadow-lg hover:shadow-xl transition-all duration-200"
+        className="2xl:hidden p-3 rounded-full bg-card border border-border shadow-lg hover:shadow-xl transition-all duration-200"
         aria-label={t('analysisResults.toggleNavigation')}
+        aria-expanded={isOpen}
       >
         <Menu className="w-5 h-5 text-foreground" />
       </button>
 
       {/* Navigation panel */}
-      <div className={cn(
-        "absolute bottom-full right-0 mb-3 p-2 rounded-xl bg-card/95 backdrop-blur-md border border-border shadow-xl transition-all duration-300",
-        "md:relative md:bottom-auto md:mb-0 md:opacity-100 md:scale-100 md:pointer-events-auto",
-        isOpen ? "opacity-100 scale-100 pointer-events-auto" : "opacity-0 scale-95 pointer-events-none md:opacity-100 md:scale-100 md:pointer-events-auto"
+      <div data-testid="section-nav-panel" className={cn(
+        "absolute bottom-full right-0 mb-3 p-2 rounded-xl bg-card/95 backdrop-blur-md border border-border shadow-xl transition-all duration-300 max-h-[70vh] overflow-y-auto",
+        "2xl:relative 2xl:bottom-auto 2xl:mb-0 2xl:opacity-100 2xl:scale-100 2xl:pointer-events-auto",
+        isOpen ? "opacity-100 scale-100 pointer-events-auto" : "opacity-0 scale-95 pointer-events-none 2xl:opacity-100 2xl:scale-100 2xl:pointer-events-auto"
       )}>
         <div className="flex flex-col gap-1 min-w-[180px]">
           <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground px-3 py-1.5">
@@ -385,11 +400,13 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
   const stats = [
     { label: t('analysisResults.stats.bulletsImproved'), value: optimizedBullets.length, icon: TrendingUp },
     { label: t('analysisResults.stats.verbUpgrades'), value: actionVerbs.length, icon: Zap },
-    { label: t('analysisResults.stats.keywordsAdded'), value: keywords.length, icon: Lightbulb },
+    // Suggested, not added (S13-054): the report adds nothing to the résumé.
+    { label: t('analysisResults.recommendedKeywords'), value: keywords.length, icon: Lightbulb },
     { label: t('analysisResults.stats.issuesFound'), value: redFlags.length, icon: AlertTriangle },
   ];
 
   const resumeScore = calculateResumeScore(data);
+  const postingKeywordsOnResume = keywordsNotMissing(data.jobDescriptionAlignment);
   
   // Build sections for navigation
   const sections = [
@@ -491,7 +508,11 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
               )}
             </div>
 
-            {/* Resume Strength Score */}
+            {/* Resume Strength Score: the ATS score's proxy, shown only when the
+                analysis has no ATS score of its own (S13-054). It returned that
+                score, so a 72 read as two metrics, "Resume Strength 72" and
+                "ATS Compatibility 72". */}
+            {!data.atsScore && (
             <div className="max-w-md mx-auto animate-fade-in" style={{ animationDelay: "0.4s" }}>
               <div className="p-6 rounded-2xl bg-card/50 backdrop-blur-sm border border-border/50 hover:border-primary/30 transition-all duration-300">
                 <div className="flex items-center justify-between mb-4">
@@ -514,14 +535,17 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                   <span className={cn("text-sm font-medium", resumeScore.color)}>
                     {t(`analysisResults.scoreLabels.${resumeScore.label}`)}
                   </span>
-                  <span className="text-xs text-muted-foreground">
-                    {resumeScore.score >= 70
-                      ? t('analysisResults.aboveAverage')
-                      : t('analysisResults.applySuggestions')}
-                  </span>
+                  {/* No "above average for your industry": nothing measures
+                      an industry's scores (S13-054). */}
+                  {resumeScore.score < 70 && (
+                    <span className="text-xs text-muted-foreground">
+                      {t('analysisResults.applySuggestions')}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
+            )}
 
             {/* JD Match Score - Prominent Display */}
             {data.jobDescriptionAlignment && (
@@ -628,7 +652,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                     <div className="space-y-2">
                       <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t('analysisResults.topImprovements')}</span>
                       <ul className="space-y-1">
-                        {data.atsScore.improvements.slice(0, 3).map((item, i) => (
+                        {safeArray(data.atsScore.improvements).map((item, i) => (
                           <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
                             <ArrowRight className="w-3 h-3 text-primary mt-1 shrink-0" />
                             {item}
@@ -661,12 +685,15 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                   {/* Role Match Analysis */}
                   <p className="text-sm text-muted-foreground mb-4">{data.jobDescriptionAlignment.roleMatchAnalysis}</p>
                   
-                  {/* Extracted Keywords */}
-                  {safeArray(data.jobDescriptionAlignment.extractedKeywords).length > 0 && (
+                  {/* The posting's requirements the résumé already has (S13-051):
+                      extractedKeywords is every requirement the posting names,
+                      so those listed as missing are left out of the green list
+                      that sat directly above them in amber. */}
+                  {postingKeywordsOnResume.length > 0 && (
                     <div className="mb-4">
-                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('analysisResults.jdKeywordsFound')}</span>
+                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('analysisResults.jdKeywordsOnResume', 'From the posting, already on your résumé')}</span>
                       <div className="flex flex-wrap gap-2 mt-2">
-                        {safeArray(data.jobDescriptionAlignment.extractedKeywords).map((kw, i) => (
+                        {postingKeywordsOnResume.map((kw, i) => (
                           <span key={i} className="px-2 py-1 rounded-lg bg-success/10 text-success text-xs font-medium">{kw}</span>
                         ))}
                       </div>
@@ -972,7 +999,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                     
                     {safeArray(data.readabilityMetrics.suggestions).length > 0 && (
                       <div className="space-y-1.5">
-                        {data.readabilityMetrics.suggestions.slice(0, 3).map((s, i) => (
+                        {safeArray(data.readabilityMetrics.suggestions).map((s, i) => (
                           <div key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
                             <Lightbulb className="w-3 h-3 text-primary mt-0.5 shrink-0" />
                             {s}
@@ -995,7 +1022,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                       <div className="mb-3">
                         <span className="text-xs font-semibold uppercase tracking-wide text-destructive">{t('analysisResults.issues')}</span>
                         <ul className="mt-1.5 space-y-1">
-                          {data.formatRecommendations.currentIssues.slice(0, 2).map((issue, i) => (
+                          {safeArray(data.formatRecommendations.currentIssues).map((issue, i) => (
                             <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
                               <AlertCircle className="w-3 h-3 text-destructive mt-0.5 shrink-0" />
                               {issue}
@@ -1009,7 +1036,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                       <div className="mb-3">
                         <span className="text-xs font-semibold uppercase tracking-wide text-success">{t('analysisResults.recommendations')}</span>
                         <ul className="mt-1.5 space-y-1">
-                          {data.formatRecommendations.recommendations.slice(0, 2).map((rec, i) => (
+                          {safeArray(data.formatRecommendations.recommendations).map((rec, i) => (
                             <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
                               <CheckCircle2 className="w-3 h-3 text-success mt-0.5 shrink-0" />
                               {rec}
@@ -1091,16 +1118,18 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
                   </div>
                   <Progress value={linkedIn.profileScore.overall} className="h-3 mb-4" />
                   
-                  <div className="grid grid-cols-5 gap-2">
+                  {/* Two, then three, then five across (S13-055): five fixed
+                      columns at 375 px ran "engagement" out of its card. */}
+                  <div data-testid="linkedin-breakdown" className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
                     {Object.entries(linkedIn.profileScore.breakdown).map(([key, value]) => (
-                      <div key={key} className="text-center p-2 rounded-lg bg-card/50">
+                      <div key={key} className="text-center p-2 rounded-lg bg-card/50 min-w-0">
                         <div className={cn(
                           "text-lg font-bold tabular-nums",
                           value >= 16 ? "text-success" : value >= 12 ? "text-[#0A66C2]" : value >= 8 ? "text-warning" : "text-destructive"
                         )}>
                           {value}/20
                         </div>
-                        <div className="text-xs text-muted-foreground capitalize">{label("linkedInSection", key)}</div>
+                        <div className="text-xs text-muted-foreground capitalize break-words [overflow-wrap:anywhere]">{label("linkedInSection", key)}</div>
                       </div>
                     ))}
                   </div>
@@ -2005,6 +2034,8 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
             </p>
             <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
               <CheckCircle2 className="w-4 h-4 text-success" />
+              {/* Its text names no "share link above" (S13-123): the shared
+                  view shows no link (docs/audit-rest-pending-locales/pages.json). */}
               <span>{t('analysisResults.analysisSaved', { analysisDays: SHARED_ANALYSIS_DAYS })}</span>
             </div>
           </div>

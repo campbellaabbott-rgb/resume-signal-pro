@@ -35,11 +35,9 @@ export function ValueComparison() {
       us: t('valueComparison.rows.keywordAnalysis.us'),
       them: t('valueComparison.rows.keywordAnalysis.them'),
     },
-    {
-      feature: t('valueComparison.rows.revisions.feature'),
-      us: t('valueComparison.rows.revisions.us'),
-      them: t('valueComparison.rows.revisions.them'),
-    },
+    // No "revisions" row (S13-026): it promised unlimited retries beside a
+    // $5 Full Analysis that is one analysis, and the free scan has a daily
+    // allowance (src/config/scan-allowance.ts).
     {
       feature: t('valueComparison.rows.jobTailoring.feature'),
       us: true,
