@@ -1639,7 +1639,7 @@
     },
     "languageNotice": {
       "unknownTitle": "We konden niet vaststellen in welke taal dit cv is geschreven.",
-      "unsupportedTitle": "Dit cv lijkt in het {{language}} geschreven, een taal die deze scan niet beoordeelt.",
+      "unsupportedTitle": "Dit cv lijkt in het {{language}} geschreven, een taal waarvoor de controles op trefwoorden en secties van deze scan niet gemaakt zijn.",
       "body": "Het rapport is geschreven in de taal van je cv, maar de controles op trefwoorden en secties zoeken naar Engelse termen en kunnen dus woorden in jouw taal missen. Zie de ontbrekende trefwoorden hieronder als richtlijn, niet als oordeel."
     },
     "weakestBullets": {
@@ -1662,7 +1662,8 @@
       },
       "industryAria": "Bevestig of corrigeer de herkende branche",
       "levelAria": "Bevestig of corrigeer het herkende ervaringsniveau",
-      "note": "Een correctie werkt dit rapport bij en wordt vastgelegd zodat we de herkenning kunnen verbeteren",
+      "note": "Een correctie werkt dit rapport bij",
+      "levelLogged": "Je correctie van het niveau is vastgelegd zodat we de herkenning kunnen verbeteren. Bedankt.",
       "quickCheck": {
         "title": "Even checken:",
         "transition": "we wisten je branche hier niet helemaal zeker — je loopbaan leest als {{historical}}, maar je laatste functie als {{recent}}. Bevestig hieronder en het rapport past zich aan.",
@@ -1703,7 +1704,8 @@
       "afterFixes": "Na de verbeteringen",
       "gain_one": "+{{count}} pt",
       "gain_other": "+{{count}} ptn",
-      "basis": "Je score plus de verbeteringen in de simulator en het verbeterplan hieronder: de belangrijkste snelle winsten, en de stappen voor opsommingspunten en trefwoorden."
+      "basis": "Je score plus de verbeteringen in de simulator en het verbeterplan hieronder: de belangrijkste snelle winsten, en de stappen voor opsommingspunten en trefwoorden.",
+      "basisQuickWins": "Je score plus maximaal drie van de belangrijkste snelle winsten en maximaal drie verbeteringen aan opsommingspunten, met een maximum van 95."
     }
   },
   "analysisPreviewSample": {

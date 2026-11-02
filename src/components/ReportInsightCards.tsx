@@ -177,6 +177,17 @@ export function AtsVendorChecksCard(props: { resumeText: string; multiColumnDete
 
 // ---------- Weakest bullets ----------
 
+/**
+ * The rewrite WeakestBulletsCard shows under its green arrow: any non-empty
+ * text, [brackets] and all, since both prompts ask for brackets around the
+ * numbers the candidate fills in. The findings index counts by this, so its
+ * summary says what the card shows; the builder hand-off applies only what
+ * isUsableRewrite passes, so it never applies a placeholder.
+ */
+export function shownRewrite(v: unknown): string | null {
+  return typeof v === "string" && v.trim() ? v.trim() : null;
+}
+
 export function WeakestBulletsCard({
   bullets,
 }: {
@@ -188,7 +199,6 @@ export function WeakestBulletsCard({
   if (!bullets?.length) return null;
   const gradeColor = (g: string) =>
     /a/i.test(g) ? "text-success" : /b/i.test(g) ? "text-primary" : /c/i.test(g) ? "text-warning" : "text-destructive";
-  const text = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : null);
 
   return (
     <div className="rounded-2xl border border-border bg-card p-5 sm:p-6">
@@ -196,12 +206,12 @@ export function WeakestBulletsCard({
       <p className="text-xs text-muted-foreground mb-4">{t("freeResults.weakestBullets.subtitle")}</p>
       <div className="space-y-3">
         {bullets.map((b, i) => {
-          const rewrite = text(b.rewrite);
+          const rewrite = shownRewrite(b.rewrite);
           // The scanner's own guidance says itself in the reader's language
           // from its code (S13-122); an older response keeps its English.
           const template = rewrite ? null
             : b.rewriteTemplateCode === "verbAndNumber" ? t("freeResults.weakestBullets.template.verbAndNumber")
-            : text(b.rewriteTemplate);
+            : shownRewrite(b.rewriteTemplate);
           return (
             <div key={i} className="rounded-xl border border-border p-3.5">
               <div className="flex items-start gap-3 mb-2">

@@ -1639,7 +1639,7 @@
     },
     "languageNotice": {
       "unknownTitle": "Wir konnten nicht erkennen, in welcher Sprache dieser Lebenslauf geschrieben ist.",
-      "unsupportedTitle": "Dieser Lebenslauf ist offenbar auf {{language}} verfasst, einer Sprache, die dieser Scan nicht bewertet.",
+      "unsupportedTitle": "Dieser Lebenslauf ist offenbar auf {{language}} verfasst, einer Sprache, für die die Schlüsselwort- und Abschnittsprüfungen dieses Scans nicht ausgelegt sind.",
       "body": "Der Bericht ist in der Sprache deines Lebenslaufs geschrieben, aber die Schlüsselwort- und Abschnittsprüfungen suchen nach englischen Begriffen und können Wörter in deiner Sprache übersehen. Sieh die Schlüsselwortlücken unten als Hinweis, nicht als Urteil."
     },
     "weakestBullets": {
@@ -1662,7 +1662,8 @@
       },
       "industryAria": "Erkannte Branche bestätigen oder korrigieren",
       "levelAria": "Erkannte Erfahrungsstufe bestätigen oder korrigieren",
-      "note": "Eine Korrektur passt diesen Bericht an und wird protokolliert, damit wir die Erkennung verbessern können",
+      "note": "Eine Korrektur passt diesen Bericht an",
+      "levelLogged": "Deine Korrektur der Erfahrungsstufe wurde protokolliert, damit wir die Erkennung verbessern können. Danke!",
       "quickCheck": {
         "title": "Kurz prüfen:",
         "transition": "bei deiner Branche waren wir uns hier nicht ganz sicher — dein Werdegang liest sich als {{historical}}, deine letzte Stelle aber als {{recent}}. Bestätige unten, dann passt sich der Bericht an.",
@@ -1703,7 +1704,8 @@
       "afterFixes": "Nach den Korrekturen",
       "gain_one": "+{{count}} Pkt.",
       "gain_other": "+{{count}} Pkt.",
-      "basis": "Dein Score plus die Korrekturen im Simulator und im Korrekturplan unten: die wichtigsten schnellen Erfolge sowie die Schritte zu Aufzählungspunkten und Schlüsselwörtern."
+      "basis": "Dein Score plus die Korrekturen im Simulator und im Korrekturplan unten: die wichtigsten schnellen Erfolge sowie die Schritte zu Aufzählungspunkten und Schlüsselwörtern.",
+      "basisQuickWins": "Dein Score plus bis zu drei der wichtigsten schnellen Erfolge und bis zu drei Korrekturen an Aufzählungspunkten, höchstens 95."
     }
   },
   "analysisPreviewSample": {

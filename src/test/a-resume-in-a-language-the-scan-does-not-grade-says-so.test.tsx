@@ -155,4 +155,34 @@ describe("the field travels from both scanners to the report under one name", ()
       expect(b.toLowerCase(), `${file} does not say the checks look for English terms`).toContain(english[file].toLowerCase());
     }
   });
+
+  // Landing check F4 (2026-11-01): the title said the scan did not grade the
+  // language at all, over a report that still prints an ATS score, a band and
+  // a score card. The server's notice claims less: only the keyword and
+  // section checks are built for the languages it lists. The title now says
+  // that much, in every locale.
+  it("the title claims what the scanner's notice claims: the keyword and section checks, not the whole scan", () => {
+    expect(languageNoticeOf(detectResumeLanguage(POLISH_CV))!.message).toMatch(/keyword and section checks are built for/);
+    expect(en.freeResults.languageNotice.unsupportedTitle).toMatch(/keyword and section checks are not built for/);
+    const dir = resolve(ROOT, "src/i18n/locales");
+    // The withdrawn whole-scan claim, as each locale said it, and the checks
+    // each locale's body names, which the title now names too.
+    const withdrawn: Record<string, RegExp> = {
+      "en.json": /does not grade/, "en-GB.json": /does not grade/, "de.json": /nicht bewertet/, "es.json": /no evalúa/,
+      "fr.json": /n'évalue pas/, "hi.json": /मूल्यांकन नहीं/, "nl.json": /niet beoordeelt/, "pt.json": /não avalia/, "tl.json": /hindi sinusuri/,
+    };
+    const checks: Record<string, RegExp> = {
+      "en.json": /keyword and section checks/, "en-GB.json": /keyword and section checks/, "de.json": /Schlüsselwort- und Abschnittsprüfungen/,
+      "es.json": /palabras clave y de secciones/, "fr.json": /mots-clés et des sections/, "hi.json": /कीवर्ड और सेक्शन/,
+      "nl.json": /trefwoorden en secties/, "pt.json": /palavras-chave e de seções/, "tl.json": /keyword at seksyon/,
+    };
+    const files = readdirSync(dir).filter((f) => f.endsWith(".json"));
+    expect(files).toHaveLength(9);
+    for (const file of files) {
+      const title = String(JSON.parse(readFileSync(resolve(dir, file), "utf8")).freeResults.languageNotice.unsupportedTitle);
+      expect(withdrawn[file] && checks[file], `${file} has no expected phrases here`).toBeTruthy();
+      expect(title, `${file} still says the scan does not grade the language`).not.toMatch(withdrawn[file]);
+      expect(title, `${file} does not name the keyword and section checks`).toMatch(checks[file]);
+    }
+  });
 });

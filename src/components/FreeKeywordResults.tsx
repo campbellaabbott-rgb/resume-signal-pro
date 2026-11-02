@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { FIX_PLAN_BASIS, marketBasis, skillsBasis } from "@/lib/report-basis";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -37,7 +37,7 @@ import { emailSchema } from "@/lib/security-validation";
 import { InteractiveChecklist } from "./InteractiveChecklist";
 import { ShareableScoreCard } from "./ShareableScoreCard";
 import { ResumeXRay } from "./ResumeXRay";
-import { ScoreSimulatorCard, AtsVendorChecksCard, WeakestBulletsCard, CareerBridgeCard, ScoreAuditCard, ShareScoreCard, FreelanceGuidanceCard, IndustryChecksCard, CountryStandardsCard, DiagnosticHeader, FindingsIndex, computeVendorChecks, type Finding } from "./ReportInsightCards";
+import { ScoreSimulatorCard, AtsVendorChecksCard, WeakestBulletsCard, CareerBridgeCard, ScoreAuditCard, ShareScoreCard, FreelanceGuidanceCard, IndustryChecksCard, CountryStandardsCard, DiagnosticHeader, FindingsIndex, computeVendorChecks, shownRewrite, type Finding } from "./ReportInsightCards";
 import { EmailReportCapture } from "./EmailReportCapture";
 import { withMailSentences, type MailSentences } from "@/lib/report-mail-copy";
 import { RoleTargetingCard, CheckAgainstPostingCard } from "./RoleTargeting";
@@ -453,8 +453,9 @@ export interface FreeKeywordResultsProps {
   multiColumnDetected?: boolean;
   /** The scanner's resumeTruncated: part of the résumé was not read (S13-008). */
   resumeTruncated?: boolean;
-  /** The scanner's languageNotice (S13-024): the résumé is in a language the
-   *  scan does not grade, or one it could not identify. Null when it grades it. */
+  /** The scanner's languageNotice (S13-024): the résumé is in a language its
+   *  keyword and section checks are not built for, or one it could not
+   *  identify. Null for a language they are built for. */
   languageNotice?: { reason?: string; language?: string | null; name?: string | null } | null;
   jobDescriptionText?: string;
   jobTitle?: string;
@@ -730,7 +731,8 @@ export function FreeKeywordResults({
   const skillGapActions = Array.isArray(skillGapActionsProp) ? skillGapActionsProp : [];
   const { t, i18n } = useTranslation();
   // The scanner's languageNotice, in the reader's words (S13-024): a résumé in
-  // a language the scan does not grade was reported as if it were English.
+  // a language the keyword and section checks are not built for was reported
+  // as if it were English.
   // The language is named in the reader's language from its code; the
   // scanner's English name is the fallback, and a notice with neither reads
   // as an unknown language. Anything else (an older response) shows nothing.
@@ -1063,20 +1065,32 @@ export function FreeKeywordResults({
     ? { ...experienceLevelBase, level: correctedExperience as typeof experienceLevelBase.level }
     : experienceLevelBase;
 
+  // Whether the latest level correction was recorded: only a plain true from
+  // log_seniority_correction counts. A refusal (42501 before 20261101110000),
+  // a false (an invalid pair or a spent budget), a network failure and an
+  // answer to an earlier pick all leave it unrecorded, and nothing says
+  // otherwise. The answer is read, never discarded.
+  const [levelCorrectionLogged, setLevelCorrectionLogged] = useState(false);
+  const levelCorrectionSeq = useRef(0);
   const confirmExperience = async (level: string) => {
+    const seq = ++levelCorrectionSeq.current;
+    setLevelCorrectionLogged(false);
     if (level === experienceLevelBase.level) { setCorrectedExperience(null); return; }
     setCorrectedExperience(level);
     onContextConfirm?.({ confirmedExperience: level });
+    let recorded = false;
     try {
-      await supabase.rpc('log_seniority_correction' as never, {
+      const { data, error } = await supabase.rpc('log_seniority_correction' as never, {
         p_detected_level: experienceLevelBase.level,
         p_corrected_level: level,
         p_detected_years: experienceLevelBase.yearsEstimate ?? null,
         p_industry: effectiveIndustry,
         p_resume_text_length: resumeText?.length ?? null,
         p_visitor_id: getVisitorId(),
-      } as never);
-    } catch { /* non-blocking */ }
+      } as never) as { data: unknown; error: unknown };
+      recorded = !error && data === true;
+    } catch { recorded = false; }
+    if (seq === levelCorrectionSeq.current) setLevelCorrectionLogged(recorded);
   };
 
   const computedTotalYears = deriveTotalExperienceText();
@@ -1134,16 +1148,21 @@ export function FreeKeywordResults({
   // keywords steps. An older response without the list keeps the quick wins.
   // A step's code and params ride along so the card says it in the reader's
   // language (S13-122); the English label stays for a step with no code.
-  const simulatorFixes: Array<{ label: string; impact: number; code?: unknown; params?: unknown }> = (() => {
-    const listed = Array.isArray(scoreProjection?.fixes)
-      ? scoreProjection!.fixes!.flatMap((f) =>
-          f && typeof f.label === 'string' && f.label.trim() && typeof f.impact === 'number' && Number.isFinite(f.impact)
-            ? [{ label: f.label, impact: Math.max(0, Math.round(f.impact)), ...(isFixCode(f.code) ? { code: f.code, params: f.params } : {}) }]
-            : [])
-      : [];
-    if (listed.length > 0) return listed;
-    return quickWins.slice(0, 5).map(w => ({ label: w.fix, impact: w.scoreImpact ?? (w.impact === 'high' ? 6 : w.impact === 'medium' ? 4 : 2) }));
-  })();
+  const projectionFixes: Array<{ label: string; impact: number; code?: unknown; params?: unknown }> = Array.isArray(scoreProjection?.fixes)
+    ? scoreProjection!.fixes!.flatMap((f) =>
+        f && typeof f.label === 'string' && f.label.trim() && typeof f.impact === 'number' && Number.isFinite(f.impact)
+          ? [{ label: f.label, impact: Math.max(0, Math.round(f.impact)), ...(isFixCode(f.code) ? { code: f.code, params: f.params } : {}) }]
+          : [])
+    : [];
+  // True only when the scanner's one fix list is what the simulator ticks
+  // through. The engine live before it (projectedScore with no list) summed
+  // the top three quick wins and up to three bullets at 3 points each, capped
+  // at 95, with no keyword step: the Score Potential card names that basis
+  // instead of the simulator and the Fix Plan.
+  const fromProjection = projectionFixes.length > 0;
+  const simulatorFixes: Array<{ label: string; impact: number; code?: unknown; params?: unknown }> = fromProjection
+    ? projectionFixes
+    : quickWins.slice(0, 5).map(w => ({ label: w.fix, impact: w.scoreImpact ?? (w.impact === 'high' ? 6 : w.impact === 'medium' ? 4 : 2) }));
   // The rewrites the builder will apply (S13-038): only a real rewrite,
   // never a null one, an instruction template, or one with an unfilled
   // [number]; each bullet once, the first rewrite winning. The hand-off box
@@ -1453,7 +1472,9 @@ export function FreeKeywordResults({
     }
     if ((weakestBullets?.length ?? 0) > 0) {
       const n = weakestBullets!.length;
-      const rewritten = weakestBullets!.filter((b) => isUsableRewrite(b.rewrite)).length;
+      // What the card shows (S13-122 landing check): a bracketed rewrite is
+      // shown under its arrow and counted here; only the hand-off refuses it.
+      const rewritten = weakestBullets!.filter((b) => shownRewrite(b.rewrite) !== null).length;
       out.push({ severity: 'warning', label: item(rewritten === n ? 'weakBulletsAll' : rewritten > 0 ? 'weakBulletsSome' : 'weakBulletsNone', { count: n, rewritten }) });
     }
     if (typeof quantificationScore === 'number' && quantificationScore < 40) out.push({ severity: 'warning', label: item('lowQuantification') });
@@ -1513,8 +1534,8 @@ export function FreeKeywordResults({
           <p className="text-xs text-muted-foreground mt-0.5">{t('freeResults.resumeTruncated.body')}</p>
         </div>
       )}
-      {/* ── The résumé is in a language the scan does not grade, or one it
-          could not identify (S13-024): the report says so before it is read,
+      {/* ── The résumé is in a language the keyword and section checks are not
+          built for, or one the scan could not identify (S13-024): the report says so before it is read,
           instead of passing an English reading off as a reading of the CV. ── */}
       {languageNoticeTitle && (
         <div data-language-notice role="note" className="rounded-xl border border-warning/50 bg-warning/10 px-4 py-3 mb-4">
@@ -1717,7 +1738,10 @@ export function FreeKeywordResults({
           </select>
         </label>
         {experienceLevel.yearsEstimate && <span className="text-muted-foreground">~{experienceLevel.yearsEstimate}</span>}
-        <span className="text-muted-foreground/60 ml-auto hidden sm:inline">{t('freeResults.readAs.note')}</span>
+        <span className="text-muted-foreground/60 ml-auto hidden sm:inline" data-read-as-note>{t('freeResults.readAs.note')}</span>
+        {levelCorrectionLogged && (
+          <span className="text-success/80 basis-full sm:basis-auto" role="status" data-level-correction-logged>{t('freeResults.readAs.levelLogged')}</span>
+        )}
       </div>
 
       {/* ── Intent-adaptive spotlight — the report leads with what THEY came for ── */}
@@ -3460,10 +3484,10 @@ export function FreeKeywordResults({
               <p className="text-xs text-muted-foreground">{t('freeResults.scorePotential.afterFixes')}</p>
             </div>
           </div>
-          {/* projectedScore is the one projection (S13-058): the top quick
-              wins plus the bullets and keywords steps, as the simulator and
-              the Fix Plan below list them. */}
-          <p className="text-xs text-muted-foreground mt-2" data-score-potential-basis>{t('freeResults.scorePotential.basis')} {t('freeResults.scoreSimulator.basis')}</p>
+          {/* With the scanner's fix list, projectedScore is the one projection
+              (S13-058) the simulator and the Fix Plan below list. Without it,
+              it is the older engine's sum, and the card says that sum. */}
+          <p className="text-xs text-muted-foreground mt-2" data-score-potential-basis>{fromProjection ? t('freeResults.scorePotential.basis') : t('freeResults.scorePotential.basisQuickWins')} {t('freeResults.scoreSimulator.basis')}</p>
         </div>
       )}
 

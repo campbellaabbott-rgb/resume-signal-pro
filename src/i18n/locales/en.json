@@ -1639,7 +1639,7 @@
     },
     "languageNotice": {
       "unknownTitle": "We could not tell which language this résumé is written in.",
-      "unsupportedTitle": "This résumé reads as {{language}}, a language this scan does not grade.",
+      "unsupportedTitle": "This résumé reads as {{language}}, a language this scan's keyword and section checks are not built for.",
       "body": "The report is written in your resume's language, but its keyword and section checks look for English terms, so they may miss words in your language. Treat the keyword gaps below as a guide, not a verdict."
     },
     "weakestBullets": {
@@ -1662,7 +1662,8 @@
       },
       "industryAria": "Confirm or correct the detected industry",
       "levelAria": "Confirm or correct the detected experience level",
-      "note": "A correction updates this report and is logged so we can improve detection",
+      "note": "A correction updates this report",
+      "levelLogged": "Your level correction was logged so we can improve detection. Thank you.",
       "quickCheck": {
         "title": "Quick check:",
         "transition": "we weren't fully sure of your industry on this one — your history reads as {{historical}}, but your latest role reads as {{recent}}. Confirm below and the report recalibrates.",
@@ -1703,7 +1704,8 @@
       "afterFixes": "After fixes",
       "gain_one": "+{{count}} pt",
       "gain_other": "+{{count}} pts",
-      "basis": "Your score plus the fixes in the simulator and Fix Plan below: the top quick wins, and the bullet and keyword steps."
+      "basis": "Your score plus the fixes in the simulator and Fix Plan below: the top quick wins, and the bullet and keyword steps.",
+      "basisQuickWins": "Your score plus up to three top quick wins and up to three bullet fixes, capped at 95."
     }
   },
   "analysisPreviewSample": {

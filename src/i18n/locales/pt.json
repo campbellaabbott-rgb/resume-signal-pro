@@ -1650,7 +1650,7 @@
     },
     "languageNotice": {
       "unknownTitle": "Não conseguimos identificar em que idioma este currículo está escrito.",
-      "unsupportedTitle": "Este currículo parece estar em {{language}}, um idioma que esta verificação não avalia.",
+      "unsupportedTitle": "Este currículo parece estar em {{language}}, um idioma para o qual as verificações de palavras-chave e de seções desta análise não foram feitas.",
       "body": "O relatório está escrito no idioma do seu currículo, mas as verificações de palavras-chave e de seções procuram termos em inglês, então podem deixar passar palavras do seu idioma. Considere as palavras-chave em falta abaixo como um guia, não como um veredito."
     },
     "weakestBullets": {
@@ -1673,7 +1673,8 @@
       },
       "industryAria": "Confirme ou corrija o setor detectado",
       "levelAria": "Confirme ou corrija o nível de experiência detectado",
-      "note": "Uma correção atualiza este relatório e fica registrada para melhorarmos a detecção",
+      "note": "Uma correção atualiza este relatório",
+      "levelLogged": "Sua correção do nível ficou registrada para melhorarmos a detecção. Obrigado.",
       "quickCheck": {
         "title": "Verificação rápida:",
         "transition": "não tínhamos certeza do seu setor desta vez — seu histórico parece {{historical}}, mas seu cargo mais recente parece {{recent}}. Confirme abaixo e o relatório se ajusta.",
@@ -1720,7 +1721,8 @@
       "gain_one": "+{{count}} pt",
       "gain_many": "+{{count}} pts",
       "gain_other": "+{{count}} pts",
-      "basis": "Sua pontuação mais as correções do simulador e do plano de correções abaixo: as principais vitórias rápidas e as etapas de tópicos e palavras-chave."
+      "basis": "Sua pontuação mais as correções do simulador e do plano de correções abaixo: as principais vitórias rápidas e as etapas de tópicos e palavras-chave.",
+      "basisQuickWins": "Sua pontuação mais até três das principais vitórias rápidas e até três correções de tópicos, com limite de 95."
     }
   },
   "analysisPreviewSample": {

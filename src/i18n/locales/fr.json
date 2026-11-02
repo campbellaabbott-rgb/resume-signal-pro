@@ -1650,7 +1650,7 @@
     },
     "languageNotice": {
       "unknownTitle": "Nous n'avons pas pu déterminer dans quelle langue ce CV est rédigé.",
-      "unsupportedTitle": "Ce CV semble rédigé en {{language}}, une langue que cette analyse n'évalue pas.",
+      "unsupportedTitle": "Ce CV semble rédigé en {{language}}, une langue pour laquelle les vérifications des mots-clés et des sections de cette analyse ne sont pas conçues.",
       "body": "Le rapport est rédigé dans la langue de votre CV, mais les vérifications des mots-clés et des sections cherchent des termes anglais : elles peuvent donc manquer des mots de votre langue. Considérez les mots-clés manquants ci-dessous comme une indication, pas comme un verdict."
     },
     "weakestBullets": {
@@ -1673,7 +1673,8 @@
       },
       "industryAria": "Confirmez ou corrigez le secteur détecté",
       "levelAria": "Confirmez ou corrigez le niveau d'expérience détecté",
-      "note": "Une correction met à jour ce rapport et est enregistrée pour améliorer la détection",
+      "note": "Une correction met à jour ce rapport",
+      "levelLogged": "Votre correction du niveau a été enregistrée pour améliorer la détection. Merci.",
       "quickCheck": {
         "title": "Vérification rapide :",
         "transition": "nous n'étions pas tout à fait sûrs de votre secteur ici — votre parcours se lit comme {{historical}}, mais votre dernier poste comme {{recent}}. Confirmez ci-dessous et le rapport se recalibre.",
@@ -1720,7 +1721,8 @@
       "gain_one": "+{{count}} pt",
       "gain_many": "+{{count}} pts",
       "gain_other": "+{{count}} pts",
-      "basis": "Votre score plus les corrections du simulateur et du plan de corrections ci-dessous : les principales actions rapides, et les étapes sur les puces et les mots-clés."
+      "basis": "Votre score plus les corrections du simulateur et du plan de corrections ci-dessous : les principales actions rapides, et les étapes sur les puces et les mots-clés.",
+      "basisQuickWins": "Votre score plus jusqu'à trois des principales actions rapides et jusqu'à trois corrections de puces, plafonné à 95."
     }
   },
   "analysisPreviewSample": {

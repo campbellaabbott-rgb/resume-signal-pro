@@ -1650,7 +1650,7 @@
     },
     "languageNotice": {
       "unknownTitle": "No pudimos saber en qué idioma está escrito este currículum.",
-      "unsupportedTitle": "Este currículum parece estar en {{language}}, un idioma que este análisis no evalúa.",
+      "unsupportedTitle": "Este currículum parece estar en {{language}}, un idioma para el que no están hechas las comprobaciones de palabras clave y de secciones de este análisis.",
       "body": "El informe está escrito en el idioma de tu currículum, pero las comprobaciones de palabras clave y de secciones buscan términos en inglés, así que pueden pasar por alto palabras de tu idioma. Toma las palabras clave que faltan abajo como una guía, no como un veredicto."
     },
     "weakestBullets": {
@@ -1673,7 +1673,8 @@
       },
       "industryAria": "Confirma o corrige el sector detectado",
       "levelAria": "Confirma o corrige el nivel de experiencia detectado",
-      "note": "Una corrección actualiza este informe y queda registrada para mejorar la detección",
+      "note": "Una corrección actualiza este informe",
+      "levelLogged": "Tu corrección del nivel quedó registrada para mejorar la detección. Gracias.",
       "quickCheck": {
         "title": "Comprobación rápida:",
         "transition": "no estábamos del todo seguros de tu sector esta vez: tu trayectoria se lee como {{historical}}, pero tu último puesto como {{recent}}. Confírmalo abajo y el informe se recalibra.",
@@ -1720,7 +1721,8 @@
       "gain_one": "+{{count}} pt",
       "gain_many": "+{{count}} pts",
       "gain_other": "+{{count}} pts",
-      "basis": "Tu puntuación más las correcciones del simulador y del plan de mejoras de abajo: las mejoras rápidas principales y los pasos de viñetas y palabras clave."
+      "basis": "Tu puntuación más las correcciones del simulador y del plan de mejoras de abajo: las mejoras rápidas principales y los pasos de viñetas y palabras clave.",
+      "basisQuickWins": "Tu puntuación más hasta tres de las mejoras rápidas principales y hasta tres correcciones de viñetas, con un máximo de 95."
     }
   },
   "analysisPreviewSample": {
