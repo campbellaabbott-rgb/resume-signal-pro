@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { INDUSTRY_KEYWORDS } from "@/config/industry-keywords";
+import { scanIndustryOptions } from "@/config/scan-industries";
 import { supabase } from "@/integrations/supabase/client";
 
 export interface IndustryDetectionData {
@@ -86,7 +87,11 @@ const formatIndustryName = (ind: string): string => {
     .join(' ');
 };
 
-// Get available industries for correction
+// The client keyword config's industries. The correction grid no longer
+// offers these (register S13-018: 38 of them are ids the scanner does not
+// know, and a correction to one was dropped); the owner's corrections digest
+// still lists them as known labels, for corrections logged before the grid
+// offered the scanner's own ids.
 export const getAvailableIndustries = (): { value: string; label: string }[] => {
   const industries = Object.keys(INDUSTRY_KEYWORDS).map(key => ({
     value: key,
@@ -175,10 +180,12 @@ export function IndustryConfidenceIndicator({
   const techStack = industryDetection?.techStack || [];
   const educationSignals = industryDetection?.educationSignals || [];
   const config = getConfidenceConfig(confidence);
-  const availableIndustries = getAvailableIndustries();
 
   const seniorityLabel: Record<string, string> = {
-    entry: 'Entry-level', mid: 'Mid-level', senior: 'Senior', executive: 'Executive',
+    entry: t("industryConfidence.seniority.entry"),
+    mid: t("industryConfidence.seniority.mid"),
+    senior: t("industryConfidence.seniority.senior"),
+    executive: t("industryConfidence.seniority.executive"),
   };
 
   // Inline feedback state — "Is this right?"
@@ -229,6 +236,9 @@ export function IndustryConfidenceIndicator({
   // Show different treatment based on confidence
   const showWarning = confidence === 'low' || confidence === 'medium';
   const displayIndustry = selectedIndustry || industry;
+  // The scanner's own ids (S13-018), the same list the report's "We read this
+  // as" select offers, plus this report's id if it is not one of them.
+  const availableIndustries = scanIndustryOptions(displayIndustry);
   
   return (
     <div className={cn("rounded-2xl border transition-all duration-300", className, 
@@ -332,24 +342,24 @@ export function IndustryConfidenceIndicator({
         {/* Inline "Is this right?" feedback — always visible, no expand needed */}
         {!selectedIndustry && feedbackGiven === null && (
           <div className="mt-2.5 flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">Is this right?</span>
+            <span className="text-xs text-muted-foreground">{t("industryConfidence.isThisRight")}</span>
             <button
               onClick={(e) => { e.stopPropagation(); handleConfirm(); }}
               className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full border border-success/40 text-success hover:bg-success/10 transition-colors"
             >
-              <ThumbsUp className="w-3 h-3" /> Yes
+              <ThumbsUp className="w-3 h-3" /> {t("industryConfidence.yes")}
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); setFeedbackGiven(false); setIsExpanded(true); setShowCorrection(true); }}
               className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full border border-muted text-muted-foreground hover:border-destructive/40 hover:text-destructive transition-colors"
             >
-              <ThumbsDown className="w-3 h-3" /> No
+              <ThumbsDown className="w-3 h-3" /> {t("industryConfidence.no")}
             </button>
           </div>
         )}
         {!selectedIndustry && feedbackGiven === true && (
           <div className="mt-2.5 flex items-center gap-1.5 text-xs text-success">
-            <Check className="w-3.5 h-3.5" /> Got it — thanks for confirming!
+            <Check className="w-3.5 h-3.5" /> {t("industryConfidence.thanksConfirmed")}
           </div>
         )}
 
@@ -373,7 +383,7 @@ export function IndustryConfidenceIndicator({
           {/* All detection signals (expanded — first 2 already shown above the fold) */}
           {signals.length > 2 && (
             <div>
-              <p className="text-xs font-medium text-muted-foreground mb-2">All detection signals:</p>
+              <p className="text-xs font-medium text-muted-foreground mb-2">{t("industryConfidence.allSignals")}</p>
               <div className="flex flex-wrap gap-1.5">
                 {signals.map((signal, idx) => (
                   <span key={idx} className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground">
@@ -387,7 +397,7 @@ export function IndustryConfidenceIndicator({
           {/* Alternative industries — quick switches with reason strings */}
           {(alternativeIndustriesWithReasons.length > 0 || alternativeIndustries.length > 0) && (
             <div>
-              <p className="text-xs font-medium text-muted-foreground mb-1.5">Also considered:</p>
+              <p className="text-xs font-medium text-muted-foreground mb-1.5">{t("industryConfidence.alsoConsidered")}</p>
               <div className="space-y-1.5">
                 {(alternativeIndustriesWithReasons.length > 0 ? alternativeIndustriesWithReasons : alternativeIndustries.map(a => ({ industry: a, reason: undefined }))).map((alt, i) => (
                   <button
@@ -403,7 +413,7 @@ export function IndustryConfidenceIndicator({
                         <p className="text-[10px] text-muted-foreground mt-0.5 leading-tight">{alt.reason}</p>
                       )}
                     </div>
-                    <span className="text-[10px] text-muted-foreground shrink-0">Switch →</span>
+                    <span className="text-[10px] text-muted-foreground shrink-0">{t("industryConfidence.switch")}</span>
                   </button>
                 ))}
               </div>

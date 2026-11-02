@@ -1,0 +1,2598 @@
+{
+ "about": "Recheck (third) corpus slice, 2026-11-01: REAL texts (Wikipedia intros, SmartRecruiters/Teamtailor/Pinpoint postings, real titles) except gaps and credibility, which are SYNTHETIC résumés in real export formats (labelled). Each expected value is the fixed code's answer and agrees with the corpus's truth. Full corpora: ~/.config/resumebooster/free-scan-wave-corpora/recheck-* (re-measured in fix3/).",
+ "language": [
+  {
+   "group": "wiki:bg",
+   "id": "wiki:bg:1",
+   "truth": "bg",
+   "main": "en",
+   "text": "Терминът анално изхвърлящ (или анално експулсивен) се свързва с черти на личността, фиксирана в аналния стадий на психосексуалното развитие.\nЗигмунд Фройд предполага, че по време на аналния стадий основната зона на удоволствие се премества от устата към ануса. За детето на този етап на развитие е характерно получаването на удолоствие от контрола на движението в червата. Конфликтите с родителите, свързани с приучването на хигиенни навици (като ходене до тоалетна), може да доведе до фиксация на този стадий, която може да се изрази в анално задържаща или анално изхвърляща личност.\nАнално изхвърля",
+   "expected": "bg"
+  },
+  {
+   "group": "wiki:bg",
+   "id": "wiki:bg:8",
+   "truth": "bg",
+   "main": "en",
+   "text": ".50 BMG, формално 0.50 inches Browning Machine Gun (0.50 инча картечница „Браунинг M2“), е името на голямокалибрени боеприпаси, използвани при тежки картечници и снайперови пушки.\n\nНиколай Ганчев Колев, известен с прякора Босия, е български дисидент, поет и журналист. Създател на първия независим синдикат в България и председател на Независимото дружество за защита правата на човека (юни 1990 – юли 1992). Получава прякора си Босия, защото през зимата и лятото не е носел чорапи.\n\nДойна (на румънски: doina, песен) е румънска и молдовска лирична народна песен, свързана по произход и съдържание с ",
+   "expected": "unknown"
+  },
+  {
+   "group": "wiki:bg",
+   "id": "wiki:bg:9",
+   "truth": "bg",
+   "main": "en",
+   "text": "Охайо може да се отнася за:\n\nОхайо, щат в Съединените американски щати\nОхайо (река), река в Съединените американски щати\nОкръзи в Съединените американски щати\nОхайо (окръг, Западна Вирджиния)\nОхайо (окръг, Индиана)\nОхайо (окръг, Кентъки)\n\nАкуапендѐнте (на италиански: Acquapendente) е градче и община в Централна Италия, провинция Витербо, регион Лацио. Разположено е на 420 m надморска височина. Населението на общината е 5619 души (към 2010 г.).\n\nЧервиня̀но дел Фриу̀ли (на италиански: Cervignano del Friuli; на фриулски: Çarvignan, Чарвинян) е град и община в Северна Италия, провинция Удине, авто",
+   "expected": "unknown"
+  },
+  {
+   "group": "wiki:bg",
+   "id": "wiki:bg:3",
+   "truth": "bg",
+   "main": "en",
+   "text": "Темщица, също Темска  река (на сръбски: Temštica) е река в Стара планина, Пиротски окръг, Сърбия, десен приток на Нишава. Попада във водосборния басейн на река Българска Морава, водите ѝ чрез нея се вливат в Дунав и от там в Черно море.\n\nУниверсалната артилерия е корабна артилерия с универсално предназначение, способна да води ефективен огън по морски, брегови и въздушни цели. За първи път се появява в 1930-те години. След Втората световна война става основния вид корабна артилерия. Съвременната универсална артилерия като правило е автоматична и обикновено има калибър от 76 до 130 милиметра.\n\n",
+   "expected": "bg"
+  },
+  {
+   "group": "wiki:bg",
+   "id": "wiki:bg:7",
+   "truth": "bg",
+   "main": "en",
+   "text": "„Анализирай онова“ (на английски: Analyze That) е американски комедиен филм от 2002 година на режисьора Харолд Реймис, продуциран от Паула Фейнщайн и Джейн Розентал. Продължение е на филма „Анализирай това“ (1999). Във филма участват Робърт де Ниро и Били Кристъл, които съответно повтарят ролите си като мафиота Пол Вити и психиатъра Бен Собел. Последван от успеха на първия филм, Warner Bros. разработва продължението на филма, като част от състава и екипа се завръщат във втория филм. Филмът е пуснат на 6 декември 2002 г.\n\nРадомир може да се отнася за:\n\nРадомир, град в Област Перник, България;\nР",
+   "expected": "bg"
+  },
+  {
+   "group": "wiki:sr",
+   "id": "wiki:sr:4",
+   "truth": "sr",
+   "main": "en",
+   "text": "Росдорф може бити:\n\nРосдорф (Тирингија), општина у њемачкој савезној држави Тирингија у округу Шмалкалден-Мајнинген\nРосдорф (Холштајн), општина у њемачкој савезној држави Шлезвиг-Холштајн у округу Штајнбург\nРосдорф (Дармштат), општина у њемачкој савезној држави Хесен у округу Дармштат-Дибург\nРосдорф (Гетинген), град у њемачкој савезној држави Доња Саксонија\n\nШтајнбах ам Донерсберг (њем. Steinbach am Donnersberg) општина је у њемачкој савезној држави Рајна-Палатинат. Једно је од 81 општинског средишта округа Донерсберг. Према процјени из 2010. у општини је живјело 792 становника. Посједује реги",
+   "expected": "sr"
+  },
+  {
+   "group": "wiki:sr",
+   "id": "wiki:sr:2",
+   "truth": "sr",
+   "main": "en",
+   "text": "Ла Роблера има више значења:\n\nЛа Роблера (Болањос), насеље у савезној држави Халиско у Мексику\nЛа Роблера (Чиникуила), насеље у савезној држави Мичоакан у Мексику\nЛа Роблера (Ла Јеска), насеље у савезној држави Најарит у Мексику\n\nPetróleo Brasileiro S.A., bolje poznata po akronimu Petrobras, državna je brazilska multinacionalna korporacija u naftnoj industriji sa sedištem u Rio de Ženeiru u Brazilu. Pun naziv kompanije je Brazilska naftna korporacija - Petrobras.\nKompanija je rangirana na 120. mestu na nedavnoj listi Forčun Global 500.\n\nСлободан Панов (Александровац, 20. јул 1964 — Београд, 31",
+   "expected": "unknown"
+  },
+  {
+   "group": "wiki:sr",
+   "id": "wiki:sr:3",
+   "truth": "sr",
+   "main": "en",
+   "text": "Тисађулахаза (мађ. Tiszagyulaháza) је село у Мађарској, у источном делу државе. Село се налази у региону велике јужне равнице, Хајду-бихарске жупаније у Хајдунанаш јарашу.\n\nZagrebački zoološki vrt jedan je od tri javna zoološka vrta u Hrvatskoj. Prostire se na 7 hektara u najvećem gradskom parku, Maksimiru. Direktorka vrta je Davorka Maljković.\nOvo je drugi najveći i jedini hrvatski zoološki vrt primljen u Udruženje zoo-vrtova. Naglo je napredovao 2005. godine preuređenjem svih staništa osim onog za beloglavog supa.\n\nIC 41 је галаксија у сазвјежђу Кит која се налази на листи објеката дубоког н",
+   "expected": "sr"
+  },
+  {
+   "group": "wiki:sr",
+   "id": "wiki:sr:9",
+   "truth": "sr",
+   "main": "en",
+   "text": "Побладо К-10 Хенерал Лазаро Карденас дел Рио Уно (шп. Poblado C-10 General Lázaro Cárdenas del Río Uno) насеље је у Мексику у савезној држави Табаско у општини Карденас. Насеље се налази на надморској висини од 7 м.\n\nЛа Бесана дел Пуенте (шп. La Besana del Puente) насеље је у Мексику у савезној држави Тласкала у општини Санта Аполонија Теакалко. Насеље се налази на надморској висини од 2160 м.\n\nЛудвиг Холберг, барoн Холберга (3. децембар 1684 – 28. јануар 1754) био је писац, есејиста, филозоф, историчар и драмски писац рођен у Бергену у\nНорвешкој, у доба Данско-норвешке дуалне монархије. Писао",
+   "expected": "sr"
+  },
+  {
+   "group": "wiki:sr",
+   "id": "wiki:sr:12",
+   "truth": "sr",
+   "main": "en",
+   "text": "Растиште је насеље у Србији у општини Бајина Башта у Златиборском округу. Према попису из 2022. било је 237 становника.\nОвде се налазе Стара црква у Растишту, Црква Покрова Пресвете Богородице у Растишту, Клисура Алушког потока и Локалитет Мраморје на потесима Гајеви и Урошевине.\nАдам Илић је још 1930-тих направио хидроелектрану и стругару у селу.\n\nБернкастел-Куес (њем. Bernkastel-Kues) град је у њемачкој савезној држави Рајна-Палатинат. Једно је од 107 општинских средишта округа Бернкастел-Витлих. Према процјени из 2010. у граду је живјело 6.675 становника. Посједује регионалну шифру (AGS) 72",
+   "expected": "sr"
+  },
+  {
+   "group": "wiki:ms",
+   "id": "wiki:ms:6",
+   "truth": "ms",
+   "main": "en",
+   "text": "Pengkalan Pasir merupakan sebuah bahagian pilihan raya negeri di Kelantan, Malaysia yang mempunyai wakil di Dewan Undangan Negeri (DUN) Kelantan dengan kod N12.\nKawasan DUN ini mula dipertandingkan pada 1986 dan memberi mandat kepada seorang ahli Dewan Undangan Negeri di DUN Kelantan mengikut sistem undian terbanyak.\n\nAcmaeodera parkeri adalah spesies kumbang tanduk panjang yang tergolong keluarga Cerambycidae. Spesies ini juga merupakan bahagian dari genus Acmaeodera, order Coleoptera, kelas Insecta, filum Arthropoda, dan alam Animalia.\nLarva kumbang ini biasanya menggerudi ke dalam kayu dan ",
+   "expected": "unknown"
+  },
+  {
+   "group": "wiki:ms",
+   "id": "wiki:ms:10",
+   "truth": "ms",
+   "main": "en",
+   "text": "Menara Alor Setar ialah menara yang berketinggian 165.5 meter di Alor Setar, Kedah, Malaysia. Ia dibina oleh Telekom Malaysia dengan kos RM40 juta.\nMenara Alor Setar yang terletak di Alor Setar ini merupakan salah satu tumpuan para pelancong di Kedah. Menara Alor Setar merupakan salah satu mercu tanda yang terkenal di Alor Setar, yang tersergam di kaki langit bandar setinggi 165.5 meter. Menara telekomunikasi ini merupakan yang ke-2 tertinggi di Malaysia, dan bangunan tertinggi di Alor Setar. Pemandangan di seluruh Alor Setar dapat dilihat di atas menara ini. \nIa berkhidmat sebagai menara tele",
+   "expected": "ms"
+  },
+  {
+   "group": "wiki:ms",
+   "id": "wiki:ms:5",
+   "truth": "ms",
+   "main": "en",
+   "text": "Sekolah Kebangsaan Kemahang atau nama ringkasnya SK Kemahang, merupakan sebuah Sekolah Kebangsaan yang terletak di Kampung Kemahang.\nPada 2024, Sekolah Kebangsaan Kemahang memiliki 45 murid Tahun 1 hingga 6. \nMurid prasekolah pula adalah seramai 17 orang.\nIa mempunyai seramai 11 \norang guru.2009\n\nCecilia Carolina Bolocco Fonck (lahir 19 Mei 1965) ialah seorang pelakon, pengacara dan ratu kecantikan Chile yang dinobatkan Miss Universo Chile 1987 dan Miss Universe 1987. \nBeliau telah bekerja sebagai wartawan pada edisi bahasa Sepanyol CNN, di Telemundo dan pada pelbagai program untuk televisyen ",
+   "expected": "unknown"
+  },
+  {
+   "group": "wiki:ms",
+   "id": "wiki:ms:0",
+   "truth": "ms",
+   "main": "en",
+   "text": "Perayaan Kuih Bulan atau Sembahyang Bulan Lapan ialah salah satu perayaan yang paling penting kepada orang Cina; ia disambut sehebat Tahun Baru Cina. Sejarah perayaan ini dipercayai bermula lebih 3,000 tahun dahulu. Perayaan serupa turut diraikan oleh masyarakat di Asia Timur dan Asia Tenggara.\nSemasa perayaan ini, pelbagai jenis tanglung saiz dan bentuk dinyalakan dan dibawa ke serata tempat, melambangkan cahaya yang menerangi jalan menuju kemakmuran dan tuah. Sejenis kuih istimewa berinti kacang manis atau biji teratai\niaitu kuih bulan dimakan sepanjang tempoh perayaan. Perayaan ini berkait ",
+   "expected": "ms"
+  },
+  {
+   "group": "wiki:ms",
+   "id": "wiki:ms:12",
+   "truth": "ms",
+   "main": "en",
+   "text": "Sekolah Kebangsaan Sungai Sugai atau nama ringkasnya SK Sungai Sugai, merupakan sebuah Sekolah kebangsaan yang terletak di D/A Pejabat Pelajaran Daerah Kecil Julau.\nPada 2009, Sekolah Kebangsaan Sungai Sugai memiliki 101 pelajar lelaki dan 96 pelajar perempuan, menjadikan jumlah keseluruhan murid seramai 197 orang. Ia mempunyai seramai 18 orang guru.2009\n\nDalam statistik, ukuran kesan adalah sejenis ukuran dari kekuatan hubungan antara dua pembolehubah dalam statistik populasi, atau suatu perkiraan contoh berasas kuantiti. Ukuran kesan dikira dari data adalah statistik deskriptif yang menyampa",
+   "expected": "unknown"
+  },
+  {
+   "group": "wiki:id",
+   "id": "wiki:id:5",
+   "truth": "id",
+   "main": "en",
+   "text": "Soaking (perendaman) adalah sebuah praktik seksual dengan memasukkan penis ke dalam vagina tanpa dilanjutkan dengan gerakan dorongan ataupun ejakulasi, yang dilaporkan dilakukan oleh sebagian penganut Mormon, yaitu anggota Gereja Yesus Kristus dari Orang-orang Suci Zaman Akhir (Gereja OSZA). Soaking dilaporkan dimanfaatkan sebagai celah atas aturan ketat Gereja OSZA mengenai larangan seks pranikah. Otoritas umum Gereja OSZA tidak mendukung pandangan ini dan sebaliknya mengajarkan bahwa \"adalah salah untuk menyentuh bagian [...] pribadi dari tubuh orang lain\" di luar ikatan pernikahan. Belum ad",
+   "expected": "id"
+  },
+  {
+   "group": "wiki:id",
+   "id": "wiki:id:2",
+   "truth": "id",
+   "main": "en",
+   "text": "Syllitus sumbae adalah spesies kumbang tanduk panjang yang tergolong famili Cerambycidae. Spesies ini juga merupakan bagian dari genus Syllitus, ordo Coleoptera, kelas Insecta, filum Arthropoda, dan kingdom Animalia.\nLarva kumbang ini biasanya mengebor ke dalam kayu dan dapat menyebabkan kerusakan pada batang kayu hidup atau kayu yang telah ditebang.\n\nEpania pusio adalah spesies kumbang tanduk panjang yang tergolong famili Cerambycidae. Spesies ini juga merupakan bagian dari genus Epania, ordo Coleoptera, kelas Insecta, filum Arthropoda, dan kingdom Animalia.\nLarva kumbang ini biasanya mengebo",
+   "expected": "unknown"
+  },
+  {
+   "group": "wiki:id",
+   "id": "wiki:id:12",
+   "truth": "id",
+   "main": "en",
+   "text": "Tutup botol digunakan untuk menutup dan menyegel bagian atas botol. Topi biasanya dihiasi warna-warni dengan logo merek minuman. Tutup plastik digunakan untuk botol plastik, sedangkan yang berbahan logam dengan alas plastik digunakan untuk kaca; tutup plastik biasanya terbuat dari bahan PE atau PP, sedangkan tutup logam biasanya terbuat dari baja atau aluminium. Tutup plastik mungkin memiliki cerat tuang. Tutup Flip-Top seperti penutup Flapper menyediakan pengeluaran produk kering yang terkontrol. Tutup botol plastik sering kali dibuat dari jenis plastik yang berbeda dari botolnya.\n\nUkraine In",
+   "expected": "unknown"
+  },
+  {
+   "group": "wiki:es",
+   "id": "wiki:es:11",
+   "truth": "es",
+   "main": "en",
+   "text": "Jurgita Dronina (nacida el 27 de marzo de 1986) es una bailarina de ballet lituana. Hasta 2024, fue bailarina principal del Ballet Nacional de Canadá,​ habiendo bailado previamente con el Ballet Real Sueco, el Ballet Nacional Holandés y el Ballet Nacional Inglés .​​ En enero de 2025, fue nombrada directora artística del Ballet Nacional de Lituania.​\n\nLeonor de Borbón y Ortiz (Madrid, 31 de octubre de 2005) es la princesa de Asturias y primera en la línea de sucesión al trono de España, como primogénita del rey Felipe VI y su consorte, la reina Letizia.\nLeonor nació durante el reinado de su abu",
+   "expected": "es"
+  },
+  {
+   "group": "wiki:es",
+   "id": "wiki:es:5",
+   "truth": "es",
+   "main": "en",
+   "text": "La temporada 2015 de Fórmula Renault 3.5 Series fue la 11.ª temporada de la categoría desde el nacimiento de la Fórmula Renault 3.5 Series en 2005 y la última bajo este nombre, ya que en el año 2016 pasará a llamarse Fórmula V8 3.5 Series.​\nEl británico Oliver Rowland ganó el Campeonato de Pilotos y Fortec Motorsports el de Escuderías.​\n\nDavid Phillip Vetter (21 de septiembre de 1971 - 22 de febrero de 1984)​ fue un niño estadounidense con inmunodeficiencia combinada grave (IDCG), una enfermedad hereditaria que debilita drásticamente el sistema inmunitario. Las personas que nacen con IDCG son ",
+   "expected": "es"
+  },
+  {
+   "group": "wiki:es",
+   "id": "wiki:es:7",
+   "truth": "es",
+   "main": "en",
+   "text": "Constitución de 1917 es una de las estaciones que forman parte del Metro de la Ciudad de México, es la terminal sur de la Línea 8. Se ubica al oriente de la Ciudad de México, en la alcaldía Iztapalapa.\n\nEl pingüino ojo amarillo (Megadyptes antipodes) es una de las dos especies del género Megadyptes, junto con el extinto Megadyptes waitaha. \nHabita la Anártida el sudeste de Nueva Zelanda. Su distribución geográfica abarca la Isla del Sur de Nueva Zelanda, la Isla Stewart y los archipiélagos de Auckland y de Campbell, más al sur.\nTiene un tamaño mediano, si lo comparamos con los pingüinos grande",
+   "expected": "es"
+  },
+  {
+   "group": "wiki:es",
+   "id": "wiki:es:9",
+   "truth": "es",
+   "main": "en",
+   "text": "Las elecciones parlamentarias de Turkmenistán fueron realizadas el 12 de diciembre de 1999.​ Todos los 104 candidatos para los 50 escaños parlamentarios eran militantes del Partido Democrático de Turkmenistán, siendo el único partido político legal del país.​ La participación electoral fue de un 99.6%.​ Tras las elecciones, la Asamblea declaró a Saparmurat Niyazov, que en entonces era Presidente de Turkmenistán desde 1991, presidente vitalicio.\n\nDave Clark (Tottenham, 15 de diciembre de 1942) es un músico, compositor y productor musical británico. En la década de los 60 lideró la banda the Dav",
+   "expected": "es"
+  },
+  {
+   "group": "wiki:es",
+   "id": "wiki:es:6",
+   "truth": "es",
+   "main": "en",
+   "text": "Trung Le Nguyen (2 de junio de 1990), ​ también conocido como Trungles, es un dibujante vietnamita estadounidense. Es más conocido como el autor de la novela gráfica The Magic Fish, publicada por Random House Graphic en 2020.\n\nLa técnica del par casi coincidente es un sistema de colocación de micrófonos para lograr una grabación estéreo de sonido. \nUtiliza micrófonos direccionales angulados con sus rejillas horizontalmente espaciadas unos cuantos centímetros, lo que añade sensación de profundidad y volumen a la grabación.\nLa sensación del estéreo la produce la combinación de las diferencias de",
+   "expected": "es"
+  },
+  {
+   "group": "wiki:pt",
+   "id": "wiki:pt:8",
+   "truth": "pt",
+   "main": "en",
+   "text": "Freimersheim é um município da Alemanha localizado no distrito (Kreis ou Landkreis) de Alzey-Worms, na associação municipal de Verbandsgemeinde Alzey-Land, no estado da Renânia-Palatinado.\n\nAndorra participou dos Jogos Olímpicos de Inverno de 2010, realizados na cidade de Vancouver, no Canadá. Foi a décima aparição do país em Olimpíadas de Inverno.\n\nPitiríase alba é uma doença da pele caracterizada por manchas e escamas secas e pálidas, geralmente no rosto, pescoço ou ombros. Mais comum em crianças e homens. Normalmente desaparece sozinha em um ano, requerendo apenas o uso de cremes hidratante",
+   "expected": "pt"
+  },
+  {
+   "group": "wiki:pt",
+   "id": "wiki:pt:6",
+   "truth": "pt",
+   "main": "en",
+   "text": "Os selos da série conhecida como Dom Pedro II - Denteado foram os primeiros selos a trazerem a efígie do imperador Dom Pedro II e a serem impressos em sua totalidade em papel denteado simples.\nFoi a quinta série de selos do Brasil e foram lançados oficialmente no dia 1 de julho de 1866, durante a Guerra do Paraguai, quando o volume de correspondências aumentou significativamente no país.\nGravados e impressos na American Bank Note Co., na cidade de Nova York, foram também os primeiros selos brasileiros a trazerem o nome do Brasil em sua face, significando um grande avanço estético nas peças fil",
+   "expected": "pt"
+  },
+  {
+   "group": "wiki:pt",
+   "id": "wiki:pt:13",
+   "truth": "pt",
+   "main": "en",
+   "text": "Auderath é um município da Alemanha localizado no distrito (Kreis ou Landkreis) de Cochem-Zell, na associação municipal de Verbandsgemeinde Ulmen, no estado da Renânia-Palatinado.\n\nO Palazzo Corsi-Horne é um palácio de Florença situado na zona de Santa Croce, no n.º 6 da Via de' Benci, esquina com o Corso Tintori. Atualmente o palácio acolhe o Museu Horne, um interessante museu menor da cidade que reconstrói alguns ambientes duma típica habitação florentina antiga, com numerosas peças de antiquário, sobretudo uma notável coleção de pinturas sobre tábua dos século XIV e XV.\nFundado pelo legado ",
+   "expected": "pt"
+  },
+  {
+   "group": "wiki:pt",
+   "id": "wiki:pt:10",
+   "truth": "pt",
+   "main": "en",
+   "text": "Krispy Kreme (anteriormente Krispy Kreme Donuts, Inc.) é uma empresa multinacional americana de donuts e rede de cafeterias.\nA Krispy Kreme foi fundada por Vernon Rudolph (1915–1973), que comprou uma receita fermentada com fermento de um chef de Nova Orleans, alugou um prédio em 1937 no que hoje é a histórica Old Salem em Winston-Salem, Carolina do Norte, e começou a vender para mercearias locais.   O crescimento constante precedeu uma expansão ambiciosa como empresa pública no período de 2000 a 2016, que acabou por se revelar não lucrativa. Em 2016, a empresa voltou à propriedade privada sob ",
+   "expected": "pt"
+  },
+  {
+   "group": "wiki:pt",
+   "id": "wiki:pt:12",
+   "truth": "pt",
+   "main": "en",
+   "text": "Bengt Gunnar Ekelöf (Estocolmo, 15 de Setembro de 1907 - Sigtuna, 16 de Março de 1968) foi um escritor, poeta e tradutor sueco. Depois de uma fase inspirada pelo surrealismo francês, enveredou por uma via modernista, sofrendo mais tarde a influência da filosofia oriental.\nUm dos seus poemas – Eufori (lit. ”Euforia”) – está incluída no Cânone Cultural da Suécia (Sveriges kulturkanon), uma lista oficial de obras e realizações particularmente importantes para a herança cultural do país.\n\nArnold Adolph Berthold ou Arnold Adolf Berthold (Soest, 26 de fevereiro de 1803 – Göttingen, 3 de janeiro de 1",
+   "expected": "pt"
+  },
+  {
+   "group": "wiki:ru",
+   "id": "wiki:ru:8",
+   "truth": "ru",
+   "main": "en",
+   "text": "Михаил Григорьевич Кумаритов (19 августа 1896, с. Дзау, Тифлисская губерния, Российская империя — 1942, Сталинградская область, РСФСР, СССР) — советский медик, ректор Дагестанского государственного медицинского института (1935—1936). Народный комиссар здравоохранения Дагестанской АССР (1934—1938).\n\nДвенадцатая осада Гибралтара (исп. Sitio de Gibraltar) велась с сентября 1704 года по май 1705 года во время Войны за испанское наследство. Она последовала за захватом в августе 1704 года укрепленного города Гибралтар на южной оконечности Испании англо-голландскими военно-морскими силами во главе с ",
+   "expected": "unknown"
+  },
+  {
+   "group": "wiki:ru",
+   "id": "wiki:ru:3",
+   "truth": "ru",
+   "main": "en",
+   "text": "Эстер Апаресида дос Сантос (порт. Ester Aparecida dos Santos; 9 декабря 1982, Гуарульюс, Сан-Паулу), более известная как Эстер — бразильская футболистка, опорная полузащитница. Выступала за сборную Бразилии.\n\nСор (каз. Сор) — озеро в Фёдоровском районе Костанайской области Казахстана. Находится в 19 км к югу от посёлка Костычевка.\nПо данным топографической съёмки 1944 года, площадь поверхности озера составляет 1,24 км². Наибольшая длина озера — 1,6 км, наибольшая ширина — 1,1 км. Длина береговой линии составляет 4,2 км, развитие береговой линии — 1,06. Озеро расположено на высоте 204,1 м над у",
+   "expected": "ru"
+  },
+  {
+   "group": "wiki:ru",
+   "id": "wiki:ru:9",
+   "truth": "ru",
+   "main": "en",
+   "text": "Хопкин ап Гернам (валл. Hopkin ap Hernam; умер около 830 года) — король Думнонии (810—830). Известен исключительно по родословной из «Книги Баглана» (XVII век).\n\nТья́го Энри́ке Гонса́лвес Си́лва (порт.-браз. Thiago Henrique Gonçalves Silva; род. 27 апреля 2004, Сети-Лагоас, Минас-Жерайс) — бразильский футболист, полузащитник/\n\nГеральдическое обеспечение Вооружённых сил России — комплекс взаимосвязанных мероприятий по разработке, учреждению, изготовлению, регистрации и использованию воинских, исторических и иных официальных символов, проводимых воинскими формированиями в Вооружённых силах Росси",
+   "expected": "unknown"
+  },
+  {
+   "group": "wiki:ru",
+   "id": "wiki:ru:13",
+   "truth": "ru",
+   "main": "en",
+   "text": "Ра́йкерс (англ. Rikers Island) — остров-тюрьма в проливе Ист-Ривер, относящийся к городу Нью-Йорку, районам Куинс и Бронкс. Расстояние до другого берега — 80 метров (до края взлётно-посадочной полосы аэропорта Ла-Гуардия). Это самая крупная исправительная колония в мире, она обходится американским налогоплательщикам в $860 млн в год.\n\nМухановка — название населённых пунктов в России:\n\nМухановка — хутор в Корочанском районе Белгородской области.\nМухановка — деревня в Лямбирском районе Мордовии.\nМухановка — деревня в Бековском районе Пензенской области, упразднена в 1991 году.\nМухановка — деревн",
+   "expected": "ru"
+  },
+  {
+   "group": "wiki:uk",
+   "id": "wiki:uk:0",
+   "truth": "uk",
+   "main": "en",
+   "text": "Капела бандуристів ім. М. Леонтовича була створена в 1946 році в м. Ґосляр, у Німеччині, яка тоді була в Англійській зоні. Засновники капели — Григорій Назаренко та Петро Гончаренко.\nПри ній була створена майстерня, де навчилися виготовляти діатонічні бандури харківського типу, які удосконалив Гончаренко.\nГригорій Назаренко використав досвід, який він перейняв від Гната Хоткевича в студійний період Полтавської капели бандуристів, і за дуже короткий час створив концертний колектив, який міг змагатися з Українською Капелею Бандуристів з Детройта. Назаренко відтворив репертуар Полтавської капели ",
+   "expected": "uk"
+  },
+  {
+   "group": "wiki:uk",
+   "id": "wiki:uk:4",
+   "truth": "uk",
+   "main": "en",
+   "text": "Кузьминка (рос. Кузьминка) — присілок у Лев-Толстовському районі Липецької області Російської Федерації.\nНаселення становить 15  осіб. Належить до муніципального утворення Первомайська сільрада.\n\nКарола Скутецька-Карвашова (нар.* 4 червня 1893, Банська Бистриця — † пом. 9 січня 1945, Немецка) — словацька мисткиня, живописець. Вона працювала під псевдонімом: Rolla.\n\nОлександр Леонідович Кузин (21 жовтня 1974) — український легкоатлет, фахівець із бігу на довгі дистанції, кросу та марафону. Виступав на професійному рівні у 1990-х та 2000-х роках, переможець та призер низки великих стартів на шос",
+   "expected": "uk"
+  },
+  {
+   "group": "wiki:uk",
+   "id": "wiki:uk:10",
+   "truth": "uk",
+   "main": "en",
+   "text": "4179 Тоутатіс (4179 Toutatis) — астероїд групи Аполлона, відкритий 4 січня 1989 року.\nМає хаотичну орбіту, зумовлену орбітальним резонансом 3:1 із Юпітером, резонансом 1:4 із Землею та частими наближеннями до планет земної групи, зокрема Землі. Вважається потенційно небезпечним об'єктом, хоча шанси зіткнення із Землею мізерні.\nНайменша відстань перетину орбіт щодо Землі — 0,00604008 а. о.\nТіссеранів параметр щодо Юпітера — 3,138.\n\nЛи́па америка́нська — ботанічна пам'ятка природи місцевого значення в Україні. Розташована в межах міста Львова, на вулиці Мушака, 54 (територія 4-ї міської лікарні)",
+   "expected": "uk"
+  },
+  {
+   "group": "posting:pt",
+   "id": "smartrecruiters:extcapital:743999890524583",
+   "truth": "pt",
+   "main": "en",
+   "text": "Descrição da empresa\nA EXT Capital é uma gestora de Venture Capital criada a partir de um spin-off da DOMO Invest, com foco em ajudar as startups pós-seed a alçarem novos patamares com maior eficiência no uso do capital, planejamento e governança. \n Liderada por Gabriel Sidi e Alberto Rossi, a EXT Capital atua com a confiança dos relacionamentos gerados para se estabelecer como uma parceira das startups, além de investidora. Atualmente, conta com mais de R$ 250 milhões de capital disponível para investimentos e um portfólio de mais de 10 startups em seu ecosistema.\n\nDescrição da vaga\nAnalista ",
+   "expected": "pt"
+  },
+  {
+   "group": "posting:pt",
+   "id": "smartrecruiters:extcapital:743999890151756",
+   "truth": "pt",
+   "main": "en",
+   "text": "Descrição da empresa\nA EXT Capital é uma gestora de Venture Capital criada a partir de um spin-off da DOMO Invest, com foco em ajudar as startups pós-seed a alçarem novos patamares com maior eficiência no uso do capital, planejamento e governança. \n Liderada por Gabriel Sidi e Alberto Rossi, a EXT Capital atua com a confiança dos relacionamentos gerados para se estabelecer como uma parceira das startups, além de investidora do ecossistema. Atualmente, conta com mais de R$ 250 milhões de capital disponível para investimentos e um portfólio de mais de 10 startups engajadas.\n\nDescrição da vaga\nAn",
+   "expected": "pt"
+  },
+  {
+   "group": "posting:pt",
+   "id": "smartrecruiters:MSXInternational:3743990016532036",
+   "truth": "pt",
+   "main": "pt",
+   "text": "Descrição da empresa\nCom aproximadamente 5.000 colaboradores e presente em mais de 80 países em todo o mundo, nossos times proporcionam liderança e expertise na indústria automotiva e suas redes de concessionários provendo ao cliente valor gerado através de oito soluções:\n• Actionable Insights\n• Consumer Engagement\n• Distribution and Sales Perfomance\n• Parts, Acessories and Service Performance \n• Technical Information \n• Warranty and Repair Efficiency\n• Learning Solutions\n• Diagnostic and Repair Enhancement\n Construindo confiança desde 1996, nossa reputação comprova que somos o parceiro de apr",
+   "expected": "pt"
+  },
+  {
+   "group": "posting:pt",
+   "id": "smartrecruiters:Deloitte6:744000157775802",
+   "truth": "pt",
+   "main": "pt",
+   "text": "Descrição da empresa\nA Comunidade Económica dos Estados da África Ocidental (CEDEAO) é um agrupamento regional composto por 12 Estados‑Membros, com o mandato de promover a integração económica, a coesão social e a estabilidade política em toda a África Ocidental. Enquanto Organização Intergovernamental (OIG) de referência, a CEDEAO atua através de um quadro institucional sólido, liderado pela Comissão e pelo Parlamento Comunitário, com o objetivo de harmonizar políticas, fomentar uma região “sem fronteiras” e salvaguardar a governação democrática para mais de 400 milhões de cidadãos.\n\nDescriçã",
+   "expected": "pt"
+  },
+  {
+   "group": "posting:pt",
+   "id": "smartrecruiters:extcapital:743999890895483",
+   "truth": "pt",
+   "main": "en",
+   "text": "Descrição da empresa\nA EXT Capital é uma gestora de Venture Capital criada a partir de um spin-off da DOMO Invest, com foco em ajudar as startups pós-seed a alçarem novos patamares com maior eficiência no uso do capital, planejamento e governança. \n Liderada por Gabriel Sidi e Alberto Rossi, a EXT Capital atua com a confiança dos relacionamentos gerados para se estabelecer como uma parceira das startups, além de investidora. Atualmente, conta com mais de R$ 250 milhões de capital disponível para investimentos e um portfólio de mais de 10 startups em seu ecossistema.\n\nDescrição da vaga\nAnalista",
+   "expected": "pt"
+  },
+  {
+   "group": "posting:es",
+   "id": "smartrecruiters:Industronic:744000156058099",
+   "truth": "es",
+   "main": "es",
+   "text": "Descripción de la empresa\nINDUSTRONIC es una empresa internacional que es líder en la fabricación de reguladores de voltaje, ahorradores y UPS y con una división solar, promoviendo el uso de energía limpia. Con más de 50 años en el mercado, tenemos la mayor calidad y garantía del mercado respaldando nuestra marca con normas internacionales.\n INDUSTRONIC es la única empresa verticalmente integrada, dando un servicio del diagnóstico hasta el mantenimiento del equipo. Somos una compañía en fuerte crecimiento, con desarrollo nacional e internacional y clientes de todos sectores.\n\nDescripción del e",
+   "expected": "es"
+  },
+  {
+   "group": "posting:es",
+   "id": "smartrecruiters:BoschGroup:744000158853849",
+   "truth": "es",
+   "main": "es",
+   "text": "Descripción de la empresa\n\n\nDescripción del empleo\nProspección Activa (“Hunter”): Visitar físicamente las plantas industriales con las que actualmente tenemos relación comercial, con enfoque especial y recurrente en las cuentas clave.\nProspección Activa en Frío (“Hunter”): Investigar contactos y visitar físicamente las plantas industriales con las que no se tenga relación comercial previa.\nInspección Visual Inicial: Realizar evaluaciones oculares rápidas del cuarto de calderas (estado general, fugas visibles, antigüedad del equipo, horas de operación acumuladas) para identificar puntos crítico",
+   "expected": "es"
+  },
+  {
+   "group": "posting:es",
+   "id": "smartrecruiters:ScharlabSL:744000150993799",
+   "truth": "es",
+   "main": "es",
+   "text": "Descripción de la empresa\nScharlab es una empresa internacional dedicada al desarrollo, producción y distribución de productos químicos, reactivos y soluciones para laboratorio. Con una larga trayectoria en el sector científico, trabajamos para ofrecer productos de calidad y un servicio cercano a nuestros clientes.\n Buscamos incorporar un/a Técnico/a de Compras para reforzar el equipo y garantizar una gestión eficiente del aprovisionamiento y la relación con proveedores.\n\nDescripción del empleo\nFunciones\n• Gestión de pedidos de compra y seguimiento de entregas.\n• Negociación de precios y condi",
+   "expected": "es"
+  },
+  {
+   "group": "posting:pl",
+   "id": "smartrecruiters:NewPerspective1:744000108730888",
+   "truth": "pl",
+   "main": "en",
+   "text": "Opis firmy\nWe do IT recruitment. We don’t look for new perspective. We create IT. \n Poszukujemy AVEVA PI System Engineer'a, który dołączy do zespołu software house’u specjalizującego się w projektowaniu rozwiązań informatycznych automatyzujących procesy biznesowe. Marka realizuje projekty dla polskich i międzynarodowych klientów, a także rozwija kilka własnych produktów (jednym z nich jest rozbudowana platforma e-learningowa, z której korzysta w tym momencie kilkaset tysięcy użytkowników). Dodatkowo, w ramach działu R&D firma prowadzi badania w zakresie rozszerzonej rzeczywistości, sztucznej i",
+   "expected": "pl"
+  },
+  {
+   "group": "posting:pl",
+   "id": "smartrecruiters:InfaktSpZOo:744000115652627",
+   "truth": "pl",
+   "main": "en",
+   "text": "Opis firmy\nOd 2008 dostarczamy aplikację ułatwiającą prowadzenie firmy, kontakt z księgowymi, wystawianie faktur, dodawanie kosztów i dokonywanie płatności. Rozwijany przez nas mechanizm sztucznej inteligencji pozwala automatycznie rozpoznawać i księgować nowe dokumenty, co znacząco upraszcza pracę przedsiębiorcom, tak, aby mogli zająć się tym, co dla nich najważniejsze. Jesteśmy liderem na polskim rynku rozwiązań dla księgowości i należymy do norweskiej Grupy Visma .\n\nOpis oferty pracy\nDo naszego zespołu w Krakowie poszukujemy Frontend Developerów z minimum 2-letnim doświadczeniem. \n Jako Fro",
+   "expected": "pl"
+  },
+  {
+   "group": "posting:pl",
+   "id": "smartrecruiters:Ayming:744000158729279",
+   "truth": "pl",
+   "main": "en",
+   "text": "Opis firmy\nJako firma świadcząca usługi profesjonalne, Ayming współpracuje z firmami i instytucjami na całym świecie, aby sukcesywnie uwalniać ich potencjał. Nasz zespół skład się z ponad 1500 ekspertów ds. innowacji, HR i podatków. Jesteśmy obecni w 14 krajach. Nasze trzy obszary świadczenia usług to: consulting services, digital services i managed services.\n\nOpis oferty pracy\nStanowisko może być wykonywane w trybie zdalnym przez kandydatów z północnej Portugalii, z obowiązkowymi spotkaniami zespołowymi raz w miesiącu w Porto lub Lizbonie (do potwierdzenia). \n• Identyfikacja i pierwszy kontak",
+   "expected": "pl"
+  },
+  {
+   "group": "en-terse:en",
+   "id": "smartrecruiters:HISLLC:743999944645994:items",
+   "truth": "en",
+   "main": "en",
+   "text": "Company Description\nJob Description\nCommunicate with vendors/factories daily on all production related matters\nManage the life cycle of assigned brands/styles in production\nReview all tech packs to insure accuracy\nMonitor and update WIP reports and keep track of approval/production/delivery status daily\nTrack all testing to ensure product standards are met\nSolid production experience, children’s sportswear preferred\nSelf-motivated and able to get things done\nMajor retailer experience a plus\nStrong excel skills and computer skills\nOrganized and detail oriented.\nSense of urgency and priorities\nT",
+   "expected": "en"
+  },
+  {
+   "group": "en-terse:en",
+   "id": "smartrecruiters:Cricut:744000156906419:items",
+   "truth": "en",
+   "main": "en",
+   "text": "Company Description\nLet’s make.\nJob Description\nEssential Duties\nDevelop cost estimates based on product concepts or designs\nSpecify materials and components in designs\nPresent and participate in design reviews and update designs as required.\nDevelop schedules for part and product development.\nProactively identify risks and develop and execute risk reduction measures\nKeep appraised of the customer experience related to company products.\nPerform testing of designs to prove functionality and reliability.\nGenerate design specifications and drawings for external design and manufacturing activities",
+   "expected": "en"
+  },
+  {
+   "group": "en-terse:en",
+   "id": "smartrecruiters:NewPageSolutionsInc:743999828493686:items",
+   "truth": "en",
+   "main": "en",
+   "text": "Company Description\nWho Are We?\nWhat We Offer?\nJob Description\nMedium to extensive experience with Python.\nComfortable with working remotely with distributed teams.\nExperience with Agile Methodologies.\nFamiliar with PHP and Drupal.\nAdditional Information\nAll your information will be kept confidential according to EEO guidelines.",
+   "expected": "en"
+  },
+  {
+   "group": "en-terse:en",
+   "id": "smartrecruiters:DIGITALPOiNTUSA1:743999667583620:items",
+   "truth": "en",
+   "main": "en",
+   "text": "Company Description\nJob Description\nResponsibilities include:\nArtistic design of websites\nCreating user interfaces\nBuilding websites\nLogo and graphic design\nBreaking up site designs to give to our programming team\nWebsite Maintenance, graphic enhancements\nSocial media design and marketing\nExperience designing websites for at least 1-2 years\nCurrently enrolled in an accredited web design or computer science program\nDesire to learn in a fast paced virtual environment\nDesire/interest to work on corporate and non profit projects\nAdobe CS, Photoshop, Illustrator, Dreamweaver, Flash, etc.\nFriendly, ",
+   "expected": "en"
+  },
+  {
+   "group": "en-terse:en",
+   "id": "smartrecruiters:Mondosol:744000137216329:items",
+   "truth": "en",
+   "main": "en",
+   "text": "Company Description\nJob Description\nDeliver engaging one-on-one and small group Italian lessons via Google Meet\nDevelop students’ speaking, listening, reading, and writing skills\nProvide constructive, encouraging feedback to help students grow with confidence\nTrack each student’s progress and adapt your teaching approach accordingly\nContribute to a warm, inclusive online learning community\nShare Italian culture and traditions as part of the learning experience\nMust Have:\nNative or near-native Italian speaker (C1/C2 level or higher)\nStrong communication skills and genuine patience with learners",
+   "expected": "en"
+  },
+  {
+   "group": "en-terse:en",
+   "id": "smartrecruiters:SmartVerum:743999853712042:items",
+   "truth": "en",
+   "main": "en",
+   "text": "Company Description\nJob Description\ncraft strategies for all marketing channels,\nplanning and organizing stationary events,\nplanning and organizing webinars,\nset, monitor and report on goals,\nidentify opportunities to reach new market segments,\nmonitor competition.\nRequirements and skills:\nknowledge of Web3, Crypto, NFT,\nknowledge of Social Media platforms,\nexperience in running campaigns,\nleadership skills with the ability to set and prioritize goals,\nbeing technical\nAdditional Information\nworking with great team in friendly environment,\nbeing part of world changing company,\ngood salary,\nwork",
+   "expected": "en"
+  },
+  {
+   "group": "posting:en",
+   "id": "smartrecruiters:TexasWaterDevelopmentBoardTWDB:744000155290317",
+   "truth": "en",
+   "main": "en",
+   "text": "Company Description\nThe mission of the Texas Water Development Board (TWDB) is to lead the state's efforts in ensuring a secure water future for Texas . Our mission is a vital part of Texas' overall vision and the state's mission and goals that relate to maintaining the viability of the state's natural resources, health, and economic development.\n The TWDB's main responsibilities are threefold: collecting and disseminating water-related data; assisting with regional water supply and flood planning that contributes to preparing the state water plan and state flood plan; and administering cost-e",
+   "expected": "en"
+  },
+  {
+   "group": "posting:en",
+   "id": "smartrecruiters:MenkitiGroup:744000119636231",
+   "truth": "en",
+   "main": "en",
+   "text": "Company Description\nWorcester, MA - At The Menkiti Group, we are dedicated to our mission of transforming lives, careers, and communities through real estate. If you are someone who wants to make a difference in the world, we invite you to elevate your career trajectory with us. \n We are seeking a driven, entrepreneurial and capable real estate professional to serve as our New England Market Leader and Real Estate Director.\n\nJob Description\nThis position will focus on market strategy, presence, development management, and commercial leasing in Worcester, MA, and the broader Boston region, and ",
+   "expected": "en"
+  },
+  {
+   "group": "posting:en",
+   "id": "smartrecruiters:1HUDDLE:743999794057292",
+   "truth": "en",
+   "main": "en",
+   "text": "Company Description\nThis job is based in Newark, NJ in our HQ at 550 Broad Street. \n Today, companies spend huge amounts of time & money on training that is outdated, boring and quickly forgotten by employees. With our game based training platform companies convert boring training material into competitive training games that are proven to increase sales performance. 1Huddle engages employees through daily training games that companies can customize to their brand and be played in under 5 minutes a day.\n Clients including: Audible, FASTSIGNS, Madison Square Garden, Golden State Warriors, Hand ",
+   "expected": "en"
+  },
+  {
+   "group": "posting:en",
+   "id": "smartrecruiters:BermanAutoGroup:744000136097869",
+   "truth": "en",
+   "main": "en",
+   "text": "Company Description\n\n\nJob Description\n \n Berman Auto Group is seeking an experienced and driven Vice President of Accounting to work directly alongside the Chief Financial Officer in supporting the financial strategy, operational performance, and long-term growth of the Berman organization.\n The VP of Accounting will serve as a key contributor in financial planning, reporting, operational analysis, and strategic decision-making across the organization.\n Compensation: $125,000 – $175,000 annually (based on experience, credentials, and industry background)\n Location: 3456 N. Kedzie Ave. Chicago,",
+   "expected": "en"
+  },
+  {
+   "group": "wiki:en",
+   "id": "wiki:en:9",
+   "truth": "en",
+   "main": "en",
+   "text": "Blanco is a census-designated place in San Juan County, New Mexico, United States. As of the 2020 census, Blanco had a population of 491. Blanco has a post office with ZIP code 87412, which opened on March 6, 1901. U.S. Route 64 passes through the community.\nA parish was established in Blanco in 1900 with St. Rose of Lima Catholic Church being the mother church for many missions.\n\nMechWarrior 5: Mercenaries is a BattleTech mecha game developed by Piranha Games released on December 10, 2019, on Microsoft Windows. It is the first single player MechWarrior game since 2002. It was initially availa",
+   "expected": "en"
+  },
+  {
+   "group": "wiki:en",
+   "id": "wiki:en:2",
+   "truth": "en",
+   "main": "en",
+   "text": "Simi Garewal (born Simrita Garewal; 17 October 1947) is an Indian director, producer, talk show hostess, and former actress.\nShe is known for her work in Hindi films like Do Badan (1966), Saathi (1968), Mera Naam Joker (1970), Siddhartha (1972), Karz (1980) and the Punjabi film Udeekaan. She also acted in the Bengali films Aranyer Din Ratri directed by Satyajit Ray and Padatik by Mrinal Sen. She is also known for her celebrity talk show, Rendezvous with Simi Garewal.\n\nThe World Association of Zoos and Aquariums (WAZA) is an umbrella organisation which provides membership to regional accreditin",
+   "expected": "en"
+  },
+  {
+   "group": "wiki:en",
+   "id": "wiki:en:11",
+   "truth": "en",
+   "main": "en",
+   "text": "The Massacre in Nicosia was the massacre of over 20,000 Greeks in Nicosia, Cyprus, committed by forces of the Ottoman Empire during the Ottoman–Venetian War of 1570–1573.\n\n\"Paper Umbrellas\" is a song by American country music singer Tim McGraw featuring Parker McCollum. Originally a solo recording by McGraw for his 2023 album, Standing Room Only, it was later re-recorded as a duet with McCollum and released as a single on March 7, 2025. The song was written by Monty Criswell and Drake Milligan, and produced by Byron Gallimore and McGraw.\n\nHistoric Landmarks and Districts is a designation of th",
+   "expected": "en"
+  },
+  {
+   "group": "posting:fr",
+   "id": "smartrecruiters:EKOSYSTEM1:744000052897625",
+   "truth": "fr",
+   "main": "fr",
+   "text": "Description de l'entreprise\nDepuis 1994, notre client, un bureau d'études conseil en environnement, assiste et conseille les industriels, les aménageurs et les donneurs d'ordre publics afin de les accompagner dans toutes leurs démarches relatives à l'environnement sur le plan juridique, technique et économique. \n Certifiés ISO9001 v2015, MASE et LNE il intervient dans les domaines des sites et sols pollués, hydrogéologie, déconstruction industrielle, études réglementaires, risques industriels, air/santé/odeur, installations de stockage de déchets, audits due diligence, écologie et data managem",
+   "expected": "fr"
+  },
+  {
+   "group": "posting:fr",
+   "id": "smartrecruiters:RDPartners1:743999731543598",
+   "truth": "fr",
+   "main": "fr",
+   "text": "Description de l'entreprise\nPartenaires R&D est une équipe d’ingénieurs et d’experts en finance expérimentée et dévouée à fournir aux entreprises en démarrage jusqu’aux multinationales des services de haut-niveau pour rencontrer leurs besoins dans le domaine des crédits d’impôt en R&D. \n Le dévouement, l’innovation et un service à la clientèle professionnel représentent les valeurs fondamentales de notre entreprise. Nos employés sont continuellement exposés à des technologies de pointe et travaillent dans un environnement qui requiert une capacité d’apprentissage rapide. \n Nous travaillons ave",
+   "expected": "fr"
+  },
+  {
+   "group": "posting:fr",
+   "id": "smartrecruiters:Wavestone1:744000158550121",
+   "truth": "fr",
+   "main": "fr",
+   "text": "Description de l'entreprise\nRejoignez un cabinet de conseil international qui accompagne les grandes transformations stratégiques.\n Nous sommes Wavestone : des expert·es passionné·es et orienté·es solutions, qui placent l’humain au cœur de la performance et de la croissance. Ambitieux·ses et en pleine expansion, nous développons sans cesse notre portefeuille de clients et de projets, avec une portée internationale et une réelle volonté de générer un impact positif.\n Êtes-vous un vrai team player, porté par des valeurs fortes ? Êtes-vous curieux·se et déterminé·e, avec l’envie d’apprendre chaqu",
+   "expected": "fr"
+  },
+  {
+   "group": "posting:de",
+   "id": "smartrecruiters:Aumovio:744000158753285",
+   "truth": "de",
+   "main": "de",
+   "text": "Unternehmensbeschreibung\nAUMOVIO führt seit dem Spin-off im September 2025 das Geschäft des ehemaligen Continental-Unternehmensbereichs Automotive als eigenständiges Unternehmen. Das Technologie- und Elektronikunternehmen bietet ein breites Portfolio für eine sichere, begeisternde, vernetzte und autonome Mobilität. Dazu gehören Sensorlösungen, Displays, Brems- und Komfortsysteme sowie umfassende Expertise in Software, Architekturplattformen und Assistenzsystemen für software-definierte Fahrzeuge. Die Geschäftsfelder, die nun zu AUMOVIO gehören, erzielten im Geschäftsjahr 2024 einen Umsatz von ",
+   "expected": "de"
+  },
+  {
+   "group": "posting:de",
+   "id": "smartrecruiters:Aumovio:744000158225549",
+   "truth": "de",
+   "main": "de",
+   "text": "Unternehmensbeschreibung\nBei AUMOVIO übernehmen wir Verantwortung für das, was wir tun: Wir entwickeln und produzieren Hardware, Software und Services, die die Zukunft der Mobilität gestalten. Doch was uns wirklich auszeichnet, sind unsere Mitarbeitenden. Menschen, die in unserer leistungsorientierten Unternehmenskultur aufblühen – angetrieben von mutigen Ideen. Menschen, die den nächsten Schritt wagen und gemeinsam einen echten Unterschied machen. Denn wir sind überzeugt: Die Zukunft gehört denen, die sie gestalten. Deshalb fördern wir eine Kultur, in der alle Verantwortung übernehmen – für j",
+   "expected": "de"
+  },
+  {
+   "group": "posting:de",
+   "id": "smartrecruiters:FormelSConsulting:743999693481615",
+   "truth": "de",
+   "main": "de",
+   "text": "Unternehmensbeschreibung\nIn den Leistungsbereichen Business Development , LeadGen/Marketing , Sales und  Customer Success , Human Capital sowie Finance & Fundraising  unterstützt Formel S Consulting seine Klienten ihr operatives Geschäft aufzubauen, auszubauen und weiter zu professionalisieren. Wir beraten unsere Kunden bei der konzeptionellen Planung und begleiten die Umsetzung angestrebter Projekte, um direkten Einfluss auf die Erreichung gesetzter Unternehmensziele auszuüben. Im Fokus unserer Tätigkeit stehen Unternehmen mit disruptiven Geschäftsmodellen in schnellwachsenden Industrien. Dur",
+   "expected": "de"
+  }
+ ],
+ "gaps": [
+  {
+   "format": "linkedin-en",
+   "timeline": "stale-2",
+   "synthetic": true,
+   "text": "Alex Morgan\nalex.morgan@example.com\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\nMarch 2019 - August 2022 (3 years 6 months)\n• Delivered the quarterly plan.\nAnalyst\nContoso Ltd\nJuly 2015 - February 2019 (3 years 8 months)\n• Delivered the quarterly plan.\n\nEDUCATION\nB.Sc. Economics, University of Leeds\nSeptember 2011 - May 2015 (3 years 9 months)",
+   "truth": {
+    "gap": false,
+    "stale": true
+   },
+   "mainRight": true
+  },
+  {
+   "format": "linkedin-en",
+   "timeline": "gap-current-1",
+   "synthetic": true,
+   "text": "Alex Morgan\nalex.morgan@example.com\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\nNovember 2018 - Present (8 years 1 months)\n• Delivered the quarterly plan.\nAnalyst\nContoso Ltd\nApril 2013 - April 2017 (4 years 1 months)\n• Delivered the quarterly plan.\n\nEDUCATION\nB.Sc. Economics, University of Leeds\nSeptember 2009 - May 2013 (3 years 9 months)",
+   "truth": {
+    "gap": true,
+    "stale": false
+   },
+   "mainRight": false
+  },
+  {
+   "format": "linkedin-de",
+   "timeline": "gap-current-3",
+   "synthetic": true,
+   "text": "Alex Morgan\nalex.morgan@example.com\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\nNov. 2017 - Heute (9 Jahre 1 Monate)\n• Delivered the quarterly plan.\nAnalyst\nContoso Ltd\nApr. 2012 - Juni 2016 (4 Jahre 3 Monate)\n• Delivered the quarterly plan.\n\nEDUCATION\nB.Sc. Economics, University of Leeds\nSept. 2008 - Mai 2012 (3 Jahre 9 Monate)",
+   "truth": {
+    "gap": true,
+    "stale": false
+   },
+   "mainRight": false
+  },
+  {
+   "format": "linkedin-de",
+   "timeline": "stale-0",
+   "synthetic": true,
+   "text": "Alex Morgan\nalex.morgan@example.com\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\nMärz 2017 - Juni 2022 (5 Jahre 4 Monate)\n• Delivered the quarterly plan.\nAnalyst\nContoso Ltd\nJuli 2013 - Feb. 2017 (3 Jahre 8 Monate)\n• Delivered the quarterly plan.\n\nEDUCATION\nB.Sc. Economics, University of Leeds\nSept. 2009 - Mai 2013 (3 Jahre 9 Monate)",
+   "truth": {
+    "gap": false,
+    "stale": true
+   },
+   "mainRight": true
+  },
+  {
+   "format": "linkedin-fr",
+   "timeline": "stale-5",
+   "synthetic": true,
+   "text": "Alex Morgan\nalex.morgan@example.com\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\nmars 2019 - nov. 2022 (3 ans 9 mois)\n• Delivered the quarterly plan.\nAnalyst\nContoso Ltd\njuil. 2015 - févr. 2019 (3 ans 8 mois)\n• Delivered the quarterly plan.\n\nEDUCATION\nB.Sc. Economics, University of Leeds\nsept. 2011 - mai 2015 (3 ans 9 mois)",
+   "truth": {
+    "gap": false,
+    "stale": true
+   },
+   "mainRight": false
+  },
+  {
+   "format": "linkedin-fr",
+   "timeline": "stale-3",
+   "synthetic": true,
+   "text": "Alex Morgan\nalex.morgan@example.com\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\nmars 2017 - sept. 2022 (5 ans 7 mois)\n• Delivered the quarterly plan.\nAnalyst\nContoso Ltd\njuil. 2013 - févr. 2017 (3 ans 8 mois)\n• Delivered the quarterly plan.\n\nEDUCATION\nB.Sc. Economics, University of Leeds\nsept. 2009 - mai 2013 (3 ans 9 mois)",
+   "truth": {
+    "gap": false,
+    "stale": true
+   },
+   "mainRight": false
+  },
+  {
+   "format": "linkedin-es",
+   "timeline": "stale-2",
+   "synthetic": true,
+   "text": "Alex Morgan\nalex.morgan@example.com\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\nmar. 2019 - ago. 2022 (3 años 6 meses)\n• Delivered the quarterly plan.\nAnalyst\nContoso Ltd\njul. 2015 - feb. 2019 (3 años 8 meses)\n• Delivered the quarterly plan.\n\nEDUCATION\nB.Sc. Economics, University of Leeds\nsept. 2011 - may. 2015 (3 años 9 meses)",
+   "truth": {
+    "gap": false,
+    "stale": true
+   },
+   "mainRight": false
+  },
+  {
+   "format": "linkedin-es",
+   "timeline": "continuous-current-4",
+   "synthetic": true,
+   "text": "Alex Morgan\nalex.morgan@example.com\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\nsept. 2019 - actualidad (7 años 3 meses)\n• Delivered the quarterly plan.\nAnalyst\nContoso Ltd\njun. 2015 - ago. 2019 (4 años 3 meses)\n• Delivered the quarterly plan.\n\nEDUCATION\nB.Sc. Economics, University of Leeds\nsept. 2011 - ene. 2015 (3 años 5 meses)",
+   "truth": {
+    "gap": false,
+    "stale": false
+   },
+   "mainRight": true
+  },
+  {
+   "format": "linkedin-pt",
+   "timeline": "stale-1",
+   "synthetic": true,
+   "text": "Alex Morgan\nalex.morgan@example.com\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\nmar. de 2018 - jul. de 2022 (4 anos 5 meses)\n• Delivered the quarterly plan.\nAnalyst\nContoso Ltd\njul. de 2014 - fev. de 2018 (3 anos 8 meses)\n• Delivered the quarterly plan.\n\nEDUCATION\nB.Sc. Economics, University of Leeds\nset. de 2010 - mai. de 2014 (3 anos 9 meses)",
+   "truth": {
+    "gap": false,
+    "stale": true
+   },
+   "mainRight": false
+  },
+  {
+   "format": "linkedin-pt",
+   "timeline": "gap-current-2",
+   "synthetic": true,
+   "text": "Alex Morgan\nalex.morgan@example.com\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\nnov. de 2019 - o momento (7 anos 1 meses)\n• Delivered the quarterly plan.\nAnalyst\nContoso Ltd\nabr. de 2014 - mai. de 2018 (4 anos 2 meses)\n• Delivered the quarterly plan.\n\nEDUCATION\nB.Sc. Economics, University of Leeds\nset. de 2010 - mai. de 2014 (3 anos 9 meses)",
+   "truth": {
+    "gap": true,
+    "stale": false
+   },
+   "mainRight": false
+  },
+  {
+   "format": "linkedin-pt",
+   "timeline": "stale-0",
+   "synthetic": true,
+   "text": "Alex Morgan\nalex.morgan@example.com\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\nmar. de 2017 - jun. de 2022 (5 anos 4 meses)\n• Delivered the quarterly plan.\nAnalyst\nContoso Ltd\njul. de 2013 - fev. de 2017 (3 anos 8 meses)\n• Delivered the quarterly plan.\n\nEDUCATION\nB.Sc. Economics, University of Leeds\nset. de 2009 - mai. de 2013 (3 anos 9 meses)",
+   "truth": {
+    "gap": false,
+    "stale": true
+   },
+   "mainRight": false
+  },
+  {
+   "format": "linkedin-pt",
+   "timeline": "gap-current-1",
+   "synthetic": true,
+   "text": "Alex Morgan\nalex.morgan@example.com\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\nnov. de 2018 - o momento (8 anos 1 meses)\n• Delivered the quarterly plan.\nAnalyst\nContoso Ltd\nabr. de 2013 - abr. de 2017 (4 anos 1 meses)\n• Delivered the quarterly plan.\n\nEDUCATION\nB.Sc. Economics, University of Leeds\nset. de 2009 - mai. de 2013 (3 anos 9 meses)",
+   "truth": {
+    "gap": true,
+    "stale": false
+   },
+   "mainRight": false
+  },
+  {
+   "format": "linkedin-pt",
+   "timeline": "stale-5",
+   "synthetic": true,
+   "text": "Alex Morgan\nalex.morgan@example.com\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\nmar. de 2019 - nov. de 2022 (3 anos 9 meses)\n• Delivered the quarterly plan.\nAnalyst\nContoso Ltd\njul. de 2015 - fev. de 2019 (3 anos 8 meses)\n• Delivered the quarterly plan.\n\nEDUCATION\nB.Sc. Economics, University of Leeds\nset. de 2011 - mai. de 2015 (3 anos 9 meses)",
+   "truth": {
+    "gap": false,
+    "stale": true
+   },
+   "mainRight": false
+  },
+  {
+   "format": "linkedin-pt",
+   "timeline": "gap-current-4",
+   "synthetic": true,
+   "text": "Alex Morgan\nalex.morgan@example.com\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\nnov. de 2018 - o momento (8 anos 1 meses)\n• Delivered the quarterly plan.\nAnalyst\nContoso Ltd\nabr. de 2013 - jul. de 2017 (4 anos 4 meses)\n• Delivered the quarterly plan.\n\nEDUCATION\nB.Sc. Economics, University of Leeds\nset. de 2009 - mai. de 2013 (3 anos 9 meses)",
+   "truth": {
+    "gap": true,
+    "stale": false
+   },
+   "mainRight": false
+  },
+  {
+   "format": "linkedin-nl",
+   "timeline": "stale-4",
+   "synthetic": true,
+   "text": "Alex Morgan\nalex.morgan@example.com\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\nmrt. 2018 - okt. 2022 (4 jaar 8 maanden)\n• Delivered the quarterly plan.\nAnalyst\nContoso Ltd\njul. 2014 - feb. 2018 (3 jaar 8 maanden)\n• Delivered the quarterly plan.\n\nEDUCATION\nB.Sc. Economics, University of Leeds\nsep. 2010 - mei 2014 (3 jaar 9 maanden)",
+   "truth": {
+    "gap": false,
+    "stale": true
+   },
+   "mainRight": false
+  },
+  {
+   "format": "linkedin-nl",
+   "timeline": "continuous-current-5",
+   "synthetic": true,
+   "text": "Alex Morgan\nalex.morgan@example.com\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\nnov. 2020 - heden (6 jaar 1 maanden)\n• Delivered the quarterly plan.\nAnalyst\nContoso Ltd\njul. 2016 - okt. 2020 (4 jaar 4 maanden)\n• Delivered the quarterly plan.\n\nEDUCATION\nB.Sc. Economics, University of Leeds\nsep. 2012 - jan. 2016 (3 jaar 5 maanden)",
+   "truth": {
+    "gap": false,
+    "stale": false
+   },
+   "mainRight": true
+  },
+  {
+   "format": "linkedin-it",
+   "timeline": "gap-current-4",
+   "synthetic": true,
+   "text": "Alex Morgan\nalex.morgan@example.com\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\nnov 2018 - presente (8 anni 1 mesi)\n• Delivered the quarterly plan.\nAnalyst\nContoso Ltd\napr 2013 - lug 2017 (4 anni 4 mesi)\n• Delivered the quarterly plan.\n\nEDUCATION\nB.Sc. Economics, University of Leeds\nset 2009 - mag 2013 (3 anni 9 mesi)",
+   "truth": {
+    "gap": true,
+    "stale": false
+   },
+   "mainRight": false
+  },
+  {
+   "format": "linkedin-it",
+   "timeline": "continuous-current-1",
+   "synthetic": true,
+   "text": "Alex Morgan\nalex.morgan@example.com\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\nmar 2019 - presente (7 anni 9 mesi)\n• Delivered the quarterly plan.\nAnalyst\nContoso Ltd\nmar 2015 - feb 2019 (4 anni 0 mesi)\n• Delivered the quarterly plan.\n\nEDUCATION\nB.Sc. Economics, University of Leeds\nset 2011 - gen 2015 (3 anni 5 mesi)",
+   "truth": {
+    "gap": false,
+    "stale": false
+   },
+   "mainRight": true
+  },
+  {
+   "format": "dotted-de",
+   "timeline": "continuous-current-3",
+   "synthetic": true,
+   "text": "Alex Morgan\nalex.morgan@example.com\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\n07.2018 – heute\n• Delivered the quarterly plan.\nAnalyst\nContoso Ltd\n05.2014 – 06.2018\n• Delivered the quarterly plan.\n\nEDUCATION\nB.Sc. Economics, University of Leeds\n09.2010 – 01.2014",
+   "truth": {
+    "gap": false,
+    "stale": false
+   },
+   "mainRight": true
+  },
+  {
+   "format": "dotted-de",
+   "timeline": "gap-current-0",
+   "synthetic": true,
+   "text": "Alex Morgan\nalex.morgan@example.com\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\n11.2017 – heute\n• Delivered the quarterly plan.\nAnalyst\nContoso Ltd\n04.2012 – 03.2016\n• Delivered the quarterly plan.\n\nEDUCATION\nB.Sc. Economics, University of Leeds\n09.2008 – 05.2012",
+   "truth": {
+    "gap": true,
+    "stale": false
+   },
+   "mainRight": false
+  },
+  {
+   "format": "slash-current",
+   "timeline": "gap-current-3",
+   "synthetic": true,
+   "text": "Alex Morgan\nalex.morgan@example.com\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\n11/2017 – Current\n• Delivered the quarterly plan.\nAnalyst\nContoso Ltd\n04/2012 – 06/2016\n• Delivered the quarterly plan.\n\nEDUCATION\nB.Sc. Economics, University of Leeds\n09/2008 – 05/2012",
+   "truth": {
+    "gap": true,
+    "stale": false
+   },
+   "mainRight": false
+  },
+  {
+   "format": "slash-current",
+   "timeline": "stale-3",
+   "synthetic": true,
+   "text": "Alex Morgan\nalex.morgan@example.com\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\n03/2017 – 09/2022\n• Delivered the quarterly plan.\nAnalyst\nContoso Ltd\n07/2013 – 02/2017\n• Delivered the quarterly plan.\n\nEDUCATION\nB.Sc. Economics, University of Leeds\n09/2009 – 05/2013",
+   "truth": {
+    "gap": false,
+    "stale": true
+   },
+   "mainRight": false
+  },
+  {
+   "format": "indeed-to",
+   "timeline": "stale-1",
+   "synthetic": true,
+   "text": "Alex Morgan\nalex.morgan@example.com\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\nMarch 2018 to July 2022\n• Delivered the quarterly plan.\nAnalyst\nContoso Ltd\nJuly 2014 to February 2018\n• Delivered the quarterly plan.\n\nEDUCATION\nB.Sc. Economics, University of Leeds\nSeptember 2010 to May 2014",
+   "truth": {
+    "gap": false,
+    "stale": true
+   },
+   "mainRight": true
+  },
+  {
+   "format": "indeed-to",
+   "timeline": "stale-5",
+   "synthetic": true,
+   "text": "Alex Morgan\nalex.morgan@example.com\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\nMarch 2019 to November 2022\n• Delivered the quarterly plan.\nAnalyst\nContoso Ltd\nJuly 2015 to February 2019\n• Delivered the quarterly plan.\n\nEDUCATION\nB.Sc. Economics, University of Leeds\nSeptember 2011 to May 2015",
+   "truth": {
+    "gap": false,
+    "stale": true
+   },
+   "mainRight": true
+  },
+  {
+   "format": "since",
+   "timeline": "gap-current-0",
+   "synthetic": true,
+   "text": "Alex Morgan\nalex.morgan@example.com\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\nSince November 2017\n• Delivered the quarterly plan.\nAnalyst\nContoso Ltd\nApr 2012 – Mar 2016\n• Delivered the quarterly plan.\n\nEDUCATION\nB.Sc. Economics, University of Leeds\nSep 2008 – May 2012",
+   "truth": {
+    "gap": true,
+    "stale": false
+   },
+   "mainRight": false
+  },
+  {
+   "format": "since",
+   "timeline": "stale-1",
+   "synthetic": true,
+   "text": "Alex Morgan\nalex.morgan@example.com\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\nMar 2018 – Jul 2022\n• Delivered the quarterly plan.\nAnalyst\nContoso Ltd\nJul 2014 – Feb 2018\n• Delivered the quarterly plan.\n\nEDUCATION\nB.Sc. Economics, University of Leeds\nSep 2010 – May 2014",
+   "truth": {
+    "gap": false,
+    "stale": true
+   },
+   "mainRight": true
+  },
+  {
+   "format": "year-endash",
+   "timeline": "continuous-current-0",
+   "synthetic": true,
+   "text": "Alex Morgan\nalex.morgan@example.com\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\n2018–Present\n• Delivered the quarterly plan.\nAnalyst\nContoso Ltd\n2014–2018\n• Delivered the quarterly plan.\n\nEDUCATION\nB.Sc. Economics, University of Leeds\n2010–2014",
+   "truth": {
+    "gap": false,
+    "stale": false
+   },
+   "mainRight": true
+  },
+  {
+   "format": "year-endash",
+   "timeline": "continuous-current-1",
+   "synthetic": true,
+   "text": "Alex Morgan\nalex.morgan@example.com\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\n2019–Present\n• Delivered the quarterly plan.\nAnalyst\nContoso Ltd\n2015–2019\n• Delivered the quarterly plan.\n\nEDUCATION\nB.Sc. Economics, University of Leeds\n2011–2015",
+   "truth": {
+    "gap": false,
+    "stale": false
+   },
+   "mainRight": true
+  },
+  {
+   "format": "now",
+   "timeline": "gap-current-4",
+   "synthetic": true,
+   "text": "Alex Morgan\nalex.morgan@example.com\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\nNov 2018 – Now\n• Delivered the quarterly plan.\nAnalyst\nContoso Ltd\nApr 2013 – Jul 2017\n• Delivered the quarterly plan.\n\nEDUCATION\nB.Sc. Economics, University of Leeds\nSep 2009 – May 2013",
+   "truth": {
+    "gap": true,
+    "stale": false
+   },
+   "mainRight": false
+  },
+  {
+   "format": "now",
+   "timeline": "gap-current-1",
+   "synthetic": true,
+   "text": "Alex Morgan\nalex.morgan@example.com\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\nNov 2018 – Now\n• Delivered the quarterly plan.\nAnalyst\nContoso Ltd\nApr 2013 – Apr 2017\n• Delivered the quarterly plan.\n\nEDUCATION\nB.Sc. Economics, University of Leeds\nSep 2009 – May 2013",
+   "truth": {
+    "gap": true,
+    "stale": false
+   },
+   "mainRight": false
+  },
+  {
+   "format": "apostrophe",
+   "timeline": "stale-1",
+   "synthetic": true,
+   "text": "Alex Morgan\nalex.morgan@example.com\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\nMar '18 – Jul '22\n• Delivered the quarterly plan.\nAnalyst\nContoso Ltd\nJul '14 – Feb '18\n• Delivered the quarterly plan.\n\nEDUCATION\nB.Sc. Economics, University of Leeds\nSep '10 – May '14",
+   "truth": {
+    "gap": false,
+    "stale": true
+   },
+   "mainRight": false
+  },
+  {
+   "format": "apostrophe",
+   "timeline": "stale-2",
+   "synthetic": true,
+   "text": "Alex Morgan\nalex.morgan@example.com\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\nMar '19 – Aug '22\n• Delivered the quarterly plan.\nAnalyst\nContoso Ltd\nJul '15 – Feb '19\n• Delivered the quarterly plan.\n\nEDUCATION\nB.Sc. Economics, University of Leeds\nSep '11 – May '15",
+   "truth": {
+    "gap": false,
+    "stale": true
+   },
+   "mainRight": false
+  },
+  {
+   "format": "glued-before",
+   "timeline": "gap-current-5",
+   "synthetic": true,
+   "text": "Alex Morgan\nalex.morgan@example.com\n\nEXPERIENCE\nSenior Analyst\nNorthwind TradersNov 2019 – Present\n• Delivered the quarterly plan.\nAnalyst\nContoso LtdApr 2014 – Aug 2018\n• Delivered the quarterly plan.\n\nEDUCATION\nB.Sc. Economics, University of Leeds\nUniversity of LeedsSep 2010 – May 2014",
+   "truth": {
+    "gap": true,
+    "stale": false
+   },
+   "mainRight": false
+  },
+  {
+   "format": "glued-before",
+   "timeline": "stale-3",
+   "synthetic": true,
+   "text": "Alex Morgan\nalex.morgan@example.com\n\nEXPERIENCE\nSenior Analyst\nNorthwind TradersMar 2017 – Sep 2022\n• Delivered the quarterly plan.\nAnalyst\nContoso LtdJul 2013 – Feb 2017\n• Delivered the quarterly plan.\n\nEDUCATION\nB.Sc. Economics, University of Leeds\nUniversity of LeedsSep 2009 – May 2013",
+   "truth": {
+    "gap": false,
+    "stale": true
+   },
+   "mainRight": true
+  },
+  {
+   "format": "glued-before-year",
+   "timeline": "continuous-current-1",
+   "synthetic": true,
+   "text": "Alex Morgan\nalex.morgan@example.com\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders2019 – Present\n• Delivered the quarterly plan.\nAnalyst\nContoso Ltd2015 – 2019\n• Delivered the quarterly plan.\n\nEDUCATION\nB.Sc. Economics, University of Leeds\nUniversity of Leeds2011 – 2015",
+   "truth": {
+    "gap": false,
+    "stale": false
+   },
+   "mainRight": true
+  },
+  {
+   "format": "glued-before-year",
+   "timeline": "continuous-current-2",
+   "synthetic": true,
+   "text": "Alex Morgan\nalex.morgan@example.com\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders2020 – Present\n• Delivered the quarterly plan.\nAnalyst\nContoso Ltd2016 – 2020\n• Delivered the quarterly plan.\n\nEDUCATION\nB.Sc. Economics, University of Leeds\nUniversity of Leeds2012 – 2016",
+   "truth": {
+    "gap": false,
+    "stale": false
+   },
+   "mainRight": true
+  }
+ ],
+ "credibility": [
+  {
+   "format": "apostrophe",
+   "case": "clean",
+   "synthetic": true,
+   "text": "Alex Morgan\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\nMay '20 – Present\n• Delivered the plan.\nAnalyst\nContoso Ltd\nApr '16 – Apr '20\n• Delivered the plan.\n\nEDUCATION\nB.Sc. Economics\nSep '12 – Jan '16",
+   "expected": [],
+   "main": [],
+   "mainRight": true
+  },
+  {
+   "format": "apostrophe",
+   "case": "reversed",
+   "synthetic": true,
+   "text": "Alex Morgan\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\nSep '19 – Present\n• Delivered the plan.\nAnalyst\nContoso Ltd\nJun '15 – Aug '19\n• Delivered the plan.\nConsultant\nFabrikam Inc\nMar '21 – Jan '19\n• Advised clients.\n\nEDUCATION\nB.Sc. Economics\nSep '11 – Jan '15",
+   "expected": [
+    "high:impossible_timeline"
+   ],
+   "main": [
+    "high:impossible_timeline",
+    "medium:timeline_overlap"
+   ],
+   "mainRight": true
+  },
+  {
+   "format": "apostrophe",
+   "case": "expected-degree",
+   "synthetic": true,
+   "text": "Alex Morgan\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\nJul '18 – Present\n• Delivered the plan.\nAnalyst\nContoso Ltd\nMay '14 – Jun '18\n• Delivered the plan.\nConsultant\nFabrikam Inc\nSep '25 – Jun '27\n• Advised clients.\n\nEDUCATION\nB.Sc. Economics\nSep '10 – Jan '14",
+   "expected": [],
+   "main": [
+    "high:date_inconsistency"
+   ],
+   "mainRight": false
+  },
+  {
+   "format": "linkedin-pt",
+   "case": "clean",
+   "synthetic": true,
+   "text": "Alex Morgan\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\nmar. de 2019 - o momento (7 anos 9 meses)\n• Delivered the plan.\nAnalyst\nContoso Ltd\nmar. de 2015 - fev. de 2019 (4 anos 0 meses)\n• Delivered the plan.\n\nEDUCATION\nB.Sc. Economics\nset. de 2011 - jan. de 2015 (3 anos 5 meses)",
+   "expected": [],
+   "main": [],
+   "mainRight": true
+  },
+  {
+   "format": "linkedin-pt",
+   "case": "reversed",
+   "synthetic": true,
+   "text": "Alex Morgan\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\njul. de 2018 - o momento (8 anos 5 meses)\n• Delivered the plan.\nAnalyst\nContoso Ltd\nmai. de 2014 - jun. de 2018 (4 anos 2 meses)\n• Delivered the plan.\nConsultant\nFabrikam Inc\nmar. de 2021 - jan. de 2019 (-3 anos -1 meses)\n• Advised clients.\n\nEDUCATION\nB.Sc. Economics\nset. de 2010 - jan. de 2014 (3 anos 5 meses)",
+   "expected": [
+    "high:impossible_timeline"
+   ],
+   "main": [],
+   "mainRight": false
+  },
+  {
+   "format": "linkedin-pt",
+   "case": "future-start",
+   "synthetic": true,
+   "text": "Alex Morgan\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\nset. de 2019 - o momento (7 anos 3 meses)\n• Delivered the plan.\nAnalyst\nContoso Ltd\njun. de 2015 - ago. de 2019 (4 anos 3 meses)\n• Delivered the plan.\nConsultant\nFabrikam Inc\njan. de 2049 - jun. de 2051 (2 anos 6 meses)\n• Advised clients.\n\nEDUCATION\nB.Sc. Economics\nset. de 2011 - jan. de 2015 (3 anos 5 meses)",
+   "expected": [
+    "medium:date_inconsistency"
+   ],
+   "main": [],
+   "mainRight": false
+  },
+  {
+   "format": "linkedin-pt",
+   "case": "expected-degree",
+   "synthetic": true,
+   "text": "Alex Morgan\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\nmar. de 2019 - o momento (7 anos 9 meses)\n• Delivered the plan.\nAnalyst\nContoso Ltd\nmar. de 2015 - fev. de 2019 (4 anos 0 meses)\n• Delivered the plan.\nConsultant\nFabrikam Inc\nset. de 2025 - jun. de 2027 (1 anos 10 meses)\n• Advised clients.\n\nEDUCATION\nB.Sc. Economics\nset. de 2011 - jan. de 2015 (3 anos 5 meses)",
+   "expected": [],
+   "main": [],
+   "mainRight": true
+  },
+  {
+   "format": "linkedin-de",
+   "case": "clean",
+   "synthetic": true,
+   "text": "Alex Morgan\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\nSept. 2019 - Heute (7 Jahre 3 Monate)\n• Delivered the plan.\nAnalyst\nContoso Ltd\nJuni 2015 - Aug. 2019 (4 Jahre 3 Monate)\n• Delivered the plan.\n\nEDUCATION\nB.Sc. Economics\nSept. 2011 - Jan. 2015 (3 Jahre 5 Monate)",
+   "expected": [],
+   "main": [],
+   "mainRight": true
+  },
+  {
+   "format": "linkedin-de",
+   "case": "reversed",
+   "synthetic": true,
+   "text": "Alex Morgan\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\nSept. 2019 - Heute (7 Jahre 3 Monate)\n• Delivered the plan.\nAnalyst\nContoso Ltd\nJuni 2015 - Aug. 2019 (4 Jahre 3 Monate)\n• Delivered the plan.\nConsultant\nFabrikam Inc\nMärz 2021 - Jan. 2019 (-3 Jahre -1 Monate)\n• Advised clients.\n\nEDUCATION\nB.Sc. Economics\nSept. 2011 - Jan. 2015 (3 Jahre 5 Monate)",
+   "expected": [
+    "high:impossible_timeline"
+   ],
+   "main": [],
+   "mainRight": false
+  },
+  {
+   "format": "linkedin-de",
+   "case": "future-start",
+   "synthetic": true,
+   "text": "Alex Morgan\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\nJuli 2018 - Heute (8 Jahre 5 Monate)\n• Delivered the plan.\nAnalyst\nContoso Ltd\nMai 2014 - Juni 2018 (4 Jahre 2 Monate)\n• Delivered the plan.\nConsultant\nFabrikam Inc\nJan. 2049 - Juni 2051 (2 Jahre 6 Monate)\n• Advised clients.\n\nEDUCATION\nB.Sc. Economics\nSept. 2010 - Jan. 2014 (3 Jahre 5 Monate)",
+   "expected": [
+    "medium:date_inconsistency"
+   ],
+   "main": [],
+   "mainRight": false
+  },
+  {
+   "format": "linkedin-de",
+   "case": "expected-degree",
+   "synthetic": true,
+   "text": "Alex Morgan\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\nJan. 2018 - Heute (8 Jahre 11 Monate)\n• Delivered the plan.\nAnalyst\nContoso Ltd\nFeb. 2014 - Jan. 2018 (4 Jahre 0 Monate)\n• Delivered the plan.\nConsultant\nFabrikam Inc\nSept. 2025 - Juni 2027 (1 Jahre 10 Monate)\n• Advised clients.\n\nEDUCATION\nB.Sc. Economics\nSept. 2010 - Jan. 2014 (3 Jahre 5 Monate)",
+   "expected": [],
+   "main": [],
+   "mainRight": true
+  },
+  {
+   "format": "dotted-de",
+   "case": "clean",
+   "synthetic": true,
+   "text": "Alex Morgan\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\n09.2019 – heute\n• Delivered the plan.\nAnalyst\nContoso Ltd\n06.2015 – 08.2019\n• Delivered the plan.\n\nEDUCATION\nB.Sc. Economics\n09.2011 – 01.2015",
+   "expected": [],
+   "main": [
+    "high:impossible_timeline",
+    "high:impossible_timeline"
+   ],
+   "mainRight": false
+  },
+  {
+   "format": "dotted-de",
+   "case": "reversed",
+   "synthetic": true,
+   "text": "Alex Morgan\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\n07.2018 – heute\n• Delivered the plan.\nAnalyst\nContoso Ltd\n05.2014 – 06.2018\n• Delivered the plan.\nConsultant\nFabrikam Inc\n03.2021 – 01.2019\n• Advised clients.\n\nEDUCATION\nB.Sc. Economics\n09.2010 – 01.2014",
+   "expected": [
+    "high:impossible_timeline"
+   ],
+   "main": [
+    "high:impossible_timeline",
+    "high:impossible_timeline",
+    "high:impossible_timeline"
+   ],
+   "mainRight": true
+  },
+  {
+   "format": "dotted-de",
+   "case": "future-start",
+   "synthetic": true,
+   "text": "Alex Morgan\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\n01.2018 – heute\n• Delivered the plan.\nAnalyst\nContoso Ltd\n02.2014 – 01.2018\n• Delivered the plan.\nConsultant\nFabrikam Inc\n01.2049 – 06.2051\n• Advised clients.\n\nEDUCATION\nB.Sc. Economics\n09.2010 – 01.2014",
+   "expected": [
+    "medium:date_inconsistency"
+   ],
+   "main": [
+    "high:impossible_timeline",
+    "high:impossible_timeline",
+    "high:impossible_timeline",
+    "high:date_inconsistency"
+   ],
+   "mainRight": false
+  },
+  {
+   "format": "dotted-de",
+   "case": "expected-degree",
+   "synthetic": true,
+   "text": "Alex Morgan\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\n01.2018 – heute\n• Delivered the plan.\nAnalyst\nContoso Ltd\n02.2014 – 01.2018\n• Delivered the plan.\nConsultant\nFabrikam Inc\n09.2025 – 06.2027\n• Advised clients.\n\nEDUCATION\nB.Sc. Economics\n09.2010 – 01.2014",
+   "expected": [],
+   "main": [
+    "high:impossible_timeline",
+    "high:impossible_timeline",
+    "high:impossible_timeline"
+   ],
+   "mainRight": false
+  },
+  {
+   "format": "slash-current",
+   "case": "clean",
+   "synthetic": true,
+   "text": "Alex Morgan\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\n01/2018 – Current\n• Delivered the plan.\nAnalyst\nContoso Ltd\n02/2014 – 01/2018\n• Delivered the plan.\n\nEDUCATION\nB.Sc. Economics\n09/2010 – 01/2014",
+   "expected": [],
+   "main": [
+    "high:impossible_timeline",
+    "high:impossible_timeline"
+   ],
+   "mainRight": false
+  },
+  {
+   "format": "slash-current",
+   "case": "reversed",
+   "synthetic": true,
+   "text": "Alex Morgan\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\n09/2019 – Current\n• Delivered the plan.\nAnalyst\nContoso Ltd\n06/2015 – 08/2019\n• Delivered the plan.\nConsultant\nFabrikam Inc\n03/2021 – 01/2019\n• Advised clients.\n\nEDUCATION\nB.Sc. Economics\n09/2011 – 01/2015",
+   "expected": [
+    "high:impossible_timeline"
+   ],
+   "main": [
+    "high:impossible_timeline",
+    "high:impossible_timeline",
+    "high:impossible_timeline",
+    "medium:timeline_overlap"
+   ],
+   "mainRight": true
+  },
+  {
+   "format": "slash-current",
+   "case": "future-start",
+   "synthetic": true,
+   "text": "Alex Morgan\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\n03/2019 – Current\n• Delivered the plan.\nAnalyst\nContoso Ltd\n03/2015 – 02/2019\n• Delivered the plan.\nConsultant\nFabrikam Inc\n01/2049 – 06/2051\n• Advised clients.\n\nEDUCATION\nB.Sc. Economics\n09/2011 – 01/2015",
+   "expected": [
+    "medium:date_inconsistency"
+   ],
+   "main": [
+    "high:impossible_timeline",
+    "high:impossible_timeline",
+    "high:impossible_timeline",
+    "high:date_inconsistency"
+   ],
+   "mainRight": false
+  },
+  {
+   "format": "slash-current",
+   "case": "expected-degree",
+   "synthetic": true,
+   "text": "Alex Morgan\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\n03/2019 – Current\n• Delivered the plan.\nAnalyst\nContoso Ltd\n03/2015 – 02/2019\n• Delivered the plan.\nConsultant\nFabrikam Inc\n09/2025 – 06/2027\n• Advised clients.\n\nEDUCATION\nB.Sc. Economics\n09/2011 – 01/2015",
+   "expected": [],
+   "main": [
+    "high:impossible_timeline",
+    "high:impossible_timeline",
+    "high:impossible_timeline"
+   ],
+   "mainRight": false
+  },
+  {
+   "format": "glued-before",
+   "case": "clean",
+   "synthetic": true,
+   "text": "Alex Morgan\n\nEXPERIENCE\nSenior Analyst\nNorthwind TradersJul 2018 – Present\n• Delivered the plan.\nAnalyst\nContoso LtdMay 2014 – Jun 2018\n• Delivered the plan.\n\nEDUCATION\nB.Sc. Economics\nUniversity of LeedsSep 2010 – Jan 2014",
+   "expected": [],
+   "main": [],
+   "mainRight": true
+  },
+  {
+   "format": "glued-before",
+   "case": "reversed",
+   "synthetic": true,
+   "text": "Alex Morgan\n\nEXPERIENCE\nSenior Analyst\nNorthwind TradersJul 2018 – Present\n• Delivered the plan.\nAnalyst\nContoso LtdMay 2014 – Jun 2018\n• Delivered the plan.\nConsultant\nFabrikam IncMar 2021 – Jan 2019\n• Advised clients.\n\nEDUCATION\nB.Sc. Economics\nUniversity of LeedsSep 2010 – Jan 2014",
+   "expected": [
+    "high:impossible_timeline"
+   ],
+   "main": [
+    "high:impossible_timeline",
+    "medium:timeline_overlap"
+   ],
+   "mainRight": true
+  },
+  {
+   "format": "glued-before",
+   "case": "future-start",
+   "synthetic": true,
+   "text": "Alex Morgan\n\nEXPERIENCE\nSenior Analyst\nNorthwind TradersJan 2018 – Present\n• Delivered the plan.\nAnalyst\nContoso LtdFeb 2014 – Jan 2018\n• Delivered the plan.\nConsultant\nFabrikam IncJan 2049 – Jun 2051\n• Advised clients.\n\nEDUCATION\nB.Sc. Economics\nUniversity of LeedsSep 2010 – Jan 2014",
+   "expected": [
+    "medium:date_inconsistency"
+   ],
+   "main": [
+    "high:date_inconsistency"
+   ],
+   "mainRight": false
+  },
+  {
+   "format": "glued-before",
+   "case": "expected-degree",
+   "synthetic": true,
+   "text": "Alex Morgan\n\nEXPERIENCE\nSenior Analyst\nNorthwind TradersJan 2018 – Present\n• Delivered the plan.\nAnalyst\nContoso LtdFeb 2014 – Jan 2018\n• Delivered the plan.\nConsultant\nFabrikam IncSep 2025 – Jun 2027\n• Advised clients.\n\nEDUCATION\nB.Sc. Economics\nUniversity of LeedsSep 2010 – Jan 2014",
+   "expected": [],
+   "main": [
+    "high:date_inconsistency"
+   ],
+   "mainRight": false
+  },
+  {
+   "format": "since",
+   "case": "clean",
+   "synthetic": true,
+   "text": "Alex Morgan\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\nSince January 2018\n• Delivered the plan.\nAnalyst\nContoso Ltd\nFeb 2014 – Jan 2018\n• Delivered the plan.\n\nEDUCATION\nB.Sc. Economics\nSep 2010 – Jan 2014",
+   "expected": [],
+   "main": [],
+   "mainRight": true
+  },
+  {
+   "format": "since",
+   "case": "reversed",
+   "synthetic": true,
+   "text": "Alex Morgan\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\nSince July 2018\n• Delivered the plan.\nAnalyst\nContoso Ltd\nMay 2014 – Jun 2018\n• Delivered the plan.\nConsultant\nFabrikam Inc\nMar 2021 – Jan 2019\n• Advised clients.\n\nEDUCATION\nB.Sc. Economics\nSep 2010 – Jan 2014",
+   "expected": [
+    "high:impossible_timeline"
+   ],
+   "main": [
+    "high:impossible_timeline"
+   ],
+   "mainRight": true
+  },
+  {
+   "format": "since",
+   "case": "future-start",
+   "synthetic": true,
+   "text": "Alex Morgan\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\nSince March 2019\n• Delivered the plan.\nAnalyst\nContoso Ltd\nMar 2015 – Feb 2019\n• Delivered the plan.\nConsultant\nFabrikam Inc\nJan 2049 – Jun 2051\n• Advised clients.\n\nEDUCATION\nB.Sc. Economics\nSep 2011 – Jan 2015",
+   "expected": [
+    "medium:date_inconsistency"
+   ],
+   "main": [
+    "high:date_inconsistency"
+   ],
+   "mainRight": false
+  },
+  {
+   "format": "since",
+   "case": "expected-degree",
+   "synthetic": true,
+   "text": "Alex Morgan\n\nEXPERIENCE\nSenior Analyst\nNorthwind Traders\nSince March 2019\n• Delivered the plan.\nAnalyst\nContoso Ltd\nMar 2015 – Feb 2019\n• Delivered the plan.\nConsultant\nFabrikam Inc\nSep 2025 – Jun 2027\n• Advised clients.\n\nEDUCATION\nB.Sc. Economics\nSep 2011 – Jan 2015",
+   "expected": [],
+   "main": [
+    "high:date_inconsistency"
+   ],
+   "mainRight": false
+  }
+ ],
+ "metrics": [
+  {
+   "kind": "main-only (main's error: a 401K, a part number, a 5K race)",
+   "text": "401K with company match.",
+   "expected": false,
+   "main": true
+  },
+  {
+   "kind": "main-only (main's error: a 401K, a part number, a 5K race)",
+   "text": "Full Time benefits include Medical/Dental/Vision/Life/Accident, Paid Time Off, 401K, and a generous employee discount",
+   "expected": false,
+   "main": true
+  },
+  {
+   "kind": "main-only (main's error: a 401K, a part number, a 5K race)",
+   "text": "Full Time benefits include Medical/Dental/Vision/Life/Accident, Paid Time Off, and 401K matching",
+   "expected": false,
+   "main": true
+  },
+  {
+   "kind": "main-only (main's error: a 401K, a part number, a 5K race)",
+   "text": "Full-Time benefits include Medical/Dental/Vision/Life/Accident, Paid Time Off, 401K, and a generous employee discount",
+   "expected": false,
+   "main": true
+  },
+  {
+   "kind": "main-only (main's error: a 401K, a part number, a 5K race)",
+   "text": "This is a full time, in office position.&#xa0; We offer a competitive compensation package including benefits, 401K and more.",
+   "expected": false,
+   "main": true
+  },
+  {
+   "kind": "main-only (main's error: a 401K, a part number, a 5K race)",
+   "text": "This is a full-time, on-site position in our beautiful offices in Santa Monica, CA.&#xa0; We offer a great package including PTO, benefits, 401K, and holidays.",
+   "expected": false,
+   "main": true
+  },
+  {
+   "kind": "main-only (main's error: a 401K, a part number, a 5K race)",
+   "text": "401k with company contributions",
+   "expected": false,
+   "main": true
+  },
+  {
+   "kind": "main-only (main's error: a 401K, a part number, a 5K race)",
+   "text": "401K with company match",
+   "expected": false,
+   "main": true
+  },
+  {
+   "kind": "main-only (main's error: a 401K, a part number, a 5K race)",
+   "text": "Generous 401k match",
+   "expected": false,
+   "main": true
+  },
+  {
+   "kind": "main-only (main's error: a 401K, a part number, a 5K race)",
+   "text": "Sportradar offers best-in-class benefits such as a comprehensive benefits package, performance bonus program, equity stock purchase and 401k contribution.",
+   "expected": false,
+   "main": true
+  },
+  {
+   "kind": "main-only (main's error: a 401K, a part number, a 5K race)",
+   "text": "Employee Stock Options 401K Retirement Plan & Matching Program",
+   "expected": false,
+   "main": true
+  },
+  {
+   "kind": "main-only (main's error: a 401K, a part number, a 5K race)",
+   "text": "We offer full benefits including medical, dental, vision, 401k, and generous paid time off (PTO).",
+   "expected": false,
+   "main": true
+  },
+  {
+   "kind": "main-only (main's error: a 401K, a part number, a 5K race)",
+   "text": "選択制確定拠出年金制度(401K)",
+   "expected": false,
+   "main": true
+  },
+  {
+   "kind": "main-only (main's error: a 401K, a part number, a 5K race)",
+   "text": "401K with a Company Match",
+   "expected": false,
+   "main": true
+  },
+  {
+   "kind": "main-only (main's error: a 401K, a part number, a 5K race)",
+   "text": "You can look forward to a range of benefits including medical, dental, vision, 401K, PTO, paid holidays, commuter benefits, spending accounts, life insurance, disability coverage, and EAPs.&#xa0;",
+   "expected": false,
+   "main": true
+  },
+  {
+   "kind": "main-only (main's error: a 401K, a part number, a 5K race)",
+   "text": "Benefits:&#xa0; We do offer benefits to our full-time consultants, including Health, Vision, Dental, 401K plan, Life Insurance, Pretax Commuter Benefits, and an incredibly supportive team cheering you on!",
+   "expected": false,
+   "main": true
+  },
+  {
+   "kind": "main-only (main's error: a 401K, a part number, a 5K race)",
+   "text": "You can look forward to a range of benefits including medical, dental, vision, 401K, PTO, commuter benefits, spending accounts, life insurance, disability coverage, and EAPs.",
+   "expected": false,
+   "main": true
+  },
+  {
+   "kind": "main-only (main's error: a 401K, a part number, a 5K race)",
+   "text": "You can look forward to a range of benefits including medical, dental, vision, 401K, PTO, paid holidays, commuter benefits, spending accounts, life insurance, disability coverage, and EAPs.&#xa0;&#xa0;&#xa0;",
+   "expected": false,
+   "main": true
+  },
+  {
+   "kind": "main-only (main's error: a 401K, a part number, a 5K race)",
+   "text": "401K with employer matching.",
+   "expected": false,
+   "main": true
+  },
+  {
+   "kind": "main-only (main's error: a 401K, a part number, a 5K race)",
+   "text": "401K with employer matching.&#xa0;",
+   "expected": false,
+   "main": true
+  },
+  {
+   "kind": "main-only (main's error: a 401K, a part number, a 5K race)",
+   "text": "SeekOut&#xa0;offers great benefits including health/vision/dental, transportation subsidies, 401k, education budgets, ability to work remote, onsite parking (if/when we go back to the office), snacks/lunches, and more!",
+   "expected": false,
+   "main": true
+  },
+  {
+   "kind": "main-only (main's error: a 401K, a part number, a 5K race)",
+   "text": "Comprehensive benefits package including health, vision and dental insurance, 401K, and more",
+   "expected": false,
+   "main": true
+  },
+  {
+   "kind": "main-only (main's error: a 401K, a part number, a 5K race)",
+   "text": "Extensive additional enrollment offerings, including: HSA/FSA, 401K, Spousal/Dependent Life Insurance, Short Term/Long Term Disability, Travel Assist, Identity Protection, and Legal Plans",
+   "expected": false,
+   "main": true
+  },
+  {
+   "kind": "main-only (main's error: a 401K, a part number, a 5K race)",
+   "text": "Essential experience developing and building embedded software for the TAG-700 or TAG-320B platforms.",
+   "expected": false,
+   "main": true
+  },
+  {
+   "kind": "main-only (main's error: a 401K, a part number, a 5K race)",
+   "text": "In addition, we provide a comprehensive benefits package including company-subsidized medical and dental coverage, vision coverage, life insurance, paid medical leave and a 401K with an employer match.",
+   "expected": false,
+   "main": true
+  },
+  {
+   "kind": "main-only (main's error: a 401K, a part number, a 5K race)",
+   "text": "Manage 5K messaging, maps, and graphics.",
+   "expected": false,
+   "main": true
+  },
+  {
+   "kind": "main-only (main's error: a 401K, a part number, a 5K race)",
+   "text": "Manage 5K registration inquiries, Bib and T-shirt orders, and distribution.",
+   "expected": false,
+   "main": true
+  },
+  {
+   "kind": "main-only (main's error: a 401K, a part number, a 5K race)",
+   "text": "Build awareness and drive revenue for 5K celebrations, fundraising campaigns, and events",
+   "expected": false,
+   "main": true
+  },
+  {
+   "kind": "sample-yes",
+   "text": "25 vakantiedagen met de mogelijkheid om extra dagen te kopen",
+   "expected": true,
+   "main": false
+  },
+  {
+   "kind": "sample-yes",
+   "text": "1-2 years relevant experience",
+   "expected": true,
+   "main": false
+  },
+  {
+   "kind": "sample-yes",
+   "text": "Our team comprises more than 65 nationalities and we are committed to developing and sustaining a diverse work force.&#xa0; Learn more about us here .",
+   "expected": true,
+   "main": false
+  },
+  {
+   "kind": "sample-yes",
+   "text": "Position requires the ability to sit for up to 2 hours at a time.",
+   "expected": true,
+   "main": false
+  },
+  {
+   "kind": "sample-yes",
+   "text": "12-month fixed term contract",
+   "expected": true,
+   "main": false
+  },
+  {
+   "kind": "sample-yes",
+   "text": "Hybrid role (3 days in office) for candidates in Seattle, Minneapolis, Salt Lake City, Chicago, Los Angeles, New York or San Francisco",
+   "expected": true,
+   "main": false
+  },
+  {
+   "kind": "sample-yes",
+   "text": "Zwrot kosztów transportu do 40 €/miesiąc",
+   "expected": true,
+   "main": false
+  },
+  {
+   "kind": "sample-yes",
+   "text": "&#xa0;Salary: $70K-110K DOE",
+   "expected": true,
+   "main": true
+  },
+  {
+   "kind": "sample-yes",
+   "text": "● Experience: 4–7 years in market research or data analytics, with a heavy focus on",
+   "expected": true,
+   "main": false
+  },
+  {
+   "kind": "sample-yes",
+   "text": "We’re recruiting for a&#xa0;Accounts Payable Administrator (9 months FTC) to join us.",
+   "expected": true,
+   "main": false
+  },
+  {
+   "kind": "sample-yes",
+   "text": "We are looking forward to reading from you soon!</p><p><span><em>*Based on packaging weight comparison: waterdrop® pod incl. lid (0.44 g) vs. average 500 ml single-use PET bottle (23.09 g).</em></span></p><p><br></p>",
+   "expected": true,
+   "main": false
+  },
+  {
+   "kind": "sample-yes",
+   "text": "1-3 years' experience",
+   "expected": true,
+   "main": false
+  },
+  {
+   "kind": "sample-yes",
+   "text": "Depuis plus de 40 ans, LGI développe des solutions logicielles en santé.",
+   "expected": true,
+   "main": false
+  },
+  {
+   "kind": "sample-yes",
+   "text": "Minimum 4 years of experience with proven functional skills in Dynamics 365 Business Central and / or NAV.",
+   "expected": true,
+   "main": false
+  },
+  {
+   "kind": "sample-yes",
+   "text": "Innerhalb weniger Jahre ist unser Team auf rund 300 Mitarbeitende gewachsen – und wir haben noch viel vor.</span></p><p><span>Unsere Mission: Solarenergie für alle einfach, bezahlbar und zugänglich machen.",
+   "expected": true,
+   "main": false
+  },
+  {
+   "kind": "sample-yes",
+   "text": "Experience : Minimum 10 years working experience as Senior Hair Stylist/cut and colour technician/specialist in a reputed organization.",
+   "expected": true,
+   "main": false
+  },
+  {
+   "kind": "sample-yes",
+   "text": "Seen in more than 100 million U.S. households, The Weather Channel network is one of the most widely-distributed cable networks.",
+   "expected": true,
+   "main": false
+  },
+  {
+   "kind": "sample-yes",
+   "text": "Salaire sur 13 mois + Primes (Primes Intéressement/Participation, Prime vacances..)&#xa0;",
+   "expected": true,
+   "main": false
+  },
+  {
+   "kind": "sample-yes",
+   "text": "20% off Puppy Pre-School",
+   "expected": true,
+   "main": false
+  },
+  {
+   "kind": "sample-yes",
+   "text": "<p><span>Bei der <strong>EAT HAPPY GROUP | FCF Holding GmbH </strong>erwartet dich mehr als ein Job.</span></p><p><span>In unserem Headquarter in Köln sorgen rund 220 Mitarbeitende dafür, dass innerhalb der Group alles zusammenläuft.",
+   "expected": true,
+   "main": false
+  },
+  {
+   "kind": "sample-yes",
+   "text": "Industry-leading holiday allowance – Up to 35 days, including a personal ‘Me’ day and Christmas closure.",
+   "expected": true,
+   "main": false
+  },
+  {
+   "kind": "sample-yes",
+   "text": "A minimum of 5 years' experience as a Senior Designer.",
+   "expected": true,
+   "main": false
+  },
+  {
+   "kind": "sample-yes",
+   "text": "This position is HYBRID in Bellevue, WA, 1-3 days a week in office.",
+   "expected": true,
+   "main": false
+  },
+  {
+   "kind": "sample-yes",
+   "text": "3 years in senior or middle management",
+   "expected": true,
+   "main": false
+  },
+  {
+   "kind": "sample-yes",
+   "text": "Competitive salary – £26,437 per annum",
+   "expected": true,
+   "main": false
+  },
+  {
+   "kind": "sample-yes",
+   "text": "Bruto maandsalaris: €3.600 - €5.000 excl. ploegentoeslag&#xa0;",
+   "expected": true,
+   "main": false
+  },
+  {
+   "kind": "sample-yes",
+   "text": "Embedding ourselves at client sites across all manufacturing industries, we work with client teams to deliver production efficiency improvements of 20-50% within 3-6 months without major investments.",
+   "expected": true,
+   "main": false
+  },
+  {
+   "kind": "sample-yes",
+   "text": "·       Up to 30% travel required",
+   "expected": true,
+   "main": false
+  },
+  {
+   "kind": "sample-yes",
+   "text": "Or 8,000 hours worked and 500 - 1000 classroom hours completed&#xa0;",
+   "expected": true,
+   "main": false
+  },
+  {
+   "kind": "sample-yes",
+   "text": "You’ll work across a portfolio of around 5-6 clients and will be assigned responsibility for specific areas of each client’s campaign.",
+   "expected": true,
+   "main": false
+  },
+  {
+   "kind": "sample-yes",
+   "text": "Projects may require working 10-16 hour days and/or outside of normal business hours, working during weekends and/or up to 14 days continuously, and travel for extended periods of time to respond to weather windows and other demands of the position.",
+   "expected": true,
+   "main": false
+  },
+  {
+   "kind": "sample-yes",
+   "text": "Pay Scale: $20.50 - $47.50/HR (Based on Experience, ASE Certifications, and/or Training)",
+   "expected": true,
+   "main": false
+  },
+  {
+   "kind": "sample-yes",
+   "text": "Working 37.5 hours per week.",
+   "expected": true,
+   "main": false
+  },
+  {
+   "kind": "sample-yes",
+   "text": "Duration of Internship : minimum 3 months&#xa0;",
+   "expected": true,
+   "main": false
+  },
+  {
+   "kind": "sample-yes",
+   "text": "We've worked with 100+ companies and helped them achieve their goals.",
+   "expected": true,
+   "main": false
+  },
+  {
+   "kind": "sample-yes",
+   "text": "📱 1M monthly active users",
+   "expected": true,
+   "main": true
+  },
+  {
+   "kind": "sample-yes",
+   "text": "At least 10+ years of experience as a Producer in game development, with a proven track record of leading successful projects and managing producers.",
+   "expected": true,
+   "main": false
+  },
+  {
+   "kind": "sample-yes",
+   "text": "Accuracy & Compliance: Ensure 100% accuracy in updating service agreements, benefit verification updates, and fee schedule disclosures while strictly adhering to organizational financial and privacy standards.",
+   "expected": true,
+   "main": false
+  },
+  {
+   "kind": "sample-yes",
+   "text": "Duration: Approximately a 10-month consulting role through Blend with the possibility of extension",
+   "expected": true,
+   "main": false
+  },
+  {
+   "kind": "sample-yes",
+   "text": "You will need to be at least 21 years of age, a good communicator who is a team player with the drive to provide a friendly and professional service at all times.",
+   "expected": true,
+   "main": false
+  },
+  {
+   "kind": "sample-no",
+   "text": "Strong writer with a B2B portfolio of positioning&#xa0; brands , website copy, and thought leadership.",
+   "expected": false,
+   "main": false
+  },
+  {
+   "kind": "sample-no",
+   "text": "Procurement: Prepare and run tender processes for all 3rd party contracts, as required.",
+   "expected": false,
+   "main": false
+  },
+  {
+   "kind": "sample-no",
+   "text": "Des possibilités de réseautage avec des influenceurs importants du milieu technologique&#xa0;",
+   "expected": false,
+   "main": false
+  },
+  {
+   "kind": "sample-no",
+   "text": "Track record of integrating various modalities of learning interventions.&#xa0;",
+   "expected": false,
+   "main": false
+  },
+  {
+   "kind": "sample-no",
+   "text": "All staff therapists are W-2 employees and are compensated on a fee-for-service basis.",
+   "expected": false,
+   "main": false
+  },
+  {
+   "kind": "sample-no",
+   "text": "§&#xa0;Citrix App and Desktop Virtualization – Expert",
+   "expected": false,
+   "main": false
+  },
+  {
+   "kind": "sample-no",
+   "text": "Manage end-to-end office relocation, expansion, and fit-out projects globally&#xa0;",
+   "expected": false,
+   "main": false
+  },
+  {
+   "kind": "sample-no",
+   "text": "Familiarity with Microsoft Azure services,&#xa0;Microsoft Server environments, IT ticketing systems, and scripting or automation tools is an asset.",
+   "expected": false,
+   "main": false
+  },
+  {
+   "kind": "sample-no",
+   "text": "Works under general supervision to service/repair/modify&#xa0;avionics equipment.&#xa0;",
+   "expected": false,
+   "main": false
+  },
+  {
+   "kind": "sample-no",
+   "text": "Biedt inhoudelijk ondersteuning aan de sales-/accountmanagement bij verkoop in nieuwe markten.&#xa0;",
+   "expected": false,
+   "main": false
+  },
+  {
+   "kind": "sample-no",
+   "text": "Identify opportunities to expand and evolve the&#xa0;product portfolio.",
+   "expected": false,
+   "main": false
+  },
+  {
+   "kind": "sample-no",
+   "text": "Od 2008 dostarczamy aplikację ułatwiającą prowadzenie firmy, kontakt z księgowymi, wystawianie faktur, dodawanie kosztów i dokonywanie płatności.",
+   "expected": false,
+   "main": false
+  },
+  {
+   "kind": "sample-no",
+   "text": "Applicants should be prepared to share three professional references and a teaching demonstration.&#xa0;",
+   "expected": false,
+   "main": false
+  },
+  {
+   "kind": "sample-no",
+   "text": "500 Westover Dr. #6954 Sanford, NC 27330 USA",
+   "expected": false,
+   "main": false
+  },
+  {
+   "kind": "sample-no",
+   "text": "We do not discriminate based on race, religion, color, national origin, gender, sexual orientation, age, marital status, veteran status, or disability status, or any other protected status under applicable laws. #EveryPerspectiveCounts&#xa0;",
+   "expected": false,
+   "main": false
+  },
+  {
+   "kind": "sample-no",
+   "text": "·&#xa0; Ability to create BRD or FRD based on the business requirement.",
+   "expected": false,
+   "main": false
+  },
+  {
+   "kind": "sample-no",
+   "text": "Poszukujemy&#xa0; Senior&#xa0;C++ Developera/Team Leadera , który dołączy do zespołu firmy technologicznej specjalizującej się w produkcji wojskowych systemów łączności oraz teleinformatycznych rozwiązań do zastosowań polowych i stacjonarnych.",
+   "expected": false,
+   "main": false
+  },
+  {
+   "kind": "sample-no",
+   "text": "Posibilidad de jornada de 6 horas.",
+   "expected": false,
+   "main": false
+  },
+  {
+   "kind": "sample-no",
+   "text": "Desired Qualifications: &#xa0;Registered Electrical Engineer or Control Systems Engineer",
+   "expected": false,
+   "main": false
+  },
+  {
+   "kind": "sample-no",
+   "text": "Nous cherchons actuellement un(e) étudiant(e)&#xa0;qui s'intéresse à l’éducation, et qui souhaite faire un&#xa0; Stage en École Maternelle (temps plein).",
+   "expected": false,
+   "main": false
+  },
+  {
+   "kind": "sample-no",
+   "text": "Télétravail possible jusqu’à 2 jours par semaine (mis en œuvre selon votre degré d’autonomie) ;",
+   "expected": false,
+   "main": false
+  },
+  {
+   "kind": "sample-no",
+   "text": "Our&#xa0;Strategy and&#xa0;Performance&#xa0;Improvement&#xa0;team is&#xa0;focused on&#xa0;strategy,&#xa0;performance improvement, and operational restructuring to&#xa0;optimise&#xa0;clients’ financial performance and sustainability.",
+   "expected": false,
+   "main": false
+  },
+  {
+   "kind": "sample-no",
+   "text": "Odborná podpora pri nábehu sériovej výroby&#xa0; vrátane voľby nástrojov, nastavovania strojov a prípravy technologických postupov.",
+   "expected": false,
+   "main": false
+  },
+  {
+   "kind": "sample-no",
+   "text": "Stays curious about new tools and techniques, especially in AI-assisted development, and brings practical improvements to the team.&#xa0;",
+   "expected": false,
+   "main": false
+  },
+  {
+   "kind": "sample-no",
+   "text": "Our Warrington warehouse is located just off the M62, with free on-site parking and dedicated cycle paths.",
+   "expected": false,
+   "main": false
+  },
+  {
+   "kind": "sample-no",
+   "text": "Ability to work in /lead cross functional teams&#xa0;",
+   "expected": false,
+   "main": false
+  },
+  {
+   "kind": "sample-no",
+   "text": "This is a 360 recruitment role , working with both candidates and clients.",
+   "expected": false,
+   "main": false
+  },
+  {
+   "kind": "sample-no",
+   "text": "Prefer previous Maintenance Technician or Multi-Craft Technician experience.&#xa0;",
+   "expected": false,
+   "main": false
+  },
+  {
+   "kind": "sample-no",
+   "text": "&#xa0;&#xa0;&#xa0;&#xa0;&#xa0;&#xa0;&#xa0;&#xa0;&#xa0;Working experience of architecting embedded systems",
+   "expected": false,
+   "main": false
+  },
+  {
+   "kind": "sample-no",
+   "text": "This is a REMOTE role available in LATAM.&#xa0;&#xa0; You must have a strong C1 English level.",
+   "expected": false,
+   "main": false
+  }
+ ],
+ "presence": [
+  {
+   "term": "futures",
+   "text": "we lead the industry into the future. please apply with your cv or",
+   "expected": false,
+   "why": "a plural that is another word: its singular here is not the term"
+  },
+  {
+   "term": "futures",
+   "text": "urset à répondre à la demande future en matière demain-d’œuvre, in",
+   "expected": false,
+   "why": "a plural that is another word: its singular here is not the term"
+  },
+  {
+   "term": "dynamics",
+   "text": " eager to make your mark in a dynamic studio environment, we want t",
+   "expected": false,
+   "why": "a plural that is another word: its singular here is not the term"
+  },
+  {
+   "term": "dynamics",
+   "text": " built by young, talented and dynamic entrepreneurs. we operate a s",
+   "expected": false,
+   "why": "a plural that is another word: its singular here is not the term"
+  },
+  {
+   "term": "customs",
+   "text": "e innovative solutions to our customers. centurylink is proud to b",
+   "expected": false,
+   "why": "a plural that is another word: its singular here is not the term"
+  },
+  {
+   "term": "customs",
+   "text": "3.5 billion invested, 150,000 customers, an award-winning service ",
+   "expected": false,
+   "why": "a plural that is another word: its singular here is not the term"
+  },
+  {
+   "term": "canvas",
+   "text": "lopment practices • in-person canvassing of your assigned submarke",
+   "expected": false,
+   "why": "a plural that is another word: its singular here is not the term"
+  },
+  {
+   "term": "canvas",
+   "text": "photoshop, adobe illustrator, canva, or comparable software. fami",
+   "expected": false,
+   "why": "a plural that is another word: its singular here is not the term"
+  },
+  {
+   "term": "covers",
+   "text": "ortantly, full of flavour! discover the world of innovative and e",
+   "expected": false,
+   "why": "a plural that is another word: its singular here is not the term"
+  },
+  {
+   "term": "covers",
+   "text": "t agency partners • strong discovery and presentation skills - ab",
+   "expected": false,
+   "why": "a plural that is another word: its singular here is not the term"
+  },
+  {
+   "term": "specials",
+   "text": "and structural requirements, especially in terms of system integrat",
+   "expected": false,
+   "why": "a plural that is another word: its singular here is not the term"
+  },
+  {
+   "term": "specials",
+   "text": "recovery • security & privacy specialties: • contract staffing (sta",
+   "expected": false,
+   "why": "a plural that is another word: its singular here is not the term"
+  },
+  {
+   "term": "combines",
+   "text": "panies with a common goal. we combine the best of teamwork, technol",
+   "expected": false,
+   "why": "a plural that is another word: its singular here is not the term"
+  },
+  {
+   "term": "combines",
+   "text": "lus de 600 consultant·es, qui combinent compréhension des enjeux bu",
+   "expected": false,
+   "why": "a plural that is another word: its singular here is not the term"
+  },
+  {
+   "term": "draws",
+   "text": " • job experience • currently drawn salary & other benefits • sa",
+   "expected": false,
+   "why": "a plural that is another word: its singular here is not the term"
+  },
+  {
+   "term": "draws",
+   "text": "ve into understanding project drawings and specs and attend turn",
+   "expected": false,
+   "why": "a plural that is another word: its singular here is not the term"
+  },
+  {
+   "term": "liens",
+   "text": "ong commercial awareness, resilience and accountability.. nice t",
+   "expected": false,
+   "why": "a plural that is another word: its singular here is not the term"
+  },
+  {
+   "term": "liens",
+   "text": "elationships with enterprise clients, partners, and key decision",
+   "expected": false,
+   "why": "a plural that is another word: its singular here is not the term"
+  },
+  {
+   "term": "rails",
+   "text": " assets, tone of voice & guardrails – du besitzt das identity-sys",
+   "expected": false,
+   "why": "a plural that is another word: its singular here is not the term"
+  },
+  {
+   "term": "rails",
+   "text": "ra, jenkins, github, and test rail. this is on the front end, wo",
+   "expected": false,
+   "why": "a plural that is another word: its singular here is not the term"
+  },
+  {
+   "term": "transformers",
+   "text": "bstations, switching devices, transformer banks, oil circuit breakers, ",
+   "expected": false,
+   "why": "a plural that is another word: its singular here is not the term"
+  },
+  {
+   "term": "transformers",
+   "text": "nsultant(e) workday prêt(e) à transformer l’expérience de nos clients a",
+   "expected": false,
+   "why": "a plural that is another word: its singular here is not the term"
+  },
+  {
+   "term": "premiums",
+   "text": "l: in tandem pays 100% of the premium for employees and 99% for all",
+   "expected": false,
+   "why": "a plural that is another word: its singular here is not the term"
+  },
+  {
+   "term": "premiums",
+   "text": "ients fully leverage alpine’s premium research services. you will b",
+   "expected": false,
+   "why": "a plural that is another word: its singular here is not the term"
+  },
+  {
+   "term": "listings",
+   "text": " information provided in this listing acts as a position overview b",
+   "expected": false,
+   "why": "a plural that is another word: its singular here is not the term"
+  },
+  {
+   "term": "listings",
+   "text": " close 13 november 2026. shortlisting will commence immediately. ap",
+   "expected": false,
+   "why": "a plural that is another word: its singular here is not the term"
+  },
+  {
+   "term": "teamworks",
+   "text": "ions-driven. we combine data, teamwork, and innovation to deliver wo",
+   "expected": false,
+   "why": "a plural that is another word: its singular here is not the term"
+  },
+  {
+   "term": "teamworks",
+   "text": "ions-driven. we combine data, teamwork, and innovation to deliver wo",
+   "expected": false,
+   "why": "a plural that is another word: its singular here is not the term"
+  },
+  {
+   "term": "locations",
+   "text": "2027 • duration: 4-6 months • location: frankfurt am main, germany •",
+   "expected": false,
+   "why": "a plural that is another word: its singular here is not the term"
+  },
+  {
+   "term": "locations",
+   "text": "ption sr java spark developer location: fifth avenue, nyc, ny 10175 ",
+   "expected": false,
+   "why": "a plural that is another word: its singular here is not the term"
+  },
+  {
+   "term": "closings",
+   "text": "d external hygiene audits and closing out corrective action summari",
+   "expected": false,
+   "why": "a plural that is another word: its singular here is not the term"
+  },
+  {
+   "term": "closings",
+   "text": "ns, quoting, negotiation, and closing. • ability to communicate tec",
+   "expected": false,
+   "why": "a plural that is another word: its singular here is not the term"
+  },
+  {
+   "term": "sources",
+   "text": "/data engineering experience (source-to-target mapping, transforma",
+   "expected": false,
+   "why": "a plural that is another word: its singular here is not the term"
+  },
+  {
+   "term": "sources",
+   "text": "ing our employee owners the resources to take care of their physica",
+   "expected": false,
+   "why": "a plural that is another word: its singular here is not the term"
+  },
+  {
+   "term": "check-in",
+   "text": "set up weekly check-ins for the first month",
+   "expected": true,
+   "why": "the plural of a term whose last word is short or accented"
+  },
+  {
+   "term": "p&id",
+   "text": "review P&IDs, equipment submittals, control",
+   "expected": true,
+   "why": "the plural of a term whose last word is short or accented"
+  },
+  {
+   "term": "p&id",
+   "text": "ability to interpret P&IDs, wiring diagrams",
+   "expected": true,
+   "why": "the plural of a term whose last word is short or accented"
+  },
+  {
+   "term": "auditoría",
+   "text": "gestión de riesgos y cumplimiento • auditorías y requerimientos",
+   "expected": true,
+   "why": "the plural of a term whose last word is short or accented"
+  }
+ ],
+ "roles": [
+  {
+   "title": "Sr. Backend Node.js Engineer (U.S remote within CST OR EST time zone)",
+   "expected": "Backend Developer",
+   "main": "Software Engineer",
+   "named": true
+  },
+  {
+   "title": "VISUALIZATION FRONT END ENGINEER",
+   "expected": "Frontend Developer",
+   "main": "Software Engineer",
+   "named": true
+  },
+  {
+   "title": "Front end Architect Remote",
+   "expected": "Frontend Developer",
+   "main": "Frontend Developer",
+   "named": true
+  },
+  {
+   "title": "Front End Architect Angular at India 100% Remote",
+   "expected": "Frontend Developer",
+   "main": "Frontend Developer",
+   "named": true
+  },
+  {
+   "title": "Software Architect, Back-End",
+   "expected": "Software Engineer",
+   "main": "Software Engineer",
+   "named": true
+  },
+  {
+   "title": "Data & Analytics Lead",
+   "expected": "Data Analyst",
+   "main": "Data Analyst",
+   "named": true
+  },
+  {
+   "title": "Luxury Travel Sales Team Leader",
+   "expected": "Sales Manager",
+   "main": "Sales Manager",
+   "named": true
+  },
+  {
+   "title": "Marketing & Communications Lead RC377",
+   "expected": "Marketing Manager",
+   "main": "Marketing Manager",
+   "named": true
+  },
+  {
+   "title": "Sales Supervisor",
+   "expected": "Sales Manager",
+   "main": "Sales Manager",
+   "named": true
+  },
+  {
+   "title": "Head of Sales",
+   "expected": "Sales Manager",
+   "main": "Sales Manager"
+  },
+  {
+   "title": "Peds Nursing Instructor - Per Diem",
+   "expected": null,
+   "main": "Frontend Developer"
+  },
+  {
+   "title": "Talent & Performance Operations Officer",
+   "expected": null,
+   "main": "Operations Manager"
+  },
+  {
+   "title": "Associate Designer - Newborn - Big Girl License and Private Label Apparel",
+   "expected": null,
+   "main": "UX Designer"
+  },
+  {
+   "title": "Account Manager, Digital Advertising",
+   "expected": null,
+   "main": "Product Manager"
+  },
+  {
+   "title": "AML Actimize SAM",
+   "expected": null,
+   "main": null
+  },
+  {
+   "title": "Principal Process Engineer",
+   "expected": null,
+   "main": "Software Engineer"
+  },
+  {
+   "title": "Receptionist",
+   "expected": null,
+   "main": null
+  },
+  {
+   "title": "Business Analyst",
+   "expected": "Data Analyst",
+   "main": "Data Analyst"
+  },
+  {
+   "title": "Internal Specialist",
+   "expected": null,
+   "main": "Digital Marketing Specialist"
+  },
+  {
+   "title": "Sales Development Representative - BENELUX",
+   "expected": null,
+   "main": "Software Engineer"
+  },
+  {
+   "title": "Ploegleider (3-ploegen)",
+   "expected": null,
+   "main": null
+  },
+  {
+   "title": "Junior FP&A",
+   "expected": "Financial Analyst",
+   "main": null
+  },
+  {
+   "title": "Mainframe Developer - Control-M, MQ Series (W2 Position)",
+   "expected": "Software Engineer",
+   "main": "Software Engineer"
+  },
+  {
+   "title": "Senior AI Engineer",
+   "expected": null,
+   "main": "Software Engineer"
+  },
+  {
+   "title": "Automotive Diagnostics Technician - German / Dutch speaker - relocation Budapest",
+   "expected": null,
+   "main": null
+  },
+  {
+   "title": "70% Vikarierende Butikkselger VIC Borg (Vikariat)",
+   "expected": null,
+   "main": null
+  },
+  {
+   "title": "Behavioral Health Provider Bilingual English and Spanish",
+   "expected": null,
+   "main": null
+  },
+  {
+   "title": "Procurement Manager – Operativer Einkauf (m/w/d)",
+   "expected": null,
+   "main": "Product Manager"
+  },
+  {
+   "title": "Senior Data Platform Engineer (Azure, Databricks, Terraform)",
+   "expected": "Software Engineer",
+   "main": "Software Engineer"
+  },
+  {
+   "title": "Principal Engineer, DevSecOps",
+   "expected": "Senior Software Engineer",
+   "main": "Software Engineer"
+  },
+  {
+   "title": "Regional Tax Executive",
+   "expected": null,
+   "main": "Account Executive"
+  },
+  {
+   "title": "Registered Behavior Technician (RBT) / Behavior Technician",
+   "expected": null,
+   "main": null
+  },
+  {
+   "title": "Department Manager",
+   "expected": null,
+   "main": "Product Manager"
+  },
+  {
+   "title": "Practicante de Operaciones",
+   "expected": null,
+   "main": "Frontend Developer"
+  },
+  {
+   "title": "Driver / Valeter",
+   "expected": null,
+   "main": null
+  },
+  {
+   "title": "Executive Personal Assistant",
+   "expected": null,
+   "main": "Account Executive"
+  },
+  {
+   "title": "ASISTENTE CONTABLE – CON EXPERIENCIA EN SAP Y CONCAR",
+   "expected": null,
+   "main": "Software Engineer"
+  },
+  {
+   "title": "Solutions Consultant",
+   "expected": null,
+   "main": null
+  },
+  {
+   "title": "Geotechnical Engineer",
+   "expected": null,
+   "main": "Software Engineer"
+  },
+  {
+   "title": "Recruitment Consultant / Senior Recruitment Consultant - US Market",
+   "expected": "Recruiter",
+   "main": "Senior Software Engineer"
+  },
+  {
+   "title": "Associate, R&D Technician",
+   "expected": null,
+   "main": null
+  },
+  {
+   "title": "Administrative Office Secretary",
+   "expected": null,
+   "main": null
+  },
+  {
+   "title": "Technical Account Manager",
+   "expected": null,
+   "main": "Product Manager"
+  },
+  {
+   "title": "Digital Marketing Assistant",
+   "expected": null,
+   "main": "Marketing Manager"
+  },
+  {
+   "title": "Sr. Social Media Executive (2-4 years)",
+   "expected": null,
+   "main": "Account Executive"
+  },
+  {
+   "title": "Enseignant(e) de Maternelle [CDI @Paris]",
+   "expected": null,
+   "main": "Frontend Developer"
+  },
+  {
+   "title": "Strategic Partnerships Manager",
+   "expected": null,
+   "main": "Product Manager"
+  },
+  {
+   "title": "Machine Operator I - Night",
+   "expected": null,
+   "main": "Software Engineer"
+  },
+  {
+   "title": "Manager de Calidad",
+   "expected": null,
+   "main": "Frontend Developer"
+  },
+  {
+   "title": "Senior Oracle Utilities Architect (C2M / CC&B / MDM) - Remote Work Type",
+   "expected": null,
+   "main": "Senior Software Engineer"
+  },
+  {
+   "title": "Technical Delegate- Flying Doc (m/f/d)",
+   "expected": null,
+   "main": null
+  },
+  {
+   "title": "Associate Director of Design and Construction, Office Development",
+   "expected": null,
+   "main": "Software Engineer"
+  },
+  {
+   "title": "Preschool / Early Education Assistant Teacher (San Francisco or Silicon Valley)",
+   "expected": null,
+   "main": "Senior Software Engineer"
+  },
+  {
+   "title": "Infrastructure Engineer",
+   "expected": null,
+   "main": "Software Engineer"
+  },
+  {
+   "title": "Candidature Spontanée",
+   "expected": null,
+   "main": null
+  },
+  {
+   "title": "Remote Administrative Office Associate",
+   "expected": null,
+   "main": null
+  },
+  {
+   "title": "Avoin työhakemus",
+   "expected": null,
+   "main": null
+  },
+  {
+   "title": "Backend Software Engineer",
+   "expected": "Software Engineer",
+   "main": "Software Engineer"
+  },
+  {
+   "title": "Entry-Level Cargo Sales Consultant (West Los Angeles)",
+   "expected": null,
+   "main": "Sales Manager"
+  }
+ ],
+ "ranks": [
+  {
+   "title": "Staff+ Software Engineer",
+   "expected": 3,
+   "named": true
+  },
+  {
+   "title": "Teamleader Logistiek",
+   "expected": 3,
+   "named": true
+  },
+  {
+   "title": "Techlead Backend",
+   "expected": 3,
+   "named": true
+  },
+  {
+   "title": "Projectleader Infra",
+   "expected": 3,
+   "named": true
+  },
+  {
+   "title": "Software Engineering - AVP",
+   "expected": 3,
+   "named": true
+  },
+  {
+   "title": "Clinical Trial Manager (Office Based - South SF 3X/wk)",
+   "expected": 4,
+   "main": 7
+  },
+  {
+   "title": "Orchard - Senior Account Executive",
+   "expected": 3,
+   "main": 7
+  },
+  {
+   "title": "Facility Management Director",
+   "expected": 4,
+   "main": 7
+  },
+  {
+   "title": "Pricing Manager",
+   "expected": 4,
+   "main": 7
+  },
+  {
+   "title": "Field Marketing Manager - 12-month maternity FTC",
+   "expected": 4,
+   "main": 7
+  },
+  {
+   "title": "Python Developer",
+   "expected": 2,
+   "main": 2
+  },
+  {
+   "title": "AAA Customer Service Representative",
+   "expected": 2,
+   "main": 7
+  },
+  {
+   "title": "Project Manager - Remote Boston MA Area (PMO)",
+   "expected": 4,
+   "main": 7
+  },
+  {
+   "title": "IT Property Custodian",
+   "expected": 2,
+   "main": 7
+  },
+  {
+   "title": "Graduate/NYSC Intern Digital Marketing",
+   "expected": 2,
+   "main": 7
+  },
+  {
+   "title": "Technical Recruiter",
+   "expected": 2,
+   "main": 7
+  },
+  {
+   "title": "Lavora da casa: Tutor Online per la Scuola Primaria – Part Time",
+   "expected": 2,
+   "main": 7
+  },
+  {
+   "title": "Marketing Lead (Fixed Term Contract 12 months) RC203",
+   "expected": 3,
+   "main": 7
+  },
+  {
+   "title": "IA & SI – Consultant·e Junior - CTO Advisory - CDI",
+   "expected": 7,
+   "main": 7
+  },
+  {
+   "title": "Software Architect, Back-End",
+   "expected": 2,
+   "main": 7
+  },
+  {
+   "title": "Outdoor Education Instructor",
+   "expected": 2,
+   "main": 7
+  },
+  {
+   "title": "Vendedor/a Tiendas Museo Laie Barcelona",
+   "expected": 2,
+   "main": 7
+  },
+  {
+   "title": "Sr. Data Engineer – Power Automate RPA",
+   "expected": 3,
+   "main": 3
+  },
+  {
+   "title": "Controller",
+   "expected": 2,
+   "main": 7
+  },
+  {
+   "title": "Head of Mechanical & Structural Design (m/f/d)",
+   "expected": 4,
+   "main": 7
+  },
+  {
+   "title": "Lecturer in Electrical Installation",
+   "expected": 2,
+   "main": 7
+  },
+  {
+   "title": "Cyber Security Design Engineer",
+   "expected": 2,
+   "main": 7
+  },
+  {
+   "title": "Field Assistant - Jawa Barat",
+   "expected": 2,
+   "main": 2
+  },
+  {
+   "title": "Autonomous Vehicle Safety Driver",
+   "expected": 2,
+   "main": 7
+  },
+  {
+   "title": "Superintendent - Projects Underground",
+   "expected": 2,
+   "main": 7
+  },
+  {
+   "title": "Assistant Controller",
+   "expected": 2,
+   "main": 7
+  },
+  {
+   "title": "Responsable des relations professionnelles – Droit de la famille (H/F)",
+   "expected": 2,
+   "main": 2
+  },
+  {
+   "title": "AI Lead",
+   "expected": 3,
+   "main": 3
+  },
+  {
+   "title": "Undersköterskor till Aktivt Stöd",
+   "expected": 2,
+   "main": 2
+  },
+  {
+   "title": "Les Schwab - ECommerce Project Manager",
+   "expected": 4,
+   "main": 7
+  },
+  {
+   "title": "MBA PROGRAM Coordinator (Temporary)",
+   "expected": 2,
+   "main": 7
+  },
+  {
+   "title": "Senior Sourcing Specialist / ME Sourcing Manager (Packaging)",
+   "expected": 4,
+   "main": 7
+  },
+  {
+   "title": "Développeur(euse) IA Augmentée (RAD)",
+   "expected": 2,
+   "main": 2
+  },
+  {
+   "title": "Spécialiste de projet logiciel, RS&DE",
+   "expected": 2,
+   "main": 7
+  },
+  {
+   "title": "Manager, Large Load Commercial Development",
+   "expected": 4,
+   "main": 7
+  },
+  {
+   "title": "Senior Backend Software Engineer – Cloud, IoT",
+   "expected": 3,
+   "main": 7
+  },
+  {
+   "title": "Senior ServiceNow Quality Assurance Analyst",
+   "expected": 3,
+   "main": 7
+  },
+  {
+   "title": "Associate Designer - Newborn - Big Girl License and Private Label Apparel",
+   "expected": 2,
+   "main": 7
+  },
+  {
+   "title": "Supervisor - Mechanical Mining",
+   "expected": 2,
+   "main": 7
+  },
+  {
+   "title": "Senior Account Executive - UK & I",
+   "expected": 3,
+   "main": 7
+  }
+ ]
+}

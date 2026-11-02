@@ -1,0 +1,1286 @@
+{
+ "about": "S13-009 slice of ~/.config/resumebooster/free-scan-wave-corpora/S13-009/corpus.json. titles: REAL job titles (other-bucket-labelled.json), rank labelled by hand where main and the branch disagree. resumes: SYNTHETIC, real titles + real posting sentences; transitionFrom by construction.",
+ "summary": {
+  "A": {
+   "titles": 2636,
+   "disagreements": 2043,
+   "unlabelled": 0,
+   "mainRight": 593,
+   "mainWrong": 2043,
+   "branchRight": 2636,
+   "branchWrong": 0
+  },
+  "B": {
+   "cases": 320,
+   "synthetic": true,
+   "withTransition": 107,
+   "mainRight": 44,
+   "mainFalseTransitions": 276,
+   "branchRight": 320,
+   "branchFalseTransitions": 0
+  },
+  "C": {
+   "cases": 232,
+   "ownList": 28,
+   "mainRight": 28,
+   "branchRight": 232
+  }
+ },
+ "titles": [
+  {
+   "title": "QA Engineer",
+   "rank": 2,
+   "main": 2
+  },
+  {
+   "title": "Senior Solutions Architect",
+   "rank": 3,
+   "main": 7
+  },
+  {
+   "title": "Electrical Engineer",
+   "rank": 2,
+   "main": 7
+  },
+  {
+   "title": "ME Engineer Sr",
+   "rank": 3,
+   "main": 2
+  },
+  {
+   "title": "Quantitative Analyst",
+   "rank": 2,
+   "main": 2
+  },
+  {
+   "title": "Business Intelligence Developer",
+   "rank": 2,
+   "main": 7
+  },
+  {
+   "title": "Business Analyst",
+   "rank": 2,
+   "main": 2
+  },
+  {
+   "title": "Applied Data Scientist, Operations Officer III - Department of Planning",
+   "rank": 2,
+   "main": 7
+  },
+  {
+   "title": "Senior Data Analyst",
+   "rank": 3,
+   "main": 3
+  },
+  {
+   "title": "Customer Data Scientist",
+   "rank": 2,
+   "main": 7
+  },
+  {
+   "title": "Microsoft D365 FO ERP Data Analyst II",
+   "rank": 2,
+   "main": 7
+  },
+  {
+   "title": "Senior Interior Designer",
+   "rank": 3,
+   "main": 3
+  },
+  {
+   "title": "Summer 2027 Intern, Motion Designer",
+   "rank": 2,
+   "main": 2
+  },
+  {
+   "title": "Web Designer Stage - Milano [IFS]",
+   "rank": 2,
+   "main": 2
+  },
+  {
+   "title": "Senior Product Designer EMEA",
+   "rank": 3,
+   "main": 7
+  },
+  {
+   "title": "Director of Product Management, Capital One Travel",
+   "rank": 4,
+   "main": 7
+  },
+  {
+   "title": "Program Officer, Northeast",
+   "rank": 2,
+   "main": 7
+  },
+  {
+   "title": "Product Manager II",
+   "rank": 4,
+   "main": 7
+  },
+  {
+   "title": "Sr. Product Manager - Case Management",
+   "rank": 4,
+   "main": 7
+  },
+  {
+   "title": "Marketing & Brand Generalist",
+   "rank": 2,
+   "main": 2
+  },
+  {
+   "title": "Técnico Assistente de Comunicação",
+   "rank": 2,
+   "main": 7
+  },
+  {
+   "title": "Paid Media Analyst",
+   "rank": 2,
+   "main": 2
+  },
+  {
+   "title": "Marketing Communications Specialist",
+   "rank": 2,
+   "main": 7
+  },
+  {
+   "title": "Social Media Manager",
+   "rank": 4,
+   "main": 7
+  },
+  {
+   "title": "Merchandiser",
+   "rank": 2,
+   "main": 7
+  },
+  {
+   "title": "Business Development Sales Professional",
+   "rank": 2,
+   "main": 2
+  },
+  {
+   "title": "EPC Account Manager",
+   "rank": 4,
+   "main": 7
+  },
+  {
+   "title": "Accountmanager Corporate Sales - Clay Hospitality",
+   "rank": 4,
+   "main": 7
+  },
+  {
+   "title": "Service Technical Support Engineer",
+   "rank": 2,
+   "main": 7
+  },
+  {
+   "title": "Crew - Overnights",
+   "rank": 2,
+   "main": 7
+  },
+  {
+   "title": "HTB Finance Team Leader (Giving)",
+   "rank": 3,
+   "main": 7
+  },
+  {
+   "title": "SPRZEDAWCA  / SPRZEDAWCZYNI JYSK RZESZÓW REJTANA 1/2 etatu (2725PLN)",
+   "rank": 2,
+   "main": 7
+  },
+  {
+   "title": "Summer Intern - Investments - Private Debt & Equity",
+   "rank": 2,
+   "main": 2
+  },
+  {
+   "title": "Finance Analyst Co-Op Student",
+   "rank": 2,
+   "main": 7
+  },
+  {
+   "title": "Senior Actuarial Manager, Pricing",
+   "rank": 4,
+   "main": 7
+  },
+  {
+   "title": "Relationship Banker - (Streeterville) Chicago, IL",
+   "rank": 2,
+   "main": 7
+  },
+  {
+   "title": "Director Transactional Counsel (Energy Solutions)",
+   "rank": 4,
+   "main": 7
+  },
+  {
+   "title": "Sustainability and Compliance Executive",
+   "rank": 2,
+   "main": 7
+  },
+  {
+   "title": "Regulatory Device Specialist",
+   "rank": 2,
+   "main": 7
+  },
+  {
+   "title": "IT Infrastructure Asset and Contract Manager - Bilingual in Korean",
+   "rank": 4,
+   "main": 7
+  },
+  {
+   "title": "Recruiter II",
+   "rank": 2,
+   "main": 7
+  },
+  {
+   "title": "Technical Recruiter - FTC 12Months",
+   "rank": 2,
+   "main": 7
+  },
+  {
+   "title": "Total Rewards Analyst (18m FTC)",
+   "rank": 2,
+   "main": 7
+  },
+  {
+   "title": "Human Resources Business Partner",
+   "rank": 7,
+   "main": 7
+  },
+  {
+   "title": "Talent Acquisition Manager - Operations",
+   "rank": 4,
+   "main": 7
+  },
+  {
+   "title": "Recruiter",
+   "rank": 2,
+   "main": 7
+  },
+  {
+   "title": "Technical Project Manager - Data & Migration Team",
+   "rank": 4,
+   "main": 7
+  },
+  {
+   "title": "Class A Driver Non-Exempt",
+   "rank": 2,
+   "main": 7
+  },
+  {
+   "title": "Warehouse Coordinator, R&D",
+   "rank": 2,
+   "main": 7
+  },
+  {
+   "title": "Maintenance Assistant",
+   "rank": 2,
+   "main": 7
+  },
+  {
+   "title": "Activities Coordinator - Assisted Living",
+   "rank": 2,
+   "main": 7
+  },
+  {
+   "title": "Case Manager - FNFAO - Competition 2026-88",
+   "rank": 4,
+   "main": 7
+  },
+  {
+   "title": "Registered Nurse, RN",
+   "rank": 2,
+   "main": 2
+  },
+  {
+   "title": "Accuracy Checking Pharmacy Technician (Part-time)",
+   "rank": 2,
+   "main": 7
+  },
+  {
+   "title": "Occupational Therapy Assistant (COTA)",
+   "rank": 2,
+   "main": 7
+  },
+  {
+   "title": "Zahnmedizinische Fachangestellte / ZFA (m/w/d)",
+   "rank": 2,
+   "main": 7
+  },
+  {
+   "title": "Manager - R&D SPMO",
+   "rank": 4,
+   "main": 4
+  },
+  {
+   "title": "Manager Product Research and Insights, EMEA",
+   "rank": 4,
+   "main": 7
+  },
+  {
+   "title": "Associate Principal Scientist, External Capabilities",
+   "rank": 3,
+   "main": 7
+  },
+  {
+   "title": "Tech Support Engineer - Part-time",
+   "rank": 2,
+   "main": 7
+  },
+  {
+   "title": "Shipping Officer  (SCE-SSC-SC-2026-217-GRAE)",
+   "rank": 2,
+   "main": 7
+  },
+  {
+   "title": "School Bus Monitor",
+   "rank": 2,
+   "main": 7
+  },
+  {
+   "title": "MATHEMATICS TEACHER",
+   "rank": 2,
+   "main": 7
+  },
+  {
+   "title": "ATHLETICS-SCHOOL CUSTODIAL CLEANER",
+   "rank": 2,
+   "main": 7
+  },
+  {
+   "title": "Director of Academics",
+   "rank": 4,
+   "main": 7
+  },
+  {
+   "title": "Assistant Professor, Politics/International Studies",
+   "rank": 2,
+   "main": 7
+  },
+  {
+   "title": "Team Leader Access Care",
+   "rank": 3,
+   "main": 7
+  },
+  {
+   "title": "Shipping & Receiving Clerk",
+   "rank": 2,
+   "main": 7
+  },
+  {
+   "title": "Cashier (06858) - 3300 W Illinois Ave",
+   "rank": 2,
+   "main": 7
+  },
+  {
+   "title": "Supervisor-Housekeeping",
+   "rank": 2,
+   "main": 2
+  },
+  {
+   "title": "Chef de Cuisine- Chinese (Expat)",
+   "rank": 2,
+   "main": 7
+  },
+  {
+   "title": "Information System Security Officer",
+   "rank": 2,
+   "main": 7
+  },
+  {
+   "title": "Managing Consultant - AI Security & Assurance",
+   "rank": 2,
+   "main": 7
+  },
+  {
+   "title": "Contract Special Security Officer (CSSO)",
+   "rank": 2,
+   "main": 7
+  },
+  {
+   "title": "Asset Protection Detective, Queens Center - Full Time",
+   "rank": 2,
+   "main": 7
+  },
+  {
+   "title": "Senior Stationary Engineer (Electric) C +",
+   "rank": 3,
+   "main": 7
+  },
+  {
+   "title": "Office Manager",
+   "rank": 4,
+   "main": 7
+  },
+  {
+   "title": "General Manager",
+   "rank": 4,
+   "main": 4
+  },
+  {
+   "title": "Sr Systems Operations Research Engineer Onsite",
+   "rank": 3,
+   "main": 7
+  },
+  {
+   "title": "Sr Pre-Visualisation Artist",
+   "rank": 3,
+   "main": 2
+  },
+  {
+   "title": "Sr Athletics Graphic Designer",
+   "rank": 3,
+   "main": 7
+  },
+  {
+   "title": "Sr Marketing Artist",
+   "rank": 3,
+   "main": 2
+  },
+  {
+   "title": "Sr Director, Commercial Product Management",
+   "rank": 4,
+   "main": 7
+  },
+  {
+   "title": "Sr Mgr, Project Mgmt",
+   "rank": 3,
+   "main": 7
+  },
+  {
+   "title": "Sr Director, Product Management (AI Platform)",
+   "rank": 4,
+   "main": 7
+  },
+  {
+   "title": "Sr Product Manager - Payments",
+   "rank": 4,
+   "main": 7
+  },
+  {
+   "title": "Sr Marketing Associate, Business Travel",
+   "rank": 3,
+   "main": 7
+  },
+  {
+   "title": "Projektmanager Marketing (m/w/d)",
+   "rank": 4,
+   "main": 4
+  },
+  {
+   "title": "Accountmanager Corporate Sales - Clay Hospitality",
+   "rank": 4,
+   "main": 7
+  },
+  {
+   "title": "Sr Financial Analyst",
+   "rank": 3,
+   "main": 7
+  },
+  {
+   "title": "Sr Manager, Accounting",
+   "rank": 4,
+   "main": 7
+  },
+  {
+   "title": "Sr Manager, Global Chemical Compliance",
+   "rank": 4,
+   "main": 7
+  },
+  {
+   "title": "Sr HR Specialist",
+   "rank": 3,
+   "main": 7
+  },
+  {
+   "title": "Sr Demand Planner",
+   "rank": 3,
+   "main": 2
+  },
+  {
+   "title": "Sr R&D Project Manager",
+   "rank": 4,
+   "main": 7
+  },
+  {
+   "title": "Sr SOC Analyst",
+   "rank": 3,
+   "main": 7
+  },
+  {
+   "title": "Sr Cyber Security Vulnerability Management Analyst",
+   "rank": 3,
+   "main": 7
+  }
+ ],
+ "resumes": [
+  {
+   "id": "s13-009-b-0",
+   "synthetic": true,
+   "roles": [
+    "Customer Success Student, Hooli",
+    "FCMB Claims Customer Service Advocate II, Acme Retail",
+    "Teaching Assistant, Department of Economics"
+   ],
+   "text": "EXPERIENCE\nCustomer Success Student, Hooli\n- Communicate with applicants and business partners (Loan Officers, Sales Manager, Partners, Underwriting, etc.) regarding loan status\nFCMB Claims Customer Service Advocate II, Acme Retail\n- LLNL is seeking an accomplished Chief Financial Officer (CFO) to join the executive leadership team.\nTeaching Assistant, Department of Economics\n- Retail Trust – We know that its not just about physical health, mental wellness is equally important which is why all of our employees get free access and support from the Retail Trust charity.\nSKILLS\nCommunication",
+   "transitionFrom": "academia",
+   "main": "military"
+  },
+  {
+   "id": "s13-009-b-5",
+   "synthetic": true,
+   "roles": [
+    "Recruiter (1099), Hooli",
+    "Recruitment Consultant - Amsterdam, Hooli",
+    "CLUSTER PEOPLE & CULTURE BUSINESS PARTNER (HR), Hooli"
+   ],
+   "text": "EXPERIENCE\nRecruiter (1099), Hooli\n- Peraton is seeking an experienced CIRT Tier 2 Analyst to join Peratons' Federal Strategic Cyber Mission program.\nRecruitment Consultant - Amsterdam, Hooli\n- Forterra is an equal-opportunity employer, providing and promoting equal employment opportunity in accordance with local, state, and federal laws.\nCLUSTER PEOPLE & CULTURE BUSINESS PARTNER (HR), Hooli\n- AlphaSense is an equal-opportunity employer.\nSKILLS\nCommunication",
+   "transitionFrom": null,
+   "main": "government"
+  },
+  {
+   "id": "s13-009-b-10",
+   "synthetic": true,
+   "roles": [
+    "VP, Global Head of Product Compliance, Initech",
+    "Intellectual Property Legal Coordinator, Hooli",
+    "Logistics NCO, U.S. Marine Corps"
+   ],
+   "text": "EXPERIENCE\nVP, Global Head of Product Compliance, Initech\n- - Develop construction phasing plans and coordinate equipment shutdowns to minimize disruption to occupied facilities and ongoing building operations.\nIntellectual Property Legal Coordinator, Hooli\n- Ongoing annual continuing education required.\nLogistics NCO, U.S. Marine Corps\n- You will lead a team of product managers and partner closely with Engineering, Finance, Legal, Risk, and Business Development to build payment and wallet products that work at global scale.\nSKILLS\nCommunication",
+   "transitionFrom": "military",
+   "main": "military"
+  },
+  {
+   "id": "s13-009-b-15",
+   "synthetic": true,
+   "roles": [
+    "Electrical Engineering Intern, Northwind",
+    "Diploma Engineer Trainee, Hooli",
+    "Graduate Rail Engineer, Initech"
+   ],
+   "text": "EXPERIENCE\nElectrical Engineering Intern, Northwind\n- Receive comprehensive training and ongoing support.\nDiploma Engineer Trainee, Hooli\n- Industry cloud foundational AWS Cloud Practitioner, CompTIA Cloud+, or MS Azure Fundamentals Certification\nGraduate Rail Engineer, Initech\n- Maybe you’re ready to leave call and shift work behind.\nSKILLS\nCommunication",
+   "transitionFrom": null,
+   "main": "nonprofit"
+  },
+  {
+   "id": "s13-009-b-20",
+   "synthetic": true,
+   "roles": [
+    "Assistant Front Desk Manager, Initech",
+    "Chef de Cuisine - Rabat Marriott Hotel, Globex",
+    "Grocery Clerk, Northwind"
+   ],
+   "text": "EXPERIENCE\nAssistant Front Desk Manager, Initech\n- 20+ years of experience in construction project management, with emphasis on excavation, SOE, and foundation work.\nChef de Cuisine - Rabat Marriott Hotel, Globex\n- If you’re a Plastic Surgeon in Stockton, CA looking for a no-call, Monday–Friday career, or a part-time role with steady income and no overhead, apply today!\nGrocery Clerk, Northwind\n- Work closely with and coach HR Advisors on employment relations cases and take the lead on cases of a complex or sensitive nature.\nSKILLS\nCommunication",
+   "transitionFrom": null,
+   "main": "military"
+  },
+  {
+   "id": "s13-009-b-25",
+   "synthetic": true,
+   "roles": [
+    "Customer Service – Booking Hotels | Work Online, Acme Retail",
+    "Manager, Professional Services (Enterprise SaaS) | ELN, Northwind",
+    "Customer Service – Booking Hotels | Work Online, Hooli"
+   ],
+   "text": "EXPERIENCE\nCustomer Service – Booking Hotels | Work Online, Acme Retail\n- Not be disqualified to drive a commercial motor vehicle under the Federal Motor Carrier Safety Act.\nManager, Professional Services (Enterprise SaaS) | ELN, Northwind\n- We are hiring a Member Service Officer III, Floater, to join the Retail Support Team.\nCustomer Service – Booking Hotels | Work Online, Hooli\n- City National is a subsidiary of Royal Bank of Canada, one of North America’s leading diversified financial services companies.\nSKILLS\nCommunication",
+   "transitionFrom": null,
+   "main": "military"
+  },
+  {
+   "id": "s13-009-b-30",
+   "synthetic": true,
+   "roles": [
+    "Nikkei Cuisine - Head chef/ Chef De Cuisine, Northwind",
+    "Chef de Partie, Northwind",
+    "Clerk, Municipality of Springfield"
+   ],
+   "text": "EXPERIENCE\nNikkei Cuisine - Head chef/ Chef De Cuisine, Northwind\n- While we continue to grow in size and expertise, our foundational values of quality, dependability, and integrity have remained steadfast as the cornerstones of our business.\nChef de Partie, Northwind\n- Seamless handoffs: Partner with Sales, Field Application Scientists, Customer Success and Marketing so customers move smoothly from purchase to onboarding, adoption and ongoing use.\nClerk, Municipality of Springfield\n- ·         Maintains & repairs low, medium, and high voltage electrical circuits.\nSKILLS\nCommunication",
+   "transitionFrom": "government",
+   "main": "nonprofit"
+  },
+  {
+   "id": "s13-009-b-35",
+   "synthetic": true,
+   "roles": [
+    "Compliance Specialist I, Initech",
+    "Assistant General Counsel, Globex",
+    "Paralegal, Acme Retail"
+   ],
+   "text": "EXPERIENCE\nCompliance Specialist I, Initech\n- Strong Command of Federal, State (California) and Municipal employment laws\nAssistant General Counsel, Globex\n- We believe in the importance of giving back and you’ll have many opportunities to do just that through the Tory Burch Foundation and paid volunteer days.\nParalegal, Acme Retail\n- Lead or support value discovery sessions and business case development for strategic sales opportunities.\nSKILLS\nCommunication",
+   "transitionFrom": null,
+   "main": "nonprofit"
+  },
+  {
+   "id": "s13-009-b-40",
+   "synthetic": true,
+   "roles": [
+    "Sr Systems Operations Research Engineer Onsite, Hooli",
+    "Resident - Data Analytics, Northwind",
+    "Director, AI Engineering, Globex"
+   ],
+   "text": "EXPERIENCE\nSr Systems Operations Research Engineer Onsite, Hooli\n- We bring together leading scientific, engineering, and management expertise in a culture grounded in objectivity and collaboration, ensuring our work creates lasting impact across federal missions.\nResident - Data Analytics, Northwind\n- Follow up and supervision of all ongoing commercial activity\nDirector, AI Engineering, Globex\n- Fresh Scrubs: Accrue an annual scrub allowance through our uniform partners.\nSKILLS\nCommunication",
+   "transitionFrom": null,
+   "main": "nonprofit"
+  },
+  {
+   "id": "s13-009-b-45",
+   "synthetic": true,
+   "roles": [
+    "H&M Sales Advisor (Seasonal) - Meadowood Mall, Hooli",
+    "Account Executive - SMB, Initech",
+    "Automotive Sales - Nissan, Globex"
+   ],
+   "text": "EXPERIENCE\nH&M Sales Advisor (Seasonal) - Meadowood Mall, Hooli\n- This job requires an awareness of any potential compliance risks and a commitment to act with integrity, as the foundation for the Company’s success, reputation and sustainable growth.\nAccount Executive - SMB, Initech\n- Specialty1 Partners and all its affiliates participate in the federal government’s E-Verify program.\nAutomotive Sales - Nissan, Globex\n- Visa & permanent residency sponsorship available\nSKILLS\nCommunication",
+   "transitionFrom": null,
+   "main": "nonprofit"
+  },
+  {
+   "id": "s13-009-b-50",
+   "synthetic": true,
+   "roles": [
+    "Server, Hooli",
+    "Housekeeping Manager, Initech",
+    "Retail Store Associate - Merrell, Initech"
+   ],
+   "text": "EXPERIENCE\nServer, Hooli\n- Lead the identification, pursuit, documentation, and monetization of federal and state tax incentives, including but not limited to:\nHousekeeping Manager, Initech\n- Not be disqualified to drive a commercial motor vehicle under the Federal Motor Carrier Safety Act.\nRetail Store Associate - Merrell, Initech\n- • Company paid benefits including medical, dental, and vision!\nSKILLS\nCommunication",
+   "transitionFrom": null,
+   "main": "government"
+  },
+  {
+   "id": "s13-009-b-55",
+   "synthetic": true,
+   "roles": [
+    "Visual Merchandisers/Store Designers, Acme Retail",
+    "Designer, Globex",
+    "Senior UI/UX Designer (all genders), Hooli"
+   ],
+   "text": "EXPERIENCE\nVisual Merchandisers/Store Designers, Acme Retail\n- There is no application deadline and we accept applications on an ongoing basis until the job is filled.\nDesigner, Globex\n- Ensure compliance of all company policies and procedures as well as local, state, and federal employment laws.\nSenior UI/UX Designer (all genders), Hooli\n- Celebrating 85 Years of Building With Purpose\nSKILLS\nCommunication",
+   "transitionFrom": null,
+   "main": "nonprofit"
+  },
+  {
+   "id": "s13-009-b-60",
+   "synthetic": true,
+   "roles": [
+    "Consultant Senior, Professional Services, Northwind",
+    "Operation Support Specialist, Hooli",
+    "Community Lead, 18 West 18th Street, Acme Retail"
+   ],
+   "text": "EXPERIENCE\nConsultant Senior, Professional Services, Northwind\n- For more information, visit the Federal Student Aid office .\nOperation Support Specialist, Hooli\n- This definition of specialized experience is typical of work performed at the next lower grade/level position in the federal service (GS-09).\nCommunity Lead, 18 West 18th Street, Acme Retail\n- Competitive compensation and total rewards package.\nSKILLS\nCommunication",
+   "transitionFrom": null,
+   "main": "government"
+  },
+  {
+   "id": "s13-009-b-65",
+   "synthetic": true,
+   "roles": [
+    "Regional Designated Broker - Southeast Territory Lead, Hooli",
+    "As-Built Document Controller, Acme Retail",
+    "Teaching Assistant, Department of Economics"
+   ],
+   "text": "EXPERIENCE\nRegional Designated Broker - Southeast Territory Lead, Hooli\n- We value our communities: We offer paid time off for volunteerism and promote many company-wide and local initiatives that benefit organizations you care about.\nAs-Built Document Controller, Acme Retail\n- Our abundant resources, programs, and voluntary options serve as a foundation for individual growth and well-being.\nTeaching Assistant, Department of Economics\n- We’re looking for our first Content Marketing hire to build Vitalize’s content engine and create content healthcare leaders actually want to read, share, and come back to.\nSKILLS\nCommunication",
+   "transitionFrom": "academia",
+   "main": "nonprofit"
+  },
+  {
+   "id": "s13-009-b-70",
+   "synthetic": true,
+   "roles": [
+    "Billing Systems Analyst, Northwind",
+    "Financial Center Specialist II - Sensitive Profile, Acme Retail",
+    "Sergeant, U.S. Army"
+   ],
+   "text": "EXPERIENCE\nBilling Systems Analyst, Northwind\n- To ensure continuity of high-quality care for people who use our services, staff will initially work within South Devon and Torbay NHS Foundation Trust.\nFinancial Center Specialist II - Sensitive Profile, Acme Retail\n- Take and record patient vitals, perform injections, and provide ongoing communication with patients regarding their treatment.\nSergeant, U.S. Army\n- The Cubic pay range for this job level is a general guideline only and not a guarantee of compensation or salary.\nSKILLS\nCommunication",
+   "transitionFrom": "military",
+   "main": "military"
+  },
+  {
+   "id": "s13-009-b-75",
+   "synthetic": true,
+   "roles": [
+    "Senior Project Manager, Acme Retail",
+    "Developer (Fullstack & BODS), Northwind",
+    "Operations Manager, Globex"
+   ],
+   "text": "EXPERIENCE\nSenior Project Manager, Acme Retail\n- Professional Development : Ongoing learning and career advancement opportunities.\nDeveloper (Fullstack & BODS), Northwind\n- Perform patient assessments and re assessments to support appropriate ongoing care\nOperations Manager, Globex\n- Strong negotiation, analytical, and communication skills, with the ability to influence at all levels.\nSKILLS\nCommunication",
+   "transitionFrom": null,
+   "main": "nonprofit"
+  },
+  {
+   "id": "s13-009-b-80",
+   "synthetic": true,
+   "roles": [
+    "Director, Security Governance, Risk and Compliance, Globex",
+    "Senior Regulatory Affairs Manager, Hooli",
+    "Director, Security Governance, Risk and Compliance, Hooli"
+   ],
+   "text": "EXPERIENCE\nDirector, Security Governance, Risk and Compliance, Globex\n- Engineering Excellence: Set and hold the technical bar across the security foundation organization through design review, architectural standards, and written technical direction.\nSenior Regulatory Affairs Manager, Hooli\n- Flexible and generous Paid Time Off and Paid Volunteer Days\nDirector, Security Governance, Risk and Compliance, Hooli\n- Leads, develops, directs, and implements clinical and non-clinical activities that impact healthcare quality, cost, and outcomes.\nSKILLS\nCommunication",
+   "transitionFrom": null,
+   "main": "nonprofit"
+  },
+  {
+   "id": "s13-009-b-85",
+   "synthetic": true,
+   "roles": [
+    "Executive Director of Operations, Hooli",
+    "Entry Level Associate Project Manager: Biopharmaceutical Product Testing, Northwind",
+    "Lieutenant, United States Navy"
+   ],
+   "text": "EXPERIENCE\nExecutive Director of Operations, Hooli\n- Ensure workplace practices comply with state and federal law and company policies\nEntry Level Associate Project Manager: Biopharmaceutical Product Testing, Northwind\n- Deep understanding of the public sector, federal government, national security, or defense ecosystem, including how agencies buy, deploy, and operate technology.\nLieutenant, United States Navy\n- You may not check every box, or your experience may look a little different from what we've outlined, but if you think you can bring value to Ford Motor Company, we encourage you to apply!\nSKILLS\nCommunication",
+   "transitionFrom": "military",
+   "main": "military"
+  },
+  {
+   "id": "s13-009-b-90",
+   "synthetic": true,
+   "roles": [
+    "Strategic Partnerships Manager, Bank & Program Launch, Northwind",
+    "Compliance Specialist I, Northwind",
+    "Development Associate, Local Food Bank (non-profit)"
+   ],
+   "text": "EXPERIENCE\nStrategic Partnerships Manager, Bank & Program Launch, Northwind\n- Understand and comply with Federal, State, and local regulations, and company policies and procedures concerning the department.\nCompliance Specialist I, Northwind\n- Current Federal employees must have served 52 weeks at the next lower grade or equivalent grade band in the Federal service.\nDevelopment Associate, Local Food Bank (non-profit)\n- Adheres to department policy and procedures, and practices modality specific safety protocols.\nSKILLS\nCommunication",
+   "transitionFrom": "nonprofit",
+   "main": "government"
+  },
+  {
+   "id": "s13-009-b-95",
+   "synthetic": true,
+   "roles": [
+    "Assistant General Counsel, Globex",
+    "Corporate Counsel Employment, Acme Retail",
+    "Compliance, Principal, Acme Retail"
+   ],
+   "text": "EXPERIENCE\nAssistant General Counsel, Globex\n- Ability to maintain a valid driver’s license and meet Commerce Bank’s driving record criteria; ongoing employment may be contingent upon meeting all driving requirements\nCorporate Counsel Employment, Acme Retail\n- We believe diversity drives business success and is the foundation for our growth.\nCompliance, Principal, Acme Retail\n- •  Lead or play a central role in commercial negotiations, aligning internal stakeholders and client priorities to deliver strong, sustainable outcomes\nSKILLS\nCommunication",
+   "transitionFrom": null,
+   "main": "nonprofit"
+  },
+  {
+   "id": "s13-009-b-100",
+   "synthetic": true,
+   "roles": [
+    "Floor Care Cleaning Tech (Español) - Lake Zurich, IL, Acme Retail",
+    "Journeyperson Heavy Duty Mechanic, Initech",
+    "Shot Tower Technician (Remington) - Level 3A Days, Acme Retail"
+   ],
+   "text": "EXPERIENCE\nFloor Care Cleaning Tech (Español) - Lake Zurich, IL, Acme Retail\n- Candidates must pass pre-employment qualifications of Cherokee Federal.\nJourneyperson Heavy Duty Mechanic, Initech\n- For more information about Carrington Charitable Foundation, and the organizations and programs, it supports through specific fundraising efforts, please visit: carringtoncf.org.\nShot Tower Technician (Remington) - Level 3A Days, Acme Retail\n- Prepares drilling packages and obtains utility clearances\nSKILLS\nCommunication",
+   "transitionFrom": null,
+   "main": "nonprofit"
+  },
+  {
+   "id": "s13-009-b-105",
+   "synthetic": true,
+   "roles": [
+    "Operation Support Specialist, Globex",
+    "Customer Service Representative (A1), Northwind",
+    "Teaching Assistant, Department of Economics"
+   ],
+   "text": "EXPERIENCE\nOperation Support Specialist, Globex\n- We do not discriminate in employment on the basis of any characteristic protected by applicable federal, state, or local law.\nCustomer Service Representative (A1), Northwind\n- Capital One is an equal opportunity employer (EOE, including disability/vet) committed to non-discrimination in compliance with applicable federal, state, and local laws.\nTeaching Assistant, Department of Economics\n- Serve as a company role model and represent the company (as an attendee or a presenter) at trade shows, public relations events, c\nSKILLS\nCommunication",
+   "transitionFrom": "academia",
+   "main": "academia"
+  },
+  {
+   "id": "s13-009-b-110",
+   "synthetic": true,
+   "roles": [
+    "Executive Assistant (Support team), Acme Retail",
+    "HR Business Partner, PRT South, Hooli",
+    "Lecturer, State University"
+   ],
+   "text": "EXPERIENCE\nExecutive Assistant (Support team), Acme Retail\n- On-target earnings (OTE) represent the total potential income an employee can earn by achieving 100% of their performance goals.\nHR Business Partner, PRT South, Hooli\n- In alignment with our commitment to our communities, we also host and attend charity galas/events.\nLecturer, State University\n- Review 401(k) valuations/trust accounting/government reporting done on an accrual basis.\nSKILLS\nCommunication",
+   "transitionFrom": "academia",
+   "main": "military"
+  },
+  {
+   "id": "s13-009-b-115",
+   "synthetic": true,
+   "roles": [
+    "Pizza Chef(06267) - 255 Anglers Drive, Acme Retail",
+    "Hotel Cleanliness Expert, Globex",
+    "Program Analyst, Federal agency (civil service)"
+   ],
+   "text": "EXPERIENCE\nPizza Chef(06267) - 255 Anglers Drive, Acme Retail\n- Operates vehicle in a safe and efficient manner complying with company policy and procedures, and applicable state and federal laws.\nHotel Cleanliness Expert, Globex\n- Experience as a CHRO, Chief People Officer, SVP/VP of Human Resources, or senior HR executive with broad functional responsibility will be considered.\nProgram Analyst, Federal agency (civil service)\n- - A well-established network of clients and professional relationships in the LA market, across a variety of industries and business functions.\nSKILLS\nCommunication",
+   "transitionFrom": "government",
+   "main": "military"
+  },
+  {
+   "id": "s13-009-b-120",
+   "synthetic": true,
+   "roles": [
+    "Marketing Lead – Belgique, Hooli",
+    "Sales/Sales admin/BD/Marketing/Promotion Specialist - HC, Initech",
+    "Content Marketing Specialist, Globex"
+   ],
+   "text": "EXPERIENCE\nMarketing Lead – Belgique, Hooli\n- • Experience supporting Federal clients, particularly DoW, preferred.\nSales/Sales admin/BD/Marketing/Promotion Specialist - HC, Initech\n- Applies basic foundation of a function's principles, theories and concepts to assignments of limited scope.\nContent Marketing Specialist, Globex\n- Experience using a CRM platform such as Salesforce, HubSpot, or a comparable system.\nSKILLS\nCommunication",
+   "transitionFrom": null,
+   "main": "nonprofit"
+  },
+  {
+   "id": "s13-009-b-125",
+   "synthetic": true,
+   "roles": [
+    "Business Development Manager, Business Banking, Acme Retail",
+    "Catering Sales Manager OEM, Globex",
+    "Policy Analyst, State Agency for Labor"
+   ],
+   "text": "EXPERIENCE\nBusiness Development Manager, Business Banking, Acme Retail\n- Partner with the Chief People Officer, CEO, Legal, and Finance leaders on executive compensation strategy.\nCatering Sales Manager OEM, Globex\n- ·        Partner with loan officers to effectively administer the management of assigned commercial banking relationships.\nPolicy Analyst, State Agency for Labor\n- The Leidos pay range for this job level is a general guideline only and not a guarantee of compensation or salary.\nSKILLS\nCommunication",
+   "transitionFrom": "government",
+   "main": "military"
+  },
+  {
+   "id": "s13-009-b-130",
+   "synthetic": true,
+   "roles": [
+    "Director of Human Resources and EDI, Acme Retail",
+    "Human Resources Coordinator, Northwind",
+    "Recruiter II, Initech"
+   ],
+   "text": "EXPERIENCE\nDirector of Human Resources and EDI, Acme Retail\n- Capital One is an equal opportunity employer (EOE, including disability/vet) committed to non-discrimination in compliance with applicable federal, state, and local laws.\nHuman Resources Coordinator, Northwind\n- Compliance, Policies & Leave Support: Support compliance with applicable federal, New York State, New York City, and other relevant state and local employment requirements.\nRecruiter II, Initech\n- From our diverse footwear collections to our expanding range of apparel and accessories, Skechers is a complete lifestyle brand.\nSKILLS\nCommunication",
+   "transitionFrom": null,
+   "main": "government"
+  },
+  {
+   "id": "s13-009-b-135",
+   "synthetic": true,
+   "roles": [
+    "Customer Fulfilment Specialist, Globex",
+    "Operations Team Member-WBG OPERATIONS (OPS)-Customer Service Desk, Initech",
+    "Adjunct Professor, City College"
+   ],
+   "text": "EXPERIENCE\nCustomer Fulfilment Specialist, Globex\n- For more information, visit the Federal Student Aid office .\nOperations Team Member-WBG OPERATIONS (OPS)-Customer Service Desk, Initech\n- It is also MasTec's policy to comply with all applicable state, federal and local laws respecting consideration of unemployment status in making hiring decisions.\nAdjunct Professor, City College\n- Disability Benefits – Short Term Disability (STD)\nSKILLS\nCommunication",
+   "transitionFrom": "academia",
+   "main": "academia"
+  },
+  {
+   "id": "s13-009-b-140",
+   "synthetic": true,
+   "roles": [
+    "Partnership Manager, Acme Retail",
+    "Director, Customer Success Manager, Initech",
+    "Part-Time Customer Service Agent - Liverpool Lime Street Station, Northwind"
+   ],
+   "text": "EXPERIENCE\nPartnership Manager, Acme Retail\n- Native Health complies with all state and federal requirements, including EEOC requirements.\nDirector, Customer Success Manager, Initech\n- Our teammates work directly inside our clients' teams and tools, while NeoWork takes care of recruiting, HR, benefits, and ongoing support.\nPart-Time Customer Service Agent - Liverpool Lime Street Station, Northwind\n- Working knowledge of customer flow-through requirements such as AS9100, FAR, ITAR, OFFSET, Foreign Corrupt Practices Act (FCPA), and public law.\nSKILLS\nCommunication",
+   "transitionFrom": null,
+   "main": "nonprofit"
+  },
+  {
+   "id": "s13-009-b-145",
+   "synthetic": true,
+   "roles": [
+    "Stagiaire IT Legal Engineering (H/F) - Temps plein - à partir janvier 2027, Initech",
+    "Senior Contracts and Legal Manager (f/m/d), Hooli",
+    "Intellectual Property Legal Coordinator, Acme Retail"
+   ],
+   "text": "EXPERIENCE\nStagiaire IT Legal Engineering (H/F) - Temps plein - à partir janvier 2027, Initech\n- Valued Time Away benefits including vacation, sick and volunteer time\nSenior Contracts and Legal Manager (f/m/d), Hooli\n- Anticipate state and federal policy shifts (LCFF, LCAP, CA School Dashboard) and position schools ahead of them.\nIntellectual Property Legal Coordinator, Acme Retail\n- Knowledge of Landscape, Construction, or Design industry process is helpful\nSKILLS\nCommunication",
+   "transitionFrom": null,
+   "main": "nonprofit"
+  },
+  {
+   "id": "s13-009-b-150",
+   "synthetic": true,
+   "roles": [
+    "2027 PhD Graduate – Intelligent Autonomous Systems and Artificial Intelligence Engineer, Initech",
+    "Junior Level Data Scientist, Hooli",
+    "Sergeant, U.S. Army"
+   ],
+   "text": "EXPERIENCE\n2027 PhD Graduate – Intelligent Autonomous Systems and Artificial Intelligence Engineer, Initech\n- Be able to command the federal acquisition processes (FAR/DFARS), key contracting vehicles, and government security authorization standards (FedRAMP, FedRAMP High, StateRAMP).\nJunior Level Data Scientist, Hooli\n- This allows you to reduce your taxable income by receiving part of your salary as tax-free benefits like super contributions, car leasing, and more.\nSergeant, U.S. Army\n- • Execution: Completes daily tasks accurately and on time.\nSKILLS\nCommunication",
+   "transitionFrom": "military",
+   "main": "military"
+  },
+  {
+   "id": "s13-009-b-155",
+   "synthetic": true,
+   "roles": [
+    "Pizza Maker/Line Cook (4807) McKeesport, Hooli",
+    "Branch Cook, Supermarket Assistant, Initech",
+    "Clerk, Municipality of Springfield"
+   ],
+   "text": "EXPERIENCE\nPizza Maker/Line Cook (4807) McKeesport, Hooli\n- Newly hired Security Officer II’s, must complete the training within 3 months of accepting the position with WellSpan.\nBranch Cook, Supermarket Assistant, Initech\n- Manage income tax provision calculations, financial statement disclosures, and related reporting in coordination with Accounting and external advisors.\nClerk, Municipality of Springfield\n- Contribute to the holistic care of patients.\nSKILLS\nCommunication",
+   "transitionFrom": "government",
+   "main": "military"
+  },
+  {
+   "id": "s13-009-b-160",
+   "synthetic": true,
+   "roles": [
+    "Patient Facilitator, Initech",
+    "ICU Registered Nurse, Acme Retail",
+    "Registered Nurse - MT5 Oncology / 0.8 FTE / Day Rotational, Northwind"
+   ],
+   "text": "EXPERIENCE\nPatient Facilitator, Initech\n- Be available or volunteer for occasional out of state deliveries.\nICU Registered Nurse, Acme Retail\n- Chief Medical Officer, Mount Sinai Health System\nRegistered Nurse - MT5 Oncology / 0.8 FTE / Day Rotational, Northwind\n- In this role, you'll be a key partner to our Senior Asset Managers, helping to maximize the value and performance of our multifamily portfolio.\nSKILLS\nCommunication",
+   "transitionFrom": null,
+   "main": "military"
+  },
+  {
+   "id": "s13-009-b-165",
+   "synthetic": true,
+   "roles": [
+    "Housekeeping - Room Attendant, Hooli",
+    "Housekeeping Attendant - Hampton Inn & Suites Wilmington Christiana, Hooli",
+    "Program Analyst, Federal agency (civil service)"
+   ],
+   "text": "EXPERIENCE\nHousekeeping - Room Attendant, Hooli\n- Quality - Quality is the foundation for the management of our business and the keystone to our goal of customer satisfaction.\nHousekeeping Attendant - Hampton Inn & Suites Wilmington Christiana, Hooli\n- Learn more about your rights under Federal laws and supplemental language at  Labor Laws Posters .\nProgram Analyst, Federal agency (civil service)\n- Preferred experience and knowledge of UFP’s organization, culture, and product lines\nSKILLS\nCommunication",
+   "transitionFrom": "government",
+   "main": "nonprofit"
+  },
+  {
+   "id": "s13-009-b-170",
+   "synthetic": true,
+   "roles": [
+    "General Manager Human Resources, Hooli",
+    "Human Resources Business Partner, Globex",
+    "HR Generalist, Globex"
+   ],
+   "text": "EXPERIENCE\nGeneral Manager Human Resources, Hooli\n- Recruit, hire, and educate the sales department on an ongoing basis.\nHuman Resources Business Partner, Globex\n- Supporting the Board of Managers and the conducting officer responsible for corporate governance in carrying out their duties and ensuring the smooth administration of corporate governance matters.\nHR Generalist, Globex\n- Together, we’re constantly learning and improving, combining the strength of our people, capabilities and iconic brands to raise the bar, grow and win.\nSKILLS\nCommunication",
+   "transitionFrom": null,
+   "main": "military"
+  },
+  {
+   "id": "s13-009-b-175",
+   "synthetic": true,
+   "roles": [
+    "Personal Banker-Inbound-Branch Banking-Service, Northwind",
+    "Relationship Manager - Business Banking, Northwind",
+    "Relationship Banker (Bilingual Spanish Preferred) - Blue Island, IL, Hooli"
+   ],
+   "text": "EXPERIENCE\nPersonal Banker-Inbound-Branch Banking-Service, Northwind\n- Legal Disclaimer: Cherokee Federal is an equal opportunity employer.\nRelationship Manager - Business Banking, Northwind\n- This position demands a proficient and driven individual with a robust foundation in dental assisting, with a preferred emphasis on oral surgery.\nRelationship Banker (Bilingual Spanish Preferred) - Blue Island, IL, Hooli\n- If you suspect any suspicious activity, please verify the agency's authenticity by reaching out to contact@anduril.com .\nSKILLS\nCommunication",
+   "transitionFrom": null,
+   "main": "nonprofit"
+  },
+  {
+   "id": "s13-009-b-180",
+   "synthetic": true,
+   "roles": [
+    "Area Sales Manager - Alabama/New Orleans/Mississippi, Acme Retail",
+    "Seasonal Retail Sales Associate, Hooli",
+    "Enterprise Account Exec (Armis/Veza), Acme Retail"
+   ],
+   "text": "EXPERIENCE\nArea Sales Manager - Alabama/New Orleans/Mississippi, Acme Retail\n- We are proud to be an equal opportunity workplace and comply with state and federal affirmative action requirements.\nSeasonal Retail Sales Associate, Hooli\n- Should you need any special accommodations, please feel free to contact us at human.resources@expfederal.com and we will arrange for the most suitable accommodations based on your needs.\nEnterprise Account Exec (Armis/Veza), Acme Retail\n- We celebrate diversity and are committed to creating an inclusive environment for all employees.\nSKILLS\nCommunication",
+   "transitionFrom": null,
+   "main": "government"
+  },
+  {
+   "id": "s13-009-b-185",
+   "synthetic": true,
+   "roles": [
+    "Transaction Counsel, CPACE, Acme Retail",
+    "Risk & Compliance Senior Manager, Globex",
+    "Assistant General Counsel, Initech"
+   ],
+   "text": "EXPERIENCE\nTransaction Counsel, CPACE, Acme Retail\n- Support recruitment, onboarding, role modeling, and ongoing training.\nRisk & Compliance Senior Manager, Globex\n- You’ll help with tactical planning using resources like Microsoft tools and regular interactions with SMEs, technical directors, engineers, and contracting officers.\nAssistant General Counsel, Initech\n- ·         Advises when immediate shut-down of equipment is necessary to\nSKILLS\nCommunication",
+   "transitionFrom": null,
+   "main": "military"
+  },
+  {
+   "id": "s13-009-b-190",
+   "synthetic": true,
+   "roles": [
+    "Head of Product Operations, Acme Retail",
+    "Senior Director, Technical Program Manager, Initech",
+    "Lead Supplier Program Management Specialist, Globex"
+   ],
+   "text": "EXPERIENCE\nHead of Product Operations, Acme Retail\n- General knowledge of state and federal laws governing Special Education—Approved School Programs.\nSenior Director, Technical Program Manager, Initech\n- Significant experience negotiating and counseling on complex federal government contracts and related subcontracts, subawards, and teaming arrangements.\nLead Supplier Program Management Specialist, Globex\n- Calibr-Skaggs is a division of Scripps Research, a first-of-its-kind, nonprofit translational research institute dedicated to creating the next generation of medicines.\nSKILLS\nCommunication",
+   "transitionFrom": null,
+   "main": "nonprofit"
+  },
+  {
+   "id": "s13-009-b-195",
+   "synthetic": true,
+   "roles": [
+    "Principal Scientist, Computational Biology-Oncology Translational Research, Northwind",
+    "UNIV - Research Program Coordinator I - Novice - Pediatrics: Developmental Behavioral, Northwind",
+    "Sr R&D Project Manager, Northwind"
+   ],
+   "text": "EXPERIENCE\nPrincipal Scientist, Computational Biology-Oncology Translational Research, Northwind\n- Oversee foundation investments in regulatory systems strengthening, pharmacology-focused model-based drug development, big data programs, novel formulations, and low-cost manufacturing.\nUNIV - Research Program Coordinator I - Novice - Pediatrics: Developmental Behavioral, Northwind\n- For more than 60 federal clients, we take on the work others won’t, and deliver where it counts.\nSr R&D Project Manager, Northwind\n- Strong organizational, management and leadership skills.\nSKILLS\nCommunication",
+   "transitionFrom": null,
+   "main": "military"
+  },
+  {
+   "id": "s13-009-b-200",
+   "synthetic": true,
+   "roles": [
+    "DATA SCIENTIST, Globex",
+    "Lead Applied Imagery Scientist and Data Scientist, Initech",
+    "Senior AI Software Engineer, Hooli"
+   ],
+   "text": "EXPERIENCE\nDATA SCIENTIST, Globex\n- Partner with the Chief People Officer to connect business and individual performance with LTS’s pay-for-performance philosophy.\nLead Applied Imagery Scientist and Data Scientist, Initech\n- Strong Command of Federal, State (California) and Municipal employment laws\nSenior AI Software Engineer, Hooli\n- Establish governance: Set standards and decision rights for architecture, service ownership, change management, access, security, vendor risk, and operational controls.\nSKILLS\nCommunication",
+   "transitionFrom": null,
+   "main": "military"
+  },
+  {
+   "id": "s13-009-b-205",
+   "synthetic": true,
+   "roles": [
+    "Security Officer, Globex",
+    "IT Cybersecurity Specialist - Defense Contract Management Agency (DCMA), Acme Retail",
+    "IADS Threat Analyst, Initech"
+   ],
+   "text": "EXPERIENCE\nSecurity Officer, Globex\n- Zone 5 Technologies is a federal contractor and participates in E-Verify to confirm employment eligibility.\nIT Cybersecurity Specialist - Defense Contract Management Agency (DCMA), Acme Retail\n- Booking Holdings is an equal opportunity employer in accordance with all applicable federal, state and local laws.\nIADS Threat Analyst, Initech\n- Palo Alto Networks is an equal opportunity employer.\nSKILLS\nCommunication",
+   "transitionFrom": null,
+   "main": "military"
+  },
+  {
+   "id": "s13-009-b-210",
+   "synthetic": true,
+   "roles": [
+    "Sr. Machine Learning Engineer (Remote), Northwind",
+    "Data Scientist Senior Associate, Northwind",
+    "Business Owner Data Platform, Northwind"
+   ],
+   "text": "EXPERIENCE\nSr. Machine Learning Engineer (Remote), Northwind\n- In fact, the UFW Foundation is one of the largest federally accredited immigration legal service providers in the state of California.\nData Scientist Senior Associate, Northwind\n- Our “Campbell’s Cares” program matches employee donations and/or volunteer activity up to $1,500 annually.\nBusiness Owner Data Platform, Northwind\n- Support the planning, execution, and follow-up for flagship internal and third-party events across EMEA (such as BoxWorks, CIOWorks Europe, and Content Cloud Summit).\nSKILLS\nCommunication",
+   "transitionFrom": null,
+   "main": "nonprofit"
+  },
+  {
+   "id": "s13-009-b-215",
+   "synthetic": true,
+   "roles": [
+    "Personal Banker I, Hooli",
+    "Assistant Branch Manager-Inbound-Branch Banking-Service, Northwind",
+    "VIE - ESG & Sustainable Finance Analyst, Northwind"
+   ],
+   "text": "EXPERIENCE\nPersonal Banker I, Hooli\n- The Pharmacy Technician is responsible for assisting with the practice of pharmacy in accordance with state and federal regulations.\nAssistant Branch Manager-Inbound-Branch Banking-Service, Northwind\n- A positive team culture with regular social events, charity initiatives and company gatherings, including annual summer BBQs.\nVIE - ESG & Sustainable Finance Analyst, Northwind\n- Experience managing customer and vendor relationships.\nSKILLS\nCommunication",
+   "transitionFrom": null,
+   "main": "nonprofit"
+  },
+  {
+   "id": "s13-009-b-220",
+   "synthetic": true,
+   "roles": [
+    "Inspector II, Globex",
+    "Assembler I, Acme Retail",
+    "Eerste Monteur Gas - Utrecht, Hooli"
+   ],
+   "text": "EXPERIENCE\nInspector II, Globex\n- Our team is mission-driven, collaborative, and empowered to take ownership of their work.\nAssembler I, Acme Retail\n- Sustainability and safety are foundational to our culture and influence everything we do.\nEerste Monteur Gas - Utrecht, Hooli\n- That's why we welcome people from all backgrounds and experiences.\nSKILLS\nCommunication",
+   "transitionFrom": null,
+   "main": "nonprofit"
+  },
+  {
+   "id": "s13-009-b-225",
+   "synthetic": true,
+   "roles": [
+    "UX Designer, Initech",
+    "Product Design Lead, Northwind",
+    "Postdoc, Biology Lab"
+   ],
+   "text": "EXPERIENCE\nUX Designer, Initech\n- Saab is a federal government contractor and adheres to policies and programs necessary for sustaining drug-free workplaces.\nProduct Design Lead, Northwind\n- Purpose & Impact – Make a difference through Atrium’s community service and volunteer programs.\nPostdoc, Biology Lab\n- Gather and document customer and market intelligence to inform business strategy and internal priorities\nSKILLS\nCommunication",
+   "transitionFrom": "academia",
+   "main": "nonprofit"
+  },
+  {
+   "id": "s13-009-b-230",
+   "synthetic": true,
+   "roles": [
+    "Property Adjuster Specialist - Field Claims, Hooli",
+    "Treasury Manager, Globex",
+    "Assistant Branch Manager-Inbound-Branch Banking-Service, Northwind"
+   ],
+   "text": "EXPERIENCE\nProperty Adjuster Specialist - Field Claims, Hooli\n- We are looking for a Banquet Captain to join our dynamic team.\nTreasury Manager, Globex\n- Federal government contracting experience is strongly preferred.\nAssistant Branch Manager-Inbound-Branch Banking-Service, Northwind\n- At Salesforce, we believe in equitable compensation practices that reflect the dynamic nature of labor markets across various regions.\nSKILLS\nCommunication",
+   "transitionFrom": null,
+   "main": "military"
+  },
+  {
+   "id": "s13-009-b-235",
+   "synthetic": true,
+   "roles": [
+    "Loan Documentation Administrator, Hooli",
+    "Tax Advisor, Globex",
+    "Relationship Banker - (Streeterville) Chicago, IL, Globex"
+   ],
+   "text": "EXPERIENCE\nLoan Documentation Administrator, Hooli\n- These systems are the foundation of the experiences millions of families rely on every day.\nTax Advisor, Globex\n- Fertility, adoption, and surrogacy support through Maven, plus paid volunteer time\nRelationship Banker - (Streeterville) Chicago, IL, Globex\n- Demonstrated experience in managing competing demands.\nSKILLS\nCommunication",
+   "transitionFrom": null,
+   "main": "nonprofit"
+  },
+  {
+   "id": "s13-009-b-240",
+   "synthetic": true,
+   "roles": [
+    "IT Platform Engineer, Globex",
+    "Microsoft Dynamics NAV (Navision) Senior Developer/Architect, Initech",
+    "Graduate Rail Engineer, Initech"
+   ],
+   "text": "EXPERIENCE\nIT Platform Engineer, Globex\n- Together with our nonprofit research institute and foundation, we tune in, step up, and are a force for good — for our customers and the communities where we live, work, and play.\nMicrosoft Dynamics NAV (Navision) Senior Developer/Architect, Initech\n- Kaweah Health is seeking a Chief Finance Officer.\nGraduate Rail Engineer, Initech\n- 3–5 years of journeyman‑level experience in similar electrical work.\nSKILLS\nCommunication",
+   "transitionFrom": null,
+   "main": "military"
+  },
+  {
+   "id": "s13-009-b-245",
+   "synthetic": true,
+   "roles": [
+    "Senior Cyber Defense Analyst, Northwind",
+    "Campus Safety & Security Officer, Hooli",
+    "Program Coordinator, Habitat for Humanity (nonprofit)"
+   ],
+   "text": "EXPERIENCE\nSenior Cyber Defense Analyst, Northwind\n- Remain in compliance with local, state and federal regulations.\nCampus Safety & Security Officer, Hooli\n- Not be disqualified to drive a commercial motor vehicle under the Federal Motor Carrier Safety Act.\nProgram Coordinator, Habitat for Humanity (nonprofit)\n- Hermitage Hall (a UHS company) is one of Middle Tennessee's largest stand-alone psychiatric residential treatment hospitals.\nSKILLS\nCommunication",
+   "transitionFrom": "nonprofit",
+   "main": "military"
+  },
+  {
+   "id": "s13-009-b-250",
+   "synthetic": true,
+   "roles": [
+    "Front End Specialist 2 Part Time, Globex",
+    "Lead Project Manager, Initech",
+    "Postdoc, Biology Lab"
+   ],
+   "text": "EXPERIENCE\nFront End Specialist 2 Part Time, Globex\n- Partner with Recruiting and ES to attract and retain cleared and mission-driven talent.\nLead Project Manager, Initech\n- Work from a dedicated space lacking ongoing interruptions to protect member PHI / HIPAA information.\nPostdoc, Biology Lab\n- - You’re obsessed with AI, constantly building with the newest tools & learning new ways of working\nSKILLS\nCommunication",
+   "transitionFrom": "academia",
+   "main": "nonprofit"
+  },
+  {
+   "id": "s13-009-b-255",
+   "synthetic": true,
+   "roles": [
+    "Product Manager, Core Integrations & API, Acme Retail",
+    "Program Manager Junior, Acme Retail",
+    "Manager, Product Management, Credit Card Offers, Acme Retail"
+   ],
+   "text": "EXPERIENCE\nProduct Manager, Core Integrations & API, Acme Retail\n- We work at Start-Up Speed: We move fast, stay agile and favor action because momentum is the foundation of perfection\nProgram Manager Junior, Acme Retail\n- Ensures a thorough transition of the client to Ongoing Service.\nManager, Product Management, Credit Card Offers, Acme Retail\n- Compensation is based on experience, location and role level\nSKILLS\nCommunication",
+   "transitionFrom": null,
+   "main": "nonprofit"
+  },
+  {
+   "id": "s13-009-b-260",
+   "synthetic": true,
+   "roles": [
+    "Staff Product Designer, Globex",
+    "UX Design Associate, Northwind",
+    "Landscape Designer, Acme Retail"
+   ],
+   "text": "EXPERIENCE\nStaff Product Designer, Globex\n- Manage the full client relationship lifecycle, from initial discovery through ongoing advice and service\nUX Design Associate, Northwind\n- It's part of a new $6.6 billion investment in America's submarine industrial base.\nLandscape Designer, Acme Retail\n- Strong analytical capability, with experience interpreting portfolio performance data and preparing commercial reports and recommendations.\nSKILLS\nCommunication",
+   "transitionFrom": null,
+   "main": "nonprofit"
+  },
+  {
+   "id": "s13-009-b-265",
+   "synthetic": true,
+   "roles": [
+    "Strategic Partnerships Manager, Bank & Program Launch, Globex",
+    "Compliance Specialist, Acme Retail",
+    "Policy Analyst, State Agency for Labor"
+   ],
+   "text": "EXPERIENCE\nStrategic Partnerships Manager, Bank & Program Launch, Globex\n- Assumes all driver responsibilities as specified in Federal Motor Carrier Safety Handbook Rules and Regulations.\nCompliance Specialist, Acme Retail\n- This position is eligible for overtime in accordance with local, state, and federal requirements.\nPolicy Analyst, State Agency for Labor\n- If hired for this full-time role, you will receive:\nSKILLS\nCommunication",
+   "transitionFrom": "government",
+   "main": "government"
+  },
+  {
+   "id": "s13-009-b-270",
+   "synthetic": true,
+   "roles": [
+    "Senior Contract Manager, Hooli",
+    "Legal Engineer (Libra - Legal AI Assistant), Acme Retail",
+    "Program Coordinator, Habitat for Humanity (nonprofit)"
+   ],
+   "text": "EXPERIENCE\nSenior Contract Manager, Hooli\n- Not be disqualified to drive a commercial motor vehicle under the Federal Motor Carrier Safety Act.\nLegal Engineer (Libra - Legal AI Assistant), Acme Retail\n- Experience with valuation techniques: market approach (comps, precedent transactions), income approach (DCF), option-pricing/waterfall allocation, and credit spread/yield analyses\nProgram Coordinator, Habitat for Humanity (nonprofit)\n- Become an integral member of the health care community\nSKILLS\nCommunication",
+   "transitionFrom": "nonprofit",
+   "main": "military"
+  },
+  {
+   "id": "s13-009-b-275",
+   "synthetic": true,
+   "roles": [
+    "Phlebotomist PRN, Initech",
+    "Técnico/a Laboratorío Microbiología, Northwind",
+    "Laboratory Assistant 5 - Ploegendienst, Hooli"
+   ],
+   "text": "EXPERIENCE\nPhlebotomist PRN, Initech\n- We are looking for a Chief Financial Officer who can bring rigor to our unit economics, credibility to our forecast, and durability to our balance sheet.\nTécnico/a Laboratorío Microbiología, Northwind\n- The concepts of Patient Centered Care will provide the foundation for all nursing care.\nLaboratory Assistant 5 - Ploegendienst, Hooli\n- nor their affiliates, which can be found at www.uhsinc.com.\nSKILLS\nCommunication",
+   "transitionFrom": null,
+   "main": "military"
+  },
+  {
+   "id": "s13-009-b-280",
+   "synthetic": true,
+   "roles": [
+    "Marketing Communications Specialist, Acme Retail",
+    "Organic Growth Lead, Globex",
+    "Manager, Digital Platforms, Hooli"
+   ],
+   "text": "EXPERIENCE\nMarketing Communications Specialist, Acme Retail\n- While we continue to grow in size and expertise, our foundational values of quality, dependability, and integrity have remained steadfast as the cornerstones of our business.\nOrganic Growth Lead, Globex\n- Forterra is an equal-opportunity employer, providing and promoting equal employment opportunity in accordance with local, state, and federal laws.\nManager, Digital Platforms, Hooli\n- Undertaking direct work and interventions that promote empowerment, resilience, independence, and community inclusion.\nSKILLS\nCommunication",
+   "transitionFrom": null,
+   "main": "nonprofit"
+  },
+  {
+   "id": "s13-009-b-285",
+   "synthetic": true,
+   "roles": [
+    "People Operations Manager (German speaking), Northwind",
+    "Assoc. Manager, HR - People Strategy, Initech",
+    "Air Talent Specialist, Initech"
+   ],
+   "text": "EXPERIENCE\nPeople Operations Manager (German speaking), Northwind\n- The Opportunity to support high-visibility federal missions\nAssoc. Manager, HR - People Strategy, Initech\n- To request an accommodation in the application or interview process, please contact Human Resources at careers@cherokee-federal.com.\nAir Talent Specialist, Initech\n- Physically able to stand for extended periods, lift up to 50 lbs., bend, climb, reach overhead, and work in confined spaces.\nSKILLS\nCommunication",
+   "transitionFrom": null,
+   "main": "government"
+  },
+  {
+   "id": "s13-009-b-290",
+   "synthetic": true,
+   "roles": [
+    "Sales/Sales admin/BD/Marketing/Promotion Specialist - HC, Initech",
+    "SEO Strategist (Remote US), Acme Retail",
+    "Marketing and Growth Manager, Globex"
+   ],
+   "text": "EXPERIENCE\nSales/Sales admin/BD/Marketing/Promotion Specialist - HC, Initech\n- 1.1.1.1 : We released 1.1.1.1 to help fix the foundation of the Internet by building a faster, more secure and privacy-centric public DNS resolver.\nSEO Strategist (Remote US), Acme Retail\n- Manage income tax provision calculations, financial statement disclosures, and related reporting in coordination with Accounting and external advisors.\nMarketing and Growth Manager, Globex\n- Must possess skills necessary to respond quickly and calmly under stressful or emergency situations.\nSKILLS\nCommunication",
+   "transitionFrom": null,
+   "main": "military"
+  },
+  {
+   "id": "s13-009-b-295",
+   "synthetic": true,
+   "roles": [
+    "School Van Driver, Initech",
+    "Cook - Watkinsville, Northwind",
+    "High School Advisory and Social Studies Teacher - Kansas Connections Academy, Northwind"
+   ],
+   "text": "EXPERIENCE\nSchool Van Driver, Initech\n- Understanding and complying with all relevant federal, state, and local laws, regulations, professional standards, and ethical principles.\nCook - Watkinsville, Northwind\n- Lennar is an equal opportunity employer and complies with all applicable federal, state, and local fair employment practices laws.\nHigh School Advisory and Social Studies Teacher - Kansas Connections Academy, Northwind\n- This posting will close within 90 days from the Posting Date.\nSKILLS\nCommunication",
+   "transitionFrom": null,
+   "main": "government"
+  },
+  {
+   "id": "s13-009-b-300",
+   "synthetic": true,
+   "roles": [
+    "Customer Quality Engineering Manager, Hooli",
+    "AI Application Developer (m/f/d), Initech",
+    "Service Desk Manager, Globex"
+   ],
+   "text": "EXPERIENCE\nCustomer Quality Engineering Manager, Hooli\n- Manage income tax provision calculations, financial statement disclosures, and related reporting in coordination with Accounting and external advisors.\nAI Application Developer (m/f/d), Initech\n- Has a solid understanding of Federal, State and Local building code requirements\nService Desk Manager, Globex\n- Strategic labour analytics (lead priority)\nSKILLS\nCommunication",
+   "transitionFrom": null,
+   "main": "military"
+  },
+  {
+   "id": "s13-009-b-305",
+   "synthetic": true,
+   "roles": [
+    "Product Marketing & GTM Lead Manager - LifeLock, Hooli",
+    "Senior Digital Marketing Manager, Initech",
+    "Marketing Lead – Belgique, Northwind"
+   ],
+   "text": "EXPERIENCE\nProduct Marketing & GTM Lead Manager - LifeLock, Hooli\n- Capital One is an equal opportunity employer (EOE, including disability/vet) committed to non-discrimination in compliance with applicable federal, state, and local laws.\nSenior Digital Marketing Manager, Initech\n- You will receive credit for all qualifying experience, including volunteer experience.\nMarketing Lead – Belgique, Northwind\n- Previous experience with the processing of Anatomic Pathology specimens, including gross examination, specimen dictation, and the management of time-sensitive frozen section cases\nSKILLS\nCommunication",
+   "transitionFrom": null,
+   "main": "nonprofit"
+  },
+  {
+   "id": "s13-009-b-310",
+   "synthetic": true,
+   "roles": [
+    "Lead Data Analyst, Initech",
+    "ETRM Business Analyst (Risk Management), Northwind",
+    "Business Owner Data Platform, Initech"
+   ],
+   "text": "EXPERIENCE\nLead Data Analyst, Initech\n- Participates in the process of ongoing professional development and meetings.\nETRM Business Analyst (Risk Management), Northwind\n- Commitment to ongoing technical development.\nBusiness Owner Data Platform, Initech\n- Health, dental, vision, life, and accident insurance\nSKILLS\nCommunication",
+   "transitionFrom": null,
+   "main": "nonprofit"
+  },
+  {
+   "id": "s13-009-b-315",
+   "synthetic": true,
+   "roles": [
+    "Operations Team Member-WBG OPERATIONS (OPS)-Customer Service Desk, Acme Retail",
+    "Customer Service Representative, Acme Retail",
+    "BDC Service / Service Admin - Dave Smith Motors Inc, Globex"
+   ],
+   "text": "EXPERIENCE\nOperations Team Member-WBG OPERATIONS (OPS)-Customer Service Desk, Acme Retail\n- Research and report on financial status including income statement variances, communicating financial results to management, budget preparation.\nCustomer Service Representative, Acme Retail\n- Reasonable accommodations will be provided in accordance with applicable federal, state, and local laws.\nBDC Service / Service Admin - Dave Smith Motors Inc, Globex\n- Assists physician in the care and teaching of patients.\nSKILLS\nCommunication",
+   "transitionFrom": null,
+   "main": "military"
+  }
+ ]
+}

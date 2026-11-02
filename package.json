@@ -11,7 +11,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc -p tsconfig.app.json --noEmit",
+    "typecheck": "NODE_OPTIONS=\"$NODE_OPTIONS --max-old-space-size=4096\" tsc -p tsconfig.app.json --noEmit",
     "prepare": "node scripts/install-hooks.mjs",
     "postinstall": "cd worker && (bun install --silent || npm install --silent) && cd ..",
     "hooks:install": "node scripts/install-hooks.mjs",

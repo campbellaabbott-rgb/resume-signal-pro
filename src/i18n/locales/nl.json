@@ -276,7 +276,8 @@
       "fileTypes": "PDF, DOCX of TXT (max 10 MB)",
       "browse": "Bladeren",
       "pasteHere": "Plak je CV-inhoud hier...",
-      "chars": "tekens"
+      "chars": "tekens",
+      "tooLong": "{{length}} tekens: de gratis scan leest er maximaal {{max}}. Maak de tekst korter voordat je scant."
     },
     "linkedin": {
       "title": "Je LinkedIn-profiel",
@@ -397,12 +398,13 @@
       "redFlags": "Waarschuwingssignalen",
       "plusMore": "+12 meer"
     },
-    "scanFooter": "Resultaten binnen {{seconds}} seconden • 7 gratis scans per dag",
+    "scanFooter": "Resultaten binnen {{seconds}} seconden • {{scans}} gratis scans per dag",
     "getFreeAnalysis": "Gratis cv-analyse krijgen",
     "orGetCompleteAnalysis": "Of krijg de volledige analyse voor",
     "securePaymentStripe": "Veilige betaling via Stripe",
     "gsheetsImportFailed": "Importeren vanuit Google Sheets mislukt. Probeer het opnieuw.",
-    "gsheetsImportFailedShared": "Importeren vanuit Google Sheets mislukt. Zorg dat het sheet is gedeeld met 'Iedereen met de link'."
+    "gsheetsImportFailedShared": "Importeren vanuit Google Sheets mislukt. Zorg dat het sheet is gedeeld met 'Iedereen met de link'.",
+    "scanFooterPro": "Resultaten binnen {{seconds}} seconden • Pro: geen daglimiet op scans"
   },
   "faq": {
     "title": "Veelgestelde vragen",
@@ -863,6 +865,11 @@
       "good": "Goed",
       "needsImprovement": "Voor verbetering vatbaar",
       "poor": "Zwak"
+    },
+    "projection": {
+      "lead": "Los de punten hieronder op → ongeveer",
+      "gain_one": "(+{{count}} pt, een ruwe richtlijn)",
+      "gain_other": "(+{{count}} ptn, een ruwe richtlijn)"
     }
   },
   "careerSnapshot": {
@@ -1107,7 +1114,9 @@
       "fontUnreadableDescription": "Het lettertype verwijst niet naar echte tekens. Upload in plaats daarvan een .docx of plak de tekst van je cv.",
       "unreadCharacters": "Sommige tekens konden niet worden gelezen",
       "unreadCharactersDescription": "We hebben {{count}} tekens overgeslagen die deze PDF niet benoemt. Upload voor de nauwkeurigste scan een .docx of plak de tekst van je cv.",
-      "checkoutRefusedTitle": "Afrekenen kon niet worden gestart"
+      "checkoutRefusedTitle": "Afrekenen kon niet worden gestart",
+      "resumeTooLong": "Cv te lang om te scannen",
+      "resumeTooLongDescription": "Dit cv telt {{length}} tekens; de gratis scan leest er maximaal {{max}}. Maak het korter (eerst oudere functies en lange lijsten) en scan opnieuw."
     },
     "reportCrash": {
       "title": "Er ging iets mis bij het tonen van je rapport",
@@ -1623,6 +1632,80 @@
     },
     "tailoredSignIn": {
       "cta": "Log in om je cv af te stemmen op deze vacature (gratis: één per dag)"
+    },
+    "resumeTruncated": {
+      "title": "Deze scan heeft je cv niet helemaal gelezen.",
+      "body": "Het is langer dan de scan volledig leest, dus de score, de ontbrekende trefwoorden en de geciteerde regels hieronder komen alleen uit het gelezen deel. Kort het in, of scan de belangrijkste pagina's, om alles te laten controleren."
+    },
+    "languageNotice": {
+      "unknownTitle": "We konden niet vaststellen in welke taal dit cv is geschreven.",
+      "unsupportedTitle": "Dit cv lijkt in het {{language}} geschreven, een taal waarvoor de controles op trefwoorden en secties van deze scan niet gemaakt zijn.",
+      "body": "Het rapport is geschreven in de taal van je cv, maar de controles op trefwoorden en secties zoeken naar Engelse termen en kunnen dus woorden in jouw taal missen. Zie de ontbrekende trefwoorden hieronder als richtlijn, niet als oordeel."
+    },
+    "weakestBullets": {
+      "title": "Je zwakste opsommingspunten, beoordeeld",
+      "subtitle": "Geciteerd uit je cv en beoordeeld op cijfers, werkwoorden en reikwijdte. Waar een herschrijving staat, vul je de [haken] in met je echte cijfers.",
+      "howToFix": "Zo verbeter je het (alleen op basis van je cv konden we dit niet herschrijven)",
+      "template": {
+        "verbAndNumber": "Herschrijf deze bullet zodat hij begint met een actiewerkwoord en eindigt met een getal, in de vorm \"[wat je deed] geleid en daarmee [resultaat] bereikt\"."
+      }
+    },
+    "readAs": {
+      "label": "Zo hebben we het gelezen:",
+      "industry": "Branche",
+      "level": "Niveau",
+      "levels": {
+        "entry": "Starter",
+        "mid": "Medior",
+        "senior": "Senior",
+        "executive": "Directie"
+      },
+      "industryAria": "Bevestig of corrigeer de herkende branche",
+      "levelAria": "Bevestig of corrigeer het herkende ervaringsniveau",
+      "note": "Een correctie werkt dit rapport bij",
+      "levelLogged": "Je correctie van het niveau is vastgelegd zodat we de herkenning kunnen verbeteren. Bedankt.",
+      "quickCheck": {
+        "title": "Even checken:",
+        "transition": "we wisten je branche hier niet helemaal zeker — je loopbaan leest als {{historical}}, maar je laatste functie als {{recent}}. Bevestig hieronder en het rapport past zich aan.",
+        "unsure": "we wisten je branche hier niet helemaal zeker. Bevestig of corrigeer hem hieronder — vergelijkingen en trefwoorden passen zich meteen aan."
+      }
+    },
+    "builderHandoff": {
+      "title": "Maak van deze diagnose een afgerond cv",
+      "bodyRewrites_one": "Open de gratis builder met je cv geladen en de {{count}} herschreven bullet uit dit rapport toegepast waar die bij een van je bullets past, en exporteer daarna een netjes opgemaakte PDF of DOCX.",
+      "bodyRewrites_other": "Open de gratis builder met je cv geladen en de {{count}} herschreven bullets uit dit rapport toegepast waar ze bij je bullets passen, en exporteer daarna een netjes opgemaakte PDF of DOCX.",
+      "bodyNoRewrites": "Dit rapport heeft geen herschrijving die de builder kan toepassen. Open de gratis builder met je cv geladen en de ontbrekende trefwoorden uit dit rapport ernaast, en exporteer daarna een netjes opgemaakte PDF of DOCX.",
+      "ctaRewrites_one": "Openen in de builder: {{count}} herschrijving om toe te passen →",
+      "ctaRewrites_other": "Openen in de builder: {{count}} herschrijvingen om toe te passen →",
+      "ctaNoRewrites": "Openen in de builder met je cv en de ontbrekende trefwoorden →"
+    },
+    "scoreSimulator": {
+      "title": "Wat gebeurt er als je het oplost?",
+      "intro": "Vink de verbeteringen aan die je wilt doorvoeren.",
+      "basis": "De punten zijn een ruwe richtlijn (de schatting van de AI per verbetering, of vaste punten per soort verbetering), geen voorspelling van je volgende scan.",
+      "aria": "Score {{score}}, verwacht {{projected}}",
+      "projectedLabel": "Verwacht:",
+      "gain_one": "(+{{count}} punt)",
+      "gain_other": "(+{{count}} punten)",
+      "current": "Je huidige score. Vink hieronder verbeteringen aan.",
+      "noGainCeiling": "Geen winst volgens deze richtlijn: ze voorspelt geen score boven {{ceiling}}, en de jouwe zit daar al.",
+      "noGain": "Volgens deze richtlijn leveren deze verbeteringen geen punten op."
+    },
+    "fixLabels": {
+      "bulletsWeak_one": "Herschrijf je {{count}} zwakste bullet met de voor-en-na-voorbeelden hierboven",
+      "bulletsWeak_other": "Herschrijf je {{count}} zwakste bullets met de voor-en-na-voorbeelden hierboven",
+      "bulletsUnquantified_one": "Voeg een resultaat met een getal toe aan {{count}} bullet zonder getal",
+      "bulletsUnquantified_other": "Voeg een resultaat met een getal toe aan {{count}} bullets zonder getal",
+      "keywords": "Verwerk {{keywords}} in je samenvatting en je ervaringsbullets"
+    },
+    "scorePotential": {
+      "title": "Je scorepotentieel",
+      "current": "Nu",
+      "afterFixes": "Na de verbeteringen",
+      "gain_one": "+{{count}} pt",
+      "gain_other": "+{{count}} ptn",
+      "basis": "Je score plus de verbeteringen in de simulator en het verbeterplan hieronder: de belangrijkste snelle winsten, en de stappen voor opsommingspunten en trefwoorden.",
+      "basisQuickWins": "Je score plus maximaal drie van de belangrijkste snelle winsten en maximaal drie verbeteringen aan opsommingspunten, met een maximum van 95."
     }
   },
   "analysisPreviewSample": {
@@ -2854,7 +2937,6 @@
   },
   "rateLimitUpsell": {
     "title": "Dagelijkse scanlimiet bereikt",
-    "subtitle": "Je hebt al je 7 gratis scans voor vandaag gebruikt. Geen zorgen – je kunt nu direct verder scannen!",
     "resetIn": "Gratis scans worden gereset binnen ongeveer",
     "hour_one": "{{count}} uur",
     "hour_other": "{{count}} uur",
@@ -3143,7 +3225,14 @@
     "bestUsesPersonal": "{{name}}, hier werkt deze CV-versie het beste:",
     "atsRelevance": "ATS-relevantie: {{level}}",
     "learnAbout": "Meer over {{title}}",
-    "close": "Sluiten"
+    "close": "Sluiten",
+    "usageTooltip": "Gebruiksadvies",
+    "suitability": {
+      "excellent": "Uitstekend",
+      "good": "Goed",
+      "limited": "Beperkt",
+      "notRecommended": "Niet aanbevolen"
+    }
   },
   "elevatorPitch": {
     "title": "60-seconden elevator pitch",
@@ -3214,7 +3303,13 @@
     "softSkills": "Zachte vaardigheden",
     "tools": "Tools en software",
     "certifications": "Certificeringen",
-    "methodologies": "Methodologieën"
+    "methodologies": "Methodologieën",
+    "matchingAgainstJob": "Vergeleken met: {{job}}",
+    "importance": {
+      "critical": "kritiek",
+      "important": "belangrijk",
+      "nice_to_have": "mooi meegenomen"
+    }
   },
   "recruiterView": {
     "seeThrough": "Bekijk je CV door de ogen van een recruiter",
@@ -3416,7 +3511,6 @@
     "neverExpire": "Credits verlopen nooit",
     "perCredit": "{{price}} per credit",
     "topUpCredits": "Credits bijvullen",
-    "freeTier": "Gratis laag: tot 7 scans per dag, voor altijd gratis.",
     "buyCredits": "Credits kopen — {{price}} per stuk",
     "myCredits": "Mijn credits",
     "provenHint": "Credits die je in deze browser hebt gekocht, verschijnen hier automatisch.",
@@ -3446,7 +3540,20 @@
     "lowShort": "○ Laag",
     "highDesc": "Sterke branchesignalen gedetecteerd. Aanbevelingen zijn zeer relevant.",
     "mediumDesc": "Sommige branchesignalen gedetecteerd, verificatie aanbevolen.",
-    "lowDesc": "Beperkte signalen. Verifieer en corrigeer indien nodig voor betere aanbevelingen."
+    "lowDesc": "Beperkte signalen. Verifieer en corrigeer indien nodig voor betere aanbevelingen.",
+    "isThisRight": "Klopt dit?",
+    "yes": "Ja",
+    "no": "Nee",
+    "thanksConfirmed": "Duidelijk — bedankt voor je bevestiging!",
+    "allSignals": "Alle herkenningssignalen:",
+    "alsoConsidered": "Ook overwogen:",
+    "switch": "Wisselen →",
+    "seniority": {
+      "entry": "Startersniveau",
+      "mid": "Mediorniveau",
+      "senior": "Senior",
+      "executive": "Directie"
+    }
   },
   "resumeBuilder": {
     "experience": {
@@ -3458,7 +3565,15 @@
       "endDate": "Einddatum",
       "bulletPoints": "Opsommingstekens",
       "addBullet": "Punt toevoegen",
-      "addWorkExperience": "Werkervaring toevoegen"
+      "addWorkExperience": "Werkervaring toevoegen",
+      "placeholder": {
+        "jobTitle": "Senior software-engineer",
+        "company": "Acme B.V.",
+        "location": "Op afstand",
+        "startDate": "jan. 2022",
+        "endDate": "Heden",
+        "bullet": "Een team van 5 engineers geleid om … op te leveren"
+      }
     },
     "education": {
       "entry": "Opleiding {{num}}",
@@ -3468,7 +3583,13 @@
       "startDate": "Begindatum",
       "endDate": "Einddatum",
       "additionalDetails": "Aanvullende details (optioneel)",
-      "addEducation": "Opleiding toevoegen"
+      "addEducation": "Opleiding toevoegen",
+      "placeholder": {
+        "school": "Universiteit Utrecht",
+        "degree": "Bachelor",
+        "field": "Informatica",
+        "details": "Relevante vakken, onderscheidingen, cijfer…"
+      }
     },
     "tagList": {
       "typeToAdd": "Typ en druk op Enter om toe te voegen"
@@ -3482,13 +3603,81 @@
       "skills": "Vaardigheden",
       "certifications": "Certificeringen"
     },
-    "replaceWithFixes": "Je huidige concept in de builder vervangen door het cv uit je scan, met de verbeteringen uit het rapport toegepast?",
+    "replaceWithFixes": "Je huidige concept in de bouwer vervangen door het cv uit je scan, met de verbeteringen uit het rapport? Als je weigert, blijft je concept staan en worden de verbeteringen die bij de opsommingspunten passen daarin doorgevoerd.",
+    "replaceWithKeywords": "Je huidige concept in de bouwer vervangen door het cv uit je scan, met de ontbrekende trefwoorden uit dit rapport ernaast? Als je weigert, blijft je concept staan en worden de trefwoorden ernaast getoond.",
     "replaceWithLatestScan": "Je hebt een concept van een eerder cv. Vervangen door het cv uit je nieuwste scan?",
     "toast": {
       "addNameDescription": "Je cv moet bovenaan je naam hebben voordat het kan worden gedownload.",
       "addNameTitle": "Voeg eerst je naam toe",
       "savedAsWordDescription": "De lettertypen van de pdf kunnen {{chars}} niet weergeven, dus hebben we een Word-bestand opgeslagen dat elk teken behoudt.",
-      "savedAsWordTitle": "Opgeslagen als Word-bestand"
+      "savedAsWordTitle": "Opgeslagen als Word-bestand",
+      "importedTitle": "Cv geïmporteerd",
+      "importedDescription": "We hebben de bouwer gevuld met je meest recente cv — pas hieronder aan wat je wilt.",
+      "importedWithFixesTitle_one": "Cv geïmporteerd — {{count}} verbetering uit je rapport doorgevoerd",
+      "importedWithFixesTitle_other": "Cv geïmporteerd — {{count}} verbeteringen uit je rapport doorgevoerd",
+      "importedWithFixesDescription": "De herschreven opsommingspunten uit je rapport staan erin. Trefwoordsuggesties uit de scan staan boven de editor.",
+      "mergedTitle_one": "Concept behouden — {{count}} verbetering uit je rapport doorgevoerd",
+      "mergedTitle_other": "Concept behouden — {{count}} verbeteringen uit je rapport doorgevoerd",
+      "mergedDescription": "Alleen opsommingspunten die al in je concept stonden zijn aangepast. Herschrijvingen voor andere punten staan nog in je rapport.",
+      "mergedNoneTitle": "Concept behouden — geen enkele herschrijving uit het rapport paste erbij",
+      "mergedNoneDescription": "Je concept bevat andere opsommingspunten dan het gescande cv, dus er is niets aangepast. De herschrijvingen staan nog in je rapport.",
+      "exportFailedTitle": "Exporteren mislukt",
+      "exportPdfFailed": "De pdf kon niet worden gemaakt. Probeer het opnieuw.",
+      "exportDocxFailed": "Het Word-document kon niet worden gemaakt. Probeer het opnieuw.",
+      "freelanceInsertedTitle_one": "Freelance-sectie ingevoegd — {{count}} item toegevoegd",
+      "freelanceInsertedTitle_other": "Freelance-sectie ingevoegd — {{count}} items toegevoegd",
+      "freelanceInsertedDescription": "Voeg bij elk item je data toe en exporteer daarna een opgemaakte pdf of Word-document."
+    },
+    "seo": {
+      "title": "Gratis cv-bouwer — Resume Booster",
+      "description": "Maak in een paar minuten een ATS-vriendelijk cv met onze gratis begeleide bouwer. Exporteer naar pdf, zonder account."
+    },
+    "title": "Cv-bouwer",
+    "subtitle": "Maak een overzichtelijk, gestructureerd cv — bewerk elke sectie en exporteer als je klaar bent.",
+    "startOver": "Opnieuw beginnen",
+    "exportDocx": "Exporteren als DOCX",
+    "exportPdf": "Exporteren als pdf",
+    "importing": "Je meest recente cv wordt in de bouwer geladen…",
+    "confirmStartOver": "Hiermee wis je alles in de bouwer. Doorgaan?",
+    "rescan": {
+      "title": "Geëxporteerd — controleer nu of de verbeteringen werken",
+      "body": "Scan precies deze versie gratis opnieuw en zie de score voor en na, beide keren met dezelfde criteria.",
+      "button": "Deze versie opnieuw scannen →"
+    },
+    "keywords": {
+      "title": "Trefwoorden die je scan miste — verwerk ze waar ze kloppen",
+      "dismiss": "verbergen",
+      "note": "We voegen nooit zelf trefwoorden in — alleen jij kunt eerlijk een vaardigheid claimen."
+    },
+    "section": {
+      "contact": "Contact",
+      "summary": "Profiel",
+      "experience": "Werkervaring",
+      "education": "Opleiding",
+      "skills": "Vaardigheden",
+      "certifications": "Certificaten",
+      "preview": "Voorbeeld"
+    },
+    "contact": {
+      "fullName": "Volledige naam",
+      "title": "Functie / Kopregel",
+      "email": "E-mail",
+      "phone": "Telefoon",
+      "location": "Locatie",
+      "linkedIn": "LinkedIn",
+      "website": "Website / Portfolio"
+    },
+    "placeholder": {
+      "fullName": "Sanne de Vries",
+      "title": "Senior productontwerper",
+      "email": "sanne@example.com",
+      "phone": "06 12345678",
+      "location": "Utrecht",
+      "linkedIn": "linkedin.com/in/sannedevries",
+      "website": "sannedevries.nl",
+      "summary": "Een kort overzicht in 2-4 zinnen van je ervaring en wat je hierna zoekt.",
+      "skill": "Voeg een vaardigheid toe en druk op Enter",
+      "certification": "Voeg een certificaat toe en druk op Enter"
     }
   },
   "jobsPage": {
@@ -5614,7 +5803,7 @@
     "title": "Er is iets misgegaan"
   },
   "freeReportSignup": {
-    "body": "Maak een gratis account aan om je voortgang over meerdere scans te volgen, je verbeterchecklist te bewaren en 15 gratis scans per dag te krijgen in plaats van 7.",
+    "body": "Maak een gratis account aan om je voortgang over meerdere scans te volgen, je verbeterchecklist te bewaren en {{signedIn}} gratis scans per dag te krijgen in plaats van {{signedOut}}.",
     "cta": "Gratis account aanmaken",
     "title": "Verlies deze score niet."
   },
@@ -5753,5 +5942,134 @@
     "metaDescription": "De data-API staat niet op het adres van deze site; de uitleg en de gratis sleutels staan op /data-api.",
     "lead": "Je vroeg deze site om {{path}}. De API staat hier niet, maar op:",
     "keyLine": "Verzoeken dragen een sleutel als Authorization: Bearer rb_live_…; gratis sleutels en elk endpoint staan op"
+  },
+  "metricCards": {
+    "section": {
+      "primary": "Hoofdscores",
+      "structure": "Structuur & inhoud",
+      "advanced": "Geavanceerde statistieken"
+    },
+    "ats": {
+      "strong": "✓ Sterk op trefwoorden, opmaak en resultaten",
+      "gaps": "⚠ Er zijn hiaten te dichten: zie de verbeteringen hieronder",
+      "manyGaps": "✗ Veel hiaten te dichten: zie de verbeteringen hieronder"
+    },
+    "grade": {
+      "a": "Uitstekend",
+      "b": "Goed",
+      "c": "Redelijk",
+      "d": "Moet beter"
+    },
+    "redFlagsClean": "Je cv ziet er netjes uit — geen grote problemen gevonden.",
+    "improvement": {
+      "value_one": "+{{count}} pt",
+      "value_other": "+{{count}} ptn",
+      "high": "🚀 Grote winst mogelijk!",
+      "medium": "📈 Ruimte voor verbetering",
+      "low": "✓ Weinig meer te winnen"
+    }
+  },
+  "scanOutcome": {
+    "title": "Gesolliciteerd met dit cv? Vertel ons hoe het ging",
+    "body": "Anoniem, alleen gekoppeld aan rapport #{{reportId}}. Zo meten we, in plaats van te gokken, welke scores echt gesprekken opleveren. Je kunt je antwoord aanpassen als er iets verandert.",
+    "interview": "🎉 Gesprek(ken) gekregen",
+    "noResponse": "📭 Nog geen reactie",
+    "rejected": "❌ Afgewezen",
+    "recorded": "Opgeslagen — bedankt. Je antwoorden helpen ons te onderzoeken welke scores tot gesprekken leiden; er wordt nog geen openbaar cijfer van gemaakt.",
+    "notSaved": "Niet opgeslagen — er is niets vastgelegd. Probeer het later opnieuw."
+  },
+  "scanFeedback": {
+    "question": "Was deze analyse nuttig?",
+    "thanks": "Bedankt voor je feedback!",
+    "yes": "Ja",
+    "no": "Nee",
+    "notSaved": "Dat kon niet worden opgeslagen — er is niets vastgelegd."
+  },
+  "reportInsights": {
+    "vendor": {
+      "title": "Hoe de grote ATS-platforms dit cv lezen",
+      "subtitle": "Elk systeem leest anders. Deze controles passen de gedocumenteerde eigenaardigheden van elke leverancier toe op je echte opmaak.",
+      "uncheckedNote": "We controleren de opmaak alleen bij een geüploade pdf. Dit was geplakte tekst of een Word-bestand, dus kolommen en tabellen zijn niet gecontroleerd, en geen platform dat daarvan afhangt staat als geslaagd.",
+      "status": {
+        "pass": "Geslaagd",
+        "warn": "Controleren",
+        "fail": "Waarschijnlijk mislukt",
+        "unknown": "Niet gecontroleerd"
+      },
+      "note": {
+        "workday": {
+          "fail": "Opmaak met meerdere kolommen brengt de parser van Workday in de war — de inhoud wordt in de verkeerde volgorde gelezen.",
+          "warn": "Met tabs uitgelijnde tekst of decoratieve opsommingstekens kunnen velden samenvoegen in het voorbeeld van Workday.",
+          "pass": "Eén kolom, standaard opsommingstekens — wordt netjes gelezen door Workday.",
+          "unknown": "Opmaak niet gecontroleerd — we kunnen niet zeggen of kolommen of tabellen de parser van Workday in de war brengen."
+        },
+        "greenhouse": {
+          "warn": "Greenhouse bewaart de pdf, maar zoekt op trefwoorden in de geëxtraheerde tekst — eigenaardigheden in de opmaak leveren minder treffers op.",
+          "pass": "Greenhouse bewaart je originele bestand; de tekstextractie lijkt hier betrouwbaar.",
+          "unknown": "Opmaak niet gecontroleerd — Greenhouse zoekt in de geëxtraheerde tekst, en we konden niet zien hoe netjes de opmaak van dit bestand wordt geëxtraheerd."
+        },
+        "lever": {
+          "warn": "De sectieherkenning van Lever verwacht standaardkoppen (Werkervaring, Opleiding) — creatieve koppen kunnen je loopbaan door elkaar halen.",
+          "pass": "Standaard sectiekoppen — Lever zet je loopbaan goed op volgorde."
+        },
+        "icims": {
+          "fail": "Kolommen plus uitlijning met tabs is het slechtste geval voor iCIMS — gegevens komen in de verkeerde velden terecht.",
+          "warn": "iCIMS vult sollicitatievelden automatisch in op basis van de gelezen tekst — controleer het ingevulde formulier voor je verstuurt.",
+          "pass": "Zou de sollicitatievelden in iCIMS goed automatisch moeten invullen.",
+          "unknown": "Opmaak niet gecontroleerd — iCIMS vult zijn formulier op basis van de gelezen tekst, dus controleer de ingevulde velden voor je verstuurt."
+        }
+      },
+      "finding": {
+        "fail": "{{vendor}}-parsing: waarschijnlijk mislukt",
+        "warn": "{{vendor}}-parsing: controleren",
+        "pass": "{{vendor}}-parsing",
+        "unknown": "{{vendor}}-parsing: opmaak niet gecontroleerd"
+      }
+    },
+    "findings": {
+      "title": "Bevindingen in één oogopslag",
+      "critical_one": "{{count}} kritiek",
+      "critical_other": "{{count}} kritiek",
+      "warning_one": "{{count}} waarschuwing",
+      "warning_other": "{{count}} waarschuwingen",
+      "passed_one": "{{count}} geslaagd",
+      "passed_other": "{{count}} geslaagd",
+      "unchecked_one": "{{count}} niet gecontroleerd",
+      "unchecked_other": "{{count}} niet gecontroleerd",
+      "noCritical": "Geen kritieke bevindingen — wat goed werkt, staat in de secties hieronder.",
+      "footer": "De volledige details van elke bevinding staan in de secties hieronder, op volgorde van ernst.",
+      "items": {
+        "parsePoor": "De tekst van het cv is mogelijk niet goed uitgelezen — de scores hieronder kunnen onbetrouwbaar zijn",
+        "parseFair": "De uitleeskwaliteit is niet perfect — controleer de voorvertoning hieronder",
+        "noEmail": "Geen e-mailadres gevonden — recruiters kunnen je niet bereiken",
+        "noPhone": "Geen telefoonnummer gevonden",
+        "fieldMissing": "{{label}}: ontbreekt — zie de vakspecifieke controles",
+        "weakBulletsAll_one": "{{count}} bullet beoordeeld met D of lager — herschrijving gegeven",
+        "weakBulletsAll_other": "{{count}} bullets beoordeeld met D of lager — herschrijvingen gegeven",
+        "weakBulletsSome_one": "{{count}} bullet beoordeeld met D of lager — {{rewritten}} herschreven",
+        "weakBulletsSome_other": "{{count}} bullets beoordeeld met D of lager — {{rewritten}} herschreven",
+        "weakBulletsNone_one": "{{count}} bullet beoordeeld met D of lager — zie hoe je die verbetert",
+        "weakBulletsNone_other": "{{count}} bullets beoordeeld met D of lager — zie hoe je ze verbetert",
+        "lowQuantification": "Minder dan 40% van de bullets bevat een getal — recruiters letten op cijfers",
+        "quantified": "Meetbare impact",
+        "coreSections": "Kernsecties aanwezig"
+      }
+    }
+  },
+  "redFlags": {
+    "title": "Rode vlaggen voor recruiters",
+    "severity": {
+      "critical": "Kritiek",
+      "major": "Groot",
+      "minor": "Klein"
+    },
+    "count": {
+      "critical_one": "{{count}} kritiek",
+      "critical_other": "{{count}} kritiek",
+      "major_one": "{{count}} groot",
+      "major_other": "{{count}} groot",
+      "minor_one": "{{count}} klein",
+      "minor_other": "{{count}} klein"
+    }
   }
 }

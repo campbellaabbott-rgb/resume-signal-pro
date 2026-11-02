@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspense } from "react";
+import { scansPerDayFor } from "@/config/scan-allowance";
 import { useTranslation } from "react-i18next";
 import { SEO } from "@/components/seo/SEO";
 import { useSearchParams } from "react-router-dom";
@@ -68,6 +69,8 @@ import { consentWasRequired, purchaseTerms } from "@/lib/purchase-terms";
 import { useBackForwardRestore } from "@/hooks/use-back-forward-restore";
 import { resilientCallers, callEdgeFunctionWithRetry, scanFailureKind } from "@/lib/resilient-edge-function";
 import { parseFailureCopy, parseNoticeCopy } from "@/lib/parse-failure-copy";
+import { MAX_RESUME_LENGTH } from "@/lib/resume-validation";
+import { outcomeWasStored, type ScanOutcomeRpcAnswer } from "@/lib/scan-outcome-answer";
 import { prepareJobAnalysisScan } from "@/lib/job-analysis-scan";
 import { parseEdgeFunctionError } from "@/lib/edge-function-errors";
 import { 
@@ -105,6 +108,10 @@ const DETECTED_INDUSTRY_COUNT = 58;
 
 interface FreeKeywordResult {
   detectedLanguage?: { code: string; name: string } | null;
+  /** The scanner did not read the whole résumé (S13-008); absent on older responses. */
+  resumeTruncated?: boolean;
+  /** The résumé's language is one the scan does not grade, or unknown (S13-024); null when it grades it. */
+  languageNotice?: { reason?: string; language?: string | null; name?: string | null } | null;
   candidateName?: string | null;
   currentRole?: string;
   industry: string;
@@ -265,6 +272,8 @@ interface FreeKeywordResult {
   unquantifiedBulletsDetected?: { text: string; role: string }[];
   bulletQuantRate?: number;
   projectedScore?: number | null;
+  /** The one fix list the projection is read from (S13-058); absent on older responses. */
+  scoreProjection?: { from?: number; to?: number; gain?: number; fixes?: Array<{ kind?: string; label?: unknown; impact?: unknown; minutes?: number }> } | null;
   // Market intelligence
   marketIntelligence?: {
     country: string;
@@ -366,7 +375,7 @@ interface FreeKeywordResult {
     hiringManager: { verdict: string; biggestDoubt?: string };
     hrScreener: { verdict: string; levelRead?: string };
   } | null;
-  weakestBullets?: Array<{ original: string; grade: string; issues: string[]; rewrite: string }>;
+  weakestBullets?: Array<{ original: string; grade: string; issues: string[]; rewrite: string | null; rewriteTemplate?: string | null }>;
   careerChangeBridge?: {
     fromField: string; toField: string; carryOver: string[];
     needsReframing: Array<{ current: string; reframed: string }>;
@@ -569,8 +578,10 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
   }, []);
 
   // Outcome links from the scan-report email land here (?outcome=&rid=).
-  // Record via the same anonymous RPC the in-report buttons use, thank the
-  // visitor, and clean the URL so refreshes don't re-record.
+  // Record via the same anonymous RPC the in-report buttons use, say whether
+  // it was kept, and clean the URL so refreshes don't re-record. The thanks
+  // is for a stored answer only (S13-057): a refusal or an error says
+  // nothing was recorded, in the visitor's language.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const outcome = params.get("outcome");
@@ -584,8 +595,10 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
       "record_scan_outcome",
       { p_report_id: rid, p_outcome: outcome, p_ip: visitor },
     ).then(
-      () => toast({ title: "Recorded — thank you", description: "Anonymous outcome saved. Every answer sharpens the benchmarks we publish." }),
-      () => { /* best-effort */ },
+      (res) => toast(outcomeWasStored(res as ScanOutcomeRpcAnswer)
+        ? { title: t("scanOutcome.recorded") }
+        : { title: t("scanOutcome.notSaved"), variant: "destructive" }),
+      () => toast({ title: t("scanOutcome.notSaved"), variant: "destructive" }),
     );
     params.delete("outcome");
     params.delete("rid");
@@ -845,6 +858,25 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
     }
   }, [searchParams, toast, verifyPurchase]);
 
+  // A RÉSUMÉ LONGER THAN THE SCANNERS READ IS REFUSED HERE (register S13-008).
+  // The scanner answers one over its cap with a 400, so the page used to show
+  // a parsed file and then fail the scan. The person is told as soon as the
+  // text is read, and the free scan is not sent; the résumé stays on the page
+  // (a purchase is made from it as before).
+  const tooLongToScan = (text: string): boolean => {
+    const length = text.trim().length;
+    if (length <= MAX_RESUME_LENGTH) return false;
+    toast({
+      title: t('homepage.toast.resumeTooLong'),
+      description: t('homepage.toast.resumeTooLongDescription', {
+        length: length.toLocaleString(i18n.language),
+        max: MAX_RESUME_LENGTH.toLocaleString(i18n.language),
+      }),
+      variant: "destructive",
+    });
+    return true;
+  };
+
   const handleFileSelect = async (file: File) => {
     // This read's number: a later pick or a Clear makes its answer stale.
     const seq = ++parseSeqRef.current;
@@ -893,6 +925,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
       preStoreResume(text); // Pre-store server-side for faster checkout
       triggerBackgroundScan(text, jobDescriptionText, honeypot); // Start background scan
       trackUploadCompleted(file.size);
+      tooLongToScan(text);
       return;
     }
 
@@ -929,7 +962,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
           // Characters the PDF does not name were left out: say so, and how to
           // get them read (S11-035).
           const notice = parseNoticeCopy(t, data);
-          toast(notice ?? {
+          if (!tooLongToScan(data.text)) toast(notice ?? {
             title: t('homepage.toast.pdfParsedSuccess'),
             description: t('homepage.toast.pdfParsedSuccessDescription', { pages: data.pages }),
           });
@@ -984,7 +1017,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
           preStoreResume(data.text); // Pre-store server-side for faster checkout
           triggerBackgroundScan(data.text, jobDescriptionText, honeypot); // Start background scan
           trackUploadCompleted(file.size, Date.now());
-          toast({
+          if (!tooLongToScan(data.text)) toast({
             title: t('homepage.toast.docParsedSuccess'),
             description: t('homepage.toast.docParsedSuccessDescription'),
           });
@@ -1050,6 +1083,9 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
     // anything: the success page then generated paid products from an
     // earlier upload, or found no résumé at all. Now every scan writes the
     // session whole and re-stores the server copy when the inputs changed.
+    // Over the scanners' cap: said, and nothing is stored or sent (S13-008).
+    if (tooLongToScan(contentToAnalyze)) return;
+
     if (contentToAnalyze) {
       persistScanInputs(contentToAnalyze, linkedInText || undefined, jdForScan);
     }
@@ -1131,7 +1167,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
           const failure = scanFailureKind(scanResult);
           if (failure === 'daily_limit') {
             const body = scanResult.errorBody ?? {};
-            trackRateLimitError('free-keyword-scan', Number(body.scansUsed) || 0, Number(body.scansLimit) || 7);
+            trackRateLimitError('free-keyword-scan', Number(body.scansUsed) || 0, Number(body.scansLimit) || scansPerDayFor(!!session?.user));
             toast({
               title: t('homepage.toast.dailyScanLimitReached'),
               description: scanResult.error.description,
@@ -1211,7 +1247,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
           trackRateLimitError('free-keyword-scan', data.scansUsed, data.scansLimit);
           toast({
             title: t('homepage.toast.dailyScanLimitReached'),
-            description: data.error || `You've used all ${data.scansLimit || 7} free scans.`,
+            description: data.error || `You've used all ${data.scansLimit ?? scansPerDayFor(!!session?.user)} free scans.`,
             variant: "destructive",
           });
           openRateLimitUpsell(data.hoursUntilReset);
@@ -1469,7 +1505,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
         trackRateLimitError('free-keyword-scan', data.scansUsed, data.scansLimit);
         toast({
           title: t('homepage.toast.dailyScanLimitReached'),
-          description: data.error || `You've used all ${data.scansLimit || 7} free scans. Resets in ~${data.hoursUntilReset || 24} hours.`,
+          description: data.error || `You've used all ${data.scansLimit ?? scansPerDayFor(!!session?.user)} free scans. Resets in ~${data.hoursUntilReset || 24} hours.`,
           variant: "destructive",
         });
         openRateLimitUpsell(data.hoursUntilReset);
@@ -2294,6 +2330,8 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
                 }}
                 resumeText={resumeText}
                 multiColumnDetected={resumeMultiColumnDetected}
+                resumeTruncated={freeKeywordResult.resumeTruncated === true}
+                languageNotice={freeKeywordResult.languageNotice ?? null}
                 jobDescriptionText={jobDescriptionText}
                 jobTitle={uploadedJobs[0]?.title}
                 jobCompany={uploadedJobs[0]?.company}
@@ -2310,6 +2348,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
                 unquantifiedBulletsDetected={freeKeywordResult.unquantifiedBulletsDetected}
                 bulletQuantRate={freeKeywordResult.bulletQuantRate}
                 projectedScore={freeKeywordResult.projectedScore ?? undefined}
+                scoreProjection={freeKeywordResult.scoreProjection ?? null}
                 marketIntelligence={freeKeywordResult.marketIntelligence}
                 skillsRecency={freeKeywordResult.skillsRecency}
                 careerTrajectory={freeKeywordResult.careerTrajectory}

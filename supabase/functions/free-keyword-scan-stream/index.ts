@@ -7,9 +7,12 @@ import { detectIndustry as detectIndustryShared } from "./industry-detection.ts"
 // 52-market resume standards must run HERE to reach users (the non-stream
 // free-keyword-scan has copies but is never invoked by the client). Modules are
 // byte-identical copies of free-keyword-scan/*.ts — keep them in sync.
-import { detectCountryFromResume, effectiveCountryOf } from "./market-intelligence.ts";
+import { detectCountryFromResume, effectiveCountryOf, phraseMatchesResume, resumeHasTerm } from "./market-intelligence.ts";
+import { detectCredibilityIssues } from "./date-credibility.ts";
+import { timelineGapOf } from "./employment-gaps.ts";
 import { resolveLanguageName } from "../_shared/language-instruction.ts";
 import { FIXED_CHOICES_STAY_ENGLISH, normalizeScanReport } from "../_shared/scan-report-shape.ts";
+import { applyScoreProjection, buildScoreProjection } from './score-projection.ts';
 import { functionCeiling } from "../_shared/model-spend-gate.ts";
 import { attachScanMailSeal } from "../_shared/scan-mail-seal.ts";
 import { accountProStanding } from "../_shared/pro-standing.ts";
@@ -17,7 +20,7 @@ import { attachMailCopy } from "./seal-safe.ts";
 import { evaluateCountryStandards } from "./country-standards.ts";
 import { websiteSessionOf } from "../_shared/website-session.ts";
 import { computeParseQuality, parseResumeStructure, formatStructureForPrompt } from "./resume-structure.ts";
-import { detectResumeLanguage } from "./resume-language.ts";
+import { detectResumeLanguage, languageNoticeOf } from "./resume-language.ts";
 const serve = Deno.serve;
 
 // Declare EdgeRuntime for background tasks
@@ -302,11 +305,14 @@ const INDUSTRY_PARENTS: Record<string, string> = {
   'hr_analytics': 'human_resources',
 };
 
-// Industry aliases for normalization
+// Industry aliases for normalization. A model's generic "software" answer is
+// 'technology', as the primary scanner reads it (S13-050): this fork mapped
+// it to 'software_engineering', so one field reached the published score
+// benchmark under two names, 36 points apart.
 const INDUSTRY_ALIASES: Record<string, string> = {
-  'tech': 'technology', 'software': 'software_engineering', 'it': 'technology',
-  'software development': 'software_engineering', 'information technology': 'technology',
-  'web development': 'software_engineering', 'app development': 'software_engineering',
+  'tech': 'technology', 'software': 'technology', 'it': 'technology',
+  'software development': 'technology', 'information technology': 'technology',
+  'web development': 'technology', 'app development': 'technology',
   'medical': 'healthcare', 'health': 'healthcare', 'medicine': 'physician',
   'nursing': 'nursing', 'pharmaceutical': 'pharmacy', 'pharma': 'pharmacy',
   'law': 'legal', 'attorney': 'corporate_law', 'lawyer': 'litigation',
@@ -5598,92 +5604,8 @@ function detectEliteSignals(resumeText: string): EliteSignal[] {
 }
 
 // ======================== Credibility Issue Detection ========================
-
-interface CredibilityIssue {
-  type: 'date_inconsistency' | 'timeline_overlap' | 'impossible_timeline' | 'gap';
-  severity: 'high' | 'medium' | 'low';
-  description: string;
-  location?: string;
-}
-
-function detectCredibilityIssues(resumeText: string): CredibilityIssue[] {
-  const issues: CredibilityIssue[] = [];
-  const currentYear = new Date().getFullYear();
-  const currentMonth = new Date().getMonth() + 1;
-  
-  // Extract all date ranges
-  const dateRangePattern = /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|january|february|march|april|may|june|july|august|september|october|november|december)?\s*'?(\d{4}|\d{2})\s*[-–—]\s*(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|january|february|march|april|may|june|july|august|september|october|november|december)?\s*'?(\d{4}|\d{2}|present|current|now)/gi;
-  
-  const ranges: Array<{ start: number; end: number; text: string }> = [];
-  let match;
-  
-  while ((match = dateRangePattern.exec(resumeText)) !== null) {
-    let startYear = parseInt(match[2]);
-    let endYear = match[4].toLowerCase();
-    
-    // Handle 2-digit years
-    if (startYear < 100) startYear += startYear > 50 ? 1900 : 2000;
-    
-    let endNum: number;
-    if (['present', 'current', 'now'].includes(endYear)) {
-      endNum = currentYear;
-    } else {
-      endNum = parseInt(endYear);
-      if (endNum < 100) endNum += endNum > 50 ? 1900 : 2000;
-    }
-    
-    if (!isNaN(startYear) && !isNaN(endNum)) {
-      ranges.push({ start: startYear, end: endNum, text: match[0] });
-    }
-  }
-  
-  // Check for impossible timelines (end before start)
-  for (const range of ranges) {
-    if (range.end < range.start) {
-      issues.push({
-        type: 'impossible_timeline',
-        severity: 'high',
-        description: `Date range "${range.text}" shows end date before start date`,
-        location: range.text
-      });
-    }
-  }
-  
-  // Check for future dates
-  for (const range of ranges) {
-    if (range.start > currentYear || (range.end > currentYear && range.end !== currentYear)) {
-      issues.push({
-        type: 'date_inconsistency',
-        severity: 'high',
-        description: `Date "${range.text}" contains future year`,
-        location: range.text
-      });
-    }
-  }
-  
-  // Check for overlapping roles (might be intentional for consulting/side projects)
-  const sortedRanges = [...ranges].sort((a, b) => a.start - b.start);
-  for (let i = 0; i < sortedRanges.length - 1; i++) {
-    const current = sortedRanges[i];
-    const next = sortedRanges[i + 1];
-    
-    // If current role ends after next role starts
-    if (current.end > next.start + 1) { // Allow 1 year overlap for transitions
-      // Only flag if significant overlap
-      const overlapYears = current.end - next.start;
-      if (overlapYears > 2) {
-        issues.push({
-          type: 'timeline_overlap',
-          severity: 'medium',
-          description: `Significant overlap (${overlapYears}+ years) between roles may need clarification`,
-          location: `${current.text} and ${next.text}`
-        });
-      }
-    }
-  }
-  
-  return issues;
-}
+// detectCredibilityIssues lives in date-credibility.ts (S13-022): ranges read
+// by employment-gaps.ts, the primary's own date reader.
 
 // ======================== Content Location Detection ========================
 
@@ -5903,8 +5825,11 @@ function calibrateLanguage(atsScore: number, seniority: SeniorityLevel, resumeTy
     };
   }
   
-  // Mid scores (55-69) - balanced guidance
-  if (atsScore >= 55) {
+  // Mid scores (50-69) - balanced guidance. The cut points are the scanner's
+  // rubric (85/70/50), the same bands the page grades every score on
+  // (src/lib/score-bands.ts, register S13-019): a 52 was "Key Improvements
+  // Needed" here and a fair score on the hero.
+  if (atsScore >= 50) {
     return {
       headline: 'Room for Improvement',
       overallTone: 'optimization',
@@ -5914,7 +5839,7 @@ function calibrateLanguage(atsScore: number, seniority: SeniorityLevel, resumeTy
     };
   }
   
-  // Low scores (<55) - actionable guidance (not alarmist)
+  // Low scores (<50) - actionable guidance (not alarmist)
   return {
     headline: 'Key Improvements Needed',
     overallTone: 'warning',
@@ -6044,16 +5969,11 @@ function computeTimelineAnalysis(resumeText: string): {
     progression = "stagnant";
   }
 
-  // Detect gaps (simplistic: look for year jumps > 1 year between consecutive years)
-  let hasGaps = false;
-  let gapNote: string | undefined;
-  for (let i = 1; i < years.length; i++) {
-    if (years[i] - years[i - 1] > 2) {
-      hasGaps = true;
-      gapNote = `Gap detected between ${years[i - 1]} and ${years[i]}`;
-      break;
-    }
-  }
+  // A gap is read from the date RANGES by employment-gaps.ts, the primary's
+  // own reader (register S10-007, the review of 2026-11-01). Two distinct
+  // years more than two apart are not a gap: "B.S. 2008 – 2012" and
+  // "2016 – Present" beside this year were both reported as one.
+  const { hasGaps, gapNote } = timelineGapOf(resumeText);
 
   return {
     totalYears: `${totalSpan} ${totalSpan === 1 ? "year" : "years"}`,
@@ -6524,7 +6444,19 @@ function clampImprovementToScoreGap(report: Record<string, unknown>): void {
 // lists, no typed salary range in the prompt text it builds). This fork reads
 // only its country detection, which did not change, so what it answers is the
 // same; the bundle differs from 2026-10-27.1, so it takes a new build.
-const FN_BUILD = "free-keyword-scan-stream.2026-10-31.1";
+// 2026-11-01.1 (the free-scan wave, engine half): the shared modules carry the
+// primary's wave changes byte for byte, the same score projection applies, its
+// industry check has room to answer (400 tokens, an unusable reply falls back
+// to server detection), a parse failure stores lengths and no model text, and
+// a generic "software" answer resolves to technology as the primary's does
+// (S13-050, -058, -064, -065 and the shared-module items). The review round
+// of the same day, still unshipped and so the same build: the timeline card
+// reads gaps with employment-gaps.ts (timelineGapOf), the header's tone bands
+// are the rubric's 85/70/50, and the shared modules carry the primary's
+// review changes byte for byte. The recheck on a third corpus, also
+// unshipped: the shared modules carry the primary's recheck changes byte for
+// byte, and the date flags read apostrophe years ("Mar '21").
+const FN_BUILD = "free-keyword-scan-stream.2026-11-01.1";
 
 /** The primary's report id formula (free-keyword-scan/report-meta.ts reportIdFor): this report's cache key and its score. */
 async function streamReportId(cacheKey: string, score: unknown): Promise<string> {
@@ -7321,21 +7253,13 @@ function computeIndustryKeywordSuggestions(
     return null;
   }
   
-  const resumeLower = resumeText.toLowerCase();
   const present: IndustryKeywordSuggestion[] = [];
   const missing: IndustryKeywordSuggestion[] = [];
   
   for (const kw of industryConfig.keywords) {
-    const keywordLower = kw.keyword.toLowerCase();
-    // Check for keyword presence with variations
-    const variations = [
-      keywordLower,
-      keywordLower.replace(/\s+/g, ''),
-      keywordLower.replace(/\//g, ''),
-      keywordLower.replace(/&/g, 'and'),
-    ];
-    
-    const isPresent = variations.some(v => resumeLower.includes(v));
+    // The primary's presence test (S13-004): a token of its own, never a
+    // substring, so "git" is not in "digital" and "rest" not in "interest".
+    const isPresent = resumeHasTerm(resumeText, kw.keyword);
     
     if (isPresent) {
       present.push({ ...kw, present: true });
@@ -7635,7 +7559,7 @@ serve(async (req) => {
       // the résumé the IP country decides it, so it is part of the key
       // (sweep S8-070; the wave 2 notes' open follow-up).
       const keyCountry = effectiveCountryOf(validTargetCountry, detectCountryFromResume(resumeText), ipCountry);
-      const cacheInput = `v6|${normalizedResume}|${normalizedJob}|${keyCountry}|${languageKey}`;
+      const cacheInput = `v7|${normalizedResume}|${normalizedJob}|${keyCountry}|${languageKey}`;
       const cacheKey = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(cacheInput))
         .then(hash => Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join(''))
         .then(hex => hex.substring(0, 32));
@@ -7874,7 +7798,10 @@ ${classificationExcerpt}
 What is the PRIMARY industry of this candidate's own experience? Reply with only the industry name.`
               }
             ],
-            max_tokens: 50,
+            // Room for a thinking model's reasoning as well as the one word
+            // (S13-065): at 50, flash spent the cap thinking and answered
+            // nothing, so every fallback scan paid for an empty check.
+            max_tokens: 400,
             temperature: 0,
           }),
           // A short classification: it never holds the scan past 15 seconds.
@@ -7883,7 +7810,15 @@ What is the PRIMARY industry of this candidate's own experience? Reply with only
 
         if (verifyResponse.ok) {
           const verifyData = await verifyResponse.json();
-          const aiVerified = verifyData.choices?.[0]?.message?.content?.trim()?.toLowerCase()?.replace(/[^a-z_]/g, '');
+          const verifyChoice = verifyData.choices?.[0];
+          const verifyContent = typeof verifyChoice?.message?.content === 'string' ? verifyChoice.message.content : '';
+          // A reply cut off at the cap, or an empty one, is no answer: the
+          // server's detection stands (S13-065).
+          const verifyUsable = verifyChoice?.finish_reason !== 'length' && verifyContent.trim() !== '';
+          if (!verifyUsable) {
+            console.warn(`[FREE-KEYWORD-SCAN-STREAM] AI verification unusable (finish_reason ${verifyChoice?.finish_reason ?? 'none'}, ${verifyContent.length} chars): server detection stands`);
+          }
+          const aiVerified = verifyUsable ? verifyContent.trim().toLowerCase().replace(/[^a-z_]/g, '') : '';
           if (aiVerified) {
             const normalizedVerified = normalizeIndustry(aiVerified);
             if (VALID_INDUSTRIES.includes(normalizedVerified) || INDUSTRY_ALIASES[normalizedVerified]) {
@@ -7982,11 +7917,19 @@ What is the PRIMARY industry of this candidate's own experience? Reply with only
       // an English UI got an English report from this fallback while the
       // primary scan answered in French. Resume language wins when confidently
       // non-English (mirrors the primary); the UI locale covers the rest.
-      const reportLanguage = detectedResumeLanguage.language !== 'en'
+      // A language the detector cannot name is answered in the résumé's own
+      // language; one the report is not built for is named and the model is
+      // warned that the English keyword checks may miss its words (S13-024).
+      const reportLanguage = detectedResumeLanguage.language === 'unknown'
+        ? 'the language the resume itself is written in'
+        : detectedResumeLanguage.language !== 'en'
         ? detectedResumeLanguage.languageName
         : (resolveLanguageName(language) ?? "English");
+      const unsupportedLanguageNote = detectedResumeLanguage.supported ? '' : `
+LANGUAGE NOTE: the resume is in ${detectedResumeLanguage.language === 'unknown' ? 'a language the scanner could not identify' : detectedResumeLanguage.languageName}, outside the languages its keyword and section checks are built for. A skill whose English name is absent may still be on the resume in its own words: do not call it missing on that ground alone.
+`;
       const systemPrompt = `Expert ATS resume analyst. Respond in ${reportLanguage}. Every free-text string value in your JSON must be written in ${reportLanguage} (keys stay in English). ${FIXED_CHOICES_STAY_ENGLISH}
-
+${unsupportedLanguageNote}
 RESUME TYPE DETECTED: ${resumeType.type} (${resumeType.label})
 SENIORITY LEVEL: ${seniority}
 ATS RELEVANCE: ${resumeType.atsRelevance}
@@ -8120,9 +8063,13 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
       // Deterministic structure scaffold — grounds the model so it can't
       // hallucinate a missing section/contact/role the raw text contains.
       const structureHint = formatStructureForPrompt(parseResumeStructure(resumeText));
+      // The whole résumé, as the primary sends it (S13-008): this fork cut at
+      // 15,000 characters with no notice. The request is refused above
+      // MAX_RESUME_LENGTH, so nothing is cut; resumeTruncated would say so.
+      const resumeForPrompt = resumeText.slice(0, MAX_RESUME_LENGTH);
       const userPrompt = hasJobDescription
-        ? `Analyze this ${resumeType.label} for the target job:\n\n<resume>\n${resumeText.substring(0, 15000)}\n</resume>${structureHint}\n\n<job_description>\n${truncatedJobDescription}\n</job_description>`
-        : `Analyze this ${resumeType.label}:\n\n<resume>\n${resumeText.substring(0, 15000)}\n</resume>${structureHint}`;
+        ? `Analyze this ${resumeType.label} for the target job:\n\n<resume>\n${resumeForPrompt}\n</resume>${structureHint}\n\n<job_description>\n${truncatedJobDescription}\n</job_description>`
+        : `Analyze this ${resumeType.label}:\n\n<resume>\n${resumeForPrompt}\n</resume>${structureHint}`;
 
       // AI request with retry logic. Flash-first to match the primary
       // scanner: the pro-first order made this path's p50 latency 32s vs the
@@ -8427,13 +8374,14 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
           errorCode: 'PARSE_ERROR',
           errorMessage: 'Failed to parse AI response after repair attempts',
           outputValid: false,
+          // Its shape only, never its text (S13-064): scan_metrics keeps rows
+          // with no retention job, and the model's output quotes the résumé.
           metadata: {
             responseLength: toolCallArgs.length,
             modelUsed,
             hasContent: toolCallArgs.length > 0,
-            // Sample first/last chars to help debug
-            startChars: toolCallArgs.substring(0, 50),
-            endChars: toolCallArgs.substring(Math.max(0, toolCallArgs.length - 50))
+            opensWithBrace: /^\s*\{/.test(toolCallArgs),
+            closesWithBrace: /\}\s*$/.test(toolCallArgs),
           }
         });
         send('error', { error: 'Failed to parse analysis results. Please try again.' });
@@ -8751,6 +8699,11 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
         // Extraction-quality gate — parity with the primary path so fallback
         // scans also warn when a mangled PDF makes the report unreliable.
         parseQuality: computeParseQuality(resumeText),
+        // The primary's language notice (S13-024): null when the report is
+        // built for the résumé's language.
+        languageNotice: languageNoticeOf(detectResumeLanguage(resumeText)),
+        // True only when part of the résumé was not sent to the model (S13-008).
+        resumeTruncated: resumeText.length > MAX_RESUME_LENGTH,
         // New fields for improved analysis
         resumeType,
         seniorityLevel: seniority,
@@ -8902,42 +8855,11 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
           const keyword = (kw.keyword || '').toLowerCase().trim();
           if (!keyword) return false;
           
-          const resumeLower = resumeText.toLowerCase();
-          
-          // Common keyword variations to check
-          const variations: Record<string, string[]> = {
-            'react': ['react', 'reactjs', 'react.js'],
-            'node': ['node', 'nodejs', 'node.js'],
-            'aws': ['aws', 'amazon web services', 'amazon aws'],
-            'javascript': ['javascript', 'js', 'ecmascript'],
-            'typescript': ['typescript', 'ts'],
-            'python': ['python', 'py'],
-            'docker': ['docker', 'containerization'],
-            'kubernetes': ['kubernetes', 'k8s'],
-            'github': ['github', 'git'],
-            'postgresql': ['postgresql', 'postgres', 'psql'],
-            'mongodb': ['mongodb', 'mongo'],
-            'graphql': ['graphql', 'gql'],
-            'rest api': ['rest api', 'restful', 'rest'],
-            'ci/cd': ['ci/cd', 'cicd', 'continuous integration', 'continuous deployment'],
-            'agile': ['agile', 'scrum', 'kanban'],
-            'salesforce': ['salesforce', 'sfdc', 'crm'],
-          };
-          
-          // Check if keyword or any variation exists in resume
-          const keywordBase = keyword.replace(/[^a-z0-9]/g, '');
-          const toCheck = variations[keyword] || variations[keywordBase] || [keyword];
-          
-          for (const variant of toCheck) {
-            if (resumeLower.includes(variant)) {
-              console.log(`[KEYWORD-FILTER] Filtered out "${keyword}" - already present as "${variant}"`);
-              return false;
-            }
-          }
-          
-          // Also do a direct check for the keyword itself
-          if (resumeLower.includes(keyword)) {
-            console.log(`[KEYWORD-FILTER] Filtered out "${keyword}" - direct match found`);
+          // The primary's presence test (S13-004). The variations table this
+          // replaced read "ts" in "results" as TypeScript, "git" in "digital" as
+          // GitHub, "rest" in "interest" as REST API and "crm" as Salesforce.
+          if (phraseMatchesResume(keyword, resumeText)) {
+            console.log(`[KEYWORD-FILTER] Filtered out "${keyword}" - on the résumé`);
             return false;
           }
           
@@ -9018,6 +8940,17 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
         console.warn(`[FREE-KEYWORD-SCAN-STREAM] Thin model analysis served as partial (${owed.filter(Boolean).length}/${owed.length} owed sections)`);
         Object.assign(responseData, { partialResults: true, partialReason: 'thin_unfilled' });
       }
+
+      // ONE projection (S13-058), the primary's rule: Improvement Potential
+      // and the simulator's fix list read the same quick wins and keywords
+      // step, so "+N pts" is what ticking every fix reaches. This fork has
+      // no rule-based bullet check, so it adds no bullets step.
+      applyScoreProjection(responseData, buildScoreProjection({
+        score: Number(responseData.atsScoreEstimate) || 0,
+        quickWins: Array.isArray(responseData.quickWins) ? responseData.quickWins : [],
+        keywordNames: (Array.isArray(responseData.keywords) ? responseData.keywords : [])
+          .map((k: { keyword?: unknown }) => (typeof k?.keyword === 'string' ? k.keyword : '')),
+      }));
 
       // Every fixed choice and list the page draws holds a value it can draw,
       // before the report is cached or sent (S11-029).

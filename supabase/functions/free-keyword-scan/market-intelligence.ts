@@ -301,6 +301,7 @@ const EDUCATION_SIGNALS: Array<{ re: RegExp; country: string; label: string }> =
 ];
 
 import { detectResumeLanguage, LANGUAGE_GEO } from './resume-language.ts';
+import { EDUCATION_HEADING, OTHER_HEADING, readDateRanges } from './employment-gaps.ts';
 
 // Spelling conventions only CORROBORATE a country that already has another
 // signal — they never introduce a country alone (British spelling can't tell GB
@@ -722,23 +723,20 @@ export function formatGeoContextForPrompt(
 // "Chicago", "git" in "digital", "rag" in "storage" and "rust" in "Trust",
 // and the report printed those as the reader's skills (the review of
 // 2026-10-27). A term now counts only where it stands as a whole word: no
-// letter or digit on either side.
-const termPatternCache = new Map<string, RegExp>();
-function termPattern(term: string): RegExp {
-  const key = term.toLowerCase().trim();
-  let re = termPatternCache.get(key);
-  if (!re) {
-    const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    re = new RegExp(`(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`, 'u');
-    termPatternCache.set(key, re);
-  }
-  return re;
-}
+// letter or digit on either side. (It used to build and keep one Unicode
+// pattern per term, without bound; term-presence.ts now reads it with no
+// pattern per term.)
 
 /** True when `term` appears in `text` as a whole word or phrase, ignoring case. */
 export function hasWholeTerm(text: string, term: string): boolean {
-  return termPattern(term).test(text.toLowerCase());
+  return textHasWholeTerm(text, term);
 }
+
+// ─── IS THIS SKILL ON THE RÉSUMÉ? (register S13-004) ────────────────────────
+// The presence test lives in term-presence.ts, shared with the report page's
+// keyword cards (S13-092).
+import { resumeHasTerm, termSpellings, textHasWholeTerm } from './term-presence.ts';
+export { resumeHasTerm, termSpellings };
 
 // ─── 3. SKILLS RECENCY SCORING ────────────────────────────────────────────────
 
@@ -878,30 +876,165 @@ export interface CareerTrajectory {
   progressionSummary: string;
 }
 
+// Each key is matched as a word of its own (register S13-009): `c: 7` and
+// includes() ranked every title holding the letter c ("Sales Associate") as
+// C-suite, "intern" was in "internal", "lead" in "pleaded". A title takes the
+// highest rank among its words; plurals count ("Directors").
 const SENIORITY_RANK: Record<string, number> = {
-  intern: 0, trainee: 0, apprentice: 0,
-  associate: 1, junior: 1, entry: 1, assistant: 1, coordinator: 1,
+  intern: 0, internship: 0, trainee: 0, apprentice: 0, apprenticeship: 0,
+  associate: 1, junior: 1, jr: 1, 'jr.': 1, entry: 1, assistant: 1, coordinator: 1,
   analyst: 2, specialist: 2, developer: 2, engineer: 2, representative: 2,
-  senior: 3, 'sr.': 3, lead: 3, principal: 3, staff: 3,
+  senior: 3, sr: 3, 'sr.': 3, lead: 3, leader: 3, principal: 3, staff: 3,
+  // Dutch, German and Scandinavian titles close the compound ("Teamleader
+  // Logistiek", "Techlead"): S13-009 recheck.
+  teamleader: 3, teamlead: 3, techlead: 3, projectleader: 3,
+  // A bank's Assistant Vice President is a senior individual title, not a
+  // vice president (main read the "vp" inside "AVP").
+  avp: 3,
   manager: 4, director: 4, head: 4, vp: 5, 'vice president': 5,
-  svp: 6, evp: 6, c: 7, ceo: 7, cto: 7, cfo: 7, coo: 7, cro: 7, partner: 7, founder: 7,
+  svp: 6, evp: 6,
+  chief: 7, ceo: 7, cto: 7, cfo: 7, coo: 7, cro: 7, cmo: 7, cio: 7, ciso: 7, cpo: 7, partner: 7, founder: 7, 'co-founder': 7, cofounder: 7,
 };
 
-function extractSeniorityFromTitle(title: string): number {
-  const lower = title.toLowerCase();
+// "Projektmanager", "Productmanager", "Marketingdirektor": German and Dutch
+// write the head noun at the end of one compound word, and German adds a
+// feminine ending to it, compound or not ("Store ManagerIn", "Sales
+// Managerin", "Projektmanagerinnen").
+const COMPOUND_HEAD = /(?<![\p{L}\p{N}])\p{L}*(?:manager|direktor|director|directeur)(?:in|innen|s)?(?![\p{L}\p{N}])/iu;
+// "Seniorrådgiver", "Seniorprojektleder": Danish, Norwegian and Swedish join
+// "senior" to the role noun. Only a title that OPENS with such a word is a
+// senior role; further in, the word describes something else ("et unikt
+// seniorfellesskap", a community for older people), and German "Senioren-"
+// is the plural noun ("Seniorenheim").
+const LEADING_SENIOR_COMPOUND = /^\s*senior(?!en)\p{L}{4,}/iu;
+
+export function extractSeniorityFromTitle(title: string): number {
   let rank = 2; // default = individual contributor
+  // "Staff+ Software Engineer", "Senior+": in a title a "+" after a word is a
+  // level band, not part of a name like "C++" (S13-009 recheck), so the word
+  // before it stands as its own token.
+  const read = title.replace(/(?<=\p{L}{2})\+(?=\s|$)/gu, ' ');
   for (const [kw, r] of Object.entries(SENIORITY_RANK)) {
-    if (lower.includes(kw) && r > rank) rank = r;
+    if (r > rank && resumeHasTerm(read, kw)) rank = r;
   }
+  if (rank < 4 && COMPOUND_HEAD.test(title)) rank = 4;
+  if (rank < 3 && LEADING_SENIOR_COMPOUND.test(title)) rank = 3;
   return rank;
 }
 
+// Evidence of a move from another field, read as whole words in the role
+// lines only, never the whole résumé (S13-009): "nco" was found in "income",
+// "ngo" in "ongoing", "marines" in "submarines", and a volunteer line, a
+// "foundational" skill or a Loan Officer title made an ordinary promotion
+// history a "career transition from military/nonprofit". "volunteer",
+// "mission-driven", a bare "officer" and "captain" say nothing about a field
+// and are not evidence; the service's name, written out or abbreviated, is.
+//
+// Recheck fix (2026-11-01), measured on 550 résumés built from real employer
+// names: "marines" is read only as written (its singular is the adjective in
+// "Marine Engineer", see NO_INFLECT in term-presence.ts); a national
+// "Defense/Defence Force(s)" is a service ("Israel Defense Forces"); the
+// federal bodies that name no "Agency" are read by their own words
+// ("Federal Bureau of Investigation", "FEMA", "FDIC"); "postdoctoral" is
+// academia, and a "PhD Candidate" title line is kept as a role line (see
+// roleHeaderLines); managing volunteers is a nonprofit role.
 const TRANSITION_KEYWORDS: Record<string, string[]> = {
-  military: ['military', 'army', 'navy', 'air force', 'marines', 'coast guard', 'nco', 'officer', 'sergeant', 'lieutenant', 'captain', 'colonel'],
-  nonprofit: ['nonprofit', 'ngo', 'charity', 'foundation', 'volunteer', 'mission-driven'],
-  academia: ['professor', 'phd candidate', 'postdoc', 'teaching assistant', 'research assistant', 'lecturer'],
-  government: ['government', 'federal', 'state agency', 'municipality', 'civil service'],
+  military: ['military', 'army', 'navy', 'air force', 'marine corps', 'marines', 'coast guard', 'national guard', 'armed forces', 'defense forces', 'defence forces', 'defense force', 'defence force', 'usmc', 'usaf', 'usn', 'uscg', 'nco', 'sergeant', 'lieutenant', 'colonel'],
+  nonprofit: ['nonprofit', 'non-profit', 'ngo', 'charity', 'volunteer coordinator', 'volunteer manager'],
+  academia: ['professor', 'phd candidate', 'doctoral candidate', 'postdoc', 'postdoctoral', 'teaching assistant', 'research assistant', 'lecturer'],
+  government: ['government', 'federal agency', 'federal bureau', 'federal emergency management', 'fema', 'federal deposit insurance', 'fdic', 'federal reserve', 'state agency', 'municipality', 'civil service'],
 };
+// An employer's own name, read as one segment of a role line (split at
+// ",", "|", "–", "(" ...): a name ending in "Foundation" ("Gates
+// Foundation", not "Foundation Medicine"), "City/State/County/Government/
+// Ministry of ..." and a name ending in "Administration" or "Commission"
+// ("Federal Aviation Administration"). Capitals are required: "a foundation
+// in data" and "the state of the art" are not employers. "Department of" is
+// not read: a university's "Department of Economics" says so as often as a
+// government's.
+//
+// A name may join its capitalised words with "and", "&", "for" or "of" ("The
+// Bill and Melinda Gates Foundation", "Bill & Melinda Gates Foundation"). A
+// "City/State/County of" name is a place of one to three capitalised words
+// and nothing after it: "City of Hope" (a cancer centre), "City of Hope
+// National Medical Center" and "State Street" are not governments, and an
+// institution noun after the place ("City of Glasgow College") is not one
+// either (S13-009 recheck).
+const NAME_WORD = String.raw`[\p{Lu}][\p{L}'’.&-]*`;
+const NAME = String.raw`${NAME_WORD}(?:\s+(?:(?:and|&|for|of)\s+)?${NAME_WORD})*`;
+const NOT_A_PLACE = String.raw`(?:Hope|Dreams|Refuge|Angels|Faith|Grace|Joy|Light|Life|God|Praise)`;
+const EMPLOYER_SEGMENT: Record<string, RegExp[]> = {
+  nonprofit: [new RegExp(String.raw`^(?:The\s+)?${NAME}\s+Foundation$`, 'u')],
+  government: [
+    new RegExp(String.raw`^(?:The\s+)?(?:City|State|County|Commonwealth|Province|Government|Ministry|Bureau)\s+of\s+(?:the\s+)?(?!${NOT_A_PLACE}(?![\p{L}]))${NAME_WORD}(?:\s+${NAME_WORD}){0,2}$`, 'u'),
+    new RegExp(String.raw`^(?:The\s+)?${NAME}\s+(?:Administration|Commission)$`, 'u'),
+  ],
+};
+// A degree names a subject, not an employer ("B.S. Business Administration").
+const DEGREE_LINE = /(?<![\p{L}])(?:b\.?\s?[as]c?\.|m\.?\s?[as]c?\.|b\.?com|mba|mpa|mha|bachelor|master|ph\.?\s?d|doctor(?:ate)?|diploma|degree|associate of)(?![\p{L}])/iu;
+const ROLE_LINE_BULLET = /^[•\-*‣◦⁃∙▪●■►➢➤✓✔\uF0A7\uF0B7\uF076\uF0D8\uF0FC]/;
+const LITTLE_WORD = /^(?:of|and|the|for|at|in|on|de|del|la|le|du|des|von|und|der|van|et|y|e|to|an|a)$/i;
+// A role's header block is short and written like a name: every longer word
+// capitalised ("U.S. Marine Corps", "Federal Aviation Administration —
+// Washington, DC", "Mar 2019 – Present"). A bullet without its mark is a
+// sentence ("Sold software to government agencies") and is not read.
+function isHeaderShaped(line: string): boolean {
+  if (!line || line.length > 90 || ROLE_LINE_BULLET.test(line) || /[.!?]$/.test(line) && !/\b\p{Lu}\.$/u.test(line)) return false;
+  const words = line.split(/[\s,|/()–—-]+/).filter(w => /\p{L}/u.test(w));
+  return words.length > 0 && words.every(w => LITTLE_WORD.test(w) || w.length <= 3 || /^[\p{Lu}\p{N}]/u.test(w));
+}
+
+/**
+ * The lines that name a role: each parsed title, and the header-shaped lines
+ * up to two above or below it or a date-range line ("Supervisory Police
+ * Officer" / "U.S. Marine Corps" / "Jun 2011 – Feb 2019"), where the employer
+ * and location are written. A bullet, a blank line or a heading ends a block.
+ */
+export function roleHeaderLines(allTitles: string[], resumeText: string): string[] {
+  const lines = resumeText.split(/\r?\n/).map(l => l.replace(/\s+/g, ' ').trim());
+  const titles = allTitles.map(t => t.trim()).filter(Boolean);
+  const out = new Set<string>(titles);
+  // A line under an education heading names a degree, a subject or a school,
+  // never an employer: "Bachelor of Science" / "Business Administration" /
+  // "University of Florida | 2008 – 2012" made the subject a government
+  // (S13-009 recheck). Such lines are neither anchors nor neighbours.
+  let section: 'education' | 'other' = 'other';
+  const inEducation = lines.map(line => {
+    if (line.length <= 40 && EDUCATION_HEADING.test(line)) section = 'education';
+    else if (line.length <= 40 && OTHER_HEADING.test(line)) section = 'other';
+    return section === 'education';
+  });
+  lines.forEach((line, i) => {
+    if (inEducation[i]) return;
+    const anchor = (line && titles.some(t => line.includes(t))) || (line.length <= 90 && readDateRanges(line).length > 0);
+    if (!anchor) return;
+    // "Title | Employer | Jun 2011 – Feb 2019" is a whole header on one line.
+    if (isHeaderShaped(line)) out.add(line);
+    for (const step of [-1, 1]) {
+      for (let j = i + step, k = 0; k < 2 && j >= 0 && j < lines.length; j += step, k++) {
+        if (inEducation[j] || !isHeaderShaped(lines[j]) || /^(?:experience|education|skills|summary|profile|employment|work history|professional experience|certifications?|projects?)$/i.test(lines[j])) break;
+        out.add(lines[j]);
+      }
+    }
+  });
+  // A degree line names a subject; a doctoral candidate's title line names a
+  // role ("PhD Candidate, University of Toronto").
+  return [...out].filter(l => !DEGREE_LINE.test(l) || DOCTORAL_ROLE.test(l));
+}
+const DOCTORAL_ROLE = /(?<![\p{L}])(?:ph\.?\s?d\.?|doctoral)\s+(?:candidate|student|researcher|fellow)(?![\p{L}])/iu;
+
+function transitionFieldOf(roleLines: string[], industry: string): string | undefined {
+  const text = roleLines.join('\n');
+  // "Development Associate at Ford Foundation": "at" before a capitalised
+  // name also ends a segment.
+  const segments = roleLines.flatMap(l => l.split(/\s*(?:[,|•·–—(){}]|\s-\s|\s+at\s+(?=\p{Lu}))\s*/u)).map(s => s.trim()).filter(Boolean);
+  for (const [field, kws] of Object.entries(TRANSITION_KEYWORDS)) {
+    if (field === industry) continue;
+    if (kws.some(k => resumeHasTerm(text, k))) return field;
+    if ((EMPLOYER_SEGMENT[field] ?? []).some(re => segments.some(seg => re.test(seg)))) return field;
+  }
+  return undefined;
+}
 
 export function analyzeCareerTrajectory(
   allTitles: string[],
@@ -945,18 +1078,11 @@ export function analyzeCareerTrajectory(
   else if (promotionCount >= 2) trajectory = 'upward';
   else trajectory = 'lateral';
 
-  // Industry transition detection
-  const lowerText = resumeText.toLowerCase();
-  let industryTransitionDetected = false;
-  let fromIndustry: string | undefined;
-  for (const [srcIndustry, kws] of Object.entries(TRANSITION_KEYWORDS)) {
-    if (srcIndustry !== industry && kws.some(k => lowerText.includes(k))) {
-      industryTransitionDetected = true;
-      fromIndustry = srcIndustry;
-      trajectory = 'transition';
-      break;
-    }
-  }
+  // Industry transition detection: the role lines only (each title and its
+  // employer and location lines), whole words only.
+  const fromIndustry = transitionFieldOf(roleHeaderLines(allTitles, resumeText), industry);
+  const industryTransitionDetected = fromIndustry !== undefined;
+  if (industryTransitionDetected) trajectory = 'transition';
 
   // Build human-readable summary
   const titleFlow = allTitles.slice(0, 4).reverse().join(' → ');
@@ -1078,47 +1204,101 @@ const ATS_PROFILES: Record<AtsSystem, AtsSystemProfile> = {
   },
 };
 
-// Signals in job descriptions that indicate which ATS is being used
-const ATS_DETECTION_SIGNALS: Array<{ system: AtsSystem; patterns: RegExp[] }> = [
-  { system: 'greenhouse', patterns: [/greenhouse\.io/i, /boards\.greenhouse\.io/i, /gh\.io/i] },
-  { system: 'lever', patterns: [/lever\.co/i, /jobs\.lever\.co/i] },
-  { system: 'workday', patterns: [/workday\.com/i, /myworkdayjobs\.com/i, /wd\d+\.myworkday/i, /workdayjobs/i] },
-  { system: 'taleo', patterns: [/taleo\.net/i, /oracle\.taleo/i, /tbe\.taleo/i] },
-  { system: 'icims', patterns: [/icims\.com/i, /careers\.icims\.com/i, /recruiting\.icims/i] },
-  { system: 'smartrecruiters', patterns: [/smartrecruiters\.com/i, /jobs\.smartrecruiters/i] },
-  { system: 'ashby', patterns: [/ashbyhq\.com/i, /jobs\.ashbyhq\.com/i] },
-  { system: 'jobvite', patterns: [/jobvite\.com/i, /hire\.jobvite\.com/i] },
-  { system: 'brassring', patterns: [/brassring\.com/i, /kenexa\.com/i, /talent\.ibm\.com/i] },
-  { system: 'successfactors', patterns: [/successfactors\.com/i, /jobs\.sap\.com/i, /career\.sap\./i, /sap\.taleo/i] },
+// The hiring system is named only by a link to it (register S13-005). It
+// used to be guessed from company words matched anywhere in the posting:
+// "att" in "attention" made a nurse's posting BrassRing, "aws" in "laws" or
+// "sap" made it Workday, "meta" in "metadata" Greenhouse, and 11 of 12 live
+// postings came back with a system they do not use. A host counts when it
+// is the vendor's domain or ends with "." and the vendor's domain, so
+// "unilever.com" is not Lever and "laugh.io" is not Greenhouse. No link, no
+// claim.
+const ATS_HOSTS: Array<{ system: AtsSystem; domains: string[] }> = [
+  { system: 'greenhouse', domains: ['greenhouse.io'] },
+  { system: 'lever', domains: ['lever.co'] },
+  { system: 'workday', domains: ['myworkdayjobs.com', 'myworkday.com', 'myworkdaysite.com'] },
+  { system: 'taleo', domains: ['taleo.net'] },
+  { system: 'icims', domains: ['icims.com'] },
+  { system: 'smartrecruiters', domains: ['smartrecruiters.com'] },
+  { system: 'ashby', domains: ['ashbyhq.com'] },
+  { system: 'jobvite', domains: ['jobvite.com'] },
+  { system: 'brassring', domains: ['brassring.com'] },
+  { system: 'successfactors', domains: ['successfactors.com', 'successfactors.eu', 'sapsf.com', 'sapsf.eu'] },
 ];
 
-// Company patterns that strongly indicate a specific ATS
-const COMPANY_ATS_MAP: Array<{ pattern: RegExp; system: AtsSystem }> = [
-  { pattern: /google|alphabet|youtube|deepmind|waymo/i, system: 'greenhouse' },
-  { pattern: /stripe|linear|vercel|notion|figma|loom|mercury/i, system: 'lever' },
-  { pattern: /salesforce|oracle|sap|general motors|ford|boeing|lockheed|deloitte|jpmorgan|bank of america|wells fargo|walmart/i, system: 'workday' },
-  { pattern: /mckinsey|bain|bcg|accenture|ibm|att|verizon|fedex|ups/i, system: 'brassring' },
-  { pattern: /amazon|aws/i, system: 'icims' },
-  { pattern: /meta|facebook/i, system: 'greenhouse' },
-  { pattern: /microsoft|linkedin/i, system: 'icims' },
-];
+// Hosts written in the text: "https://jobs.lever.co/acme", "jobs.lever.co/acme",
+// "apply at acme.wd5.myworkdayjobs.com", "mail from Humana@myworkday.com". A
+// host is two or more labels. The text is read in one pass (S13-005 review):
+// the pattern this replaced backtracked on every dotted run, so 15,000
+// characters of "ab.ab.ab..." took seconds. A run of host characters is a
+// host when every label is a DNS label and the last is a top-level name, it
+// does not start inside a longer word, and it ends at a URL boundary, or at a
+// sentence's full stop ("To apply visit jobs.lever.co.").
+const LABEL = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/i;
+const TOP_LEVEL = /^[a-z]{2,24}$/i;
+const HOST_END = /[\/:?#&\s"'<>),;]/;
+const isHostChar = (c: number) =>
+  (c >= 97 && c <= 122) || (c >= 65 && c <= 90) || (c >= 48 && c <= 57) || c === 46 || c === 45;
+
+function isHost(run: string): boolean {
+  const labels = run.split('.');
+  return labels.length >= 2 && TOP_LEVEL.test(labels[labels.length - 1]) && labels.every(l => LABEL.test(l));
+}
+
+/** The hosts named in a text, lower-cased. */
+export function hostsIn(text: string): string[] {
+  const hosts: string[] = [];
+  const n = text.length;
+  let i = 0;
+  while (i < n) {
+    if (!isHostChar(text.charCodeAt(i))) { i++; continue; }
+    const start = i;
+    while (i < n && isHostChar(text.charCodeAt(i))) i++;
+    const before = text[start - 1];
+    // Inside a longer word, no. After "@" yes: a posting that says its mail
+    // comes from "@myworkday.com" or "@talent.icims.com" names its system.
+    if (before && /[\p{L}\p{N}_]/u.test(before)) continue;
+    let run = text.slice(start, i);
+    const after = text[i];
+    if (run.endsWith('.') && (after === undefined || /\s/.test(after))) run = run.slice(0, -1);
+    else if (after !== undefined && !HOST_END.test(after)) continue;
+    if (isHost(run)) hosts.push(run.toLowerCase());
+  }
+  return hosts;
+}
+
+// A link pasted through a redirect or a safe-links wrapper arrives
+// percent-encoded ("linkedin.com/redir/redirect?url=https%3A%2F%2Fjobs.
+// smartrecruiters.com%2FAcme"): LinkedIn, Google and Outlook all rewrite links
+// this way (S13-005 recheck: 189 of 303 such postings lost their system). The
+// URL punctuation is decoded in a copy, twice for a link wrapped twice, and
+// both copies are read. The host check itself is unchanged.
+const URL_ESCAPES: Record<string, string> = { '2f': '/', '3a': ':', '2e': '.', '3f': '?', '23': '#', '26': '&', '3d': '=', '25': '%' };
+function decodeUrlPunctuation(text: string): string {
+  const once = (t: string) => t.replace(/%(2f|3a|2e|3f|23|26|3d|25)/gi, (_, h: string) => URL_ESCAPES[h.toLowerCase()]);
+  return once(once(text));
+}
 
 export function detectAtsSystem(jobDescriptionText: string | null | undefined, companyName?: string): AtsSystem {
   if (!jobDescriptionText && !companyName) return 'unknown';
-
-  const combined = `${jobDescriptionText || ''} ${companyName || ''}`;
-
-  // URL-based detection (highest confidence)
-  for (const { system, patterns } of ATS_DETECTION_SIGNALS) {
-    if (patterns.some(p => p.test(combined))) return system;
+  const text = `${jobDescriptionText || ''} ${companyName || ''}`;
+  const hosts = hostsIn(text);
+  if (text.includes('%')) hosts.push(...hostsIn(decodeUrlPunctuation(text)));
+  for (const { system, domains } of ATS_HOSTS) {
+    if (hosts.some(h => domains.some(d => h === d || h.endsWith(`.${d}`)))) return system;
   }
-
-  // Company name inference (medium confidence)
-  for (const { pattern, system } of COMPANY_ATS_MAP) {
-    if (pattern.test(combined)) return system;
-  }
-
+  // A Greenhouse board embedded on the employer's own site keeps Greenhouse's
+  // job id in the link ("teneo.com/careers/...?gh_jid=7786600003"): 128 of
+  // 1,224 real Greenhouse apply links carry it, and none of 11,191 links from
+  // six other vendors.
+  if (GREENHOUSE_JOB_ID.test(`${jobDescriptionText || ''}`) || (text.includes('%') && GREENHOUSE_JOB_ID.test(decodeUrlPunctuation(jobDescriptionText || '')))) return 'greenhouse';
   return 'unknown';
+}
+const GREENHOUSE_JOB_ID = /[?&]gh_jid=\d/i;
+
+/** What the page shows for a detected system: its name and how well it parses, never the raw id. */
+export function atsProfileOf(atsSystem: AtsSystem): { name: string; parsingStrength: 'strong' | 'moderate' | 'weak' } {
+  const profile = ATS_PROFILES[atsSystem] ?? ATS_PROFILES.unknown;
+  return { name: profile.name, parsingStrength: profile.parsingStrength };
 }
 
 export function formatAtsSystemForPrompt(atsSystem: AtsSystem, resumeText: string): string {
@@ -1208,6 +1388,23 @@ export interface CompetitiveGapResult {
   gapScore: number;                 // 0-100, lower = more gaps
 }
 
+// The scanner's fields whose work is building and running software, which
+// read technology's list. Measured by posting title on 5,499 real postings
+// (the three wave corpora, deduplicated; recheck 2026-11-01), the share of
+// technology's entry/mid/senior terms a posting holds:
+//   software (n 265)            15.1 / 10.3 / 16.2
+//   data engineering (n 29)     15.1 /  8.2 / 17.6
+//   data science (n 42)         12.2 /  2.4 / 10.7
+//   machine learning (n 33)      7.2 /  5.7 / 12.7
+//   cybersecurity (n 32)         4.3 / 10.2 / 11.6
+//   healthcare (n 242)           0.4 /  3.0 /  6.9
+//   non-software eng. (n 59)     1.1 /  1.5 /  7.5
+// Only data engineering reads them as software does at every level; data
+// science, machine learning and cybersecurity fall to the healthcare rate at
+// one level or another, so none of the three borrows the list (no list, no
+// claim) until a larger corpus shows otherwise.
+const SOFTWARE_FIELDS: ReadonlySet<string> = new Set(['data_engineering']);
+
 export function analyzeCompetitiveKeywordGap(
   resumeText: string,
   industry: string,
@@ -1215,7 +1412,11 @@ export function analyzeCompetitiveKeywordGap(
 ): CompetitiveGapResult {
   const lower = resumeText.toLowerCase();
   const level = ['entry', 'mid', 'senior', 'executive'].includes(seniorityLevel) ? seniorityLevel : 'mid';
-  const industryKws = COMPETITIVE_KEYWORDS[industry]?.[level] || COMPETITIVE_KEYWORDS['technology'][level];
+  // Only the field's own list (register S13-010): technology's stood in for
+  // every field without one, so a teacher was told she lacked microservices
+  // and CI/CD. No list, no claim. The fields whose work is building and
+  // running software read technology's list (see SOFTWARE_FIELDS).
+  const industryKws = COMPETITIVE_KEYWORDS[SOFTWARE_FIELDS.has(industry) ? 'technology' : industry]?.[level] ?? [];
 
   const present = industryKws.filter(kw => hasWholeTerm(lower, kw));
   const missing = industryKws.filter(kw => !hasWholeTerm(lower, kw));
@@ -1591,40 +1792,13 @@ const PHRASE_PATTERNS: Record<string, RegExp[]> = {
 };
 
 /**
- * Check whether a multi-word phrase appears in resume text using phrase-aware matching.
- * Handles hyphenation, spacing variants, and abbreviations better than simple includes().
+ * Whether the résumé carries a keyword or phrase: hyphen, spacing and
+ * no-space forms, a plural, and an abbreviation or its expansion, each as a
+ * token of its own (resumeHasTerm). Every step used to be includes(), so
+ * "html" held "ml" and "build" held "ui" (register S13-004).
  */
 export function phraseMatchesResume(phrase: string, resumeText: string): boolean {
-  const lower = resumeText.toLowerCase();
-  const norm = phrase.toLowerCase().trim();
-
-  // 1. Direct substring (fast path)
-  if (lower.includes(norm)) return true;
-
-  // 2. No-space variant ("fullstack", "cicd")
-  if (lower.includes(norm.replace(/[\s\-\/]+/g, ''))) return true;
-
-  // 3. Hyphen ↔ space swap
-  if (lower.includes(norm.replace(/\s+/g, '-'))) return true;
-  if (lower.includes(norm.replace(/-/g, ' '))) return true;
-
-  // 4. Abbreviation expansion — "ml" ↔ "machine learning"
-  const abbrevMap: Record<string, string> = {
-    'ml': 'machine learning', 'dl': 'deep learning', 'nlp': 'natural language processing',
-    'cv': 'computer vision', 'ux': 'user experience', 'ui': 'user interface',
-    'p&l': 'profit and loss', 'pl': 'profit and loss', 'm&a': 'mergers and acquisitions',
-    'dcf': 'discounted cash flow', 'roi': 'return on investment', 'kpi': 'key performance indicator',
-    'seo': 'search engine optimization', 'sem': 'search engine marketing',
-    'crm': 'customer relationship management', 'ehr': 'electronic health records',
-    'ci/cd': 'continuous integration', 'oop': 'object oriented programming',
-  };
-  if (abbrevMap[norm] && lower.includes(abbrevMap[norm])) return true;
-  // Check if phrase matches an abbreviation in the resume
-  for (const [abbrev, expanded] of Object.entries(abbrevMap)) {
-    if (norm === expanded && lower.includes(abbrev)) return true;
-  }
-
-  return false;
+  return resumeHasTerm(resumeText, phrase);
 }
 
 /**

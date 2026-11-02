@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ThumbsUp, ThumbsDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,6 +19,7 @@ export function ScanFeedback({
   resumeWordCount,
   visitorId,
 }: ScanFeedbackProps) {
+  const { t } = useTranslation();
   const [submitted, setSubmitted] = useState<"up" | "down" | null>(null);
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -33,7 +35,7 @@ export function ScanFeedback({
       // 100% of submissions were discarded while the UI said "Thanks for the
       // feedback!". Same silent-swallow shape as the analytics-visitor-id
       // incident. Check the error and only claim success when there was one.
-      const res = await (supabase.rpc as unknown as (fn: string, args: Record<string, unknown>) => Promise<{ error: unknown }>)("record_scan_feedback", {
+      const res = await (supabase.rpc as unknown as (fn: string, args: Record<string, unknown>) => Promise<{ data?: unknown; error: unknown }>)("record_scan_feedback", {
         p_visitor_id: visitorId ?? null,
         p_rating: rating,
         p_industry: industry,
@@ -42,9 +44,13 @@ export function ScanFeedback({
         p_resume_word_count: resumeWordCount ?? null,
         p_feedback_text: null,
       });
-      if (res?.error) {
+      // record_scan_feedback answers false when its budget skipped the
+      // insert (20261101150000, S13-057): that vote was not kept either. The
+      // void definition before that migration answers no data, read as
+      // stored, as it always was.
+      if (res?.error || res?.data === false) {
         // Never thank someone for something we did not record.
-        console.warn("[scan-feedback] not recorded:", res.error);
+        console.warn("[scan-feedback] not recorded:", res?.error ?? "skipped by the write budget");
         setFailed(true);
         return;
       }
@@ -60,7 +66,7 @@ export function ScanFeedback({
   return (
     <div className="flex items-center gap-3 py-4">
       <span className="text-sm text-muted-foreground">
-        {submitted ? "Thanks for the feedback!" : "Was this analysis helpful?"}
+        {submitted ? t("scanFeedback.thanks") : t("scanFeedback.question")}
       </span>
       {!submitted && (
         <>
@@ -72,7 +78,7 @@ export function ScanFeedback({
             className="gap-1.5"
           >
             <ThumbsUp className="h-3.5 w-3.5" />
-            Yes
+            {t("scanFeedback.yes")}
           </Button>
           <Button
             variant="outline"
@@ -82,7 +88,7 @@ export function ScanFeedback({
             className="gap-1.5"
           >
             <ThumbsDown className="h-3.5 w-3.5" />
-            No
+            {t("scanFeedback.no")}
           </Button>
         </>
       )}
@@ -95,7 +101,7 @@ export function ScanFeedback({
         // Say so. Silently eating it is what produced a year of phantom
         // "Thanks for the feedback!" against a table that does not exist.
         <span className="text-xs text-muted-foreground">
-          Couldn't save that — nothing was recorded.
+          {t("scanFeedback.notSaved")}
         </span>
       )}
     </div>

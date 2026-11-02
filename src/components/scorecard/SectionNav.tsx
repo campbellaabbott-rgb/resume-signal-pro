@@ -13,6 +13,16 @@ interface SectionNavProps {
   className?: string;
 }
 
+/**
+ * The fixed site header's bottom edge (Header.tsx: fixed, top 0, h-14 /
+ * lg:h-16). The nav sticks just below it (S13-056): at top 0 it sat entirely
+ * under the header and vanished the moment it stuck.
+ */
+function headerBottom(): number {
+  const header = typeof document !== "undefined" ? document.querySelector<HTMLElement>('header[role="banner"]') : null;
+  return header ? Math.max(0, header.getBoundingClientRect().bottom) : 0;
+}
+
 export function SectionNav({ sections, className }: SectionNavProps) {
   const [activeSection, setActiveSection] = useState(sections[0]?.id || "");
   const [isSticky, setIsSticky] = useState(false);
@@ -22,10 +32,12 @@ export function SectionNav({ sections, className }: SectionNavProps) {
 
   useEffect(() => {
     const handleScroll = () => {
-      // Determine sticky state
+      // Stuck once it reaches the header's bottom edge, where it sticks.
+      const below = headerBottom();
+      const navHeight = navRef.current?.offsetHeight ?? 0;
       if (navRef.current) {
         const rect = navRef.current.getBoundingClientRect();
-        setIsSticky(rect.top <= 0);
+        setIsSticky(rect.top <= below + 1);
       }
 
       // Determine active section based on scroll position
@@ -34,7 +46,7 @@ export function SectionNav({ sections, className }: SectionNavProps) {
         const el = document.getElementById(section.id);
         if (el) {
           const rect = el.getBoundingClientRect();
-          if (rect.top <= 120) {
+          if (rect.top <= below + navHeight + 16) {
             current = section.id;
           }
         }
@@ -59,7 +71,8 @@ export function SectionNav({ sections, className }: SectionNavProps) {
   const scrollToSection = (id: string) => {
     const el = document.getElementById(id);
     if (el) {
-      const offset = 80;
+      // Land the section below the header and the stuck nav, not under them.
+      const offset = headerBottom() + (navRef.current?.offsetHeight ?? 0) + 8;
       const y = el.getBoundingClientRect().top + window.scrollY - offset;
       window.scrollTo({ top: y, behavior: "smooth" });
     }
@@ -69,7 +82,7 @@ export function SectionNav({ sections, className }: SectionNavProps) {
     <div
       ref={navRef}
       className={cn(
-        "sticky top-0 z-30 -mx-1 px-1 transition-all duration-200",
+        "sticky top-14 lg:top-16 z-30 -mx-1 px-1 transition-all duration-200",
         isSticky && "bg-background/95 backdrop-blur-md border-b border-border/50 shadow-sm",
         className
       )}

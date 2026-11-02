@@ -11,7 +11,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { FIX_POINTS_BASIS } from "@/lib/report-basis";
+import { bandTone, scoreBand, scoreTone } from "@/lib/score-bands";
 
 interface ScoreHeroProps {
   candidateName?: string | null;
@@ -65,25 +65,28 @@ function RadialGauge({ score, size = 140, strokeWidth = 10 }: { score: number; s
     return () => cancelAnimationFrame(raf);
   }, [score]);
 
-  // Bands match the scoring rubric in free-keyword-scan/index.ts (85/70/50) so the
-  // visual treatment doesn't soften a score the model has already judged as weak.
-  // Color follows the ANIMATED value so it visibly shifts bands during the climb.
-  const getColor = () => {
-    if (animatedScore >= 70) return "hsl(var(--success))";
-    if (animatedScore >= 50) return "hsl(var(--warning))";
-    return "hsl(var(--destructive))";
-  };
+  // One set of bands for the whole report (src/lib/score-bands.ts, S13-019):
+  // the scanner's own rubric, 85/70/50. Colour follows the ANIMATED value so
+  // it visibly shifts bands during the climb; the label and the data
+  // attributes name where the final score lands.
+  const getColor = () => `hsl(var(--${scoreTone(animatedScore)}))`;
 
   const { t } = useTranslation();
-  const getLabel = () => {
-    if (score >= 85) return t("scoreHero.gauge.excellent");
-    if (score >= 70) return t("scoreHero.gauge.good");
-    if (score >= 50) return t("scoreHero.gauge.needsImprovement");
-    return t("scoreHero.gauge.poor");
-  };
+  const band = scoreBand(score);
+  const label = {
+    excellent: t("scoreHero.gauge.excellent"),
+    good: t("scoreHero.gauge.good"),
+    fair: t("scoreHero.gauge.needsImprovement"),
+    weak: t("scoreHero.gauge.poor"),
+  }[band];
 
   return (
-    <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
+    <div
+      className="relative flex items-center justify-center"
+      style={{ width: size, height: size }}
+      data-score-band={band}
+      data-score-tone={bandTone(band)}
+    >
       <svg
         width={size}
         height={size}
@@ -125,7 +128,7 @@ function RadialGauge({ score, size = 140, strokeWidth = 10 }: { score: number; s
           {animatedScore}
         </span>
         <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mt-0.5">
-          {getLabel()}
+          {label}
         </span>
       </div>
     </div>
@@ -242,15 +245,17 @@ export function ScoreHero({
           )}
         </div>
 
-        {/* Center: Gauge + info */}
-        <div className="flex items-center gap-6 sm:gap-8">
+        {/* Center: Gauge + info. Below sm the gauge stacks above the info
+            block: side by side, a 140 px gauge left a phone ~100 px for the
+            role chip, and "Registered Nurse" widened the page (S13-023). */}
+        <div data-hero-row className="flex flex-col items-center gap-4 sm:flex-row sm:gap-8">
           {/* Radial gauge */}
           <div className="shrink-0">
             <RadialGauge score={atsScoreEstimate} />
           </div>
 
           {/* Info block */}
-          <div className="flex-1 min-w-0">
+          <div data-hero-info className="w-full min-w-0 sm:flex-1">
             <h3 className="text-lg sm:text-xl font-bold text-foreground mb-1 truncate">
               {firstName
                 ? t("scoreHero.greeting", { name: firstName })
@@ -263,10 +268,12 @@ export function ScoreHero({
                 2026-10-27). */}
             <p className="text-sm font-medium mb-2 text-muted-foreground">{t("scoreHero.basis")}</p>
             {currentRole && (
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 mb-2 rounded-lg bg-primary/10 border border-primary/20 text-xs font-medium text-primary">
-                <Briefcase className="w-3 h-3" />
-                <span className="text-muted-foreground">{t("scoreHero.currentRole")}</span>
-                <span className="font-semibold truncate max-w-[200px]">{currentRole}</span>
+              // Capped at its container, with the role (never the label)
+              // truncating: a long title ends in an ellipsis inside the card.
+              <div data-current-role-chip className="flex w-fit max-w-full min-w-0 items-center gap-1.5 px-2.5 py-1 mb-2 rounded-lg bg-primary/10 border border-primary/20 text-xs font-medium text-primary">
+                <Briefcase className="w-3 h-3 shrink-0" />
+                <span className="shrink-0 text-muted-foreground">{t("scoreHero.currentRole")}</span>
+                <span data-current-role className="min-w-0 truncate font-semibold" title={currentRole}>{currentRole}</span>
               </div>
             )}
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground mb-3">
@@ -300,9 +307,10 @@ export function ScoreHero({
             {projectedScore && projectedScore > atsScoreEstimate && (
               <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-success/10 border border-success/20 text-xs font-medium text-success">
                 <TrendingUp className="w-3.5 h-3.5" />
-                <span title={FIX_POINTS_BASIS}>
-                  Fix the issues below → about <span className="font-bold text-sm">{projectedScore}</span>
-                  <span className="text-success/70 ml-0.5">(+{projectedScore - atsScoreEstimate} pts, a rough guide)</span>
+                {/* In the reader's language (S13-122), with the simulator's basis. */}
+                <span data-hero-projection title={t("freeResults.scoreSimulator.basis")}>
+                  {t("scoreHero.projection.lead")} <span className="font-bold text-sm">{projectedScore}</span>
+                  <span className="text-success/70 ml-0.5">{t("scoreHero.projection.gain", { count: projectedScore - atsScoreEstimate })}</span>
                 </span>
               </div>
             )}

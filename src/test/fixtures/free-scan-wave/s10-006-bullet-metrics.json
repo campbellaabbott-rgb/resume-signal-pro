@@ -1,0 +1,976 @@
+{
+ "about": "S10-006 slice of ~/.config/resumebooster/free-scan-wave-corpora/S10-006/corpus.json: real sentences from job postings, labelled by hand. metric = the label; main = f8d72a9b QUANT_PATTERN.",
+ "summary": {
+  "sentencesWithDigits": 8509,
+  "cases": 711,
+  "disagreements": 5105,
+  "unlabelled": 0,
+  "mainRight": 79,
+  "mainWrong": 632,
+  "branchRight": 709,
+  "branchWrong": 2,
+  "manualAgreementSample": 56,
+  "manualAgreementSampleDisputed": 2
+ },
+ "cases": [
+  {
+   "text": "For more information regarding your (EEO) rights as an applicant, please visit the following websites: https://www.eeoc.gov/sites/default/files/2023-06/22-088_EEOC_KnowYourRights6.12ScreenRdr.pdf",
+   "metric": false,
+   "main": false,
+   "source": "workday:abb~wd3~external_career_page:JR00036560-1",
+   "why": "agreement sample checked by hand"
+  },
+  {
+   "text": "For candidates located in our Tier 1 (NYC/Bay Area) markets, the base salary pay range for this role is below.",
+   "metric": false,
+   "main": false,
+   "source": "greenhouse:flex:4745048005",
+   "why": "agreement sample checked by hand"
+  },
+  {
+   "text": "Arsenal-2 is purpose-built to break long-standing industrial bottlenecks and scale production of critical components for the Navy's Virginia-class attack submarines to support fleet requirements.",
+   "metric": false,
+   "main": false,
+   "source": "greenhouse:andurilindustries:5268882007",
+   "why": "agreement sample checked by hand"
+  },
+  {
+   "text": "We Elev8 each other.",
+   "metric": false,
+   "main": false,
+   "source": "workday:pax8inc~wd12~Pax8Careers:R-102490",
+   "why": "agreement sample checked by hand"
+  },
+  {
+   "text": "High proficiency in 3D CAD (SolidWorks preferred), top-level assembly integration, standard GD&T application, tolerance stack-up analysis, and producing manufacturing-ready drawing packages.",
+   "metric": false,
+   "main": false,
+   "source": "greenhouse:wing:8882200002",
+   "why": "agreement sample checked by hand"
+  },
+  {
+   "text": "· Own the Governance, Risk and Compliance (GRC) program: Cybersecurity Maturity Model Certification (CMMC), Service Organization Control 2 (SOC 2), and International Traffic in Arms Regulations (ITAR) / export-control readiness;",
+   "metric": false,
+   "main": false,
+   "source": "workday:lyten~wd503~Lyten_External_Career_Site:JR100951",
+   "why": "agreement sample checked by hand"
+  },
+  {
+   "text": "Guide and lead risk management activities, including failure modes and effects analysis (FMEA) and hazards analysis, in alignment with ISO 14971",
+   "metric": false,
+   "main": false,
+   "source": "greenhouse:echo:4450984009",
+   "why": "agreement sample checked by hand"
+  },
+  {
+   "text": "When life gets tough, we’re here with 24/7 EAP counseling, virtual mental health support, a food pantry, PTO donation program, and professional attire through the Classy Closet.",
+   "metric": false,
+   "main": false,
+   "source": "workday:nyuhs~wd12~nyuhscareers1:R0000015925",
+   "why": "agreement sample checked by hand"
+  },
+  {
+   "text": "We're the #1 platform for AI infrastructure, trusted by the world's fastest-growing AI cloud builders.",
+   "metric": false,
+   "main": false,
+   "source": "ashby:vClusterLabs:acc888cc-65f3-4430-b88b-552ac56a6d93",
+   "why": "agreement sample checked by hand"
+  },
+  {
+   "text": "DensityAI sponsors qualified candidates for H-1B, O-1, TN, E-3, and other employment-based visas, and we welcome applicants on F-1 OPT and STEM-OPT.",
+   "metric": false,
+   "main": true,
+   "source": "greenhouse:densityai:4464119009",
+   "why": "401k / E-3 is a plan or visa name, not a measurement"
+  },
+  {
+   "text": "401K matching and access to financial advisors",
+   "metric": false,
+   "main": true,
+   "source": "greenhouse:formlabs:8267681",
+   "why": "401k is a plan name, not a measurement"
+  },
+  {
+   "text": "Founded in 1998, Aspire Public Schools has served scholars and communities across California for nearly three decades.",
+   "metric": false,
+   "main": false,
+   "source": "workable:stronger-consulting:EF87B9AC2C",
+   "why": "agreement sample checked by hand"
+  },
+  {
+   "text": "Total compensation package will include base salary + bonus/commission + equity + benefits (health, dental, life, 401k, and paid time off).",
+   "metric": false,
+   "main": true,
+   "source": "greenhouse:celonis:7995431003",
+   "why": "held-out: 401k is a plan name, not a measurement"
+  },
+  {
+   "text": "Location: Remote, Minneapolis, Minnesota 55403-2581",
+   "metric": false,
+   "main": false,
+   "source": "workday:commercebank~wd1~CommerceJobs:38595-1",
+   "why": "agreement sample checked by hand"
+  },
+  {
+   "text": "Working knowledge of US GAAP fair value guidance (ASC 820, ASC 946), IPEV guidelines and AICPA PE/VC valuation guide",
+   "metric": false,
+   "main": false,
+   "source": "workday:nb~wd1~NBCareers:R0012505-3",
+   "why": "agreement sample checked by hand"
+  },
+  {
+   "text": "Schedule: 6:00am-4:00pm Monday through Friday, and every other Saturday with the opportunity for overtime.",
+   "metric": false,
+   "main": false,
+   "source": "workday:cat~wd5~caterpillarcareers:R0000401461",
+   "why": "agreement sample checked by hand"
+  },
+  {
+   "text": "and/or (2) Engineering Technical Systems, using computer-aided design (CAD), Building Information Modeling (BIM), or similar software to develop project deliverables;",
+   "metric": false,
+   "main": false,
+   "source": "usajobs:usajobs:889692000",
+   "why": "agreement sample checked by hand"
+  },
+  {
+   "text": "Integrate cost data with scheduling tools (Primavera P6).",
+   "metric": false,
+   "main": false,
+   "source": "teamtailor:orbia:8553391",
+   "why": "agreement sample checked by hand"
+  },
+  {
+   "text": "Applicants seeking Veteran's Preference must attach a DD-214 Member-4 Form (Certificate of Release or Discharge from Active Duty) to their applications.",
+   "metric": false,
+   "main": false,
+   "source": "workday:nc~wd108~NC_Careers:JR-108339",
+   "why": "held-out: DD-214 Member-4 is a form name; the branch called it a group size before the letter-hyphen edge rule (fixed)"
+  },
+  {
+   "text": "Anticipated start date of January 2027, with flexibility to accommodate the selected candidate’s availability.",
+   "metric": false,
+   "main": false,
+   "source": "icims:jobs.statefarm.com:46792",
+   "why": "agreement sample checked by hand"
+  },
+  {
+   "text": "In addition to salary, full-time employees receive equity compensation as well as benefits including medical, dental, and vision insurance, a 401k retirement plan, short & long term disability and life insurance.",
+   "metric": false,
+   "main": true,
+   "source": "greenhouse:muonspace:5274545007",
+   "why": "401k / E-3 is a plan or visa name, not a measurement"
+  },
+  {
+   "text": "• 401k with generous company match",
+   "metric": false,
+   "main": true,
+   "source": "greenhouse:grvty:4462299009",
+   "why": "401k is a plan name, not a measurement"
+  },
+  {
+   "text": "401(k) Savings and Investment Plan with company match",
+   "metric": false,
+   "main": false,
+   "source": "oracle:eeho~us2~CX_1:348698",
+   "why": "agreement sample checked by hand"
+  },
+  {
+   "text": "3M Global Terms of Use and Privacy Statement",
+   "metric": false,
+   "main": true,
+   "source": "workday:3m~wd1~Search:R01172363-1",
+   "why": "3M is a company name"
+  },
+  {
+   "text": "401k with company match",
+   "metric": false,
+   "main": true,
+   "source": "rippling:overland-ai:62b8cb30-f687-4518-b6d6-d369e9e9ab36",
+   "why": "held-out: 401k is a plan name, not a measurement"
+  },
+  {
+   "text": "CACI is seeking an experienced, hands-on Tier 2 Systems Administrator to support mission-critical IT infrastructure and applications in a secure, 24×7 operational environment.",
+   "metric": false,
+   "main": false,
+   "source": "workday:caci~wd1~External:329106",
+   "why": "agreement sample checked by hand"
+  },
+  {
+   "text": "We offer competitive benefits package including paid time off, healthcare benefits, supplemental benefits, 401k including an employer match, discount perks, rewards, and more.",
+   "metric": false,
+   "main": true,
+   "source": "icims:careers.kentro.us:4486",
+   "why": "401k / E-3 is a plan or visa name, not a measurement"
+  },
+  {
+   "text": "550 Cumberland St., Room 246",
+   "metric": false,
+   "main": false,
+   "source": "workday:uottawa~wd3~uOttawa_External_Career_Site:JR39685",
+   "why": "agreement sample checked by hand"
+  },
+  {
+   "text": "Basic understanding of networking hardware and cabling types (Cat5e/6, fiber).",
+   "metric": false,
+   "main": false,
+   "source": "greenhouse:eositsolutions:8857223002",
+   "why": "agreement sample checked by hand"
+  },
+  {
+   "text": "Ranked by ENR as the #1 Power Contractor, we specialize in natural gas, oil, biomass, and waste-to-energy projects.",
+   "metric": false,
+   "main": false,
+   "source": "icims:careers.mastec.com:71037",
+   "why": "agreement sample checked by hand"
+  },
+  {
+   "text": "2) Platform adoption",
+   "metric": false,
+   "main": false,
+   "source": "workable:zippd:C35768F5C3",
+   "why": "agreement sample checked by hand"
+  },
+  {
+   "text": "Other rewards may include an annual cash bonus and a comprehensive benefits package, including but not limited to medical, dental, vision, life insurance, and 401(k).",
+   "metric": false,
+   "main": false,
+   "source": "greenhouse:networkfirms:6221300004",
+   "why": "agreement sample checked by hand"
+  },
+  {
+   "text": "Ten consecutive years in a row as a “Best Place to Work” by Zweig Group (#11)",
+   "metric": false,
+   "main": false,
+   "source": "greenhouse:atwellgroup:5272825007",
+   "why": "agreement sample checked by hand"
+  },
+  {
+   "text": "We offer our full-time employees a competitive benefits package including, but not limited to: medical, dental, vision, and life insurances, short-term and long-term disability, 401k employer match, and paid time off.",
+   "metric": false,
+   "main": true,
+   "source": "paylocity:521982c3-477f-43db-b896-99ec8fe49a5a:4611633",
+   "why": "401k / E-3 is a plan or visa name, not a measurement"
+  },
+  {
+   "text": "Proficiency with project management and reporting tools such as Primavera P6, MS Project, Procore, Bluebeam, or similar systems.",
+   "metric": false,
+   "main": false,
+   "source": "workday:stvinc~wd5~stv:JR6387",
+   "why": "agreement sample checked by hand"
+  },
+  {
+   "text": "The company has repeatedly been recognized as a Leader in marketing technology by industry analysts, and was voted a G2 “Best of Marketing and Digital Advertising Software Product” in 2025.",
+   "metric": false,
+   "main": false,
+   "source": "greenhouse:braze:8186643",
+   "why": "agreement sample checked by hand"
+  },
+  {
+   "text": "V7 Go is a platform for building and deploying custom AI agents, made for the document-heavy work finance and insurance teams handle every day.",
+   "metric": false,
+   "main": false,
+   "source": "ashby:v7labs.com:6c830829-d9fb-4b58-8e48-e483dec25813",
+   "why": "agreement sample checked by hand"
+  },
+  {
+   "text": "All Level 38 and more senior roles may also be eligible for non-qualified Deferred Compensation and Deferred Savings Plans",
+   "metric": false,
+   "main": false,
+   "source": "oracle:eedu~em3~CX_1003:202605882",
+   "why": "agreement sample checked by hand"
+  },
+  {
+   "text": "This position is expected to work out of our office at 2765 Lafayette St.",
+   "metric": false,
+   "main": false,
+   "source": "adp:88c98010-aa81-453d-a520-789a95022ee5:9207301272831_1",
+   "why": "agreement sample checked by hand"
+  },
+  {
+   "text": "Competitive 401k package .",
+   "metric": false,
+   "main": true,
+   "source": "workable:wealth-recruitment-llc:56D6F5F878",
+   "why": "401k / E-3 is a plan or visa name, not a measurement"
+  },
+  {
+   "text": "GL-09: Experience in teaching programs such as Literacy, General Educational Development (GED), and English-as-a-second language (ESL).",
+   "metric": false,
+   "main": false,
+   "source": "usajobs:usajobs:889593900",
+   "why": "agreement sample checked by hand"
+  },
+  {
+   "text": "106 not to discriminate on the basis of sex or gender, and does not discriminate on the basis of sex or gender in the operation of education programs and activities.",
+   "metric": false,
+   "main": false,
+   "source": "workday:montclair~wd1~JobOpportunities:R1005034",
+   "why": "agreement sample checked by hand"
+  },
+  {
+   "text": "ACS is also tasked with auditing DCAS program to reimburse Non-Public schools (Local Law 2 of 2016) for allowable costs associated with security guard services to help provide assurance that this program is operating within the stated parameters.",
+   "metric": false,
+   "main": false,
+   "source": "smartrecruiters:CityOfNewYork:3743990016391856",
+   "why": "agreement sample checked by hand"
+  },
+  {
+   "text": "Experience with accounting software, preferably SAP S/4HANA",
+   "metric": false,
+   "main": false,
+   "source": "workable:foodics:915423BA12",
+   "why": "agreement sample checked by hand"
+  },
+  {
+   "text": "Rejoignez-nous et portez nos 4 valeurs :",
+   "metric": false,
+   "main": false,
+   "source": "teamtailor:techniquesolairesarl:8611098",
+   "why": "agreement sample checked by hand"
+  },
+  {
+   "text": "Retirement Plan 403(b) plans with employer matching contributions.",
+   "metric": false,
+   "main": false,
+   "source": "ukg:recruiting~VAL1004VVH~7a5186be-89cf-4eb5-b2e5-869118e3e2f0:fe5a8666-6af0-4c68-83b8-e40000ef4818",
+   "why": "agreement sample checked by hand"
+  },
+  {
+   "text": "When overtime is necessary, the schedule will shift to 7:30am to 5:00pm.",
+   "metric": false,
+   "main": false,
+   "source": "greenhouse:hexarmor:8042950003",
+   "why": "agreement sample checked by hand"
+  },
+  {
+   "text": "Primary Shift: 8:00 AM - 4:30 PM",
+   "metric": false,
+   "main": false,
+   "source": "workday:uvmhealth~wd1~EXTERNAL:R0091308",
+   "why": "agreement sample checked by hand"
+  },
+  {
+   "text": "401(k) with Company Match!",
+   "metric": false,
+   "main": false,
+   "source": "ukg:recruiting2~NEW1035NPSL~010c6bb6-999b-45ff-8e74-8a217ff36f22:4769635a-888a-40ce-9257-d8d255693755",
+   "why": "agreement sample checked by hand"
+  },
+  {
+   "text": "Possess a valid 5 driver's license and safe driving record,",
+   "metric": false,
+   "main": false,
+   "source": "workday:lkqcorp~wd5~ExternalCareerSite-LKQ:R72986",
+   "why": "'5 driver's license' is a licence class, not a count"
+  },
+  {
+   "text": "PRINCE2 / Agile Certification or experience gained",
+   "metric": false,
+   "main": false,
+   "source": "smartrecruiters:TurnerTownsend:744000157489650",
+   "why": "agreement sample checked by hand"
+  },
+  {
+   "text": "Eligible employees enjoy medical, dental, and vision insurance, paid time off, and a generous 401(k) matching program.",
+   "metric": false,
+   "main": false,
+   "source": "paylocity:bee5ae18-058e-4b3e-b456-2886dcb0a175:4606947",
+   "why": "agreement sample checked by hand"
+  },
+  {
+   "text": "Comprehensive Benefits Package: Medical, Dental, Vision, 401K with match, flexible spending accounts, paid time off , company holidays and much more!",
+   "metric": false,
+   "main": true,
+   "source": "icims:careers.benevis.com:13265",
+   "why": "401k / E-3 is a plan or visa name, not a measurement"
+  },
+  {
+   "text": "Dental365 - Croton on Hudson",
+   "metric": false,
+   "main": false,
+   "source": "greenhouse:dental365:8043135003",
+   "why": "agreement sample checked by hand"
+  },
+  {
+   "text": "As a Social Worker, you will manage a varied caseload and undertake assessments, reviews and support planning in line with the Care Act 2014.",
+   "metric": false,
+   "main": false,
+   "source": "oracle:effe~em3~CX_1:3096",
+   "why": "agreement sample checked by hand"
+  },
+  {
+   "text": "401k with generous company contributions",
+   "metric": false,
+   "main": true,
+   "source": "ukg:recruiting2~NAT1059NHTH~02b4dc60-27be-428b-aa7b-4f7b89a29f7a:5581abd9-d083-4d81-a89d-f59bed169d64",
+   "why": "held-out: 401k is a plan name, not a measurement"
+  },
+  {
+   "text": "Valid Class 5 driver's licence and access to a vehicle required.",
+   "metric": false,
+   "main": false,
+   "source": "bamboohr:apexgcs:135",
+   "why": "agreement sample checked by hand"
+  },
+  {
+   "text": "Health and financial well-being benefits for eligible associates (Medical, Dental, 401k and more!)",
+   "metric": false,
+   "main": true,
+   "source": "oracle:eofd~us6~CX_1:783335",
+   "why": "held-out: 401k is a plan name, not a measurement"
+  },
+  {
+   "text": "We also offer a 401(k) retirement plan as well as incentive and recognition programs.",
+   "metric": false,
+   "main": false,
+   "source": "workday:powerdesigninc~wd5~externaljobboards:R12816-1",
+   "why": "agreement sample checked by hand"
+  },
+  {
+   "text": "Competitive salaries, quarterly bonus opportunities based on billable hours, paid time off, top-notch medical insurance with no copay for outpatient mental health access, paid parking or commuter benefits, and a robust 401k plan.",
+   "metric": false,
+   "main": true,
+   "source": "ukg:recruiting~LYD1001LYDR~3617b9b6-4f67-4235-bab5-87355a202415:839fb6c5-a39a-4793-b5ab-31ebb91bf834",
+   "why": "held-out: 401k is a plan name, not a measurement"
+  },
+  {
+   "text": "our benefits package is chock full of perks such as paid time off, health care opportunities, 401k matching, paid holiday and more.",
+   "metric": false,
+   "main": true,
+   "source": "paylocity:7a91257b-45bb-4120-90ae-fee824f4c4cd:4608975",
+   "why": "401k / E-3 is a plan or visa name, not a measurement"
+  },
+  {
+   "text": "Shift Timings - 12:30 – 21:30 PM IST",
+   "metric": false,
+   "main": false,
+   "source": "workday:bpinternational~wd3~bpcareers:RQ109175",
+   "why": "agreement sample checked by hand"
+  },
+  {
+   "text": "Wednesday - 09:00 - 21:00",
+   "metric": false,
+   "main": false,
+   "source": "workday:asda~wd103~AsdaJobs:R-109539",
+   "why": "agreement sample checked by hand"
+  },
+  {
+   "text": "• Expect paid time off, parental leave, 401K matching and an employee recognition program.",
+   "metric": false,
+   "main": true,
+   "source": "icims:talent.unitypoint.org:188916",
+   "why": "401k / E-3 is a plan or visa name, not a measurement"
+  },
+  {
+   "text": "To request an accommodation, contact a Human Resources Representative at (818) 717-1000 ext.",
+   "metric": false,
+   "main": false,
+   "source": "workday:ccrcca~wd1~Careers:JR103631",
+   "why": "agreement sample checked by hand"
+  },
+  {
+   "text": "n8n is the open workflow orchestration platform built for the new era of AI.",
+   "metric": false,
+   "main": false,
+   "source": "ashby:n8n:12d3b685-95b1-4152-b611-c82cd581e8fb",
+   "why": "agreement sample checked by hand"
+  },
+  {
+   "text": "Zion Lodge is in National Register of Historic Places designed in 1924 by Gilbert Stanley Underwood in the National Park Service rustic style.",
+   "metric": false,
+   "main": false,
+   "source": "workday:powdr~wd12~POWDR_Careers:JR7476",
+   "why": "agreement sample checked by hand"
+  },
+  {
+   "text": "Closing date: 23rd OCTOBER 2026",
+   "metric": false,
+   "main": false,
+   "source": "perks:workday:Airbus:10",
+   "why": "agreement sample checked by hand"
+  },
+  {
+   "text": "Juris Doctor Degree and at least 10+ years’ experience in US Employment and Labor Law (additional bachelor's degree in business or human resources preferred)",
+   "metric": true,
+   "main": false,
+   "source": "workday:abb~wd3~external_career_page:JR00036560-1",
+   "why": "disagreement reviewed by hand 2026-10-31: a real quantity"
+  },
+  {
+   "text": "12+ years of experience in fulfillment, distribution, 3PL or warehouse operations, including leadership of a high volume site",
+   "metric": true,
+   "main": false,
+   "source": "greenhouse:andurilindustries:5258897007",
+   "why": "disagreement reviewed by hand 2026-10-31: a real quantity"
+  },
+  {
+   "text": "- Comprehensive medical, dental, and vision coverage, with 100% of employee-only benefit premiums covered for most medical plans",
+   "metric": true,
+   "main": false,
+   "source": "ashby:vanta:0ab177a8-3ea8-4b91-9a55-bfef435b0cfc",
+   "why": "disagreement reviewed by hand (second pass): a real quantity"
+  },
+  {
+   "text": "- Comprehensive healthcare with 100% employer-paid medical coverage for employees (PPO Platinum plan with $0 deductible).",
+   "metric": true,
+   "main": false,
+   "source": "ashby:juicebox:386a5d74-ea06-4a8c-aeb5-c883fe55cf44",
+   "why": "disagreement reviewed by hand (second pass): a real quantity"
+  },
+  {
+   "text": "Ability and willingness to travel locally as needed in their market, if applicable, nationally for initial training (2 weeks) and then occasionally regionally and nationally for recruiting or training purposes.",
+   "metric": true,
+   "main": false,
+   "source": "workday:chenmed~wd1~ChenMed:R0049875",
+   "why": "disagreement reviewed by hand 2026-10-31: a real quantity"
+  },
+  {
+   "text": "- Have 12+ years of enterprise B2B sales experience, including 4+ years leading strategic or enterprise sales teams selling into financial services (banks, asset managers, hedge funds, PE firms), law firms, or a mix.",
+   "metric": true,
+   "main": false,
+   "source": "ashby:9fin:f585cf19-142f-4eea-8dc2-d2c312bc4fa4",
+   "why": "held-out disagreement reviewed by hand: a real quantity"
+  },
+  {
+   "text": "Base salary: $200,000 to $300,000 annually.",
+   "metric": true,
+   "main": false,
+   "source": "ashby:clera:0af5e7b1-13c1-4bc0-b962-139d30013f89",
+   "why": "disagreement reviewed by hand 2026-10-31: a real quantity"
+  },
+  {
+   "text": "As the Senior Director, Service Manager you will lead the Electrification Service team in the West US region, which comprises 18 states across five time zones.",
+   "metric": true,
+   "main": false,
+   "source": "workday:abb~wd3~external_career_page:JR00039242",
+   "why": "disagreement reviewed by hand (second pass): a real quantity"
+  },
+  {
+   "text": "In compliance with California and Colorado state law, the base salary range for this position is $250,000 to $300,000 per year.",
+   "metric": true,
+   "main": false,
+   "source": "greenhouse:flockhomes:4745234005",
+   "why": "disagreement reviewed by hand 2026-10-31: a real quantity"
+  },
+  {
+   "text": "Generous paid Parental Leave (up to 16 weeks)",
+   "metric": true,
+   "main": false,
+   "source": "greenhouse:formlabs:8267681",
+   "why": "disagreement reviewed by hand (second pass): a real quantity"
+  },
+  {
+   "text": "- You've built and scaled project teams across regions and time zones, align technical and commercial stakeholders under shared goals, and you'll travel 80-100% to active sites.",
+   "metric": true,
+   "main": false,
+   "source": "ashby:fluidstack:18af0603-cead-4bca-8dd0-0b95ea6a2cf8",
+   "why": "disagreement reviewed by hand (second pass): a real quantity"
+  },
+  {
+   "text": "15+ years in consulting, including leadership roles in capital markets or corporate & investment banking transformation, operating model design, technology enablement, or regulatory advisory.",
+   "metric": true,
+   "main": false,
+   "source": "smartrecruiters:Sia:744000156361899",
+   "why": "held-out disagreement reviewed by hand: a real quantity"
+  },
+  {
+   "text": "- 5+ years as a Director or VP of Finance, ideally in AI, SaaS, financial services, or banking.",
+   "metric": true,
+   "main": false,
+   "source": "ashby:interface-ai:03fb063f-c3d8-4e21-a079-1dfe5056d662",
+   "why": "disagreement reviewed by hand (second pass): a real quantity"
+  },
+  {
+   "text": "The base salary range is $300,000 - $350,000, plus annual & monthly KPI bonus potential.",
+   "metric": true,
+   "main": false,
+   "source": "greenhouse:goldenhippo:4741684005",
+   "why": "held-out disagreement reviewed by hand: a real quantity"
+  },
+  {
+   "text": "People Leadership & Development — 20%",
+   "metric": true,
+   "main": false,
+   "source": "paylocity:a12a5984-aab0-4cee-9ff7-9da7c897edaf:4584295",
+   "why": "disagreement reviewed by hand 2026-10-31: a real quantity"
+  },
+  {
+   "text": "- 28+ days of paid time off across PTO and wellbeing days, so you can show up at your best",
+   "metric": true,
+   "main": false,
+   "source": "ashby:scan-com:f81c62e3-fb82-46ad-95f6-6e08649e2cea",
+   "why": "held-out disagreement reviewed by hand: a real quantity"
+  },
+  {
+   "text": "8+ years of progressive accounting experience.",
+   "metric": true,
+   "main": false,
+   "source": "greenhouse:oldcastlebuildingenvelope:4465978009",
+   "why": "held-out disagreement reviewed by hand: a real quantity"
+  },
+  {
+   "text": "7+ years prior securities, banking, technology industry and/or job specific related experience",
+   "metric": true,
+   "main": false,
+   "source": "workday:rbc~wd3~RBCGLOBAL1:R-0000190897-1",
+   "why": "disagreement reviewed by hand (second pass): a real quantity"
+  },
+  {
+   "text": "4+ years experience in basic mechanical design",
+   "metric": true,
+   "main": false,
+   "source": "rippling:forterra:626b9679-0891-4b56-9aa8-ee4b61d41ee5",
+   "why": "disagreement reviewed by hand (second pass): a real quantity"
+  },
+  {
+   "text": "4 yrs of procurement experience.",
+   "metric": true,
+   "main": false,
+   "source": "workday:pae~wd1~Amentum_Careers:R0171267",
+   "why": "disagreement reviewed by hand 2026-10-31: a real quantity"
+  },
+  {
+   "text": "The ability to work a hybrid schedule, supporting 3 days onsite.",
+   "metric": true,
+   "main": false,
+   "source": "workday:moog~wd5~MOOG_External_Career_Site:R-26-18660",
+   "why": "held-out disagreement reviewed by hand: a real quantity"
+  },
+  {
+   "text": "You've acquired 5+ years of clinical experience in an advanced clinical institution performing complex structural heart work.",
+   "metric": true,
+   "main": false,
+   "source": "workday:philips~wd3~jobs-and-careers:592132-1",
+   "why": "disagreement reviewed by hand (second pass): a real quantity"
+  },
+  {
+   "text": "In lieu of degree, 9+ years of related experience with overall compensation, global compensation and plans outside the U.S.",
+   "metric": true,
+   "main": false,
+   "source": "workday:gdit~wd5~External_Career_Site:RQ229650-1",
+   "why": "held-out disagreement reviewed by hand: a real quantity"
+  },
+  {
+   "text": "1–2 years of experience in IT, networking, field service, or a related technical role (internships and school programs considered).",
+   "metric": true,
+   "main": false,
+   "source": "greenhouse:eositsolutions:8857223002",
+   "why": "disagreement reviewed by hand 2026-10-31: a real quantity"
+  },
+  {
+   "text": "Minimum 3 years of experience in warehouse coordination, logistics, or shipping/receiving.",
+   "metric": true,
+   "main": false,
+   "source": "ukg:recruiting~UPS1000UPNC~8278ab32-7638-486b-a889-8265d76f85da:6db3deb0-b1f5-4a8f-8853-1a92394879f0",
+   "why": "disagreement reviewed by hand 2026-10-31: a real quantity"
+  },
+  {
+   "text": "Paid Parental Leave (8 weeks)",
+   "metric": true,
+   "main": false,
+   "source": "greenhouse:merceradvisors:5452310008",
+   "why": "disagreement reviewed by hand 2026-10-31: a real quantity"
+  },
+  {
+   "text": "£75,800.00-£99,800.00",
+   "metric": true,
+   "main": false,
+   "source": "workday:leidos~wd5~External:R-00194278",
+   "why": "disagreement reviewed by hand (second pass): a real quantity"
+  },
+  {
+   "text": "Lead, coach, and develop a team of 10 BDRs, holding a high standard for performance and accountability",
+   "metric": true,
+   "main": false,
+   "source": "greenhouse:billcom:6221603004",
+   "why": "disagreement reviewed by hand (second pass): a real quantity"
+  },
+  {
+   "text": "We also provide full-time employees with paid time off including vacation (15 days), holiday and personal days (totaling 12 days) and sick time off (72 hours).",
+   "metric": true,
+   "main": false,
+   "source": "oracle:fa-eups-saasfaprod1~ocs~CX_1:11292",
+   "why": "disagreement reviewed by hand (second pass): a real quantity"
+  },
+  {
+   "text": "10+ years of experience designing small to mid-size architectural projects, including urban and resort hotels",
+   "metric": true,
+   "main": false,
+   "source": "ukg:recruiting2~WAT1003WATG~40a8f4fc-f7d8-4099-97da-169f37ab8e95:5200f29c-0c93-4805-a941-d3fa2f41fb8d",
+   "why": "held-out disagreement reviewed by hand: a real quantity"
+  },
+  {
+   "text": "Bachelor's Degree and 16+ years of relevant experience OR",
+   "metric": true,
+   "main": false,
+   "source": "workday:gilead~wd1~gileadcareers:R0055908-1",
+   "why": "disagreement reviewed by hand 2026-10-31: a real quantity"
+  },
+  {
+   "text": "9+ years of experience with cybersecurity frameworks and concepts such as NIST CSF, MITRE ATT&CK, CMMC, FedRAMP, etc.",
+   "metric": true,
+   "main": false,
+   "source": "workday:capitalone~wd12~Capital_One:R1003857-1",
+   "why": "disagreement reviewed by hand (second pass): a real quantity"
+  },
+  {
+   "text": "Since its start in 1844, Aegon has grown into an international company serving more than 23.9 million people across the globe.* It offers investment, protection, and retirement solutions, always with a clear purpose: Helping people live their best lives.",
+   "metric": true,
+   "main": false,
+   "source": "workday:transamerica~wd5~US:R20062881",
+   "why": "disagreement reviewed by hand 2026-10-31: a real quantity"
+  },
+  {
+   "text": "5+ years closing B2B business — sales, business development, strategic partnerships, staffing and recruiting, or professional services.",
+   "metric": true,
+   "main": false,
+   "source": "greenhouse:pursuit:8238522",
+   "why": "held-out disagreement reviewed by hand: a real quantity"
+  },
+  {
+   "text": "- Paid sabbatical after 5 years of service for Principal cohort and above",
+   "metric": true,
+   "main": false,
+   "source": "ashby:pariveda:3809d049-cb8e-4393-8c71-1de64cb808b0",
+   "why": "disagreement reviewed by hand 2026-10-31: a real quantity"
+  },
+  {
+   "text": "Other US Locations: $205,615.00 - $266,090.00.",
+   "metric": true,
+   "main": false,
+   "source": "workday:gilead~wd1~gileadcareers:R0055823",
+   "why": "disagreement reviewed by hand 2026-10-31: a real quantity"
+  },
+  {
+   "text": "Subject to the candidate’s experience, the salary range for this role is $390,000–$435,000 .",
+   "metric": true,
+   "main": false,
+   "source": "smartrecruiters:CliffordChance:744000154500124",
+   "why": "disagreement reviewed by hand (second pass): a real quantity"
+  },
+  {
+   "text": "Recognized as the #1 provider in SMS Marketing by G2, Attentive partners with more than 8,000 customers across 70+ industries.",
+   "metric": true,
+   "main": false,
+   "source": "greenhouse:attentive:4429776009",
+   "why": "disagreement reviewed by hand (second pass): a real quantity"
+  },
+  {
+   "text": "With nearly $70 billion in assets under advisement, over 460 team members and a nationwide network of 20 offices, we offer comprehensive wealth management and trust services to more than 11,500 clients in all 50 states.",
+   "metric": true,
+   "main": false,
+   "source": "paylocity:339c16b4-81ae-4835-9262-35a92590c849:4431073",
+   "why": "disagreement reviewed by hand 2026-10-31: a real quantity"
+  },
+  {
+   "text": "[500+] cities and towns use our Infrastructure Intelligence Platform to direct the work and fix problems before they fail.",
+   "metric": true,
+   "main": false,
+   "source": "ashby:cyvl:a57427a9-f04a-4f95-b8a0-0fa404cf75da",
+   "why": "held-out disagreement reviewed by hand: a real quantity"
+  },
+  {
+   "text": "2 years of relevant work experience",
+   "metric": true,
+   "main": false,
+   "source": "oracle:emcm~us2~CX_1:2350175",
+   "why": "disagreement reviewed by hand 2026-10-31: a real quantity"
+  },
+  {
+   "text": "5–10 years of progressive experience in multifamily revenue management, pricing, asset management, or closely related real estate functions, including substantial hands-on responsibility for portfolio revenue strategy.",
+   "metric": true,
+   "main": false,
+   "source": "rippling:omninet-property-management:703fb94f-630c-412b-abdf-c0efe7c86847",
+   "why": "held-out disagreement reviewed by hand: a real quantity"
+  },
+  {
+   "text": "Must be able to lift, push, pull, carry or otherwise move up to 25 pounds with no support regularly",
+   "metric": true,
+   "main": false,
+   "source": "adp:7166ad59-d039-46f9-b4db-667c501b1f64:9201278541320_17",
+   "why": "disagreement reviewed by hand (second pass): a real quantity"
+  },
+  {
+   "text": "1+ year progressively responsible store management experience in a retail environment as a General/Store Manager",
+   "metric": true,
+   "main": false,
+   "source": "oracle:fa-exhh-saasfaprod1~ocs~CX_3004:76631",
+   "why": "disagreement reviewed by hand 2026-10-31: a real quantity"
+  },
+  {
+   "text": "Location : Edinburgh, Birmingham or London on a hybrid basis, with normally a minimum of 2 days a week working in the office and the rest working at home.",
+   "metric": true,
+   "main": false,
+   "source": "oracle:fa-enor-saasfaprod1~ocs~CX_1:20719",
+   "why": "held-out disagreement reviewed by hand: a real quantity"
+  },
+  {
+   "text": "Ability to work a range between 20-40 hours per week is required.",
+   "metric": true,
+   "main": false,
+   "source": "ukg:recruiting2~EDD1000EBLLC~6fb5a475-cea1-435e-89f4-fdc9d00253c1:222fa4f8-2477-4dd0-b1bf-aec7d44a8dff",
+   "why": "held-out disagreement reviewed by hand: a real quantity"
+  },
+  {
+   "text": "We also offer a $100 hiring bonus !",
+   "metric": true,
+   "main": false,
+   "source": "workday:uhaul~wd1~UhaulJobs:R258197",
+   "why": "held-out disagreement reviewed by hand: a real quantity"
+  },
+  {
+   "text": "Starting salary of £25,174 per annum",
+   "metric": true,
+   "main": false,
+   "source": "workday:incora~wd5~Incora:JR106748-1",
+   "why": "disagreement reviewed by hand (second pass): a real quantity"
+  },
+  {
+   "text": "Minimum of one (1) year of experience providing personal care to seniors",
+   "metric": true,
+   "main": false,
+   "source": "greenhouse:welbehealth:8890221002",
+   "why": "held-out disagreement reviewed by hand: a real quantity"
+  },
+  {
+   "text": "Ability to lift up to 75 pounds, carry, load/ unload glass",
+   "metric": true,
+   "main": false,
+   "source": "paylocity:2f361da3-ee55-4859-8d64-3f923e6dd691:4377949",
+   "why": "disagreement reviewed by hand 2026-10-31: a real quantity"
+  },
+  {
+   "text": "Starting pay is $15.15 per hour ($16.00 bilingual) .",
+   "metric": true,
+   "main": false,
+   "source": "paylocity:bee5ae18-058e-4b3e-b456-2886dcb0a175:4606947",
+   "why": "held-out disagreement reviewed by hand: a real quantity"
+  },
+  {
+   "text": "Minimum Age Requirement: Must be at least 16 years old to apply.",
+   "metric": true,
+   "main": false,
+   "source": "oracle:egud~us2~CX_1:169514",
+   "why": "disagreement reviewed by hand 2026-10-31: a real quantity"
+  },
+  {
+   "text": "Mon-Thurs: 6:45am-4:15pm (60 min lunch)",
+   "metric": true,
+   "main": false,
+   "source": "icims:careers.imagendentalpartners.com:8402",
+   "why": "disagreement reviewed by hand (second pass): a real quantity"
+  },
+  {
+   "text": "Eligible full-time employees working more than 30 hours per week enjoy access to:",
+   "metric": true,
+   "main": false,
+   "source": "ukg:recruiting~CHI1001CHIM~72cbb0b0-0593-4f9a-8317-11391b3533d8:ba60e3c4-fae4-49fa-bf3f-1f53d4523af9",
+   "why": "disagreement reviewed by hand 2026-10-31: a real quantity"
+  },
+  {
+   "text": "of force occasionally and/or up to 10 lbs.",
+   "metric": true,
+   "main": false,
+   "source": "adp:e8d8be73-93e3-49db-85a1-535422ca902a:9201641165692_1",
+   "why": "10 lbs: a weight"
+  },
+  {
+   "text": "For over 90 years, Fulton Hogan has been delivering high-quality infrastructure to improve the lives of people every day.",
+   "metric": true,
+   "main": false,
+   "source": "workday:fultonhogan~wd3~Fultonhogan:R27328-2",
+   "why": "disagreement reviewed by hand (second pass): a real quantity"
+  },
+  {
+   "text": "Net sales for 2024 were $18.6 billion.",
+   "metric": true,
+   "main": false,
+   "source": "oracle:iazbqy~ocs~CX_1:2004604",
+   "why": "disagreement reviewed by hand 2026-10-31: a real quantity"
+  },
+  {
+   "text": "ability to lift up to 25 kg bags of feed;",
+   "metric": true,
+   "main": false,
+   "source": "workday:nutreco~wd3~Nutreco_External:VAC29956",
+   "why": "disagreement reviewed by hand 2026-10-31: a real quantity"
+  },
+  {
+   "text": "Willingness to travel 20–30% (primarily local and regional client/partner meetings).",
+   "metric": true,
+   "main": false,
+   "source": "workday:harman~wd3~HARMAN:R-56546-2026",
+   "why": "disagreement reviewed by hand 2026-10-31: a real quantity"
+  },
+  {
+   "text": "Today, AACo owns and operates a strategic balance of stations, feedlots and farms spanning approximately 6.5 million hectares of land across Queensland and the Northern Territory.",
+   "metric": true,
+   "main": false,
+   "source": "workday:aaco~wd105~AACo_Careers:JR100230-1",
+   "why": "disagreement reviewed by hand 2026-10-31: a real quantity"
+  },
+  {
+   "text": "occasional standing, bending, and lifting to 20 pounds.",
+   "metric": true,
+   "main": false,
+   "source": "perks:paylocity:AdaptHealth LLC:91",
+   "why": "disagreement reviewed by hand 2026-10-31: a real quantity"
+  },
+  {
+   "text": "In 2026, Forbes named AiDASH one of America's Best Startup Employers for the 4th consecutive year, and TIME included AiDASH among America's Top GreenTech Companies for the 3rd year in a row.",
+   "metric": false,
+   "main": false,
+   "source": "greenhouse:aidashinc:4444781009",
+   "why": null
+  },
+  {
+   "text": "Bank is subject to, and conducts background checks consistent with the requirements of Section 19 of the Federal Deposit Insurance Act (FDIA).",
+   "metric": false,
+   "main": false,
+   "source": "workday:usbank~wd1~US_Bank_Careers:2026-0033090",
+   "why": null
+  },
+  {
+   "text": "Support fair value hierarchy classification (Level 1/2/3), Level 3 unobservable input disclosures and footnote/financial statement reporting",
+   "metric": false,
+   "main": false,
+   "source": "workday:nb~wd1~NBCareers:R0012505-3",
+   "why": null
+  },
+  {
+   "text": "Administer Microsoft 365 environments, including Exchange Online, SharePoint, Teams, OneDrive, and Security & Compliance features",
+   "metric": false,
+   "main": false,
+   "source": "workable:cubx:2AFFE25A65",
+   "why": null
+  },
+  {
+   "text": "The posting end date is November 1, 2026.",
+   "metric": false,
+   "main": false,
+   "source": "workday:hubinternational~wd1~HUBInternational:R0039155",
+   "why": null
+  },
+  {
+   "text": "As a Senior Consulting Director within Unit 42’s Cyber Risk Management team, you will lead our AI Security Assessment offering and own the delivery success of the service line in North America.",
+   "metric": false,
+   "main": false,
+   "source": "workday:paloaltonetworks~wd5~panwexternalcareers:JR-018933",
+   "why": null
+  },
+  {
+   "text": "We’ve raised $50M from top investors, including General Catalyst, Bessemer Venture Partners, and Bain Capital Ventures.",
+   "metric": true,
+   "main": true,
+   "source": "greenhouse:pallet:5254445007",
+   "why": "agreement sample checked by hand"
+  },
+  {
+   "text": "Stretching from the dynamic neighbourhood of Streatham in the South to the iconic landmarks of Waterloo in the North, we are proud to be the 9th largest borough in London.",
+   "metric": false,
+   "main": false,
+   "source": "oracle:effe~em3~CX_1:3096",
+   "why": null
+  }
+ ]
+}

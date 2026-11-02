@@ -276,7 +276,8 @@
       "fileTypes": "PDF, DOCX, or TXT (max 10MB)",
       "browse": "Browse files",
       "pasteHere": "Paste your resume content here...",
-      "chars": "chars"
+      "chars": "chars",
+      "tooLong": "{{length}} characters: the free scan reads up to {{max}}. Shorten it before you scan."
     },
     "linkedin": {
       "title": "Your LinkedIn Profile",
@@ -397,12 +398,13 @@
       "redFlags": "Red Flags",
       "plusMore": "+12 more"
     },
-    "scanFooter": "Results within {{seconds}} seconds • 7 free scans per day",
+    "scanFooter": "Results within {{seconds}} seconds • {{scans}} free scans per day",
     "getFreeAnalysis": "Get Free Resume Analysis",
     "orGetCompleteAnalysis": "Or get the complete analysis for",
     "securePaymentStripe": "Secure payment via Stripe",
     "gsheetsImportFailed": "Failed to import from Google Sheets. Please try again.",
-    "gsheetsImportFailedShared": "Failed to import from Google Sheets. Make sure the sheet is shared with 'Anyone with the link'."
+    "gsheetsImportFailedShared": "Failed to import from Google Sheets. Make sure the sheet is shared with 'Anyone with the link'.",
+    "scanFooterPro": "Results within {{seconds}} seconds • Pro: no daily cap on scans"
   },
   "faq": {
     "title": "Frequently Asked Questions",
@@ -863,6 +865,11 @@
       "good": "Good",
       "needsImprovement": "Needs Improvement",
       "poor": "Poor"
+    },
+    "projection": {
+      "lead": "Fix the issues below → about",
+      "gain_one": "(+{{count}} pt, a rough guide)",
+      "gain_other": "(+{{count}} pts, a rough guide)"
     }
   },
   "careerSnapshot": {
@@ -1107,7 +1114,9 @@
       "fontUnreadableDescription": "Its font doesn't map to real characters. Upload a .docx or paste your resume text instead.",
       "unreadCharacters": "Some characters couldn't be read",
       "unreadCharactersDescription": "We skipped {{count}} characters this PDF doesn't name. For the most accurate scan, upload a .docx or paste your resume text.",
-      "checkoutRefusedTitle": "Couldn't start checkout"
+      "checkoutRefusedTitle": "Couldn't start checkout",
+      "resumeTooLong": "Resume too long to scan",
+      "resumeTooLongDescription": "This resume is {{length}} characters; the free scan reads up to {{max}}. Shorten it (older roles and long lists go first) and scan again."
     },
     "reportCrash": {
       "title": "Something went wrong displaying your report",
@@ -1623,6 +1632,80 @@
     },
     "tailoredSignIn": {
       "cta": "Sign in to tailor your résumé to this job (free: one a day)"
+    },
+    "resumeTruncated": {
+      "title": "This scan did not read your whole résumé.",
+      "body": "It is longer than the scan reads in full, so the score, the keyword gaps and the quoted lines below come only from the part it read. Shorten it, or scan the pages that matter most, to have all of it checked."
+    },
+    "languageNotice": {
+      "unknownTitle": "We could not tell which language this résumé is written in.",
+      "unsupportedTitle": "This résumé reads as {{language}}, a language this scan's keyword and section checks are not built for.",
+      "body": "The report is written in your resume's language, but its keyword and section checks look for English terms, so they may miss words in your language. Treat the keyword gaps below as a guide, not a verdict."
+    },
+    "weakestBullets": {
+      "title": "Your weakest bullets, graded",
+      "subtitle": "Quoted from your resume and graded on metrics, verbs and scope. Where a rewrite is shown, fill any [brackets] with your real numbers.",
+      "howToFix": "How to fix it (we couldn't rewrite this one from your resume alone)",
+      "template": {
+        "verbAndNumber": "Rewrite this bullet to open with an action verb and end with a number, in the shape \"Led [what you did], achieving [metric]\"."
+      }
+    },
+    "readAs": {
+      "label": "We read this as:",
+      "industry": "Industry",
+      "level": "Level",
+      "levels": {
+        "entry": "Entry",
+        "mid": "Mid",
+        "senior": "Senior",
+        "executive": "Executive"
+      },
+      "industryAria": "Confirm or correct the detected industry",
+      "levelAria": "Confirm or correct the detected experience level",
+      "note": "A correction updates this report",
+      "levelLogged": "Your level correction was logged so we can improve detection. Thank you.",
+      "quickCheck": {
+        "title": "Quick check:",
+        "transition": "we weren't fully sure of your industry on this one — your history reads as {{historical}}, but your latest role reads as {{recent}}. Confirm below and the report recalibrates.",
+        "unsure": "we weren't fully sure of your industry on this one. Confirm or correct it below — benchmarks and keywords update at once."
+      }
+    },
+    "builderHandoff": {
+      "title": "Turn this diagnosis into a finished resume",
+      "bodyRewrites_one": "Open the free builder with your resume loaded and this report's {{count}} bullet rewrite applied where it matches one of your bullets, then export a cleanly typeset PDF or DOCX.",
+      "bodyRewrites_other": "Open the free builder with your resume loaded and this report's {{count}} bullet rewrites applied wherever they match your bullets, then export a cleanly typeset PDF or DOCX.",
+      "bodyNoRewrites": "This report has no rewrite the builder can apply. Open the free builder with your resume loaded and this report's missing keywords beside it, then export a cleanly typeset PDF or DOCX.",
+      "ctaRewrites_one": "Open in builder: {{count}} rewrite to apply →",
+      "ctaRewrites_other": "Open in builder: {{count}} rewrites to apply →",
+      "ctaNoRewrites": "Open in builder with your resume and missing keywords →"
+    },
+    "scoreSimulator": {
+      "title": "What happens if you fix it?",
+      "intro": "Check the fixes you're willing to make.",
+      "basis": "Points are a rough guide (the AI's estimate per fix, or fixed points per kind of fix), not a forecast of your next scan.",
+      "aria": "Score {{score}}, projected {{projected}}",
+      "projectedLabel": "Projected:",
+      "gain_one": "(+{{count}} point)",
+      "gain_other": "(+{{count}} points)",
+      "current": "Your current score. Start checking fixes below.",
+      "noGainCeiling": "No gain by this guide: it projects no score above {{ceiling}}, and yours is already there.",
+      "noGain": "These fixes add no points by this guide."
+    },
+    "fixLabels": {
+      "bulletsWeak_one": "Rewrite your {{count}} weakest bullet using the before/after examples above",
+      "bulletsWeak_other": "Rewrite your {{count}} weakest bullets using the before/after examples above",
+      "bulletsUnquantified_one": "Add a result with a number to {{count}} bullet that has none",
+      "bulletsUnquantified_other": "Add a result with a number to {{count}} bullets that have none",
+      "keywords": "Work {{keywords}} into your summary and experience bullets"
+    },
+    "scorePotential": {
+      "title": "Your Score Potential",
+      "current": "Current",
+      "afterFixes": "After fixes",
+      "gain_one": "+{{count}} pt",
+      "gain_other": "+{{count}} pts",
+      "basis": "Your score plus the fixes in the simulator and Fix Plan below: the top quick wins, and the bullet and keyword steps.",
+      "basisQuickWins": "Your score plus up to three top quick wins and up to three bullet fixes, capped at 95."
     }
   },
   "analysisPreviewSample": {
@@ -2854,7 +2937,6 @@
   },
   "rateLimitUpsell": {
     "title": "Daily Scan Limit Reached",
-    "subtitle": "You've used all 7 free scans for today. Don't worry – you can continue scanning right now!",
     "resetIn": "Free scans reset in approximately",
     "hour_one": "{{count}} hour",
     "hour_other": "{{count}} hours",
@@ -3143,7 +3225,14 @@
     "bestUsesPersonal": "{{name}}, here's where this resume version works best:",
     "atsRelevance": "ATS Relevance: {{level}}",
     "learnAbout": "Learn about {{title}}",
-    "close": "Close"
+    "close": "Close",
+    "usageTooltip": "Usage Recommendations",
+    "suitability": {
+      "excellent": "Excellent",
+      "good": "Good",
+      "limited": "Limited",
+      "notRecommended": "Not Recommended"
+    }
   },
   "elevatorPitch": {
     "title": "60-Second Elevator Pitch",
@@ -3214,7 +3303,13 @@
     "softSkills": "Soft Skills",
     "tools": "Tools & Software",
     "certifications": "Certifications",
-    "methodologies": "Methodologies"
+    "methodologies": "Methodologies",
+    "matchingAgainstJob": "Matching against: {{job}}",
+    "importance": {
+      "critical": "critical",
+      "important": "important",
+      "nice_to_have": "nice to have"
+    }
   },
   "recruiterView": {
     "seeThrough": "See your resume through a recruiter's eyes",
@@ -3416,7 +3511,6 @@
     "neverExpire": "Credits never expire",
     "perCredit": "{{price}} per credit",
     "topUpCredits": "Top Up Credits",
-    "freeTier": "Free tier: Up to 7 scans per day, free forever.",
     "buyCredits": "Buy Credits — {{price}} each",
     "myCredits": "My Credits",
     "provenHint": "Credits bought in this browser show here automatically.",
@@ -3446,7 +3540,20 @@
     "lowShort": "○ Low",
     "highDesc": "Strong industry signals detected. Recommendations are highly relevant.",
     "mediumDesc": "Some industry signals detected, but verification recommended.",
-    "lowDesc": "Limited signals. Please verify and correct if needed for better recommendations."
+    "lowDesc": "Limited signals. Please verify and correct if needed for better recommendations.",
+    "isThisRight": "Is this right?",
+    "yes": "Yes",
+    "no": "No",
+    "thanksConfirmed": "Got it — thanks for confirming!",
+    "allSignals": "All detection signals:",
+    "alsoConsidered": "Also considered:",
+    "switch": "Switch →",
+    "seniority": {
+      "entry": "Entry-level",
+      "mid": "Mid-level",
+      "senior": "Senior",
+      "executive": "Executive"
+    }
   },
   "resumeBuilder": {
     "experience": {
@@ -3458,7 +3565,15 @@
       "endDate": "End Date",
       "bulletPoints": "Bullet Points",
       "addBullet": "Add Bullet",
-      "addWorkExperience": "Add Work Experience"
+      "addWorkExperience": "Add Work Experience",
+      "placeholder": {
+        "jobTitle": "Senior Software Engineer",
+        "company": "Acme Corp",
+        "location": "Remote",
+        "startDate": "Jan 2022",
+        "endDate": "Present",
+        "bullet": "Led a team of 5 engineers to ship…"
+      }
     },
     "education": {
       "entry": "Education {{num}}",
@@ -3468,7 +3583,13 @@
       "startDate": "Start Date",
       "endDate": "End Date",
       "additionalDetails": "Additional Details (optional)",
-      "addEducation": "Add Education"
+      "addEducation": "Add Education",
+      "placeholder": {
+        "school": "University of California",
+        "degree": "B.S.",
+        "field": "Computer Science",
+        "details": "Relevant coursework, honors, GPA…"
+      }
     },
     "tagList": {
       "typeToAdd": "Type and press Enter to add"
@@ -3482,13 +3603,81 @@
       "skills": "Skills",
       "certifications": "Certifications"
     },
-    "replaceWithFixes": "Replace your current builder draft with the résumé from your scan, with the report's fixes applied?",
+    "replaceWithFixes": "Replace your current builder draft with the résumé from your scan, with the report's fixes applied? If you decline, your draft stays and the fixes that match its bullets are applied to it.",
+    "replaceWithKeywords": "Replace your current builder draft with the résumé from your scan, with this report's missing keywords beside it? If you decline, your draft stays and the keywords are shown beside it.",
     "replaceWithLatestScan": "You have a builder draft from an earlier résumé. Replace it with the résumé from your latest scan?",
     "toast": {
       "addNameDescription": "Your résumé needs your name at the top before it can be downloaded.",
       "addNameTitle": "Add your name first",
       "savedAsWordDescription": "The PDF's fonts can't draw {{chars}}, so we saved a Word file, which keeps every character.",
-      "savedAsWordTitle": "Saved as a Word file"
+      "savedAsWordTitle": "Saved as a Word file",
+      "importedTitle": "Resume imported",
+      "importedDescription": "We've filled in the builder from your most recent resume — edit anything below.",
+      "importedWithFixesTitle_one": "Resume imported — {{count}} fix from your report applied",
+      "importedWithFixesTitle_other": "Resume imported — {{count}} fixes from your report applied",
+      "importedWithFixesDescription": "Rewritten bullets from your report are in place. Keyword suggestions from the scan are listed above the editor.",
+      "mergedTitle_one": "Draft kept — {{count}} fix from your report applied to it",
+      "mergedTitle_other": "Draft kept — {{count}} fixes from your report applied to it",
+      "mergedDescription": "Only bullets already in your draft were changed. Rewrites for bullets it doesn't have are still in your report.",
+      "mergedNoneTitle": "Draft kept — none of the report's rewrites matched it",
+      "mergedNoneDescription": "Your draft holds different bullets from the scanned resume, so nothing in it was changed. The rewrites are still in your report.",
+      "exportFailedTitle": "Export failed",
+      "exportPdfFailed": "Could not create the PDF. Please try again.",
+      "exportDocxFailed": "Could not create the Word document. Please try again.",
+      "freelanceInsertedTitle_one": "Freelance section inserted — {{count}} entry added",
+      "freelanceInsertedTitle_other": "Freelance section inserted — {{count}} entries added",
+      "freelanceInsertedDescription": "Add your dates to each entry, then export a typeset PDF or Word document."
+    },
+    "seo": {
+      "title": "Free Resume Builder — Resume Booster",
+      "description": "Build an ATS-friendly resume in minutes with our free guided builder. Export to PDF, no signup required."
+    },
+    "title": "Resume Builder",
+    "subtitle": "Build a clean, structured resume — edit any section and export when ready.",
+    "startOver": "Start Over",
+    "exportDocx": "Export DOCX",
+    "exportPdf": "Export PDF",
+    "importing": "Importing your most recent resume into the builder…",
+    "confirmStartOver": "This will clear everything in the builder. Continue?",
+    "rescan": {
+      "title": "Exported — now check that the fixes worked",
+      "body": "Rescan this exact version free and see the before/after score, on the same rubric both times.",
+      "button": "Rescan this version →"
+    },
+    "keywords": {
+      "title": "Keywords your scan found missing — work them in where they're true",
+      "dismiss": "dismiss",
+      "note": "We never insert keywords for you — only you can honestly claim a skill."
+    },
+    "section": {
+      "contact": "Contact",
+      "summary": "Summary",
+      "experience": "Experience",
+      "education": "Education",
+      "skills": "Skills",
+      "certifications": "Certifications",
+      "preview": "Preview"
+    },
+    "contact": {
+      "fullName": "Full Name",
+      "title": "Title / Headline",
+      "email": "Email",
+      "phone": "Phone",
+      "location": "Location",
+      "linkedIn": "LinkedIn",
+      "website": "Website / Portfolio"
+    },
+    "placeholder": {
+      "fullName": "Jane Doe",
+      "title": "Senior Product Designer",
+      "email": "jane@example.com",
+      "phone": "(555) 123-4567",
+      "location": "San Francisco, CA",
+      "linkedIn": "linkedin.com/in/janedoe",
+      "website": "janedoe.com",
+      "summary": "A brief 2-4 sentence overview of your experience and what you're looking for next.",
+      "skill": "Add a skill and press Enter",
+      "certification": "Add a certification and press Enter"
     }
   },
   "jobsPage": {
@@ -5614,7 +5803,7 @@
     "title": "Something went wrong"
   },
   "freeReportSignup": {
-    "body": "Create a free account to track your progress across scans, keep your fix checklist, and get 15 free scans a day instead of 7.",
+    "body": "Create a free account to track your progress across scans, keep your fix checklist, and get {{signedIn}} free scans a day instead of {{signedOut}}.",
     "cta": "Create free account",
     "title": "Don't lose this score."
   },
@@ -5753,5 +5942,134 @@
     "metaDescription": "The data API does not live on this site's own address; the how-to and the free keys are on /data-api.",
     "lead": "You asked this site for {{path}}. The API does not live here; it lives at:",
     "keyLine": "Requests carry a key as Authorization: Bearer rb_live_…; free keys and every endpoint are described on"
+  },
+  "metricCards": {
+    "section": {
+      "primary": "Primary Scores",
+      "structure": "Structure & Content",
+      "advanced": "Advanced Metrics"
+    },
+    "ats": {
+      "strong": "✓ Strong on keywords, format and results",
+      "gaps": "⚠ Gaps to close: see the fixes below",
+      "manyGaps": "✗ Many gaps to close: see the fixes below"
+    },
+    "grade": {
+      "a": "Excellent",
+      "b": "Good",
+      "c": "Fair",
+      "d": "Needs Work"
+    },
+    "redFlagsClean": "Your resume looks clean — no major issues detected.",
+    "improvement": {
+      "value_one": "+{{count}} pt",
+      "value_other": "+{{count}} pts",
+      "high": "🚀 Big gains possible!",
+      "medium": "📈 Room to improve",
+      "low": "✓ Little left to gain"
+    }
+  },
+  "scanOutcome": {
+    "title": "Applied with this resume? Tell us how it went",
+    "body": "Anonymous, tied only to report #{{reportId}}. This is how we measure, rather than guess, which scores actually land interviews. You can update your answer if things change.",
+    "interview": "🎉 Got interview(s)",
+    "noResponse": "📭 No response yet",
+    "rejected": "❌ Rejected",
+    "recorded": "Recorded — thank you. Your answers help us study which scores lead to interviews; no public figure is built from them yet.",
+    "notSaved": "Not saved — nothing was recorded. Please try again later."
+  },
+  "scanFeedback": {
+    "question": "Was this analysis helpful?",
+    "thanks": "Thanks for the feedback!",
+    "yes": "Yes",
+    "no": "No",
+    "notSaved": "Couldn't save that — nothing was recorded."
+  },
+  "reportInsights": {
+    "vendor": {
+      "title": "How the big ATS platforms read this resume",
+      "subtitle": "Each system parses differently. These checks apply each vendor's documented quirks to your actual formatting.",
+      "uncheckedNote": "We check the layout only on a PDF upload. This one was pasted text or a Word file, so columns and tables were not checked, and no platform that depends on them is marked as passing.",
+      "status": {
+        "pass": "Passes",
+        "warn": "Needs review",
+        "fail": "Likely failure",
+        "unknown": "Not checked"
+      },
+      "note": {
+        "workday": {
+          "fail": "Multi-column layouts scramble Workday's parser — content reads out of order.",
+          "warn": "Tab-aligned text or decorative bullets can merge fields in Workday's preview.",
+          "pass": "Single-column, standard bullets — parses cleanly in Workday.",
+          "unknown": "Layout not checked — we can't say whether columns or tables would scramble Workday's parser."
+        },
+        "greenhouse": {
+          "warn": "Greenhouse keeps the PDF but its keyword search relies on extracted text — layout quirks reduce match hits.",
+          "pass": "Greenhouse stores your original file; text extraction looks reliable here.",
+          "unknown": "Layout not checked — Greenhouse searches the extracted text, and we couldn't see how cleanly this file's layout extracts."
+        },
+        "lever": {
+          "warn": "Lever's section detection expects standard headers (Experience, Education) — creative headers may unsort your history.",
+          "pass": "Standard section headers — Lever will thread your history correctly."
+        },
+        "icims": {
+          "fail": "Columns plus tab alignment is the worst case for iCIMS — fields land in the wrong boxes.",
+          "warn": "iCIMS auto-fills application fields from the parse — check the auto-filled form before submitting.",
+          "pass": "Should auto-fill iCIMS application fields correctly.",
+          "unknown": "Layout not checked — iCIMS fills its form from the parse, so check the auto-filled fields before submitting."
+        }
+      },
+      "finding": {
+        "fail": "{{vendor}} parsing: likely failure",
+        "warn": "{{vendor}} parsing: needs review",
+        "pass": "{{vendor}} parsing",
+        "unknown": "{{vendor}} parsing: layout not checked"
+      }
+    },
+    "findings": {
+      "title": "Findings at a glance",
+      "critical_one": "{{count}} critical",
+      "critical_other": "{{count}} critical",
+      "warning_one": "{{count}} warning",
+      "warning_other": "{{count}} warnings",
+      "passed_one": "{{count}} passed",
+      "passed_other": "{{count}} passed",
+      "unchecked_one": "{{count}} not checked",
+      "unchecked_other": "{{count}} not checked",
+      "noCritical": "No critical findings — details on what's working are in the sections below.",
+      "footer": "Full detail for every finding appears in the sections below, in order of severity.",
+      "items": {
+        "parsePoor": "Resume text may not have extracted correctly — scores below could be unreliable",
+        "parseFair": "Extraction quality is imperfect — verify the parse preview below",
+        "noEmail": "No email address detected — screeners cannot contact you",
+        "noPhone": "No phone number detected",
+        "fieldMissing": "{{label}}: missing — see field-specific checks",
+        "weakBulletsAll_one": "{{count}} bullet graded D or below — rewrite provided",
+        "weakBulletsAll_other": "{{count}} bullets graded D or below — rewrites provided",
+        "weakBulletsSome_one": "{{count}} bullet graded D or below — {{rewritten}} rewritten",
+        "weakBulletsSome_other": "{{count}} bullets graded D or below — {{rewritten}} rewritten",
+        "weakBulletsNone_one": "{{count}} bullet graded D or below — see how to fix it",
+        "weakBulletsNone_other": "{{count}} bullets graded D or below — see how to fix them",
+        "lowQuantification": "Under 40% of bullets carry a number — recruiters anchor on metrics",
+        "quantified": "Quantified impact",
+        "coreSections": "Core sections present"
+      }
+    }
+  },
+  "redFlags": {
+    "title": "Recruiter Red Flags",
+    "severity": {
+      "critical": "Critical",
+      "major": "Major",
+      "minor": "Minor"
+    },
+    "count": {
+      "critical_one": "{{count}} critical",
+      "critical_other": "{{count}} critical",
+      "major_one": "{{count}} major",
+      "major_other": "{{count}} major",
+      "minor_one": "{{count}} minor",
+      "minor_other": "{{count}} minor"
+    }
   }
 }

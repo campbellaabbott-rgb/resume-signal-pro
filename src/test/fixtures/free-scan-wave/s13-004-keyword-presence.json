@@ -1,0 +1,509 @@
+{
+ "about": "S13-004: a slice of the keyword-presence corpus (real posting text). present = the label; main = what f8d72a9b said. Full corpus: ~/.config/resumebooster/free-scan-wave-corpora/S13-004/corpus.json",
+ "cases": [
+  {
+   "keyword": "aws",
+   "text": "consistent, friendly, and knowledgeable service to every customer. Develop knowledge and awareness of current products, marketing programs, promotions, strategies, and initiatives",
+   "present": false,
+   "main": true,
+   "source": "icims:careers.royalfarms.com:11570"
+  },
+  {
+   "keyword": "git",
+   "text": "eeding quota in a solutions or specialty sales role. Knowledge & Skills Solution Domain Digital Employee Experience (DEX) and endpoint observability platforms Endpoint security — E",
+   "present": false,
+   "main": true,
+   "source": "workday:hp~wd5~ExternalCareerSite:3168057-1"
+  },
+  {
+   "keyword": "redis",
+   "text": "e store scorecard, to inform strategy and drive results, including improving loyalty and credit performance. Ensure full compliance with company policies, procedures, and all appl",
+   "present": false,
+   "main": true,
+   "source": "oracle:hdiy~us2~CX_1:23239"
+  },
+  {
+   "keyword": "system design",
+   "text": "ram management team and technical work package leaders. The Mission As the Flight Control System Designer , you will be working within the Overall Systems Design team, and your mis",
+   "present": false,
+   "main": true,
+   "source": "perks:workday:Airbus:13"
+  },
+  {
+   "keyword": "go",
+   "text": "able for emergent cardiac intervention Residency training site for the University of Chicago Pritzker School of Medicine Medical Students and Emergency Medicine Residency Program R",
+   "present": false,
+   "main": true,
+   "source": "workday:nshs~wd1~ns-eeh:R48909"
+  },
+  {
+   "keyword": "rust",
+   "text": "legal practice is being built, take on meaningful responsibility early, and grow into a trusted right hand to the Head of Legal. Success in this role requires excellent judgment,",
+   "present": false,
+   "main": true,
+   "source": "ashby:norm-ai:ce939d6c-bc9a-4554-9413-2c6610a03f91"
+  },
+  {
+   "keyword": "financial modeling",
+   "text": "rends, challenges and regulatory activity which may affect Siemens customers Knowledge of financial models and solutions geared towards customer specific situations Ability to conf",
+   "present": false,
+   "main": true,
+   "source": "workday:onehealthineers~wd3~ijmhrms:R-31302"
+  },
+  {
+   "keyword": "excel",
+   "text": "ed, but not required. High School Diploma or Equivalent You must also be able to: Deliver excellent customer service Communicate clearly, engage, and lead others by example Organiz",
+   "present": false,
+   "main": true,
+   "source": "ukg:recruiting2~GOC1000GCWM~79997205-8d34-4c48-a7fb-374469334aec:07830ac9-e853-40a9-aa7e-6e73b7650e37"
+  },
+  {
+   "keyword": "valuation",
+   "text": "including regulatory readiness assessments, planning, stakeholder management, execution, evaluation, and sustainment of initiatives. Completes supplier compliance risk assessments.",
+   "present": false,
+   "main": true,
+   "source": "workday:bmo~wd3~External:R260026786"
+  },
+  {
+   "keyword": "ifrs",
+   "text": "insikter till konkreta förbättringsinitiativ. Prioritera investeringar och aktiviteter utifrån affärspotential och effekt. Samarbeta tvärfunktionellt Arbeta nära Segment Managers",
+   "present": false,
+   "main": true,
+   "source": "perks:teamtailor:Telenor Sweden:193"
+  },
+  {
+   "keyword": "series 7",
+   "text": "ted with and a passion for finance and the ability to manage multiple processes · Series 79, 63 licensing preferred Expectations It is the Bank’s expectation that employee",
+   "present": false,
+   "main": true,
+   "source": "workday:db~wd3~DBWebsite:R0452361"
+  },
+  {
+   "keyword": "tableau",
+   "text": "re d’affaires, effectifs, masse salariale et frais généraux ; Concevoir et fiabiliser les tableaux de bord par activité ; Analyser les performances des filiales et identifier les a",
+   "present": false,
+   "main": true,
+   "source": "teamtailor:techniquesolairesarl:8611098"
+  },
+  {
+   "keyword": "r",
+   "text": "CHAOS Industries is redefining modern defense with a multi-product portfolio that gives the ultimate a",
+   "present": false,
+   "main": true,
+   "source": "greenhouse:chaosindustries:5271869007"
+  },
+  {
+   "keyword": "seo",
+   "text": "as one team across New York City, Silicon Valley (Mountain View), London, Copenhagen, and Seoul. THE ROLE In partnership with our engineering leads, you will break down company",
+   "present": false,
+   "main": true,
+   "source": "ashby:NormalComputing:5e5759df-44c0-4675-930c-27ad2fd9eb4d"
+  },
+  {
+   "keyword": "roi",
+   "text": "exploitation et sur l’engagement de 330 collaborateurs, au service d’une trajectoire de croissance à horizon 2030 visant plus de 4 GW. Plus que de l’énergie, Mexens se positionne",
+   "present": false,
+   "main": true,
+   "source": "teamtailor:techniquesolairesarl:8611098"
+  },
+  {
+   "keyword": "kpi",
+   "text": "clear deterrence, ensuring the safety, security and effectiveness of the U.S. nuclear stockpile. We are adopting a transformational approach to this mission, seeking to deliver nee",
+   "present": false,
+   "main": true,
+   "source": "smartrecruiters:LLNL:3743990016351386"
+  },
+  {
+   "keyword": "ehr",
+   "text": "t sharing payments Competitive health plans for individuals and families Check out behr.com/careers to view a comprehensive list of our benefits and perks Founded in 194",
+   "present": false,
+   "main": true,
+   "source": "workday:masco~wd1~Behr:REQ53720-1"
+  },
+  {
+   "keyword": "epic",
+   "text": "and supply chain disruptions. What has been a “sleepy” industry for decades is now at the epicenter of sustaining the global economy.",
+   "present": false,
+   "main": true,
+   "source": "rippling:mytra:e002aac4-a159-484c-97f2-afcf4d90ca97"
+  },
+  {
+   "keyword": "bls",
+   "text": "iter: Abby Luck This is a remote position. JOB SUMMARY: The Staff Accountant is responsible for the following: Provide support through training and assistance as well as guidance",
+   "present": false,
+   "main": true,
+   "source": "workday:uvmhealth~wd1~EXTERNAL:R0091308"
+  },
+  {
+   "keyword": "acls",
+   "text": "te UI Financial Model, along with other financial models and tools (including excel and Oracle Planning). Develop and execute strategies to meet the company’s overall financial ob",
+   "present": false,
+   "main": true,
+   "source": "oracle:emje~us6~CX_1:22388"
+  },
+  {
+   "keyword": "mvp",
+   "text": "ronment. For further information on services for Māori, Pacific, women, LGBTQIATakatāpu iMVPFAFF + , people with disabilities, parenting support, flexible work and other personal",
+   "present": false,
+   "main": true,
+   "source": "smartrecruiters:TheUniversityOfAuckland:744000152099717"
+  },
+  {
+   "keyword": "arr",
+   "text": "value persistence, but we also value good judgment. WHO YOU ARE - 5+ years of quota-carrying sales experience, with a strong track record of winning new business. - A proven",
+   "present": false,
+   "main": true,
+   "source": "ashby:human:b15a429b-e77f-4560-b54d-5cab532dfa6d"
+  },
+  {
+   "keyword": "mrr",
+   "text": "ting. Accessibility: If you need accommodation as part of the employment process, contact MRRecruiters@mastec.com. Due to the high volume of applications received, we are unable to",
+   "present": false,
+   "main": true,
+   "source": "icims:careers.mastec.com:70756"
+  },
+  {
+   "keyword": "deals",
+   "text": "ion valves, pressure control valves, custom manifold solutions, and heated products. The ideal candidate will possess strong mechanical design expertise, hands-on experience in pro",
+   "present": false,
+   "main": true,
+   "source": "workday:mksinst~wd1~MKSCareersEMEA:R21165"
+  },
+  {
+   "keyword": "cold calling",
+   "text": "lanners in a fashion that enables the brand to achieve its marketing objectives. - Make cold calls to potential clients, perform online presentations to media professionals, crea",
+   "present": false,
+   "main": true,
+   "source": "ashby:quantcast:cbfab344-3e23-446a-8a0f-27bde7d2f960"
+  },
+  {
+   "keyword": "demo",
+   "text": "o higher level professional accountants or auditors has determined that the applicant has demonstrated a good knowledge of accounting and of related and underlying fields that equa",
+   "present": false,
+   "main": true,
+   "source": "usajobs:usajobs:889580800"
+  },
+  {
+   "keyword": "demos",
+   "text": "xperience Securities license 7 or 99 (or able to obtain license within 120 days) 5+ years demonstrated and sound experience leading and managing a team Nice-to-have 4-year degree",
+   "present": false,
+   "main": true,
+   "source": "workday:rbc~wd3~RBCGLOBAL1:R-0000190897-1"
+  },
+  {
+   "keyword": "cross-sell",
+   "text": ". Increases referral volume from assigned accounts by promotion within business lines and cross selling among business lines through regular and ongoing solicitation/facilitation o",
+   "present": false,
+   "main": true,
+   "source": "perks:paylocity:AdaptHealth LLC:89"
+  },
+  {
+   "keyword": "sold",
+   "text": "ers and cashiers Maintain a clean, neat, organized and safe sales floor and return all unsold merchandise to the floor THE BENEFITS: Medical, Dental, & Vision Insurance, Employe",
+   "present": false,
+   "main": true,
+   "source": "adp:7166ad59-d039-46f9-b4db-667c501b1f64:9201278541320_17"
+  },
+  {
+   "keyword": "ventas",
+   "text": "perience with process safety management and creating a culture where all accidents are preventable Highly developed leadership, change management, interpersonal, communication and",
+   "present": false,
+   "main": true,
+   "source": "workday:iko~wd3~IKO_Careers:REQ-13998"
+  },
+  {
+   "keyword": "code",
+   "text": "need on our single unified platform, built with an operating system approach on a single codebase. That means that everything — and everyone — can work together to service, respon",
+   "present": false,
+   "main": true,
+   "source": "workday:sprinklr~wd1~careers:113593-JOB"
+  },
+  {
+   "keyword": "system",
+   "text": "magic together with us through your Rappi mission 🧡 Check out how it will impact our ecosystem: Facilities & Experience As part of Rappi, you will be responsible for: Workplac",
+   "present": false,
+   "main": true,
+   "source": "workday:rappi~wd12~Rappi_jobs:JR122868"
+  },
+  {
+   "keyword": "api",
+   "text": "corner of the globe. THE PROBLEM YOU’LL HELP SOLVE Utilities are contending with a rapidly shifting energy mix and a surge in connection requests, from renewable generation t",
+   "present": false,
+   "main": true,
+   "source": "ashby:neara:11e025a4-7697-46f1-b9ad-bbf3f0980949"
+  },
+  {
+   "keyword": "apis",
+   "text": "ou can focus on working with your students instead of building lesson plans. As we move rapidly toward our most ambitious years yet, we are looking for great minds with the drive",
+   "present": false,
+   "main": true,
+   "source": "greenhouse:successacademycharterschool:5452644008"
+  },
+  {
+   "keyword": "etl",
+   "text": "service mesh authentication, centralized policy decision services, device trust, and secretless service-to-service authentication. Depth in authentication and authorization protoc",
+   "present": false,
+   "main": true,
+   "source": "oracle:iaziqy~ocs~CX_1:303126"
+  },
+  {
+   "keyword": "elt",
+   "text": "r customers. Promote Databricks' Data Intelligence Platform powered by Apache Spark™ and Delta Lake Prioritize opportunities and leverage appropriate resources. Build a plan for su",
+   "present": false,
+   "main": true,
+   "source": "greenhouse:databricks:8869256002"
+  },
+  {
+   "keyword": "transformation",
+   "text": "the future, you’re ready to take your seat at La-Z-Boy Incorporated. WE BELIEVE IN THE TRANSFORMATIONAL POWER OF COMFORT! Job Summary: A pivotal leader responsible for driving",
+   "present": false,
+   "main": true,
+   "source": "workday:lazboy~wd1~LZBCareers:JR135038-1"
+  },
+  {
+   "keyword": "data modeling",
+   "text": "knowledge, deep engineering expertise, and the ability to challenge existing technology, data models, and operating practices to deliver meaningful transformation. Responsibiliti",
+   "present": false,
+   "main": true,
+   "source": "workday:spgi~wd5~SPGI_Careers:332392-1"
+  },
+  {
+   "keyword": "predictive modeling",
+   "text": "S, XPS, TEM, EELS, APT, electrical stress testing, ML ‑ assisted image analysis) to build predictive models for HAR structures, defect behavior, and reliability performance. Pro",
+   "present": false,
+   "main": true,
+   "source": "workday:micron~wd1~external:JR100806"
+  },
+  {
+   "keyword": "eda",
+   "text": "er bijvoorbeeld ook extra vrije dagen voor kopen. Jij kiest wat bij jou past. 24,5 vakantiedagen per jaar, ruim aan te vullen vanuit je IKB. Een eindejaarsuitkering in december van",
+   "present": false,
+   "main": true,
+   "source": "workday:alliander~wd3~alliander:JR18244"
+  },
+  {
+   "keyword": "insights",
+   "text": "i is to forge connections with customers while communicating Vuori’s brand values through insightful product knowledge and a happy optimistic outlook. What you'll get to do: Creat",
+   "present": false,
+   "main": true,
+   "source": "smartrecruiters:VuoriInc:744000157672679"
+  },
+  {
+   "keyword": "probabilistic modeling",
+   "text": "uantitative analytics. You are an effective communicator capable of synthesizing complex probabilistic models into clear narratives that guide portfolio decision-makers and leader",
+   "present": false,
+   "main": true,
+   "source": "workday:roche~wd3~ROG-A2O-GENE:202610-126065-1"
+  },
+  {
+   "keyword": "llm",
+   "text": ", dental, and vision coverage; employer-paid life and disability insurance; automatic enrollment in the 403(b) plan and employer contribution (whether or not the employee contribut",
+   "present": false,
+   "main": true,
+   "source": "ukg:recruiting~ARC1013AOB~8888f6c2-d0b5-4f4b-ba2b-fa2ab452ce90:e33ddb8d-9b94-4022-88ca-41099f6d959c"
+  },
+  {
+   "keyword": "rag",
+   "text": "joy what matters most • Medical, dental, and vision insurance, plus prescription drug coverage • Basic life and AD&D insurance, with supplemental life options • Short-term and long",
+   "present": false,
+   "main": true,
+   "source": "oracle:ibtcjb~ocs~CX_2:44136"
+  },
+  {
+   "keyword": "copy",
+   "text": "suggest a GI issue. Examinations for GI patients may include rectal examinations and endoscopy procedures, currently done off-site. The incumbent serves as the GI subject matter ex",
+   "present": false,
+   "main": true,
+   "source": "usajobs:usajobs:889117300"
+  },
+  {
+   "keyword": "react",
+   "text": "e Pharmacist-on-duty for vaccination questions Monitoring for, and responding to, adverse reactions; reporting adverse reaction events per public health requirements Reviewing and",
+   "present": false,
+   "main": true,
+   "source": "workday:cvshealth~wd1~CVS_Health_Careers:R1003852"
+  },
+  {
+   "keyword": "statistics",
+   "text": "ility to design rigorous experiments at scale, including baselines, ablations, and enough statistical care to trust a result that costs real compute Ability to reason quantitativel",
+   "present": false,
+   "main": true,
+   "source": "greenhouse:anthropic:5438044008"
+  },
+  {
+   "keyword": "quota",
+   "text": "portunities by providing product information, roadmap updates, product samples, and price quotations. Maintain awareness of and communicate internally to sales and marketing teams",
+   "present": false,
+   "main": true,
+   "source": "greenhouse:samsungsemiconductor:8027922003"
+  },
+  {
+   "keyword": "forecast",
+   "text": "ass experience preferred) Experience with data analysis & performance tracking, including forecasting & sales statistics Strong customer & business judgment, with experience resolv",
+   "present": false,
+   "main": true,
+   "source": "greenhouse:oldcastlebuildingenvelope:4464166009"
+  },
+  {
+   "keyword": "prospects",
+   "text": "team while providing professional cost, schedule, risk, and constructability analysis for prospective developments shaping capital expenditure decisions across North America. LEADE",
+   "present": false,
+   "main": true,
+   "source": "greenhouse:eu~nscaleoperationsukltd:5007304101"
+  },
+  {
+   "keyword": "develop",
+   "text": "is a project lead and individual contributor role at the center of hypersonic propulsion development. As Project Engineer, you will work with the Program Manager to lead the desig",
+   "present": false,
+   "main": true,
+   "source": "workday:geaerospace~wd5~GE_ExternalSite:R5042095-1"
+  },
+  {
+   "keyword": "deploy",
+   "text": "to one of the largest MS Dynamics 365 rollouts globally. You will be embedded within the deployment team, focusing on the integrity, analysis, and visualization of data to ensure",
+   "present": false,
+   "main": true,
+   "source": "smartrecruiters:Rotork1:744000157048429"
+  },
+  {
+   "keyword": "budget",
+   "text": "lio, program, and project management discipline • Familiarity with planning, programing, Budgeting, and execution discipline • Knowledge of key performance indicators • Strong a",
+   "present": false,
+   "main": true,
+   "source": "icims:talent.peraton.com:172503"
+  },
+  {
+   "keyword": "audit",
+   "text": "mmission CMS and DOH Measures and as well as other sources. Administers and oversees the auditing and entering of data into Registries. Administrator for the Adult Cardiac Surger",
+   "present": false,
+   "main": true,
+   "source": "icims:jobs.chsli.org:75098"
+  },
+  {
+   "keyword": "hospital",
+   "text": "Exceptional Hospitality Starts with You Picture yourself brightening someone’s day. When you join our",
+   "present": false,
+   "main": true,
+   "source": "oracle:efet~us2~CX_1:228030"
+  },
+  {
+   "keyword": "python",
+   "text": "lding and validating machine learning or statistical models 3-5 years of experience using Python or R for data analysis and modeling 3-5 years of SQL experience writing medium to c",
+   "present": true,
+   "main": true,
+   "source": "workday:chghealthcare~wd1~External:JR104586-1"
+  },
+  {
+   "keyword": "javascript",
+   "text": "enuinely there. - You can code and read diffs. Strong Python; comfortable in TypeScript/JavaScript. You've built and deployed applications yourself, and you can review someone el",
+   "present": true,
+   "main": true,
+   "source": "ashby:fireworks:7a9c5827-cbeb-4397-b364-b7a5177b9f62"
+  },
+  {
+   "keyword": "typescript",
+   "text": "on in data modeling and distributed systems. TECHNICAL SKILLS: We work with a mix of TypeScript, Python, Node.js, React, cloud infrastructure, and workflow orchestration frame",
+   "present": true,
+   "main": true,
+   "source": "ashby:brettonai:191496c7-6aa7-4d11-897d-7681aec0e6b9"
+  },
+  {
+   "keyword": "node.js",
+   "text": "ngineering experience building backend services. - Strong proficiency in TypeScript and Node.js with experience building production services, ideally with NestJS or a similar fra",
+   "present": true,
+   "main": true,
+   "source": "ashby:kong:e75c7ded-f94e-4ee8-9365-794bbd0e0e91"
+  },
+  {
+   "keyword": "kubernetes",
+   "text": "ng, not only assessing them - Deep knowledge of cloud and infrastructure security: IAM, Kubernetes, network segmentation, secrets management, and infrastructure as code - Stron",
+   "present": true,
+   "main": true,
+   "source": "ashby:suno:f93eefd6-5e2d-41a1-8c19-fb74466a8860"
+  },
+  {
+   "keyword": "sql",
+   "text": "to hear from you if your background is in instalment loans or lines of credit. - Writes SQL hands-on to self-serve data and build monitoring and analytics. - Brings credit disc",
+   "present": true,
+   "main": true,
+   "source": "ashby:wealthsimple:9e46b33a-fb0a-4b41-9669-7bf83d2c759c"
+  },
+  {
+   "keyword": "microservices",
+   "text": "nt (e.g., Docker) and related ecosystems (e.g., Helm). Experience supporting multi-tenant microservices architectures. Experience with CI/CD pipelines & tools (e.g., Jenkins, GitHu",
+   "present": true,
+   "main": true,
+   "source": "smartrecruiters:Nexthink:744000152940239"
+  },
+  {
+   "keyword": "agile",
+   "text": "that powers global commerce, seamlessly connecting the digital and physical worlds. From agile supply chains to energy solutions, our ecosystems help your business move faster, op",
+   "present": true,
+   "main": true,
+   "source": "workday:prologis~wd5~Prologis_External_Careers:R6853-1"
+  },
+  {
+   "keyword": "scrum",
+   "text": "experience 3+ years’ experience at an eCommerce company Experience with both Agile and Scrum from a Product Owner Perspective Demonstrated success in working within cross funct",
+   "present": true,
+   "main": true,
+   "source": "oracle:fa-exhh-saasfaprod1~ocs~CX_3004:76427"
+  },
+  {
+   "keyword": "java",
+   "text": "as code, container platforms, continuous integration and continuous delivery (CI/CD), and Java or a comparable modern language to prototype, review, and refine solutions. Additiona",
+   "present": true,
+   "main": true,
+   "source": "workday:athenahealth~wd1~External:R15587"
+  },
+  {
+   "keyword": "kafka",
+   "text": "ed systems skills in Python, Java, Go or Scala Experience with data pipelines, streaming (Kafka or similar), lakehouse architectures and large-scale storage Experience with ontolog",
+   "present": true,
+   "main": true,
+   "source": "greenhouse:avathon:4745082005"
+  },
+  {
+   "keyword": "powerpoint",
+   "text": "capital, inventory, capital investment and margin management. Strong Microsoft Excel and PowerPoint skills with the ability to report, convey and communicate complex financial dec",
+   "present": true,
+   "main": true,
+   "source": "workday:saabusa~wd1~Saab_careers:R-03326-1"
+  },
+  {
+   "keyword": "financial analysis",
+   "text": "ticipate market shifts and communicate risks and opportunities with recommended actions. Financial Analysis & Performance Reporting Own revenue models, dashboards, forecasts, and",
+   "present": true,
+   "main": true,
+   "source": "rippling:omninet-property-management:703fb94f-630c-412b-abdf-c0efe7c86847"
+  },
+  {
+   "keyword": "budgeting",
+   "text": "onthly Recurring Revenue) calculations. Financial Analysis & Process Improvement: Support budgeting and financial planning for SaaS revenue streams. Identify and implement process",
+   "present": true,
+   "main": true,
+   "source": "workable:foodics:915423BA12"
+  },
+  {
+   "keyword": "forecasting",
+   "text": "Accounting Assistant. You will report to the Director of Finance and help with budgeting, forecasting and audit preparation. This is a good fit for an accountant who has mastered t",
+   "present": true,
+   "main": true,
+   "source": "paylocity:0817d74d-d6e9-4384-b397-c12b52e6a1c5:4610872"
+  },
+  {
+   "keyword": "intellectual property",
+   "text": "ion people and an entertainment leader, home to some of the most beloved and recognizable intellectual properties (IP) in the world. Our role at SIE is to create and nurture the ex",
+   "present": true,
+   "main": false,
+   "source": "greenhouse:sonyinteractiveentertainmentglobal:6226719004"
+  },
+  {
+   "keyword": "CI/CD",
+   "text": "Establish engineering excellence across the organization: architecture standards, DevOps/CI-CD, observability, reliability engineering, cost management, and quality practices App",
+   "present": true,
+   "main": false,
+   "source": "adp:336f663d-4d12-4b4f-9883-371d431e3759:9207107875414_1"
+  }
+ ]
+}

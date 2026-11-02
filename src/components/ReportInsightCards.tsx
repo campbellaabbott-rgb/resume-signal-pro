@@ -1,14 +1,17 @@
 import { useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ChevronDown, Download, Share2, Wrench, ArrowRight, Scale, Globe } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { FIX_POINTS_BASIS } from "@/lib/report-basis";
+import { fixLabel } from "@/lib/fix-labels";
+import { PROJECTION_CEILING } from "../../supabase/functions/free-keyword-scan/score-projection";
 import { SHARE_SITE } from "./ShareableScoreCard";
+import { scoreTone, TONE_HEX } from "@/lib/score-bands";
 
 /* ============================================================
  * New free-report insight cards:
  *  - ScoreSimulatorCard: interactive before/after — check fixes, watch the score move
  *  - AtsVendorChecksCard: how Workday/Greenhouse/Lever/iCIMS handle THIS resume
- *  - WeakestBulletsCard: 3 worst bullets, graded + rewritten
+ *  - WeakestBulletsCard: 3 worst bullets, graded, rewritten where the scan could ground a rewrite
  *  - CareerBridgeCard: transferable-skills map for career changers
  *  - ScoreAuditCard: "why this score" — every point accounted for
  *  - ShareScoreCard: downloadable branded score-card image
@@ -16,44 +19,61 @@ import { SHARE_SITE } from "./ShareableScoreCard";
 
 // ---------- Score simulator ----------
 
+/**
+ * The simulator reads the scanner's projection rule (score-projection.ts,
+ * S13-058): the score the boxes project is never below the score it started
+ * from and never above PROJECTION_CEILING, and the gain it prints is the
+ * gain the bar shows. It used to cap the projection at the ceiling but print
+ * the boxes' whole sum, so a 90 with three fixes read "Projected: 95 (+16
+ * points)", and a score already above the ceiling projected DOWN to it. Its
+ * words come from the reader's locale, the fix steps from their code
+ * (S13-122).
+ */
 export function ScoreSimulatorCard({
   atsScore,
   fixes,
 }: {
   atsScore: number;
-  fixes: Array<{ label: string; impact: number }>;
+  fixes: Array<{ label: string; impact: number; code?: unknown; params?: unknown }>;
 }) {
+  const { t } = useTranslation();
   const [checked, setChecked] = useState<boolean[]>(() => fixes.map(() => false));
   if (!fixes.length) return null;
 
-  const gained = fixes.reduce((sum, f, i) => sum + (checked[i] ? f.impact : 0), 0);
-  const projected = Math.min(95, atsScore + gained);
+  const checkedSum = fixes.reduce((sum, f, i) => sum + (checked[i] ? f.impact : 0), 0);
+  const anyChecked = checked.some(Boolean);
+  const projected = Math.max(atsScore, Math.min(PROJECTION_CEILING, atsScore + checkedSum));
+  const gain = projected - atsScore;
   const pct = (n: number) => `${Math.min(100, Math.max(0, n))}%`;
 
   return (
     <div className="rounded-2xl border border-border bg-card p-5 sm:p-6">
       <div className="flex items-center gap-2 mb-1">
         <Wrench className="w-4 h-4 text-primary" />
-        <h3 className="font-semibold text-foreground">What happens if you fix it?</h3>
+        <h3 className="font-semibold text-foreground">{t("freeResults.scoreSimulator.title")}</h3>
       </div>
       <p className="text-xs text-muted-foreground mb-4">
-        Check the fixes you're willing to make. {FIX_POINTS_BASIS}
+        {t("freeResults.scoreSimulator.intro")} {t("freeResults.scoreSimulator.basis")}
       </p>
 
-      <div className="relative h-8 rounded-full bg-muted overflow-hidden mb-1" role="img" aria-label={`Score ${atsScore}, projected ${projected}`}>
+      <div className="relative h-8 rounded-full bg-muted overflow-hidden mb-1" role="img" aria-label={t("freeResults.scoreSimulator.aria", { score: atsScore, projected })}>
         <div className="absolute inset-y-0 left-0 bg-primary/25 transition-all duration-500" style={{ width: pct(projected) }} />
         <div className="absolute inset-y-0 left-0 bg-primary transition-all duration-300" style={{ width: pct(atsScore) }} />
         <span className="absolute inset-y-0 flex items-center text-[11px] font-bold text-primary-foreground" style={{ left: `calc(${pct(atsScore)} - 28px)` }}>{atsScore}</span>
-        {gained > 0 && (
+        {gain > 0 && (
           <span className="absolute inset-y-0 flex items-center text-[11px] font-bold text-primary" style={{ left: `calc(${pct(projected)} + 6px)` }}>
             → {projected}
           </span>
         )}
       </div>
-      <p className="text-xs text-muted-foreground mb-4">
-        {gained > 0
-          ? <>Projected: <span className="font-semibold text-foreground">{projected}</span> (+{gained} points)</>
-          : "Your current score. Start checking fixes below."}
+      <p data-simulator-projection className="text-xs text-muted-foreground mb-4">
+        {gain > 0
+          ? <>{t("freeResults.scoreSimulator.projectedLabel")} <span className="font-semibold text-foreground">{projected}</span> {t("freeResults.scoreSimulator.gain", { count: gain })}</>
+          : anyChecked
+            ? (atsScore >= PROJECTION_CEILING
+              ? t("freeResults.scoreSimulator.noGainCeiling", { ceiling: PROJECTION_CEILING })
+              : t("freeResults.scoreSimulator.noGain"))
+            : t("freeResults.scoreSimulator.current")}
       </p>
 
       <div className="space-y-2">
@@ -65,7 +85,7 @@ export function ScoreSimulatorCard({
               onChange={() => setChecked(prev => prev.map((c, j) => j === i ? !c : c))}
               className="mt-0.5 accent-[hsl(var(--primary))]"
             />
-            <span className="text-xs text-foreground flex-1">{f.label}</span>
+            <span className="text-xs text-foreground flex-1">{fixLabel(t, f)}</span>
             <span className="text-xs font-semibold text-primary shrink-0">+{f.impact}</span>
           </label>
         ))}
@@ -76,7 +96,15 @@ export function ScoreSimulatorCard({
 
 // ---------- ATS vendor-specific parse checks ----------
 
-interface VendorFinding { vendor: string; status: "pass" | "warn" | "fail"; note: string }
+/**
+ * "unknown" is a vendor whose verdict depends on the layout when nobody
+ * checked the layout (S13-036): only a PDF upload reports multiColumnDetected;
+ * pasted text and Word files leave it undefined, and "not checked" must never
+ * read as "single column". hasTables, when a parser reports it, is a layout
+ * risk like columns.
+ */
+export type VendorStatus = "pass" | "warn" | "fail" | "unknown";
+export interface VendorFinding { vendor: string; status: VendorStatus; noteKey: string }
 
 /** Static, well-documented vendor parsing behaviors applied to THIS resume's features. */
 export function computeVendorChecks(input: {
@@ -84,77 +112,62 @@ export function computeVendorChecks(input: {
   multiColumnDetected?: boolean;
   hasTables?: boolean;
 }): VendorFinding[] {
-  const { resumeText, multiColumnDetected } = input;
+  const { resumeText, multiColumnDetected, hasTables } = input;
   const text = resumeText || "";
+  const layoutKnown = typeof multiColumnDetected === "boolean" || typeof hasTables === "boolean";
+  const layoutRisk = multiColumnDetected === true || hasTables === true;
   // Feature detection on the raw text
   const hasTabRuns = /\t{2,}|(?: {6,}\S+){2,}/m.test(text);
   const hasSpecialBullets = /[✦✧➤➣◆◇►▶✓☑]/.test(text);
   const nonStandardHeaders = !/(experience|employment|work history)/i.test(text) || !/(education|academic)/i.test(text);
   const longLines = text.split("\n").filter(l => l.length > 220).length > 3;
 
-  const risk = (fail: boolean, warn: boolean, failNote: string, warnNote: string, passNote: string): { status: VendorFinding["status"]; note: string } =>
-    fail ? { status: "fail", note: failNote } : warn ? { status: "warn", note: warnNote } : { status: "pass", note: passNote };
+  const NOTE = "reportInsights.vendor.note.";
+  const verdict = (vendor: string, key: string, fail: boolean, warn: boolean, dependsOnLayout: boolean): VendorFinding => {
+    const status: VendorStatus = fail ? "fail" : warn ? "warn" : dependsOnLayout && !layoutKnown ? "unknown" : "pass";
+    return { vendor, status, noteKey: `${NOTE}${key}.${status}` };
+  };
 
   return [
-    {
-      vendor: "Workday",
-      ...risk(
-        !!multiColumnDetected,
-        hasTabRuns || hasSpecialBullets,
-        "Multi-column layouts scramble Workday's parser — content reads out of order.",
-        "Tab-aligned text or decorative bullets can merge fields in Workday's preview.",
-        "Single-column, standard bullets — parses cleanly in Workday.",
-      ),
-    },
-    {
-      vendor: "Greenhouse",
-      ...risk(
-        false,
-        !!multiColumnDetected || longLines,
-        "",
-        "Greenhouse keeps the PDF but its keyword search relies on extracted text — layout quirks reduce match hits.",
-        "Greenhouse stores your original file; text extraction looks reliable here.",
-      ),
-    },
-    {
-      vendor: "Lever",
-      ...risk(
-        false,
-        hasSpecialBullets || nonStandardHeaders,
-        "",
-        "Lever's section detection expects standard headers (Experience, Education) — creative headers may unsort your history.",
-        "Standard section headers — Lever will thread your history correctly.",
-      ),
-    },
-    {
-      vendor: "iCIMS",
-      ...risk(
-        !!multiColumnDetected && hasTabRuns,
-        !!multiColumnDetected || hasTabRuns,
-        "Columns plus tab alignment is the worst case for iCIMS — fields land in the wrong boxes.",
-        "iCIMS auto-fills application fields from the parse — verify the auto-filled form before submitting.",
-        "Should auto-fill iCIMS application fields correctly.",
-      ),
-    },
+    verdict("Workday", "workday", layoutRisk, hasTabRuns || hasSpecialBullets, true),
+    verdict("Greenhouse", "greenhouse", false, layoutRisk || longLines, true),
+    verdict("Lever", "lever", false, hasSpecialBullets || nonStandardHeaders, false),
+    verdict("iCIMS", "icims", layoutRisk && hasTabRuns, layoutRisk || hasTabRuns, true),
   ];
 }
 
-export function AtsVendorChecksCard(props: { resumeText: string; multiColumnDetected?: boolean }) {
-  const findings = useMemo(() => computeVendorChecks(props), [props.resumeText, props.multiColumnDetected]);
+export function AtsVendorChecksCard(props: { resumeText: string; multiColumnDetected?: boolean; hasTables?: boolean }) {
+  const { t } = useTranslation();
+  const findings = useMemo(() => computeVendorChecks(props), [props.resumeText, props.multiColumnDetected, props.hasTables]);
   if (!props.resumeText) return null;
-  const icon = { pass: "✅", warn: "⚠️", fail: "🚫" } as const;
+  const icon = { pass: "✅", warn: "⚠️", fail: "🚫", unknown: "❔" } as const;
+  const box = {
+    fail: "border-destructive/30 bg-destructive/5",
+    warn: "border-warning/30 bg-warning/5",
+    pass: "border-border bg-background/40",
+    unknown: "border-dashed border-border bg-muted/20",
+  } as const;
+  const anyUnknown = findings.some(f => f.status === "unknown");
 
   return (
     <div className="rounded-2xl border border-border bg-card p-5 sm:p-6">
-      <h3 className="font-semibold text-foreground mb-1">How the big ATS platforms read this resume</h3>
+      <h3 className="font-semibold text-foreground mb-1">{t("reportInsights.vendor.title")}</h3>
       <p className="text-xs text-muted-foreground mb-4">
-        Each system parses differently. These checks apply each vendor's documented quirks to your actual formatting.
+        {t("reportInsights.vendor.subtitle")}
       </p>
+      {anyUnknown && (
+        <p data-vendor-unchecked-note className="text-xs text-muted-foreground mb-3 rounded-lg border border-dashed border-border px-3 py-2">
+          {t("reportInsights.vendor.uncheckedNote")}
+        </p>
+      )}
       <div className="grid sm:grid-cols-2 gap-2.5">
         {findings.map(f => (
-          <div key={f.vendor} className={`rounded-xl border p-3 ${f.status === "fail" ? "border-destructive/30 bg-destructive/5" : f.status === "warn" ? "border-warning/30 bg-warning/5" : "border-border bg-background/40"}`}>
-            <p className="text-xs font-semibold text-foreground mb-1">{icon[f.status]} {f.vendor}</p>
-            <p className="text-[11px] text-muted-foreground leading-relaxed">{f.note}</p>
+          <div key={f.vendor} data-vendor-status={f.status} className={`rounded-xl border p-3 ${box[f.status]}`}>
+            <p className="text-xs font-semibold text-foreground mb-1">
+              <span aria-hidden="true">{icon[f.status]}</span> {f.vendor}
+              <span className="sr-only"> — {t(`reportInsights.vendor.status.${f.status}`)}</span>
+            </p>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">{t(f.noteKey)}</p>
           </div>
         ))}
       </div>
@@ -164,41 +177,68 @@ export function AtsVendorChecksCard(props: { resumeText: string; multiColumnDete
 
 // ---------- Weakest bullets ----------
 
+/**
+ * The rewrite WeakestBulletsCard shows under its green arrow: any non-empty
+ * text, [brackets] and all, since both prompts ask for brackets around the
+ * numbers the candidate fills in. The findings index counts by this, so its
+ * summary says what the card shows; the builder hand-off applies only what
+ * isUsableRewrite passes, so it never applies a placeholder.
+ */
+export function shownRewrite(v: unknown): string | null {
+  return typeof v === "string" && v.trim() ? v.trim() : null;
+}
+
 export function WeakestBulletsCard({
   bullets,
 }: {
-  bullets: Array<{ original: string; grade: string; issues: string[]; rewrite: string }>;
+  /** rewrite is null when the scan could not ground one; rewriteTemplate is
+   *  then shown as guidance, never as the rewrite (S13-038). */
+  bullets: Array<{ original: string; grade: string; issues: string[]; rewrite: string | null; rewriteTemplate?: string | null; rewriteTemplateCode?: string | null }>;
 }) {
+  const { t } = useTranslation();
   if (!bullets?.length) return null;
   const gradeColor = (g: string) =>
     /a/i.test(g) ? "text-success" : /b/i.test(g) ? "text-primary" : /c/i.test(g) ? "text-warning" : "text-destructive";
 
   return (
     <div className="rounded-2xl border border-border bg-card p-5 sm:p-6">
-      <h3 className="font-semibold text-foreground mb-1">Your {bullets.length} weakest bullets, graded</h3>
-      <p className="text-xs text-muted-foreground mb-4">
-        Quoted from your resume, graded on metrics + verbs + scope, and rewritten. Fill any [brackets] with your real numbers.
-      </p>
+      <h3 className="font-semibold text-foreground mb-1">{t("freeResults.weakestBullets.title")}</h3>
+      <p className="text-xs text-muted-foreground mb-4">{t("freeResults.weakestBullets.subtitle")}</p>
       <div className="space-y-3">
-        {bullets.map((b, i) => (
-          <div key={i} className="rounded-xl border border-border p-3.5">
-            <div className="flex items-start gap-3 mb-2">
-              <span className={`text-2xl font-black shrink-0 ${gradeColor(b.grade)}`}>{b.grade.toUpperCase().slice(0, 2)}</span>
-              <p className="text-xs text-muted-foreground italic line-through decoration-destructive/40 flex-1">"{b.original}"</p>
-            </div>
-            {b.issues?.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mb-2">
-                {b.issues.slice(0, 3).map((iss, j) => (
-                  <span key={j} className="px-2 py-0.5 rounded-full bg-destructive/10 text-destructive text-[10px] font-medium">{iss}</span>
-                ))}
+        {bullets.map((b, i) => {
+          const rewrite = shownRewrite(b.rewrite);
+          // The scanner's own guidance says itself in the reader's language
+          // from its code (S13-122); an older response keeps its English.
+          const template = rewrite ? null
+            : b.rewriteTemplateCode === "verbAndNumber" ? t("freeResults.weakestBullets.template.verbAndNumber")
+            : shownRewrite(b.rewriteTemplate);
+          return (
+            <div key={i} className="rounded-xl border border-border p-3.5">
+              <div className="flex items-start gap-3 mb-2">
+                <span className={`text-2xl font-black shrink-0 ${gradeColor(b.grade)}`}>{String(b.grade ?? "").toUpperCase().slice(0, 2)}</span>
+                <p className="text-xs text-muted-foreground italic line-through decoration-destructive/40 flex-1 min-w-0 break-words">"{b.original}"</p>
               </div>
-            )}
-            <div className="flex items-start gap-2 rounded-lg bg-success/5 border border-success/20 p-2.5">
-              <ArrowRight className="w-3.5 h-3.5 text-success shrink-0 mt-0.5" />
-              <p className="text-xs text-foreground">{b.rewrite}</p>
+              {b.issues?.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {b.issues.slice(0, 3).map((iss, j) => (
+                    <span key={j} className="px-2 py-0.5 rounded-full bg-destructive/10 text-destructive text-[10px] font-medium">{iss}</span>
+                  ))}
+                </div>
+              )}
+              {rewrite ? (
+                <div className="flex items-start gap-2 rounded-lg bg-success/5 border border-success/20 p-2.5">
+                  <ArrowRight className="w-3.5 h-3.5 text-success shrink-0 mt-0.5" />
+                  <p data-bullet-rewrite className="text-xs text-foreground min-w-0 break-words">{rewrite}</p>
+                </div>
+              ) : template ? (
+                <div className="rounded-lg bg-muted/40 border border-border p-2.5">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">{t("freeResults.weakestBullets.howToFix")}</p>
+                  <p data-bullet-rewrite-template className="text-xs text-muted-foreground min-w-0 break-words">{template}</p>
+                </div>
+              ) : null}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -292,37 +332,44 @@ export function DiagnosticHeader({
 // ---------- Findings index ----------
 
 export interface Finding {
-  severity: "critical" | "warning" | "pass";
+  /** "unchecked": a check that could not be run here; never counted as a pass. */
+  severity: "critical" | "warning" | "pass" | "unchecked";
   label: string;
 }
 
 export function FindingsIndex({ findings }: { findings: Finding[] }) {
+  const { t } = useTranslation();
   if (!findings.length) return null;
   const critical = findings.filter(f => f.severity === "critical");
   const warning = findings.filter(f => f.severity === "warning");
   const passed = findings.filter(f => f.severity === "pass");
+  const unchecked = findings.filter(f => f.severity === "unchecked");
+  const dot = { critical: "bg-destructive", warning: "bg-warning", unchecked: "bg-muted-foreground/50", pass: "bg-success" } as const;
   return (
     <div className="rounded-2xl border border-border bg-card p-5 mb-4">
-      <div className="flex items-center justify-between gap-2 mb-3">
-        <h3 className="font-semibold text-foreground text-sm">Findings at a glance</h3>
-        <div className="flex items-center gap-3 text-xs">
-          <span className="text-destructive font-semibold">{critical.length} critical</span>
-          <span className="text-warning font-semibold">{warning.length} warning{warning.length === 1 ? "" : "s"}</span>
-          <span className="text-success font-semibold">{passed.length} passed</span>
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+        <h3 className="font-semibold text-foreground text-sm">{t("reportInsights.findings.title")}</h3>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+          <span data-findings-critical className="text-destructive font-semibold">{t("reportInsights.findings.critical", { count: critical.length })}</span>
+          <span data-findings-warning className="text-warning font-semibold">{t("reportInsights.findings.warning", { count: warning.length })}</span>
+          <span data-findings-passed className="text-success font-semibold">{t("reportInsights.findings.passed", { count: passed.length })}</span>
+          {unchecked.length > 0 && (
+            <span data-findings-unchecked className="text-muted-foreground font-semibold">{t("reportInsights.findings.unchecked", { count: unchecked.length })}</span>
+          )}
         </div>
       </div>
       <div className="space-y-1.5">
-        {[...critical, ...warning].slice(0, 7).map((f, i) => (
+        {[...critical, ...warning, ...unchecked].slice(0, 7).map((f, i) => (
           <div key={i} className="flex items-start gap-2 text-xs">
-            <span className={`mt-1 w-1.5 h-1.5 rounded-full shrink-0 ${f.severity === "critical" ? "bg-destructive" : "bg-warning"}`} />
-            <span className="text-foreground">{f.label}</span>
+            <span className={`mt-1 w-1.5 h-1.5 rounded-full shrink-0 ${dot[f.severity]}`} />
+            <span className={f.severity === "unchecked" ? "text-muted-foreground" : "text-foreground"}>{f.label}</span>
           </div>
         ))}
-        {critical.length + warning.length === 0 && (
-          <p className="text-xs text-muted-foreground">No critical findings — details on what's working are in the sections below.</p>
+        {critical.length + warning.length + unchecked.length === 0 && (
+          <p className="text-xs text-muted-foreground">{t("reportInsights.findings.noCritical")}</p>
         )}
       </div>
-      <p className="text-[10px] text-muted-foreground mt-3">Full detail for every finding appears in the sections below, in order of severity.</p>
+      <p className="text-[10px] text-muted-foreground mt-3">{t("reportInsights.findings.footer")}</p>
     </div>
   );
 }
@@ -569,7 +616,8 @@ export function ShareScoreCard({
     ctx.lineWidth = 26;
     ctx.strokeStyle = "#1f2c47";
     ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
-    const scoreColor = atsScore >= 75 ? "#34d399" : atsScore >= 55 ? "#fbbf24" : "#f87171";
+    // The report's one set of bands (src/lib/score-bands.ts, S13-019).
+    const scoreColor = TONE_HEX[scoreTone(atsScore)];
     ctx.strokeStyle = scoreColor;
     ctx.beginPath(); ctx.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + (Math.PI * 2 * atsScore) / 100); ctx.stroke();
     ctx.fillStyle = "#ffffff";

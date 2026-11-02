@@ -14,10 +14,15 @@ import { PageJsonLd } from "@/components/seo/PageJsonLd";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { supabase } from "@/integrations/supabase/client";
+import { studyBasisLine, studyFaqs } from "@/lib/score-study";
 
 interface Insights {
   as_of: string;
   window_days: number;
+  /** 'primary' once 20261101100000 applies: every figure is the primary scanner's (S13-050). */
+  scorer?: string;
+  /** How many scans that migration leaves out, and why. */
+  excluded?: { fallback_scanner?: number; rule_based_report?: number };
   overall: {
     n: number;
     median: number;
@@ -33,24 +38,8 @@ interface Insights {
 
 const label = (slug: string) => slug.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
-const FAQS = [
-  {
-    q: "What is a good ATS score?",
-    a: "Judge your score against the live distribution on this page, not a folklore threshold: the median and quartiles above come from real scans in the last 180 days. Scoring above the 75th percentile means most resumes being checked right now score below yours; below the 25th percentile means parsing or keyword problems are very likely holding you back.",
-  },
-  {
-    q: "Do ATS systems themselves show scores like this?",
-    a: "Mostly no. Most ATS platforms rank and filter by recruiter searches rather than assigning a universal score. A resume score — ours included — is a diagnostic model of how well your resume will survive parsing and keyword search, not a number Workday or Greenhouse shows a recruiter.",
-  },
-  {
-    q: "Where do these numbers come from?",
-    a: "From completed scans run by real users on this site over a rolling 180-day window. Only aggregates are published: each industry or experience bucket must contain at least 25 scans before it appears, and no individual resume, score, or location is ever exposed.",
-  },
-  {
-    q: "Why might this sample skew low or high?",
-    a: "People who check their resume are often mid-job-search and suspect something is wrong, so the sample likely skews toward resumes with fixable problems. Treat the percentiles as a benchmark of active job seekers, not of every employed professional's resume.",
-  },
-];
+// The questions, and the basis they and the subline name, come from one
+// module the crawler copy reads too (S13-050): src/lib/score-study.ts.
 
 export default function ScoreStudy() {
   const [insights, setInsights] = useState<Insights | null>(null);
@@ -80,6 +69,9 @@ export default function ScoreStudy() {
     };
   }, []);
 
+  const faqs = useMemo(() => studyFaqs(insights), [insights]);
+  const basisLine = studyBasisLine(insights);
+
   const jsonLd = useMemo(() => {
     const blocks: object[] = [
       {
@@ -105,7 +97,7 @@ export default function ScoreStudy() {
       {
         "@context": "https://schema.org",
         "@type": "FAQPage",
-        mainEntity: FAQS.map((f) => ({
+        mainEntity: faqs.map((f) => ({
           "@type": "Question",
           name: f.q,
           acceptedAnswer: { "@type": "Answer", text: f.a },
@@ -113,7 +105,7 @@ export default function ScoreStudy() {
       },
     ];
     return blocks.map((b) => JSON.stringify(b));
-  }, []);
+  }, [faqs]);
 
   const o = insights?.overall ?? null;
 
@@ -140,6 +132,7 @@ export default function ScoreStudy() {
             Computed live from our scan corpus (rolling {insights?.window_days ?? 180}-day window
             {insights ? `, as of ${insights.as_of}` : ""}) · No individual resume data — aggregates only, minimum 25
             scans per bucket
+            {basisLine && <span data-study-basis className="block mt-1">{basisLine}</span>}
           </p>
 
           <section className="rounded-2xl border border-primary/25 bg-primary/5 p-5 mb-8">
@@ -147,7 +140,7 @@ export default function ScoreStudy() {
             <p className="text-sm text-muted-foreground leading-relaxed">
               {o ? (
                 <>
-                  Across the last {o.n.toLocaleString()} completed scans, the median resume scored{" "}
+                  Across the last {o.n.toLocaleString()} scans logged, the median resume scored{" "}
                   <strong className="text-foreground">{o.median}</strong>, with the middle half of resumes landing
                   between {o.p25} and {o.p75}.{" "}
                   {o.pct_80_plus != null && (
@@ -181,7 +174,7 @@ export default function ScoreStudy() {
               <section className="mb-10">
                 <h2 className="text-xl font-bold mb-3">How real resumes score</h2>
                 <p className="text-sm text-muted-foreground leading-relaxed mb-4">
-                  Each bar is a 10-point score band; together they show every completed scan in the current window.
+                  Each bar is a 10-point score band; together they show every scan logged in the current window.
                   If the shape surprises you, remember who runs a resume checker: mostly active job seekers who
                   suspect something is wrong — employed professionals with polished resumes are underrepresented.
                 </p>
@@ -202,7 +195,7 @@ export default function ScoreStudy() {
                   <h2 className="text-xl font-bold mb-3">Benchmarks by industry</h2>
                   <p className="text-sm text-muted-foreground leading-relaxed mb-4">
                     Median and middle-half range (25th–75th percentile) per detected industry. Industries appear
-                    once they have at least 25 completed scans in the window, so smaller fields may be missing.
+                    once they have at least 25 scans logged in the window, so smaller fields may be missing.
                   </p>
                   <div className="rounded-2xl border border-border bg-card overflow-hidden">
                     <table className="w-full text-sm">
@@ -271,7 +264,7 @@ export default function ScoreStudy() {
           <section className="mb-10">
             <h2 className="text-xl font-bold mb-4">Common questions</h2>
             <div className="space-y-3">
-              {FAQS.map((f) => (
+              {faqs.map((f) => (
                 <div key={f.q} className="rounded-2xl border border-border bg-card p-4">
                   <h3 className="font-semibold text-foreground text-sm mb-1.5">{f.q}</h3>
                   <p className="text-xs text-muted-foreground leading-relaxed">{f.a}</p>

@@ -204,7 +204,6 @@ const COMPUTED_SITES: Record<string, Record<string, string>> = {
     "${scoreBreakdown.keywords}%": "the scan's breakdown of the reader's own score (PDF export)",
     "${scoreBreakdown.format}%": "the scan's breakdown of the reader's own score (PDF export)",
     "${scoreBreakdown.quantification}%": "the scan's breakdown of the reader's own score (PDF export)",
-    [`"40%" in "severity: 'warning', label: 'Under 40% of bullets carry a number — recruiters anchor on"`]: "printed only when the reader's own quantificationScore (the share of their bullets with a number) is under 40",
     "{industryBlend.primaryPct}%": "the share of the reader's own résumé text the industry detector reads as the first field",
     "{industryBlend.secondaryPct}%": "the share of the reader's own résumé text the industry detector reads as the second field",
     "{side.keywordCoveragePct}%": "the share of a field's keyword list found in the reader's own résumé",
@@ -285,6 +284,9 @@ function keysUsed(): { whole: Set<string>; exact: Set<string> } {
 const COMPUTED_KEYS: Record<string, string> = {
   "freeResults.targeting.reachTitle": "{{pct}} is industryBlend.secondaryPct, the share of the reader's own résumé text read as that field",
   "jobsPage.fitBadge": "{{pct}} is the fit score of the reader's own résumé against that posting",
+  // Moved here from the module allowlist when the findings items became
+  // locale strings (S13-122 recheck).
+  "reportInsights.findings.items.lowQuantification": "printed only when the reader's own quantificationScore (the share of their bullets with a number) is under 40",
   "freeResults.lockedInsights.bulletLine1": "an example rewrite (\"Replace '…' → '…'\"), shown only when the reader's résumé gave no weak bullet to quote; its figures are the example's",
   "freeResults.lockedInsights.bulletLine2": "an example rewrite (\"Replace '…' → '…'\"), shown only when the reader's résumé gave no weak bullet to quote; its figures are the example's",
 };

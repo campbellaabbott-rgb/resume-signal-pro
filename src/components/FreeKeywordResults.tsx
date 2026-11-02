@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
-import { FIX_PLAN_BASIS, FIX_POINTS_BASIS, marketBasis, skillsBasis } from "@/lib/report-basis";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { FIX_PLAN_BASIS, marketBasis, skillsBasis } from "@/lib/report-basis";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useConversionTracking } from "@/hooks/use-conversion-tracking";
@@ -37,18 +37,21 @@ import { emailSchema } from "@/lib/security-validation";
 import { InteractiveChecklist } from "./InteractiveChecklist";
 import { ShareableScoreCard } from "./ShareableScoreCard";
 import { ResumeXRay } from "./ResumeXRay";
-import { ScoreSimulatorCard, AtsVendorChecksCard, WeakestBulletsCard, CareerBridgeCard, ScoreAuditCard, ShareScoreCard, FreelanceGuidanceCard, IndustryChecksCard, CountryStandardsCard, DiagnosticHeader, FindingsIndex, computeVendorChecks, type Finding } from "./ReportInsightCards";
+import { ScoreSimulatorCard, AtsVendorChecksCard, WeakestBulletsCard, CareerBridgeCard, ScoreAuditCard, ShareScoreCard, FreelanceGuidanceCard, IndustryChecksCard, CountryStandardsCard, DiagnosticHeader, FindingsIndex, computeVendorChecks, shownRewrite, type Finding } from "./ReportInsightCards";
 import { EmailReportCapture } from "./EmailReportCapture";
 import { withMailSentences, type MailSentences } from "@/lib/report-mail-copy";
 import { RoleTargetingCard, CheckAgainstPostingCard } from "./RoleTargeting";
 import { LiveMatches } from "./LiveMatches";
 import { CardErrorBoundary } from "./CardErrorBoundary";
-import { getAvailableIndustries } from "./IndustryConfidenceIndicator";
+import { scanIndustryOptions, scanIndustryLabel } from "@/config/scan-industries";
 import { diffWords } from "@/lib/diff-words";
 import { ScoreHero } from "./scorecard/ScoreHero";
 import { MetricCardsGrid } from "./scorecard/MetricCardsGrid";
 import { RedFlagsSection, KeywordsSection } from "./scorecard/RedFlagsKeywords";
 import { SectionNav } from "./scorecard/SectionNav";
+import { scoreTone } from "@/lib/score-bands";
+import { isUsableRewrite } from "@/lib/builder-import";
+import { fixLabel, isFixCode } from "@/lib/fix-labels";
 import { CollapsibleSection } from "./scorecard/CollapsibleSection";
 import { 
   EnhancedAnalysisDisplay, 
@@ -448,6 +451,12 @@ export interface FreeKeywordResultsProps {
   // Set only for PDF uploads (needs position data from text extraction) — see
   // ATSParseSimulator, which skips the layout check entirely when undefined.
   multiColumnDetected?: boolean;
+  /** The scanner's resumeTruncated: part of the résumé was not read (S13-008). */
+  resumeTruncated?: boolean;
+  /** The scanner's languageNotice (S13-024): the résumé is in a language its
+   *  keyword and section checks are not built for, or one it could not
+   *  identify. Null for a language they are built for. */
+  languageNotice?: { reason?: string; language?: string | null; name?: string | null } | null;
   jobDescriptionText?: string;
   jobTitle?: string;
   jobCompany?: string;
@@ -474,6 +483,9 @@ export interface FreeKeywordResultsProps {
   unquantifiedBulletsDetected?: { text: string; role: string }[];
   bulletQuantRate?: number;
   projectedScore?: number | null;
+  /** The scanner's one fix list (S13-058): projectedScore is its `to`, and the
+   *  simulator ticks through its fixes to reach the same total. */
+  scoreProjection?: { to?: number; fixes?: Array<{ label?: unknown; impact?: unknown; code?: unknown; params?: unknown }> } | null;
   // Market intelligence
   marketIntelligence?: {
     country: string; countryName: string; countrySource: string;
@@ -521,7 +533,7 @@ export interface FreeKeywordResultsProps {
     user: { quantifiedBullets: number; leadershipSignals: number; keywordCoveragePct: number };
   };
   fixRoadmap?: {
-    steps: Array<{ order: number; step: string; minutes: number; scoreImpact: number; projectedScoreAfter: number }>;
+    steps: Array<{ order: number; step: string; code?: unknown; params?: unknown; minutes: number; scoreImpact: number; projectedScoreAfter: number }>;
     totalMinutes: number;
     finalProjectedScore: number;
   };
@@ -548,7 +560,9 @@ export interface FreeKeywordResultsProps {
     hiringManager: { verdict: string; biggestDoubt?: string };
     hrScreener: { verdict: string; levelRead?: string };
   };
-  weakestBullets?: Array<{ original: string; grade: string; issues: string[]; rewrite: string }>;
+  /** rewrite is null when the scan could not ground one (newer responses);
+   *  rewriteTemplate is then guidance for the person, never a bullet. */
+  weakestBullets?: Array<{ original: string; grade: string; issues: string[]; rewrite: string | null; rewriteTemplate?: string | null; rewriteTemplateCode?: string | null }>;
   careerChangeBridge?: {
     fromField: string; toField: string; carryOver: string[];
     needsReframing: Array<{ current: string; reframed: string }>;
@@ -636,6 +650,8 @@ export function FreeKeywordResults({
   isGeneratingTailored,
   resumeText,
   multiColumnDetected,
+  resumeTruncated,
+  languageNotice,
   jobDescriptionText,
   jobTitle,
   jobCompany,
@@ -656,6 +672,7 @@ export function FreeKeywordResults({
   unquantifiedBulletsDetected = [],
   bulletQuantRate,
   projectedScore,
+  scoreProjection,
   marketIntelligence,
   skillsRecency,
   careerTrajectory,
@@ -712,7 +729,24 @@ export function FreeKeywordResults({
   const missingSkills = Array.isArray(missingSkillsProp) ? missingSkillsProp : [];
   const missingSkillsDetailed = Array.isArray(missingSkillsDetailedProp) ? missingSkillsDetailedProp : [];
   const skillGapActions = Array.isArray(skillGapActionsProp) ? skillGapActionsProp : [];
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  // The scanner's languageNotice, in the reader's words (S13-024): a résumé in
+  // a language the keyword and section checks are not built for was reported
+  // as if it were English.
+  // The language is named in the reader's language from its code; the
+  // scanner's English name is the fallback, and a notice with neither reads
+  // as an unknown language. Anything else (an older response) shows nothing.
+  const languageNoticeTitle = (() => {
+    if (!languageNotice || typeof languageNotice !== 'object') return null;
+    if (languageNotice.reason === 'unknown') return t('freeResults.languageNotice.unknownTitle');
+    if (languageNotice.reason !== 'unsupported') return null;
+    const code = typeof languageNotice.language === 'string' ? languageNotice.language : '';
+    let name = typeof languageNotice.name === 'string' ? languageNotice.name.trim() : '';
+    if (/^[a-z]{2,3}$/.test(code)) {
+      try { name = new Intl.DisplayNames([i18n.language || 'en', 'en'], { type: 'language' }).of(code) || name; } catch { /* no Intl.DisplayNames: keep the scanner's name */ }
+    }
+    return name ? t('freeResults.languageNotice.unsupportedTitle', { language: name }) : t('freeResults.languageNotice.unknownTitle');
+  })();
   // Interview prep needs an account (the server counts it by account).
   const { user } = useAuth();
   const { formatPrice, isLocalCurrency } = useCurrency();
@@ -741,6 +775,8 @@ export function FreeKeywordResults({
 
   // Use corrected industry if set, otherwise use detected
   const effectiveIndustry = correctedIndustry || industry;
+  // The ATS score's one set of bands (src/lib/score-bands.ts, S13-019).
+  const atsTone = scoreTone(atsScoreEstimate);
 
   // Real counts for the "Complete Keyword Gap Analysis" upsell card below —
   // these used to be the same hardcoded marketing copy for every user
@@ -780,10 +816,19 @@ export function FreeKeywordResults({
     }
     toast({
       title: t('freeResults.industryUpdated'),
-      description: t('freeResults.industryUpdatedDescription', { industry: newIndustry.replace(/_/g, ' ') }),
+      description: t('freeResults.industryUpdatedDescription', { industry: scanIndustryLabel(newIndustry) }),
     });
   };
   
+  // A correction the reader makes, from the "We read this as" select or the
+  // industry card's grid (S13-018): the report re-reads itself, and the next
+  // scan is told. "General / Other" is no industry to hold the scanner to (it
+  // drops a confirmed "general"), so it is sent as no override.
+  const confirmIndustry = (newIndustry: string) => {
+    handleIndustryChange(newIndustry);
+    onContextConfirm?.({ confirmedIndustry: newIndustry === 'general' ? null : newIndustry });
+  };
+
   // Record this scan in history (only once per render)
   useEffect(() => {
     if (!hasRecordedScan && atsScoreEstimate) {
@@ -1020,20 +1065,32 @@ export function FreeKeywordResults({
     ? { ...experienceLevelBase, level: correctedExperience as typeof experienceLevelBase.level }
     : experienceLevelBase;
 
+  // Whether the latest level correction was recorded: only a plain true from
+  // log_seniority_correction counts. A refusal (42501 before 20261101110000),
+  // a false (an invalid pair or a spent budget), a network failure and an
+  // answer to an earlier pick all leave it unrecorded, and nothing says
+  // otherwise. The answer is read, never discarded.
+  const [levelCorrectionLogged, setLevelCorrectionLogged] = useState(false);
+  const levelCorrectionSeq = useRef(0);
   const confirmExperience = async (level: string) => {
+    const seq = ++levelCorrectionSeq.current;
+    setLevelCorrectionLogged(false);
     if (level === experienceLevelBase.level) { setCorrectedExperience(null); return; }
     setCorrectedExperience(level);
     onContextConfirm?.({ confirmedExperience: level });
+    let recorded = false;
     try {
-      await supabase.rpc('log_seniority_correction' as never, {
+      const { data, error } = await supabase.rpc('log_seniority_correction' as never, {
         p_detected_level: experienceLevelBase.level,
         p_corrected_level: level,
         p_detected_years: experienceLevelBase.yearsEstimate ?? null,
         p_industry: effectiveIndustry,
         p_resume_text_length: resumeText?.length ?? null,
         p_visitor_id: getVisitorId(),
-      } as never);
-    } catch { /* non-blocking */ }
+      } as never) as { data: unknown; error: unknown };
+      recorded = !error && data === true;
+    } catch { recorded = false; }
+    if (seq === levelCorrectionSeq.current) setLevelCorrectionLogged(recorded);
   };
 
   const computedTotalYears = deriveTotalExperienceText();
@@ -1085,6 +1142,42 @@ export function FreeKeywordResults({
   const weakPhrases = weakPhrasesProp || [];
   const timelineAnalysis = timelineAnalysisProp ?? null;
   const quickWins = quickWinsProp || [];
+  // The simulator's fixes are the scanner's one fix list (S13-058), so every
+  // box ticked lands on the hero's projected score, the Fix Plan's last step
+  // and Improvement Potential: the quick wins served plus the bullets and
+  // keywords steps. An older response without the list keeps the quick wins.
+  // A step's code and params ride along so the card says it in the reader's
+  // language (S13-122); the English label stays for a step with no code.
+  const projectionFixes: Array<{ label: string; impact: number; code?: unknown; params?: unknown }> = Array.isArray(scoreProjection?.fixes)
+    ? scoreProjection!.fixes!.flatMap((f) =>
+        f && typeof f.label === 'string' && f.label.trim() && typeof f.impact === 'number' && Number.isFinite(f.impact)
+          ? [{ label: f.label, impact: Math.max(0, Math.round(f.impact)), ...(isFixCode(f.code) ? { code: f.code, params: f.params } : {}) }]
+          : [])
+    : [];
+  // True only when the scanner's one fix list is what the simulator ticks
+  // through. The engine live before it (projectedScore with no list) summed
+  // the top three quick wins and up to three bullets at 3 points each, capped
+  // at 95, with no keyword step: the Score Potential card names that basis
+  // instead of the simulator and the Fix Plan.
+  const fromProjection = projectionFixes.length > 0;
+  const simulatorFixes: Array<{ label: string; impact: number; code?: unknown; params?: unknown }> = fromProjection
+    ? projectionFixes
+    : quickWins.slice(0, 5).map(w => ({ label: w.fix, impact: w.scoreImpact ?? (w.impact === 'high' ? 6 : w.impact === 'medium' ? 4 : 2) }));
+  // The rewrites the builder will apply (S13-038): only a real rewrite,
+  // never a null one, an instruction template, or one with an unfilled
+  // [number]; each bullet once, the first rewrite winning. The hand-off box
+  // counts these and hands exactly these over.
+  const handoffRewrites: Array<{ before: string; after: string }> = (() => {
+    const seen = new Set<string>();
+    return [
+      ...(weakestBullets ?? []).map((b) => ({ before: b.original, after: b.rewrite })),
+      ...(additionalRewrites ?? []).map((r) => ({ before: r.before, after: r.after })),
+    ].flatMap((r) => {
+      if (!r.before || !isUsableRewrite(r.after) || seen.has(r.before)) return [];
+      seen.add(r.before);
+      return [{ before: r.before, after: r.after }];
+    });
+  })();
   const sampleRewrite = sampleRewriteProp;
   // No fallback, deliberately: the old hardcoded default showed every user
   // the same invented per-vendor scores. Absent data now hides the section.
@@ -1355,27 +1448,38 @@ export function FreeKeywordResults({
   // the report runs. Derived entirely from data already on screen.
   const findings: Finding[] = (() => {
     const out: Finding[] = [];
-    if (parseQuality?.verdict === 'poor') out.push({ severity: 'critical', label: 'Resume text may not have extracted correctly — scores below could be unreliable' });
-    else if (parseQuality?.verdict === 'fair') out.push({ severity: 'warning', label: 'Extraction quality is imperfect — verify the parse preview below' });
+    // Every label the page writes is the reader's language (S13-122 recheck);
+    // red-flag titles and field-check labels come from the scan as written.
+    const item = (key: string, opts?: Record<string, unknown>) => t(`reportInsights.findings.items.${key}`, opts);
+    if (parseQuality?.verdict === 'poor') out.push({ severity: 'critical', label: item('parsePoor') });
+    else if (parseQuality?.verdict === 'fair') out.push({ severity: 'warning', label: item('parseFair') });
     for (const flag of (redFlags || []).slice(0, 3)) {
       const sev = (flag as { severity?: string }).severity === 'critical' ? 'critical' : 'warning';
       const title = (flag as { title?: string; flag?: string }).title || (flag as { flag?: string }).flag;
       if (title) out.push({ severity: sev, label: title });
     }
-    if (!contactInfo.hasEmail) out.push({ severity: 'critical', label: 'No email address detected — screeners cannot contact you' });
-    if (!contactInfo.hasPhone) out.push({ severity: 'warning', label: 'No phone number detected' });
-    for (const item of industrySpecificChecks?.items || []) {
-      out.push(item.present ? { severity: 'pass', label: item.label } : { severity: 'warning', label: `${item.label}: missing — see field-specific checks` });
+    if (!contactInfo.hasEmail) out.push({ severity: 'critical', label: item('noEmail') });
+    if (!contactInfo.hasPhone) out.push({ severity: 'warning', label: item('noPhone') });
+    for (const check of industrySpecificChecks?.items || []) {
+      out.push(check.present ? { severity: 'pass', label: check.label } : { severity: 'warning', label: item('fieldMissing', { label: check.label }) });
     }
     if (resumeText) {
       for (const v of computeVendorChecks({ resumeText, multiColumnDetected })) {
-        out.push(v.status === 'fail' ? { severity: 'critical', label: `${v.vendor} parsing: likely failure` } : v.status === 'warn' ? { severity: 'warning', label: `${v.vendor} parsing: needs review` } : { severity: 'pass', label: `${v.vendor} parsing` });
+        // A layout nobody checked is "unchecked", never a pass (S13-036).
+        const severity = v.status === 'fail' ? 'critical' : v.status === 'warn' ? 'warning' : v.status === 'unknown' ? 'unchecked' : 'pass';
+        out.push({ severity, label: t(`reportInsights.vendor.finding.${v.status}`, { vendor: v.vendor }) });
       }
     }
-    if ((weakestBullets?.length ?? 0) > 0) out.push({ severity: 'warning', label: `${weakestBullets!.length} bullet${weakestBullets!.length === 1 ? '' : 's'} graded D or below — rewrites provided` });
-    if (typeof quantificationScore === 'number' && quantificationScore < 40) out.push({ severity: 'warning', label: 'Under 40% of bullets carry a number — recruiters anchor on metrics' });
-    else if (typeof quantificationScore === 'number' && quantificationScore >= 60) out.push({ severity: 'pass', label: 'Quantified impact' });
-    if (sectionCheck.hasExperience && sectionCheck.hasEducation && sectionCheck.hasSkills) out.push({ severity: 'pass', label: 'Core sections present' });
+    if ((weakestBullets?.length ?? 0) > 0) {
+      const n = weakestBullets!.length;
+      // What the card shows (S13-122 landing check): a bracketed rewrite is
+      // shown under its arrow and counted here; only the hand-off refuses it.
+      const rewritten = weakestBullets!.filter((b) => shownRewrite(b.rewrite) !== null).length;
+      out.push({ severity: 'warning', label: item(rewritten === n ? 'weakBulletsAll' : rewritten > 0 ? 'weakBulletsSome' : 'weakBulletsNone', { count: n, rewritten }) });
+    }
+    if (typeof quantificationScore === 'number' && quantificationScore < 40) out.push({ severity: 'warning', label: item('lowQuantification') });
+    else if (typeof quantificationScore === 'number' && quantificationScore >= 60) out.push({ severity: 'pass', label: item('quantified') });
+    if (sectionCheck.hasExperience && sectionCheck.hasEducation && sectionCheck.hasSkills) out.push({ severity: 'pass', label: item('coreSections') });
     return out;
   })();
 
@@ -1419,6 +1523,27 @@ export function FreeKeywordResults({
   return (
     <TooltipProvider delayDuration={200}>
     <div className="w-full max-w-3xl mx-auto animate-fade-in">
+      {/* ── The scan did not read the whole résumé (S13-008). It leads the
+          report: every score and quote below comes from the part it read,
+          and the report must not pass that off as a reading of the whole
+          document. Only the scanner's own boolean shows it; an older
+          response without the field shows nothing. ── */}
+      {resumeTruncated === true && (
+        <div data-resume-truncated role="note" className="rounded-xl border border-warning/50 bg-warning/10 px-4 py-3 mb-4">
+          <p className="text-sm font-semibold text-foreground">{t('freeResults.resumeTruncated.title')}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{t('freeResults.resumeTruncated.body')}</p>
+        </div>
+      )}
+      {/* ── The résumé is in a language the keyword and section checks are not
+          built for, or one the scan could not identify (S13-024): the report says so before it is read,
+          instead of passing an English reading off as a reading of the CV. ── */}
+      {languageNoticeTitle && (
+        <div data-language-notice role="note" className="rounded-xl border border-warning/50 bg-warning/10 px-4 py-3 mb-4">
+          <p className="text-sm font-semibold text-foreground">{languageNoticeTitle}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{t('freeResults.languageNotice.body')}</p>
+        </div>
+      )}
+
       {/* ── The report's summary. The scan's verdict marks a complete report,
           and its sentence is not printed: it put a pass rate on the résumé,
           and the line under it placed the score among other people's scans.
@@ -1463,6 +1588,8 @@ export function FreeKeywordResults({
                   line(new Date().toLocaleDateString(), 9, false, [120, 120, 120]);
                 }
                 y += 8;
+                if (resumeTruncated === true) line(`${t('freeResults.resumeTruncated.title')} ${t('freeResults.resumeTruncated.body')}`, 9.5, true, [160, 110, 20]);
+                if (languageNoticeTitle) line(`${languageNoticeTitle} ${t('freeResults.languageNotice.body')}`, 9.5, true, [160, 110, 20]);
                 line(`ATS Score: ${atsScoreEstimate}/100${scoreBand ? `  (modeling band ${scoreBand.low}–${scoreBand.high})` : ''}${projectedScore ? `  →  about ${projectedScore} after fixes, a rough guide` : ''}`, 12, true);
                 if (scoreBreakdown) line(`Breakdown — Keywords: ${scoreBreakdown.keywords}%  ·  Format: ${scoreBreakdown.format}%  ·  Quantification: ${scoreBreakdown.quantification}%`, 10);
                 y += 6;
@@ -1572,43 +1699,49 @@ export function FreeKeywordResults({
       {/* ── Detection confirmation strip — confirmed labels are 100% accurate ── */}
       {industryNeedsConfirmation && !correctedIndustry && (
         <div className="rounded-xl border border-warning/40 bg-warning/10 px-4 py-2.5 mb-2 text-xs text-foreground">
-          <span className="font-semibold">Quick check:</span> we weren't fully sure of your industry on this one
-          {industryTransition ? (
-            <> — your history reads as <span className="font-semibold capitalize">{(industryTransition.historical ?? '').replace(/_/g, ' ')}</span> but your latest role reads as <span className="font-semibold capitalize">{(industryTransition.recent ?? '').replace(/_/g, ' ')}</span>. Confirm below and the whole report recalibrates.</>
-          ) : (
-            <>. Confirm or correct it below — benchmarks and keywords sharpen instantly.</>
-          )}
+          <span className="font-semibold">{t('freeResults.readAs.quickCheck.title')}</span>{' '}
+          {industryTransition
+            ? t('freeResults.readAs.quickCheck.transition', {
+                historical: scanIndustryLabel(industryTransition.historical ?? ''),
+                recent: scanIndustryLabel(industryTransition.recent ?? ''),
+              })
+            : t('freeResults.readAs.quickCheck.unsure')}
         </div>
       )}
       <div className={`rounded-xl border px-4 py-2.5 mb-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs ${industryNeedsConfirmation && !correctedIndustry ? 'border-warning/50 bg-warning/5 ring-1 ring-warning/30' : 'border-border/60 bg-card/60'}`}>
-        <span className="text-muted-foreground">We read this as:</span>
+        <span className="text-muted-foreground">{t('freeResults.readAs.label')}</span>
         <label className="flex items-center gap-1.5">
-          <span className="text-muted-foreground">Industry</span>
+          <span className="text-muted-foreground">{t('freeResults.readAs.industry')}</span>
           <select
             value={effectiveIndustry}
-            onChange={(e) => { handleIndustryChange(e.target.value); onContextConfirm?.({ confirmedIndustry: e.target.value }); }}
+            onChange={(e) => confirmIndustry(e.target.value)}
             className="bg-transparent border border-border/60 rounded-md px-1.5 py-0.5 text-foreground font-medium capitalize cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary/40"
-            aria-label="Confirm or correct detected industry"
+            aria-label={t('freeResults.readAs.industryAria')}
+            data-industry-select
           >
-            {getAvailableIndustries().map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            {/* The scanner's own ids (S13-018), plus this report's if it is not one of them. */}
+            {scanIndustryOptions(effectiveIndustry).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         </label>
         <label className="flex items-center gap-1.5">
-          <span className="text-muted-foreground">Level</span>
+          <span className="text-muted-foreground">{t('freeResults.readAs.level')}</span>
           <select
             value={experienceLevel.level}
             onChange={(e) => confirmExperience(e.target.value)}
             className="bg-transparent border border-border/60 rounded-md px-1.5 py-0.5 text-foreground font-medium capitalize cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary/40"
-            aria-label="Confirm or correct detected experience level"
+            aria-label={t('freeResults.readAs.levelAria')}
+            data-level-select
           >
-            <option value="entry">Entry</option>
-            <option value="mid">Mid</option>
-            <option value="senior">Senior</option>
-            <option value="executive">Executive</option>
+            {(['entry', 'mid', 'senior', 'executive'] as const).map((lv) => (
+              <option key={lv} value={lv}>{t(`freeResults.readAs.levels.${lv}`)}</option>
+            ))}
           </select>
         </label>
         {experienceLevel.yearsEstimate && <span className="text-muted-foreground">~{experienceLevel.yearsEstimate}</span>}
-        <span className="text-muted-foreground/60 ml-auto hidden sm:inline">Corrections retrain our detection</span>
+        <span className="text-muted-foreground/60 ml-auto hidden sm:inline" data-read-as-note>{t('freeResults.readAs.note')}</span>
+        {levelCorrectionLogged && (
+          <span className="text-success/80 basis-full sm:basis-auto" role="status" data-level-correction-logged>{t('freeResults.readAs.levelLogged')}</span>
+        )}
       </div>
 
       {/* ── Intent-adaptive spotlight — the report leads with what THEY came for ── */}
@@ -1811,13 +1944,14 @@ export function FreeKeywordResults({
         seniorityLevel={seniorityLevel}
         dualScore={dualScore}
         calibratedLanguage={calibratedLanguage}
+        atsScore={atsScoreEstimate}
         usageRecommendations={usageRecommendations}
         credibilityIssues={credibilityIssues}
         contentLocations={contentLocations}
         industryDetection={industryDetection}
         industry={effectiveIndustry}
         candidateName={candidateName}
-        onIndustryChange={handleIndustryChange}
+        onIndustryChange={confirmIndustry}
         resumeTextLength={resumeText?.length}
         visitorId={getVisitorId()}
       />
@@ -1927,7 +2061,7 @@ export function FreeKeywordResults({
             <p className="text-sm font-semibold text-foreground">
               {redFlags.length > 0
                 ? t('freeResults.actionBanner.issuesFound', { count: redFlags.length })
-                : t(atsScoreEstimate < 70 ? 'freeResults.actionBanner.criticalImprovements' : 'freeResults.actionBanner.keyImprovements')
+                : t(atsTone !== 'success' ? 'freeResults.actionBanner.criticalImprovements' : 'freeResults.actionBanner.keyImprovements')
               }
             </p>
             <p className="text-xs text-muted-foreground">
@@ -2163,17 +2297,19 @@ export function FreeKeywordResults({
           median and a top quarter over 180 days, never named in the line)
           under a heading about competing; the free report ranks the reader
           against no one (H0, the review of 2026-10-27). */}
-      {atsScoreEstimate < 75 && (
-        <div className={cn(
+      {/* Shown for exactly the scores the hero does not colour green, in the
+          hero's colour: one set of bands for the whole report (S13-019). */}
+      {atsTone !== "success" && (
+        <div data-ats-banner data-score-tone={atsTone} className={cn(
           "rounded-xl border p-3 mb-4",
-          atsScoreEstimate < 60 
+          atsTone === "destructive"
             ? "bg-destructive/5 border-destructive/20" 
             : "bg-warning/5 border-warning/20"
         )}>
           <div className="flex items-center gap-2">
-            <AlertTriangle className={cn("w-4 h-4 shrink-0", atsScoreEstimate < 60 ? "text-destructive" : "text-warning")} />
+            <AlertTriangle className={cn("w-4 h-4 shrink-0", atsTone === "destructive" ? "text-destructive" : "text-warning")} />
             <div>
-              <p className={cn("text-sm font-semibold", atsScoreEstimate < 60 ? "text-destructive" : "text-warning")}>
+              <p className={cn("text-sm font-semibold", atsTone === "destructive" ? "text-destructive" : "text-warning")}>
                 {t('freeResults.atsBanner.heading')}
               </p>
               <p className="text-xs text-muted-foreground">{t('freeResults.atsBanner.noPassMark')}</p>
@@ -3271,12 +3407,12 @@ export function FreeKeywordResults({
       )}
 
       {/* Interactive score simulator — check fixes, watch the projection */}
-      {quickWins.length > 0 && (
+      {simulatorFixes.length > 0 && (
         <div className="mb-5">
           <ScoreSimulatorCard
-            key={`sim-${atsScoreEstimate}-${quickWins.length}`}
+            key={`sim-${atsScoreEstimate}-${simulatorFixes.length}`}
             atsScore={atsScoreEstimate}
-            fixes={quickWins.slice(0, 5).map(w => ({ label: w.fix, impact: w.scoreImpact ?? (w.impact === 'high' ? 6 : w.impact === 'medium' ? 4 : 2) }))}
+            fixes={simulatorFixes}
           />
         </div>
       )}
@@ -3331,24 +3467,27 @@ export function FreeKeywordResults({
         <div className="rounded-2xl border border-success/30 bg-success/5 p-5 mb-5">
           <div className="flex items-center gap-2 mb-2">
             <TrendingUp className="w-4 h-4 text-success" />
-            <h4 className="font-semibold text-foreground text-sm">Your Score Potential</h4>
+            <h4 className="font-semibold text-foreground text-sm">{t('freeResults.scorePotential.title')}</h4>
           </div>
           <div className="flex items-center gap-3">
             <div className="text-center">
               <p className="text-2xl font-bold text-foreground">{atsScoreEstimate}</p>
-              <p className="text-xs text-muted-foreground">Current</p>
+              <p className="text-xs text-muted-foreground">{t('freeResults.scorePotential.current')}</p>
             </div>
             <div className="flex-1 flex items-center gap-1">
               <div className="flex-1 h-1 rounded-full bg-muted" />
-              <span className="text-xs font-semibold text-success px-1">+{projectedScore - atsScoreEstimate} pts</span>
+              <span className="text-xs font-semibold text-success px-1">{t('freeResults.scorePotential.gain', { count: projectedScore - atsScoreEstimate })}</span>
               <div className="flex-1 h-1 rounded-full bg-success/40" />
             </div>
             <div className="text-center">
               <p className="text-2xl font-bold text-success">{projectedScore}</p>
-              <p className="text-xs text-muted-foreground">After fixes</p>
+              <p className="text-xs text-muted-foreground">{t('freeResults.scorePotential.afterFixes')}</p>
             </div>
           </div>
-          <p className="text-xs text-muted-foreground mt-2">The points of the top quick wins above added to your score. {FIX_POINTS_BASIS}</p>
+          {/* With the scanner's fix list, projectedScore is the one projection
+              (S13-058) the simulator and the Fix Plan below list. Without it,
+              it is the older engine's sum, and the card says that sum. */}
+          <p className="text-xs text-muted-foreground mt-2" data-score-potential-basis>{fromProjection ? t('freeResults.scorePotential.basis') : t('freeResults.scorePotential.basisQuickWins')} {t('freeResults.scoreSimulator.basis')}</p>
         </div>
       )}
 
@@ -3713,7 +3852,7 @@ export function FreeKeywordResults({
                   {s.order}
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm text-foreground">{s.step}</p>
+                  <p className="text-sm text-foreground">{fixLabel(t, { label: s.step, code: s.code, params: s.params })}</p>
                   <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                     <span>⏱️ ~{s.minutes} min</span>
                     <span className="px-1.5 py-0.5 rounded-full bg-success/10 text-success font-semibold">+{s.scoreImpact} pts</span>
@@ -3876,25 +4015,25 @@ export function FreeKeywordResults({
 
       {/* Diagnosis → treatment: hand the builder this resume plus every
           rewrite from the report. sessionStorage carries the payload; the
-          builder applies matching bullet rewrites and shows missing keywords. */}
+          builder applies matching bullet rewrites and shows missing keywords.
+          The box says how many rewrites it will apply, and offers the résumé
+          and the missing keywords when there are none (S13-038): it used to
+          promise "fixes applied" over a report with nothing to apply. */}
       {resumeText && resumeText.trim().length > 100 && (
-        <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4 mb-6">
-          <p className="text-sm font-semibold text-foreground mb-0.5">Turn this diagnosis into a finished resume</p>
+        <div data-builder-handoff className="rounded-2xl border border-primary/30 bg-primary/5 p-4 mb-6">
+          <p className="text-sm font-semibold text-foreground mb-0.5">{t('freeResults.builderHandoff.title')}</p>
           <p className="text-xs text-muted-foreground mb-3">
-            Open the free builder with your resume loaded and this report's bullet rewrites already applied —
-            then export a cleanly typeset PDF or DOCX.
+            {handoffRewrites.length > 0
+              ? t('freeResults.builderHandoff.bodyRewrites', { count: handoffRewrites.length })
+              : t('freeResults.builderHandoff.bodyNoRewrites')}
           </p>
           <Link
             to="/builder"
             onClick={() => {
               try {
                 sessionStorage.setItem('rb_resume_text', resumeText);
-                const rewrites = [
-                  ...(weakestBullets ?? []).map((b) => ({ before: b.original, after: b.rewrite })),
-                  ...(additionalRewrites ?? []).map((r) => ({ before: r.before, after: r.after })),
-                ].filter((r) => r.before && r.after);
                 sessionStorage.setItem('rb_scan_fixes', JSON.stringify({
-                  rewrites,
+                  rewrites: handoffRewrites,
                   keywords: (keywords ?? []).slice(0, 12).map((k) => k.keyword),
                   reportId: reportMeta?.reportId ?? null,
                 }));
@@ -3902,7 +4041,9 @@ export function FreeKeywordResults({
             }}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
           >
-            Open in builder with fixes applied →
+            {handoffRewrites.length > 0
+              ? t('freeResults.builderHandoff.ctaRewrites', { count: handoffRewrites.length })
+              : t('freeResults.builderHandoff.ctaNoRewrites')}
           </Link>
         </div>
       )}

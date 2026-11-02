@@ -66,9 +66,9 @@ const HEADROOM_BYTES = 50_000;
  * all merged at integration, so their entries now add nothing. A file counts
  * the bytes its branch has beyond what the disk holds. The board-stream merge
  * (2026-11-01, on main 21518390, where fix/full-analysis-timeout has landed)
- * adds the round still in flight beside it, at its size on its branch tip that
- * day (git ls-tree -l): fix/free-scan-wave grows industry-detection.ts;
- * fix/free-scan-ui changes no _shared file.
+ * added the round then in flight beside it, fix/free-scan-wave, which grew
+ * industry-detection.ts. That round reached main at 340a8959 (2026-11-02) and
+ * board-stream merged it, so its growth is on disk and no round is in flight.
  */
 const PENDING_SHARED: Record<string, number> = {
   // profiles, as design/integration holds them
@@ -101,18 +101,16 @@ const PENDING_SHARED: Record<string, number> = {
   "planted-instructions.ts": 3_317,
   "shortlist-attestation.ts": 935,
   "subscription-notice.ts": 17_344,
-  // fix/free-scan-wave at d511acfa (2026-11-01; the file unchanged since a2a94d0f)
-  "industry-detection.ts": 270_590,
 };
 /** The entries above whose round had not merged when the board-stream merge measured them. */
-const IN_FLIGHT = ["industry-detection.ts"];
+const IN_FLIGHT: string[] = [];
 /**
  * Each in-flight file's size HERE when its branch tip was measured. While the
  * round is out the disk holds exactly that; once it merges (or the file is
  * edited here) the disk differs and the entry is stale, whether the branch
  * grew, shrank or moved its comments out after it was measured.
  */
-const IN_FLIGHT_BASE: Record<string, number> = { "industry-detection.ts": 268_512 };
+const IN_FLIGHT_BASE: Record<string, number> = {};
 
 /** Every in-flight entry whose file no longer holds the size it had when its round was measured. */
 function staleInFlight(base: Record<string, number>, onDisk: (name: string) => number): string[] {
@@ -263,7 +261,9 @@ describe("the job-board upload, tallied the deploy's way", () => {
     const inFlight = Object.fromEntries(IN_FLIGHT.map((f) => [f, PENDING_SHARED[f]]));
     const sizeOnDisk = (name: string) => files.get(join(SHARED, name)) ?? 0;
     expect(pending).toBe(pendingBytes(inFlight, sizeOnDisk));
-    expect(pending, "the in-flight rounds are listed but add nothing: their entries are stale").toBeGreaterThan(0);
+    // With no round in flight the list adds nothing; a listed round that adds nothing is stale.
+    if (IN_FLIGHT.length) expect(pending, "the in-flight rounds are listed but add nothing: their entries are stale").toBeGreaterThan(0);
+    else expect(pending, "no round is in flight, so the pending list adds nothing").toBe(0);
     expect(Object.keys(IN_FLIGHT_BASE).sort(), "every in-flight entry names the size it was measured against").toEqual([...IN_FLIGHT].sort());
     expect(staleInFlight(IN_FLIGHT_BASE, sizeOnDisk), "an in-flight entry outlived its measurement").toEqual([]);
   });

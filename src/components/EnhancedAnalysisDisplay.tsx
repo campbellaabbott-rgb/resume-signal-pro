@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { IndustryConfidenceIndicator } from "./IndustryConfidenceIndicator";
+import { scoreTone, type ScoreTone } from "@/lib/score-bands";
 
 // Resume Type Detection Types
 export type ResumeType = 'chronological' | 'executive_summary' | 'ats_optimized' | 'outreach_referral' | 'hybrid';
@@ -95,6 +96,9 @@ interface EnhancedAnalysisDisplayProps {
   onIndustryChange?: (newIndustry: string) => void;
   resumeTextLength?: number;
   visitorId?: string;
+  /** The ATS score the header's words describe: it takes the report's one
+   *  band colour (src/lib/score-bands.ts), not a tone of its own. */
+  atsScore?: number;
 }
 
 // Mobile-friendly tooltip
@@ -156,7 +160,8 @@ export function EnhancedAnalysisDisplay({
   candidateName,
   onIndustryChange,
   resumeTextLength,
-  visitorId
+  visitorId,
+  atsScore
 }: EnhancedAnalysisDisplayProps) {
   const { t } = useTranslation();
   if (!dualScore && !resumeType && !usageRecommendations && !industryDetection && !industry) {
@@ -164,15 +169,13 @@ export function EnhancedAnalysisDisplay({
   }
 
   const getScoreColor = (score: number) => {
-    if (score >= 70) return "text-success";
-    if (score >= 50) return "text-warning";
-    return "text-destructive";
+    const tone = scoreTone(score);
+    return tone === "success" ? "text-success" : tone === "warning" ? "text-warning" : "text-destructive";
   };
 
   const getScoreBgColor = (score: number) => {
-    if (score >= 70) return "bg-success/10 border-success/20";
-    if (score >= 50) return "bg-warning/10 border-warning/20";
-    return "bg-destructive/10 border-destructive/20";
+    const tone = scoreTone(score);
+    return tone === "success" ? "bg-success/10 border-success/20" : tone === "warning" ? "bg-warning/10 border-warning/20" : "bg-destructive/10 border-destructive/20";
   };
 
   const getSuitabilityIcon = (suitability: UsageRecommendation['suitability']) => {
@@ -191,13 +194,13 @@ export function EnhancedAnalysisDisplay({
   const getSuitabilityLabel = (suitability: UsageRecommendation['suitability']) => {
     switch (suitability) {
       case 'excellent':
-        return 'Excellent';
+        return t('enhancedAnalysis.suitability.excellent');
       case 'good':
-        return 'Good';
+        return t('enhancedAnalysis.suitability.good');
       case 'limited':
-        return 'Limited';
+        return t('enhancedAnalysis.suitability.limited');
       case 'not_recommended':
-        return 'Not Recommended';
+        return t('enhancedAnalysis.suitability.notRecommended');
     }
   };
 
@@ -218,7 +221,19 @@ export function EnhancedAnalysisDisplay({
     }
   };
 
+  // The header describes the ATS score, so it wears that score's band colour
+  // (register S13-019): the streamed fallback cut its words at 85/70/55 and
+  // coloured a 72 "optimization" blue while the hero showed it green. A
+  // résumé the scan reads as outreach-first keeps the neutral style.
+  const BAND_STYLE: Record<ScoreTone, string> = {
+    success: 'from-success/10 to-success/5 border-success/30',
+    warning: 'from-warning/10 to-warning/5 border-warning/30',
+    destructive: 'from-destructive/10 to-destructive/5 border-destructive/30',
+  };
   const getToneStyle = (tone: CalibratedLanguage['overallTone']) => {
+    if (typeof atsScore === 'number' && Number.isFinite(atsScore) && resumeType?.atsRelevance !== 'low') {
+      return BAND_STYLE[scoreTone(atsScore)];
+    }
     switch (tone) {
       case 'praise':
         return 'from-success/10 to-success/5 border-success/30';
@@ -428,14 +443,16 @@ export function EnhancedAnalysisDisplay({
         <div className="rounded-2xl border border-border bg-card/50 p-4">
           <div className="flex items-center gap-2 mb-3">
             <Globe className="w-5 h-5 text-primary" />
-            <h4 className="font-bold text-foreground">Best Uses for This Resume</h4>
+            <h4 className="font-bold text-foreground">{t('enhancedAnalysis.bestUses')}</h4>
             <InfoTooltip 
-              title="Usage Recommendations" 
+              title={t('enhancedAnalysis.usageTooltip')} 
               description={t('enhancedAnalysis.bestUsesDesc')}
             />
           </div>
           <p className="text-xs text-muted-foreground mb-3">
-            {candidateName ? `${candidateName.split(' ')[0]}, here's` : 'Here\'s'} where this resume version works best:
+            {candidateName
+              ? t('enhancedAnalysis.bestUsesPersonal', { name: candidateName.split(' ')[0] })
+              : t('enhancedAnalysis.bestUsesGeneric')}
           </p>
           <div className="grid grid-cols-2 gap-2">
             {usageRecommendations.map((rec, idx) => (

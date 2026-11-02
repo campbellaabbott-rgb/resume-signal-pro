@@ -1,0 +1,894 @@
+{
+ "about": "S13-092 fix2: real job titles (reviewer's 12,586 review-_source/titles.json and the builder's 2,636) the head-noun, rank, work-noun and alias-head rules decide. config = the card the fix gives, judged right; main = f8d72a9b; old = 89c2bc0b. No synthetic titles.",
+ "titles": [
+  {
+   "title": "Associate Director (Project Management) - Aviation",
+   "config": "Project Manager",
+   "main": "Project Manager",
+   "old": null,
+   "source": "review-S13-092/branch-worse-strict.json"
+  },
+  {
+   "title": "Associate Director, R&D Project Management - Resource and Schedule Lead",
+   "config": "Project Manager",
+   "main": "Project Manager",
+   "old": null,
+   "source": "review-S13-092/branch-worse-strict.json"
+  },
+  {
+   "title": "Cost & Project Management Intern - Early Career Programme (ONLY STUDENTS)",
+   "config": "Project Manager",
+   "main": "Project Manager",
+   "old": null,
+   "source": "review-S13-092/branch-worse-strict.json"
+  },
+  {
+   "title": "Director, Project Management, Japan",
+   "config": "Project Manager",
+   "main": "Project Manager",
+   "old": null,
+   "source": "review-S13-092/branch-worse-strict.json"
+  },
+  {
+   "title": "Global Compliance Technology & AI Project Lead (f/m/div.)",
+   "config": "Project Manager",
+   "main": "Project Manager",
+   "old": null,
+   "source": "review-S13-092/branch-worse-strict.json"
+  },
+  {
+   "title": "Project Director",
+   "config": "Project Manager",
+   "main": "Project Manager",
+   "old": null,
+   "source": "review-S13-092/branch-worse-strict.json"
+  },
+  {
+   "title": "Project Director (Mozambique)",
+   "config": "Project Manager",
+   "main": "Project Manager",
+   "old": null,
+   "source": "review-S13-092/branch-worse-strict.json"
+  },
+  {
+   "title": "Project Director – Rail & TBM Construction",
+   "config": "Project Manager",
+   "main": "Project Manager",
+   "old": null,
+   "source": "review-S13-092/branch-worse-strict.json"
+  },
+  {
+   "title": "Project Director, Chad",
+   "config": "Project Manager",
+   "main": "Project Manager",
+   "old": null,
+   "source": "review-S13-092/branch-worse-strict.json"
+  },
+  {
+   "title": "Project Leader (Semiconductor)",
+   "config": "Project Manager",
+   "main": "Project Manager",
+   "old": null,
+   "source": "review-S13-092/branch-worse-strict.json"
+  },
+  {
+   "title": "Project Management Lead - Film Studio (SPA5-50012959)",
+   "config": "Project Manager",
+   "main": "Project Manager",
+   "old": null,
+   "source": "review-S13-092/branch-worse-strict.json"
+  },
+  {
+   "title": "Senegal Project Director, AFGHS-FHI 360",
+   "config": "Project Manager",
+   "main": "Project Manager",
+   "old": null,
+   "source": "review-S13-092/branch-worse-strict.json"
+  },
+  {
+   "title": "Trade Customization Project Lead (18 month contract)",
+   "config": "Project Manager",
+   "main": "Project Manager",
+   "old": null,
+   "source": "review-S13-092/branch-worse-strict.json"
+  },
+  {
+   "title": "UX_Customer Project Lead (CPL)　- Toyota -",
+   "config": "Project Manager",
+   "main": "Project Manager",
+   "old": null,
+   "source": "review-S13-092/branch-worse-strict.json"
+  },
+  {
+   "title": "Associate Director - Financial Planning and Analysis (FP&A)",
+   "config": "Financial Analyst",
+   "main": "Financial Analyst",
+   "old": null,
+   "source": "review-S13-092/branch-worse-strict.json"
+  },
+  {
+   "title": "Director Financial Planning & Analysis",
+   "config": "Financial Analyst",
+   "main": "Financial Analyst",
+   "old": null,
+   "source": "review-S13-092/branch-worse-strict.json"
+  },
+  {
+   "title": "FP&A & Financial Controller",
+   "config": "Financial Analyst",
+   "main": "Financial Analyst",
+   "old": null,
+   "source": "review-S13-092/branch-worse-strict.json"
+  },
+  {
+   "title": "Financial Planning Associate",
+   "config": "Financial Analyst",
+   "main": "Financial Analyst",
+   "old": null,
+   "source": "review-S13-092/branch-worse-strict.json"
+  },
+  {
+   "title": "Financial Planning Client Administrator",
+   "config": "Financial Analyst",
+   "main": "Financial Analyst",
+   "old": null,
+   "source": "review-S13-092/branch-worse-strict.json"
+  },
+  {
+   "title": "Business Intelligence Analyst",
+   "config": "Data Analyst",
+   "main": "Data Analyst",
+   "old": null,
+   "source": "review-S13-092/branch-worse-strict.json"
+  },
+  {
+   "title": "Lead Power BI Analyst",
+   "config": "Data Analyst",
+   "main": "Data Analyst",
+   "old": null,
+   "source": "review-S13-092/branch-worse-strict.json"
+  },
+  {
+   "title": "Reporting Analyst",
+   "config": "Data Analyst",
+   "main": "Data Analyst",
+   "old": null,
+   "source": "review-S13-092/branch-worse-strict.json"
+  },
+  {
+   "title": "Reporting Analyst, Consumer Services",
+   "config": "Data Analyst",
+   "main": "Data Analyst",
+   "old": null,
+   "source": "review-S13-092/branch-worse-strict.json"
+  },
+  {
+   "title": "Sr. Business Intelligence Analyst",
+   "config": "Data Analyst",
+   "main": "Data Analyst",
+   "old": null,
+   "source": "review-S13-092/branch-worse-strict.json"
+  },
+  {
+   "title": "Affiliate Marketing Coordinator",
+   "config": "Marketing Manager",
+   "main": "Marketing Manager",
+   "old": null,
+   "source": "review-S13-092/branch-worse-strict.json"
+  },
+  {
+   "title": "Digital Marketing Coordinator - Supre Global Support Centre",
+   "config": "Marketing Manager",
+   "main": "Marketing Manager",
+   "old": null,
+   "source": "review-S13-092/branch-worse-strict.json"
+  },
+  {
+   "title": "Marketing Coordinator",
+   "config": "Marketing Manager",
+   "main": "Marketing Manager",
+   "old": null,
+   "source": "review-S13-092/branch-worse-strict.json"
+  },
+  {
+   "title": "Marketing Coordinator Intern",
+   "config": "Marketing Manager",
+   "main": "Marketing Manager",
+   "old": null,
+   "source": "review-S13-092/branch-worse-strict.json"
+  },
+  {
+   "title": "Marketing Coordinator, Partner Marketing EMEA",
+   "config": "Marketing Manager",
+   "main": "Marketing Manager",
+   "old": null,
+   "source": "review-S13-092/branch-worse-strict.json"
+  },
+  {
+   "title": "Sales & Marketing Coordinator",
+   "config": "Marketing Manager",
+   "main": "Marketing Manager",
+   "old": null,
+   "source": "review-S13-092/branch-worse-strict.json"
+  },
+  {
+   "title": "Full Stack Engineer",
+   "config": "Software Engineer",
+   "main": "Software Engineer",
+   "old": null,
+   "source": "review-S13-092/branch-worse-strict.json"
+  },
+  {
+   "title": "Full Stack Java Engineer",
+   "config": "Software Engineer",
+   "main": "Software Engineer",
+   "old": null,
+   "source": "review-S13-092/branch-worse-strict.json"
+  },
+  {
+   "title": "Mid Full-Stack Engineer - Java",
+   "config": "Software Engineer",
+   "main": "Software Engineer",
+   "old": null,
+   "source": "review-S13-092/branch-worse-strict.json"
+  },
+  {
+   "title": "Mid/Senior Full Stack Engineer",
+   "config": "Software Engineer",
+   "main": "Software Engineer",
+   "old": null,
+   "source": "review-S13-092/branch-worse-strict.json"
+  },
+  {
+   "title": "Senior Full Stack AI Engineer",
+   "config": "Software Engineer",
+   "main": "Software Engineer",
+   "old": null,
+   "source": "review-S13-092/branch-worse-strict.json"
+  },
+  {
+   "title": "Senior Full Stack Engineer",
+   "config": "Software Engineer",
+   "main": "Software Engineer",
+   "old": null,
+   "source": "review-S13-092/branch-worse-strict.json"
+  },
+  {
+   "title": "Senior Full Stack Engineer - Data Services",
+   "config": "Software Engineer",
+   "main": "Software Engineer",
+   "old": null,
+   "source": "review-S13-092/branch-worse-strict.json"
+  },
+  {
+   "title": "Senior Full Stack JS Engineer",
+   "config": "Software Engineer",
+   "main": "Software Engineer",
+   "old": null,
+   "source": "review-S13-092/branch-worse-strict.json"
+  },
+  {
+   "title": "Senior Full-Stack Engineer",
+   "config": "Software Engineer",
+   "main": "Software Engineer",
+   "old": null,
+   "source": "review-S13-092/branch-worse-strict.json"
+  },
+  {
+   "title": "Senior Full-Stack Engineer - Internal Tools",
+   "config": "Software Engineer",
+   "main": "Software Engineer",
+   "old": null,
+   "source": "review-S13-092/branch-worse-strict.json"
+  },
+  {
+   "title": "Senior Full-Stack Software Engineer (Java/Typescript/Python) - Tieto Tech Consulting (m/f/d)",
+   "config": "Senior Software Engineer",
+   "main": "Software Engineer",
+   "old": "Senior Software Engineer",
+   "source": "review-S13-092/branch-worse-strict.json"
+  },
+  {
+   "title": "Senior Full-stack engineer",
+   "config": "Software Engineer",
+   "main": "Software Engineer",
+   "old": null,
+   "source": "review-S13-092/branch-worse-strict.json"
+  },
+  {
+   "title": "Senior Software Engineer, Full Stack (C# (.NET))",
+   "config": "Senior Software Engineer",
+   "main": "Software Engineer",
+   "old": "Senior Software Engineer",
+   "source": "review-S13-092/branch-worse-strict.json"
+  },
+  {
+   "title": "Senior Software Engineer, Full Stack, Java",
+   "config": "Senior Software Engineer",
+   "main": "Software Engineer",
+   "old": "Senior Software Engineer",
+   "source": "review-S13-092/branch-worse-strict.json"
+  },
+  {
+   "title": "Web Full Stack Engineer",
+   "config": "Software Engineer",
+   "main": "Software Engineer",
+   "old": null,
+   "source": "review-S13-092/branch-worse-strict.json"
+  },
+  {
+   "title": "(Freelance/Permanent) Fullstack Engineer (Contentful)",
+   "config": "Software Engineer",
+   "main": "Software Engineer",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "AE - Sales Leader (Full-Time)",
+   "config": "Sales Manager",
+   "main": "Account Executive",
+   "old": "Account Executive",
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Academic Content Developer - AI & Fraud Detection in Financial Systems (FinTech)",
+   "config": null,
+   "main": "Software Engineer",
+   "old": "Software Engineer",
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Accounting & Tax Manager - Consumer Health",
+   "config": "Accountant",
+   "main": "Product Manager",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Accounting Clerk",
+   "config": "Accountant",
+   "main": "Account Executive",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Accounting Senior Specialist",
+   "config": "Accountant",
+   "main": "Senior Software Engineer",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Administrative & Accounting Intern",
+   "config": "Accountant",
+   "main": "Account Executive",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Agentic AI Co-Founder / Head of Product (100 % remote) (m/f/d)",
+   "config": "Product Manager",
+   "main": "Software Engineer",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Assistant Director of Sales",
+   "config": "Sales Manager",
+   "main": "Software Engineer",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Assistant Manager, Fund Administration (Accounting)",
+   "config": "Accountant",
+   "main": "Product Manager",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Associate Director US Oncology Marketing, Patient Engagement Strategy - Individualized Neoantigen therapy",
+   "config": "Marketing Manager",
+   "main": "Marketing Manager",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Associate Director, Marketing",
+   "config": "Marketing Manager",
+   "main": "Marketing Manager",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Associate Manager - Fund Accounting - Private Markets",
+   "config": "Accountant",
+   "main": "Product Manager",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Business Developer - Eficiencia Energética",
+   "config": null,
+   "main": "Software Engineer",
+   "old": "Software Engineer",
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "CSV CU and eMobility Technical Project Lead",
+   "config": "Project Manager",
+   "main": "Account Executive",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Cloud Platform Engineer",
+   "config": "Software Engineer",
+   "main": "Software Engineer",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Construction Operations & Estimating Coordinator - Freelance, Remote",
+   "config": "Operations Manager",
+   "main": "Operations Manager",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Content Developer",
+   "config": null,
+   "main": "Software Engineer",
+   "old": "Software Engineer",
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Deputy Manager - Finance & Accounting",
+   "config": "Accountant",
+   "main": "Product Manager",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Developer Relations Manager, Agentic AI — Japan",
+   "config": null,
+   "main": "Software Engineer",
+   "old": "Software Engineer",
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Digital Technology Experienced Professional - Software Engineering",
+   "config": "Software Engineer",
+   "main": "Software Engineer",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Director Sales",
+   "config": "Sales Manager",
+   "main": "Sales Manager",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Director of Marketing-The Viera Company",
+   "config": "Marketing Manager",
+   "main": "Software Engineer",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Director of Operations in charge of Food and Beverage",
+   "config": "Operations Manager",
+   "main": "Software Engineer",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Director of Product, AI Growth",
+   "config": "Product Manager",
+   "main": "Software Engineer",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Director of Sales - Portuguese-Speaking  - London, UK",
+   "config": "Sales Manager",
+   "main": "Software Engineer",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Director of Software Engineering",
+   "config": "Software Engineer",
+   "main": "Software Engineer",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Director, FP&A",
+   "config": "Financial Analyst",
+   "main": null,
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Director, Global People Operations & Compliance",
+   "config": "HR Business Partner",
+   "main": "Operations Manager",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Director, Hedge Fund Accounting - Dublin",
+   "config": "Accountant",
+   "main": "Account Executive",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Director, U.S. Marketing, Atherosclerosis",
+   "config": "Marketing Manager",
+   "main": "Marketing Manager",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Engagement and Operations Coordinator",
+   "config": "Operations Manager",
+   "main": "Operations Manager",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Executive Director, Hospital Marketing",
+   "config": "Marketing Manager",
+   "main": "Marketing Manager",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Executive Director, System Nursing Operations",
+   "config": "Operations Manager",
+   "main": "Account Executive",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Executive Vice President, US Sales",
+   "config": "Sales Manager",
+   "main": "Account Executive",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Finance Intern - Technical Accounting & Treasury - Winter 2027",
+   "config": "Accountant",
+   "main": "Account Executive",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Financial Planning & Analysis Manager",
+   "config": "Financial Analyst",
+   "main": "Product Manager",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "General Accounting Manager",
+   "config": "Accountant",
+   "main": "Product Manager",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "HR Officer - Recruitment",
+   "config": "Recruiter",
+   "main": null,
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Head of Accounting, Tax and Compliance",
+   "config": "Accountant",
+   "main": "Software Engineer",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Head of Data Platform Engineering",
+   "config": "Software Engineer",
+   "main": "Software Engineer",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Head of Enterprise FP&A",
+   "config": "Financial Analyst",
+   "main": "Software Engineer",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Head of Growth Marketing",
+   "config": "Marketing Manager",
+   "main": "Software Engineer",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Head of Operations (Directeur des Operations)",
+   "config": "Operations Manager",
+   "main": "Software Engineer",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Head of Product Operations",
+   "config": "Operations Manager",
+   "main": "Software Engineer",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "IT Platform Engineer",
+   "config": "Software Engineer",
+   "main": "Software Engineer",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Internal Reporting & AI Operations Coordinator",
+   "config": "Operations Manager",
+   "main": "Operations Manager",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Manager Financial Planning, Reporting & Analysis (GGIL)",
+   "config": "Financial Analyst",
+   "main": "Product Manager",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Marketing & Communications Coordinator",
+   "config": "Marketing Manager",
+   "main": "Marketing Manager",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Marketing Operations & Outreach Coordinator",
+   "config": "Operations Manager",
+   "main": "Marketing Manager",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Membership Recruitment Specialist",
+   "config": null,
+   "main": "Digital Marketing Specialist",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Operations Coordinator (Beauty), China Grove - Full Time",
+   "config": "Operations Manager",
+   "main": "Operations Manager",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Operations Management Trainee",
+   "config": "Operations Manager",
+   "main": "Operations Manager",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "People Operations Coordinator",
+   "config": "HR Business Partner",
+   "main": "Operations Manager",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Prepaid Sales Coordinator",
+   "config": "Sales Manager",
+   "main": "Sales Manager",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Principal, Recruiting",
+   "config": "Recruiter",
+   "main": null,
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Project Management Analyst II - Information Services",
+   "config": "Project Manager",
+   "main": "Data Analyst",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Provider Recruitment Coordinator",
+   "config": "Recruiter",
+   "main": null,
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Recruitment  Analyst",
+   "config": "Recruiter",
+   "main": "Software Engineer",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Recruitment Manager",
+   "config": "Recruiter",
+   "main": "Product Manager",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Retail Banking Department,Uganda.Team Leader - Sales",
+   "config": "Sales Manager",
+   "main": "Sales Manager",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Sales & Marketing Program Coordinator - Fixed Term 2 year contract",
+   "config": "Sales Manager",
+   "main": "Marketing Manager",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Sales and Operations Management Trainee",
+   "config": "Operations Manager",
+   "main": "Sales Manager",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Senior Analyst, FP&A",
+   "config": "Financial Analyst",
+   "main": "Senior Software Engineer",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Senior Business Intelligence Developer - Epic Reporting",
+   "config": "Data Analyst",
+   "main": "Software Engineer",
+   "old": "Software Engineer",
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Senior Director, Corporate FP&A | United States | Remote",
+   "config": "Financial Analyst",
+   "main": "Senior Software Engineer",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Senior Environmental Consultant and Project Lead",
+   "config": "Project Manager",
+   "main": "Senior Software Engineer",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Senior Platform Engineer",
+   "config": "Software Engineer",
+   "main": "Software Engineer",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Senior Staff Cloud Platform Engineer",
+   "config": "Software Engineer",
+   "main": "Software Engineer",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Software Engineering Intern",
+   "config": "Software Engineer",
+   "main": "Software Engineer",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Software Engineering Manager - IAM Team - Control Plane - Platform",
+   "config": "Software Engineer",
+   "main": "Software Engineer",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Sr Advanced Software Engineer - Display Services",
+   "config": "Senior Software Engineer",
+   "main": "Software Engineer",
+   "old": "Software Engineer",
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Sr Software Development Engineer",
+   "config": "Senior Software Engineer",
+   "main": "Software Engineer",
+   "old": "Software Engineer",
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Sr. FP&A/Cost Analyst",
+   "config": "Financial Analyst",
+   "main": "Data Analyst",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Sr. Software Engineer (UI Developer)",
+   "config": "Senior Software Engineer",
+   "main": "Software Engineer",
+   "old": "Software Engineer",
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Stagiair(e) Recruitment",
+   "config": "Recruiter",
+   "main": null,
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Supply Chain Co-Founder / Head of Product (100 % remote) (m/f/d)",
+   "config": "Product Manager",
+   "main": "Software Engineer",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Temporary Tax and Accounting Assistant",
+   "config": "Accountant",
+   "main": "Account Executive",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "VP GMP Clinical Manufacturing Operations",
+   "config": "Operations Manager",
+   "main": "Operations Manager",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "VP, HEAD OF TRUST ACCOUNTING",
+   "config": "Accountant",
+   "main": "Software Engineer",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "Vice President, Marketing, EMEA & APAC",
+   "config": "Marketing Manager",
+   "main": "Marketing Manager",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  },
+  {
+   "title": "[Coupang] Senior FP&A",
+   "config": "Financial Analyst",
+   "main": "Senior Software Engineer",
+   "old": null,
+   "source": "S13-092/fix2-labels.json (real title, labelled in fix2)"
+  }
+ ]
+}

@@ -1,0 +1,285 @@
+/**
+ * EMPLOYMENT GAPS AND RÉSUMÉ RECENCY, READ FROM THE DATES (register S10-007).
+ *
+ * The scan's pre-check sorted the date ranges newest-first (its comparator
+ * returned b − a), took the earliest end date as "the most recent", and
+ * compared each role with the one after it in that order. Someone laid off
+ * two months ago was told "most recent role ended ~117 months ago", a real
+ * 19-month gap went unreported, and the prompt was told both were
+ * "confirmed from resume dates". "To date", "Till date", "Présent", "heute",
+ * "actualidad" and "attuale" were not read as a current role at all, and
+ * "05/2019 - 08/2022" was not read as a range.
+ *
+ * Here:
+ *   - every dated range on the page counts as time accounted for, a degree
+ *     or a course as much as a job: a recruiter does not call study a gap,
+ *     and a new graduate is not "stale";
+ *   - ranges are sorted oldest-first and a gap is measured from the latest
+ *     end seen so far, so an overlapping role cannot open a false gap;
+ *   - a year without a month starts in January and ends in December, so
+ *     "2015 – 2017" then "2018 – 2020" is no gap: the page does not say;
+ *   - a range that ends in the future ("Expected 2027") ends today.
+ * When the dates do not say, nothing is claimed.
+ *
+ * Recheck fix (2026-11-01). LinkedIn's Portuguese export writes a current
+ * role as "jan. de 2018 - o momento": "o momento" was not a present word, so
+ * the current role was dropped and a working candidate was called stale by
+ * about ten years. The Portuguese words are read now, and so is any start
+ * the reader can parse whose end it cannot ("Mar 2020 – Gegenwart", "Jan 2019
+ * –" at the end of a line, "Since Jan 2019"): such a range is OPEN, which
+ * the gap check treats as still running, so an end the reader does not know
+ * can never make a stale résumé or a gap (when unsure, do not claim). An
+ * apostrophe year ("Mar '21 – Jan '19") is read as a year: the apostrophe
+ * says it is one, which "05/19" does not.
+ */
+
+export interface DatePoint { year: number; month: number }
+
+export interface EmploymentGap {
+  startDate: string;   // e.g. "Jan 2022"
+  endDate: string;     // e.g. "Mar 2023"
+  gapMonths: number;
+  between: [string, string]; // the lines on each side
+}
+
+export interface GapAnalysis {
+  gaps: EmploymentGap[];
+  mostRecentEndYear: number | null;
+  mostRecentEndMonth: number | null;
+  isStale: boolean;       // the latest range ended > 18 months ago and none is current
+  staleDuration: string;  // e.g. "~26 months"
+}
+
+export interface DatedRange { start: DatePoint; end: DatePoint | 'present'; line: string; open?: boolean }
+/** A range as written, kept even when it reads backwards, for the fallback's date checks. */
+export interface ReadRange extends DatedRange {
+  text: string;        // the range as written, "05/2019 - 08/2022"
+  reversed: boolean;   // the end is before the start at month precision
+  education: boolean;  // under an education heading, or a degree on the same line
+}
+
+// Month names in the languages the scan reads (en, es, fr, de, pt, nl, it),
+// keyed by a prefix long enough to be unambiguous.
+const MONTHS: Array<[RegExp, number]> = [
+  [/^(?:jan(?:uary|vier|eiro|uari|uar)?|ene(?:ro)?|gen(?:naio)?|janv)$/, 0],
+  [/^(?:feb(?:ruary|rero|braio|ruari|ruar)?|f[ée]v(?:rier)?|fev(?:ereiro)?)$/, 1],
+  [/^(?:mar(?:ch|zo|ço|s)?|m[äa]r(?:z)?|maart)$/, 2],
+  [/^(?:apr(?:il|ile)?|abr(?:il)?|avr(?:il)?)$/, 3],
+  [/^(?:may|mayo|mai|maio|mei|mag(?:gio)?)$/, 4],
+  [/^(?:jun(?:e|io|i|ho)?|juin|giu(?:gno)?)$/, 5],
+  [/^(?:jul(?:y|io|i|ho)?|juil(?:let)?|lug(?:lio)?)$/, 6],
+  [/^(?:aug(?:ust|ustus)?|ago(?:sto)?|ao[uû]t?|août)$/, 7],
+  [/^(?:sep(?:t|tember|tiembre|tembre)?|set(?:embro|tembre)?)$/, 8],
+  [/^(?:oct(?:ober|ubre|obre)?|okt(?:ober)?|out(?:ubro)?|ott(?:obre)?)$/, 9],
+  [/^(?:nov(?:ember|iembre|embre|embro)?)$/, 10],
+  [/^(?:dec(?:ember)?|dic(?:iembre|embre)?|d[ée]c(?:embre)?|dez(?:ember|embro)?)$/, 11],
+];
+const MONTH_WORD = String.raw`[A-Za-zÀ-ÿ]{3,10}\.?`;
+
+// A month and year ("Jan 2020", "janvier 2020", "Sept. 2019"), a numeric month
+// and year ("05/2019", "05-2019", "05.2019"), year then month ("2019-05",
+// "2019/05"), or a bare year. A two-digit year is read only after an
+// apostrophe ("Mar '21", "'19"): "05/19" could be May 2019 or the 19th of May.
+const APOSTROPHE = "['\u2019\u2018]";
+const TOKEN = String.raw`(?:${MONTH_WORD}\s+(?:de\s+)?(?:(?:19|20)\d\d|${APOSTROPHE}\d\d(?!\d))|\d{1,2}[\/.\-](?:19|20)\d\d|(?:19|20)\d\d[\/\-]\d{1,2}(?![\d\/.]|-(?!(?:19|20)\d\d|\p{L}))|(?:19|20)\d\d|${APOSTROPHE}\d\d(?!\d))`;
+// Words for "still in this role", in the languages the scan reads.
+// "Date" alone is "to date" only where the separator before it was "to",
+// "till" or "until" ("June 2018 to Date"): the separator takes that word, so
+// the word is looked for behind "date" rather than inside this group.
+// Portuguese: LinkedIn's export writes "o momento"; résumés also write "até o
+// momento", "até hoje", "momento atual" and "atualmente".
+const PRESENT = String.raw`(?:present|current(?:ly)?|now|today|to\s+date|till\s+date|until\s+now|ongoing|pr[ée]sent|aujourd['’]hui|heute|aktuell|actualidad|actualmente|actual|presente|attuale|(?:at[ée]\s+)?o\s+momento|momento\s+atual|at[ée]\s+(?:hoje|agora|a\s+data)|atualmente|atual|heden|hoy|hoje|oggi|(?<=(?:^|[^\p{L}])(?:to|till|until)\s+)date)`;
+const SEP = String.raw`\s*(?:[–—−-]+|to|until|till|bis|au|à|a|al|hasta|tot)\s*`;
+// A degree still under way: "May 2025 – Expected Jun 2027".
+const EXPECTED = String.raw`(?:(?:expected|anticipated|exp\.|est\.|pr[ée]vu|voraussichtlich|previsto|prevista)\s+)?`;
+const RANGE_RE = new RegExp(String.raw`(?<![\p{L}\p{N}\/.])(${TOKEN})${SEP}${EXPECTED}(${TOKEN}|${PRESENT})(?![\p{L}\p{N}])`, 'giu');
+const PRESENT_ONLY = new RegExp(String.raw`^(?:${PRESENT}|date)$`, 'iu');
+// A start the reader can parse whose end it cannot: a dash, then a word it
+// does not know ("Gegenwart", "nu", "сейчас") or nothing at all (the end went
+// to the next line). Or "since" a start, in the languages above.
+const OPEN_DASH_RE = new RegExp(String.raw`(?<![\p{L}\p{N}\/.])(${TOKEN})\s*[–—−-]+\s*(?=$|[\p{L}(])`, 'giu');
+const OPEN_SINCE_RE = new RegExp(String.raw`(?<![\p{L}])(?:since|seit|desde|depuis|dal|sinds|vanaf)\s+(${TOKEN})(?![\p{L}\p{N}]|\s*[–—−-]+\s*[\p{L}\p{N}'’‘])`, 'giu');
+
+function monthOf(word: string): number | undefined {
+  const w = word.toLowerCase().replace(/\.$/, '');
+  for (const [re, n] of MONTHS) if (re.test(w)) return n;
+  return undefined;
+}
+
+// A season names a span of months, not one. As a start it is read as its
+// first month in that year and as an end as its last, so "Fall 2016 – Spring
+// 2020" covers Sep 2016 to May 2020 and "Summer 2019 – Fall 2019" Jun to Dec:
+// when the page does not say which month, no month is taken away from the
+// time it accounts for (a gap or a stale résumé is claimed only from what is
+// written). Winter as a start is January, as an end December.
+const SEASONS: Array<[RegExp, number, number]> = [
+  [/^(?:spring|printemps|primavera|fr[üu]hling|fr[üu]hjahr|lente|voorjaar)$/, 2, 4],
+  [/^(?:summer|[ée]t[ée]|verano|ver[ãa]o|estate|sommer|zomer)$/, 5, 7],
+  [/^(?:fall|autumn|automne|oto[ñn]o|outono|autunno|herbst|herfst|najaar)$/, 8, 11],
+  [/^(?:winter|hiver|invierno|inverno)$/, 0, 11],
+];
+function seasonOf(word: string, edge: 'start' | 'end'): number | undefined {
+  const w = word.toLowerCase().replace(/\.$/, '');
+  for (const [re, first, last] of SEASONS) if (re.test(w)) return edge === 'start' ? first : last;
+  return undefined;
+}
+
+// Text pulled out of a PDF loses the space between columns: "Jan 2020 –
+// PresentSan Francisco", "Mar 2024 – Jan 2021Denver". A lower-case letter or
+// a digit straight before a capital is such a seam; the reader puts the space
+// back before it looks for a range ("JavaScript" becomes "Java Script" only
+// in the copy the dates are read from).
+const SEAM = /(?<=[\p{Ll}\p{N}])(?=\p{Lu})/gu;
+
+/** One date token, read as the start (`edge: 'start'`) or end of a range. */
+export function parseDateToken(raw: string, edge: 'start' | 'end', now: Date = new Date()): DatePoint | null {
+  const t = raw.trim();
+  let m: RegExpMatchArray | null;
+  if ((m = t.match(/^([A-Za-zÀ-ÿ]{3,10})\.?\s+(?:de\s+)?((?:19|20)\d\d)$/))) {
+    const month = monthOf(m[1]) ?? seasonOf(m[1], edge);
+    if (month === undefined) return null; // "Class 2019", "Mid 2019": not a month
+    return { year: Number(m[2]), month };
+  }
+  if ((m = t.match(/^(?:([A-Za-zÀ-ÿ]{3,10})\.?\s+(?:de\s+)?)?['\u2019\u2018](\d\d)$/))) {
+    const month = m[1] ? monthOf(m[1]) ?? seasonOf(m[1], edge) : edge === 'start' ? 0 : 11;
+    if (month === undefined) return null;
+    return { year: apostropheYear(Number(m[2]), now), month };
+  }
+  if ((m = t.match(/^(\d{1,2})[\/.\-]((?:19|20)\d\d)$/))) {
+    const month = Number(m[1]) - 1;
+    return month >= 0 && month < 12 ? { year: Number(m[2]), month } : null;
+  }
+  if ((m = t.match(/^((?:19|20)\d\d)[\/\-](\d{1,2})$/))) {
+    const month = Number(m[2]) - 1;
+    return month >= 0 && month < 12 ? { year: Number(m[1]), month } : null;
+  }
+  if ((m = t.match(/^((?:19|20)\d\d)$/))) return { year: Number(m[1]), month: edge === 'start' ? 0 : 11 };
+  return null;
+}
+
+// "'21" is 2021 and "'98" is 1998: a two-digit year up to five years past
+// this one is this century ("Expected '29" is a degree, not 1929), any other
+// the last.
+function apostropheYear(yy: number, now: Date): number {
+  return 2000 + yy <= now.getFullYear() + 5 ? 2000 + yy : 1900 + yy;
+}
+
+const key = (d: DatePoint) => d.year * 12 + d.month;
+const monthsBetween = (a: DatePoint, b: DatePoint) => key(b) - key(a);
+const NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const formatDatePoint = (d: DatePoint) => `${NAMES[d.month]} ${d.year}`;
+
+// A heading line: short, and nothing but the heading's words.
+export const EDUCATION_HEADING = /^(?:education(?:al)?(?:\s+(?:and|&)\s+[\p{L} ]+)?|academic(?:\s+[\p{L}]+)?|qualifications|ausbildung|bildung|formation|formaci[óo]n|educaci[óo]n|istruzione|formazione|forma[çc][ãa]o|educa[çc][ãa]o|opleiding(?:en)?|studies|studium)\s*:?$/iu;
+export const OTHER_HEADING = /^(?:(?:professional|work|relevant|employment|career)\s+)?(?:experience|history|employment|projects?|skills|certifications?|licen[cs]es?|volunteer(?:ing)?|awards|publications|languages|summary|profile|berufserfahrung|exp[ée]riences?(?:\s+professionnelles?)?|experiencia(?:\s+profesional)?|esperienz[ae](?:\s+professionali)?|experi[êe]ncia(?:\s+profissional)?|werkervaring)\s*:?$/iu;
+const DEGREE = /\b(?:bachelor(?:'s|s)?|master(?:'s|s)?\s+(?:of|in|degree)|master of|mba|ph\.?\s?d|doctorate|b\.?sc|m\.?sc|b\.a\.|m\.a\.|b\.s\.|m\.s\.|diploma|degree|associate of|high school|ged|licenciatura|laurea|abitur|baccalaur[ée]at|bachillerato)\b/iu;
+
+/**
+ * Every "start – end" range on the page as written, backwards ones included.
+ * With `open: true`, also every start whose end the reader cannot parse, as
+ * an OPEN range ending 'present' (see the header): only the gap check asks
+ * for these, so a line is never a role header or a credibility flag because
+ * of an end nobody could read.
+ */
+export function readDateRanges(resumeText: string, opts: { open?: boolean; now?: Date } = {}): ReadRange[] {
+  const now = opts.now ?? new Date();
+  const ranges: ReadRange[] = [];
+  let section: 'education' | 'other' | null = null;
+  for (const rawLine of resumeText.split(/\r?\n/)) {
+    const line = rawLine.replace(/\s+/g, ' ').trim();
+    if (!line) continue;
+    if (line.length <= 40 && EDUCATION_HEADING.test(line)) { section = 'education'; continue; }
+    if (line.length <= 40 && OTHER_HEADING.test(line)) { section = 'other'; continue; }
+    const education = section === 'education' || DEGREE.test(line);
+    const scan = line.replace(SEAM, ' ');
+    RANGE_RE.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    const taken: Array<[number, number]> = [];
+    while ((m = RANGE_RE.exec(scan)) !== null) {
+      const start = parseDateToken(m[1], 'start', now);
+      // "Mid 2019 – 2020": no month in "Mid"; read on from the next
+      // character so "2019 – 2020" is still found.
+      if (!start) { RANGE_RE.lastIndex = m.index + 1; continue; }
+      const base = { start, line: line.slice(0, 60), text: m[0].trim(), education };
+      if (PRESENT_ONLY.test(m[2].trim())) { ranges.push({ ...base, end: 'present', reversed: false }); taken.push([m.index, m.index + m[0].length]); continue; }
+      // An end that names no month ("Jan 2018 – Mid 2020") still names its
+      // year: read it as the end of that year rather than drop the range.
+      const end = parseDateToken(m[2], 'end', now) ?? parseDateToken(m[2].trim().match(/(?:19|20)\d\d$/)?.[0] ?? '', 'end', now);
+      if (!end) continue;
+      ranges.push({ ...base, end, reversed: key(end) < key(start) });
+      taken.push([m.index, m.index + m[0].length]);
+    }
+    if (!opts.open) continue;
+    for (const re of [OPEN_DASH_RE, OPEN_SINCE_RE]) {
+      re.lastIndex = 0;
+      while ((m = re.exec(scan)) !== null) {
+        const at = m.index + m[0].indexOf(m[1]);
+        if (taken.some(([a, b]) => at < b && at + m![1].length > a)) continue;
+        const start = parseDateToken(m[1], 'start', now);
+        if (!start) continue;
+        ranges.push({ start, end: 'present', open: true, line: line.slice(0, 60), text: m[0].trim(), education, reversed: false });
+        taken.push([at, at + m[1].length]);
+      }
+    }
+  }
+  return ranges;
+}
+
+/** Every "start – end" range on the page that reads forwards, with the line it sits on. */
+export function extractDateRanges(resumeText: string, opts: { open?: boolean; now?: Date } = {}): ReadRange[] {
+  return readDateRanges(resumeText, opts).filter(r => !r.reversed);
+}
+
+/** Months since year 0: compare and subtract date points with it. */
+export const monthIndex = (d: DatePoint) => d.year * 12 + d.month;
+
+export function detectEmploymentGaps(resumeText: string, now: Date = new Date()): GapAnalysis {
+  const today: DatePoint = { year: now.getFullYear(), month: now.getMonth() };
+  const none: GapAnalysis = { gaps: [], mostRecentEndYear: null, mostRecentEndMonth: null, isStale: false, staleDuration: '' };
+  const ranges = extractDateRanges(resumeText, { open: true, now });
+  if (ranges.length < 2) return none;
+
+  const entries = ranges
+    .filter(r => key(r.start) <= key(today)) // a range that has not started yet accounts for nothing
+    .map(r => {
+      const isPresent = r.end === 'present' || key(r.end) > key(today);
+      return { start: r.start, end: isPresent ? today : r.end as DatePoint, isPresent, line: r.line };
+    })
+    .sort((a, b) => key(a.start) - key(b.start) || key(a.end) - key(b.end));
+  if (entries.length < 2) return none;
+
+  let latest = entries[0];
+  for (const e of entries) if (key(e.end) > key(latest.end)) latest = e;
+  const hasPresent = entries.some(e => e.isPresent);
+
+  let isStale = false;
+  let staleDuration = '';
+  if (!hasPresent) {
+    const staleMonths = monthsBetween(latest.end, today);
+    if (staleMonths > 18) { isStale = true; staleDuration = `~${staleMonths} months`; }
+  }
+
+  // Oldest first, against the latest end so far: a role that overlaps another
+  // cannot open a gap the other one covers.
+  const gaps: EmploymentGap[] = [];
+  let cover = entries[0];
+  for (const next of entries.slice(1)) {
+    const gapMonths = monthsBetween(cover.end, next.start);
+    if (gapMonths > 6) {
+      gaps.push({ startDate: formatDatePoint(cover.end), endDate: formatDatePoint(next.start), gapMonths, between: [cover.line, next.line] });
+    }
+    if (key(next.end) > key(cover.end)) cover = next;
+  }
+
+  return { gaps, mostRecentEndYear: latest.end.year, mostRecentEndMonth: latest.end.month, isStale, staleDuration };
+}
+
+/**
+ * The fallback report's timeline card ("Employment gap detected"): the first
+ * gap this reader finds, or none. The primary's prompt is told the same gaps,
+ * so the two scanners give one answer on one résumé.
+ */
+export function timelineGapOf(resumeText: string, now: Date = new Date()): { hasGaps: boolean; gapNote?: string } {
+  const first = detectEmploymentGaps(resumeText, now).gaps[0];
+  return first ? { hasGaps: true, gapNote: `Gap detected between ${first.startDate} and ${first.endDate}` } : { hasGaps: false };
+}

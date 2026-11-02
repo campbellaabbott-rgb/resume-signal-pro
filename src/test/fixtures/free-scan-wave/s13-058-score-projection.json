@@ -1,0 +1,1981 @@
+{
+ "note": "SYNTHETIC report shapes from ~/.config/resumebooster/free-scan-wave-corpora/_harness/s13-058.ts; main = the figures f8d72a9b showed",
+ "cases": [
+  {
+   "id": "syn-0",
+   "synthetic": true,
+   "score": 83,
+   "quickWins": [
+    {
+     "fix": "Add a LinkedIn URL #2",
+     "timeEstimate": "15 min",
+     "impact": "high",
+     "scoreImpact": 11
+    },
+    {
+     "fix": "Add the revenue number from your Acme role #1",
+     "timeEstimate": "15 min",
+     "impact": "low",
+     "scoreImpact": 9
+    },
+    {
+     "fix": "Quantify the team you led #0",
+     "timeEstimate": "1 hour",
+     "impact": "medium",
+     "scoreImpact": 7
+    }
+   ],
+   "weak": 0,
+   "quantRate": 45,
+   "unq": 0,
+   "keywords": [
+    "Kubernetes"
+   ],
+   "modelInc": 3,
+   "main": {
+    "hero": 95,
+    "plan": 95,
+    "ip": 86,
+    "sim": 95,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-1",
+   "synthetic": true,
+   "score": 62,
+   "quickWins": [],
+   "weak": 1,
+   "quantRate": 28,
+   "unq": 2,
+   "keywords": [],
+   "modelInc": 27,
+   "main": {
+    "hero": 71,
+    "plan": 67,
+    "ip": 89,
+    "sim": 62,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-2",
+   "synthetic": true,
+   "score": 21,
+   "quickWins": [
+    {
+     "fix": "Add the revenue number from your Acme role #0",
+     "timeEstimate": "5 min",
+     "impact": "high",
+     "scoreImpact": 14
+    },
+    {
+     "fix": "Name SQL in your summary #2",
+     "timeEstimate": "5 min",
+     "impact": "medium",
+     "scoreImpact": 10
+    },
+    {
+     "fix": "Add the revenue number from your Acme role #1",
+     "timeEstimate": "1 hour",
+     "impact": "medium",
+     "scoreImpact": 6
+    }
+   ],
+   "weak": 2,
+   "quantRate": 86,
+   "unq": 2,
+   "keywords": [
+    "Python",
+    "Tableau1",
+    "Tableau2",
+    "Salesforce3",
+    "SQL4"
+   ],
+   "modelInc": 28,
+   "main": {
+    "hero": 57,
+    "plan": 62,
+    "ip": 49,
+    "sim": 51,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-3",
+   "synthetic": true,
+   "score": 88,
+   "quickWins": [
+    {
+     "fix": "Quantify the team you led #0",
+     "timeEstimate": "5 min",
+     "impact": "medium",
+     "scoreImpact": 14
+    },
+    {
+     "fix": "Add the revenue number from your Acme role #2",
+     "timeEstimate": "5 min",
+     "impact": "high",
+     "scoreImpact": 3
+    },
+    {
+     "fix": "Move Skills above Education #1",
+     "timeEstimate": "5 min",
+     "impact": "medium",
+     "scoreImpact": 1
+    }
+   ],
+   "weak": 0,
+   "quantRate": 61,
+   "unq": 0,
+   "keywords": [],
+   "modelInc": 15,
+   "main": {
+    "hero": 95,
+    "plan": 95,
+    "ip": 98,
+    "sim": 95,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-4",
+   "synthetic": true,
+   "score": 41,
+   "quickWins": [
+    {
+     "fix": "Rewrite bullets that start with passive phrases #2",
+     "timeEstimate": "5 min",
+     "impact": "low",
+     "scoreImpact": 15
+    },
+    {
+     "fix": "Quantify the team you led #0",
+     "timeEstimate": "1 hour",
+     "impact": "high",
+     "scoreImpact": 9
+    },
+    {
+     "fix": "Rewrite bullets that start with passive phrases #1",
+     "timeEstimate": "1 hour",
+     "impact": "low",
+     "scoreImpact": 6
+    }
+   ],
+   "weak": 5,
+   "quantRate": 67,
+   "unq": 0,
+   "keywords": [
+    "Tableau",
+    "Terraform1",
+    "Python2",
+    "Terraform3",
+    "Tableau4"
+   ],
+   "modelInc": 19,
+   "main": {
+    "hero": 80,
+    "plan": 82,
+    "ip": 60,
+    "sim": 71,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-5",
+   "synthetic": true,
+   "score": 69,
+   "quickWins": [
+    {
+     "fix": "Add a LinkedIn URL #1",
+     "timeEstimate": "5 min",
+     "impact": "high",
+     "scoreImpact": 8
+    },
+    {
+     "fix": "Name SQL in your summary #2",
+     "timeEstimate": "10 min",
+     "impact": "medium",
+     "scoreImpact": 5
+    },
+    {
+     "fix": "Add the revenue number from your Acme role #0",
+     "timeEstimate": "5 min",
+     "impact": "low",
+     "scoreImpact": 3
+    }
+   ],
+   "weak": 2,
+   "quantRate": 57,
+   "unq": 0,
+   "keywords": [],
+   "modelInc": 9,
+   "main": {
+    "hero": 91,
+    "plan": 90,
+    "ip": 78,
+    "sim": 85,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-6",
+   "synthetic": true,
+   "score": 72,
+   "quickWins": [
+    {
+     "fix": "Rewrite bullets that start with passive phrases #0",
+     "timeEstimate": "15 min",
+     "impact": "high",
+     "scoreImpact": 10
+    },
+    {
+     "fix": "Name SQL in your summary #1",
+     "timeEstimate": "10 min",
+     "impact": "high",
+     "scoreImpact": 2
+    },
+    {
+     "fix": "Rewrite bullets that start with passive phrases #2",
+     "timeEstimate": "10 min",
+     "impact": "low",
+     "scoreImpact": 2
+    }
+   ],
+   "weak": 0,
+   "quantRate": 92,
+   "unq": 6,
+   "keywords": [
+    "Kubernetes"
+   ],
+   "modelInc": 12,
+   "main": {
+    "hero": 86,
+    "plan": 92,
+    "ip": 84,
+    "sim": 86,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-7",
+   "synthetic": true,
+   "score": 94,
+   "quickWins": [
+    {
+     "fix": "Add a LinkedIn URL #1",
+     "timeEstimate": "20 minutes",
+     "impact": "high",
+     "scoreImpact": 12
+    },
+    {
+     "fix": "Quantify the team you led #0",
+     "timeEstimate": "10 min",
+     "impact": "high",
+     "scoreImpact": 2
+    }
+   ],
+   "weak": 5,
+   "quantRate": 80,
+   "unq": 6,
+   "keywords": [
+    "Kubernetes",
+    "SQL1",
+    "Tableau2"
+   ],
+   "modelInc": 20,
+   "main": {
+    "hero": 95,
+    "plan": 95,
+    "ip": 98,
+    "sim": 95,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-8",
+   "synthetic": true,
+   "score": 74,
+   "quickWins": [],
+   "weak": 2,
+   "quantRate": 78,
+   "unq": 0,
+   "keywords": [
+    "Kubernetes",
+    "Salesforce1",
+    "Kubernetes2",
+    "SQL3",
+    "Kubernetes4"
+   ],
+   "modelInc": 11,
+   "main": {
+    "hero": 80,
+    "plan": 85,
+    "ip": 85,
+    "sim": 74,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-9",
+   "synthetic": true,
+   "score": 61,
+   "quickWins": [
+    {
+     "fix": "Rewrite bullets that start with passive phrases #1",
+     "timeEstimate": "20 minutes",
+     "impact": "low",
+     "scoreImpact": 8
+    },
+    {
+     "fix": "Quantify the team you led #0",
+     "timeEstimate": "15 min",
+     "impact": "medium",
+     "scoreImpact": 1
+    }
+   ],
+   "weak": 2,
+   "quantRate": 32,
+   "unq": 6,
+   "keywords": [
+    "Tableau"
+   ],
+   "modelInc": 30,
+   "main": {
+    "hero": 79,
+    "plan": 81,
+    "ip": 91,
+    "sim": 70,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-10",
+   "synthetic": true,
+   "score": 81,
+   "quickWins": [
+    {
+     "fix": "Rewrite bullets that start with passive phrases #2",
+     "timeEstimate": "20 minutes",
+     "impact": "low",
+     "scoreImpact": 8
+    },
+    {
+     "fix": "Move Skills above Education #0",
+     "timeEstimate": "15 min",
+     "impact": "medium",
+     "scoreImpact": 7
+    },
+    {
+     "fix": "Move Skills above Education #1",
+     "timeEstimate": "10 min",
+     "impact": "high",
+     "scoreImpact": 3
+    }
+   ],
+   "weak": 3,
+   "quantRate": 99,
+   "unq": 6,
+   "keywords": [
+    "Python"
+   ],
+   "modelInc": 14,
+   "main": {
+    "hero": 95,
+    "plan": 95,
+    "ip": 95,
+    "sim": 95,
+    "agree": true
+   }
+  },
+  {
+   "id": "syn-11",
+   "synthetic": true,
+   "score": 75,
+   "quickWins": [],
+   "weak": 1,
+   "quantRate": 1,
+   "unq": 2,
+   "keywords": [
+    "Python",
+    "Salesforce1",
+    "Tableau2"
+   ],
+   "modelInc": 19,
+   "main": {
+    "hero": 84,
+    "plan": 86,
+    "ip": 94,
+    "sim": 75,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-12",
+   "synthetic": true,
+   "score": 34,
+   "quickWins": [
+    {
+     "fix": "Move Skills above Education #0",
+     "timeEstimate": "20 minutes",
+     "impact": "low",
+     "scoreImpact": 4
+    }
+   ],
+   "weak": 0,
+   "quantRate": 15,
+   "unq": 6,
+   "keywords": [
+    "Kubernetes"
+   ],
+   "modelInc": 23,
+   "main": {
+    "hero": 47,
+    "plan": 44,
+    "ip": 57,
+    "sim": 38,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-13",
+   "synthetic": true,
+   "score": 67,
+   "quickWins": [
+    {
+     "fix": "Move Skills above Education #0",
+     "timeEstimate": "15 min",
+     "impact": "high",
+     "scoreImpact": 5
+    }
+   ],
+   "weak": 2,
+   "quantRate": 54,
+   "unq": 6,
+   "keywords": [
+    "Tableau",
+    "SQL1",
+    "SQL2",
+    "Kubernetes3",
+    "Terraform4"
+   ],
+   "modelInc": 13,
+   "main": {
+    "hero": 78,
+    "plan": 83,
+    "ip": 80,
+    "sim": 72,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-14",
+   "synthetic": true,
+   "score": 59,
+   "quickWins": [
+    {
+     "fix": "Quantify the team you led #0",
+     "timeEstimate": "15 min",
+     "impact": "high",
+     "scoreImpact": 14
+    }
+   ],
+   "weak": 3,
+   "quantRate": 50,
+   "unq": 6,
+   "keywords": [
+    "Salesforce",
+    "Tableau1",
+    "Salesforce2",
+    "Tableau3",
+    "Python4"
+   ],
+   "modelInc": 3,
+   "main": {
+    "hero": 82,
+    "plan": 84,
+    "ip": 62,
+    "sim": 73,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-15",
+   "synthetic": true,
+   "score": 43,
+   "quickWins": [
+    {
+     "fix": "Move Skills above Education #1",
+     "timeEstimate": "20 minutes",
+     "impact": "medium",
+     "scoreImpact": 10
+    },
+    {
+     "fix": "Quantify the team you led #2",
+     "timeEstimate": "20 minutes",
+     "impact": "medium",
+     "scoreImpact": 10
+    },
+    {
+     "fix": "Add a LinkedIn URL #0",
+     "timeEstimate": "15 min",
+     "impact": "medium",
+     "scoreImpact": 3
+    }
+   ],
+   "weak": 0,
+   "quantRate": 53,
+   "unq": 2,
+   "keywords": [
+    "Tableau"
+   ],
+   "modelInc": 16,
+   "main": {
+    "hero": 66,
+    "plan": 72,
+    "ip": 59,
+    "sim": 66,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-16",
+   "synthetic": true,
+   "score": 31,
+   "quickWins": [
+    {
+     "fix": "Name SQL in your summary #0",
+     "timeEstimate": "5 min",
+     "impact": "low",
+     "scoreImpact": 14
+    },
+    {
+     "fix": "Name SQL in your summary #2",
+     "timeEstimate": "20 minutes",
+     "impact": "medium",
+     "scoreImpact": 11
+    },
+    {
+     "fix": "Add the revenue number from your Acme role #1",
+     "timeEstimate": "20 minutes",
+     "impact": "medium",
+     "scoreImpact": 4
+    }
+   ],
+   "weak": 2,
+   "quantRate": 15,
+   "unq": 6,
+   "keywords": [
+    "Terraform",
+    "SQL1",
+    "Salesforce2",
+    "Terraform3",
+    "SQL4"
+   ],
+   "modelInc": 17,
+   "main": {
+    "hero": 69,
+    "plan": 71,
+    "ip": 48,
+    "sim": 60,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-17",
+   "synthetic": true,
+   "score": 52,
+   "quickWins": [
+    {
+     "fix": "Move Skills above Education #0",
+     "timeEstimate": "5 min",
+     "impact": "high",
+     "scoreImpact": 3
+    }
+   ],
+   "weak": 5,
+   "quantRate": 54,
+   "unq": 6,
+   "keywords": [
+    "Tableau",
+    "Terraform1",
+    "Tableau2",
+    "Python3",
+    "Salesforce4"
+   ],
+   "modelInc": 24,
+   "main": {
+    "hero": 64,
+    "plan": 66,
+    "ip": 76,
+    "sim": 55,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-18",
+   "synthetic": true,
+   "score": 68,
+   "quickWins": [
+    {
+     "fix": "Move Skills above Education #1",
+     "timeEstimate": "15 min",
+     "impact": "low",
+     "scoreImpact": 12
+    },
+    {
+     "fix": "Rewrite bullets that start with passive phrases #2",
+     "timeEstimate": "15 min",
+     "impact": "high",
+     "scoreImpact": 12
+    },
+    {
+     "fix": "Name SQL in your summary #0",
+     "timeEstimate": "5 min",
+     "impact": "low",
+     "scoreImpact": 8
+    }
+   ],
+   "weak": 0,
+   "quantRate": 26,
+   "unq": 4,
+   "keywords": [],
+   "modelInc": 6,
+   "main": {
+    "hero": 95,
+    "plan": 95,
+    "ip": 74,
+    "sim": 95,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-19",
+   "synthetic": true,
+   "score": 84,
+   "quickWins": [
+    {
+     "fix": "Name SQL in your summary #1",
+     "timeEstimate": "20 minutes",
+     "impact": "low",
+     "scoreImpact": 8
+    },
+    {
+     "fix": "Add a LinkedIn URL #0",
+     "timeEstimate": "10 min",
+     "impact": "high",
+     "scoreImpact": 6
+    },
+    {
+     "fix": "Add a LinkedIn URL #2",
+     "timeEstimate": "1 hour",
+     "impact": "medium",
+     "scoreImpact": 5
+    }
+   ],
+   "weak": 0,
+   "quantRate": 78,
+   "unq": 0,
+   "keywords": [
+    "Salesforce"
+   ],
+   "modelInc": 23,
+   "main": {
+    "hero": 95,
+    "plan": 95,
+    "ip": 98,
+    "sim": 95,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-20",
+   "synthetic": true,
+   "score": 63,
+   "quickWins": [
+    {
+     "fix": "Name SQL in your summary #2",
+     "timeEstimate": "5 min",
+     "impact": "low",
+     "scoreImpact": 14
+    },
+    {
+     "fix": "Quantify the team you led #1",
+     "timeEstimate": "20 minutes",
+     "impact": "high",
+     "scoreImpact": 7
+    },
+    {
+     "fix": "Quantify the team you led #0",
+     "timeEstimate": "20 minutes",
+     "impact": "medium",
+     "scoreImpact": 2
+    }
+   ],
+   "weak": 0,
+   "quantRate": 31,
+   "unq": 6,
+   "keywords": [
+    "Kubernetes",
+    "Python1",
+    "Terraform2",
+    "SQL3",
+    "Kubernetes4"
+   ],
+   "modelInc": 20,
+   "main": {
+    "hero": 95,
+    "plan": 92,
+    "ip": 83,
+    "sim": 86,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-21",
+   "synthetic": true,
+   "score": 29,
+   "quickWins": [
+    {
+     "fix": "Rewrite bullets that start with passive phrases #0",
+     "timeEstimate": "15 min",
+     "impact": "high",
+     "scoreImpact": 10
+    }
+   ],
+   "weak": 0,
+   "quantRate": 32,
+   "unq": 2,
+   "keywords": [],
+   "modelInc": 25,
+   "main": {
+    "hero": 45,
+    "plan": 39,
+    "ip": 54,
+    "sim": 39,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-22",
+   "synthetic": true,
+   "score": 96,
+   "quickWins": [
+    {
+     "fix": "Quantify the team you led #0",
+     "timeEstimate": "20 minutes",
+     "impact": "high",
+     "scoreImpact": 14
+    }
+   ],
+   "weak": 0,
+   "quantRate": 72,
+   "unq": 0,
+   "keywords": [],
+   "modelInc": 19,
+   "main": {
+    "hero": 95,
+    "plan": 95,
+    "ip": 98,
+    "sim": 95,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-23",
+   "synthetic": true,
+   "score": 48,
+   "quickWins": [
+    {
+     "fix": "Add a LinkedIn URL #0",
+     "timeEstimate": "20 minutes",
+     "impact": "low",
+     "scoreImpact": 13
+    },
+    {
+     "fix": "Rewrite bullets that start with passive phrases #2",
+     "timeEstimate": "15 min",
+     "impact": "medium",
+     "scoreImpact": 7
+    },
+    {
+     "fix": "Quantify the team you led #1",
+     "timeEstimate": "1 hour",
+     "impact": "medium",
+     "scoreImpact": 6
+    }
+   ],
+   "weak": 0,
+   "quantRate": 89,
+   "unq": 2,
+   "keywords": [
+    "Terraform",
+    "Terraform1",
+    "Salesforce2"
+   ],
+   "modelInc": 8,
+   "main": {
+    "hero": 74,
+    "plan": 80,
+    "ip": 56,
+    "sim": 74,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-24",
+   "synthetic": true,
+   "score": 76,
+   "quickWins": [
+    {
+     "fix": "Quantify the team you led #2",
+     "timeEstimate": "1 hour",
+     "impact": "medium",
+     "scoreImpact": 12
+    },
+    {
+     "fix": "Name SQL in your summary #1",
+     "timeEstimate": "15 min",
+     "impact": "low",
+     "scoreImpact": 8
+    },
+    {
+     "fix": "Add the revenue number from your Acme role #0",
+     "timeEstimate": "10 min",
+     "impact": "low",
+     "scoreImpact": 3
+    }
+   ],
+   "weak": 1,
+   "quantRate": 53,
+   "unq": 0,
+   "keywords": [
+    "Salesforce"
+   ],
+   "modelInc": 27,
+   "main": {
+    "hero": 95,
+    "plan": 95,
+    "ip": 98,
+    "sim": 95,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-25",
+   "synthetic": true,
+   "score": 60,
+   "quickWins": [
+    {
+     "fix": "Quantify the team you led #0",
+     "timeEstimate": "5 min",
+     "impact": "high",
+     "scoreImpact": 5
+    },
+    {
+     "fix": "Rewrite bullets that start with passive phrases #1",
+     "timeEstimate": "20 minutes",
+     "impact": "low",
+     "scoreImpact": 5
+    }
+   ],
+   "weak": 0,
+   "quantRate": 100,
+   "unq": 2,
+   "keywords": [],
+   "modelInc": 25,
+   "main": {
+    "hero": 70,
+    "plan": 70,
+    "ip": 85,
+    "sim": 70,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-26",
+   "synthetic": true,
+   "score": 63,
+   "quickWins": [
+    {
+     "fix": "Add the revenue number from your Acme role #1",
+     "timeEstimate": "1 hour",
+     "impact": "high",
+     "scoreImpact": 5
+    },
+    {
+     "fix": "Add the revenue number from your Acme role #2",
+     "timeEstimate": "5 min",
+     "impact": "high",
+     "scoreImpact": 4
+    },
+    {
+     "fix": "Name SQL in your summary #0",
+     "timeEstimate": "5 min",
+     "impact": "low",
+     "scoreImpact": 2
+    }
+   ],
+   "weak": 5,
+   "quantRate": 58,
+   "unq": 2,
+   "keywords": [],
+   "modelInc": 21,
+   "main": {
+    "hero": 83,
+    "plan": 79,
+    "ip": 84,
+    "sim": 74,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-27",
+   "synthetic": true,
+   "score": 77,
+   "quickWins": [
+    {
+     "fix": "Move Skills above Education #2",
+     "timeEstimate": "1 hour",
+     "impact": "high",
+     "scoreImpact": 13
+    },
+    {
+     "fix": "Add the revenue number from your Acme role #1",
+     "timeEstimate": "15 min",
+     "impact": "high",
+     "scoreImpact": 8
+    },
+    {
+     "fix": "Rewrite bullets that start with passive phrases #0",
+     "timeEstimate": "15 min",
+     "impact": "medium",
+     "scoreImpact": 5
+    }
+   ],
+   "weak": 3,
+   "quantRate": 78,
+   "unq": 4,
+   "keywords": [
+    "Python"
+   ],
+   "modelInc": 25,
+   "main": {
+    "hero": 95,
+    "plan": 95,
+    "ip": 98,
+    "sim": 95,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-28",
+   "synthetic": true,
+   "score": 76,
+   "quickWins": [],
+   "weak": 5,
+   "quantRate": 20,
+   "unq": 4,
+   "keywords": [],
+   "modelInc": 19,
+   "main": {
+    "hero": 85,
+    "plan": 81,
+    "ip": 95,
+    "sim": 76,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-29",
+   "synthetic": true,
+   "score": 72,
+   "quickWins": [
+    {
+     "fix": "Add a LinkedIn URL #2",
+     "timeEstimate": "15 min",
+     "impact": "medium",
+     "scoreImpact": 14
+    },
+    {
+     "fix": "Name SQL in your summary #0",
+     "timeEstimate": "5 min",
+     "impact": "low",
+     "scoreImpact": 9
+    },
+    {
+     "fix": "Add the revenue number from your Acme role #1",
+     "timeEstimate": "20 minutes",
+     "impact": "medium",
+     "scoreImpact": 2
+    }
+   ],
+   "weak": 0,
+   "quantRate": 54,
+   "unq": 0,
+   "keywords": [
+    "SQL",
+    "Python1",
+    "SQL2",
+    "SQL3",
+    "SQL4"
+   ],
+   "modelInc": 9,
+   "main": {
+    "hero": 95,
+    "plan": 95,
+    "ip": 81,
+    "sim": 95,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-30",
+   "synthetic": true,
+   "score": 33,
+   "quickWins": [],
+   "weak": 5,
+   "quantRate": 35,
+   "unq": 4,
+   "keywords": [
+    "SQL",
+    "Kubernetes1",
+    "SQL2"
+   ],
+   "modelInc": 7,
+   "main": {
+    "hero": 42,
+    "plan": 44,
+    "ip": 40,
+    "sim": 33,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-31",
+   "synthetic": true,
+   "score": 60,
+   "quickWins": [
+    {
+     "fix": "Rewrite bullets that start with passive phrases #1",
+     "timeEstimate": "5 min",
+     "impact": "high",
+     "scoreImpact": 11
+    },
+    {
+     "fix": "Quantify the team you led #0",
+     "timeEstimate": "1 hour",
+     "impact": "high",
+     "scoreImpact": 4
+    }
+   ],
+   "weak": 2,
+   "quantRate": 60,
+   "unq": 4,
+   "keywords": [
+    "SQL",
+    "Tableau1",
+    "Terraform2",
+    "Tableau3",
+    "Salesforce4"
+   ],
+   "modelInc": 14,
+   "main": {
+    "hero": 81,
+    "plan": 86,
+    "ip": 74,
+    "sim": 75,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-32",
+   "synthetic": true,
+   "score": 78,
+   "quickWins": [
+    {
+     "fix": "Rewrite bullets that start with passive phrases #0",
+     "timeEstimate": "20 minutes",
+     "impact": "low",
+     "scoreImpact": 10
+    },
+    {
+     "fix": "Move Skills above Education #2",
+     "timeEstimate": "20 minutes",
+     "impact": "high",
+     "scoreImpact": 9
+    },
+    {
+     "fix": "Move Skills above Education #1",
+     "timeEstimate": "10 min",
+     "impact": "medium",
+     "scoreImpact": 2
+    }
+   ],
+   "weak": 5,
+   "quantRate": 57,
+   "unq": 0,
+   "keywords": [],
+   "modelInc": 28,
+   "main": {
+    "hero": 95,
+    "plan": 95,
+    "ip": 98,
+    "sim": 95,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-33",
+   "synthetic": true,
+   "score": 92,
+   "quickWins": [],
+   "weak": 5,
+   "quantRate": 39,
+   "unq": 4,
+   "keywords": [
+    "Terraform"
+   ],
+   "modelInc": 9,
+   "main": {
+    "hero": 95,
+    "plan": 95,
+    "ip": 98,
+    "sim": 92,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-34",
+   "synthetic": true,
+   "score": 85,
+   "quickWins": [
+    {
+     "fix": "Name SQL in your summary #2",
+     "timeEstimate": "5 min",
+     "impact": "high",
+     "scoreImpact": 10
+    },
+    {
+     "fix": "Move Skills above Education #0",
+     "timeEstimate": "1 hour",
+     "impact": "high",
+     "scoreImpact": 8
+    },
+    {
+     "fix": "Add a LinkedIn URL #1",
+     "timeEstimate": "15 min",
+     "impact": "high",
+     "scoreImpact": 2
+    }
+   ],
+   "weak": 2,
+   "quantRate": 60,
+   "unq": 4,
+   "keywords": [
+    "Salesforce"
+   ],
+   "modelInc": 10,
+   "main": {
+    "hero": 95,
+    "plan": 95,
+    "ip": 95,
+    "sim": 95,
+    "agree": true
+   }
+  },
+  {
+   "id": "syn-35",
+   "synthetic": true,
+   "score": 39,
+   "quickWins": [
+    {
+     "fix": "Quantify the team you led #2",
+     "timeEstimate": "5 min",
+     "impact": "medium",
+     "scoreImpact": 10
+    },
+    {
+     "fix": "Rewrite bullets that start with passive phrases #1",
+     "timeEstimate": "1 hour",
+     "impact": "medium",
+     "scoreImpact": 6
+    },
+    {
+     "fix": "Rewrite bullets that start with passive phrases #0",
+     "timeEstimate": "10 min",
+     "impact": "low",
+     "scoreImpact": 1
+    }
+   ],
+   "weak": 1,
+   "quantRate": 89,
+   "unq": 4,
+   "keywords": [],
+   "modelInc": 24,
+   "main": {
+    "hero": 59,
+    "plan": 61,
+    "ip": 63,
+    "sim": 56,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-36",
+   "synthetic": true,
+   "score": 85,
+   "quickWins": [
+    {
+     "fix": "Add the revenue number from your Acme role #0",
+     "timeEstimate": "5 min",
+     "impact": "medium",
+     "scoreImpact": 11
+    },
+    {
+     "fix": "Quantify the team you led #1",
+     "timeEstimate": "20 minutes",
+     "impact": "low",
+     "scoreImpact": 10
+    },
+    {
+     "fix": "Add a LinkedIn URL #2",
+     "timeEstimate": "1 hour",
+     "impact": "medium",
+     "scoreImpact": 8
+    }
+   ],
+   "weak": 3,
+   "quantRate": 36,
+   "unq": 4,
+   "keywords": [
+    "Salesforce",
+    "Kubernetes1",
+    "Salesforce2"
+   ],
+   "modelInc": 26,
+   "main": {
+    "hero": 95,
+    "plan": 95,
+    "ip": 98,
+    "sim": 95,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-37",
+   "synthetic": true,
+   "score": 35,
+   "quickWins": [
+    {
+     "fix": "Quantify the team you led #0",
+     "timeEstimate": "1 hour",
+     "impact": "medium",
+     "scoreImpact": 10
+    },
+    {
+     "fix": "Add the revenue number from your Acme role #1",
+     "timeEstimate": "15 min",
+     "impact": "high",
+     "scoreImpact": 10
+    },
+    {
+     "fix": "Rewrite bullets that start with passive phrases #2",
+     "timeEstimate": "15 min",
+     "impact": "low",
+     "scoreImpact": 6
+    }
+   ],
+   "weak": 0,
+   "quantRate": 9,
+   "unq": 4,
+   "keywords": [],
+   "modelInc": 16,
+   "main": {
+    "hero": 70,
+    "plan": 61,
+    "ip": 51,
+    "sim": 61,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-38",
+   "synthetic": true,
+   "score": 38,
+   "quickWins": [
+    {
+     "fix": "Add the revenue number from your Acme role #0",
+     "timeEstimate": "20 minutes",
+     "impact": "high",
+     "scoreImpact": 4
+    }
+   ],
+   "weak": 0,
+   "quantRate": 25,
+   "unq": 4,
+   "keywords": [],
+   "modelInc": 16,
+   "main": {
+    "hero": 51,
+    "plan": 42,
+    "ip": 54,
+    "sim": 42,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-39",
+   "synthetic": true,
+   "score": 84,
+   "quickWins": [
+    {
+     "fix": "Rewrite bullets that start with passive phrases #2",
+     "timeEstimate": "5 min",
+     "impact": "high",
+     "scoreImpact": 10
+    },
+    {
+     "fix": "Name SQL in your summary #1",
+     "timeEstimate": "5 min",
+     "impact": "low",
+     "scoreImpact": 7
+    },
+    {
+     "fix": "Add the revenue number from your Acme role #0",
+     "timeEstimate": "5 min",
+     "impact": "high",
+     "scoreImpact": 5
+    }
+   ],
+   "weak": 1,
+   "quantRate": 47,
+   "unq": 2,
+   "keywords": [
+    "Python",
+    "Python1",
+    "Terraform2",
+    "Terraform3",
+    "Salesforce4"
+   ],
+   "modelInc": 3,
+   "main": {
+    "hero": 95,
+    "plan": 95,
+    "ip": 87,
+    "sim": 95,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-40",
+   "synthetic": true,
+   "score": 29,
+   "quickWins": [
+    {
+     "fix": "Add a LinkedIn URL #0",
+     "timeEstimate": "20 minutes",
+     "impact": "high",
+     "scoreImpact": 13
+    },
+    {
+     "fix": "Add a LinkedIn URL #1",
+     "timeEstimate": "10 min",
+     "impact": "low",
+     "scoreImpact": 2
+    },
+    {
+     "fix": "Name SQL in your summary #2",
+     "timeEstimate": "15 min",
+     "impact": "low",
+     "scoreImpact": 1
+    }
+   ],
+   "weak": 5,
+   "quantRate": 78,
+   "unq": 6,
+   "keywords": [
+    "SQL",
+    "Salesforce1",
+    "Salesforce2",
+    "Python3",
+    "Tableau4"
+   ],
+   "modelInc": 30,
+   "main": {
+    "hero": 54,
+    "plan": 56,
+    "ip": 59,
+    "sim": 45,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-41",
+   "synthetic": true,
+   "score": 70,
+   "quickWins": [
+    {
+     "fix": "Add the revenue number from your Acme role #1",
+     "timeEstimate": "1 hour",
+     "impact": "medium",
+     "scoreImpact": 12
+    },
+    {
+     "fix": "Move Skills above Education #2",
+     "timeEstimate": "5 min",
+     "impact": "medium",
+     "scoreImpact": 12
+    },
+    {
+     "fix": "Add a LinkedIn URL #0",
+     "timeEstimate": "15 min",
+     "impact": "high",
+     "scoreImpact": 5
+    }
+   ],
+   "weak": 0,
+   "quantRate": 51,
+   "unq": 2,
+   "keywords": [
+    "Tableau"
+   ],
+   "modelInc": 30,
+   "main": {
+    "hero": 95,
+    "plan": 95,
+    "ip": 98,
+    "sim": 95,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-42",
+   "synthetic": true,
+   "score": 61,
+   "quickWins": [],
+   "weak": 0,
+   "quantRate": 36,
+   "unq": 4,
+   "keywords": [],
+   "modelInc": 8,
+   "main": {
+    "hero": 70,
+    "plan": 61,
+    "ip": 69,
+    "sim": 61,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-43",
+   "synthetic": true,
+   "score": 93,
+   "quickWins": [
+    {
+     "fix": "Quantify the team you led #1",
+     "timeEstimate": "1 hour",
+     "impact": "low",
+     "scoreImpact": 9
+    },
+    {
+     "fix": "Rewrite bullets that start with passive phrases #0",
+     "timeEstimate": "5 min",
+     "impact": "medium",
+     "scoreImpact": 7
+    }
+   ],
+   "weak": 2,
+   "quantRate": 9,
+   "unq": 4,
+   "keywords": [
+    "Python"
+   ],
+   "modelInc": 5,
+   "main": {
+    "hero": 95,
+    "plan": 95,
+    "ip": 98,
+    "sim": 95,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-44",
+   "synthetic": true,
+   "score": 63,
+   "quickWins": [
+    {
+     "fix": "Name SQL in your summary #0",
+     "timeEstimate": "1 hour",
+     "impact": "low",
+     "scoreImpact": 11
+    },
+    {
+     "fix": "Quantify the team you led #2",
+     "timeEstimate": "20 minutes",
+     "impact": "high",
+     "scoreImpact": 8
+    },
+    {
+     "fix": "Rewrite bullets that start with passive phrases #1",
+     "timeEstimate": "10 min",
+     "impact": "low",
+     "scoreImpact": 2
+    }
+   ],
+   "weak": 2,
+   "quantRate": 64,
+   "unq": 6,
+   "keywords": [
+    "Salesforce",
+    "Python1",
+    "Salesforce2"
+   ],
+   "modelInc": 2,
+   "main": {
+    "hero": 90,
+    "plan": 95,
+    "ip": 65,
+    "sim": 84,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-45",
+   "synthetic": true,
+   "score": 20,
+   "quickWins": [
+    {
+     "fix": "Quantify the team you led #0",
+     "timeEstimate": "15 min",
+     "impact": "low",
+     "scoreImpact": 9
+    }
+   ],
+   "weak": 2,
+   "quantRate": 14,
+   "unq": 0,
+   "keywords": [],
+   "modelInc": 9,
+   "main": {
+    "hero": 35,
+    "plan": 34,
+    "ip": 29,
+    "sim": 29,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-46",
+   "synthetic": true,
+   "score": 79,
+   "quickWins": [
+    {
+     "fix": "Add the revenue number from your Acme role #2",
+     "timeEstimate": "20 minutes",
+     "impact": "low",
+     "scoreImpact": 7
+    },
+    {
+     "fix": "Add a LinkedIn URL #1",
+     "timeEstimate": "20 minutes",
+     "impact": "medium",
+     "scoreImpact": 6
+    },
+    {
+     "fix": "Quantify the team you led #0",
+     "timeEstimate": "5 min",
+     "impact": "high",
+     "scoreImpact": 5
+    }
+   ],
+   "weak": 3,
+   "quantRate": 18,
+   "unq": 0,
+   "keywords": [],
+   "modelInc": 22,
+   "main": {
+    "hero": 95,
+    "plan": 95,
+    "ip": 98,
+    "sim": 95,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-47",
+   "synthetic": true,
+   "score": 97,
+   "quickWins": [],
+   "weak": 3,
+   "quantRate": 56,
+   "unq": 0,
+   "keywords": [
+    "Kubernetes"
+   ],
+   "modelInc": 25,
+   "main": {
+    "hero": 95,
+    "plan": 95,
+    "ip": 98,
+    "sim": 95,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-48",
+   "synthetic": true,
+   "score": 32,
+   "quickWins": [
+    {
+     "fix": "Name SQL in your summary #2",
+     "timeEstimate": "1 hour",
+     "impact": "medium",
+     "scoreImpact": 10
+    },
+    {
+     "fix": "Name SQL in your summary #0",
+     "timeEstimate": "10 min",
+     "impact": "high",
+     "scoreImpact": 4
+    },
+    {
+     "fix": "Add the revenue number from your Acme role #1",
+     "timeEstimate": "1 hour",
+     "impact": "low",
+     "scoreImpact": 3
+    }
+   ],
+   "weak": 5,
+   "quantRate": 7,
+   "unq": 0,
+   "keywords": [
+    "Python"
+   ],
+   "modelInc": 27,
+   "main": {
+    "hero": 58,
+    "plan": 60,
+    "ip": 59,
+    "sim": 49,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-49",
+   "synthetic": true,
+   "score": 93,
+   "quickWins": [
+    {
+     "fix": "Rewrite bullets that start with passive phrases #1",
+     "timeEstimate": "20 minutes",
+     "impact": "low",
+     "scoreImpact": 9
+    },
+    {
+     "fix": "Quantify the team you led #0",
+     "timeEstimate": "10 min",
+     "impact": "medium",
+     "scoreImpact": 3
+    }
+   ],
+   "weak": 0,
+   "quantRate": 9,
+   "unq": 6,
+   "keywords": [
+    "SQL",
+    "Salesforce1",
+    "Terraform2"
+   ],
+   "modelInc": 27,
+   "main": {
+    "hero": 95,
+    "plan": 95,
+    "ip": 98,
+    "sim": 95,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-50",
+   "synthetic": true,
+   "score": 32,
+   "quickWins": [],
+   "weak": 3,
+   "quantRate": 80,
+   "unq": 6,
+   "keywords": [],
+   "modelInc": 24,
+   "main": {
+    "hero": 41,
+    "plan": 37,
+    "ip": 56,
+    "sim": 32,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-51",
+   "synthetic": true,
+   "score": 79,
+   "quickWins": [
+    {
+     "fix": "Move Skills above Education #2",
+     "timeEstimate": "15 min",
+     "impact": "high",
+     "scoreImpact": 14
+    },
+    {
+     "fix": "Move Skills above Education #1",
+     "timeEstimate": "20 minutes",
+     "impact": "high",
+     "scoreImpact": 10
+    },
+    {
+     "fix": "Name SQL in your summary #0",
+     "timeEstimate": "15 min",
+     "impact": "low",
+     "scoreImpact": 5
+    }
+   ],
+   "weak": 2,
+   "quantRate": 44,
+   "unq": 4,
+   "keywords": [
+    "Salesforce",
+    "Kubernetes1",
+    "Tableau2"
+   ],
+   "modelInc": 26,
+   "main": {
+    "hero": 95,
+    "plan": 95,
+    "ip": 98,
+    "sim": 95,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-52",
+   "synthetic": true,
+   "score": 49,
+   "quickWins": [
+    {
+     "fix": "Name SQL in your summary #0",
+     "timeEstimate": "10 min",
+     "impact": "high",
+     "scoreImpact": 8
+    },
+    {
+     "fix": "Move Skills above Education #1",
+     "timeEstimate": "15 min",
+     "impact": "medium",
+     "scoreImpact": 1
+    }
+   ],
+   "weak": 1,
+   "quantRate": 5,
+   "unq": 6,
+   "keywords": [],
+   "modelInc": 14,
+   "main": {
+    "hero": 67,
+    "plan": 63,
+    "ip": 63,
+    "sim": 58,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-53",
+   "synthetic": true,
+   "score": 85,
+   "quickWins": [],
+   "weak": 1,
+   "quantRate": 66,
+   "unq": 2,
+   "keywords": [
+    "Salesforce",
+    "Salesforce1",
+    "Salesforce2",
+    "Salesforce3",
+    "SQL4"
+   ],
+   "modelInc": 30,
+   "main": {
+    "hero": 88,
+    "plan": 95,
+    "ip": 98,
+    "sim": 85,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-54",
+   "synthetic": true,
+   "score": 29,
+   "quickWins": [],
+   "weak": 3,
+   "quantRate": 6,
+   "unq": 0,
+   "keywords": [
+    "SQL",
+    "Kubernetes1",
+    "SQL2"
+   ],
+   "modelInc": 8,
+   "main": {
+    "hero": 38,
+    "plan": 40,
+    "ip": 37,
+    "sim": 29,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-55",
+   "synthetic": true,
+   "score": 72,
+   "quickWins": [
+    {
+     "fix": "Add the revenue number from your Acme role #0",
+     "timeEstimate": "15 min",
+     "impact": "high",
+     "scoreImpact": 15
+    },
+    {
+     "fix": "Add a LinkedIn URL #1",
+     "timeEstimate": "20 minutes",
+     "impact": "high",
+     "scoreImpact": 14
+    },
+    {
+     "fix": "Name SQL in your summary #2",
+     "timeEstimate": "1 hour",
+     "impact": "medium",
+     "scoreImpact": 7
+    }
+   ],
+   "weak": 1,
+   "quantRate": 17,
+   "unq": 2,
+   "keywords": [],
+   "modelInc": 29,
+   "main": {
+    "hero": 95,
+    "plan": 95,
+    "ip": 98,
+    "sim": 95,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-56",
+   "synthetic": true,
+   "score": 27,
+   "quickWins": [],
+   "weak": 2,
+   "quantRate": 73,
+   "unq": 6,
+   "keywords": [
+    "Salesforce",
+    "SQL1",
+    "Terraform2",
+    "Terraform3",
+    "Python4"
+   ],
+   "modelInc": 21,
+   "main": {
+    "hero": 33,
+    "plan": 38,
+    "ip": 48,
+    "sim": 27,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-57",
+   "synthetic": true,
+   "score": 73,
+   "quickWins": [
+    {
+     "fix": "Name SQL in your summary #0",
+     "timeEstimate": "1 hour",
+     "impact": "medium",
+     "scoreImpact": 15
+    },
+    {
+     "fix": "Rewrite bullets that start with passive phrases #1",
+     "timeEstimate": "20 minutes",
+     "impact": "medium",
+     "scoreImpact": 8
+    },
+    {
+     "fix": "Move Skills above Education #2",
+     "timeEstimate": "10 min",
+     "impact": "medium",
+     "scoreImpact": 2
+    }
+   ],
+   "weak": 5,
+   "quantRate": 59,
+   "unq": 4,
+   "keywords": [
+    "SQL",
+    "Salesforce1",
+    "Terraform2"
+   ],
+   "modelInc": 24,
+   "main": {
+    "hero": 95,
+    "plan": 95,
+    "ip": 97,
+    "sim": 95,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-58",
+   "synthetic": true,
+   "score": 41,
+   "quickWins": [],
+   "weak": 5,
+   "quantRate": 59,
+   "unq": 2,
+   "keywords": [
+    "Python",
+    "SQL1",
+    "Kubernetes2",
+    "Kubernetes3",
+    "Python4"
+   ],
+   "modelInc": 1,
+   "main": {
+    "hero": 50,
+    "plan": 52,
+    "ip": 42,
+    "sim": 41,
+    "agree": false
+   }
+  },
+  {
+   "id": "syn-59",
+   "synthetic": true,
+   "score": 95,
+   "quickWins": [],
+   "weak": 0,
+   "quantRate": 89,
+   "unq": 0,
+   "keywords": [],
+   "modelInc": 29,
+   "main": {
+    "hero": 95,
+    "plan": 95,
+    "ip": 98,
+    "sim": 95,
+    "agree": false
+   }
+  }
+ ]
+}

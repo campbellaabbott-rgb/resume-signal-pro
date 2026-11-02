@@ -358,6 +358,7 @@ export { HOME_H1_CLASS, HOME_SUB_CLASS } from "../src/lib/home/hero-classes";
 export { parseVendorCounts } from "../src/lib/home/vendor-counts";
 export { utcStamp, andList as homeAndList } from "../src/lib/home/stamps";
 export { count as fmtCount, money as fmtMoney, date as fmtDate } from "../src/lib/format";
+export { studyBasisLine, studyFaqs } from "../src/lib/score-study";
 `));
   const bundle = OUT ? join(OUT, ".prerender-data.mjs") : join(root, "scripts", ".prerender-data.mjs");
   execSync(`npx esbuild "${entry}" --bundle --format=esm --outfile="${bundle}" --log-level=error`, { cwd: root, stdio: "inherit" });
@@ -1851,15 +1852,11 @@ export { count as fmtCount, money as fmtMoney, date as fmtDate } from "../src/li
   {
     const ins = scanInsights;
     const o = ins?.overall;
-    const studyFaqs = [
-      { q: "What is a good ATS score?", a: "Judge your score against the live distribution on this page, not a folklore threshold: the median and quartiles come from real scans in the last 180 days. Scoring above the 75th percentile means most resumes being checked right now score below yours; below the 25th percentile means parsing or keyword problems are very likely holding you back." },
-      { q: "Do ATS systems themselves show scores like this?", a: "Mostly no. Most ATS platforms rank and filter by recruiter searches rather than assigning a universal score. A resume score — ours included — is a diagnostic model of how well your resume will survive parsing and keyword search, not a number Workday or Greenhouse shows a recruiter." },
-      // "SCANS LOGGED", NOT "COMPLETED SCANS" (S13-087): the count includes
-      // failed attempts, and one scan can be logged twice (migration
-      // 20260709124621), until the SQL counts completions.
-      { q: "Where do these numbers come from?", a: "From scans logged by real users on this site over a rolling 180-day window. Only aggregates are published: each industry or experience bucket must contain at least 25 scans before it appears, and no individual resume, score, or location is ever exposed." },
-      { q: "Why might this sample skew low or high?", a: "People who check their resume are often mid-job-search and suspect something is wrong, so the sample likely skews toward resumes with fixable problems. Treat the percentiles as a benchmark of active job seekers, not of every employed professional's resume." },
-    ];
+    // The page's own questions and basis line, from one module (S13-050):
+    // the source answer names the primary scanner only once the response
+    // says that is what it counts.
+    const studyFaqs = D.studyFaqs(ins);
+    const studyBasis = D.studyBasisLine(ins);
     write({
       path: "/research/ats-score-benchmarks",
       title: "What's a Good ATS Score? Live Benchmarks From Real Scans",
@@ -1907,7 +1904,7 @@ export { count as fmtCount, money as fmtMoney, date as fmtDate } from "../src/li
         ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Guides", href: "/guides" }, { name: "ATS score benchmarks" }])}
         <article>
         <h1 class="text-3xl font-bold mb-3">What's a good ATS score? Live benchmarks from real scans</h1>
-        <p class="text-xs text-muted-foreground mb-6">Computed live from our scan corpus (rolling 180-day window${ins ? `, as of ${esc(ins.as_of)}` : ""}) · Aggregates only, minimum 25 scans per bucket</p>
+        <p class="text-xs text-muted-foreground mb-6">Computed live from our scan corpus (rolling 180-day window${ins ? `, as of ${esc(ins.as_of)}` : ""}) · Aggregates only, minimum 25 scans per bucket${studyBasis ? `<span class="block mt-1">${esc(studyBasis)}</span>` : ""}</p>
         <section class="rounded-2xl border border-primary/25 bg-primary/5 p-5 mb-8"><h2 class="text-sm font-semibold text-foreground mb-1.5">The short answer</h2><p class="text-sm text-muted-foreground leading-relaxed">${
           o
             ? esc(`Across the last ${o.n.toLocaleString("en-US")} scans logged, the median resume scored ${o.median}, with the middle half of resumes landing between ${o.p25} and ${o.p75}.${o.pct_80_plus != null ? ` Only ${o.pct_80_plus}% scored 80 or higher — so a score in the 80s is genuinely strong, not table stakes.` : ""} There is no universal pass mark: use the distribution below to see where you actually stand.`)

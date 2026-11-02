@@ -276,7 +276,8 @@
       "fileTypes": "PDF, DOCX ou TXT (max 10 Mo)",
       "browse": "Parcourir",
       "pasteHere": "Collez le contenu de votre CV ici...",
-      "chars": "caractères"
+      "chars": "caractères",
+      "tooLong": "{{length}} caractères : l'analyse gratuite en lit jusqu'à {{max}}. Raccourcissez le texte avant l'analyse."
     },
     "linkedin": {
       "title": "Votre profil LinkedIn",
@@ -397,13 +398,14 @@
       "redFlags": "Signaux d'alarme",
       "plusMore": "+12 autres"
     },
-    "scanFooter": "Résultats en {{seconds}} secondes maximum • 7 scans gratuits par jour",
+    "scanFooter": "Résultats en {{seconds}} secondes maximum • {{scans}} scans gratuits par jour",
     "getFreeAnalysis": "Obtenir une analyse de CV gratuite",
     "orGetCompleteAnalysis": "Ou obtenez l'analyse complète pour",
     "securePaymentStripe": "Paiement sécurisé via Stripe",
     "gsheetsImportFailed": "Échec de l'importation depuis Google Sheets. Veuillez réessayer.",
     "gsheetsImportFailedShared": "Échec de l'importation depuis Google Sheets. Assurez-vous que la feuille est partagée avec « Tous les utilisateurs disposant du lien ».",
-    "otherJobsAvailable_many": "{{count}} autres postes disponibles"
+    "otherJobsAvailable_many": "{{count}} autres postes disponibles",
+    "scanFooterPro": "Résultats en {{seconds}} secondes maximum • Pro : aucune limite quotidienne de scans"
   },
   "faq": {
     "title": "Questions fréquentes",
@@ -867,7 +869,13 @@
     },
     "eliteSignal_many": "{{count}} signaux d'élite",
     "issue_many": "{{count}} problèmes",
-    "quickFix_many": "{{count}} corrections rapides"
+    "quickFix_many": "{{count}} corrections rapides",
+    "projection": {
+      "lead": "Corrigez les points ci-dessous → environ",
+      "gain_one": "(+{{count}} pt, une estimation approximative)",
+      "gain_many": "(+{{count}} pts, une estimation approximative)",
+      "gain_other": "(+{{count}} pts, une estimation approximative)"
+    }
   },
   "careerSnapshot": {
     "downloadPdf": "Télécharger le rapport PDF",
@@ -1113,7 +1121,9 @@
       "fontUnreadableDescription": "Sa police ne correspond pas à de vrais caractères. Téléversez plutôt un .docx ou collez le texte de votre CV.",
       "unreadCharacters": "Certains caractères n'ont pas pu être lus",
       "unreadCharactersDescription": "Nous avons ignoré {{count}} caractères que ce PDF ne nomme pas. Pour l'analyse la plus précise, téléversez un .docx ou collez le texte de votre CV.",
-      "checkoutRefusedTitle": "Impossible de lancer le paiement"
+      "checkoutRefusedTitle": "Impossible de lancer le paiement",
+      "resumeTooLong": "CV trop long pour l'analyse",
+      "resumeTooLongDescription": "Ce CV compte {{length}} caractères ; l'analyse gratuite en lit jusqu'à {{max}}. Raccourcissez-le (d'abord les postes anciens et les longues listes) et relancez l'analyse."
     },
     "reportCrash": {
       "title": "Un problème est survenu lors de l'affichage de votre rapport",
@@ -1633,6 +1643,86 @@
     },
     "tailoredSignIn": {
       "cta": "Connectez-vous pour adapter votre CV à cette offre (gratuit : un par jour)"
+    },
+    "resumeTruncated": {
+      "title": "Cette analyse n'a pas lu votre CV en entier.",
+      "body": "Il est plus long que ce que l'analyse lit en entier : le score, les mots-clés manquants et les lignes citées ci-dessous ne viennent que de la partie lue. Raccourcissez-le, ou analysez les pages les plus importantes, pour que tout soit vérifié."
+    },
+    "languageNotice": {
+      "unknownTitle": "Nous n'avons pas pu déterminer dans quelle langue ce CV est rédigé.",
+      "unsupportedTitle": "Ce CV semble rédigé en {{language}}, une langue pour laquelle les vérifications des mots-clés et des sections de cette analyse ne sont pas conçues.",
+      "body": "Le rapport est rédigé dans la langue de votre CV, mais les vérifications des mots-clés et des sections cherchent des termes anglais : elles peuvent donc manquer des mots de votre langue. Considérez les mots-clés manquants ci-dessous comme une indication, pas comme un verdict."
+    },
+    "weakestBullets": {
+      "title": "Vos puces les plus faibles, notées",
+      "subtitle": "Citées de votre CV et notées selon les chiffres, les verbes et la portée. Lorsqu'une reformulation est proposée, remplacez les [crochets] par vos vrais chiffres.",
+      "howToFix": "Comment l'améliorer (nous n'avons pas pu la reformuler à partir de votre seul CV)",
+      "template": {
+        "verbAndNumber": "Reformulez cette puce pour qu'elle commence par un verbe d'action et se termine par un chiffre, sur le modèle « J'ai dirigé [ce que vous avez fait] et obtenu [indicateur] »."
+      }
+    },
+    "readAs": {
+      "label": "Notre lecture :",
+      "industry": "Secteur",
+      "level": "Niveau",
+      "levels": {
+        "entry": "Débutant",
+        "mid": "Intermédiaire",
+        "senior": "Senior",
+        "executive": "Cadre dirigeant"
+      },
+      "industryAria": "Confirmez ou corrigez le secteur détecté",
+      "levelAria": "Confirmez ou corrigez le niveau d'expérience détecté",
+      "note": "Une correction met à jour ce rapport",
+      "levelLogged": "Votre correction du niveau a été enregistrée pour améliorer la détection. Merci.",
+      "quickCheck": {
+        "title": "Vérification rapide :",
+        "transition": "nous n'étions pas tout à fait sûrs de votre secteur ici — votre parcours se lit comme {{historical}}, mais votre dernier poste comme {{recent}}. Confirmez ci-dessous et le rapport se recalibre.",
+        "unsure": "nous n'étions pas tout à fait sûrs de votre secteur ici. Confirmez-le ou corrigez-le ci-dessous — repères et mots-clés se mettent à jour aussitôt."
+      }
+    },
+    "builderHandoff": {
+      "title": "Transformez ce diagnostic en CV abouti",
+      "bodyRewrites_one": "Ouvrez l'éditeur gratuit avec votre CV chargé et {{count}} reformulation de puce de ce rapport appliquée là où elle correspond à l'une de vos puces, puis exportez un PDF ou DOCX proprement mis en page.",
+      "bodyRewrites_many": "Ouvrez l'éditeur gratuit avec votre CV chargé et les {{count}} reformulations de puces de ce rapport appliquées partout où elles correspondent à vos puces, puis exportez un PDF ou DOCX proprement mis en page.",
+      "bodyRewrites_other": "Ouvrez l'éditeur gratuit avec votre CV chargé et les {{count}} reformulations de puces de ce rapport appliquées partout où elles correspondent à vos puces, puis exportez un PDF ou DOCX proprement mis en page.",
+      "bodyNoRewrites": "Ce rapport n'a aucune reformulation que l'éditeur peut appliquer. Ouvrez l'éditeur gratuit avec votre CV chargé et les mots-clés manquants de ce rapport à côté, puis exportez un PDF ou DOCX proprement mis en page.",
+      "ctaRewrites_one": "Ouvrir dans l'éditeur : {{count}} reformulation à appliquer →",
+      "ctaRewrites_many": "Ouvrir dans l'éditeur : {{count}} reformulations à appliquer →",
+      "ctaRewrites_other": "Ouvrir dans l'éditeur : {{count}} reformulations à appliquer →",
+      "ctaNoRewrites": "Ouvrir dans l'éditeur avec votre CV et les mots-clés manquants →"
+    },
+    "scoreSimulator": {
+      "title": "Que se passe-t-il si vous corrigez ?",
+      "intro": "Cochez les corrections que vous êtes prêt à faire.",
+      "basis": "Les points sont une estimation approximative (l'estimation de l'IA par correction, ou des points fixes par type de correction), pas une prévision de votre prochaine analyse.",
+      "aria": "Score {{score}}, projeté {{projected}}",
+      "projectedLabel": "Projection :",
+      "gain_one": "(+{{count}} point)",
+      "gain_many": "(+{{count}} points)",
+      "gain_other": "(+{{count}} points)",
+      "current": "Votre score actuel. Cochez des corrections ci-dessous.",
+      "noGainCeiling": "Aucun gain selon cette estimation : elle ne projette aucun score au-delà de {{ceiling}}, et le vôtre y est déjà.",
+      "noGain": "Selon cette estimation, ces corrections n'ajoutent aucun point."
+    },
+    "fixLabels": {
+      "bulletsWeak_one": "Reformulez votre puce la plus faible à l'aide des exemples avant/après ci-dessus",
+      "bulletsWeak_many": "Reformulez vos {{count}} puces les plus faibles à l'aide des exemples avant/après ci-dessus",
+      "bulletsWeak_other": "Reformulez vos {{count}} puces les plus faibles à l'aide des exemples avant/après ci-dessus",
+      "bulletsUnquantified_one": "Ajoutez un résultat chiffré à {{count}} puce qui n'en a pas",
+      "bulletsUnquantified_many": "Ajoutez un résultat chiffré à {{count}} puces qui n'en ont pas",
+      "bulletsUnquantified_other": "Ajoutez un résultat chiffré à {{count}} puces qui n'en ont pas",
+      "keywords": "Intégrez {{keywords}} à votre résumé et à vos puces d'expérience"
+    },
+    "scorePotential": {
+      "title": "Votre potentiel de score",
+      "current": "Actuel",
+      "afterFixes": "Après corrections",
+      "gain_one": "+{{count}} pt",
+      "gain_many": "+{{count}} pts",
+      "gain_other": "+{{count}} pts",
+      "basis": "Votre score plus les corrections du simulateur et du plan de corrections ci-dessous : les principales actions rapides, et les étapes sur les puces et les mots-clés.",
+      "basisQuickWins": "Votre score plus jusqu'à trois des principales actions rapides et jusqu'à trois corrections de puces, plafonné à 95."
     }
   },
   "analysisPreviewSample": {
@@ -2869,7 +2959,6 @@
   },
   "rateLimitUpsell": {
     "title": "Limite quotidienne de scans atteinte",
-    "subtitle": "Vous avez utilisé vos 7 scans gratuits du jour. Pas de panique – vous pouvez continuer à scanner dès maintenant !",
     "resetIn": "Les scans gratuits se réinitialisent dans environ",
     "hour_one": "{{count}} heure",
     "hour_other": "{{count}} heures",
@@ -3161,7 +3250,14 @@
     "bestUsesPersonal": "{{name}}, voici où cette version du CV fonctionne le mieux :",
     "atsRelevance": "Pertinence ATS : {{level}}",
     "learnAbout": "En savoir plus sur {{title}}",
-    "close": "Fermer"
+    "close": "Fermer",
+    "usageTooltip": "Recommandations d'utilisation",
+    "suitability": {
+      "excellent": "Excellent",
+      "good": "Bon",
+      "limited": "Limité",
+      "notRecommended": "Déconseillé"
+    }
   },
   "elevatorPitch": {
     "title": "Pitch de 60 secondes",
@@ -3235,7 +3331,13 @@
     "tools": "Outils et logiciels",
     "certifications": "Certifications",
     "methodologies": "Méthodologies",
-    "gapCount_many": "({{count}} lacunes)"
+    "gapCount_many": "({{count}} lacunes)",
+    "matchingAgainstJob": "Comparé à : {{job}}",
+    "importance": {
+      "critical": "critique",
+      "important": "importante",
+      "nice_to_have": "appréciable"
+    }
   },
   "recruiterView": {
     "seeThrough": "Voyez votre CV à travers les yeux d'un recruteur",
@@ -3439,7 +3541,6 @@
     "neverExpire": "Les crédits n'expirent jamais",
     "perCredit": "{{price}} par crédit",
     "topUpCredits": "Recharger des crédits",
-    "freeTier": "Niveau gratuit : jusqu'à 7 scans par jour, gratuit pour toujours.",
     "buyCredits": "Acheter des crédits — {{price}} chacun",
     "myCredits": "Mes crédits",
     "provenHint": "Les crédits achetés dans ce navigateur s'affichent ici automatiquement.",
@@ -3469,7 +3570,20 @@
     "lowShort": "○ Faible",
     "highDesc": "Signaux sectoriels forts détectés. Les recommandations sont très pertinentes.",
     "mediumDesc": "Quelques signaux sectoriels détectés, vérification recommandée.",
-    "lowDesc": "Signaux limités. Veuillez vérifier et corriger si nécessaire pour de meilleures recommandations."
+    "lowDesc": "Signaux limités. Veuillez vérifier et corriger si nécessaire pour de meilleures recommandations.",
+    "isThisRight": "Est-ce exact ?",
+    "yes": "Oui",
+    "no": "Non",
+    "thanksConfirmed": "C'est noté — merci de votre confirmation !",
+    "allSignals": "Tous les signaux détectés :",
+    "alsoConsidered": "Également envisagés :",
+    "switch": "Changer →",
+    "seniority": {
+      "entry": "Débutant",
+      "mid": "Intermédiaire",
+      "senior": "Senior",
+      "executive": "Cadre dirigeant"
+    }
   },
   "resumeBuilder": {
     "experience": {
@@ -3481,7 +3595,15 @@
       "endDate": "Date de fin",
       "bulletPoints": "Points clés",
       "addBullet": "Ajouter un point",
-      "addWorkExperience": "Ajouter une expérience professionnelle"
+      "addWorkExperience": "Ajouter une expérience professionnelle",
+      "placeholder": {
+        "jobTitle": "Ingénieur logiciel senior",
+        "company": "Acme SAS",
+        "location": "Télétravail",
+        "startDate": "janv. 2022",
+        "endDate": "Aujourd'hui",
+        "bullet": "Encadré une équipe de 5 ingénieurs pour livrer…"
+      }
     },
     "education": {
       "entry": "Formation {{num}}",
@@ -3491,7 +3613,13 @@
       "startDate": "Date de début",
       "endDate": "Date de fin",
       "additionalDetails": "Détails supplémentaires (facultatif)",
-      "addEducation": "Ajouter une formation"
+      "addEducation": "Ajouter une formation",
+      "placeholder": {
+        "school": "Université de Lyon",
+        "degree": "Licence",
+        "field": "Informatique",
+        "details": "Cours pertinents, mentions, moyenne…"
+      }
     },
     "tagList": {
       "typeToAdd": "Tapez et appuyez sur Entrée pour ajouter"
@@ -3505,13 +3633,84 @@
       "skills": "Compétences",
       "certifications": "Certifications"
     },
-    "replaceWithFixes": "Remplacer votre brouillon actuel par le CV de votre analyse, avec les corrections du rapport appliquées ?",
+    "replaceWithFixes": "Remplacer votre brouillon actuel par le CV de votre analyse, avec les corrections du rapport appliquées ? Si vous refusez, votre brouillon est conservé et les corrections qui correspondent à ses puces y sont appliquées.",
+    "replaceWithKeywords": "Remplacer votre brouillon actuel par le CV de votre analyse, avec les mots-clés manquants de ce rapport à côté ? Si vous refusez, votre brouillon est conservé et les mots-clés s'affichent à côté.",
     "replaceWithLatestScan": "Vous avez un brouillon issu d'un CV précédent. Le remplacer par le CV de votre dernière analyse ?",
     "toast": {
       "addNameDescription": "Votre CV doit porter votre nom en haut avant de pouvoir être téléchargé.",
       "addNameTitle": "Ajoutez d'abord votre nom",
       "savedAsWordDescription": "Les polices du PDF ne peuvent pas afficher {{chars}} : nous avons donc enregistré un fichier Word, qui conserve tous les caractères.",
-      "savedAsWordTitle": "Enregistré en fichier Word"
+      "savedAsWordTitle": "Enregistré en fichier Word",
+      "importedTitle": "CV importé",
+      "importedDescription": "Nous avons rempli l'outil à partir de votre CV le plus récent — modifiez ce que vous voulez ci-dessous.",
+      "importedWithFixesTitle_one": "CV importé — {{count}} correction de votre rapport appliquée",
+      "importedWithFixesTitle_other": "CV importé — {{count}} corrections de votre rapport appliquées",
+      "importedWithFixesTitle_many": "CV importé — {{count}} corrections de votre rapport appliquées",
+      "importedWithFixesDescription": "Les puces reformulées de votre rapport sont en place. Les suggestions de mots-clés de l'analyse figurent au-dessus de l'éditeur.",
+      "mergedTitle_one": "Brouillon conservé — {{count}} correction de votre rapport appliquée",
+      "mergedTitle_other": "Brouillon conservé — {{count}} corrections de votre rapport appliquées",
+      "mergedTitle_many": "Brouillon conservé — {{count}} corrections de votre rapport appliquées",
+      "mergedDescription": "Seules les puces déjà présentes dans votre brouillon ont été modifiées. Les reformulations des autres puces restent dans votre rapport.",
+      "mergedNoneTitle": "Brouillon conservé — aucune reformulation du rapport ne lui correspondait",
+      "mergedNoneDescription": "Votre brouillon contient d'autres puces que le CV analysé, rien n'y a donc été modifié. Les reformulations restent dans votre rapport.",
+      "exportFailedTitle": "Échec de l'export",
+      "exportPdfFailed": "Impossible de créer le PDF. Veuillez réessayer.",
+      "exportDocxFailed": "Impossible de créer le document Word. Veuillez réessayer.",
+      "freelanceInsertedTitle_one": "Section freelance insérée — {{count}} entrée ajoutée",
+      "freelanceInsertedTitle_other": "Section freelance insérée — {{count}} entrées ajoutées",
+      "freelanceInsertedTitle_many": "Section freelance insérée — {{count}} entrées ajoutées",
+      "freelanceInsertedDescription": "Ajoutez vos dates à chaque entrée, puis exportez un PDF ou un document Word mis en page."
+    },
+    "seo": {
+      "title": "Créateur de CV gratuit — Resume Booster",
+      "description": "Créez un CV compatible avec les ATS en quelques minutes grâce à notre outil guidé gratuit. Export en PDF, sans inscription."
+    },
+    "title": "Créateur de CV",
+    "subtitle": "Créez un CV clair et structuré — modifiez chaque section et exportez-le quand il est prêt.",
+    "startOver": "Recommencer",
+    "exportDocx": "Exporter en DOCX",
+    "exportPdf": "Exporter en PDF",
+    "importing": "Import de votre CV le plus récent dans l'outil…",
+    "confirmStartOver": "Tout le contenu de l'outil sera effacé. Continuer ?",
+    "rescan": {
+      "title": "Exporté — vérifiez maintenant que les corrections ont fonctionné",
+      "body": "Rescannez gratuitement cette version exacte et comparez le score avant/après, selon les mêmes critères.",
+      "button": "Rescanner cette version →"
+    },
+    "keywords": {
+      "title": "Mots-clés absents selon votre analyse — intégrez-les là où ils sont vrais",
+      "dismiss": "masquer",
+      "note": "Nous n'insérons jamais de mots-clés à votre place — vous seul pouvez revendiquer honnêtement une compétence."
+    },
+    "section": {
+      "contact": "Coordonnées",
+      "summary": "Profil",
+      "experience": "Expérience",
+      "education": "Formation",
+      "skills": "Compétences",
+      "certifications": "Certifications",
+      "preview": "Aperçu"
+    },
+    "contact": {
+      "fullName": "Nom complet",
+      "title": "Titre / Accroche",
+      "email": "E-mail",
+      "phone": "Téléphone",
+      "location": "Lieu",
+      "linkedIn": "LinkedIn",
+      "website": "Site web / Portfolio"
+    },
+    "placeholder": {
+      "fullName": "Marie Dupont",
+      "title": "Designer produit senior",
+      "email": "marie@example.com",
+      "phone": "06 12 34 56 78",
+      "location": "Lyon",
+      "linkedIn": "linkedin.com/in/mariedupont",
+      "website": "mariedupont.fr",
+      "summary": "Un bref aperçu en 2 à 4 phrases de votre expérience et de ce que vous recherchez.",
+      "skill": "Ajoutez une compétence et appuyez sur Entrée",
+      "certification": "Ajoutez une certification et appuyez sur Entrée"
     }
   },
   "jobsPage": {
@@ -5650,7 +5849,7 @@
     "title": "Une erreur s'est produite"
   },
   "freeReportSignup": {
-    "body": "Créez un compte gratuit pour suivre vos progrès d'une analyse à l'autre, garder votre liste de corrections et obtenir 15 analyses gratuites par jour au lieu de 7.",
+    "body": "Créez un compte gratuit pour suivre vos progrès d'une analyse à l'autre, garder votre liste de corrections et obtenir {{signedIn}} analyses gratuites par jour au lieu de {{signedOut}}.",
     "cta": "Créer un compte gratuit",
     "title": "Ne perdez pas ce score."
   },
@@ -5792,5 +5991,145 @@
     "metaDescription": "L'API de données n'est pas à l'adresse de ce site ; le mode d'emploi et les clés gratuites sont sur /data-api.",
     "lead": "Vous avez demandé {{path}} à ce site. L'API n'est pas ici ; elle se trouve à :",
     "keyLine": "Les requêtes portent une clé sous la forme Authorization: Bearer rb_live_… ; les clés gratuites et tous les points d'accès sont décrits sur"
+  },
+  "metricCards": {
+    "section": {
+      "primary": "Scores principaux",
+      "structure": "Structure et contenu",
+      "advanced": "Indicateurs avancés"
+    },
+    "ats": {
+      "strong": "✓ Solide sur les mots-clés, le format et les résultats",
+      "gaps": "⚠ Des lacunes à combler : voir les corrections ci-dessous",
+      "manyGaps": "✗ Beaucoup de lacunes à combler : voir les corrections ci-dessous"
+    },
+    "grade": {
+      "a": "Excellent",
+      "b": "Bon",
+      "c": "Moyen",
+      "d": "À retravailler"
+    },
+    "redFlagsClean": "Votre CV semble propre : aucun problème majeur détecté.",
+    "improvement": {
+      "value_one": "+{{count}} pt",
+      "value_many": "+{{count}} pts",
+      "value_other": "+{{count}} pts",
+      "high": "🚀 De gros gains possibles !",
+      "medium": "📈 Marge de progression",
+      "low": "✓ Peu de points à gagner"
+    }
+  },
+  "scanOutcome": {
+    "title": "Vous avez postulé avec ce CV ? Dites-nous comment ça s'est passé",
+    "body": "Anonyme, lié uniquement au rapport #{{reportId}}. C'est ainsi que nous mesurons, au lieu de deviner, quels scores décrochent vraiment des entretiens. Vous pouvez modifier votre réponse si les choses évoluent.",
+    "interview": "🎉 Entretien(s) obtenu(s)",
+    "noResponse": "📭 Pas encore de réponse",
+    "rejected": "❌ Refusé",
+    "recorded": "Enregistré — merci. Vos réponses nous aident à étudier quels scores mènent à des entretiens ; aucun chiffre public n'en est encore tiré.",
+    "notSaved": "Non enregistré — rien n'a été conservé. Réessayez plus tard."
+  },
+  "scanFeedback": {
+    "question": "Cette analyse vous a-t-elle été utile ?",
+    "thanks": "Merci pour votre retour !",
+    "yes": "Oui",
+    "no": "Non",
+    "notSaved": "Impossible d'enregistrer — rien n'a été conservé."
+  },
+  "reportInsights": {
+    "vendor": {
+      "title": "Comment les grandes plateformes ATS lisent ce CV",
+      "subtitle": "Chaque système analyse différemment. Ces vérifications appliquent les particularités documentées de chaque éditeur à votre mise en forme réelle.",
+      "uncheckedNote": "Nous ne vérifions la mise en page que pour un PDF importé. Ici, il s'agissait de texte collé ou d'un fichier Word : colonnes et tableaux n'ont pas été vérifiés, et aucune plateforme qui en dépend n'est marquée comme réussie.",
+      "status": {
+        "pass": "Réussi",
+        "warn": "À vérifier",
+        "fail": "Échec probable",
+        "unknown": "Non vérifié"
+      },
+      "note": {
+        "workday": {
+          "fail": "Les mises en page en plusieurs colonnes brouillent l'analyseur de Workday — le contenu est lu dans le désordre.",
+          "warn": "Le texte aligné par tabulations ou les puces décoratives peuvent fusionner des champs dans l'aperçu de Workday.",
+          "pass": "Une seule colonne, puces standard — analysé proprement par Workday.",
+          "unknown": "Mise en page non vérifiée — impossible de dire si des colonnes ou des tableaux brouilleraient l'analyseur de Workday."
+        },
+        "greenhouse": {
+          "warn": "Greenhouse conserve le PDF, mais sa recherche par mots-clés s'appuie sur le texte extrait — les particularités de mise en page réduisent les correspondances.",
+          "pass": "Greenhouse conserve votre fichier d'origine ; l'extraction du texte semble fiable ici.",
+          "unknown": "Mise en page non vérifiée — Greenhouse cherche dans le texte extrait, et nous n'avons pas pu voir si la mise en page de ce fichier s'extrait proprement."
+        },
+        "lever": {
+          "warn": "La détection de sections de Lever attend des titres standard (Expérience, Formation) — des titres créatifs peuvent désordonner votre parcours.",
+          "pass": "Titres de section standard — Lever reconstituera correctement votre parcours."
+        },
+        "icims": {
+          "fail": "Colonnes et alignement par tabulations sont le pire cas pour iCIMS — les informations atterrissent dans les mauvais champs.",
+          "warn": "iCIMS remplit automatiquement les champs de candidature à partir de l'analyse — vérifiez le formulaire prérempli avant de l'envoyer.",
+          "pass": "Devrait préremplir correctement les champs de candidature iCIMS.",
+          "unknown": "Mise en page non vérifiée — iCIMS remplit son formulaire à partir de l'analyse, vérifiez donc les champs préremplis avant l'envoi."
+        }
+      },
+      "finding": {
+        "fail": "Analyse {{vendor}} : échec probable",
+        "warn": "Analyse {{vendor}} : à vérifier",
+        "pass": "Analyse {{vendor}}",
+        "unknown": "Analyse {{vendor}} : mise en page non vérifiée"
+      }
+    },
+    "findings": {
+      "title": "Constats en un coup d'œil",
+      "critical_one": "{{count}} critique",
+      "critical_other": "{{count}} critiques",
+      "critical_many": "{{count}} critiques",
+      "warning_one": "{{count}} avertissement",
+      "warning_other": "{{count}} avertissements",
+      "warning_many": "{{count}} avertissements",
+      "passed_one": "{{count}} réussi",
+      "passed_other": "{{count}} réussis",
+      "passed_many": "{{count}} réussis",
+      "unchecked_one": "{{count}} non vérifié",
+      "unchecked_other": "{{count}} non vérifiés",
+      "unchecked_many": "{{count}} non vérifiés",
+      "noCritical": "Aucun constat critique — ce qui fonctionne est détaillé dans les sections ci-dessous.",
+      "footer": "Le détail de chaque constat figure dans les sections ci-dessous, par ordre de gravité.",
+      "items": {
+        "parsePoor": "Le texte du CV n'a peut-être pas été extrait correctement — les scores ci-dessous pourraient être peu fiables",
+        "parseFair": "La qualité de l'extraction est imparfaite — vérifiez l'aperçu ci-dessous",
+        "noEmail": "Aucune adresse e-mail détectée — les recruteurs ne peuvent pas vous contacter",
+        "noPhone": "Aucun numéro de téléphone détecté",
+        "fieldMissing": "{{label}} : manquant — voir les vérifications propres au secteur",
+        "weakBulletsAll_one": "{{count}} puce notée D ou moins — reformulation fournie",
+        "weakBulletsAll_many": "{{count}} puces notées D ou moins — reformulations fournies",
+        "weakBulletsAll_other": "{{count}} puces notées D ou moins — reformulations fournies",
+        "weakBulletsSome_one": "{{count}} puce notée D ou moins — {{rewritten}} reformulée",
+        "weakBulletsSome_many": "{{count}} puces notées D ou moins — {{rewritten}} reformulées",
+        "weakBulletsSome_other": "{{count}} puces notées D ou moins — {{rewritten}} reformulées",
+        "weakBulletsNone_one": "{{count}} puce notée D ou moins — voyez comment la corriger",
+        "weakBulletsNone_many": "{{count}} puces notées D ou moins — voyez comment les corriger",
+        "weakBulletsNone_other": "{{count}} puces notées D ou moins — voyez comment les corriger",
+        "lowQuantification": "Moins de 40 % des puces contiennent un chiffre — les recruteurs s'appuient sur les indicateurs",
+        "quantified": "Impact chiffré",
+        "coreSections": "Sections essentielles présentes"
+      }
+    }
+  },
+  "redFlags": {
+    "title": "Signaux d'alerte pour les recruteurs",
+    "severity": {
+      "critical": "Critique",
+      "major": "Majeur",
+      "minor": "Mineur"
+    },
+    "count": {
+      "critical_one": "{{count}} critique",
+      "critical_other": "{{count}} critiques",
+      "critical_many": "{{count}} critiques",
+      "major_one": "{{count}} majeur",
+      "major_other": "{{count}} majeurs",
+      "major_many": "{{count}} majeurs",
+      "minor_one": "{{count}} mineur",
+      "minor_other": "{{count}} mineurs",
+      "minor_many": "{{count}} mineurs"
+    }
   }
 }

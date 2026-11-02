@@ -276,7 +276,8 @@
       "fileTypes": "PDF, DOCX ou TXT (máx. 10MB)",
       "browse": "Procurar ficheiros",
       "pasteHere": "Cole o conteúdo do seu currículo aqui...",
-      "chars": "caracteres"
+      "chars": "caracteres",
+      "tooLong": "{{length}} caracteres: a verificação gratuita lê até {{max}}. Encurte o texto antes de verificar."
     },
     "linkedin": {
       "title": "O Seu Perfil LinkedIn",
@@ -397,13 +398,14 @@
       "redFlags": "Sinais de Alerta",
       "plusMore": "+12 mais"
     },
-    "scanFooter": "Resultados em até {{seconds}} segundos • 7 verificações gratuitas por dia",
+    "scanFooter": "Resultados em até {{seconds}} segundos • {{scans}} verificações gratuitas por dia",
     "getFreeAnalysis": "Obter Análise Gratuita do Currículo",
     "orGetCompleteAnalysis": "Ou obtenha a análise completa por",
     "securePaymentStripe": "Pagamento seguro via Stripe",
     "gsheetsImportFailed": "Falha ao importar do Google Sheets. Tente novamente.",
     "gsheetsImportFailedShared": "Falha ao importar do Google Sheets. Certifique-se de que a folha está partilhada com 'Qualquer pessoa com o link'.",
-    "otherJobsAvailable_many": "{{count}} outras vagas disponíveis"
+    "otherJobsAvailable_many": "{{count}} outras vagas disponíveis",
+    "scanFooterPro": "Resultados em até {{seconds}} segundos • Pro: sem limite diário de verificações"
   },
   "faq": {
     "title": "Perguntas Frequentes",
@@ -867,7 +869,13 @@
     },
     "eliteSignal_many": "{{count}} sinais de destaque",
     "issue_many": "{{count}} problemas",
-    "quickFix_many": "{{count}} correções rápidas"
+    "quickFix_many": "{{count}} correções rápidas",
+    "projection": {
+      "lead": "Corrija os problemas abaixo → cerca de",
+      "gain_one": "(+{{count}} pt, uma estimativa aproximada)",
+      "gain_many": "(+{{count}} pts, uma estimativa aproximada)",
+      "gain_other": "(+{{count}} pts, uma estimativa aproximada)"
+    }
   },
   "careerSnapshot": {
     "downloadPdf": "Baixar relatório em PDF",
@@ -1113,7 +1121,9 @@
       "fontUnreadableDescription": "O tipo de letra não corresponde a caracteres reais. Carregue antes um .docx ou cole o texto do seu currículo.",
       "unreadCharacters": "Não foi possível ler alguns caracteres",
       "unreadCharactersDescription": "Ignorámos {{count}} caracteres que este PDF não identifica. Para a análise mais precisa, carregue um .docx ou cole o texto do seu currículo.",
-      "checkoutRefusedTitle": "Não foi possível iniciar o pagamento"
+      "checkoutRefusedTitle": "Não foi possível iniciar o pagamento",
+      "resumeTooLong": "Currículo longo demais para a verificação",
+      "resumeTooLongDescription": "Este currículo tem {{length}} caracteres; a verificação gratuita lê até {{max}}. Encurte-o (primeiro os cargos antigos e as listas longas) e verifique de novo."
     },
     "reportCrash": {
       "title": "Algo deu errado ao exibir seu relatório",
@@ -1633,6 +1643,86 @@
     },
     "tailoredSignIn": {
       "cta": "Inicie sessão para adaptar o seu currículo a este emprego (grátis: um por dia)"
+    },
+    "resumeTruncated": {
+      "title": "Esta verificação não leu seu currículo inteiro.",
+      "body": "Ele é mais longo do que a verificação lê por inteiro, então a pontuação, as palavras-chave em falta e as linhas citadas abaixo vêm só da parte lida. Encurte-o, ou verifique as páginas mais importantes, para que tudo seja analisado."
+    },
+    "languageNotice": {
+      "unknownTitle": "Não conseguimos identificar em que idioma este currículo está escrito.",
+      "unsupportedTitle": "Este currículo parece estar em {{language}}, um idioma para o qual as verificações de palavras-chave e de seções desta análise não foram feitas.",
+      "body": "O relatório está escrito no idioma do seu currículo, mas as verificações de palavras-chave e de seções procuram termos em inglês, então podem deixar passar palavras do seu idioma. Considere as palavras-chave em falta abaixo como um guia, não como um veredito."
+    },
+    "weakestBullets": {
+      "title": "Seus tópicos mais fracos, avaliados",
+      "subtitle": "Citados do seu currículo e avaliados por números, verbos e alcance. Onde houver uma reescrita, preencha os [colchetes] com seus números reais.",
+      "howToFix": "Como corrigir (não conseguimos reescrever este só com o seu currículo)",
+      "template": {
+        "verbAndNumber": "Reescreva este tópico para começar com um verbo de ação e terminar com um número, no formato \"Liderei [o que você fez], alcançando [métrica]\"."
+      }
+    },
+    "readAs": {
+      "label": "Nossa leitura:",
+      "industry": "Setor",
+      "level": "Nível",
+      "levels": {
+        "entry": "Inicial",
+        "mid": "Pleno",
+        "senior": "Sênior",
+        "executive": "Executivo"
+      },
+      "industryAria": "Confirme ou corrija o setor detectado",
+      "levelAria": "Confirme ou corrija o nível de experiência detectado",
+      "note": "Uma correção atualiza este relatório",
+      "levelLogged": "Sua correção do nível ficou registrada para melhorarmos a detecção. Obrigado.",
+      "quickCheck": {
+        "title": "Verificação rápida:",
+        "transition": "não tínhamos certeza do seu setor desta vez — seu histórico parece {{historical}}, mas seu cargo mais recente parece {{recent}}. Confirme abaixo e o relatório se ajusta.",
+        "unsure": "não tínhamos certeza do seu setor desta vez. Confirme ou corrija abaixo — referências e palavras-chave se atualizam na hora."
+      }
+    },
+    "builderHandoff": {
+      "title": "Transforme este diagnóstico em um currículo pronto",
+      "bodyRewrites_one": "Abra o criador gratuito com seu currículo carregado e {{count}} reescrita de tópico deste relatório aplicada onde combinar com um dos seus tópicos, depois exporte um PDF ou DOCX bem diagramado.",
+      "bodyRewrites_many": "Abra o criador gratuito com seu currículo carregado e as {{count}} reescritas de tópicos deste relatório aplicadas onde combinarem com seus tópicos, depois exporte um PDF ou DOCX bem diagramado.",
+      "bodyRewrites_other": "Abra o criador gratuito com seu currículo carregado e as {{count}} reescritas de tópicos deste relatório aplicadas onde combinarem com seus tópicos, depois exporte um PDF ou DOCX bem diagramado.",
+      "bodyNoRewrites": "Este relatório não tem nenhuma reescrita que o criador possa aplicar. Abra o criador gratuito com seu currículo carregado e as palavras-chave em falta deste relatório ao lado, depois exporte um PDF ou DOCX bem diagramado.",
+      "ctaRewrites_one": "Abrir no criador: {{count}} reescrita para aplicar →",
+      "ctaRewrites_many": "Abrir no criador: {{count}} reescritas para aplicar →",
+      "ctaRewrites_other": "Abrir no criador: {{count}} reescritas para aplicar →",
+      "ctaNoRewrites": "Abrir no criador com seu currículo e as palavras-chave em falta →"
+    },
+    "scoreSimulator": {
+      "title": "O que acontece se você corrigir?",
+      "intro": "Marque as correções que você está disposto a fazer.",
+      "basis": "Os pontos são uma estimativa aproximada (a estimativa da IA por correção, ou pontos fixos por tipo de correção), não uma previsão da sua próxima verificação.",
+      "aria": "Pontuação {{score}}, projetada {{projected}}",
+      "projectedLabel": "Projeção:",
+      "gain_one": "(+{{count}} ponto)",
+      "gain_many": "(+{{count}} pontos)",
+      "gain_other": "(+{{count}} pontos)",
+      "current": "Sua pontuação atual. Comece a marcar correções abaixo.",
+      "noGainCeiling": "Sem ganho por esta estimativa: ela não projeta pontuação acima de {{ceiling}}, e a sua já está lá.",
+      "noGain": "Por esta estimativa, estas correções não somam pontos."
+    },
+    "fixLabels": {
+      "bulletsWeak_one": "Reescreva seu {{count}} tópico mais fraco com os exemplos de antes e depois acima",
+      "bulletsWeak_many": "Reescreva seus {{count}} tópicos mais fracos com os exemplos de antes e depois acima",
+      "bulletsWeak_other": "Reescreva seus {{count}} tópicos mais fracos com os exemplos de antes e depois acima",
+      "bulletsUnquantified_one": "Adicione um resultado com número a {{count}} tópico que não tem nenhum",
+      "bulletsUnquantified_many": "Adicione um resultado com número a {{count}} tópicos que não têm nenhum",
+      "bulletsUnquantified_other": "Adicione um resultado com número a {{count}} tópicos que não têm nenhum",
+      "keywords": "Inclua {{keywords}} no seu resumo e nos tópicos de experiência"
+    },
+    "scorePotential": {
+      "title": "Seu potencial de pontuação",
+      "current": "Atual",
+      "afterFixes": "Depois das correções",
+      "gain_one": "+{{count}} pt",
+      "gain_many": "+{{count}} pts",
+      "gain_other": "+{{count}} pts",
+      "basis": "Sua pontuação mais as correções do simulador e do plano de correções abaixo: as principais vitórias rápidas e as etapas de tópicos e palavras-chave.",
+      "basisQuickWins": "Sua pontuação mais até três das principais vitórias rápidas e até três correções de tópicos, com limite de 95."
     }
   },
   "analysisPreviewSample": {
@@ -2869,7 +2959,6 @@
   },
   "rateLimitUpsell": {
     "title": "Limite diário de verificações atingido",
-    "subtitle": "Já usou os seus 7 verificações gratuitas de hoje. Não se preocupe – pode continuar a verificar agora mesmo!",
     "resetIn": "As verificações gratuitas são reiniciadas em aproximadamente",
     "hour_one": "{{count}} hora",
     "hour_other": "{{count}} horas",
@@ -3161,7 +3250,14 @@
     "bestUsesPersonal": "{{name}}, veja onde esta versão do currículo funciona melhor:",
     "atsRelevance": "Relevância ATS: {{level}}",
     "learnAbout": "Saiba mais sobre {{title}}",
-    "close": "Fechar"
+    "close": "Fechar",
+    "usageTooltip": "Recomendações de uso",
+    "suitability": {
+      "excellent": "Excelente",
+      "good": "Bom",
+      "limited": "Limitado",
+      "notRecommended": "Não recomendado"
+    }
   },
   "elevatorPitch": {
     "title": "Pitch de 60 Segundos",
@@ -3235,7 +3331,13 @@
     "tools": "Ferramentas e Software",
     "certifications": "Certificações",
     "methodologies": "Metodologias",
-    "gapCount_many": "({{count}} lacunas)"
+    "gapCount_many": "({{count}} lacunas)",
+    "matchingAgainstJob": "Comparando com: {{job}}",
+    "importance": {
+      "critical": "crítica",
+      "important": "importante",
+      "nice_to_have": "desejável"
+    }
   },
   "recruiterView": {
     "seeThrough": "Veja seu currículo pelos olhos de um recrutador",
@@ -3439,7 +3541,6 @@
     "neverExpire": "Créditos nunca expiram",
     "perCredit": "{{price}} por crédito",
     "topUpCredits": "Recarregar créditos",
-    "freeTier": "Nível gratuito: até 7 escaneamentos por dia, gratuito para sempre.",
     "buyCredits": "Comprar créditos — {{price}} cada",
     "myCredits": "Meus créditos",
     "provenHint": "Os créditos comprados neste navegador aparecem aqui automaticamente.",
@@ -3469,7 +3570,20 @@
     "lowShort": "○ Baixa",
     "highDesc": "Sinais industriais fortes detectados. As recomendações são altamente relevantes.",
     "mediumDesc": "Alguns sinais industriais detectados, verificação recomendada.",
-    "lowDesc": "Sinais limitados. Verifique e corrija se necessário para melhores recomendações."
+    "lowDesc": "Sinais limitados. Verifique e corrija se necessário para melhores recomendações.",
+    "isThisRight": "Está certo?",
+    "yes": "Sim",
+    "no": "Não",
+    "thanksConfirmed": "Entendido — obrigado por confirmar!",
+    "allSignals": "Todos os sinais detectados:",
+    "alsoConsidered": "Também considerados:",
+    "switch": "Trocar →",
+    "seniority": {
+      "entry": "Nível inicial",
+      "mid": "Nível pleno",
+      "senior": "Sênior",
+      "executive": "Executivo"
+    }
   },
   "resumeBuilder": {
     "experience": {
@@ -3481,7 +3595,15 @@
       "endDate": "Data de término",
       "bulletPoints": "Pontos",
       "addBullet": "Adicionar ponto",
-      "addWorkExperience": "Adicionar experiência profissional"
+      "addWorkExperience": "Adicionar experiência profissional",
+      "placeholder": {
+        "jobTitle": "Engenheiro de software sênior",
+        "company": "Acme Ltda.",
+        "location": "Remoto",
+        "startDate": "jan. 2022",
+        "endDate": "Atual",
+        "bullet": "Liderei uma equipe de 5 engenheiros para lançar…"
+      }
     },
     "education": {
       "entry": "Formação {{num}}",
@@ -3491,7 +3613,13 @@
       "startDate": "Data de início",
       "endDate": "Data de término",
       "additionalDetails": "Detalhes adicionais (opcional)",
-      "addEducation": "Adicionar formação"
+      "addEducation": "Adicionar formação",
+      "placeholder": {
+        "school": "Universidade de São Paulo",
+        "degree": "Bacharelado",
+        "field": "Ciência da Computação",
+        "details": "Disciplinas relevantes, honrarias, média…"
+      }
     },
     "tagList": {
       "typeToAdd": "Digite e pressione Enter para adicionar"
@@ -3505,13 +3633,84 @@
       "skills": "Habilidades",
       "certifications": "Certificações"
     },
-    "replaceWithFixes": "Substituir o rascunho atual do editor pelo currículo da sua verificação, com as correções do relatório aplicadas?",
+    "replaceWithFixes": "Substituir seu rascunho atual pelo currículo do seu escaneamento, com as correções do relatório aplicadas? Se você recusar, seu rascunho fica e as correções que combinam com os tópicos dele são aplicadas.",
+    "replaceWithKeywords": "Substituir seu rascunho atual pelo currículo do seu escaneamento, com as palavras-chave em falta deste relatório ao lado? Se você recusar, seu rascunho fica e as palavras-chave aparecem ao lado.",
     "replaceWithLatestScan": "Você tem um rascunho de um currículo anterior. Substituí-lo pelo currículo da sua verificação mais recente?",
     "toast": {
       "addNameDescription": "O seu currículo precisa do seu nome no topo antes de poder ser transferido.",
       "addNameTitle": "Acrescente primeiro o seu nome",
       "savedAsWordDescription": "Os tipos de letra do PDF não conseguem desenhar {{chars}}, por isso guardámos um ficheiro Word, que mantém todos os carateres.",
-      "savedAsWordTitle": "Guardado como ficheiro Word"
+      "savedAsWordTitle": "Guardado como ficheiro Word",
+      "importedTitle": "Currículo importado",
+      "importedDescription": "Preenchemos o criador com seu currículo mais recente — edite o que quiser abaixo.",
+      "importedWithFixesTitle_one": "Currículo importado — {{count}} correção do seu relatório aplicada",
+      "importedWithFixesTitle_other": "Currículo importado — {{count}} correções do seu relatório aplicadas",
+      "importedWithFixesTitle_many": "Currículo importado — {{count}} correções do seu relatório aplicadas",
+      "importedWithFixesDescription": "Os tópicos reescritos do seu relatório já estão no lugar. As sugestões de palavras-chave do escaneamento aparecem acima do editor.",
+      "mergedTitle_one": "Rascunho mantido — {{count}} correção do seu relatório aplicada a ele",
+      "mergedTitle_other": "Rascunho mantido — {{count}} correções do seu relatório aplicadas a ele",
+      "mergedTitle_many": "Rascunho mantido — {{count}} correções do seu relatório aplicadas a ele",
+      "mergedDescription": "Só foram alterados os tópicos que já estavam no seu rascunho. As reescritas de tópicos que ele não tem continuam no seu relatório.",
+      "mergedNoneTitle": "Rascunho mantido — nenhuma reescrita do relatório combinou com ele",
+      "mergedNoneDescription": "Seu rascunho tem tópicos diferentes do currículo escaneado, então nada foi alterado. As reescritas continuam no seu relatório.",
+      "exportFailedTitle": "Falha ao exportar",
+      "exportPdfFailed": "Não foi possível criar o PDF. Tente novamente.",
+      "exportDocxFailed": "Não foi possível criar o documento do Word. Tente novamente.",
+      "freelanceInsertedTitle_one": "Seção freelance inserida — {{count}} entrada adicionada",
+      "freelanceInsertedTitle_other": "Seção freelance inserida — {{count}} entradas adicionadas",
+      "freelanceInsertedTitle_many": "Seção freelance inserida — {{count}} entradas adicionadas",
+      "freelanceInsertedDescription": "Adicione as datas a cada entrada e depois exporte um PDF ou documento do Word diagramado."
+    },
+    "seo": {
+      "title": "Criador de currículo grátis — Resume Booster",
+      "description": "Crie um currículo compatível com ATS em minutos com nosso criador guiado gratuito. Exporte em PDF, sem cadastro."
+    },
+    "title": "Criador de currículo",
+    "subtitle": "Crie um currículo limpo e estruturado — edite qualquer seção e exporte quando estiver pronto.",
+    "startOver": "Recomeçar",
+    "exportDocx": "Exportar DOCX",
+    "exportPdf": "Exportar PDF",
+    "importing": "Importando seu currículo mais recente para o criador…",
+    "confirmStartOver": "Isso vai apagar tudo no criador. Continuar?",
+    "rescan": {
+      "title": "Exportado — agora confira se as correções funcionaram",
+      "body": "Escaneie de novo esta mesma versão grátis e veja a pontuação antes e depois, com os mesmos critérios.",
+      "button": "Escanear esta versão de novo →"
+    },
+    "keywords": {
+      "title": "Palavras-chave que seu escaneamento não encontrou — inclua onde forem verdadeiras",
+      "dismiss": "ocultar",
+      "note": "Nunca inserimos palavras-chave por você — só você pode afirmar uma habilidade com honestidade."
+    },
+    "section": {
+      "contact": "Contato",
+      "summary": "Resumo",
+      "experience": "Experiência",
+      "education": "Formação",
+      "skills": "Habilidades",
+      "certifications": "Certificações",
+      "preview": "Pré-visualização"
+    },
+    "contact": {
+      "fullName": "Nome completo",
+      "title": "Cargo / Título",
+      "email": "E-mail",
+      "phone": "Telefone",
+      "location": "Localização",
+      "linkedIn": "LinkedIn",
+      "website": "Site / Portfólio"
+    },
+    "placeholder": {
+      "fullName": "Maria Silva",
+      "title": "Designer de produto sênior",
+      "email": "maria@example.com",
+      "phone": "(11) 91234-5678",
+      "location": "São Paulo, SP",
+      "linkedIn": "linkedin.com/in/mariasilva",
+      "website": "mariasilva.com.br",
+      "summary": "Um breve resumo de 2 a 4 frases sobre sua experiência e o que você procura agora.",
+      "skill": "Adicione uma habilidade e pressione Enter",
+      "certification": "Adicione uma certificação e pressione Enter"
     }
   },
   "jobsPage": {
@@ -5650,7 +5849,7 @@
     "title": "Algo correu mal"
   },
   "freeReportSignup": {
-    "body": "Crie uma conta gratuita para acompanhar o seu progresso entre análises, manter a sua lista de correções e ter 15 análises gratuitas por dia em vez de 7.",
+    "body": "Crie uma conta gratuita para acompanhar o seu progresso entre análises, manter a sua lista de correções e ter {{signedIn}} análises gratuitas por dia em vez de {{signedOut}}.",
     "cta": "Criar conta gratuita",
     "title": "Não perca esta pontuação."
   },
@@ -5792,5 +5991,145 @@
     "metaDescription": "A API de dados não está no endereço deste site; o guia e as chaves gratuitas estão em /data-api.",
     "lead": "Pediu a este site {{path}}. A API não está aqui; está em:",
     "keyLine": "Os pedidos levam uma chave como Authorization: Bearer rb_live_…; as chaves gratuitas e todos os endpoints estão descritos em"
+  },
+  "metricCards": {
+    "section": {
+      "primary": "Pontuações principais",
+      "structure": "Estrutura e conteúdo",
+      "advanced": "Métricas avançadas"
+    },
+    "ats": {
+      "strong": "✓ Forte em palavras-chave, formato e resultados",
+      "gaps": "⚠ Há lacunas a fechar: veja as correções abaixo",
+      "manyGaps": "✗ Muitas lacunas a fechar: veja as correções abaixo"
+    },
+    "grade": {
+      "a": "Excelente",
+      "b": "Bom",
+      "c": "Razoável",
+      "d": "Precisa melhorar"
+    },
+    "redFlagsClean": "Seu currículo parece limpo — nenhum problema grave detectado.",
+    "improvement": {
+      "value_one": "+{{count}} pt",
+      "value_many": "+{{count}} pts",
+      "value_other": "+{{count}} pts",
+      "high": "🚀 Grandes ganhos possíveis!",
+      "medium": "📈 Espaço para melhorar",
+      "low": "✓ Pouco a ganhar"
+    }
+  },
+  "scanOutcome": {
+    "title": "Candidatou-se com este currículo? Conte como foi",
+    "body": "Anônimo, ligado apenas ao relatório #{{reportId}}. É assim que medimos, em vez de adivinhar, quais pontuações realmente geram entrevistas. Você pode atualizar sua resposta se algo mudar.",
+    "interview": "🎉 Consegui entrevista(s)",
+    "noResponse": "📭 Ainda sem resposta",
+    "rejected": "❌ Rejeitado",
+    "recorded": "Registrado — obrigado. Suas respostas nos ajudam a estudar quais pontuações levam a entrevistas; ainda não publicamos nenhum número com base nelas.",
+    "notSaved": "Não salvo — nada foi registrado. Tente novamente mais tarde."
+  },
+  "scanFeedback": {
+    "question": "Esta análise foi útil?",
+    "thanks": "Obrigado pelo feedback!",
+    "yes": "Sim",
+    "no": "Não",
+    "notSaved": "Não foi possível salvar — nada foi registrado."
+  },
+  "reportInsights": {
+    "vendor": {
+      "title": "Como as grandes plataformas ATS leem este currículo",
+      "subtitle": "Cada sistema lê de um jeito. Estas verificações aplicam as particularidades documentadas de cada fornecedor à sua formatação real.",
+      "uncheckedNote": "Só verificamos o layout quando você envia um PDF. Este foi texto colado ou um arquivo do Word, então colunas e tabelas não foram verificadas, e nenhuma plataforma que depende delas aparece como aprovada.",
+      "status": {
+        "pass": "Aprovado",
+        "warn": "Revisar",
+        "fail": "Provável falha",
+        "unknown": "Não verificado"
+      },
+      "note": {
+        "workday": {
+          "fail": "Layouts com várias colunas embaralham o leitor do Workday — o conteúdo é lido fora de ordem.",
+          "warn": "Texto alinhado com tabulações ou marcadores decorativos podem juntar campos na pré-visualização do Workday.",
+          "pass": "Uma coluna, marcadores padrão — o Workday lê sem problemas.",
+          "unknown": "Layout não verificado — não dá para dizer se colunas ou tabelas embaralhariam o leitor do Workday."
+        },
+        "greenhouse": {
+          "warn": "O Greenhouse guarda o PDF, mas a busca por palavras-chave usa o texto extraído — peculiaridades do layout reduzem as correspondências.",
+          "pass": "O Greenhouse guarda seu arquivo original; a extração de texto parece confiável aqui.",
+          "unknown": "Layout não verificado — o Greenhouse busca no texto extraído, e não conseguimos ver se o layout deste arquivo é extraído corretamente."
+        },
+        "lever": {
+          "warn": "A detecção de seções do Lever espera títulos padrão (Experiência, Formação) — títulos criativos podem bagunçar seu histórico.",
+          "pass": "Títulos de seção padrão — o Lever vai organizar seu histórico corretamente."
+        },
+        "icims": {
+          "fail": "Colunas mais alinhamento com tabulações é o pior caso para o iCIMS — os dados caem nos campos errados.",
+          "warn": "O iCIMS preenche os campos da candidatura a partir da leitura — confira o formulário preenchido antes de enviar.",
+          "pass": "Deve preencher corretamente os campos de candidatura do iCIMS.",
+          "unknown": "Layout não verificado — o iCIMS preenche o formulário a partir da leitura, então confira os campos antes de enviar."
+        }
+      },
+      "finding": {
+        "fail": "Leitura do {{vendor}}: provável falha",
+        "warn": "Leitura do {{vendor}}: revisar",
+        "pass": "Leitura do {{vendor}}",
+        "unknown": "Leitura do {{vendor}}: layout não verificado"
+      }
+    },
+    "findings": {
+      "title": "Resultados num relance",
+      "critical_one": "{{count}} crítico",
+      "critical_other": "{{count}} críticos",
+      "critical_many": "{{count}} críticos",
+      "warning_one": "{{count}} alerta",
+      "warning_other": "{{count}} alertas",
+      "warning_many": "{{count}} alertas",
+      "passed_one": "{{count}} aprovado",
+      "passed_other": "{{count}} aprovados",
+      "passed_many": "{{count}} aprovados",
+      "unchecked_one": "{{count}} não verificado",
+      "unchecked_other": "{{count}} não verificados",
+      "unchecked_many": "{{count}} não verificados",
+      "noCritical": "Nenhum resultado crítico — o que está funcionando aparece nas seções abaixo.",
+      "footer": "O detalhe completo de cada resultado aparece nas seções abaixo, por ordem de gravidade.",
+      "items": {
+        "parsePoor": "O texto do currículo pode não ter sido extraído corretamente — as pontuações abaixo podem não ser confiáveis",
+        "parseFair": "A qualidade da extração não é perfeita — confira a pré-visualização abaixo",
+        "noEmail": "Nenhum e-mail detectado — os recrutadores não conseguem entrar em contato",
+        "noPhone": "Nenhum número de telefone detectado",
+        "fieldMissing": "{{label}}: em falta — veja as verificações da área",
+        "weakBulletsAll_one": "{{count}} tópico com nota D ou inferior — reescrita incluída",
+        "weakBulletsAll_many": "{{count}} tópicos com nota D ou inferior — reescritas incluídas",
+        "weakBulletsAll_other": "{{count}} tópicos com nota D ou inferior — reescritas incluídas",
+        "weakBulletsSome_one": "{{count}} tópico com nota D ou inferior — {{rewritten}} reescrito",
+        "weakBulletsSome_many": "{{count}} tópicos com nota D ou inferior — {{rewritten}} reescritos",
+        "weakBulletsSome_other": "{{count}} tópicos com nota D ou inferior — {{rewritten}} reescritos",
+        "weakBulletsNone_one": "{{count}} tópico com nota D ou inferior — veja como corrigi-lo",
+        "weakBulletsNone_many": "{{count}} tópicos com nota D ou inferior — veja como corrigi-los",
+        "weakBulletsNone_other": "{{count}} tópicos com nota D ou inferior — veja como corrigi-los",
+        "lowQuantification": "Menos de 40% dos tópicos trazem um número — recrutadores se apoiam em métricas",
+        "quantified": "Impacto quantificado",
+        "coreSections": "Seções principais presentes"
+      }
+    }
+  },
+  "redFlags": {
+    "title": "Sinais de alerta para recrutadores",
+    "severity": {
+      "critical": "Crítico",
+      "major": "Importante",
+      "minor": "Menor"
+    },
+    "count": {
+      "critical_one": "{{count}} crítico",
+      "critical_other": "{{count}} críticos",
+      "critical_many": "{{count}} críticos",
+      "major_one": "{{count}} importante",
+      "major_other": "{{count}} importantes",
+      "major_many": "{{count}} importantes",
+      "minor_one": "{{count}} menor",
+      "minor_other": "{{count}} menores",
+      "minor_many": "{{count}} menores"
+    }
   }
 }

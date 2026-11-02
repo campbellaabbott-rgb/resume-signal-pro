@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
+import { improvementLevelOf } from "../../../supabase/functions/free-keyword-scan/score-projection";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Tooltip,
@@ -12,6 +13,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Progress } from "@/components/ui/progress";
+import { scoreTone } from "@/lib/score-bands";
 
 // --- Types ---
 
@@ -239,7 +241,7 @@ interface MetricCardProps {
 
 function DashboardMetricCard({ icon: Icon, label, tooltipKey, value, subtext, status, progress }: MetricCardProps) {
   return (
-    <div className="flex items-start gap-3 p-3 rounded-xl border border-border bg-card/50 hover:bg-card/80 transition-colors">
+    <div className="flex items-start gap-3 p-3 rounded-xl border border-border bg-card/50 hover:bg-card/80 transition-colors" data-metric={tooltipKey} data-status={status}>
       <div className={cn(
         "p-2 rounded-lg shrink-0",
         status === "success" ? "bg-success/10" :
@@ -307,7 +309,10 @@ export function MetricCardsGrid({
 }: MetricCardsGridProps) {
   const { t } = useTranslation();
 
-  const gradeLabel = (g: string) => g === "A" ? "Excellent" : g === "B" ? "Good" : g === "C" ? "Fair" : "Needs Work";
+  const gradeLabel = (g: string) => t(g === "A" ? "metricCards.grade.a" : g === "B" ? "metricCards.grade.b" : g === "C" ? "metricCards.grade.c" : "metricCards.grade.d");
+  // The ATS score's colour and words come from the report's one set of bands
+  // (src/lib/score-bands.ts, S13-019), never thresholds of this card's own.
+  const atsTone = scoreTone(atsScoreEstimate);
 
   const sectionPresent = [sectionCheck.hasContact, sectionCheck.hasSummary, sectionCheck.hasExperience, sectionCheck.hasEducation, sectionCheck.hasSkills].filter(Boolean).length;
   const contactPresent = [contactInfo.hasEmail, contactInfo.hasPhone, contactInfo.hasLinkedIn].filter(Boolean).length;
@@ -324,8 +329,8 @@ export function MetricCardsGrid({
       value: `${atsScoreEstimate}/100`,
       // What the score reads, not what a recruiter's search will do with it
       // (the review of 2026-10-27, finding 3's class).
-      subtext: atsScoreEstimate >= 80 ? "✓ Strong on keywords, format and results" : atsScoreEstimate >= 60 ? "⚠ Gaps to close: see the fixes below" : "✗ Many gaps to close: see the fixes below",
-      status: statusFromScore(atsScoreEstimate, 80, 60),
+      subtext: t(atsTone === "success" ? "metricCards.ats.strong" : atsTone === "warning" ? "metricCards.ats.gaps" : "metricCards.ats.manyGaps"),
+      status: atsTone,
       progress: atsScoreEstimate,
     },
     {
@@ -422,14 +427,21 @@ export function MetricCardsGrid({
       status: densityStatus,
       progress: densityScore,
     }] : []),
-    ...(improvementPotential ? [{
-      icon: Zap,
-      label: t('freeScan.improvementPotential'),
-      tooltipKey: "improvementPotential",
-      value: `+${improvementPotential.estimatedScoreIncrease} pts`,
-      subtext: improvementPotential.level === "high" ? "🚀 Big gains possible!" : improvementPotential.level === "medium" ? "📈 Room to improve" : "✓ Already optimized",
-      status: (improvementPotential.level === "low" ? "success" : improvementPotential.level === "medium" ? "warning" : "muted") as Status,
-    }] : []),
+    // The number and its verdict come from the one projected gain (S13-058
+    // recheck): the model's own level beside the projection's number read
+    // "+10 pts, Already optimized". A gain of 0 says nothing worth a card.
+    ...(improvementPotential && improvementPotential.estimatedScoreIncrease > 0 ? (() => {
+      const gain = improvementPotential.estimatedScoreIncrease;
+      const level = improvementLevelOf(gain);
+      return [{
+        icon: Zap,
+        label: t('freeScan.improvementPotential'),
+        tooltipKey: "improvementPotential",
+        value: t('metricCards.improvement.value', { count: gain }),
+        subtext: t(`metricCards.improvement.${level}`),
+        status: (level === "low" ? "success" : level === "medium" ? "warning" : "muted") as Status,
+      }];
+    })() : []),
   ];
 
   return (
@@ -437,7 +449,7 @@ export function MetricCardsGrid({
       {/* Section: Primary Scores */}
       <div>
         <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2.5 px-1">
-          Primary Scores
+          {t("metricCards.section.primary")}
         </h4>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           {primaryCards.map((card, i) => (
@@ -449,7 +461,7 @@ export function MetricCardsGrid({
       {/* Section: Structure & Content */}
       <div>
         <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2.5 px-1">
-          Structure & Content
+          {t("metricCards.section.structure")}
         </h4>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           {structureCards.map((card, i) => (
@@ -461,7 +473,7 @@ export function MetricCardsGrid({
       {/* Section: Advanced Metrics */}
       <div>
         <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2.5 px-1">
-          Advanced Metrics
+          {t("metricCards.section.advanced")}
         </h4>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           {advancedCards.map((card, i) => (
@@ -496,10 +508,10 @@ export function MetricCardsGrid({
               {t('freeScan.redFlags')}
             </span>
             <p className="font-semibold text-foreground text-sm mt-0.5">
-              {redFlags.length === 0 ? "No red flags" : `${redFlags.length} issue${redFlags.length > 1 ? "s" : ""} found`}
+              {redFlags.length === 0 ? t("scoreHero.noRedFlags") : t("scoreHero.issue", { count: redFlags.length })}
             </p>
             <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">
-              {redFlags.length > 0 ? redFlags[0].issue : "Your resume looks clean — no major issues detected."}
+              {redFlags.length > 0 ? redFlags[0].issue : t("metricCards.redFlagsClean")}
             </p>
           </div>
         </div>
