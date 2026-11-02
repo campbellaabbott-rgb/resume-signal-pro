@@ -81,7 +81,12 @@ export function InterviewCoach({ resumeText, industry, currentRole, isPremium, s
   const [data, setData] = useState<InterviewData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [activeQuestion, setActiveQuestion] = useState<number | null>(null);
-  const [answer, setAnswer] = useState("");
+  // One draft per question (S13-125): a single shared draft showed question
+  // 1's half-typed answer in question 3's box and sent it as question 3's
+  // answer, and "Try again" on one question wiped every draft.
+  const [answers, setAnswers] = useState<Record<number, string>>({});
+  const answerFor = (id: number) => answers[id] ?? "";
+  const setAnswerFor = (id: number, text: string) => setAnswers((prev) => ({ ...prev, [id]: text }));
   const [evaluations, setEvaluations] = useState<Record<number, Evaluation>>({});
   const [evaluatingId, setEvaluatingId] = useState<number | null>(null);
   const [showTips, setShowTips] = useState(false);
@@ -129,6 +134,7 @@ export function InterviewCoach({ resumeText, industry, currentRole, isPremium, s
   };
 
   const submitAnswer = async (q: Question) => {
+    const answer = answerFor(q.id);
     if (!answer.trim()) return;
     setEvaluatingId(q.id);
     try {
@@ -138,7 +144,7 @@ export function InterviewCoach({ resumeText, industry, currentRole, isPremium, s
       if (error) throw error;
       if (!result?.success) throw new Error(result?.error || "Evaluation failed");
       setEvaluations(prev => ({ ...prev, [q.id]: result.data }));
-      setAnswer("");
+      setAnswerFor(q.id, "");
     } catch (err: any) {
       toast({ title: t('interviewCoach.error'), description: err.message || t('interviewCoach.evaluateFailed'), variant: "destructive" });
     } finally {
@@ -256,13 +262,13 @@ export function InterviewCoach({ resumeText, industry, currentRole, isPremium, s
                   {!evaluation && (
                     <div className="space-y-2">
                       <textarea
-                        value={answer}
-                        onChange={(e) => setAnswer(e.target.value)}
+                        value={answerFor(q.id)}
+                        onChange={(e) => setAnswerFor(q.id, e.target.value)}
                         placeholder={t('interviewCoach.answerPlaceholder')}
                         className="w-full text-xs p-2 rounded-lg border border-border/50 bg-background min-h-[80px] resize-none focus:outline-none focus:ring-1 focus:ring-primary/30"
                       />
                       <div className="flex items-center gap-2">
-                        <Button size="sm" className="gap-1 text-xs h-7" onClick={() => submitAnswer(q)} disabled={!answer.trim() || evaluatingId === q.id}>
+                        <Button size="sm" className="gap-1 text-xs h-7" onClick={() => submitAnswer(q)} disabled={!answerFor(q.id).trim() || evaluatingId === q.id}>
                           {evaluatingId === q.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
                           {evaluatingId === q.id ? t('interviewCoach.evaluating') : t('interviewCoach.submitAnswer')}
                         </Button>
@@ -318,7 +324,7 @@ export function InterviewCoach({ resumeText, industry, currentRole, isPremium, s
                       </div>
                       <Button size="sm" variant="ghost" className="text-xs h-6 gap-1" onClick={() => {
                         setEvaluations(prev => { const n = {...prev}; delete n[q.id]; return n; });
-                        setAnswer("");
+                        setAnswerFor(q.id, "");
                       }}>
                         <RotateCcw className="w-3 h-3" /> {t('interviewCoach.tryAgain')}
                       </Button>
