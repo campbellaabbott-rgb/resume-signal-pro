@@ -3,7 +3,7 @@
 // straight from RLS-protected tables; credits and purchases key by email in
 // service-role tables and are fetched through the get-account-data function.
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 // Comma-stripping matters here: role titles go into a PostgREST or() downstream,
@@ -37,6 +37,7 @@ import { AccountNav } from "@/components/account/AccountNav";
 // refuses about the same employer.
 import { FILL_RATE_MIN_TRACKING_DAYS } from "@/pages/Jobs";
 import { GapReport } from "@/components/account/GapReport";
+import { type Fit, REMEASURE_PAUSE_MS, gapBasisScanId, readGapFits, remeasureKey, resumeFingerprint, rowsToRemeasure, skillGapOf, writeGapFits } from "@/lib/gap-report";
 import { InterviewsHub } from "@/components/account/InterviewsHub";
 import { SetupChecklist } from "@/components/account/SetupChecklist";
 import { AgentBridgeCard } from "@/components/account/AgentBridgeCard";
@@ -301,19 +302,48 @@ export default function Account() {
   // user actually pursued — the highest-signal "what to add" there is, because
   // it's drawn from their own targets, not a generic list. Floors: ≥3 apps with
   // fit data, keyword must recur (≥2) — no advice off a single posting.
-  const skillGap = useMemo(() => {
-    const counts = new Map<string, number>();
-    let withFit = 0;
-    for (const a of applications) {
-      const miss = a.fit_missing;
-      if (!Array.isArray(miss) || miss.length === 0) continue;
-      withFit++;
-      for (const k of miss) counts.set(k, (counts.get(k) ?? 0) + 1);
-    }
-    if (withFit < 3) return null;
-    const top = [...counts.entries()].sort((a, b) => b[1] - a[1]).filter(([, n]) => n >= 2).slice(0, 5);
-    return top.length > 0 ? { top, withFit } : null;
-  }, [applications]);
+  // MEASURED AGAINST THE RÉSUMÉ MATCHING USES NOW (S13-093, lib/gap-report):
+  // a stored fit counts only when its row was measured against that résumé;
+  // other rows with a posting are measured again for this tab, and every
+  // measured row is in the denominator, fully matched ones included.
+  const gapResume = matchingResume ?? scans[0]?.resume_text ?? null;
+  const gapBasis = gapBasisScanId(matching, scans);
+  const [freshFits, setFreshFits] = useState<Record<string, Fit>>({});
+  // What the re-measurement depends on: a status change or a note does not
+  // start it again, a new posting or another version does.
+  const gapRowsKey = useMemo(() => remeasureKey(applications), [applications]);
+  const gapRowsRef = useRef(applications);
+  gapRowsRef.current = applications;
+  // A refusal (the fit check's hourly limit, an outage) pauses it for this
+  // page, so the board's own fit on a save keeps its allowance.
+  const gapPausedUntil = useRef(0);
+  useEffect(() => {
+    if (!session || !gapResume) { setFreshFits({}); return; }
+    const fp = resumeFingerprint(gapResume);
+    let fits = readGapFits(fp);
+    setFreshFits(fits);
+    if (Date.now() < gapPausedUntil.current) return;
+    const todo = rowsToRemeasure(gapRowsRef.current, gapBasis, fits);
+    if (todo.length === 0) return;
+    let cancelled = false;
+    void (async () => {
+      for (const row of todo) {
+        if (cancelled) return;
+        try {
+          const { data, error } = await supabase.functions.invoke("application-fit", {
+            body: { jobPosting: row.job_posting, resumeText: gapResume },
+          });
+          if (error || !data?.success) { gapPausedUntil.current = Date.now() + REMEASURE_PAUSE_MS; return; }
+          const { pct, missing } = data.data as { pct: number | null; missing: string[] };
+          fits = { ...fits, [row.id]: { pct, missing: Array.isArray(missing) ? missing : [] } };
+          writeGapFits(fp, fits);
+          if (!cancelled) setFreshFits(fits);
+        } catch { gapPausedUntil.current = Date.now() + REMEASURE_PAUSE_MS; return; }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [session, gapResume, gapBasis, gapRowsKey]);
+  const skillGap = useMemo(() => skillGapOf(applications, gapBasis, freshFits), [applications, gapBasis, freshFits]);
   // ACC1: pipeline lane filter over the tracker ("" = all stages).
   const [appFilter, setAppFilter] = useState<string>("");
   const stageCounts = useMemo(() => {
@@ -398,6 +428,13 @@ export default function Account() {
         return;
       }
       const { pct, missing } = data.data as { pct: number | null; missing: string[] };
+      // The gap report's own measurement of this row was of the old posting:
+      // it goes, and the row is measured again (S13-093).
+      if (freshFits[a.id] && gapResume) {
+        const { [a.id]: _old, ...rest } = freshFits;
+        setFreshFits(rest);
+        writeGapFits(resumeFingerprint(gapResume), rest);
+      }
       setApplications(applications.map(x => x.id === a.id ? { ...x, fit_pct: pct, fit_missing: missing, job_posting: fitPosting } : x));
       await supabase.from("user_applications").update({
         job_posting: fitPosting.slice(0, 20000), fit_pct: pct, fit_missing: missing,
@@ -778,7 +815,7 @@ export default function Account() {
           <GapReport
             gaps={skillGap.top}
             withFit={skillGap.withFit}
-            resumeText={matchingResume ?? scans[0]?.resume_text ?? null}
+            resumeText={gapResume}
           />
         )}
         {user && localOffer && (

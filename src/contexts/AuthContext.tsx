@@ -120,6 +120,7 @@ export const PERSONAL_SESSION_KEYS = [
   "rb_boost_insert",                        // ResumeBuilder's hand-off
   "rb_prestored_resume_session", "rb_checkout_retry", // use-product-checkout
   "rb_jd_handoff",                          // jd-handoff
+  "rb_gap_fits",                            // gap-report: Account's re-measured fits (S13-093)
 ] as const;
 
 /** The "signed in from a link" banner, per tab (LinkSignInBanner). */
