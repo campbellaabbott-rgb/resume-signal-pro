@@ -16,6 +16,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { codeOf } from "./helpers/strip-comments";
 
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: { functions: { invoke: vi.fn(async () => ({ data: null, error: null })) } },
@@ -48,6 +51,9 @@ describe("what the market pulse is said to be", () => {
     const box = screen.getByRole("checkbox", { name: /monthly market pulse/i });
     const label = box.closest("label")?.textContent ?? "";
     expect(label).not.toMatch(POSTINGS_CLAIM);
-    expect(label).toMatch(/curated keyword guide/i);
+    expect(label).toMatch(/keyword guide/i);
+    // Its fallback, shown wherever a locale lacks the line, says the same.
+    const code = codeOf(readFileSync(resolve(__dirname, "../components/EmailReportCapture.tsx"), "utf8"));
+    expect(code).not.toMatch(POSTINGS_CLAIM);
   });
 });
