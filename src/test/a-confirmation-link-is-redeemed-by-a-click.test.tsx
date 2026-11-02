@@ -149,7 +149,8 @@ describe("/market-pulse/confirm: subscribed only by the person's click", () => {
     expect(invoke).not.toHaveBeenCalled();
     fireEvent.click(button);
     await waitFor(() => expect(screen.getByText(/You're subscribed/)).toBeInTheDocument());
-    expect(invoke).toHaveBeenCalledWith("send-market-pulse", { body: { action: "confirm", token: TOKEN } });
+    // The page's language rides along: the monthly pulse is written in it (S13-102).
+    expect(invoke).toHaveBeenCalledWith("send-market-pulse", { body: { action: "confirm", token: TOKEN, language: "en" } });
     // The fragment is cleared by a passive effect after the success render,
     // so it is waited for; read once, it raced that effect (CI run 37707420206).
     await waitFor(() => expect(window.location.hash).toBe(""));

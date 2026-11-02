@@ -71,7 +71,8 @@ describe("the market pulse is opt-in, and opting in sends a confirmation, not a 
     const report = invoke.mock.calls.find((c) => c[0] === "send-scan-report") as [string, { body: Record<string, unknown> }];
     expect(report[1].body, "the report request must not carry the pulse choice").not.toHaveProperty("subscribePulse");
     const pulse = invoke.mock.calls.find((c) => c[0] === "send-market-pulse") as [string, { body: Record<string, unknown> }];
-    expect(pulse[1].body).toEqual({ action: "subscribe", email: "Me@Example.com", industry: "technology", score: 74 });
+    // The page's language rides along: the confirmation mail is written in it (S13-102).
+    expect(pulse[1].body).toEqual({ action: "subscribe", email: "Me@Example.com", industry: "technology", score: 74, language: "en" });
   });
 
   it("a field the pulse does not cover is said so, and no confirmation is claimed", async () => {

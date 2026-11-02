@@ -38,7 +38,7 @@ interface EmailReportCaptureProps {
 }
 
 export function EmailReportCapture({ payload, variant = "full", hideIfKnown = false, suggestedEmail = null }: EmailReportCaptureProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [email, setEmail] = useState(suggestedEmail ?? "");
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -89,7 +89,8 @@ export function EmailReportCapture({ payload, variant = "full", hideIfKnown = fa
         // (or one was already due); the address is still not subscribed.
         try {
           const { data: p, error: pErr } = await supabase.functions.invoke("send-market-pulse", {
-            body: { action: "subscribe", email: trimmed, industry: payload.industry, score: payload.score },
+            // The page's language: the confirmation mail is written in it (S13-102).
+            body: { action: "subscribe", email: trimmed, industry: payload.industry, score: payload.score, language: i18n.language },
           });
           if (!pErr && (p as { success?: boolean } | null)?.success) setPulseOutcome("pending");
           else if ((pErr as { context?: { status?: number } } | null)?.context?.status === 422) setPulseOutcome("not_covered");
