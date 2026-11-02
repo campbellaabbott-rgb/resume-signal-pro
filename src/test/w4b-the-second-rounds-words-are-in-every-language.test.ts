@@ -19,15 +19,13 @@
  *   - en-GB's new keys never name the trader "CV Booster" (plan CP-G): the
  *     named sentences insert {{name}}, which is TRADING_NAME.
  *
- * Words waiting for the locale files (2026-11-03, the audit-rest round): while
- * the nine locale files belong to other rounds, a builder writes a new key's
- * nine translations to docs/audit-rest-pending-locales/<builder>.json, to be
- * applied once those rounds merge. A key found there counts as present, but
- * only with a value in all nine languages and the English placeholders, so a
- * key in neither place, or one waiting with a language short, still fails.
+ * The audit-rest round's words briefly waited outside the locale files and
+ * this guard read them there too. They were applied to all nine files when
+ * that round joined main, so the guard reads the locale files alone again:
+ * a key in no locale file fails.
  */
 import { describe, expect, it } from "vitest";
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 const SRC = resolve(__dirname, "..");
@@ -35,24 +33,6 @@ const LOCALES = ["en", "en-GB", "de", "es", "fr", "hi", "nl", "pt", "tl"];
 const locale = (l: string) => JSON.parse(readFileSync(resolve(SRC, "i18n/locales", `${l}.json`), "utf8")) as Record<string, unknown>;
 const valueOf = (d: Record<string, unknown>, key: string): unknown =>
   key.split(".").reduce<unknown>((c, p) => (c && typeof c === "object" ? (c as Record<string, unknown>)[p] : undefined), d);
-
-/** Keys waiting for the locale files, by dotted key: each language's value as its builder wrote it. */
-const PENDING_DIR = resolve(SRC, "../docs/audit-rest-pending-locales");
-function pendingLocales(): Map<string, Record<string, unknown>> {
-  const out = new Map<string, Record<string, unknown>>();
-  if (!existsSync(PENDING_DIR)) return out;
-  for (const name of readdirSync(PENDING_DIR).filter((n) => n.endsWith(".json")).sort()) {
-    const doc = JSON.parse(readFileSync(join(PENDING_DIR, name), "utf8")) as Record<string, Record<string, unknown>>;
-    for (const [key, values] of Object.entries(doc)) out.set(key, values);
-  }
-  return out;
-}
-const PENDING = pendingLocales();
-/** A locale's value for a key: the locale file's, else the value waiting for it. */
-const localeValue = (d: Record<string, unknown>, l: string, key: string): unknown => {
-  const v = valueOf(d, key);
-  return typeof v === "string" ? v : PENDING.get(key)?.[l];
-};
 
 /** The namespaces this round introduced, wholly new (no key in them predates it). */
 const ROUND_NAMESPACES = [
@@ -103,7 +83,7 @@ describe("the second round's words", () => {
   });
 
   it("every one the source calls is in en.json", () => {
-    const missing = round.filter((k) => typeof localeValue(en, "en", k) !== "string").map((k) => `${k} (${all.get(k)})`);
+    const missing = round.filter((k) => typeof valueOf(en, k) !== "string").map((k) => `${k} (${all.get(k)})`);
     expect(missing, missing.join("\n")).toEqual([]);
   });
 
@@ -112,24 +92,13 @@ describe("the second round's words", () => {
     for (const l of LOCALES) {
       const d = locale(l);
       for (const k of round) {
-        const v = localeValue(d, l, k);
-        const e = localeValue(en, "en", k);
+        const v = valueOf(d, k);
+        const e = valueOf(en, k);
         if (typeof v !== "string" || !v.trim()) { wrong.push(`${l}: ${k} missing`); continue; }
         if (typeof e === "string" && placeholders(v).join() !== placeholders(e).join()) wrong.push(`${l}: ${k} has {{${placeholders(v)}}} for {{${placeholders(e)}}}`);
       }
     }
     expect(wrong, wrong.join("\n")).toEqual([]);
-  });
-
-  it("TEETH: a key waiting for the locale files counts only with all nine languages", () => {
-    const waiting = round.filter((k) => typeof valueOf(en, k) !== "string" && PENDING.has(k));
-    for (const k of waiting) {
-      const short = LOCALES.filter((l) => { const v = PENDING.get(k)?.[l]; return typeof v !== "string" || !v.trim(); });
-      expect(short, `${k} waits without ${short.join(", ")}`).toEqual([]);
-    }
-    const d = { a: { b: "x" } };
-    expect(localeValue(d, "de", "a.b")).toBe("x");
-    expect(localeValue(d, "de", "a.notWaitingAnywhere")).toBeUndefined();
   });
 
   it("the plural keys have a one and an other form in every language", () => {

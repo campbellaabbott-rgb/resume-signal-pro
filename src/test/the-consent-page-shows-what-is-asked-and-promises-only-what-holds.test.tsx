@@ -83,10 +83,14 @@ describe("what the page promises", () => {
     expect(container.textContent).toMatch(/allow only an app you trust/);
   });
 
-  it("the waiting translations promise no 'cannot' either, in any language", () => {
-    const doc = JSON.parse(readFileSync(resolve(ROOT, "docs/audit-rest-pending-locales/abuse.json"), "utf8")) as Record<string, Record<string, string>>;
-    const grant = doc["oauthConsent.grant"];
-    expect(Object.keys(grant).sort()).toEqual(["de", "en", "en-GB", "es", "fr", "hi", "nl", "pt", "tl"]);
+  it("the translations promise no 'cannot' either, in any language", () => {
+    const grant: Record<string, string> = {};
+    for (const lang of ["de", "en", "en-GB", "es", "fr", "hi", "nl", "pt", "tl"]) {
+      const doc = JSON.parse(readFileSync(resolve(ROOT, `src/i18n/locales/${lang}.json`), "utf8")) as { oauthConsent?: Record<string, unknown> };
+      const text = doc.oauthConsent?.grant;
+      expect(typeof text === "string" && text.trim().length > 0, `${lang} has oauthConsent.grant`).toBe(true);
+      grant[lang] = text as string;
+    }
     expect(grant.en).toBe("It can search jobs on the board, score a resume you paste against them, prepare applications for you to send yourself, and see your email address and how much of your daily allowance is used. The access it receives belongs to your account, so allow only an app you trust.");
     for (const [lang, text] of Object.entries(grant)) {
       expect(text, lang).not.toMatch(/cannot buy|kann nichts kaufen|no puede comprar|ne peut rien acheter|kan niets kopen|não pode comprar|hindi ito makakabili|खरीद नहीं सकता/i);

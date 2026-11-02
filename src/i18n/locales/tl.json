@@ -673,6 +673,7 @@
     },
     "actions": {
       "share": "I-share",
+      "shareHint": "Mababasa ng sinumang may link na ito ang pagsusuri hanggang mabura ito. Hindi ito mabubura gamit ang link.",
       "copied": "Na-copy!",
       "downloadPdf": "I-download ang PDF",
       "generating": "Gumagawa...",
@@ -689,9 +690,19 @@
       "deleting": "Dine-delete...",
       "generatingPdf": "Ginagawa...",
       "savePdf": "I-save bilang PDF",
-      "savePdfHint": "I-save ang analysis mo bilang PDF"
+      "savePdfHint": "I-save ang analysis mo bilang PDF",
+      "copyLink": "Kopyahin ang link"
     },
-    "sharedView": "Tinitingnan ang na-share na pagsusuri"
+    "sharedView": "Tinitingnan ang na-share na pagsusuri",
+    "sharedViewDeleteNote": "Ang bumili lang ang makakabura sa pagsusuring ito, mula sa link sa kanyang purchase email.",
+    "sharedComputer": {
+      "title": "Gumagamit ka ba ng pampubliko o shared na computer?",
+      "body": "Burahin ang data ng browser na ito kapag tapos ka na. Itinatago ang pagsusuri sa aming mga server nang {{days}} araw, at hanggang doon ay mabubuksan ito ng sinumang may link nito. Burahin ito sa ibaba kung ayaw mong itago ito."
+    },
+    "noSession": {
+      "title": "Walang bukas na pagsusuri dito",
+      "body": "Bumubukas ang pagsusuri mula sa link nito: ang nasa purchase email mo, o share link na kinopya mula sa pahina ng pagsusuri. Kung kababayad mo lang, buksan ang link sa email mo."
+    }
   },
   "common": {
     "backToHome": "Bumalik sa Home",
@@ -2227,6 +2238,44 @@
     "retiredSale": {
       "body": "Naitala ang bayad mo, pero itinigil na ang pagbebenta ng produktong ito bago pumasok ang bayad, kaya walang awtomatikong nagawa. Naabisuhan na kami at kokontakin ka namin sa address na ginamit mo sa pagbayad.",
       "title": "Hindi na ibinebenta ang {{product}}"
+    },
+    "noReference": {
+      "title": "Kulang ang link na ito ng purchase reference",
+      "body": "Bumubukas ang isang purchase mula sa link sa email nito, na may dalang purchase reference. I-paste ang link na iyon, o ang mismong reference, sa ibaba. Walang sisingilin ulit sa iyo rito.",
+      "pasteLabel": "Ang iyong purchase link o reference",
+      "notALink": "Walang purchase reference diyan. I-paste ang buong link mula sa iyong purchase email.",
+      "open": "Buksan ang aking purchase"
+    },
+    "refusal": {
+      "rateLimited": {
+        "title": "Masyadong maraming check ngayon",
+        "body": "Masyadong maraming pagsusuri ng pagbili ang nanggaling sa koneksyong ito sa nakaraang oras. Walang problema sa binili mo. Subukan ulit mamaya, o buksan ang link mula sa email ng pagbili mo gamit ang ibang koneksyon."
+      },
+      "refunded": {
+        "title": "Na-refund ang purchase na ito",
+        "body": "Na-refund ang bayad para sa purchase na ito, kaya hindi na ito nabubuksan. Kung sa tingin mo ay mali ito, sumagot sa iyong purchase email."
+      },
+      "withdrawn": {
+        "title": "Hindi na available ang purchase na ito",
+        "body": "Kasama ito ng isang plan na hindi na aktibo, o na-refund ang bayad sa likod nito, kaya hindi na ito nabubuksan. Kung sa tingin mo ay mali ito, makipag-ugnayan sa support."
+      },
+      "unpaid": {
+        "title": "Hindi pa natatapos ang bayad na ito",
+        "body": "Hindi pa nakukumpirma ang bayad. Ilang araw ang inaabot ng ilang bayad sa bangko, at makakatanggap ka ng email kapag natuloy ito. Kung umalis ka sa checkout bago magbayad, walang siningil."
+      },
+      "notFound": {
+        "title": "Hindi namin mahanap ang purchase na ito",
+        "body": "Hindi tugma ang link na ito sa anumang purchase na mababasa namin: maaaring putol ito o expired na. I-paste sa ibaba ang buong link mula sa iyong purchase email, o makipag-ugnayan sa support."
+      },
+      "signInAgain": {
+        "title": "Mag-sign in para mabuksan ito",
+        "body": "Ginawa ang link na ito bago ang isang update sa kung paano binubuksan ng plan ang mga kasama nitong tool. Mag-sign in gamit ang account na may hawak ng plan mo, saka buksan muli ang tool mula sa page nito. Habang aktibo ang plan mo, kasama ito at walang sisingilin.",
+        "button": "Mag-sign in"
+      },
+      "busy": {
+        "title": "Hindi namin nasuri ang pagbiling ito ngayon",
+        "body": "Hindi agad sumagot ang payment provider. Ligtas ang binili mo. Maghintay sandali at subukan ulit."
+      }
     }
   },
   "analysisResults": {
@@ -2294,6 +2343,7 @@
     },
     "topImprovements": "Mga Nangungunang Pagpapahusay",
     "jdKeywordsFound": "Nahanap na JD Keyword",
+    "jdKeywordsOnResume": "Mula sa posting, nasa résumé mo na",
     "missingFromResume": "Wala sa Resume",
     "suggestedEdits": "Mga Iminumungkahing Edit",
     "gapAnalysis": "Gap Analysis",
@@ -2418,7 +2468,7 @@
     "analysisProcessingDescription": "Hindi namin nakuha ang detalyadong rekomendasyon mula sa iyong resume. Maaari itong mangyari kung hindi pangkaraniwan ang format ng resume o nagkaroon ng isyu sa pagproseso.",
     "bottomCta": "I-apply ang mga pagbabagong ito sa iyong resume at panoorin ang pagpapahusay ng iyong interview rate!",
     "bottomCtaWithLinkedIn": "I-apply ang mga pagbabagong ito sa iyong resume at LinkedIn profile at panoorin ang pagpapahusay ng iyong interview rate!",
-    "analysisSaved": "Itinatago ang pagsusuring ito nang {{analysisDays}} araw sa likod ng share link sa itaas, saka binubura. I-download ito bilang PDF para magtabi ng sarili mong kopya.",
+    "analysisSaved": "Itinatago ang pagsusuring ito nang {{analysisDays}} araw, saka binubura. I-download ito bilang PDF para magtabi ng sarili mong kopya.",
     "enum": {
       "industry": {
         "technology": "Teknolohiya",
@@ -4651,10 +4701,12 @@
     "bridgeGap": "Alam din nito ang iyong kasalukuyang pinakamalaking kakulangan ({{gap}}) at tinitimbang ito.",
     "bridgeCta": "Buksan ang queue ↓",
     "notifTitle": "Mga email at alerto",
-    "notifSummary": "{{on}} sa {{total}} lingguhang digest ang naka-on",
-    "notifBlurb": "Ang mga digest ng iyong naka-save na paghahanap, sa iisang lugar. Ipinapadala lang ang mga ito kapag may bagong tugma ang isang paghahanap; bawat email ay may one-click unsubscribe. Ang pang-umagang email ng Apply Agent ay pinamamahalaan sa sarili nitong panel sa ibaba.",
+    "notifSummaryEmails": "{{on}} sa {{total}} email ng paghahanap ang naka-on",
+    "notifBlurbCadence": "Lahat ng puwede naming i-email sa iyo, sa iisang lugar. Ipinapadala lang ang email ng paghahanap kapag may bagong tugma ito, araw-araw o lingguhan ayon sa nakasaad sa tabi nito; bawat email ay may one-click unsubscribe.",
     "notifToggle": "Lingguhang email para sa {{name}}",
+    "notifToggleDaily": "Araw-araw na email para sa {{name}}",
     "notifWeekly": "lingguhang digest",
+    "notifDaily": "araw-araw na digest",
     "closedHeading_one": "{{count}} sa mga inaplayan mong trabaho ay nagsara na — narito ang mga sariwang opening",
     "closedHeading_other": "{{count}} sa mga inaplayan mong trabaho ay nagsara na — narito ang mga sariwang opening",
     "closedBlurb": "Parehong mga role, live ngayon sa board — huwag mawalan ng momentum.",
@@ -4672,13 +4724,17 @@
     "ssFitPossible": "Posibleng tugma+",
     "ssFitStrong": "Malakas na tugma lang",
     "ssBellOffAria": "I-off ang lingguhang email para sa {{name}}",
+    "ssBellOffAriaDaily": "I-off ang araw-araw na email para sa {{name}}",
     "ssBellOnAria": "Mag-email lingguhan tungkol sa {{name}}",
+    "ssBellOnAriaDaily": "Mag-email araw-araw tungkol sa {{name}}",
     "ssBellOnTitle": "Naka-on ang lingguhang email — i-click para i-off",
+    "ssBellOnTitleDaily": "Naka-on ang araw-araw na email — i-click para i-off",
     "ssBellOffTitle": "Mag-email lingguhan kapag may bagong tugmang trabaho",
+    "ssBellOffTitleDaily": "Mag-email araw-araw kapag may bagong tugmang trabaho",
     "ssOpenAria": "Buksan ang paghahanap na {{name}}",
     "ssDeleteAria": "Burahin ang paghahanap na {{name}}",
-    "ssFootnoteA": "Binibilang ng “bago” ang mga posting mula nang huling buksan ang bawat paghahanap. I-tap ang",
-    "ssFootnoteB": "para sa lingguhang email kapag may bagong tugma.",
+    "ssFootnoteACadence": "Binibilang ng “bago” ang mga posting mula nang huling buksan ang bawat paghahanap. I-tap ang",
+    "ssFootnoteBCadence": "para makatanggap ng email kapag may bagong tugma: araw-araw para sa mga alert at sinusubaybayang kumpanya, lingguhan para sa ibang paghahanap.",
     "akButton": "Application kit — resume na iniangkop sa trabahong ito",
     "akGenFailed": "Nabigo ang paggawa — subukan muli.",
     "akGenerating": "Iniaangkop ang resume mo… (~30s)",
@@ -4880,7 +4936,9 @@
     "localOfferFailed": "Hindi ito gumana. Subukan ulit pagkalipas ng isang minuto.",
     "acBusy": "Abala ang AI service — naka-save ang mga naihanda na. Subukan ang natitira pagkalipas ng ilang minuto.",
     "acLimitHours": "Naabot ang limitasyon sa paggawa — naka-save ang mga naihanda na. Subukan ang natitira pagkalipas ng mga {{hours}} oras.",
-    "acLimitMinutes": "Naabot ang limitasyon sa paggawa — naka-save ang mga naihanda na. Subukan ang natitira pagkalipas ng mga {{minutes}} minuto."
+    "acLimitMinutes": "Naabot ang limitasyon sa paggawa — naka-save ang mga naihanda na. Subukan ang natitira pagkalipas ng mga {{minutes}} minuto.",
+    "acAiUnavailable": "Hindi makatanggap ng request ang AI service ngayon. Naka-save ang naihanda na; subukan ang iba mamaya.",
+    "acSavedNoLetter": "Mga naiangkop na résumé na na-save: {{count}}. Hindi naisulat ang mga cover letter nila ngayon; patakbuhin muli ang prep para maidagdag ang mga ito."
   },
   "applyAgent": {
     "badge": "Ang iyong AI apply agent",
@@ -5210,6 +5268,7 @@
     "endsOn": "Matatapos sa {{date}}: kinansela, hindi na magre-renew",
     "goPro": "Mag-Pro — ${{price}}/buwan",
     "linkPendingUnlinked": "May plan ang address na ito na hindi pa naka-link sa account na ito. Mag-email sa {{support}} mula sa address na iyon at ili-link namin ito.",
+    "linkPendingNoSecondPlan": "Hindi mo kailangang bumili muli ng Pro: hindi puwedeng magsimula ng pangalawang plan sa address na mayroon na nito.",
     "manage": "Pamahalaan ang subscription",
     "manageRetired": "Pamahalaan o kanselahin sa billing",
     "owing": "Hindi pumasok ang huling bayad mo. I-update ang card mo para mapanatili ang plan mo — hindi kailangan ng bagong subscription.",
@@ -5236,13 +5295,16 @@
     "toast": {
       "alreadyMemberBody": "Aktibo na ang plan mo sa account na ito.",
       "alreadyMemberTitle": "Pro member ka na",
+      "alreadyUnconfirmedBody": "Hindi namin ito nakumpirma sa account na ito ngayon. I-reload ang page mamaya para makita ito.",
       "briefOutage": "Pansamantalang hindi available ang mga subscription — pakisubukan ulit pagkalipas ng ilang minuto.",
       "emailNeededBody": "Ilagay ang email mo para maikabit namin ang subscription sa account mo.",
       "emailNeededTitle": "Kailangan ang email",
       "portalFailedTitle": "Hindi mabuksan ang billing portal",
       "signInBody": "Mag-sign in para pamahalaan ang subscription mo.",
       "signInTitle": "Kailangang mag-sign in",
-      "tryAgain": "Pakisubukan ulit."
+      "tryAgain": "Pakisubukan ulit.",
+      "linkPendingTitle": "May Pro plan na ang address na ito",
+      "linkPendingBody": "Hindi pa ito naka-link sa account na ito. Mag-email sa {{support}} mula sa address na iyon at ili-link namin ito."
     },
     "trialingNoCap": "Naka-on ang trial mo: walang daily cap ang mga scan ngayon. Kasama na ang $5 na Full Analysis mula sa una mong bayad.",
     "updatePayment": "I-update ang paraan ng pagbabayad"
@@ -5416,6 +5478,8 @@
     "metaDescription": "Payagan ang isang agent host na kumilos bilang ikaw sa Resume Booster MCP server.",
     "asks": "Humihiling ang {{client}} na kumilos bilang ikaw sa Resume Booster MCP server.",
     "scopes": "Makikita nito: {{scopes}}.",
+    "scopesAsked": "Hinihingi nito ang: {{scopes}}.",
+    "scopeUnexpected": "Hinihingi rin nito ang {{scopes}}, na hindi ginagamit ng koneksyong ito. Tanggihan maliban kung alam mo kung bakit kailangan nito ng higit pa.",
     "sendsTo": "Kapag pinayagan mo, makakakuha ng access sa account mo ang {{host}}. Payagan lang kung iyan ang serbisyong ikinokonekta mo.",
     "noHost": "Hindi sinasabi ng kahilingang ito kung saan mapupunta ang access. Payagan lang kung ikaw mismo ang nagsimula nito ngayon mula sa Claude, ChatGPT o Claude Code.",
     "signedInAs": "Naka-sign in bilang {{email}}.",
@@ -5428,7 +5492,8 @@
     "passUnstarted": "Hindi pa nagsisimula ang pass · {{left}} aplikasyon ang naghihintay",
     "passLive": "Tumatakbo ang pass · {{left}} aplikasyon na lang",
     "passBuy": "Bumili ng pass",
-    "passOpen": "Ang iyong pass"
+    "passOpen": "Ang iyong pass",
+    "grant": "Kaya nitong maghanap ng mga trabaho sa board, i-score laban sa mga ito ang resume na ipe-paste mo, maghanda ng mga aplikasyong ikaw mismo ang magpapadala, at makita ang email address mo at kung gaano na karami ang nagamit sa pang-araw-araw mong allowance. Sa account mo nakatali ang access na matatanggap nito, kaya payagan lang ang app na pinagkakatiwalaan mo."
   },
   "agentPage": {
     "connectInstead": "May agent ka na? Ikonekta na lang ito — {{passHours}} oras sa halagang ${{passPrice}}, hindi kailanman nagre-renew; ang Agent plan ay nagre-renew.",
@@ -5526,7 +5591,7 @@
   },
   "pulseConfirm": {
     "title": "Kumpirmahin ang iyong buwanang market pulse",
-    "body": "Isang email bawat buwan na may mga keyword na hinahanap ng mga job posting sa iyong larangan, at isang libreng rescan link. May one-click unsubscribe ang bawat email.",
+    "bodyCurated": "Isang email bawat buwan na may mga pangunahing keyword para sa iyong larangan mula sa aming piniling keyword guide (hindi bilang ng mga posting ngayong buwan), at isang libreng rescan link. May one-click unsubscribe ang bawat email.",
     "button": "Oo, ipadala sa akin ang pulse",
     "done": "Naka-subscribe ka na. Darating ang unang pulse sa loob ng isang araw.",
     "invalid": "Nag-expire na o nagamit na ang link na ito. I-tick ang kahon sa ilalim ng susunod mong scan report para makakuha ng bago.",
@@ -5762,6 +5827,7 @@
     "copyAll": "Kopyahin lahat",
     "copyAnswer": "Kopyahin ang sagot",
     "draftButton": "I-draft ang mga tanong ng application na ito",
+    "draftAgain": "I-draft ulit",
     "failed": "Hindi makapag-draft ng mga sagot ngayon.",
     "inferredIntro": "Mga malamang na tanong para sa role na ito (hindi inilalathala ng ATS na ito ang form nito) — nakabatay sa resume mo. Suriin bago i-paste.",
     "limit": "Nagamit mo na ang allowance na ito sa ngayon. Pakisubukan ulit mamaya.",
@@ -5837,7 +5903,12 @@
     "dailyNoTime": "Nagamit mo na ang writing allowance para ngayong araw. Makakagawa ka pa bukas; naka-save ang lahat ng nagawa mo na.",
     "monthly": "Nagamit mo na ang writing allowance para sa buwang ito. Makakagawa ka pa pagkatapos ng {{when}}.",
     "monthlyNoTime": "Nagamit mo na ang writing allowance para sa buwang ito. Makakagawa ka pa sa susunod na buwan.",
-    "signIn": "Mag-sign in para magamit ang mga writing tool. Kasama sa libreng account ang isang tailored resume, isang cover letter at isang interview-prep set bawat araw."
+    "signIn": "Mag-sign in para magamit ang mga writing tool. Kasama sa libreng account ang isang tailored resume, isang cover letter at isang interview-prep set bawat araw.",
+    "toolLimitTitle": "Naabot na ang limitasyon sa ngayon",
+    "toolLimitUntil": "Naabot mo na ang limitasyon ng tool na ito sa ngayon. Magbubukas ulit ito sa {{when}}.",
+    "busyTitle": "Abala sa ngayon",
+    "busyEveryone": "Abala ang tool na ito para sa lahat sa ngayon. Hindi ito ang sarili mong limit. Subukan ulit mamaya.",
+    "busyNetwork": "Abala ang tool na ito para sa network mo sa ngayon. Hindi ito ang sarili mong limit. Subukan ulit mamaya."
   },
   "format": {
     "ago": "{{duration}} ang nakalipas",

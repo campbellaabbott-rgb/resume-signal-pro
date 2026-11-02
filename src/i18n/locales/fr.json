@@ -674,6 +674,7 @@
     },
     "actions": {
       "share": "Partager",
+      "shareHint": "Toute personne disposant de ce lien peut lire l'analyse jusqu'à sa suppression. Le lien ne permet pas de la supprimer.",
       "copied": "Copié !",
       "downloadPdf": "Télécharger PDF",
       "generating": "Génération...",
@@ -690,9 +691,19 @@
       "deleting": "Suppression...",
       "generatingPdf": "Génération...",
       "savePdf": "Enregistrer en PDF",
-      "savePdfHint": "Enregistrez votre analyse en PDF"
+      "savePdfHint": "Enregistrez votre analyse en PDF",
+      "copyLink": "Copier le lien"
     },
-    "sharedView": "Visualisation de l'analyse partagée"
+    "sharedView": "Visualisation de l'analyse partagée",
+    "sharedViewDeleteNote": "Seul l'acheteur peut supprimer cette analyse, depuis le lien de son e-mail d'achat.",
+    "sharedComputer": {
+      "title": "Vous utilisez un ordinateur public ou partagé ?",
+      "body": "Effacez les données de ce navigateur quand vous avez terminé. L'analyse elle-même est conservée sur nos serveurs pendant {{days}} jours, et toute personne disposant de son lien peut l'ouvrir d'ici là. Supprimez-la ci-dessous si vous ne voulez pas qu'elle soit conservée."
+    },
+    "noSession": {
+      "title": "Aucune analyse n'est ouverte ici",
+      "body": "Une analyse s'ouvre depuis son lien : celui de votre e-mail d'achat, ou un lien de partage copié depuis la page de l'analyse. Si vous venez de payer, ouvrez le lien de votre e-mail."
+    }
   },
   "common": {
     "backToHome": "Retour à l'accueil",
@@ -2245,7 +2256,45 @@
       "body": "Votre paiement est enregistré, mais ce produit a cessé d'être vendu avant que le paiement aboutisse : rien n'a donc été créé automatiquement. Nous avons été prévenus et vous contacterons à l'adresse avec laquelle vous avez payé.",
       "title": "{{product}} n'est plus vendu"
     },
-    "creditsAdded_many": "{{count}} crédits ajoutés !"
+    "creditsAdded_many": "{{count}} crédits ajoutés !",
+    "noReference": {
+      "title": "Il manque à ce lien sa référence d'achat",
+      "body": "Un achat s'ouvre depuis le lien de son e-mail, qui contient une référence d'achat. Collez ce lien, ou la référence elle-même, ci-dessous. Rien ne vous est facturé à nouveau ici.",
+      "pasteLabel": "Votre lien ou référence d'achat",
+      "notALink": "Cela ne contient pas de référence d'achat. Collez le lien complet de votre e-mail d'achat.",
+      "open": "Ouvrir mon achat"
+    },
+    "refusal": {
+      "rateLimited": {
+        "title": "Trop de vérifications pour le moment",
+        "body": "Trop de vérifications d'achat sont venues de cette connexion au cours de la dernière heure. Votre achat n'a aucun problème. Réessayez plus tard, ou ouvrez le lien de votre e-mail d'achat depuis une autre connexion."
+      },
+      "refunded": {
+        "title": "Cet achat a été remboursé",
+        "body": "Le paiement de cet achat a été remboursé, il ne s'ouvre donc plus. Si vous pensez qu'il s'agit d'une erreur, répondez à votre e-mail d'achat."
+      },
+      "withdrawn": {
+        "title": "Cet achat n'est plus disponible",
+        "body": "Il était inclus dans une offre qui n'est plus active, ou le paiement correspondant a été remboursé, il ne s'ouvre donc plus. Si vous pensez qu'il s'agit d'une erreur, contactez le support."
+      },
+      "unpaid": {
+        "title": "Ce paiement n'est pas finalisé",
+        "body": "Le paiement n'a pas été confirmé. Certains paiements bancaires prennent quelques jours, et vous recevrez un e-mail quand il aboutira. Si vous avez quitté la page de paiement avant de payer, rien n'a été débité."
+      },
+      "notFound": {
+        "title": "Nous n'avons pas trouvé cet achat",
+        "body": "Ce lien ne correspond à aucun achat que nous pouvons lire : il est peut-être tronqué ou expiré. Collez ci-dessous le lien complet de votre e-mail d'achat, ou contactez le support."
+      },
+      "signInAgain": {
+        "title": "Connectez-vous pour ouvrir ceci",
+        "body": "Ce lien a été créé avant une mise à jour de la façon dont une formule ouvre ses outils inclus. Connectez-vous avec le compte qui détient votre formule, puis rouvrez l'outil depuis sa page. Tant que votre formule est active, il est inclus et rien n'est facturé.",
+        "button": "Se connecter"
+      },
+      "busy": {
+        "title": "Nous n'avons pas pu vérifier cet achat pour le moment",
+        "body": "Le prestataire de paiement n'a pas répondu à temps. Votre achat est en sécurité. Patientez un instant et réessayez."
+      }
+    }
   },
   "analysisResults": {
     "copied": "Copié !",
@@ -2312,6 +2361,7 @@
     },
     "topImprovements": "Principales améliorations",
     "jdKeywordsFound": "Mots-clés de l'offre trouvés",
+    "jdKeywordsOnResume": "De l'offre, déjà dans votre CV",
     "missingFromResume": "Manquant dans le CV",
     "suggestedEdits": "Modifications suggérées",
     "gapAnalysis": "Analyse des écarts",
@@ -2436,7 +2486,7 @@
     "analysisProcessingDescription": "Nous n'avons pas pu extraire de recommandations détaillées de votre CV. Cela peut arriver si le format du CV est inhabituel ou si un problème est survenu lors du traitement.",
     "bottomCta": "Appliquez ces changements à votre CV et observez votre taux d'entretien s'améliorer !",
     "bottomCtaWithLinkedIn": "Appliquez ces changements à votre CV et votre profil LinkedIn et observez votre taux d'entretien s'améliorer !",
-    "analysisSaved": "Cette analyse est conservée {{analysisDays}} jours derrière le lien de partage ci-dessus, puis supprimée. Téléchargez-la en PDF pour garder votre propre copie.",
+    "analysisSaved": "Cette analyse est conservée {{analysisDays}} jours, puis supprimée. Téléchargez-la en PDF pour garder votre propre copie.",
     "pageCount_many": "{{count}} pages",
     "enum": {
       "industry": {
@@ -4689,10 +4739,12 @@
     "bridgeGap": "Il connaît aussi votre principale lacune actuelle ({{gap}}) et la pondère.",
     "bridgeCta": "Ouvrir la file ↓",
     "notifTitle": "E-mails et alertes",
-    "notifSummary": "{{on}} sur {{total}} digests hebdo actifs",
-    "notifBlurb": "Vos synthèses de recherches enregistrées, au même endroit. Elles ne partent que lorsqu'une recherche a de nouveaux résultats ; chaque e-mail a une désinscription en un clic. L'e-mail matinal de l'Apply Agent se gère dans son propre panneau ci-dessous.",
+    "notifSummaryEmails": "{{on}} sur {{total}} e-mails de recherche actifs",
+    "notifBlurbCadence": "Tout ce que nous pouvons vous envoyer, au même endroit. Un e-mail de recherche ne part que lorsque la recherche a de nouveaux résultats, chaque jour ou chaque semaine comme indiqué à côté ; chaque e-mail a une désinscription en un clic.",
     "notifToggle": "E-mail hebdomadaire pour {{name}}",
+    "notifToggleDaily": "E-mail quotidien pour {{name}}",
     "notifWeekly": "digest hebdo",
+    "notifDaily": "digest quotidien",
     "closedHeading_one": "{{count}} de vos candidatures s'est fermée — voici des offres fraîches",
     "closedHeading_other": "{{count}} de vos candidatures se sont fermées — voici des offres fraîches",
     "closedBlurb": "Les mêmes postes, en direct sur le tableau — ne perdez pas l'élan.",
@@ -4710,13 +4762,17 @@
     "ssFitPossible": "Compatibilité possible+",
     "ssFitStrong": "Forte compatibilité seulement",
     "ssBellOffAria": "Désactiver l'e-mail hebdomadaire pour {{name}}",
+    "ssBellOffAriaDaily": "Désactiver l'e-mail quotidien pour {{name}}",
     "ssBellOnAria": "M'écrire chaque semaine au sujet de {{name}}",
+    "ssBellOnAriaDaily": "M'écrire chaque jour au sujet de {{name}}",
     "ssBellOnTitle": "E-mail hebdomadaire activé — cliquez pour désactiver",
+    "ssBellOnTitleDaily": "E-mail quotidien activé — cliquez pour désactiver",
     "ssBellOffTitle": "M'écrire chaque semaine quand de nouvelles offres correspondent",
+    "ssBellOffTitleDaily": "M'écrire chaque jour quand de nouvelles offres correspondent",
     "ssOpenAria": "Ouvrir la recherche {{name}}",
     "ssDeleteAria": "Supprimer la recherche {{name}}",
-    "ssFootnoteA": "« Nouvelles » compte les offres publiées depuis votre dernière ouverture de chaque recherche. Touchez la",
-    "ssFootnoteB": "pour recevoir un e-mail hebdomadaire quand des offres correspondent.",
+    "ssFootnoteACadence": "« Nouvelles » compte les offres publiées depuis votre dernière ouverture de chaque recherche. Touchez la",
+    "ssFootnoteBCadence": "pour recevoir un e-mail quand des offres correspondent : chaque jour pour les alertes et les entreprises suivies, chaque semaine pour les autres recherches.",
     "akButton": "Kit de candidature — CV adapté à ce poste",
     "akGenFailed": "La génération a échoué — réessayez.",
     "akGenerating": "Adaptation de votre CV… (~30 s)",
@@ -4926,7 +4982,9 @@
     "ssNewHeadline_many": "{{count}} nouvelles offres correspondent à vos recherches depuis votre dernière visite",
     "acPreppedToast_many": "{{count}} candidatures préparées — relisez et postulez ci-dessous.",
     "acPrepAll_many": "Préparer {{count}} candidatures adaptées",
-    "acGoPro_many": "Passez Pro pour préparer {{count}} offres enregistrées"
+    "acGoPro_many": "Passez Pro pour préparer {{count}} offres enregistrées",
+    "acAiUnavailable": "Le service d'IA ne peut pas traiter de demandes pour le moment. Ce qui a été préparé est enregistré ; réessayez le reste plus tard.",
+    "acSavedNoLetter": "CV adaptés enregistrés : {{count}}. Leurs lettres de motivation n'ont pas pu être rédigées cette fois ; relancez la préparation pour les ajouter."
   },
   "applyAgent": {
     "badge": "Votre agent IA de candidature",
@@ -5256,6 +5314,7 @@
     "endsOn": "Prend fin le {{date}} : résilié, il ne sera pas renouvelé",
     "goPro": "Passer à Pro — ${{price}}/mois",
     "linkPendingUnlinked": "Cette adresse possède une formule qui n'est pas encore liée à ce compte. Écrivez à {{support}} depuis cette adresse et nous la lierons.",
+    "linkPendingNoSecondPlan": "Inutile d'acheter Pro une seconde fois : une deuxième formule ne peut pas être ouverte sur une adresse qui en a déjà une.",
     "manage": "Gérer l'abonnement",
     "manageRetired": "Gérer ou résilier dans la facturation",
     "owing": "Votre dernier paiement n'est pas passé. Mettez à jour votre carte pour garder votre formule — inutile de souscrire un nouvel abonnement.",
@@ -5282,13 +5341,16 @@
     "toast": {
       "alreadyMemberBody": "Votre formule est déjà active sur ce compte.",
       "alreadyMemberTitle": "Vous êtes déjà membre Pro",
+      "alreadyUnconfirmedBody": "Nous n'avons pas pu la confirmer sur ce compte pour le moment. Rechargez la page dans un instant pour la voir.",
       "briefOutage": "Les abonnements sont momentanément indisponibles — veuillez réessayer dans quelques minutes.",
       "emailNeededBody": "Saisissez votre e-mail pour que nous puissions rattacher l'abonnement à votre compte.",
       "emailNeededTitle": "E-mail requis",
       "portalFailedTitle": "Impossible d'ouvrir le portail de facturation",
       "signInBody": "Connectez-vous pour gérer votre abonnement.",
       "signInTitle": "Connexion requise",
-      "tryAgain": "Veuillez réessayer."
+      "tryAgain": "Veuillez réessayer.",
+      "linkPendingTitle": "Cette adresse a déjà une formule Pro",
+      "linkPendingBody": "Elle n'est pas encore liée à ce compte. Écrivez à {{support}} depuis cette adresse et nous la lierons."
     },
     "trialingNoCap": "Votre essai est en cours : les analyses n'ont plus de plafond quotidien. L'Analyse complète à 5 $ est incluse dès votre premier paiement.",
     "updatePayment": "Mettre à jour le moyen de paiement"
@@ -5462,6 +5524,8 @@
     "metaDescription": "Autoriser un hôte d'agent à agir en votre nom sur le serveur MCP de Resume Booster.",
     "asks": "{{client}} demande à agir en votre nom sur le serveur MCP de Resume Booster.",
     "scopes": "Il verra : {{scopes}}.",
+    "scopesAsked": "Il demande : {{scopes}}.",
+    "scopeUnexpected": "Il demande aussi {{scopes}}, que cette connexion n'utilise pas. Refusez, sauf si vous savez pourquoi il lui en faut davantage.",
     "sendsTo": "Si vous autorisez, {{host}} aura accès à votre compte. N'autorisez que si c'est bien le service que vous connectez.",
     "noHost": "Cette demande n'indique pas où ira l'accès. N'autorisez que si vous venez de la lancer vous-même depuis Claude, ChatGPT ou Claude Code.",
     "signedInAs": "Connecté en tant que {{email}}.",
@@ -5474,7 +5538,8 @@
     "passUnstarted": "Pass non démarré · {{left}} candidatures en attente",
     "passLive": "Pass en cours · {{left}} candidatures restantes",
     "passBuy": "Acheter un pass",
-    "passOpen": "Votre pass"
+    "passOpen": "Votre pass",
+    "grant": "Il peut chercher des offres sur le tableau, évaluer un CV que vous collez par rapport à ces offres, préparer des candidatures que vous envoyez vous-même, et voir votre adresse e-mail et la part de votre allocation quotidienne déjà utilisée. L'accès qu'il reçoit appartient à votre compte : n'autorisez qu'une application en laquelle vous avez confiance."
   },
   "agentPage": {
     "connectInstead": "Vous avez déjà un agent ? Connectez-le plutôt — {{passHours}} heures pour {{passPrice}} $, sans renouvellement ; le plan Agent, lui, se renouvelle.",
@@ -5572,7 +5637,7 @@
   },
   "pulseConfirm": {
     "title": "Confirmez votre pouls mensuel du marché",
-    "body": "Un e-mail par mois avec les mots-clés que recherchent les offres d'emploi de votre domaine, et un lien pour un nouveau scan gratuit. Chaque e-mail permet de se désabonner en un clic.",
+    "bodyCurated": "Un e-mail par mois avec les mots-clés essentiels de votre domaine, tirés de notre guide de mots-clés sélectionnés (et non d'un décompte des offres de ce mois), et un lien pour un nouveau scan gratuit. Chaque e-mail permet de se désabonner en un clic.",
     "button": "Oui, envoyez-moi le pouls",
     "done": "Vous êtes inscrit. Le premier pouls arrive sous un jour.",
     "invalid": "Ce lien a expiré ou a déjà été utilisé. Cochez la case sous votre prochain rapport de scan pour en recevoir un nouveau.",
@@ -5808,6 +5873,7 @@
     "copyAll": "Tout copier",
     "copyAnswer": "Copier la réponse",
     "draftButton": "Rédiger les questions de cette candidature",
+    "draftAgain": "Rédiger à nouveau",
     "failed": "Impossible de rédiger les réponses pour le moment.",
     "inferredIntro": "Questions probables pour ce poste (cet ATS ne publie pas son formulaire), fondées sur votre CV. Relisez-les avant de les coller.",
     "limit": "Vous avez utilisé ce quota pour l'instant. Veuillez réessayer plus tard.",
@@ -5883,7 +5949,12 @@
     "dailyNoTime": "Vous avez utilisé votre quota de rédaction du jour. Vous pourrez en créer d'autres demain ; ce que vous avez déjà créé est enregistré.",
     "monthly": "Vous avez utilisé votre quota de rédaction du mois. Vous pourrez en créer d'autres après {{when}}.",
     "monthlyNoTime": "Vous avez utilisé votre quota de rédaction du mois. Vous pourrez en créer d'autres le mois prochain.",
-    "signIn": "Connectez-vous pour utiliser les outils de rédaction. Un compte gratuit comprend chaque jour un CV adapté, une lettre de motivation et une série de préparation aux entretiens."
+    "signIn": "Connectez-vous pour utiliser les outils de rédaction. Un compte gratuit comprend chaque jour un CV adapté, une lettre de motivation et une série de préparation aux entretiens.",
+    "toolLimitTitle": "Limite atteinte pour l'instant",
+    "toolLimitUntil": "Vous avez atteint la limite de cet outil pour l'instant. Il sera de nouveau disponible à {{when}}.",
+    "busyTitle": "Occupé pour le moment",
+    "busyEveryone": "Cet outil est occupé pour tout le monde en ce moment. Ce n'est pas votre propre limite. Réessayez plus tard.",
+    "busyNetwork": "Cet outil est occupé pour votre réseau en ce moment. Ce n'est pas votre propre limite. Réessayez plus tard."
   },
   "format": {
     "ago": "il y a {{duration}}",

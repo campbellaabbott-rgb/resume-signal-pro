@@ -673,6 +673,7 @@
     },
     "actions": {
       "share": "Teilen",
+      "shareHint": "Jeder mit diesem Link kann die Analyse lesen, bis sie gelöscht wird. Über den Link lässt sie sich nicht löschen.",
       "copied": "Kopiert!",
       "downloadPdf": "PDF herunterladen",
       "generating": "Wird generiert...",
@@ -689,9 +690,19 @@
       "deleting": "Wird gelöscht...",
       "generatingPdf": "Wird erstellt...",
       "savePdf": "Als PDF speichern",
-      "savePdfHint": "Ihre Analyse als PDF speichern"
+      "savePdfHint": "Ihre Analyse als PDF speichern",
+      "copyLink": "Link kopieren"
     },
-    "sharedView": "Geteilte Analyse anzeigen"
+    "sharedView": "Geteilte Analyse anzeigen",
+    "sharedViewDeleteNote": "Nur der Käufer kann diese Analyse löschen, über den Link in seiner Kauf-E-Mail.",
+    "sharedComputer": {
+      "title": "Nutzen Sie einen öffentlichen oder geteilten Computer?",
+      "body": "Löschen Sie die Daten dieses Browsers, wenn Sie fertig sind. Die Analyse selbst wird {{days}} Tage auf unseren Servern aufbewahrt, und bis dahin kann sie jeder mit ihrem Link öffnen. Löschen Sie sie unten, wenn sie nicht aufbewahrt werden soll."
+    },
+    "noSession": {
+      "title": "Hier ist keine Analyse geöffnet",
+      "body": "Eine Analyse öffnet sich über ihren Link: den in Ihrer Kauf-E-Mail oder einen Freigabelink, der auf der Analyseseite kopiert wurde. Wenn Sie gerade bezahlt haben, öffnen Sie den Link in Ihrer E-Mail."
+    }
   },
   "common": {
     "backToHome": "Zurück zur Startseite",
@@ -2227,6 +2238,44 @@
     "retiredSale": {
       "body": "Ihre Zahlung ist erfasst, aber dieses Produkt wurde nicht mehr verkauft, bevor die Zahlung durchging, daher wurde nichts automatisch erstellt. Wir wurden informiert und melden uns unter der Adresse, mit der Sie bezahlt haben.",
       "title": "{{product}} wird nicht mehr verkauft"
+    },
+    "noReference": {
+      "title": "Diesem Link fehlt die Kaufreferenz",
+      "body": "Ein Kauf öffnet sich über den Link in seiner E-Mail, der eine Kaufreferenz enthält. Füge diesen Link oder die Referenz selbst unten ein. Hier wird dir nichts erneut berechnet.",
+      "pasteLabel": "Dein Kauflink oder deine Kaufreferenz",
+      "notALink": "Darin ist keine Kaufreferenz enthalten. Füge den ganzen Link aus deiner Kauf-E-Mail ein.",
+      "open": "Meinen Kauf öffnen"
+    },
+    "refusal": {
+      "rateLimited": {
+        "title": "Gerade zu viele Abfragen",
+        "body": "In der letzten Stunde kamen zu viele Kaufabfragen von dieser Verbindung. Mit deinem Kauf ist alles in Ordnung. Versuch es später noch einmal oder öffne den Link aus deiner Kauf-E-Mail über eine andere Verbindung."
+      },
+      "refunded": {
+        "title": "Dieser Kauf wurde erstattet",
+        "body": "Die Zahlung für diesen Kauf wurde erstattet, deshalb öffnet er sich nicht mehr. Wenn du das für einen Fehler hältst, antworte auf deine Kauf-E-Mail."
+      },
+      "withdrawn": {
+        "title": "Dieser Kauf ist nicht mehr verfügbar",
+        "body": "Er gehörte zu einem Tarif, der nicht mehr aktiv ist, oder die Zahlung dahinter wurde erstattet, deshalb öffnet er sich nicht mehr. Wenn du das für einen Fehler hältst, wende dich an den Support."
+      },
+      "unpaid": {
+        "title": "Diese Zahlung ist noch nicht abgeschlossen",
+        "body": "Die Zahlung wurde noch nicht bestätigt. Manche Bankzahlungen dauern ein paar Tage, und du bekommst eine E-Mail, sobald sie durch ist. Wenn du den Checkout vor dem Bezahlen verlassen hast, wurde nichts berechnet."
+      },
+      "notFound": {
+        "title": "Wir konnten diesen Kauf nicht finden",
+        "body": "Dieser Link passt zu keinem Kauf, den wir lesen können: Er ist vielleicht abgeschnitten oder abgelaufen. Füge unten den ganzen Link aus deiner Kauf-E-Mail ein oder wende dich an den Support."
+      },
+      "signInAgain": {
+        "title": "Melde dich an, um das zu öffnen",
+        "body": "Dieser Link wurde vor einer Änderung daran erstellt, wie ein Tarif seine enthaltenen Tools öffnet. Melde dich mit dem Konto an, zu dem dein Tarif gehört, und öffne das Tool dann erneut über seine Seite. Solange dein Tarif aktiv ist, ist es enthalten, und es wird nichts berechnet.",
+        "button": "Anmelden"
+      },
+      "busy": {
+        "title": "Wir konnten diesen Kauf gerade nicht prüfen",
+        "body": "Der Zahlungsanbieter hat nicht rechtzeitig geantwortet. Dein Kauf ist sicher. Warte einen Moment und versuch es noch einmal."
+      }
     }
   },
   "analysisResults": {
@@ -2294,6 +2343,7 @@
     },
     "topImprovements": "Top-Verbesserungen",
     "jdKeywordsFound": "Gefundene JD-Schlüsselwörter",
+    "jdKeywordsOnResume": "Aus der Stellenanzeige, schon in deinem Lebenslauf",
     "missingFromResume": "Im Lebenslauf fehlend",
     "suggestedEdits": "Vorgeschlagene Änderungen",
     "gapAnalysis": "Lückenanalyse",
@@ -2418,7 +2468,7 @@
     "analysisProcessingDescription": "Wir konnten keine detaillierten Empfehlungen aus deinem Lebenslauf extrahieren. Dies kann passieren, wenn das Lebenslaufformat ungewöhnlich ist oder es bei der Verarbeitung ein Problem gab.",
     "bottomCta": "Wende diese Änderungen auf deinen Lebenslauf an und beobachte, wie sich deine Interviewquote verbessert!",
     "bottomCtaWithLinkedIn": "Wende diese Änderungen auf deinen Lebenslauf und dein LinkedIn-Profil an und beobachte, wie sich deine Interviewquote verbessert!",
-    "analysisSaved": "Diese Analyse bleibt {{analysisDays}} Tage hinter dem Freigabelink oben abrufbar und wird dann gelöscht. Lade sie als PDF herunter, um eine eigene Kopie zu behalten.",
+    "analysisSaved": "Diese Analyse wird {{analysisDays}} Tage aufbewahrt und dann gelöscht. Lade sie als PDF herunter, um eine eigene Kopie zu behalten.",
     "enum": {
       "industry": {
         "technology": "Technologie",
@@ -4651,10 +4701,12 @@
     "bridgeGap": "Er kennt auch deine aktuelle größte Lücke ({{gap}}) und gewichtet sie.",
     "bridgeCta": "Queue öffnen ↓",
     "notifTitle": "E-Mails & Alerts",
-    "notifSummary": "{{on}} von {{total}} Wochen-Digests aktiv",
-    "notifBlurb": "Ihre Digest-Mails für gespeicherte Suchen an einem Ort. Sie werden nur versendet, wenn eine Suche neue Treffer hat; jede E-Mail hat eine Ein-Klick-Abmeldung. Die Morgen-E-Mail des Apply Agent wird unten in ihrem eigenen Bereich verwaltet.",
+    "notifSummaryEmails": "{{on}} von {{total}} Such-E-Mails aktiv",
+    "notifBlurbCadence": "Alles, was wir Ihnen mailen können, an einem Ort. Eine Such-E-Mail geht nur raus, wenn die Suche neue Treffer hat, täglich oder wöchentlich, wie daneben angegeben; jede E-Mail hat eine Ein-Klick-Abmeldung.",
     "notifToggle": "Wöchentliche E-Mail für {{name}}",
+    "notifToggleDaily": "Tägliche E-Mail für {{name}}",
     "notifWeekly": "Wochen-Digest",
+    "notifDaily": "Tages-Digest",
     "closedHeading_one": "{{count}} Ihrer Bewerbungen wurde geschlossen — hier sind frische Stellen",
     "closedHeading_other": "{{count}} Ihrer Bewerbungen wurden geschlossen — hier sind frische Stellen",
     "closedBlurb": "Dieselben Rollen, jetzt live auf dem Board — verlieren Sie keinen Schwung.",
@@ -4672,13 +4724,17 @@
     "ssFitPossible": "Mögliche Passung+",
     "ssFitStrong": "Nur starke Passung",
     "ssBellOffAria": "Wöchentliche E-Mail für {{name}} abschalten",
+    "ssBellOffAriaDaily": "Tägliche E-Mail für {{name}} abschalten",
     "ssBellOnAria": "Wöchentlich zu {{name}} mailen",
+    "ssBellOnAriaDaily": "Täglich zu {{name}} mailen",
     "ssBellOnTitle": "Wöchentliche E-Mail an — zum Abschalten klicken",
+    "ssBellOnTitleDaily": "Tägliche E-Mail an — zum Abschalten klicken",
     "ssBellOffTitle": "Wöchentlich mailen, wenn neue Stellen passen",
+    "ssBellOffTitleDaily": "Täglich mailen, wenn neue Stellen passen",
     "ssOpenAria": "Suche {{name}} öffnen",
     "ssDeleteAria": "Suche {{name}} löschen",
-    "ssFootnoteA": "„Neu“ zählt Stellen, die seit dem letzten Öffnen jeder Suche veröffentlicht wurden. Tippen Sie auf die",
-    "ssFootnoteB": "für eine wöchentliche E-Mail bei neuen Treffern.",
+    "ssFootnoteACadence": "„Neu“ zählt Stellen, die seit dem letzten Öffnen jeder Suche veröffentlicht wurden. Tippen Sie auf die",
+    "ssFootnoteBCadence": "für eine E-Mail bei neuen Treffern: täglich bei Alerts und beobachteten Unternehmen, wöchentlich bei anderen Suchen.",
     "akButton": "Bewerbungs-Kit — auf diese Stelle zugeschnittener Lebenslauf",
     "akGenFailed": "Generierung fehlgeschlagen — bitte erneut versuchen.",
     "akGenerating": "Lebenslauf wird zugeschnitten… (~30 s)",
@@ -4880,7 +4936,9 @@
     "localOfferFailed": "Das hat nicht geklappt. Versuchen Sie es in einer Minute erneut.",
     "acBusy": "Der KI-Dienst ist ausgelastet. Die bisher vorbereiteten sind gespeichert. Versuchen Sie den Rest in ein paar Minuten.",
     "acLimitHours": "Generierungslimit erreicht. Die bisher vorbereiteten sind gespeichert. Versuchen Sie den Rest in etwa {{hours}} Stunden.",
-    "acLimitMinutes": "Generierungslimit erreicht. Die bisher vorbereiteten sind gespeichert. Versuchen Sie den Rest in etwa {{minutes}} Minuten."
+    "acLimitMinutes": "Generierungslimit erreicht. Die bisher vorbereiteten sind gespeichert. Versuchen Sie den Rest in etwa {{minutes}} Minuten.",
+    "acAiUnavailable": "Der KI-Dienst nimmt gerade keine Anfragen an. Was bisher vorbereitet wurde, ist gespeichert; versuchen Sie den Rest später.",
+    "acSavedNoLetter": "Zugeschnittene Lebensläufe gespeichert: {{count}}. Die Anschreiben dazu konnten diesmal nicht geschrieben werden; starten Sie die Vorbereitung erneut, um sie hinzuzufügen."
   },
   "applyAgent": {
     "badge": "Ihr KI-Bewerbungsagent",
@@ -5210,6 +5268,7 @@
     "endsOn": "Endet am {{date}}: gekündigt, verlängert sich nicht",
     "goPro": "Pro holen — ${{price}}/Monat",
     "linkPendingUnlinked": "Diese Adresse hat einen Tarif, der noch nicht mit diesem Konto verknüpft ist. Schreiben Sie von dieser Adresse an {{support}}, dann verknüpfen wir ihn.",
+    "linkPendingNoSecondPlan": "Sie müssen Pro nicht noch einmal kaufen: Auf einer Adresse, die schon einen Tarif hat, lässt sich kein zweiter starten.",
     "manage": "Abonnement verwalten",
     "manageRetired": "In der Abrechnung verwalten oder kündigen",
     "owing": "Ihre letzte Zahlung ist nicht durchgegangen. Aktualisieren Sie Ihre Karte, um Ihren Tarif zu behalten – kein neues Abonnement nötig.",
@@ -5236,13 +5295,16 @@
     "toast": {
       "alreadyMemberBody": "Ihr Tarif ist in diesem Konto bereits aktiv.",
       "alreadyMemberTitle": "Sie sind bereits Pro-Mitglied",
+      "alreadyUnconfirmedBody": "Wir konnten ihn gerade nicht für dieses Konto bestätigen. Laden Sie die Seite gleich neu, um ihn zu sehen.",
       "briefOutage": "Abonnements sind kurz nicht verfügbar – bitte versuchen Sie es in ein paar Minuten erneut.",
       "emailNeededBody": "Geben Sie Ihre E-Mail-Adresse ein, damit wir das Abonnement Ihrem Konto zuordnen können.",
       "emailNeededTitle": "E-Mail-Adresse erforderlich",
       "portalFailedTitle": "Das Abrechnungsportal konnte nicht geöffnet werden",
       "signInBody": "Melden Sie sich an, um Ihr Abonnement zu verwalten.",
       "signInTitle": "Anmeldung erforderlich",
-      "tryAgain": "Bitte versuchen Sie es erneut."
+      "tryAgain": "Bitte versuchen Sie es erneut.",
+      "linkPendingTitle": "Diese Adresse hat bereits einen Pro-Tarif",
+      "linkPendingBody": "Er ist noch nicht mit diesem Konto verknüpft. Schreiben Sie von dieser Adresse an {{support}}, dann verknüpfen wir ihn."
     },
     "trialingNoCap": "Ihre Testphase läuft: Scans haben jetzt keine tägliche Obergrenze. Die vollständige Analyse für 5 $ ist ab Ihrer ersten Zahlung enthalten.",
     "updatePayment": "Zahlungsmethode aktualisieren"
@@ -5416,6 +5478,8 @@
     "metaDescription": "Erlaube einem Agenten-Host, auf dem MCP-Server von Resume Booster in deinem Namen zu handeln.",
     "asks": "{{client}} möchte auf dem MCP-Server von Resume Booster in deinem Namen handeln.",
     "scopes": "Es sieht: {{scopes}}.",
+    "scopesAsked": "Es fragt nach: {{scopes}}.",
+    "scopeUnexpected": "Es fragt außerdem nach {{scopes}}, was diese Verbindung nicht nutzt. Lehne ab, wenn du nicht weißt, wozu es mehr braucht.",
     "sendsTo": "Wenn du zustimmst, erhält {{host}} Zugriff auf dein Konto. Stimme nur zu, wenn das der Dienst ist, den du verbindest.",
     "noHost": "Diese Anfrage sagt nicht, wohin der Zugriff geht. Stimme nur zu, wenn du sie gerade selbst in Claude, ChatGPT oder Claude Code gestartet hast.",
     "signedInAs": "Angemeldet als {{email}}.",
@@ -5428,7 +5492,8 @@
     "passUnstarted": "Pass nicht gestartet · {{left}} Bewerbungen warten",
     "passLive": "Pass läuft · noch {{left}} Bewerbungen",
     "passBuy": "Pass kaufen",
-    "passOpen": "Dein Pass"
+    "passOpen": "Dein Pass",
+    "grant": "Es kann die Jobbörse durchsuchen, einen Lebenslauf, den du einfügst, mit den Stellen abgleichen, Bewerbungen vorbereiten, die du selbst abschickst, und deine E-Mail-Adresse sehen sowie wie viel deines Tageskontingents verbraucht ist. Der Zugriff, den es erhält, gehört zu deinem Konto, erlaube ihn also nur einer App, der du vertraust."
   },
   "agentPage": {
     "connectInstead": "Du hast schon einen Agenten? Verbinde ihn stattdessen — {{passHours}} Stunden für {{passPrice}} $, verlängert sich nie; der Agent-Plan schon.",
@@ -5526,7 +5591,7 @@
   },
   "pulseConfirm": {
     "title": "Bestätigen Sie Ihren monatlichen Markt-Puls",
-    "body": "Eine E-Mail pro Monat mit den Keywords, auf die Stellenanzeigen in Ihrem Bereich achten, und einem kostenlosen Rescan-Link. Jede E-Mail lässt sich mit einem Klick abbestellen.",
+    "bodyCurated": "Eine E-Mail pro Monat mit den zentralen Keywords Ihres Bereichs aus unserem kuratierten Keyword-Leitfaden (keine Zählung der Stellenanzeigen dieses Monats) und einem kostenlosen Rescan-Link. Jede E-Mail lässt sich mit einem Klick abbestellen.",
     "button": "Ja, Markt-Puls senden",
     "done": "Sie sind angemeldet. Der erste Puls kommt innerhalb eines Tages.",
     "invalid": "Dieser Link ist abgelaufen oder wurde bereits verwendet. Setzen Sie beim nächsten Scan-Bericht das Häkchen, um einen neuen zu erhalten.",
@@ -5762,6 +5827,7 @@
     "copyAll": "Alle kopieren",
     "copyAnswer": "Antwort kopieren",
     "draftButton": "Fragen dieser Bewerbung entwerfen",
+    "draftAgain": "Neu entwerfen",
     "failed": "Antworten konnten gerade nicht entworfen werden.",
     "inferredIntro": "Wahrscheinliche Fragen für diese Stelle (dieses ATS veröffentlicht sein Formular nicht), gestützt auf Ihren Lebenslauf. Prüfen Sie sie, bevor Sie sie einfügen.",
     "limit": "Sie haben dieses Kontingent vorerst aufgebraucht. Bitte versuchen Sie es später erneut.",
@@ -5837,7 +5903,12 @@
     "dailyNoTime": "Sie haben das heutige Schreibkontingent aufgebraucht. Morgen können Sie mehr erstellen; was Sie bisher erstellt haben, ist gespeichert.",
     "monthly": "Sie haben das Schreibkontingent dieses Monats aufgebraucht. Ab {{when}} können Sie mehr erstellen.",
     "monthlyNoTime": "Sie haben das Schreibkontingent dieses Monats aufgebraucht. Nächsten Monat können Sie mehr erstellen.",
-    "signIn": "Melden Sie sich an, um die Schreibwerkzeuge zu nutzen. Ein kostenloses Konto umfasst pro Tag einen angepassten Lebenslauf, ein Anschreiben und ein Set zur Gesprächsvorbereitung."
+    "signIn": "Melden Sie sich an, um die Schreibwerkzeuge zu nutzen. Ein kostenloses Konto umfasst pro Tag einen angepassten Lebenslauf, ein Anschreiben und ein Set zur Gesprächsvorbereitung.",
+    "toolLimitTitle": "Limit vorerst erreicht",
+    "toolLimitUntil": "Sie haben das Limit dieses Tools vorerst erreicht. Es ist wieder verfügbar ab {{when}}.",
+    "busyTitle": "Gerade ausgelastet",
+    "busyEveryone": "Dieses Tool ist gerade für alle ausgelastet. Das ist nicht Ihr eigenes Limit. Versuchen Sie es später noch einmal.",
+    "busyNetwork": "Dieses Tool ist gerade für Ihr Netzwerk ausgelastet. Das ist nicht Ihr eigenes Limit. Versuchen Sie es später noch einmal."
   },
   "format": {
     "ago": "vor {{duration}}",

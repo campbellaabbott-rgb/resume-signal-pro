@@ -137,27 +137,20 @@ describe("S13-055: the LinkedIn breakdown wraps on a phone", () => {
 });
 
 describe("S13-123: the last line names no link the page does not show", () => {
-  // The line's new words wait in the pending-locale file until the locale
-  // files are free to edit (they are another round's while this one runs).
-  const pending = JSON.parse(readFileSync(resolve(__dirname, "../../docs/audit-rest-pending-locales/pages.json"), "utf8")) as Record<string, Record<string, string>>;
-  const line = pending["analysisResults.analysisSaved"];
+  const lineIn = (l: string): unknown =>
+    (JSON.parse(readFileSync(resolve(__dirname, `../i18n/locales/${l}.json`), "utf8")) as { analysisResults?: Record<string, unknown> }).analysisResults?.analysisSaved;
 
-  it("its replacement is written for every locale, with the clock and without the link", () => {
-    expect(line?._replaces).toBe(en.analysisResults.analysisSaved);
+  it("is written in every locale with the clock, and the English names no link", () => {
     for (const l of ["en", "en-GB", "de", "es", "fr", "hi", "nl", "pt", "tl"]) {
-      expect(line?.[l], l).toContain("{{analysisDays}}");
+      expect(lineIn(l), l).toContain("{{analysisDays}}");
     }
-    expect(line.en).not.toMatch(/share link|above/i);
+    expect(en.analysisResults.analysisSaved).not.toMatch(/share link|above/i);
+    expect(lineIn("en-GB")).not.toMatch(/share link|above/i);
   });
 
-  it("rendered with it, says how long it is kept and nothing about a share link above", () => {
-    i18n.addResource("en", "translation", "analysisResults.analysisSaved", line.en);
-    try {
-      const { container } = render(<AnalysisResults data={{ ...BASE, atsScore: atsScore(60, []) }} />);
-      expect(container.textContent).not.toMatch(/share link above/i);
-      expect(container.textContent).toMatch(/kept for 90 days/);
-    } finally {
-      i18n.addResource("en", "translation", "analysisResults.analysisSaved", line._replaces);
-    }
+  it("rendered, says how long it is kept and nothing about a share link above", () => {
+    const { container } = render(<AnalysisResults data={{ ...BASE, atsScore: atsScore(60, []) }} />);
+    expect(container.textContent).not.toMatch(/share link above/i);
+    expect(container.textContent).toMatch(/kept for 90 days/);
   });
 });

@@ -673,6 +673,7 @@
     },
     "actions": {
       "share": "Delen",
+      "shareHint": "Iedereen met deze link kan de analyse lezen tot hij wordt verwijderd. Met de link kun je hem niet verwijderen.",
       "copied": "Gekopieerd!",
       "downloadPdf": "Download PDF",
       "generating": "Genereren...",
@@ -689,9 +690,19 @@
       "deleting": "Verwijderen...",
       "generatingPdf": "Bezig met genereren...",
       "savePdf": "Opslaan als pdf",
-      "savePdfHint": "Sla je analyse op als pdf"
+      "savePdfHint": "Sla je analyse op als pdf",
+      "copyLink": "Link kopiëren"
     },
-    "sharedView": "Gedeelde analyse bekijken"
+    "sharedView": "Gedeelde analyse bekijken",
+    "sharedViewDeleteNote": "Alleen de koper kan deze analyse verwijderen, via de link in de aankoopmail.",
+    "sharedComputer": {
+      "title": "Gebruik je een openbare of gedeelde computer?",
+      "body": "Wis de gegevens van deze browser als je klaar bent. De analyse zelf wordt {{days}} dagen op onze servers bewaard, en tot dan kan iedereen met de link hem openen. Verwijder hem hieronder als je niet wilt dat hij bewaard blijft."
+    },
+    "noSession": {
+      "title": "Hier is geen analyse geopend",
+      "body": "Een analyse opent via de link: die in je aankoopmail, of een deellink die op de analysepagina is gekopieerd. Heb je net betaald, open dan de link in je e-mail."
+    }
   },
   "common": {
     "backToHome": "Terug naar home",
@@ -2227,6 +2238,44 @@
     "retiredSale": {
       "body": "Je betaling is vastgelegd, maar dit product werd niet meer verkocht voordat de betaling rond was, dus is er niets automatisch gemaakt. Wij zijn op de hoogte gebracht en nemen contact met je op via het adres waarmee je hebt betaald.",
       "title": "{{product}} wordt niet meer verkocht"
+    },
+    "noReference": {
+      "title": "Deze link mist de aankoopreferentie",
+      "body": "Een aankoop opent via de link in de bijbehorende e-mail, die een aankoopreferentie bevat. Plak die link, of de referentie zelf, hieronder. Hier wordt je niets opnieuw in rekening gebracht.",
+      "pasteLabel": "Je aankooplink of -referentie",
+      "notALink": "Daar zit geen aankoopreferentie in. Plak de volledige link uit je aankoopmail.",
+      "open": "Mijn aankoop openen"
+    },
+    "refusal": {
+      "rateLimited": {
+        "title": "Net te veel controles",
+        "body": "Er kwamen het afgelopen uur te veel aankoopcontroles van deze verbinding. Er is niets mis met je aankoop. Probeer het later opnieuw, of open de link uit je aankoopmail via een andere verbinding."
+      },
+      "refunded": {
+        "title": "Deze aankoop is terugbetaald",
+        "body": "De betaling voor deze aankoop is terugbetaald, dus hij opent niet meer. Denk je dat dit een vergissing is, beantwoord dan je aankoopmail."
+      },
+      "withdrawn": {
+        "title": "Deze aankoop is niet meer beschikbaar",
+        "body": "Hij hoorde bij een abonnement dat niet meer actief is, of de betaling erachter is terugbetaald, dus hij opent niet meer. Denk je dat dit een vergissing is, neem dan contact op met support."
+      },
+      "unpaid": {
+        "title": "Deze betaling is niet voltooid",
+        "body": "De betaling is niet bevestigd. Sommige bankbetalingen duren een paar dagen, en je krijgt een e-mail zodra hij rond is. Heb je de checkout verlaten voordat je betaalde, dan is er niets in rekening gebracht."
+      },
+      "notFound": {
+        "title": "We konden deze aankoop niet vinden",
+        "body": "Deze link past bij geen aankoop die we kunnen lezen: hij is misschien afgekapt of verlopen. Plak hieronder de volledige link uit je aankoopmail, of neem contact op met support."
+      },
+      "signInAgain": {
+        "title": "Log in om dit te openen",
+        "body": "Deze link is gemaakt vóór een update van hoe een abonnement zijn inbegrepen tools opent. Log in met het account waar je abonnement bij hoort en open de tool daarna opnieuw vanaf de pagina ervan. Zolang je abonnement actief is, is hij inbegrepen en wordt er niets in rekening gebracht.",
+        "button": "Inloggen"
+      },
+      "busy": {
+        "title": "We konden deze aankoop nu niet controleren",
+        "body": "De betaalprovider antwoordde niet op tijd. Je aankoop is veilig. Wacht even en probeer het opnieuw."
+      }
     }
   },
   "analysisResults": {
@@ -2294,6 +2343,7 @@
     },
     "topImprovements": "Belangrijkste verbeteringen",
     "jdKeywordsFound": "Gevonden zoekwoorden uit vacature",
+    "jdKeywordsOnResume": "Uit de vacature, al in je cv",
     "missingFromResume": "Ontbreekt in cv",
     "suggestedEdits": "Voorgestelde wijzigingen",
     "gapAnalysis": "Hiaatanalyse",
@@ -2418,7 +2468,7 @@
     "analysisProcessingDescription": "We konden geen gedetailleerde aanbevelingen uit je cv halen. Dit kan gebeuren als het cv-formaat ongewoon is of als er een probleem was tijdens de verwerking.",
     "bottomCta": "Pas deze wijzigingen toe op je cv en zie je interviewpercentage verbeteren!",
     "bottomCtaWithLinkedIn": "Pas deze wijzigingen toe op je cv en LinkedIn-profiel en zie je interviewpercentage verbeteren!",
-    "analysisSaved": "Deze analyse blijft {{analysisDays}} dagen achter de deellink hierboven bewaard en wordt daarna verwijderd. Download hem als pdf om je eigen kopie te houden.",
+    "analysisSaved": "Deze analyse wordt {{analysisDays}} dagen bewaard en daarna verwijderd. Download hem als pdf om je eigen kopie te houden.",
     "enum": {
       "industry": {
         "technology": "Technologie",
@@ -4651,10 +4701,12 @@
     "bridgeGap": "Hij kent ook je huidige grootste hiaat ({{gap}}) en weegt die mee.",
     "bridgeCta": "Open de wachtrij ↓",
     "notifTitle": "E-mails & meldingen",
-    "notifSummary": "{{on}} van {{total}} weekdigests aan",
-    "notifBlurb": "Je digests voor opgeslagen zoekopdrachten, op één plek. Ze worden alleen verstuurd als een zoekopdracht nieuwe matches heeft; elke e-mail heeft afmelden in één klik. De ochtendmail van de Apply Agent beheer je in het eigen paneel hieronder.",
+    "notifSummaryEmails": "{{on}} van {{total}} zoekmails aan",
+    "notifBlurbCadence": "Alles wat we je kunnen mailen, op één plek. Een zoekmail gaat alleen uit als de zoekopdracht nieuwe matches heeft, dagelijks of wekelijks zoals ernaast staat; elke e-mail heeft afmelden in één klik.",
     "notifToggle": "Wekelijkse e-mail voor {{name}}",
+    "notifToggleDaily": "Dagelijkse e-mail voor {{name}}",
     "notifWeekly": "weekdigest",
+    "notifDaily": "dagdigest",
     "closedHeading_one": "{{count}} van je sollicitaties is gesloten — hier zijn verse vacatures",
     "closedHeading_other": "{{count}} van je sollicitaties zijn gesloten — hier zijn verse vacatures",
     "closedBlurb": "Dezelfde functies, nu live op het board — verlies geen momentum.",
@@ -4672,13 +4724,17 @@
     "ssFitPossible": "Mogelijke match+",
     "ssFitStrong": "Alleen sterke match",
     "ssBellOffAria": "Wekelijkse e-mail voor {{name}} uitzetten",
+    "ssBellOffAriaDaily": "Dagelijkse e-mail voor {{name}} uitzetten",
     "ssBellOnAria": "Wekelijks mailen over {{name}}",
+    "ssBellOnAriaDaily": "Dagelijks mailen over {{name}}",
     "ssBellOnTitle": "Wekelijkse e-mail aan — klik om uit te zetten",
+    "ssBellOnTitleDaily": "Dagelijkse e-mail aan — klik om uit te zetten",
     "ssBellOffTitle": "Wekelijks mailen bij nieuwe matches",
+    "ssBellOffTitleDaily": "Dagelijks mailen bij nieuwe matches",
     "ssOpenAria": "Zoekopdracht {{name}} openen",
     "ssDeleteAria": "Zoekopdracht {{name}} verwijderen",
-    "ssFootnoteA": "'Nieuw' telt vacatures gepubliceerd sinds je elke zoekopdracht voor het laatst opende. Tik op de",
-    "ssFootnoteB": "voor een wekelijkse e-mail bij nieuwe matches.",
+    "ssFootnoteACadence": "'Nieuw' telt vacatures gepubliceerd sinds je elke zoekopdracht voor het laatst opende. Tik op de",
+    "ssFootnoteBCadence": "voor een e-mail bij nieuwe matches: dagelijks voor alerts en gevolgde bedrijven, wekelijks voor andere zoekopdrachten.",
     "akButton": "Sollicitatiekit — cv op maat voor deze vacature",
     "akGenFailed": "Genereren mislukt — probeer opnieuw.",
     "akGenerating": "Je cv wordt aangepast… (~30 s)",
@@ -4880,7 +4936,9 @@
     "localOfferFailed": "Dat lukte niet. Probeer het over een minuut opnieuw.",
     "acBusy": "De AI-dienst is druk. Wat al is voorbereid, is opgeslagen. Probeer de rest over een paar minuten.",
     "acLimitHours": "Generatielimiet bereikt. Wat al is voorbereid, is opgeslagen. Probeer de rest over ongeveer {{hours}} uur.",
-    "acLimitMinutes": "Generatielimiet bereikt. Wat al is voorbereid, is opgeslagen. Probeer de rest over ongeveer {{minutes}} minuten."
+    "acLimitMinutes": "Generatielimiet bereikt. Wat al is voorbereid, is opgeslagen. Probeer de rest over ongeveer {{minutes}} minuten.",
+    "acAiUnavailable": "De AI-dienst kan nu geen verzoeken aannemen. Wat tot nu toe is voorbereid, is opgeslagen; probeer de rest later.",
+    "acSavedNoLetter": "Aangepaste cv's opgeslagen: {{count}}. De sollicitatiebrieven konden deze keer niet worden geschreven; start de voorbereiding opnieuw om ze toe te voegen."
   },
   "applyAgent": {
     "badge": "Je AI-sollicitatieagent",
@@ -5210,6 +5268,7 @@
     "endsOn": "Eindigt op {{date}}: opgezegd, wordt niet verlengd",
     "goPro": "Neem Pro — ${{price}}/maand",
     "linkPendingUnlinked": "Dit adres heeft een abonnement dat nog niet aan dit account is gekoppeld. Mail {{support}} vanaf dat adres, dan koppelen wij het.",
+    "linkPendingNoSecondPlan": "Je hoeft Pro niet opnieuw te kopen: op een adres dat al een abonnement heeft, kan geen tweede worden gestart.",
     "manage": "Abonnement beheren",
     "manageRetired": "Beheren of opzeggen bij facturering",
     "owing": "Je laatste betaling is niet gelukt. Werk je kaart bij om je abonnement te houden — een nieuw abonnement is niet nodig.",
@@ -5236,13 +5295,16 @@
     "toast": {
       "alreadyMemberBody": "Je abonnement is al actief op dit account.",
       "alreadyMemberTitle": "Je bent al Pro-lid",
+      "alreadyUnconfirmedBody": "We konden het nu niet bevestigen op dit account. Laad de pagina zo opnieuw om het te zien.",
       "briefOutage": "Abonnementen zijn even niet beschikbaar — probeer het over een paar minuten opnieuw.",
       "emailNeededBody": "Voer je e-mailadres in, zodat we het abonnement aan je account kunnen koppelen.",
       "emailNeededTitle": "E-mailadres nodig",
       "portalFailedTitle": "Factureringsportaal kon niet worden geopend",
       "signInBody": "Log in om je abonnement te beheren.",
       "signInTitle": "Inloggen vereist",
-      "tryAgain": "Probeer het opnieuw."
+      "tryAgain": "Probeer het opnieuw.",
+      "linkPendingTitle": "Dit adres heeft al een Pro-abonnement",
+      "linkPendingBody": "Het is nog niet aan dit account gekoppeld. Mail {{support}} vanaf dat adres, dan koppelen wij het."
     },
     "trialingNoCap": "Je proefperiode loopt: scans hebben nu geen daglimiet. De volledige analyse van $ 5 is inbegrepen vanaf je eerste betaling.",
     "updatePayment": "Betaalmethode bijwerken"
@@ -5416,6 +5478,8 @@
     "metaDescription": "Sta een agent-host toe om namens jou te handelen op de MCP-server van Resume Booster.",
     "asks": "{{client}} vraagt om namens jou te handelen op de MCP-server van Resume Booster.",
     "scopes": "Het ziet: {{scopes}}.",
+    "scopesAsked": "Het vraagt om: {{scopes}}.",
+    "scopeUnexpected": "Het vraagt ook om {{scopes}}, wat deze verbinding niet gebruikt. Weiger, tenzij je weet waarom het meer nodig heeft.",
     "sendsTo": "Als je toestemming geeft, krijgt {{host}} toegang tot je account. Geef alleen toestemming als dat de dienst is die je koppelt.",
     "noHost": "Dit verzoek zegt niet waar de toegang naartoe gaat. Geef alleen toestemming als je het net zelf vanuit Claude, ChatGPT of Claude Code bent begonnen.",
     "signedInAs": "Ingelogd als {{email}}.",
@@ -5428,7 +5492,8 @@
     "passUnstarted": "Pas niet gestart · {{left}} sollicitaties wachten",
     "passLive": "Pas loopt · nog {{left}} sollicitaties",
     "passBuy": "Koop een pas",
-    "passOpen": "Je pas"
+    "passOpen": "Je pas",
+    "grant": "Het kan vacatures op het bord doorzoeken, een cv dat je plakt daartegen scoren, sollicitaties voorbereiden die je zelf verstuurt, en je e-mailadres zien en hoeveel van je daglimiet al is gebruikt. De toegang die het krijgt hoort bij je account, dus sta dit alleen toe voor een app die je vertrouwt."
   },
   "agentPage": {
     "connectInstead": "Heb je al een agent? Verbind die dan — {{passHours}} uur voor ${{passPrice}}, verlengt nooit; het Agent-abonnement wel.",
@@ -5526,7 +5591,7 @@
   },
   "pulseConfirm": {
     "title": "Bevestig je maandelijkse marktpuls",
-    "body": "Eén e-mail per maand met de trefwoorden waarop vacatures in jouw vakgebied screenen, en een gratis rescan-link. Elke e-mail heeft een afmelding met één klik.",
+    "bodyCurated": "Eén e-mail per maand met de belangrijkste trefwoorden voor jouw vakgebied uit onze samengestelde trefwoordengids (geen telling van de vacatures van deze maand), en een gratis rescan-link. Elke e-mail heeft een afmelding met één klik.",
     "button": "Ja, stuur me de puls",
     "done": "Je bent aangemeld. De eerste puls komt binnen een dag.",
     "invalid": "Deze link is verlopen of al gebruikt. Vink het vakje aan onder je volgende scanrapport om een nieuwe te krijgen.",
@@ -5762,6 +5827,7 @@
     "copyAll": "Alles kopiëren",
     "copyAnswer": "Antwoord kopiëren",
     "draftButton": "De vragen van deze sollicitatie opstellen",
+    "draftAgain": "Opnieuw opstellen",
     "failed": "We konden nu geen antwoorden opstellen.",
     "inferredIntro": "Waarschijnlijke vragen voor deze functie (dit ATS publiceert zijn formulier niet), gebaseerd op je cv. Controleer ze voordat je ze plakt.",
     "limit": "Je hebt dit tegoed voorlopig opgebruikt. Probeer het later opnieuw.",
@@ -5837,7 +5903,12 @@
     "dailyNoTime": "Je hebt het schrijftegoed van vandaag gebruikt. Morgen kun je meer maken; wat je tot nu toe hebt gemaakt, is bewaard.",
     "monthly": "Je hebt het schrijftegoed van deze maand gebruikt. Na {{when}} kun je meer maken.",
     "monthlyNoTime": "Je hebt het schrijftegoed van deze maand gebruikt. Volgende maand kun je meer maken.",
-    "signIn": "Log in om de schrijftools te gebruiken. Een gratis account bevat per dag één aangepast cv, één motivatiebrief en één set gespreksvoorbereiding."
+    "signIn": "Log in om de schrijftools te gebruiken. Een gratis account bevat per dag één aangepast cv, één motivatiebrief en één set gespreksvoorbereiding.",
+    "toolLimitTitle": "Limiet voorlopig bereikt",
+    "toolLimitUntil": "Je hebt de limiet van deze tool voorlopig bereikt. Hij is weer beschikbaar vanaf {{when}}.",
+    "busyTitle": "Nu even druk",
+    "busyEveryone": "Deze tool is nu voor iedereen druk bezet. Dit is niet je eigen limiet. Probeer het later opnieuw.",
+    "busyNetwork": "Deze tool is nu druk bezet voor je netwerk. Dit is niet je eigen limiet. Probeer het later opnieuw."
   },
   "format": {
     "ago": "{{duration}} geleden",

@@ -2035,7 +2035,7 @@ export function AnalysisResults({ data }: AnalysisResultsProps) {
             <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
               <CheckCircle2 className="w-4 h-4 text-success" />
               {/* Its text names no "share link above" (S13-123): the shared
-                  view shows no link (docs/audit-rest-pending-locales/pages.json). */}
+                  view shows no link. */}
               <span>{t('analysisResults.analysisSaved', { analysisDays: SHARED_ANALYSIS_DAYS })}</span>
             </div>
           </div>

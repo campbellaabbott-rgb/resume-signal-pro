@@ -673,6 +673,7 @@
     },
     "actions": {
       "share": "Share",
+      "shareHint": "Anyone with this link can read the analysis until it is deleted. The link cannot delete it.",
       "copied": "Copied!",
       "downloadPdf": "Download PDF",
       "generating": "Generating...",
@@ -689,9 +690,19 @@
       "deleting": "Deleting...",
       "generatingPdf": "Generating...",
       "savePdf": "Save as PDF",
-      "savePdfHint": "Save your analysis as PDF"
+      "savePdfHint": "Save your analysis as PDF",
+      "copyLink": "Copy link"
     },
-    "sharedView": "Viewing shared analysis"
+    "sharedView": "Viewing shared analysis",
+    "sharedViewDeleteNote": "Only the buyer can delete this analysis, from the link in their purchase email.",
+    "sharedComputer": {
+      "title": "Using a public or shared computer?",
+      "body": "Clear this browser's data when you're done. The analysis itself is kept on our servers for {{days}} days, and anyone with its link can open it until then. Delete it below if you don't want it kept."
+    },
+    "noSession": {
+      "title": "No analysis is open here",
+      "body": "An analysis opens from its link: the one in your purchase email, or a share link copied from the analysis page. If you have just paid, open the link in your email."
+    }
   },
   "common": {
     "backToHome": "Back to Home",
@@ -2227,6 +2238,44 @@
     "retiredSale": {
       "body": "Your payment is recorded, but this product stopped being sold before the payment went through, so nothing was made automatically. We have been told and will contact you at the address you paid with.",
       "title": "{{product}} is no longer sold"
+    },
+    "noReference": {
+      "title": "This link is missing its purchase reference",
+      "body": "A purchase opens from the link in its email, which carries a purchase reference. Paste that link, or the reference itself, below. Nothing here charges you again.",
+      "pasteLabel": "Your purchase link or reference",
+      "notALink": "That doesn't contain a purchase reference. Paste the whole link from your purchase email.",
+      "open": "Open my purchase"
+    },
+    "refusal": {
+      "rateLimited": {
+        "title": "Too many checks just now",
+        "body": "Too many purchase checks came from this connection in the last hour. Nothing is wrong with your purchase. Try again later, or open the link from your purchase email on another connection."
+      },
+      "refunded": {
+        "title": "This purchase was refunded",
+        "body": "The payment for this purchase was refunded, so it no longer opens. If you think this is a mistake, reply to your purchase email."
+      },
+      "withdrawn": {
+        "title": "This purchase is no longer available",
+        "body": "It came with a plan that is no longer active, or the payment behind it was refunded, so it no longer opens. If you think this is a mistake, contact support."
+      },
+      "unpaid": {
+        "title": "This payment hasn't completed",
+        "body": "The payment has not been confirmed. Some bank payments take a few days, and you'll get an email when it goes through. If you left the checkout before paying, nothing was charged."
+      },
+      "notFound": {
+        "title": "We couldn't find this purchase",
+        "body": "This link doesn't match a purchase we can read: it may be cut short or have expired. Paste the whole link from your purchase email below, or contact support."
+      },
+      "signInAgain": {
+        "title": "Sign in to open this",
+        "body": "This link was made before an update to how a plan opens its included tools. Sign in with the account that holds your plan, then open the tool again from its page. While your plan is active it is included, and nothing is charged.",
+        "button": "Sign in"
+      },
+      "busy": {
+        "title": "We couldn't check this purchase just now",
+        "body": "The payment provider didn't answer in time. Your purchase is safe. Wait a moment and try again."
+      }
     }
   },
   "analysisResults": {
@@ -2294,6 +2343,7 @@
     },
     "topImprovements": "Top Improvements",
     "jdKeywordsFound": "JD Keywords Found",
+    "jdKeywordsOnResume": "From the posting, already on your CV",
     "missingFromResume": "Missing from CV",
     "suggestedEdits": "Suggested Edits",
     "gapAnalysis": "Gap Analysis",
@@ -2418,7 +2468,7 @@
     "analysisProcessingDescription": "We could not extract detailed recommendations from your CV. This might happen if the CV format is unusual or if there was an issue during processing.",
     "bottomCta": "Apply these changes to your CV and watch your interview rate improve!",
     "bottomCtaWithLinkedIn": "Apply these changes to your CV and LinkedIn profile and watch your interview rate improve!",
-    "analysisSaved": "This analysis is kept for {{analysisDays}} days behind the share link above, then deleted. Download it as a PDF to keep your own copy.",
+    "analysisSaved": "This analysis is kept for {{analysisDays}} days, then deleted. Download it as a PDF to keep your own copy.",
     "enum": {
       "industry": {
         "technology": "Technology",
@@ -4651,10 +4701,12 @@
     "bridgeGap": "It also knows your current top gap ({{gap}}) and weighs it.",
     "bridgeCta": "Open the queue ↓",
     "notifTitle": "Emails & alerts",
-    "notifSummary": "{{on}} of {{total}} weekly digests on",
-    "notifBlurb": "Your saved-search digests, in one place. They send only when a search has new matches; every email has a one-click unsubscribe. The Apply Agent's morning email is managed in its own panel below.",
+    "notifSummaryEmails": "{{on}} of {{total}} search emails on",
+    "notifBlurbCadence": "Everything we can email you, in one place. A search email goes out only when the search has new matches, daily or weekly as shown beside it; every email has a one-click unsubscribe.",
     "notifToggle": "Weekly email for {{name}}",
+    "notifToggleDaily": "Daily email for {{name}}",
     "notifWeekly": "weekly digest",
+    "notifDaily": "daily digest",
     "closedHeading_one": "{{count}} of your applied jobs has closed — here are fresh openings",
     "closedHeading_other": "{{count}} of your applied jobs have closed — here are fresh openings",
     "closedBlurb": "Same roles, live on the board right now — don't lose momentum.",
@@ -4672,13 +4724,17 @@
     "ssFitPossible": "Possible fit+",
     "ssFitStrong": "Strong fit only",
     "ssBellOffAria": "Turn off weekly email for {{name}}",
+    "ssBellOffAriaDaily": "Turn off daily email for {{name}}",
     "ssBellOnAria": "Email me weekly about {{name}}",
+    "ssBellOnAriaDaily": "Email me daily about {{name}}",
     "ssBellOnTitle": "Weekly email on — click to turn off",
+    "ssBellOnTitleDaily": "Daily email on — click to turn off",
     "ssBellOffTitle": "Email me weekly when new jobs match",
+    "ssBellOffTitleDaily": "Email me daily when new jobs match",
     "ssOpenAria": "Open search {{name}}",
     "ssDeleteAria": "Delete search {{name}}",
-    "ssFootnoteA": "“New” counts postings published since you last opened each search. Tap the",
-    "ssFootnoteB": "to get a weekly email when fresh jobs match.",
+    "ssFootnoteACadence": "“New” counts postings published since you last opened each search. Tap the",
+    "ssFootnoteBCadence": "to get an email when fresh jobs match: daily for alerts and company watches, weekly for other searches.",
     "akButton": "Application kit — tailored CV for this job",
     "akGenFailed": "Generation failed — try again.",
     "akGenerating": "Tailoring your CV… (~30s)",
@@ -4880,7 +4936,9 @@
     "localOfferFailed": "That didn't work. Try again in a minute.",
     "acBusy": "The AI service is busy — the ones prepped so far are saved. Try the rest in a few minutes.",
     "acLimitHours": "Generation limit reached — the ones prepped so far are saved. Try the rest in about {{hours}} hours.",
-    "acLimitMinutes": "Generation limit reached — the ones prepped so far are saved. Try the rest in about {{minutes}} minutes."
+    "acLimitMinutes": "Generation limit reached — the ones prepped so far are saved. Try the rest in about {{minutes}} minutes.",
+    "acAiUnavailable": "The AI service can't take requests right now. What was prepped so far is saved; try the rest later.",
+    "acSavedNoLetter": "Tailored CVs saved: {{count}}. Their cover letters couldn't be written this time; run prep again to add them."
   },
   "applyAgent": {
     "badge": "Your AI apply agent",
@@ -5210,6 +5268,7 @@
     "endsOn": "Ends {{date}}: cancelled, it will not renew",
     "goPro": "Go Pro — ${{price}}/month",
     "linkPendingUnlinked": "This address has a plan that isn't linked to this account yet. Email {{support}} from that address and we will link it.",
+    "linkPendingNoSecondPlan": "You don't need to buy Pro again: a second plan can't be started on an address that already has one.",
     "manage": "Manage subscription",
     "manageRetired": "Manage or cancel in billing",
     "owing": "Your last payment didn't go through. Update your card to keep your plan — no new subscription needed.",
@@ -5236,13 +5295,16 @@
     "toast": {
       "alreadyMemberBody": "Your plan is already active on this account.",
       "alreadyMemberTitle": "You're already a Pro member",
+      "alreadyUnconfirmedBody": "We couldn't confirm it on this account just now. Reload the page in a moment to see it.",
       "briefOutage": "Subscriptions are briefly unavailable — please try again in a few minutes.",
       "emailNeededBody": "Enter your email so we can attach the subscription to your account.",
       "emailNeededTitle": "Email needed",
       "portalFailedTitle": "Couldn't open billing portal",
       "signInBody": "Sign in to manage your subscription.",
       "signInTitle": "Sign in required",
-      "tryAgain": "Please try again."
+      "tryAgain": "Please try again.",
+      "linkPendingTitle": "This address already has a Pro plan",
+      "linkPendingBody": "It isn't linked to this account yet. Email {{support}} from that address and we will link it."
     },
     "trialingNoCap": "Your trial is on: scans have no daily cap now. The $5 Full Analysis is included from your first payment.",
     "updatePayment": "Update payment method"
@@ -5416,6 +5478,8 @@
     "metaDescription": "Allow an agent host to act as you on the Resume Booster MCP server.",
     "asks": "{{client}} is asking to act as you on the Resume Booster MCP server.",
     "scopes": "It will see: {{scopes}}.",
+    "scopesAsked": "It asks for: {{scopes}}.",
+    "scopeUnexpected": "It also asks for {{scopes}}, which this connection does not use. Deny unless you know why it needs more.",
     "sendsTo": "If you allow, access to your account goes to {{host}}. Allow only if that is the host you are connecting.",
     "noHost": "This request does not say where access will go. Allow only if you started it just now from Claude, ChatGPT or Claude Code.",
     "signedInAs": "Signed in as {{email}}.",
@@ -5428,7 +5492,8 @@
     "passUnstarted": "Pass not started · {{left}} applications waiting",
     "passLive": "Pass running · {{left}} applications left",
     "passBuy": "Buy a pass",
-    "passOpen": "Your pass"
+    "passOpen": "Your pass",
+    "grant": "It can search jobs on the board, score a CV you paste against them, prepare applications for you to send yourself, and see your email address and how much of your daily allowance is used. The access it receives belongs to your account, so allow only an app you trust."
   },
   "agentPage": {
     "connectInstead": "Already have an agent? Connect it instead — {{passHours}} hours for ${{passPrice}}, never renews; the Agent plan does.",
@@ -5526,7 +5591,7 @@
   },
   "pulseConfirm": {
     "title": "Confirm your monthly market pulse",
-    "body": "One email a month with the keywords job postings in your field are screening for, and a free rescan link. Every email has a one-click unsubscribe.",
+    "bodyCurated": "One email a month with the core keywords for your field from our curated keyword guide (not a count of this month's job adverts), and a free rescan link. Every email has a one-click unsubscribe.",
     "button": "Yes, send me the pulse",
     "done": "You're subscribed. The first pulse arrives within a day.",
     "invalid": "This link has expired or was already used. Tick the box under your next scan report to get a new one.",
@@ -5762,6 +5827,7 @@
     "copyAll": "Copy all",
     "copyAnswer": "Copy answer",
     "draftButton": "Draft this application's questions",
+    "draftAgain": "Draft again",
     "failed": "Couldn't draft answers right now.",
     "inferredIntro": "Likely questions for this role (this ATS doesn't publish its form) — grounded in your CV. Review before you paste.",
     "limit": "You've used this allowance for now. Please try again later.",
@@ -5837,7 +5903,12 @@
     "dailyNoTime": "You've used today's writing allowance. You can make more tomorrow; what you made so far is saved.",
     "monthly": "You've used this month's writing allowance. You can make more after {{when}}.",
     "monthlyNoTime": "You've used this month's writing allowance. You can make more next month.",
-    "signIn": "Sign in to use the writing tools. A free account includes one tailored CV, one cover letter and one interview-prep set a day."
+    "signIn": "Sign in to use the writing tools. A free account includes one tailored CV, one cover letter and one interview-prep set a day.",
+    "toolLimitTitle": "Limit reached for now",
+    "toolLimitUntil": "You've reached this tool's limit for now. It opens again at {{when}}.",
+    "busyTitle": "Busy right now",
+    "busyEveryone": "This tool is busy for everyone right now. This is not your own limit. Try again later.",
+    "busyNetwork": "This tool is busy for your network right now. This is not your own limit. Try again later."
   },
   "format": {
     "ago": "{{duration}} ago",
