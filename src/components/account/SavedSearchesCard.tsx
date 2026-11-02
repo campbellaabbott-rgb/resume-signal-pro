@@ -61,14 +61,16 @@ export function SavedSearchesCard() {
       setLoaded(true);
       // New-since counts, best effort, in parallel.
       const counts = await Promise.all(
-        rows.map(async (s) => {
+        rows.map(async (row) => {
+          // The badge counts the board the search's link opens (S13-118).
+          const s = { ...row, params: openedParams(row.params as JobSearchParams) };
           try {
             const { data: res } = await invokeJobBoard({
               // MAPPED, not spread. `...s.params` sent `company` — a key the
               // board does not read — so the employer scope vanished and this
               // badge counted the whole corpus. Watching one employer showed
               // thousands of "new since your last visit".
-              body: { action: "list", ...searchToBoardBody(openedParams(s.params as JobSearchParams)), countOnly: true, postedAfter: s.last_seen_at },
+              body: { action: "list", ...searchToBoardBody(s.params as JobSearchParams), countOnly: true, postedAfter: s.last_seen_at },
             });
             // countCapped means "at least this many" — the badge shows 10,000+
             // rather than passing the board's cap off as an exact figure.
