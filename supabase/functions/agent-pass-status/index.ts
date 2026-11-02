@@ -35,6 +35,7 @@ import { passSessionSettled } from "../_shared/pass-settlement.ts";
 import { paymentRevocationState } from "../_shared/payment-revocation.ts";
 import { firstPassAlert } from "../_shared/owner-alert.ts";
 import { AGENT_PRODUCTS_ON_SALE, APPLY_AGENT_ON } from "../_shared/apply-agent-switch.ts";
+import { websiteTokenRefusal } from "../_shared/checkout-buyer.ts";
 
 // Provable from outside without signing in: the preflight carries it. The
 // name and the date sit on separate lines on purpose: a guard reads every line
@@ -46,7 +47,8 @@ import { AGENT_PRODUCTS_ON_SALE, APPLY_AGENT_ON } from "../_shared/apply-agent-s
 const FN_NAME = "agent-pass-status";
 // 2026-10-11.14: apply-agent-switch.ts gained the Apply Assistant's own switch (APPLY_ASSISTANT_ON_SALE); nothing this function does changed.
 // 2026-10-11.15 (recheck 3, 2026-10-26): while the agent products are off sale, a success-page repair of a paid session grants nothing and answers a terminal "retired", as stripe-webhook does.
-const FN_BUILD = `${FN_NAME}.2026-10-11.15`;
+// 2026-11-03.1 (S9-001, fix/audit-rest-abuse): a connected app's token is refused with the signed-out answer before the auth server is asked.
+const FN_BUILD = `${FN_NAME}.2026-11-03.1`;
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -217,6 +219,11 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   if (req.method !== "GET" && req.method !== "POST") return json({ error: "method not allowed" }, 405);
 
+  // S9-001: a token the auth server signed for a connected app (client_id,
+  // role mcp_client) is not the person on the website, though /user answers for it.
+  if (websiteTokenRefusal(req.headers)) {
+    return json({ error: "Sign in to see your pass." }, 401);
+  }
   const authClient = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
     Deno.env.get("SUPABASE_ANON_KEY") ?? "",

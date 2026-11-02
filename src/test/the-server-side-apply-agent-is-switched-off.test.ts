@@ -35,6 +35,7 @@ import { resolve } from "node:path";
 import { parse } from "yaml";
 import { loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
 import { APPLY_AGENT_SWITCH_ON } from "./helpers/apply-agent-switch-on";
+import { buildIsAtLeast } from "./helpers/fn-build";
 
 const ROOT = resolve(__dirname, "../..");
 const env: Record<string, string | undefined> = {
@@ -280,7 +281,7 @@ describe("agent-pass-status: a bought pass reads as before, and says nothing wil
   it("a signed-out caller is still a 401, and the preflight carries the new build", async () => {
     expect((await call(h["agent-pass-status"], "agent-pass-status", {})).status).toBe(401);
     const pre = await h["agent-pass-status"](new Request("https://harness.supabase.co/functions/v1/agent-pass-status", { method: "OPTIONS" }));
-    expect(pre.headers.get("x-fn-build")).toBe("agent-pass-status.2026-10-11.15");
+    expect(buildIsAtLeast(pre.headers.get("x-fn-build"), "agent-pass-status", "2026-10-11", 15), String(pre.headers.get("x-fn-build"))).toBe(true);
   });
 
   it("positive control: with the switch on, the same read carries no switched-off flag", async () => {

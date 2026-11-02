@@ -15,7 +15,17 @@
  * employer's own site (careers.savills.com -> savills.com) -- and never an
  * applicant-tracking or hosting domain, whose mailboxes belong to the vendor.
  * Everything else goes to the owner's manual review (email_confirmed).
+ *
+ * S13-071: the registrable domain is read from the full Public Suffix List
+ * (public-suffix-list.ts). The short list of second-level labels below was the
+ * whole rule before, so an employer under any shared suffix it did not name
+ * (me.uk, id.au, waw.pl, k12.ca.us, uk.com) collapsed to that suffix, and
+ * anyone holding a mailbox under the same suffix matched it. The list's answer
+ * is taken unless the old rule kept more labels, so no host is read as more
+ * shared than before; a host that is itself a public suffix has no
+ * registrable domain at all.
  */
+import { PUBLIC_SUFFIX_RULES } from "./public-suffix-list.ts";
 
 /** Second-level labels under a two-letter country code that are not themselves registrable (co.uk, com.au). */
 const SECOND_LEVEL = new Set(["co", "com", "org", "net", "ac", "gov", "edu", "ltd", "plc", "ne", "or", "gob", "nic", "mil", "sch", "gv", "go", "nhs"]);
@@ -39,6 +49,32 @@ export const VENDOR_DOMAINS: ReadonlySet<string> = new Set([
   "force.com", "site.com", "jobs.net", "brassring.com", "resumebooster.work",
 ]);
 
+let suffixRules: Set<string> | null = null;
+let suffixExceptions: Set<string> | null = null;
+
+/**
+ * How many trailing labels are the public suffix, by the list's own
+ * algorithm: an exception rule wins (its suffix drops the leftmost label),
+ * then the longest matching rule, wildcards included, then the bare TLD.
+ */
+export function publicSuffixLabels(labels: readonly string[]): number {
+  if (!suffixRules || !suffixExceptions) {
+    suffixRules = new Set();
+    suffixExceptions = new Set();
+    for (const r of PUBLIC_SUFFIX_RULES.split("\n")) {
+      if (r.startsWith("!")) suffixExceptions.add(r.slice(1));
+      else suffixRules.add(r);
+    }
+  }
+  const n = labels.length;
+  for (let i = 0; i < n; i++) if (suffixExceptions.has(labels.slice(i).join("."))) return n - i - 1;
+  for (let i = 0; i < n; i++) {
+    const rest = labels.slice(i + 1).join(".");
+    if (suffixRules.has(labels.slice(i).join(".")) || (rest && suffixRules.has(`*.${rest}`))) return n - i;
+  }
+  return 1;
+}
+
 /** The registrable domain of a host ("careers.savills.co.uk" -> "savills.co.uk"), or "" for something that is not one. */
 export function registrableDomain(host: string): string {
   const h = host.trim().toLowerCase().replace(/\.$/, "");
@@ -46,8 +82,17 @@ export function registrableDomain(host: string): string {
   const labels = h.split(".").filter(Boolean);
   if (labels.length < 2 || labels.some((l) => l.length > 63)) return "";
   const n = labels.length;
-  const take = n >= 3 && labels[n - 1].length === 2 && SECOND_LEVEL.has(labels[n - 2]) ? 3 : 2;
-  return labels.slice(-take).join(".");
+  const listed = publicSuffixLabels(labels);
+  if (n <= listed) return "";
+  const older = n >= 3 && labels[n - 1].length === 2 && SECOND_LEVEL.has(labels[n - 2]) ? 3 : 2;
+  return labels.slice(-Math.max(listed + 1, older)).join(".");
+}
+
+/** True when the host is a vendor domain or any host under one. */
+export function vendorHost(host: string): boolean {
+  const labels = host.trim().toLowerCase().replace(/\.$/, "").split(".");
+  for (let i = 0; i < labels.length - 1; i++) if (VENDOR_DOMAINS.has(labels.slice(i).join("."))) return true;
+  return false;
 }
 
 /** The employer's own registrable domains, from the board's apply URLs for one company. */
@@ -58,7 +103,9 @@ export function employerDomains(applyUrls: Array<string | null | undefined>): Se
     let host = "";
     try { host = new URL(u).hostname; } catch { continue; }
     const d = registrableDomain(host);
-    if (d && !VENDOR_DOMAINS.has(d)) out.add(d);
+    // By suffix, not by equality: a vendor domain that is itself a public
+    // suffix (notion.site, github.io) makes every tenant its own registrable.
+    if (d && !vendorHost(host)) out.add(d);
   }
   return out;
 }

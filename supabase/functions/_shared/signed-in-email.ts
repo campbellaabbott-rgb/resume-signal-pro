@@ -15,6 +15,7 @@
  * Pure apart from the client it is handed: importable by Deno and by vitest.
  */
 import { bearerOf } from "./service-caller.ts";
+import { websiteTokenRefusal } from "./checkout-buyer.ts";
 
 type AuthLike = {
   getUser: (jwt: string) => Promise<{ data?: { user?: { id?: string | null; email?: string | null } | null } | null; error?: unknown }>;
@@ -37,6 +38,8 @@ export async function signedInUser(
 ): Promise<{ id: string; email: string } | null> {
   const token = bearerOf(headers);
   if (!token || (publishableKey && token === publishableKey)) return null;
+  // S9-001: only a website session; the auth server also answers for a connected app's token.
+  if (websiteTokenRefusal(headers)) return null;
   try {
     const { data } = await auth.getUser(token);
     const email = data?.user?.email;

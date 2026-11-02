@@ -361,7 +361,11 @@ describe("the consent route /oauth/consent", () => {
     oauthApi.approveAuthorization.mockResolvedValue({ data: { redirect_url: "https://claude.ai/callback?code=x" }, error: null });
     mount(<OAuthConsent />, "/oauth/consent?authorization_id=auth_1");
     await screen.findByText(/Claude is asking/);
-    expect(screen.getByText(/It will see: email/)).toBeInTheDocument();
+    // The grant is named as what the connection does, not the bare OAuth
+    // scope (S9-001): the token works the connector's tools as the person.
+    expect(screen.getByText(/It can search jobs on the board/)).toBeInTheDocument();
+    expect(screen.getByText(/It cannot buy anything, change your plan or open your saved resume/)).toBeInTheDocument();
+    expect(screen.queryByText(/It will see:/)).toBeNull();
     // The client's self-declared homepage is never named as where access goes
     // (S8-081); with no pending redirect in the details, no host is named.
     expect(screen.queryByText(/claude\.ai/)).toBeNull();

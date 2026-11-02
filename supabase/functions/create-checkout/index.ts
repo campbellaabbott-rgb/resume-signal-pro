@@ -50,6 +50,7 @@ import { REHEARSAL_UNCONFIGURED, rehearsalKeyOf } from "./owner-rehearsal.ts";
 // to rehearse the sale end to end: x-admin-key with ADMIN_API_KEY, testMode
 // true in the body and an sk_test_ test key (owner-rehearsal.ts). Without
 // the owner's key the body's testMode is ignored and every session is live.
+// 2026-11-03.1 (S9-001, fix/audit-rest-abuse): _shared/checkout-buyer.ts refuses a connected app's token whatever role it names; the access-token hook gives it role mcp_client, which the old check passed to the auth server as a buyer.
 const FN_BUILD = "create-checkout.2026-11-03.1";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

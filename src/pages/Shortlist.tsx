@@ -23,6 +23,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import { rankCandidates, reviewsFromDecisions, type CandidateReview } from "@/lib/shortlist-review";
+import { csvDocument } from "@/lib/spreadsheet-safe-csv";
 import { SHORTLIST_ATTESTATION_TEXT } from "../../supabase/functions/_shared/shortlist-attestation";
 import { PLANTED_INSTRUCTIONS_FLAG } from "../../supabase/functions/_shared/planted-instructions";
 
@@ -54,6 +55,28 @@ interface Candidate {
   created_at: string;
 }
 
+
+/** The audit CSV's columns, in order. */
+export const SHORTLIST_AUDIT_COLUMNS = ["candidate_id", "file_name", "ai_score", "human_override_score", "alternative_review", "level_read", "final_human_decision", "flags", "model_version", "jd_version", "created_at"] as const;
+
+/**
+ * The audit CSV (S13-085). The file name is the uploader's and the flags and
+ * level read are the model's, so any of them can start with a formula
+ * character; every cell goes through csvCell, which quotes it and makes it
+ * text in Excel, Sheets and LibreOffice.
+ */
+export function shortlistAuditCsv(
+  candidates: ReadonlyArray<Pick<Candidate, "id" | "file_name" | "score" | "level_read" | "status" | "flags" | "model_version" | "jd_version" | "created_at">>,
+  reviews: Record<string, CandidateReview>,
+): string {
+  return csvDocument(SHORTLIST_AUDIT_COLUMNS, candidates.map((c) => {
+    const alt = reviews[c.id]?.altReview === true;
+    return [
+      c.id, c.file_name ?? "", alt ? "" : c.score ?? "", alt ? "" : reviews[c.id]?.overrideScore ?? "", alt ? "yes" : "no",
+      c.level_read ?? "", c.status, (c.flags ?? []).join("; "), c.model_version ?? "", c.jd_version ?? "", c.created_at,
+    ];
+  }));
+}
 
 const JURISDICTIONS = ["OTHER", "NYC", "IL", "CA", "EU"] as const;
 
@@ -373,14 +396,7 @@ export default function Shortlist() {
       blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
       name = `shortlist-audit-${activeRole.title.replace(/\W+/g, "-")}.json`;
     } else {
-      const rows = candidates.map(c => {
-        const alt = reviews[c.id]?.altReview === true;
-        return [
-          c.id, c.file_name ?? "", alt ? "" : c.score ?? "", alt ? "" : reviews[c.id]?.overrideScore ?? "", alt ? "yes" : "no",
-          c.level_read ?? "", c.status, (c.flags ?? []).join("; "), c.model_version ?? "", c.jd_version ?? "", c.created_at,
-        ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(",");
-      });
-      blob = new Blob([["candidate_id,file_name,ai_score,human_override_score,alternative_review,level_read,final_human_decision,flags,model_version,jd_version,created_at", ...rows].join("\n")], { type: "text/csv" });
+      blob = new Blob([shortlistAuditCsv(candidates, reviews)], { type: "text/csv" });
       name = `shortlist-audit-${activeRole.title.replace(/\W+/g, "-")}.csv`;
     }
     const url = URL.createObjectURL(blob);

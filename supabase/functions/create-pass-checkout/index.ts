@@ -46,6 +46,7 @@ import { checkoutContextFromRequest, recordCheckoutStart } from "../_shared/chec
 import { checkoutOrigin, euConsentAnswer, euConsentRefusal, policyMetadata, sessionPolicy } from "../_shared/checkout-policy.ts";
 import { AGENT_PRODUCTS_ON_SALE } from "../_shared/apply-agent-switch.ts";
 import { retiredCheckoutAnswer } from "../_shared/apply-agent-retired.ts";
+import { websiteTokenRefusal } from "../_shared/checkout-buyer.ts";
 
 // NO LONGER SOLD (owner decision 2026-10-11, the apply pivot). While
 // AGENT_PRODUCTS_ON_SALE is off, every POST is answered 410 with the sentence
@@ -70,7 +71,8 @@ const FN_NAME = "create-pass-checkout";
 // 2026-10-11.15: the retirement sentence's apply-yourself line says what the question marking does (it reads words and can miss an unusually worded question about the buyer) and asks them to read every answer before they send (wave 4 descope, 2026-10-25); nothing this function does changed.
 // 2026-10-11.16: the retirement sentence's apply-yourself line says the marking can miss a question about the buyer even when it is plainly worded (the recheck of the descope, 2026-10-25); nothing this function does changed.
 // 2026-10-11.17: the retirement sentence's apply-yourself line says that inside ChatGPT the AI reads the application form only for Greenhouse or Recruitee, the server's public-API pair (the second recheck of the descope, 2026-10-25); nothing else changed.
-const FN_BUILD = `${FN_NAME}.2026-10-11.17`;
+// 2026-11-03.1 (S9-001, fix/audit-rest-abuse): a connected app's token is refused with the signed-out answer before the auth server is asked.
+const FN_BUILD = `${FN_NAME}.2026-11-03.1`;
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -142,6 +144,11 @@ Deno.serve(async (req) => {
 
   // The buyer, from the VERIFIED token — the anon-key client validates the
   // JWT; the body is never consulted for identity.
+  // S9-001: a token the auth server signed for a connected app (client_id,
+  // role mcp_client) is not the person on the website, though /user answers for it.
+  if (websiteTokenRefusal(req.headers)) {
+    return json({ error: "Sign in to buy a pass — it is bound to your account, not an address." }, 401);
+  }
   const authClient = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
     Deno.env.get("SUPABASE_ANON_KEY") ?? "",

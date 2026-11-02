@@ -47,8 +47,12 @@ import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
 
 // Provable from outside without minting anything: every response, the CORS
 // preflight included, carries this in x-fn-build. 2026-10-11.1: the minted
-// key states its free fit allowance beside its request limits.
-const FN_BUILD = "api-key-request.2026-10-11.1";
+// key states its free fit allowance beside its request limits. 2026-11-03.1
+// (S13-072): a confirmation mail the provider refused, or whose send threw, is
+// marked on its request row (api_key_request_unsent, 20261103170000), so it no
+// longer counts toward the mailbox's two links a day: after two refusals the
+// next request was answered "a link is on its way" and nothing was sent.
+const FN_BUILD = "api-key-request.2026-11-03.1";
 
 /**
  * Résumé fit scoring calls a UTC day on the key this door mints (owner
@@ -256,6 +260,13 @@ Deno.serve(async (req) => {
     console.error("[API-KEY-REQUEST] email threw:", e instanceof Error ? e.message.slice(0, 120) : String(e));
   }
   if (!emailed) {
+    // Best effort: a mark that fails leaves the row counting, as before.
+    try {
+      const { error: uErr } = await client.rpc("api_key_request_unsent", { p_token_hash: tokenHash });
+      if (uErr) console.error("[API-KEY-REQUEST] unsent mark failed:", uErr.message?.slice(0, 120));
+    } catch (e) {
+      console.error("[API-KEY-REQUEST] unsent mark threw:", e instanceof Error ? e.message.slice(0, 120) : String(e));
+    }
     return refuse("email_failed", "We could not send the confirmation email. Try again shortly.", 502);
   }
 

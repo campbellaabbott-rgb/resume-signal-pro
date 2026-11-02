@@ -52,6 +52,7 @@ import { ACCOUNT_SUBSCRIPTION_RPC, accountSubscription, normalizeEmail, rowIsEnt
 import { isSendableVendor } from "../_shared/apply-automation.ts";
 import { networkBucket } from "../_shared/network-bucket.ts";
 import { APPLY_AGENT_ON } from "../_shared/apply-agent-switch.ts";
+import { websiteTokenRefusal } from "../_shared/checkout-buyer.ts";
 
 // Provable from outside without signing in: the preflight carries it.
 // 2026-10-05.2: the subscription is the account's by user id
@@ -68,7 +69,8 @@ import { APPLY_AGENT_ON } from "../_shared/apply-agent-switch.ts";
 // the status read of a plan or a pass reports it as before and adds
 // agentSwitchedOff, so a page can say nothing will be sent for it.
 // 2026-10-11.14: apply-agent-switch.ts gained the Apply Assistant's own switch (APPLY_ASSISTANT_ON_SALE); nothing this function does changed.
-const FN_BUILD = "agent-access.2026-10-11.14";
+// 2026-11-03.1 (S9-001, fix/audit-rest-abuse): a connected app's token is refused with the signed-out answer before the auth server is asked.
+const FN_BUILD = "agent-access.2026-11-03.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -137,6 +139,11 @@ serve(async (req) => {
 
   // The user, from the VERIFIED token. Nothing about identity is read from
   // the body — an address there is what made this an oracle.
+  // S9-001: a token the auth server signed for a connected app (client_id,
+  // role mcp_client) is not the person on the website, though /user answers for it.
+  if (websiteTokenRefusal(req.headers)) {
+    return json({ active: false, status: "signed_out", error: "Sign in to see your agent." }, 401);
+  }
   const authClient = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
     Deno.env.get("SUPABASE_ANON_KEY") ?? "",

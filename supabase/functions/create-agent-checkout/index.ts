@@ -54,6 +54,7 @@ import { checkoutVerdict, verdictBody } from "../_shared/subscription-standing.t
 import { clientAddressOr } from "../_shared/client-address.ts";
 import { checkoutContextOf, recordCheckoutStart } from "../_shared/checkout-start.ts";
 import { bearerOf } from "../_shared/service-caller.ts";
+import { websiteTokenRefusal } from "../_shared/checkout-buyer.ts";
 import { checkoutLanguageOf, checkoutOrigin, euConsentAnswer, euConsentRefusal, policyMetadata, renewalTerms, sessionPolicy } from "../_shared/checkout-policy.ts";
 import { AGENT_PRODUCTS_ON_SALE } from "../_shared/apply-agent-switch.ts";
 import { retiredCheckoutAnswer } from "../_shared/apply-agent-retired.ts";
@@ -65,7 +66,8 @@ import { retiredCheckoutAnswer } from "../_shared/apply-agent-retired.ts";
 // 2026-10-11.15: the retirement sentence's apply-yourself line says what the question marking does (it reads words and can miss an unusually worded question about the buyer) and asks them to read every answer before they send (wave 4 descope, 2026-10-25); nothing this function does changed.
 // 2026-10-11.16: the retirement sentence's apply-yourself line says the marking can miss a question about the buyer even when it is plainly worded (the recheck of the descope, 2026-10-25); nothing this function does changed.
 // 2026-10-11.17: the retirement sentence's apply-yourself line says that inside ChatGPT the AI reads the application form only for Greenhouse or Recruitee, the server's public-API pair (the second recheck of the descope, 2026-10-25); nothing else changed.
-const FN_BUILD = "create-agent-checkout.2026-10-11.17";
+// 2026-11-03.1 (S9-001, fix/audit-rest-abuse): a connected app's token is refused with the signed-out answer before the auth server is asked.
+const FN_BUILD = "create-agent-checkout.2026-11-03.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -115,7 +117,8 @@ serve(async (req) => {
     // and a body address is never read for identity.
     const token = bearerOf(req.headers);
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
-    const { data: userData } = token && token !== anonKey
+    // S9-001: a connected app's token never buys as the person.
+    const { data: userData } = token && token !== anonKey && !websiteTokenRefusal(req.headers)
       ? await supabase.auth.getUser(token).catch(() => ({ data: null }))
       : { data: null };
     const user = (userData as { user?: { id?: string; email?: string | null } | null } | null)?.user ?? null;

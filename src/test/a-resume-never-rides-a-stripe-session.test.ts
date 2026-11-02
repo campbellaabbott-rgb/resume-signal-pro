@@ -296,7 +296,7 @@ describe("create-product-checkout keeps the résumé reference on our side", () 
 
   it("answers its build on the preflight", async () => {
     const res = await handler(new Request("https://harness.supabase.co/functions/v1/create-product-checkout", { method: "OPTIONS" }));
-    expect(res.headers.get("x-fn-build")).toMatch(/^create-product-checkout\.2026-10-(0[4-9]|[1-3]\d)\.[\w-]+$/);
+    expect(buildIsAtLeast(res.headers.get("x-fn-build"), "create-product-checkout", "2026-10-04"), String(res.headers.get("x-fn-build"))).toBe(true);
   });
 });
 
