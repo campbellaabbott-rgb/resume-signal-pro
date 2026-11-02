@@ -339,7 +339,8 @@ const SUPPORTED_METHODS = ["initialize", "tools/list", "tools/call", "prompts/li
 // 2026-10-11.36 (the second recheck of the descope, 2026-10-25): a trailing "remote" or "anywhere" the person excluded (a minus on it, or not, no, non, except and the place words before it) is never lifted into remote:true; the query goes to the board as typed, as origin/main sends it. apply_myself marks a cover-letter text box answeredBy "you" with cvMayHelp, as the answers panel does. The job card's salary field no longer calls a string the board wrote from a vendor's figures verbatim.
 // 2026-10-11.37 (the merge recheck, 2026-10-25): companiesUnresolved also names a name held because its one exact match is a staffing agency's board or has under 10 open roles, and the guide says to ask before using a held candidate.
 // 2026-10-11.38 (recheck 3, 2026-10-26): a name is held only when its one exact match has under 10 open roles, never because the catalogue labels the board an agency's, and a held name is one the board carries; recheckedAt and get_job say the stamp is when the board last read the employer's feed, which may not have included the posting.
-const FN_BUILD = "agent-mcp.2026-10-11.38";
+// 2026-11-02.1 (board-stream round, 2026-11-01): a country word inside another place is not that country (S13-041, query-place.ts countryOf over _shared/work-countries.ts countryMentions); the location argument still goes to the board as typed (S9-002's country and remote reading measured and declined: it lost rows main found, n1461); the keyless page cap holds whatever credential failed (S13-103, answerUnkeyed); check_jobs_open's basis says open is get_job's row test only when the board's exists answer names that test (S13-076), and the weaker sentence otherwise.
+const FN_BUILD = "agent-mcp.2026-11-02.1";
 /** Where a free key is minted — the page every refusal in this file points at. */
 const MINT_URL = "https://resumebooster.work/data-api";
 /** Where a pass is bought, signed in — the fix every pass refusal names. */
@@ -2791,14 +2792,25 @@ function fitDescriptions(cards: Array<Record<string, unknown>>, budget: number):
  * that prunes the corpus as a side effect of an agent checking its list, and
  * a tool annotated readOnlyHint would be lying if it did.
  *
- * The cost of that choice is stated in the answer's `basis`, in full, because
- * it is exactly the kind of gap that becomes a false claim. `exists` asks one
- * question — is there a row? — and that is WEAKER than the test the serving
- * path applies: a row inside the removal grace window (stamped missing, not
- * yet pruned) and a row past the 30-day freshness cap both still exist, and
- * get_job would decline to serve either. Reporting those as "open" without
- * saying so would be the board contradicting itself between two tools.
+ * What `exists` checks is stated in the answer's `basis`, in full, because a
+ * gap here is exactly the kind that becomes a false claim. Until job-board
+ * .100 it asked only whether a row existed, and a row stamped missing but not
+ * yet pruned, or one older than the 30-day cap, still does while the serving
+ * path declines both. Since .100 (S13-076, n1442) it reads detail's row test
+ * and says so in its answer. The basis follows the board's answer, never this
+ * build's assumption about which board is live, so deploy order cannot make
+ * it overstate the check (n1464 in docs/job-board-index-notes.md).
  */
+const OPEN_BASIS_SERVED =
+  "Open means the board still holds a row for this posting and it passes the test get_job applies to a row: its employer's " +
+  "feed listed it at the last refresh and it is inside the board's 30-day freshness cap. A posting inside the removal grace " +
+  "window (the feed stopped listing it and the board has not yet removed it) or past the cap reads closed here, as get_job " +
+  "declines it. It is not a live probe of the employer's site at this instant; get_job on a single id is the closer look.";
+const OPEN_BASIS_ROW =
+  "Open means the board still holds a row for this posting — its employer's feed listed it at the last refresh and the " +
+  "board has not confirmed it gone. It is not a live probe of the employer's site at this instant, and it is a WEAKER " +
+  "test than the one search and get_job apply: a posting inside the removal grace window, or one past the board's 30-day " +
+  "freshness cap, can still read open here while get_job declines to serve it. get_job on a single id is the closer look.";
 async function runCheckJobsOpen(args: Record<string, unknown>, ctx: Ctx = KEYED_CTX): Promise<unknown> {
   const cap = ctx.keyless ? ANON_ALLOWANCE.checkJobsOpenIds : CHECK_JOBS_OPEN_MAX;
   const sent = idsArg(args.ids, cap);
@@ -2828,11 +2840,7 @@ async function runCheckJobsOpen(args: Record<string, unknown>, ctx: Ctx = KEYED_
     closedCount: closed.length,
     ...(notChecked.length ? { notChecked, note: `Only the first ${cap} ids were checked — send the rest in another call${ctx.keyless ? `, or use a key for ${CHECK_JOBS_OPEN_MAX} at once` : ""}.` } : {}),
     ...(restricted.length ? { restricted, restrictedNote: NO_REDISTRIBUTION_REASON } : {}),
-    basis:
-      "Open means the board still holds a row for this posting — its employer's feed listed it at the last refresh and the " +
-      "board has not confirmed it gone. It is not a live probe of the employer's site at this instant, and it is a WEAKER " +
-      "test than the one search and get_job apply: a posting inside the removal grace window, or one past the board's 30-day " +
-      "freshness cap, can still read open here while get_job declines to serve it. get_job on a single id is the closer look.",
+    basis: r.rowTest === "served" ? OPEN_BASIS_SERVED : OPEN_BASIS_ROW,
   };
 }
 
@@ -4224,6 +4232,9 @@ async function answerUnkeyed(
   params: Record<string, unknown> = {},
 ): Promise<{ rpc: unknown; headers: Record<string, string> }> {
   const A = ANON_ALLOWANCE;
+  // Here, not at the door: a junk bearer or an unrecognised key also answers keyless (S13-103).
+  const past = pastKeylessPage(toolName, args);
+  if (past) return { rpc: rpcResult(rpcId, toolOk(past)), headers: {} };
   const address = callerAddress(req.headers);
   const edition = editionOf(req.headers, params);
   const claimsChatGpt = isChatGptCaller(req.headers, params);
@@ -4746,10 +4757,6 @@ Deno.serve(async (req) => {
     } catch (e) {
       if (e instanceof ToolArgumentError) return json(rpcResult(id, toolErr(e.message, e.fix)));
       throw e;
-    }
-    if (!bearer) {
-      const past = pastKeylessPage(toolName, toolArgs);
-      if (past) return json(rpcResult(id, toolOk(past)));
     }
   }
 

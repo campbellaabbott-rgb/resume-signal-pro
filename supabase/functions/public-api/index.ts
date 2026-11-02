@@ -17,7 +17,7 @@ import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supa
 import { attachLastVerified, neverReadTokens } from "./last-verified.ts";
 import { SENDABLE_VENDORS } from "../_shared/apply-automation.ts";
 import { locationTerms } from "../_shared/location-terms.ts";
-import { isStateCodeAlias, locationBranch } from "../_shared/location-match.ts";
+import { ANCHOR, isStateCodeAlias, locationBranch } from "../_shared/location-match.ts";
 import { resumeRoleTerms } from "../_shared/fit-score.ts";
 // EVERY /v1 SEARCH LANDS IN THE SITE'S DEMAND LOG. This function proxies
 // job-board's `list`, which logs a search event unconditionally, so paying
@@ -382,7 +382,8 @@ const LIST_FILTERS = [
 // 2026-10-11.35 (the recheck of the descope, 2026-10-25): no rule change. The application route's description and answeredByMeans say the marks can miss a question about the person even when it is plainly worded.
 // 2026-10-11.36 (the second recheck of the descope, 2026-10-25): the application route marks a cover-letter text box answeredBy "you" with cvMayHelp, as the answers panel and origin/main leave it with the person; it was the one question main leaves to the person that the route sent to a draft.
 // 2026-10-11.37 (recheck 3, 2026-10-26): no rule change. The field notes say last_verified_at (and last_seen) is when the board last read the employer's feed, not proof the read listed the posting: a large board is read in windows.
-const FN_BUILD = "public-api.2026-10-11.37";
+// 2026-11-02.1 (board-stream round, 2026-11-01): a city typed in its own language binds the English name it adds to its country (S13-006; _shared/location-terms.ts and _shared/location-match.ts): the /v1 location or() refuses a US-placed row for "Vienna@Austria" unless it names Austria, and the explain trace shows "Vienna" with outsideUsUnlessNaming.
+const FN_BUILD = "public-api.2026-11-02.1";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -1534,7 +1535,11 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
             ...(postedBefore ? { posted_before: postedBefore } : {}),
             ...(includeUnstated ? { include_unstated_pay: true } : {}),
             // The seven that bound and were not listed (S8-078).
-            ...(locTerms.length ? { location: { terms: locTerms, operator: locTerms.length === 1 && !isStateCodeAlias(locTerms[0]) ? "ilike" : "or" } } : {}),
+            // S13-006: a name bound to a country is shown as the name, and the binding said beside it (n1416).
+            ...(locTerms.length ? { location: {
+              terms: locTerms.map((t) => t.replace(ANCHOR, "")), operator: locTerms.length === 1 && !isStateCodeAlias(locTerms[0]) ? "ilike" : "or",
+              ...(locTerms.some((t) => ANCHOR.test(t)) ? { outsideUsUnlessNaming: Object.fromEntries(locTerms.flatMap((t) => { const m = ANCHOR.exec(t); return m ? [[t.slice(0, m.index), m[1]]] : []; })) } : {}),
+            } } : {}),
             ...(payBasis ? { pay_basis: payBasis } : {}),
             ...(statedPay === true ? { has_stated_pay: true } : {}),
             ...(maxYears !== null ? { max_years: maxYears } : {}),

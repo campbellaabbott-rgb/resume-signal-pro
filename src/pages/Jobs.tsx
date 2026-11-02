@@ -42,7 +42,8 @@ import { BOARD_BUDGET_ERROR, boardBudgetRefusal, httpStatusOf, markBoardBudgetRe
 import { BoardBudgetNotice } from "@/components/jobs/BoardBudgetNotice";
 import { Link, useLocation, useNavigate, useNavigationType, useParams } from "react-router-dom";
 import { companyLanderPath } from "@/lib/public-href";
-import { useCompanyBoardHref } from "@/lib/seo/lander-manifest";
+import { landerManifestSettled, loadLanderManifest, useCompanyBoardHref, usePooledBoards } from "@/lib/seo/lander-manifest";
+import { cachedCurves, curveChunks, rememberCurves, type CurveMemo } from "@/lib/board-curve-memo";
 import { bakedCompanyPrimary } from "@/lib/prerendered-head";
 import type { BoardJob, FillCurve } from "@/lib/board-job";
 import { foldName } from "../../supabase/functions/job-board/search-routing";
@@ -1447,6 +1448,9 @@ interface BoardResponse {
    */
   relatedTotal?: number;
   relatedCapped?: boolean;
+  /** The description tier missed its clock (n482): the related segment was not
+   *  read, which is not zero. `total` and the rows are title matches only. */
+  relatedUnavailable?: boolean;
   countUnavailable?: boolean;
   /** Employer tokens of the request the board does not carry (sweep S11-020):
    *  sent only when every employer the request scopes to is outside the
@@ -2402,10 +2406,12 @@ export default function Jobs() {
       ? { ...mounted.current, loc: location }
       : { loc: location, n: mounted.current.n + 1, id: newBoardId() };
   }
-  return <JobsBoard key={mounted.current.n} boardId={mounted.current.id} />;
+  // The hiring badges' memo outlives each board instance (S12-016).
+  const curveMemo = useRef<CurveMemo>(new Map());
+  return <JobsBoard key={mounted.current.n} boardId={mounted.current.id} curveMemo={curveMemo.current} />;
 }
 
-function JobsBoard({ boardId }: { boardId: string }) {
+function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMemo }) {
   const { t, i18n } = useTranslation();
   // SEO-010: an employer link goes to its written company page, or to the
   // live board filtered to the board when the bake wrote none.
@@ -2542,6 +2548,22 @@ function JobsBoard({ boardId }: { boardId: string }) {
   // company chip left "Open roles at Foo" rendered over the whole 573k board,
   // with the board-wide total presented as Foo's (bug sweep 2026-07-26).
   const landerCompany = routeCompany && company === routeCompany ? routeCompany : undefined;
+  // THE EMPLOYER'S BOARDS (S12-021): on its own page, every board the bake
+  // pools into it, so the list, the count and the watch cover what the baked
+  // page counts. A secondary board's page stays its own board.
+  const pooledBoards = usePooledBoards(routeCompany);
+  const landerScope = landerCompany && pooledBoards ? pooledBoards : null;
+  // The first read of a company page waits for the pool's manifest (at most
+  // 1.5 s), so the page never prints one board's count before the employer's.
+  const [manifestWait, setManifestWait] = useState(() => !!routeCompany && !landerManifestSettled());
+  useEffect(() => {
+    if (!manifestWait) return;
+    let done = false;
+    const finish = () => { if (!done) { done = true; setManifestWait(false); } };
+    void loadLanderManifest().then(finish, finish);
+    const h = setTimeout(finish, 1500);
+    return () => { done = true; clearTimeout(h); };
+  }, [manifestWait]);
   // A LANDER TOKEN TWO HIRING SYSTEMS CARRY (139 in the catalogue, read from
   // the catalogue and not from which boards have live postings). Every
   // per-employer reader keys on the token, so intel, pay, headcount, SEC
@@ -3453,10 +3475,10 @@ function JobsBoard({ boardId }: { boardId: string }) {
     // sortMode!=="salary"} so the body agrees with what the visitor can see.
     inclUncat: inclUncat && sortMode !== "salary",
     country,
-    experience, companyTokens, salaryFloor, salaryCeiling, payBasis, statedPayOnly, includeUnstatedPay,
+    experience, companyTokens: landerScope ?? companyTokens, salaryFloor, salaryCeiling, payBasis, statedPayOnly, includeUnstatedPay,
     maxYears, department, vendor, freshness, employmentType, hideAgencies,
   }), [q, location, remoteOnly, workMode, category, inclUncat, sortMode, country,
-    experience, companyTokens, salaryFloor, salaryCeiling, payBasis, statedPayOnly, includeUnstatedPay,
+    experience, companyTokens, landerScope, salaryFloor, salaryCeiling, payBasis, statedPayOnly, includeUnstatedPay,
     maxYears, department, vendor, freshness, employmentType, hideAgencies]);
   /**
    * IS THE FIELD THE ONLY THING BOUND? Derived from the same body the request
@@ -4102,6 +4124,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
           ...normalizeRow(row),
           searchId: br.searchId,
           rank: offset + i + 1,
+          listOffset: offset,
         }));
         // A page-0 response DEFINES the current list; a later page may only
         // extend one built from the same filters. Appending a mismatch is what
@@ -4420,6 +4443,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
   const first = useRef(true);
   useEffect(() => {
     if (first.current) {
+      if (manifestWait) return;
       first.current = false;
       fetchJobs(0);
       return;
@@ -4434,7 +4458,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
     setRefreshing(true);
     const h = setTimeout(() => fetchJobs(0), 400);
     return () => clearTimeout(h);
-  }, [fetchJobs, listResync]);
+  }, [fetchJobs, listResync, manifestWait]);
 
   // Feature 1 (verify-on-apply): confirm a posting is still live on the
   // company's own board at the moment of interaction — the refresh window
@@ -4600,13 +4624,18 @@ function JobsBoard({ boardId }: { boardId: string }) {
       lastFocusRef.current?.focus?.();
     }
   }, [detailJob]);
-  const openDetail = useCallback(async (job: BoardJob, urlMode: "push" | "replace" | "none" = "push") => {
+  const openDetail = useCallback(async (job: BoardJob, urlMode: "push" | "replace" | "none" | "auto" = "push") => {
     // Race guard (same contract as similarSeq): arrowing down the list fires
     // openDetail per keystroke, and invokeBoard retries after 1.2s — so a slow
     // response for job A could land after the user moved to job B and paint
     // A's description under B's title (and into B's JSON-LD).
     const seq = ++detailSeq.current;
     userClosed.current = false; // an explicit open clears the "don't re-open" flag
+    // "auto" is the wide-screen open nobody chose (S12-012, S12-033): it writes
+    // no address, no viewed mark and no Jump-back-in entry, and Enter does not
+    // apply to it. Any other open makes the posting the reader's.
+    const chosen = urlMode !== "auto";
+    autoSelectedId.current = chosen ? null : job.id;
     setDetailJob(job);
     // OPENS ARE LOGGED ONLY WHEN DELIBERATE. openDetail fires once per keystroke
     // while arrowing down the list, and again when a deep link restores a
@@ -4618,14 +4647,14 @@ function JobsBoard({ boardId }: { boardId: string }) {
     setDetailDesc(null);
     setDetailLoading(true);
     setDetailFailed(false);
-    setViewedIds((prev) => {
+    if (chosen) setViewedIds((prev) => {
       if (prev.has(job.id)) return prev;
       const next = new Set(prev).add(job.id);
       try { localStorage.setItem("rb_viewed_jobs", JSON.stringify([...next].slice(-1000))); } catch { /* session-only */ }
       return next;
     });
     // Jump-back-in strip: keep a tiny snapshot of the last few viewed jobs.
-    try {
+    if (chosen) try {
       const prevRecent: Array<{ id: string; title: string; company: string }> =
         JSON.parse(localStorage.getItem("rb_recent_jobs") ?? "[]");
       const nextRecent = [{ id: job.id, title: job.title, company: job.company },
@@ -4633,7 +4662,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
       localStorage.setItem("rb_recent_jobs", JSON.stringify(nextRecent));
       setRecentJobs(nextRecent);
     } catch { /* cosmetic */ }
-    if (urlMode !== "none") {
+    if (urlMode === "push" || urlMode === "replace") {
       const p = new URLSearchParams(window.location.search);
       p.set("job", job.id);
       const url = `${window.location.pathname}?${p.toString()}`;
@@ -4774,10 +4803,23 @@ function JobsBoard({ boardId }: { boardId: string }) {
   // Back button closes the panel; Escape too. Deep link opens it on load.
   useEffect(() => {
     const onPop = () => {
-      if (new URLSearchParams(window.location.search).has("job")) return;
+      // A fragment jump on the address this board last wrote (index.html's
+      // skip link) pops nothing off the panel: the wrapper's own rule.
+      const here = `${window.location.pathname}${window.location.search}`;
+      if (window.history.state == null && window.location.hash !== "" && boardAddress?.id === boardId && boardAddress.at === here) return;
       // Read BEFORE closeDetail resets it: only a pop that landed on the entry
-      // under a pushed panel can have left that entry stale.
+      // under a pushed panel can have left that entry stale. It is read before
+      // the ?job= test (S12-012): the entry under a pushed panel can carry an
+      // arrowed ?job=, and returning on it left the flag up and the address
+      // stale, so the next close took a Back off the board.
       const poppedPushedPanel = detailPushed.current;
+      const landed = new URLSearchParams(window.location.search);
+      if (!poppedPushedPanel && landed.has("job")) return;
+      if (poppedPushedPanel && landed.has("job")) {
+        landed.delete("job");
+        const rest = landed.toString();
+        writeBoardEntry("replace", boardId, `${window.location.pathname}${rest ? `?${rest}` : ""}`);
+      }
       closeDetail(true);
       if (poppedPushedPanel) setUrlSyncTick((n) => n + 1);
     };
@@ -5008,6 +5050,15 @@ function JobsBoard({ boardId }: { boardId: string }) {
   const watchCompany = async (promise = true) => {
     if (!landerCompany) return;
     if (!session) return requireAuth();
+    // A BOARD NAME TWO HIRING SYSTEMS SHARE IS NO EMPLOYER (S13-117): its
+    // watch is named for the boards, as its page and its button are.
+    const boardsNamed = landerModel?.variant === "collision";
+    const watchName = boardsNamed
+      ? t("jobsPage.watchNameBoards", "New roles on boards named “{{token}}”", { token: landerCompany })
+      : t("jobsPage.watchName", "New roles at {{company}}", { company: landerCompanyName });
+    // The employer's boards (S12-021) ride as `companies`; `company` stays the
+    // page's own board, which is all a digest older than the list reads.
+    const params = landerScope ? { company: landerCompany, companies: landerScope } : { company: landerCompany };
     // digest_opt_in was never set here, so "watching" fed the account counts
     // but produced NO email, ever — the watch list had no outbound consumer.
     // A watch click is an explicit ask to hear about new roles: opt the
@@ -5015,8 +5066,8 @@ function JobsBoard({ boardId }: { boardId: string }) {
     // email), and the toast below says exactly that.
     let { error: err } = await searchesTable().insert({
       user_id: session.user.id,
-      name: t("jobsPage.watchName", "New roles at {{company}}", { company: landerCompanyName }),
-      params: { company: landerCompany },
+      name: watchName,
+      params,
       digest_opt_in: true,
       digest_cadence: "daily",
     });
@@ -5026,13 +5077,15 @@ function JobsBoard({ boardId }: { boardId: string }) {
     if (err && /digest_cadence/.test(err.message ?? "")) {
       ({ error: err } = await searchesTable().insert({
         user_id: session.user.id,
-        name: t("jobsPage.watchName", "New roles at {{company}}", { company: landerCompanyName }),
-        params: { company: landerCompany },
+        name: watchName,
+        params,
         digest_opt_in: true,
       }));
     }
     if (err && err.code === "23505") {
-      toast({ title: t("jobsPage.watchExists", "You're already watching {{company}}.", { company: landerCompanyName }) });
+      toast({ title: boardsNamed
+        ? t("jobsPage.watchExistsBoards", "You're already watching boards named “{{token}}”.", { token: landerCompany })
+        : t("jobsPage.watchExists", "You're already watching {{company}}.", { company: landerCompanyName }) });
       return;
     }
     if (err) {
@@ -5040,7 +5093,9 @@ function JobsBoard({ boardId }: { boardId: string }) {
       return;
     }
     toast({
-      title: t("jobsPage.watchSaved", "Watching {{company}}", { company: landerCompanyName }),
+      title: boardsNamed
+        ? t("jobsPage.watchSavedBoards", "Watching boards named “{{token}}”", { token: landerCompany })
+        : t("jobsPage.watchSaved", "Watching {{company}}", { company: landerCompanyName }),
       ...(promise ? { description: t("jobsPage.watchSavedDescAlert", "We'll email you when they post new roles (daily at most — unsubscribe any time), and your account shows the new-since-last-look count.") } : {}),
     });
   };
@@ -5617,10 +5672,28 @@ function JobsBoard({ boardId }: { boardId: string }) {
   // and the page that says it "shows no employer facts here" printed a badge
   // and a count built from two employers. With no row the card's slot and the
   // detail pane's line render nothing, and the filter names the token as shared.
+  //
+  // IN SCREEN ORDER, AND KEPT WHILE THE BOARD IS OPEN (S12-016). The RPC's
+  // cost grows with the employers asked, so one call for the whole page made
+  // the first card's badge wait for the last employer's record. The first call
+  // carries the first screen's employers and the rest follow one call at a
+  // time; an employer answered inside the TTL is drawn from the route
+  // wrapper's memo, so a board page remounted for (an employer page, then
+  // Back) does not ask again (src/lib/board-curve-memo.ts).
   useEffect(() => {
-    const batch = Array.from(new Set(jobs.map((j) => j.token).filter((x): x is string => !!x && !isCollidedToken(x))))
+    const unasked = Array.from(new Set(jobs.map((j) => j.token).filter((x): x is string => !!x && !isCollidedToken(x))))
       .filter((tok) => !healthAttempted.current.has(tok))
       .slice(0, 200);
+    const kept = cachedCurves(curveMemo, unasked);
+    if (kept.size > 0) {
+      kept.forEach((_, tok) => healthAttempted.current.add(tok));
+      setCurveByToken((prev) => {
+        const next = { ...prev };
+        kept.forEach((row, tok) => { if (row) next[tok] = normaliseCurve(row as unknown as FillCurve); });
+        return next;
+      });
+    }
+    const batch = unasked.filter((tok) => !kept.has(tok));
     // Nothing left to ask for: every visible token has been attempted, so the
     // pending flag must clear here as well as on the response. A run whose
     // fetch was cancelled by a `jobs` change leaves its tokens marked attempted,
@@ -5670,18 +5743,21 @@ function JobsBoard({ boardId }: { boardId: string }) {
     };
     (async () => {
       try {
-        const { data, error } = await (supabase as unknown as {
-          rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>;
-        }).rpc("get_company_fill_curve", { p_tokens: batch });
-        if (cancelled) return;
-        if (error || !Array.isArray(data)) { giveUp(); return; }
-        setCurveByToken((prev) => {
-          const next = { ...prev };
-          for (const row of data as FillCurve[]) {
-            if (row?.company_token) next[row.company_token] = normaliseCurve(row);
-          }
-          return next;
-        });
+        for (const chunk of curveChunks(batch)) {
+          const { data, error } = await (supabase as unknown as {
+            rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>;
+          }).rpc("get_company_fill_curve", { p_tokens: chunk });
+          if (cancelled) return;
+          if (error || !Array.isArray(data)) { giveUp(); return; }
+          rememberCurves(curveMemo, chunk, data);
+          setCurveByToken((prev) => {
+            const next = { ...prev };
+            for (const row of data as FillCurve[]) {
+              if (row?.company_token) next[row.company_token] = normaliseCurve(row);
+            }
+            return next;
+          });
+        }
         settled = true;
         setHealthPending(false);
       } catch { giveUp(); }
@@ -5692,7 +5768,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
       // back so the next run asks again — see `settled` above.
       if (!settled) batch.forEach((tok) => healthAttempted.current.delete(tok));
     };
-  }, [jobs]);
+  }, [jobs, curveMemo]);
 
   // THE OTHER HALF, FETCHED THE SAME WAY: get_company_growth for the visible
   // tokens, batched, deduped, cancel-safe. Same cap, same `settled` rule (only
@@ -6043,30 +6119,45 @@ function JobsBoard({ boardId }: { boardId: string }) {
     // the "Agent can apply" chip never fires on the one screen everyone sees.
     //
     // ROUND-ROBIN, NOT A CAP. Nothing is dropped and nothing is hidden — the
-    // same rows in a different order — so "Showing N" stays true, pagination is
-    // unaffected, and no employer's postings become unreachable. Order WITHIN
-    // each employer is preserved, so the newest role at any company still
-    // outranks its older ones.
+    // same rows in a different order — so "Showing N" stays true and no
+    // employer's postings become unreachable. Order WITHIN each employer is
+    // preserved, so the newest role at any company still outranks its older
+    // ones.
+    //
+    // ONE PAGE AT A TIME (S10-008). Woven across every appended page, each
+    // employer new on a Load more took an early-round slot near the top: 53 of
+    // 60 new cards landed above the reader and card #60 moved to #113. Each
+    // page (a card's first row's listOffset) is woven on its own and appended
+    // after the pages before it, so a card keeps its place once it is drawn.
     //
     // Strict date order is genuinely relaxed, so the sort label says so rather
     // than claiming "newest first" and quietly meaning something else.
     if (!interleaveEmployers) return order;
-    const byCompany = new Map<string, Array<(typeof order)[number]>>();
+    const pages = new Map<number, Array<(typeof order)[number]>>();
     for (const g of order) {
-      const k = (g.primary.token ?? g.primary.company ?? "").toLowerCase();
-      const bucket = byCompany.get(k);
-      if (bucket) bucket.push(g); else byCompany.set(k, [g]);
+      const at = g.primary.listOffset ?? 0;
+      const pg = pages.get(at);
+      if (pg) pg.push(g); else pages.set(at, [g]);
     }
-    // Buckets keep first-appearance order, so the employer holding the single
-    // newest posting still leads the page.
-    const buckets = [...byCompany.values()];
     const woven: typeof order = [];
-    for (let round = 0; woven.length < order.length; round++) {
-      let placed = false;
-      for (const b of buckets) {
-        if (round < b.length) { woven.push(b[round]); placed = true; }
+    for (const pageGroups of pages.values()) {
+      const byCompany = new Map<string, Array<(typeof order)[number]>>();
+      for (const g of pageGroups) {
+        const k = (g.primary.token ?? g.primary.company ?? "").toLowerCase();
+        const bucket = byCompany.get(k);
+        if (bucket) bucket.push(g); else byCompany.set(k, [g]);
       }
-      if (!placed) break; // exhausted — cannot loop forever
+      // Buckets keep first-appearance order, so the employer holding the single
+      // newest posting still leads the page.
+      const buckets = [...byCompany.values()];
+      const start = woven.length;
+      for (let round = 0; woven.length - start < pageGroups.length; round++) {
+        let placed = false;
+        for (const b of buckets) {
+          if (round < b.length) { woven.push(b[round]); placed = true; }
+        }
+        if (!placed) break; // exhausted — cannot loop forever
+      }
     }
     return woven;
   }, [displayJobs, interleaveEmployers]);
@@ -6177,7 +6268,11 @@ function JobsBoard({ boardId }: { boardId: string }) {
   // empty — select the top result once the list settles. replace-mode URL so
   // browsing never piles up history entries.
   useEffect(() => {
-    if (loading || refreshing || detailJob || groupedJobs.length === 0) return;
+    // The board's own pick follows the list's top when the list changes
+    // (S12-033); a posting the reader chose stays open.
+    const boardsPick = !!detailJob && autoSelectedId.current === detailJob.id;
+    if (loading || refreshing || (detailJob && !boardsPick) || groupedJobs.length === 0) return;
+    if (boardsPick && groupedJobs[0].primary.id === detailJob!.id) return;
     if (!window.matchMedia("(min-width: 1024px)").matches) return;
     // A COMPANY PAGE KEEPS ITS RAIL. There only an explicit open or a ?job=
     // deep link opens a posting: the auto-selected one rewrote the address,
@@ -6196,8 +6291,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
     // Never re-summon a panel the user closed — the ✕/Escape/Back used to be
     // instantly undone here, so the pane could not be closed at all on desktop.
     if (userClosed.current) return;
-    autoSelectedId.current = groupedJobs[0].primary.id;
-    void openDetail(groupedJobs[0].primary, "replace");
+    void openDetail(groupedJobs[0].primary, "auto");
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, refreshing, detailJob, groupedJobs]);
 
@@ -6247,7 +6341,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
           void openDetail(job, "replace");
           document.querySelector(`[data-job-id="${CSS.escape(job.id)}"]`)?.scrollIntoView({ block: "nearest" });
         }
-      } else if (e.key === "Enter" && detailJob && window.matchMedia("(min-width: 1024px)").matches) {
+      } else if (e.key === "Enter" && detailJob && autoSelectedId.current !== detailJob.id && window.matchMedia("(min-width: 1024px)").matches) {
         window.open(detailJob.applyUrl, "_blank", "noopener,noreferrer");
         trackApply(detailJob);
         void promoteApplied(detailJob);
@@ -6442,10 +6536,13 @@ function JobsBoard({ boardId }: { boardId: string }) {
         ? { total: hiringCurve.feed_total, readAt: hiringCurve.feed_read_at, state: hiringCurve.feed_state, capped: hiringCurve.feed_capped, bucket: hiringCurve.observability_bucket, trackingDays: hiringCurve.tracking_days }
         : null,
       undatedOpen: undated === null || undated === undefined || undated === "" ? null : Number(undated),
+      pooledBoards: landerScope ? landerScope.length : null,
+      // One board's own figures never stand for the employer's pooled count.
+      ...(landerScope ? { feedTotal: null, boardTotal: null, undatedOpen: null } : {}),
     });
   }, [landerCompany, landerStoredName, data, hiringCurve, landerFeedTotal, curveAnsweredAt, landerBoardReadAt, landerSource, jobs,
     landerCollision, loading, error, budgetRefusal, landerRecord, landerGrowthVerdict, landerLayoffFilings, landerVisitorFilters, listAnsweredAt,
-    landerReplyCurrent, landerUncarried]);
+    landerReplyCurrent, landerUncarried, landerScope]);
   const onCompanyPage = !!landerCompany && !!landerModel;
   // The polite region's empty line (below): a zero company page has no filter
   // to blame, so it says the page's own line (round 3 review, 2026-10-25),
@@ -7274,7 +7371,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
    * statement, which is true either way.
    */
   const endComplete = endServerConfirmed && !endCountUnknown && !endApproximate
-    && data?.countCapped !== true && data?.relatedCapped !== true
+    && data?.countCapped !== true && data?.relatedCapped !== true && data?.relatedUnavailable !== true
     && jobs.length >= pageTotalCount;
   /**
    * WHICH OF THE THREE ENDINGS THE TERMINAL CARD IS RENDERING.
@@ -10203,7 +10300,9 @@ function JobsBoard({ boardId }: { boardId: string }) {
               company={landerModel.variant === "collision" || landerModel.variant === "usajobs" || landerModel.name.name
                 ? { name: landerModel.name.name, generic: landerModel.name.generic, openRoles: landerModel.openRoles, kind: landerModel.variant === "collision" ? "collision" : landerModel.variant === "usajobs" ? "usajobs" : "employer", token: landerCompany ?? undefined }
                 : undefined}
-              sort={isSmallScreen ? undefined : { value: shownSortControl, options: sortOptions, onChange: applySort }}
+              /* At every width (S13-119): a phone had no order control while a
+                 shared ?sort=salary link still applied the pay order. */
+              sort={{ value: shownSortControl, options: sortOptions, onChange: applySort }}
             />
           )}
           {/* WHY THIS SITS ABOVE THE RESULTS/EMPTY SPLIT, NOT INSIDE IT.
@@ -10237,6 +10336,11 @@ function JobsBoard({ boardId }: { boardId: string }) {
                       on screen — an active filter chip, results that ignore it, and no
                       word to the user. A filter that did nothing has to SAY so where
                       the results are, not only in the JSON. */}
+                  {data?.relatedUnavailable === true && (
+                    <p className="text-xs text-muted-foreground mt-1" data-related-unavailable>
+                      {t("jobsPage.relatedUnavailable", "Postings that mention your search only in their description could not be searched just now, so they are not counted or listed here. Try again in a moment.")}
+                    </p>
+                  )}
                   {Array.isArray(data?.droppedTerms) && data.droppedTerms.length > 0 && (
                     <p className="text-xs text-muted-foreground mt-1">
                       {t("jobsPage.droppedTerms", "Searched titles for the rest — ignored {{words}}, which don't appear in job titles.", {
@@ -10959,6 +11063,13 @@ function JobsBoard({ boardId }: { boardId: string }) {
                     is disproved. */}
                 {activelyHiringOnly
                   ? t("jobsPage.resultsSummaryNoTotal", "Showing {{shown}} matching openings", { shown: shownCount })
+                  // TITLE MATCHES ONLY (S12-034): the description tier was not
+                  // read, so its total is no count of every match.
+                  : data?.relatedUnavailable === true && typeof data?.total === "number"
+                  ? t("jobsPage.resultsSummaryTitleOnly", "Showing {{shown}} of {{total}} openings with your search in the title", {
+                      shown: shownCount,
+                      total: `${data.total.toLocaleString()}${data.countCapped ? "+" : ""}`,
+                    })
                   : typeof data?.relatedTotal === "number" && data.relatedTotal > 0
                   ? t("jobsPage.resultsSummarySegmented", "Showing {{shown}} — {{exact}} exact and {{related}} where the term appears in the description", {
                       shown: shownCount,
@@ -11409,7 +11520,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                     seen real openings first, early enough to still be found.
                     On a page with fewer than four results it falls back to the
                     last card so it never disappears entirely. */}
-                {groupedJobs.map(({ primary: job, siblings }, gi) => {
+                {groupedJobs.map(({ primary: job, siblings, postings }, gi) => {
                   const mobileDropAt = Math.min(3, Math.max(groupedJobs.length - 1, 0));
                   // THE SEAM, MADE STRUCTURAL. Per-card "matched in
                   // description" badges tell the truth row by row; this names
@@ -11490,7 +11601,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                       ctx={{
                         surface: onCompanyPage ? "company" : "board",
                         density,
-                        hideEmployer: landerOneEmployer && job.token === landerCompany,
+                        hideEmployer: landerOneEmployer && !!job.token && (landerScope ?? [landerCompany]).includes(job.token),
                         selected: detailJob?.id === job.id,
                       }}
                       href={jobDetailHref(job.id)}
@@ -11655,6 +11766,8 @@ function JobsBoard({ boardId }: { boardId: string }) {
                         <div className="mt-2">
                           <button
                             type="button"
+                            aria-expanded={expandedGroups.has(job.id)}
+                            aria-controls={`fold-${encodeURIComponent(job.id)}`}
                             onClick={() => setExpandedGroups((prev) => {
                               const next = new Set(prev);
                               if (next.has(job.id)) next.delete(job.id); else next.add(job.id);
@@ -11663,25 +11776,31 @@ function JobsBoard({ boardId }: { boardId: string }) {
                             className="text-[11px] text-primary font-medium hover:underline"
                           >
                             {(() => {
-                              // "Locations" only when every sibling is a different
-                              // place from the card and from each other: the
-                              // server's folded postings are often one store's
-                              // repeats (S11-005), and those are openings.
+                              // EVERY POSTING THE CARD STANDS FOR (S12-048), not
+                              // the siblings listed: the server lists at most 50,
+                              // and a 98-posting card read "50 more". "Locations"
+                              // only when every one is a different place: all
+                              // listed and pairwise distinct, or the server's own
+                              // distinct-place count equal to its posting count.
+                              // Otherwise they are openings (one store's repeats,
+                              // S11-005).
+                              const more = Math.max(siblings.length, postings - 1);
                               const places = siblings.map((sib) => (sib.location ?? "").trim().toLowerCase());
-                              const allPlaces = places.every((p) => p && p !== (job.location ?? "").trim().toLowerCase())
-                                && new Set(places).size === places.length;
+                              const allPlaces = more === siblings.length
+                                ? places.every((p) => p && p !== (job.location ?? "").trim().toLowerCase()) && new Set(places).size === places.length
+                                : postings === (job.postingCount ?? 1) && job.locationCount === job.postingCount;
                               if (expandedGroups.has(job.id)) {
                                 return allPlaces
                                   ? t("jobsPage.hideLocations", "Hide other locations")
                                   : t("jobsPage.hideOpenings", "Hide the other openings");
                               }
                               return allPlaces
-                                ? t("jobsPage.moreLocations", "Same role in {{count}} more locations", { count: siblings.length })
-                                : t("jobsPage.moreOpenings", "{{count}} more openings of this role", { count: siblings.length });
+                                ? t("jobsPage.moreLocations", "Same role in {{count}} more locations", { count: more })
+                                : t("jobsPage.moreOpenings", "{{count}} more openings of this role", { count: more });
                             })()}
                           </button>
                           {expandedGroups.has(job.id) && (
-                            <ul className="mt-1.5 space-y-1 border-l-2 border-border/60 pl-3">
+                            <ul id={`fold-${encodeURIComponent(job.id)}`} className="mt-1.5 space-y-1 border-l-2 border-border/60 pl-3">
                               {siblings.map((sib) => (
                                 <li key={sib.id} className="flex items-center gap-2 text-[12px] text-muted-foreground">
                                   <MapPin className="w-3 h-3 shrink-0" />

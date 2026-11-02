@@ -85,6 +85,9 @@ function notBinding(t: string, at: number, end: number, before: string): boolean
   return wish > need;
 }
 
+// What follows a 16-21 year figure when it is work, not an age (n1420).
+const AGE_FOLLOWS_WORK = /^[^.;!?\n]*?\b(?:experience|exp|work|industry|professional|relevant|related|progressive|in\s+(?!age\b)\w|as\s+an?\s)/;
+
 // Pull the binding minimum-years requirement from posting text. Only counts year
 // figures tied to an experience/work context (so "founded 10 years ago" or
 // "401k after 1 year" don't register), and takes the MAX of the stated lower
@@ -118,7 +121,9 @@ export function parseMinYears(text: string): number | null {
       if ((/\bor\s+more\b/.test(m[0]) && /\d\s*to\s*$/.test(before)) || /\bsubstitute\s+for\s+$/.test(before)) continue;
       // A MINIMUM AGE IS NOT EXPERIENCE (L8-15): "18 years or older and able
       // to work", "at least 18 years of age".
-      if (/\b(?:of\s+age|old|older)\b/.test(gap) || /^\s*(?:of\s+age|old\b|or\s+older)/.test(after) || /\b(?:age|aged)\s*(?:of\s*)?$/.test(before)) continue;
+      if (/\b(?:of\s+age|old|older)\b/.test(gap) || /^\s*-?\s*(?:of\s+age|old\b|or\s+older)/.test(after) || /\b(?:age|aged)\s*(?:of\s*)?$/.test(before)) continue;
+      // Rationale: docs/job-board-index-notes.md#n1420-an-age-a-story-and-a-rung
+      if (/^\s*ago\b/.test(gap) || (re === backward && /^(?:1[6-9]|2[01])$/.test(m[1]) && !m[0].startsWith("exp") && !AGE_FOLLOWS_WORK.test(t.slice(end, end + 50)))) continue;
       // THE COMPANY'S YEARS ARE NOT THE CANDIDATE'S (L7-09): "for over 15
       // years, Acme has been ...". Only a company clause; "over 10 years of
       // experience" is a requirement.
@@ -175,11 +180,17 @@ export function bandFromTitle(title: string): ExperienceBand | null {
   return null;
 }
 
+/** A level the employer picked in its ATS (n1421): it fills only what the posting's words leave unsaid. */
+export type StatedLevel = { band: ExperienceBand | null; minYears: number | null };
 export function detectExperience(
   title: string,
   description?: string | null,
+  stated?: StatedLevel | null,
 ): { band: ExperienceBand | null; minYears: number | null } {
+  const rung = bandFromTitle(title);
   const minYears = parseMinYears(`${title}\n${description ?? ""}`);
+  // Rationale: docs/job-board-index-notes.md#n1420-an-age-a-story-and-a-rung
   if (minYears != null) return { band: bandFromYears(minYears), minYears };
-  return { band: bandFromTitle(title), minYears: null };
+  const s = stated?.minYears ?? null;
+  return { band: rung ?? (s != null ? bandFromYears(s) : stated?.band ?? null), minYears: s };
 }

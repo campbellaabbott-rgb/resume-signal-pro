@@ -47,6 +47,24 @@ export type Database = {
         }
         Relationships: []
       }
+      _mig_staging: {
+        Row: {
+          md5: string
+          name: string
+          sql: string
+        }
+        Insert: {
+          md5: string
+          name: string
+          sql: string
+        }
+        Update: {
+          md5?: string
+          name?: string
+          sql?: string
+        }
+        Relationships: []
+      }
       ab_test_events: {
         Row: {
           created_at: string
@@ -1510,6 +1528,30 @@ export type Database = {
         }
         Relationships: []
       }
+      company_name_evidence: {
+        Row: {
+          display_name: string
+          evidence: string[]
+          quote: string
+          read_on: string
+          slug: string
+        }
+        Insert: {
+          display_name: string
+          evidence: string[]
+          quote: string
+          read_on: string
+          slug: string
+        }
+        Update: {
+          display_name?: string
+          evidence?: string[]
+          quote?: string
+          read_on?: string
+          slug?: string
+        }
+        Relationships: []
+      }
       company_name_overrides: {
         Row: {
           added_at: string
@@ -1735,6 +1777,36 @@ export type Database = {
         }
         Relationships: []
       }
+      employer_perk_audit_draws: {
+        Row: {
+          drawn_at: string
+          drawn_rows: number
+          extractor_version: number
+          id: number
+          perk: string
+          recorded_at: string | null
+          recorded_mode: string | null
+        }
+        Insert: {
+          drawn_at?: string
+          drawn_rows: number
+          extractor_version: number
+          id?: number
+          perk: string
+          recorded_at?: string | null
+          recorded_mode?: string | null
+        }
+        Update: {
+          drawn_at?: string
+          drawn_rows?: number
+          extractor_version?: number
+          id?: number
+          perk?: string
+          recorded_at?: string | null
+          recorded_mode?: string | null
+        }
+        Relationships: []
+      }
       employer_perk_board_flags: {
         Row: {
           as_of: string
@@ -1884,6 +1956,7 @@ export type Database = {
           as_of: string
           company_token: string
           country: string
+          extractor_version: number | null
           k: number
           n: number
           perk: string
@@ -1897,6 +1970,7 @@ export type Database = {
           as_of?: string
           company_token: string
           country: string
+          extractor_version?: number | null
           k: number
           n: number
           perk: string
@@ -1910,6 +1984,7 @@ export type Database = {
           as_of?: string
           company_token?: string
           country?: string
+          extractor_version?: number | null
           k?: number
           n?: number
           perk?: string
@@ -2005,9 +2080,12 @@ export type Database = {
       employer_profile_perk_publish: {
         Row: {
           audit_correct: number | null
+          audit_draw_id: number | null
+          audit_drawn_at: string | null
           audit_judged: number | null
           audit_mode: string | null
           audit_note: string | null
+          audited_version: number | null
           bit: number
           counts: string
           last_audited_at: string | null
@@ -2017,9 +2095,12 @@ export type Database = {
         }
         Insert: {
           audit_correct?: number | null
+          audit_draw_id?: number | null
+          audit_drawn_at?: string | null
           audit_judged?: number | null
           audit_mode?: string | null
           audit_note?: string | null
+          audited_version?: number | null
           bit: number
           counts: string
           last_audited_at?: string | null
@@ -2029,9 +2110,12 @@ export type Database = {
         }
         Update: {
           audit_correct?: number | null
+          audit_draw_id?: number | null
+          audit_drawn_at?: string | null
           audit_judged?: number | null
           audit_mode?: string | null
           audit_note?: string | null
+          audited_version?: number | null
           bit?: number
           counts?: string
           last_audited_at?: string | null
@@ -6094,16 +6178,18 @@ export type Database = {
         Returns: string
       }
       employer_perk_audit_draw: {
-        Args: { p_perk: string; p_rows?: number }
+        Args: { p_perk: string; p_rows?: number; p_version: number }
         Returns: Json
       }
       employer_perk_audit_record: {
         Args: {
           p_correct: number
+          p_draw_id: number
           p_judged: number
           p_mode: string
           p_note?: string
           p_perk: string
+          p_version: number
         }
         Returns: Json
       }
@@ -7802,7 +7888,7 @@ export type Database = {
           p_resume_word_count?: number
           p_visitor_id?: string
         }
-        Returns: undefined
+        Returns: boolean
       }
       record_scan_outcome: {
         Args: { p_ip: string; p_outcome: string; p_report_id: string }

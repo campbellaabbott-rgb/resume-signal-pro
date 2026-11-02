@@ -38,7 +38,8 @@ describe("capture: structured fields only, nine vendors", () => {
   });
 
   it("all nine vendors wire it", () => {
-    const wires = NORM.match(/employmentType: normalizeEmploymentType\(/g) ?? [];
+    // employmentTypeFromLabel (board-stream fields, n1422) is the same closed ladder plus one class word read from the vendor's label.
+    const wires = NORM.match(/employmentType: (?:normalizeEmploymentType|employmentTypeFromLabel)\(/g) ?? [];
     expect(wires.length, "a vendor's capture vanished").toBeGreaterThanOrEqual(9);
   });
 });

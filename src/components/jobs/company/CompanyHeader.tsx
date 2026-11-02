@@ -383,6 +383,11 @@ export function CompanyHeader({ model, token, system, countries = [], workMode, 
             ? <p className="text-sm font-medium text-foreground sm:text-base" data-company-answer="">{answer}</p>
             : !model.openRoles && (model.answerable || !name || !model.nameSettled) ? <span aria-hidden="true" data-company-answer-reserve="" className="block h-5 sm:h-6 w-56 max-w-full rounded-md bg-muted animate-pulse motion-reduce:animate-none" /> : null}
           {answer && totalLine && <p className="text-meta text-muted-foreground" data-company-board-total="">{totalLine}</p>}
+          {answer && !zero && model.pooledBoards && (
+            <p className="text-meta text-muted-foreground" data-company-pooled-boards="">
+              {t("companyProfile.pooledBoards", "Counted across {{n}} of this employer's hiring-system boards", { n: fmtCount(model.pooledBoards, { lng: lang }) })}
+            </p>
+          )}
           {subtitle && <p className="hidden sm:block text-sm text-muted-foreground">{subtitle}</p>}
         </div>
       </div>

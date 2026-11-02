@@ -1,24 +1,4 @@
-/**
- * AN EMPLOYER ASKED FOR BY NAME IS FOUND BY NAME (wave 4, job-board .93).
- *
- * companies:["Humana"] answered 0 with no note: the filter takes board tokens
- * (humana~wd5~Humana_External_Career_Site), and an AI asking for an employer
- * sends the name. A name now resolves the way company-suggest reads the
- * employer list, folded both sides: an exact name, plus the boards we name
- * after it in parentheses ("CenterWell (Humana)"). Two different employers
- * that share the exact name are never merged; the name is refused with them
- * as candidates. A name that matches nothing is refused with up to five near
- * names. Either refusal is named on the answer, never silently dropped.
- *
- * BOUNDED (review of 9fe3bc0d): every name was matched against every
- * employer, two or three folds each, before any cap, so 100 names in a 1.9 KB
- * anonymous body cost more than a request's CPU budget. At most
- * NAMES_PER_CALL names are looked up per call (the rest are named as not
- * looked up), and the employer list is folded once per list into an index
- * kept as long as that list is (job-board memoises it per refresh read).
- *
- * Pure, so vitest walks it.
- */
+// Rationale: docs/job-board-index-notes.md#n1492-import-foldtypeahead-from-search-routing
 import { foldTypeahead } from "./search-routing.ts";
 
 export type FacetEmployer = { token?: string; name?: string; open?: number; count?: number; tokens?: string[] };

@@ -109,7 +109,7 @@ describe("two doors onto one board", () => {
     // (quoted; a state code binds at a boundary), mirrored into _shared because
     // a bundle carries only its own directory and _shared (L13-01 on /v1).
     expect(API, "a metro must OR every expanded name through the board's branch builder").toMatch(/qb\.or\(locTerms\.map\(locationBranch\)\.join\(","\)\)/);
-    expect(API).toMatch(/import \{ isStateCodeAlias, locationBranch \} from "\.\.\/_shared\/location-match\.ts";/);
+    expect(API).toMatch(/import \{ (?:ANCHOR, )?isStateCodeAlias, locationBranch \} from "\.\.\/_shared\/location-match\.ts";/);
   });
 
   it("mirrors the board's own column semantics rather than inventing new ones", () => {

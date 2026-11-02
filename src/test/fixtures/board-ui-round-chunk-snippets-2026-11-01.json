@@ -1,0 +1,66 @@
+{
+ "_note": "Snippets cut on 2026-11-01 from a vite build of branch fix/bs-ui (Jobs-H0pFQLDG.js, rb-en_ns_jobsPage-Dyyle7Hr.js) where every 99zzzz U line matched, and the same regions of the then-live Jobs-yO5fGjIq.js where none did. Read by src/test/board-ui-verify-section-99zzzz-fails-what-it-claims.test.ts.",
+ "built": {
+  "U1a": [
+   ".primary,\"auto\")",
+   "r===\"push\"||r===\"replace\"){const x=new URLSearchParams"
+  ],
+  "U1b": [
+   "m&&g.has(\"job\")){g.delete(\"job\");const x=g.toString();qt(\"replace\""
+  ],
+  "U2a": [
+   "m=r!==\"auto\";if(fo.current=m?null:s.id,ho(s),r===\"push\"&&Dl(s,\"open\"),po(null),Ir(!0),Br(!1),m&&Cm(x=>{if(x.has(s.id))return x;const v=new Set(x).add(s.id);try{localStorage.setItem(\"rb_viewed_jobs\",JSON.stringify([...v].slice(-1e3)))}catch{}return v}),m)try{const x=JSON.parse(localStorage.getItem(\"rb_recent_jobs\")"
+  ],
+  "U2b": [
+   "key===\"Enter\"&&w&&fo.current!==w.id&&window.matchMedia(\"(min-width: 1024px)\").matches"
+  ],
+  "U3": [
+   ",listOffset:s}",
+   ".primary.listOffset??0"
+  ],
+  "U4": [
+   "Math.max(r.length,l-1)",
+   "\"aria-expanded\":Zr.has(s.id),\"aria-controls\":`fold-${encodeURIComponent(s.id)}`",
+   "id:`fold-${encodeURIComponent(s.id)}`"
+  ],
+  "U5": [
+   ".relatedUnavailable)!==!0",
+   "\"data-related-unavailable\":!0",
+   "\"jobsPage.resultsSummaryTitleOnly\""
+  ],
+  "U6": [
+   "token:k??void 0}:void 0,sort:{value:"
+  ],
+  "U7": [
+   "companyTokens:xe??se",
+   "{company:k,companies:xe}:{company:k}",
+   "\"data-company-pooled-boards\":\"\""
+  ],
+  "U8": [
+   "\"jobsPage.watchNameBoards\"",
+   "\"jobsPage.watchSavedBoards\"",
+   "\"jobsPage.watchExistsBoards\""
+  ],
+  "U9": [
+   "for(const v of Kf(l)){const{data:N,error:T}=await Z.rpc(\"get_company_fill_curve\",{p_tokens:v})",
+   "{boardId:t.current.id,curveMemo:a.current}"
+  ]
+ },
+ "builtStrings": {
+  "U5": [
+   "openings with your search in the title",
+   "only in their description could not be searched just now"
+  ],
+  "U8": [
+   "\"watchNameBoards\":\"New roles on boards named “{{token}}”\"",
+   "\"watchSavedBoards\":\"Watching boards named “{{token}}”\""
+  ]
+ },
+ "live": {
+  "U1a": ".primary,\"replace\")",
+  "U1b": "const s=()=>{if(new URLSearchParams(window.location.search).has(\"job\"))return;const l=Jt.current;Ke(!0),l&&Am(h=>h+1)",
+  "U2b": "key===\"Enter\"&&x&&window.matchMedia(\"(min-width: 1024px)\").matches",
+  "U6": "token:N??void 0}:void 0,sort:zi?void 0:{value:",
+  "U9": "const{data:g,error:j}=await X.rpc(\"get_company_fill_curve\",{p_tokens:s})"
+ }
+}

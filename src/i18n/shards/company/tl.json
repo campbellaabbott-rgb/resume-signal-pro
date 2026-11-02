@@ -181,6 +181,7 @@
     "countedAgo": "binilang {{ago}}",
     "undatedMore": "({{u}} pa ang walang petsa)",
     "boardTotal_one": "{{total}} role ang nakalista sa kabuuan sa board nila nang basahin namin ito {{ago}}.",
-    "boardTotal_other": "{{total}} role ang nakalista sa kabuuan sa board nila nang basahin namin ito {{ago}}."
+    "boardTotal_other": "{{total}} role ang nakalista sa kabuuan sa board nila nang basahin namin ito {{ago}}.",
+    "pooledBoards": "Binilang sa {{n}} board sa hiring system ng employer na ito"
   }
 }

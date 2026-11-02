@@ -41,7 +41,10 @@ import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
 // gives the claim back instead of advancing the window.
 // 2026-10-25.1 (homepage switch-over, step 11; reservation home-pricing): the
 // "scan your resume" tip links /resume-checker, since "/" becomes the job board.
-const FN_BUILD = "send-search-digest.2026-10-25.1";
+// 2026-11-02.1 (board-stream ui round, S12-021): a watch saved on an employer
+// page that pools several boards carries `companies`, and the digest asks for
+// and links every one of them.
+const FN_BUILD = "send-search-digest.2026-11-02.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -120,7 +123,17 @@ type SearchParams = {
   salaryCeiling?: number; payBasis?: string; hasStatedPay?: boolean;
   includeUnstatedPay?: boolean; maxYears?: number; department?: string; vendor?: string;
   employmentType?: string; excludeAgencies?: boolean;
+  /** An employer page's watch: every board of the employer (S12-021). */
+  companies?: string[];
 };
+
+/** The boards a search covers: an employer's list when saved, else its one board. */
+function companiesOf(p: SearchParams): string[] | undefined {
+  const many = Array.isArray(p.companies)
+    ? p.companies.filter((c): c is string => typeof c === "string" && c.trim() !== "").slice(0, 12)
+    : [];
+  return many.length ? many : p.company ? [p.company] : undefined;
+}
 
 function boardUrl(p: SearchParams): string {
   const qs = new URLSearchParams();
@@ -128,7 +141,8 @@ function boardUrl(p: SearchParams): string {
   if (p.location) qs.set("location", p.location);
   if (p.remote) qs.set("remote", "1");
   if (p.workMode) qs.set("mode", p.workMode);
-  if (p.company) qs.set("company", p.company);
+  const boards = companiesOf(p);
+  if (boards) qs.set("company", boards.join(","));
   if (p.category) qs.set("category", p.category);
   if (p.experience) qs.set("experience", p.experience);
   if (p.country) qs.set("country", p.country);
@@ -282,7 +296,7 @@ Deno.serve(async (req) => {
             location: p.location || undefined,
             remote: p.remote || undefined,
             workMode: p.workMode || undefined,
-            companies: p.company ? [p.company] : undefined,
+            companies: companiesOf(p),
             experience: p.experience || undefined,
             country: p.country || undefined,
             salaryFloor: p.salaryFloor || undefined,

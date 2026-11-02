@@ -4615,7 +4615,12 @@
     "seoPhraseCount": "{{n}} vacantes en vivo",
     "seoPhraseCountBoards": "{{n}} vacantes en vivo en {{boards}} bolsas de empleo de empresas",
     "usajobsSeoDescriptionCount": "{{n}} vacantes federales publicadas en USAJOBS, cada una con su agencia. {{cap}} Comprueba gratis el encaje de tu currículum.",
-    "usajobsSeoDescription": "Vacantes federales publicadas en USAJOBS, cada una con su agencia. {{cap}} Comprueba gratis el encaje de tu currículum."
+    "usajobsSeoDescription": "Vacantes federales publicadas en USAJOBS, cada una con su agencia. {{cap}} Comprueba gratis el encaje de tu currículum.",
+    "resultsSummaryTitleOnly": "Mostrando {{shown}} de {{total}} vacantes con tu búsqueda en el título",
+    "relatedUnavailable": "Las vacantes que mencionan tu búsqueda solo en la descripción no se pudieron buscar en este momento, así que no se cuentan ni aparecen aquí. Vuelve a intentarlo en un momento.",
+    "watchNameBoards": "Nuevas vacantes en portales llamados «{{token}}»",
+    "watchSavedBoards": "Siguiendo los portales llamados «{{token}}»",
+    "watchExistsBoards": "Ya sigues los portales llamados «{{token}}»."
   },
   "accountPage": {
     "statusSaveFailed": "No se pudo guardar ese estado; inténtalo de nuevo.",

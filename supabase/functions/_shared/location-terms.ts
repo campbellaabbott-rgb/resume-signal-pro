@@ -144,7 +144,7 @@ export const STATE_ALIASES: Record<string, { names: string[]; keepRaw: boolean }
   "sk": { names: ["Saskatchewan", ", SK"], keepRaw: false },
 };
 
-export const METRO_ALIASES: Record<string, { names: string[]; keepRaw: boolean }> = {
+export const METRO_ALIASES: Record<string, { names: string[]; keepRaw: boolean; anchor?: string }> = {
   nyc: { names: ["New York"], keepRaw: true },
   "new york city": { names: ["New York"], keepRaw: false },
   sf: { names: ["San Francisco"], keepRaw: false },
@@ -193,41 +193,41 @@ export const METRO_ALIASES: Record<string, { names: string[]; keepRaw: boolean }
   // the alternate spelling returns ZERO postings, so the entry would be dead
   // weight pretending to be coverage.
   munich: { names: ["Munich", "München"], keepRaw: false },
-  "münchen": { names: ["Munich", "München"], keepRaw: false },
-  muenchen: { names: ["Munich", "München"], keepRaw: false },
+  "münchen": { names: ["Munich", "München"], keepRaw: false, anchor: "Germany" },
+  muenchen: { names: ["Munich", "München"], keepRaw: false, anchor: "Germany" },
   cologne: { names: ["Cologne", "Köln"], keepRaw: false },
-  "köln": { names: ["Cologne", "Köln"], keepRaw: false },
-  koeln: { names: ["Cologne", "Köln"], keepRaw: false },
+  "köln": { names: ["Cologne", "Köln"], keepRaw: false, anchor: "Germany" },
+  koeln: { names: ["Cologne", "Köln"], keepRaw: false, anchor: "Germany" },
   vienna: { names: ["Vienna", "Wien"], keepRaw: false },
-  wien: { names: ["Vienna", "Wien"], keepRaw: false },
+  wien: { names: ["Vienna", "Wien"], keepRaw: false, anchor: "Austria" },
   prague: { names: ["Prague", "Praha"], keepRaw: false },
-  praha: { names: ["Prague", "Praha"], keepRaw: false },
+  praha: { names: ["Prague", "Praha"], keepRaw: false, anchor: "Czech" },
   lisbon: { names: ["Lisbon", "Lisboa"], keepRaw: false },
-  lisboa: { names: ["Lisbon", "Lisboa"], keepRaw: false },
+  lisboa: { names: ["Lisbon", "Lisboa"], keepRaw: false, anchor: "Portugal" },
   milan: { names: ["Milan", "Milano"], keepRaw: false },
-  milano: { names: ["Milan", "Milano"], keepRaw: false },
+  milano: { names: ["Milan", "Milano"], keepRaw: false, anchor: "Italy" },
   florence: { names: ["Florence", "Firenze"], keepRaw: false },
-  firenze: { names: ["Florence", "Firenze"], keepRaw: false },
+  firenze: { names: ["Florence", "Firenze"], keepRaw: false, anchor: "Italy" },
   zurich: { names: ["Zurich", "Zürich"], keepRaw: false },
-  "zürich": { names: ["Zurich", "Zürich"], keepRaw: false },
+  "zürich": { names: ["Zurich", "Zürich"], keepRaw: false, anchor: "Switzerland" },
   geneva: { names: ["Geneva", "Genève"], keepRaw: false },
-  "genève": { names: ["Geneva", "Genève"], keepRaw: false },
-  geneve: { names: ["Geneva", "Genève"], keepRaw: false },
+  "genève": { names: ["Geneva", "Genève"], keepRaw: false, anchor: "Switzerland" },
+  geneve: { names: ["Geneva", "Genève"], keepRaw: false, anchor: "Switzerland" },
   copenhagen: { names: ["Copenhagen", "København"], keepRaw: false },
-  "københavn": { names: ["Copenhagen", "København"], keepRaw: false },
-  kobenhavn: { names: ["Copenhagen", "København"], keepRaw: false },
+  "københavn": { names: ["Copenhagen", "København"], keepRaw: false, anchor: "Denmark" },
+  kobenhavn: { names: ["Copenhagen", "København"], keepRaw: false, anchor: "Denmark" },
   gothenburg: { names: ["Gothenburg", "Göteborg"], keepRaw: false },
-  "göteborg": { names: ["Gothenburg", "Göteborg"], keepRaw: false },
-  goteborg: { names: ["Gothenburg", "Göteborg"], keepRaw: false },
+  "göteborg": { names: ["Gothenburg", "Göteborg"], keepRaw: false, anchor: "Sweden" },
+  goteborg: { names: ["Gothenburg", "Göteborg"], keepRaw: false, anchor: "Sweden" },
   warsaw: { names: ["Warsaw", "Warszawa"], keepRaw: false },
-  warszawa: { names: ["Warsaw", "Warszawa"], keepRaw: false },
+  warszawa: { names: ["Warsaw", "Warszawa"], keepRaw: false, anchor: "Poland" },
   krakow: { names: ["Krakow", "Kraków"], keepRaw: false },
-  "kraków": { names: ["Krakow", "Kraków"], keepRaw: false },
+  "kraków": { names: ["Krakow", "Kraków"], keepRaw: false, anchor: "Poland" },
   cracow: { names: ["Krakow", "Kraków"], keepRaw: false },
   brussels: { names: ["Brussels", "Bruxelles", "Brussel"], keepRaw: false },
-  bruxelles: { names: ["Brussels", "Bruxelles", "Brussel"], keepRaw: false },
+  bruxelles: { names: ["Brussels", "Bruxelles", "Brussel"], keepRaw: false, anchor: "Belgium" },
   bangalore: { names: ["Bangalore", "Bengaluru"], keepRaw: false },
-  bengaluru: { names: ["Bangalore", "Bengaluru"], keepRaw: false },
+  bengaluru: { names: ["Bangalore", "Bengaluru"], keepRaw: false, anchor: "India" },
 };
 
 /**
@@ -290,10 +290,12 @@ export function locationTerms(raw: unknown): { terms: string[]; expandedFrom: st
   if (!clean) return { terms: [], expandedFrom: null };
   // Metro first: "NYC" and "LA" are cities, not states, and must not be
   // shadowed by a same-spelled code.
-  const hit = METRO_ALIASES[clean.toLowerCase()] ?? STATE_ALIASES[clean.toLowerCase()];
+  const hit: { names: string[]; keepRaw: boolean; anchor?: string } | undefined = METRO_ALIASES[clean.toLowerCase()] ?? STATE_ALIASES[clean.toLowerCase()];
   if (!hit) return { terms: [clean], expandedFrom: null };
+  // S13-006: a city typed in its own language binds every other name to its country, "Vienna@Austria" (n1416).
+  const names = hit.anchor ? hit.names.map((n) => n.toLowerCase() === clean.toLowerCase() ? n : `${n}@${hit.anchor}`) : hit.names;
   return {
-    terms: hit.keepRaw ? [clean, ...hit.names] : [...hit.names],
+    terms: hit.keepRaw ? [clean, ...names] : [...names],
     expandedFrom: clean,
   };
 }

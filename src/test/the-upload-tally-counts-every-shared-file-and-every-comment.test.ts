@@ -64,7 +64,11 @@ const HEADROOM_BYTES = 50_000;
  * builder branches w4b/agents-api, w4b/checkout-catalogue, w4b/generators,
  * w4b/payments-delivery and w4b/account-compliance (2026-10-17), which have
  * all merged at integration, so their entries now add nothing. A file counts
- * the bytes its branch has beyond what the disk holds.
+ * the bytes its branch has beyond what the disk holds. The board-stream merge
+ * (2026-11-01, on main 21518390, where fix/full-analysis-timeout has landed)
+ * added the round then in flight beside it, fix/free-scan-wave, which grew
+ * industry-detection.ts. That round reached main at 340a8959 (2026-11-02) and
+ * board-stream merged it, so its growth is on disk and no round is in flight.
  */
 const PENDING_SHARED: Record<string, number> = {
   // profiles, as design/integration holds them
@@ -98,6 +102,21 @@ const PENDING_SHARED: Record<string, number> = {
   "shortlist-attestation.ts": 935,
   "subscription-notice.ts": 17_344,
 };
+/** The entries above whose round had not merged when the board-stream merge measured them. */
+const IN_FLIGHT: string[] = [];
+/**
+ * Each in-flight file's size HERE when its branch tip was measured. While the
+ * round is out the disk holds exactly that; once it merges (or the file is
+ * edited here) the disk differs and the entry is stale, whether the branch
+ * grew, shrank or moved its comments out after it was measured.
+ */
+const IN_FLIGHT_BASE: Record<string, number> = {};
+
+/** Every in-flight entry whose file no longer holds the size it had when its round was measured. */
+function staleInFlight(base: Record<string, number>, onDisk: (name: string) => number): string[] {
+  return Object.entries(base).filter(([name, bytes]) => onDisk(name) !== bytes)
+    .map(([name, bytes]) => `${name} is ${onDisk(name).toLocaleString("en-US")} bytes here, not the ${bytes.toLocaleString("en-US")} it held when its round was measured: the round merged or the file changed, so re-measure the entry at the branch tip or drop it`);
+}
 
 /** What the pending files add: the bytes each has on its branch beyond what the disk holds. */
 function pendingBytes(pending: Record<string, number>, onDisk: (name: string) => number): number {
@@ -238,7 +257,25 @@ describe("the job-board upload, tallied the deploy's way", () => {
     for (const f of ["hiring-record-gate.ts", "perks-extract.ts"]) {
       expect(files.get(join(SHARED, f)) ?? 0, `${f} is counted on disk`).toBeGreaterThanOrEqual(PENDING_SHARED[f]);
     }
-    expect(pending).toBe(0);
+    // Only the rounds still in flight add anything, and each adds exactly its growth over the disk.
+    const inFlight = Object.fromEntries(IN_FLIGHT.map((f) => [f, PENDING_SHARED[f]]));
+    const sizeOnDisk = (name: string) => files.get(join(SHARED, name)) ?? 0;
+    expect(pending).toBe(pendingBytes(inFlight, sizeOnDisk));
+    // With no round in flight the list adds nothing; a listed round that adds nothing is stale.
+    if (IN_FLIGHT.length) expect(pending, "the in-flight rounds are listed but add nothing: their entries are stale").toBeGreaterThan(0);
+    else expect(pending, "no round is in flight, so the pending list adds nothing").toBe(0);
+    expect(Object.keys(IN_FLIGHT_BASE).sort(), "every in-flight entry names the size it was measured against").toEqual([...IN_FLIGHT].sort());
+    expect(staleInFlight(IN_FLIGHT_BASE, sizeOnDisk), "an in-flight entry outlived its measurement").toEqual([]);
+  });
+
+  it("TEETH: an in-flight entry is stale once its file moves off the size it was measured against, whichever way it moved", () => {
+    const base = { "grew.ts": 1_000, "shrank.ts": 10_715, "out.ts": 500 };
+    // fix/full-analysis-timeout's case: measured at 22,660 over a base of 10,715, merged at 15,584.
+    const disk: Record<string, number> = { "grew.ts": 1_000, "shrank.ts": 15_584, "out.ts": 500 };
+    expect(staleInFlight(base, (n) => disk[n] ?? 0)).toEqual([expect.stringContaining("shrank.ts is 15,584 bytes here, not the 10,715")]);
+    expect(pendingBytes({ "shrank.ts": 22_660 }, (n) => disk[n] ?? 0), "the old check: the stale entry still adds, so pending > 0 never fired").toBe(7_076);
+    expect(staleInFlight(base, (n) => ({ ...disk, "shrank.ts": 10_715 })[n] ?? 0)).toEqual([]);
+    expect(staleInFlight({ "gone.ts": 400 }, () => 0)).toHaveLength(1);
   });
 
   it("TEETH: the gate refuses a tally one byte over it", () => {

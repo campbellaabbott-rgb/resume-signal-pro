@@ -21,6 +21,8 @@ export interface JobSearchParams {
   /** Comma-joined subset of remote|hybrid|onsite. A LIST since 2026-08-27. */
   workMode?: string;
   company?: string;
+  /** An employer page's watch: every board of the employer, `company` first (S12-021). */
+  companies?: string[];
   /** ISO-2, comma-joined for a multi-country selection. */
   country?: string;
   /** Experience band: entry | mid | senior | expert (from job-board/experience.ts). */
@@ -101,6 +103,14 @@ export function searchName(p: JobSearchParams, categoryLabel?: string, experienc
   );
 }
 
+/** The boards a search covers: an employer's list when saved, else its one board. */
+export function companiesOf(p: JobSearchParams): string[] | undefined {
+  const many = Array.isArray(p.companies)
+    ? p.companies.filter((c): c is string => typeof c === "string" && c.trim() !== "").slice(0, 12)
+    : [];
+  return many.length ? many : p.company ? [p.company] : undefined;
+}
+
 /** /jobs?… query string for a saved search (matches the board's URL sync). */
 export function searchToQuery(p: JobSearchParams): string {
   // Parameter NAMES are the board's, not this file's: the board reads `mode`
@@ -111,7 +121,8 @@ export function searchToQuery(p: JobSearchParams): string {
   if (p.location) qs.set("location", p.location);
   if (p.remote) qs.set("remote", "1");
   if (p.workMode) qs.set("mode", p.workMode);
-  if (p.company) qs.set("company", p.company);
+  const boards = companiesOf(p);
+  if (boards) qs.set("company", boards.join(","));
   if (p.category) qs.set("category", p.category);
   if (p.category && p.includeUncategorised) qs.set("inclUncat", "1");
   if (p.sendableOnly) qs.set("agentOnly", "1");
@@ -162,7 +173,7 @@ export function searchToBoardBody(p: JobSearchParams): Record<string, unknown> {
     location: p.location || undefined,
     remote: p.remote || undefined,
     workMode: p.workMode || undefined,
-    companies: p.company ? [p.company] : undefined,
+    companies: companiesOf(p),
     experience: p.experience || undefined,
     country: p.country || undefined,
     salaryFloor: p.salaryFloor || undefined,

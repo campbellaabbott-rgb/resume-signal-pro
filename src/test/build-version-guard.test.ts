@@ -1507,7 +1507,15 @@ const PINNED = {
   // location is named in ignoredFilters (textFieldShape), and a visit re-files
   // the board's stored rows it did not read where n1396's US-town reading
   // applies (townRefilePatches, n1399). sources.ts unchanged.
-  buildVersion: "2026-09-09.98",
+  // 2026-09-09.100 (fix/board-stream, the board-stream round of the
+  // 2026-10-31 bug audit; .99 stays profiles-p3's): search reads what was
+  // typed (n1410-n1418), vendor fields reach the row and an age is not a years
+  // floor (n1420-n1428), Oracle's 10,000 cap, UKG/ADP cursors, iCIMS later-page
+  // refusals and Workday's facets page in English (n1430-n1433), a lap reads
+  // superseded from the whole lap, the description sweep asks once a rotation
+  // and exists answers on detail's predicate (n1440-n1442), and City, ST read
+  // as typed (n1460). sources.ts unchanged.
+  buildVersion: "2026-09-09.100",
 };
 
 /**

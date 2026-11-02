@@ -69,16 +69,21 @@ beforeEach(() => {
 afterEach(() => { cleanup(); window.matchMedia = matchMedia; document.head.innerHTML = ""; });
 
 const canonical = () => document.head.querySelector('link[rel="canonical"]')?.getAttribute("href");
+const openedFirst = () => invoke.mock.calls.some(([, o]) => {
+  const b = (o as { body?: { action?: string; id?: string } })?.body;
+  return b?.action === "detail" && b.id === JOBS[0].id;
+});
 const jobPostings = () => [...document.querySelectorAll('script[type="application/ld+json"]')].filter((s) => /"JobPosting"/.test(s.textContent ?? ""));
 
 describe("the board at desktop width", () => {
   it("auto-selects its first card without making it the page's canonical or structured data", async () => {
     window.history.replaceState({}, "", "/jobs");
     render(<HelmetProvider><MemoryRouter initialEntries={["/jobs"]}><Routes><Route path="/jobs" element={<Jobs />} /></Routes></MemoryRouter></HelmetProvider>);
-    // The auto-select opened the first posting (the address names it).
-    await waitFor(() => expect(new URLSearchParams(window.location.search).get("job")).toBe(JOBS[0].id), SLOW);
-    await waitFor(() => expect(invoke.mock.calls.some(([, o]) => (o as { body?: { action?: string } })?.body?.action === "detail")).toBe(true), SLOW);
+    // The auto-select opened the first posting (its description was asked
+    // for). Since S12-012 it does not write the address either.
+    await waitFor(() => expect(openedFirst()).toBe(true), SLOW);
     await new Promise((r) => setTimeout(r, 300));
+    expect(new URLSearchParams(window.location.search).has("job")).toBe(false);
     expect(canonical()).not.toMatch(/\?job=/);
     expect(jobPostings()).toEqual([]);
   });
@@ -86,7 +91,7 @@ describe("the board at desktop width", () => {
   it("positive control: a posting the reader opens does take over the head", async () => {
     window.history.replaceState({}, "", "/jobs");
     render(<HelmetProvider><MemoryRouter initialEntries={["/jobs"]}><Routes><Route path="/jobs" element={<Jobs />} /></Routes></MemoryRouter></HelmetProvider>);
-    await waitFor(() => expect(new URLSearchParams(window.location.search).get("job")).toBe(JOBS[0].id), SLOW);
+    await waitFor(() => expect(openedFirst()).toBe(true), SLOW);
     const second = (await screen.findAllByText("Nurse 2", undefined, SLOW))[0];
     fireEvent.click(second);
     await waitFor(() => expect(canonical()).toBe(`https://resumebooster.work/jobs?job=${encodeURIComponent(JOBS[1].id)}`), SLOW);

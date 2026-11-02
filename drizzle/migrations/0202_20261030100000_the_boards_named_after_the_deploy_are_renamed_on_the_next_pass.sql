@@ -1,0 +1,1 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_staging WHERE name = '20261030100000_the_boards_named_after_the_deploy_are_renamed_on_the_next_pass'));

@@ -1,32 +1,4 @@
-// Refresh-cursor arithmetic for the two-tier rotation.
-//
-// Why this is its own module: index.ts writes the refresh_progress meta row
-// TWICE per hop — once optimistically before the slice runs (so a hop that dies
-// on the resource ceiling doesn't wedge the pipeline on the same boards), and
-// once after with the final failure accumulator. Those two writes duplicated
-// both the cursor arithmetic and the row shape by hand, and on 2026-07-25 they
-// were found to have silently diverged in two separate ways:
-//
-//   1. The post-slice write advanced the cold cursor by `slice.length` — which
-//      includes the prepended demand and bootstrap boards. Those come from
-//      ELSEWHERE in the catalog and consume no cursor. With the bootstrap lane
-//      draining 25 boards/hop the cursor jumped 105 positions per 80-board
-//      slice, so 24% of the cold list was skipped on every rotation. The
-//      skipped boards weren't lost (the offset drifts each wrap, so they were
-//      picked up 2-5 rotations later) which is why the MEDIAN re-verification
-//      age looked perfectly healthy while P95 ran 1.4x the wrap and max 5.5x —
-//      far enough past the published "re-verified within a few hours" claim to
-//      make it false.
-//
-//   2. The post-slice write omitted the `rot` field that the optimistic write
-//      set. An upsert replaces the whole v JSON, so `rot` was zeroed every hop
-//      and the quiet lane that keyed off its parity never once ran in
-//      production. (That lane is gone now — see index.ts — but the failure mode
-//      is general: any field in one write and not the other is silently lost.)
-//
-// Both bugs are the same bug: two hand-maintained copies of one rule. So the
-// rule lives here, once, as a pure function that returns the WHOLE row. Both
-// call sites write exactly what it returns, and the invariants are unit-tested.
+// Rationale: docs/job-board-index-notes.md#n1500-export-interface-refreshprogress
 
 /** The complete refresh_progress meta value. Every write must carry every field. */
 export interface RefreshProgress {

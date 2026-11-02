@@ -70,7 +70,7 @@ describe("the ring-merged seam partitions the result set", () => {
     expect(BOARD, "dropped rows still occupied SQL ranks; nextOffset advances by RAW rows")
       .toMatch(/deepRingRawUsed/);
     expect(BOARD, "the pool-exhausting page must hand the walk to the FIXED seam")
-      .toMatch(/nextOffset: poolExhausted \? RING_WINDOW : offset \+ rankedGrouped\.rawConsumed,/);
+      .toMatch(/nextOffset: poolExhausted \? RING_WINDOW \+ seamRaw : seamRaw \? RANKED_WINDOW \+ seamRaw : offset \+ rankedGrouped\.rawConsumed,/);
     expect(BOARD, "the ring promise must also fire on deep ring-merged pages")
       .toMatch(/\(scoreRanked && headTermRing && \(!deepPage \|\| ringMerged\)\)/);
   });

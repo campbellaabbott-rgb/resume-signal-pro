@@ -250,13 +250,27 @@ describe("a shortlist costs one call, not twenty", () => {
     // read-only must not carry a path that prunes the corpus.
     expect(fn, "the writing liveness action must not appear on a read-only tool").not.toMatch(/action: "verify"/);
     expect(fn, "a published answer names its basis").toMatch(/basis:/);
-    expect(fn).toMatch(/the board still holds a row for this posting/);
-    expect(fn, "it must not claim to have asked the employer this second").toMatch(/not a live probe of the employer's site/);
-    // `exists` asks a WEAKER question than the serving path: a row inside the
-    // removal grace window, or past the 30-day cap, still exists. Two tools
-    // that disagree about whether a posting is live must say which is stricter.
-    expect(fn, "the gap against get_job's test has to be stated, not glossed")
-      .toMatch(/WEAKER[\s\S]{0,300}freshness cap[\s\S]{0,120}get_job declines to serve it/);
+    // Until job-board .100 `exists` asked a weaker question than the serving
+    // path, and the basis had to say so. Since .100 (S13-076) it reads detail's
+    // row test: no missing stamp, inside the 30-day cap. The two functions
+    // deploy apart, so the stronger sentence is chosen by the board's answer
+    // (it names the test it ran), never by this build: against a board that
+    // does not name it, the weaker sentence stands (n1464).
+    expect(fn, "the basis follows the board's own answer").toMatch(/basis: r\.rowTest === "served" \? OPEN_BASIS_SERVED : OPEN_BASIS_ROW,/);
+    const served = /const OPEN_BASIS_SERVED =([\s\S]*?);\n/.exec(MCP)?.[1] ?? "";
+    const row = /const OPEN_BASIS_ROW =([\s\S]*?);\n/.exec(MCP)?.[1] ?? "";
+    for (const b of [served, row]) {
+      expect(b).toMatch(/the board still holds a row for this posting/);
+      expect(b, "it must not claim to have asked the employer this second").toMatch(/not a live probe of the employer's site/);
+    }
+    expect(served, "the served basis says a dropped or capped posting reads closed, as get_job declines it")
+      .toMatch(/removal grace[\s\S]{0,200}past the cap reads closed here, as get_job[\s\S]{0,12}declines it/);
+    expect(served).not.toMatch(/WEAKER/);
+    expect(row, "a board that names no test gets the sentence true of any build").toMatch(/WEAKER[\s\S]{0,250}can still read open here/);
+    const existsBody = BOARD_RAW.slice(existsAt, existsAt + 1500);
+    expect(existsBody, "the board names the test only where it runs it").toMatch(/return json\(\{ open: openMap, rowTest: "served" \}\);/);
+    expect(existsBody, "the served basis says a posting the feed stopped listing reads closed").toMatch(/\.is\("missing_since", null\)/);
+    expect(existsBody, "and that one past the cap does").toMatch(/pastFence\(r, cutoffMs\)/);
     expect(block("check_jobs_open")).toMatch(/maxItems: CHECK_JOBS_OPEN_MAX/);
   });
 

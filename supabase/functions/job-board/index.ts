@@ -1,17 +1,4 @@
-// Job board aggregator, DB-backed. Postings come from each company's
-// OFFICIAL public job-board API (Greenhouse / Lever / Ashby); a refresh
-// pass normalizes them into public.job_board_postings, where list queries
-// run in SQL. "Apply" always points at the company's own posting page.
-//
-//   POST { action: "list", q?, location?, remote?, category?, companies?, limit?, offset? }
-//   POST { action: "detail", id }      // full description text for the fit scan
-//   POST { action: "refresh" }         // fan-out -> upsert -> prune; cron + SWR call this
-//
-// Freshness model: pg_cron hits refresh every 10 minutes; list also fires a
-// background refresh (EdgeRuntime.waitUntil) when data is older than the
-// TTL, so the board self-heals even if cron dies. Postings that vanish from
-// a company's feed are pruned on the next successful pass — dead listings
-// never linger. A refresh lock in job_board_meta stops stampedes.
+// Rationale: docs/job-board-index-notes.md#n1470-import-createclient-type-supabaseclient
 
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { HOT_TOKENS, JOB_SOURCES, LIGHT_DESC_TOKENS, ORACLE_CANONICAL_SITES, ORACLE_POOL_SITES, type JobSource } from "./sources.ts";
@@ -27,6 +14,9 @@ import {
   normalizeBreezy,
   normalizeGreenhouse,
   normalizeLever,
+  leverText,
+  mergePersonioDescriptions,
+  PERSONIO_NO_DESCRIPTION,
   normalizePersonio,
   normalizeRecruitee,
   normalizeSmartRecruiters,
@@ -43,6 +33,7 @@ import {
   normalizePinpoint,
   normalizePaylocity,
   extractPaylocityPageData,
+  paylocityPageText,
   normalizeAdp,
   adpBoardParams,
   extractRipplingJobPosts,
@@ -93,10 +84,11 @@ import { advanceProgress, baseConsumedPrefix, isPassDone, type RefreshProgress }
 import { CANARIES, rawItemCount, aggregateVendorHealth, type CanaryResult } from "./vendor-canary.ts";
 import { detectExperience, isExperienceBand } from "./experience.ts";
 import { ageCutoffMs, textFieldShape, categoryParam, COMPANY_TOKEN_SHAPE, extraFilterParams, filterViolations, isUnfiltered, normalizeFilters, payParams, rpcBlindFilters, rescueVendorsParam, SALARIED_PERIODS, sendableSourcesParam, splitPage, salaryFromQueryText, salaryTokenInQuery, WIDENING_FILTERS } from "./filters.ts";
-import { foldName, foldTypeahead, pickRoute, rerankWindow, RETRIEVER_FOR, ringWordPattern, simpleRouteFilters, singularReading, splitExclusions, startsWithWord, stopwordTokens, titleExcluded, withLiveBrands, type TitleFilter } from "./search-routing.ts";
+import { BRAND_MIN_OPEN, foldName, foldTypeahead, pickRoute, rerankWindow, RETRIEVER_FOR, ringWordPattern, simpleRouteFilters, singularReading, splitExclusions, startsWithWord, stopwordTokens, titleExcluded, withLiveBrands, type TitleFilter } from "./search-routing.ts";
 import { planRankedPage, RANKED_WINDOW, RING_WINDOW, rowsReached, symbolLiteralRows } from "./paging.ts";
-import { collapseClusters, GROUP_OVERFETCH, interleaveByCompany, rowClusterKey, visibleCategories, mergeCompanyFacet } from "./clusters.ts";
+import { collapseClusters, continuePastSeam, GROUP_OVERFETCH, interleaveByCompany, rowClusterKey, visibleCategories, mergeCompanyFacet } from "./clusters.ts";
 import { EMPLOYER_ALIASES } from "./employer-aliases.ts";
+import { ROUTE_BRANDS } from "./route-brands.ts";
 import { expandQuery, ROLE_ALIASES } from "./search-alias.ts";
 import { rankedWithDeadline } from "./ranked-deadline.ts";
 import { classifyQuestion } from "../_shared/application-questions.ts";
@@ -112,8 +104,8 @@ import {
 } from "./abuse-guards.ts";
 import { splitTombstoned, type Tombstone } from "./tombstone.ts";
 import { laneRows, stampKeyOfJob, stampPlan, stampRows } from "./verification-stamp.ts";
-import { isStateCodeAlias, locationBranch, partMatchesTerm } from "./location-match.ts";
-import { cursorAfterFailure, emptyFirstPage, emptyInsideLapTotal, lapTotal, stampFeedTotal, workdayWindowed } from "./read-window.ts";
+import { ANCHOR, isStateCodeAlias, locationBranch, partMatchesTerm } from "./location-match.ts";
+import { belowCapFloor, capLapCovers, cursorAfterFailure, emptyFirstPage, emptyInsideLapTotal, lapTotal, ORACLE_RESULT_CAP, resumeAt, stampFeedTotal, workdayWindowed } from "./read-window.ts";
 import { clearOversize, heldOversize, loadOversizeEntries, noteOversize, oversizeStatusRows } from "./oversize-registry.ts";
 import { startGate } from "./start-gate.ts";
 import { addLightReread, lightReread, lightRereadStats, type LightRereadStats } from "./light-reread.ts";
@@ -147,7 +139,7 @@ const json = (body: unknown, status = 200) =>
 // a-stripper-that-loses-real-code-passes-every-guard-that-reads-it.test.ts.
 const SITEMAP_DAYS = 30;
 // Rationale: docs/job-board-index-notes.md#n002-build-version
-const BUILD_VERSION = "2026-09-09.98"; // per-version deploy notes: docs/job-board-deploy-notes.md (kept out of the bundle; see the 4.5MB cap note there)
+const BUILD_VERSION = "2026-09-09.100"; // per-version deploy notes: docs/job-board-deploy-notes.md (kept out of the bundle; see the 4.5MB cap note there)
 // Rationale: docs/job-board-index-notes.md#n003-stored-names-do-not-heal-themselves-the-refr
 
 // Rationale: docs/job-board-index-notes.md#n483-const-name_sync_version
@@ -476,48 +468,7 @@ const HEAP_SOFT_LIMIT_MB = 150;
 // dying at heap 70 and 132, far below both the 150MB bound and the ~256MB
 // ceiling, so the bound never even fired. Recorded here because I shipped that
 // theory to production and it was wrong.
-//
-// What separates the slices cleanly is DURATION. Every slice that ever wrote
-// its terminal stamp finished inside 128s — 85.9, 93.3, 97.0, 102.8, 108.5,
-// 109.5, 115.0, 127.8 — and the one recorded death ran 158.3s. The isolate has
-// a wall-clock ceiling and the slice had no clock: the only time bound in the
-// whole loop was FETCH_TIMEOUT_MS on a single fetch.
-//
-// THE PROSE SAID 90s AND THE CONSTANT SAID 120s, FOR WEEKS. Corrected here
-// rather than quietly, because the derivation the old sentence gave is the
-// derivation that makes 120s frightening, and it was landing on a different
-// number than the code.
-//
-// 120s to STOP TAKING new boards. A board already in flight can add, per
-// request, FETCH_TIMEOUT_MS (20s) for headers and as much for the body
-// (bodyDeadline since .92; before it the body had no clock, S8-030) plus its
-// upsert, and then the post-loop tail —
-// stampSliceWork, the cursor advance, updateBoardFailures with its per-token
-// exits and deletes, the deep-cursor and oversize meta writes,
-// maybeKickMaintenance, chainNextSlice, recordSliceStats — runs on top. A
-// slice that actually reaches this bound therefore lands somewhere around
-// 145-155s: OUTSIDE the 128s in which every slice that ever wrote a terminal
-// stamp finished, and next to the 158.3s of the one recorded death.
-//
-// SO A WALL-STOPPED SLICE IS AN ALARM, NOT A MODE OF OPERATION. `wallStopped`
-// riding true on slice_stats means the slice is expected to die: it loses its
-// bookkeeping AND stops the chain, which turns one cron tick into a single
-// slice instead of a ~17-hop chain — the ~960 boards/hour, 46-hour-lap
-// regression of 2026-09-06. The bound that is supposed to stop the loop is
-// SLICE_POSTING_BUDGET, and it is sized so that it fires with ~57s of this
-// wall unspent even if a fifth worker buys nothing (see the arithmetic there;
-// a guard pins it). This constant exists for the case where that sizing is
-// wrong about a particular draw — it is a backstop, and a backstop being
-// reached is news.
-//
-// WHY IT IS NOT SIMPLY LOWERED TO THE 90s THE OLD COMMENT CLAIMED, which would
-// land a wall-stopped slice at ~115s and inside the envelope: the HOT phase
-// shares this bound, and hotEmaMs is 100,554 today. A 90s wall would start
-// truncating hot slices that currently complete — deferring giants and
-// changing hot-cursor behaviour — to fix a case that the posting budget is
-// already sized to prevent. That trade needs the hot-slice measurement this
-// file does not yet take (see the shed thresholds), so the wall stays where it
-// is and the sentence describing it is made true instead.
+// Rationale: docs/job-board-index-notes.md#n1471-const-slice_wall_budget_ms-_000
 const SLICE_WALL_BUDGET_MS = 120_000;
 // Rationale: docs/job-board-index-notes.md#n012-min-boards-per-slice
 const MIN_BOARDS_PER_SLICE = 80;
@@ -527,36 +478,9 @@ const MIN_BOARDS_PER_SLICE = 80;
 //     budget 16  slice completes   (works 3123 -> 3125)
 //     budget 24  slice DIES        (chainKick http_error, trace frozen at
 //                                   "loop 24", works stops at 3125)
-// So the threshold this file has chased through five versions — the posting
-// budget, heap, wall time, and two cap guesses — sits between 16 and 24
-// boards. The cause is still unknown; the boundary is not.
-//
-// The ceiling is the last value observed to SURVIVE, not the first to die. A
-// ceiling of 80 left the ramp oscillating 8 -> 16 -> 24 -> death -> 8, and a
-// death costs the whole chain plus a wait for the next cron tick, which is
-// strictly worse than simply running at 16. So the ramp now climbs 8 -> 16 and
-// holds there, and the machinery stays: raise this to 20 and the ramp will
-// tell us within minutes whether 20 lives, without another guess.
+// Rationale: docs/job-board-index-notes.md#n1472-const-max_boards_per_slice
 // RAISED BACK, BECAUSE THE MEASUREMENT THAT SET IT WAS TAKEN ON BROKEN CODE.
-//
-// 16 was the last budget observed to survive — measured on .47, while BOTH the
-// 105KB-a-posting memory blowout (.51/.52 capped it) and the yield that could
-// never end (.53 fixed it) were still live. Every death that produced that
-// number had one of those two causes, so the number describes the bugs, not
-// the platform.
-//
-// And the cost of keeping it is now the larger problem: a budget of 16 splits
-// to ~9 cold boards a slice, which is 4,889 slices for one pass over 44,000
-// boards. Freshness has gone 403 -> 2,291 minutes across today while the
-// rotation became steadily more correct — the slices complete, they are simply
-// far too small. Correct and too slow is still broken.
-//
-// The ramp is the right instrument and it is already built: it climbs while
-// hops complete and resets to the floor when one dies, so restoring the
-// ceiling lets it re-find the real limit under the fixed code instead of me
-// guessing a second number. The posting budget — 1,400, set from the measured
-// per-posting cost — is what actually bounds a slice now; the board count only
-// stops a slice made entirely of tiny boards from running long.
+// Rationale: docs/job-board-index-notes.md#n1473-const-max_boards_per_slice
 const MAX_BOARDS_PER_SLICE = 80;
 const BOARDS_RAMP_STEP = 8;
 const CAPPED_VISIT_VENDORS = new Set(["workday", "oracle", "icims", "smartrecruiters", "rippling", "usajobs", "teamtailor"]);
@@ -1090,7 +1014,7 @@ async function fetchWithTimeout(url: string, init?: RequestInit, limit = MAX_RES
     return bodyDeadline(res, bodyMs);
   };
   // Workday: English only where the runtime's language is refused (S8-003, n437).
-  const once = () => withWorkdayLanguage(url, init?.headers, send, discardBody);
+  const once = () => withWorkdayLanguage(url, init?.headers, send, discardBody, init?.body);
   const res = await once();
   // Rationale: docs/job-board-index-notes.md#n500-if-res-status
   if (res.status === 429) {
@@ -1113,7 +1037,16 @@ async function fetchPersonio(s: JobSource): Promise<{ xml: string; host: string 
       const res = await fetchWithTimeout(`https://${s.token}.${host}/xml`);
       if (res.ok) {
         const xml = await res.text();
-        if (xml.includes("<workzag-jobs") || xml.includes("<position")) return { xml, host };
+        if (xml.includes("<workzag-jobs") || xml.includes("<position")) {
+          // Rationale: docs/job-board-index-notes.md#n1423-a-personio-posting-in-another-language
+          if (!PERSONIO_NO_DESCRIPTION.test(xml)) return { xml, host };
+          try {
+            const en = await fetchWithTimeout(`https://${s.token}.${host}/xml?language=en`);
+            if (en.ok) return { xml: mergePersonioDescriptions(xml, await en.text()), host };
+            discardBody(en);
+          } catch { /* the default-language read stands */ }
+          return { xml, host };
+        }
       } else discardBody(res);
     } catch (e) {
       // Rationale: docs/job-board-index-notes.md#n024-string-e-as-error-message-e-inclu
@@ -1186,7 +1119,7 @@ async function fetchPaylocity(s: JobSource): Promise<{ items: unknown[]; raw: st
 const UKG_PAGE = 50;
 const UKG_PAGE_CAP = 12; // 12 × 50 = 600 postings/board/pass
 const UKG_CHUNK = 4;     // same politeness ceiling as oracle/icims/adp
-async function fetchUkg(s: JobSource): Promise<{ items: unknown[]; raw: unknown; windowed: boolean; feedTotal: number }> {
+async function fetchUkg(s: JobSource, startOffset = 0): Promise<{ items: unknown[]; raw: unknown; windowed: boolean; feedTotal: number; nextOffset: number; feedEnded: boolean; endOffset: number }> {
   const parts = ukgBoardParams(s.token);
   if (!parts) throw new Error("bad ukg token");
   const url = `https://${parts.pod}.ultipro.com/${parts.tenant}/JobBoard/${parts.board}/JobBoardView/LoadSearchResults`;
@@ -1203,7 +1136,7 @@ async function fetchUkg(s: JobSource): Promise<{ items: unknown[]; raw: unknown;
         const res = await fetchWithTimeout(url, {
           method: "POST",
           headers: { "Content-Type": "application/json", Accept: "application/json" },
-          body: JSON.stringify({ opportunitySearch: { Top: UKG_PAGE, Skip: page * UKG_PAGE, QueryString: "", OrderBy: [], Filters: [] } }),
+          body: JSON.stringify({ opportunitySearch: { Top: UKG_PAGE, Skip: startOffset + page * UKG_PAGE, QueryString: "", OrderBy: [], Filters: [] } }),
         });
         if (!res.ok) { discardBody(res); if (page === 0) throw new Error(`HTTP ${res.status}`); return null; }
         return res;
@@ -1231,10 +1164,8 @@ async function fetchUkg(s: JobSource): Promise<{ items: unknown[]; raw: unknown;
       }
     } finally { discardRest(responses, read); }
   }
-  // Same refusal guard as every other vendor: an empty read against a non-zero
-  // advertised total is a rate-limit or a bot-wall, not an empty board.
-  if (all.length === 0 && feedTotal > 0) throw new Error(`empty page but total=${feedTotal}`);
-  return { items: all, raw: { opportunities: all }, windowed: !exhausted, feedTotal };
+  // The cursor contract of fetchOracle (S10-004, n1431).
+  return { items: all, raw: { opportunities: all }, ...resumeAt(startOffset, all.length, feedTotal, exhausted) };
 }
 
 // Rationale: docs/job-board-index-notes.md#n027-adp-page
@@ -1243,12 +1174,12 @@ const ADP_PAGE_CAP = 15; // 15 × 20 = 300 postings/board/pass
 // Four concurrent page fetches per board, matching the census tooling's
 // politeness ceiling — same chunking rationale as oracle and icims.
 const ADP_CHUNK = 4;
-async function fetchAdp(s: JobSource): Promise<{ items: unknown[]; raw: unknown; windowed: boolean; feedTotal: number }> {
+async function fetchAdp(s: JobSource, startOffset = 0): Promise<{ items: unknown[]; raw: unknown; windowed: boolean; feedTotal: number; nextOffset: number; feedEnded: boolean; endOffset: number }> {
   const { cid, ccId } = adpBoardParams(s.token);
   if (!cid) throw new Error("bad adp token");
   const base = "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions";
   const pageUrl = (p: number) =>
-    `${base}?cid=${cid}&ccId=${ccId}&timeStamp=${Date.now()}&lang=en_US&locale=en_US&$top=${ADP_PAGE}&$skip=${1 + p * ADP_PAGE}`;
+    `${base}?cid=${cid}&ccId=${ccId}&timeStamp=${Date.now()}&lang=en_US&locale=en_US&$top=${ADP_PAGE}&$skip=${1 + startOffset + p * ADP_PAGE}`;
   const pageCap = Math.max(1, s.pages ?? ADP_PAGE_CAP);
   const all: unknown[] = [];
   let feedTotal = 0;
@@ -1288,8 +1219,7 @@ async function fetchAdp(s: JobSource): Promise<{ items: unknown[]; raw: unknown;
     } finally { discardRest(responses, read); }
   }
   // Rationale: docs/job-board-index-notes.md#n507-if-all-length-feedtotal-throw-new
-  if (all.length === 0 && feedTotal > 0) throw new Error(`empty page but total=${feedTotal}`);
-  return { items: all, raw: { jobRequisitions: all }, windowed: !exhausted, feedTotal };
+  return { items: all, raw: { jobRequisitions: all }, ...resumeAt(startOffset, all.length, feedTotal, exhausted) };
 }
 
 // Rationale: docs/job-board-index-notes.md#n028-
@@ -1403,13 +1333,7 @@ async function fetchWorkday(s: JobSource, startOffset = 0): Promise<{ jobPosting
       }
     } finally { discardRest(responses, read); }
   }
-  // Empty page with a non-zero advertised total = the tenant refused/failed us
-  // (rate-limit, transient) — NOT an empty board. Throwing marks the board
-  // failed so nothing is pruned. Without this, persistent empty responses
-  // eventually pass the two-pass + shrink-ratchet guards and delete the whole
-  // board (live case: Four Seasons pruned to 0 while advertising 1,963 jobs).
-  // Past the top an empty page wraps instead: the feed ended before the
-  // cursor, or will not serve that deep (n420).
+  // Rationale: docs/job-board-index-notes.md#n1474-const-empty-emptyfirstpage-startoffset-a
   const empty = emptyFirstPage(startOffset, all.length, feedTotal);
   if (empty === "refused") throw new Error(`empty page but total=${feedTotal}`);
   if (empty) exhausted = empty === "ended";
@@ -1422,7 +1346,7 @@ async function fetchWorkday(s: JobSource, startOffset = 0): Promise<{ jobPosting
 }
 
 // Rationale: docs/job-board-index-notes.md#n032-fetchoracle
-async function fetchOracle(s: JobSource, startOffset = 0): Promise<{ items: unknown[]; raw: unknown; windowed: boolean; feedTotal: number; nextOffset: number; feedEnded: boolean; endOffset: number }> {
+async function fetchOracle(s: JobSource, startOffset = 0): Promise<{ items: unknown[]; raw: unknown; windowed: boolean; feedTotal: number; nextOffset: number; feedEnded: boolean; endOffset: number; capFloor?: string }> {
   const site = s.token.split("~")[2], host = oracleHost(s.token);
   if (!host) throw new Error("bad oracle token");
   const base = `https://${host}/hcmRestApi/resources/latest/recruitingCEJobRequisitions`;
@@ -1436,7 +1360,8 @@ async function fetchOracle(s: JobSource, startOffset = 0): Promise<{ items: unkn
   const ORACLE_CHUNK = 4;
   outer: for (let start = 0; start < oraclePageCap; start += ORACLE_CHUNK) {
     const pages: number[] = [];
-    for (let p = start; p < Math.min(start + ORACLE_CHUNK, oraclePageCap); p++) pages.push(p);
+    for (let p = start; p < Math.min(start + ORACLE_CHUNK, oraclePageCap); p++) if (startOffset + (p + 1) * ORACLE_PAGE_SIZE <= ORACLE_RESULT_CAP) pages.push(p);
+    if (!pages.length) break;
     // Fetch concurrently, read one at a time — see MAX_RESPONSE_BYTES.
     const responses = await Promise.all(pages.map(async (page) => {
       try {
@@ -1475,9 +1400,13 @@ async function fetchOracle(s: JobSource, startOffset = 0): Promise<{ items: unkn
   if (empty === "refused") throw new Error(`empty page but total=${feedTotal}`);
   if (empty) exhausted = empty === "ended";
   const advancedOr = startOffset + all.length;
-  const nextOffset = exhausted || empty === "restart" || (feedTotal > 0 && advancedOr >= feedTotal) ? 0 : advancedOr;
+  // At the vendor's cap: the end only when the total says so, else a wrap naming its floor (S10-003, n1430).
+  const atCap = !exhausted && advancedOr >= ORACLE_RESULT_CAP;
+  if (atCap && feedTotal <= advancedOr) exhausted = true;
+  const capFloor = atCap && !exhausted ? String((all.at(-1) as { PostedDate?: string } | undefined)?.PostedDate ?? "") : undefined;
+  const nextOffset = exhausted || capFloor !== undefined || empty === "restart" || (feedTotal > 0 && advancedOr >= feedTotal) ? 0 : advancedOr;
   // Rationale: docs/job-board-index-notes.md#n034-return-items-all-raw-items-all-window
-  return { items: all, raw: { items: all }, windowed: !exhausted || startOffset > 0, feedTotal, nextOffset, feedEnded: exhausted, endOffset: advancedOr };
+  return { items: all, raw: { items: all }, windowed: !exhausted || startOffset > 0, feedTotal, nextOffset, feedEnded: exhausted, endOffset: advancedOr, capFloor };
 }
 
 /** iCIMS page sizes, largest first: a first page over the byte bound is retried smaller (n414). */
@@ -1486,7 +1415,8 @@ const ICIMS_SIZE_HINT = new Map<string, number>();
 
 // Rationale: docs/job-board-index-notes.md#n516-async-function-fetchicims-s-jobsource-st
 async function fetchIcims(s: JobSource, startOffset: number, pageSize: number): Promise<{ items: unknown[]; windowed: boolean; feedTotal: number; nextOffset: number; feedEnded: boolean; endOffset: number }> {
-  const ICIMS_MAX_PAGES = Math.max(1, s.pages ?? 12), ICIMS_CHUNK = 5;
+  // A chunk asks only for pages the visit can keep (S13-035, n1432).
+  const ICIMS_MAX_PAGES = Math.max(1, s.pages ?? 12), ICIMS_CHUNK = Math.min(5, Math.ceil(MAX_POSTINGS_PER_VISIT / pageSize));
   const startPage = Math.floor(startOffset / pageSize) + 1;
   // Where the first page really starts: a cursor from another page size may fall inside one.
   const base = (startPage - 1) * pageSize;
@@ -1499,7 +1429,7 @@ async function fetchIcims(s: JobSource, startOffset: number, pageSize: number): 
       const res = await fetchWithTimeout(`https://${s.token}/api/jobs?page=${page}&limit=${pageSize}${s.brand ? `&brand=${encodeURIComponent(s.brand)}` : ""}`, {
         headers: { Accept: "application/json" },
       });
-      if (!res.ok) { discardBody(res); throw new Error(`HTTP ${res.status}`); }
+      if (!res.ok) { discardBody(res); if (page === startPage) throw new Error(`HTTP ${res.status}`); return null; }
       return res;
     } catch (e) { return chunkPageRefusal(e, page === startPage); }
   };
@@ -1694,11 +1624,11 @@ async function fetchBoard(
   onFail?: (reason: string) => void,
   // Rationale: docs/job-board-index-notes.md#n522-startoffset
   startOffset = 0,
-): Promise<{ jobs: JobPosting[]; raw: unknown; windowed?: boolean; feedTotal?: number; nextOffset?: number; feedEnded?: boolean; endOffset?: number } | null> {
+): Promise<{ jobs: JobPosting[]; raw: unknown; windowed?: boolean; feedTotal?: number; nextOffset?: number; feedEnded?: boolean; endOffset?: number; capFloor?: string } | null> {
   try {
     if (s.source === "oracle") {
-      const { items, raw, windowed, feedTotal, nextOffset, feedEnded, endOffset } = await fetchOracle(s, startOffset);
-      return { jobs: normalizeOracle(items as never, s.name, s.token), raw, windowed, feedTotal, nextOffset, feedEnded, endOffset };
+      const { items, ...r } = await fetchOracle(s, startOffset);
+      return { jobs: normalizeOracle(items as never, s.name, s.token), ...r };
     }
     if (s.source === "icims") {
       // Rationale: docs/job-board-index-notes.md#n035-icims-page
@@ -1736,16 +1666,16 @@ async function fetchBoard(
       return { jobs, raw, windowed, feedTotal };
     }
     if (s.source === "ukg") {
-    const { items, raw, windowed, feedTotal } = await fetchUkg(s);
-    return { jobs: normalizeUkg(items as never, s.name, s.token), raw, windowed, feedTotal };
+    const { items, ...r } = await fetchUkg(s, startOffset);
+    return { jobs: normalizeUkg(items as never, s.name, s.token), ...r };
   }
   if (s.source === "paylocity") {
       const { items, raw } = await fetchPaylocity(s);
       return { jobs: normalizePaylocity(items as never, s.name, s.token), raw };
     }
     if (s.source === "adp") {
-      const { items, raw, windowed, feedTotal } = await fetchAdp(s);
-      return { jobs: normalizeAdp(items as never, s.name, s.token), raw, windowed, feedTotal };
+      const { items, ...r } = await fetchAdp(s, startOffset);
+      return { jobs: normalizeAdp(items as never, s.name, s.token), ...r };
     }
     if (s.source === "workday") {
       const { jobPostings, raw, windowed, feedTotal, nextOffset, feedEnded, endOffset } = await fetchWorkday(s, startOffset);
@@ -1865,14 +1795,8 @@ const VENDOR_ZERO_RESET = 0.3; // hysteresis: quarantine lifts below this
 const VENDOR_MIN_ATTEMPTS = 20; // never judge a vendor on a handful of fetches
 const VENDOR_STATS_DECAY = 0.8; // per-slice decay — recent slices dominate
 
-// Experience-band rules version. A bump re-derives EVERY stored row from its
-// title and stored description (backfill-experience, progress in
-// job_board_meta experience_backfill) and writes the rows whose band or
-// minimum changed, "unspecified"/NULL included.
-// v2 (S12-013): v1 only filled NULL bands, so the L8-15/L7-09 parser fixes
-// reached new rows and nothing else: 0 of 24 stored minimum-age figures
-// reproduced, and Domino's served 4,018 Expert rows against 1,359 Entry.
-const EXPERIENCE_VERSION = 2;
+// Rationale: docs/job-board-index-notes.md#n1475-const-experience_version
+const EXPERIENCE_VERSION = 3;
 // Rationale: docs/job-board-index-notes.md#n043-salary-parse-version
 const SALARY_PARSE_VERSION = 10; // v10 (2026-10-09, wave 3 board-data-ingest, docs/wave3/board-data-ingest.md): NT$/AR$/CL$/COL$/RD$/$U and a bare $ in TW/AR/CL/CO/DO/UY are not USD; a figure in millions is no wage; "up to X" alone is no floor; "$17/hr - $38/hr" is a range. // v9 (2026-09-27): A COMMA IS A DECIMAL POINT IN MOST OF EUROPE and the money pattern read it as a thousands group, so the figure split in half: P_RANGE is two money patterns with a dash between them, and on "€14,61 — €14,61" (ouihelp's own greenhouse pay footer) the grouped alternative could not match a 2-digit group, the plain one matched the bare "14", no separator followed, and the engine restarted INSIDE the number — taking the decimal tail 61 as the low end and the next figure's 14 as the high end. A €14.61/hour rate was read as a range from 61 down to 14. Where the halves descended, annualisation refused and the columns stored NULL (643 of 684 rows); where they ascended, the WRONG pair annualised cleanly — smartrecruiters/Securitas "€ 18,10 – € 19,51" stored 20,800-39,520 and workday/Assurant "$ 19,08 - $ 30,53" stored a floor of 16,640 against a true 39,686, 58% low, in the column salary_rank_usd is generated from (41 rows). Worst single shape: smartrecruiters/Flink "€15,96 - €17,14 per hour" read min 96 WITH a stated period and annualised to 199,680 — a €33k job published as a €200k one at the top of the pay sort. THE TAIL LENGTH DECIDES, NOT THE SEPARATOR AND NOT THE LOCALE: no thousands group has two digits, while three genuinely is ambiguous, so the v8 rule below and parseMoney's European reading are untouched (1,715 dot-3 rows in the census, zero changed) and the fix is unconditional — 29 of the 74 shape-carrying rows found by the country census have country NULL, so a locale-gated rule would have missed most of the population. Lookaheads refuse a tail followed by another separator (ashby/Oscilar's Indian lakh grouping "₹66,21,800") or by a period and a digit. MEASURED LIVE 2026-09-27 with the anon key: 684 rows carry the shape on NINE boards (greenhouse ouihelp 550 / joya 114, smartrecruiters Securitas 8 / Flink 5, workday Ia 2 / Assurant 2 / Enzazaden 1, oracle CareOne 1 / IHG 1), found by censusing every servable posting placed in any of the 64 comma-decimal countries the board holds (80,006 rows, cluster fold off) and then walking each discovered board to its exact countOnly total; an independent 60,000-row offset sample of the whole board found one further board and nothing else. Re-parsing 178,591 real stored salary strings with the old reader and the new one: 683 rows change, 638 NULL to a value, 45 a wrong value to a right one, ZERO a value to NULL. Boards, not one board, and never a token condition — the same lesson as v8. // v8 (2026-09-26): a 3-decimal HOURLY rate was read as a thousands group — Saskatchewan Health Authority's own field says "RequisitionType": "Hourly" beside "Pay Band 12 $23.170 to $24.840", and the board stored $23.17/hr as a $23,170 ANNUAL salary (under SK minimum wage, ~29% of real pay). Measured live over 176,575 rows: 1,404 rows on FIVE boards / two vendors — oracle HealthCareersInSask.ca 1,294, oracle DPS 96, workday Scarborough Health Network 11, workday Richmond University Medical Center 2, oracle Northwell 1 — of which 1,323 hold a wrong stored annual and 81 stored NULL. Every salary floor, ceiling and the pay sort read salary_rank_usd off salary_min_annual, so all of them filtered and sorted at ~half their true pay. See readsDotThreeAsRate: the European thousands reading ('€45.000' = 45,000) is deliberately kept, so the re-read is conditioned on the posting's locale, not the separator. // v7 (2026-08-25): day rates (x260) + a part-time/casual guard that REFUSES to annualise a load-dependent rate — {"q":"teacher","salaryFloor":90000} was serving 14 hourly part-timers out of 15, incl. $44/hr read as 91,520 and a $160/day substitute read as 332,800
 // v6 (2026-08-24): // v6 (2026-08-24): "an hour"/"a year" vocabulary + unambiguous-hourly inference for parity currencies in [7,200) — 17,641 workday vendor-stated ranges sat unannualized; whole-dollar rounding
@@ -2032,7 +1956,7 @@ const DERIVED_FEED_TOTAL_SOURCES = new Set(["rippling", "jazzhr", "teamtailor"])
 
 /** The widened posting select both delete paths now read before pruning. */
 const LIFECYCLE_SELECT =
-  "id, source, company_token, company, title, category, first_seen, posted_at, " +
+  "id, source, company_token, company, title, location, category, first_seen, posted_at, " +
   "department, country, region_code, work_mode, employment_type, experience_band, min_years, " +
   "salary_min_annual, salary_max_annual, salary_period, salary_currency";
 
@@ -2238,7 +2162,7 @@ async function closeVanishedChunk(
     const rows = ((toLog ?? []) as Array<Record<string, unknown>>).filter((r) => {
       if (isAgedOut(r)) return false; // (b) aged out, not closed
       const norm = normalizeCloseTitle(String(r.title ?? ""));
-      return !(liveTitles.has(norm) && recentSuperseded.has(norm)); // superseded repeat within 24h — skip
+      return lapMode || !(liveTitles.has(norm) && recentSuperseded.has(norm)); // superseded repeat within 24h — skip, never on a lap (n1443)
     });
     if (rows.length) {
       // Rationale: docs/job-board-index-notes.md#n125-closurerows
@@ -2253,7 +2177,7 @@ async function closeVanishedChunk(
         first_seen: r.first_seen ?? null,
         posted_at: r.posted_at ?? null,
         closed_at: closedAt,
-        superseded: liveTitles.has(normalizeCloseTitle(String(r.title ?? ""))), // (c)
+        superseded: liveTitles.has(normalizeCloseTitle(String(r.title ?? ""), lapMode ? String(r.location ?? "") : undefined)), // (c)
         suspect: batchSuspect,
         batch_removed: absentInPass,
         batch_live_before: removableBefore,
@@ -2388,7 +2312,10 @@ const LIVE_KEY_REFUSE: ReadonlySet<string> = new Set([
   "cna", "lpn", "lvn", "rn", "np", "pa", "cpa", "cdl", "hvac", "emt", "pta", "ota", "slp", "bcba", "rbt", "csr", "sdr",
   "bdr", "qc", "dba", "cfo", "ceo", "cto", "coo", "cmo", "vp", "gm", "crna", "cst", "phd", "mba", "aws", "sap", "erp",
   "crm", "seo", "ehs", "hse", "osha", "dot", "cad", "plc", "rf", "mep", "bim", "cnc", "pmp", "lmsw", "lcsw", "msw",
+  "all", "coop",
 ]);
+/** S12-014: the table, the short brands and the brand keys the table's names give ("CVS Health" gives cvs), alike in every isolate (n1415). */
+const ROUTE_TABLE = withLiveBrands({ ...EMPLOYER_ALIASES, ...ROUTE_BRANDS }, Object.values(EMPLOYER_ALIASES).map((e) => ({ ...e, open: BRAND_MIN_OPEN })), LIVE_KEY_REFUSE);
 let liveRouteAliases: { at: number; aliases: typeof EMPLOYER_ALIASES } | null = null;
 let liveRouteBuilding = false;
 /**
@@ -2402,10 +2329,10 @@ export function routeAliasesFor(client: SupabaseClient): typeof EMPLOYER_ALIASES
   if ((!built || now - built.at >= SUGGEST_MEMO_MS) && !liveRouteBuilding) {
     liveRouteBuilding = true;
     waitUntil(suggestEmployers(client).then((merged) => {
-      if (merged.length) liveRouteAliases = { at: Date.now(), aliases: withLiveBrands(EMPLOYER_ALIASES, merged, LIVE_KEY_REFUSE) };
+      if (merged.length) liveRouteAliases = { at: Date.now(), aliases: withLiveBrands(ROUTE_TABLE, merged, LIVE_KEY_REFUSE) };
     }).finally(() => { liveRouteBuilding = false; }));
   }
-  return built ? built.aliases : EMPLOYER_ALIASES;
+  return built ? built.aliases : ROUTE_TABLE;
 }
 
 /** A browse the list pages by its keyset cursor (pageWithInner's seek), so the offset it carries is never read. */
@@ -2419,6 +2346,12 @@ function cursorPaged(b: Record<string, unknown>): boolean {
 
 /** The longest id `exists` reads (S12-123): every posting id is source:token:externalId, well under this. */
 const EXISTS_ID_MAX = 300;
+
+// Rationale: docs/job-board-index-notes.md#n1442-exists-detail-fence
+function pastFence(r: Record<string, unknown>, cutoffMs: number): boolean {
+  const eff = Date.parse(String(r.effective_posted ?? ""));
+  return Number.isFinite(eff) && eff < cutoffMs;
+}
 
 /** A maintenance credential (.88): the chain secret in the body, or the service key itself. */
 async function isMaintenance(req: Request, body: Record<string, unknown>): Promise<boolean> {
@@ -3325,9 +3258,9 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             const totalRef = Math.max(totalNow, 0);
             const tailSlack = Math.min(LAP_TAIL_SLACK, Math.floor((1 - LAP_COVERAGE_MIN) * totalRef));
             if (r.nextOffset === 0 && cursorBefore > 0 && rec.f === 0 &&
-                r.feedEnded === true && !emptyInsideLapTotal(cursorBefore, r.endOffset, rec.t0) &&
-                totalRef > 0 && totalNow >= LAP_COVERAGE_MIN * rec.t0 &&
-                lapSeen >= totalRef - tailSlack) {
+                (typeof r.capFloor === "string" ? capLapCovers(lapSeen, r.capFloor, freshCutoffMs)
+                  : r.feedEnded === true && !emptyInsideLapTotal(cursorBefore, r.endOffset, rec.t0) && lapSeen >= totalRef - tailSlack) &&
+                totalRef > 0 && totalNow >= LAP_COVERAGE_MIN * rec.t0) {
               lapProven = true;
             }
           }
@@ -3400,8 +3333,8 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         // Rationale: docs/job-board-index-notes.md#n580-let-descsdeferred-false
         let descsDeferred = false;
         if (s.source === "lever") {
-          for (const j of (Array.isArray(r.raw) ? r.raw : []) as Array<{ id: string; descriptionPlain?: string; descriptionBodyPlain?: string }>) {
-            const text = ((j.descriptionPlain ?? "") + (j.descriptionBodyPlain ? `\n${j.descriptionBodyPlain}` : "")).trim();
+          for (const j of (Array.isArray(r.raw) ? r.raw : []) as Array<{ id: string; descriptionPlain?: string; lists?: unknown; additionalPlain?: string }>) {
+            const text = leverText(j);
             if (text) descs.set(`lever:${s.token}:${j.id}`, text.slice(0, STORED_DESC_CAP));
           }
         } else if (s.source === "ashby") {
@@ -3478,7 +3411,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           if (isDatedBefore(posted, freshCutoffMs)) { agedOutIds.add(j.id); continue; }
           // Experience band from the best text we have this pass (title + the
           // fetched description where the vendor provides one). null → "unspecified".
-          const exp = detectExperience(j.title ?? "", lightDescs ? null : (descs.get(j.id) ?? null));
+          const exp = detectExperience(j.title ?? "", lightDescs ? null : (descs.get(j.id) ?? null), j.level);
           const rowCountry = j.country ?? detectCountry(j.location);
           if (j.employmentTypeText) scheduleWordsById.set(j.id, j.employmentTypeText);
           rowsById.set(j.id, {
@@ -3533,7 +3466,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           title?: string | null; location?: string | null; country?: string | null;
           apply_url?: string | null; work_mode?: string | null; remote?: boolean | null;
           salary?: string | null; agency?: boolean | null; employment_type?: string | null;
-          region_code?: string | null; first_seen?: string | null;
+          region_code?: string | null; first_seen?: string | null; posted_at?: string | null;
           /** Which lap last SERVED this row. See deepLaps. Absent/NULL = never, or not read this visit. */
           lap_epoch?: number | null;
         };
@@ -3548,7 +3481,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           // Rationale: docs/job-board-index-notes.md#n094-res
           let res = await client
             .from("job_board_postings")
-            .select("id,lap_epoch,missing_since,title,location,country,region_code,apply_url,work_mode,employment_type,remote,salary,agency,first_seen")
+            .select("id,lap_epoch,missing_since,title,location,country,region_code,apply_url,work_mode,employment_type,remote,salary,agency,first_seen,posted_at")
             .eq("company_token", s.token)
             .order("id")
             .range(from, from + 999);
@@ -3610,6 +3543,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             region_code: r.region_code ?? null,
             // Rationale: docs/job-board-index-notes.md#n597-first_seen-r-as-first_seen-string-null
             first_seen: (r as { first_seen?: string | null }).first_seen ?? null,
+            posted_at: r.posted_at ?? null, // the cap floor reads it (n1430)
             // Rationale: docs/job-board-index-notes.md#n598-lap_epoch-r-as-lap_epoch-number-null
             lap_epoch: (r as { lap_epoch?: number | null }).lap_epoch ?? null,
           })));
@@ -3771,7 +3705,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             console.warn(`[JOB-BOARD] aged-out check skipped for ${s.token}:`, String((e as Error)?.message ?? e).slice(0, 120));
           }
         }
-        const vanishedAll = [...existing].filter((id) => !liveIds.has(id));
+        const vanishedAll = [...existing].filter((id) => !liveIds.has(id) && (agedOutIds.has(id) || !belowCapFloor(existingById.get(id)?.posted_at, r.capFloor)));
 
         // Rationale: docs/job-board-index-notes.md#n100-grace-ms
         const GRACE_MS = 5 * 60 * 1000;
@@ -3865,7 +3799,9 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         // Rationale: docs/job-board-index-notes.md#n108-vendor-field-first-read
         const VENDOR_FIELD_FIRST_READ = new Set(["personio:salary"]);
         // .92 changed how these federal fields are read (S8-023, S8-083): the patches land, unlogged. Remove after 2026-11-09 (n444).
-        const OUR_READING_CHANGED = new Set(["usajobs:country", "usajobs:work_mode", "usajobs:remote", "usajobs:salary"]);
+        const OUR_READING_CHANGED = new Set(["usajobs:country", "usajobs:work_mode", "usajobs:remote", "usajobs:salary",
+          // Remove after 2026-11-30 (n1426).
+          "lever:employment_type", "bamboohr:employment_type", "recruitee:employment_type", "breezy:employment_type", "personio:employment_type", "breezy:salary", "lever:salary"]);
         // ONE-SHOT, REMOVE AFTER ONE COLD ROTATION (wave 3, L7-04/L7-05): the Lever and
         // Recruitee pay text is re-formatted (exact figures, the stated period), so the
         // first rewrite of a stored figure is our correction, not an employer edit.
@@ -3973,29 +3909,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
               patch.remote = row.remote;
               note("remote", prev.remote, row.remote);
             }
-            // A REFUSAL THAT CANNOT BE WRITTEN IS NOT A REFUSAL. This used to
-            // sit INSIDE the `row.remote !== prev.remote` test above, so the
-            // trinary could only move when the boolean moved with it — and
-            // remote is false for hybrid, for onsite AND for null, so every
-            // transition inside that set was unwritable. put() above cannot
-            // carry them either: it is stated-only and returns on a null.
-            //
-            // Net effect, measured live 2026-10-01 on
-            // ukg:…:692bd5bf-2be4-4ddd-9e24-e32c507bb43f: a UKG dropdown
-            // reading On-site under the title "Pre-Visit Specialist I - Call
-            // Center *Hybrid*". normalizeUkg refuses that contradiction and
-            // answers null, as .78 intended — and the row still served
-            // "hybrid", because hybrid→null leaves remote false→false and
-            // nothing wrote it. The fabrication .78 was shipped to remove
-            // outlived the bundle that removed it, on every row where the
-            // correction did not happen to flip the boolean.
-            //
-            // The pair is ONE fact (every normalizer derives
-            // `remote: workMode === "remote"` from the one trinary), so the
-            // gate is "did the normalizer compute the pair at all", not "did
-            // the boolean change". A null under that gate is this visit's
-            // computed answer, not vendor silence — which is the distinction
-            // the stated-only put() cannot make.
+            // Rationale: docs/job-board-index-notes.md#n1476-const-nextmode-row-as-record-string
             const nextMode = ((row as Record<string, unknown>).work_mode ?? null) as string | null;
             // Rationale: docs/job-board-index-notes.md#n611-if-nextmode-prev-work_mode-patch-work_mo
             if (nextMode !== prev.work_mode && patch.work_mode === undefined) {
@@ -4141,125 +4055,12 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         }
         // Rationale: docs/job-board-index-notes.md#n120-truncatedfetch
         const truncatedFetch = r.windowed === true;
-        // ── FEED-DARK GUARD ──────────────────────────────────────────────────
-        // THE HOLE truncatedFetch LEAVES IS THE WHOLE POINT. `windowed` is the
-        // vendor's own advertised total against what we fetched, so it catches
-        // a PARTIAL read. It cannot catch the other failure: a feed that
-        // answers 200 with a valid, nearly empty list. feedTotal then equals
-        // what we got, windowed is false, and every stored posting for that
-        // board falls through this branch and is logged as an employer
-        // takedown in a single second — a collection failure written into the
-        // one table that means "the company took the role down", where nothing
-        // downstream can tell it from 400 real fills.
-        //
+        // Rationale: docs/job-board-index-notes.md#n1477-const-feed_short_ratio
         // Marked, never suppressed. The closure log is the asset that cannot be
         // re-derived; a batch we doubt is still INSERTED, carrying the numbers
         // that produced the doubt so a reader can recompute the decision or
         // overturn it. Exclusion happens at READ time, in the estimator.
-        //
-        // A FALSE POSITIVE HERE COSTS MORE THAN A FALSE NEGATIVE, and the two
-        // are not symmetric. A missed dark feed writes closures we later doubt.
-        // A wrongly-marked batch is DELETED FROM THE ESTIMATOR — the closure
-        // row is excluded by every reader and the posting itself is already
-        // hard-deleted, so the cohort does not fall back to being censored: it
-        // leaves the risk set entirely. That is truncation, the exact defect
-        // this whole change exists to remove, and there is no promotion path
-        // (nothing ever clears `suspect`). So the guard fires only when TWO
-        // independent things are true at once.
-        //
-        // (1) THE SHARE THAT WENT ABSENT IS IMPLAUSIBLE. Measured on the pass's
-        // RAW absence, not on the grace-confirmed subset. `vanished` only holds
-        // ids stamped on an EARLIER pass and still missing now, so an outage
-        // that widens across passes never trips a threshold read off it: 400
-        // stored, 100 absent on pass 1 (all newly stamped, `vanished` empty,
-        // ratio 0), 200 absent on pass 2 of which only the first 100 are
-        // confirmed — 100 against a 120 threshold, no fire, and 100 false
-        // closures land clean. `vanishedAll` is what actually measures this
-        // pass's darkness, and it is the same variable the 6h shrink ratchet
-        // one screen up already reads.
-        //
-        // Both terms of the ratio exclude agedOutIds, because they must count
-        // the SAME population. A freshness-cap wave inflates absence while
-        // producing ZERO closures (those route to the exit ledger). Excluding
-        // them from the numerator alone is not "merely cautious" — it is
-        // one-sided the wrong way: a 1,000-posting board that ages out 600 and
-        // simultaneously loses 250 others to a dark feed scores 250/1000 = 25%
-        // and stays clean, where against the 400 that could actually be removed
-        // it is 62%. Both counts now run over the removable population.
-        // (The per-row isAgedOut fallback below still catches rows whose STORED
-        // posted_at is stale, which this pre-loop count cannot see without
-        // reading them; that residual makes the guard more cautious, and it
-        // applies to numerator and denominator alike.)
-        //
-        // (2) THE FEED ITSELF CAME BACK SHORT. This is the term that separates
-        // a collection failure from an employer, and it is the one the first
-        // cut of this guard was missing. A dark feed serves nothing; a board
-        // doing something dramatic serves a full list. Without it, three
-        // ordinary events are silently deleted from the estimator:
-        //   - an ATS recycling requisition ids: 100 served against 100 stored,
-        //     35 ids rotated. 35 > 0.30 x 100 — and the rows deleted are the
-        //     RELIST arm the competing-risk estimator depends on, so the board
-        //     that churns hardest reports churn = NULL;
-        //   - an employer filling a hiring class: 60 stored, 19 filled, the
-        //     feed still serving the other 41. 19 > max(5, 18) — and those are
-        //     precisely the fastest fills, the same cohort the deleted 7-day
-        //     floor removed, pushing R(14) the same way;
-        //   - a small board on the cold lane, where one "pass" is a rotation
-        //     visit hours to days apart: 16 stored, 6 genuinely closed.
-        //     6 > max(5, 4.8) fires on the absolute floor alone.
-        // Served count is `r.jobs.length` — the vendor's normalised postings
-        // BEFORE our freshness cap, so a dating sweep cannot fake it (rowsById
-        // would, since the cap removes rows from it). At 0.6 the three cases
-        // above all serve too much to qualify (100/100, 41/60, 10/16) while the
-        // incident this exists for (400 stored, a near-empty list) and the
-        // widening half-board outage (200 served of 400) both do.
-        //
-        // No small-board exemption, deliberately, though the shrink ratchet has
-        // one. The ratchet exempts boards under 20 because a share alone is
-        // noisy at small n and it has no second signal; term (2) IS that second
-        // signal, and a 16-posting board whose feed truly returns nothing is a
-        // dark feed that should be marked.
-        //
-        // Marked, never suppressed. The closure log is the asset that cannot be
-        // re-derived; a batch we doubt is still INSERTED, carrying the numbers
-        // that produced the doubt so a reader can recompute the decision or
-        // overturn it. Exclusion happens at READ time, in the estimator.
-        // Term (1)'s two numbers are stamped on every row; term (2)'s served
-        // count has no column yet (20260906090000 added three), so a reader can
-        // recompute the share but must take the feed-health half on the log
-        // line below. Adding batch_served is the follow-up.
-        //
-        // Denominators are prefix-filtered to this source, exactly like
-        // `vanished`, so a multi-source token compares like with like;
-        // existingRows.length would silently deflate the ratio.
-        //
-        // Computed ONCE per board pass, before the 200-id chunk loop: chunks
-        // are smaller than the threshold on any board over ~667 stored rows, so
-        // a per-chunk guard would never fire on exactly the large boards a dark
-        // feed hurts most, and would split one 400-removal event into two 200s.
-        //
-        // Composition with what is already here: this branch is only reached
-        // when !truncatedFetch, so a windowed board never gets stamped at all;
-        // the two-pass grace and the 6h shrink ratchet DELAY rather than
-        // suppress, so during a hold nothing is written while the absence count
-        // keeps its full value; and the 24h superseded dedupe decides whether a
-        // row EXISTS, where this decides whether an existing row is ADMISSIBLE.
-        // Three orthogonal protections, none substituting for another. The 0.30
-        // share intentionally fires inside the 30-60% band the ratchet's 0.6
-        // lets through.
-        //
-        // BOTH TERMS MUST BE READ AT THE SCALE OF THE EVIDENCE. On a lap-proven
-        // windowed board the unit of evidence is the LAP, not the visit, and
-        // feeding visit-scale numbers to these two tests inverts both of them:
-        // the numerator would be "everything outside a 250-row window" (always
-        // implausible) and `servedInPass` would be the last window's remainder,
-        // perhaps 27 rows against 16,000 stored (always short). Every
-        // lap-proven closure batch would be stamped suspect — and a suspect
-        // batch is EXCLUDED by every reader, so the cohort leaves the risk set
-        // entirely. That is truncation wearing the mark's clothes, and it would
-        // have made this whole fix write closures nothing is allowed to count.
-        // So on a lap the numerator is the lap's absence and the served count
-        // is the lap's own total, measured against the same stored population.
+        // Rationale: docs/job-board-index-notes.md#n1478-const-feed_short_ratio
         const FEED_SHORT_RATIO = 0.6;
         let removableBefore = 0; // = existing.size minus this pass's freshness-cap age-outs
         for (const id of existing) if (!agedOutIds.has(id)) removableBefore += 1;
@@ -4282,12 +4083,14 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         // Rationale: docs/job-board-index-notes.md#n620-if-vanished-length-truncatedfetch-lapmod
         if (vanished.length && (!truncatedFetch || lapMode)) {
           const closedAt = new Date().toISOString();
+          // Rationale: docs/job-board-index-notes.md#n1440-lap-live-titles
           const liveTitles = new Set(
-            [...rowsById.values()].map((r) => normalizeCloseTitle(String(r.title ?? ""))).filter(Boolean),
+            [...rowsById.values(), ...(lapMode ? [...existingById.values()].filter((ex) => ex.lap_epoch === lapMark && !ex.missing_since && !agedOutIds.has(ex.id)) : [])]
+              .map((r) => normalizeCloseTitle(String(r.title ?? ""), lapMode ? String(r.location ?? "") : undefined)).filter(Boolean),
           );
           // Rationale: docs/job-board-index-notes.md#n621-let-recentsuperseded-new-set-string
           let recentSuperseded = new Set<string>();
-          try {
+          if (!lapMode) try {
             const { data: recent } = await client
               .from("job_board_closures")
               .select("title")
@@ -5100,22 +4903,7 @@ async function passEndHygiene(client: SupabaseClient): Promise<{ ok: boolean; de
   return { ok: true, detail: "dates checked" };
 }
 
-// Freshness cap sweep: drop the aged tail (effective_posted past the window)
-// so the corpus reclaims itself immediately rather than waiting a full cold
-// rotation for the per-board prune. Bounded per pass (a single delete of the
-// ~65k initial backlog risks a statement timeout on the free tier); the
-// ingestion filter keeps dated-old postings from re-entering, so this
-// converges within a few passes and then only trims the daily trickle.
-//
-// ONE CHUNK AT A TIME, ON A CLOCK (S11-001). It used to read all 15,000
-// ids, then every chunk's rows, and delete only at the very end, so a tail
-// that died anywhere in the reads deleted nothing at all: the aged
-// backlog grew from 20.5k to 36.6k while the sweep ran every pass. Each
-// chunk is now read, tombstoned, logged and deleted before the next is
-// taken, so whatever a pass gets through stays done. Since every chunk
-// is gone before the next read, the next chunk is always the oldest 200
-// again: no offset to drift. No new chunk starts once the pass-end hop is
-// PASS_END_SWEEP_UNTIL_MS old, and the cap still bounds a pass.
+// Rationale: docs/job-board-index-notes.md#n1479-async-function-freshnesssweep-client-sup
 async function freshnessSweep(client: SupabaseClient, freshCutoffMs: number, sliceWallStart: number): Promise<{ swept: number; stop: string }> {
   const freshCutoffIso = new Date(freshCutoffMs).toISOString();
   const sweepUntil = sliceWallStart + PASS_END_SWEEP_UNTIL_MS;
@@ -5309,29 +5097,7 @@ async function passEndCapacity(client: SupabaseClient): Promise<{ ok: boolean; d
 
 /** Step "names": the name-sync lane, a board at a time on this step's clock. */
 async function passEndNames(client: SupabaseClient, sliceWallStart: number): Promise<{ ok: boolean; detail: string; stop?: string }> {
-  // One-time name sync: ~48 rung-3 census names shipped HTML-escaped
-  // ("Bob's Main Street Auto &amp; Towing") and were decoded in the catalog —
-  // but the refresh is INSERT-ONLY by design (existing rows are never
-  // rewritten), so stored rows can never heal on their own. Find rows still
-  // carrying escaped names and sync them (postings + closures, which feed
-  // the actively-hiring leaderboard) to the decoded catalog name. Stamped.
-  //
-  // AND EVERY BOARD AN EMPLOYER-NAME OVERRIDE NAMES (S11-133, v4). Wave 3's
-  // 179 names rename about 80,800 stored postings and their closures on 216
-  // boards; the migration that adds them used to do that in one
-  // transaction. The lane does it here instead, a board at a time, by the
-  // trigger's own precedence over company_name_overrides (name-sync.ts),
-  // into the closure rollup as well (S11-135). It runs LAST in the tail and
-  // stops taking boards at NAME_SYNC_UNTIL_MS from the hop's start.
-  //
-  // S12-015, S12-084: A CURSOR, AND NO GREEN RECEIPT WHILE BOARDS WAIT. The
-  // lane walked every token from the first each pass, so it re-read 444 boards
-  // it had already renamed and never reached the m's (Loblaw's tenant still
-  // read "Myview" on 7,312 rows), and it answered ok:true with 90 s a pass.
-  // name_sync_progress keeps the last token it finished and the tokens that
-  // failed; a hop resumes after the one and retries the others first. While a
-  // board waits the step answers ok:false with stop "clock" and runs again
-  // (pass-end.ts PASS_END_NAME_HOPS), and the receipt says how far it got.
+  // Rationale: docs/job-board-index-notes.md#n1480-const-data-nsver-await-client-from
   const { data: nsVer } = await client.from("job_board_meta").select("v").eq("k", "name_sync_version").maybeSingle();
   if ((nsVer?.v as { version?: number } | null)?.version !== NAME_SYNC_VERSION) {
   try {
@@ -5775,34 +5541,7 @@ async function checkLive(src: JobSource, externalId: string, applyUrl?: string |
       liveBoardMemo.set(memoKey, memo);
     }
     // ── WINDOWED-ABSENCE RULE ────────────────────────────────────────────────
-    // The SAME rule the refresh prune applies at `truncatedFetch`
-    // (`r.windowed === true`), stated here because this is the second place a
-    // posting's absence gets turned into a closure — and until now the only one
-    // that did it WITHOUT the rule.
-    //
-    // `windowed` means the vendor's OWN advertised total exceeded what we could
-    // fetch. A posting displaced past the page cap is absent from `ids` while
-    // being perfectly live on the employer's site: measured 2026-07-21, 7 of 8
-    // sampled "closures" on a windowed board were still open. ~4,348 of 44,542
-    // boards sit on capped fetchers, so this is not a corner.
-    //
-    // Reading absence as `false` here told a user "{{company}} took this one
-    // down" about a live role at a NAMED employer, stamped the posting
-    // missing_since so it vanished for everyone, and then DELETEd it with no
-    // closure row — a hole in the lifecycle log, the one asset that cannot be
-    // re-derived.
-    //
-    // Three states, and `null` is not a hedge: the verify action already treats
-    // null as "keep showing" (it is what the catch below returns for a network
-    // hiccup), and the audit counts it as `unknown` rather than scoring it
-    // against vendor accuracy. Absent + windowed is genuinely UNKNOWN.
-    // Spelled `X.windowed === true`, the SAME four tokens as the prune's
-    // `truncatedFetch` and the closure log's `partialRead`. Not a style
-    // preference: the guard asserts all three derivations are spelled
-    // identically, because three sites that mean the same thing and say it
-    // three ways are three sites that drift apart one edit at a time. The
-    // branch that turns this flag into a user-visible verdict is the LAST one
-    // that should be exempt from that rule.
+    // Rationale: docs/job-board-index-notes.md#n1481-const-truncatedfetch-memo-windowed-true
     const truncatedFetch = memo.windowed === true;
     if (memo.ids.has(externalId)) return true;
     if (truncatedFetch) { if (note) note.pageCapped = true; return null; }
@@ -6016,8 +5755,10 @@ async function fetchVendorDetail(
     // Rationale: docs/job-board-index-notes.md#n680-const-res-await-fetchwithtimeout-https-r
     const res = await fetchWithTimeout(`https://recruiting.paylocity.com/recruiting/jobs/Details/${externalId}`);
     if (res.ok) {
-      const ld = jobPostingLd(await res.text());
-      text = ld.description ? htmlToText(ld.description).slice(0, DESC_CAP) || null : null;
+      const html = await res.text();
+      const ld = jobPostingLd(html);
+      // Rationale: docs/job-board-index-notes.md#n1427-a-paylocity-page-with-no-structured-data
+      text = (ld.description ? htmlToText(ld.description) : paylocityPageText(html)).slice(0, DESC_CAP) || null;
       pay = ldBaseSalaryText(ld.pay);
     }
   } else if (src.source === "adp") {
@@ -6062,15 +5803,20 @@ async function fetchVendorDetail(
     const r = await readBoardForDetail(src);
     if (r) {
       if (src.source === "lever") {
-        const raw = (Array.isArray(r.raw) ? r.raw : []) as Array<{ id: string; descriptionPlain?: string; descriptionBodyPlain?: string }>;
+        const raw = (Array.isArray(r.raw) ? r.raw : []) as Array<{ id: string; descriptionPlain?: string; lists?: unknown; additionalPlain?: string }>;
         const job = raw.find((x) => `lever:${src.token}:${x.id}` === id);
-        if (job) text = ((job.descriptionPlain ?? "") + (job.descriptionBodyPlain ? `\n${job.descriptionBodyPlain}` : "")).slice(0, DESC_CAP) || null;
+        if (job) text = leverText(job).slice(0, DESC_CAP) || null;
       } else {
         const raw = (r.raw as { jobs?: Array<{ id: string; descriptionPlain?: string; descriptionHtml?: string }> }).jobs ?? [];
         const job = raw.find((x) => `ashby:${src.token}:${x.id}` === id);
         if (job) text = (job.descriptionPlain ?? (job.descriptionHtml ? htmlToText(job.descriptionHtml) : "")).slice(0, DESC_CAP) || null;
       }
     }
+  } else if (src.source === "personio") {
+    // Rationale: docs/job-board-index-notes.md#n1423-a-personio-posting-in-another-language
+    const xml = await fetchPersonio(src).then((r) => r.xml, () => "");
+    const block = xmlBlocks(xml, "position").find((b) => xmlValue(b, "id") === externalId);
+    if (block) text = htmlToText(xmlBlocks(block, "jobDescription").map((d) => xmlValue(d, "value") ?? "").join("\n").slice(0, RAW_HTML_CAP)).slice(0, DESC_CAP) || null;
   }
   // Everything else — rippling today — has no public description source.
   // Returning null here is a measured fact, not an unfinished branch.
@@ -6140,8 +5886,8 @@ const INTENT_FILTERS: Array<{ re: RegExp; label: string; patch: Record<string, u
   { re: /\bremote(?:ly)? only\b/i, label: "remote only", patch: { workMode: "remote" } },
   // The bare work-mode words, per the measurement above.
   // Not the first word of a trade term: "Remote Sensing Analyst", "Hybrid Vehicle Technician" (L8-06).
-  { re: /\bremote(?:ly)?\b(?!\s+(?:sensing|pilots?|patient|monitoring|operated)\b)/i, label: "remote", patch: { workMode: "remote" } },
-  { re: /\bhybrid\b(?!\s+(?:vehicles?|electric|cars?|cloud|powertrains?|engines?)\b)/i, label: "hybrid", patch: { workMode: "hybrid" } },
+  { re: /\bremote(?:ly)?\b(?![\s-]+(?:sensing|pilots?|patient|monitoring|operated)\b)/i, label: "remote", patch: { workMode: "remote" } },
+  { re: /\bhybrid\b(?![\s-]+(?:vehicles?|electric|cars?|cloud|powertrains?|engines?)\b)/i, label: "hybrid", patch: { workMode: "hybrid" } },
   { re: /\bon[- ]?site\b/i, label: "onsite", patch: { workMode: "onsite" } },
   // Seniority phrases map onto the experience band the board already stores.
   { re: /\bno experience(?: (?:required|needed|necessary))?\b/i, label: "no experience", patch: { experience: ["entry"] } },
@@ -6173,7 +5919,7 @@ const INTENT_CONFLICTS: Record<string, string[]> = {
 function liftIntentFilters(
   rawQ: unknown,
   body: Record<string, unknown>,
-): { patch: Record<string, unknown>; labels: string[]; residualQ: string; placeExclusion?: true } | null {
+): { patch: Record<string, unknown>; labels: string[]; residualQ: string; placeExclusion?: true; notRemote?: true } | null {
   const q = String(rawQ ?? "");
   // noIntent: the caller (the page's undo) asked for every word as search text (L8-06).
   if (!q.trim() || body.noIntent === true) return null;
@@ -6182,14 +5928,25 @@ function liftIntentFilters(
   let residual = q.replace(/"[^"]*"/g, (m) => `\u0001${quoted.push(m) - 1}\u0001`);
   const patch: Record<string, unknown> = {};
   const labels: string[] = [];
+  let notRemote = false;
   for (const { re, label, patch: p } of INTENT_FILTERS) {
     if (!re.test(residual)) continue;
+    // S13-013: the one empty patch is the negated remote; it yields to a caller's work mode as a remote lift does (n1411).
+    const negation = Object.keys(p).length === 0;
     // Rationale: docs/job-board-index-notes.md#n684-if-object-keys-p-some-k
-    if (Object.keys(p).some((k) => (INTENT_CONFLICTS[k] ?? [k]).some((f) => body[f] !== undefined && body[f] !== null))) continue;
+    if ((negation ? ["workMode"] : Object.keys(p)).some((k) => (INTENT_CONFLICTS[k] ?? [k]).some((f) => body[f] !== undefined && body[f] !== null))) continue;
     // Rationale: docs/job-board-index-notes.md#n188-clash
     const clash = Object.keys(p).find((k) => k in patch && patch[k] !== p[k]);
     if (clash) continue;
-    residual = residual.replace(re, " ");
+    // S13-077: "remote-first" is lifted whole, never left as a "-first" NOT, unless another rule starts there (n1412).
+    const m = re.exec(residual)!;
+    const at = (i: number) => INTENT_FILTERS.some((r) => r.re.exec(residual.slice(i))?.index === 0);
+    let end = m.index + m[0].length, start = m.index;
+    const tail = /^-[a-z0-9]+/i.exec(residual.slice(end));
+    if (tail && !at(end + 1)) end += tail[0].length;
+    if (/[^\s-]-$/.test(residual.slice(0, start))) start -= 1; // "coder-remote": the word stays, the hyphen goes
+    residual = `${residual.slice(0, start)} ${residual.slice(end)}`;
+    if (negation) notRemote = true;
     // Rationale: docs/job-board-index-notes.md#n685-const-restates-object-keys-p-every
     const restates = Object.keys(p).every((k) => k in patch && patch[k] === p[k]);
     Object.assign(patch, p);
@@ -6206,9 +5963,9 @@ function liftIntentFilters(
   // S12-172: a negated place is dropped from the words and named in ignoredFilters ("placeExclusion").
   const notPlace = place ? null : negatedTrailingPlace(residual, QUERY_FILLER);
   if (notPlace) residual = notPlace.head;
-  if (labels.length === 0 && !notPlace) return null;
+  if (labels.length === 0 && !notPlace && !notRemote) return null;
   residual = residual.replace(/\u0001(\d+)\u0001/g, (_m, i) => quoted[Number(i)] ?? "").replace(/\s+/g, " ").trim();
-  return { patch, labels, residualQ: residual, ...(notPlace ? { placeExclusion: true as const } : {}) };
+  return { patch, labels, residualQ: residual, ...(notPlace ? { placeExclusion: true as const } : {}), ...(notRemote ? { notRemote: true as const } : {}) };
 }
 
 // Rationale: docs/job-board-index-notes.md#n1195-function-ftssafe-t-string-string
@@ -6269,6 +6026,20 @@ function queryTerms(raw: unknown): { terms: string[]; dropped: string[]; liftedS
   return { terms: kept, dropped: all.filter((t, i) => QUERY_FILLER.has(t) && !isOr(t, i)), liftedSalary: money !== null };
 }
 
+// Rationale: docs/job-board-index-notes.md#n1414-a-zip-is-dropped-and-named
+async function withoutZips(client: SupabaseClient, body: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const q = String(body.q ?? "");
+  const w = q.replace(/"[^"]*"/g, " \u0001 ").toLowerCase().split(/\s+/).filter(Boolean);
+  const money = salaryTokenInQuery(q)?.token ?? null;
+  const zips = w.filter((t, i) => /^\d{5}(?:-\d{4})?$/.test(t) && t !== money && !/^(?:lbs?|pounds|gvwr?|sq|ft|feet|miles?|psi|rpm|btu|kw|volts?|hrs?|hours)$/.test(w[i + 1] ?? ""));
+  if (!zips.length || !w.some((t) => !zips.includes(t) && t !== money && !QUERY_FILLER.has(t))) return body;
+  const held = await Promise.all(zips.slice(0, 3).map((z) => Promise.resolve(client.from("job_board_postings").select("id")
+    .textSearch("title_tsv", z.slice(0, 5), { config: "english" }).limit(1).abortSignal(AbortSignal.timeout(1_500)))
+    .then(({ data, error }) => error || !Array.isArray(data) || data.length > 0, () => true)));
+  const gone = zips.slice(0, 3).filter((_, i) => !held[i]);
+  return gone.length ? { ...body, q: q.split(/\s+/).filter((t) => !gone.includes(t)).join(" "), zipDropped: gone } : body;
+}
+
 // Rationale: docs/job-board-index-notes.md#n1199-const-place_qualifiers-readonlyset-strin
 const PLACE_QUALIFIERS: ReadonlySet<string> = new Set([
   "united", "states", "state", "kingdom", "county", "remote", "republic", "city", "north", "south",
@@ -6320,7 +6091,7 @@ const DID_YOU_MEAN: Record<string, string> = {
 
 /** The words a search ignored: filler, plus the stopwords an english tsquery served it discarded (S11-004, n481). */
 function droppedTermsOf(body: Record<string, unknown>, englishDropped: readonly string[] = []): string[] {
-  return [...new Set([...queryTerms(body.q).dropped, ...englishDropped])];
+  return [...new Set([...queryTerms(body.q).dropped, ...((body.zipDropped as string[] | undefined) ?? []), ...englishDropped])];
 }
 
 // Rationale: docs/job-board-index-notes.md#n1202-function-englishdropdisclosure-body-reco
@@ -6343,7 +6114,7 @@ function searchDisclosures(
   if (fromQuery !== null && applied.salaryFloor === fromQuery) out.salaryFromQuery = fromQuery;
   // Rationale: docs/job-board-index-notes.md#n691-const-l-locationterms-body-location
   const l = locationTerms(body.location);
-  if (l.expandedFrom) { out.locationExpandedFrom = l.expandedFrom; out.locationSearched = l.terms; }
+  if (l.expandedFrom) { out.locationExpandedFrom = l.expandedFrom; out.locationSearched = l.terms.map((t) => t.replace(ANCHOR, "")); }
   // Rationale: docs/job-board-index-notes.md#n692-if-maxageclamped-out-maxageclampedto
   if (maxAgeClamped) out.maxAgeClampedTo = 30;
   // Rationale: docs/job-board-index-notes.md#n693-if-applied-postedafter-out-postedafterus
@@ -6475,32 +6246,7 @@ async function handleRequest(req: Request): Promise<Response> {
   // Rationale: docs/job-board-index-notes.md#n198-req-method-get
   if (req.method === "GET") {
     const u = new URL(req.url);
-    // THE SITEMAP THIS SERVED IS GONE, AND 410 IS HOW A CRAWLER LEARNS THAT.
-    //
-    // On 2026-09-23 the second sitemap line was taken out of robots.txt because
-    // the index behind it asked crawlers to index 767,391 board URLs that every
-    // one of them served the same bytes for. Only the ADVERTISEMENT was removed.
-    // This endpoint kept serving, and a crawler does not need robots.txt to
-    // reach a URL it already has.
-    //
-    // Measured 2026-10-01, a week after that change: the index still answered
-    // with its 30 pages, page 0 still listed 24,449 URLs in 3.3 MB, uncached at
-    // the edge, 7.4 s a page, and 200 to Bytespider, Baiduspider, PetalBot and
-    // curl alike. A full walk is ~733,000 URLs at ~81 KB each: about 59 GB of
-    // uncached egress, per crawler, as often as each one cares to repeat it.
-    // That is what the owner saw as a flood of foreign traffic, and none of it
-    // was anybody attacking us — we were handing it out.
-    //
-    // The guard written at the time pins robots.txt, reasoning that the lever
-    // behind the 767,391 was one line in a text file and not code. The lever
-    // was the road, not the sign. the-sitemap-never-advertises-a-posting-url-
-    // with-no-page.test.ts now holds both.
-    //
-    // 410 and not 404, deliberately: a 404 says "not here, maybe later" and
-    // crawlers retry it for months, while 410 is the terminal one that drops
-    // the URL from the queue. Nothing in this repo calls this action — no code,
-    // no robots line, no test asserting it exists — so there is no caller to
-    // break. Cached for a week so the refusal does not become its own traffic.
+    // Rationale: docs/job-board-index-notes.md#n1482-if-u-searchparams-get-action-sitemap
     if (u.searchParams.get("action") === "sitemap") {
       return new Response(
         "Gone. Individual openings have their own pages; the sitemap that lists "
@@ -6583,27 +6329,13 @@ async function handleRequest(req: Request): Promise<Response> {
       // Rationale: docs/job-board-index-notes.md#n200-slice
       const SLICE = 200;
       const state = await client.from("job_board_meta").select("v, updated_at").eq("k", "host_sweep").maybeSingle();
-      // The stampede lock: no sweep inside 5 minutes of the row's last write,
-      // for anyone. The cron fires hourly (:07) and posts no credential, so
-      // anyone can send this action, and that guard alone let a loop run a
-      // sweep of 200 outbound probes every 5 minutes, twelve times the cron.
-      // .88 also holds a caller without a maintenance credential to one sweep
-      // per HOST_SWEEP_ANON_GAP_MS counted from the last ARRIVAL, never from
-      // completion: arrival to arrival is the cron's own hour, while a slow
-      // sweep's completion stamp lands minutes later and would make the next
-      // tick look early.
+      // Rationale: docs/job-board-index-notes.md#n1483-const-lockage-state-data-updated_at-date
       const lockAge = state.data?.updated_at ? Date.now() - new Date(state.data.updated_at).getTime() : Infinity;
       if (lockAge < 5 * 60_000) return json({ skipped: "a sweep ran moments ago" });
       const arrivedMs = Date.parse(String((state.data?.v as { lastArrivedAt?: unknown } | null)?.lastArrivedAt ?? ""));
       const sinceArrival = Number.isFinite(arrivedMs) ? Date.now() - arrivedMs : lockAge;
       if (sinceArrival < HOST_SWEEP_ANON_GAP_MS && !(await isMaintenance(req, body))) return json({ skipped: "a sweep ran moments ago" });
-      // Stamp ARRIVAL before probing, not only completion. Overnight
-      // 2026-08-23→24 the cursor advanced once in ten-plus cron ticks and
-      // there was no way to tell arrivals-that-died from ticks-that-never-
-      // fired. The arrival stamp also moves the stampede lock to entry time,
-      // where a lock belongs. CONDITIONAL since .88, on the stamp just read
-      // (or on the row not existing yet): callers arriving together all read
-      // an expired lock, and exactly one of them may sweep.
+      // Rationale: docs/job-board-index-notes.md#n1484-const-svarrive-state-data-v-as
       const svArrive = { ...(state.data?.v as Record<string, unknown> ?? {}), lastArrivedAt: new Date().toISOString() };
       const arriveAt = new Date().toISOString();
       if (state.data?.updated_at) {
@@ -6904,6 +6636,8 @@ async function handleRequest(req: Request): Promise<Response> {
         descSweep: {
           vendor: ((dsMeta.data?.v ?? {}) as { vendor?: string }).vendor ?? null,
           doneAt: ((dsMeta.data?.v ?? {}) as { doneAt?: string }).doneAt ?? null,
+          cursor: ((dsMeta.data?.v ?? {}) as { cursor?: string }).cursor ?? null,
+          floor: ((dsMeta.data?.v ?? {}) as { floor?: string }).floor ?? null,
           ageMin: dsMeta.data?.updated_at ? Math.round((Date.now() - new Date(dsMeta.data.updated_at).getTime()) / 60000) : null,
         },
         // Rationale: docs/job-board-index-notes.md#n217-slicestats-slicestatsrow-data-v-null
@@ -7547,6 +7281,7 @@ async function handleRequest(req: Request): Promise<Response> {
         for (const r of rows ?? []) {
           scanned++;
           const row = r as { id: string; title?: string | null; description?: string | null; experience_band?: string | null; min_years?: number | string | null };
+          if (row.id.startsWith("personio:")) continue;
           const exp = detectExperience(row.title ?? "", row.description ?? null);
           const band = exp.band ?? "unspecified";
           const min = exp.minYears ?? null;
@@ -8356,6 +8091,9 @@ async function handleRequest(req: Request): Promise<Response> {
       const vstart = Math.max(0, Number(body.vstart) || 0) % DETAIL_DESC_SOURCES.length;
       // Rationale: docs/job-board-index-notes.md#n792-const-desccursor-typeof-body-cursor-stri
       const descCursor = typeof body.cursor === "string" && body.cursor ? body.cursor : null;
+      // Rationale: docs/job-board-index-notes.md#n1441-desc-sweep-floor
+      const descFloor = typeof body.floor === "string" ? body.floor : "";
+      let descTop = typeof body.top === "string" ? body.top : "";
       if (vi >= DETAIL_DESC_SOURCES.length) {
         // Rationale: docs/job-board-index-notes.md#n793-const-boards-job_sources-filter-s-board_
         const BOARDS = JOB_SOURCES.filter((s) => (BOARD_DESC_SOURCES as readonly string[]).includes(s.source));
@@ -8422,7 +8160,7 @@ async function handleRequest(req: Request): Promise<Response> {
       }
       const vendor = DETAIL_DESC_SOURCES[vi];
       await client.from("job_board_meta").upsert(
-        { k: "desc_sweep", v: { runningVi: vi, vendor, cursor: descCursor }, updated_at: new Date().toISOString() },
+        { k: "desc_sweep", v: { runningVi: vi, vendor, cursor: descCursor, floor: descFloor || null }, updated_at: new Date().toISOString() },
         { onConflict: "k" },
       );
       // Rationale: docs/job-board-index-notes.md#n246-sel
@@ -8433,9 +8171,14 @@ async function handleRequest(req: Request): Promise<Response> {
         .in("source", [...DETAIL_DESC_SOURCES])
         .is("description", null)
         .is("missing_since", null);
-      if (descCursor) sel = sel.lt("first_seen", descCursor);
+      if (descFloor) sel = sel.gt("first_seen", descFloor);
+      const bar = descCursor ? descCursor.indexOf("|") : -1;
+      const curFs = descCursor && bar >= 0 ? descCursor.slice(0, bar) : descCursor;
+      if (curFs) sel = sel.lte("first_seen", curFs);
+      if (curFs && bar >= 0) sel = sel.or(`first_seen.lt."${curFs}",id.lt."${descCursor!.slice(bar + 1).replace(/["\\]/g, "\\$&")}"`);
       const { data: rows, error: readErr } = await sel
         .order("first_seen", { ascending: false, nullsFirst: false })
+        .order("id", { ascending: false })
         .limit(DESC_SWEEP_PER_HOP);
       if (readErr) throw readErr;
       const queue = [...(rows ?? [])] as Array<{
@@ -8520,17 +8263,22 @@ async function handleRequest(req: Request): Promise<Response> {
       }));
       // Rationale: docs/job-board-index-notes.md#n801-const-exhausted-queue-length-desc_sweep_
       const exhausted = queue.length < DESC_SWEEP_PER_HOP;
-      const nextCursor = exhausted ? null : (queue[queue.length - 1]?.first_seen ?? null);
+      const tail = queue[queue.length - 1];
+      const nextCursor = exhausted || !tail?.first_seen ? null : `${tail.first_seen}|${tail.id}`;
+      if (!descCursor && queue[0]?.first_seen) descTop = queue[0].first_seen;
+      let floor = descFloor;
       if (exhausted) {
         // Rationale: docs/job-board-index-notes.md#n802-const-next-vi-detail_desc_sources-length
         const next = (vi + 1) % DETAIL_DESC_SOURCES.length;
         vi = next === vstart ? DETAIL_DESC_SOURCES.length : next;
+        floor = descTop || descFloor;
+        descTop = "";
       }
       const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
       waitUntil(chainKey().then((key) => fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "desc-sweep", chainKey: key, vi, vstart, ...(nextCursor ? { cursor: nextCursor } : {}) }),
+        body: JSON.stringify({ action: "desc-sweep", chainKey: key, vi, vstart, ...(nextCursor ? { cursor: nextCursor } : {}), ...(floor ? { floor } : {}), ...(descTop ? { top: descTop } : {}) }),
       })).then((rr) => discardBody(rr)).catch(() => {}));
       return json({ ok: true, vendor, scanned: queue.length, updated, nextVi: vi, cursor: nextCursor });
     }
@@ -9029,21 +8777,24 @@ async function handleRequest(req: Request): Promise<Response> {
     if (action === "exists") {
       // Rationale: docs/job-board-index-notes.md#n826-const-asked-array-isarray-body-ids
       const asked = Array.isArray(body.ids) ? body.ids.filter((x): x is string => typeof x === "string").slice(0, 200) : [];
-      if (asked.length === 0) return json({ open: {} });
+      if (asked.length === 0) return json({ open: {}, rowTest: "served" });
       const openMap: Record<string, boolean> = {};
       for (const id of asked) openMap[id] = false;
       // S12-123: no posting id is longer than EXISTS_ID_MAX; a longer one is
       // not open and is never put in the read (a 100 KB id answered 500).
       const ids = asked.filter((id) => id.length <= EXISTS_ID_MAX);
+      const cutoffMs = Date.now() - FRESH_WINDOW_DAYS * 86_400_000;
       for (let i = 0; i < ids.length; i += 200) {
         const { data, error } = await client
           .from("job_board_postings")
-          .select("id")
-          .in("id", ids.slice(i, i + 200));
+          .select("id, effective_posted")
+          .in("id", ids.slice(i, i + 200))
+          .is("missing_since", null);
         if (error) throw error;
-        for (const r of data ?? []) openMap[r.id as string] = true;
+        for (const r of data ?? []) if (!pastFence(r, cutoffMs)) openMap[r.id as string] = true;
       }
-      return json({ open: openMap });
+      // The answer names its test; check_jobs_open's basis follows it (n1464).
+      return json({ open: openMap, rowTest: "served" });
     }
 
     if (action === "semantic-search") {
@@ -9102,15 +8853,7 @@ async function handleRequest(req: Request): Promise<Response> {
       const description = stored ?? fetched?.text ?? null;
       const vendorPay = fetched?.pay ?? null;
       if (!description && !jobRow) {
-        // Dead deep link. Before answering with a bare 404 (which the client
-        // can only render as a shrug), check the closure log: if we WATCHED
-        // this posting close, we know its title and company and when — enough
-        // for the client to say what happened and offer a search for similar
-        // live roles instead of a silent dead end.
-        // BY THE BOARD FIRST (S11-024): the ledger has no posting_id index, so
-        // the posting id alone read ~5M rows (7 s cold, 1.5 s warm on an
-        // unknown id). The token, already checked against the catalogue above,
-        // reaches job_board_closures_curve_idx (company_token, closed_at DESC).
+        // Rationale: docs/job-board-index-notes.md#n1485-const-data-closure-await-client
         const { data: closure } = await client
           .from("job_board_closures")
           .select("title, company, closed_at")
@@ -9480,10 +9223,19 @@ async function serveList(
   if (intentLift) {
     body = { ...body, ...intentLift.patch, q: intentLift.residualQ };
   }
+  // S13-013: a negated remote strikes a title saying remote, as "-remote" does (n1411).
+  if (intentLift?.notRemote && !excludedTerms.includes("remote")) excludedTerms.push("remote");
   const { applied, ignored: ignoredFilters, maxAgeClamped } = (intentLift || excludedTerms.length)
     ? normalizeFilters(body, JOB_SOURCES.length)
     : preFilters;
   for (const f of textShape.ignored) if (!ignoredFilters.includes(f)) ignoredFilters.push(f);
+  body = await withoutZips(client, body);
+  // S13-015: filler asking for places near the searcher ("jobs near me") searches nothing, said (n1413).
+  const qWords = queryTerms(body.q).terms;
+  if (qWords.every((t) => QUERY_FILLER.has(t)) && (qWords.includes("nearby") || (qWords.includes("me") && qWords.some((t) => t === "near" || t === "around" || t === "close")))) {
+    body = { ...body, q: "" };
+    if (!intentLift?.labels.length && !ignoredFilters.includes("q")) ignoredFilters.push("q");
+  }
   if (intentLift?.placeExclusion && !ignoredFilters.includes("placeExclusion")) ignoredFilters.push("placeExclusion");
   // Rationale: docs/job-board-index-notes.md#n841-const-agecutoff-applied-maxagedays-null
   const ageCutoff = applied.maxAgeDays === null ? null : ageCutoffMs(applied.maxAgeDays, Date.now(), body.tzOffset);
@@ -9582,15 +9334,7 @@ async function serveList(
           `— ${JSON.stringify(v.slice(0, 3))}`,
       );
     }
-    // Both outcomes recorded, and the asymmetry is the point: if only failures
-    // were written, "no incidents" and "the check stopped running" would look
-    // identical. Clean pages sampled ~2% so a healthy board pays almost nothing;
-    // violations unsampled, because they should be zero.
-    // .88: an incident is one row PER FIELD (filter_integrity_incident.<field>),
-    // so a page tripping one field cannot erase another field's record, and
-    // nothing the caller wrote -- its filters, the `want` text -- is stored.
-    // Each field's row is rewritten at most once per INCIDENT_REWRITE_MS, so
-    // a request that trips the sensor is not a write per request.
+    // Rationale: docs/job-board-index-notes.md#n1486-if-v-length
     if (v.length) {
       waitUntil(writeIncidents(client, incidentRows(v, jobs.length, new Date().toISOString())).catch(() => {}));
     } else if (Math.random() < 0.02) {
@@ -9805,7 +9549,7 @@ async function serveList(
   // reach the tsquery parser back inside its quotes, or the tip is a lie.
   const qText = phraseText(qt.terms).slice(0, 200) || (qt.liftedSalary ? "" : String(body.q ?? "").trim().slice(0, 200));
   // The router's employer keys: the table, plus the live employer list's (S12-014).
-  const routeAliases = qText ? routeAliasesFor(client) : EMPLOYER_ALIASES;
+  const routeAliases = qText ? routeAliasesFor(client) : ROUTE_TABLE;
   /** The SIMPLE route's split title match, with an employer's boards beside its key (S12-014). */
   const simpleSplit = (q: string) => simpleRouteFilters(ftsSafe(q), ROLE_ALIASES, routeAliases);
 
@@ -10399,7 +10143,7 @@ async function serveList(
 
       const t_search_jobs_3 = Date.now();
       // On a clock: a missed full call is answered by the title tier (S11-009, n482).
-      const rankedAnswer = await rankedWithDeadline(async (titleOnly) => await client.rpc("search_jobs", {
+      const rankedCall = async (page: { p_limit: number; p_offset: number }, titleOnly: boolean) => await client.rpc("search_jobs", {
         p_q: expandedQ,
         p_fresh_cutoff: freshCutoffIso,
         p_location: rankedLocationParam(applied.location),
@@ -10420,11 +10164,14 @@ async function serveList(
         ...(applied.workMode ? { p_work_mode: applied.workMode } : {}),
         ...(applied.employmentType ? { p_employment_type: applied.employmentType } : {}),
         ...(applied.excludeAgencies ? { p_exclude_agencies: true } : {}),
+        ...page,
+        ...(titleOnly ? { p_title_only: true } : {}),
+      });
+      const rankedAnswer = await rankedWithDeadline(async (titleOnly) => await rankedCall({
         // Rationale: docs/job-board-index-notes.md#n350-p-limit-pageplan-plimit
         p_limit: pagePlan.pLimit,
         p_offset: pagePlan.pOffset,
-        ...(titleOnly ? { p_title_only: true } : {}),
-      }), budgetLeft);
+      }, titleOnly), budgetLeft);
       const { data: ranked, error: rankErr } = rankedAnswer;
       markFrom("search_jobs", t_search_jobs_3);
       if (rankedAnswer.timedOut) {
@@ -10975,6 +10722,18 @@ async function serveList(
             ? offset + rankedGrouped.rawConsumed >= rankedScored.length
             : offset + rankedGrouped.rawConsumed >= RANKED_WINDOW
         );
+        // S13-012: a page the window's last clusters left short continues past the seam, in SQL rank (n1417).
+        let seamRaw = 0;
+        const seamReached = !deepPage && deepPageable && rankedRows.length >= RANKED_WINDOW && (ringMerged ? poolExhausted && ringResolved : offset + rankedGrouped.rawConsumed >= RANKED_WINDOW);
+        if (seamReached && groupSimilar && rankedGrouped.jobs.length < limit && budgetLeft() > 2_000) {
+          try {
+            const t_seam = Date.now();
+            const { data: deep } = await withDeadline(rankedCall({ p_limit: fetchLimit, p_offset: RANKED_WINDOW }, rankedAnswer.cut), Math.min(1_500, budgetLeft())) as { data: unknown[] | null };
+            markFrom("seam_topup", t_seam);
+            const past = continuePastSeam(rankedWindow, ((deep ?? []) as unknown[]).map(rowToJob) as Array<Record<string, unknown>>, mergedSeen, limit);
+            if (past) ({ grouped: rankedGrouped, raw: seamRaw } = past);
+          } catch { /* the short page is still correct */ }
+        }
         // Rationale: docs/job-board-index-notes.md#n380-deeppage-scoreranked-rankedgrouped
         if (deepPage && scoreRanked && rankedGrouped.jobs.length > 1) {
           rankedGrouped = { ...rankedGrouped, jobs: rerankWindow(rankedGrouped.jobs, [qText, ...expansions]) };
@@ -11119,7 +10878,7 @@ async function serveList(
             ? { sortScope: "relevanceWindow", sortScopeRows: ringMerged ? RING_WINDOW : RANKED_WINDOW }
             : {}),
           // Rationale: docs/job-board-index-notes.md#n934-nextoffset-poolexhausted-ring_window-off
-          nextOffset: poolExhausted ? RING_WINDOW : offset + rankedGrouped.rawConsumed,
+          nextOffset: poolExhausted ? RING_WINDOW + seamRaw : seamRaw ? RANKED_WINDOW + seamRaw : offset + rankedGrouped.rawConsumed,
           // Rationale: docs/job-board-index-notes.md#n389-hasmore-deeppage
           hasMore: deepPage
             ? (rankedSequence.length > rankedGrouped.rawConsumed || rankedRows.length >= fetchLimit)

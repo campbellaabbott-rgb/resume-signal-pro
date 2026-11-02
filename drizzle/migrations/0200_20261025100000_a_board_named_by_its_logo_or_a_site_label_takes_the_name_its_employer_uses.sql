@@ -1,0 +1,1 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_staging WHERE name = '20261025100000_a_board_named_by_its_logo_or_a_site_label_takes_the_name_its_employer_uses'));

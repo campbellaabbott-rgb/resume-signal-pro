@@ -8,9 +8,11 @@
 //                                                   each with its quote, the posting it came from and a
 //                                                   3-posting spot check (scripts/perk-audit.mjs writes them
 //                                                   to a review file)
-//   POST {action: "audit_record", perk, mode,       the owner: a judgement written back -- launch (60 judged,
-//         judged, correct, note?}                   57 right publishes), reaudit (a stratum of 5+; two wrong
-//                                                   unpublishes, else the 45 days restart), withdraw
+//   POST {action: "audit_record", perk, mode,       the owner: a judgement of one draw written back -- launch
+//         judged, correct, drawId, note?}           (60 judged, 57 right publishes), reaudit (a stratum of 5+;
+//                                                   two wrong unpublishes, else the 45 days restart), withdraw
+//                                                   (no draw). A draw is of this extractor version and at most
+//                                                   14 days old (20261102164000, S13-121)
 //   POST {action: "audit_pause", sweep?, publish?}  the owner: the two switches
 //
 // Company profiles, phase 1 (plan 2026-10-11). Its own function, never a
@@ -36,7 +38,10 @@ import { runSweep } from "./sweep.ts";
 
 // Provable from outside without a key: every response, the preflight
 // included, carries this in x-fn-build (stamped()).
-export const FN_BUILD = "employer-profiles.2026-10-12.2";
+// 2026-11-02.1 (board-stream round, S13-121): the audit draw passes
+// EXTRACTOR_VERSION and a launch or reaudit record names its drawId
+// (migration 20261102164000).
+export const FN_BUILD = "employer-profiles.2026-11-02.1";
 
 const CRON_HEADER = "x-employer-profiles-cron";
 
@@ -93,7 +98,7 @@ async function audit(client: Client, action: string, body: Record<string, unknow
     if (!(CANDIDATE_KEYS as readonly string[]).includes(perk)) return json(400, { error: `not a candidate key: ${perk || "(none)"}`, candidates: CANDIDATE_KEYS });
     const rows = body.rows === undefined ? 60 : body.rows;
     if (!isInt(rows, 1, 200)) return json(400, { error: "rows must be a whole number from 1 to 200" });
-    call = { fn: "employer_perk_audit_draw", args: { p_perk: perk, p_rows: rows } };
+    call = { fn: "employer_perk_audit_draw", args: { p_perk: perk, p_version: EXTRACTOR_VERSION, p_rows: rows } };
   } else if (action === "audit_record") {
     const perk = String(body.perk ?? "");
     const mode = String(body.mode ?? "");
@@ -104,8 +109,13 @@ async function audit(client: Client, action: string, body: Record<string, unknow
     if (!isInt(judged, 0, 10000) || !isInt(correct, 0, 10000) || correct > judged) {
       return json(400, { error: "judged and correct must be whole numbers with correct <= judged" });
     }
+    const drawId = body.drawId ?? null;
+    if (mode !== "withdraw" && !isInt(drawId, 1, Number.MAX_SAFE_INTEGER)) return json(400, { error: "drawId must name the draw this judgement is of" });
     const note = typeof body.note === "string" ? body.note.slice(0, 500) : null;
-    call = { fn: "employer_perk_audit_record", args: { p_perk: perk, p_mode: mode, p_judged: judged, p_correct: correct, p_note: note } };
+    call = {
+      fn: "employer_perk_audit_record",
+      args: { p_perk: perk, p_mode: mode, p_judged: judged, p_correct: correct, p_draw_id: mode === "withdraw" ? null : drawId, p_version: EXTRACTOR_VERSION, p_note: note },
+    };
   } else {
     const sweep = body.sweep;
     const publish = body.publish;

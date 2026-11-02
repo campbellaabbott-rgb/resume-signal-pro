@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { normalizeUkg, ukgBoardParams } from "../../supabase/functions/job-board/normalize";
+import { resumeAt } from "../../supabase/functions/job-board/read-window";
 
 /**
  * UKG PRO RECRUITING, THE NINETEENTH SOURCE — AND WHY ITS TOKEN HAS THREE PARTS.
@@ -79,11 +80,14 @@ describe("a tenant lives on exactly one pod", () => {
     // reshape that parses as 200 must not look like an employer who stopped
     // hiring, because that prunes a live board.
     expect(FN).toMatch(/throw new Error\("ukg payload shape unrecognized"\)/);
-    expect(FN).toMatch(/if \(all\.length === 0 && feedTotal > 0\) throw new Error\(`empty page but total=\$\{feedTotal\}`\)/);
+    // An empty read against a non-zero total: since the cursor (S10-004, n1431)
+    // the walk's tail is resumeAt, which refuses it.
+    expect(FN).toMatch(/return \{ items: all, raw: \{ opportunities: all \}, \.\.\.resumeAt\(startOffset, all\.length, feedTotal, exhausted\) \};/);
+    expect(() => resumeAt(0, 0, 1_392, true)).toThrow(/empty page but total=1392/);
   });
 
   it("pages by Top/Skip and honours a per-board window override", () => {
     expect(FN).toMatch(/const ukgPageCap|Math\.max\(1, s\.pages \?\? UKG_PAGE_CAP\)/);
-    expect(FN).toMatch(/Top: UKG_PAGE, Skip: page \* UKG_PAGE/);
+    expect(FN).toMatch(/Top: UKG_PAGE, Skip: startOffset \+ page \* UKG_PAGE/);
   });
 });

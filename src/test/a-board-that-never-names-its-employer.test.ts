@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { adpBoardParams, normalizeAdp } from "../../supabase/functions/job-board/normalize";
+import { resumeAt } from "../../supabase/functions/job-board/read-window";
 
 /**
  * ADP WORKFORCE NOW JOINED AS THE EIGHTEENTH VENDOR, AND ITS PAYLOADS NEVER
@@ -203,8 +204,11 @@ describe("a board that never names its employer", () => {
     // a reshaped payload as an employer with nothing open.
     expect(FN).toMatch(/if \(pages\[i\] === 0\) throw new Error\("adp payload shape unrecognized"\);/);
     // And the workday/oracle/icims guard rides along: an empty read against a
-    // non-zero advertised total is a refusal, not an empty board.
-    expect(FN).toMatch(/if \(all\.length === 0 && feedTotal > 0\) throw new Error\(`empty page but total=\$\{feedTotal\}`\);\s*\n\s*return \{ items: all, raw: \{ jobRequisitions: all \}, windowed: !exhausted, feedTotal \};/);
+    // non-zero advertised total is a refusal, not an empty board. Since the
+    // cursor (S10-004, n1431) the walk's tail is resumeAt, which refuses it.
+    expect(FN).toMatch(/return \{ items: all, raw: \{ jobRequisitions: all \}, \.\.\.resumeAt\(startOffset, all\.length, feedTotal, exhausted\) \};/);
+    expect(() => resumeAt(0, 0, 40, true)).toThrow(/empty page but total=40/);
+    expect(resumeAt(0, 0, 0, true)).toMatchObject({ feedEnded: true, windowed: false, nextOffset: 0 });
   });
 
   it("windowing is honest — false only when the feed itself ran out", () => {

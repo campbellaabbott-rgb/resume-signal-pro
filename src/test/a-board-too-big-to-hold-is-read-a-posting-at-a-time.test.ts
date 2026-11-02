@@ -55,7 +55,7 @@ import { join, resolve } from "node:path";
 import { transformSync } from "esbuild";
 import { codeOf } from "./helpers/strip-comments";
 import { JOB_SOURCES } from "../../supabase/functions/job-board/sources";
-import { htmlToText, isDatedBefore, normalizeAshby, normalizeGreenhouse, normalizeLever, sanePostedAt } from "../../supabase/functions/job-board/normalize";
+import { htmlToText, isDatedBefore, leverText, normalizeAshby, normalizeGreenhouse, normalizeLever, sanePostedAt } from "../../supabase/functions/job-board/normalize";
 import { beforeDeadline, jsonArrayElements, SLIM_SPECS, streamSlim } from "../../supabase/functions/job-board/slim-stream";
 import { withWorkdayLanguage } from "../../supabase/functions/job-board/request-headers";
 import population from "./fixtures/oversize-light-population-2026-10-01.json";
@@ -138,7 +138,7 @@ async function collect(doc: string | Uint8Array, key: string | null, chunk: numb
 // deno-lint-ignore no-explicit-any
 const indexDesc = (vendor: "lever" | "ashby", j: any): string => {
   const text = vendor === "lever"
-    ? ((j.descriptionPlain ?? "") + (j.descriptionBodyPlain ? `\n${j.descriptionBodyPlain}` : "")).trim()
+    ? leverText(j)
     : (j.descriptionPlain ?? (j.descriptionHtml ? htmlToText(j.descriptionHtml) : "")).trim();
   return text.slice(0, STORED_DESC_CAP);
 };
@@ -339,7 +339,7 @@ describe("(b) the splitter agrees with JSON.parse, and refuses what it cannot fi
 describe("(c) the normalisers see the same postings, and the stored text is the same text", () => {
   // The two description expressions this file copies, pinned where they live.
   it("index.ts still builds lever and ashby descriptions exactly as indexDesc does", () => {
-    expect(CODE).toContain('const text = ((j.descriptionPlain ?? "") + (j.descriptionBodyPlain ? `\\n${j.descriptionBodyPlain}` : "")).trim();');
+    expect(CODE).toContain("const text = leverText(j);");
     expect(CODE).toContain('const text = (j.descriptionPlain ?? (j.descriptionHtml ? htmlToText(j.descriptionHtml) : "")).trim();');
     expect(CODE).toContain("descs.set(`lever:${s.token}:${j.id}`, text.slice(0, STORED_DESC_CAP));");
     expect(CODE).toContain("descs.set(`ashby:${s.token}:${j.id}`, text.slice(0, STORED_DESC_CAP));");

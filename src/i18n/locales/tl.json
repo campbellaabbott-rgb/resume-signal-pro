@@ -4577,7 +4577,12 @@
     "seoPhraseCount": "{{n}} live na bakante",
     "seoPhraseCountBoards": "{{n}} live na bakante sa {{boards}} job board ng mga kumpanya",
     "usajobsSeoDescriptionCount": "{{n}} pederal na bakanteng nakalista sa USAJOBS, bawat isa may pangalan ng ahensya. {{cap}} Libreng suriin ang fit ng iyong resume.",
-    "usajobsSeoDescription": "Mga pederal na bakanteng nakalista sa USAJOBS, bawat isa may pangalan ng ahensya. {{cap}} Libreng suriin ang fit ng iyong resume."
+    "usajobsSeoDescription": "Mga pederal na bakanteng nakalista sa USAJOBS, bawat isa may pangalan ng ahensya. {{cap}} Libreng suriin ang fit ng iyong resume.",
+    "resultsSummaryTitleOnly": "Ipinapakita ang {{shown}} sa {{total}} opening na may hinanap mo sa pamagat",
+    "relatedUnavailable": "Hindi mahanap ngayon ang mga posting na binabanggit lang ang hinanap mo sa paglalarawan, kaya hindi sila nabilang o nakalista rito. Subukan ulit maya-maya.",
+    "watchNameBoards": "Mga bagong role sa mga board na may pangalang “{{token}}”",
+    "watchSavedBoards": "Binabantayan ang mga board na may pangalang “{{token}}”",
+    "watchExistsBoards": "Binabantayan mo na ang mga board na may pangalang “{{token}}”."
   },
   "accountPage": {
     "statusSaveFailed": "Hindi na-save ang status na iyon — pakisubukan muli.",

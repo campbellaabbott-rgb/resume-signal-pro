@@ -8,6 +8,286 @@ earlier are still in `index.ts` around the constant. New notes go here, newest f
 `BUILD_VERSION` itself still moves with every deploy, and `src/test/build-version-guard.test.ts`
 still pins it.
 
+## 2026-09-09.100
+
+BOARD STREAM (branch fix/board-stream on main b929839e, merged with main 21518390, 2026-11-01; the board-stream groups of the 2026-10-31 bug audit, then a review of the merge whose 14 findings are answered in REVIEW below, then a recheck of those fixes whose 9 findings are answered in RECHECK). It merges fix/bs-search (4a094a32), fix/bs-fields (9d0f00b7), fix/bs-reach (91dcc00d), fix/bs-lifecycle (67c880d9), fix/bs-ui (73dc7d57) and fix/bs-mcp (fad6003e). Ledger reservation `board-stream`:
+- job-board 2026-09-09.100. .99 stays profiles phase 3's.
+- agent-mcp, public-api, employer-profiles and send-search-digest at 2026-11-02.1.
+- Migrations 20261102100000 (before job-board) and 20261102164000 (before employer-profiles).
+- A frontend publish.
+
+Each item was reproduced live on .96 or by a test that fails on b929839e. Each group has one verify section, scripts/verify-deploy.d/99zzzz-board-<group>.sh, with one line per claim below. Index notes: n1410-n1464 for the groups and the review, n1470-n1506 for the integration's comment trim.
+
+SEARCH (fix/bs-search; n1410-n1418; verify 99zzzz-board-search.sh)
+- A quoted phrase is excluded whole, and a requirement verb is not the excluded word (S12-017; search-routing.ts).
+  - Live .96: supervisor -"team lead" excluded "team" and searched `lead"`. "nurse not requiring travel" excluded "requiring" and served travel nurses.
+  - Now the phrase is excluded, and it is struck from titles across a space, hyphen or slash, with its last word singular or plural. "not requiring|involving|including|needing X" excludes X.
+  - Only those -ing forms pass the "not" on. "cdl not required driver" excludes "required", as main does (the review's build excluded "driver", the role asked for).
+  - The bare `not team lead` keeps main's one-word reading.
+  - Corpus: 626 cases. Main is wrong on 266, this build on 0, never worse. Recheck: 2,094 inputs, every non-ing form reads as main; the labelled corpus scores main 765, this build 784, none of main's lost (the review's build 785: "nurse not requires travel" reads as main again).
+- A negated remote strikes the remote reading (S13-013).
+  - Live .96: "no remote nurse" dropped "no" and served remote nurses, saying nothing.
+  - Now "no/non/not remote" leaves the search, excludedTerms names remote, and titles that say remote are struck. A caller's own work-mode filter keeps main's reading.
+  - A remote row whose title does not say remote is not struck.
+  - A title that says it is not remote ("Staff Accountant I (Not Remote)", "NON-REMOTE") is kept: it is what the exclusion asks for. search-routing.ts imports nothing, so it reads the negation by a copy of normalize.ts's pattern that a test pins byte for byte. 2,382 live titles, 305 saying remote: 22 negated ones kept, 283 struck as before, none struck that main kept.
+- A word hyphened onto a work mode leaves with it (S13-077).
+  - Live .96: "remote-first engineer" sent "-first engineer" to websearch, a NOT on "first".
+  - The word after the hyphen leaves with the mode ("remote-first"); the word before it stays and only the hyphen goes ("medical coder-remote" searches medical coder).
+  - "remote-sensing" is still searched.
+  - Corpus at the group branch: 1,130 intent cases, main wrong on 317, the branch on 1. Recheck after the head-side change: 1,041 live work-mode titles as queries, main worse on 7, this build on none.
+- A search that only asks for places near the searcher searches nothing, and the page says so (S13-015).
+  - Live .96: "jobs near me" searched those words in descriptions, total 2 over 2,998 related rows.
+  - Now "jobs near me", "jobs nearby" and "openings around me" clear q and name it in ignoredFilters ("search words" on the page).
+  - Every other all-filler query keeps main's search: "career", "jobs" and "hiring" are words titles hold (Career Coach, Hiring Manager).
+  - Corpus: 4,354 live titles as queries, none cleared. 1,924 filler queries: the review's build cleared all of them, this build 906, each holding a proximity phrase.
+- A US ZIP is dropped and named in droppedTerms (S13-014).
+  - Only when no stored title holds the number: one indexed title lookup per number, at most three, 1.5 s each, and an error or timeout keeps it. ISO 13485, IATF 16949 and a store's "(02330)" stay searched (live: 35 of 60 five-digit numbers are in a title).
+  - It is also kept when it is the whole query, a unit follows ("26000 lbs") or it is the query's pay figure. We hold no ZIP-to-place data, so a ZIP is not turned into a location.
+  - Corpus: 44 ZIP queries, 37 dropped and the 7 a title holds kept; 587 live titles and 1,685 numeric titles as queries, none changed from main.
+- The router routes the same way in every isolate (S12-014; route-brands.ts).
+  - Live .96: "cvs" routed EMPLOYER in one isolate and SIMPLE (17 rows) in the next.
+  - Now a cold isolate's table carries every catalogue employer and 21 short brand names measured live.
+  - employer-aliases.ts, and so layoff-filings' copy of it, is unchanged.
+- A city typed in its own language is searched in its own country (S13-006; _shared/location-terms.ts, both location-match.ts copies, migration 20261102100000).
+  - Live .96: Wien plus nurse served 7 US rows of 9 (Vienna VA and WV).
+  - Now the English name the alias adds is sent as "Vienna@Austria". It is refused on a row placed in the US unless the row names Austria. This holds on the browse or(), on /v1's or(), and in search_jobs, count_jobs_capped and fuzzy_title_search.
+  - Corpus: 859 rows over 18 probes. Main served 91 US homonyms, this build 0, with no row lost in the city's country.
+- A grouped page short at the 200-row seam continues past it (S13-012; clusters.ts continuePastSeam).
+  - The extra read is one search_jobs call, capped at 1.5 s and recorded as phaseMs.seam_topup. nextOffset resumes after the deep rows it used.
+  - A deep page past rank 200 can still fold short.
+
+FIELDS (fix/bs-fields; n1420-n1428; verify 99zzzz-board-fields.sh)
+- An age and a story no longer set a years floor (S12-013; experience.ts).
+  - Lines like "at least 18 years", "18 years-old", "18 years young" and "15 years ago as a driver" no longer set one.
+  - Corpus: 6,243 descriptions, 14 changes, each an age or story line, hand-checked (the 15th, "Head of Fulfillment" to Expert, went with S13-016).
+  - S13-016 (an executive title lifts its band to Expert) is measured and declined: of 919 live Entry rows with such a title, the lift moved 442, and 209 are not executives (assistant and site directors, crew chiefs). The band keeps main's reading of the posting's figure.
+  - EXPERIENCE_VERSION 3: the existing chained backfill-experience sweep re-derives every stored row from its stored title and description (6,000 rows a hop, one pass, no vendor fetches). It skips personio: rows.
+- Personio's seniority and yearsOfExperience fill the band only where the posting's words say nothing (S13-033).
+  - Its employmentType wins over the schedule unless it is "permanent" or the schedule is part-time: 67 of 628 change (n1421).
+  - A part-time schedule keeps part_time, because the pay re-sweep reads the stored type as its only part-time signal. The branch alone changed 97; on 30 of them (Minijob, working-student and temporary part-timers) the sweep would have annualised an hourly wage at a full-time load. Measured over the 628: the merged rule annualises none that main refuses and refuses none that main annualises.
+- One class word in a longer label stores a type (S13-031, S13-034; employmentTypeFromLabel).
+  - This covers Recruitee codes, BambooHR employmentStatusLabel, Lever commitment and Breezy type.id. Two classes or none stay NULL.
+  - A label that says permanent is never a contract: Lever's "Permanent Contract" (58 rows) stays NULL, as on main. Over 131 labels and 4,730 rows no class main stated changes.
+  - Rows changed: BambooHR 273, Breezy 505, Lever 236, Recruitee 346. None are cleared.
+- Breezy pay is stored, with its schedule words passed to the pay parse (S13-030).
+  - 374 of 750 postings state pay and 336 parse. 32 part-time hourly or daily figures are not annualised at a full-time load.
+  - national-assemblers-inc's feed states pay on 157 of 238; 154 of the 237 inside the fence parse to an annual figure. .96 served 4 of 60 with pay.
+- Lever, Breezy and Workable country codes are stored (S13-032; normalize.ts vendorCountry).
+  - A place that names countries in words, none of them the code's, keeps main's reading unless its own US state or Canadian province backs the code. Lever stated CN for "Hong Kong" and GB for "EMEA · Ireland · Portugal", and the review's build stored the code.
+  - "3388 Sweden Way, Richmond, BC" reads CA (main stored SE). "Libreville, GA" and "Bogotá, CO" read GA and CO (main read Georgia and Colorado, US). "Mexicali, Baja California, Mexico" stays MX.
+  - iCIMS keeps icimsCountry: "49-MAINE-ET-LOIRE, France" is now FR where main stored US.
+  - Corpus: 18,054 rows of 329 feeds (Lever 8,000, iCIMS 5,832, Breezy 2,214, Workable 2,008). 1,751 filled where main stored none. 26 differ from main's value: 12 where main was wrong, and 14 multi-place rows where both readings name a listed place and this one is the vendor's. Never worse than main.
+- Lever text is read once and whole (S13-044): leverText = descriptionPlain + lists + additionalPlain.
+  - Pay is found on 66 more postings, with 0 lost.
+- Personio's English feed fills empty descriptions, and the detail action gains a Personio branch (S13-045).
+  - It is read once, only when the default feed has an empty description: 44 of 63 filled.
+- A Paylocity page with no JSON-LD reads its own Description section (S13-046).
+  - 25 of 25 filled. On all 302 pages that have structured data, the page text covers at least 95% of its words.
+- S13-078 is not a defect. SmartRecruiters experienceLevel disagrees with its postings' own text (748 compared), so it stays unread.
+- Stored rows:
+  - employment_type, salary and country land through put() on each board's next ordinary visit.
+  - Until 2026-11-30 the first fills are not logged as employer edits. Seven OUR_READING_CHANGED entries (n1426) do this, and a dated test fails from 2026-12-01 while they remain.
+
+REACH (fix/bs-reach; n1430-n1433; verify 99zzzz-board-reach.sh)
+- Workday's list first page (the facets page) is asked in English (S8-003; request-headers.ts withWorkdayLanguage).
+  - 52 tenants answer it with HTTP 500 under the runtime's Accept-Language *, and with 200 under en-US. A chunk-mate's 200 under * vetoed the English retry.
+  - So Truist, Geico, WVU Medicine UHA and WVUH, 7-Eleven, Wawa, Nordstrom, Signet and the rest failed every visit: 21,269 postings by the employers' own totals.
+  - That page now gets two tries under *, then English.
+- Oracle's 10,000 cap (S10-003; read-window.ts ORACLE_RESULT_CAP, capLapCovers, belowCapFloor; index.ts fetchOracle and the lap block).
+  - The walk asks for no page past offset 10,000. At the cap it wraps and reports capFloor.
+  - The lap proves only when that floor's day ends before the 30-day fence. On that visit, undated and below-floor stored rows are never absence candidates.
+  - Kroger, AutoZone, Marriott and Kotak never proved a lap before.
+  - The stored-rows read carries posted_at into the rows the floor reads. The review's build selected it but dropped it from the mapping, so every stored row read as undated and a capped lap stamped nothing. A test now drives the shipped select, mapper and vanishedAll line together.
+- UKG and ADP resume at a deep cursor (S10-004; read-window.ts resumeAt). The page caps are unchanged.
+  - UKG boards over 600 open laps: Ollie's 1,392, Troon 2,154, Cherry 1,283, Big 5 1,030 and four more.
+- An iCIMS refusal on a later page ends the walk with the pages that landed instead of failing the visit (S13-035).
+  - A chunk asks only for the pages the visit keeps: three at 100 a page.
+- EXPECT: the stalled boards' first proven laps close their backlog at once. Under the existing two-step lap rule, the first proven lap stamps the rows missing and the next closes them. For example, Marriott held 13,307 open rows against the employer's 12,826.
+  - Expect a one-time step in fills_90d and the weekly takedown counts on these boards, dated at the proof, not at the takedown.
+
+LIFECYCLE (fix/bs-lifecycle; n1440-n1443, n1464; verify 99zzzz-board-lifecycle.sh)
+- A lap reads superseded from the whole lap, by title AND place, and writes every closure (S10-002; index.ts liveTitles, normalize.ts normalizeCloseTitle).
+  - On a lap, the live set is now the visit's rows plus every stored row this lap served (lap_epoch = lapMark, no missing stamp, not aged out this visit), keyed by title plus folded location: a store's fill is not a relist because another store lists the title.
+  - Live .96: superseded_90d was 0 on O'Reilly, Dollar Tree, Marriott, CVS and Domino's, against 3-27% on ten whole-read Greenhouse boards.
+  - Corpus: 2,640 live rows of seven lapped boards, each closed in turn against the rest of its lap. Title alone says superseded for 2,031 (77%), title and place for 322 (12%). Several openings of one title at one store still read as superseded.
+  - A lap skips the 24h superseded dedupe: it dropped the closure row and still deleted the posting, leaving neither a closure nor an exit row. Whole reads keep that dedupe as on main.
+  - Whole reads are otherwise unchanged, and no stored closure row is rewritten.
+  - Over the base read of 2026-11-01 14:27Z (O'Reilly 1,291 closed, CVS 5,430, none superseded), the corpus says title and place mark about 17% of each board's closures superseded, title alone 92% and 72%.
+- The description sweep asks for each null row once per rotation (S13-113).
+  - Each walk after the first starts at the newest row the previous walk saw.
+  - The cursor is first_seen|id, so one insert batch that crosses a page is no longer skipped. status.descSweep names cursor and floor.
+- exists answers on detail's predicate (S13-076).
+  - It reads missing_since IS NULL and drops a row past the 30-day fence by effective_posted, the date detail reads first. That is a generated column (COALESCE(posted_at, last_seen)), so detail's own fallbacks are reached only by a row holding neither. Such a row is never fenced.
+  - The branch also fell back to posted_at and then first_seen. The integration dropped that, because it is the coalesce the duration guard refuses everywhere in supabase/functions.
+  - exists answers rowTest "served" beside its open map. agent-mcp's check_jobs_open gives the stronger basis (a posting inside the removal grace window or past the cap reads closed, as get_job declines it) only on that answer, and main's weaker sentence on any other, .96's included. The guard pins both sentences and the marker to the board's exists handler (n1464).
+
+MCP (fix/bs-mcp; n1460-n1463; verify 99zzzz-board-mcp.sh)
+- A place typed as a person's AI types it is read as City, ST (S9-002; job-board query-place.ts cityState).
+  - Live .96: "Austin, TX 78701" gave 0 against 96 for "Austin, TX"; "New York NY" gave 0 against 204.
+  - A trailing ZIP, a dotted code or a missing comma now reads as the city in that state under all three spellings. locationExpandedFrom says so.
+  - Corpus: 886 inputs over 1,755 live rows. 0 rows lost, and 652 added, all in the state read.
+
+INTEGRATION (fix/board-stream)
+- Conflicts were only the appended index-notes sections, kept in n-number order, and one import line in index.ts that both sides extended.
+- The full suite on the merged tree found six seams between groups. Each is fixed here:
+  - Personio: fields' English-feed read had replaced the valid-empty-feed spelling that a-failure-must-say-what-failed pins. That spelling is back, and the English read sits inside it.
+  - Personio: a part-time schedule keeps part_time. This was a real regression: the-text-re-sweep test's Minijobber at EUR 14.50 an hour would have been republished at 30,160 a year (see FIELDS).
+  - exists: pastFence reads effective_posted only (see LIFECYCLE).
+  - Ranked search: rankedCall is written `async (...) => await client.rpc("search_jobs", ...)`, so the concurrency guard sees the ranked call issued inside the head ring's window. Behaviour is unchanged: it is still called between issuing the ring and awaiting it.
+  - Three counting guards now count the new readers: employmentTypeFromLabel beside normalizeEmploymentType, two jobPostingLd sites after Paylocity's fallback, and the Personio cases in what-the-vendor-states-reaches-the-row.
+  - Three build pins accept the 2026-11-02 stamps (the digest, the wave-four sections and the scope migrations' "can never come" case). The basis guard in an-agent-could-not-ask-what-its-own-key-could-do moved with the exists change.
+- Merged main 21518390 (fix/full-analysis-timeout landed there): no conflict outside the tally test, whose entries now count posting-text.ts and ai-fallback.ts on disk.
+  - The draft at 42c39f10 (2026-11-02) lists 28 functions: these 5 plus the 23 at 2026-10-28.1 that main carries and live has not deployed (fix/full-analysis-timeout, deployOrder 3.9). Its notes govern those 23; this round is 3.95, after it.
+- Upload, measured the deploy's way (job-board plus all of _shared, raw bytes):
+  - main b929839e: 4,411,387.
+  - After the six merges and the fixes: 4,432,404.
+  - The three rounds in flight grow _shared on their branch tips. fix/full-analysis-timeout at e5c3ca9e: ai-fallback.ts 22,660 and posting-text.ts 31,116. fix/free-scan-wave at 89c2bc0b: industry-detection.ts 270,590. fix/free-scan-ui changes no _shared file.
+  - That is 40,302 bytes over the disk, now in PENDING_SHARED. posting-text.ts alone grew 12,385 between 10a85dc9 and e5c3ca9e. It put the tally at 4,472,706, 22,706 over the guard's 4,450,000.
+  - 37 comment runs moved to index notes n1470-n1506, saving 44,163 bytes:
+    - 17 from index.ts. Four are parts of runs whose guard-read lines stay beside the code: the heap paragraph under WALL TIME, the measurement table and the RAISED BACK heading, the FEED-DARK marked-not-suppressed paragraph, and the WINDOWED-ABSENCE heading.
+    - 20 from read-window.ts (6), search-alias.ts (4), paging.ts (3), rotation.ts, vendors/jazzhr.ts, token-map.ts, company-names.ts, name-sync.ts, uncarried.ts and typed-text.ts.
+  - Not moved, because a guard reads them: normalize.ts's Workday header and workdayDetailPlace block, stale-lane.ts's header, and the index.ts runs on the pause, the one-shot pay rewrite, FIFTEEN vendors, describedOnly, the accepted race and the uncategorised cost.
+  - index.ts keeps 2,036 comment lines (the guard needs over 2,000), and search-alias.ts keeps 26 (over 20). For all 11 files, every non-blank line of codeOf is byte-identical, and the trim script's whitespace-collapsed strip is equal.
+  - Now: 4,388,166 on disk and 4,428,468 with the pending files. That is 21,532 under the guard's ceiling and 71,532 under the 4.5 MB line.
+  - index.ts has 36 comment lines left above the guard, so the next trim has to come from other files.
+  - After merging main 21518390: 4,411,059 on disk. After the review: 4,413,597 (+2,538). After the recheck: 4,414,632 (+1,035). PENDING_SHARED holds only fix/free-scan-wave (d511acfa; industry-detection.ts 270,590, 2,078 over the disk, the same at its tip 340a8959 on 2026-11-02), so 4,416,710 with pending: 33,290 under the guard's ceiling and 83,290 under the 4.5 MB line. main 21518390 itself is 4,434,280 on disk. A pending entry fails its own test when the file on disk no longer holds the size it was measured against.
+- The entry-level basis sentence from fix/bs-fields (scripts/prerender-seo.mjs, src/pages/EntryLevelIndex.tsx) is held out of this merge.
+  - Merging into main publishes the frontend at once, and stored rows keep their v2 bands until the v3 sweep has run.
+  - The patch is at ~/.config/resumebooster/board-stream-2026-11-01/entry-level-basis-sentence-after-100-verifies.patch. The review took its executive-title clauses out (S13-016 declined); it keeps the Personio sentence and applies cleanly to this tree.
+  - Ship it in a later frontend publish once 99zzzz-board-fields prints PASS on its Domino's line.
+
+REVIEW (14 findings on the merge, 2026-11-01; each fix has a test that failed first)
+1. Lap superseded marked store fills as relists, and the 24h dedupe deleted rows with neither closure nor exit: FIXED (title and place on a lap; no dedupe on a lap; n1443).
+2. The executive rung lifted assistant and site directors to Expert: FIXED by declining S13-016 (main's reading; n1420).
+3. The ZIP rule dropped ISO and store numbers: FIXED (dropped only when no title holds it; n1414).
+4. The negated-remote strike removed "Not Remote" titles: FIXED (n1411).
+5. The hyphen cut dropped the role word before the mode: FIXED (n1412).
+6. A US state name overrode a vendor's MX: FIXED (own-country rule; n1425).
+7. "Permanent Contract" stored contract: FIXED (n1422).
+8. main moved to 21518390: MERGED, tally entries fixed.
+9. Ledger deployOrder 3.9 collided and next.migrations dropped main's 2026-10-28 entry: FIXED in the ledger text below (3.95, main's text kept).
+10. PENDING_SHARED sizes went stale with no check: FIXED (a base size per entry, failing when the disk moves).
+11. L3 could not tell .96 from .100: FIXED (rowTest marker).
+12. The check_jobs_open basis depended on deploy order: FIXED (follows the board's rowTest; n1464).
+13. The Wien ranked line could pass on head-ring rows: FIXED (needs ranked, search_jobs timed, a non-head title).
+14. 20261102164000 could switch off a live key: FIXED (carry or RAISE).
+
+RECHECK (9 findings on the review's fixes, 2026-11-01; each fix has a test that failed first; corpora in ~/.config/resumebooster/board-stream-2026-11-01/corpora/review-fix-2/)
+1. The verb rule read participles and base forms ("cdl not required driver" excluded "driver"): FIXED, -ing forms only (n1410). 2,094 inputs, none worse than main.
+2. The all-filler clear wiped real title words ("career", "hiring"): FIXED, it clears only a search for places near the searcher (n1413). 4,354 live titles, none cleared.
+3. The Lever, Breezy and Workable code overrode a place naming another country (CN for "Hong Kong"): FIXED, vendorCountry (n1425). 18,054 rows, none worse than main.
+4. agent-mcp's location reading lost rows main found: DESCOPED to main's behaviour (n1461). No reading of that shape can be never-worse while a filter replaces the substring. The location goes as typed, and verify M1 and M2 check that.
+5. Scope note: no action. Re-run at 42c39f10: the closure tests pass in the full suite, and the search measure (corpora/review-fix-3/search-main-vs-42c39f10.json) reads 3,772 fresh titles as queries with 31 differing from main, each where main sent a NOT on a hyphened word, none cleared and the remote strike unchanged; of 2,094 not-verb inputs, the 137 differences outside the -ing forms are all quoted phrases.
+6. BLOCKER: the stored-rows mapping dropped posted_at, so a capped Oracle lap never stamped: FIXED (n1430), with a test of the shipped select, mapper and vanishedAll line. The reach line now FAILs a lap_proven board that still holds more than 10,300 open dated rows.
+7. The Breezy pay line passed without the fix: FIXED, it needs 40% of the board's rows with pay (.96 served 4 of 60).
+8. The metzen line would FAIL falsely: FIXED, replaced by a line that finds a current intern or trainee posting in four Personio boards' own feeds and needs it filed internship. None listed is INFO.
+9. Verify gaps: FIXED. L1b bounds superseded from above: under 30% of the closures logged since a base read, judged only once .100 has served at least 24 h and at least as long as the gap between the base read and its first slice, so main's unsuperseded closures in that gap cannot carry a title-only build to a PASS. New search lines cover the participle, the head-hyphen, "career" and ISO 13485. New fields lines cover trailappliances' BC rows and gojob's Permanent Contract. The negated-remote line keeps a title that says it is not remote, as review finding 4 asked. Mexicali and "Hong Kong" have no live row to read (bluelightconsulting serves 0, rws serves no Hong Kong row), so a unit test proves them.
+
+ORDER
+1. Apply 20261102100000 before job-board .100. Without it, the ranked path matches the anchored English name nowhere and searches only the local form: narrower, never wrong.
+2. Apply 20261102164000 before employer-profiles 2026-11-02.1. The new build calls the versioned audit draw and record that only this migration creates.
+3. Deploy job-board, then agent-mcp, public-api, employer-profiles and send-search-digest. agent-mcp needs no wait: check_jobs_open's basis follows the board's own exists answer.
+4. The frontend is already published by the merge.
+
+VERIFY after deploy. The preflights must answer job-board.2026-09-09.100, agent-mcp.2026-11-02.1, public-api.2026-11-02.1, employer-profiles.2026-11-02.1 and send-search-digest.2026-11-02.1.
+- 99zzzz-board-search.sh:
+  - The phrase, verb and participle lines ("cdl not required driver" excludes "required" only).
+  - The negated-remote line: no served title says remote unless it says it is not remote.
+  - remote-first and medical coder-remote: each lifts remote and counts what the spaced query counts.
+  - near-me clears q and names it; "career" keeps q and serves rows.
+  - The ZIP line, and "quality engineer iso 13485" keeps 13485.
+  - cvs asked 4 times and 3m twice, every answer EMPLOYER.
+  - Wien browsed and Wien ranked: no US row unless it names Austria. The ranked line also needs ranked true, search_jobs among the phases timed, and a Vienna row whose title does not start with "engineer" (the head-term ring finds those): only 20261102100000's anchored arm serves it.
+  - The seam walk on q nurse at limit 50.
+  - agent-mcp and public-api at 2026-11-02.1 or later.
+- 99zzzz-board-fields.sh:
+  - Domino's delivery rows: none Expert 15-21. INFO for 24 h after .100's first slice, then FAIL until the v3 sweep has run.
+  - Eight named boards, each judged once .100 has read it: Breezy pay (40% of national-assemblers-inc's rows), Breezy type and country, Recruitee and BambooHR type, Lever and Workable country, trailappliances' "..., BC" rows all CA, gojob at most 25% contract.
+  - A Personio intern or trainee posting from four boards' own feeds, created inside 25 days, filed internship. None listed is INFO.
+  - The tryjeeves Lever text.
+  - The lyceum-technology Personio English description.
+  - A Paylocity posting with no JSON-LD.
+- 99zzzz-board-reach.sh:
+  - Truist, Geico, WVU Medicine UHA and WVUH, and 7-Eleven serve rows within 36 h.
+  - Ollie's reads lap_proven within 5 days.
+  - Kroger, AutoZone, Marriott and Kotak read lap_proven within 7 days wherever their own row 9,999 is older than the fence. A floor inside the fence is INFO.
+  - A board that reads lap_proven holds no more than 10,300 open dated rows (Marriott held 13,309): a proof that closed nothing FAILs.
+- 99zzzz-board-lifecycle.sh:
+  - L1: a lapped board shows superseded_90d > 0 within 72 h.
+  - L1b: under 30% of the closures O'Reilly and CVS log after the base read (2026-11-01 14:27Z) are superseded, once each has logged 200 (title and place 17% on the corpus, title alone 92% and 72%). It judges only once .100 has served at least 24 h and at least as long as the gap from the base read to its first slice, when a title-only build reads 36% or more. INFO before, and as the base's closures near the 90-day window (about 2026-12-24).
+  - L2: descSweep carries cursor and floor, and a keyset cursor.
+  - L3: exists answers rowTest "served" (.96 answers none, so this half tells the builds apart) and agrees with the list on gusto. That a stamped or fenced row reads closed is proven by the unit test only: anon reads no such row.
+- 99zzzz-board-mcp.sh:
+  - P1-P3: City, ST places.
+  - M1, M2: the connector sends location "United States" as typed (no locationReadAs, rows found), and its schema and prompts are main's.
+  - K1: a junk bearer at offset 9000.
+  - V1-V5: the versioned perk draw and record are closed to anon, the old signatures are gone, and the reader is in shape.
+  - Section 80 still applies.
+- 99zzzz-board-ui.sh: U1a-U9 (the board's code marks and strings in the published chunks) and D1 (send-search-digest 2026-11-02.1).
+
+ROLLBACK
+- Functions: redeploy the previous builds (job-board .96, agent-mcp .38, public-api .37, employer-profiles 2026-10-12.2, send-search-digest 2026-10-25.1).
+- Nothing here writes a new kind of row:
+  - The v3 sweep re-derives bands from stored text.
+  - put() never writes NULL.
+  - Closures logged through the existing lap rule stay in the append-only ledger.
+- 20261102100000 can stay applied under .96, because .96 never sends an anchored term.
+- 20261102164000 can stay under the old employer-profiles. Only its owner-only audit calls are refused, and no perk key is published.
+
+CHANGELOG FACTS (read each live first):
+- Searches that quote a phrase or say "not remote" exclude what was typed.
+- A city typed in its own language (Wien, Firenze) no longer serves US namesakes.
+- Truist, Geico, WVU Medicine, Wawa, Nordstrom and Signet postings are on the board. Check a live row for each before naming it.
+- Breezy postings show their pay, and Lever, Breezy and Workable postings show their country.
+- Domino's delivery postings no longer show Expert 18+. Quote one live row's title and band.
+
+OTHER FUNCTIONS (same deploy, stamped 2026-11-02.1)
+- agent-mcp.2026-11-02.1 (n1418, n1461, n1462):
+  - A country word inside another place is not that country: "in Spanish", "in New South Wales", "in Latin America" and "in Northern Ireland" (S13-041; query-place.ts countryOf over _shared/work-countries.ts countryMentions, mirrored byte for byte in worker/src/questions/countries.ts). Corpus: 1,115 places. Main read a wrong country 32 times, this build 2, both of which main misreads too.
+  - The location argument still goes to the board as typed. Reading it as a country or remote filter (S9-002) was measured and declined: it answered more on every headline input but lost rows main found (34 rows on 15 of 891 inputs; live, 16 United States and 79 remote rows), and the board has no OR of a filter and a substring (n1461). The prompts and schema are main's.
+  - The keyless page cap now holds for a junk bearer or an unrecognised key: past offset 200 the answer is pageLimitReached, uncounted (S13-103; answerUnkeyed).
+  - The check_jobs_open basis says exists applies get_job's row test only when the board's exists answer names it (rowTest "served", job-board .100); any other answer gets the weaker sentence (S13-076; n1464).
+  - VERIFY 99zzzz-board-mcp.sh M1, M2 and K1, and 99zzzz-board-search.sh's agent-mcp build line. No live line reads the basis string; 99zzzz-board-lifecycle.sh L3 proves the marker it keys on.
+- public-api.2026-11-02.1:
+  - The /v1 location or() binds a local city's added English name to its country, the same way the board does (S13-006). The explain trace shows "Vienna" and outsideUsUnlessNaming, never the raw anchor.
+  - VERIFY 99zzzz-board-search.sh's public-api build line.
+- employer-profiles.2026-11-02.1:
+  - The perk audit draw passes EXTRACTOR_VERSION, and a launch or reaudit record names its drawId (S13-121; migration 20261102164000; scripts/perk-audit.mjs). Nothing public changes: published_keys was [] on 2026-11-01 (read again 12:56Z).
+  - VERIFY 99zzzz-board-mcp.sh's employer-profiles build line and V1-V5, plus section 80.
+- send-search-digest.2026-11-02.1:
+  - A watch saved on an employer page that pools several boards carries `companies`. The digest asks for every board in it and links them all (S12-021).
+  - VERIFY 99zzzz-board-ui.sh D1.
+- apply-agent bundles _shared/work-countries.ts through submission-packet.ts. It gains one export it never calls, so it is not redeployed. The ledger reads direct imports only and does not list it.
+
+FRONTEND (published by the merge into main; fix/bs-ui; verify 99zzzz-board-ui.sh)
+- The board's own desktop pick writes no ?job= to the address, so a close never leaves the board (S12-012). It is not marked viewed, not put in Jump back in, and does not answer Enter (S12-033).
+- Load more weaves each page on its own and appends it. Cards already drawn never move (S10-008).
+- A folded card counts every posting it stands for (98, not the 50 listed). It says "locations" only when every posting is in a different place, and carries aria-expanded and aria-controls (S12-048).
+- relatedUnavailable is read: the count is named as title matches, and the page says the description tier was not searched (S12-034).
+- The company page shows its order control at every width (S13-119).
+- An employer page lists and counts every board /landers.json pools under it, says how many, and saves its watch with `companies` (S12-021).
+- A board name shared by two hiring systems is watched and toasted as "boards named ..." (S13-117).
+- Fill-curve badges are asked for 12 employers first, then 24 a call, and a route-level memo keeps answers for 20 minutes across board remounts (S12-016).
+- New jobsPage keys and companyProfile.pooledBoards are added in all nine locales.
+- The entry-level basis sentence is NOT in this publish (see INTEGRATION).
+- The frontend needs no new function. It runs against .96 until step 3: relatedUnavailable and the fill curve are already served, and an older send-search-digest ignores `companies`.
+
+MIGRATIONS (apply in this order, before the functions; each is self-verifying, safe to re-run, and RAISEs on a failed self-check)
+- 20261102100000_a_city_typed_in_its_own_language_is_searched_in_its_own_country.sql (before fn:job-board):
+  - It patches search_jobs, count_jobs_capped and fuzzy_title_search from the catalog with the anchored-city arm: "Vienna@Austria" matches location ILIKE %Vienna% only where country is null, is not US, or the row names Austria. Then NOTIFY pgrst.
+  - VERIFY 99zzzz-board-search.sh's Wien ranked line, which only this arm can pass.
+- 20261102164000_a_perk_is_shown_only_from_the_extractor_output_its_audit_judged.sql (before fn:employer-profiles):
+  - employer_perk_rollups.extractor_version, with the rollup tick restated.
+  - employer_profile_perk_publish gains audited_version, audit_draw_id and audit_drawn_at.
+  - A private employer_perk_audit_draws table (RLS, no policy, service_role only).
+  - Versioned employer_perk_audit_draw and employer_perk_audit_record. A record names a draw of the same key, at most 14 days old, never recorded before, of the current version, and holding at least the rows judged.
+  - The status and get_employer_perks are restated, so a key shows only claim rows of the version its audit judged.
+  - A key the old rule shows when it applies (published, audited inside 45 days, publishing not paused) is carried on the one extractor version every stored posting holds, if a posting read by it predates the key's audit. Otherwise it RAISEs: nothing changes and the key serves as before. None was live on 2026-11-01.
+  - The old signatures are dropped and revoked by name.
+  - VERIFY 99zzzz-board-mcp.sh V1-V5 and section 80.
+
+UPLOAD ROOM (after merging main 340a8959, where the free scan's round landed with its industry-detection.ts growth): job-board plus _shared is 4,416,710 bytes against the 4,450,000 line, 33,290 spare. The upload-tally test lists no round in flight.
+
 ## FIX/FREE-SCAN-WAVE: function build 2026-11-01.1, three migrations
 
 FREE-SCAN WAVE (fix/free-scan-wave with fix/free-scan-ui merged, 2026-11-01, merged with main 21518390): this closes 32 audit items (S13-004 to S13-127, S10-006, S10-007) from the 2026-10-31 audit, plus a recheck on a third corpus. Every heuristic was measured against main on three corpora and is never worse than main, apart from cases where main was right only by accident, which are justified in the corpora under ~/.config/resumebooster/free-scan-wave-corpora/. Six functions go to 2026-11-01.1: free-keyword-scan, free-keyword-scan-stream, parse-docx, send-scan-report, and save-lead and industry-corrections-digest through _shared/industry-detection.ts. REPORT_ENGINE_VERSION moves to scan-v2026-11-01-free-scan-wave, so cached reports are rebuilt. There are three migrations, applied before the functions: 20261101100000 (the benchmark is the primary scorer's, with its exclusions stated), 20261101110000 (the Level correction records within a per-address and global hourly budget; its table is closed to both client roles) and 20261101150000 (a feedback vote that hit the budget is not thanked). The frontend publish carries the page half (one band function, the honest truncation and language banners, the hand-off that asks before replacing a draft, the translated builder and findings). Verify sections: 99zzzz-free-scan-ui, 99zzzz-free-scan-wave-engine, 99zzzz-free-scan-wave-review and 99zzzzz-free-scan-wave-recheck. The recheck section reads the served English chunk and FAILs if the withdrawn "rewrites applied" / "already applied" / typed "15 … instead of 7" are still served. A FR2 or engine-section FAIL before 20261101100000 applies is the expected order fault, and its line names the fix. Two deferrals: "Dir Sales Strategy" gets no role card, and two same-meaning plurals ("premiums", "draws") are no longer matched. Also on this branch: package.json typecheck now runs with a 4 GB heap, because main alone used 2,239.7 of node's 2,240 MB default here and the merge pushed the pre-commit hook out of memory with 0 type errors.
