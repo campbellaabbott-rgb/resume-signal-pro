@@ -31,6 +31,7 @@ import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
+import { buildIsAtLeast } from "./helpers/fn-build";
 
 const SERVICE = "service_role_key_for_the_harness_0123456789abcdef";
 const ADMIN = "admin_key_for_the_harness_0123456789";
@@ -200,7 +201,7 @@ describe("the rest of the door", () => {
 
   it("the preflight answers its build and lets the admin page send its key header", async () => {
     const res = await handler(new Request("https://harness.supabase.co/functions/v1/company-claim", { method: "OPTIONS" }));
-    expect(res.headers.get("x-fn-build")).toMatch(/^company-claim\.2026-10-(0[4-9]|[1-3]\d)\.\d+$/);
+    expect(buildIsAtLeast(res.headers.get("x-fn-build"), "company-claim", "2026-10-04"), String(res.headers.get("x-fn-build"))).toBe(true);
     expect(res.headers.get("access-control-allow-headers")).toMatch(/x-admin-key/);
   });
 });

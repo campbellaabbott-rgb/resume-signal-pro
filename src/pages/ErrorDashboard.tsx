@@ -14,8 +14,9 @@ import { AdminAuthGate } from '@/components/dashboard/AdminAuthGate';
 import { adminAuthHeaders } from '@/lib/admin-auth';
 import { toast } from 'sonner';
 import { subHours, format } from 'date-fns';
+import { csvDocument } from '@/lib/spreadsheet-safe-csv';
 
-interface ErrorTelemetry {
+export interface ErrorTelemetry {
   id: string;
   error_type: string;
   error_code: string;
@@ -48,6 +49,28 @@ function getErrorSeverity(error: ErrorTelemetry): 'critical' | 'warning' | 'info
   if (error.error_type === 'client') return 'warning';
   
   return 'info';
+}
+
+/** The /errors CSV's columns, in order. */
+export const ERROR_REPORT_COLUMNS = ['Time', 'Severity', 'Type', 'Code', 'Message', 'Function', 'Visitor ID', 'HTTP Status'] as const;
+
+/**
+ * The owner's error report (S13-091). Type, code, message and function name
+ * are whatever an anonymous caller handed log_error_telemetry, so every cell
+ * goes through csvCell: quoted (a comma or line break stays in its column)
+ * and never a formula when the owner opens the file.
+ */
+export function errorReportCsv(errors: ReadonlyArray<ErrorTelemetry>): string {
+  return csvDocument(ERROR_REPORT_COLUMNS, errors.map((e) => [
+    format(new Date(e.created_at), 'yyyy-MM-dd HH:mm:ss'),
+    getErrorSeverity(e),
+    e.error_type,
+    e.error_code,
+    e.error_message || '',
+    e.function_name || '',
+    e.visitor_id || '',
+    e.http_status?.toString() || '',
+  ]));
 }
 
 function SeverityBadge({ severity }: { severity: 'critical' | 'warning' | 'info' }) {
@@ -172,20 +195,7 @@ function ErrorDashboardContent() {
       return;
     }
 
-    const headers = ['Time', 'Severity', 'Type', 'Code', 'Message', 'Function', 'Visitor ID', 'HTTP Status'];
-    const rows = errors.map(e => [
-      format(new Date(e.created_at), 'yyyy-MM-dd HH:mm:ss'),
-      getErrorSeverity(e),
-      e.error_type,
-      e.error_code,
-      `"${(e.error_message || '').replace(/"/g, '""')}"`,
-      e.function_name || '',
-      e.visitor_id || '',
-      e.http_status?.toString() || ''
-    ]);
-
-    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
+    const blob = new Blob([errorReportCsv(errors)], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;

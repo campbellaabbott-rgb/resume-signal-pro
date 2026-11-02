@@ -503,3 +503,19 @@ only the formatting element ends and the block stays open, so a hidden
 <div> inside a <b> keeps hiding past the </b>. Not open but lingering:
 it stops being rebuilt. Otherwise the end tag is ignored.
 ```
+
+## s33
+
+`supabase/functions/_shared/checkout-buyer.ts`, the module: a token minted for something else. Above: `// Pure apart from the clients it is handed: importable by Deno and vitest.`
+
+```text
+A TOKEN MINTED FOR SOMETHING ELSE IS NOT A BUYER (critical-path CP-D and
+S9-001). Once the OAuth server signs tokens for the AI connectors, the auth
+server will accept those too: a connector's token carries a client_id
+claim, and it must never buy, mint a member's grant or open the billing
+portal as the person. websiteTokenRefusal reads the claims the way
+_shared/website-session.ts does (R1) and refuses a token that carries
+client_id or the hook's role mcp_client, and a signed-in token that names
+another audience, before the auth server is asked. The publishable key and
+anything that is not a signed-in user's token are judged exactly as before.
+```

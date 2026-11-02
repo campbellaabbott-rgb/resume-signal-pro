@@ -44,6 +44,13 @@
 // And a repeat request re-sends only after 10 minutes from the LAST send
 // (last_sent_at): the guard keyed on created_at, so after a row's first 10
 // minutes every request re-sent (L10-12).
+// S13-071 and S13-098 (2026-11-03): the registrable domain comes from the full
+// Public Suffix List (domain-proof.ts). A send the mail provider refused, or
+// that threw, hands the inbox's and the day's counts back (mail_door_give,
+// 20261103165000), and the cooldown runs only from a send that left
+// (last_sent_at), never from the row's creation: a retry after a refused
+// send was answered "sent" for ten minutes, and two refusals told the
+// claimant the address had already been sent its links today.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { Resend } from "https://esm.sh/resend@2.0.0";
@@ -55,7 +62,7 @@ import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
 
 // Provable from outside without sending anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "company-claim.2026-10-09.2";
+const FN_BUILD = "company-claim.2026-11-03.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -118,6 +125,12 @@ async function take(admin: Admin, door: string, bucket: string, max: number, win
     return "error";
   }
   return data === true ? "ok" : "full";
+}
+
+/** One count handed back to a mail door whose send never left (mail_door_give, 20261103165000). Best effort. */
+async function giveBack(admin: Admin, door: string, bucket: string, windowMinutes: number): Promise<void> {
+  const { error } = await admin.rpc("mail_door_give", { p_door: door, p_bucket: bucket, p_window_minutes: windowMinutes });
+  if (error) console.error(`[COMPANY-CLAIM] ${door} give-back failed:`, error.message?.slice(0, 160));
 }
 
 Deno.serve(async (req) => {
@@ -285,7 +298,8 @@ Deno.serve(async (req) => {
         .from("company_claims").select("id, status, verify_token, created_at, last_sent_at")
         .eq("company_token", companyToken).eq("work_email", workEmail).maybeSingle();
       if (existing?.status === "verified") return json({ status: "verified" });
-      const lastSent = existing ? Date.parse(String(existing.last_sent_at ?? existing.created_at)) : NaN;
+      // From the last send that left, never the row's creation (S13-098).
+      const lastSent = existing?.last_sent_at ? Date.parse(String(existing.last_sent_at)) : NaN;
       if (existing && Number.isFinite(lastSent) && Date.now() - lastSent < RESEND_AFTER_MS) {
         return json({ status: "sent" });
       }
@@ -305,8 +319,15 @@ Deno.serve(async (req) => {
       const atAll = await take(supabase, "company-claim:all", "all", MAILS_PER_DAY, 1440);
       if (atAll !== "ok") {
         if (atAll === "full") await alertOwnerOnce(supabase, "company-claim:all", "reached its daily ceiling", ownerMail);
+        await giveBack(supabase, "company-claim:recipient", inbox, 1440);
         return json({ error: "Claim requests are paused for today. Please try again tomorrow." }, 503);
       }
+
+      // Nothing below this line has mailed the inbox until the send succeeds.
+      const unsent = async () => {
+        await giveBack(supabase, "company-claim:recipient", inbox, 1440);
+        await giveBack(supabase, "company-claim:all", "all", 1440);
+      };
 
       let verifyToken = existing?.verify_token as string | undefined;
       if (existing) {
@@ -323,29 +344,39 @@ Deno.serve(async (req) => {
           .select("verify_token").single();
         if (error || !inserted) {
           console.error("[COMPANY-CLAIM] insert failed:", error);
+          await unsent();
           return json({ error: "Could not record the claim. Please try again." }, 500);
         }
         verifyToken = inserted.verify_token as string;
       }
 
-      if (!RESEND_API_KEY) return json({ error: "Email is not configured." }, 503);
+      if (!RESEND_API_KEY) {
+        await unsent();
+        return json({ error: "Email is not configured." }, 503);
+      }
       const resend = new Resend(RESEND_API_KEY);
 
       const verifyUrl = `${SITE}/jobs/company/${encodeURIComponent(companyToken)}?claim_verify=${encodeURIComponent(String(verifyToken))}`;
-      const { error: sendError } = await resend.emails.send({
-        from: FROM,
-        to: [workEmail],
-        reply_to: CUSTOMER_REPLY_TO,
-        subject: `Verify your claim of ${subjectSafe(displayName)} on Resume Booster`,
-        html: `<div style="font-family:Helvetica,Arial,sans-serif;font-size:14px;color:#111;max-width:520px">
-          <p>Someone (hopefully you) asked to claim the <b>${escapeHtml(displayName)}</b> company profile on resumebooster.work using this address.</p>
-          <p><a href="${escapeHtml(verifyUrl)}" style="display:inline-block;padding:10px 18px;background:#0ea5e9;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">Verify this claim</a></p>
-          <p style="font-size:12px;color:#64748b">Verification confirms your identity as an employer contact. It never changes the hiring data we show — fills, re-listing patterns, and badges are computed from public postings and are not editable by anyone, including verified employers.</p>
-          <p style="font-size:12px;color:#64748b">If you didn't request this, ignore this email — nothing happens without the click.</p>
-        </div>`,
-      });
+      let sendError: unknown = null;
+      try {
+        ({ error: sendError } = await resend.emails.send({
+          from: FROM,
+          to: [workEmail],
+          reply_to: CUSTOMER_REPLY_TO,
+          subject: `Verify your claim of ${subjectSafe(displayName)} on Resume Booster`,
+          html: `<div style="font-family:Helvetica,Arial,sans-serif;font-size:14px;color:#111;max-width:520px">
+            <p>Someone (hopefully you) asked to claim the <b>${escapeHtml(displayName)}</b> company profile on resumebooster.work using this address.</p>
+            <p><a href="${escapeHtml(verifyUrl)}" style="display:inline-block;padding:10px 18px;background:#0ea5e9;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">Verify this claim</a></p>
+            <p style="font-size:12px;color:#64748b">Verification confirms your identity as an employer contact. It never changes the hiring data we show — fills, re-listing patterns, and badges are computed from public postings and are not editable by anyone, including verified employers.</p>
+            <p style="font-size:12px;color:#64748b">If you didn't request this, ignore this email — nothing happens without the click.</p>
+          </div>`,
+        }));
+      } catch (e) {
+        sendError = e;
+      }
       if (sendError) {
         console.error("[COMPANY-CLAIM] verification send failed:", sendError);
+        await unsent();
         return json({ error: "Could not send the verification email. Please try again." }, 502);
       }
       // The resend cooldown runs from here (L10-12).

@@ -29,9 +29,11 @@
 // accounts that pay for nothing (20261005130000).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { networkBucket } from "../_shared/network-bucket.ts";
+import { websiteTokenRefusal } from "../_shared/checkout-buyer.ts";
 
 // Provable from outside without signing in: the preflight carries it.
-const FN_BUILD = "agent-connect.2026-10-05.1";
+// 2026-11-03.1 (S9-001, fix/audit-rest-abuse): a connected app's token is refused with the signed-out answer before the auth server is asked.
+const FN_BUILD = "agent-connect.2026-11-03.1";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -62,6 +64,11 @@ Deno.serve(async (req) => {
 
   // The user, from the VERIFIED token — the anon-key client validates the JWT;
   // nothing about identity is read from the body.
+  // S9-001: a token the auth server signed for a connected app (client_id,
+  // role mcp_client) is not the person on the website, though /user answers for it.
+  if (websiteTokenRefusal(req.headers)) {
+    return json({ error: "Sign in to mint an agent key." }, 401);
+  }
   const authClient = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
     Deno.env.get("SUPABASE_ANON_KEY") ?? "",

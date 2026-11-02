@@ -1,12 +1,24 @@
 // deploy-stamp: 2026-07-04T18:44Z
+// SheetJS stays at the registry's last build, 0.18.5 (before the
+// prototype-pollution fix in 0.19.3 and the ReDoS fix in 0.20.2). Later builds
+// are published only at cdn.sheetjs.com, a host Deno 2 refuses to import from
+// by default, so scripts/check-functions.sh fails on it; moving up is the
+// owner's call (S13-066). Until then a workbook is bounded below.
 import * as XLSX from "https://esm.sh/xlsx@0.18.5";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { clientAddressOr } from "../_shared/client-address.ts";
 // Quote-aware CSV rows and header matching that ignores empty headers
 // (register L5-09).
 import { findColumnIndex, parseCSV } from "./csv.ts";
+// The size, time, row and per-address bounds (S13-066).
+import { MAX_ROWS, MAX_UPLOAD_BYTES, PER_ADDRESS_PER_HOUR, SHEETS_FETCH_MS, TooLarge, declaredTooLarge, readCapped } from "./limits.ts";
 
 // Provable from outside without an upload: every response, the CORS preflight
 // included, carries this in x-fn-build.
-const FN_BUILD = "parse-spreadsheet.2026-10-05.1";
+// 2026-11-03.1 (S13-066, fix/audit-rest-abuse): a 10 MB cap on every body,
+// a per-address limiter, a timed and capped Google Sheets read, at most
+// MAX_ROWS workbook rows.
+const FN_BUILD = "parse-spreadsheet.2026-11-03.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -27,7 +39,9 @@ interface JobEntry {
 function parseExcel(buffer: ArrayBuffer): string[][] {
   console.log("[parse-spreadsheet] Parsing Excel file with SheetJS");
   
-  const workbook = XLSX.read(buffer, { type: 'array' });
+  // Only the first sheet's first MAX_ROWS rows, values only: no formulae,
+  // HTML or styles are built for cells nobody reads.
+  const workbook = XLSX.read(buffer, { type: 'array', sheetRows: MAX_ROWS + 1, cellFormula: false, cellHTML: false, cellStyles: false });
   
   // Get the first sheet
   const firstSheetName = workbook.SheetNames[0];
@@ -126,9 +140,37 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
   
+  const tooLarge = (what: string) => new Response(
+    JSON.stringify({ success: false, error: `${what} is too large. The limit is ${MAX_UPLOAD_BYTES / (1024 * 1024)} MB.`, code: 'too_large' }),
+    { status: 413, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
+
   try {
     console.log("[parse-spreadsheet] Function called");
-    
+
+    // A body past the cap is refused before a byte of it is parsed.
+    if (declaredTooLarge(req.headers) !== null) return tooLarge('This file');
+
+    // One address, PER_ADDRESS_PER_HOUR requests an hour: the platform's
+    // address, never a header the caller writes. A limiter that cannot be
+    // read lets the request through, as parse-pdf does: a broken counter
+    // never takes the import away from everyone.
+    const limiter = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
+    const { data: allowed, error: rlError } = await limiter.rpc('check_rate_limit', {
+      p_ip: clientAddressOr(req.headers),
+      p_function: 'parse-spreadsheet',
+      p_max_requests: PER_ADDRESS_PER_HOUR,
+      p_window_minutes: 60,
+    });
+    if (rlError) {
+      console.error("[parse-spreadsheet] rate limit check error:", rlError.message ?? rlError);
+    } else if (allowed === false) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Too many spreadsheets from your network this hour. Please try again later.', code: 'rate_limited_function' }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': '3600' } }
+      );
+    }
+
     const contentType = req.headers.get('content-type') || '';
     let rows: string[][] = [];
     let fileName = 'data.csv';
@@ -146,6 +188,7 @@ Deno.serve(async (req) => {
       
       fileName = file.name.toLowerCase();
       console.log("[parse-spreadsheet] Processing file:", fileName, "Size:", file.size);
+      if (file.size > MAX_UPLOAD_BYTES) return tooLarge('This file');
       
       // Handle Excel files
       if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
@@ -207,7 +250,8 @@ Deno.serve(async (req) => {
           const response = await fetch(exportUrl, {
             headers: {
               'Accept': 'text/csv',
-            }
+            },
+            signal: AbortSignal.timeout(SHEETS_FETCH_MS),
           });
           
           if (!response.ok) {
@@ -222,7 +266,7 @@ Deno.serve(async (req) => {
             );
           }
           
-          const csvContent = await response.text();
+          const csvContent = await readCapped(response);
           console.log("[parse-spreadsheet] Fetched CSV content, length:", csvContent.length);
           
           if (!csvContent || csvContent.trim().length === 0) {
@@ -234,6 +278,7 @@ Deno.serve(async (req) => {
           
           rows = parseCSV(csvContent);
         } catch (fetchError) {
+          if (fetchError instanceof TooLarge) return tooLarge('This Google Sheet');
           console.error("[parse-spreadsheet] Google Sheets fetch error:", fetchError);
           return new Response(
             JSON.stringify({ 
@@ -249,12 +294,13 @@ Deno.serve(async (req) => {
         const fileContent = body.content;
         fileName = body.fileName || 'data.csv';
         
-        if (!fileContent || fileContent.trim().length === 0) {
+        if (!fileContent || typeof fileContent !== 'string' || fileContent.trim().length === 0) {
           return new Response(
             JSON.stringify({ success: false, error: 'Empty file content' }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
+        if (fileContent.length > MAX_UPLOAD_BYTES) return tooLarge('This file');
         
         rows = parseCSV(fileContent);
       }

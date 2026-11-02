@@ -12,6 +12,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { redactForScoring, type RedactionConfig } from "../_shared/redaction.ts";
+import { callerBlocklist } from "./caller-blocklist.ts";
 import { modelSpendGate } from "../_shared/model-spend-gate.ts";
 import { requireWebsiteSession } from "../_shared/website-session.ts";
 import { fenceUntrusted, plantedInstructions, PLANTED_INSTRUCTIONS_FLAG } from "../_shared/planted-instructions.ts";
@@ -26,7 +27,10 @@ import { SHORTLIST_ATTESTATION_TEXT, SHORTLIST_ATTESTATION_VERSION } from "../_s
 // 2026-10-11.29 (wave 4 round 2 integration): carries account-compliance's
 // 2026-10-11.25 and generators' 2026-10-11.24 (the bundled
 // _shared/model-spend-gate.ts changed there).
-const FN_BUILD = "shortlist-evaluate.2026-10-11.29";
+// 2026-11-03.1 (S13-073, fix/audit-rest-abuse): the body's extra blocklist is
+// read as literal phrases (caller-blocklist.ts), never compiled as a caller's
+// regular expression.
+const FN_BUILD = "shortlist-evaluate.2026-11-03.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -71,7 +75,9 @@ Deno.serve(async (req) => {
     const resumeText: string = typeof body.resumeText === "string" ? body.resumeText.slice(0, 40000) : "";
     const fileName: string | null = typeof body.fileName === "string" ? body.fileName.slice(0, 200) : null;
     const jurisdiction: string = ["NYC", "IL", "CA", "EU", "OTHER"].includes(body.jurisdiction) ? body.jurisdiction : "OTHER";
-    const redactionConfig: RedactionConfig = body.redactionConfig && typeof body.redactionConfig === "object" ? body.redactionConfig : {};
+    // An employer's extra blocklist is literal phrases, bounded (S13-073):
+    // never a caller's regular expression run over the whole resume.
+    const redactionConfig: RedactionConfig = callerBlocklist(body.redactionConfig);
     const altReview = body.altReview === true;
     const json = (o: unknown, status = 200) =>
       new Response(JSON.stringify(o), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });

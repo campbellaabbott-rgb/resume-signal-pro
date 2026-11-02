@@ -78,7 +78,8 @@ import { proStripeDescription } from "../_shared/pro-perks.ts";
 // 2026-10-31.2 (land/all carries the homepage switch-over): 2026-10-31.1's
 // code with the switch-over's "packages" line in Pro's Stripe description;
 // neither branch's build, and nothing else changed.
-const FN_BUILD = "create-subscription-checkout.2026-10-31.2";
+// 2026-11-03.1 (S9-001, fix/audit-rest-abuse): _shared/checkout-buyer.ts and _shared/signed-in-email.ts refuse a connected app's token whatever role it names (the access-token hook gives it role mcp_client).
+const FN_BUILD = "create-subscription-checkout.2026-11-03.1";
 
 /** What Stripe's page and receipts say Pro is: the Pro card's own items (_shared/pro-perks.ts), as sentences. */
 export const PRO_STRIPE_DESCRIPTION = proStripeDescription();

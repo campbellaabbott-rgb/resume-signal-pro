@@ -38,7 +38,8 @@ import { planPaid, UNPAID_PLAN_NOTE } from "../_shared/consumable-paid.ts";
 // territoryRefused), and the session asks for a billing address only with the
 // switch on, as sessionPolicy always did. The RU/NG/PK block is main's, as
 // before.
-const FN_BUILD = "create-checkout.2026-10-31.1";
+// 2026-11-03.1 (S9-001, fix/audit-rest-abuse): _shared/checkout-buyer.ts refuses a connected app's token whatever role it names; the access-token hook gives it role mcp_client, which the old check passed to the auth server as a buyer.
+const FN_BUILD = "create-checkout.2026-11-03.1";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

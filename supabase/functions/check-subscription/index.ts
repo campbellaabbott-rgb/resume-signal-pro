@@ -62,7 +62,8 @@ import { cacheCancelFlag, cancelFlagFrom, recordingSubscriptions } from "../_sha
 // link (linkPending), never that plan's status, renewal date or cancellation:
 // sign-ups are auto-confirmed, so anyone can sign up as a stranger's address
 // (D8).
-const FN_BUILD = "check-subscription.2026-10-11.30";
+// 2026-11-03.1 (S9-001, fix/audit-rest-abuse): _shared/signed-in-email.ts reads only a website session, so a connected app's token is an anonymous request and never reads the person's plan.
+const FN_BUILD = "check-subscription.2026-11-03.1";
 
 /**
  * Which plan a signed-in account's rows rest on: a live Pro row, else a live

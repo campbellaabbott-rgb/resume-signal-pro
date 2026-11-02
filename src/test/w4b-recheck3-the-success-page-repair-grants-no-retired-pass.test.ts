@@ -18,6 +18,7 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
 import { APPLY_AGENT_SWITCH_ON } from "./helpers/apply-agent-switch-on";
+import { buildIsAtLeast } from "./helpers/fn-build";
 
 const BUYER = "11111111-1111-1111-1111-111111111111";
 const SESSION = "cs_live_retiredpass000000000001";
@@ -95,7 +96,7 @@ describe("agent-pass-status, with the Agent Pass off sale as it ships", () => {
 
   it("the preflight carries the new build", async () => {
     const pre = await shipped(new Request("https://harness.supabase.co/functions/v1/agent-pass-status", { method: "OPTIONS" }));
-    expect(pre.headers.get("x-fn-build")).toBe("agent-pass-status.2026-10-11.15");
+    expect(buildIsAtLeast(pre.headers.get("x-fn-build"), "agent-pass-status", "2026-10-11", 15), String(pre.headers.get("x-fn-build"))).toBe(true);
   });
 });
 

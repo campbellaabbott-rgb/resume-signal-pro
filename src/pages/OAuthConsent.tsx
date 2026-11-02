@@ -5,8 +5,8 @@
 // ChatGPT, Claude Code's /mcp — asks to act as them on the MCP server. The
 // page does exactly three things: signs the person in if they are not (and
 // comes back here with the request intact, via /auth?next=), shows what is
-// being asked (the client's name, the scopes, and where Allow sends access when
-// the request says so: see pendingRedirectHost), and
+// being asked (the client's name, what the connection can and cannot do, and
+// where Allow sends access when the request says so: see pendingRedirectHost), and
 // hands the decision to the Supabase client's own consent API —
 // getAuthorizationDetails / approveAuthorization / denyAuthorization on
 // supabase.auth.oauth (supabase-js 2.87.1). The redirect back to the host is
@@ -145,8 +145,11 @@ export default function OAuthConsent() {
                 <p className="text-sm text-foreground mb-2">
                   {t("oauthConsent.asks", "{{client}} is asking to act as you on the Resume Booster MCP server.", { client: details.client.name || hostOf(details.client.uri) || "An agent host" })}
                 </p>
+                {/* What the grant really is (S9-001): the OAuth scope reads only
+                    "email", but the token works the connector's tools as the
+                    person, and nothing else on the site accepts it. */}
                 <p className="text-sm text-muted-foreground mb-1">
-                  {t("oauthConsent.scopes", "It will see: {{scopes}}.", { scopes: details.scope.split(/\s+/).filter(Boolean).join(", ") || "—" })}
+                  {t("oauthConsent.grant", "It can search jobs on the board, score a resume you paste against them, prepare applications for you to send yourself, and see your email address and how much of your daily allowance is used. It cannot buy anything, change your plan or open your saved resume.")}
                 </p>
                 {details.sendsToHost ? (
                   <p className="text-sm text-foreground mb-1">

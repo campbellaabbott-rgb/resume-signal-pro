@@ -33,6 +33,7 @@ import Stripe from "https://esm.sh/stripe@18.5.0";
 import { AGENT_PRODUCT_NAME, isAgentPriced, subscriptionBuyer } from "../_shared/agent.ts";
 import { listAll } from "../_shared/stripe-paging.ts";
 import { bearerOf } from "../_shared/service-caller.ts";
+import { websiteTokenRefusal } from "../_shared/checkout-buyer.ts";
 import { euUkSalesOn } from "../_shared/checkout-policy.ts";
 import { sendLegalNotice, WITHDRAWAL_CANCEL_COMMENT, withdrawalMail } from "../_shared/subscription-notice.ts";
 import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
@@ -41,7 +42,8 @@ import { buyerCountryOf, inWithdrawalTerritory, serviceStartRequested, withdrawa
 // 2026-10-11.25 (wave 4 round 2, account-compliance): no change of its own;
 // _shared/subscription-notice.ts, which it bundles, now renders a legal notice
 // once and resends exactly that body (S12-102).
-const FN_BUILD = "withdraw-subscription.2026-10-11.25";
+// 2026-11-03.1 (S9-001, fix/audit-rest-abuse): a connected app's token is refused with the signed-out answer before the auth server is asked.
+const FN_BUILD = "withdraw-subscription.2026-11-03.1";
 const PRO_PRODUCT_NAME = "Resume Booster Pro";
 
 const corsHeaders = {
@@ -71,7 +73,8 @@ Deno.serve(async (req) => {
     const preview = body?.preview === true;
     const admin = createClient(env("SUPABASE_URL") ?? "", env("SUPABASE_SERVICE_ROLE_KEY") ?? "", { auth: { persistSession: false } });
     const token = bearerOf(req.headers) ?? "";
-    const { data: userData } = token && token !== (env("SUPABASE_ANON_KEY") ?? "")
+    // S9-001: a connected app's token never withdraws as the person.
+    const { data: userData } = token && token !== (env("SUPABASE_ANON_KEY") ?? "") && !websiteTokenRefusal(req.headers)
       ? await admin.auth.getUser(token).catch(() => ({ data: null }))
       : { data: null };
     const user = (userData as { user?: { id?: string; email?: string | null } | null } | null)?.user ?? null;

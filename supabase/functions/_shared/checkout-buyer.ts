@@ -19,15 +19,7 @@
 // charge: pro_grants_cap refuses the 11th grant in a day and the 61st in 30
 // days with SQLSTATE P0001 and a message starting "pro_grant_cap:".
 //
-// A TOKEN MINTED FOR SOMETHING ELSE IS NOT A BUYER (critical-path CP-D and
-// S9-001). Once the OAuth server signs tokens for the AI connectors, the auth
-// server will accept those too: a connector's token carries a client_id
-// claim, and it must never buy, mint a member's grant or open the billing
-// portal as the person. websiteTokenRefusal reads the claims the way
-// _shared/website-session.ts does (R1) and refuses a signed-in token that
-// carries client_id or names another audience, before the auth server is
-// asked. The publishable key and anything that is not a signed-in user's
-// token are judged exactly as before.
+// A TOKEN MINTED FOR SOMETHING ELSE IS NOT A BUYER (CP-D, S9-001): a connected app's token never buys. docs/shared-notes.md#s33
 //
 // Pure apart from the clients it is handed: importable by Deno and vitest.
 import { jwtClaims, websiteClaimsRefusal } from "./website-session.ts";
@@ -53,13 +45,19 @@ function bearerToken(headers: Headers): string {
 }
 
 /**
- * Why a signed-in token is not a website session (a connected app's token,
- * or one issued for another audience), or null: for no token, the
+ * Why a token is not a website session, or null: for no token, the
  * publishable key, a token that is not a signed-in user's, or a website
  * session. Read from the claims alone; the auth server still judges the rest.
+ * A connected app's token is refused whatever role it names (S9-001): the
+ * access-token hook gives it role mcp_client, which the old first line
+ * skipped as "not a signed-in user's", while the auth server's /user still
+ * answers for it with the person. Any other token with a role other than
+ * authenticated is judged as before; one with role authenticated is refused
+ * when it names another audience.
  */
 export function websiteTokenRefusal(headers: Headers): WebsiteTokenRefusal | null {
   const claims = jwtClaims(bearerToken(headers));
+  if (claims && ("client_id" in claims || claims.role === "mcp_client")) return { reason: "connector_token", error: "A token issued to a connected app cannot act on the website." };
   if (!claims || claims.role !== "authenticated") return null;
   const refusal = websiteClaimsRefusal(claims);
   if (refusal?.reason === "connector_token" || refusal?.reason === "wrong_audience") {

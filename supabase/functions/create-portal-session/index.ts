@@ -26,7 +26,8 @@ import { refusedCallerBody, websiteTokenRefusal } from "../_shared/checkout-buye
 // (S12-053, the portal half); a connected app's token, or one issued for
 // another audience, is refused with a 401 and never opens the billing
 // portal (critical-path CP-D, S9-001).
-const FN_BUILD = "create-portal-session.2026-10-14.23";
+// 2026-11-03.1 (S9-001, fix/audit-rest-abuse): _shared/checkout-buyer.ts refuses a connected app's token whatever role it names, so one the access-token hook gave role mcp_client never opens the billing portal.
+const FN_BUILD = "create-portal-session.2026-11-03.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
