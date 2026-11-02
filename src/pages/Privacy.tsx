@@ -102,7 +102,7 @@ export default function Privacy() {
                     <li>Lovable Emails, which sends sign-in emails through Mailgun from the EU</li>
                     <li>Resend (receipts, reports and our other email, from the United States)</li>
                     <li data-ipinfo>ipinfo (the country of the IP address a free scan comes from, to set its limits)</li>
-                    <li>Google Fonts (your browser loads the site's fonts from Google, which sees your IP address)</li>
+                    <li data-fonts>No font host: the site's fonts are served from this site itself, so loading a page asks Google, or anyone else, for no font</li>
                   </ul>
                 </li>
                 <li><strong className="text-foreground">Shortlist:</strong> An employer who screens candidates with Shortlist uploads their resumes and confirms, for each one, that they may have it scored by AI. We remove protected-class proxies before scoring, keep the redacted text and the evaluation for that employer until they delete the role or their account, and record no candidate's sex or race</li>

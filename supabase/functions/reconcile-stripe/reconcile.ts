@@ -52,3 +52,47 @@ export async function redeliveryOf(
   const hex = Array.from(mac, (b) => b.toString(16).padStart(2, "0")).join("");
   return { body, signature: `t=${nowSeconds},v1=${hex}` };
 }
+
+/** The columns of a product_deliveries row a re-delivery is judged by. */
+export interface DeliveryRow {
+  status?: string | null;
+  email_sent_at?: string | null;
+  email_success?: boolean | null;
+  generation_error?: string | null;
+  email_error?: string | null;
+}
+
+export type RedeliveryState = "delivered" | "in_progress" | "failed" | "no_order_row";
+
+/**
+ * WHAT A RE-DELIVERY DID, READ FROM THE ORDER ROW (the fixer's review of
+ * S13-028). stripe-webhook writes the used_stripe_sessions marker FIRST, before
+ * it reads the résumé or generates anything, and generation is deferred: a
+ * marker proves the webhook claimed the session, nothing more. A 30-hour-old
+ * cover letter whose stored résumé had expired (24h) was claimed, then failed,
+ * and the owner was told it was delivered. The state is the session's
+ * product_deliveries rows':
+ *   delivered     a row says delivered, or its purchase-link mail went out
+ *                 (the $5 analysis runs when the buyer opens that link);
+ *   failed        a row says generation_failed or email_failed (refund, or
+ *                 send it by hand);
+ *   in_progress   claimed and still generating (the retry sweep finishes it);
+ *   no_order_row  claimed, with no order row at all (check by hand).
+ */
+export function redeliveryStateOf(rows: readonly DeliveryRow[]): { state: RedeliveryState; why: string | null } {
+  if (rows.length === 0) return { state: "no_order_row", why: null };
+  if (rows.some((r) => r.status === "delivered" || (!!r.email_sent_at && r.email_success !== false))) return { state: "delivered", why: null };
+  const failed = rows.find((r) => r.status === "generation_failed" || r.status === "email_failed");
+  if (failed) return { state: "failed", why: String(failed.generation_error || failed.email_error || failed.status).slice(0, 160) };
+  return { state: "in_progress", why: null };
+}
+
+/** The owner's line for one claimed re-delivery. */
+export function redeliveryOutcomeLine(s: { state: RedeliveryState; why: string | null }): string {
+  switch (s.state) {
+    case "delivered": return "re-delivered: its order row says delivered";
+    case "failed": return `claimed by the webhook, then failed (${s.why}): refund it or send it by hand`;
+    case "in_progress": return "claimed by the webhook and still generating: not delivered yet (the retry sweep finishes it; check product_deliveries)";
+    default: return "claimed by the webhook, but no order row was written: check it by hand";
+  }
+}

@@ -17,6 +17,11 @@
  *   - a Google Sheets export is read under AbortSignal.timeout and refused once
  *     it passes the cap, without being read whole;
  *   - the workbook parser reads at most MAX_ROWS rows, values only;
+ *   - (the fixer's review) a body that declares no length is still stopped
+ *     at the cap, never buffered whole; and a zipped workbook whose entries
+ *     unpack past MAX_UNZIPPED_BYTES is a 413 that never reaches SheetJS,
+ *     measured by inflating, so a directory that understates a size is
+ *     caught too;
  *   - an ordinary CSV still becomes jobs.
  *
  * STILL OPEN, FOR THE OWNER: the parser is still SheetJS 0.18.5. Later builds
@@ -28,7 +33,44 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
 import { buildIsAtLeast } from "./helpers/fn-build";
-import { MAX_ROWS, MAX_UPLOAD_BYTES, PER_ADDRESS_PER_HOUR, SHEETS_FETCH_MS, TooLarge, readCapped } from "../../supabase/functions/parse-spreadsheet/limits";
+import { deflateRawSync } from "node:zlib";
+import { MAX_ROWS, MAX_UNZIPPED_BYTES, MAX_UPLOAD_BYTES, PER_ADDRESS_PER_HOUR, SHEETS_FETCH_MS, TooLarge, readCapped, zipInflationRefusal } from "../../supabase/functions/parse-spreadsheet/limits";
+
+/**
+ * A zip of these entries, each deflated (or stored), with a real central
+ * directory; `claim` overrides an entry's declared uncompressed size.
+ */
+function zipOf(entries: Array<{ name: string; data: Uint8Array; store?: boolean; claim?: number }>): Uint8Array {
+  const locals: Buffer[] = [];
+  const centrals: Buffer[] = [];
+  let offset = 0;
+  for (const e of entries) {
+    const name = Buffer.from(e.name);
+    const packed = e.store ? Buffer.from(e.data) : deflateRawSync(e.data);
+    const size = e.claim ?? e.data.length;
+    const lh = Buffer.alloc(30);
+    lh.writeUInt32LE(0x04034b50, 0); lh.writeUInt16LE(20, 4); lh.writeUInt16LE(e.store ? 0 : 8, 8);
+    lh.writeUInt32LE(packed.length, 18); lh.writeUInt32LE(size, 22); lh.writeUInt16LE(name.length, 26);
+    locals.push(lh, name, packed);
+    const ch = Buffer.alloc(46);
+    ch.writeUInt32LE(0x02014b50, 0); ch.writeUInt16LE(20, 4); ch.writeUInt16LE(20, 6); ch.writeUInt16LE(e.store ? 0 : 8, 10);
+    ch.writeUInt32LE(packed.length, 20); ch.writeUInt32LE(size, 24); ch.writeUInt16LE(name.length, 28); ch.writeUInt32LE(offset, 42);
+    centrals.push(ch, name);
+    offset += 30 + name.length + packed.length;
+  }
+  const cd = Buffer.concat(centrals);
+  const end = Buffer.alloc(22);
+  end.writeUInt32LE(0x06054b50, 0); end.writeUInt16LE(entries.length, 8); end.writeUInt16LE(entries.length, 10);
+  end.writeUInt32LE(cd.length, 12); end.writeUInt32LE(offset, 16);
+  return new Uint8Array(Buffer.concat([...locals, cd, end]));
+}
+const SMALL_BOOK = zipOf([
+  { name: "[Content_Types].xml", data: new TextEncoder().encode("<Types/>") },
+  { name: "xl/workbook.xml", data: new TextEncoder().encode("<workbook/>") },
+  { name: "xl/sharedStrings.xml", data: new TextEncoder().encode("<sst>" + "<si><t>Engineer</t></si>".repeat(200) + "</sst>") },
+]);
+/** 60 MB of one byte deflates to about 60 KB: a workbook well under the upload cap that unpacks past the unzip cap. */
+const BOMB_DATA = new Uint8Array(60 * 1024 * 1024).fill(0x41);
 
 vi.setConfig({ testTimeout: 30_000, hookTimeout: 180_000 });
 
@@ -97,7 +139,7 @@ describe("an ordinary upload still becomes jobs", () => {
   });
 
   it("a workbook is read with the row cap and values only", async () => {
-    const res = await post(multipart("jobs.xlsx", new Uint8Array([80, 75, 3, 4])));
+    const res = await post(multipart("jobs.xlsx", SMALL_BOOK));
     expect(res.status).toBe(200);
     expect(xlsxReads).toEqual([expect.objectContaining({ type: "array", sheetRows: MAX_ROWS + 1, cellFormula: false, cellHTML: false, cellStyles: false })]);
   });
@@ -120,6 +162,51 @@ describe("the size", () => {
   it("JSON content past the cap is a 413", async () => {
     const res = await post(JSON.stringify({ content: "a,b\n".repeat(MAX_UPLOAD_BYTES / 4 + 10), fileName: "x.csv" }), { "content-type": "application/json" });
     expect(res.status).toBe(413);
+  });
+});
+
+describe("the body read and the unzip (the fixer's review)", () => {
+  it("a body that declares no length is stopped at the cap, never buffered whole", async () => {
+    let pulled = 0;
+    // Finite (40 MB), so a reader with no cap ends instead of eating the machine.
+    const stream = new ReadableStream<Uint8Array>({ pull(c) { pulled++; if (pulled > 40) c.close(); else c.enqueue(new Uint8Array(1024 * 1024)); } });
+    const res = await handler(new Request("https://harness.supabase.co/functions/v1/parse-spreadsheet", {
+      method: "POST", headers: { "cf-connecting-ip": "198.51.100.7", "content-type": "multipart/form-data; boundary=x" },
+      body: stream, duplex: "half",
+    } as RequestInit));
+    expect(res.status).toBe(413);
+    expect(pulled).toBeLessThan(MAX_UPLOAD_BYTES / (1024 * 1024) + 4);
+    expect(xlsxReads).toEqual([]);
+  });
+
+  it("a small workbook that unpacks past the unzip cap is a 413 that never reaches SheetJS", async () => {
+    const bomb = zipOf([{ name: "xl/sharedStrings.xml", data: BOMB_DATA }]);
+    expect(bomb.length).toBeLessThan(MAX_UPLOAD_BYTES / 10);
+    const res = await post(multipart("jobs.xlsx", bomb));
+    expect(res.status).toBe(413);
+    expect((await res.json() as { code: string }).code).toBe("too_large");
+    expect(xlsxReads).toEqual([]);
+  });
+
+  it("a directory that understates an entry's size is caught by inflating it", async () => {
+    const liar = zipOf([{ name: "xl/sharedStrings.xml", data: BOMB_DATA, claim: 120 }]);
+    expect(await zipInflationRefusal(liar)).toBe("too_large");
+    expect(await zipInflationRefusal(liar, MAX_UNZIPPED_BYTES)).toBe("too_large");
+  });
+
+  it("a .xls name on zip bytes is measured too", async () => {
+    const res = await post(multipart("jobs.xls", zipOf([{ name: "a.xml", data: BOMB_DATA }])));
+    expect(res.status).toBe(413);
+    expect(xlsxReads).toEqual([]);
+  });
+
+  it("an ordinary workbook and stored entries pass; a zip with no directory is refused as unreadable", async () => {
+    expect(await zipInflationRefusal(SMALL_BOOK)).toBeNull();
+    expect(await zipInflationRefusal(zipOf([{ name: "a.xml", data: new Uint8Array(1000), store: true }]))).toBeNull();
+    expect(await zipInflationRefusal(new Uint8Array([80, 75, 3, 4]))).toBe("corrupt");
+    const res = await post(multipart("jobs.xlsx", new Uint8Array([80, 75, 3, 4])));
+    expect(res.status).toBe(400);
+    expect(xlsxReads).toEqual([]);
   });
 });
 

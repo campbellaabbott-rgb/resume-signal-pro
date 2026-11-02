@@ -44,6 +44,7 @@ import { networkBucket } from "../_shared/network-bucket.ts";
 import { alertOwnerOnce } from "../_shared/owner-alert.ts";
 import { termsVersionOf } from "../_shared/checkout-policy.ts";
 import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
+import { KEY_COPY, mailLanguageOf, type MailLanguage } from "./copy.ts";
 
 // Provable from outside without minting anything: every response, the CORS
 // preflight included, carries this in x-fn-build. 2026-10-11.1: the minted
@@ -52,6 +53,9 @@ import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
 // marked on its request row (api_key_request_unsent, 20261103170000), so it no
 // longer counts toward the mailbox's two links a day: after two refusals the
 // next request was answered "a link is on its way" and nothing was sent.
+// Also 2026-11-03.1 (S13-102, the audit-rest fixer): the confirmation mail
+// is written in the asking page's language (body.language, else the
+// browser's Accept-Language, else English; ./copy.ts).
 const FN_BUILD = "api-key-request.2026-11-03.1";
 
 /**
@@ -102,14 +106,15 @@ const REQUESTED = {
   docs: `${SITE}/data-api`,
 };
 
-function confirmationHtml(link: string, liveKeys: number): string {
-  return `<div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;max-width:560px;line-height:1.5">
-            <h2 style="margin:0 0 12px">Confirm your Resume Booster API key</h2>
-            <p style="margin:0 0 12px">Someone, hopefully you, asked for a free data API key for this address. Open the link below to create it; the key is shown once, on the page the link opens.</p>
-            <p style="margin:16px 0"><a href="${link}" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;font-weight:600;padding:10px 18px;border-radius:8px">Create my API key</a></p>
-            <p style="margin:0 0 12px;color:#52525b;font-size:14px">The link works once and expires in 24 hours.</p>
-            ${liveKeys >= 3 ? '<p style="margin:0 0 12px;color:#52525b;font-size:14px">This address already holds three live keys, the most it can hold. Confirming retires the one used least recently.</p>' : ""}
-            <p style="margin:16px 0 0;color:#71717a;font-size:13px">If you did not ask for this, ignore this email. No key exists until the link is opened, and nothing else will be sent.</p>
+function confirmationHtml(link: string, liveKeys: number, lang: MailLanguage = "en"): string {
+  const c = KEY_COPY[lang];
+  return `<div lang="${lang}" style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;max-width:560px;line-height:1.5">
+            <h2 style="margin:0 0 12px">${c.heading}</h2>
+            <p style="margin:0 0 12px">${c.ask}</p>
+            <p style="margin:16px 0"><a href="${link}" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;font-weight:600;padding:10px 18px;border-radius:8px">${c.button}</a></p>
+            <p style="margin:0 0 12px;color:#52525b;font-size:14px">${c.expiry}</p>
+            ${liveKeys >= 3 ? `<p style="margin:0 0 12px;color:#52525b;font-size:14px">${c.full}</p>` : ""}
+            <p style="margin:16px 0 0;color:#71717a;font-size:13px">${c.ignore}</p>
           </div>`;
 }
 
@@ -117,7 +122,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   if (req.method !== "POST") return refuse("method_not_allowed", "POST an email address.", 405);
 
-  let body: { action?: unknown; email?: unknown; name?: unknown; token?: unknown; termsVersion?: unknown };
+  let body: { action?: unknown; email?: unknown; name?: unknown; token?: unknown; termsVersion?: unknown; language?: unknown };
   try { body = await req.json(); } catch { return refuse("bad_json", "Body must be JSON.", 400); }
 
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -241,6 +246,8 @@ Deno.serve(async (req) => {
   // The link goes ONLY to the address that asked, and the mail carries no text
   // the requester wrote: the name they typed is stored, never sent.
   const link = `${SITE}/data-api#confirm=${token}`;
+  // The asking page's language (S13-102, ./copy.ts).
+  const lang = mailLanguageOf(body, req.headers.get("accept-language"));
   let emailed = false;
   try {
     const res = await fetch("https://api.resend.com/emails", {
@@ -250,8 +257,8 @@ Deno.serve(async (req) => {
         from: "Resume Booster <reports@resumebooster.work>",
         to: [email],
         reply_to: CUSTOMER_REPLY_TO,
-        subject: "Confirm your Resume Booster API key",
-        html: confirmationHtml(link, Number(d.rq_live_keys) || 0),
+        subject: KEY_COPY[lang].subject,
+        html: confirmationHtml(link, Number(d.rq_live_keys) || 0, lang),
       }),
     });
     emailed = res.ok;

@@ -5,6 +5,7 @@ import { isServiceRoleCaller } from "../_shared/service-caller.ts";
 import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
 import { purchaseLinkFor } from "../_shared/purchase-links.ts";
 import { ANALYSIS_MAIL_COPY, type AnalysisMailCopy, type MailLanguage, mailLanguageIn } from "./copy.ts";
+import { industryLabel, mailGrade, mailScoreColor } from "./grade.ts";
 
 // Provable from outside without sending anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
@@ -16,6 +17,11 @@ import { ANALYSIS_MAIL_COPY, type AnalysisMailCopy, type MailLanguage, mailLangu
 // link it used to carry is the one a buyer forwards, and it opened the
 // buyer's own mail as "Viewing shared analysis"; it is kept only when no
 // redemption names the share id. Nothing else changed since main 21518390.
+// Also 2026-11-03.1 (S13-101, the audit-rest fixer): a score is graded and
+// coloured on the analysis page's bands (85 and 70; green from 70), so an 82
+// is "Good" in the mail as on the page, and the industry is the label the
+// page shows in the mail's language, never the fixed choice's spelling
+// ("data_engineering"); ./grade.ts.
 const FN_BUILD = "send-analysis-email.2026-11-03.1";
 
 const corsHeaders = {
@@ -80,7 +86,8 @@ function generateEmailHtml(data: AnalysisEmailRequest, copy: AnalysisMailCopy, l
   // could put a link where the score goes. Coerced and clamped to 0-100.
   const rawScore = Math.round(Number(analysisData.atsScore?.score));
   const atsScore = Number.isFinite(rawScore) ? Math.min(100, Math.max(0, rawScore)) : 0;
-  const scoreColor = atsScore >= 80 ? '#22c55e' : atsScore >= 60 ? '#eab308' : '#ef4444';
+  // The page's bands and colours (S13-101, ./grade.ts).
+  const scoreColor = mailScoreColor(atsScore);
   
   // Escape all user-provided content to prevent XSS
   const actionPlanHtml = analysisData.actionPlan?.slice(0, 5).map((item, i) => 
@@ -134,14 +141,14 @@ function generateEmailHtml(data: AnalysisEmailRequest, copy: AnalysisMailCopy, l
                   <span style="font-size: 36px; font-weight: 700; color: ${scoreColor};">${atsScore}</span>
                 </div>
                 <p style="margin: 12px 0 0; color: #6b7280; font-size: 14px;">
-                  ${escapeHtml(atsScore >= 80 ? copy.grade.high : atsScore >= 60 ? copy.grade.mid : copy.grade.low)}
+                  ${escapeHtml(copy.grade[mailGrade(atsScore)])}
                 </p>
               </div>
 
               <!-- Industry & Level -->
               <div style="background: #f9fafb; padding: 16px; border-radius: 12px; margin-bottom: 24px; text-align: center;">
                 <span style="color: #6b7280;">${escapeHtml(copy.industry)}</span>
-                <strong style="color: #111827; margin-left: 4px;">${escapeHtml(analysisData.industry || copy.industryDefault)}</strong>
+                <strong style="color: #111827; margin-left: 4px;">${escapeHtml(industryLabel(language, analysisData.industry) ?? copy.industryDefault)}</strong>
                 <span style="color: #d1d5db; margin: 0 12px;">|</span>
                 <span style="color: #6b7280;">${escapeHtml(copy.level)}</span>
                 <strong style="color: #111827; margin-left: 4px; text-transform: capitalize;">${escapeHtml(analysisData.experienceLevel || copy.levelDefault)}</strong>

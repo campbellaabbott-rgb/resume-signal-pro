@@ -37,7 +37,7 @@ import { AccountNav } from "@/components/account/AccountNav";
 // refuses about the same employer.
 import { FILL_RATE_MIN_TRACKING_DAYS } from "@/pages/Jobs";
 import { GapReport } from "@/components/account/GapReport";
-import { type Fit, REMEASURE_PAUSE_MS, gapBasisScanId, readGapFits, remeasureKey, resumeFingerprint, rowsToRemeasure, skillGapOf, writeGapFits } from "@/lib/gap-report";
+import { type Fit, REMEASURE_PAUSE_MS, REMEASURE_PER_LOAD, autoRemeasureAllowance, gapBasisScanId, readGapFits, remeasureKey, resumeFingerprint, rowsToRemeasure, skillGapOf, spendAutoRemeasure, writeGapFits } from "@/lib/gap-report";
 import { InterviewsHub } from "@/components/account/InterviewsHub";
 import { SetupChecklist } from "@/components/account/SetupChecklist";
 import { AgentBridgeCard } from "@/components/account/AgentBridgeCard";
@@ -323,12 +323,16 @@ export default function Account() {
     let fits = readGapFits(fp);
     setFreshFits(fits);
     if (Date.now() < gapPausedUntil.current) return;
-    const todo = rowsToRemeasure(gapRowsRef.current, gapBasis, fits);
+    // At most AUTO_REMEASURE_PER_HOUR automatic checks an hour across loads
+    // and tabs (the fixer's review): opening the page spent the person's own
+    // application-fit allowance.
+    const todo = rowsToRemeasure(gapRowsRef.current, gapBasis, fits, Math.min(REMEASURE_PER_LOAD, autoRemeasureAllowance()));
     if (todo.length === 0) return;
     let cancelled = false;
     void (async () => {
       for (const row of todo) {
         if (cancelled) return;
+        if (!spendAutoRemeasure()) return;
         try {
           const { data, error } = await supabase.functions.invoke("application-fit", {
             body: { jobPosting: row.job_posting, resumeText: gapResume },

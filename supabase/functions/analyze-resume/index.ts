@@ -25,6 +25,8 @@ import { proGrantRefusal } from "../_shared/pro.ts";
 import { REFUNDED_PURCHASE_MESSAGE, sessionWasRefunded } from "../_shared/payment-revocation.ts";
 // A test-mode session is read with the test key, and only one (S13-043).
 import { sessionKeyFor } from "./stripe-mode.ts";
+// The buyer's mail language, one of the site's nine or none (FA-1).
+import { checkoutLanguageOf } from "../_shared/checkout-policy.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
@@ -63,6 +65,12 @@ import { sessionKeyFor } from "./stripe-mode.ts";
 // test session with no test key is refused as before. The delivery row this
 // function opens for a test session is tagged livemode false, as the
 // webhook's is, so revenue readers leave it out.
+// Also 2026-11-03.1 (FA-1, the audit-rest fixer): the finished-analysis mail
+// is asked for in the buyer's language (the page's, else the report's, when
+// it is one of the site's nine), and a delivery row this function opens (a
+// Pro member's included analysis, or a sale the webhook has not reached)
+// records that language in metadata.language, where send-analysis-email
+// looks next. It had neither, so a Pro member's mail was always English.
 const FN_BUILD = "analyze-resume.2026-11-03.1";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -932,6 +940,10 @@ Use their actual resume content in examples. Prioritize highest-impact fixes fir
     // A failure anywhere BEFORE step 2 -- the AI call, its parse, its
     // validation -- returns without having written a redemption, which is
     // what makes a retry with the same session work.
+    // The site language the buyer's mail is asked in (FA-1): set below with
+    // the report's language, before deliver() runs; null when it is not one
+    // of the site's nine (send-analysis-email then reads the checkout's).
+    let mailLanguage: string | null = null;
     const deliver = async (analysis: Record<string, unknown>): Promise<Response> => {
       const { data: savedAnalysis, error: dbError } = await supabase
         .from("resume_analyses")
@@ -1043,8 +1055,13 @@ Use their actual resume content in examples. Prioritize highest-impact fixes fir
             payment_completed_at: deliveredAt,
             generation_success: true,
             content_generation_completed_at: deliveredAt,
-            // A test-mode rehearsal (S13-043) is tagged as the webhook tags it.
-            metadata: { share_id: shareId, ...((session as { livemode?: boolean }).livemode === false ? { livemode: false } : {}) },
+            // A test-mode rehearsal (S13-043) is tagged as the webhook tags it,
+            // and the buyer's language is kept as the webhook keeps it (FA-1).
+            metadata: {
+              share_id: shareId,
+              ...((session as { livemode?: boolean }).livemode === false ? { livemode: false } : {}),
+              ...(mailLanguage ? { language: mailLanguage } : {}),
+            },
           });
           if (openError) console.error("[ANALYZE-RESUME] Could not record the delivery:", openError);
         }
@@ -1070,6 +1087,7 @@ Use their actual resume content in examples. Prioritize highest-impact fixes fir
               email: customerEmail,
               analysisData: analysis,
               shareId,
+              ...(mailLanguage ? { language: mailLanguage } : {}),
             }),
           }).then(async (res) => {
             if (res.ok) {
@@ -1108,6 +1126,9 @@ Use their actual resume content in examples. Prioritize highest-impact fixes fir
     // part reads it.
     const language = reportLanguage(askedLanguage, resumeText);
     userMessage += reportLanguageInstruction(language);
+    // The mail that carries it speaks the same language when the site has it
+    // (FA-1); deliver() reads this, after it is set.
+    mailLanguage = checkoutLanguageOf({ language: language.code });
     console.log(`[ANALYZE-RESUME] Report language: ${language.code} (${language.source}); résumé: ${language.resume?.code ?? "not named"}`);
 
     // THE ANALYSIS IN PARALLEL PARTS (S13-001; analysis-parts.ts): the

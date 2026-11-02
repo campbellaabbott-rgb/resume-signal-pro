@@ -39,6 +39,9 @@ export interface ProSubscriptionState {
   planTier: "pro" | "agent" | null;
 }
 
+/** One check-subscription read: live here, live on the address but not linked, neither, or no answer. */
+export type ProStandingRead = "active" | "link_pending" | "inactive" | "unknown";
+
 const EMPTY: Omit<ProSubscriptionState, "loading"> = {
   active: false, status: null, currentPeriodEnd: null, trialing: false, linkPending: false, cancelAtPeriodEnd: false, planTier: null,
 };
@@ -93,10 +96,12 @@ export function useProSubscription() {
     }
   })();
 
-  const refresh = useCallback(async (): Promise<boolean> => {
+  // What one check-subscription read said (the fixer's review of S13-086):
+  // "unknown" is a read that failed, never a plan that is not linked.
+  const readStanding = useCallback(async (): Promise<ProStandingRead> => {
     if (!knownEmail && !heldSession) {
       setPro({ ...EMPTY, loading: false });
-      return false;
+      return "inactive";
     }
     try {
       const fresh = freshOnce.pending;
@@ -119,12 +124,14 @@ export function useProSubscription() {
         cancelAtPeriodEnd: data?.cancelAtPeriodEnd === true,
         planTier: data?.planTier === "agent" || data?.planTier === "pro" ? data.planTier : null,
       });
-      return !!data?.active;
+      return data?.active ? "active" : data?.linkPending === true ? "link_pending" : "inactive";
     } catch {
       setPro((p) => ({ ...p, loading: false }));
-      return false;
+      return "unknown";
     }
   }, [knownEmail, heldSession, freshOnce]);
+
+  const refresh = useCallback(async (): Promise<boolean> => (await readStanding()) === "active", [readStanding]);
 
   // The asks ran out with the plan still not live (a late webhook, a payment
   // left incomplete, an old success link): the card stops saying it is
@@ -180,11 +187,17 @@ export function useProSubscription() {
         if (data?.alreadySubscribed) {
           // The checkout answers by ADDRESS. When this account cannot use the
           // plan on its address (not linked yet), it is not told the plan is
-          // active on it (S13-086): it is told to have it linked.
-          const live = await refresh();
-          toast(live
+          // active on it (S13-086): it is told to have it linked. Only a read
+          // that SAYS it is not linked says so; a read that failed, or one
+          // that names neither, says the plan is there and to reload (the
+          // fixer's review: a timed-out check told a linked member to email
+          // support).
+          const standing = await readStanding();
+          toast(standing === "active"
             ? { title: i18n.t("proPlan.toast.alreadyMemberTitle", "You're already a Pro member"), description: i18n.t("proPlan.toast.alreadyMemberBody", "Your plan is already active on this account.") }
-            : { title: i18n.t("proPlan.toast.linkPendingTitle", "This address already has a Pro plan"), description: i18n.t("proPlan.toast.linkPendingBody", "It isn't linked to this account yet. Email {{support}} from that address and we will link it.", { support: PRO_SUPPORT_EMAIL }) });
+            : standing === "link_pending"
+              ? { title: i18n.t("proPlan.toast.linkPendingTitle", "This address already has a Pro plan"), description: i18n.t("proPlan.toast.linkPendingBody", "It isn't linked to this account yet. Email {{support}} from that address and we will link it.", { support: PRO_SUPPORT_EMAIL }) }
+              : { title: i18n.t("proPlan.toast.linkPendingTitle", "This address already has a Pro plan"), description: i18n.t("proPlan.toast.alreadyUnconfirmedBody", "We couldn't confirm it on this account just now. Reload the page in a moment to see it.") });
           return true;
         }
         if (data?.url) {
@@ -208,7 +221,7 @@ export function useProSubscription() {
         setActionLoading(false);
       }
     },
-    [knownEmail, refresh, toast],
+    [knownEmail, readStanding, toast],
   );
 
   const manage = useCallback(async () => {

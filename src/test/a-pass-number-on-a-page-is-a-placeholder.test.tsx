@@ -364,8 +364,11 @@ describe("the consent route /oauth/consent", () => {
     // The grant is named as what the connection does, not the bare OAuth
     // scope (S9-001): the token works the connector's tools as the person.
     expect(screen.getByText(/It can search jobs on the board/)).toBeInTheDocument();
-    expect(screen.getByText(/It cannot buy anything, change your plan or open your saved resume/)).toBeInTheDocument();
-    expect(screen.queryByText(/It will see:/)).toBeNull();
+    // No "cannot" is promised (the fixer's review: Supabase Auth's account
+    // endpoint accepts the token), and the request's scopes are listed.
+    expect(screen.getByText(/allow only an app you trust/)).toBeInTheDocument();
+    expect(screen.queryByText(/It cannot buy anything/)).toBeNull();
+    expect(screen.getByTestId("consent-scopes").textContent).toBe("It asks for: email.");
     // The client's self-declared homepage is never named as where access goes
     // (S8-081); with no pending redirect in the details, no host is named.
     expect(screen.queryByText(/claude\.ai/)).toBeNull();

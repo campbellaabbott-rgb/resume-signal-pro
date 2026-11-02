@@ -20,11 +20,15 @@
 #       2026-11-03.1, and a FAIL after: from then on a refused mail would keep
 #       counting, which is the bug;
 #   G2  custom_access_token_hook still answers anon 42501 after its
-#       redefinition (20261103160000);
-#   O   the OAuth server's discovery document: INFO either way. While it
-#       answers 404 feature_disabled no connector token can exist. Once it
-#       answers, the access-token hook must be enabled in the dashboard
+#       redefinition (20261103160000). A REGRESSION GUARD, NOT PROOF OF THIS
+#       DEPLOY: the hook has existed and been closed to anon since
+#       20260917130000, so G2 passes before the deploy as well as after;
+#   O   the OAuth server's discovery document. While it answers 404
+#       feature_disabled no connector token can exist (INFO). Once it answers,
+#       the access-token hook must be enabled in the dashboard
 #       (Authentication > Hooks), which nothing outside can read.
+#   (S9-001 on Supabase Auth's own /auth/v1/user, which no layer here
+#   covers, is judged in 99zzzz-audit-rest-fixer.sh.)
 #
 # WHAT THIS SECTION CANNOT SEE. The hook's new body, the mcp_client role and
 # the restrictive policies live where the publishable key reads nothing;
@@ -63,7 +67,9 @@ vdab_giveback() {
 vdab_giveback mail_door_give company-claim '{"p_door":"verify-deploy-probe","p_bucket":"verify-deploy-probe","p_window_minutes":1}'
 vdab_giveback api_key_request_unsent api-key-request '{"p_token_hash":"0000000000000000000000000000000000000000000000000000000000000000"}'
 
-# G2: the hook, redefined, is still the auth server's alone.
+# G2: the hook, redefined, is still the auth server's alone. It passed before
+# this deploy too: a regression guard, not proof the deploy landed.
+echo "INFO  G2 below passes before and after this deploy (the hook has been closed to anon since 20260917130000): it guards a regression, it does not show the deploy landed"
 probe custom_access_token_hook '{"event":{"claims":{}}}'
 
 # O: the OAuth server. Informational: the S9-001 layers are latent until it answers.
@@ -73,6 +79,6 @@ VDAB_OAS_CODE=$(node -e 'try{const j=JSON.parse(require("fs").readFileSync("/tmp
 rm -f /tmp/vd_99zzzz_oas.json
 case "$VDAB_OAS" in
   404) echo "INFO  the OAuth server's discovery answers 404 ${VDAB_OAS_CODE:-}: no connector token can be minted, so S9-001's layers are latent";;
-  200) echo "INFO  the OAuth server's discovery answers 200 (${VDAB_OAS_CODE:-}): connector tokens can be minted; confirm Authentication > Hooks > Custom Access Token points at public.custom_access_token_hook, or a connector token reaches the database as role authenticated (20261103161000 still keeps it from every row)";;
+  200) echo "INFO  the OAuth server's discovery answers 200 (${VDAB_OAS_CODE:-}): connector tokens can be minted; confirm Authentication > Hooks > Custom Access Token points at public.custom_access_token_hook, or a connector token reaches the database as role authenticated (20261103161000 keeps it from RLS tables only: SECURITY DEFINER functions and owner-run views still answer it)";;
   *) echo "INFO  the OAuth server's discovery answered ${VDAB_OAS:-nothing} (${VDAB_OAS_CODE:-})";;
 esac

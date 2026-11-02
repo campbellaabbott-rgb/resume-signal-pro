@@ -208,11 +208,21 @@ export default function FreelanceBoost() {
         // THE TWO ANSWERS GENERATE CANNOT CHANGE (S13-048): a refund, and a
         // link that holds no paid Freelance Boost. Said as they are, with no
         // "press Generate" and no already-paid box.
+        // A Pro plan's included Boost (a pro_ link) and a checkout are refused
+        // for different reasons (the fixer's review): the plan's grant when
+        // the plan has ended, is in its trial, or the link predates grants
+        // naming their account; a checkout when its payment has not completed
+        // (a delayed bank payment still processing) or the link is not a
+        // Boost's. The server's own sentence is shown when it says more than
+        // "Payment required".
         if (status === 402) {
           setPurchaseClosed(true);
+          const said = message && !/^payment required$/i.test(message.trim()) ? message.trim() : "";
           setGenError(refunded
             ? `${message || "This purchase was refunded, so it can no longer be delivered."} If you think this is a mistake, reply to your purchase email.`
-            : "This link doesn't hold a paid Freelance Boost purchase, so there is nothing to generate, and nothing was charged here. If you paid, open the link in your purchase email, or reply to that email.");
+            : sessionId.startsWith("pro_")
+              ? `${said || "This Freelance Boost came with a Pro plan, and that plan can't open it right now."} If your plan is active, sign in with the account that holds it and open Freelance Boost again: a link made before an update opens that way. If the plan has ended or is still in its trial, this link no longer opens. Nothing was charged here.`
+              : "This link doesn't hold a completed Freelance Boost payment, so there is nothing to generate yet, and nothing was charged here. A bank payment can take a few days to go through, and you'll get an email when it does. Otherwise, open the link in your purchase email, or reply to that email.");
           return;
         }
         // The request itself was incomplete: the answers above, not the purchase.

@@ -19,8 +19,10 @@
 #   D2  a well-formed pair whose purchase did not redeem that analysis
 #       answers false (the function reads purchased_content and deletes
 #       nothing);
-#   P1  the published success page sends '<share id>:<purchase>' and shows a
-#       shared view no delete button (its chunk carries the note's key);
+#   P1  the published success page sends '<share id>:<purchase>' (its chunk
+#       passes the delete call a two-value template joined by a colon) and
+#       shows a shared view no delete button (its chunk carries the note's
+#       key);
 #   P2  the published product page says why a link did not open and asks a
 #       link with no reference for its email link (its chunk carries the
 #       refusal and no-reference keys).
@@ -78,7 +80,11 @@ VDARP_SUCC=$(vdarp_chunk Success)
 if [ -z "$VDARP_SUCC" ]; then echo "FAIL  the served entry (${VDARP_MAIN:-none found}) names no Success chunk: the frontend is not serving, or the bundle layout moved"
 else
   VDARP_SJS=$(curl -s -m 30 "$SITE/assets/$VDARP_SUCC")
-  if printf '%s' "$VDARP_SJS" | grep -qF 'success.sharedViewDeleteNote' && printf '%s' "$VDARP_SJS" | grep -qF 'shared-computer-note'; then echo "PASS  the published success page ($VDARP_SUCC) offers a shared view no delete and says the analysis is kept for its days"
+  # The pair: the delete call's argument is '<share id>:<purchase>', a
+  # template of two values with a colon between them (or its concatenation).
+  VDARP_PAIR_RE='p_share_id:(`[$][{][A-Za-z_$][A-Za-z0-9_$]*[}]:[$][{]|[A-Za-z_$][A-Za-z0-9_$]*[+]":"[+])'
+  if ! printf '%s' "$VDARP_SJS" | grep -qE "$VDARP_PAIR_RE"; then echo "FAIL  the published success page ($VDARP_SUCC) does not send '<share id>:<purchase>' to the delete call: the server now refuses a share id alone, so a buyer's delete fails"
+  elif printf '%s' "$VDARP_SJS" | grep -qF 'success.sharedViewDeleteNote' && printf '%s' "$VDARP_SJS" | grep -qF 'shared-computer-note'; then echo "PASS  the published success page ($VDARP_SUCC) sends '<share id>:<purchase>' to the delete call, offers a shared view no delete and says the analysis is kept for its days"
   else echo "FAIL  the published success page ($VDARP_SUCC) carries no shared-view note: the frontend publish with S13-079 and S13-027 has not happened"; fi
 fi
 VDARP_PROD=$(vdarp_chunk ProductSuccess)

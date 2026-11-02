@@ -23,6 +23,14 @@
 -- turns on row level security later does not get the policy by itself: the
 -- hook is the layer that covers everything.
 --
+-- WHAT THIS LAYER DOES NOT COVER (the audit-rest fixer's review): a SECURITY
+-- DEFINER function the signed-in role may execute (agent_cancel_pending,
+-- get_application_lifecycle, agent_sent_today and the rest) reads its tables
+-- as its owner, and a view owned by a privileged role reads as that owner, so
+-- neither runs this policy. With the hook off, a connector token can still
+-- call them as the person. Nor does it touch Supabase Auth's /auth/v1/user
+-- (see 20261103160000). It narrows tables; it is not a second hook.
+--
 -- Safe to re-run: a policy is created only where it is missing, and the
 -- self-check only reads (its claims probe runs in a block that rolls back).
 

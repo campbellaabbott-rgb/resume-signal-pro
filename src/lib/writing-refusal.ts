@@ -140,6 +140,19 @@ export async function writingToolToast(tool: WritingTool, error: unknown, t: Tra
   const { code, retryAfterSeconds } = await limitOf(error);
   const gated = code !== "model_busy" && (code.startsWith("rate_limited_") || (retryAfterSeconds ?? 0) >= LONG_LIMIT_SECONDS);
   if (!gated) return { title: t(...c.limitTitle), description: t(...c.limit) };
+  // EVERYONE'S CEILING, NOT THIS PERSON'S (the fixer's review). The gate's
+  // all-callers hourly ceiling and its per-network one are reached by other
+  // people: a first request can meet them. Their Retry-After is a constant,
+  // not the window's real reset, so no time is named and the person is not
+  // told they used anything.
+  if (code === "rate_limited_global" || code === "rate_limited_network") {
+    return {
+      title: t("writingRefusal.busyTitle", "Busy right now"),
+      description: code === "rate_limited_network"
+        ? t("writingRefusal.busyNetwork", "This tool is busy for your network right now. This is not your own limit. Try again later.")
+        : t("writingRefusal.busyEveryone", "This tool is busy for everyone right now. This is not your own limit. Try again later."),
+    };
+  }
   const opensAt = new Date(Date.now() + (retryAfterSeconds ?? 3600) * 1000);
   const when = opensAt.toLocaleString(locale, { weekday: "short", hour: "numeric", minute: "2-digit" });
   return {

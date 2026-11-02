@@ -116,6 +116,34 @@ describe("S13-048: a refused purchase link says why, under no success header", (
     expect(h.open).toHaveBeenCalledWith("/product-success?session_id=cs_live_thewholelink99&product=coverLetter");
   });
 
+  // The fixer's review: a Stripe that did not answer (a 429, a timeout, a
+  // 5xx) was the not-found 400, a dead end with no Try again; and a Pro grant
+  // minted before grants named their account was "no longer available",
+  // telling a paying member their plan had lapsed.
+  it("a Stripe that did not answer is a 503 the page offers to try again, and never says the link expired", async () => {
+    verifyAnswers(refusal(503, { error: "We couldn't reach the payment provider just now. Your purchase is safe: wait a moment and try again.", retryable: true }));
+    const { container } = open(`?session_id=${SESSION}&product=coverLetter`);
+    expect(await screen.findByRole("heading", { name: /couldn't check this purchase just now/ }, SLOW)).toBeTruthy();
+    expect(tryAgain()).toBeTruthy();
+    expect(container.textContent).not.toMatch(/expired|cut short/);
+  });
+
+  it("a Pro grant made before the update is told to sign in and open it again, never that its plan lapsed", async () => {
+    verifyAnswers(refusal(402, { error: "This link was made before an update. Open the tool again while signed in and it will be included." }));
+    const { container } = open(`?session_id=pro_7c9e6679-7425-40de-944b-e07fc1f90ae7&product=coverLetter`);
+    expect(await screen.findByRole("heading", { name: /Sign in to open this/ }, SLOW)).toBeTruthy();
+    expect(screen.getByTestId("sign-in-again").getAttribute("href")).toBe("/auth");
+    expect(container.textContent).not.toMatch(/no longer active|no longer available/);
+  });
+
+  it("the rate limit is said as the connection's, never this purchase's", async () => {
+    verifyAnswers(refusal(429, { error: "Too many requests. Please try again later." }));
+    const { container } = open(`?session_id=${SESSION}&product=coverLetter`);
+    expect(await screen.findByRole("heading", { name: /Too many checks/ }, SLOW)).toBeTruthy();
+    expect(container.textContent).toMatch(/from this connection in the last hour/);
+    expect(container.textContent).not.toMatch(/This purchase was checked too many times/);
+  });
+
   it("an answer it cannot place keeps the old words and Try again", async () => {
     verifyAnswers(refusal(500, { error: "Failed to verify purchase" }));
     open(`?session_id=${SESSION}&product=coverLetter`);
@@ -194,11 +222,39 @@ describe("S13-048: Freelance Boost tells a refused buyer the truth", () => {
     expect(screen.queryByRole("button", { name: /already paid/i })).toBeNull();
   });
 
-  it("not a paid Freelance Boost: said so, no 'press Generate', no already-paid box", async () => {
+  it("not a completed Freelance Boost payment: said so, a bank payment still going through named, no 'press Generate', no already-paid box", async () => {
     const { container } = mount(refusal(402, { error: "Payment required" }));
-    expect(await screen.findByText(/doesn't hold a paid Freelance Boost purchase/, undefined, SLOW)).toBeTruthy();
-    expect(container.textContent).not.toMatch(/purchase is safe/);
+    expect(await screen.findByText(/doesn't hold a completed Freelance Boost payment/, undefined, SLOW)).toBeTruthy();
+    expect(container.textContent).toMatch(/bank payment can take a few days/);
+    expect(container.textContent).not.toMatch(/purchase is safe|came with a Pro plan/);
     expect(screen.queryByRole("button", { name: /already paid/i })).toBeNull();
+  });
+
+  // The fixer's review: a Pro plan's included Boost refused (a legacy link
+  // with no account, a lapsed or trial plan) was told the link held no paid
+  // purchase, and never heard the fix: open it again while signed in.
+  it("a Pro plan's included Boost is told it came with the plan, and how a link made before the update opens", async () => {
+    localStorage.setItem("freelanceBoostIntake", JSON.stringify(DRAFT));
+    h.invoke.mockImplementation(async (fn: string) => {
+      if (fn === "recover-purchase") return { data: { found: false }, error: null };
+      if (fn === "generate-freelance-boost") return refusal(402, { error: "Payment required" });
+      return { data: null, error: null };
+    });
+    const { container } = render(<MemoryRouter initialEntries={["/freelance-boost?session_id=pro_7c9e6679-7425-40de-944b-e07fc1f90ae7"]}><FreelanceBoost /></MemoryRouter>);
+    expect(await screen.findByText(/came with a Pro plan/, undefined, SLOW)).toBeTruthy();
+    expect(container.textContent).toMatch(/sign in with the account that holds it and open Freelance Boost again/);
+    expect(container.textContent).not.toMatch(/doesn't hold a completed Freelance Boost payment/);
+  });
+
+  it("a server sentence that says more than 'Payment required' is shown as it is", async () => {
+    localStorage.setItem("freelanceBoostIntake", JSON.stringify(DRAFT));
+    h.invoke.mockImplementation(async (fn: string) => {
+      if (fn === "recover-purchase") return { data: { found: false }, error: null };
+      if (fn === "generate-freelance-boost") return refusal(402, { error: "This link was made before an update. Open the tool again while signed in and it will be included." });
+      return { data: null, error: null };
+    });
+    render(<MemoryRouter initialEntries={["/freelance-boost?session_id=pro_7c9e6679-7425-40de-944b-e07fc1f90ae7"]}><FreelanceBoost /></MemoryRouter>);
+    expect(await screen.findByText(/This link was made before an update/, undefined, SLOW)).toBeTruthy();
   });
 
   it("a write that failed keeps the server's sentence and the Generate button", async () => {

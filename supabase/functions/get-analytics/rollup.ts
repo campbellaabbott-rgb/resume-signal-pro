@@ -104,6 +104,12 @@ export function createRollup(pageFilter?: string | null) {
       // oldest rows, so the days before coveredFrom are undercounted.
       truncated,
       coveredFrom: truncated ? coveredFrom : null,
+      // And on EVERY day, the read days too, new and returning are
+      // approximate when the read stopped early (the fixer's review): a
+      // visitor is new on the earliest day seen in the rows read, so one
+      // whose first visit fell in the unread part counts as new on a later
+      // day, and returning is undercounted.
+      visitorSplitApproximate: truncated,
     };
   };
 

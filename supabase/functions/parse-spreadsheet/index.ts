@@ -11,13 +11,17 @@ import { clientAddressOr } from "../_shared/client-address.ts";
 // (register L5-09).
 import { findColumnIndex, parseCSV } from "./csv.ts";
 // The size, time, row and per-address bounds (S13-066).
-import { MAX_ROWS, MAX_UPLOAD_BYTES, PER_ADDRESS_PER_HOUR, SHEETS_FETCH_MS, TooLarge, declaredTooLarge, readCapped } from "./limits.ts";
+import { MAX_ROWS, MAX_UNZIPPED_BYTES, MAX_UPLOAD_BYTES, PER_ADDRESS_PER_HOUR, SHEETS_FETCH_MS, TooLarge, declaredTooLarge, looksZipped, readBodyCapped, readCapped, zipInflationRefusal } from "./limits.ts";
 
 // Provable from outside without an upload: every response, the CORS preflight
 // included, carries this in x-fn-build.
 // 2026-11-03.1 (S13-066, fix/audit-rest-abuse): a 10 MB cap on every body,
 // a per-address limiter, a timed and capped Google Sheets read, at most
 // MAX_ROWS workbook rows.
+// Also 2026-11-03.1 (the audit-rest fixer): the body is read through a byte
+// count whether or not it declares its length, and a zipped workbook that
+// unpacks past MAX_UNZIPPED_BYTES is refused before SheetJS reads it. The 15 s
+// clock is the Google Sheets fetch's only.
 const FN_BUILD = "parse-spreadsheet.2026-11-03.1";
 
 const corsHeaders = {
@@ -174,9 +178,20 @@ Deno.serve(async (req) => {
     const contentType = req.headers.get('content-type') || '';
     let rows: string[][] = [];
     let fileName = 'data.csv';
+
+    // The body, read only up to the cap, declared length or not (a chunked
+    // upload was buffered whole by formData() before its size was checked).
+    let rawBody: Uint8Array<ArrayBuffer>;
+    try {
+      rawBody = await readBodyCapped(req);
+    } catch (e) {
+      if (e instanceof TooLarge) return tooLarge('This file');
+      throw e;
+    }
+    const capped = new Response(rawBody, { headers: { 'content-type': contentType } });
     
     if (contentType.includes('multipart/form-data')) {
-      const formData = await req.formData();
+      const formData = await capped.formData();
       const file = formData.get('file') as File;
       
       if (!file) {
@@ -194,6 +209,19 @@ Deno.serve(async (req) => {
       if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
         try {
           const buffer = await file.arrayBuffer();
+          // A zipped workbook is measured before SheetJS inflates it: its
+          // row cap does not bound the inflation of sharedStrings or styles.
+          const bytes = new Uint8Array(buffer);
+          if (looksZipped(bytes)) {
+            const refusal = await zipInflationRefusal(bytes);
+            if (refusal === 'too_large') {
+              return new Response(
+                JSON.stringify({ success: false, error: `This workbook unpacks to more than ${MAX_UNZIPPED_BYTES / (1024 * 1024)} MB, which is more than we read. Export it as CSV and upload that instead.`, code: 'too_large' }),
+                { status: 413, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+              );
+            }
+            if (refusal === 'corrupt') throw new Error('the zip directory or an entry could not be read');
+          }
           rows = parseExcel(buffer);
         } catch (excelError) {
           console.error("[parse-spreadsheet] Excel parsing error:", excelError);
@@ -219,7 +247,7 @@ Deno.serve(async (req) => {
       }
     } else {
       // JSON body - could be content or Google Sheets URL
-      const body = await req.json();
+      const body = await capped.json();
       
       // Handle Google Sheets URL
       if (body.googleSheetsUrl) {

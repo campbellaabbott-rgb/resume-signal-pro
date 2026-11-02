@@ -59,9 +59,15 @@ import { sameSecret } from "../_shared/service-caller.ts";
 import { alertOwnerOnce } from "../_shared/owner-alert.ts";
 import { domainProven, employerDomains } from "./domain-proof.ts";
 import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
+import { CLAIM_COPY, mailLanguageOf, storedLanguage } from "./copy.ts";
 
 // Provable from outside without sending anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
+// Also 2026-11-03.1 (S13-102, the audit-rest fixer): the verification mail
+// is written in the claiming page's language (body.language, else the
+// browser's Accept-Language, else English; ./copy.ts), and that language is
+// kept on the claim (company_claims.locale, 20261103195000) for the
+// "verified" notice the owner's decision sends later.
 const FN_BUILD = "company-claim.2026-11-03.1";
 
 const corsHeaders = {
@@ -205,15 +211,24 @@ Deno.serve(async (req) => {
       if (decision === "verified" && claim.status !== "verified" && RESEND_API_KEY) {
         const displayName = String(claim.company_name || claim.company_token);
         const pageUrl = `${SITE}/jobs/company/${encodeURIComponent(claim.company_token)}`;
+        // The claimant's language (S13-102), read on its own so a missing
+        // column (before 20261103195000) costs only the translation.
+        let locale: unknown = null;
+        try {
+          const { data: loc, error: locErr } = await supabase.from("company_claims").select("locale").eq("id", id).maybeSingle();
+          if (!locErr) locale = (loc as { locale?: unknown } | null)?.locale ?? null;
+        } catch { /* English */ }
+        const lang = storedLanguage(locale);
+        const c = CLAIM_COPY[lang];
         await new Resend(RESEND_API_KEY).emails.send({
           from: FROM,
           to: [claim.work_email],
           reply_to: CUSTOMER_REPLY_TO,
-          subject: `Your claim of ${subjectSafe(displayName)} is verified`,
-          html: `<div style="font-family:Helvetica,Arial,sans-serif;font-size:14px;color:#111;max-width:520px">
-            <p>Your claim of <b>${escapeHtml(displayName)}</b> on resumebooster.work has been reviewed and verified. The company page now shows a Verified employer badge:</p>
+          subject: c.verifiedSubject(subjectSafe(displayName)),
+          html: `<div lang="${lang}" style="font-family:Helvetica,Arial,sans-serif;font-size:14px;color:#111;max-width:520px">
+            <p>${c.verifiedBody(escapeHtml(displayName))}</p>
             <p><a href="${escapeHtml(pageUrl)}">${escapeHtml(pageUrl)}</a></p>
-            <p style="font-size:12px;color:#64748b">Verification confirms identity only — the hiring data shown is computed from public postings and is not editable by anyone, including verified employers.</p>
+            <p style="font-size:12px;color:#64748b">${c.verifiedNote}</p>
           </div>`,
         }).catch((e) => console.error("[COMPANY-CLAIM] approval notify failed:", e));
       }
@@ -358,17 +373,20 @@ Deno.serve(async (req) => {
 
       const verifyUrl = `${SITE}/jobs/company/${encodeURIComponent(companyToken)}?claim_verify=${encodeURIComponent(String(verifyToken))}`;
       let sendError: unknown = null;
+      // The claiming page's language (S13-102, ./copy.ts).
+      const lang = mailLanguageOf(body, req.headers.get("accept-language"));
+      const c = CLAIM_COPY[lang];
       try {
         ({ error: sendError } = await resend.emails.send({
           from: FROM,
           to: [workEmail],
           reply_to: CUSTOMER_REPLY_TO,
-          subject: `Verify your claim of ${subjectSafe(displayName)} on Resume Booster`,
-          html: `<div style="font-family:Helvetica,Arial,sans-serif;font-size:14px;color:#111;max-width:520px">
-            <p>Someone (hopefully you) asked to claim the <b>${escapeHtml(displayName)}</b> company profile on resumebooster.work using this address.</p>
-            <p><a href="${escapeHtml(verifyUrl)}" style="display:inline-block;padding:10px 18px;background:#0ea5e9;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">Verify this claim</a></p>
-            <p style="font-size:12px;color:#64748b">Verification confirms your identity as an employer contact. It never changes the hiring data we show — fills, re-listing patterns, and badges are computed from public postings and are not editable by anyone, including verified employers.</p>
-            <p style="font-size:12px;color:#64748b">If you didn't request this, ignore this email — nothing happens without the click.</p>
+          subject: c.verifySubject(subjectSafe(displayName)),
+          html: `<div lang="${lang}" style="font-family:Helvetica,Arial,sans-serif;font-size:14px;color:#111;max-width:520px">
+            <p>${c.verifyAsk(escapeHtml(displayName))}</p>
+            <p><a href="${escapeHtml(verifyUrl)}" style="display:inline-block;padding:10px 18px;background:#0ea5e9;color:#fff;border-radius:8px;text-decoration:none;font-weight:600">${c.verifyButton}</a></p>
+            <p style="font-size:12px;color:#64748b">${c.verifyNote}</p>
+            <p style="font-size:12px;color:#64748b">${c.verifyIgnore}</p>
           </div>`,
         }));
       } catch (e) {
@@ -384,6 +402,13 @@ Deno.serve(async (req) => {
         .update({ last_sent_at: new Date().toISOString() })
         .eq("company_token", companyToken).eq("work_email", workEmail);
       if (stampErr) console.error("[COMPANY-CLAIM] last_sent_at stamp failed:", stampErr);
+      // The claimant's language, for the "verified" notice (S13-102). Its own
+      // write, so a missing column costs only that notice's translation.
+      try {
+        const { error: locErr } = await supabase.from("company_claims").update({ locale: lang })
+          .eq("company_token", companyToken).eq("work_email", workEmail);
+        if (locErr) console.warn("[COMPANY-CLAIM] locale not kept:", locErr.message?.slice(0, 120));
+      } catch { /* that notice stays English */ }
 
       // Owner heads-up (best effort — the claim stands even if this fails),
       // at most OWNER_NOTES_PER_DAY a day: every claim is on /admin/claims.

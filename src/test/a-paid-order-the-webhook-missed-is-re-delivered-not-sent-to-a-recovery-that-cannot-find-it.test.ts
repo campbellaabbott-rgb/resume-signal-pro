@@ -14,7 +14,10 @@
  * the webhook's signature checked in Stripe's own scheme):
  *   - each orphan's completed-checkout event is posted to stripe-webhook,
  *     signed so the webhook's own check accepts it, carrying Stripe's copy of
- *     the session; it counts as re-delivered only once its marker is there;
+ *     the session; it counts as re-delivered only once its ORDER ROW says
+ *     delivered (the fixer's review: the webhook writes the claim marker
+ *     before it generates anything, so a marker alone is a claim, and a
+ *     claimed order that failed or is still generating is said as such);
  *   - a webhook that does not answer 2xx gives the session's door back, so
  *     the next run tries again, and the owner is told the manual remedy;
  *   - a session already re-sent is not re-sent again inside its door;
@@ -46,6 +49,8 @@ let posts: Post[];
 let mails: Array<{ subject: string; html: string }>;
 let webhookStatus: number;
 let webhookMarks: boolean;
+/** The order row the faked webhook writes with its marker, or none. */
+let orderRow: Record<string, unknown> | null;
 let doorRefuses: boolean;
 let db: FakeDb;
 let reconcile: EdgeHandler;
@@ -59,7 +64,10 @@ beforeAll(async () => {
     const url = String(input instanceof Request ? input.url : input);
     const headers = new Headers(init?.headers);
     posts.push({ url, signature: headers.get("stripe-signature") ?? "", body: String(init?.body ?? "") });
-    if (webhookStatus === 200 && webhookMarks) db.rows("used_stripe_sessions").push({ session_id: SESSION.id });
+    if (webhookStatus === 200 && webhookMarks) {
+      db.rows("used_stripe_sessions").push({ session_id: SESSION.id });
+      if (orderRow) db.rows("product_deliveries").push({ stripe_session_id: SESSION.id, ...orderRow });
+    }
     return new Response(JSON.stringify({ received: true }), { status: webhookStatus });
   };
   verify = new Function(`return (${STRIPE_WEBHOOKS_REAL_SHAPE}).constructEventAsync;`)();
@@ -80,6 +88,8 @@ beforeEach(() => {
   mails = [];
   webhookStatus = 200;
   webhookMarks = true;
+  // The $5 analysis's delivery is its purchase-link mail.
+  orderRow = { status: "payment_received", email_sent_at: new Date().toISOString(), email_success: true };
   doorRefuses = false;
   db.rpcs.mail_door_take = (a) => {
     if (doorRefuses) return { data: false, error: null };
@@ -105,12 +115,37 @@ describe("a paid session with no marker is re-delivered through the webhook", ()
     await expect(verify(posts[0].body, posts[0].signature, "whsec_someone_else")).rejects.toThrow();
   });
 
-  it("tells the owner it was re-delivered, and never names recover-purchase as the remedy", async () => {
+  it("tells the owner it was re-delivered, as its order row says, and never names recover-purchase as the remedy", async () => {
     await run();
     expect(mails).toHaveLength(1);
-    expect(mails[0].subject).toMatch(/1 re-delivered/);
-    expect(mails[0].html).toMatch(/re-delivered: the webhook has now claimed and delivered it/);
+    expect(mails[0].subject).toMatch(/: 1 delivered$/);
+    expect(mails[0].html).toMatch(/re-delivered: its order row says delivered/);
+    expect(mails[0].html).toMatch(/1 of 1 are now delivered/);
     expect(mails[0].html).not.toMatch(/recover-purchase/);
+  });
+
+  it("a claimed order that then failed is said as failed, with what to do, and is not counted delivered", async () => {
+    orderRow = { status: "generation_failed", generation_error: "Resume data not found" };
+    const r = await run();
+    expect(r).toMatchObject({ orphans: 1, redelivered: 0, failedAfterClaim: 1, inProgress: 0 });
+    expect(mails[0].subject).toMatch(/0 delivered, 1 failed/);
+    expect(mails[0].html).toMatch(/claimed by the webhook, then failed \(Resume data not found\): refund it or send it by hand/);
+    expect(mails[0].html).toMatch(/0 of 1 are now delivered/);
+  });
+
+  it("a claimed order still generating is said as not delivered yet", async () => {
+    orderRow = { status: "generating" };
+    const r = await run();
+    expect(r).toMatchObject({ redelivered: 0, inProgress: 1 });
+    expect(mails[0].html).toMatch(/still generating: not delivered yet/);
+    expect(mails[0].html).not.toMatch(/1 of 1 are now delivered/);
+  });
+
+  it("a claim with no order row is said as such, never as delivered", async () => {
+    orderRow = null;
+    const r = await run();
+    expect(r).toMatchObject({ redelivered: 0, inProgress: 1 });
+    expect(mails[0].html).toMatch(/no order row was written: check it by hand/);
   });
 
   it("counts nothing re-delivered when the webhook answered but wrote no marker", async () => {

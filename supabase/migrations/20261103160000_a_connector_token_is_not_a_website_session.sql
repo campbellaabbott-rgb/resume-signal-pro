@@ -36,8 +36,24 @@
 -- This migration does NOT enable the hook (a dashboard toggle: Authentication
 -- > Hooks > Custom Access Token), and the OAuth server is off: discovery
 -- answered 404 feature_disabled on 2026-10-31. The owner enables the hook
--- BEFORE the OAuth server. 20261103161000 adds the second layer for a token
--- minted while the hook is off.
+-- BEFORE the OAuth server. 20261103161000 adds a second layer for a token
+-- minted while the hook is off, and it covers TABLES ONLY: a restrictive
+-- policy on every RLS table in public and on storage.objects. A SECURITY
+-- DEFINER function the signed-in role may execute, and a view owned by a
+-- privileged role, read as their owner and skip that policy, so with the
+-- hook off a connector token could still call them as the person. Only the
+-- hook covers those (the audit-rest fixer's review).
+--
+-- WHAT NONE OF THIS COVERS (the fixer's review, 2026-11-02): Supabase Auth's
+-- own account endpoint. GoTrue's /auth/v1/user checks a token's signature
+-- and loads the user from its sub and session_id; it does not read the
+-- audience, the role or client_id (internal/api/auth.go requireAuthentication
+-- and user.go UserGet/UserUpdate, read 2026-11-02). So a connector token,
+-- hook or no hook, can read the account there and change its email or
+-- password, and then sign in on the site as the person. S9-001 stays OPEN on
+-- that path, and the OAuth server stays off until a read-only probe of GET
+-- /auth/v1/user with a connector token answers 401 or 403
+-- (scripts/verify-deploy.d/99zzzz-audit-rest-abuse.sh, line S).
 --
 -- Executable only by the auth server's role, revoked from PUBLIC, anon and
 -- authenticated by name. The MCP server's URL below is one of three spellings

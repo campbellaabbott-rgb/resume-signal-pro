@@ -19,7 +19,11 @@
  * faked; the mail door counted as mail_door_take counts it):
  *   - an expired checkout is recorded in payment_failures and mails nobody;
  *   - a decline is one row and one mail, and a redelivered decline mails no
- *     more; a charge.failed behind a payment intent writes and mails nothing;
+ *     more; its two events (payment_intent.payment_failed and charge.failed)
+ *     are one row and one mail together, and either alone records and mails
+ *     it, so an endpoint subscribed to only one still hears every decline
+ *     (the fixer's review); a second card on the same payment is a second
+ *     row and no second mail;
  *   - no more than ten failure mails go out an hour; a mail no sender took
  *     gives its door back, so the redelivery mails it;
  *   - the affiliate is mailed by the webhook when its call recorded the
@@ -110,10 +114,12 @@ async function deliver(type: string, object: Record<string, unknown>) {
   return res.status;
 }
 
-const declined = (pi: string) => ({
+const declined = (pi: string, charge?: string) => ({
   id: pi, amount: 500, currency: "usd", receipt_email: "buyer@example.com",
-  last_payment_error: { code: "card_declined", message: "Your card was declined.", decline_code: "generic_decline" },
+  ...(charge ? { latest_charge: charge } : {}),
+  last_payment_error: { code: "card_declined", message: "Your card was declined.", decline_code: "generic_decline", ...(charge ? { charge } : {}) },
 });
+const failedCharge = (id: string, pi: string | null) => ({ id, payment_intent: pi, amount: 500, currency: "usd", failure_code: "card_declined", billing_details: { email: "b@example.com" } });
 const failureMails = () => mail.filter((m) => /Payment|Failed/i.test(m.subject));
 
 describe("payment failures mail the owner what is money, once (S13-059)", () => {
@@ -124,17 +130,40 @@ describe("payment failures mail the owner what is money, once (S13-059)", () => 
   });
 
   it("a decline is one row and one mail, and its redelivery mails no more", async () => {
-    await deliver("payment_intent.payment_failed", declined("pi_declined_1"));
-    await deliver("payment_intent.payment_failed", declined("pi_declined_1"));
+    await deliver("payment_intent.payment_failed", declined("pi_declined_1", "ch_declined_1"));
+    await deliver("payment_intent.payment_failed", declined("pi_declined_1", "ch_declined_1"));
+    expect(failureMails()).toHaveLength(1);
+    expect(db.rows("payment_failures")).toHaveLength(1);
+  });
+
+  it("a Checkout decline's two events are one row and one mail, in either order", async () => {
+    await deliver("charge.failed", failedCharge("ch_1", "pi_declined_2"));
+    await deliver("payment_intent.payment_failed", declined("pi_declined_2", "ch_1"));
+    expect(db.rows("payment_failures")).toHaveLength(1);
+    expect(failureMails()).toHaveLength(1);
+    await deliver("payment_intent.payment_failed", declined("pi_declined_3", "ch_3"));
+    await deliver("charge.failed", failedCharge("ch_3", "pi_declined_3"));
+    expect(db.rows("payment_failures")).toHaveLength(2);
+    expect(failureMails()).toHaveLength(2);
+  });
+
+  it("an endpoint subscribed to charge.failed alone still records and mails a Checkout decline", async () => {
+    await deliver("charge.failed", failedCharge("ch_only", "pi_only_charge_event"));
+    expect(db.rows("payment_failures")).toHaveLength(1);
+    expect(db.rows("payment_failures")[0].payment_intent_id).toBe("pi_only_charge_event");
     expect(failureMails()).toHaveLength(1);
   });
 
-  it("charge.failed behind a payment intent writes and mails nothing; one with none is recorded and mailed", async () => {
-    await deliver("charge.failed", { id: "ch_1", payment_intent: "pi_declined_2", amount: 500, currency: "usd", failure_code: "card_declined", billing_details: { email: "b@example.com" } });
-    expect(db.rows("payment_failures")).toEqual([]);
-    expect(mail).toEqual([]);
-    await deliver("charge.failed", { id: "ch_2", payment_intent: null, amount: 500, currency: "usd", failure_code: "card_declined", billing_details: { email: "b@example.com" } });
+  it("a charge with no payment intent behind it is recorded and mailed", async () => {
+    await deliver("charge.failed", failedCharge("ch_2", null));
     expect(db.rows("payment_failures")).toHaveLength(1);
+    expect(failureMails()).toHaveLength(1);
+  });
+
+  it("a second card declined on the same payment is a second row, and no second mail", async () => {
+    await deliver("charge.failed", failedCharge("ch_card_a", "pi_two_cards"));
+    await deliver("charge.failed", failedCharge("ch_card_b", "pi_two_cards"));
+    expect(db.rows("payment_failures")).toHaveLength(2);
     expect(failureMails()).toHaveLength(1);
   });
 

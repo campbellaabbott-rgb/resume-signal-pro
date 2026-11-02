@@ -20,8 +20,11 @@
 // with STRIPE_WEBHOOK_SECRET in Stripe's own scheme (reconcile.ts,
 // redeliveryOf) and posted to stripe-webhook, which runs the delivery it
 // missed exactly as for Stripe: the claim, the order row and the buyer's
-// mail. A session counts as re-delivered only when its marker is there
-// afterwards. Each session is re-sent at most once a fortnight (a door per
+// mail. A session counts as re-delivered only when its ORDER ROW
+// (product_deliveries) says it was delivered: the webhook writes the claim
+// marker before it generates anything, so a marker alone is a claim, and a
+// claimed order that is still generating or failed is said as such (the
+// fixer's review). Each session is re-sent at most once a fortnight (a door per
 // session, given back when the webhook did not answer 2xx, so the next run
 // tries again), at most MAX_REDELIVERIES a run. The owner's mail names, per
 // session, what happened and, for one that did not take, the manual remedy:
@@ -43,7 +46,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
-import { findOrphanSessions, redeliveryOf, type ReconcileSession } from "./reconcile.ts";
+import { findOrphanSessions, redeliveryOf, redeliveryOutcomeLine, redeliveryStateOf, type DeliveryRow, type ReconcileSession } from "./reconcile.ts";
 import { isServiceRoleCaller } from "../_shared/service-caller.ts";
 import { keyMatches } from "../_shared/admin-key.ts";
 import { checkoutSessionSettled } from "../_shared/pass-settlement.ts";
@@ -55,6 +58,8 @@ import { buyerEmailOf } from "../_shared/buyer-email.ts";
 // 2026-11-03.1 (audit-rest money, S13-028): each orphan is re-delivered
 // through stripe-webhook, and the owner's mail says what each re-delivery did
 // instead of naming a recovery function that could not find the order.
+// Also 2026-11-03.1 (the audit-rest fixer): "delivered" is read from the
+// order row, never from the claim marker alone.
 const BUILD_VERSION = "2026-11-03.1";
 const FN_BUILD = `reconcile-stripe.${BUILD_VERSION}`;
 
@@ -160,7 +165,11 @@ serve(async (req) => {
     const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET") ?? "";
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const outcome = new Map<string, string>();
+    // Judged by the order row, never by the claim marker alone (the fixer's
+    // review): redelivered counts what its row says is delivered.
     let redelivered = 0;
+    let inProgress = 0;
+    let failedAfterClaim = 0;
     let sent = 0;
     for (const o of orphans) {
       const session = listed.get(o.id);
@@ -196,12 +205,24 @@ serve(async (req) => {
         continue;
       }
       const { data: marked } = await supabase.from("used_stripe_sessions").select("session_id").eq("session_id", o.id).maybeSingle();
-      if (marked) {
-        redelivered++;
-        outcome.set(o.id, "re-delivered: the webhook has now claimed and delivered it");
-      } else {
+      if (!marked) {
         outcome.set(o.id, "re-sent and acknowledged, but still no delivery marker");
+        continue;
       }
+      // The marker is written before anything is generated: the order row
+      // says what happened next.
+      const { data: orderRows, error: orderError } = await supabase.from("product_deliveries")
+        .select("status, email_sent_at, email_success, generation_error, email_error").eq("stripe_session_id", o.id).limit(5);
+      if (orderError) {
+        inProgress++;
+        outcome.set(o.id, "claimed by the webhook; its order row could not be read, so not counted as delivered: check product_deliveries");
+        continue;
+      }
+      const judged = redeliveryStateOf((orderRows ?? []) as DeliveryRow[]);
+      if (judged.state === "delivered") redelivered++;
+      else if (judged.state === "failed") failedAfterClaim++;
+      else inProgress++;
+      outcome.set(o.id, redeliveryOutcomeLine(judged));
     }
 
     // Did the alert actually leave the building? `null` means there was nothing
@@ -219,9 +240,9 @@ serve(async (req) => {
         const rows = orphans.map((o) =>
           `<tr><td>${o.createdIso}</td><td><code>${esc(o.id)}</code></td><td>${esc(o.email)}</td><td>${o.amountCents != null ? (o.amountCents / 100).toFixed(2) + " " + o.currency.toUpperCase() : "—"}</td><td>${esc(o.product)}</td><td>${esc(outcome.get(o.id) ?? null)}</td></tr>`,
         ).join("");
-        const subject = `⚠️ ${orphans.length} paid Stripe session(s) the webhook missed: ${redelivered} re-delivered`;
+        const subject = `⚠️ ${orphans.length} paid Stripe session(s) the webhook missed: ${redelivered} delivered${failedAfterClaim ? `, ${failedAfterClaim} failed` : ""}${inProgress ? `, ${inProgress} still generating` : ""}`;
         const html = `<h2>Stripe reconciliation: ${orphans.length} paid session(s) the webhook missed</h2>`
-          + `<p>These were PAID in Stripe in the last ${lookbackHours}h but had no <code>used_stripe_sessions</code> marker: the webhook (and the success-page fallback) both missed them. This sweep re-sent each one's completed-checkout event to stripe-webhook, which delivers it and mails the buyer as it would have; ${redelivered} of ${orphans.length} are now delivered.</p>`
+          + `<p>These were PAID in Stripe in the last ${lookbackHours}h but had no <code>used_stripe_sessions</code> marker: the webhook (and the success-page fallback) both missed them. This sweep re-sent each one's completed-checkout event to stripe-webhook, which runs the delivery it missed and mails the buyer as it would have. Judged by each order's row in product_deliveries: ${redelivered} of ${orphans.length} are now delivered${failedAfterClaim ? `, ${failedAfterClaim} were claimed and then failed (refund them or send them by hand)` : ""}${inProgress ? `, ${inProgress} are claimed and still generating (not delivered yet)` : ""}.</p>`
           + `<p>For any row not re-delivered: in the Stripe Dashboard, open Developers, then Events, find the session's <code>checkout.session.completed</code> event and press Resend. That runs the same delivery.</p>`
           + `<table border="1" cellpadding="6" style="border-collapse:collapse"><tr><th>Created</th><th>Session</th><th>Email</th><th>Amount</th><th>Product</th><th>This sweep</th></tr>${rows}</table>`;
         // ALERTED MEANS ACCEPTED (CP-027). The SDK answers a refusal as
@@ -245,7 +266,7 @@ serve(async (req) => {
       }
     }
 
-    console.log(`[RECONCILE-STRIPE] ${paid.length} paid sessions over ${lookbackHours}h, ${orphans.length} orphan(s), ${redelivered} re-delivered`);
+    console.log(`[RECONCILE-STRIPE] ${paid.length} paid sessions over ${lookbackHours}h, ${orphans.length} orphan(s), ${redelivered} delivered, ${failedAfterClaim} failed after the claim, ${inProgress} still generating`);
 
     // WHAT THE LAST SWEEP SAW, so a healthy result stops being indistinguishable
     // from no result. Counts only — session ids, addresses and amounts stay in
@@ -260,7 +281,7 @@ serve(async (req) => {
       await supabase.from("job_board_meta").upsert({
         k: "reconcile_stripe_run",
         v: { at: stampedAt, buildVersion: BUILD_VERSION, checkedPaid: paid.length,
-             orphans: orphans.length, redelivered, alerted, lookbackHours },
+             orphans: orphans.length, redelivered, inProgress, failedAfterClaim, alerted, lookbackHours },
         updated_at: stampedAt,
       }, { onConflict: "k" });
     } catch (e) {
@@ -270,7 +291,7 @@ serve(async (req) => {
     }
 
     // Counts only — never PII.
-    return json({ checkedPaid: paid.length, orphans: orphans.length, redelivered, alerted, lookbackHours,
+    return json({ checkedPaid: paid.length, orphans: orphans.length, redelivered, inProgress, failedAfterClaim, alerted, lookbackHours,
                   buildVersion: BUILD_VERSION, at: stampedAt });
   } catch (e) {
     console.error("[RECONCILE-STRIPE] error:", e);

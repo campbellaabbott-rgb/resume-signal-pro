@@ -42,9 +42,22 @@ describe("the spend gate's hour-long refusal", () => {
     expect(toast.description).toContain(when);
   });
 
-  it("the global gate, read by its code alone, says the same", async () => {
-    const toast = await writingToolToast("coach", refused(429, { error: "This tool is very busy right now.", code: "rate_limited_global" }), t, "en-US");
-    expect(toast.description).toMatch(/opens again at/);
+  // The fixer's review: the all-callers ceiling and the per-network one are
+  // reached by other people, and their Retry-After is a constant, not the
+  // window's reset. A first-time visitor was told THEY reached the tool's
+  // limit and that it opened again an hour away.
+  it("the global gate says the tool is busy for everyone, names no time, and never says the person used anything", async () => {
+    const toast = await writingToolToast("coach", refused(429, { error: "This tool is very busy right now.", code: "rate_limited_global" }, { "Retry-After": "3600" }), t, "en-US");
+    expect(toast.title).toBe("Busy right now");
+    expect(toast.description).toMatch(/busy for everyone/);
+    expect(toast.description).toMatch(/not your own limit/);
+    expect(toast.description).not.toMatch(/opens again|You've reached/);
+  });
+
+  it("the network gate says it is busy for the person's network, with no time", async () => {
+    const toast = await writingToolToast("cover", refused(429, { error: "busy on your network", code: "rate_limited_network" }, { "Retry-After": "3600" }), t, "en-US");
+    expect(toast.description).toMatch(/busy for your network/);
+    expect(toast.description).not.toMatch(/opens again|You've reached/);
   });
 });
 

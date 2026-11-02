@@ -5,7 +5,8 @@
 // ChatGPT, Claude Code's /mcp — asks to act as them on the MCP server. The
 // page does exactly three things: signs the person in if they are not (and
 // comes back here with the request intact, via /auth?next=), shows what is
-// being asked (the client's name, what the connection can and cannot do, and
+// being asked (the client's name, what the connection is for, the scopes the
+// request asks for with a warning on any beyond the connector's own, and
 // where Allow sends access when the request says so: see pendingRedirectHost), and
 // hands the decision to the Supabase client's own consent API —
 // getAuthorizationDetails / approveAuthorization / denyAuthorization on
@@ -63,6 +64,22 @@ export function pendingRedirectHost(raw: unknown): string {
   const r = raw as { redirect_uri?: unknown };
   return typeof r.redirect_uri === "string" ? hostOf(r.redirect_uri) : "";
 }
+
+/**
+ * The scopes the MCP server asks a host for (agent-mcp/oauth.ts OAUTH_SCOPE,
+ * held equal by src/test/the-consent-page-shows-what-is-asked-and-promises-only-what-holds.test.tsx).
+ */
+export const CONNECTOR_SCOPES: readonly string[] = ["email"];
+
+/** The scopes a request asks for, as the consent page lists them. */
+export const scopesOf = (scope: string): string[] => [...new Set(scope.split(/\s+/).filter(Boolean))];
+
+/**
+ * Any scope the request asks for beyond the connector's own (the fixer's
+ * review of S9-001): the page listed a fixed sentence instead of the request,
+ * so a host asking for more was approved without the person seeing it.
+ */
+export const unexpectedScopes = (scope: string): string[] => scopesOf(scope).filter((s) => !CONNECTOR_SCOPES.includes(s));
 
 export default function OAuthConsent() {
   const { t } = useTranslation();
@@ -145,12 +162,22 @@ export default function OAuthConsent() {
                 <p className="text-sm text-foreground mb-2">
                   {t("oauthConsent.asks", "{{client}} is asking to act as you on the Resume Booster MCP server.", { client: details.client.name || hostOf(details.client.uri) || "An agent host" })}
                 </p>
-                {/* What the grant really is (S9-001): the OAuth scope reads only
-                    "email", but the token works the connector's tools as the
-                    person, and nothing else on the site accepts it. */}
+                {/* What the grant is for (S9-001), and what the request asks for,
+                    as it asks (the fixer's review). No "cannot" is promised:
+                    Supabase Auth's own account endpoint accepts the token it
+                    mints, so the person is told to allow only an app they
+                    trust. */}
                 <p className="text-sm text-muted-foreground mb-1">
-                  {t("oauthConsent.grant", "It can search jobs on the board, score a resume you paste against them, prepare applications for you to send yourself, and see your email address and how much of your daily allowance is used. It cannot buy anything, change your plan or open your saved resume.")}
+                  {t("oauthConsent.grant", "It can search jobs on the board, score a resume you paste against them, prepare applications for you to send yourself, and see your email address and how much of your daily allowance is used. The access it receives belongs to your account, so allow only an app you trust.")}
                 </p>
+                <p className="text-sm text-muted-foreground mb-1" data-testid="consent-scopes">
+                  {t("oauthConsent.scopesAsked", "It asks for: {{scopes}}.", { scopes: scopesOf(details.scope).join(", ") || "—" })}
+                </p>
+                {unexpectedScopes(details.scope).length > 0 && (
+                  <p className="text-sm text-destructive mb-1" role="alert" data-testid="consent-scope-warning">
+                    {t("oauthConsent.scopeUnexpected", "It also asks for {{scopes}}, which this connection does not use. Deny unless you know why it needs more.", { scopes: unexpectedScopes(details.scope).join(", ") })}
+                  </p>
+                )}
                 {details.sendsToHost ? (
                   <p className="text-sm text-foreground mb-1">
                     {t("oauthConsent.sendsTo", "If you allow, access to your account goes to {{host}}. Allow only if that is the host you are connecting.", { host: details.sendsToHost })}

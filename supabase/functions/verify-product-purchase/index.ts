@@ -17,6 +17,8 @@ import { bearerOf } from "../_shared/service-caller.ts";
 import { APPLY_ASSISTANT_ON_SALE } from "../_shared/apply-agent-switch.ts";
 // What an affiliate earns on one referred checkout: one rule, shared with stripe-webhook.
 import { commissionCentsFor } from "../_shared/affiliate-commission.ts";
+// Stripe's "no such session" told apart from a Stripe that did not answer (S13-048).
+import { retrieveFailureAnswer } from "./retrieve-failure.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build. R1 stamped this function
@@ -30,6 +32,11 @@ import { commissionCentsFor } from "../_shared/affiliate-commission.ts";
 // affiliate, and the commission the conversion row holds, never the
 // checkout's figure (the row holds 0 for a returning customer or the
 // affiliate's own purchase).
+// Also 2026-11-03.1 (S13-048, the audit-rest fixer): a session Stripe says
+// it does not have (resource_missing, 404) is the "couldn't find that
+// purchase" 400 as before; any other retrieve failure (a rate limit, a
+// timeout, a 5xx) is a 503 the success page offers to try again
+// (./retrieve-failure.ts), no longer a dead end for a buyer who has just paid.
 const FN_BUILD = "verify-product-purchase.2026-11-03.1";
 
 /** Why a sale of this product cannot be delivered while it is not sold, or null. */
@@ -324,18 +331,20 @@ serve(async (req) => {
       };
       logStep("Pro grant verified", { grantId, productType: session.metadata.product_type });
     } else {
-      // Retrieve checkout session. A malformed/expired/unknown id makes Stripe
-      // throw — return a clean 400 the client can message, not a bare 500
-      // (a user reloading a stale success URL would otherwise hit an error page).
+      // Retrieve checkout session. An unknown id makes Stripe throw
+      // resource_missing: a clean 400 the client can message. Any other
+      // throw (a rate limit, a timeout, a Stripe 5xx) is a 503 the page
+      // offers to try again, never "the link may have expired" (S13-048).
       try {
         session = await stripe.checkout.sessions.retrieve(sessionId, {
           expand: ['line_items', 'customer']
         }) as unknown as typeof session;
       } catch (e) {
-        logStep("Session retrieve failed", { message: e instanceof Error ? e.message : String(e) });
+        const answer = retrieveFailureAnswer(e);
+        logStep("Session retrieve failed", { message: e instanceof Error ? e.message : String(e), answered: answer.status });
         return new Response(
-          JSON.stringify({ error: "We couldn't find that purchase. If you just paid, wait a moment and refresh; otherwise the link may have expired." }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          JSON.stringify(answer.body),
+          { status: answer.status, headers: { ...corsHeaders, "Content-Type": "application/json", ...(answer.status === 503 ? { "Retry-After": "5" } : {}) } }
         );
       }
     }

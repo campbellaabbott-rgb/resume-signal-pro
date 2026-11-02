@@ -8,41 +8,59 @@
  * names no purchase and a checkout that was never paid all read that, and
  * reloading could never change their answer. The page now reads the status
  * and the body verify-product-purchase answers:
- *   429                               rate_limited  (its hourly budget; try again later)
+ *   429                               rate_limited  (the connection's hourly budget; try again later)
  *   402 { refunded: true }            refunded      (REFUNDED_PURCHASE_MESSAGE)
+ *   402 "made before an update"       sign_in_again (a Pro grant minted before grants named
+ *                                                    their account: open the tool again signed in)
+ *   402 "Invalid session"             not_found
  *   402 otherwise                     withdrawn     (a revoked or lapsed Pro grant)
  *   400 { error: "Payment not completed" }  unpaid  (Stripe has not settled it)
- *   400 unknown, expired or malformed link  not_found
- *   anything else, 503 and 500 included     unknown (the old answer, with Try again)
+ *   400 unknown, expired or malformed link  not_found (Stripe's own "no such session")
+ *   503 { retryable: true }           busy          (Stripe did not answer: a rate limit,
+ *                                                    a timeout, a 5xx; try again)
+ *   anything else, 500 included       unknown       (the old answer, with Try again)
  * Try again is offered only where asking again can change the answer.
+ * (The fixer's review: a transient Stripe failure was answered as not_found,
+ * a dead end with no Try again, and the legacy grant's actionable 402 as
+ * withdrawn, telling a paying member their plan had lapsed.)
  */
 
 import { purchaseReferenceIn } from "../../supabase/functions/_shared/purchase-links";
 
-export type VerifyRefusal = "rate_limited" | "refunded" | "withdrawn" | "unpaid" | "not_found" | "unknown";
+export type VerifyRefusal = "rate_limited" | "refunded" | "withdrawn" | "sign_in_again" | "unpaid" | "not_found" | "busy" | "unknown";
 
 /** Whether reloading the page can change this answer. */
 export const VERIFY_REFUSAL_RETRIES: Readonly<Record<VerifyRefusal, boolean>> = {
   rate_limited: true,
   unpaid: true,
+  busy: true,
   unknown: true,
   refunded: false,
   withdrawn: false,
+  sign_in_again: false,
   not_found: false,
 };
 
 const NOT_FOUND = /couldn't find that purchase|^Invalid session$|^Session ID is required$/i;
+/** _shared/pro-standing.ts proGrantRefusal's answer for a grant that names no account. */
+const LEGACY_GRANT = /made before an update/i;
 
 /** The refusal a status and a parsed body name. */
 export function verifyRefusalFrom(status: number | undefined, body: unknown): VerifyRefusal {
   const b = body && typeof body === "object" ? (body as Record<string, unknown>) : {};
   const message = typeof b.error === "string" ? b.error : "";
   if (status === 429) return "rate_limited";
-  if (status === 402) return b.refunded === true ? "refunded" : "withdrawn";
+  if (status === 402) {
+    if (b.refunded === true) return "refunded";
+    if (LEGACY_GRANT.test(message)) return "sign_in_again";
+    if (/^Invalid session$/i.test(message)) return "not_found";
+    return "withdrawn";
+  }
   if (status === 400) {
     if (message === "Payment not completed") return "unpaid";
     if (NOT_FOUND.test(message)) return "not_found";
   }
+  if (status === 503 && b.retryable === true) return "busy";
   return "unknown";
 }
 

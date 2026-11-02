@@ -37,6 +37,8 @@ interface AudienceData {
   truncated: boolean;
   /** When truncated: the oldest moment fully read. Earlier days are partial. */
   coveredFrom?: string | null;
+  /** When truncated: new and returning are approximate on every day, the read ones too. */
+  visitorSplitApproximate?: boolean;
 }
 
 interface EngagementData {
@@ -338,7 +340,7 @@ function AnalyticsDashboardContent() {
 
             {data.audience.truncated && (
               <p className="mt-4 text-[11px] text-warning">
-                The read ran out of time before the oldest events{data.audience.coveredFrom ? ` (everything from ${data.audience.coveredFrom.slice(0, 16).replace("T", " ")} UTC on was read)` : ""}, so the earlier days are a FLOOR, not a total. Narrow the date range for exact figures.
+                The read ran out of time before the oldest events{data.audience.coveredFrom ? ` (everything from ${data.audience.coveredFrom.slice(0, 16).replace("T", " ")} UTC on was read)` : ""}, so the earlier days are a FLOOR, not a total. New and returning visitors are approximate on every day, the fully read ones too: a visitor whose first visit fell in the unread part is counted as new on a later day, so returning is undercounted. Narrow the date range for exact figures.
               </p>
             )}
           </div>

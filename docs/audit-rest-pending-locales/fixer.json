@@ -1,0 +1,123 @@
+{
+  "productSuccess.refusal.signInAgain.title": {
+    "en": "Sign in to open this",
+    "en-GB": "Sign in to open this",
+    "de": "Melde dich an, um das zu öffnen",
+    "es": "Inicia sesión para abrir esto",
+    "fr": "Connectez-vous pour ouvrir ceci",
+    "hi": "इसे खोलने के लिए साइन इन करें",
+    "nl": "Log in om dit te openen",
+    "pt": "Inicie sessão para abrir isto",
+    "tl": "Mag-sign in para mabuksan ito"
+  },
+  "productSuccess.refusal.signInAgain.body": {
+    "en": "This link was made before an update to how a plan opens its included tools. Sign in with the account that holds your plan, then open the tool again from its page. While your plan is active it is included, and nothing is charged.",
+    "en-GB": "This link was made before an update to how a plan opens its included tools. Sign in with the account that holds your plan, then open the tool again from its page. While your plan is active it is included, and nothing is charged.",
+    "de": "Dieser Link wurde vor einer Änderung daran erstellt, wie ein Tarif seine enthaltenen Tools öffnet. Melde dich mit dem Konto an, zu dem dein Tarif gehört, und öffne das Tool dann erneut über seine Seite. Solange dein Tarif aktiv ist, ist es enthalten, und es wird nichts berechnet.",
+    "es": "Este enlace se creó antes de un cambio en cómo un plan abre sus herramientas incluidas. Inicia sesión con la cuenta que tiene tu plan y vuelve a abrir la herramienta desde su página. Mientras tu plan esté activo, está incluida y no se cobra nada.",
+    "fr": "Ce lien a été créé avant une mise à jour de la façon dont une formule ouvre ses outils inclus. Connectez-vous avec le compte qui détient votre formule, puis rouvrez l'outil depuis sa page. Tant que votre formule est active, il est inclus et rien n'est facturé.",
+    "hi": "यह लिंक उस अपडेट से पहले बना था जिसने बदला कि कोई प्लान अपने शामिल टूल कैसे खोलता है। जिस खाते में आपका प्लान है उससे साइन इन करें, फिर टूल को उसके पेज से दोबारा खोलें। जब तक आपका प्लान सक्रिय है, यह शामिल है और कोई शुल्क नहीं लगता।",
+    "nl": "Deze link is gemaakt vóór een update van hoe een abonnement zijn inbegrepen tools opent. Log in met het account waar je abonnement bij hoort en open de tool daarna opnieuw vanaf de pagina ervan. Zolang je abonnement actief is, is hij inbegrepen en wordt er niets in rekening gebracht.",
+    "pt": "Esta ligação foi criada antes de uma atualização na forma como um plano abre as ferramentas incluídas. Inicie sessão com a conta que tem o seu plano e volte a abrir a ferramenta a partir da página dela. Enquanto o seu plano estiver ativo, está incluída e nada é cobrado.",
+    "tl": "Ginawa ang link na ito bago ang isang update sa kung paano binubuksan ng plan ang mga kasama nitong tool. Mag-sign in gamit ang account na may hawak ng plan mo, saka buksan muli ang tool mula sa page nito. Habang aktibo ang plan mo, kasama ito at walang sisingilin."
+  },
+  "productSuccess.refusal.signInAgain.button": {
+    "en": "Sign in",
+    "en-GB": "Sign in",
+    "de": "Anmelden",
+    "es": "Iniciar sesión",
+    "fr": "Se connecter",
+    "hi": "साइन इन करें",
+    "nl": "Inloggen",
+    "pt": "Iniciar sessão",
+    "tl": "Mag-sign in"
+  },
+  "productSuccess.refusal.busy.title": {
+    "en": "We couldn't check this purchase just now",
+    "en-GB": "We couldn't check this purchase just now",
+    "de": "Wir konnten diesen Kauf gerade nicht prüfen",
+    "es": "No pudimos comprobar esta compra ahora mismo",
+    "fr": "Nous n'avons pas pu vérifier cet achat pour le moment",
+    "hi": "हम अभी इस खरीद की जाँच नहीं कर सके",
+    "nl": "We konden deze aankoop nu niet controleren",
+    "pt": "Não conseguimos verificar esta compra agora",
+    "tl": "Hindi namin nasuri ang pagbiling ito ngayon"
+  },
+  "productSuccess.refusal.busy.body": {
+    "en": "The payment provider didn't answer in time. Your purchase is safe. Wait a moment and try again.",
+    "en-GB": "The payment provider didn't answer in time. Your purchase is safe. Wait a moment and try again.",
+    "de": "Der Zahlungsanbieter hat nicht rechtzeitig geantwortet. Dein Kauf ist sicher. Warte einen Moment und versuch es noch einmal.",
+    "es": "El proveedor de pagos no respondió a tiempo. Tu compra está a salvo. Espera un momento y vuelve a intentarlo.",
+    "fr": "Le prestataire de paiement n'a pas répondu à temps. Votre achat est en sécurité. Patientez un instant et réessayez.",
+    "hi": "भुगतान प्रदाता ने समय पर जवाब नहीं दिया। आपकी खरीद सुरक्षित है। एक पल रुकें और फिर से कोशिश करें।",
+    "nl": "De betaalprovider antwoordde niet op tijd. Je aankoop is veilig. Wacht even en probeer het opnieuw.",
+    "pt": "O fornecedor de pagamentos não respondeu a tempo. A sua compra está segura. Aguarde um momento e tente novamente.",
+    "tl": "Hindi agad sumagot ang payment provider. Ligtas ang binili mo. Maghintay sandali at subukan ulit."
+  },
+  "writingRefusal.busyTitle": {
+    "en": "Busy right now",
+    "en-GB": "Busy right now",
+    "de": "Gerade ausgelastet",
+    "es": "Ocupado ahora mismo",
+    "fr": "Occupé pour le moment",
+    "hi": "अभी व्यस्त",
+    "nl": "Nu even druk",
+    "pt": "Ocupado neste momento",
+    "tl": "Abala sa ngayon"
+  },
+  "writingRefusal.busyEveryone": {
+    "en": "This tool is busy for everyone right now. This is not your own limit. Try again later.",
+    "en-GB": "This tool is busy for everyone right now. This is not your own limit. Try again later.",
+    "de": "Dieses Tool ist gerade für alle ausgelastet. Das ist nicht Ihr eigenes Limit. Versuchen Sie es später noch einmal.",
+    "es": "Esta herramienta está ocupada para todos ahora mismo. No es tu propio límite. Vuelve a intentarlo más tarde.",
+    "fr": "Cet outil est occupé pour tout le monde en ce moment. Ce n'est pas votre propre limite. Réessayez plus tard.",
+    "hi": "यह टूल अभी सभी के लिए व्यस्त है। यह आपकी अपनी सीमा नहीं है। बाद में फिर से कोशिश करें।",
+    "nl": "Deze tool is nu voor iedereen druk bezet. Dit is niet je eigen limiet. Probeer het later opnieuw.",
+    "pt": "Esta ferramenta está ocupada para todos neste momento. Não é o seu próprio limite. Tente novamente mais tarde.",
+    "tl": "Abala ang tool na ito para sa lahat sa ngayon. Hindi ito ang sarili mong limit. Subukan ulit mamaya."
+  },
+  "writingRefusal.busyNetwork": {
+    "en": "This tool is busy for your network right now. This is not your own limit. Try again later.",
+    "en-GB": "This tool is busy for your network right now. This is not your own limit. Try again later.",
+    "de": "Dieses Tool ist gerade für Ihr Netzwerk ausgelastet. Das ist nicht Ihr eigenes Limit. Versuchen Sie es später noch einmal.",
+    "es": "Esta herramienta está ocupada para tu red ahora mismo. No es tu propio límite. Vuelve a intentarlo más tarde.",
+    "fr": "Cet outil est occupé pour votre réseau en ce moment. Ce n'est pas votre propre limite. Réessayez plus tard.",
+    "hi": "यह टूल अभी आपके नेटवर्क के लिए व्यस्त है। यह आपकी अपनी सीमा नहीं है। बाद में फिर से कोशिश करें।",
+    "nl": "Deze tool is nu druk bezet voor je netwerk. Dit is niet je eigen limiet. Probeer het later opnieuw.",
+    "pt": "Esta ferramenta está ocupada para a sua rede neste momento. Não é o seu próprio limite. Tente novamente mais tarde.",
+    "tl": "Abala ang tool na ito para sa network mo sa ngayon. Hindi ito ang sarili mong limit. Subukan ulit mamaya."
+  },
+  "proPlan.toast.alreadyUnconfirmedBody": {
+    "en": "We couldn't confirm it on this account just now. Reload the page in a moment to see it.",
+    "en-GB": "We couldn't confirm it on this account just now. Reload the page in a moment to see it.",
+    "de": "Wir konnten ihn gerade nicht für dieses Konto bestätigen. Laden Sie die Seite gleich neu, um ihn zu sehen.",
+    "es": "No pudimos confirmarlo en esta cuenta ahora mismo. Vuelve a cargar la página en un momento para verlo.",
+    "fr": "Nous n'avons pas pu la confirmer sur ce compte pour le moment. Rechargez la page dans un instant pour la voir.",
+    "hi": "हम अभी इसकी पुष्टि इस खाते पर नहीं कर सके। इसे देखने के लिए थोड़ी देर में पेज फिर से लोड करें।",
+    "nl": "We konden het nu niet bevestigen op dit account. Laad de pagina zo opnieuw om het te zien.",
+    "pt": "Não conseguimos confirmá-lo nesta conta agora. Recarregue a página dentro de momentos para o ver.",
+    "tl": "Hindi namin ito nakumpirma sa account na ito ngayon. I-reload ang page mamaya para makita ito."
+  },
+  "oauthConsent.scopesAsked": {
+    "en": "It asks for: {{scopes}}.",
+    "en-GB": "It asks for: {{scopes}}.",
+    "de": "Es fragt nach: {{scopes}}.",
+    "es": "Pide: {{scopes}}.",
+    "fr": "Il demande : {{scopes}}.",
+    "hi": "यह माँगता है: {{scopes}}।",
+    "nl": "Het vraagt om: {{scopes}}.",
+    "pt": "Pede: {{scopes}}.",
+    "tl": "Hinihingi nito ang: {{scopes}}."
+  },
+  "oauthConsent.scopeUnexpected": {
+    "en": "It also asks for {{scopes}}, which this connection does not use. Deny unless you know why it needs more.",
+    "en-GB": "It also asks for {{scopes}}, which this connection does not use. Deny unless you know why it needs more.",
+    "de": "Es fragt außerdem nach {{scopes}}, was diese Verbindung nicht nutzt. Lehne ab, wenn du nicht weißt, wozu es mehr braucht.",
+    "es": "También pide {{scopes}}, que esta conexión no usa. Rechaza la solicitud salvo que sepas por qué necesita más.",
+    "fr": "Il demande aussi {{scopes}}, que cette connexion n'utilise pas. Refusez, sauf si vous savez pourquoi il lui en faut davantage.",
+    "hi": "यह {{scopes}} भी माँगता है, जिसका यह कनेक्शन इस्तेमाल नहीं करता। जब तक आपको पता न हो कि इसे और क्यों चाहिए, अस्वीकार करें।",
+    "nl": "Het vraagt ook om {{scopes}}, wat deze verbinding niet gebruikt. Weiger, tenzij je weet waarom het meer nodig heeft.",
+    "pt": "Pede também {{scopes}}, que esta ligação não usa. Recuse, a não ser que saiba porque precisa de mais.",
+    "tl": "Hinihingi rin nito ang {{scopes}}, na hindi ginagamit ng koneksyong ito. Tanggihan maliban kung alam mo kung bakit kailangan nito ng higit pa."
+  }
+}

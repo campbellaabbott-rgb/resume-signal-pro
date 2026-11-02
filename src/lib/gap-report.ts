@@ -103,6 +103,41 @@ export function resumeFingerprint(text: string): string {
   return `${text.length}:${(h >>> 0).toString(36)}`;
 }
 
+/**
+ * HOW MANY AUTOMATIC RE-MEASUREMENTS AN HOUR, ACROSS EVERY LOAD AND TAB (the
+ * fixer's review). application-fit allows one address 60 checks an hour, and
+ * the page ran up to REMEASURE_PER_LOAD of them on every open, in every new
+ * tab: opening /account a few times spent the checks a person runs
+ * themselves on the board, which then failed as rate-limited. Now the page
+ * spends at most this many an hour on its own, and a row measured once is
+ * kept for the tab (readGapFits), so a reload repeats nothing. The rest are
+ * measured over the next hours.
+ */
+export const AUTO_REMEASURE_PER_HOUR = 6;
+/** When the page's automatic checks were spent (times only, no personal data; this browser). */
+export const GAP_AUTO_SPEND_KEY = "rb_gap_auto_spend";
+const HOUR_MS = 60 * 60 * 1000;
+
+function spentThisHour(now: number): number[] {
+  try {
+    const v = JSON.parse(localStorage.getItem(GAP_AUTO_SPEND_KEY) ?? "[]") as unknown;
+    return Array.isArray(v) ? v.filter((t): t is number => typeof t === "number" && t > now - HOUR_MS && t <= now) : [];
+  } catch { return []; }
+}
+
+/** How many automatic re-measurements the page may still start this hour. */
+export function autoRemeasureAllowance(now: number = Date.now()): number {
+  return Math.max(0, AUTO_REMEASURE_PER_HOUR - spentThisHour(now).length);
+}
+
+/** Records one automatic re-measurement; false when the hour's allowance is already spent. */
+export function spendAutoRemeasure(now: number = Date.now()): boolean {
+  const spent = spentThisHour(now);
+  if (spent.length >= AUTO_REMEASURE_PER_HOUR) return false;
+  try { localStorage.setItem(GAP_AUTO_SPEND_KEY, JSON.stringify([...spent, now])); } catch { /* storage blocked: this load's own cap still holds */ }
+  return true;
+}
+
 /** This tab's re-measurements (one key, cleared at sign-out with the other personal copies). */
 export const GAP_FITS_KEY = "rb_gap_fits";
 

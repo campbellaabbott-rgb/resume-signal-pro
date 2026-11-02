@@ -110,7 +110,7 @@ describe("the account page", () => {
   it("builds its report from these rules, and measures stale rows with the matching résumé", () => {
     const code = codeOf(readFileSync(resolve(__dirname, "../pages/Account.tsx"), "utf8"));
     expect(code).toMatch(/skillGapOf\(applications, gapBasis, freshFits\)/);
-    expect(code).toMatch(/rowsToRemeasure\(gapRowsRef\.current, gapBasis, fits\)/);
+    expect(code).toMatch(/rowsToRemeasure\(gapRowsRef\.current, gapBasis, fits, Math\.min\(REMEASURE_PER_LOAD, autoRemeasureAllowance\(\)\)\)/);
     expect(code).toMatch(/\[session, gapResume, gapBasis, gapRowsKey\]/);
     expect(code).toMatch(/resumeText=\{gapResume\}/);
   });

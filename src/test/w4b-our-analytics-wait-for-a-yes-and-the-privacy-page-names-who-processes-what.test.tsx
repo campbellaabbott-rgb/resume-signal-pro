@@ -114,7 +114,12 @@ describe("S12-049: no unverified claim, and the processors named", () => {
     render(<HelmetProvider><MemoryRouter><Privacy /></MemoryRouter></HelmetProvider>);
     const text = document.body.textContent ?? "";
     const processors = document.querySelector("[data-processors]")!.textContent!;
-    for (const name of ["Stripe", "Lovable", "Supabase", "Google and OpenAI", "Mailgun", "Resend", "ipinfo", "Google Fonts"]) expect(processors, name).toContain(name);
+    for (const name of ["Stripe", "Lovable", "Supabase", "Google and OpenAI", "Mailgun", "Resend", "ipinfo"]) expect(processors, name).toContain(name);
+    // The fonts are served from the site itself (audit-rest account round;
+    // the fixer's review): Google Fonts is no longer a processor, and the
+    // page says no font host is asked.
+    expect(processors).not.toContain("Google Fonts");
+    expect(document.querySelector("[data-fonts]")!.textContent).toMatch(/served from this site itself/);
     expect(text).toMatch(/record no candidate's sex or race/);
     expect(text).toMatch(/We do not train AI models on your resume/);
     expect(text).not.toMatch(/AI algorithms|through your browser settings|apply agent/i);

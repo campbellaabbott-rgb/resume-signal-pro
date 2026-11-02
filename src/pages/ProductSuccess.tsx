@@ -1189,15 +1189,19 @@ export default function ProductSuccess() {
                     : verifyRefusal === 'rate_limited' ? t('productSuccess.refusal.rateLimited.title', 'Too many checks just now')
                     : verifyRefusal === 'refunded' ? t('productSuccess.refusal.refunded.title', 'This purchase was refunded')
                     : verifyRefusal === 'withdrawn' ? t('productSuccess.refusal.withdrawn.title', 'This purchase is no longer available')
+                    : verifyRefusal === 'sign_in_again' ? t('productSuccess.refusal.signInAgain.title', 'Sign in to open this')
+                    : verifyRefusal === 'busy' ? t('productSuccess.refusal.busy.title', "We couldn't check this purchase just now")
                     : verifyRefusal === 'unpaid' ? t('productSuccess.refusal.unpaid.title', "This payment hasn't completed")
                     : verifyRefusal === 'not_found' ? t('productSuccess.refusal.notFound.title', "We couldn't find this purchase")
                     : t('productSuccess.couldNotVerify')}
                 </h1>
                 <p className="text-muted-foreground mb-6">
                   {!sessionId ? t('productSuccess.noReference.body', 'A purchase opens from the link in its email, which carries a purchase reference. Paste that link, or the reference itself, below. Nothing here charges you again.')
-                    : verifyRefusal === 'rate_limited' ? t('productSuccess.refusal.rateLimited.body', 'This purchase was checked too many times in the last hour. Nothing is wrong with it. Try again in a few minutes.')
+                    : verifyRefusal === 'rate_limited' ? t('productSuccess.refusal.rateLimited.body', 'Too many purchase checks came from this connection in the last hour. Nothing is wrong with your purchase. Try again later, or open the link from your purchase email on another connection.')
                     : verifyRefusal === 'refunded' ? t('productSuccess.refusal.refunded.body', 'The payment for this purchase was refunded, so it no longer opens. If you think this is a mistake, reply to your purchase email.')
                     : verifyRefusal === 'withdrawn' ? t('productSuccess.refusal.withdrawn.body', 'It came with a plan that is no longer active, or the payment behind it was refunded, so it no longer opens. If you think this is a mistake, contact support.')
+                    : verifyRefusal === 'sign_in_again' ? t('productSuccess.refusal.signInAgain.body', 'This link was made before an update to how a plan opens its included tools. Sign in with the account that holds your plan, then open the tool again from its page: it is still included, and nothing is charged.')
+                    : verifyRefusal === 'busy' ? t('productSuccess.refusal.busy.body', "The payment provider didn't answer in time. Your purchase is safe. Wait a moment and try again.")
                     : verifyRefusal === 'unpaid' ? t('productSuccess.refusal.unpaid.body', "The payment has not been confirmed. Some bank payments take a few days, and you'll get an email when it goes through. If you left the checkout before paying, nothing was charged.")
                     : verifyRefusal === 'not_found' ? t('productSuccess.refusal.notFound.body', "This link doesn't match a purchase we can read: it may be cut short or have expired. Paste the whole link from your purchase email below, or contact support.")
                     : t('productSuccess.couldNotVerifyDescription')}
@@ -1235,6 +1239,11 @@ export default function ProductSuccess() {
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
                   {sessionId && VERIFY_REFUSAL_RETRIES[verifyRefusal] && (
                     <Button onClick={() => window.location.reload()}>{t('productSuccess.tryAgain')}</Button>
+                  )}
+                  {sessionId && verifyRefusal === 'sign_in_again' && (
+                    <Button asChild data-testid="sign-in-again">
+                      <a href="/auth">{t('productSuccess.refusal.signInAgain.button', 'Sign in')}</a>
+                    </Button>
                   )}
                   <Button variant="outline" asChild>
                     <a href="mailto:resumeboostersupp@gmail.com">{t('productSuccess.contactSupport')}</a>

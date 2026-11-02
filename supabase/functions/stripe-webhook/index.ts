@@ -73,9 +73,11 @@ import { commissionCentsFor } from "../_shared/affiliate-commission.ts";
 // 2026-11-03.1 (audit-rest money: S13-059, S13-060): a payment failure mails
 // the owner once per payment, and at most ten an hour in all. An abandoned
 // checkout (checkout.session.expired) is recorded and mails nobody; a card
-// declined in Checkout is recorded and mailed once, from
-// payment_intent.payment_failed (charge.failed answers only for a charge with
-// no payment intent). And the affiliate whose referral this webhook records
+// declined in Checkout is recorded once and mailed once, by whichever of
+// payment_intent.payment_failed and charge.failed arrives first (the fixer's
+// review: an endpoint subscribed to only one of the two still hears every
+// decline; a per-charge door keeps the row single, the per-payment door the
+// mail). And the affiliate whose referral this webhook records
 // is mailed the commission actually recorded, when it is above zero and the
 // affiliate is active, as /affiliates promises.
 const FN_BUILD = "stripe-webhook.2026-11-03.1";
@@ -202,6 +204,29 @@ function getSupabase(): SupabaseClient<any, any, any> {
  * payment_failures only.
  */
 export const FAILURE_ALERTS_PER_HOUR = 10;
+
+/**
+ * ONE DECLINE, ONE ROW (S13-059, the fixer's review). A card declined in
+ * Checkout sends payment_intent.payment_failed AND charge.failed for the same
+ * failed charge. Both are handled, so an endpoint subscribed to only one of
+ * them (older endpoints list charge.failed alone) still records and mails the
+ * decline; the row is written once per failed CHARGE (a door keyed by the
+ * charge id, so a buyer's second card on the same payment is a second row),
+ * and the mail once per payment (sendFailureAlertBackground's own door). A
+ * failure with no charge behind it is keyed by its event, so only Stripe's
+ * redelivery of that event is a repeat. A door that cannot be asked records
+ * the row anyway: a duplicate row is cheaper than a lost decline.
+ */
+async function recordDeclineOnce(supabase: SupabaseClient<any, any, any>, key: string, row: Record<string, unknown>): Promise<void> {
+  try {
+    const { data: first, error } = await supabase.rpc("mail_door_take", { p_door: "payment-failure-row", p_bucket: key.slice(0, 64), p_max: 1, p_window_minutes: 43200 });
+    if (!error && first === false) {
+      logStep("Decline already recorded from its other event", { key: key.slice(0, 64) });
+      return;
+    }
+  } catch { /* recorded below */ }
+  await supabase.from('payment_failures').insert(row);
+}
 
 // Send email alert for payment failures (non-blocking)
 function sendFailureAlertBackground(details: {
@@ -1793,7 +1818,11 @@ serve(async (req) => {
             } catch {}
           }
 
-          await supabase.from('payment_failures').insert({
+          // The failed charge, when Stripe names one: the key charge.failed
+          // records the same decline under (S13-059).
+          const failedCharge = refId((pi as unknown as { latest_charge?: unknown }).latest_charge)
+            || refId((pi.last_payment_error as unknown as { charge?: unknown } | null | undefined)?.charge);
+          await recordDeclineOnce(supabase, failedCharge ? `charge:${failedCharge}` : `event:${event.id}`, {
             payment_intent_id: pi.id,
             amount: pi.amount,
             currency: pi.currency,
@@ -1802,7 +1831,8 @@ serve(async (req) => {
             customer_email: customerEmail,
             metadata: {
               decline_code: pi.last_payment_error?.decline_code,
-              payment_method_type: pi.last_payment_error?.payment_method?.type
+              payment_method_type: pi.last_payment_error?.payment_method?.type,
+              ...(failedCharge ? { charge_id: failedCharge } : {}),
             }
           });
 
@@ -1824,17 +1854,15 @@ serve(async (req) => {
         const charge = event.data.object as Stripe.Charge;
         // ONE DECLINE, ONE ROW AND ONE MAIL (S13-059). A card declined in
         // Checkout sends payment_intent.payment_failed AND this event for the
-        // same payment; both wrote a row and both mailed. The payment intent's
-        // event is the record; this one answers only for a charge with no
-        // payment intent behind it.
-        if (refId(charge.payment_intent)) {
-          logStep("Charge failed: recorded from its payment intent's own event, not twice", { charge: charge.id });
-          break;
-        }
+        // same payment; both wrote a row and both mailed. Both are still
+        // handled (an endpoint may be subscribed to only one of them), and
+        // the doors keep the row and the mail single: recordDeclineOnce by
+        // the charge, sendFailureAlertBackground by the payment.
+        const paymentRef = refId(charge.payment_intent) || charge.id;
         
         EdgeRuntime.waitUntil((async () => {
-          await supabase.from('payment_failures').insert({
-            payment_intent_id: charge.payment_intent as string || charge.id,
+          await recordDeclineOnce(supabase, `charge:${charge.id}`, {
+            payment_intent_id: paymentRef,
             amount: charge.amount,
             currency: charge.currency,
             failure_code: charge.failure_code || null,
@@ -1850,7 +1878,7 @@ serve(async (req) => {
             failureCode: charge.failure_code,
             failureMessage: charge.failure_message,
             customerEmail: charge.billing_details?.email,
-            paymentIntentId: charge.payment_intent as string || charge.id,
+            paymentIntentId: paymentRef,
             oncePerPayment: true,
           });
         })());
