@@ -17,14 +17,21 @@
 #     title holds it across a space, a hyphen or a slash (S12-017);
 #   - "nurse not requiring travel" excludes "travel", not "requiring", and no
 #     served title says travel (S12-017);
+#   - "cdl not required driver" keeps main's one-word reading: it excludes
+#     "required" only, never "driver" (a participle follows its noun);
 #   - "no remote nurse" excludes "remote": excludedTerms names it and no served
-#     title says remote (S13-013);
+#     title says remote unless the title itself says it is not remote
+#     ("Not Remote", "Non-Remote": what the exclusion asks for) (S13-013);
 #   - "remote-first engineer" lifts the remote filter and searches exactly
 #     what "remote engineer" searches: the same total, and no "first" excluded
 #     (S13-077). A count the board did not state is INFO;
+#   - "medical coder-remote" lifts the remote filter and searches exactly what
+#     "medical coder remote" searches (the word before the hyphen stays);
 #   - "jobs near me" searches no words and says so: ignoredFilters names q
-#     (S13-015);
+#     (S13-015); "career", filler that asks for no place near the searcher,
+#     keeps main's title search: q is not named and rows are served;
 #   - "nurse 94105" drops the ZIP and names it in droppedTerms (S13-014);
+#     "quality engineer iso 13485" keeps 13485, a number stored titles hold;
 #   - "cvs" and "3m" route to their employer on every ask, six asks across
 #     whatever isolates answer (S12-014: a cold isolate routed nothing);
 #   - location "Wien" browses no row placed in the US unless the row names
@@ -39,7 +46,7 @@
 #     (S13-012: the seam page served 7 cards).
 #
 # READ-ONLY. Three OPTIONS preflights; job-board list reads sent with
-# x-rb-budget: probe (about 20, the seam walk at most 6 of them).
+# x-rb-budget: probe (about 26, the seam walk at most 6 of them).
 echo "== 99zzzz. The search reads what was typed: phrases, negated work modes, ZIPs, filler, short employer names, local city names, and the page at the seam =="
 
 VDBS_H=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/job-board" -H "x-rb-budget: probe" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | sed -E 's/^[^:]+: *//')
@@ -60,11 +67,16 @@ if [ "$VDBS_LIVE" = 1 ]; then
   rm -f /tmp/vd_bsearch_*.json
   J '{"action":"list","q":"supervisor -\"team lead\"","limit":20,"groupSimilar":false,"includeFacets":false}' > /tmp/vd_bsearch_phrase.json
   J '{"action":"list","q":"nurse not requiring travel","limit":20,"groupSimilar":false,"includeFacets":false}' > /tmp/vd_bsearch_verb.json
+  J '{"action":"list","q":"cdl not required driver","limit":5,"groupSimilar":false,"includeFacets":false}' > /tmp/vd_bsearch_participle.json
   J '{"action":"list","q":"no remote nurse","limit":20,"groupSimilar":false,"includeFacets":false}' > /tmp/vd_bsearch_noremote.json
   J '{"action":"list","q":"remote-first engineer","limit":5,"groupSimilar":false,"includeFacets":false}' > /tmp/vd_bsearch_rf.json
   J '{"action":"list","q":"remote engineer","limit":5,"groupSimilar":false,"includeFacets":false}' > /tmp/vd_bsearch_rp.json
+  J '{"action":"list","q":"medical coder-remote","limit":5,"groupSimilar":false,"includeFacets":false}' > /tmp/vd_bsearch_hh.json
+  J '{"action":"list","q":"medical coder remote","limit":5,"groupSimilar":false,"includeFacets":false}' > /tmp/vd_bsearch_hp.json
   J '{"action":"list","q":"jobs near me","limit":5,"groupSimilar":false,"includeFacets":false}' > /tmp/vd_bsearch_nearme.json
+  J '{"action":"list","q":"career","limit":5,"groupSimilar":false,"includeFacets":false}' > /tmp/vd_bsearch_career.json
   J '{"action":"list","q":"nurse 94105","limit":5,"groupSimilar":false,"includeFacets":false}' > /tmp/vd_bsearch_zip.json
+  J '{"action":"list","q":"quality engineer iso 13485","limit":5,"groupSimilar":false,"includeFacets":false}' > /tmp/vd_bsearch_iso.json
   for VDBS_I in 1 2 3 4; do J '{"action":"list","q":"cvs","limit":3,"groupSimilar":false,"includeFacets":false}' > "/tmp/vd_bsearch_route_cvs_$VDBS_I.json"; done
   for VDBS_I in 1 2; do J '{"action":"list","q":"3m","limit":3,"groupSimilar":false,"includeFacets":false}' > "/tmp/vd_bsearch_route_3m_$VDBS_I.json"; done
   J '{"action":"list","q":"","location":"Wien","limit":50,"groupSimilar":false,"includeFacets":false}' > /tmp/vd_bsearch_wien_browse.json
@@ -103,9 +115,14 @@ const unreadable=(f,what)=>say("FAIL",what+": the list is unreadable: "+peek(f))
   else if(hit.length)say("FAIL","nurse not requiring travel names travel excluded but serves "+JSON.stringify(hit.slice(0,3)));
   else if(!j.jobs.length)say("INFO","nurse not requiring travel excludes [\"travel\"] but served no row");
   else say("PASS","nurse not requiring travel excludes [\"travel\"] and none of its "+j.jobs.length+" titles says travel");}}
+// S12-017, a participle.
+{const j=read("participle");if(!ok(j))unreadable("participle","cdl not required driver");else{
+  const ex=JSON.stringify(j.excludedTerms??null);
+  if(ex!=="[\"required\"]")say("FAIL","cdl not required driver excludes "+ex+" (want [\"required\"], main\u2019s reading: the word after a participle is not its object)");
+  else say("PASS","cdl not required driver excludes [\"required\"] only, as main reads it, and still searches driver");}}
 // S13-013.
 {const j=read("noremote");if(!ok(j))unreadable("noremote","no remote nurse");else{
-  const ex=Array.isArray(j.excludedTerms)?j.excludedTerms:[];const hit=titles(j).filter((t)=>/remote/i.test(t));
+  const ex=Array.isArray(j.excludedTerms)?j.excludedTerms:[];const hit=titles(j).filter((t)=>/remote/i.test(t.replace(/\b(?:non|not|no)[-\s]?remote\b|\bnot\s+(?:a\s+|an\s+|fully\s+)?remote\b|\bremote\s*[:=(\u2013\u2014-]\s*(?:no|none)\b/gi," ")));
   if(!ex.includes("remote"))say("FAIL","no remote nurse: excludedTerms is "+JSON.stringify(j.excludedTerms??null)+", not naming remote (the negated work mode was searched or dropped silently)");
   else if(hit.length)say("FAIL","no remote nurse names remote excluded but serves "+JSON.stringify(hit.slice(0,3)));
   else if(!j.jobs.length)say("INFO","no remote nurse excludes remote but served no row");
@@ -119,16 +136,31 @@ const unreadable=(f,what)=>say("FAIL",what+": the list is unreadable: "+peek(f))
     else if(typeof a.total!=="number"||typeof b.total!=="number")say("INFO","remote-first engineer lifts the remote filter, but a total is unstated (remote-first "+a.total+", remote "+b.total+"), so the two searches were not compared");
     else if(a.total!==b.total)say("FAIL","remote-first engineer counts "+a.total+" and remote engineer "+b.total+", asked twice: the two did not search the same words");
     else say("PASS","remote-first engineer lifts the remote filter and counts "+a.total+", exactly what remote engineer counts");}}
+{const a=read("hh"),b=read("hp");
+  if(!ok(a)||!ok(b))say("FAIL","medical coder-remote: a list is unreadable: "+peek(ok(a)?"hp":"hh"));
+  else if(!(Array.isArray(a.intentFilters)&&a.intentFilters.includes("remote")))say("FAIL","medical coder-remote lifts "+JSON.stringify(a.intentFilters??null)+" (want the remote filter)");
+  else if(typeof a.total!=="number"||typeof b.total!=="number")say("INFO","medical coder-remote lifts the remote filter, but a total is unstated ("+a.total+" / "+b.total+"), so the two searches were not compared");
+  else if(a.total!==b.total)say("FAIL","medical coder-remote counts "+a.total+" and medical coder remote "+b.total+": the word before the hyphen was dropped or changed");
+  else say("PASS","medical coder-remote lifts the remote filter and counts "+a.total+", exactly what medical coder remote counts");}
 // S13-015.
 {const j=read("nearme");if(!ok(j))unreadable("nearme","jobs near me");else{
   const ig=Array.isArray(j.ignoredFilters)?j.ignoredFilters:[];
   if(!ig.includes("q"))say("FAIL","jobs near me: ignoredFilters is "+JSON.stringify(j.ignoredFilters??null)+", not naming q (words no title holds were searched)");
   else say("PASS","jobs near me searches no words and names q in ignoredFilters");}}
+{const j=read("career");if(!ok(j))unreadable("career","career");else{
+  const ig=Array.isArray(j.ignoredFilters)?j.ignoredFilters:[];
+  if(ig.includes("q"))say("FAIL","career: ignoredFilters names q, so a title word (Career Advisor, Career Coach) was cleared to the whole board");
+  else if(!j.jobs.length)say("FAIL","career keeps q but served no row (main served 7,616 title matches)");
+  else say("PASS","career keeps main\u2019s title search: q is not named, "+j.jobs.length+" rows served (e.g. "+JSON.stringify(titles(j)[0])+")");}}
 // S13-014.
 {const j=read("zip");if(!ok(j))unreadable("zip","nurse 94105");else{
   const d=Array.isArray(j.droppedTerms)?j.droppedTerms:[];
   if(!d.includes("94105"))say("FAIL","nurse 94105: droppedTerms is "+JSON.stringify(j.droppedTerms??null)+", not naming the ZIP");
   else say("PASS","nurse 94105 drops the ZIP and names it in droppedTerms");}}
+{const j=read("iso");if(!ok(j))unreadable("iso","quality engineer iso 13485");else{
+  const d=Array.isArray(j.droppedTerms)?j.droppedTerms:[];
+  if(d.includes("13485"))say("FAIL","quality engineer iso 13485 drops 13485 as a ZIP (droppedTerms "+JSON.stringify(d)+"), though stored titles hold it");
+  else say("PASS","quality engineer iso 13485 keeps 13485 searched (droppedTerms "+JSON.stringify(j.droppedTerms??null)+")");}}
 // S12-014.
 {const want={cvs:"CVS Health","3m":"3M"};const asks=[...[1,2,3,4].map((i)=>["cvs",i]),...[1,2].map((i)=>["3m",i])];
   const bad=[];let read_=0;

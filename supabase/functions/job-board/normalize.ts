@@ -1310,7 +1310,7 @@ export function normalizeLever(raw: LeverJob[], company: string, token: string):
       title: j.text ?? "",
       location,
       // Rationale: docs/job-board-index-notes.md#n1425-the-vendor-states-the-country
-      country: icimsCountry(j.country, location),
+      country: vendorCountry(j.country, location),
       workMode,
       remote: workMode === "remote",
       department: j.categories?.team ?? null,
@@ -1460,7 +1460,7 @@ export function normalizeWorkable(raw: { jobs?: WorkableJob[] }, company: string
         title: j.title ?? "",
         location,
         // Rationale: docs/job-board-index-notes.md#n1425-the-vendor-states-the-country
-        country: icimsCountry(j.locations?.[0]?.countryCode, location),
+        country: vendorCountry(j.locations?.[0]?.countryCode, location),
         workMode,
         remote: workMode === "remote",
         department: j.department ?? null,
@@ -1684,7 +1684,7 @@ export function normalizeBreezy(raw: BreezyPosition[], company: string, token: s
         title: p.name ?? "",
         location,
         // Rationale: docs/job-board-index-notes.md#n1425-the-vendor-states-the-country
-        country: icimsCountry(p.location?.country?.id, location),
+        country: vendorCountry(p.location?.country?.id, location),
         workMode,
         remote: workMode === "remote",
         department: p.department ?? null,
@@ -1752,6 +1752,14 @@ export function icimsCountry(feedCode: unknown, location: string | null | undefi
   const ca = notOwn(P_CA_PROV_CODE.exec(first)) || P_CA_PROV_NAME.test(first);
   const site = us && !ca ? "US" : ca && !us ? "CA" : null;
   return site !== null && site !== code ? site : code;
+}
+
+/** Lever, Breezy, Workable: a place naming countries in words, none the code's, keeps detectCountry's reading unless its own state or province backs the code (n1425). */
+export function vendorCountry(feedCode: unknown, location: string | null | undefined): string | null {
+  const s = String(location ?? "").slice(0, 300), own = String(feedCode ?? "").toUpperCase();
+  const named = [...COUNTRY_PATTERNS.filter(([re]) => re.test(s)).map(([, c]) => c), ...s.toLowerCase().split(/[,;·|/]+/).map((x) => CITY_COUNTRY.get(x.trim().replace(/\s+/g, " ")) ?? "")].filter(Boolean);
+  const backed = own === "US" ? P_US_STATE_CODE.test(s) || P_US_STATE_NAME.test(s) || P_US_STATE_CODE_LEADING.test(s) : own === "CA" && (P_CA_PROV_CODE.test(s) || P_CA_PROV_NAME.test(s));
+  return named.length && !named.includes(own) && !backed ? detectCountry(location) : icimsCountry(feedCode, location);
 }
 
 // Rationale: docs/job-board-index-notes.md#n1395-icims-org-scope

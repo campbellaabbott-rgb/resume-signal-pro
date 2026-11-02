@@ -10,18 +10,20 @@
  * of the 1,953 it marks remote. Nothing in the answer said the place was read
  * literally.
  *
- * Two rules, measured on real posting locations (index notes n1460, n1461):
+ * One rule, measured on real posting locations (index notes n1460, n1461):
  *   - job-board placeTerms reads "City, ST" with a ZIP, a dotted code or no
  *     comma as the city in that state under every spelling, keeping what was
- *     typed as a term of its own; anything else reads as before;
- *   - agent-mcp reads a location that is only a country, only remote (or
- *     remote and a country), or "City, Country" as that filter, and says so
- *     in locationReadAs. A filter the caller set itself is never contradicted.
+ *     typed as a term of its own; anything else reads as before.
+ * agent-mcp sends the location as typed, as main does. Reading a bare
+ * country, "remote" or "City, Country" as the board's country or remote
+ * filter was measured and declined: it lost rows main found (a "Remote TX"
+ * row the board stores with remote false; a "Toronto" row with no country),
+ * and the answer could not say which (recheck, 2026-11-01; n1461).
  */
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { COUNTRY_NAMES, placeTerms } from "../../supabase/functions/job-board/query-place";
+import { placeTerms } from "../../supabase/functions/job-board/query-place";
 import { locationTerms } from "../../supabase/functions/_shared/location-terms";
-import { LOCATION_COUNTRIES, readLocation } from "../../supabase/functions/agent-mcp/query-place";
+import * as mcpPlace from "../../supabase/functions/agent-mcp/query-place";
 import { loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
 
 vi.setConfig({ testTimeout: 30_000, hookTimeout: 120_000 });
@@ -63,55 +65,13 @@ describe("job-board: 'City, ST' however the model types it is the city in that s
   });
 });
 
-describe("agent-mcp: a location that names a country or remote is that filter", () => {
-  it.each([
-    ["United States", { country: "US" }],
-    ["USA", { country: "US" }],
-    ["India", { country: "IN" }],
-    ["UK", { country: "GB" }],
-    ["remote", { remote: true }],
-    ["Anywhere", { remote: true }],
-    ["fully remote", { remote: true }],
-    ["Remote US", { remote: true, country: "US" }],
-    ["Remote - Australia", { remote: true, country: "AU" }],
-    ["France, Remote", { remote: true, country: "FR" }],
-    ["London, UK", { location: "London", country: "GB" }],
-    ["Berlin, Germany", { location: "Berlin", country: "DE" }],
-    ["Toronto, Canada", { location: "Toronto", country: "CA" }],
-  ])("%s", (sent, want) => {
-    expect(readLocation(sent)).toEqual({ sent, ...want });
-  });
-
-  it.each([
-    "New Mexico",
-    "Indiana",
-    "Texas",
-    "Georgia",
-    "New York",
-    "Austin, TX",
-    "London, UK; Dublin, Ireland",
-    "Remote, Austin, TX",
-    ", US",
-    "Berlin",
-  ])("%s goes to the board as sent", (sent) => {
-    expect(readLocation(sent)).toBeNull();
-  });
-
-  it("a filter the caller set is never contradicted", () => {
-    expect(readLocation("United States", { country: "GB" })).toBeNull();
-    expect(readLocation("remote", { remote: false })).toBeNull();
-    expect(readLocation("remote", { workMode: "hybrid" })).toBeNull();
-    // Inside the caller's own list, the country named is the intersection of the two.
-    expect(readLocation("United States", { country: "US" })).toEqual({ sent: "United States", country: "US" });
-    expect(readLocation("London, UK", { country: "gb,us" })).toEqual({ sent: "London, UK", location: "London", country: "GB" });
-  });
-
-  it("names a country exactly as job-board's country table does", () => {
-    expect(LOCATION_COUNTRIES).toEqual(COUNTRY_NAMES);
+describe("agent-mcp reads no location argument as a filter", () => {
+  it("query-place exports no location reader: the place goes to the board as typed", () => {
+    expect(Object.keys(mcpPlace).sort()).toEqual(["readQuery"]);
   });
 });
 
-describe("the server sends the board the place as meant, and says what it read", () => {
+describe("the server sends the board the location as typed, as main does", () => {
   let handler: EdgeHandler;
   let boardBodies: Array<Record<string, unknown>>;
   beforeAll(async () => {
@@ -154,42 +114,25 @@ describe("the server sends the board the place as meant, and says what it read",
     ((await rpc("tools/call", { name: "search_jobs", arguments: args })).structuredContent ?? {}) as Record<string, unknown>;
   const listBody = () => boardBodies.find((b) => b.action === "list")!;
 
-  it("'United States' searches the US country filter, not the words", async () => {
-    const sc = await search({ query: "software engineer", location: "United States" });
-    expect(listBody()).toMatchObject({ q: "software engineer", country: "US" });
-    expect(listBody().location).toBeUndefined();
-    expect(sc.locationReadAs).toEqual({ sent: "United States", country: "US" });
+  it.each([
+    ["United States", "software engineer"],
+    ["remote", "nurse"],
+    ["Remote TX", "nurse"],
+    ["London, UK", "nurse"],
+    ["Toronto, Canada", "manager"],
+    ["Austin, TX 78701", "nurse"],
+  ])("location %s goes to the board as typed, with no country or remote filter added and no locationReadAs", async (location, query) => {
+    const sc = await search({ query, location });
+    expect(listBody().location).toBe(location);
+    expect(listBody().country).toBeUndefined();
+    expect(listBody().remote).toBeUndefined();
+    expect(sc.locationReadAs).toBeUndefined();
   });
 
-  it("'remote' is the remote filter; 'London, UK' is London in GB", async () => {
-    await search({ query: "nurse", location: "remote" });
-    expect(listBody()).toMatchObject({ remote: true });
-    expect(listBody().location).toBeUndefined();
-    boardBodies = [];
-    const sc = await search({ query: "nurse", location: "London, UK" });
-    expect(listBody()).toMatchObject({ location: "London", country: "GB" });
-    expect(sc.locationReadAs).toEqual({ sent: "London, UK", location: "London", country: "GB" });
-  });
-
-  it("a place the board reads itself, or one the caller's filters contradict, goes as sent and is not disclosed", async () => {
-    for (const args of [
-      { query: "nurse", location: "Austin, TX 78701" },
-      { query: "nurse", location: "Texas" },
-      { query: "nurse", location: "United States", country: "GB" },
-      { query: "nurse", location: "remote", remote: false },
-    ]) {
-      boardBodies = [];
-      const sc = await search(args);
-      expect(listBody().location, JSON.stringify(args)).toBe(args.location);
-      expect(sc.locationReadAs, JSON.stringify(args)).toBeUndefined();
-    }
-  });
-
-  it("the prompts ask for a country and remote in their own arguments", async () => {
-    const got = await rpc("prompts/get", { name: "browse_jobs", arguments: { what: "nurse", where: "Texas" } });
-    const text = JSON.stringify(got);
-    expect(text).toMatch(/only a country goes in country as its ISO-2 code/);
+  it("the prompts ask for the place as main's prompts do, and never steer a country or remote into a filter", async () => {
+    const got = JSON.stringify(await rpc("prompts/get", { name: "browse_jobs", arguments: { what: "nurse", where: "Texas" } }));
+    expect(got).not.toMatch(/only a country goes in country/);
     const listed = JSON.stringify(await rpc("prompts/list", {}));
-    expect(listed).not.toMatch(/City, state, country or 'remote'/);
+    expect(listed).toMatch(/City, state, country or 'remote'/);
   });
 });

@@ -14,7 +14,7 @@
  *   - each claim prints FAIL when its answer is the old behaviour or broken;
  *   - before job-board .100 no list read is made and P1-P3 are INFO; before
  *     agent-mcp.2026-11-02.1 no tool is called (K1 would spend a counted call
- *     on the old build) and M1-M4, K1 are INFO;
+ *     on the old build) and M1, M2, K1 are INFO;
  *   - the key is never printed, every board call carries x-rb-budget: probe
  *     and is a list read, and the two writers are only ever asked with a GET.
  */
@@ -89,7 +89,7 @@ const SEARCHED: Record<string, string[]> = {
 type Over = {
   jb?: string | null; mcp?: string | null; ep?: string | null;
   place?: Record<string, Record<string, unknown>>;
-  m1?: unknown; m2?: unknown; schema?: Record<string, unknown>; prompt?: string; prompts?: string; k1?: unknown;
+  m1?: unknown; schema?: Record<string, unknown>; prompt?: string; prompts?: string; k1?: unknown;
   codes?: Partial<Record<"v1" | "v2" | "v3" | "v4", string>>; perks?: string;
 };
 const rpcResult = (structuredContent: unknown) => JSON.stringify({ jsonrpc: "2.0", id: 1, result: { content: [{ type: "text", text: "{}" }], structuredContent } });
@@ -109,11 +109,10 @@ function routes(o: Over = {}): Route[] {
     { match: `^OPTIONS ${B}/functions/v1/agent-mcp\\t?`, status: 204, headers: mcp ? { "x-fn-build": mcp } : {} },
     { match: `^OPTIONS ${B}/functions/v1/employer-profiles\\t?`, status: 204, headers: ep ? { "x-fn-build": ep } : {} },
     ...placeRoutes,
-    { match: `^POST ${B}/functions/v1/agent-mcp\\t[^\\t]*"location":"United States"`, body: rpcResult(o.m1 !== undefined ? o.m1 : { jobs: [{}], total: 6550, locationReadAs: { sent: "United States", country: "US" } }) },
-    { match: `^POST ${B}/functions/v1/agent-mcp\\t[^\\t]*"location":"remote"`, body: rpcResult(o.m2 !== undefined ? o.m2 : { jobs: [{}], total: 1953, locationReadAs: { sent: "remote", remote: true } }) },
-    { match: `^POST ${B}/functions/v1/agent-mcp\\t[^\\t]*"method":"tools/list"`, body: JSON.stringify({ result: { tools: [{ name: "search_jobs", outputSchema: { properties: o.schema ?? { jobs: {}, locationInterpreted: {}, locationReadAs: {} } } }] } }) },
-    { match: `^POST ${B}/functions/v1/agent-mcp\\t[^\\t]*"method":"prompts/get"`, body: JSON.stringify({ result: { messages: [{ role: "user", content: { type: "text", text: o.prompt ?? "1) Call search_jobs with query = \"nurse\", location = \"Texas\", limit = 10; a place that is only a country goes in country as its ISO-2 code instead, and only 'remote' as remote = true." } }] } }) },
-    { match: `^POST ${B}/functions/v1/agent-mcp\\t[^\\t]*"method":"prompts/list"`, body: o.prompts ?? JSON.stringify({ result: { prompts: [{ name: "browse_jobs", arguments: [{ name: "where", description: "A city, state or metro (e.g. 'Austin, TX'), a country, or 'remote'." }] }] } }) },
+    { match: `^POST ${B}/functions/v1/agent-mcp\\t[^\\t]*"location":"United States"`, body: rpcResult(o.m1 !== undefined ? o.m1 : { jobs: [{}], total: 1959 }) },
+    { match: `^POST ${B}/functions/v1/agent-mcp\\t[^\\t]*"method":"tools/list"`, body: JSON.stringify({ result: { tools: [{ name: "search_jobs", outputSchema: { properties: o.schema ?? { jobs: {}, locationInterpreted: {} } } }] } }) },
+    { match: `^POST ${B}/functions/v1/agent-mcp\\t[^\\t]*"method":"prompts/get"`, body: JSON.stringify({ result: { messages: [{ role: "user", content: { type: "text", text: o.prompt ?? "1) Call search_jobs with query = \"nurse\", location = \"Texas\", limit = 10. Show the jobs." } }] } }) },
+    { match: `^POST ${B}/functions/v1/agent-mcp\\t[^\\t]*"method":"prompts/list"`, body: o.prompts ?? JSON.stringify({ result: { prompts: [{ name: "browse_jobs", arguments: [{ name: "where", description: "City, state, country or 'remote'." }] }] } }) },
     { match: `^POST ${B}/functions/v1/agent-mcp\\t[^\\t]*"offset":9000[^\\t]*\\theaders:.*Authorization: Bearer x`, body: rpcResult(o.k1 !== undefined ? o.k1 : { jobs: [], pageLimitReached: true, pageLimitNote: "A keyless search pages to offset 200." }) },
     { match: `^GET ${B}/rest/v1/rpc/employer_perk_audit_draw\\?p_perk=health&p_version=2&p_rows=1\\t`, status: 401, body: codeBody(codes.v1) },
     { match: `^GET ${B}/rest/v1/rpc/employer_perk_audit_draw\\?p_perk=health&p_rows=1\\t`, status: 404, body: codeBody(codes.v2) },
@@ -131,8 +130,8 @@ describe("a good deploy", () => {
   it("prints PASS for every claim and nothing else", () => {
     const v = verdicts(r.lines);
     expect(v.filter((l) => !l.startsWith("PASS")), r.out).toEqual([]);
-    for (const id of ["P1", "P2", "P3", "M1", "M2", "M3", "M4", "K1", "V1", "V2", "V3", "V4", "V5"]) expect(line(v, id), `${id}\n${r.out}`).toMatch(/^PASS/);
-    expect(v).toHaveLength(16);
+    for (const id of ["P1", "P2", "P3", "M1", "M2", "K1", "V1", "V2", "V3", "V4", "V5"]) expect(line(v, id), `${id}\n${r.out}`).toMatch(/^PASS/);
+    expect(v).toHaveLength(14);
   });
 
   it("never prints the key; every board call is a probe list read; the writers are asked only with a GET", () => {
@@ -151,12 +150,11 @@ describe("each claim can FAIL", () => {
     ["P1", { place: { "Austin, TX 78701": { total: 0 } } }],
     ["P2", { place: { "New York NY": { locationSearched: ["New York, NY", "New York, New York", "New York,NY"] } } }],
     ["P3", { place: { "Washington, D.C.": { locationSearched: ["Washington, D.C."], locationExpandedFrom: null } } }],
-    ["M1", { m1: { jobs: [{}], total: 1959 } }],
-    ["M1", { m1: { jobs: [], total: 0, locationReadAs: { sent: "United States", country: "US" } } }],
-    ["M2", { m2: { jobs: [{}], total: 1123 } }],
-    ["M3", { schema: { jobs: {}, locationInterpreted: {} } }],
-    ["M4", { prompt: "1) Call search_jobs with query = \"nurse\", location = \"Texas\", limit = 10. Show the jobs." }],
-    ["M4", { prompts: JSON.stringify({ result: { prompts: [{ name: "browse_jobs", arguments: [{ name: "where", description: "City, state, country or 'remote'." }] }] } }) }],
+    ["M1", { m1: { jobs: [{}], total: 6550, locationReadAs: { sent: "United States", country: "US" } } }],
+    ["M1", { m1: { jobs: [], total: 0 } }],
+    ["M2", { schema: { jobs: {}, locationInterpreted: {}, locationReadAs: {} } }],
+    ["M2", { prompt: "1) Call search_jobs with query = \"nurse\", location = \"Texas\", limit = 10; a place that is only a country goes in country as its ISO-2 code instead, and only 'remote' as remote = true." }],
+    ["M2", { prompts: JSON.stringify({ result: { prompts: [{ name: "browse_jobs", arguments: [{ name: "where", description: "A city, state or metro (e.g. 'Austin, TX'), a country, or 'remote'." }] }] } }) }],
     ["K1", { k1: { jobs: [{ id: "x" }], total: 12000 } }],
     ["V1", { codes: { v1: "PGRST202" } }],
     ["V1", { codes: { v1: "25006" } }],
@@ -184,10 +182,10 @@ describe("what waits for what", () => {
     expect(r.calls.filter((c) => c.includes("/functions/v1/job-board") && !c.startsWith("OPTIONS"))).toEqual([]);
   });
 
-  it("before agent-mcp.2026-11-02.1, M1-M4 and K1 are INFO and no tool is called", () => {
+  it("before agent-mcp.2026-11-02.1, M1, M2 and K1 are INFO and no tool is called", () => {
     const r = run(routes({ mcp: "agent-mcp.2026-10-11.38" }));
-    expect(r.lines.some((l) => /^INFO  M1-M4 and K1 wait for agent-mcp\.2026-11-02\.1/.test(l))).toBe(true);
-    expect(r.lines.some((l) => /^(PASS|FAIL)  (M[1-4]|K1) /.test(l))).toBe(false);
+    expect(r.lines.some((l) => /^INFO  M1, M2 and K1 wait for agent-mcp\.2026-11-02\.1/.test(l))).toBe(true);
+    expect(r.lines.some((l) => /^(PASS|FAIL)  (M[12]|K1) /.test(l))).toBe(false);
     expect(r.calls.filter((c) => c.includes("/functions/v1/agent-mcp") && !c.startsWith("OPTIONS"))).toEqual([]);
   });
 });

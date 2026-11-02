@@ -102,19 +102,22 @@ const LEVER_TEXT = "Jeeves is a global financial operating system for companies 
 const pos = (id: string, desc: string) => `<position><id>${id}</id><name>Role</name>${desc}</position>`;
 const PDE = `<workzag-jobs>${pos("901", "<jobDescriptions></jobDescriptions>")}</workzag-jobs>`;
 const PEN = `<workzag-jobs>${pos("901", "<jobDescriptions><jobDescription><name>Tasks</name><value><![CDATA[<p>You will build the GPU cloud scheduler.</p>]]></value></jobDescription></jobDescriptions>")}</workzag-jobs>`;
+const INTERN_FEED = `<workzag-jobs><position><id>2864862</id><name>Human Resources Praktikant (m/w/d)</name><employmentType>intern</employmentType><schedule>full-time</schedule><createdAt>${new Date(Date.now() - 4 * 86_400_000).toISOString()}</createdAt></position></workzag-jobs>`;
 const PAGE = `<html><body><div class="job-preview-details"><div class="job-listing-header">Description</div><div><p>${"After school care. ".repeat(20)}</p></div></div><div class="preview-bottom-apply-btn"></div></body></html>`;
 
 type Over = {
   build?: string; buildSince?: string; read?: string;
   dominos?: Row[]; exec?: Row[]; boards?: Partial<Record<string, Row[]>>; leverRows?: Row[];
   leverDetail?: string | null; personioDetail?: string | null; paylocityDetail?: string | null;
+  internFeed?: string; internRows?: Row[];
 };
 /** Rows a good deploy serves for each board kind, read at `read`. */
 function goodRows(kind: string, read: string): Row[] {
   const base = (i: number): Row => ({ id: `x:${i}`, title: "Role", recheckedAt: read, country: "US", employmentType: "full_time" });
   const n = Array.from({ length: 10 }, (_, i) => base(i));
-  if (kind === "pay") return n.map((r, i) => (i < 4 ? { ...r, salary: "$22 - $24 / hour", salaryMinAnnual: 45760 } : r));
-  if (kind === "intern") return n.map((r, i) => (i < 2 ? { ...r, employmentType: "internship" } : r));
+  if (kind === "pay") return n.map((r, i) => (i < 6 ? { ...r, salary: "$22 - $24 / hour", salaryMinAnnual: 45760 } : r));
+  if (kind === "bcca") return n.map((r, i) => (i < 5 ? { ...r, location: "3388 Sweden Way, Richmond, BC", country: "CA" } : { ...r, location: "Toronto, ON", country: "CA" }));
+  if (kind === "notcontract") return n.map((r, i) => (i < 1 ? { ...r, employmentType: "contract" } : { ...r, employmentType: null }));
   return n;
 }
 function routes(o: Over = {}): Route[] {
@@ -135,6 +138,8 @@ function routes(o: Over = {}): Route[] {
     { match: `^GET https://lyceum-technology\\.jobs\\.personio\\.de/xml\\?language=en$`, body: PEN },
     { match: `^GET https://lyceum-technology\\.jobs\\.personio\\.de/xml$`, body: PDE },
     { match: `^GET https://recruiting\\.paylocity\\.com/recruiting/jobs/Details/${PAYLOCITY[0][1]}$`, body: PAGE },
+    { match: `^GET https://mynaric\\.jobs\\.personio\\.de/xml$`, body: o.internFeed ?? INTERN_FEED },
+    { match: `^POST ${FB}\t.*"companies":\\["mynaric"\\]`, body: JSON.stringify({ total: 13, jobs: o.internRows ?? [{ id: "personio:mynaric:2864862", title: "Human Resources Praktikant (m/w/d)", employmentType: "internship", recheckedAt: read }] }) },
   ];
   return r;
 }
@@ -146,7 +151,7 @@ describe("99zzzz on a good deploy", () => {
     const { lines, out } = run(routes());
     const v = verdicts(lines);
     expect(v.filter((l) => !l.startsWith("PASS")), out).toEqual([]);
-    expect(v.length, out).toBe(2 + BOARDS.length + 3);
+    expect(v.length, out).toBe(2 + BOARDS.length + 4);
     expect(out).not.toContain(KEY);
   });
   it("every board call is a probe-budget status, list or detail read", () => {
@@ -185,12 +190,26 @@ describe("99zzzz fails each claim when it is false", () => {
     const read = iso(2 * H);
     const strip: Row[] = goodRows(kind, read).map((r) => {
       if (kind === "pay") return { ...r, salary: null, salaryMinAnnual: null };
-      if (kind === "intern") return { ...r, employmentType: "full_time" };
+      if (kind === "bcca") return { ...r, location: "3388 Sweden Way, Richmond, BC", country: "SE" };
+      if (kind === "notcontract") return { ...r, employmentType: "contract" };
       if (kind === "country") return { ...r, country: null };
       if (kind === "typecountry") return { ...r, country: Number(String(r.id).slice(2)) % 2 ? null : "FI" };
       return { ...r, employmentType: null };
     });
     expect(line(run(routes({ boards: { [t]: strip } })).lines, new RegExp(`board ${esc(t)}`))).toMatch(/^FAIL/);
+  });
+  it("Breezy pay at the share .96 served by description mining alone (4 of 60): FAIL", () => {
+    const read = iso(2 * H);
+    const rows = goodRows("pay", read).map((r, i) => (i < 1 ? r : { ...r, salary: null, salaryMinAnnual: null }));
+    expect(line(run(routes({ boards: { "national-assemblers-inc": rows } })).lines, /board national-assemblers-inc/)).toMatch(/^FAIL .*1 of 10 .*want 40%/);
+  });
+  it("a Personio posting its feed lists as intern on a full-time schedule, filed full_time: FAIL; none in the feeds: INFO", () => {
+    const read = iso(2 * H);
+    expect(line(run(routes({ internRows: [{ id: "personio:mynaric:2864862", employmentType: "full_time", recheckedAt: read }] })).lines, /personio:mynaric/)).toMatch(/^FAIL .*filed full_time/);
+    expect(line(run(routes({ internRows: [{ id: "personio:mynaric:2864862", employmentType: "full_time", recheckedAt: iso(40 * H) }] })).lines, /personio:mynaric/)).toMatch(/^FAIL .*has not read mynaric/);
+    expect(line(run(routes({ internRows: [] })).lines, /personio:mynaric/)).toMatch(/^FAIL .*not served/);
+    expect(line(run(routes({ internFeed: INTERN_FEED.replace("full-time", "part-time") })).lines, /Personio type line/)).toMatch(/^INFO/);
+    expect(line(run(routes({ internFeed: INTERN_FEED.replace(/<createdAt>[^<]*/, "<createdAt>2025-05-15T15:57:31+00:00") })).lines, /Personio type line/)).toMatch(/^INFO/);
   });
   it("a board this build has not read: INFO for 24 h, then FAIL", () => {
     const t = BOARDS[0][1];

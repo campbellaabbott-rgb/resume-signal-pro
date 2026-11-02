@@ -27,7 +27,12 @@
 #     lap_pending on 2026-11-01) proves
 #     a lap within 7 days of the first slice, when the employer's own row 9,999
 #     (read live) is posted more than a day before the 30-day fence. A floor
-#     inside the fence is INFO (the build declines to prove there).
+#     inside the fence is INFO (the build declines to prove there). A proven
+#     lap also closes what the read no longer lists: once the bucket reads
+#     lap_proven, the board's open dated rows number no more than the 10,000
+#     a capped read can serve plus 3% for postings added during the lap
+#     (Marriott 13,309, AutoZone 11,567 and Kroger 10,337 on 2026-11-01; a
+#     build that proves the lap but stamps nothing keeps them there).
 #
 # READ-ONLY. One OPTIONS preflight; job-board status and list reads sent with
 # x-rb-budget: probe; one anon GET of the fill-curve reader; four GETs to the
@@ -74,7 +79,7 @@ for(const [t,n] of Object.entries(names)){
   else console.log("INFO  "+n+" ("+t+") serves 0 rows yet; "+clock+" (a dormant board is rechecked every 12 h; FAIL after 36 h)");
 }
 const curve=Array.isArray(C)?C:null;
-const bucketOf=(t)=>{const r=curve&&curve.find((x)=>x&&x.company_token===t);return r?r.observability_bucket:null};
+const rowOf=(t)=>curve&&curve.find((x)=>x&&x.company_token===t);const bucketOf=(t)=>{const r=rowOf(t);return r?r.observability_bucket:null};
 if(!curve)console.log("FAIL  the fill-curve read is unreadable: "+peek("/tmp/vd_br_curve.json"));
 else{
   const OL="Ollie"+String.fromCharCode(39)+"s Bargain Outlet";const oll="recruiting~OLL1000OLLIE~355913c1-206d-48a4-bb34-020064efe845";const b=bucketOf(oll);
@@ -88,7 +93,9 @@ else{
     const row=it&&Array.isArray(it.requisitionList)?it.requisitionList[0]:null;const floor=row?Date.parse(String(row.PostedDate||"")):NaN;
     const b=bucketOf(t);
     const at=Number.isFinite(floor)?"its own row 9,999 is posted "+String(row.PostedDate)+" (TotalJobsCount "+it.TotalJobsCount+")":"its own feed served no row 9,999 ("+peek("/tmp/vd_br_ora_"+t+".json")+")";
-    if(b==="lap_proven")console.log("PASS  "+n+" ("+t+", Oracle) has proven a lap at the 10,000 cap (bucket lap_proven); "+at);
+    const cr=rowOf(t)||{};const dated=Number(cr.open_roles)-Number(cr.undated_open||0);
+    if(b==="lap_proven"&&!(dated<=10300))console.log("FAIL  "+n+" ("+t+", Oracle) reads bucket lap_proven but still holds "+cr.open_roles+" open rows ("+(cr.undated_open||0)+" undated), more than the 10,000 a capped read can serve plus 3%: the lap proved and closed nothing it no longer lists; "+at);
+    else if(b==="lap_proven")console.log("PASS  "+n+" ("+t+", Oracle) has proven a lap at the 10,000 cap (bucket lap_proven) and holds "+dated+" open dated rows, within the 10,300 a capped read can serve; "+at);
     else if(!Number.isFinite(floor))console.log("INFO  "+n+" ("+t+") reads bucket "+b+", and "+at+": under 10,000 now, or the feed did not answer, so the cap rule is not judged");
     else if(floor+86400000>=fence)console.log("INFO  "+n+" ("+t+") reads bucket "+b+": "+at+", inside the 30-day fence, so the build rightly declines to prove a capped lap");
     else if(due(168))console.log("FAIL  "+n+" ("+t+") still reads bucket "+b+" "+ageH.toFixed(1)+" h after the first slice of this build, and "+at+", older than the fence: a capped lap should have proven within 7 days");

@@ -12,12 +12,12 @@
 #       spelling (the ZIP dropped), says so, and finds rows;
 #   P2  "New York NY" (no comma) likewise, with what was typed kept as a term;
 #   P3  "Washington, D.C." (a dotted code) likewise;
-#   M1  agent-mcp reads location "United States" as country US, says so in
-#       locationReadAs, and finds rows;
-#   M2  agent-mcp reads location "remote" as remote: true, and says so;
-#   M3  search_jobs' output schema names locationReadAs;
-#   M4  browse_jobs tells the model a country goes in country and remote in
-#       remote, and no prompt asks for "City, state, country or 'remote'";
+#   M1  agent-mcp sends location "United States" to the board as typed: the
+#       answer carries no locationReadAs, and finds rows (the country and
+#       remote reading was measured and declined: it lost rows main found);
+#   M2  search_jobs' output schema names no locationReadAs, and browse_jobs
+#       asks for the place as main's prompt does, steering no country or
+#       remote into a filter;
 #   K1  a junk bearer at offset 9000 is told the keyless page limit by name,
 #       and the board is not asked;
 #   V1  the perk draw takes an extractor version, and refuses anon (42501);
@@ -26,14 +26,14 @@
 #   V4  the record without them is gone;
 #   V5  get_employer_perks, restated, answers the publishable key in shape.
 #
-# WHAT WAITS FOR WHAT. P1-P3 wait for job-board .100, M1-M4 and K1 for
+# WHAT WAITS FOR WHAT. P1-P3 wait for job-board .100, M1, M2 and K1 for
 # agent-mcp.2026-11-02.1 (before it, K1 would spend a counted keyless call
 # on the old build); each prints INFO until its build serves. V1-V5 judge the
 # migration, which applies before the functions.
 #
 # READ-ONLY. OPTIONS preflights; job-board list reads with x-rb-budget: probe;
 # agent-mcp initialize-free calls: tools/list, prompts/list, prompts/get, and
-# two keyless search_jobs calls (one each of today's shared allowance, as
+# one keyless search_jobs call (one of today's shared allowance, as
 # sections 73, 82 and 92 spend) plus K1, which the fixed build answers
 # uncounted; GET probes of two writers, which PostgREST runs read-only; one
 # read of the pure perk reader.
@@ -51,7 +51,7 @@ VD99M_MCP=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/agent-mc
 VD99M_MCP_LIVE=0
 if [ -z "$VD99M_MCP" ]; then echo "FAIL  agent-mcp preflight carries no x-fn-build (not deployed, or the previous bundle is serving)"
 elif build_ge agent-mcp "$VD99M_MCP" "2026-11-02" "1"; then echo "PASS  agent-mcp preflight x-fn-build = $VD99M_MCP (agent-mcp.2026-11-02.1 or later)"; VD99M_MCP_LIVE=1
-else echo "INFO  agent-mcp preflight x-fn-build = $VD99M_MCP: agent-mcp.2026-11-02.1 is not serving yet, so M1-M4 and K1 wait for it"; fi
+else echo "INFO  agent-mcp preflight x-fn-build = $VD99M_MCP: agent-mcp.2026-11-02.1 is not serving yet, so M1, M2 and K1 wait for it"; fi
 
 VD99M_EP=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/employer-profiles" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+: *//')
 if [ -z "$VD99M_EP" ]; then echo "FAIL  employer-profiles preflight carries no x-fn-build (not deployed)"
@@ -77,10 +77,9 @@ else
   echo "INFO  P1-P3 wait for job-board 2026-09-09.100"
 fi
 
-# ── M1-M4, K1: the connector ──
+# ── M1, M2, K1: the connector ──
 if [ "$VD99M_MCP_LIVE" = 1 ]; then
   MC -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"search_jobs","arguments":{"query":"software engineer","location":"United States","limit":1}}}' > /tmp/vd_99m_m1.json
-  MC -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"search_jobs","arguments":{"query":"software engineer","location":"remote","limit":1}}}' > /tmp/vd_99m_m2.json
   MC -d '{"jsonrpc":"2.0","id":3,"method":"tools/list","params":{}}' > /tmp/vd_99m_tools.json
   MC -d '{"jsonrpc":"2.0","id":4,"method":"prompts/get","params":{"name":"browse_jobs","arguments":{"what":"nurse","where":"Texas"}}}' > /tmp/vd_99m_prompt.json
   MC -d '{"jsonrpc":"2.0","id":5,"method":"prompts/list","params":{}}' > /tmp/vd_99m_prompts.json
@@ -93,19 +92,15 @@ const sc=(f)=>{const j=rd(f);return j&&j.result&&!j.result.isError?(j.result.str
 const why=(f)=>raw(f).slice(0,160);
 const m1=sc("/tmp/vd_99m_m1.json");
 if(!m1)ok(false,"M1 keyless search_jobs location \"United States\" answered no result: "+why("/tmp/vd_99m_m1.json"));
-else{const r=m1.locationReadAs||{};ok(r.country==="US"&&r.location===undefined&&r.sent==="United States"&&Number(m1.total)>0,"M1 location \"United States\" read as "+JSON.stringify(m1.locationReadAs||null)+", total "+m1.total+" (want country US, no location text, rows)")}
-const m2=sc("/tmp/vd_99m_m2.json");
-if(!m2)ok(false,"M2 keyless search_jobs location \"remote\" answered no result: "+why("/tmp/vd_99m_m2.json"));
-else{const r=m2.locationReadAs||{};ok(r.remote===true&&r.location===undefined&&Number(m2.total)>0,"M2 location \"remote\" read as "+JSON.stringify(m2.locationReadAs||null)+", total "+m2.total+" (want remote: true, no location text, rows)")}
+else ok(m1.locationReadAs===undefined&&Number(m1.total)>0,"M1 location \"United States\" goes to the board as typed: locationReadAs "+JSON.stringify(m1.locationReadAs===undefined?"absent":m1.locationReadAs)+", total "+m1.total+" (want it absent, and rows)");
 const tools=((rd("/tmp/vd_99m_tools.json")||{}).result||{}).tools||[];const sj=tools.find((t)=>t.name==="search_jobs");
 const props=sj&&sj.outputSchema&&sj.outputSchema.properties||{};
-ok(!!props.locationReadAs,"M3 search_jobs output schema names locationReadAs ("+(sj?Object.keys(props).length+" properties":"no search_jobs in tools/list")+")");
 const ptext=JSON.stringify(((rd("/tmp/vd_99m_prompt.json")||{}).result||{}).messages||[]);const plist=raw("/tmp/vd_99m_prompts.json");
-ok(/only a country goes in country as its ISO-2 code/.test(ptext)&&plist.includes("browse_jobs")&&!plist.includes("City, state, country or"),"M4 browse_jobs asks for a country in country and remote in remote, and no prompt asks for \"City, state, country or remote\" ("+(ptext.length>2?"prompt read":"no prompt text")+")");
+ok(!!sj&&!props.locationReadAs&&ptext.length>2&&!/only a country goes in country/.test(ptext)&&plist.includes("City, state, country or"),"M2 search_jobs output schema "+(sj?(props.locationReadAs?"names":"names no")+" locationReadAs":"is missing from tools/list")+", and browse_jobs "+(/only a country goes in country/.test(ptext)?"steers a country or remote into a filter":"asks for the place as typed")+" ("+(plist.includes("City, state, country or")?"main\x27s place wording":"not main\x27s place wording")+")");
 const k1=rd("/tmp/vd_99m_k1.json");const k=k1&&k1.result&&k1.result.structuredContent;
 ok(!!k&&k.pageLimitReached===true&&Array.isArray(k.jobs)&&k.jobs.length===0,"K1 a junk bearer at offset 9000 is told pageLimitReached by name with no rows: "+JSON.stringify(k?{pageLimitReached:k.pageLimitReached,jobs:Array.isArray(k.jobs)?k.jobs.length:null,total:k.total}:why("/tmp/vd_99m_k1.json")))'
 else
-  echo "INFO  M1-M4 and K1 wait for agent-mcp.2026-11-02.1"
+  echo "INFO  M1, M2 and K1 wait for agent-mcp.2026-11-02.1"
 fi
 
 # ── V1-V5: the perk audit migration ──

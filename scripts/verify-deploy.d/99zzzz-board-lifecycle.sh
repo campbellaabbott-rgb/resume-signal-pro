@@ -11,6 +11,15 @@
 #       below shows superseded_90d > 0 in get_company_hiring_health (all five
 #       read 0 on .96, 2026-11-01, against 1,291 to 46,214 closures); INFO
 #       before;
+#   L1b (S10-002) and not for most: of the closures O'Reilly and CVS log after
+#       the base read (2026-11-01 14:27Z: 1,291 and 5,430 closed, tracking 32
+#       and 9 days, none superseded), under 30% read superseded once each
+#       board logs 200 (title and place said 17% of each on the 2026-11-01
+#       corpus, title alone 92% and 72%). Main's closures between the base
+#       read and .100's first slice carry no superseded and dilute the share,
+#       so it is judged only once .100 has served at least 24 h and at least
+#       as long as that gap: a title-only build then reads 36% or more. INFO
+#       before, and once the base's oldest closure nears the 90-day window;
 #   L2  (S13-113) status.descSweep reports the sweep's cursor and floor, and a
 #       cursor written 10 minutes or more after .100's first slice is
 #       first_seen|id (a bare timestamp is main's cursor); INFO while the
@@ -50,7 +59,18 @@ if(!Array.isArray(hh))console.log("FAIL  L1 get_company_hiring_health did not an
 else{const pos=hh.filter((r)=>Number(r.superseded_90d)>0);const line=hh.map((r)=>String(r.company_token).split("~")[0]+" "+r.superseded_90d+"/"+r.closed_90d).join(", ");
   if(pos.length)console.log("PASS  L1 a lapped board logs re-listed requisitions as superseded: superseded/fills over 90 days "+line+" (all five read 0 on .96)");
   else if(ageH!==null&&ageH>=72)console.log("FAIL  L1 72 h after .100 first slice ("+ss.buildSince+") every lapped board still reads superseded_90d = 0 ("+line+"): the lap closures still read superseded from one window, or no lap closed");
-  else console.log("INFO  L1 superseded_90d still 0 on all five ("+line+"); "+(ageH===null?"no .100 slice yet":"waits 72 h after .100 first slice ("+ageH.toFixed(1)+" h so far)"))}
+  else console.log("INFO  L1 superseded_90d still 0 on all five ("+line+"); "+(ageH===null?"no .100 slice yet":"waits 72 h after .100 first slice ("+ageH.toFixed(1)+" h so far)"))
+  const BASE={oreillyauto:[1291,32],cvshealth:[5430,9]},baseAt=Date.parse(process.env.VDBL_BASE_AT||"2026-11-01T14:27:00Z"),daysOn=(Date.now()-baseAt)/86400000;
+  const got=hh.map((r)=>{const k=String(r.company_token).split("~")[0],b=BASE[k];if(!b)return null;const s=Number(r.superseded_90d);return{k,s,n:s+Number(r.closed_90d)-b[0],roll:b[1]+daysOn>=85}}).filter(Boolean);
+  const said=got.map((g)=>g.k+" "+g.s+" of "+g.n).join(", ");const lagH=Number.isFinite(since)?(since-baseAt)/3600000:null;
+  if(got.length<2||got.some((g)=>!Number.isFinite(g.n)||g.n<0))console.log("INFO  L1b cannot read new closures against the base for O\u0027Reilly and CVS ("+(said||"no rows")+")");
+  else if(got.some((g)=>g.roll))console.log("INFO  L1b the base read is "+daysOn.toFixed(0)+" days old: its oldest closures leave the 90-day window, so closed_90d less the base no longer counts new closures; re-base");
+  else if(lagH===null||ageH===null)console.log("INFO  L1b waits for .100 first slice ("+said+")");
+  else if(ageH<Math.max(24,lagH))console.log("INFO  L1b .100 first sliced "+lagH.toFixed(0)+" h after the base read and has served "+ageH.toFixed(0)+" h: judged at "+Math.max(24,lagH).toFixed(0)+" h, when main\u2019s closures in between can no longer outweigh this build\u2019s ("+said+")");
+  else{const hi=got.filter((g)=>g.n>=200&&g.s/g.n>=0.3);
+    if(hi.length)console.log("FAIL  L1b 30% or more of the closures logged since the base read are superseded ("+said+"): a lap keys a relist on title alone again (92% and 72% on the corpus, title and place 17%)");
+    else if(got.every((g)=>g.n>=200))console.log("PASS  L1b under 30% of the closures logged since the base read are superseded (superseded of new: "+said+")");
+    else console.log("INFO  L1b fewer than 200 closures logged since the base read on one board ("+said+"): re-run")}}
 // L2
 const ds=st&&st.descSweep;
 if(!ds||typeof ds!=="object")console.log("FAIL  L2 status carries no descSweep: "+JSON.stringify(st).slice(0,200));

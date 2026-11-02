@@ -22013,17 +22013,26 @@ quote the tsquery read as text), and "nurse not requiring night shifts"
 excluded 'requiring' and searched 'night shifts', the very titles the person
 asked to hide. Now a balanced "…" pair is one word: after "not" or "-" it is
 one excluded phrase, matched across a space, hyphen or slash, its last word
-singular or plural ("Team-Lead", "Night Shifts"). A requirement verb after
-"not" (require/involve/include/need and their forms) passes the "not" to the
-next word, unless that word is a stopword or another "not", so the rest reads
-as main reads "not night shifts". Everything else is main's rule, byte for
-byte in behaviour: the bare "nurse not night shift" still excludes 'night'
-only, because a word after the excluded one is as often a wanted word
-("engineer not manager python"). Measured on the 1,191-query labelled corpus
-(fixtures/w4b-fix3-search): main 765 right, this rule 785, none of main's
-lost; 75 self-break queries unchanged; and a 626-query corpus over 587 live
-titles (2026-11-01, 20 seed probes): 266 queries changed, all quoted or verb
-shapes, main wrong on all 266, this rule on none, the other 360 identical
+singular or plural ("Team-Lead", "Night Shifts"). A requirement verb in its
+-ing form after "not" (requiring, involving, including, needing) passes the
+"not" to the next word, unless that word is a stopword or another "not", so
+the rest reads as main reads "not night shifts". Other forms keep main's
+reading: "cdl not required driver" excludes 'required' and searches cdl
+driver, as main does, where the branch read every form and excluded
+'driver', the role asked for (recheck, 2026-11-01; "experience not needed
+warehouse" the same). Over 2,094 inputs (the recheck's 209 description
+phrases, the 626 and 1,191 corpora, 75 self-break) every other form reads as
+main, and the -ing forms differ from main on 154, each excluding the word
+after the verb (corpora/review-fix-2/search/notverb-main-vs-head-vs-fix.json).
+Everything else is main's rule, byte for byte in behaviour: the bare "nurse
+not night shift" still excludes 'night' only, because a word after the
+excluded one is as often a wanted word ("engineer not manager python").
+Measured on the 1,191-query labelled corpus (fixtures/w4b-fix3-search): main
+765 right, this rule 784 (the branch 785: "nurse not requires travel" reads
+as main again), none of main's lost; 75 self-break queries unchanged; and a
+626-query corpus over 587 live titles (2026-11-01, 20 seed probes): 266
+queries changed, all quoted or -ing verb shapes, main wrong on all 266, this
+rule on none, the other 360 identical
 (corpora/search/s12-017-exclusions-main-vs-mine.json).
 
 ## n1411-a-negated-remote-strikes-the-remote-reading
@@ -22074,11 +22083,24 @@ In `supabase/functions/job-board/index.ts`, above: `const qWords = queryTerms(bo
 
 "JOBS NEAR ME" SERVED UNRELATED DESCRIPTION MATCHES UNDER TOTAL 2 (S13-015).
 queryTerms keeps every word when all of them are filler, so 'jobs near me'
-searched those words in descriptions. Now a query of nothing but filler is
-blanked, the list browses, and when no intent lift explains the change the
-page names 'search words' as a filter it could not apply (ignoredFilters 'q',
-the existing jobsPage.filterName.q copy). A filler word beside a real one is
-dropped as before. The 587 live titles as queries: none blanked.
+searched those words in descriptions. Now a query of nothing but filler that
+asks for places near the searcher ('nearby', or 'me' with near, around or
+close) is blanked, the list browses, and when no intent lift explains the
+change the page names 'search words' as a filter it could not apply
+(ignoredFilters 'q', the existing jobsPage.filterName.q copy). Any other
+all-filler query keeps main's search: 'career', 'jobs', 'hiring' and
+'employment opportunities' are words titles hold (Career Coach, Hiring
+Manager), and the branch blanked every all-filler query (recheck,
+2026-11-01). A filler word beside a real one is dropped as before. Measured
+(corpora/review-fix-2/search/filler-main-vs-head-vs-fix.json): 4,354 live
+titles as queries, none blanked; 1,924 one- and two-word filler queries,
+with and without a "near me", "nearby" or "around me" tail: the branch
+blanked all 1,924, this rule 906, each holding a proximity phrase. Live on
+.96 those served description matches: 'jobs near me' total 2 over 2,998
+related rows, 'openings around me' no title holding every word
+(filler-cleared-live-96.jsonl, 7 probes). 'nearby' and 'near me' alone are
+blanked though 7 and 15 titles hold them ("Columbus, OH and nearby areas",
+"Hospitalist near Denver"): a place in a title is not the searcher's.
 
 ## n1414-a-zip-is-dropped-and-named
 
@@ -22303,25 +22325,36 @@ rows turn over inside the 30-day fence.
 
 ## n1425-the-vendor-states-the-country
 
-In `supabase/functions/job-board/normalize.ts`, above: `country: icimsCountry(j.country, location),` (Lever), and the Breezy and Workable equivalents.
+In `supabase/functions/job-board/normalize.ts`, above: `export function vendorCountry(` and `country: vendorCountry(j.country, location),` (Lever), and the Breezy and Workable equivalents.
 
 THE VENDOR STATES THE COUNTRY (S13-032). Lever (country), Breezy
 (location.country.id) and Workable (locations[0].countryCode) state a code;
 the board guessed from the place text and stored none for "Kuopio, FI",
-"Kyiv, UA" or "Riga, Riga, Latvia". The code is read through icimsCountry: a
+"Kyiv, UA" or "Riga, Riga, Latvia". The code is read through vendorCountry: a place that
+names countries in words (a country name or a known city), none of them the
+code's, keeps detectCountry's reading unless its own US state or Canadian
+province backs the code. Lever stated CN for "Hong Kong", GB for "EMEA ·
+Ireland · Portugal" and RS for city lists across Europe, and the branch
+stored the code (recheck, 2026-11-01); "3388 Sweden Way, Richmond, BC"
+names Sweden but BC backs CA (main stored SE); "Libreville, GA" and
+"Bogotá, CO" name no country in words and keep GA and CO (main read Georgia
+and Colorado, US). Otherwise it is icimsCountry: a
 US state or Canadian province in the place text overrules a code that
 disagrees, unless the place names the code's own country: "Mexicali, Baja
 California, Mexico" keeps MX (the branch read California and stored US for 7
 Lever rows), and iCIMS's "49-MAINE-ET-LOIRE, France" now keeps FR where main
 stored US (merge review, 2026-11-01; 177 feeds, 10,146 rows: those 8 rows
 change from the branch, and iCIMS changes from main on that 1;
-corpora/review-fix/fields/country-main-vs-branch-vs-fix.json). Corpus: corpora/fields/lever-country.json and
-breezy-workable-country.json. Lever 2,453: 965 filled, 16 changed (multi-
-location rows now take the vendor's primary country), 6 overrides equal to
-main's reading (3 "Hamilton, ON" read CA, right; 3 "New Brunswick, NJ" read
-CA, wrong as on main). Breezy 750: 151 filled, 0 changed. Workable 1,179: 50
-filled, 0 changed (a multi-location posting repeats its shortcode once per
-location, each entry with its own code). Stored rows take it on their next
+corpora/review-fix/fields/country-main-vs-branch-vs-fix.json). iCIMS still
+calls icimsCountry. Measured on 18,054 rows of 329 feeds (Lever 8,000,
+iCIMS 5,832, Breezy 2,214, Workable 2,008;
+corpora/review-fix-2/fields/country-main-vs-head-vs-fix.json): 1,751
+filled where main stored none; 26 differ from main's value, 12 where main
+was wrong (6 Gabon and Colombia rows read US, 5 Richmond BC read SE, 1
+Maine-et-Loire read US) and 14 multi-place rows where both readings name a
+listed place and this one is the vendor's; the 12 rows the branch's code
+overrode return to main's reading. Not separable: "New Brunswick NJ
+(Rutgers Univ)" stated US still reads CA, as on main. Stored rows take it on their next
 visit; country is derived and never logged.
 
 ## n1426-our-reading-changed-window
@@ -22405,6 +22438,15 @@ measured) gets a floor inside the fence and keeps today's behaviour: no proof,
 no stamp, no lap receipt. Plan for that case, if it appears: prove per row
 (belowCapFloor alone) without writing the lap receipt `w`, so the observability
 bucket never claims a lap that could not see every served row.
+
+The stored-rows read selected posted_at but the mapping into existingRows
+dropped it (recheck, 2026-11-01), so belowCapFloor read every stored row as
+undated and a capped lap stamped nothing: the fix was dead. The mapping
+carries it now, and a test drives the shipped select, mapper and vanishedAll
+line together (every selected column is mapped; a capped Kroger lap stamps
+the row dated after the floor). Verify 99zzzz-board-reach FAILs a board that
+reads lap_proven while it still holds more than 10,300 open dated rows
+(open_roles less undated_open): a proof that closed nothing.
 
 ## n1431-ukg-adp-cursor
 
@@ -22590,35 +22632,25 @@ expansion at all, as before).
 
 ## n1461-a-location-read-as-the-filter-it-names
 
-In `supabase/functions/agent-mcp/query-place.ts`, above: `export function readLocation(`.
+In `supabase/functions/agent-mcp/index.ts`, beside `const FN_BUILD`.
 
-AGENT-MCP READS A LOCATION THAT IS ONLY A COUNTRY, ONLY REMOTE, OR "CITY,
-COUNTRY" AS THAT FILTER (S9-002, agent-mcp.2026-11-02.1). The prompts asked
-for "City, state, country or 'remote'" in location, and job-board matched it
-as one substring: live 2026-11-01 (q "software engineer"), "United States"
-1,959 of the 6,550 the board files in the US, "remote" 1,123 of the 1,953 it
-marks remote, "London, UK" 26 of 281, "Berlin, Germany" 8 of 54. readLocation
-moves a whole-location country name (job-board's COUNTRY_NAMES, held equal by
-a test) to country, a location that is remote/anywhere (with at most a
-country beside it) to remote: true, and "City, Country" to location City and
-that country; it never reads a state or metro the board knows, a string with
-several places (";", "|", "·"), a head with no letter, or a reading that
-contradicts the caller's own country, remote: false or another workMode (a
-country inside the caller's own list narrows the list to it, the intersection
-of the two). The answer says so in locationReadAs. The trade, measured
-(connector-measurement.json, 891 inputs over the same 1,755 rows): 345
-inputs read (12 country, 19 remote, 314 City, Country), 7,098 rows added on
-110 inputs with 0 outside the place, and 34 rows lost on 15 inputs: 14 are
-main's own false positives (Indiana for India; Ukraine, Milwaukee, Neukirch
-for UK; New Mexico for Mexico), 20 are rows whose stored remote flag or
-country contradicts their own location text ("US, CA, Remote" stored
-remote=false; multi-country postings filed GB). Live, all 15 headline inputs
-answer more (connector-live-counts.json): United States 1,959 -> 6,550 (16
-rows lost: country null on "United States of America" rows), remote 1,123 ->
-1,953 (79 lost: remote false on "Remote Kentucky"-style rows), UK 164 -> 647.
-Those ingest flags are the fields work's, not this reader's. The page's own
-location box stays literal: its intent Undo works only with a query, so the
-move lives in the connector, which discloses it.
+MEASURED AND DECLINED: AGENT-MCP SENDS THE LOCATION AS TYPED (S9-002,
+agent-mcp.2026-11-02.1). The round built readLocation, which moved a
+location that was only a country to country, only remote to remote: true,
+and "City, Country" to the city plus that country. It answered more on every
+headline input (live 2026-11-01, q "software engineer": United States 1,959
+-> 6,550, remote 1,123 -> 1,953, UK 164 -> 647) but lost rows main found:
+34 rows on 15 of 891 inputs over 1,755 live rows, and live 16 United States
+rows (country null on "United States of America") and 79 remote rows
+(remote false on "Remote Kentucky")
+(corpora/mcp/connector-measurement.json, connector-live-counts.json). A
+filter replaces the substring instead of adding to it, and the board has no
+OR of a filter and a substring, so no reading of this shape is never worse
+than main. The recheck (2026-11-01) held it to that bar: the argument goes
+to the board as typed, the prompts say "City, state, country or 'remote'."
+as main does, and the answer carries no locationReadAs. Revisit once the
+board can add a filter's rows to the substring's, or once the ingest fills
+country and remote on those rows.
 
 ## n1462-the-keyless-page-cap-where-every-keyless-answer-passes
 

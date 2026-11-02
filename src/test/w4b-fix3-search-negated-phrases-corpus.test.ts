@@ -29,11 +29,13 @@
  *
  * S12-017 (2026-11-01). The search project changed two shapes and nothing
  * else: a balanced quoted pair after "not" or "-" is one excluded phrase
- * (-"team lead"), and a requirement verb after "not" ("not requiring travel")
- * is not itself the excluded word. On every other query the answer is still
- * origin/main's, split and titles. On those two shapes the shipped answer is
- * right wherever main's is: 785 of the 1,191 right by label (20 more than
- * main, none fewer), and the self-break set is unchanged.
+ * (-"team lead"), and a requirement verb in its -ing form after "not" ("not
+ * requiring travel") is not itself the excluded word. On every other query the
+ * answer is still origin/main's, split and titles. On those two shapes the
+ * shipped answer is right wherever main's is: 784 of the 1,191 right by label
+ * (19 more than main, none fewer; the recheck of 2026-11-01 returned "nurse
+ * not requires travel" to main's reading with every other form of the verb),
+ * and the self-break set is unchanged.
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -136,11 +138,11 @@ describe("the shipped exclusion answers every self-break query exactly as origin
 });
 
 describe("the record of what main's rule gets wrong, for the separate search project", () => {
-  it("main answers 765 of the 1,191 right by label, as stored case by case; the shipped rule 785, none of main's lost", () => {
+  it("main answers 765 of the 1,191 right by label, as stored case by case; the shipped rule 784, none of main's lost", () => {
     expect(CASES.filter(mainRight).length).toBe(765);
     expect(FILE.meta.measured["origin/main"]).toBe(765);
     expect(CASES.filter((c) => mainRight(c) !== c.correct.main).map((c) => c.id)).toEqual([]);
-    expect(CASES.filter((c) => rightByLabel(c)).length).toBe(785);
+    expect(CASES.filter((c) => rightByLabel(c)).length).toBe(784);
     expect(CASES.filter((c) => mainRight(c) && !rightByLabel(c)).map((c) => c.id)).toEqual([]);
   });
 

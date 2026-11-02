@@ -112,8 +112,8 @@ describe("S13-077: a word hyphened onto a work mode leaves with it", () => {
   });
 });
 
-describe("S13-015: words no title holds search nothing, and the page says so", () => {
-  it.each(["jobs near me", "near me", "jobs hiring near me"])("%s: no text search, 'search words' named as not applied", async (q) => {
+describe("S13-015: a search for places near the searcher searches no words, and the page says so", () => {
+  it.each(["jobs near me", "near me", "jobs hiring near me", "jobs nearby", "openings around me"])("%s: no text search, 'search words' named as not applied", async (q) => {
     nurses();
     const r = await board.post({ action: "list", q, limit: 20, groupSimilar: false });
     expect(searched()).toEqual([]);
@@ -126,6 +126,15 @@ describe("S13-015: words no title holds search nothing, and the page says so", (
     expect(r.ignoredFilters ?? []).not.toContain("q");
     expect(searched().join(" ")).toMatch(/nurse/);
   });
+
+  // Live .96: "career" 7,616 title matches (Career Advisor, Career Coach), "employment" 996, "opening" 1,953 (recheck, 2026-11-01).
+  it.each(["career", "careers", "employment", "opening", "opportunity", "hiring", "vacancy", "jobs", "career opportunities", "employment opportunities", "jobs for me"])(
+    "%s: a filler-only query that asks for no place near the searcher keeps main's title search", async (q) => {
+      nurses();
+      const r = await board.post({ action: "list", q, limit: 20, groupSimilar: false });
+      expect(r.ignoredFilters ?? []).not.toContain("q");
+      expect(searched().length).toBeGreaterThan(0);
+    });
 });
 
 describe("S13-014: a number no stored title holds is a ZIP; it is dropped and named, and one a title holds is searched (n1414)", () => {
@@ -192,6 +201,32 @@ describe("S12-017: a quoted phrase is excluded whole, and a requirement verb is 
     const r = await board.post({ action: "list", q: "nurse not requiring travel", limit: 20, groupSimilar: false });
     expect(r.excludedTerms).toEqual(["travel"]);
     for (const t of searched()) expect(t).not.toMatch(/requir|travel/);
+  });
+
+  // A participle follows its noun ("CDL not required"), so the next word is not its object: main's one-word reading (recheck, 2026-11-01).
+  it.each([
+    ["cdl not required driver", ["required"], /driver/],
+    ["experience not needed warehouse", ["needed"], /warehouse/],
+    ["degree not included nurse", ["included"], /nurse/],
+  ])("%s: the participle is excluded, as on main, and the next word is still searched", async (q, ex, kept) => {
+    nurses();
+    const r = await board.post({ action: "list", q, limit: 20, groupSimilar: false });
+    expect(r.excludedTerms).toEqual(ex);
+    expect(searched().join(" | ")).toMatch(kept);
+  });
+
+  it("degree not required remote: the remote filter is still lifted and only 'required' is excluded, as on main", async () => {
+    nurses();
+    const r = await board.post({ action: "list", q: "degree not required remote", limit: 20, groupSimilar: false });
+    expect(r.excludedTerms).toEqual(["required"]);
+    expect(r.intentFilters).toContain("remote");
+  });
+
+  it("license not required part time: the part-time filter is still lifted, as on main", async () => {
+    nurses();
+    const r = await board.post({ action: "list", q: "license not required part time", limit: 20, groupSimilar: false });
+    expect(r.excludedTerms).toEqual(["required"]);
+    expect(r.excludedTerms).not.toContain("part");
   });
 });
 

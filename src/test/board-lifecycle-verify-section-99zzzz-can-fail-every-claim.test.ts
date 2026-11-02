@@ -51,7 +51,7 @@ process.stdout.write(out);
 const dirs: string[] = [];
 afterAll(() => { for (const d of dirs) { try { rmSync(d, { recursive: true, force: true }); } catch { /* best effort */ } } });
 
-function run(routes: Route[]): { lines: string[]; calls: string[]; out: string } {
+function run(routes: Route[], baseAt = new Date(Date.now() - 100 * 3_600_000).toISOString()): { lines: string[]; calls: string[]; out: string } {
   const dir = mkdtempSync(join(tmpdir(), "vd99zzzzbl-"));
   dirs.push(dir);
   mkdirSync(join(dir, "bin"));
@@ -64,7 +64,7 @@ function run(routes: Route[]): { lines: string[]; calls: string[]; out: string }
   const env: NodeJS.ProcessEnv = {
     ...process.env,
     PATH: `${join(dir, "bin")}:${dirname(process.execPath)}:${process.env.PATH ?? ""}`,
-    VD_ROUTES: join(dir, "routes.json"), VD_CALLS: join(dir, "calls.log"),
+    VD_ROUTES: join(dir, "routes.json"), VD_CALLS: join(dir, "calls.log"), VDBL_BASE_AT: baseAt,
     NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ""} --require ${join(dir, "nofetch.cjs")}`.trim(),
   };
   let out = "";
@@ -79,7 +79,7 @@ const FB = "https://p\\.supabase\\.co/functions/v1/job-board";
 const TOKENS = ["oreillyauto~wd1~oreilly", "cvshealth~wd1~CVS_Health_Careers", "ejwl~us2~CX", "dollartree~wd5~dollartreeus", "dominos"];
 const SERVED = ["greenhouse:gusto:1", "greenhouse:gusto:2", "greenhouse:gusto:3"];
 type Over = {
-  build?: string | null; sliceBuild?: string; sinceH?: number; superseded?: number[];
+  build?: string | null; sliceBuild?: string; sinceH?: number; superseded?: number[]; closed?: number[];
   ds?: Record<string, unknown> | null; served?: string[]; open?: Record<string, boolean> | null; rowTest?: unknown;
 };
 function routes(o: Over = {}): Route[] {
@@ -91,7 +91,7 @@ function routes(o: Over = {}): Route[] {
   return [
     { match: `^OPTIONS ${FB}$`, headers: build ? { "x-fn-build": build } : {} },
     { match: `^POST ${FB}\t.*"action":"status"`, body: JSON.stringify({ sliceStats: { build: o.sliceBuild ?? "2026-09-09.100", buildSince: iso((o.sinceH ?? 80) * H) }, ...(ds === null ? {} : { descSweep: ds }) }) },
-    { match: "^GET https://p\\.supabase\\.co/rest/v1/rpc/get_company_hiring_health\\?", body: JSON.stringify(TOKENS.map((t, i) => ({ company_token: t, closed_90d: 1_000 + i, superseded_90d: sup[i] }))) },
+    { match: "^GET https://p\\.supabase\\.co/rest/v1/rpc/get_company_hiring_health\\?", body: JSON.stringify(TOKENS.map((t, i) => ({ company_token: t, closed_90d: (o.closed ?? [1_691, 6_030, 4_100, 4_200, 47_000])[i], superseded_90d: sup[i] }))) },
     { match: `^POST ${FB}\t.*"action":"list"`, body: JSON.stringify({ jobs: served.map((id) => ({ id })) }) },
     { match: `^POST ${FB}\t.*"action":"exists"`, body: JSON.stringify(open === null ? { error: "boom" } : { open, ...("rowTest" in o ? (o.rowTest === undefined ? {} : { rowTest: o.rowTest }) : { rowTest: "served" }) }) },
   ];
@@ -106,8 +106,8 @@ describe("section 99zzzz passes a good deploy and fails each claim when it is fa
   it("a good deploy: the preflight and every claim PASS; nothing FAILs", () => {
     const { lines } = run(routes());
     expect(lines.some((l) => l.startsWith("FAIL")), lines.join("\n")).toBe(false);
-    expect(lines.filter((l) => l.startsWith("PASS")).length).toBe(4);
-    for (const t of ["L1", "L2", "L3"]) expect(verdict(lines, t)).toBe("PASS");
+    expect(lines.filter((l) => l.startsWith("PASS")).length).toBe(5);
+    for (const t of ["L1", "L1b", "L2", "L3"]) expect(verdict(lines, t)).toBe("PASS");
   });
 
   it("before .100 serves: one INFO and no board read", () => {
@@ -123,6 +123,30 @@ describe("section 99zzzz passes a good deploy and fails each claim when it is fa
   it("L1: every lapped board still at 0 superseded 72 h after .100 is a FAIL, and INFO before", () => {
     expect(verdict(run(routes({ superseded: [0, 0, 0, 0, 0], sinceH: 80 })).lines, "L1")).toBe("FAIL");
     expect(verdict(run(routes({ superseded: [0, 0, 0, 0, 0], sinceH: 10 })).lines, "L1")).toBe("INFO");
+  });
+
+  it("L1b: 30% of the new closures superseded on O'Reilly or CVS is a FAIL; too soon after a late deploy, a rolling window, a thin count or a missing board is INFO", () => {
+    // O'Reilly: base 1,291 closed; 600 superseded and 400 more closed is 600 of 1,000 new.
+    const hi = run(routes({ superseded: [600, 3, 0, 0, 41] })).lines;
+    expect(verdict(hi, "L1b"), hi.join("\n")).toBe("FAIL");
+    expect(hi.find((l) => /^FAIL  L1b /.test(l))).toMatch(/oreillyauto 600 of 1000/);
+    expect(verdict(run(routes({ superseded: [3, 3_100, 0, 0, 41] })).lines, "L1b")).toBe("FAIL");
+    // 199 of 599 is 33%: what a title-only build reads at a gap as long as its own run.
+    expect(verdict(run(routes({ superseded: [199, 3, 0, 0, 41] })).lines, "L1b")).toBe("FAIL");
+    expect(verdict(run(routes({ superseded: [100, 3, 0, 0, 41] })).lines, "L1b")).toBe("PASS");
+    // .100 first sliced 120 h after the base and has served 80 h: main's closures could still outweigh its own.
+    expect(verdict(run(routes({ superseded: [600, 3, 0, 0, 41] }), new Date(Date.now() - 200 * H).toISOString()).lines, "L1b")).toBe("INFO");
+    // 400 and 600 closures logged since the base, none superseded, but .100 has served 20 h of a 30 h gap: main's closures alone, never a PASS.
+    const early = run(routes({ superseded: [0, 0, 0, 0, 41], sinceH: 20 }), new Date(Date.now() - 50 * H).toISOString()).lines;
+    expect(verdict(early, "L1b"), early.join("\n")).toBe("INFO");
+    expect(early.find((l) => /^INFO  L1b /.test(l))).toMatch(/judged at 30 h/);
+    expect(verdict(run(routes({ superseded: [0, 0, 0, 0, 41], sinceH: 31 }), new Date(Date.now() - 61 * H).toISOString()).lines, "L1b")).toBe("PASS");
+    expect(verdict(run(routes({ superseded: [0, 0, 0, 0, 41], sinceH: 20 }), new Date(Date.now() - 21 * H).toISOString()).lines, "L1b")).toBe("INFO");
+    const rolled = run(routes({ superseded: [600, 3, 0, 0, 41], sinceH: 60 * 24 - 10 }), new Date(Date.now() - 60 * 24 * H).toISOString()).lines;
+    expect(verdict(rolled, "L1b")).toBe("INFO");
+    expect(rolled.find((l) => /^INFO  L1b /.test(l))).toMatch(/90-day window/);
+    expect(verdict(run(routes({ superseded: [90, 3, 0, 0, 41], closed: [1_341, 6_030, 4_100, 4_200, 47_000] })).lines, "L1b")).toBe("INFO");
+    expect(verdict(run(routes({ closed: [1_000, 6_030, 4_100, 4_200, 47_000] })).lines, "L1b")).toBe("INFO");
   });
 
   it("L2: missing keys, or a bare first_seen cursor written after the window, are FAILs; a null cursor is INFO", () => {

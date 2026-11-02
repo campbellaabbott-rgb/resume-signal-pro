@@ -678,7 +678,7 @@ const EXCLUSION_STOPWORDS: ReadonlySet<string> = new Set([
   "for", "the", "a", "an", "of", "in", "at", "to", "on",
 ]);
 
-const NOT_LEAD_VERB = /^(?:requir(?:e|es|ed|ing)|involv(?:e|es|ed|ing)|includ(?:e|es|ed|ing)|need(?:s|ed|ing)?)$/i;
+const NOT_LEAD_VERB = /^(?:requiring|involving|including|needing)$/i;
 
 export function splitExclusions(raw: string): { positive: string; excluded: string[] } {
   const text = String(raw ?? "").trim();

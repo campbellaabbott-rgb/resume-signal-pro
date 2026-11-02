@@ -21,7 +21,8 @@
  *   - Ollie's without lap_proven is INFO for 5 days, FAIL after;
  *   - an Oracle tenant without lap_proven is FAIL after 7 days only when its
  *     own row 9,999 is older than the fence; a floor inside the fence, or no
- *     row 9,999 at all, is INFO;
+ *     row 9,999 at all, is INFO; one with lap_proven that still holds more
+ *     open dated rows than a capped read can serve (10,000 plus 3%) is FAIL;
  *   - slice stats an older build wrote time nothing, a status with no
  *     buildSince and an unreadable fill curve are FAILs;
  *   - the key is never printed, every call to the board carries
@@ -106,14 +107,14 @@ const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 type Over = {
   build?: string | null; buildSince?: string | null; sliceBuild?: string; status?: string;
   wdTotal?: Record<string, number>; wdBody?: Record<string, string>; unknown?: string[];
-  buckets?: Record<string, string | null>; curve?: string; floors?: Record<string, string | null>;
+  buckets?: Record<string, string | null>; curve?: string; floors?: Record<string, string | null>; open?: Record<string, number>;
 };
 function routes(o: Over = {}): Route[] {
   const build = o.build === undefined ? "job-board.2026-09-09.100" : o.build;
   const since = o.buildSince === undefined ? ago(2) : o.buildSince;
   const status = o.status ?? JSON.stringify({ version: "2026-09-09.100", sliceStats: since === null ? {} : { build: o.sliceBuild ?? "2026-09-09.100", buildSince: since } });
   const bucket = (t: string) => (o.buckets && t in o.buckets ? o.buckets[t] : "lap_proven");
-  const curve = o.curve ?? JSON.stringify([OLL, ...Object.keys(ORA)].filter((t) => bucket(t) !== null).map((t) => ({ company_token: t, observability_bucket: bucket(t), open_roles: 100 })));
+  const curve = o.curve ?? JSON.stringify([OLL, ...Object.keys(ORA)].filter((t) => bucket(t) !== null).map((t) => ({ company_token: t, observability_bucket: bucket(t), open_roles: o.open?.[t] ?? 100, undated_open: 0 })));
   const out: Route[] = [
     { match: `^OPTIONS ${FB}$`, status: 204, headers: build ? { "x-fn-build": build } : {} },
     { match: `^POST ${FB}\\t\\{"action":"status"\\}`, body: status },
@@ -200,6 +201,13 @@ describe("section 99zzzz-board-reach: Workday first pages, UKG and Oracle laps",
     expect(hasLine(late.lines, "INFO", /Marriott \(ejwl~us2~CX\) reads bucket lap_pending, and its own feed served no row 9,999 .*not judged/), show(late.lines)).toBe(true);
     expect(hasLine(late.lines, "PASS", /AutoZone \(egud~us2~CX_1, Oracle\) has proven a lap/), show(late.lines)).toBe(true);
     expect(verdicts(late.lines, "FAIL").length, show(late.lines)).toBe(1);
+  });
+
+  it("an Oracle tenant whose lap proved but whose open rows stay above what a capped read serves is a FAIL (the lap closed nothing)", () => {
+    const { lines } = run(routes({ open: { "ejwl~us2~CX": 13_309, "eluq~us2~CX_1": 10_300 } }));
+    expect(hasLine(lines, "FAIL", /Marriott \(ejwl~us2~CX, Oracle\) reads bucket lap_proven but still holds 13309 open rows .*closed nothing/), show(lines)).toBe(true);
+    expect(hasLine(lines, "PASS", /Kroger \(eluq~us2~CX_1, Oracle\) has proven a lap at the 10,000 cap \(bucket lap_proven\) and holds 10300 open dated rows/), show(lines)).toBe(true);
+    expect(verdicts(lines, "FAIL").length, show(lines)).toBe(1);
   });
 
   it("never dates this build by slice stats an older build wrote", () => {

@@ -139,6 +139,20 @@ describe("the vendor's country (S13-032)", () => {
     expect(icimsCountry("FR", "KCMO, MO")).toBe("US");
     expect(lever("CA", "3388 Sweden Way, Richmond, BC")).toBe("CA");
   });
+  // Fresh feeds, 2026-11-01 (corpora/recheck/raw; measured in corpora/review-fix-2/fields): main read the place, the code named elsewhere.
+  it("a place that names other countries in words and not the code's keeps main's reading of the place (n1425)", () => {
+    const lever = (country: string, location: string, all?: string[]) =>
+      normalizeLever([{ id: "a", text: "Evaluator", hostedUrl: "https://jobs.lever.co/t/a", country, categories: { location, ...(all ? { allLocations: all } : {}) } }], "Co", "t")[0].country;
+    expect(lever("CN", "Hong Kong", ["Hong Kong"])).toBe("HK");
+    expect(lever("GB", "EMEA", ["EMEA", "Ireland", "Portugal"])).toBe("IE");
+    // A code the place's own state or province agrees with still holds against a country word in a street name.
+    expect(lever("CA", "3388 Sweden Way, Richmond, BC")).toBe("CA");
+    // A foreign code that reads as a US state code still holds where the place names no country in words.
+    const breezy = (id: string, name: string) => normalizeBreezy([{ id: "b", name: "Comptable", url: "https://x.breezy.hr/p/b", location: { name, country: { id } } }], "Co", "t")[0].country;
+    expect(breezy("GA", "Libreville, GA")).toBe("GA");
+    expect(breezy("CO", "Bogotá, CO")).toBe("CO");
+    expect(breezy("FI", "Kuopio, FI")).toBe("FI");
+  });
   it("Workable, per location entry", () => {
     const [w] = normalizeWorkable({ jobs: [{ title: "Analyst", shortcode: "AB12", city: "Riga", state: "Riga", country: "Latvia", locations: [{ countryCode: "LV" }] }] }, "Co", "t");
     expect(w.country).toBe("LV");

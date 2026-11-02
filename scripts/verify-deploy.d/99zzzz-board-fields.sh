@@ -19,8 +19,10 @@
 #     INFO and every other line waits for it;
 #   - no Domino's delivery row is filed Expert on a figure of 15 to 21 years
 #     (an age or a story), against a control that the board serves delivery rows;
-#   - Breezy pay: national-assemblers-inc serves a row with stated pay and an
-#     annual figure;
+#   - Breezy pay: national-assemblers-inc serves at least 40% of its rows
+#     with stated pay and an annual figure (its feed states pay on 157 of 238,
+#     154 of the 237 inside the fence parse to one; .96, which mines pay only
+#     from descriptions, served 4 of 60);
 #   - Breezy type and country: staffmill-oy serves at least 80% of its rows
 #     typed and 95% with a country (most say only "Kuopio, FI");
 #   - Recruitee type: nozrecrute serves at least half its rows typed
@@ -29,7 +31,15 @@
 #   - Lever country: insomniacookies serves 95% of its rows with a country
 #     (one corpus posting in 1,110 states none);
 #   - Workable country: utopia-life-worth-living serves 95% with a country;
-#   - Personio type: metzen serves an internship row;
+#   - Lever country: trailappliances' rows placed "..., BC" all read CA, the
+#     code Lever states and the place's own province backs, though "3388
+#     Sweden Way" names a country in words (.96 read SE on 5 of them);
+#   - Lever type: gojob files at most 25% of its rows contract (58 of its 78
+#     feed postings say "Permanent Contract", a CDI, which stays unfiled);
+#   - Personio type: a posting one of four named boards' own feeds lists as
+#     intern or trainee on a full-time schedule, created inside 25 days, is
+#     served filed internship (.96 filed all six such postings full_time). No
+#     such posting on any of the four is INFO;
 #   - Lever text: a tryjeeves row first seen after the first slice reads its
 #     first requirement list item, and its opening once, against Lever's own
 #     posting (INFO while no row is that new);
@@ -41,7 +51,7 @@
 #
 # READ-ONLY. One OPTIONS preflight; job-board status, list and detail reads
 # sent with x-rb-budget: probe; GETs to the vendors' own public feeds and
-# pages (one Lever posting, two Personio feeds, up to three Paylocity pages),
+# pages (one Lever posting, up to six Personio feeds, up to three Paylocity pages),
 # paced 1.2 s apart.
 echo "== 99zzzz. Board fields: vendor-stated pay, type and country reach the row; an age or a story is not a years floor =="
 
@@ -51,7 +61,7 @@ if [ -z "$VDBF_H" ]; then echo "FAIL  job-board preflight carries no x-fn-build 
 elif build_ge job-board "$VDBF_H" "2026-09-09" "100"; then echo "PASS  job-board preflight x-fn-build = $VDBF_H (job-board.2026-09-09.100 or later: the build that reads these fields)"; VDBF_LIVE=1
 else echo "INFO  job-board preflight x-fn-build = $VDBF_H: job-board.2026-09-09.100 is not serving yet, so the field lines wait for it"; fi
 
-VDBF_BOARDS='[["breezy","national-assemblers-inc","pay"],["breezy","staffmill-oy","typecountry"],["recruitee","nozrecrute","type50"],["bamboohr","qualitymoments","type80"],["lever","insomniacookies","country"],["workable","utopia-life-worth-living","country"],["personio","metzen","intern"]]'
+VDBF_BOARDS='[["breezy","national-assemblers-inc","pay"],["breezy","staffmill-oy","typecountry"],["recruitee","nozrecrute","type50"],["bamboohr","qualitymoments","type80"],["lever","insomniacookies","country"],["workable","utopia-life-worth-living","country"],["lever","trailappliances","bcca"],["lever","gojob","notcontract"]]'
 VDBF_PAYLOCITY='[["d046f154-8f5e-484e-ad23-2a0db3d29231","4218310"],["dcf0d29a-5748-4108-9599-cfa1954ec1f9","4074014"],["c719c45a-5165-498d-828c-fa725512b89a","4577929"]]'
 
 if [ "$VDBF_LIVE" = 1 ]; then
@@ -96,12 +106,13 @@ BOARDS.forEach(([v,t,kind],i)=>{
   const read_=Number.isFinite(stamp)&&Number.isFinite(since)&&ours&&stamp>=since;
   const n=J.length,count=(f)=>J.filter(f).length;
   let ok,say;
-  if(kind==="pay"){const k=count((r)=>r.salary&&typeof r.salaryMinAnnual==="number"&&r.salaryMinAnnual>0);ok=k>0;say=k+" of "+n+" rows carry the stated pay with an annual figure"}
+  if(kind==="pay"){const k=count((r)=>r.salary&&typeof r.salaryMinAnnual==="number"&&r.salaryMinAnnual>0);ok=k>=0.4*n;say=k+" of "+n+" rows carry the stated pay with an annual figure (want 40%)"}
   else if(kind==="typecountry"){const a=count((r)=>r.employmentType),c=count((r)=>r.country);ok=a>=0.8*n&&c>=0.95*n;say=a+" of "+n+" rows typed (want 80%), "+c+" of "+n+" with a country (want 95%)"}
   else if(kind==="type50"){const a=count((r)=>r.employmentType);ok=a>=0.5*n;say=a+" of "+n+" rows typed (want half)"}
   else if(kind==="type80"){const a=count((r)=>r.employmentType);ok=a>=0.8*n;say=a+" of "+n+" rows typed (want 80%)"}
   else if(kind==="country"){const c=count((r)=>r.country);ok=c>=0.95*n;say=c+" of "+n+" rows with a country (want 95%)"}
-  else if(kind==="intern"){const a=count((r)=>r.employmentType==="internship");ok=a>0;say=a+" of "+n+" rows filed internship"}
+  else if(kind==="bcca"){const bc=J.filter((r)=>/,\s*BC\b/.test(String(r.location||"")));const off=bc.filter((r)=>r.country!=="CA");ok=bc.length>0&&!off.length;say=(bc.length-off.length)+" of "+bc.length+" rows placed in BC read CA"+(off.length?" ("+JSON.stringify(off.slice(0,2).map((r)=>[r.location,r.country]))+")":"")}
+  else if(kind==="notcontract"){const a=count((r)=>r.employmentType==="contract");ok=a<=0.25*n;say=a+" of "+n+" rows filed contract (want 25% or fewer)"}
   const read_say=Number.isFinite(stamp)?"read "+((Date.now()-stamp)/3600000).toFixed(1)+" h ago":"no read stamp on its rows";
   if(read_)console.log((ok?"PASS":"FAIL")+"  "+v+" board "+t+": "+say+" ("+read_say+", after the first slice of this build)");
   else if(late)console.log("FAIL  "+v+" board "+t+" has not been read by this build 24 h after its first slice ("+read_say+"): "+say);
@@ -133,6 +144,35 @@ else{const li=(P.lists||[]).map((l)=>/<li>([\s\S]*?)<\/li>/.exec(String(l&&l.con
  if(!item)console.log("INFO  Lever posting "+id+" has no list item to look for");
  else console.log((d.includes(item)&&times===1?"PASS":"FAIL")+"  Lever row "+id+", first seen after this build, stores its first list item ("+JSON.stringify(item)+": "+(d.includes(item)?"present":"MISSING")+") and its opening "+times+" time(s) (want 1)")}
 ' || echo "FAIL  99zzzz Lever judge threw"
+  fi
+
+  # Personio: a posting its own feed lists as intern or trainee, full-time, created inside 25 days.
+  VDBF_IN=""
+  for VDBF_T in mynaric buddyfit flemming-dental adeor; do
+    [ -n "$VDBF_IN" ] && break
+    sleep 1.2
+    rm -f /tmp/vd_bf_pin.xml
+    curl -s -m 60 "https://$VDBF_T.jobs.personio.de/xml" > /tmp/vd_bf_pin.xml
+    VDBF_IN=$(VDBF_T="$VDBF_T" node -e '
+const fs=require("fs");let x="";try{x=fs.readFileSync("/tmp/vd_bf_pin.xml","utf8")}catch{}
+const g=(b,t)=>(new RegExp("<"+t+">\\s*([^<]*?)\\s*</"+t+">").exec(b)||[])[1]||"";
+const hit=(x.match(/<position>[\s\S]*?<\/position>/g)||[]).find((b)=>/^(intern|trainee)$/.test(g(b,"employmentType"))&&!/part/.test(g(b,"schedule"))&&Date.now()-Date.parse(g(b,"createdAt"))<25*86400000);
+if(hit)console.log(process.env.VDBF_T+"|"+g(hit,"id")+"|"+g(hit,"employmentType"));')
+  done
+  if [ -z "$VDBF_IN" ]; then echo "INFO  none of mynaric, buddyfit, flemming-dental and adeor lists an intern or trainee posting on a full-time schedule created inside 25 days, so the Personio type line has nothing to judge"
+  else
+    VDBF_PT=${VDBF_IN%%|*}
+    J "{\"action\":\"list\",\"companies\":[\"$VDBF_PT\"],\"vendor\":[\"personio\"],\"groupSimilar\":false,\"includeFacets\":false,\"limit\":60}" > /tmp/vd_bf_pinlist.json
+    VDBF_H="$VDBF_H" VDBF_IN="$VDBF_IN" node -e '
+const fs=require("fs");const E=process.env;const read=(f)=>{try{return JSON.parse(fs.readFileSync(f,"utf8"))}catch{return null}};
+const [t,pid,et]=E.VDBF_IN.split("|");const id="personio:"+t+":"+pid;const S=read("/tmp/vd_bf_status.json"),L=read("/tmp/vd_bf_pinlist.json");
+const ss=S&&S.sliceStats||{};const ours=ss.build===String(E.VDBF_H||"").replace(/^job-board\./,"");const since=ours?Date.parse(ss.buildSince||""):NaN;
+const ageH=Number.isFinite(since)?(Date.now()-since)/3600000:null;const late=ageH!==null&&ageH>=24;
+const row=L&&Array.isArray(L.jobs)?L.jobs.find((r)=>r&&r.id===id):undefined;const stamp=row?Date.parse(row.recheckedAt||""):NaN;
+if(!L||!Array.isArray(L.jobs))console.log("FAIL  the personio list for "+t+" is unreadable: "+JSON.stringify(L).slice(0,160));
+else if(!row)console.log((late?"FAIL":"INFO")+"  "+id+" (the feed\u2019s "+et+", full-time) is not served by the board"+(late?" 24 h after the first slice of this build":" yet"));
+else if(!(Number.isFinite(stamp)&&Number.isFinite(since)&&stamp>=since))console.log((late?"FAIL":"INFO")+"  "+id+" is filed "+row.employmentType+", but the board has not read "+t+" since this build\u2019s first slice"+(late?" (24 h after it)":""));
+else console.log((row.employmentType==="internship"?"PASS":"FAIL")+"  "+id+", which its feed lists as "+et+" on a full-time schedule, is filed "+row.employmentType+" (want internship; read after the first slice of this build)");' || echo "FAIL  99zzzz Personio type judge threw"
   fi
 
   # Personio: a posting empty in the default feed, read through the board's detail action.

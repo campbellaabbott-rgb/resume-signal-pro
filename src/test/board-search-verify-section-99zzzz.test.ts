@@ -113,6 +113,7 @@ const routed = (route: string, company: string | null) =>
 type Over = {
   build?: string | null; mcp?: string | null; api?: string | null;
   phrase?: string; verb?: string; noremote?: string; rf?: string[]; rp?: string[]; nearme?: string; zip?: string;
+  participle?: string; hh?: string; hp?: string; career?: string; iso?: string;
   cvs?: string[]; m3?: string[]; browse?: string; ranked?: string; walk?: Record<number, string>;
 };
 const q = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -128,6 +129,11 @@ function routes(o: Over = {}): Route[] {
     { match: `^OPTIONS ${FN}public-api$`, status: 204, headers: api ? { "x-fn-build": api } : {} },
     { match: ask('supervisor -\\"team lead\\"'), body: o.phrase ?? list([job("Supervisor, Lead Generation"), job("Shift Supervisor")], { excludedTerms: ["team lead"] }) },
     { match: ask("nurse not requiring travel"), body: o.verb ?? list([job("Registered Nurse"), job("Nurse Practitioner")], { excludedTerms: ["travel"] }) },
+    { match: ask("cdl not required driver"), body: o.participle ?? list([job("CDL Driver")], { excludedTerms: ["required"] }) },
+    { match: ask("medical coder-remote"), body: o.hh ?? list([job("Medical Coder")], { intentFilters: ["remote"], total: 412 }) },
+    { match: ask("medical coder remote"), body: o.hp ?? list([job("Medical Coder")], { intentFilters: ["remote"], total: 412 }) },
+    { match: ask("career"), body: o.career ?? list([job("Career Advisor"), job("Career Coach")]) },
+    { match: ask("quality engineer iso 13485"), body: o.iso ?? list([job("Quality Engineer - ISO 13485")]) },
     { match: ask("no remote nurse"), body: o.noremote ?? list([job("Registered Nurse"), job("Charge Nurse")], { excludedTerms: ["remote"] }) },
     { match: ask("remote-first engineer"), bodies: o.rf ?? [list([job("Platform Engineer")], { intentFilters: ["remote"], total: 8628 })] },
     { match: ask("remote engineer"), bodies: o.rp ?? [list([job("Platform Engineer")], { intentFilters: ["remote"], total: 8628 })] },
@@ -156,12 +162,13 @@ describe("section 99zzzz: the search reads what was typed", () => {
     const pass = verdicts(lines, "PASS");
     for (const re of [/x-fn-build = job-board\.2026-09-09\.100/, /x-fn-build = agent-mcp\.2026-11-02\.1/, /x-fn-build = public-api\.2026-11-02\.1/,
       /supervisor -"team lead" excludes \["team lead"\] and none of its 2 titles/, /nurse not requiring travel excludes \["travel"\]/, /no remote nurse excludes remote/,
+      /cdl not required driver excludes \["required"\] only/, /medical coder-remote lifts the remote filter and counts 412/, /career keeps main.s title search/, /quality engineer iso 13485 keeps 13485 searched/,
       /remote-first engineer lifts the remote filter and counts 8628, exactly what remote engineer counts/, /jobs near me searches no words/, /nurse 94105 drops the ZIP/,
       /cvs and 3m route to CVS Health and 3M on all 6 asks/, /location Wien browses 2 rows/, /engineer in Wien ranks 3 rows, .* 1 of them named Vienna/,
       /seam walk for nurse \(limit 50\) served 4 full pages to nextOffset 243/]) {
       expect(pass.some((l) => re.test(l)), `${re}\n${show(lines)}`).toBe(true);
     }
-    expect(pass.length).toBe(13);
+    expect(pass.length).toBe(17);
     expect(lines[0]).toMatch(/^== 99zzzz\. /);
   });
 
@@ -199,9 +206,21 @@ describe("section 99zzzz: the search reads what was typed", () => {
     failsWith({ verb: list([job("Registered Nurse Travel RN")], { excludedTerms: ["travel"] }) }, /names travel excluded but serves \["Registered Nurse Travel RN"\]/);
   });
 
-  it("FAILs a negated remote dropped as filler with remote nurses served", () => {
+  it("FAILs a negated remote dropped as filler with remote nurses served; a title that says it is not remote passes", () => {
     failsWith({ noremote: list([job("Triage Nurse | Remote")], { droppedTerms: ["no"] }) }, /no remote nurse: excludedTerms is null, not naming remote/);
     failsWith({ noremote: list([job("Nurse Practitioner (Remote)")], { excludedTerms: ["remote"] }) }, /names remote excluded but serves \["Nurse Practitioner \(Remote\)"\]/);
+    failsWith({ noremote: list([job("RN (Not Remote)"), job("Remote RN Case Manager")], { excludedTerms: ["remote"] }) }, /serves \["Remote RN Case Manager"\]/);
+    const kept = run(routes({ noremote: list([job("Staff Nurse I (Not Remote)"), job("NON-REMOTE Charge Nurse"), job("Nurse - Remote: No")], { excludedTerms: ["remote"] }) }));
+    expect(hasLine(kept.lines, "PASS", /no remote nurse excludes remote and none of its 3 titles says remote/), show(kept.lines)).toBe(true);
+  });
+
+  it("FAILs a participle's next word excluded, a head word dropped before a hyphened mode, a title word cleared as filler, and a held number dropped as a ZIP", () => {
+    failsWith({ participle: list([job("CDL Instructor")], { excludedTerms: ["driver"] }) }, /cdl not required driver excludes \["driver"\] \(want \["required"\]/);
+    failsWith({ hh: list([job("Medical Biller")], { intentFilters: ["remote"], total: 9120 }) }, /medical coder-remote counts 9120 and medical coder remote 412/);
+    failsWith({ hh: list([job("Medical Coder")], { total: 3 }) }, /medical coder-remote lifts null \(want the remote filter\)/);
+    failsWith({ career: list([job("Cashier")], { ignoredFilters: ["q"] }) }, /career: ignoredFilters names q/);
+    failsWith({ career: list([]) }, /career keeps q but served no row/);
+    failsWith({ iso: list([job("Quality Engineer")], { droppedTerms: ["13485"] }) }, /quality engineer iso 13485 drops 13485 as a ZIP/);
   });
 
   it("FAILs a hyphened word left as a NOT, judged by the two totals asked twice; a drift that agrees on the second ask is a PASS", () => {
@@ -279,7 +298,7 @@ describe("section 99zzzz: the search reads what was typed", () => {
     const { out, calls } = run(routes());
     expect(out).not.toContain(KEY);
     const fns = calls.filter((c) => /functions\/v1\//.test(c));
-    expect(fns.length).toBe(3 + 7 + 6 + 2 + 4);
+    expect(fns.length).toBe(3 + 12 + 6 + 2 + 4);
     for (const c of fns) expect(c, c).toMatch(/headers:.*x-rb-budget: probe/);
     const posts = calls.filter((c) => /^curl\tPOST /.test(c));
     for (const p of posts) expect(p, p).toMatch(new RegExp(`^curl\\tPOST ${FB}\\t\\{"action":"list"`));

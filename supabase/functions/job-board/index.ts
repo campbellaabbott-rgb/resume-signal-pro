@@ -3543,6 +3543,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             region_code: r.region_code ?? null,
             // Rationale: docs/job-board-index-notes.md#n597-first_seen-r-as-first_seen-string-null
             first_seen: (r as { first_seen?: string | null }).first_seen ?? null,
+            posted_at: r.posted_at ?? null, // the cap floor reads it (n1430)
             // Rationale: docs/job-board-index-notes.md#n598-lap_epoch-r-as-lap_epoch-number-null
             lap_epoch: (r as { lap_epoch?: number | null }).lap_epoch ?? null,
           })));
@@ -9229,9 +9230,9 @@ async function serveList(
     : preFilters;
   for (const f of textShape.ignored) if (!ignoredFilters.includes(f)) ignoredFilters.push(f);
   body = await withoutZips(client, body);
-  // S13-015: words no title holds ("jobs near me") search nothing; an unlifted query says so (n1413).
+  // S13-015: filler asking for places near the searcher ("jobs near me") searches nothing, said (n1413).
   const qWords = queryTerms(body.q).terms;
-  if (qWords.length && qWords.every((t) => QUERY_FILLER.has(t))) {
+  if (qWords.every((t) => QUERY_FILLER.has(t)) && (qWords.includes("nearby") || (qWords.includes("me") && qWords.some((t) => t === "near" || t === "around" || t === "close")))) {
     body = { ...body, q: "" };
     if (!intentLift?.labels.length && !ignoredFilters.includes("q")) ignoredFilters.push("q");
   }
