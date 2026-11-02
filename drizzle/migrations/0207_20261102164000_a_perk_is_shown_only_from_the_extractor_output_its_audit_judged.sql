@@ -1,0 +1,1 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_staging WHERE name = '20261102164000_a_perk_is_shown_only_from_the_extractor_output_its_audit_judged'));

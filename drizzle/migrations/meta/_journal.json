@@ -1401,6 +1401,62 @@
       "when": 1793472582789,
       "tag": "0199_20261026110000_six_icims_boards_keep_only_their_own_brand_or_hirer",
       "breakpoints": true
+    },
+    {
+      "idx": 200,
+      "version": "7",
+      "when": 1793636849250,
+      "tag": "0200_20261025100000_a_board_named_by_its_logo_or_a_site_label_takes_the_name_its_employer_uses",
+      "breakpoints": true
+    },
+    {
+      "idx": 201,
+      "version": "7",
+      "when": 1793636858663,
+      "tag": "0201_20261026100000_eighty_more_boards_print_the_name_their_employer_uses",
+      "breakpoints": true
+    },
+    {
+      "idx": 202,
+      "version": "7",
+      "when": 1793636868520,
+      "tag": "0202_20261030100000_the_boards_named_after_the_deploy_are_renamed_on_the_next_pass",
+      "breakpoints": true
+    },
+    {
+      "idx": 203,
+      "version": "7",
+      "when": 1793636896017,
+      "tag": "0203_20261101100000_the_score_benchmark_is_one_scorers_in_one_vocabulary",
+      "breakpoints": true
+    },
+    {
+      "idx": 204,
+      "version": "7",
+      "when": 1793636903095,
+      "tag": "0204_20261101110000_a_seniority_correction_is_recorded_within_a_budget",
+      "breakpoints": true
+    },
+    {
+      "idx": 205,
+      "version": "7",
+      "when": 1793636929998,
+      "tag": "0205_20261101150000_a_feedback_vote_the_budget_skipped_is_never_thanked",
+      "breakpoints": true
+    },
+    {
+      "idx": 206,
+      "version": "7",
+      "when": 1793636952115,
+      "tag": "0206_20261102100000_a_city_typed_in_its_own_language_is_searched_in_its_own_country",
+      "breakpoints": true
+    },
+    {
+      "idx": 207,
+      "version": "7",
+      "when": 1793636959298,
+      "tag": "0207_20261102164000_a_perk_is_shown_only_from_the_extractor_output_its_audit_judged",
+      "breakpoints": true
     }
   ]
 }
