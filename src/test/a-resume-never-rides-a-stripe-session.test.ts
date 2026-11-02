@@ -577,7 +577,9 @@ describe("the numbers the page prints are the numbers the code enforces", () => 
   });
 
   it("the emails state the same clocks the page does, and promise nothing for ever", () => {
-    const analysisMail = codeOf(read("supabase/functions/send-analysis-email/index.ts"));
+    // The mail's words live in its copy table since it speaks the buyer's
+    // language (FA-1); the English line is the one this guard reads.
+    const analysisMail = codeOf(read("supabase/functions/send-analysis-email/index.ts")) + codeOf(read("supabase/functions/send-analysis-email/copy.ts"));
     const days = /This link works for (\d+) days from the day your analysis was made/.exec(analysisMail);
     expect(days, "the analysis email's clock line moved -- point this guard at it").toBeTruthy();
     expect(Number(days![1])).toBe(SHARED_ANALYSIS_DAYS);

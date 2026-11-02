@@ -58,6 +58,7 @@ import { parseEdgeFunctionError } from "@/lib/edge-function-errors";
 import { AIGenerationProgress } from "@/components/AIGenerationProgress";
 import { CREDITS_UPDATED_EVENT, fetchProvenCredits, rememberCreditSession } from "@/hooks/use-scan-credits";
 import { maskEmail, stashedSessionIdFor } from "@/lib/auth-fragment";
+import { VERIFY_REFUSAL_RETRIES, type VerifyRefusal, openPage, productPageForPaste, verifyRefusalOf } from "@/lib/purchase-verify-refusal";
 import { AUTH_SUPPORT_EMAIL } from "@/config/auth-providers";
 
 // Map product keys to icons
@@ -183,6 +184,13 @@ export default function ProductSuccess() {
   const [searchParams] = useSearchParams();
   const [isVerifying, setIsVerifying] = useState(true);
   const [verificationError, setVerificationError] = useState<string | null>(null);
+  // Why verify-product-purchase refused (S13-048): only an answer that asking
+  // again can change offers Try again, and none says "your purchase is safe"
+  // to a refunded, withdrawn or unpaid one.
+  const [verifyRefusal, setVerifyRefusal] = useState<VerifyRefusal>('unknown');
+  // A pasted purchase link (S13-128, and a link verify could not read).
+  const [pastedReference, setPastedReference] = useState("");
+  const [pasteRefused, setPasteRefused] = useState(false);
   const [generatedContent, setGeneratedContent] = useState<KeywordData | CoverLetterData | PremiumPackageData | ATSDefenseData | null>(null);
   const [atsDefenseData, setAtsDefenseData] = useState<ATSDefenseData | null>(null);
   // Captured alongside atsDefenseData so ATSDefenseResults can run the same
@@ -300,6 +308,9 @@ export default function ProductSuccess() {
 
   // Regenerate content with provided resume text
   const regenerateContent = useCallback(async (resumeText: string, jobDescription?: string, targetRoles?: string[]) => {
+    // No purchase reference, nothing to generate for (S13-128): every
+    // generator refuses a request that names no purchase.
+    if (!sessionId) return false;
     if (!resumeText || resumeText.length < 50) {
       toast({
         title: "Resume too short",
@@ -644,11 +655,29 @@ export default function ProductSuccess() {
 
         if (error) {
           console.error('Verification error:', error);
+          setVerifyRefusal(await verifyRefusalOf(error));
           setVerificationError(error.message);
           setIsVerifying(false);
           return;
         }
         setBuyerEmailOnFile(Boolean(data?.customerEmail));
+        // A SALE ONLY ONCE (S13-130): in the tab that started the checkout, or
+        // when this answer was the purchase's first use. The purchase email
+        // opened again, here or on another device, is a revisit; the scan
+        // pack and the Coach / Career Path branches below recorded every one.
+        // A scan pack counts what it bought at the catalogue's price a credit,
+        // not the catalogue's 10-credit $2 whatever was chosen.
+        let scanCreditsBought = 0;
+        const countSale = () => {
+          if (!productKey || !product) return;
+          if (!(reachedInThisTab('checkout_started') || data?.isFirstUse !== false)) return;
+          const perPack = (product as { credits?: number }).credits;
+          const value = productKey === 'scanPack' && scanCreditsBought > 0 && perPack
+            ? Math.round((scanCreditsBought * product.priceUsd / perPack) * 100) / 100
+            : product.priceUsd;
+          recordPurchase(productKey, value, sessionId);
+          clearReferralCode();
+        };
         // The roles an ATS Defense buyer named at checkout (S11-074): the
         // recovery form starts from them, and a fallback generation sends them.
         const boughtRoles: string[] = Array.isArray(data?.targetRoles)
@@ -717,7 +746,8 @@ export default function ProductSuccess() {
             : proven?.email
               ? (proven.signedIn && proven.mailboxProven ? proven.email : maskEmail(proven.email))
               : '';
-          setScanCreditsResult({ credits: proven?.bought || fromContent, email: shownEmail });
+          scanCreditsBought = proven?.bought || fromContent;
+          setScanCreditsResult({ credits: scanCreditsBought, email: shownEmail });
           window.dispatchEvent(new CustomEvent(CREDITS_UPDATED_EVENT));
         }
 
@@ -752,10 +782,7 @@ export default function ProductSuccess() {
         }
         if (productKey === 'scanPack' && data?.generatedContent) {
           setGeneratedContent(data.generatedContent);
-          if (productKey && product) {
-            recordPurchase(productKey, product.priceUsd, sessionId);
-            clearReferralCode();
-          }
+          countSale();
           setIsVerifying(false);
           return;
         }
@@ -956,10 +983,7 @@ export default function ProductSuccess() {
           }
         }
         
-        if (productKey && product) {
-          recordPurchase(productKey, product.priceUsd, sessionId);
-          clearReferralCode();
-        }
+        countSale();
       } catch (err) {
         console.error('Verification failed:', err);
         setVerificationError('Failed to verify purchase');
@@ -1152,6 +1176,75 @@ export default function ProductSuccess() {
       <Header />
       
       <main className="pt-16 pb-20">
+        {/* NO REFERENCE, OR A REFUSAL (S13-128, S13-048): no "Payment
+            Successful" or "Thank You" over a link that names no purchase or
+            one verify refused; the reason, and what can open it. */}
+        {(!sessionId || (verificationError && !isVerifying)) ? (
+          <section className="py-12" data-testid={!sessionId ? "no-purchase-reference" : "purchase-refusal"}>
+            <div className="container max-w-2xl">
+              <div className="p-8 rounded-2xl bg-muted/50 border border-border text-center">
+                <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
+                <h1 className="text-2xl font-bold mb-2">
+                  {!sessionId ? t('productSuccess.noReference.title', 'This link is missing its purchase reference')
+                    : verifyRefusal === 'rate_limited' ? t('productSuccess.refusal.rateLimited.title', 'Too many checks just now')
+                    : verifyRefusal === 'refunded' ? t('productSuccess.refusal.refunded.title', 'This purchase was refunded')
+                    : verifyRefusal === 'withdrawn' ? t('productSuccess.refusal.withdrawn.title', 'This purchase is no longer available')
+                    : verifyRefusal === 'unpaid' ? t('productSuccess.refusal.unpaid.title', "This payment hasn't completed")
+                    : verifyRefusal === 'not_found' ? t('productSuccess.refusal.notFound.title', "We couldn't find this purchase")
+                    : t('productSuccess.couldNotVerify')}
+                </h1>
+                <p className="text-muted-foreground mb-6">
+                  {!sessionId ? t('productSuccess.noReference.body', 'A purchase opens from the link in its email, which carries a purchase reference. Paste that link, or the reference itself, below. Nothing here charges you again.')
+                    : verifyRefusal === 'rate_limited' ? t('productSuccess.refusal.rateLimited.body', 'This purchase was checked too many times in the last hour. Nothing is wrong with it. Try again in a few minutes.')
+                    : verifyRefusal === 'refunded' ? t('productSuccess.refusal.refunded.body', 'The payment for this purchase was refunded, so it no longer opens. If you think this is a mistake, reply to your purchase email.')
+                    : verifyRefusal === 'withdrawn' ? t('productSuccess.refusal.withdrawn.body', 'It came with a plan that is no longer active, or the payment behind it was refunded, so it no longer opens. If you think this is a mistake, contact support.')
+                    : verifyRefusal === 'unpaid' ? t('productSuccess.refusal.unpaid.body', "The payment has not been confirmed. Some bank payments take a few days, and you'll get an email when it goes through. If you left the checkout before paying, nothing was charged.")
+                    : verifyRefusal === 'not_found' ? t('productSuccess.refusal.notFound.body', "This link doesn't match a purchase we can read: it may be cut short or have expired. Paste the whole link from your purchase email below, or contact support.")
+                    : t('productSuccess.couldNotVerifyDescription')}
+                </p>
+                {(!sessionId || verifyRefusal === 'not_found') && (
+                  <form
+                    className="space-y-3 text-left mb-6"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const href = productPageForPaste(pastedReference, productKey);
+                      if (!href) { setPasteRefused(true); return; }
+                      openPage(href);
+                    }}
+                  >
+                    <label htmlFor="purchase-reference" className="text-sm font-medium">
+                      {t('productSuccess.noReference.pasteLabel', 'Your purchase link or reference')}
+                    </label>
+                    <Input
+                      id="purchase-reference"
+                      type="text"
+                      value={pastedReference}
+                      onChange={(e) => { setPastedReference(e.target.value); setPasteRefused(false); }}
+                      placeholder={t('productSuccess.recovery.sessionIdPlaceholder')}
+                    />
+                    {pasteRefused && (
+                      <p role="alert" className="text-sm text-destructive">
+                        {t('productSuccess.noReference.notALink', "That doesn't contain a purchase reference. Paste the whole link from your purchase email.")}
+                      </p>
+                    )}
+                    <Button type="submit" className="w-full" disabled={!pastedReference.trim()}>
+                      {t('productSuccess.noReference.open', 'Open my purchase')}
+                    </Button>
+                  </form>
+                )}
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  {sessionId && VERIFY_REFUSAL_RETRIES[verifyRefusal] && (
+                    <Button onClick={() => window.location.reload()}>{t('productSuccess.tryAgain')}</Button>
+                  )}
+                  <Button variant="outline" asChild>
+                    <a href="mailto:resumeboostersupp@gmail.com">{t('productSuccess.contactSupport')}</a>
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </section>
+        ) : (
+        <>
         {/* Success Header */}
         <section className="py-12 relative overflow-hidden">
           <div className="absolute inset-0 pointer-events-none">
@@ -1226,6 +1319,8 @@ export default function ProductSuccess() {
             </div>
           </div>
         </section>
+        </>
+        )}
 
         {/* Generated Content Section - Keyword Fix */}
         {isKeywordFix && keywordData && (
@@ -1694,29 +1789,11 @@ export default function ProductSuccess() {
           productName={product?.name || t('productSuccess.yourContent')}
         />
 
-        {/* Verification Failed - don't leave the user on a blank page */}
-        {verificationError && !isVerifying && (
-          <section className="py-12 border-t border-border/50">
-            <div className="container max-w-2xl">
-              <div className="p-8 rounded-2xl bg-muted/50 border border-border text-center">
-                <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
-                <h3 className="text-xl font-semibold mb-2">{t('productSuccess.couldNotVerify')}</h3>
-                <p className="text-muted-foreground mb-6">
-                  {t('productSuccess.couldNotVerifyDescription')}
-                </p>
-                <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                  <Button onClick={() => window.location.reload()}>{t('productSuccess.tryAgain')}</Button>
-                  <Button variant="outline" asChild>
-                    <a href="mailto:resumeboostersupp@gmail.com">{t('productSuccess.contactSupport')}</a>
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </section>
-        )}
+        {/* A refused verification is said in place of the success header
+            above (S13-048), never under "Payment Successful". */}
 
         {/* No Generated Content - Show Inline Upload Recovery */}
-        {(isKeywordFix || isCoverLetter || isPremiumPackage || isAtsDefense || isCareerSnapshot || isGraduateGamePlan || isInterviewCoach || isCareerPathSimulator || isApplyAssistant) && !generatedContent && !atsDefenseData && !careerSnapshotData && !graduateGamePlanData && !coachResumeText && !applyPackageData && !verificationError && !isVerifying && !isRegenerating && (
+        {(isKeywordFix || isCoverLetter || isPremiumPackage || isAtsDefense || isCareerSnapshot || isGraduateGamePlan || isInterviewCoach || isCareerPathSimulator || isApplyAssistant) && !generatedContent && !atsDefenseData && !careerSnapshotData && !graduateGamePlanData && !coachResumeText && !applyPackageData && !verificationError && !isVerifying && !isRegenerating && !!sessionId && (
           <section className="py-12 border-t border-border/50">
             <div className="container max-w-2xl">
               <div className="p-8 rounded-2xl bg-muted/50 border border-border">

@@ -100,19 +100,50 @@ const TOOL_COPY: Readonly<Record<WritingTool, { limitTitle: Copy; limit: Copy; e
 };
 
 /**
+ * A 429's code and Retry-After, read from the Response supabase-js puts on
+ * error.context. Never throws; a missing header is null.
+ */
+async function limitOf(error: unknown): Promise<{ code: string; retryAfterSeconds: number | null }> {
+  const ctx = (error as { context?: unknown } | null)?.context as Response | undefined;
+  let body: { code?: unknown; error?: unknown } | null = null;
+  try {
+    const copy = typeof ctx?.clone === "function" ? ctx.clone() : ctx;
+    body = typeof copy?.json === "function" ? await copy.json() : null;
+  } catch {
+    body = null;
+  }
+  const code = typeof body?.code === "string" ? body.code : typeof body?.error === "string" ? body.error : "";
+  const ra = Number(ctx?.headers?.get?.("retry-after"));
+  return { code, retryAfterSeconds: Number.isFinite(ra) && ra > 0 ? ra : null };
+}
+
+/** A refusal that lasts longer than "a moment": two minutes or more. */
+const LONG_LIMIT_SECONDS = 120;
+
+/**
  * The toast the /jobs prepare modal shows when one of its writing tools fails
  * (recheck 3 of wave 4, 2026-10-26). An account's daily or monthly allowance,
  * or a missing sign-in, is said as such, with when it comes back: the modal
  * worded every 429 as "reset within the hour" or "busy", false once the
- * allowance is a day. Any other 429 (the model-spend gate) keeps that copy,
- * and anything else the tool's plain error.
+ * allowance is a day. The model-spend gate's refusal (a rate_limited_ code,
+ * Retry-After 3600 or 86400) is said with the time it opens again (S12-051):
+ * it told the person the writer was busy and to try again in a moment. A busy
+ * model (model_busy, Retry-After 60) or a 429 that says neither keeps the
+ * tool's own copy, and anything else the tool's plain error.
  */
 export async function writingToolToast(tool: WritingTool, error: unknown, t: Translate, locale?: string): Promise<{ title: string; description: string }> {
   const c = TOOL_COPY[tool];
   const refusal = error ? await writingRefusalOf(error) : null;
   if (refusal) return { title: t(...c.errorTitle), description: writingRefusalText(refusal, t, locale) };
   const status = (error as { context?: { status?: number } } | null)?.context?.status;
-  return status === 429
-    ? { title: t(...c.limitTitle), description: t(...c.limit) }
-    : { title: t(...c.errorTitle), description: t(...c.error) };
+  if (status !== 429) return { title: t(...c.errorTitle), description: t(...c.error) };
+  const { code, retryAfterSeconds } = await limitOf(error);
+  const gated = code !== "model_busy" && (code.startsWith("rate_limited_") || (retryAfterSeconds ?? 0) >= LONG_LIMIT_SECONDS);
+  if (!gated) return { title: t(...c.limitTitle), description: t(...c.limit) };
+  const opensAt = new Date(Date.now() + (retryAfterSeconds ?? 3600) * 1000);
+  const when = opensAt.toLocaleString(locale, { weekday: "short", hour: "numeric", minute: "2-digit" });
+  return {
+    title: t("writingRefusal.toolLimitTitle", "Limit reached for now"),
+    description: t("writingRefusal.toolLimitUntil", "You've reached this tool's limit for now. It opens again at {{when}}.", { when }),
+  };
 }

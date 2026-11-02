@@ -16,10 +16,24 @@ import { Resend } from "https://esm.sh/resend@2.0.0";
 import { keyMatches } from "../_shared/admin-key.ts";
 import { purchaseLinkFor } from "../_shared/purchase-links.ts";
 import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
+import { callAIForUsableReply, describeError, looksLikeBrokenJson, type UsableReply } from "../_shared/ai-fallback.ts";
 
 // Provable from outside without the key: every response, the preflight
 // included, carries this in x-fn-build.
-const FN_BUILD = "admin-regenerate-delivery.2026-10-09.2";
+// 2026-11-03.1 (audit-rest, FA-2): the two model calls walk the shared chain
+// the paid writers walk (_shared/ai-fallback.ts callAIForUsableReply), in the
+// premium package's order (gpt-5, gemini-2.5-pro, gpt-5-mini), each inside
+// the chain's 125 s; this function's own fetchWithRetry (gpt-5 only, 60 s
+// three times, no deadline) is gone. A reply cut off at its cap, empty, or
+// with no résumé in it asks the next model (prose is still a letter); it
+// used to ship as the delivery with an invented "ATS 60 -> 90", and the mail
+// printed 60% -> 92% for a reply that named no score. When no model writes
+// the résumé nothing is saved or mailed, and the log says so. The customer
+// mail, the saved product name and the owner's answer no longer name a model
+// (the chain may answer with another). Bodies (messages,
+// max_completion_tokens 12000 and 4000) are unchanged. Nothing else changed
+// since main 21518390.
+const FN_BUILD = "admin-regenerate-delivery.2026-11-03.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -40,67 +54,64 @@ declare const EdgeRuntime: {
   waitUntil: (promise: Promise<any>) => void;
 };
 
-// Retry configuration
-const MAX_RETRIES = 2;
-const REQUEST_TIMEOUT_MS = 60000;
-const RETRY_DELAY_MS = 2000;
+// The premium package's order (generate-premium-package MODEL_FALLBACK_ORDER).
+const MODEL_FALLBACK_ORDER = [
+  'openai/gpt-5',
+  'google/gemini-2.5-pro',
+  'openai/gpt-5-mini',
+];
 
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+/**
+ * One model call on the shared chain: every model in order, each call inside
+ * the chain's own 125 s, until a reply `read` accepts.
+ */
+async function askAI<T>(
+  apiKey: string,
+  messages: Array<{ role: string; content: string }>,
+  maxCompletionTokens: number,
+  context: string,
+  read: (data: unknown) => T | null,
+): Promise<UsableReply<T>> {
+  return await callAIForUsableReply(apiKey, {
+    messages,
+    maxCompletionTokens,
+    models: MODEL_FALLBACK_ORDER,
+    context: `ADMIN-REGENERATE ${context}`,
+    read,
+  });
+}
 
-async function fetchWithRetry(
-  url: string, 
-  options: RequestInit, 
-  maxRetries = MAX_RETRIES
-): Promise<Response> {
-  let lastError: Error | null = null;
-  
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-      
-      logStep(`API call attempt ${attempt + 1}/${maxRetries + 1}`);
-      
-      const response = await fetch(url, {
-        ...options,
-        signal: controller.signal,
-      });
-      
-      clearTimeout(timeoutId);
-      
-      if (response.ok || (response.status >= 400 && response.status < 500)) {
-        return response;
-      }
-      
-      if (response.status >= 500 && attempt < maxRetries) {
-        const errorText = await response.text();
-        logStep(`Server error ${response.status}, retrying...`, { error: errorText.substring(0, 200) });
-        lastError = new Error(`Server error: ${response.status}`);
-        await sleep(RETRY_DELAY_MS * (attempt + 1));
-        continue;
-      }
-      
-      return response;
-      
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      
-      if (errorMessage.includes('aborted')) {
-        logStep(`Request timed out after ${REQUEST_TIMEOUT_MS}ms`);
-        lastError = new Error(`Request timed out after ${REQUEST_TIMEOUT_MS / 1000}s`);
-      } else {
-        logStep(`Network error: ${errorMessage}`);
-        lastError = error instanceof Error ? error : new Error(errorMessage);
-      }
-      
-      if (attempt < maxRetries) {
-        await sleep(RETRY_DELAY_MS * (attempt + 1));
-        continue;
-      }
-    }
+/** The text a reply wrote, or null when it wrote none. */
+function contentOf(data: unknown): string | null {
+  const content = (data as { choices?: Array<{ message?: { content?: unknown } }> } | null)?.choices?.[0]?.message?.content;
+  return typeof content === "string" && content.trim() ? content : null;
+}
+
+/** The JSON object a reply carries, or null. */
+// deno-lint-ignore no-explicit-any
+function jsonObjectOf(content: string | null): Record<string, any> | null {
+  const match = content?.match(/\{[\s\S]*\}/);
+  if (!match) return null;
+  try {
+    const parsed = JSON.parse(match[0]);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
   }
-  
-  throw lastError || new Error('Max retries exceeded');
+}
+
+/** A reply's JSON when it carries the part delivered, a non-empty string in `field`; else null. */
+// deno-lint-ignore no-explicit-any
+function partOf(content: string | null, field: "rewrittenResume" | "coverLetter"): Record<string, any> | null {
+  const parsed = jsonObjectOf(content);
+  return parsed && typeof parsed[field] === "string" && parsed[field].trim() ? parsed : null;
+}
+
+/** A gateway refusal (429, 402) as the error that ends the regeneration. */
+async function refusalOf(reply: { response: Response; modelUsed: string }, part: string): Promise<Error> {
+  const errorText = await reply.response.text().catch(() => "");
+  logStep(`${part} AI API error`, { status: reply.response.status, model: reply.modelUsed, error: errorText.slice(0, 200) });
+  return new Error(`${part} AI API error: ${reply.response.status}`);
 }
 
 async function processRegeneration(newSessionId: string, email: string, resumeText: string, jobTitle: string, jobCompany: string, jobDescription?: string) {
@@ -121,8 +132,8 @@ async function processRegeneration(newSessionId: string, email: string, resumeTe
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Step 1: Generate the rewritten resume with GPT-5
-    logStep("Generating rewritten resume with GPT-5");
+    // Step 1: Generate the rewritten resume
+    logStep("Generating rewritten resume");
     
     const resumeSystemPrompt = `You are an elite ATS resume optimization specialist. Your ONLY task is to ENHANCE the provided resume while preserving 100% of the original content.
 
@@ -173,63 +184,31 @@ TARGET COMPANY: ${jobCompany || 'Not specified'}
 
 ${jobDescription ? `JOB DESCRIPTION:\n${jobDescription}` : 'No job description was provided: tailor to the target job title above, using only what the resume supports.'}`;
 
-    const resumeResponse = await fetchWithRetry("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "openai/gpt-5",
-        messages: [
-          { role: "system", content: resumeSystemPrompt },
-          { role: "user", content: resumeUserPrompt }
-        ],
-        max_completion_tokens: 12000,
-      }),
-    });
-
-    if (!resumeResponse.ok) {
-      const errorText = await resumeResponse.text();
-      logStep("Resume AI API error", { status: resumeResponse.status, error: errorText });
-      throw new Error(`Resume AI API error: ${resumeResponse.status}`);
-    }
-
-    const resumeAiResponse = await resumeResponse.json();
-    const resumeContent = resumeAiResponse.choices?.[0]?.message?.content;
-    
-    if (!resumeContent) {
-      throw new Error("No content in resume AI response");
-    }
-
-    let resumeResult;
-    try {
-      const jsonMatch = resumeContent.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        resumeResult = JSON.parse(jsonMatch[0]);
-      } else {
-        throw new Error("No JSON found in resume response");
-      }
-    } catch (parseError) {
-      logStep("Resume JSON parse error, using raw content", { error: String(parseError) });
-      resumeResult = {
-        rewrittenResume: resumeContent,
-        professionalSummary: "",
-        keyChanges: [],
-        addedKeywords: [],
-        atsScore: { before: 60, after: 90, improvement: "Optimized for ATS" },
-        highlights: []
-      };
-    }
+    // NO SYNTHESISED DELIVERY: a reply with no résumé in it (prose, cut off,
+    // or JSON that does not parse) asks the next model; when none writes
+    // one, the chain throws and nothing is saved or mailed.
+    const resumeReply = await askAI(
+      apiKey,
+      [
+        { role: "system", content: resumeSystemPrompt },
+        { role: "user", content: resumeUserPrompt }
+      ],
+      12000,
+      "Resume generation",
+      (data) => partOf(contentOf(data), "rewrittenResume"),
+    );
+    if (!resumeReply.ok) throw await refusalOf(resumeReply, "Resume");
+    const resumeResult = resumeReply.value;
 
     logStep("Resume rewrite complete", { 
+      model: resumeReply.modelUsed,
       keywordsAdded: resumeResult.addedKeywords?.length,
       changesCount: resumeResult.keyChanges?.length,
       resumeLength: resumeResult.rewrittenResume?.length
     });
 
-    // Step 2: Generate the cover letter with GPT-5
-    logStep("Generating cover letter with GPT-5");
+    // Step 2: Generate the cover letter
+    logStep("Generating cover letter");
 
     const coverLetterSystemPrompt = `You are a senior executive recruiter. Write cover letters that sound authentically human - confident and articulate.
 
@@ -260,55 +239,37 @@ TARGET COMPANY: ${jobCompany || 'Not specified'}
 
 ${jobDescription ? `JOB REQUIREMENTS:\n${jobDescription}` : ''}`;
 
-    const coverLetterResponse = await fetchWithRetry("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "openai/gpt-5",
-        messages: [
-          { role: "system", content: coverLetterSystemPrompt },
-          { role: "user", content: coverLetterUserPrompt }
-        ],
-        max_completion_tokens: 4000,
-      }),
-    });
-
-    if (!coverLetterResponse.ok) {
-      const errorText = await coverLetterResponse.text();
-      logStep("Cover letter AI API error", { status: coverLetterResponse.status, error: errorText });
-      throw new Error(`Cover letter AI API error: ${coverLetterResponse.status}`);
-    }
-
-    const coverLetterAiResponse = await coverLetterResponse.json();
-    const coverLetterContent = coverLetterAiResponse.choices?.[0]?.message?.content;
-
-    if (!coverLetterContent) {
-      throw new Error("No content in cover letter AI response");
-    }
-
-    let coverLetterResult;
-    try {
-      const jsonMatch = coverLetterContent.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        coverLetterResult = JSON.parse(jsonMatch[0]);
-      } else {
-        throw new Error("No JSON found in cover letter response");
-      }
-    } catch (parseError) {
-      logStep("Cover letter JSON parse error", { error: String(parseError) });
-      coverLetterResult = {
-        coverLetter: coverLetterContent,
+    // Prose is still a letter; broken JSON, an empty reply, or JSON with no
+    // letter in it asks the next model.
+    // deno-lint-ignore no-explicit-any
+    const readLetter = (data: unknown): Record<string, any> | null => {
+      const content = contentOf(data);
+      if (!content) return null;
+      if (jsonObjectOf(content)) return partOf(content, "coverLetter");
+      if (looksLikeBrokenJson(content)) return null;
+      logStep("Cover letter came back as prose; the prose is the letter");
+      return {
+        coverLetter: content,
         openingLine: "",
         keySkillsHighlighted: [],
         personalizedElements: [],
         suggestedSubjectLine: `Application for ${jobTitle}`
       };
-    }
+    };
+    const coverLetterReply = await askAI(
+      apiKey,
+      [
+        { role: "system", content: coverLetterSystemPrompt },
+        { role: "user", content: coverLetterUserPrompt }
+      ],
+      4000,
+      "Cover letter generation",
+      readLetter,
+    );
+    if (!coverLetterReply.ok) throw await refusalOf(coverLetterReply, "Cover letter");
+    const coverLetterResult = coverLetterReply.value;
 
-    logStep("Cover letter generated", { coverLetterLength: coverLetterResult.coverLetter?.length });
+    logStep("Cover letter generated", { model: coverLetterReply.modelUsed, coverLetterLength: coverLetterResult.coverLetter?.length });
 
     // Combine results
     const generatedContent = {
@@ -316,7 +277,7 @@ ${jobDescription ? `JOB REQUIREMENTS:\n${jobDescription}` : ''}`;
       coverLetter: coverLetterResult,
       jobDetails: { title: jobTitle, company: jobCompany },
       generatedAt: new Date().toISOString(),
-      regeneratedWithGPT5: true
+      regenerated: { resumeModel: resumeReply.modelUsed, coverLetterModel: coverLetterReply.modelUsed },
     };
 
     // Step 3: Save to database
@@ -327,7 +288,7 @@ ${jobDescription ? `JOB REQUIREMENTS:\n${jobDescription}` : ''}`;
       .insert({
         customer_email: email,
         product_type: PREMIUM_PACKAGE_PRODUCT_TYPE,
-        product_name: 'Premium Package (GPT-5 Regenerated)',
+        product_name: 'Premium Package (Regenerated)',
         stripe_session_id: newSessionId,
         generated_content: generatedContent,
         expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
@@ -349,7 +310,7 @@ ${jobDescription ? `JOB REQUIREMENTS:\n${jobDescription}` : ''}`;
       from: "Resume Booster <reports@resumebooster.work>",
       to: [email],
       reply_to: CUSTOMER_REPLY_TO,
-      subject: "👑 Your Regenerated Premium Package is Ready! (GPT-5 Enhanced)",
+      subject: "👑 Your Regenerated Premium Package is Ready!",
       html: emailHtml,
     });
 
@@ -362,8 +323,8 @@ ${jobDescription ? `JOB REQUIREMENTS:\n${jobDescription}` : ''}`;
     logStep("Background task completed successfully", { email });
 
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error("[ADMIN-REGENERATE] Background task error:", errorMessage);
+    // describeError: a parse error's message can quote the reply's words.
+    console.error("[ADMIN-REGENERATE] Background task error; nothing was saved or mailed:", describeError(error));
   }
 }
 
@@ -415,7 +376,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        message: "Your premium package is being regenerated with GPT-5. This takes 2-3 minutes. You'll receive an email when it's ready!",
+        message: "The premium package is being regenerated. This takes 2-3 minutes; the customer is emailed when it is ready, and nothing is sent if no model writes it (see the function's log).",
         estimatedTime: "2-3 minutes",
         email: email,
         sessionId: newSessionId,
@@ -449,9 +410,18 @@ function generatePremiumPackageEmail(email: string, generatedContent: any, sessi
   const resume = generatedContent.resume;
   const coverLetter = generatedContent.coverLetter;
   
-  const keyChangesHtml = resume.keyChanges?.slice(0, 8).map((c: any) => 
-    `<li style="color: #374151; margin-bottom: 8px;"><strong>${escapeHtml(c.section)}:</strong> ${escapeHtml(c.reason)}</li>`
+  const keyChangesHtml = (Array.isArray(resume.keyChanges) ? resume.keyChanges : []).slice(0, 8).map((c: any) => 
+    `<li style="color: #374151; margin-bottom: 8px;"><strong>${escapeHtml(c?.section)}:</strong> ${escapeHtml(c?.reason)}</li>`
   ).join('') || '';
+  const addedKeywords: unknown[] = Array.isArray(resume.addedKeywords) ? resume.addedKeywords : [];
+  // The scores the reply wrote, or no score block: 60% -> 92% was printed
+  // for a reply that named none.
+  const scoreOf = (v: unknown) => {
+    const n = Math.round(Number(v));
+    return typeof v === "number" && Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : null;
+  };
+  const before = scoreOf(resume.atsScore?.before);
+  const after = scoreOf(resume.atsScore?.after);
 
   return `
 <!DOCTYPE html>
@@ -475,7 +445,7 @@ function generatePremiumPackageEmail(email: string, generatedContent: any, sessi
                 Your Premium Package is Ready!
               </h1>
               <p style="margin: 12px 0 0; color: rgba(255,255,255,0.9); font-size: 16px;">
-                Regenerated with GPT-5 for maximum quality
+                Regenerated for you, tailored to your target role
               </p>
             </td>
           </tr>
@@ -483,12 +453,14 @@ function generatePremiumPackageEmail(email: string, generatedContent: any, sessi
           <!-- ATS Score -->
           <tr>
             <td style="background: white; padding: 32px;">
+              ${before !== null && after !== null ? `
               <div style="background: #f0fdf4; border: 1px solid #86efac; border-radius: 12px; padding: 24px; margin-bottom: 24px; text-align: center;">
-                <div style="font-size: 28px; font-weight: bold; color: #9ca3af; display: inline-block;">${resume.atsScore?.before || 60}%</div>
+                <div style="font-size: 28px; font-weight: bold; color: #9ca3af; display: inline-block;">${before}%</div>
                 <span style="font-size: 28px; color: #22c55e; margin: 0 16px;">→</span>
-                <div style="font-size: 42px; font-weight: bold; color: #22c55e; display: inline-block;">${resume.atsScore?.after || 92}%</div>
+                <div style="font-size: 42px; font-weight: bold; color: #22c55e; display: inline-block;">${after}%</div>
                 <div style="color: #166534; font-size: 15px; margin-top: 16px; font-weight: 600;">ATS Score Improvement</div>
               </div>
+              ` : ''}
 
               ${keyChangesHtml ? `
               <div style="background: #f9fafb; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
@@ -497,11 +469,11 @@ function generatePremiumPackageEmail(email: string, generatedContent: any, sessi
               </div>
               ` : ''}
 
-              ${resume.addedKeywords?.length ? `
+              ${addedKeywords.length ? `
               <div style="background: #eff6ff; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
-                <h3 style="color: #1e40af; font-size: 18px; margin: 0 0 16px;">🎯 ${resume.addedKeywords.length} ATS Keywords Added:</h3>
+                <h3 style="color: #1e40af; font-size: 18px; margin: 0 0 16px;">🎯 ${addedKeywords.length} ATS Keywords Added:</h3>
                 <p style="color: #374151; font-size: 14px; line-height: 1.8; margin: 0;">
-                  ${resume.addedKeywords.slice(0, 25).map((k: string) => `<span style="background: #dbeafe; color: #1e40af; padding: 4px 10px; border-radius: 4px; margin: 3px; display: inline-block; font-size: 13px;">${escapeHtml(k)}</span>`).join('')}
+                  ${addedKeywords.slice(0, 25).map((k) => `<span style="background: #dbeafe; color: #1e40af; padding: 4px 10px; border-radius: 4px; margin: 3px; display: inline-block; font-size: 13px;">${escapeHtml(String(k))}</span>`).join('')}
                 </p>
               </div>
               ` : ''}

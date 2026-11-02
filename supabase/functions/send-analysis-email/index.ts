@@ -3,10 +3,20 @@ import { Resend } from "https://esm.sh/resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { isServiceRoleCaller } from "../_shared/service-caller.ts";
 import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
+import { purchaseLinkFor } from "../_shared/purchase-links.ts";
+import { ANALYSIS_MAIL_COPY, type AnalysisMailCopy, type MailLanguage, mailLanguageIn } from "./copy.ts";
 
 // Provable from outside without sending anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "send-analysis-email.2026-10-09.2";
+// 2026-11-03.1 (audit-rest, FA-1 and S13-079): the mail speaks the buyer's
+// language (the request's `language`, else the one the checkout recorded on
+// the purchase's delivery row, else English; ./copy.ts), and its button is
+// the buyer's own link, /success?session_id=<the purchase that redeemed this
+// analysis>, which opens it with its delete button on any device. The share
+// link it used to carry is the one a buyer forwards, and it opened the
+// buyer's own mail as "Viewing shared analysis"; it is kept only when no
+// redemption names the share id. Nothing else changed since main 21518390.
+const FN_BUILD = "send-analysis-email.2026-11-03.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -51,10 +61,21 @@ interface AnalysisEmailRequest {
     };
   };
   shareId?: string;
+  /** The page's language (a locale code); the checkout's, then English, when absent or not one of the site's. */
+  language?: string;
 }
 
-function generateEmailHtml(data: AnalysisEmailRequest): string {
-  const { analysisData, shareId } = data;
+/** The share link, or the homepage when the id is not one. */
+function shareLinkFor(shareId: string | undefined): string {
+  // Validate shareId format before using in URL
+  const safeShareId = shareId && /^[a-f0-9]{24,32}$/.test(shareId) ? shareId : null;
+  return safeShareId
+    ? `https://resumebooster.work/success?share=${safeShareId}`
+    : 'https://resumebooster.work';
+}
+
+function generateEmailHtml(data: AnalysisEmailRequest, copy: AnalysisMailCopy, language: MailLanguage, viewResultsUrl: string, ownLink: boolean): string {
+  const { analysisData } = data;
   // A NUMBER, NEVER MARKUP: this used to reach the HTML raw, so a caller
   // could put a link where the score goes. Coerced and clamped to 0-100.
   const rawScore = Math.round(Number(analysisData.atsScore?.score));
@@ -74,19 +95,15 @@ function generateEmailHtml(data: AnalysisEmailRequest): string {
     `<span style="display: inline-block; background: #e0f2fe; color: #0369a1; padding: 4px 12px; border-radius: 16px; margin: 4px; font-size: 14px;">${escapeHtml(kw)}</span>`
   ).join('') || '';
 
-  // Validate shareId format before using in URL
-  const safeShareId = shareId && /^[a-f0-9]{24,32}$/.test(shareId) ? shareId : null;
-  const viewResultsUrl = safeShareId 
-    ? `https://resumebooster.work/success?share=${safeShareId}`
-    : 'https://resumebooster.work';
+  const jobScore = Number(analysisData.jobMatch?.score) || 0;
 
   return `
 <!DOCTYPE html>
-<html>
+<html lang="${escapeHtml(language)}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Your Resume Analysis Results</title>
+  <title>${escapeHtml(copy.title)}</title>
 </head>
 <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f3f4f6;">
   <table role="presentation" style="width: 100%; border-collapse: collapse;">
@@ -98,10 +115,10 @@ function generateEmailHtml(data: AnalysisEmailRequest): string {
           <tr>
             <td style="background: linear-gradient(135deg, #6366f1, #8b5cf6); padding: 32px; border-radius: 16px 16px 0 0; text-align: center;">
               <h1 style="margin: 0; color: white; font-size: 28px; font-weight: 700;">
-                ✨ Your Resume Analysis is Ready!
+                ✨ ${escapeHtml(copy.heading)}
               </h1>
               <p style="margin: 12px 0 0; color: rgba(255,255,255,0.9); font-size: 16px;">
-                Thank you for using Resume Booster
+                ${escapeHtml(copy.thanks)}
               </p>
             </td>
           </tr>
@@ -112,30 +129,30 @@ function generateEmailHtml(data: AnalysisEmailRequest): string {
               
               <!-- ATS Score -->
               <div style="text-align: center; margin-bottom: 32px;">
-                <p style="margin: 0 0 8px; color: #6b7280; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">ATS Compatibility Score</p>
+                <p style="margin: 0 0 8px; color: #6b7280; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">${escapeHtml(copy.scoreLabel)}</p>
                 <div style="display: inline-block; width: 120px; height: 120px; border-radius: 50%; border: 8px solid ${scoreColor}; line-height: 104px; text-align: center;">
                   <span style="font-size: 36px; font-weight: 700; color: ${scoreColor};">${atsScore}</span>
                 </div>
                 <p style="margin: 12px 0 0; color: #6b7280; font-size: 14px;">
-                  ${atsScore >= 80 ? 'Excellent! Your resume is well-optimized.' : atsScore >= 60 ? 'Good, but there\'s room for improvement.' : 'Needs work to pass ATS systems.'}
+                  ${escapeHtml(atsScore >= 80 ? copy.grade.high : atsScore >= 60 ? copy.grade.mid : copy.grade.low)}
                 </p>
               </div>
 
               <!-- Industry & Level -->
               <div style="background: #f9fafb; padding: 16px; border-radius: 12px; margin-bottom: 24px; text-align: center;">
-                <span style="color: #6b7280;">Industry:</span>
-                <strong style="color: #111827; margin-left: 4px;">${escapeHtml(analysisData.industry || 'General')}</strong>
+                <span style="color: #6b7280;">${escapeHtml(copy.industry)}</span>
+                <strong style="color: #111827; margin-left: 4px;">${escapeHtml(analysisData.industry || copy.industryDefault)}</strong>
                 <span style="color: #d1d5db; margin: 0 12px;">|</span>
-                <span style="color: #6b7280;">Level:</span>
-                <strong style="color: #111827; margin-left: 4px; text-transform: capitalize;">${escapeHtml(analysisData.experienceLevel || 'Mid')}</strong>
+                <span style="color: #6b7280;">${escapeHtml(copy.level)}</span>
+                <strong style="color: #111827; margin-left: 4px; text-transform: capitalize;">${escapeHtml(analysisData.experienceLevel || copy.levelDefault)}</strong>
               </div>
 
               ${analysisData.hasJobDescription && analysisData.jobMatch ? `
               <!-- Job Match Score -->
               <div style="background: #fef3c7; padding: 16px; border-radius: 12px; margin-bottom: 24px; border-left: 4px solid #f59e0b;">
-                <p style="margin: 0 0 8px; font-weight: 600; color: #92400e;">📋 Job Match Score: ${escapeHtml(analysisData.jobMatch.score || 0)}%</p>
+                <p style="margin: 0 0 8px; font-weight: 600; color: #92400e;">📋 ${escapeHtml(copy.jobMatch(jobScore))}</p>
                 <p style="margin: 0; color: #78350f; font-size: 14px;">
-                  Your resume ${(analysisData.jobMatch.score || 0) >= 70 ? 'aligns well' : 'needs optimization'} for the target job description.
+                  ${escapeHtml(jobScore >= 70 ? copy.jobFit.good : copy.jobFit.weak)}
                 </p>
               </div>
               ` : ''}
@@ -144,7 +161,7 @@ function generateEmailHtml(data: AnalysisEmailRequest): string {
               ${actionPlanHtml ? `
               <div style="margin-bottom: 24px;">
                 <h2 style="margin: 0 0 16px; color: #111827; font-size: 18px; font-weight: 600;">
-                  🎯 Your Action Plan
+                  🎯 ${escapeHtml(copy.actionPlan)}
                 </h2>
                 <ol style="margin: 0; padding-left: 20px; color: #374151;">
                   ${actionPlanHtml}
@@ -155,7 +172,7 @@ function generateEmailHtml(data: AnalysisEmailRequest): string {
               <!-- Red Flags -->
               ${redFlagsHtml ? `
               <div style="background: #fef2f2; padding: 16px; border-radius: 12px; margin-bottom: 24px;">
-                <h3 style="margin: 0 0 12px; color: #991b1b; font-size: 16px;">Issues to Fix</h3>
+                <h3 style="margin: 0 0 12px; color: #991b1b; font-size: 16px;">${escapeHtml(copy.issues)}</h3>
                 <ul style="margin: 0; padding-left: 16px; list-style: none;">
                   ${redFlagsHtml}
                 </ul>
@@ -165,7 +182,7 @@ function generateEmailHtml(data: AnalysisEmailRequest): string {
               <!-- Keywords to Add -->
               ${keywordsHtml ? `
               <div style="margin-bottom: 24px;">
-                <h3 style="margin: 0 0 12px; color: #111827; font-size: 16px;">🔑 Keywords to Add</h3>
+                <h3 style="margin: 0 0 12px; color: #111827; font-size: 16px;">🔑 ${escapeHtml(copy.keywords)}</h3>
                 <div>
                   ${keywordsHtml}
                 </div>
@@ -175,7 +192,7 @@ function generateEmailHtml(data: AnalysisEmailRequest): string {
               <!-- Professional Summary -->
               ${analysisData.summaryRewrite?.professionalSummary ? `
               <div style="background: #f0fdf4; padding: 16px; border-radius: 12px; margin-bottom: 24px; border-left: 4px solid #22c55e;">
-                <h3 style="margin: 0 0 8px; color: #166534; font-size: 16px;">✍️ Optimized Summary</h3>
+                <h3 style="margin: 0 0 8px; color: #166534; font-size: 16px;">✍️ ${escapeHtml(copy.summary)}</h3>
                 <p style="margin: 0; color: #166534; font-size: 14px; line-height: 1.6;">
                   "${escapeHtml(analysisData.summaryRewrite.professionalSummary)}"
                 </p>
@@ -184,12 +201,13 @@ function generateEmailHtml(data: AnalysisEmailRequest): string {
 
               <!-- CTA Button -->
               <div style="text-align: center; margin-top: 32px;">
-                <a href="${viewResultsUrl}" style="display: inline-block; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; padding: 16px 32px; border-radius: 12px; text-decoration: none; font-weight: 600; font-size: 16px;">
-                  View Full Analysis →
+                <a href="${escapeHtml(viewResultsUrl)}" style="display: inline-block; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; padding: 16px 32px; border-radius: 12px; text-decoration: none; font-weight: 600; font-size: 16px;">
+                  ${escapeHtml(copy.open)}
                 </a>
                 <p style="margin: 16px 0 0; color: #9ca3af; font-size: 12px;">
-                  This link works for 90 days from the day your analysis was made. Open it and choose Save as PDF to keep your own copy.
+                  ${escapeHtml(copy.link)}
                 </p>
+                ${ownLink ? `<p style="margin: 8px 0 0; color: #9ca3af; font-size: 12px;">${escapeHtml(copy.ownerNote)}</p>` : ''}
               </div>
             </td>
           </tr>
@@ -198,10 +216,10 @@ function generateEmailHtml(data: AnalysisEmailRequest): string {
           <tr>
             <td style="background: #f9fafb; padding: 24px; border-radius: 0 0 16px 16px; text-align: center;">
               <p style="margin: 0 0 8px; color: #6b7280; font-size: 14px;">
-                Questions? Just reply to this email.
+                ${escapeHtml(copy.questions)}
               </p>
               <p style="margin: 0; color: #9ca3af; font-size: 12px;">
-                © ${new Date().getFullYear()} Resume Booster. All rights reserved.
+                ${escapeHtml(copy.rights(new Date().getFullYear()))}
               </p>
             </td>
           </tr>
@@ -213,6 +231,42 @@ function generateEmailHtml(data: AnalysisEmailRequest): string {
 </body>
 </html>
   `;
+}
+
+/**
+ * The purchase reference that redeemed this share id, and the language the
+ * checkout recorded for it. Either is null when it cannot be read; the mail
+ * still goes, with the share link and the request's language or English.
+ */
+// deno-lint-ignore no-explicit-any
+async function purchaseOf(supabase: any, shareId: string | undefined): Promise<{ sessionId: string | null; language: MailLanguage | null }> {
+  const none = { sessionId: null, language: null };
+  if (!shareId || !/^[a-f0-9]{24,32}$/.test(shareId)) return none;
+  try {
+    const { data: redemption } = await supabase
+      .from("purchased_content")
+      .select("stripe_session_id")
+      .eq("product_type", "full_analysis")
+      .eq("generated_content->>shareId", shareId)
+      .limit(1)
+      .maybeSingle();
+    const sessionId = typeof redemption?.stripe_session_id === "string" ? redemption.stripe_session_id : null;
+    if (!sessionId) return none;
+    let language: MailLanguage | null = null;
+    try {
+      const { data: order } = await supabase
+        .from("product_deliveries")
+        .select("metadata")
+        .eq("stripe_session_id", sessionId)
+        .limit(1)
+        .maybeSingle();
+      language = mailLanguageIn(order?.metadata?.language);
+    } catch { /* the request's language, else English */ }
+    return { sessionId, language };
+  } catch (e) {
+    console.error("[SEND-ANALYSIS-EMAIL] Could not read the purchase behind the share id; mailing the share link:", e instanceof Error ? e.message : String(e));
+    return none;
+  }
 }
 
 Deno.serve(async (req) => {
@@ -266,24 +320,30 @@ Deno.serve(async (req) => {
 
     console.log(`[SEND-ANALYSIS-EMAIL] Sending to: ${requestData.email}`);
 
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // The purchase that redeemed this analysis (analyze-resume writes it
+    // before it calls this function), and the language its checkout recorded.
+    const purchase = await purchaseOf(supabase, requestData.shareId);
+    const language: MailLanguage = mailLanguageIn(requestData.language) ?? purchase.language ?? "en";
+    const copy = ANALYSIS_MAIL_COPY[language];
+    const viewResultsUrl = purchase.sessionId ? purchaseLinkFor("full_analysis", purchase.sessionId) : shareLinkFor(requestData.shareId);
+
     const resend = new Resend(RESEND_API_KEY);
-    const html = generateEmailHtml(requestData);
+    const html = generateEmailHtml(requestData, copy, language, viewResultsUrl, !!purchase.sessionId);
 
     // Sanitize ATS score for subject line (ensure it's a valid number)
-    const safeAtsScore = Math.min(100, Math.max(0, Math.round(requestData.analysisData.atsScore?.score || 0)));
+    const safeAtsScore = Math.min(100, Math.max(0, Math.round(Number(requestData.analysisData.atsScore?.score) || 0)));
     
     const { data, error } = await resend.emails.send({
       from: "Resume Booster <reports@resumebooster.work>",
       to: [requestData.email],
       reply_to: CUSTOMER_REPLY_TO,
-      subject: `Your Resume Analysis is Ready! (ATS Score: ${safeAtsScore}/100)`,
+      subject: copy.subject(safeAtsScore),
       html,
     });
-
-    // Log email send to database
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
 
     if (error) {
       console.error("[SEND-ANALYSIS-EMAIL] Resend error:", error);

@@ -5,7 +5,7 @@
 // resume; unsupported ones are flagged for the candidate, never fabricated. The human
 // reviews, edits, and pastes into the company's own form — we never auto-submit.
 import { useEffect, useRef, useState } from "react";
-import { Loader2, Copy, AlertTriangle, MessageSquare, ShieldCheck, ClipboardList } from "lucide-react";
+import { Loader2, Copy, AlertTriangle, MessageSquare, ShieldCheck, ClipboardList, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { invokeJobBoard } from "@/lib/invoke-job-board";
@@ -117,6 +117,49 @@ async function readInvokeFailure(error: unknown): Promise<{ status?: number; bod
   return { status: ctx.status, body, retryAfter: Number.isFinite(ra) && ra > 0 ? ra : null };
 }
 
+/**
+ * THE ANSWERS ALREADY DRAFTED FOR A JOB, KEPT WHILE THE PAGE IS OPEN (S12-052).
+ *
+ * The board's Prepare dialog unmounts this component on close and mounts it
+ * with autoStart on every open, so each reopen drafted the same job again:
+ * another generate-application-answers call, spending the person's daily
+ * writing allowance on answers they already had. A draft is now kept here,
+ * per job, for the same résumé, posting text and reader's language; a reopen
+ * shows it, and "Draft again" asks for a new one. Memory only, never browser
+ * storage: it goes with the page, and nothing résumé-derived outlives the tab.
+ */
+type KeptDraft = {
+  resumeText: string;
+  language: string;
+  jobDescription: string;
+  answers: DraftedAnswer[];
+  inferred: boolean;
+  skipped: Array<{ question: string; class: string }>;
+  undrafted: string[];
+  requirements: string[];
+};
+const keptDrafts = new Map<string, KeptDraft>();
+const KEPT_DRAFTS_MAX = 20;
+
+const draftKeyOf = (jobId: string | null | undefined, jobTitle: string, jobCompany: string) =>
+  jobId ? `id:${jobId}` : `job:${jobTitle}\u0000${jobCompany}`;
+
+function keptDraftFor(key: string, resumeText: string | null, language: string, jobDescription: string): KeptDraft | null {
+  const kept = keptDrafts.get(key);
+  return kept && resumeText && kept.resumeText === resumeText && kept.language === language && kept.jobDescription === jobDescription ? kept : null;
+}
+
+function keepDraft(key: string, draft: KeptDraft): void {
+  keptDrafts.delete(key);
+  keptDrafts.set(key, draft);
+  while (keptDrafts.size > KEPT_DRAFTS_MAX) keptDrafts.delete(keptDrafts.keys().next().value as string);
+}
+
+/** Forgets every kept draft (tests start from none). */
+export function forgetKeptDrafts(): void {
+  keptDrafts.clear();
+}
+
 export function ApplicationAnswers({
   resumeText,
   jobTitle,
@@ -143,20 +186,24 @@ export function ApplicationAnswers({
   autoStart?: boolean;
 }) {
   const { t, i18n } = useTranslation();
+  const draftKey = draftKeyOf(jobId, jobTitle, jobCompany);
+  const [kept] = useState(() => keptDraftFor(draftKey, resumeText, i18n.language, jobDescription ?? ""));
   const [loading, setLoading] = useState(false);
-  const [answers, setAnswers] = useState<DraftedAnswer[] | null>(null);
-  const [inferred, setInferred] = useState(false);
-  const [skipped, setSkipped] = useState<Array<{ question: string; class: string }>>([]);
+  const [answers, setAnswers] = useState<DraftedAnswer[] | null>(kept?.answers ?? null);
+  const [inferred, setInferred] = useState(kept?.inferred ?? false);
+  const [skipped, setSkipped] = useState<Array<{ question: string; class: string }>>(kept?.skipped ?? []);
   /** Questions past the drafting cap, or in a chunk that failed: named back for the person (S12-148). */
-  const [undrafted, setUndrafted] = useState<string[]>([]);
+  const [undrafted, setUndrafted] = useState<string[]>(kept?.undrafted ?? []);
   /** Documents the real form demands (from the ATS form config) — shown as a
    *  pre-flight so the candidate has them ready before they start. */
-  const [requirements, setRequirements] = useState<string[]>([]);
-  const started = useRef(false);
+  const [requirements, setRequirements] = useState<string[]>(kept?.requirements ?? []);
+  const started = useRef(!!kept);
 
   const draft = async () => {
     if (loading || !resumeText) return;
     setLoading(true);
+    const askedWith = { resumeText, language: i18n.language, jobDescription: jobDescription ?? "" };
+    let formRequirements: string[] = requirements;
     try {
       // For Greenhouse/Ashby/Recruitee postings we can fetch the posting's REAL
       // application form (question labels, required flags, document demands)
@@ -180,7 +227,8 @@ export function ApplicationAnswers({
               .filter((x) => x.label !== "");
           }
           if (qd?.supported && Array.isArray(qd.requirements) && qd.requirements.length) {
-            setRequirements(qd.requirements.filter((r): r is string => typeof r === "string" && !!r.trim()).slice(0, 6));
+            formRequirements = qd.requirements.filter((r): r is string => typeof r === "string" && !!r.trim()).slice(0, 6);
+            setRequirements(formRequirements);
           }
         } catch {
           // Real-questions fetch is best-effort; fall through to JD-inference.
@@ -197,16 +245,23 @@ export function ApplicationAnswers({
         return;
       }
       const d = data as { answers?: DraftedAnswer[]; inferred?: boolean; skipped?: Array<{ question?: string; class?: string }>; undrafted?: unknown };
-      setAnswers(Array.isArray(d.answers) ? d.answers : []);
-      setUndrafted(Array.isArray(d.undrafted) ? d.undrafted.filter((q): q is string => typeof q === "string" && !!q.trim()) : []);
-      setInferred(!!d.inferred);
-      setSkipped(
-        Array.isArray(d.skipped)
+      const next: KeptDraft = {
+        ...askedWith,
+        answers: Array.isArray(d.answers) ? d.answers : [],
+        undrafted: Array.isArray(d.undrafted) ? d.undrafted.filter((q): q is string => typeof q === "string" && !!q.trim()) : [],
+        inferred: !!d.inferred,
+        skipped: Array.isArray(d.skipped)
           ? d.skipped
               .filter((s): s is { question: string; class?: string } => typeof s?.question === "string" && !!s.question.trim())
               .map((s) => ({ question: s.question, class: s.class ?? "" }))
           : [],
-      );
+        requirements: formRequirements,
+      };
+      setAnswers(next.answers);
+      setUndrafted(next.undrafted);
+      setInferred(next.inferred);
+      setSkipped(next.skipped);
+      keepDraft(draftKey, next);
     } catch {
       toast.error(t("applyAnswers.failed", "Couldn't draft answers right now."));
     } finally {
@@ -216,13 +271,35 @@ export function ApplicationAnswers({
 
   // Optional auto-start once a resume is available. The ref guard makes it fire
   // exactly once even as resumeText resolves.
+  // A résumé that arrives after the mount finds a kept draft the same way.
   useEffect(() => {
-    if (autoStart && !started.current && resumeText && answers === null) {
+    if (started.current || !resumeText || answers !== null) return;
+    const found = keptDraftFor(draftKey, resumeText, i18n.language, jobDescription ?? "");
+    if (found) {
+      started.current = true;
+      setAnswers(found.answers);
+      setInferred(found.inferred);
+      setSkipped(found.skipped);
+      setUndrafted(found.undrafted);
+      setRequirements(found.requirements);
+      return;
+    }
+    if (autoStart) {
       started.current = true;
       void draft();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoStart, resumeText]);
+
+  const draftAgain = (
+    <button
+      onClick={draft}
+      disabled={loading}
+      className="shrink-0 inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground disabled:opacity-60"
+    >
+      {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />} {t("applyAnswers.draftAgain", "Draft again")}
+    </button>
+  );
 
   const copyAll = () => {
     if (!answers) return;
@@ -266,7 +343,12 @@ export function ApplicationAnswers({
   }
 
   if (answers.length === 0 && skipped.length === 0 && undrafted.length === 0) {
-    return <p className="mt-3 text-[11px] text-muted-foreground">{t("applyAnswers.nothingDraftable", "No auto-draftable questions — the rest are yours to complete honestly.")}</p>;
+    return (
+      <div className="mt-3 flex items-start justify-between gap-2">
+        <p className="text-[11px] text-muted-foreground">{t("applyAnswers.nothingDraftable", "No auto-draftable questions — the rest are yours to complete honestly.")}</p>
+        {draftAgain}
+      </div>
+    );
   }
 
   const gaps = answers.filter((a) => !a.supported).length;
@@ -307,12 +389,15 @@ export function ApplicationAnswers({
                 ? t("applyAnswers.inferredIntro", "Likely questions for this role (this ATS doesn't publish its form) — grounded in your résumé. Review before you paste.")
                 : t("applyAnswers.realIntro", "This application's real questions, drafted from your résumé. Review before you paste.")}
             </p>
-            <button
-              onClick={copyAll}
-              className="shrink-0 inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
-            >
-              <Copy className="w-3 h-3" /> {t("applyAnswers.copyAll", "Copy all")}
-            </button>
+            <div className="shrink-0 flex flex-col items-end gap-1">
+              <button
+                onClick={copyAll}
+                className="shrink-0 inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
+              >
+                <Copy className="w-3 h-3" /> {t("applyAnswers.copyAll", "Copy all")}
+              </button>
+              {draftAgain}
+            </div>
           </div>
           {answers.map((a, i) => (
             <div key={i} className="rounded-lg border border-border/60 bg-background p-2.5">

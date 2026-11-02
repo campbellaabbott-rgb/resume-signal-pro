@@ -16,7 +16,8 @@ import {
   Mail,
   Monitor,
   AlertTriangle,
-  RefreshCw
+  RefreshCw,
+  Link2
 } from "lucide-react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -51,6 +52,7 @@ import { useFunnelTracking } from "@/hooks/use-funnel-tracking";
 import { usePersonalization } from "@/hooks/use-personalization";
 import { parseEdgeFunctionError } from "@/lib/edge-function-errors";
 import { PRODUCTS } from "@/config/products";
+import { SHARED_ANALYSIS_DAYS } from "@/lib/resume-retention";
 import { forgetStashedSessionFor, forgetStashedShare, stashShareFor, stashedSessionIdFor, stashedShareFor } from "@/lib/auth-fragment";
 
 /**
@@ -516,16 +518,24 @@ const Success = () => {
     }
   };
 
+  /**
+   * ONLY THE BUYER DELETES (S13-079). The share id is the link anyone can be
+   * forwarded, so it alone deletes nothing (20261103130000): the RPC takes
+   * '<share id>:<purchase reference>', the purchase this tab or the purchase
+   * mail's link carries. An answer other than true deleted nothing, and is
+   * not reported as a deletion.
+   */
   const handleDeleteData = async () => {
-    if (!shareId) return;
+    if (!shareId || !sessionId) return;
 
     setIsDeleting(true);
     try {
       const { data, error: deleteError } = await supabase.rpc('delete_analysis_by_share_id', {
-        p_share_id: shareId
+        p_share_id: `${shareId}:${sessionId}`
       });
 
       if (deleteError) throw deleteError;
+      if (data !== true) throw new Error("The analysis was not deleted");
       // The analysis is gone: this tab no longer names it (S13-002), nor the
       // purchase it was made for. Back to /success would otherwise ask
       // analyze-resume for that purchase, whose saved copy is gone (a 409),
@@ -551,6 +561,24 @@ const Success = () => {
       });
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  /**
+   * THE SHARE LINK THE REPORT TALKS ABOUT (S13-123). The address bar shows a
+   * bare /success (the share id and the session live in this tab's stash),
+   * so a copied address opened "No session found" elsewhere. This is the
+   * link that opens the analysis anywhere; it reads it and cannot delete it
+   * (20261103130000).
+   */
+  const handleCopyShareLink = async () => {
+    if (!shareId) return;
+    const link = `${window.location.origin}/success?share=${encodeURIComponent(shareId)}`;
+    try {
+      await navigator.clipboard.writeText(link);
+      toast({ title: t('success.toast.linkCopied'), description: t('success.toast.linkCopiedDesc') });
+    } catch {
+      window.prompt(t('success.actions.share'), link);
     }
   };
 
@@ -720,9 +748,12 @@ const Success = () => {
                       <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-sm">
                         <Monitor className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
                         <div className="text-left">
-                          <p className="font-medium text-amber-500">Using a public or shared computer?</p>
-                          <p className="text-muted-foreground mt-1">
-                            Clear your browser data when you're done to protect your privacy. Your data auto-expires in 1 hour.
+                          {/* The analysis is kept SHARED_ANALYSIS_DAYS and opens for
+                              anyone with its link (S13-027): this said the data
+                              expired in an hour. */}
+                          <p className="font-medium text-amber-500">{t('success.sharedComputer.title', 'Using a public or shared computer?')}</p>
+                          <p className="text-muted-foreground mt-1" data-testid="shared-computer-note">
+                            {t('success.sharedComputer.body', "Clear this browser's data when you're done. The analysis itself is kept on our servers for {{days}} days, and anyone with its link can open it until then. Delete it below if you don't want it kept.", { days: SHARED_ANALYSIS_DAYS })}
                           </p>
                         </div>
                       </div>
@@ -731,7 +762,7 @@ const Success = () => {
 
                   {/* Action cards */}
                   {shareId && !isSharedView && (
-                    <div className="grid md:grid-cols-4 gap-4 max-w-3xl mx-auto pt-4">
+                    <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4 max-w-3xl mx-auto pt-4">
                       {/* Download PDF card */}
                       <div className="p-5 rounded-2xl bg-card/50 backdrop-blur-sm border border-border/50 space-y-3">
                         <div className="flex items-center gap-2 text-sm font-medium">
@@ -757,6 +788,21 @@ const Success = () => {
                         </Button>
                       </div>
                       
+                      {/* Share link card (S13-123) */}
+                      <div className="p-5 rounded-2xl bg-card/50 backdrop-blur-sm border border-border/50 space-y-3">
+                        <div className="flex items-center gap-2 text-sm font-medium">
+                          <Link2 className="w-4 h-4 text-primary" />
+                          {t('success.actions.share')}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {t('success.actions.shareHint', 'Anyone with this link can read the analysis until it is deleted. The link cannot delete it.')}
+                        </p>
+                        <Button variant="outline" onClick={handleCopyShareLink} className="w-full gap-2" size="sm">
+                          <Link2 className="w-4 h-4" />
+                          {t('success.actions.copyLink', 'Copy link')}
+                        </Button>
+                      </div>
+
                       {/* Email Sent card — only show when email was actually delivered */}
                       {emailSent && (
                         <div className="p-5 rounded-2xl bg-card/50 backdrop-blur-sm border border-success/30 space-y-3">
@@ -867,40 +913,11 @@ const Success = () => {
                         )}
                         {isGeneratingPdf ? t('success.actions.generatingPdf', 'Generating...') : t('success.actions.savePdf', 'Save as PDF')}
                       </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className="gap-2 border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                            size="lg"
-                            disabled={isDeleting}
-                          >
-                            {isDeleting ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="w-4 h-4" />
-                            )}
-                            {isDeleting ? "Deleting..." : "Delete My Data"}
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete your analysis data?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This action cannot be undone. Your resume analysis will be permanently deleted from our servers. This helps ensure your privacy under GDPR and CCPA regulations.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={handleDeleteData}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            >
-                              Yes, delete my data
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                      {/* A forwarded link carries no purchase, so it cannot delete
+                          (S13-079): the buyer deletes from their own link. */}
+                      <p className="w-full text-sm text-muted-foreground" data-testid="shared-view-delete-note">
+                        {t('success.sharedViewDeleteNote', 'Only the buyer can delete this analysis, from the link in their purchase email.')}
+                      </p>
                     </div>
                   )}
 
@@ -917,9 +934,11 @@ const Success = () => {
                   <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-muted border border-border">
                     <FileText className="w-10 h-10 text-muted-foreground" />
                   </div>
-                  <h1 className="text-3xl md:text-4xl font-bold">No session found</h1>
+                  {/* A copied bare /success lands here in another tab or browser
+                      (S13-123): it says how an analysis opens. */}
+                  <h1 className="text-3xl md:text-4xl font-bold">{t('success.noSession.title', 'No analysis is open here')}</h1>
                   <p className="text-muted-foreground text-lg">
-                    Please complete the checkout process first.
+                    {t('success.noSession.body', 'An analysis opens from its link: the one in your purchase email, or a share link copied from the analysis page. If you have just paid, open the link in your email.')}
                   </p>
                   <Link to="/resume-checker">
                     <Button variant="default" size="lg" className="gap-2">
