@@ -123,6 +123,10 @@ export default function FreelanceBoost() {
   const [generating, setGenerating] = useState(false);
   const [result, setResult] = useState<BoostResult | null>(null);
   const [genError, setGenError] = useState<string | null>(null);
+  // A purchase the generator refused for good (S13-048): refunded, or not a
+  // paid Freelance Boost. Generate cannot change that, so neither the "your
+  // purchase is safe, press Generate" line nor the already-paid box is shown.
+  const [purchaseClosed, setPurchaseClosed] = useState(false);
   const [importText, setImportText] = useState("");
   const [importing, setImporting] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -192,8 +196,29 @@ export default function FreelanceBoost() {
         // own sentence ("Your purchase is safe — press Generate to try again")
         // is in its body, not in error.message.
         let message: string | undefined = data?.error;
-        if (!message && error) {
-          try { message = (await (error as { context?: Response }).context?.json())?.error; } catch { /* no body */ }
+        let refunded = false;
+        const status = (error as { context?: Response } | null)?.context?.status;
+        if (error) {
+          try {
+            const body = await (error as { context?: Response }).context?.json();
+            message = message || body?.error;
+            refunded = body?.refunded === true;
+          } catch { /* no body */ }
+        }
+        // THE TWO ANSWERS GENERATE CANNOT CHANGE (S13-048): a refund, and a
+        // link that holds no paid Freelance Boost. Said as they are, with no
+        // "press Generate" and no already-paid box.
+        if (status === 402) {
+          setPurchaseClosed(true);
+          setGenError(refunded
+            ? `${message || "This purchase was refunded, so it can no longer be delivered."} If you think this is a mistake, reply to your purchase email.`
+            : "This link doesn't hold a paid Freelance Boost purchase, so there is nothing to generate, and nothing was charged here. If you paid, open the link in your purchase email, or reply to that email.");
+          return;
+        }
+        // The request itself was incomplete: the answers above, not the purchase.
+        if (status === 400) {
+          setGenError("Some answers the section needs are missing. Add your target role and at least one project above, then generate again.");
+          return;
         }
         throw new Error(message || "Generation failed");
       }
@@ -579,7 +604,7 @@ export default function FreelanceBoost() {
                 </p>
               </div>
 
-              {sessionId ? (
+              {sessionId && purchaseClosed ? null : sessionId ? (
                 // ALREADY PAID: this link carries the purchase, so the only
                 // action offered is generating it -- never the buy buttons,
                 // whose click would charge the buyer a second time.
