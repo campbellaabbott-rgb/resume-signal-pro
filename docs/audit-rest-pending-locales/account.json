@@ -1,0 +1,183 @@
+{
+  "accountPage.notifSummaryEmails": {
+    "en": "{{on}} of {{total}} search emails on",
+    "en-GB": "{{on}} of {{total}} search emails on",
+    "de": "{{on}} von {{total}} Such-E-Mails aktiv",
+    "es": "{{on}} de {{total}} correos de búsqueda activos",
+    "fr": "{{on}} sur {{total}} e-mails de recherche actifs",
+    "hi": "{{total}} में से {{on}} खोज ईमेल चालू",
+    "nl": "{{on}} van {{total}} zoekmails aan",
+    "pt": "{{on}} de {{total}} e-mails de busca ativos",
+    "tl": "{{on}} sa {{total}} email ng paghahanap ang naka-on",
+    "_supersedes": "accountPage.notifSummary"
+  },
+  "accountPage.notifBlurbCadence": {
+    "en": "Everything we can email you, in one place. A search email goes out only when the search has new matches, daily or weekly as shown beside it; every email has a one-click unsubscribe.",
+    "en-GB": "Everything we can email you, in one place. A search email goes out only when the search has new matches, daily or weekly as shown beside it; every email has a one-click unsubscribe.",
+    "de": "Alles, was wir Ihnen mailen können, an einem Ort. Eine Such-E-Mail geht nur raus, wenn die Suche neue Treffer hat, täglich oder wöchentlich, wie daneben angegeben; jede E-Mail hat eine Ein-Klick-Abmeldung.",
+    "es": "Todo lo que podemos enviarte por correo, en un solo lugar. Un correo de búsqueda solo se envía cuando la búsqueda tiene nuevas coincidencias, a diario o cada semana según se indica al lado; cada correo tiene baja en un clic.",
+    "fr": "Tout ce que nous pouvons vous envoyer, au même endroit. Un e-mail de recherche ne part que lorsque la recherche a de nouveaux résultats, chaque jour ou chaque semaine comme indiqué à côté ; chaque e-mail a une désinscription en un clic.",
+    "hi": "जो कुछ भी हम आपको ईमेल कर सकते हैं, एक ही जगह। खोज ईमेल तभी भेजी जाती है जब खोज में नए मिलान हों, रोज़ या हर हफ़्ते, जैसा उसके बगल में लिखा है; हर ईमेल में एक-क्लिक अनसब्सक्राइब है।",
+    "nl": "Alles wat we je kunnen mailen, op één plek. Een zoekmail gaat alleen uit als de zoekopdracht nieuwe matches heeft, dagelijks of wekelijks zoals ernaast staat; elke e-mail heeft afmelden in één klik.",
+    "pt": "Tudo o que podemos enviar por e-mail, em um só lugar. Um e-mail de busca só sai quando a busca tem novas correspondências, diariamente ou semanalmente, como indicado ao lado; cada e-mail tem cancelamento em um clique.",
+    "tl": "Lahat ng puwede naming i-email sa iyo, sa iisang lugar. Ipinapadala lang ang email ng paghahanap kapag may bagong tugma ito, araw-araw o lingguhan ayon sa nakasaad sa tabi nito; bawat email ay may one-click unsubscribe.",
+    "_supersedes": "accountPage.notifBlurb"
+  },
+  "accountPage.notifToggleDaily": {
+    "en": "Daily email for {{name}}",
+    "en-GB": "Daily email for {{name}}",
+    "de": "Tägliche E-Mail für {{name}}",
+    "es": "Correo diario de {{name}}",
+    "fr": "E-mail quotidien pour {{name}}",
+    "hi": "{{name}} के लिए रोज़ की ईमेल",
+    "nl": "Dagelijkse e-mail voor {{name}}",
+    "pt": "E-mail diário de {{name}}",
+    "tl": "Araw-araw na email para sa {{name}}"
+  },
+  "accountPage.notifDaily": {
+    "en": "daily digest",
+    "en-GB": "daily digest",
+    "de": "Tages-Digest",
+    "es": "resumen diario",
+    "fr": "digest quotidien",
+    "hi": "दैनिक डाइजेस्ट",
+    "nl": "dagdigest",
+    "pt": "resumo diário",
+    "tl": "araw-araw na digest"
+  },
+  "accountPage.ssBellOffAriaDaily": {
+    "en": "Turn off daily email for {{name}}",
+    "en-GB": "Turn off daily email for {{name}}",
+    "de": "Tägliche E-Mail für {{name}} abschalten",
+    "es": "Desactivar el correo diario de {{name}}",
+    "fr": "Désactiver l'e-mail quotidien pour {{name}}",
+    "hi": "{{name}} की रोज़ की ईमेल बंद करें",
+    "nl": "Dagelijkse e-mail voor {{name}} uitzetten",
+    "pt": "Desligar o e-mail diário de {{name}}",
+    "tl": "I-off ang araw-araw na email para sa {{name}}"
+  },
+  "accountPage.ssBellOnAriaDaily": {
+    "en": "Email me daily about {{name}}",
+    "en-GB": "Email me daily about {{name}}",
+    "de": "Täglich zu {{name}} mailen",
+    "es": "Enviarme un correo diario sobre {{name}}",
+    "fr": "M'écrire chaque jour au sujet de {{name}}",
+    "hi": "{{name}} के बारे में रोज़ ईमेल भेजें",
+    "nl": "Dagelijks mailen over {{name}}",
+    "pt": "Enviar e-mail diário sobre {{name}}",
+    "tl": "Mag-email araw-araw tungkol sa {{name}}"
+  },
+  "accountPage.ssBellOnTitleDaily": {
+    "en": "Daily email on — click to turn off",
+    "en-GB": "Daily email on — click to turn off",
+    "de": "Tägliche E-Mail an — zum Abschalten klicken",
+    "es": "Correo diario activado — clic para desactivar",
+    "fr": "E-mail quotidien activé — cliquez pour désactiver",
+    "hi": "रोज़ की ईमेल चालू — बंद करने के लिए क्लिक करें",
+    "nl": "Dagelijkse e-mail aan — klik om uit te zetten",
+    "pt": "E-mail diário ativo — clique para desligar",
+    "tl": "Naka-on ang araw-araw na email — i-click para i-off"
+  },
+  "accountPage.ssBellOffTitleDaily": {
+    "en": "Email me daily when new jobs match",
+    "en-GB": "Email me daily when new jobs match",
+    "de": "Täglich mailen, wenn neue Stellen passen",
+    "es": "Enviarme un correo diario cuando haya empleos nuevos",
+    "fr": "M'écrire chaque jour quand de nouvelles offres correspondent",
+    "hi": "नई नौकरियाँ मिलने पर रोज़ ईमेल भेजें",
+    "nl": "Dagelijks mailen bij nieuwe matches",
+    "pt": "Enviar e-mail diário quando houver vagas novas",
+    "tl": "Mag-email araw-araw kapag may bagong tugmang trabaho"
+  },
+  "accountPage.ssFootnoteACadence": {
+    "en": "“New” counts postings published since you last opened each search. Tap the",
+    "en-GB": "“New” counts postings published since you last opened each search. Tap the",
+    "de": "„Neu“ zählt Stellen, die seit dem letzten Öffnen jeder Suche veröffentlicht wurden. Tippen Sie auf die",
+    "es": "«Nuevos» cuenta las publicaciones desde que abriste cada búsqueda por última vez. Toca la",
+    "fr": "« Nouvelles » compte les offres publiées depuis votre dernière ouverture de chaque recherche. Touchez la",
+    "hi": "“नई” उन पोस्टिंग को गिनती है जो हर खोज को आख़िरी बार खोलने के बाद प्रकाशित हुईं। नई मिलती नौकरियों की ईमेल के लिए",
+    "nl": "'Nieuw' telt vacatures gepubliceerd sinds je elke zoekopdracht voor het laatst opende. Tik op de",
+    "pt": "“Novas” conta vagas publicadas desde a última vez que você abriu cada busca. Toque no",
+    "tl": "Binibilang ng “bago” ang mga posting mula nang huling buksan ang bawat paghahanap. I-tap ang",
+    "_supersedes": "accountPage.ssFootnoteA"
+  },
+  "accountPage.ssFootnoteBCadence": {
+    "en": "to get an email when fresh jobs match: daily for alerts and company watches, weekly for other searches.",
+    "en-GB": "to get an email when fresh jobs match: daily for alerts and company watches, weekly for other searches.",
+    "de": "für eine E-Mail bei neuen Treffern: täglich bei Alerts und beobachteten Unternehmen, wöchentlich bei anderen Suchen.",
+    "es": "para recibir un correo cuando haya empleos nuevos: a diario en las alertas y empresas seguidas, cada semana en las demás búsquedas.",
+    "fr": "pour recevoir un e-mail quand des offres correspondent : chaque jour pour les alertes et les entreprises suivies, chaque semaine pour les autres recherches.",
+    "hi": "पर टैप करें: अलर्ट और फ़ॉलो की गई कंपनियों के लिए रोज़, बाकी खोजों के लिए हर हफ़्ते।",
+    "nl": "voor een e-mail bij nieuwe matches: dagelijks voor alerts en gevolgde bedrijven, wekelijks voor andere zoekopdrachten.",
+    "pt": "para receber um e-mail quando houver vagas novas: diariamente para alertas e empresas acompanhadas, semanalmente para as outras buscas.",
+    "tl": "para makatanggap ng email kapag may bagong tugma: araw-araw para sa mga alert at sinusubaybayang kumpanya, lingguhan para sa ibang paghahanap.",
+    "_supersedes": "accountPage.ssFootnoteB"
+  },
+  "accountPage.acAiUnavailable": {
+    "en": "The AI service can't take requests right now. What was prepped so far is saved; try the rest later.",
+    "en-GB": "The AI service can't take requests right now. What was prepped so far is saved; try the rest later.",
+    "de": "Der KI-Dienst nimmt gerade keine Anfragen an. Was bisher vorbereitet wurde, ist gespeichert; versuchen Sie den Rest später.",
+    "es": "El servicio de IA no puede atender solicitudes ahora mismo. Lo preparado hasta ahora está guardado; intenta el resto más tarde.",
+    "fr": "Le service d'IA ne peut pas traiter de demandes pour le moment. Ce qui a été préparé est enregistré ; réessayez le reste plus tard.",
+    "hi": "AI सेवा अभी अनुरोध नहीं ले पा रही है। अब तक जो तैयार हुआ वह सहेजा गया है; बाकी बाद में आज़माएँ।",
+    "nl": "De AI-dienst kan nu geen verzoeken aannemen. Wat tot nu toe is voorbereid, is opgeslagen; probeer de rest later.",
+    "pt": "O serviço de IA não pode atender pedidos agora. O que foi preparado até aqui está salvo; tente o restante mais tarde.",
+    "tl": "Hindi makatanggap ng request ang AI service ngayon. Naka-save ang naihanda na; subukan ang iba mamaya."
+  },
+  "accountPage.acSavedNoLetter": {
+    "en": "Tailored résumés saved: {{count}}. Their cover letters couldn't be written this time; run prep again to add them.",
+    "en-GB": "Tailored CVs saved: {{count}}. Their cover letters couldn't be written this time; run prep again to add them.",
+    "de": "Zugeschnittene Lebensläufe gespeichert: {{count}}. Die Anschreiben dazu konnten diesmal nicht geschrieben werden; starten Sie die Vorbereitung erneut, um sie hinzuzufügen.",
+    "es": "Currículums adaptados guardados: {{count}}. Esta vez no se pudieron escribir sus cartas de presentación; vuelve a preparar para añadirlas.",
+    "fr": "CV adaptés enregistrés : {{count}}. Leurs lettres de motivation n'ont pas pu être rédigées cette fois ; relancez la préparation pour les ajouter.",
+    "hi": "सहेजे गए अनुकूलित रिज़्यूमे: {{count}}। इस बार उनके कवर लेटर नहीं लिखे जा सके; उन्हें जोड़ने के लिए तैयारी फिर चलाएँ।",
+    "nl": "Aangepaste cv's opgeslagen: {{count}}. De sollicitatiebrieven konden deze keer niet worden geschreven; start de voorbereiding opnieuw om ze toe te voegen.",
+    "pt": "Currículos adaptados salvos: {{count}}. As cartas de apresentação não puderam ser escritas desta vez; prepare de novo para adicioná-las.",
+    "tl": "Mga naiangkop na résumé na na-save: {{count}}. Hindi naisulat ang mga cover letter nila ngayon; patakbuhin muli ang prep para maidagdag ang mga ito."
+  },
+  "proPlan.linkPendingNoSecondPlan": {
+    "en": "You don't need to buy Pro again: a second plan can't be started on an address that already has one.",
+    "en-GB": "You don't need to buy Pro again: a second plan can't be started on an address that already has one.",
+    "de": "Sie müssen Pro nicht noch einmal kaufen: Auf einer Adresse, die schon einen Tarif hat, lässt sich kein zweiter starten.",
+    "es": "No necesitas volver a comprar Pro: no se puede iniciar un segundo plan en una dirección que ya tiene uno.",
+    "fr": "Inutile d'acheter Pro une seconde fois : une deuxième formule ne peut pas être ouverte sur une adresse qui en a déjà une.",
+    "hi": "आपको Pro दोबारा खरीदने की ज़रूरत नहीं है: जिस पते पर पहले से एक प्लान है, उस पर दूसरा प्लान शुरू नहीं हो सकता।",
+    "nl": "Je hoeft Pro niet opnieuw te kopen: op een adres dat al een abonnement heeft, kan geen tweede worden gestart.",
+    "pt": "Você não precisa comprar o Pro de novo: não é possível iniciar um segundo plano em um endereço que já tem um.",
+    "tl": "Hindi mo kailangang bumili muli ng Pro: hindi puwedeng magsimula ng pangalawang plan sa address na mayroon na nito."
+  },
+  "proPlan.toast.linkPendingTitle": {
+    "en": "This address already has a Pro plan",
+    "en-GB": "This address already has a Pro plan",
+    "de": "Diese Adresse hat bereits einen Pro-Tarif",
+    "es": "Esta dirección ya tiene un plan Pro",
+    "fr": "Cette adresse a déjà une formule Pro",
+    "hi": "इस पते पर पहले से एक Pro प्लान है",
+    "nl": "Dit adres heeft al een Pro-abonnement",
+    "pt": "Este endereço já tem um plano Pro",
+    "tl": "May Pro plan na ang address na ito"
+  },
+  "proPlan.toast.linkPendingBody": {
+    "en": "It isn't linked to this account yet. Email {{support}} from that address and we will link it.",
+    "en-GB": "It isn't linked to this account yet. Email {{support}} from that address and we will link it.",
+    "de": "Er ist noch nicht mit diesem Konto verknüpft. Schreiben Sie von dieser Adresse an {{support}}, dann verknüpfen wir ihn.",
+    "es": "Aún no está vinculado a esta cuenta. Escribe a {{support}} desde esa dirección y lo vincularemos.",
+    "fr": "Elle n'est pas encore liée à ce compte. Écrivez à {{support}} depuis cette adresse et nous la lierons.",
+    "hi": "यह अभी इस खाते से जुड़ा नहीं है। उसी पते से {{support}} को ईमेल करें और हम इसे जोड़ देंगे।",
+    "nl": "Het is nog niet aan dit account gekoppeld. Mail {{support}} vanaf dat adres, dan koppelen wij het.",
+    "pt": "Ainda não está vinculado a esta conta. Envie um e-mail para {{support}} a partir desse endereço e nós o vincularemos.",
+    "tl": "Hindi pa ito naka-link sa account na ito. Mag-email sa {{support}} mula sa address na iyon at ili-link namin ito."
+  },
+  "pulseConfirm.bodyCurated": {
+    "en": "One email a month with the core keywords for your field from our curated keyword guide (not a count of this month's postings), and a free rescan link. Every email has a one-click unsubscribe.",
+    "en-GB": "One email a month with the core keywords for your field from our curated keyword guide (not a count of this month's job adverts), and a free rescan link. Every email has a one-click unsubscribe.",
+    "de": "Eine E-Mail pro Monat mit den zentralen Keywords Ihres Bereichs aus unserem kuratierten Keyword-Leitfaden (keine Zählung der Stellenanzeigen dieses Monats) und einem kostenlosen Rescan-Link. Jede E-Mail lässt sich mit einem Klick abbestellen.",
+    "es": "Un correo al mes con las palabras clave principales de tu sector según nuestra guía seleccionada de palabras clave (no un recuento de las ofertas de este mes) y un enlace para volver a escanear gratis. Cada correo incluye una baja con un clic.",
+    "fr": "Un e-mail par mois avec les mots-clés essentiels de votre domaine, tirés de notre guide de mots-clés sélectionnés (et non d'un décompte des offres de ce mois), et un lien pour un nouveau scan gratuit. Chaque e-mail permet de se désabonner en un clic.",
+    "hi": "महीने में एक ईमेल, जिसमें हमारी चुनी हुई कीवर्ड गाइड से आपके क्षेत्र के मुख्य कीवर्ड्स हों (इस महीने की पोस्टिंग की गिनती नहीं), और एक मुफ़्त रीस्कैन लिंक। हर ईमेल में एक क्लिक में अनसब्सक्राइब।",
+    "nl": "Eén e-mail per maand met de belangrijkste trefwoorden voor jouw vakgebied uit onze samengestelde trefwoordengids (geen telling van de vacatures van deze maand), en een gratis rescan-link. Elke e-mail heeft een afmelding met één klik.",
+    "pt": "Um e-mail por mês com as principais palavras-chave da sua área, do nosso guia selecionado de palavras-chave (não uma contagem das vagas deste mês), e um link para escanear de novo grátis. Todo e-mail tem cancelamento com um clique.",
+    "tl": "Isang email bawat buwan na may mga pangunahing keyword para sa iyong larangan mula sa aming piniling keyword guide (hindi bilang ng mga posting ngayong buwan), at isang libreng rescan link. May one-click unsubscribe ang bawat email.",
+    "_supersedes": "pulseConfirm.body"
+  }
+}
