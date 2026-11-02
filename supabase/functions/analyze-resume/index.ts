@@ -23,6 +23,8 @@ import {
 } from "../_shared/full-analysis.ts";
 import { proGrantRefusal } from "../_shared/pro.ts";
 import { REFUNDED_PURCHASE_MESSAGE, sessionWasRefunded } from "../_shared/payment-revocation.ts";
+// A test-mode session is read with the test key, and only one (S13-043).
+import { sessionKeyFor } from "./stripe-mode.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
@@ -54,7 +56,14 @@ import { REFUNDED_PURCHASE_MESSAGE, sessionWasRefunded } from "../_shared/paymen
 // English report, never a non-language in the prompt. The emailed copy
 // (send-analysis-email) is unchanged and still English around the
 // analysis's own text.
-const FN_BUILD = "analyze-resume.2026-10-28.1";
+// 2026-11-03.1 (S13-043, audit-rest money): the owner can rehearse the $5
+// Full Analysis in Stripe test mode. A cs_test_ session is read with an
+// sk_test_ STRIPE_TEST_SECRET_KEY (stripe-mode.ts) and must answer livemode
+// false; every other session is read with the live key as before, and a
+// test session with no test key is refused as before. The delivery row this
+// function opens for a test session is tagged livemode false, as the
+// webhook's is, so revenue readers leave it out.
+const FN_BUILD = "analyze-resume.2026-11-03.1";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -568,10 +577,16 @@ serve(async (req) => {
       // The same shape a paid $0 session has, so everything below reads it unchanged.
       session = { payment_status: "paid", amount_total: 0, currency: "usd", metadata: { product_type: FULL_ANALYSIS_PRODUCT_TYPE } };
     } else {
+      // THE TEST KEY FOR A TEST SESSION, AND ONLY FOR ONE (S13-043): see
+      // stripe-mode.ts. A failure of any kind is the refusal below.
+      const sessionKey = sessionKeyFor(sessionId, (k) => Deno.env.get(k));
       try {
-        session = await stripe.checkout.sessions.retrieve(sessionId, {
+        if (!sessionKey.key) throw new Error("a test-mode session, and no sk_test_ STRIPE_TEST_SECRET_KEY to read it with");
+        const sessionStripe = sessionKey.testMode ? new Stripe(sessionKey.key, { apiVersion: "2025-12-15.clover" }) : stripe;
+        session = await sessionStripe.checkout.sessions.retrieve(sessionId, {
           expand: ['customer_details']
         });
+        if (sessionKey.testMode && session.livemode !== false) throw new Error("a test-mode id answered as a live session");
         customerEmail = session.customer_details?.email || session.customer_email || null;
         console.log(`[ANALYZE-RESUME] Customer email: ${customerEmail ? 'found' : 'not found'}`);
       } catch (stripeError) {
@@ -1028,7 +1043,8 @@ Use their actual resume content in examples. Prioritize highest-impact fixes fir
             payment_completed_at: deliveredAt,
             generation_success: true,
             content_generation_completed_at: deliveredAt,
-            metadata: { share_id: shareId },
+            // A test-mode rehearsal (S13-043) is tagged as the webhook tags it.
+            metadata: { share_id: shareId, ...((session as { livemode?: boolean }).livemode === false ? { livemode: false } : {}) },
           });
           if (openError) console.error("[ANALYZE-RESUME] Could not record the delivery:", openError);
         }

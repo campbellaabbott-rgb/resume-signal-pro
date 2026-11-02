@@ -4,7 +4,8 @@
  * CP-021, CP-052, CP-003).
  *
  * Nothing alarmed when mail stopped leaving. The new mail-watch function runs
- * every 15 minutes (20261011142000) and checks nine rules; each says ok,
+ * every 15 minutes (20261011142000) and checks ten rules (R10 since
+ * 2026-11-03.1); each says ok,
  * alarm or unknown, an alarm mails the owner once per rule per six hours, and
  * healthchecks.io is pinged every run (its /fail on an alarm). R7's canaries
  * go out through R1's shared sender (its log row is what the next run judges)
@@ -58,7 +59,7 @@ beforeAll(async () => {
       email_type text NOT NULL, recipient text NOT NULL, subject text, status text NOT NULL DEFAULT 'pending', error_message text, metadata jsonb);
     CREATE TABLE public.product_deliveries (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), created_at timestamptz NOT NULL DEFAULT now(),
       stripe_session_id text NOT NULL, product_type text NOT NULL, status text NOT NULL DEFAULT 'payment_received', email_sent_at timestamptz,
-      email_success boolean, generation_error text);
+      email_success boolean, generation_error text, customer_email text);
     CREATE TABLE public.job_board_meta (k text PRIMARY KEY, v jsonb, updated_at timestamptz);
     CREATE TABLE public.mail_door_counts (door text NOT NULL, bucket text NOT NULL, window_start timestamptz NOT NULL DEFAULT now(),
       hits integer NOT NULL DEFAULT 1, PRIMARY KEY (door, bucket));
@@ -133,7 +134,7 @@ describe("who may run it", () => {
     expect((await run({ authorization: `Bearer ${SERVICE}` })).status).toBe(200);
     const ok = await run();
     expect(ok.status).toBe(200);
-    expect(ok.build).toMatch(/^mail-watch\.2026-10-11\.\d+$/);
+    expect(ok.build).toMatch(/^mail-watch\.2026-1[01]-\d{2}\.\d+$/);
   });
 });
 
@@ -142,7 +143,7 @@ describe("a quiet, healthy day", () => {
     await db.exec("INSERT INTO public.email_logs (email_type, recipient, status) VALUES ('product_full_analysis', 'buyer@example.com', 'sent')");
     await db.exec("INSERT INTO public.product_deliveries (stripe_session_id, product_type, status) VALUES ('cs_live_x', 'full_analysis', 'payment_received')");
     const r = await run();
-    expect(r.json.rules.map((x) => [x.id, x.state])).toEqual([["R1", "ok"], ["R2", "ok"], ["R3", "ok"], ["R4", "ok"], ["R5", "ok"], ["R6", "ok"], ["R7", "ok"], ["R8", "ok"], ["R9", "ok"]]);
+    expect(r.json.rules.map((x) => [x.id, x.state])).toEqual([["R1", "ok"], ["R2", "ok"], ["R3", "ok"], ["R4", "ok"], ["R5", "ok"], ["R6", "ok"], ["R7", "ok"], ["R8", "ok"], ["R9", "ok"], ["R10", "ok"]]);
     expect(alerts()).toEqual([]);
     expect(pings).toEqual(["https://hc-ping.com/abc-123"]);
     const stamp = (await db.query<{ v: Record<string, unknown> }>("SELECT v FROM public.job_board_meta WHERE k = 'mail_watch_run'")).rows[0].v;
@@ -165,7 +166,8 @@ describe("each rule rings for what it watches", () => {
   });
 
   it("R2: paid orders with not one purchase mail sent ring", async () => {
-    await db.exec("INSERT INTO public.product_deliveries (stripe_session_id, product_type) VALUES ('cs_live_a', 'full_analysis'), ('cs_live_b', 'freelance_boost')");
+    // An hour old: R2 judges an order from 15 minutes on (2026-11-03.1, S13-109).
+    await db.exec("INSERT INTO public.product_deliveries (stripe_session_id, product_type, customer_email, created_at) VALUES ('cs_live_a', 'full_analysis', 'a@example.com', now() - interval '1 hour'), ('cs_live_b', 'freelance_boost', 'b@example.com', now() - interval '1 hour')");
     expect(stateOf(await run(), "R2")).toBe("alarm");
   });
 
@@ -331,7 +333,7 @@ describe("the owner's mail", () => {
     // Only R2 rings here: with no CANARY_EMAIL the refused Resend does not also ring R7.
     delete env.CANARY_EMAIL;
     ownerStatus = 503;
-    await db.exec("INSERT INTO public.product_deliveries (stripe_session_id, product_type) VALUES ('cs_live_a', 'full_analysis')");
+    await db.exec("INSERT INTO public.product_deliveries (stripe_session_id, product_type, customer_email, created_at) VALUES ('cs_live_a', 'full_analysis', 'a@example.com', now() - interval '1 hour')");
     const r = await run();
     expect(r.json.alerted).toEqual([]);
     expect(alerts().map((m) => m.from)).toEqual(["Resume Booster Alerts <alerts@resumebooster.work>", "Resume Booster Alerts <onboarding@resend.dev>"]);

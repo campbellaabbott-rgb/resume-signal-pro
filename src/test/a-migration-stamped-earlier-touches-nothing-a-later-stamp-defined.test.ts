@@ -58,7 +58,14 @@ describe("the late-stamp rule", () => {
   it("this checkout's own pending migrations revert nothing an applied migration with a later stamp defines", () => {
     const dir = resolve(__dirname, "../../supabase/migrations");
     const files = readdirSync(dir).filter((f) => /^\d{14}_.+\.sql$/.test(f));
-    const pending = files.filter((f) => f.startsWith("20261011"));
+    // The one deploy (f8d72a9b, 2026-10-31) applied wave 4's 20261011 files
+    // but the ones the ledger holds or never applies; those are what is still
+    // pending among them. A later file that redefines an applied 20261011
+    // object (20261103100000's record_affiliate_conversion) restores nothing.
+    const ledger = JSON.parse(readFileSync(resolve(__dirname, "../../docs/deploy-ledger.json"), "utf8")) as { holdUntilVerified: Array<{ stamp: string }>; neverApply: string[] };
+    const notApplied = new Set([...ledger.holdUntilVerified.map((h) => h.stamp), ...ledger.neverApply]);
+    const pending = files.filter((f) => f.startsWith("20261011") && notApplied.has(f.slice(0, 14)));
+    expect(pending, "no 20261011 file is held: re-anchor this check on the ledger").not.toEqual([]);
     const later = files.filter((f) => f.slice(0, 14) > "20261011999999");
     expect(lateStampViolations(pending, later, (f) => readFileSync(resolve(dir, f), "utf8"))).toEqual([]);
   });

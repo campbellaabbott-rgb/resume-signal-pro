@@ -38,6 +38,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { FakeDb, loadEdgeHandler } from "./helpers/edge-harness";
 import { codeOf, sqlCodeOf } from "./helpers/strip-comments";
+import { buildIsAtLeast } from "./helpers/fn-build";
 import { RESUME_BEARING_METADATA_KEYS, withoutResumeText } from "../../supabase/functions/_shared/webhook-payload";
 import {
   CHECKOUT_RESUME_TABLE,
@@ -145,7 +146,7 @@ describe("create-checkout sends Stripe no résumé text", () => {
     const res = await handler(new Request("https://harness.supabase.co/functions/v1/create-checkout", { method: "OPTIONS" }));
     // This build or a later one: a later change to the same function (2026-10-05
     // payments wave) carries the fix forward under its own build string.
-    expect(res.headers.get("x-fn-build")).toMatch(/^create-checkout\.2026-10-(0[4-9]|[1-3]\d)\.[\w-]+$/);
+    expect(buildIsAtLeast(res.headers.get("x-fn-build"), "create-checkout", "2026-10-04"), String(res.headers.get("x-fn-build"))).toBe(true);
   });
 });
 
@@ -389,7 +390,7 @@ describe("stripe-webhook stores no résumé text from the events old sessions st
 
   it("answers its build on every response", async () => {
     const res = await handler(new Request("https://harness.supabase.co/functions/v1/stripe-webhook", { method: "GET" }));
-    expect(res.headers.get("x-fn-build")).toMatch(/^stripe-webhook\.2026-10-(0[4-9]|[1-3]\d)\.[\w-]+$/);
+    expect(buildIsAtLeast(res.headers.get("x-fn-build"), "stripe-webhook", "2026-10-04"), String(res.headers.get("x-fn-build"))).toBe(true);
   });
 
   it("a paid product session whose metadata names no résumé is delivered from the résumé kept against its id", async () => {

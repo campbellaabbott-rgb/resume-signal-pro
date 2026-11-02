@@ -15,7 +15,13 @@ import { Resend } from "https://esm.sh/resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { isScheduledCaller } from "../_shared/email-cron.ts";
 
-const FN_BUILD = "notify-owner.2026-10-08.1";
+// 2026-11-03.1 (S13-040): the keyless allowance's 50% alert is a note it
+// knows. agent-mcp claims the alert (mcp_allowance_alert_claim, once per
+// share per UTC day) and posts {type:'allowance', share, used, cap}; this
+// answered 400 "unrecognized payload" to it, so the owner was never told a
+// share had reached half its cap. The share is a short label and the two
+// counts are whole numbers, or the note is refused.
+const FN_BUILD = "notify-owner.2026-11-03.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -60,7 +66,7 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
 
     // DB webhook payloads (auth.users trigger) arrive as { type: "INSERT", record: {...} }
-    let kind: "signup" | "scan" | null = null;
+    let kind: "signup" | "scan" | "allowance" | null = null;
     let subject = "";
     let lines: string[] = [];
 
@@ -84,6 +90,17 @@ Deno.serve(async (req) => {
         body.country ? `Country: ${escapeHtml(body.country)}` : "",
         body.authed != null ? `Signed-in user: ${body.authed ? "yes" : "no"}` : "",
       ].filter(Boolean);
+    } else if (body.type === "allowance" && typeof body.share === "string" && /^[a-z0-9_:-]{1,40}$/i.test(body.share)
+      && Number.isSafeInteger(body.used) && Number.isSafeInteger(body.cap) && body.used >= 0 && body.cap > 0) {
+      // THE KEYLESS ALLOWANCE AT HALF (S13-040): agent-mcp's 50% alert,
+      // claimed once per share per UTC day before it is posted here.
+      kind = "allowance";
+      const pct = Math.round((body.used / body.cap) * 100);
+      subject = subjectSafe(`⚠️ Keyless allowance: ${body.share} at ${body.used}/${body.cap} (${pct}%)`);
+      lines = [
+        `The keyless allowance share <b>${escapeHtml(body.share)}</b> has used <b>${escapeHtml(body.used)}</b> of <b>${escapeHtml(body.cap)}</b> lookups today (${pct}%, UTC day).`,
+        `At its cap, keyless callers on this share are refused until midnight UTC. A spike past half is a scraper or a surge: read mcp_calls_daily by host and tool.`,
+      ];
     }
 
     if (!kind) return json({ error: "unrecognized payload" }, 400);

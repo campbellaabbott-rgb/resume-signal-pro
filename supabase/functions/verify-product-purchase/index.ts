@@ -24,7 +24,13 @@ import { commissionCentsFor } from "../_shared/affiliate-commission.ts";
 // sequence (docs/deploy-ledger.json, _reservationsNote).
 // 2026-10-14.29 (wave 4 round 2 integration): the affiliate commission is
 // read from _shared/affiliate-commission.ts, the rule stripe-webhook reads.
-const FN_BUILD = "verify-product-purchase.2026-10-14.29";
+// 2026-11-03.1 (S13-060, audit-rest money): the affiliate is mailed only
+// when record_affiliate_conversion answered true (it answers false, writing
+// nothing, when no active affiliate holds the code), only an active
+// affiliate, and the commission the conversion row holds, never the
+// checkout's figure (the row holds 0 for a returning customer or the
+// affiliate's own purchase).
+const FN_BUILD = "verify-product-purchase.2026-11-03.1";
 
 /** Why a sale of this product cannot be delivered while it is not sold, or null. */
 function retiredReasonOf(productType: string | null | undefined): string | null {
@@ -917,7 +923,7 @@ serve(async (req) => {
         productType 
       });
       
-      const { error: affiliateError } = await supabase.rpc('record_affiliate_conversion', {
+      const { data: recorded, error: affiliateError } = await supabase.rpc('record_affiliate_conversion', {
         p_referral_code: referralCode,
         p_stripe_session_id: sessionId,
         p_product_name: productName || productType || 'Product',
@@ -927,18 +933,33 @@ serve(async (req) => {
 
       if (affiliateError) {
         logStep("Affiliate conversion recording failed", { error: affiliateError.message });
+      } else if (recorded !== true) {
+        // false: no ACTIVE affiliate holds the code, and nothing was recorded
+        // (S13-060). Nobody is told they earned anything.
+        logStep("Affiliate conversion not recorded: no active affiliate holds the code");
       } else {
         logStep("Affiliate conversion recorded successfully");
         
-        // Send email notification to affiliate
+        // Send email notification to affiliate: the commission the row holds
+        // (0 for a returning customer or the affiliate's own purchase), and
+        // only to an active affiliate (S13-060).
         try {
-          const { data: affiliateData } = await supabase
-            .from('affiliates')
-            .select('email')
-            .eq('referral_code', referralCode)
-            .single();
+          const { data: conversion } = await supabase
+            .from('affiliate_conversions')
+            .select('affiliate_id, commission_amount')
+            .eq('stripe_session_id', sessionId)
+            .maybeSingle();
+          const recordedCents = Number(conversion?.commission_amount ?? 0);
+          const { data: affiliateData } = conversion && recordedCents > 0
+            ? await supabase
+              .from('affiliates')
+              .select('email')
+              .eq('id', conversion.affiliate_id)
+              .eq('status', 'active')
+              .maybeSingle()
+            : { data: null };
           
-          if (affiliateData?.email && commissionCents > 0) {
+          if (affiliateData?.email && recordedCents > 0) {
             const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
             // The service-role key: the commission mailer is internal and
             // refuses the publishable key, which every visitor holds.
@@ -952,7 +973,7 @@ serve(async (req) => {
                 affiliateEmail: affiliateData.email,
                 productName: productName || productType,
                 saleAmount: session.amount_total,
-                commissionAmount: commissionCents,
+                commissionAmount: recordedCents,
                 referralCode
               })
             });

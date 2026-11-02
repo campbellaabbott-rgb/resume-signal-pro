@@ -12,6 +12,8 @@ import {
   refusedCallerBody,
 } from "../_shared/checkout-buyer.ts";
 import { planPaid, UNPAID_PLAN_NOTE } from "../_shared/consumable-paid.ts";
+// The owner's test-mode rehearsal only (S13-043).
+import { REHEARSAL_UNCONFIGURED, rehearsalKeyOf } from "./owner-rehearsal.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
@@ -36,9 +38,19 @@ import { planPaid, UNPAID_PLAN_NOTE } from "../_shared/consumable-paid.ts";
 // checks out as on main: no currency, time zone, country header or address
 // lookup refuses a sale, the GET answers the EU/UK switch alone (no
 // territoryRefused), and the session asks for a billing address only with the
-// switch on, as sessionPolicy always did. The RU/NG/PK block is main's, as
-// before.
-const FN_BUILD = "create-checkout.2026-10-31.1";
+// switch on, as sessionPolicy always did. The RU/NG/PK block was main's, as
+// before (removed 2026-11-03.1, below).
+// 2026-11-03.1 (S13-061; owner 2026-10-27, "keep selling as today"): the
+// last refusal by place is gone too. It read only country headers the
+// platform never sends (cf-ipcountry, x-vercel-ip-country), so it refused
+// nobody but a caller who wrote the header himself; no header, time zone or
+// address refuses a sale now. A refusal by region, should the owner want
+// one, is a Stripe Radar rule, never a header this function reads.
+// Same build (S13-043): the owner can mint a TEST-mode Full Analysis session
+// to rehearse the sale end to end: x-admin-key with ADMIN_API_KEY, testMode
+// true in the body and an sk_test_ test key (owner-rehearsal.ts). Without
+// the owner's key the body's testMode is ignored and every session is live.
+const FN_BUILD = "create-checkout.2026-11-03.1";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -177,21 +189,6 @@ const CURRENCY_RATES: Record<string, { rate: number; minUnit: number }> = {
   uyu: { rate: 44.50, minUnit: 100 },
 };
 
-// Blocked country codes (ISO 3166-1 alpha-2)
-const BLOCKED_COUNTRIES = new Set(['RU', 'NG', 'PK']);
-
-const getCountryCode = (req: Request): string | null => {
-  return req.headers.get('cf-ipcountry') || 
-         req.headers.get('x-vercel-ip-country') || 
-         null;
-};
-
-const isBlockedCountry = (req: Request): boolean => {
-  const country = getCountryCode(req);
-  if (!country) return false;
-  return BLOCKED_COUNTRIES.has(country.toUpperCase());
-};
-
 const logStep = (step: string, details?: Record<string, unknown>) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
   console.log(`[CREATE-CHECKOUT] ${step}${detailsStr}`);
@@ -319,16 +316,6 @@ serve(async (req) => {
     });
   }
 
-  // Geo-blocking check
-  if (isBlockedCountry(req)) {
-    const country = getCountryCode(req);
-    console.log(`[CREATE-CHECKOUT] Blocked request from country: ${country}`);
-    return new Response(
-      JSON.stringify({ error: "Service not available in your region." }),
-      { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
-
   // The platform's word for the caller's address (cf-connecting-ip, else the
   // last forwarded hop), never the first hop, which a caller writes itself
   // and could rotate per request to dodge the limit below.
@@ -443,7 +430,21 @@ serve(async (req) => {
       );
     }
 
-    const stripe = getStripe(stripeKey);
+    // THE OWNER'S TEST-MODE REHEARSAL (S13-043). The session is minted on
+    // the Stripe test account, so the owner pays it with a test card and
+    // watches analyze-resume deliver it (it reads a cs_test_ session with the
+    // test key). Asked only with the owner's key; a visitor's testMode is
+    // ignored, so no visitor is ever sent a session that takes no money.
+    const rehearsalKey = rehearsalKeyOf(req.headers, requestBody, (k) => Deno.env.get(k));
+    const ownerTestMode = rehearsalKey !== null;
+    if (rehearsalKey === "") {
+      return new Response(
+        JSON.stringify({ error: REHEARSAL_UNCONFIGURED }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const stripe = rehearsalKey ? new Stripe(rehearsalKey, { apiVersion: "2025-12-15.clover" }) : getStripe(stripeKey);
+    if (ownerTestMode) logStep("Owner test-mode rehearsal: the session is minted on the test account");
     const env = (k: string) => Deno.env.get(k);
     // Only our own hosts get the buyer back (S8-060). This fell back to
     // lovable.dev, a host that is not ours at all.
@@ -655,7 +656,7 @@ serve(async (req) => {
       currency: session.currency ?? currency,
       mode: session.mode ?? "payment",
       context: checkoutContextOf(requestBody),
-      metadata: { promo: !!promotionCodeId, requestedCurrency: requestedCurrency ?? null, termsVersion: policy.terms_version || null, referral: !!policy.referral_code, withdrawalWaiver: policy.withdrawal_waiver ?? null },
+      metadata: { promo: !!promotionCodeId, requestedCurrency: requestedCurrency ?? null, termsVersion: policy.terms_version || null, referral: !!policy.referral_code, withdrawalWaiver: policy.withdrawal_waiver ?? null, ...(ownerTestMode ? { testMode: true } : {}) },
     });
     // The account behind the session, before the browser has the url.
     await recordCheckoutBuyer(supabase, { stripeSessionId: session.id, caller, checkoutFunction: "create-checkout", productType: "full_analysis" });

@@ -113,7 +113,7 @@ describe("L10-10: the heartbeat answers its cron, the service role and the owner
   it("the preflight lets the dashboard send the owner's key and names the build", async () => {
     const res = await handler(new Request("https://h.supabase.co/functions/v1/scan-heartbeat", { method: "OPTIONS" }));
     expect(res.headers.get("access-control-allow-headers")).toMatch(/x-admin-key/);
-    expect(res.headers.get("x-fn-build")).toMatch(/^scan-heartbeat\.2026-10-(0[89]|[1-3]\d)\.\d+$/);
+    expect(res.headers.get("x-fn-build")).toMatch(/^scan-heartbeat\.2026-(10-(0[89]|[1-3]\d)|11-\d{2})\.\d+$/);
   });
 });
 

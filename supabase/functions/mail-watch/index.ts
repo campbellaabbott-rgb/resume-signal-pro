@@ -10,8 +10,10 @@
 //   R1  a class failing: in the last hour, a template (email_send_log) or a
 //       purchase mail type (email_logs) with 3 or more refusals making up at
 //       least half of its attempts;
-//   R2  paid orders with no purchase mail: orders written in the last 24
-//       hours that should be mailed, and not one purchase mail sent;
+//   R2  paid orders with no purchase mail: each order written 15 minutes to
+//       24 hours ago that should be mailed, judged by its own mail (a sent
+//       purchase mail to its address since it was written; a Full Analysis
+//       is answered by its link mail or its report mail);
 //   R3  mail stuck: an email_send_log row 'pending' for over 2 minutes with no
 //       later row for the same message;
 //   R4  the queue gave up: a message the sign-in drain dead-lettered (its
@@ -34,6 +36,12 @@
 //       uses. A timeout is reported, never judged: no cron sets pg_net's
 //       timeout, so every call to a function that runs past its 5-second
 //       default reads timed_out.
+//   R10 every other scheduled job, read with get_cron_health over 26 hours:
+//       a job whose last run failed and that failed at least half its runs
+//       (a SQL cron cancelled every run included) or ran only once (a daily,
+//       weekly or monthly job), and a job switched off after it ran; and,
+//       read with cron_disarmed_jobs (20261103120000), an active job whose
+//       vault secret is gone, so it runs, succeeds and posts nothing.
 //
 // Each rule says ok, alarm or unknown (a read that failed is unknown, never
 // ok and never an alarm). An alarm mails the owner once per rule per six
@@ -55,7 +63,12 @@ import { sendMail } from "../_shared/send-mail.ts";
 // 2026-10-11.30 (wave 4 merges main 899be058): no change of its own; the
 // _shared/send-mail.ts it bundles keeps its deadline armed until the Resend
 // body is read (R1 hotfix, process-email-queue 2026-10-14.2).
-const FN_BUILD = "mail-watch.2026-10-11.30";
+// 2026-11-03.1 (audit-rest money: S13-081, S13-109): R2 judges each order
+// by its own mail, so a Pro member's Full Analysis (mailed only its report)
+// no longer reads as unmailed and a report that never left does; R10 rings
+// for any scheduled job failing, cancelled every run, switched off or
+// disarmed by a missing vault secret (cron_disarmed_jobs, 20261103120000).
+const FN_BUILD = "mail-watch.2026-11-03.1";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -108,17 +121,50 @@ async function classFailing(db: Db): Promise<Rule> {
     : { id: "R1", state: "ok", detail: `${tally.size} mail classes sent in the last hour; none failing` };
 }
 
-/** R2: orders that should be mailed were written in the last 24 hours, and no purchase mail was sent. */
+/** An order this young is not judged yet: its mail is sent in the background. */
+const R2_GRACE_MS = 15 * 60_000;
+/** A mail counts for an order from this long before the order's row (the webhook may mail first). */
+const R2_LEAD_MS = 10 * 60_000;
+const lowerTrim = (v: unknown) => String(v ?? "").trim().toLowerCase();
+
+/**
+ * R2 (S13-109): each order owed a mail, 15 minutes to 24 hours old, judged by
+ * its own mail. It used to count every purchase mail sent in the day against
+ * every order, so one buyer's mail hid another's missing one, and a Pro
+ * member's Full Analysis (a delivered order mailed only its report,
+ * 'analysis_results') rang "not one purchase mail" on a quiet day. An order
+ * is answered by a sent purchase mail ('product_' anything) to its address
+ * since it was written, and a Full Analysis by its report mail too; an order
+ * with no address cannot be mailed and is counted, not judged.
+ */
 async function ordersWithNoMail(db: Db): Promise<Rule> {
-  const orders = await rows(db.from("product_deliveries").select("product_type, generation_error").gte("created_at", iso(24 * HOUR)).limit(2000));
-  const sent = await rows(db.from("email_logs").select("email_type").eq("status", "sent").gte("created_at", iso(24 * HOUR)).limit(2000));
-  if (!orders || !sent) return { id: "R2", state: "unknown", detail: "orders or the purchase-mail log could not be read" };
+  const orders = await rows(db.from("product_deliveries").select("product_type, generation_error, customer_email, created_at")
+    .gte("created_at", iso(24 * HOUR)).lt("created_at", iso(R2_GRACE_MS)).limit(2000));
+  const purchaseMails = await rows(db.from("email_logs").select("email_type, recipient, created_at").eq("status", "sent")
+    .like("email_type", "product_%").gte("created_at", iso(25 * HOUR)).limit(5000));
+  const reportMails = await rows(db.from("email_logs").select("email_type, recipient, created_at").eq("status", "sent")
+    .eq("email_type", "analysis_results").gte("created_at", iso(25 * HOUR)).limit(5000));
+  if (!orders || !purchaseMails || !reportMails) return { id: "R2", state: "unknown", detail: "orders or the purchase-mail log could not be read" };
   const mailable = orders.filter((o) => !NOT_MAILED.has(String(o.product_type)) && !String(o.generation_error ?? "").startsWith("undeliverable_retired"));
-  const productMails = sent.filter((m) => String(m.email_type ?? "").startsWith("product_")).length;
-  if (mailable.length > 0 && productMails === 0) {
-    return { id: "R2", state: "alarm", detail: `${mailable.length} paid order(s) in 24 hours and not one purchase mail sent` };
+  const mailsTo = new Map<string, Array<{ report: boolean; at: number }>>();
+  for (const [list, report] of [[purchaseMails, false], [reportMails, true]] as const) {
+    for (const m of list) {
+      const to = lowerTrim(m.recipient);
+      if (to) mailsTo.set(to, [...(mailsTo.get(to) ?? []), { report, at: Date.parse(String(m.created_at ?? "")) }]);
+    }
   }
-  return { id: "R2", state: "ok", detail: `${mailable.length} mailable order(s), ${productMails} purchase mail(s) sent in 24 hours` };
+  const unaddressed = mailable.filter((o) => !lowerTrim(o.customer_email)).length;
+  const unmailed = mailable.filter((o) => {
+    const to = lowerTrim(o.customer_email);
+    if (!to) return false;
+    const since = Date.parse(String(o.created_at ?? "")) - R2_LEAD_MS;
+    return !(mailsTo.get(to) ?? []).some((m) => !(m.at < since) && (!m.report || String(o.product_type) === "full_analysis"));
+  });
+  const noAddress = unaddressed ? `; ${unaddressed} with no address, not judged` : "";
+  if (unmailed.length > 0) {
+    return { id: "R2", state: "alarm", detail: `${unmailed.length} of ${mailable.length} paid order(s) in 24 hours with no purchase mail sent to the buyer: ${[...new Set(unmailed.map((o) => o.product_type))].join(", ")}${noAddress}` };
+  }
+  return { id: "R2", state: "ok", detail: `${mailable.length} mailable order(s) in 24 hours, every addressed one mailed${noAddress}` };
 }
 
 /** R3: a send logged pending for over 2 minutes that no later row for its message settled. */
@@ -324,6 +370,51 @@ async function deadMan(db: Db): Promise<Rule> {
     : { id: "R9", state: "ok", detail: "the heartbeat runs and the crons are answered" + timeouts };
 }
 
+/**
+ * R10 (S13-081): every scheduled job, not only the heartbeat's. R9 asked
+ * get_cron_health one question (has scan-heartbeat-sentinel run); a SQL cron
+ * cancelled on every run, a daily or monthly job whose run failed, or a job
+ * switched off rang nothing. Over 26 hours (a daily job's run is always in
+ * the window): a job whose last run failed and that failed at least half its
+ * runs, or ran only once; and a job switched off after it ran (an old
+ * deliberate switch-off has no runs in the window and is not news). A job
+ * that fails now and then and recovers is not judged. And a job disarmed:
+ * active, reading a vault secret that no longer exists (cron_disarmed_jobs),
+ * which every run 'succeeds' at by posting nothing, so neither reader above
+ * sees it. That second read is judged when it answers; until its migration
+ * is applied the detail says it was not read.
+ */
+async function cronJobsFailing(db: Db): Promise<Rule> {
+  let health: Array<Record<string, unknown>> | null = null;
+  try { health = await rows(db.rpc("get_cron_health", { p_hours: 26 })); } catch { health = null; }
+  if (!health) return { id: "R10", state: "unknown", detail: "get_cron_health did not answer" };
+  if (health.length === 0) return { id: "R10", state: "unknown", detail: "no scheduled job is visible" };
+  let disarmedRows: Array<Record<string, unknown>> | null = null;
+  try { disarmedRows = await rows(db.rpc("cron_disarmed_jobs", {})); } catch { disarmedRows = null; }
+  const disarmed = (disarmedRows ?? []).map((d) => `${String(d.cd_jobname ?? "?")} (vault secret ${String(d.cd_missing_secret ?? "?")} is missing)`);
+  const failing: string[] = [];
+  const switchedOff: string[] = [];
+  for (const j of health) {
+    const name = String(j.ch_jobname ?? "?");
+    const runs = Number(j.ch_runs ?? 0);
+    const failed = Number(j.ch_failed ?? 0);
+    const cancelled = Number(j.ch_timeouts ?? 0);
+    if (j.ch_last_status === "failed" && runs >= 1 && (runs === 1 || failed * 2 >= runs)) {
+      failing.push(`${name} (${failed} of ${runs} run(s) failed${cancelled ? `, ${cancelled} cancelled at its statement timeout` : ""})`);
+    }
+    if (j.ch_active === false && runs > 0) switchedOff.push(name);
+  }
+  const wrong = [
+    ...(failing.length ? [`failing: ${failing.join(", ")}`] : []),
+    ...(switchedOff.length ? [`switched off after running: ${switchedOff.join(", ")}`] : []),
+    ...(disarmed.length ? [`disarmed, running and posting nothing: ${disarmed.join(", ")}`] : []),
+  ];
+  const unread = disarmedRows ? "" : "; cron_disarmed_jobs did not answer, so a disarmed job is not judged";
+  return wrong.length
+    ? { id: "R10", state: "alarm", detail: wrong.join("; ") + unread }
+    : { id: "R10", state: "ok", detail: `${health.length} scheduled job(s); none failing, newly switched off or disarmed${unread}` };
+}
+
 const OWNER_ALERT_SENDERS = ["Resume Booster Alerts <alerts@resumebooster.work>", "Resume Booster Alerts <onboarding@resend.dev>"];
 const esc = (v: unknown) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[c] as string));
 
@@ -390,7 +481,7 @@ Deno.serve(async (req) => {
     : null;
   const rules = await Promise.all([
     classFailing(db), ordersWithNoMail(db), mailStuck(db), deadLettered(db), bounces(db), dnsDrift(fetchImpl),
-    canaries(db, fetchImpl, anon), deliveredUnmailed(db), deadMan(db),
+    canaries(db, fetchImpl, anon), deliveredUnmailed(db), deadMan(db), cronJobsFailing(db),
   ]);
   const alarms = rules.filter((r) => r.state === "alarm");
   const alerted: string[] = [];
