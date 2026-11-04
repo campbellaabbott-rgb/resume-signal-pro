@@ -25,7 +25,7 @@ import { PREVIEW_FORMAT, PREVIEW_OUTPUT_TOKENS, readPreviewReply } from "./previ
 // one the person is told to try again in words. Request, reply shape, the
 // 429/402 answers and the prompt's text are unchanged. Nothing of main's past
 // f8d72a9b, the build the 2026-10-31 deploy put live, rides along.
-const FN_BUILD = "generate-product-preview.2026-10-28.1";
+const FN_BUILD = "generate-product-preview.2026-11-03.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

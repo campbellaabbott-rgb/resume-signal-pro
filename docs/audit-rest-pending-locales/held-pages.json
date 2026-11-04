@@ -1,0 +1,35 @@
+{
+  "jobsPage.tailorResumeOpen": {
+    "en": "Open your tailored résumé",
+    "en-GB": "Open your tailored CV",
+    "de": "Deinen zugeschnittenen Lebenslauf öffnen",
+    "es": "Abrir tu currículum adaptado",
+    "fr": "Ouvrir votre CV adapté",
+    "hi": "अपना टेलर किया हुआ रिज़्यूमे खोलें",
+    "nl": "Open je aangepaste cv",
+    "pt": "Abrir seu currículo adaptado",
+    "tl": "Buksan ang na-tailor mong résumé"
+  },
+  "jobsPage.coverLetterOpen": {
+    "en": "Open your cover letter",
+    "en-GB": "Open your cover letter",
+    "de": "Dein Anschreiben öffnen",
+    "es": "Abrir tu carta de presentación",
+    "fr": "Ouvrir votre lettre de motivation",
+    "hi": "अपना कवर लेटर खोलें",
+    "nl": "Open je sollicitatiebrief",
+    "pt": "Abrir sua carta de apresentação",
+    "tl": "Buksan ang cover letter mo"
+  },
+  "jobsPage.tailorResumeAgain": {
+    "en": "Tailor it again",
+    "en-GB": "Tailor it again",
+    "de": "Erneut zuschneiden",
+    "es": "Adaptarlo de nuevo",
+    "fr": "L'adapter à nouveau",
+    "hi": "फिर से टेलर करें",
+    "nl": "Opnieuw aanpassen",
+    "pt": "Adaptar de novo",
+    "tl": "I-tailor ulit"
+  }
+}

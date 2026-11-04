@@ -15,7 +15,7 @@ import { createGatewayDeltaReader } from "../_shared/ai-fallback.ts";
 // unchanged. Rebuilt so the deployed bundle matches the repo's ai-fallback.ts.
 // Nothing else in this bundle changed since main's f8d72a9b, the build the
 // 2026-10-31 deploy put live (docs/deploy-ledger.json, verifiedDeploys).
-const FN_BUILD = "generate-cover-letter-stream.2026-10-28.1";
+const FN_BUILD = "generate-cover-letter-stream.2026-11-03.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

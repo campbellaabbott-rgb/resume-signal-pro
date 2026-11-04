@@ -572,17 +572,17 @@ export function ResumeUploader({
       urlMessageRef.current.scrollIntoView?.({ behavior: "smooth", block: "center" });
     }
   });
-  const getFinalJobDescriptionText = () =>
-    scannableJobDescription(localJobDescriptionText || jobDescriptionText).trim();
-
-  // THE JOB DESCRIPTION THE FREE SCAN USES IS THE ONE IN THIS BOX (register
-  // L13-31). The box kept its text in local state and the scan button sent
-  // only the résumé, so the advertised match score never appeared for a JD
-  // typed or pasted here, and a handed-off JD the visitor edited or cleared
-  // was still sent unchanged. The box is hydrated from the parent's JD, so
-  // its own content is the truth: empty means no JD. An import failure
-  // message shown in the box is not a job description.
-  const jobDescriptionForScan = (): string => {
+  // THE JOB DESCRIPTION A PRESS USES IS THE ONE IN THIS BOX (register L13-31,
+  // S13-039), the free scan's and the $5 Full Analysis's alike. The box kept
+  // its text in local state and the scan button sent only the résumé, so the
+  // advertised match score never appeared for a JD typed or pasted here, and a
+  // handed-off JD the visitor edited or cleared was still sent unchanged; the
+  // paid buttons went on falling back to the parent's JD after the scan
+  // stopped, so a cleared box bought against the posting the buyer removed. The
+  // box is hydrated from the parent's JD, so its own content is the truth:
+  // empty means no JD. An import failure message shown in the box is not a job
+  // description.
+  const jobDescriptionForPress = (): string => {
     const own = localJobDescriptionText;
     const failure = own.startsWith("Error:") ||
       own === t('uploader.gsheetsImportFailed') || own === t('uploader.gsheetsImportFailedShared');
@@ -600,7 +600,7 @@ export function ResumeUploader({
     // the posting's text; a link that cannot be read stops here, and the box
     // asks for the text rather than scanning against nothing the person meant.
     const link = pendingJobLink();
-    if (!link) { scan(jobDescriptionForScan()); return; }
+    if (!link) { scan(jobDescriptionForPress()); return; }
     void readJobLink(link).then((read) => { if (read !== null) scan(scannableJobDescription(read).trim()); });
   };
 
@@ -608,13 +608,17 @@ export function ResumeUploader({
   // read first and the press stops there: the posting lands in the box, and
   // the next press buys with the text the buyer can see. Synchronous
   // otherwise, so the press that started a checkout is the one it records.
+  // The posting always goes as a string, "" for an empty box: left out, the
+  // page takes its own earlier one. The page is told too, as the free scan
+  // tells it, so a retry from the overlay buys against the same posting.
   const handleTextPaste = () => {
     const link = pendingJobLink();
     if (link) { void readJobLink(link); return; }
     if (textInput.trim()) {
       const finalLinkedInText = linkedInMode === "paste" ? localLinkedInText : linkedInText;
-      const finalJobDescriptionText = getFinalJobDescriptionText();
-      onTextSubmit(textInput.trim(), finalLinkedInText || undefined, finalJobDescriptionText || undefined);
+      const jd = jobDescriptionForPress();
+      onJobDescriptionTextChange?.(jd);
+      onTextSubmit(textInput.trim(), finalLinkedInText || undefined, jd);
     }
   };
 
@@ -622,8 +626,9 @@ export function ResumeUploader({
     const link = pendingJobLink();
     if (link) { void readJobLink(link); return; }
     const finalLinkedInText = linkedInMode === "paste" ? localLinkedInText : linkedInText;
-    const finalJobDescriptionText = getFinalJobDescriptionText();
-    onCheckout(finalLinkedInText || undefined, finalJobDescriptionText || undefined);
+    const jd = jobDescriptionForPress();
+    onJobDescriptionTextChange?.(jd);
+    onCheckout(finalLinkedInText || undefined, jd);
   };
 
   // THE PAGE'S TEXT IS THE TRUTH (register S11-030). This used to be
@@ -644,7 +649,7 @@ export function ResumeUploader({
   // numbers.
   const scanTextLength = (resumeMode === "paste" ? textInput : resumeText).trim().length;
   const tooLongToScan = scanTextLength > MAX_RESUME_LENGTH;
-  const hasJobDescriptionContent = !!localJobDescriptionText.trim() || !!jobDescriptionText || !!jobDescriptionUrl.trim() || !!jobDescriptionFile;
+  const hasJobDescriptionContent = !!localJobDescriptionText.trim() || !!jobDescriptionUrl.trim() || !!jobDescriptionFile;
 
   return (
     <section 

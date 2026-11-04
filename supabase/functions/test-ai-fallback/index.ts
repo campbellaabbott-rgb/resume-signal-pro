@@ -30,7 +30,7 @@ import { SCAN_MODEL_CHAIN } from "../_shared/scan-models.ts";
 // platform's 150 s, and ended in the platform's 504 instead of this report
 // at the moment the report matters most. Nothing of main's past f8d72a9b,
 // the build the 2026-10-31 deploy put live, rides along.
-const FN_BUILD = "test-ai-fallback.2026-10-28.1";
+const FN_BUILD = "test-ai-fallback.2026-11-03.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

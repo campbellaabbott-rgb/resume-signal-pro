@@ -52,7 +52,7 @@ import {
 // unchanged. Request body, reply shape, the 429 answer and the use given
 // back on failure are unchanged. Nothing of main's past f8d72a9b rides
 // along.
-const FN_BUILD = "generate-interview-coach.2026-10-28.1";
+const FN_BUILD = "generate-interview-coach.2026-11-03.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

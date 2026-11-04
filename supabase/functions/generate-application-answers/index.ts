@@ -98,7 +98,7 @@ import { signInRequired } from "../_shared/writing-allowance.ts";
 // tag or the end of its table cell, as a browser rebuilds it.
 // Nothing else in this bundle changed since main's f8d72a9b, the build the
 // 2026-10-31 deploy put live (docs/deploy-ledger.json, verifiedDeploys).
-const FN_BUILD = "generate-application-answers.2026-10-28.1";
+const FN_BUILD = "generate-application-answers.2026-11-03.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

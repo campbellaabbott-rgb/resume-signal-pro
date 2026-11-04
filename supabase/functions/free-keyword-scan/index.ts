@@ -535,7 +535,7 @@ const trackPerformance = (startTime: number, operation: string, success: boolean
 // read as written, version floors and street numbers are not metrics, apostrophe
 // years and a Portuguese "o momento" are dates, and federal agencies,
 // foundations and postdocs are transitions while a marine engineer is not.
-const FN_BUILD = "free-keyword-scan.2026-11-01.1";
+const FN_BUILD = "free-keyword-scan.2026-11-03.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

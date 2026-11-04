@@ -122,6 +122,41 @@ const appsTable = () => (supabase as unknown as { from: (t: string) => any }).fr
 const searchesTable = () => (supabase as unknown as { from: (t: string) => any }).from("user_job_searches");
 
 /**
+ * WHAT WAS DRAFTED FOR A JOB STAYS DRAFTED WHILE THE PAGE IS OPEN (S12-052, the
+ * letter and tailored-résumé half; ApplicationAnswers keeps the answers the
+ * same way).
+ *
+ * The buttons in the Prepare dialog started another paid generator call on
+ * every press, and a letter closed without copying could only be reached by
+ * drafting it again, on the daily writing allowance. Each draft is now kept in
+ * memory per job, and is good only for the same résumé, posting text and
+ * language: the same press opens it with no call, and asking for another is its
+ * own control. At most 20 jobs, oldest gone first, never in browser storage: a
+ * reload or a new tab starts clean.
+ */
+type KeptWriting<T> = { resumeText: string; language: string; jobDescription: string; draft: T };
+const keptLetters = new Map<string, KeptWriting<string>>();
+const keptResumes = new Map<string, KeptWriting<TailoredResumeContent>>();
+const KEPT_WRITING_MAX = 20;
+
+function keptWritingFor<T>(kept: Map<string, KeptWriting<T>>, jobId: string, asked: Omit<KeptWriting<T>, "draft">): T | null {
+  const found = kept.get(jobId);
+  return found && found.resumeText === asked.resumeText && found.language === asked.language && found.jobDescription === asked.jobDescription ? found.draft : null;
+}
+
+function keepWriting<T>(kept: Map<string, KeptWriting<T>>, jobId: string, entry: KeptWriting<T>): void {
+  kept.delete(jobId);
+  kept.set(jobId, entry);
+  while (kept.size > KEPT_WRITING_MAX) kept.delete(kept.keys().next().value as string);
+}
+
+/** Forgets every kept draft (tests start from none). */
+export function forgetKeptWriting(): void {
+  keptLetters.clear();
+  keptResumes.clear();
+}
+
+/**
  * A CAP IS NOT A COUNT.
  *
  * `failedSources` is a SAMPLE: the refresh loop keeps `.slice(-120)` of the
@@ -5162,11 +5197,21 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
     }
   };
 
+  /** What a draft for the open job is written from: the same answer may be reopened (S12-052). */
+  const writingAsked = (): Omit<KeptWriting<never>, "draft"> | null =>
+    prepareJob && fitResume.current ? { resumeText: fitResume.current, language: i18n.language, jobDescription: prepareJob.description ?? "" } : null;
+  const keptWritingOfOpenJob = <T,>(kept: Map<string, KeptWriting<T>>): T | null => {
+    const asked = writingAsked();
+    return prepareJob && asked ? keptWritingFor(kept, prepareJob.job.id, asked) : null;
+  };
+
   // Rewrite the résumé for the posting currently open in the prepare modal.
   // Grounded by generate-tailored-resume (deployed): it rewrites summary/bullets
   // toward the JD's real keywords and flags gaps — never invents experience.
   const tailorForRole = async () => {
-    if (tailoredLoading || !prepareJob || !fitResume.current) return;
+    const asked = writingAsked();
+    if (tailoredLoading || !prepareJob || !fitResume.current || !asked) return;
+    const jobId = prepareJob.job.id;
     setTailoredOpen(true);
     setTailoredLoading(true);
     setTailoredContent(null);
@@ -5190,6 +5235,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
         setTailoredOpen(false);
         return;
       }
+      keepWriting(keptResumes, jobId, { ...asked, draft: d });
       setTailoredContent(d);
     } catch {
       toast({ title: t("jobsPage.tailorErrorTitle", "Couldn't tailor your résumé"), description: t("jobsPage.tailorError", "Something went wrong tailoring your résumé. Please try again.") });
@@ -5202,7 +5248,9 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
   // Draft a cover letter for the posting open in the prepare modal, grounded in
   // the user's résumé by the already-deployed generate-cover-letter.
   const draftCoverLetter = async () => {
-    if (coverLoading || !prepareJob || !fitResume.current) return;
+    const asked = writingAsked();
+    if (coverLoading || !prepareJob || !fitResume.current || !asked) return;
+    const jobId = prepareJob.job.id;
     setCoverOpen(true);
     setCoverLoading(true);
     setCoverText(null);
@@ -5223,6 +5271,7 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
         setCoverOpen(false);
         return;
       }
+      keepWriting(keptLetters, jobId, { ...asked, draft: letter });
       setCoverText(letter);
     } catch {
       toast({ title: t("jobsPage.coverErrorTitle", "Couldn't draft a cover letter"), description: t("jobsPage.coverError", "Something went wrong drafting your cover letter. Please try again.") });
@@ -5230,6 +5279,21 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
     } finally {
       setCoverLoading(false);
     }
+  };
+
+  // The Prepare dialog's two buttons: a draft this job already has opens with no
+  // call. Asking for another goes to the writer directly (S12-052).
+  const openTailoredOrDraft = () => {
+    const kept = keptWritingOfOpenJob(keptResumes);
+    if (!kept) return void tailorForRole();
+    setTailoredContent(kept);
+    setTailoredOpen(true);
+  };
+  const openCoverOrDraft = () => {
+    const kept = keptWritingOfOpenJob(keptLetters);
+    if (!kept) return void draftCoverLetter();
+    setCoverText(kept);
+    setCoverOpen(true);
   };
 
   // Likely interview questions for the posting open in the prepare modal, grounded
@@ -12315,13 +12379,22 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
                 autoStart
               />
               <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-border/60 pt-4">
-                <Button size="sm" variant="outline" className="gap-1.5" disabled={tailoredLoading} onClick={tailorForRole}>
+                <Button size="sm" variant="outline" className="gap-1.5" disabled={tailoredLoading} onClick={openTailoredOrDraft}>
                   {tailoredLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-                  {t("jobsPage.tailorResume", "Tailor my résumé for this role")}
+                  {keptWritingOfOpenJob(keptResumes)
+                    ? t("jobsPage.tailorResumeOpen", "Open your tailored résumé")
+                    : t("jobsPage.tailorResume", "Tailor my résumé for this role")}
                 </Button>
-                <Button size="sm" variant="outline" className="gap-1.5" disabled={coverLoading} onClick={draftCoverLetter}>
+                {keptWritingOfOpenJob(keptResumes) && (
+                  <Button size="sm" variant="ghost" className="gap-1.5" disabled={tailoredLoading} onClick={() => void tailorForRole()}>
+                    <RefreshCw className="w-3.5 h-3.5" /> {t("jobsPage.tailorResumeAgain", "Tailor it again")}
+                  </Button>
+                )}
+                <Button size="sm" variant="outline" className="gap-1.5" disabled={coverLoading} onClick={openCoverOrDraft}>
                   {coverLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
-                  {t("jobsPage.coverLetter", "Draft a cover letter")}
+                  {keptWritingOfOpenJob(keptLetters)
+                    ? t("jobsPage.coverLetterOpen", "Open your cover letter")
+                    : t("jobsPage.coverLetter", "Draft a cover letter")}
                 </Button>
                 <Button size="sm" variant="outline" className="gap-1.5" disabled={coachLoading} onClick={prepInterview}>
                   {coachLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Target className="w-3.5 h-3.5" />}
@@ -12364,14 +12437,21 @@ function JobsBoard({ boardId, curveMemo }: { boardId: string; curveMemo: CurveMe
           {!coverLoading && coverText && (
             <div className="space-y-3">
               <p className="text-[13px] text-foreground whitespace-pre-wrap leading-relaxed">{coverText}</p>
-              <Button
-                size="sm"
-                variant="outline"
-                className="gap-1.5 w-fit"
-                onClick={() => navigator.clipboard?.writeText(coverText).then(() => toast({ title: t("jobsPage.copied", "Copied") }))}
-              >
-                <Copy className="w-3.5 h-3.5" /> {t("jobsPage.copyCoverLetter", "Copy cover letter")}
-              </Button>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5 w-fit"
+                  onClick={() => navigator.clipboard?.writeText(coverText).then(() => toast({ title: t("jobsPage.copied", "Copied") }))}
+                >
+                  <Copy className="w-3.5 h-3.5" /> {t("jobsPage.copyCoverLetter", "Copy cover letter")}
+                </Button>
+                {prepareJob && (
+                  <Button size="sm" variant="ghost" className="gap-1.5 w-fit" onClick={() => void draftCoverLetter()}>
+                    <RefreshCw className="w-3.5 h-3.5" /> {t("applyAnswers.draftAgain", "Draft again")}
+                  </Button>
+                )}
+              </div>
             </div>
           )}
         </DialogContent>

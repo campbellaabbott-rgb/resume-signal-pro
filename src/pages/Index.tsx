@@ -802,16 +802,19 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
   // (register L13-32, L13-31): the session keys are rewritten whole, so a JD
   // or LinkedIn text from an earlier résumé never rides along, and the copy
   // the server keeps is re-made when the inputs changed.
-  const persistScanInputs = useCallback((text: string, linkedIn?: string, jobDesc?: string) => {
+  const rewriteTabInputs = useCallback((text: string, linkedIn?: string, jobDesc?: string) => {
     const multiColumn = getMultiColumnDetectedFromSession();
     clearResumeSession();
     saveResumeToSession(text, linkedIn || undefined, jobDesc || undefined);
     setMultiColumnDetectedInSession(multiColumn);
+  }, []);
+  const persistScanInputs = useCallback((text: string, linkedIn?: string, jobDesc?: string) => {
+    rewriteTabInputs(text, linkedIn, jobDesc);
     if (inputsKey(text, linkedIn, jobDesc) !== preStoredInputsRef.current) {
       forgetPreStored();
       preStoreResume(text, linkedIn, jobDesc);
     }
-  }, [forgetPreStored, preStoreResume]);
+  }, [rewriteTabInputs, forgetPreStored, preStoreResume]);
 
   // Show floating scan button when resumeText is available (covers both file upload and text paste)
   useEffect(() => {
@@ -1621,13 +1624,14 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
       return;
     }
 
-    // Find job context from various sources
+    // A RÉSUMÉ IS TAILORED TO A REAL POSTING OR NOT AT ALL (S13-124). With no
+    // job and no posting text this used to invent both: "<industry> Position"
+    // as the title and a one-line stub as the description, then show the result
+    // as "Tailored for" that job. The report's card only appears with a posting
+    // (its prop below is left out without one); nothing here makes one up.
     const currentJob = uploadedJobs[0];
-    const hasJobContext = currentJob || jobDescriptionText;
-    
-    // Use industry from scan results as fallback for job title
-    const targetTitle = currentJob?.title || 
-      (jobDescriptionText ? "Target Role" : `${freeKeywordResult?.industry || "Professional"} Position`);
+    if (!currentJob?.title && !jobDescriptionText) return;
+    const targetTitle = currentJob?.title || "Target Role";
 
     setIsGeneratingTailored(true);
     setShowTailoredResumeModal(true);
@@ -1638,7 +1642,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
         resumeText,
         jobTitle: targetTitle,
         jobCompany: currentJob?.company,
-        jobDescription: currentJob?.description || jobDescriptionText || `A ${freeKeywordResult?.industry || "professional"} role requiring strong skills and experience.`,
+        jobDescription: currentJob?.description || jobDescriptionText || undefined,
         matchingSkills: freeKeywordResult?.matchingSkills,
         missingSkills: freeKeywordResult?.missingSkills,
       }, {
@@ -1714,7 +1718,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
     setResumeMultiColumnDetected(undefined); // No layout data for pasted text
     setFreeKeywordResult(null);
     if (linkedIn) setLinkedInText(linkedIn);
-    if (jobDescription) setJobDescriptionText(jobDescription);
+    if (jobDescription !== undefined) setJobDescriptionText(jobDescription);
     
     // Save to session storage so it persists across refreshes
     saveResumeToSession(text, linkedIn, jobDescription);
@@ -1754,7 +1758,9 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
     const terms = purchaseTerms();
     const contentToAnalyze = text || resumeText;
     const linkedInContent = linkedIn || linkedInText;
-    const jobDescriptionContent = jobDescription || jobDescriptionText;
+    // "" IS AN ANSWER (S13-039): the box was empty at the press, so no posting
+    // is bought against. Only a press that names none (a retry) reads the page's.
+    const jobDescriptionContent = jobDescription ?? jobDescriptionText;
 
     // Optional coupon code from URL (always normalize to UPPERCASE)
     const couponFromUrl = searchParams.get("coupon");
@@ -1782,6 +1788,10 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
       });
       return;
     }
+
+    // The tab's copy follows the press, or a posting the buyer removed comes
+    // back into the box on the next load and rides on the next purchase.
+    if (jobDescription !== undefined) rewriteTabInputs(contentToAnalyze, linkedInContent, jobDescription);
 
     // Track button click for conversion analytics
     trackButtonClick('fullAnalysis', 'main_checkout');
@@ -2319,7 +2329,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
                 personalizedCareerInsights={freeKeywordResult.personalizedCareerInsights}
                 onGetFullAnalysis={() => handleCheckout(resumeText, linkedInText, jobDescriptionText)}
                 onGetJobAnalysis={handleJobAnalysis}
-                onGenerateTailoredResume={handleGenerateTailoredResume}
+                onGenerateTailoredResume={uploadedJobs[0]?.title || jobDescriptionText ? handleGenerateTailoredResume : undefined}
                 isGeneratingTailored={isGeneratingTailored}
                 isLoading={isLoading || isFreeScanLoading}
                 isCached={isCachedResult}

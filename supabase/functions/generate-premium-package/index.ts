@@ -35,7 +35,7 @@ import { restoreUnsupportedLines, rewrittenResumeFigureIssues, validateProseClai
 // next model is asked, and when none writes it the retryable 502 keeps the
 // delivery open for the retry sweep. Nothing of main's past f8d72a9b, the
 // build the 2026-10-31 deploy put live, rides along.
-const FN_BUILD = "generate-premium-package.2026-10-28.1";
+const FN_BUILD = "generate-premium-package.2026-11-03.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
