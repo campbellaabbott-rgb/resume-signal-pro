@@ -498,10 +498,13 @@ describe("a filter over a column employers leave blank says so", () => {
     // That day came (2026-08-27): the digest forwards the full filter set, the
     // params are saved, and the toast names only what genuinely cannot ride.
     const digest = readFileSync(resolve(root, "supabase/functions/send-search-digest/index.ts"), "utf8");
-    for (const k of ["salaryCeiling", "payBasis", "hasStatedPay", "includeUnstatedPay", "maxYears", "department", "vendor", "sendableOnly", "includeUncategorised"]) {
+    for (const k of ["salaryCeiling", "payBasis", "hasStatedPay", "includeUnstatedPay", "maxYears", "department", "vendor", "includeUncategorised"]) {
       expect(digest, `${k} dropped from the digest body — the email mails a wider search than the one saved`)
         .toMatch(new RegExp(`${k}: p\.${k}`));
     }
+    // The one exception is deliberate (S13-118): the agent-ready filter is gone
+    // from the board, so an old search's flag must not narrow its mail.
+    expect(digest).not.toMatch(/sendableOnly/);
     // And the save side actually stores them, or the digest forwards nothing.
     for (const k of ["salaryCeiling", "payBasis", "maxYears", "vendor"]) {
       expect(JOBS_CODE, `${k} is not saved — parity is one-sided`).toMatch(new RegExp(`${k}: `));

@@ -583,7 +583,7 @@ describe("the numbers the page prints are the numbers the code enforces", () => 
     const days = /This link works for (\d+) days from the day your analysis was made/.exec(analysisMail);
     expect(days, "the analysis email's clock line moved -- point this guard at it").toBeTruthy();
     expect(Number(days![1])).toBe(SHARED_ANALYSIS_DAYS);
-    const scanMail = codeOf(read("supabase/functions/send-scan-report/index.ts"));
+    const scanMail = codeOf(read("supabase/functions/send-scan-report/index.ts")) + codeOf(read("supabase/functions/send-scan-report/copy.ts"));
     const clocks = /resume text is deleted within (\d+) hours of your scan, and the report that quotes it within (\d+) days/.exec(scanMail);
     expect(clocks, "the scan-report footer's clock line moved -- point this guard at it").toBeTruthy();
     expect(Number(clocks![1])).toBe(TEMP_RESUME_HOURS);

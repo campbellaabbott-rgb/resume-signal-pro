@@ -2,6 +2,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { clientAddressOr } from "../_shared/client-address.ts";
+import { networkBucket } from "../_shared/network-bucket.ts";
 import { INDUSTRY_KEYWORDS } from "../_shared/industry-detection.ts";
 import { CORRECTION_MENU_INDUSTRIES } from "../_shared/correction-menu-industries.ts";
 
@@ -10,7 +11,10 @@ import { CORRECTION_MENU_INDUSTRIES } from "../_shared/correction-menu-industrie
 // for byte (register S13-097). This function reads only INDUSTRY_KEYWORDS, which
 // did not change, so what it answers is the same; its bundle differs, so it
 // takes a new build.
-const FN_BUILD = "save-lead.2026-11-01.1";
+// 2026-11-03.1 (S13-067): the owner's lead alert has a daily count per address
+// and an hourly ceiling; the country lookup waits for validation and the limit;
+// the limit counts a network, not an address.
+const FN_BUILD = "save-lead.2026-11-03.1";
 
 /**
  * WHAT A CALLER WROTE NEVER BECOMES MARKUP IN THE OWNER'S MAIL (S8-100). The
@@ -182,6 +186,58 @@ const corsHeaders = {
   'x-fn-build': FN_BUILD,
 };
 
+/**
+ * THE OWNER HEARS ABOUT A LEAD AT A BOUNDED RATE (S13-067). Every call that got
+ * past the per-address limit mailed the owner through the Resend key that
+ * purchase mail shares, and the lead table's upsert means repeating one address
+ * from a proxy pool never reached any row cap. Now one address alerts at most
+ * once a day and all addresses at most OWNER_ALERTS_PER_HOUR an hour, each
+ * counted by the database; the lead itself is saved either way. A counter that
+ * cannot answer leaves the alert as it was before the doors, so it goes: a gate
+ * on mail defaults to today's behaviour. Past the ceiling the owner is told so,
+ * once a day.
+ */
+const OWNER_ALERTS_PER_HOUR = 20;
+const ADDRESS_DOOR = { p_door: "save-lead:owner-address", p_max: 1, p_window_minutes: 1440 };
+const ALL_DOOR = { p_door: "save-lead:owner", p_bucket: "all", p_max: OWNER_ALERTS_PER_HOUR, p_window_minutes: 60 };
+// The same door and window alertOwnerOnce uses for its once-a-day notices.
+const CEILING_NOTICE_DOOR = { p_door: "owner-alert", p_bucket: "save-lead:owner", p_max: 1, p_window_minutes: 1440 };
+
+// deno-lint-ignore no-explicit-any
+type Admin = any;
+
+async function take(admin: Admin, door: Record<string, unknown>): Promise<"ok" | "full" | "error"> {
+  const { data, error } = await admin.rpc("mail_door_take", door);
+  if (error) {
+    console.error(`[SAVE-LEAD] ${door.p_door} count failed:`, error.message?.slice(0, 160));
+    return "error";
+  }
+  return data === true ? "ok" : "full";
+}
+
+/** A keyed hash of the address, so the door's bucket is no list of who left one. */
+async function addressBucket(email: string, secret: string): Promise<string> {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${secret}:save-lead:owner-address:${email.trim().toLowerCase()}`));
+  return Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, "0")).join("").slice(0, 32);
+}
+
+async function alertOwnerOfLead(admin: Admin, secret: string, email: string, ip: string, industry: string | null, score: number | null): Promise<void> {
+  if (await take(admin, { ...ADDRESS_DOOR, p_bucket: await addressBucket(email, secret) }) === "full") return;
+  const atAll = await take(admin, ALL_DOOR);
+  if (atAll === "full") {
+    if (await take(admin, CEILING_NOTICE_DOOR) === "ok") {
+      await sendAlert("lead_alerts_ceiling", "Lead alerts reached their hourly ceiling", {
+        ceilingPerHour: OWNER_ALERTS_PER_HOUR,
+        leads: "still saved; only the alert mails stop until the hour's window ends",
+      });
+    }
+    return;
+  }
+  // The lookup of the platform's address only: a country header is the caller's.
+  const country = (await getCountryFromIpInfo(ip)) || "Unknown";
+  await sendLeadNotificationEmail(email, ip, country, industry, score);
+}
+
 // Common disposable email domains to block
 const DISPOSABLE_EMAIL_DOMAINS = new Set([
   // Temporary email services
@@ -316,22 +372,21 @@ serve(async (req) => {
 
   const clientIp = getClientIp(req);
 
-  // Geo-blocking check (async with ipinfo.io fallback)
-  if (await isBlockedCountry(req, clientIp)) {
-    const country = await getCountryCode(req, clientIp);
-    console.log(`[SAVE-LEAD] Blocked request from country: ${country}`);
-    return new Response(
-      JSON.stringify({ error: 'Service not available in your region.' }),
-      { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  }
-
   try {
-    const { email, industry, atsScore, honeypot } = await req.json();
+    // A body that is not an object is a bad request, not a failure of ours: no
+    // lookup, no alert to the owner.
+    const parsed = await req.json().catch(() => null);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return new Response(
+        JSON.stringify({ error: 'Please enter a valid email address.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    const { email, industry, atsScore, honeypot } = parsed as Record<string, unknown>;
     console.log(`[SAVE-LEAD] Request from IP: ${clientIp}`);
 
     // Honeypot check - if filled, it's a bot
-    if (honeypot && honeypot.trim() !== '') {
+    if (honeypot && String(honeypot).trim() !== '') {
       console.log(`[SAVE-LEAD] Honeypot triggered for IP: ${clientIp}`);
       // Return success to not alert the bot, but don't save
       return new Response(
@@ -342,7 +397,7 @@ serve(async (req) => {
 
     // Validate email format
     const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
-    if (!email || !emailRegex.test(email)) {
+    if (typeof email !== 'string' || !emailRegex.test(email)) {
       return new Response(
         JSON.stringify({ error: 'Please enter a valid email address.' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -372,10 +427,13 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Rate limit: max 10 email submissions per hour per IP
+    // Rate limit: max 10 email submissions per hour per network (an address's
+    // /24 or /48, as a keyed hash), since a proxy pool rotates addresses inside
+    // its blocks. An error here still lets the request through, as it always
+    // has; the doors above bound the mail either way.
     const { data: allowed, error: rlError } = await supabase.rpc('check_rate_limit', {
       p_function: 'save-lead',
-      p_ip: clientIp,
+      p_ip: await networkBucket(req.headers, supabaseServiceKey, 'save-lead'),
       p_max_requests: 10,
       p_window_minutes: 60
     });
@@ -387,6 +445,17 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ error: 'Too many requests. Please try again later.' }),
         { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Geo-blocking check (async with ipinfo.io fallback). It costs a lookup on
+    // the quota the scanner shares, so it runs behind validation and the limit.
+    if (await isBlockedCountry(req, clientIp)) {
+      const country = await getCountryCode(req, clientIp);
+      console.log(`[SAVE-LEAD] Blocked request from country: ${country}`);
+      return new Response(
+        JSON.stringify({ error: 'Service not available in your region.' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -405,12 +474,12 @@ serve(async (req) => {
       );
     }
 
-    // Send lead notification email in background. The country is the lookup
-    // of the platform's address only: a country header is the caller's.
-    const countryPromise = getCountryFromIpInfo(clientIp).then(c => c || 'Unknown');
-    const score = Number.isInteger(atsScore) && atsScore >= 0 && atsScore <= 100 ? atsScore : null;
+    // Send lead notification email in background, through its doors. A failure
+    // there is the alert's alone: the lead is saved and the visitor is answered.
+    const score = typeof atsScore === 'number' && Number.isInteger(atsScore) && atsScore >= 0 && atsScore <= 100 ? atsScore : null;
     EdgeRuntime.waitUntil(
-      countryPromise.then(country => sendLeadNotificationEmail(email, clientIp, country, knownIndustry(industry), score))
+      alertOwnerOfLead(supabase, supabaseServiceKey, email, clientIp, knownIndustry(industry), score)
+        .catch((e) => console.error("[SAVE-LEAD] Owner alert failed:", e))
     );
 
     trackPerformance(requestStartTime, 'save-lead', true, {}, clientIp);

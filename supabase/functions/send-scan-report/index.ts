@@ -55,6 +55,7 @@ import { alertOwnerOnce } from "../_shared/owner-alert.ts";
 import { redirectToConfirm, unsubscribeParams, unsubscribePageUrl } from "../_shared/unsubscribe-link.ts";
 import { sellerFooterHtml, sellerFooterText } from "../_shared/seller.ts";
 import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
+import { mailLanguageOf, REPORT_COPY, reportDate, type MailLanguage, type ReportCopy } from "./copy.ts";
 
 // Provable from outside without sending anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
@@ -73,7 +74,11 @@ import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
 // 2026-10-31.1 (land/all carries the homepage switch-over): 2026-10-27.1's
 // sending with 2026-10-25.1's /resume-checker links, neither branch's build.
 // 2026-11-01.1 (S13-099): "Get the full analysis" lands on /pricing#full-analysis, the Full Analysis card.
-const FN_BUILD = "send-scan-report.2026-11-01.1";
+// 2026-11-03.1 (audit-rest held mail): the report and the fix-plan mails are
+// written in the reader's language (S13-102, copy.ts); a mail that never left
+// hands its counts back (S13-098, mail_door_give); an unsubscribe never lowers
+// a bounce or a complaint (S13-068).
+const FN_BUILD = "send-scan-report.2026-11-03.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -177,11 +182,9 @@ const plain = mailSafeText;
  * verdict named the model's reading of the resume's current job title, which
  * is whatever the resume's author typed, so it is never mailed.
  */
-function verdictOf(r: ScanReport): string {
+function verdictOf(r: ScanReport, c: ReportCopy): string {
   if (r.applicationPassRate === null) return "";
-  const crit = r.findingsSummary?.critical ?? 0;
-  return `This resume will pass roughly ${r.applicationPassRate}% of ATS filters` +
-    (crit > 0 ? ` — ${crit} critical issue${crit === 1 ? " is" : "s are"} holding it back.` : ".");
+  return c.verdict(r.applicationPassRate, r.findingsSummary?.critical ?? 0);
 }
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -262,6 +265,11 @@ async function take(admin: Admin, door: string, bucket: string, max: number, win
   return data === true ? "ok" : "full";
 }
 
+/** One count handed back to a door whose mail never left (mail_door_give, 20261103165000). Best effort. */
+async function give(admin: Admin, door: string, bucket: string, windowMinutes: number): Promise<void> {
+  const { error } = await admin.rpc("mail_door_give", { p_door: door, p_bucket: bucket, p_window_minutes: windowMinutes });
+  if (error) console.error(`[SEND-SCAN-REPORT] ${door} count not handed back:`, error.message?.slice(0, 160));
+}
 
 const recipientBucket = async (serviceKey: string, email: string) =>
   (await sha256Hex(`${serviceKey}:scan-report-recipient:${email}`)).slice(0, 32);
@@ -278,7 +286,8 @@ class DripNotQueued extends Error {
  * a refused enqueue deletes the ones already queued (DripNotQueued.undone
  * says whether every delete held).
  */
-async function queueDrip(admin: Admin, plan: DripPlan): Promise<void> {
+async function queueDrip(admin: Admin, plan: DripPlan, lang: MailLanguage): Promise<void> {
+  const c = REPORT_COPY[lang];
   const email = plan.email;
   // Get-or-create the address's unsubscribe token
   let token: string | null = null;
@@ -292,42 +301,46 @@ async function queueDrip(admin: Admin, plan: DripPlan): Promise<void> {
   const score = plan.score;
   const rescanUrl = `${SITE_URL}/resume-checker?utm_source=email&utm_medium=scan_report&utm_campaign=rescan`;
   const unsubUrl = unsubscribePageUrl("scan-report", { token: token ?? "" });
-  const footer = `<p style="font-size:11px;color:#94a3b8;text-align:center;margin-top:18px">Part of the fix-plan emails started from the button in your scan report from resumebooster.work. <a href="${unsubUrl}" style="color:#94a3b8">Unsubscribe</a> any time — remaining emails cancel too.</p>${sellerFooterHtml()}`;
-  const wrap = (inner: string) => `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f1f5f9;font-family:Helvetica,Arial,sans-serif"><div style="max-width:560px;margin:0 auto;padding:24px 16px"><div style="background:#fff;border-radius:14px;padding:26px 24px;border:1px solid #e2e8f0">${inner}</div>${footer}</div></body></html>`;
+  const blue = (href: string) => (text: string) => `<a href="${href}" style="color:#2563eb">${text}</a>`;
+  const footer = `<p style="font-size:11px;color:#94a3b8;text-align:center;margin-top:18px">${c.dripFooter((text) => `<a href="${unsubUrl}" style="color:#94a3b8">${text}</a>`)}</p>${sellerFooterHtml()}`;
+  const wrap = (inner: string) => `<!DOCTYPE html><html lang="${lang}"><body style="margin:0;padding:0;background:#f1f5f9;font-family:Helvetica,Arial,sans-serif"><div style="max-width:560px;margin:0 auto;padding:24px 16px"><div style="background:#fff;border-radius:14px;padding:26px 24px;border:1px solid #e2e8f0">${inner}</div>${footer}</div></body></html>`;
 
   const steps = plan.steps;
   const topSteps = steps.slice(0, 3);
   const restSteps = steps.slice(3, 6);
   const rid = plan.reportId;
+  const interviews = `${SITE_URL}/?outcome=interview&rid=${encodeURIComponent(rid ?? "")}`;
+  const noResponse = `${SITE_URL}/?outcome=no_response&rid=${encodeURIComponent(rid ?? "")}`;
+  const rejected = `${SITE_URL}/?outcome=rejected&rid=${encodeURIComponent(rid ?? "")}`;
   const day2 = wrap(`
-    <h2 style="font-size:17px;color:#0f172a;margin:0 0 8px">Day 2: your ${topSteps.length ? "three highest-impact fixes" : "fix plan"}</h2>
-    <p style="font-size:13px;color:#475569">Two days ago your resume scored ${score}/100${rid ? ` (report #${escapeHtml(rid)})` : ""}. These fixes move the score most per minute:</p>
-    ${topSteps.length ? `<ol style="font-size:13px;color:#334155;padding-left:18px">${topSteps.map((s) => `<li style="margin-bottom:6px">${escapeHtml(s.step)} <span style="color:#94a3b8">(~${s.minutes} min, ≈+${s.scoreImpact} pts)</span></li>`).join("")}</ol>` : `<p style="font-size:13px;color:#334155">Open your report's fix plan and work top to bottom — it's ordered by impact per minute.</p>`}
-    <p style="font-size:13px;color:#475569">Doing them in the free builder is fastest: <a href="${SITE_URL}/builder?utm_source=email&utm_medium=drip&utm_campaign=day2" style="color:#2563eb">open the builder</a>.</p>`);
+    <h2 style="font-size:17px;color:#0f172a;margin:0 0 8px">${c.day2Heading(topSteps.length > 0)}</h2>
+    <p style="font-size:13px;color:#475569">${c.day2Intro(score, rid ? escapeHtml(rid) : null)}</p>
+    ${topSteps.length ? `<ol style="font-size:13px;color:#334155;padding-left:18px">${topSteps.map((s) => `<li style="margin-bottom:6px">${escapeHtml(s.step)} <span style="color:#94a3b8">${c.stepEffort(s.minutes, s.scoreImpact)}</span></li>`).join("")}</ol>` : `<p style="font-size:13px;color:#334155">${c.day2Fallback}</p>`}
+    <p style="font-size:13px;color:#475569">${c.day2Builder(blue(`${SITE_URL}/builder?utm_source=email&utm_medium=drip&utm_campaign=day2`))}</p>`);
   const day4 = wrap(`
-    <h2 style="font-size:17px;color:#0f172a;margin:0 0 8px">Day 4: the rest of the plan</h2>
-    ${restSteps.length ? `<p style="font-size:13px;color:#475569">If the big three are done, these finish the job:</p><ol start="4" style="font-size:13px;color:#334155;padding-left:18px">${restSteps.map((s) => `<li style="margin-bottom:6px">${escapeHtml(s.step)} <span style="color:#94a3b8">(~${s.minutes} min)</span></li>`).join("")}</ol>` : `<p style="font-size:13px;color:#475569">If the first fixes are done, do one pass for weak bullets: every bullet needs an action verb, a scope, and an outcome. Your report graded each one.</p>`}
-    <p style="font-size:13px;color:#475569">Stuck on wording? The report's rewrites are copy-ready.</p>`);
+    <h2 style="font-size:17px;color:#0f172a;margin:0 0 8px">${c.day4Heading}</h2>
+    ${restSteps.length ? `<p style="font-size:13px;color:#475569">${c.day4Intro}</p><ol start="4" style="font-size:13px;color:#334155;padding-left:18px">${restSteps.map((s) => `<li style="margin-bottom:6px">${escapeHtml(s.step)} <span style="color:#94a3b8">${c.stepOnlyMinutes(s.minutes)}</span></li>`).join("")}</ol>` : `<p style="font-size:13px;color:#475569">${c.day4Fallback}</p>`}
+    <p style="font-size:13px;color:#475569">${c.day4Wording}</p>`);
   const day6 = wrap(`
-    <h2 style="font-size:17px;color:#0f172a;margin:0 0 8px">Day 6: verify the fixes worked</h2>
-    <p style="font-size:13px;color:#475569">You scored ${score}/100 last week. Rescan the fixed version — same rubric, so the before/after is real: <a href="${rescanUrl}" style="color:#2563eb">rescan free</a>.</p>
-    <p style="font-size:13px;color:#475569">And if you've applied anywhere with it, one anonymous click tells us how it went — that's how we measure what actually works: <a href="${SITE_URL}/?outcome=interview&rid=${encodeURIComponent(rid ?? "")}" style="color:#2563eb">got interviews</a> · <a href="${SITE_URL}/?outcome=no_response&rid=${encodeURIComponent(rid ?? "")}" style="color:#2563eb">no response</a>.</p>`);
+    <h2 style="font-size:17px;color:#0f172a;margin:0 0 8px">${c.day6Heading}</h2>
+    <p style="font-size:13px;color:#475569">${c.day6Intro(score, blue(rescanUrl))}</p>
+    <p style="font-size:13px;color:#475569">${c.day6Outcome(blue(interviews), blue(noResponse))}</p>`);
   // Day 14: THE outcome ask — the one question the capture checkbox
   // promises. Links land on the homepage handler (?outcome=&rid=) which
   // records via the record_scan_outcome RPC, anonymously.
   const day14 = wrap(`
-    <h2 style="font-size:17px;color:#0f172a;margin:0 0 8px">One question — did it work?</h2>
-    <p style="font-size:13px;color:#475569">Two weeks ago your resume scored ${score}/100 and you got a fix plan. One anonymous click, honest answer either way:</p>
-    <p style="font-size:14px;font-weight:600"><a href="${SITE_URL}/?outcome=interview&rid=${encodeURIComponent(rid ?? "")}" style="color:#2563eb">I got interviews</a> &nbsp;·&nbsp; <a href="${SITE_URL}/?outcome=no_response&rid=${encodeURIComponent(rid ?? "")}" style="color:#2563eb">No response yet</a> &nbsp;·&nbsp; <a href="${SITE_URL}/?outcome=rejected&rid=${encodeURIComponent(rid ?? "")}" style="color:#2563eb">Rejected</a></p>
-    <p style="font-size:13px;color:#475569">Every answer sharpens the public benchmarks — measuring what actually works is the whole product.</p>
-    <p style="font-size:13px;color:#475569">Still mid-fix? <a href="${rescanUrl}" style="color:#2563eb">Rescan free</a> first — same rubric, so the before/after is real.</p>`);
+    <h2 style="font-size:17px;color:#0f172a;margin:0 0 8px">${c.day14Heading}</h2>
+    <p style="font-size:13px;color:#475569">${c.day14Intro(score)}</p>
+    <p style="font-size:14px;font-weight:600">${blue(interviews)(c.day14Interviews)} &nbsp;·&nbsp; ${blue(noResponse)(c.day14NoResponse)} &nbsp;·&nbsp; ${blue(rejected)(c.day14Rejected)}</p>
+    <p style="font-size:13px;color:#475569">${c.day14Why}</p>
+    <p style="font-size:13px;color:#475569">${c.day14Rescan(blue(rescanUrl))}</p>`);
 
   const DAY = 86400;
   const drips: Array<{ html: string; subject: string; delay: number }> = [
-    { html: day2, subject: "Day 2: your three highest-impact resume fixes", delay: 2 * DAY },
-    { html: day4, subject: "Day 4: finishing your resume fix plan", delay: 4 * DAY },
-    { html: day6, subject: "Day 6: did the fixes work? Verify free", delay: 6 * DAY },
-    { html: day14, subject: "One question: did the new resume get interviews?", delay: 14 * DAY },
+    { html: day2, subject: c.subjectDay2, delay: 2 * DAY },
+    { html: day4, subject: c.subjectDay4, delay: 4 * DAY },
+    { html: day6, subject: c.subjectDay6, delay: 6 * DAY },
+    { html: day14, subject: c.subjectDay14, delay: 14 * DAY },
   ];
   const queued: number[] = [];
   for (const d of drips) {
@@ -397,7 +410,11 @@ Deno.serve(async (req) => {
       const admin = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
       const { data: row } = await admin.from("email_unsubscribe_tokens").select("email").eq("token", token).maybeSingle();
       if (!row) return reply({ error: "invalid unsubscribe link" }, 400);
-      const { error: supErr } = await admin.from("suppressed_emails").upsert({ email: row.email, reason: "unsubscribe" }, { onConflict: "email" });
+      // NEVER LOWERS A REASON (S13-068). The token is permanent, so an older
+      // drip's button or a mail client's one-click can arrive after the address
+      // bounced or complained, and those stop legal notices where "unsubscribe"
+      // does not. A row already here stays as it is.
+      const { error: supErr } = await admin.from("suppressed_emails").upsert({ email: row.email, reason: "unsubscribe" }, { onConflict: "email", ignoreDuplicates: true });
       if (supErr) {
         console.error("[SEND-SCAN-REPORT] unsubscribe failed:", supErr.message);
         return reply({ error: "could not unsubscribe right now" }, 503);
@@ -431,7 +448,7 @@ Deno.serve(async (req) => {
       if (due === "error") return reply({ success: false, error: "Could not start it right now. Try the button again shortly." }, 503);
       if (due === "full") return reply({ success: true, queued: false, reason: "already_started" });
       try {
-        await queueDrip(admin, plan);
+        await queueDrip(admin, plan, mailLanguageOf(raw, req.headers.get("accept-language")));
       } catch (e) {
         console.error("[SEND-SCAN-REPORT] drip enqueue failed:", e instanceof Error ? e.message.slice(0, 160) : String(e));
         // The month's slot was taken above. A retry can work only if nothing
@@ -464,6 +481,8 @@ Deno.serve(async (req) => {
     // From here on `body` is the rebuilt report, never the request.
     const body = cleanReport(raw, sealed);
     if (!body) return reply({ success: false, error: "Missing score" }, 400);
+    const lang = mailLanguageOf(raw, req.headers.get("accept-language"));
+    const c = REPORT_COPY[lang];
 
     const admin = createClient(Deno.env.get("SUPABASE_URL") ?? "", serviceKey);
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
@@ -489,6 +508,14 @@ Deno.serve(async (req) => {
     if (atRecipient === "full") {
       return reply({ success: false, error: "That address has already been sent several reports today. Try again tomorrow, or use the PDF download." }, 429);
     }
+    // A COUNT STAYS TAKEN ONLY FOR A MAIL THAT LEFT (S13-098). Three refused
+    // sends during a provider incident used up the report's 30-day allowance,
+    // and the day's ceiling filled with mail nobody got, so a healthy provider
+    // the next day still answered "already emailed several times". Each door
+    // past this point goes on this list, and every way out with no mail sent
+    // hands them back. The network's count stays: it bounds requests, not mail.
+    const taken: Array<[door: string, bucket: string, windowMinutes: number]> = [["send-scan-report:recipient", recipient, 1440]];
+    const handBack = async () => { for (const [door, bucket, minutes] of taken) await give(admin, door, bucket, minutes); };
 
     // 3. THE REPORT. One sealed report goes out at most PER_REPORT times a
     //    month, to any addresses: its sentences came from a resume the caller
@@ -498,10 +525,12 @@ Deno.serve(async (req) => {
     if (body.sealed && body.reportId) {
       const reportBucket = (await sha256Hex(`${serviceKey}:scan-report-report:${body.reportId}`)).slice(0, 32);
       const atReport = await take(admin, "send-scan-report:report", reportBucket, PER_REPORT, PER_REPORT_WINDOW_MIN);
+      if (atReport !== "ok") await handBack();
       if (atReport === "error") return reply({ success: false, error: "Could not send right now. Please try again shortly." }, 503);
       if (atReport === "full") {
         return reply({ success: false, error: "This report has already been emailed several times. Use the PDF download, or run a fresh scan next month." }, 429);
       }
+      taken.push(["send-scan-report:report", reportBucket, PER_REPORT_WINDOW_MIN]);
     }
 
     // 4. EVERYONE. A day's ceiling, so the worst case is a number. Unsealed
@@ -513,8 +542,10 @@ Deno.serve(async (req) => {
     if (atAll !== "ok") {
       console.error(`[SEND-SCAN-REPORT] daily ceiling: ${atAll}`);
       if (atAll === "full") await alertOwnerOnce(admin, ceilingDoor, "reached its daily ceiling", ownerMail);
+      await handBack();
       return reply({ success: false, error: "Report emails are paused for today. The PDF download works meanwhile." }, 503);
     }
+    taken.push([ceilingDoor, "all", 1440]);
 
     // 5. THE RECIPIENT'S OWN WORD, LAST. An address that unsubscribed,
     //    bounced or complained gets nothing from here, whoever typed it. The
@@ -524,7 +555,10 @@ Deno.serve(async (req) => {
     //    tell a suppressed address from one that is not.
     const { data: suppressed, error: supErr } = await admin
       .from("suppressed_emails").select("email").eq("email", email).maybeSingle();
-    if (supErr) return reply({ success: false, error: "Could not send right now. Please try again shortly." }, 503);
+    if (supErr) {
+      await handBack();
+      return reply({ success: false, error: "Could not send right now. Please try again shortly." }, 503);
+    }
     if (suppressed) return reply({ success: true });
 
     // Store the lead (non-blocking failure — email still sends)
@@ -540,6 +574,7 @@ Deno.serve(async (req) => {
 
     if (!resend) {
       console.error("[SEND-SCAN-REPORT] RESEND_API_KEY not configured");
+      await handBack();
       return reply({ success: false, error: "Email service not configured" }, 503);
     }
 
@@ -549,7 +584,7 @@ Deno.serve(async (req) => {
     const score = Math.round(body.score);
     const scoreColor = score >= 70 ? "#16a34a" : score >= 50 ? "#d97706" : "#dc2626";
     const scoreBg = score >= 70 ? "#f0fdf4" : score >= 50 ? "#fffbeb" : "#fef2f2";
-    const scoreLabel = score >= 70 ? "Good" : score >= 50 ? "Needs work" : "At risk";
+    const scoreLabel = score >= 70 ? c.labelGood : score >= 50 ? c.labelWork : c.labelRisk;
 
     // Email-safe horizontal bar (nested divs degrade gracefully in Outlook)
     const bar = (label: string, value: number, color: string) => `
@@ -566,13 +601,13 @@ Deno.serve(async (req) => {
     const rows: string[] = [];
 
     if (body.reportId) {
-      rows.push(`<p style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#888;margin:0 0 4px">Resume Diagnostic Report &nbsp;·&nbsp; #${escapeHtml(body.reportId)} &nbsp;·&nbsp; ${new Date().toLocaleDateString()}</p>`);
+      rows.push(`<p style="font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#888;margin:0 0 4px">${c.reportHead} &nbsp;·&nbsp; #${escapeHtml(body.reportId)} &nbsp;·&nbsp; ${reportDate(lang)}</p>`);
     }
     if (body.findingsSummary) {
       const fs = body.findingsSummary;
-      rows.push(`<p style="font-size:13px;margin:0 0 10px"><span style="color:#dc2626;font-weight:700">${escapeHtml(fs.critical)} critical</span> &nbsp;·&nbsp; <span style="color:#d97706;font-weight:700">${escapeHtml(fs.warnings)} warning${fs.warnings === 1 ? "" : "s"}</span> &nbsp;·&nbsp; <span style="color:#16a34a;font-weight:700">${escapeHtml(fs.passed)} passed</span></p>`);
+      rows.push(`<p style="font-size:13px;margin:0 0 10px"><span style="color:#dc2626;font-weight:700">${c.critical(fs.critical)}</span> &nbsp;·&nbsp; <span style="color:#d97706;font-weight:700">${c.warnings(fs.warnings)}</span> &nbsp;·&nbsp; <span style="color:#16a34a;font-weight:700">${c.passed(fs.passed)}</span></p>`);
     }
-    const verdict = verdictOf(body);
+    const verdict = verdictOf(body, c);
     if (verdict) {
       rows.push(`<p style="font-size:15px;line-height:1.55;color:#111;font-weight:600;margin:0 0 12px">${escapeHtml(verdict)}</p>`);
     }
@@ -582,8 +617,8 @@ Deno.serve(async (req) => {
       <div style="background:${scoreBg};border:1px solid ${scoreColor}22;border-radius:12px;text-align:center;padding:20px 16px;margin:0 0 16px">
         <div style="font-size:52px;font-weight:800;color:${scoreColor};line-height:1">${escapeHtml(score)}<span style="font-size:18px;font-weight:400;color:#888">/100</span></div>
         <div style="display:inline-block;background:${scoreColor};color:#fff;font-size:11px;font-weight:700;padding:3px 10px;border-radius:99px;margin-top:8px;letter-spacing:0.5px;text-transform:uppercase">${scoreLabel}</div>
-        ${body.projectedScore && Math.round(body.projectedScore) > score ? `<div style="font-size:13px;color:#16a34a;margin-top:10px;font-weight:600">↗ Projected ~${escapeHtml(Math.round(body.projectedScore))} after your fix plan</div>` : ""}
-        ${body.scoreBand ? `<div style="font-size:11px;color:#888;margin-top:6px">Modeling band ${escapeHtml(Math.round(body.scoreBand.low))}–${escapeHtml(Math.round(body.scoreBand.high))} — spans our deterministic calculation and the AI estimate</div>` : ""}
+        ${body.projectedScore && Math.round(body.projectedScore) > score ? `<div style="font-size:13px;color:#16a34a;margin-top:10px;font-weight:600">${c.projected(Math.round(body.projectedScore))}</div>` : ""}
+        ${body.scoreBand ? `<div style="font-size:11px;color:#888;margin-top:6px">${c.band(Math.round(body.scoreBand.low), Math.round(body.scoreBand.high))}</div>` : ""}
       </div>`);
 
     // Breakdown bars
@@ -591,9 +626,9 @@ Deno.serve(async (req) => {
       const sb = body.scoreBreakdown;
       rows.push(`
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px">
-          ${bar("Keyword match", sb.keywords, "#2563eb")}
-          ${bar("Format", sb.format, "#d97706")}
-          ${bar("Quantification", sb.quantification, "#16a34a")}
+          ${bar(c.barKeywords, sb.keywords, "#2563eb")}
+          ${bar(c.barFormat, sb.format, "#d97706")}
+          ${bar(c.barQuantification, sb.quantification, "#16a34a")}
         </table>`);
     }
 
@@ -601,16 +636,16 @@ Deno.serve(async (req) => {
     if (body.peerPercentile != null || body.applicationPassRate != null) {
       rows.push(`
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px"><tr>
-          ${body.peerPercentile != null ? `<td width="49%" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;text-align:center;padding:12px 8px"><div style="font-size:22px;font-weight:800;color:#111">${escapeHtml(body.peerPercentile)}<span style="font-size:12px;color:#888">th</span></div><div style="font-size:11px;color:#666">percentile in your industry</div></td>` : ""}
+          ${body.peerPercentile != null ? `<td width="49%" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;text-align:center;padding:12px 8px"><div style="font-size:22px;font-weight:800;color:#111">${escapeHtml(body.peerPercentile)}<span style="font-size:12px;color:#888">${c.percentileMark}</span></div><div style="font-size:11px;color:#666">${c.percentile}</div></td>` : ""}
           ${body.peerPercentile != null && body.applicationPassRate != null ? `<td width="2%"></td>` : ""}
-          ${body.applicationPassRate != null ? `<td width="49%" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;text-align:center;padding:12px 8px"><div style="font-size:22px;font-weight:800;color:#111">${escapeHtml(body.applicationPassRate)}<span style="font-size:12px;color:#888">%</span></div><div style="font-size:11px;color:#666">est. ATS pass rate</div></td>` : ""}
+          ${body.applicationPassRate != null ? `<td width="49%" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;text-align:center;padding:12px 8px"><div style="font-size:22px;font-weight:800;color:#111">${escapeHtml(body.applicationPassRate)}<span style="font-size:12px;color:#888">%</span></div><div style="font-size:11px;color:#666">${c.passRate}</div></td>` : ""}
         </tr></table>`);
     }
 
     // Top issues with severity accents
     if (body.redFlags && body.redFlags.length > 0) {
       rows.push(`
-        <h3 style="font-size:13px;color:#111;margin:18px 0 8px;text-transform:uppercase;letter-spacing:0.5px">⚠️ Top issues</h3>
+        <h3 style="font-size:13px;color:#111;margin:18px 0 8px;text-transform:uppercase;letter-spacing:0.5px">⚠️ ${c.topIssues}</h3>
         ${body.redFlags.slice(0, 3).map((f, i) => `
           <div style="border-left:3px solid #dc2626;background:#fef2f2;border-radius:0 8px 8px 0;padding:8px 12px;margin:0 0 6px">
             <span style="font-size:13px;color:#333"><b style="color:#dc2626">${i + 1}.</b> ${escapeHtml(f.issue)}</span>
@@ -620,29 +655,29 @@ Deno.serve(async (req) => {
     // Fix plan as a checklist
     if (body.fixRoadmap && body.fixRoadmap.steps.length > 0) {
       rows.push(`
-        <h3 style="font-size:13px;color:#111;margin:18px 0 8px;text-transform:uppercase;letter-spacing:0.5px">✅ Your ${escapeHtml(body.fixRoadmap.totalMinutes)}-minute fix plan</h3>
+        <h3 style="font-size:13px;color:#111;margin:18px 0 8px;text-transform:uppercase;letter-spacing:0.5px">✅ ${c.fixPlanHeading(body.fixRoadmap.totalMinutes)}</h3>
         ${body.fixRoadmap.steps.slice(0, 8).map(s => `
           <div style="border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;margin:0 0 6px">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
               <td style="font-size:13px;color:#333;line-height:1.4"><b style="color:#2563eb">${escapeHtml(s.order ?? "")}.</b> ${escapeHtml(s.step)}</td>
               <td style="white-space:nowrap;text-align:right;padding-left:10px;vertical-align:top">
-                <span style="font-size:11px;color:#888">~${escapeHtml(s.minutes)} min</span>
-                <span style="display:inline-block;background:#f0fdf4;color:#16a34a;font-size:11px;font-weight:700;padding:2px 7px;border-radius:99px;margin-left:4px">+${escapeHtml(s.scoreImpact)} pts</span>
+                <span style="font-size:11px;color:#888">${c.stepMinutes(s.minutes)}</span>
+                <span style="display:inline-block;background:#f0fdf4;color:#16a34a;font-size:11px;font-weight:700;padding:2px 7px;border-radius:99px;margin-left:4px">${c.stepPoints(s.scoreImpact)}</span>
               </td>
             </tr></table>
           </div>`).join("")}`);
     }
 
     if (body.keywordSource?.source === "onet" && body.keywordSource.code) {
-      rows.push(`<p style="font-size:11px;color:#888;margin:14px 0 0">Keyword expectations sourced from O*NET ${escapeHtml(body.keywordSource.code)} (U.S. Department of Labor${body.keywordSource.occupation ? ` — ${escapeHtml(body.keywordSource.occupation)}` : ""}). Every quoted line in your full report is verified against your resume.</p>`);
+      rows.push(`<p style="font-size:11px;color:#888;margin:14px 0 0">${c.onetNote(escapeHtml(body.keywordSource.code), body.keywordSource.occupation ? escapeHtml(body.keywordSource.occupation) : undefined)}</p>`);
     } else if (body.keywordSource?.source === "job_description") {
-      rows.push(`<p style="font-size:11px;color:#888;margin:14px 0 0">Keyword analysis matched against the job posting you provided. Every quoted line in your full report is verified against your resume.</p>`);
+      rows.push(`<p style="font-size:11px;color:#888;margin:14px 0 0">${c.postingNote}</p>`);
     }
 
     // Without the seal there are no sentences to print, so the mail says where
     // they are instead -- in our words, not the caller's.
     if (!body.sealed) {
-      rows.push(`<p style="font-size:13px;color:#475569;margin:14px 0 0">The full findings and your fix plan are on the results page where you ran the scan. A fresh scan is free and takes about a minute.</p>`);
+      rows.push(`<p style="font-size:13px;color:#475569;margin:14px 0 0">${c.unsealedNote}</p>`);
     }
 
     // THE FIX-PLAN SEQUENCE ASKS, IT DOES NOT START. A ticked box puts this
@@ -662,57 +697,63 @@ Deno.serve(async (req) => {
     if (dripLink) {
       rows.push(`
         <div style="margin:18px 0 0;padding:14px;border:1px solid #bfdbfe;background:#eff6ff;border-radius:10px;text-align:center">
-          <p style="font-size:13px;color:#1e3a8a;margin:0 0 10px">You asked to break this plan into four short emails over two weeks: the top fixes, the rest, a rescan reminder, and one question. They start only if you press this button.</p>
-          <a href="${escapeHtml(dripLink)}" style="display:inline-block;background:#2563eb;color:#fff;font-size:13px;font-weight:700;padding:10px 20px;border-radius:8px;text-decoration:none">Start my fix-plan emails</a>
-          <p style="font-size:11px;color:#64748b;margin:8px 0 0">The button works for 7 days. Ignore it and nothing more is sent.</p>
+          <p style="font-size:13px;color:#1e3a8a;margin:0 0 10px">${c.dripAsk}</p>
+          <a href="${escapeHtml(dripLink)}" style="display:inline-block;background:#2563eb;color:#fff;font-size:13px;font-weight:700;padding:10px 20px;border-radius:8px;text-decoration:none">${c.dripButton}</a>
+          <p style="font-size:11px;color:#64748b;margin:8px 0 0">${c.dripNote}</p>
         </div>`);
     }
 
-    const preheader = `Your resume scored ${score}/100 — ${body.fixRoadmap?.totalMinutes ? `a ${body.fixRoadmap.totalMinutes}-minute fix plan is inside.` : body.sealed ? "your fix plan is inside." : "your scan summary is inside."}`;
+    const preheader = c.preheader(score, body.fixRoadmap?.totalMinutes || null, body.sealed);
 
     const html = `
-<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f1f5f9;font-family:Helvetica,Arial,sans-serif">
+<!DOCTYPE html><html lang="${lang}"><body style="margin:0;padding:0;background:#f1f5f9;font-family:Helvetica,Arial,sans-serif">
   <div style="display:none;max-height:0;overflow:hidden;font-size:1px;color:#f1f5f9">${escapeHtml(preheader)}</div>
   <div style="max-width:560px;margin:0 auto;padding:24px 16px">
     <div style="text-align:center;padding:0 0 14px">
       <span style="font-size:17px;font-weight:800;color:#0f172a">Resume <span style="color:#2563eb">Booster</span></span>
-      <div style="font-size:11px;color:#94a3b8;margin-top:2px">Free scan summary · ${escapeHtml(new Date().toISOString().slice(0, 10))}</div>
+      <div style="font-size:11px;color:#94a3b8;margin-top:2px">${c.headTagline} · ${escapeHtml(new Date().toISOString().slice(0, 10))}</div>
     </div>
     <div style="background:#fff;border-radius:14px;padding:26px 24px;border:1px solid #e2e8f0">
       ${rows.join("\n")}
       <div style="text-align:center;margin-top:22px">
-        <a href="${ctaUrl}" style="display:inline-block;background:#2563eb;color:#fff;font-size:15px;font-weight:700;padding:13px 30px;border-radius:10px;text-decoration:none">Get the full analysis →</a>
-        <div style="margin-top:10px"><a href="${rescanUrl}" style="font-size:12px;color:#64748b;text-decoration:underline">Made the fixes? Rescan free to see your new score</a></div>
+        <a href="${ctaUrl}" style="display:inline-block;background:#2563eb;color:#fff;font-size:15px;font-weight:700;padding:13px 30px;border-radius:10px;text-decoration:none">${c.cta}</a>
+        <div style="margin-top:10px"><a href="${rescanUrl}" style="font-size:12px;color:#64748b;text-decoration:underline">${c.rescan}</a></div>
       </div>
       ${body.reportId ? `
       <div style="margin-top:20px;padding-top:16px;border-top:1px solid #e2e8f0;text-align:center">
-        <p style="font-size:12px;color:#64748b;margin:0 0 8px">Applied with this resume? One click helps us measure which scores actually land interviews (anonymous):</p>
-        <a href="https://resumebooster.work/?outcome=interview&rid=${escapeHtml(body.reportId)}" style="font-size:12px;color:#2563eb;text-decoration:underline;margin:0 6px">🎉 Got interviews</a>
-        <a href="https://resumebooster.work/?outcome=no_response&rid=${escapeHtml(body.reportId)}" style="font-size:12px;color:#2563eb;text-decoration:underline;margin:0 6px">📭 No response</a>
-        <a href="https://resumebooster.work/?outcome=rejected&rid=${escapeHtml(body.reportId)}" style="font-size:12px;color:#2563eb;text-decoration:underline;margin:0 6px">❌ Rejected</a>
+        <p style="font-size:12px;color:#64748b;margin:0 0 8px">${c.outcomeAsk}</p>
+        <a href="https://resumebooster.work/?outcome=interview&rid=${escapeHtml(body.reportId)}" style="font-size:12px;color:#2563eb;text-decoration:underline;margin:0 6px">${c.outcomeInterviews}</a>
+        <a href="https://resumebooster.work/?outcome=no_response&rid=${escapeHtml(body.reportId)}" style="font-size:12px;color:#2563eb;text-decoration:underline;margin:0 6px">${c.outcomeNoResponse}</a>
+        <a href="https://resumebooster.work/?outcome=rejected&rid=${escapeHtml(body.reportId)}" style="font-size:12px;color:#2563eb;text-decoration:underline;margin:0 6px">${c.outcomeRejected}</a>
       </div>` : ""}
     </div>
     <p style="font-size:11px;color:#94a3b8;text-align:center;margin-top:16px;line-height:1.5">
-      Your resume text is deleted within 24 hours of your scan, and the report that quotes it within 7 days. Every copy we keep, and for how long: resumebooster.work/trust<br>
-      You received this because this address was entered for a scan report at resumebooster.work. If that wasn't you, ignore it.<br>
-      Follow-up emails come only if the button for them in this email is pressed, and every one has an unsubscribe link.
+      ${c.footerRetention}<br>
+      ${c.footerWhy}<br>
+      ${c.footerFollowUp}
     </p>
     ${sellerFooterHtml()}
   </div>
 </body></html>`;
 
-    const { error } = await resend.emails.send({
-      from: FROM,
-      to: [email],
-      reply_to: CUSTOMER_REPLY_TO,
-      subject: body.sealed
-        ? `Your resume scored ${Math.round(body.score)}/100 — here's your fix plan`
-        : `Your resume scored ${Math.round(body.score)}/100 — your scan summary`,
-      html,
-    });
-
-    if (error) {
-      console.error("[SEND-SCAN-REPORT] Resend error:", error);
+    // A send the provider refused, or that threw, never left: its counts go
+    // back, and the visitor can try again once the provider is healthy.
+    let sendFailure: unknown = null;
+    try {
+      const { error } = await resend.emails.send({
+        from: FROM,
+        to: [email],
+        reply_to: CUSTOMER_REPLY_TO,
+        subject: body.sealed ? c.subjectSealed(Math.round(body.score)) : c.subjectUnsealed(Math.round(body.score)),
+        html,
+      });
+      sendFailure = error;
+    } catch (e) {
+      sendFailure = e;
+    }
+    if (sendFailure) {
+      console.error("[SEND-SCAN-REPORT] Resend error:", sendFailure);
+      await handBack();
       return reply({ success: false, error: "Failed to send email" }, 502);
     }
     if (body.dripOptIn && !body.sealed) console.log("[SEND-SCAN-REPORT] no fix-plan button: the report was not sealed by the scan");

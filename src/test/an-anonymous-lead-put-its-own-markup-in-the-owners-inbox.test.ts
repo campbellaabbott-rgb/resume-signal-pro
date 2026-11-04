@@ -11,7 +11,7 @@
  * WHAT HOLDS NOW, running the shipped handler with its network faked: an
  * industry that is not a label the detector or the correction menu makes is
  * not printed; the address is the platform's, never the caller's first hop
- * (and keys the rate limit); a country header is ignored; what is printed is
+ * (and its network keys the rate limit); a country header is ignored; what is printed is
  * escaped, and the subject carries no markup or control characters.
  */
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -45,6 +45,7 @@ beforeEach(() => {
   db.rpcs = {
     check_rate_limit: (a) => { limitedBy.push(a.p_ip); return { data: true, error: null }; },
     save_free_scan_lead: () => ({ data: null, error: null }),
+    mail_door_take: () => ({ data: true, error: null }),
   };
 });
 
@@ -73,7 +74,12 @@ describe("the owner's lead alert prints nothing a caller wrote as markup", () =>
     expect(m.html).toContain("203.0.113.9");
     expect(m.html, "a country header was printed").not.toContain("<b>US</b>");
     expect(m.subject).not.toMatch(/[<>\u0000-\u001f]/);
-    expect(limitedBy, "the flood bound was keyed on the caller's first hop").toEqual(["203.0.113.9"]);
+    // Since S13-067 the bound counts the platform's address's network, as a keyed
+    // hash: another forged first hop from that network lands in the same bucket.
+    expect(limitedBy).toHaveLength(1);
+    expect(limitedBy[0]).toMatch(/^[0-9a-f]{32}$/);
+    await post({ email: "lead2@example.com" }, { "x-forwarded-for": "7.7.7.7, 203.0.113.200" });
+    expect(limitedBy[1], "the flood bound was keyed on the caller's first hop").toBe(limitedBy[0]);
   });
 
   it("an industry the detector makes is printed", async () => {
