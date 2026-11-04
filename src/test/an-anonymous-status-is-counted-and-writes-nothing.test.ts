@@ -24,7 +24,9 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { PGlite } from "@electric-sql/pglite";
 import { ANON, bootBoardHandler, SVC, type BoardHandler } from "./helpers/board-handler";
+import { migration } from "./helpers/agent-db";
 import { eqs, type Answer, type Query } from "./helpers/proxy-db";
 import { anonBudgetGate, BUDGETED_ACTIONS, METERED_ACTIONS } from "../../supabase/functions/job-board/anon-budget";
 import { isScheduledCaller } from "../../supabase/functions/_shared/email-cron";
@@ -287,8 +289,32 @@ describe("the schedule", () => {
     expect(SQL).toMatch(/WHERE EXISTS \(SELECT 1 FROM vault\.decrypted_secrets WHERE name = 'email_cron_key'\)/);
   });
 
-  it("re-runs by replacing its own job and checks the job came up active", () => {
-    expect(SQL).toMatch(/PERFORM cron\.unschedule\('job-board-upkeep'\)/);
-    expect(SQL).toMatch(/IF v_active IS NOT TRUE THEN\s+RAISE EXCEPTION/);
+  const FILE = "20261103221000_the_scheduler_not_an_anonymous_reader_wakes_a_dead_chain.sql";
+  /** pg_cron's three names as a stand-in, so the file's own branches run in Postgres. */
+  const withCron = async (activeByDefault: boolean) => {
+    const db = new PGlite();
+    await db.exec(`
+      CREATE SCHEMA cron;
+      CREATE TABLE cron.job (jobid serial PRIMARY KEY, jobname text UNIQUE, schedule text, command text, active boolean DEFAULT ${activeByDefault});
+      CREATE FUNCTION cron.schedule(n text, s text, c text) RETURNS bigint LANGUAGE sql AS $f$ INSERT INTO cron.job (jobname, schedule, command) VALUES (n, s, c) RETURNING jobid::bigint $f$;
+      CREATE FUNCTION cron.unschedule(n text) RETURNS boolean LANGUAGE sql AS $f$ DELETE FROM cron.job WHERE jobname = n RETURNING true $f$;
+    `);
+    return db;
+  };
+
+  it("run twice in Postgres it leaves one active job on its schedule", async () => {
+    const db = await withCron(true);
+    await db.exec(migration(FILE));
+    await db.exec(migration(FILE));
+    const { rows } = await db.query<{ jobname: string; schedule: string; active: boolean }>("SELECT jobname, schedule, active FROM cron.job");
+    expect(rows).toEqual([{ jobname: "job-board-upkeep", schedule: "2-59/5 * * * *", active: true }]);
+  });
+
+  it("verifies itself: a job that did not come up active stops the migration", async () => {
+    await expect((await withCron(false)).exec(migration(FILE))).rejects.toThrow(/not an active cron job/);
+  });
+
+  it("passes on a database without pg_cron", async () => {
+    await expect(new PGlite().exec(migration(FILE))).resolves.toBeDefined();
   });
 });
