@@ -187,7 +187,10 @@ describe("the redirect knows every query parameter the scanner reads", () => {
     expect(report).toContain("${SITE_URL}/pricing?utm_source=email&utm_medium=scan_report&utm_campaign=free_scan#full-analysis");
     expect(report).not.toContain("/resume-checker?utm_source=email&utm_medium=scan_report&utm_campaign=free_scan#pricing");
     expect(read("supabase/functions/send-market-pulse/index.ts")).toContain("${SITE_URL}/resume-checker?utm_source=email&utm_medium=market_pulse&utm_campaign=rescan");
-    expect(read("supabase/functions/send-search-digest/index.ts")).toMatch(/href="\$\{SITE_URL\}\/resume-checker"[^>]*>scan your resume</);
+    // The link's words live in the digest's copy table since it speaks the
+    // reader's language (S13-102); the address stays in the mail.
+    expect(read("supabase/functions/send-search-digest/index.ts")).toMatch(/c\.tip\(\(text\) => `<a href="\$\{SITE_URL\}\/resume-checker"/);
+    expect(read("supabase/functions/send-search-digest/copy.ts")).toContain('link("scan your resume")');
   });
 
   it("the report emails' outcome links are among them", () => {

@@ -68,6 +68,6 @@ describe("the report mail's Full Analysis button", () => {
 
   it("the function says which build carries the new destination", () => {
     const src = readFileSync(resolve(ROOT, "supabase/functions/send-scan-report/index.ts"), "utf8");
-    expect(src).toMatch(/const FN_BUILD = "send-scan-report\.2026-11-01\.1";/);
+    expect(src).toMatch(/const FN_BUILD = "send-scan-report\.2026-11-03\.1";/);
   });
 });

@@ -30,6 +30,14 @@
 // session, what happened and, for one that did not take, the manual remedy:
 // resend the event from the Stripe Dashboard.
 //
+// THE RUN HAS A CLOCK (the recheck of S13-028). Ten re-deliveries at 25 s each,
+// after a list that could wait on Stripe for minutes, pass the platform's cut of
+// an isolate at about 150 s: the sweep died before its mail and its stamp, and
+// what it found went with it. Now the list stops at LIST_BUDGET_MS and keeps
+// what it read, no re-delivery starts past RUN_BUDGET_MS and none runs past
+// RUN_HARD_MS, each mail attempt is bounded, and a session left over is said as
+// such and counted in `deferred`. It takes no door, so the next run sends it.
+//
 // WHO MAY RUN IT (2026-10-04 completeness review). It used to answer anyone:
 // "counts only, so no secret gate is needed". But every POST paged through up
 // to 20 Stripe list calls on our key, with a lookback the caller chose -- an
@@ -60,6 +68,8 @@ import { buyerEmailOf } from "../_shared/buyer-email.ts";
 // instead of naming a recovery function that could not find the order.
 // Also 2026-11-03.1 (the audit-rest fixer): "delivered" is read from the
 // order row, never from the claim marker alone.
+// Also 2026-11-03.1 (audit-rest held mail): the run keeps a clock, so its mail
+// and its stamp always happen and what is left waits for the next run.
 const BUILD_VERSION = "2026-11-03.1";
 const FN_BUILD = `reconcile-stripe.${BUILD_VERSION}`;
 
@@ -72,6 +82,16 @@ const MAX_REDELIVERIES = 10;
 const REDELIVERY_MS = 25_000;
 /** A session is re-sent at most once in this window (a door per session). */
 const REDELIVERY_DOOR_MINUTES = 14 * 24 * 60;
+/** Stop asking Stripe for more pages this far into the run; keep what was read. */
+const LIST_BUDGET_MS = 45_000;
+/** One list call's wait, with one retry. The SDK's own defaults allow minutes. */
+const LIST_CALL_MS = 15_000;
+/** No new re-delivery starts this far into the run. */
+const RUN_BUDGET_MS = 90_000;
+/** A re-delivery in flight is cut here, which leaves the mail and the stamp their time. */
+const RUN_HARD_MS = 105_000;
+/** One attempt at the owner's mail; the SDK's send takes no signal. */
+const MAIL_ATTEMPT_MS = 10_000;
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -83,8 +103,19 @@ const json = (b: unknown, s = 200) =>
   new Response(JSON.stringify(b), { status: s, headers: { ...cors, "Content-Type": "application/json" } });
 const unauthorized = () => json({ error: "Unauthorized" }, 401);
 
+/** The promise's answer, or a rejection once `ms` have passed. */
+function withClock<T>(work: Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const clock = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`no answer in ${ms} ms`)), ms);
+  });
+  return Promise.race([work, clock]).finally(() => clearTimeout(timer));
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
+  const startedAt = Date.now();
+  const elapsed = () => Date.now() - startedAt;
 
   // The owner's key or the service role opens it outright. Otherwise only a
   // cron key long enough to be the vault's is even asked about, so a
@@ -122,12 +153,25 @@ serve(async (req) => {
     // the session it is handed, so it gets Stripe's own copy.
     const listed = new Map<string, Stripe.Checkout.Session>();
     let startingAfter: string | undefined;
+    // True when this run stopped reading before Stripe's list ended.
+    let listCut = false;
     for (let page = 0; page < MAX_PAGES; page++) {
-      const res = await stripe.checkout.sessions.list({
-        created: { gte: sinceEpoch },
-        limit: 100,
-        ...(startingAfter ? { starting_after: startingAfter } : {}),
-      });
+      if (page > 0 && elapsed() >= LIST_BUDGET_MS) { listCut = true; break; }
+      let res: Stripe.ApiList<Stripe.Checkout.Session>;
+      try {
+        res = await stripe.checkout.sessions.list({
+          created: { gte: sinceEpoch },
+          limit: 100,
+          ...(startingAfter ? { starting_after: startingAfter } : {}),
+        }, { timeout: LIST_CALL_MS, maxNetworkRetries: 1 });
+      } catch (e) {
+        // The first page failing is a failed run. A later one must not lose
+        // the orphans already found on the pages before it.
+        if (page === 0) throw e;
+        console.error(`[RECONCILE-STRIPE] list page ${page + 1} failed; working from what was read:`, e);
+        listCut = true;
+        break;
+      }
       for (const s of res.data) {
         // Match the webhook's own definition of "should be fulfilled": paid,
         // or a payment-mode session a 100%-off code completed at $0.
@@ -171,10 +215,13 @@ serve(async (req) => {
     let inProgress = 0;
     let failedAfterClaim = 0;
     let sent = 0;
+    // Orphans this run had no room for. Their doors stay untaken, so the next run sends them.
+    let deferred = 0;
     for (const o of orphans) {
       const session = listed.get(o.id);
       if (!webhookSecret || !supabaseUrl || !session) { outcome.set(o.id, "not re-sent: STRIPE_WEBHOOK_SECRET is not set"); continue; }
-      if (sent >= MAX_REDELIVERIES) { outcome.set(o.id, `not re-sent: ${MAX_REDELIVERIES} a run, the next run sends it`); continue; }
+      if (sent >= MAX_REDELIVERIES) { outcome.set(o.id, `not re-sent: ${MAX_REDELIVERIES} a run, the next run sends it`); deferred++; continue; }
+      if (elapsed() >= RUN_BUDGET_MS) { outcome.set(o.id, "not re-sent: the run's clock ran out, the next run sends it"); deferred++; continue; }
       const door = { p_door: "reconcile-redeliver", p_bucket: o.id.slice(0, 64), p_max: 1, p_window_minutes: REDELIVERY_DOOR_MINUTES };
       const { data: first, error: doorError } = await supabase.rpc("mail_door_take", door);
       if (doorError || first !== true) {
@@ -190,7 +237,7 @@ serve(async (req) => {
           method: "POST",
           headers: { "Content-Type": "application/json", "stripe-signature": signature, Authorization: `Bearer ${serviceKey}` },
           body,
-          signal: AbortSignal.timeout(REDELIVERY_MS),
+          signal: AbortSignal.timeout(Math.max(1000, Math.min(REDELIVERY_MS, RUN_HARD_MS - elapsed()))),
         });
         accepted = res.ok;
         status = String(res.status);
@@ -240,9 +287,10 @@ serve(async (req) => {
         const rows = orphans.map((o) =>
           `<tr><td>${o.createdIso}</td><td><code>${esc(o.id)}</code></td><td>${esc(o.email)}</td><td>${o.amountCents != null ? (o.amountCents / 100).toFixed(2) + " " + o.currency.toUpperCase() : "—"}</td><td>${esc(o.product)}</td><td>${esc(outcome.get(o.id) ?? null)}</td></tr>`,
         ).join("");
-        const subject = `⚠️ ${orphans.length} paid Stripe session(s) the webhook missed: ${redelivered} delivered${failedAfterClaim ? `, ${failedAfterClaim} failed` : ""}${inProgress ? `, ${inProgress} still generating` : ""}`;
+        const subject = `⚠️ ${orphans.length} paid Stripe session(s) the webhook missed: ${redelivered} delivered${failedAfterClaim ? `, ${failedAfterClaim} failed` : ""}${inProgress ? `, ${inProgress} still generating` : ""}${deferred ? `, ${deferred} left for the next run` : ""}`;
         const html = `<h2>Stripe reconciliation: ${orphans.length} paid session(s) the webhook missed</h2>`
-          + `<p>These were PAID in Stripe in the last ${lookbackHours}h but had no <code>used_stripe_sessions</code> marker: the webhook (and the success-page fallback) both missed them. This sweep re-sent each one's completed-checkout event to stripe-webhook, which runs the delivery it missed and mails the buyer as it would have. Judged by each order's row in product_deliveries: ${redelivered} of ${orphans.length} are now delivered${failedAfterClaim ? `, ${failedAfterClaim} were claimed and then failed (refund them or send them by hand)` : ""}${inProgress ? `, ${inProgress} are claimed and still generating (not delivered yet)` : ""}.</p>`
+          + `<p>These were PAID in Stripe in the last ${lookbackHours}h but had no <code>used_stripe_sessions</code> marker: the webhook (and the success-page fallback) both missed them. This sweep re-sent each one's completed-checkout event to stripe-webhook, which runs the delivery it missed and mails the buyer as it would have. Judged by each order's row in product_deliveries: ${redelivered} of ${orphans.length} are now delivered${failedAfterClaim ? `, ${failedAfterClaim} were claimed and then failed (refund them or send them by hand)` : ""}${inProgress ? `, ${inProgress} are claimed and still generating (not delivered yet)` : ""}${deferred ? `, ${deferred} were not re-sent in this run and the next run sends them` : ""}.</p>`
+          + (listCut ? `<p>This run stopped reading Stripe's list before its end, so there may be more; the next run reads it again.</p>` : "")
           + `<p>For any row not re-delivered: in the Stripe Dashboard, open Developers, then Events, find the session's <code>checkout.session.completed</code> event and press Resend. That runs the same delivery.</p>`
           + `<table border="1" cellpadding="6" style="border-collapse:collapse"><tr><th>Created</th><th>Session</th><th>Email</th><th>Amount</th><th>Product</th><th>This sweep</th></tr>${rows}</table>`;
         // ALERTED MEANS ACCEPTED (CP-027). The SDK answers a refusal as
@@ -253,7 +301,7 @@ serve(async (req) => {
         alerted = false;
         for (const from of ["Resume Booster Alerts <alerts@resumebooster.work>", "Resume Booster Alerts <onboarding@resend.dev>"]) {
           try {
-            const sent = await resend.emails.send({ from, to: [adminEmail], subject, html }) as { error?: { message?: string } | null } | undefined;
+            const sent = await withClock(resend.emails.send({ from, to: [adminEmail], subject, html }), MAIL_ATTEMPT_MS) as { error?: { message?: string } | null } | undefined;
             if (!sent?.error) { alerted = true; break; }
             console.error(`[RECONCILE-STRIPE] owner email refused from ${from}:`, sent.error.message ?? "refused");
           } catch (e) {
@@ -266,7 +314,7 @@ serve(async (req) => {
       }
     }
 
-    console.log(`[RECONCILE-STRIPE] ${paid.length} paid sessions over ${lookbackHours}h, ${orphans.length} orphan(s), ${redelivered} delivered, ${failedAfterClaim} failed after the claim, ${inProgress} still generating`);
+    console.log(`[RECONCILE-STRIPE] ${paid.length} paid sessions over ${lookbackHours}h, ${orphans.length} orphan(s), ${redelivered} delivered, ${failedAfterClaim} failed after the claim, ${inProgress} still generating, ${deferred} left for the next run, list cut: ${listCut}, ${elapsed()} ms`);
 
     // WHAT THE LAST SWEEP SAW, so a healthy result stops being indistinguishable
     // from no result. Counts only — session ids, addresses and amounts stay in
@@ -281,7 +329,7 @@ serve(async (req) => {
       await supabase.from("job_board_meta").upsert({
         k: "reconcile_stripe_run",
         v: { at: stampedAt, buildVersion: BUILD_VERSION, checkedPaid: paid.length,
-             orphans: orphans.length, redelivered, inProgress, failedAfterClaim, alerted, lookbackHours },
+             orphans: orphans.length, redelivered, inProgress, failedAfterClaim, deferred, listCut, alerted, lookbackHours },
         updated_at: stampedAt,
       }, { onConflict: "k" });
     } catch (e) {
@@ -291,7 +339,7 @@ serve(async (req) => {
     }
 
     // Counts only — never PII.
-    return json({ checkedPaid: paid.length, orphans: orphans.length, redelivered, inProgress, failedAfterClaim, alerted, lookbackHours,
+    return json({ checkedPaid: paid.length, orphans: orphans.length, redelivered, inProgress, failedAfterClaim, deferred, listCut, alerted, lookbackHours,
                   buildVersion: BUILD_VERSION, at: stampedAt });
   } catch (e) {
     console.error("[RECONCILE-STRIPE] error:", e);

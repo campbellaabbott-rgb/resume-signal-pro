@@ -181,7 +181,8 @@ describe("L10-02: the window is discovery time, and what was mailed is not maile
     expect(await (await run()).json()).toMatchObject({ sent: 1 });
     expect(sent[0].html).toContain("Nurse late");
     expect(sent[0].html).toContain("Nurse undated");
-    expect(sent[0].subject).toMatch(/^2 new /);
+    // Nothing was ever mailed to this daily search, so its first match says so (S13-083).
+    expect(sent[0].subject).toMatch(/^We found it: 2 matches /);
   });
 
   it("drops what this search already mailed, counts only the rest, and records what it mailed after the send", async () => {

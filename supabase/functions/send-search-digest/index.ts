@@ -30,6 +30,7 @@ import { oneClickHeaders, oneClickUrl, redirectToConfirm, unsubscribeParams, uns
 import { sellerFooterHtml } from "../_shared/seller.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
+import { DIGEST_COPY, formatCount, storedLanguage, type MailLanguage } from "./copy.ts";
 
 // Provable from outside without sending anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
@@ -44,7 +45,11 @@ import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
 // 2026-11-02.1 (board-stream ui round, S12-021): a watch saved on an employer
 // page that pools several boards carries `companies`, and the digest asks for
 // and links every one of them.
-const FN_BUILD = "send-search-digest.2026-11-02.1";
+// 2026-11-03.1 (audit-rest held mail): the first-match subject is keyed on
+// whether a match was ever mailed, not on the claim's stamp (S13-083); an old
+// agent-ready search is no longer narrowed to the sendable vendors (S13-118);
+// the mail speaks the language kept on the saved search (S13-102).
+const FN_BUILD = "send-search-digest.2026-11-03.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -60,7 +65,7 @@ const SITE_URL = "https://resumebooster.work";
 // claim is atomic: daily = 20 hours, anything else = 6 days.
 // THE RUN HAS A CLOCK (S8-052). Claiming 400 at once and working them one by
 // one ran past the ~150 s isolate limit, and every claimed row left behind
-// lost its window (and its first-match mail, which needs a NULL stamp). Now
+// lost its window. Now
 // rows are claimed 25 at a time, nothing new starts after 100 s, and a row
 // claimed but not started is handed back.
 // A HANDED-BACK ROW WAITS AT THE BACK OF THE QUEUE (review of the wave-3
@@ -119,7 +124,7 @@ async function hmacToken(id: string): Promise<string> {
 type SearchParams = {
   q?: string; category?: string; includeUncategorised?: boolean; location?: string;
   remote?: boolean; workMode?: string; company?: string; experience?: string;
-  country?: string; salaryFloor?: number; maxAgeDays?: number; sendableOnly?: boolean;
+  country?: string; salaryFloor?: number; maxAgeDays?: number;
   salaryCeiling?: number; payBasis?: string; hasStatedPay?: boolean;
   includeUnstatedPay?: boolean; maxYears?: number; department?: string; vendor?: string;
   employmentType?: string; excludeAgencies?: boolean;
@@ -150,7 +155,6 @@ function boardUrl(p: SearchParams): string {
   // Board URL spellings, verbatim from Jobs.tsx's initial.get sync — statedPay
   // and inclUnstatedPay are flags ("1"), fresh is the freshness window's name.
   if (p.category && p.includeUncategorised) qs.set("inclUncat", "1");
-  if (p.sendableOnly) qs.set("agentOnly", "1");
   if (p.maxAgeDays) qs.set("fresh", String(p.maxAgeDays));
   if (p.salaryCeiling) qs.set("salaryCeiling", String(p.salaryCeiling));
   if (p.payBasis) qs.set("payBasis", p.payBasis);
@@ -285,9 +289,13 @@ Deno.serve(async (req) => {
           // EVERY field the board can filter on, or the digest mails a wider
           // search than the one saved. The seven that were hand-list-dropped
           // (ceiling, basis, stated-pay, unstated widening, years, department,
-          // vendor) plus the two silent omissions (includeUncategorised,
-          // sendableOnly) all ride now; the save-side toast stopped naming
-          // them as left out in the same change.
+          // vendor) and the silent omission of includeUncategorised all ride
+          // now; the save-side toast stopped naming them as left out in the
+          // same change. THE ONE THAT DOES NOT: an old search's retired
+          // agent-ready flag (S13-118). The board page dropped that filter, so
+          // opening the search showed every role while the mail counted the
+          // four sendable vendors, about 5% of it, with no control to see or
+          // remove the narrowing. Whatever the row still holds, it is ignored.
           body: JSON.stringify({
             action: "list",
             q: p.q || undefined,
@@ -301,7 +309,6 @@ Deno.serve(async (req) => {
             country: p.country || undefined,
             salaryFloor: p.salaryFloor || undefined,
             maxAgeDays: p.maxAgeDays || undefined,
-            sendableOnly: p.sendableOnly || undefined,
             salaryCeiling: p.salaryCeiling || undefined,
             payBasis: p.payBasis || undefined,
             hasStatedPay: p.hasStatedPay || undefined,
@@ -450,9 +457,15 @@ Deno.serve(async (req) => {
         mailedIds = fresh.map((j) => j.id).filter((x): x is string => !!x);
       }
 
+      // THE READER'S LANGUAGE (S13-102), kept on the saved search. Read on its
+      // own so a run deployed before 20261103240000 only stays in English.
+      const { data: localeRow, error: localeErr } = await supabase.from("user_job_searches").select("locale").eq("id", s.id).maybeSingle();
+      const lang: MailLanguage = storedLanguage(localeErr ? null : (localeRow as { locale?: unknown } | null)?.locale);
+      const c = DIGEST_COPY[lang];
+
       const token = await hmacToken(s.id as string);
       // "10,000+" when the board could only tell us "at least this many".
-      const shownCount = countIsLowerBound ? `${newCount.toLocaleString()}+` : String(newCount);
+      const shownCount = countIsLowerBound ? `${formatCount(newCount, lang)}+` : String(newCount);
       const unsubParams = { id: s.id as string, token };
       const unsubUrl = unsubscribePageUrl("search-digest", unsubParams);
       const unsubHeaders = oneClickHeaders(oneClickUrl(Deno.env.get("SUPABASE_URL") ?? "", "send-search-digest", unsubParams));
@@ -461,7 +474,7 @@ Deno.serve(async (req) => {
       const fmtPosted = (iso?: string | null) => {
         if (!iso) return "";
         const d = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 86_400_000));
-        return d === 0 ? "posted today" : d === 1 ? "posted yesterday" : `posted ${d}d ago`;
+        return d === 0 ? c.postedToday : d === 1 ? c.postedYesterday : c.postedDaysAgo(d);
       };
       const rows = jobs.map((j) => {
         // Deep-link to OUR posting page (fit scan, live verify, prep answers
@@ -473,53 +486,56 @@ Deno.serve(async (req) => {
         return `
         <tr><td style="padding:10px 0;border-bottom:1px solid #eef2f7">
           <div style="font-size:14px;font-weight:600;color:#0f172a"><a href="${escapeHtml(rowUrl)}" style="color:#0f172a;text-decoration:none">${escapeHtml(j.title)}</a></div>
-          <div style="font-size:12px;color:#64748b">${escapeHtml(j.company)}${j.location ? " · " + escapeHtml(j.location) : ""}${j.postedAt ? ` · ${escapeHtml(fmtPosted(j.postedAt))}` : ""}${typeof j.fit === "number" ? ` · <span style="color:#16a34a;font-weight:600">${escapeHtml(j.fit)}% match</span>` : ""}</div>
+          <div style="font-size:12px;color:#64748b">${escapeHtml(j.company)}${j.location ? " · " + escapeHtml(j.location) : ""}${j.postedAt ? ` · ${escapeHtml(fmtPosted(j.postedAt))}` : ""}${typeof j.fit === "number" ? ` · <span style="color:#16a34a;font-weight:600">${c.fitMatch(escapeHtml(j.fit))}</span>` : ""}</div>
         </td><td style="padding:10px 0;border-bottom:1px solid #eef2f7;text-align:right;vertical-align:middle">
-          <a href="${escapeHtml(rowUrl)}" style="font-size:12px;color:#2563eb;text-decoration:none;font-weight:600">View&nbsp;→</a>
+          <a href="${escapeHtml(rowUrl)}" style="font-size:12px;color:#2563eb;text-decoration:none;font-weight:600">${c.view}&nbsp;→</a>
         </td></tr>`;
       }).join("");
 
       const html = `
-<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f1f5f9;font-family:Helvetica,Arial,sans-serif">
+<!DOCTYPE html><html lang="${lang}"><body style="margin:0;padding:0;background:#f1f5f9;font-family:Helvetica,Arial,sans-serif">
   <div style="max-width:560px;margin:0 auto;padding:24px 16px">
     <div style="text-align:center;padding:0 0 14px">
       <span style="font-size:17px;font-weight:800;color:#0f172a">Resume <span style="color:#2563eb">Booster</span></span>
-      <div style="font-size:11px;color:#94a3b8;margin-top:2px">Saved search · ${escapeHtml(s.name as string)}</div>
+      <div style="font-size:11px;color:#94a3b8;margin-top:2px">${c.tagline} · ${escapeHtml(s.name as string)}</div>
     </div>
     <div style="background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:22px">
-      <p style="font-size:15px;color:#0f172a;margin:0 0 4px"><b>${escapeHtml(shownCount)}</b> new ${strongMode ? (newCount === 1 ? "match for you" : "matches for you") : (newCount === 1 ? "opening" : "openings")} since we last checked</p>
-      <p style="font-size:13px;color:#64748b;margin:0 0 16px">${strongMode ? `that clear your fit bar for` : `matching`} “${escapeHtml(s.name as string)}”, pulled from companies' official job boards.</p>
+      <p style="font-size:15px;color:#0f172a;margin:0 0 4px">${c.countLine(escapeHtml(shownCount), newCount, strongMode)}</p>
+      <p style="font-size:13px;color:#64748b;margin:0 0 16px">${c.lead(escapeHtml(s.name as string), newCount, strongMode)}</p>
       <table style="width:100%;border-collapse:collapse">${rows}</table>
       <div style="text-align:center;margin:20px 0 4px">
-        <a href="${escapeHtml(viewUrl)}" style="display:inline-block;background:#2563eb;color:#fff;font-size:14px;font-weight:700;padding:11px 22px;border-radius:10px;text-decoration:none">See all ${escapeHtml(shownCount)} on the board</a>
+        <a href="${escapeHtml(viewUrl)}" style="display:inline-block;background:#2563eb;color:#fff;font-size:14px;font-weight:700;padding:11px 22px;border-radius:10px;text-decoration:none">${c.seeAll(escapeHtml(shownCount))}</a>
       </div>
-      <p style="font-size:12px;color:#94a3b8;text-align:center;margin:10px 0 0">Tip: <a href="${SITE_URL}/resume-checker" style="color:#2563eb;text-decoration:none">scan your resume</a> against any posting before you apply.</p>
+      <p style="font-size:12px;color:#94a3b8;text-align:center;margin:10px 0 0">${c.tip((text) => `<a href="${SITE_URL}/resume-checker" style="color:#2563eb;text-decoration:none">${text}</a>`)}</p>
     </div>
     <p style="font-size:11px;color:#94a3b8;text-align:center;margin:14px 0 0">
-      You turned on the digest for this saved search. <a href="${escapeHtml(unsubUrl)}" style="color:#94a3b8">Turn it off</a>.
+      ${c.footer((text) => `<a href="${escapeHtml(unsubUrl)}" style="color:#94a3b8">${text}</a>`)}
     </p>${sellerFooterHtml()}
   </div>
 </body></html>`;
 
       try {
-        const CATEGORY_LABELS: Record<string, string> = {
-          engineering: "engineering", data_ai: "data & AI", design: "design", product: "product",
-          marketing: "marketing", sales: "sales", customer: "customer", finance: "finance",
-          legal: "legal", people_hr: "people & HR", operations: "operations", healthcare: "healthcare",
-          science: "science", education: "education", hospitality_retail: "retail & hospitality",
-          security: "security", admin: "admin", other: "job",
-        };
-        const catLabel = p.category ? (CATEGORY_LABELS[p.category] ?? "job") : (p.q || "job");
+        const catLabel = p.category ? (c.category[p.category] ?? null) : (p.q || null);
         // First-ever send on a daily-cadence search = the user clicked "Alert
         // me when this exists" (or watch-company) and this is the moment it
         // exists. Say that, plainly — it's the single most awaited email the
-        // board sends.
-        const firstMatch = !s.digest_last_sent_at && String((s as { digest_cadence?: string }).digest_cadence ?? "") === "daily";
+        // board sends. "FIRST-EVER" IS WHETHER A MATCH WAS EVER MAILED (S13-083),
+        // never the window stamp: the claim stamps every run, the empty ones
+        // too, so the zero-result alert this subject was written for had a
+        // stamp by its first real match and never got it. search_digest_sent
+        // keeps a search's last mailed postings until the next mail replaces
+        // them, so a row there means a mail went; a read that failed is not
+        // "never", so it gets the plain subject.
+        const isDaily = String((s as { digest_cadence?: string }).digest_cadence ?? "") === "daily";
+        const { data: everMailed, error: everErr } = isDaily
+          ? await supabase.from("search_digest_sent").select("posting_id").eq("search_id", s.id).limit(1)
+          : { data: null, error: null };
+        const firstMatch = isDaily && !everErr && Array.isArray(everMailed) && everMailed.length === 0;
         const subject = firstMatch
-          ? `We found it: ${shownCount} ${newCount === 1 ? "match" : "matches"} for “${s.name}”`
+          ? c.subjectFirstMatch(shownCount, newCount, s.name)
           : strongMode
-            ? `${shownCount} new strong ${newCount === 1 ? "match" : "matches"} for you — ${s.name}`
-            : `${shownCount} new ${catLabel} ${newCount === 1 ? "match" : "matches"} — ${s.name}`;
+            ? c.subjectStrong(shownCount, newCount, s.name)
+            : c.subjectPlain(shownCount, newCount, catLabel, s.name);
         const { error: sendErr } = await resend.emails.send({ from: "Resume Booster <reports@resumebooster.work>", to: email, reply_to: CUSTOMER_REPLY_TO, subject, html, headers: unsubHeaders });
         if (sendErr) throw new Error(String((sendErr as { message?: string }).message ?? "send refused"));
         sent++;
