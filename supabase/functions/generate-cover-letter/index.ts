@@ -60,7 +60,7 @@ import { refundWriting, writingChain, writingGate, type WritingPass } from "../_
 // the use given back.
 // Nothing of main's past f8d72a9b, the build the 2026-10-31 deploy put live,
 // rides along.
-const FN_BUILD = "generate-cover-letter.2026-10-28.1";
+const FN_BUILD = "generate-cover-letter.2026-11-03.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

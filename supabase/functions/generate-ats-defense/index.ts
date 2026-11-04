@@ -24,7 +24,7 @@ import { isServiceRoleCaller } from "../_shared/service-caller.ts";
 // itself, whose message quoted the report text around it.
 // Nothing of main's past f8d72a9b, the build the 2026-10-31 deploy put live,
 // rides along.
-const FN_BUILD = "generate-ats-defense.2026-10-28.1";
+const FN_BUILD = "generate-ats-defense.2026-11-03.1";
 /** Reports one purchase may generate in a day (regenerations included). */
 const ATS_DEFENSE_PER_PURCHASE_DAY = 10;
 

@@ -17,7 +17,7 @@ import { callAIWithModelFallback, describeError, describeReply } from "../_share
 // text around it, which could be the person's name or email. Nothing else in
 // this function changed, and nothing of main's past f8d72a9b, the build the
 // 2026-10-31 deploy put live, rides along.
-const FN_BUILD = "parse-resume-structured.2026-10-28.1";
+const FN_BUILD = "parse-resume-structured.2026-11-03.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

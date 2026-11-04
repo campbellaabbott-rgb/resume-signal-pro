@@ -333,15 +333,16 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
  * provider verified, or an emailed confirmation once confirmation is really
  * on), or a paying account (a live, non-trial plan by pro-standing's one
  * rule). Anything else is null: an anonymous caller, an anonymous sign-in,
- * and a plain password account, which costs nothing to mint while sign-ups
- * auto-confirm. Both names fit check_rate_limit's 45 characters.
+ * a plain password account, which costs nothing to mint while sign-ups
+ * auto-confirm, and a connected app's token, hook or no hook (S9-001). Both
+ * names fit check_rate_limit's 45 characters.
  */
 export async function provenCaller(db: SpendDb, h: Headers, boardPass: unknown): Promise<string | null> {
   const pass = await boardPassId(boardPass, env("SUPABASE_SERVICE_ROLE_KEY"), env("TURNSTILE_SECRET_KEY"));
   if (pass) return `pass:${pass}`;
   const jwt = bearerOf(h);
   const claims = jwt ? unverifiedClaims(jwt) : null;
-  if (!claims || claims.role !== "authenticated" || claims.is_anonymous === true) return null;
+  if (!claims || claims.role !== "authenticated" || claims.is_anonymous === true || "client_id" in claims) return null;
   if (typeof db.auth?.getUser !== "function") return null;
   try {
     const { data, error } = await db.auth.getUser(jwt);
